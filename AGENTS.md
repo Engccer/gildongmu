@@ -52,6 +52,13 @@
 
 상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`. 설계 결정: `docs/SPEC.md`.
 
+## 배포
+
+- **Vercel 프로덕션**: https://gildongmu.vercel.app (2026-06-13 최초 배포, 팀 `hunyong-kims-projects`)
+- 환경변수는 Vercel 프로젝트에 등록 (`KAKAO_REST_API_KEY` — Production/Development. Preview는 CLI 구버전 버그로 미등록, 새 키 추가 시 대시보드에서)
+- GitHub 저장소(`Engccer/gildongmu`)가 Vercel에 연결됨 — **push하면 자동 배포**된다. push는 사용자 요청 시에만 하는 워크스페이스 규칙이 곧 배포 게이트.
+- 수동 배포: `vercel deploy --prod --yes`
+
 ## 명령어
 
 ```bash
