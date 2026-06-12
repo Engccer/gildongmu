@@ -26,6 +26,9 @@ const envSchema = z.object({
   NCP_MAPS_CLIENT_ID: z.string().min(1).optional(),
   NCP_MAPS_CLIENT_SECRET: z.string().min(1).optional(),
 
+  // 한국관광공사 TourAPI 4.0 — data.go.kr serviceKey (Decoding 버전을 넣을 것)
+  TOUR_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -36,6 +39,7 @@ export const env = envSchema.parse({
   NAVER_LOCAL_CLIENT_SECRET: process.env.NAVER_LOCAL_CLIENT_SECRET,
   NCP_MAPS_CLIENT_ID: process.env.NCP_MAPS_CLIENT_ID,
   NCP_MAPS_CLIENT_SECRET: process.env.NCP_MAPS_CLIENT_SECRET,
+  TOUR_API_KEY: process.env.TOUR_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -52,4 +56,9 @@ export function hasNaverLocalKeys(): boolean {
 /** NCP Maps REST API 사용 가능 여부 */
 export function hasNcpMapsKeys(): boolean {
   return Boolean(env.NCP_MAPS_CLIENT_ID && env.NCP_MAPS_CLIENT_SECRET);
+}
+
+/** TourAPI(한국관광공사) 사용 가능 여부 */
+export function hasTourApiKey(): boolean {
+  return Boolean(env.TOUR_API_KEY);
 }

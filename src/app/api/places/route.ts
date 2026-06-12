@@ -12,12 +12,14 @@ import { searchPlaces } from "@/lib/providers/places";
 const querySchema = z.object({
   query: z.string().trim().min(1, "검색어가 비어 있습니다").max(100),
   limit: z.coerce.number().int().min(1).max(5).default(5),
+  lang: z.enum(["ko", "en"]).default("ko"),
 });
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     query: request.nextUrl.searchParams.get("query") ?? "",
     limit: request.nextUrl.searchParams.get("limit") ?? undefined,
+    lang: request.nextUrl.searchParams.get("lang") ?? undefined,
   });
 
   if (!parsed.success) {

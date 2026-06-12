@@ -20,13 +20,32 @@
     "phone": "전화",
     "callAction": "{name}에 전화 걸기",
     "openInNaverMap": "네이버 지도에서 보기",
+    "openInKakaoMap": "카카오맵에서 보기",
     "detailPage": "상세 정보 페이지"
   },
   "route": {
     "heading": "{name}까지 길찾기",
+    "naverGroup": "네이버 지도로 {name}까지 길찾기",
+    "naverLabel": "네이버 지도",
+    "naverModeAction": "네이버 지도로 {mode} 길찾기",
+    "kakaoGroup": "카카오맵으로 {name}까지 길찾기",
+    "kakaoLabel": "카카오맵",
+    "kakaoModeAction": "카카오맵으로 {mode} 길찾기",
     "walk": "도보",
     "public": "대중교통",
     "car": "자동차",
-    "deeplinkHint": "네이버 지도 앱이 열립니다"
+    "deeplinkHint": "네이버 지도 앱이 열립니다",
+    "briefing": {
+      "button": "자동차 경로 미리 듣기",
+      "locating": "현재 위치 확인 중…",
+      "loading": "경로 계산 중…",
+      "geoError": "현재 위치를 가져올 수 없습니다. 브라우저의 위치 권한을 확인해 주세요.",
+      "error": "경로 브리핑에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+      "ready": "경로 안내가 준비되었습니다.",
+      "heading": "{name}까지 자동차 경로",
+      "summary": "총 거리 {distance}, 약 {minutes}분 소요. 예상 택시 요금 {taxi}원.",
+      "toll": "통행료 {toll}원 별도.",
+      "disclaimer": "실시간 교통 기준 예상치입니다. 실제 주행 안내는 지도 앱 길찾기를 이용하세요."
+    }
   }
 }

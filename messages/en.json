@@ -20,13 +20,32 @@
     "phone": "Phone",
     "callAction": "Call {name}",
     "openInNaverMap": "Open in Naver Map",
+    "openInKakaoMap": "Open in Kakao Map",
     "detailPage": "Detail page"
   },
   "route": {
     "heading": "Directions to {name}",
+    "naverGroup": "Directions to {name} with Naver Map",
+    "naverLabel": "Naver Map",
+    "naverModeAction": "{mode} directions with Naver Map",
+    "kakaoGroup": "Directions to {name} with Kakao Map",
+    "kakaoLabel": "Kakao Map",
+    "kakaoModeAction": "{mode} directions with Kakao Map",
     "walk": "Walk",
     "public": "Transit",
     "car": "Car",
-    "deeplinkHint": "Opens the Naver Map app"
+    "deeplinkHint": "Opens the Naver Map app",
+    "briefing": {
+      "button": "Preview car route as text",
+      "locating": "Getting your location…",
+      "loading": "Calculating route…",
+      "geoError": "Could not get your location. Please check the browser's location permission.",
+      "error": "Route briefing failed. Please try again shortly.",
+      "ready": "Route briefing is ready.",
+      "heading": "Car route to {name}",
+      "summary": "Total {distance}, about {minutes} min. Estimated taxi fare {taxi} KRW.",
+      "toll": "Toll {toll} KRW not included.",
+      "disclaimer": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
+    }
   }
 }

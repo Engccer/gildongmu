@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { getTranslations } from "next-intl/server";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { activeProviderName } from "@/lib/providers/places";
+import { hasKakaoKey } from "@/lib/env";
 
 export default async function HomePage({
   params,
@@ -18,7 +19,10 @@ export default async function HomePage({
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <p className="mt-2 text-lg opacity-80">{t("tagline")}</p>
       </header>
-      <PlaceSearch isMockMode={activeProviderName() === "mock"} />
+      <PlaceSearch
+        isMockMode={activeProviderName() === "mock"}
+        canBriefCarRoute={hasKakaoKey()}
+      />
     </main>
   );
 }

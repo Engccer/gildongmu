@@ -31,13 +31,16 @@
   - 실데이터 호출 실패 시 mock으로 조용히 폴백하지 않는다(가짜 실데이터 금지).
 - **좌표는 WGS84 십진 도로 통일**. 네이버 지역 검색의 `mapx/mapy`(×10⁷ 정수)는 provider 안에서만 존재. 카카오는 WGS84 그대로.
 - **내비게이션은 딥링크로 네이티브 앱 위임**: `src/lib/deeplink.ts`(nmap://), `src/lib/deeplink-kakao.ts`(kakaomap://). NCP/카카오내비 Directions는 자동차 전용이라 도보·대중교통 자체 구현 대상이 아니다.
+- **자동차 경로 텍스트 브리핑** (`/api/route/car` + `CarRouteBriefing` 컴포넌트): 카카오모빌리티 directions의 `guides[].guidance`(완성된 한국어 안내문)를 낭독 정본으로 사용. 실주행 내비가 아니라 "출발 전 경로 미리 듣기" — 실주행은 딥링크 위임 원칙 유지.
+- **버튼 비활성화는 `disabled` 대신 `aria-disabled` + 핸들러 가드** — `disabled`는 포커스를 제거해 스크린 리더 사용자가 맥락을 잃는다 (a11y 감사 반영, 2026-06-13).
 - i18n: next-intl, `/ko` `/en` 경로 프리픽스, 메시지는 `messages/*.json`.
 
-## API 키 현황 (2026-06-12)
+## API 키 현황 (2026-06-13)
 
 | 키 | 상태 | 비고 |
 |----|------|------|
-| `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료, 실데이터 검증됨 |
+| `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료. 이 키 하나로 **로컬 검색 + 주소 지오코딩 + 카카오모빌리티 자동차 경로**까지 모두 동작 (모빌리티는 별도 활성화 불필요, 2026-06-13 검증) |
+| `TOUR_API_KEY` | 미발급 (provider 구현 완료) | data.go.kr 회원가입 → 관광정보 서비스 활용신청 (자동 승인). **Decoding 키**를 넣을 것. en 로케일 장소 검색이 자동으로 TourAPI 우선 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com 수동 등록 필요 (Claude in Chrome이 해당 도메인 차단) — 결제수단 불필요, 일 25,000회 |
 | `NCP_MAPS_CLIENT_ID/SECRET` | 차단 | NCP 계정 결제수단 미등록 → 카드 등록 후 콘솔 Maps > Application 등록 |
 

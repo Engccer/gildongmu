@@ -1,13 +1,18 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { Place, PlaceSearchResult, RouteMode } from "@/lib/types";
 import {
   buildPlaceDeeplink,
   buildRouteDeeplink,
   buildWebFallbackUrl,
 } from "@/lib/deeplink";
+import {
+  buildKakaoWebMapUrl,
+  buildKakaoWebRouteUrl,
+} from "@/lib/deeplink-kakao";
+import { CarRouteBriefing } from "./CarRouteBriefing";
 
 const APPNAME =
   process.env.NEXT_PUBLIC_APP_IDENTIFIER ?? "space.dodoplanet.gildongmu";
@@ -29,20 +34,31 @@ type Status =
  * - 검색 완료 시 결과 헤딩으로 포커스 이동 → 키보드/스크린 리더 사용자가
  *   결과 위치를 찾아 헤매지 않게 한다.
  */
-export function PlaceSearch({ isMockMode }: { isMockMode: boolean }) {
+export function PlaceSearch({
+  isMockMode,
+  canBriefCarRoute = false,
+}: {
+  isMockMode: boolean;
+  /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
+  canBriefCarRoute?: boolean;
+}) {
   const t = useTranslations();
+  const locale = useLocale();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (status.kind === "loading") return;
     const q = query.trim();
     if (!q) return;
 
     setStatus({ kind: "loading" });
     try {
-      const res = await fetch(`/api/places?query=${encodeURIComponent(q)}`);
+      const res = await fetch(
+        `/api/places?query=${encodeURIComponent(q)}&lang=${locale}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const result = (await res.json()) as PlaceSearchResult;
       setStatus({ kind: "done", result });
@@ -88,10 +104,12 @@ export function PlaceSearch({ isMockMode }: { isMockMode: boolean }) {
           autoComplete="off"
           className="min-h-12 flex-1 rounded-md border border-gray-400 px-4 text-lg"
         />
+        {/* disabled 대신 aria-disabled — 검색 중에도 포커스를 잃지 않게 한다 */}
         <button
           type="submit"
-          disabled={status.kind === "loading"}
-          className="min-h-12 rounded-md bg-blue-700 px-6 text-lg font-semibold text-white disabled:opacity-50"
+          aria-disabled={status.kind === "loading"}
+          aria-busy={status.kind === "loading"}
+          className="min-h-12 rounded-md bg-blue-700 px-6 text-lg font-semibold text-white aria-disabled:opacity-50"
         >
           {t("search.button")}
         </button>
@@ -118,7 +136,11 @@ export function PlaceSearch({ isMockMode }: { isMockMode: boolean }) {
           ) : (
             <ul className="mt-3 flex flex-col gap-4">
               {status.result.places.map((place) => (
-                <PlaceCard key={place.id} place={place} />
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  canBriefCarRoute={canBriefCarRoute}
+                />
               ))}
             </ul>
           )}
@@ -128,8 +150,15 @@ export function PlaceSearch({ isMockMode }: { isMockMode: boolean }) {
   );
 }
 
-function PlaceCard({ place }: { place: Place }) {
+function PlaceCard({
+  place,
+  canBriefCarRoute,
+}: {
+  place: Place;
+  canBriefCarRoute: boolean;
+}) {
   const t = useTranslations();
+  const dest = { lat: place.lat, lng: place.lng, name: place.name };
 
   return (
     <li className="rounded-lg border border-gray-300 p-4">
@@ -159,50 +188,95 @@ function PlaceCard({ place }: { place: Place }) {
         )}
       </dl>
 
-      <nav
-        aria-label={t("route.heading", { name: place.name })}
-        className="mt-3 flex flex-wrap gap-2"
-      >
-        {ROUTE_MODES.map((mode) => (
-          <a
-            key={mode}
-            href={buildRouteDeeplink(
-              mode,
-              { dest: { lat: place.lat, lng: place.lng, name: place.name } },
-              APPNAME,
+      <nav aria-label={t("route.heading", { name: place.name })}>
+        {/* 네이버 지도 — 앱 딥링크 (nmap://) */}
+        <div
+          role="group"
+          aria-label={t("route.naverGroup", { name: place.name })}
+          className="mt-3"
+        >
+          <p aria-hidden="true" className="text-xs font-medium opacity-70">
+            {t("route.naverLabel")}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {ROUTE_MODES.map((mode) => (
+              <a
+                key={mode}
+                href={buildRouteDeeplink(mode, { dest }, APPNAME)}
+                aria-label={t("route.naverModeAction", {
+                  mode: t(`route.${mode}`),
+                })}
+                title={t("route.deeplinkHint")}
+                className="min-h-11 rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300"
+              >
+                {t(`route.${mode}`)}
+              </a>
+            ))}
+            <a
+              href={buildPlaceDeeplink(place, APPNAME)}
+              title={t("route.deeplinkHint")}
+              className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
+            >
+              {t("place.openInNaverMap")}
+            </a>
+            <a
+              href={buildWebFallbackUrl(place.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
+            >
+              map.naver.com
+            </a>
+          </div>
+        </div>
+
+        {/* 카카오맵 — 웹 URL (모바일은 앱으로, 데스크톱은 웹 지도로 자연 폴백) */}
+        <div
+          role="group"
+          aria-label={t("route.kakaoGroup", { name: place.name })}
+          className="mt-3"
+        >
+          <p aria-hidden="true" className="text-xs font-medium opacity-70">
+            {t("route.kakaoLabel")}
+          </p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {ROUTE_MODES.map((mode) => (
+              <a
+                key={mode}
+                href={buildKakaoWebRouteUrl(mode, dest)}
+                aria-label={t("route.kakaoModeAction", {
+                  mode: t(`route.${mode}`),
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-11 rounded-md border border-amber-600 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300"
+              >
+                {t(`route.${mode}`)}
+              </a>
+            ))}
+            <a
+              href={buildKakaoWebMapUrl(dest)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
+            >
+              {t("place.openInKakaoMap")}
+            </a>
+            {place.link && (
+              <a
+                href={place.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
+              >
+                {t("place.detailPage")}
+              </a>
             )}
-            title={t("route.deeplinkHint")}
-            className="min-h-11 rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300"
-          >
-            {t(`route.${mode}`)}
-          </a>
-        ))}
-        <a
-          href={buildPlaceDeeplink(place, APPNAME)}
-          title={t("route.deeplinkHint")}
-          className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
-        >
-          {t("place.openInNaverMap")}
-        </a>
-        <a
-          href={buildWebFallbackUrl(place.name)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
-        >
-          map.naver.com
-        </a>
-        {place.link && (
-          <a
-            href={place.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
-          >
-            {t("place.detailPage")}
-          </a>
-        )}
+          </div>
+        </div>
       </nav>
+
+      {canBriefCarRoute && <CarRouteBriefing dest={dest} />}
     </li>
   );
 }
