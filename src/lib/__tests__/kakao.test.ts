@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import { normalizeDocument } from "../providers/kakao-local";
 import {
   buildKakaoLookDeeplink,
+  buildKakaoPlaceDeeplink,
   buildKakaoRouteDeeplink,
+  buildKakaoWebMapUrl,
+  buildKakaoWebRouteUrl,
 } from "../deeplink-kakao";
 
 describe("normalizeDocument (카카오 로컬)", () => {
@@ -52,18 +55,18 @@ describe("buildKakaoRouteDeeplink", () => {
   it("대중교통 길찾기 — 출발지 생략 시 ep만 포함", () => {
     const url = buildKakaoRouteDeeplink("public", { dest: DEST });
     expect(url).toMatch(/^kakaomap:\/\/route\?/);
-    expect(url).toContain("by=PUBLICTRANSIT");
+    expect(url).toContain("by=publictransit");
     expect(url).toContain(`ep=${encodeURIComponent("37.578897,126.976861")}`);
     expect(url).not.toContain("sp=");
   });
 
-  it("이동 수단 매핑: walk→FOOT, car→CAR, bike→FOOT(대체)", () => {
+  it("이동 수단 매핑 (공식 소문자): walk→foot, car→car, bike→bicycle", () => {
     expect(buildKakaoRouteDeeplink("walk", { dest: DEST })).toContain(
-      "by=FOOT",
+      "by=foot",
     );
-    expect(buildKakaoRouteDeeplink("car", { dest: DEST })).toContain("by=CAR");
+    expect(buildKakaoRouteDeeplink("car", { dest: DEST })).toContain("by=car");
     expect(buildKakaoRouteDeeplink("bike", { dest: DEST })).toContain(
-      "by=FOOT",
+      "by=bicycle",
     );
   });
 
@@ -76,10 +79,43 @@ describe("buildKakaoRouteDeeplink", () => {
   });
 });
 
-describe("buildKakaoLookDeeplink", () => {
+describe("buildKakaoLookDeeplink / buildKakaoPlaceDeeplink", () => {
   it("좌표 보기 딥링크를 생성한다", () => {
     expect(buildKakaoLookDeeplink({ lat: 37.5, lng: 127.0 })).toBe(
       "kakaomap://look?p=37.5,127",
     );
+  });
+
+  it("장소 상세 딥링크를 생성한다 (로컬 API id 체인)", () => {
+    expect(buildKakaoPlaceDeeplink("8129461")).toBe(
+      "kakaomap://place?id=8129461",
+    );
+  });
+});
+
+describe("카카오맵 웹 URL (미설치 폴백)", () => {
+  const DEST = { lat: 37.578897, lng: 126.976861, name: "경복궁" };
+
+  it("길찾기 웹 URL — 수단 세그먼트 매핑 (public→traffic, walk→walk)", () => {
+    expect(buildKakaoWebRouteUrl("public", DEST)).toBe(
+      `https://map.kakao.com/link/by/traffic/${encodeURIComponent("경복궁")},37.578897,126.976861`,
+    );
+    expect(buildKakaoWebRouteUrl("walk", DEST)).toContain("/link/by/walk/");
+  });
+
+  it("지도 보기 웹 URL을 생성한다", () => {
+    expect(buildKakaoWebMapUrl(DEST)).toBe(
+      `https://map.kakao.com/link/map/${encodeURIComponent("경복궁")},37.578897,126.976861`,
+    );
+  });
+
+  it("권역 밖 목적지는 거부한다", () => {
+    expect(() =>
+      buildKakaoWebRouteUrl("car", {
+        lat: 1.35,
+        lng: 103.82,
+        name: "싱가포르",
+      }),
+    ).toThrow();
   });
 });
