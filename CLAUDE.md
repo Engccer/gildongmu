@@ -42,7 +42,7 @@
 | `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료. 이 키 하나로 **로컬 검색 + 주소 지오코딩 + 카카오모빌리티 자동차 경로**까지 모두 동작 (모빌리티는 별도 활성화 불필요, 2026-06-13 검증) |
 | `TOUR_API_KEY` | 미발급 (provider 구현 완료) | data.go.kr 회원가입 → 관광정보 서비스 활용신청 (자동 승인). **Decoding 키**를 넣을 것. en 로케일 장소 검색이 자동으로 TourAPI 우선 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com 수동 등록 필요 (Claude in Chrome이 해당 도메인 차단) — 결제수단 불필요, 일 25,000회 |
-| `NCP_MAPS_CLIENT_ID/SECRET` | 차단 | NCP 계정 결제수단 미등록 → 카드 등록 후 콘솔 Maps > Application 등록 |
+| `NCP_MAPS_CLIENT_ID/SECRET` | **동작 확인 (2026-06-13)** | 결제수단 등록 후 Maps 구독 + Application `gildongmu` 등록(API 6종 전체 체크, Web URL: vercel.app·localhost:3000·3001). Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 호스트 `maps.apigw.ntruss.com`, 헤더 `x-ncp-apigw-api-key-id`/`x-ncp-apigw-api-key` |
 
 상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`. 설계 결정: `docs/SPEC.md`.
 

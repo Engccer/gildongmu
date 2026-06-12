@@ -79,7 +79,7 @@
 - [x] ~~카카오맵 제품 활성화~~ → 완료, 카카오 로컬 실데이터 동작 확인
 - [x] ~~외국인용 장소 검색~~ → TourAPI provider로 설계 확정 (en 로케일 자동 우선). 키 발급 후 검증만 남음
 - [ ] **TourAPI 키 발급** — data.go.kr 회원가입 + 국문/영문 관광정보 서비스 활용신청 (자동 승인). 발급 후: 빈 결과 시 `items: ""` 동작과 `contenttypeid` 라벨 매핑 실응답 검증
-- [ ] NCP 결제수단 등록 (사용자 직접) → Maps Application 등록 → `NCP_MAPS_*` 키 확보
+- [x] ~~NCP 결제수단 등록 → Maps Application 등록~~ → **완료 (2026-06-13)** — Maps 구독 + Application `gildongmu`(API 6종, Web URL 3개), Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 키는 `.env.local` `NCP_MAPS_*`. 다음 실험 후보: 영문 주소 변환(juso.go.kr 대신 NCP `englishAddress` 활용), 카카오 vs NCP Directions A/B
 - [ ] developers.naver.com 애플리케이션 등록 (사용자 직접 — Claude in Chrome이 도메인 차단) → `NAVER_LOCAL_*` 키 확보
 - [ ] 지역 검색 API 좌표계(×10⁷) 실응답 검증 — 공식 문서 원문 확인 불가였음 (조사 보고서 §2.1)
 - [ ] VoiceOver 수동 테스트 시나리오 문서화
