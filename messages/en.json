@@ -19,7 +19,8 @@
     "roadAddress": "Road address",
     "phone": "Phone",
     "callAction": "Call {name}",
-    "openInNaverMap": "Open in Naver Map"
+    "openInNaverMap": "Open in Naver Map",
+    "detailPage": "Detail page"
   },
   "route": {
     "heading": "Directions to {name}",

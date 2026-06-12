@@ -15,6 +15,9 @@ import { z } from "zod";
  *   헤더 X-Naver-Client-Id / X-Naver-Client-Secret.
  */
 const envSchema = z.object({
+  // developers.kakao.com — 카카오 로컬/모빌리티 REST API (KakaoAK 헤더)
+  KAKAO_REST_API_KEY: z.string().min(1).optional(),
+
   // developers.naver.com — 지역(Local) 검색 API
   NAVER_LOCAL_CLIENT_ID: z.string().min(1).optional(),
   NAVER_LOCAL_CLIENT_SECRET: z.string().min(1).optional(),
@@ -28,12 +31,18 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse({
+  KAKAO_REST_API_KEY: process.env.KAKAO_REST_API_KEY,
   NAVER_LOCAL_CLIENT_ID: process.env.NAVER_LOCAL_CLIENT_ID,
   NAVER_LOCAL_CLIENT_SECRET: process.env.NAVER_LOCAL_CLIENT_SECRET,
   NCP_MAPS_CLIENT_ID: process.env.NCP_MAPS_CLIENT_ID,
   NCP_MAPS_CLIENT_SECRET: process.env.NCP_MAPS_CLIENT_SECRET,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
+
+/** 카카오 로컬 API 사용 가능 여부 */
+export function hasKakaoKey(): boolean {
+  return Boolean(env.KAKAO_REST_API_KEY);
+}
 
 /** 네이버 지역 검색 API 사용 가능 여부 */
 export function hasNaverLocalKeys(): boolean {

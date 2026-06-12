@@ -192,6 +192,16 @@ function PlaceCard({ place }: { place: Place }) {
         >
           map.naver.com
         </a>
+        {place.link && (
+          <a
+            href={place.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-h-11 rounded-md border border-gray-500 px-4 py-2 text-sm"
+          >
+            {t("place.detailPage")}
+          </a>
+        )}
       </nav>
     </li>
   );
