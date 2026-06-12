@@ -9,13 +9,15 @@ import type { Place, PlaceSearchResult } from "../types";
  * 언어로 번역되어 내려온다. 외국인 여행자 시나리오의 코어 데이터.
  *
  * - 엔드포인트: https://apis.data.go.kr/B551011/{서비스}/searchKeyword2
- * - 인증: data.go.kr serviceKey (일 100,000건 무료)
- *   ⚠ 키는 "Decoding" 버전을 환경변수에 넣을 것 — URLSearchParams가
- *   인코딩을 담당하므로 Encoding 키를 넣으면 이중 인코딩으로 401이 난다.
+ * - 인증: data.go.kr serviceKey. 신형 GW 서비스는 hex 64자 단일 키
+ *   (Encoding/Decoding 구분 없음). 승인 직후 30분~1시간은 게이트웨이
+ *   전파 전이라 401 Unauthorized가 난다 (2026-06-13 실측: 약 10분).
+ * - 쿼터: 개발계정은 상세기능당 일 1,000건 (운영계정 전환 시 상향).
  * - 좌표: mapx(경도)/mapy(위도) WGS84 십진 도.
  *
- * 미검증(키 발급 대기): 빈 결과 시 items가 "" 문자열로 오는 동작과
- * contenttypeid 라벨은 실호출로 확인 후 확정한다 (docs/SPEC.md 미해결 항목).
+ * 실호출 검증 완료 (2026-06-13): 빈 결과 시 items는 빈 문자열("")로
+ * 온다. contenttypeid는 국문(12~39)·영문(75~85) 코드가 겹치지 않아
+ * 단일 맵으로 라벨링한다 (아래 CONTENT_TYPE_LABELS).
  */
 
 /** 지원 언어 → TourAPI 서비스 이름 (필요 시 Jpn/Chs 등 추가) */
@@ -49,12 +51,38 @@ interface TourApiResponse {
   };
 }
 
+/**
+ * contenttypeid → 사람이 읽을 카테고리 라벨.
+ * 국문 서비스(KorService2)와 영문 서비스(EngService2)는 코드 체계가
+ * 다르지만 값이 겹치지 않으므로 (국문 12~39, 영문 75~85) 한 맵으로 처리.
+ * 출처: TourAPI 4.0 공식 개발 가이드 + 2026-06-13 실응답 확인.
+ */
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  // 국문 (KorService2)
+  "12": "관광지",
+  "14": "문화시설",
+  "15": "축제·공연·행사",
+  "25": "여행코스",
+  "28": "레포츠",
+  "32": "숙박",
+  "38": "쇼핑",
+  "39": "음식점",
+  // 영문 (EngService2)
+  "75": "Leisure Sports",
+  "76": "Tourist Attraction",
+  "77": "Transportation",
+  "78": "Cultural Facility",
+  "79": "Shopping",
+  "80": "Accommodation",
+  "82": "Restaurant",
+  "85": "Festival & Event",
+};
+
 export function normalizeTourItem(item: TourApiItem): Place {
   return {
     id: `tour-${item.contentid}`,
     name: item.title,
-    // contenttypeid 숫자 코드 → 라벨 매핑은 실호출 검증 후 확정 (위 주석)
-    category: "",
+    category: CONTENT_TYPE_LABELS[item.contenttypeid] ?? "",
     address: [item.addr1, item.addr2].filter(Boolean).join(" "),
     roadAddress: item.addr1 || "",
     lat: Number(item.mapy),
