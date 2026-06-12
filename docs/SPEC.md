@@ -67,6 +67,8 @@
 
 ## 5. dodo-planet 통합 경로 (장기)
 
+> **2026-06-13: 통합 계획 스펙 확정** — `~/Mac-Projects/dodo-planet/docs/plans/2026-06-13-korea-local-provider-integration.md`. 카카오 3종+딥링크는 검증 완료로 dodo Phase 1 직행 가능. 이 저장소의 잔여 역할은 **Phase 0 = TourAPI 키 발급 + 실응답 검증** (dodo 착수의 전제조건 아님, 병행).
+
 1. **v0~v1**: 독립 앱으로 성숙 (이 저장소).
 2. **통합 시**: `src/lib/` (providers, deeplink, types)은 그대로 이식 가능하도록 React/Next 비의존으로 유지. UI 컴포넌트는 dodo-planet 디자인 시스템에 맞춰 재스킨.
 3. 스택을 dodo-planet과 미리 일치시켜 둠: next-intl 4 / zod 4 / Vitest 4 / App Router / proxy.ts.
