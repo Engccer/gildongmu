@@ -43,8 +43,8 @@
 
 | 키 | 상태 | 비고 |
 |----|------|------|
-| `KAKAO_REST_API_KEY` | **키 확보, 서비스 비활성** | dodo-planet 카카오 앱 키 재사용(.env.local에 있음). 카카오 디벨로퍼스에서 카카오맵(OPEN_MAP_AND_LOCAL) 활성화 필요 — 활성화 즉시 동작 |
-| `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com — 결제수단 불필요, 일 25,000회 |
+| `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료, 실데이터 검증됨 |
+| `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com 수동 등록 필요 (Claude in Chrome이 해당 도메인 차단) — 결제수단 불필요, 일 25,000회 |
 | `NCP_MAPS_CLIENT_ID/SECRET` | 차단 | NCP 계정 결제수단 미등록 → 카드 등록 후 콘솔 Maps > Application 등록 |
 
 상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`. 설계 결정: `docs/SPEC.md`.
