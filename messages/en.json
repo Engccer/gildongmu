@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "Gildongmu",
+    "tagline": "Navigation in Korea, usable by everyone"
+  },
+  "search": {
+    "label": "Search places",
+    "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",
+    "button": "Search",
+    "searching": "Searching…",
+    "resultsAnnouncement": "{count} results found",
+    "noResults": "No results. Try a different search term.",
+    "error": "Search failed. Please try again shortly.",
+    "mockNotice": "Running on demo data. Real search activates once API keys are registered."
+  },
+  "place": {
+    "category": "Category",
+    "address": "Address",
+    "roadAddress": "Road address",
+    "phone": "Phone",
+    "callAction": "Call {name}",
+    "openInNaverMap": "Open in Naver Map"
+  },
+  "route": {
+    "heading": "Directions to {name}",
+    "walk": "Walk",
+    "public": "Transit",
+    "car": "Car",
+    "deeplinkHint": "Opens the Naver Map app"
+  }
+}
