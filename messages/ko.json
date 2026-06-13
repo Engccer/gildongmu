@@ -13,6 +13,15 @@
     "error": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "mockNotice": "지금은 데모 데이터로 동작 중입니다. API 키 등록 후 실제 검색이 활성화됩니다."
   },
+  "category": {
+    "groupHeading": "{label} {count}건",
+    "attraction": "관광·명소",
+    "food": "음식",
+    "shopping": "쇼핑",
+    "lodging": "숙박",
+    "transport": "교통",
+    "other": "기타"
+  },
   "place": {
     "category": "분류",
     "address": "주소",

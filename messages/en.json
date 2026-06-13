@@ -13,6 +13,15 @@
     "error": "Search failed. Please try again shortly.",
     "mockNotice": "Running on demo data. Real search activates once API keys are registered."
   },
+  "category": {
+    "groupHeading": "{label} ({count})",
+    "attraction": "Attractions",
+    "food": "Food",
+    "shopping": "Shopping",
+    "lodging": "Lodging",
+    "transport": "Transport",
+    "other": "Other"
+  },
   "place": {
     "category": "Category",
     "address": "Address",

@@ -12,6 +12,7 @@ import {
   buildKakaoWebMapUrl,
   buildKakaoWebRouteUrl,
 } from "@/lib/deeplink-kakao";
+import { groupByCategory } from "@/lib/category";
 import { CarRouteBriefing } from "./CarRouteBriefing";
 
 const APPNAME =
@@ -134,15 +135,33 @@ export function PlaceSearch({
           {status.result.places.length === 0 ? (
             <p className="mt-2">{t("search.noResults")}</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-4">
-              {status.result.places.map((place) => (
-                <PlaceCard
-                  key={place.id}
-                  place={place}
-                  canBriefCarRoute={canBriefCarRoute}
-                />
-              ))}
-            </ul>
+            // 카테고리 버킷별 섹션으로 표시 — 카카오·TourAPI를 출처가 아닌
+            // 의미(관광·쇼핑·교통 등)로 재편해 검색 의도와 노이즈를 분리한다.
+            <div className="mt-3 flex flex-col gap-6">
+              {groupByCategory(status.result.places).map((group) => {
+                const heading = t("category.groupHeading", {
+                  label: t(`category.${group.bucket}`),
+                  count: group.places.length,
+                });
+                return (
+                  // 카테고리 그룹은 랜드마크가 아니라 문서 구조 — section에
+                  // aria-label을 주면 region이 되어 h3와 중복 발표되므로,
+                  // 헤딩(h3)만으로 구조를 담당하게 한다(aria-label 제거).
+                  <section key={group.bucket}>
+                    <h3 className="text-lg font-semibold">{heading}</h3>
+                    <ul className="mt-2 flex flex-col gap-4">
+                      {group.places.map((place) => (
+                        <PlaceCard
+                          key={place.id}
+                          place={place}
+                          canBriefCarRoute={canBriefCarRoute}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
@@ -162,7 +181,8 @@ function PlaceCard({
 
   return (
     <li className="rounded-lg border border-gray-300 p-4">
-      <h3 className="text-lg font-bold">{place.name}</h3>
+      {/* h4 — 헤딩 계층: h2(결과 수) > h3(카테고리 버킷) > h4(장소명) */}
+      <h4 className="text-lg font-bold">{place.name}</h4>
       <dl className="mt-1 text-sm leading-relaxed">
         <div>
           <dt className="inline font-medium">{t("place.category")}: </dt>
