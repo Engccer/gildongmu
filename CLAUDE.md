@@ -51,7 +51,9 @@
 ## 배포
 
 - **Vercel 프로덕션**: https://gildongmu.vercel.app (2026-06-13 최초 배포, 팀 `hunyong-kims-projects`)
-- 환경변수는 Vercel 프로젝트에 등록 (`KAKAO_REST_API_KEY` — Production/Preview/Development 전체). 주의: CLI `vercel env add <key> preview`는 비대화형에서 `git_branch_required`로 멈추는 결함(54.12.2에서도 재현) — Preview 등록은 REST API(`POST /v10/projects/{id}/env`) 또는 대시보드 사용
+- 프로덕션 환경변수 현황(2026-06-13): `KAKAO_REST_API_KEY`(Production), `TOUR_API_KEY`(Production/Preview/Development), `NCP_MAPS_CLIENT_ID`·`NCP_MAPS_CLIENT_SECRET`(Production — en 영문 주소 보강용). `vercel env ls production`으로 확인.
+- **환경변수는 배포 시점에 함수로 주입된다** — 키를 추가/변경한 뒤에는 반드시 재배포(`vercel deploy --prod --yes` 또는 push)해야 이미 떠 있는 배포에 반영된다. 키만 추가하고 재배포 안 하면 기존 함수는 옛 env를 본다(2026-06-13 NCP 키 등록 시 실측).
+- 비대화형 등록: `printf '%s' "$VALUE" | vercel env add <KEY> production`. 주의: CLI `vercel env add <key> preview`는 비대화형에서 `git_branch_required`로 멈추는 결함(54.12.2에서도 재현) — Preview 등록은 REST API(`POST /v10/projects/{id}/env`) 또는 대시보드 사용
 - GitHub 저장소(`Engccer/gildongmu`)가 Vercel에 연결됨 — **push하면 자동 배포**된다. push는 사용자 요청 시에만 하는 워크스페이스 규칙이 곧 배포 게이트.
 - 수동 배포: `vercel deploy --prod --yes`
 
