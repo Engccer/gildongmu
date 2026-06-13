@@ -18,6 +18,8 @@ export interface Place {
   address: string;
   /** 도로명 주소 */
   roadAddress: string;
+  /** 영문 주소 (en 로케일에서 NCP geocoding으로 보강 — 없을 수 있음) */
+  englishAddress?: string;
   /** 위도 (WGS84) */
   lat: number;
   /** 경도 (WGS84) */

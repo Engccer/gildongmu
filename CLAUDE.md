@@ -29,6 +29,7 @@
 - **Provider 추상화** (`src/lib/providers/`): 도메인별 단일 진입점(예: `searchPlaces()`)이 키 유무로 provider를 자동 선택. **새 국내 서비스 추가 시 이 패턴을 따른다** — provider 파일 추가 → 진입점에 선택 로직 → mock 폴백 유지.
   - 장소 검색 우선순위: **kakao-local(15건) > naver-local(5건) > mock**. `PLACES_PROVIDER` env로 강제 지정(A/B 실험).
   - **en 로케일은 카카오 + TourAPI 병합**(`searchPlacesMergedEn`): TourAPI는 관광 콘텐츠만 커버해 일상 장소(학교·카페 등)를 못 찾으므로, 카카오를 기본으로 두고 TourAPI 영문 관광 정보를 보강한다. 두 소스를 병렬 호출해 한쪽 실패해도 다른 쪽 실데이터는 보존하고, 둘 다 실패하면 에러를 던진다. 중복은 좌표 4자리(약 11m)로만 판정해 카카오를 우선 남긴다(이름은 한/영으로 갈려 비교 불가). en+TourAPI만 있으면 TourAPI 단독, 카카오만 있으면 카카오 단독.
+  - **en 병합 결과의 카카오 카드는 영문 주소 보강**(`enrichEnglishAddresses` → `ncp-geocode.ts`): 카카오는 한글 주소만 주므로 NCP Maps Geocoding으로 `englishAddress`를 채운다. TourAPI 카드는 이미 영문 주소라 건드리지 않고, `hasNcpMapsKeys()` 가드로 NCP 키 없으면 단계 자체를 건너뛴다. 영문 주소는 best-effort 보강 — `geocodeEnglishAddress`는 HTTP·네트워크 실패를 모두 null로 흡수하고 throw하지 않아, 변환 실패 카드는 한글 주소로 graceful degrade한다. UI는 영문을 메인·한글을 보조(`lang="ko"`)로 표시.
   - 실데이터 호출 실패 시 mock으로 조용히 폴백하지 않는다(가짜 실데이터 금지).
 - **좌표는 WGS84 십진 도로 통일**. 네이버 지역 검색의 `mapx/mapy`(×10⁷ 정수)는 provider 안에서만 존재. 카카오는 WGS84 그대로.
 - **내비게이션은 딥링크로 네이티브 앱 위임**: `src/lib/deeplink.ts`(nmap://), `src/lib/deeplink-kakao.ts`(kakaomap://). NCP/카카오내비 Directions는 자동차 전용이라 도보·대중교통 자체 구현 대상이 아니다.
@@ -43,7 +44,7 @@
 | `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료. 이 키 하나로 **로컬 검색 + 주소 지오코딩 + 카카오모빌리티 자동차 경로**까지 모두 동작 (모빌리티는 별도 활성화 불필요, 2026-06-13 검증) |
 | `TOUR_API_KEY` | **동작 확인 (2026-06-13)** | data.go.kr 국문·영문 GW 활용신청 승인(만료 2028-06-13), 실응답 검증 완료(빈 결과 `items:""`, contenttypeid 라벨 매핑 확정). 신형 GW는 **hex 64자 단일 키**(Encoding/Decoding 구분 없음, 승인 후 전파 ~10분간 401). **개발계정은 기능당 일 1,000건**(상향은 운영계정 신청). en 로케일 장소 검색은 카카오와 병합(`searchPlacesMergedEn`)되어 일상 장소+관광 영문 정보를 함께 노출 — 로컬 실호출 검증됨(2026-06-13) |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com 수동 등록 필요 (Claude in Chrome이 해당 도메인 차단) — 결제수단 불필요, 일 25,000회 |
-| `NCP_MAPS_CLIENT_ID/SECRET` | **동작 확인 (2026-06-13)** | 결제수단 등록 후 Maps 구독 + Application `gildongmu` 등록(API 6종 전체 체크, Web URL: vercel.app·localhost:3000·3001). Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 호스트 `maps.apigw.ntruss.com`, 헤더 `x-ncp-apigw-api-key-id`/`x-ncp-apigw-api-key` |
+| `NCP_MAPS_CLIENT_ID/SECRET` | **동작 확인 (2026-06-13)** | 결제수단 등록 후 Maps 구독 + Application `gildongmu` 등록(API 6종 전체 체크, Web URL: vercel.app·localhost:3000·3001). Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 호스트 `maps.apigw.ntruss.com`, 헤더 `x-ncp-apigw-api-key-id`/`x-ncp-apigw-api-key`. **en 검색 카카오 카드의 영문 주소 보강에 사용 중**(`ncp-geocode.ts`, 2026-06-13 연결) — Directions는 카카오모빌리티와 중복이라 미연결 |
 
 상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`. 설계 결정: `docs/SPEC.md`.
 

@@ -170,7 +170,16 @@ function PlaceCard({
         </div>
         <div>
           <dt className="inline font-medium">{t("place.roadAddress")}: </dt>
-          <dd className="inline">{place.roadAddress || place.address}</dd>
+          {/* 영문 주소가 있으면(en 검색) 영문을 메인으로, 한글은 보조로.
+              한글 줄에 lang="ko"를 주어 영문 UI 스크린 리더가 한국어로 읽게 한다. */}
+          <dd className="inline">
+            {place.englishAddress ?? (place.roadAddress || place.address)}
+          </dd>
+          {place.englishAddress && (place.roadAddress || place.address) && (
+            <dd className="mt-0.5 text-xs opacity-70" lang="ko">
+              {place.roadAddress || place.address}
+            </dd>
+          )}
         </div>
         {place.phone && (
           <div>

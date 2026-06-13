@@ -1,8 +1,14 @@
-import { hasKakaoKey, hasNaverLocalKeys, hasTourApiKey } from "../env";
+import {
+  hasKakaoKey,
+  hasNaverLocalKeys,
+  hasNcpMapsKeys,
+  hasTourApiKey,
+} from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
+import { geocodeEnglishAddress } from "./ncp-geocode";
 import { searchPlacesTourApi } from "./tour-api";
 
 /** 좌표 중복 판정 키 — 4자리(약 11m)면 같은 건물/장소로 본다. */
@@ -95,11 +101,32 @@ export async function searchPlacesMergedEn(
 
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const tour = tourR.status === "fulfilled" ? tourR.value.places : [];
+  const merged = mergePlaces(kakao, tour);
   return {
-    places: mergePlaces(kakao, tour),
+    places: hasNcpMapsKeys() ? await enrichEnglishAddresses(merged) : merged,
     provider: "merged",
     query: params.query,
   };
+}
+
+/**
+ * 카카오 출신 카드(한글 주소)에만 NCP geocoding으로 영문 주소를 보강한다.
+ * TourAPI 카드는 이미 영문 주소(addr1)를 가지므로 변환하지 않는다.
+ * geocodeEnglishAddress는 실패 시 throw 대신 null을 주므로(영문 주소는
+ * best-effort 보강), 변환 못 한 카드는 영문 주소 없이 한글만 남는다.
+ */
+export async function enrichEnglishAddresses(
+  places: Place[],
+): Promise<Place[]> {
+  return Promise.all(
+    places.map(async (p) => {
+      if (!p.id.startsWith("kakao-")) return p;
+      const addr = p.roadAddress || p.address;
+      if (!addr) return p;
+      const english = await geocodeEnglishAddress(addr);
+      return english ? { ...p, englishAddress: english } : p;
+    }),
+  );
 }
 
 /** 현재 활성화될 provider 이름 — UI 안내용 (ko 로케일 기준 기본 경로) */
