@@ -47,7 +47,9 @@
 | 카카오모빌리티 directions | 자동차 경로 텍스트 브리핑 | **운영 중 (2026-06-13)** — `/api/route/car` + 검색 카드 "자동차 경로 미리 듣기". 같은 REST 키로 별도 활성화 없이 동작 | 높음 — "지도 없이 완결되는 경로" 실험의 코어 |
 | 네이버 지역 검색 | 장소 검색 | 구현 완료 (키 대기) | 중 — 카카오 보완 |
 | 카카오맵/네이버지도 딥링크 | 내비 연결 | **구현 완료 + UI 통합 (2026-06-13)** — 검색 카드에 네이버/카카오 두 그룹 | 높음 — 길찾기 코어 |
-| 한국관광공사 TourAPI 4.0 | 관광정보 (다국어) | **운영 중 (2026-06-13)** — en 로케일 자동 우선, 실응답·프로덕션 검증 완료. 개발계정 기능당 일 1,000건 | **높음** — 외국인 여행자 + dodo 여행 도메인 정합. 카카오·네이버의 다국어 공백을 메우는 유일한 공식 소스 |
+| 한국관광공사 TourAPI 4.0 | 관광정보 (다국어) | **운영 중 (2026-06-13)** — en 로케일 자동 우선, 실응답·프로덕션 검증 완료. 개발계정 기능당 일 1,000건. 추가 실측: `locationBasedList2`(반경·dist·거리순)·`detailCommon2`(영문 overview 1,300자) — provider 함수 추가는 Phase 0b 후보 | **높음** — 외국인 여행자 + dodo 여행 도메인 정합. 카카오·네이버의 다국어 공백을 메우는 유일한 공식 소스 |
+| NCP Directions 5/15 | 자동차 경로 (영문!) | **키 확보 + 원시 실측 (2026-06-13)** — **`lang=en`이 완전한 영문 턴바이턴 반환** (카카오모빌리티는 ko 전용). provider 구현이 다음 실험(Phase 0b): en 로케일 경로 브리핑을 NCP로 라우팅 | **높음** — dodo 외국인 시나리오의 영문 경로 정본 |
+| NCP Geocoding/Reverse | 주소↔좌표 (영문 보완) | **키 확보 + 원시 실측 (2026-06-13)** — 정지오코딩이 `englishAddress` 반환. 역지오는 한국어 전용 → 영문 현위치는 역지오→정지오 **2-call 체인**(실측 동작 확인). 영문 입력 질의는 미수용(0건) | 중상 — 영문 주소 표기·현위치 낭독. juso.go.kr 불필요해짐 |
 | 행안부 juso.go.kr | 영문 주소 변환 | 조사됨 | 중 — 외국인용 주소 표기 보완 |
 | 카카오톡 메시지(위치 템플릿) | 공유 | 조사됨 — `talk_message` 동의만으로 "나에게 보내기" 가능 | 중상 — 가족 공유 시나리오, dodo 카카오 로그인과 정합 |
 | ODsay / TMAP | 대중교통/도보 경로 | 조사됨 (네이버 보고서) | 중 — 텍스트 경로 안내용 |
@@ -82,5 +84,6 @@
 - [x] ~~NCP 결제수단 등록 → Maps Application 등록~~ → **완료 (2026-06-13)** — Maps 구독 + Application `gildongmu`(API 6종, Web URL 3개), Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 키는 `.env.local` `NCP_MAPS_*`. 다음 실험 후보: 영문 주소 변환(juso.go.kr 대신 NCP `englishAddress` 활용), 카카오 vs NCP Directions A/B
 - [ ] developers.naver.com 애플리케이션 등록 (사용자 직접 — Claude in Chrome이 도메인 차단) → `NAVER_LOCAL_*` 키 확보
 - [ ] 지역 검색 API 좌표계(×10⁷) 실응답 검증 — 공식 문서 원문 확인 불가였음 (조사 보고서 §2.1)
+- [ ] **Phase 0b (dodo §5b 선행 작업)** — ① `ncp-directions.ts` provider(`lang` 파라미터, CarRouteBriefing shape 재사용) + en 로케일 "자동차 경로 미리 듣기"를 NCP로 라우팅해 실사용 검증 ② `getEnglishAddress()` 역지오→정지오 체인 헬퍼 ③ (선택) tour-api에 `locationBasedList2`·`detailCommon2` 함수 추가. 근거 실측은 dodo 스펙 §2.5 (2026-06-13)
 - [ ] VoiceOver 수동 테스트 시나리오 문서화
 - [ ] 경로 브리핑의 출발지 대안 입력 — Geolocation 거부/실패 시 주소 입력(`/api/geocode` 활용)으로 폴백
