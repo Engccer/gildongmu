@@ -41,7 +41,7 @@ export interface PlaceSearchParams {
 export interface PlaceSearchResult {
   places: Place[];
   /** 어떤 provider가 응답했는지 — UI에서 mock 모드 안내에 사용 */
-  provider: "mock" | "naver-local" | "kakao-local" | "tour-api";
+  provider: "mock" | "naver-local" | "kakao-local" | "tour-api" | "merged";
   query: string;
 }
 

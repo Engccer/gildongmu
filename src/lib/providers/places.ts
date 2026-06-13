@@ -1,9 +1,31 @@
 import { hasKakaoKey, hasNaverLocalKeys, hasTourApiKey } from "../env";
-import type { PlaceSearchParams, PlaceSearchResult } from "../types";
+import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
 import { searchPlacesTourApi } from "./tour-api";
+
+/** 좌표 중복 판정 키 — 4자리(약 11m)면 같은 건물/장소로 본다. */
+function coordKey(p: Place): string {
+  return `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+}
+
+/**
+ * en 병합용 중복 제거. primary(카카오) 전부를 우선 담고, secondary(TourAPI)
+ * 중 좌표가 겹치지 않는 것만 이어 붙인다. 카카오·TourAPI는 같은 장소를
+ * 한글/영문 이름과 미세하게 다른 좌표로 주므로 좌표를 유일 공통축으로 쓴다.
+ */
+export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
+  const seen = new Set<string>();
+  const merged: Place[] = [];
+  for (const p of [...primary, ...secondary]) {
+    const key = coordKey(p);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(p);
+  }
+  return merged;
+}
 
 /**
  * 장소 검색 진입점 — 키 유무와 로케일에 따라 provider를 자동 선택한다.
@@ -29,6 +51,9 @@ export async function searchPlaces(
   if (forced === "tour") return searchPlacesTourApi(params);
   if (forced === "mock") return searchPlacesMock(params);
 
+  if (params.lang === "en" && hasTourApiKey() && hasKakaoKey()) {
+    return searchPlacesMergedEn(params);
+  }
   if (params.lang === "en" && hasTourApiKey()) {
     return searchPlacesTourApi(params);
   }
@@ -39,6 +64,42 @@ export async function searchPlaces(
     return searchPlacesNaverLocal(params);
   }
   return searchPlacesMock(params);
+}
+
+/**
+ * en 로케일 병합 검색 — 카카오(일상 장소 커버)를 기본으로, TourAPI(관광
+ * 콘텐츠 영문 정보)를 보강해 함께 보여준다. 외국인이 영문 UI에서 학교·카페
+ * 같은 일상 장소를 검색해도 0건이 되지 않도록 한 결정 (2026-06-13).
+ *
+ * 두 소스를 병렬 호출하고 한쪽이 실패해도 다른 쪽 실데이터는 보존한다.
+ * 다만 둘 다 실패하면 조용히 빈 결과를 주지 않고 에러를 던진다 —
+ * "실데이터처럼 보이는 빈 결과"로 장애를 가리지 않기 위해서.
+ */
+export async function searchPlacesMergedEn(
+  params: PlaceSearchParams,
+): Promise<PlaceSearchResult> {
+  const [kakaoR, tourR] = await Promise.allSettled([
+    searchPlacesKakaoLocal(params),
+    searchPlacesTourApi(params),
+  ]);
+
+  if (kakaoR.status === "rejected" && tourR.status === "rejected") {
+    throw kakaoR.reason;
+  }
+  if (kakaoR.status === "rejected") {
+    console.error("[places] en 병합 — 카카오 실패:", kakaoR.reason);
+  }
+  if (tourR.status === "rejected") {
+    console.error("[places] en 병합 — TourAPI 실패:", tourR.reason);
+  }
+
+  const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
+  const tour = tourR.status === "fulfilled" ? tourR.value.places : [];
+  return {
+    places: mergePlaces(kakao, tour),
+    provider: "merged",
+    query: params.query,
+  };
 }
 
 /** 현재 활성화될 provider 이름 — UI 안내용 (ko 로케일 기준 기본 경로) */
