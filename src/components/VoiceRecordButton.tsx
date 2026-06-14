@@ -7,7 +7,6 @@ import {
   useVoiceRecorder,
   type VoiceRecorderErrorCode,
 } from "@/hooks/useVoiceRecorder";
-import { useMicrophonePermission } from "@/hooks/useMicrophonePermission";
 
 /**
  * 음성 받아쓰기 버튼 — 탭-토글(탭=시작, 다시 탭=정지·전사), Esc=취소.
@@ -30,8 +29,6 @@ export function VoiceRecordButton({
   const t = useTranslations("voice");
   const locale = useLocale();
   const announcerRef = useRef<HTMLDivElement>(null);
-  const { permissionState, checkPermission, requestPermission } =
-    useMicrophonePermission();
 
   const announce = useCallback((msg: string) => {
     if (announcerRef.current) {
@@ -75,29 +72,13 @@ export function VoiceRecordButton({
       await stopRecording();
       return;
     }
-    // idle → 권한 확인 후 녹음
-    if (permissionState === "ready") {
-      await beginRecording();
-      return;
-    }
-    const result =
-      permissionState === "idle" || permissionState === "checking"
-        ? await checkPermission()
-        : permissionState;
-    if (result === "ready") {
-      await beginRecording();
-    } else if (result === "denied") {
-      reportError("mic_denied");
-    } else {
-      // needsPermission → 네이티브 프롬프트로 직접 요청
-      const granted = await requestPermission();
-      if (granted) await beginRecording();
-      else reportError("mic_denied");
-    }
-  }, [
-    isSupported, state, permissionState, checkPermission, requestPermission,
-    beginRecording, stopRecording, reportError, announce, t,
-  ]);
+    // idle → 곧장 녹음 시작. 권한이 필요하면 startRecording 내부의 getUserMedia가
+    // 네이티브 프롬프트를 띄우고, 거부/실패를 NotAllowedError 기준으로 정확히
+    // 분류한다(mic_denied vs mic_failed). 별도 권한 사전요청(requestPermission)을
+    // 두지 않아 getUserMedia 중복 호출과 "장치 없음도 mic_denied"로 뭉개던
+    // 오분류를 함께 제거한다(codex 잔여 #3 — 단일 분류 경로).
+    await beginRecording();
+  }, [isSupported, state, beginRecording, stopRecording, announce, t]);
 
   // Esc로 녹음 취소 (IME 조합 중에는 무시 — 한글/일본어 입력 확정과 충돌 방지)
   useEffect(() => {

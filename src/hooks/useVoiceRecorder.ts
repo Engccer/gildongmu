@@ -102,9 +102,10 @@ export function useVoiceRecorder(
     if (busyRef.current) return false;
     busyRef.current = true;
 
+    let stream: MediaStream | null = null;
     try {
       // Request microphone permission
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -112,6 +113,15 @@ export function useVoiceRecorder(
           sampleRate: 44100,
         },
       });
+
+      // getUserMedia 대기 중 언마운트(예: 언어 전환)되면 cleanup은 이미 지나간
+      // 뒤라, 여기서 직접 트랙을 멈추지 않으면 마이크 스트림이 샌다(codex 잔여 #2).
+      // setState/recorder 셋업도 하지 않고 즉시 중단한다.
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        busyRef.current = false;
+        return false;
+      }
       streamRef.current = stream;
 
       // Determine the best available MIME type
@@ -156,6 +166,13 @@ export function useVoiceRecorder(
       return true;
     } catch (err) {
       console.error("Failed to start recording:", err);
+      // 스트림을 확보한 뒤 MediaRecorder 생성/시작이 실패해도 트랙을 반드시
+      // 정리한다 — 안 하면 마이크가 켜진 채 샌다(codex 잔여 #2). getUserMedia
+      // 자체가 실패한 경우 stream은 null이라 무해.
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      streamRef.current = null;
       // 시작 실패 — 잠금 해제하고 onError 코드 통지(마운트 가드).
       busyRef.current = false;
       if (mountedRef.current) {
