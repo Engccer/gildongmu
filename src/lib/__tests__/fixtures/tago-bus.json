@@ -1,0 +1,46 @@
+{
+  "nearbyStops": {
+    "response": {
+      "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE." },
+      "body": {
+        "items": {
+          "item": [
+            { "citycode": 23, "gpslati": 35.1795, "gpslong": 129.0756, "nodeid": "DGB7011001400", "nodenm": "부산역", "nodeno": 7011 },
+            { "citycode": 23, "gpslati": 35.1810, "gpslong": 129.0760, "nodeid": "DGB7011001500", "nodenm": "부산역환승센터", "nodeno": 7012 }
+          ]
+        },
+        "numOfRows": 10, "pageNo": 1, "totalCount": 2
+      }
+    }
+  },
+  "arrivals": {
+    "response": {
+      "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE." },
+      "body": {
+        "items": {
+          "item": [
+            { "routeid": "DGB3000", "routeno": 1003, "routetp": "급행버스", "arrtime": 720, "arrprevstationcnt": 5, "vehicletp": "일반차량", "nodeid": "DGB7011001400", "nodenm": "부산역" },
+            { "routeid": "DGB3001", "routeno": 81, "routetp": "일반버스", "arrtime": 180, "arrprevstationcnt": 2, "vehicletp": "저상버스", "nodeid": "DGB7011001400", "nodenm": "부산역" }
+          ]
+        },
+        "numOfRows": 50, "pageNo": 1, "totalCount": 2
+      }
+    }
+  },
+  "routeStops": {
+    "response": {
+      "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE." },
+      "body": {
+        "items": {
+          "item": [
+            { "nodeid": "DGB7011001400", "nodenm": "부산역", "nodeord": 1, "gpslati": 35.1795, "gpslong": 129.0756 },
+            { "nodeid": "DGB7011002000", "nodenm": "중앙동", "nodeord": 2, "gpslati": 35.1830, "gpslong": 129.0700 }
+          ]
+        },
+        "numOfRows": 200, "pageNo": 1, "totalCount": 2
+      }
+    }
+  },
+  "empty": { "response": { "header": { "resultCode": "00", "resultMsg": "NORMAL SERVICE." }, "body": { "items": "", "numOfRows": 10, "pageNo": 1, "totalCount": 0 } } },
+  "serviceError": { "OpenAPI_ServiceResponse": { "cmmMsgHeader": { "errMsg": "SERVICE ERROR", "returnAuthMsg": "SERVICE_KEY_IS_NOT_REGISTERED_ERROR", "returnReasonCode": "30" } } }
+}
