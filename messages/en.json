@@ -68,5 +68,20 @@
   },
   "detail": {
     "back": "Back to results"
+  },
+  "station": {
+    "button": "View accessibility facilities",
+    "loading": "Loading facilities…",
+    "empty": "No accessibility facility data for this station.",
+    "error": "Failed to load facilities. Please try again shortly.",
+    "ready": "Facility information is ready.",
+    "heading": "Accessibility facilities at {name}",
+    "accessibleToilet": "Accessible restroom",
+    "accessibleSlope": "Accessible ramp",
+    "wheelchairLifts": "Wheelchair lifts",
+    "elevators": "Elevators",
+    "yes": "Available",
+    "no": "Not available",
+    "source": "Source: Korea Railroad (nationwide rail stations). Urban subway not included."
   }
 }

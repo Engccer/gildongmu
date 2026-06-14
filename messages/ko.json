@@ -68,5 +68,20 @@
   },
   "detail": {
     "back": "검색 결과로 돌아가기"
+  },
+  "station": {
+    "button": "역 교통약자 편의시설 보기",
+    "loading": "편의시설 조회 중…",
+    "empty": "이 역의 교통약자 편의시설 정보가 없습니다.",
+    "error": "편의시설 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "편의시설 정보가 준비되었습니다.",
+    "heading": "{name} 교통약자 편의시설",
+    "accessibleToilet": "장애인 화장실",
+    "accessibleSlope": "장애인 경사로",
+    "wheelchairLifts": "휠체어 리프트",
+    "elevators": "엘리베이터",
+    "yes": "있음",
+    "no": "없음",
+    "source": "출처: 한국철도공사(전국 철도역). 도시철도는 포함되지 않습니다."
   }
 }

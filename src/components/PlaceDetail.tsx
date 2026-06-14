@@ -4,8 +4,10 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import type { Place } from "@/lib/types";
+import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
+import { StationFacilities } from "./StationFacilities";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -87,7 +89,7 @@ export function PlaceDetail({
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
         />
       )}
-      {/* M4: <StationFacilities place={place} /> 삽입 */}
+      {isStation(place) && <StationFacilities stationName={place.name} />}
     </div>
   );
 }
