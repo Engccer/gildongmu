@@ -38,7 +38,8 @@
     "callAction": "{name}에 전화 걸기",
     "openInNaverMap": "네이버 지도에서 보기",
     "openInKakaoMap": "카카오맵에서 보기",
-    "detailPage": "상세 정보 페이지"
+    "detailPage": "상세 정보 페이지",
+    "openDetail": "{name} 상세 보기"
   },
   "route": {
     "heading": "{name}까지 길찾기",

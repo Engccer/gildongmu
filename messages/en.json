@@ -38,7 +38,8 @@
     "callAction": "Call {name}",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
-    "detailPage": "Detail page"
+    "detailPage": "Detail page",
+    "openDetail": "View details for {name}"
   },
   "route": {
     "heading": "Directions to {name}",
