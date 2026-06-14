@@ -19,8 +19,9 @@ import { normalizeStationName } from "../station-match";
  * - envelope: response.body.items.item (배열). 빈 결과는 items:"".
  *   resultCode "0" = 정상 (TourAPI의 "0000"과 다름).
  *
- * graceful degrade 원칙: 키 없음/네트워크 실패/미커버 역은 모두 null —
- * 가짜 실데이터를 만들지 않는다.
+ * graceful degrade 원칙: 키 없음/미커버 역은 null("정보 없음"). 단 주
+ * 데이터(weekPerson)의 upstream 장애는 throw해 "정보 없음"과 구분한다
+ * (가짜 실데이터·장애 은폐 금지). 자세한 분기는 fetchStationFacilities 참고.
  */
 
 const BASE = "https://apis.data.go.kr/B551457/convenience";
