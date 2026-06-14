@@ -144,6 +144,14 @@ export function PlaceSearch({
     void performSearch(query);
   }
 
+  // 음성 전사 결과 → 입력값 채우고 같은 performSearch 본체로 자동 검색.
+  // performSearch는 reqIdRef 최신요청 가드·?q= URL 동기화·결과 헤딩 포커스를
+  // 이미 보장하므로, 전사 자동검색도 그 보장을 그대로 물려받는다.
+  function handleTranscribed(text: string) {
+    setQuery(text);
+    void performSearch(text);
+  }
+
   // 첫 마운트 시 ?q= 있으면 자동 검색.
   // 입력값(query) 초기화는 위 lazy initializer가 이미 처리했다. 자동검색은
   // queueMicrotask로 한 틱 미뤄 실행한다 — performSearch가 동기적으로 부르는
@@ -203,6 +211,8 @@ export function PlaceSearch({
         onQueryChange={setQuery}
         onSubmit={runSearch}
         busy={status.kind === "loading"}
+        onTranscribed={handleTranscribed}
+        onVoiceError={() => setStatus({ kind: "error" })}
       />
 
       {/* 스크린 리더 상태 통지 — 시각적으로도 함께 표시 */}

@@ -2,17 +2,22 @@
 
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
+import { VoiceRecordButton } from "./VoiceRecordButton";
 
 export function SearchBar({
   query,
   onQueryChange,
   onSubmit,
   busy,
+  onTranscribed,
+  onVoiceError,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
   onSubmit: () => void;
   busy: boolean;
+  onTranscribed: (text: string) => void;
+  onVoiceError?: (message: string) => void;
 }) {
   const t = useTranslations("search");
   return (
@@ -45,6 +50,7 @@ export function SearchBar({
         <Search aria-hidden="true" className="h-5 w-5" />
         {t("button")}
       </button>
+      <VoiceRecordButton onTranscribed={onTranscribed} onError={onVoiceError} />
     </form>
   );
 }
