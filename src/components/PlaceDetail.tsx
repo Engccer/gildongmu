@@ -55,7 +55,11 @@ export function PlaceDetail({
           <dd className="inline">{place.category}</dd>
         </div>
         <div>
-          <dt className="inline font-medium">{t("place.roadAddress")}: </dt>
+          {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨이 맞고, 한글 도로명일
+              땐 "도로명"/"Road address" 라벨을 쓴다 — dt 라벨을 주소 종류로 분기. */}
+          <dt className="inline font-medium">
+            {place.englishAddress ? t("place.address") : t("place.roadAddress")}:{" "}
+          </dt>
           <dd className="inline">
             {place.englishAddress ?? (place.roadAddress || place.address)}
           </dd>

@@ -54,14 +54,33 @@ export function PlaceSearch({
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  // popstate 핸들러는 마운트 시점 status를 클로저로 잡으므로, 복귀 시 "결과가
+  // 렌더되는 상태인지"를 최신값으로 읽기 위해 ref로 status를 미러링한다.
+  // 렌더 중 ref 변경은 금지(react-hooks/refs)이므로 effect에서 갱신한다.
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  // 상세 → 목록 복귀 시 결과 헤딩으로 포커스 이동(접근성 1급).
+  // 상세 뷰가 언마운트되면 포커스가 document.body로 유실되므로, 결과 헤딩이
+  // 렌더되는 done 상태일 때만 리렌더 후(rAF 한 틱) 헤딩으로 옮긴다. ref가 아직
+  // 없을 수 있으니 옵셔널 체이닝으로 가드한다.
+  function focusResultsHeadingIfDone() {
+    if (statusRef.current.kind !== "done") return;
+    requestAnimationFrame(() => resultsHeadingRef.current?.focus());
+  }
 
   // 상세 진입/이탈을 브라우저 히스토리에 연동 — 백버튼이 목록으로 복귀.
   useEffect(() => {
     function onPop() {
       setSelected(null);
+      focusResultsHeadingIfDone();
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
+    // focusResultsHeadingIfDone은 statusRef로 최신 status를 읽으므로 마운트 시
+    // 한 번만 등록해도 안전하다(리스너 재등록 불필요).
   }, []);
 
   function openDetail(place: Place) {
@@ -69,8 +88,14 @@ export function PlaceSearch({
     setSelected(place);
   }
   function backToResults() {
-    if (window.history.state?.place) window.history.back();
-    else setSelected(null);
+    if (window.history.state?.place) {
+      // 정상 경로: history.back()이 popstate를 발화 → onPop에서 복귀+포커스 처리.
+      window.history.back();
+    } else {
+      // 방어: pushState 없이 상세가 켜진 비정상 상태 대비.
+      setSelected(null);
+      focusResultsHeadingIfDone();
+    }
   }
 
   /**
