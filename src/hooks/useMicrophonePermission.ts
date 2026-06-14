@@ -47,7 +47,8 @@ export function useMicrophonePermission(): UseMicrophonePermissionReturn {
             return "ready";
           } else if (result.state === "denied") {
             setPermissionState("denied");
-            localStorage.setItem(STORAGE_KEY, "denied");
+            // denied는 캐시하지 않는다(Minor 7) — 사용자가 설정에서 허용 후
+            // 재시도하면 getUserMedia 경로로 가야 하므로 영구 캐시는 금물.
             return "denied";
           } else {
             // prompt 상태
@@ -111,9 +112,8 @@ export function useMicrophonePermission(): UseMicrophonePermissionReturn {
     } catch (error) {
       console.error("Microphone permission denied:", error);
 
-      // 권한 거부 여부 확인
+      // 권한 거부 여부 확인 — denied는 캐시하지 않는다(Minor 7).
       if (error instanceof Error && error.name === "NotAllowedError") {
-        localStorage.setItem(STORAGE_KEY, "denied");
         setPermissionState("denied");
       } else {
         // 기타 오류 (장치 없음 등)

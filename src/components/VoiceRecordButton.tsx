@@ -62,8 +62,10 @@ export function VoiceRecordButton({
     });
 
   const beginRecording = useCallback(async () => {
-    announce(t("started"));
-    await startRecording();
+    // 실제 시작 성공 후에만 "녹음 시작"을 발표 — 권한 실패 시 상태 역전 방지
+    // (Minor 8). 실패 경로는 훅의 onError 코드가 이미 announce한다.
+    const ok = await startRecording();
+    if (ok) announce(t("started"));
   }, [announce, t, startRecording]);
 
   const handleClick = useCallback(async () => {

@@ -224,7 +224,6 @@ export function PlaceSearch({
         onSubmit={runSearch}
         busy={status.kind === "loading"}
         onTranscribed={handleTranscribed}
-        onVoiceError={() => setStatus({ kind: "error" })}
       />
 
       {/* 스크린 리더 상태 통지 — 시각적으로도 함께 표시 */}
