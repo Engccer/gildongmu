@@ -134,3 +134,51 @@ export interface CarRouteBriefing {
   tollFare: number;
   guides: CarRouteGuide[];
 }
+
+/**
+ * 버스 정류소 하나 — TAGO 근접정류소(A-2) + 도착예정(A-1) + 계산 거리.
+ * 좌표는 WGS84 십진 도. nodeId·cityCode는 도착(A-1)·경유정류소(A-3) 조회 키.
+ */
+export interface BusStop {
+  nodeId: string;
+  cityCode: string;
+  /** 정류소명(한글 — TAGO는 영문 미제공) */
+  name: string;
+  /** 정류소 표지판 번호(없을 수 있음) */
+  stopNo?: string;
+  lat: number;
+  lng: number;
+  /** 출발 좌표로부터 Haversine 거리(m) — 정렬·표시용 */
+  distanceMeters: number;
+  /** 도착조회 상태(개정 노트 §1) — "ok": A-1 성공(arrivals 정본, 0건이면 정상적 "버스 없음").
+   *  "unavailable": A-1 실패(쿼터·인증·네트워크) → "버스 없음"과 구분, 장애 은폐 금지. */
+  arrivalStatus: "ok" | "unavailable";
+  /** 도착 예정 버스(도착 임박 순). arrivalStatus==="ok"일 때만 의미 — unavailable이면 []. */
+  arrivals: BusArrival[];
+}
+
+/** 정류소에 도착 예정인 버스 하나 — TAGO 도착정보(A-1) 정규화. */
+export interface BusArrival {
+  /** 노선 ID — 경유정류소(A-3) 조회 키 */
+  routeId: string;
+  /** 노선번호(예 "272") */
+  routeNo: string;
+  /** 노선유형(한글, 예 "간선버스") */
+  routeType: string;
+  /** 도착 예정(초) */
+  arrivalSeconds: number;
+  /** 남은 정류장 수 */
+  prevStationCount: number;
+  /** 저상버스 여부(vehicletp에 "저상" 포함) — 교통약자 정본 */
+  lowFloor: boolean;
+}
+
+/** 노선 경유정류소 하나 — TAGO 노선정보(A-3) 정규화. */
+export interface BusRouteStop {
+  nodeId: string;
+  name: string;
+  /** 정류소 순번(nodeord) */
+  order: number;
+  lat: number;
+  lng: number;
+}
