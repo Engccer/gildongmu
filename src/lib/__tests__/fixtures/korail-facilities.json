@@ -1,0 +1,94 @@
+{
+  "_note": "한국철도공사 편의시설 API 실응답 (2026-06-14 캡처). 교통약자 정보는 두 엔드포인트에 분산: weekPersonFacilities(장애인화장실·휠체어리프트·장애인경사로) + stationFacilities(엘리베이터). stn_cd로 조인, stn_nm으로 역명 매칭. name 필터 파라미터 미지원 → 전체(406역) 받아 클라이언트 매칭.",
+  "weekPersonFacilities": {
+    "response": {
+      "body": {
+        "dataType": "JSON",
+        "items": {
+          "item": [
+            {
+              "pwdbs_slwy_estnc": "N",
+              "pwdbs_tolt_estnc": "N",
+              "stn_cd": "3900677",
+              "stn_nm": "가야",
+              "whlch_liftt_cnt": 0
+            },
+            {
+              "pwdbs_slwy_estnc": "Y",
+              "pwdbs_tolt_estnc": "Y",
+              "stn_cd": "3900023",
+              "stn_nm": "서울",
+              "whlch_liftt_cnt": 1
+            },
+            {
+              "pwdbs_slwy_estnc": "Y",
+              "pwdbs_tolt_estnc": "Y",
+              "stn_cd": "3900361",
+              "stn_nm": "행신",
+              "whlch_liftt_cnt": 0
+            }
+          ]
+        },
+        "numOfRows": 3,
+        "pageNo": 1,
+        "totalCount": 406
+      },
+      "header": {
+        "resultCode": "0",
+        "resultMsg": "정상"
+      }
+    }
+  },
+  "stationFacilities": {
+    "response": {
+      "body": {
+        "dataType": "JSON",
+        "items": {
+          "item": [
+            {
+              "altm_lead_cntr_estnc": "N",
+              "elevt_cnt": 0,
+              "esclt_cnt": 0,
+              "gen_tolt_estnc": "Y",
+              "nrsrm_estnc": "N",
+              "stn_cd": "3900677",
+              "stn_nm": "가야"
+            },
+            {
+              "altm_lead_cntr_estnc": "Y",
+              "elevt_cnt": 18,
+              "esclt_cnt": 23,
+              "gen_tolt_estnc": "Y",
+              "nrsrm_estnc": "Y",
+              "stn_cd": "3900023",
+              "stn_nm": "서울"
+            },
+            {
+              "altm_lead_cntr_estnc": "N",
+              "elevt_cnt": 4,
+              "esclt_cnt": 8,
+              "gen_tolt_estnc": "Y",
+              "nrsrm_estnc": "Y",
+              "stn_cd": "3900361",
+              "stn_nm": "행신"
+            }
+          ]
+        },
+        "numOfRows": 3,
+        "pageNo": 1,
+        "totalCount": 406
+      },
+      "header": {
+        "resultCode": "0",
+        "resultMsg": "정상"
+      }
+    }
+  },
+  "emptyExample": {
+    "response": {
+      "body": {
+        "items": ""
+      }
+    }
+  }
+}
