@@ -8,6 +8,7 @@ import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationFacilities } from "./StationFacilities";
+import { BusArrivals } from "./BusArrivals";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -24,10 +25,12 @@ import { StationFacilities } from "./StationFacilities";
 export function PlaceDetail({
   place,
   canBriefCarRoute,
+  canShowBus,
   onBack,
 }: {
   place: Place;
   canBriefCarRoute: boolean;
+  canShowBus: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -92,6 +95,9 @@ export function PlaceDetail({
         />
       )}
       {isStation(place) && <StationFacilities stationName={place.name} />}
+      {canShowBus && (
+        <BusArrivals mode="place" lat={place.lat} lng={place.lng} />
+      )}
     </div>
   );
 }
