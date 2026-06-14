@@ -92,7 +92,7 @@
     "refresh": "Refresh",
     "locating": "Getting your location…",
     "loading": "Loading stops & arrivals…",
-    "empty": "No bus stops nearby.",
+    "empty": "No bus stops nearby. (Seoul city buses aren't supported yet — only Gyeonggi and other regions.)",
     "error": "Failed to load bus info. Please try again shortly.",
     "ready": "Bus arrival info is ready.",
     "asOf": "as of {time}",

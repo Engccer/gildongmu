@@ -1,3 +1,4 @@
+// 2026-06-14 실 TAGO 호출로 envelope·필드명·저상버스 판정 검증 완료(성남시청후문앞 등 실응답). fixture 구조가 실응답과 일치.
 import { describe, it, expect, afterEach, vi } from "vitest";
 
 vi.mock("../env", () => ({
