@@ -21,6 +21,8 @@
   },
   "category": {
     "groupHeading": "{label} ({count})",
+    "filterLabel": "Filter by category",
+    "all": "All",
     "attraction": "Attractions",
     "food": "Food",
     "shopping": "Shopping",

@@ -21,6 +21,8 @@
   },
   "category": {
     "groupHeading": "{label} {count}건",
+    "filterLabel": "분류로 거르기",
+    "all": "전체",
     "attraction": "관광·명소",
     "food": "음식",
     "shopping": "쇼핑",
