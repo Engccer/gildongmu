@@ -65,5 +65,8 @@
       "toll": "Toll {toll} KRW not included.",
       "disclaimer": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
     }
+  },
+  "detail": {
+    "back": "Back to results"
   }
 }
