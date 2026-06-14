@@ -690,6 +690,8 @@ git commit -m "feat(tago): 근접정류소+도착 병렬 fetch 래퍼, graceful 
 - Create: `src/app/api/bus/route/route.ts`
 
 > 기존 `src/app/api/station/facilities/route.ts`의 형태(쿼리 파싱 → provider 호출 → throw 시 502)를 따른다.
+>
+> **⚠ 구현 노트 (품질리뷰 반영, 커밋 e22a749)**: 아래 Step 1·2 코드 블록은 bare `Request`+수동 검증 초안이다. 실제 구현은 코드베이스 컨벤션(기존 라우트 5개 전부 `NextRequest`+zod `safeParse`)에 맞춰 **zod로 통일하고 위경도 범위 가드를 추가**했다. 재실행·재구현 시 `src/app/api/route/car/route.ts`·`src/app/api/places/route.ts`의 zod 패턴을 따를 것: `nearby`는 `z.coerce.number()` + 위도 `.min(33).max(43)`·경도 `.min(124).max(132)`(한국 영역, `lat=9999` 등 무의미 좌표 차단), `route`는 `z.string().min(1)` 두 필드. 에러 응답은 `parsed.error.issues[0]?.message ?? "잘못된 요청"` + 400. graceful 분기(키없음→`{stops:[]}`, throw→502)는 동일.
 
 - [ ] **Step 1: nearby 라우트 구현**
 
@@ -1377,9 +1379,13 @@ design.md §11의 확정 항목을 실응답으로 검증한다:
 Run: `npm run test:run`
 Expected: PASS.
 
-- [ ] **Step 4: 저상버스(`vehicletp`) 실값 확인**
+- [ ] **Step 4: 저상버스 판정·필드 실값 확인 (묶음A 품질리뷰 지적)**
 
-실응답에서 `vehicletp` 실제 문자열을 확인한다("저상버스"/"일반차량"이 맞는지). 다르면 `parseBusArrivals`의 `includes("저상")` 판정을 실값에 맞춘다(테스트도 갱신).
+실응답에서 다음을 확인하고 필요 시 `parseBusArrivals`·`fetchNearbyBusStops`를 교정한다(테스트도 갱신):
+1. **저상버스 판정**: `vehicletp` 실제 문자열이 "저상버스"/"일반차량"이 맞는지. **다수 지역 TAGO는 저상 여부를 별도 코드 필드(`lowplsbusFlag`·`lowfloorbus` 등 `0/1`)로 준다** — 그런 필드가 있으면 `vehicletp` 문자열 매칭보다 그쪽을 우선한다(교통약자 정본이라 정확성 우선).
+2. **A-2 `totalCount` 실값과 호출량**: `getCrdntPrxmtSttnList`의 `totalCount`가 실제로 근접 정류소 수인지(전국/광역 수치가 아닌지) 확인. 비현실적으로 크면 `fetchNearbyBusStops`의 페이징이 불필요하게 5페이지까지 돌 수 있으므로, 실값을 보고 페이징 상한·반경 컷(예: `distanceMeters > 500` 초과 시 조기 종료)을 조정한다.
+3. **A-3 `cityCode` 필수 여부**: `getRouteAcctoThrghSttnList`가 `routeId`만으로 동작하는지, `cityCode`가 필수인지 확인. 미사용이면 `fetchBusRouteStops`·라우트·컴포넌트의 `cityCode` 결합을 제거할 수 있다.
+4. **도착 문구 `prevStationCount` 경계 (최종 cross-cutting 리뷰 지적)**: 실응답에서 `arrprevstationcnt`가 0(현재 정류장 통과/곧 도착) 또는 음수로 오는지 확인. 0이 흔하면 `BusArrivals`의 `t("arrival")` 문구가 "0번째 전 정류장"으로 어색하게 낭독되므로, "곧 도착"·"전전 정류장" 등 경계 카피를 i18n에 추가해 분기한다(0/1/N 구분).
 
 - [ ] **Step 5: 커밋**
 
