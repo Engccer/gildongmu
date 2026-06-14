@@ -96,5 +96,9 @@
     "transcribed": "Recognized: {text}",
     "permissionDenied": "Microphone permission is required. Please allow it in browser settings.",
     "error": "Voice recognition failed. Please try again."
+  },
+  "offline": {
+    "heading": "You are offline",
+    "body": "Check your connection and try again. Search works only online."
   }
 }

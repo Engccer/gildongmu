@@ -1,0 +1,41 @@
+// 길동무 수제 서비스워커 (Serwist가 Turbopack 빌드와 비호환이라 폴백 경로 채택).
+// 정책: 페이지(document)는 network-first → 실패 시 오프라인 폴백.
+// API(/api/*)는 절대 캐시하지 않는다(실데이터 원칙, 가짜 캐시 금지) — fetch 처리에서 early-return.
+const SHELL = "gildongmu-shell-v1";
+const OFFLINE_URL = "/ko/offline";
+
+self.addEventListener("install", (e) => {
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll([OFFLINE_URL])));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    (async () => {
+      // 이전 버전 셸 캐시 정리.
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== SHELL).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("fetch", (e) => {
+  const req = e.request;
+  if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  // 동일 출처가 아니면 SW가 개입하지 않는다(외부 API/지도 타일 등).
+  if (url.origin !== self.location.origin) return;
+  // API 비캐시(실데이터): 가로채지 않고 브라우저 기본 네트워크에 맡긴다.
+  if (url.pathname.startsWith("/api/")) return;
+  if (req.destination === "document") {
+    // 페이지: network-first → 오프라인 폴백.
+    e.respondWith(
+      fetch(req).catch(
+        async () =>
+          (await caches.match(OFFLINE_URL)) ??
+          new Response("", { status: 503, statusText: "Offline" }),
+      ),
+    );
+  }
+});

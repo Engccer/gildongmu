@@ -4,6 +4,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/Header";
+import { SWRegister } from "@/components/SWRegister";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -48,6 +49,7 @@ export default async function LocaleLayout({
           <main id="main" className="mx-auto max-w-2xl px-4 py-6">
             {children}
           </main>
+          <SWRegister />
         </NextIntlClientProvider>
       </body>
     </html>
