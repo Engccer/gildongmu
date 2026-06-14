@@ -3,6 +3,12 @@
     "title": "Gildongmu",
     "tagline": "Navigation in Korea, usable by everyone"
   },
+  "nav": {
+    "languageLabel": "Language",
+    "korean": "한국어",
+    "english": "English",
+    "skipToContent": "Skip to content"
+  },
   "search": {
     "label": "Search places",
     "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",

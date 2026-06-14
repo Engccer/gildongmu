@@ -3,6 +3,12 @@
     "title": "길동무",
     "tagline": "누구나 쓸 수 있는 대한민국 길찾기"
   },
+  "nav": {
+    "languageLabel": "언어",
+    "korean": "한국어",
+    "english": "English",
+    "skipToContent": "본문 바로가기"
+  },
   "search": {
     "label": "장소 검색",
     "placeholder": "예: 경복궁, 서울역, 근처 약국",
