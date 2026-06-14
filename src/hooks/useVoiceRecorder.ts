@@ -4,11 +4,23 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 export type RecordingState = "idle" | "recording" | "processing";
 
+/**
+ * 오류 코드 — 로케일별 번역은 소비 컴포넌트(VoiceRecordButton)가 담당한다.
+ * 훅은 사람이 읽는 문자열을 직접 만들지 않는다(en 사용자가 한국어를 듣는 결함 차단).
+ */
+export type VoiceRecorderErrorCode =
+  | "mic_denied" // 마이크 권한 거부(NotAllowedError)
+  | "mic_failed" // 그 외 마이크 시작 실패(장치 없음 등)
+  | "no_audio" // 녹음된 오디오 청크 없음
+  | "too_short" // 최소 길이(0.3초) 미달
+  | "no_text" // STT 422 — 음성을 텍스트로 인식 못 함
+  | "stt_failed"; // 그 외 STT 실패/네트워크/예외
+
 interface UseVoiceRecorderOptions {
   maxDuration?: number; // Maximum recording duration in seconds (default: 60)
   locale?: string; // UI locale hint for speech recognition (ko, en, es, fr)
   onTranscribed?: (text: string) => void; // Callback when transcription is complete
-  onError?: (error: string) => void; // Callback on error
+  onError?: (code: VoiceRecorderErrorCode) => void; // Callback on error (코드만 — 번역은 소비자 담당)
 }
 
 interface UseVoiceRecorderReturn {
@@ -117,11 +129,11 @@ export function useVoiceRecorder(
       }, 100);
     } catch (err) {
       console.error("Failed to start recording:", err);
-      const errorMessage =
+      onError?.(
         err instanceof Error && err.name === "NotAllowedError"
-          ? "마이크 권한이 필요합니다. 브라우저 설정에서 마이크 접근을 허용해주세요."
-          : "마이크를 시작할 수 없습니다.";
-      onError?.(errorMessage);
+          ? "mic_denied"
+          : "mic_failed",
+      );
     }
   }, [state, maxDuration, onError]);
 
@@ -150,7 +162,7 @@ export function useVoiceRecorder(
 
         // Check if we have audio data
         if (chunksRef.current.length === 0) {
-          onError?.("녹음된 오디오가 없습니다.");
+          onError?.("no_audio");
           setState("idle");
           resolve();
           return;
@@ -163,7 +175,7 @@ export function useVoiceRecorder(
 
         // Check minimum duration (at least 0.3 seconds)
         if (duration < 0.3) {
-          onError?.("녹음이 너무 짧습니다. 좀 더 길게 말씀해주세요.");
+          onError?.("too_short");
           setState("idle");
           setDuration(0);
           resolve();
@@ -183,22 +195,22 @@ export function useVoiceRecorder(
             body: formData,
           });
 
-          const data = await response.json();
-
           if (!response.ok) {
-            throw new Error(data.error || "음성 인식에 실패했습니다.");
+            // 서버의 한국어 data.error 텍스트는 무시하고 HTTP status로 코드 결정
+            // (en 사용자가 영어 TTS로 한국어를 듣는 결함 차단).
+            onError?.(response.status === 422 ? "no_text" : "stt_failed");
+            return;
           }
 
+          const data = await response.json();
           if (data.text) {
             onTranscribed?.(data.text);
           } else {
-            onError?.("인식된 텍스트가 없습니다. 다시 시도해주세요.");
+            onError?.("no_text");
           }
         } catch (err) {
           console.error("STT error:", err);
-          onError?.(
-            err instanceof Error ? err.message : "음성 인식에 실패했습니다."
-          );
+          onError?.("stt_failed");
         } finally {
           setState("idle");
           setDuration(0);

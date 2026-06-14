@@ -14,6 +14,7 @@
     "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",
     "button": "Search",
     "searching": "Searching…",
+    "searchingFor": "Searching for ‘{query}’…",
     "resultsAnnouncement": "{count} results found",
     "noResults": "No results. Try a different search term.",
     "error": "Search failed. Please try again shortly.",
@@ -90,12 +91,17 @@
     "stop": "Stop recording",
     "recognizing": "Recognizing speech",
     "notSupported": "This browser does not support voice input",
-    "started": "Recording started. Tap again to stop.",
+    "started": "Recording started. Tap again to stop, or press Escape to cancel.",
     "stopped": "Stopping and recognizing.",
     "cancelled": "Recording cancelled.",
-    "transcribed": "Recognized: {text}",
-    "permissionDenied": "Microphone permission is required. Please allow it in browser settings.",
-    "error": "Voice recognition failed. Please try again."
+    "errors": {
+      "mic_denied": "Microphone permission is required. Please allow it in browser settings.",
+      "mic_failed": "Could not start the microphone.",
+      "no_audio": "No audio was recorded.",
+      "too_short": "The recording is too short. Please speak a little longer.",
+      "no_text": "Could not recognize the speech. Please try again.",
+      "stt_failed": "Voice recognition failed. Please try again."
+    }
   },
   "offline": {
     "heading": "You are offline",

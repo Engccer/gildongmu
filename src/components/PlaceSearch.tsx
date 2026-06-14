@@ -53,6 +53,10 @@ export function PlaceSearch({
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
+  // 음성으로 검색한 질의어(없으면 null=타이핑 검색). 로딩 라이브 메시지를
+  // 음성일 때 "‘{질의}’ 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
+  // 통지한다(VoiceRecordButton의 assertive announce 제거와 한 쌍 — a11y C1).
+  const [spokenQuery, setSpokenQuery] = useState<string | null>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
@@ -141,13 +145,19 @@ export function PlaceSearch({
 
   function runSearch() {
     if (status.kind === "loading") return;
+    // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
+    // 남지 않도록).
+    setSpokenQuery(null);
     void performSearch(query);
   }
 
   // 음성 전사 결과 → 입력값 채우고 같은 performSearch 본체로 자동 검색.
   // performSearch는 reqIdRef 최신요청 가드·?q= URL 동기화·결과 헤딩 포커스를
   // 이미 보장하므로, 전사 자동검색도 그 보장을 그대로 물려받는다.
+  // spokenQuery를 세팅해 로딩 라이브 메시지가 "‘{질의}’ 검색 중…"으로 나가
+  // 인식 텍스트를 polite 한 채널로 통지한다(input에도 채워 시각·편집 확인).
   function handleTranscribed(text: string) {
+    setSpokenQuery(text);
     setQuery(text);
     void performSearch(text);
   }
@@ -168,7 +178,9 @@ export function PlaceSearch({
 
   const liveMessage =
     status.kind === "loading"
-      ? t("search.searching")
+      ? spokenQuery
+        ? t("search.searchingFor", { query: spokenQuery })
+        : t("search.searching")
       : status.kind === "error"
         ? t("search.error")
         : status.kind === "done"
