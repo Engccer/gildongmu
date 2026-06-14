@@ -25,7 +25,12 @@ export function PlaceCard({
           <span className="mt-0.5 block text-sm text-muted">
             {place.category}
           </span>
-          <span className="mt-0.5 block text-sm">
+          {/* 영문 주소가 없어 한글 주소를 그대로 보일 땐 lang="ko"를 줘
+              영문 UI에서도 SR이 올바른 음성 엔진으로 읽게 한다(ko에선 무해). */}
+          <span
+            className="mt-0.5 block text-sm"
+            lang={place.englishAddress ? undefined : "ko"}
+          >
             {place.englishAddress ?? (place.roadAddress || place.address)}
           </span>
         </span>

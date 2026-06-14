@@ -23,8 +23,15 @@ const LABEL_KEY: Record<string, "korean" | "english"> = {
  * 마운트 후 클라이언트 스냅샷이 실제 ?q= 쿼리를 반영한다.
  */
 function subscribeSearch(callback: () => void) {
+  // popstate(백/포워드)와 함께, PlaceSearch가 replaceState로 ?q=를 갱신할 때
+  // 발화하는 커스텀 이벤트도 구독 — 검색 직후 언어 링크 href가 새 ?q=를 즉시
+  // 반영한다(replaceState는 popstate를 발화하지 않으므로 필요).
   window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
+  window.addEventListener("gildongmu:locationchange", callback);
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener("gildongmu:locationchange", callback);
+  };
 }
 function getSearchSnapshot() {
   return window.location.search;

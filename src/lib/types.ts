@@ -110,12 +110,18 @@ export interface StationFacilities {
   stationName: string;
   /** 장애인 화장실 유무 (pwdbs_tolt_estnc) */
   accessibleToilet: boolean;
-  /** 휠체어 리프트 수 (whlch_liftt_cnt) */
-  wheelchairLifts: number;
+  /**
+   * 휠체어 리프트 수 (whlch_liftt_cnt).
+   * undefined = 정보 없음(파싱 불가/빈값). "0대"와 명확히 구분한다.
+   */
+  wheelchairLifts: number | undefined;
   /** 장애인 경사로/통로 유무 (pwdbs_slwy_estnc) */
   accessibleSlope: boolean;
-  /** 엘리베이터 수 (stationFacilities elevt_cnt — 없을 수 있음) */
-  elevators?: number;
+  /**
+   * 엘리베이터 수 (stationFacilities elevt_cnt).
+   * undefined = 정보 없음(보조 데이터 부재/실패). "0대"와 구분한다.
+   */
+  elevators: number | undefined;
 }
 
 /** 자동차 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본 */

@@ -11,7 +11,7 @@ export async function Header() {
     <header className="border-b border-border">
       <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-3">
         <div>
-          {/* 문서의 유일한 h1 — 스크린 리더 heading 내비게이션의 진입점 */}
+          {/* 앱 셸 h1 — heading 내비게이션 진입점(상세 화면의 장소명은 h2) */}
           <h1 className="text-lg font-bold">{t("title")}</h1>
           <p className="text-xs text-muted">{t("tagline")}</p>
         </div>

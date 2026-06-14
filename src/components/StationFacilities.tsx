@@ -23,9 +23,14 @@ export function StationFacilities({ stationName }: { stationName: string }) {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
+  // in-flight 가드 — 클로저의 status.kind만으로는 같은 렌더에서 빠른
+  // 더블클릭/Enter 반복 시 중복 fetch를 막지 못한다(setState 비동기). ref로
+  // 동기 가드한다.
+  const inFlightRef = useRef(false);
 
   async function load() {
-    if (status.kind === "loading") return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setStatus({ kind: "loading" });
     try {
       const res = await fetch(
@@ -44,6 +49,8 @@ export function StationFacilities({ stationName }: { stationName: string }) {
       requestAnimationFrame(() => headingRef.current?.focus());
     } catch {
       setStatus({ kind: "error" });
+    } finally {
+      inFlightRef.current = false;
     }
   }
 
@@ -101,13 +108,12 @@ export function StationFacilities({ stationName }: { stationName: string }) {
               {status.facilities.accessibleSlope ? t("yes") : t("no")}
             </li>
             <li>
-              {t("wheelchairLifts")}: {status.facilities.wheelchairLifts}
+              {t("wheelchairLifts")}:{" "}
+              {status.facilities.wheelchairLifts ?? t("unknown")}
             </li>
-            {status.facilities.elevators != null && (
-              <li>
-                {t("elevators")}: {status.facilities.elevators}
-              </li>
-            )}
+            <li>
+              {t("elevators")}: {status.facilities.elevators ?? t("unknown")}
+            </li>
           </ul>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </section>

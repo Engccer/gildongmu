@@ -45,13 +45,25 @@ function yn(v: unknown): boolean {
   return s === "Y" || s === "있음" || s === "1" || s === "TRUE";
 }
 
-function num(v: unknown): number {
+/**
+ * 수치 필드를 파싱한다 — "접근성 정본" 원칙상 **"0대"와 "정보 없음"을
+ * 뭉개지 않는다**: 실제 숫자(또는 숫자 문자열 `"0"`/`"4"`)면 그 값,
+ * 빈문자열·null·undefined·파싱불가면 `undefined`(=정보 없음).
+ */
+function num(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  if (typeof v === "string" && v.trim() === "") return undefined;
   const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : undefined;
 }
 
 function stnName(item: RawItem): string {
   return typeof item.stn_nm === "string" ? item.stn_nm : "";
+}
+
+function stnCode(item: RawItem): string {
+  const c = item.stn_cd;
+  return c == null ? "" : String(c);
 }
 
 /** 정규화된 타깃 역명과 일치하는 item을 목록에서 찾는다. */
@@ -59,8 +71,19 @@ function findByName(items: RawItem[], target: string): RawItem | null {
   return items.find((it) => normalizeStationName(stnName(it)) === target) ?? null;
 }
 
+/** stn_cd로 item을 찾는다(역명 표기차/동명이역 혼입 방지). */
+function findByCode(items: RawItem[], code: string): RawItem | null {
+  if (!code) return null;
+  return items.find((it) => stnCode(it) === code) ?? null;
+}
+
 /**
- * 두 엔드포인트 응답을 역명으로 조인해 StationFacilities로 정규화한다.
+ * 두 엔드포인트 응답을 조인해 StationFacilities로 정규화한다.
+ *
+ * 조인 키 정책: weekPerson에서 **정규화 역명으로 매칭**한 그 항목의
+ * `stn_cd`를 확보한 뒤, stationFacilities(엘리베이터)는 **같은 stn_cd로
+ * 조인**한다. 역명은 weekPerson 후보 선별에만 쓰여 동명이역/표기차로
+ * 다른 역 데이터가 혼입되는 것을 막는다.
  *
  * 교통약자(weekPerson) 응답에 해당 역이 없으면 null — 그 데이터가
  * 이 기능의 핵심이기 때문. 엘리베이터(stationFacilities)는 보조라
@@ -74,15 +97,16 @@ export function parseStationFacilities(
   const person = findByName(parseStationItems(weekPersonRaw), normalizedName);
   if (!person) return null;
 
-  const station = findByName(parseStationItems(stationRaw), normalizedName);
-  const elevatorRaw = station?.elevt_cnt;
+  // stn_cd로만 보조 데이터를 조인 — 역명 재매칭은 하지 않는다.
+  const code = stnCode(person);
+  const station = findByCode(parseStationItems(stationRaw), code);
 
   return {
     stationName: stnName(person) || stnName(station ?? {}) || normalizedName,
     accessibleToilet: yn(person.pwdbs_tolt_estnc),
     wheelchairLifts: num(person.whlch_liftt_cnt),
     accessibleSlope: yn(person.pwdbs_slwy_estnc),
-    elevators: elevatorRaw != null ? num(elevatorRaw) : undefined,
+    elevators: num(station?.elevt_cnt),
   };
 }
 
@@ -100,7 +124,13 @@ async function fetchList(path: string, key: string): Promise<unknown> {
 
 /**
  * 역 이름으로 교통약자 편의시설을 가져온다.
- * 키 없음·실패·미커버 역은 모두 null(graceful) — 가짜 데이터 금지.
+ *
+ * 장애("정보 없음")와 일시 장애를 구분한다(접근성 정본 원칙):
+ * - **키 없음 / 미커버 역**(weekPerson 매칭 없음) → null(graceful → "정보 없음").
+ * - **주(weekPerson) fetch·HTTP·파싱 실패**(=upstream 장애) → throw →
+ *   라우트가 502, UI는 "조회 실패"로 표시(정보 없음으로 오인 금지).
+ * - **보조(stationFacilities, 엘리베이터) 실패만** 개별 흡수 → 부분 결과
+ *   (엘리베이터 undefined).
  */
 export async function fetchStationFacilities(
   stationName: string,
@@ -109,14 +139,10 @@ export async function fetchStationFacilities(
   if (!key) return null;
   const target = normalizeStationName(stationName);
   if (!target) return null;
-  try {
-    const [weekPersonRaw, stationRaw] = await Promise.all([
-      fetchList("weekPersonFacilities", key),
-      // 엘리베이터(보조)는 실패해도 전체를 막지 않도록 개별 흡수
-      fetchList("stationFacilities", key).catch(() => null),
-    ]);
-    return parseStationFacilities(weekPersonRaw, stationRaw, target);
-  } catch {
-    return null;
-  }
+  // 주 데이터(weekPerson)의 실패는 흡수하지 않고 전파한다 — 일시 장애를
+  // "정보 없음"으로 뭉개면 접근성 정본이 거짓이 된다.
+  const weekPersonRaw = await fetchList("weekPersonFacilities", key);
+  // 엘리베이터(보조)는 실패해도 전체를 막지 않도록 개별 흡수.
+  const stationRaw = await fetchList("stationFacilities", key).catch(() => null);
+  return parseStationFacilities(weekPersonRaw, stationRaw, target);
 }

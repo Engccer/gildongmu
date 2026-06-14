@@ -54,6 +54,10 @@ export function PlaceSearch({
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
+  // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
+  // 늦게 끝난 이전 요청이 최신 결과를 덮어쓰는 것을 막는다(AbortController 불필요).
+  const reqIdRef = useRef(0);
   // popstate 핸들러는 마운트 시점 status를 클로저로 잡으므로, 복귀 시 "결과가
   // 렌더되는 상태인지"를 최신값으로 읽기 위해 ref로 status를 미러링한다.
   // 렌더 중 ref 변경은 금지(react-hooks/refs)이므로 effect에서 갱신한다.
@@ -84,6 +88,8 @@ export function PlaceSearch({
   }, []);
 
   function openDetail(place: Place) {
+    // 상세는 URL에 싣지 않음(딥링크 상세 복원은 비목표) — 이 pushState는
+    // 백버튼으로 목록 복귀를 포착하기 위한 trap 엔트리일 뿐이다.
     window.history.pushState({ place: place.id }, "");
     setSelected(place);
   }
@@ -106,21 +112,27 @@ export function PlaceSearch({
     async (rawQuery: string) => {
       const q = rawQuery.trim();
       if (!q) return;
+      const myId = ++reqIdRef.current;
       setBucket(null);
       setStatus({ kind: "loading" });
       // URL ?q= 동기화(공유·새로고침 보존)
       const url = new URL(window.location.href);
       url.searchParams.set("q", q);
       window.history.replaceState(window.history.state, "", url);
+      // LanguageSwitcher가 ?q= 변경을 즉시 반영하도록 통지(popstate는 안 뜸).
+      window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
         const res = await fetch(
           `/api/places?query=${encodeURIComponent(q)}&lang=${locale}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = (await res.json()) as PlaceSearchResult;
+        // 최신 요청만 반영 — 늦게 끝난 이전 요청은 여기서 폐기.
+        if (reqIdRef.current !== myId) return;
         setStatus({ kind: "done", result });
         requestAnimationFrame(() => resultsHeadingRef.current?.focus());
       } catch {
+        if (reqIdRef.current !== myId) return;
         setStatus({ kind: "error" });
       }
     },

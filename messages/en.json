@@ -82,6 +82,7 @@
     "elevators": "Elevators",
     "yes": "Available",
     "no": "Not available",
+    "unknown": "Unknown",
     "source": "Source: Korea Railroad (nationwide rail stations). Urban subway not included."
   }
 }

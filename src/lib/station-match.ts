@@ -8,7 +8,9 @@ import type { Place } from "./types";
  * (2) 이름이 "역"/"station"으로 끝나면 역으로 본다.
  */
 
-const STATION_CATEGORY = /지하철|전철|철도|기차|Subway|Metro|Railway|Train|Station/i;
+// "Station"은 카테고리에서 제외한다 — "Stationery"(문구) 등을 역으로 오판하기
+// 때문. 영문 역 판정은 이름 접미사(/station$/i)에만 맡긴다.
+const STATION_CATEGORY = /지하철|전철|철도|기차|Subway|Metro|Railway|Train/i;
 
 /** 장소가 철도/지하철 역인지 — 카테고리 또는 이름 접미사로 판정. */
 export function isStation(place: Place): boolean {

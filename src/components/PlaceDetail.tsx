@@ -62,7 +62,9 @@ export function PlaceDetail({
           <dt className="inline font-medium">
             {place.englishAddress ? t("place.address") : t("place.roadAddress")}:{" "}
           </dt>
-          <dd className="inline">
+          {/* 메인 주소가 한글(영문 주소 부재)일 땐 lang="ko"로 SR 음성 엔진을
+              맞춘다(영문 UI에서도 정확히 읽히게; ko 로케일에선 무해). */}
+          <dd className="inline" lang={place.englishAddress ? undefined : "ko"}>
             {place.englishAddress ?? (place.roadAddress || place.address)}
           </dd>
           {place.englishAddress && (place.roadAddress || place.address) && (
