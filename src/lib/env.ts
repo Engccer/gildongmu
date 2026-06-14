@@ -29,6 +29,10 @@ const envSchema = z.object({
   // 한국관광공사 TourAPI 4.0 — data.go.kr serviceKey (Decoding 버전을 넣을 것)
   TOUR_API_KEY: z.string().min(1).optional(),
 
+  // data.go.kr 계정 단일 인증키 (TOUR_API_KEY와 같은 값). 한국철도공사
+  // 편의시설(B551457) 등 비-관광 data.go.kr 서비스 공용.
+  DATA_GO_KR_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -40,6 +44,7 @@ export const env = envSchema.parse({
   NCP_MAPS_CLIENT_ID: process.env.NCP_MAPS_CLIENT_ID,
   NCP_MAPS_CLIENT_SECRET: process.env.NCP_MAPS_CLIENT_SECRET,
   TOUR_API_KEY: process.env.TOUR_API_KEY,
+  DATA_GO_KR_API_KEY: process.env.DATA_GO_KR_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -61,4 +66,9 @@ export function hasNcpMapsKeys(): boolean {
 /** TourAPI(한국관광공사) 사용 가능 여부 */
 export function hasTourApiKey(): boolean {
   return Boolean(env.TOUR_API_KEY);
+}
+
+/** data.go.kr 공용 인증키(철도공사 편의시설 등) 사용 가능 여부 */
+export function hasDataGoKrKey(): boolean {
+  return Boolean(env.DATA_GO_KR_API_KEY);
 }
