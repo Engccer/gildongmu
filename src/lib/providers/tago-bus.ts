@@ -1,4 +1,5 @@
 import type { BusArrival, BusRouteStop, BusStop } from "../types";
+import { env } from "../env";
 
 /**
  * 국토교통부 TAGO(국가대중교통정보센터) 시내버스 provider.
@@ -113,4 +114,139 @@ export function parseBusRouteStops(raw: unknown): BusRouteStop[] {
     }))
     .filter((s) => s.nodeId)
     .sort((a, b) => a.order - b.order);
+}
+
+const STN_BASE = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService";
+const ARV_BASE = "http://apis.data.go.kr/1613000/ArvlInfoInqireService";
+const RTE_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
+
+/**
+ * envelope의 response.body.totalCount를 정수로 읽는다(없으면 0).
+ * A-2 근접정류소 페이징 종료 조건(개정 노트 §3)에 쓰인다 — 받은 후보 수가
+ * totalCount에 도달할 때까지 페이지를 더 받아 "진짜 최근접"을 놓치지 않는다.
+ */
+function readTotalCount(raw: unknown): number {
+  const tc = (raw as { response?: { body?: { totalCount?: unknown } } })?.response
+    ?.body?.totalCount;
+  const n = Number(tc);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * TAGO 한 오퍼레이션을 호출하고 표준 envelope JSON을 돌려준다.
+ *
+ * graceful 원칙: HTTP 실패·JSON 아님·서비스 에러 envelope는 throw(라우트가
+ * 502로 변환, "조회 실패"와 "정보 없음"을 구분). 정상 빈결과(resultCode "00"
+ * + items:"")는 throw하지 않고 그대로 반환해 파서가 빈 배열을 만든다.
+ */
+async function fetchTago(
+  base: string,
+  op: string,
+  params: Record<string, string | number>,
+  init?: RequestInit & { next?: { revalidate: number } },
+): Promise<unknown> {
+  const key = env.DATA_GO_KR_API_KEY!;
+  const url = new URL(`${base}/${op}`);
+  url.searchParams.set("serviceKey", key);
+  url.searchParams.set("_type", "json");
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
+
+  const res = await fetch(url, init ?? { cache: "no-store" });
+  if (!res.ok) throw new Error(`TAGO ${op} HTTP ${res.status}`);
+
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // 인증 실패 등은 _type=json이어도 XML 에러로 오기도 한다.
+    throw new Error(`TAGO ${op} 비정상 응답: ${text.slice(0, 200)}`);
+  }
+
+  const svcErr = (data as { OpenAPI_ServiceResponse?: { cmmMsgHeader?: Record<string, unknown> } })
+    .OpenAPI_ServiceResponse;
+  if (svcErr) {
+    const h = svcErr.cmmMsgHeader ?? {};
+    throw new Error(
+      `TAGO ${op} 서비스 에러: ${h.returnAuthMsg ?? h.returnReasonCode ?? "unknown"}`,
+    );
+  }
+
+  const header = (data as { response?: { header?: { resultCode?: unknown; resultMsg?: unknown } } })
+    .response?.header;
+  const code = header?.resultCode == null ? null : String(header.resultCode);
+  // "00"/"0" 정상. NODATA류(03 등)는 정상 빈결과로 통과. 그 외는 장애로 throw.
+  if (code != null && code !== "00" && code !== "0") {
+    const msg = String(header?.resultMsg ?? code);
+    if (code === "03" || /NODATA|NO_?DATA/i.test(msg)) return data;
+    throw new Error(`TAGO ${op} resultCode ${code}: ${msg}`);
+  }
+  return data;
+}
+
+/**
+ * 좌표 → 근접 정류소 상위 5개 + 각 정류소 도착예정(병렬).
+ * 키 없으면 빈 배열(진입점은 키 게이트로 미렌더되므로 방어적).
+ */
+export async function fetchNearbyBusStops(
+  lat: number,
+  lng: number,
+): Promise<BusStop[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  // A-2: 500m 반경 후보를 빠짐없이 수집한 뒤 정렬(개정 노트 §3) — "10건만 받아 슬라이스" 금지.
+  // totalCount(= response.body.totalCount)가 받은 수보다 크면 페이징한다. readTotalCount는
+  // envelope에서 totalCount를 숫자로 읽는 작은 헬퍼(없으면 0)로 provider에 함께 추가한다.
+  const PAGE = 100;
+  let candidates: BusStop[] = [];
+  let total = Infinity;
+  for (let page = 1; candidates.length < total && page <= 5; page++) {
+    const raw = await fetchTago(STN_BASE, "getCrdntPrxmtSttnList", {
+      gpsLati: lat,
+      gpsLong: lng,
+      numOfRows: PAGE,
+      pageNo: page,
+    });
+    total = readTotalCount(raw);
+    const pageStops = parseBusStops(raw, lat, lng); // arrivalStatus:"ok"·arrivals:[] 기본값으로
+    if (pageStops.length === 0) break;
+    candidates = candidates.concat(pageStops);
+  }
+  // 전체 후보를 모은 뒤에야 거리 정렬·상위 5 cap (부분집합 슬라이스 금지)
+  const stops = candidates
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, 5);
+
+  const settled = await Promise.allSettled(
+    stops.map((s) =>
+      fetchTago(ARV_BASE, "getSttnAcctoArvlPrearngeInfoList", {
+        cityCode: s.cityCode,
+        nodeId: s.nodeId,
+        numOfRows: 50,
+      }),
+    ),
+  );
+  return stops.map((s, i) => {
+    const r = settled[i];
+    if (r.status === "rejected") {
+      // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — unavailable로 구분, 빈배열로 뭉개지 않는다.
+      console.error(`[tago] 도착조회 실패 ${s.name}:`, r.reason);
+      return { ...s, arrivalStatus: "unavailable" as const, arrivals: [] };
+    }
+    return { ...s, arrivalStatus: "ok" as const, arrivals: parseBusArrivals(r.value) };
+  });
+}
+
+/** 노선 경유정류소(거의 불변 → 하루 캐시). */
+export async function fetchBusRouteStops(
+  cityCode: string,
+  routeId: string,
+): Promise<BusRouteStop[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchTago(
+    RTE_BASE,
+    "getRouteAcctoThrghSttnList",
+    { cityCode, routeId, numOfRows: 200 },
+    { next: { revalidate: 86_400 } },
+  );
+  return parseBusRouteStops(raw);
 }
