@@ -42,6 +42,8 @@
 
 > **2026-06-14 대규모 확장 조사 완료** — 우편번호·시내버스·지하철·맛집·예약·접근성/여행 6개 도메인 심층 조사(deep-research 워크플로 102 에이전트 + 직접 검증 2라운드). 전문: `RESEARCH-2026-06-domestic-api-expansion.md`. 핵심: TAGO 버스 패밀리(최대 공백 메움)·전국도시철도역사정보표준데이터(외국인 정합 최강)·행안부 도로명주소 공식 API(ePost 대체)·KRIC 교통약자(접근성 차별화).
 
+> **2026-06-14 v2 UI 개편 출시** — 단일 검색창 → 결과(카테고리 칩 필터) → **장소 상세**(같은 페이지 뷰 전환 + History API, 백버튼 복귀·포커스 이동) 흐름으로 재편. ko/en 로케일별 단일 언어 페이지 + 언어 전환기(경로·`?q=`·쿠키 보존). 상세 화면에 길찾기 딥링크·자동차 경로 브리핑과 함께 **역 교통약자 편의시설**(철도공사 15125774)을 첫 노출. 설계/계획: `superpowers/specs/2026-06-14-gildongmu-v2-upgrade-design.md`·`superpowers/plans/2026-06-14-gildongmu-v2.md`. 채팅 인터페이스는 다음 패스(같은 검색 축에 얹을 구조 유지).
+
 | 서비스/API | 도메인 | 상태 | dodo-planet 통합 가치 |
 |------------|--------|------|----------------------|
 | 카카오 로컬 | 장소 검색 | **운영 중** — 카카오맵 활성화 + 실데이터 검증 완료 (2026-06-12) | 높음 — 장소 검색 코어 |
@@ -61,7 +63,7 @@
 | **전국도시철도역사정보표준데이터** (15013205) | 지하철 | **검증 완료 (2026-06-14, 3-0)** — 국가철도공단, 1,073개역 한/영/한자 역명 + WGS84 좌표. 무료 | **높음** — 좌표+영문 동시 충족 유일 데이터셋. 서울 실시간(보유)을 전국 정적 메타로 확장 |
 | **행안부 도로명주소 API** (검색·영문·좌표, business.juso.go.kr) | 우편번호/주소 | **검증 완료 (2026-06-14)** — 승인키, 공식 영문주소 직접 제공. 무료한도 재확인 필요 | **중상** — 현 ePost 비공식 웹폼·NCP 2-call 체인 대체. 영문주소 공식화 |
 | **KRIC 교통약자 이동경로** (transferMovement·stationMovement) | 접근성/철도 | **회원가입 완료·승인 대기 (2026-06-14)** — KRIC는 data.go.kr과 달리 **수동 승인(수일 소요)**. 승인 후 로그인→2종 활용신청 재개 예정. 엔드포인트 1차 확정: `openapi.kric.go.kr/openapi/vulnerableUserInfo/transferMovement`·`/handicapped/stationMovement`, 무료·**무제한**·단일키, 역식별 railOprIsttCd+lnCd+stinCd. ⚠ 발급 후 실호출 게이트 2건(낭독 산문 여부·역코드 조인). 상세 RESEARCH §I | **높음** — 무장애 환승/역내 동선. **최대 차별화 축** |
-| **한국철도공사 편의시설정보** (data.go.kr 15125774) | 접근성/철도 | **키 발급+실호출 검증 완료 (2026-06-14)** — `apis.data.go.kr/B551457/convenience` 4종(`/stationFacilities`·`/weekPersonFacilities` 교통약자·`/parkingLots`·`/codes`). data.go.kr 계정 단일 키(`DATA_GO_KR_API_KEY` = `TOUR_API_KEY` 동일값). `/weekPersonFacilities` 실호출 200, 전국 406건(장애인화장실유무 `pwdbs_tolt_estnc`·장애인경사로 `pwdbs_slwy_estnc`·휠체어리프트수 `whlch_liftt_cnt`·역코드 `stn_cd`) | **높음** — KRIC 가입 없이 data.go.kr로 확보한 역 교통약자 시설 정본 |
+| **한국철도공사 편의시설정보** (data.go.kr 15125774) | 접근성/철도 | **운영 중 (UI 통합, 2026-06-14)** — `src/lib/providers/korail-facilities.ts` + `/api/station/facilities` + `StationFacilities` 컴포넌트로 장소 상세에 노출. `/weekPersonFacilities`(교통약자: 장애인화장실 `pwdbs_tolt_estnc`·경사로 `pwdbs_slwy_estnc`·휠체어리프트 `whlch_liftt_cnt`) + `/stationFacilities`(엘리베이터 `elevt_cnt`)를 **`stn_cd` 조인**. API가 역명 필터를 무시해 406역 전체를 받아 `normalizeStationName` 클라이언트 매칭(일 1회 revalidate). 정본 정확성: "0대"≠"정보 없음"(`num→number\|undefined`), 주 fetch 장애는 502(미커버 null과 구분). 도시철도(지하철) 미포함 → graceful degrade. `DATA_GO_KR_API_KEY`(=`TOUR_API_KEY`), 프로덕션 env 등록 완료 | **높음** — KRIC 가입 없이 data.go.kr로 확보한 역 교통약자 시설 정본 |
 | **무장애 안내 보조 데이터** (서울 키오스크 점자·음성 XLSX id=985 / 서울 빠른하차 15143840 / 승강기안전공단 실시간 15070652) | 접근성/철도 | **조사됨 (3라운드)** — 점자·음성 특화필드는 서울 키오스크 정적파일에만. 실시간 승강기는 승강기안전공단(건물단위→역 매핑 필요)·서울 후속. KRIC 환각 엔드포인트 2종 반증(코드 금지) | **높음** — 편의시설(15125774, 발급완료)과 3층 스택 구성. seed+조회+실시간 조합 |
 | ODsay LAB 대중교통 길찾기 | 버스+지하철 경로 | **검증 완료 (2026-06-14, 3-0)** — TAGO에 없는 환승 경로계산 보완. 무료 일 1,000건·**6개월·한국어 전용**(영문 유료) | 중상 — ko 경로검색 코어. en은 보류/자체 구성 |
 | KORAIL/TAGO 열차 운행정보 (15125762 / 15098552) | 철도 | **검증 완료 (2026-06-14, 3-0)** — 무료·개발 10,000건. 둘 중 택1 | 중 — KTX/SRT 딥링크와 별개 "운행현황 텍스트 안내" |

@@ -34,8 +34,10 @@
 - **좌표는 WGS84 십진 도로 통일**. 네이버 지역 검색의 `mapx/mapy`(×10⁷ 정수)는 provider 안에서만 존재. 카카오는 WGS84 그대로.
 - **내비게이션은 딥링크로 네이티브 앱 위임**: `src/lib/deeplink.ts`(nmap://), `src/lib/deeplink-kakao.ts`(kakaomap://). NCP/카카오내비 Directions는 자동차 전용이라 도보·대중교통 자체 구현 대상이 아니다.
 - **자동차 경로 텍스트 브리핑** (`/api/route/car` + `CarRouteBriefing` 컴포넌트): 카카오모빌리티 directions의 `guides[].guidance`(완성된 한국어 안내문)를 낭독 정본으로 사용. 실주행 내비가 아니라 "출발 전 경로 미리 듣기" — 실주행은 딥링크 위임 원칙 유지.
-- **버튼 비활성화는 `disabled` 대신 `aria-disabled` + 핸들러 가드** — `disabled`는 포커스를 제거해 스크린 리더 사용자가 맥락을 잃는다 (a11y 감사 반영, 2026-06-13).
-- i18n: next-intl, `/ko` `/en` 경로 프리픽스, 메시지는 `messages/*.json`.
+- **버튼 비활성화는 `disabled` 대신 `aria-disabled` + 핸들러 가드** — `disabled`는 포커스를 제거해 스크린 리더 사용자가 맥락을 잃는다 (a11y 감사 반영, 2026-06-13). 단 `aria-disabled`만으로는 빠른 더블클릭/Enter 반복 시 같은 렌더의 클로저 가드가 중복 호출을 못 막으므로, 비동기 트리거에는 **in-flight ref 가드**(`useRef(false)` + `finally` 해제)를 병행한다(codex 리뷰 반영, 2026-06-14).
+- **검색 → 결과 → 장소 상세 흐름 (v2, 2026-06-14)**: 입력은 검색창 하나. 결과는 카테고리 버킷 칩으로 필터(`ChipFilter`), 장소를 고르면 **같은 페이지 내 뷰 전환 + History API**로 상세(`PlaceDetail`)를 연다 — 카카오 로컬은 ID 단건 조회가 없어 메모리의 `Place`로 상세를 그린다. `openDetail`이 `pushState`로 백버튼 포착용 trap 엔트리를 쌓고, `popstate`가 단일 수렴점으로 목록 복귀 + 결과 헤딩 포커스 이동을 담당(딥링크 상세 복원은 비목표). 검색은 `?q=` URL 동기화 + request-id ref로 stale 응답을 버린다. 상세에 길찾기 딥링크·자동차 브리핑·(역이면)역 편의시설을 집약.
+- **역 교통약자 편의시설** (`korail-facilities` provider + `/api/station/facilities` + `StationFacilities`): 철도공사 API(15125774)가 역명 필터를 무시해 406역 전체를 받아 `normalizeStationName`으로 클라이언트 매칭(일 1회 revalidate). 교통약자(`/weekPersonFacilities`)와 엘리베이터(`/stationFacilities`)를 **`stn_cd` 조인**(역명 조인은 동명이역 혼입 위험). **정본 정확성**: "0대"와 "정보 없음"을 뭉개지 않음(`num→number|undefined`), 주 데이터 upstream 장애는 throw→502(미커버 `null`과 구분). 도시철도(지하철)는 미포함이라 매칭 실패=graceful degrade.
+- i18n: next-intl, `/ko` `/en` 경로 프리픽스, 메시지는 `messages/*.json`. **로케일별 단일 언어**(혼용 제거) + 언어 전환기(`LanguageSwitcher`)가 경로·`?q=`(`replaceState` 후 커스텀 이벤트로 동기화)·`NEXT_LOCALE` 쿠키를 보존. SSG hydration 안전(`useSyncExternalStore`, 서버 스냅샷 `""`).
 
 ## API 키 현황 (2026-06-13)
 
@@ -52,7 +54,7 @@
 ## 배포
 
 - **Vercel 프로덕션**: https://gildongmu.vercel.app (2026-06-13 최초 배포, 팀 `hunyong-kims-projects`)
-- 프로덕션 환경변수 현황(2026-06-13): `KAKAO_REST_API_KEY`(Production), `TOUR_API_KEY`(Production/Preview/Development), `NCP_MAPS_CLIENT_ID`·`NCP_MAPS_CLIENT_SECRET`(Production — en 영문 주소 보강용). `vercel env ls production`으로 확인.
+- 프로덕션 환경변수 현황(2026-06-14): `KAKAO_REST_API_KEY`(Production), `TOUR_API_KEY`(Production/Preview/Development), `NCP_MAPS_CLIENT_ID`·`NCP_MAPS_CLIENT_SECRET`(Production — en 영문 주소 보강용), `DATA_GO_KR_API_KEY`(Production — 역 교통약자 편의시설, 2026-06-14 추가). `vercel env ls production`으로 확인.
 - **환경변수는 배포 시점에 함수로 주입된다** — 키를 추가/변경한 뒤에는 반드시 재배포(`vercel deploy --prod --yes` 또는 push)해야 이미 떠 있는 배포에 반영된다. 키만 추가하고 재배포 안 하면 기존 함수는 옛 env를 본다(2026-06-13 NCP 키 등록 시 실측).
 - 비대화형 등록: `printf '%s' "$VALUE" | vercel env add <KEY> production`. 주의: CLI `vercel env add <key> preview`는 비대화형에서 `git_branch_required`로 멈추는 결함(54.12.2에서도 재현) — Preview 등록은 REST API(`POST /v10/projects/{id}/env`) 또는 대시보드 사용
 - GitHub 저장소(`Engccer/gildongmu`)가 Vercel에 연결됨 — **push하면 자동 배포**된다. push는 사용자 요청 시에만 하는 워크스페이스 규칙이 곧 배포 게이트.
