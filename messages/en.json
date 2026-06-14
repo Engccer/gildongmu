@@ -3,6 +3,12 @@
     "title": "Gildongmu",
     "tagline": "Navigation in Korea, usable by everyone"
   },
+  "nav": {
+    "languageLabel": "Language",
+    "korean": "한국어",
+    "english": "English",
+    "skipToContent": "Skip to content"
+  },
   "search": {
     "label": "Search places",
     "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",
@@ -15,6 +21,8 @@
   },
   "category": {
     "groupHeading": "{label} ({count})",
+    "filterLabel": "Filter by category",
+    "all": "All",
     "attraction": "Attractions",
     "food": "Food",
     "shopping": "Shopping",
@@ -30,7 +38,8 @@
     "callAction": "Call {name}",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
-    "detailPage": "Detail page"
+    "detailPage": "Detail page",
+    "openDetail": "View details for {name}"
   },
   "route": {
     "heading": "Directions to {name}",
@@ -56,5 +65,24 @@
       "toll": "Toll {toll} KRW not included.",
       "disclaimer": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
     }
+  },
+  "detail": {
+    "back": "Back to results"
+  },
+  "station": {
+    "button": "View accessibility facilities",
+    "loading": "Loading facilities…",
+    "empty": "No accessibility facility data for this station.",
+    "error": "Failed to load facilities. Please try again shortly.",
+    "ready": "Facility information is ready.",
+    "heading": "Accessibility facilities at {name}",
+    "accessibleToilet": "Accessible restroom",
+    "accessibleSlope": "Accessible ramp",
+    "wheelchairLifts": "Wheelchair lifts",
+    "elevators": "Elevators",
+    "yes": "Available",
+    "no": "Not available",
+    "unknown": "Unknown",
+    "source": "Source: Korea Railroad (nationwide rail stations). Urban subway not included."
   }
 }

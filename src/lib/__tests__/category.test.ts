@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { categoryOf, groupByCategory, type CategoryBucket } from "../category";
+import {
+  categoryOf,
+  groupByCategory,
+  bucketsPresent,
+  filterPlacesByBucket,
+  type CategoryBucket,
+} from "../category";
 import type { Place } from "../types";
 
 /**
@@ -80,5 +86,53 @@ describe("groupByCategory", () => {
 
   it("빈 입력은 빈 배열", () => {
     expect(groupByCategory([])).toEqual([]);
+  });
+});
+
+const sample = [
+  {
+    id: "1",
+    name: "경복궁",
+    category: "관광,명소>고궁",
+    address: "",
+    roadAddress: "",
+    lat: 0,
+    lng: 0,
+  },
+  {
+    id: "2",
+    name: "김밥천국",
+    category: "음식점>분식",
+    address: "",
+    roadAddress: "",
+    lat: 0,
+    lng: 0,
+  },
+  {
+    id: "3",
+    name: "서울역",
+    category: "교통,수송>지하철",
+    address: "",
+    roadAddress: "",
+    lat: 0,
+    lng: 0,
+  },
+];
+
+describe("bucketsPresent", () => {
+  it("결과에 존재하는 버킷만 BUCKET_ORDER 순서로 반환", () => {
+    expect(bucketsPresent(sample)).toEqual(["attraction", "food", "transport"]);
+  });
+  it("빈 입력은 빈 배열", () => {
+    expect(bucketsPresent([])).toEqual([]);
+  });
+});
+
+describe("filterPlacesByBucket", () => {
+  it("null이면 전체 반환", () => {
+    expect(filterPlacesByBucket(sample, null)).toHaveLength(3);
+  });
+  it("특정 버킷만 필터", () => {
+    expect(filterPlacesByBucket(sample, "food").map((p) => p.id)).toEqual(["2"]);
   });
 });

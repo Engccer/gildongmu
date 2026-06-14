@@ -96,6 +96,34 @@ export interface CarRouteGuide {
   durationSeconds: number;
 }
 
+/**
+ * 역 교통약자 편의시설 — 지도 없이 완결되는 접근성 정보 정본.
+ *
+ * 한국철도공사(B551457) API 두 엔드포인트를 조인한 결과:
+ * - weekPersonFacilities(교통약자): 장애인 화장실·휠체어 리프트·장애인 경사로
+ * - stationFacilities: 엘리베이터 수
+ * 데이터 모집단은 전국 철도역(KTX·일반철도, 406역)이며 도시철도(지하철)는
+ * 별도 사업자라 포함되지 않는다 — 미커버 역은 null로 graceful degrade.
+ */
+export interface StationFacilities {
+  /** 역명(데이터셋 표기 그대로, 표시용) */
+  stationName: string;
+  /** 장애인 화장실 유무 (pwdbs_tolt_estnc) */
+  accessibleToilet: boolean;
+  /**
+   * 휠체어 리프트 수 (whlch_liftt_cnt).
+   * undefined = 정보 없음(파싱 불가/빈값). "0대"와 명확히 구분한다.
+   */
+  wheelchairLifts: number | undefined;
+  /** 장애인 경사로/통로 유무 (pwdbs_slwy_estnc) */
+  accessibleSlope: boolean;
+  /**
+   * 엘리베이터 수 (stationFacilities elevt_cnt).
+   * undefined = 정보 없음(보조 데이터 부재/실패). "0대"와 구분한다.
+   */
+  elevators: number | undefined;
+}
+
 /** 자동차 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본 */
 export interface CarRouteBriefing {
   distanceMeters: number;

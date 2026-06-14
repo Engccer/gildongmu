@@ -71,3 +71,18 @@ export function groupByCategory(places: Place[]): CategoryGroup[] {
     places: map.get(bucket)!,
   }));
 }
+
+/** 결과 안에 실제로 존재하는 버킷만 BUCKET_ORDER 순서로 반환(칩 표시용). */
+export function bucketsPresent(places: Place[]): CategoryBucket[] {
+  const present = new Set(places.map((p) => categoryOf(p.category)));
+  return BUCKET_ORDER.filter((b) => present.has(b));
+}
+
+/** 선택 버킷으로 필터. null이면 전체 반환(입력 순서 보존). */
+export function filterPlacesByBucket(
+  places: Place[],
+  bucket: CategoryBucket | null,
+): Place[] {
+  if (bucket === null) return places;
+  return places.filter((p) => categoryOf(p.category) === bucket);
+}
