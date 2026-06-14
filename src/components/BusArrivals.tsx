@@ -168,8 +168,8 @@ export function BusArrivals(
                   <p className="text-sm opacity-70">{t("noArrivals")}</p>
                 ) : (
                   <ul className="mt-1 space-y-1 text-sm">
-                    {stop.arrivals.map((a) => (
-                      <li key={a.routeId}>
+                    {stop.arrivals.map((a, i) => (
+                      <li key={`${a.routeId}-${i}`}>
                         <span lang="ko">
                           {t("arrival", {
                             route: a.routeNo,
