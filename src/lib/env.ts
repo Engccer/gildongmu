@@ -33,6 +33,9 @@ const envSchema = z.object({
   // 편의시설(B551457) 등 비-관광 data.go.kr 서비스 공용.
   DATA_GO_KR_API_KEY: z.string().min(1).optional(),
 
+  // Deepgram — 음성 받아쓰기(STT) 서버 키 (Authorization: Token 헤더)
+  DEEPGRAM_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -45,6 +48,7 @@ export const env = envSchema.parse({
   NCP_MAPS_CLIENT_SECRET: process.env.NCP_MAPS_CLIENT_SECRET,
   TOUR_API_KEY: process.env.TOUR_API_KEY,
   DATA_GO_KR_API_KEY: process.env.DATA_GO_KR_API_KEY,
+  DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -71,4 +75,9 @@ export function hasTourApiKey(): boolean {
 /** data.go.kr 공용 인증키(철도공사 편의시설 등) 사용 가능 여부 */
 export function hasDataGoKrKey(): boolean {
   return Boolean(env.DATA_GO_KR_API_KEY);
+}
+
+/** Deepgram 음성 받아쓰기(STT) 사용 가능 여부 */
+export function hasDeepgramKey(): boolean {
+  return Boolean(env.DEEPGRAM_API_KEY);
 }

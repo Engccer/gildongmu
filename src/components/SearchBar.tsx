@@ -2,17 +2,23 @@
 
 import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
+import { VoiceRecordButton } from "./VoiceRecordButton";
+import type { VoiceRecorderErrorCode } from "@/hooks/useVoiceRecorder";
 
 export function SearchBar({
   query,
   onQueryChange,
   onSubmit,
   busy,
+  onTranscribed,
+  onVoiceError,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
   onSubmit: () => void;
   busy: boolean;
+  onTranscribed: (text: string) => void;
+  onVoiceError?: (code: VoiceRecorderErrorCode) => void;
 }) {
   const t = useTranslations("search");
   return (
@@ -36,6 +42,8 @@ export function SearchBar({
         autoComplete="off"
         className="min-h-12 flex-1 rounded-md border border-border bg-background px-4 text-lg"
       />
+      {/* 음성은 1급 시민 — 탭 순서 [검색어][음성][검색]. type="button"이라 폼 미제출. */}
+      <VoiceRecordButton onTranscribed={onTranscribed} onError={onVoiceError} />
       <button
         type="submit"
         aria-disabled={busy}
