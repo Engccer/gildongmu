@@ -44,6 +44,8 @@
 
 > **2026-06-14 v2 UI 개편 출시** — 단일 검색창 → 결과(카테고리 칩 필터) → **장소 상세**(같은 페이지 뷰 전환 + History API, 백버튼 복귀·포커스 이동) 흐름으로 재편. ko/en 로케일별 단일 언어 페이지 + 언어 전환기(경로·`?q=`·쿠키 보존). 상세 화면에 길찾기 딥링크·자동차 경로 브리핑과 함께 **역 교통약자 편의시설**(철도공사 15125774)을 첫 노출. 설계/계획: `superpowers/specs/2026-06-14-gildongmu-v2-upgrade-design.md`·`superpowers/plans/2026-06-14-gildongmu-v2.md`. 채팅 인터페이스는 다음 패스(같은 검색 축에 얹을 구조 유지).
 
+> **2026-06-14 v2.1 음성 받아쓰기 + PWA 출시** — 검색창에 **음성 받아쓰기**(dodo-planet Deepgram Nova-2 서버 STT 수입, 탭-토글 녹음→전사→자동검색, 언어 자동감지, aria-live 통지). **PWA**(manifest·아이콘·수제 서비스워커—Serwist가 Next 16 Turbopack 미지원이라 폴백—설치·앱셸·로케일별 오프라인 폴백, API/검색 비캐시). 설계/계획: `superpowers/specs/2026-06-14-gildongmu-v2.1-voice-pwa-design.md`·`superpowers/plans/2026-06-14-gildongmu-v2.1-voice-pwa.md`.
+
 | 서비스/API | 도메인 | 상태 | dodo-planet 통합 가치 |
 |------------|--------|------|----------------------|
 | 카카오 로컬 | 장소 검색 | **운영 중** — 카카오맵 활성화 + 실데이터 검증 완료 (2026-06-12) | 높음 — 장소 검색 코어 |
