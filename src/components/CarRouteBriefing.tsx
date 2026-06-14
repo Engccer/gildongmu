@@ -105,14 +105,15 @@ export function CarRouteBriefing({
           aria-labelledby={headingId}
           className="mt-2 rounded-md border border-gray-300 p-3"
         >
-          <h4
+          {/* 상세(h2) 하위 섹션 — StationFacilities(h3)와 레벨 통일(h2→h3) */}
+          <h3
             id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"
           >
             {t("heading", { name: dest.name })}
-          </h4>
+          </h3>
           <p className="mt-1 text-sm">
             {t("summary", {
               distance: formatDistance(status.briefing.distanceMeters),

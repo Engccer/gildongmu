@@ -54,10 +54,12 @@ export function LanguageSwitcher() {
               <Link
                 href={href}
                 locale={loc}
-                aria-current={isActive ? "true" : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium aria-[current]:bg-accent aria-[current]:text-accent-foreground"
               >
-                {t(LABEL_KEY[loc])}
+                {/* 각 옵션을 자국어로 표기 — 해당 언어 태그를 줘 SR이 올바른
+                    음성 엔진으로 읽게 한다(영문 UI에서 "한국어"를 한국어로). */}
+                <span lang={loc}>{t(LABEL_KEY[loc])}</span>
               </Link>
             </li>
           );
