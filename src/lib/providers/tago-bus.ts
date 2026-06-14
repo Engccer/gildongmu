@@ -193,9 +193,10 @@ export async function fetchNearbyBusStops(
   lng: number,
 ): Promise<BusStop[]> {
   if (!env.DATA_GO_KR_API_KEY) return [];
-  // A-2: 500m 반경 후보를 빠짐없이 수집한 뒤 정렬(개정 노트 §3) — "10건만 받아 슬라이스" 금지.
-  // totalCount(= response.body.totalCount)가 받은 수보다 크면 페이징한다. readTotalCount는
-  // envelope에서 totalCount를 숫자로 읽는 작은 헬퍼(없으면 0)로 provider에 함께 추가한다.
+  // A-2가 근접순으로 주는 후보를 totalCount에 도달할 때까지(최대 5페이지=500건
+  // 안전상한) 모은 뒤 Haversine 정렬→상위 5 cap(개정 노트 §3) — "10건만 받아 슬라이스" 금지.
+  // readTotalCount는 envelope의 response.body.totalCount를 숫자로 읽는 헬퍼(없으면 0).
+  // 실제 totalCount 호출량은 Task 10에서 실값으로 확정한다.
   const PAGE = 100;
   let candidates: BusStop[] = [];
   let total = Infinity;

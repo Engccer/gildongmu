@@ -11,6 +11,8 @@ import {
   parseBusStops,
   parseBusArrivals,
   parseBusRouteStops,
+  fetchNearbyBusStops,
+  fetchBusRouteStops,
 } from "../providers/tago-bus";
 
 describe("parseTagoItems", () => {
@@ -83,8 +85,6 @@ describe("parseBusRouteStops", () => {
     expect(stops[0].name).toBe("부산역");
   });
 });
-
-import { fetchNearbyBusStops, fetchBusRouteStops } from "../providers/tago-bus";
 
 function mockFetchSequence(...payloads: unknown[]) {
   const fn = vi.fn();
