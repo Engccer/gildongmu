@@ -13,6 +13,7 @@ import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
 import { PlaceDetail } from "./PlaceDetail";
+import { BusArrivals } from "./BusArrivals";
 
 type Status =
   | { kind: "idle" }
@@ -37,10 +38,13 @@ type Status =
 export function PlaceSearch({
   isMockMode,
   canBriefCarRoute = false,
+  canShowBus = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
   canBriefCarRoute?: boolean;
+  /** data.go.kr 키가 있어 TAGO 버스 도착·정류소를 제공할 수 있는지 */
+  canShowBus?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -195,6 +199,7 @@ export function PlaceSearch({
       <PlaceDetail
         place={selected}
         canBriefCarRoute={canBriefCarRoute}
+        canShowBus={canShowBus}
         onBack={backToResults}
       />
     );
@@ -230,6 +235,15 @@ export function PlaceSearch({
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
         {liveMessage}
       </p>
+
+      {/* 검색 전 첫 화면 진입점 — 현재 위치 기준 근처 정류소·버스 도착(키 게이트).
+          status.kind === "idle"일 때만 노출해 결과 목록·상세와 겹치지 않게 한다
+          (상세는 selected 단축으로 이 return 자체에 도달하지 않는다). */}
+      {canShowBus && status.kind === "idle" && (
+        <div className="mt-4">
+          <BusArrivals mode="current" />
+        </div>
+      )}
 
       {status.kind === "done" && (
         <div className="mt-4">

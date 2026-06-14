@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { activeProviderName } from "@/lib/providers/places";
-import { hasKakaoKey } from "@/lib/env";
+import { hasKakaoKey, hasDataGoKrKey } from "@/lib/env";
 
 export default async function HomePage({
   params,
@@ -15,6 +15,7 @@ export default async function HomePage({
     <PlaceSearch
       isMockMode={activeProviderName() === "mock"}
       canBriefCarRoute={hasKakaoKey()}
+      canShowBus={hasDataGoKrKey()}
     />
   );
 }
