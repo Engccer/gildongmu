@@ -12,6 +12,14 @@
 
 **전제조건(사용자 액션):** data.go.kr에서 TAGO 3종(15098534·15098530·15098529) 활용신청 완료. 미완이면 파서 단위 테스트(fixture 기반)는 통과하나 실호출 라우트는 502. 키 승인 후 fixture를 실응답으로 교정한다(Task 10).
 
+> ## ⚠ 개정 노트 (2026-06-14, codex adversarial-review 반영 — 구현 전 필독)
+>
+> 구현 착수 전 이 계획을 codex `adversarial-review`로 검토해 지적 3건을 반영했다. **설계 정본은 design 스펙의 "개정 노트"**이고, 이 계획의 각 Task도 그에 맞춰 갱신했다. 구현하는 에이전트(다른 셸/세션 포함)는 아래를 반드시 지킬 것:
+>
+> 1. **도착조회 실패 ≠ 버스 없음**: `BusStop.arrivalStatus: "ok" | "unavailable"`을 타입(Task 1)·파서/provider·라우트·UI(BusArrivals)·테스트 전 계층에 thread할 것. A-1 promise가 rejected면 `arrivals: []`로 뭉개지 말고 `unavailable`로 두고 "도착 정보를 가져오지 못했습니다"로 별도 통지(aria-live). "도착 0건(정상)"과 절대 합치지 말 것. (스펙 개정 §1)
+> 2. **실 TAGO 검증은 pre-merge 게이트**: Task 10(실호출 검증)은 "나중에 선택"이 아니다. **Task 1~9 fixture 테스트가 다 green이어도, 실응답 캡처→fixture 교정→3종 엔트리틀먼트 헬스체크 통과 전에는 머지/배포 금지.** (스펙 개정 §2)
+> 3. **근접 정류소: 후보 전체 수집 후 정렬**: A-2를 `numOfRows: 10`만 받아 슬라이스하지 말고, `totalCount`를 보고 500m 반경 후보를 충분히(페이징 또는 큰 numOfRows, 예 100) 모은 뒤 Haversine 정렬 → 상위 5 cap. 페이징 누락 케이스를 테스트로 고정. (스펙 개정 §3)
+
 ---
 
 ## File Structure
@@ -60,7 +68,10 @@ export interface BusStop {
   lng: number;
   /** 출발 좌표로부터 Haversine 거리(m) — 정렬·표시용 */
   distanceMeters: number;
-  /** 도착 예정 버스(도착 임박 순) */
+  /** 도착조회 상태(개정 노트 §1) — "ok": A-1 성공(arrivals 정본, 0건이면 정상적 "버스 없음").
+   *  "unavailable": A-1 실패(쿼터·인증·네트워크) → "버스 없음"과 구분, 장애 은폐 금지. */
+  arrivalStatus: "ok" | "unavailable";
+  /** 도착 예정 버스(도착 임박 순). arrivalStatus==="ok"일 때만 의미 — unavailable이면 []. */
   arrivals: BusArrival[];
 }
 
@@ -344,6 +355,7 @@ export function parseBusStops(
         lat,
         lng,
         distanceMeters: haversineMeters(originLat, originLng, lat, lng),
+        arrivalStatus: "ok", // 기본값 — fetchNearbyBusStops가 A-1 결과로 ok/unavailable 확정
         arrivals: [],
       };
     })
@@ -446,18 +458,23 @@ describe("fetchNearbyBusStops", () => {
     mockFetchSequence(fixture.nearbyStops, fixture.arrivals, fixture.empty);
     const stops = await fetchNearbyBusStops(35.1795, 129.0756);
     expect(stops.length).toBe(2);
+    expect(stops[0].arrivalStatus).toBe("ok"); // 조회 성공
     expect(stops[0].arrivals.length).toBe(2); // fixture.arrivals
+    expect(stops[1].arrivalStatus).toBe("ok"); // 조회 성공이나 도착 0건(= 정상 "버스 없음")
     expect(stops[1].arrivals).toEqual([]); // fixture.empty
   });
 
-  it("한 정류소 도착조회 실패해도 나머지는 보존(allSettled)", async () => {
+  it("도착조회 실패는 unavailable로 구분(빈 배열로 뭉개지 않음, 개정 노트 §1)", async () => {
     const fn = vi.fn();
     fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(fixture.nearbyStops) });
-    fn.mockResolvedValueOnce({ ok: false, status: 500, text: async () => "err" }); // 정류소1 실패
+    fn.mockResolvedValueOnce({ ok: false, status: 500, text: async () => "err" }); // 정류소1 도착조회 실패
     fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(fixture.arrivals) }); // 정류소2 성공
     vi.stubGlobal("fetch", fn);
     const stops = await fetchNearbyBusStops(35.1795, 129.0756);
-    expect(stops[0].arrivals).toEqual([]); // 실패 → 빈 배열
+    // 실패 → unavailable (≠ ok+빈배열). 정류소 자체(A-2)는 보존.
+    expect(stops[0].arrivalStatus).toBe("unavailable");
+    expect(stops[0].arrivals).toEqual([]);
+    expect(stops[1].arrivalStatus).toBe("ok");
     expect(stops[1].arrivals.length).toBe(2);
   });
 
@@ -553,12 +570,29 @@ export async function fetchNearbyBusStops(
   lng: number,
 ): Promise<BusStop[]> {
   if (!env.DATA_GO_KR_API_KEY) return [];
-  const stnRaw = await fetchTago(STN_BASE, "getCrdntPrxmtSttnList", {
-    gpsLati: lat,
-    gpsLong: lng,
-    numOfRows: 10,
-  });
-  const stops = parseBusStops(stnRaw, lat, lng).slice(0, 5);
+  // A-2: 500m 반경 후보를 빠짐없이 수집한 뒤 정렬(개정 노트 §3) — "10건만 받아 슬라이스" 금지.
+  // totalCount(= response.body.totalCount)가 받은 수보다 크면 페이징한다. readTotalCount는
+  // envelope에서 totalCount를 숫자로 읽는 작은 헬퍼(없으면 0)로 provider에 함께 추가한다.
+  const PAGE = 100;
+  let candidates: BusStop[] = [];
+  let total = Infinity;
+  for (let page = 1; candidates.length < total && page <= 5; page++) {
+    const raw = await fetchTago(STN_BASE, "getCrdntPrxmtSttnList", {
+      gpsLati: lat,
+      gpsLong: lng,
+      numOfRows: PAGE,
+      pageNo: page,
+    });
+    total = readTotalCount(raw);
+    const pageStops = parseBusStops(raw, lat, lng); // arrivalStatus:"ok"·arrivals:[] 기본값으로
+    if (pageStops.length === 0) break;
+    candidates = candidates.concat(pageStops);
+  }
+  // 전체 후보를 모은 뒤에야 거리 정렬·상위 5 cap (부분집합 슬라이스 금지)
+  const stops = candidates
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    .slice(0, 5);
+
   const settled = await Promise.allSettled(
     stops.map((s) =>
       fetchTago(ARV_BASE, "getSttnAcctoArvlPrearngeInfoList", {
@@ -571,10 +605,11 @@ export async function fetchNearbyBusStops(
   return stops.map((s, i) => {
     const r = settled[i];
     if (r.status === "rejected") {
+      // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — unavailable로 구분, 빈배열로 뭉개지 않는다.
       console.error(`[tago] 도착조회 실패 ${s.name}:`, r.reason);
-      return { ...s, arrivals: [] };
+      return { ...s, arrivalStatus: "unavailable" as const, arrivals: [] };
     }
-    return { ...s, arrivals: parseBusArrivals(r.value) };
+    return { ...s, arrivalStatus: "ok" as const, arrivals: parseBusArrivals(r.value) };
   });
 }
 
@@ -724,6 +759,7 @@ git commit -m "feat(api): /api/bus/nearby·/api/bus/route — TAGO 버스 라우
   "asOf": "{time} 기준",
   "stopDistance": "약 {distance}",
   "noArrivals": "도착 예정 버스가 없습니다.",
+  "arrivalUnavailable": "이 정류소의 도착 정보를 가져오지 못했습니다.",
   "lowFloor": "저상버스",
   "normalBus": "일반버스",
   "arrival": "{route} {type}, {prev}번째 전 정류장, 약 {min}분 후 도착",
@@ -755,6 +791,7 @@ git commit -m "feat(api): /api/bus/nearby·/api/bus/route — TAGO 버스 라우
   "asOf": "as of {time}",
   "stopDistance": "about {distance}",
   "noArrivals": "No buses arriving.",
+  "arrivalUnavailable": "Could not load arrival info for this stop.",
   "lowFloor": "low-floor bus",
   "normalBus": "standard bus",
   "arrival": "Route {route} {type}, {prev} stops away, in about {min} min",
@@ -958,7 +995,10 @@ export function BusArrivals(
                     })}
                   </span>
                 </p>
-                {stop.arrivals.length === 0 ? (
+                {stop.arrivalStatus === "unavailable" ? (
+                  // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — 별도 문구로 통지
+                  <p className="text-sm opacity-70">{t("arrivalUnavailable")}</p>
+                ) : stop.arrivals.length === 0 ? (
                   <p className="text-sm opacity-70">{t("noArrivals")}</p>
                 ) : (
                   <ul className="mt-1 space-y-1 text-sm">
@@ -1273,9 +1313,9 @@ git commit -m "feat(ui): 장소 상세 버스 도착 + 첫 화면 '내 주변 �
 
 ---
 
-## Task 10: 실호출 검증·fixture 교정 (활용신청 완료 후)
+## Task 10: 실호출 검증·fixture 교정 (pre-merge 게이트 — 개정 노트 §2)
 
-> **전제조건 게이트**: data.go.kr TAGO 3종 활용신청이 승인된 뒤에만 수행. 미승인 상태면 이 Task를 건너뛰고 위 Task 1~9까지 머지한다(파서 테스트는 키 없이 통과).
+> **⚠ 이건 "나중에 선택"이 아니라 pre-merge 게이트다.** Task 1~9는 활용신청 미승인이어도 *브랜치에 구현·커밋*할 수 있지만(파서 fixture 테스트는 키 없이 통과), **이 Task를 통과하기 전에는 main 머지·프로덕션 배포 금지.** fixture 테스트가 다 green이어도 fixture는 *예상* envelope이라, 실 계약(envelope·필드명·키 엔트리틀먼트·https)이 다르면 프로덕션에서 502·엉뚱한 빈결과가 난다(테스트는 통과하면서). 머지 전 반드시: (a) 3종 활용신청 승인 + 실응답 캡처, (b) 캡처로 fixture·파서 교정, (c) 3종 엔트리틀먼트 헬스체크(각 API 실제 200 + 정상 envelope). 승인 대기로 막히면 **브랜치를 미머지 상태로 보류**하고 사용자에게 승인 진행을 알린다(미검증 머지 금지).
 
 **Files:**
 - 검증 후 필요 시 Modify: `src/lib/__tests__/fixtures/tago-bus.json`, `src/lib/providers/tago-bus.ts`
@@ -1333,9 +1373,16 @@ TAGO 버스(A-1/A-2/A-3)를 "구현 완료"로 이동.
 Run: `cd /Users/hunyongkim/Mac-Projects && python sync_agent_docs.py`
 Expected: 형제 AGENTS.md 재생성.
 
-- [ ] **Step 4: codex-rescue 마일스톤 리뷰**
+- [ ] **Step 4: codex adversarial-review 마일스톤 리뷰 (`--wait`)**
 
-마일스톤 완료 직전 `git diff main..HEAD`(또는 커밋 범위)를 codex-rescue에 **`--wait`로** 전달해 cross-cutting invariant를 검토받는다. 리뷰 포커스: graceful 에러 분리(throw vs 빈배열), 키 게이트 정합, allSettled 부분실패 보존, 좌표/거리 단위 일관성. 리뷰 결과는 즉시 지엽 패치하지 말고 아키텍처 수준 대조 후 반영(워크스페이스 규칙).
+마일스톤 완료 직전, codex **adversarial-review**로 cross-cutting invariant를 검토받는다(리뷰 전용·자동 스코핑·고아/hang 없는 포그라운드 — 이 계획의 설계 자체가 이 모드로 사전 검토받아 개정됐다). 슬래시 명령은 모델이 못 띄우므로 companion을 직접 호출:
+
+```bash
+COMP=~/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs
+node "$COMP" adversarial-review --wait --base main "리뷰 포커스: ① 도착조회 실패(unavailable)와 도착 0건(ok)이 타입·provider·UI·테스트에서 끝까지 분리됐는지(개정 노트 §1), ② A-2 근접정류소가 totalCount 페이징으로 후보 전체를 모은 뒤 정렬하는지(§3), ③ 실 검증 없이 머지되지 않게 게이트가 지켜지는지(§2), ④ graceful 에러 분리(throw vs 빈배열)·키 게이트 정합·좌표/거리 단위 일관성." < /dev/null
+```
+
+리뷰 결과는 즉시 지엽 패치하지 말고 아키텍처 수준 대조 후 반영(워크스페이스 규칙). 이 모드가 고아/hang 없이 깔끔히 돌면, 이후 글로벌 지침의 "마일스톤 리뷰 = adversarial-review --wait" 전환 근거가 된다.
 
 - [ ] **Step 5: 커밋**
 
