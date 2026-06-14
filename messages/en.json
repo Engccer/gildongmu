@@ -84,5 +84,17 @@
     "no": "Not available",
     "unknown": "Unknown",
     "source": "Source: Korea Railroad (nationwide rail stations). Urban subway not included."
+  },
+  "voice": {
+    "start": "Search by voice",
+    "stop": "Stop recording",
+    "recognizing": "Recognizing speech",
+    "notSupported": "This browser does not support voice input",
+    "started": "Recording started. Tap again to stop.",
+    "stopped": "Stopping and recognizing.",
+    "cancelled": "Recording cancelled.",
+    "transcribed": "Recognized: {text}",
+    "permissionDenied": "Microphone permission is required. Please allow it in browser settings.",
+    "error": "Voice recognition failed. Please try again."
   }
 }
