@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
@@ -16,12 +17,31 @@ const LABEL_KEY: Record<string, "korean" | "english"> = {
   en: "english",
 };
 
+/**
+ * location.search를 외부 스토어로 구독한다. 서버 스냅샷은 빈 문자열이라
+ * SSG 프리렌더 href와 첫 클라이언트 페인트가 일치하고(hydration mismatch 방지),
+ * 마운트 후 클라이언트 스냅샷이 실제 ?q= 쿼리를 반영한다.
+ */
+function subscribeSearch(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+}
+function getSearchSnapshot() {
+  return window.location.search;
+}
+function getServerSearchSnapshot() {
+  return "";
+}
+
 export function LanguageSwitcher() {
   const t = useTranslations("nav");
   const active = useLocale();
   const pathname = usePathname();
-  // 클라이언트에서만 search 접근 — SSR 시 빈 문자열
-  const search = typeof window !== "undefined" ? window.location.search : "";
+  const search = useSyncExternalStore(
+    subscribeSearch,
+    getSearchSnapshot,
+    getServerSearchSnapshot,
+  );
   const href = withQuery(pathname, search);
 
   return (
