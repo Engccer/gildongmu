@@ -478,6 +478,29 @@ describe("fetchNearbyBusStops", () => {
     expect(stops[1].arrivals.length).toBe(2);
   });
 
+  it("totalCount가 받은 수보다 크면 페이징해 후보 전체를 수집(개정 노트 §3)", async () => {
+    // page1에 2건(totalCount 3) → page2에 1건. "10건만 받아 슬라이스"였다면 S3을
+    // 영영 못 보고 정렬한다. 페이징으로 3건을 다 모은 뒤 거리 정렬해야 한다.
+    const page1 = { response: { header: { resultCode: "00" }, body: { totalCount: 3, items: { item: [
+      { citycode: 23, gpslati: 35.1795, gpslong: 129.0756, nodeid: "S1", nodenm: "정류소1" },
+      { citycode: 23, gpslati: 35.1796, gpslong: 129.0757, nodeid: "S2", nodenm: "정류소2" },
+    ] } } } };
+    const page2 = { response: { header: { resultCode: "00" }, body: { totalCount: 3, items: { item: [
+      { citycode: 23, gpslati: 35.1797, gpslong: 129.0758, nodeid: "S3", nodenm: "정류소3" },
+    ] } } } };
+    const fn = vi.fn();
+    fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(page1) });
+    fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(page2) });
+    // 정류소 3개의 도착조회(모두 빈결과)
+    for (let i = 0; i < 3; i++) {
+      fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(fixture.empty) });
+    }
+    vi.stubGlobal("fetch", fn);
+    const stops = await fetchNearbyBusStops(35.1795, 129.0756);
+    expect(stops.length).toBe(3); // page1 2건으로 끝내지 않고 page2까지 수집
+    expect(stops.map((s) => s.nodeId)).toEqual(["S1", "S2", "S3"]); // 거리 오름차순
+  });
+
   it("서비스 에러 envelope는 throw(정보 없음과 구분)", async () => {
     mockFetchSequence(fixture.serviceError);
     await expect(fetchNearbyBusStops(35.1795, 129.0756)).rejects.toThrow();
@@ -508,6 +531,18 @@ import { env } from "../env";
 const STN_BASE = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService";
 const ARV_BASE = "http://apis.data.go.kr/1613000/ArvlInfoInqireService";
 const RTE_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
+
+/**
+ * envelope의 response.body.totalCount를 정수로 읽는다(없으면 0).
+ * A-2 근접정류소 페이징 종료 조건(개정 노트 §3)에 쓰인다 — 받은 후보 수가
+ * totalCount에 도달할 때까지 페이지를 더 받아 "진짜 최근접"을 놓치지 않는다.
+ */
+function readTotalCount(raw: unknown): number {
+  const tc = (raw as { response?: { body?: { totalCount?: unknown } } })?.response
+    ?.body?.totalCount;
+  const n = Number(tc);
+  return Number.isFinite(n) ? n : 0;
+}
 
 /**
  * TAGO 한 오퍼레이션을 호출하고 표준 envelope JSON을 돌려준다.
