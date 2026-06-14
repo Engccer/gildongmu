@@ -49,10 +49,11 @@
 |----|------|------|
 | `KAKAO_REST_API_KEY` | **동작 확인 (2026-06-12)** | dodo-planet 카카오 앱(ID 1383407) 키 재사용(.env.local). 카카오맵 제품 활성화 완료. 이 키 하나로 **로컬 검색 + 주소 지오코딩 + 카카오모빌리티 자동차 경로**까지 모두 동작 (모빌리티는 별도 활성화 불필요, 2026-06-13 검증) |
 | `TOUR_API_KEY` | **동작 확인 (2026-06-13)** | data.go.kr 국문·영문 GW 활용신청 승인(만료 2028-06-13), 실응답 검증 완료(빈 결과 `items:""`, contenttypeid 라벨 매핑 확정). 신형 GW는 **hex 64자 단일 키**(Encoding/Decoding 구분 없음, 승인 후 전파 ~10분간 401). **개발계정은 기능당 일 1,000건**(상향은 운영계정 신청). en 로케일 장소 검색은 카카오와 병합(`searchPlacesMergedEn`)되어 일상 장소+관광 영문 정보를 함께 노출 — 로컬 실호출 검증됨(2026-06-13) |
+| `DATA_GO_KR_API_KEY` | **동작 확인 (2026-06-14)** | **`TOUR_API_KEY`와 동일 값** — data.go.kr은 계정당 단일 인증키라 모든 승인 API가 공유. "TOUR" 이름에 묶이지 않는 정식 별칭으로 추가(향후 TAGO 버스·열차·무장애여행 등 data.go.kr 서비스 공용). 현재 **한국철도공사 편의시설(15125774)** 승인·실호출 검증 완료: `apis.data.go.kr/B551457/convenience`의 `/stationFacilities`·`/weekPersonFacilities`(교통약자: 장애인화장실유무 `pwdbs_tolt_estnc`·휠체어리프트수 `whlch_liftt_cnt`)·`/parkingLots`·`/codes`, 각 일 10,000건, 전국 406역. 신규 API 추가는 같은 키로 data.go.kr 활용신청만 하면 즉시 자동승인 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | 미발급 | developers.naver.com 수동 등록 필요 (Claude in Chrome이 해당 도메인 차단) — 결제수단 불필요, 일 25,000회 |
 | `NCP_MAPS_CLIENT_ID/SECRET` | **동작 확인 (2026-06-13)** | 결제수단 등록 후 Maps 구독 + Application `gildongmu` 등록(API 6종 전체 체크, Web URL: vercel.app·localhost:3000·3001). Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 호스트 `maps.apigw.ntruss.com`, 헤더 `x-ncp-apigw-api-key-id`/`x-ncp-apigw-api-key`. **en 검색 카카오 카드의 영문 주소 보강에 사용 중**(`ncp-geocode.ts`, 2026-06-13 연결) — Directions는 카카오모빌리티와 중복이라 미연결 |
 
-상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`. 설계 결정: `docs/SPEC.md`.
+상세 조사: `docs/RESEARCH-2026-06-naver-api-ecosystem.md`, `docs/RESEARCH-2026-06-kakao-api-ecosystem.md`, **`docs/RESEARCH-2026-06-domestic-api-expansion.md`**(우편번호·버스·지하철·맛집·예약·접근성 6개 도메인 + KRIC 교통약자 §I). 설계 결정: `docs/SPEC.md`.
 
 ## 배포
 
