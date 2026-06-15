@@ -1,5 +1,10 @@
 import type { BusArrival, BusRouteStop, BusStop } from "../types";
 import { env } from "../env";
+import { haversineMeters } from "../geo";
+
+// Haversine 공식은 geo.ts로 단일화했다(거리 정렬 공용). 과거 이 파일에서
+// import하던 코드·테스트 호환을 위해 그대로 re-export한다.
+export { haversineMeters } from "../geo";
 
 /**
  * 국토교통부 TAGO(국가대중교통정보센터) 시내버스 provider.
@@ -44,23 +49,6 @@ function nonNegInt(v: unknown): number {
   return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
 }
 
-/** 두 WGS84 좌표 간 대원거리(m). */
-export function haversineMeters(
-  aLat: number,
-  aLng: number,
-  bLat: number,
-  bLng: number,
-): number {
-  const R = 6_371_000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
-  return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(s))));
-}
-
 /** A-2 응답 → 거리 오름차순 BusStop[](도착정보는 빈 배열로 시작). */
 export function parseBusStops(
   raw: unknown,
@@ -78,7 +66,7 @@ export function parseBusStops(
         stopNo: it.nodeno != null && str(it.nodeno) !== "" ? str(it.nodeno) : undefined,
         lat,
         lng,
-        distanceMeters: haversineMeters(originLat, originLng, lat, lng),
+        distanceMeters: Math.round(haversineMeters(originLat, originLng, lat, lng)),
         arrivalStatus: "ok", // 기본값 — fetchNearbyBusStops가 A-1 결과로 ok/unavailable 확정
         arrivals: [],
       };

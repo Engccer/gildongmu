@@ -28,6 +28,11 @@ export interface Place {
   phone?: string;
   /** 홈페이지 등 링크 (없을 수 있음) */
   link?: string;
+  /**
+   * 현재 위치 기준 거리(m) — 클라이언트가 geolocation으로 정렬할 때만 부여한다
+   * (sortPlacesByDistance). provider 응답에는 없으며, 위치 권한이 없으면 미설정.
+   */
+  distanceMeters?: number;
 }
 
 /** 장소 검색 요청 파라미터 */

@@ -12,6 +12,7 @@
     "label": "장소 검색",
     "placeholder": "예: 경복궁, 서울역, 근처 약국",
     "button": "검색",
+    "clear": "검색어 지우기",
     "searching": "검색 중…",
     "searchingFor": "‘{query}’ 검색 중…",
     "resultsAnnouncement": "검색 결과 {count}건",
@@ -54,6 +55,7 @@
   },
   "place": {
     "category": "분류",
+    "distance": "약 {distance}",
     "address": "주소",
     "roadAddress": "도로명",
     "phone": "전화",

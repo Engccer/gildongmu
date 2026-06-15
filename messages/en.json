@@ -12,6 +12,7 @@
     "label": "Search places",
     "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",
     "button": "Search",
+    "clear": "Clear search",
     "searching": "Searching…",
     "searchingFor": "Searching for ‘{query}’…",
     "resultsAnnouncement": "{count} results found",
@@ -54,6 +55,7 @@
   },
   "place": {
     "category": "Category",
+    "distance": "about {distance}",
     "address": "Address",
     "roadAddress": "Road address",
     "phone": "Phone",
