@@ -41,20 +41,13 @@ export default async function LocaleLayout({
     notFound();
   }
   setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: "nav" });
 
   return (
     <html lang={locale}>
       <body className="antialiased">
         <NextIntlClientProvider>
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-accent-foreground"
-          >
-            {t("skipToContent")}
-          </a>
           <Header />
-          <main id="main" className="mx-auto max-w-2xl px-4 py-6">
+          <main className="mx-auto max-w-2xl px-4 py-6">
             {children}
           </main>
           <SWRegister />

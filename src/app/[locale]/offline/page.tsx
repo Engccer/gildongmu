@@ -9,9 +9,9 @@ export default async function OfflinePage({
   setRequestLocale(locale);
   const t = await getTranslations("offline");
   return (
-    <section aria-label={t("heading")}>
+    <>
       <h2 className="text-xl font-semibold">{t("heading")}</h2>
       <p className="mt-2">{t("body")}</p>
-    </section>
+    </>
   );
 }

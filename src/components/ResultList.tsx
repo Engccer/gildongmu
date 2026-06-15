@@ -16,7 +16,7 @@ export function ResultList({
   return (
     <div className="mt-3 flex flex-col gap-6">
       {groups.map((group) => (
-        <section key={group.bucket}>
+        <div key={group.bucket}>
           <h3 className="text-lg font-semibold">
             {t("groupHeading", {
               label: t(group.bucket),
@@ -28,7 +28,7 @@ export function ResultList({
               <PlaceCard key={place.id} place={place} onOpen={onOpen} />
             ))}
           </ul>
-        </section>
+        </div>
       ))}
     </div>
   );

@@ -6,8 +6,7 @@
   "nav": {
     "languageLabel": "Language",
     "korean": "한국어",
-    "english": "English",
-    "skipToContent": "Skip to content"
+    "english": "English"
   },
   "search": {
     "label": "Search places",
@@ -39,8 +38,7 @@
     "callAction": "Call {name}",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
-    "detailPage": "Detail page",
-    "openDetail": "View details for {name}"
+    "detailPage": "Detail page"
   },
   "route": {
     "heading": "Directions to {name}",

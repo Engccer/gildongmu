@@ -18,6 +18,7 @@
 - 모든 인터랙티브 요소는 키보드 도달 가능 + `:focus-visible` 스타일 필수.
 - 터치 타깃 최소 44×44px (`min-h-11` 이상).
 - UI 메뉴/버튼 라벨에 이모지 금지 (워크스페이스 공통 원칙).
+- 과잉 ARIA 정리 (2026-06-15): 글로벌 "First Rule of ARIA" 기준에 따라 노이즈 요소 제거 — skip link 삭제(단일 화면이라 WCAG 2.4.1 비해당, heading 내비가 진입점), offline 페이지 `<section aria-label>` 중복 레이블 제거, `PlaceCard` 버튼의 시각 텍스트를 덮던 `aria-label` 제거(분류·주소가 다시 낭독됨), `ResultList` 무명 `<section>`→`<div>`. 관련 i18n 키(`nav.skipToContent`·`place.openDetail`) 제거. 기준 정본은 글로벌 `~/.claude/CLAUDE.md`.
 
 ## 아키텍처
 
