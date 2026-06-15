@@ -8,6 +8,8 @@ import {
   filterPlacesByBucket,
   groupByCategory,
 } from "@/lib/category";
+import type { RegionCode } from "@/lib/region";
+import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import type { Place, PlaceSearchResult } from "@/lib/types";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
@@ -56,6 +58,7 @@ export function PlaceSearch({
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
+  const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
   // 음성으로 검색한 질의어(없으면 null=타이핑 검색). 로딩 라이브 메시지를
   // 음성일 때 "‘{질의}’ 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
@@ -122,6 +125,7 @@ export function PlaceSearch({
       if (!q) return;
       const myId = ++reqIdRef.current;
       setBucket(null);
+      setRegion(null);
       setStatus({ kind: "loading" });
       // URL ?q= 동기화(공유·새로고침 보존)
       const url = new URL(window.location.href);
@@ -206,11 +210,25 @@ export function PlaceSearch({
   }
 
   const places = status.kind === "done" ? status.result.places : [];
-  const buckets = bucketsPresent(places);
-  const counts = Object.fromEntries(
-    buckets.map((b) => [b, filterPlacesByBucket(places, b).length]),
-  ) as Record<CategoryBucket, number>;
-  const groups = groupByCategory(filterPlacesByBucket(places, bucket));
+  // 칩 목록·카운트는 전체 결과 기준(고정) — 선택해도 칩이 사라지지 않아 스크린
+  // 리더 탐색이 안정적이다. 두 축(카테고리·지역)은 AND로 결합해 표시 목록만
+  // 좁힌다. 각 축은 항목이 1개 이하면 ChipFilter가 스스로 숨으므로, 브랜드
+  // 검색은 지역 축만, 지역 검색은 카테고리 축만 자동으로 노출된다.
+  const bucketItems = bucketsPresent(places).map((b) => ({
+    key: b,
+    label: t(`category.${b}`),
+    count: filterPlacesByBucket(places, b).length,
+  }));
+  const regionItems = regionsPresent(places).map((r) => ({
+    key: r,
+    label: t(`region.${r}`),
+    count: filterPlacesByRegion(places, r).length,
+  }));
+  const filtered = filterPlacesByRegion(
+    filterPlacesByBucket(places, bucket),
+    region,
+  );
+  const groups = groupByCategory(filtered);
 
   return (
     <section aria-label={t("search.label")}>
@@ -260,15 +278,27 @@ export function PlaceSearch({
             <p className="mt-2">{t("search.noResults")}</p>
           ) : (
             <>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-col gap-2">
                 <ChipFilter
-                  buckets={buckets}
+                  groupLabel={t("category.filterLabel")}
+                  allLabel={t("category.all")}
+                  items={bucketItems}
                   selected={bucket}
-                  counts={counts}
                   onSelect={setBucket}
                 />
+                <ChipFilter
+                  groupLabel={t("region.filterLabel")}
+                  allLabel={t("region.all")}
+                  items={regionItems}
+                  selected={region}
+                  onSelect={setRegion}
+                />
               </div>
-              <ResultList groups={groups} onOpen={openDetail} />
+              {filtered.length === 0 ? (
+                <p className="mt-3">{t("search.noFilterResults")}</p>
+              ) : (
+                <ResultList groups={groups} onOpen={openDetail} />
+              )}
             </>
           )}
         </div>

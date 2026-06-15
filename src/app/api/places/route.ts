@@ -11,7 +11,10 @@ import { searchPlaces } from "@/lib/providers/places";
 
 const querySchema = z.object({
   query: z.string().trim().min(1, "검색어가 비어 있습니다").max(100),
-  limit: z.coerce.number().int().min(1).max(5).default(5),
+  // 카카오 로컬 키워드 검색의 단일 요청 상한이 15건이다(과거 max(5)는 네이버
+  // 지역검색 페이지당 5건 시절 잔재). 결과가 많으면 카테고리·지역 칩 필터가
+  // 자연 분류하므로 인위적 상한을 두지 않고 provider 최대치를 그대로 노출한다.
+  limit: z.coerce.number().int().min(1).max(15).default(15),
   lang: z.enum(["ko", "en"]).default("ko"),
 });
 

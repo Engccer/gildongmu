@@ -33,7 +33,7 @@ export interface Place {
 /** 장소 검색 요청 파라미터 */
 export interface PlaceSearchParams {
   query: string;
-  /** 결과 개수 (네이버 지역 검색은 최대 5) */
+  /** 결과 개수 (카카오 로컬 단일 요청 최대 15, 네이버 지역 검색은 최대 5) */
   limit?: number;
   /** UI 로케일 — 다국어 provider(TourAPI) 선택에 사용 */
   lang?: "ko" | "en";
