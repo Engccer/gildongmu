@@ -67,6 +67,7 @@ export function parseBusStops(
         lat,
         lng,
         distanceMeters: Math.round(haversineMeters(originLat, originLng, lat, lng)),
+        source: "tago" as const,
         arrivalStatus: "ok", // 기본값 — fetchNearbyBusStops가 A-1 결과로 ok/unavailable 확정
         arrivals: [],
       };
@@ -85,6 +86,7 @@ export function parseBusArrivals(raw: unknown): BusArrival[] {
       arrivalSeconds: nonNegInt(it.arrtime),
       prevStationCount: nonNegInt(it.arrprevstationcnt),
       lowFloor: str(it.vehicletp).includes("저상"),
+      source: "tago" as const,
     }))
     .filter((a) => a.routeNo)
     .sort((a, b) => a.arrivalSeconds - b.arrivalSeconds);

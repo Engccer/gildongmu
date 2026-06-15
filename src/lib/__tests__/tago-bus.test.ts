@@ -54,6 +54,7 @@ describe("parseBusStops", () => {
     expect(stops[0].stopNo).toBe("7011");
     expect(stops[1].distanceMeters).toBeGreaterThan(stops[0].distanceMeters);
     expect(stops[0].arrivals).toEqual([]);
+    expect(stops[0].source).toBe("tago");
   });
   it("좌표 결측 항목은 제외", () => {
     const raw = { response: { body: { items: { item: [{ nodeid: "X", nodenm: "결측", citycode: 1 }] } } } };
@@ -66,6 +67,7 @@ describe("parseBusArrivals", () => {
     const arr = parseBusArrivals(fixture.arrivals);
     expect(arr.length).toBe(2);
     // arrtime 180(81번)이 720(1003번)보다 먼저
+    expect(arr[0].source).toBe("tago");
     expect(arr[0].routeNo).toBe("81");
     expect(arr[0].arrivalSeconds).toBe(180);
     expect(arr[0].prevStationCount).toBe(2);

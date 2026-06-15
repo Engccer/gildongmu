@@ -140,6 +140,9 @@ export interface CarRouteBriefing {
   guides: CarRouteGuide[];
 }
 
+/** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */
+export type BusSource = "tago" | "seoul";
+
 /**
  * 버스 정류소 하나 — TAGO 근접정류소(A-2) + 도착예정(A-1) + 계산 거리.
  * 좌표는 WGS84 십진 도. nodeId·cityCode는 도착(A-1)·경유정류소(A-3) 조회 키.
@@ -155,6 +158,8 @@ export interface BusStop {
   lng: number;
   /** 출발 좌표로부터 Haversine 거리(m) — 정렬·표시용 */
   distanceMeters: number;
+  /** 제공자 — "tago"(경기·지방·부산) | "seoul"(서울 TOPIS). 경유정류소 조회 디스패치에 사용. */
+  source: BusSource;
   /** 도착조회 상태(개정 노트 §1) — "ok": A-1 성공(arrivals 정본, 0건이면 정상적 "버스 없음").
    *  "unavailable": A-1 실패(쿼터·인증·네트워크) → "버스 없음"과 구분, 장애 은폐 금지. */
   arrivalStatus: "ok" | "unavailable";
@@ -176,6 +181,8 @@ export interface BusArrival {
   prevStationCount: number;
   /** 저상버스 여부(vehicletp에 "저상" 포함) — 교통약자 정본 */
   lowFloor: boolean;
+  /** 제공자 — 경유정류소 조회를 올바른 provider로 보내는 키. */
+  source: BusSource;
 }
 
 /** 노선 경유정류소 하나 — TAGO 노선정보(A-3) 정규화. */
