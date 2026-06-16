@@ -129,6 +129,48 @@ export interface StationFacilities {
   elevators: number | undefined;
 }
 
+/** 서울 지하철 교통약자 시설 종류 키 — i18n 라벨·그룹핑용. */
+export type SeoulMetroFacilityKind =
+  | "elevator"
+  | "escalator"
+  | "wheelchairLift"
+  | "movingWalk"
+  | "wheelchairCharger"
+  | "safetyPlatform"
+  | "signLangPhone"
+  | "helper"
+  | "restroom";
+
+/** 시설 인스턴스 하나(엘리베이터 1대 등) — 위치·층·가동현황을 낭독 정본으로 보존. */
+export interface SeoulMetroFacility {
+  /** 시설명(fcltNm) 예: "승강기)엘리베이터-강동 내부 1호기" */
+  name: string;
+  /** 상세 위치 — dtlPstn 또는 시설별 위치 필드. 없으면 undefined. */
+  location: string | undefined;
+  /** 층 정보 — "지하3층~지하4층" 등. 해당 없으면 undefined. */
+  floors: string | undefined;
+  /** 가동현황 — 엘리베이터·에스컬레이터만. M=normal, 그 외=stopped, 필드 없으면 undefined. */
+  operatingStatus: "normal" | "stopped" | undefined;
+  /** 시설별 보조 설명(화장실 종류·휠체어 접근 등). 없으면 undefined. */
+  detail: string | undefined;
+}
+
+/** 한 시설 종류의 묶음 — 데이터가 있는 종류만 포함된다. */
+export interface SeoulMetroFacilityGroup {
+  kind: SeoulMetroFacilityKind;
+  facilities: SeoulMetroFacility[];
+}
+
+/** 한 지하철역의 교통약자 시설 전체(서울교통공사 1~8호선). */
+export interface SeoulMetroFacilities {
+  /** 역명(데이터셋 표기, 표시용) */
+  stationName: string;
+  /** 호선(첫 매칭 항목 기준) — 없으면 undefined */
+  line: string | undefined;
+  /** 데이터가 있는 시설 종류만. 전부 비면 빈 배열 → 라우트가 null 처리. */
+  groups: SeoulMetroFacilityGroup[];
+}
+
 /** 자동차 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본 */
 export interface CarRouteBriefing {
   distanceMeters: number;
