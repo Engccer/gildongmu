@@ -144,42 +144,45 @@ import {
 } from "../providers/seoul-metro-facilities";
 
 describe("parseFacilityGroup — 시설별 정규화", () => {
+  // fixture(stnNm=강동 포함필터)는 강동+강동구청 혼재. 정확매칭 후 강동역만:
+  // 엘리베이터 3(6중), 에스컬레이터 10(15중), 안전발판 1, 화장실 1, 충전기 0(강동구청만).
   it("엘리베이터: 위치·층·가동현황 보존, 강동만 정확매칭(강동구청 제외)", () => {
     const g = parseFacilityGroup("elevator", fixture.Elvtr, "강동");
     expect(g).not.toBeNull();
     expect(g!.kind).toBe("elevator");
-    // 강동역 엘리베이터 6대 (강동구청 분 제외)
-    expect(g!.facilities.length).toBe(6);
+    expect(g!.facilities.length).toBe(3); // 강동역 3대 (강동구청 3대 제외)
     const f = g!.facilities[0];
-    expect(f.name).toContain("엘리베이터");
-    expect(f.floors).toBe("지하B3~지하B4"); // bgngFlrGrndUdgdSe+bgngFlr ~ endFlrGrndUdgdSe+endFlr
+    expect(f.name).toBe("승강기)엘리베이터-강동 내부 1호기");
+    expect(f.floors).toBe("지하B3~지하B4"); // bgng(지하B3) ~ end(지하B4)
     expect(f.operatingStatus).toBe("normal"); // oprtngSitu "M"
     expect(f.location).toBe("둔촌동 방면8-3"); // dtlPstn
   });
 
   it("에스컬레이터: dtlPstn 없이 bgngFlrDtlPstn 사용, S는 stopped", () => {
     const g = parseFacilityGroup("escalator", fixture.Esctr, "강동");
-    expect(g!.facilities.length).toBe(15);
+    expect(g!.facilities.length).toBe(10); // 강동역 10대 (강동구청 5대 제외)
     expect(
       g!.facilities.some((f) => f.operatingStatus === "stopped"),
-    ).toBe(true); // S=4건
+    ).toBe(true); // 강동 10대 중 S 3건
   });
 
-  it("장애인화장실: 휠체어접근·종류를 detail로", () => {
+  it("장애인화장실: 종류를 detail로", () => {
     const g = parseFacilityGroup("restroom", fixture.Rstrm, "강동");
-    expect(g!.facilities.length).toBe(2);
-    expect(g!.facilities[0].detail).toContain("교통약자"); // rstrmInfo
+    expect(g!.facilities.length).toBe(1);
+    expect(g!.facilities[0].detail).toContain("교통약자"); // rstrmInfo "일반(남,여) / 교통약자(남,여)"
   });
 
-  it("빈 결과(강동 미설치 종류)는 null", () => {
+  it("빈 결과(강동 미설치 종류)는 null — 충전기는 강동구청만이라 강동역엔 없음", () => {
     expect(parseFacilityGroup("wheelchairLift", fixture.Whcllift, "강동")).toBeNull();
     expect(parseFacilityGroup("helper", fixture.Helper, "강동")).toBeNull();
+    expect(parseFacilityGroup("wheelchairCharger", fixture.WhclCharge, "강동")).toBeNull();
   });
 
   it("정확매칭: 포함필터로 섞인 다른 역(강동구청)은 제외", () => {
     const g = parseFacilityGroup("elevator", fixture.Elvtr, "강동");
+    // 강동역 3대 모두 stnNm "강동" — "강동구청"은 normalizeStationName이 달라 제외됨
+    expect(g!.facilities.length).toBe(3);
     expect(g!.facilities.every((f) => f.name.includes("강동"))).toBe(true);
-    // 강동구청 엘리베이터가 섞이지 않았는지 — 6대가 모두 stnNm "강동"
   });
 });
 
@@ -196,14 +199,14 @@ describe("parseSeoulMetroFacilities — 9종 묶음", () => {
     restroom: fixture.Rstrm,
   };
 
-  it("데이터 있는 종류만 groups에 — 강동은 5종", () => {
+  it("데이터 있는 종류만 groups에 — 강동은 4종(충전기는 강동구청만이라 제외)", () => {
     const r = parseSeoulMetroFacilities(raws, "강동");
     expect(r).not.toBeNull();
     expect(r!.stationName).toBe("강동");
     expect(r!.line).toBe("5호선");
     const kinds = r!.groups.map((g) => g.kind).sort();
     expect(kinds).toEqual(
-      ["elevator", "escalator", "restroom", "safetyPlatform", "wheelchairCharger"].sort(),
+      ["elevator", "escalator", "restroom", "safetyPlatform"].sort(),
     );
   });
 
@@ -437,7 +440,7 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     });
     const r = await fetchSeoulMetroFacilities("강동역");
     expect(r).not.toBeNull();
-    expect(r!.groups.length).toBe(5);
+    expect(r!.groups.length).toBe(4); // 엘리베이터·에스컬레이터·안전발판·화장실 (충전기는 강동구청만)
   });
 
   it("주 fetch HTTP 실패는 throw(일시 장애 ≠ 정보 없음)", async () => {
@@ -869,7 +872,7 @@ npm run dev  # 별도 셸
 curl -s "http://localhost:3000/api/station/metro-facilities?station=강동역" | python3 -m json.tool | head -40
 curl -s "http://localhost:3000/api/station/metro-facilities?station=없는역" # → {"facilities":null}
 ```
-Expected: 강동역 5종 그룹(엘리베이터 6·에스컬레이터 15·충전기 1·안전발판 2·화장실 2), 없는역 null.
+Expected: 강동역 4종 그룹(엘리베이터 3·에스컬레이터 10·안전발판 1·화장실 1 — 정확매칭으로 강동구청 분 제외, 충전기는 강동구청만이라 미포함), 없는역 null.
 
 - [ ] **Step 3: a11y 점검**
 

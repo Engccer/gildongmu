@@ -1,0 +1,656 @@
+{
+ "Elvtr": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": [
+      {
+       "fcltNo": "1310729",
+       "fcltNm": "승강기)엘리베이터-강동 내부 1호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "mngNo": "1",
+       "vcntEntrcNo": "내부",
+       "dtlPstn": "둔촌동 방면8-3",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B4",
+       "pscpNope": 15,
+       "pscpWht": "1000",
+       "elvtrSn": "0078-217",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1310730",
+       "fcltNm": "승강기)엘리베이터-강동 외부 2호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "mngNo": "2",
+       "vcntEntrcNo": "1",
+       "dtlPstn": "1번 출입구",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "endFlrGrndUdgdSe": "지상",
+       "endFlr": "1",
+       "pscpNope": 15,
+       "pscpWht": "1000",
+       "elvtrSn": "0012-496",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1804616",
+       "fcltNm": "승강기)엘리베이터-강동 내부 3호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20240308",
+       "mngNo": "3",
+       "vcntEntrcNo": "천호 방면1-2",
+       "dtlPstn": "천호 방면1-2",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B4",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B3",
+       "pscpNope": 10,
+       "pscpWht": "800",
+       "elvtrSn": "0162-506",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1311955",
+       "fcltNm": "승강기)엘리베이터-강동구청 내부 1호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "mngNo": "1",
+       "vcntEntrcNo": "내부",
+       "dtlPstn": "천호 방면4-2",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B2",
+       "pscpNope": 11,
+       "pscpWht": "750",
+       "elvtrSn": "0077-745",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1311956",
+       "fcltNm": "승강기)엘리베이터-강동구청 내부 2호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "mngNo": "2",
+       "vcntEntrcNo": "내부",
+       "dtlPstn": "몽촌토성 방면 3-2,3-3 사이",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B2",
+       "pscpNope": 11,
+       "pscpWht": "750",
+       "elvtrSn": "0077-746",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1311957",
+       "fcltNm": "승강기)엘리베이터-강동구청 외부 3호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "mngNo": "3",
+       "vcntEntrcNo": "4",
+       "dtlPstn": "4번 출입구",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B2",
+       "endFlrGrndUdgdSe": "지상",
+       "endFlr": "1",
+       "pscpNope": 15,
+       "pscpWht": "1000",
+       "elvtrSn": "0009-742",
+       "oprtngSitu": "M"
+      }
+     ]
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 6
+   }
+  }
+ },
+ "Esctr": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": [
+      {
+       "fcltNo": "1486111",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 7호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "7",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "bgngFlrDtlPstn": "둔촌동 방면1-1",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B4",
+       "endFlrDtlPstn": "둔촌동 방면1-1",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1802-525",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1486112",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 8호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "8",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B4",
+       "bgngFlrDtlPstn": "둔촌동 방면1-1",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B3",
+       "endFlrDtlPstn": "둔촌동 방면1-1",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1802-526",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1486113",
+       "fcltNm": "승강기)에스컬레이터-강동 4번 출입구 11호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "11",
+       "vcntEntrcNo": "4",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "4번 출입구",
+       "endFlrGrndUdgdSe": "지상",
+       "endFlr": "1",
+       "endFlrDtlPstn": "4번 출입구",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1805-633",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1486114",
+       "fcltNm": "승강기)에스컬레이터-강동 4번 출입구 12호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "12",
+       "vcntEntrcNo": "4",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "4번 출입구",
+       "endFlrGrndUdgdSe": "지상",
+       "endFlr": "1",
+       "endFlrDtlPstn": "4번 출입구",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1805-634",
+       "oprtngSitu": "S"
+      },
+      {
+       "fcltNo": "1310735",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 1호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "1",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "대합실(B3, 아이센터 앞)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B3",
+       "endFlrDtlPstn": "대합실(B3, 아이센터 앞)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1802-833",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1310736",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 2호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "2",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "bgngFlrDtlPstn": "대합실(B3, 아이센터 앞)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B1",
+       "endFlrDtlPstn": "대합실(B3, 아이센터 앞)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1802-834",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1310737",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 3호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "3",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "bgngFlrDtlPstn": "대합실(B3, 개찰구 앞)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B1",
+       "endFlrDtlPstn": "대합실(B3, 개찰구 앞)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1805-630",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1310738",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 4호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "4",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "대합실(B3, 개찰구 앞)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B3",
+       "endFlrDtlPstn": "대합실(B3, 개찰구 앞)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1802-835",
+       "oprtngSitu": "S"
+      },
+      {
+       "fcltNo": "1310739",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 5호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "5",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B3",
+       "bgngFlrDtlPstn": "천호 방면8-4",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B4",
+       "endFlrDtlPstn": "천호 방면8-4",
+       "elvtrWdthBt": "800형",
+       "elvtrSn": "1802-523",
+       "oprtngSitu": "S"
+      },
+      {
+       "fcltNo": "1310740",
+       "fcltNm": "승강기)에스컬레이터-강동 내부 6호기",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "6",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B4",
+       "bgngFlrDtlPstn": "천호 방면8-4",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B3",
+       "endFlrDtlPstn": "천호 방면8-4",
+       "elvtrWdthBt": "800형",
+       "elvtrSn": "1802-524",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1548222",
+       "fcltNm": "승강기)에스컬레이터-강동구청 내부 1호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "1",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B2",
+       "bgngFlrDtlPstn": "대합실(B2-B1)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B1",
+       "endFlrDtlPstn": "대합실(B2-B1)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1808-897",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1548224",
+       "fcltNm": "승강기)에스컬레이터-강동구청 내부 2호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "하행",
+       "mngNo": "2",
+       "vcntEntrcNo": "내부",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "대합실(B2-B1)",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "B2",
+       "endFlrDtlPstn": "대합실(B2-B1)",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1808-898",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1548226",
+       "fcltNm": "승강기)에스컬레이터-강동구청 내부 3호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "3",
+       "vcntEntrcNo": "1",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "1번 출입구",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "BM1",
+       "endFlrDtlPstn": "1번 출입구",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1808-899",
+       "oprtngSitu": "S"
+      },
+      {
+       "fcltNo": "1548228",
+       "fcltNm": "승강기)에스컬레이터-강동구청 내부 4호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "4",
+       "vcntEntrcNo": "2",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "2번 출입구",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "BM1",
+       "endFlrDtlPstn": "2번 출입구",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1808-900",
+       "oprtngSitu": "M"
+      },
+      {
+       "fcltNo": "1548230",
+       "fcltNm": "승강기)에스컬레이터-강동구청 내부 5호기",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "upbdnbSe": "상행",
+       "mngNo": "5",
+       "vcntEntrcNo": "4",
+       "bgngFlrGrndUdgdSe": "지하",
+       "bgngFlr": "B1",
+       "bgngFlrDtlPstn": "4번 출입구",
+       "endFlrGrndUdgdSe": "지하",
+       "endFlr": "BM1",
+       "endFlrDtlPstn": "4번 출입구",
+       "elvtrWdthBt": "1200형",
+       "elvtrSn": "1805-220",
+       "oprtngSitu": "M"
+      }
+     ]
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 15
+   }
+  }
+ },
+ "Whcllift": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": []
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 0
+   }
+  }
+ },
+ "Mvnwlk": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": []
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 0
+   }
+  }
+ },
+ "WhclCharge": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": [
+      {
+       "fcltNm": "전동휠체어 충전설비",
+       "mngNo": "-",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "cnnctrSe": "기타",
+       "stnFlr": "B2",
+       "elctcFacCnt": 1,
+       "dtlPstn": "고객안내센터 맞은편 벽면(게이트 옆)",
+       "crtrYmd": "20241231",
+       "grndUdgdSe": "지하",
+       "utztnCrg": null,
+       "operInstTelno": null
+      }
+     ]
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 1
+   }
+  }
+ },
+ "SafePlfm": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": [
+      {
+       "fcltNm": "안전발판",
+       "sftyScfldEn": "N",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20241231",
+       "mngrTelno": "0263115481"
+      },
+      {
+       "fcltNm": "안전발판",
+       "sftyScfldEn": "N",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20241231",
+       "mngrTelno": "0263118121"
+      }
+     ]
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 2
+   }
+  }
+ },
+ "Slng": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": []
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 0
+   }
+  }
+ },
+ "Helper": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": []
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 0
+   }
+  }
+ },
+ "Rstrm": {
+  "response": {
+   "header": {
+    "resultCode": "00",
+    "resultMsg": "NORMAL_CODE"
+   },
+   "body": {
+    "items": {
+     "item": [
+      {
+       "fcltNo": "1740724",
+       "fcltNm": "건축)대합실화장실-강동_지하1층",
+       "lineNm": "5호선",
+       "stnCd": "2549",
+       "stnNm": "강동",
+       "stnNo": "548",
+       "crtrYmd": "20210527",
+       "mngNo": null,
+       "gateInoutSe": "외부",
+       "grndUdgdSe": "지하",
+       "vcntEntrcNo": "2",
+       "dtlPstn": "대합실 지하1층 2번 출입구 앞",
+       "rstrmInfo": "일반(남,여) / 교통약자(남,여)",
+       "stnFlr": "B1",
+       "whlchrAcsPsbltyYn": "N"
+      },
+      {
+       "fcltNo": "1740849",
+       "fcltNm": "건축)대합실화장실-강동구청_지하2층",
+       "lineNm": "8호선",
+       "stnCd": "2813",
+       "stnNm": "강동구청",
+       "stnNo": "812",
+       "crtrYmd": "20210527",
+       "mngNo": null,
+       "gateInoutSe": "외부",
+       "grndUdgdSe": "지하",
+       "vcntEntrcNo": "4,5",
+       "dtlPstn": "대합실 B2층 개집표기 옆",
+       "rstrmInfo": "일반(남,여) / 교통약자(남,여)",
+       "stnFlr": "B2",
+       "whlchrAcsPsbltyYn": "Y"
+      }
+     ]
+    },
+    "pageNo": 1,
+    "numOfRows": 50,
+    "totalCount": 2
+   }
+  }
+ }
+}
