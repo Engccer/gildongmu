@@ -131,6 +131,13 @@
     },
     "source": "출처: 서울교통공사 교통약자이용정보(서울 1~8호선)."
   },
+  "stationMeta": {
+    "heading": "역 정보",
+    "lines": "노선",
+    "transfer": "환승역",
+    "operator": "운영기관",
+    "source": "출처: 전국도시철도역사정보 표준데이터(국가철도공단)."
+  },
   "bus": {
     "currentButton": "내 주변 버스 도착 정보",
     "placeButton": "근처 정류소·버스 도착",

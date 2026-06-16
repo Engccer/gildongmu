@@ -238,6 +238,59 @@ export interface BusRouteStop {
 }
 
 /**
+ * 도시철도역 하나 — 전국도시철도역사정보 표준데이터(A3) 정적 seed의 한 행.
+ *
+ * 1,098개 도시철도역의 한/영(/한자) 역명 + WGS84 좌표 + 노선·환승·주소.
+ * OpenAPI가 아니라 연 1회 갱신 XLSX라 정적 seed로 번들한다(서버 전용 import).
+ * A1(역 교통약자 시설)·A2(실시간 도착)의 역 식별·영문 역명·좌표 근접 받침대.
+ * 같은 역명이 노선마다 별도 레코드라, 환승역은 여러 행으로 나온다(고속터미널 3행).
+ */
+export interface SubwayStation {
+  /** 역번호(원문 int/str 혼합 → 문자열 통일, 예 "0350","S112") */
+  stationId: string;
+  /** 역사명(원문, 예 "고속터미널" — "역" 접미사는 있는 역/없는 역 혼재) */
+  name: string;
+  /** 영문 역명(표준데이터 100% 제공, 외국인 en 정합 정본) */
+  nameEn: string;
+  /** 노선명(예 "3호선","우이신설선") */
+  lineName: string;
+  /** 위도(WGS84, 소수 6자리) */
+  lat: number;
+  /** 경도(WGS84, 소수 6자리) */
+  lng: number;
+  /** 운영기관명(예 "서울교통공사","한국철도공사") */
+  operator: string;
+  /** 역사 도로명주소 */
+  roadAddress: string;
+  /** 환승역 여부(환승역구분 === "환승역") */
+  isTransfer: boolean;
+  /** 한자 역명(일부 역 누락 가능) */
+  nameHanja?: string;
+  /** 환승 노선 설명(원문, 일반역은 없음) */
+  transferLines?: string;
+}
+
+/**
+ * 한 역의 메타 요약(A3) — 같은 역명의 여러 노선 레코드를 하나로 집계.
+ * 장소 상세에서 역일 때 영문역명·노선·환승을 표시하는 표시용 정본.
+ * 환승역은 노선이 여럿이라 lines로 묶고, isTransfer는 어느 한 행이라도 환승이면 true.
+ */
+export interface StationMeta {
+  /** 한글 역명(대표, 모든 노선 행에서 동일) */
+  name: string;
+  /** 영문 역명(외국인 en 정합 정본) */
+  nameEn: string;
+  /** 한자 역명(있으면) */
+  nameHanja?: string;
+  /** 이 역명을 지나는 노선들(중복 제거, 원문 순서 보존) */
+  lines: string[];
+  /** 환승역 여부 */
+  isTransfer: boolean;
+  /** 운영기관명(대표, 첫 행 기준) */
+  operator: string;
+}
+
+/**
  * 따릉이(서울 공공자전거) 대여소 하나 — bikeList(OA-15493) 정규화 + 계산 거리.
  * 좌표는 WGS84 십진 도. 서울 전용(따릉이는 서울시 운영).
  */

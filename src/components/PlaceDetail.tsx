@@ -7,6 +7,7 @@ import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
+import { StationMeta } from "./StationMeta";
 import { StationFacilities } from "./StationFacilities";
 import { SeoulMetroFacilities } from "./SeoulMetroFacilities";
 import { BusArrivals } from "./BusArrivals";
@@ -100,6 +101,7 @@ export function PlaceDetail({
       )}
       {isStation(place) && (
         <>
+          <StationMeta stationName={place.name} />
           <StationFacilities stationName={place.name} />
           <SeoulMetroFacilities stationName={place.name} />
         </>

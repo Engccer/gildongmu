@@ -131,6 +131,13 @@
     },
     "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8)."
   },
+  "stationMeta": {
+    "heading": "Station info",
+    "lines": "Lines",
+    "transfer": "Transfer station",
+    "operator": "Operator",
+    "source": "Source: National urban-railway station standard data (KR National Railway)."
+  },
   "bus": {
     "currentButton": "Bus arrivals near me",
     "placeButton": "Nearby stops & arrivals",
