@@ -194,3 +194,22 @@ export interface BusRouteStop {
   lat: number;
   lng: number;
 }
+
+/**
+ * 따릉이(서울 공공자전거) 대여소 하나 — bikeList(OA-15493) 정규화 + 계산 거리.
+ * 좌표는 WGS84 십진 도. 서울 전용(따릉이는 서울시 운영).
+ */
+export interface BikeStation {
+  /** 대여소 ID(예 "ST-2749") */
+  stationId: string;
+  /** 대여소명 — 원문 그대로(번호 접두 포함, 예 "3681. 길동 마루빌딩") */
+  name: string;
+  lat: number;
+  lng: number;
+  /** 출발 좌표로부터 Haversine 거리(m). 좌표 비유한이면 Infinity(정렬 후미). */
+  distanceMeters: number;
+  /** 거치대 총수(rackTotCnt) */
+  racksTotal: number;
+  /** 대여 가능 자전거 수(parkingBikeTotCnt) */
+  bikesAvailable: number;
+}

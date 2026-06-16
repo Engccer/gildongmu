@@ -1,0 +1,63 @@
+{
+  "_comment": "서울 따릉이 bikeList 실호출 응답 기반 fixture (2026-06-16 강동구 길동 lat 37.5385 lng 127.1378 근처 캡처). nearbyPage: 거리 무작위 순서 row(정렬 검증용) + 좌표 비유한 row 1개. emptyPage: 정상 빈 페이지. row 필드는 모두 문자열(실제 API와 동일).",
+  "nearbyPage": {
+    "rentBikeStatus": {
+      "RESULT": { "CODE": "INFO-000", "MESSAGE": "정상 처리되었습니다." },
+      "list_total_count": 5,
+      "row": [
+        {
+          "rackTotCnt": "20",
+          "stationName": "1010. 강동세무서",
+          "parkingBikeTotCnt": "45",
+          "shared": "225",
+          "stationLatitude": "37.53450775",
+          "stationLongitude": "127.13840485",
+          "stationId": "ST-1010"
+        },
+        {
+          "rackTotCnt": "10",
+          "stationName": "3681. 길동 마루빌딩",
+          "parkingBikeTotCnt": "31",
+          "shared": "310",
+          "stationLatitude": "37.53685379",
+          "stationLongitude": "127.13948822",
+          "stationId": "ST-2749"
+        },
+        {
+          "rackTotCnt": "10",
+          "stationName": "1075.천동초교 삼거리",
+          "parkingBikeTotCnt": "45",
+          "shared": "450",
+          "stationLatitude": "37.54136276",
+          "stationLongitude": "127.13718414",
+          "stationId": "ST-1075"
+        },
+        {
+          "rackTotCnt": "15",
+          "stationName": "9999. 좌표불명 대여소",
+          "parkingBikeTotCnt": "0",
+          "shared": "0",
+          "stationLatitude": "",
+          "stationLongitude": "",
+          "stationId": "ST-BAD"
+        },
+        {
+          "rackTotCnt": "30",
+          "stationName": "0001. 먼곳(2km 밖)",
+          "parkingBikeTotCnt": "12",
+          "shared": "40",
+          "stationLatitude": "37.55700000",
+          "stationLongitude": "127.15500000",
+          "stationId": "ST-FAR"
+        }
+      ]
+    }
+  },
+  "emptyPage": {
+    "rentBikeStatus": {
+      "RESULT": { "CODE": "INFO-000", "MESSAGE": "정상 처리되었습니다." },
+      "list_total_count": 0,
+      "row": []
+    }
+  }
+}

@@ -36,6 +36,9 @@ const envSchema = z.object({
   // Deepgram — 음성 받아쓰기(STT) 서버 키 (Authorization: Token 헤더)
   DEEPGRAM_API_KEY: z.string().min(1).optional(),
 
+  // 서울 열린데이터광장 일반 인증키 — 따릉이(bikeList) 등 openapi.seoul.go.kr 계열
+  SEOUL_OPEN_DATA_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -49,6 +52,7 @@ export const env = envSchema.parse({
   TOUR_API_KEY: process.env.TOUR_API_KEY,
   DATA_GO_KR_API_KEY: process.env.DATA_GO_KR_API_KEY,
   DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
+  SEOUL_OPEN_DATA_KEY: process.env.SEOUL_OPEN_DATA_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -80,4 +84,9 @@ export function hasDataGoKrKey(): boolean {
 /** Deepgram 음성 받아쓰기(STT) 사용 가능 여부 */
 export function hasDeepgramKey(): boolean {
   return Boolean(env.DEEPGRAM_API_KEY);
+}
+
+/** 서울 열린데이터광장(따릉이 등) 사용 가능 여부 */
+export function hasSeoulOpenDataKey(): boolean {
+  return Boolean(env.SEOUL_OPEN_DATA_KEY);
 }

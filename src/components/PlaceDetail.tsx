@@ -9,6 +9,7 @@ import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationFacilities } from "./StationFacilities";
 import { BusArrivals } from "./BusArrivals";
+import { BikeStations } from "./BikeStations";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -26,11 +27,13 @@ export function PlaceDetail({
   place,
   canBriefCarRoute,
   canShowBus,
+  canShowBike,
   onBack,
 }: {
   place: Place;
   canBriefCarRoute: boolean;
   canShowBus: boolean;
+  canShowBike: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -97,6 +100,9 @@ export function PlaceDetail({
       {isStation(place) && <StationFacilities stationName={place.name} />}
       {canShowBus && (
         <BusArrivals mode="place" lat={place.lat} lng={place.lng} />
+      )}
+      {canShowBike && (
+        <BikeStations mode="place" lat={place.lat} lng={place.lng} />
       )}
     </div>
   );

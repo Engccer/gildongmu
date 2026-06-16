@@ -17,6 +17,7 @@ import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
+import { BikeStations } from "./BikeStations";
 
 type Status =
   | { kind: "idle" }
@@ -42,12 +43,15 @@ export function PlaceSearch({
   isMockMode,
   canBriefCarRoute = false,
   canShowBus = false,
+  canShowBike = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
   canBriefCarRoute?: boolean;
   /** data.go.kr 키가 있어 TAGO 버스 도착·정류소를 제공할 수 있는지 */
   canShowBus?: boolean;
+  /** 서울 열린데이터 키가 있어 따릉이 대여소를 제공할 수 있는지 */
+  canShowBike?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -230,6 +234,7 @@ export function PlaceSearch({
         place={selected}
         canBriefCarRoute={canBriefCarRoute}
         canShowBus={canShowBus}
+        canShowBike={canShowBike}
         onBack={backToResults}
       />
     );
@@ -290,6 +295,11 @@ export function PlaceSearch({
       {canShowBus && status.kind === "idle" && (
         <div className="mt-4">
           <BusArrivals mode="current" />
+        </div>
+      )}
+      {canShowBike && status.kind === "idle" && (
+        <div className="mt-4">
+          <BikeStations mode="current" />
         </div>
       )}
 

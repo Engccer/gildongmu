@@ -133,6 +133,22 @@
     "routeStopsError": "Failed to load route stops.",
     "source": "Source: MOLIT TAGO (National Transport Information Center)."
   },
+  "bike": {
+    "currentButton": "Ttareungyi bikes near me",
+    "placeButton": "Bike stations nearby",
+    "refresh": "Refresh",
+    "locating": "Getting your location…",
+    "loading": "Loading bike stations…",
+    "empty": "No bike stations within 1 km.",
+    "error": "Could not load bike information. Please try again.",
+    "ready": "Nearby bike stations.",
+    "asOf": "as of {time}",
+    "stationDistance": "{distance} walk",
+    "availability": "{bikes} available · {racks} racks",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser does not support location.",
+    "source": "Source: Seoul Open Data Plaza (Ttareungyi)."
+  },
   "voice": {
     "start": "Search by voice",
     "stop": "Stop recording",
