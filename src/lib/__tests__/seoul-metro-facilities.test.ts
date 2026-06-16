@@ -128,4 +128,48 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     } as unknown as Response);
     await expect(fetchSeoulMetroFacilities("강동역")).rejects.toThrow();
   });
+
+  it("9개 중 1개만 실패해도 전체 throw — Promise.all any-fail→all-fail 불변식", async () => {
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const map: Record<string, unknown> = {
+      getWksnElvtr: fixture.Elvtr,
+      getWksnEsctr: fixture.Esctr,
+      getWksnWhcllift: fixture.Whcllift,
+      getWksnMvnwlk: fixture.Mvnwlk,
+      getWksnWhclCharge: fixture.WhclCharge,
+      getWksnSafePlfm: fixture.SafePlfm,
+      getWksnSlng: fixture.Slng,
+      getWksnHelper: fixture.Helper,
+      getWksnRstrm: fixture.Rstrm,
+    };
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      // 엘리베이터 1종만 503, 나머지 8종은 정상 fixture.
+      if (url.includes("/getWksnElvtr?")) {
+        return Promise.resolve({ ok: false, status: 503 } as unknown as Response);
+      }
+      const op = Object.keys(map).find((o) => url.includes(`/${o}?`))!;
+      return Promise.resolve(ok(map[op]));
+    });
+    await expect(fetchSeoulMetroFacilities("강동역")).rejects.toThrow();
+  });
+
+  it("totalCount가 numOfRows(300)를 넘으면 throw — 페이지 누락 은폐 금지", async () => {
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    // totalCount 301 + item은 일부만 → 뒤 페이지가 잘린 상태. 조용히 넘기지 않는다.
+    const truncated = {
+      response: {
+        body: {
+          totalCount: 301,
+          items: { item: [{ stnNm: "강동", fcltNm: "엘리베이터", lineNm: "5호선" }] },
+        },
+      },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(truncated));
+    await expect(fetchSeoulMetroFacilities("강동역")).rejects.toThrow(/페이지 누락/);
+  });
 });

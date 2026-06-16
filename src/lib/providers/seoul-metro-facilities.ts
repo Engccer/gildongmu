@@ -64,12 +64,12 @@ function operating(item: RawItem): "normal" | "stopped" | undefined {
 
 /** 시설 종류별로 RawItem을 SeoulMetroFacility로 정규화한다. */
 function toFacility(kind: SeoulMetroFacilityKind, item: RawItem): SeoulMetroFacility {
-  const base = {
+  const base: SeoulMetroFacility = {
     name: str(item.fcltNm),
-    location: undefined as string | undefined,
-    floors: undefined as string | undefined,
+    location: undefined,
+    floors: undefined,
     operatingStatus: operating(item),
-    detail: undefined as string | undefined,
+    detail: undefined,
   };
   switch (kind) {
     case "elevator":
@@ -153,17 +153,38 @@ export function parseSeoulMetroFacilities(
   };
 }
 
+/** 단일 요청으로 다 받는 상한. 초과하면 페이지 누락이므로 throw로 검증한다. */
+const PAGE_SIZE = 300;
+
+/** data.go.kr 표준 envelope에서 totalCount를 안전하게 읽는다(없으면 0). */
+function totalCount(raw: unknown): number {
+  const tc = (raw as { response?: { body?: { totalCount?: unknown } } })?.response
+    ?.body?.totalCount;
+  const n = Number(tc);
+  return Number.isFinite(n) ? n : 0;
+}
+
 async function fetchOp(op: string, stationName: string, key: string): Promise<unknown> {
   const url = new URL(`${BASE}/${op}`);
   url.searchParams.set("serviceKey", key);
   url.searchParams.set("dataType", "JSON");
-  url.searchParams.set("numOfRows", "100");
+  url.searchParams.set("numOfRows", String(PAGE_SIZE));
   url.searchParams.set("pageNo", "1");
   url.searchParams.set("stnNm", stationName);
   // 시설 현황은 분 단위로 안 바뀐다 — 하루 캐시로 쿼터를 아낀다(코레일과 동일).
   const res = await fetch(url, { next: { revalidate: 86_400 } });
   if (!res.ok) throw new Error(`서울교통공사 시설 조회 실패: HTTP ${res.status} (${op})`);
-  return res.json();
+  const raw = await res.json();
+  // 코레일은 필터 없이 전체(500)를 받지만, 이 provider는 stnNm "포함" 필터라
+  // 환승역이 걸리면 totalCount가 커질 수 있다. PAGE_SIZE를 넘으면 뒤 페이지가
+  // 조용히 잘리므로(접근성 정본상 silent truncation 금지) throw로 검증한다.
+  const tc = totalCount(raw);
+  if (tc > PAGE_SIZE) {
+    throw new Error(
+      `서울교통공사 ${op}: totalCount(${tc}) > numOfRows(${PAGE_SIZE}), 페이지 누락`,
+    );
+  }
+  return raw;
 }
 
 /**
