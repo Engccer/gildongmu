@@ -8,6 +8,7 @@ import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationFacilities } from "./StationFacilities";
+import { SeoulMetroFacilities } from "./SeoulMetroFacilities";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 
@@ -97,7 +98,12 @@ export function PlaceDetail({
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
         />
       )}
-      {isStation(place) && <StationFacilities stationName={place.name} />}
+      {isStation(place) && (
+        <>
+          <StationFacilities stationName={place.name} />
+          <SeoulMetroFacilities stationName={place.name} />
+        </>
+      )}
       {canShowBus && (
         <BusArrivals mode="place" lat={place.lat} lng={place.lng} />
       )}

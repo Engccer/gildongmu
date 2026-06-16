@@ -108,6 +108,29 @@
     "unknown": "Unknown",
     "source": "Source: Korea Railroad (nationwide rail stations). Urban subway not included."
   },
+  "subway": {
+    "button": "View subway accessibility facilities",
+    "loading": "Loading station facilities…",
+    "empty": "No subway accessibility facility data for this station. (Seoul lines 1–8 only)",
+    "error": "Failed to load station facilities. Please try again.",
+    "ready": "Subway accessibility facilities are ready.",
+    "heading": "{name} subway accessibility facilities",
+    "count": "{count}",
+    "operatingNormal": "In service",
+    "operatingStopped": "Out of service or under maintenance",
+    "kind": {
+      "elevator": "Elevator",
+      "escalator": "Escalator",
+      "wheelchairLift": "Wheelchair lift",
+      "movingWalk": "Moving walkway",
+      "wheelchairCharger": "Powered wheelchair charger",
+      "safetyPlatform": "Safety step",
+      "signLangPhone": "Sign-language video phone",
+      "helper": "Accessibility helper",
+      "restroom": "Accessible restroom"
+    },
+    "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8)."
+  },
   "bus": {
     "currentButton": "Bus arrivals near me",
     "placeButton": "Nearby stops & arrivals",

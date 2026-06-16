@@ -108,6 +108,29 @@
     "unknown": "정보 없음",
     "source": "출처: 한국철도공사(전국 철도역). 도시철도는 포함되지 않습니다."
   },
+  "subway": {
+    "button": "지하철역 교통약자 시설 보기",
+    "loading": "지하철역 시설 조회 중…",
+    "empty": "이 역의 지하철 교통약자 시설 정보가 없습니다. (서울 1~8호선만 지원)",
+    "error": "지하철역 시설 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "지하철역 교통약자 시설 정보가 준비되었습니다.",
+    "heading": "{name} 지하철 교통약자 시설",
+    "count": "{count}곳",
+    "operatingNormal": "정상 운행",
+    "operatingStopped": "운행 중지 또는 점검 중",
+    "kind": {
+      "elevator": "엘리베이터",
+      "escalator": "에스컬레이터",
+      "wheelchairLift": "휠체어 리프트",
+      "movingWalk": "무빙워크",
+      "wheelchairCharger": "전동휠체어 급속충전기",
+      "safetyPlatform": "안전발판",
+      "signLangPhone": "수어영상전화기",
+      "helper": "교통약자 도우미",
+      "restroom": "장애인 화장실"
+    },
+    "source": "출처: 서울교통공사 교통약자이용정보(서울 1~8호선)."
+  },
   "bus": {
     "currentButton": "내 주변 버스 도착 정보",
     "placeButton": "근처 정류소·버스 도착",
