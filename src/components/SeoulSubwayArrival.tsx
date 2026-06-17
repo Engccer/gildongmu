@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SubwayStationArrivals } from "@/lib/types";
+import { SubwayArrivalList } from "./SubwayArrivalList";
 
 type Status =
   | { kind: "idle" }
@@ -103,34 +104,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
             </span>
           </h3>
 
-          {status.data.arrivals.length === 0 ? (
-            <p className="mt-2 text-sm opacity-70">{t("noArrivals")}</p>
-          ) : (
-            <ul className="mt-2 space-y-2 text-sm leading-relaxed">
-              {status.data.arrivals.map((a, i) => (
-                <li key={`${a.line ?? ""}-${a.trainLineNm}-${i}`} lang="ko">
-                  <div className="font-medium">
-                    {a.line ? `${a.line} ` : ""}
-                    {a.direction} · {a.trainLineNm}
-                    {a.express && (
-                      <span className="ml-1 rounded bg-accent/10 px-1 text-xs text-accent">
-                        {t("express")}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    {a.message}
-                    {a.currentLocation && (
-                      <span className="opacity-70">
-                        {" "}
-                        ({t("currentLocation", { location: a.currentLocation })})
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <SubwayArrivalList arrivals={status.data.arrivals} />
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </section>
       )}

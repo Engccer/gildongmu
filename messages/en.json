@@ -145,6 +145,21 @@
     "currentLocation": "Now at {location}",
     "source": "Source: Seoul Open Data Plaza live subway arrivals."
   },
+  "subwayNearby": {
+    "button": "Subway arrivals near me",
+    "refresh": "Refresh",
+    "locating": "Getting your location…",
+    "loading": "Loading nearby station arrivals…",
+    "empty": "No Seoul subway stations nearby. (Seoul subway lines 1–9 only)",
+    "error": "Failed to load subway arrivals. Please try again shortly.",
+    "ready": "Subway arrivals near you.",
+    "asOf": "as of {time}",
+    "stationDistance": "about {distance}",
+    "arrivalUnavailable": "Could not load arrival info for this station.",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser does not support location.",
+    "source": "Source: Seoul Open Data Plaza live subway arrivals."
+  },
   "stationMeta": {
     "heading": "Station info",
     "lines": "Lines",

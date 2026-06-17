@@ -56,7 +56,7 @@ function str(v: unknown): string {
 }
 
 /** 역명 정규화 — 접미사(역/station) 제거, trim. swopenapi 조회 키이자 표시명. */
-function cleanName(name: string): string {
+export function cleanName(name: string): string {
   return name.replace(/\s*station$/i, "").replace(/역$/, "").trim();
 }
 

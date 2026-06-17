@@ -18,6 +18,7 @@ import { ResultList } from "./ResultList";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
+import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 
 type Status =
   | { kind: "idle" }
@@ -293,9 +294,15 @@ export function PlaceSearch({
         {liveMessage}
       </p>
 
-      {/* 검색 전 첫 화면 진입점 — 현재 위치 기준 근처 정류소·버스 도착(키 게이트).
+      {/* 검색 전 첫 화면 진입점 — 현재 위치 기준 내 주변 대중교통/공공자전거(키 게이트).
           status.kind === "idle"일 때만 노출해 결과 목록·상세와 겹치지 않게 한다
-          (상세는 selected 단축으로 이 return 자체에 도달하지 않는다). */}
+          (상세는 selected 단축으로 이 return 자체에 도달하지 않는다).
+          순서: 지하철 → 버스 → 따릉이. */}
+      {canShowSubway && status.kind === "idle" && (
+        <div className="mt-4">
+          <SubwayArrivalsNearby />
+        </div>
+      )}
       {canShowBus && status.kind === "idle" && (
         <div className="mt-4">
           <BusArrivals mode="current" />

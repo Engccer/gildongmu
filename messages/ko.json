@@ -145,6 +145,21 @@
     "currentLocation": "현재 {location}",
     "source": "출처: 서울 열린데이터광장 지하철 실시간 도착정보."
   },
+  "subwayNearby": {
+    "button": "내 주변 지하철 도착 정보",
+    "refresh": "새로고침",
+    "locating": "현재 위치 확인 중…",
+    "loading": "주변 역 도착 정보 조회 중…",
+    "empty": "주변에 서울 지하철역이 없습니다. (서울 지하철 1~9호선만 지원)",
+    "error": "지하철 도착 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "내 주변 지하철 도착 정보입니다.",
+    "asOf": "{time} 기준",
+    "stationDistance": "약 {distance}",
+    "arrivalUnavailable": "이 역의 도착 정보를 가져오지 못했습니다.",
+    "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
+    "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
+    "source": "출처: 서울 열린데이터광장 지하철 실시간 도착정보."
+  },
   "stationMeta": {
     "heading": "역 정보",
     "lines": "노선",

@@ -348,3 +348,28 @@ export interface SubwayStationArrivals {
   /** 도착 열차들(API 반환 순 — 도착 임박 순) */
   arrivals: SubwayArrival[];
 }
+
+/**
+ * 근접 지하철역 한 곳의 실시간 도착 — 홈 "내 주변 지하철 도착 정보"(A2) 진입점.
+ *
+ * 좌표→근접역(A3 정적 seed의 findStationsNear)→역별 실시간 도착을 합성한 결과.
+ * 실시간 API가 역명 기반이라 버스/따릉이(좌표 직접)와 달리 seed 식별 한 단계가
+ * 더 든다. BusStop.arrivalStatus와 동형으로 "조회 실패(unavailable) ≠ 도착 열차
+ * 없음(ok·arrivals 빈 배열)"을 구분한다(시각장애인 정합 — 장애 은폐 금지).
+ * 비서울 좌표는 seed 근접역이 잡혀도 swopenapi가 INFO-200 → 합성 단계에서 제외.
+ */
+export interface NearbySubwayStation {
+  /** 역명(표시·낭독용, "역" 접미사 제거) */
+  stationName: string;
+  /** 영문 역명(A3 seed 메타 — 외국인 보조 표기, 없을 수 있음) */
+  nameEn?: string;
+  /** 이 역을 지나는 노선들(seed 메타 집계 — 환승역은 여럿) */
+  lines: string[];
+  /** 현재 위치로부터 Haversine 거리(m, 반올림) — 가까운 순 정렬 보존 */
+  distanceMeters: number;
+  /** 도착조회 상태 — "ok": 실시간 성공(arrivals 정본, 0건이면 정상적 "열차 없음").
+   *  "unavailable": 실시간 실패(쿼터·인증·네트워크) → "열차 없음"과 구분, 장애 은폐 금지. */
+  arrivalStatus: "ok" | "unavailable";
+  /** 도착 열차들(arrivalStatus==="ok"일 때만 의미 — unavailable이면 []). */
+  arrivals: SubwayArrival[];
+}
