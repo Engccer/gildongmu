@@ -1,5 +1,5 @@
 import { env } from "../env";
-import type { TransitLeg, TransitRoute, TransitRouteResult } from "../types";
+import type { Coord, TransitLeg, TransitRoute, TransitRouteResult } from "../types";
 
 /**
  * ODsay 대중교통 길찾기 provider.
@@ -97,4 +97,42 @@ export function normalizeOdsayRoute(
   if (paths.length === 0) return null;
   const routes = paths.slice(0, 3).map(toTransitRoute);
   return { recommended: routes[0], alternatives: routes.slice(1) };
+}
+
+/**
+ * ODsay 대중교통 길찾기 조회. 경로 없으면 null, ODsay 오류/HTTP 실패면 throw.
+ *
+ * ⚠ apiKey는 이미 URL 인코딩된 값일 수 있어 재인코딩하면 깨진다 →
+ *   URLSearchParams로 인코딩하지 말고 raw로 쿼리에 붙인다.
+ * ODsay 좌표 파라미터는 SX/EX=경도(lng), SY/EY=위도(lat).
+ */
+export async function getTransitRoute(params: {
+  origin: Coord;
+  dest: Coord;
+}): Promise<TransitRouteResult | null> {
+  const { origin, dest } = params;
+  const q = new URLSearchParams({
+    SX: String(origin.lng),
+    SY: String(origin.lat),
+    EX: String(dest.lng),
+    EY: String(dest.lat),
+    OPT: "0",
+  });
+  // apiKey는 인코딩하지 않고 raw로 덧붙인다(이중 인코딩 방지)
+  const url = `${ENDPOINT}?${q.toString()}&apiKey=${env.ODSAY_API_KEY ?? ""}`;
+
+  const res = await fetch(url, {
+    // 경로는 준정적 — 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`ODsay 길찾기 실패: HTTP ${res.status} ${body}`);
+  }
+  const data = (await res.json()) as OdsayResponse;
+  if (data.error) {
+    // ODsay는 200 + result.error로 오류를 주기도 한다 → upstream/입력 오류로 throw
+    throw new Error(`ODsay 길찾기 오류: ${JSON.stringify(data.error)}`);
+  }
+  return normalizeOdsayRoute(data);
 }
