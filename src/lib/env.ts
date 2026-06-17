@@ -39,6 +39,10 @@ const envSchema = z.object({
   // 서울 열린데이터광장 일반 인증키 — 따릉이(bikeList) 등 openapi.seoul.go.kr 계열
   SEOUL_OPEN_DATA_KEY: z.string().min(1).optional(),
 
+  // 서울 열린데이터광장 "실시간 데이터 인증키" — 일반키와 별도 계열.
+  // 지하철 실시간 도착(swopenapi.seoul.go.kr) 전용. 일반키로는 ERROR-338.
+  SEOUL_SUBWAY_REALTIME_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -53,6 +57,7 @@ export const env = envSchema.parse({
   DATA_GO_KR_API_KEY: process.env.DATA_GO_KR_API_KEY,
   DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
   SEOUL_OPEN_DATA_KEY: process.env.SEOUL_OPEN_DATA_KEY,
+  SEOUL_SUBWAY_REALTIME_KEY: process.env.SEOUL_SUBWAY_REALTIME_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -89,4 +94,9 @@ export function hasDeepgramKey(): boolean {
 /** 서울 열린데이터광장(따릉이 등) 사용 가능 여부 */
 export function hasSeoulOpenDataKey(): boolean {
   return Boolean(env.SEOUL_OPEN_DATA_KEY);
+}
+
+/** 서울 지하철 실시간 도착(swopenapi) 사용 가능 여부 */
+export function hasSeoulSubwayRealtimeKey(): boolean {
+  return Boolean(env.SEOUL_SUBWAY_REALTIME_KEY);
 }

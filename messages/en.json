@@ -131,6 +131,20 @@
     },
     "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8)."
   },
+  "subwayArrival": {
+    "button": "View live subway arrivals",
+    "refresh": "Refresh",
+    "loading": "Loading arrivals…",
+    "empty": "No live arrival data for this station. (Seoul subway lines 1–9 only)",
+    "error": "Failed to load arrivals. Please try again.",
+    "ready": "Live arrivals are ready.",
+    "heading": "{name} live arrivals",
+    "asOf": "as of {time}",
+    "noArrivals": "No trains arriving soon.",
+    "express": "Express",
+    "currentLocation": "Now at {location}",
+    "source": "Source: Seoul Open Data Plaza live subway arrivals."
+  },
   "stationMeta": {
     "heading": "Station info",
     "lines": "Lines",

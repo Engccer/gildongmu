@@ -308,3 +308,43 @@ export interface BikeStation {
   /** 대여 가능 자전거 수(parkingBikeTotCnt) */
   bikesAvailable: number;
 }
+
+/**
+ * 한 역에 도착 예정인 열차 하나 — 서울 지하철 실시간 도착(A2, OA-12764)
+ * realtimeStationArrival 정규화. TAGO 미커버 도시철도의 실시간 정본.
+ */
+export interface SubwayArrival {
+  /** 호선명(subwayId 코드 매핑, 예 "2호선","신분당선"). 미매핑 코드면 undefined. */
+  line?: string;
+  /** 상/하행 또는 내/외선(updnLine) */
+  direction: string;
+  /**
+   * 행선 안내(trainLineNm) — 서울 지하철 표준상 "{종착역}행 - {주요경유}방면"
+   * 완성 문구라 **종착역명을 포함**한다(예 "성수행 - 역삼방면"·"신사행 - 신논현방면").
+   * 컴포넌트의 종착 정보 낭독 정본 — destination을 따로 표시하지 않아도 종착이 읽힌다.
+   */
+  trainLineNm: string;
+  /** 종착역명(bstatnNm) — trainLineNm에 이미 포함되나 데이터 정합·필터용 보조 필드. */
+  destination: string;
+  /** 도착 메시지(arvlMsg2 — "강남 도착","3분 후(2번째 전)" — 낭독 정본) */
+  message: string;
+  /** 현재 위치(arvlMsg3, 예 "방배") */
+  currentLocation?: string;
+  /** 도착 예정(초, barvlDt). 0이면 진입/도착. */
+  arrivalSeconds: number;
+  /** 급행 여부(btrainSttus에 "급행" 포함) — 일반 열차와 구분 */
+  express: boolean;
+}
+
+/**
+ * 한 역의 실시간 도착 묶음. arrivals는 도착 임박 순(API 반환 순). 각 항목이
+ * 노선·방향·방면·메시지로 자체완결하므로 컴포넌트는 **평면 리스트**로 표시한다 —
+ * 환승역은 노선이 섞여(예 강남=2호선 외선 + 신분당선 상행) 방향만으로 묶으면
+ * 외려 혼란스럽고, 항목별 자체완결이 스크린리더 순차 낭독에 더 명확(미니멀 접근성).
+ */
+export interface SubwayStationArrivals {
+  /** 역명(statnNm 원문, "역" 접미사 없음) */
+  stationName: string;
+  /** 도착 열차들(API 반환 순 — 도착 임박 순) */
+  arrivals: SubwayArrival[];
+}

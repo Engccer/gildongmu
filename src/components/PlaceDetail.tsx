@@ -10,6 +10,7 @@ import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationMeta } from "./StationMeta";
 import { StationFacilities } from "./StationFacilities";
 import { SeoulMetroFacilities } from "./SeoulMetroFacilities";
+import { SeoulSubwayArrival } from "./SeoulSubwayArrival";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 
@@ -30,12 +31,14 @@ export function PlaceDetail({
   canBriefCarRoute,
   canShowBus,
   canShowBike,
+  canShowSubway,
   onBack,
 }: {
   place: Place;
   canBriefCarRoute: boolean;
   canShowBus: boolean;
   canShowBike: boolean;
+  canShowSubway: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -102,6 +105,7 @@ export function PlaceDetail({
       {isStation(place) && (
         <>
           <StationMeta stationName={place.name} />
+          {canShowSubway && <SeoulSubwayArrival stationName={place.name} />}
           <StationFacilities stationName={place.name} />
           <SeoulMetroFacilities stationName={place.name} />
         </>
