@@ -48,8 +48,9 @@ export function CarRouteBriefing({
         setStatus({ kind: "loading" });
         try {
           const origin = `${position.coords.latitude},${position.coords.longitude}`;
+          // en 로케일은 NCP 영문 턴바이턴으로 라우팅(라우트가 lang+키로 디스패치)
           const res = await fetch(
-            `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}`,
+            `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}&lang=${locale}`,
           );
           const body = await res.json();
           if (!res.ok) {

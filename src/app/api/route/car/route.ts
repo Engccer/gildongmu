@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { hasKakaoKey } from "@/lib/env";
+import { hasKakaoKey, hasNcpMapsKeys } from "@/lib/env";
 import { isInKorea } from "@/lib/deeplink";
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
+import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 
 /**
- * 자동차 경로 텍스트 브리핑 프록시 (카카오모빌리티 directions).
+ * 자동차 경로 텍스트 브리핑 프록시.
  *
  * 좌표 파라미터는 도메인 표준대로 "위도,경도" 순서를 받는다.
  * 경로 브리핑은 실데이터만 의미가 있으므로 mock 폴백이 없다 —
- * 카카오 키가 없으면 503으로 정직하게 알린다 (가짜 실데이터 금지 원칙).
+ * 어떤 provider도 못 쓰면 503으로 정직하게 알린다 (가짜 실데이터 금지 원칙).
+ *
+ * provider 디스패치(lang+키 유무):
+ * - lang=en + NCP 키 → NCP Directions(영문 턴바이턴, 외국인 정본)
+ * - 그 외(ko, 또는 en이지만 NCP 키 없음) → 카카오모빌리티(한국어, 현 동작 graceful)
+ * 두 provider 모두 동일한 CarRouteBriefing shape를 반환해 컴포넌트는 불변이다.
  */
 
 const coordSchema = z
@@ -27,9 +33,12 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  if (!hasKakaoKey()) {
+  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 카카오 한국어로 폴백
+  const useNcp =
+    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys();
+  if (!useNcp && !hasKakaoKey()) {
     return NextResponse.json(
-      { error: "경로 브리핑은 카카오 API 키 등록 후 사용할 수 있습니다." },
+      { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
       { status: 503 },
     );
   }
@@ -46,7 +55,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const briefing = await getCarRouteBriefing(parsed.data);
+    const briefing = useNcp
+      ? await getCarRouteBriefingEn(parsed.data)
+      : await getCarRouteBriefing(parsed.data);
     return NextResponse.json(briefing);
   } catch (e) {
     console.error("[api/route/car] 경로 브리핑 실패:", e);
