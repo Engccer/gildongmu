@@ -310,6 +310,58 @@ export interface BikeStation {
 }
 
 /**
+ * 진료시간 한 칸 — `start`/`end`는 HHMM 정수(예 1800, 2400=자정).
+ * 해당 요일 진료시간 정보가 없으면 둘 다 null(=마감 아님, "정보 없음").
+ */
+export interface ClinicHours {
+  start: number | null;
+  end: number | null;
+}
+
+/** 진료 상태 3-state — "정보 없음(unknown)"과 "마감(closed)"을 뭉개지 않는다. */
+export type ClinicOpenState = "open" | "closed" | "unknown";
+
+/** 특정 요일·시각 기준 진료 상태(요청 시점 KST로 계산). */
+export interface ClinicOpenStatus {
+  state: ClinicOpenState;
+  /** 그 요일 진료 시작/종료 HHMM(없으면 null). */
+  start: number | null;
+  end: number | null;
+}
+
+/**
+ * 내 주변 소아 야간·휴일 진료 기관 하나 — NMC 15000736 달빛어린이병원·
+ * 소아전문센터 목록(`getBabyListInfoInqire`) 정규화. 좌표 기반 "내 주변"의
+ * 의료 안전망 정본(가짜 데이터 금지 — mock 폴백 없음).
+ *
+ * `hours`는 index 0..7 = 월·화·수·목·금·토·일·공휴일(dutyTime1..8 대응).
+ * 진료 상태(지금 진료중 여부)는 요청 시점 KST에 의존하므로 타입에 박지 않고
+ * 라우트가 `openStatus`(ClinicOpenStatus)를 계산해 덧붙인다.
+ */
+export interface NightClinic {
+  /** 기관 ID(hpid) */
+  id: string;
+  /** 기관명(dutyName) */
+  name: string;
+  /** 주소(dutyAddr) */
+  address: string;
+  /** 대표 전화(dutyTel1) — 없으면 "" */
+  phone: string;
+  /** 기관 종별(dutyDivNam, 예 "의원"/"병원") */
+  kind: string;
+  /** 응급의료기관 분류명(dutyEmclsName, 예 "응급의료기관 이외") */
+  emergencyClass: string;
+  /** 찾아오는 길 안내(dutyMapimg, 예 "5호선 오목교역 2번 출구") — 없으면 "" */
+  directions: string;
+  lat: number;
+  lng: number;
+  /** 출발 좌표로부터 Haversine 거리(m). 좌표 비유한이면 Infinity(정렬 후미). */
+  distanceMeters: number;
+  /** 월~일·공휴일 진료시간(8칸, dutyTime1..8). */
+  hours: ClinicHours[];
+}
+
+/**
  * 한 역에 도착 예정인 열차 하나 — 서울 지하철 실시간 도착(A2, OA-12764)
  * realtimeStationArrival 정규화. TAGO 미커버 도시철도의 실시간 정본.
  */

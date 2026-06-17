@@ -19,6 +19,7 @@ import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
+import { NightClinicsNearby } from "./NightClinicsNearby";
 
 type Status =
   | { kind: "idle" }
@@ -46,6 +47,7 @@ export function PlaceSearch({
   canShowBus = false,
   canShowBike = false,
   canShowSubway = false,
+  canShowClinic = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -56,6 +58,8 @@ export function PlaceSearch({
   canShowBike?: boolean;
   /** 서울 실시간 지하철 키가 있어 역 실시간 도착을 제공할 수 있는지 */
   canShowSubway?: boolean;
+  /** data.go.kr 키가 있어 소아 야간·휴일 진료(달빛어린이병원)를 제공할 수 있는지 */
+  canShowClinic?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -297,7 +301,7 @@ export function PlaceSearch({
       {/* 검색 전 첫 화면 진입점 — 현재 위치 기준 내 주변 대중교통/공공자전거(키 게이트).
           status.kind === "idle"일 때만 노출해 결과 목록·상세와 겹치지 않게 한다
           (상세는 selected 단축으로 이 return 자체에 도달하지 않는다).
-          순서: 지하철 → 버스 → 따릉이. */}
+          순서: 지하철 → 버스 → 따릉이 → 소아 야간·휴일 진료. */}
       {canShowSubway && status.kind === "idle" && (
         <div className="mt-4">
           <SubwayArrivalsNearby />
@@ -311,6 +315,11 @@ export function PlaceSearch({
       {canShowBike && status.kind === "idle" && (
         <div className="mt-4">
           <BikeStations mode="current" />
+        </div>
+      )}
+      {canShowClinic && status.kind === "idle" && (
+        <div className="mt-4">
+          <NightClinicsNearby />
         </div>
       )}
 

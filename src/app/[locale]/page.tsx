@@ -23,6 +23,7 @@ export default async function HomePage({
       canShowBus={hasDataGoKrKey()}
       canShowBike={hasSeoulOpenDataKey()}
       canShowSubway={hasSeoulSubwayRealtimeKey()}
+      canShowClinic={hasDataGoKrKey()}
     />
   );
 }

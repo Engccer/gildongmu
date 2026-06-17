@@ -208,6 +208,27 @@
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 서울 열린데이터광장 따릉이."
   },
+  "clinicNearby": {
+    "button": "내 주변 소아 야간·휴일 진료",
+    "refresh": "새로고침",
+    "locating": "현재 위치 확인 중…",
+    "loading": "소아 야간·휴일 진료 기관 조회 중…",
+    "empty": "근처에 소아 야간·휴일 진료(달빛어린이병원) 기관이 없습니다.",
+    "error": "진료 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "내 주변 소아 야간·휴일 진료 기관입니다.",
+    "asOf": "{time} 기준",
+    "distance": "약 {distance}",
+    "open": "지금 진료 중",
+    "closed": "지금은 진료 시간이 아닙니다",
+    "unknown": "오늘 진료시간 정보가 없습니다",
+    "todayHours": "오늘 진료 {start}~{end}",
+    "holidayHours": "공휴일 진료 {start}~{end}",
+    "callAction": "{name}에 전화 걸기",
+    "directions": "찾아오는 길: {text}",
+    "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
+    "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
+    "source": "출처: 국립중앙의료원 달빛어린이병원·소아전문센터. 공휴일 진료 여부는 진료시간을 확인하세요."
+  },
   "voice": {
     "start": "음성으로 검색",
     "stop": "녹음 정지",

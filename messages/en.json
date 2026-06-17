@@ -208,6 +208,27 @@
     "geoUnsupported": "This browser does not support location.",
     "source": "Source: Seoul Open Data Plaza (Ttareungyi)."
   },
+  "clinicNearby": {
+    "button": "Pediatric night & holiday clinics near me",
+    "refresh": "Refresh",
+    "locating": "Getting your location…",
+    "loading": "Loading pediatric clinics…",
+    "empty": "No pediatric night/holiday clinics (Moonlight Children's Hospitals) nearby.",
+    "error": "Failed to load clinic info. Please try again shortly.",
+    "ready": "Pediatric night & holiday clinics near you.",
+    "asOf": "as of {time}",
+    "distance": "about {distance}",
+    "open": "Open now",
+    "closed": "Closed now",
+    "unknown": "No hours info for today",
+    "todayHours": "Today {start}–{end}",
+    "holidayHours": "Holidays {start}–{end}",
+    "callAction": "Call {name}",
+    "directions": "Directions: {text}",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser does not support location.",
+    "source": "Source: National Medical Center (Moonlight Children's Hospitals & pediatric centers). Check hours for holiday availability."
+  },
   "voice": {
     "start": "Search by voice",
     "stop": "Stop recording",
