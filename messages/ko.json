@@ -229,6 +229,33 @@
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 국립중앙의료원 달빛어린이병원·소아전문센터. 공휴일 진료 여부는 진료시간을 확인하세요."
   },
+  "kidsNearby": {
+    "button": "내 주변 아이 놀 곳",
+    "refresh": "새로고침",
+    "locating": "현재 위치 확인 중…",
+    "loading": "근처 아이 놀 곳 조회 중…",
+    "empty": "근처에 아이 놀 곳(키즈카페·놀이터·어린이공원)이 없습니다.",
+    "error": "아이 놀 곳 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "내 주변 아이 놀 곳입니다.",
+    "asOf": "{time} 기준",
+    "distance": "약 {distance}",
+    "kind": {
+      "kidscafe": "키즈카페",
+      "playground": "놀이터",
+      "playcenter": "놀이센터",
+      "park": "어린이공원"
+    },
+    "indoor": {
+      "indoor": "실내",
+      "outdoor": "실외",
+      "unknown": "실내외 정보 없음"
+    },
+    "mapLink": "카카오맵에서 보기",
+    "call": "전화하기",
+    "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
+    "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
+    "source": "출처: 카카오맵 장소 검색. 실내/실외는 분류 추정이며 방문 전 확인하세요."
+  },
   "airQuality": {
     "heading": "이 지역 공기질",
     "station": "{name} 측정소 · {distance}km",

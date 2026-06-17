@@ -464,3 +464,38 @@ export interface AirQuality {
   /** 초미세먼지(PM2.5) */
   pm25: AirPollutant;
 }
+
+/** 키즈 장소 종류(B3). 카카오 category_name 계층에서 결정적 분류. */
+export type KidsPlaceKind = "kidscafe" | "playground" | "playcenter" | "park";
+
+/**
+ * 실내/실외(B3 우천 판단 정보). 놀이터는 모호해 이름 신호 없으면 unknown —
+ * 잘못된 단정 금지(B1·B2 unknown 교훈). 라벨이 1차 정보, 자동필터는 V1 비포함.
+ */
+export type IndoorOutdoor = "indoor" | "outdoor" | "unknown";
+
+/**
+ * 근처 아이 놀 곳(B3) — 카카오 로컬 좌표 근접 검색 결과 1건.
+ *
+ * ⚠ 키워드 매칭 ≠ 키즈 장소: category_name 계층 화이트리스트로 거짓양성
+ * (스킨스쿠버·노인복지시설·동우회·방탈출카페 등)을 차단한 뒤의 정규화 결과.
+ * 거리는 카카오 `distance`(m) 정본(x/y 제공 시 채워짐). 좌표는 WGS84 그대로.
+ */
+export interface KidsPlace {
+  /** 카카오 장소 id(dedupe 키, "kakao-" 접두) */
+  id: string;
+  name: string;
+  /** 카카오 category_name 전체 계층 */
+  category: string;
+  kind: KidsPlaceKind;
+  indoorOutdoor: IndoorOutdoor;
+  /** 현재 위치로부터 거리(m, 카카오 정본) */
+  distanceMeters: number;
+  address: string;
+  roadAddress?: string;
+  lat: number;
+  lng: number;
+  phone?: string;
+  /** 카카오맵 상세 페이지 */
+  link?: string;
+}

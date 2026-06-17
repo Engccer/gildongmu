@@ -25,6 +25,7 @@ export default async function HomePage({
       canShowSubway={hasSeoulSubwayRealtimeKey()}
       canShowClinic={hasDataGoKrKey()}
       canShowAir={hasDataGoKrKey()}
+      canShowKids={hasKakaoKey()}
     />
   );
 }

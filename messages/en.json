@@ -229,6 +229,33 @@
     "geoUnsupported": "This browser does not support location.",
     "source": "Source: National Medical Center (Moonlight Children's Hospitals & pediatric centers). Check hours for holiday availability."
   },
+  "kidsNearby": {
+    "button": "Kids play places near me",
+    "refresh": "Refresh",
+    "locating": "Checking your location…",
+    "loading": "Finding kids play places nearby…",
+    "empty": "No kids play places (kids cafes, playgrounds, parks) nearby.",
+    "error": "Couldn't load kids play places. Please try again.",
+    "ready": "Kids play places near you.",
+    "asOf": "As of {time}",
+    "distance": "about {distance}",
+    "kind": {
+      "kidscafe": "Kids cafe",
+      "playground": "Playground",
+      "playcenter": "Play center",
+      "park": "Children's park"
+    },
+    "indoor": {
+      "indoor": "Indoor",
+      "outdoor": "Outdoor",
+      "unknown": "Indoor/outdoor unknown"
+    },
+    "mapLink": "View on KakaoMap",
+    "call": "Call",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser doesn't support location.",
+    "source": "Source: KakaoMap place search. Indoor/outdoor is an estimate — please confirm before visiting."
+  },
   "airQuality": {
     "heading": "Air Quality",
     "station": "{name} monitoring station · {distance} km",

@@ -78,7 +78,7 @@ SPEC §3 2026-06-16 방향: "여행/외출 중 위치 기반" 가족 항목만 �
 
 - **B1. 근처 소아 야간·휴일 진료**(달빛어린이병원 15000736 / HIRA 15001674) — `getChildNightMdlrtList`(xPos/yPos/radius) 좌표 근접. `DATA_GO_KR_API_KEY`·버스/역 provider 패턴 그대로 재사용. 여행 중 아이 아플 때 안전망.
 - **B2. 이 지역 공기질**(에어코리아 15073877/15073861) — ✅ **완료(2026-06-17)**. `air-quality.ts`(WGS84→TM EPSG:2097 proj4 → 근접측정소 → 측정소명 단건 실시간) + `/api/air-quality/nearby` + `AirQuality`(장소 상세 enrich). KHAI·PM10·PM2.5 등급(낭독 정본). ⚠ 좌표계 EPSG:2097(Bessel, 카카오 5181 아님)·envelope `items` 직접 배열(실호출로 규명). 3-state Flag→unknown. 20개 단위테스트 + 실호출 검증(강동길동·부산·범위밖).
-- **B3. 근처 아이 놀 곳**(키즈 장소 카테고리) — 기존 카카오 로컬 + 카테고리 칩 UI 확장.
+- **B3. 근처 아이 놀 곳**(키즈 장소) — ✅ **완료(2026-06-18)**. `kids-places.ts`(카카오 로컬 키워드 3종 좌표 근접 `Promise.allSettled`→카테고리 화이트리스트→dedupe·거리순·상위8) + `/api/places/kids` + `KidsPlacesNearby`(홈 "내 주변" 5번째). 신규 API·게이트 없음(기존 `KAKAO_REST_API_KEY`). ⚠ **실호출로 규명: 키워드 매칭 ≠ 키즈 장소**(스킨스쿠버·노인복지시설·동우회·방탈출카페가 "놀이터"에 섞임) → `category_name` 계층 화이트리스트가 정본(시각장애인 노이즈 차단). 실내/실외 3-state(놀이터 모호→unknown). 부분 실패 불변식(subway-nearby 동형). 33개 테스트 + code-reviewer 5건(2 수정·2 보강·1 보류). 실호출 검증(강동 8건 노이즈0·부산·범위밖). 설계 `2026-06-18-kids-places-design.md`.
 
 ### 레인 C — 외국인 영문 완결성
 
@@ -98,7 +98,7 @@ SPEC §3 2026-06-16 방향: "여행/외출 중 위치 기반" 가족 항목만 �
 4. ~~**B1** 소아 야간·휴일 진료~~ ✅ **완료(2026-06-17)** — `night-clinic.ts`+`/api/clinic/nearby`+`NightClinicsNearby`(홈 "내 주변" 4번째). NMC `getBabyListInfoInqire`(달빛어린이병원, 좌표+진료시간+전화) 정본(15001674 좌표 없음으로 NMC 채택). 전국 152개 Haversine→20km→상위5, 진료상태 3-state(KST), 공휴일 V1 표시만. mock 없음·502 구분. 22개 테스트. 설계 `2026-06-17-nearby-night-clinic-design.md`. 실호출 검증(강동 5곳). codex 설계검토 hang→code-reviewer 서브에이전트로 대체(불변식 전부 PASS, 보강 3건 반영).
 5. ~~**C1** NCP en 자동차 경로~~ ✅ **완료(2026-06-17)** — B1 게이트 차단으로 우선 착수. `ncp-directions.ts` + lang 디스패치, ms→s 변환, 실호출 검증.
 6. ~~**B2** 공기질~~ ✅ **완료(2026-06-17)** — `air-quality.ts`+`/api/air-quality/nearby`+`AirQuality`(장소 상세 enrich). WGS84→TM EPSG:2097(proj4) 2-call 체인, KHAI·PM10·PM2.5 등급. ⚠ envelope `items` 직접 배열·EPSG:2097(5181 아님) 실호출로 규명. 3-state Flag→unknown. tago-bus 동형 방어(code-reviewer 3건 반영). 설계 `2026-06-17-air-quality-design.md`. 실호출 검증(강동길동·부산·범위밖).
-7. **B3** 키즈 장소(카카오, 게이트 없음) → **C2** 영문 도로명주소(juso 키 미보유)
+7. ~~**B3** 키즈 장소(카카오, 게이트 없음)~~ ✅ **완료(2026-06-18)** — `kids-places.ts`+`/api/places/kids`+`KidsPlacesNearby`(홈 "내 주변" 5번째). 카카오 좌표 근접 + **카테고리 화이트리스트**(키워드≠키즈장소, 실호출 규명) + 실내/실외 3-state + 부분실패 불변식. 33개 테스트, code-reviewer 5건 반영. → **다음: C2** 영문 도로명주소(juso 키 미보유)
 
 대기 레인(서울 버스·KRIC)은 외부 게이트가 풀리는 즉시 끼어든다.
 
@@ -111,4 +111,4 @@ SPEC §3 2026-06-16 방향: "여행/외출 중 위치 기반" 가족 항목만 �
 
 ## 6. 진행 현황
 
-A1·A2·A3·C1·**B1·B2 완료**(2026-06-17). **다음 후보: B3 키즈 장소**(카카오 로컬 + 카테고리 칩, 게이트 없음) → C2 영문 도로명주소(juso 키 미보유). 서울버스(여전히 차단)·KRIC는 외부 게이트 풀리면 끼어든다.
+A1·A2·A3·C1·B1·B2·**B3 완료**(B3 2026-06-18). **다음 후보: C2 영문 도로명주소**(juso 키 미보유 — 사용자 발급 필요). 서울버스(여전히 차단)·KRIC는 외부 게이트 풀리면 끼어든다. B3는 외부 게이트 없는 마지막 항목이라, 이후 레인은 모두 사용자 키 발급(C2 juso·서울버스·KRIC)에 의존.

@@ -1,0 +1,186 @@
+"use client";
+
+import { useId, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import type { KidsPlace } from "@/lib/types";
+import { formatDistance } from "@/lib/format";
+
+type Status =
+  | { kind: "idle" }
+  | { kind: "locating" }
+  | { kind: "loading" }
+  | { kind: "empty" }
+  | { kind: "error" }
+  | { kind: "geoerror"; reason: "denied" | "unsupported" }
+  | { kind: "done"; kids: KidsPlace[]; at: string };
+
+/**
+ * 근처 아이 놀 곳(키즈카페·놀이터·어린이공원, B3) — 홈 진입점.
+ *
+ * 따릉이/지하철/소아진료 nearby와 동형: 버튼 → geolocation → 좌표 조회.
+ * 카카오 로컬 좌표 근접이지만 **키워드 매칭 ≠ 키즈 장소**라 서버에서 카테고리
+ * 화이트리스트로 거짓양성을 거른 결과만 받는다(시각장애인 정합). 실내/실외는
+ * 3-state 라벨(놀이터 모호 시 "정보 없음") — 우천 시 사용자가 듣고 판단.
+ * 자기완결 정보 리스트(상세 연동 비포함) — 길찾기는 카카오맵 링크로 위임.
+ */
+export function KidsPlacesNearby() {
+  const t = useTranslations("kidsNearby");
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingId = useId();
+  const inFlightRef = useRef(false);
+
+  async function fetchAt(lat: number, lng: number) {
+    setStatus({ kind: "loading" });
+    try {
+      const res = await fetch(`/api/places/kids?lat=${lat}&lng=${lng}`, {
+        cache: "no-store",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setStatus({ kind: "error" });
+        return;
+      }
+      const kids = (body.kids ?? []) as KidsPlace[];
+      if (kids.length === 0) {
+        setStatus({ kind: "empty" });
+        return;
+      }
+      const at = new Date().toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      setStatus({ kind: "done", kids, at });
+      requestAnimationFrame(() => headingRef.current?.focus());
+    } catch {
+      setStatus({ kind: "error" });
+    }
+  }
+
+  function load() {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    const done = () => {
+      inFlightRef.current = false;
+    };
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setStatus({ kind: "geoerror", reason: "unsupported" });
+      done();
+      return;
+    }
+    setStatus({ kind: "locating" });
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void fetchAt(pos.coords.latitude, pos.coords.longitude).finally(done);
+      },
+      () => {
+        setStatus({ kind: "geoerror", reason: "denied" });
+        done();
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 30_000 },
+    );
+  }
+
+  const busy = status.kind === "locating" || status.kind === "loading";
+  const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
+
+  const live =
+    status.kind === "locating"
+      ? t("locating")
+      : status.kind === "loading"
+        ? t("loading")
+        : status.kind === "empty"
+          ? t("empty")
+          : status.kind === "error"
+            ? t("error")
+            : status.kind === "geoerror"
+              ? status.reason === "denied"
+                ? t("geoDenied")
+                : t("geoUnsupported")
+              : status.kind === "done"
+                ? t("ready")
+                : "";
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={load}
+        aria-disabled={busy}
+        aria-busy={busy}
+        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
+      >
+        {buttonLabel}
+      </button>
+
+      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
+        {live}
+      </p>
+
+      {status.kind === "done" && (
+        <section
+          aria-labelledby={headingId}
+          className="mt-2 rounded-md border border-border p-3"
+        >
+          <h3
+            id={headingId}
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-base font-semibold"
+          >
+            {t("ready")}
+            <span className="ml-2 text-xs font-normal opacity-70">
+              {t("asOf", { time: status.at })}
+            </span>
+          </h3>
+
+          <ul className="mt-2 space-y-4">
+            {status.kids.map((k) => (
+              <li key={k.id}>
+                <p className="font-medium">
+                  <span lang="ko">{k.name}</span>{" "}
+                  <span className="text-xs font-normal opacity-70">
+                    {t(`kind.${k.kind}`)}
+                    {" · "}
+                    {t(`indoor.${k.indoorOutdoor}`)}
+                    {" · "}
+                    {t("distance", { distance: formatDistance(k.distanceMeters) })}
+                  </span>
+                </p>
+
+                <p className="mt-1 text-sm" lang="ko">
+                  {k.address}
+                </p>
+
+                {/* 전화번호가 있으면 1탭 통화(키즈카페 예약·운영 확인 — 시각장애인 정합,
+                    NightClinicsNearby의 tel: 패턴 동형). 공원·놀이터는 대개 미제공. */}
+                {k.phone && (
+                  <p className="mt-1 text-sm">
+                    <a href={`tel:${k.phone}`} className="text-accent underline">
+                      {k.phone}
+                      <span className="ml-1 opacity-70">{t("call")}</span>
+                    </a>
+                  </p>
+                )}
+
+                {k.link && (
+                  <p className="mt-1 text-sm">
+                    <a
+                      href={k.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent underline"
+                    >
+                      {t("mapLink")}
+                    </a>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs opacity-70">{t("source")}</p>
+        </section>
+      )}
+    </div>
+  );
+}
