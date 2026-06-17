@@ -229,6 +229,22 @@
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 국립중앙의료원 달빛어린이병원·소아전문센터. 공휴일 진료 여부는 진료시간을 확인하세요."
   },
+  "airQuality": {
+    "heading": "이 지역 공기질",
+    "station": "{name} 측정소 · {distance}km",
+    "khai": "통합대기환경지수",
+    "pm10": "미세먼지",
+    "pm25": "초미세먼지",
+    "grade": {
+      "good": "좋음",
+      "moderate": "보통",
+      "bad": "나쁨",
+      "veryBad": "매우 나쁨"
+    },
+    "unknown": "정보 없음",
+    "asOf": "{time} 기준",
+    "source": "출처: 에어코리아(한국환경공단)."
+  },
   "voice": {
     "start": "음성으로 검색",
     "stop": "녹음 정지",

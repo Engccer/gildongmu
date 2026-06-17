@@ -1,0 +1,1 @@
+{"response":{"body":{"totalCount":3,"items":[{"tm":0.5,"addr":"서울 강동구 천호대로 1151 길동사거리 강동성모요양병원 앞)","stationName":"천호대로"},{"tm":1.3,"addr":"서울 강동구 구천면로 42길 59 천호1동 주민센터","stationName":"강동구"},{"tm":3.7,"addr":"경기도 하남시 감이동 469-1 단가람 유치원 인근 지상","stationName":"감일"}],"pageNo":1,"numOfRows":5},"header":{"resultMsg":"NORMAL_CODE","resultCode":"00"}}}

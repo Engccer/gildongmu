@@ -48,6 +48,7 @@ export function PlaceSearch({
   canShowBike = false,
   canShowSubway = false,
   canShowClinic = false,
+  canShowAir = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -60,6 +61,8 @@ export function PlaceSearch({
   canShowSubway?: boolean;
   /** data.go.kr 키가 있어 소아 야간·휴일 진료(달빛어린이병원)를 제공할 수 있는지 */
   canShowClinic?: boolean;
+  /** data.go.kr 키가 있어 이 지역 공기질(에어코리아)을 제공할 수 있는지 */
+  canShowAir?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -244,6 +247,7 @@ export function PlaceSearch({
         canShowBus={canShowBus}
         canShowBike={canShowBike}
         canShowSubway={canShowSubway}
+        canShowAir={canShowAir}
         onBack={backToResults}
       />
     );

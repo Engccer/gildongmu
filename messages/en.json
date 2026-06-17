@@ -229,6 +229,22 @@
     "geoUnsupported": "This browser does not support location.",
     "source": "Source: National Medical Center (Moonlight Children's Hospitals & pediatric centers). Check hours for holiday availability."
   },
+  "airQuality": {
+    "heading": "Air Quality",
+    "station": "{name} monitoring station · {distance} km",
+    "khai": "Air quality index",
+    "pm10": "Fine dust (PM10)",
+    "pm25": "Ultrafine dust (PM2.5)",
+    "grade": {
+      "good": "Good",
+      "moderate": "Moderate",
+      "bad": "Bad",
+      "veryBad": "Very bad"
+    },
+    "unknown": "No data",
+    "asOf": "As of {time}",
+    "source": "Source: AirKorea (Korea Environment Corporation)."
+  },
   "voice": {
     "start": "Search by voice",
     "stop": "Stop recording",

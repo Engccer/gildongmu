@@ -425,3 +425,42 @@ export interface NearbySubwayStation {
   /** 도착 열차들(arrivalStatus==="ok"일 때만 의미 — unavailable이면 []). */
   arrivals: SubwayArrival[];
 }
+
+/** 대기질 등급 — 1좋음·2보통·3나쁨·4매우나쁨, 부재/장애는 unknown(낭독 정본). */
+export type AirGrade = "good" | "moderate" | "bad" | "veryBad" | "unknown";
+
+/**
+ * 오염물질 한 종(통합지수·미세먼지·초미세먼지)의 값+등급.
+ * 측정 장애(*Flag) 또는 값/등급 부재 → value:null·grade:"unknown"
+ * (측정 안 됨을 숫자로 노출 금지 — 시각장애인 오판 방지).
+ */
+export interface AirPollutant {
+  /** 측정값(㎍/㎥ 또는 통합지수). 측정 장애·부재 → null */
+  value: number | null;
+  /** 등급(낭독 정본). 측정 장애·부재 → "unknown" */
+  grade: AirGrade;
+}
+
+/**
+ * 이 지역 공기질(B2) — 가장 가까운 측정소의 실시간 측정.
+ *
+ * WGS84→TM(EPSG:2097, proj4) 변환 후 근접 측정소 조회 → 측정소명 단건 실시간의
+ * 2-call 체인 결과. 거리(`distanceKm`)는 에어코리아 API 정본(자체 Haversine 아님).
+ * 등급이 1차 정보(낭독 정본), 수치는 보강. 측정 장애는 AirPollutant에서 unknown.
+ */
+export interface AirQuality {
+  /** 측정소명 */
+  stationName: string;
+  /** 현재 위치로부터 거리(km, 에어코리아 `tm` 정본) */
+  distanceKm: number;
+  /** 측정소 주소 */
+  addr: string;
+  /** 측정 시각(예: "2026-06-17 19:00") */
+  dataTime: string;
+  /** 통합대기환경지수(KHAI) */
+  khai: AirPollutant;
+  /** 미세먼지(PM10) */
+  pm10: AirPollutant;
+  /** 초미세먼지(PM2.5) */
+  pm25: AirPollutant;
+}
