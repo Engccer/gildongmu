@@ -43,6 +43,10 @@ const envSchema = z.object({
   // 지하철 실시간 도착(swopenapi.seoul.go.kr) 전용. 일반키로는 ERROR-338.
   SEOUL_SUBWAY_REALTIME_KEY: z.string().min(1).optional(),
 
+  // ODsay 대중교통 길찾기 — api.odsay.com apiKey (서버 전용).
+  // ⚠ URL 인코딩된 키를 재인코딩하면 깨짐(data.go.kr serviceKey와 동형).
+  ODSAY_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -58,6 +62,7 @@ export const env = envSchema.parse({
   DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
   SEOUL_OPEN_DATA_KEY: process.env.SEOUL_OPEN_DATA_KEY,
   SEOUL_SUBWAY_REALTIME_KEY: process.env.SEOUL_SUBWAY_REALTIME_KEY,
+  ODSAY_API_KEY: process.env.ODSAY_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -99,4 +104,9 @@ export function hasSeoulOpenDataKey(): boolean {
 /** 서울 지하철 실시간 도착(swopenapi) 사용 가능 여부 */
 export function hasSeoulSubwayRealtimeKey(): boolean {
   return Boolean(env.SEOUL_SUBWAY_REALTIME_KEY);
+}
+
+/** ODsay 대중교통 길찾기 사용 가능 여부 */
+export function hasOdsayKey(): boolean {
+  return Boolean(env.ODSAY_API_KEY);
 }

@@ -182,6 +182,45 @@ export interface CarRouteBriefing {
   guides: CarRouteGuide[];
 }
 
+/** 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로. */
+export interface TransitLeg {
+  mode: "walk" | "bus" | "subway";
+  /** "수도권 5호선" / "341" 등 ODsay 한국어 원문 (도보는 없음) */
+  lineName?: string;
+  /** 승차 정류장 (도보는 없음) */
+  fromName?: string;
+  /** 하차 정류장 (도보는 없음) */
+  toName?: string;
+  /** 정거장 수 (도보는 없음) */
+  stationCount?: number;
+  /** 구간 소요시간(분) */
+  minutes: number;
+}
+
+/** 대중교통 경로 1개(요약 + 구간 리스트). */
+export interface TransitRoute {
+  summary: {
+    totalMinutes: number;
+    /** 요금(원) */
+    fare: number;
+    /** 환승 횟수 */
+    transfers: number;
+    /** 총 도보 시간(분) */
+    walkMinutes: number;
+    /** 첫 승차 정류장 (한국어 원문) */
+    departName?: string;
+    /** 막 하차 정류장 (한국어 원문) */
+    arriveName?: string;
+  };
+  legs: TransitLeg[];
+}
+
+/** 대중교통 길찾기 결과: 추천 1개 + 대안 최대 2개. */
+export interface TransitRouteResult {
+  recommended: TransitRoute;
+  alternatives: TransitRoute[];
+}
+
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */
 export type BusSource = "tago" | "seoul";
 
