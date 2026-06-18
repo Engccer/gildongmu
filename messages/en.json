@@ -87,6 +87,28 @@
       "summary": "Total {distance}, about {minutes} min. Estimated taxi fare {taxi} KRW.",
       "toll": "Toll {toll} KRW not included.",
       "disclaimer": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
+    },
+    "transit": {
+      "button": "Public transit to here",
+      "heading": "Transit to {name}",
+      "locating": "Locating you…",
+      "loading": "Finding a route…",
+      "ready": "Route is ready.",
+      "error": "Couldn't load the route. Please try again.",
+      "geoError": "Couldn't get your location. Please search for a starting point.",
+      "noRoute": "No public transit route found. Check the start and destination.",
+      "summary": "{minutes} min, {fare} won, {transfers} transfer(s)",
+      "walkSummary": "incl. {minutes} min walking",
+      "legWalk": "Walk {minutes} min",
+      "legBoard": "Board {line} at {from}, {count} stops",
+      "legTransfer": "Transfer to {line} at {from}, {count} stops",
+      "arrive": "Arrive at {name}",
+      "changeOrigin": "Change start",
+      "originLabel": "Search start point",
+      "originPlaceholder": "Enter a starting point",
+      "useCurrentLocation": "Start from current location",
+      "showAlternatives": "See other routes",
+      "alternativeHeading": "Alternative {index}"
     }
   },
   "detail": {
