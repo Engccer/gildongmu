@@ -5,7 +5,6 @@ import {
   geocodeEnglishAddressJuso,
   searchJusoAddresses,
 } from "../providers/juso-address";
-import type { JusoAddress } from "../types";
 
 /**
  * 행안부 juso 도로명주소 검색 — 실응답 구조(2026-06-19 실호출 확정):
