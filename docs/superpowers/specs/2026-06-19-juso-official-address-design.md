@@ -43,14 +43,19 @@ PlaceSearch (검색 종류 토글: 장소 ⁄ 주소)
 
 ### 2.1 juso provider (`juso-address.ts`)
 
-- **엔드포인트**: 도로명주소 검색 API (`business.juso.go.kr/addrlink/addrLinkApi.do` 또는 신규 GW — 실호출로 확정), `resultType=json`, `confmKey=JUSO_CONFM_KEY`.
+- **엔드포인트**: 도로명주소 검색 API `https://business.juso.go.kr/addrlink/addrLinkApi.do`(2026-06-19 실호출 확정), `resultType=json`, `confmKey=JUSO_CONFM_KEY`, `currentPage`·`countPerPage`·`keyword`.
 - **공개 함수 2개**:
   - `searchJusoAddresses(keyword, page?, size?)`: 키워드 → 정규화된 주소 목록. juso `results.juso[]`를 `JusoAddress` shape(`roadAddr`·`jibunAddr`·`engAddr`·`zipNo`)로 투영. envelope `results.common.errorCode`로 분기(정상/무결과/에러). **검색 본류라 에러는 throw**(라우트가 분류).
   - `geocodeEnglishAddressJuso(koreanAddress)`: 한글 주소 키워드 → 첫 결과의 영문 도로명주소. **best-effort라 절대 throw 안 함**(NCP `geocodeEnglishAddress`와 동일 계약) — 실패·무결과·HTTP 오류 모두 `null`.
 - **순수 정규화 함수**: `normalizeJusoResults(raw)`(응답 → `JusoAddress[]`), `extractEnglishAddressJuso(raw)`(→ `string|null`). React/Next 비의존, fixture 테스트.
 - **게이트**: `hasJusoKey()`(`env.JUSO_CONFM_KEY` 유무).
 
-> ⚠ **실호출 전 확정 대상**(키 도착 후 1단계): 정확한 엔드포인트 host, 영문 필드명(`roadAddrEng`/`engAddr`), 우편번호 필드(`zipNo`), 무결과·에러 코드 값. 본 문서의 필드명은 잠정치이며 fixture는 실응답으로 교정한다.
+> ✅ **실계약 확정 (2026-06-19 실호출, `JUSO_CONFM_KEY` 발급·검증 완료)**:
+> - envelope: `results.common`(`errorCode` "0"=정상 / `errorMessage` "정상" / `totalCount` / `currentPage` / `countPerPage`) + `results.juso[]`.
+> - 무결과: `errorCode "0"` + `totalCount "0"` + `juso: []` (정상 응답의 빈 결과). 에러는 `errorCode`가 "0" 외 값.
+> - 주소 필드: `roadAddr`(전체 도로명, 참고항목 포함 "서울특별시 중구 세종대로 110 (태평로1가)") · `roadAddrPart1`(참고항목 제외) · `jibunAddr`(지번) · `engAddr`(영문 "110 Sejong-daero, Jung-gu, Seoul") · `zipNo`(우편번호 "04524") · `bdNm`(건물명) · `siNm`/`sggNm`/`emdNm`(시도/시군구/읍면동).
+> - ⚠ `engAddr`은 NCP `englishAddress`("110, Sejong-daero, Jung-gu, Seoul, **Republic of Korea**")와 달리 **국가명 미포함 + 콤마 형식 상이**. 둘 다 유효 영문주소지만 C2-a 교체 시 표기 차이를 인지(필요하면 국가명 보정은 선택).
+> - 키 종류: 민간기관/인터넷망/**운영**(영구), 검색 API는 트래픽 제한 없음. 발급 즉시 동작 확인(전파 지연 없음).
 
 ### 2.2 영문주소 폴백 체인 (C2-a, `places.ts`)
 
@@ -99,9 +104,10 @@ PlaceSearch (검색 종류 토글: 장소 ⁄ 주소)
 - **묶음 1 (C2-a, 회귀 0)**: `juso-address.ts`(`geocodeEnglishAddressJuso`+순수 정규화) + `env`/`hasJusoKey` + `enrichEnglishAddresses` 폴백 체인 + 게이트 테스트. juso 키 없이도 NCP 폴백으로 머지 가능.
 - **묶음 2 (C2-b, 신규 UI)**: `searchJusoAddresses` + `/api/address/search` + `PlaceSearch` 토글 + 주소 결과 렌더 + 주소→Place(카카오 좌표) + 테스트. **juso 키 도착·실호출 검증 후 머지**.
 
-## 6. 사용자 액션 (병행, 선결 게이트)
+## 6. 키 발급 현황
 
-- **juso 승인키 발급**(`JUSO_CONFM_KEY`): business.juso.go.kr 가입 → 도로명주소 검색 API 신청 → 승인키. 검색 API는 통상 즉시·무료. 영문/좌표 API 별도 승인 가능성은 실호출로 확인. 발급 후 `.env.local` + (배포 시) Vercel Production env 등록.
+- ✅ **`JUSO_CONFM_KEY` 발급·검증 완료 (2026-06-19)**: business.juso.go.kr 본인인증 로그인 → 도로명주소 검색 API 신청(민간기관/인터넷망/운영) → 즉시 승인 → `.env.local` 등록 + 실호출 검증(§2.1 ✅). 검색 API 하나로 C2-a(`engAddr`)·C2-b(검색) 모두 커버 → 별도 영문/좌표 API 신청 불요.
+- ⏳ **Vercel Production env 등록**: C2 배포 시점에 `JUSO_CONFM_KEY`를 Production에 등록 + 재배포(env는 배포 시점 주입). C2-b 프로덕션 노출은 이 등록 후.
 
 ## 7. 참고
 
