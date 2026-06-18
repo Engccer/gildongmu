@@ -40,8 +40,14 @@ interface OdsayPath {
 }
 export interface OdsayResponse {
   result?: { path?: OdsayPath[] };
-  error?: unknown;
+  // ODsay는 200 + { error: { code, msg } }로 오류를 주기도 한다(실호출 검증).
+  error?: { code?: string | number; msg?: string };
 }
+
+// "경로 없음"류로 graceful(null) 처리할 ODsay error 코드.
+// -98: 출·도착지가 700m 이내(실호출 검증, 2026-06-18). 다른 경로없음 코드는
+// 실제 관측 시 추가한다(추측 금지). 그 외 코드(인증·파라미터·서버 오류)는 throw.
+const NO_ROUTE_ERROR_CODES = new Set(["-98"]);
 
 function toLeg(sp: OdsaySubPath): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
@@ -61,21 +67,17 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
 }
 
 function toTransitRoute(path: OdsayPath): TransitRoute {
-  // 거리·시간 0 도보 구간은 의미 없으니 제외
+  // 거리 0 도보는 역내 환승 통로다(실호출 검증: {trafficType:3, distance:0,
+  // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
+  // 리스트에서는 제외해 낭독을 간결히 한다. 단 walkMinutes(총 도보 시간)는
+  // 환승 통로 시간도 실제 걷는 시간이라 필터 전 전체 도보 합으로 정직하게 센다.
   const legs = path.subPath
-    .filter(
-      (sp) =>
-        !(
-          sp.trafficType === 3 &&
-          (sp.sectionTime ?? 0) === 0 &&
-          (sp.distance ?? 0) === 0
-        ),
-    )
+    .filter((sp) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
     .map(toLeg);
   const boardCount = legs.filter((l) => l.mode !== "walk").length;
-  const walkMinutes = legs
-    .filter((l) => l.mode === "walk")
-    .reduce((sum, l) => sum + l.minutes, 0);
+  const walkMinutes = path.subPath
+    .filter((sp) => sp.trafficType === 3)
+    .reduce((sum, sp) => sum + (sp.sectionTime ?? 0), 0);
   return {
     summary: {
       totalMinutes: path.info.totalTime,
@@ -93,6 +95,12 @@ function toTransitRoute(path: OdsayPath): TransitRoute {
 export function normalizeOdsayRoute(
   data: OdsayResponse,
 ): TransitRouteResult | null {
+  if (data.error) {
+    // 출·도착 700m 이내 등 "경로 없음"류는 장애가 아니라 graceful(null).
+    // 그 외 오류(인증·파라미터·서버)는 throw해 라우트가 502로 정직하게 알린다.
+    if (NO_ROUTE_ERROR_CODES.has(String(data.error.code ?? ""))) return null;
+    throw new Error(`ODsay 길찾기 오류: ${JSON.stringify(data.error)}`);
+  }
   const paths = data.result?.path ?? [];
   if (paths.length === 0) return null;
   const routes = paths.slice(0, 3).map(toTransitRoute);
@@ -130,9 +138,6 @@ export async function getTransitRoute(params: {
     throw new Error(`ODsay 길찾기 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as OdsayResponse;
-  if (data.error) {
-    // ODsay는 200 + result.error로 오류를 주기도 한다 → upstream/입력 오류로 throw
-    throw new Error(`ODsay 길찾기 오류: ${JSON.stringify(data.error)}`);
-  }
+  // error 분기(경로없음 graceful vs 장애 throw)는 normalizeOdsayRoute가 담당.
   return normalizeOdsayRoute(data);
 }
