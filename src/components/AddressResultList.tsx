@@ -44,8 +44,8 @@ export function AddressResultList({
                     {addr.roadAddr}
                   </span>
                 )}
-                <span className="mt-0.5 block text-sm text-muted" lang="ko">
-                  {t("jibun")} {addr.jibunAddr}
+                <span className="mt-0.5 block text-sm text-muted">
+                  {t("jibun")} <span lang="ko">{addr.jibunAddr}</span>
                 </span>
                 {addr.zipNo && (
                   <span className="mt-0.5 block text-sm text-muted">
