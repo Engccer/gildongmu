@@ -86,6 +86,25 @@ export interface AddressMatch {
 }
 
 /**
+ * 행안부 도로명주소 검색(juso) 결과 하나 — provider가 응답을 정규화한 형태.
+ * 라우트·컴포넌트는 juso 원본 필드를 모르고 이 shape로만 소통한다(이식성).
+ */
+export interface JusoAddress {
+  /** 전체 도로명주소(참고항목 포함, 예 "서울특별시 중구 세종대로 110 (태평로1가)") */
+  roadAddr: string;
+  /** 도로명주소(참고항목 제외, 예 "서울특별시 중구 세종대로 110") */
+  roadAddrPart1: string;
+  /** 지번 주소 */
+  jibunAddr: string;
+  /** 공식 영문 주소(국가명 미포함, 예 "110 Sejong-daero, Jung-gu, Seoul") */
+  engAddr: string;
+  /** 우편번호(예 "04524") */
+  zipNo: string;
+  /** 건물명(없으면 "") */
+  bdNm: string;
+}
+
+/**
  * 자동차 경로의 턴바이턴 안내 한 단계.
  * guidance는 provider(카카오모빌리티)가 완성해 주는 한국어 안내문 —
  * 스크린 리더 낭독의 정본 텍스트로 그대로 사용한다.
