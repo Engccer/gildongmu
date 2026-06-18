@@ -44,8 +44,11 @@ export function TransitRouteBriefing({
     const myReq = ++reqId.current;
     setStatus({ kind: "loading" });
     try {
+      // 자동차 경로와 달리 lang 파라미터를 보내지 않는다 — ODsay 무료 티어는
+      // 국문 응답 전용이라 라우트가 lang을 쓰지 않고, 보내면 캐시만 로케일로
+      // 무의미하게 분절된다. en은 컴포넌트에서 구조만 영역화(고유명은 한국어 원문).
       const res = await fetch(
-        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}&lang=${locale}`,
+        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}`,
       );
       const body = await res.json();
       if (myReq !== reqId.current) return; // stale 응답 폐기
