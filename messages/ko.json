@@ -102,7 +102,7 @@
       "legWalk": "도보 {minutes}분",
       "legBoard": "<from></from>에서 <line></line> 승차, {count}정거장",
       "legTransfer": "<from></from>에서 <line></line> 환승, {count}정거장",
-      "arrive": "{name} 도착",
+      "arrive": "<name></name> 도착",
       "changeOrigin": "출발지 바꾸기",
       "originLabel": "출발지 검색",
       "originPlaceholder": "출발지를 입력하세요",

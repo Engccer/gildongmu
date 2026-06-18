@@ -102,7 +102,7 @@
       "legWalk": "Walk {minutes} min",
       "legBoard": "Board <line></line> at <from></from>, {count} stops",
       "legTransfer": "Transfer to <line></line> at <from></from>, {count} stops",
-      "arrive": "Arrive at {name}",
+      "arrive": "Arrive at <name></name>",
       "changeOrigin": "Change start",
       "originLabel": "Search start point",
       "originPlaceholder": "Enter a starting point",

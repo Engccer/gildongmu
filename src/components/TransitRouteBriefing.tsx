@@ -79,6 +79,7 @@ export function TransitRouteBriefing({
     setStatus({ kind: "locating" });
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        if (!inFlight.current) return; // selectOrigin 등으로 취소됨
         await fetchRoute(pos.coords.latitude, pos.coords.longitude);
         inFlight.current = false;
       },
@@ -106,6 +107,7 @@ export function TransitRouteBriefing({
   }
 
   function selectOrigin(place: Place) {
+    inFlight.current = false; // 진행 중 geolocation 콜백 무효화
     setShowOriginSearch(false);
     setOriginResults([]);
     setOriginQuery("");
@@ -289,8 +291,12 @@ function RouteView({
           );
         })}
       </ol>
-      <p className="mt-1 text-sm" lang="ko">
-        {t("arrive", { name: route.summary.arriveName ?? dest })}
+      <p className="mt-1 text-sm">
+        {t.rich("arrive", {
+          name: () => (
+            <span lang="ko">{route.summary.arriveName ?? dest}</span>
+          ),
+        })}
       </p>
     </>
   );
