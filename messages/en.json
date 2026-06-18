@@ -19,7 +19,19 @@
     "noResults": "No results. Try a different search term.",
     "noFilterResults": "No results match the selected filters.",
     "error": "Search failed. Please try again shortly.",
-    "mockNotice": "Running on demo data. Real search activates once API keys are registered."
+    "mockNotice": "Running on demo data. Real search activates once API keys are registered.",
+    "kind": {
+      "label": "Search type",
+      "place": "Place",
+      "address": "Address"
+    },
+    "addressLabel": "Search addresses",
+    "addressPlaceholder": "e.g. 110 Sejong-daero, 396 Gangnam-daero",
+    "addressSearching": "Searching addresses…",
+    "addressResultsAnnouncement": "{count} addresses found",
+    "addressNoResults": "No matching address. Try a different term.",
+    "addressError": "Address search failed. Please try again shortly.",
+    "addressCoordFailed": "Couldn't locate coordinates for this address; cannot open details."
   },
   "region": {
     "filterLabel": "Filter by region",
@@ -63,6 +75,10 @@
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
     "detailPage": "Detail page"
+  },
+  "address": {
+    "postalCode": "Postal code",
+    "jibun": "Lot number"
   },
   "route": {
     "heading": "Directions to {name}",
