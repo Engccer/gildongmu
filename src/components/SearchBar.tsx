@@ -13,6 +13,8 @@ export function SearchBar({
   busy,
   onTranscribed,
   onVoiceError,
+  label,
+  placeholder,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
@@ -20,6 +22,10 @@ export function SearchBar({
   busy: boolean;
   onTranscribed: (text: string) => void;
   onVoiceError?: (code: VoiceRecorderErrorCode) => void;
+  /** sr-only 라벨 오버라이드 (없으면 search.label) */
+  label?: string;
+  /** placeholder 오버라이드 (없으면 search.placeholder) */
+  placeholder?: string;
 }) {
   const t = useTranslations("search");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +47,7 @@ export function SearchBar({
       role="search"
     >
       <label htmlFor="place-query" className="sr-only">
-        {t("label")}
+        {label ?? t("label")}
       </label>
       {/* 입력창 + 우측 지우기 버튼을 한 묶음으로(relative) — 버튼은 입력창 안에
           겹쳐 띄우고, 입력 텍스트가 가려지지 않도록 오른쪽 패딩을 둔다. */}
@@ -52,7 +58,7 @@ export function SearchBar({
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={t("placeholder")}
+          placeholder={placeholder ?? t("placeholder")}
           autoComplete="off"
           className="min-h-12 w-full rounded-md border border-border bg-background pl-4 pr-12 text-lg [&::-webkit-search-cancel-button]:appearance-none"
         />
