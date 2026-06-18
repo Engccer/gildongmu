@@ -1,4 +1,5 @@
 import {
+  hasJusoKey,
   hasKakaoKey,
   hasNaverLocalKeys,
   hasNcpMapsKeys,
@@ -9,6 +10,7 @@ import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
 import { geocodeEnglishAddress } from "./ncp-geocode";
+import { geocodeEnglishAddressJuso } from "./juso-address";
 import { searchPlacesTourApi } from "./tour-api";
 
 /** 좌표 중복 판정 키 — 4자리(약 11m)면 같은 건물/장소로 본다. */
@@ -103,17 +105,22 @@ export async function searchPlacesMergedEn(
   const tour = tourR.status === "fulfilled" ? tourR.value.places : [];
   const merged = mergePlaces(kakao, tour);
   return {
-    places: hasNcpMapsKeys() ? await enrichEnglishAddresses(merged) : merged,
+    places:
+      hasJusoKey() || hasNcpMapsKeys()
+        ? await enrichEnglishAddresses(merged)
+        : merged,
     provider: "merged",
     query: params.query,
   };
 }
 
 /**
- * 카카오 출신 카드(한글 주소)에만 NCP geocoding으로 영문 주소를 보강한다.
+ * 카카오 출신 카드(한글 주소)에만 영문 주소를 폴백 체인으로 보강한다.
  * TourAPI 카드는 이미 영문 주소(addr1)를 가지므로 변환하지 않는다.
- * geocodeEnglishAddress는 실패 시 throw 대신 null을 주므로(영문 주소는
- * best-effort 보강), 변환 못 한 카드는 영문 주소 없이 한글만 남는다.
+ *
+ * 폴백 우선순위: juso(행안부 공식) → NCP. 둘 다 best-effort(throw 안 함)라
+ * ?? 로 합성된다. 각 provider는 키가 있을 때만 호출해 빈 키 fetch 낭비를 막는다.
+ * 둘 다 null/키없음이면 영문 주소 없이 한글만 남는다(graceful degrade).
  */
 export async function enrichEnglishAddresses(
   places: Place[],
@@ -123,7 +130,9 @@ export async function enrichEnglishAddresses(
       if (!p.id.startsWith("kakao-")) return p;
       const addr = p.roadAddress || p.address;
       if (!addr) return p;
-      const english = await geocodeEnglishAddress(addr);
+      const english =
+        (hasJusoKey() ? await geocodeEnglishAddressJuso(addr) : null) ??
+        (hasNcpMapsKeys() ? await geocodeEnglishAddress(addr) : null);
       return english ? { ...p, englishAddress: english } : p;
     }),
   );
