@@ -51,6 +51,7 @@ export function PlaceSearch({
   canShowClinic = false,
   canShowAir = false,
   canShowKids = false,
+  canShowTransit = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -67,6 +68,8 @@ export function PlaceSearch({
   canShowAir?: boolean;
   /** 카카오 키가 있어 근처 아이 놀 곳(키즈 장소)을 제공할 수 있는지 */
   canShowKids?: boolean;
+  /** ODsay 키가 있어 대중교통 길찾기 브리핑을 제공할 수 있는지 */
+  canShowTransit?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -252,6 +255,7 @@ export function PlaceSearch({
         canShowBike={canShowBike}
         canShowSubway={canShowSubway}
         canShowAir={canShowAir}
+        canShowTransit={canShowTransit}
         onBack={backToResults}
       />
     );

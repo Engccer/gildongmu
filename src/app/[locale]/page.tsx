@@ -6,6 +6,7 @@ import {
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasSeoulSubwayRealtimeKey,
+  hasOdsayKey,
 } from "@/lib/env";
 
 export default async function HomePage({
@@ -26,6 +27,7 @@ export default async function HomePage({
       canShowClinic={hasDataGoKrKey()}
       canShowAir={hasDataGoKrKey()}
       canShowKids={hasKakaoKey()}
+      canShowTransit={hasOdsayKey()}
     />
   );
 }

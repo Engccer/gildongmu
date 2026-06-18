@@ -14,6 +14,7 @@ import { SeoulSubwayArrival } from "./SeoulSubwayArrival";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { AirQuality } from "./AirQuality";
+import { TransitRouteBriefing } from "./TransitRouteBriefing";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -34,6 +35,7 @@ export function PlaceDetail({
   canShowBike,
   canShowSubway,
   canShowAir,
+  canShowTransit,
   onBack,
 }: {
   place: Place;
@@ -42,6 +44,7 @@ export function PlaceDetail({
   canShowBike: boolean;
   canShowSubway: boolean;
   canShowAir: boolean;
+  canShowTransit: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -102,6 +105,11 @@ export function PlaceDetail({
       <RouteLinks place={place} />
       {canBriefCarRoute && (
         <CarRouteBriefing
+          dest={{ lat: place.lat, lng: place.lng, name: place.name }}
+        />
+      )}
+      {canShowTransit && (
+        <TransitRouteBriefing
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
         />
       )}
