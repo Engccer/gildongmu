@@ -47,6 +47,10 @@ const envSchema = z.object({
   // ⚠ URL 인코딩된 키를 재인코딩하면 깨짐(data.go.kr serviceKey와 동형).
   ODSAY_API_KEY: z.string().min(1).optional(),
 
+  // 행안부 도로명주소 검색 API — business.juso.go.kr confmKey (서버 전용).
+  // 검색 응답에 공식 영문 주소(engAddr)·우편번호(zipNo)가 포함된다.
+  JUSO_CONFM_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -63,6 +67,7 @@ export const env = envSchema.parse({
   SEOUL_OPEN_DATA_KEY: process.env.SEOUL_OPEN_DATA_KEY,
   SEOUL_SUBWAY_REALTIME_KEY: process.env.SEOUL_SUBWAY_REALTIME_KEY,
   ODSAY_API_KEY: process.env.ODSAY_API_KEY,
+  JUSO_CONFM_KEY: process.env.JUSO_CONFM_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -109,4 +114,9 @@ export function hasSeoulSubwayRealtimeKey(): boolean {
 /** ODsay 대중교통 길찾기 사용 가능 여부 */
 export function hasOdsayKey(): boolean {
   return Boolean(env.ODSAY_API_KEY);
+}
+
+/** 행안부 도로명주소 검색 API 사용 가능 여부 */
+export function hasJusoKey(): boolean {
+  return Boolean(env.JUSO_CONFM_KEY);
 }
