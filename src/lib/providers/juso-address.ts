@@ -105,3 +105,32 @@ export async function geocodeEnglishAddressJuso(
     return null;
   }
 }
+
+/**
+ * 키워드 → 정규화된 주소 목록. 검색 본류라 에러를 throw한다(라우트가 502 분류).
+ * 무결과는 errorCode "0"이라 빈 배열로 정상 반환된다.
+ */
+export async function searchJusoAddresses(
+  keyword: string,
+  page = 1,
+  size = 10,
+): Promise<JusoAddress[]> {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("confmKey", env.JUSO_CONFM_KEY ?? "");
+  url.searchParams.set("currentPage", String(page));
+  url.searchParams.set("countPerPage", String(size));
+  url.searchParams.set("keyword", keyword);
+  url.searchParams.set("resultType", "json");
+
+  const res = await fetch(url, {
+    // 주소는 준정적 — 1시간 캐시(쿼터 보호, 카카오 주소검색 동형)
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`juso 주소 검색 실패: HTTP ${res.status} ${body}`);
+  }
+
+  const data = (await res.json()) as JusoApiResponse;
+  return normalizeJusoResults(data);
+}

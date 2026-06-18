@@ -3,6 +3,7 @@ import {
   normalizeJusoResults,
   extractEnglishAddressJuso,
   geocodeEnglishAddressJuso,
+  searchJusoAddresses,
 } from "../providers/juso-address";
 import type { JusoAddress } from "../types";
 
@@ -130,5 +131,45 @@ describe("geocodeEnglishAddressJuso (실패는 throw하지 않고 graceful null)
     vi.stubGlobal("fetch", fetchSpy);
     expect(await geocodeEnglishAddressJuso("  ")).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("searchJusoAddresses (검색 본류 — 에러는 throw)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("정상 응답을 JusoAddress[]로 반환한다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(ok([RAW])), { status: 200 })),
+    );
+    const list = await searchJusoAddresses("세종대로 110");
+    expect(list).toHaveLength(1);
+    expect(list[0].zipNo).toBe("04524");
+  });
+
+  it("무결과면 빈 배열(throw 아님)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(ok([])), { status: 200 })),
+    );
+    expect(await searchJusoAddresses("없는주소")).toEqual([]);
+  });
+
+  it("HTTP 에러는 throw한다(라우트가 502 분류)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("err", { status: 500 })),
+    );
+    await expect(searchJusoAddresses("세종대로")).rejects.toThrow();
+  });
+
+  it("errorCode가 0이 아니면 throw한다", async () => {
+    const raw = ok([]);
+    raw.results.common.errorCode = "E0001";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify(raw), { status: 200 })),
+    );
+    await expect(searchJusoAddresses("세종대로")).rejects.toThrow();
   });
 });
