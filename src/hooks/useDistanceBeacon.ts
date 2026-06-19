@@ -6,6 +6,7 @@ import {
   INITIAL_BEACON_STATE,
   type BeaconState,
   type BeaconAnnounce,
+  type AnnounceKind,
 } from "@/lib/beacon";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
@@ -35,7 +36,7 @@ export function useDistanceBeacon(
   const watchIdRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
   const lastToneAtRef = useRef(0);
-  const startingRef = useRef(false);
+  const prevKindRef = useRef<AnnounceKind | null>(null);
 
   const { playCloser, playFarther, playNearby, playTick, playStart, playStop } =
     useBeaconSound();
@@ -79,7 +80,7 @@ export function useDistanceBeacon(
       navigator.geolocation.clearWatch(watchIdRef.current);
     }
     watchIdRef.current = null;
-    startingRef.current = false;
+    prevKindRef.current = null;
     void wakeLock.release();
     stateRef.current = INITIAL_BEACON_STATE;
     if (mountedRef.current) {
@@ -94,9 +95,9 @@ export function useDistanceBeacon(
       setStatus("unsupported");
       return;
     }
-    if (watchIdRef.current !== null || startingRef.current) return;
-    startingRef.current = true;
+    if (watchIdRef.current !== null) return;
     stateRef.current = INITIAL_BEACON_STATE;
+    prevKindRef.current = null;
     setStatus("tracking");
     setAnnounce(null);
     playStart();
@@ -114,6 +115,12 @@ export function useDistanceBeacon(
           { lat: destLat, lng: destLng },
         );
         stateRef.current = result.state;
+        // weak가 연속될 때는 재방출하지 않는다(polite live region SR 스팸 방지).
+        // 비-weak→weak 전이 1회만 통지(신호 약함을 1회 알리되 반복 낭독 회피).
+        if (result.announce.kind === "weak" && prevKindRef.current === "weak") {
+          return;
+        }
+        prevKindRef.current = result.announce.kind;
         setAnnounce(result.announce);
         routeTone(result.announce.kind);
       },
@@ -127,17 +134,19 @@ export function useDistanceBeacon(
             navigator.geolocation.clearWatch(watchIdRef.current);
           }
           watchIdRef.current = null;
+          prevKindRef.current = null;
           void wakeLock.release();
           setStatus("denied");
           setAnnounce(null);
         } else {
-          // POSITION_UNAVAILABLE·TIMEOUT: 추적 유지, 신호 약함만 표시.
+          // POSITION_UNAVAILABLE·TIMEOUT: 추적 유지, 신호 약함만(전이 1회) 표시.
+          if (prevKindRef.current === "weak") return;
+          prevKindRef.current = "weak";
           setAnnounce({ kind: "weak", distance: 0, accuracy: 0, speak: false });
         }
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
-    startingRef.current = false;
   }, [supported, destLat, destLng, wakeLock, playStart, routeTone]);
 
   // 언마운트 정리.

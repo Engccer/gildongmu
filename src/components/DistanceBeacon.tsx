@@ -46,7 +46,7 @@ export function DistanceBeacon({
   const tracking = status === "tracking";
 
   // live region 텍스트: 발화 신호(speak)·권한 거부에서만 텍스트를 내고,
-  // hold·비발화 추세는 빈 문자열(tonick이 즉시 피드백을 준다).
+  // hold·비발화 추세는 빈 문자열(톤이 즉시 피드백을 준다).
   let live = "";
   if (status === "denied") {
     live = t("denied");
@@ -68,7 +68,7 @@ export function DistanceBeacon({
         type="button"
         onClick={toggle}
         aria-pressed={tracking}
-        className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-white"
+        className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
       >
         {tracking ? t("stop") : t("start")}
       </button>
