@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SubwayStationArrivals } from "@/lib/types";
 import { SubwayArrivalList } from "./SubwayArrivalList";
@@ -24,7 +24,6 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
   const t = useTranslations("subwayArrival");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
   const inFlightRef = useRef(false);
 
   async function load() {
@@ -92,7 +91,6 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
           className="mt-2 rounded-md border border-border p-3"
         >
           <h3
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"

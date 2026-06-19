@@ -36,7 +36,6 @@ export function TransitRouteBriefing({
   const [originQuery, setOriginQuery] = useState("");
   const [originResults, setOriginResults] = useState<Place[]>([]);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
   const originInputId = useId();
   const inFlight = useRef(false);
   const reqId = useRef(0);
@@ -205,7 +204,6 @@ export function TransitRouteBriefing({
           className="mt-2 rounded-md border border-gray-300 p-3"
         >
           <h3
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"

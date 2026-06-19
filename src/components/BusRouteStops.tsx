@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BusRouteStop } from "@/lib/types";
 
@@ -27,7 +27,6 @@ export function BusRouteStops({
   const t = useTranslations("bus");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
   const inFlightRef = useRef(false);
 
   async function load() {
@@ -86,7 +85,6 @@ export function BusRouteStops({
       {status.kind === "done" && (
         <div className="mt-1">
           <h4
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-xs font-semibold"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
 import { durationToMinutes, formatDistance } from "@/lib/format";
@@ -30,7 +30,6 @@ export function CarRouteBriefing({
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
 
   function requestBriefing() {
     if (
@@ -109,7 +108,6 @@ export function CarRouteBriefing({
         >
           {/* 상세(h2) 하위 섹션 — StationFacilities(h3)와 레벨 통일(h2→h3) */}
           <h3
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"

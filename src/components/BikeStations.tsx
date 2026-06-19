@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
@@ -32,7 +32,6 @@ export function BikeStations(
   const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
   const inFlightRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -155,7 +154,6 @@ export function BikeStations(
           className="mt-2 rounded-md border border-border p-3"
         >
           <h3
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { StationFacilities as Facilities } from "@/lib/types";
 
@@ -22,7 +22,6 @@ export function StationFacilities({ stationName }: { stationName: string }) {
   const t = useTranslations("station");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const headingId = useId();
   // in-flight 가드 — 클로저의 status.kind만으로는 같은 렌더에서 빠른
   // 더블클릭/Enter 반복 시 중복 fetch를 막지 못한다(setState 비동기). ref로
   // 동기 가드한다.
@@ -88,7 +87,6 @@ export function StationFacilities({ stationName }: { stationName: string }) {
           className="mt-2 rounded-md border border-border p-3"
         >
           <h3
-            id={headingId}
             ref={headingRef}
             tabIndex={-1}
             className="text-base font-semibold"

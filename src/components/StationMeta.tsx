@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
@@ -18,7 +18,6 @@ export function StationMeta({ stationName }: { stationName: string }) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
   const [meta, setMeta] = useState<Meta | null>(null);
-  const headingId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,7 +56,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
     <div
       className="mt-3 rounded-md border border-border p-3"
     >
-      <h3 id={headingId} className="text-base font-semibold">
+      <h3 className="text-base font-semibold">
         {t("heading")}
       </h3>
 

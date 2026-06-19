@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { AirPollutant, AirQuality as Air } from "@/lib/types";
 
@@ -14,7 +14,6 @@ import type { AirPollutant, AirQuality as Air } from "@/lib/types";
 export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
   const t = useTranslations("airQuality");
   const [air, setAir] = useState<Air | null>(null);
-  const headingId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,7 +48,7 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
     <div
       className="mt-3 rounded-md border border-border p-3"
     >
-      <h3 id={headingId} className="text-base font-semibold">
+      <h3 className="text-base font-semibold">
         {t("heading")}
       </h3>
 
