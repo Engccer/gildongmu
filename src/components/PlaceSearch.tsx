@@ -218,8 +218,8 @@ export function PlaceSearch({
 
   /**
    * 주소 검색 실행 — /api/address/search(juso) 호출, 결과/오류 상태 갱신.
-   * place performSearch와 동형의 reqId stale 가드. 주소 모드는 URL ?q= 동기화를
-   * 하지 않는다(첫 마운트 자동검색이 장소 모드를 가정 — V1 범위 결정).
+   * place performSearch와 동형의 reqId stale 가드. URL ?q=는 performSearch가
+   * 소유하므로 주소 검색은 별도 동기화하지 않는다(장소·주소가 같은 q를 공유).
    */
   const performAddressSearch = useCallback(async (raw: string) => {
     const q = raw.trim();
@@ -238,13 +238,28 @@ export function PlaceSearch({
     }
   }, []);
 
+  /**
+   * 검색 진입점 단일화 — 장소(performSearch)와, juso 키가 있으면 주소
+   * (performAddressSearch)를 함께 발사한다. runSearch(폼 제출)·handleTranscribed
+   * (음성)·첫 마운트 ?q= 자동검색 셋이 반드시 이 한 경로를 공유한다. 과거엔 세 곳에
+   * 같은 호출이 복붙돼 자동검색 경로만 주소 호출이 누락된 회귀가 있었다(통합 검색
+   * 후 ?q= 진입·새로고침·언어전환 시 주소 섹션 미노출) — 단일 함수로 묶어
+   * 구조적으로 차단한다.
+   */
+  const runQuerySearch = useCallback(
+    (raw: string) => {
+      void performSearch(raw);
+      if (canSearchAddress) void performAddressSearch(raw);
+    },
+    [performSearch, performAddressSearch, canSearchAddress],
+  );
+
   function runSearch() {
     if (status.kind === "loading") return;
     // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
     // 남지 않도록).
     setSpokenQuery(null);
-    void performSearch(query);
-    if (canSearchAddress) void performAddressSearch(query);
+    runQuerySearch(query);
   }
 
   /**
@@ -281,7 +296,7 @@ export function PlaceSearch({
     }
   }
 
-  // 음성 전사 결과 → 입력값 채우고 같은 performSearch 본체로 자동 검색.
+  // 음성 전사 결과 → 입력값 채우고 같은 runQuerySearch(장소+주소) 경로로 자동 검색.
   // performSearch는 reqIdRef 최신요청 가드·?q= URL 동기화·결과 헤딩 포커스를
   // 이미 보장하므로, 전사 자동검색도 그 보장을 그대로 물려받는다.
   // spokenQuery를 세팅해 로딩 라이브 메시지가 "'{질의}' 검색 중…"으로 나가
@@ -289,14 +304,13 @@ export function PlaceSearch({
   function handleTranscribed(text: string) {
     setSpokenQuery(text);
     setQuery(text);
-    void performSearch(text);
-    if (canSearchAddress) void performAddressSearch(text);
+    runQuerySearch(text);
   }
 
-  // 첫 마운트 시 ?q= 있으면 자동 검색.
+  // 첫 마운트 시 ?q= 있으면 자동 검색(장소+주소 동시 — runQuerySearch).
   // 입력값(query) 초기화는 위 lazy initializer가 이미 처리했다. 자동검색은
-  // queueMicrotask로 한 틱 미뤄 실행한다 — performSearch가 동기적으로 부르는
-  // setStatus({loading})가 effect 본문이 아니라 콜백에서 일어나게 하여
+  // queueMicrotask로 한 틱 미뤄 실행한다 — runQuerySearch가 동기적으로 부르는
+  // setStatus/setAddrStatus({loading})가 effect 본문이 아니라 콜백에서 일어나게 하여
   // react-hooks/set-state-in-effect(동기 setState로 인한 cascading render 경고)를
   // 정석대로 만족시킨다. 동작(=?q= 자동검색)은 그대로 보존된다.
   const didAutoSearch = useRef(false);
@@ -304,8 +318,8 @@ export function PlaceSearch({
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
     const q = new URLSearchParams(window.location.search).get("q");
-    if (q) queueMicrotask(() => void performSearch(q));
-  }, [performSearch]);
+    if (q) queueMicrotask(() => runQuerySearch(q));
+  }, [runQuerySearch]);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
   // juso 키 없으면 주소 검색을 안 하므로 장소 settled만으로 판정한다. 검색이 한 번도
