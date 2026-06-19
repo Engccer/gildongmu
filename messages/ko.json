@@ -4,7 +4,6 @@
     "tagline": "누구나 쓸 수 있는 대한민국 길찾기"
   },
   "nav": {
-    "languageLabel": "언어",
     "korean": "한국어",
     "english": "English",
     "spanish": "Español",
@@ -79,11 +78,8 @@
     "jibun": "지번"
   },
   "route": {
-    "heading": "{name}까지 길찾기",
-    "naverGroup": "네이버 지도로 {name}까지 길찾기",
     "naverLabel": "네이버 지도",
     "naverModeAction": "네이버 지도로 {mode} 길찾기",
-    "kakaoGroup": "카카오맵으로 {name}까지 길찾기",
     "kakaoLabel": "카카오맵",
     "kakaoModeAction": "카카오맵으로 {mode} 길찾기",
     "walk": "도보",

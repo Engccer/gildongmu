@@ -100,8 +100,7 @@ export function LanguageSwitcher() {
   const activeLabel = t(LABEL_KEY[active] ?? "english");
 
   return (
-    <nav
-      aria-label={t("languageLabel")}
+    <div
       ref={containerRef}
       className="relative"
     >
@@ -144,6 +143,6 @@ export function LanguageSwitcher() {
           })}
         </ul>
       )}
-    </nav>
+    </div>
   );
 }

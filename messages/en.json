@@ -4,7 +4,6 @@
     "tagline": "Navigation in Korea, usable by everyone"
   },
   "nav": {
-    "languageLabel": "Language",
     "korean": "한국어",
     "english": "English",
     "spanish": "Español",
@@ -79,11 +78,8 @@
     "jibun": "Lot number"
   },
   "route": {
-    "heading": "Directions to {name}",
-    "naverGroup": "Directions to {name} with Naver Map",
     "naverLabel": "Naver Map",
     "naverModeAction": "{mode} directions with Naver Map",
-    "kakaoGroup": "Directions to {name} with Kakao Map",
     "kakaoLabel": "Kakao Map",
     "kakaoModeAction": "{mode} directions with Kakao Map",
     "walk": "Walk",

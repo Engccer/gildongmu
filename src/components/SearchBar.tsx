@@ -44,7 +44,6 @@ export function SearchBar({
         onSubmit();
       }}
       className="flex gap-2"
-      role="search"
     >
       <label htmlFor="place-query" className="sr-only">
         {label ?? t("label")}

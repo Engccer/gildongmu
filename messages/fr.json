@@ -4,7 +4,6 @@
     "tagline": "La navigation en Corée, accessible à tous"
   },
   "nav": {
-    "languageLabel": "Langue",
     "korean": "한국어",
     "english": "English",
     "spanish": "Español",
@@ -79,11 +78,8 @@
     "jibun": "Numéro de lot"
   },
   "route": {
-    "heading": "Itinéraire vers {name}",
-    "naverGroup": "Itinéraire vers {name} avec Naver Map",
     "naverLabel": "Naver Map",
     "naverModeAction": "Itinéraire {mode} avec Naver Map",
-    "kakaoGroup": "Itinéraire vers {name} avec Kakao Map",
     "kakaoLabel": "Kakao Map",
     "kakaoModeAction": "Itinéraire {mode} avec Kakao Map",
     "walk": "À pied",

@@ -470,7 +470,7 @@ export function PlaceSearch({
   );
 
   return (
-    <section aria-label={t("search.label")}>
+    <>
       {isMockMode && (
         <p
           role="note"
@@ -560,6 +560,6 @@ export function PlaceSearch({
           )}
         </div>
       )}
-    </section>
+    </>
   );
 }

@@ -27,13 +27,9 @@ export function RouteLinks({ place }: { place: Place }) {
   const dest = { lat: place.lat, lng: place.lng, name: place.name };
 
   return (
-    <nav aria-label={t("route.heading", { name: place.name })}>
+    <div>
       {/* 네이버 지도 — 앱 딥링크 (nmap://) */}
-      <div
-        role="group"
-        aria-label={t("route.naverGroup", { name: place.name })}
-        className="mt-3"
-      >
+      <div className="mt-3">
         <p aria-hidden="true" className="text-xs font-medium opacity-70">
           {t("route.naverLabel")}
         </p>
@@ -70,11 +66,7 @@ export function RouteLinks({ place }: { place: Place }) {
       </div>
 
       {/* 카카오맵 — 웹 URL (모바일은 앱으로, 데스크톱은 웹 지도로 자연 폴백) */}
-      <div
-        role="group"
-        aria-label={t("route.kakaoGroup", { name: place.name })}
-        className="mt-3"
-      >
+      <div className="mt-3">
         <p aria-hidden="true" className="text-xs font-medium opacity-70">
           {t("route.kakaoLabel")}
         </p>
@@ -113,6 +105,6 @@ export function RouteLinks({ place }: { place: Place }) {
           )}
         </div>
       </div>
-    </nav>
+    </div>
   );
 }

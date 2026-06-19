@@ -80,8 +80,7 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
       </p>
 
       {status.kind === "done" && (
-        <section
-          aria-labelledby={headingId}
+        <div
           className="mt-2 rounded-md border border-border p-3"
         >
           <h3
@@ -136,7 +135,7 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
             ))}
           </div>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
-        </section>
+        </div>
       )}
     </div>
   );

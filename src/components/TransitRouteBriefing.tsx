@@ -201,8 +201,7 @@ export function TransitRouteBriefing({
       </p>
 
       {status.kind === "done" && (
-        <section
-          aria-labelledby={headingId}
+        <div
           className="mt-2 rounded-md border border-gray-300 p-3"
         >
           <h3
@@ -246,7 +245,7 @@ export function TransitRouteBriefing({
                 ))}
             </div>
           )}
-        </section>
+        </div>
       )}
     </div>
   );

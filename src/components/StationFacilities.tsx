@@ -84,8 +84,7 @@ export function StationFacilities({ stationName }: { stationName: string }) {
       </p>
 
       {status.kind === "done" && (
-        <section
-          aria-labelledby={headingId}
+        <div
           className="mt-2 rounded-md border border-border p-3"
         >
           <h3
@@ -116,7 +115,7 @@ export function StationFacilities({ stationName }: { stationName: string }) {
             </li>
           </ul>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
-        </section>
+        </div>
       )}
     </div>
   );

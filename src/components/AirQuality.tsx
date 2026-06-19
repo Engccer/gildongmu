@@ -46,8 +46,7 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
   if (!air) return null;
 
   return (
-    <section
-      aria-labelledby={headingId}
+    <div
       className="mt-3 rounded-md border border-border p-3"
     >
       <h3 id={headingId} className="text-base font-semibold">
@@ -67,7 +66,7 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
 
       <p className="mt-2 text-xs opacity-70">{t("asOf", { time: air.dataTime })}</p>
       <p className="mt-1 text-xs opacity-70">{t("source")}</p>
-    </section>
+    </div>
   );
 }
 

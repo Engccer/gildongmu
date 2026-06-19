@@ -4,7 +4,6 @@
     "tagline": "Navegación en Corea, accesible para todos"
   },
   "nav": {
-    "languageLabel": "Idioma",
     "korean": "한국어",
     "english": "English",
     "spanish": "Español",
@@ -79,11 +78,8 @@
     "jibun": "Número de lote"
   },
   "route": {
-    "heading": "Cómo llegar a {name}",
-    "naverGroup": "Cómo llegar a {name} con Naver Map",
     "naverLabel": "Naver Map",
     "naverModeAction": "Indicaciones en {mode} con Naver Map",
-    "kakaoGroup": "Cómo llegar a {name} con Kakao Map",
     "kakaoLabel": "Kakao Map",
     "kakaoModeAction": "Indicaciones en {mode} con Kakao Map",
     "walk": "A pie",

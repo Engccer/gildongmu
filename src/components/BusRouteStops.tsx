@@ -84,7 +84,7 @@ export function BusRouteStops({
       </p>
 
       {status.kind === "done" && (
-        <section aria-labelledby={headingId} className="mt-1">
+        <div className="mt-1">
           <h4
             id={headingId}
             ref={headingRef}
@@ -98,7 +98,7 @@ export function BusRouteStops({
               <li key={s.nodeId}>{s.name}</li>
             ))}
           </ol>
-        </section>
+        </div>
       )}
     </div>
   );

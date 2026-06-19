@@ -54,8 +54,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
   const isEn = prefersEnglish(locale);
 
   return (
-    <section
-      aria-labelledby={headingId}
+    <div
       className="mt-3 rounded-md border border-border p-3"
     >
       <h3 id={headingId} className="text-base font-semibold">
@@ -95,6 +94,6 @@ export function StationMeta({ stationName }: { stationName: string }) {
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>
-    </section>
+    </div>
   );
 }

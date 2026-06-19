@@ -104,9 +104,7 @@ export function CarRouteBriefing({
       </p>
 
       {status.kind === "done" && (
-        // 헤딩 텍스트를 aria-labelledby로 참조 — aria-label 중복 발표 방지
-        <section
-          aria-labelledby={headingId}
+        <div
           className="mt-2 rounded-md border border-gray-300 p-3"
         >
           {/* 상세(h2) 하위 섹션 — StationFacilities(h3)와 레벨 통일(h2→h3) */}
@@ -144,7 +142,7 @@ export function CarRouteBriefing({
             ))}
           </ol>
           <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
-        </section>
+        </div>
       )}
     </div>
   );
