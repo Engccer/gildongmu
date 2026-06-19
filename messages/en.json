@@ -25,7 +25,6 @@
     "combinedAnnouncement": "{place} places, {addr} addresses found",
     "addressSearching": "Searching addresses…",
     "addressResultsAnnouncement": "{count} addresses found",
-    "addressNoResults": "No matching address. Try a different term.",
     "addressError": "Address search failed. Please try again shortly.",
     "addressCoordFailed": "Couldn't locate coordinates for this address; cannot open details."
   },

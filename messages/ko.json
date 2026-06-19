@@ -25,7 +25,6 @@
     "combinedAnnouncement": "장소 {place}건, 주소 {addr}건",
     "addressSearching": "주소 검색 중…",
     "addressResultsAnnouncement": "주소 검색 결과 {count}건",
-    "addressNoResults": "해당 주소를 찾지 못했습니다. 다시 입력해 보세요.",
     "addressError": "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "addressCoordFailed": "이 주소의 좌표를 찾지 못해 상세를 열 수 없습니다."
   },
