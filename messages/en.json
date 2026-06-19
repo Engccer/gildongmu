@@ -326,6 +326,19 @@
       "stt_failed": "Voice recognition failed. Please try again."
     }
   },
+  "beacon": {
+    "heading": "Distance to destination",
+    "start": "Start distance tracking",
+    "stop": "Stop distance tracking",
+    "first": "About {meters}m to destination",
+    "closer": "{meters}m, getting closer",
+    "farther": "{meters}m, getting farther",
+    "nearby": "Near destination (about ±{meters}m)",
+    "weak": "Weak signal",
+    "denied": "Location permission required",
+    "screenHint": "Keep the screen on and the phone in hand. Guidance stops when the screen turns off.",
+    "straightLineNote": "Straight-line distance. Use a maps app for the actual route."
+  },
   "offline": {
     "heading": "You are offline",
     "body": "Check your connection and try again. Search works only online."

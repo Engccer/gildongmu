@@ -326,6 +326,19 @@
       "stt_failed": "El reconocimiento de voz falló. Inténtalo de nuevo."
     }
   },
+  "beacon": {
+    "heading": "Distancia al destino",
+    "start": "Iniciar seguimiento de distancia",
+    "stop": "Detener seguimiento de distancia",
+    "first": "Unos {meters} m hasta el destino",
+    "closer": "{meters} m, acercándose",
+    "farther": "{meters} m, alejándose",
+    "nearby": "Cerca del destino (unos ±{meters} m)",
+    "weak": "Señal débil",
+    "denied": "Se requiere permiso de ubicación",
+    "screenHint": "Mantén la pantalla encendida y el teléfono en la mano. La guía se detiene cuando la pantalla se apaga.",
+    "straightLineNote": "Distancia en línea recta. Usa una app de mapas para la ruta real."
+  },
   "offline": {
     "heading": "Estás sin conexión",
     "body": "Revisa tu conexión e inténtalo de nuevo. La búsqueda solo funciona en línea."

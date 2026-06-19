@@ -326,6 +326,19 @@
       "stt_failed": "Riconoscimento vocale non riuscito. Riprova."
     }
   },
+  "beacon": {
+    "heading": "Distanza dalla destinazione",
+    "start": "Avvia il monitoraggio della distanza",
+    "stop": "Ferma il monitoraggio della distanza",
+    "first": "Circa {meters} m alla destinazione",
+    "closer": "{meters} m, ti stai avvicinando",
+    "farther": "{meters} m, ti stai allontanando",
+    "nearby": "Vicino alla destinazione (circa ±{meters} m)",
+    "weak": "Segnale debole",
+    "denied": "Autorizzazione alla posizione richiesta",
+    "screenHint": "Tieni lo schermo acceso e il telefono in mano. La guida si interrompe quando lo schermo si spegne.",
+    "straightLineNote": "Distanza in linea d'aria. Usa un'app di mappe per il percorso reale."
+  },
   "offline": {
     "heading": "Sei offline",
     "body": "Controlla la connessione e riprova. La ricerca funziona solo online."
