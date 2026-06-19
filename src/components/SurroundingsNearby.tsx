@@ -1,0 +1,189 @@
+"use client";
+
+import { useId, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import type { SurroundingPlace } from "@/lib/types";
+import { formatDistance } from "@/lib/format";
+import { awaitGeolocation } from "@/lib/geolocation";
+
+type Status =
+  | { kind: "idle" }
+  | { kind: "locating" }
+  | { kind: "loading" }
+  | { kind: "empty" }
+  | { kind: "error" }
+  | { kind: "geoerror"; reason: "denied" | "unsupported" }
+  | { kind: "done"; places: SurroundingPlace[]; at: string };
+
+/**
+ * 내 주변 둘러보기(기능 A) — 홈 진입점. KidsPlacesNearby 동형(geolocation 공유
+ * 스토어 → 좌표 조회 → 자기완결 리스트). 차이: 각 항목에 **북 기준 8방위 방향**을
+ * 거리와 함께 낭독("편의점 · 남동쪽 · 약 40m"). BlindSquare식 상시 인지.
+ */
+export function SurroundingsNearby() {
+  const t = useTranslations("surroundingsNearby");
+  const tActions = useTranslations("actions");
+  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const headingId = useId();
+  const inFlightRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  async function fetchAt(lat: number, lng: number) {
+    setStatus({ kind: "loading" });
+    try {
+      const res = await fetch(`/api/places/around?lat=${lat}&lng=${lng}`, {
+        cache: "no-store",
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setStatus({ kind: "error" });
+        return;
+      }
+      const places = (body.places ?? []) as SurroundingPlace[];
+      if (places.length === 0) {
+        setStatus({ kind: "empty" });
+        return;
+      }
+      const at = new Date().toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      setStatus({ kind: "done", places, at });
+      requestAnimationFrame(() => headingRef.current?.focus());
+    } catch {
+      setStatus({ kind: "error" });
+    }
+  }
+
+  function load() {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    const done = () => {
+      inFlightRef.current = false;
+    };
+    setStatus({ kind: "locating" });
+    void awaitGeolocation().then((g) => {
+      if (g.status === "ready") {
+        void fetchAt(g.coords.lat, g.coords.lng).finally(done);
+      } else {
+        setStatus({
+          kind: "geoerror",
+          reason: g.status === "unsupported" ? "unsupported" : "denied",
+        });
+        done();
+      }
+    });
+  }
+
+  function close() {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
+  const busy = status.kind === "locating" || status.kind === "loading";
+  const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
+
+  const live =
+    status.kind === "locating"
+      ? t("locating")
+      : status.kind === "loading"
+        ? t("loading")
+        : status.kind === "empty"
+          ? t("empty")
+          : status.kind === "error"
+            ? t("error")
+            : status.kind === "geoerror"
+              ? status.reason === "denied"
+                ? t("geoDenied")
+                : t("geoUnsupported")
+              : status.kind === "done"
+                ? t("ready")
+                : "";
+
+  return (
+    <div className="mt-3">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={load}
+        aria-disabled={busy}
+        aria-busy={busy}
+        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
+      >
+        {buttonLabel}
+      </button>
+
+      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
+        {live}
+      </p>
+
+      {status.kind === "done" && (
+        <section
+          aria-labelledby={headingId}
+          className="mt-2 rounded-md border border-border p-3"
+        >
+          <h3
+            id={headingId}
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-base font-semibold"
+          >
+            {t("ready")}
+            <span className="ml-2 text-xs font-normal opacity-70">
+              {t("asOf", { time: status.at })}
+            </span>
+          </h3>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
+
+          <ul className="mt-2 space-y-4">
+            {status.places.map((p) => (
+              <li key={p.id}>
+                <p className="font-medium">
+                  <span lang="ko">{p.name}</span>{" "}
+                  <span className="text-xs font-normal opacity-70">
+                    {t("item", {
+                      category: t(`category.${p.category}`),
+                      direction: t(`direction.${p.bearing}`),
+                      distance: formatDistance(p.distanceMeters),
+                    })}
+                  </span>
+                </p>
+
+                {p.phone && (
+                  <p className="mt-1 text-sm">
+                    <a href={`tel:${p.phone}`} className="text-accent underline">
+                      {p.phone}
+                      <span className="ml-1 opacity-70">{t("call")}</span>
+                    </a>
+                  </p>
+                )}
+
+                {p.link && (
+                  <p className="mt-1 text-sm">
+                    <a
+                      href={p.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent underline"
+                    >
+                      {t("mapLink")}
+                    </a>
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs opacity-70">{t("source")}</p>
+        </section>
+      )}
+    </div>
+  );
+}
