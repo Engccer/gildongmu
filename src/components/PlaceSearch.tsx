@@ -340,7 +340,13 @@ export function PlaceSearch({
   const liveSpec: { key: string; values?: Record<string, number> } | null =
     addrStatus.kind === "coordError"
       ? { key: "search.addressCoordFailed" }
-      : combinedLiveMessage({ loading, placeCount, addrCount, spokenQuery });
+      : combinedLiveMessage({
+          loading,
+          placeCount,
+          addrCount,
+          spokenQuery,
+          placeErrored: status.kind === "error",
+        });
   const liveMessage = liveSpec
     ? liveSpec.key === "search.searchingFor"
       ? t(liveSpec.key, { query: spokenQuery ?? "" })
@@ -402,6 +408,7 @@ export function PlaceSearch({
     placeCount: status.kind === "done" ? places.length : null,
     addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
     spokenQuery: null,
+    placeErrored: status.kind === "error",
   });
   const resultsHeading = headingSpec
     ? t(headingSpec.key, headingSpec.values ?? {})
@@ -430,7 +437,7 @@ export function PlaceSearch({
       {filtered.length === 0 ? (
         <p className="mt-3">{t("search.noFilterResults")}</p>
       ) : (
-        <ResultList groups={groups} onOpen={openDetail} />
+        <ResultList groups={groups} onOpen={openDetail} headingLevel={showSectionHeadings ? 4 : 3} />
       )}
     </>
   );

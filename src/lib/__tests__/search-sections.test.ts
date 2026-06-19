@@ -21,8 +21,14 @@ describe("orderResultSections", () => {
 });
 
 describe("combinedLiveMessage", () => {
-  const base = { loading: false, placeCount: null, addrCount: null, spokenQuery: null };
-  it("idle(둘 다 null, 비로딩)이면 null", () => {
+  const base = {
+    loading: false,
+    placeCount: null,
+    addrCount: null,
+    spokenQuery: null,
+    placeErrored: false, // 시그니처 변경 반영
+  };
+  it("idle(둘 다 null, 비로딩, 에러 아님)이면 null", () => {
     expect(combinedLiveMessage(base)).toBeNull();
   });
   it("로딩이면 searching", () => {
@@ -58,5 +64,34 @@ describe("combinedLiveMessage", () => {
       key: "search.resultsAnnouncement",
       values: { count: 0 },
     });
+  });
+
+  // --- I-1: 에러 케이스 ---
+  it("장소 에러 + 결과 없음이면 search.error 통지(무음 회귀 방지)", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeErrored: true,
+        placeCount: null,
+        addrCount: null,
+        loading: false,
+      }),
+    ).toEqual({ key: "search.error" });
+  });
+  it("장소 에러여도 주소 결과 있으면 주소 통지 우선", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeErrored: true,
+        placeCount: null,
+        addrCount: 3,
+        loading: false,
+      }),
+    ).toEqual({ key: "search.addressResultsAnnouncement", values: { count: 3 } });
+  });
+  it("로딩 중엔 에러보다 searching 우선", () => {
+    expect(
+      combinedLiveMessage({ ...base, placeErrored: true, loading: true }),
+    ).toEqual({ key: "search.searching" });
   });
 });
