@@ -342,5 +342,43 @@
   "offline": {
     "heading": "Vous êtes hors ligne",
     "body": "Vérifiez votre connexion et réessayez. La recherche ne fonctionne qu'en ligne."
+  },
+  "surroundingsNearby": {
+    "button": "Explorer les environs",
+    "refresh": "Actualiser",
+    "locating": "Localisation en cours…",
+    "loading": "Recherche de lieux à proximité…",
+    "empty": "Aucun lieu à signaler à proximité.",
+    "error": "Impossible de charger les lieux proches. Veuillez réessayer.",
+    "ready": "Lieux près de vous.",
+    "asOf": "à {time}",
+    "item": "{category} · {direction} · environ {distance}",
+    "category": {
+      "convenience": "supérette",
+      "subway": "station de métro",
+      "restaurant": "restaurant",
+      "cafe": "café",
+      "bank": "banque",
+      "pharmacy": "pharmacie",
+      "hospital": "hôpital",
+      "mart": "supermarché",
+      "public": "service public",
+      "attraction": "attraction"
+    },
+    "direction": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SO",
+      "w": "O",
+      "nw": "NO"
+    },
+    "call": "Appeler",
+    "mapLink": "Voir sur Kakao Map",
+    "geoDenied": "L'autorisation de localisation est requise. Veuillez l'autoriser dans votre navigateur.",
+    "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
+    "source": "Source : recherche de lieux Kakao Map. La direction est un cap (depuis le nord)."
   }
 }

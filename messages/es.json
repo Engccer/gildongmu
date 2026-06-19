@@ -342,5 +342,43 @@
   "offline": {
     "heading": "Estás sin conexión",
     "body": "Revisa tu conexión e inténtalo de nuevo. La búsqueda solo funciona en línea."
+  },
+  "surroundingsNearby": {
+    "button": "Explorar alrededores",
+    "refresh": "Actualizar",
+    "locating": "Obteniendo tu ubicación…",
+    "loading": "Buscando lugares cercanos…",
+    "empty": "No hay lugares que anunciar cerca.",
+    "error": "No se pudieron cargar los lugares cercanos. Inténtalo de nuevo.",
+    "ready": "Lugares cerca de ti.",
+    "asOf": "a las {time}",
+    "item": "{category} · {direction} · unos {distance}",
+    "category": {
+      "convenience": "tienda de conveniencia",
+      "subway": "estación de metro",
+      "restaurant": "restaurante",
+      "cafe": "cafetería",
+      "bank": "banco",
+      "pharmacy": "farmacia",
+      "hospital": "hospital",
+      "mart": "supermercado",
+      "public": "oficina pública",
+      "attraction": "atracción"
+    },
+    "direction": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SO",
+      "w": "O",
+      "nw": "NO"
+    },
+    "call": "Llamar",
+    "mapLink": "Ver en Kakao Map",
+    "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
+    "geoUnsupported": "Este navegador no admite la ubicación.",
+    "source": "Fuente: búsqueda de lugares de Kakao Map. La dirección es un rumbo (desde el norte)."
   }
 }

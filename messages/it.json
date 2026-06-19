@@ -342,5 +342,43 @@
   "offline": {
     "heading": "Sei offline",
     "body": "Controlla la connessione e riprova. La ricerca funziona solo online."
+  },
+  "surroundingsNearby": {
+    "button": "Esplora dintorni",
+    "refresh": "Aggiorna",
+    "locating": "Rilevamento posizione…",
+    "loading": "Ricerca luoghi nelle vicinanze…",
+    "empty": "Nessun luogo da segnalare nelle vicinanze.",
+    "error": "Impossibile caricare i luoghi vicini. Riprova.",
+    "ready": "Luoghi vicino a te.",
+    "asOf": "alle {time}",
+    "item": "{category} · {direction} · circa {distance}",
+    "category": {
+      "convenience": "minimarket",
+      "subway": "stazione della metro",
+      "restaurant": "ristorante",
+      "cafe": "caffè",
+      "bank": "banca",
+      "pharmacy": "farmacia",
+      "hospital": "ospedale",
+      "mart": "supermercato",
+      "public": "ufficio pubblico",
+      "attraction": "attrazione"
+    },
+    "direction": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SO",
+      "w": "O",
+      "nw": "NO"
+    },
+    "call": "Chiama",
+    "mapLink": "Vedi su Kakao Map",
+    "geoDenied": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso nel browser.",
+    "geoUnsupported": "Questo browser non supporta la geolocalizzazione.",
+    "source": "Fonte: ricerca luoghi Kakao Map. La direzione è un rilevamento (dal nord)."
   }
 }

@@ -342,5 +342,43 @@
   "offline": {
     "heading": "You are offline",
     "body": "Check your connection and try again. Search works only online."
+  },
+  "surroundingsNearby": {
+    "button": "Explore nearby",
+    "refresh": "Refresh",
+    "locating": "Getting your location…",
+    "loading": "Finding places nearby…",
+    "empty": "No places to announce nearby.",
+    "error": "Could not load nearby places. Please try again.",
+    "ready": "Places near you.",
+    "asOf": "as of {time}",
+    "item": "{category} · {direction} · about {distance}",
+    "category": {
+      "convenience": "convenience store",
+      "subway": "subway station",
+      "restaurant": "restaurant",
+      "cafe": "cafe",
+      "bank": "bank",
+      "pharmacy": "pharmacy",
+      "hospital": "hospital",
+      "mart": "supermarket",
+      "public": "public office",
+      "attraction": "attraction"
+    },
+    "direction": {
+      "n": "N",
+      "ne": "NE",
+      "e": "E",
+      "se": "SE",
+      "s": "S",
+      "sw": "SW",
+      "w": "W",
+      "nw": "NW"
+    },
+    "call": "Call",
+    "mapLink": "View on Kakao Map",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser does not support location.",
+    "source": "Source: Kakao Map place search. Direction is a compass bearing (from North)."
   }
 }
