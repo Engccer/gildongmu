@@ -15,6 +15,7 @@ import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { AirQuality } from "./AirQuality";
 import { TransitRouteBriefing } from "./TransitRouteBriefing";
+import { DistanceBeacon } from "./DistanceBeacon";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -104,6 +105,7 @@ export function PlaceDetail({
       </div>
 
       <RouteLinks place={place} />
+      <DistanceBeacon dest={{ lat: place.lat, lng: place.lng, name: place.name }} />
       {canBriefCarRoute && (
         <CarRouteBriefing
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
