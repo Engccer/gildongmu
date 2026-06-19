@@ -15,10 +15,10 @@ import type { AddressMatch, JusoAddress, Place, PlaceSearchResult } from "@/lib/
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
-import { SearchKindToggle } from "./SearchKindToggle";
 import { AddressResultList } from "./AddressResultList";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
@@ -91,9 +91,6 @@ export function PlaceSearch({
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
-  // 검색 종류 토글(장소/주소). 주소 모드는 juso 검색 → 좌표(카카오) → 상세.
-  const [searchKind, setSearchKind] = useState<"place" | "address">("place");
-  const [addrQuery, setAddrQuery] = useState("");
   const [addrStatus, setAddrStatus] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -105,9 +102,8 @@ export function PlaceSearch({
   const addrReqIdRef = useRef(0);
   // 좌표 변환 in-flight 가드(더블클릭 중복 진입 방지 — aria-disabled 보강 패턴).
   const addrResolveRef = useRef(false);
-  const addrHeadingRef = useRef<HTMLHeadingElement>(null);
   // 음성으로 검색한 질의어(없으면 null=타이핑 검색). 로딩 라이브 메시지를
-  // 음성일 때 "‘{질의}’ 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
+  // 음성일 때 "'{질의}' 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
   // 통지한다(VoiceRecordButton의 assertive announce 제거와 한 쌍 — a11y C1).
   const [spokenQuery, setSpokenQuery] = useState<string | null>(null);
   // 현재 위치 — 공유 스토어에서 파생한다. 결과를 가까운 순으로 정렬하는 데 쓰며,
@@ -128,12 +124,6 @@ export function PlaceSearch({
     statusRef.current = status;
   }, [status]);
 
-  // popstate(백버튼 복귀) 핸들러는 마운트 시점 클로저라, 복귀 시 현재 모드와
-  // 주소 결과 상태를 최신값으로 읽기 위해 ref로 미러링한다(place statusRef 동형).
-  const searchKindRef = useRef(searchKind);
-  useEffect(() => {
-    searchKindRef.current = searchKind;
-  }, [searchKind]);
   const addrStatusRef = useRef(addrStatus);
   useEffect(() => {
     addrStatusRef.current = addrStatus;
@@ -144,7 +134,9 @@ export function PlaceSearch({
   // 렌더되는 done 상태일 때만 리렌더 후(rAF 한 틱) 헤딩으로 옮긴다. ref가 아직
   // 없을 수 있으니 옵셔널 체이닝으로 가드한다.
   function focusResultsHeadingIfDone() {
-    if (statusRef.current.kind !== "done") return;
+    const hasResults =
+      statusRef.current.kind === "done" || addrStatusRef.current.kind === "done";
+    if (!hasResults) return;
     requestAnimationFrame(() => resultsHeadingRef.current?.focus());
   }
 
@@ -152,15 +144,9 @@ export function PlaceSearch({
   useEffect(() => {
     function onPop() {
       setSelected(null);
-      // 복귀 시 활성 모드의 결과 헤딩으로 포커스를 옮긴다(상세 언마운트로 포커스가
+      // 복귀 시 결과 헤딩으로 포커스를 옮긴다(상세 언마운트로 포커스가
       // body로 유실되는 것 방지 — 접근성 1급).
-      if (searchKindRef.current === "address") {
-        if (addrStatusRef.current.kind === "done") {
-          requestAnimationFrame(() => addrHeadingRef.current?.focus());
-        }
-      } else {
-        focusResultsHeadingIfDone();
-      }
+      focusResultsHeadingIfDone();
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -222,7 +208,6 @@ export function PlaceSearch({
         // 최신 요청만 반영 — 늦게 끝난 이전 요청은 여기서 폐기.
         if (reqIdRef.current !== myId) return;
         setStatus({ kind: "done", result });
-        requestAnimationFrame(() => resultsHeadingRef.current?.focus());
       } catch {
         if (reqIdRef.current !== myId) return;
         setStatus({ kind: "error" });
@@ -230,14 +215,6 @@ export function PlaceSearch({
     },
     [locale],
   );
-
-  function runSearch() {
-    if (status.kind === "loading") return;
-    // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
-    // 남지 않도록).
-    setSpokenQuery(null);
-    void performSearch(query);
-  }
 
   /**
    * 주소 검색 실행 — /api/address/search(juso) 호출, 결과/오류 상태 갱신.
@@ -255,16 +232,19 @@ export function PlaceSearch({
       const data = (await res.json()) as { addresses: JusoAddress[] };
       if (addrReqIdRef.current !== myId) return;
       setAddrStatus({ kind: "done", addresses: data.addresses });
-      requestAnimationFrame(() => addrHeadingRef.current?.focus());
     } catch {
       if (addrReqIdRef.current !== myId) return;
       setAddrStatus({ kind: "error" });
     }
   }, []);
 
-  function runAddressSearch() {
-    if (addrStatus.kind === "loading") return;
-    void performAddressSearch(addrQuery);
+  function runSearch() {
+    if (status.kind === "loading") return;
+    // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
+    // 남지 않도록).
+    setSpokenQuery(null);
+    void performSearch(query);
+    if (canSearchAddress) void performAddressSearch(query);
   }
 
   /**
@@ -304,12 +284,13 @@ export function PlaceSearch({
   // 음성 전사 결과 → 입력값 채우고 같은 performSearch 본체로 자동 검색.
   // performSearch는 reqIdRef 최신요청 가드·?q= URL 동기화·결과 헤딩 포커스를
   // 이미 보장하므로, 전사 자동검색도 그 보장을 그대로 물려받는다.
-  // spokenQuery를 세팅해 로딩 라이브 메시지가 "‘{질의}’ 검색 중…"으로 나가
+  // spokenQuery를 세팅해 로딩 라이브 메시지가 "'{질의}' 검색 중…"으로 나가
   // 인식 텍스트를 polite 한 채널로 통지한다(input에도 채워 시각·편집 확인).
   function handleTranscribed(text: string) {
     setSpokenQuery(text);
     setQuery(text);
     void performSearch(text);
+    if (canSearchAddress) void performAddressSearch(text);
   }
 
   // 첫 마운트 시 ?q= 있으면 자동 검색.
@@ -326,31 +307,45 @@ export function PlaceSearch({
     if (q) queueMicrotask(() => void performSearch(q));
   }, [performSearch]);
 
-  const liveMessage =
-    status.kind === "loading"
-      ? spokenQuery
-        ? t("search.searchingFor", { query: spokenQuery })
-        : t("search.searching")
-      : status.kind === "error"
-        ? t("search.error")
-        : status.kind === "done"
-          ? t("search.resultsAnnouncement", {
-              count: status.result.places.length,
-            })
-          : "";
+  // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
+  // juso 키 없으면 주소 검색을 안 하므로 장소 settled만으로 판정한다. 검색이 한 번도
+  // 일어나지 않은 idle에서는 옮기지 않는다(둘 다 idle).
+  const focusedForSearchRef = useRef(false);
+  useEffect(() => {
+    const placeSettled = status.kind === "done" || status.kind === "error";
+    const addrSettled =
+      !canSearchAddress ||
+      addrStatus.kind === "done" ||
+      addrStatus.kind === "error";
+    const anyStarted =
+      status.kind !== "idle" ||
+      (canSearchAddress && addrStatus.kind !== "idle");
+    if (placeSettled && addrSettled && anyStarted) {
+      if (!focusedForSearchRef.current) {
+        focusedForSearchRef.current = true;
+        requestAnimationFrame(() => resultsHeadingRef.current?.focus());
+      }
+    } else if (status.kind === "loading" || addrStatus.kind === "loading") {
+      // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
+      focusedForSearchRef.current = false;
+    }
+  }, [status.kind, addrStatus.kind, canSearchAddress]);
 
-  const addrLiveMessage =
-    addrStatus.kind === "loading"
-      ? t("search.addressSearching")
-      : addrStatus.kind === "error"
-        ? t("search.addressError")
-        : addrStatus.kind === "coordError"
-          ? t("search.addressCoordFailed")
-          : addrStatus.kind === "done"
-            ? t("search.addressResultsAnnouncement", {
-                count: addrStatus.addresses.length,
-              })
-            : "";
+  // 단일 polite 채널 통지. coordError(주소 선택 후 좌표 실패)는 검색 완료 통지와
+  // 시점이 달라 우선 노출.
+  const placeCount = status.kind === "done" ? status.result.places.length : null;
+  const addrCount =
+    addrStatus.kind === "done" ? addrStatus.addresses.length : null;
+  const loading = status.kind === "loading" || addrStatus.kind === "loading";
+  const liveSpec: { key: string; values?: Record<string, number> } | null =
+    addrStatus.kind === "coordError"
+      ? { key: "search.addressCoordFailed" }
+      : combinedLiveMessage({ loading, placeCount, addrCount, spokenQuery });
+  const liveMessage = liveSpec
+    ? liveSpec.key === "search.searchingFor"
+      ? t(liveSpec.key, { query: spokenQuery ?? "" })
+      : t(liveSpec.key, liveSpec.values ?? {})
+    : "";
 
   // 상세 화면이면 상세만 렌더(같은 페이지 뷰 전환).
   if (selected) {
@@ -393,6 +388,61 @@ export function PlaceSearch({
   );
   const groups = groupByCategory(filtered);
 
+  // 두 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용).
+  const placeResultCount = status.kind === "done" ? places.length : 0;
+  const addrResultCount =
+    addrStatus.kind === "done" ? addrStatus.addresses.length : 0;
+  const sectionOrder = orderResultSections(placeResultCount, addrResultCount);
+  // 두 섹션이 모두 렌더될 때만 구분 헤딩(단일 섹션은 오늘처럼 헤딩 없이).
+  const showSectionHeadings = sectionOrder.length === 2;
+
+  // 결과 영역 최상단 헤딩 텍스트 — 합산 통지와 동일 규칙.
+  const headingSpec = combinedLiveMessage({
+    loading: false,
+    placeCount: status.kind === "done" ? places.length : null,
+    addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
+    spokenQuery: null,
+  });
+  const resultsHeading = headingSpec
+    ? t(headingSpec.key, headingSpec.values ?? {})
+    : t("search.resultsAnnouncement", { count: 0 });
+
+  // 장소 섹션 본체(기존 칩 + ResultList). places 0이면 sectionOrder가 제외하므로
+  // 여기 도달 시 places>0 가정.
+  const placeSectionBody = (
+    <>
+      <div className="mt-3 flex flex-col gap-2">
+        <ChipFilter
+          groupLabel={t("category.filterLabel")}
+          allLabel={t("category.all")}
+          items={bucketItems}
+          selected={bucket}
+          onSelect={setBucket}
+        />
+        <ChipFilter
+          groupLabel={t("region.filterLabel")}
+          allLabel={t("region.all")}
+          items={regionItems}
+          selected={region}
+          onSelect={setRegion}
+        />
+      </div>
+      {filtered.length === 0 ? (
+        <p className="mt-3">{t("search.noFilterResults")}</p>
+      ) : (
+        <ResultList groups={groups} onOpen={openDetail} />
+      )}
+    </>
+  );
+
+  // 주소 섹션 본체. addrStatus.done && length>0일 때만 sectionOrder에 포함.
+  const addressSectionBody = (
+    <AddressResultList
+      addresses={addrStatus.kind === "done" ? addrStatus.addresses : []}
+      onSelect={onSelectAddress}
+    />
+  );
+
   return (
     <section aria-label={t("search.label")}>
       {isMockMode && (
@@ -404,136 +454,80 @@ export function PlaceSearch({
         </p>
       )}
 
-      {canSearchAddress && (
-        <SearchKindToggle value={searchKind} onChange={setSearchKind} />
+      <SearchBar
+        query={query}
+        onQueryChange={setQuery}
+        onSubmit={runSearch}
+        busy={status.kind === "loading"}
+        onTranscribed={handleTranscribed}
+      />
+
+      <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
+        {liveMessage}
+      </p>
+
+      {/* 검색 전 첫 화면 진입점 — 내 주변 5종(키 게이트). idle일 때만. */}
+      {canShowSubway && status.kind === "idle" && (
+        <div className="mt-4">
+          <SubwayArrivalsNearby />
+        </div>
+      )}
+      {canShowBus && status.kind === "idle" && (
+        <div className="mt-4">
+          <BusArrivals mode="current" />
+        </div>
+      )}
+      {canShowBike && status.kind === "idle" && (
+        <div className="mt-4">
+          <BikeStations mode="current" />
+        </div>
+      )}
+      {canShowClinic && status.kind === "idle" && (
+        <div className="mt-4">
+          <NightClinicsNearby />
+        </div>
+      )}
+      {canShowKids && status.kind === "idle" && (
+        <div className="mt-4">
+          <KidsPlacesNearby />
+        </div>
       )}
 
-      {searchKind === "place" ? (
-        <>
-          <SearchBar
-            query={query}
-            onQueryChange={setQuery}
-            onSubmit={runSearch}
-            busy={status.kind === "loading"}
-            onTranscribed={handleTranscribed}
-          />
-
-          <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
-            {liveMessage}
-          </p>
-
-          {/* 검색 전 첫 화면 진입점 — 현재 위치 기준 내 주변 대중교통/공공자전거(키 게이트).
-              status.kind === "idle"일 때만 노출해 결과 목록·상세와 겹치지 않게 한다
-              (상세는 selected 단축으로 이 return 자체에 도달하지 않는다).
-              순서: 지하철 → 버스 → 따릉이 → 소아 야간·휴일 진료 → 아이 놀 곳. */}
-          {canShowSubway && status.kind === "idle" && (
-            <div className="mt-4">
-              <SubwayArrivalsNearby />
-            </div>
-          )}
-          {canShowBus && status.kind === "idle" && (
-            <div className="mt-4">
-              <BusArrivals mode="current" />
-            </div>
-          )}
-          {canShowBike && status.kind === "idle" && (
-            <div className="mt-4">
-              <BikeStations mode="current" />
-            </div>
-          )}
-          {canShowClinic && status.kind === "idle" && (
-            <div className="mt-4">
-              <NightClinicsNearby />
-            </div>
-          )}
-          {canShowKids && status.kind === "idle" && (
-            <div className="mt-4">
-              <KidsPlacesNearby />
-            </div>
-          )}
-
-          {status.kind === "done" && (
-            <div className="mt-4">
-              <h2
-                ref={resultsHeadingRef}
-                tabIndex={-1}
-                className="text-xl font-semibold"
-              >
-                {t("search.resultsAnnouncement", {
-                  count: status.result.places.length,
-                })}
-              </h2>
-              {places.length === 0 ? (
-                <p className="mt-2">{t("search.noResults")}</p>
-              ) : (
-                <>
-                  <div className="mt-3 flex flex-col gap-2">
-                    <ChipFilter
-                      groupLabel={t("category.filterLabel")}
-                      allLabel={t("category.all")}
-                      items={bucketItems}
-                      selected={bucket}
-                      onSelect={setBucket}
-                    />
-                    <ChipFilter
-                      groupLabel={t("region.filterLabel")}
-                      allLabel={t("region.all")}
-                      items={regionItems}
-                      selected={region}
-                      onSelect={setRegion}
-                    />
-                  </div>
-                  {filtered.length === 0 ? (
-                    <p className="mt-3">{t("search.noFilterResults")}</p>
-                  ) : (
-                    <ResultList groups={groups} onOpen={openDetail} />
+      {(status.kind === "done" || addrStatus.kind === "done") && (
+        <div className="mt-4">
+          <h2
+            ref={resultsHeadingRef}
+            tabIndex={-1}
+            className="text-xl font-semibold"
+          >
+            {resultsHeading}
+          </h2>
+          {sectionOrder.length === 0 ? (
+            <p className="mt-2">{t("search.noResults")}</p>
+          ) : (
+            sectionOrder.map((kind) =>
+              kind === "place" ? (
+                <section key="place" className="mt-4">
+                  {showSectionHeadings && (
+                    <h3 className="text-lg font-semibold">
+                      {t("search.placeSection")}
+                    </h3>
                   )}
-                </>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <SearchBar
-            query={addrQuery}
-            onQueryChange={setAddrQuery}
-            onSubmit={runAddressSearch}
-            busy={addrStatus.kind === "loading"}
-            onTranscribed={(text) => {
-              setAddrQuery(text);
-              void performAddressSearch(text);
-            }}
-            label={t("search.addressLabel")}
-            placeholder={t("search.addressPlaceholder")}
-          />
-
-          <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
-            {addrLiveMessage}
-          </p>
-
-          {addrStatus.kind === "done" && (
-            <div className="mt-4">
-              <h2
-                ref={addrHeadingRef}
-                tabIndex={-1}
-                className="text-xl font-semibold"
-              >
-                {t("search.addressResultsAnnouncement", {
-                  count: addrStatus.addresses.length,
-                })}
-              </h2>
-              {addrStatus.addresses.length === 0 ? (
-                <p className="mt-2">{t("search.addressNoResults")}</p>
+                  {placeSectionBody}
+                </section>
               ) : (
-                <AddressResultList
-                  addresses={addrStatus.addresses}
-                  onSelect={onSelectAddress}
-                />
-              )}
-            </div>
+                <section key="address" className="mt-4">
+                  {showSectionHeadings && (
+                    <h3 className="text-lg font-semibold">
+                      {t("search.addressSection")}
+                    </h3>
+                  )}
+                  {addressSectionBody}
+                </section>
+              ),
+            )
           )}
-        </>
+        </div>
       )}
     </section>
   );
