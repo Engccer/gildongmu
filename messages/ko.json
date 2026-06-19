@@ -6,7 +6,10 @@
   "nav": {
     "languageLabel": "언어",
     "korean": "한국어",
-    "english": "English"
+    "english": "English",
+    "spanish": "Español",
+    "french": "Français",
+    "italian": "Italiano"
   },
   "search": {
     "label": "장소 검색",
@@ -313,8 +316,6 @@
     "stop": "받아쓰기 정지",
     "recognizing": "받아쓰는 중",
     "notSupported": "이 브라우저는 음성 입력을 지원하지 않습니다",
-    "started": "받아쓰기를 시작합니다. 다시 누르면 정지, Esc로 취소합니다.",
-    "stopped": "받아쓰기를 정지하고 인식합니다.",
     "cancelled": "받아쓰기를 취소했습니다.",
     "errors": {
       "mic_denied": "마이크 권한이 필요합니다. 브라우저 설정에서 허용해 주세요.",

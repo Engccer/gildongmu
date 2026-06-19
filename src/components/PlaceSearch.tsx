@@ -13,6 +13,7 @@ import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import { sortPlacesByDistance } from "@/lib/geo";
 import type { AddressMatch, JusoAddress, Place, PlaceSearchResult } from "@/lib/types";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
@@ -201,7 +202,7 @@ export function PlaceSearch({
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
         const res = await fetch(
-          `/api/places?query=${encodeURIComponent(q)}&lang=${locale}`,
+          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = (await res.json()) as PlaceSearchResult;
@@ -286,7 +287,7 @@ export function PlaceSearch({
         jusoAddressToPlace(
           addr,
           { lat: coord.lat, lng: coord.lng },
-          locale === "en" ? "en" : "ko",
+          dataLocale(locale),
         ),
       );
     } catch {

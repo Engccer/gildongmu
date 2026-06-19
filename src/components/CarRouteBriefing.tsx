@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
 import { durationToMinutes, formatDistance } from "@/lib/format";
+import { dataLocale } from "@/lib/data-locale";
 
 type Status =
   | { kind: "idle" }
@@ -48,9 +49,11 @@ export function CarRouteBriefing({
         setStatus({ kind: "loading" });
         try {
           const origin = `${position.coords.latitude},${position.coords.longitude}`;
-          // en 로케일은 NCP 영문 턴바이턴으로 라우팅(라우트가 lang+키로 디스패치)
+          // 비한국어 로케일(en/es/fr/it)은 NCP 영문 턴바이턴으로 라우팅한다 —
+          // 카카오모빌리티는 ko 안내문 전용이라 외국인에겐 영문이 정본. dataLocale가
+          // es/fr/it를 en으로 합쳐 라우트의 lang=en 디스패치를 태운다.
           const res = await fetch(
-            `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}&lang=${locale}`,
+            `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}&lang=${dataLocale(locale)}`,
           );
           const body = await res.json();
           if (!res.ok) {

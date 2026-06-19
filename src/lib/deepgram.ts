@@ -1,3 +1,5 @@
+import type { SttLocale } from "./stt-validate";
+
 /**
  * Deepgram STT 응답을 앱 공통 형태로 정규화한다(React/Next 비의존).
  * 전사 텍스트가 비면 null(인식 실패) — 가짜 결과를 만들지 않는다.
@@ -19,9 +21,10 @@ export interface Transcript {
  *
  * 모델은 현행 `nova-3` — `nova-2-conversationalai`는 deprecated되어 Deepgram이
  * 조용히 nova-3로 라우팅하며, ko 정확도도 nova-3가 우위였다(실측: nova-2 "길동 맛집
- * 검색" vs nova-3 "강동구 길동 맛집 검색").
+ * 검색" vs nova-3 "강동구 길동 맛집 검색"). nova-3는 ko/en/es/fr/it를 모두 인식하므로
+ * 외국인 로케일도 영문이 아니라 자국어로 발화·전사된다(BCP-47 로케일 그대로 전달).
  */
-export function buildDeepgramParams(locale: "ko" | "en"): URLSearchParams {
+export function buildDeepgramParams(locale: SttLocale): URLSearchParams {
   return new URLSearchParams({
     model: "nova-3",
     smart_format: "true",

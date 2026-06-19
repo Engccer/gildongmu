@@ -7,17 +7,23 @@ import {
   useVoiceRecorder,
   type VoiceRecorderErrorCode,
 } from "@/hooks/useVoiceRecorder";
+import { useRecordingSound } from "@/hooks/useRecordingSound";
 
 /**
  * 음성 받아쓰기 버튼 — 탭-토글(탭=시작, 다시 탭=정지·전사), Esc=취소.
- * dodo-planet에서 수입·적응(토스트/사운드/모달 제거, gildongmu 토큰·aria-live).
+ * dodo-planet에서 수입·적응(토스트/모달 제거, gildongmu 토큰·aria-live).
  *
- * 라이브 리전 단일화(a11y C1): 전사 성공 시 이 버튼의 assertive announcer는
- * 침묵한다 — 인식 텍스트·결과 수는 부모 PlaceSearch의 polite status 한 채널로만
- * 순차 통지된다. 이 announcer는 started/stopped/cancelled/오류 통지용으로만 유지.
+ * 시작/정지/취소는 효과음으로 통지(useRecordingSound) — 매 토글마다 장황한 음성
+ * 안내가 거슬린다는 피드백에 따라 비언어 신호로 바꿨다. 상승음=시작·하강음=정지·
+ * 단음=취소로 방향이 직관적이고, 버튼의 aria-label/aria-busy 상태가 스크린 리더용
+ * 보강 신호를 준다(효과음 미지원/음소거 시에도 상태 인지 가능).
+ *
+ * 라이브 리전(a11y C1): 전사 성공 시 인식 텍스트·결과 수는 부모 PlaceSearch의
+ * polite status 한 채널로만 통지된다. 이 버튼의 assertive announcer는 이제
+ * "오류 통지" 전용이다(시작/정지/취소는 효과음이 담당).
  *
  * 오류 i18n(a11y C2): 녹음 훅은 오류를 코드로만 던지고, 여기서 로케일별로
- * 번역(`voice.errors.{code}`)한다 — en 사용자가 한국어 오류를 듣지 않게.
+ * 번역(`voice.errors.{code}`)한다 — 외국어 사용자가 한국어 오류를 듣지 않게.
  */
 export function VoiceRecordButton({
   onTranscribed,
@@ -29,7 +35,9 @@ export function VoiceRecordButton({
   const t = useTranslations("voice");
   const locale = useLocale();
   const announcerRef = useRef<HTMLDivElement>(null);
+  const { playStart, playStop, playCancel } = useRecordingSound();
 
+  // 오류 통지 전용 announcer(시작/정지/취소는 효과음). 2초 뒤 비워 잔상 방지.
   const announce = useCallback((msg: string) => {
     if (announcerRef.current) {
       announcerRef.current.textContent = msg;
@@ -59,16 +67,16 @@ export function VoiceRecordButton({
     });
 
   const beginRecording = useCallback(async () => {
-    // 실제 시작 성공 후에만 "녹음 시작"을 발표 — 권한 실패 시 상태 역전 방지
-    // (Minor 8). 실패 경로는 훅의 onError 코드가 이미 announce한다.
+    // 실제 시작 성공 후에만 시작음 — 권한 실패 시 신호 역전 방지(Minor 8).
+    // 실패 경로는 훅의 onError 코드가 announce(오류는 효과음 아닌 음성 통지).
     const ok = await startRecording();
-    if (ok) announce(t("started"));
-  }, [announce, t, startRecording]);
+    if (ok) playStart();
+  }, [playStart, startRecording]);
 
   const handleClick = useCallback(async () => {
     if (!isSupported || state === "processing") return;
     if (state === "recording") {
-      announce(t("stopped"));
+      playStop();
       await stopRecording();
       return;
     }
@@ -78,20 +86,24 @@ export function VoiceRecordButton({
     // 두지 않아 getUserMedia 중복 호출과 "장치 없음도 mic_denied"로 뭉개던
     // 오분류를 함께 제거한다(codex 잔여 #3 — 단일 분류 경로).
     await beginRecording();
-  }, [isSupported, state, beginRecording, stopRecording, announce, t]);
+  }, [isSupported, state, beginRecording, stopRecording, playStop]);
 
   // Esc로 녹음 취소 (IME 조합 중에는 무시 — 한글/일본어 입력 확정과 충돌 방지)
+  // 취소는 전역 keydown이라 포커스가 버튼 밖일 수 있고, 음소거 환경에선 효과음을
+  // 못 듣는다 → 시작/정지와 달리 취소만 효과음 + 음성 통지를 병행해 인지 사각을
+  // 메운다(버튼에 포커스가 없어 aria-label 변화로도 알 수 없는 경우 대비).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.isComposing) return;
       if (e.key === "Escape" && state === "recording") {
+        playCancel();
         announce(t("cancelled"));
         cancelRecording();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [state, cancelRecording, announce, t]);
+  }, [state, cancelRecording, playCancel, announce, t]);
 
   if (!isSupported) {
     // 미지원 브라우저: 버튼 자리에 아무것도 두지 않고 텍스트 검색만 — 단,

@@ -1,20 +1,36 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Check, ChevronDown } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { withQuery } from "@/lib/locale-href";
 
 /**
- * 언어 전환기 — 현재 경로와 ?q= 쿼리를 보존한 채 ko/en을 전환한다.
- * next-intl 미들웨어가 로케일 프리픽스 네비게이션 시 NEXT_LOCALE 쿠키를
- * 설정하므로, 한 번 고른 언어는 재방문 시 유지된다.
- * disabled 대신 aria-current로 현재 언어를 표시(포커스 보존).
+ * 언어 선택기 — 버튼을 눌러 펼치는 disclosure 메뉴로 5개 언어(ko/en/es/fr/it)를
+ * 전환한다. 현재 경로와 ?q= 쿼리를 보존하며, next-intl 미들웨어가 로케일 프리픽스
+ * 네비게이션 시 NEXT_LOCALE 쿠키를 설정하므로 고른 언어는 재방문 시 유지된다.
+ *
+ * 접근성(미니멀): role="menu"의 화살표 키 모델 대신 disclosure 패턴 —
+ * 트리거 버튼 aria-expanded + 일반 링크 목록(네이티브 Tab 순회). Esc로 닫고
+ * 버튼으로 포커스 복귀, 포인터/포커스가 컨테이너를 벗어나면 자동으로 닫는다.
+ * 각 옵션은 자국어로 표기하고 해당 lang 태그를 줘 SR이 올바른 음성 엔진으로 읽게 한다.
  */
-const LABEL_KEY: Record<string, "korean" | "english"> = {
+const LABEL_KEY: Record<string, string> = {
   ko: "korean",
   en: "english",
+  es: "spanish",
+  fr: "french",
+  it: "italian",
 };
 
 /**
@@ -51,27 +67,83 @@ export function LanguageSwitcher() {
   );
   const href = withQuery(pathname, search);
 
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
+
+  // 포인터/포커스가 컨테이너를 벗어나면 닫는다(외부 클릭·Tab 이탈 모두 처리).
+  useEffect(() => {
+    if (!open) return;
+    function onOutside(e: Event) {
+      const node = containerRef.current;
+      if (node && !node.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("pointerdown", onOutside);
+    document.addEventListener("focusin", onOutside);
+    return () => {
+      document.removeEventListener("pointerdown", onOutside);
+      document.removeEventListener("focusin", onOutside);
+    };
+  }, [open]);
+
+  // Esc로 닫고 버튼으로 포커스 복귀(메뉴 항목에 포커스가 있을 때 맥락 유지).
+  const closeAndFocus = useCallback(() => {
+    setOpen(false);
+    buttonRef.current?.focus();
+  }, []);
+
+  function onMenuKeyDown(e: ReactKeyboardEvent<HTMLUListElement>) {
+    if (e.key === "Escape") closeAndFocus();
+  }
+
+  const activeLabel = t(LABEL_KEY[active] ?? "english");
+
   return (
-    <nav aria-label={t("languageLabel")}>
-      <ul className="flex gap-1">
-        {routing.locales.map((loc) => {
-          const isActive = loc === active;
-          return (
-            <li key={loc}>
-              <Link
-                href={href}
-                locale={loc}
-                aria-current={isActive ? "page" : undefined}
-                className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium aria-[current]:bg-accent aria-[current]:text-accent-foreground"
-              >
-                {/* 각 옵션을 자국어로 표기 — 해당 언어 태그를 줘 SR이 올바른
-                    음성 엔진으로 읽게 한다(영문 UI에서 "한국어"를 한국어로). */}
-                <span lang={loc}>{t(LABEL_KEY[loc])}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <nav
+      aria-label={t("languageLabel")}
+      ref={containerRef}
+      className="relative"
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-expanded={open}
+        aria-controls={menuId}
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex min-h-11 items-center gap-1 rounded-md border border-border px-3 text-sm font-medium"
+      >
+        <span lang={active}>{activeLabel}</span>
+        <ChevronDown aria-hidden="true" className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <ul
+          id={menuId}
+          onKeyDown={onMenuKeyDown}
+          className="absolute right-0 z-20 mt-1 min-w-40 rounded-md border border-border bg-surface p-1 shadow-lg"
+        >
+          {routing.locales.map((loc) => {
+            const isActive = loc === active;
+            return (
+              <li key={loc}>
+                <Link
+                  href={href}
+                  locale={loc}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-11 items-center justify-between gap-3 rounded px-3 text-sm aria-[current]:font-semibold hover:bg-accent/10"
+                >
+                  <span lang={loc}>{t(LABEL_KEY[loc])}</span>
+                  {isActive && (
+                    <Check aria-hidden="true" className="h-4 w-4 text-accent" />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </nav>
   );
 }

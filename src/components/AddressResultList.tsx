@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import type { JusoAddress } from "@/lib/types";
+import { prefersEnglish } from "@/lib/data-locale";
 
 /**
  * juso 주소 검색 결과 목록. 항목 선택 → onSelect(addr) → 상위가 좌표 지오코딩 후
@@ -21,7 +22,7 @@ export function AddressResultList({
   return (
     <ul className="mt-3 flex flex-col gap-3">
       {addresses.map((addr, i) => {
-        const useEng = locale === "en" && Boolean(addr.engAddr);
+        const useEng = prefersEnglish(locale) && Boolean(addr.engAddr);
         return (
           <li
             key={`${addr.roadAddr}-${i}`}

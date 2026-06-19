@@ -8,6 +8,7 @@ import type {
   TransitRoute,
   TransitRouteResult,
 } from "@/lib/types";
+import { dataLocale } from "@/lib/data-locale";
 
 type Status =
   | { kind: "idle" }
@@ -100,7 +101,7 @@ export function TransitRouteBriefing({
     if (!q) return;
     try {
       const res = await fetch(
-        `/api/places?query=${encodeURIComponent(q)}&lang=${locale}`,
+        `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}`,
       );
       const body = (await res.json()) as PlaceSearchResult;
       setOriginResults(res.ok ? (body.places ?? []) : []);

@@ -68,39 +68,40 @@ export function PlaceDetail({
         {place.name}
       </h2>
 
-      <dl className="mt-2 text-sm leading-relaxed">
-        <div>
-          <dt className="inline font-medium">{t("place.category")}: </dt>
-          <dd className="inline">{place.category}</dd>
-        </div>
-        <div>
-          {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨이 맞고, 한글 도로명일
-              땐 "도로명"/"Road address" 라벨을 쓴다 — dt 라벨을 주소 종류로 분기. */}
-          <dt className="inline font-medium">
-            {place.englishAddress ? t("place.address") : t("place.roadAddress")}:{" "}
-          </dt>
+      {/* 정의 리스트(dl/dt/dd) 대신 평문 단락 — 스크린 리더가 항목마다 "용어/정의"
+          역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
+          "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
+      <div className="mt-2 text-sm leading-relaxed">
+        <p>
+          <span className="font-medium">{t("place.category")}</span>{" "}
+          {place.category}
+        </p>
+        <p>
+          {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
+              "도로명"/"Road address" 라벨 — 주소 종류로 분기. */}
+          <span className="font-medium">
+            {place.englishAddress ? t("place.address") : t("place.roadAddress")}
+          </span>{" "}
           {/* 메인 주소가 한글(영문 주소 부재)일 땐 lang="ko"로 SR 음성 엔진을
               맞춘다(영문 UI에서도 정확히 읽히게; ko 로케일에선 무해). */}
-          <dd className="inline" lang={place.englishAddress ? undefined : "ko"}>
+          <span lang={place.englishAddress ? undefined : "ko"}>
             {place.englishAddress ?? (place.roadAddress || place.address)}
-          </dd>
+          </span>
           {place.englishAddress && (place.roadAddress || place.address) && (
-            <dd className="mt-0.5 text-xs text-muted" lang="ko">
+            <span className="mt-0.5 block text-xs text-muted" lang="ko">
               {place.roadAddress || place.address}
-            </dd>
+            </span>
           )}
-        </div>
+        </p>
         {place.phone && (
-          <div>
-            <dt className="inline font-medium">{t("place.phone")}: </dt>
-            <dd className="inline">
-              <a href={`tel:${place.phone}`} className="underline">
-                {place.phone}
-              </a>
-            </dd>
-          </div>
+          <p>
+            <span className="font-medium">{t("place.phone")}</span>{" "}
+            <a href={`tel:${place.phone}`} className="underline">
+              {place.phone}
+            </a>
+          </p>
         )}
-      </dl>
+      </div>
 
       <RouteLinks place={place} />
       {canBriefCarRoute && (

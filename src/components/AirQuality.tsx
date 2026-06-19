@@ -58,11 +58,12 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
         {t("station", { name: air.stationName, distance: air.distanceKm })}
       </p>
 
-      <dl className="mt-1 text-sm leading-relaxed">
+      {/* 정의 리스트 대신 평문 단락 — "용어/정의" 역할·콜론 낭독 노이즈 제거. */}
+      <div className="mt-1 text-sm leading-relaxed">
         <PollutantRow label={t("khai")} p={air.khai} t={t} />
         <PollutantRow label={t("pm10")} p={air.pm10} unit="㎍/㎥" t={t} />
         <PollutantRow label={t("pm25")} p={air.pm25} unit="㎍/㎥" t={t} />
-      </dl>
+      </div>
 
       <p className="mt-2 text-xs opacity-70">{t("asOf", { time: air.dataTime })}</p>
       <p className="mt-1 text-xs opacity-70">{t("source")}</p>
@@ -71,7 +72,7 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
 }
 
 /**
- * 오염물질 한 줄 — "라벨: 등급 (수치 단위)".
+ * 오염물질 한 줄 — "라벨 등급 (수치 단위)".
  * grade==="unknown"이면 등급은 "정보 없음"이고 수치는 표시하지 않는다
  * (해석 불가한 숫자 노출 금지 — 측정 장애 정합).
  */
@@ -90,12 +91,10 @@ function PollutantRow({
     p.grade === "unknown" ? t("unknown") : t(`grade.${p.grade}`);
   const showValue = p.grade !== "unknown" && p.value != null;
   return (
-    <div>
-      <dt className="inline font-medium">{label}: </dt>
-      <dd className="inline">
-        {gradeText}
-        {showValue ? ` (${p.value}${unit})` : ""}
-      </dd>
-    </div>
+    <p>
+      <span className="font-medium">{label}</span>{" "}
+      {gradeText}
+      {showValue ? ` (${p.value}${unit})` : ""}
+    </p>
   );
 }

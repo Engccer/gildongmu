@@ -45,8 +45,18 @@ describe("validateSttInput", () => {
       reason: "too_large",
     });
   });
-  it("미지원 locale은 ko로 폴백", () => {
+  it("지원 외국어 로케일(es/fr/it)은 그대로 통과(nova-3 다국어)", () => {
     expect(validateSttInput(blob(100, "audio/webm"), "fr")).toEqual({
+      ok: true,
+      locale: "fr",
+    });
+    expect(validateSttInput(blob(100, "audio/webm"), "es")).toEqual({
+      ok: true,
+      locale: "es",
+    });
+  });
+  it("미지원 locale은 ko로 폴백", () => {
+    expect(validateSttInput(blob(100, "audio/webm"), "ja")).toEqual({
       ok: true,
       locale: "ko",
     });
@@ -54,12 +64,15 @@ describe("validateSttInput", () => {
 });
 
 describe("normalizeSttLocale", () => {
-  it("ko/en은 그대로", () => {
+  it("지원 5개 언어(ko/en/es/fr/it)는 그대로", () => {
     expect(normalizeSttLocale("ko")).toBe("ko");
     expect(normalizeSttLocale("en")).toBe("en");
+    expect(normalizeSttLocale("es")).toBe("es");
+    expect(normalizeSttLocale("fr")).toBe("fr");
+    expect(normalizeSttLocale("it")).toBe("it");
   });
-  it("그 외·null은 ko 폴백", () => {
-    expect(normalizeSttLocale("es")).toBe("ko");
+  it("미지원·null은 ko 폴백", () => {
+    expect(normalizeSttLocale("ja")).toBe("ko");
     expect(normalizeSttLocale(null)).toBe("ko");
     expect(normalizeSttLocale(undefined)).toBe("ko");
   });

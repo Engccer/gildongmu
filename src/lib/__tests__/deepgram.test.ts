@@ -46,6 +46,13 @@ describe("buildDeepgramParams", () => {
     expect(en.get("language")).toBe("en");
     expect(en.has("detect_language")).toBe(false);
   });
+  it("외국어 로케일(es/fr/it)도 language로 명시한다(nova-3 다국어)", () => {
+    for (const loc of ["es", "fr", "it"] as const) {
+      const p = buildDeepgramParams(loc);
+      expect(p.get("language")).toBe(loc);
+      expect(p.has("detect_language")).toBe(false);
+    }
+  });
   it("현행 nova-3 모델을 쓴다(deprecated nova-2-conversationalai 아님)", () => {
     expect(buildDeepgramParams("ko").get("model")).toBe("nova-3");
   });

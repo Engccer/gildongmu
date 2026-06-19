@@ -6,7 +6,10 @@
   "nav": {
     "languageLabel": "Language",
     "korean": "한국어",
-    "english": "English"
+    "english": "English",
+    "spanish": "Español",
+    "french": "Français",
+    "italian": "Italiano"
   },
   "search": {
     "label": "Search places",
@@ -313,8 +316,6 @@
     "stop": "Stop dictation",
     "recognizing": "Transcribing",
     "notSupported": "This browser does not support voice input",
-    "started": "Dictation started. Tap again to stop, or press Escape to cancel.",
-    "stopped": "Stopping and transcribing.",
     "cancelled": "Dictation cancelled.",
     "errors": {
       "mic_denied": "Microphone permission is required. Please allow it in browser settings.",

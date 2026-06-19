@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
+import { prefersEnglish } from "@/lib/data-locale";
 
 /**
  * 도시철도역 메타(A3) — 영문역명·노선·환승을 장소 상세에 표시.
@@ -50,7 +51,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
 
   if (!meta) return null;
 
-  const isEn = locale === "en";
+  const isEn = prefersEnglish(locale);
 
   return (
     <section
@@ -75,25 +76,22 @@ export function StationMeta({ stationName }: { stationName: string }) {
         </p>
       )}
 
-      <dl className="mt-1 text-sm leading-relaxed">
-        <div>
-          <dt className="inline font-medium">{t("lines")}: </dt>
-          <dd className="inline" lang="ko">
-            {meta.lines.join(", ")}
-          </dd>
+      {/* 정의 리스트 대신 평문 — "용어/정의" 역할·콜론 낭독 노이즈 제거. */}
+      <div className="mt-1 text-sm leading-relaxed">
+        <p>
+          <span className="font-medium">{t("lines")}</span>{" "}
+          <span lang="ko">{meta.lines.join(", ")}</span>
           {meta.isTransfer && (
             <span className="ml-2 rounded bg-accent/10 px-1 text-xs text-accent">
               {t("transfer")}
             </span>
           )}
-        </div>
-        <div>
-          <dt className="inline font-medium">{t("operator")}: </dt>
-          <dd className="inline" lang="ko">
-            {meta.operator}
-          </dd>
-        </div>
-      </dl>
+        </p>
+        <p>
+          <span className="font-medium">{t("operator")}</span>{" "}
+          <span lang="ko">{meta.operator}</span>
+        </p>
+      </div>
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>
