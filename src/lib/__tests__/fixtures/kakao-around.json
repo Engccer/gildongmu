@@ -1,0 +1,48 @@
+{
+  "convenience": [
+    {
+      "id": "1001",
+      "place_name": "GS25 길동점",
+      "category_name": "가정,생활 > 편의점 > GS25",
+      "category_group_code": "CS2",
+      "phone": "02-111-1111",
+      "x": "127.14035",
+      "y": "37.53760",
+      "place_url": "http://place.map.kakao.com/1001",
+      "distance": "40"
+    },
+    {
+      "id": "1002",
+      "place_name": "CU 길동중앙점",
+      "category_name": "가정,생활 > 편의점 > CU",
+      "category_group_code": "CS2",
+      "x": "127.13900",
+      "y": "37.53850",
+      "place_url": "http://place.map.kakao.com/1002",
+      "distance": "120"
+    }
+  ],
+  "subway": [
+    {
+      "id": "2001",
+      "place_name": "길동역 5호선",
+      "category_name": "교통,수송 > 지하철,전철 > 수도권5호선",
+      "category_group_code": "SW8",
+      "x": "127.13994",
+      "y": "37.53785",
+      "place_url": "http://place.map.kakao.com/2001",
+      "distance": "15"
+    }
+  ],
+  "dupOfConvenience": [
+    {
+      "id": "1001",
+      "place_name": "GS25 길동점",
+      "category_name": "가정,생활 > 편의점 > GS25",
+      "category_group_code": "CS2",
+      "x": "127.14035",
+      "y": "37.53760",
+      "distance": "40"
+    }
+  ]
+}

@@ -6,6 +6,8 @@
  * provider 계층에서 변환을 마친 뒤에만 이 타입으로 흘러나온다.
  */
 
+import type { CompassDirection } from "./geo/bearing";
+
 /** 장소 하나. 모든 provider의 응답이 이 형태로 정규화된다. */
 export interface Place {
   /** provider 내부 식별자 (없으면 name+주소 해시) */
@@ -555,5 +557,36 @@ export interface KidsPlace {
   lng: number;
   phone?: string;
   /** 카카오맵 상세 페이지 */
+  link?: string;
+}
+
+/** 내 주변 둘러보기(기능 A) 카테고리 — 카카오 category_group_code 매핑. */
+export type SurroundingCategory =
+  | "convenience"
+  | "subway"
+  | "restaurant"
+  | "cafe"
+  | "bank"
+  | "pharmacy"
+  | "hospital"
+  | "mart"
+  | "public"
+  | "attraction";
+
+/**
+ * 내 주변 둘러보기 결과 1건 — 카카오 카테고리 검색 좌표 근접.
+ * 거리는 카카오 `distance`(m) 정본, 방향은 두 좌표 간 북 기준 8방위(우리가 산출).
+ */
+export interface SurroundingPlace {
+  id: string;
+  name: string;
+  category: SurroundingCategory;
+  /** 카카오 category_name 전체 계층(보조 표시) */
+  categoryRaw: string;
+  distanceMeters: number;
+  bearing: CompassDirection;
+  lat: number;
+  lng: number;
+  phone?: string;
   link?: string;
 }
