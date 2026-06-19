@@ -59,9 +59,11 @@ export function normalizeSurroundingDoc(
   const lat = Number(doc.y);
   const lng = Number(doc.x);
   const kakaoDist = numOrNaN(doc.distance);
+  // distanceMeters는 항상 정수(m)로 통일 — 카카오 raw(문자열 정수)·haversine 폴백
+  // 양쪽 모두 round해 필드 계약을 명확히 한다(표시는 formatDistance가 다시 round).
   const distanceMeters = Number.isNaN(kakaoDist)
     ? Math.round(haversineMeters(userLat, userLng, lat, lng))
-    : kakaoDist;
+    : Math.round(kakaoDist);
   const bearing = bearingToCompass8(bearingDegrees(userLat, userLng, lat, lng));
   return {
     id: `kakao-${doc.id}`,

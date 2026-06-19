@@ -366,14 +366,14 @@
       "attraction": "attraction"
     },
     "direction": {
-      "n": "N",
-      "ne": "NE",
-      "e": "E",
-      "se": "SE",
-      "s": "S",
-      "sw": "SO",
-      "w": "O",
-      "nw": "NO"
+      "n": "nord",
+      "ne": "nord-est",
+      "e": "est",
+      "se": "sud-est",
+      "s": "sud",
+      "sw": "sud-ouest",
+      "w": "ouest",
+      "nw": "nord-ouest"
     },
     "call": "Appeler",
     "mapLink": "Voir sur Kakao Map",
