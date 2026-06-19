@@ -20,13 +20,9 @@
     "noFilterResults": "선택한 필터에 해당하는 결과가 없습니다.",
     "error": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "mockNotice": "지금은 데모 데이터로 동작 중입니다. API 키 등록 후 실제 검색이 활성화됩니다.",
-    "kind": {
-      "label": "검색 종류",
-      "place": "장소",
-      "address": "주소"
-    },
-    "addressLabel": "주소 검색",
-    "addressPlaceholder": "예: 세종대로 110, 강남대로 396",
+    "placeSection": "장소",
+    "addressSection": "주소",
+    "combinedAnnouncement": "장소 {place}건, 주소 {addr}건",
     "addressSearching": "주소 검색 중…",
     "addressResultsAnnouncement": "주소 검색 결과 {count}건",
     "addressNoResults": "해당 주소를 찾지 못했습니다. 다시 입력해 보세요.",
