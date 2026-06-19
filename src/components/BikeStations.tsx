@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
 type Status =
   | { kind: "idle" }
@@ -63,6 +64,9 @@ export function BikeStations(
   }
 
   function load() {
+    // 홈(current)에서만 아코디언 점유를 가져간다 — 다른 펼친 패널이 스스로 닫힌다.
+    // 상세(place)에선 단일 패널이라 조정 불필요.
+    if (props.mode === "current") claim();
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     const done = () => {
@@ -88,11 +92,21 @@ export function BikeStations(
     });
   }
 
-  // 펼친 결과를 다시 감춘다(idle 복귀). 포커스를 트리거 버튼으로 되돌린다.
-  function close() {
+  // 펼친 결과를 다시 감춘다(idle 복귀). restoreFocus면 포커스를 트리거 버튼으로
+  // 되돌린다(직접 닫기·Esc). 다른 패널이 점유를 가져가 자동으로 닫힐 때는
+  // restoreFocus=false로 포커스를 옮기지 않는다.
+  const close = useCallback((restoreFocus = true) => {
     setStatus({ kind: "idle" });
-    requestAnimationFrame(() => triggerRef.current?.focus());
-  }
+    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  const onDismiss = useCallback(() => close(false), [close]);
+  const onEscape = useCallback(() => close(true), [close]);
+  // place 모드는 상세 화면의 단일 패널 → engaged=false로 아코디언/Esc 비활성.
+  const { claim } = useNearbyPanel({
+    engaged: props.mode === "current" && status.kind !== "idle",
+    onDismiss,
+    onEscape,
+  });
 
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel =
@@ -154,7 +168,7 @@ export function BikeStations(
 
           <button
             type="button"
-            onClick={close}
+            onClick={() => close()}
             className="mt-1 min-h-11 text-sm text-accent underline"
           >
             {tActions("close")}

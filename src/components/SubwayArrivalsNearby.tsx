@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { NearbySubwayStation } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { SubwayArrivalList } from "./SubwayArrivalList";
 
 type Status =
@@ -65,6 +66,7 @@ export function SubwayArrivalsNearby() {
   }
 
   function load() {
+    claim();
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     const done = () => {
@@ -86,12 +88,21 @@ export function SubwayArrivalsNearby() {
     });
   }
 
-  // 펼친 결과를 다시 감춘다(idle 복귀). 닫기 버튼은 언마운트되므로 포커스를
-  // 트리거 버튼으로 되돌려 스크린 리더 사용자가 맥락을 잃지 않게 한다.
-  function close() {
+  // 펼친 결과를 다시 감춘다(idle 복귀). 닫기 버튼은 언마운트되므로 restoreFocus면
+  // 포커스를 트리거 버튼으로 되돌려 스크린 리더 사용자가 맥락을 잃지 않게 한다
+  // (직접 닫기·Esc). 다른 패널이 점유를 가져가 자동으로 닫힐 때는
+  // restoreFocus=false로 포커스를 옮기지 않는다.
+  const close = useCallback((restoreFocus = true) => {
     setStatus({ kind: "idle" });
-    requestAnimationFrame(() => triggerRef.current?.focus());
-  }
+    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  const onDismiss = useCallback(() => close(false), [close]);
+  const onEscape = useCallback(() => close(true), [close]);
+  const { claim } = useNearbyPanel({
+    engaged: status.kind !== "idle",
+    onDismiss,
+    onEscape,
+  });
 
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
@@ -148,7 +159,7 @@ export function SubwayArrivalsNearby() {
 
           <button
             type="button"
-            onClick={close}
+            onClick={() => close()}
             className="mt-1 min-h-11 text-sm text-accent underline"
           >
             {tActions("close")}

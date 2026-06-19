@@ -1,10 +1,11 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
 /** API 응답 항목 — NightClinic + 서버 계산 진료 상태. */
 type ClinicWithStatus = NightClinic & { openStatus: ClinicOpenStatus };
@@ -70,6 +71,7 @@ export function NightClinicsNearby() {
   }
 
   function load() {
+    claim();
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     const done = () => {
@@ -91,11 +93,20 @@ export function NightClinicsNearby() {
     });
   }
 
-  // 펼친 결과를 다시 감춘다(idle 복귀). 포커스를 트리거 버튼으로 되돌린다.
-  function close() {
+  // 펼친 결과를 다시 감춘다(idle 복귀). restoreFocus면 포커스를 트리거 버튼으로
+  // 되돌린다(직접 닫기·Esc). 다른 패널이 점유를 가져가 자동으로 닫힐 때는
+  // restoreFocus=false로 포커스를 옮기지 않는다.
+  const close = useCallback((restoreFocus = true) => {
     setStatus({ kind: "idle" });
-    requestAnimationFrame(() => triggerRef.current?.focus());
-  }
+    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  const onDismiss = useCallback(() => close(false), [close]);
+  const onEscape = useCallback(() => close(true), [close]);
+  const { claim } = useNearbyPanel({
+    engaged: status.kind !== "idle",
+    onDismiss,
+    onEscape,
+  });
 
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
@@ -152,7 +163,7 @@ export function NightClinicsNearby() {
 
           <button
             type="button"
-            onClick={close}
+            onClick={() => close()}
             className="mt-1 min-h-11 text-sm text-accent underline"
           >
             {tActions("close")}
