@@ -104,7 +104,7 @@ arrivalThreshold = max(ARRIVAL_BASE_M, fix.accuracy)
 - **정직 고지(정적 텍스트, 항상 표시)**: `beacon.screenHint`("화면을 켜고 손에 든 채 사용하세요. 화면이 꺼지면 안내가 멈춥니다.") + `beacon.straightLineNote`("직선거리 기준입니다. 실제 경로는 길찾기 앱을 이용하세요.").
 
 ## 8. i18n
-`beacon.*` 키: `heading`·`start`·`stop`·`tracking`·`first`·`closer`·`farther`·`nearby`·`weak`·`denied`·`unsupported`·`screenHint`·`straightLineNote`. **5개 언어 전부**(ko/en/es/fr/it). 숫자는 `{meters}` ICU 플레이스홀더. `t.rich` 불필요(고유명 없음). 외부 데이터 fetch 없음 → `dataLocale` 무관. `i18n-messages.test.ts`가 키 패리티·플레이스홀더 게이트.
+`beacon.*` 키: `heading`·`start`·`stop`·`first`·`closer`·`farther`·`nearby`·`weak`·`denied`·`screenHint`·`straightLineNote`. **5개 언어 전부**(ko/en/es/fr/it). 숫자는 `{meters}` ICU 플레이스홀더. `t.rich` 불필요(고유명 없음). 외부 데이터 fetch 없음 → `dataLocale` 무관. `i18n-messages.test.ts`가 키 패리티·플레이스홀더 게이트.
 
 ## 9. 테스트 게이트
 - **`beacon.ts` 리듀서 fixture ~12–15개**(매 커밋 게이트): ① 데드밴드 내 진동→추세 불변(flapping) ② 정확도 큰 fix→데드밴드 확대 ③ accuracy>100→weak ④ 추세 flip→speak ⑤ 50m 마일스톤→speak ⑥ 도착→nearby+±accuracy(정밀숫자 미노출) ⑦ nearby 이탈→추세 재개 ⑧ NaN 좌표 graceful ⑨ first→speak ⑩ hold→speak=false.
