@@ -28,6 +28,7 @@ export default async function HomePage({
       canShowClinic={hasDataGoKrKey()}
       canShowAir={hasDataGoKrKey()}
       canShowKids={hasKakaoKey()}
+      canShowSurroundings={hasKakaoKey()}
       canShowTransit={hasOdsayKey()}
       canSearchAddress={hasJusoKey()}
     />

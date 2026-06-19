@@ -27,6 +27,7 @@ import { BikeStations } from "./BikeStations";
 import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
+import { SurroundingsNearby } from "./SurroundingsNearby";
 
 type Status =
   | { kind: "idle" }
@@ -57,6 +58,7 @@ export function PlaceSearch({
   canShowClinic = false,
   canShowAir = false,
   canShowKids = false,
+  canShowSurroundings = false,
   canShowTransit = false,
   canSearchAddress = false,
 }: {
@@ -75,6 +77,8 @@ export function PlaceSearch({
   canShowAir?: boolean;
   /** 카카오 키가 있어 근처 아이 놀 곳(키즈 장소)을 제공할 수 있는지 */
   canShowKids?: boolean;
+  /** 카카오 키가 있어 내 주변 둘러보기(주변 시설·방향)를 제공할 수 있는지 */
+  canShowSurroundings?: boolean;
   /** ODsay 키가 있어 대중교통 길찾기 브리핑을 제공할 수 있는지 */
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
@@ -512,6 +516,11 @@ export function PlaceSearch({
       {canShowKids && status.kind === "idle" && (
         <div className="mt-4">
           <KidsPlacesNearby />
+        </div>
+      )}
+      {canShowSurroundings && status.kind === "idle" && (
+        <div className="mt-4">
+          <SurroundingsNearby />
         </div>
       )}
 
