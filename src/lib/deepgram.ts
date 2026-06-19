@@ -8,6 +8,29 @@ export interface Transcript {
   confidence: number;
 }
 
+/**
+ * STT 요청 파라미터 — 앱이 로케일을 알므로 자동감지(detect_language) 대신
+ * `language`를 명시한다(latent→deterministic).
+ *
+ * ⚠ 실측 결함(2026-06-19): `detect_language=true`는 한국어 발화를 베트남어(vi,
+ * confidence 0.92)로 오인식해 빈 전사("")를 반환했다 → 받아쓰기 전면 실패. dodo-planet
+ * (다국어 자동감지)에서 그대로 수입한 설정이 화근. gildongmu는 next-intl 로케일을
+ * 알고 라우트에 locale까지 넘기므로 ko/en을 직접 지정해 오인식 경로 자체를 제거한다.
+ *
+ * 모델은 현행 `nova-3` — `nova-2-conversationalai`는 deprecated되어 Deepgram이
+ * 조용히 nova-3로 라우팅하며, ko 정확도도 nova-3가 우위였다(실측: nova-2 "길동 맛집
+ * 검색" vs nova-3 "강동구 길동 맛집 검색").
+ */
+export function buildDeepgramParams(locale: "ko" | "en"): URLSearchParams {
+  return new URLSearchParams({
+    model: "nova-3",
+    smart_format: "true",
+    punctuate: "true",
+    diarize: "false",
+    language: locale,
+  });
+}
+
 export function parseDeepgramTranscript(
   raw: unknown,
   fallbackLocale: string,

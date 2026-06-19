@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseDeepgramTranscript } from "@/lib/deepgram";
+import { buildDeepgramParams, parseDeepgramTranscript } from "@/lib/deepgram";
 import { validateSttInput } from "@/lib/stt-validate";
 
 /**
@@ -42,13 +42,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "서버 설정 오류입니다." }, { status: 500 });
   }
 
-  const params = new URLSearchParams({
-    model: "nova-2-conversationalai",
-    smart_format: "true",
-    punctuate: "true",
-    diarize: "false",
-    detect_language: "true",
-  });
+  // 자동감지 대신 로케일 명시(detect_language의 ko→vi 오인식 결함 차단, deepgram.ts 주석).
+  const params = buildDeepgramParams(locale);
 
   try {
     const res = await fetch(`https://api.deepgram.com/v1/listen?${params}`, {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDeepgramTranscript } from "../deepgram";
+import { buildDeepgramParams, parseDeepgramTranscript } from "../deepgram";
 
 const ok = {
   results: {
@@ -32,5 +32,21 @@ describe("parseDeepgramTranscript", () => {
   it("빈 transcript는 null", () => {
     const empty = { results: { channels: [{ alternatives: [{ transcript: "", confidence: 0 }] }] } };
     expect(parseDeepgramTranscript(empty, "ko")).toBeNull();
+  });
+});
+
+describe("buildDeepgramParams", () => {
+  // ko→vi 오인식 결함 회귀 방지: detect_language를 절대 쓰지 않고 language를 명시한다.
+  it("로케일을 language로 명시하고 detect_language를 쓰지 않는다", () => {
+    const ko = buildDeepgramParams("ko");
+    expect(ko.get("language")).toBe("ko");
+    expect(ko.has("detect_language")).toBe(false);
+
+    const en = buildDeepgramParams("en");
+    expect(en.get("language")).toBe("en");
+    expect(en.has("detect_language")).toBe(false);
+  });
+  it("현행 nova-3 모델을 쓴다(deprecated nova-2-conversationalai 아님)", () => {
+    expect(buildDeepgramParams("ko").get("model")).toBe("nova-3");
   });
 });

@@ -310,19 +310,22 @@
     "asOf": "As of {time}",
     "source": "Source: AirKorea (Korea Environment Corporation)."
   },
+  "actions": {
+    "close": "Close"
+  },
   "voice": {
     "start": "Search by voice",
-    "stop": "Stop recording",
-    "recognizing": "Recognizing speech",
+    "stop": "Stop dictation",
+    "recognizing": "Transcribing",
     "notSupported": "This browser does not support voice input",
-    "started": "Recording started. Tap again to stop, or press Escape to cancel.",
-    "stopped": "Stopping and recognizing.",
-    "cancelled": "Recording cancelled.",
+    "started": "Dictation started. Tap again to stop, or press Escape to cancel.",
+    "stopped": "Stopping and transcribing.",
+    "cancelled": "Dictation cancelled.",
     "errors": {
       "mic_denied": "Microphone permission is required. Please allow it in browser settings.",
       "mic_failed": "Could not start the microphone.",
-      "no_audio": "No audio was recorded.",
-      "too_short": "The recording is too short. Please speak a little longer.",
+      "no_audio": "Nothing was dictated.",
+      "too_short": "The dictation is too short. Please speak a little longer.",
       "no_text": "Could not recognize the speech. Please try again.",
       "stt_failed": "Voice recognition failed. Please try again."
     }

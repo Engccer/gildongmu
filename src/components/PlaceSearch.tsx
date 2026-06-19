@@ -11,8 +11,10 @@ import {
 import type { RegionCode } from "@/lib/region";
 import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import { sortPlacesByDistance } from "@/lib/geo";
-import type { AddressMatch, Coord, JusoAddress, Place, PlaceSearchResult } from "@/lib/types";
+import type { AddressMatch, JusoAddress, Place, PlaceSearchResult } from "@/lib/types";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { requestLocation } from "@/lib/geolocation";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
@@ -108,11 +110,11 @@ export function PlaceSearch({
   // 음성일 때 "‘{질의}’ 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
   // 통지한다(VoiceRecordButton의 assertive announce 제거와 한 쌍 — a11y C1).
   const [spokenQuery, setSpokenQuery] = useState<string | null>(null);
-  // 현재 위치 — 결과를 가까운 순으로 정렬하는 데 쓴다. 위치 정렬은 핵심이 아니라
-  // 향상 기능이므로 권한이 없거나 실패하면 조용히 provider 순서를 유지한다.
-  const [userCoords, setUserCoords] = useState<Coord | null>(null);
-  // 위치 권한은 검색 시 한 번만 요청한다(거부돼도 매 검색마다 재요청하지 않음).
-  const triedGeoRef = useRef(false);
+  // 현재 위치 — 공유 스토어에서 파생한다. 결과를 가까운 순으로 정렬하는 데 쓰며,
+  // 위치 정렬은 핵심이 아니라 향상 기능이라 좌표가 없으면 provider 순서를 유지한다.
+  // 공유 스토어가 세션 1회 획득·캐시를 보장하므로 "내 주변" 버튼들과 권한을 공유한다.
+  const geo = useGeolocation();
+  const userCoords = geo.status === "ready" ? geo.coords : null;
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
@@ -182,21 +184,13 @@ export function PlaceSearch({
     }
   }
 
-  // 현재 위치를 한 번만(세션당) 요청한다. 성공하면 userCoords를 채워, 렌더 시점의
-  // 거리 정렬이 다음 리렌더부터 자동 반영된다(결과 표시를 위치 획득으로 막지 않음 —
-  // 좌표가 나중에 도착하면 그때 목록이 재정렬된다). 거부/미지원/실패는 정렬 없이
-  // graceful degrade.
-  const ensureUserCoords = useCallback(() => {
-    if (triedGeoRef.current) return;
-    triedGeoRef.current = true;
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {
-        // 권한 거부·타임아웃 — 거리 정렬은 향상 기능이라 통지 없이 무시.
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
+  // 앱 시작(홈 마운트) 시 위치를 1회 요청한다 — 사용자 요청 동작. 공유 스토어가
+  // 멱등이라 이미 획득됐으면 no-op. 좌표가 들어오면 검색 결과가 가까운 순으로
+  // 재정렬되고, "내 주변" 버튼들은 이 캐시 좌표를 팝업 없이 재사용한다. 거부/미지원은
+  // 정렬 없이 graceful degrade. requestLocation은 마운트 콜백에서만 호출하므로
+  // set-state-in-effect와 무관(스토어 setState는 비동기 콜백에서 발생).
+  useEffect(() => {
+    requestLocation();
   }, []);
 
   /**
@@ -207,9 +201,8 @@ export function PlaceSearch({
     async (rawQuery: string) => {
       const q = rawQuery.trim();
       if (!q) return;
-      // 검색과 함께 현재 위치 획득을 시도(첫 검색에서 권한 1회 요청) — 좌표가
-      // 들어오면 결과가 가까운 순으로 재정렬된다.
-      ensureUserCoords();
+      // 위치는 마운트 시 이미 요청했다. 좌표가 들어와 있으면 결과가 가까운 순으로
+      // 재정렬된다(없으면 provider 순서 유지).
       const myId = ++reqIdRef.current;
       setBucket(null);
       setRegion(null);
@@ -235,7 +228,7 @@ export function PlaceSearch({
         setStatus({ kind: "error" });
       }
     },
-    [locale, ensureUserCoords],
+    [locale],
   );
 
   function runSearch() {

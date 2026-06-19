@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
+import { awaitGeolocation } from "@/lib/geolocation";
 
 type Status =
   | { kind: "idle" }
@@ -27,10 +28,12 @@ export function BikeStations(
   props: { mode: "current" } | { mode: "place"; lat: number; lng: number },
 ) {
   const t = useTranslations("bike");
+  const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const headingId = useId();
   const inFlightRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -69,22 +72,26 @@ export function BikeStations(
       void fetchAt(props.lat, props.lng).finally(done);
       return;
     }
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setStatus({ kind: "geoerror", reason: "unsupported" });
-      done();
-      return;
-    }
+    // current 모드 — 공유 스토어에서 좌표를 얻는다(세션 1회 권한 획득 뒤 캐시 재사용,
+    // 매 버튼마다 getCurrentPosition을 부르지 않아 팝업이 반복되지 않음).
     setStatus({ kind: "locating" });
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        void fetchAt(pos.coords.latitude, pos.coords.longitude).finally(done);
-      },
-      () => {
-        setStatus({ kind: "geoerror", reason: "denied" });
+    void awaitGeolocation().then((g) => {
+      if (g.status === "ready") {
+        void fetchAt(g.coords.lat, g.coords.lng).finally(done);
+      } else {
+        setStatus({
+          kind: "geoerror",
+          reason: g.status === "unsupported" ? "unsupported" : "denied",
+        });
         done();
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 30_000 },
-    );
+      }
+    });
+  }
+
+  // 펼친 결과를 다시 감춘다(idle 복귀). 포커스를 트리거 버튼으로 되돌린다.
+  function close() {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   const busy = status.kind === "locating" || status.kind === "loading";
@@ -115,6 +122,7 @@ export function BikeStations(
   return (
     <div className="mt-3">
       <button
+        ref={triggerRef}
         type="button"
         onClick={load}
         aria-disabled={busy}
@@ -144,6 +152,14 @@ export function BikeStations(
               {t("asOf", { time: status.at })}
             </span>
           </h3>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
 
           <ul className="mt-2 space-y-3">
             {status.stations.map((s) => (
