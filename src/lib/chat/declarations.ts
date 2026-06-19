@@ -1,0 +1,41 @@
+// declarations.ts — Gemini function declarations + 키 게이트 필터 (React/Next 비의존)
+import type { FunctionDeclaration } from "@google/genai";
+import { hasKakaoKey } from "@/lib/env";
+
+interface GatedDeclaration {
+  declaration: FunctionDeclaration;
+  gate: () => boolean;
+}
+
+const DECLARATIONS: GatedDeclaration[] = [
+  {
+    gate: hasKakaoKey,
+    declaration: {
+      name: "search_places",
+      description:
+        "키워드로 장소(상호·POI)를 검색한다. 예: '길동 카페', '강남역 맛집'. " +
+        "사용자가 특정 지명/상호를 찾을 때 사용. 현재 위치 기준 거리 정렬을 원하면 useCurrentLocation=true.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "검색 키워드" },
+          useCurrentLocation: {
+            type: "boolean",
+            description: "현재 위치 기준 거리 정렬 여부",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+];
+
+/** 전체 도구 선언 목록 (게이트 무관) */
+export const ALL_DECLARATIONS: FunctionDeclaration[] = DECLARATIONS.map(
+  (d) => d.declaration
+);
+
+/** 게이트를 통과한 도구 선언만 반환 */
+export function availableDeclarations(): FunctionDeclaration[] {
+  return DECLARATIONS.filter((d) => d.gate()).map((d) => d.declaration);
+}
