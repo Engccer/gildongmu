@@ -11,10 +11,10 @@ import type { BeaconAnnounce } from "@/lib/beacon";
  *
  * 펼침 패턴: 형제 컴포넌트(CarRouteBriefing·TransitRouteBriefing 등)와 동일하게
  * 평소엔 버튼 하나만 노출하고, 누르면 안내문·토글·피드백이 인라인으로 펼쳐진다.
- * `<h3>` 안의 `<button aria-expanded aria-controls>`(W3C APG disclosure+heading)로
- * heading 내비 진입점을 유지하면서 펼침 상태를 SR에 알린다 — 오버레이/포커스 트랩
- * 없이 시맨틱 HTML만으로 완결(First Rule of ARIA). 추적은 훅 상태라 패널을 접어도
- * 톤 피드백(useBeaconSound)은 계속된다.
+ * 트리거는 `<button aria-expanded>`(W3C APG disclosure) — 형제 패널과 동일하게
+ * heading 래퍼 없이 버튼만 둔다(버튼 자체가 발견 경로라 heading 진입점 불필요,
+ * 형제와의 일관성·First Rule of ARIA). 오버레이/포커스 트랩 없이 시맨틱 HTML만으로
+ * 완결한다. 추적은 훅 상태라 패널을 접어도 톤 피드백(useBeaconSound)은 계속된다.
  *
  * 접근성: 연속 피드백은 톤(useBeaconSound), 음성은 추세 flip·50m 마일스톤·도착·권한
  * 거부에서만 polite로 통지(장황한 낭독 회피). 화면 꺼짐·직선거리 한계는 정적 텍스트로
@@ -71,20 +71,18 @@ export function DistanceBeacon({
 
   return (
     <section className="mt-4">
-      {/* disclosure 헤더 — 형제 트리거 버튼과 동급(border-accent). heading 안의
-          버튼이라 SR 내비 진입점을 유지하면서 aria-expanded로 펼침 상태를 알린다.
-          패널은 조건부 렌더라 aria-controls는 닫힘 시 dangling되므로 생략(형제 동형,
-          aria-expanded만으로 disclosure 상태 전달 충분 — First Rule of ARIA). */}
-      <h3 className="text-base font-semibold">
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
-        >
-          {t("heading")}
-        </button>
-      </h3>
+      {/* disclosure 트리거 — 형제 트리거 버튼과 동급(border-accent). heading 래퍼
+          없이 버튼만 둬 형제 패널과 일관성을 맞춘다(버튼이 발견 경로). 패널은 조건부
+          렌더라 aria-controls는 닫힘 시 dangling되므로 생략(형제 동형, aria-expanded
+          만으로 disclosure 상태 전달 충분 — First Rule of ARIA). */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
+      >
+        {t("heading")}
+      </button>
 
       {open && (
         <div className="mt-2">

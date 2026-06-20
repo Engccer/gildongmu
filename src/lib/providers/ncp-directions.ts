@@ -5,7 +5,7 @@ import type { CarRouteBriefing, CarRouteGuide, Coord } from "../types";
  * NCP Maps Directions(5) 자동차 길찾기 provider — **영문 턴바이턴 정본**.
  *
  * 카카오모빌리티 directions는 한국어 안내문만 주므로(ko 전용), 외국인 영문
- * UI(en 로케일)의 "자동차 경로 미리 듣기"는 이 provider로 라우팅한다. NCP는
+ * UI(en 로케일)의 "자동차 경로 안내"는 이 provider로 라우팅한다. NCP는
  * `lang=en`이 완전한 영문 턴바이턴(`instructions`)을 반환한다(2026-06-17 실호출
  * 검증: 서울역→경복궁 "Turn right toward 'Cheongpa-ro'" …). 라우트 선택은
  * `/api/route/car`가 lang+키 유무로 디스패치(en+NCP키 → 여기, 그 외 → 카카오).
