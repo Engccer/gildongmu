@@ -1,6 +1,11 @@
 // declarations.ts — Gemini function declarations + 키 게이트 필터 (React/Next 비의존)
 import type { FunctionDeclaration } from "@google/genai";
-import { hasKakaoKey, hasJusoKey } from "@/lib/env";
+import {
+  hasKakaoKey,
+  hasJusoKey,
+  hasSeoulSubwayRealtimeKey,
+  hasDataGoKrKey,
+} from "@/lib/env";
 
 interface GatedDeclaration {
   declaration: FunctionDeclaration;
@@ -40,6 +45,54 @@ const DECLARATIONS: GatedDeclaration[] = [
           keyword: { type: "string", description: "주소 키워드" },
         },
         required: ["keyword"],
+      },
+    },
+  },
+  {
+    gate: hasSeoulSubwayRealtimeKey,
+    declaration: {
+      name: "get_subway_arrivals",
+      description:
+        "현재 위치 주변 지하철역의 실시간 도착 정보를 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_night_clinics",
+      description:
+        "현재 위치 주변 소아 야간·휴일 진료 병원(달빛어린이병원)을 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    gate: hasKakaoKey,
+    declaration: {
+      name: "get_kids_places",
+      description:
+        "현재 위치 주변 아이 놀 곳(키즈카페·놀이터·어린이공원)을 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
+    gate: hasKakaoKey,
+    declaration: {
+      name: "get_surroundings",
+      description:
+        "현재 위치 주변 편의점·음식점·약국 등 주변 장소를 방위·거리와 함께 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
       },
     },
   },

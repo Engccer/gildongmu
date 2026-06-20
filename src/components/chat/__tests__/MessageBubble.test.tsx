@@ -7,6 +7,20 @@ vi.mock("next-intl", () => ({
   useLocale: () => "ko",
 }));
 
+// self-fetch 컴포넌트 mock — 실제 렌더 시 fetch/geolocation 필요하므로 최소 stub
+vi.mock("@/components/SubwayArrivalsNearby", () => ({
+  SubwayArrivalsNearby: () => <div data-testid="subway-nearby" />,
+}));
+vi.mock("@/components/NightClinicsNearby", () => ({
+  NightClinicsNearby: () => <div data-testid="clinics-nearby" />,
+}));
+vi.mock("@/components/KidsPlacesNearby", () => ({
+  KidsPlacesNearby: () => <div data-testid="kids-nearby" />,
+}));
+vi.mock("@/components/SurroundingsNearby", () => ({
+  SurroundingsNearby: () => <div data-testid="surroundings-nearby" />,
+}));
+
 import { MessageBubble } from "../MessageBubble";
 import type { Place } from "@/lib/types";
 
@@ -73,5 +87,42 @@ describe("MessageBubble", () => {
     );
     // AddressResultList가 roadAddr을 렌더링
     expect(screen.getByText(/세종대로 110/)).toBeTruthy();
+  });
+
+  // self-fetch nearby 컴포넌트 마운트 테스트 (mock 경유)
+  it("subway-nearby render면 SubwayArrivalsNearby 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "5", role: "assistant", text: "", render: { type: "subway-nearby" } }}
+      />
+    );
+    expect(screen.getByTestId("subway-nearby")).toBeTruthy();
+  });
+
+  it("clinics-nearby render면 NightClinicsNearby 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "6", role: "assistant", text: "", render: { type: "clinics-nearby" } }}
+      />
+    );
+    expect(screen.getByTestId("clinics-nearby")).toBeTruthy();
+  });
+
+  it("kids-nearby render면 KidsPlacesNearby 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "7", role: "assistant", text: "", render: { type: "kids-nearby" } }}
+      />
+    );
+    expect(screen.getByTestId("kids-nearby")).toBeTruthy();
+  });
+
+  it("surroundings-nearby render면 SurroundingsNearby 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "8", role: "assistant", text: "", render: { type: "surroundings-nearby" } }}
+      />
+    );
+    expect(screen.getByTestId("surroundings-nearby")).toBeTruthy();
   });
 });

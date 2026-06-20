@@ -40,6 +40,26 @@ export async function executeFunction(
         render: addressesToRender(results),
       };
     }
+    case "get_subway_arrivals":
+      return {
+        summary: "주변 지하철 도착 정보를 아래에 표시했습니다.",
+        render: { type: "subway-nearby" },
+      };
+    case "get_night_clinics":
+      return {
+        summary: "주변 소아 야간·휴일 진료 병원을 아래에 표시했습니다.",
+        render: { type: "clinics-nearby" },
+      };
+    case "get_kids_places":
+      return {
+        summary: "주변 아이 놀 곳을 아래에 표시했습니다.",
+        render: { type: "kids-nearby" },
+      };
+    case "get_surroundings":
+      return {
+        summary: "주변 장소를 아래에 표시했습니다.",
+        render: { type: "surroundings-nearby" },
+      };
     default:
       throw new Error(`알 수 없는 도구: ${name}`);
   }

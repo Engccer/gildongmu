@@ -5,22 +5,7 @@
  * 후속 태스크(라우터·render 헬퍼·useChat·MessageBubble)가 전부 이 타입을 import한다.
  */
 
-import type {
-  Place,
-  JusoAddress,
-  CarRouteBriefing,
-  TransitRoute,
-  NearbySubwayStation,
-  BusStop,
-  BikeStation,
-  AirQuality,
-  NightClinic,
-  StationFacilities,
-  SeoulMetroFacilities,
-  StationMeta,
-  SurroundingPlace,
-  KidsPlace,
-} from "@/lib/types";
+import type { Place, JusoAddress } from "@/lib/types";
 
 /** 도구 실행 컨텍스트 — 각 도구 함수에 전달되는 공유 상태. */
 export interface ExecutionContext {
@@ -33,27 +18,29 @@ export interface ExecutionContext {
 }
 
 /**
- * 렌더 페이로드 — discriminated union.
- * `type` 필드로 MessageBubble이 어떤 컴포넌트를 렌더할지 결정한다.
+ * 렌더 페이로드 — discriminated union (옵션 C: self-fetch 컴포넌트 파라미터 마운트).
+ *
+ * props-driven 변종(places·addresses): 데이터를 router가 가져와 전달.
+ * self-fetch 변종 나머지: router는 파라미터만 추출하고 컴포넌트가 직접 fetch한다.
  */
 export type RenderPayload =
+  // props-driven 재사용 (데이터 그대로):
   | { type: "places"; places: Place[] }
   | { type: "addresses"; results: JusoAddress[] }
-  | { type: "car-route"; route: CarRouteBriefing }
-  | { type: "transit-route"; route: TransitRoute | null }
-  | { type: "subway-arrivals"; stations: NearbySubwayStation[] }
-  | { type: "bus-arrivals"; stops: BusStop[] }
-  | { type: "bike-stations"; stations: BikeStation[] }
-  | { type: "air-quality"; air: AirQuality | null }
-  | { type: "night-clinics"; clinics: NightClinic[] }
-  | {
-      type: "station-facilities";
-      korail?: StationFacilities;
-      metro?: SeoulMetroFacilities;
-    }
-  | { type: "station-meta"; meta: StationMeta | null }
-  | { type: "surroundings"; places: SurroundingPlace[] }
-  | { type: "kids-places"; places: KidsPlace[] };
+  // self-fetch 컴포넌트 마운트 — 파라미터만 (컴포넌트가 직접 fetch):
+  | { type: "subway-nearby" }                                   // <SubwayArrivalsNearby/>
+  | { type: "clinics-nearby" }                                  // <NightClinicsNearby/>
+  | { type: "kids-nearby" }                                     // <KidsPlacesNearby/>
+  | { type: "surroundings-nearby" }                             // <SurroundingsNearby/>
+  | { type: "bus"; mode: "current" }
+  | { type: "bus"; mode: "place"; lat: number; lng: number }    // <BusArrivals mode.../>
+  | { type: "bike"; mode: "current" }
+  | { type: "bike"; mode: "place"; lat: number; lng: number }   // <BikeStations mode.../>
+  | { type: "air-quality"; lat: number; lng: number }           // <AirQuality lat lng/>
+  | { type: "station-meta"; stationName: string }               // <StationMeta stationName/>
+  | { type: "station-facilities"; stationName: string }         // <StationFacilities/> + <SeoulMetroFacilities/>
+  | { type: "car-route"; dest: { lat: number; lng: number; name: string } }      // <CarRouteBriefing dest/>
+  | { type: "transit-route"; dest: { lat: number; lng: number; name: string } }; // <TransitRouteBriefing dest/>
 
 /** 도구 실행 결과 — 텍스트 요약 + 선택적 렌더 페이로드. */
 export interface ToolResult {

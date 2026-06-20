@@ -5,6 +5,10 @@ import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
 import { groupByCategory } from "@/lib/category";
 import { AddressResultList } from "@/components/AddressResultList";
+import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
+import { NightClinicsNearby } from "@/components/NightClinicsNearby";
+import { KidsPlacesNearby } from "@/components/KidsPlacesNearby";
+import { SurroundingsNearby } from "@/components/SurroundingsNearby";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -63,8 +67,16 @@ function RenderBlock({
           onSelect={() => {}}
         />
       );
+    case "subway-nearby":
+      return <SubwayArrivalsNearby />;
+    case "clinics-nearby":
+      return <NightClinicsNearby />;
+    case "kids-nearby":
+      return <KidsPlacesNearby />;
+    case "surroundings-nearby":
+      return <SurroundingsNearby />;
     default:
-      // Phase 3에서 car-route, transit-route 등 case 추가
+      // Task 17~19에서 bus·bike·air-quality·station-meta·station-facilities·car-route·transit-route case 추가
       return null;
   }
 }

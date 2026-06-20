@@ -90,3 +90,30 @@ describe("executeFunction search_address", () => {
     expect(searchJusoAddresses).toHaveBeenCalledWith("");
   });
 });
+
+// 현재위치 nearby 4도구 — provider 호출 없이 summary + render type만 반환
+describe("executeFunction 현재위치 nearby 4도구", () => {
+  it("get_subway_arrivals → subway-nearby render + 요약 포함", async () => {
+    const r = await executeFunction("get_subway_arrivals", {}, ctxKo);
+    expect(r.render).toEqual({ type: "subway-nearby" });
+    expect(r.summary).toContain("지하철");
+  });
+
+  it("get_night_clinics → clinics-nearby render + 요약 포함", async () => {
+    const r = await executeFunction("get_night_clinics", {}, ctxKo);
+    expect(r.render).toEqual({ type: "clinics-nearby" });
+    expect(r.summary).toContain("소아");
+  });
+
+  it("get_kids_places → kids-nearby render + 요약 포함", async () => {
+    const r = await executeFunction("get_kids_places", {}, ctxKo);
+    expect(r.render).toEqual({ type: "kids-nearby" });
+    expect(r.summary).toContain("아이");
+  });
+
+  it("get_surroundings → surroundings-nearby render + 요약 포함", async () => {
+    const r = await executeFunction("get_surroundings", {}, ctxKo);
+    expect(r.render).toEqual({ type: "surroundings-nearby" });
+    expect(r.summary).toContain("주변");
+  });
+});
