@@ -9,6 +9,9 @@ import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
 import { NightClinicsNearby } from "@/components/NightClinicsNearby";
 import { KidsPlacesNearby } from "@/components/KidsPlacesNearby";
 import { SurroundingsNearby } from "@/components/SurroundingsNearby";
+import { BusArrivals } from "@/components/BusArrivals";
+import { BikeStations } from "@/components/BikeStations";
+import { AirQuality } from "@/components/AirQuality";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -75,8 +78,18 @@ function RenderBlock({
       return <KidsPlacesNearby />;
     case "surroundings-nearby":
       return <SurroundingsNearby />;
+    case "bus":
+      return render.mode === "current"
+        ? <BusArrivals mode="current" />
+        : <BusArrivals mode="place" lat={render.lat} lng={render.lng} />;
+    case "bike":
+      return render.mode === "current"
+        ? <BikeStations mode="current" />
+        : <BikeStations mode="place" lat={render.lat} lng={render.lng} />;
+    case "air-quality":
+      return <AirQuality lat={render.lat} lng={render.lng} />;
     default:
-      // Task 17~19에서 bus·bike·air-quality·station-meta·station-facilities·car-route·transit-route case 추가
+      // Task 18~19에서 station-meta·station-facilities·car-route·transit-route case 추가
       return null;
   }
 }

@@ -82,4 +82,43 @@ describe("availableDeclarations", () => {
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_surroundings")).toBe(false);
   });
+
+  // get_bus_arrivals — DATA_GO_KR_API_KEY 게이트
+  it("data.go.kr 키 있으면 get_bus_arrivals 노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", "d");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_bus_arrivals")).toBe(true);
+  });
+
+  it("data.go.kr 키 없으면 get_bus_arrivals 미노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_bus_arrivals")).toBe(false);
+  });
+
+  // get_bike_stations — SEOUL_OPEN_DATA_KEY 게이트
+  it("서울 열린데이터 키 있으면 get_bike_stations 노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", "s");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_bike_stations")).toBe(true);
+  });
+
+  it("서울 열린데이터 키 없으면 get_bike_stations 미노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_bike_stations")).toBe(false);
+  });
+
+  // get_air_quality — DATA_GO_KR_API_KEY 게이트
+  it("data.go.kr 키 있으면 get_air_quality 노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", "d");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_air_quality")).toBe(true);
+  });
+
+  it("data.go.kr 키 없으면 get_air_quality 미노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_air_quality")).toBe(false);
+  });
 });

@@ -60,6 +60,63 @@ export async function executeFunction(
         summary: "주변 장소를 아래에 표시했습니다.",
         render: { type: "surroundings-nearby" },
       };
+    case "get_bus_arrivals": {
+      const place = args.place ? String(args.place) : "";
+      if (place) {
+        const r = await searchPlaces({ query: place, lang: ctx.dataLocale });
+        const p = r.places[0];
+        if (p) {
+          return {
+            summary: `${place} 주변 버스 도착 정보를 표시했습니다.`,
+            render: { type: "bus", mode: "place", lat: p.lat, lng: p.lng },
+          };
+        }
+        return { summary: `'${place}' 위치를 찾지 못했습니다.` };
+      }
+      if (ctx.userLocation) {
+        return {
+          summary: "현재 위치 주변 버스 도착 정보를 표시했습니다.",
+          render: { type: "bus", mode: "current" },
+        };
+      }
+      return { summary: "위치를 알 수 없어 버스 도착 정보를 표시할 수 없습니다." };
+    }
+    case "get_bike_stations": {
+      const place = args.place ? String(args.place) : "";
+      if (place) {
+        const r = await searchPlaces({ query: place, lang: ctx.dataLocale });
+        const p = r.places[0];
+        if (p) {
+          return {
+            summary: `${place} 주변 따릉이 대여소를 표시했습니다.`,
+            render: { type: "bike", mode: "place", lat: p.lat, lng: p.lng },
+          };
+        }
+        return { summary: `'${place}' 위치를 찾지 못했습니다.` };
+      }
+      if (ctx.userLocation) {
+        return {
+          summary: "현재 위치 주변 따릉이 대여소를 표시했습니다.",
+          render: { type: "bike", mode: "current" },
+        };
+      }
+      return { summary: "위치를 알 수 없어 따릉이 정보를 표시할 수 없습니다." };
+    }
+    case "get_air_quality": {
+      const place = args.place ? String(args.place) : "";
+      let coord = ctx.userLocation;
+      if (place) {
+        const r = await searchPlaces({ query: place, lang: ctx.dataLocale });
+        coord = r.places[0] ? { lat: r.places[0].lat, lng: r.places[0].lng } : undefined;
+      }
+      if (coord) {
+        return {
+          summary: `${place || "현재 위치"} 공기질을 표시했습니다.`,
+          render: { type: "air-quality", lat: coord.lat, lng: coord.lng },
+        };
+      }
+      return { summary: "위치를 알 수 없어 공기질을 표시할 수 없습니다." };
+    }
     default:
       throw new Error(`알 수 없는 도구: ${name}`);
   }

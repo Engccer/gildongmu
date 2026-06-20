@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+
+afterEach(() => {
+  cleanup();
+});
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string) => k,
@@ -19,6 +23,22 @@ vi.mock("@/components/KidsPlacesNearby", () => ({
 }));
 vi.mock("@/components/SurroundingsNearby", () => ({
   SurroundingsNearby: () => <div data-testid="surroundings-nearby" />,
+}));
+// 좌표 도구 컴포넌트 mock
+vi.mock("@/components/BusArrivals", () => ({
+  BusArrivals: (props: { mode: string; lat?: number; lng?: number }) => (
+    <div data-testid="bus-arrivals" data-mode={props.mode} />
+  ),
+}));
+vi.mock("@/components/BikeStations", () => ({
+  BikeStations: (props: { mode: string; lat?: number; lng?: number }) => (
+    <div data-testid="bike-stations" data-mode={props.mode} />
+  ),
+}));
+vi.mock("@/components/AirQuality", () => ({
+  AirQuality: (props: { lat: number; lng: number }) => (
+    <div data-testid="air-quality" data-lat={props.lat} data-lng={props.lng} />
+  ),
 }));
 
 import { MessageBubble } from "../MessageBubble";
@@ -124,5 +144,77 @@ describe("MessageBubble", () => {
       />
     );
     expect(screen.getByTestId("surroundings-nearby")).toBeTruthy();
+  });
+
+  // 좌표 도구 3종 컴포넌트 마운트 테스트
+  it("bus current render면 BusArrivals mode=current 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "9", role: "assistant", text: "", render: { type: "bus", mode: "current" } }}
+      />
+    );
+    const el = screen.getByTestId("bus-arrivals");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-mode")).toBe("current");
+  });
+
+  it("bus place render면 BusArrivals mode=place 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "10",
+          role: "assistant",
+          text: "",
+          render: { type: "bus", mode: "place", lat: 37.5, lng: 127.1 },
+        }}
+      />
+    );
+    const el = screen.getByTestId("bus-arrivals");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-mode")).toBe("place");
+  });
+
+  it("bike current render면 BikeStations mode=current 마운트", () => {
+    render(
+      <MessageBubble
+        message={{ id: "11", role: "assistant", text: "", render: { type: "bike", mode: "current" } }}
+      />
+    );
+    const el = screen.getByTestId("bike-stations");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-mode")).toBe("current");
+  });
+
+  it("bike place render면 BikeStations mode=place 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "12",
+          role: "assistant",
+          text: "",
+          render: { type: "bike", mode: "place", lat: 37.5, lng: 127.1 },
+        }}
+      />
+    );
+    const el = screen.getByTestId("bike-stations");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-mode")).toBe("place");
+  });
+
+  it("air-quality render면 AirQuality lat/lng 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "13",
+          role: "assistant",
+          text: "",
+          render: { type: "air-quality", lat: 37.5, lng: 127.1 },
+        }}
+      />
+    );
+    const el = screen.getByTestId("air-quality");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-lat")).toBe("37.5");
+    expect(el.getAttribute("data-lng")).toBe("127.1");
   });
 });

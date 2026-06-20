@@ -5,6 +5,7 @@ import {
   hasJusoKey,
   hasSeoulSubwayRealtimeKey,
   hasDataGoKrKey,
+  hasSeoulOpenDataKey,
 } from "@/lib/env";
 
 interface GatedDeclaration {
@@ -93,6 +94,57 @@ const DECLARATIONS: GatedDeclaration[] = [
       parametersJsonSchema: {
         type: "object",
         properties: {},
+      },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_bus_arrivals",
+      description:
+        "버스 도착 정보를 보여준다. 특정 지명 주변이면 place 지정, 없으면 현재 위치.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: {
+            type: "string",
+            description: "지명(없으면 현재 위치 기준)",
+          },
+        },
+      },
+    },
+  },
+  {
+    gate: hasSeoulOpenDataKey,
+    declaration: {
+      name: "get_bike_stations",
+      description:
+        "따릉이 공공자전거 대여소 정보를 보여준다. 특정 지명 주변이면 place 지정, 없으면 현재 위치.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: {
+            type: "string",
+            description: "지명(없으면 현재 위치 기준)",
+          },
+        },
+      },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_air_quality",
+      description:
+        "현재 위치 또는 지명 주변의 공기질(미세먼지·초미세먼지·통합대기환경지수)을 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: {
+            type: "string",
+            description: "지명(없으면 현재 위치 기준)",
+          },
+        },
       },
     },
   },

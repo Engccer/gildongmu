@@ -91,6 +91,85 @@ describe("executeFunction search_address", () => {
   });
 });
 
+// 좌표 도구 3종 — get_bus_arrivals, get_bike_stations, get_air_quality
+describe("executeFunction 좌표 도구 3종", () => {
+  const ctxWithLoc = { ...ctxKo, userLocation: { lat: 37.55, lng: 127.1 } };
+
+  // get_bus_arrivals
+  it("get_bus_arrivals place 지정 → searchPlaces 호출 + bus place render", async () => {
+    const r = await executeFunction("get_bus_arrivals", { place: "길동" }, ctxKo);
+    expect(r.render).toEqual({ type: "bus", mode: "place", lat: 37.5, lng: 127.1 });
+    expect(r.summary).toContain("길동");
+    expect(r.summary).toContain("버스");
+  });
+
+  it("get_bus_arrivals place 없고 userLocation 있음 → bus current render", async () => {
+    const r = await executeFunction("get_bus_arrivals", {}, ctxWithLoc);
+    expect(r.render).toEqual({ type: "bus", mode: "current" });
+    expect(r.summary).toContain("버스");
+  });
+
+  it("get_bus_arrivals place 없고 userLocation 없음 → render 없는 summary", async () => {
+    const r = await executeFunction("get_bus_arrivals", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_bus_arrivals place 지정했으나 검색 결과 없음 → render 없는 summary", async () => {
+    const { searchPlaces } = await import("@/lib/providers/places");
+    vi.mocked(searchPlaces).mockResolvedValueOnce({ places: [], provider: "kakao-local", query: "없는곳" });
+    const r = await executeFunction("get_bus_arrivals", { place: "없는곳" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toContain("없는곳");
+  });
+
+  // get_bike_stations
+  it("get_bike_stations place 지정 → bike place render", async () => {
+    const r = await executeFunction("get_bike_stations", { place: "길동" }, ctxKo);
+    expect(r.render).toEqual({ type: "bike", mode: "place", lat: 37.5, lng: 127.1 });
+    expect(r.summary).toContain("따릉이");
+  });
+
+  it("get_bike_stations place 없고 userLocation 있음 → bike current render", async () => {
+    const r = await executeFunction("get_bike_stations", {}, ctxWithLoc);
+    expect(r.render).toEqual({ type: "bike", mode: "current" });
+    expect(r.summary).toContain("따릉이");
+  });
+
+  it("get_bike_stations place 없고 userLocation 없음 → render 없는 summary", async () => {
+    const r = await executeFunction("get_bike_stations", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  // get_air_quality
+  it("get_air_quality place 지정 → air-quality render with lat/lng", async () => {
+    const r = await executeFunction("get_air_quality", { place: "길동" }, ctxKo);
+    expect(r.render).toEqual({ type: "air-quality", lat: 37.5, lng: 127.1 });
+    expect(r.summary).toContain("공기질");
+  });
+
+  it("get_air_quality place 없고 userLocation 있음 → air-quality render with userLocation", async () => {
+    const r = await executeFunction("get_air_quality", {}, ctxWithLoc);
+    expect(r.render).toEqual({ type: "air-quality", lat: 37.55, lng: 127.1 });
+    expect(r.summary).toContain("공기질");
+  });
+
+  it("get_air_quality place 없고 userLocation 없음 → render 없는 summary", async () => {
+    const r = await executeFunction("get_air_quality", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_air_quality place 지정했으나 검색 결과 없음 → render 없는 summary", async () => {
+    const { searchPlaces } = await import("@/lib/providers/places");
+    vi.mocked(searchPlaces).mockResolvedValueOnce({ places: [], provider: "kakao-local", query: "없는곳" });
+    const r = await executeFunction("get_air_quality", { place: "없는곳" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+});
+
 // 현재위치 nearby 4도구 — provider 호출 없이 summary + render type만 반환
 describe("executeFunction 현재위치 nearby 4도구", () => {
   it("get_subway_arrivals → subway-nearby render + 요약 포함", async () => {
