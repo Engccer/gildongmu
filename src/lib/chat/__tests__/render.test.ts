@@ -1,72 +1,33 @@
 import { describe, it, expect } from "vitest";
-import { placesToRender, placesSummary, addressesToRender, addressesSummary } from "../render";
-import type { JusoAddress, Place } from "@/lib/types";
+import { placesToData, placesToRender, addressesToData } from "../render";
+import type { JusoAddress } from "@/lib/types";
 
-const sample: Place[] = [
-  {
-    id: "1",
-    name: "길동 카페",
-    category: "카페",
-    address: "서울 강동구",
-    roadAddress: "서울 강동구 길동로",
-    lat: 37.5,
-    lng: 127.1,
-  },
-  {
-    id: "2",
-    name: "길동 약국",
-    category: "약국",
-    address: "서울 강동구",
-    roadAddress: "서울 강동구 길동로 2",
-    lat: 37.5,
-    lng: 127.1,
-  },
-];
+const place = { id: "1", name: "길동 카페", category: "카페", address: "강동구",
+  roadAddress: "강동대로 1", lat: 37.5, lng: 127.1 };
 
-describe("placesToRender", () => {
-  it("places를 RenderPayload로 투영", () => {
-    expect(placesToRender(sample)).toEqual({ type: "places", places: sample });
+/** Record<string,unknown> 단계 키 내려가는 헬퍼. */
+function dig(data: Record<string, unknown>, ...keys: string[]): unknown {
+  let cur: unknown = data;
+  for (const k of keys) {
+    if (cur == null || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[k];
+  }
+  return cur;
+}
+
+describe("render 헬퍼", () => {
+  it("placesToData는 count + 상위 8건 핵심필드", () => {
+    const d = placesToData([place]);
+    expect(dig(d, "count")).toBe(1);
+    expect(dig(d, "places", "0")).toEqual({ name: "길동 카페", category: "카페", address: "강동대로 1" });
   });
-});
-
-describe("placesSummary", () => {
-  it("건수와 첫 항목명을 포함", () => {
-    const s = placesSummary(sample, "ko");
-    expect(s).toContain("2");
-    expect(s).toContain("길동 카페");
+  it("placesToRender는 places 페이로드", () => {
+    expect(placesToRender([place])).toEqual({ type: "places", places: [place] });
   });
-  it("빈 결과는 결과 없음 요약", () => {
-    expect(placesSummary([], "ko")).toMatch(/없|0/);
-  });
-});
-
-const addressSample: JusoAddress[] = [
-  {
-    roadAddr: "서울특별시 중구 세종대로 110 (태평로1가)",
-    roadAddrPart1: "서울특별시 중구 세종대로 110",
-    jibunAddr: "서울특별시 중구 태평로1가 31",
-    engAddr: "110 Sejong-daero, Jung-gu, Seoul",
-    zipNo: "04524",
-    bdNm: "서울특별시청",
-  },
-];
-
-describe("addressesToRender", () => {
-  it("addresses를 RenderPayload로 투영", () => {
-    expect(addressesToRender(addressSample)).toEqual({
-      type: "addresses",
-      results: addressSample,
-    });
-  });
-});
-
-describe("addressesSummary", () => {
-  it("건수와 첫 roadAddr를 포함", () => {
-    const s = addressesSummary(addressSample, "ko");
-    expect(s).toContain("1");
-    expect(s).toContain("서울특별시 중구 세종대로 110");
-  });
-  it("빈 결과는 결과 없음 요약", () => {
-    expect(addressesSummary([], "ko")).toMatch(/없|0/);
+  it("addressesToData는 count + roadAddr/zipNo", () => {
+    const addr: JusoAddress = { roadAddr: "세종대로 110", roadAddrPart1: "", jibunAddr: "",
+      engAddr: "", zipNo: "04524", bdNm: "" };
+    const d = addressesToData([addr]);
+    expect(dig(d, "addresses", "0")).toEqual({ roadAddr: "세종대로 110", zipNo: "04524" });
   });
 });

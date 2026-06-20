@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   const systemInstruction =
     `너는 한국 로컬 정보 도우미다. 사용자의 언어(${locale})로 간결히 답한다. ` +
-    `도구 결과(summary)를 바탕으로만 사실을 말하고, 추측하지 않는다.`;
+    `도구 결과(data)를 바탕으로만 사실을 말하고, 추측하지 않는다.`;
   const tools = [{ functionDeclarations: availableDeclarations() }];
 
   // messages → Gemini Contents (assistant → model 역할 변환)
@@ -74,14 +74,14 @@ export async function POST(request: Request) {
       );
       render = result.render;
 
-      // tool 응답을 user role로 되돌려 2차 generateContent 호출
+      // tool 응답(실데이터)을 user role로 되돌려 2차 generateContent 호출
       history.push({
         role: "user",
         parts: [
           {
             functionResponse: {
               name: name!,
-              response: { summary: result.summary },
+              response: result.data,   // ← summary → 실데이터
             },
           },
         ],

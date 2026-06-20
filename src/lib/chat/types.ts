@@ -48,24 +48,24 @@ export type RenderPayload =
   | { type: "car-route"; dest: { lat: number; lng: number; name: string } }      // <CarRouteBriefing dest/>
   | { type: "transit-route"; dest: { lat: number; lng: number; name: string } }; // <TransitRouteBriefing dest/>
 
-/** 도구 실행 결과 — 텍스트 요약 + 선택적 렌더 페이로드. */
+/** 도구 실행 결과 — LLM용 데이터 + 선택적 카드 + 출처. */
 export interface ToolResult {
-  /** 어시스턴트 메시지에 포함될 텍스트 요약 */
-  summary: string;
-  /** 구조화 데이터를 렌더할 때 첨부 (없으면 텍스트만) */
+  /** LLM이 추론·종합할 실제 JSON (요약 문자열 아님). 실패 시 { error } */
+  data: Record<string, unknown>;
+  /** 구조화 데이터를 렌더할 카드 (없으면 텍스트만) */
   render?: RenderPayload;
+  /** 이 도구가 사용한 데이터 제공처(0..n) */
+  source?: SourceAttribution[];
 }
 
-/** 채팅 메시지 하나 — 사용자 발화 또는 어시스턴트 응답. */
+/** 채팅 메시지 하나. */
 export interface ChatMessage {
-  /** 메시지 고유 식별자 */
   id: string;
-  /** 발화자 역할 */
   role: "user" | "assistant";
-  /** 표시 텍스트 */
   text: string;
-  /** 어시스턴트 응답에 첨부되는 렌더 페이로드 (없으면 텍스트만) */
-  render?: RenderPayload;
-  /** 오류 발생 시 오류 메시지 */
+  /** 어시스턴트 응답에 첨부되는 카드들(복수 — 한 답변에 여러 카드 가능) */
+  renders?: RenderPayload[];
+  /** 응답 하단 출처 목록 */
+  sources?: SourceAttribution[];
   error?: string;
 }
