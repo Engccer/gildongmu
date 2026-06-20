@@ -2,7 +2,8 @@
  * Gemini function call → provider 디스패치 라우터.
  * React/Next 비의존 — dodo-planet 이식 가능.
  *
- * Phase 3에서 case가 추가된다. search_places만 구현.
+ * Gemini function call을 도구 핸들러로 디스패치한다. 도구는 기존 provider 호출
+ * 또는 좌표/파라미터 추출 후 컴포넌트 마운트 지시(render)를 반환한다.
  */
 
 import type { ExecutionContext, ToolResult } from "./types";

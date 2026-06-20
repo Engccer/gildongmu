@@ -48,7 +48,6 @@ export function MessageBubble({
 
 /**
  * render payload 타입에 따라 적절한 컴포넌트로 디스패치.
- * Phase 3에서 도구별 case가 추가된다.
  */
 function RenderBlock({
   render,

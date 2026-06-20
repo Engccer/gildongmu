@@ -21,15 +21,11 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "search_places",
       description:
         "키워드로 장소(상호·POI)를 검색한다. 예: '길동 카페', '강남역 맛집'. " +
-        "사용자가 특정 지명/상호를 찾을 때 사용. 현재 위치 기준 거리 정렬을 원하면 useCurrentLocation=true.",
+        "사용자가 특정 지명/상호를 찾을 때 사용.",
       parametersJsonSchema: {
         type: "object",
         properties: {
           query: { type: "string", description: "검색 키워드" },
-          useCurrentLocation: {
-            type: "boolean",
-            description: "현재 위치 기준 거리 정렬 여부",
-          },
         },
         required: ["query"],
       },
