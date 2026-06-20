@@ -352,6 +352,23 @@
     "error": {
       "chat_failed": "답변을 가져오지 못했습니다.",
       "chat_unavailable": "채팅을 사용할 수 없습니다."
+    },
+    "sources": "출처",
+    "source": {
+      "kakao": "카카오",
+      "tourapi": "한국관광공사 TourAPI",
+      "juso": "행안부 도로명주소",
+      "seoulopen": "서울 열린데이터광장",
+      "airkorea": "에어코리아",
+      "kma": "기상청",
+      "tago": "국토부 TAGO 버스",
+      "nmc": "국가응급의료정보원",
+      "kakaomobility": "카카오모빌리티",
+      "ncp": "네이버 클라우드 플랫폼",
+      "odsay": "ODsay 대중교통",
+      "kric": "국가철도공단",
+      "korail": "한국철도공사",
+      "seoulmetro": "서울교통공사"
     }
   },
   "beacon": {

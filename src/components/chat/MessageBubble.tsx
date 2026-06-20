@@ -17,6 +17,7 @@ import { StationFacilities } from "@/components/StationFacilities";
 import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 import { CarRouteBriefing } from "@/components/CarRouteBriefing";
 import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
+import { SourceList } from "./SourceList";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -42,6 +43,8 @@ export function MessageBubble({
       {message.renders?.map((render, i) => (
         <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} />
       ))}
+      {/* 어시스턴트 메시지에만 출처 푸터 표시 */}
+      {!isUser && <SourceList sources={message.sources} />}
     </div>
   );
 }

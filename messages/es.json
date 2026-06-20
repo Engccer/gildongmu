@@ -352,6 +352,23 @@
     "error": {
       "chat_failed": "No se pudo obtener una respuesta.",
       "chat_unavailable": "El chat no está disponible."
+    },
+    "sources": "Fuentes",
+    "source": {
+      "kakao": "Kakao",
+      "tourapi": "TourAPI de la Organización de Turismo de Corea",
+      "juso": "Dirección postal (MOIS)",
+      "seoulopen": "Portal de datos abiertos de Seúl",
+      "airkorea": "AirKorea",
+      "kma": "Agencia Meteorológica de Corea",
+      "tago": "TAGO Autobús (MOLIT)",
+      "nmc": "Centro Médico Nacional",
+      "kakaomobility": "Kakao Mobility",
+      "ncp": "Naver Cloud Platform",
+      "odsay": "ODsay Transporte público",
+      "kric": "Autoridad de Red Ferroviaria de Corea",
+      "korail": "Korail",
+      "seoulmetro": "Metro de Seúl"
     }
   },
   "beacon": {
