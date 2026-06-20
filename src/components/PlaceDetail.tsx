@@ -13,7 +13,7 @@ import { SeoulMetroFacilities } from "./SeoulMetroFacilities";
 import { SeoulSubwayArrival } from "./SeoulSubwayArrival";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
-import { AirQuality } from "./AirQuality";
+import { LocalConditions } from "./LocalConditions";
 import { TransitRouteBriefing } from "./TransitRouteBriefing";
 import { DistanceBeacon } from "./DistanceBeacon";
 
@@ -130,7 +130,7 @@ export function PlaceDetail({
       {canShowBike && (
         <BikeStations mode="place" lat={place.lat} lng={place.lng} />
       )}
-      {canShowAir && <AirQuality lat={place.lat} lng={place.lng} />}
+      {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
     </div>
   );
 }

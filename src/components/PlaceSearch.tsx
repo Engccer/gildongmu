@@ -32,7 +32,7 @@ import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
-import { AirQuality } from "./AirQuality";
+import { LocalConditions } from "./LocalConditions";
 import { ModeToggle } from "./ModeToggle";
 import { ChatInterface } from "./chat/ChatInterface";
 
@@ -610,13 +610,12 @@ export function PlaceSearch({
           <SurroundingsNearby />
         </div>
       )}
-      {/* 공기질은 버튼 없이 좌표 준비 시 자동 등장하는 카드 — 외출 전 환경 브리핑.
-          내 주변 버튼 6종(지하철~둘러보기) 아래에 배치(위원장 선호, 2026-06-20).
-          AirQuality는 좌표 props를 받는 동일 컴포넌트라 장소 상세와 재사용,
-          region 랜드마크도 그대로(자동 등장 섹션 정책 부합). */}
+      {/* 이 지역 날씨 — 버튼 없이 좌표 준비 시 자동 등장하는 통합 카드(현재 날씨 +
+          공기질). 외출 전 환경 브리핑. 내 주변 버튼 6종(지하철~둘러보기) 아래에
+          배치(위원장 선호). LocalConditions가 두 fetch를 소유해 단일 region. */}
       {canShowAir && status.kind === "idle" && userCoords && (
         <div className="mt-4">
-          <AirQuality lat={userCoords.lat} lng={userCoords.lng} />
+          <LocalConditions lat={userCoords.lat} lng={userCoords.lng} />
         </div>
       )}
 
