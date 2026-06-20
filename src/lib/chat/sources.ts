@@ -9,7 +9,6 @@ const TOURAPI: SourceAttribution = { label: "source.tourapi" };
 const JUSO: SourceAttribution = { label: "source.juso" };
 const SEOUL_OPEN: SourceAttribution = { label: "source.seoulopen" };
 const AIRKOREA: SourceAttribution = { label: "source.airkorea" };
-const KMA: SourceAttribution = { label: "source.kma" };
 const TAGO: SourceAttribution = { label: "source.tago" };
 const NMC: SourceAttribution = { label: "source.nmc" };
 const KAKAO_MOBILITY: SourceAttribution = { label: "source.kakaomobility" };
