@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
@@ -18,6 +18,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
   const [meta, setMeta] = useState<Meta | null>(null);
+  const headingId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -53,10 +54,13 @@ export function StationMeta({ stationName }: { stationName: string }) {
   const isEn = prefersEnglish(locale);
 
   return (
-    <div
+    // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나
+    // 회전자 탐색이 유일한 발견 경로다(미니멀 ARIA의 예외, CLAUDE.md 참조).
+    <section
+      aria-labelledby={headingId}
       className="mt-3 rounded-md border border-border p-3"
     >
-      <h3 className="text-base font-semibold">
+      <h3 id={headingId} className="text-base font-semibold">
         {t("heading")}
       </h3>
 
@@ -93,6 +97,6 @@ export function StationMeta({ stationName }: { stationName: string }) {
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>
-    </div>
+    </section>
   );
 }

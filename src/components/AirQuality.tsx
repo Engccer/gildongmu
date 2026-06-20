@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { AirPollutant, AirQuality as Air } from "@/lib/types";
 
@@ -14,6 +14,7 @@ import type { AirPollutant, AirQuality as Air } from "@/lib/types";
 export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
   const t = useTranslations("airQuality");
   const [air, setAir] = useState<Air | null>(null);
+  const headingId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,10 +46,13 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
   if (!air) return null;
 
   return (
-    <div
+    // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나
+    // 회전자 탐색이 유일한 발견 경로다(미니멀 ARIA의 예외, CLAUDE.md 참조).
+    <section
+      aria-labelledby={headingId}
       className="mt-3 rounded-md border border-border p-3"
     >
-      <h3 className="text-base font-semibold">
+      <h3 id={headingId} className="text-base font-semibold">
         {t("heading")}
       </h3>
 
@@ -65,7 +69,7 @@ export function AirQuality({ lat, lng }: { lat: number; lng: number }) {
 
       <p className="mt-2 text-xs opacity-70">{t("asOf", { time: air.dataTime })}</p>
       <p className="mt-1 text-xs opacity-70">{t("source")}</p>
-    </div>
+    </section>
   );
 }
 
