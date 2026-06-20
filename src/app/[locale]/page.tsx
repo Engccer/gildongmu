@@ -8,6 +8,7 @@ import {
   hasSeoulSubwayRealtimeKey,
   hasOdsayKey,
   hasJusoKey,
+  hasGeminiKey,
 } from "@/lib/env";
 
 export default async function HomePage({
@@ -31,6 +32,7 @@ export default async function HomePage({
       canShowSurroundings={hasKakaoKey()}
       canShowTransit={hasOdsayKey()}
       canSearchAddress={hasJusoKey()}
+      canShowChat={hasGeminiKey()}
     />
   );
 }
