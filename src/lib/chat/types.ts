@@ -7,6 +7,12 @@
 
 import type { Place, JusoAddress } from "@/lib/types";
 
+/** 응답 하단에 표시할 데이터 제공처. label은 i18n 키(chat.<label>), url은 선택. */
+export interface SourceAttribution {
+  label: string;
+  url?: string;
+}
+
 /** 도구 실행 컨텍스트 — 각 도구 함수에 전달되는 공유 상태. */
 export interface ExecutionContext {
   /** 사용자 현재 위치 (WGS84). 위치 권한 없으면 undefined. */
