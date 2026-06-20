@@ -322,6 +322,16 @@
       "stt_failed": "El reconocimiento de voz falló. Inténtalo de nuevo."
     }
   },
+  "chat": {
+    "switchToChat": "Chat",
+    "switchToSearch": "Buscar",
+    "inputLabel": "Mensaje",
+    "send": "Enviar",
+    "error": {
+      "chat_failed": "No se pudo obtener una respuesta.",
+      "chat_unavailable": "El chat no está disponible."
+    }
+  },
   "beacon": {
     "heading": "Distancia al destino",
     "start": "Iniciar seguimiento de distancia",

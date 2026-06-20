@@ -322,6 +322,16 @@
       "stt_failed": "Voice recognition failed. Please try again."
     }
   },
+  "chat": {
+    "switchToChat": "Chat",
+    "switchToSearch": "Search",
+    "inputLabel": "Message",
+    "send": "Send",
+    "error": {
+      "chat_failed": "Couldn't get a response.",
+      "chat_unavailable": "Chat is unavailable."
+    }
+  },
   "beacon": {
     "heading": "Distance to destination",
     "start": "Start distance tracking",

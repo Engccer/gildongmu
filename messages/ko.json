@@ -322,6 +322,16 @@
       "stt_failed": "음성 인식에 실패했습니다. 다시 시도해 주세요."
     }
   },
+  "chat": {
+    "switchToChat": "채팅으로",
+    "switchToSearch": "검색으로",
+    "inputLabel": "메시지 입력",
+    "send": "보내기",
+    "error": {
+      "chat_failed": "답변을 가져오지 못했습니다.",
+      "chat_unavailable": "채팅을 사용할 수 없습니다."
+    }
+  },
   "beacon": {
     "heading": "목적지 거리 추적",
     "start": "거리 추적 시작",
