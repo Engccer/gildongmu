@@ -148,6 +148,43 @@ const DECLARATIONS: GatedDeclaration[] = [
       },
     },
   },
+  {
+    // 게이트 없음 — 정적 seed 기반, 외부 키 불필요
+    gate: () => true,
+    declaration: {
+      name: "get_station_meta",
+      description:
+        "지하철역의 노선·환승·영문역명 등 메타 정보를 보여준다. 역 이름을 stationName에 넣는다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          stationName: {
+            type: "string",
+            description: "역 이름 (예: 강남, 서울역)",
+          },
+        },
+        required: ["stationName"],
+      },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_station_facilities",
+      description:
+        "지하철역의 교통약자 편의시설(엘리베이터·장애인화장실 등)을 보여준다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          stationName: {
+            type: "string",
+            description: "역 이름 (예: 강남, 서울역)",
+          },
+        },
+        required: ["stationName"],
+      },
+    },
+  },
 ];
 
 /** 전체 도구 선언 목록 (게이트 무관) */

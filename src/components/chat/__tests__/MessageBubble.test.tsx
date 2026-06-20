@@ -40,6 +40,22 @@ vi.mock("@/components/AirQuality", () => ({
     <div data-testid="air-quality" data-lat={props.lat} data-lng={props.lng} />
   ),
 }));
+// 역명 도구 컴포넌트 mock
+vi.mock("@/components/StationMeta", () => ({
+  StationMeta: (props: { stationName: string }) => (
+    <div data-testid="station-meta" data-station={props.stationName} />
+  ),
+}));
+vi.mock("@/components/StationFacilities", () => ({
+  StationFacilities: (props: { stationName: string }) => (
+    <div data-testid="station-facilities" data-station={props.stationName} />
+  ),
+}));
+vi.mock("@/components/SeoulMetroFacilities", () => ({
+  SeoulMetroFacilities: (props: { stationName: string }) => (
+    <div data-testid="seoul-metro-facilities" data-station={props.stationName} />
+  ),
+}));
 
 import { MessageBubble } from "../MessageBubble";
 import type { Place } from "@/lib/types";
@@ -216,5 +232,41 @@ describe("MessageBubble", () => {
     expect(el).toBeTruthy();
     expect(el.getAttribute("data-lat")).toBe("37.5");
     expect(el.getAttribute("data-lng")).toBe("127.1");
+  });
+
+  // 역명 도구 2종 컴포넌트 마운트 테스트
+  it("station-meta render면 StationMeta stationName prop으로 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "14",
+          role: "assistant",
+          text: "",
+          render: { type: "station-meta", stationName: "강남" },
+        }}
+      />
+    );
+    const el = screen.getByTestId("station-meta");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-station")).toBe("강남");
+  });
+
+  it("station-facilities render면 StationFacilities + SeoulMetroFacilities 모두 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "15",
+          role: "assistant",
+          text: "",
+          render: { type: "station-facilities", stationName: "서울역" },
+        }}
+      />
+    );
+    const sf = screen.getByTestId("station-facilities");
+    const smf = screen.getByTestId("seoul-metro-facilities");
+    expect(sf).toBeTruthy();
+    expect(sf.getAttribute("data-station")).toBe("서울역");
+    expect(smf).toBeTruthy();
+    expect(smf.getAttribute("data-station")).toBe("서울역");
   });
 });

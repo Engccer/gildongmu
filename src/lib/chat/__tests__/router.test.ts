@@ -170,6 +170,45 @@ describe("executeFunction 좌표 도구 3종", () => {
   });
 });
 
+// 역명 도구 2종 — get_station_meta, get_station_facilities
+describe("executeFunction 역명 도구 2종", () => {
+  it("get_station_meta stationName 있음 → station-meta render + stationName 전달", async () => {
+    const r = await executeFunction("get_station_meta", { stationName: "강남" }, ctxKo);
+    expect(r.render).toEqual({ type: "station-meta", stationName: "강남" });
+    expect(r.summary).toContain("강남");
+  });
+
+  it("get_station_meta stationName 빈 문자열 → render 생략 + summary 반환", async () => {
+    const r = await executeFunction("get_station_meta", { stationName: "" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_station_meta stationName 누락 → render 생략 + summary 반환", async () => {
+    const r = await executeFunction("get_station_meta", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_station_facilities stationName 있음 → station-facilities render + stationName 전달", async () => {
+    const r = await executeFunction("get_station_facilities", { stationName: "서울역" }, ctxKo);
+    expect(r.render).toEqual({ type: "station-facilities", stationName: "서울역" });
+    expect(r.summary).toContain("서울역");
+  });
+
+  it("get_station_facilities stationName 빈 문자열 → render 생략 + summary 반환", async () => {
+    const r = await executeFunction("get_station_facilities", { stationName: "" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_station_facilities stationName 누락 → render 생략 + summary 반환", async () => {
+    const r = await executeFunction("get_station_facilities", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+});
+
 // 현재위치 nearby 4도구 — provider 호출 없이 summary + render type만 반환
 describe("executeFunction 현재위치 nearby 4도구", () => {
   it("get_subway_arrivals → subway-nearby render + 요약 포함", async () => {

@@ -12,6 +12,9 @@ import { SurroundingsNearby } from "@/components/SurroundingsNearby";
 import { BusArrivals } from "@/components/BusArrivals";
 import { BikeStations } from "@/components/BikeStations";
 import { AirQuality } from "@/components/AirQuality";
+import { StationMeta } from "@/components/StationMeta";
+import { StationFacilities } from "@/components/StationFacilities";
+import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -88,8 +91,17 @@ function RenderBlock({
         : <BikeStations mode="place" lat={render.lat} lng={render.lng} />;
     case "air-quality":
       return <AirQuality lat={render.lat} lng={render.lng} />;
+    case "station-meta":
+      return <StationMeta stationName={render.stationName} />;
+    case "station-facilities":
+      return (
+        <>
+          <StationFacilities stationName={render.stationName} />
+          <SeoulMetroFacilities stationName={render.stationName} />
+        </>
+      );
     default:
-      // Task 18~19에서 station-meta·station-facilities·car-route·transit-route case 추가
+      // Task 19에서 car-route·transit-route case 추가
       return null;
   }
 }

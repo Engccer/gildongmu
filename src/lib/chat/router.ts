@@ -117,6 +117,26 @@ export async function executeFunction(
       }
       return { summary: "위치를 알 수 없어 공기질을 표시할 수 없습니다." };
     }
+    case "get_station_meta": {
+      const stationName = String(args.stationName ?? "");
+      if (!stationName) {
+        return { summary: "역 이름을 알 수 없어 정보를 표시할 수 없습니다." };
+      }
+      return {
+        summary: `${stationName} 역 정보를 표시했습니다.`,
+        render: { type: "station-meta", stationName },
+      };
+    }
+    case "get_station_facilities": {
+      const stationName = String(args.stationName ?? "");
+      if (!stationName) {
+        return { summary: "역 이름을 알 수 없어 편의시설 정보를 표시할 수 없습니다." };
+      }
+      return {
+        summary: `${stationName} 역 편의시설을 표시했습니다.`,
+        render: { type: "station-facilities", stationName },
+      };
+    }
     default:
       throw new Error(`알 수 없는 도구: ${name}`);
   }
