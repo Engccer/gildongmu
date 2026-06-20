@@ -6,14 +6,13 @@
  *
  * 사용자가 macOS에서도 Cmd가 아닌 Ctrl을 쓰도록 명시 요청 → metaKey가 아닌 ctrlKey로 판정한다.
  */
-export type ChatShortcutAction = "chat-mode" | "search-mode" | "focus-input" | "dictation";
+export type ChatShortcutAction = "chat-mode" | "search-mode" | "focus-input";
 
 /** 단축키 표기 (WAI-ARIA 키 이름 규약). 접근성 이름에 합쳐 스크린리더로 안내한다. */
 export const CHAT_SHORTCUT_KEYS = {
   chatMode: "Control+Shift+C",
   searchMode: "Control+Shift+S",
   focusInput: "Shift+Escape",
-  dictation: "Control+Shift+D",
 } as const;
 
 /**
@@ -56,8 +55,6 @@ export function matchChatShortcut(e: ShortcutEventLike): ChatShortcutAction | nu
         return "chat-mode";
       case "KeyS":
         return "search-mode";
-      case "KeyD":
-        return "dictation";
     }
   }
 

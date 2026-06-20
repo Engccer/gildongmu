@@ -35,7 +35,7 @@ export function ChatInput({ onSend, disabled, inputRef }: Props) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         aria-label={t("inputLabel")}
-        className="flex-1 min-h-11 rounded border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        className="flex-1 min-h-11 rounded border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       />
       <VoiceRecordButton onTranscribed={(text: string) => onSend(text)} />
       <button

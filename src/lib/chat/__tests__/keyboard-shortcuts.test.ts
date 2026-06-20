@@ -28,12 +28,6 @@ describe("matchChatShortcut", () => {
     expect(matchChatShortcut(ev({ code: "Escape", shiftKey: true }))).toBe("focus-input");
   });
 
-  it("Ctrl+Shift+D → dictation", () => {
-    expect(matchChatShortcut(ev({ code: "KeyD", ctrlKey: true, shiftKey: true }))).toBe(
-      "dictation"
-    );
-  });
-
   it("Alt 섞이면 null", () => {
     expect(
       matchChatShortcut(ev({ code: "KeyC", ctrlKey: true, shiftKey: true, altKey: true }))
