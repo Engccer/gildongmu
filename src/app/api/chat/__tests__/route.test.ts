@@ -45,4 +45,10 @@ describe("POST /api/chat", () => {
     const res = await POST(req);
     expect(res.status).toBe(502);
   });
+
+  it("잘못된 body → 400", async () => {
+    const req = new Request("http://x/api/chat", { method: "POST", body: "not-json" });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
 });

@@ -46,24 +46,22 @@ export function useChat() {
       setMessages(history);
       setLoading(true);
 
+      // 타임아웃은 fetch 헤더 수신뿐 아니라 스트림 본문 소비(read 루프)까지 전체에
+      // 적용한다 — controller/timeoutId를 read 루프 바깥 상위 스코프에 두고, 외곽
+      // finally에서 한 번만 clearTimeout 한다. (헤더만 받고 본문이 stall하면 abort)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120_000);
       try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120_000);
-        let res: Response;
-        try {
-          res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              messages: history.map((m) => ({ role: m.role, text: m.text })),
-              userLocation,
-              locale,
-            }),
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timeoutId);
-        }
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: history.map((m) => ({ role: m.role, text: m.text })),
+            userLocation,
+            locale,
+          }),
+          signal: controller.signal,
+        });
         if (!res.ok || !res.body) { setError("chat_failed"); return; }
 
         const reader = res.body.getReader();
@@ -89,11 +87,13 @@ export function useChat() {
         }
 
         if (streamError) { setError(streamError); return; }
+        // done 이벤트 없이 스트림이 끝나면 빈 버블 삽입을 막고 에러 처리(I-2 정신).
+        if (!done) { setError("chat_failed"); return; }
         const assistantMsg: ChatMessage = {
           id: nextId(), role: "assistant",
-          text: done?.text ?? "",
-          renders: (done?.renders as ChatMessage["renders"]) ?? undefined,
-          sources: (done?.sources as ChatMessage["sources"]) ?? undefined,
+          text: done.text ?? "",
+          renders: (done.renders as ChatMessage["renders"]) ?? undefined,
+          sources: (done.sources as ChatMessage["sources"]) ?? undefined,
         };
         const next = [...messagesRef.current, assistantMsg];
         messagesRef.current = next;
@@ -101,6 +101,7 @@ export function useChat() {
       } catch (e) {
         setError(e instanceof DOMException && e.name === "AbortError" ? "timeout" : "chat_failed");
       } finally {
+        clearTimeout(timeoutId);
         setProgressCategories([]);
         setLoading(false);
         inFlight.current = false;

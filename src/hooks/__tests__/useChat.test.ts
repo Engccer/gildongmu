@@ -107,4 +107,19 @@ describe("useChat", () => {
     // 완료 후 progressCategories는 빈 배열로 초기화됨
     expect(result.current.progressCategories).toEqual([]);
   });
+
+  it("done 이벤트 없이 스트림이 끝나면 빈 버블 대신 error 설정", async () => {
+    // status만 있고 done이 없는 스트림 — 빈 어시스턴트 메시지가 삽입되면 안 됨.
+    global.fetch = vi.fn(async () =>
+      makeNdjsonResponse([{ type: "status", categories: ["search_places"] }]),
+    ) as unknown as typeof fetch;
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.sendMessage("테스트");
+    });
+    await waitFor(() => expect(result.current.error).toBe("chat_failed"));
+    // user 메시지 1건만 — 빈 assistant 버블은 삽입되지 않음
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.messages[0]).toMatchObject({ role: "user" });
+  });
 });
