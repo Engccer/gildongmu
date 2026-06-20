@@ -13,7 +13,7 @@ describe("hasGeminiKey", () => {
   });
 
   it("키가 없으면 false", async () => {
-    vi.stubEnv("GEMINI_API_KEY", undefined as any);
+    vi.stubEnv("GEMINI_API_KEY", undefined);
     const { hasGeminiKey } = await import("../env");
     expect(hasGeminiKey()).toBe(false);
   });

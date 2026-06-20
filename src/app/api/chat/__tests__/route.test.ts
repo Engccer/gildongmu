@@ -1,5 +1,13 @@
 // /api/chat 엔드포인트 — generateContent mock 기반 2-pass function-calling 테스트
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ToolResult } from "@/lib/chat/types";
+import type { Place } from "@/lib/types";
+
+// 부분 Place는 render 통과(pass-through)만 검증하므로 의도적으로 최소 필드만 둔다.
+const fakeResult: ToolResult = {
+  summary: "장소 1건",
+  render: { type: "places", places: [{ name: "길동 카페" } as Partial<Place> as Place] },
+};
 
 const generateContent = vi.fn();
 vi.mock("@/lib/gemini/client", () => ({
@@ -10,11 +18,7 @@ vi.mock("@/lib/chat/declarations", () => ({
   availableDeclarations: () => [{ name: "search_places" }],
 }));
 vi.mock("@/lib/chat/router", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  executeFunction: vi.fn(async () => ({
-    summary: "장소 1건",
-    render: { type: "places", places: [{ name: "길동 카페" }] } as any,
-  })),
+  executeFunction: vi.fn(),
 }));
 
 import { POST } from "../route";
@@ -33,11 +37,7 @@ beforeEach(() => {
   vi.mocked(getGeminiClient).mockReturnValue({
     models: { generateContent },
   } as unknown as ReturnType<typeof getGeminiClient>);
-  vi.mocked(executeFunction).mockResolvedValue({
-    summary: "장소 1건",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    render: { type: "places", places: [{ name: "길동 카페" }] } as any,
-  });
+  vi.mocked(executeFunction).mockResolvedValue(fakeResult);
 });
 
 describe("POST /api/chat", () => {

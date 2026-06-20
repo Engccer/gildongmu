@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { placesToRender, placesSummary, addressesToRender, addressesSummary } from "../render";
-import type { JusoAddress } from "@/lib/types";
+import type { JusoAddress, Place } from "@/lib/types";
 
-const sample = [
+const sample: Place[] = [
   {
     id: "1",
     name: "길동 카페",
@@ -21,7 +21,7 @@ const sample = [
     lat: 37.5,
     lng: 127.1,
   },
-] as any;
+];
 
 describe("placesToRender", () => {
   it("places를 RenderPayload로 투영", () => {

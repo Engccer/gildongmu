@@ -7,7 +7,7 @@ describe("gemini client", () => {
   });
 
   it("키 없으면 getGeminiClient가 null", async () => {
-    vi.stubEnv("GEMINI_API_KEY", undefined as any);
+    vi.stubEnv("GEMINI_API_KEY", undefined);
     const { getGeminiClient } = await import("../client");
     expect(getGeminiClient()).toBeNull();
   });

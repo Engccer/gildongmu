@@ -36,21 +36,19 @@ export function SearchBar({
   const t = useTranslations("search");
   // 외부 ref가 없을 때 사용하는 내부 ref — clearQuery의 포커스 복귀에 쓴다.
   const internalRef = useRef<HTMLInputElement>(null);
-  // 실제 input에 연결할 ref: 외부 ref가 주어지면 그것을, 없으면 내부 ref 사용.
-  // clearQuery는 항상 internalRef를 통해 내부적으로 포커스하므로,
-  // externalInputRef가 있을 때도 internalRef가 함께 연결되어야 한다.
-  // → externalInputRef가 있으면 mergedRef 패턴으로 두 ref를 모두 연결한다.
+  // 실제 input에 연결할 ref: 외부 ref가 주어지면 두 ref를 모두 연결(mergedRef), 없으면
+  // 내부 ref만 사용. clearQuery는 항상 internalRef로 포커스하므로 외부 ref가 있어도
+  // internalRef를 함께 채워야 한다.
   const inputRef = externalInputRef
     ? (el: HTMLInputElement | null) => {
-        // internalRef는 clearQuery 전용
-        (internalRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-        // externalInputRef는 부모(PlaceSearch)의 Shift+Esc 포커스 제어용
-        if (typeof externalInputRef === "function") {
-          externalInputRef(el);
-        } else if (externalInputRef && "current" in externalInputRef) {
-          (externalInputRef as React.MutableRefObject<HTMLInputElement | null>).current =
-            el;
-        }
+        // internalRef는 clearQuery 전용 (useRef 반환이라 변경 허용)
+        internalRef.current = el;
+        // 부모(PlaceSearch)의 RefObject/콜백을 함께 충족 — Shift+Esc 포커스 제어용.
+        // RefObject.current 쓰기는 ref 충족의 정상 패턴이나 React Compiler의
+        // immutability 규칙이 prop 변경으로 오인하므로 이 한 줄만 예외 처리한다.
+        if (typeof externalInputRef === "function") externalInputRef(el);
+        // eslint-disable-next-line react-hooks/immutability
+        else externalInputRef.current = el;
       }
     : internalRef;
 

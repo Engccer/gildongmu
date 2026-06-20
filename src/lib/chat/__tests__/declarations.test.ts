@@ -14,7 +14,7 @@ describe("availableDeclarations", () => {
   });
 
   it("카카오 키 없으면 search_places 미노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "search_places")).toBe(false);
   });
@@ -26,7 +26,7 @@ describe("availableDeclarations", () => {
   });
 
   it("juso 키 없으면 search_address 미노출", async () => {
-    vi.stubEnv("JUSO_CONFM_KEY", undefined as any);
+    vi.stubEnv("JUSO_CONFM_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "search_address")).toBe(false);
   });
@@ -39,7 +39,7 @@ describe("availableDeclarations", () => {
   });
 
   it("지하철 실시간 키 없으면 get_subway_arrivals 미노출", async () => {
-    vi.stubEnv("SEOUL_SUBWAY_REALTIME_KEY", undefined as any);
+    vi.stubEnv("SEOUL_SUBWAY_REALTIME_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_subway_arrivals")).toBe(false);
   });
@@ -52,7 +52,7 @@ describe("availableDeclarations", () => {
   });
 
   it("data.go.kr 키 없으면 get_night_clinics 미노출", async () => {
-    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_night_clinics")).toBe(false);
   });
@@ -65,7 +65,7 @@ describe("availableDeclarations", () => {
   });
 
   it("카카오 키 없으면 get_kids_places 미노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_kids_places")).toBe(false);
   });
@@ -78,7 +78,7 @@ describe("availableDeclarations", () => {
   });
 
   it("카카오 키 없으면 get_surroundings 미노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_surroundings")).toBe(false);
   });
@@ -91,7 +91,7 @@ describe("availableDeclarations", () => {
   });
 
   it("data.go.kr 키 없으면 get_bus_arrivals 미노출", async () => {
-    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_bus_arrivals")).toBe(false);
   });
@@ -104,7 +104,7 @@ describe("availableDeclarations", () => {
   });
 
   it("서울 열린데이터 키 없으면 get_bike_stations 미노출", async () => {
-    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined as any);
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_bike_stations")).toBe(false);
   });
@@ -117,18 +117,18 @@ describe("availableDeclarations", () => {
   });
 
   it("data.go.kr 키 없으면 get_air_quality 미노출", async () => {
-    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_air_quality")).toBe(false);
   });
 
   // get_station_meta — 게이트 없음(정적 seed), 키 전부 비어도 항상 노출
   it("get_station_meta: 키가 전부 없어도 항상 노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
-    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
-    vi.stubEnv("SEOUL_SUBWAY_REALTIME_KEY", undefined as any);
-    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined as any);
-    vi.stubEnv("JUSO_CONFM_KEY", undefined as any);
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
+    vi.stubEnv("SEOUL_SUBWAY_REALTIME_KEY", undefined);
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined);
+    vi.stubEnv("JUSO_CONFM_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_station_meta")).toBe(true);
   });
@@ -147,7 +147,7 @@ describe("availableDeclarations", () => {
   });
 
   it("data.go.kr 키 없으면 get_station_facilities 미노출", async () => {
-    vi.stubEnv("DATA_GO_KR_API_KEY", undefined as any);
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_station_facilities")).toBe(false);
   });
@@ -160,7 +160,7 @@ describe("availableDeclarations", () => {
   });
 
   it("카카오 키 없으면 get_car_route 미노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(false);
   });
@@ -173,7 +173,7 @@ describe("availableDeclarations", () => {
   });
 
   it("ODsay 키 없으면 get_transit_route 미노출", async () => {
-    vi.stubEnv("ODSAY_API_KEY", undefined as any);
+    vi.stubEnv("ODSAY_API_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_transit_route")).toBe(false);
   });

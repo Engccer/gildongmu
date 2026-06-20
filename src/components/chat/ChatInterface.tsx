@@ -19,11 +19,15 @@ export function ChatInterface({ inputRef }: { inputRef?: Ref<HTMLInputElement> }
   const { messages, isLoading, error, sendMessage } = useChat();
   const liveRef = useRef<HTMLDivElement>(null);
 
-  // 새 assistant 산문만 polite 통지 — id가 바뀔 때만 갱신
+  // 새 assistant 산문만 polite 통지 — id가 바뀔 때만 갱신.
+  // 매 렌더마다 reverse().find()가 새 객체를 만들므로, effect는 객체가 아니라
+  // 추출한 원시값(id·text)에 의존한다(exhaustive-deps 정합 + 동일 의미 보존).
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  const lastAssistantId = lastAssistant?.id;
+  const lastAssistantText = lastAssistant?.text ?? "";
   useEffect(() => {
-    if (liveRef.current && lastAssistant) liveRef.current.textContent = lastAssistant.text;
-  }, [lastAssistant?.id]);
+    if (liveRef.current && lastAssistantId) liveRef.current.textContent = lastAssistantText;
+  }, [lastAssistantId, lastAssistantText]);
 
   return (
     <div className="flex flex-col gap-3">

@@ -22,6 +22,10 @@ export function useChat() {
   const userLocation = geo.status === "ready" ? geo.coords : undefined;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // 렌더용 messages의 미러 — 히스토리 구성(전송 payload)의 단일 출처로 쓴다.
+  // 이렇게 하면 sendMessage가 messages를 deps로 잡지 않아(신원 안정화 → onSend churn
+  // 제거), 비동기 중 stale 클로저로 직전 응답이 히스토리에서 누락되는 경쟁 창도 닫힌다.
+  const messagesRef = useRef<ChatMessage[]>([]);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -35,7 +39,8 @@ export function useChat() {
       setError(null);
 
       const userMsg: ChatMessage = { id: nextId(), role: "user", text: trimmed };
-      const history = [...messages, userMsg];
+      const history = [...messagesRef.current, userMsg];
+      messagesRef.current = history;
       setMessages(history);
       setLoading(true);
 
@@ -56,15 +61,15 @@ export function useChat() {
         }
 
         const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: nextId(),
-            role: "assistant",
-            text: data.text ?? "",
-            render: data.render,
-          },
-        ]);
+        const assistantMsg: ChatMessage = {
+          id: nextId(),
+          role: "assistant",
+          text: data.text ?? "",
+          render: data.render,
+        };
+        const next = [...messagesRef.current, assistantMsg];
+        messagesRef.current = next;
+        setMessages(next);
       } catch {
         setError("chat_failed");
       } finally {
@@ -72,7 +77,7 @@ export function useChat() {
         inFlight.current = false;
       }
     },
-    [messages, userLocation, locale],
+    [userLocation, locale],
   );
 
   const dismissError = useCallback(() => setError(null), []);

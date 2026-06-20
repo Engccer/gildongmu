@@ -81,9 +81,9 @@ vi.mock("@/components/chat/MessageBubble", () => ({ MessageBubble: () => null })
 // React import (jsx 변환용)
 import React from "react";
 import { PlaceSearch } from "../PlaceSearch";
+import { __resetAppModeForTest } from "@/lib/chat/mode-state";
 
 // window.history mock
-const originalPushState = window.history.pushState.bind(window.history);
 const originalReplaceState = window.history.replaceState.bind(window.history);
 
 beforeEach(() => {
@@ -94,6 +94,8 @@ beforeEach(() => {
   if (typeof localStorage !== "undefined" && localStorage.clear) {
     localStorage.clear();
   }
+  // 공유 모드 스토어 캐시 초기화 — 모듈 싱글턴이라 테스트 간 누수를 막는다.
+  __resetAppModeForTest();
 });
 
 afterEach(() => {

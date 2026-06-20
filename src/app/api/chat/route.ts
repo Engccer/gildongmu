@@ -87,10 +87,13 @@ export async function POST(request: Request) {
         ],
       });
 
+      // 2차 패스는 도구 결과(summary) 기반 산문 생성이 목적이므로 tools를 넘기지
+      // 않는다 — 모델이 다시 functionCall을 반환해 text=""(빈 버블)이 되는 경로를
+      // 구조적으로 차단한다(V1 단일 함수호출 설계).
       response = await ai.models.generateContent({
         model: GEMINI_MODEL,
         contents: history,
-        config: { systemInstruction, tools },
+        config: { systemInstruction },
       });
     }
 

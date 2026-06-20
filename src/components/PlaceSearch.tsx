@@ -18,7 +18,8 @@ import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
 import type { AppMode } from "@/lib/chat/mode-state";
-import { parseModeFromUrl, modeToUrl, STORAGE_KEY } from "@/lib/chat/mode-state";
+import { setAppMode } from "@/lib/chat/mode-state";
+import { useAppMode } from "@/hooks/useAppMode";
 import { matchChatShortcut } from "@/lib/chat/keyboard-shortcuts";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
@@ -128,8 +129,10 @@ export function PlaceSearch({
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // ── 채팅/검색 모드 상태 (canShowChat=false면 항상 "search" 고정) ──
-  // SSR 안전: 서버 스냅샷은 "search"로 두고, 클라 마운트 후 URL·localStorage에서 읽는다.
-  const [mode, setMode] = useState<AppMode>("search");
+  // 공유 스토어(useSyncExternalStore)에서 파생 — SSR 스냅샷 "search" 고정 후 클라
+  // 마운트에서 URL·localStorage로 1회 재조정된다(geolocation 동형, 마운트 setState 없음).
+  const appMode = useAppMode();
+  const mode: AppMode = canShowChat ? appMode : "search";
   // 채팅 입력창 ref (Shift+Esc 포커스 및 모드 전환 후 포커스용)
   const chatInputRef = useRef<HTMLInputElement>(null);
   // 검색 입력창 ref (SearchBar에 전달 — Shift+Esc 및 모드 전환 후 포커스용)
@@ -138,32 +141,11 @@ export function PlaceSearch({
   // ?q= 자동검색 후 결과-헤딩 포커스 이동과 경합을 막는다.
   const isMountRef = useRef(true);
 
-  // 클라이언트 마운트 후 모드 초기화 (URL → localStorage → 기본값 "search")
-  useEffect(() => {
-    if (!canShowChat) return;
-    const fromUrl = parseModeFromUrl(window.location.search);
-    const fromStorage =
-      typeof localStorage !== "undefined"
-        ? (localStorage.getItem(STORAGE_KEY) as AppMode | null)
-        : null;
-    const initial = fromUrl ?? fromStorage ?? "search";
-    setMode(initial);
-  }, [canShowChat]);
-
   /**
-   * 모드 전환 래퍼 — state + URL + localStorage 동기 갱신.
+   * 모드 전환 래퍼 — 공유 스토어가 state + URL(?mode) + localStorage를 동기 갱신한다.
    */
   function changeMode(m: AppMode) {
-    setMode(m);
-    const newSearch = modeToUrl(window.location.search, m);
-    window.history.replaceState(
-      window.history.state,
-      "",
-      newSearch || window.location.pathname,
-    );
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, m);
-    }
+    setAppMode(m);
   }
 
   // 모드 전환 후 새 모드의 입력창으로 포커스 이동 (접근성: 맥락 이동 안내).
@@ -197,8 +179,7 @@ export function PlaceSearch({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // mode ref 대신 mode를 직접 의존해 항상 최신 모드를 클로저로 잡는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // mode를 직접 의존해 항상 최신 모드를 클로저로 잡는다(deps 정합).
   }, [canShowChat, mode]);
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
