@@ -40,6 +40,27 @@ vi.mock("@/components/AirQuality", () => ({
     <div data-testid="air-quality" data-lat={props.lat} data-lng={props.lng} />
   ),
 }));
+// dest 도구 컴포넌트 mock
+vi.mock("@/components/CarRouteBriefing", () => ({
+  CarRouteBriefing: (props: { dest: { lat: number; lng: number; name: string } }) => (
+    <div
+      data-testid="car-route-briefing"
+      data-dest-name={props.dest.name}
+      data-dest-lat={props.dest.lat}
+      data-dest-lng={props.dest.lng}
+    />
+  ),
+}));
+vi.mock("@/components/TransitRouteBriefing", () => ({
+  TransitRouteBriefing: (props: { dest: { lat: number; lng: number; name: string } }) => (
+    <div
+      data-testid="transit-route-briefing"
+      data-dest-name={props.dest.name}
+      data-dest-lat={props.dest.lat}
+      data-dest-lng={props.dest.lng}
+    />
+  ),
+}));
 // 역명 도구 컴포넌트 mock
 vi.mock("@/components/StationMeta", () => ({
   StationMeta: (props: { stationName: string }) => (
@@ -249,6 +270,49 @@ describe("MessageBubble", () => {
     const el = screen.getByTestId("station-meta");
     expect(el).toBeTruthy();
     expect(el.getAttribute("data-station")).toBe("강남");
+  });
+
+  // dest 도구 2종 컴포넌트 마운트 테스트
+  it("car-route render면 CarRouteBriefing dest prop으로 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "16",
+          role: "assistant",
+          text: "",
+          render: {
+            type: "car-route",
+            dest: { lat: 37.5, lng: 127.1, name: "강남역" },
+          },
+        }}
+      />
+    );
+    const el = screen.getByTestId("car-route-briefing");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-dest-name")).toBe("강남역");
+    expect(el.getAttribute("data-dest-lat")).toBe("37.5");
+    expect(el.getAttribute("data-dest-lng")).toBe("127.1");
+  });
+
+  it("transit-route render면 TransitRouteBriefing dest prop으로 마운트", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "17",
+          role: "assistant",
+          text: "",
+          render: {
+            type: "transit-route",
+            dest: { lat: 37.6, lng: 127.2, name: "서울역" },
+          },
+        }}
+      />
+    );
+    const el = screen.getByTestId("transit-route-briefing");
+    expect(el).toBeTruthy();
+    expect(el.getAttribute("data-dest-name")).toBe("서울역");
+    expect(el.getAttribute("data-dest-lat")).toBe("37.6");
+    expect(el.getAttribute("data-dest-lng")).toBe("127.2");
   });
 
   it("station-facilities render면 StationFacilities + SeoulMetroFacilities 모두 마운트", () => {

@@ -151,4 +151,30 @@ describe("availableDeclarations", () => {
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_station_facilities")).toBe(false);
   });
+
+  // get_car_route — KAKAO_REST_API_KEY 게이트
+  it("카카오 키 있으면 get_car_route 노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(true);
+  });
+
+  it("카카오 키 없으면 get_car_route 미노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(false);
+  });
+
+  // get_transit_route — ODSAY_API_KEY 게이트
+  it("ODsay 키 있으면 get_transit_route 노출", async () => {
+    vi.stubEnv("ODSAY_API_KEY", "o");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_transit_route")).toBe(true);
+  });
+
+  it("ODsay 키 없으면 get_transit_route 미노출", async () => {
+    vi.stubEnv("ODSAY_API_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_transit_route")).toBe(false);
+  });
 });

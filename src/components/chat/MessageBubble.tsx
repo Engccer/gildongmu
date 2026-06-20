@@ -15,6 +15,8 @@ import { AirQuality } from "@/components/AirQuality";
 import { StationMeta } from "@/components/StationMeta";
 import { StationFacilities } from "@/components/StationFacilities";
 import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
+import { CarRouteBriefing } from "@/components/CarRouteBriefing";
+import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -100,8 +102,11 @@ function RenderBlock({
           <SeoulMetroFacilities stationName={render.stationName} />
         </>
       );
+    case "car-route":
+      return <CarRouteBriefing dest={render.dest} />;
+    case "transit-route":
+      return <TransitRouteBriefing dest={render.dest} />;
     default:
-      // Task 19에서 car-route·transit-route case 추가
       return null;
   }
 }

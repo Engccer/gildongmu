@@ -137,6 +137,28 @@ export async function executeFunction(
         render: { type: "station-facilities", stationName },
       };
     }
+    case "get_car_route": {
+      const destination = String(args.destination ?? "");
+      if (!destination) return { summary: "목적지를 알려주세요." };
+      const r = await searchPlaces({ query: destination, lang: ctx.dataLocale });
+      const p = r.places[0];
+      if (!p) return { summary: `'${destination}' 위치를 찾지 못했습니다.` };
+      return {
+        summary: `${p.name}까지 자동차 경로를 표시했습니다.`,
+        render: { type: "car-route", dest: { lat: p.lat, lng: p.lng, name: p.name } },
+      };
+    }
+    case "get_transit_route": {
+      const destination = String(args.destination ?? "");
+      if (!destination) return { summary: "목적지를 알려주세요." };
+      const r = await searchPlaces({ query: destination, lang: ctx.dataLocale });
+      const p = r.places[0];
+      if (!p) return { summary: `'${destination}' 위치를 찾지 못했습니다.` };
+      return {
+        summary: `${p.name}까지 대중교통 경로를 표시했습니다.`,
+        render: { type: "transit-route", dest: { lat: p.lat, lng: p.lng, name: p.name } },
+      };
+    }
     default:
       throw new Error(`알 수 없는 도구: ${name}`);
   }

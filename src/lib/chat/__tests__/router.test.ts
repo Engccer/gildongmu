@@ -209,6 +209,55 @@ describe("executeFunction 역명 도구 2종", () => {
   });
 });
 
+// dest 도구 2종 — get_car_route, get_transit_route
+describe("executeFunction dest 도구 2종", () => {
+  it("get_car_route destination 지정 → car-route render with dest{lat,lng,name}", async () => {
+    const r = await executeFunction("get_car_route", { destination: "강남역" }, ctxKo);
+    expect(r.render).toEqual({
+      type: "car-route",
+      dest: { lat: 37.5, lng: 127.1, name: "길동 카페" },
+    });
+    expect(r.summary).toContain("자동차");
+  });
+
+  it("get_car_route destination 누락 → render 없는 summary", async () => {
+    const r = await executeFunction("get_car_route", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_car_route destination 검색 결과 없음 → render 없는 summary", async () => {
+    const { searchPlaces } = await import("@/lib/providers/places");
+    vi.mocked(searchPlaces).mockResolvedValueOnce({ places: [], provider: "kakao-local", query: "없는곳" });
+    const r = await executeFunction("get_car_route", { destination: "없는곳" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toContain("없는곳");
+  });
+
+  it("get_transit_route destination 지정 → transit-route render with dest{lat,lng,name}", async () => {
+    const r = await executeFunction("get_transit_route", { destination: "강남역" }, ctxKo);
+    expect(r.render).toEqual({
+      type: "transit-route",
+      dest: { lat: 37.5, lng: 127.1, name: "길동 카페" },
+    });
+    expect(r.summary).toContain("대중교통");
+  });
+
+  it("get_transit_route destination 누락 → render 없는 summary", async () => {
+    const r = await executeFunction("get_transit_route", {}, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toBeTruthy();
+  });
+
+  it("get_transit_route destination 검색 결과 없음 → render 없는 summary", async () => {
+    const { searchPlaces } = await import("@/lib/providers/places");
+    vi.mocked(searchPlaces).mockResolvedValueOnce({ places: [], provider: "kakao-local", query: "없는곳" });
+    const r = await executeFunction("get_transit_route", { destination: "없는곳" }, ctxKo);
+    expect(r.render).toBeUndefined();
+    expect(r.summary).toContain("없는곳");
+  });
+});
+
 // 현재위치 nearby 4도구 — provider 호출 없이 summary + render type만 반환
 describe("executeFunction 현재위치 nearby 4도구", () => {
   it("get_subway_arrivals → subway-nearby render + 요약 포함", async () => {
