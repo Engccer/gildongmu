@@ -54,3 +54,80 @@ export function latLngToGrid(lat: number, lng: number): { nx: number; ny: number
   const ny = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
   return { nx, ny };
 }
+
+/** KST(+9) 벽시계 구성요소. 서버 TZ와 무관하게 결정적(공기질·B1 동형). */
+function kstParts(now: Date): {
+  y: number;
+  mo: number;
+  d: number;
+  h: number;
+  mi: number;
+} {
+  const shifted = new Date(now.getTime() + 9 * 3_600_000);
+  return {
+    y: shifted.getUTCFullYear(),
+    mo: shifted.getUTCMonth(),
+    d: shifted.getUTCDate(),
+    h: shifted.getUTCHours(),
+    mi: shifted.getUTCMinutes(),
+  };
+}
+
+/** (y, 0-based month, d) → "YYYYMMDD". */
+function fmtDate(y: number, mo: number, d: number): string {
+  return (
+    String(y) +
+    String(mo + 1).padStart(2, "0") +
+    String(d).padStart(2, "0")
+  );
+}
+
+/** KST 자정 직전 날짜로 하루 되돌린 "YYYYMMDD"(자정 경계용). */
+function prevDate(y: number, mo: number, d: number): string {
+  const prev = new Date(Date.UTC(y, mo, d) - 24 * 3_600_000);
+  return fmtDate(prev.getUTCFullYear(), prev.getUTCMonth(), prev.getUTCDate());
+}
+
+/**
+ * 초단기실황 base_date/base_time(KST). 매시 정시 발표·40분 이후 제공이라
+ * 분<40이면 직전 정시 사용. 00시대에 되돌리면 전날 23시.
+ */
+export function ultraSrtNcstBaseTime(now: Date): {
+  baseDate: string;
+  baseTime: string;
+} {
+  const p = kstParts(now);
+  let h = p.h;
+  let date = fmtDate(p.y, p.mo, p.d);
+  if (p.mi < 40) h -= 1;
+  if (h < 0) {
+    h = 23;
+    date = prevDate(p.y, p.mo, p.d);
+  }
+  return { baseDate: date, baseTime: String(h).padStart(2, "0") + "00" };
+}
+
+const FCST_HOURS = [2, 5, 8, 11, 14, 17, 20, 23];
+
+/**
+ * 단기예보 base_date/base_time(KST). 발표시각(02/05/…/23) 중 발표+10분이
+ * 현재 이하인 가장 최근. 첫 발표(02:10) 전이면 전날 23시.
+ */
+export function vilageFcstBaseTime(now: Date): {
+  baseDate: string;
+  baseTime: string;
+} {
+  const p = kstParts(now);
+  const mins = p.h * 60 + p.mi;
+  let chosen = -1;
+  for (const fh of FCST_HOURS) {
+    if (fh * 60 + 10 <= mins) chosen = fh;
+  }
+  if (chosen === -1) {
+    return { baseDate: prevDate(p.y, p.mo, p.d), baseTime: "2300" };
+  }
+  return {
+    baseDate: fmtDate(p.y, p.mo, p.d),
+    baseTime: String(chosen).padStart(2, "0") + "00",
+  };
+}
