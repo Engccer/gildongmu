@@ -304,6 +304,28 @@
     "asOf": "As of {time}",
     "source": "Source: AirKorea (Korea Environment Corporation)."
   },
+  "weather": {
+    "heading": "Local weather",
+    "highLow": "High {max}° Low {min}°",
+    "humidity": "Humidity {humidity}%",
+    "precipProbability": "Chance of rain {pop}%",
+    "airLabel": "Air quality",
+    "asOf": "As of {time}",
+    "source": "Source: KMA short-term forecast.",
+    "unknown": "No data",
+    "sky": {
+      "clear": "Clear",
+      "partlyCloudy": "Partly cloudy",
+      "cloudy": "Cloudy"
+    },
+    "precipitation": {
+      "none": "No precipitation",
+      "rain": "Rain",
+      "rainSnow": "Rain and snow",
+      "snow": "Snow",
+      "shower": "Showers"
+    }
+  },
   "actions": {
     "close": "Close"
   },

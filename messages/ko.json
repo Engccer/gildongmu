@@ -304,6 +304,28 @@
     "asOf": "{time} 기준",
     "source": "출처: 에어코리아(한국환경공단)."
   },
+  "weather": {
+    "heading": "이 지역 날씨",
+    "highLow": "최고 {max}° 최저 {min}°",
+    "humidity": "습도 {humidity}%",
+    "precipProbability": "강수확률 {pop}%",
+    "airLabel": "공기질",
+    "asOf": "{time} 기준",
+    "source": "출처: 기상청 단기예보.",
+    "unknown": "정보 없음",
+    "sky": {
+      "clear": "맑음",
+      "partlyCloudy": "구름많음",
+      "cloudy": "흐림"
+    },
+    "precipitation": {
+      "none": "강수 없음",
+      "rain": "비",
+      "rainSnow": "비/눈",
+      "snow": "눈",
+      "shower": "소나기"
+    }
+  },
   "actions": {
     "close": "닫기"
   },
