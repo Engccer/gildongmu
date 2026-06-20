@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { latLngToGrid, ultraSrtNcstBaseTime, vilageFcstBaseTime, skyLabel, precipLabel, parseNcst, parseFcst, mergeWeather } from "../providers/weather";
+import { latLngToGrid, ultraSrtNcstBaseTime, vilageFcstBaseTime, currentKstYmd, skyLabel, precipLabel, parseNcst, parseFcst, mergeWeather } from "../providers/weather";
 
 describe("latLngToGrid", () => {
   it("서울시청(37.5665, 126.9780) → nx 60, ny 127 (기상청 레퍼런스)", () => {
@@ -65,6 +65,26 @@ describe("vilageFcstBaseTime (KST, 발표시각)", () => {
       baseDate: "20260620",
       baseTime: "1100",
     });
+  });
+});
+
+describe("currentKstYmd (자정 경계 — 실황 base_date와 분리)", () => {
+  it("KST 00:10도 당일(실황 baseDate가 전날로 되돌려져도 todayYmd는 오늘)", () => {
+    // 2026-06-19T15:10:00Z == KST 2026-06-20 00:10
+    expect(currentKstYmd(new Date("2026-06-19T15:10:00Z"))).toBe("20260620");
+  });
+  it("같은 시각 ultraSrtNcstBaseTime.baseDate는 전날(20260619) — 버그 재발 방지 대조", () => {
+    // currentKstYmd는 당일(오늘)이지만 실황 baseDate는 00:10(분<40) → 전날 23시로 되돌려짐
+    const now = new Date("2026-06-19T15:10:00Z");
+    expect(ultraSrtNcstBaseTime(now).baseDate).toBe("20260619"); // 전날
+    expect(currentKstYmd(now)).toBe("20260620"); // 당일 — 분리 필요성 확인
+  });
+  it("KST 13:30 당일", () => {
+    expect(currentKstYmd(new Date("2026-06-20T04:30:00Z"))).toBe("20260620");
+  });
+  it("KST 연말 23:59 당일(월/연 경계)", () => {
+    // 2026-12-31T14:59:00Z == KST 2026-12-31 23:59
+    expect(currentKstYmd(new Date("2026-12-31T14:59:00Z"))).toBe("20261231");
   });
 });
 

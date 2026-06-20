@@ -110,6 +110,16 @@ export function ultraSrtNcstBaseTime(now: Date): {
 const FCST_HOURS = [2, 5, 8, 11, 14, 17, 20, 23];
 
 /**
+ * 현재 KST 날짜 "YYYYMMDD" — 단기예보 오늘 TMX/TMN 매칭 기준.
+ * 실황 base_date(ultraSrtNcstBaseTime)는 00:00~00:39에 전날로 되돌려지므로
+ * "오늘"의 정본이 아니다 → 현재 벽시계 날짜를 별도 산출해 자정 경계 오표시를 막는다.
+ */
+export function currentKstYmd(now: Date): string {
+  const p = kstParts(now);
+  return fmtDate(p.y, p.mo, p.d);
+}
+
+/**
  * 단기예보 base_date/base_time(KST). 발표시각(02/05/…/23) 중 발표+10분이
  * 현재 이하인 가장 최근. 첫 발표(02:10) 전이면 전날 23시.
  */
@@ -355,7 +365,7 @@ export async function findWeatherNear(
   const [ncstRes, fcstRes] = await Promise.allSettled([
     fetchKma(
       NCST_BASE,
-      { base_date: ncstBase.baseDate, base_time: ncstBase.baseTime, nx: grid.nx, ny: grid.ny, numOfRows: 10 },
+      { base_date: ncstBase.baseDate, base_time: ncstBase.baseTime, nx: grid.nx, ny: grid.ny, numOfRows: 60 },
       "초단기실황",
     ),
     fetchKma(
@@ -369,7 +379,7 @@ export async function findWeatherNear(
     throw ncstRes.reason;
   }
 
-  const todayYmd = ncstBase.baseDate;
+  const todayYmd = currentKstYmd(now);
   const ncst = ncstRes.status === "fulfilled" ? parseNcst(ncstRes.value) : null;
   const fcst =
     fcstRes.status === "fulfilled" ? parseFcst(fcstRes.value, todayYmd) : null;
