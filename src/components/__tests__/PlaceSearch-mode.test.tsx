@@ -74,7 +74,12 @@ vi.mock("@/hooks/useChat", () => ({
   }),
 }));
 vi.mock("@/components/chat/ChatInput", () => ({
-  ChatInput: () => <div data-testid="chat-input-field" />,
+  // 실제 ChatInput처럼 inputRef를 input에 연결 — 모드 전환 포커스 검증에 필요.
+  ChatInput: ({ inputRef }: { inputRef?: React.Ref<HTMLInputElement> }) => (
+    <div data-testid="chat-input-field">
+      <input ref={inputRef} data-testid="chat-input" />
+    </div>
+  ),
 }));
 vi.mock("@/components/chat/MessageBubble", () => ({ MessageBubble: () => null }));
 
@@ -96,6 +101,15 @@ beforeEach(() => {
   }
   // 공유 모드 스토어 캐시 초기화 — 모듈 싱글턴이라 테스트 간 누수를 막는다.
   __resetAppModeForTest();
+  // 모드 전환 포커스는 rAF로 미뤄지므로, 테스트에서는 콜백을 동기 실행해
+  // act() 안에서 결정적으로 검증한다(jsdom 기본 rAF는 16ms 타이머라 비결정적).
+  vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation(
+    (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    },
+  );
+  vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -170,6 +184,35 @@ describe("PlaceSearch 모드 분기", () => {
     // (ModeToggle 클릭 없이 모드 변경이 없으므로 focus spy가 0회여야 함)
     const focusCalls = focusSpy.mock.calls.length;
     expect(focusCalls).toBe(0);
+  });
+
+  it("검색→채팅 전환 시 채팅 입력창으로 포커스가 이동한다", async () => {
+    render(<PlaceSearch isMockMode={false} canShowChat={true} />);
+
+    // 검색→채팅 토글
+    const toChat = screen.getByRole("button", { name: /switchToChat/i });
+    await act(async () => {
+      fireEvent.click(toChat);
+    });
+
+    // rAF가 동기 실행되어 채팅 입력창이 활성 요소가 된다.
+    expect(document.activeElement).toBe(screen.getByTestId("chat-input"));
+  });
+
+  it("채팅→검색 전환 시 검색 입력창으로 포커스가 이동한다", async () => {
+    render(<PlaceSearch isMockMode={false} canShowChat={true} />);
+
+    // 먼저 채팅 모드로 진입
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /switchToChat/i }));
+    });
+    // 채팅→검색 토글
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /switchToSearch/i }));
+    });
+
+    // 검색 입력창이 활성 요소가 된다.
+    expect(document.activeElement).toBe(screen.getByTestId("search-input"));
   });
 
   it("canShowChat=false 이면 전역 단축키 리스너를 등록하지 않는다", () => {
