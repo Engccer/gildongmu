@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { latLngToGrid, ultraSrtNcstBaseTime, vilageFcstBaseTime } from "../providers/weather";
+import { latLngToGrid, ultraSrtNcstBaseTime, vilageFcstBaseTime, skyLabel, precipLabel, parseNcst, parseFcst, mergeWeather } from "../providers/weather";
 
 describe("latLngToGrid", () => {
   it("서울시청(37.5665, 126.9780) → nx 60, ny 127 (기상청 레퍼런스)", () => {
@@ -67,14 +67,6 @@ describe("vilageFcstBaseTime (KST, 발표시각)", () => {
     });
   });
 });
-
-import {
-  skyLabel,
-  precipLabel,
-  parseNcst,
-  parseFcst,
-  mergeWeather,
-} from "../providers/weather";
 
 describe("skyLabel / precipLabel (미매핑 → unknown)", () => {
   it("SKY 1/3/4 → clear/partlyCloudy/cloudy", () => {
@@ -153,6 +145,26 @@ describe("parseFcst", () => {
     expect(r?.tempMax).toBeNull();
     expect(r?.tempMin).toBeNull();
   });
+  it("firstFcst 정렬: 배열 순서 무관 가장 이른 fcstTime 선택", () => {
+    // 같은 날짜에 늦은 시각(1800, SKY=4 cloudy)이 배열 앞, 이른 시각(0900, SKY=1 clear)이 뒤
+    const raw = {
+      response: {
+        header: { resultCode: "00" },
+        body: {
+          items: {
+            item: [
+              { category: "SKY", fcstDate: "20260620", fcstTime: "1800", fcstValue: "4" },
+              { category: "SKY", fcstDate: "20260620", fcstTime: "0900", fcstValue: "1" },
+            ],
+          },
+        },
+      },
+    };
+    // 배열 순서가 아닌 fcstTime 기준으로 0900 항목이 선택되어야 한다
+    const r = parseFcst(raw, "20260620");
+    expect(r?.sky.code).toBe(1);
+    expect(r?.sky.label).toBe("clear");
+  });
 });
 
 describe("mergeWeather (부분 성공)", () => {
@@ -175,6 +187,16 @@ describe("mergeWeather (부분 성공)", () => {
     expect(w.tempC).toBeNull();
     expect(w.sky.label).toBe("partlyCloudy");
     expect(w.precipitation.label).toBe("unknown");
+  });
+  it("실황만(예보 null) → 실황 값 보존, sky unknown·tempMax null", () => {
+    const ncst = parseNcst(NCST_RAW)!;
+    const w = mergeWeather(ncst, null, "13:00", grid)!;
+    expect(w).not.toBeNull();
+    expect(w.tempC).toBe(21.3);
+    expect(w.humidity).toBe(55);
+    expect(w.precipitation.label).toBe("none");
+    expect(w.sky.label).toBe("unknown");
+    expect(w.tempMax).toBeNull();
   });
   it("둘 다 null → null", () => {
     expect(mergeWeather(null, null, "13:00", grid)).toBeNull();
