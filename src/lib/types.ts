@@ -525,6 +525,45 @@ export interface AirQuality {
   pm25: AirPollutant;
 }
 
+/** 하늘상태 라벨 — 기상청 SKY 코드(1/3/4) 매핑. 미매핑 → unknown. */
+export type SkyLabel = "clear" | "partlyCloudy" | "cloudy" | "unknown";
+
+/** 강수형태 라벨 — 기상청 PTY 코드(0~4) 매핑. 미매핑 → unknown. */
+export type PrecipLabel =
+  | "none"
+  | "rain"
+  | "rainSnow"
+  | "snow"
+  | "shower"
+  | "unknown";
+
+/**
+ * 이 지역 날씨 — 기상청 초단기실황(현재 실측) + 단기예보(하늘상태·최고최저·강수확률) 합성.
+ *
+ * 상태 단어(하늘상태/강수형태)가 낭독 정본, 수치는 보강. 부분 성공 가능
+ * (실황만/예보만) — 없는 값은 null(해당 줄 생략). 둘 다 없으면 Weather 자체가 null.
+ */
+export interface Weather {
+  /** 하늘상태(단기예보 SKY). 예보 부재 → label "unknown" */
+  sky: { code: number | null; label: SkyLabel };
+  /** 강수형태(초단기실황 PTY). 실황 부재 → label "unknown" */
+  precipitation: { code: number | null; label: PrecipLabel };
+  /** 현재기온(°C, 초단기실황 T1H). 부재 → null */
+  tempC: number | null;
+  /** 일 최고기온(단기예보 TMX, 오늘분). 부재 → null */
+  tempMax: number | null;
+  /** 일 최저기온(단기예보 TMN, 오늘분). 부재 → null */
+  tempMin: number | null;
+  /** 습도(%, 초단기실황 REH). 부재 → null */
+  humidity: number | null;
+  /** 강수확률(%, 단기예보 POP). 부재 → null */
+  precipProbability: number | null;
+  /** 조회 기준 시각 "HH:mm"(실황 base_time). 낭독 "조회시각" */
+  baseTime: string;
+  /** 기상청 격자(디버그·캐시 키) */
+  grid: { nx: number; ny: number };
+}
+
 /** 키즈 장소 종류(B3). 카카오 category_name 계층에서 결정적 분류. */
 export type KidsPlaceKind = "kidscafe" | "playground" | "playcenter" | "park";
 
