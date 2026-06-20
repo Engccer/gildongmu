@@ -43,6 +43,9 @@ export async function runAgentLoop(opts: AgentLoopOptions): Promise<AgentLoopRes
     model, contents: history, config: { systemInstruction, tools },
   });
 
+  // maxIterations를 소진한 직후 응답이 또 functionCall만 담고 있으면 그 도구는
+  // 실행되지 않고 text=""로 떨어지지만, 루프 뒤 I-2 폴백(tools 없이 산문 강제)이
+  // 빈 버블을 흡수한다 — 6라운드×병렬 묶음이면 실무상 도달 난망인 극단 케이스다.
   for (let iter = 0; iter < maxIterations; iter++) {
     const parts: Part[] = response.candidates?.[0]?.content?.parts ?? [];
     const fcParts = functionCallParts(parts);

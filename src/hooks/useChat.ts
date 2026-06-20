@@ -50,7 +50,10 @@ export function useChat() {
       // 적용한다 — controller/timeoutId를 read 루프 바깥 상위 스코프에 두고, 외곽
       // finally에서 한 번만 clearTimeout 한다. (헤더만 받고 본문이 stall하면 abort)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120_000);
+      // 서버 maxDuration(120s)보다 약간 길게 — 동률이면 서버 컷오프와 클라 abort가
+      // 같은 시점에 걸려 결과가 timeout/chat_failed로 비결정적이 된다. 클라가 더
+      // 길면 "서버가 끝까지 시도 → 그 결과/에러 수신"이 결정적이 된다.
+      const timeoutId = setTimeout(() => controller.abort(), 130_000);
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
