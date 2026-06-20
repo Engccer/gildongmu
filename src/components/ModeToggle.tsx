@@ -38,9 +38,9 @@ export function ModeToggle({
       className="inline-flex items-center gap-2 min-h-11 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
     >
       {next === "chat" ? (
-        <MessageSquare aria-hidden className="h-4 w-4" />
+        <MessageSquare aria-hidden={true} className="h-4 w-4" />
       ) : (
-        <Search aria-hidden className="h-4 w-4" />
+        <Search aria-hidden={true} className="h-4 w-4" />
       )}
       <span>{label}</span>
     </button>

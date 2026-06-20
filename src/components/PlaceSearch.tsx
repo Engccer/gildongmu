@@ -133,6 +133,9 @@ export function PlaceSearch({
   const chatInputRef = useRef<HTMLInputElement>(null);
   // 검색 입력창 ref (SearchBar에 전달 — Shift+Esc 및 모드 전환 후 포커스용)
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // 마운트 시 mode focus effect 건너뛰기 — 초기 마운트에서는 포커스를 이동하지 않아
+  // ?q= 자동검색 후 결과-헤딩 포커스 이동과 경합을 막는다.
+  const isMountRef = useRef(true);
 
   // 클라이언트 마운트 후 모드 초기화 (URL → localStorage → 기본값 "search")
   useEffect(() => {
@@ -162,16 +165,16 @@ export function PlaceSearch({
     }
   }
 
-  // 모드 전환 후 새 모드의 입력창으로 포커스 이동 (접근성: 맥락 이동 안내)
+  // 모드 전환 후 새 모드의 입력창으로 포커스 이동 (접근성: 맥락 이동 안내).
+  // isMountRef 가드로 마운트 시에는 건너뛴다 — ?q= 자동검색 결과-헤딩 포커스 이동과의
+  // 경합을 방지한다(canShowChat=true + ?q= URL 진입 시 적용).
   useEffect(() => {
     if (!canShowChat) return;
-    if (mode === "chat") {
-      chatInputRef.current?.focus();
-    } else {
-      searchInputRef.current?.focus();
-    }
-  // mode가 바뀔 때만 실행 (마운트 초기 이동은 runQuerySearch 처리와 충돌 방지를 위해
-  // searchInput은 이미 마운트 시 visible이므로 무시해도 무방)
+    if (isMountRef.current) { isMountRef.current = false; return; }
+    if (mode === "chat") chatInputRef.current?.focus();
+    else searchInputRef.current?.focus();
+  // changeMode는 [canShowChat, mode] deps로 effect가 재등록되어 항상 최신 mode를
+  // 캡처하므로 deps에서 제외해도 안전. mode 변경 시에만 실행하는 것이 의도.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 

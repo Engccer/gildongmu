@@ -152,6 +152,24 @@ describe("PlaceSearch 모드 분기", () => {
     expect(screen.queryByTestId("search-bar")).toBeNull();
   });
 
+  it("canShowChat=true 마운트 시 검색창에 자동 focus가 가지 않는다 (isMountRef 가드)", async () => {
+    // jsdom에서 focus()는 document.activeElement를 바꾸지만
+    // focus 이벤트가 항상 발화되지는 않는다. 대신 focus() 호출 횟수를 spy로 검증한다.
+    const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
+    await act(async () => {
+      render(
+        <PlaceSearch
+          isMockMode={false}
+          canShowChat={true}
+        />,
+      );
+    });
+    // isMountRef 가드로 마운트 직후에는 searchInputRef.current?.focus()가 호출되지 않는다.
+    // (ModeToggle 클릭 없이 모드 변경이 없으므로 focus spy가 0회여야 함)
+    const focusCalls = focusSpy.mock.calls.length;
+    expect(focusCalls).toBe(0);
+  });
+
   it("canShowChat=false 이면 전역 단축키 리스너를 등록하지 않는다", () => {
     const addEventListenerSpy = vi.spyOn(window, "addEventListener");
     render(
