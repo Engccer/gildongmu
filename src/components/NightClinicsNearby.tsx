@@ -172,13 +172,13 @@ export function NightClinicsNearby() {
               const holiday = c.hours[7];
               return (
                 <li key={c.id || `${c.name}-${c.distanceMeters}`}>
-                  <p className="font-medium">
+                  <h4 className="font-medium">
                     <span lang="ko">{c.name}</span>{" "}
                     <span className="text-xs font-normal opacity-70">
                       {c.kind && <span lang="ko">{c.kind} · </span>}
                       {t("distance", { distance: formatDistance(c.distanceMeters) })}
                     </span>
-                  </p>
+                  </h4>
 
                   {/* 진료 상태 3-state — 마감과 정보없음을 구분 */}
                   <p className="mt-1 text-sm">

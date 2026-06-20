@@ -179,14 +179,14 @@ export function BusArrivals(
           <ul className="mt-2 space-y-3">
             {status.stops.map((stop) => (
               <li key={`${stop.cityCode}-${stop.nodeId}`}>
-                <p className="font-medium" lang="ko">
+                <h4 className="font-medium" lang="ko">
                   {stop.name}{" "}
                   <span className="text-xs font-normal opacity-70">
                     {t("stopDistance", {
                       distance: formatDistance(stop.distanceMeters),
                     })}
                   </span>
-                </p>
+                </h4>
                 {stop.arrivalStatus === "unavailable" ? (
                   // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — 별도 문구로 통지
                   <p className="text-sm opacity-70">{t("arrivalUnavailable")}</p>

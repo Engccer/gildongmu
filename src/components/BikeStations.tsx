@@ -175,14 +175,14 @@ export function BikeStations(
           <ul className="mt-2 space-y-3">
             {status.stations.map((s) => (
               <li key={s.stationId}>
-                <p className="font-medium" lang="ko">
+                <h4 className="font-medium" lang="ko">
                   {s.name}{" "}
                   <span className="text-xs font-normal opacity-70">
                     {t("stationDistance", {
                       distance: formatDistance(s.distanceMeters),
                     })}
                   </span>
-                </p>
+                </h4>
                 <p className="text-sm">
                   {t("availability", {
                     bikes: s.bikesAvailable,

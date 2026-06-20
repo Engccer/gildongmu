@@ -161,7 +161,7 @@ export function KidsPlacesNearby() {
           <ul className="mt-2 space-y-4">
             {status.kids.map((k) => (
               <li key={k.id}>
-                <p className="font-medium">
+                <h4 className="font-medium">
                   <span lang="ko">{k.name}</span>{" "}
                   <span className="text-xs font-normal opacity-70">
                     {t(`kind.${k.kind}`)}
@@ -170,7 +170,7 @@ export function KidsPlacesNearby() {
                     {" · "}
                     {t("distance", { distance: formatDistance(k.distanceMeters) })}
                   </span>
-                </p>
+                </h4>
 
                 <p className="mt-1 text-sm" lang="ko">
                   {k.address}

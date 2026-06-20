@@ -166,7 +166,7 @@ export function SubwayArrivalsNearby() {
           <ul className="mt-2 space-y-4">
             {status.stations.map((s) => (
               <li key={`${s.stationName}-${s.distanceMeters}`}>
-                <p className="font-medium">
+                <h4 className="font-medium">
                   <span lang="ko">{s.stationName}</span>
                   {s.nameEn && (
                     <span className="ml-1 text-xs font-normal opacity-70" lang="en">
@@ -181,7 +181,7 @@ export function SubwayArrivalsNearby() {
                       distance: formatDistance(s.distanceMeters),
                     })}
                   </span>
-                </p>
+                </h4>
                 {s.arrivalStatus === "unavailable" ? (
                   <p className="mt-1 text-sm opacity-70">{t("arrivalUnavailable")}</p>
                 ) : (

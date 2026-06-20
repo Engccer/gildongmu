@@ -155,7 +155,7 @@ export function SurroundingsNearby() {
           <ul className="mt-2 space-y-4">
             {status.places.map((p) => (
               <li key={p.id}>
-                <p className="font-medium">
+                <h4 className="font-medium">
                   <span lang="ko">{p.name}</span>{" "}
                   <span className="text-xs font-normal opacity-70">
                     {t("item", {
@@ -164,7 +164,7 @@ export function SurroundingsNearby() {
                       distance: formatDistance(p.distanceMeters),
                     })}
                   </span>
-                </p>
+                </h4>
 
                 {p.phone && (
                   <p className="mt-1 text-sm">
