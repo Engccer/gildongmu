@@ -17,6 +17,9 @@ import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
+import type { AppMode } from "@/lib/chat/mode-state";
+import { parseModeFromUrl, modeToUrl, STORAGE_KEY } from "@/lib/chat/mode-state";
+import { matchChatShortcut } from "@/lib/chat/keyboard-shortcuts";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
@@ -28,6 +31,8 @@ import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
+import { ModeToggle } from "./ModeToggle";
+import { ChatInterface } from "./chat/ChatInterface";
 
 type Status =
   | { kind: "idle" }
@@ -61,6 +66,7 @@ export function PlaceSearch({
   canShowSurroundings = false,
   canShowTransit = false,
   canSearchAddress = false,
+  canShowChat = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -83,6 +89,8 @@ export function PlaceSearch({
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
   canSearchAddress?: boolean;
+  /** Gemini 키가 있어 채팅(AI 길찾기 도우미)을 제공할 수 있는지 */
+  canShowChat?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -117,6 +125,80 @@ export function PlaceSearch({
   const geo = useGeolocation();
   const userCoords = geo.status === "ready" ? geo.coords : null;
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // ── 채팅/검색 모드 상태 (canShowChat=false면 항상 "search" 고정) ──
+  // SSR 안전: 서버 스냅샷은 "search"로 두고, 클라 마운트 후 URL·localStorage에서 읽는다.
+  const [mode, setMode] = useState<AppMode>("search");
+  // 채팅 입력창 ref (Shift+Esc 포커스 및 모드 전환 후 포커스용)
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  // 검색 입력창 ref (SearchBar에 전달 — Shift+Esc 및 모드 전환 후 포커스용)
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // 마운트 시 mode focus effect 건너뛰기 — 초기 마운트에서는 포커스를 이동하지 않아
+  // ?q= 자동검색 후 결과-헤딩 포커스 이동과 경합을 막는다.
+  const isMountRef = useRef(true);
+
+  // 클라이언트 마운트 후 모드 초기화 (URL → localStorage → 기본값 "search")
+  useEffect(() => {
+    if (!canShowChat) return;
+    const fromUrl = parseModeFromUrl(window.location.search);
+    const fromStorage =
+      typeof localStorage !== "undefined"
+        ? (localStorage.getItem(STORAGE_KEY) as AppMode | null)
+        : null;
+    const initial = fromUrl ?? fromStorage ?? "search";
+    setMode(initial);
+  }, [canShowChat]);
+
+  /**
+   * 모드 전환 래퍼 — state + URL + localStorage 동기 갱신.
+   */
+  function changeMode(m: AppMode) {
+    setMode(m);
+    const newSearch = modeToUrl(window.location.search, m);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      newSearch || window.location.pathname,
+    );
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, m);
+    }
+  }
+
+  // 모드 전환 후 새 모드의 입력창으로 포커스 이동 (접근성: 맥락 이동 안내).
+  // isMountRef 가드로 마운트 시에는 건너뛴다 — ?q= 자동검색 결과-헤딩 포커스 이동과의
+  // 경합을 방지한다(canShowChat=true + ?q= URL 진입 시 적용).
+  useEffect(() => {
+    if (!canShowChat) return;
+    if (isMountRef.current) { isMountRef.current = false; return; }
+    if (mode === "chat") chatInputRef.current?.focus();
+    else searchInputRef.current?.focus();
+  // changeMode는 [canShowChat, mode] deps로 effect가 재등록되어 항상 최신 mode를
+  // 캡처하므로 deps에서 제외해도 안전. mode 변경 시에만 실행하는 것이 의도.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  // 전역 키보드 단축키 리스너 (canShowChat일 때만 등록)
+  useEffect(() => {
+    if (!canShowChat) return;
+    function onKeyDown(e: KeyboardEvent) {
+      const action = matchChatShortcut(e);
+      if (!action) return;
+      e.preventDefault();
+      if (action === "chat-mode") {
+        changeMode("chat");
+      } else if (action === "search-mode") {
+        changeMode("search");
+      } else if (action === "focus-input") {
+        const targetRef = mode === "chat" ? chatInputRef : searchInputRef;
+        targetRef.current?.focus();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // mode ref 대신 mode를 직접 의존해 항상 최신 모드를 클로저로 잡는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShowChat, mode]);
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
   // 늦게 끝난 이전 요청이 최신 결과를 덮어쓰는 것을 막는다(AbortController 불필요).
@@ -469,6 +551,21 @@ export function PlaceSearch({
     />
   );
 
+  // 채팅 모드로 진입하면 ChatInterface를 렌더하고 검색 UI를 숨긴다.
+  // canShowChat=false면 mode는 항상 "search"이므로 아래 조건은 성립 안 함.
+  if (mode === "chat" && canShowChat) {
+    return (
+      <>
+        {canShowChat && (
+          <div className="mb-4">
+            <ModeToggle mode={mode} onChange={changeMode} />
+          </div>
+        )}
+        <ChatInterface inputRef={chatInputRef} />
+      </>
+    );
+  }
+
   return (
     <>
       {isMockMode && (
@@ -480,12 +577,20 @@ export function PlaceSearch({
         </p>
       )}
 
+      {/* 채팅 기능이 활성화된 경우 토글 버튼 표시 */}
+      {canShowChat && (
+        <div className="mb-4">
+          <ModeToggle mode={mode} onChange={changeMode} />
+        </div>
+      )}
+
       <SearchBar
         query={query}
         onQueryChange={setQuery}
         onSubmit={runSearch}
         busy={status.kind === "loading"}
         onTranscribed={handleTranscribed}
+        inputRef={searchInputRef}
       />
 
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">

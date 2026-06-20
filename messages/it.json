@@ -322,6 +322,16 @@
       "stt_failed": "Riconoscimento vocale non riuscito. Riprova."
     }
   },
+  "chat": {
+    "switchToChat": "Chat",
+    "switchToSearch": "Cerca",
+    "inputLabel": "Messaggio",
+    "send": "Invia",
+    "error": {
+      "chat_failed": "Impossibile ottenere una risposta.",
+      "chat_unavailable": "La chat non è disponibile."
+    }
+  },
   "beacon": {
     "heading": "Distanza dalla destinazione",
     "start": "Avvia il monitoraggio della distanza",

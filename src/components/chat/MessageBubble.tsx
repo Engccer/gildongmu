@@ -1,0 +1,111 @@
+"use client";
+
+import type { Place } from "@/lib/types";
+import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
+import { ResultList } from "@/components/ResultList";
+import { groupByCategory } from "@/lib/category";
+import { AddressResultList } from "@/components/AddressResultList";
+import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
+import { NightClinicsNearby } from "@/components/NightClinicsNearby";
+import { KidsPlacesNearby } from "@/components/KidsPlacesNearby";
+import { SurroundingsNearby } from "@/components/SurroundingsNearby";
+import { BusArrivals } from "@/components/BusArrivals";
+import { BikeStations } from "@/components/BikeStations";
+import { AirQuality } from "@/components/AirQuality";
+import { StationMeta } from "@/components/StationMeta";
+import { StationFacilities } from "@/components/StationFacilities";
+import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
+import { CarRouteBriefing } from "@/components/CarRouteBriefing";
+import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
+
+/**
+ * 채팅 메시지 1건 렌더.
+ * - 사용자 메시지: 오른쪽 정렬 텍스트.
+ * - 어시스턴트 메시지: 텍스트 + 선택적 RenderBlock(render payload 디스패치).
+ *
+ * @param onOpenPlace - 장소 카드 클릭 시 상세 진입 콜백. V1 채팅은 비목표 → 미주입 시 no-op.
+ *   후속 Task에서 PlaceSearch openDetail과 연결 예정.
+ */
+export function MessageBubble({
+  message,
+  onOpenPlace,
+}: {
+  message: ChatMessage;
+  onOpenPlace?: (place: Place) => void;
+}) {
+  const isUser = message.role === "user";
+  return (
+    <div className={isUser ? "text-right" : "text-left"}>
+      {message.text && (
+        <p className="whitespace-pre-wrap">{message.text}</p>
+      )}
+      {message.render && (
+        <RenderBlock render={message.render} onOpenPlace={onOpenPlace} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * render payload 타입에 따라 적절한 컴포넌트로 디스패치.
+ */
+function RenderBlock({
+  render,
+  onOpenPlace,
+}: {
+  render: RenderPayload;
+  onOpenPlace?: (place: Place) => void;
+}) {
+  switch (render.type) {
+    case "places":
+      return (
+        <ResultList
+          groups={groupByCategory(render.places)}
+          // onOpenPlace 미주입 시 no-op: ResultList는 필수 콜백 요구,
+          // 상세 진입 와이어링은 후속 Task에서 처리.
+          onOpen={onOpenPlace ?? (() => {})}
+        />
+      );
+    case "addresses":
+      return (
+        <AddressResultList
+          addresses={render.results}
+          // 채팅 V1: 상세 진입 비목표 → no-op (후속 Task에서 연결)
+          onSelect={() => {}}
+        />
+      );
+    case "subway-nearby":
+      return <SubwayArrivalsNearby />;
+    case "clinics-nearby":
+      return <NightClinicsNearby />;
+    case "kids-nearby":
+      return <KidsPlacesNearby />;
+    case "surroundings-nearby":
+      return <SurroundingsNearby />;
+    case "bus":
+      return render.mode === "current"
+        ? <BusArrivals mode="current" />
+        : <BusArrivals mode="place" lat={render.lat} lng={render.lng} />;
+    case "bike":
+      return render.mode === "current"
+        ? <BikeStations mode="current" />
+        : <BikeStations mode="place" lat={render.lat} lng={render.lng} />;
+    case "air-quality":
+      return <AirQuality lat={render.lat} lng={render.lng} />;
+    case "station-meta":
+      return <StationMeta stationName={render.stationName} />;
+    case "station-facilities":
+      return (
+        <>
+          <StationFacilities stationName={render.stationName} />
+          <SeoulMetroFacilities stationName={render.stationName} />
+        </>
+      );
+    case "car-route":
+      return <CarRouteBriefing dest={render.dest} />;
+    case "transit-route":
+      return <TransitRouteBriefing dest={render.dest} />;
+    default:
+      return null;
+  }
+}
