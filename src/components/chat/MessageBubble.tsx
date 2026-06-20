@@ -4,6 +4,7 @@ import type { Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
 import { groupByCategory } from "@/lib/category";
+import { AddressResultList } from "@/components/AddressResultList";
 
 /**
  * 채팅 메시지 1건 렌더.
@@ -54,8 +55,16 @@ function RenderBlock({
           onOpen={onOpenPlace ?? (() => {})}
         />
       );
+    case "addresses":
+      return (
+        <AddressResultList
+          addresses={render.results}
+          // 채팅 V1: 상세 진입 비목표 → no-op (후속 Task에서 연결)
+          onSelect={() => {}}
+        />
+      );
     default:
-      // Phase 3에서 addresses, car-route, transit-route 등 case 추가
+      // Phase 3에서 car-route, transit-route 등 case 추가
       return null;
   }
 }

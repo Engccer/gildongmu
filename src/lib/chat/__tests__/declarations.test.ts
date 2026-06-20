@@ -18,4 +18,16 @@ describe("availableDeclarations", () => {
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "search_places")).toBe(false);
   });
+
+  it("juso 키 있으면 search_address 노출", async () => {
+    vi.stubEnv("JUSO_CONFM_KEY", "j");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "search_address")).toBe(true);
+  });
+
+  it("juso 키 없으면 search_address 미노출", async () => {
+    vi.stubEnv("JUSO_CONFM_KEY", undefined as any);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "search_address")).toBe(false);
+  });
 });

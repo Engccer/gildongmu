@@ -7,7 +7,8 @@
 
 import type { ExecutionContext, ToolResult } from "./types";
 import { searchPlaces } from "@/lib/providers/places";
-import { placesToRender, placesSummary } from "./render";
+import { searchJusoAddresses } from "@/lib/providers/juso-address";
+import { placesToRender, placesSummary, addressesToRender, addressesSummary } from "./render";
 
 /**
  * Gemini 도구 호출을 provider로 디스패치하고 ToolResult를 반환한다.
@@ -29,6 +30,14 @@ export async function executeFunction(
       return {
         summary: placesSummary(result.places, ctx.locale),
         render: placesToRender(result.places),
+      };
+    }
+    case "search_address": {
+      const keyword = String(args.keyword ?? "");
+      const results = await searchJusoAddresses(keyword);
+      return {
+        summary: addressesSummary(results, ctx.locale),
+        render: addressesToRender(results),
       };
     }
     default:

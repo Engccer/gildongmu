@@ -1,6 +1,6 @@
 // declarations.ts — Gemini function declarations + 키 게이트 필터 (React/Next 비의존)
 import type { FunctionDeclaration } from "@google/genai";
-import { hasKakaoKey } from "@/lib/env";
+import { hasKakaoKey, hasJusoKey } from "@/lib/env";
 
 interface GatedDeclaration {
   declaration: FunctionDeclaration;
@@ -25,6 +25,21 @@ const DECLARATIONS: GatedDeclaration[] = [
           },
         },
         required: ["query"],
+      },
+    },
+  },
+  {
+    gate: hasJusoKey,
+    declaration: {
+      name: "search_address",
+      description:
+        "도로명/지번 주소·우편번호를 검색한다. 상호(POI)가 아니라 '세종대로 110' 같은 주소를 찾을 때.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          keyword: { type: "string", description: "주소 키워드" },
+        },
+        required: ["keyword"],
       },
     },
   },
