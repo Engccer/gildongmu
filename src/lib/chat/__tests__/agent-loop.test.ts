@@ -69,6 +69,10 @@ describe("runAgentLoop", () => {
     const ai = makeAi([fcResponse("get_air_quality"), textResponse(""), textResponse("폴백 답변")]);
     const r = await runAgentLoop(baseOpts(ai));
     expect(r.text).toBe("폴백 답변");
+    // I-2 핵심: 마지막 폴백 호출은 tools를 빼야 한다(빈 버블 차단을 위한 강제 산문)
+    expect(ai.models.generateContent).toHaveBeenCalledTimes(3);
+    const lastCall = vi.mocked(ai.models.generateContent).mock.calls.at(-1)![0];
+    expect(lastCall.config?.tools).toBeUndefined();
   });
 
   it("onStatus 콜백이 도구 카테고리를 통지", async () => {
