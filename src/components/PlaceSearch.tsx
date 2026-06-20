@@ -31,6 +31,7 @@ import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
+import { AirQuality } from "./AirQuality";
 import { ModeToggle } from "./ModeToggle";
 import { ChatInterface } from "./chat/ChatInterface";
 
@@ -597,7 +598,15 @@ export function PlaceSearch({
         {liveMessage}
       </p>
 
-      {/* 검색 전 첫 화면 진입점 — 내 주변 5종(키 게이트). idle일 때만. */}
+      {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
+      {/* 공기질은 자동 등장 카드(버튼 없이 좌표 준비 시 표시) — 외출 전 환경 브리핑.
+          AirQuality는 좌표 props를 받는 동일 컴포넌트라 장소 상세와 재사용,
+          region 랜드마크도 그대로(자동 등장 섹션 정책 부합). */}
+      {canShowAir && status.kind === "idle" && userCoords && (
+        <div className="mt-4">
+          <AirQuality lat={userCoords.lat} lng={userCoords.lng} />
+        </div>
+      )}
       {canShowSubway && status.kind === "idle" && (
         <div className="mt-4">
           <SubwayArrivalsNearby />
