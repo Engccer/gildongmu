@@ -280,3 +280,99 @@ export function mergeWeather(
     grid,
   };
 }
+
+const NCST_BASE =
+  "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst";
+const FCST_BASE =
+  "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
+
+/** envelope resultCode 추출(정상 "00"). */
+function resultCode(raw: unknown): string | null {
+  const c = (raw as { response?: { header?: { resultCode?: unknown } } })
+    ?.response?.header?.resultCode;
+  return c != null ? String(c) : null;
+}
+
+/**
+ * 기상청 한 오퍼레이션 호출 → 검증된 raw JSON. 공기질 fetchAirkorea 동형 방어:
+ * - serviceKey 등 모든 파라미터 URLSearchParams 인코딩.
+ * - 인증 실패 등은 dataType=JSON이어도 XML 에러를 HTTP 200으로 보냄 → text()
+ *   받아 JSON.parse try-catch, 게이트웨이 에러 envelope·resultCode≠"00" → throw
+ *   (라우트 502 — "조회 실패"와 "정보 없음" 구분).
+ */
+async function fetchKma(
+  base: string,
+  params: Record<string, string | number>,
+  label: string,
+): Promise<unknown> {
+  const key = env.DATA_GO_KR_API_KEY!;
+  const url = new URL(base);
+  url.searchParams.set("serviceKey", key);
+  url.searchParams.set("dataType", "JSON");
+  url.searchParams.set("pageNo", "1");
+  for (const [k, v] of Object.entries(params)) {
+    url.searchParams.set(k, String(v));
+  }
+
+  const res = await fetch(url, { next: { revalidate: 1800 } });
+  if (!res.ok) throw new Error(`${label} 조회 실패: HTTP ${res.status}`);
+
+  const text = await res.text();
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    throw new Error(`${label} 비정상 응답(XML?): ${text.slice(0, 200)}`);
+  }
+  if ((raw as { OpenAPI_ServiceResponse?: unknown }).OpenAPI_ServiceResponse) {
+    throw new Error(`${label} 서비스 에러(인증?): ${text.slice(0, 200)}`);
+  }
+  const code = resultCode(raw);
+  if (code !== "00") throw new Error(`${label} 비정상 응답: resultCode ${code}`);
+  return raw;
+}
+
+/** "HHmm" → "HH:mm"(낭독 조회시각). */
+function formatBaseTime(hhmm: string): string {
+  return hhmm.length === 4 ? `${hhmm.slice(0, 2)}:${hhmm.slice(2)}` : hhmm;
+}
+
+/**
+ * 좌표 → 가장 가까운 격자의 현재 날씨(2-오퍼레이션 allSettled). 키 없으면 null.
+ * 무데이터 → null(graceful). 실황·예보 둘 다 실패해야 throw(502). 한쪽만 실패면
+ * 부분 Weather 보존(mergeWeather). 시각은 실호출 시점 기준(`new Date()`).
+ */
+export async function findWeatherNear(
+  lat: number,
+  lng: number,
+): Promise<Weather | null> {
+  if (!env.DATA_GO_KR_API_KEY) return null;
+  const grid = latLngToGrid(lat, lng);
+  const now = new Date();
+  const ncstBase = ultraSrtNcstBaseTime(now);
+  const fcstBase = vilageFcstBaseTime(now);
+
+  const [ncstRes, fcstRes] = await Promise.allSettled([
+    fetchKma(
+      NCST_BASE,
+      { base_date: ncstBase.baseDate, base_time: ncstBase.baseTime, nx: grid.nx, ny: grid.ny, numOfRows: 10 },
+      "초단기실황",
+    ),
+    fetchKma(
+      FCST_BASE,
+      { base_date: fcstBase.baseDate, base_time: fcstBase.baseTime, nx: grid.nx, ny: grid.ny, numOfRows: 1000 },
+      "단기예보",
+    ),
+  ]);
+
+  if (ncstRes.status === "rejected" && fcstRes.status === "rejected") {
+    throw ncstRes.reason;
+  }
+
+  const todayYmd = ncstBase.baseDate;
+  const ncst = ncstRes.status === "fulfilled" ? parseNcst(ncstRes.value) : null;
+  const fcst =
+    fcstRes.status === "fulfilled" ? parseFcst(fcstRes.value, todayYmd) : null;
+
+  return mergeWeather(ncst, fcst, formatBaseTime(ncstBase.baseTime), grid);
+}
