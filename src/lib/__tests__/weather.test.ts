@@ -67,3 +67,116 @@ describe("vilageFcstBaseTime (KST, 발표시각)", () => {
     });
   });
 });
+
+import {
+  skyLabel,
+  precipLabel,
+  parseNcst,
+  parseFcst,
+  mergeWeather,
+} from "../providers/weather";
+
+describe("skyLabel / precipLabel (미매핑 → unknown)", () => {
+  it("SKY 1/3/4 → clear/partlyCloudy/cloudy", () => {
+    expect(skyLabel("1")).toBe("clear");
+    expect(skyLabel("3")).toBe("partlyCloudy");
+    expect(skyLabel("4")).toBe("cloudy");
+    expect(skyLabel("9")).toBe("unknown");
+  });
+  it("PTY 0~4 → none/rain/rainSnow/snow/shower, 그 외 unknown", () => {
+    expect(precipLabel("0")).toBe("none");
+    expect(precipLabel("1")).toBe("rain");
+    expect(precipLabel("2")).toBe("rainSnow");
+    expect(precipLabel("3")).toBe("snow");
+    expect(precipLabel("4")).toBe("shower");
+    expect(precipLabel("")).toBe("unknown");
+  });
+});
+
+const NCST_RAW = {
+  response: {
+    header: { resultCode: "00" },
+    body: {
+      items: {
+        item: [
+          { category: "T1H", obsrValue: "21.3" },
+          { category: "REH", obsrValue: "55" },
+          { category: "PTY", obsrValue: "0" },
+          { category: "WSD", obsrValue: "1.2" },
+        ],
+      },
+    },
+  },
+};
+
+const FCST_RAW = {
+  response: {
+    header: { resultCode: "00" },
+    body: {
+      items: {
+        item: [
+          { category: "SKY", fcstDate: "20260620", fcstTime: "1500", fcstValue: "3" },
+          { category: "POP", fcstDate: "20260620", fcstTime: "1500", fcstValue: "20" },
+          { category: "TMX", fcstDate: "20260620", fcstTime: "1500", fcstValue: "27.0" },
+          { category: "TMN", fcstDate: "20260620", fcstTime: "0600", fcstValue: "18.0" },
+          { category: "SKY", fcstDate: "20260621", fcstTime: "1500", fcstValue: "1" },
+        ],
+      },
+    },
+  },
+};
+
+describe("parseNcst", () => {
+  it("T1H/REH/PTY 추출", () => {
+    expect(parseNcst(NCST_RAW)).toEqual({
+      tempC: 21.3,
+      humidity: 55,
+      precipitation: { code: 0, label: "none" },
+    });
+  });
+  it("빈 응답 → null", () => {
+    expect(parseNcst({ response: { body: { items: "" } } })).toBeNull();
+  });
+});
+
+describe("parseFcst", () => {
+  it("가장 이른 SKY/POP + 오늘 TMX/TMN", () => {
+    expect(parseFcst(FCST_RAW, "20260620")).toEqual({
+      sky: { code: 3, label: "partlyCloudy" },
+      tempMax: 27,
+      tempMin: 18,
+      precipProbability: 20,
+    });
+  });
+  it("오늘 TMX/TMN 없으면 null 값(예보가 내일치뿐)", () => {
+    const r = parseFcst(FCST_RAW, "20260621");
+    expect(r?.tempMax).toBeNull();
+    expect(r?.tempMin).toBeNull();
+  });
+});
+
+describe("mergeWeather (부분 성공)", () => {
+  const grid = { nx: 60, ny: 127 };
+  it("실황+예보 모두 → 완전 Weather", () => {
+    const ncst = parseNcst(NCST_RAW)!;
+    const fcst = parseFcst(FCST_RAW, "20260620")!;
+    const w = mergeWeather(ncst, fcst, "13:00", grid)!;
+    expect(w.tempC).toBe(21.3);
+    expect(w.sky.label).toBe("partlyCloudy");
+    expect(w.precipitation.label).toBe("none");
+    expect(w.tempMax).toBe(27);
+    expect(w.humidity).toBe(55);
+    expect(w.precipProbability).toBe(20);
+    expect(w.baseTime).toBe("13:00");
+  });
+  it("예보만(실황 null) → 기온·습도 null, 하늘상태 보존", () => {
+    const fcst = parseFcst(FCST_RAW, "20260620")!;
+    const w = mergeWeather(null, fcst, "13:00", grid)!;
+    expect(w.tempC).toBeNull();
+    expect(w.sky.label).toBe("partlyCloudy");
+    expect(w.precipitation.label).toBe("unknown");
+  });
+  it("둘 다 null → null", () => {
+    expect(mergeWeather(null, null, "13:00", grid)).toBeNull();
+  });
+});

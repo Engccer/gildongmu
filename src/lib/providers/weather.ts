@@ -131,3 +131,152 @@ export function vilageFcstBaseTime(now: Date): {
     baseTime: String(chosen).padStart(2, "0") + "00",
   };
 }
+
+type RawItem = Record<string, unknown>;
+
+/** 수치 문자열 → number. 빈 값·"-"·비유한 → null. */
+function numOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (s === "" || s === "-") return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * 기상청 표준 envelope items 추출 — `response.body.items.item[]`.
+ * (공기질 에어코리아의 직접 배열 quirk와 다름 — 기상청은 표준 item 중첩.)
+ * 빈 결과 `items:""` → []. resultCode≠"00" 검증은 fetch 계층 책임.
+ */
+function extractItems(raw: unknown): RawItem[] {
+  const items = (raw as { response?: { body?: { items?: unknown } } })?.response
+    ?.body?.items;
+  if (!items || typeof items === "string") return [];
+  const item = (items as { item?: unknown }).item;
+  if (item == null) return [];
+  return Array.isArray(item) ? (item as RawItem[]) : [item as RawItem];
+}
+
+/** SKY 코드 → 라벨. 1 맑음·3 구름많음·4 흐림, 그 외 unknown. */
+export function skyLabel(code: unknown): SkyLabel {
+  switch (String(code ?? "").trim()) {
+    case "1":
+      return "clear";
+    case "3":
+      return "partlyCloudy";
+    case "4":
+      return "cloudy";
+    default:
+      return "unknown";
+  }
+}
+
+/** PTY 코드 → 라벨. 0 없음·1 비·2 비눈·3 눈·4 소나기, 그 외 unknown. */
+export function precipLabel(code: unknown): PrecipLabel {
+  switch (String(code ?? "").trim()) {
+    case "0":
+      return "none";
+    case "1":
+      return "rain";
+    case "2":
+      return "rainSnow";
+    case "3":
+      return "snow";
+    case "4":
+      return "shower";
+    default:
+      return "unknown";
+  }
+}
+
+/** 카테고리별 첫 obsrValue. */
+function ncstValue(items: RawItem[], category: string): unknown {
+  return items.find((it) => String(it.category).trim() === category)?.obsrValue;
+}
+
+/** 초단기실황 → 현재기온·습도·강수형태. 빈 응답 → null. */
+export function parseNcst(raw: unknown): {
+  tempC: number | null;
+  humidity: number | null;
+  precipitation: { code: number | null; label: PrecipLabel };
+} | null {
+  const items = extractItems(raw);
+  if (items.length === 0) return null;
+  const ptyRaw = ncstValue(items, "PTY");
+  return {
+    tempC: numOrNull(ncstValue(items, "T1H")),
+    humidity: numOrNull(ncstValue(items, "REH")),
+    precipitation: { code: numOrNull(ptyRaw), label: precipLabel(ptyRaw) },
+  };
+}
+
+/** fcstDate+fcstTime 오름차순 키. */
+function fcstKey(it: RawItem): string {
+  return String(it.fcstDate ?? "") + String(it.fcstTime ?? "");
+}
+
+/** 카테고리의 fcst 항목들 중 시각 오름차순 첫 항목 fcstValue. */
+function firstFcst(items: RawItem[], category: string): unknown {
+  const matched = items
+    .filter((it) => String(it.category).trim() === category)
+    .sort((a, b) => fcstKey(a).localeCompare(fcstKey(b)));
+  return matched[0]?.fcstValue;
+}
+
+/** 카테고리의 오늘(todayYmd) 항목 fcstValue. */
+function todayFcst(
+  items: RawItem[],
+  category: string,
+  todayYmd: string,
+): unknown {
+  return items.find(
+    (it) =>
+      String(it.category).trim() === category &&
+      String(it.fcstDate).trim() === todayYmd,
+  )?.fcstValue;
+}
+
+/**
+ * 단기예보 → 하늘상태(가장 이른 SKY)·강수확률(가장 이른 POP)·오늘 최고/최저.
+ * 빈 응답 → null. 오늘 TMX/TMN이 예보에 없으면(밤늦게) 해당 값 null.
+ */
+export function parseFcst(
+  raw: unknown,
+  todayYmd: string,
+): {
+  sky: { code: number | null; label: SkyLabel };
+  tempMax: number | null;
+  tempMin: number | null;
+  precipProbability: number | null;
+} | null {
+  const items = extractItems(raw);
+  if (items.length === 0) return null;
+  const skyRaw = firstFcst(items, "SKY");
+  return {
+    sky: { code: numOrNull(skyRaw), label: skyLabel(skyRaw) },
+    tempMax: numOrNull(todayFcst(items, "TMX", todayYmd)),
+    tempMin: numOrNull(todayFcst(items, "TMN", todayYmd)),
+    precipProbability: numOrNull(firstFcst(items, "POP")),
+  };
+}
+
+/** 실황·예보 합성 → Weather. 둘 다 null이면 null(빈 카드 금지). */
+export function mergeWeather(
+  ncst: ReturnType<typeof parseNcst>,
+  fcst: ReturnType<typeof parseFcst>,
+  baseTime: string,
+  grid: { nx: number; ny: number },
+): Weather | null {
+  if (!ncst && !fcst) return null;
+  return {
+    sky: fcst?.sky ?? { code: null, label: "unknown" },
+    precipitation: ncst?.precipitation ?? { code: null, label: "unknown" },
+    tempC: ncst?.tempC ?? null,
+    tempMax: fcst?.tempMax ?? null,
+    tempMin: fcst?.tempMin ?? null,
+    humidity: ncst?.humidity ?? null,
+    precipProbability: fcst?.precipProbability ?? null,
+    baseTime,
+    grid,
+  };
+}
