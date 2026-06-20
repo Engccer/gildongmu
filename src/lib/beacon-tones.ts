@@ -4,7 +4,7 @@
  * 음높이 방향으로 추세를 즉시 구분: 가까워짐=상승, 멀어짐=하강, 도착=밝은 더블,
  * tick=낮은 단음("추적 중" 하트비트). recording-tones.ts와 동일한 Tone 형식.
  */
-import type { Tone } from "./recording-tones";
+import type { Tone } from "./tones";
 
 export const CLOSER_TONES: Tone[] = [
   { freq: 660, start: 0, dur: 0.07 },

@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import type { Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
@@ -26,20 +27,39 @@ import { SourceList } from "./SourceList";
  *
  * @param onOpenPlace - 장소 카드 클릭 시 상세 진입 콜백. V1 채팅은 비목표 → 미주입 시 no-op.
  *   후속 Task에서 PlaceSearch openDetail과 연결 예정.
+ * @param isLastQuery - 이 메시지가 가장 최근 사용자 질문인지. true면 lastQueryRef를 연결해
+ *   응답 완료 후 포커스가 이 heading으로 이동한다(턴별 탐색).
+ * @param lastQueryRef - 최신 질문 heading 참조(ChatInterface가 포커스 이동에 사용).
  */
 export function MessageBubble({
   message,
   onOpenPlace,
+  isLastQuery,
+  lastQueryRef,
 }: {
   message: ChatMessage;
   onOpenPlace?: (place: Place) => void;
+  isLastQuery?: boolean;
+  lastQueryRef?: RefObject<HTMLHeadingElement | null>;
 }) {
   const isUser = message.role === "user";
   return (
     <div className={isUser ? "text-right" : "text-left"}>
-      {message.text && (
-        <p className="whitespace-pre-wrap">{message.text}</p>
-      )}
+      {/* 사용자 질문은 heading — 회전자 heading 점프로 대화 턴을 순회하고,
+          응답 완료 시 포커스가 최신 질문으로 이동하는 앵커가 된다.
+          tabIndex=-1: 프로그램적 포커스만 받고 Tab 순회엔 끼지 않는다. */}
+      {message.text &&
+        (isUser ? (
+          <h2
+            ref={isLastQuery ? lastQueryRef : undefined}
+            tabIndex={-1}
+            className="whitespace-pre-wrap font-medium"
+          >
+            {message.text}
+          </h2>
+        ) : (
+          <p className="whitespace-pre-wrap">{message.text}</p>
+        ))}
       {message.renders?.map((render, i) => (
         <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} />
       ))}

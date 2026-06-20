@@ -98,11 +98,19 @@ describe("MessageBubble", () => {
     expect(screen.getByText("안녕")).toBeTruthy();
   });
 
-  it("assistant 산문 표시", () => {
+  it("사용자 메시지는 heading(level 2) — 회전자 턴별 탐색 앵커", () => {
+    render(<MessageBubble message={{ id: "1", role: "user", text: "안녕" }} />);
+    const heading = screen.getByRole("heading", { level: 2, name: "안녕" });
+    // 프로그램적 포커스만 받고 Tab 순회엔 끼지 않는다.
+    expect(heading.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("assistant 산문은 heading이 아님(질문만 heading)", () => {
     render(
       <MessageBubble message={{ id: "2", role: "assistant", text: "찾았어요" }} />
     );
     expect(screen.getByText("찾았어요")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "찾았어요" })).toBeNull();
   });
 
   it("places renders면 장소명 노출", () => {
