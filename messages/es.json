@@ -351,7 +351,26 @@
     "send": "Enviar",
     "error": {
       "chat_failed": "No se pudo obtener una respuesta.",
-      "chat_unavailable": "El chat no está disponible."
+      "chat_unavailable": "El chat no está disponible.",
+      "timeout": "La respuesta ha tardado demasiado. Por favor, inténtalo de nuevo."
+    },
+    "progress": {
+      "searching": "Buscando {tools}",
+      "tool": {
+        "search_places": "lugares",
+        "search_address": "dirección",
+        "get_subway_arrivals": "llegadas de metro",
+        "get_night_clinics": "clínicas nocturnas",
+        "get_kids_places": "lugares para niños",
+        "get_surroundings": "alrededores",
+        "get_bus_arrivals": "llegadas de autobús",
+        "get_bike_stations": "estaciones de bicicleta",
+        "get_air_quality": "calidad del aire",
+        "get_station_meta": "información de la estación",
+        "get_station_facilities": "instalaciones de la estación",
+        "get_car_route": "ruta en coche",
+        "get_transit_route": "ruta de transporte público"
+      }
     },
     "sources": "Fuentes",
     "source": {

@@ -351,7 +351,26 @@
     "send": "보내기",
     "error": {
       "chat_failed": "답변을 가져오지 못했습니다.",
-      "chat_unavailable": "채팅을 사용할 수 없습니다."
+      "chat_unavailable": "채팅을 사용할 수 없습니다.",
+      "timeout": "응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
+    },
+    "progress": {
+      "searching": "{tools} 조회 중",
+      "tool": {
+        "search_places": "장소",
+        "search_address": "주소",
+        "get_subway_arrivals": "지하철 도착",
+        "get_night_clinics": "야간 진료",
+        "get_kids_places": "아이 놀 곳",
+        "get_surroundings": "주변",
+        "get_bus_arrivals": "버스 도착",
+        "get_bike_stations": "따릉이",
+        "get_air_quality": "공기질",
+        "get_station_meta": "역 정보",
+        "get_station_facilities": "역 편의시설",
+        "get_car_route": "자동차 경로",
+        "get_transit_route": "대중교통 경로"
+      }
     },
     "sources": "출처",
     "source": {

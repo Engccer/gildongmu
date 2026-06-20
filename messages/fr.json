@@ -351,7 +351,26 @@
     "send": "Envoyer",
     "error": {
       "chat_failed": "Impossible d'obtenir une réponse.",
-      "chat_unavailable": "Le chat n'est pas disponible."
+      "chat_unavailable": "Le chat n'est pas disponible.",
+      "timeout": "La réponse a expiré. Veuillez réessayer dans un instant."
+    },
+    "progress": {
+      "searching": "Recherche de {tools}",
+      "tool": {
+        "search_places": "lieux",
+        "search_address": "adresse",
+        "get_subway_arrivals": "arrivées de métro",
+        "get_night_clinics": "cliniques de nuit",
+        "get_kids_places": "lieux pour enfants",
+        "get_surroundings": "alentours",
+        "get_bus_arrivals": "arrivées de bus",
+        "get_bike_stations": "stations de vélo",
+        "get_air_quality": "qualité de l'air",
+        "get_station_meta": "infos sur la gare",
+        "get_station_facilities": "équipements de la gare",
+        "get_car_route": "itinéraire en voiture",
+        "get_transit_route": "itinéraire en transport en commun"
+      }
     },
     "sources": "Sources",
     "source": {

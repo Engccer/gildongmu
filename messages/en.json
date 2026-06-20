@@ -351,7 +351,26 @@
     "send": "Send",
     "error": {
       "chat_failed": "Couldn't get a response.",
-      "chat_unavailable": "Chat is unavailable."
+      "chat_unavailable": "Chat is unavailable.",
+      "timeout": "Response timed out. Please try again in a moment."
+    },
+    "progress": {
+      "searching": "Looking up {tools}",
+      "tool": {
+        "search_places": "places",
+        "search_address": "address",
+        "get_subway_arrivals": "subway arrivals",
+        "get_night_clinics": "night clinics",
+        "get_kids_places": "kids places",
+        "get_surroundings": "surroundings",
+        "get_bus_arrivals": "bus arrivals",
+        "get_bike_stations": "bike stations",
+        "get_air_quality": "air quality",
+        "get_station_meta": "station info",
+        "get_station_facilities": "station facilities",
+        "get_car_route": "driving route",
+        "get_transit_route": "transit route"
+      }
     },
     "sources": "Sources",
     "source": {
