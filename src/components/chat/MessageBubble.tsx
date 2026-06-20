@@ -39,9 +39,9 @@ export function MessageBubble({
       {message.text && (
         <p className="whitespace-pre-wrap">{message.text}</p>
       )}
-      {message.render && (
-        <RenderBlock render={message.render} onOpenPlace={onOpenPlace} />
-      )}
+      {message.renders?.map((render, i) => (
+        <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} />
+      ))}
     </div>
   );
 }

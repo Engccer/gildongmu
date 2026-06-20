@@ -6,11 +6,12 @@
  * - useGeolocation()으로 현재 위치를 읽기만 한다 (요청/권한 처리는 PlaceSearch 담당).
  * - in-flight ref로 중복 전송을 막는다.
  * - 에러는 "chat_failed" 코드로 설정하고, dismissError()로 초기화한다.
+ * - NDJSON 스트림을 라인 단위로 읽어 status/done/error 이벤트를 처리한다.
  */
 import { useCallback, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import type { ChatMessage } from "@/lib/chat/types";
+import type { ChatMessage, ChatStreamEvent } from "@/lib/chat/types";
 
 let counter = 0;
 const nextId = () => `m${++counter}`;
@@ -28,6 +29,7 @@ export function useChat() {
   const messagesRef = useRef<ChatMessage[]>([]);
   const [isLoading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progressCategories, setProgressCategories] = useState<string[]>([]);
   const inFlight = useRef(false);
 
   const sendMessage = useCallback(
@@ -45,34 +47,61 @@ export function useChat() {
       setLoading(true);
 
       try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: history.map((m) => ({ role: m.role, text: m.text })),
-            userLocation,
-            locale,
-          }),
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120_000);
+        let res: Response;
+        try {
+          res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              messages: history.map((m) => ({ role: m.role, text: m.text })),
+              userLocation,
+              locale,
+            }),
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+        if (!res.ok || !res.body) { setError("chat_failed"); return; }
 
-        if (!res.ok) {
-          setError("chat_failed");
-          return;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let done: { text: string; renders?: unknown[]; sources?: unknown[] } | null = null;
+        let streamError: string | null = null;
+
+        while (true) {
+          const { done: streamDone, value } = await reader.read();
+          if (streamDone) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let evt: ChatStreamEvent;
+            try { evt = JSON.parse(line); } catch { continue; }
+            if (evt.type === "status") setProgressCategories(evt.categories);
+            else if (evt.type === "done") done = evt;
+            else if (evt.type === "error") streamError = evt.code;
+          }
         }
 
-        const data = await res.json();
+        if (streamError) { setError(streamError); return; }
         const assistantMsg: ChatMessage = {
-          id: nextId(),
-          role: "assistant",
-          text: data.text ?? "",
-          render: data.render,
+          id: nextId(), role: "assistant",
+          text: done?.text ?? "",
+          renders: (done?.renders as ChatMessage["renders"]) ?? undefined,
+          sources: (done?.sources as ChatMessage["sources"]) ?? undefined,
         };
         const next = [...messagesRef.current, assistantMsg];
         messagesRef.current = next;
         setMessages(next);
-      } catch {
-        setError("chat_failed");
+      } catch (e) {
+        setError(e instanceof DOMException && e.name === "AbortError" ? "timeout" : "chat_failed");
       } finally {
+        setProgressCategories([]);
         setLoading(false);
         inFlight.current = false;
       }
@@ -82,5 +111,5 @@ export function useChat() {
 
   const dismissError = useCallback(() => setError(null), []);
 
-  return { messages, isLoading, error, sendMessage, dismissError };
+  return { messages, isLoading, error, progressCategories, sendMessage, dismissError };
 }

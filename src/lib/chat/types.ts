@@ -69,3 +69,9 @@ export interface ChatMessage {
   sources?: SourceAttribution[];
   error?: string;
 }
+
+/** NDJSON 스트리밍 이벤트 (서버 → 클라이언트, 1줄 1이벤트). */
+export type ChatStreamEvent =
+  | { type: "status"; categories: string[] }
+  | { type: "done"; text: string; renders: RenderPayload[]; sources: SourceAttribution[] }
+  | { type: "error"; code: string };

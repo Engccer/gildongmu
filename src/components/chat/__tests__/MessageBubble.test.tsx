@@ -105,40 +105,42 @@ describe("MessageBubble", () => {
     expect(screen.getByText("찾았어요")).toBeTruthy();
   });
 
-  it("places render면 장소명 노출", () => {
+  it("places renders면 장소명 노출", () => {
     render(
       <MessageBubble
         message={{
           id: "3",
           role: "assistant",
           text: "결과",
-          render: { type: "places", places: [placeFixture] },
+          renders: [{ type: "places", places: [placeFixture] }],
         }}
       />
     );
     expect(screen.getByText(/길동 카페/)).toBeTruthy();
   });
 
-  it("addresses render면 roadAddr 노출", () => {
+  it("addresses renders면 roadAddr 노출", () => {
     render(
       <MessageBubble
         message={{
           id: "4",
           role: "assistant",
           text: "주소 결과",
-          render: {
-            type: "addresses",
-            results: [
-              {
-                roadAddr: "서울특별시 중구 세종대로 110 (태평로1가)",
-                roadAddrPart1: "서울특별시 중구 세종대로 110",
-                jibunAddr: "서울특별시 중구 태평로1가 31",
-                engAddr: "110 Sejong-daero, Jung-gu, Seoul",
-                zipNo: "04524",
-                bdNm: "서울특별시청",
-              },
-            ],
-          },
+          renders: [
+            {
+              type: "addresses",
+              results: [
+                {
+                  roadAddr: "서울특별시 중구 세종대로 110 (태평로1가)",
+                  roadAddrPart1: "서울특별시 중구 세종대로 110",
+                  jibunAddr: "서울특별시 중구 태평로1가 31",
+                  engAddr: "110 Sejong-daero, Jung-gu, Seoul",
+                  zipNo: "04524",
+                  bdNm: "서울특별시청",
+                },
+              ],
+            },
+          ],
         }}
       />
     );
@@ -147,47 +149,47 @@ describe("MessageBubble", () => {
   });
 
   // self-fetch nearby 컴포넌트 마운트 테스트 (mock 경유)
-  it("subway-nearby render면 SubwayArrivalsNearby 마운트", () => {
+  it("subway-nearby renders면 SubwayArrivalsNearby 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "5", role: "assistant", text: "", render: { type: "subway-nearby" } }}
+        message={{ id: "5", role: "assistant", text: "", renders: [{ type: "subway-nearby" }] }}
       />
     );
     expect(screen.getByTestId("subway-nearby")).toBeTruthy();
   });
 
-  it("clinics-nearby render면 NightClinicsNearby 마운트", () => {
+  it("clinics-nearby renders면 NightClinicsNearby 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "6", role: "assistant", text: "", render: { type: "clinics-nearby" } }}
+        message={{ id: "6", role: "assistant", text: "", renders: [{ type: "clinics-nearby" }] }}
       />
     );
     expect(screen.getByTestId("clinics-nearby")).toBeTruthy();
   });
 
-  it("kids-nearby render면 KidsPlacesNearby 마운트", () => {
+  it("kids-nearby renders면 KidsPlacesNearby 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "7", role: "assistant", text: "", render: { type: "kids-nearby" } }}
+        message={{ id: "7", role: "assistant", text: "", renders: [{ type: "kids-nearby" }] }}
       />
     );
     expect(screen.getByTestId("kids-nearby")).toBeTruthy();
   });
 
-  it("surroundings-nearby render면 SurroundingsNearby 마운트", () => {
+  it("surroundings-nearby renders면 SurroundingsNearby 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "8", role: "assistant", text: "", render: { type: "surroundings-nearby" } }}
+        message={{ id: "8", role: "assistant", text: "", renders: [{ type: "surroundings-nearby" }] }}
       />
     );
     expect(screen.getByTestId("surroundings-nearby")).toBeTruthy();
   });
 
   // 좌표 도구 3종 컴포넌트 마운트 테스트
-  it("bus current render면 BusArrivals mode=current 마운트", () => {
+  it("bus current renders면 BusArrivals mode=current 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "9", role: "assistant", text: "", render: { type: "bus", mode: "current" } }}
+        message={{ id: "9", role: "assistant", text: "", renders: [{ type: "bus", mode: "current" }] }}
       />
     );
     const el = screen.getByTestId("bus-arrivals");
@@ -195,14 +197,14 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-mode")).toBe("current");
   });
 
-  it("bus place render면 BusArrivals mode=place 마운트", () => {
+  it("bus place renders면 BusArrivals mode=place 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "10",
           role: "assistant",
           text: "",
-          render: { type: "bus", mode: "place", lat: 37.5, lng: 127.1 },
+          renders: [{ type: "bus", mode: "place", lat: 37.5, lng: 127.1 }],
         }}
       />
     );
@@ -211,10 +213,10 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-mode")).toBe("place");
   });
 
-  it("bike current render면 BikeStations mode=current 마운트", () => {
+  it("bike current renders면 BikeStations mode=current 마운트", () => {
     render(
       <MessageBubble
-        message={{ id: "11", role: "assistant", text: "", render: { type: "bike", mode: "current" } }}
+        message={{ id: "11", role: "assistant", text: "", renders: [{ type: "bike", mode: "current" }] }}
       />
     );
     const el = screen.getByTestId("bike-stations");
@@ -222,14 +224,14 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-mode")).toBe("current");
   });
 
-  it("bike place render면 BikeStations mode=place 마운트", () => {
+  it("bike place renders면 BikeStations mode=place 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "12",
           role: "assistant",
           text: "",
-          render: { type: "bike", mode: "place", lat: 37.5, lng: 127.1 },
+          renders: [{ type: "bike", mode: "place", lat: 37.5, lng: 127.1 }],
         }}
       />
     );
@@ -238,14 +240,14 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-mode")).toBe("place");
   });
 
-  it("air-quality render면 AirQuality lat/lng 마운트", () => {
+  it("air-quality renders면 AirQuality lat/lng 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "13",
           role: "assistant",
           text: "",
-          render: { type: "air-quality", lat: 37.5, lng: 127.1 },
+          renders: [{ type: "air-quality", lat: 37.5, lng: 127.1 }],
         }}
       />
     );
@@ -256,14 +258,14 @@ describe("MessageBubble", () => {
   });
 
   // 역명 도구 2종 컴포넌트 마운트 테스트
-  it("station-meta render면 StationMeta stationName prop으로 마운트", () => {
+  it("station-meta renders면 StationMeta stationName prop으로 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "14",
           role: "assistant",
           text: "",
-          render: { type: "station-meta", stationName: "강남" },
+          renders: [{ type: "station-meta", stationName: "강남" }],
         }}
       />
     );
@@ -273,17 +275,19 @@ describe("MessageBubble", () => {
   });
 
   // dest 도구 2종 컴포넌트 마운트 테스트
-  it("car-route render면 CarRouteBriefing dest prop으로 마운트", () => {
+  it("car-route renders면 CarRouteBriefing dest prop으로 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "16",
           role: "assistant",
           text: "",
-          render: {
-            type: "car-route",
-            dest: { lat: 37.5, lng: 127.1, name: "강남역" },
-          },
+          renders: [
+            {
+              type: "car-route",
+              dest: { lat: 37.5, lng: 127.1, name: "강남역" },
+            },
+          ],
         }}
       />
     );
@@ -294,17 +298,19 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-dest-lng")).toBe("127.1");
   });
 
-  it("transit-route render면 TransitRouteBriefing dest prop으로 마운트", () => {
+  it("transit-route renders면 TransitRouteBriefing dest prop으로 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "17",
           role: "assistant",
           text: "",
-          render: {
-            type: "transit-route",
-            dest: { lat: 37.6, lng: 127.2, name: "서울역" },
-          },
+          renders: [
+            {
+              type: "transit-route",
+              dest: { lat: 37.6, lng: 127.2, name: "서울역" },
+            },
+          ],
         }}
       />
     );
@@ -315,14 +321,14 @@ describe("MessageBubble", () => {
     expect(el.getAttribute("data-dest-lng")).toBe("127.2");
   });
 
-  it("station-facilities render면 StationFacilities + SeoulMetroFacilities 모두 마운트", () => {
+  it("station-facilities renders면 StationFacilities + SeoulMetroFacilities 모두 마운트", () => {
     render(
       <MessageBubble
         message={{
           id: "15",
           role: "assistant",
           text: "",
-          render: { type: "station-facilities", stationName: "서울역" },
+          renders: [{ type: "station-facilities", stationName: "서울역" }],
         }}
       />
     );

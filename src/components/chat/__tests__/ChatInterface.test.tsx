@@ -8,6 +8,7 @@ vi.mock("@/hooks/useChat", () => ({
     messages: [{ id: "1", role: "assistant", text: "안녕하세요" }],
     isLoading: false,
     error: null,
+    progressCategories: [],
     sendMessage: vi.fn(),
     dismissError: vi.fn(),
   }),

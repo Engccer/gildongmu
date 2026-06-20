@@ -69,6 +69,7 @@ vi.mock("@/hooks/useChat", () => ({
     messages: [],
     isLoading: false,
     error: null,
+    progressCategories: [],
     sendMessage: vi.fn(),
     dismissError: vi.fn(),
   }),

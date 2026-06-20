@@ -11,15 +11,21 @@ vi.mock("@/hooks/useGeolocation", () => ({
 
 import { useChat } from "../useChat";
 
+/** NDJSON 스트림 응답을 만드는 헬퍼. */
+function makeNdjsonResponse(lines: object[], status = 200): Response {
+  const body = lines.map((l) => JSON.stringify(l)).join("\n") + "\n";
+  return new Response(body, { status });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   // 기본: idle 상태 (userLocation = undefined)
   mockUseGeolocation.mockReturnValue({ status: "idle" });
+  // 기본: done 이벤트만 있는 NDJSON 스트림 응답
   global.fetch = vi.fn(async () =>
-    new Response(
-      JSON.stringify({ text: "길동 카페를 찾았어요.", render: { type: "places", places: [] } }),
-      { status: 200 },
-    ),
+    makeNdjsonResponse([
+      { type: "done", text: "길동 카페를 찾았어요.", renders: [{ type: "places", places: [] }], sources: [] },
+    ]),
   ) as unknown as typeof fetch;
 });
 
@@ -35,7 +41,7 @@ describe("useChat", () => {
       role: "assistant",
       text: "길동 카페를 찾았어요.",
     });
-    expect(result.current.messages[1].render).toEqual({ type: "places", places: [] });
+    expect(result.current.messages[1].renders).toEqual([{ type: "places", places: [] }]);
   });
 
   it("502면 error 설정", async () => {
@@ -84,5 +90,21 @@ describe("useChat", () => {
 
     const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
     expect(body.userLocation).toEqual({ lat: 37.5, lng: 127.1 });
+  });
+
+  it("status 이벤트가 progressCategories를 설정", async () => {
+    global.fetch = vi.fn(async () =>
+      makeNdjsonResponse([
+        { type: "status", categories: ["get_air_quality"] },
+        { type: "done", text: "공기질 정보입니다.", renders: [], sources: [] },
+      ]),
+    ) as unknown as typeof fetch;
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.sendMessage("공기질");
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+    // 완료 후 progressCategories는 빈 배열로 초기화됨
+    expect(result.current.progressCategories).toEqual([]);
   });
 });
