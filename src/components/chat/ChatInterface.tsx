@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, type Ref } from "react";
 import { useTranslations } from "next-intl";
-import { useChat } from "@/hooks/useChat";
+import { useChat, type PlaceContext } from "@/hooks/useChat";
 import { useChatSound } from "@/hooks/useChatSound";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
@@ -19,9 +19,19 @@ import { ChatInput } from "./ChatInput";
  * - error는 role="alert"(assertive 없이 네이티브 role 사용).
  * - inputRef: 부모(PlaceSearch)가 전달해 Shift+Esc 포커스를 채팅 입력창에 건다.
  */
-export function ChatInterface({ inputRef }: { inputRef?: Ref<HTMLInputElement> }) {
+export function ChatInterface({
+  inputRef,
+  placeContext,
+  examplePrompts,
+}: {
+  inputRef?: Ref<HTMLInputElement>;
+  placeContext?: PlaceContext;
+  examplePrompts?: string[];
+}) {
   const t = useTranslations("chat");
-  const { messages, isLoading, error, progressCategories, sendMessage } = useChat();
+  // placeChat 스코프 번역기 — 빈 상태 안내 문구(placeChat.empty)는 chat 스코프 밖이다.
+  const tp = useTranslations("placeChat");
+  const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext });
   const { playSend, playReceive } = useChatSound();
   const progressRef = useRef<HTMLDivElement>(null);
   // 최신 사용자 질문 heading 참조 — 응답 완료 후 포커스 이동 앵커.
@@ -78,6 +88,24 @@ export function ChatInterface({ inputRef }: { inputRef?: Ref<HTMLInputElement> }
           />
         ))}
       </div>
+      {/* 빈 상태 — 메시지가 없고 예시 프롬프트가 있으면 안내 문구 + 예시 버튼 3개를
+          노출한다. 버튼 클릭은 기존 handleSend(playSend + sendMessage)를 재사용해
+          그 문구를 첫 메시지로 전송한다. */}
+      {messages.length === 0 && examplePrompts && examplePrompts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-muted">{tp("empty")}</p>
+          {examplePrompts.map((prompt) => (
+            <button
+              key={prompt}
+              type="button"
+              onClick={() => handleSend(prompt)}
+              className="min-h-11 rounded-md border border-border bg-background px-4 py-2 text-left text-sm hover:bg-accent/10"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
+      )}
       {/* 진행 통지 polite live region — 답변 산문은 MessageBubble에만(중복 낭독 방지) */}
       <div ref={progressRef} aria-live="polite" className="sr-only" />
       {error && <p role="alert">{t(`error.${error}`)}</p>}
