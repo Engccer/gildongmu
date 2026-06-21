@@ -1,6 +1,8 @@
 "use client";
 
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
@@ -58,7 +60,14 @@ export function MessageBubble({
             {message.text}
           </h2>
         ) : (
-          <p className="whitespace-pre-wrap">{message.text}</p>
+          // 어시스턴트 산문은 마크다운으로 렌더 — Gemini가 출력한 **굵게**·- 목록·
+          // [링크](url) 등이 시맨틱 HTML(strong·ul·li·a)로 변환된다(평문 기호 노출 제거).
+          // prose: 목록 마커·강조 등 시각 스타일(Tailwind preflight 리셋 복구), 미니멀 여백.
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-headings:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-a:text-accent">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {message.text}
+            </ReactMarkdown>
+          </div>
         ))}
       {message.renders?.map((render, i) => (
         <RenderBlock key={i} render={render} onOpenPlace={onOpenPlace} />
@@ -68,6 +77,24 @@ export function MessageBubble({
     </div>
   );
 }
+
+/**
+ * 채팅 답변 마크다운 헤딩(#/##/...)을 강조 단락으로 다운그레이드.
+ * 답변 내부 소제목을 페이지 heading으로 렌더하면 회전자 heading 내비를 오염시킨다
+ * (질문 h2·"내 주변" h3/h4 사이에 끼어듦) — 시각 강조(font-semibold)만 남기고
+ * heading 시맨틱을 제거한다(미니멀 접근성: 산문 답변은 문서가 아니라 한 호흡의 글).
+ */
+function MarkdownHeading({ children }: { children?: ReactNode }) {
+  return <p className="font-semibold">{children}</p>;
+}
+const markdownComponents = {
+  h1: MarkdownHeading,
+  h2: MarkdownHeading,
+  h3: MarkdownHeading,
+  h4: MarkdownHeading,
+  h5: MarkdownHeading,
+  h6: MarkdownHeading,
+};
 
 /**
  * render payload 타입에 따라 적절한 컴포넌트로 디스패치.

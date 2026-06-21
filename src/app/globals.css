@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* 채팅 답변 마크다운 렌더 스타일(목록·강조 등) — Tailwind v4 CSS-first 플러그인 등록 */
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;

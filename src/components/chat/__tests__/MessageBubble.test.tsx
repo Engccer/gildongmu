@@ -113,6 +113,31 @@ describe("MessageBubble", () => {
     expect(screen.queryByRole("heading", { name: "찾았어요" })).toBeNull();
   });
 
+  it("assistant 마크다운을 시맨틱 HTML로 렌더 — **굵게**·- 목록", () => {
+    render(
+      <MessageBubble
+        message={{
+          id: "md1",
+          role: "assistant",
+          text: "**강조** 그리고\n\n- 항목1\n- 항목2",
+        }}
+      />
+    );
+    // **강조** → <strong>(평문 기호 노출 X)
+    expect(screen.getByText("강조").tagName).toBe("STRONG");
+    // - 목록 → <ul><li>
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("답변 내 마크다운 헤딩은 강조 단락으로 다운그레이드(heading 아웃라인 오염 방지)", () => {
+    render(
+      <MessageBubble message={{ id: "md2", role: "assistant", text: "### 소제목" }} />
+    );
+    // 채팅 답변 내부 소제목은 페이지 heading으로 렌더되지 않는다(회전자 내비 보호).
+    expect(screen.queryByRole("heading", { name: "소제목" })).toBeNull();
+    expect(screen.getByText("소제목").tagName).toBe("P");
+  });
+
   it("places renders면 장소명 노출", () => {
     render(
       <MessageBubble
