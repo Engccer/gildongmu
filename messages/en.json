@@ -390,6 +390,23 @@
       "seoulmetro": "Seoul Metro"
     }
   },
+  "placeChat": {
+    "launch": "Ask about this place",
+    "title": "Ask about this place",
+    "close": "Close chat",
+    "empty": "What would you like to know? You can pick one below.",
+    "prompt": {
+      "stationArrivals": "Show real-time subway arrivals for this station",
+      "stationFacilities": "What accessibility facilities does this station have?",
+      "stationSurroundings": "What's around this station?",
+      "foodRoute": "How do I get here?",
+      "foodSimilar": "Any similar places nearby?",
+      "foodWeather": "What's the weather like here?",
+      "generalRoute": "How do I get here?",
+      "generalSurroundings": "What's nearby?",
+      "generalWeather": "Tell me the air quality and weather here"
+    }
+  },
   "beacon": {
     "heading": "Distance to destination",
     "start": "Start distance tracking",

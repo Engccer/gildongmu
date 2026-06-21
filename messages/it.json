@@ -390,6 +390,23 @@
       "seoulmetro": "Metropolitana di Seoul"
     }
   },
+  "placeChat": {
+    "launch": "Chiedi informazioni su questo luogo",
+    "title": "Chiedi informazioni su questo luogo",
+    "close": "Chiudi chat",
+    "empty": "Cosa vuoi sapere? Puoi sceglierne una qui sotto.",
+    "prompt": {
+      "stationArrivals": "Mostra gli arrivi della metro in tempo reale per questa stazione",
+      "stationFacilities": "Quali servizi di accessibilità ha questa stazione?",
+      "stationSurroundings": "Cosa c'è intorno a questa stazione?",
+      "foodRoute": "Come ci arrivo?",
+      "foodSimilar": "Ci sono luoghi simili nelle vicinanze?",
+      "foodWeather": "Che tempo fa qui?",
+      "generalRoute": "Come ci arrivo?",
+      "generalSurroundings": "Cosa c'è nelle vicinanze?",
+      "generalWeather": "Dimmi la qualità dell'aria e il meteo qui"
+    }
+  },
   "beacon": {
     "heading": "Distanza dalla destinazione",
     "start": "Avvia il monitoraggio della distanza",

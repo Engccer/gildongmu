@@ -390,6 +390,23 @@
       "seoulmetro": "Metro de Seúl"
     }
   },
+  "placeChat": {
+    "launch": "Preguntar sobre este lugar",
+    "title": "Preguntar sobre este lugar",
+    "close": "Cerrar chat",
+    "empty": "¿Qué te gustaría saber? Puedes elegir una opción abajo.",
+    "prompt": {
+      "stationArrivals": "Muéstrame las llegadas de metro en tiempo real de esta estación",
+      "stationFacilities": "¿Qué instalaciones de accesibilidad tiene esta estación?",
+      "stationSurroundings": "¿Qué hay alrededor de esta estación?",
+      "foodRoute": "¿Cómo llego hasta aquí?",
+      "foodSimilar": "¿Hay lugares similares cerca?",
+      "foodWeather": "¿Qué tiempo hace aquí?",
+      "generalRoute": "¿Cómo llego hasta aquí?",
+      "generalSurroundings": "¿Qué hay cerca?",
+      "generalWeather": "Dime la calidad del aire y el tiempo aquí"
+    }
+  },
   "beacon": {
     "heading": "Distancia al destino",
     "start": "Iniciar seguimiento de distancia",
