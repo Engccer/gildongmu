@@ -3,6 +3,7 @@
 import type { ReactNode, RefObject } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { remarkTightLists } from "@/lib/chat/remark-tight-lists";
 import type { Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
@@ -62,9 +63,10 @@ export function MessageBubble({
         ) : (
           // 어시스턴트 산문은 마크다운으로 렌더 — Gemini가 출력한 **굵게**·- 목록·
           // [링크](url) 등이 시맨틱 HTML(strong·ul·li·a)로 변환된다(평문 기호 노출 제거).
+          // remarkTightLists: loose list의 <li><p> 중첩을 제거해 iOS VoiceOver 이중 낭독 차단.
           // prose: 목록 마커·강조 등 시각 스타일(Tailwind preflight 리셋 복구), 미니멀 여백.
           <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-headings:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-a:text-accent">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={[remarkGfm, remarkTightLists]} components={markdownComponents}>
               {message.text}
             </ReactMarkdown>
           </div>

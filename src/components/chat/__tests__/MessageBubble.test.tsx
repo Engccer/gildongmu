@@ -138,6 +138,27 @@ describe("MessageBubble", () => {
     expect(screen.getByText("소제목").tagName).toBe("P");
   });
 
+  it("loose list 항목은 <li> 직속 텍스트로 렌더 — <li><p> 중첩 제거(VoiceOver 이중 낭독 방지)", () => {
+    // Gemini가 내는 loose list(항목 사이 빈 줄 + 중첩) 형태.
+    const { container } = render(
+      <MessageBubble
+        message={{
+          id: "md3",
+          role: "assistant",
+          text: "1. **소과당** (디저트카페)\n\n   - **주소**: 서울 강남구\n\n2. **브라운홀릭**\n\n   - **주소**: 서울 강남구",
+        }}
+      />
+    );
+    // 핵심: 어떤 <li>도 자식으로 <p>를 직접 갖지 않는다(loose→tight 정규화).
+    // <li><p>텍스트</p></li> 중첩이 iOS VoiceOver가 li·p를 이중 낭독하던 원인.
+    const liWithP = [...container.querySelectorAll("li")].filter((li) =>
+      [...li.children].some((c) => c.tagName === "P"),
+    );
+    expect(liWithP).toHaveLength(0);
+    // 텍스트·중첩 목록 구조는 보존
+    expect(screen.getByText("소과당").tagName).toBe("STRONG");
+  });
+
   it("places renders면 장소명 노출", () => {
     render(
       <MessageBubble
