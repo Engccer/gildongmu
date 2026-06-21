@@ -21,6 +21,7 @@ import { StationFacilities } from "@/components/StationFacilities";
 import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 import { CarRouteBriefing } from "@/components/CarRouteBriefing";
 import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
+import { WebResults } from "./WebResults";
 import { SourceList } from "./SourceList";
 
 /**
@@ -126,6 +127,8 @@ function RenderBlock({
           onSelect={() => {}}
         />
       );
+    case "web-results":
+      return <WebResults results={render.results} />;
     case "subway-nearby":
       return <SubwayArrivalsNearby />;
     case "clinics-nearby":

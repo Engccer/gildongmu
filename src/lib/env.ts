@@ -54,6 +54,10 @@ const envSchema = z.object({
   // Google Gemini — 채팅 function-calling 엔진(서버 전용). 유료 API.
   GEMINI_API_KEY: z.string().min(1).optional(),
 
+  // Perplexity Search — 채팅 실시간 웹 검색 도구(서버 전용). 유료 API.
+  // dodo-planet과 공유 키. 키 없으면 search_web 도구 미노출(회귀 0).
+  PERPLEXITY_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -72,6 +76,7 @@ export const env = envSchema.parse({
   ODSAY_API_KEY: process.env.ODSAY_API_KEY,
   JUSO_CONFM_KEY: process.env.JUSO_CONFM_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -128,4 +133,9 @@ export function hasJusoKey(): boolean {
 /** Google Gemini 채팅 API 사용 가능 여부 */
 export function hasGeminiKey(): boolean {
   return !!env.GEMINI_API_KEY;
+}
+
+/** Perplexity 웹 검색 API 사용 가능 여부 */
+export function hasPerplexityKey(): boolean {
+  return !!env.PERPLEXITY_API_KEY;
 }

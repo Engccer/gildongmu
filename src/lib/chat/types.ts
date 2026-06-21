@@ -5,7 +5,7 @@
  * 후속 태스크(라우터·render 헬퍼·useChat·MessageBubble)가 전부 이 타입을 import한다.
  */
 
-import type { Place, JusoAddress } from "@/lib/types";
+import type { Place, JusoAddress, WebSearchResult } from "@/lib/types";
 
 /** 응답 하단에 표시할 데이터 제공처. label은 i18n 키(chat.<label>), url은 선택. */
 export interface SourceAttribution {
@@ -39,6 +39,7 @@ export type RenderPayload =
   // props-driven 재사용 (데이터 그대로):
   | { type: "places"; places: Place[] }
   | { type: "addresses"; results: JusoAddress[] }
+  | { type: "web-results"; results: WebSearchResult[] }         // <WebResults results/>
   // self-fetch 컴포넌트 마운트 — 파라미터만 (컴포넌트가 직접 fetch):
   | { type: "subway-nearby" }                                   // <SubwayArrivalsNearby/>
   | { type: "clinics-nearby" }                                  // <NightClinicsNearby/>

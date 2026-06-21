@@ -367,7 +367,8 @@
         "get_station_meta": "station info",
         "get_station_facilities": "station facilities",
         "get_car_route": "driving route",
-        "get_transit_route": "transit route"
+        "get_transit_route": "transit route",
+        "search_web": "web search"
       }
     },
     "sources": "Sources",
@@ -385,7 +386,11 @@
       "odsay": "ODsay Transit",
       "kric": "Korea Rail Network Authority",
       "korail": "Korail",
-      "seoulmetro": "Seoul Metro"
+      "seoulmetro": "Seoul Metro",
+      "perplexity": "Perplexity"
+    },
+    "webResults": {
+      "heading": "Web results"
     }
   },
   "placeChat": {

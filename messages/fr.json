@@ -367,7 +367,8 @@
         "get_station_meta": "infos sur la gare",
         "get_station_facilities": "équipements de la gare",
         "get_car_route": "itinéraire en voiture",
-        "get_transit_route": "itinéraire en transport en commun"
+        "get_transit_route": "itinéraire en transport en commun",
+        "search_web": "recherche web"
       }
     },
     "sources": "Sources",
@@ -385,7 +386,11 @@
       "odsay": "ODsay Transport en commun",
       "kric": "Autorité du réseau ferroviaire coréen",
       "korail": "Korail",
-      "seoulmetro": "Métro de Séoul"
+      "seoulmetro": "Métro de Séoul",
+      "perplexity": "Perplexity"
+    },
+    "webResults": {
+      "heading": "Résultats web"
     }
   },
   "placeChat": {

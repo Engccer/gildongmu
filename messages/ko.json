@@ -367,7 +367,8 @@
         "get_station_meta": "역 정보",
         "get_station_facilities": "역 편의시설",
         "get_car_route": "자동차 경로",
-        "get_transit_route": "대중교통 경로"
+        "get_transit_route": "대중교통 경로",
+        "search_web": "웹 검색"
       }
     },
     "sources": "출처",
@@ -385,7 +386,11 @@
       "odsay": "ODsay 대중교통",
       "kric": "국가철도공단",
       "korail": "한국철도공사",
-      "seoulmetro": "서울교통공사"
+      "seoulmetro": "서울교통공사",
+      "perplexity": "Perplexity"
+    },
+    "webResults": {
+      "heading": "참고한 웹 결과"
     }
   },
   "placeChat": {

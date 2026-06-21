@@ -7,6 +7,7 @@ import {
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasOdsayKey,
+  hasPerplexityKey,
 } from "@/lib/env";
 
 interface GatedDeclaration {
@@ -215,6 +216,34 @@ const DECLARATIONS: GatedDeclaration[] = [
           },
         },
         required: ["destination"],
+      },
+    },
+  },
+  {
+    gate: hasPerplexityKey,
+    declaration: {
+      name: "search_web",
+      description:
+        "최신 뉴스·실시간 정책·공식 발표·환율·임시 운영시간 등 최근 웹 데이터를 검색한다. " +
+        "국내 장소·교통·공기질·날씨처럼 전용 도구로 답할 수 있는 건 그쪽을 우선하고, " +
+        "전용 도구가 못 다루는 시의성 정보일 때만 사용한다. 결과의 출처를 답변에 반영하라.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "관련 결과가 가장 잘 나올 언어로 작성한 검색어",
+          },
+          max_results: {
+            type: "number",
+            description: "반환할 결과 수(기본 5, 최대 10)",
+          },
+          search_recency_filter: {
+            type: "string",
+            description: "시간 필터: hour, day, week, month, year. 시의성 질의에 사용.",
+          },
+        },
+        required: ["query"],
       },
     },
   },

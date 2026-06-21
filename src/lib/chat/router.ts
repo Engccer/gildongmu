@@ -19,6 +19,7 @@ import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilitie
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 import { getTransitRoute } from "@/lib/providers/odsay";
+import { searchWebPerplexity } from "./perplexity-search";
 import { hasNcpMapsKeys } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { sourceFor } from "./sources";
@@ -160,6 +161,11 @@ export async function executeFunction(
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
       const route = await getTransitRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
       return { data: { destination: p.name, route }, render, source: src };
+    }
+    case "search_web": {
+      // perplexity-search가 data·render를 빚고, 출처는 여기서 부착(실패면 카드 없음).
+      const result = await searchWebPerplexity(args);
+      return { ...result, source: result.render ? src : undefined };
     }
     default:
       throw new Error(`알 수 없는 도구: ${name}`);

@@ -17,6 +17,7 @@ const ODSAY: SourceAttribution = { label: "source.odsay" };
 const KRIC: SourceAttribution = { label: "source.kric" };
 const KORAIL: SourceAttribution = { label: "source.korail" };
 const SEOUL_METRO: SourceAttribution = { label: "source.seoulmetro" };
+const PERPLEXITY: SourceAttribution = { label: "source.perplexity", url: "https://www.perplexity.ai" };
 
 export function sourceFor(
   tool: string,
@@ -48,6 +49,8 @@ export function sourceFor(
       return ctx.dataLocale === "en" ? [NCP] : [KAKAO_MOBILITY];
     case "get_transit_route":
       return [ODSAY];
+    case "search_web":
+      return [PERPLEXITY];
     default:
       return [];
   }

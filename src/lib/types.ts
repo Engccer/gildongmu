@@ -629,3 +629,14 @@ export interface SurroundingPlace {
   phone?: string;
   link?: string;
 }
+
+/**
+ * 웹 검색 결과 1건 — Perplexity Search API 정규화.
+ * 채팅 LLM이 산문에 종합하고, web-results 카드로 출처 링크를 노출한다.
+ */
+export interface WebSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  date: string | null;
+}
