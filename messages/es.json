@@ -345,8 +345,6 @@
     }
   },
   "chat": {
-    "switchToChat": "Chat",
-    "switchToSearch": "Buscar",
     "inputLabel": "Mensaje",
     "send": "Enviar",
     "error": {

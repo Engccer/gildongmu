@@ -345,8 +345,6 @@
     }
   },
   "chat": {
-    "switchToChat": "채팅으로",
-    "switchToSearch": "검색으로",
     "inputLabel": "메시지 입력",
     "send": "보내기",
     "error": {
