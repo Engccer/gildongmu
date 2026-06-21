@@ -23,7 +23,14 @@ import { hasNcpMapsKeys } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { sourceFor } from "./sources";
 
-/** 지명 → 좌표(카카오 지오코딩 첫 결과) 또는 현재 위치. */
+/** 좌표 도구의 기준 좌표 — 장소 앵커 우선, 없으면 현재 위치. */
+export function anchorOf(
+  ctx: ExecutionContext,
+): { lat: number; lng: number } | undefined {
+  return ctx.placeAnchor ?? ctx.userLocation;
+}
+
+/** 지명 → 좌표(카카오 지오코딩 첫 결과). 미지정이면 장소 앵커/현재 위치. */
 async function resolveCoord(
   place: string | undefined,
   ctx: ExecutionContext,
@@ -33,7 +40,7 @@ async function resolveCoord(
     const p = r.places[0];
     return p ? { lat: p.lat, lng: p.lng } : undefined;
   }
-  return ctx.userLocation;
+  return anchorOf(ctx);
 }
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
@@ -56,40 +63,53 @@ export async function executeFunction(
       return { data: addressesToData(results), render: addressesToRender(results), source: src };
     }
     case "get_subway_arrivals": {
-      if (!ctx.userLocation) return { data: NO_LOCATION };
-      const arrivals = await fetchNearbySubwayArrivals(ctx.userLocation.lat, ctx.userLocation.lng);
-      return { data: { count: arrivals.length, arrivals }, render: { type: "subway-nearby" }, source: src };
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const arrivals = await fetchNearbySubwayArrivals(anchor.lat, anchor.lng);
+      // 장소 앵커일 땐 device-self-fetch 카드가 장소와 어긋나므로 생략(산문이 정본).
+      const render = ctx.placeAnchor ? undefined : ({ type: "subway-nearby" } as const);
+      return { data: { count: arrivals.length, arrivals }, render, source: src };
     }
     case "get_night_clinics": {
-      if (!ctx.userLocation) return { data: NO_LOCATION };
-      const clinics = await findNightClinicsNear(ctx.userLocation.lat, ctx.userLocation.lng);
-      return { data: { count: clinics.length, clinics: clinics.slice(0, 5) }, render: { type: "clinics-nearby" }, source: src };
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const clinics = await findNightClinicsNear(anchor.lat, anchor.lng);
+      const render = ctx.placeAnchor ? undefined : ({ type: "clinics-nearby" } as const);
+      return { data: { count: clinics.length, clinics: clinics.slice(0, 5) }, render, source: src };
     }
     case "get_kids_places": {
-      if (!ctx.userLocation) return { data: NO_LOCATION };
-      const kids = await findKidsPlacesNear(ctx.userLocation.lat, ctx.userLocation.lng);
-      return { data: { count: kids.length, places: kids.slice(0, 8) }, render: { type: "kids-nearby" }, source: src };
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const kids = await findKidsPlacesNear(anchor.lat, anchor.lng);
+      const render = ctx.placeAnchor ? undefined : ({ type: "kids-nearby" } as const);
+      return { data: { count: kids.length, places: kids.slice(0, 8) }, render, source: src };
     }
     case "get_surroundings": {
-      if (!ctx.userLocation) return { data: NO_LOCATION };
-      const around = await findSurroundingsNear(ctx.userLocation.lat, ctx.userLocation.lng);
-      return { data: { count: around.length, places: around.slice(0, 12) }, render: { type: "surroundings-nearby" }, source: src };
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const around = await findSurroundingsNear(anchor.lat, anchor.lng);
+      const render = ctx.placeAnchor ? undefined : ({ type: "surroundings-nearby" } as const);
+      return { data: { count: around.length, places: around.slice(0, 12) }, render, source: src };
     }
     case "get_bus_arrivals": {
-      const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
+      const explicit = args.place ? String(args.place) : undefined;
+      const coord = await resolveCoord(explicit, ctx);
       if (!coord) return { data: NO_LOCATION };
       const stops = await fetchNearbyBusStops(coord.lat, coord.lng);
-      const mode = args.place ? "place" : "current";
-      const render = mode === "place"
+      // 명시 지명 또는 장소 앵커 → place 모드(카드가 그 좌표를 fetch). 아니면 current.
+      const placeMode = !!explicit || !!ctx.placeAnchor;
+      const render = placeMode
         ? { type: "bus" as const, mode: "place" as const, lat: coord.lat, lng: coord.lng }
         : { type: "bus" as const, mode: "current" as const };
       return { data: { count: stops.length, stops: stops.slice(0, 5) }, render, source: src };
     }
     case "get_bike_stations": {
-      const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
+      const explicit = args.place ? String(args.place) : undefined;
+      const coord = await resolveCoord(explicit, ctx);
       if (!coord) return { data: NO_LOCATION };
       const stations = await fetchNearbyBikeStations(coord.lat, coord.lng);
-      const render = args.place
+      const placeMode = !!explicit || !!ctx.placeAnchor;
+      const render = placeMode
         ? { type: "bike" as const, mode: "place" as const, lat: coord.lat, lng: coord.lng }
         : { type: "bike" as const, mode: "current" as const };
       return { data: { count: stations.length, stations: stations.slice(0, 5) }, render, source: src };

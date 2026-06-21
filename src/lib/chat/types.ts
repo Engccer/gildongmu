@@ -15,8 +15,14 @@ export interface SourceAttribution {
 
 /** 도구 실행 컨텍스트 — 각 도구 함수에 전달되는 공유 상태. */
 export interface ExecutionContext {
-  /** 사용자 현재 위치 (WGS84). 위치 권한 없으면 undefined. */
+  /** 사용자 현재 위치 (WGS84). 위치 권한 없으면 undefined. 길찾기 출발지로 쓴다. */
   userLocation?: { lat: number; lng: number };
+  /**
+   * 장소 컨텍스트 앵커 (WGS84 + 이름). 장소 상세에서 연 채팅일 때만 존재한다.
+   * 주변/앰비언트 좌표 도구의 기준 좌표가 되며(I-1), userLocation을 덮어쓰지 않아
+   * 길찾기 출발지는 현재 위치로 보존된다(I-2). 없으면 기존 동작(I-3).
+   */
+  placeAnchor?: { lat: number; lng: number; name: string };
   /** UI 로케일 (ko|en|es|fr|it) */
   locale: string;
   /** 외부 데이터 언어 — dataLocale()로 파생 (ko|en) */
