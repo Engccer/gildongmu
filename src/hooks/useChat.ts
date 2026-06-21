@@ -16,7 +16,16 @@ import type { ChatMessage, ChatStreamEvent } from "@/lib/chat/types";
 let counter = 0;
 const nextId = () => `m${++counter}`;
 
-export function useChat() {
+export interface PlaceContext {
+  name: string;
+  lat: number;
+  lng: number;
+  category?: string;
+  isStation?: boolean;
+}
+
+export function useChat(opts?: { placeContext?: PlaceContext }) {
+  const placeContext = opts?.placeContext;
   const locale = useLocale();
   const geo = useGeolocation();
   // status === "ready"일 때만 coords를 꺼낸다 (GeoState union 안전 접근)
@@ -62,6 +71,7 @@ export function useChat() {
             messages: history.map((m) => ({ role: m.role, text: m.text })),
             userLocation,
             locale,
+            placeContext,
           }),
           signal: controller.signal,
         });
@@ -110,7 +120,7 @@ export function useChat() {
         inFlight.current = false;
       }
     },
-    [userLocation, locale],
+    [userLocation, locale, placeContext],
   );
 
   const dismissError = useCallback(() => setError(null), []);
