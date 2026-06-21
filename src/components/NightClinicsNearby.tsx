@@ -2,10 +2,14 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { MessageSquare } from "lucide-react";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
+import { usePlaceChat } from "@/hooks/usePlaceChat";
+import { nightClinicToPlace } from "@/lib/nearby-place";
+import { ChatOverlay } from "./chat/ChatOverlay";
 
 /** API 응답 항목 — NightClinic + 서버 계산 진료 상태. */
 type ClinicWithStatus = NightClinic & { openStatus: ClinicOpenStatus };
@@ -34,13 +38,15 @@ function formatTime(n: number | null): string {
  * open/closed/unknown 3-state로 "마감"과 "정보 없음"을 구분(시각장애인 정합).
  * 전화는 tel: 링크로 바로 연결(야간 응급 시 1탭 통화).
  */
-export function NightClinicsNearby() {
+export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: boolean }) {
   const t = useTranslations("clinicNearby");
   const tActions = useTranslations("actions");
+  const tPlaceChat = useTranslations("placeChat");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -102,7 +108,8 @@ export function NightClinicsNearby() {
   const onDismiss = useCallback(() => close(false), [close]);
   const onEscape = useCallback(() => close(true), [close]);
   const { claim } = useNearbyPanel({
-    engaged: status.kind !== "idle",
+    // 채팅이 열린 동안엔 패널 Esc·자동닫힘을 비활성(Esc 경합 차단).
+    engaged: status.kind !== "idle" && !isChatOpen,
     onDismiss,
     onEscape,
   });
@@ -227,6 +234,24 @@ export function NightClinicsNearby() {
                       {t("directions", { text: c.directions })}
                     </p>
                   )}
+
+                  {/* 이 장소에 관해 물어보기 — 장소명을 버튼 이름에 넣어 회전자 구분. */}
+                  {canShowChat && (
+                    <p className="mt-1 text-sm">
+                      <button
+                        type="button"
+                        onClick={(e) =>
+                          openChat(nightClinicToPlace(c), e.currentTarget)
+                        }
+                        className="inline-flex min-h-11 items-center gap-1 text-accent underline"
+                      >
+                        <MessageSquare aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        {tPlaceChat.rich("launchFor", {
+                          name: () => <span lang="ko">{c.name}</span>,
+                        })}
+                      </button>
+                    </p>
+                  )}
                 </li>
               );
             })}
@@ -234,6 +259,8 @@ export function NightClinicsNearby() {
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
+
+      {chatPlace && <ChatOverlay place={chatPlace} onClose={closeChat} />}
     </div>
   );
 }

@@ -390,6 +390,7 @@
   },
   "placeChat": {
     "launch": "Ask about this place",
+    "launchFor": "Ask about <name></name>",
     "title": "Ask about this place",
     "close": "Close chat",
     "empty": "What would you like to know?",

@@ -520,17 +520,17 @@ export function PlaceSearch({
       )}
       {canShowClinic && status.kind === "idle" && (
         <div className="mt-4">
-          <NightClinicsNearby />
+          <NightClinicsNearby canShowChat={canShowChat} />
         </div>
       )}
       {canShowKids && status.kind === "idle" && (
         <div className="mt-4">
-          <KidsPlacesNearby />
+          <KidsPlacesNearby canShowChat={canShowChat} />
         </div>
       )}
       {canShowSurroundings && status.kind === "idle" && (
         <div className="mt-4">
-          <SurroundingsNearby />
+          <SurroundingsNearby canShowChat={canShowChat} />
         </div>
       )}
       {/* 이 지역 날씨 — 버튼 없이 좌표 준비 시 자동 등장하는 통합 카드(현재 날씨 +

@@ -390,6 +390,7 @@
   },
   "placeChat": {
     "launch": "Poser une question sur ce lieu",
+    "launchFor": "Poser une question sur <name></name>",
     "title": "Poser une question sur ce lieu",
     "close": "Fermer le chat",
     "empty": "Que voulez-vous savoir ?",

@@ -2,10 +2,14 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { MessageSquare } from "lucide-react";
 import type { SurroundingPlace } from "@/lib/types";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
+import { usePlaceChat } from "@/hooks/usePlaceChat";
+import { surroundingPlaceToPlace } from "@/lib/nearby-place";
+import { ChatOverlay } from "./chat/ChatOverlay";
 
 type Status =
   | { kind: "idle" }
@@ -21,13 +25,15 @@ type Status =
  * 스토어 → 좌표 조회 → 자기완결 리스트). 차이: 각 항목에 **북 기준 8방위 방향**을
  * 거리와 함께 낭독("편의점 · 남동쪽 · 약 40m"). BlindSquare식 상시 인지.
  */
-export function SurroundingsNearby() {
+export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: boolean }) {
   const t = useTranslations("surroundingsNearby");
   const tActions = useTranslations("actions");
+  const tPlaceChat = useTranslations("placeChat");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -87,7 +93,8 @@ export function SurroundingsNearby() {
   const onDismiss = useCallback(() => close(false), [close]);
   const onEscape = useCallback(() => close(true), [close]);
   const { claim } = useNearbyPanel({
-    engaged: status.kind !== "idle",
+    // 채팅이 열린 동안엔 패널 Esc·자동닫힘을 비활성(Esc 경합 차단).
+    engaged: status.kind !== "idle" && !isChatOpen,
     onDismiss,
     onEscape,
   });
@@ -187,12 +194,32 @@ export function SurroundingsNearby() {
                     </a>
                   </p>
                 )}
+
+                {/* 이 장소에 관해 물어보기 — 장소명을 버튼 이름에 넣어 회전자 구분. */}
+                {canShowChat && (
+                  <p className="mt-1 text-sm">
+                    <button
+                      type="button"
+                      onClick={(e) =>
+                        openChat(surroundingPlaceToPlace(p), e.currentTarget)
+                      }
+                      className="inline-flex min-h-11 items-center gap-1 text-accent underline"
+                    >
+                      <MessageSquare aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      {tPlaceChat.rich("launchFor", {
+                        name: () => <span lang="ko">{p.name}</span>,
+                      })}
+                    </button>
+                  </p>
+                )}
               </li>
             ))}
           </ul>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
+
+      {chatPlace && <ChatOverlay place={chatPlace} onClose={closeChat} />}
     </div>
   );
 }

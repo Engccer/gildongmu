@@ -390,6 +390,7 @@
   },
   "placeChat": {
     "launch": "Preguntar sobre este lugar",
+    "launchFor": "Preguntar sobre <name></name>",
     "title": "Preguntar sobre este lugar",
     "close": "Cerrar chat",
     "empty": "¿Qué te gustaría saber?",

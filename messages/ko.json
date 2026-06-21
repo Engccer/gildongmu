@@ -390,6 +390,7 @@
   },
   "placeChat": {
     "launch": "이 장소에 관해 물어보기",
+    "launchFor": "<name></name>에 관해 물어보기",
     "title": "이 장소에 관해 물어보기",
     "close": "채팅 닫기",
     "empty": "무엇이 궁금하세요?",
