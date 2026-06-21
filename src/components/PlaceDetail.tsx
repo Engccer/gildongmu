@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
@@ -15,7 +15,7 @@ import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { LocalConditions } from "./LocalConditions";
 import { TransitRouteBriefing } from "./TransitRouteBriefing";
-import { DistanceBeacon } from "./DistanceBeacon";
+import { ChatOverlay } from "./chat/ChatOverlay";
 
 /**
  * 장소 상세 뷰 — 같은 페이지에서 검색 결과를 대체해 렌더되는 화면.
@@ -37,6 +37,7 @@ export function PlaceDetail({
   canShowSubway,
   canShowAir,
   canShowTransit,
+  canShowChat = false,
   onBack,
 }: {
   place: Place;
@@ -46,10 +47,14 @@ export function PlaceDetail({
   canShowSubway: boolean;
   canShowAir: boolean;
   canShowTransit: boolean;
+  canShowChat?: boolean;
   onBack: () => void;
 }) {
   const t = useTranslations();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatTriggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, [place.id]);
@@ -105,7 +110,17 @@ export function PlaceDetail({
       </div>
 
       <RouteLinks place={place} />
-      <DistanceBeacon dest={{ lat: place.lat, lng: place.lng, name: place.name }} />
+      {canShowChat && (
+        <button
+          type="button"
+          ref={chatTriggerRef}
+          onClick={() => setChatOpen(true)}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <MessageSquare aria-hidden="true" className="h-4 w-4" />
+          {t("placeChat.launch")}
+        </button>
+      )}
       {canBriefCarRoute && (
         <CarRouteBriefing
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
@@ -131,6 +146,16 @@ export function PlaceDetail({
         <BikeStations mode="place" lat={place.lat} lng={place.lng} />
       )}
       {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
+      {chatOpen && (
+        <ChatOverlay
+          place={place}
+          onClose={() => {
+            setChatOpen(false);
+            // 닫기 버튼/Esc 공통 — 트리거 버튼으로 포커스 복귀(맥락 유지).
+            requestAnimationFrame(() => chatTriggerRef.current?.focus());
+          }}
+        />
+      )}
     </div>
   );
 }
