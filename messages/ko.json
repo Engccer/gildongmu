@@ -12,7 +12,7 @@
   },
   "search": {
     "label": "장소 검색",
-    "placeholder": "예: 경복궁, 서울역, 근처 약국",
+    "placeholder": "예: 경복궁, 서울역",
     "button": "검색",
     "clear": "검색어 지우기",
     "searching": "검색 중…",

@@ -12,7 +12,7 @@
   },
   "search": {
     "label": "Search places",
-    "placeholder": "e.g. Gyeongbokgung, Seoul Station, pharmacy",
+    "placeholder": "e.g. Gyeongbokgung, Seoul Station",
     "button": "Search",
     "clear": "Clear search",
     "searching": "Searching…",
