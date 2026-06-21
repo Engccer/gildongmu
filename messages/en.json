@@ -392,7 +392,7 @@
     "launch": "Ask about this place",
     "title": "Ask about this place",
     "close": "Close chat",
-    "empty": "What would you like to know? You can pick one below.",
+    "empty": "What would you like to know?",
     "prompt": {
       "stationArrivals": "Show real-time subway arrivals for this station",
       "stationFacilities": "What accessibility facilities does this station have?",

@@ -392,7 +392,7 @@
     "launch": "이 장소에 관해 물어보기",
     "title": "이 장소에 관해 물어보기",
     "close": "채팅 닫기",
-    "empty": "무엇이 궁금하세요? 아래에서 골라도 됩니다.",
+    "empty": "무엇이 궁금하세요?",
     "prompt": {
       "stationArrivals": "이 역 실시간 지하철 도착 정보 알려줘",
       "stationFacilities": "이 역 교통약자 편의시설 알려줘",

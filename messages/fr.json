@@ -392,7 +392,7 @@
     "launch": "Poser une question sur ce lieu",
     "title": "Poser une question sur ce lieu",
     "close": "Fermer le chat",
-    "empty": "Que voulez-vous savoir ? Vous pouvez en choisir une ci-dessous.",
+    "empty": "Que voulez-vous savoir ?",
     "prompt": {
       "stationArrivals": "Afficher les arrivées de métro en temps réel pour cette station",
       "stationFacilities": "Quels équipements d'accessibilité possède cette station ?",
