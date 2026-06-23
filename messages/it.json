@@ -205,7 +205,7 @@
     "refresh": "Aggiorna",
     "locating": "Recupero della tua posizione…",
     "loading": "Caricamento di fermate e arrivi…",
-    "empty": "Nessuna fermata dell'autobus nelle vicinanze. (Gli autobus urbani di Seoul non sono ancora supportati — solo Gyeonggi e altre regioni.)",
+    "empty": "Nessuna fermata dell'autobus nelle vicinanze.",
     "error": "Impossibile caricare le informazioni sugli autobus. Riprova tra poco.",
     "ready": "Le informazioni sugli arrivi degli autobus sono pronte.",
     "asOf": "alle {time}",
@@ -215,6 +215,7 @@
     "lowFloor": "autobus a pianale ribassato",
     "normalBus": "autobus standard",
     "arrival": "Linea {route} {type}, a {prev} fermate, tra circa {min} min",
+    "arrivalMessage": "Linea {route} {type}, {message}",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
     "routeStopsButton": "Mostra le fermate della linea {route}",
@@ -222,7 +223,7 @@
     "routeStopsLoading": "Caricamento delle fermate della linea…",
     "routeStopsEmpty": "Nessuna informazione sulle fermate della linea.",
     "routeStopsError": "Impossibile caricare le fermate della linea.",
-    "source": "Fonte: MOLIT TAGO (National Transport Information Center)."
+    "source": "Fonte: MOLIT TAGO e Seoul TOPIS."
   },
   "bike": {
     "currentButton": "Bici Ttareungyi vicino a me",

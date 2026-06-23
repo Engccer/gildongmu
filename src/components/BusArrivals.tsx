@@ -178,7 +178,7 @@ export function BusArrivals(
 
           <ul className="mt-2 space-y-3">
             {status.stops.map((stop) => (
-              <li key={`${stop.cityCode}-${stop.nodeId}`}>
+              <li key={`${stop.source}-${stop.cityCode}-${stop.nodeId}`}>
                 <h4 className="font-medium" lang="ko">
                   {stop.name}{" "}
                   <span className="text-xs font-normal opacity-70">
@@ -194,28 +194,40 @@ export function BusArrivals(
                   <p className="text-sm opacity-70">{t("noArrivals")}</p>
                 ) : (
                   <ul className="mt-1 space-y-1 text-sm">
-                    {stop.arrivals.map((a, i) => (
-                      <li key={`${a.routeId}-${i}`}>
-                        <span lang="ko">
-                          {t("arrival", {
-                            route: a.routeNo,
-                            type: a.routeType || (a.lowFloor ? t("lowFloor") : t("normalBus")),
-                            prev: a.prevStationCount,
-                            min: durationToMinutes(a.arrivalSeconds),
-                          })}
-                        </span>
-                        {a.lowFloor && (
-                          <span className="ml-1 rounded bg-accent/10 px-1 text-xs text-accent">
-                            {t("lowFloor")}
+                    {stop.arrivals.map((a, i) => {
+                      const type =
+                        a.routeType || (a.lowFloor ? t("lowFloor") : t("normalBus"));
+                      return (
+                        <li key={`${a.source}-${a.routeId}-${i}`}>
+                          <span lang="ko">
+                            {/* 서울은 arrmsg1 완성 문장이 정본(arrivalMessage), TAGO는 슬롯형. */}
+                            {a.arrivalMessage
+                              ? t("arrivalMessage", {
+                                  route: a.routeNo,
+                                  type,
+                                  message: a.arrivalMessage,
+                                })
+                              : t("arrival", {
+                                  route: a.routeNo,
+                                  type,
+                                  prev: a.prevStationCount,
+                                  min: durationToMinutes(a.arrivalSeconds),
+                                })}
                           </span>
-                        )}
-                        <BusRouteStops
-                          cityCode={stop.cityCode}
-                          routeId={a.routeId}
-                          routeNo={a.routeNo}
-                        />
-                      </li>
-                    ))}
+                          {a.lowFloor && (
+                            <span className="ml-1 rounded bg-accent/10 px-1 text-xs text-accent">
+                              {t("lowFloor")}
+                            </span>
+                          )}
+                          <BusRouteStops
+                            source={stop.source}
+                            cityCode={stop.cityCode}
+                            routeId={a.routeId}
+                            routeNo={a.routeNo}
+                          />
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </li>

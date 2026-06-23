@@ -205,7 +205,7 @@
     "refresh": "Refresh",
     "locating": "Getting your location…",
     "loading": "Loading stops & arrivals…",
-    "empty": "No bus stops nearby. (Seoul city buses aren't supported yet — only Gyeonggi and other regions.)",
+    "empty": "No bus stops nearby.",
     "error": "Failed to load bus info. Please try again shortly.",
     "ready": "Bus arrival info is ready.",
     "asOf": "as of {time}",
@@ -215,6 +215,7 @@
     "lowFloor": "low-floor bus",
     "normalBus": "standard bus",
     "arrival": "Route {route} {type}, {prev} stops away, in about {min} min",
+    "arrivalMessage": "Route {route} {type}, {message}",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
     "routeStopsButton": "Show stops on route {route}",
@@ -222,7 +223,7 @@
     "routeStopsLoading": "Loading route stops…",
     "routeStopsEmpty": "No route stop info.",
     "routeStopsError": "Failed to load route stops.",
-    "source": "Source: MOLIT TAGO (National Transport Information Center)."
+    "source": "Source: MOLIT TAGO and Seoul TOPIS."
   },
   "bike": {
     "currentButton": "Ttareungyi bikes near me",

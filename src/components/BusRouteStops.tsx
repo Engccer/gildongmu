@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { BusRouteStop } from "@/lib/types";
+import type { BusRouteStop, BusSource } from "@/lib/types";
 
 type Status =
   | { kind: "idle" }
@@ -16,10 +16,13 @@ type Status =
  * 거의 불변 데이터라 서버 라우트가 하루 캐시한다.
  */
 export function BusRouteStops({
+  source,
   cityCode,
   routeId,
   routeNo,
 }: {
+  source: BusSource;
+  /** tago만 사용(서울은 빈 문자열일 수 있음). */
   cityCode: string;
   routeId: string;
   routeNo: string;
@@ -34,9 +37,9 @@ export function BusRouteStops({
     inFlightRef.current = true;
     setStatus({ kind: "loading" });
     try {
-      const res = await fetch(
-        `/api/bus/route?cityCode=${encodeURIComponent(cityCode)}&routeId=${encodeURIComponent(routeId)}`,
-      );
+      const qs = new URLSearchParams({ source, routeId });
+      if (source === "tago") qs.set("cityCode", cityCode);
+      const res = await fetch(`/api/bus/route?${qs.toString()}`);
       const body = await res.json();
       if (!res.ok) {
         setStatus({ kind: "error" });
