@@ -213,8 +213,13 @@ export function PlaceSearch({
       // LanguageSwitcher가 ?q= 변경을 즉시 반영하도록 통지(popstate는 안 뜸).
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
+        // 좌표가 있으면 거리순으로 정렬돼 "맥도날드" 같은 전국 체인도 근처
+        // 지점이 상위로 온다(없으면 정확도순 graceful).
+        const coordQuery = userCoords
+          ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
+          : "";
         const res = await fetch(
-          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}`,
+          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = (await res.json()) as PlaceSearchResult;
@@ -226,7 +231,7 @@ export function PlaceSearch({
         setStatus({ kind: "error" });
       }
     },
-    [locale],
+    [locale, userCoords],
   );
 
   /**
