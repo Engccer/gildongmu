@@ -16,6 +16,9 @@ const querySchema = z.object({
   // 자연 분류하므로 인위적 상한을 두지 않고 provider 최대치를 그대로 노출한다.
   limit: z.coerce.number().int().min(1).max(15).default(15),
   lang: z.enum(["ko", "en"]).default("ko"),
+  // 좌표는 검색 품질 보조 — 있으면 거리순, 무효/누락이면 좌표 없이 검색(400 아님).
+  lat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
+  lng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
 });
 
 export async function GET(request: NextRequest) {
@@ -23,6 +26,8 @@ export async function GET(request: NextRequest) {
     query: request.nextUrl.searchParams.get("query") ?? "",
     limit: request.nextUrl.searchParams.get("limit") ?? undefined,
     lang: request.nextUrl.searchParams.get("lang") ?? undefined,
+    lat: request.nextUrl.searchParams.get("lat") ?? undefined,
+    lng: request.nextUrl.searchParams.get("lng") ?? undefined,
   });
 
   if (!parsed.success) {
