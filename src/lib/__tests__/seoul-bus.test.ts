@@ -85,6 +85,25 @@ describe("parseSeoulArrivals", () => {
     const raw = { msgBody: { itemList: [{ rtNm: "N30", busRouteId: "1", arrmsg1: "출발대기", routeType: "15" }] } };
     expect(parseSeoulArrivals(raw)[0].routeType).toBe("");
   });
+  it("2번째 도착 슬롯(arrmsg2)이 1번째와 다르면 둘 다 투영", () => {
+    const raw = {
+      msgBody: {
+        itemList: [
+          { rtNm: "272", busRouteId: "1", routeType: "3", arrmsg1: "3분후[2번째 전]", busType1: "1", arrmsg2: "11분후[6번째 전]", busType2: "0" },
+        ],
+      },
+    };
+    const arr = parseSeoulArrivals(raw);
+    expect(arr.map((a) => a.arrivalMessage)).toEqual(["3분후[2번째 전]", "11분후[6번째 전]"]);
+    expect(arr[0].lowFloor).toBe(true); // busType1
+    expect(arr[1].lowFloor).toBe(false); // busType2
+  });
+  it("2번째 슬롯이 1번째와 같으면(운행종료/운행종료) 중복 제거", () => {
+    const raw = {
+      msgBody: { itemList: [{ rtNm: "6300", busRouteId: "1", arrmsg1: "운행종료", arrmsg2: "운행종료" }] },
+    };
+    expect(parseSeoulArrivals(raw).length).toBe(1);
+  });
   it("노선번호 없는 항목은 제외", () => {
     const raw = { msgBody: { itemList: [{ busRouteId: "1", arrmsg1: "곧 도착" }] } };
     expect(parseSeoulArrivals(raw)).toEqual([]);
@@ -136,6 +155,12 @@ describe("fetchSeoulNearby", () => {
     const stops = await fetchSeoulNearby(37.5385, 127.1378);
     expect(stops[0].arrivalStatus).toBe("unavailable");
     expect(stops[0].arrivals).toEqual([]);
+  });
+
+  it("인증실패(headerCd 7)는 throw(조회 실패 ≠ 결과 없음)", async () => {
+    const authErr = { msgHeader: { headerCd: "7", headerMsg: "SERVICE KEY IS NOT REGISTERED" } };
+    mockFetchSequence(authErr);
+    await expect(fetchSeoulNearby(37.5385, 127.1378)).rejects.toThrow();
   });
 });
 

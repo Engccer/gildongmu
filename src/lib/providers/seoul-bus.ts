@@ -74,22 +74,40 @@ export function parseSeoulStops(
     .sort((a, b) => a.distanceMeters - b.distanceMeters);
 }
 
-/** 도착정보 응답 → BusArrival[]. arrmsg1을 완성 문장 정본으로 담고 API가 준 도착
- *  임박 순서를 그대로 보존한다(traTime1 재정렬은 운행종료·곧도착을 뒤섞으므로 금지).
- *  저상: busType1 "1"=저상. routeType은 숫자코드를 한글로 매핑(미매핑 ""). */
+/** 한 도착 항목의 슬롯(1번째/2번째 도착 버스)을 BusArrival로 투영. 메시지·노선번호
+ *  없으면 null. 저상: busType{slot} "1"=저상. routeType 숫자코드→한글(미매핑 ""). */
+function slotToArrival(it: RawItem, slot: "1" | "2"): BusArrival | null {
+  const message = str(it[`arrmsg${slot}`]);
+  const routeNo = str(it.rtNm);
+  if (!message || !routeNo) return null;
+  return {
+    routeId: str(it.busRouteId),
+    routeNo,
+    routeType: SEOUL_ROUTE_TYPE[str(it.routeType)] ?? "",
+    arrivalSeconds: 0, // 서울은 arrivalMessage가 정본 — 슬롯 미사용
+    prevStationCount: 0,
+    lowFloor: str(it[`busType${slot}`]) === "1",
+    arrivalMessage: message,
+    source: "seoul",
+  };
+}
+
+/** 도착정보 응답 → BusArrival[]. 서울 getStationByUid는 한 항목에 같은 노선의
+ *  1번째·2번째 도착 버스를 슬롯 페어(arrmsg1·arrmsg2)로 담으므로 둘 다 투영한다
+ *  (TAGO는 1버스=1항목이라 단일). arrmsg1을 완성 문장 정본으로 쓰고 API가 준 순서를
+ *  보존한다(traTime1 재정렬은 운행종료·곧도착을 뒤섞으므로 금지). 슬롯2는 메시지가
+ *  슬롯1과 다를 때만 추가(운행종료/운행종료 같은 중복 제거 — vehId는 운행종료에도
+ *  배차가 남아 신뢰 불가라 메시지로 판정). */
 export function parseSeoulArrivals(raw: unknown): BusArrival[] {
-  return parseSeoulItems(raw)
-    .map((it): BusArrival => ({
-      routeId: str(it.busRouteId),
-      routeNo: str(it.rtNm),
-      routeType: SEOUL_ROUTE_TYPE[str(it.routeType)] ?? "",
-      arrivalSeconds: 0, // 서울은 arrivalMessage가 정본 — 슬롯 미사용
-      prevStationCount: 0,
-      lowFloor: str(it.busType1) === "1",
-      arrivalMessage: str(it.arrmsg1),
-      source: "seoul",
-    }))
-    .filter((a) => a.routeNo);
+  const out: BusArrival[] = [];
+  for (const it of parseSeoulItems(raw)) {
+    const first = slotToArrival(it, "1");
+    if (!first) continue;
+    out.push(first);
+    const second = slotToArrival(it, "2");
+    if (second && second.arrivalMessage !== first.arrivalMessage) out.push(second);
+  }
+  return out;
 }
 
 /** 노선 경유정류소 응답 → 순번 오름차순 BusRouteStop[]. */
@@ -134,6 +152,8 @@ async function fetchSeoul(
   const hdr = (data as { msgHeader?: { headerCd?: unknown; headerMsg?: unknown } })?.msgHeader;
   const code = hdr?.headerCd == null ? null : String(hdr.headerCd);
   // "0"=정상, "4"=결과없음(정상 빈결과로 통과). 그 외(7 인증실패 등)는 장애로 throw.
+  // code==null(msgHeader 부재)은 실측상 ws.bus.go.kr 모든 응답에 헤더가 있어 일어나지
+  // 않고(인증실패도 headerCd 7로 명시), 일어나면 itemList도 없어 빈 결과로 graceful 처리.
   if (code != null && code !== "0" && code !== "4") {
     const msg = String(hdr?.headerMsg ?? code);
     throw new Error(`Seoul ${path} headerCd ${code}: ${msg}`);
