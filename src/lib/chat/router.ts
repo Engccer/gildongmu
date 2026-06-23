@@ -55,7 +55,15 @@ export async function executeFunction(
   switch (name) {
     case "search_places": {
       const query = String(args.query ?? "");
-      const result = await searchPlaces({ query, lang: ctx.dataLocale });
+      // 장소 앵커 있으면 그 장소 기준, 없으면 현재 위치 — 다른 좌표 도구와 동일.
+      // 좌표가 있으면 카카오가 거리순으로 정렬한다(없으면 정확도순).
+      const anchor = anchorOf(ctx);
+      const result = await searchPlaces({
+        query,
+        lang: ctx.dataLocale,
+        lat: anchor?.lat,
+        lng: anchor?.lng,
+      });
       return { data: placesToData(result.places), render: placesToRender(result.places), source: src };
     }
     case "search_address": {

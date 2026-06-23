@@ -56,6 +56,7 @@ vi.mock("@/lib/env", () => ({
 }));
 
 import { executeFunction } from "../router";
+import { searchPlaces } from "@/lib/providers/places";
 
 const ctxKo = { locale: "ko", dataLocale: "ko" as const, userLocation: { lat: 37.5, lng: 127.1 } };
 const ctxNoLoc = { locale: "ko", dataLocale: "ko" as const };
@@ -76,6 +77,20 @@ describe("executeFunction — 실데이터 + render + source", () => {
     expect(dig(r.data, "count")).toBe(1);
     expect(r.render).toEqual({ type: "places", places: expect.any(Array) });
     expect(r.source).toEqual([{ label: "source.kakao" }]);
+  });
+
+  it("search_places: anchorOf(ctx) 좌표를 searchPlaces에 전달해 거리순", async () => {
+    await executeFunction("search_places", { query: "맥도날드" }, ctxKo);
+    expect(vi.mocked(searchPlaces)).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "맥도날드", lat: 37.5, lng: 127.1 }),
+    );
+  });
+
+  it("search_places: 위치 없으면 좌표 없이 검색(현행 동작)", async () => {
+    await executeFunction("search_places", { query: "맥도날드" }, ctxNoLoc);
+    expect(vi.mocked(searchPlaces)).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "맥도날드", lat: undefined, lng: undefined }),
+    );
   });
 
   it("get_air_quality: provider 실데이터를 data에 싣고 카드 마운트", async () => {
