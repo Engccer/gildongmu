@@ -281,8 +281,16 @@ export interface BusArrival {
   arrivalSeconds: number;
   /** 남은 정류장 수 */
   prevStationCount: number;
-  /** 저상버스 여부(vehicletp에 "저상" 포함) — 교통약자 정본 */
+  /** 저상버스 여부 — TAGO는 vehicletp "저상" 포함, 서울은 busType1 "1". 교통약자 정본 */
   lowFloor: boolean;
+  /**
+   * 완성된 도착 안내 문장(낭독 정본). 서울 TOPIS만 채운다(arrmsg1: "곧 도착",
+   * "운행종료", "출발대기", "3분54초후[2번째 전]"). 서울은 traTime1이 운행종료에도
+   * 비0을 줘 슬롯형(arrivalSeconds/prevStationCount)으로 환산하면 오발화하므로,
+   * API가 준 완성 문장을 그대로 쓴다(SeoulSubwayArrival arvlMsg2 패턴 동형).
+   * TAGO는 undefined → 컴포넌트가 기존 슬롯(route·type·prev·min) 렌더 유지.
+   */
+  arrivalMessage?: string;
   /** 제공자 — 경유정류소 조회를 올바른 provider로 보내는 키. */
   source: BusSource;
 }
