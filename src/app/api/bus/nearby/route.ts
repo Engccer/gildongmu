@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasDataGoKrKey } from "@/lib/env";
-import { fetchNearbyBusStops } from "@/lib/providers/tago-bus";
+import { fetchNearbyBusStops } from "@/lib/bus";
 
 /**
  * GET /api/bus/nearby?lat=..&lng=..

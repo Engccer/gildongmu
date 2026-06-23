@@ -68,7 +68,7 @@ export function parseBusStops(
         lng,
         distanceMeters: Math.round(haversineMeters(originLat, originLng, lat, lng)),
         source: "tago" as const,
-        arrivalStatus: "ok", // 기본값 — fetchNearbyBusStops가 A-1 결과로 ok/unavailable 확정
+        arrivalStatus: "ok", // 기본값 — fetchTagoNearby가 A-1 결과로 ok/unavailable 확정
         arrivals: [],
       };
     })
@@ -178,7 +178,7 @@ async function fetchTago(
  * 좌표 → 근접 정류소 상위 5개 + 각 정류소 도착예정(병렬).
  * 키 없으면 빈 배열(진입점은 키 게이트로 미렌더되므로 방어적).
  */
-export async function fetchNearbyBusStops(
+export async function fetchTagoNearby(
   lat: number,
   lng: number,
 ): Promise<BusStop[]> {

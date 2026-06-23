@@ -12,7 +12,7 @@ import {
   parseBusStops,
   parseBusArrivals,
   parseBusRouteStops,
-  fetchNearbyBusStops,
+  fetchTagoNearby,
   fetchBusRouteStops,
 } from "../providers/tago-bus";
 
@@ -107,11 +107,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("fetchNearbyBusStops", () => {
+describe("fetchTagoNearby", () => {
   it("근접 정류소 + 각 정류소 도착정보를 병렬로 채운다", async () => {
     // 1) A-2 nearbyStops, 2) 정류소1 A-1, 3) 정류소2 A-1
     mockFetchSequence(fixture.nearbyStops, fixture.arrivals, fixture.empty);
-    const stops = await fetchNearbyBusStops(35.1795, 129.0756);
+    const stops = await fetchTagoNearby(35.1795, 129.0756);
     expect(stops.length).toBe(2);
     expect(stops[0].arrivalStatus).toBe("ok"); // 조회 성공
     expect(stops[0].arrivals.length).toBe(2); // fixture.arrivals
@@ -125,7 +125,7 @@ describe("fetchNearbyBusStops", () => {
     fn.mockResolvedValueOnce({ ok: false, status: 500, text: async () => "err" }); // 정류소1 도착조회 실패
     fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(fixture.arrivals) }); // 정류소2 성공
     vi.stubGlobal("fetch", fn);
-    const stops = await fetchNearbyBusStops(35.1795, 129.0756);
+    const stops = await fetchTagoNearby(35.1795, 129.0756);
     // 실패 → unavailable (≠ ok+빈배열). 정류소 자체(A-2)는 보존.
     expect(stops[0].arrivalStatus).toBe("unavailable");
     expect(stops[0].arrivals).toEqual([]);
@@ -151,14 +151,14 @@ describe("fetchNearbyBusStops", () => {
       fn.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(fixture.empty) });
     }
     vi.stubGlobal("fetch", fn);
-    const stops = await fetchNearbyBusStops(35.1795, 129.0756);
+    const stops = await fetchTagoNearby(35.1795, 129.0756);
     expect(stops.length).toBe(3); // page1 2건으로 끝내지 않고 page2까지 수집
     expect(stops.map((s) => s.nodeId)).toEqual(["S1", "S2", "S3"]); // 거리 오름차순
   });
 
   it("서비스 에러 envelope는 throw(정보 없음과 구분)", async () => {
     mockFetchSequence(fixture.serviceError);
-    await expect(fetchNearbyBusStops(35.1795, 129.0756)).rejects.toThrow();
+    await expect(fetchTagoNearby(35.1795, 129.0756)).rejects.toThrow();
   });
 });
 

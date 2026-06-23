@@ -8,7 +8,7 @@ import { searchPlaces } from "@/lib/providers/places";
 import { searchJusoAddresses } from "@/lib/providers/juso-address";
 import { findAirQualityNear } from "@/lib/providers/air-quality";
 import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
-import { fetchNearbyBusStops } from "@/lib/providers/tago-bus";
+import { fetchNearbyBusStops } from "@/lib/bus";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNear } from "@/lib/providers/night-clinic";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";

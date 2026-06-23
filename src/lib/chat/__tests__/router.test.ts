@@ -27,7 +27,7 @@ vi.mock("@/lib/providers/kids-places", () => ({
 vi.mock("@/lib/providers/surroundings", () => ({
   findSurroundingsNear: vi.fn(async () => []),
 }));
-vi.mock("@/lib/providers/tago-bus", () => ({
+vi.mock("@/lib/bus", () => ({
   fetchNearbyBusStops: vi.fn(async () => []),
 }));
 vi.mock("@/lib/providers/seoul-bike", () => ({
