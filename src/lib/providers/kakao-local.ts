@@ -55,12 +55,28 @@ export function normalizeDocument(doc: KakaoLocalDocument): Place {
   };
 }
 
-export async function searchPlacesKakaoLocal(
-  params: PlaceSearchParams,
-): Promise<PlaceSearchResult> {
+/**
+ * 검색 URL 빌더(순수) — query·size에 더해, 좌표가 둘 다 있으면
+ * x(경도)·y(위도)·sort=distance를 붙인다. radius는 지정하지 않는다
+ * (거리순 정렬만 — 근처에 없으면 먼 곳도 거리순으로 노출, 0건 위험 회피).
+ * 좌표가 없거나 한쪽만 있으면 카카오 기본(정확도순)으로 graceful degrade.
+ */
+export function buildKakaoSearchUrl(params: PlaceSearchParams): URL {
   const url = new URL(ENDPOINT);
   url.searchParams.set("query", params.query);
   url.searchParams.set("size", String(Math.min(params.limit ?? 10, 15)));
+  if (params.lat != null && params.lng != null) {
+    url.searchParams.set("x", String(params.lng));
+    url.searchParams.set("y", String(params.lat));
+    url.searchParams.set("sort", "distance");
+  }
+  return url;
+}
+
+export async function searchPlacesKakaoLocal(
+  params: PlaceSearchParams,
+): Promise<PlaceSearchResult> {
+  const url = buildKakaoSearchUrl(params);
 
   const res = await fetch(url, {
     headers: {

@@ -44,6 +44,9 @@ export interface PlaceSearchParams {
   limit?: number;
   /** UI 로케일 — 다국어 provider(TourAPI) 선택에 사용 */
   lang?: "ko" | "en";
+  /** 검색 기준 좌표(WGS84). 있으면 카카오를 거리순 정렬한다. */
+  lat?: number;
+  lng?: number;
 }
 
 /** 장소 검색 결과 + 메타데이터 */
