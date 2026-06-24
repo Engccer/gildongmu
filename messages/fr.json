@@ -28,7 +28,11 @@
     "addressSearching": "Recherche d'adresses…",
     "addressResultsAnnouncement": "{count} adresses trouvées",
     "addressError": "Échec de la recherche d'adresse. Veuillez réessayer dans un instant.",
-    "addressCoordFailed": "Impossible de localiser les coordonnées de cette adresse ; les détails ne peuvent pas être ouverts."
+    "addressCoordFailed": "Impossible de localiser les coordonnées de cette adresse ; les détails ne peuvent pas être ouverts.",
+    "webSection": "Web",
+    "webResultsAnnouncement": "{count} résultats web",
+    "webFallbackAnnouncement": "Aucun lieu trouvé ; {count} résultats web trouvés",
+    "webAndAddressAnnouncement": "{web} résultats web, {addr} adresses"
   },
   "region": {
     "filterLabel": "Filtrer par région",

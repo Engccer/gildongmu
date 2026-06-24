@@ -28,7 +28,11 @@
     "addressSearching": "Buscando direcciones…",
     "addressResultsAnnouncement": "{count} direcciones encontradas",
     "addressError": "La búsqueda de direcciones falló. Inténtalo de nuevo en breve.",
-    "addressCoordFailed": "No se encontraron las coordenadas de esta dirección; no se pueden abrir los detalles."
+    "addressCoordFailed": "No se encontraron las coordenadas de esta dirección; no se pueden abrir los detalles.",
+    "webSection": "Web",
+    "webResultsAnnouncement": "{count} resultados web",
+    "webFallbackAnnouncement": "No se encontraron lugares; se encontraron {count} resultados web",
+    "webAndAddressAnnouncement": "{web} resultados web, {addr} direcciones"
   },
   "region": {
     "filterLabel": "Filtrar por región",

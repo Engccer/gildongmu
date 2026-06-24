@@ -21,7 +21,7 @@ import { StationFacilities } from "@/components/StationFacilities";
 import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 import { CarRouteBriefing } from "@/components/CarRouteBriefing";
 import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
-import { WebResults } from "./WebResults";
+import { WebResults } from "@/components/WebResults";
 import { SourceList } from "./SourceList";
 
 /**

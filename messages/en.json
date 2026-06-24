@@ -28,7 +28,11 @@
     "addressSearching": "Searching addresses…",
     "addressResultsAnnouncement": "{count} addresses found",
     "addressError": "Address search failed. Please try again shortly.",
-    "addressCoordFailed": "Couldn't locate coordinates for this address; cannot open details."
+    "addressCoordFailed": "Couldn't locate coordinates for this address; cannot open details.",
+    "webSection": "Web",
+    "webResultsAnnouncement": "{count} web results",
+    "webFallbackAnnouncement": "No places found; found {count} web results instead",
+    "webAndAddressAnnouncement": "{web} web results, {addr} addresses"
   },
   "region": {
     "filterLabel": "Filter by region",

@@ -28,7 +28,11 @@
     "addressSearching": "주소 검색 중…",
     "addressResultsAnnouncement": "주소 검색 결과 {count}건",
     "addressError": "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
-    "addressCoordFailed": "이 주소의 좌표를 찾지 못해 상세를 열 수 없습니다."
+    "addressCoordFailed": "이 주소의 좌표를 찾지 못해 상세를 열 수 없습니다.",
+    "webSection": "웹",
+    "webResultsAnnouncement": "웹 결과 {count}건",
+    "webFallbackAnnouncement": "장소를 찾지 못해 웹에서 {count}건을 찾았습니다",
+    "webAndAddressAnnouncement": "웹 결과 {web}건, 주소 {addr}건"
   },
   "region": {
     "filterLabel": "지역으로 거르기",

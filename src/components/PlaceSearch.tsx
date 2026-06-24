@@ -11,7 +11,14 @@ import {
 import type { RegionCode } from "@/lib/region";
 import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import { sortPlacesByDistance } from "@/lib/geo";
-import type { AddressMatch, JusoAddress, Place, PlaceSearchResult } from "@/lib/types";
+import type {
+  AddressMatch,
+  JusoAddress,
+  Place,
+  PlaceSearchResult,
+  WebSearchResult,
+} from "@/lib/types";
+import type { SearchRouteResult } from "@/lib/search-router/types";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
@@ -21,6 +28,7 @@ import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
+import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
@@ -97,6 +105,10 @@ export function PlaceSearch({
     return new URLSearchParams(window.location.search).get("q") ?? "";
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // 자연어 라우터가 웹으로 라우팅한 결과(place와 상호배타). null=웹 아님.
+  // webFallback=true면 장소 0건 폴백(길 B), false면 웹 직접 라우팅(길 A).
+  const [webResults, setWebResults] = useState<WebSearchResult[] | null>(null);
+  const [webFallback, setWebFallback] = useState(false);
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
@@ -206,6 +218,9 @@ export function PlaceSearch({
       setBucket(null);
       setRegion(null);
       setStatus({ kind: "loading" });
+      // 새 검색 — 이전 웹 결과 잔류 방지(stale 웹 섹션 차단).
+      setWebResults(null);
+      setWebFallback(false);
       // URL ?q= 동기화(공유·새로고침 보존)
       const url = new URL(window.location.href);
       url.searchParams.set("q", q);
@@ -214,18 +229,35 @@ export function PlaceSearch({
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
         // 좌표가 있으면 거리순으로 정렬돼 "맥도날드" 같은 전국 체인도 근처
-        // 지점이 상위로 온다(없으면 정확도순 graceful).
+        // 지점이 상위로 온다(없으면 정확도순 graceful). /api/search는 Gemini 단발
+        // 라우터 — 자연어를 search_places(지역 앵커)/search_web로 분류해 응답한다.
+        // 키 없으면 라우트가 naive 장소검색으로 강등하므로 클라는 동일 코드 경로.
         const coordQuery = userCoords
           ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
           : "";
         const res = await fetch(
-          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
+          `/api/search?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const result = (await res.json()) as PlaceSearchResult;
+        const data = (await res.json()) as SearchRouteResult;
         // 최신 요청만 반영 — 늦게 끝난 이전 요청은 여기서 폐기.
         if (reqIdRef.current !== myId) return;
-        setStatus({ kind: "done", result });
+        if (data.kind === "web") {
+          // 웹 라우팅 — 장소 섹션은 비우고 웹 섹션을 채운다(상호배타).
+          setWebResults(data.web);
+          setWebFallback(data.fallbackFrom === "place");
+          setStatus({
+            kind: "done",
+            result: { places: [], provider: "kakao-local", query: q },
+          });
+        } else {
+          setWebResults(null);
+          setWebFallback(false);
+          setStatus({
+            kind: "done",
+            result: { places: data.places, provider: "kakao-local", query: q },
+          });
+        }
       } catch {
         if (reqIdRef.current !== myId) return;
         setStatus({ kind: "error" });
@@ -368,6 +400,8 @@ export function PlaceSearch({
   const placeCount = status.kind === "done" ? status.result.places.length : null;
   const addrCount =
     addrStatus.kind === "done" ? addrStatus.addresses.length : null;
+  // 웹 결과 건수 — 웹 라우팅(길 A/B)일 때만 non-null.
+  const webCount = webResults ? webResults.length : null;
   const loading = status.kind === "loading" || addrStatus.kind === "loading";
   const liveSpec: { key: string; values?: Record<string, number> } | null =
     addrStatus.kind === "coordError"
@@ -376,6 +410,8 @@ export function PlaceSearch({
           loading,
           placeCount,
           addrCount,
+          webCount,
+          webFallback,
           spokenQuery,
           placeErrored: status.kind === "error",
         });
@@ -427,11 +463,16 @@ export function PlaceSearch({
   );
   const groups = groupByCategory(filtered);
 
-  // 두 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용).
+  // 세 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용). web은 place와 상호배타.
   const placeResultCount = status.kind === "done" ? places.length : 0;
   const addrResultCount =
     addrStatus.kind === "done" ? addrStatus.addresses.length : 0;
-  const sectionOrder = orderResultSections(placeResultCount, addrResultCount);
+  const webResultCount = webResults ? webResults.length : 0;
+  const sectionOrder = orderResultSections(
+    placeResultCount,
+    addrResultCount,
+    webResultCount,
+  );
   // 두 섹션이 모두 렌더될 때만 구분 헤딩(단일 섹션은 오늘처럼 헤딩 없이).
   const showSectionHeadings = sectionOrder.length === 2;
 
@@ -440,6 +481,8 @@ export function PlaceSearch({
     loading: false,
     placeCount: status.kind === "done" ? places.length : null,
     addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
+    webCount: webResults ? webResults.length : null,
+    webFallback,
     spokenQuery: null,
     placeErrored: status.kind === "error",
   });
@@ -559,17 +602,33 @@ export function PlaceSearch({
           {sectionOrder.length === 0 ? (
             <p className="mt-2">{t("search.noResults")}</p>
           ) : (
-            sectionOrder.map((kind) =>
-              kind === "place" ? (
-                <section key="place" className="mt-4">
-                  {showSectionHeadings && (
-                    <h3 className="text-lg font-semibold">
-                      {t("search.placeSection")}
-                    </h3>
-                  )}
-                  {placeSectionBody}
-                </section>
-              ) : (
+            sectionOrder.map((kind) => {
+              if (kind === "place") {
+                return (
+                  <section key="place" className="mt-4">
+                    {showSectionHeadings && (
+                      <h3 className="text-lg font-semibold">
+                        {t("search.placeSection")}
+                      </h3>
+                    )}
+                    {placeSectionBody}
+                  </section>
+                );
+              }
+              if (kind === "web") {
+                return (
+                  <section key="web" className="mt-4">
+                    {showSectionHeadings && (
+                      <h3 className="text-lg font-semibold">
+                        {t("search.webSection")}
+                      </h3>
+                    )}
+                    {/* 검색창 섹션 구분 헤딩은 위에서 그리므로 카드 내부 헤딩은 끈다. */}
+                    <WebResults results={webResults ?? []} showHeading={false} />
+                  </section>
+                );
+              }
+              return (
                 <section key="address" className="mt-4">
                   {showSectionHeadings && (
                     <h3 className="text-lg font-semibold">
@@ -578,8 +637,8 @@ export function PlaceSearch({
                   )}
                   {addressSectionBody}
                 </section>
-              ),
-            )
+              );
+            })
           )}
         </div>
       )}

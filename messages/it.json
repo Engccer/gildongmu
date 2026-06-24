@@ -28,7 +28,11 @@
     "addressSearching": "Ricerca indirizzi…",
     "addressResultsAnnouncement": "{count} indirizzi trovati",
     "addressError": "Ricerca indirizzi non riuscita. Riprova tra poco.",
-    "addressCoordFailed": "Impossibile individuare le coordinate di questo indirizzo; non si possono aprire i dettagli."
+    "addressCoordFailed": "Impossibile individuare le coordinate di questo indirizzo; non si possono aprire i dettagli.",
+    "webSection": "Web",
+    "webResultsAnnouncement": "{count} risultati web",
+    "webFallbackAnnouncement": "Nessun luogo trovato; trovati {count} risultati web",
+    "webAndAddressAnnouncement": "{web} risultati web, {addr} indirizzi"
   },
   "region": {
     "filterLabel": "Filtra per regione",
