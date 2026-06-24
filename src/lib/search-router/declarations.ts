@@ -11,16 +11,17 @@ export function buildSearchDeclarations(): FunctionDeclaration[] {
       name: "search_places",
       description:
         "장소(상호·POI)를 검색한다. 자연어에서 지역과 카테고리를 분해한다. " +
-        "예: '암사동 캐나다 식당' → keyword='양식 서양음식점', region='암사동'. " +
-        "'길동 카페' → keyword='카페', region='길동'.",
+        "예: '암사동 캐나다 식당' → keyword='레스토랑', region='암사동'. " +
+        "'길동 조용한 카페' → keyword='카페', region='길동'.",
       parametersJsonSchema: {
         type: "object",
         properties: {
           keyword: {
             type: "string",
             description:
-              "장소 검색 키워드(카테고리·업종·상호). 지역명은 빼고 region에 넣는다. " +
-              "실재하지 않을 법한 표현은 카카오가 찾을 만한 일반 카테고리로 바꾼다(예: '캐나다 식당'→'양식 서양음식점').",
+              "카카오 지도가 매칭할 단일 카테고리어 하나(예: '카페', '양식', '레스토랑', '이탈리안', '약국'). " +
+              "지역명은 빼고 region에 넣는다. 여러 단어·수식어를 붙이지 않는다('양식 서양음식점'처럼 구문으로 " +
+              "만들면 상호명만 걸려 빗나간다). 드문 표현은 가장 가까운 단일 카테고리어로(예: '캐나다 식당'→'레스토랑').",
           },
           region: {
             type: "string",
