@@ -94,4 +94,55 @@ describe("combinedLiveMessage", () => {
       combinedLiveMessage({ ...base, placeErrored: true, loading: true }),
     ).toEqual({ key: "search.searching" });
   });
+
+  // --- 웹 라우팅(길 A/B) ---
+  it("웹 폴백(장소 0건, 길 B)이면 webFallback 통지", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeCount: 0,
+        addrCount: 0,
+        webCount: 4,
+        webFallback: true,
+      }),
+    ).toEqual({ key: "search.webFallbackAnnouncement", values: { count: 4 } });
+  });
+  it("웹 직접 라우팅(길 A)이면 webResults 통지", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeCount: null,
+        addrCount: 0,
+        webCount: 4,
+        webFallback: false,
+      }),
+    ).toEqual({ key: "search.webResultsAnnouncement", values: { count: 4 } });
+  });
+  it("웹+주소 둘 다면 합산 통지", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeCount: null,
+        addrCount: 2,
+        webCount: 4,
+        webFallback: false,
+      }),
+    ).toEqual({ key: "search.webAndAddressAnnouncement", values: { web: 4, addr: 2 } });
+  });
+});
+
+describe("orderResultSections — 웹", () => {
+  it("웹만 있으면 web 단독", () => {
+    expect(orderResultSections(0, 0, 3)).toEqual(["web"]);
+  });
+  it("웹+주소면 건수 내림차순(웹>주소)", () => {
+    expect(orderResultSections(0, 2, 5)).toEqual(["web", "address"]);
+    expect(orderResultSections(0, 5, 2)).toEqual(["address", "web"]);
+  });
+  it("place만이면 기존대로(web 0)", () => {
+    expect(orderResultSections(3, 0, 0)).toEqual(["place"]);
+  });
+  it("동률 웹·주소면 web 우선(rank)", () => {
+    expect(orderResultSections(0, 3, 3)).toEqual(["web", "address"]);
+  });
 });
