@@ -33,8 +33,10 @@ export async function classifySearchQuery(opts: {
   query: string;
   locale: string;
   ai: ClassifyClient;
+  /** Perplexity 키가 있을 때만 search_web을 노출(키 없으면 웹 질의도 place로 강등). */
+  includeWeb?: boolean;
 }): Promise<SearchIntent> {
-  const { query, locale, ai } = opts;
+  const { query, locale, ai, includeWeb = true } = opts;
   const fallback: SearchIntent = { kind: "place", keyword: query };
   try {
     const res = await ai.models.generateContent({
@@ -42,7 +44,7 @@ export async function classifySearchQuery(opts: {
       contents: [{ role: "user", parts: [{ text: `[locale=${locale}] ${query}` }] }],
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ functionDeclarations: buildSearchDeclarations() }],
+        tools: [{ functionDeclarations: buildSearchDeclarations({ includeWeb }) }],
       },
     });
     const call = firstFunctionCall(res.candidates?.[0]?.content?.parts);

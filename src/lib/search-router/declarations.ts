@@ -1,12 +1,19 @@
 import type { FunctionDeclaration } from "@google/genai";
 
 /**
- * 검색창 라우터가 Gemini에 노출하는 도구 2종(순수 데이터).
+ * 검색창 라우터가 Gemini에 노출하는 도구(순수 데이터).
  * 채팅(14종)과 달리 검색 의도만 — 실시간/버튼 도구는 비노출(deterministic 유지).
  * search_places는 region을 선택 인자로 받아 지역 앵커링을 가능케 한다.
+ *
+ * includeWeb: Perplexity 키가 있을 때만 search_web을 노출한다(채팅 availableDeclarations
+ * 게이트 패턴 — 키 없는 도구를 모델이 호출 못 하게). 키 없으면 웹 질의도 search_places로
+ * graceful 강등(빈 결과+무통지 회귀 차단).
  */
-export function buildSearchDeclarations(): FunctionDeclaration[] {
-  return [
+export function buildSearchDeclarations(
+  opts: { includeWeb?: boolean } = {},
+): FunctionDeclaration[] {
+  const { includeWeb = true } = opts;
+  const decls: FunctionDeclaration[] = [
     {
       name: "search_places",
       description:
@@ -32,7 +39,9 @@ export function buildSearchDeclarations(): FunctionDeclaration[] {
         required: ["keyword"],
       },
     },
-    {
+  ];
+  if (includeWeb) {
+    decls.push({
       name: "search_web",
       description:
         "장소가 아니라 시의성 웹 정보를 찾을 때. 예: '환율 최신', '스페인 입국 정책', '오늘 날씨 뉴스'. " +
@@ -49,6 +58,7 @@ export function buildSearchDeclarations(): FunctionDeclaration[] {
         },
         required: ["query"],
       },
-    },
-  ];
+    });
+  }
+  return decls;
 }

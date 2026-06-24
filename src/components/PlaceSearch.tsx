@@ -473,8 +473,9 @@ export function PlaceSearch({
     addrResultCount,
     webResultCount,
   );
-  // 두 섹션이 모두 렌더될 때만 구분 헤딩(단일 섹션은 오늘처럼 헤딩 없이).
-  const showSectionHeadings = sectionOrder.length === 2;
+  // 둘 이상 섹션이 렌더될 때만 구분 헤딩(단일 섹션은 오늘처럼 헤딩 없이).
+  // place·web은 상호배타라 보통 ≤2이나, >1로 두어 이론적 3종 동시에도 헤딩이 유지된다.
+  const showSectionHeadings = sectionOrder.length > 1;
 
   // 결과 영역 최상단 헤딩 텍스트 — 합산 통지와 동일 규칙.
   const headingSpec = combinedLiveMessage({

@@ -15,10 +15,13 @@ function mockAi(fn: { name: string; args: Record<string, unknown> } | null) {
 }
 
 describe("classifySearchQuery", () => {
-  it("복합 의미 쿼리 → place{region,keyword}", async () => {
+  // 복합 의미 쿼리에서 모델이 지역·카테고리를 분해한 응답을 그대로 통과시킨다.
+  // (keyword 정규화 — 단일 카테고리어 — 는 systemInstruction이 모델에 유도하는 책임이고,
+  //  classify는 model 응답을 정제하지 않는다. 여기선 그 pass-through를 검증.)
+  it("복합 의미 쿼리 → place{region,keyword} 분해 통과", async () => {
     const ai = mockAi({
       name: "search_places",
-      args: { keyword: "양식 서양음식점", region: "암사동" },
+      args: { keyword: "레스토랑", region: "암사동" },
     });
     const intent = await classifySearchQuery({
       query: "암사동 캐나다 식당",
@@ -27,7 +30,7 @@ describe("classifySearchQuery", () => {
     });
     expect(intent).toEqual({
       kind: "place",
-      keyword: "양식 서양음식점",
+      keyword: "레스토랑",
       region: "암사동",
     });
   });

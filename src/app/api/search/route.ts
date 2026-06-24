@@ -63,11 +63,19 @@ export async function GET(request: NextRequest) {
     const ai = getGeminiClient();
     if (!ai) return NextResponse.json(await naivePlace());
 
-    // 2. 단발 분류.
-    const intent = await classifySearchQuery({ query, locale: lang, ai });
+    // 2. 단발 분류. Perplexity 키가 없으면 search_web을 노출하지 않아 웹 질의도
+    //    place로 강등된다(빈 결과+무통지 회귀 차단).
+    const webEnabled = hasPerplexityKey();
+    const intent = await classifySearchQuery({
+      query,
+      locale: lang,
+      ai,
+      includeWeb: webEnabled,
+    });
 
-    // 3-A. 웹 라우팅(길 A).
+    // 3-A. 웹 라우팅(길 A). 방어: 키 없는데 web으로 분류되면 naive 장소검색으로 강등.
     if (intent.kind === "web") {
+      if (!webEnabled) return NextResponse.json(await naivePlace());
       const tr = await searchWebPerplexity({
         query: intent.query,
         ...(intent.recency ? { search_recency_filter: intent.recency } : {}),
@@ -98,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 3-C. 0건 → 웹 폴백(길 B, 코드 결정).
-    if (shouldFallbackToWeb(placeR.places.length, hasPerplexityKey())) {
+    if (shouldFallbackToWeb(placeR.places.length, webEnabled)) {
       const tr = await searchWebPerplexity({ query });
       const web = extractWeb(tr);
       if (web.length > 0) {
