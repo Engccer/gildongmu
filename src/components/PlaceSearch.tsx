@@ -105,12 +105,11 @@ export function PlaceSearch({
 }) {
   const t = useTranslations();
   const locale = useLocale();
-  // 첫 마운트 시 ?q= 가 있으면 입력값 초기값으로 채운다(lazy initializer로 한 번만
-  // 평가 → effect 본문에서 setState를 호출하지 않아 set-state-in-effect를 피한다).
-  const [query, setQuery] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return new URLSearchParams(window.location.search).get("q") ?? "";
-  });
+  // 초기값은 항상 "" — 서버(window 없음)와 클라가 동일해 hydration이 일치한다.
+  // ?q= 진입 시 입력값 반영은 아래 첫 마운트 effect가 setQuery로 처리한다(과거엔
+  // lazy initializer가 window.location.search를 읽어 SSR ""·CSR ?q= 불일치로
+  // hydration mismatch가 났다 — clear 버튼 유무가 갈렸음).
+  const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   // 웹 검색 결과(장소·주소 0건 시 폴백). null=미검색/폴백 안 함/키 없음.
   const [webResults, setWebResults] = useState<WebSearchResult[] | null>(null);
@@ -395,18 +394,22 @@ export function PlaceSearch({
     void runQuerySearch(text);
   }
 
-  // 첫 마운트 시 ?q= 있으면 자동 검색(장소+주소 동시 — runQuerySearch).
-  // 입력값(query) 초기화는 위 lazy initializer가 이미 처리했다. 자동검색은
-  // queueMicrotask로 한 틱 미뤄 실행한다 — runQuerySearch가 동기적으로 부르는
-  // setStatus/setAddrStatus({loading})가 effect 본문이 아니라 콜백에서 일어나게 하여
-  // react-hooks/set-state-in-effect(동기 setState로 인한 cascading render 경고)를
-  // 정석대로 만족시킨다. 동작(=?q= 자동검색)은 그대로 보존된다.
+  // 첫 마운트 시 ?q= 있으면 입력값 반영 + 자동 검색(장소+주소 동시 — runQuerySearch).
+  // setQuery·runQuerySearch를 모두 queueMicrotask로 한 틱 미뤄 실행한다 — 동기 setState
+  // (입력값·setStatus loading)가 effect 본문이 아니라 콜백에서 일어나게 해
+  // react-hooks/set-state-in-effect(cascading render 경고)를 정석대로 만족시킨다.
+  // query 초기값이 ""라 SSR/CSR이 일치하고(hydration mismatch 제거), 마운트 직후
+  // 콜백이 setQuery(q)로 입력창을 채운다(?q= 진입 시 입력 표시 보존).
   const didAutoSearch = useRef(false);
   useEffect(() => {
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
     const q = new URLSearchParams(window.location.search).get("q");
-    if (q) queueMicrotask(() => void runQuerySearch(q));
+    if (q)
+      queueMicrotask(() => {
+        setQuery(q);
+        void runQuerySearch(q);
+      });
   }, [runQuerySearch]);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
