@@ -74,6 +74,12 @@ describe("combinedLiveMessage 공존 모델", () => {
       combinedLiveMessage({ ...base, placeCount: 0, webCount: 0, addrCount: 0 }),
     ).toEqual([{ key: "search.noResults" }]);
   });
+
+  it("장소 에러여도 웹 결과가 있으면 웹만 통지(에러 억제 — 웹은 보조)", () => {
+    expect(
+      combinedLiveMessage({ ...base, placeCount: null, webCount: 5, addrCount: 0, placeErrored: true }),
+    ).toEqual([{ key: "search.webCount", values: { count: 5 } }]);
+  });
 });
 
 describe("orderResultSections — 웹", () => {

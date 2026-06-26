@@ -599,7 +599,8 @@ export function PlaceSearch({
 
       {/* 웹은 장소·주소와 병렬인 보조 보완 섹션이라, 장소가 에러/로딩이고 주소가
           없어도 웹 결과만 있으면 컨테이너를 그려 웹 단독 결과가 가려지지 않게 한다.
-          장소 에러 표시는 컨테이너 밖 live region(liveMessage)이 담당하므로
+          장소 에러는 웹/주소 결과가 없을 때만 live region이 통지하므로
+          (combinedLiveMessage가 parts 전부 0일 때 search.error 반환),
           status.kind==="error"는 조건에 넣지 않는다(빈 컨테이너·중복 헤딩 방지). */}
       {(status.kind === "done" ||
         addrStatus.kind === "done" ||
