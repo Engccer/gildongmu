@@ -18,7 +18,7 @@ import type {
   PlaceSearchResult,
   WebSearchResult,
 } from "@/lib/types";
-import type { SearchRouteResult } from "@/lib/search-router/types";
+import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
@@ -70,6 +70,7 @@ export function PlaceSearch({
   canShowSurroundings = false,
   canShowTransit = false,
   canSearchAddress = false,
+  canSearchWeb = false,
   canShowChat = false,
 }: {
   isMockMode: boolean;
@@ -93,6 +94,8 @@ export function PlaceSearch({
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
   canSearchAddress?: boolean;
+  /** Perplexity 키가 있어 웹 검색 섹션을 제공할 수 있는지 */
+  canSearchWeb?: boolean;
   /** Gemini 키가 있어 채팅(AI 길찾기 도우미)을 제공할 수 있는지 */
   canShowChat?: boolean;
 }) {
@@ -105,10 +108,8 @@ export function PlaceSearch({
     return new URLSearchParams(window.location.search).get("q") ?? "";
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  // 자연어 라우터가 웹으로 라우팅한 결과(place와 상호배타). null=웹 아님.
-  // webFallback=true면 장소 0건 폴백(길 B), false면 웹 직접 라우팅(길 A).
+  // 웹 검색 결과(장소·주소와 병렬). null=미검색/키 없음.
   const [webResults, setWebResults] = useState<WebSearchResult[] | null>(null);
-  const [webFallback, setWebFallback] = useState(false);
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
@@ -121,6 +122,8 @@ export function PlaceSearch({
   >({ kind: "idle" });
   // 주소 검색 stale-result race 방지(place reqIdRef와 동형).
   const addrReqIdRef = useRef(0);
+  // 웹 검색 stale-result race 방지(place reqIdRef와 동형).
+  const webReqIdRef = useRef(0);
   // 좌표 변환 in-flight 가드(더블클릭 중복 진입 방지 — aria-disabled 보강 패턴).
   const addrResolveRef = useRef(false);
   // 음성으로 검색한 질의어(없으면 null=타이핑 검색). 로딩 라이브 메시지를
@@ -218,9 +221,6 @@ export function PlaceSearch({
       setBucket(null);
       setRegion(null);
       setStatus({ kind: "loading" });
-      // 새 검색 — 이전 웹 결과 잔류 방지(stale 웹 섹션 차단).
-      setWebResults(null);
-      setWebFallback(false);
       // URL ?q= 동기화(공유·새로고침 보존)
       const url = new URL(window.location.href);
       url.searchParams.set("q", q);
@@ -228,36 +228,17 @@ export function PlaceSearch({
       // LanguageSwitcher가 ?q= 변경을 즉시 반영하도록 통지(popstate는 안 뜸).
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
-        // 좌표가 있으면 거리순으로 정렬돼 "맥도날드" 같은 전국 체인도 근처
-        // 지점이 상위로 온다(없으면 정확도순 graceful). /api/search는 Gemini 단발
-        // 라우터 — 자연어를 search_places(지역 앵커)/search_web로 분류해 응답한다.
-        // 키 없으면 라우트가 naive 장소검색으로 강등하므로 클라는 동일 코드 경로.
+        // 좌표가 있으면 거리순 정렬("맥도날드" 전국 체인도 근처 지점 상위).
         const coordQuery = userCoords
           ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
           : "";
         const res = await fetch(
-          `/api/search?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
+          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as SearchRouteResult;
-        // 최신 요청만 반영 — 늦게 끝난 이전 요청은 여기서 폐기.
+        const result = (await res.json()) as PlaceSearchResult;
         if (reqIdRef.current !== myId) return;
-        if (data.kind === "web") {
-          // 웹 라우팅 — 장소 섹션은 비우고 웹 섹션을 채운다(상호배타).
-          setWebResults(data.web);
-          setWebFallback(data.fallbackFrom === "place");
-          setStatus({
-            kind: "done",
-            result: { places: [], provider: "kakao-local", query: q },
-          });
-        } else {
-          setWebResults(null);
-          setWebFallback(false);
-          setStatus({
-            kind: "done",
-            result: { places: data.places, provider: "kakao-local", query: q },
-          });
-        }
+        setStatus({ kind: "done", result });
       } catch {
         if (reqIdRef.current !== myId) return;
         setStatus({ kind: "error" });
@@ -289,6 +270,27 @@ export function PlaceSearch({
   }, []);
 
   /**
+   * 웹 검색 실행 — /api/search/web(Perplexity) 호출. 장소·주소와 병렬 발사되는
+   * 보조 섹션이라 실패/빈 결과는 빈 배열로 graceful(섹션 미렌더). place reqId 동형.
+   */
+  const performWebSearch = useCallback(async (raw: string) => {
+    const q = raw.trim();
+    if (!q) return;
+    const myId = ++webReqIdRef.current;
+    setWebResults(null); // 새 검색 — 이전 웹 결과 잔류 방지.
+    try {
+      const res = await fetch(`/api/search/web?query=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { web: WebSearchResult[] };
+      if (webReqIdRef.current !== myId) return;
+      setWebResults(data.web);
+    } catch {
+      if (webReqIdRef.current !== myId) return;
+      setWebResults([]); // 보조 섹션 — 무음 degrade.
+    }
+  }, []);
+
+  /**
    * 검색 진입점 단일화 — 장소(performSearch)와, juso 키가 있으면 주소
    * (performAddressSearch)를 함께 발사한다. runSearch(폼 제출)·handleTranscribed
    * (음성)·첫 마운트 ?q= 자동검색 셋이 반드시 이 한 경로를 공유한다. 과거엔 세 곳에
@@ -300,8 +302,9 @@ export function PlaceSearch({
     (raw: string) => {
       void performSearch(raw);
       if (canSearchAddress) void performAddressSearch(raw);
+      if (canSearchWeb) void performWebSearch(raw);
     },
-    [performSearch, performAddressSearch, canSearchAddress],
+    [performSearch, performAddressSearch, performWebSearch, canSearchAddress, canSearchWeb],
   );
 
   function runSearch() {
@@ -381,10 +384,13 @@ export function PlaceSearch({
       !canSearchAddress ||
       addrStatus.kind === "done" ||
       addrStatus.kind === "error";
+    // 웹은 done/error를 status로 추적하지 않으므로 webResults가 채워졌는지로 판정.
+    const webSettled = !canSearchWeb || webResults !== null;
     const anyStarted =
       status.kind !== "idle" ||
-      (canSearchAddress && addrStatus.kind !== "idle");
-    if (placeSettled && addrSettled && anyStarted) {
+      (canSearchAddress && addrStatus.kind !== "idle") ||
+      (canSearchWeb && webResults !== null);
+    if (placeSettled && addrSettled && webSettled && anyStarted) {
       if (!focusedForSearchRef.current) {
         focusedForSearchRef.current = true;
         requestAnimationFrame(() => resultsHeadingRef.current?.focus());
@@ -393,33 +399,32 @@ export function PlaceSearch({
       // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
       focusedForSearchRef.current = false;
     }
-  }, [status.kind, addrStatus.kind, canSearchAddress]);
+  }, [status.kind, addrStatus.kind, canSearchAddress, canSearchWeb, webResults]);
 
   // 단일 polite 채널 통지. coordError(주소 선택 후 좌표 실패)는 검색 완료 통지와
   // 시점이 달라 우선 노출.
   const placeCount = status.kind === "done" ? status.result.places.length : null;
-  const addrCount =
-    addrStatus.kind === "done" ? addrStatus.addresses.length : null;
-  // 웹 결과 건수 — 웹 라우팅(길 A/B)일 때만 non-null.
+  const addrCount = addrStatus.kind === "done" ? addrStatus.addresses.length : null;
   const webCount = webResults ? webResults.length : null;
   const loading = status.kind === "loading" || addrStatus.kind === "loading";
-  const liveSpec: { key: string; values?: Record<string, number> } | null =
+  const liveParts: LivePart[] | null =
     addrStatus.kind === "coordError"
-      ? { key: "search.addressCoordFailed" }
+      ? [{ key: "search.addressCoordFailed" }]
       : combinedLiveMessage({
           loading,
           placeCount,
           addrCount,
           webCount,
-          webFallback,
           spokenQuery,
           placeErrored: status.kind === "error",
         });
-  const liveMessage = liveSpec
-    ? liveSpec.key === "search.searchingFor"
-      ? t(liveSpec.key, { query: spokenQuery ?? "" })
-      : t(liveSpec.key, liveSpec.values ?? {})
-    : "";
+  const liveMessage = (liveParts ?? [])
+    .map((p) =>
+      p.key === "search.searchingFor"
+        ? t(p.key, { query: spokenQuery ?? "" })
+        : t(p.key, p.values ?? {}),
+    )
+    .join(", ");
 
   // 상세 화면이면 상세만 렌더(같은 페이지 뷰 전환).
   if (selected) {
@@ -463,7 +468,7 @@ export function PlaceSearch({
   );
   const groups = groupByCategory(filtered);
 
-  // 세 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용). web은 place와 상호배타.
+  // 세 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용). 셋 모두 병렬 공존 가능.
   const placeResultCount = status.kind === "done" ? places.length : 0;
   const addrResultCount =
     addrStatus.kind === "done" ? addrStatus.addresses.length : 0;
@@ -473,23 +478,22 @@ export function PlaceSearch({
     addrResultCount,
     webResultCount,
   );
-  // 둘 이상 섹션이 렌더될 때만 구분 헤딩(단일 섹션은 오늘처럼 헤딩 없이).
-  // place·web은 상호배타라 보통 ≤2이나, >1로 두어 이론적 3종 동시에도 헤딩이 유지된다.
+  // 둘 이상 섹션이 렌더될 때만 구분 헤딩(단일 섹션은 헤딩 없이).
+  // 장소·주소·웹은 항상 병렬이라 공존 시 헤딩이 자연히 켜진다.
   const showSectionHeadings = sectionOrder.length > 1;
 
   // 결과 영역 최상단 헤딩 텍스트 — 합산 통지와 동일 규칙.
-  const headingSpec = combinedLiveMessage({
+  const headingParts: LivePart[] | null = combinedLiveMessage({
     loading: false,
     placeCount: status.kind === "done" ? places.length : null,
     addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
     webCount: webResults ? webResults.length : null,
-    webFallback,
     spokenQuery: null,
     placeErrored: status.kind === "error",
   });
-  const resultsHeading = headingSpec
-    ? t(headingSpec.key, headingSpec.values ?? {})
-    : t("search.resultsAnnouncement", { count: 0 });
+  const resultsHeading =
+    (headingParts ?? []).map((p) => t(p.key, p.values ?? {})).join(", ") ||
+    t("search.resultsAnnouncement", { count: 0 });
 
   // 장소 섹션 본체(기존 칩 + ResultList). places 0이면 sectionOrder가 제외하므로
   // 여기 도달 시 places>0 가정.
