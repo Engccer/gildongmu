@@ -32,7 +32,10 @@
     "webSection": "웹",
     "webResultsAnnouncement": "웹 결과 {count}건",
     "webFallbackAnnouncement": "장소를 찾지 못해 웹에서 {count}건을 찾았습니다",
-    "webAndAddressAnnouncement": "웹 결과 {web}건, 주소 {addr}건"
+    "webAndAddressAnnouncement": "웹 결과 {web}건, 주소 {addr}건",
+    "placeCount": "장소 {count}건",
+    "webCount": "웹 {count}건",
+    "addressCount": "주소 {count}건"
   },
   "region": {
     "filterLabel": "지역으로 거르기",

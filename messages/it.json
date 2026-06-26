@@ -32,7 +32,10 @@
     "webSection": "Web",
     "webResultsAnnouncement": "{count} risultati web",
     "webFallbackAnnouncement": "Nessun luogo trovato; trovati {count} risultati web",
-    "webAndAddressAnnouncement": "{web} risultati web, {addr} indirizzi"
+    "webAndAddressAnnouncement": "{web} risultati web, {addr} indirizzi",
+    "placeCount": "{count} luoghi",
+    "webCount": "{count} risultati web",
+    "addressCount": "{count} indirizzi"
   },
   "region": {
     "filterLabel": "Filtra per regione",
