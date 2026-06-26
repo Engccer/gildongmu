@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { orderResultSections, combinedLiveMessage } from "../search-sections";
+import {
+  orderResultSections,
+  combinedLiveMessage,
+  shouldFallbackToWeb,
+} from "../search-sections";
 
 describe("orderResultSections", () => {
   it("장소만 있으면 place만", () => {
@@ -105,5 +109,22 @@ describe("orderResultSections 공존", () => {
   });
   it("셋 동시 — 건수 내림차순, 동률 place>web>address", () => {
     expect(orderResultSections(4, 4, 4)).toEqual(["place", "web", "address"]);
+  });
+});
+
+describe("shouldFallbackToWeb", () => {
+  // 0건 폴백 — 카카오·juso 둘 다 0건(구조화된 국내 데이터로 못 찾음)일 때만 웹.
+  it("장소·주소 둘 다 0건이면 폴백(웹 호출)", () => {
+    expect(shouldFallbackToWeb(0, 0)).toBe(true);
+  });
+  it("장소가 1건이라도 있으면 폴백 안 함", () => {
+    expect(shouldFallbackToWeb(1, 0)).toBe(false);
+    expect(shouldFallbackToWeb(15, 0)).toBe(false);
+  });
+  it("주소가 1건이라도 있으면 폴백 안 함('세종대로 110'은 주소로 찾음)", () => {
+    expect(shouldFallbackToWeb(0, 2)).toBe(false);
+  });
+  it("둘 다 있으면 폴백 안 함", () => {
+    expect(shouldFallbackToWeb(5, 3)).toBe(false);
   });
 });

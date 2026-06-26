@@ -29,6 +29,23 @@ export function orderResultSections(
 export type LivePart = { key: string; values?: Record<string, number> };
 
 /**
+ * 0건 웹 폴백 트리거 — 장소(카카오)·주소(juso)가 **둘 다 0건**일 때만 웹 검색을 한다.
+ *
+ * 카카오가 장소를 찾았거나 juso가 주소를 찾았다는 건 "구조화된 국내 데이터로 답을
+ * 찾음"이라 의도가 장소/주소였을 가능성이 압도적 — 이때 웹은 노이즈다. 둘 다 0건이어야
+ * 비로소 "국내 구조화 데이터 밖(신생 가게·시의성·장소 아닌 질문)" = 웹 신호다.
+ * 결과를 본 뒤(posterior) deterministic하게 판정하므로, 검색 전 추측하던 LLM 라우터의
+ * 실패 모드(멀쩡한 쿼리 재해석 악화)가 구조적으로 불가능하다. 장소 "에러"(조회 실패)는
+ * "0건"과 다른 신호라 호출부가 폴백에서 제외한다(여기 인자엔 성공 건수만 들어온다).
+ */
+export function shouldFallbackToWeb(
+  placeCount: number,
+  addrCount: number,
+): boolean {
+  return placeCount === 0 && addrCount === 0;
+}
+
+/**
  * 단일 polite 채널 통지(부분 배열). loading이면 검색 중(음성이면 searchingFor),
  * 완료면 0이 아닌 섹션(장소·웹·주소)을 차례로 part로 쌓아 호출부가 ", "로 잇는다.
  * 모두 0이면 장소 에러는 error, 아니면 noResults. 검색 전 idle은 null(통지 없음).

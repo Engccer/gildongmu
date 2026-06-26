@@ -23,7 +23,11 @@ import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
+import {
+  orderResultSections,
+  combinedLiveMessage,
+  shouldFallbackToWeb,
+} from "@/lib/search-sections";
 import { SearchBar } from "./SearchBar";
 import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
@@ -108,8 +112,11 @@ export function PlaceSearch({
     return new URLSearchParams(window.location.search).get("q") ?? "";
   });
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  // 웹 검색 결과(장소·주소와 병렬). null=미검색/키 없음.
+  // 웹 검색 결과(장소·주소 0건 시 폴백). null=미검색/폴백 안 함/키 없음.
   const [webResults, setWebResults] = useState<WebSearchResult[] | null>(null);
+  // 웹 폴백을 발사해 결과 대기 중인지 — 포커스 effect가 웹을 기다릴지 판정한다.
+  // 폴백을 안 한 검색(대부분)은 false라 장소·주소 settled 즉시 포커스가 옮겨진다.
+  const [webPending, setWebPending] = useState(false);
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
@@ -212,9 +219,9 @@ export function PlaceSearch({
    * runSearch(폼 제출)와 첫 마운트 자동검색이 같은 경로를 공유하도록 분리했다.
    */
   const performSearch = useCallback(
-    async (rawQuery: string) => {
+    async (rawQuery: string): Promise<{ count: number; errored: boolean }> => {
       const q = rawQuery.trim();
-      if (!q) return;
+      if (!q) return { count: 0, errored: false };
       // 위치는 마운트 시 이미 요청했다. 좌표가 들어와 있으면 결과가 가까운 순으로
       // 재정렬된다(없으면 provider 순서 유지).
       const myId = ++reqIdRef.current;
@@ -237,11 +244,16 @@ export function PlaceSearch({
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = (await res.json()) as PlaceSearchResult;
-        if (reqIdRef.current !== myId) return;
+        // stale(더 새로운 검색이 진행 중)은 errored 취급 — 이 검색의 폴백 판정을
+        // 막고 최신 검색이 자기 폴백을 책임지게 한다(웹 이중 발사·stale 폴백 방지).
+        if (reqIdRef.current !== myId) return { count: 0, errored: true };
         setStatus({ kind: "done", result });
+        return { count: result.places.length, errored: false };
       } catch {
-        if (reqIdRef.current !== myId) return;
+        if (reqIdRef.current !== myId) return { count: 0, errored: true };
         setStatus({ kind: "error" });
+        // 에러는 "0건"과 다른 신호(인프라 장애 ≠ 장소 도메인 밖) — 폴백 억제.
+        return { count: 0, errored: true };
       }
     },
     [locale, userCoords],
@@ -252,22 +264,28 @@ export function PlaceSearch({
    * place performSearch와 동형의 reqId stale 가드. URL ?q=는 performSearch가
    * 소유하므로 주소 검색은 별도 동기화하지 않는다(장소·주소가 같은 q를 공유).
    */
-  const performAddressSearch = useCallback(async (raw: string) => {
-    const q = raw.trim();
-    if (!q) return;
-    const myId = ++addrReqIdRef.current;
-    setAddrStatus({ kind: "loading" });
-    try {
-      const res = await fetch(`/api/address/search?query=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { addresses: JusoAddress[] };
-      if (addrReqIdRef.current !== myId) return;
-      setAddrStatus({ kind: "done", addresses: data.addresses });
-    } catch {
-      if (addrReqIdRef.current !== myId) return;
-      setAddrStatus({ kind: "error" });
-    }
-  }, []);
+  const performAddressSearch = useCallback(
+    async (raw: string): Promise<number> => {
+      const q = raw.trim();
+      if (!q) return 0;
+      const myId = ++addrReqIdRef.current;
+      setAddrStatus({ kind: "loading" });
+      try {
+        const res = await fetch(`/api/address/search?query=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { addresses: JusoAddress[] };
+        if (addrReqIdRef.current !== myId) return 0;
+        setAddrStatus({ kind: "done", addresses: data.addresses });
+        return data.addresses.length;
+      } catch {
+        // 주소 에러·stale은 0건 취급(보조 — 폴백 억제는 장소 errored가 담당).
+        if (addrReqIdRef.current !== myId) return 0;
+        setAddrStatus({ kind: "error" });
+        return 0;
+      }
+    },
+    [],
+  );
 
   /**
    * 웹 검색 실행 — /api/search/web(Perplexity) 호출. 장소·주소와 병렬 발사되는
@@ -284,9 +302,11 @@ export function PlaceSearch({
       const data = (await res.json()) as { web: WebSearchResult[] };
       if (webReqIdRef.current !== myId) return;
       setWebResults(data.web);
+      setWebPending(false); // 폴백 완료 — 포커스 effect가 결과 헤딩으로 이동.
     } catch {
       if (webReqIdRef.current !== myId) return;
       setWebResults([]); // 보조 섹션 — 무음 degrade.
+      setWebPending(false);
     }
   }, []);
 
@@ -299,10 +319,25 @@ export function PlaceSearch({
    * 구조적으로 차단한다.
    */
   const runQuerySearch = useCallback(
-    (raw: string) => {
-      void performSearch(raw);
-      if (canSearchAddress) void performAddressSearch(raw);
-      if (canSearchWeb) void performWebSearch(raw);
+    async (raw: string) => {
+      if (!raw.trim()) return;
+      // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
+      setWebPending(false);
+      setWebResults(null);
+      // 장소·주소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
+      // 0건 폴백 조건일 때만 2단계로 발사한다(카카오·juso가 찾으면 웹 노이즈 회피).
+      const [place, addrCount] = await Promise.all([
+        performSearch(raw),
+        canSearchAddress ? performAddressSearch(raw) : Promise.resolve(0),
+      ]);
+      if (
+        canSearchWeb &&
+        !place.errored &&
+        shouldFallbackToWeb(place.count, addrCount)
+      ) {
+        setWebPending(true);
+        void performWebSearch(raw);
+      }
     },
     [performSearch, performAddressSearch, performWebSearch, canSearchAddress, canSearchWeb],
   );
@@ -312,7 +347,7 @@ export function PlaceSearch({
     // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
     // 남지 않도록).
     setSpokenQuery(null);
-    runQuerySearch(query);
+    void runQuerySearch(query);
   }
 
   /**
@@ -357,7 +392,7 @@ export function PlaceSearch({
   function handleTranscribed(text: string) {
     setSpokenQuery(text);
     setQuery(text);
-    runQuerySearch(text);
+    void runQuerySearch(text);
   }
 
   // 첫 마운트 시 ?q= 있으면 자동 검색(장소+주소 동시 — runQuerySearch).
@@ -371,7 +406,7 @@ export function PlaceSearch({
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
     const q = new URLSearchParams(window.location.search).get("q");
-    if (q) queueMicrotask(() => runQuerySearch(q));
+    if (q) queueMicrotask(() => void runQuerySearch(q));
   }, [runQuerySearch]);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
@@ -384,15 +419,16 @@ export function PlaceSearch({
       !canSearchAddress ||
       addrStatus.kind === "done" ||
       addrStatus.kind === "error";
-    // 웹은 done/error를 status로 추적하지 않으므로 webResults가 채워졌는지로 판정.
-    const webSettled = !canSearchWeb || webResults !== null;
+    // 웹은 0건 폴백일 때만 발사되므로 webPending(대기 중)으로 판정한다 — 폴백을 안 한
+    // 검색(대부분)은 webPending=false라 장소·주소 settled 즉시 포커스가 옮겨진다.
+    // (webResults!==null로 판정하면 폴백 미발사 검색이 영원히 포커스를 못 받는다.)
+    const webSettled = !canSearchWeb || !webPending;
     // runQuerySearch가 performSearch에서 status=loading을 동기 세팅하므로 검색이
-    // 시작되면 status.kind !== "idle"이 항상 참 — web/addr 절은 명시적 안전망일 뿐
+    // 시작되면 status.kind !== "idle"이 항상 참 — addr 절은 명시적 안전망일 뿐
     // 실질 dead code다(의도 보존용으로 남김).
     const anyStarted =
       status.kind !== "idle" ||
-      (canSearchAddress && addrStatus.kind !== "idle") ||
-      (canSearchWeb && webResults !== null);
+      (canSearchAddress && addrStatus.kind !== "idle");
     if (placeSettled && addrSettled && webSettled && anyStarted) {
       if (!focusedForSearchRef.current) {
         focusedForSearchRef.current = true;
@@ -402,7 +438,7 @@ export function PlaceSearch({
       // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
       focusedForSearchRef.current = false;
     }
-  }, [status.kind, addrStatus.kind, canSearchAddress, canSearchWeb, webResults]);
+  }, [status.kind, addrStatus.kind, canSearchAddress, canSearchWeb, webPending]);
 
   // 단일 polite 채널 통지. coordError(주소 선택 후 좌표 실패)는 검색 완료 통지와
   // 시점이 달라 우선 노출.
