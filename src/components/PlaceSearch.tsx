@@ -386,6 +386,9 @@ export function PlaceSearch({
       addrStatus.kind === "error";
     // 웹은 done/error를 status로 추적하지 않으므로 webResults가 채워졌는지로 판정.
     const webSettled = !canSearchWeb || webResults !== null;
+    // runQuerySearch가 performSearch에서 status=loading을 동기 세팅하므로 검색이
+    // 시작되면 status.kind !== "idle"이 항상 참 — web/addr 절은 명시적 안전망일 뿐
+    // 실질 dead code다(의도 보존용으로 남김).
     const anyStarted =
       status.kind !== "idle" ||
       (canSearchAddress && addrStatus.kind !== "idle") ||
@@ -595,7 +598,13 @@ export function PlaceSearch({
         </div>
       )}
 
-      {(status.kind === "done" || addrStatus.kind === "done") && (
+      {/* 웹은 장소·주소와 병렬인 보조 보완 섹션이라, 장소가 에러/로딩이고 주소가
+          없어도 웹 결과만 있으면 컨테이너를 그려 웹 단독 결과가 가려지지 않게 한다.
+          장소 에러 표시는 컨테이너 밖 live region(liveMessage)이 담당하므로
+          status.kind==="error"는 조건에 넣지 않는다(빈 컨테이너·중복 헤딩 방지). */}
+      {(status.kind === "done" ||
+        addrStatus.kind === "done" ||
+        (canSearchWeb && webResults !== null && webResults.length > 0)) && (
         <div className="mt-4">
           <h2
             ref={resultsHeadingRef}
