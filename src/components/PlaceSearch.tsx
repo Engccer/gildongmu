@@ -495,8 +495,7 @@ export function PlaceSearch({
     placeErrored: status.kind === "error",
   });
   const resultsHeading =
-    (headingParts ?? []).map((p) => t(p.key, p.values ?? {})).join(", ") ||
-    t("search.resultsAnnouncement", { count: 0 });
+    (headingParts ?? []).map((p) => t(p.key, p.values ?? {})).join(", ");
 
   // 장소 섹션 본체(기존 칩 + ResultList). places 0이면 sectionOrder가 제외하므로
   // 여기 도달 시 places>0 가정.
