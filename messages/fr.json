@@ -411,8 +411,7 @@
       "generalRoute": "Comment puis-je m'y rendre ?",
       "generalSurroundings": "Qu'y a-t-il à proximité ?",
       "generalWeather": "Indique-moi la qualité de l'air et la météo ici"
-    },
-    "launchForLocation": "Poser une question sur ma position actuelle"
+    }
   },
   "beacon": {
     "heading": "Distance jusqu'à la destination",
@@ -482,11 +481,10 @@
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "narrative": {
       "here": "Vous êtes à <place></place>.",
-      "station": "La station de métro la plus proche est <name></name>{line}, à environ {distance} {direction}.",
+      "station": "La station de métro la plus proche est <name></name><line></line>, à environ {distance} {direction}.",
       "landmarksLead": "À proximité, vous trouverez ",
       "landmarkItem": "<name></name> ({category}) à environ {distance} {direction}",
-      "landmarksTail": ", et plus encore.",
-      "lineSuffix": " ({line})"
+      "landmarksTail": ", et plus encore."
     },
     "chatButton": "Poser une question sur ma position actuelle",
     "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord.",

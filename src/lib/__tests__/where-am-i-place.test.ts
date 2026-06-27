@@ -25,6 +25,14 @@ describe("whereAmIToPlace", () => {
     ).toBe("현재 위치");
   });
 
+  it("region 없고 road 없으면 jibun을 name으로 쓴다", () => {
+    const p = whereAmIToPlace(
+      { ...base, region: null, address: { jibun: "길동 123" } },
+      coord,
+    );
+    expect(p.name).toBe("길동 123");
+  });
+
   it("category는 빈 문자열(역 오분류 방지)", () => {
     expect(whereAmIToPlace(base, coord).category).toBe("");
   });

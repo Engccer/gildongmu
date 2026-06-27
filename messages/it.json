@@ -411,8 +411,7 @@
       "generalRoute": "Come ci arrivo?",
       "generalSurroundings": "Cosa c'è nelle vicinanze?",
       "generalWeather": "Dimmi la qualità dell'aria e il meteo qui"
-    },
-    "launchForLocation": "Chiedi informazioni sulla mia posizione attuale"
+    }
   },
   "beacon": {
     "heading": "Distanza dalla destinazione",
@@ -482,11 +481,10 @@
     "geoUnsupported": "Questo browser non supporta la posizione.",
     "narrative": {
       "here": "Ti trovi a <place></place>.",
-      "station": "La stazione della metropolitana più vicina è <name></name>{line}, a circa {distance} a {direction}.",
+      "station": "La stazione della metropolitana più vicina è <name></name><line></line>, a circa {distance} a {direction}.",
       "landmarksLead": "Nelle vicinanze troverai ",
       "landmarkItem": "<name></name> ({category}) a circa {distance} a {direction}",
-      "landmarksTail": ", e altro ancora.",
-      "lineSuffix": " ({line})"
+      "landmarksTail": ", e altro ancora."
     },
     "chatButton": "Chiedi informazioni sulla mia posizione attuale",
     "source": "Fonte: Kakao Map. Le direzioni sono rilevamenti dal nord.",

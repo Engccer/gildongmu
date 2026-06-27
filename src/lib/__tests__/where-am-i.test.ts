@@ -70,12 +70,14 @@ describe("buildLocationNarrative", () => {
     ).toBe("서울특별시 강동구 길동, 천호대로 1042");
   });
 
-  it("landmarks는 거리순 상위 6개로 자른다", () => {
-    const many = Array.from({ length: 10 }, (_, i) => lm(`p${i}`, (i + 1) * 10));
+  it("landmarks는 입력 순서를 유지하며 앞 6개로 자른다 (정렬 안 함)", () => {
+    // buildLocationNarrative는 정렬하지 않고 slice만 한다. 정렬은 상류
+    // rankSurroundings 책임이므로, 의도적으로 비오름차순 입력을 줘 계약을 고정.
+    const distances = [50, 10, 30, 20, 40, 60, 80, 70, 90, 100];
+    const many = distances.map((d, i) => lm(`p${i}`, d));
     const out = buildLocationNarrative({ ...base, landmarks: many });
     expect(out.landmarks).toHaveLength(6);
-    expect(out.landmarks[0].distanceMeters).toBe(10);
-    expect(out.landmarks[5].distanceMeters).toBe(60);
+    expect(out.landmarks.map((l) => l.distanceMeters)).toEqual([50, 10, 30, 20, 40, 60]);
   });
 
   it("station은 그대로 통과시킨다", () => {

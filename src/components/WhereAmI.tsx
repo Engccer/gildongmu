@@ -170,9 +170,12 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
                 {" "}
                 {t.rich("narrative.station", {
                   name: () => <span lang="ko">{narrative.station!.name}</span>,
-                  line: narrative.station.line
-                    ? t("narrative.lineSuffix", { line: narrative.station.line })
-                    : "",
+                  line: () =>
+                    narrative.station!.line ? (
+                      <span lang="ko">{` (${narrative.station!.line})`}</span>
+                    ) : (
+                      ""
+                    ),
                   direction: t(`direction.${narrative.station.bearing}`),
                   distance: formatDistance(narrative.station.distanceMeters),
                 })}
