@@ -105,3 +105,41 @@ export async function coordToAddress(coord: Coord): Promise<{
   if (!display) return null;
   return { roadAddress, jibunAddress, display };
 }
+
+const COORD2REGION_ENDPOINT =
+  "https://dapi.kakao.com/v2/local/geo/coord2regioncode.json";
+
+export interface KakaoRegionDocument {
+  /** "H"=행정동, "B"=법정동 */
+  region_type: "H" | "B";
+  /** "서울특별시 강동구 길동" */
+  address_name: string;
+}
+
+/** 행정동(H) 우선, 없으면 법정동(B) 첫 항목, 없으면 null. */
+export function pickRegionDocument(
+  docs: KakaoRegionDocument[],
+): KakaoRegionDocument | null {
+  return (
+    docs.find((d) => d.region_type === "H") ?? docs[0] ?? null
+  );
+}
+
+/** 좌표 → 행정동 표시 문자열(예 "서울특별시 강동구 길동"). 없으면 null. */
+export async function coordToRegion(coord: Coord): Promise<string | null> {
+  const url = new URL(COORD2REGION_ENDPOINT);
+  url.searchParams.set("x", String(coord.lng));
+  url.searchParams.set("y", String(coord.lat));
+
+  const res = await fetch(url, {
+    headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
+    next: { revalidate: 3600 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`카카오 좌표→행정동 변환 실패: HTTP ${res.status} ${body}`);
+  }
+  const data = (await res.json()) as { documents: KakaoRegionDocument[] };
+  const doc = pickRegionDocument(data.documents ?? []);
+  return doc?.address_name || null;
+}
