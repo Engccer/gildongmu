@@ -40,6 +40,7 @@ import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
+import { WhereAmI } from "./WhereAmI";
 import { LocalConditions } from "./LocalConditions";
 
 type Status =
@@ -72,6 +73,7 @@ export function PlaceSearch({
   canShowAir = false,
   canShowKids = false,
   canShowSurroundings = false,
+  canShowWhereAmI = false,
   canShowTransit = false,
   canSearchAddress = false,
   canSearchWeb = false,
@@ -94,6 +96,8 @@ export function PlaceSearch({
   canShowKids?: boolean;
   /** 카카오 키가 있어 내 주변 둘러보기(주변 시설·방향)를 제공할 수 있는지 */
   canShowSurroundings?: boolean;
+  /** 카카오 키가 있어 현재 위치 정위 카드를 제공할 수 있는지 */
+  canShowWhereAmI?: boolean;
   /** ODsay 키가 있어 대중교통 길찾기 브리핑을 제공할 수 있는지 */
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
@@ -597,6 +601,9 @@ export function PlaceSearch({
       </p>
 
       {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
+      {canShowWhereAmI && status.kind === "idle" && (
+        <WhereAmI canShowChat={canShowChat} />
+      )}
       {canShowSubway && status.kind === "idle" && (
         <div className="mt-4">
           <SubwayArrivalsNearby />

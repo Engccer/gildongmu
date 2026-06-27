@@ -31,6 +31,7 @@ export default async function HomePage({
       canShowAir={hasDataGoKrKey()}
       canShowKids={hasKakaoKey()}
       canShowSurroundings={hasKakaoKey()}
+      canShowWhereAmI={hasKakaoKey()}
       canShowTransit={hasOdsayKey()}
       canSearchAddress={hasJusoKey()}
       canSearchWeb={hasPerplexityKey()}
