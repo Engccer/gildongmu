@@ -482,17 +482,17 @@
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "narrative": {
       "here": "Vous êtes à <place></place>.",
-      "station": "La station de métro la plus proche est <name></name>{line}, à environ {distance} au {direction}.",
+      "station": "La station de métro la plus proche est <name></name>{line}, à environ {distance} {direction}.",
       "landmarksLead": "À proximité, vous trouverez ",
-      "landmarkItem": "<name></name> ({category}) à environ {distance} au {direction}",
+      "landmarkItem": "<name></name> ({category}) à environ {distance} {direction}",
       "landmarksTail": ", et plus encore.",
       "lineSuffix": " ({line})"
     },
     "chatButton": "Poser une question sur ma position actuelle",
     "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord.",
     "direction": {
-      "n": "nord", "ne": "nord-est", "e": "est", "se": "sud-est",
-      "s": "sud", "sw": "sud-ouest", "w": "ouest", "nw": "nord-ouest"
+      "n": "au nord", "ne": "au nord-est", "e": "à l'est", "se": "au sud-est",
+      "s": "au sud", "sw": "au sud-ouest", "w": "à l'ouest", "nw": "au nord-ouest"
     },
     "category": {
       "convenience": "supérette", "subway": "station de métro", "restaurant": "restaurant",
