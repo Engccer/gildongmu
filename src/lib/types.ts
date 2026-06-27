@@ -642,6 +642,36 @@ export interface SurroundingPlace {
 }
 
 /**
+ * "현재 위치" 정위 카드(where-am-i) — 좌표를 받아 네 조각을 병렬 조립한 결과.
+ * 각 조각은 독립 실패(부분 실패 격리) — 전부 비면 라우트가 502.
+ */
+export interface WhereAmI {
+  /** 도로명/지번 주소(coordToAddress). 둘 다 없으면 null. */
+  address: { road?: string; jibun?: string } | null;
+  /** 행정동 표시 문자열(coordToRegion, 예 "서울특별시 강동구 길동"). 없으면 null. */
+  region: string | null;
+  /** 가장 가까운 도시철도역 1곳(1km 내). 없으면 null. */
+  nearestStation: {
+    name: string;
+    line?: string;
+    bearing: CompassDirection;
+    distanceMeters: number;
+  } | null;
+  /** 주변 기준점(거리순, 카페·음식점 포함). 없으면 빈 배열. */
+  landmarks: SurroundingPlace[];
+}
+
+/** 산문 렌더용 구조화 데이터 — 순수 buildLocationNarrative 산출(컴포넌트가 5개 언어로 렌더). */
+export interface LocationNarrative {
+  /** 단락1 위치 문자열(행정동 + 도로명 조합). 둘 다 없으면 null → 위치 문장 생략. */
+  place: string | null;
+  /** 단락1 역 문장 데이터. 없으면 null → 역 문장 생략. */
+  station: WhereAmI["nearestStation"];
+  /** 단락2 기준점(상위 6). 빈 배열이면 단락2 생략. */
+  landmarks: SurroundingPlace[];
+}
+
+/**
  * 웹 검색 결과 1건 — Perplexity Search API 정규화.
  * 채팅 LLM이 산문에 종합하고, web-results 카드로 출처 링크를 노출한다.
  */

@@ -1,0 +1,64 @@
+import { describe, it, expect } from "vitest";
+import { buildLocationNarrative } from "../where-am-i";
+import type { WhereAmI, SurroundingPlace } from "../types";
+
+function lm(id: string, distanceMeters: number): SurroundingPlace {
+  return {
+    id,
+    name: id,
+    category: "convenience",
+    categoryRaw: "가정,생활 > 편의점",
+    distanceMeters,
+    bearing: "n",
+    lat: 37.5,
+    lng: 127.1,
+  };
+}
+
+const base: WhereAmI = {
+  address: { road: "천호대로 1042", jibun: "길동 123" },
+  region: "서울특별시 강동구 길동",
+  nearestStation: { name: "굽은다리", line: "5호선", bearing: "se", distanceMeters: 250 },
+  landmarks: [],
+};
+
+describe("buildLocationNarrative", () => {
+  it("행정동과 도로명을 ', '로 합쳐 place를 만든다", () => {
+    expect(buildLocationNarrative(base).place).toBe(
+      "서울특별시 강동구 길동, 천호대로 1042",
+    );
+  });
+
+  it("행정동만 있으면 행정동만, 도로명만 있으면 도로명만", () => {
+    expect(
+      buildLocationNarrative({ ...base, address: null }).place,
+    ).toBe("서울특별시 강동구 길동");
+    expect(
+      buildLocationNarrative({ ...base, region: null, address: { road: "천호대로 1042" } }).place,
+    ).toBe("천호대로 1042");
+  });
+
+  it("주소·행정동 모두 없으면 place는 null", () => {
+    expect(
+      buildLocationNarrative({ ...base, address: null, region: null }).place,
+    ).toBeNull();
+  });
+
+  it("도로명이 없으면 지번으로 폴백한다", () => {
+    expect(
+      buildLocationNarrative({ ...base, region: null, address: { jibun: "길동 123" } }).place,
+    ).toBe("길동 123");
+  });
+
+  it("landmarks는 거리순 상위 6개로 자른다", () => {
+    const many = Array.from({ length: 10 }, (_, i) => lm(`p${i}`, (i + 1) * 10));
+    const out = buildLocationNarrative({ ...base, landmarks: many });
+    expect(out.landmarks).toHaveLength(6);
+    expect(out.landmarks[0].distanceMeters).toBe(10);
+    expect(out.landmarks[5].distanceMeters).toBe(60);
+  });
+
+  it("station은 그대로 통과시킨다", () => {
+    expect(buildLocationNarrative(base).station?.name).toBe("굽은다리");
+  });
+});
