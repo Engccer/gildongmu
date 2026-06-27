@@ -411,7 +411,8 @@
       "generalRoute": "How do I get here?",
       "generalSurroundings": "What's nearby?",
       "generalWeather": "Tell me the air quality and weather here"
-    }
+    },
+    "launchForLocation": "Ask about my current location"
   },
   "beacon": {
     "heading": "Distance to destination",
@@ -467,5 +468,36 @@
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
     "source": "Source: Kakao Map place search. Direction is a compass bearing (from North)."
+  },
+  "whereAmI": {
+    "button": "Where am I",
+    "refresh": "Refresh location",
+    "locating": "Checking your location…",
+    "loading": "Looking up your surroundings…",
+    "empty": "Could not determine your current location.",
+    "error": "Failed to look up your location. Please try again shortly.",
+    "ready": "Current location",
+    "asOf": "as of {time}",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser does not support location.",
+    "narrative": {
+      "here": "You are at <place></place>.",
+      "station": "The nearest subway station is <name></name>{line}, about {distance} to the {direction}.",
+      "landmarksLead": "Nearby you'll find ",
+      "landmarkItem": "<name></name> ({category}) about {distance} to the {direction}",
+      "landmarksTail": ", and more.",
+      "lineSuffix": " ({line})"
+    },
+    "chatButton": "Ask about my current location",
+    "source": "Source: Kakao Map. Directions are compass bearings from north.",
+    "direction": {
+      "n": "north", "ne": "northeast", "e": "east", "se": "southeast",
+      "s": "south", "sw": "southwest", "w": "west", "nw": "northwest"
+    },
+    "category": {
+      "convenience": "convenience store", "subway": "subway station", "restaurant": "restaurant",
+      "cafe": "café", "bank": "bank", "pharmacy": "pharmacy", "hospital": "hospital",
+      "mart": "mart", "public": "public office", "attraction": "attraction"
+    }
   }
 }

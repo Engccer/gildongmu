@@ -411,7 +411,8 @@
       "generalRoute": "¿Cómo llego hasta aquí?",
       "generalSurroundings": "¿Qué hay cerca?",
       "generalWeather": "Dime la calidad del aire y el tiempo aquí"
-    }
+    },
+    "launchForLocation": "Preguntar sobre mi ubicación actual"
   },
   "beacon": {
     "heading": "Distancia al destino",
@@ -467,5 +468,36 @@
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
     "source": "Fuente: búsqueda de lugares de Kakao Map. La dirección es un rumbo (desde el norte)."
+  },
+  "whereAmI": {
+    "button": "Dónde estoy",
+    "refresh": "Actualizar ubicación",
+    "locating": "Comprobando tu ubicación…",
+    "loading": "Consultando tu entorno…",
+    "empty": "No se pudo determinar tu ubicación actual.",
+    "error": "No se pudo consultar tu ubicación. Inténtalo de nuevo en breve.",
+    "ready": "Ubicación actual",
+    "asOf": "a las {time}",
+    "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
+    "geoUnsupported": "Este navegador no admite la ubicación.",
+    "narrative": {
+      "here": "Estás en <place></place>.",
+      "station": "La estación de metro más cercana es <name></name>{line}, a unos {distance} al {direction}.",
+      "landmarksLead": "Cerca encontrarás ",
+      "landmarkItem": "<name></name> ({category}) a unos {distance} al {direction}",
+      "landmarksTail": ", y más.",
+      "lineSuffix": " ({line})"
+    },
+    "chatButton": "Preguntar sobre mi ubicación actual",
+    "source": "Fuente: Kakao Map. Las direcciones son rumbos desde el norte.",
+    "direction": {
+      "n": "norte", "ne": "noreste", "e": "este", "se": "sureste",
+      "s": "sur", "sw": "suroeste", "w": "oeste", "nw": "noroeste"
+    },
+    "category": {
+      "convenience": "tienda de conveniencia", "subway": "estación de metro", "restaurant": "restaurante",
+      "cafe": "cafetería", "bank": "banco", "pharmacy": "farmacia", "hospital": "hospital",
+      "mart": "supermercado", "public": "oficina pública", "attraction": "atracción"
+    }
   }
 }

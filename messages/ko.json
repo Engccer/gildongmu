@@ -411,7 +411,8 @@
       "generalRoute": "여기까지 가는 법 알려줘",
       "generalSurroundings": "주변에 뭐가 있어?",
       "generalWeather": "이 지역 공기질이랑 날씨 알려줘"
-    }
+    },
+    "launchForLocation": "내 현재 위치에 관해 물어보기"
   },
   "beacon": {
     "heading": "목적지 거리 추적",
@@ -467,5 +468,36 @@
     "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 카카오맵 장소 검색. 방향은 북 기준 방위입니다."
+  },
+  "whereAmI": {
+    "button": "현재 위치 확인",
+    "refresh": "위치 새로고침",
+    "locating": "현재 위치 확인 중…",
+    "loading": "주변 정보 조회 중…",
+    "empty": "현재 위치 정보를 찾지 못했습니다.",
+    "error": "현재 위치 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+    "ready": "현재 위치",
+    "asOf": "{time} 기준",
+    "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
+    "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
+    "narrative": {
+      "here": "현재 위치는 <place></place>입니다.",
+      "station": "가장 가까운 지하철역은 <name></name>{line}, {direction}쪽 약 {distance}입니다.",
+      "landmarksLead": "주변에는 ",
+      "landmarkItem": "{direction}쪽 약 {distance}에 <name></name> {category}",
+      "landmarksTail": " 등이 있습니다.",
+      "lineSuffix": "({line})"
+    },
+    "chatButton": "내 현재 위치에 관해 물어보기",
+    "source": "출처: 카카오맵. 방향은 북 기준 방위입니다.",
+    "direction": {
+      "n": "북", "ne": "북동", "e": "동", "se": "남동",
+      "s": "남", "sw": "남서", "w": "서", "nw": "북서"
+    },
+    "category": {
+      "convenience": "편의점", "subway": "지하철역", "restaurant": "음식점",
+      "cafe": "카페", "bank": "은행", "pharmacy": "약국", "hospital": "병원",
+      "mart": "마트", "public": "공공기관", "attraction": "관광명소"
+    }
   }
 }

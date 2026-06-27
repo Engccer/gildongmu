@@ -411,7 +411,8 @@
       "generalRoute": "Comment puis-je m'y rendre ?",
       "generalSurroundings": "Qu'y a-t-il à proximité ?",
       "generalWeather": "Indique-moi la qualité de l'air et la météo ici"
-    }
+    },
+    "launchForLocation": "Poser une question sur ma position actuelle"
   },
   "beacon": {
     "heading": "Distance jusqu'à la destination",
@@ -467,5 +468,36 @@
     "geoDenied": "L'autorisation de localisation est requise. Veuillez l'autoriser dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "source": "Source : recherche de lieux Kakao Map. La direction est un cap (depuis le nord)."
+  },
+  "whereAmI": {
+    "button": "Où suis-je",
+    "refresh": "Actualiser la position",
+    "locating": "Vérification de votre position…",
+    "loading": "Recherche de votre environnement…",
+    "empty": "Impossible de déterminer votre position actuelle.",
+    "error": "Échec de la localisation. Veuillez réessayer dans un instant.",
+    "ready": "Position actuelle",
+    "asOf": "à {time}",
+    "geoDenied": "L'autorisation de localisation est requise. Autorisez l'accès à la position dans votre navigateur.",
+    "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
+    "narrative": {
+      "here": "Vous êtes à <place></place>.",
+      "station": "La station de métro la plus proche est <name></name>{line}, à environ {distance} au {direction}.",
+      "landmarksLead": "À proximité, vous trouverez ",
+      "landmarkItem": "<name></name> ({category}) à environ {distance} au {direction}",
+      "landmarksTail": ", et plus encore.",
+      "lineSuffix": " ({line})"
+    },
+    "chatButton": "Poser une question sur ma position actuelle",
+    "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord.",
+    "direction": {
+      "n": "nord", "ne": "nord-est", "e": "est", "se": "sud-est",
+      "s": "sud", "sw": "sud-ouest", "w": "ouest", "nw": "nord-ouest"
+    },
+    "category": {
+      "convenience": "supérette", "subway": "station de métro", "restaurant": "restaurant",
+      "cafe": "café", "bank": "banque", "pharmacy": "pharmacie", "hospital": "hôpital",
+      "mart": "supermarché", "public": "bureau public", "attraction": "attraction"
+    }
   }
 }

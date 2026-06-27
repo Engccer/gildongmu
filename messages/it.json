@@ -411,7 +411,8 @@
       "generalRoute": "Come ci arrivo?",
       "generalSurroundings": "Cosa c'è nelle vicinanze?",
       "generalWeather": "Dimmi la qualità dell'aria e il meteo qui"
-    }
+    },
+    "launchForLocation": "Chiedi informazioni sulla mia posizione attuale"
   },
   "beacon": {
     "heading": "Distanza dalla destinazione",
@@ -467,5 +468,36 @@
     "geoDenied": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso nel browser.",
     "geoUnsupported": "Questo browser non supporta la geolocalizzazione.",
     "source": "Fonte: ricerca luoghi Kakao Map. La direzione è un rilevamento (dal nord)."
+  },
+  "whereAmI": {
+    "button": "Dove mi trovo",
+    "refresh": "Aggiorna posizione",
+    "locating": "Controllo della tua posizione…",
+    "loading": "Ricerca dei dintorni…",
+    "empty": "Impossibile determinare la tua posizione attuale.",
+    "error": "Impossibile localizzarti. Riprova tra poco.",
+    "ready": "Posizione attuale",
+    "asOf": "alle {time}",
+    "geoDenied": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso alla posizione nel browser.",
+    "geoUnsupported": "Questo browser non supporta la posizione.",
+    "narrative": {
+      "here": "Ti trovi a <place></place>.",
+      "station": "La stazione della metropolitana più vicina è <name></name>{line}, a circa {distance} a {direction}.",
+      "landmarksLead": "Nelle vicinanze troverai ",
+      "landmarkItem": "<name></name> ({category}) a circa {distance} a {direction}",
+      "landmarksTail": ", e altro ancora.",
+      "lineSuffix": " ({line})"
+    },
+    "chatButton": "Chiedi informazioni sulla mia posizione attuale",
+    "source": "Fonte: Kakao Map. Le direzioni sono rilevamenti dal nord.",
+    "direction": {
+      "n": "nord", "ne": "nord-est", "e": "est", "se": "sud-est",
+      "s": "sud", "sw": "sud-ovest", "w": "ovest", "nw": "nord-ovest"
+    },
+    "category": {
+      "convenience": "minimarket", "subway": "stazione della metropolitana", "restaurant": "ristorante",
+      "cafe": "caffè", "bank": "banca", "pharmacy": "farmacia", "hospital": "ospedale",
+      "mart": "supermercato", "public": "ufficio pubblico", "attraction": "attrazione"
+    }
   }
 }
