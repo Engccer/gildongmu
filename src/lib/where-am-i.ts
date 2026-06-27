@@ -10,12 +10,28 @@ const LANDMARK_CAP = 6;
 const STATION_RADIUS = 1000;
 
 /**
+ * 도로명에서 행정동과 겹치는 행정구역 접두(시·도 + 시·군·구)를 제거한다.
+ * 행정동·도로명이 둘 다 풀 주소라 "서울특별시 강동구"가 두 번 낭독되는 것을 막아
+ * "서울특별시 강동구 길동, 천중로44길 74"처럼 한 번만 읽히게 한다(시각장애 사용자
+ * 중복 낭독 회피). region이 없거나 토큰이 2개 미만이거나 접두가 안 맞으면 원문 유지.
+ */
+function stripRegionPrefix(region: string | null, road: string): string {
+  if (!region) return road;
+  const tokens = region.split(/\s+/);
+  if (tokens.length < 2) return road;
+  const prefix = tokens.slice(0, -1).join(" "); // 동/읍/면 제외한 시·도+시·군·구
+  return road.startsWith(prefix + " ") ? road.slice(prefix.length + 1) : road;
+}
+
+/**
  * 순수: WhereAmI → 산문 렌더용 구조화 데이터.
  * place는 행정동 + 도로명(없으면 지번)을 ", "로 합친 위치 문자열, 둘 다 없으면 null.
+ * 도로명이 행정동의 시·구 접두로 시작하면 중복을 떼어 간결하게 한다.
  * landmarks는 거리순 상위 LANDMARK_CAP. 입력을 변형하지 않는다.
  */
 export function buildLocationNarrative(data: WhereAmI): LocationNarrative {
-  const road = data.address?.road || data.address?.jibun || null;
+  const rawRoad = data.address?.road || data.address?.jibun || null;
+  const road = rawRoad ? stripRegionPrefix(data.region, rawRoad) : null;
   const parts = [data.region, road].filter((s): s is string => Boolean(s));
   const place = parts.length > 0 ? parts.join(", ") : null;
   return {

@@ -50,6 +50,26 @@ describe("buildLocationNarrative", () => {
     ).toBe("길동 123");
   });
 
+  it("도로명이 행정동의 시·구 접두로 시작하면 중복을 제거한다", () => {
+    expect(
+      buildLocationNarrative({
+        ...base,
+        region: "서울특별시 강동구 길동",
+        address: { road: "서울특별시 강동구 천중로44길 74" },
+      }).place,
+    ).toBe("서울특별시 강동구 길동, 천중로44길 74");
+  });
+
+  it("접두가 겹치지 않는 도로명은 그대로 둔다", () => {
+    expect(
+      buildLocationNarrative({
+        ...base,
+        region: "서울특별시 강동구 길동",
+        address: { road: "천호대로 1042" },
+      }).place,
+    ).toBe("서울특별시 강동구 길동, 천호대로 1042");
+  });
+
   it("landmarks는 거리순 상위 6개로 자른다", () => {
     const many = Array.from({ length: 10 }, (_, i) => lm(`p${i}`, (i + 1) * 10));
     const out = buildLocationNarrative({ ...base, landmarks: many });
