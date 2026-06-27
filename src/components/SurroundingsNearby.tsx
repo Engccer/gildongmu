@@ -62,7 +62,8 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
     }
   }
 
-  function load() {
+  function load(force = false) {
+    const prevStatus = status;
     claim();
     if (inFlightRef.current) return;
     inFlightRef.current = true;
@@ -70,14 +71,21 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
       inFlightRef.current = false;
     };
     setStatus({ kind: "locating" });
-    void awaitGeolocation().then((g) => {
+    void awaitGeolocation({ force }).then((g) => {
       if (g.status === "ready") {
         void fetchAt(g.coords.lat, g.coords.lng).finally(done);
       } else {
-        setStatus({
-          kind: "geoerror",
-          reason: g.status === "unsupported" ? "unsupported" : "denied",
-        });
+        // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
+        // 복원하고, 첫 조회 실패면 geoerror. 실내 등에서 정밀 재취득(GPS)이 자주
+        // 실패할 수 있어 데이터 소멸을 막는다.
+        setStatus(
+          prevStatus.kind === "done"
+            ? prevStatus
+            : {
+                kind: "geoerror",
+                reason: g.status === "unsupported" ? "unsupported" : "denied",
+              },
+        );
         done();
       }
     });
@@ -124,7 +132,7 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
       <button
         ref={triggerRef}
         type="button"
-        onClick={load}
+        onClick={() => load(status.kind === "done")}
         aria-disabled={busy}
         aria-busy={busy}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"

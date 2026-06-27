@@ -66,7 +66,8 @@ export function BusArrivals(
     }
   }
 
-  function load() {
+  function load(force = false) {
+    const prevStatus = status;
     // 홈(current)에서만 아코디언 점유를 가져간다 — 다른 펼친 패널이 스스로 닫힌다.
     // 상세(place)에선 단일 패널이라 조정 불필요.
     if (props.mode === "current") claim();
@@ -82,14 +83,21 @@ export function BusArrivals(
     // current 모드 — 공유 스토어에서 좌표를 얻는다(세션 1회 권한 획득 뒤 캐시 재사용,
     // 매 버튼마다 getCurrentPosition을 부르지 않아 팝업이 반복되지 않음).
     setStatus({ kind: "locating" });
-    void awaitGeolocation().then((g) => {
+    void awaitGeolocation({ force }).then((g) => {
       if (g.status === "ready") {
         void fetchAt(g.coords.lat, g.coords.lng).finally(done);
       } else {
-        setStatus({
-          kind: "geoerror",
-          reason: g.status === "unsupported" ? "unsupported" : "denied",
-        });
+        // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
+        // 복원하고, 첫 조회 실패면 geoerror. 실내 등에서 정밀 재취득(GPS)이 자주
+        // 실패할 수 있어 데이터 소멸을 막는다.
+        setStatus(
+          prevStatus.kind === "done"
+            ? prevStatus
+            : {
+                kind: "geoerror",
+                reason: g.status === "unsupported" ? "unsupported" : "denied",
+              },
+        );
         done();
       }
     });
@@ -141,7 +149,7 @@ export function BusArrivals(
       <button
         ref={triggerRef}
         type="button"
-        onClick={load}
+        onClick={() => load(status.kind === "done")}
         aria-disabled={busy}
         aria-busy={busy}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
