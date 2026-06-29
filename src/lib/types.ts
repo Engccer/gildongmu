@@ -681,3 +681,43 @@ export interface WebSearchResult {
   snippet: string;
   date: string | null;
 }
+
+/**
+ * 무장애 여행 관광지 하나 — 한국관광공사 KorWithService2 locationBasedList2 정규화.
+ * 좌표기반 검색 결과 + 계산 거리. 장소 상세(편의시설)는 BarrierFreeDetail 참조.
+ */
+export interface BarrierFreePlace {
+  contentId: string;
+  name: string;
+  /** contenttypeid 라벨(빈 문자열 허용 — Task 1 비범위) */
+  category: string;
+  address: string;
+  lat: number;
+  lng: number;
+  /** 출발 좌표로부터 Haversine 거리(m, 반올림) */
+  distanceMeters: number;
+}
+
+/**
+ * 무장애 편의시설 항목 하나 — 화이트리스트 키·한글 라벨·서술형 값.
+ * 값이 비어있지 않은 것만 포함된다(3-state 중 "값 있음" 만).
+ */
+export interface BarrierFreeFacility {
+  /** 원본 필드 키 (예: "wheelchair") */
+  key: string;
+  /** 한글 라벨 (예: "휠체어 대여") */
+  label: string;
+  /** 서술형 텍스트(비어있지 않음) */
+  value: string;
+}
+
+/**
+ * 무장애 여행 편의시설 상세 — KorWithService2 detailWithTour2 정규화.
+ * facilities는 값이 있는 화이트리스트 항목만 담는다(빈 배열 가능).
+ */
+export interface BarrierFreeDetail {
+  contentId: string;
+  name: string;
+  /** 값 있는 편의시설만, 빈 배열 가능 */
+  facilities: BarrierFreeFacility[];
+}
