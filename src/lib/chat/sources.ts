@@ -38,6 +38,8 @@ export function sourceFor(
       return [AIRKOREA];
     case "get_night_clinics":
       return [NMC];
+    case "get_nearby_barrier_free":
+      return [TOURAPI];
     case "get_kids_places":
     case "get_surroundings":
       return [KAKAO];

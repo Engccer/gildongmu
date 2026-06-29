@@ -22,6 +22,7 @@ import { SeoulMetroFacilities } from "@/components/SeoulMetroFacilities";
 import { CarRouteBriefing } from "@/components/CarRouteBriefing";
 import { TransitRouteBriefing } from "@/components/TransitRouteBriefing";
 import { WebResults } from "@/components/WebResults";
+import { BarrierFreeNearby } from "@/components/BarrierFreeNearby";
 import { SourceList } from "./SourceList";
 
 /**
@@ -133,6 +134,8 @@ function RenderBlock({
       return <SubwayArrivalsNearby />;
     case "clinics-nearby":
       return <NightClinicsNearby />;
+    case "barrier-free-nearby":
+      return <BarrierFreeNearby autoLoad />;
     case "kids-nearby":
       return <KidsPlacesNearby />;
     case "surroundings-nearby":

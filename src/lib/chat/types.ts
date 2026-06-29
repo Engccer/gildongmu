@@ -43,6 +43,7 @@ export type RenderPayload =
   // self-fetch 컴포넌트 마운트 — 파라미터만 (컴포넌트가 직접 fetch):
   | { type: "subway-nearby" }                                   // <SubwayArrivalsNearby/>
   | { type: "clinics-nearby" }                                  // <NightClinicsNearby/>
+  | { type: "barrier-free-nearby" }                             // <BarrierFreeNearby autoLoad/>
   | { type: "kids-nearby" }                                     // <KidsPlacesNearby/>
   | { type: "surroundings-nearby" }                             // <SurroundingsNearby/>
   | { type: "bus"; mode: "current" }

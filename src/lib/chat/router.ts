@@ -11,6 +11,7 @@ import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
 import { fetchNearbyBusStops } from "@/lib/bus";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNear } from "@/lib/providers/night-clinic";
+import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
 import { findStationMeta } from "@/lib/subway-stations";
@@ -85,6 +86,13 @@ export async function executeFunction(
       const clinics = await findNightClinicsNear(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "clinics-nearby" } as const);
       return { data: { count: clinics.length, clinics: clinics.slice(0, 5) }, render, source: src };
+    }
+    case "get_nearby_barrier_free": {
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const places = await searchBarrierFreeNearby(anchor.lat, anchor.lng);
+      const render = ctx.placeAnchor ? undefined : ({ type: "barrier-free-nearby" } as const);
+      return { data: { count: places.length, places: places.slice(0, 8) }, render, source: src };
     }
     case "get_kids_places": {
       const anchor = anchorOf(ctx);

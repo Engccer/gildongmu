@@ -202,6 +202,15 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_nearby_barrier_free",
+      description:
+        "현재 위치(또는 보고 있는 장소) 주변의 무장애 관광지(휠체어·점자블록·음성안내 등 장애인 편의시설을 갖춘 곳)를 보여준다.",
+      parametersJsonSchema: { type: "object", properties: {} },
+    },
+  },
+  {
     gate: hasOdsayKey,
     declaration: {
       name: "get_transit_route",
