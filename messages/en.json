@@ -515,5 +515,9 @@
       "cafe": "café", "bank": "bank", "pharmacy": "pharmacy", "hospital": "hospital",
       "mart": "mart", "public": "public office", "attraction": "attraction"
     }
+  },
+  "barrierFreeInfo": {
+    "heading": "Accessibility facilities",
+    "source": "Source: Korea Tourism Organization barrier-free travel data"
   }
 }

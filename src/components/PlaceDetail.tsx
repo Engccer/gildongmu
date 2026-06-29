@@ -14,6 +14,7 @@ import { SeoulSubwayArrival } from "./SeoulSubwayArrival";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { LocalConditions } from "./LocalConditions";
+import { BarrierFreeInfo } from "./BarrierFreeInfo";
 import { TransitRouteBriefing } from "./TransitRouteBriefing";
 import { ChatOverlay } from "./chat/ChatOverlay";
 
@@ -36,6 +37,7 @@ export function PlaceDetail({
   canShowBike,
   canShowSubway,
   canShowAir,
+  canShowBarrierFree,
   canShowTransit,
   canShowChat = false,
   onBack,
@@ -46,6 +48,7 @@ export function PlaceDetail({
   canShowBike: boolean;
   canShowSubway: boolean;
   canShowAir: boolean;
+  canShowBarrierFree: boolean;
   canShowTransit: boolean;
   canShowChat?: boolean;
   onBack: () => void;
@@ -146,6 +149,9 @@ export function PlaceDetail({
         <BikeStations mode="place" lat={place.lat} lng={place.lng} />
       )}
       {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
+      {canShowBarrierFree && (
+        <BarrierFreeInfo lat={place.lat} lng={place.lng} name={place.name} canShow={canShowBarrierFree} />
+      )}
       {chatOpen && (
         <ChatOverlay
           place={place}

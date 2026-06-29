@@ -515,5 +515,9 @@
       "cafe": "카페", "bank": "은행", "pharmacy": "약국", "hospital": "병원",
       "mart": "마트", "public": "공공기관", "attraction": "관광명소"
     }
+  },
+  "barrierFreeInfo": {
+    "heading": "무장애 편의시설",
+    "source": "출처: 한국관광공사 무장애 여행 정보"
   }
 }

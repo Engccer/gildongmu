@@ -486,6 +486,7 @@ export function PlaceSearch({
         canShowBike={canShowBike}
         canShowSubway={canShowSubway}
         canShowAir={canShowAir}
+        canShowBarrierFree={canShowBarrierFree}
         canShowTransit={canShowTransit}
         canShowChat={canShowChat}
         onBack={backToResults}
