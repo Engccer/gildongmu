@@ -11,6 +11,10 @@ describe("extractTourItems", () => {
     const raw = { response: { body: { items: "" } } };
     expect(extractTourItems(raw)).toEqual([]);
   });
+  it("null/undefined 입력 → 빈 배열(optional chain 가드)", () => {
+    expect(extractTourItems(null)).toEqual([]);
+    expect(extractTourItems(undefined)).toEqual([]);
+  });
   it("단일 객체 item → 배열 1개로 정규화", () => {
     const raw = { response: { body: { items: { item: { contentid: "1" } } } } };
     expect(extractTourItems(raw)).toHaveLength(1);

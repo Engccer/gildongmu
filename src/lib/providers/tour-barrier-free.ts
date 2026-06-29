@@ -6,8 +6,11 @@ import { haversineMeters } from "../geo";
  * 한국관광공사 무장애 여행 정보 provider — B551011/KorWithService2.
  *
  * 장애유형별 무장애 편의시설(휠체어·장애인화장실·점자블록·음성안내 등)을 제공.
- * tour-api.ts(KorService2)와 키·envelope·좌표 규약 동일(serviceKey=TOUR_API_KEY,
- * mapx=경도/mapy=위도, 빈결과 items:"").
+ * tour-api.ts(KorService2)와 envelope·좌표 규약 동일(mapx=경도/mapy=위도, 빈결과
+ * items:""). 인증은 형제 night-clinic.ts와 동일하게 data.go.kr 공용
+ * serviceKey(env.DATA_GO_KR_API_KEY)를 쓴다 — 이 기능의 4계층 게이트가 전부
+ * hasDataGoKrKey()라, 인증 변수도 같은 키로 일치시켜 split-brain(게이트 통과·
+ * provider 빈결과 → 거짓 "없음" 음성)을 막는다.
  *
  * ⚠ 필드 철자는 활용신청 승인 후 실호출로 확정(Task 6) — 한국 공공 API는 철자가
  * 비표준(braile 단철자 등)이라, 화이트리스트 키 중 값이 비어있지 않은 것만 라벨링해
@@ -104,7 +107,7 @@ function normalizePlace(item: Record<string, unknown>, originLat: number, origin
 
 async function callKorWith(operation: string, params: Record<string, string>): Promise<unknown> {
   const url = new URL(`${BASE}/${operation}`);
-  url.searchParams.set("serviceKey", env.TOUR_API_KEY ?? "");
+  url.searchParams.set("serviceKey", env.DATA_GO_KR_API_KEY ?? "");
   url.searchParams.set("MobileOS", "WEB");
   url.searchParams.set("MobileApp", "gildongmu");
   url.searchParams.set("_type", "json");
@@ -123,7 +126,7 @@ export async function searchBarrierFreeNearby(
   lng: number,
   opts: { radiusMeters?: number; limit?: number } = {},
 ): Promise<BarrierFreePlace[]> {
-  if (!env.TOUR_API_KEY) return [];
+  if (!env.DATA_GO_KR_API_KEY) return [];
   const radius = opts.radiusMeters ?? MAX_DISTANCE_METERS;
   const limit = opts.limit ?? TOP_N;
   const raw = await callKorWith("locationBasedList2", {
@@ -142,7 +145,7 @@ export async function searchBarrierFreeNearby(
 
 /** contentId → 무장애 편의시설 상세(값 있는 항목만). 항목 자체가 없으면 null. */
 export async function getBarrierFreeDetail(contentId: string): Promise<BarrierFreeDetail | null> {
-  if (!env.TOUR_API_KEY || !contentId) return null;
+  if (!env.DATA_GO_KR_API_KEY || !contentId) return null;
   const raw = await callKorWith("detailWithTour2", { contentId });
   const items = extractTourItems(raw);
   if (items.length === 0) return null;
@@ -160,13 +163,17 @@ export async function matchBarrierFreePlace(args: {
   lng: number;
   name: string;
 }): Promise<BarrierFreeDetail | null> {
-  if (!env.TOUR_API_KEY) return null;
+  if (!env.DATA_GO_KR_API_KEY) return null;
   const near = await searchBarrierFreeNearby(args.lat, args.lng, {
     radiusMeters: MATCH_RADIUS_METERS,
     limit: 10,
   });
   const target = normalizeName(args.name);
-  const matched = near.find((p) => normalizeName(p.name) === target);
+  // 이름 일치 + 코드 측 거리 가드(defense-in-depth). data.go.kr radius 필터가
+  // 느슨해 반경 밖 동명 장소를 줘도 distanceMeters로 false positive를 차단.
+  const matched = near.find(
+    (p) => normalizeName(p.name) === target && p.distanceMeters <= MATCH_RADIUS_METERS,
+  );
   if (!matched) return null;
   return getBarrierFreeDetail(matched.contentId);
 }
