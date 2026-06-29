@@ -47,6 +47,10 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
+  /** 펼침 상세 fetch in-flight(contentId별) — 메인 load의 inFlightRef와 동형.
+      detailCache 가드만으론 리렌더 전 더블클릭 두 클릭이 같은 구 스냅샷을 읽어
+      둘 다 fetch를 시작(stale closure 경쟁)하므로 ref Set으로 즉시 차단한다. */
+  const detailInFlightRef = useRef<Set<string>>(new Set());
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   // 펼친 결과를 다시 감춘다(idle 복귀). restoreFocus면 포커스를 트리거 버튼으로
@@ -145,6 +149,9 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
     setOpenIds((prev) => new Set(prev).add(contentId));
     // 이미 캐시 있으면 재요청 안 함
     if (detailCache[contentId] !== undefined) return;
+    // ref in-flight 가드 — 리렌더 전 더블클릭 중복 fetch 차단(stale closure 경쟁).
+    if (detailInFlightRef.current.has(contentId)) return;
+    detailInFlightRef.current.add(contentId);
     setDetailCache((prev) => ({ ...prev, [contentId]: "loading" }));
     try {
       const res = await fetch(
@@ -162,6 +169,9 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
       }));
     } catch {
       setDetailCache((prev) => ({ ...prev, [contentId]: null }));
+    } finally {
+      // 성공·실패 모두 해제 — 다음 펼침 시도가 막히지 않게.
+      detailInFlightRef.current.delete(contentId);
     }
   }
 

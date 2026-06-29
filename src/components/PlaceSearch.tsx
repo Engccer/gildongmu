@@ -71,6 +71,7 @@ export function PlaceSearch({
   canShowBike = false,
   canShowSubway = false,
   canShowClinic = false,
+  canShowBarrierFree = false,
   canShowAir = false,
   canShowKids = false,
   canShowSurroundings = false,
@@ -91,6 +92,8 @@ export function PlaceSearch({
   canShowSubway?: boolean;
   /** data.go.kr 키가 있어 소아 야간·휴일 진료(달빛어린이병원)를 제공할 수 있는지 */
   canShowClinic?: boolean;
+  /** data.go.kr 키가 있어 내 주변 무장애 관광지(한국관광공사)를 제공할 수 있는지 */
+  canShowBarrierFree?: boolean;
   /** data.go.kr 키가 있어 이 지역 공기질(에어코리아)을 제공할 수 있는지 */
   canShowAir?: boolean;
   /** 카카오 키가 있어 근처 아이 놀 곳(키즈 장소)을 제공할 수 있는지 */
@@ -625,7 +628,7 @@ export function PlaceSearch({
           <NightClinicsNearby canShowChat={canShowChat} />
         </div>
       )}
-      {status.kind === "idle" && (
+      {canShowBarrierFree && status.kind === "idle" && (
         <div className="mt-4">
           <BarrierFreeNearby />
         </div>
