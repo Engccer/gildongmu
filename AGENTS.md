@@ -66,7 +66,7 @@
 - **장소 앵커 불변식**: `placeContext` 있으면 주변 도구는 `anchorOf(ctx)`=장소좌표 기준, 단 **길찾기 출발지는 실제 `userLocation`**(장소로 안 덮음). 장소 앵커 시 기기위치 nearby 카드는 render 생략(산문이 정본). `placeContext` 없으면 동작 byte-identical.
 - **⚠ 장소 특징 날조 금지**: 도구가 준 필드만 — Gemini가 카페 분위기·평판을 사전지식으로 날조하면 시각장애 사용자가 검증 불가([[agentic-llm-fabricates-unstated-fields]], systemInstruction에 명시). 도구는 provider 직접 import 호출(`ToolResult{data,render?,source?}`), self-fetch 카드+출처(`SourceList`) 노출, `data`는 LLM에만(PII 누수 차단).
 - **마크다운 답변**(`react-markdown`+`remark-gfm`): 헤딩은 강조 단락으로 다운그레이드(아웃라인 오염 방지). ⚠ **loose list `remarkTightLists`로 tight 강제** — `<li><p>` 중첩이 iOS VoiceOver 이중 낭독([[markdown-loose-list-voiceover-double-read]]). 완료 통지는 효과음(`playReceive`)+포커스 이동(진행만 live region).
-- **14개 도구**: 장소2(검색·주소)·내주변4·좌표3(버스·따릉이·공기질)·역명2·길찾기2·웹검색1(`search_web` Perplexity). 각 게이트. `get_bus_route`는 V1 제외.
+- **15개 도구**: 장소2(검색·주소)·내주변5(소아진료·아이놀곳·둘러보기·지하철·무장애관광지)·좌표3(버스·따릉이·공기질)·역명2·길찾기2·웹검색1(`search_web` Perplexity). 각 게이트. `get_bus_route`는 V1 제외.
 
 ### 통합 카탈로그 (provider · route · 핵심 함정)
 세부 구현·검증은 각 spec(`docs/superpowers/specs`) 참조. 새 통합 추가 시 위 횡단 함정·게이트 패턴을 적용.
@@ -87,6 +87,7 @@
 | 아이 놀 곳 | kids-places / `/api/places/kids` | 카카오 키워드→`category_name` 화이트리스트(키워드 매칭≠키즈), 실내/외 3-state |
 | 둘러보기 | surroundings / `/api/places/around` | 카카오 카테고리(10종)+8방위(`bearing.ts`), ⚠ heading 없어 정면-상대 방향 금지 |
 | 현재 위치 정위 | where-am-i / `/api/where-am-i` | 4조각 allSettled 조립, 산문은 결정론 템플릿(LLM 아님), `stripRegionPrefix` 중복제거 |
+| 무장애 여행 정보 | tour-barrier-free / `/api/places/barrier-free[/detail/match]` | 한국관광공사 KorWithService2(B551011). 편의시설 화이트리스트 라벨링(⚠ 필드 철자는 실호출 확정), 장소상세 매칭 좌표50m∩이름(코드 거리 가드 병행). **게이트·인증 모두 `DATA_GO_KR_API_KEY`로 일치**(split-brain 금지). ⚠ 활용신청 별도(API별 독립 승인) |
 | 자동차 경로 | 카카오모빌리티(ko) / ncp-directions(en) / `/api/route/car` | en=NCP 영문 턴바이턴, NCP duration=ms(위 단위 함정) |
 | 대중교통 | odsay / `/api/route/transit` | 환승도보 `{distance:0}` leg 제외, error -98→null. ⚠ Vercel IP 미동작(PROGRESS) |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
@@ -99,7 +100,7 @@
 | 키 | 게이트 | 용도·비고 |
 |---|---|---|
 | `KAKAO_REST_API_KEY` | `hasKakaoKey` | 로컬검색+지오코딩+카카오모빌리티 자동차경로 (dodo 앱 공유, 1개로 전부) |
-| `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` | `hasDataGoKrKey` | **동일값** — data.go.kr 계정당 단일키. 코레일·TAGO·서울지하철역시설·소아진료·공기질·날씨 공유. 신규 추가는 활용신청만 |
+| `TOUR_API_KEY` = `DATA_GO_KR_API_KEY` | `hasDataGoKrKey` | **동일값** — data.go.kr 계정당 단일키. 코레일·TAGO·서울지하철역시설·소아진료·공기질·날씨·무장애여행정보 공유. 신규 추가는 활용신청만. ⚠ 신규 provider 인증은 게이트와 같은 `DATA_GO_KR_API_KEY`로(`TOUR_API_KEY`로 인증하면 게이트와 split-brain — 거짓 "없음" 음성 위험) |
 | `NCP_MAPS_CLIENT_ID/SECRET` | `hasNcpMapsKeys` | en 영문주소 보강 폴백 + en 자동차경로. 헤더 `x-ncp-apigw-api-key-id`/`-key` |
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이). ⚠ 실시간 지하철은 별도 키 |
