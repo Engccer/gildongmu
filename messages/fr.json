@@ -290,6 +290,24 @@
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "source": "Source : recherche de lieux KakaoMap. Intérieur/extérieur est une estimation — veuillez confirmer avant de vous déplacer."
   },
+  "barrierFreeNearby": {
+    "button": "Attractions accessibles à proximité",
+    "refresh": "Actualiser",
+    "locating": "Récupération de votre position…",
+    "loading": "Recherche d'attractions accessibles à proximité…",
+    "ready": "Attractions accessibles près de vous",
+    "empty": "Aucune attraction accessible enregistrée à proximité.",
+    "error": "Impossible de charger les informations sur les attractions accessibles.",
+    "geoDenied": "La permission de localisation a été refusée.",
+    "geoUnsupported": "La localisation n'est pas disponible sur cet appareil.",
+    "asOf": "à {time}",
+    "distance": "{distance}",
+    "showFacilities": "Voir les équipements accessibles",
+    "hideFacilities": "Masquer les équipements",
+    "facilitiesLoading": "Chargement des équipements…",
+    "facilitiesEmpty": "Aucune information sur les équipements accessibles enregistrée.",
+    "source": "Source : informations sur les voyages accessibles de l'Organisation coréenne du tourisme"
+  },
   "airQuality": {
     "heading": "Qualité de l'air",
     "station": "Station de mesure {name} · {distance} km",

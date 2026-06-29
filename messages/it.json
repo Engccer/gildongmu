@@ -290,6 +290,24 @@
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
     "source": "Fonte: ricerca luoghi di KakaoMap. Al chiuso/all'aperto è una stima — verifica prima di visitare."
   },
+  "barrierFreeNearby": {
+    "button": "Attrazioni accessibili vicino a me",
+    "refresh": "Aggiorna",
+    "locating": "Recupero della tua posizione…",
+    "loading": "Ricerca di attrazioni accessibili nelle vicinanze…",
+    "ready": "Attrazioni accessibili vicino a te",
+    "empty": "Nessuna attrazione accessibile registrata nelle vicinanze.",
+    "error": "Impossibile caricare le informazioni sulle attrazioni accessibili.",
+    "geoDenied": "L'autorizzazione alla localizzazione è stata negata.",
+    "geoUnsupported": "La localizzazione non è disponibile su questo dispositivo.",
+    "asOf": "alle {time}",
+    "distance": "{distance}",
+    "showFacilities": "Vedi strutture accessibili",
+    "hideFacilities": "Nascondi strutture",
+    "facilitiesLoading": "Caricamento strutture…",
+    "facilitiesEmpty": "Nessuna informazione sulle strutture accessibili registrata.",
+    "source": "Fonte: informazioni sui viaggi accessibili dell'Organizzazione del Turismo della Corea"
+  },
   "airQuality": {
     "heading": "Qualità dell'aria",
     "station": "Stazione di rilevamento {name} · {distance} km",

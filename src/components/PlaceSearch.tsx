@@ -38,6 +38,7 @@ import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { NightClinicsNearby } from "./NightClinicsNearby";
+import { BarrierFreeNearby } from "./BarrierFreeNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
 import { WhereAmI } from "./WhereAmI";
@@ -622,6 +623,11 @@ export function PlaceSearch({
       {canShowClinic && status.kind === "idle" && (
         <div className="mt-4">
           <NightClinicsNearby canShowChat={canShowChat} />
+        </div>
+      )}
+      {status.kind === "idle" && (
+        <div className="mt-4">
+          <BarrierFreeNearby />
         </div>
       )}
       {canShowKids && status.kind === "idle" && (

@@ -290,6 +290,24 @@
     "geoUnsupported": "This browser doesn't support location.",
     "source": "Source: KakaoMap place search. Indoor/outdoor is an estimate — please confirm before visiting."
   },
+  "barrierFreeNearby": {
+    "button": "Barrier-free attractions near me",
+    "refresh": "Refresh",
+    "locating": "Getting your location…",
+    "loading": "Finding barrier-free attractions nearby…",
+    "ready": "Barrier-free attractions near you",
+    "empty": "No registered barrier-free attractions nearby.",
+    "error": "Couldn't load barrier-free attraction info.",
+    "geoDenied": "Location permission was denied.",
+    "geoUnsupported": "Location is not available on this device.",
+    "asOf": "as of {time}",
+    "distance": "{distance}",
+    "showFacilities": "View accessibility facilities",
+    "hideFacilities": "Hide facilities",
+    "facilitiesLoading": "Loading facilities…",
+    "facilitiesEmpty": "No accessibility facility info registered.",
+    "source": "Source: Korea Tourism Organization barrier-free travel information"
+  },
   "airQuality": {
     "heading": "Air Quality",
     "station": "{name} monitoring station · {distance} km",
