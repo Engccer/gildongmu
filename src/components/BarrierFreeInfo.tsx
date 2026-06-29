@@ -25,6 +25,18 @@ export function BarrierFreeInfo({
   const [detail, setDetail] = useState<BarrierFreeDetail | null>(null);
   const headingId = useId();
 
+  // 장소(props) 변경 시 렌더 단계에서 이전 데이터 즉시 폐기 — A(시설 표시 중)→B
+  // 전환 때 B의 fetch 완료 전까지 A의 무장애 정보가 화면에 남아 낭독되는 false
+  // positive를 차단한다(active 가드는 늦은 응답만 막지 이미 렌더된 stale은 못 지움).
+  // React 공식 "prop 변경 시 상태 리셋" 패턴 — effect 내 동기 setState(cascading
+  // 렌더 경고)·post-paint 깜빡임을 모두 피한다.
+  const placeKey = `${lat},${lng},${name}`;
+  const [prevKey, setPrevKey] = useState(placeKey);
+  if (placeKey !== prevKey) {
+    setPrevKey(placeKey);
+    setDetail(null);
+  }
+
   useEffect(() => {
     if (!canShow) return;
     const controller = new AbortController();
