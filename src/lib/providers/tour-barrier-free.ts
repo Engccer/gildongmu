@@ -25,35 +25,58 @@ const TOP_N = 8;
 const MATCH_RADIUS_METERS = 50; // 장소 상세 매칭 — 좁게(false positive 차단)
 
 /** 무장애 편의시설 필드 화이트리스트 → 한글 라벨. ⚠ Task 6에서 실응답으로 교정. */
+// ⚠ 키 철자는 detailWithTour2 실응답으로 확정(2026-06-30 서울도서관 130183·덕수궁
+// 1605981 실호출). 응답은 무장애 필드 전체를 항상 포함(빈 값이라도 키 존재)하므로
+// 화이트리스트는 그 키 중 "무장애 편의시설"만 골라 한글 라벨을 단다(contentid 등 제외).
 export const BARRIER_FREE_FIELD_LABELS: Record<string, string> = {
   // 지체/공통
   wheelchair: "휠체어 대여",
   restroom: "장애인 화장실",
   elevator: "엘리베이터",
   parking: "장애인 주차장",
-  route: "주출입구 접근로",
-  exit: "출입문",
-  publictransport: "대중교통",
+  route: "접근로",
+  exit: "주출입구",
+  publictransport: "대중교통·접근",
+  ticketoffice: "매표소 장애인 편의",
+  auditorium: "공연장·객석 장애인석",
+  room: "객실 장애인 편의",
+  handicapetc: "장애인 편의(기타)",
   // 시각
   braileblock: "점자블록",
   audioguide: "음성안내",
-  braileguide: "점자 안내책자",
+  brailepromotion: "점자 안내물",
   guidehuman: "안내요원",
   helpdog: "보조견 동반",
   bigprint: "큰글씨 자료",
-  guidesystem: "음성안내 시스템",
+  guidesystem: "음성유도기",
+  blindhandicapetc: "시각장애 편의(기타)",
   // 청각
   signguide: "수어 안내",
-  videoguide: "자막 영상안내",
+  videoguide: "자막·영상 안내",
+  hearingroom: "청각 보조 설비",
   hearinghandicapetc: "청각장애 편의(기타)",
-  // 영유아
+  // 영유아·가족
   lactationroom: "수유실",
   stroller: "유모차 대여",
   babysparechair: "유아용 의자",
+  infantsfamilyetc: "영유아·가족 편의(기타)",
 };
 
 function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
+}
+
+/**
+ * 무장애 편의시설 값 정제 — detailWithTour2 실응답은 `<br/>` 태그와 `_무장애
+ * 편의시설`류 분류 접미를 섞어 준다(2026-06-30 실측). 그대로 두면 스크린 리더가
+ * "br" 태그·언더바를 낭독하므로 평문으로 정규화한다(정적 리뷰가 못 잡는 데이터 현실).
+ */
+export function cleanFacilityValue(v: unknown): string {
+  return String(v ?? "")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/_(무장애|시각장애인|청각장애인|영유아가족|고령자)\s*편의시설/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 function numF(v: unknown): number {
   if (v == null || (typeof v === "string" && v.trim() === "")) return NaN;
@@ -82,7 +105,7 @@ function resultCode(raw: unknown): string | null {
 export function labelFacilities(item: Record<string, unknown>): BarrierFreeFacility[] {
   const out: BarrierFreeFacility[] = [];
   for (const [key, label] of Object.entries(BARRIER_FREE_FIELD_LABELS)) {
-    const value = str(item[key]);
+    const value = cleanFacilityValue(item[key]);
     if (value) out.push({ key, label, value });
   }
   return out;
