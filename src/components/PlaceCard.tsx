@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Place } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 
 export function PlaceCard({
   place,
@@ -23,11 +23,12 @@ export function PlaceCard({
         <span>
           <span className="block text-lg font-bold">{place.name}</span>
           <span className="mt-0.5 block text-sm text-muted">
-            {place.category}
-            {place.distanceMeters != null && (
-              <span className="ml-2">
-                {t("distance", { distance: formatDistance(place.distanceMeters) })}
-              </span>
+            {joinText(
+              place.category,
+              place.distanceMeters != null &&
+                t("distance", {
+                  distance: formatDistance(place.distanceMeters),
+                }),
             )}
           </span>
           {/* 영문 주소가 없어 한글 주소를 그대로 보일 땐 lang="ko"를 줘

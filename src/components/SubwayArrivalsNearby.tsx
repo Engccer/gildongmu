@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { NearbySubwayStation } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
+import { prefersEnglish } from "@/lib/data-locale";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { SubwayArrivalList } from "./SubwayArrivalList";
@@ -31,6 +32,7 @@ type Status =
 export function SubwayArrivalsNearby() {
   const t = useTranslations("subwayNearby");
   const tActions = useTranslations("actions");
+  const isEn = prefersEnglish(useLocale());
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
@@ -157,10 +159,7 @@ export function SubwayArrivalsNearby() {
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -174,21 +173,17 @@ export function SubwayArrivalsNearby() {
           <ul className="mt-2 space-y-4">
             {status.stations.map((s) => (
               <li key={`${s.stationName}-${s.distanceMeters}`}>
+                {/* 한 줄 = 한 객체: 역명(현재 언어)·노선·거리를 단일 텍스트로
+                    합쳐 VoiceOver가 한 번에 낭독한다. 한국어 데이터(노선)는
+                    en 로케일에서도 한국어 표기뿐이라 그대로 둔다. */}
                 <h4 className="font-medium">
-                  <span lang="ko">{s.stationName}</span>
-                  {s.nameEn && (
-                    <span className="ml-1 text-xs font-normal opacity-70" lang="en">
-                      {s.nameEn}
-                    </span>
-                  )}{" "}
-                  <span className="text-xs font-normal opacity-70">
-                    {s.lines.length > 0 && (
-                      <span lang="ko">{s.lines.join(", ")} · </span>
-                    )}
-                    {t("stationDistance", {
+                  {joinText(
+                    isEn ? s.nameEn || s.stationName : s.stationName,
+                    s.lines.length > 0 && s.lines.join(", "),
+                    t("stationDistance", {
                       distance: formatDistance(s.distanceMeters),
-                    })}
-                  </span>
+                    }),
+                  )}
                 </h4>
                 {s.arrivalStatus === "unavailable" ? (
                   <p className="mt-1 text-sm opacity-70">{t("arrivalUnavailable")}</p>

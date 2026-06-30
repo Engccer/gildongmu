@@ -457,7 +457,7 @@
     "error": "Could not load nearby places. Please try again.",
     "ready": "Places near you.",
     "asOf": "as of {time}",
-    "item": "{category} · {direction} · about {distance}",
+    "item": "{category}, {direction}, about {distance}",
     "category": {
       "convenience": "convenience store",
       "subway": "subway station",

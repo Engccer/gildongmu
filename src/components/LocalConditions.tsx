@@ -83,9 +83,7 @@ export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
 
       {air && (
         <div className="mt-3">
-          <p className="text-sm">
-            <span className="font-medium">{t("airLabel")}</span>
-          </p>
+          <p className="text-sm">{t("airLabel")}</p>
           <AirQualityBody air={air} />
         </div>
       )}
@@ -119,10 +117,8 @@ function WeatherBody({ weather }: { weather: Weather }) {
 
   return (
     <div className="text-sm leading-relaxed">
-      <p>
-        <span className="font-medium">{conditionWord}</span>
-        {weather.tempC != null ? `, ${weather.tempC}°C` : ""}
-      </p>
+      {/* 상태어+기온을 단일 텍스트로(라벨 볼드 분절 포기). 상태어가 3-state 정본. */}
+      <p>{`${conditionWord}${weather.tempC != null ? `, ${weather.tempC}°C` : ""}`}</p>
       {weather.tempMax != null && weather.tempMin != null && (
         <p>{t("highLow", { max: weather.tempMax, min: weather.tempMin })}</p>
       )}

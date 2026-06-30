@@ -457,7 +457,7 @@
     "error": "주변 조회에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "ready": "내 주변 시설입니다.",
     "asOf": "{time} 기준",
-    "item": "{category} · {direction}쪽 · 약 {distance}",
+    "item": "{category}, {direction}쪽, 약 {distance}",
     "category": {
       "convenience": "편의점",
       "subway": "지하철역",

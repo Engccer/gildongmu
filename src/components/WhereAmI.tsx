@@ -145,10 +145,7 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
       {status.kind === "done" && narrative && (
         <div className="mt-2 rounded-md border border-border p-3">
           <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -159,23 +156,23 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
             {tActions("close")}
           </button>
 
-          {/* 단락 1 — 위치 + 가장 가까운 역 */}
+          {/* 단락 1 — 위치 + 가장 가까운 역. 결정론 산문 한 단락을 한 텍스트 런으로:
+              장소·역명·노선을 <span>으로 감싸지 않고 문자열로 보간해 VoiceOver가
+              문장을 끊지 않고 한 번에 낭독한다(산문 템플릿 자체는 불변). */}
           <p className="mt-2 text-sm leading-relaxed">
             {narrative.place &&
               t.rich("narrative.here", {
-                place: () => <span lang="ko">{narrative.place}</span>,
+                place: () => narrative.place,
               })}
             {narrative.station && (
               <>
                 {" "}
                 {t.rich("narrative.station", {
-                  name: () => <span lang="ko">{narrative.station!.name}</span>,
+                  name: () => narrative.station!.name,
                   line: () =>
-                    narrative.station!.line ? (
-                      <span lang="ko">{` (${narrative.station!.line})`}</span>
-                    ) : (
-                      ""
-                    ),
+                    narrative.station!.line
+                      ? ` (${narrative.station!.line})`
+                      : "",
                   direction: t(`direction.${narrative.station.bearing}`),
                   distance: formatDistance(narrative.station.distanceMeters),
                 })}
@@ -191,7 +188,7 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
                 <Fragment key={l.id}>
                   {i > 0 && ", "}
                   {t.rich("narrative.landmarkItem", {
-                    name: () => <span lang="ko">{l.name}</span>,
+                    name: () => l.name,
                     category: t(`category.${l.category}`),
                     direction: t(`direction.${l.bearing}`),
                     distance: formatDistance(l.distanceMeters),

@@ -26,7 +26,7 @@ describe("SourceList", () => {
   });
 
   it("출처 라벨을 i18n 키로 표시", () => {
-    render(
+    const { container } = render(
       <SourceList
         sources={[
           { label: "source.kakao" },
@@ -34,10 +34,12 @@ describe("SourceList", () => {
         ]}
       />
     );
-    // vi.mock: t(key)는 키를 그대로 반환
-    expect(screen.getByText("sources")).toBeTruthy();
-    expect(screen.getByText("source.kakao")).toBeTruthy();
-    expect(screen.getByText("source.airkorea")).toBeTruthy();
+    // 한 줄 = 한 접근성 객체: 라벨을 개별 span으로 쪼개지 않고 <p> 텍스트로
+    // 합친다 → 개별 요소가 아니라 합쳐진 텍스트로 검증. vi.mock: t(key)는 키 반환.
+    const text = container.textContent ?? "";
+    expect(text).toContain("sources");
+    expect(text).toContain("source.kakao");
+    expect(text).toContain("source.airkorea");
   });
 
   it("url 있으면 링크로 렌더", () => {
@@ -54,8 +56,8 @@ describe("SourceList", () => {
   });
 
   it("url 없으면 텍스트(링크 아님)로 렌더", () => {
-    render(<SourceList sources={[{ label: "source.tago" }]} />);
-    expect(screen.getByText("source.tago")).toBeTruthy();
+    const { container } = render(<SourceList sources={[{ label: "source.tago" }]} />);
+    expect(container.textContent).toContain("source.tago");
     expect(screen.queryByRole("link")).toBeNull();
   });
 });

@@ -457,7 +457,7 @@
     "error": "Impossibile caricare i luoghi vicini. Riprova.",
     "ready": "Luoghi vicino a te.",
     "asOf": "alle {time}",
-    "item": "{category} · {direction} · circa {distance}",
+    "item": "{category}, {direction}, circa {distance}",
     "category": {
       "convenience": "minimarket",
       "subway": "stazione della metro",

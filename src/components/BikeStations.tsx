@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
@@ -166,10 +166,7 @@ export function BikeStations(
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -184,12 +181,12 @@ export function BikeStations(
             {status.stations.map((s) => (
               <li key={s.stationId}>
                 <h4 className="font-medium" lang="ko">
-                  {s.name}{" "}
-                  <span className="text-xs font-normal opacity-70">
-                    {t("stationDistance", {
+                  {joinText(
+                    s.name,
+                    t("stationDistance", {
                       distance: formatDistance(s.distanceMeters),
-                    })}
-                  </span>
+                    }),
+                  )}
                 </h4>
                 <p className="text-sm">
                   {t("availability", {

@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { KidsPlace } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { usePlaceChat } from "@/hooks/usePlaceChat";
@@ -159,10 +159,7 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -176,15 +173,16 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
           <ul className="mt-2 space-y-4">
             {status.kids.map((k) => (
               <li key={k.id}>
+                {/* 한 줄 = 한 객체: 이름·분류·실내외·거리를 단일 텍스트로 합친다.
+                    분류·실내외·거리는 번역(로케일 정합)이고 이름은 한국어 전용이라,
+                    SubwayArrivalsNearby와 동형으로 lang 없이 페이지 로케일을 따른다. */}
                 <h4 className="font-medium">
-                  <span lang="ko">{k.name}</span>{" "}
-                  <span className="text-xs font-normal opacity-70">
-                    {t(`kind.${k.kind}`)}
-                    {" · "}
-                    {t(`indoor.${k.indoorOutdoor}`)}
-                    {" · "}
-                    {t("distance", { distance: formatDistance(k.distanceMeters) })}
-                  </span>
+                  {joinText(
+                    k.name,
+                    t(`kind.${k.kind}`),
+                    t(`indoor.${k.indoorOutdoor}`),
+                    t("distance", { distance: formatDistance(k.distanceMeters) }),
+                  )}
                 </h4>
 
                 <p className="mt-1 text-sm" lang="ko">
@@ -196,8 +194,7 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
                 {k.phone && (
                   <p className="mt-1 text-sm">
                     <a href={`tel:${k.phone}`} className="text-accent underline">
-                      {k.phone}
-                      <span className="ml-1 opacity-70">{t("call")}</span>
+                      {joinText(k.phone, t("call"))}
                     </a>
                   </p>
                 )}

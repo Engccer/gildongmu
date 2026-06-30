@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { SubwayArrival } from "@/lib/types";
+import { joinText } from "@/lib/format";
 
 /**
  * 한 역의 실시간 도착 열차 목록 — 상세(SeoulSubwayArrival)·홈 근접
@@ -11,6 +12,10 @@ import type { SubwayArrival } from "@/lib/types";
  * 신분당선 상행) 방향만으로 묶으면 외려 혼란 — 각 항목이 노선·방향·방면·메시지로
  * 자체완결하는 편이 스크린리더 순차 낭독에 명확하다(미니멀 접근성, A2 정본).
  * arvlMsg2(message)가 완성 한국어 문장이라 낭독 정본 — lang="ko".
+ *
+ * 한 줄 = 한 접근성 객체(joinText): 노선·방면·급행·현재위치를 인라인 span으로
+ * 쪼개면 VoiceOver가 조각마다 멈춘다(가운뎃점까지 별도 객체). 두 줄(편성/메시지)은
+ * 블록이라 자연 분리되지만, 각 줄 내부는 단일 텍스트로 합쳐 한 번에 낭독한다.
  */
 export function SubwayArrivalList({ arrivals }: { arrivals: SubwayArrival[] }) {
   const t = useTranslations("subwayArrival");
@@ -24,21 +29,17 @@ export function SubwayArrivalList({ arrivals }: { arrivals: SubwayArrival[] }) {
       {arrivals.map((a, i) => (
         <li key={`${a.line ?? ""}-${a.trainLineNm}-${i}`} lang="ko">
           <div className="font-medium">
-            {a.line ? `${a.line} ` : ""}
-            {a.direction} · {a.trainLineNm}
-            {a.express && (
-              <span className="ml-1 rounded bg-accent/10 px-1 text-xs text-accent">
-                {t("express")}
-              </span>
+            {joinText(
+              `${a.line ? `${a.line} ` : ""}${a.direction}`,
+              a.trainLineNm,
+              a.express && t("express"),
             )}
           </div>
           <div>
-            {a.message}
-            {a.currentLocation && (
-              <span className="opacity-70">
-                {" "}
-                ({t("currentLocation", { location: a.currentLocation })})
-              </span>
+            {joinText(
+              a.message,
+              a.currentLocation &&
+                t("currentLocation", { location: a.currentLocation }),
             )}
           </div>
         </li>

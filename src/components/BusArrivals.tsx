@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BusStop } from "@/lib/types";
-import { formatDistance, durationToMinutes } from "@/lib/format";
+import { formatDistance, durationToMinutes, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { BusRouteStops } from "./BusRouteStops";
@@ -170,10 +170,7 @@ export function BusArrivals(
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -188,12 +185,12 @@ export function BusArrivals(
             {status.stops.map((stop) => (
               <li key={`${stop.source}-${stop.cityCode}-${stop.nodeId}`}>
                 <h4 className="font-medium" lang="ko">
-                  {stop.name}{" "}
-                  <span className="text-xs font-normal opacity-70">
-                    {t("stopDistance", {
+                  {joinText(
+                    stop.name,
+                    t("stopDistance", {
                       distance: formatDistance(stop.distanceMeters),
-                    })}
-                  </span>
+                    }),
+                  )}
                 </h4>
                 {stop.arrivalStatus === "unavailable" ? (
                   // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — 별도 문구로 통지
@@ -207,26 +204,28 @@ export function BusArrivals(
                         a.routeType || (a.lowFloor ? t("lowFloor") : t("normalBus"));
                       return (
                         <li key={`${a.source}-${a.routeId}-${i}`}>
+                          {/* 한 줄 = 한 객체: 도착 문장과 저상버스 배지를 단일
+                              텍스트로 합친다. 저상 정보는 routeType이 없을 때 이미
+                              type으로 낭독되므로, 중복 낭독을 피해 routeType이 있을
+                              때만 배지를 흡수한다(정보 집합은 동일). */}
                           <span lang="ko">
                             {/* 서울은 arrmsg1 완성 문장이 정본(arrivalMessage), TAGO는 슬롯형. */}
-                            {a.arrivalMessage
-                              ? t("arrivalMessage", {
-                                  route: a.routeNo,
-                                  type,
-                                  message: a.arrivalMessage,
-                                })
-                              : t("arrival", {
-                                  route: a.routeNo,
-                                  type,
-                                  prev: a.prevStationCount,
-                                  min: durationToMinutes(a.arrivalSeconds),
-                                })}
+                            {joinText(
+                              a.arrivalMessage
+                                ? t("arrivalMessage", {
+                                    route: a.routeNo,
+                                    type,
+                                    message: a.arrivalMessage,
+                                  })
+                                : t("arrival", {
+                                    route: a.routeNo,
+                                    type,
+                                    prev: a.prevStationCount,
+                                    min: durationToMinutes(a.arrivalSeconds),
+                                  }),
+                              a.routeType && a.lowFloor && t("lowFloor"),
+                            )}
                           </span>
-                          {a.lowFloor && (
-                            <span className="ml-1 rounded bg-accent/10 px-1 text-xs text-accent">
-                              {t("lowFloor")}
-                            </span>
-                          )}
                           <BusRouteStops
                             source={stop.source}
                             cityCode={stop.cityCode}

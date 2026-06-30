@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
+import { joinText } from "@/lib/format";
 
 type Status =
   | { kind: "idle" }
@@ -87,44 +88,32 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("heading", {
-              name: status.facilities.stationName || stationName,
-            })}
-            {status.facilities.line && (
-              <span className="ml-2 text-xs font-normal opacity-70" lang="ko">
-                {status.facilities.line}
-              </span>
+            {joinText(
+              t("heading", {
+                name: status.facilities.stationName || stationName,
+              }),
+              status.facilities.line,
             )}
           </h3>
 
           <div className="mt-2 space-y-3">
             {status.facilities.groups.map((g) => (
               <div key={g.kind}>
-                <h4 className="text-sm font-semibold" lang="ko">
-                  {t(`kind.${g.kind}`)}{" "}
-                  <span className="font-normal opacity-70">
-                    {t("count", { count: g.facilities.length })}
-                  </span>
+                <h4 className="text-sm font-semibold">
+                  {`${t(`kind.${g.kind}`)} ${t("count", { count: g.facilities.length })}`}
                 </h4>
                 <ul className="mt-1 space-y-1 text-sm leading-relaxed">
                   {g.facilities.map((f, i) => (
                     <li key={`${g.kind}-${i}`} lang="ko">
-                      {f.name}
-                      {f.location && ` — ${f.location}`}
-                      {f.floors && ` (${f.floors})`}
-                      {f.detail && ` · ${f.detail}`}
-                      {f.operatingStatus && (
-                        <span
-                          className={
-                            f.operatingStatus === "stopped"
-                              ? "ml-1 rounded bg-red-500/10 px-1 text-xs text-red-600"
-                              : "ml-1 text-xs opacity-70"
-                          }
-                        >
-                          {f.operatingStatus === "normal"
+                      {joinText(
+                        f.name,
+                        f.location,
+                        f.floors,
+                        f.detail,
+                        f.operatingStatus &&
+                          (f.operatingStatus === "normal"
                             ? t("operatingNormal")
-                            : t("operatingStopped")}
-                        </span>
+                            : t("operatingStopped")),
                       )}
                     </li>
                   ))}

@@ -81,30 +81,22 @@ export function PlaceDetail({
           역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
       <div className="mt-2 text-sm leading-relaxed">
-        <p>
-          <span className="font-medium">{t("place.category")}</span>{" "}
-          {place.category}
+        <p>{`${t("place.category")} ${place.category}`}</p>
+        {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
+            "도로명"/"Road address" 라벨 — 주소 종류로 분기. 라벨+주소를 단일
+            텍스트로 합쳐 한 객체로 낭독(라벨 볼드 분절 포기). 메인 주소가 한글
+            (영문 주소 부재)이면 줄 전체에 lang="ko"(영문 UI에서도 정확히 읽히게). */}
+        <p lang={place.englishAddress ? undefined : "ko"}>
+          {`${place.englishAddress ? t("place.address") : t("place.roadAddress")} ${place.englishAddress ?? (place.roadAddress || place.address)}`}
         </p>
-        <p>
-          {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
-              "도로명"/"Road address" 라벨 — 주소 종류로 분기. */}
-          <span className="font-medium">
-            {place.englishAddress ? t("place.address") : t("place.roadAddress")}
-          </span>{" "}
-          {/* 메인 주소가 한글(영문 주소 부재)일 땐 lang="ko"로 SR 음성 엔진을
-              맞춘다(영문 UI에서도 정확히 읽히게; ko 로케일에선 무해). */}
-          <span lang={place.englishAddress ? undefined : "ko"}>
-            {place.englishAddress ?? (place.roadAddress || place.address)}
-          </span>
-          {place.englishAddress && (place.roadAddress || place.address) && (
-            <span className="mt-0.5 block text-xs text-muted" lang="ko">
-              {place.roadAddress || place.address}
-            </span>
-          )}
-        </p>
+        {place.englishAddress && (place.roadAddress || place.address) && (
+          <p className="mt-0.5 text-xs text-muted" lang="ko">
+            {place.roadAddress || place.address}
+          </p>
+        )}
         {place.phone && (
           <p>
-            <span className="font-medium">{t("place.phone")}</span>{" "}
+            {`${t("place.phone")} `}
             <a href={`tel:${place.phone}`} className="underline">
               {place.phone}
             </a>

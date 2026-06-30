@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { SurroundingPlace } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { usePlaceChat } from "@/hooks/usePlaceChat";
@@ -153,10 +153,7 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -171,21 +168,20 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
             {status.places.map((p) => (
               <li key={p.id}>
                 <h4 className="font-medium">
-                  <span lang="ko">{p.name}</span>{" "}
-                  <span className="text-xs font-normal opacity-70">
-                    {t("item", {
+                  {joinText(
+                    p.name,
+                    t("item", {
                       category: t(`category.${p.category}`),
                       direction: t(`direction.${p.bearing}`),
                       distance: formatDistance(p.distanceMeters),
-                    })}
-                  </span>
+                    }),
+                  )}
                 </h4>
 
                 {p.phone && (
                   <p className="mt-1 text-sm">
                     <a href={`tel:${p.phone}`} className="text-accent underline">
-                      {p.phone}
-                      <span className="ml-1 opacity-70">{t("call")}</span>
+                      {`${p.phone} ${t("call")}`}
                     </a>
                   </p>
                 )}

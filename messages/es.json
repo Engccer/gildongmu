@@ -457,7 +457,7 @@
     "error": "No se pudieron cargar los lugares cercanos. Inténtalo de nuevo.",
     "ready": "Lugares cerca de ti.",
     "asOf": "a las {time}",
-    "item": "{category} · {direction} · unos {distance}",
+    "item": "{category}, {direction}, unos {distance}",
     "category": {
       "convenience": "tienda de conveniencia",
       "subway": "estación de metro",

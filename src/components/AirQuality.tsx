@@ -94,10 +94,9 @@ function PollutantRow({
 }) {
   const gradeText = p.grade === "unknown" ? t("unknown") : t(`grade.${p.grade}`);
   const showValue = p.grade !== "unknown" && p.value != null;
+  // 한 줄 = 한 객체: 라벨·등급·수치를 단일 텍스트 노드로 합친다(라벨 볼드 분절
+  // 포기). 등급 단어가 3-state 정본, 수치는 unknown이 아니고 값이 있을 때만.
   return (
-    <p>
-      <span className="font-medium">{label}</span> {gradeText}
-      {showValue ? ` (${p.value}${unit})` : ""}
-    </p>
+    <p>{`${label} ${gradeText}${showValue ? ` (${p.value}${unit})` : ""}`}</p>
   );
 }

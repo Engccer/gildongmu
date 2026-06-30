@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail, BarrierFreePlace } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
@@ -221,10 +221,7 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           {!autoLoad && (
@@ -243,19 +240,14 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
               const cached = detailCache[p.contentId];
               return (
                 <li key={p.contentId}>
-                  <h4 className="font-medium">
-                    <span lang="ko">{p.name}</span>{" "}
-                    <span className="text-xs font-normal opacity-70">
-                      {p.category ? (
-                        <>
-                          {p.category}
-                          {" · "}
-                        </>
-                      ) : null}
-                      {t("distance", {
+                  <h4 className="font-medium" lang="ko">
+                    {joinText(
+                      p.name,
+                      p.category,
+                      t("distance", {
                         distance: formatDistance(p.distanceMeters),
-                      })}
-                    </span>
+                      }),
+                    )}
                   </h4>
 
                   <p className="mt-1 text-sm" lang="ko">
@@ -293,10 +285,10 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
                         <ul className="space-y-1">
                           {cached.facilities.map((f) => (
                             <li key={f.key}>
-                              {/* 평문 <p> — definition list 금지(SR "용어/정의" 낭독 회피) */}
-                              <p className="text-sm">
-                                <span className="font-medium">{f.label}</span>{" "}
-                                <span lang="ko">{f.value}</span>
+                              {/* 평문 <p> 단일 텍스트 — definition list 금지(SR
+                                  "용어/정의" 낭독 회피) + 라벨·값 span 분절 제거 */}
+                              <p className="text-sm" lang="ko">
+                                {`${f.label} ${f.value}`}
                               </p>
                             </li>
                           ))}

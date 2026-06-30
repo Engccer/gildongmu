@@ -74,10 +74,8 @@ export function BarrierFreeInfo({
       </h3>
       <div className="mt-1 space-y-1 text-sm leading-relaxed">
         {detail.facilities.map((f) => (
-          <p key={f.key}>
-            <span className="font-medium">{f.label}</span>{" "}
-            <span lang="ko">{f.value}</span>
-          </p>
+          // 라벨+값 단일 텍스트 — span 분절 제거(SR 한 객체 낭독)
+          <p key={f.key} lang="ko">{`${f.label} ${f.value}`}</p>
         ))}
       </div>
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>

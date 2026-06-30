@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
+import { joinText } from "@/lib/format";
 
 /**
  * 도시철도역 메타(A3) — 영문역명·노선·환승을 장소 상세에 표시.
@@ -64,35 +65,27 @@ export function StationMeta({ stationName }: { stationName: string }) {
         {t("heading")}
       </h3>
 
-      {/* en: 영문역명을 메인(외국인 정합), 한글명 보조. ko: 영문역명 한 줄 보강. */}
+      {/* 역명은 현재 언어 하나만 — en은 영문역명, ko는 영문역명 한 줄 보강.
+          en에서 한글 보조명은 드롭(블라인드 영어 사용자에겐 한글 낭독이 노이즈,
+          한 줄 한 객체 원칙). 단일 언어라 분절 없음. */}
       {isEn ? (
-        <p className="mt-1">
-          <span className="text-lg font-semibold">{meta.nameEn}</span>
-          <span className="ml-2 text-sm opacity-70" lang="ko">
-            {meta.name}
-          </span>
-        </p>
+        <p className="mt-1 text-lg font-semibold">{meta.nameEn}</p>
       ) : (
         <p className="mt-1 text-sm opacity-80" lang="en">
           {meta.nameEn}
         </p>
       )}
 
-      {/* 정의 리스트 대신 평문 — "용어/정의" 역할·콜론 낭독 노이즈 제거. */}
+      {/* 정의 리스트 대신 평문 한 줄 = 한 객체 — 라벨+값+환승 배지를 단일
+          텍스트로 합친다(볼드 라벨·배지 분절 제거, 환승은 의미 정보라 텍스트 흡수). */}
       <div className="mt-1 text-sm leading-relaxed">
         <p>
-          <span className="font-medium">{t("lines")}</span>{" "}
-          <span lang="ko">{meta.lines.join(", ")}</span>
-          {meta.isTransfer && (
-            <span className="ml-2 rounded bg-accent/10 px-1 text-xs text-accent">
-              {t("transfer")}
-            </span>
+          {joinText(
+            `${t("lines")} ${meta.lines.join(", ")}`,
+            meta.isTransfer && t("transfer"),
           )}
         </p>
-        <p>
-          <span className="font-medium">{t("operator")}</span>{" "}
-          <span lang="ko">{meta.operator}</span>
-        </p>
+        <p>{`${t("operator")} ${meta.operator}`}</p>
       </div>
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}

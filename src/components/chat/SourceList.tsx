@@ -1,4 +1,5 @@
 "use client";
+import { Fragment } from "react";
 import { useTranslations } from "next-intl";
 import type { SourceAttribution } from "@/lib/chat/types";
 
@@ -12,18 +13,18 @@ export function SourceList({ sources }: { sources?: SourceAttribution[] }) {
   if (!sources || sources.length === 0) return null;
   return (
     <p className="mt-2 text-xs text-muted">
-      <span className="font-medium">{t("sources")}</span>{" "}
+      {`${t("sources")} `}
       {sources.map((s, i) => (
-        <span key={s.label}>
+        <Fragment key={s.label}>
           {i > 0 && <span aria-hidden="true">, </span>}
           {s.url ? (
             <a href={s.url} className="underline" target="_blank" rel="noreferrer">
               {t(s.label)}
             </a>
           ) : (
-            <span>{t(s.label)}</span>
+            t(s.label)
           )}
-        </span>
+        </Fragment>
       ))}
     </p>
   );

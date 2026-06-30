@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { usePlaceChat } from "@/hooks/usePlaceChat";
@@ -168,10 +168,7 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("ready")}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <button
@@ -187,28 +184,30 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
               const holiday = c.hours[7];
               return (
                 <li key={c.id || `${c.name}-${c.distanceMeters}`}>
-                  <h4 className="font-medium">
-                    <span lang="ko">{c.name}</span>{" "}
-                    <span className="text-xs font-normal opacity-70">
-                      {c.kind && <span lang="ko">{c.kind} · </span>}
-                      {t("distance", { distance: formatDistance(c.distanceMeters) })}
-                    </span>
+                  {/* 한 줄 = 한 객체: 이름·분류(한국어)·거리를 단일 텍스트로 합친다.
+                      이름·분류가 한국어 전용 데이터라 lang="ko"를 줄 전체로 옮긴다. */}
+                  <h4 className="font-medium" lang="ko">
+                    {joinText(
+                      c.name,
+                      c.kind,
+                      t("distance", { distance: formatDistance(c.distanceMeters) }),
+                    )}
                   </h4>
 
-                  {/* 진료 상태 3-state — 마감과 정보없음을 구분 */}
+                  {/* 진료 상태 3-state — 마감과 정보없음을 구분(분기 유지, 부가 운영시간만 흡수) */}
                   <p className="mt-1 text-sm">
-                    {c.openStatus.state === "open"
-                      ? t("open")
-                      : c.openStatus.state === "closed"
-                        ? t("closed")
-                        : t("unknown")}
-                    {c.openStatus.start != null && c.openStatus.end != null && (
-                      <span className="ml-1 opacity-70">
-                        ({t("todayHours", {
+                    {joinText(
+                      c.openStatus.state === "open"
+                        ? t("open")
+                        : c.openStatus.state === "closed"
+                          ? t("closed")
+                          : t("unknown"),
+                      c.openStatus.start != null &&
+                        c.openStatus.end != null &&
+                        t("todayHours", {
                           start: formatTime(c.openStatus.start),
                           end: formatTime(c.openStatus.end),
-                        })})
-                      </span>
+                        }),
                     )}
                   </p>
 

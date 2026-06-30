@@ -95,10 +95,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
             tabIndex={-1}
             className="text-base font-semibold"
           >
-            {t("heading", { name: status.data.stationName || stationName })}
-            <span className="ml-2 text-xs font-normal opacity-70">
-              {t("asOf", { time: status.at })}
-            </span>
+            {`${t("heading", { name: status.data.stationName || stationName })} ${t("asOf", { time: status.at })}`}
           </h3>
 
           <SubwayArrivalList arrivals={status.data.arrivals} />
