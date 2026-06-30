@@ -26,7 +26,7 @@
 | 음성 받아쓰기 (Deepgram nova-3) | ✅ prod | 2026-06-19 키 401 사고 복구 |
 | PWA (수제 서비스워커) | ✅ prod | 2026-06-21 |
 | 채팅 (Gemini FC 15도구 + Perplexity 웹) | ✅ prod | 2026-06-21 장소별 진입 재배치, 2026-06-30 무장애 도구 추가(게이트) |
-| 무장애 여행 정보 (한국관광공사 KorWithService2) | ⚠ 코드 완결·활용신청 대기 | 2026-06-30 nearby·장소상세·채팅 3계층 구현+리뷰 완료. KorWithService2 현재 403 → 활용신청 승인 후 실호출 검증(Task 6). 게이트로 prod 死기능 0 |
+| 무장애 여행 정보 (한국관광공사 KorWithService2) | ✅ prod | 2026-06-30 활용신청 자동승인+실호출 검증 완료(서울도서관 130183·덕수궁 1605981). nearby·장소상세 region·채팅 도구 3계층. 라벨 실키 교정(brailepromotion 등)·값 HTML/접미 정제·매칭 50m∩이름 |
 
 ## 프로덕션 env 등록 현황
 
@@ -43,7 +43,6 @@
 - **ODsay 대중교통 길찾기 prod 미동작**: Server 방식이 공인 IP 화이트리스트라 Vercel 가변 IP와 충돌. 개발 머신 IP만 등록. 해결 후보: 고정 IP 애드온/프록시/유료/URI 재검토([[odsay-transit-server-ip-vercel]]). 별도 마일스톤.
 - **둘러보기 기능 B (OSM 횡단보도·점자블록 + 음향신호기)**: 후속 마일스톤. 길동 OSM 보행 태깅 희박 확인(2026-06-20) — OSM은 카카오가 비운 칸만 채우는 보완재. 음향신호기는 OSM 공백→data.go.kr 피벗([[overpass-osm-korea-pedestrian-coverage]]).
 - **idle 홈 heading 레벨 점프**: `h1`→`h3`(nearby 섹션 헤더가 h3, 상위 묶음 h2 없음). 회전자 순회는 안 막힘. 완전 정돈하려면 "내 주변" 묶음 `h2` 도입 필요 — 미니멀 UI 판단 보류.
-- **무장애 여행 정보 Task 6 (실호출 머지 게이트)**: 코드 5계층(provider·route·nearby·장소상세·채팅) + 최종 리뷰 fix 완료(2026-06-30, 8f0799e..9f8c65e). **남은 것: 사용자 활용신청** — https://www.data.go.kr/data/15101897/openapi.do 에서 무장애 여행 정보 활용신청(같은 `DATA_GO_KR_API_KEY`, 무료·대부분 즉시승인). 승인 후 실호출로 `detailWithTour2` 필드 철자 확정 → `BARRIER_FREE_FIELD_LABELS` 교정 → fixture 갱신(plan Task 6). 그 전까지 게이트(hasDataGoKrKey)로 미노출. 설계 `docs/superpowers/specs/2026-06-30-barrier-free-travel-design.md`, 계획 `plans/2026-06-30-barrier-free-travel.md`.
 - **dodo-planet 이식**: 한국 API·채팅 카드를 dodo로 이식하는 spec 작성·저장(`docs/superpowers/specs/2026-06-21-dodo-korea-api-port-design.md`), 미구현. 로드맵 `2026-06-21-chat-relocation-and-dodo-port-roadmap.md`.
 - **`DistanceBeacon`(목적지 거리 추적) 보류 코드**: 마운트만 제거, 코드 5파일+`beacon.*` i18n 보존. 미래 별도 브랜치 고도화 예정 — ⚠ 죽은 코드 청소 시 제거 금지.
 
