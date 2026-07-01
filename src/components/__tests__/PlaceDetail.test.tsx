@@ -69,6 +69,9 @@ describe("PlaceDetail 주소 복사", () => {
     expect(copyButton.classList.contains("min-h-11")).toBe(true);
     expect(copyButton.classList.contains("min-w-11")).toBe(true);
     expect(copyButton.classList.contains("shrink-0")).toBe(true);
+    expect(copyButton.classList.contains("items-start")).toBe(true);
+    expect(copyButton.classList.contains("pt-0.5")).toBe(true);
+    expect(copyButton.classList.contains("items-center")).toBe(false);
   });
 
   it("주소 다음에 복사 버튼, 전화번호 순으로 읽힌다", () => {

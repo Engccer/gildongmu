@@ -119,7 +119,7 @@ export function PlaceDetail({
           <button
             type="button"
             onClick={copyAddress}
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 text-xs font-medium text-accent"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-start justify-center gap-1 pt-0.5 text-xs font-medium text-accent"
           >
             <Copy aria-hidden="true" className="h-3.5 w-3.5" />
             {t("place.copyAddress")}
