@@ -14,9 +14,9 @@ import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
  * 비활성 시 401 NotAuthorizedError("disabled OPEN_MAP_AND_LOCAL service") 반환.
  */
 
-const ENDPOINT = "https://dapi.kakao.com/v2/local/search/keyword.json";
+export const ENDPOINT = "https://dapi.kakao.com/v2/local/search/keyword.json";
 
-interface KakaoLocalDocument {
+export interface KakaoLocalDocument {
   id: string;
   place_name: string;
   category_name: string;
@@ -32,7 +32,7 @@ interface KakaoLocalDocument {
   distance: string;
 }
 
-interface KakaoLocalResponse {
+export interface KakaoLocalResponse {
   documents: KakaoLocalDocument[];
   meta: {
     total_count: number;
