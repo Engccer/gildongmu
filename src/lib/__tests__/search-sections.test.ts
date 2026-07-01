@@ -84,6 +84,32 @@ describe("combinedLiveMessage 공존 모델", () => {
       combinedLiveMessage({ ...base, placeCount: null, webCount: 5, addrCount: 0, placeErrored: true }),
     ).toEqual([{ key: "search.webCount", values: { count: 5 } }]);
   });
+
+  it("명소가 있으면 attractionCount를 맨 앞 part로", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeCount: 15,
+        webCount: 0,
+        addrCount: 0,
+        attractionCount: 3,
+      }),
+    ).toEqual([
+      { key: "search.attractionCount", values: { count: 3 } },
+      { key: "search.placeCount", values: { count: 15 } },
+    ]);
+  });
+  it("명소만 있어도 attractionCount 단일 part", () => {
+    expect(
+      combinedLiveMessage({
+        ...base,
+        placeCount: 0,
+        webCount: 0,
+        addrCount: 0,
+        attractionCount: 2,
+      }),
+    ).toEqual([{ key: "search.attractionCount", values: { count: 2 } }]);
+  });
 });
 
 describe("orderResultSections — 웹", () => {
@@ -109,6 +135,18 @@ describe("orderResultSections 공존", () => {
   });
   it("셋 동시 — 건수 내림차순, 동률 place>web>address", () => {
     expect(orderResultSections(4, 4, 4)).toEqual(["place", "web", "address"]);
+  });
+  it("명소가 있으면 건수와 무관하게 최상단", () => {
+    // 내 주변 15건이 명소 3건보다 많아도 명소가 먼저.
+    expect(orderResultSections(15, 0, 0, 3)).toEqual(["attraction", "place"]);
+    expect(orderResultSections(2, 5, 0, 1)).toEqual([
+      "attraction",
+      "address",
+      "place",
+    ]);
+  });
+  it("명소가 0이면 기존 순서 그대로", () => {
+    expect(orderResultSections(7, 1, 0, 0)).toEqual(["place", "address"]);
   });
 });
 
