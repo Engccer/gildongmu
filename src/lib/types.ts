@@ -52,8 +52,9 @@ export interface PlaceSearchParams {
 /** 장소 검색 결과 + 메타데이터 */
 export interface PlaceSearchResult {
   places: Place[];
-  /** 어떤 provider가 응답했는지 — UI에서 mock 모드 안내에 사용 */
-  provider: "mock" | "naver-local" | "kakao-local" | "tour-api" | "kakao-attractions" | "merged";
+  /** 어떤 provider가 응답했는지 — UI에서 mock 모드 안내에 사용. "none"은 게이트가
+   * 소스 키 부재로 빈 결과를 반환한 死기능 0 상태(라우트 빈 응답과 동일 의미). */
+  provider: "mock" | "naver-local" | "kakao-local" | "tour-api" | "kakao-attractions" | "merged" | "none";
   query: string;
 }
 

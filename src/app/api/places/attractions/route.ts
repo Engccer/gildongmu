@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { hasKakaoKey } from "@/lib/env";
-import { searchAttractions } from "@/lib/providers/kakao-attractions";
+import { hasKakaoKey, hasTourApiKey } from "@/lib/env";
+import { searchAttractions } from "@/lib/providers/attractions";
 
 /**
- * 관광지·명소 검색 프록시 — 정확도순 카카오 호출로 랜드마크를 surface한다.
- * 거리순 /api/places와 병렬로 호출되며, 카카오 키가 없으면 빈 결과(死기능 0).
+ * 관광지·명소 검색 프록시 — 랜드마크를 surface한다(ko 카카오 정확도순 /
+ * en TourAPI contentTypeId=76). 거리순 /api/places와 병렬로 호출되며,
+ * 두 소스 키가 모두 없으면 빈 결과(死기능 0). 디스패처가 로케일별 소스를 고른다.
  */
 const querySchema = z.object({
   query: z.string().trim().min(1, "검색어가 비어 있습니다").max(100),
@@ -15,7 +16,7 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  if (!hasKakaoKey()) {
+  if (!hasKakaoKey() && !hasTourApiKey()) {
     return NextResponse.json({ places: [], provider: "none", query: "" });
   }
   const parsed = querySchema.safeParse({

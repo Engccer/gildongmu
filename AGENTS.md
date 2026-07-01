@@ -75,7 +75,7 @@
 | 도메인 | provider / route | 핵심 함정·정본 |
 |---|---|---|
 | 장소 검색 | kakao-local / `/api/places` | 좌표 거리순(`buildKakaoSearchUrl`), 우선순위 kakao(15)>naver(5)>mock |
-| 관광지·명소 | kakao-attractions / `/api/places/attractions` | 정확도순 호출→`category_name.startsWith("여행 > 관광,명소")` 필터(⚠ **AT4 group code 아님** — 부속 명소는 group code 빈 문자열, 실호출 확정), cap 5, 좌표 시 Haversine 거리. "경복궁"류 랜드마크가 거리순에 밀려 안 나오던 문제 해결. **결과 있으면 최상단 병치**(`orderResultSections` 4번째 인자, 건수 무관 unshift). ko 데이터 로케일만(en fast-follow=TourAPI 영문명), 게이트 `hasKakaoKey` |
+| 관광지·명소 | 디스패처 `attractions.ts` → ko: kakao-attractions / en: tour-api / `/api/places/attractions` | **로케일 분기**(`searchPlaces` 동형): ko=카카오 정확도순→`category_name.startsWith("여행 > 관광,명소")` 필터(⚠ **AT4 group code 아님** — 부속 명소는 group code 빈 문자열, 실호출 확정), en=TourAPI EngService2 `searchKeyword2`+**서버측 `contentTypeId=76`**(Tourist Attraction, 영문명·매장 배제, ⚠ 78 Cultural Facility 제외로 ko parity). cap 5, 좌표 시 Haversine 거리. **정렬 비대칭**: ko는 정확도순 유지, en은 좌표 있으면 **거리순**(TourAPI엔 정확도 arrange 없어 먼 동명 청도·경주 남산이 상단에 옴 — 실호출 확정, 근접성이 유일 관련도 신호). "경복궁"류 랜드마크가 거리순에 밀려 안 나오던 문제 해결(경복궁 1건이라 en 정렬 무영향). **결과 있으면 최상단 병치**(`orderResultSections` 4번째 인자, 건수 무관 unshift). 게이트 `hasKakaoKey`\|\|`hasTourApiKey` |
 | en 장소 | `searchPlacesMergedEn` | 카카오+TourAPI 병렬 병합, 중복=좌표 4자리. 영문주소 juso→NCP 폴백 |
 | 주소·우편번호 | juso `searchJusoAddresses` / `/api/address/search` | 좌표는 카카오 `/api/geocode` 재사용. `engAddr`는 국가명 미포함 |
 | 코레일 역시설 | korail-facilities / `/api/station/facilities` | 406역 전체 받아 `normalizeStationName` 클라 매칭, `stn_cd` 조인 |

@@ -23,7 +23,7 @@ import {
 export const ATTRACTION_CATEGORY_PREFIX = "여행 > 관광,명소";
 
 /** 명소 표시 상한 — 대표 명소 + 상위 부속. accuracy 순서라 대표가 맨 위. */
-const ATTRACTION_CAP = 5;
+export const ATTRACTION_CAP = 5;
 
 export function isAttraction(category: string): boolean {
   return category.startsWith(ATTRACTION_CATEGORY_PREFIX);
@@ -59,7 +59,8 @@ export function extractAttractions(
   return withDistance.slice(0, ATTRACTION_CAP);
 }
 
-export async function searchAttractions(
+/** ko 명소 검색 — 카카오 로컬 정확도순 + category_name 필터. */
+export async function searchAttractionsKakao(
   params: PlaceSearchParams,
 ): Promise<PlaceSearchResult> {
   const url = buildAttractionSearchUrl(params);

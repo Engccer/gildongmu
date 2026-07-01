@@ -87,7 +87,41 @@ const isAttraction = (p: Place) => p.category.startsWith(ATTRACTION_PREFIX);
 ## 범위 경계
 
 - **v1은 ko 우선.** 신고된 경복궁 케이스 해결이 목표. 카카오 정확도순은 한글 이름만 준다.
-- **en은 fast-follow.** 외국인은 카카오 한글 명소명을 못 읽으므로, en 명소 섹션은 TourAPI(영문 명소명 보유)로 채우는 별도 작업으로 분리(YAGNI — v1에 억지로 끼우지 않음). v1에서 en 로케일은 명소 섹션을 노출하지 않거나(게이트) 후속에서 TourAPI로 채운다. **v1 구현 시 en 경로는 기존 동작 불변**을 보장한다.
+- **en은 fast-follow.** 외국인은 카카오 한글 명소명을 못 읽으므로, en 명소 섹션은 TourAPI(영문 명소명 보유)로 채우는 별도 작업으로 분리(YAGNI — v1에 억지로 끼우지 않음). v1에서 en 로케일은 명소 섹션을 노출하지 않는다(`canAttraction = … && dataLocale === "ko"` 게이트). **v1 구현 시 en 경로는 기존 동작 불변**을 보장한다.
+
+## en 명소 (fast-follow 확정 — 2026-07-01 실호출)
+
+v1의 ko-only 게이트를 풀고 en 로케일도 명소 섹션을 채운다. ko(kakao)와 **소스만 다르고 나머지 배선은 로케일 무관이라 그대로 재사용**한다.
+
+### 판별 신호 — TourAPI `contentTypeId=76` (Tourist Attraction)
+
+실호출 확정: EngService2 `searchKeyword2`에서 **`Gyeongbokgung` + `contentTypeId=76` → 정확히 1건 "Gyeongbokgung Palace"**(동명 매장 전부 79 Shopping으로 배제, 궁궐 1위). 이는 ko의 kakao `category_name` "여행 > 관광,명소" 필터에 대응하는 en 신호다. 78(Cultural Facility=박물관·도서관)은 ko의 관광,명소 트리에 없으므로 **제외**(parity).
+
+kakao(ko)는 서버측 명소 필터가 없어 클라 필터(`isAttraction`)가 불가피했지만, TourAPI(en)는 소스에서 `contentTypeId`로 걸러줘 매장·잡음이 제거되고 궁궐이 1위가 된다 — 클라 필터 불필요, 쿼터 낭비 최소.
+
+### 소스 분리 — en 명소는 TourAPI 단독
+
+일반 장소 섹션(`/api/places`)의 en은 kakao+TourAPI **병합**(`searchPlacesMergedEn`)이지만, **명소 섹션 en은 TourAPI 단독**이다. kakao는 명소명을 한글로만 줘 외국인이 못 읽으므로 병합하면 반쪽이다. 영문명을 주는 TourAPI만 쓴다.
+
+### 아키텍처 — provider 계층 로케일 분기
+
+`searchPlaces`가 이미 쓰는 "provider 계층에서 lang 분기" 패턴을 그대로 따른다. `searchAttractions(params)`를 디스패처로:
+
+```
+searchAttractions(params):
+  if params.lang === "en" && hasTourApiKey() → searchAttractionsTourApi(params)  // 신규
+  else → searchAttractionsKakao(params)  // 기존 body, byte-identical
+```
+
+- **provider**: `tour-api.ts`에 `searchAttractionsTourApi` 신규 — EngService2 `searchKeyword2` + `contentTypeId=76`, 좌표 있으면 Haversine 거리 주입, cap 5. 순수 추출 로직 `extractTourAttractions`는 단위테스트.
+- **정렬(⚠ ko와 다름 — 실호출로 확정)**: TourAPI엔 인기/정확도순 `arrange`가 없다(A 제목·O/Q/R 이미지·수정일 전부 실측). "Namsan"에서 어떤 `arrange`도 청도·경주 남산(수백 km)을 서울 남산 케이블카(479m)보다 위에 올린다. ko(kakao)는 정확도순이 대표를 1위로 올리지만 en은 불가능하므로, **좌표가 있으면 거리순 정렬**해 가장 가까운 실제 관광지를 먼저 보인다(위치 사용자에겐 근접성이 유일한 관련도 신호). 좌표 없으면 소스(제목) 순서. "경복궁"은 결과 1건이라 정렬 무영향 → 신고 케이스 그대로 해결. 소스별 최선 신호를 쓰는 정당한 비대칭(ko 정확도 / en 거리).
+- **route**(`/api/places/attractions`): `lang` 파싱은 이미 존재. 게이트를 `hasKakaoKey() || hasTourApiKey()`로 넓혀 en(TourAPI)도 통과. 디스패처가 소스별 키를 재확인.
+- **client**(`PlaceSearch.tsx`): v1 게이트에서 `&& dataLocale(locale) === "ko"`만 제거 → `canAttraction = canSearchAttractions`. `performAttractionSearch`는 이미 `lang=${dataLocale(locale)}`를 보내므로 그대로. 순서·통지·포커스·렌더는 로케일 무관이라 무변경.
+- **page.tsx**: `canSearchAttractions`를 `hasKakaoKey() || hasTourApiKey()`로(둘 중 하나면 어떤 로케일이든 명소 섹션 가능).
+
+### 수용된 발산 (ko ≠ en)
+
+"cafe"+76 → "Apsan Cafe Street" 등 4건(TourAPI가 카페거리를 관광지로 실분류). ko "카페"는 명소 0건(kakao 관광,명소 없음)이라 섹션 미노출이지만 en은 4건 노출 — **날조 아닌 실분류**라 수용(외국인엔 유효 랜드마크, cap 5로 제한). TourAPI 관광지 범주가 kakao보다 넓은 소스 특성.
 
 ## 열린 항목
 

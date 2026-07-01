@@ -375,9 +375,8 @@ export function PlaceSearch({
       // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
       setWebPending(false);
       setWebResults(null);
-      // 명소는 v1 ko 데이터 로케일만(en 등은 fast-follow — 기존 동작 불변).
-      const canAttraction =
-        canSearchAttractions && dataLocale(locale) === "ko";
+      // 명소 섹션은 ko(카카오)·en(TourAPI) 모두 지원 — route가 로케일별 소스를 고른다.
+      const canAttraction = canSearchAttractions;
       if (!canAttraction) setAttractionStatus({ kind: "idle" });
       // 장소·주소·명소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
       // 0건 폴백 조건일 때만 2단계로 발사한다(카카오·juso가 찾으면 웹 노이즈 회피).
@@ -403,7 +402,6 @@ export function PlaceSearch({
       canSearchAddress,
       canSearchWeb,
       canSearchAttractions,
-      locale,
     ],
   );
 
