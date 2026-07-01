@@ -100,27 +100,31 @@ export function PlaceDetail({
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
       <div className="mt-2 text-sm leading-relaxed">
         <p>{`${t("place.category")} ${place.category}`}</p>
-        {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
-            "도로명"/"Road address" 라벨 — 주소 종류로 분기. 라벨+주소를 단일
-            텍스트로 합쳐 한 객체로 낭독(라벨 볼드 분절 포기). 메인 주소가 한글
-            (영문 주소 부재)이면 줄 전체에 lang="ko"(영문 UI에서도 정확히 읽히게). */}
-        <p lang={place.englishAddress ? undefined : "ko"}>
-          {`${place.englishAddress ? t("place.address") : t("place.roadAddress")} ${place.englishAddress ?? (place.roadAddress || place.address)}`}
-        </p>
-        {place.englishAddress && (place.roadAddress || place.address) && (
-          <p className="mt-0.5 text-xs text-muted" lang="ko">
-            {place.roadAddress || place.address}
-          </p>
-        )}
-        <div ref={copyAnnouncerRef} role="status" aria-live="polite" className="sr-only" />
-        <button
-          type="button"
-          onClick={copyAddress}
-          className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-accent"
-        >
-          <Copy aria-hidden="true" className="h-3.5 w-3.5" />
-          {t("place.copyAddress")}
-        </button>
+        <div className="flex w-fit max-w-full items-start gap-2">
+          <div className="min-w-0">
+            {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
+                "도로명"/"Road address" 라벨 — 주소 종류로 분기. 라벨+주소를 단일
+                텍스트로 합쳐 한 객체로 낭독(라벨 볼드 분절 포기). 메인 주소가 한글
+                (영문 주소 부재)이면 줄 전체에 lang="ko"(영문 UI에서도 정확히 읽히게). */}
+            <p lang={place.englishAddress ? undefined : "ko"}>
+              {`${place.englishAddress ? t("place.address") : t("place.roadAddress")} ${place.englishAddress ?? (place.roadAddress || place.address)}`}
+            </p>
+            {place.englishAddress && (place.roadAddress || place.address) && (
+              <p className="mt-0.5 text-xs text-muted" lang="ko">
+                {place.roadAddress || place.address}
+              </p>
+            )}
+          </div>
+          <div ref={copyAnnouncerRef} role="status" aria-live="polite" className="sr-only" />
+          <button
+            type="button"
+            onClick={copyAddress}
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 text-xs font-medium text-accent"
+          >
+            <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+            {t("place.copyAddress")}
+          </button>
+        </div>
         {place.phone && (
           <p>
             {`${t("place.phone")} `}

@@ -99,6 +99,9 @@ describe("PlaceDetail 주소 복사", () => {
     expect(addressBlock?.classList.contains("flex")).toBe(true);
     expect(addressBlock?.classList.contains("items-start")).toBe(true);
     expect(addressBlock?.classList.contains("gap-2")).toBe(true);
+    expect(addressBlock?.classList.contains("w-fit")).toBe(true);
+    expect(addressBlock?.classList.contains("max-w-full")).toBe(true);
+    expect(address.parentElement?.classList.contains("flex-1")).toBe(false);
     expect(copyButton.classList.contains("min-h-11")).toBe(true);
     expect(copyButton.classList.contains("min-w-11")).toBe(true);
     expect(copyButton.classList.contains("shrink-0")).toBe(true);
@@ -128,8 +131,8 @@ Expected: 첫 테스트가 기존 DOM에서 주소와 버튼이 같은 flex 블�
 `PlaceDetail.tsx`의 주소 단락·상태 통지·복사 버튼을 다음 구조로 바꾼다. 전화번호 단락은 컨테이너 밖의 기존 위치를 유지한다.
 
 ```tsx
-<div className="flex items-start gap-2">
-  <div className="min-w-0 flex-1">
+<div className="flex w-fit max-w-full items-start gap-2">
+  <div className="min-w-0">
     <p lang={place.englishAddress ? undefined : "ko"}>
       {`${place.englishAddress ? t("place.address") : t("place.roadAddress")} ${place.englishAddress ?? (place.roadAddress || place.address)}`}
     </p>
