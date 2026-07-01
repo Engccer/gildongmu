@@ -87,7 +87,11 @@ describe("PlaceDetail 주소 복사", () => {
     expect(
       copyButton.compareDocumentPosition(phone!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    expect(container.querySelector('[role="status"][aria-live="polite"]')).toBeTruthy();
+    const addressRow = address.parentElement?.parentElement;
+    expect(addressRow?.getAttribute("aria-live")).toBe("polite");
+    expect(addressRow?.getAttribute("aria-atomic")).toBe("false");
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(screen.queryByText("place.addressCopied")).toBeNull();
   });
 
   it("주 주소를 클립보드에 쓰고 성공 상태를 통지한다", async () => {
@@ -102,7 +106,7 @@ describe("PlaceDetail 주소 복사", () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(place.englishAddress);
-      expect(screen.getByRole("status").textContent).toBe("place.addressCopied");
+      expect(screen.getByText("place.addressCopied").classList.contains("sr-only")).toBe(true);
     });
   });
 });

@@ -58,12 +58,24 @@ export function PlaceDetail({
   // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
   const [chatOpen, setChatOpen] = useState(false);
   const chatTriggerRef = useRef<HTMLButtonElement>(null);
-  // 주소 복사 통지 전용 announcer(VoiceRecordButton과 동일 패턴) — textContent를
-  // 직접 갱신해 React 배칭과 무관하게 즉시 낭독, 2초 뒤 비워 잔상 방지.
-  const copyAnnouncerRef = useRef<HTMLDivElement>(null);
+  // 복사 성공 때만 기존 주소 행의 live region에 통지 문구를 추가한다. 평상시에는
+  // 빈 status 요소를 남기지 않아 스크린 리더 탐색 중 불필요한 정지를 만들지 않는다.
+  const [copyAnnouncement, setCopyAnnouncement] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
+  const copyAnnouncementIdRef = useRef(0);
+  const copyAnnouncementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, [place.id]);
+  useEffect(() => {
+    return () => {
+      if (copyAnnouncementTimerRef.current) {
+        clearTimeout(copyAnnouncementTimerRef.current);
+      }
+    };
+  }, []);
 
   const copyAddress = useCallback(async () => {
     const address = place.englishAddress ?? (place.roadAddress || place.address);
@@ -72,12 +84,17 @@ export function PlaceDetail({
     } catch {
       return;
     }
-    if (copyAnnouncerRef.current) {
-      copyAnnouncerRef.current.textContent = t("place.addressCopied");
-      setTimeout(() => {
-        if (copyAnnouncerRef.current) copyAnnouncerRef.current.textContent = "";
-      }, 2000);
+    const announcementId = ++copyAnnouncementIdRef.current;
+    setCopyAnnouncement({ id: announcementId, message: t("place.addressCopied") });
+    if (copyAnnouncementTimerRef.current) {
+      clearTimeout(copyAnnouncementTimerRef.current);
     }
+    copyAnnouncementTimerRef.current = setTimeout(() => {
+      setCopyAnnouncement((current) =>
+        current?.id === announcementId ? null : current,
+      );
+      copyAnnouncementTimerRef.current = null;
+    }, 2000);
   }, [place, t]);
 
   return (
@@ -100,7 +117,11 @@ export function PlaceDetail({
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
       <div className="mt-2 text-sm leading-relaxed">
         <p>{`${t("place.category")} ${place.category}`}</p>
-        <div className="flex w-fit max-w-full items-start gap-2">
+        <div
+          className="flex w-fit max-w-full items-start gap-2"
+          aria-live="polite"
+          aria-atomic="false"
+        >
           <div className="min-w-0">
             {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
                 "도로명"/"Road address" 라벨 — 주소 종류로 분기. 라벨+주소를 단일
@@ -115,7 +136,6 @@ export function PlaceDetail({
               </p>
             )}
           </div>
-          <div ref={copyAnnouncerRef} role="status" aria-live="polite" className="sr-only" />
           <button
             type="button"
             onClick={copyAddress}
@@ -124,6 +144,11 @@ export function PlaceDetail({
             <Copy aria-hidden="true" className="h-3.5 w-3.5" />
             {t("place.copyAddress")}
           </button>
+          {copyAnnouncement && (
+            <span key={copyAnnouncement.id} className="sr-only">
+              {copyAnnouncement.message}
+            </span>
+          )}
         </div>
         {place.phone && (
           <p>
