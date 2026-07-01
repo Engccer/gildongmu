@@ -15,7 +15,7 @@
 
 ## 절대 원칙: 접근성
 
-기준 정본은 글로벌 `~/.claude/CLAUDE.md`의 "First Rule of ARIA"(과잉 ARIA 금지, WCAG 실질 요구는 100%). 이 repo의 핵심 규칙:
+기준 정본은 글로벌 접근성 헌장 `~/.claude/ACCESSIBILITY.md`(과잉 ARIA 금지, WCAG 실질 요구는 100%, "한 줄=한 객체", landmark "발견 경로" 규칙). 아래는 그 헌장을 이 repo 코드에 구체화한 것 — 일반 원칙은 헌장이 정본이고 여기엔 repo 고유 디테일(구체 파일 경로·컴포넌트명·계층)만 남긴다:
 
 - **정보의 정본은 리스트/텍스트 UI다. 지도는 시각 보조 레이어다.** 지도 SDK는 캔버스라 스크린 리더 접근 불가 — 지도에만 존재하는 정보가 있으면 버그다.
 - 상태 변화(검색 결과 수·오류·경로)는 단일 polite `aria-live`로 통지. 키보드 도달 + `:focus-visible` 필수. 터치 타깃 ≥44×44px(`min-h-11`). UI 라벨에 이모지 금지.
@@ -51,7 +51,7 @@
 - **현재 위치는 공유 스토어 1곳에서만**(`src/lib/geolocation.ts` 모듈 싱글턴 + `useGeolocation`). 신규 "내 주변"은 `getCurrentPosition` 직접 호출 금지, `awaitGeolocation()` 사용(권한 팝업 세션 1회). **"새로고침"은 `awaitGeolocation({force:true})`**로 정밀 재취득(`PRECISE_OPTS`), ⚠ 실패 시 직전 `done` 데이터 복원(`prevStatus`, 새로고침=재조회이지 데이터 포기 아님).
 - **"내 주변" 패널은 닫기·Esc·아코디언으로 접는다**(`nearby-panel-store.ts` 싱글턴 + `useNearbyPanel`). `claim()`/`close(restoreFocus)`. **포커스 비대칭**: 직접 닫기·Esc는 `restoreFocus=true`(trigger 복귀), 다른 패널이 점유 가져가 자동 닫힐 땐 `false`. ⚠ 채팅 오버레이가 열린 동안은 `engaged:false`로 패널 Esc 비활성(스택된 전역 Esc 경합 — [[stacked-global-esc-listener-conflict]]).
 - **검색→상세 흐름**: 단일 검색창, 카테고리 칩 필터, 장소 선택 시 **History API 뷰 전환**(카카오는 ID 단건조회 없어 메모리 `Place`로 상세). `?q=` URL 동기화 + request-id ref로 stale 응답 폐기.
-- **검색창 3섹션 결정론 병렬**: 장소(`/api/places`)+주소(`/api/address/search` juso 무료)는 **매 검색 병렬**(`Promise.all`), 웹(`/api/search/web` Perplexity)은 **둘 다 0건일 때만 폴백**. ⚠ **Gemini 자연어 라우터 폐기**(LLM을 deterministic 위에 얹은 안티패턴 — "위스키바→바→미용실"로 멀쩡한 쿼리 악화, [[gildongmu-search-router-removed-llm-antipattern]], 부활 금지). 웹 비용방어: IP 레이트리밋(60초 30회)+쿼리 1h 캐시(`unstable_cache`), 실패는 throw로 캐시 회피. 섹션 순서는 건수 내림차순(`orderResultSections`), 통지는 단일 polite 합산(`combinedLiveMessage`), 포커스는 전부 settled 후 1회.
+- **검색창 3섹션 결정론 병렬**: 장소(`/api/places`)+주소(`/api/address/search` juso 무료)는 **매 검색 병렬**(`Promise.all`), 웹(`/api/search/web` Perplexity)은 **둘 다 0건일 때만 폴백**. ⚠ **Gemini 자연어 라우터 폐기**(LLM을 deterministic 위에 얹은 안티패턴 — "위스키바→바→미용실"로 멀쩡한 쿼리 악화, [[gildongmu-search-router-removed-llm-antipattern]], 부활 금지). 웹 비용방어: IP 레이트리밋(60초 30회)+쿼리 1h 캐시(`unstable_cache`), 실패는 throw로 캐시 회피. 섹션 순서는 건수 내림차순(`orderResultSections`), 통지는 단일 polite 합산(`combinedLiveMessage`), 포커스는 전부 settled 후 1회. **명소(`/api/places/attractions`)는 4번째 병렬 섹션**(ko만) — 거리순과 반대 정렬(정확도순)이라 별도 호출, 결과 있으면 **건수 무관 최상단**(랜드마크 의도 신호가 가장 강함). settled·포커스·통지 판정에 명소도 편입([[gildongmu-landmark-attraction-search]] 스펙 `docs/superpowers/specs/2026-07-01-landmark-attraction-search-design.md`).
 - **딥링크로 네이티브 앱 위임**: 실주행 내비는 `nmap://`(`deeplink.ts`)·`kakaomap://`(`deeplink-kakao.ts`). 자체 구현은 "출발 전 미리 듣기" **텍스트 브리핑만**(자동차·대중교통), 실주행은 위임 유지.
 - **데이터 언어 분리**(`src/lib/data-locale.ts`): 외부 API는 ko/en만 제공 → 비한국어(en/es/fr/it)는 영문 데이터 공유. **외부 fetch·영문 분기에 `useLocale()` 원시값 직접 금지, `dataLocale`/`prefersEnglish` 경유**(예외: STT Deepgram은 es/fr/it 직접 인식). i18n 키 일관성은 `i18n-messages.test.ts`가 머지 게이트. 언어 선택 UI는 disclosure 메뉴(국기 이모지 금지, 각 언어 자국어 텍스트+`lang` 속성).
 
@@ -69,6 +69,7 @@
 | 도메인 | provider / route | 핵심 함정·정본 |
 |---|---|---|
 | 장소 검색 | kakao-local / `/api/places` | 좌표 거리순(`buildKakaoSearchUrl`), 우선순위 kakao(15)>naver(5)>mock |
+| 관광지·명소 | kakao-attractions / `/api/places/attractions` | 정확도순 호출→`category_name.startsWith("여행 > 관광,명소")` 필터(⚠ **AT4 group code 아님** — 부속 명소는 group code 빈 문자열, 실호출 확정), cap 5, 좌표 시 Haversine 거리. "경복궁"류 랜드마크가 거리순에 밀려 안 나오던 문제 해결. **결과 있으면 최상단 병치**(`orderResultSections` 4번째 인자, 건수 무관 unshift). ko 데이터 로케일만(en fast-follow=TourAPI 영문명), 게이트 `hasKakaoKey` |
 | en 장소 | `searchPlacesMergedEn` | 카카오+TourAPI 병렬 병합, 중복=좌표 4자리. 영문주소 juso→NCP 폴백 |
 | 주소·우편번호 | juso `searchJusoAddresses` / `/api/address/search` | 좌표는 카카오 `/api/geocode` 재사용. `engAddr`는 국가명 미포함 |
 | 코레일 역시설 | korail-facilities / `/api/station/facilities` | 406역 전체 받아 `normalizeStationName` 클라 매칭, `stn_cd` 조인 |
