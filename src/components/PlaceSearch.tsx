@@ -478,7 +478,7 @@ export function PlaceSearch({
       });
   }, [runQuerySearch]);
 
-  // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
+  // 장소·주소·명소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
   // juso 키 없으면 주소 검색을 안 하므로 장소 settled만으로 판정한다. 검색이 한 번도
   // 일어나지 않은 idle에서는 옮기지 않는다(둘 다 idle).
   const focusedForSearchRef = useRef(false);
@@ -492,13 +492,23 @@ export function PlaceSearch({
     // 검색(대부분)은 webPending=false라 장소·주소 settled 즉시 포커스가 옮겨진다.
     // (webResults!==null로 판정하면 폴백 미발사 검색이 영원히 포커스를 못 받는다.)
     const webSettled = !canSearchWeb || !webPending;
+    // 명소는 결과 최상단 섹션(가장 강한 의도 신호)이라, place가 먼저 done돼도
+    // attraction이 loading이면 포커스를 대기시킨다 — idle(en 로케일·게이트 꺼짐)·
+    // done·error는 모두 non-loading이라 자연히 settled 취급되어 en 기존 동작은 불변.
+    const attractionSettled = attractionStatus.kind !== "loading";
     // runQuerySearch가 performSearch에서 status=loading을 동기 세팅하므로 검색이
     // 시작되면 status.kind !== "idle"이 항상 참 — addr 절은 명시적 안전망일 뿐
     // 실질 dead code다(의도 보존용으로 남김).
     const anyStarted =
       status.kind !== "idle" ||
       (canSearchAddress && addrStatus.kind !== "idle");
-    if (placeSettled && addrSettled && webSettled && anyStarted) {
+    if (
+      placeSettled &&
+      addrSettled &&
+      webSettled &&
+      attractionSettled &&
+      anyStarted
+    ) {
       if (!focusedForSearchRef.current) {
         focusedForSearchRef.current = true;
         requestAnimationFrame(() => resultsHeadingRef.current?.focus());
@@ -507,14 +517,24 @@ export function PlaceSearch({
       // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
       focusedForSearchRef.current = false;
     }
-  }, [status.kind, addrStatus.kind, canSearchAddress, canSearchWeb, webPending]);
+  }, [
+    status.kind,
+    addrStatus.kind,
+    canSearchAddress,
+    canSearchWeb,
+    webPending,
+    attractionStatus.kind,
+  ]);
 
   // 단일 polite 채널 통지. coordError(주소 선택 후 좌표 실패)는 검색 완료 통지와
   // 시점이 달라 우선 노출.
   const placeCount = status.kind === "done" ? status.result.places.length : null;
   const addrCount = addrStatus.kind === "done" ? addrStatus.addresses.length : null;
   const webCount = webResults ? webResults.length : null;
-  const loading = status.kind === "loading" || addrStatus.kind === "loading";
+  const loading =
+    status.kind === "loading" ||
+    addrStatus.kind === "loading" ||
+    attractionStatus.kind === "loading";
   const liveParts: LivePart[] | null =
     addrStatus.kind === "coordError"
       ? [{ key: "search.addressCoordFailed" }]
