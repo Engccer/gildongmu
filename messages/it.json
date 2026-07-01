@@ -72,7 +72,9 @@
     "callAction": "Chiama {name}",
     "openInNaverMap": "Apri in Naver Map",
     "openInKakaoMap": "Apri in Kakao Map",
-    "detailPage": "Pagina dei dettagli"
+    "detailPage": "Pagina dei dettagli",
+    "copyAddress": "Copia",
+    "addressCopied": "Indirizzo copiato negli appunti"
   },
   "address": {
     "postalCode": "Codice postale",

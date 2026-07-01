@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, Copy, MessageSquare } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
@@ -58,9 +58,27 @@ export function PlaceDetail({
   // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
   const [chatOpen, setChatOpen] = useState(false);
   const chatTriggerRef = useRef<HTMLButtonElement>(null);
+  // 주소 복사 통지 전용 announcer(VoiceRecordButton과 동일 패턴) — textContent를
+  // 직접 갱신해 React 배칭과 무관하게 즉시 낭독, 2초 뒤 비워 잔상 방지.
+  const copyAnnouncerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     headingRef.current?.focus();
   }, [place.id]);
+
+  const copyAddress = useCallback(async () => {
+    const address = place.englishAddress ?? (place.roadAddress || place.address);
+    try {
+      await navigator.clipboard.writeText(address);
+    } catch {
+      return;
+    }
+    if (copyAnnouncerRef.current) {
+      copyAnnouncerRef.current.textContent = t("place.addressCopied");
+      setTimeout(() => {
+        if (copyAnnouncerRef.current) copyAnnouncerRef.current.textContent = "";
+      }, 2000);
+    }
+  }, [place, t]);
 
   return (
     <div>
@@ -94,6 +112,15 @@ export function PlaceDetail({
             {place.roadAddress || place.address}
           </p>
         )}
+        <div ref={copyAnnouncerRef} role="status" aria-live="polite" className="sr-only" />
+        <button
+          type="button"
+          onClick={copyAddress}
+          className="mt-1 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-accent"
+        >
+          <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+          {t("place.copyAddress")}
+        </button>
         {place.phone && (
           <p>
             {`${t("place.phone")} `}

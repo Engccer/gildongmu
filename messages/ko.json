@@ -72,7 +72,9 @@
     "callAction": "{name}에 전화 걸기",
     "openInNaverMap": "네이버 지도에서 보기",
     "openInKakaoMap": "카카오맵에서 보기",
-    "detailPage": "상세 정보 페이지"
+    "detailPage": "상세 정보 페이지",
+    "copyAddress": "복사",
+    "addressCopied": "주소가 클립보드에 복사됨"
   },
   "address": {
     "postalCode": "우편번호",
