@@ -47,6 +47,8 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
   const [openIds, setOpenIds] = useState<Set<string>>(new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
+  /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
+  const focusedRef = useRef(false);
   /** 펼침 상세 fetch in-flight(contentId별) — 메인 load의 inFlightRef와 동형.
       detailCache 가드만으론 리렌더 전 더블클릭 두 클릭이 같은 구 스냅샷을 읽어
       둘 다 fetch를 시작(stale closure 경쟁)하므로 ref Set으로 즉시 차단한다. */
@@ -92,7 +94,6 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
         minute: "2-digit",
       });
       setStatus({ kind: "done", places, at });
-      requestAnimationFrame(() => headingRef.current?.focus());
     } catch {
       setStatus({ kind: "error" });
     }
@@ -134,6 +135,21 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
     if (autoLoad) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // done 진입 시 결과 헤딩으로 포커스 이동(접근성 1급). fetch 완료 직후 rAF로
+  // 옮기면 React 커밋과 인과관계가 없어 레이스가 생긴다(헤딩이 아직 DOM에
+  // 없을 수 있음) — useEffect는 커밋 이후 실행이 보장되므로 안전하다
+  // (PlaceDetail·PlaceSearch의 결과 헤딩 포커스와 동형).
+  useEffect(() => {
+    if (status.kind === "done") {
+      if (!focusedRef.current) {
+        focusedRef.current = true;
+        headingRef.current?.focus();
+      }
+    } else {
+      focusedRef.current = false;
+    }
+  }, [status.kind]);
 
   /** 항목의 편의시설 펼침/접기 토글 — 펼칠 때 캐시 없으면 lazy fetch */
   async function toggleFacilities(contentId: string) {

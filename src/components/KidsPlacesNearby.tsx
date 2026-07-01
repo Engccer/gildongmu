@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { KidsPlace } from "@/lib/types";
@@ -37,6 +37,8 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
+  const focusedRef = useRef(false);
   const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
@@ -60,7 +62,6 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
         minute: "2-digit",
       });
       setStatus({ kind: "done", kids, at });
-      requestAnimationFrame(() => headingRef.current?.focus());
     } catch {
       setStatus({ kind: "error" });
     }
@@ -112,6 +113,21 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
     onDismiss,
     onEscape,
   });
+
+  // done 진입 시 결과 헤딩으로 포커스 이동(접근성 1급). fetch 완료 직후 rAF로
+  // 옮기면 React 커밋과 인과관계가 없어 레이스가 생긴다(헤딩이 아직 DOM에
+  // 없을 수 있음) — useEffect는 커밋 이후 실행이 보장되므로 안전하다
+  // (PlaceDetail·PlaceSearch의 결과 헤딩 포커스와 동형).
+  useEffect(() => {
+    if (status.kind === "done") {
+      if (!focusedRef.current) {
+        focusedRef.current = true;
+        headingRef.current?.focus();
+      }
+    } else {
+      focusedRef.current = false;
+    }
+  }, [status.kind]);
 
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
