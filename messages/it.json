@@ -27,9 +27,11 @@
     "addressError": "Ricerca indirizzi non riuscita. Riprova tra poco.",
     "addressCoordFailed": "Impossibile individuare le coordinate di questo indirizzo; non si possono aprire i dettagli.",
     "webSection": "Web",
+    "attractionSection": "Attrazioni",
     "placeCount": "{count} luoghi",
     "webCount": "{count} risultati web",
-    "addressCount": "{count} indirizzi"
+    "addressCount": "{count} indirizzi",
+    "attractionCount": "{count} attrazioni"
   },
   "region": {
     "filterLabel": "Filtra per regione",

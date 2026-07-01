@@ -33,6 +33,7 @@ import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
+import { PlaceCard } from "./PlaceCard";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
@@ -76,6 +77,7 @@ export function PlaceSearch({
   canShowKids = false,
   canShowSurroundings = false,
   canShowWhereAmI = false,
+  canSearchAttractions = false,
   canShowTransit = false,
   canSearchAddress = false,
   canSearchWeb = false,
@@ -102,6 +104,8 @@ export function PlaceSearch({
   canShowSurroundings?: boolean;
   /** 카카오 키가 있어 현재 위치 정위 카드를 제공할 수 있는지 */
   canShowWhereAmI?: boolean;
+  /** 카카오 키가 있어 관광지·명소 검색 섹션을 제공할 수 있는지 */
+  canSearchAttractions?: boolean;
   /** ODsay 키가 있어 대중교통 길찾기 브리핑을 제공할 수 있는지 */
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
@@ -134,6 +138,13 @@ export function PlaceSearch({
     | { kind: "coordError" }
     | { kind: "done"; addresses: JusoAddress[] }
   >({ kind: "idle" });
+  const [attractionStatus, setAttractionStatus] = useState<
+    | { kind: "idle" }
+    | { kind: "loading" }
+    | { kind: "done"; places: Place[] }
+    | { kind: "error" }
+  >({ kind: "idle" });
+  const attractionReqIdRef = useRef(0);
   // 주소 검색 stale-result race 방지(place reqIdRef와 동형).
   const addrReqIdRef = useRef(0);
   // 웹 검색 stale-result race 방지(place reqIdRef와 동형).
@@ -318,6 +329,39 @@ export function PlaceSearch({
   }, []);
 
   /**
+   * 명소 검색 실행 — /api/places/attractions(정확도순+category_name 필터) 호출.
+   * 거리순 장소 검색과 병렬 발사되는 보조 섹션. 결과 있으면 최상단 병치,
+   * 없으면 섹션 미노출(orderResultSections가 제외). place reqId 동형 stale 가드.
+   */
+  const performAttractionSearch = useCallback(
+    async (raw: string): Promise<number> => {
+      const q = raw.trim();
+      if (!q) return 0;
+      const myId = ++attractionReqIdRef.current;
+      setAttractionStatus({ kind: "loading" });
+      try {
+        const coordQuery = userCoords
+          ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
+          : "";
+        const res = await fetch(
+          `/api/places/attractions?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as PlaceSearchResult;
+        if (attractionReqIdRef.current !== myId) return 0;
+        setAttractionStatus({ kind: "done", places: data.places });
+        return data.places.length;
+      } catch {
+        // 보조 섹션 — 실패는 0건 취급(무음 degrade, 폴백 억제는 장소 errored 담당).
+        if (attractionReqIdRef.current !== myId) return 0;
+        setAttractionStatus({ kind: "error" });
+        return 0;
+      }
+    },
+    [locale, userCoords],
+  );
+
+  /**
    * 검색 진입점 단일화 — 장소(performSearch)와, juso 키가 있으면 주소
    * (performAddressSearch)를 함께 발사한다. runSearch(폼 제출)·handleTranscribed
    * (음성)·첫 마운트 ?q= 자동검색 셋이 반드시 이 한 경로를 공유한다. 과거엔 세 곳에
@@ -331,11 +375,16 @@ export function PlaceSearch({
       // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
       setWebPending(false);
       setWebResults(null);
-      // 장소·주소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
+      // 명소는 v1 ko 데이터 로케일만(en 등은 fast-follow — 기존 동작 불변).
+      const canAttraction =
+        canSearchAttractions && dataLocale(locale) === "ko";
+      if (!canAttraction) setAttractionStatus({ kind: "idle" });
+      // 장소·주소·명소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
       // 0건 폴백 조건일 때만 2단계로 발사한다(카카오·juso가 찾으면 웹 노이즈 회피).
       const [place, addrCount] = await Promise.all([
         performSearch(raw),
         canSearchAddress ? performAddressSearch(raw) : Promise.resolve(0),
+        canAttraction ? performAttractionSearch(raw) : Promise.resolve(0),
       ]);
       if (
         canSearchWeb &&
@@ -346,7 +395,16 @@ export function PlaceSearch({
         void performWebSearch(raw);
       }
     },
-    [performSearch, performAddressSearch, performWebSearch, canSearchAddress, canSearchWeb],
+    [
+      performSearch,
+      performAddressSearch,
+      performWebSearch,
+      performAttractionSearch,
+      canSearchAddress,
+      canSearchWeb,
+      canSearchAttractions,
+      locale,
+    ],
   );
 
   function runSearch() {
@@ -465,6 +523,10 @@ export function PlaceSearch({
           placeCount,
           addrCount,
           webCount,
+          attractionCount:
+            attractionStatus.kind === "done"
+              ? attractionStatus.places.length
+              : null,
           spokenQuery,
           placeErrored: status.kind === "error",
         });
@@ -524,10 +586,13 @@ export function PlaceSearch({
   const addrResultCount =
     addrStatus.kind === "done" ? addrStatus.addresses.length : 0;
   const webResultCount = webResults ? webResults.length : 0;
+  const attractionResultCount =
+    attractionStatus.kind === "done" ? attractionStatus.places.length : 0;
   const sectionOrder = orderResultSections(
     placeResultCount,
     addrResultCount,
     webResultCount,
+    attractionResultCount,
   );
   // 둘 이상 섹션이 렌더될 때만 구분 헤딩(단일 섹션은 헤딩 없이).
   // 장소·주소·웹은 항상 병렬이라 공존 시 헤딩이 자연히 켜진다.
@@ -539,6 +604,8 @@ export function PlaceSearch({
     placeCount: status.kind === "done" ? places.length : null,
     addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
     webCount: webResults ? webResults.length : null,
+    attractionCount:
+      attractionStatus.kind === "done" ? attractionStatus.places.length : null,
     spokenQuery: null,
     placeErrored: status.kind === "error",
   });
@@ -579,6 +646,18 @@ export function PlaceSearch({
       addresses={addrStatus.kind === "done" ? addrStatus.addresses : []}
       onSelect={onSelectAddress}
     />
+  );
+
+  // 명소 섹션 본체 — 거리순 내 주변과 동형으로 PlaceCard 재사용(이름·분류·거리는
+  // joinText로 한 줄=한 객체, 버튼은 별도 객체 유지). 카테고리 그룹핑 없음(전부 명소).
+  const attractionSectionBody = (
+    <ul className="mt-3 flex flex-col gap-3">
+      {(attractionStatus.kind === "done" ? attractionStatus.places : []).map(
+        (place) => (
+          <PlaceCard key={place.id} place={place} onOpen={openDetail} />
+        ),
+      )}
+    </ul>
   );
 
   return (
@@ -660,6 +739,7 @@ export function PlaceSearch({
           status.kind==="error"는 조건에 넣지 않는다(빈 컨테이너·중복 헤딩 방지). */}
       {(status.kind === "done" ||
         addrStatus.kind === "done" ||
+        attractionStatus.kind === "done" ||
         (canSearchWeb && webResults !== null && webResults.length > 0)) && (
         <div className="mt-4">
           <h2
@@ -673,6 +753,18 @@ export function PlaceSearch({
             <p className="mt-2">{t("search.noResults")}</p>
           ) : (
             sectionOrder.map((kind) => {
+              if (kind === "attraction") {
+                return (
+                  <section key="attraction" className="mt-4">
+                    {showSectionHeadings && (
+                      <h3 className="text-lg font-semibold">
+                        {t("search.attractionSection")}
+                      </h3>
+                    )}
+                    {attractionSectionBody}
+                  </section>
+                );
+              }
               if (kind === "place") {
                 return (
                   <section key="place" className="mt-4">

@@ -27,9 +27,11 @@
     "addressError": "La búsqueda de direcciones falló. Inténtalo de nuevo en breve.",
     "addressCoordFailed": "No se encontraron las coordenadas de esta dirección; no se pueden abrir los detalles.",
     "webSection": "Web",
+    "attractionSection": "Lugares turísticos",
     "placeCount": "{count} lugares",
     "webCount": "{count} resultados web",
-    "addressCount": "{count} direcciones"
+    "addressCount": "{count} direcciones",
+    "attractionCount": "{count} lugares turísticos"
   },
   "region": {
     "filterLabel": "Filtrar por región",

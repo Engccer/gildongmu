@@ -27,9 +27,11 @@
     "addressError": "Address search failed. Please try again shortly.",
     "addressCoordFailed": "Couldn't locate coordinates for this address; cannot open details.",
     "webSection": "Web",
+    "attractionSection": "Attractions",
     "placeCount": "{count} places",
     "webCount": "{count} web results",
-    "addressCount": "{count} addresses"
+    "addressCount": "{count} addresses",
+    "attractionCount": "{count} attractions"
   },
   "region": {
     "filterLabel": "Filter by region",

@@ -33,6 +33,7 @@ export default async function HomePage({
       canShowKids={hasKakaoKey()}
       canShowSurroundings={hasKakaoKey()}
       canShowWhereAmI={hasKakaoKey()}
+      canSearchAttractions={hasKakaoKey()}
       canShowTransit={hasOdsayKey()}
       canSearchAddress={hasJusoKey()}
       canSearchWeb={hasPerplexityKey()}
