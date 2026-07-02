@@ -27,6 +27,7 @@
 | 음성 받아쓰기 (Deepgram nova-3) | ✅ prod | 2026-06-19 키 401 사고 복구 |
 | PWA (수제 서비스워커) | ✅ prod | 2026-06-21 |
 | 채팅 (Gemini FC 15도구 + Perplexity 웹) | ✅ prod | 2026-06-21 장소별 진입 재배치, 2026-06-30 무장애 도구 추가(게이트) |
+| 미지원 언어 첫 방문 en 폴백 (proxy Accept-Language 치환) | ✅ prod | 2026-07-03 ja/zh→/en 확인, ko·fr·en·헤더없음(ko)·쿠키 우선순위 기존대로 — 커밋 3abf158 |
 | 무장애 여행 정보 (한국관광공사 KorWithService2) | ✅ prod | 2026-06-30 활용신청 자동승인+실호출 검증 완료(서울도서관 130183·덕수궁 1605981). nearby·장소상세 region·채팅 도구 3계층. 라벨 실키 교정(brailepromotion 등)·값 HTML/접미 정제·매칭 50m∩이름 |
 
 ## 프로덕션 env 등록 현황
