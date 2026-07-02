@@ -45,7 +45,7 @@
 - **ODsay 대중교통 길찾기 prod 미동작**: Server 방식이 공인 IP 화이트리스트라 Vercel 가변 IP와 충돌. 개발 머신 IP만 등록. 해결 후보: 고정 IP 애드온/프록시/유료/URI 재검토([[odsay-transit-server-ip-vercel]]). 별도 마일스톤.
 - **둘러보기 기능 B (OSM 횡단보도·점자블록 + 음향신호기)**: 후속 마일스톤. 길동 OSM 보행 태깅 희박 확인(2026-06-20) — OSM은 카카오가 비운 칸만 채우는 보완재. 음향신호기는 OSM 공백→data.go.kr 피벗([[overpass-osm-korea-pedestrian-coverage]]).
 - **idle 홈 heading 레벨 점프**: `h1`→`h3`(nearby 섹션 헤더가 h3, 상위 묶음 h2 없음). 회전자 순회는 안 막힘. 완전 정돈하려면 "내 주변" 묶음 `h2` 도입 필요 — 미니멀 UI 판단 보류.
-- **dodo-planet 이식**: 한국 API·채팅 카드를 dodo로 이식하는 spec 작성·저장(`docs/superpowers/specs/2026-06-21-dodo-korea-api-port-design.md`), 미구현. 로드맵 `2026-06-21-chat-relocation-and-dodo-port-roadmap.md`.
+- **dodo-planet 이식**: **전량 이식 spec 확정(2026-07-03)** — `docs/superpowers/specs/2026-07-03-dodo-full-port-design.md`가 최신 정본(Spec B 2026-06-21 흡수, 자산 17종 판정·Phase A~E·하이브리드 에스컬레이션 한국 감지·실호출 게이트 계획). 구현은 dodo 저장소에서 Phase별 writing-plans로 착수. 미해결 전제는 ODsay IP 하나(무장애 403은 2026-06-30 해소 완료).
 - **`DistanceBeacon`(목적지 거리 추적) 보류 코드**: 마운트만 제거, 코드 5파일+`beacon.*` i18n 보존. 미래 별도 브랜치 고도화 예정 — ⚠ 죽은 코드 청소 시 제거 금지.
 
 ## 신규 data.go.kr API 추가 절차

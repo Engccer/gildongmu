@@ -103,6 +103,8 @@
 > **2026-06-13: 통합 계획 스펙 확정** — `~/Mac-Projects/dodo-planet/docs/plans/2026-06-13-korea-local-provider-integration.md`. 카카오 3종+딥링크는 검증 완료로 dodo Phase 1 직행 가능. 이 저장소의 잔여 역할은 **Phase 0 = TourAPI 키 발급 + 실응답 검증** (dodo 착수의 전제조건 아님, 병행).
 >
 > **2026-07-03: 수용측 아키텍처 지도 확보** — dodo-planet Round 148 기준 타깃 코드베이스(49개 Gemini 함수·카탈로그 3-mirror·`isKoreaContext` 좌표 우선 라우팅·이식 1건당 수정 파일 체크리스트) 정밀 조사: `RESEARCH-2026-07-dodo-planet-target-architecture.md`. 추가 졸업 작업 착수 전 이 문서로 재탐색을 생략한다. 핵심 설계 공백: trip-less 채팅의 한국 판정이 GPS 신호뿐(문서 §3).
+>
+> **2026-07-03: 전량 이식 spec 확정** — gildongmu 자산 **전체**의 dodo 이식 판정·Phase·라우팅 설계를 `superpowers/specs/2026-07-03-dodo-full-port-design.md`로 확정(2026-06-13 계약의 확장, Spec B 2026-06-21 흡수). trip-less 한국 판정은 **하이브리드 에스컬레이션**(결정론 신호 OR-래치 + 도구 내부 좌표 최종 판정)으로 사용자 확정. dodo측 대응 문서 `~/Mac-Projects/dodo-planet/docs/plans/2026-07-03-gildongmu-full-port-plan.md`.
 
 1. **v0~v1**: 독립 앱으로 성숙 (이 저장소).
 2. **통합 시**: `src/lib/` (providers, deeplink, types)은 그대로 이식 가능하도록 React/Next 비의존으로 유지. UI 컴포넌트는 dodo-planet 디자인 시스템에 맞춰 재스킨.
