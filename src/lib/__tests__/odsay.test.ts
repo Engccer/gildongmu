@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { normalizeOdsayRoute } from "@/lib/providers/odsay";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { getTransitRoute, normalizeOdsayRoute } from "@/lib/providers/odsay";
 
 // ODsay searchPubTransPathT 실응답 발췌 (2026-06-18 강동 길동→강남 실호출로 확정).
 // 단위: totalTime/sectionTime=분, payment=원, totalWalk=미터.
@@ -164,5 +164,27 @@ describe("normalizeOdsayRoute", () => {
     expect(() =>
       normalizeOdsayRoute({ error: { code: "500", msg: "잘못된 파라미터입니다." } }),
     ).toThrow("ODsay 길찾기 오류");
+  });
+});
+
+describe("getTransitRoute", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Vercel 가변 IP 대응: ODsay URI(도메인) 식별은 서버 fetch가 보내는 Referer가 정본.
+  // 이 헤더가 빠지면 프로덕션에서 키인증오류로 회귀한다.
+  it("서버 fetch에 URI 식별용 Referer 헤더를 보낸다", async () => {
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify(sample)));
+    await getTransitRoute({
+      origin: { lat: 37.5385, lng: 127.1368 },
+      dest: { lat: 37.4979, lng: 127.0276 },
+    });
+    const init = spy.mock.calls[0][1] as RequestInit;
+    expect(init.headers).toMatchObject({
+      Referer: "https://gildongmu.vercel.app/",
+    });
   });
 });

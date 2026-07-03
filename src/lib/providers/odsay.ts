@@ -130,6 +130,10 @@ export async function getTransitRoute(params: {
   const url = `${ENDPOINT}?${q.toString()}&apiKey=${env.ODSAY_API_KEY ?? ""}`;
 
   const res = await fetch(url, {
+    // ODsay URI(도메인) 플랫폼 식별 — 콘솔에 등록된 도메인과 일치해야 한다.
+    // Vercel 서버리스는 egress IP가 가변이라 Server(IP) 방식이 프로덕션에서 인증 실패
+    // → 기존 앱에 URI 환경을 병행 등록하고 서버 fetch가 Referer를 명시한다(dev/prod 동일 경로).
+    headers: { Referer: "https://gildongmu.vercel.app/" },
     // 경로는 준정적 — 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호
     next: { revalidate: 3600 },
   });
