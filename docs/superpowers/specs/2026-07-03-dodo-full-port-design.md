@@ -38,7 +38,7 @@ dodo-planet은 현재 국가별 차별성이 없다. gildongmu에서 실호출�
 | 14 | 무장애 여행 정보 (`tour-barrier-free.ts`) | ✅ prod (**2026-06-30 활용신청 자동승인+실호출 검증 완료** — "403 대기"는 stale) | **Phase D** | 편의시설 라벨 철자는 실호출 확정본(`brailepromotion` 등) 그대로. 장소 매칭 좌표50m∩이름. 게이트·인증 모두 `DATA_GO_KR_API_KEY`(split-brain 금지) |
 | 15 | 따릉이 (`seoul-bike.ts`) | ✅ | **Phase D** | 전체 페이지 루프+서버 Haversine. `list_total_count` 신뢰 금지 — 종료조건은 받은 row 수 |
 | 16 | 현재 위치 정위 (`where-am-i.ts`+`/api/where-am-i`) | ✅ prod | **Phase D** (§5b-⑤ 음성 "Where am I?" 연결) | 4조각 `allSettled` 조립, 산문은 **결정론 템플릿**(LLM 아님). `stripRegionPrefix` 중복 제거 |
-| 17 | ODsay 대중교통 (`odsay.ts`) | ⚠ dev only (Server IP 화이트리스트 — Vercel 가변 IP 미동작) | **Phase E (조건부)** — §7.1 해소 전 본앱 라우팅 연결 금지 | `totalTime`=분·`payment`=원. 환승도보 `{distance:0}` leg 제외. error -98→null 3-state |
+| 17 | ODsay 대중교통 (`odsay.ts`) | ✅ prod (2026-07-04 URI(referer) 식별 전환) | **Phase E** — dodo 도메인용 URI 앱 등록+실호출이 선행(§7.1) | `totalTime`=분·`payment`=원. 환승도보 `{distance:0}` leg 제외. error -98→null 3-state. 서버 fetch에 도메인 Referer 명시 |
 
 지원 모듈(위 provider가 의존, 함께 이식): `format.ts`(`joinText`)·`geo.ts`(Haversine 정렬)·`data-locale.ts`(`dataLocale`/`prefersEnglish`)·`station-match.ts`·`nearby-place.ts`·`env.ts` 게이트 패턴(dodo `providers/env.ts` lazy 관례로 변환 — §6).
 
@@ -126,9 +126,9 @@ dodo 채팅/음성/CLI 3-라우트
 | **B** | **이식 기반 공사** — ToolResult 어댑터(§2 카드), `koreaSignal` 하이브리드 에스컬레이션(§4), `providers/korea/` 골격, env 키 등록(§6) | A와 병행 가능. 완료: 비한국 대화 byte-identical 회귀 테스트 + trip-less 한국 질의에 함수 노출 확인 |
 | **C** | **코어 정보 도구 1차** — 지하철 실시간+역 정보, 버스, 공기질(±날씨), 소아진료, 키즈 (§2 표) | B 완료 후. 도구별 실호출 verify 스크립트(§8) PASS가 머지 게이트 |
 | **D** | **2차** — 둘러보기, 무장애, 따릉이, where-am-i 음성 | C와 같은 패턴. 무장애는 dodo 키로 실호출 재검증 후 라우팅 연결 |
-| **E** | **ODsay 대중교통 (조건부)** — §7.1 IP 해소가 선행 조건. 해소 전 provider 파일 이식은 허용하되 declaration 연결 금지(휴면 — dodo tour-api 휴면 선례와 동형) | IP 해소 + prod 실호출 검증 |
+| **E** | **ODsay 대중교통** — 방식은 해소됨(§7.1 URI 식별, gildongmu prod 검증 완료). 선행 조건은 dodo 도메인용 ODsay URI 앱 콘솔 등록(URI는 앱 간 중복 불가). 등록·실호출 검증 전 declaration 연결 금지(휴면 — dodo tour-api 휴면 선례와 동형) | dodo URI 앱 등록 + prod 실호출 검증 |
 
-순서 근거: A가 먼저인 이유는 dodo 로드맵이 이미 최우선으로 지정했고 이식 인프라와 독립적으로 가치를 배달하기 때문. B는 C·D 전부의 전제(함수 노출 경로). C/D는 dodo 여행 도메인 가치 순(전국 커버·가족 안전망 우선, 서울 한정·저빈도 후순). E는 미해결 전제가 있는 유일한 항목이라 맨 뒤. ⚠ dodo P0(Amadeus 폐쇄 2026-07-17 대응)과 리소스 경합 시 P0 우선.
+순서 근거: A가 먼저인 이유는 dodo 로드맵이 이미 최우선으로 지정했고 이식 인프라와 독립적으로 가치를 배달하기 때문. B는 C·D 전부의 전제(함수 노출 경로). C/D는 dodo 여행 도메인 가치 순(전국 커버·가족 안전망 우선, 서울 한정·저빈도 후순). E는 외부 콘솔 절차(dodo 도메인 URI 앱 등록)가 선행하는 유일한 항목이라 맨 뒤. ⚠ dodo P0(Amadeus 폐쇄 2026-07-17 대응)과 리소스 경합 시 P0 우선.
 
 ## 6. env·키 이식 목록 (Vercel 3환경)
 
@@ -142,23 +142,25 @@ dodo 채팅/음성/CLI 3-라우트
 | `JUSO_CONFM_KEY` | 없음 | Phase A 등록 (무료·무제한) |
 | `SEOUL_SUBWAY_REALTIME_KEY` | 없음 | Phase C 등록. ⚠ 일반키 아님("실시간 데이터 인증키" 별도 계열). 일 1,000회/키 — dodo 트래픽 기준 상향(갤러리 등록) 검토 |
 | `SEOUL_OPEN_DATA_KEY` | 없음 | Phase D 등록 (따릉이) |
-| `ODSAY_API_KEY` | 없음 | **Phase E까지 등록 보류** (§7.1) |
+| `ODSAY_API_KEY` | 없음 | Phase E 등록 — **dodo 도메인용 URI 전용 앱을 새로 만들어 그 키를 URL 인코딩 형태로**(§7.1, gildongmu 키 재사용 불가) |
 | `GEMINI`·`PERPLEXITY`·`DEEPGRAM` | ✅ 기존 공유 | 없음 |
 
 공통 함정: env 추가 후 **반드시 재배포**(키는 배포 시점 주입), 등록 검증은 `env pull` 길이가 아니라 실호출로.
 
 ## 7. 미해결 전제 해소 계획
 
-### 7.1 ODsay Server IP 화이트리스트 (유일한 실질 차단)
+### 7.1 ODsay Server IP 화이트리스트 — 해소 완료 (정정, 2026-07-04)
 
-Server 방식이 공인 IP 화이트리스트라 Vercel 가변 egress IP와 충돌(gildongmu prod 미동작과 동일 벽). 해소 후보와 판정:
+당초 "유일한 실질 차단"이었으나 gildongmu에서 해소·prod 실호출 검증 완료. 채택안은 당시 1순위 후보였던 **URI(도메인) 식별**인데, 우려했던 "키 노출형"이 아니었다 — **키를 클라이언트에 노출하지 않고 서버 fetch가 `Referer` 헤더로 도메인을 자기 식별**하면 되고, referer 식별은 IP 무관이라 Vercel 가변 egress IP 문제가 사라진다. 상세 판별 기록은 gildongmu PROGRESS.md(2026-07-04)와 [[odsay-transit-server-ip-vercel]].
 
-1. **(권장 1순위) ODsay "URI 호출 방식" 재검토** — 키 노출형이지만 도메인 제한. 서버 프록시 없이 쓸 수 있는지, 키 노출 리스크(무료 일 1,000건 소진 공격)를 레이트리밋으로 방어 가능한지 재조사. 비용 0.
-2. **자택 상시 머신 프록시** (youjung-macmini + Tailscale Funnel/고정 공인 IP) — dodo→프록시→ODsay. 비용 0이나 가용성이 자택 인프라에 종속(여행 앱의 실시간 기능이 집 정전에 죽는 구조) — 실험용으로만.
-3. **Vercel 고정 egress IP** — Secure Compute는 Enterprise 전용으로 비용 하드 스톱. 기각.
-4. **ODsay 유료 플랜**(고정 IP 불요 방식 여부 포함) — **비용 발생 = 하드 스톱, 사용자 사전 확인 필수**.
+dodo 이식(Phase E) 시 그대로 반복할 절차:
 
-spec 판정: plan 단계에서 1번을 먼저 조사하고, 1 불가 시 2(임시)+4(사용자 확인) 순. 어느 경우든 **prod 실호출 검증 전 declaration 연결 금지**.
+1. ODsay 콘솔에 **dodo 도메인용 URI 전용 앱 신규 등록**(www.dodoplanet.space). ⚠ apiKey는 발급 시점 플랫폼에 묶이므로 기존 Server 앱에 URI를 추가하는 방식은 불가(gildongmu 실측 — 전 referer variant `ApiKeyAuthFailed`). ⚠ 앱 이름 하이픈 불가(에러 표시 없이 404), URI는 앱 간 중복 등록 불가.
+2. 새 키를 **URL 인코딩 형태로** env 등록(`+`/`/` 포함 — provider는 raw로 URL에 붙임).
+3. provider fetch의 Referer를 dodo 도메인으로(gildongmu 하드코딩 상수를 이식 시 도메인 파라미터화).
+4. **비화이트리스트 IP에서 referer 유/무 대조 실호출**로 검증 후 declaration 연결(화이트리스트 IP에서의 성공은 URI 증명이 아님).
+
+폐기된 후보(기록 보존): 자택 프록시(가용성 종속) · Vercel 고정 IP(월 $100, 비용 하드 스톱) · ODsay 유료 플랜(비용 하드 스톱). 전부 불필요해짐.
 
 ### 7.2 무장애 여행 정보 403 — 해소 완료 (정정)
 
