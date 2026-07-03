@@ -85,7 +85,7 @@
 | 현재 위치 정위 | where-am-i / `/api/where-am-i` | 4조각 allSettled 조립, 산문은 결정론 템플릿(LLM 아님), `stripRegionPrefix` 중복제거 |
 | 무장애 여행 정보 | tour-barrier-free / `/api/places/barrier-free[/detail/match]` | 한국관광공사 KorWithService2(B551011). 편의시설 화이트리스트 라벨링(⚠ 필드 철자는 실호출 확정), 장소상세 매칭 좌표50m∩이름(코드 거리 가드 병행). **게이트·인증 모두 `DATA_GO_KR_API_KEY`로 일치**(split-brain 금지). ⚠ 활용신청 별도(API별 독립 승인) |
 | 자동차 경로 | 카카오모빌리티(ko) / ncp-directions(en) / `/api/route/car` | en=NCP 영문 턴바이턴, NCP duration=ms(위 단위 함정) |
-| 대중교통 | odsay / `/api/route/transit` | 환승도보 `{distance:0}` leg 제외, error -98→null. ⚠ Vercel IP 미동작(PROGRESS) |
+| 대중교통 | odsay / `/api/route/transit` | 환승도보 `{distance:0}` leg 제외, error -98→null. **URI(도메인) 식별**: 서버 fetch가 `Referer: https://gildongmu.vercel.app/` 명시(IP 무관 — Vercel 가변 IP 해소). ⚠ ODsay 키는 발급 시점 플랫폼에 묶임 — Server 키에 URI 추가해도 referer 식별 불가, URI 전용 앱 키여야 함(PROGRESS 2026-07-04) |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
 
@@ -101,7 +101,7 @@
 | `JUSO_CONFM_KEY` | `hasJusoKey` | 행안부 도로명주소 검색(영문주소+우편번호), 무료·무제한 |
 | `SEOUL_OPEN_DATA_KEY` | `hasSeoulOpenDataKey` | 서울 열린데이터(따릉이). ⚠ 실시간 지하철은 별도 키 |
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회 |
-| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통. ⚠ Server 방식 IP 화이트리스트(Vercel 미동작, PROGRESS) |
+| `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — URI 전용 앱 `gildongmuweb` 키(~2027-01-04, 일 1,000회). ⚠ `+`/`/` 포함이라 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), 만료 갱신·dodo 이식 시 해당 도메인 URI 앱 등록 |
 | `DEEPGRAM_API_KEY` | — | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(`GEMINI_MODEL=gemini-3.5-flash`). dodo `GOOGLE_GENERATIVE_AI_API_KEY` 공유 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |

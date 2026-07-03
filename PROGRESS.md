@@ -23,7 +23,7 @@
 | 내 주변 둘러보기 (카카오 카테고리+8방위) | ✅ | 2026-06-20 |
 | 현재 위치 정위 카드 (where-am-i) | ✅ prod | 2026-06-28 |
 | 자동차 경로 브리핑 (ko 카카오 / en NCP) | ✅ | 2026-06-17 |
-| 대중교통 길찾기 (ODsay) | ⚠ dev only | IP 화이트리스트 — 아래 미해결 |
+| 대중교통 길찾기 (ODsay) | ✅ prod | 2026-07-04 URI(referer) 식별 전환 — 길동→강남 prod 실호출 검증. 아래 해소 기록 |
 | 음성 받아쓰기 (Deepgram nova-3) | ✅ prod | 2026-06-19 키 401 사고 복구 |
 | PWA (수제 서비스워커) | ✅ prod | 2026-06-21 |
 | 채팅 (Gemini FC 15도구 + Perplexity 웹) | ✅ prod | 2026-06-21 장소별 진입 재배치, 2026-06-30 무장애 도구 추가(게이트) |
@@ -32,9 +32,7 @@
 
 ## 프로덕션 env 등록 현황
 
-`vercel env ls production`으로 확인. 등록됨: `KAKAO_REST_API_KEY`, `TOUR_API_KEY`/`DATA_GO_KR_API_KEY`(동일값), `NCP_MAPS_CLIENT_ID/SECRET`, `DEEPGRAM_API_KEY`, `SEOUL_OPEN_DATA_KEY`, `SEOUL_SUBWAY_REALTIME_KEY`, `JUSO_CONFM_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`.
-
-**미등록**: `ODSAY_API_KEY`(IP 문제로 보류 — `canShowTransit` 게이트로 prod 안전).
+`vercel env ls production`으로 확인. 등록됨: `KAKAO_REST_API_KEY`, `TOUR_API_KEY`/`DATA_GO_KR_API_KEY`(동일값), `NCP_MAPS_CLIENT_ID/SECRET`, `DEEPGRAM_API_KEY`, `SEOUL_OPEN_DATA_KEY`, `SEOUL_SUBWAY_REALTIME_KEY`, `JUSO_CONFM_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`, `ODSAY_API_KEY`(2026-07-04, URI 앱 키 — URL 인코딩 형태로 저장).
 
 ⚠ **env 변경 후 반드시 재배포** — 키는 배포 시점에 함수로 주입된다(`vercel deploy --prod --yes` 또는 push). 키만 추가하고 재배포 안 하면 기존 함수는 옛 env를 본다.
 
@@ -42,10 +40,10 @@
 
 ## 미해결·보류
 
-- **ODsay 대중교통 길찾기 prod 미동작**: Server 방식이 공인 IP 화이트리스트라 Vercel 가변 IP와 충돌. 개발 머신 IP만 등록. 해결 후보: 고정 IP 애드온/프록시/유료/URI 재검토([[odsay-transit-server-ip-vercel]]). 별도 마일스톤.
+- ~~**ODsay 대중교통 길찾기 prod 미동작**~~ → **해소(2026-07-04)**. 결정 기록(spec 생략, 이 단락이 정본): 후보 4안(Web키 referer/자가 프록시/클라 직접/유료 고정 IP) 중 **URI(도메인) 식별 + 서버 Referer 헤더** 채택(무료·최소 diff·키 서버 전용 유지, 커밋 f64831a). 시행착오 2건 — ① ODsay **apiKey는 발급 시점 플랫폼에 묶임**: 기존 Server 앱에 URI 환경을 추가해도 그 키는 referer 식별 불가(전 variant `ApiKeyAuthFailed`, 프로브 실측). **URI 전용 앱**(`gildongmuweb`, ~2027-01-04)을 새로 만들어 해결, 비화이트리스트 IP에서 referer 유/무 대조 실호출로 증명. ② 콘솔 신규 등록 404의 정체는 **앱 이름 하이픈 불가**("영문·숫자·한글만") — 에러 표시 없이 registerPay 404로 죽음. 새 키는 `+`/`/` 포함이라 **URL 인코딩 형태로 env 저장**(provider가 raw로 붙이는 계약과 정합). 기존 `gildongmu` 앱(Server·119.71.23.38)은 백업으로 보존. URI는 앱 간 중복 등록 불가.
 - **둘러보기 기능 B (OSM 횡단보도·점자블록 + 음향신호기)**: 후속 마일스톤. 길동 OSM 보행 태깅 희박 확인(2026-06-20) — OSM은 카카오가 비운 칸만 채우는 보완재. 음향신호기는 OSM 공백→data.go.kr 피벗([[overpass-osm-korea-pedestrian-coverage]]).
 - **idle 홈 heading 레벨 점프**: `h1`→`h3`(nearby 섹션 헤더가 h3, 상위 묶음 h2 없음). 회전자 순회는 안 막힘. 완전 정돈하려면 "내 주변" 묶음 `h2` 도입 필요 — 미니멀 UI 판단 보류.
-- **dodo-planet 이식**: **전량 이식 spec 확정(2026-07-03)** — `docs/superpowers/specs/2026-07-03-dodo-full-port-design.md`가 최신 정본(Spec B 2026-06-21 흡수, 자산 17종 판정·Phase A~E·하이브리드 에스컬레이션 한국 감지·실호출 게이트 계획). 구현은 dodo 저장소에서 Phase별 writing-plans로 착수. 미해결 전제는 ODsay IP 하나(무장애 403은 2026-06-30 해소 완료).
+- **dodo-planet 이식**: **전량 이식 spec 확정(2026-07-03)** — `docs/superpowers/specs/2026-07-03-dodo-full-port-design.md`가 최신 정본(Spec B 2026-06-21 흡수, 자산 17종 판정·Phase A~E·하이브리드 에스컬레이션 한국 감지·실호출 게이트 계획). 구현은 dodo 저장소에서 Phase별 writing-plans로 착수. 미해결 전제 전부 해소(무장애 403은 2026-06-30, ODsay IP는 2026-07-04 URI 식별로 — dodo 이식 시 dodo 도메인용 URI 앱 별도 등록 필요).
 - **`DistanceBeacon`(목적지 거리 추적) 보류 코드**: 마운트만 제거, 코드 5파일+`beacon.*` i18n 보존. 미래 별도 브랜치 고도화 예정 — ⚠ 죽은 코드 청소 시 제거 금지.
 
 ## 신규 data.go.kr API 추가 절차
