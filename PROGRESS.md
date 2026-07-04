@@ -45,6 +45,7 @@
 - **idle 홈 heading 레벨 점프**: `h1`→`h3`(nearby 섹션 헤더가 h3, 상위 묶음 h2 없음). 회전자 순회는 안 막힘. 완전 정돈하려면 "내 주변" 묶음 `h2` 도입 필요 — 미니멀 UI 판단 보류.
 - ~~**dodo-planet 이식**~~ → **Phase A~E 전량 이식 완결(2026-07-04, dodo Round 150~155)**. 정본 spec `docs/superpowers/specs/2026-07-03-dodo-full-port-design.md`의 이식 대상 자산 전부 dodo 합류 — 마지막 Phase E(ODsay 대중교통)는 dodo 전용 URI 앱 `dodoplanet`(www.dodoplanet.space, ~2027-01-04) 신규 등록 + 비화이트리스트 IP referer 유/무 대조 실호출 6/6 PASS로 §7.1 절차 그대로 재현(dodo `docs/plans/2026-07-04-gildongmu-port-phase-e.md`). 콘솔 신규 함정 실측 1건 추가: **URI 입력은 프로토콜 제외 도메인만** — `https://` 포함 시 에러 표시 없이 "다음"이 무반응(폼 아래 경고 문구만). gildongmu는 인큐베이터로 존속 — 신규 국내 API는 여기서 검증 후 같은 경로로 졸업.
 - **`DistanceBeacon`(목적지 거리 추적) 보류 코드**: 마운트만 제거, 코드 5파일+`beacon.*` i18n 보존. 미래 별도 브랜치 고도화 예정 — ⚠ 죽은 코드 청소 시 제거 금지.
+  - **감사 근본 원인(2026-07-04)**: 설계(순수 리듀서 `beacon.ts`·spec)는 건실. 죽은 원인은 훅 계층 버그 2개(최초 커밋 `fd8d0fc`부터 존재). **①치명**: `useScreenWakeLock`이 매 렌더 새 객체 `{acquire,release}`를 반환(useMemo 없음)하는데 `useDistanceBeacon`의 정리 effect가 `[wakeLock]` 의존 → 렌더마다 cleanup 실행 → `start()`가 방금 등록한 `watchPosition`이 자신의 setState 리렌더에서 즉시 `clearWatch`됨(시작 톤 후 fix 콜백 0회, 영원한 침묵). 수정안: `useScreenWakeLock` 반환값 `useMemo`로 안정화(acquire/release는 이미 stable) — start·stop·정리 effect 참조 동일성 3곳 동시 해소. **②2차**: `routeTone`의 단일 2s throttle을 hold tick이 점유해 핵심 closer/farther 톤 소실 → 톤 우선순위 분리 필요. 기술스택 광범위 조사는 `docs/RESEARCH-2026-07-04-realtime-pedestrian-nav-stack.md`(웹 PWA=포그라운드 한정 실현 가능·백그라운드/공간오디오=네이티브 필수 경계선, 2단계 승격 경로).
 
 ## 신규 data.go.kr API 추가 절차
 
