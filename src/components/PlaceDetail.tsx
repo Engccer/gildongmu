@@ -16,6 +16,7 @@ import { BikeStations } from "./BikeStations";
 import { LocalConditions } from "./LocalConditions";
 import { BarrierFreeInfo } from "./BarrierFreeInfo";
 import { TransitRouteBriefing } from "./TransitRouteBriefing";
+import { DistanceBeacon } from "./DistanceBeacon";
 import { ChatOverlay } from "./chat/ChatOverlay";
 
 /**
@@ -182,6 +183,9 @@ export function PlaceDetail({
           dest={{ lat: place.lat, lng: place.lng, name: place.name }}
         />
       )}
+      <DistanceBeacon
+        dest={{ lat: place.lat, lng: place.lng, name: place.name }}
+      />
       {isStation(place) && (
         <>
           <StationMeta stationName={place.name} />

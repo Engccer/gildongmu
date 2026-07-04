@@ -34,6 +34,19 @@ export function useBeaconSound() {
     if (!AC) return null;
     if (ctxRef.current?.state === "closed") return null;
     if (!ctxRef.current) {
+      // iOS는 하드웨어 무음 스위치가 켜지면 Web Audio를 침묵시킨다(HTML5 <audio>와
+      // 비대칭). iOS 17+ 공식 API로 오디오 세션을 'playback'으로 선언하면 무음
+      // 스위치에도 비콘 톤이 울린다(조사 2026-07-04). 미지원 브라우저는 graceful.
+      try {
+        const nav = navigator as unknown as {
+          audioSession?: { type?: string };
+        };
+        if (nav.audioSession && "type" in nav.audioSession) {
+          nav.audioSession.type = "playback";
+        }
+      } catch {
+        // 미지원·정책 차단 — 무시(톤은 무음 스위치 해제 시 정상).
+      }
       try {
         ctxRef.current = new AC();
       } catch {

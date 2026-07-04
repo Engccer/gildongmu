@@ -14,6 +14,8 @@ import { useScreenWakeLock } from "./useScreenWakeLock";
 export type BeaconStatus = "idle" | "tracking" | "denied" | "unsupported";
 
 const TONE_THROTTLE_MS = 2000;
+// hold tick은 추세 톤과 독립된 창을 쓴다(더 길게 — 소프트 하트비트).
+const TICK_THROTTLE_MS = 3000;
 
 /**
  * 거리 비콘 오케스트레이터. watchPosition 생명주기를 쥐고, 매 fix를 순수
@@ -35,7 +37,9 @@ export function useDistanceBeacon(
   const stateRef = useRef<BeaconState>(INITIAL_BEACON_STATE);
   const watchIdRef = useRef<number | null>(null);
   const mountedRef = useRef(true);
-  const lastToneAtRef = useRef(0);
+  // 추세 톤(closer/farther)과 hold tick은 독립 throttle 창을 쓴다.
+  const lastTrendToneAtRef = useRef(0);
+  const lastTickAtRef = useRef(0);
   const prevKindRef = useRef<AnnounceKind | null>(null);
 
   const { playCloser, playFarther, playNearby, playTick, playStart, playStop } =
@@ -54,18 +58,27 @@ export function useDistanceBeacon(
 
   const routeTone = useCallback(
     (kind: BeaconAnnounce["kind"]) => {
+      const now = Date.now();
       // nearby 도착음은 throttle 없이 항상(중요 이벤트).
       if (kind === "nearby") {
         playNearby();
-        lastToneAtRef.current = Date.now();
         return;
       }
-      const now = Date.now();
-      if (now - lastToneAtRef.current < TONE_THROTTLE_MS) return;
-      lastToneAtRef.current = now;
-      if (kind === "closer") playCloser();
-      else if (kind === "farther") playFarther();
-      else if (kind === "hold") playTick();
+      // ⚠ 추세 톤과 tick은 독립 창. 과거엔 하나의 창을 공유해, 데드밴드 내 미세
+      // 흔들림이 잦을 때 hold tick이 창을 점유하면 정작 핵심인 closer/farther 톤이
+      // 소실됐다(감사 2026-07-04). 이제 tick이 추세 톤 예산을 잠식하지 않는다.
+      if (kind === "closer" || kind === "farther") {
+        if (now - lastTrendToneAtRef.current < TONE_THROTTLE_MS) return;
+        lastTrendToneAtRef.current = now;
+        if (kind === "closer") playCloser();
+        else playFarther();
+        return;
+      }
+      if (kind === "hold") {
+        if (now - lastTickAtRef.current < TICK_THROTTLE_MS) return;
+        lastTickAtRef.current = now;
+        playTick();
+      }
       // first·weak: 톤 없음.
     },
     [playCloser, playFarther, playNearby, playTick],
