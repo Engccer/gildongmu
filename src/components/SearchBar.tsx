@@ -54,9 +54,9 @@ export function SearchBar({
 
   function clearQuery() {
     onQueryChange("");
-    // 키보드로 버튼을 활성화(Enter)한 경우엔 mousedown이 없어 preventDefault가
+    // 키보드로 버튼을 활성화(Enter)한 경우엔 pointerdown이 없어 preventDefault가
     // 걸리지 않으므로, 버튼이 사라질 때 포커스가 document.body로 유실되는 것을
-    // 막으려 입력창으로 되돌린다. 포인터 탭 경로에서는 아래 onMouseDown이 이미
+    // 막으려 입력창으로 되돌린다. 포인터 탭 경로에서는 아래 onPointerDown이 이미
     // 입력창 포커스를 유지하므로 이 focus()는 무해한 no-op이다.
     internalRef.current?.focus();
   }
@@ -90,10 +90,15 @@ export function SearchBar({
             type="button"
             // 지우기 버튼이 포커스를 가져가면 입력창이 blur돼 모바일 가상 키보드가
             // 내려가고, iOS는 이후 프로그래밍 방식 focus()로 키보드를 다시 못 띄운다.
-            // mousedown 기본동작(포커스 이동)을 막아 입력창이 포커스·키보드를 그대로
-            // 유지하게 한다 — 검색어를 지운 직후 곧바로 다시 입력할 수 있는 상태로 둔다
-            // (click은 그대로 발화하므로 지우기 동작은 유지).
-            onMouseDown={(e) => e.preventDefault()}
+            // → blur를 아예 막는다. iOS는 blur를 touchend에서 처리하고 mousedown은
+            // 그 뒤에 합성돼 이미 늦으므로, 터치보다 먼저 발생하는 pointerdown에서
+            // 기본동작(포커스 이동/blur)을 막아 입력창 포커스·키보드를 유지한다.
+            // preventDefault가 iOS에서 click을 억제할 수 있어 지우기 동작도 여기서
+            // 함께 수행한다(clearQuery는 멱등 — onClick과 중복 호출돼도 무해).
+            onPointerDown={(e) => {
+              e.preventDefault();
+              clearQuery();
+            }}
             onClick={clearQuery}
             aria-label={t("clear")}
             className="absolute inset-y-0 right-0 inline-flex w-12 items-center justify-center text-muted"
