@@ -54,10 +54,15 @@ export function SearchBar({
 
   function clearQuery() {
     onQueryChange("");
-    // 키보드로 버튼을 활성화(Enter)한 경우엔 pointerdown이 없어 preventDefault가
-    // 걸리지 않으므로, 버튼이 사라질 때 포커스가 document.body로 유실되는 것을
-    // 막으려 입력창으로 되돌린다. 포인터 탭 경로에서는 아래 onPointerDown이 이미
-    // 입력창 포커스를 유지하므로 이 focus()는 무해한 no-op이다.
+    // 지운 뒤 검색 입력창으로 포커스를 되돌린다 — VoiceOver 포커스도 함께 따라와
+    // 빈 검색창에 안착하므로, 더블탭 한 번으로 바로 다시 입력할 수 있다.
+    //
+    // ⚠ iOS VoiceOver에서는 '지운 직후 온스크린 키보드 자동 등장'이 플랫폼상 불가능하다.
+    // Apple 문서상 편집 모드(=키보드) 진입은 오직 사용자가 텍스트 필드를 직접 더블탭할
+    // 때만 일어나고, 필드 밖 버튼에서 focus()로는 못 띄운다. 또 VoiceOver 더블탭은
+    // pointerdown/mousedown/touchstart 시퀀스를 발생시키지 않으므로 그 이벤트에 건
+    // preventDefault(blur 차단)도 무효다. 따라서 '포커스 안착'까지가 최선이며 —
+    // 여기에 키보드를 강제하려는 pointer 트릭을 다시 추가하지 말 것(실측으로 무효 확인).
     internalRef.current?.focus();
   }
 
@@ -88,17 +93,6 @@ export function SearchBar({
         {query && (
           <button
             type="button"
-            // 지우기 버튼이 포커스를 가져가면 입력창이 blur돼 모바일 가상 키보드가
-            // 내려가고, iOS는 이후 프로그래밍 방식 focus()로 키보드를 다시 못 띄운다.
-            // → blur를 아예 막는다. iOS는 blur를 touchend에서 처리하고 mousedown은
-            // 그 뒤에 합성돼 이미 늦으므로, 터치보다 먼저 발생하는 pointerdown에서
-            // 기본동작(포커스 이동/blur)을 막아 입력창 포커스·키보드를 유지한다.
-            // preventDefault가 iOS에서 click을 억제할 수 있어 지우기 동작도 여기서
-            // 함께 수행한다(clearQuery는 멱등 — onClick과 중복 호출돼도 무해).
-            onPointerDown={(e) => {
-              e.preventDefault();
-              clearQuery();
-            }}
             onClick={clearQuery}
             aria-label={t("clear")}
             className="absolute inset-y-0 right-0 inline-flex w-12 items-center justify-center text-muted"
