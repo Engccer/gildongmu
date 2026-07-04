@@ -355,7 +355,7 @@
   },
   "voice": {
     "start": "음성으로 검색",
-    "stop": "받아쓰기 정지",
+    "stop": "받아쓰기 중지",
     "recognizing": "받아쓰는 중",
     "notSupported": "이 브라우저는 음성 입력을 지원하지 않습니다",
     "cancelled": "받아쓰기를 취소했습니다.",

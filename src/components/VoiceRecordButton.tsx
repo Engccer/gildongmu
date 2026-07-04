@@ -15,8 +15,10 @@ import { useRecordingSound } from "@/hooks/useRecordingSound";
  *
  * 시작/정지/취소는 효과음으로 통지(useRecordingSound) — 매 토글마다 장황한 음성
  * 안내가 거슬린다는 피드백에 따라 비언어 신호로 바꿨다. 상승음=시작·하강음=정지·
- * 단음=취소로 방향이 직관적이고, 버튼의 aria-label/aria-busy 상태가 스크린 리더용
- * 보강 신호를 준다(효과음 미지원/음소거 시에도 상태 인지 가능).
+ * 단음=취소로 방향이 직관적이고, 스크린 리더에는 버튼의 aria-label 변화("음성으로
+ * 검색"→"받아쓰기 중지")만으로 상태를 전달한다 — 별도 live region "진행 중" 알림이나
+ * aria-busy 상태 낭독은 두지 않는다(과잉 통지 제거). 시작 성공 시 버튼에 명시적
+ * 재포커스해 SR 커서를 버튼에 고정하고 바뀐 라벨을 그 자리에서 읽게 한다.
  *
  * 라이브 리전(a11y C1): 전사 성공 시 인식 텍스트·결과 수는 부모 PlaceSearch의
  * polite status 한 채널로만 통지된다. 이 버튼의 assertive announcer는 이제
@@ -35,6 +37,7 @@ export function VoiceRecordButton({
   const t = useTranslations("voice");
   const locale = useLocale();
   const announcerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { playStart, playStop, playCancel } = useRecordingSound();
 
   // 오류 통지 전용 announcer(시작/정지/취소는 효과음). 2초 뒤 비워 잔상 방지.
@@ -71,6 +74,7 @@ export function VoiceRecordButton({
     // 실패 경로는 훅의 onError 코드가 announce(오류는 효과음 아닌 음성 통지).
     const ok = await startRecording();
     if (ok) playStart();
+    return ok;
   }, [playStart, startRecording]);
 
   const handleClick = useCallback(async () => {
@@ -85,7 +89,11 @@ export function VoiceRecordButton({
     // 분류한다(mic_denied vs mic_failed). 별도 권한 사전요청(requestPermission)을
     // 두지 않아 getUserMedia 중복 호출과 "장치 없음도 mic_denied"로 뭉개던
     // 오분류를 함께 제거한다(codex 잔여 #3 — 단일 분류 경로).
-    await beginRecording();
+    const ok = await beginRecording();
+    // 시작 성공 시 이 버튼에 포커스를 고정 — getUserMedia 비동기 대기 중 SR 커서가
+    // 버튼을 이탈하는 것을 되돌리고, 바뀐 라벨("받아쓰기 중지")을 버튼에서 읽게 한다.
+    // 언마운트되면 ref가 null이라 안전한 no-op.
+    if (ok) buttonRef.current?.focus();
   }, [isSupported, state, beginRecording, stopRecording, playStop]);
 
   // Esc로 녹음 취소 (IME 조합 중에는 무시 — 한글/일본어 입력 확정과 충돌 방지)
@@ -135,10 +143,10 @@ export function VoiceRecordButton({
     <>
       <div ref={announcerRef} role="status" aria-live="assertive" aria-atomic="true" className="sr-only" />
       <button
+        ref={buttonRef}
         type="button"
         onClick={handleClick}
         aria-disabled={state === "processing"}
-        aria-busy={state === "recording" || state === "processing"}
         aria-label={label}
         className={
           "inline-flex min-h-12 items-center justify-center rounded-md border px-3 aria-disabled:opacity-50 " +
