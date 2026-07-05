@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type {
   Place,
@@ -29,6 +29,7 @@ export function TransitRouteBriefing({
   dest: { lat: number; lng: number; name: string };
 }) {
   const t = useTranslations("route.transit");
+  const tActions = useTranslations("actions");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [showAlts, setShowAlts] = useState(false);
@@ -36,9 +37,17 @@ export function TransitRouteBriefing({
   const [originQuery, setOriginQuery] = useState("");
   const [originResults, setOriginResults] = useState<Place[]>([]);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const originInputId = useId();
   const inFlight = useRef(false);
   const reqId = useRef(0);
+
+  // 펼친 경로를 다시 감춘다(idle 복귀) — 홈 "내 주변" 패널과 동일하게 결과
+  // 블록에 닫기 경로를 준다. 닫은 뒤 포커스를 트리거 버튼으로 되돌린다.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   async function fetchRoute(originLat: number, originLng: number) {
     const myReq = ++reqId.current;
@@ -134,6 +143,7 @@ export function TransitRouteBriefing({
   return (
     <div className="mt-3">
       <button
+        ref={triggerRef}
         type="button"
         onClick={requestFromCurrent}
         aria-disabled={busy}
@@ -210,6 +220,13 @@ export function TransitRouteBriefing({
           >
             {t("heading", { name: dest.name })}
           </h3>
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-blue-700 underline dark:text-blue-300"
+          >
+            {tActions("close")}
+          </button>
           <RouteView
             route={status.result.recommended}
             t={t}

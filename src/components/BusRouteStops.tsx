@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BusRouteStop, BusSource } from "@/lib/types";
 
@@ -28,9 +28,17 @@ export function BusRouteStops({
   routeNo: string;
 }) {
   const t = useTranslations("bus");
+  const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlightRef = useRef(false);
+
+  // 펼친 경유정류소 목록을 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거로 복원.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   async function load() {
     if (inFlightRef.current) return;
@@ -72,6 +80,7 @@ export function BusRouteStops({
   return (
     <div className="mt-1">
       <button
+        ref={triggerRef}
         type="button"
         onClick={load}
         aria-disabled={busy}
@@ -94,6 +103,13 @@ export function BusRouteStops({
           >
             {t("routeStopsHeading", { route: routeNo })}
           </h4>
+          <button
+            type="button"
+            onClick={close}
+            className="min-h-11 text-xs text-accent underline"
+          >
+            {tActions("close")}
+          </button>
           <ol className="mt-1 list-decimal pl-5 text-xs" lang="ko">
             {status.stops.map((s) => (
               <li key={s.nodeId}>{s.name}</li>

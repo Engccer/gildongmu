@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
-import { durationToMinutes, formatDistance } from "@/lib/format";
+import { durationToMinutes, formatDistance, joinText } from "@/lib/format";
 import { dataLocale } from "@/lib/data-locale";
 
 type Status =
@@ -27,9 +27,19 @@ export function CarRouteBriefing({
   dest: { lat: number; lng: number; name: string };
 }) {
   const t = useTranslations("route.briefing");
+  const tActions = useTranslations("actions");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // 펼친 브리핑을 다시 감춘다(idle 복귀) — 홈 "내 주변" 패널과 동일하게
+  // 결과 블록에 닫기 경로를 준다. 닫은 뒤 포커스를 트리거 버튼으로 되돌려
+  // 스크린 리더 사용자가 맥락을 잃지 않게 한다.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   function requestBriefing() {
     if (
@@ -89,6 +99,7 @@ export function CarRouteBriefing({
     <div className="mt-3">
       {/* disabled 대신 aria-disabled — 진행 중에도 포커스를 잃지 않게 한다 */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={requestBriefing}
         aria-disabled={busy}
@@ -114,6 +125,13 @@ export function CarRouteBriefing({
           >
             {t("heading", { name: dest.name })}
           </h3>
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-blue-700 underline dark:text-blue-300"
+          >
+            {tActions("close")}
+          </button>
           <p className="mt-1 text-sm">
             {t("summary", {
               distance: formatDistance(status.briefing.distanceMeters),
@@ -131,11 +149,14 @@ export function CarRouteBriefing({
           </p>
           <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
             {status.briefing.guides.map((guide, i) => (
+              // 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
+              // (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본).
               <li key={`${i}-${guide.guidance}`}>
-                {guide.name ? `${guide.name} — ` : ""}
-                {guide.guidance}
-                {guide.distanceMeters > 0 &&
-                  ` (${formatDistance(guide.distanceMeters)})`}
+                {joinText(
+                  guide.name,
+                  guide.guidance,
+                  guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
+                )}
               </li>
             ))}
           </ol>

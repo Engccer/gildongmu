@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
 import { joinText } from "@/lib/format";
@@ -21,9 +21,17 @@ type Status =
  */
 export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
   const t = useTranslations("subway");
+  const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlightRef = useRef(false);
+
+  // 펼친 결과를 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거 버튼으로 복원.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   async function load() {
     if (inFlightRef.current) return;
@@ -66,6 +74,7 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
   return (
     <div className="mt-3">
       <button
+        ref={triggerRef}
         type="button"
         onClick={load}
         aria-disabled={busy}
@@ -95,6 +104,14 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
               status.facilities.line,
             )}
           </h3>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
 
           <div className="mt-2 space-y-3">
             {status.facilities.groups.map((g) => (

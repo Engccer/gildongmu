@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { StationFacilities as Facilities } from "@/lib/types";
 
@@ -20,8 +20,16 @@ type Status =
  */
 export function StationFacilities({ stationName }: { stationName: string }) {
   const t = useTranslations("station");
+  const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // 펼친 결과를 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거 버튼으로 복원.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
   // in-flight 가드 — 클로저의 status.kind만으로는 같은 렌더에서 빠른
   // 더블클릭/Enter 반복 시 중복 fetch를 막지 못한다(setState 비동기). ref로
   // 동기 가드한다.
@@ -69,6 +77,7 @@ export function StationFacilities({ stationName }: { stationName: string }) {
     <div className="mt-3">
       {/* disabled 대신 aria-disabled — 진행 중에도 포커스를 잃지 않게 한다 */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={load}
         aria-disabled={busy}
@@ -95,6 +104,13 @@ export function StationFacilities({ stationName }: { stationName: string }) {
               name: status.facilities.stationName || stationName,
             })}
           </h3>
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
           <ul className="mt-1 text-sm leading-relaxed">
             <li>
               {t("accessibleToilet")}:{" "}

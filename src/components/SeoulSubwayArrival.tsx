@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SubwayStationArrivals } from "@/lib/types";
 import { SubwayArrivalList } from "./SubwayArrivalList";
@@ -22,9 +22,17 @@ type Status =
  */
 export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
   const t = useTranslations("subwayArrival");
+  const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlightRef = useRef(false);
+
+  // 펼친 결과를 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거 버튼으로 복원.
+  const close = useCallback(() => {
+    setStatus({ kind: "idle" });
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   async function load() {
     if (inFlightRef.current) return;
@@ -73,6 +81,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
   return (
     <div className="mt-3">
       <button
+        ref={triggerRef}
         type="button"
         onClick={load}
         aria-disabled={busy}
@@ -97,6 +106,14 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
           >
             {`${t("heading", { name: status.data.stationName || stationName })} ${t("asOf", { time: status.at })}`}
           </h3>
+
+          <button
+            type="button"
+            onClick={close}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
 
           <SubwayArrivalList arrivals={status.data.arrivals} />
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
