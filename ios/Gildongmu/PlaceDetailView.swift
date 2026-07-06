@@ -31,6 +31,9 @@ struct PlaceDetailView: View {
                 if let kakaoId = kakaoPlaceId {
                     Button("카카오맵 장소 정보") { openKakaoPlace(kakaoId) }
                 }
+                // 출발 전 미리 듣기 텍스트 브리핑(M4). 실주행은 위 딥링크 위임 유지
+                NavigationLink("자동차 경로 미리 듣기") { CarBriefingView(place: place) }
+                NavigationLink("대중교통 경로 미리 듣기") { TransitBriefingView(place: place) }
             }
 
             // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)
