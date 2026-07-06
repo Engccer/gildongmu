@@ -117,9 +117,11 @@ struct SearchView: View {
     }
 }
 
-/// 장소 행. 이름·카테고리를 하나의 접근성 객체로 합친다. 상세 진입은 M1.
+/// 장소 행. 이름·카테고리를 하나의 접근성 객체로 합친다.
+/// 화면 버튼 대신 VoiceOver 커스텀 액션(로터)으로 전화·길찾기 제공(spec §4).
 struct PlaceRow: View {
     let place: Place
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading) {
@@ -129,7 +131,23 @@ struct PlaceRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityActions {
+            if let phone = place.phone, !phone.isEmpty,
+               let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
+                Button("전화 걸기") { openURL(telURL) }
+            }
+            Button("네이버 지도 길찾기") {
+                if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
+                    openURL(url)
+                }
+            }
+            Button("카카오맵 길찾기") {
+                if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) { openURL(url) }
+            }
+        }
     }
+
+    private var dest: RouteDestination { RouteDestination(lat: place.lat, lng: place.lng, name: place.name) }
 
     /// falsy 조각 제거+쉼표 결합(웹 joinText 미러).
     private var joined: String {
