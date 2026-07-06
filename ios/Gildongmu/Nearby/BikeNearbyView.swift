@@ -1,9 +1,62 @@
 import SwiftUI
+import Observation
+import Accessibility
+import GildongmuKit
 
-/// M2 Task B에서 구현할 화면의 최소 스텁 — 허브 NavigationLink 컴파일용.
+/// 내 주변 따릉이 대여소. SubwayNearbyModel 규범 패턴 미러(3-state 권한 거부/조회 실패/0건 분리).
+/// 정수 필드라 "0대"와 "정보 없음"의 구조적 혼동 없음.
+@Observable @MainActor
+final class BikeNearbyModel {
+    private(set) var state: NearbyLoadState<BikeStation> = .idle
+    private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+
+    func load(force: Bool = false) async {
+        if case .idle = state { state = .loading }
+        do {
+            let coord = try await LocationService.shared.currentCoordinate(force: force)
+            let stations = try await service.bikeStations(lat: coord.lat, lng: coord.lng)
+            state = .loaded(stations)
+            announceLoaded(count: stations.count, unit: "대여소")
+        } catch let error as LocationService.LocationError {
+            if case .denied = error { state = .denied } else if case .loaded = state {} else { state = .failed }
+        } catch {
+            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
+            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
+        }
+    }
+}
+
 struct BikeNearbyView: View {
+    @State private var model = BikeNearbyModel()
+
     var body: some View {
-        Text("준비 중")
-            .navigationTitle("따릉이 대여소")
+        List {
+            if case .loaded(let stations) = model.state {
+                ForEach(stations, id: \.stationId) { station in
+                    // 한 줄 = 한 접근성 객체. 대여소명·거리·대여 가능·거치대를 단일 텍스트로 흡수(heading 없음).
+                    Text(joinText(station.name, "\(station.distanceMeters)m",
+                                  "대여 가능 \(station.bikesAvailable)대", "거치대 \(station.racksTotal)대"))
+                }
+            }
+        }
+        .navigationTitle("따릉이 대여소")
+        .overlay { stateOverlay }
+        .task { await model.load() }
+        .refreshable { await model.load(force: true) }
+    }
+
+    @ViewBuilder private var stateOverlay: some View {
+        switch model.state {
+        case .loading: ProgressView("확인 중")
+        case .denied:
+            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
+                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+        case .failed:
+            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
+                description: Text("잠시 후 다시 시도해 주세요"))
+        case .loaded(let stations) where stations.isEmpty:
+            ContentUnavailableView("주변에 따릉이 대여소가 없습니다", systemImage: "bicycle")
+        default: EmptyView()
+        }
     }
 }
