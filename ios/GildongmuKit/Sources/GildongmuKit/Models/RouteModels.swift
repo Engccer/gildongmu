@@ -1,0 +1,86 @@
+import Foundation
+
+// 경로 브리핑 도메인 모델: 웹 /api/route/car·/api/route/transit 계약 미러
+// (계약 정본은 Fixtures/route-car.json·route-transit.json prod 실캡처).
+// 단위 함정 주의: durationSeconds=초·totalMinutes/walkMinutes/minutes=분·fare류=원.
+// mode는 신규 값 추가에 깨지지 않도록 String으로 둔다(기존 원칙).
+
+// MARK: - 자동차 경로
+
+/// 자동차 경로 안내 구간 하나. guidance(한국어 완성 안내문)가 낭독 정본,
+/// 빈 문자열이면 뷰가 name으로 폴백(둘 다 비면 행 생략).
+public struct CarRouteGuide: Codable, Sendable, Hashable {
+    /// 지점명(교차로·시설명). 빈 문자열 실측 존재(옵셔널 아님)
+    public let name: String
+    /// 안내문(예 "올림픽대교 왕십리역 방면으로 우회전")
+    public let guidance: String
+    /// 이 구간 거리(m)
+    public let distanceMeters: Int
+    /// 이 구간 소요(초)
+    public let durationSeconds: Int
+}
+
+/// 자동차 경로 브리핑. ⚠ /api/route/car 응답은 envelope 없이 이 타입 직접.
+public struct CarRouteBriefing: Codable, Sendable, Hashable {
+    /// 총 거리(m)
+    public let distanceMeters: Int
+    /// 총 소요(초). 밀리초 아님(NCP ms→서버가 초로 정규화, 단위 회귀 테스트 대상)
+    public let durationSeconds: Int
+    /// 예상 택시 요금(원)
+    public let taxiFare: Int
+    /// 통행료(원). 0이면 뷰가 생략
+    public let tollFare: Int
+    /// 턴바이턴 안내 구간들
+    public let guides: [CarRouteGuide]
+}
+
+// MARK: - 대중교통 경로
+
+/// 한 경로의 요약. 전부 분·원 단위(ODsay 정규화 후).
+public struct TransitRouteSummary: Codable, Sendable, Hashable {
+    /// 총 소요(분)
+    public let totalMinutes: Int
+    /// 요금(원)
+    public let fare: Int
+    /// 환승 횟수
+    public let transfers: Int
+    /// 도보 합계(분)
+    public let walkMinutes: Int
+    /// 출발 정류장·역명(없으면 nil)
+    public let departName: String?
+    /// 도착 정류장·역명(없으면 nil)
+    public let arriveName: String?
+}
+
+/// 경로 구간 하나. mode "walk"/"bus"/"subway".
+/// walk leg는 lineName·fromName·toName·stationCount 전부 nil(뷰의 "도보 N분" 단일 분기 근거).
+public struct TransitRouteLeg: Codable, Sendable, Hashable {
+    public let mode: String
+    /// 노선명(예 "수도권 5호선"·"342"), walk는 nil
+    public let lineName: String?
+    /// 승차 지점명
+    public let fromName: String?
+    /// 하차 지점명
+    public let toName: String?
+    /// 경유 역·정류장 수
+    public let stationCount: Int?
+    /// 이 구간 소요(분)
+    public let minutes: Int
+}
+
+/// 대중교통 경로 하나(요약 + 구간들).
+public struct TransitRoute: Codable, Sendable, Hashable {
+    public let summary: TransitRouteSummary
+    public let legs: [TransitRouteLeg]
+}
+
+/// 추천 1건 + 대안들. 대안은 뷰가 요약만 표시(미니멀).
+public struct TransitRouteResult: Codable, Sendable, Hashable {
+    public let recommended: TransitRoute
+    public let alternatives: [TransitRoute]
+}
+
+/// /api/route/transit envelope(자동차와 달리 result로 감싼다).
+public struct TransitRouteEnvelope: Codable, Sendable {
+    public let result: TransitRouteResult
+}
