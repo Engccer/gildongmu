@@ -169,6 +169,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "길동무 베타";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -192,6 +193,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "길동무 베타";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
