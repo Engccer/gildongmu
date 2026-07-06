@@ -14,3 +14,43 @@ public struct Place: Codable, Sendable, Identifiable, Hashable {
     public let link: String?
     public let distanceMeters: Double?
 }
+
+/// 장소 검색 응답 envelope(`/api/places`·`/api/places/attractions` 공용).
+/// provider는 웹에서 열거형이지만 신규 provider 추가에 깨지지 않도록 String으로 둔다.
+public struct PlaceSearchResult: Codable, Sendable {
+    public let places: [Place]
+    public let provider: String
+    public let query: String
+}
+
+/// 행안부 도로명주소(juso) 정규화 결과. 웹 JusoAddress 미러.
+public struct JusoAddress: Codable, Sendable, Hashable {
+    public let roadAddr: String
+    public let roadAddrPart1: String
+    public let jibunAddr: String
+    public let engAddr: String
+    public let zipNo: String
+    public let bdNm: String
+}
+
+public struct AddressSearchResponse: Codable, Sendable {
+    public let addresses: [JusoAddress]
+    public let query: String
+}
+
+/// Perplexity 웹 검색 결과. 웹 WebSearchResult 미러.
+public struct WebSearchResult: Codable, Sendable, Hashable {
+    public let title: String
+    public let url: String
+    public let snippet: String
+    public let date: String?
+}
+
+public struct WebSearchResponse: Codable, Sendable {
+    public let web: [WebSearchResult]
+}
+
+/// 라우트 오류 응답 `{ "error": "..." }`.
+public struct APIErrorBody: Codable, Sendable {
+    public let error: String
+}
