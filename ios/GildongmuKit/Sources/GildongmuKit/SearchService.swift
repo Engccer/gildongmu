@@ -19,6 +19,9 @@ public enum SearchSection: Sendable {
 public struct SearchOutcome: Sendable {
     public let attractions: [Place]
     public let sections: [SearchSection]
+    /// 정본 두 트랙(장소·주소) 호출이 모두 실패했는가. 3-state 불변식의 신호:
+    /// 뷰가 "결과 없음"과 "조회 실패"를 분리해 낭독한다. 빈 결과의 성공 응답은 false.
+    public let allFailed: Bool
 }
 
 /// 빈 섹션 제외 + 건수 내림차순(웹 orderResultSections 미러, 안정 정렬).
@@ -46,8 +49,10 @@ public struct SearchService: Sendable {
             ? (try? client.get("/api/places/attractions", query: coordQuery + [URLQueryItem(name: "lang", value: lang)]))
             : nil
 
-        let places = (await placesTask)?.places ?? []
-        let addresses = (await addressTask)?.addresses ?? []
+        let placesResult = await placesTask
+        let addressResult = await addressTask
+        let places = placesResult?.places ?? []
+        let addresses = addressResult?.addresses ?? []
         let attractions = (await attractionsTask)?.places ?? []
 
         var web: [WebSearchResult] = []
@@ -55,6 +60,10 @@ public struct SearchService: Sendable {
             let webResponse: WebSearchResponse? = try? await client.get("/api/search/web", query: [URLQueryItem(name: "query", value: query)])
             web = webResponse?.web ?? []
         }
-        return SearchOutcome(attractions: attractions, sections: orderedSections(places: places, addresses: addresses, web: web))
+        return SearchOutcome(
+            attractions: attractions,
+            sections: orderedSections(places: places, addresses: addresses, web: web),
+            allFailed: placesResult == nil && addressResult == nil
+        )
     }
 }

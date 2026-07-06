@@ -63,5 +63,14 @@ extension StubNetworkTests {
         }
         let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
         #expect(outcome.sections.count == 1)  // 주소는 살아 있음(장소 502에 안 죽음)
+        #expect(outcome.allFailed == false)   // 한쪽만 실패면 전체 실패 아님
+    }
+
+    @Test func totalFailureIsSignaledNotSilenced() async throws {
+        // 3-state 불변식: 정본 두 트랙(장소·주소) 모두 실패는 "결과 없음"이 아니라 "조회 실패"
+        StubURLProtocol.handler = { _ in (502, Data(#"{"error":"실패"}"#.utf8)) }
+        let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
+        #expect(outcome.allFailed == true)
+        #expect(outcome.sections.isEmpty)
     }
 }
