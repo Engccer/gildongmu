@@ -14,7 +14,7 @@ struct SearchView: View {
                     if !outcome.attractions.items.isEmpty {
                         Section("명소") {
                             ForEach(outcome.attractions.items) { place in
-                                PlaceRow(place: place)
+                                NavigationLink(value: place) { PlaceRow(place: place) }
                                     .accessibilityFocused($focusedRowID, equals: "attraction-\(place.id)")
                             }
                         }
@@ -24,6 +24,7 @@ struct SearchView: View {
                     }
                 }
             }
+            .navigationDestination(for: Place.self) { PlaceDetailView(place: $0) }
             .navigationTitle("길동무")
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
             .onSubmit(of: .search) { model.submit() }
@@ -74,7 +75,7 @@ struct SearchView: View {
             if !filtered.isEmpty {
                 Section("장소") {
                     ForEach(filtered) { place in
-                        PlaceRow(place: place)
+                        NavigationLink(value: place) { PlaceRow(place: place) }
                             .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
                     }
                 }
