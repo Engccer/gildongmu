@@ -7,6 +7,8 @@ struct PlaceDetailView: View {
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
     @State private var stationSections = StationSectionsModel()
+    /// 장소 채팅 sheet(M5). 표시마다 새 ChatView = 장소마다 새 대화(웹 계약)
+    @State private var isChatPresented = false
 
     var body: some View {
         List {
@@ -23,6 +25,7 @@ struct PlaceDetailView: View {
                     // 인터랙티브 요소는 별도 객체가 정상(합치지 말 것)
                     Link("전화 걸기, \(phone)", destination: telURL)
                 }
+                Button("이 장소에 관해 물어보기") { isChatPresented = true }
             }
 
             Section("길찾기") {
@@ -47,6 +50,9 @@ struct PlaceDetailView: View {
             if isStation(place) {
                 await stationSections.load(stationName: place.name)
             }
+        }
+        .sheet(isPresented: $isChatPresented) {
+            ChatView(place: place)
         }
     }
 
