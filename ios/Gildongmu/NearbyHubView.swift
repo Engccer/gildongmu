@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 내 주변 허브 — 6개 도메인 화면 진입점.
+/// 내 주변 허브: 7개 도메인 화면 진입점.
 /// 위치 요청은 여기서 하지 않는다(각 도메인 화면 진입 시, When In Use 계약).
 struct NearbyHubView: View {
     var body: some View {
@@ -12,6 +12,7 @@ struct NearbyHubView: View {
                 NavigationLink("소아 야간진료") { ClinicNearbyView() }
                 NavigationLink("아이 놀 곳") { KidsNearbyView() }
                 NavigationLink("둘러보기") { AroundNearbyView() }
+                NavigationLink("날씨·공기질") { ConditionsView() }
             }
             .navigationTitle("내 주변")
         }
