@@ -4,14 +4,14 @@
 
 **Goal:** 검색 결과에서 장소 상세로 들어가 한영 주소·전화·네이버/카카오 딥링크를 쓸 수 있게 하고, 검색 행에 VoiceOver 커스텀 액션을 붙인다. M0의 `try?` 단순화를 3-state로 해소한다.
 
-**Architecture:** spec `2026-07-06-ios-native-rewrite-design.md` §3·§4. 딥링크 빌더는 웹 `src/lib/deeplink.ts`·`deeplink-kakao.ts`의 Swift 미러(GildongmuKit). 앱 실행은 `openURL` 완료 콜백으로 미설치 폴백(`canOpenURL`·`LSApplicationQueriesSchemes` 불필요 — open은 화이트리스트 없이 시도 가능).
+**Architecture:** spec `2026-07-06-ios-native-rewrite-design.md` §3·§4. 딥링크 빌더는 웹 `src/lib/deeplink.ts`·`deeplink-kakao.ts`의 Swift 미러(GildongmuKit). 앱 실행은 `openURL` 완료 콜백으로 미설치 폴백(`canOpenURL`·`LSApplicationQueriesSchemes` 불필요: open은 화이트리스트 없이 시도 가능).
 
 **Tech Stack:** M0과 동일. 신규 의존성 0.
 
 ## Global Constraints (M0 plan과 동일 + 추가)
 
 - M0 plan의 Global Constraints 전부 유지(iOS 26·의존성 0·한 줄=한 객체·pathspec 커밋·한국어 주석·em dash 금지).
-- 실행 방식: 단일 세션+서브에이전트. Agent Teams는 M2(내 주변 6종, 진짜 팬아웃)부터 검토 — M1은 한 수직 슬라이스라 팀 동기화 비용 > 이득.
+- 실행 방식: 단일 세션+서브에이전트. Agent Teams는 M2(내 주변 6종, 진짜 팬아웃)부터 검토. M1은 한 수직 슬라이스라 팀 동기화 비용 > 이득.
 - 웹 딥링크 의미론 보존: nmap은 `appname=space.dodoplanet.gildongmu` 필수, 목적지 한반도 권역 검증(위도 31.43~44.35, 경도 122.37~132.0), 출발지 생략=현재 위치 출발, 카카오 장소 상세는 `Place.id`의 `"kakao-"` 접두 제거 후 전달.
 - 테스트: `swift test --package-path ios/GildongmuKit`, 앱 빌드: `cd ios && xcodebuild -project Gildongmu.xcodeproj -scheme Gildongmu -destination 'generic/platform=iOS' build CODE_SIGNING_ALLOWED=NO`.
 
@@ -205,7 +205,7 @@ git add ios/GildongmuKit/Sources/GildongmuKit/Deeplink.swift ios/GildongmuKit/Te
 - `SearchOutcome`: `attractions/places/addresses/web: SectionState<...>` + `var allFailed: Bool`(계산) + `var orderedSections: [SearchSection]`(계산, 기존 정렬 규칙)
 - `orderedSections(places:addresses:web:)` 전역 함수는 SearchOutcome 계산 프로퍼티로 흡수(전역 제거)
 
-- [ ] **Step 1: 테스트 갱신** — 기존 4개 테스트를 새 shape로 고치고 부분 실패 가시성 테스트 추가:
+- [ ] **Step 1: 테스트 갱신**: 기존 4개 테스트를 새 shape로 고치고 부분 실패 가시성 테스트 추가:
 
 ```swift
 @Test func partialFailureIsVisiblePerSection() async throws {
@@ -227,7 +227,7 @@ git add ios/GildongmuKit/Sources/GildongmuKit/Deeplink.swift ios/GildongmuKit/Te
 
 기존 테스트 매핑: `webFallbackOnlyWhenBothEmpty`·`attractionsRideSeparateTrack`·`sectionFailureIsIsolated`·`totalFailureIsSignaledNotSilenced`는 `outcome.orderedSections`·`outcome.attractions.items`·`outcome.allFailed`로 표현만 바꾼다(의미 동일). `orderedSectionsSortsByCountDesc`는 SearchOutcome 생성자 기반으로 재작성.
 
-- [ ] **Step 2: 구현.** `search()`는 각 결과를 `result.map { .loaded($0...) } ?? .failed`로 변환. 웹 폴백 발동 조건은 "places.items와 addresses.items 둘 다 빈 배열"(실패 포함 — 기존 의미 유지). 미발동 시 `web = .loaded([])`. `allFailed = places.isFailed && addresses.isFailed`.
+- [ ] **Step 2: 구현.** `search()`는 각 결과를 `result.map { .loaded($0...) } ?? .failed`로 변환. 웹 폴백 발동 조건은 "places.items와 addresses.items 둘 다 빈 배열"(실패 포함, 기존 의미 유지). 미발동 시 `web = .loaded([])`. `allFailed = places.isFailed && addresses.isFailed`.
 
 - [ ] **Step 3: 앱 컴파일 유지보수.** `SearchModel.totalCount`·`SearchView`가 `outcome.orderedSections`·`outcome.attractions.items`를 쓰도록 갱신(로직 불변).
 
@@ -416,5 +416,5 @@ git commit -m "feat(ios): 검색 행 VoiceOver 커스텀 액션(전화·네이�
 ## Self-Review 결과
 
 - **Spec coverage:** M1 로드맵 항목(상세·한영 주소·tel·딥링크+폴백·커스텀 액션·3-state 해소) 전부 태스크 매핑. base URL 이월분 Task 3 처리.
-- **Placeholder scan:** 없음. Task 2는 리팩터라 diff 지시 방식(기존 코드가 정본)으로 서술 — 신규 코드는 전문 수록.
+- **Placeholder scan:** 없음. Task 2는 리팩터라 diff 지시 방식(기존 코드가 정본)으로 서술하고 신규 코드는 전문 수록.
 - **Type consistency:** `RouteDestination`·`RouteMode`(Task 1) ↔ Task 4·5 사용부 일치. `SectionState.items`·`orderedSections`(Task 2) ↔ Task 2 Step 3 앱 갱신 일치. `AppConfig.appIdentifier`(Task 3) ↔ Task 4·5 사용 일치.
