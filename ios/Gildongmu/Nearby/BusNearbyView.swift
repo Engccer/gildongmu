@@ -10,8 +10,13 @@ import GildongmuKit
 final class BusNearbyModel {
     private(set) var state: NearbyLoadState<BusStop> = .idle
     private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
+    private var isLoadingInFlight = false
 
     func load(force: Bool = false) async {
+        if isLoadingInFlight { return }
+        isLoadingInFlight = true
+        defer { isLoadingInFlight = false }
         if case .idle = state { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)

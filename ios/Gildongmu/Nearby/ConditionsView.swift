@@ -16,8 +16,13 @@ final class ConditionsModel {
     private(set) var weather: Weather?
     private(set) var air: AirQuality?
     private let service = ConditionsService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
+    private var isLoadingInFlight = false
 
     func load(force: Bool = false) async {
+        if isLoadingInFlight { return }
+        isLoadingInFlight = true
+        defer { isLoadingInFlight = false }
         if case .idle = phase { phase = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
@@ -29,10 +34,15 @@ final class ConditionsModel {
             if newWeather != nil { weather = newWeather }
             if newAir != nil { air = newAir }
             phase = .done
-            // 완료 통지 1회(진행 통지 없음). 부분 실패는 문장으로 분리
-            let message = (weather != nil && air != nil)
-                ? "날씨와 공기질 정보를 불러왔습니다"
-                : "일부 정보를 가져오지 못했습니다"
+            // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
+            // (누적 프로퍼티 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
+            let message = if newWeather != nil && newAir != nil {
+                "날씨와 공기질 정보를 불러왔습니다"
+            } else if newWeather != nil || newAir != nil {
+                "일부 정보를 가져오지 못했습니다"
+            } else {
+                "정보를 가져오지 못했습니다"
+            }
             AccessibilityNotification.Announcement(message).post()
         } catch let error as LocationService.LocationError {
             if case .denied = error { phase = .denied } else if case .done = phase { announceRefreshFailed() } else { phase = .failed }

@@ -18,7 +18,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private(set) var lastCoordinate: (lat: Double, lng: Double)?
 
     private let manager = CLLocationManager()
-    private var authContinuation: CheckedContinuation<Void, Never>?
+    /// 위치 쪽과 동일하게 배열 — 최초 권한 요청 구간에 동시 호출이 겹쳐도 전부 resume(스칼라면 덮어써 영구 대기)
+    private var authContinuations: [CheckedContinuation<Void, Never>] = []
     private var locationContinuations: [CheckedContinuation<(lat: Double, lng: Double), any Error>] = []
 
     private override init() {
@@ -34,7 +35,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
         if manager.authorizationStatus == .notDetermined {
             await withCheckedContinuation { continuation in
-                authContinuation = continuation
+                authContinuations.append(continuation)
                 manager.requestWhenInUseAuthorization()
             }
         }
@@ -63,8 +64,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
-            self.authContinuation?.resume()
-            self.authContinuation = nil
+            let continuations = self.authContinuations
+            self.authContinuations = []
+            for continuation in continuations { continuation.resume() }
         }
     }
 
