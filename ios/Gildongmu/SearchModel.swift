@@ -17,7 +17,7 @@ final class SearchModel {
     private var searchTask: Task<Void, Never>?
 
     private let service = SearchService(
-        client: APIClient(baseURL: URL(string: "https://gildongmu.vercel.app")!)
+        client: APIClient(baseURL: AppConfig.apiBaseURL)
     )
 
     var totalCount: Int {
