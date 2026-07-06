@@ -5,6 +5,8 @@ import GildongmuKit
 struct PlaceDetailView: View {
     let place: Place
     @Environment(\.openURL) private var openURL
+    /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
+    @State private var stationSections = StationSectionsModel()
 
     var body: some View {
         List {
@@ -30,9 +32,19 @@ struct PlaceDetailView: View {
                     Button("카카오맵 장소 정보") { openKakaoPlace(kakaoId) }
                 }
             }
+
+            // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)
+            if isStation(place) {
+                StationSectionsView(model: stationSections)
+            }
         }
         .navigationTitle(place.name)
         .navigationBarTitleDisplayMode(.large)
+        .task {
+            if isStation(place) {
+                await stationSections.load(stationName: place.name)
+            }
+        }
     }
 
     /// Place.id "kakao-" 접두가 있을 때만 카카오 장소 상세 체인 유효(웹 계약)
