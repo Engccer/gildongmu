@@ -25,7 +25,7 @@
 | `/api/air-quality/nearby` | `?lat=&lng=` | `{air: AirQuality?}` | khai/pm10/pm25: {value: Double?, grade: String}. distanceKm Double |
 | `/api/weather/nearby` | `?lat=&lng=` | `{weather: Weather?}` | sky/precipitation: {code: Int?, label: String}. temp들 Double?, grid{nx,ny} |
 
-null 여부·옵셔널은 fixture + 웹 `src/lib/types.ts` 대조가 정본. 각 라우트 실패(4xx/5xx)와 null은 "섹션 미노출"로 동일 처리(자동 등장 보조 정보의 graceful degrade, 웹 미러) — 단 도착은 fetch 성공 시 0건도 "도착 예정 열차가 없습니다"로 노출.
+null 여부·옵셔널은 fixture + 웹 `src/lib/types.ts` 대조가 정본. 각 라우트 실패(4xx/5xx)와 null은 "섹션 미노출"로 동일 처리(자동 등장 보조 정보의 graceful degrade, 웹 미러): 단 도착은 fetch 성공 시 0건도 "도착 예정 열차가 없습니다"로 노출.
 
 ### Task 1 (Kit): StationMatch + 모델 + 서비스
 
