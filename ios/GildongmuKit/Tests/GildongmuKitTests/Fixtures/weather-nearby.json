@@ -1,0 +1,1 @@
+{"weather":{"sky":{"code":4,"label":"cloudy"},"precipitation":{"code":1,"label":"rain"},"tempC":24.2,"tempMax":31,"tempMin":null,"humidity":91,"precipProbability":60,"baseTime":"07:00","grid":{"nx":63,"ny":126}}}
