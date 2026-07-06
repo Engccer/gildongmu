@@ -11,16 +11,16 @@ struct SearchView: View {
         NavigationStack {
             List {
                 if let outcome = model.outcome {
-                    if !outcome.attractions.isEmpty {
+                    if !outcome.attractions.items.isEmpty {
                         Section("명소") {
-                            ForEach(outcome.attractions) { place in
+                            ForEach(outcome.attractions.items) { place in
                                 PlaceRow(place: place)
                                     .accessibilityFocused($focusedRowID, equals: "attraction-\(place.id)")
                             }
                         }
                     }
-                    ForEach(Array(outcome.sections.enumerated()), id: \.offset) { _, section in
-                        sectionView(section, attractionIDs: Set(outcome.attractions.map(\.id)))
+                    ForEach(Array(outcome.orderedSections.enumerated()), id: \.offset) { _, section in
+                        sectionView(section, attractionIDs: Set(outcome.attractions.items.map(\.id)))
                     }
                 }
             }
@@ -48,9 +48,9 @@ struct SearchView: View {
     /// 포커스 이동 목표: 명소 최우선(최상단 병치), 없으면 첫 섹션의 첫 행.
     private var firstRowID: String? {
         guard let outcome = model.outcome else { return nil }
-        if let first = outcome.attractions.first { return "attraction-\(first.id)" }
-        let attractionIDs = Set(outcome.attractions.map(\.id))
-        for section in outcome.sections {
+        if let first = outcome.attractions.items.first { return "attraction-\(first.id)" }
+        let attractionIDs = Set(outcome.attractions.items.map(\.id))
+        for section in outcome.orderedSections {
             switch section {
             case .places(let places):
                 if let first = places.first(where: { !attractionIDs.contains($0.id) }) {

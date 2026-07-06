@@ -3,11 +3,13 @@ import Foundation
 @testable import GildongmuKit
 
 @Test func orderedSectionsSortsByCountDesc() {
-    let sections = orderedSections(
-        places: [],
-        addresses: [JusoAddress(roadAddr: "r", roadAddrPart1: "r1", jibunAddr: "j", engAddr: "e", zipNo: "04524", bdNm: "")],
-        web: []
+    let outcome = SearchOutcome(
+        attractions: .loaded([]),
+        places: .loaded([]),
+        addresses: .loaded([JusoAddress(roadAddr: "r", roadAddrPart1: "r1", jibunAddr: "j", engAddr: "e", zipNo: "04524", bdNm: "")]),
+        web: .loaded([])
     )
+    let sections = outcome.orderedSections
     #expect(sections.count == 1)  // 빈 섹션은 제외
     if case .addresses(let a) = sections[0] { #expect(a.count == 1) } else { Issue.record("주소 섹션이 최상단이어야 함") }
 }
@@ -28,8 +30,8 @@ extension StubNetworkTests {
             }
         }
         let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
-        #expect(outcome.sections.count == 1)
-        if case .web(let w) = outcome.sections[0] { #expect(w.count == 1) } else { Issue.record("웹 폴백 섹션이어야 함") }
+        #expect(outcome.orderedSections.count == 1)
+        if case .web(let w) = outcome.orderedSections[0] { #expect(w.count == 1) } else { Issue.record("웹 폴백 섹션이어야 함") }
     }
 
     @Test func attractionsRideSeparateTrack() async throws {
@@ -45,8 +47,8 @@ extension StubNetworkTests {
             }
         }
         let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
-        #expect(outcome.attractions.count == 1)   // 명소는 별도 트랙(최상단 병치는 뷰 책임)
-        #expect(outcome.sections.count == 1)      // 웹 폴백 미발동(장소 1건 존재)
+        #expect(outcome.attractions.items.count == 1)   // 명소는 별도 트랙(최상단 병치는 뷰 책임)
+        #expect(outcome.orderedSections.count == 1)     // 웹 폴백 미발동(장소 1건 존재)
     }
 
     @Test func sectionFailureIsIsolated() async throws {
@@ -62,8 +64,24 @@ extension StubNetworkTests {
             }
         }
         let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
-        #expect(outcome.sections.count == 1)  // 주소는 살아 있음(장소 502에 안 죽음)
-        #expect(outcome.allFailed == false)   // 한쪽만 실패면 전체 실패 아님
+        #expect(outcome.orderedSections.count == 1)  // 주소는 살아 있음(장소 502에 안 죽음)
+        #expect(outcome.allFailed == false)          // 한쪽만 실패면 전체 실패 아님
+    }
+
+    @Test func partialFailureIsVisiblePerSection() async throws {
+        StubURLProtocol.handler = { request in
+            switch request.url!.path() {
+            case "/api/places": return (502, Data(#"{"error":"실패"}"#.utf8))
+            case "/api/places/attractions": return (200, Data(#"{"places":[],"provider":"none","query":"q"}"#.utf8))
+            case "/api/address/search": return (200, Data(#"{"addresses":[],"query":"q"}"#.utf8))
+            case "/api/search/web": return (200, Data(#"{"web":[]}"#.utf8))
+            default: return (404, Data())
+            }
+        }
+        let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
+        #expect(outcome.places.isFailed)
+        #expect(!outcome.addresses.isFailed)
+        #expect(outcome.allFailed == false)
     }
 
     @Test func totalFailureIsSignaledNotSilenced() async throws {
@@ -71,6 +89,6 @@ extension StubNetworkTests {
         StubURLProtocol.handler = { _ in (502, Data(#"{"error":"실패"}"#.utf8)) }
         let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
         #expect(outcome.allFailed == true)
-        #expect(outcome.sections.isEmpty)
+        #expect(outcome.orderedSections.isEmpty)
     }
 }

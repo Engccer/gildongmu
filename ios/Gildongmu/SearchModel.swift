@@ -22,7 +22,7 @@ final class SearchModel {
 
     var totalCount: Int {
         guard let outcome else { return 0 }
-        return outcome.attractions.count + outcome.sections.reduce(0) { $0 + $1.count }
+        return outcome.attractions.items.count + outcome.orderedSections.reduce(0) { $0 + $1.count }
     }
 
     func submit() {
