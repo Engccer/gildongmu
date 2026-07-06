@@ -40,6 +40,7 @@
 
 ## 미해결·보류
 
+- **iOS 네이티브 재개발(SwiftUI 전면) 착수(2026-07-06)**: spec `docs/superpowers/specs/2026-07-06-ios-native-rewrite-design.md`(사용자 승인) + M0 plan `docs/superpowers/plans/2026-07-06-ios-native-rewrite-m0.md`. 개인 기기 우선(무료 프로비저닝)·전체 기능 동등성(M0~M8)·Vercel API 전량 재사용·같은 repo `ios/`·최소 iOS 26. **차단물: Xcode 26 미설치**(M0 Task 0, 사용자 App Store 조작 필요) — GildongmuKit(Task 1~5)는 CLT `swift test`만으로 진행 가능.
 - ~~**ODsay 대중교통 길찾기 prod 미동작**~~ → **해소(2026-07-04)**. 결정 기록(spec 생략, 이 단락이 정본): 후보 4안(Web키 referer/자가 프록시/클라 직접/유료 고정 IP) 중 **URI(도메인) 식별 + 서버 Referer 헤더** 채택(무료·최소 diff·키 서버 전용 유지, 커밋 f64831a). 시행착오 2건 — ① ODsay **apiKey는 발급 시점 플랫폼에 묶임**: 기존 Server 앱에 URI 환경을 추가해도 그 키는 referer 식별 불가(전 variant `ApiKeyAuthFailed`, 프로브 실측). **URI 전용 앱**(`gildongmuweb`, ~2027-01-04)을 새로 만들어 해결, 비화이트리스트 IP에서 referer 유/무 대조 실호출로 증명. ② 콘솔 신규 등록 404의 정체는 **앱 이름 하이픈 불가**("영문·숫자·한글만") — 에러 표시 없이 registerPay 404로 죽음. 새 키는 `+`/`/` 포함이라 **URL 인코딩 형태로 env 저장**(provider가 raw로 붙이는 계약과 정합). 기존 `gildongmu` 앱(Server·119.71.23.38)은 백업으로 보존. URI는 앱 간 중복 등록 불가.
 - **둘러보기 기능 B (OSM 횡단보도·점자블록 + 음향신호기)**: 후속 마일스톤. 길동 OSM 보행 태깅 희박 확인(2026-06-20) — OSM은 카카오가 비운 칸만 채우는 보완재. 음향신호기는 OSM 공백→data.go.kr 피벗([[overpass-osm-korea-pedestrian-coverage]]).
 - **idle 홈 heading 레벨 점프**: `h1`→`h3`(nearby 섹션 헤더가 h3, 상위 묶음 h2 없음). 회전자 순회는 안 막힘. 완전 정돈하려면 "내 주변" 묶음 `h2` 도입 필요 — 미니멀 UI 판단 보류.
