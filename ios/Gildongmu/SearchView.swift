@@ -3,6 +3,7 @@ import GildongmuKit
 
 struct SearchView: View {
     @State private var model = SearchModel()
+    @State private var speech = SpeechService()
     /// 검색 완료 후 첫 결과로 VoiceOver 포커스 이동(웹 "settled 후 1회 포커스" 원칙의 iOS 문법).
     /// 행 키는 섹션 접두("attraction-"·"place-"·"address-"·"web-")로 List 전역 유일.
     @AccessibilityFocusState private var focusedRowID: String?
@@ -29,6 +30,20 @@ struct SearchView: View {
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
             .onSubmit(of: .search) { model.submit() }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
+            .toolbar {
+                // 라벨 변화("음성 입력"↔"입력 마침")가 상태 신호(disabled 금지, 접근성 헌장)
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: toggleMic) {
+                        Label(
+                            speech.isListening ? "입력 마침" : "음성 입력",
+                            systemImage: speech.isListening ? "mic.fill" : "mic"
+                        )
+                    }
+                }
+            }
+            .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
+                Button("확인") {}
+            }
             .overlay {
                 if model.isSearching {
                     ProgressView("검색 중")
@@ -44,6 +59,38 @@ struct SearchView: View {
                 }
             }
         }
+    }
+
+    /// 음성 입력 토글: 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약).
+    /// partial은 검색 필드에 실시간 반영하지 않는다(필드 값 경합 회피, 최종만).
+    /// 재진입은 SpeechService의 phase 가드가 차단.
+    private func toggleMic() {
+        Task {
+            if speech.isListening {
+                if let text = await speech.stop() {
+                    model.query = text
+                    model.submit()
+                }
+            } else {
+                await speech.start()
+            }
+        }
+    }
+
+    /// denied·failed 안내(3-state: 실패와 거부를 다른 문장으로). 확인 시 idle 복귀.
+    private var speechAlertMessage: String? {
+        switch speech.phase {
+        case .denied: "설정에서 마이크 접근을 허용해 주세요"
+        case .failed: "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+        default: nil
+        }
+    }
+
+    private var speechAlertBinding: Binding<Bool> {
+        Binding(
+            get: { speechAlertMessage != nil },
+            set: { if !$0 { speech.reset() } }
+        )
     }
 
     /// 포커스 이동 목표: 명소 최우선(최상단 병치), 없으면 첫 섹션의 첫 행.

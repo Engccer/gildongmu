@@ -142,6 +142,7 @@ final class ChatModel {
 struct ChatView: View {
     @State private var model: ChatModel
     @State private var draft = ""
+    @State private var speech = SpeechService()
     /// 완료 시 새 답변 말풍선으로 VoiceOver 포커스 이동(웹 완료 포커스 이동 미러)
     @AccessibilityFocusState private var focusedMessageID: UUID?
     @Environment(\.dismiss) private var dismiss
@@ -191,7 +192,14 @@ struct ChatView: View {
             }
         }
         .presentationDetents([.large])
-        .onDisappear { model.cancel() }
+        .onDisappear {
+            model.cancel()
+            // 진행 중 음성 인식도 폐기(시트 닫힘 후 마이크 잔존 방지)
+            Task { await speech.cancel() }
+        }
+        .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
+            Button("확인") {}
+        }
     }
 
     private var inputBar: some View {
@@ -200,6 +208,15 @@ struct ChatView: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
+            // 라벨 변화("음성 입력"↔"입력 마침")가 상태 신호(disabled 금지, 접근성 헌장)
+            Button(action: toggleMic) {
+                Label(
+                    speech.isListening ? "입력 마침" : "음성 입력",
+                    systemImage: speech.isListening ? "mic.fill" : "mic"
+                )
+                .labelStyle(.iconOnly)
+            }
+            .frame(minWidth: 44, minHeight: 44)
             // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장)
             Button("보내기", action: sendDraft)
                 .buttonStyle(.borderedProminent)
@@ -213,6 +230,35 @@ struct ChatView: View {
         guard !trimmed.isEmpty, !model.isStreaming else { return }
         draft = ""
         model.send(trimmed)
+    }
+
+    /// 음성 입력 토글: 최종 텍스트를 입력 필드에 넣기만(자동 전송 안 함, 질문은 검토 후 전송).
+    private func toggleMic() {
+        Task {
+            if speech.isListening {
+                if let text = await speech.stop() {
+                    draft = text
+                }
+            } else {
+                await speech.start()
+            }
+        }
+    }
+
+    /// denied·failed 안내(SearchView 동형). 확인 시 idle 복귀.
+    private var speechAlertMessage: String? {
+        switch speech.phase {
+        case .denied: "설정에서 마이크 접근을 허용해 주세요"
+        case .failed: "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+        default: nil
+        }
+    }
+
+    private var speechAlertBinding: Binding<Bool> {
+        Binding(
+            get: { speechAlertMessage != nil },
+            set: { if !$0 { speech.reset() } }
+        )
     }
 }
 

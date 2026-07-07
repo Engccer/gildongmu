@@ -1,5 +1,6 @@
 import Foundation
-import AVFoundation
+// AVAudioNodeTapBlock 등 AVFAudio의 Sendable 미표기 API를 Swift 6에서 경고 없이 쓰기 위함
+@preconcurrency import AVFoundation
 import AudioToolbox
 import Observation
 import Speech
@@ -194,6 +195,8 @@ private final class MicBufferForwarder: @unchecked Sendable {
     private let converter: AVAudioConverter?
     private let analyzerFormat: AVAudioFormat
     private let continuation: AsyncStream<AnalyzerInput>.Continuation
+    /// 변환 대기 버퍼. convert()의 입력 블록은 forward() 안에서 동기 호출되므로 경합 없음.
+    private var pendingBuffer: AVAudioPCMBuffer?
 
     init?(
         inputFormat: AVAudioFormat,
@@ -219,16 +222,16 @@ private final class MicBufferForwarder: @unchecked Sendable {
         let capacity = AVAudioFrameCount((Double(buffer.frameLength) * ratio).rounded(.up)) + 16
         guard let converted = AVAudioPCMBuffer(pcmFormat: analyzerFormat, frameCapacity: capacity) else { return }
 
-        var consumed = false
+        pendingBuffer = buffer
         var conversionError: NSError?
-        converter.convert(to: converted, error: &conversionError) { _, outStatus in
-            if consumed {
+        converter.convert(to: converted, error: &conversionError) { [self] _, outStatus in
+            guard let pending = pendingBuffer else {
                 outStatus.pointee = .noDataNow
                 return nil
             }
-            consumed = true
+            pendingBuffer = nil
             outStatus.pointee = .haveData
-            return buffer
+            return pending
         }
         if conversionError == nil, converted.frameLength > 0 {
             continuation.yield(AnalyzerInput(buffer: converted))
