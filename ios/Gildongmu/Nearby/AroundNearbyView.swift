@@ -33,6 +33,8 @@ final class AroundNearbyModel {
 
 struct AroundNearbyView: View {
     @State private var model = AroundNearbyModel()
+    /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
+    @State private var chatPlace: Place?
 
     var body: some View {
         List {
@@ -41,6 +43,13 @@ struct AroundNearbyView: View {
                     // 이름·카테고리·방위·거리를 한 줄 = 한 접근성 객체로 합친다.
                     Text(joinText(place.name, categoryPiece(place.categoryRaw),
                                   bearingLabel(place.bearing), "\(place.distanceMeters)m"))
+                        // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
+                        .contextMenu {
+                            Button(chatLabel(place.name)) { chatPlace = surroundingPlaceToPlace(place) }
+                        }
+                        .accessibilityAction(named: Text(chatLabel(place.name))) {
+                            chatPlace = surroundingPlaceToPlace(place)
+                        }
                 }
             }
         }
@@ -48,7 +57,10 @@ struct AroundNearbyView: View {
         .overlay { stateOverlay }
         .task { await model.load() }
         .refreshable { await model.load(force: true) }
+        .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
+
+    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
 
     /// category_name 전체 계층 중 마지막 " > " 조각만(가장 구체적인 분류).
     private func categoryPiece(_ raw: String) -> String {

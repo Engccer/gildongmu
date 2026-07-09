@@ -33,6 +33,8 @@ final class ClinicNearbyModel {
 
 struct ClinicNearbyView: View {
     @State private var model = ClinicNearbyModel()
+    /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
+    @State private var chatPlace: Place?
 
     var body: some View {
         List {
@@ -56,6 +58,13 @@ struct ClinicNearbyView: View {
                         // 기관명만 heading(웹 h4 규칙). 종별·거리는 같은 줄에 흡수.
                         Text(joinText(clinic.name, clinic.kind, "\(clinic.distanceMeters)m"))
                             .accessibilityAddTraits(.isHeader)
+                            // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
+                            .contextMenu {
+                                Button(chatLabel(clinic.name)) { chatPlace = nightClinicToPlace(clinic) }
+                            }
+                            .accessibilityAction(named: Text(chatLabel(clinic.name))) {
+                                chatPlace = nightClinicToPlace(clinic)
+                            }
                     }
                 }
             }
@@ -64,7 +73,10 @@ struct ClinicNearbyView: View {
         .overlay { stateOverlay }
         .task { await model.load() }
         .refreshable { await model.load(force: true) }
+        .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
+
+    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
 
     /// 진료 상태 3-state 문장. open이면 종료시각까지, closed/unknown은 각각의 문장으로.
     private func clinicStatusText(_ status: NightClinic.OpenStatus) -> String {

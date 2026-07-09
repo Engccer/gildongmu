@@ -33,6 +33,8 @@ final class KidsNearbyModel {
 
 struct KidsNearbyView: View {
     @State private var model = KidsNearbyModel()
+    /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
+    @State private var chatPlace: Place?
 
     var body: some View {
         List {
@@ -41,6 +43,13 @@ struct KidsNearbyView: View {
                     // 이름·종류·실내외·거리·주소를 한 줄 = 한 접근성 객체로 합친다.
                     Text(joinText(place.name, kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
                                   "\(place.distanceMeters)m", place.roadAddress ?? place.address))
+                        // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
+                        .contextMenu {
+                            Button(chatLabel(place.name)) { chatPlace = kidsPlaceToPlace(place) }
+                        }
+                        .accessibilityAction(named: Text(chatLabel(place.name))) {
+                            chatPlace = kidsPlaceToPlace(place)
+                        }
                 }
             }
         }
@@ -48,7 +57,10 @@ struct KidsNearbyView: View {
         .overlay { stateOverlay }
         .task { await model.load() }
         .refreshable { await model.load(force: true) }
+        .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
+
+    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
 
     /// kind 코드 → 한글 라벨. 미지 값은 원문 그대로 노출(계약 확장에 깨지지 않게).
     private func kindLabel(_ kind: String) -> String {
