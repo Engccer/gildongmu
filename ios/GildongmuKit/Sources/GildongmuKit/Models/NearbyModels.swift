@@ -201,3 +201,19 @@ public struct SurroundingPlace: Codable, Sendable, Identifiable, Hashable {
 public struct AroundNearbyResponse: Codable, Sendable {
     public let places: [SurroundingPlace]
 }
+
+// MARK: - 버스 노선 경유 정류소
+
+/// 노선 경유 정류소 하나(도착 항목 lazy 펼치기 전용). 거의 불변 데이터라 서버가 하루 캐시(웹 계약).
+public struct BusRouteStop: Codable, Sendable, Hashable {
+    public let nodeId: String
+    public let name: String
+    /// 정류소 순번(nodeord) — 오름차순
+    public let order: Int
+    public let lat: Double
+    public let lng: Double
+}
+
+public struct BusRouteStopsResponse: Codable, Sendable {
+    public let stops: [BusRouteStop]
+}

@@ -49,4 +49,17 @@ public struct NearbyService: Sendable {
             "/api/places/around", query: coordQuery(lat: lat, lng: lng))
         return response.places
     }
+
+    /// 노선 경유정류소(lazy 펼치기). cityCode는 source=="tago"일 때만 쿼리에 포함(웹 BusRouteStops.tsx 미러).
+    public func busRouteStops(source: String, cityCode: String?, routeId: String) async throws -> [BusRouteStop] {
+        var query = [
+            URLQueryItem(name: "source", value: source),
+            URLQueryItem(name: "routeId", value: routeId),
+        ]
+        if source == "tago", let cityCode {
+            query.append(URLQueryItem(name: "cityCode", value: cityCode))
+        }
+        let response: BusRouteStopsResponse = try await client.get("/api/bus/route", query: query)
+        return response.stops
+    }
 }

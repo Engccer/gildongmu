@@ -64,3 +64,11 @@ import Foundation
     #expect(result.places.allSatisfy { !$0.categoryRaw.isEmpty })
     #expect(result.places.allSatisfy { $0.distanceMeters >= 0 })
 }
+
+@Test func busRouteStopsFixtureDecodes() throws {
+    let result = try JSONDecoder().decode(BusRouteStopsResponse.self, from: fixture("bus-route-stops"))
+    #expect(!result.stops.isEmpty)
+    #expect(result.stops.allSatisfy { !$0.nodeId.isEmpty })
+    // order는 정류소 통과 순서 — 오름차순 보존(서버 계약)
+    #expect(result.stops.map(\.order) == result.stops.map(\.order).sorted())
+}
