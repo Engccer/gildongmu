@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import Accessibility
 import GildongmuKit
 
 /// 장소 상세. 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임(spec §4).
@@ -7,6 +9,8 @@ struct PlaceDetailView: View {
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
     @State private var stationSections = StationSectionsModel()
+    /// 무장애 편의시설 자동 섹션 모델. 역 여부와 무관하게 모든 장소에서 로드
+    @State private var barrierFreeInfo = BarrierFreeInfoModel()
     /// 장소 채팅 sheet(M5). 표시마다 새 ChatView = 장소마다 새 대화(웹 계약)
     @State private var isChatPresented = false
 
@@ -19,6 +23,11 @@ struct PlaceDetailView: View {
                 if !place.address.isEmpty { Text("지번 주소, \(place.address)") }
                 if let english = place.englishAddress, !english.isEmpty {
                     Text("영문 주소, \(english)")
+                }
+                // 별도 접근성 객체(인터랙티브는 텍스트와 합치지 않음, 웹 정본 규칙)
+                Button("주소 복사") {
+                    UIPasteboard.general.string = copyableAddress
+                    AccessibilityNotification.Announcement("주소가 클립보드에 복사됨").post()
                 }
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -43,6 +52,9 @@ struct PlaceDetailView: View {
             if isStation(place) {
                 StationSectionsView(model: stationSections)
             }
+
+            // 무장애 편의시설도 자동 등장(조용히 나타남, 역 여부 무관)
+            BarrierFreeInfoSection(model: barrierFreeInfo)
         }
         .navigationTitle(place.name)
         .navigationBarTitleDisplayMode(.large)
@@ -50,6 +62,9 @@ struct PlaceDetailView: View {
             if isStation(place) {
                 await stationSections.load(stationName: place.name)
             }
+        }
+        .task {
+            await barrierFreeInfo.load(lat: place.lat, lng: place.lng, name: place.name)
         }
         .sheet(isPresented: $isChatPresented) {
             ChatView(place: place)
@@ -59,6 +74,12 @@ struct PlaceDetailView: View {
     /// Place.id "kakao-" 접두가 있을 때만 카카오 장소 상세 체인 유효(웹 계약)
     private var kakaoPlaceId: String? {
         place.id.hasPrefix("kakao-") ? String(place.id.dropFirst("kakao-".count)) : nil
+    }
+
+    /// 복사 대상 주소 우선순위: 영문 주소 > 도로명 > 지번(웹 PlaceDetail.tsx:81-99 미러)
+    private var copyableAddress: String {
+        if let english = place.englishAddress, !english.isEmpty { return english }
+        return place.roadAddress.isEmpty ? place.address : place.roadAddress
     }
 
     private var destination: RouteDestination {
