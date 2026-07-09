@@ -4,6 +4,9 @@ import GildongmuKit
 struct SearchView: View {
     @State private var model = SearchModel()
     @State private var speech = SpeechService()
+    /// 장소 섹션 분류·지역 필터(웹 bucket/region state 미러). 새 검색마다 초기화(runSearch).
+    @State private var bucket: String?
+    @State private var region: String?
     /// 검색 완료 후 첫 결과로 VoiceOver 포커스 이동(웹 "settled 후 1회 포커스" 원칙의 iOS 문법).
     /// 행 키는 섹션 접두("attraction-"·"place-"·"address-"·"web-")로 List 전역 유일.
     @AccessibilityFocusState private var focusedRowID: String?
@@ -28,7 +31,7 @@ struct SearchView: View {
             .navigationDestination(for: Place.self) { PlaceDetailView(place: $0) }
             .navigationTitle("길동무")
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
-            .onSubmit(of: .search) { model.submit() }
+            .onSubmit(of: .search) { runSearch() }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
             .toolbar {
                 // 라벨 변화("음성 입력"↔"입력 마침")가 상태 신호(disabled 금지, 접근성 헌장)
@@ -69,12 +72,21 @@ struct SearchView: View {
             if speech.isListening {
                 if let text = await speech.stop() {
                     model.query = text
-                    model.submit()
+                    runSearch()
                 }
             } else {
                 await speech.start()
             }
         }
+    }
+
+    /// 새 검색 시작 지점(제출·음성 확정) 공용 경로. 분류·지역 필터를 초기화한 뒤
+    /// 제출한다(웹 performSearch의 setBucket(null)/setRegion(null) 미러) — 필터
+    /// 리셋은 결과 도착 전에 끝나므로 포커스 이동 시점엔 항상 무필터 상태다.
+    private func runSearch() {
+        bucket = nil
+        region = nil
+        model.submit()
     }
 
     /// denied·failed 안내(3-state: 실패와 거부를 다른 문장으로). 확인 시 idle 복귀.
@@ -117,16 +129,7 @@ struct SearchView: View {
     private func sectionView(_ section: SearchSection, attractionIDs: Set<String>) -> some View {
         switch section {
         case .places(let places):
-            // 명소 섹션과 같은 List에 공존하므로 동일 id 행을 제거(ForEach 정체성 충돌·중복 낭독 방지)
-            let filtered = places.filter { !attractionIDs.contains($0.id) }
-            if !filtered.isEmpty {
-                Section("장소") {
-                    ForEach(filtered) { place in
-                        NavigationLink(value: place) { PlaceRow(place: place) }
-                            .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
-                    }
-                }
-            }
+            placesSectionView(places, attractionIDs: attractionIDs)
         case .addresses(let addresses):
             Section("주소") {
                 ForEach(addresses, id: \.roadAddr) { address in
@@ -140,6 +143,56 @@ struct SearchView: View {
                 ForEach(results, id: \.url) { result in
                     webRow(result)
                         .accessibilityFocused($focusedRowID, equals: "web-\(result.url)")
+                }
+            }
+        }
+    }
+
+    /// 장소 섹션: 분류·지역 두 축 필터(AND 결합) + 버킷별 Section 분할.
+    /// 웹 PlaceSearch.tsx 575-660행 미러(칩 대신 iOS 문법의 Picker 2종).
+    @ViewBuilder
+    private func placesSectionView(_ places: [Place], attractionIDs: Set<String>) -> some View {
+        // 명소 섹션과 같은 List에 공존하므로 동일 id 행을 제거(ForEach 정체성 충돌·중복 낭독 방지)
+        let base = places.filter { !attractionIDs.contains($0.id) }
+        if !base.isEmpty {
+            // 칩/픽커 목록·카운트는 전체 결과(base) 기준 고정 — 선택해도 목록이 줄지
+            // 않아 SR 탐색이 안정적이다(웹 bucketItems/regionItems 미러).
+            let bucketItems = bucketsPresent(base).map { key in
+                FilterChip(id: key, label: bucketLabelKo(key), count: filterPlaces(base, bucket: key).count)
+            }
+            let regionItems = regionsPresent(base).map { key in
+                FilterChip(id: key, label: regionLabelKo(key), count: filterPlaces(base, region: key).count)
+            }
+            // 축 항목이 1개 이하면 그 축은 숨김(웹 ChipFilter "items.length <= 1" 미러)
+            if bucketItems.count > 1 {
+                Picker("분류", selection: $bucket) {
+                    Text("전체").tag(nil as String?)
+                    ForEach(bucketItems) { item in
+                        Text("\(item.label) (\(item.count))").tag(item.id as String?)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            if regionItems.count > 1 {
+                Picker("지역", selection: $region) {
+                    Text("전체").tag(nil as String?)
+                    ForEach(regionItems) { item in
+                        Text("\(item.label) (\(item.count))").tag(item.id as String?)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            let filtered = filterPlaces(filterPlaces(base, bucket: bucket), region: region)
+            if filtered.isEmpty {
+                Text("선택한 필터에 해당하는 결과가 없습니다.")
+            } else {
+                ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
+                    Section(bucketLabelKo(group.bucket)) {
+                        ForEach(group.places) { place in
+                            NavigationLink(value: place) { PlaceRow(place: place) }
+                                .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
+                        }
+                    }
                 }
             }
         }
@@ -196,10 +249,19 @@ struct PlaceRow: View {
 
     private var dest: RouteDestination { RouteDestination(lat: place.lat, lng: place.lng, name: place.name) }
 
-    /// falsy 조각 제거+쉼표 결합(웹 joinText 미러).
+    /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
     private var joined: String {
-        [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
-            .filter { !$0.isEmpty }
-            .joined(separator: ", ")
+        var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
+        if let distance = place.distanceMeters {
+            parts.append("\(Int(distance.rounded()))m")
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }
+}
+
+/// 장소 필터 픽커 항목(분류·지역 공용). 라벨은 이미 로컬라이즈된 문자열.
+private struct FilterChip: Identifiable {
+    let id: String
+    let label: String
+    let count: Int
 }
