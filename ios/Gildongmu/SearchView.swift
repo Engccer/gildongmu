@@ -164,8 +164,9 @@ struct SearchView: View {
                 FilterChip(id: key, label: regionLabelKo(key), count: filterPlaces(base, region: key).count)
             }
             // 축 항목이 1개 이하면 그 축은 숨김(웹 ChipFilter "items.length <= 1" 미러)
+            // 라벨·"전체"/"전국"은 ko.json category.filterLabel/all·region.filterLabel/all 정본 미러.
             if bucketItems.count > 1 {
-                Picker("분류", selection: $bucket) {
+                Picker("분류로 거르기", selection: $bucket) {
                     Text("전체").tag(nil as String?)
                     ForEach(bucketItems) { item in
                         Text("\(item.label) (\(item.count))").tag(item.id as String?)
@@ -174,8 +175,8 @@ struct SearchView: View {
                 .pickerStyle(.menu)
             }
             if regionItems.count > 1 {
-                Picker("지역", selection: $region) {
-                    Text("전체").tag(nil as String?)
+                Picker("지역으로 거르기", selection: $region) {
+                    Text("전국").tag(nil as String?)
                     ForEach(regionItems) { item in
                         Text("\(item.label) (\(item.count))").tag(item.id as String?)
                     }
@@ -186,8 +187,9 @@ struct SearchView: View {
             if filtered.isEmpty {
                 Text("선택한 필터에 해당하는 결과가 없습니다.")
             } else {
+                // 헤더 "{label} {count}건"은 ko.json category.groupHeading 정본 미러.
                 ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
-                    Section(bucketLabelKo(group.bucket)) {
+                    Section("\(bucketLabelKo(group.bucket)) \(group.places.count)건") {
                         ForEach(group.places) { place in
                             NavigationLink(value: place) { PlaceRow(place: place) }
                                 .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
@@ -253,10 +255,19 @@ struct PlaceRow: View {
     private var joined: String {
         var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
         if let distance = place.distanceMeters {
-            parts.append("\(Int(distance.rounded()))m")
+            // ko.json place.distance "약 {distance}" 정본 미러.
+            parts.append("약 \(formatDistanceKo(distance))")
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }
+}
+
+/// 웹 `src/lib/format.ts` formatDistance 미러: 1,000m 미만은 "{m}m", 이상은
+/// 소수 첫째자리 "{km}km". GildongmuKit의 동형 함수는 private이라(Kit 비수정
+/// 범위) 여기 로컬로 둔다.
+private func formatDistanceKo(_ meters: Double) -> String {
+    if meters < 1000 { return "\(Int(meters.rounded()))m" }
+    return String(format: "%.1fkm", meters / 1000)
 }
 
 /// 장소 필터 픽커 항목(분류·지역 공용). 라벨은 이미 로컬라이즈된 문자열.
