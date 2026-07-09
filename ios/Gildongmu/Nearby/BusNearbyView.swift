@@ -50,7 +50,16 @@ struct BusNearbyView: View {
                             Text("도착 예정 버스가 없습니다")
                         } else {
                             ForEach(Array(stop.arrivals.enumerated()), id: \.offset) { _, arrival in
-                                Text(arrivalLine(arrival))
+                                NavigationLink {
+                                    BusRouteStopsView(
+                                        source: stop.source,
+                                        cityCode: stop.source == "tago" ? stop.cityCode : nil,
+                                        routeId: arrival.routeId,
+                                        routeNo: arrival.routeNo)
+                                } label: {
+                                    Text(arrivalLine(arrival))
+                                }
+                                .accessibilityHint("경유 정류소 보기")
                             }
                         }
                     }
