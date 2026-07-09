@@ -42,7 +42,7 @@ final class WhereAmIModel {
                 AccessibilityNotification.Announcement("현재 위치 정보를 찾지 못했습니다.").post()
             }
         } catch let error as LocationService.LocationError {
-            if case .denied = error { state = .denied } else if case .loaded = state {} else { state = .failed }
+            if case .denied = error { state = .denied } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
         } catch {
             if case .loaded = state { announceRefreshFailed() } else { state = .failed }
         }
