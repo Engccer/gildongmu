@@ -37,6 +37,15 @@ private func formatDistanceKo(_ meters: Int) -> String {
     return String(format: "%.1fkm", Double(meters) / 1000)
 }
 
+/// 첫 non-nil·non-empty 값 반환(웹 `||` 폴백 동형, `PlaceProjection.swift`의
+/// firstNonEmpty와 동일 접근). 빈 문자열 조각이 트레일링 쉼표로 낭독되는 것을 막는다.
+private func firstNonEmpty(_ values: String?...) -> String? {
+    for value in values {
+        if let value, !value.isEmpty { return value }
+    }
+    return nil
+}
+
 /// WhereAmIData → ko 산문 단락 배열. 단락1(위치+근접역)·단락2(주변 기준점 상위
 /// landmarkCap) 순. 빈 조각(주소·행정동 둘 다 없음, 근접역 없음, 기준점 없음)은
 /// 해당 문장·단락을 통째로 생략한다.
@@ -44,9 +53,9 @@ public func buildLocationNarrativeKo(_ data: WhereAmIData) -> [String] {
     var paragraphs: [String] = []
 
     var sentences: [String] = []
-    let rawRoad = data.address?.road ?? data.address?.jibun
+    let rawRoad = firstNonEmpty(data.address?.road, data.address?.jibun)
     let road = rawRoad.map { stripRegionPrefix(data.region, $0) }
-    let placeParts = [data.region, road].compactMap { $0 }
+    let placeParts = [firstNonEmpty(data.region), road].compactMap { $0 }
     if !placeParts.isEmpty {
         sentences.append("현재 위치는 \(placeParts.joined(separator: ", "))입니다.")
     }

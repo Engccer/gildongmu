@@ -83,3 +83,15 @@ import Foundation
         landmarks: [])
     #expect(buildLocationNarrativeKo(noOverlap)[0] == "현재 위치는 서울특별시 강동구 길동, 천호대로 1042입니다.")
 }
+
+@Test func buildLocationNarrativeKoFallsBackWhenRoadIsEmptyString() {
+    // 웹 `||` 폴백 동형: road가 빈 문자열("")이면 트레일링 쉼표 없이 jibun으로 폴백된다.
+    let emptyRoad = WhereAmIData(
+        address: WhereAmIAddress(road: "", jibun: "강동구 길동 247"),
+        region: "서울특별시 강동구 길동",
+        nearestStation: nil,
+        landmarks: [])
+    let paragraph = buildLocationNarrativeKo(emptyRoad)[0]
+    #expect(paragraph == "현재 위치는 서울특별시 강동구 길동, 강동구 길동 247입니다.")
+    #expect(!paragraph.contains(", 입니다"))
+}

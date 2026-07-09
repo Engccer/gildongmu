@@ -18,6 +18,7 @@ final class BusRouteStopsModel {
         do {
             let stops = try await service.busRouteStops(source: source, cityCode: cityCode, routeId: routeId)
             state = .loaded(stops)
+            announceLoaded(count: stops.count, unit: "정류소")
         } catch {
             state = .failed
         }

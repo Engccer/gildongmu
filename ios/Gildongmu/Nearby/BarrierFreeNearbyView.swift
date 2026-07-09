@@ -103,7 +103,7 @@ private struct BarrierFreePlaceSection: View {
 
     var body: some View {
         Section {
-            DisclosureGroup("무장애 편의시설 보기", isExpanded: $isExpanded) {
+            DisclosureGroup("무장애 편의시설 보기, \(place.name)", isExpanded: $isExpanded) {
                 facilitiesContent
             }
         } header: {
