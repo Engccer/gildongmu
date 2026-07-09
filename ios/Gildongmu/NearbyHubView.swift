@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// 내 주변 허브: 7개 도메인 화면 진입점.
+/// 내 주변 허브: 현재 위치 정위+8개 도메인 화면 진입점.
 /// 위치 요청은 여기서 하지 않는다(각 도메인 화면 진입 시, When In Use 계약).
 struct NearbyHubView: View {
     var body: some View {
         NavigationStack {
             List {
+                NavigationLink("현재 위치 확인") { WhereAmIView() }
                 NavigationLink("지하철 도착") { SubwayNearbyView() }
                 NavigationLink("버스 도착") { BusNearbyView() }
                 NavigationLink("따릉이 대여소") { BikeNearbyView() }
