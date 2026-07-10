@@ -208,10 +208,10 @@ struct ChatView: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
-            // 라벨 변화("음성 입력"↔"입력 마침")가 상태 신호(disabled 금지, 접근성 헌장)
+            // 라벨 변화("음성 입력"↔"입력 중지")가 상태 신호(disabled 금지, 접근성 헌장)
             Button(action: toggleMic) {
                 Label(
-                    speech.isListening ? "입력 마침" : "음성 입력",
+                    speech.isListening ? "입력 중지" : "음성 입력",
                     systemImage: speech.isListening ? "mic.fill" : "mic"
                 )
                 .labelStyle(.iconOnly)

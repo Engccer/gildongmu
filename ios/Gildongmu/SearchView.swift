@@ -19,7 +19,7 @@ struct SearchView: View {
                 Section {
                     Button(action: toggleMic) {
                         Label(
-                            speech.isListening ? "입력 마침" : "음성 입력",
+                            speech.isListening ? "입력 중지" : "음성 입력",
                             systemImage: speech.isListening ? "mic.fill" : "mic"
                         )
                     }
