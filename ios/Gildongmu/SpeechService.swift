@@ -165,7 +165,9 @@ final class SpeechService {
             throw SpeechError.audioUnavailable
         }
 
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
+        // @Sendable 명시 필수: 미표기 시 클로저가 MainActor 격리를 상속해, AVFAudio가
+        // 오디오 실시간 큐에서 호출하는 순간 런타임 격리 검증(SIGTRAP)으로 크래시(실기기 실측).
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { @Sendable buffer, _ in
             forwarder.forward(buffer)
         }
 

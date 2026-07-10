@@ -14,6 +14,16 @@ struct SearchView: View {
     var body: some View {
         NavigationStack {
             List {
+                // 마이크는 검색 필드 바로 다음 행: toolbar(내비 바)에 두면 VoiceOver가
+                // 제목보다 먼저 읽는다(실기기 실측). 라벨 변화가 상태 신호(disabled 금지).
+                Section {
+                    Button(action: toggleMic) {
+                        Label(
+                            speech.isListening ? "입력 마침" : "음성 입력",
+                            systemImage: speech.isListening ? "mic.fill" : "mic"
+                        )
+                    }
+                }
                 if let outcome = model.outcome {
                     if !outcome.attractions.items.isEmpty {
                         Section("명소") {
@@ -33,17 +43,6 @@ struct SearchView: View {
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
             .onSubmit(of: .search) { runSearch() }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
-            .toolbar {
-                // 라벨 변화("음성 입력"↔"입력 마침")가 상태 신호(disabled 금지, 접근성 헌장)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: toggleMic) {
-                        Label(
-                            speech.isListening ? "입력 마침" : "음성 입력",
-                            systemImage: speech.isListening ? "mic.fill" : "mic"
-                        )
-                    }
-                }
-            }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
                 Button("확인") {}
             }
