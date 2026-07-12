@@ -16,14 +16,19 @@ final class KidsNearbyModel {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
         defer { isLoadingInFlight = false }
-        if case .idle = state { state = .loading }
+        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
+        if case .loaded = state {} else { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
             state = .loaded(places)
             announceLoaded(count: places.count, unit: "곳")
         } catch let error as LocationService.LocationError {
-            if case .denied = error { state = .denied } else if case .loaded = state {} else { state = .failed }
+            if case .denied = error {
+                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
+                if case .loaded = state { announcePermissionLost() }
+                state = .denied
+            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
         } catch {
             // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
             if case .loaded = state { announceRefreshFailed() } else { state = .failed }
@@ -54,9 +59,9 @@ struct KidsNearbyView: View {
             }
         }
         .navigationTitle("아이 놀 곳")
-        .overlay { stateOverlay }
+        .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
-        .refreshable { await model.load(force: true) }
+        .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
 

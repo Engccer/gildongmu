@@ -17,14 +17,19 @@ final class BusNearbyModel {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
         defer { isLoadingInFlight = false }
-        if case .idle = state { state = .loading }
+        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
+        if case .loaded = state {} else { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let stops = try await service.busStops(lat: coord.lat, lng: coord.lng)
             state = .loaded(stops)
             announceLoaded(count: stops.count, unit: "정류소")
         } catch let error as LocationService.LocationError {
-            if case .denied = error { state = .denied } else if case .loaded = state {} else { state = .failed }
+            if case .denied = error {
+                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
+                if case .loaded = state { announcePermissionLost() }
+                state = .denied
+            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
         } catch {
             // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
             if case .loaded = state { announceRefreshFailed() } else { state = .failed }
@@ -67,9 +72,9 @@ struct BusNearbyView: View {
             }
         }
         .navigationTitle("버스 도착")
-        .overlay { stateOverlay }
+        .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
-        .refreshable { await model.load(force: true) }
+        .nearbyRefreshable { await model.load(force: true) }
     }
 
     /// 도착 한 줄 결합. 저상은 교통약자 정본이라 텍스트로 흡수.

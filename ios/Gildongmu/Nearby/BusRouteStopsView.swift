@@ -14,13 +14,15 @@ final class BusRouteStopsModel {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
         defer { isLoadingInFlight = false }
-        if case .idle = state { state = .loading }
+        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
+        if case .loaded = state {} else { state = .loading }
         do {
             let stops = try await service.busRouteStops(source: source, cityCode: cityCode, routeId: routeId)
             state = .loaded(stops)
             announceLoaded(count: stops.count, unit: "정류소")
         } catch {
-            state = .failed
+            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
+            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
         }
     }
 }
@@ -42,8 +44,9 @@ struct BusRouteStopsView: View {
             }
         }
         .navigationTitle("\(routeNo)번 경유 정류소")
-        .overlay { stateOverlay }
+        .nearbyStateOverlay { stateOverlay }
         .task { await model.load(source: source, cityCode: cityCode, routeId: routeId) }
+        .nearbyRefreshable { await model.load(source: source, cityCode: cityCode, routeId: routeId) }
     }
 
     @ViewBuilder private var stateOverlay: some View {

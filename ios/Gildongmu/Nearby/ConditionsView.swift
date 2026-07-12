@@ -23,7 +23,8 @@ final class ConditionsModel {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
         defer { isLoadingInFlight = false }
-        if case .idle = phase { phase = .loading }
+        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
+        if case .done = phase {} else { phase = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             async let weatherTask: Weather? = (try? service.weather(lat: coord.lat, lng: coord.lng)) ?? nil
@@ -45,7 +46,11 @@ final class ConditionsModel {
             }
             AccessibilityNotification.Announcement(message).post()
         } catch let error as LocationService.LocationError {
-            if case .denied = error { phase = .denied } else if case .done = phase { announceRefreshFailed() } else { phase = .failed }
+            if case .denied = error {
+                // done에서 권한 취소로 전락하면 내용이 통째로 사라진다 — 무신호 화면 전환 방지 통지
+                if case .done = phase { announcePermissionLost() }
+                phase = .denied
+            } else if case .done = phase { announceRefreshFailed() } else { phase = .failed }
         } catch {
             if case .done = phase { announceRefreshFailed() } else { phase = .failed }
         }
@@ -65,9 +70,9 @@ struct ConditionsView: View {
             }
         }
         .navigationTitle("날씨·공기질")
-        .overlay { stateOverlay }
+        .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
-        .refreshable { await model.load(force: true) }
+        .nearbyRefreshable { await model.load(force: true) }
     }
 
     @ViewBuilder private var weatherSection: some View {
