@@ -15,6 +15,14 @@ describe("resolveLocation", () => {
     expect(apiRequest).not.toHaveBeenCalled();
   });
 
+  it("--lat/--lng 한쪽만 지정하면 LocationError", async () => {
+    const { resolveLocation, LocationError } = await import("../lib/resolve-location.js");
+    await expect(resolveLocation({ lat: "37.5" })).rejects.toBeInstanceOf(LocationError);
+    await expect(resolveLocation({ lat: "37.5" })).rejects.toThrow(/--lat.*--lng.*함께/);
+    await expect(resolveLocation({ lng: "127.1" })).rejects.toBeInstanceOf(LocationError);
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
   it("--near는 /api/geocode 첫 결과", async () => {
     apiRequest.mockResolvedValue({ matches: [{ addressName: "서울 강동구 길동", lat: 37.53, lng: 127.14 }] });
     const { resolveLocation } = await import("../lib/resolve-location.js");

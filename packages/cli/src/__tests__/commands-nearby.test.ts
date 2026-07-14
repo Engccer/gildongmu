@@ -1,0 +1,81 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+/**
+ * nearby 7종 명령 테스트 — 카탈로그 팩토리(Task 8)가 만든 서브커맨드의
+ * 위치 필수 안내·엔드포인트 매핑을 검증한다. api-client.js·config.js만 모킹.
+ */
+
+class MockApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public exitCode: number,
+    public body?: unknown,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+const apiRequest = vi.fn();
+const readConfig = vi.fn();
+
+vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError }));
+vi.mock("../lib/config.js", () => ({ readConfig }));
+
+let stdoutSpy: ReturnType<typeof vi.spyOn>;
+let stderrSpy: ReturnType<typeof vi.spyOn>;
+let exitSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  apiRequest.mockReset();
+  readConfig.mockReset();
+  readConfig.mockResolvedValue({ apiUrl: "https://example.test" });
+  stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+  exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+    throw new Error(`EXIT_${code}`);
+  }) as never);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+async function runNearby(verb: string, args: Record<string, unknown>): Promise<void> {
+  const { nearbyCommand } = await import("../commands/nearby.js");
+  const sub = (nearbyCommand.subCommands as Record<string, { run?: (...a: never[]) => unknown }>)[verb];
+  await sub.run!({ args, rawArgs: [], cmd: sub } as never);
+}
+
+const EXPECTED_VERBS = ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free"];
+
+describe("nearby 명령", () => {
+  it("7개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
+    const { nearbyCommand } = await import("../commands/nearby.js");
+    expect(Object.keys(nearbyCommand.subCommands ?? {}).sort()).toEqual([...EXPECTED_VERBS].sort());
+  });
+
+  it("위치를 지정하지 않으면 LocationError 안내와 함께 exit 2로 종료한다", async () => {
+    readConfig.mockResolvedValue({ apiUrl: "https://example.test" }); // location 없음
+    await expect(runNearby("subway", { output: "text" })).rejects.toThrow("EXIT_2");
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(stderrSpy).toHaveBeenCalled();
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("위치를 지정하세요");
+  });
+
+  it("mock 위치로 subway 호출 시 apiRequest가 올바른 엔드포인트에 lat/lng 문자열로 나간다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/subway-arrival/nearby") return { stations: [] };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runNearby("subway", { lat: "37.5", lng: "127.1", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/station/subway-arrival/nearby",
+      { query: { lat: "37.5", lng: "127.1" } },
+    );
+  });
+});

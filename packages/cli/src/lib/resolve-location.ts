@@ -27,6 +27,9 @@ export async function resolveLocation(
     }
     return { lat, lng };
   }
+  if (args.lat !== undefined || args.lng !== undefined) {
+    throw new LocationError("--lat과 --lng는 함께 지정해야 합니다 (예: --lat 37.538 --lng 127.137)");
+  }
   if (args.near) return geocodeQuery(args.near);
   const cfg = await readConfig();
   if (cfg.location) return cfg.location;
