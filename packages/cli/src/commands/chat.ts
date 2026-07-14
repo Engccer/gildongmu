@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { createInterface, type Interface as ReadlineInterface } from "node:readline/promises";
 import { readConfig } from "../lib/config.js";
 import { resolveLocation } from "../lib/resolve-location.js";
+import { ApiError } from "../lib/api-client.js";
 import { chatOnce, type ChatTurn, type ChatOnceResult } from "../lib/chat-client.js";
 import { emit, fail, resolveOutputMode } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
@@ -42,12 +43,21 @@ async function resolveUserLocation(
   }
 }
 
-/** rl.question()은 EOF(Ctrl+D) 시 정착하지 않는다 — close 이벤트와 경합해 EOF를 검출. */
-async function nextLine(rl: ReadlineInterface): Promise<{ eof: true } | { eof: false; value: string }> {
-  return Promise.race([
-    rl.question("> ").then((value) => ({ eof: false as const, value })),
-    new Promise<{ eof: true }>((resolve) => rl.once("close", () => resolve({ eof: true }))),
-  ]);
+/** REPL 진입 게이트 — 대화형으로 읽을 수 있는가(stdin)가 기준. 파이프 stdin은 차단. */
+export function canEnterRepl(stdinIsTTY: boolean | undefined): boolean {
+  return stdinIsTTY === true;
+}
+
+/**
+ * rl.question()은 EOF(Ctrl+D) 시 정착하지 않는다 — close 프로미스와 경합해 EOF를 검출.
+ * close 리스너는 rl 생성 시 1회만 등록한 프로미스를 재사용한다(라운드마다 once를 걸면
+ * 정상 경로에서 해제되지 않아 10턴 초과 시 MaxListenersExceededWarning이 stderr에 출력 — SR 잡음).
+ */
+async function nextLine(
+  rl: ReadlineInterface,
+  closed: Promise<{ eof: true }>,
+): Promise<{ eof: true } | { eof: false; value: string }> {
+  return Promise.race([rl.question("> ").then((value) => ({ eof: false as const, value })), closed]);
 }
 
 async function runRepl(
@@ -55,10 +65,11 @@ async function runRepl(
   mode: "text" | "json",
 ): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const closed = new Promise<{ eof: true }>((resolve) => rl.once("close", () => resolve({ eof: true })));
   const messages: ChatTurn[] = [];
   try {
     for (;;) {
-      const line = await nextLine(rl);
+      const line = await nextLine(rl, closed);
       if (line.eof) break;
       const question = line.value.trim();
       if (!question) continue;
@@ -101,13 +112,14 @@ export const chatCommand = defineCommand({
         const result = await chatOnce([{ role: "user", text: args.question }], opts);
         printResult(result, mode);
       } catch (err) {
+        if (err instanceof ApiError) fail(err.message, err.exitCode);
         fail(err instanceof Error ? err.message : String(err), ExitCode.Error);
       }
       return;
     }
 
-    if (!process.stdout.isTTY) {
-      fail('질문을 인자로 주거나 TTY에서 실행하세요: gil chat "질문"', ExitCode.Usage);
+    if (!canEnterRepl(process.stdin.isTTY)) {
+      fail('질문을 인자로 주거나 대화형 터미널에서 실행하세요: gil chat "질문"', ExitCode.Usage);
     }
     await runRepl(opts, mode);
   },

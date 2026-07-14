@@ -7,6 +7,9 @@
  * 실제 생성값으로 대조 확인.
  */
 
+import { ApiError } from "./api-client.js";
+import { ExitCode } from "./exit-codes.js";
+
 export interface ChatTurn {
   role: "user" | "assistant";
   text: string;
@@ -36,11 +39,18 @@ interface ChatStreamEvent {
 }
 
 export async function chatOnce(messages: ChatTurn[], opts: ChatOnceOptions): Promise<ChatOnceResult> {
-  const res = await fetch(new URL("/api/chat", opts.apiUrl), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ messages, userLocation: opts.userLocation, locale: opts.locale }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(new URL("/api/chat", opts.apiUrl), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages, userLocation: opts.userLocation, locale: opts.locale }),
+    });
+  } catch (err) {
+    // 연결 실패는 exit 7 — api-client.ts apiRequest와 동형(HTTP 비정상과 3-state 분리).
+    const msg = err instanceof Error ? err.message : "network error";
+    throw new ApiError(`서버에 연결할 수 없습니다: ${msg}`, 0, ExitCode.Network);
+  }
   if (!res.ok || !res.body) throw new Error(`채팅 요청 실패 (HTTP ${res.status})`);
 
   const reader = res.body.getReader();

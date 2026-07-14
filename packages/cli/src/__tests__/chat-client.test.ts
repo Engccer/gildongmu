@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { chatOnce } from "../lib/chat-client.js";
+import { ApiError } from "../lib/api-client.js";
+import { ExitCode } from "../lib/exit-codes.js";
+import { canEnterRepl } from "../commands/chat.js";
 
 /**
  * chat-client.ts 테스트 — NDJSON 스트림 소비(스펙 §7, 서버 계약은 src/lib/chat/types.ts).
@@ -71,5 +74,26 @@ describe("chatOnce", () => {
     await expect(
       chatOnce([{ role: "user", text: "질문" }], { locale: "ko", apiUrl: "https://x.test" }),
     ).rejects.toThrow(/500/);
+  });
+
+  it("fetch 연결 실패는 ApiError(exit 7)로 던진다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new Error("ECONNREFUSED");
+    }));
+
+    const promise = chatOnce([{ role: "user", text: "질문" }], { locale: "ko", apiUrl: "https://x.test" });
+    await expect(promise).rejects.toBeInstanceOf(ApiError);
+    await promise.catch((err: ApiError) => {
+      expect(err.exitCode).toBe(ExitCode.Network);
+      expect(err.message).toContain("서버에 연결할 수 없습니다");
+    });
+  });
+});
+
+describe("canEnterRepl", () => {
+  it("stdin이 TTY일 때만 REPL 진입을 허용한다(파이프 stdin·undefined는 차단)", () => {
+    expect(canEnterRepl(true)).toBe(true);
+    expect(canEnterRepl(false)).toBe(false);
+    expect(canEnterRepl(undefined)).toBe(false);
   });
 });
