@@ -5,6 +5,9 @@ import { nearbyCommand } from "./commands/nearby.js";
 import { stationCommand } from "./commands/station.js";
 import { busCommand } from "./commands/bus.js";
 import { placeCommand } from "./commands/place.js";
+import { routeCommand } from "./commands/route.js";
+import { weatherCommand, airCommand } from "./commands/env.js";
+import { whereamiCommand } from "./commands/whereami.js";
 
 const main = defineCommand({
   meta: { name: "gildongmu", version: "0.1.0", description: "길동무 — 접근성 우선 대한민국 길찾기 CLI" },
@@ -15,6 +18,10 @@ const main = defineCommand({
     station: stationCommand,
     bus: busCommand,
     place: placeCommand,
+    route: routeCommand,
+    weather: weatherCommand,
+    air: airCommand,
+    whereami: whereamiCommand,
   }, // 이후 태스크에서 나머지 명령을 채운다
 });
 
