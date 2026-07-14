@@ -75,6 +75,40 @@ describe("route 명령", () => {
     expect(apiRequest).not.toHaveBeenCalledWith("/api/geocode", { query: { query: "37.49,127.02" } });
   });
 
+  it("car는 --lang en 시 lang 쿼리를 포함하고 transit은 en이어도 포함하지 않는다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/route/car") return { distanceMeters: 0, durationSeconds: 0, taxiFare: 0, tollFare: 0, guides: [] };
+      if (path === "/api/route/transit") return { result: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runRoute("car", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/car",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en" } },
+    );
+
+    await runRoute("transit", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/transit",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+    );
+  });
+
+  it("지오코딩이 네트워크 오류(ApiError exit 7)로 실패하면 Usage로 뭉개지 않고 exit 7로 종료한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/geocode") throw new MockApiError("연결에 실패했습니다", 0, 7);
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await expect(
+      runRoute("transit", { origin: "강동역", dest: "37.49,127.02", output: "text" }),
+    ).rejects.toThrow("EXIT_7");
+    expect(exitSpy).toHaveBeenCalledWith(7);
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("연결에 실패했습니다");
+  });
+
   it("지오코딩 0건이면 exit 2로 종료한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/geocode") return { matches: [] };
