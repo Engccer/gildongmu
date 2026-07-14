@@ -92,6 +92,22 @@ describe("station 명령", () => {
     expect(output).not.toContain("서울 지하철 교통약자 시설");
   });
 
+  it("info: 세 섹션 모두 fulfilled인데 값이 전부 null이면 미발견 안내를 출력하고 exit 하지 않는다(3-state 침묵 금지)", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/meta") return { meta: null };
+      if (path === "/api/station/facilities") return { facilities: null };
+      if (path === "/api/station/metro-facilities") return { facilities: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["info"], { station: "없는역", output: "text" });
+
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain("찾을 수 없습니다");
+    expect(output).toContain("없는역");
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
   it("info: 세 요청이 모두 실패하면 exit 1로 종료한다", async () => {
     apiRequest.mockImplementation(async () => {
       throw new Error("network down");

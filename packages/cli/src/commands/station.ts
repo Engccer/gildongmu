@@ -1,17 +1,10 @@
 import { defineCommand } from "citty";
 import { apiRequest, ApiError } from "../lib/api-client.js";
 import { readConfig } from "../lib/config.js";
-import { ENDPOINT_CATALOG } from "../lib/endpoint-catalog-shared.js";
 import { FORMATTERS } from "../lib/formatters.js";
 import { emit, fail, resolveOutputMode } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
-import { runEndpoint, sharedArgs } from "./shared.js";
-
-function pathFor(name: string): string {
-  const spec = ENDPOINT_CATALOG.find((e) => e.name === name);
-  if (!spec) throw new Error(`카탈로그에 없는 엔드포인트: ${name}`);
-  return spec.path;
-}
+import { catalogPath, runEndpoint, sharedArgs } from "./shared.js";
 
 /**
  * `station info`의 3병렬 섹션 정의 — 카탈로그 이름·envelope 키·표시 제목·json 합성 키를
@@ -44,7 +37,7 @@ const infoCommand = defineCommand({
     const query = { station: args.station };
 
     const settled = await Promise.allSettled(
-      INFO_SECTIONS.map((s) => apiRequest<Record<string, unknown>>(pathFor(s.catalog), { query })),
+      INFO_SECTIONS.map((s) => apiRequest<Record<string, unknown>>(catalogPath(s.catalog), { query })),
     );
 
     if (settled.every((r) => r.status === "rejected")) {
@@ -72,6 +65,10 @@ const infoCommand = defineCommand({
       lines.push(section.title);
       lines.push(...FORMATTERS[section.catalog](result.value as never));
     });
+
+    // 3-state: 세 섹션이 모두 fulfilled인데 값이 전부 null(존재하지 않는 역명)이면
+    // 무음 종료가 아니라 미발견을 명시한다. 조회 자체는 성공(0건)이므로 exit 0 유지.
+    if (lines.length === 0) lines.push(`역 정보를 찾을 수 없습니다: ${args.station}`);
 
     emit(jsonData, lines, mode);
   },

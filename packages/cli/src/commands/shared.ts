@@ -14,17 +14,23 @@ export const sharedArgs = {
   output: { type: "string" as const, description: "text|json (기본: TTY면 text)" },
 };
 
+/** 카탈로그 이름 → REST 경로 조회(없으면 throw) — runEndpoint와 합성 명령(station info)이 공유. */
+export function catalogPath(name: string): string {
+  const spec = ENDPOINT_CATALOG.find((e) => e.name === name);
+  if (!spec) throw new Error(`카탈로그에 없는 엔드포인트: ${name}`);
+  return spec.path;
+}
+
 /** 카탈로그 항목 하나를 실행해 출력까지 마친다 — 단순 명령(길찾기 제외)의 공통 경로. */
 export async function runEndpoint(
   name: string,
   query: Record<string, string | undefined>,
   outputFlag?: string,
 ): Promise<void> {
-  const spec = ENDPOINT_CATALOG.find((e) => e.name === name);
-  if (!spec) throw new Error(`카탈로그에 없는 엔드포인트: ${name}`);
+  const path = catalogPath(name);
   const cfg = await readConfig();
   try {
-    const data = await apiRequest<Record<string, unknown>>(spec.path, { query });
+    const data = await apiRequest<Record<string, unknown>>(path, { query });
     const formatter = FORMATTERS[name];
     emit(data, formatter ? formatter(data as never) : [JSON.stringify(data)], resolveOutputMode(outputFlag, cfg));
   } catch (err) {
