@@ -253,7 +253,7 @@ const METRO_KIND_KO: Record<MetroFacilityKind, string> = {
 // "unknown"·"none"은 의도적으로 매핑에서 빠진다 — joinText가 undefined를 걸러
 // 해당 줄에서 생략한다(3-state: 정보 없음/해당 없음은 낭독하지 않는다).
 const SKY_KO: Partial<Record<SkyLabelItem, string>> = {
-  clear: "맑음", partlyCloudy: "구름조금", cloudy: "흐림",
+  clear: "맑음", partlyCloudy: "구름많음", cloudy: "흐림",
 };
 const PRECIP_KO: Partial<Record<PrecipLabelItem, string>> = {
   rain: "비", rainSnow: "비또는눈", snow: "눈", shower: "소나기",
@@ -362,7 +362,7 @@ function formatNearbyBus(body: { stops: BusStopItem[] }): string[] {
 function formatBike(body: { stations: BikeStationItem[] }): string[] {
   if (body.stations.length === 0) return ["주변에 따릉이 대여소가 없습니다."];
   return body.stations.map((b) =>
-    joinText(b.name, `자전거 ${b.bikesAvailable}대`, `거치대 ${b.racksTotal}`, m(b.distanceMeters)),
+    joinText(b.name, `자전거 ${b.bikesAvailable}대`, `거치대 ${b.racksTotal}대`, m(b.distanceMeters)),
   );
 }
 

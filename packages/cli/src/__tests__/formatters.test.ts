@@ -153,7 +153,7 @@ describe("nearby-bike", () => {
     const lines = FORMATTERS["nearby-bike"]({
       stations: [{ name: "3681. 길동 마루빌딩", distanceMeters: 90, racksTotal: 10, bikesAvailable: 4 }],
     } as never);
-    expect(lines).toEqual(["3681. 길동 마루빌딩, 자전거 4대, 거치대 10, 90m"]);
+    expect(lines).toEqual(["3681. 길동 마루빌딩, 자전거 4대, 거치대 10대, 90m"]);
   });
 });
 
@@ -334,6 +334,16 @@ describe("weather", () => {
       },
     } as never);
     expect(lines).toEqual(["맑음, 현재 23.5도, 최고 26, 최저 18, 습도 55%, 강수확률 20%, 14:00 기준"]);
+  });
+
+  it("partlyCloudy는 '구름많음'으로 포매팅", () => {
+    const lines = FORMATTERS["weather"]({
+      weather: {
+        sky: { code: 3, label: "partlyCloudy" }, precipitation: { code: 0, label: "none" },
+        tempC: 20, tempMax: 24, tempMin: 16, humidity: 60, precipProbability: 10, baseTime: "10:00",
+      },
+    } as never);
+    expect(lines[0]).toContain("구름많음");
   });
 });
 
