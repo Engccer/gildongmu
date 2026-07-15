@@ -92,7 +92,7 @@ packages/mcp/              # npm "gildongmu-mcp"
 ## 8. MCP 서버 (`gildongmu-mcp`)
 
 - stdio 전송, `@modelcontextprotocol/sdk` + zod. 카탈로그의 **결정론 도구만** 노출 — `chat`·`web`(LLM/검색 판단은 호스트 몫) 제외한 전 항목, 모두 `readOnlyHint: true`(쓰기 도구가 없다).
-- 도구 입력 스키마는 카탈로그 zod에서 생성. 위치 인자는 `lat`/`lng` 필수 노출(MCP 호스트가 좌표를 넘긴다) + `near`(문자열, 서버 지오코딩 경유) 병행.
+- 도구 입력 스키마는 카탈로그에서 생성. 위치 인자는 `lat`/`lng` 필수 노출(MCP 호스트가 좌표를 넘긴다). 장소명→좌표 해석은 별도 도구(`geocode`·`places_search`) 체이닝으로 호스트 LLM이 수행한다 — 도구별 `near` 파라미터는 MCP 서버에 지오코딩 로직을 복제하게 되어 넣지 않는다(구현 확정 2026-07-15, 최종 리뷰 반영).
 - 설치: `claude mcp add gildongmu -- npx -y gildongmu-mcp`(무인증이라 env 불필요 — README에 기재).
 
 ## 9. 테스트·게이트
