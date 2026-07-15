@@ -5,6 +5,8 @@
  * Citty 0.2.x에 자동완성 빌트인이 없으므로 정적 매핑(dodo `commands/completion.ts` 이식).
  */
 import { defineCommand } from "citty";
+import { fail } from "../lib/output.js";
+import { ExitCode } from "../lib/exit-codes.js";
 
 const COMMAND_TREE: Record<string, string[]> = {
   nearby: ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free"],
@@ -86,10 +88,13 @@ function fishCompletion(): string {
     "# gil CLI fish completion. Save to ~/.config/fish/completions/gil.fish:",
     "#   gil completion fish > ~/.config/fish/completions/gil.fish",
     "",
-    `complete -c gil -f -n '__fish_use_subcommand' -a '${TOP_LEVEL.join(" ")}'`,
   ];
-  for (const [cmd, subs] of Object.entries(COMMAND_TREE)) {
-    lines.push(`complete -c gil -f -n "__fish_seen_subcommand_from ${cmd}" -a "${subs.join(" ")}"`);
+  // bash·zsh와 동형으로 gil·gildongmu 두 명령 모두에 등록한다.
+  for (const bin of ["gil", "gildongmu"]) {
+    lines.push(`complete -c ${bin} -f -n '__fish_use_subcommand' -a '${TOP_LEVEL.join(" ")}'`);
+    for (const [cmd, subs] of Object.entries(COMMAND_TREE)) {
+      lines.push(`complete -c ${bin} -f -n "__fish_seen_subcommand_from ${cmd}" -a "${subs.join(" ")}"`);
+    }
   }
   return lines.join("\n") + "\n";
 }
@@ -106,8 +111,7 @@ export const completionCommand = defineCommand({
       case "zsh":  script = zshCompletion(); break;
       case "fish": script = fishCompletion(); break;
       default:
-        process.stderr.write(`Error: 지원하지 않는 셸: ${args.shell} (bash|zsh|fish)\n`);
-        process.exit(2);
+        fail(`지원하지 않는 셸: ${args.shell} (bash|zsh|fish)`, ExitCode.Usage);
     }
     process.stdout.write(script);
   },
