@@ -211,6 +211,14 @@ describe("station-meta", () => {
   it("미커버 역이면 못 찾음 한 줄", () => {
     expect(FORMATTERS["station-meta"]({ meta: null } as never)).toEqual(["역 정보를 찾을 수 없습니다."]);
   });
+
+  it("이미 '역'으로 끝나는 역명은 접미사를 중복하지 않는다", () => {
+    const lines = FORMATTERS["station-meta"]({
+      meta: { name: "서울역", nameEn: "Seoul Station", lines: ["1호선"], isTransfer: false, operator: "서울교통공사" },
+    } as never);
+    expect(lines[0]).toContain("서울역 (Seoul Station)");
+    expect(lines[0]).not.toContain("서울역역");
+  });
 });
 
 describe("station-metro-facilities", () => {

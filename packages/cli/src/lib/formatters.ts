@@ -395,7 +395,9 @@ function formatBarrierFreeNearby(body: { places: BarrierFreePlaceItem[] }): stri
 function formatStationMeta(body: { meta: StationMetaItem | null }): string[] {
   const meta = body.meta;
   if (!meta) return ["역 정보를 찾을 수 없습니다."];
-  return [joinText(`${meta.name}역 (${meta.nameEn})`, meta.lines.join("·"), meta.isTransfer && "환승역", meta.operator)];
+  // A3 seed는 "역" 접미사가 있는 역/없는 역 혼재(서울역·강동) — 중복 접미("서울역역") 방지.
+  const displayName = meta.name.endsWith("역") ? meta.name : `${meta.name}역`;
+  return [joinText(`${displayName} (${meta.nameEn})`, meta.lines.join("·"), meta.isTransfer && "환승역", meta.operator)];
 }
 
 function formatStationFacilities(body: { facilities: StationFacilitiesItem | null }): string[] {
