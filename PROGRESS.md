@@ -6,6 +6,7 @@
 
 | 도메인 | 상태 | 비고 |
 |---|---|---|
+| CLI(`gildongmu`)+MCP(`gildongmu-mcp`) | 코드·README 완료(2026-07-15), npm 미발행 | 씬 클라이언트(REST 카탈로그 그대로 중계). 스펙 `docs/superpowers/specs/2026-07-15-cli-mcp-design.md`. 발행은 Task 15(CI `.github/workflows/cli-publish.yml`), 실호출 검증은 Task 16에서 이 표에 기록 예정 |
 | 장소 검색 (카카오 좌표 거리순) | ✅ prod | 2026-06-24 길동 "맥도날드"→강동구 지점 1~6위 |
 | 검색창 3섹션 병렬 (장소+주소+웹 0건폴백) | ✅ prod | 2026-06-27 LLM 라우터 폐기 후 결정론 전환 |
 | 관광지·명소 섹션 (랜드마크 정확도순 병치) | ✅ prod | 2026-07-01 "경복궁"→명소 섹션 최상단 1위=진짜 경복궁, 카페→0건. category_name 계층 필터(AT4 아님). ko=kakao 정확도순, en=TourAPI contentTypeId=76(영문명)+좌표시 거리순(먼 동명 배제) — 디스패처 `attractions.ts` |
