@@ -112,6 +112,7 @@ describe("route 명령", () => {
   it("지오코딩 0건이면 exit 2로 종료한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/geocode") return { matches: [] };
+      if (path === "/api/places") return { places: [] }; // geocode 0건 → places 폴백도 0건
       throw new Error(`unexpected path ${path}`);
     });
 

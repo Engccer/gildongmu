@@ -7,12 +7,26 @@ export class LocationError extends Error {
 }
 
 interface GeocodeMatch { addressName: string; lat: number; lng: number }
+interface PlaceMatch { name: string; lat: number; lng: number }
 
+/**
+ * 위치명 → 좌표. `/api/geocode`는 주소·지번 전용이라 장소명("강동역")은 못 푼다
+ * (실측 2026-07-15: matches 0건, 같은 질의를 `/api/places?query=강동역`에 던지면
+ * 첫 결과가 lat/lng를 준다). 2단 폴백:
+ * 1. geocode 첫 match 있으면 그대로(기존 동작 — 주소·지번).
+ * 2. 0건이면 places(장소 검색) 첫 결과의 {lat,lng,name}을 {lat,lng,label:name}으로.
+ * 3. 둘 다 0건일 때만 오류.
+ */
 export async function geocodeQuery(query: string): Promise<{ lat: number; lng: number; label: string }> {
   const res = await apiRequest<{ matches: GeocodeMatch[] }>("/api/geocode", { query: { query } });
   const first = res.matches[0];
-  if (!first) throw new Error(`'${query}' 위치를 찾지 못했습니다. 다른 표기로 다시 시도하세요.`);
-  return { lat: first.lat, lng: first.lng, label: first.addressName };
+  if (first) return { lat: first.lat, lng: first.lng, label: first.addressName };
+
+  const placesRes = await apiRequest<{ places: PlaceMatch[] }>("/api/places", { query: { query, limit: "1" } });
+  const firstPlace = placesRes.places?.[0];
+  if (firstPlace) return { lat: firstPlace.lat, lng: firstPlace.lng, label: firstPlace.name };
+
+  throw new Error(`'${query}' 위치를 찾지 못했습니다. 다른 표기로 다시 시도하세요.`);
 }
 
 /** 위치 우선순위(스펙 §5): ① --lat/--lng ② --near 지오코딩 ③ config location. */

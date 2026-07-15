@@ -65,6 +65,24 @@ describe("nearby 명령", () => {
     expect(stderrOut).toContain("위치를 지정하세요");
   });
 
+  it("지오코딩 실패(plain Error)는 스택 트레이스 없이 exit 2 한 줄로 처리한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/geocode") return { matches: [] };
+      if (path === "/api/places") return { places: [] }; // geocode·places 모두 0건 → plain Error
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await expect(
+      runNearby("subway", { near: "존재하지않는곳12345", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
+    expect(exitSpy).toHaveBeenCalledWith(2);
+
+    const stderrCalls = stderrSpy.mock.calls.map((c: unknown[]) => c[0] as string);
+    expect(stderrCalls).toHaveLength(1); // 한 줄만 — 스택 트레이스가 별도로 출력되지 않는다
+    expect(stderrCalls[0]).toContain("찾지 못했습니다");
+    expect(stderrCalls[0]).not.toContain("\n    at "); // 스택 프레임 노출 없음
+  });
+
   it("mock 위치로 subway 호출 시 apiRequest가 올바른 엔드포인트에 lat/lng 문자열로 나간다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/station/subway-arrival/nearby") return { stations: [] };

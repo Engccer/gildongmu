@@ -30,8 +30,24 @@ describe("resolveLocation", () => {
     expect(loc).toMatchObject({ lat: 37.53, lng: 127.14 });
   });
 
-  it("지오코딩 0건은 명확한 오류(0건 ≠ 네트워크 실패)", async () => {
-    apiRequest.mockResolvedValue({ matches: [] });
+  it("geocode 0건이면 /api/places로 폴백해 장소명('강동역')도 좌표화한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/geocode") return { matches: [] };
+      if (path === "/api/places") return { places: [{ name: "강동역", lat: 37.5285, lng: 127.1359 }] };
+      throw new Error(`unexpected path ${path}`);
+    });
+    const { resolveLocation } = await import("../lib/resolve-location.js");
+    const loc = await resolveLocation({ near: "강동역" });
+    expect(loc).toMatchObject({ lat: 37.5285, lng: 127.1359, label: "강동역" });
+    expect(apiRequest).toHaveBeenCalledWith("/api/places", { query: { query: "강동역", limit: "1" } });
+  });
+
+  it("geocode·places 모두 0건일 때만 명확한 오류(0건 ≠ 네트워크 실패)", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/geocode") return { matches: [] };
+      if (path === "/api/places") return { places: [] };
+      throw new Error(`unexpected path ${path}`);
+    });
     const { resolveLocation } = await import("../lib/resolve-location.js");
     await expect(resolveLocation({ near: "존재하지않는곳12345" })).rejects.toThrow(/찾지 못했습니다/);
   });
