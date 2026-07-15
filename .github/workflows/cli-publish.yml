@@ -1,0 +1,57 @@
+name: CLI / MCP Publish
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+  pull_request:
+    paths:
+      - "packages/**"
+      - ".github/workflows/cli-publish.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Build CLI + MCP
+        run: |
+          npm -w gildongmu run build
+          npm -w gildongmu-mcp run build
+      - name: Run CLI tests
+        run: npm -w gildongmu test
+      - name: Run MCP tests
+        run: npm -w gildongmu-mcp test
+      - name: Inspect tarball contents (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          npm -w gildongmu pack --dry-run
+          npm -w gildongmu-mcp pack --dry-run
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/cli-v')
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # npm Trusted Publishing OIDC
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install
+      - run: |
+          npm -w gildongmu run build
+          npm -w gildongmu-mcp run build
+      # Trusted Publishing OIDC는 npm CLI 11.5.1+ 필요. node 22 동봉 npm은 10.x이고
+      # `npm install -g npm@latest`는 self-upgrade race가 있어(dodo 실측) npx로 회피.
+      - name: Publish gildongmu (Trusted Publishing)
+        run: npx -y npm@latest publish -w gildongmu --access public
+      - name: Publish gildongmu-mcp (Trusted Publishing)
+        run: npx -y npm@latest publish -w gildongmu-mcp --access public
