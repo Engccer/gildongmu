@@ -6,7 +6,7 @@
 
 | 도메인 | 상태 | 비고 |
 |---|---|---|
-| CLI(`gildongmu`)+MCP(`gildongmu-mcp`) | 코드 완결·실호출 게이트 PASS(2026-07-15), npm 발행 대기 | 씬 클라이언트(REST 카탈로그 22항목 중계). 스펙 `docs/superpowers/specs/2026-07-15-cli-mcp-design.md`. **실호출 검증(프로덕션)**: search 경복궁(명소 5 최상단+장소 15+주소 10, JSON 모드 동작)·nearby subway 강동역(실시간 도착 산문)·route transit 강동역→서울역(추천+대안, legs)·weather/air 길동(등급 단어)·station info 서울역(3섹션 병렬)·whereami·chat 단발(약국 5건)·MCP stdio(tools/list 22, nearby_subway 실도착 4건). 게이트가 실결함 3건 검출·수정: 장소명 지오코딩 폴백(/api/geocode는 주소 전용 → /api/places 2단 폴백), nearby류 지오코딩 실패 스택 노출 제거, station-meta "서울역역" 접미 중복. 발행: `cli-v*` 태그(CLAUDE.md 릴리스 규칙) |
+| CLI(`gildongmu`)+MCP(`gildongmu-mcp`) | 운영(npm 발행 완료 2026-07-16) | 씬 클라이언트(REST 카탈로그 22항목 중계). 스펙 `docs/superpowers/specs/2026-07-15-cli-mcp-design.md`. **실호출 검증(프로덕션)**: search 경복궁(명소 5 최상단+장소 15+주소 10, JSON 모드 동작)·nearby subway 강동역(실시간 도착 산문)·route transit 강동역→서울역(추천+대안, legs)·weather/air 길동(등급 단어)·station info 서울역(3섹션 병렬)·whereami·chat 단발(약국 5건)·MCP stdio(tools/list 22, nearby_subway 실도착 4건). 게이트가 실결함 3건 검출·수정: 장소명 지오코딩 폴백(/api/geocode는 주소 전용 → /api/places 2단 폴백), nearby류 지오코딩 실패 스택 노출 제거, station-meta "서울역역" 접미 중복. **npm 발행(2026-07-16)**: `gildongmu@0.1.0`·`gildongmu-mcp@0.1.0` 로컬 발행(웹 2FA·Windows 원격 브라우저 인증), 両패키지 Trusted Publisher(Engccer/gildongmu·cli-publish.yml·npm publish) 등록 완료 — 이후 릴리스는 `cli-v*` 태그 push 자동발행(파이프라인 실증은 차기 릴리스). 글로벌 설치 스모크: `npm i -g gildongmu` 후 `gil search 경복궁` 실왕복 PASS |
 | 장소 검색 (카카오 좌표 거리순) | ✅ prod | 2026-06-24 길동 "맥도날드"→강동구 지점 1~6위 |
 | 검색창 3섹션 병렬 (장소+주소+웹 0건폴백) | ✅ prod | 2026-06-27 LLM 라우터 폐기 후 결정론 전환 |
 | 관광지·명소 섹션 (랜드마크 정확도순 병치) | ✅ prod | 2026-07-01 "경복궁"→명소 섹션 최상단 1위=진짜 경복궁, 카페→0건. category_name 계층 필터(AT4 아님). ko=kakao 정확도순, en=TourAPI contentTypeId=76(영문명)+좌표시 거리순(먼 동명 배제) — 디스패처 `attractions.ts` |
