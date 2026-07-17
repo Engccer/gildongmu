@@ -6,6 +6,7 @@ import {
   hasTourApiKey,
 } from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
+import { sortPlacesByDistance } from "../geo";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
@@ -19,9 +20,10 @@ function coordKey(p: Place): string {
 }
 
 /**
- * en 병합용 중복 제거. primary(카카오) 전부를 우선 담고, secondary(TourAPI)
- * 중 좌표가 겹치지 않는 것만 이어 붙인다. 카카오·TourAPI는 같은 장소를
- * 한글/영문 이름과 미세하게 다른 좌표로 주므로 좌표를 유일 공통축으로 쓴다.
+ * 교차 provider 좌표 병합 유틸 — en(카카오+TourAPI)·ko(카카오+네이버) 공용.
+ * primary(카카오) 전부를 우선 담고, secondary 중 좌표가 겹치지 않는 것만
+ * 이어 붙인다. 소스마다 같은 장소를 다른 이름·미세하게 다른 좌표로 주므로
+ * 좌표를 유일 공통축으로 쓴다.
  */
 export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
   const seen = new Set<string>();
@@ -41,9 +43,12 @@ export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
  * 우선순위:
  * 1. en 로케일 + TourAPI 키 → tour-api (카카오·네이버 모두 다국어 미지원 —
  *    영문 장소명·주소를 주는 유일한 공식 소스이므로 외국인 시나리오 우선)
- * 2. kakao-local > naver-local > mock
+ * 2. ko: 카카오+네이버 両키 보유 시 병합(searchPlacesMergedKo) >
+ *    kakao-local > naver-local > mock
  * - 카카오 우선 이유: 결과 최대 15건(네이버 5건), WGS84 좌표 그대로,
  *   place_url(카카오맵 상세) 제공 — 탐색 UX가 명백히 우위 (docs/RESEARCH 참고)
+ * - 네이버 병합 이유: 카카오 미등록 가게 보강 — 커버리지 공백 실측 사례는
+ *   searchPlacesMergedKo 주석 참고
  * - PLACES_PROVIDER 환경변수로 강제 지정 가능 (A/B 비교 실험용):
  *   "kakao" | "naver" | "tour" | "mock"
  *
@@ -65,6 +70,9 @@ export async function searchPlaces(
   if (params.lang === "en" && hasTourApiKey()) {
     return searchPlacesTourApi(params);
   }
+  if (hasKakaoKey() && hasNaverLocalKeys() && params.lang !== "en") {
+    return searchPlacesMergedKo(params);
+  }
   if (hasKakaoKey()) {
     return searchPlacesKakaoLocal(params);
   }
@@ -72,6 +80,46 @@ export async function searchPlaces(
     return searchPlacesNaverLocal(params);
   }
   return searchPlacesMock(params);
+}
+
+/**
+ * ko 병합 검색 — 카카오(최대 15건, 좌표 시 거리순)를 기본으로, 네이버 지역
+ * (최대 5건)을 보강한다. 카카오 로컬 DB에 미등록인 가게가 네이버에만 있는
+ * 커버리지 공백(예: 여의도 "백년찌개집 1971", 2026-07-18 실측)을 메우는 결정.
+ *
+ * - 두 소스 병렬 호출, 한쪽 실패해도 다른 쪽 실데이터는 보존(MergedEn 동형).
+ * - 중복 제거는 좌표 4자리(mergePlaces 재사용).
+ * - 좌표가 있으면 병합 결과를 Haversine 거리순으로 재정렬한다 — 네이버 지역
+ *   검색은 거리 정렬·좌표 필터가 없어 전국 정확도순으로 오므로, 재정렬 없이는
+ *   근처의 네이버 전용 결과가 목록 끝에 묻힌다(원거리 동명 가게가 위로 오는
+ *   것도 함께 차단). 좌표가 없으면 카카오 정확도순 뒤에 이어 붙인다.
+ */
+export async function searchPlacesMergedKo(
+  params: PlaceSearchParams,
+): Promise<PlaceSearchResult> {
+  const [kakaoR, naverR] = await Promise.allSettled([
+    searchPlacesKakaoLocal(params),
+    searchPlacesNaverLocal(params),
+  ]);
+
+  if (kakaoR.status === "rejected" && naverR.status === "rejected") {
+    throw kakaoR.reason;
+  }
+  if (kakaoR.status === "rejected") {
+    console.error("[places] ko 병합 — 카카오 실패:", kakaoR.reason);
+  }
+  if (naverR.status === "rejected") {
+    console.error("[places] ko 병합 — 네이버 실패:", naverR.reason);
+  }
+
+  const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
+  const naver = naverR.status === "fulfilled" ? naverR.value.places : [];
+  const merged = mergePlaces(kakao, naver);
+  const places =
+    params.lat != null && params.lng != null
+      ? sortPlacesByDistance(merged, { lat: params.lat, lng: params.lng })
+      : merged;
+  return { places, provider: "merged", query: params.query };
 }
 
 /**
