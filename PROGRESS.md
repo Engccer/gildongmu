@@ -30,6 +30,7 @@
 | 채팅 (Gemini FC 15도구 + Perplexity 웹) | ✅ prod | 2026-06-21 장소별 진입 재배치, 2026-06-30 무장애 도구 추가(게이트) |
 | 미지원 언어 첫 방문 en 폴백 (proxy Accept-Language 치환) | ✅ prod | 2026-07-03 ja/zh→/en 확인, ko·fr·en·헤더없음(ko)·쿠키 우선순위 기존대로 — 커밋 3abf158 |
 | 무장애 여행 정보 (한국관광공사 KorWithService2) | ✅ prod | 2026-06-30 활용신청 자동승인+실호출 검증 완료(서울도서관 130183·덕수궁 1605981). nearby·장소상세 region·채팅 도구 3계층. 라벨 실키 교정(brailepromotion 등)·값 HTML/접미 정제·매칭 50m∩이름 |
+| 커스텀 도메인 `gildongmu.dodoplanet.space` | ✅ prod | 2026-07-18 gildongmu 프로젝트에 추가(`vercel domains add`). dodoplanet.space DNS는 Cloudflare 관리인데 기존 와일드카드 CNAME(DNS-only)이 있어 레코드 추가 없이 즉시 해석·인증서 발급. 실호출 검증: 페이지(길동무 타이틀)·places(강남역 15건)·ODsay transit(국회의사당→강남 36분). **API 재신청 불필요** — 전 키가 서버 전용이고 브라우저→외부 API 직호출 0, 유일한 도메인 식별형 ODsay는 서버가 등록 Referer(gildongmu.vercel.app)를 코드로 명시 전송하므로 접속 도메인 무관 |
 
 ## 프로덕션 env 등록 현황
 
