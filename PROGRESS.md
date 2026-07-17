@@ -30,11 +30,12 @@
 | 채팅 (Gemini FC 15도구 + Perplexity 웹) | ✅ prod | 2026-06-21 장소별 진입 재배치, 2026-06-30 무장애 도구 추가(게이트) |
 | 미지원 언어 첫 방문 en 폴백 (proxy Accept-Language 치환) | ✅ prod | 2026-07-03 ja/zh→/en 확인, ko·fr·en·헤더없음(ko)·쿠키 우선순위 기존대로 — 커밋 3abf158 |
 | 무장애 여행 정보 (한국관광공사 KorWithService2) | ✅ prod | 2026-06-30 활용신청 자동승인+실호출 검증 완료(서울도서관 130183·덕수궁 1605981). nearby·장소상세 region·채팅 도구 3계층. 라벨 실키 교정(brailepromotion 등)·값 HTML/접미 정제·매칭 50m∩이름 |
+| ko 장소 병합 (카카오+네이버 지역검색) | ✅ prod | 2026-07-18 커밋 f3c0032. 발단: 여의도 "백년찌개" 검색 미노출 — 카카오 로컬 DB에 어떤 상호 변형으로도 미등록(커버리지 공백), 네이버에만 "백년찌개집 1971" 등재. 両키 시 `searchPlacesMergedKo` 병합(allSettled 부분실패 보존, 좌표 4자리 dedupe, 좌표 시 Haversine 재정렬 — 네이버는 거리 정렬·좌표 필터 없어 전국 정확도순). **prod 실호출 검증**: 백년찌개(여의도 좌표)→両도메인 1위 백년찌개집 1971 609m·merged 10건, 회귀 맥도날드(길동)→1위 천호로데오점 837m·merged 20건. 네이버 지역검색 일 25,000회·최대 5건 |
 | 커스텀 도메인 `gildongmu.dodoplanet.space` | ✅ prod | 2026-07-18 gildongmu 프로젝트에 추가(`vercel domains add`). dodoplanet.space DNS는 Cloudflare 관리인데 기존 와일드카드 CNAME(DNS-only)이 있어 레코드 추가 없이 즉시 해석·인증서 발급. 실호출 검증: 페이지(길동무 타이틀)·places(강남역 15건)·ODsay transit(국회의사당→강남 36분). **API 재신청 불필요** — 전 키가 서버 전용이고 브라우저→외부 API 직호출 0, 유일한 도메인 식별형 ODsay는 서버가 등록 Referer(gildongmu.vercel.app)를 코드로 명시 전송하므로 접속 도메인 무관 |
 
 ## 프로덕션 env 등록 현황
 
-`vercel env ls production`으로 확인. 등록됨: `KAKAO_REST_API_KEY`, `TOUR_API_KEY`/`DATA_GO_KR_API_KEY`(동일값), `NCP_MAPS_CLIENT_ID/SECRET`, `DEEPGRAM_API_KEY`, `SEOUL_OPEN_DATA_KEY`, `SEOUL_SUBWAY_REALTIME_KEY`, `JUSO_CONFM_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`, `ODSAY_API_KEY`(2026-07-04, URI 앱 키 — URL 인코딩 형태로 저장).
+`vercel env ls production`으로 확인. 등록됨: `KAKAO_REST_API_KEY`, `TOUR_API_KEY`/`DATA_GO_KR_API_KEY`(동일값), `NCP_MAPS_CLIENT_ID/SECRET`, `DEEPGRAM_API_KEY`, `SEOUL_OPEN_DATA_KEY`, `SEOUL_SUBWAY_REALTIME_KEY`, `JUSO_CONFM_KEY`, `GEMINI_API_KEY`, `PERPLEXITY_API_KEY`, `ODSAY_API_KEY`(2026-07-04, URI 앱 키 — URL 인코딩 형태로 저장), `NAVER_LOCAL_CLIENT_ID/SECRET`(2026-07-18, 네이버 개발자센터 gildongmu 앱 — 사용자 수동 발급, Claude in Chrome이 naver 도메인 차단).
 
 ⚠ **env 변경 후 반드시 재배포** — 키는 배포 시점에 함수로 주입된다(`vercel deploy --prod --yes` 또는 push). 키만 추가하고 재배포 안 하면 기존 함수는 옛 env를 본다.
 
