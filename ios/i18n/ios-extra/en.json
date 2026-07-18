@@ -154,7 +154,8 @@
       "airFailed": "Couldn't load air quality",
       "weatherHeading": "Weather",
       "skyPartly": "Partly cloudy",
-      "rainSnow": "Rain or snow"
+      "rainSnow": "Rain or snow",
+      "airStationLine": "{name} monitoring station, {distance}km"
     },
     "settings": {
       "title": "Settings",

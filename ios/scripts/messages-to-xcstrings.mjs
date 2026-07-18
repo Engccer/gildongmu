@@ -81,9 +81,12 @@ function dedupeInOrder(names) {
 }
 
 /** `{name}`을 nameOrder 안 위치 기반 `%N$@`로 치환한다. 문자열 안 등장 순서가 로케일마다
- * 달라도(어순 차이) nameOrder(ko 기준) 인덱스로 고정되므로 안전하다. */
+ * 달라도(어순 차이) nameOrder(ko 기준) 인덱스로 고정되므로 안전하다.
+ * 리터럴 `%`는 먼저 `%%`로 이스케이프한다 — 이 키들은 Swift String(format:)으로
+ * 소비되는데, 유효 지정자로 이어지지 않는 `%`를 format이 조용히 삼킨다
+ * (실측: "습도 %1$@%" → "습도 55", % 소실. 코드리뷰 2026-07-19). */
 function toPositionalFormat(value, nameOrder) {
-  return value.replace(NAMED_PLACEHOLDER_RE, (full, name) => {
+  return value.replaceAll('%', '%%').replace(NAMED_PLACEHOLDER_RE, (full, name) => {
     const index = nameOrder.indexOf(name);
     return index === -1 ? full : `%${index + 1}$@`;
   });

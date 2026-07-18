@@ -154,7 +154,8 @@
       "airFailed": "Impossible de charger la qualité de l'air",
       "weatherHeading": "Météo",
       "skyPartly": "Partiellement nuageux",
-      "rainSnow": "Pluie ou neige"
+      "rainSnow": "Pluie ou neige",
+      "airStationLine": "Station de mesure {name}, {distance}km"
     },
     "settings": {
       "title": "Réglages",

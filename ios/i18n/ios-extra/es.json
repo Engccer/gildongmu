@@ -154,7 +154,8 @@
       "airFailed": "No se pudo obtener la calidad del aire",
       "weatherHeading": "Tiempo",
       "skyPartly": "Parcialmente nublado",
-      "rainSnow": "Lluvia o nieve"
+      "rainSnow": "Lluvia o nieve",
+      "airStationLine": "Estación de medición {name}, {distance}km"
     },
     "settings": {
       "title": "Ajustes",

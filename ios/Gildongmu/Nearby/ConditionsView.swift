@@ -101,7 +101,7 @@ struct ConditionsView: View {
     @ViewBuilder private var airSection: some View {
         Section {
             if let air = model.air {
-                Text("\(air.stationName) 측정소, \(numberText(air.distanceKm))km")
+                Text(String(format: String(localized: "ios.nearby.airStationLine"), air.stationName, numberText(air.distanceKm)))
                 Text(pollutantText(String(localized: "airQuality.khai"), air.khai))
                 Text(pollutantText(String(localized: "airQuality.pm10"), air.pm10))
                 Text(pollutantText(String(localized: "airQuality.pm25"), air.pm25))

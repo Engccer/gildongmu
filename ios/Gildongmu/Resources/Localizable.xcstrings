@@ -5645,6 +5645,40 @@
         }
       }
     },
+    "ios.nearby.airStationLine": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 측정소, %2$@km"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ monitoring station, %2$@km"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estación de medición %1$@, %2$@km"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Station de mesure %1$@, %2$@km"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stazione di monitoraggio %1$@, %2$@km"
+          }
+        }
+      }
+    },
     "ios.nearby.announceCount": {
       "localizations": {
         "ko": {
@@ -18366,31 +18400,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "습도 %1$@%"
+            "value": "습도 %1$@%%"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Humidity %1$@%"
+            "value": "Humidity %1$@%%"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Humedad %1$@%"
+            "value": "Humedad %1$@%%"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Humidité %1$@%"
+            "value": "Humidité %1$@%%"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Umidità %1$@%"
+            "value": "Umidità %1$@%%"
           }
         }
       }
@@ -18400,31 +18434,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "강수확률 %1$@%"
+            "value": "강수확률 %1$@%%"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chance of rain %1$@%"
+            "value": "Chance of rain %1$@%%"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prob. de lluvia %1$@%"
+            "value": "Prob. de lluvia %1$@%%"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Risque de pluie %1$@%"
+            "value": "Risque de pluie %1$@%%"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prob. di pioggia %1$@%"
+            "value": "Prob. di pioggia %1$@%%"
           }
         }
       }

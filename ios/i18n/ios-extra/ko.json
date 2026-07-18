@@ -154,7 +154,8 @@
       "airFailed": "공기질 정보를 가져오지 못했습니다",
       "weatherHeading": "날씨",
       "skyPartly": "구름 조금",
-      "rainSnow": "비 또는 눈"
+      "rainSnow": "비 또는 눈",
+      "airStationLine": "{name} 측정소, {distance}km"
     },
     "settings": {
       "title": "설정",

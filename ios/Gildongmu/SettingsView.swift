@@ -42,9 +42,12 @@ struct SettingsView: View {
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
     /// 현재 세션의 선택값. 오버라이드가 이미 있으면 그것이 정본(재시작 전엔
     /// Bundle 해석(AppLanguage.current)이 옛 언어라 UserDefaults를 먼저 본다).
+    /// ⚠ AppleLanguages는 오버라이드가 없어도 시스템이 채워 두므로 지원 언어
+    /// 필터가 필수 — 미지원 값(예: ja)을 그대로 쓰면 픽커가 무선택 상태가 된다.
     @State private var selectedLanguage =
         (UserDefaults.standard.array(forKey: "AppleLanguages")?.first as? String)
-            .map { String($0.prefix(2)) } ?? AppLanguage.current
+            .map { String($0.prefix(2)) }
+            .flatMap { AppLanguage.supported.contains($0) ? $0 : nil } ?? AppLanguage.current
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
