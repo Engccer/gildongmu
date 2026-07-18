@@ -53,6 +53,8 @@
 - 진행 통지: status 이벤트당 `AccessibilityNotification.Announcement` 1회(단일 polite 채널의 iOS 문법).
 - 음성 입력: **자체 온디바이스 `SpeechService`(iOS 26 SpeechAnalyzer, ko-KR 고정) 재사용**. dodo `DictationRecorder`(서버 STT)는 이식하지 않는다. 이미 sheet에서 검증됐고 서버 왕복·비용이 없다.
 - `disabled` 금지(핸들러 가드+in-flight 가드), 터치 타깃 ≥44pt, 한 줄=한 접근성 객체, 산문은 말풍선 한 곳에만. 전부 기존 그대로.
+- **질문 말풍선은 헤딩(trait만, 시각 불변)**: 긴 대화에서 로터 헤딩 탐색이 턴(질문) 단위 점프의 유일한 경로(위원장 실측 반영).
+- **마이크 라벨은 "받아쓰기 시작/중지"**: "음성 입력"은 받아쓴 내용에 "음성"이 들어가면 SR 낭독에서 내용과 컨트롤 라벨이 구분 불가(위원장 실측). 컨트롤 라벨은 사용자 콘텐츠에 등장할 법한 일반명사를 피하고 행위구로. SearchView 동일 적용.
 
 ## 6. 디자인 정체성
 
