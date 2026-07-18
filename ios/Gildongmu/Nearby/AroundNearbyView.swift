@@ -22,7 +22,7 @@ final class AroundNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.surroundings(lat: coord.lat, lng: coord.lng)
             state = .loaded(places)
-            announceLoaded(count: places.count, unit: "곳")
+            announceLoaded(count: places.count, unit: String(localized: "ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -58,7 +58,7 @@ struct AroundNearbyView: View {
                 }
             }
         }
-        .navigationTitle("둘러보기")
+        .navigationTitle(String(localized: "ios.nearby.around"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -76,30 +76,30 @@ struct AroundNearbyView: View {
     private func bearingLabel(_ bearing: String) -> String? {
         let korean: String?
         switch bearing {
-        case "n": korean = "북"
-        case "ne": korean = "북동"
-        case "e": korean = "동"
-        case "se": korean = "남동"
-        case "s": korean = "남"
-        case "sw": korean = "남서"
-        case "w": korean = "서"
-        case "nw": korean = "북서"
+        case "n": korean = String(localized: "surroundingsNearby.direction.n")
+        case "ne": korean = String(localized: "surroundingsNearby.direction.ne")
+        case "e": korean = String(localized: "surroundingsNearby.direction.e")
+        case "se": korean = String(localized: "surroundingsNearby.direction.se")
+        case "s": korean = String(localized: "surroundingsNearby.direction.s")
+        case "sw": korean = String(localized: "surroundingsNearby.direction.sw")
+        case "w": korean = String(localized: "surroundingsNearby.direction.w")
+        case "nw": korean = String(localized: "surroundingsNearby.direction.nw")
         default: korean = nil
         }
-        return korean.map { $0 + "쪽" }
+        return korean.map { String(format: String(localized: "ios.nearby.directionSuffixed"), $0) }
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .loaded(let places) where places.isEmpty:
-            ContentUnavailableView("주변에 표시할 장소가 없습니다", systemImage: "mappin.and.ellipse")
+            ContentUnavailableView(String(localized: "ios.nearby.aroundEmpty"), systemImage: "mappin.and.ellipse")
         default: EmptyView()
         }
     }

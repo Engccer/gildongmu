@@ -22,7 +22,7 @@ final class KidsNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
             state = .loaded(places)
-            announceLoaded(count: places.count, unit: "곳")
+            announceLoaded(count: places.count, unit: String(localized: "ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -58,22 +58,22 @@ struct KidsNearbyView: View {
                 }
             }
         }
-        .navigationTitle("아이 놀 곳")
+        .navigationTitle(String(localized: "ios.nearby.kids"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
 
-    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
+    private func chatLabel(_ name: String) -> String { String(format: String(localized: "ios.place.askAbout"), name) }
 
     /// kind 코드 → 한글 라벨. 미지 값은 원문 그대로 노출(계약 확장에 깨지지 않게).
     private func kindLabel(_ kind: String) -> String {
         switch kind {
-        case "kidscafe": return "키즈카페"
-        case "playground": return "놀이터"
-        case "playcenter": return "놀이센터"
-        case "park": return "공원"
+        case "kidscafe": return String(localized: "kidsNearby.kind.kidscafe")
+        case "playground": return String(localized: "kidsNearby.kind.playground")
+        case "playcenter": return String(localized: "kidsNearby.kind.playcenter")
+        case "park": return String(localized: "ios.nearby.kidsPark")
         default: return kind
         }
     }
@@ -81,23 +81,23 @@ struct KidsNearbyView: View {
     /// indoor/outdoor 3-state: unknown도 "실내외 정보 없음"으로 명시(0건·미확인 혼동 방지).
     private func inOutLabel(_ value: String) -> String {
         switch value {
-        case "indoor": return "실내"
-        case "outdoor": return "실외"
-        default: return "실내외 정보 없음"
+        case "indoor": return String(localized: "kidsNearby.indoor.indoor")
+        case "outdoor": return String(localized: "kidsNearby.indoor.outdoor")
+        default: return String(localized: "kidsNearby.indoor.unknown")
         }
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .loaded(let places) where places.isEmpty:
-            ContentUnavailableView("주변에 아이 놀 곳이 없습니다", systemImage: "figure.and.child.holdinghands")
+            ContentUnavailableView(String(localized: "ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands")
         default: EmptyView()
         }
     }

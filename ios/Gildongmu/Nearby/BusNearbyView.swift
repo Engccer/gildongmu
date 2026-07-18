@@ -23,7 +23,7 @@ final class BusNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let stops = try await service.busStops(lat: coord.lat, lng: coord.lng)
             state = .loaded(stops)
-            announceLoaded(count: stops.count, unit: "정류소")
+            announceLoaded(count: stops.count, unit: String(localized: "ios.nearby.unitStop"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -50,9 +50,9 @@ struct BusNearbyView: View {
                         Text(joinText(stop.name, stop.stopNo, "\(stop.distanceMeters)m"))
                             .accessibilityAddTraits(.isHeader)
                         if stop.arrivalStatus == "unavailable" {
-                            Text("도착 정보를 가져오지 못했습니다")   // 조회 실패 ≠ 버스 없음
+                            Text(String(localized: "ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 버스 없음
                         } else if stop.arrivals.isEmpty {
-                            Text("도착 예정 버스가 없습니다")
+                            Text(String(localized: "ios.nearby.noBusArrivals"))
                         } else {
                             ForEach(Array(stop.arrivals.enumerated()), id: \.offset) { _, arrival in
                                 NavigationLink {
@@ -64,14 +64,14 @@ struct BusNearbyView: View {
                                 } label: {
                                     Text(arrivalLine(arrival))
                                 }
-                                .accessibilityHint("경유 정류소 보기")
+                                .accessibilityHint(String(localized: "ios.nearby.routeStopsHint"))
                             }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("버스 도착")
+        .navigationTitle(String(localized: "ios.nearby.bus"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -80,26 +80,26 @@ struct BusNearbyView: View {
     /// 도착 한 줄 결합. 저상은 교통약자 정본이라 텍스트로 흡수.
     /// arrivalMessage(서울 완성 문장)가 있으면 그대로, 없으면(TAGO) 슬롯 조합.
     private func arrivalLine(_ arrival: BusArrival) -> String {
-        let lowFloor = arrival.lowFloor ? "저상" : nil
+        let lowFloor = arrival.lowFloor ? String(localized: "ios.nearby.lowFloor") : nil
         if let message = arrival.arrivalMessage, !message.isEmpty {
-            return joinText(arrival.routeNo + "번", arrival.routeType, lowFloor, message)
+            return joinText(String(format: String(localized: "ios.nearby.routeNo"), arrival.routeNo), arrival.routeType, lowFloor, message)
         }
-        return joinText(arrival.routeNo + "번", arrival.routeType, lowFloor,
+        return joinText(String(format: String(localized: "ios.nearby.routeNo"), arrival.routeNo), arrival.routeType, lowFloor,
                         "\(arrival.prevStationCount)정류장 전",
-                        "약 \(max(1, arrival.arrivalSeconds / 60))분 후")
+                        String(format: String(localized: "ios.nearby.minutesAway"), String(max(1, arrival.arrivalSeconds / 60))))
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .loaded(let stops) where stops.isEmpty:
-            ContentUnavailableView("주변에 버스 정류소가 없습니다", systemImage: "bus")
+            ContentUnavailableView(String(localized: "ios.nearby.busEmpty"), systemImage: "bus")
         default: EmptyView()
         }
     }

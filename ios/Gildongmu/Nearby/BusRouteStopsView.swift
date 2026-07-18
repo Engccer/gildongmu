@@ -19,7 +19,7 @@ final class BusRouteStopsModel {
         do {
             let stops = try await service.busRouteStops(source: source, cityCode: cityCode, routeId: routeId)
             state = .loaded(stops)
-            announceLoaded(count: stops.count, unit: "정류소")
+            announceLoaded(count: stops.count, unit: String(localized: "ios.nearby.unitStop"))
         } catch {
             // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
             if case .loaded = state { announceRefreshFailed() } else { state = .failed }
@@ -43,7 +43,7 @@ struct BusRouteStopsView: View {
                 }
             }
         }
-        .navigationTitle("\(routeNo)번 경유 정류소")
+        .navigationTitle(String(format: String(localized: "ios.nearby.routeStopsTitle"), routeNo))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load(source: source, cityCode: cityCode, routeId: routeId) }
         .nearbyRefreshable { await model.load(source: source, cityCode: cityCode, routeId: routeId) }
@@ -51,11 +51,11 @@ struct BusRouteStopsView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("경유 정류소 조회 중")
+        case .loading: ProgressView(String(localized: "ios.nearby.routeStopsLoading"))
         case .failed:
-            ContentUnavailableView("경유 정류소 조회에 실패했습니다", systemImage: "wifi.exclamationmark")
+            ContentUnavailableView(String(localized: "ios.nearby.routeStopsFailed"), systemImage: "wifi.exclamationmark")
         case .loaded(let stops) where stops.isEmpty:
-            ContentUnavailableView("경유 정류소 정보가 없습니다", systemImage: "bus")
+            ContentUnavailableView(String(localized: "ios.nearby.routeStopsEmpty"), systemImage: "bus")
         default: EmptyView()
         }
     }

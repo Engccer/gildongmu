@@ -20,19 +20,21 @@ func joinText(_ parts: String?...) -> String {
 /// 로드 완료 단일 통지 채널(웹 combinedLiveMessage의 iOS 문법). 0건도 문장으로 통지.
 @MainActor
 func announceLoaded(count: Int, unit: String) {
-    let message = count == 0 ? "주변 결과가 없습니다" : "주변 \(unit) \(count)개"
+    let message = count == 0
+        ? String(localized: "ios.nearby.announceEmpty")
+        : String(format: String(localized: "ios.nearby.announceCount"), unit, String(count))
     AccessibilityNotification.Announcement(message).post()
 }
 
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).
 @MainActor
 func announceRefreshFailed() {
-    AccessibilityNotification.Announcement("새로고침에 실패했습니다. 기존 정보를 유지합니다").post()
+    AccessibilityNotification.Announcement(String(localized: "ios.nearby.refreshFailed")).post()
 }
 
 /// 권한 취소 전락 통지: loaded 중 새로고침에서 위치 권한 거부를 만나면 목록이
 /// denied 화면으로 통째로 바뀐다 — 무신호 화면 전환(SR 맥락 상실) 방지.
 @MainActor
 func announcePermissionLost() {
-    AccessibilityNotification.Announcement("위치 권한이 꺼져 있어 새로고침하지 못했습니다").post()
+    AccessibilityNotification.Announcement(String(localized: "ios.nearby.refreshDenied")).post()
 }

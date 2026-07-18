@@ -32,7 +32,7 @@ final class BarrierFreeNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.nearby(lat: coord.lat, lng: coord.lng)
             state = .loaded(places)
-            announceLoaded(count: places.count, unit: "곳")
+            announceLoaded(count: places.count, unit: String(localized: "ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -72,12 +72,12 @@ struct BarrierFreeNearbyView: View {
                 }
                 if !places.isEmpty {
                     Section {
-                        Text("출처: 한국관광공사 무장애 여행 정보")
+                        Text(String(localized: "barrierFreeInfo.source"))
                     }
                 }
             }
         }
-        .navigationTitle("무장애 관광지")
+        .navigationTitle(String(localized: "ios.nearby.barrierFree"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -85,15 +85,15 @@ struct BarrierFreeNearbyView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .loaded(let places) where places.isEmpty:
-            ContentUnavailableView("주변에 무장애 관광지가 없습니다", systemImage: "figure.roll")
+            ContentUnavailableView(String(localized: "ios.nearby.barrierFreeEmpty"), systemImage: "figure.roll")
         default: EmptyView()
         }
     }
@@ -108,7 +108,7 @@ private struct BarrierFreePlaceSection: View {
 
     var body: some View {
         Section {
-            DisclosureGroup("무장애 편의시설 보기, \(place.name)", isExpanded: $isExpanded) {
+            DisclosureGroup(String(format: String(localized: "ios.nearby.showFacilitiesFor"), place.name), isExpanded: $isExpanded) {
                 facilitiesContent
             }
         } header: {
@@ -125,7 +125,7 @@ private struct BarrierFreePlaceSection: View {
     @ViewBuilder private var facilitiesContent: some View {
         switch model.detailStates[place.contentId] {
         case .none, .loading:
-            Text("편의시설 불러오는 중…")
+            Text(String(localized: "barrierFreeNearby.facilitiesLoading"))
         case .loaded(let detail):
             if let facilities = detail?.facilities, !facilities.isEmpty {
                 // 평문 단일 텍스트(definition list 금지, SR "용어/정의" 낭독 회피).
@@ -133,10 +133,10 @@ private struct BarrierFreePlaceSection: View {
                     Text("\(facility.label) \(facility.value)")
                 }
             } else {
-                Text("등록된 무장애 편의시설 정보가 없습니다.")
+                Text(String(localized: "barrierFreeNearby.facilitiesEmpty"))
             }
         case .failed:
-            Text("편의시설 조회에 실패했습니다")
+            Text(String(localized: "ios.nearby.facilitiesFailed"))
         }
     }
 }

@@ -6,17 +6,17 @@ struct NearbyHubView: View {
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink("현재 위치 확인") { WhereAmIView() }
-                NavigationLink("지하철 도착") { SubwayNearbyView() }
-                NavigationLink("버스 도착") { BusNearbyView() }
-                NavigationLink("따릉이 대여소") { BikeNearbyView() }
-                NavigationLink("소아 야간진료") { ClinicNearbyView() }
-                NavigationLink("무장애 관광지") { BarrierFreeNearbyView() }
-                NavigationLink("아이 놀 곳") { KidsNearbyView() }
-                NavigationLink("둘러보기") { AroundNearbyView() }
-                NavigationLink("날씨·공기질") { ConditionsView() }
+                NavigationLink(String(localized: "whereAmI.button")) { WhereAmIView() }
+                NavigationLink(String(localized: "ios.nearby.subway")) { SubwayNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.bus")) { BusNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.bike")) { BikeNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.clinic")) { ClinicNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.barrierFree")) { BarrierFreeNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.kids")) { KidsNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.around")) { AroundNearbyView() }
+                NavigationLink(String(localized: "ios.nearby.conditions")) { ConditionsView() }
             }
-            .navigationTitle("내 주변")
+            .navigationTitle(String(localized: "ios.tab.nearby"))
             .navigationBarTitleDisplayMode(.inline)
             .gildongmuTitleMenu()
         }

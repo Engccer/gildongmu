@@ -34,13 +34,13 @@ final class WhereAmIModel {
             if let data {
                 let asOf = Self.timeFormatter.string(from: Date())
                 state = .loaded(data, lat: coord.lat, lng: coord.lng, asOf: asOf)
-                AccessibilityNotification.Announcement("현재 위치를 확인했습니다").post()
+                AccessibilityNotification.Announcement(String(localized: "ios.nearby.whereAmIReady")).post()
             } else if case .loaded = state {
                 // 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
                 announceRefreshFailed()
             } else {
                 state = .empty
-                AccessibilityNotification.Announcement("현재 위치 정보를 찾지 못했습니다.").post()
+                AccessibilityNotification.Announcement(String(localized: "whereAmI.empty")).post()
             }
         } catch let error as LocationService.LocationError {
             if case .denied = error {
@@ -74,15 +74,15 @@ struct WhereAmIView: View {
                     ForEach(Array(buildLocationNarrative(data, lang: "ko").enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
                     }
-                    Button("내 현재 위치에 관해 물어보기") {
+                    Button(String(localized: "ios.nearby.whereAmIChat")) {
                         chatPlace = whereAmIToPlace(data, lat: lat, lng: lng, lang: "ko")
                     }
                 } header: {
-                    Text("현재 위치 \(asOf) 기준").accessibilityAddTraits(.isHeader)
+                    Text(String(format: String(localized: "ios.nearby.whereAmIAsOf"), asOf)).accessibilityAddTraits(.isHeader)
                 }
             }
         }
-        .navigationTitle("현재 위치 확인")
+        .navigationTitle(String(localized: "whereAmI.button"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -91,15 +91,15 @@ struct WhereAmIView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("현재 위치 조회에 실패했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.nearby.whereAmIFailed"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .empty:
-            ContentUnavailableView("현재 위치 정보를 찾지 못했습니다", systemImage: "location.slash")
+            ContentUnavailableView(String(localized: "ios.nearby.whereAmIEmpty"), systemImage: "location.slash")
         default: EmptyView()
         }
     }

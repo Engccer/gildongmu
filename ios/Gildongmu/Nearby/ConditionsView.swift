@@ -38,11 +38,11 @@ final class ConditionsModel {
             // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
             // (누적 프로퍼티 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
             let message = if newWeather != nil && newAir != nil {
-                "날씨와 공기질 정보를 불러왔습니다"
+                String(localized: "ios.nearby.conditionsReady")
             } else if newWeather != nil || newAir != nil {
-                "일부 정보를 가져오지 못했습니다"
+                String(localized: "ios.nearby.conditionsPartial")
             } else {
-                "정보를 가져오지 못했습니다"
+                String(localized: "ios.common.failedTitle")
             }
             AccessibilityNotification.Announcement(message).post()
         } catch let error as LocationService.LocationError {
@@ -69,7 +69,7 @@ struct ConditionsView: View {
                 airSection
             }
         }
-        .navigationTitle("날씨·공기질")
+        .navigationTitle(String(localized: "ios.nearby.conditions"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -78,23 +78,23 @@ struct ConditionsView: View {
     @ViewBuilder private var weatherSection: some View {
         Section {
             if let weather = model.weather {
-                Text("하늘, \(skyWord(weather.sky.label))")
-                Text("강수, \(precipWord(weather.precipitation.label))")
-                if let temp = weather.tempC { Text("현재 기온 \(numberText(temp))도") }
+                Text(String(format: String(localized: "ios.nearby.skyLine"), skyWord(weather.sky.label)))
+                Text(String(format: String(localized: "ios.nearby.precipLine"), precipWord(weather.precipitation.label)))
+                if let temp = weather.tempC { Text(String(format: String(localized: "ios.nearby.tempNow"), numberText(temp))) }
                 // 둘 다 null이면 생략, 한쪽만이면 있는 쪽만
                 if weather.tempMax != nil || weather.tempMin != nil {
                     Text(joinText(
-                        weather.tempMax.map { "최고 \(numberText($0))도" },
-                        weather.tempMin.map { "최저 \(numberText($0))도" }))
+                        weather.tempMax.map { String(format: String(localized: "ios.nearby.tempMax"), numberText($0)) },
+                        weather.tempMin.map { String(format: String(localized: "ios.nearby.tempMin"), numberText($0)) }))
                 }
-                if let humidity = weather.humidity { Text("습도 \(numberText(humidity))%") }
-                if let probability = weather.precipProbability { Text("강수확률 \(numberText(probability))%") }
-                Text("기준 시각 \(weather.baseTime)")
+                if let humidity = weather.humidity { Text(String(format: String(localized: "weather.humidity"), numberText(humidity))) }
+                if let probability = weather.precipProbability { Text(String(format: String(localized: "weather.precipProbability"), numberText(probability))) }
+                Text(String(format: String(localized: "ios.nearby.baseTime"), weather.baseTime))
             } else {
-                Text("날씨 정보를 가져오지 못했습니다")
+                Text(String(localized: "ios.nearby.weatherFailed"))
             }
         } header: {
-            Text("날씨").accessibilityAddTraits(.isHeader)
+            Text(String(localized: "ios.nearby.weatherHeading")).accessibilityAddTraits(.isHeader)
         }
     }
 
@@ -102,27 +102,27 @@ struct ConditionsView: View {
         Section {
             if let air = model.air {
                 Text("\(air.stationName) 측정소, \(numberText(air.distanceKm))km")
-                Text(pollutantText("통합대기환경지수", air.khai))
-                Text(pollutantText("미세먼지", air.pm10))
-                Text(pollutantText("초미세먼지", air.pm25))
-                Text("측정 시각 \(air.dataTime)")
+                Text(pollutantText(String(localized: "airQuality.khai"), air.khai))
+                Text(pollutantText(String(localized: "airQuality.pm10"), air.pm10))
+                Text(pollutantText(String(localized: "airQuality.pm25"), air.pm25))
+                Text(String(format: String(localized: "ios.nearby.dataTime"), air.dataTime))
             } else {
-                Text("공기질 정보를 가져오지 못했습니다")
+                Text(String(localized: "ios.nearby.airFailed"))
             }
         } header: {
-            Text("공기질").accessibilityAddTraits(.isHeader)
+            Text(String(localized: "weather.airLabel")).accessibilityAddTraits(.isHeader)
         }
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.phase {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         default: EmptyView()
         }
     }
@@ -137,31 +137,31 @@ struct ConditionsView: View {
     /// 공기질 등급 단어. 미지의 값은 "정보 없음"으로(잘못된 단정 금지)
     private func gradeWord(_ grade: String) -> String {
         switch grade {
-        case "good": "좋음"
-        case "moderate": "보통"
-        case "bad": "나쁨"
-        case "veryBad": "매우 나쁨"
-        default: "정보 없음"
+        case "good": String(localized: "airQuality.grade.good")
+        case "moderate": String(localized: "airQuality.grade.moderate")
+        case "bad": String(localized: "airQuality.grade.bad")
+        case "veryBad": String(localized: "airQuality.grade.veryBad")
+        default: String(localized: "airQuality.unknown")
         }
     }
 
     private func skyWord(_ label: String) -> String {
         switch label {
-        case "clear": "맑음"
-        case "partlyCloudy": "구름 조금"
-        case "cloudy": "흐림"
-        default: "정보 없음"
+        case "clear": String(localized: "weather.sky.clear")
+        case "partlyCloudy": String(localized: "ios.nearby.skyPartly")
+        case "cloudy": String(localized: "weather.sky.cloudy")
+        default: String(localized: "weather.unknown")
         }
     }
 
     private func precipWord(_ label: String) -> String {
         switch label {
-        case "none": "강수 없음"
-        case "rain": "비"
-        case "rainSnow": "비 또는 눈"
-        case "snow": "눈"
-        case "shower": "소나기"
-        default: "정보 없음"
+        case "none": String(localized: "weather.precipitation.none")
+        case "rain": String(localized: "weather.precipitation.rain")
+        case "rainSnow": String(localized: "ios.nearby.rainSnow")
+        case "snow": String(localized: "weather.precipitation.snow")
+        case "shower": String(localized: "weather.precipitation.shower")
+        default: String(localized: "weather.unknown")
         }
     }
 

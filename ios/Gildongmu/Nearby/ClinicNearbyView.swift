@@ -22,7 +22,7 @@ final class ClinicNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let clinics = try await service.clinics(lat: coord.lat, lng: coord.lng)
             state = .loaded(clinics)
-            announceLoaded(count: clinics.count, unit: "곳")
+            announceLoaded(count: clinics.count, unit: String(localized: "ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -57,7 +57,7 @@ struct ClinicNearbyView: View {
                         // 전화는 인터랙티브 요소라 별도 객체로 분리(합치지 않음). 표시 라벨은 원문, tel URL만 하이픈 제거
                         if !clinic.phone.isEmpty,
                            let url = URL(string: "tel:\(clinic.phone.replacingOccurrences(of: "-", with: ""))") {
-                            Link("전화 걸기, \(clinic.phone)", destination: url)
+                            Link(String(format: String(localized: "ios.place.callLine"), clinic.phone), destination: url)
                         }
                     } header: {
                         // 기관명만 heading(웹 h4 규칙). 종별·거리는 같은 줄에 흡수.
@@ -74,7 +74,7 @@ struct ClinicNearbyView: View {
                 }
             }
         }
-        .navigationTitle("소아 야간진료")
+        .navigationTitle(String(localized: "ios.nearby.clinic"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -88,33 +88,33 @@ struct ClinicNearbyView: View {
         switch status.state {
         case "open":
             if let end = status.end {
-                return joinText("지금 진료 중", endTimeText(end))
+                return joinText(String(localized: "clinicNearby.open"), endTimeText(end))
             }
-            return "지금 진료 중"
+            return String(localized: "clinicNearby.open")
         case "closed":
-            return "지금은 진료하지 않습니다"
+            return String(localized: "ios.nearby.clinicClosed")
         default:
-            return "진료시간 정보 없음"
+            return String(localized: "ios.nearby.clinicUnknown")
         }
     }
 
     /// HHMM 정수를 "HH시 MM분까지"로. 2400은 자정을 뜻해 "자정까지".
     private func endTimeText(_ hhmm: Int) -> String {
-        if hhmm == 2400 { return "자정까지" }
-        return "\(hhmm / 100)시 \(hhmm % 100)분까지"
+        if hhmm == 2400 { return String(localized: "ios.nearby.untilMidnight") }
+        return String(format: String(localized: "ios.nearby.untilTime"), String(hhmm / 100), String(hhmm % 100))
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView("확인 중")
+        case .loading: ProgressView(String(localized: "ios.common.checking"))
         case .denied:
-            ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-                description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(String(localized: "ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView("정보를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-                description: Text("잠시 후 다시 시도해 주세요"))
+            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(String(localized: "ios.common.retryLater")))
         case .loaded(let clinics) where clinics.isEmpty:
-            ContentUnavailableView("주변에 진료 기관이 없습니다", systemImage: "cross.case")
+            ContentUnavailableView(String(localized: "ios.nearby.clinicEmpty"), systemImage: "cross.case")
         default: EmptyView()
         }
     }

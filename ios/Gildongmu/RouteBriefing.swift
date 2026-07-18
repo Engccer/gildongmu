@@ -19,10 +19,10 @@ enum RouteLoadState<Payload> {
 @MainActor @ViewBuilder
 private func routeStateOverlay<Payload>(_ state: RouteLoadState<Payload>) -> some View {
     switch state {
-    case .loading: ProgressView(String(localized: "ios.route.checking"))
+    case .loading: ProgressView(String(localized: "ios.common.checking"))
     case .denied:
-        ContentUnavailableView(String(localized: "ios.route.geoDeniedTitle"), systemImage: "location.slash",
-            description: Text(String(localized: "ios.route.geoDeniedDesc")))
+        ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
+            description: Text(String(localized: "ios.common.geoDeniedDesc")))
     case .failed:
         ContentUnavailableView(String(localized: "ios.route.failedTitle"), systemImage: "wifi.exclamationmark",
             description: Text(String(localized: "ios.common.retryLater")))
