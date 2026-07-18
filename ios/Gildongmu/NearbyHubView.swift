@@ -17,6 +17,8 @@ struct NearbyHubView: View {
                 NavigationLink("날씨·공기질") { ConditionsView() }
             }
             .navigationTitle("내 주변")
+            .navigationBarTitleDisplayMode(.inline)
+            .gildongmuTitleMenu()
         }
     }
 }

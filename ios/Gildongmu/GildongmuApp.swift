@@ -1,11 +1,6 @@
 import SwiftUI
 import GildongmuKit
 
-extension EnvironmentValues {
-    /// 세션 리셋 액션 — 검색 탭 제목 버튼(웹 헤더 제목 링크 동형)이 호출한다.
-    @Entry var resetSession: () -> Void = {}
-}
-
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
 /// 세션 리셋 시 `.id` 재생성만으론 첫 탭(채팅) 복귀가 안 된다 — 명시 복귀 필요.
 enum AppTab {
@@ -18,8 +13,12 @@ enum AppTab {
 struct GildongmuApp: App {
     @Environment(\.scenePhase) private var scenePhase
     /// 세션 세대. 증가하면 .id로 TabView 전체(모델 포함)가 재생성돼
-    /// 초기 화면으로 복귀한다 — 유휴 복귀·제목 탭·단축어 진입이 공유.
+    /// 초기 화면으로 복귀한다 — 유휴 복귀·단축어 진입이 공유.
     @State private var sessionEpoch = 0
+    /// 탭별 새로고침 세대. 해당 탭 콘텐츠만 .id 재생성한다(전체 리셋 sessionEpoch과 별개).
+    @State private var chatEpoch = 0
+    @State private var searchEpoch = 0
+    @State private var nearbyEpoch = 0
     @State private var backgroundedAt: Date?
     @State private var selectedTab: AppTab = .chat
     /// 채팅 탭 대화 모델은 App 소유 — 리셋 경로에서 스트림을 요청째 폐기하기 위함
@@ -32,13 +31,13 @@ struct GildongmuApp: App {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
             TabView(selection: $selectedTab) {
-                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel) }
-                Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView() }
-                Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView() }
+                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
+                Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
+                Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id(sessionEpoch)
             .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme ?? nil)
-            .environment(\.resetSession, resetSession)
+            .environment(\.refreshTab, refreshCurrentTab)
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
             // epoch 재생성으로 .task가 다시 돌아도 멱등.
@@ -62,11 +61,25 @@ struct GildongmuApp: App {
         }
     }
 
-    /// 초기 화면 복귀(제목 탭·유휴 복귀 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
+    /// 초기 화면 복귀(유휴 복귀·단축어 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
     private func resetSession() {
         sessionEpoch += 1
         selectedTab = .chat
         resetChatModel()
+    }
+
+    /// 현재 탭만 초기 상태로(제목 메뉴 "새로고침"): 탭 이동 없음, 해당 탭 epoch만 증가.
+    /// 채팅은 진행 중 스트림을 요청째 취소하고 새 대화로 교체한다(idle-reset 불변식 공유).
+    private func refreshCurrentTab() {
+        switch selectedTab {
+        case .chat:
+            chatEpoch += 1
+            resetChatModel()
+        case .search:
+            searchEpoch += 1
+        case .nearby:
+            nearbyEpoch += 1
+        }
     }
 
     /// 채팅 대화 폐기: 진행 중 스트림을 요청째 취소하고 새 대화로 교체(일회성 대화 계약).

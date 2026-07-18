@@ -22,6 +22,7 @@ struct ChatTabView: View {
             }
             .navigationTitle("채팅")
             .navigationBarTitleDisplayMode(.inline)
+            .gildongmuTitleMenu()
         }
     }
 
