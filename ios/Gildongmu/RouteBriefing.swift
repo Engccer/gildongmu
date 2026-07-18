@@ -19,13 +19,13 @@ enum RouteLoadState<Payload> {
 @MainActor @ViewBuilder
 private func routeStateOverlay<Payload>(_ state: RouteLoadState<Payload>) -> some View {
     switch state {
-    case .loading: ProgressView("확인 중")
+    case .loading: ProgressView(String(localized: "ios.route.checking"))
     case .denied:
-        ContentUnavailableView("위치 권한이 필요합니다", systemImage: "location.slash",
-            description: Text("설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요"))
+        ContentUnavailableView(String(localized: "ios.route.geoDeniedTitle"), systemImage: "location.slash",
+            description: Text(String(localized: "ios.route.geoDeniedDesc")))
     case .failed:
-        ContentUnavailableView("경로를 가져오지 못했습니다", systemImage: "wifi.exclamationmark",
-            description: Text("잠시 후 다시 시도해 주세요"))
+        ContentUnavailableView(String(localized: "ios.route.failedTitle"), systemImage: "wifi.exclamationmark",
+            description: Text(String(localized: "ios.common.retryLater")))
     default: EmptyView()
     }
 }
@@ -57,7 +57,7 @@ final class CarBriefingModel {
             state = .loaded(briefing)
             // 완료 통지 1회(진행 통지 없음)
             AccessibilityNotification.Announcement(
-                "자동차 경로를 불러왔습니다, 약 \(briefing.durationSeconds / 60)분").post()
+                String(format: String(localized: "ios.route.carReady"), String(briefing.durationSeconds / 60))).post()
         } catch let error as LocationService.LocationError {
             if case .denied = error { state = .denied } else { state = .failed }
         } catch {
@@ -76,10 +76,10 @@ struct CarBriefingView: View {
                 Section {
                     // 요약 1행이 헤더(발견 경로). 통행료 0원은 생략(잉여)
                     Text(joinText(
-                        "총 \(String(format: "%.1f", Double(briefing.distanceMeters) / 1000))km",
-                        "약 \(briefing.durationSeconds / 60)분",
-                        "택시 요금 약 \(wonText(briefing.taxiFare))원",
-                        briefing.tollFare > 0 ? "통행료 \(wonText(briefing.tollFare))원" : nil))
+                        String(format: String(localized: "ios.route.totalDistance"), String(format: "%.1f", Double(briefing.distanceMeters) / 1000)),
+                        String(format: String(localized: "ios.route.durationMinutes"), String(briefing.durationSeconds / 60)),
+                        String(format: String(localized: "ios.route.taxiFare"), wonText(briefing.taxiFare)),
+                        briefing.tollFare > 0 ? String(format: String(localized: "ios.route.tollFare"), wonText(briefing.tollFare)) : nil))
                         .accessibilityAddTraits(.isHeader)
                     ForEach(Array(briefing.guides.enumerated()), id: \.offset) { _, guide in
                         // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
@@ -91,7 +91,7 @@ struct CarBriefingView: View {
                 }
             }
         }
-        .navigationTitle("자동차 경로")
+        .navigationTitle(String(localized: "ios.route.carTitle"))
         .overlay { routeStateOverlay(model.state) }
         .task { await model.load(place: place) }
     }
@@ -119,7 +119,7 @@ final class TransitBriefingModel {
             state = .loaded(result)
             // 완료 통지 1회(진행 통지 없음)
             AccessibilityNotification.Announcement(
-                "대중교통 경로를 불러왔습니다, 약 \(result.recommended.summary.totalMinutes)분").post()
+                String(format: String(localized: "ios.route.transitReady"), String(result.recommended.summary.totalMinutes))).post()
         } catch let error as LocationService.LocationError {
             if case .denied = error { state = .denied } else { state = .failed }
         } catch {
@@ -141,7 +141,7 @@ struct TransitBriefingView: View {
                         Text(legText(leg))
                     }
                 } header: {
-                    Text("추천 경로").accessibilityAddTraits(.isHeader)
+                    Text(String(localized: "ios.route.recommended")).accessibilityAddTraits(.isHeader)
                 }
                 // 대안은 요약 1행씩만(legs 미표시, 미니멀). 없으면 섹션 미노출
                 if !result.alternatives.isEmpty {
@@ -150,33 +150,35 @@ struct TransitBriefingView: View {
                             Text(summaryText(route.summary))
                         }
                     } header: {
-                        Text("다른 경로").accessibilityAddTraits(.isHeader)
+                        Text(String(localized: "ios.route.alternatives")).accessibilityAddTraits(.isHeader)
                     }
                 }
             }
         }
-        .navigationTitle("대중교통 경로")
+        .navigationTitle(String(localized: "ios.route.transitTitle"))
         .overlay { routeStateOverlay(model.state) }
         .task { await model.load(place: place) }
     }
 
     private func summaryText(_ summary: TransitRouteSummary) -> String {
         joinText(
-            "약 \(summary.totalMinutes)분",
-            "요금 \(wonText(summary.fare))원",
-            "환승 \(summary.transfers)회",
-            "도보 \(summary.walkMinutes)분")
+            String(format: String(localized: "ios.route.durationMinutes"), String(summary.totalMinutes)),
+            String(format: String(localized: "ios.route.fare"), wonText(summary.fare)),
+            String(format: String(localized: "ios.route.transfers"), String(summary.transfers)),
+            String(format: String(localized: "ios.route.walkMinutes"), String(summary.walkMinutes)))
     }
 
     /// 구간 한 줄 = 한 접근성 객체. walk leg는 노선 정보가 없어 단일 분기(계약 테스트 근거)
     private func legText(_ leg: TransitRouteLeg) -> String {
-        if leg.mode == "walk" { return "도보 \(leg.minutes)분" }
-        let countUnit = leg.mode == "bus" ? "정류장" : "역"
+        if leg.mode == "walk" {
+            return String(format: String(localized: "ios.route.walkMinutes"), String(leg.minutes))
+        }
+        let countKey = leg.mode == "bus" ? String(localized: "ios.route.stopCount") : String(localized: "ios.route.stationCount")
         return joinText(
             leg.lineName,
-            leg.fromName.map { "\($0) 승차" },
-            leg.toName.map { "\($0) 하차" },
-            leg.stationCount.map { "\($0)개 \(countUnit)" },
-            "\(leg.minutes)분")
+            leg.fromName.map { String(format: String(localized: "ios.route.board"), $0) },
+            leg.toName.map { String(format: String(localized: "ios.route.alight"), $0) },
+            leg.stationCount.map { String(format: countKey, String($0)) },
+            String(format: String(localized: "ios.route.legMinutes"), String(leg.minutes)))
     }
 }

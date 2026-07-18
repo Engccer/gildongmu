@@ -6,7 +6,8 @@
       "nearby": "À proximité"
     },
     "common": {
-      "ok": "OK"
+      "ok": "OK",
+      "retryLater": "Veuillez réessayer dans un instant"
     },
     "chat": {
       "suggestion1": "Montre-moi ce qu'il y a autour",
@@ -22,6 +23,71 @@
       "start": "Démarrer la dictée",
       "denied": "Autorisez l'accès au micro dans Réglages",
       "failed": "Impossible de démarrer la reconnaissance vocale. Veuillez réessayer."
+    },
+    "search": {
+      "prompt": "Rechercher lieux et adresses",
+      "searching": "Recherche en cours",
+      "failedTitle": "Échec de la recherche",
+      "webSection": "Recherche web",
+      "attractionSection": "Attractions",
+      "announceFailed": "Échec de la recherche. Veuillez réessayer dans un instant",
+      "announceEmpty": "Aucun résultat",
+      "announceCount": "{count} résultats"
+    },
+    "place": {
+      "call": "Appeler",
+      "callLine": "Appeler, {phone}",
+      "copyAddress": "Copier l'adresse",
+      "roadAddressLine": "Adresse (rue), {value}",
+      "jibunAddressLine": "Adresse (parcelle), {value}",
+      "englishAddressLine": "Adresse en anglais, {value}"
+    },
+    "route": {
+      "section": "Itinéraire",
+      "naver": "Itinéraire dans Naver Map",
+      "kakao": "Itinéraire dans KakaoMap",
+      "kakaoPlace": "Infos du lieu dans KakaoMap",
+      "carBriefing": "Aperçu de l'itinéraire en voiture",
+      "transitBriefing": "Aperçu de l'itinéraire en transport en commun",
+      "checking": "Vérification",
+      "geoDeniedTitle": "Autorisation de localisation requise",
+      "geoDeniedDesc": "Autorisez l'accès à la position pour Gildongmu dans Réglages",
+      "failedTitle": "Impossible de charger l'itinéraire",
+      "carReady": "Itinéraire en voiture chargé, environ {minutes} min",
+      "transitReady": "Itinéraire en transport en commun chargé, environ {minutes} min",
+      "totalDistance": "Total {km}km",
+      "durationMinutes": "environ {minutes} min",
+      "taxiFare": "taxi environ {won} KRW",
+      "tollFare": "péages {won} KRW",
+      "carTitle": "Itinéraire en voiture",
+      "transitTitle": "Itinéraire en transport en commun",
+      "recommended": "Itinéraire recommandé",
+      "alternatives": "Autres itinéraires",
+      "fare": "tarif {won} KRW",
+      "transfers": "{count} correspondances",
+      "walkMinutes": "à pied {minutes} min",
+      "board": "montée à {name}",
+      "alight": "descente à {name}",
+      "stopCount": "{count} arrêts",
+      "stationCount": "{count} stations",
+      "legMinutes": "{minutes} min"
+    },
+    "station": {
+      "nameSuffixed": "Station {name}",
+      "noArrivals": "Aucun train prévu",
+      "arrivalHeading": "Arrivées en temps réel",
+      "accessibleToiletYes": "Toilettes accessibles disponibles",
+      "accessibleToiletNo": "Pas de toilettes accessibles",
+      "accessibleSlopeYes": "Rampe accessible disponible",
+      "accessibleSlopeNo": "Pas de rampe accessible",
+      "countUnknown": "{label} : aucune donnée",
+      "countNone": "{label} : aucun",
+      "countSome": "{label} : {count}",
+      "railFacilities": "Équipements d'accessibilité (rail)",
+      "seoulFacilities": "Équipements d'accessibilité (métro de Séoul)",
+      "kindCount": "{label} : {count}",
+      "operatingNormal": "En service",
+      "operatingStopped": "Hors service"
     }
   }
 }

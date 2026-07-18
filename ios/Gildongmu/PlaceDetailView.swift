@@ -19,33 +19,33 @@ struct PlaceDetailView: View {
             Section {
                 // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙)
                 if !place.category.isEmpty { Text(place.category) }
-                if !place.roadAddress.isEmpty { Text("도로명 주소, \(place.roadAddress)") }
-                if !place.address.isEmpty { Text("지번 주소, \(place.address)") }
+                if !place.roadAddress.isEmpty { Text(String(format: String(localized: "ios.place.roadAddressLine"), place.roadAddress)) }
+                if !place.address.isEmpty { Text(String(format: String(localized: "ios.place.jibunAddressLine"), place.address)) }
                 if let english = place.englishAddress, !english.isEmpty {
-                    Text("영문 주소, \(english)")
+                    Text(String(format: String(localized: "ios.place.englishAddressLine"), english))
                 }
                 // 별도 접근성 객체(인터랙티브는 텍스트와 합치지 않음, 웹 정본 규칙)
-                Button("주소 복사") {
+                Button(String(localized: "ios.place.copyAddress")) {
                     UIPasteboard.general.string = copyableAddress
-                    AccessibilityNotification.Announcement("주소가 클립보드에 복사됨").post()
+                    AccessibilityNotification.Announcement(String(localized: "place.addressCopied")).post()
                 }
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
                     // 인터랙티브 요소는 별도 객체가 정상(합치지 말 것)
-                    Link("전화 걸기, \(phone)", destination: telURL)
+                    Link(String(format: String(localized: "ios.place.callLine"), phone), destination: telURL)
                 }
-                Button("이 장소에 관해 물어보기") { isChatPresented = true }
+                Button(String(localized: "placeChat.launch")) { isChatPresented = true }
             }
 
-            Section("길찾기") {
-                Button("네이버 지도 길찾기") { openNaverRoute() }
-                Button("카카오맵 길찾기") { openKakaoRoute() }
+            Section(String(localized: "ios.route.section")) {
+                Button(String(localized: "ios.route.naver")) { openNaverRoute() }
+                Button(String(localized: "ios.route.kakao")) { openKakaoRoute() }
                 if let kakaoId = kakaoPlaceId {
-                    Button("카카오맵 장소 정보") { openKakaoPlace(kakaoId) }
+                    Button(String(localized: "ios.route.kakaoPlace")) { openKakaoPlace(kakaoId) }
                 }
                 // 출발 전 미리 듣기 텍스트 브리핑(M4). 실주행은 위 딥링크 위임 유지
-                NavigationLink("자동차 경로 미리 듣기") { CarBriefingView(place: place) }
-                NavigationLink("대중교통 경로 미리 듣기") { TransitBriefingView(place: place) }
+                NavigationLink(String(localized: "ios.route.carBriefing")) { CarBriefingView(place: place) }
+                NavigationLink(String(localized: "ios.route.transitBriefing")) { TransitBriefingView(place: place) }
             }
 
             // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)

@@ -6,7 +6,8 @@
       "nearby": "내 주변"
     },
     "common": {
-      "ok": "확인"
+      "ok": "확인",
+      "retryLater": "잠시 후 다시 시도해 주세요"
     },
     "chat": {
       "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
@@ -22,6 +23,71 @@
       "start": "받아쓰기 시작",
       "denied": "설정에서 마이크 접근을 허용해 주세요",
       "failed": "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+    },
+    "search": {
+      "prompt": "장소, 주소 검색",
+      "searching": "검색 중",
+      "failedTitle": "검색에 실패했습니다",
+      "webSection": "웹 검색",
+      "attractionSection": "명소",
+      "announceFailed": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요",
+      "announceEmpty": "검색 결과가 없습니다",
+      "announceCount": "검색 결과 {count}건"
+    },
+    "place": {
+      "call": "전화 걸기",
+      "callLine": "전화 걸기, {phone}",
+      "copyAddress": "주소 복사",
+      "roadAddressLine": "도로명 주소, {value}",
+      "jibunAddressLine": "지번 주소, {value}",
+      "englishAddressLine": "영문 주소, {value}"
+    },
+    "route": {
+      "section": "길찾기",
+      "naver": "네이버 지도 길찾기",
+      "kakao": "카카오맵 길찾기",
+      "kakaoPlace": "카카오맵 장소 정보",
+      "carBriefing": "자동차 경로 미리 듣기",
+      "transitBriefing": "대중교통 경로 미리 듣기",
+      "checking": "확인 중",
+      "geoDeniedTitle": "위치 권한이 필요합니다",
+      "geoDeniedDesc": "설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요",
+      "failedTitle": "경로를 가져오지 못했습니다",
+      "carReady": "자동차 경로를 불러왔습니다, 약 {minutes}분",
+      "transitReady": "대중교통 경로를 불러왔습니다, 약 {minutes}분",
+      "totalDistance": "총 {km}km",
+      "durationMinutes": "약 {minutes}분",
+      "taxiFare": "택시 요금 약 {won}원",
+      "tollFare": "통행료 {won}원",
+      "carTitle": "자동차 경로",
+      "transitTitle": "대중교통 경로",
+      "recommended": "추천 경로",
+      "alternatives": "다른 경로",
+      "fare": "요금 {won}원",
+      "transfers": "환승 {count}회",
+      "walkMinutes": "도보 {minutes}분",
+      "board": "{name} 승차",
+      "alight": "{name} 하차",
+      "stopCount": "{count}개 정류장",
+      "stationCount": "{count}개 역",
+      "legMinutes": "{minutes}분"
+    },
+    "station": {
+      "nameSuffixed": "{name}역",
+      "noArrivals": "도착 예정 열차가 없습니다",
+      "arrivalHeading": "실시간 도착",
+      "accessibleToiletYes": "장애인 화장실 있음",
+      "accessibleToiletNo": "장애인 화장실 없음",
+      "accessibleSlopeYes": "장애인 경사로 있음",
+      "accessibleSlopeNo": "장애인 경사로 없음",
+      "countUnknown": "{label} 정보 없음",
+      "countNone": "{label} 없음",
+      "countSome": "{label} {count}대",
+      "railFacilities": "교통약자 시설(철도)",
+      "seoulFacilities": "교통약자 시설(서울 지하철)",
+      "kindCount": "{label} {count}곳",
+      "operatingNormal": "정상 가동",
+      "operatingStopped": "운행 중지"
     }
   }
 }

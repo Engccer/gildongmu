@@ -6,7 +6,8 @@
       "nearby": "Nei dintorni"
     },
     "common": {
-      "ok": "OK"
+      "ok": "OK",
+      "retryLater": "Riprova tra poco"
     },
     "chat": {
       "suggestion1": "Mostrami cosa c'è qui intorno",
@@ -22,6 +23,71 @@
       "start": "Avvia dettatura",
       "denied": "Consenti l'accesso al microfono nelle Impostazioni",
       "failed": "Impossibile avviare il riconoscimento vocale. Riprova."
+    },
+    "search": {
+      "prompt": "Cerca luoghi e indirizzi",
+      "searching": "Ricerca in corso",
+      "failedTitle": "Ricerca non riuscita",
+      "webSection": "Ricerca web",
+      "attractionSection": "Attrazioni",
+      "announceFailed": "Ricerca non riuscita. Riprova tra poco",
+      "announceEmpty": "Nessun risultato",
+      "announceCount": "{count} risultati"
+    },
+    "place": {
+      "call": "Chiama",
+      "callLine": "Chiama, {phone}",
+      "copyAddress": "Copia indirizzo",
+      "roadAddressLine": "Indirizzo stradale, {value}",
+      "jibunAddressLine": "Indirizzo catastale, {value}",
+      "englishAddressLine": "Indirizzo in inglese, {value}"
+    },
+    "route": {
+      "section": "Indicazioni",
+      "naver": "Percorso in Naver Map",
+      "kakao": "Percorso in KakaoMap",
+      "kakaoPlace": "Info sul luogo in KakaoMap",
+      "carBriefing": "Anteprima del percorso in auto",
+      "transitBriefing": "Anteprima del percorso con i mezzi",
+      "checking": "Controllo in corso",
+      "geoDeniedTitle": "Serve il permesso di localizzazione",
+      "geoDeniedDesc": "Consenti l'accesso alla posizione per Gildongmu nelle Impostazioni",
+      "failedTitle": "Impossibile caricare il percorso",
+      "carReady": "Percorso in auto caricato, circa {minutes} min",
+      "transitReady": "Percorso con i mezzi caricato, circa {minutes} min",
+      "totalDistance": "Totale {km}km",
+      "durationMinutes": "circa {minutes} min",
+      "taxiFare": "taxi circa {won} KRW",
+      "tollFare": "pedaggi {won} KRW",
+      "carTitle": "Percorso in auto",
+      "transitTitle": "Percorso con i mezzi",
+      "recommended": "Percorso consigliato",
+      "alternatives": "Altri percorsi",
+      "fare": "tariffa {won} KRW",
+      "transfers": "{count} cambi",
+      "walkMinutes": "a piedi {minutes} min",
+      "board": "salita a {name}",
+      "alight": "discesa a {name}",
+      "stopCount": "{count} fermate",
+      "stationCount": "{count} stazioni",
+      "legMinutes": "{minutes} min"
+    },
+    "station": {
+      "nameSuffixed": "Stazione {name}",
+      "noArrivals": "Nessun treno in arrivo",
+      "arrivalHeading": "Arrivi in tempo reale",
+      "accessibleToiletYes": "Bagno accessibile disponibile",
+      "accessibleToiletNo": "Nessun bagno accessibile",
+      "accessibleSlopeYes": "Rampa accessibile disponibile",
+      "accessibleSlopeNo": "Nessuna rampa accessibile",
+      "countUnknown": "{label}: nessun dato",
+      "countNone": "{label}: nessuno",
+      "countSome": "{label}: {count}",
+      "railFacilities": "Strutture di accessibilità (ferrovia)",
+      "seoulFacilities": "Strutture di accessibilità (metro di Seoul)",
+      "kindCount": "{label}: {count}",
+      "operatingNormal": "In funzione",
+      "operatingStopped": "Fuori servizio"
     }
   }
 }

@@ -55,11 +55,11 @@ final class SearchModel {
     private func announce() {
         let message: String
         if failed {
-            message = "검색에 실패했습니다. 잠시 후 다시 시도해 주세요"
+            message = String(localized: "ios.search.announceFailed")
         } else if totalCount == 0 {
-            message = "검색 결과가 없습니다"
+            message = String(localized: "ios.search.announceEmpty")
         } else {
-            message = "검색 결과 \(totalCount)건"
+            message = String(format: String(localized: "ios.search.announceCount"), String(totalCount))
         }
         AccessibilityNotification.Announcement(message).post()
     }
