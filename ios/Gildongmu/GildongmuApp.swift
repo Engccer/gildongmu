@@ -25,6 +25,7 @@ struct GildongmuApp: App {
     /// 채팅 탭 대화 모델은 App 소유 — 리셋 경로에서 스트림을 요청째 폐기하기 위함
     /// (idle-reset 불변식: `.id` 재생성만으론 진행 중 Task가 취소되지 않는다).
     @State private var chatModel = ChatModel()
+    @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
     private let launchStore = LaunchActionStore.shared
 
     var body: some Scene {
@@ -36,6 +37,7 @@ struct GildongmuApp: App {
                 Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView() }
             }
             .id(sessionEpoch)
+            .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme ?? nil)
             .environment(\.resetSession, resetSession)
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
