@@ -52,6 +52,15 @@ struct SearchView: View {
             }
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
             .onSubmit(of: .search) { runSearch() }
+            // 단축어 "음성 검색" 진입: App이 리셋·탭 전환을 마친 뒤 세운 플래그를
+            // 재생성된 이 뷰가 소비해 마이크 시작(시작음·햅틱·권한은 기존 경로 그대로).
+            .task {
+                let store = LaunchActionStore.shared
+                if store.voiceStartRequested {
+                    store.voiceStartRequested = false
+                    await speech.start()
+                }
+            }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
                 Button("확인") {}

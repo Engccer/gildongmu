@@ -6,23 +6,37 @@ extension EnvironmentValues {
     @Entry var resetSession: () -> Void = {}
 }
 
+/// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
+/// 세션 리셋 시 `.id` 재생성만으론 첫 탭 복귀가 안 된다 — 명시 복귀 필요.
+enum AppTab {
+    case search
+    case nearby
+}
+
 @main
 struct GildongmuApp: App {
     @Environment(\.scenePhase) private var scenePhase
-    /// 세션 세대. 증가하면 .id로 TabView 전체(모델·탭 선택 포함)가 재생성돼
-    /// 초기 화면으로 복귀한다 — 유휴 복귀·제목 탭이 같은 메커니즘을 공유.
+    /// 세션 세대. 증가하면 .id로 TabView 전체(모델 포함)가 재생성돼
+    /// 초기 화면으로 복귀한다 — 유휴 복귀·제목 탭·단축어 진입이 공유.
     @State private var sessionEpoch = 0
     @State private var backgroundedAt: Date?
+    @State private var selectedTab: AppTab = .search
+    private let launchStore = LaunchActionStore.shared
 
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
-            TabView {
-                Tab("검색", systemImage: "magnifyingglass") { SearchView() }
-                Tab("내 주변", systemImage: "location") { NearbyHubView() }
+            TabView(selection: $selectedTab) {
+                Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView() }
+                Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView() }
             }
             .id(sessionEpoch)
-            .environment(\.resetSession, { sessionEpoch += 1 })
+            .environment(\.resetSession, resetSession)
+            // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
+            // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
+            // epoch 재생성으로 .task가 다시 돌아도 멱등.
+            .task { consumeLaunchAction() }
+            .onChange(of: launchStore.pending) { _, _ in consumeLaunchAction() }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .background:
@@ -31,13 +45,40 @@ struct GildongmuApp: App {
                     // .inactive(전화·알림센터 등 짧은 인터럽션)는 기록하지 않아
                     // 오리셋이 없다 — .background 경유 복귀만 판정.
                     if IdleReset.shouldReset(backgroundedAt: backgroundedAt, now: .now) {
-                        sessionEpoch += 1
+                        resetSession()
                     }
                     backgroundedAt = nil
                 default:
                     break
                 }
             }
+        }
+    }
+
+    /// 초기 화면 복귀(제목 탭·유휴 복귀 공용): 뷰 전체 재생성 + 검색 탭 복귀.
+    private func resetSession() {
+        sessionEpoch += 1
+        selectedTab = .search
+    }
+
+    /// 단축어 진입 라우팅. 두 액션 모두 초기 화면 리셋 후 목적 탭으로
+    /// (딥 내비게이션에 머물던 화면 위에 탭만 바뀌는 어정쩡함 방지).
+    /// voiceSearch는 마이크 시작을 재생성된 SearchView에 플래그로 위임.
+    private func consumeLaunchAction() {
+        guard let action = launchStore.pending else { return }
+        launchStore.pending = nil
+        // 직전 voiceSearch의 잔존 플래그를 액션 무관하게 소거(유령 마이크 시작 차단)
+        launchStore.voiceStartRequested = false
+        // 인텐트 진입 자체가 리셋이므로 같은 포그라운드 전환의 유휴 복귀 판정을
+        // 무효화 — 실행 순서와 무관하게 인텐트가 고른 탭이 최종 승자.
+        backgroundedAt = nil
+        sessionEpoch += 1
+        switch action {
+        case .voiceSearch:
+            selectedTab = .search
+            launchStore.voiceStartRequested = true
+        case .nearby:
+            selectedTab = .nearby
         }
     }
 }

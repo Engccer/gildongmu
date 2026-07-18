@@ -33,9 +33,10 @@
 ### 3. `GildongmuApp` 수정
 
 - `TabView`에 selection 바인딩 추가(`enum AppTab { search, nearby }`). ⚠ selection 상태가 TabView 밖(App)으로 나오므로, **기존 세션 리셋(`resetSession`·유휴 복귀)이 탭도 검색으로 되돌리도록 `selectedTab = .search`를 명시** — 지금까지는 `.id` 재생성이 암묵적으로 첫 탭 복귀를 해줬다(회귀 방지).
-- 스토어 `pending` 관찰(`.onChange` + 콜드 런치 대비 `.task` 초기 소비):
-  - `.voiceSearch`: `sessionEpoch += 1`, `selectedTab = .search`. pending은 **지우지 않는다** — 새로 생성된 `SearchView`가 소비.
-  - `.nearby`: `sessionEpoch += 1`, `selectedTab = .nearby`, pending 즉시 소거. (딥 내비게이션에 머물던 상태 위에 탭만 바뀌는 어정쩡함 방지 — 두 액션 모두 초기 화면 리셋.)
+- 스토어 `pending` 관찰(`.onChange` + 콜드 런치 대비 `.task` 초기 소비). 소비는 2단: **App이 `pending`을 즉시 소거**하고(재생성 시 `.task` 재실행이 멱등 — 재생성 루프 차단), 마이크 시작만 별도 플래그 `voiceStartRequested`로 재생성된 `SearchView`에 위임한다.
+  - 공통: `pending` 소거 → 잔존 `voiceStartRequested` 소거(유령 마이크 시작 차단) → `backgroundedAt = nil`(같은 포그라운드 전환의 유휴 복귀 리셋 판정 무효화 — 실행 순서 무관하게 인텐트가 고른 탭이 최종 승자) → `sessionEpoch += 1`(딥 내비게이션에 머물던 상태 위에 탭만 바뀌는 어정쩡함 방지 — 두 액션 모두 초기 화면 리셋).
+  - `.voiceSearch`: `selectedTab = .search` + `voiceStartRequested = true`.
+  - `.nearby`: `selectedTab = .nearby`.
 
 ### 4. `SearchView` 수정
 
