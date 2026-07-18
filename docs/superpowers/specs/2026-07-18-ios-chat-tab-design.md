@@ -49,7 +49,7 @@
 
 ## 5. 접근성 (gildongmu 기확립 계약 유지)
 
-- 답변 도착: 햅틱 + VoiceOver 포커스를 **새 답변 말풍선**으로 이동(gildongmu 계약. dodo의 "마지막 사용자 질문 포커스" 패턴은 채택하지 않음, 기확립 계약 우선).
+- 답변 도착: 햅틱 + VoiceOver 포커스를 **마지막 질문 헤딩**으로 이동(위원장 지시 2026-07-19로 dodo 동형 채택 — 질문에 앉으면 다음 스와이프가 자연히 답변 첫 블록. 최초 설계의 "새 답변 말풍선 포커스"는 폐기).
 - 진행 통지: status 이벤트당 `AccessibilityNotification.Announcement` 1회(단일 polite 채널의 iOS 문법).
 - 음성 입력: **자체 온디바이스 `SpeechService`(iOS 26 SpeechAnalyzer, ko-KR 고정) 재사용**. dodo `DictationRecorder`(서버 STT)는 이식하지 않는다. 이미 sheet에서 검증됐고 서버 왕복·비용이 없다.
 - `disabled` 금지(핸들러 가드+in-flight 가드), 터치 타깃 ≥44pt, 한 줄=한 접근성 객체, 산문은 말풍선 한 곳에만. 전부 기존 그대로.
@@ -74,7 +74,7 @@ gildongmu 기존 스타일 유지: 시스템 tint 말풍선(user는 `accentColor
 - **prod 실호출**: 답변에 블록 마크다운(`###` 헤딩·`*` 리스트)이 오는데 인라인 전용 파서(`inlineOnlyPreservingWhitespace`)는 블록 문법을 해석하지 못해 기호가 리터럴 노출된다.
 - **위원장 VoiceOver 실기기**: 산문 전체를 단일 `Text`로 렌더하면 접근성 객체 하나로 노출돼 단락·헤딩 구조 탐색이 불가능하다(질문도 답변도 통짜 낭독).
 
-정본 해법: `parseChatMarkdownBlocks`(GildongmuKit, 순수 함수·단위 테스트)가 답변을 블록(헤딩 마커 제거·리스트 항목 `•` 완성형·단락)으로 파싱하고, 말풍선은 **블록마다 별도 `Text`(=별도 접근성 객체)**로 렌더한다. 헤딩 블록은 `.font(.headline)`+`.isHeader` trait(로터 헤딩 탐색), 인라인 강조는 블록 내부에서 AttributedString으로 해석, 답변 도착 포커스는 첫 블록. 사용자 발화는 원문 평문 단일 Text(마크다운 재해석 금지). 웹 react-markdown 블록 노드의 iOS 문법. ⚠ dodo-planet 채팅도 동일 결함 보유(위원장 확인) — 이식 시 이 패턴 적용.
+정본 해법: `parseChatMarkdownBlocks`(GildongmuKit, 순수 함수·단위 테스트)가 답변을 블록(헤딩 마커 제거·리스트 항목 `•` 완성형·단락)으로 파싱하고, 말풍선은 **블록마다 별도 `Text`(=별도 접근성 객체)**로 렌더한다. 헤딩 블록은 `.font(.headline)`+`.isHeader` trait(로터 헤딩 탐색), 인라인 강조는 블록 내부에서 AttributedString으로 해석, 완료 포커스는 §5대로 질문 헤딩이 받는다(답변 블록엔 포커스 바인딩 없음). 사용자 발화는 원문 평문 단일 Text(마크다운 재해석 금지). 웹 react-markdown 블록 노드의 iOS 문법. ⚠ dodo-planet 채팅도 동일 결함 보유(위원장 확인) — 이식 시 이 패턴 적용.
 
 ## 9. 테스트·검증
 
