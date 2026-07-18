@@ -21,7 +21,8 @@ struct SearchView: View {
                 Section {
                     Button(action: toggleMic) {
                         Label(
-                            speech.isListening ? "입력 중지" : "음성 입력",
+                            // "음성 입력" 금지: 받아쓴 내용의 "음성"과 라벨이 SR에서 혼동(채팅 동일 교훈)
+                            speech.isListening ? "받아쓰기 중지" : "받아쓰기 시작",
                             systemImage: speech.isListening ? "mic.fill" : "mic"
                         )
                     }

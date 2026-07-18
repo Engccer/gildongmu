@@ -80,11 +80,13 @@ struct ChatConversationView<EmptyContent: View>: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
-            // 라벨 변화("음성 입력"↔"입력 중지")가 상태 신호(disabled 금지, 접근성 헌장).
+            // 라벨 변화("받아쓰기 시작"↔"받아쓰기 중지")가 상태 신호(disabled 금지, 접근성 헌장).
+            // "음성 입력"은 금지 — 받아쓴 질문에 "음성"이 들어가면 SR 낭독에서 내용과
+            // 컨트롤 라벨이 구분 안 됨(위원장 실기기 실측 2026-07-18, SearchView 동일 적용).
             // 44pt frame은 label 안쪽 + contentShape — 버튼 바깥 frame은 히트 영역을 안 넓힌다.
             Button(action: toggleMic) {
                 Label(
-                    speech.isListening ? "입력 중지" : "음성 입력",
+                    speech.isListening ? "받아쓰기 중지" : "받아쓰기 시작",
                     systemImage: speech.isListening ? "mic.fill" : "mic"
                 )
                 .labelStyle(.iconOnly)
@@ -196,7 +198,10 @@ private struct MessageBubbleView: View {
                 }
             }
         } else {
+            // 질문은 헤딩(trait만, 시각 불변): 긴 대화에서 로터 헤딩 탐색으로
+            // 턴(질문) 단위 점프가 되는 유일한 경로(위원장 실기기 실측 2026-07-18)
             Text(message.text)
+                .accessibilityAddTraits(.isHeader)
                 .accessibilityFocused($focusedMessageID, equals: message.id)
         }
     }
