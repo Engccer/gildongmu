@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import GildongmuKit
 
 /// 공용 대화 뷰: 메시지 리스트 + 진행 표시 + 입력바(텍스트·마이크·보내기) + 음성 알럿.
@@ -16,8 +17,17 @@ struct ChatConversationView<EmptyContent: View>: View {
     @State private var speech = SpeechService()
     /// 마이크 토글 Task in-flight 가드(더블탭 경합 차단)
     @State private var micTaskInFlight = false
-    /// 완료 시 새 답변 말풍선으로 VoiceOver 포커스 이동(웹 완료 포커스 이동 미러)
+    /// 완료 시 마지막 질문 헤딩으로 VoiceOver 포커스 이동(헌장 §6 포커스 계약)
     @AccessibilityFocusState private var focusedMessageID: UUID?
+    /// 포커스 계약(헌장 §6, 위원장 실기기 판정 2026-07-19 dodo R184 역이식): 전송 시
+    /// 항상 존재하는 보내기 버튼으로 이동해 생성 내내 머물고(포커스를 쥔 추천 질문
+    /// 버튼이 전송으로 제거되며 VO가 최상단 리셋되는 이탈 차단), 완료 시에만 마지막
+    /// 질문 헤딩으로 이동한다. 구계약(전송 즉시 질문 헤딩 선점)은 폐기 — 완료 재확정이
+    /// 같은 값 재대입 no-op이 되어 생성 중 콘텐츠 삽입에 뺏긴 포커스가 복귀하지 못했다.
+    @AccessibilityFocusState private var isSendFocused: Bool
+    /// 진행 중인 완료 포커스 시퀀스(400ms 가시화 대기 + 600ms 실패 감지 + 재시도).
+    /// 새 답변 도착·뷰 이탈 시 취소해 옛 질문으로의 지연 대입 잔류를 막는다.
+    @State private var completionFocusTask: Task<Void, Never>?
 
     init(
         model: ChatModel,
@@ -54,26 +64,47 @@ struct ChatConversationView<EmptyContent: View>: View {
                     }
                     .padding()
                 }
-                // 전송 즉시 질문 헤딩에 포커스(유지 우선, 접근성 헌장): 포커스를 쥔
-                // 요소(추천 질문 버튼 등)가 전송으로 사라지면 VO가 최상단으로 리셋되는
-                // 이탈을 안정 요소 선점으로 차단. 받아쓴 질문의 원문 확인 낭독을 겸한다.
+                // 전송 시: 질문을 화면에 보이게 스크롤하고, VO 포커스는 항상 존재하는
+                // 보내기 버튼으로 선점 이동(유지, 헌장 §6). 포커스를 쥔 요소(추천 질문
+                // 버튼 등)가 전송으로 사라지면 VO가 최상단으로 리셋되는 이탈을 차단한다.
+                // 타이핑 전송은 이미 보내기 버튼 근처라 사실상 무이동.
                 .onChange(of: model.questionRevision) {
-                    focusLastQuestion(proxy)
+                    if let lastUser = model.messages.last(where: { $0.role == .user }) {
+                        proxy.scrollTo(lastUser.id, anchor: .bottom)
+                    }
+                    isSendFocused = true
                 }
-                // 완료 포커스도 질문 헤딩 재확정(위원장 지시 2026-07-19, dodo 동형):
-                // 질문에 앉으면 다음 스와이프가 자연스럽게 답변 첫 블록으로 이어진다.
+                // 완료 시에만 질문 헤딩으로 이동(헌장 §6): 질문에 앉으면 다음 스와이프가
+                // 자연스럽게 답변 첫 블록으로 이어진다. VO 실행 중엔 하단(답변) 스크롤
+                // 대신 질문 상단 스크롤로 목적지를 단일화한다 — ScrollView는 화면 밖
+                // 요소를 AX 트리에서 컬링해 포커스 대입이 조용히 실패하므로(dodo R184
+                // 실기기 로그 확정) "스크롤 가시화 → 400ms 후 포커스" 2단계가 필수다.
+                // VO 미실행 시엔 기존 시각 동작(답변 하단 스크롤) 유지.
+                // 새 답변 도착 시 이전 완료 시퀀스를 취소하고, 대기 중 새 질문이 전송되면
+                // (isStreaming) 지연 대입을 중단한다 — 이미 보내기 버튼으로 옮겨간 포커스를
+                // 옛 질문으로 되돌리는 경합 차단(리뷰 검출). ⚠ .task(id:) 대체 금지 —
+                // 탭 복귀 재-appear마다 마지막 revision으로 재실행돼 포커스를 끌어간다.
                 .onChange(of: model.answerRevision) {
-                    guard let last = model.messages.last else { return }
-                    proxy.scrollTo(last.id, anchor: .bottom)
-                    focusLastQuestion(proxy, scroll: false)
+                    completionFocusTask?.cancel()
+                    completionFocusTask = Task { @MainActor in
+                        await runCompletionFocusSequence(proxy)
+                    }
                 }
             }
             Divider()
             inputBar
         }
+        .onAppear {
+            #if DEBUG
+            installChatFocusObserverOnce()
+            #endif
+        }
         .onDisappear {
             // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환 포함)
             Task { await speech.cancel() }
+            // 완료 포커스 시퀀스도 폐기(화면을 떠난 뷰의 지연 포커스 대입 방지)
+            completionFocusTask?.cancel()
+            completionFocusTask = nil
             guard cancelsOnDisappear else { return }
             model.cancel()
         }
@@ -103,21 +134,54 @@ struct ChatConversationView<EmptyContent: View>: View {
             }
             // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장).
             // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.
+            // 전송 시 VO 포커스가 여기로 선점 이동해 생성 내내 머문다(헌장 §6).
             Button(action: sendDraft) {
                 Text(model.isStreaming ? "전송 중" : "보내기")
                     .frame(minWidth: 44, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityFocused($isSendFocused)
         }
         .padding()
     }
 
-    /// 마지막 질문 헤딩으로 VO 포커스 이동(전송·완료 공용). 사용자가 생성 중
-    /// 다른 곳을 읽고 있었어도 완료 시 질문으로 복귀시킨다(헌장 ⓑ 복원).
-    private func focusLastQuestion(_ proxy: ScrollViewProxy, scroll: Bool = true) {
-        guard let lastUser = model.messages.last(where: { $0.role == .user }) else { return }
-        if scroll { proxy.scrollTo(lastUser.id, anchor: .bottom) }
+    /// 완료 포커스 시퀀스(헌장 §6, dodo R184 이식): VO 실행 중이면 질문 상단 스크롤로
+    /// 가시화 → 400ms 후 포커스 대입 → 600ms 후 바인딩 nil 리셋(AX 컬링 실패 신호)
+    /// 감지 시 재스크롤+1회 재시도. 각 체크포인트에서 취소·새 질문 전송(isStreaming)을
+    /// 확인해 stale 대입을 중단한다. VO 미실행 시엔 답변 하단 스크롤만(기존 시각 동작).
+    private func runCompletionFocusSequence(_ proxy: ScrollViewProxy) async {
+        guard let last = model.messages.last else { return }
+        #if DEBUG
+        chatFocusLog("completion: voRunning=\(UIAccessibility.isVoiceOverRunning) sendFocused=\(isSendFocused)")
+        #endif
+        guard UIAccessibility.isVoiceOverRunning,
+              let lastUser = model.messages.last(where: { $0.role == .user }) else {
+            proxy.scrollTo(last.id, anchor: .bottom)
+            return
+        }
+        proxy.scrollTo(lastUser.id, anchor: .top)
+        try? await Task.sleep(for: .milliseconds(400))
+        guard !Task.isCancelled, !model.isStreaming else { return }
+        // 보내기 버튼의 포커스 상태를 먼저 해제(이중 점유 충돌 후보 제거)
+        isSendFocused = false
         focusedMessageID = lastUser.id
+        #if DEBUG
+        chatFocusLog("assigned question focus id=\(lastUser.id)")
+        #endif
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !Task.isCancelled, !model.isStreaming else { return }
+        // 대입 실패의 진짜 신호는 바인딩 nil 리셋(대상이 AX 트리에 없으면 SwiftUI가
+        // 되돌린다, dodo R184 실기기 로그 확정). 재스크롤 후 1회 재시도.
+        if focusedMessageID != lastUser.id {
+            #if DEBUG
+            chatFocusLog("retry: rescroll + reassign (focusedMessageID=\(focusedMessageID?.uuidString ?? "nil"))")
+            #endif
+            proxy.scrollTo(lastUser.id, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled, !model.isStreaming else { return }
+            isSendFocused = false
+            focusedMessageID = lastUser.id
+        }
     }
 
     private func sendDraft() {

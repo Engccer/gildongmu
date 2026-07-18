@@ -49,8 +49,10 @@
 
 ## 5. 접근성 (gildongmu 기확립 계약 유지)
 
-- 답변 도착: 햅틱 + VoiceOver 포커스를 **마지막 질문 헤딩**으로 이동(위원장 지시 2026-07-19로 dodo 동형 채택 — 질문에 앉으면 다음 스와이프가 자연히 답변 첫 블록. 최초 설계의 "새 답변 말풍선 포커스"는 폐기).
-- **전송 즉시에도 질문 헤딩 선점 포커스**(`questionRevision` 신호): 포커스를 쥔 요소(추천 질문 버튼 등)가 전송으로 제거되면 VO가 최상단으로 리셋되는 이탈 발생(위원장 실측 2026-07-19) → 생성 내내 존재하는 안정 요소(질문 헤딩)에 먼저 앉혀 차단. 받아쓴 질문의 원문 확인 낭독 겸함. 완료 시엔 같은 위치 재확정(생성 중 다른 곳을 읽었어도 복귀).
+- **포커스 계약(헌장 §6 2026-07-19 개정, dodo R184 실기기 판정 역이식)**: 전송 시(`questionRevision` 신호) 항상 존재하는 **보내기 버튼**으로 선점 이동해 생성 내내 유지하고(포커스를 쥔 추천 질문 버튼이 전송으로 제거되며 VO가 최상단 리셋되는 이탈 차단, 타이핑 전송은 무이동), 완료 시(`answerRevision` 신호)에만 햅틱과 함께 **마지막 질문 헤딩**으로 이동한다(질문에 앉으면 다음 스와이프가 자연히 답변 첫 블록).
+  - ⚠ 구계약(전송 즉시 질문 헤딩 선점 + 완료 재확정)은 폐기: dodo R184 실기기 로그로 결함 3종 확정 — ① 완료 재확정이 같은 값 재대입 no-op ② ScrollView가 화면 밖 요소를 AX 트리에서 컬링해 포커스 대입이 조용히 실패(바인딩 nil 리셋) ③ 응답 append 하단 스크롤이 질문 상단 scrollTo를 덮는 경합.
+  - 완료 시퀀스(VO 실행 중에만): 질문 상단 `scrollTo`로 가시화 → 400ms 후 `isSendFocused` 해제+`focusedMessageID` 대입 → 600ms 후 바인딩 nil 리셋(실패 신호) 감지 시 재스크롤+1회 재시도. VO 실행 중엔 완료 스크롤 목적지도 하단이 아니라 질문 상단(경합 원천 제거). VO 미실행 시엔 기존 시각 동작(답변 하단 스크롤)이며 포커스 코드는 무동작.
+  - 계측: DEBUG 빌드는 `ChatFocusDiag.swift`(dodo `LiveDiagFileLog` 이식)가 `UIAccessibility.elementFocusedNotification` 관찰자+완료 경로 단계 로그를 기기 파일(Documents/chat-focus-diag.log)에 남긴다. 실기기 실패 시 가설 패치 금지, 로그로 실착지 확정(회수: `xcrun devicectl device copy from --domain-type appDataContainer`).
 - 진행 통지: status 이벤트당 `AccessibilityNotification.Announcement` 1회(단일 polite 채널의 iOS 문법).
 - 음성 입력: **자체 온디바이스 `SpeechService`(iOS 26 SpeechAnalyzer, ko-KR 고정) 재사용**. dodo `DictationRecorder`(서버 STT)는 이식하지 않는다. 이미 sheet에서 검증됐고 서버 왕복·비용이 없다.
 - `disabled` 금지(핸들러 가드+in-flight 가드), 터치 타깃 ≥44pt, 한 줄=한 접근성 객체, 산문은 말풍선 한 곳에만. 전부 기존 그대로.

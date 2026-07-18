@@ -24,10 +24,11 @@ final class ChatModel {
     /// 진행 통지 문장(status 이벤트). 스트리밍 중에만 존재.
     private(set) var progress: String?
     private(set) var isStreaming = false
-    /// 답변 도착 세대. 뷰가 완료 포커스(질문 헤딩 재확정)를 놓는 신호.
+    /// 답변 도착 세대. 뷰가 완료 포커스(질문 헤딩 이동)를 놓는 신호(헌장 §6).
     private(set) var answerRevision = 0
-    /// 질문 전송 세대. 뷰가 전송 즉시 질문 헤딩으로 포커스를 앉히는 신호 —
+    /// 질문 전송 세대. 뷰가 보내기 버튼으로 VO 포커스를 선점 이동시키는 신호 —
     /// 포커스를 쥔 요소(추천 질문 등)가 사라져 VO가 최상단으로 리셋되는 이탈 차단.
+    /// 두 전송 진입점(입력바·추천 질문 버튼)을 모두 덮는 유일한 지점이라 모델에 둔다.
     private(set) var questionRevision = 0
     private var streamTask: Task<Void, Never>?
 
