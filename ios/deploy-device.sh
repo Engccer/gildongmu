@@ -9,8 +9,9 @@ cd "$(dirname "$0")"
 PROJ=$(ls -d *.xcodeproj | head -1)
 SCHEME="${PROJ%.xcodeproj}"
 
+# 기기 상태 문자열은 Xcode 버전에 따라 다르다("available (paired)" 또는 "connected", 2026-07-18 실측)
 UDID="${1:-$(xcrun devicectl list devices 2>/dev/null \
-  | awk '/available \(paired\)/{for(i=1;i<=NF;i++) if ($i ~ /^[0-9A-F]{8}-/) print $i}' | head -1)}"
+  | awk '/available \(paired\)|connected/{for(i=1;i<=NF;i++) if ($i ~ /^[0-9A-F]{8}-/) print $i}' | head -1)}"
 [ -n "$UDID" ] || { echo "페어링된 iOS 기기가 없습니다. USB 연결과 신뢰 설정을 확인하세요." >&2; exit 1; }
 echo "대상: $SCHEME → $UDID"
 
