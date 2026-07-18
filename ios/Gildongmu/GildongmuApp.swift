@@ -7,8 +7,9 @@ extension EnvironmentValues {
 }
 
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
-/// 세션 리셋 시 `.id` 재생성만으론 첫 탭 복귀가 안 된다 — 명시 복귀 필요.
+/// 세션 리셋 시 `.id` 재생성만으론 첫 탭(채팅) 복귀가 안 된다 — 명시 복귀 필요.
 enum AppTab {
+    case chat
     case search
     case nearby
 }
@@ -20,13 +21,14 @@ struct GildongmuApp: App {
     /// 초기 화면으로 복귀한다 — 유휴 복귀·제목 탭·단축어 진입이 공유.
     @State private var sessionEpoch = 0
     @State private var backgroundedAt: Date?
-    @State private var selectedTab: AppTab = .search
+    @State private var selectedTab: AppTab = .chat
     private let launchStore = LaunchActionStore.shared
 
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
             TabView(selection: $selectedTab) {
+                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView() }
                 Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView() }
                 Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView() }
             }
@@ -55,10 +57,11 @@ struct GildongmuApp: App {
         }
     }
 
-    /// 초기 화면 복귀(제목 탭·유휴 복귀 공용): 뷰 전체 재생성 + 검색 탭 복귀.
+    /// 초기 화면 복귀(제목 탭·유휴 복귀 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
+    /// 재생성으로 채팅 대화도 증발한다(일회성 대화 계약, spec §1).
     private func resetSession() {
         sessionEpoch += 1
-        selectedTab = .search
+        selectedTab = .chat
     }
 
     /// 단축어 진입 라우팅. 두 액션 모두 초기 화면 리셋 후 목적 탭으로
