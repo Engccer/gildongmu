@@ -66,7 +66,11 @@ gildongmu 기존 스타일 유지: 시스템 tint 말풍선(user는 `accentColor
 - 라이브 음성 대화, TTS 자동 재생 (백엔드·설정 인프라 없음, 미니멀 원칙)
 - 웹앱 변경 0, 서버 변경 0
 
-## 8. 테스트·검증
+## 8. 렌더링: 블록 마크다운 평탄화 (구현 중 실측 반영)
+
+prod 실호출 실측: 일반 채팅 답변에 블록 마크다운(`###` 헤딩·`*` 리스트)이 오는데, 말풍선의 인라인 전용 파서(`inlineOnlyPreservingWhitespace`)는 블록 문법을 해석하지 못해 기호가 리터럴로 노출되고 VoiceOver가 그대로 낭독한다. 렌더 직전 `flattenBlockMarkdown`(GildongmuKit)으로 헤딩 마커는 제거, 리스트 마커는 글머리표(`•`)로 치환한다(웹 "헤딩 다운그레이드"의 iOS 문법). 인라인 강조·줄바꿈·들여쓰기는 보존, 순수 함수라 Kit 단위 테스트 대상.
+
+## 9. 테스트·검증
 
 - **단위(GildongmuKit)**: `place == nil`일 때 `ChatRequestBody` 인코딩에서 `placeContext` 키가 생략되는지(서버 계약 보호). 기존 `ChatModelsTests` 레인에 추가.
 - **게이트**: xcodebuild 빌드 + 기존 XCTest 전체 통과.
