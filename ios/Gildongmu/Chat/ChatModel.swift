@@ -24,8 +24,11 @@ final class ChatModel {
     /// 진행 통지 문장(status 이벤트). 스트리밍 중에만 존재.
     private(set) var progress: String?
     private(set) var isStreaming = false
-    /// 답변 도착 세대. 뷰가 새 답변으로 포커스를 옮기는 신호.
+    /// 답변 도착 세대. 뷰가 완료 포커스(질문 헤딩 재확정)를 놓는 신호.
     private(set) var answerRevision = 0
+    /// 질문 전송 세대. 뷰가 전송 즉시 질문 헤딩으로 포커스를 앉히는 신호 —
+    /// 포커스를 쥔 요소(추천 질문 등)가 사라져 VO가 최상단으로 리셋되는 이탈 차단.
+    private(set) var questionRevision = 0
     private var streamTask: Task<Void, Never>?
 
     private let service = ChatService()
@@ -40,6 +43,7 @@ final class ChatModel {
         guard !trimmed.isEmpty, !isStreaming else { return }
 
         messages.append(ChatMessage(role: .user, text: trimmed))
+        questionRevision += 1
         isStreaming = true
 
         streamTask = Task {

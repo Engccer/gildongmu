@@ -54,14 +54,18 @@ struct ChatConversationView<EmptyContent: View>: View {
                     }
                     .padding()
                 }
+                // 전송 즉시 질문 헤딩에 포커스(유지 우선, 접근성 헌장): 포커스를 쥔
+                // 요소(추천 질문 버튼 등)가 전송으로 사라지면 VO가 최상단으로 리셋되는
+                // 이탈을 안정 요소 선점으로 차단. 받아쓴 질문의 원문 확인 낭독을 겸한다.
+                .onChange(of: model.questionRevision) {
+                    focusLastQuestion(proxy)
+                }
+                // 완료 포커스도 질문 헤딩 재확정(위원장 지시 2026-07-19, dodo 동형):
+                // 질문에 앉으면 다음 스와이프가 자연스럽게 답변 첫 블록으로 이어진다.
                 .onChange(of: model.answerRevision) {
                     guard let last = model.messages.last else { return }
                     proxy.scrollTo(last.id, anchor: .bottom)
-                    // 완료 포커스는 마지막 질문 헤딩으로(위원장 지시 2026-07-19, dodo 동형):
-                    // 질문에 앉으면 다음 스와이프가 자연스럽게 답변 첫 블록으로 이어진다.
-                    if let lastUser = model.messages.last(where: { $0.role == .user }) {
-                        focusedMessageID = lastUser.id
-                    }
+                    focusLastQuestion(proxy, scroll: false)
                 }
             }
             Divider()
@@ -106,6 +110,14 @@ struct ChatConversationView<EmptyContent: View>: View {
             .buttonStyle(.borderedProminent)
         }
         .padding()
+    }
+
+    /// 마지막 질문 헤딩으로 VO 포커스 이동(전송·완료 공용). 사용자가 생성 중
+    /// 다른 곳을 읽고 있었어도 완료 시 질문으로 복귀시킨다(헌장 ⓑ 복원).
+    private func focusLastQuestion(_ proxy: ScrollViewProxy, scroll: Bool = true) {
+        guard let lastUser = model.messages.last(where: { $0.role == .user }) else { return }
+        if scroll { proxy.scrollTo(lastUser.id, anchor: .bottom) }
+        focusedMessageID = lastUser.id
     }
 
     private func sendDraft() {
