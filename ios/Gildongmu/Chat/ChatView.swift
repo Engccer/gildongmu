@@ -18,7 +18,7 @@ struct ChatView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("닫기") { dismiss() }
+                        Button(String(localized: "actions.close")) { dismiss() }
                     }
                 }
         }

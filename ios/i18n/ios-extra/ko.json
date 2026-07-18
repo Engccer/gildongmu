@@ -1,1 +1,27 @@
-{}
+{
+  "ios": {
+    "tab": {
+      "chat": "채팅",
+      "search": "검색",
+      "nearby": "내 주변"
+    },
+    "common": {
+      "ok": "확인"
+    },
+    "chat": {
+      "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
+      "suggestion2": "가까운 지하철역 도착 정보 알려줘",
+      "suggestion3": "지금 미세먼지 어때?",
+      "suggestion4": "근처에 아이랑 갈 만한 곳 있어?",
+      "sending": "전송 중",
+      "emptyAnswer": "답변을 준비하지 못했습니다",
+      "failed": "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "progressFallback": "정보 확인 중"
+    },
+    "voice": {
+      "start": "받아쓰기 시작",
+      "denied": "설정에서 마이크 접근을 허용해 주세요",
+      "failed": "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+    }
+  }
+}

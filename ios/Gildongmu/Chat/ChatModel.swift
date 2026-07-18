@@ -80,10 +80,10 @@ final class ChatModel {
             isStreaming = false
             if let done, !errored {
                 // 빈 done.text는 오류가 아니라 폴백 문장(웹 1회 폴백 미러)
-                let answer = done.text.isEmpty ? "답변을 준비하지 못했습니다" : done.text
+                let answer = done.text.isEmpty ? String(localized: "ios.chat.emptyAnswer") : done.text
                 appendAssistant(ChatMessage(role: .assistant, text: answer, renders: done.renders, sources: done.sources), success: true)
             } else {
-                appendAssistant(ChatMessage(role: .assistant, text: "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."), success: false)
+                appendAssistant(ChatMessage(role: .assistant, text: String(localized: "ios.chat.failed")), success: false)
             }
         }
     }
@@ -107,7 +107,9 @@ final class ChatModel {
     /// status 이벤트당 1회 진행 통지(웹 polite live region의 iOS 문법).
     private func announceProgress(_ categories: [String]) {
         let labels = categories.map(toolLabel).joined(separator: ", ")
-        let message = labels.isEmpty ? "정보 확인 중" : "\(labels) 조회 중"
+        let message = labels.isEmpty
+            ? String(localized: "ios.chat.progressFallback")
+            : String(format: String(localized: "chat.progress.searching"), labels)
         progress = message
         AccessibilityNotification.Announcement(message).post()
     }
@@ -131,23 +133,23 @@ final class ChatModel {
         )
     }
 
-    /// 도구 카테고리 한국어 라벨(웹 messages/ko.json chat.progress.tool 미러). 미지 키는 원문 유지.
+    /// 도구 카테고리 라벨(카탈로그 chat.progress.tool.*, 웹 미러). 미지 키는 원문 유지.
     private func toolLabel(_ category: String) -> String {
         switch category {
-        case "search_places": "장소"
-        case "search_address": "주소"
-        case "get_subway_arrivals": "지하철 도착"
-        case "get_night_clinics": "야간 진료"
-        case "get_kids_places": "아이 놀 곳"
-        case "get_surroundings": "주변"
-        case "get_bus_arrivals": "버스 도착"
-        case "get_bike_stations": "따릉이"
-        case "get_air_quality": "공기질"
-        case "get_station_meta": "역 정보"
-        case "get_station_facilities": "역 편의시설"
-        case "get_car_route": "자동차 경로"
-        case "get_transit_route": "대중교통 경로"
-        case "search_web": "웹 검색"
+        case "search_places": String(localized: "chat.progress.tool.search_places")
+        case "search_address": String(localized: "chat.progress.tool.search_address")
+        case "get_subway_arrivals": String(localized: "chat.progress.tool.get_subway_arrivals")
+        case "get_night_clinics": String(localized: "chat.progress.tool.get_night_clinics")
+        case "get_kids_places": String(localized: "chat.progress.tool.get_kids_places")
+        case "get_surroundings": String(localized: "chat.progress.tool.get_surroundings")
+        case "get_bus_arrivals": String(localized: "chat.progress.tool.get_bus_arrivals")
+        case "get_bike_stations": String(localized: "chat.progress.tool.get_bike_stations")
+        case "get_air_quality": String(localized: "chat.progress.tool.get_air_quality")
+        case "get_station_meta": String(localized: "chat.progress.tool.get_station_meta")
+        case "get_station_facilities": String(localized: "chat.progress.tool.get_station_facilities")
+        case "get_car_route": String(localized: "chat.progress.tool.get_car_route")
+        case "get_transit_route": String(localized: "chat.progress.tool.get_transit_route")
+        case "search_web": String(localized: "chat.progress.tool.search_web")
         default: category
         }
     }

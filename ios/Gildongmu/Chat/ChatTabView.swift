@@ -9,10 +9,10 @@ struct ChatTabView: View {
     /// 빈 화면 추천 질문(정적, 서버 호출 없음): 탭이 무엇을 할 수 있는지 알리는 발견 경로.
     /// 채팅 도구가 실제 답할 수 있는 질문만(둘러보기·지하철·공기질·아이 놀 곳).
     private static let suggestions = [
-        "주변에 뭐가 있는지 둘러봐 줘",
-        "가까운 지하철역 도착 정보 알려줘",
-        "지금 미세먼지 어때?",
-        "근처에 아이랑 갈 만한 곳 있어?",
+        String(localized: "ios.chat.suggestion1"),
+        String(localized: "ios.chat.suggestion2"),
+        String(localized: "ios.chat.suggestion3"),
+        String(localized: "ios.chat.suggestion4"),
     ]
 
     var body: some View {
@@ -20,7 +20,7 @@ struct ChatTabView: View {
             ChatConversationView(model: model) {
                 suggestionList
             }
-            .navigationTitle("채팅")
+            .navigationTitle(String(localized: "ios.tab.chat"))
             .navigationBarTitleDisplayMode(.inline)
             .gildongmuTitleMenu()
         }

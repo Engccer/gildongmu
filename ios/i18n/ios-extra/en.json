@@ -1,1 +1,27 @@
-{}
+{
+  "ios": {
+    "tab": {
+      "chat": "Chat",
+      "search": "Search",
+      "nearby": "Nearby"
+    },
+    "common": {
+      "ok": "OK"
+    },
+    "chat": {
+      "suggestion1": "Show me what's around here",
+      "suggestion2": "Tell me arrivals at the nearest subway station",
+      "suggestion3": "How's the air quality right now?",
+      "suggestion4": "Any good places nearby to go with kids?",
+      "sending": "Sending",
+      "emptyAnswer": "Couldn't prepare a response",
+      "failed": "Couldn't get a response. Please try again in a moment.",
+      "progressFallback": "Checking information"
+    },
+    "voice": {
+      "start": "Start dictation",
+      "denied": "Please allow microphone access in Settings",
+      "failed": "Couldn't start speech recognition. Please try again."
+    }
+  }
+}

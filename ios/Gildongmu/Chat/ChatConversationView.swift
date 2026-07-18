@@ -110,13 +110,13 @@ struct ChatConversationView<EmptyContent: View>: View {
             model.cancel()
         }
         .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
-            Button("확인") {}
+            Button(String(localized: "ios.common.ok")) {}
         }
     }
 
     private var inputBar: some View {
         HStack(spacing: 8) {
-            TextField("메시지 입력", text: $draft)
+            TextField(String(localized: "chat.inputLabel"), text: $draft)
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
@@ -126,7 +126,7 @@ struct ChatConversationView<EmptyContent: View>: View {
             // 44pt frame은 label 안쪽 + contentShape — 버튼 바깥 frame은 히트 영역을 안 넓힌다.
             Button(action: toggleMic) {
                 Label(
-                    speech.isListening ? "받아쓰기 중지" : "받아쓰기 시작",
+                    speech.isListening ? String(localized: "voice.stop") : String(localized: "ios.voice.start"),
                     systemImage: speech.isListening ? "mic.fill" : "mic"
                 )
                 .labelStyle(.iconOnly)
@@ -137,7 +137,7 @@ struct ChatConversationView<EmptyContent: View>: View {
             // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.
             // 전송 시 VO 포커스가 여기로 선점 이동해 생성 내내 머문다(헌장 §6).
             Button(action: sendDraft) {
-                Text(model.isStreaming ? "전송 중" : "보내기")
+                Text(model.isStreaming ? String(localized: "ios.chat.sending") : String(localized: "chat.send"))
                     .frame(minWidth: 44, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
@@ -224,8 +224,8 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// denied·failed 안내(SearchView 동형). 확인 시 idle 복귀.
     private var speechAlertMessage: String? {
         switch speech.phase {
-        case .denied: "설정에서 마이크 접근을 허용해 주세요"
-        case .failed: "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+        case .denied: String(localized: "ios.voice.denied")
+        case .failed: String(localized: "ios.voice.failed")
         default: nil
         }
     }
