@@ -1,4 +1,5 @@
 import SwiftUI
+import Accessibility
 import GildongmuKit
 
 struct SearchView: View {
@@ -86,11 +87,15 @@ struct SearchView: View {
     /// 음성 입력 토글: 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약).
     /// partial은 검색 필드에 실시간 반영하지 않는다(필드 값 경합 회피, 최종만).
     /// 재진입은 SpeechService의 phase 가드가 차단.
+    /// 전사 성공은 침묵 금지(헌장 §6 받아쓰기 완료): 받아쓴 결과 원문을 polite 통지.
+    /// 포커스 이동은 하지 않는다 — 검색이 자동 실행되는 설계라 다음 행동(결과 확인)의
+    /// 목적지는 settled 후 첫 결과 행 포커스(resultsRevision onChange)가 이미 담당한다.
     private func toggleMic() {
         Task {
             if speech.isListening {
                 if let text = await speech.stop() {
                     model.query = text
+                    AccessibilityNotification.Announcement(text).post()
                     runSearch()
                 }
             } else {

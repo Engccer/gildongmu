@@ -54,6 +54,7 @@
   - 완료 시퀀스(VO 실행 중에만): 질문 상단 `scrollTo`로 가시화 → 400ms 후 `isSendFocused` 해제+`focusedMessageID` 대입 → 600ms 후 바인딩 nil 리셋(실패 신호) 감지 시 재스크롤+1회 재시도. VO 실행 중엔 완료 스크롤 목적지도 하단이 아니라 질문 상단(경합 원천 제거). VO 미실행 시엔 기존 시각 동작(답변 하단 스크롤)이며 포커스 코드는 무동작.
   - 계측: DEBUG 빌드는 `ChatFocusDiag.swift`(dodo `LiveDiagFileLog` 이식)가 `UIAccessibility.elementFocusedNotification` 관찰자+완료 경로 단계 로그를 기기 파일(Documents/chat-focus-diag.log)에 남긴다. 실기기 실패 시 가설 패치 금지, 로그로 실착지 확정(회수: `xcrun devicectl device copy from --domain-type appDataContainer`).
 - 진행 통지: status 이벤트당 `AccessibilityNotification.Announcement` 1회(단일 polite 채널의 iOS 문법).
+- **받아쓰기 완료(헌장 §6 신설 2026-07-19, dodo R184 후속 실기기 합격 이식)**: 전사 성공은 침묵 금지 — 입력 필드 반영 후 VO 포커스를 보내기 버튼으로 이동(자동 전송 없는 설계라 다음 행동이 곧 전송)하고 받아쓴 결과 원문을 polite 통지(포커스 발화 뒤 결과 낭독 순서). 검색(`SearchView`)은 자동 검색+settled 후 첫 결과 포커스가 목적지를 담당하므로 이동 없이 원문 통지만. ⚠ `SpeechService`엔 자동 정지 경로가 없어(정지는 사용자 토글 유일) 반환값 소비로 전사 유실이 없다 — dodo의 콜백 단일 채널 전환(60초 캡 유실 실버그)은 비해당.
 - 음성 입력: **자체 온디바이스 `SpeechService`(iOS 26 SpeechAnalyzer, ko-KR 고정) 재사용**. dodo `DictationRecorder`(서버 STT)는 이식하지 않는다. 이미 sheet에서 검증됐고 서버 왕복·비용이 없다.
 - `disabled` 금지(핸들러 가드+in-flight 가드), 터치 타깃 ≥44pt, 한 줄=한 접근성 객체, 산문은 말풍선 한 곳에만. 전부 기존 그대로.
 - **질문 말풍선은 헤딩(trait만, 시각 불변)**: 긴 대화에서 로터 헤딩 탐색이 턴(질문) 단위 점프의 유일한 경로(위원장 실측 반영).
