@@ -54,15 +54,16 @@ public func groupPlacesByBucket(_ places: [Place]) -> [(bucket: String, places: 
     }
 }
 
-/// ko.json `category.*` 미러. 미지정 키는 키 그대로 반환.
-public func bucketLabelKo(_ key: String) -> String {
+/// 카탈로그 `category.*` 조회(웹 미러). 미지정 키는 키 그대로 반환.
+/// 키를 리터럴 switch로 두는 이유: 동적 조립 금지(린터 계약) + 허용 키 집합의 코드 명시.
+public func bucketLabel(_ key: String, lang: String) -> String {
     switch key {
-    case "attraction": return "관광·명소"
-    case "food": return "음식"
-    case "shopping": return "쇼핑"
-    case "lodging": return "숙박"
-    case "transport": return "교통"
-    case "other": return "기타"
+    case "attraction": return kitLocalized("category.attraction", lang: lang)
+    case "food": return kitLocalized("category.food", lang: lang)
+    case "shopping": return kitLocalized("category.shopping", lang: lang)
+    case "lodging": return kitLocalized("category.lodging", lang: lang)
+    case "transport": return kitLocalized("category.transport", lang: lang)
+    case "other": return kitLocalized("category.other", lang: lang)
     default: return key
     }
 }
@@ -119,26 +120,26 @@ public func filterPlaces(_ places: [Place], region: String?) -> [Place] {
     return places.filter { regionOf($0) == region }
 }
 
-/// ko.json `region.*` 미러. 미지정 키는 키 그대로 반환.
-public func regionLabelKo(_ key: String) -> String {
+/// 카탈로그 `region.*` 조회(웹 미러). 미지정 키는 키 그대로 반환.
+public func regionLabel(_ key: String, lang: String) -> String {
     switch key {
-    case "seoul": return "서울"
-    case "busan": return "부산"
-    case "daegu": return "대구"
-    case "incheon": return "인천"
-    case "gwangju": return "광주"
-    case "daejeon": return "대전"
-    case "ulsan": return "울산"
-    case "sejong": return "세종"
-    case "gyeonggi": return "경기"
-    case "gangwon": return "강원"
-    case "chungbuk": return "충북"
-    case "chungnam": return "충남"
-    case "jeonbuk": return "전북"
-    case "jeonnam": return "전남"
-    case "gyeongbuk": return "경북"
-    case "gyeongnam": return "경남"
-    case "jeju": return "제주"
+    case "seoul": return kitLocalized("region.seoul", lang: lang)
+    case "busan": return kitLocalized("region.busan", lang: lang)
+    case "daegu": return kitLocalized("region.daegu", lang: lang)
+    case "incheon": return kitLocalized("region.incheon", lang: lang)
+    case "gwangju": return kitLocalized("region.gwangju", lang: lang)
+    case "daejeon": return kitLocalized("region.daejeon", lang: lang)
+    case "ulsan": return kitLocalized("region.ulsan", lang: lang)
+    case "sejong": return kitLocalized("region.sejong", lang: lang)
+    case "gyeonggi": return kitLocalized("region.gyeonggi", lang: lang)
+    case "gangwon": return kitLocalized("region.gangwon", lang: lang)
+    case "chungbuk": return kitLocalized("region.chungbuk", lang: lang)
+    case "chungnam": return kitLocalized("region.chungnam", lang: lang)
+    case "jeonbuk": return kitLocalized("region.jeonbuk", lang: lang)
+    case "jeonnam": return kitLocalized("region.jeonnam", lang: lang)
+    case "gyeongbuk": return kitLocalized("region.gyeongbuk", lang: lang)
+    case "gyeongnam": return kitLocalized("region.gyeongnam", lang: lang)
+    case "jeju": return kitLocalized("region.jeju", lang: lang)
     default: return key
     }
 }

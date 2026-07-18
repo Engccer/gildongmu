@@ -79,7 +79,7 @@ import Foundation
         region: "서울특별시 강동구 길동",
         nearestStation: WhereAmIStation(name: "길동", line: "5호선", bearing: "n", distanceMeters: 336),
         landmarks: [])
-    let place = whereAmIToPlace(dataWithStation, lat: 37.53842, lng: 127.14281)
+    let place = whereAmIToPlace(dataWithStation, lat: 37.53842, lng: 127.14281, lang: "ko")
 
     // nearestStation이 있어도 category는 항상 빈 문자열(isStation false 고정).
     #expect(place.category == "")
@@ -98,13 +98,13 @@ import Foundation
     let roadOnly = WhereAmIData(
         address: WhereAmIAddress(road: "천호대로 1042", jibun: nil),
         region: nil, nearestStation: nil, landmarks: [])
-    #expect(whereAmIToPlace(roadOnly, lat: 0, lng: 0).name == "천호대로 1042")
+    #expect(whereAmIToPlace(roadOnly, lat: 0, lng: 0, lang: "ko").name == "천호대로 1042")
 
     let jibunOnly = WhereAmIData(
         address: WhereAmIAddress(road: nil, jibun: "길동 247"),
         region: nil, nearestStation: nil, landmarks: [])
-    #expect(whereAmIToPlace(jibunOnly, lat: 0, lng: 0).name == "길동 247")
+    #expect(whereAmIToPlace(jibunOnly, lat: 0, lng: 0, lang: "ko").name == "길동 247")
 
     let none = WhereAmIData(address: nil, region: nil, nearestStation: nil, landmarks: [])
-    #expect(whereAmIToPlace(none, lat: 0, lng: 0).name == "현재 위치")
+    #expect(whereAmIToPlace(none, lat: 0, lng: 0, lang: "ko").name == "현재 위치")
 }

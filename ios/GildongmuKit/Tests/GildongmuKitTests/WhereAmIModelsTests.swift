@@ -23,7 +23,7 @@ import Foundation
 @Test func buildLocationNarrativeKoFromFixture() throws {
     let response = try JSONDecoder().decode(WhereAmIResponse.self, from: fixture("where-am-i"))
     let data = try #require(response.data)
-    let paragraphs = buildLocationNarrativeKo(data)
+    let paragraphs = buildLocationNarrative(data, lang: "ko")
 
     #expect(paragraphs.count == 2)
     // 단락1 — 위치 + 근접역
@@ -47,7 +47,7 @@ import Foundation
         region: nil,
         nearestStation: WhereAmIStation(name: "굽은다리", line: "5호선", bearing: "se", distanceMeters: 250),
         landmarks: [])
-    let paragraphs = buildLocationNarrativeKo(stationOnly)
+    let paragraphs = buildLocationNarrative(stationOnly, lang: "ko")
     #expect(paragraphs.count == 1)
     #expect(paragraphs[0] == "가장 가까운 지하철역은 굽은다리 (5호선), 남동쪽 약 250m입니다.")
 
@@ -57,13 +57,13 @@ import Foundation
         region: "서울특별시 강동구 길동",
         nearestStation: nil,
         landmarks: [])
-    let placeParagraphs = buildLocationNarrativeKo(placeOnly)
+    let placeParagraphs = buildLocationNarrative(placeOnly, lang: "ko")
     #expect(placeParagraphs.count == 1)
     #expect(placeParagraphs[0] == "현재 위치는 서울특별시 강동구 길동, 천호대로 1042입니다.")
 
     // 전부 없으면 빈 배열.
     let empty = WhereAmIData(address: nil, region: nil, nearestStation: nil, landmarks: [])
-    #expect(buildLocationNarrativeKo(empty).isEmpty)
+    #expect(buildLocationNarrative(empty, lang: "ko").isEmpty)
 }
 
 @Test func buildLocationNarrativeKoStripsDuplicateRegionPrefix() {
@@ -73,7 +73,7 @@ import Foundation
         region: "서울특별시 강동구 길동",
         nearestStation: nil,
         landmarks: [])
-    #expect(buildLocationNarrativeKo(dedup)[0] == "현재 위치는 서울특별시 강동구 길동, 천중로44길 74입니다.")
+    #expect(buildLocationNarrative(dedup, lang: "ko")[0] == "현재 위치는 서울특별시 강동구 길동, 천중로44길 74입니다.")
 
     // 접두가 겹치지 않으면 원문 그대로 둔다.
     let noOverlap = WhereAmIData(
@@ -81,7 +81,7 @@ import Foundation
         region: "서울특별시 강동구 길동",
         nearestStation: nil,
         landmarks: [])
-    #expect(buildLocationNarrativeKo(noOverlap)[0] == "현재 위치는 서울특별시 강동구 길동, 천호대로 1042입니다.")
+    #expect(buildLocationNarrative(noOverlap, lang: "ko")[0] == "현재 위치는 서울특별시 강동구 길동, 천호대로 1042입니다.")
 }
 
 @Test func buildLocationNarrativeKoFallsBackWhenRoadIsEmptyString() {
@@ -91,7 +91,7 @@ import Foundation
         region: "서울특별시 강동구 길동",
         nearestStation: nil,
         landmarks: [])
-    let paragraph = buildLocationNarrativeKo(emptyRoad)[0]
+    let paragraph = buildLocationNarrative(emptyRoad, lang: "ko")[0]
     #expect(paragraph == "현재 위치는 서울특별시 강동구 길동, 강동구 길동 247입니다.")
     #expect(!paragraph.contains(", 입니다"))
 }

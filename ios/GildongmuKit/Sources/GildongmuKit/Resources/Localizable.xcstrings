@@ -7554,31 +7554,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치는 <place></place>입니다."
+            "value": "현재 위치는 %1$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You are at <place></place>."
+            "value": "You are at %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estás en <place></place>."
+            "value": "Estás en %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous êtes à <place></place>."
+            "value": "Vous êtes à %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ti trovi a <place></place>."
+            "value": "Ti trovi a %1$@."
           }
         }
       }
@@ -7588,31 +7588,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@쪽 약 %2$@에 <name></name> %3$@"
+            "value": "%1$@쪽 약 %2$@에 %3$@ %4$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "<name></name> (%3$@) about %2$@ to the %1$@"
+            "value": "%3$@ (%4$@) about %2$@ to the %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "<name></name> (%3$@) a unos %2$@ al %1$@"
+            "value": "%3$@ (%4$@) a unos %2$@ al %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "<name></name> (%3$@) à environ %2$@ %1$@"
+            "value": "%3$@ (%4$@) à environ %2$@ %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "<name></name> (%3$@) a circa %2$@ a %1$@"
+            "value": "%3$@ (%4$@) a circa %2$@ a %1$@"
           }
         }
       }
@@ -7690,31 +7690,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "가장 가까운 지하철역은 <name></name><line></line>, %1$@쪽 약 %2$@입니다."
+            "value": "가장 가까운 지하철역은 %1$@%2$@, %3$@쪽 약 %4$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The nearest subway station is <name></name><line></line>, about %2$@ to the %1$@."
+            "value": "The nearest subway station is %1$@%2$@, about %4$@ to the %3$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La estación de metro más cercana es <name></name><line></line>, a unos %2$@ al %1$@."
+            "value": "La estación de metro más cercana es %1$@%2$@, a unos %4$@ al %3$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La station de métro la plus proche est <name></name><line></line>, à environ %2$@ %1$@."
+            "value": "La station de métro la plus proche est %1$@%2$@, à environ %4$@ %3$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La stazione della metropolitana più vicina è <name></name><line></line>, a circa %2$@ a %1$@."
+            "value": "La stazione della metropolitana più vicina è %1$@%2$@, a circa %4$@ a %3$@."
           }
         }
       }

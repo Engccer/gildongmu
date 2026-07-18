@@ -181,10 +181,10 @@ struct SearchView: View {
             // 칩/픽커 목록·카운트는 전체 결과(base) 기준 고정 — 선택해도 목록이 줄지
             // 않아 SR 탐색이 안정적이다(웹 bucketItems/regionItems 미러).
             let bucketItems = bucketsPresent(base).map { key in
-                FilterChip(id: key, label: bucketLabelKo(key), count: filterPlaces(base, bucket: key).count)
+                FilterChip(id: key, label: bucketLabel(key, lang: "ko"), count: filterPlaces(base, bucket: key).count)
             }
             let regionItems = regionsPresent(base).map { key in
-                FilterChip(id: key, label: regionLabelKo(key), count: filterPlaces(base, region: key).count)
+                FilterChip(id: key, label: regionLabel(key, lang: "ko"), count: filterPlaces(base, region: key).count)
             }
             // 축 항목이 1개 이하면 그 축은 숨김(웹 ChipFilter "items.length <= 1" 미러)
             // 라벨·"전체"/"전국"은 ko.json category.filterLabel/all·region.filterLabel/all 정본 미러.
@@ -212,7 +212,7 @@ struct SearchView: View {
             } else {
                 // 헤더 "{label} {count}건"은 ko.json category.groupHeading 정본 미러.
                 ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
-                    Section("\(bucketLabelKo(group.bucket)) \(group.places.count)건") {
+                    Section("\(bucketLabel(group.bucket, lang: "ko")) \(group.places.count)건") {
                         ForEach(group.places) { place in
                             NavigationLink(value: place) { PlaceRow(place: place) }
                                 .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")

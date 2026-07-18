@@ -60,9 +60,10 @@ public func surroundingPlaceToPlace(_ p: SurroundingPlace) -> Place {
 }
 
 /// name은 좌표 앵커 식별 문자열 — 행정동 > 도로명 > 지번 > "현재 위치" 순 폴백
-/// (빈 문자열도 없는 값으로 취급, 웹 `||` 폴백 동형).
-public func whereAmIToPlace(_ data: WhereAmIData, lat: Double, lng: Double) -> Place {
-    let name = firstNonEmpty(data.region, data.address?.road, data.address?.jibun) ?? "현재 위치"
+/// (빈 문자열도 없는 값으로 취급, 웹 `||` 폴백 동형). lang은 폴백 라벨 언어.
+public func whereAmIToPlace(_ data: WhereAmIData, lat: Double, lng: Double, lang: String) -> Place {
+    let name = firstNonEmpty(data.region, data.address?.road, data.address?.jibun)
+        ?? kitLocalized("whereAmI.ready", lang: lang)
     return Place(
         id: "where-am-i-\(String(format: "%.5f", lat))-\(String(format: "%.5f", lng))",
         name: name,

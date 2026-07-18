@@ -87,12 +87,12 @@ func categoryBucketJudgesRepresentativeCases(category: String, expectedBucket: S
 }
 
 @Test func bucketLabelKoMirrorsMessages() {
-    #expect(bucketLabelKo("attraction") == "관광·명소")
-    #expect(bucketLabelKo("food") == "음식")
-    #expect(bucketLabelKo("shopping") == "쇼핑")
-    #expect(bucketLabelKo("lodging") == "숙박")
-    #expect(bucketLabelKo("transport") == "교통")
-    #expect(bucketLabelKo("other") == "기타")
+    #expect(bucketLabel("attraction", lang: "ko") == "관광·명소")
+    #expect(bucketLabel("food", lang: "ko") == "음식")
+    #expect(bucketLabel("shopping", lang: "ko") == "쇼핑")
+    #expect(bucketLabel("lodging", lang: "ko") == "숙박")
+    #expect(bucketLabel("transport", lang: "ko") == "교통")
+    #expect(bucketLabel("other", lang: "ko") == "기타")
 }
 
 // MARK: - regionOf (regionsPresent/filterPlaces(region:) 경유로 간접 검증)
@@ -146,9 +146,9 @@ func regionUnmatchedAddressFallsIntoNoRegion(address: String) {
 }
 
 @Test func regionLabelKoMirrorsMessages() {
-    #expect(regionLabelKo("seoul") == "서울")
-    #expect(regionLabelKo("jeju") == "제주")
-    #expect(regionLabelKo("gyeongbuk") == "경북")
+    #expect(regionLabel("seoul", lang: "ko") == "서울")
+    #expect(regionLabel("jeju", lang: "ko") == "제주")
+    #expect(regionLabel("gyeongbuk", lang: "ko") == "경북")
 }
 
 // MARK: - AND 결합 (버킷 → 지역, 웹 filterPlacesByRegion(filterPlacesByBucket(...)) 미러)
