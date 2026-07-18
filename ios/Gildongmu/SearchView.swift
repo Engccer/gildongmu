@@ -58,6 +58,11 @@ struct SearchView: View {
                 }
             }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
+            // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환·새로고침 재생성 포함).
+            // ChatConversationView 동형 teardown: 없으면 오디오 세션·인식 Task가 고아로 남는다.
+            .onDisappear {
+                Task { await speech.cancel() }
+            }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
                 Button("확인") {}
             }

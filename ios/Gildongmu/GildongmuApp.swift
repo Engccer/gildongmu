@@ -36,7 +36,7 @@ struct GildongmuApp: App {
                 Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id(sessionEpoch)
-            .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme ?? nil)
+            .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme)
             .environment(\.refreshTab, refreshCurrentTab)
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
