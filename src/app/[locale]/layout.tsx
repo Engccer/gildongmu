@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/Header";
 import { SWRegister } from "@/components/SWRegister";
+import { IdleReset } from "@/components/IdleReset";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -51,6 +52,7 @@ export default async function LocaleLayout({
             {children}
           </main>
           <SWRegister />
+          <IdleReset locale={locale} />
         </NextIntlClientProvider>
       </body>
     </html>

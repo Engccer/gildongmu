@@ -2,6 +2,8 @@ import SwiftUI
 import GildongmuKit
 
 struct SearchView: View {
+    /// 제목 탭 → 처음으로(웹 헤더 제목 하드 링크 동형). 세션 epoch 증가로 전체 재생성.
+    @Environment(\.resetSession) private var resetSession
     @State private var model = SearchModel()
     @State private var speech = SpeechService()
     /// 장소 섹션 분류·지역 필터(웹 bucket/region state 미러). 새 검색마다 초기화(runSearch).
@@ -39,7 +41,15 @@ struct SearchView: View {
                 }
             }
             .navigationDestination(for: Place.self) { PlaceDetailView(place: $0) }
+            // navigationTitle은 유지(상세 push 시 뒤로 버튼 라벨 "길동무" 보존),
+            // 중앙 표시는 principal 버튼이 대체 — 탭하면 초기 화면 복귀.
             .navigationTitle("길동무")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Button("길동무") { resetSession() }
+                }
+            }
             .searchable(text: $model.query, prompt: "장소, 주소 검색")
             .onSubmit(of: .search) { runSearch() }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }

@@ -22,7 +22,7 @@
 - **기록**: `visibilitychange`(hidden 전환)·`pagehide` 시 `localStorage`에 타임스탬프 기록. visible 복귀·첫 마운트 시에도 갱신(활동 표시).
 - **판정**: visible 복귀 시와 첫 마운트 시, 저장된 타임스탬프가 10분보다 오래됐으면 리셋.
 - **리셋**: `location.replace(쿼리 없는 로케일 홈)` — 전체 리로드. 검색·상세·History 스택·근처 패널·채팅 오버레이가 구조적으로 전부 초기화되고, 스테일 서비스워커가 새 배포를 픽업하는 계기도 된다. 10분 이상 자리를 비운 뒤라 리로드 비용은 체감되지 않으며, 스크린 리더 포커스는 문서 최상단 = 초기 화면에서 시작.
-- **보존 경계**: 타임스탬프가 없으면(첫 방문·공유 링크 진입) 리셋하지 않는다 → `?q=` 공유·새로고침 보존 기능 유지. 스토리지는 `localStorage`(PWA 콜드 재시작에도 생존; sessionStorage는 복원 여부가 브라우저 재량이라 부적합).
+- **보존 경계**: 타임스탬프가 없으면(첫 방문) 리셋하지 않는다. 추가로 **첫 마운트 리셋은 standalone(홈 화면 설치형)에서만** 발동한다 — 재방문자가 오랜만에 브라우저 탭에서 공유 링크(`?q=`)를 열면 stale 타임스탬프가 남아 있어 콜드 재시작과 구분 불가한데, OS의 마지막 URL 복원은 standalone에서만 일어나므로 이 경계로 공유 링크 진입을 보존한다(코드 리뷰에서 발견·수정). standalone 판정은 `display-mode: standalone` 매체 질의 + iOS 레거시 `navigator.standalone` 병용. 스토리지는 `localStorage`(PWA 콜드 재시작에도 생존; sessionStorage는 복원 여부가 브라우저 재량이라 부적합).
 - **판정 로직은 순수 함수로 분리**(`shouldIdleReset(storedTs, now)` + 리셋 대상 URL 계산) → Vitest 단위 테스트. 리로드 호출 자체는 jsdom 밖이므로 판정만 테스트.
 
 ## iOS (네이티브 SwiftUI)
