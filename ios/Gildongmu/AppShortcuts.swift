@@ -24,8 +24,8 @@ final class LaunchActionStore {
 
 /// 음성 검색 진입: 앱을 열고 초기 화면으로 리셋한 뒤 즉시 마이크 시작.
 struct StartVoiceSearchIntent: AppIntent {
-    static let title: LocalizedStringResource = "음성 검색"
-    static let description = IntentDescription("길동무를 열고 바로 음성으로 검색합니다")
+    static let title = LocalizedStringResource("ios.shortcut.voiceSearch.title")
+    static let description = IntentDescription(LocalizedStringResource("ios.shortcut.voiceSearch.desc"))
     static let openAppWhenRun = true
 
     @MainActor
@@ -37,8 +37,8 @@ struct StartVoiceSearchIntent: AppIntent {
 
 /// 내 주변 진입: 앱을 열고 내 주변 허브 탭으로 이동.
 struct OpenNearbyIntent: AppIntent {
-    static let title: LocalizedStringResource = "내 주변"
-    static let description = IntentDescription("길동무 내 주변 화면을 엽니다")
+    static let title = LocalizedStringResource("ios.shortcut.nearby.title")
+    static let description = IntentDescription(LocalizedStringResource("ios.shortcut.nearby.desc"))
     static let openAppWhenRun = true
 
     @MainActor
@@ -58,7 +58,7 @@ struct GildongmuShortcuts: AppShortcutsProvider {
                 "\(.applicationName)에서 음성으로 검색",
                 "\(.applicationName) 음성 입력"
             ],
-            shortTitle: "음성 검색",
+            shortTitle: LocalizedStringResource("ios.shortcut.voiceSearch.title"),
             systemImageName: "mic"
         )
         AppShortcut(
@@ -67,7 +67,7 @@ struct GildongmuShortcuts: AppShortcutsProvider {
                 "\(.applicationName) 내 주변",
                 "\(.applicationName) 내 주변 열어 줘"
             ],
-            shortTitle: "내 주변",
+            shortTitle: LocalizedStringResource("ios.shortcut.nearby.title"),
             systemImageName: "location"
         )
     }

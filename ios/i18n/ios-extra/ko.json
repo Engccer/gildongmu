@@ -155,6 +155,25 @@
       "weatherHeading": "날씨",
       "skyPartly": "구름 조금",
       "rainSnow": "비 또는 눈"
+    },
+    "settings": {
+      "title": "설정",
+      "theme": "테마",
+      "themeSystem": "시스템 설정 따름",
+      "themeLight": "라이트",
+      "themeDark": "다크",
+      "language": "언어",
+      "languageRestartNotice": "다음 앱 실행부터 적용됩니다"
+    },
+    "shortcut": {
+      "voiceSearch": {
+        "title": "음성 검색",
+        "desc": "길동무를 열고 바로 음성으로 검색합니다"
+      },
+      "nearby": {
+        "title": "내 주변",
+        "desc": "길동무 내 주변 화면을 엽니다"
+      }
     }
   }
 }

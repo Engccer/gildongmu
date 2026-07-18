@@ -1,0 +1,24 @@
+{
+  "sourceLanguage" : "ko",
+  "strings" : {
+    "NSLocationWhenInUseUsageDescription" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your location is used to find nearby transit, places, and local information." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu ubicación se usa para encontrar transporte, lugares e información local cercanos." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre position sert à trouver les transports, lieux et informations locales à proximité." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "La tua posizione è usata per trovare trasporti, luoghi e informazioni locali nelle vicinanze." } }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "검색어와 질문을 음성으로 입력하기 위해 마이크를 사용합니다." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The microphone is used to enter searches and questions by voice." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El micrófono se usa para introducir búsquedas y preguntas por voz." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le micro sert à saisir les recherches et questions à la voix." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il microfono è usato per inserire ricerche e domande con la voce." } }
+      }
+    }
+  },
+  "version" : "1.0"
+}

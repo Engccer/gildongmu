@@ -16,9 +16,9 @@ private struct GildongmuTitleMenu: ViewModifier {
         content
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Menu("길동무") {
-                        Button("새로고침") { refreshTab() }
-                        Button("설정") { showsSettings = true }
+                    Menu(String(localized: "app.title")) {
+                        Button(String(localized: "ios.common.refresh")) { refreshTab() }
+                        Button(String(localized: "ios.settings.title")) { showsSettings = true }
                     }
                 }
             }

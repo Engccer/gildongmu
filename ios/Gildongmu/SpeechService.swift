@@ -103,7 +103,7 @@ final class SpeechService {
     private func beginListening() async throws {
         finalizedText = ""
 
-        let locale = Locale(identifier: "ko-KR")
+        let locale = Locale(identifier: AppLanguage.speechLocaleIdentifier)
         guard await SpeechTranscriber.supportedLocale(equivalentTo: locale) != nil else {
             throw SpeechError.localeUnsupported
         }

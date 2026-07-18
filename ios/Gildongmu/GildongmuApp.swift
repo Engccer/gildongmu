@@ -31,9 +31,9 @@ struct GildongmuApp: App {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
             TabView(selection: $selectedTab) {
-                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
-                Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
-                Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
+                Tab(String(localized: "ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
+                Tab(String(localized: "ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
+                Tab(String(localized: "ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id(sessionEpoch)
             .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme)

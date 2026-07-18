@@ -155,6 +155,25 @@
       "weatherHeading": "Météo",
       "skyPartly": "Partiellement nuageux",
       "rainSnow": "Pluie ou neige"
+    },
+    "settings": {
+      "title": "Réglages",
+      "theme": "Thème",
+      "themeSystem": "Selon le système",
+      "themeLight": "Clair",
+      "themeDark": "Sombre",
+      "language": "Langue",
+      "languageRestartNotice": "Prendra effet au prochain lancement de l'app"
+    },
+    "shortcut": {
+      "voiceSearch": {
+        "title": "Recherche vocale",
+        "desc": "Ouvre Gildongmu et lance une recherche vocale"
+      },
+      "nearby": {
+        "title": "À proximité",
+        "desc": "Ouvre l'écran À proximité de Gildongmu"
+      }
     }
   }
 }

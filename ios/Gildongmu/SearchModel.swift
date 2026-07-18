@@ -31,7 +31,7 @@ final class SearchModel {
         searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
         isSearching = true
         searchTask = Task {
-            var result = await service.search(query: trimmed, lat: nil, lng: nil, lang: "ko")
+            var result = await service.search(query: trimmed, lat: nil, lng: nil, lang: AppLanguage.dataLocale)
             guard !Task.isCancelled else { return }
             // 보유 좌표가 있으면 결과를 가까운 순으로 재정렬(웹 userCoords 정렬 미러).
             // 신규 권한 요청·위치 취득은 트리거하지 않는다(LocationService 캐시만 사용).

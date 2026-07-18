@@ -1,4 +1,5 @@
 import SwiftUI
+import Accessibility
 
 /// 테마 선택 영속값. rawValue가 AppStorage("themePreference")에 저장된다.
 /// 시스템=nil 반환으로 preferredColorScheme 오버라이드를 해제한다.
@@ -17,35 +18,63 @@ enum ThemePreference: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .system: "시스템 설정 따름"
-        case .light: "라이트"
-        case .dark: "다크"
+        case .system: String(localized: "ios.settings.themeSystem")
+        case .light: String(localized: "ios.settings.themeLight")
+        case .dark: String(localized: "ios.settings.themeDark")
         }
     }
 }
 
-/// 앱 설정 시트. 이번 라운드 내용은 테마 선택 하나(스펙 §4) — 언어 설정은
-/// 후속 마일스톤(iOS 다국어)이라 자리를 미리 잡지 않는다(YAGNI).
+/// 앱 설정 시트: 테마 + 언어(스펙 2026-07-19 iOS 다국어 §4).
+/// 언어는 dodo 동형 AppleLanguages 오버라이드 — String(localized:)가 Bundle.main
+/// 기준이라 다음 앱 실행부터 적용되며, 선택 즉시 재시작 안내를 polite 통지한다.
 /// 시트 등장 시 VoiceOver 포커스는 시스템이 이동시키므로 별도 처리 없음.
 struct SettingsView: View {
+    /// 각 언어는 자국어 표기(고유명사라 로컬라이즈 대상 아님, 웹 nav.* 동일 어휘).
+    private static let languages: [(code: String, name: String)] = [
+        ("ko", "한국어"),
+        ("en", "English"),
+        ("es", "Español"),
+        ("fr", "Français"),
+        ("it", "Italiano"),
+    ]
+
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
+    /// 현재 세션의 선택값. 오버라이드가 이미 있으면 그것이 정본(재시작 전엔
+    /// Bundle 해석(AppLanguage.current)이 옛 언어라 UserDefaults를 먼저 본다).
+    @State private var selectedLanguage =
+        (UserDefaults.standard.array(forKey: "AppleLanguages")?.first as? String)
+            .map { String($0.prefix(2)) } ?? AppLanguage.current
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             List {
-                Picker("테마", selection: $themeRaw) {
+                Picker(String(localized: "ios.settings.theme"), selection: $themeRaw) {
                     ForEach(ThemePreference.allCases, id: \.rawValue) { theme in
                         Text(theme.label).tag(theme.rawValue)
                     }
                 }
                 .pickerStyle(.inline)
+
+                Picker(String(localized: "ios.settings.language"), selection: $selectedLanguage) {
+                    ForEach(Self.languages, id: \.code) { language in
+                        Text(language.name).tag(language.code)
+                    }
+                }
+                .pickerStyle(.inline)
+                .onChange(of: selectedLanguage) { _, code in
+                    UserDefaults.standard.set([code], forKey: "AppleLanguages")
+                    AccessibilityNotification.Announcement(
+                        String(localized: "ios.settings.languageRestartNotice")
+                    ).post()
+                }
             }
-            .navigationTitle("설정")
+            .navigationTitle(String(localized: "ios.settings.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("닫기") { dismiss() }
+                    Button(String(localized: "actions.close")) { dismiss() }
                 }
             }
         }

@@ -71,11 +71,11 @@ struct WhereAmIView: View {
             if case .loaded(let data, let lat, let lng, let asOf) = model.state {
                 Section {
                     // 산문 문단=한 접근성 객체(인라인 분절 금지). 완성 문장은 Kit이 조립.
-                    ForEach(Array(buildLocationNarrative(data, lang: "ko").enumerated()), id: \.offset) { _, paragraph in
+                    ForEach(Array(buildLocationNarrative(data, lang: AppLanguage.current).enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
                     }
                     Button(String(localized: "ios.nearby.whereAmIChat")) {
-                        chatPlace = whereAmIToPlace(data, lat: lat, lng: lng, lang: "ko")
+                        chatPlace = whereAmIToPlace(data, lat: lat, lng: lng, lang: AppLanguage.current)
                     }
                 } header: {
                     Text(String(format: String(localized: "ios.nearby.whereAmIAsOf"), asOf)).accessibilityAddTraits(.isHeader)

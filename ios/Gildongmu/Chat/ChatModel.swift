@@ -120,7 +120,7 @@ final class ChatModel {
         ChatRequestBody(
             messages: messages.map { .init(role: $0.role == .user ? "user" : "assistant", text: $0.text) },
             userLocation: LocationService.shared.lastCoordinate.map { .init(lat: $0.lat, lng: $0.lng) },
-            locale: "ko",
+            locale: AppLanguage.current,
             placeContext: place.map { place in
                 .init(
                     name: place.name,
