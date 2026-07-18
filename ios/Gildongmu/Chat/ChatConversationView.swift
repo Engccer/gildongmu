@@ -174,10 +174,12 @@ private struct MessageBubbleView: View {
     }
 
     /// 어시스턴트 산문은 마크다운 시도(인라인 강조), 파싱 실패·사용자 발화는 평문.
+    /// 블록 문법(### 헤딩·* 리스트)은 인라인 파서가 리터럴로 노출하므로 먼저 평탄화
+    /// (flattenBlockMarkdown — VoiceOver 기호 낭독 차단, prod 실호출 실측).
     private var bubbleText: Text {
         if message.role == .assistant,
            let attributed = try? AttributedString(
-               markdown: message.text,
+               markdown: flattenBlockMarkdown(message.text),
                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
            ) {
             return Text(attributed)
