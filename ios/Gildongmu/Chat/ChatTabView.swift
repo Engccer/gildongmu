@@ -29,9 +29,14 @@ struct ChatTabView: View {
     private var suggestionList: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Self.suggestions, id: \.self) { suggestion in
-                Button(suggestion) { model.send(suggestion) }
-                    .buttonStyle(.bordered)
-                    .frame(minHeight: 44)
+                // 44pt frame은 label 안쪽 — 버튼 바깥 frame은 히트 영역을 안 넓힌다
+                Button {
+                    model.send(suggestion)
+                } label: {
+                    Text(suggestion)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
         }
     }

@@ -14,6 +14,8 @@ struct ChatConversationView<EmptyContent: View>: View {
 
     @State private var draft = ""
     @State private var speech = SpeechService()
+    /// 마이크 토글 Task in-flight 가드(더블탭 경합 차단)
+    @State private var micTaskInFlight = false
     /// 완료 시 새 답변 말풍선으로 VoiceOver 포커스 이동(웹 완료 포커스 이동 미러)
     @AccessibilityFocusState private var focusedMessageID: UUID?
 
@@ -78,19 +80,24 @@ struct ChatConversationView<EmptyContent: View>: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
-            // 라벨 변화("음성 입력"↔"입력 중지")가 상태 신호(disabled 금지, 접근성 헌장)
+            // 라벨 변화("음성 입력"↔"입력 중지")가 상태 신호(disabled 금지, 접근성 헌장).
+            // 44pt frame은 label 안쪽 + contentShape — 버튼 바깥 frame은 히트 영역을 안 넓힌다.
             Button(action: toggleMic) {
                 Label(
                     speech.isListening ? "입력 중지" : "음성 입력",
                     systemImage: speech.isListening ? "mic.fill" : "mic"
                 )
                 .labelStyle(.iconOnly)
-            }
-            .frame(minWidth: 44, minHeight: 44)
-            // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장)
-            Button("보내기", action: sendDraft)
-                .buttonStyle(.borderedProminent)
                 .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장).
+            // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.
+            Button(action: sendDraft) {
+                Text(model.isStreaming ? "전송 중" : "보내기")
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
         }
         .padding()
     }
@@ -103,8 +110,12 @@ struct ChatConversationView<EmptyContent: View>: View {
     }
 
     /// 음성 입력 토글: 최종 텍스트를 입력 필드에 넣기만(자동 전송 안 함, 질문은 검토 후 전송).
+    /// in-flight 가드: 더블탭이 두 Task를 띄워 start/stop이 인터리브되는 경합 차단(접근성 헌장).
     private func toggleMic() {
+        guard !micTaskInFlight else { return }
+        micTaskInFlight = true
         Task {
+            defer { micTaskInFlight = false }
             if speech.isListening {
                 if let text = await speech.stop() {
                     draft = text
@@ -148,7 +159,7 @@ private struct MessageBubbleView: View {
                         : Color(.secondarySystemBackground)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                .accessibilityElement(children: .combine)
+                // 단일 Text는 이미 한 접근성 객체 — combine 그룹핑은 잉여라 두지 않는다
                 .accessibilityFocused($focusedMessageID, equals: message.id)
 
             ForEach(Array(message.renders.enumerated()), id: \.offset) { _, render in
