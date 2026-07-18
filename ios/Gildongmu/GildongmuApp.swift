@@ -22,13 +22,16 @@ struct GildongmuApp: App {
     @State private var sessionEpoch = 0
     @State private var backgroundedAt: Date?
     @State private var selectedTab: AppTab = .chat
+    /// 채팅 탭 대화 모델은 App 소유 — 리셋 경로에서 스트림을 요청째 폐기하기 위함
+    /// (idle-reset 불변식: `.id` 재생성만으론 진행 중 Task가 취소되지 않는다).
+    @State private var chatModel = ChatModel()
     private let launchStore = LaunchActionStore.shared
 
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
             TabView(selection: $selectedTab) {
-                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView() }
+                Tab("채팅", systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel) }
                 Tab("검색", systemImage: "magnifyingglass", value: AppTab.search) { SearchView() }
                 Tab("내 주변", systemImage: "location", value: AppTab.nearby) { NearbyHubView() }
             }
@@ -58,10 +61,17 @@ struct GildongmuApp: App {
     }
 
     /// 초기 화면 복귀(제목 탭·유휴 복귀 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
-    /// 재생성으로 채팅 대화도 증발한다(일회성 대화 계약, spec §1).
     private func resetSession() {
         sessionEpoch += 1
         selectedTab = .chat
+        resetChatModel()
+    }
+
+    /// 채팅 대화 폐기: 진행 중 스트림을 요청째 취소하고 새 대화로 교체(일회성 대화 계약).
+    /// 뷰 재생성(.id)만으론 스트림 Task가 살아남아 유령 햅틱·낭독을 주입하므로 명시 취소가 필수.
+    private func resetChatModel() {
+        chatModel.cancel()
+        chatModel = ChatModel()
     }
 
     /// 단축어 진입 라우팅. 두 액션 모두 초기 화면 리셋 후 목적 탭으로
@@ -76,6 +86,7 @@ struct GildongmuApp: App {
         // 무효화 — 실행 순서와 무관하게 인텐트가 고른 탭이 최종 승자.
         backgroundedAt = nil
         sessionEpoch += 1
+        resetChatModel() // 인텐트 진입도 세션 리셋 — 채팅 스트림·대화 동반 폐기
         switch action {
         case .voiceSearch:
             selectedTab = .search

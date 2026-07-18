@@ -5,8 +5,9 @@ import GildongmuKit
 /// 소비자 2곳 — 장소 채팅 sheet(ChatView)·채팅 탭(ChatTabView). 말풍선·입력바 수정은 여기 한 곳.
 struct ChatConversationView<EmptyContent: View>: View {
     let model: ChatModel
-    /// true면 뷰가 사라질 때 스트림·음성 인식을 폐기한다(sheet 전용).
-    /// 탭에서는 false — 탭 전환은 대화 중단이 아니다(스트림은 계속 돌고 답변이 쌓인다).
+    /// true면 뷰가 사라질 때 스트림을 폐기한다(sheet 전용). 탭에서는 false —
+    /// 탭 전환은 대화 중단이 아니다(스트림은 계속 돌고 답변이 쌓인다). 탭의 세션 리셋
+    /// 시 스트림 폐기는 App의 resetChatModel()이 담당. 마이크는 여기서 항상 폐기.
     let cancelsOnDisappear: Bool
     /// 메시지 0개일 때 리스트 위치에 표시(채팅 탭 추천 질문). sheet는 EmptyView.
     private let emptyContent: () -> EmptyContent
@@ -61,10 +62,10 @@ struct ChatConversationView<EmptyContent: View>: View {
             inputBar
         }
         .onDisappear {
+            // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환 포함)
+            Task { await speech.cancel() }
             guard cancelsOnDisappear else { return }
             model.cancel()
-            // 진행 중 음성 인식도 폐기(시트 닫힘 후 마이크 잔존 방지)
-            Task { await speech.cancel() }
         }
         .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
             Button("확인") {}
