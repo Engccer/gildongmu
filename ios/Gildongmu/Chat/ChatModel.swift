@@ -80,10 +80,10 @@ final class ChatModel {
             isStreaming = false
             if let done, !errored {
                 // 빈 done.text는 오류가 아니라 폴백 문장(웹 1회 폴백 미러)
-                let answer = done.text.isEmpty ? String(localized: "ios.chat.emptyAnswer") : done.text
+                let answer = done.text.isEmpty ? appLocalized("ios.chat.emptyAnswer") : done.text
                 appendAssistant(ChatMessage(role: .assistant, text: answer, renders: done.renders, sources: done.sources), success: true)
             } else {
-                appendAssistant(ChatMessage(role: .assistant, text: String(localized: "ios.chat.failed")), success: false)
+                appendAssistant(ChatMessage(role: .assistant, text: appLocalized("ios.chat.failed")), success: false)
             }
         }
     }
@@ -108,8 +108,8 @@ final class ChatModel {
     private func announceProgress(_ categories: [String]) {
         let labels = categories.map(toolLabel).joined(separator: ", ")
         let message = labels.isEmpty
-            ? String(localized: "ios.chat.progressFallback")
-            : String(format: String(localized: "chat.progress.searching"), labels)
+            ? appLocalized("ios.chat.progressFallback")
+            : appLocalized("chat.progress.searching", labels)
         progress = message
         AccessibilityNotification.Announcement(message).post()
     }
@@ -136,20 +136,20 @@ final class ChatModel {
     /// 도구 카테고리 라벨(카탈로그 chat.progress.tool.*, 웹 미러). 미지 키는 원문 유지.
     private func toolLabel(_ category: String) -> String {
         switch category {
-        case "search_places": String(localized: "chat.progress.tool.search_places")
-        case "search_address": String(localized: "chat.progress.tool.search_address")
-        case "get_subway_arrivals": String(localized: "chat.progress.tool.get_subway_arrivals")
-        case "get_night_clinics": String(localized: "chat.progress.tool.get_night_clinics")
-        case "get_kids_places": String(localized: "chat.progress.tool.get_kids_places")
-        case "get_surroundings": String(localized: "chat.progress.tool.get_surroundings")
-        case "get_bus_arrivals": String(localized: "chat.progress.tool.get_bus_arrivals")
-        case "get_bike_stations": String(localized: "chat.progress.tool.get_bike_stations")
-        case "get_air_quality": String(localized: "chat.progress.tool.get_air_quality")
-        case "get_station_meta": String(localized: "chat.progress.tool.get_station_meta")
-        case "get_station_facilities": String(localized: "chat.progress.tool.get_station_facilities")
-        case "get_car_route": String(localized: "chat.progress.tool.get_car_route")
-        case "get_transit_route": String(localized: "chat.progress.tool.get_transit_route")
-        case "search_web": String(localized: "chat.progress.tool.search_web")
+        case "search_places": appLocalized("chat.progress.tool.search_places")
+        case "search_address": appLocalized("chat.progress.tool.search_address")
+        case "get_subway_arrivals": appLocalized("chat.progress.tool.get_subway_arrivals")
+        case "get_night_clinics": appLocalized("chat.progress.tool.get_night_clinics")
+        case "get_kids_places": appLocalized("chat.progress.tool.get_kids_places")
+        case "get_surroundings": appLocalized("chat.progress.tool.get_surroundings")
+        case "get_bus_arrivals": appLocalized("chat.progress.tool.get_bus_arrivals")
+        case "get_bike_stations": appLocalized("chat.progress.tool.get_bike_stations")
+        case "get_air_quality": appLocalized("chat.progress.tool.get_air_quality")
+        case "get_station_meta": appLocalized("chat.progress.tool.get_station_meta")
+        case "get_station_facilities": appLocalized("chat.progress.tool.get_station_facilities")
+        case "get_car_route": appLocalized("chat.progress.tool.get_car_route")
+        case "get_transit_route": appLocalized("chat.progress.tool.get_transit_route")
+        case "search_web": appLocalized("chat.progress.tool.search_web")
         default: category
         }
     }

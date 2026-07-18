@@ -164,7 +164,7 @@
       "themeLight": "Light",
       "themeDark": "Dark",
       "language": "Language",
-      "languageRestartNotice": "Takes effect the next time you open the app"
+      "languageApplied": "Language changed"
     },
     "shortcut": {
       "voiceSearch": {

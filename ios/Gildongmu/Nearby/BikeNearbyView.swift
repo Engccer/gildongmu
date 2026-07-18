@@ -22,7 +22,7 @@ final class BikeNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let stations = try await service.bikeStations(lat: coord.lat, lng: coord.lng)
             state = .loaded(stations)
-            announceLoaded(count: stations.count, unit: String(localized: "ios.nearby.unitBike"))
+            announceLoaded(count: stations.count, unit: appLocalized("ios.nearby.unitBike"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -45,11 +45,11 @@ struct BikeNearbyView: View {
                 ForEach(stations, id: \.stationId) { station in
                     // 한 줄 = 한 접근성 객체. 대여소명·거리·대여 가능·거치대를 단일 텍스트로 흡수(heading 없음).
                     Text(joinText(station.name, "\(station.distanceMeters)m",
-                                  String(format: String(localized: "ios.nearby.bikesAvailable"), String(station.bikesAvailable)), String(format: String(localized: "ios.nearby.racksTotal"), String(station.racksTotal))))
+                                  appLocalized("ios.nearby.bikesAvailable", String(station.bikesAvailable)), appLocalized("ios.nearby.racksTotal", String(station.racksTotal))))
                 }
             }
         }
-        .navigationTitle(String(localized: "ios.nearby.bike"))
+        .navigationTitle(appLocalized("ios.nearby.bike"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -57,15 +57,15 @@ struct BikeNearbyView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         case .loaded(let stations) where stations.isEmpty:
-            ContentUnavailableView(String(localized: "ios.nearby.bikeEmpty"), systemImage: "bicycle")
+            ContentUnavailableView(appLocalized("ios.nearby.bikeEmpty"), systemImage: "bicycle")
         default: EmptyView()
         }
     }

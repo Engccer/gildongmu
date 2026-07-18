@@ -22,7 +22,7 @@ final class SubwayNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let stations = try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
             state = .loaded(stations)
-            announceLoaded(count: stations.count, unit: String(localized: "ios.nearby.unitStation"))
+            announceLoaded(count: stations.count, unit: appLocalized("ios.nearby.unitStation"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -48,20 +48,20 @@ struct SubwayNearbyView: View {
                         Text(joinText(station.stationName, station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
                             .accessibilityAddTraits(.isHeader)
                         if station.arrivalStatus == "unavailable" {
-                            Text(String(localized: "ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
+                            Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
                         } else if station.arrivals.isEmpty {
-                            Text(String(localized: "ios.station.noArrivals"))
+                            Text(appLocalized("ios.station.noArrivals"))
                         } else {
                             ForEach(Array(station.arrivals.enumerated()), id: \.offset) { _, arrival in
                                 // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수.
-                                Text(joinText(arrival.line, arrival.express ? String(localized: "subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+                                Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
                             }
                         }
                     }
                 }
             }
         }
-        .navigationTitle(String(localized: "ios.nearby.subway"))
+        .navigationTitle(appLocalized("ios.nearby.subway"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -69,15 +69,15 @@ struct SubwayNearbyView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         case .loaded(let stations) where stations.isEmpty:
-            ContentUnavailableView(String(localized: "ios.nearby.subwayEmpty"), systemImage: "tram")
+            ContentUnavailableView(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram")
         default: EmptyView()
         }
     }

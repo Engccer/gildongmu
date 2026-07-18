@@ -12,7 +12,7 @@ extension View {
                 Button {
                     Task { await action() }
                 } label: {
-                    Label(String(localized: "ios.common.refresh"), systemImage: "arrow.clockwise")
+                    Label(appLocalized("ios.common.refresh"), systemImage: "arrow.clockwise")
                 }
             }
         }

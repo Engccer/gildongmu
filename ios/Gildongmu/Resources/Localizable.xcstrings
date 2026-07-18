@@ -9147,36 +9147,36 @@
         }
       }
     },
-    "ios.settings.languageRestartNotice": {
+    "ios.settings.languageApplied": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다음 앱 실행부터 적용됩니다"
+            "value": "언어를 바꿨습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Takes effect the next time you open the app"
+            "value": "Language changed"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se aplicará la próxima vez que abras la app"
+            "value": "Idioma cambiado"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prendra effet au prochain lancement de l'app"
+            "value": "Langue modifiée"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avrà effetto al prossimo avvio dell'app"
+            "value": "Lingua cambiata"
           }
         }
       }

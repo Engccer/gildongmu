@@ -24,20 +24,32 @@ struct GildongmuApp: App {
     /// 채팅 탭 대화 모델은 App 소유 — 리셋 경로에서 스트림을 요청째 폐기하기 위함
     /// (idle-reset 불변식: `.id` 재생성만으론 진행 중 Task가 취소되지 않는다).
     @State private var chatModel = ChatModel()
+    /// 설정 시트 표시 상태를 App이 소유한다 — 아래 `.id` 재생성(언어 전환) 밖이라
+    /// 설정 중 언어를 바꿔도 시트가 닫히지 않는다(SR 맥락 유지).
+    @State private var showsSettings = false
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
+    /// 언어 선택 값. 그 자체가 `.id`에 들어가 전환 즉시 탭 트리를 재생성한다.
+    /// 재생성이 필요한 이유: 표시 문자열은 `appLocalized`가 매번 조회하지만
+    /// SwiftUI는 UserDefaults 변경을 모르므로 스스로 다시 그리지 않는다.
+    /// (탭 내용 초기화는 부작용이 아니라 의도 — 검색 결과·주변 데이터는 로케일
+    /// 의존이라 새 언어로 다시 받아야 한다.)
+    @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
     private let launchStore = LaunchActionStore.shared
 
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
             TabView(selection: $selectedTab) {
-                Tab(String(localized: "ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
-                Tab(String(localized: "ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
-                Tab(String(localized: "ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
+                Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
+                Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
+                Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
-            .id(sessionEpoch)
+            .id("\(sessionEpoch)#\(languageRaw)")
             .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme)
             .environment(\.refreshTab, refreshCurrentTab)
+            .environment(\.openSettings, { showsSettings = true })
+            // `.id` 바깥이라 언어 전환의 트리 재생성에도 열린 채로 유지된다.
+            .sheet(isPresented: $showsSettings) { SettingsView() }
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
             // epoch 재생성으로 .task가 다시 돌아도 멱등.

@@ -22,7 +22,7 @@ final class KidsNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
             state = .loaded(places)
-            announceLoaded(count: places.count, unit: String(localized: "ios.nearby.unitPlace"))
+            announceLoaded(count: places.count, unit: appLocalized("ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -58,22 +58,22 @@ struct KidsNearbyView: View {
                 }
             }
         }
-        .navigationTitle(String(localized: "ios.nearby.kids"))
+        .navigationTitle(appLocalized("ios.nearby.kids"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
 
-    private func chatLabel(_ name: String) -> String { String(format: String(localized: "ios.place.askAbout"), name) }
+    private func chatLabel(_ name: String) -> String { appLocalized("ios.place.askAbout", name) }
 
     /// kind 코드 → 한글 라벨. 미지 값은 원문 그대로 노출(계약 확장에 깨지지 않게).
     private func kindLabel(_ kind: String) -> String {
         switch kind {
-        case "kidscafe": return String(localized: "kidsNearby.kind.kidscafe")
-        case "playground": return String(localized: "kidsNearby.kind.playground")
-        case "playcenter": return String(localized: "kidsNearby.kind.playcenter")
-        case "park": return String(localized: "ios.nearby.kidsPark")
+        case "kidscafe": return appLocalized("kidsNearby.kind.kidscafe")
+        case "playground": return appLocalized("kidsNearby.kind.playground")
+        case "playcenter": return appLocalized("kidsNearby.kind.playcenter")
+        case "park": return appLocalized("ios.nearby.kidsPark")
         default: return kind
         }
     }
@@ -81,23 +81,23 @@ struct KidsNearbyView: View {
     /// indoor/outdoor 3-state: unknown도 "실내외 정보 없음"으로 명시(0건·미확인 혼동 방지).
     private func inOutLabel(_ value: String) -> String {
         switch value {
-        case "indoor": return String(localized: "kidsNearby.indoor.indoor")
-        case "outdoor": return String(localized: "kidsNearby.indoor.outdoor")
-        default: return String(localized: "kidsNearby.indoor.unknown")
+        case "indoor": return appLocalized("kidsNearby.indoor.indoor")
+        case "outdoor": return appLocalized("kidsNearby.indoor.outdoor")
+        default: return appLocalized("kidsNearby.indoor.unknown")
         }
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         case .loaded(let places) where places.isEmpty:
-            ContentUnavailableView(String(localized: "ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands")
+            ContentUnavailableView(appLocalized("ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands")
         default: EmptyView()
         }
     }

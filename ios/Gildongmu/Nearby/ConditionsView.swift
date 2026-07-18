@@ -38,11 +38,11 @@ final class ConditionsModel {
             // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
             // (누적 프로퍼티 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
             let message = if newWeather != nil && newAir != nil {
-                String(localized: "ios.nearby.conditionsReady")
+                appLocalized("ios.nearby.conditionsReady")
             } else if newWeather != nil || newAir != nil {
-                String(localized: "ios.nearby.conditionsPartial")
+                appLocalized("ios.nearby.conditionsPartial")
             } else {
-                String(localized: "ios.common.failedTitle")
+                appLocalized("ios.common.failedTitle")
             }
             AccessibilityNotification.Announcement(message).post()
         } catch let error as LocationService.LocationError {
@@ -69,7 +69,7 @@ struct ConditionsView: View {
                 airSection
             }
         }
-        .navigationTitle(String(localized: "ios.nearby.conditions"))
+        .navigationTitle(appLocalized("ios.nearby.conditions"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -78,51 +78,51 @@ struct ConditionsView: View {
     @ViewBuilder private var weatherSection: some View {
         Section {
             if let weather = model.weather {
-                Text(String(format: String(localized: "ios.nearby.skyLine"), skyWord(weather.sky.label)))
-                Text(String(format: String(localized: "ios.nearby.precipLine"), precipWord(weather.precipitation.label)))
-                if let temp = weather.tempC { Text(String(format: String(localized: "ios.nearby.tempNow"), numberText(temp))) }
+                Text(appLocalized("ios.nearby.skyLine", skyWord(weather.sky.label)))
+                Text(appLocalized("ios.nearby.precipLine", precipWord(weather.precipitation.label)))
+                if let temp = weather.tempC { Text(appLocalized("ios.nearby.tempNow", numberText(temp))) }
                 // 둘 다 null이면 생략, 한쪽만이면 있는 쪽만
                 if weather.tempMax != nil || weather.tempMin != nil {
                     Text(joinText(
-                        weather.tempMax.map { String(format: String(localized: "ios.nearby.tempMax"), numberText($0)) },
-                        weather.tempMin.map { String(format: String(localized: "ios.nearby.tempMin"), numberText($0)) }))
+                        weather.tempMax.map { appLocalized("ios.nearby.tempMax", numberText($0)) },
+                        weather.tempMin.map { appLocalized("ios.nearby.tempMin", numberText($0)) }))
                 }
-                if let humidity = weather.humidity { Text(String(format: String(localized: "weather.humidity"), numberText(humidity))) }
-                if let probability = weather.precipProbability { Text(String(format: String(localized: "weather.precipProbability"), numberText(probability))) }
-                Text(String(format: String(localized: "ios.nearby.baseTime"), weather.baseTime))
+                if let humidity = weather.humidity { Text(appLocalized("weather.humidity", numberText(humidity))) }
+                if let probability = weather.precipProbability { Text(appLocalized("weather.precipProbability", numberText(probability))) }
+                Text(appLocalized("ios.nearby.baseTime", weather.baseTime))
             } else {
-                Text(String(localized: "ios.nearby.weatherFailed"))
+                Text(appLocalized("ios.nearby.weatherFailed"))
             }
         } header: {
-            Text(String(localized: "ios.nearby.weatherHeading")).accessibilityAddTraits(.isHeader)
+            Text(appLocalized("ios.nearby.weatherHeading")).accessibilityAddTraits(.isHeader)
         }
     }
 
     @ViewBuilder private var airSection: some View {
         Section {
             if let air = model.air {
-                Text(String(format: String(localized: "ios.nearby.airStationLine"), air.stationName, numberText(air.distanceKm)))
-                Text(pollutantText(String(localized: "airQuality.khai"), air.khai))
-                Text(pollutantText(String(localized: "airQuality.pm10"), air.pm10))
-                Text(pollutantText(String(localized: "airQuality.pm25"), air.pm25))
-                Text(String(format: String(localized: "ios.nearby.dataTime"), air.dataTime))
+                Text(appLocalized("ios.nearby.airStationLine", air.stationName, numberText(air.distanceKm)))
+                Text(pollutantText(appLocalized("airQuality.khai"), air.khai))
+                Text(pollutantText(appLocalized("airQuality.pm10"), air.pm10))
+                Text(pollutantText(appLocalized("airQuality.pm25"), air.pm25))
+                Text(appLocalized("ios.nearby.dataTime", air.dataTime))
             } else {
-                Text(String(localized: "ios.nearby.airFailed"))
+                Text(appLocalized("ios.nearby.airFailed"))
             }
         } header: {
-            Text(String(localized: "weather.airLabel")).accessibilityAddTraits(.isHeader)
+            Text(appLocalized("weather.airLabel")).accessibilityAddTraits(.isHeader)
         }
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.phase {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         default: EmptyView()
         }
     }
@@ -137,31 +137,31 @@ struct ConditionsView: View {
     /// 공기질 등급 단어. 미지의 값은 "정보 없음"으로(잘못된 단정 금지)
     private func gradeWord(_ grade: String) -> String {
         switch grade {
-        case "good": String(localized: "airQuality.grade.good")
-        case "moderate": String(localized: "airQuality.grade.moderate")
-        case "bad": String(localized: "airQuality.grade.bad")
-        case "veryBad": String(localized: "airQuality.grade.veryBad")
-        default: String(localized: "airQuality.unknown")
+        case "good": appLocalized("airQuality.grade.good")
+        case "moderate": appLocalized("airQuality.grade.moderate")
+        case "bad": appLocalized("airQuality.grade.bad")
+        case "veryBad": appLocalized("airQuality.grade.veryBad")
+        default: appLocalized("airQuality.unknown")
         }
     }
 
     private func skyWord(_ label: String) -> String {
         switch label {
-        case "clear": String(localized: "weather.sky.clear")
-        case "partlyCloudy": String(localized: "ios.nearby.skyPartly")
-        case "cloudy": String(localized: "weather.sky.cloudy")
-        default: String(localized: "weather.unknown")
+        case "clear": appLocalized("weather.sky.clear")
+        case "partlyCloudy": appLocalized("ios.nearby.skyPartly")
+        case "cloudy": appLocalized("weather.sky.cloudy")
+        default: appLocalized("weather.unknown")
         }
     }
 
     private func precipWord(_ label: String) -> String {
         switch label {
-        case "none": String(localized: "weather.precipitation.none")
-        case "rain": String(localized: "weather.precipitation.rain")
-        case "rainSnow": String(localized: "ios.nearby.rainSnow")
-        case "snow": String(localized: "weather.precipitation.snow")
-        case "shower": String(localized: "weather.precipitation.shower")
-        default: String(localized: "weather.unknown")
+        case "none": appLocalized("weather.precipitation.none")
+        case "rain": appLocalized("weather.precipitation.rain")
+        case "rainSnow": appLocalized("ios.nearby.rainSnow")
+        case "snow": appLocalized("weather.precipitation.snow")
+        case "shower": appLocalized("weather.precipitation.shower")
+        default: appLocalized("weather.unknown")
         }
     }
 

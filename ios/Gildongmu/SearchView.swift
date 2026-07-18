@@ -21,14 +21,14 @@ struct SearchView: View {
                     Button(action: toggleMic) {
                         Label(
                             // "음성 입력" 금지: 받아쓴 내용의 "음성"과 라벨이 SR에서 혼동(채팅 동일 교훈)
-                            speech.isListening ? String(localized: "voice.stop") : String(localized: "ios.voice.start"),
+                            speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start"),
                             systemImage: speech.isListening ? "mic.fill" : "mic"
                         )
                     }
                 }
                 if let outcome = model.outcome {
                     if !outcome.attractions.items.isEmpty {
-                        Section(String(localized: "ios.search.attractionSection")) {
+                        Section(appLocalized("ios.search.attractionSection")) {
                             ForEach(outcome.attractions.items) { place in
                                 NavigationLink(value: place) { PlaceRow(place: place) }
                                     .accessibilityFocused($focusedRowID, equals: "attraction-\(place.id)")
@@ -43,10 +43,10 @@ struct SearchView: View {
             .navigationDestination(for: Place.self) { PlaceDetailView(place: $0) }
             // navigationTitle은 유지(상세 push 시 뒤로 버튼 라벨 "길동무" 보존),
             // 중앙 표시는 공통 길동무 메뉴가 대체(새로고침·설정).
-            .navigationTitle(String(localized: "app.title"))
+            .navigationTitle(appLocalized("app.title"))
             .navigationBarTitleDisplayMode(.inline)
             .gildongmuTitleMenu()
-            .searchable(text: $model.query, prompt: Text(String(localized: "ios.search.prompt")))
+            .searchable(text: $model.query, prompt: Text(appLocalized("ios.search.prompt")))
             .onSubmit(of: .search) { runSearch() }
             // 단축어 "음성 검색" 진입: App이 리셋·탭 전환을 마친 뒤 세운 플래그를
             // 재생성된 이 뷰가 소비해 마이크 시작(시작음·햅틱·권한은 기존 경로 그대로).
@@ -64,17 +64,17 @@ struct SearchView: View {
                 Task { await speech.cancel() }
             }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
-                Button(String(localized: "ios.common.ok")) {}
+                Button(appLocalized("ios.common.ok")) {}
             }
             .overlay {
                 if model.isSearching {
-                    ProgressView(String(localized: "ios.search.searching"))
+                    ProgressView(appLocalized("ios.search.searching"))
                 } else if model.failed {
                     // 3-state: "조회 실패"는 "결과 없음"과 다른 화면·문장(뭉개기 금지)
                     ContentUnavailableView(
-                        String(localized: "ios.search.failedTitle"),
+                        appLocalized("ios.search.failedTitle"),
                         systemImage: "wifi.exclamationmark",
-                        description: Text(String(localized: "ios.common.retryLater"))
+                        description: Text(appLocalized("ios.common.retryLater"))
                     )
                 } else if model.outcome != nil && model.totalCount == 0 {
                     ContentUnavailableView.search
@@ -115,8 +115,8 @@ struct SearchView: View {
     /// denied·failed 안내(3-state: 실패와 거부를 다른 문장으로). 확인 시 idle 복귀.
     private var speechAlertMessage: String? {
         switch speech.phase {
-        case .denied: String(localized: "ios.voice.denied")
-        case .failed: String(localized: "ios.voice.failed")
+        case .denied: appLocalized("ios.voice.denied")
+        case .failed: appLocalized("ios.voice.failed")
         default: nil
         }
     }
@@ -154,7 +154,7 @@ struct SearchView: View {
         case .places(let places):
             placesSectionView(places, attractionIDs: attractionIDs)
         case .addresses(let addresses):
-            Section(String(localized: "search.addressSection")) {
+            Section(appLocalized("search.addressSection")) {
                 ForEach(addresses, id: \.roadAddr) { address in
                     // 한 줄=한 객체: 도로명+우편번호를 단일 텍스트로(웹 joinText 동형)
                     Text("\(address.roadAddr), \(address.zipNo)")
@@ -162,7 +162,7 @@ struct SearchView: View {
                 }
             }
         case .web(let results):
-            Section(String(localized: "ios.search.webSection")) {
+            Section(appLocalized("ios.search.webSection")) {
                 ForEach(results, id: \.url) { result in
                     webRow(result)
                         .accessibilityFocused($focusedRowID, equals: "web-\(result.url)")
@@ -189,8 +189,8 @@ struct SearchView: View {
             // 축 항목이 1개 이하면 그 축은 숨김(웹 ChipFilter "items.length <= 1" 미러)
             // 라벨·"전체"/"전국"은 ko.json category.filterLabel/all·region.filterLabel/all 정본 미러.
             if bucketItems.count > 1 {
-                Picker(String(localized: "category.filterLabel"), selection: $bucket) {
-                    Text(String(localized: "category.all")).tag(nil as String?)
+                Picker(appLocalized("category.filterLabel"), selection: $bucket) {
+                    Text(appLocalized("category.all")).tag(nil as String?)
                     ForEach(bucketItems) { item in
                         Text("\(item.label) (\(item.count))").tag(item.id as String?)
                     }
@@ -198,8 +198,8 @@ struct SearchView: View {
                 .pickerStyle(.menu)
             }
             if regionItems.count > 1 {
-                Picker(String(localized: "region.filterLabel"), selection: $region) {
-                    Text(String(localized: "region.all")).tag(nil as String?)
+                Picker(appLocalized("region.filterLabel"), selection: $region) {
+                    Text(appLocalized("region.all")).tag(nil as String?)
                     ForEach(regionItems) { item in
                         Text("\(item.label) (\(item.count))").tag(item.id as String?)
                     }
@@ -208,11 +208,11 @@ struct SearchView: View {
             }
             let filtered = filterPlaces(filterPlaces(base, bucket: bucket), region: region)
             if filtered.isEmpty {
-                Text(String(localized: "search.noFilterResults"))
+                Text(appLocalized("search.noFilterResults"))
             } else {
                 // 헤더 "{label} {count}건"은 ko.json category.groupHeading 정본 미러.
                 ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
-                    Section(String(format: String(localized: "category.groupHeading"), bucketLabel(group.bucket, lang: AppLanguage.current), String(group.places.count))) {
+                    Section(appLocalized("category.groupHeading", bucketLabel(group.bucket, lang: AppLanguage.current), String(group.places.count))) {
                         ForEach(group.places) { place in
                             NavigationLink(value: place) { PlaceRow(place: place) }
                                 .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
@@ -259,14 +259,14 @@ struct PlaceRow: View {
         .accessibilityActions {
             if let phone = place.phone, !phone.isEmpty,
                let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
-                Button(String(localized: "ios.place.call")) { openURL(telURL) }
+                Button(appLocalized("ios.place.call")) { openURL(telURL) }
             }
-            Button(String(localized: "ios.route.naver")) {
+            Button(appLocalized("ios.route.naver")) {
                 if let url = buildNaverRouteDeeplink(mode: .walk, dest: dest, appname: AppConfig.appIdentifier) {
                     openURL(url)
                 }
             }
-            Button(String(localized: "ios.route.kakao")) {
+            Button(appLocalized("ios.route.kakao")) {
                 if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) { openURL(url) }
             }
         }
@@ -279,7 +279,7 @@ struct PlaceRow: View {
         var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
         if let distance = place.distanceMeters {
             // ko.json place.distance "약 {distance}" 정본 미러.
-            parts.append(String(format: String(localized: "place.distance"), formatDistanceKo(distance)))
+            parts.append(appLocalized("place.distance", formatDistanceKo(distance)))
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }

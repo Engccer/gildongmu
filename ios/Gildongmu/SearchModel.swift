@@ -55,11 +55,11 @@ final class SearchModel {
     private func announce() {
         let message: String
         if failed {
-            message = String(localized: "ios.search.announceFailed")
+            message = appLocalized("ios.search.announceFailed")
         } else if totalCount == 0 {
-            message = String(localized: "ios.search.announceEmpty")
+            message = appLocalized("ios.search.announceEmpty")
         } else {
-            message = String(format: String(localized: "ios.search.announceCount"), String(totalCount))
+            message = appLocalized("ios.search.announceCount", String(totalCount))
         }
         AccessibilityNotification.Announcement(message).post()
     }

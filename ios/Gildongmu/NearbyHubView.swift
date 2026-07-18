@@ -6,17 +6,17 @@ struct NearbyHubView: View {
     var body: some View {
         NavigationStack {
             List {
-                NavigationLink(String(localized: "whereAmI.button")) { WhereAmIView() }
-                NavigationLink(String(localized: "ios.nearby.subway")) { SubwayNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.bus")) { BusNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.bike")) { BikeNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.clinic")) { ClinicNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.barrierFree")) { BarrierFreeNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.kids")) { KidsNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.around")) { AroundNearbyView() }
-                NavigationLink(String(localized: "ios.nearby.conditions")) { ConditionsView() }
+                NavigationLink(appLocalized("whereAmI.button")) { WhereAmIView() }
+                NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.bike")) { BikeNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.clinic")) { ClinicNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.barrierFree")) { BarrierFreeNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.kids")) { KidsNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.around")) { AroundNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView() }
             }
-            .navigationTitle(String(localized: "ios.tab.nearby"))
+            .navigationTitle(appLocalized("ios.tab.nearby"))
             .navigationBarTitleDisplayMode(.inline)
             .gildongmuTitleMenu()
         }

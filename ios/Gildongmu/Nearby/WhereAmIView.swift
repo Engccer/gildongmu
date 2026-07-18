@@ -34,13 +34,13 @@ final class WhereAmIModel {
             if let data {
                 let asOf = Self.timeFormatter.string(from: Date())
                 state = .loaded(data, lat: coord.lat, lng: coord.lng, asOf: asOf)
-                AccessibilityNotification.Announcement(String(localized: "ios.nearby.whereAmIReady")).post()
+                AccessibilityNotification.Announcement(appLocalized("ios.nearby.whereAmIReady")).post()
             } else if case .loaded = state {
                 // 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
                 announceRefreshFailed()
             } else {
                 state = .empty
-                AccessibilityNotification.Announcement(String(localized: "whereAmI.empty")).post()
+                AccessibilityNotification.Announcement(appLocalized("whereAmI.empty")).post()
             }
         } catch let error as LocationService.LocationError {
             if case .denied = error {
@@ -74,15 +74,15 @@ struct WhereAmIView: View {
                     ForEach(Array(buildLocationNarrative(data, lang: AppLanguage.current).enumerated()), id: \.offset) { _, paragraph in
                         Text(paragraph)
                     }
-                    Button(String(localized: "ios.nearby.whereAmIChat")) {
+                    Button(appLocalized("ios.nearby.whereAmIChat")) {
                         chatPlace = whereAmIToPlace(data, lat: lat, lng: lng, lang: AppLanguage.current)
                     }
                 } header: {
-                    Text(String(format: String(localized: "ios.nearby.whereAmIAsOf"), asOf)).accessibilityAddTraits(.isHeader)
+                    Text(appLocalized("ios.nearby.whereAmIAsOf", asOf)).accessibilityAddTraits(.isHeader)
                 }
             }
         }
-        .navigationTitle(String(localized: "whereAmI.button"))
+        .navigationTitle(appLocalized("whereAmI.button"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -91,15 +91,15 @@ struct WhereAmIView: View {
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.nearby.whereAmIFailed"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.nearby.whereAmIFailed"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         case .empty:
-            ContentUnavailableView(String(localized: "ios.nearby.whereAmIEmpty"), systemImage: "location.slash")
+            ContentUnavailableView(appLocalized("ios.nearby.whereAmIEmpty"), systemImage: "location.slash")
         default: EmptyView()
         }
     }

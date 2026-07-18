@@ -38,10 +38,10 @@ struct StationSectionsView: View {
             Section {
                 // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로
                 Text(joinText(
-                    String(format: String(localized: "ios.station.nameSuffixed"), meta.name), meta.nameEn, meta.lines.joined(separator: ", "),
-                    meta.isTransfer ? String(localized: "stationMeta.transfer") : nil, meta.operatorName))
+                    appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn, meta.lines.joined(separator: ", "),
+                    meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName))
             } header: {
-                Text(String(localized: "stationMeta.heading")).accessibilityAddTraits(.isHeader)
+                Text(appLocalized("stationMeta.heading")).accessibilityAddTraits(.isHeader)
             }
         }
 
@@ -49,27 +49,27 @@ struct StationSectionsView: View {
             Section {
                 if arrivals.arrivals.isEmpty {
                     // fetch 성공의 0건은 문장으로 노출("조회 실패"와 뭉개지 않는 3-state)
-                    Text(String(localized: "ios.station.noArrivals"))
+                    Text(appLocalized("ios.station.noArrivals"))
                 } else {
                     ForEach(Array(arrivals.arrivals.enumerated()), id: \.offset) { _, arrival in
                         // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수(M2와 동일)
-                        Text(joinText(arrival.line, arrival.express ? String(localized: "subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+                        Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
                     }
                 }
             } header: {
-                Text(String(localized: "ios.station.arrivalHeading")).accessibilityAddTraits(.isHeader)
+                Text(appLocalized("ios.station.arrivalHeading")).accessibilityAddTraits(.isHeader)
             }
         }
 
         if let facilities = model.korailFacilities {
             Section {
-                Text(facilities.accessibleToilet ? String(localized: "ios.station.accessibleToiletYes") : String(localized: "ios.station.accessibleToiletNo"))
+                Text(facilities.accessibleToilet ? appLocalized("ios.station.accessibleToiletYes") : appLocalized("ios.station.accessibleToiletNo"))
                 // 정수 3-state: nil="정보 없음" ≠ 0="없음" ≠ n="n대"
-                Text(countText(String(localized: "station.wheelchairLifts"), facilities.wheelchairLifts))
-                Text(facilities.accessibleSlope ? String(localized: "ios.station.accessibleSlopeYes") : String(localized: "ios.station.accessibleSlopeNo"))
-                Text(countText(String(localized: "station.elevators"), facilities.elevators))
+                Text(countText(appLocalized("station.wheelchairLifts"), facilities.wheelchairLifts))
+                Text(facilities.accessibleSlope ? appLocalized("ios.station.accessibleSlopeYes") : appLocalized("ios.station.accessibleSlopeNo"))
+                Text(countText(appLocalized("station.elevators"), facilities.elevators))
             } header: {
-                Text(String(localized: "ios.station.railFacilities")).accessibilityAddTraits(.isHeader)
+                Text(appLocalized("ios.station.railFacilities")).accessibilityAddTraits(.isHeader)
             }
         }
 
@@ -77,7 +77,7 @@ struct StationSectionsView: View {
             Section {
                 ForEach(facilities.groups, id: \.kind) { group in
                     // kind 한국어 라벨은 웹 SeoulMetroFacilities.tsx 미러
-                    Text(String(format: String(localized: "ios.station.kindCount"), metroKindLabel(group.kind), String(group.facilities.count)))
+                    Text(appLocalized("ios.station.kindCount", metroKindLabel(group.kind), String(group.facilities.count)))
                     ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
                         Text(joinText(
                             facility.name, facility.location, facility.floors,
@@ -85,24 +85,24 @@ struct StationSectionsView: View {
                     }
                 }
             } header: {
-                Text(String(localized: "ios.station.seoulFacilities")).accessibilityAddTraits(.isHeader)
+                Text(appLocalized("ios.station.seoulFacilities")).accessibilityAddTraits(.isHeader)
             }
         }
     }
 
     /// 시설 수 3-state 문장: nil="정보 없음" ≠ 0="없음" ≠ n="n대". 절대 뭉개지 않는다.
     private func countText(_ label: String, _ count: Int?) -> String {
-        guard let count else { return String(format: String(localized: "ios.station.countUnknown"), label) }
+        guard let count else { return appLocalized("ios.station.countUnknown", label) }
         return count == 0
-            ? String(format: String(localized: "ios.station.countNone"), label)
-            : String(format: String(localized: "ios.station.countSome"), label, String(count))
+            ? appLocalized("ios.station.countNone", label)
+            : appLocalized("ios.station.countSome", label, String(count))
     }
 
     /// 가동현황 텍스트(엘리베이터·에스컬레이터만 존재, 그 외 nil은 생략)
     private func operatingStatusText(_ status: String?) -> String? {
         switch status {
-        case "normal": String(localized: "ios.station.operatingNormal")
-        case "stopped": String(localized: "ios.station.operatingStopped")
+        case "normal": appLocalized("ios.station.operatingNormal")
+        case "stopped": appLocalized("ios.station.operatingStopped")
         default: nil
         }
     }
@@ -110,15 +110,15 @@ struct StationSectionsView: View {
     /// 시설 종류 한국어 라벨(웹 messages/ko.json subway.kind 미러). 미지의 키는 원문 유지.
     private func metroKindLabel(_ kind: String) -> String {
         switch kind {
-        case "elevator": String(localized: "subway.kind.elevator")
-        case "escalator": String(localized: "subway.kind.escalator")
-        case "wheelchairLift": String(localized: "subway.kind.wheelchairLift")
-        case "movingWalk": String(localized: "subway.kind.movingWalk")
-        case "wheelchairCharger": String(localized: "subway.kind.wheelchairCharger")
-        case "safetyPlatform": String(localized: "subway.kind.safetyPlatform")
-        case "signLangPhone": String(localized: "subway.kind.signLangPhone")
-        case "helper": String(localized: "subway.kind.helper")
-        case "restroom": String(localized: "subway.kind.restroom")
+        case "elevator": appLocalized("subway.kind.elevator")
+        case "escalator": appLocalized("subway.kind.escalator")
+        case "wheelchairLift": appLocalized("subway.kind.wheelchairLift")
+        case "movingWalk": appLocalized("subway.kind.movingWalk")
+        case "wheelchairCharger": appLocalized("subway.kind.wheelchairCharger")
+        case "safetyPlatform": appLocalized("subway.kind.safetyPlatform")
+        case "signLangPhone": appLocalized("subway.kind.signLangPhone")
+        case "helper": appLocalized("subway.kind.helper")
+        case "restroom": appLocalized("subway.kind.restroom")
         default: kind
         }
     }

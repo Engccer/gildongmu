@@ -32,9 +32,9 @@ struct BarrierFreeInfoSection: View {
                     // 한 줄=한 객체: 라벨+값 단일 텍스트(웹 미러, span 분절 금지)
                     Text("\(facility.label) \(facility.value)")
                 }
-                Text(String(localized: "barrierFreeInfo.source"))
+                Text(appLocalized("barrierFreeInfo.source"))
             } header: {
-                Text(String(localized: "barrierFreeInfo.heading")).accessibilityAddTraits(.isHeader)
+                Text(appLocalized("barrierFreeInfo.heading")).accessibilityAddTraits(.isHeader)
             }
         }
     }

@@ -3,7 +3,7 @@
 // 누락 키는 런타임에 키 문자열이 그대로 노출되는 무증상 결함이라 빌드가 못 잡는다 — 이 린터가 머지 게이트.
 //
 // 대조 규칙(플랜 Global Constraints의 호출 규약과 쌍):
-//   앱 타깃(ios/Gildongmu/**)      String(localized: "키") · LocalizedStringResource("키") → 앱 카탈로그
+//   앱 타깃(ios/Gildongmu/**)      appLocalized("키") · LocalizedStringResource("키") → 앱 카탈로그
 //   Kit(ios/GildongmuKit/Sources)  kitLocalized("키"                                        → Kit 카탈로그
 // 키는 항상 문자열 리터럴이어야 한다(동적 조립 금지). 사용법: node ios/scripts/check-xcstrings-keys.mjs
 
@@ -20,7 +20,7 @@ const CHECKS = [
     sourceDirs: [path.join(REPO_ROOT, 'ios', 'Gildongmu')],
     catalog: path.join(REPO_ROOT, 'ios', 'Gildongmu', 'Resources', 'Localizable.xcstrings'),
     patterns: [
-      /String\(localized:\s*"((?:[^"\\]|\\.)*)"/g,
+      /appLocalized\(\s*"((?:[^"\\]|\\.)*)"/g,
       /LocalizedStringResource\(\s*"((?:[^"\\]|\\.)*)"/g,
     ],
   },

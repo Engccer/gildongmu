@@ -22,7 +22,7 @@ final class ClinicNearbyModel {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let clinics = try await service.clinics(lat: coord.lat, lng: coord.lng)
             state = .loaded(clinics)
-            announceLoaded(count: clinics.count, unit: String(localized: "ios.nearby.unitPlace"))
+            announceLoaded(count: clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
             if case .denied = error {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
@@ -57,7 +57,7 @@ struct ClinicNearbyView: View {
                         // 전화는 인터랙티브 요소라 별도 객체로 분리(합치지 않음). 표시 라벨은 원문, tel URL만 하이픈 제거
                         if !clinic.phone.isEmpty,
                            let url = URL(string: "tel:\(clinic.phone.replacingOccurrences(of: "-", with: ""))") {
-                            Link(String(format: String(localized: "ios.place.callLine"), clinic.phone), destination: url)
+                            Link(appLocalized("ios.place.callLine", clinic.phone), destination: url)
                         }
                     } header: {
                         // 기관명만 heading(웹 h4 규칙). 종별·거리는 같은 줄에 흡수.
@@ -74,7 +74,7 @@ struct ClinicNearbyView: View {
                 }
             }
         }
-        .navigationTitle(String(localized: "ios.nearby.clinic"))
+        .navigationTitle(appLocalized("ios.nearby.clinic"))
         .nearbyStateOverlay { stateOverlay }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
@@ -88,33 +88,33 @@ struct ClinicNearbyView: View {
         switch status.state {
         case "open":
             if let end = status.end {
-                return joinText(String(localized: "clinicNearby.open"), endTimeText(end))
+                return joinText(appLocalized("clinicNearby.open"), endTimeText(end))
             }
-            return String(localized: "clinicNearby.open")
+            return appLocalized("clinicNearby.open")
         case "closed":
-            return String(localized: "ios.nearby.clinicClosed")
+            return appLocalized("ios.nearby.clinicClosed")
         default:
-            return String(localized: "ios.nearby.clinicUnknown")
+            return appLocalized("ios.nearby.clinicUnknown")
         }
     }
 
     /// HHMM 정수를 "HH시 MM분까지"로. 2400은 자정을 뜻해 "자정까지".
     private func endTimeText(_ hhmm: Int) -> String {
-        if hhmm == 2400 { return String(localized: "ios.nearby.untilMidnight") }
-        return String(format: String(localized: "ios.nearby.untilTime"), String(hhmm / 100), String(hhmm % 100))
+        if hhmm == 2400 { return appLocalized("ios.nearby.untilMidnight") }
+        return appLocalized("ios.nearby.untilTime", String(hhmm / 100), String(hhmm % 100))
     }
 
     @ViewBuilder private var stateOverlay: some View {
         switch model.state {
-        case .loading: ProgressView(String(localized: "ios.common.checking"))
+        case .loading: ProgressView(appLocalized("ios.common.checking"))
         case .denied:
-            ContentUnavailableView(String(localized: "ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(String(localized: "ios.common.geoDeniedDesc")))
+            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
+                description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .failed:
-            ContentUnavailableView(String(localized: "ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(String(localized: "ios.common.retryLater")))
+            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
         case .loaded(let clinics) where clinics.isEmpty:
-            ContentUnavailableView(String(localized: "ios.nearby.clinicEmpty"), systemImage: "cross.case")
+            ContentUnavailableView(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case")
         default: EmptyView()
         }
     }

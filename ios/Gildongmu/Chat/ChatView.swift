@@ -18,7 +18,7 @@ struct ChatView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(String(localized: "actions.close")) { dismiss() }
+                        Button(appLocalized("actions.close")) { dismiss() }
                     }
                 }
         }
