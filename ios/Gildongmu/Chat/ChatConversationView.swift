@@ -151,7 +151,7 @@ private struct MessageBubbleView: View {
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
-            bubbleText
+            bubbleContent
                 .padding(12)
                 .background(
                     message.role == .user
@@ -159,8 +159,6 @@ private struct MessageBubbleView: View {
                         : Color(.secondarySystemBackground)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
-                // 단일 Text는 이미 한 접근성 객체 — combine 그룹핑은 잉여라 두지 않는다
-                .accessibilityFocused($focusedMessageID, equals: message.id)
 
             ForEach(Array(message.renders.enumerated()), id: \.offset) { _, render in
                 renderView(render)
@@ -173,18 +171,59 @@ private struct MessageBubbleView: View {
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
     }
 
-    /// 어시스턴트 산문은 마크다운 시도(인라인 강조), 파싱 실패·사용자 발화는 평문.
-    /// 블록 문법(### 헤딩·* 리스트)은 인라인 파서가 리터럴로 노출하므로 먼저 평탄화
-    /// (flattenBlockMarkdown — VoiceOver 기호 낭독 차단, prod 실호출 실측).
-    private var bubbleText: Text {
-        if message.role == .assistant,
-           let attributed = try? AttributedString(
-               markdown: flattenBlockMarkdown(message.text),
-               options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-           ) {
+    /// 어시스턴트 산문은 블록(헤딩·리스트 항목·단락)마다 별도 Text = 별도 접근성 객체.
+    /// 통짜 단일 Text는 VoiceOver에 객체 하나로 노출돼 구조 탐색이 불가능하다
+    /// (위원장 실기기 실측 2026-07-18, 웹 react-markdown 블록 노드의 iOS 문법).
+    /// 헤딩 블록은 .isHeader trait으로 로터 헤딩 탐색 지원. 답변 도착 포커스는 첫 블록에.
+    /// 사용자 발화는 원문 그대로 단일 평문 Text(마크다운 해석·재구성 금지).
+    @ViewBuilder
+    private var bubbleContent: some View {
+        if message.role == .assistant {
+            let blocks = parseChatMarkdownBlocks(message.text)
+            if blocks.isEmpty {
+                Text(message.text)
+                    .accessibilityFocused($focusedMessageID, equals: message.id)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(blocks.indices, id: \.self) { index in
+                        if index == 0 {
+                            blockView(blocks[index])
+                                .accessibilityFocused($focusedMessageID, equals: message.id)
+                        } else {
+                            blockView(blocks[index])
+                        }
+                    }
+                }
+            }
+        } else {
+            Text(message.text)
+                .accessibilityFocused($focusedMessageID, equals: message.id)
+        }
+    }
+
+    @ViewBuilder
+    private func blockView(_ block: ChatMarkdownBlock) -> some View {
+        switch block {
+        case .heading(let text):
+            inlineText(text)
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+        case .listItem(let text):
+            inlineText(text)
+        case .paragraph(let text):
+            inlineText(text)
+        }
+    }
+
+    /// 블록 내부 인라인 강조(**) 해석. 파싱 실패는 평문 강등.
+    private func inlineText(_ string: String) -> Text {
+        if let attributed = try? AttributedString(
+            markdown: string,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
             return Text(attributed)
         }
-        return Text(message.text)
+        return Text(string)
     }
 
     /// V1 렌더 정책: props-driven 3종만, .unsupported는 미표시(산문이 정본).

@@ -109,15 +109,21 @@ private func chatFixtureLines() throws -> [String] {
     #expect(json["placeContext"] == nil)
 }
 
-@Test func flattenBlockMarkdownStripsHeadingsAndBullets() {
-    // prod 실호출 실측 형태: ### 헤딩 + "* **볼드**: 설명" 리스트
-    let input = "### 편의점 및 마트\n* **CU 강동풍차점**: 북동쪽 10m\n  - 세부 항목\n1. 순서 목록 유지\n일반 문장 **강조** 유지\n*기울임*은 리스트 아님"
-    let expected = "편의점 및 마트\n• **CU 강동풍차점**: 북동쪽 10m\n  • 세부 항목\n1. 순서 목록 유지\n일반 문장 **강조** 유지\n*기울임*은 리스트 아님"
-    #expect(flattenBlockMarkdown(input) == expected)
+@Test func parseChatMarkdownBlocksSplitsHeadingListAndParagraph() {
+    // prod 실호출 실측 형태: ### 헤딩 + "* **볼드**: 설명" 리스트 + 단락들
+    let input = "### 편의점 및 마트\n* **CU 강동풍차점**: 북동쪽 10m\n  - 세부 항목\n1. 순서 목록\n\n첫 단락 첫 줄\n첫 단락 둘째 줄\n\n둘째 단락 **강조** 유지"
+    #expect(parseChatMarkdownBlocks(input) == [
+        .heading("편의점 및 마트"),
+        .listItem("• **CU 강동풍차점**: 북동쪽 10m"),
+        .listItem("• 세부 항목"),
+        .listItem("1. 순서 목록"),
+        .paragraph("첫 단락 첫 줄\n첫 단락 둘째 줄"),
+        .paragraph("둘째 단락 **강조** 유지"),
+    ])
 }
 
-@Test func flattenBlockMarkdownKeepsPlainTextIntact() {
-    // 블록 문법이 없으면 입력 그대로(빈 줄·들여쓰기 포함)
-    let input = "안녕하세요.\n\n  들여쓴 줄과 # 중간 해시는 유지"
-    #expect(flattenBlockMarkdown(input) == input)
+@Test func parseChatMarkdownBlocksPlainTextIsSingleParagraph() {
+    // 블록 문법이 없으면 단락 하나(내부 줄바꿈·중간 해시 보존), 줄 시작 *기울임*은 리스트 아님
+    let input = "안녕하세요. # 중간 해시 유지\n*기울임*은 리스트 아님"
+    #expect(parseChatMarkdownBlocks(input) == [.paragraph(input)])
 }
