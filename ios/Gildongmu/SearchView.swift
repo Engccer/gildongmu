@@ -25,14 +25,15 @@ struct SearchView: View {
                 Section {
                     HoldDictationButton(
                         speech: speech,
-                        allowsSlideActions: false,
                         hint: appLocalized("ios.voice.holdHintSearch"),
-                        showsTitle: true
-                    ) { text in
-                        model.query = text
-                        AccessibilityNotification.Announcement(text).post()
-                        runSearch()
-                    }
+                        showsTitle: true,
+                        onTranscript: { text in
+                            model.query = text
+                            AccessibilityNotification.Announcement(text).post()
+                            runSearch()
+                        },
+                        onPause: nil
+                    )
                 }
                 if let outcome = model.outcome {
                     if !outcome.attractions.items.isEmpty {

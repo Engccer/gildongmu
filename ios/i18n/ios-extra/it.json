@@ -28,10 +28,11 @@
     "voice": {
       "hold": "Dettatura",
       "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare",
-      "holdHintChat": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare e continuare dopo aver sollevato il dito, poi tocca per inviare. Scorri verso sinistra senza rilasciare per annullare",
+      "holdHintChat": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare: quanto dettato finora entra nel campo di testo, dove puoi modificarlo, poi tieni premuto di nuovo per continuare a dettare. Scorri verso sinistra senza rilasciare per annullare",
       "holdGuide": "Tieni premuto per parlare",
       "denied": "Consenti l'accesso al microfono nelle Impostazioni",
-      "failed": "Impossibile avviare il riconoscimento vocale. Riprova."
+      "failed": "Impossibile avviare il riconoscimento vocale. Riprova.",
+      "paused": "Dettatura bloccata"
     },
     "search": {
       "prompt": "Cerca luoghi e indirizzi",

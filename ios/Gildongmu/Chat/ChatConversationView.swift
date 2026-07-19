@@ -143,43 +143,57 @@ struct ChatConversationView<EmptyContent: View>: View {
                 }
             }
             // WhatsApp식 홀드 받아쓰기(2026-07-20 탭 토글 대체): 누르는 동안 녹음,
-            // 떼면 즉시 전송. 채팅은 긴 문장 입력이 있어 위로 밀어 잠금·왼쪽으로 밀어
-            // 취소를 허용한다(검색과의 차이). 라벨 "받아쓰기"는 행위 일반명사 충돌 회피
-            // ("음성 입력" 금지 — 받아쓴 내용의 "음성"과 낭독 혼동, 실측 2026-07-18).
+            // 떼면 즉시 전송. 위로 밀면 잠금(일시정지) — 전사를 입력창에 확정해
+            // 확인·수정 후 다시 길게 눌러 이어쓴다. 왼쪽 밀기=취소. 라벨 "받아쓰기"는
+            // 행위 일반명사 충돌 회피("음성 입력" 금지 — 받아쓴 내용의 "음성"과 낭독
+            // 혼동, 실측 2026-07-18).
             HoldDictationButton(
                 speech: speech,
-                allowsSlideActions: true,
                 hint: appLocalized("ios.voice.holdHintChat"),
-                showsTitle: false
-            ) { text in
-                // 직전 답변의 지연 완료 시퀀스가 대기 중이면 폐기 — isStreaming 가드는
-                // "새 질문 전송"만 걸러서, 전송 전 시점엔 통과해 방금 잡은 포커스를
-                // 옛 질문 헤딩으로 되돌린다(리뷰 검출).
-                completionFocusTask?.cancel()
-                completionFocusTask = nil
-                // 타이핑해 둔 초안과 받아쓴 텍스트는 병합이 정책(리뷰 검출: 무병합이면
-                // 초안이 입력창에 고아로 방치돼 무엇이 전송됐는지 불투명): 보내는 것
-                // = 초안 + 받아쓴 말 전부, 초안은 소거. 통지도 병합 원문 전체 —
-                // 사용자가 들은 것이 곧 전송된 것(결정론).
-                let typed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                let message = typed.isEmpty ? text : "\(typed) \(text)"
-                if model.isStreaming {
-                    // 생성 중엔 전송 불가: 발화 유실 금지 — 초안으로 보존(구계약 폴백)
-                    draft = message
-                    isSendFocused = true
-                    AccessibilityNotification.Announcement(message).post()
-                } else {
-                    // 릴리스=즉시 전송(위원장 실기기 지시 2026-07-20, WhatsApp 동형).
-                    // 순서는 헌장 §6 "포커스 먼저, 통지 나중": 보내기 버튼 포커스를
-                    // 동기 선점한 뒤 통지 — questionRevision onChange의 재대입은 같은
-                    // 값 no-op이라 통지를 인터럽트하지 않는다(리뷰 검출: 통지 선행이면
-                    // 다음 렌더 패스의 포커스 이동이 원문 낭독을 자를 위험).
-                    draft = ""
-                    isSendFocused = true
-                    AccessibilityNotification.Announcement(message).post()
-                    model.send(message)
+                showsTitle: false,
+                onTranscript: { text in
+                    // 직전 답변의 지연 완료 시퀀스가 대기 중이면 폐기 — isStreaming 가드는
+                    // "새 질문 전송"만 걸러서, 전송 전 시점엔 통과해 방금 잡은 포커스를
+                    // 옛 질문 헤딩으로 되돌린다(리뷰 검출).
+                    completionFocusTask?.cancel()
+                    completionFocusTask = nil
+                    // 초안(타이핑·잠금 확정분)과 새 전사는 병합이 정책(리뷰 검출: 무병합이면
+                    // 초안이 고아로 방치): 보내는 것 = 초안 + 받아쓴 말 전부, 초안은 소거.
+                    // 통지도 병합 원문 전체 — 사용자가 들은 것이 곧 전송된 것(결정론).
+                    let message = mergedDraft(with: text)
+                    if model.isStreaming {
+                        // 생성 중엔 전송 불가: 발화 유실 금지 — 초안으로 보존(구계약 폴백)
+                        draft = message
+                        isSendFocused = true
+                        AccessibilityNotification.Announcement(message).post()
+                    } else {
+                        // 릴리스=즉시 전송(위원장 실기기 지시 2026-07-20, WhatsApp 동형).
+                        // 순서는 헌장 §6 "포커스 먼저, 통지 나중": 보내기 버튼 포커스를
+                        // 동기 선점한 뒤 통지 — questionRevision onChange의 재대입은 같은
+                        // 값 no-op이라 통지를 인터럽트하지 않는다(리뷰 검출).
+                        draft = ""
+                        isSendFocused = true
+                        AccessibilityNotification.Announcement(message).post()
+                        model.send(message)
+                    }
+                },
+                // 잠금(일시정지, 2026-07-20 위원장 재설계): 전사를 초안에 확정해 별도 UI
+                // 없이 확인·수정·이어쓰기. 녹음이 멈춘 뒤라 통지가 발화 금지와 무충돌.
+                // 통지는 "받아쓰기 잠김" + 새 세그먼트만(누적 초안 전체 재낭독은 소음 —
+                // 전체 확인은 입력 필드 탐색으로). 포커스는 건드리지 않는다(손가락이
+                // 아직 마이크 위, 다음 행동이 이어쓰기·수정·전송으로 갈리는 지점).
+                onPause: { segment in
+                    completionFocusTask?.cancel()
+                    completionFocusTask = nil
+                    let notice = appLocalized("ios.voice.paused")
+                    if let segment {
+                        draft = mergedDraft(with: segment)
+                        AccessibilityNotification.Announcement("\(notice), \(segment)").post()
+                    } else {
+                        AccessibilityNotification.Announcement(notice).post()
+                    }
                 }
-            }
+            )
             // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장).
             // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.
             // 전송 시 VO 포커스가 여기로 선점 이동해 생성 내내 머문다(헌장 §6).
@@ -230,6 +244,12 @@ struct ChatConversationView<EmptyContent: View>: View {
             isSendFocused = false
             focusedMessageID = lastUser.id
         }
+    }
+
+    /// 초안(타이핑·잠금 확정분)에 새 전사를 공백 한 칸으로 병합. 공백뿐인 초안은 버린다.
+    private func mergedDraft(with text: String) -> String {
+        let typed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        return typed.isEmpty ? text : "\(typed) \(text)"
     }
 
     private func sendDraft() {

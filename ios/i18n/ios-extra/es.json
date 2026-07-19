@@ -28,10 +28,11 @@
     "voice": {
       "hold": "Dictar",
       "holdHintSearch": "Mantén pulsado para hablar y suelta para buscar",
-      "holdHintChat": "Mantén pulsado para hablar y suelta para enviar. Desliza hacia arriba sin soltar para bloquear y que siga tras levantar el dedo; toca de nuevo para enviar. Desliza hacia la izquierda sin soltar para cancelar",
+      "holdHintChat": "Mantén pulsado para hablar y suelta para enviar. Desliza hacia arriba sin soltar para bloquear: lo dictado hasta entonces pasa al campo de texto, donde puedes editarlo, y mantén pulsado de nuevo para seguir dictando. Desliza hacia la izquierda sin soltar para cancelar",
       "holdGuide": "Mantén pulsado para hablar",
       "denied": "Permite el acceso al micrófono en Ajustes",
-      "failed": "No se pudo iniciar el reconocimiento de voz. Inténtalo de nuevo."
+      "failed": "No se pudo iniciar el reconocimiento de voz. Inténtalo de nuevo.",
+      "paused": "Dictado bloqueado"
     },
     "search": {
       "prompt": "Buscar lugares y direcciones",

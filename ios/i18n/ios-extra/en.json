@@ -28,10 +28,11 @@
     "voice": {
       "hold": "Dictate",
       "holdHintSearch": "Press and hold to speak; release to search",
-      "holdHintChat": "Press and hold to speak; release to send. Slide up while holding to lock so it keeps going after you let go, then tap to send. Slide left while holding to cancel",
+      "holdHintChat": "Press and hold to speak; release to send. Slide up while holding to lock: what you said so far goes into the text field, where you can edit it, then press and hold again to continue dictating. Slide left while holding to cancel",
       "holdGuide": "Press and hold to speak",
       "denied": "Please allow microphone access in Settings",
-      "failed": "Couldn't start speech recognition. Please try again."
+      "failed": "Couldn't start speech recognition. Please try again.",
+      "paused": "Dictation locked"
     },
     "search": {
       "prompt": "Search places and addresses",
