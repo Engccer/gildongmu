@@ -38,6 +38,14 @@ final class SpeechService {
     private var recognitionTask: Task<Void, Never>?
     /// 최종 확정 텍스트 누적(volatile은 phase의 partial에만 반영)
     private var finalizedText = ""
+    /// 취소 세대 토큰 — cancel()이 올릴 때마다 진행 중 start()가 무효화된다.
+    /// start()는 권한·모델 다운로드 등 긴 await 지점을 지나므로, 그 사이 화면 이탈로
+    /// cancel()이 다녀가면 뒤늦게 완주한 start()가 마이크를 재점화하는 레이스를 막는다
+    /// (MainActor 직렬이라 비교·증가는 동기 구간에서 안전. webfortd 이식 리뷰 검출 백포트).
+    private var generation = 0
+    /// stop() 진행 중 상호 배제 — finalize 대기 동안 isListening이 true로 남아
+    /// cancel()이 같은 analyzer/recognitionTask에 중복 종료를 거는 경합을 차단.
+    private var stopping = false
 
     /// 권한 요청 → 모델 에셋 확인 → 마이크 탭 + 스트리밍 인식 시작.
     /// 재진입은 phase 가드로 차단(MainActor 직렬이라 동기 구간에서 확정).
@@ -49,25 +57,41 @@ final class SpeechService {
             return
         }
         phase = .requesting
+        let gen = generation
 
         guard await AVAudioApplication.requestRecordPermission() else {
-            phase = .denied
+            if gen == generation { phase = .denied }
             return
         }
+        // 권한 대기 중 cancel()이 다녀갔으면 여기서 중단(아직 아무것도 시작 안 됨).
+        guard gen == generation else { return }
 
         do {
             try await beginListening()
+            // 모델 다운로드·analyzer 기동 대기 중 cancel()이 다녀갔으면, 방금 만든
+            // 리소스를 cancel()과 같은 절차로 폐기하고 무음 종료(시작음·phase 갱신 없음).
+            guard gen == generation else {
+                audioEngine.stop()
+                audioEngine.inputNode.removeTap(onBus: 0)
+                inputContinuation?.finish()
+                await analyzer?.cancelAndFinishNow()
+                recognitionTask?.cancel()
+                await teardown()
+                return
+            }
             phase = .listening(partial: "")
             notify(soundID: 1113) // 녹음 시작음
         } catch {
             await teardown()
-            phase = .failed
+            if gen == generation { phase = .failed }
         }
     }
 
     /// 인식 종료 후 최종 텍스트 반환(빈 결과는 nil). 오디오 세션 해제.
     func stop() async -> String? {
-        guard isListening else { return nil }
+        guard isListening, !stopping else { return nil }
+        stopping = true
+        defer { stopping = false }
         notify(soundID: 1114) // 녹음 정지음: 즉시 통지 후 확정 대기
 
         audioEngine.stop()
@@ -85,7 +109,13 @@ final class SpeechService {
 
     /// 결과 없이 폐기(화면 이탈 등). 통지 없음.
     func cancel() async {
+        // 진행 중 start()를 무효화(늦은 완주가 마이크를 재점화하지 못하게).
+        generation += 1
         guard phase != .idle else { return }
+        // stop()이 finalize 진행 중이면 그 경로가 teardown까지 책임진다 — 같은
+        // analyzer/recognitionTask에 중복 종료를 걸지 않는다(결과 텍스트는 이미
+        // 이탈한 화면의 입력 필드에 붙을 뿐이라 무해).
+        guard !stopping else { return }
         audioEngine.stop()
         if isListening { audioEngine.inputNode.removeTap(onBus: 0) }
         inputContinuation?.finish()
