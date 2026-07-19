@@ -159,21 +159,7 @@ struct SearchView: View {
                     // 한 줄=한 객체: 도로명+우편번호를 단일 텍스트로(웹 joinText 동형)
                     Text("\(address.roadAddr), \(address.zipNo)")
                         .accessibilityFocused($focusedRowID, equals: "address-\(address.roadAddr)")
-                        // 화면 버튼 대신 VoiceOver 커스텀 액션(한 손가락 위/아래
-                        // 쓸기)으로 복사 제공 — PlaceRow 전화·길찾기 동형. 도로명·
-                        // 지번은 쓰임이 달라(택배·행정서식) 종류별로 낸다(장소 상세
-                        // 복사 버튼 분리와 같은 근거). 보유한 주소만(빈 주소 = 죽은 액션).
-                        .accessibilityActions {
-                            if !address.roadAddr.isEmpty {
-                                Button(appLocalized("place.copyRoadAddress")) { copyAddressToPasteboard(address.roadAddr) }
-                            }
-                            if !address.jibunAddr.isEmpty {
-                                Button(appLocalized("place.copyJibunAddress")) { copyAddressToPasteboard(address.jibunAddr) }
-                            }
-                            if !address.engAddr.isEmpty {
-                                Button(appLocalized("place.copyEnglishAddress")) { copyAddressToPasteboard(address.engAddr) }
-                            }
-                        }
+                        .addressCopyActions(address)
                 }
             }
         case .web(let results):

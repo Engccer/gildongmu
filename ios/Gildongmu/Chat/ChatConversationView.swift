@@ -332,6 +332,7 @@ private struct MessageBubbleView: View {
             ForEach(addresses, id: \.roadAddr) { address in
                 // 한 줄=한 객체: 도로명+우편번호 단일 텍스트(SearchView 주소 행 동형)
                 Text("\(address.roadAddr), \(address.zipNo)")
+                    .addressCopyActions(address)
             }
         case .webResults(let results):
             ForEach(results, id: \.url) { result in
