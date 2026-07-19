@@ -129,9 +129,11 @@ struct HoldDictationButton: View {
         Task {
             defer { finishInFlight = false }
             await task?.value
-            let text = await speech.stop()
+            // denied·failed로 청취가 시작조차 안 된 세션: 권한 알럿이 상태의 정본 —
+            // "받아쓰기 잠김" 오통지가 알럿과 동시 발화하는 3-state 뭉개기 금지(리뷰 검출)
+            guard speech.isListening else { return }
             // 빈 전사여도 호출: "정지됐다"는 상태 통지는 전사 유무와 무관(3-state 정신)
-            onPause?(text)
+            onPause?(await speech.stop())
         }
     }
 
