@@ -22,12 +22,13 @@
       "sending": "Envoi en cours",
       "emptyAnswer": "Impossible de préparer une réponse",
       "failed": "Impossible d'obtenir une réponse. Veuillez réessayer dans un instant.",
-      "progressFallback": "Vérification des informations"
+      "progressFallback": "Vérification des informations",
+      "clear": "Effacer le texte"
     },
     "voice": {
       "hold": "Dictée",
       "holdHintSearch": "Maintenez appuyé pour parler, relâchez pour lancer la recherche",
-      "holdHintChat": "Maintenez appuyé pour parler, relâchez pour insérer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour terminer. Faites glisser vers la gauche sans relâcher pour annuler",
+      "holdHintChat": "Maintenez appuyé pour parler, relâchez pour envoyer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour envoyer. Faites glisser vers la gauche sans relâcher pour annuler",
       "holdGuide": "Maintenez appuyé pour parler",
       "denied": "Autorisez l'accès au micro dans Réglages",
       "failed": "Impossible de démarrer la reconnaissance vocale. Veuillez réessayer."

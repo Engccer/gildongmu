@@ -24,6 +24,9 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// 질문 헤딩으로 이동한다. 구계약(전송 즉시 질문 헤딩 선점)은 폐기 — 완료 재확정이
     /// 같은 값 재대입 no-op이 되어 생성 중 콘텐츠 삽입에 뺏긴 포커스가 복귀하지 못했다.
     @AccessibilityFocusState private var isSendFocused: Bool
+    /// 지우기 버튼이 초안 소거로 자신을 제거할 때 포커스를 입력 필드로 선점 이동
+    /// (포커스를 쥔 요소의 제거는 VO 최상단 이탈을 유발, 헌장 §5)
+    @AccessibilityFocusState private var isDraftFocused: Bool
     /// 진행 중인 완료 포커스 시퀀스(400ms 가시화 대기 + 600ms 실패 감지 + 재시도).
     /// 새 답변 도착·뷰 이탈 시 취소해 옛 질문으로의 지연 대입 잔류를 막는다.
     @State private var completionFocusTask: Task<Void, Never>?
@@ -118,8 +121,23 @@ struct ChatConversationView<EmptyContent: View>: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
+                .accessibilityFocused($isDraftFocused)
+            // 텍스트 지우기(검색창 시스템 clear 버튼의 채팅 판, 2026-07-20 위원장 요청).
+            // 초안이 있을 때만 존재 — 지우면 자신이 사라지므로 포커스를 입력 필드로
+            // 선점 이동(§5). 키보드 재진입은 VO 제약상 직접 더블탭 필요(프로그래밍 불가).
+            if !draft.isEmpty {
+                Button {
+                    draft = ""
+                    isDraftFocused = true
+                } label: {
+                    Label(appLocalized("ios.chat.clear"), systemImage: "xmark.circle.fill")
+                        .labelStyle(.iconOnly)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+            }
             // WhatsApp식 홀드 받아쓰기(2026-07-20 탭 토글 대체): 누르는 동안 녹음,
-            // 떼면 초안 삽입. 채팅은 긴 문장 입력이 있어 위로 밀어 잠금·왼쪽으로 밀어
+            // 떼면 즉시 전송. 채팅은 긴 문장 입력이 있어 위로 밀어 잠금·왼쪽으로 밀어
             // 취소를 허용한다(검색과의 차이). 라벨 "받아쓰기"는 행위 일반명사 충돌 회피
             // ("음성 입력" 금지 — 받아쓴 내용의 "음성"과 낭독 혼동, 실측 2026-07-18).
             HoldDictationButton(
@@ -129,15 +147,32 @@ struct ChatConversationView<EmptyContent: View>: View {
                 showsTitle: false
             ) { text in
                 // 직전 답변의 지연 완료 시퀀스가 대기 중이면 폐기 — isStreaming 가드는
-                // "새 질문 전송"만 걸러서, 전송 전인 받아쓰기 초안 채움 시점엔 통과해
-                // 방금 잡은 보내기 버튼 포커스를 옛 질문 헤딩으로 되돌린다(리뷰 검출).
+                // "새 질문 전송"만 걸러서, 전송 전 시점엔 통과해 방금 잡은 포커스를
+                // 옛 질문 헤딩으로 되돌린다(리뷰 검출).
                 completionFocusTask?.cancel()
                 completionFocusTask = nil
-                draft = text
-                // 자동 전송 없는 설계라 다음 행동이 곧 전송: 포커스를 보내기 버튼으로
-                // 이동한 뒤 받아쓴 결과 원문을 polite 통지(헌장 §6 받아쓰기 완료).
-                isSendFocused = true
-                AccessibilityNotification.Announcement(text).post()
+                // 타이핑해 둔 초안과 받아쓴 텍스트는 병합이 정책(리뷰 검출: 무병합이면
+                // 초안이 입력창에 고아로 방치돼 무엇이 전송됐는지 불투명): 보내는 것
+                // = 초안 + 받아쓴 말 전부, 초안은 소거. 통지도 병합 원문 전체 —
+                // 사용자가 들은 것이 곧 전송된 것(결정론).
+                let typed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                let message = typed.isEmpty ? text : "\(typed) \(text)"
+                if model.isStreaming {
+                    // 생성 중엔 전송 불가: 발화 유실 금지 — 초안으로 보존(구계약 폴백)
+                    draft = message
+                    isSendFocused = true
+                    AccessibilityNotification.Announcement(message).post()
+                } else {
+                    // 릴리스=즉시 전송(위원장 실기기 지시 2026-07-20, WhatsApp 동형).
+                    // 순서는 헌장 §6 "포커스 먼저, 통지 나중": 보내기 버튼 포커스를
+                    // 동기 선점한 뒤 통지 — questionRevision onChange의 재대입은 같은
+                    // 값 no-op이라 통지를 인터럽트하지 않는다(리뷰 검출: 통지 선행이면
+                    // 다음 렌더 패스의 포커스 이동이 원문 낭독을 자를 위험).
+                    draft = ""
+                    isSendFocused = true
+                    AccessibilityNotification.Announcement(message).post()
+                    model.send(message)
+                }
             }
             // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장).
             // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.

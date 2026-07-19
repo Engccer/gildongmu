@@ -22,12 +22,13 @@
       "sending": "Sending",
       "emptyAnswer": "Couldn't prepare a response",
       "failed": "Couldn't get a response. Please try again in a moment.",
-      "progressFallback": "Checking information"
+      "progressFallback": "Checking information",
+      "clear": "Clear text"
     },
     "voice": {
       "hold": "Dictate",
       "holdHintSearch": "Press and hold to speak; release to search",
-      "holdHintChat": "Press and hold to speak; release to insert. Slide up while holding to lock so it keeps going after you let go, then tap to finish. Slide left while holding to cancel",
+      "holdHintChat": "Press and hold to speak; release to send. Slide up while holding to lock so it keeps going after you let go, then tap to send. Slide left while holding to cancel",
       "holdGuide": "Press and hold to speak",
       "denied": "Please allow microphone access in Settings",
       "failed": "Couldn't start speech recognition. Please try again."

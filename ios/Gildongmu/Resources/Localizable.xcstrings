@@ -5101,6 +5101,40 @@
         }
       }
     },
+    "ios.chat.clear": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "텍스트 지우기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear text"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar texto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer le texte"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancella il testo"
+          }
+        }
+      }
+    },
     "ios.chat.emptyAnswer": {
       "localizations": {
         "ko": {
@@ -10206,31 +10240,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "누른 채로 말하고, 손을 떼면 입력됩니다. 누른 채 위로 밀면 잠겨서 손을 떼도 계속되고, 다시 탭하면 입력됩니다. 누른 채 왼쪽으로 밀면 취소합니다"
+            "value": "누른 채로 말하고, 손을 떼면 전송합니다. 누른 채 위로 밀면 잠겨서 손을 떼도 계속되고, 다시 탭하면 전송합니다. 누른 채 왼쪽으로 밀면 취소합니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Press and hold to speak; release to insert. Slide up while holding to lock so it keeps going after you let go, then tap to finish. Slide left while holding to cancel"
+            "value": "Press and hold to speak; release to send. Slide up while holding to lock so it keeps going after you let go, then tap to send. Slide left while holding to cancel"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantén pulsado para hablar y suelta para insertar. Desliza hacia arriba sin soltar para bloquear y que siga tras levantar el dedo; toca de nuevo para terminar. Desliza hacia la izquierda sin soltar para cancelar"
+            "value": "Mantén pulsado para hablar y suelta para enviar. Desliza hacia arriba sin soltar para bloquear y que siga tras levantar el dedo; toca de nuevo para enviar. Desliza hacia la izquierda sin soltar para cancelar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maintenez appuyé pour parler, relâchez pour insérer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour terminer. Faites glisser vers la gauche sans relâcher pour annuler"
+            "value": "Maintenez appuyé pour parler, relâchez pour envoyer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour envoyer. Faites glisser vers la gauche sans relâcher pour annuler"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tieni premuto per parlare, rilascia per inserire. Scorri verso l'alto senza rilasciare per bloccare e continuare dopo aver sollevato il dito, poi tocca per terminare. Scorri verso sinistra senza rilasciare per annullare"
+            "value": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare e continuare dopo aver sollevato il dito, poi tocca per inviare. Scorri verso sinistra senza rilasciare per annullare"
           }
         }
       }

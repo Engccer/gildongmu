@@ -7,7 +7,7 @@ import Accessibility
 /// 전달한다. allowsSlideActions(채팅 전용)면 누른 채 위로 밀어 잠금(손을 떼도 계속,
 /// 이후 탭이 정지·전달), 왼쪽으로 밀어 취소(결과 폐기). 검색은 홀드 단일 동작.
 ///
-/// VoiceOver 계약(위원장 요구, 실기기 검증 대기):
+/// VoiceOver 계약(위원장 요구):
 /// - 두 번 탭 뒤 유지(pass-through)가 그대로 홀드로 전달된다. 짧은 탭(더블탭 활성화)은
 ///   녹음 없이 사용법 안내만 polite 통지 — 유령 시작·즉시 정지 소음을 만들지 않는다.
 /// - 녹음 시작 순간 interrupting 무음 통지로 진행 중 낭독(라벨·힌트)을 즉시 끊는다.
@@ -15,10 +15,13 @@ import Accessibility
 /// - 세션 중 접근성 라벨 불변: 포커스를 쥔 요소의 라벨 변경은 VO 재낭독을 유발하므로
 ///   (탭 토글 시절의 라벨 전환 신호는 폐기) 상태 신호는 시작·정지음과 햅틱만 쓴다.
 ///
-/// 홀드 성립을 LongPressGesture(250ms)로 두는 이유: DragGesture(minimumDistance: 0)
-/// 단독은 List 스크롤 플릭의 스침에도 즉시 발화해 유령 녹음이 시작되고, 스크롤이
-/// 제스처를 가로채면 onEnded가 유실돼 정지가 안 된다. 탭/홀드/스크롤 판별을 시스템
-/// 인식기 경합에 위임하면 세 경로가 구조적으로 분리된다.
+/// 제스처는 UIKit 인식기 계층(HoldGestureCatcher)이 정본이다. SwiftUI
+/// LongPressGesture.sequenced(DragGesture) 조합은 실기기에서 두 결함이 확정됐다
+/// (2026-07-20 위원장 실측): ① List(UIScrollView) 안에서 스크롤 팬에 가로채여
+/// 검색 탭 홀드가 아예 성립하지 않음 ② VO pass-through에서 드래그 추적이 유실돼
+/// 위로 밀어 잠금이 미동작. UIKit UILongPressGestureRecognizer는 스크롤 팬과의
+/// 경합을 시스템 규칙으로 판정하고(정지 0.25s=홀드 승리, 플릭=팬 승리) began 이후
+/// 이동을 .changed로 연속 전달한다 — WhatsApp류 홀드 녹음의 표준 구현 계층.
 struct HoldDictationButton: View {
     let speech: SpeechService
     /// 위로 밀어 잠금 + 왼쪽으로 밀어 취소 허용(채팅 true, 검색 false)
@@ -29,15 +32,9 @@ struct HoldDictationButton: View {
     let showsTitle: Bool
     let onTranscript: (String) -> Void
 
-    private enum Press: Equatable {
-        case inactive
-        case pressing(translation: CGSize)
-    }
-
     /// 잠금·취소 판정 이동량(pt). 오발동 방지와 도달성의 절충(WhatsApp 관행 수준).
     private static let slideThreshold: CGFloat = 60
 
-    @GestureState private var press: Press = .inactive
     /// 이번 홀드가 녹음을 시작했는지(릴리스·슬라이드 처리 대상인지)
     @State private var sessionActive = false
     @State private var locked = false
@@ -66,54 +63,21 @@ struct HoldDictationButton: View {
         }
         .frame(minWidth: 44, minHeight: 44)
         .contentShape(Rectangle())
-        .onTapGesture(perform: handleTap)
-        .gesture(holdGesture)
+        .overlay {
+            HoldGestureCatcher(
+                onBegan: beginHold,
+                onMoved: handleSlide,
+                onEnded: endHold,
+                onTapped: handleTap
+            )
+        }
         .accessibilityElement()
         .accessibilityLabel(appLocalized("ios.voice.hold"))
         .accessibilityHint(hint)
         .accessibilityAddTraits(.isButton)
-        .onChange(of: press) { old, new in
-            handlePressChange(old: old, new: new)
-        }
         // 외부 폐기(화면 이탈 cancel 등)로 청취가 끝나면 잠금 표지도 정리
         .onChange(of: speech.isListening) {
             if !speech.isListening { locked = false }
-        }
-    }
-
-    private var holdGesture: some Gesture {
-        LongPressGesture(minimumDuration: 0.25)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .updating($press) { value, state, _ in
-                if case .second(true, let drag) = value {
-                    state = .pressing(translation: drag?.translation ?? .zero)
-                }
-            }
-    }
-
-    /// @GestureState 리셋(릴리스·시스템 취소 공통)을 한 지점에서 받는다 — sequenced
-    /// 제스처는 onEnded가 취소 경로를 놓치므로 상태 전이 관찰이 유일한 안전 경로.
-    private func handlePressChange(old: Press, new: Press) {
-        switch (old, new) {
-        case (.inactive, .pressing):
-            beginHold()
-        case (.pressing, .pressing(let translation)):
-            guard sessionActive, allowsSlideActions else { return }
-            // 지배 축 판정: 위로 밀면 잠금, 왼쪽으로 밀면 취소(대각선 오발동 방지)
-            if !locked, translation.height <= -Self.slideThreshold,
-               abs(translation.height) >= abs(translation.width) {
-                engageLock()
-            } else if !locked, translation.width <= -Self.slideThreshold,
-                      abs(translation.width) > abs(translation.height) {
-                // 취소는 잠금 전에만: translation은 터치 시작 기준 누적이라 잠금 후
-                // 같은 터치의 대각선 드리프트가 취소 조건을 만족할 수 있다(리뷰 검출) —
-                // 잠금 햅틱으로 "손 떼도 계속"을 신뢰한 발화의 무단 폐기 차단
-                cancelHold()
-            }
-        case (.pressing, .inactive):
-            endHold()
-        default:
-            break
         }
     }
 
@@ -124,6 +88,21 @@ struct HoldDictationButton: View {
         sessionActive = true
         interruptVoiceOverSpeech()
         startTask = Task { await speech.start() }
+    }
+
+    /// 홀드 성립 이후의 이동(시작점 기준 누적). 지배 축 판정으로 대각선 오발동 방지.
+    private func handleSlide(_ translation: CGSize) {
+        guard sessionActive, allowsSlideActions else { return }
+        if !locked, translation.height <= -Self.slideThreshold,
+           abs(translation.height) >= abs(translation.width) {
+            engageLock()
+        } else if !locked, translation.width <= -Self.slideThreshold,
+                  abs(translation.width) > abs(translation.height) {
+            // 취소는 잠금 전에만: translation은 터치 시작 기준 누적이라 잠금 후
+            // 같은 터치의 대각선 드리프트가 취소 조건을 만족할 수 있다(리뷰 검출) —
+            // 잠금 햅틱으로 "손 떼도 계속"을 신뢰한 발화의 무단 폐기 차단
+            cancelHold()
+        }
     }
 
     private func engageLock() {
@@ -195,5 +174,78 @@ struct HoldDictationButton: View {
         var silence = AttributedString(" ")
         silence.accessibilitySpeechAnnouncementPriority = .high
         AccessibilityNotification.Announcement(silence).post()
+    }
+}
+
+/// UIKit 홀드·탭 인식기 캐처(투명 오버레이). 파일 상단 주석의 실기기 결함 2건이
+/// SwiftUI 제스처 조합을 배제한 근거다. 탭은 require(toFail: 홀드)로 종속시켜
+/// "0.25s 미만 릴리스에만 탭"을 시스템이 판정한다(UITap엔 자체 시간 상한이 없어
+/// 길게 눌렀다 뗀 것도 탭으로 오인식하는 함정 회피).
+private struct HoldGestureCatcher: UIViewRepresentable {
+    let onBegan: () -> Void
+    let onMoved: (CGSize) -> Void
+    let onEnded: () -> Void
+    let onTapped: () -> Void
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        // 접근성 요소는 SwiftUI 래퍼(.accessibilityElement) 하나뿐 — 캐처는 비노출
+        view.isAccessibilityElement = false
+
+        let hold = UILongPressGestureRecognizer(
+            target: context.coordinator, action: #selector(Coordinator.handleHold(_:))
+        )
+        hold.minimumPressDuration = 0.25
+        view.addGestureRecognizer(hold)
+
+        let tap = UITapGestureRecognizer(
+            target: context.coordinator, action: #selector(Coordinator.handleTap(_:))
+        )
+        tap.require(toFail: hold)
+        view.addGestureRecognizer(tap)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // SwiftUI 상태 변경마다 재생성되는 클로저를 코디네이터에 최신화
+        context.coordinator.parent = self
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: HoldGestureCatcher
+        /// 이동량 기준점: 뷰 로컬이 아니라 window 좌표(홀드 중 스크롤·레이아웃 변동 무관)
+        private var startPoint: CGPoint = .zero
+
+        init(parent: HoldGestureCatcher) {
+            self.parent = parent
+        }
+
+        @objc func handleHold(_ recognizer: UILongPressGestureRecognizer) {
+            let point = recognizer.location(in: recognizer.view?.window)
+            switch recognizer.state {
+            case .began:
+                startPoint = point
+                parent.onBegan()
+            case .changed:
+                parent.onMoved(CGSize(
+                    width: point.x - startPoint.x,
+                    height: point.y - startPoint.y
+                ))
+            case .ended, .cancelled, .failed:
+                // 시스템 취소(전화 수신·VO 개입)도 릴리스와 동일 처리 — 유령 녹음 방지
+                parent.onEnded()
+            default:
+                break
+            }
+        }
+
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard recognizer.state == .ended else { return }
+            parent.onTapped()
+        }
     }
 }
