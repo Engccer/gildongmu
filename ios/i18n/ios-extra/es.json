@@ -39,7 +39,6 @@
       "searching": "Buscando",
       "failedTitle": "Error en la búsqueda",
       "webSection": "Búsqueda web",
-      "attractionSection": "Atracciones",
       "announceFailed": "Error en la búsqueda. Inténtalo de nuevo en un momento",
       "announceEmpty": "Sin resultados",
       "announceCount": "{count} resultados"

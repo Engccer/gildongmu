@@ -10,7 +10,6 @@ import {
 } from "@/lib/category";
 import type { RegionCode } from "@/lib/region";
 import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
-import { sortPlacesByDistance } from "@/lib/geo";
 import type {
   AddressMatch,
   JusoAddress,
@@ -33,7 +32,6 @@ import { ChipFilter } from "./ChipFilter";
 import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
-import { PlaceCard } from "./PlaceCard";
 import { PlaceDetail } from "./PlaceDetail";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
@@ -77,7 +75,6 @@ export function PlaceSearch({
   canShowKids = false,
   canShowSurroundings = false,
   canShowWhereAmI = false,
-  canSearchAttractions = false,
   canShowTransit = false,
   canSearchAddress = false,
   canSearchWeb = false,
@@ -104,8 +101,6 @@ export function PlaceSearch({
   canShowSurroundings?: boolean;
   /** 카카오 키가 있어 현재 위치 정위 카드를 제공할 수 있는지 */
   canShowWhereAmI?: boolean;
-  /** 카카오 키가 있어 관광지·명소 검색 섹션을 제공할 수 있는지 */
-  canSearchAttractions?: boolean;
   /** ODsay 키가 있어 대중교통 길찾기 브리핑을 제공할 수 있는지 */
   canShowTransit?: boolean;
   /** 행안부 juso 키가 있어 주소 검색 모드를 제공할 수 있는지 */
@@ -138,13 +133,6 @@ export function PlaceSearch({
     | { kind: "coordError" }
     | { kind: "done"; addresses: JusoAddress[] }
   >({ kind: "idle" });
-  const [attractionStatus, setAttractionStatus] = useState<
-    | { kind: "idle" }
-    | { kind: "loading" }
-    | { kind: "done"; places: Place[] }
-    | { kind: "error" }
-  >({ kind: "idle" });
-  const attractionReqIdRef = useRef(0);
   // 주소 검색 stale-result race 방지(place reqIdRef와 동형).
   const addrReqIdRef = useRef(0);
   // 웹 검색 stale-result race 방지(place reqIdRef와 동형).
@@ -329,39 +317,6 @@ export function PlaceSearch({
   }, []);
 
   /**
-   * 명소 검색 실행 — /api/places/attractions(정확도순+category_name 필터) 호출.
-   * 거리순 장소 검색과 병렬 발사되는 보조 섹션. 결과 있으면 최상단 병치,
-   * 없으면 섹션 미노출(orderResultSections가 제외). place reqId 동형 stale 가드.
-   */
-  const performAttractionSearch = useCallback(
-    async (raw: string): Promise<number> => {
-      const q = raw.trim();
-      if (!q) return 0;
-      const myId = ++attractionReqIdRef.current;
-      setAttractionStatus({ kind: "loading" });
-      try {
-        const coordQuery = userCoords
-          ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
-          : "";
-        const res = await fetch(
-          `/api/places/attractions?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as PlaceSearchResult;
-        if (attractionReqIdRef.current !== myId) return 0;
-        setAttractionStatus({ kind: "done", places: data.places });
-        return data.places.length;
-      } catch {
-        // 보조 섹션 — 실패는 0건 취급(무음 degrade, 폴백 억제는 장소 errored 담당).
-        if (attractionReqIdRef.current !== myId) return 0;
-        setAttractionStatus({ kind: "error" });
-        return 0;
-      }
-    },
-    [locale, userCoords],
-  );
-
-  /**
    * 검색 진입점 단일화 — 장소(performSearch)와, juso 키가 있으면 주소
    * (performAddressSearch)를 함께 발사한다. runSearch(폼 제출)·handleTranscribed
    * (음성)·첫 마운트 ?q= 자동검색 셋이 반드시 이 한 경로를 공유한다. 과거엔 세 곳에
@@ -375,15 +330,11 @@ export function PlaceSearch({
       // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
       setWebPending(false);
       setWebResults(null);
-      // 명소 섹션은 ko(카카오)·en(TourAPI) 모두 지원 — route가 로케일별 소스를 고른다.
-      const canAttraction = canSearchAttractions;
-      if (!canAttraction) setAttractionStatus({ kind: "idle" });
-      // 장소·주소·명소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
+      // 장소·주소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
       // 0건 폴백 조건일 때만 2단계로 발사한다(카카오·juso가 찾으면 웹 노이즈 회피).
       const [place, addrCount] = await Promise.all([
         performSearch(raw),
         canSearchAddress ? performAddressSearch(raw) : Promise.resolve(0),
-        canAttraction ? performAttractionSearch(raw) : Promise.resolve(0),
       ]);
       if (
         canSearchWeb &&
@@ -398,10 +349,8 @@ export function PlaceSearch({
       performSearch,
       performAddressSearch,
       performWebSearch,
-      performAttractionSearch,
       canSearchAddress,
       canSearchWeb,
-      canSearchAttractions,
     ],
   );
 
@@ -476,7 +425,7 @@ export function PlaceSearch({
       });
   }, [runQuerySearch]);
 
-  // 장소·주소·명소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
+  // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
   // juso 키 없으면 주소 검색을 안 하므로 장소 settled만으로 판정한다. 검색이 한 번도
   // 일어나지 않은 idle에서는 옮기지 않는다(둘 다 idle).
   const focusedForSearchRef = useRef(false);
@@ -490,23 +439,13 @@ export function PlaceSearch({
     // 검색(대부분)은 webPending=false라 장소·주소 settled 즉시 포커스가 옮겨진다.
     // (webResults!==null로 판정하면 폴백 미발사 검색이 영원히 포커스를 못 받는다.)
     const webSettled = !canSearchWeb || !webPending;
-    // 명소는 결과 최상단 섹션(가장 강한 의도 신호)이라, place가 먼저 done돼도
-    // attraction이 loading이면 포커스를 대기시킨다 — idle(en 로케일·게이트 꺼짐)·
-    // done·error는 모두 non-loading이라 자연히 settled 취급되어 en 기존 동작은 불변.
-    const attractionSettled = attractionStatus.kind !== "loading";
     // runQuerySearch가 performSearch에서 status=loading을 동기 세팅하므로 검색이
     // 시작되면 status.kind !== "idle"이 항상 참 — addr 절은 명시적 안전망일 뿐
     // 실질 dead code다(의도 보존용으로 남김).
     const anyStarted =
       status.kind !== "idle" ||
       (canSearchAddress && addrStatus.kind !== "idle");
-    if (
-      placeSettled &&
-      addrSettled &&
-      webSettled &&
-      attractionSettled &&
-      anyStarted
-    ) {
+    if (placeSettled && addrSettled && webSettled && anyStarted) {
       if (!focusedForSearchRef.current) {
         focusedForSearchRef.current = true;
         requestAnimationFrame(() => resultsHeadingRef.current?.focus());
@@ -515,24 +454,14 @@ export function PlaceSearch({
       // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
       focusedForSearchRef.current = false;
     }
-  }, [
-    status.kind,
-    addrStatus.kind,
-    canSearchAddress,
-    canSearchWeb,
-    webPending,
-    attractionStatus.kind,
-  ]);
+  }, [status.kind, addrStatus.kind, canSearchAddress, canSearchWeb, webPending]);
 
   // 단일 polite 채널 통지. coordError(주소 선택 후 좌표 실패)는 검색 완료 통지와
   // 시점이 달라 우선 노출.
   const placeCount = status.kind === "done" ? status.result.places.length : null;
   const addrCount = addrStatus.kind === "done" ? addrStatus.addresses.length : null;
   const webCount = webResults ? webResults.length : null;
-  const loading =
-    status.kind === "loading" ||
-    addrStatus.kind === "loading" ||
-    attractionStatus.kind === "loading";
+  const loading = status.kind === "loading" || addrStatus.kind === "loading";
   const liveParts: LivePart[] | null =
     addrStatus.kind === "coordError"
       ? [{ key: "search.addressCoordFailed" }]
@@ -541,10 +470,6 @@ export function PlaceSearch({
           placeCount,
           addrCount,
           webCount,
-          attractionCount:
-            attractionStatus.kind === "done"
-              ? attractionStatus.places.length
-              : null,
           spokenQuery,
           placeErrored: status.kind === "error",
         });
@@ -574,11 +499,9 @@ export function PlaceSearch({
     );
   }
 
-  const rawPlaces = status.kind === "done" ? status.result.places : [];
-  // 현재 위치가 있으면 가까운 순으로 정렬하고 각 카드에 distanceMeters를 부여한다.
-  // groupByCategory가 입력 순서를 보존하므로, 카테고리 그룹은 그대로 유지되되 각
-  // 그룹 안이 "가까운 순"으로 배열된다(위치 없으면 provider 순서 유지).
-  const places = userCoords ? sortPlacesByDistance(rawPlaces, userCoords) : rawPlaces;
+  // 거리순 재정렬은 정확도순 전환으로 폐기(스펙 2026-07-20), distanceMeters는
+  // 서버가 이미 주석(annotateDistances)했으므로 provider 관련도 순서를 그대로 쓴다.
+  const places = status.kind === "done" ? status.result.places : [];
   // 칩 목록·카운트는 전체 결과 기준(고정) — 선택해도 칩이 사라지지 않아 스크린
   // 리더 탐색이 안정적이다. 두 축(카테고리·지역)은 AND로 결합해 표시 목록만
   // 좁힌다. 각 축은 항목이 1개 이하면 ChipFilter가 스스로 숨으므로, 브랜드
@@ -604,13 +527,10 @@ export function PlaceSearch({
   const addrResultCount =
     addrStatus.kind === "done" ? addrStatus.addresses.length : 0;
   const webResultCount = webResults ? webResults.length : 0;
-  const attractionResultCount =
-    attractionStatus.kind === "done" ? attractionStatus.places.length : 0;
   const sectionOrder = orderResultSections(
     placeResultCount,
     addrResultCount,
     webResultCount,
-    attractionResultCount,
   );
   // 둘 이상 섹션이 렌더될 때만 구분 헤딩(단일 섹션은 헤딩 없이).
   // 장소·주소·웹은 항상 병렬이라 공존 시 헤딩이 자연히 켜진다.
@@ -622,8 +542,6 @@ export function PlaceSearch({
     placeCount: status.kind === "done" ? places.length : null,
     addrCount: addrStatus.kind === "done" ? addrStatus.addresses.length : null,
     webCount: webResults ? webResults.length : null,
-    attractionCount:
-      attractionStatus.kind === "done" ? attractionStatus.places.length : null,
     spokenQuery: null,
     placeErrored: status.kind === "error",
   });
@@ -664,18 +582,6 @@ export function PlaceSearch({
       addresses={addrStatus.kind === "done" ? addrStatus.addresses : []}
       onSelect={onSelectAddress}
     />
-  );
-
-  // 명소 섹션 본체 — 거리순 내 주변과 동형으로 PlaceCard 재사용(이름·분류·거리는
-  // joinText로 한 줄=한 객체, 버튼은 별도 객체 유지). 카테고리 그룹핑 없음(전부 명소).
-  const attractionSectionBody = (
-    <ul className="mt-3 flex flex-col gap-3">
-      {(attractionStatus.kind === "done" ? attractionStatus.places : []).map(
-        (place) => (
-          <PlaceCard key={place.id} place={place} onOpen={openDetail} />
-        ),
-      )}
-    </ul>
   );
 
   return (
@@ -757,7 +663,6 @@ export function PlaceSearch({
           status.kind==="error"는 조건에 넣지 않는다(빈 컨테이너·중복 헤딩 방지). */}
       {(status.kind === "done" ||
         addrStatus.kind === "done" ||
-        attractionStatus.kind === "done" ||
         (canSearchWeb && webResults !== null && webResults.length > 0)) && (
         <div className="mt-4">
           <h2
@@ -771,18 +676,6 @@ export function PlaceSearch({
             <p className="mt-2">{t("search.noResults")}</p>
           ) : (
             sectionOrder.map((kind) => {
-              if (kind === "attraction") {
-                return (
-                  <section key="attraction" className="mt-4">
-                    {showSectionHeadings && (
-                      <h3 className="text-lg font-semibold">
-                        {t("search.attractionSection")}
-                      </h3>
-                    )}
-                    {attractionSectionBody}
-                  </section>
-                );
-              }
               if (kind === "place") {
                 return (
                   <section key="place" className="mt-4">

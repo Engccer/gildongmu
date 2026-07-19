@@ -27,11 +27,9 @@
     "addressError": "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     "addressCoordFailed": "이 주소의 좌표를 찾지 못해 상세를 열 수 없습니다.",
     "webSection": "웹",
-    "attractionSection": "관광지·명소",
     "placeCount": "장소 {count}건",
     "webCount": "웹 {count}건",
-    "addressCount": "주소 {count}건",
-    "attractionCount": "관광지 {count}곳"
+    "addressCount": "주소 {count}건"
   },
   "region": {
     "filterLabel": "지역으로 거르기",

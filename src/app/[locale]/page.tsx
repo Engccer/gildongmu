@@ -3,7 +3,6 @@ import { PlaceSearch } from "@/components/PlaceSearch";
 import { activeProviderName } from "@/lib/providers/places";
 import {
   hasKakaoKey,
-  hasTourApiKey,
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasSeoulSubwayRealtimeKey,
@@ -34,7 +33,6 @@ export default async function HomePage({
       canShowKids={hasKakaoKey()}
       canShowSurroundings={hasKakaoKey()}
       canShowWhereAmI={hasKakaoKey()}
-      canSearchAttractions={hasKakaoKey() || hasTourApiKey()}
       canShowTransit={hasOdsayKey()}
       canSearchAddress={hasJusoKey()}
       canSearchWeb={hasPerplexityKey()}

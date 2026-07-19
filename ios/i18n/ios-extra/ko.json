@@ -39,7 +39,6 @@
       "searching": "검색 중",
       "failedTitle": "검색에 실패했습니다",
       "webSection": "웹 검색",
-      "attractionSection": "명소",
       "announceFailed": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요",
       "announceEmpty": "검색 결과가 없습니다",
       "announceCount": "검색 결과 {count}건"

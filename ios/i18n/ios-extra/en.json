@@ -39,7 +39,6 @@
       "searching": "Searching",
       "failedTitle": "Search failed",
       "webSection": "Web search",
-      "attractionSection": "Attractions",
       "announceFailed": "Search failed. Please try again in a moment",
       "announceEmpty": "No results",
       "announceCount": "{count} results"

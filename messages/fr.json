@@ -27,11 +27,9 @@
     "addressError": "Échec de la recherche d'adresse. Veuillez réessayer dans un instant.",
     "addressCoordFailed": "Impossible de localiser les coordonnées de cette adresse ; les détails ne peuvent pas être ouverts.",
     "webSection": "Web",
-    "attractionSection": "Sites touristiques",
     "placeCount": "{count} lieux",
     "webCount": "{count} résultats web",
-    "addressCount": "{count} adresses",
-    "attractionCount": "{count} sites touristiques"
+    "addressCount": "{count} adresses"
   },
   "region": {
     "filterLabel": "Filtrer par région",
