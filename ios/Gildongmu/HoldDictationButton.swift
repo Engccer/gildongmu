@@ -84,7 +84,15 @@ struct HoldDictationButton: View {
     private func beginHold() {
         // 잠금 세션·단축어 시작 세션(외부 시작)·정지·취소 정리 중엔 새 세션을 만들지 않는다
         guard !sessionActive, !locked, !speech.isListening,
-              !finishInFlight, !cancelInFlight else { return }
+              !finishInFlight, !cancelInFlight else {
+            #if DEBUG
+            chatFocusLog("holdmic begin REJECT session=\(sessionActive) locked=\(locked) listening=\(speech.isListening) finish=\(finishInFlight) cancel=\(cancelInFlight)")
+            #endif
+            return
+        }
+        #if DEBUG
+        chatFocusLog("holdmic begin OK slideActions=\(allowsSlideActions)")
+        #endif
         sessionActive = true
         interruptVoiceOverSpeech()
         startTask = Task { await speech.start() }
@@ -92,7 +100,12 @@ struct HoldDictationButton: View {
 
     /// 홀드 성립 이후의 이동(시작점 기준 누적). 지배 축 판정으로 대각선 오발동 방지.
     private func handleSlide(_ translation: CGSize) {
-        guard sessionActive, allowsSlideActions else { return }
+        guard sessionActive, allowsSlideActions else {
+            #if DEBUG
+            chatFocusLog("holdmic slide DROP session=\(sessionActive) allow=\(allowsSlideActions) tr=(\(Int(translation.width)),\(Int(translation.height)))")
+            #endif
+            return
+        }
         if !locked, translation.height <= -Self.slideThreshold,
            abs(translation.height) >= abs(translation.width) {
             engageLock()
@@ -106,6 +119,9 @@ struct HoldDictationButton: View {
     }
 
     private func engageLock() {
+        #if DEBUG
+        chatFocusLog("holdmic LOCK engaged")
+        #endif
         locked = true
         // 발화 금지 구간이라 잠금 통지는 햅틱만(시작·정지음과 구분되는 질감)
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
@@ -130,6 +146,9 @@ struct HoldDictationButton: View {
     }
 
     private func endHold() {
+        #if DEBUG
+        chatFocusLog("holdmic release session=\(sessionActive) locked=\(locked)")
+        #endif
         guard sessionActive else { return }
         sessionActive = false
         if locked { return } // 잠금: 손을 떼도 계속, 정지는 이후 탭이 담당
@@ -224,19 +243,37 @@ private struct HoldGestureCatcher: UIViewRepresentable {
             self.parent = parent
         }
 
+        #if DEBUG
+        /// .changed 계측 스로틀(직전 로그 지점에서 8pt 이상 이동 시에만 기록)
+        private var lastLogged: CGPoint = .zero
+        #endif
+
         @objc func handleHold(_ recognizer: UILongPressGestureRecognizer) {
             let point = recognizer.location(in: recognizer.view?.window)
             switch recognizer.state {
             case .began:
                 startPoint = point
+                #if DEBUG
+                lastLogged = point
+                chatFocusLog("holdmic recognizer BEGAN pt=(\(Int(point.x)),\(Int(point.y)))")
+                #endif
                 parent.onBegan()
             case .changed:
+                #if DEBUG
+                if hypot(point.x - lastLogged.x, point.y - lastLogged.y) >= 8 {
+                    lastLogged = point
+                    chatFocusLog("holdmic recognizer CHANGED tr=(\(Int(point.x - startPoint.x)),\(Int(point.y - startPoint.y)))")
+                }
+                #endif
                 parent.onMoved(CGSize(
                     width: point.x - startPoint.x,
                     height: point.y - startPoint.y
                 ))
             case .ended, .cancelled, .failed:
                 // 시스템 취소(전화 수신·VO 개입)도 릴리스와 동일 처리 — 유령 녹음 방지
+                #if DEBUG
+                chatFocusLog("holdmic recognizer END state=\(recognizer.state.rawValue) tr=(\(Int(point.x - startPoint.x)),\(Int(point.y - startPoint.y)))")
+                #endif
                 parent.onEnded()
             default:
                 break
