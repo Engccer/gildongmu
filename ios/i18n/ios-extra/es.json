@@ -25,7 +25,10 @@
       "progressFallback": "Consultando información"
     },
     "voice": {
-      "start": "Iniciar dictado",
+      "hold": "Dictar",
+      "holdHintSearch": "Mantén pulsado para hablar y suelta para buscar",
+      "holdHintChat": "Mantén pulsado para hablar y suelta para insertar. Desliza hacia arriba sin soltar para bloquear y que siga tras levantar el dedo; toca de nuevo para terminar. Desliza hacia la izquierda sin soltar para cancelar",
+      "holdGuide": "Mantén pulsado para hablar",
       "denied": "Permite el acceso al micrófono en Ajustes",
       "failed": "No se pudo iniciar el reconocimiento de voz. Inténtalo de nuevo."
     },

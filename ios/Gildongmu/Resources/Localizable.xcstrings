@@ -10133,36 +10133,138 @@
         }
       }
     },
-    "ios.voice.start": {
+    "ios.voice.hold": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "받아쓰기 시작"
+            "value": "받아쓰기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start dictation"
+            "value": "Dictate"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar dictado"
+            "value": "Dictar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer la dictée"
+            "value": "Dictée"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia dettatura"
+            "value": "Dettatura"
+          }
+        }
+      }
+    },
+    "ios.voice.holdGuide": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "누른 채로 말해 주세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press and hold to speak"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén pulsado para hablar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenez appuyé pour parler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni premuto per parlare"
+          }
+        }
+      }
+    },
+    "ios.voice.holdHintChat": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "누른 채로 말하고, 손을 떼면 입력됩니다. 누른 채 위로 밀면 잠겨서 손을 떼도 계속되고, 다시 탭하면 입력됩니다. 누른 채 왼쪽으로 밀면 취소합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press and hold to speak; release to insert. Slide up while holding to lock so it keeps going after you let go, then tap to finish. Slide left while holding to cancel"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén pulsado para hablar y suelta para insertar. Desliza hacia arriba sin soltar para bloquear y que siga tras levantar el dedo; toca de nuevo para terminar. Desliza hacia la izquierda sin soltar para cancelar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenez appuyé pour parler, relâchez pour insérer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour terminer. Faites glisser vers la gauche sans relâcher pour annuler"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni premuto per parlare, rilascia per inserire. Scorri verso l'alto senza rilasciare per bloccare e continuare dopo aver sollevato il dito, poi tocca per terminare. Scorri verso sinistra senza rilasciare per annullare"
+          }
+        }
+      }
+    },
+    "ios.voice.holdHintSearch": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "누른 채로 말하고, 손을 떼면 검색합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press and hold to speak; release to search"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén pulsado para hablar y suelta para buscar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maintenez appuyé pour parler, relâchez pour lancer la recherche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni premuto per parlare, rilascia per cercare"
           }
         }
       }

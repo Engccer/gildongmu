@@ -25,7 +25,10 @@
       "progressFallback": "Vérification des informations"
     },
     "voice": {
-      "start": "Démarrer la dictée",
+      "hold": "Dictée",
+      "holdHintSearch": "Maintenez appuyé pour parler, relâchez pour lancer la recherche",
+      "holdHintChat": "Maintenez appuyé pour parler, relâchez pour insérer. Faites glisser vers le haut sans relâcher pour verrouiller et continuer après avoir levé le doigt, puis touchez pour terminer. Faites glisser vers la gauche sans relâcher pour annuler",
+      "holdGuide": "Maintenez appuyé pour parler",
       "denied": "Autorisez l'accès au micro dans Réglages",
       "failed": "Impossible de démarrer la reconnaissance vocale. Veuillez réessayer."
     },

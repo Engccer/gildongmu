@@ -25,7 +25,10 @@
       "progressFallback": "Checking information"
     },
     "voice": {
-      "start": "Start dictation",
+      "hold": "Dictate",
+      "holdHintSearch": "Press and hold to speak; release to search",
+      "holdHintChat": "Press and hold to speak; release to insert. Slide up while holding to lock so it keeps going after you let go, then tap to finish. Slide left while holding to cancel",
+      "holdGuide": "Press and hold to speak",
       "denied": "Please allow microphone access in Settings",
       "failed": "Couldn't start speech recognition. Please try again."
     },

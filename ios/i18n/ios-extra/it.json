@@ -25,7 +25,10 @@
       "progressFallback": "Controllo delle informazioni"
     },
     "voice": {
-      "start": "Avvia dettatura",
+      "hold": "Dettatura",
+      "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare",
+      "holdHintChat": "Tieni premuto per parlare, rilascia per inserire. Scorri verso l'alto senza rilasciare per bloccare e continuare dopo aver sollevato il dito, poi tocca per terminare. Scorri verso sinistra senza rilasciare per annullare",
+      "holdGuide": "Tieni premuto per parlare",
       "denied": "Consenti l'accesso al microfono nelle Impostazioni",
       "failed": "Impossibile avviare il riconoscimento vocale. Riprova."
     },

@@ -16,8 +16,6 @@ struct ChatConversationView<EmptyContent: View>: View {
 
     @State private var draft = ""
     @State private var speech = SpeechService()
-    /// 마이크 토글 Task in-flight 가드(더블탭 경합 차단)
-    @State private var micTaskInFlight = false
     /// 완료 시 마지막 질문 헤딩으로 VoiceOver 포커스 이동(헌장 §6 포커스 계약)
     @AccessibilityFocusState private var focusedMessageID: UUID?
     /// 포커스 계약(헌장 §6, 위원장 실기기 판정 2026-07-19 dodo R184 역이식): 전송 시
@@ -120,18 +118,26 @@ struct ChatConversationView<EmptyContent: View>: View {
                 .textFieldStyle(.roundedBorder)
                 .submitLabel(.send)
                 .onSubmit(sendDraft)
-            // 라벨 변화("받아쓰기 시작"↔"받아쓰기 중지")가 상태 신호(disabled 금지, 접근성 헌장).
-            // "음성 입력"은 금지 — 받아쓴 질문에 "음성"이 들어가면 SR 낭독에서 내용과
-            // 컨트롤 라벨이 구분 안 됨(위원장 실기기 실측 2026-07-18, SearchView 동일 적용).
-            // 44pt frame은 label 안쪽 + contentShape — 버튼 바깥 frame은 히트 영역을 안 넓힌다.
-            Button(action: toggleMic) {
-                Label(
-                    speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start"),
-                    systemImage: speech.isListening ? "mic.fill" : "mic"
-                )
-                .labelStyle(.iconOnly)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
+            // WhatsApp식 홀드 받아쓰기(2026-07-20 탭 토글 대체): 누르는 동안 녹음,
+            // 떼면 초안 삽입. 채팅은 긴 문장 입력이 있어 위로 밀어 잠금·왼쪽으로 밀어
+            // 취소를 허용한다(검색과의 차이). 라벨 "받아쓰기"는 행위 일반명사 충돌 회피
+            // ("음성 입력" 금지 — 받아쓴 내용의 "음성"과 낭독 혼동, 실측 2026-07-18).
+            HoldDictationButton(
+                speech: speech,
+                allowsSlideActions: true,
+                hint: appLocalized("ios.voice.holdHintChat"),
+                showsTitle: false
+            ) { text in
+                // 직전 답변의 지연 완료 시퀀스가 대기 중이면 폐기 — isStreaming 가드는
+                // "새 질문 전송"만 걸러서, 전송 전인 받아쓰기 초안 채움 시점엔 통과해
+                // 방금 잡은 보내기 버튼 포커스를 옛 질문 헤딩으로 되돌린다(리뷰 검출).
+                completionFocusTask?.cancel()
+                completionFocusTask = nil
+                draft = text
+                // 자동 전송 없는 설계라 다음 행동이 곧 전송: 포커스를 보내기 버튼으로
+                // 이동한 뒤 받아쓴 결과 원문을 polite 통지(헌장 §6 받아쓰기 완료).
+                isSendFocused = true
+                AccessibilityNotification.Announcement(text).post()
             }
             // 전송 중 비활성은 disabled 대신 핸들러 가드(포커스 이탈 방지, 접근성 헌장).
             // 라벨 변화("보내기"→"전송 중")가 스트리밍 중 무시 상태의 시각·낭독 신호.
@@ -190,35 +196,6 @@ struct ChatConversationView<EmptyContent: View>: View {
         guard !trimmed.isEmpty, !model.isStreaming else { return }
         draft = ""
         model.send(trimmed)
-    }
-
-    /// 음성 입력 토글: 최종 텍스트를 입력 필드에 넣기만(자동 전송 안 함, 질문은 검토 후 전송).
-    /// in-flight 가드: 더블탭이 두 Task를 띄워 start/stop이 인터리브되는 경합 차단(접근성 헌장).
-    /// 전사 성공은 침묵 금지(헌장 §6 받아쓰기 완료, dodo R184 후속 실기기 합격 이식):
-    /// 포커스를 보내기 버튼으로 이동(자동 전송이 없는 설계라 다음 행동이 곧 전송) →
-    /// 받아쓴 결과 원문을 polite 통지(포커스 발화 뒤 결과 낭독 순서). ⚠ SpeechService엔
-    /// 자동 정지 경로가 없어(정지는 이 토글 유일) 반환값 소비로 전사 유실이 없다 —
-    /// dodo의 콜백 단일 채널 전환(60초 캡 유실 실버그)은 여기선 비해당.
-    private func toggleMic() {
-        guard !micTaskInFlight else { return }
-        micTaskInFlight = true
-        Task {
-            defer { micTaskInFlight = false }
-            if speech.isListening {
-                if let text = await speech.stop() {
-                    // 직전 답변의 지연 완료 시퀀스가 대기 중이면 폐기 — isStreaming 가드는
-                    // "새 질문 전송"만 걸러서, 전송 전인 받아쓰기 초안 채움 시점엔 통과해
-                    // 방금 잡은 보내기 버튼 포커스를 옛 질문 헤딩으로 되돌린다(리뷰 검출).
-                    completionFocusTask?.cancel()
-                    completionFocusTask = nil
-                    draft = text
-                    isSendFocused = true
-                    AccessibilityNotification.Announcement(text).post()
-                }
-            } else {
-                await speech.start()
-            }
-        }
     }
 
     /// denied·failed 안내(SearchView 동형). 확인 시 idle 복귀.

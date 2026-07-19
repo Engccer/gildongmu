@@ -16,14 +16,22 @@ struct SearchView: View {
         NavigationStack {
             List {
                 // 마이크는 검색 필드 바로 다음 행: toolbar(내비 바)에 두면 VoiceOver가
-                // 제목보다 먼저 읽는다(실기기 실측). 라벨 변화가 상태 신호(disabled 금지).
+                // 제목보다 먼저 읽는다(실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
+                // 대체): 검색어는 짧아 홀드 단일 동작만(잠금·취소 슬라이드는 채팅 전용).
+                // 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약). partial은
+                // 필드에 실시간 반영하지 않는다(필드 값 경합 회피, 최종만). 포커스 이동은
+                // 하지 않는다 — 검색이 자동 실행되는 설계라 다음 행동(결과 확인)의
+                // 목적지는 settled 후 첫 결과 행 포커스(resultsRevision onChange)가 담당.
                 Section {
-                    Button(action: toggleMic) {
-                        Label(
-                            // "음성 입력" 금지: 받아쓴 내용의 "음성"과 라벨이 SR에서 혼동(채팅 동일 교훈)
-                            speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start"),
-                            systemImage: speech.isListening ? "mic.fill" : "mic"
-                        )
+                    HoldDictationButton(
+                        speech: speech,
+                        allowsSlideActions: false,
+                        hint: appLocalized("ios.voice.holdHintSearch"),
+                        showsTitle: true
+                    ) { text in
+                        model.query = text
+                        AccessibilityNotification.Announcement(text).post()
+                        runSearch()
                     }
                 }
                 if let outcome = model.outcome {
@@ -50,6 +58,8 @@ struct SearchView: View {
             .onSubmit(of: .search) { runSearch() }
             // 단축어 "음성 검색" 진입: App이 리셋·탭 전환을 마친 뒤 세운 플래그를
             // 재생성된 이 뷰가 소비해 마이크 시작(시작음·햅틱·권한은 기존 경로 그대로).
+            // 홀드 없이 시작된 이 세션의 정지는 마이크 행 탭(HoldDictationButton의
+            // 외부 시작 세션 공용 정지 경로)이 담당한다.
             .task {
                 let store = LaunchActionStore.shared
                 if store.voiceStartRequested {
@@ -79,26 +89,6 @@ struct SearchView: View {
                 } else if model.outcome != nil && model.totalCount == 0 {
                     ContentUnavailableView.search
                 }
-            }
-        }
-    }
-
-    /// 음성 입력 토글: 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약).
-    /// partial은 검색 필드에 실시간 반영하지 않는다(필드 값 경합 회피, 최종만).
-    /// 재진입은 SpeechService의 phase 가드가 차단.
-    /// 전사 성공은 침묵 금지(헌장 §6 받아쓰기 완료): 받아쓴 결과 원문을 polite 통지.
-    /// 포커스 이동은 하지 않는다 — 검색이 자동 실행되는 설계라 다음 행동(결과 확인)의
-    /// 목적지는 settled 후 첫 결과 행 포커스(resultsRevision onChange)가 이미 담당한다.
-    private func toggleMic() {
-        Task {
-            if speech.isListening {
-                if let text = await speech.stop() {
-                    model.query = text
-                    AccessibilityNotification.Announcement(text).post()
-                    runSearch()
-                }
-            } else {
-                await speech.start()
             }
         }
     }
