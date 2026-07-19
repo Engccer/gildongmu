@@ -1,6 +1,5 @@
 import { env } from "../env";
-import { haversineMeters } from "../geo";
-import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
+import type { Place, PlaceSearchResult } from "../types";
 
 /**
  * 한국관광공사 TourAPI 4.0 키워드 검색 provider.
@@ -90,88 +89,6 @@ export function normalizeTourItem(item: TourApiItem): Place {
     lng: Number(item.mapx),
     phone: item.tel || undefined,
     link: undefined,
-  };
-}
-
-/**
- * en 명소 검색 — EngService2 `searchKeyword2` + `contentTypeId=76`(Tourist
- * Attraction). 카카오 명소(ko)는 한글명만 줘 외국인이 못 읽으므로, 영문명을
- * 주는 TourAPI로 en 명소 섹션을 채운다. contentTypeId를 서버측에서 걸러
- * 동명 매장(79 Shopping 등)이 배제되고 진짜 랜드마크가 상단에 온다
- * (실호출 확정: "Gyeongbokgung"+76 → 1건 "Gyeongbokgung Palace").
- * ko의 kakao category_name "여행 > 관광,명소" 필터에 대응하는 en 신호.
- */
-export const ATTRACTION_CONTENT_TYPE_ID = "76";
-
-/** en 명소 표시 상한 — ko(kakao-attractions)와 동일 개념. accuracy 순서 유지. */
-const ATTRACTION_CAP = 5;
-
-/** en 명소 검색 URL(순수) — contentTypeId=76으로 소스에서 관광지만 추린다. */
-export function buildTourAttractionUrl(params: PlaceSearchParams): URL {
-  const url = new URL(
-    "https://apis.data.go.kr/B551011/EngService2/searchKeyword2",
-  );
-  url.searchParams.set("serviceKey", env.TOUR_API_KEY ?? "");
-  url.searchParams.set("MobileOS", "WEB");
-  url.searchParams.set("MobileApp", "gildongmu");
-  url.searchParams.set("_type", "json");
-  url.searchParams.set("keyword", params.query);
-  url.searchParams.set("numOfRows", "15");
-  url.searchParams.set("arrange", "A");
-  url.searchParams.set("contentTypeId", ATTRACTION_CONTENT_TYPE_ID);
-  return url;
-}
-
-/**
- * 명소 항목 추출(순수) — 정규화 → (좌표 있으면) Haversine 거리 주입·거리순 정렬 → cap.
- * contentTypeId로 이미 관광지만 왔으므로 카테고리 재필터는 불필요.
- *
- * ⚠ 정렬 정책이 ko(kakao-attractions)와 다르다. kakao는 정확도순이 대표 명소를
- * 1위로 올리지만 TourAPI엔 인기/정확도순 arrange가 없어 어떤 순서(제목·이미지·
- * 수정일)도 먼 동명(청도·경주 남산)을 상단에 올린다(실호출 확정). 좌표가 있는
- * 사용자에겐 근접성이 유일한 관련도 신호이므로 거리순으로 정렬해 가장 가까운
- * 실제 관광지(남산 케이블카)를 먼저 보인다. 좌표가 없으면 소스 순서(제목순) 유지.
- * "경복궁"처럼 결과 1건이면 정렬은 무영향이라 신고 케이스는 그대로 해결된다.
- */
-export function extractTourAttractions(
-  items: TourApiItem[],
-  params: PlaceSearchParams,
-): Place[] {
-  const places = items.map(normalizeTourItem);
-  const { lat, lng } = params;
-  if (lat == null || lng == null) return places.slice(0, ATTRACTION_CAP);
-  return places
-    .map((p) => ({
-      ...p,
-      distanceMeters: Math.round(haversineMeters(lat, lng, p.lat, p.lng)),
-    }))
-    .sort((a, b) => a.distanceMeters - b.distanceMeters)
-    .slice(0, ATTRACTION_CAP);
-}
-
-export async function searchAttractionsTourApi(
-  params: PlaceSearchParams,
-): Promise<PlaceSearchResult> {
-  const res = await fetch(buildTourAttractionUrl(params), {
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`TourAPI 명소 검색 실패: HTTP ${res.status} ${body}`);
-  }
-  const data = (await res.json()) as TourApiResponse;
-  const header = data.response?.header;
-  if (header && header.resultCode !== "0000") {
-    throw new Error(
-      `TourAPI 명소 검색 실패 (${header.resultCode}): ${header.resultMsg}`,
-    );
-  }
-  const items = data.response?.body?.items;
-  const rawItems = items && typeof items === "object" ? items.item : [];
-  return {
-    places: extractTourAttractions(rawItems, params),
-    provider: "tour-api",
-    query: params.query,
   };
 }
 
