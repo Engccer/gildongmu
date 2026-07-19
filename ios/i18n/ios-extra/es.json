@@ -27,7 +27,7 @@
     },
     "voice": {
       "hold": "Dictar",
-      "holdHintSearch": "Mantén pulsado para hablar y suelta para buscar",
+      "holdHintSearch": "Mantén pulsado para hablar y suelta para buscar. Si el dictado se inició desde un atajo, toca para detenerlo y buscar",
       "holdHintChat": "Mantén pulsado para hablar y suelta para enviar. Desliza hacia arriba sin soltar para bloquear: lo dictado hasta entonces pasa al campo de texto, donde puedes editarlo, y mantén pulsado de nuevo para seguir dictando. Desliza hacia la izquierda sin soltar para cancelar",
       "holdGuide": "Mantén pulsado para hablar",
       "denied": "Permite el acceso al micrófono en Ajustes",
