@@ -70,13 +70,16 @@
     "distance": "about {distance}",
     "address": "Address",
     "roadAddress": "Road address",
+    "jibunAddress": "Lot address",
     "phone": "Phone",
     "callAction": "Call {name}",
     "openInNaverMap": "Open in Naver Map",
     "openInKakaoMap": "Open in Kakao Map",
     "detailPage": "Detail page",
-    "copyAddress": "Copy",
-    "addressCopied": "Address copied to clipboard"
+    "addressCopied": "Address copied",
+    "copyRoadAddress": "Copy road address",
+    "copyJibunAddress": "Copy lot address",
+    "copyEnglishAddress": "Copy English address"
   },
   "address": {
     "postalCode": "Postal code",

@@ -19,15 +19,22 @@ struct PlaceDetailView: View {
             Section {
                 // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙)
                 if !place.category.isEmpty { Text(place.category) }
-                if !place.roadAddress.isEmpty { Text(appLocalized("ios.place.roadAddressLine", place.roadAddress)) }
-                if !place.address.isEmpty { Text(appLocalized("ios.place.jibunAddressLine", place.address)) }
+                // 주소는 종류마다 "줄 + 그 줄 전용 복사 버튼"을 인접 배치한다. 도로명과
+                // 지번은 쓰임이 달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 버튼이
+                // 자기 주소 바로 뒤에 와야 스와이프 순서에서 짝이 유지된다(웹 동형).
+                // 보유한 주소만 낸다(빈 주소 = 죽은 버튼). 인터랙티브는 텍스트와 합치지
+                // 않는다 — 별도 접근성 객체가 정상(웹 정본 규칙).
+                if !place.roadAddress.isEmpty {
+                    Text(appLocalized("ios.place.roadAddressLine", place.roadAddress))
+                    Button(appLocalized("place.copyRoadAddress")) { copyAddress(place.roadAddress) }
+                }
+                if !place.address.isEmpty {
+                    Text(appLocalized("ios.place.jibunAddressLine", place.address))
+                    Button(appLocalized("place.copyJibunAddress")) { copyAddress(place.address) }
+                }
                 if let english = place.englishAddress, !english.isEmpty {
                     Text(appLocalized("ios.place.englishAddressLine", english))
-                }
-                // 별도 접근성 객체(인터랙티브는 텍스트와 합치지 않음, 웹 정본 규칙)
-                Button(appLocalized("ios.place.copyAddress")) {
-                    UIPasteboard.general.string = copyableAddress
-                    AccessibilityNotification.Announcement(appLocalized("place.addressCopied")).post()
+                    Button(appLocalized("place.copyEnglishAddress")) { copyAddress(english) }
                 }
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -76,10 +83,11 @@ struct PlaceDetailView: View {
         place.id.hasPrefix("kakao-") ? String(place.id.dropFirst("kakao-".count)) : nil
     }
 
-    /// 복사 대상 주소 우선순위: 영문 주소 > 도로명 > 지번(웹 PlaceDetail.tsx:81-99 미러)
-    private var copyableAddress: String {
-        if let english = place.englishAddress, !english.isEmpty { return english }
-        return place.roadAddress.isEmpty ? place.address : place.roadAddress
+    /// 클립보드 복사 + 완료 통지(웹 PlaceDetail.tsx의 sr-only live region 미러).
+    /// 포커스는 누른 버튼에 그대로 남으므로 어느 주소를 복사했는지 맥락이 유지된다.
+    private func copyAddress(_ address: String) {
+        UIPasteboard.general.string = address
+        AccessibilityNotification.Announcement(appLocalized("place.addressCopied")).post()
     }
 
     private var destination: RouteDestination {

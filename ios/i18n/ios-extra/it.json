@@ -42,7 +42,6 @@
     "place": {
       "call": "Chiama",
       "callLine": "Chiama, {phone}",
-      "copyAddress": "Copia indirizzo",
       "roadAddressLine": "Indirizzo stradale, {value}",
       "jibunAddressLine": "Indirizzo catastale, {value}",
       "englishAddressLine": "Indirizzo in inglese, {value}",

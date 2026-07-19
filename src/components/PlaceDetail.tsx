@@ -78,8 +78,8 @@ export function PlaceDetail({
     };
   }, []);
 
-  const copyAddress = useCallback(async () => {
-    const address = place.englishAddress ?? (place.roadAddress || place.address);
+  // 주소 종류(영문·도로명·지번)마다 버튼이 있으므로 복사 대상을 인자로 받는다.
+  const copyAddress = useCallback(async (address: string) => {
     try {
       await navigator.clipboard.writeText(address);
     } catch {
@@ -96,7 +96,33 @@ export function PlaceDetail({
       );
       copyAnnouncementTimerRef.current = null;
     }, 2000);
-  }, [place, t]);
+  }, [t]);
+
+  // 보유한 주소만 줄로 낸다(빈 주소 = 죽은 복사 버튼). en 검색 결과는 영문 주소가
+  // 메인이라 맨 위, 한글 도로명·지번이 뒤따른다.
+  const addressLines = [
+    place.englishAddress && {
+      key: "english",
+      label: t("place.address"),
+      value: place.englishAddress,
+      copyLabel: t("place.copyEnglishAddress"),
+      korean: false,
+    },
+    place.roadAddress && {
+      key: "road",
+      label: t("place.roadAddress"),
+      value: place.roadAddress,
+      copyLabel: t("place.copyRoadAddress"),
+      korean: true,
+    },
+    place.address && {
+      key: "jibun",
+      label: t("place.jibunAddress"),
+      value: place.address,
+      copyLabel: t("place.copyJibunAddress"),
+      korean: true,
+    },
+  ].filter((line) => typeof line === "object");
 
   return (
     <div>
@@ -118,33 +144,30 @@ export function PlaceDetail({
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
       <div className="mt-2 text-sm leading-relaxed">
         <p>{`${t("place.category")} ${place.category}`}</p>
-        <div
-          className="flex w-fit max-w-full items-start gap-2"
-          aria-live="polite"
-          aria-atomic="false"
-        >
-          <div className="min-w-0">
-            {/* 영문 주소(en 검색)일 땐 "주소"/"Address" 라벨, 한글 도로명일 땐
-                "도로명"/"Road address" 라벨 — 주소 종류로 분기. 라벨+주소를 단일
-                텍스트로 합쳐 한 객체로 낭독(라벨 볼드 분절 포기). 메인 주소가 한글
-                (영문 주소 부재)이면 줄 전체에 lang="ko"(영문 UI에서도 정확히 읽히게). */}
-            <p lang={place.englishAddress ? undefined : "ko"}>
-              {`${place.englishAddress ? t("place.address") : t("place.roadAddress")} ${place.englishAddress ?? (place.roadAddress || place.address)}`}
+        {/* 주소는 종류마다 한 줄 + 그 줄 전용 복사 버튼. 도로명과 지번은 쓰임이
+            달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 복사 대상은 반드시
+            화면에 보이는 줄과 일치한다. 라벨+주소는 단일 텍스트로 합쳐 한 객체로
+            낭독(라벨 볼드 분절 포기). 한글 주소 줄엔 lang="ko"(영문 UI에서도 정확히
+            읽히게). */}
+        {addressLines.map(({ key, label, value, copyLabel, korean }) => (
+          <div key={key} className="flex w-fit max-w-full items-start gap-2">
+            <p className="min-w-0" lang={korean ? "ko" : undefined}>
+              {`${label} ${value}`}
             </p>
-            {place.englishAddress && (place.roadAddress || place.address) && (
-              <p className="mt-0.5 text-xs text-muted" lang="ko">
-                {place.roadAddress || place.address}
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => copyAddress(value)}
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-start justify-center gap-1 pt-0.5 text-xs font-medium text-accent"
+            >
+              <Copy aria-hidden="true" className="h-3.5 w-3.5" />
+              {copyLabel}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={copyAddress}
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-start justify-center gap-1 pt-0.5 text-xs font-medium text-accent"
-          >
-            <Copy aria-hidden="true" className="h-3.5 w-3.5" />
-            {t("place.copyAddress")}
-          </button>
+        ))}
+        {/* 복사 통지 전용 live region — 주소 줄을 감싸지 않는다. 감싸면 장소를 바꿀 때
+            (PlaceDetail 인스턴스 재사용) 주소 변경이 통째로 재낭독돼, 이미 보이는
+            콘텐츠를 중복 낭독하게 된다. 내용 없는 빈 컨테이너는 SR 탐색을 멈추지 않는다. */}
+        <div aria-live="polite">
           {copyAnnouncement && (
             <span key={copyAnnouncement.id} className="sr-only">
               {copyAnnouncement.message}

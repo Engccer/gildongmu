@@ -33,10 +33,10 @@ const place = {
   phone: "02-722-7713",
 };
 
-function renderDetail() {
+function renderDetail(overrides: Partial<typeof place> = {}) {
   return render(
     <PlaceDetail
-      place={place}
+      place={{ ...place, ...overrides }}
       canBriefCarRoute={false}
       canShowBus={false}
       canShowBike={false}
@@ -49,64 +49,96 @@ function renderDetail() {
   );
 }
 
+function mockClipboard() {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  return writeText;
+}
+
 afterEach(cleanup);
 
 describe("PlaceDetail 주소 복사", () => {
-  it("주소 텍스트와 복사 버튼을 같은 반응형 블록에 묶는다", () => {
+  it("주소 종류마다 텍스트와 전용 복사 버튼을 같은 반응형 블록에 묶는다", () => {
     renderDetail();
-    const copyButton = screen.getByRole("button", { name: "place.copyAddress" });
-    const address = screen.getByText(`place.address ${place.englishAddress}`);
-    const addressBlock = address.parentElement?.parentElement;
+    const road = screen.getByText(`place.roadAddress ${place.roadAddress}`);
+    const copyRoad = screen.getByRole("button", { name: "place.copyRoadAddress" });
+    const addressRow = road.parentElement;
 
-    expect(addressBlock).toBeTruthy();
-    expect(addressBlock?.contains(copyButton)).toBe(true);
-    expect(addressBlock?.classList.contains("flex")).toBe(true);
-    expect(addressBlock?.classList.contains("items-start")).toBe(true);
-    expect(addressBlock?.classList.contains("gap-2")).toBe(true);
-    expect(addressBlock?.classList.contains("w-fit")).toBe(true);
-    expect(addressBlock?.classList.contains("max-w-full")).toBe(true);
-    expect(address.parentElement?.classList.contains("flex-1")).toBe(false);
-    expect(copyButton.classList.contains("min-h-11")).toBe(true);
-    expect(copyButton.classList.contains("min-w-11")).toBe(true);
-    expect(copyButton.classList.contains("shrink-0")).toBe(true);
-    expect(copyButton.classList.contains("items-start")).toBe(true);
-    expect(copyButton.classList.contains("pt-0.5")).toBe(true);
-    expect(copyButton.classList.contains("items-center")).toBe(false);
+    expect(addressRow?.contains(copyRoad)).toBe(true);
+    expect(addressRow?.classList.contains("flex")).toBe(true);
+    expect(addressRow?.classList.contains("items-start")).toBe(true);
+    expect(addressRow?.classList.contains("gap-2")).toBe(true);
+    expect(addressRow?.classList.contains("w-fit")).toBe(true);
+    expect(addressRow?.classList.contains("max-w-full")).toBe(true);
+    expect(copyRoad.classList.contains("min-h-11")).toBe(true);
+    expect(copyRoad.classList.contains("min-w-11")).toBe(true);
+    expect(copyRoad.classList.contains("shrink-0")).toBe(true);
   });
 
-  it("주소 다음에 복사 버튼, 전화번호 순으로 읽힌다", () => {
+  it("도로명·지번 주소를 각각 줄과 버튼으로 낸다", () => {
+    renderDetail();
+    expect(screen.getByText(`place.roadAddress ${place.roadAddress}`)).toBeTruthy();
+    expect(screen.getByText(`place.jibunAddress ${place.address}`)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "place.copyRoadAddress" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "place.copyJibunAddress" })).toBeTruthy();
+  });
+
+  it("빈 주소는 줄도 복사 버튼도 만들지 않는다", () => {
+    renderDetail({ englishAddress: undefined, roadAddress: "" });
+    expect(screen.queryByRole("button", { name: "place.copyEnglishAddress" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "place.copyRoadAddress" })).toBeNull();
+    expect(screen.getByRole("button", { name: "place.copyJibunAddress" })).toBeTruthy();
+  });
+
+  it("주소 다음에 복사 버튼, 전화번호 순으로 읽히고 통지 영역은 하나뿐이다", () => {
     const { container } = renderDetail();
-    const address = screen.getByText(`place.address ${place.englishAddress}`);
-    const copyButton = screen.getByRole("button", { name: "place.copyAddress" });
+    const road = screen.getByText(`place.roadAddress ${place.roadAddress}`);
+    const copyRoad = screen.getByRole("button", { name: "place.copyRoadAddress" });
     const phone = screen.getByText("02-722-7713").closest("p");
     expect(phone).toBeTruthy();
 
     expect(
-      address.compareDocumentPosition(copyButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      road.compareDocumentPosition(copyRoad) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
-      copyButton.compareDocumentPosition(phone!) & Node.DOCUMENT_POSITION_FOLLOWING,
+      copyRoad.compareDocumentPosition(phone!) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    const addressRow = address.parentElement?.parentElement;
-    expect(addressRow?.getAttribute("aria-live")).toBe("polite");
-    expect(addressRow?.getAttribute("aria-atomic")).toBe("false");
+    const liveRegions = container.querySelectorAll('[aria-live="polite"]');
+    expect(liveRegions.length).toBe(1);
+    // 통지 전용 영역 — 주소 줄을 감싸면 장소 전환 시 주소가 통째로 재낭독된다.
+    expect(liveRegions[0].contains(road)).toBe(false);
+    expect(liveRegions[0].textContent).toBe("");
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect(screen.queryByText("place.addressCopied")).toBeNull();
   });
 
-  it("주 주소를 클립보드에 쓰고 성공 상태를 통지한다", async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
+  it("도로명 버튼은 도로명을, 지번 버튼은 지번을 복사하고 각각 통지한다", async () => {
+    const writeText = mockClipboard();
     renderDetail();
 
-    fireEvent.click(screen.getByRole("button", { name: "place.copyAddress" }));
+    fireEvent.click(screen.getByRole("button", { name: "place.copyRoadAddress" }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(place.roadAddress);
+      expect(screen.getByText("place.addressCopied").classList.contains("sr-only")).toBe(true);
+    });
 
+    fireEvent.click(screen.getByRole("button", { name: "place.copyJibunAddress" }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(place.address);
+      expect(screen.getByText("place.addressCopied").classList.contains("sr-only")).toBe(true);
+    });
+  });
+
+  it("영문 주소가 있으면 영문 복사 버튼이 영문 주소를 복사한다", async () => {
+    const writeText = mockClipboard();
+    renderDetail();
+
+    fireEvent.click(screen.getByRole("button", { name: "place.copyEnglishAddress" }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(place.englishAddress);
-      expect(screen.getByText("place.addressCopied").classList.contains("sr-only")).toBe(true);
     });
   });
 });

@@ -7855,40 +7855,6 @@
         }
       }
     },
-    "ios.place.copyAddress": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "주소 복사"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copy address"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copiar dirección"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copier l'adresse"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copia indirizzo"
-          }
-        }
-      }
-    },
     "ios.place.englishAddressLine": {
       "localizations": {
         "ko": {
@@ -11192,31 +11158,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주소가 클립보드에 복사됨"
+            "value": "주소 복사됨"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Address copied to clipboard"
+            "value": "Address copied"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dirección copiada al portapapeles"
+            "value": "Dirección copiada"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adresse copiée dans le presse-papiers"
+            "value": "Adresse copiée"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Indirizzo copiato negli appunti"
+            "value": "Indirizzo copiato"
           }
         }
       }
@@ -11289,36 +11255,104 @@
         }
       }
     },
-    "place.copyAddress": {
+    "place.copyEnglishAddress": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "복사"
+            "value": "영문 주소 복사"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copy"
+            "value": "Copy English address"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copiar"
+            "value": "Copiar dirección en inglés"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copier"
+            "value": "Copier l'adresse en anglais"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copia"
+            "value": "Copia indirizzo in inglese"
+          }
+        }
+      }
+    },
+    "place.copyJibunAddress": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지번 복사"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy lot address"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar dirección catastral"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier l'adresse cadastrale"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia indirizzo catastale"
+          }
+        }
+      }
+    },
+    "place.copyRoadAddress": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도로명 복사"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy road address"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar dirección vial"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier l'adresse de voirie"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia indirizzo stradale"
           }
         }
       }
@@ -11387,6 +11421,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "circa %1$@"
+          }
+        }
+      }
+    },
+    "place.jibunAddress": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지번"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lot address"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dirección catastral"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse cadastrale"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indirizzo catastale"
           }
         }
       }

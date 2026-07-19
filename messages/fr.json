@@ -70,13 +70,16 @@
     "distance": "environ {distance}",
     "address": "Adresse",
     "roadAddress": "Adresse de voirie",
+    "jibunAddress": "Adresse cadastrale",
     "phone": "Téléphone",
     "callAction": "Appeler {name}",
     "openInNaverMap": "Ouvrir dans Naver Map",
     "openInKakaoMap": "Ouvrir dans Kakao Map",
     "detailPage": "Page de détail",
-    "copyAddress": "Copier",
-    "addressCopied": "Adresse copiée dans le presse-papiers"
+    "addressCopied": "Adresse copiée",
+    "copyRoadAddress": "Copier l'adresse de voirie",
+    "copyJibunAddress": "Copier l'adresse cadastrale",
+    "copyEnglishAddress": "Copier l'adresse en anglais"
   },
   "address": {
     "postalCode": "Code postal",

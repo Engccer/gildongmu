@@ -42,7 +42,6 @@
     "place": {
       "call": "전화 걸기",
       "callLine": "전화 걸기, {phone}",
-      "copyAddress": "주소 복사",
       "roadAddressLine": "도로명 주소, {value}",
       "jibunAddressLine": "지번 주소, {value}",
       "englishAddressLine": "영문 주소, {value}",

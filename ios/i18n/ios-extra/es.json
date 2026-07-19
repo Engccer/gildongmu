@@ -42,7 +42,6 @@
     "place": {
       "call": "Llamar",
       "callLine": "Llamar, {phone}",
-      "copyAddress": "Copiar dirección",
       "roadAddressLine": "Dirección (calle), {value}",
       "jibunAddressLine": "Dirección (parcela), {value}",
       "englishAddressLine": "Dirección en inglés, {value}",
