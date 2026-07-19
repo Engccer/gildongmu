@@ -6,7 +6,7 @@ import {
   hasTourApiKey,
 } from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
-import { sortPlacesByDistance } from "../geo";
+import { annotateDistances } from "../geo";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
@@ -58,12 +58,26 @@ export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
 export async function searchPlaces(
   params: PlaceSearchParams,
 ): Promise<PlaceSearchResult> {
+  const result = await pickPlacesProvider(params);
+  // 거리 "표기"는 서버 일원화 — 정렬 없이 주석만(정확도순 전환, 스펙 §1).
+  if (params.lat != null && params.lng != null) {
+    return {
+      ...result,
+      places: annotateDistances(result.places, { lat: params.lat, lng: params.lng }),
+    };
+  }
+  return result;
+}
+
+/** provider 선택 체인(기존 searchPlaces 본문 그대로 이동). */
+async function pickPlacesProvider(
+  params: PlaceSearchParams,
+): Promise<PlaceSearchResult> {
   const forced = process.env.PLACES_PROVIDER;
   if (forced === "kakao") return searchPlacesKakaoLocal(params);
   if (forced === "naver") return searchPlacesNaverLocal(params);
   if (forced === "tour") return searchPlacesTourApi(params);
   if (forced === "mock") return searchPlacesMock(params);
-
   if (params.lang === "en" && hasTourApiKey() && hasKakaoKey()) {
     return searchPlacesMergedEn(params);
   }
@@ -73,26 +87,21 @@ export async function searchPlaces(
   if (hasKakaoKey() && hasNaverLocalKeys() && params.lang !== "en") {
     return searchPlacesMergedKo(params);
   }
-  if (hasKakaoKey()) {
-    return searchPlacesKakaoLocal(params);
-  }
-  if (hasNaverLocalKeys()) {
-    return searchPlacesNaverLocal(params);
-  }
+  if (hasKakaoKey()) return searchPlacesKakaoLocal(params);
+  if (hasNaverLocalKeys()) return searchPlacesNaverLocal(params);
   return searchPlacesMock(params);
 }
 
 /**
- * ko 병합 검색 — 카카오(최대 15건, 좌표 시 거리순)를 기본으로, 네이버 지역
+ * ko 병합 검색 — 카카오(최대 15건, 정확도순)를 기본으로, 네이버 지역
  * (최대 5건)을 보강한다. 카카오 로컬 DB에 미등록인 가게가 네이버에만 있는
  * 커버리지 공백(예: 여의도 "백년찌개집 1971", 2026-07-18 실측)을 메우는 결정.
  *
  * - 두 소스 병렬 호출, 한쪽 실패해도 다른 쪽 실데이터는 보존(MergedEn 동형).
  * - 중복 제거는 좌표 4자리(mergePlaces 재사용).
- * - 좌표가 있으면 병합 결과를 Haversine 거리순으로 재정렬한다 — 네이버 지역
- *   검색은 거리 정렬·좌표 필터가 없어 전국 정확도순으로 오므로, 재정렬 없이는
- *   근처의 네이버 전용 결과가 목록 끝에 묻힌다(원거리 동명 가게가 위로 오는
- *   것도 함께 차단). 좌표가 없으면 카카오 정확도순 뒤에 이어 붙인다.
+ * - 카카오 정확도순 15건 뒤에 네이버 5건(자체 정확도순)을 이어 붙인다. 네이버
+ *   전용 근처 가게가 하단에 오는 트레이드오프는 수용(보강 소스 역할, 스펙 §1).
+ *   재정렬은 하지 않는다 — 정확도 축 보존.
  */
 export async function searchPlacesMergedKo(
   params: PlaceSearchParams,
@@ -115,11 +124,7 @@ export async function searchPlacesMergedKo(
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const naver = naverR.status === "fulfilled" ? naverR.value.places : [];
   const merged = mergePlaces(kakao, naver);
-  const places =
-    params.lat != null && params.lng != null
-      ? sortPlacesByDistance(merged, { lat: params.lat, lng: params.lng })
-      : merged;
-  return { places, provider: "merged", query: params.query };
+  return { places: merged, provider: "merged", query: params.query };
 }
 
 /**

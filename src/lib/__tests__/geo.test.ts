@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { haversineMeters, sortPlacesByDistance } from "../geo";
+import { annotateDistances, haversineMeters, sortPlacesByDistance } from "../geo";
 import type { Place } from "../types";
 
 /** 테스트용 최소 Place — 좌표만 의미 있고 나머지는 형태 충족용. */
@@ -62,5 +62,26 @@ describe("sortPlacesByDistance", () => {
     const sorted = sortPlacesByDistance([bad, good], origin);
     expect(sorted.map((p) => p.id)).toEqual(["good", "bad"]);
     expect(sorted[1].distanceMeters).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe("annotateDistances", () => {
+  const origin = { lat: 37.5, lng: 127.0 };
+  it("입력 순서를 보존하며 distanceMeters만 부여한다", () => {
+    const far = { id: "a", name: "먼곳", category: "", address: "", roadAddress: "", lat: 38.0, lng: 128.0 };
+    const near = { id: "b", name: "가까운곳", category: "", address: "", roadAddress: "", lat: 37.5, lng: 127.001 };
+    const out = annotateDistances([far, near], origin);
+    expect(out.map((p) => p.id)).toEqual(["a", "b"]); // 정렬 안 함
+    expect(out[0].distanceMeters).toBeGreaterThan(out[1].distanceMeters!);
+  });
+  it("비유한 좌표는 distanceMeters를 부여하지 않는다", () => {
+    const bad = { id: "c", name: "", category: "", address: "", roadAddress: "", lat: NaN, lng: 127.0 };
+    expect(annotateDistances([bad], origin)[0].distanceMeters).toBeUndefined();
+  });
+  it("입력 배열·원소를 변형하지 않는다", () => {
+    const p = { id: "d", name: "", category: "", address: "", roadAddress: "", lat: 37.5, lng: 127.0 };
+    const arr = [p];
+    annotateDistances(arr, origin);
+    expect(p).not.toHaveProperty("distanceMeters");
   });
 });

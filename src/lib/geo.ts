@@ -45,3 +45,16 @@ export function sortPlacesByDistance(places: Place[], origin: Coord): Place[] {
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters);
 }
+
+/**
+ * 정렬 없이 각 장소에 origin 기준 distanceMeters만 부여한 새 배열(순수).
+ * 정확도순 전환(2026-07-20) 후 거리는 "표기 정보"이지 정렬 축이 아니다 —
+ * 순서는 provider 관련도를 그대로 보존한다. 비유한 좌표는 미부여(표기 생략).
+ */
+export function annotateDistances(places: Place[], origin: Coord): Place[] {
+  return places.map((p) =>
+    Number.isFinite(p.lat) && Number.isFinite(p.lng)
+      ? { ...p, distanceMeters: haversineMeters(origin.lat, origin.lng, p.lat, p.lng) }
+      : p,
+  );
+}

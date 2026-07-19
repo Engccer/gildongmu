@@ -1,0 +1,64 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { searchPlaces } from "../providers/places";
+import { searchPlacesKakaoLocal } from "../providers/kakao-local";
+import { hasKakaoKey, hasNaverLocalKeys, hasTourApiKey } from "../env";
+import type { Place, PlaceSearchResult } from "../types";
+
+/**
+ * searchPlaces 진입점 — provider 선택 자체는 각 병합 테스트(places-merge-*)가
+ * 커버하므로, 여기서는 "거리 표기는 searchPlaces가 좌표 존재 시 일원화해
+ * annotateDistances로 부여하고, 정렬은 하지 않는다"만 검증한다(2026-07-20 전환).
+ */
+vi.mock("../providers/kakao-local");
+vi.mock("../env", () => ({
+  hasKakaoKey: vi.fn(),
+  hasNaverLocalKeys: vi.fn(() => false),
+  hasTourApiKey: vi.fn(() => false),
+  hasJusoKey: vi.fn(() => false),
+  hasNcpMapsKeys: vi.fn(() => false),
+  env: {},
+}));
+
+const kakaoMock = vi.mocked(searchPlacesKakaoLocal);
+const hasKakao = vi.mocked(hasKakaoKey);
+const hasNaver = vi.mocked(hasNaverLocalKeys);
+const hasTour = vi.mocked(hasTourApiKey);
+
+function result(places: Place[]): PlaceSearchResult {
+  return { provider: "kakao-local", places, query: "q" };
+}
+function place(id: string, lat: number, lng: number): Place {
+  return { id, name: id, category: "", address: "", roadAddress: "", lat, lng };
+}
+
+describe("searchPlaces (거리 표기 일원화)", () => {
+  beforeEach(() => {
+    kakaoMock.mockReset();
+    hasKakao.mockReset();
+    hasNaver.mockReset();
+    hasTour.mockReset();
+    hasKakao.mockReturnValue(true);
+    hasNaver.mockReturnValue(false);
+    hasTour.mockReturnValue(false);
+  });
+
+  it("좌표가 있으면 정렬 없이 distanceMeters를 부여한다(provider 순서 보존)", async () => {
+    kakaoMock.mockResolvedValue(
+      result([place("far", 38.0, 128.0), place("near", 37.5, 127.001)]),
+    );
+
+    const res = await searchPlaces({ query: "q", lat: 37.5, lng: 127.0 });
+
+    // provider가 준 순서 그대로 — 정렬하지 않는다.
+    expect(res.places.map((p) => p.id)).toEqual(["far", "near"]);
+    expect(res.places[0].distanceMeters).toBeGreaterThan(res.places[1].distanceMeters!);
+  });
+
+  it("좌표가 없으면 distanceMeters를 부여하지 않는다", async () => {
+    kakaoMock.mockResolvedValue(result([place("a", 37.5, 127.0)]));
+
+    const res = await searchPlaces({ query: "q" });
+
+    expect(res.places[0].distanceMeters).toBeUndefined();
+  });
+});

@@ -31,8 +31,8 @@ export interface Place {
   /** 홈페이지 등 링크 (없을 수 있음) */
   link?: string;
   /**
-   * 현재 위치 기준 거리(m) — 클라이언트가 geolocation으로 정렬할 때만 부여한다
-   * (sortPlacesByDistance). provider 응답에는 없으며, 위치 권한이 없으면 미설정.
+   * 현재 위치 기준 거리(m) — searchPlaces가 좌표 파라미터 존재 시 표기용으로만
+   * 부여한다(annotateDistances, 정렬 축 아님). 위치 권한이 없으면 미설정.
    */
   distanceMeters?: number;
 }
@@ -44,7 +44,7 @@ export interface PlaceSearchParams {
   limit?: number;
   /** UI 로케일 — 다국어 provider(TourAPI) 선택에 사용 */
   lang?: "ko" | "en";
-  /** 검색 기준 좌표(WGS84). 있으면 카카오를 거리순 정렬한다. */
+  /** 검색 기준 좌표(WGS84). 있으면 카카오가 근접성을 정확도에 블렌딩하고, 결과에 distanceMeters를 표기한다(정렬 축 아님). */
   lat?: number;
   lng?: number;
 }

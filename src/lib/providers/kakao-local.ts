@@ -56,10 +56,10 @@ export function normalizeDocument(doc: KakaoLocalDocument): Place {
 }
 
 /**
- * 검색 URL 빌더(순수) — query·size에 더해, 좌표가 둘 다 있으면
- * x(경도)·y(위도)·sort=distance를 붙인다. radius는 지정하지 않는다
- * (거리순 정렬만 — 근처에 없으면 먼 곳도 거리순으로 노출, 0건 위험 회피).
- * 좌표가 없거나 한쪽만 있으면 카카오 기본(정확도순)으로 graceful degrade.
+ * 검색 URL 빌더(순수) — query·size에 더해, 좌표가 둘 다 있으면 x(경도)·y(위도)를
+ * 붙인다. sort는 지정하지 않는다(기본 정확도순) — 좌표가 있으면 카카오가 근접성을
+ * 관련도에 블렌딩한다(실호출 확정 2026-07-20: "맥도날드"는 근처 지점 상위,
+ * "경복궁"은 15km 밖에서도 본체·부속 명소 최상단). radius도 미지정(0건 위험 회피).
  */
 export function buildKakaoSearchUrl(params: PlaceSearchParams): URL {
   const url = new URL(ENDPOINT);
@@ -68,7 +68,6 @@ export function buildKakaoSearchUrl(params: PlaceSearchParams): URL {
   if (params.lat != null && params.lng != null) {
     url.searchParams.set("x", String(params.lng));
     url.searchParams.set("y", String(params.lat));
-    url.searchParams.set("sort", "distance");
   }
   return url;
 }

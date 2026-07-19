@@ -33,7 +33,7 @@ describe("searchPlacesMergedKo (ko 카카오+네이버 병합)", () => {
     expect(res.places.map((p) => p.id)).toEqual(["kakao-1", "naver-1"]);
   });
 
-  it("좌표가 있으면 병합 결과를 거리순으로 재정렬한다 — 카카오 원거리 결과보다 근처 네이버 전용 가게가 앞에 온다", async () => {
+  it("좌표가 있어도 재정렬하지 않는다 — 카카오 정확도순 뒤에 네이버가 그대로 이어진다(distanceMeters는 표기만)", async () => {
     // 백년찌개 시나리오: 카카오는 원거리 유사명만, 네이버에만 근처 실가게가 있다
     kakaoMock.mockResolvedValue(
       result("kakao-local", [
@@ -47,8 +47,14 @@ describe("searchPlacesMergedKo (ko 카카오+네이버 병합)", () => {
 
     const res = await searchPlacesMergedKo({ query: "백년찌개", lat: 37.5319, lng: 126.914 });
 
-    expect(res.places[0].id).toBe("naver-여의도-백년찌개집");
-    expect(res.places[0].distanceMeters).toBeLessThan(1000);
+    // 정렬은 하지 않는다 — 카카오 정확도순 2건 뒤에 네이버 1건.
+    expect(res.places.map((p) => p.id)).toEqual([
+      "kakao-부천-백년전골",
+      "kakao-용인-백년집",
+      "naver-여의도-백년찌개집",
+    ]);
+    // searchPlacesMergedKo 자체는 distanceMeters를 부여하지 않는다(표기는 searchPlaces가 일원화).
+    expect(res.places[0].distanceMeters).toBeUndefined();
   });
 
   it("좌표 4자리가 겹치는 네이버 중복은 제거하고 카카오를 우선한다", async () => {
