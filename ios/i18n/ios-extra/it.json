@@ -27,7 +27,7 @@
     },
     "voice": {
       "hold": "Dettatura",
-      "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare. Se la dettatura è stata avviata da un comando rapido, tocca per fermarla e cercare",
+      "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare",
       "holdHintChat": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare: quanto dettato finora entra nel campo di testo, dove puoi modificarlo, poi tieni premuto di nuovo per continuare a dettare. Scorri verso sinistra senza rilasciare per annullare",
       "holdGuide": "Tieni premuto per parlare",
       "denied": "Consenti l'accesso al microfono nelle Impostazioni",

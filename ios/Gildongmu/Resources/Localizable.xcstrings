@@ -10274,31 +10274,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "누른 채로 말하고, 손을 떼면 검색합니다. 단축어로 시작된 받아쓰기는 탭하면 멈추고 검색합니다"
+            "value": "누른 채로 말하고, 손을 떼면 검색합니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Press and hold to speak; release to search. If dictation was started from a Shortcut, tap to stop and search"
+            "value": "Press and hold to speak; release to search"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mantén pulsado para hablar y suelta para buscar. Si el dictado se inició desde un atajo, toca para detenerlo y buscar"
+            "value": "Mantén pulsado para hablar y suelta para buscar"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Maintenez appuyé pour parler, relâchez pour lancer la recherche. Si la dictée a été lancée depuis un raccourci, touchez pour l'arrêter et rechercher"
+            "value": "Maintenez appuyé pour parler, relâchez pour lancer la recherche"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tieni premuto per parlare, rilascia per cercare. Se la dettatura è stata avviata da un comando rapido, tocca per fermarla e cercare"
+            "value": "Tieni premuto per parlare, rilascia per cercare"
           }
         }
       }
