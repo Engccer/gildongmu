@@ -1,6 +1,4 @@
 import SwiftUI
-import UIKit
-import Accessibility
 import GildongmuKit
 
 /// 장소 상세. 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임(spec §4).
@@ -26,15 +24,15 @@ struct PlaceDetailView: View {
                 // 않는다 — 별도 접근성 객체가 정상(웹 정본 규칙).
                 if !place.roadAddress.isEmpty {
                     Text(appLocalized("ios.place.roadAddressLine", place.roadAddress))
-                    Button(appLocalized("place.copyRoadAddress")) { copyAddress(place.roadAddress) }
+                    Button(appLocalized("place.copyRoadAddress")) { copyAddressToPasteboard(place.roadAddress) }
                 }
                 if !place.address.isEmpty {
                     Text(appLocalized("ios.place.jibunAddressLine", place.address))
-                    Button(appLocalized("place.copyJibunAddress")) { copyAddress(place.address) }
+                    Button(appLocalized("place.copyJibunAddress")) { copyAddressToPasteboard(place.address) }
                 }
                 if let english = place.englishAddress, !english.isEmpty {
                     Text(appLocalized("ios.place.englishAddressLine", english))
-                    Button(appLocalized("place.copyEnglishAddress")) { copyAddress(english) }
+                    Button(appLocalized("place.copyEnglishAddress")) { copyAddressToPasteboard(english) }
                 }
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -81,13 +79,6 @@ struct PlaceDetailView: View {
     /// Place.id "kakao-" 접두가 있을 때만 카카오 장소 상세 체인 유효(웹 계약)
     private var kakaoPlaceId: String? {
         place.id.hasPrefix("kakao-") ? String(place.id.dropFirst("kakao-".count)) : nil
-    }
-
-    /// 클립보드 복사 + 완료 통지(웹 PlaceDetail.tsx의 sr-only live region 미러).
-    /// 포커스는 누른 버튼에 그대로 남으므로 어느 주소를 복사했는지 맥락이 유지된다.
-    private func copyAddress(_ address: String) {
-        UIPasteboard.general.string = address
-        AccessibilityNotification.Announcement(appLocalized("place.addressCopied")).post()
     }
 
     private var destination: RouteDestination {
