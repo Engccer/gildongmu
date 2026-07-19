@@ -5,19 +5,17 @@
  * 순서로 보일지와 스크린 리더에 무엇을 통지할지는 같은 입력에 같은 정답이
  * 보장되는 deterministic 작업이라 코드로 잠그고 테스트로 검증한다(I/O와 분리).
  */
-export type SectionKind = "place" | "address" | "web" | "attraction";
+export type SectionKind = "place" | "address" | "web";
 
 /**
  * 결과 있는 섹션을 위로(적응형). 0건 섹션은 제외, 건수 내림차순, 동률 시 우선순위
  * place>web>address. 모두 0이면 빈 배열(호출부가 "결과 없음" 처리).
  * place·web·address는 항상 병렬이라 공존 가능. 건수 내림차순으로 가장 많은 섹션을 위로.
- * attraction은 "이 이름의 유명한 그곳"이라는 가장 강한 의도 신호라 건수 무관하게 최상단.
  */
 export function orderResultSections(
   placeCount: number,
   addrCount: number,
   webCount = 0,
-  attractionCount = 0,
 ): SectionKind[] {
   const present: { kind: SectionKind; count: number; rank: number }[] = [];
   if (placeCount > 0) present.push({ kind: "place", count: placeCount, rank: 0 });
@@ -25,10 +23,7 @@ export function orderResultSections(
   if (addrCount > 0) present.push({ kind: "address", count: addrCount, rank: 2 });
   // 건수 내림차순, 동률이면 rank(place>web>address) 우선.
   present.sort((a, b) => b.count - a.count || a.rank - b.rank);
-  const ordered = present.map((s) => s.kind);
-  // 명소는 "이 이름의 유명한 그곳"이라는 가장 강한 의도 신호 — 건수 무시하고 최상단.
-  if (attractionCount > 0) ordered.unshift("attraction");
-  return ordered;
+  return present.map((s) => s.kind);
 }
 
 export type LivePart = { key: string; values?: Record<string, number> };
@@ -52,43 +47,32 @@ export function shouldFallbackToWeb(
 
 /**
  * 단일 polite 채널 통지(부분 배열). loading이면 검색 중(음성이면 searchingFor),
- * 완료면 0이 아닌 섹션(명소·장소·웹·주소)을 차례로 part로 쌓아 호출부가 ", "로 잇는다.
+ * 완료면 0이 아닌 섹션(장소·웹·주소)을 차례로 part로 쌓아 호출부가 ", "로 잇는다.
  * 모두 0이면 장소 에러는 error, 아니면 noResults. 검색 전 idle은 null(통지 없음).
- * 명소가 있으면 맨 앞 part로. place·web·address는 항상 병렬이라 공존한다(라우터 시절 place⊕web 상호배타 폐기).
+ * place·web·address는 항상 병렬이라 공존한다(라우터 시절 place⊕web 상호배타 폐기).
  */
 export function combinedLiveMessage(input: {
   loading: boolean;
   placeCount: number | null;
   addrCount: number | null;
   webCount?: number | null;
-  attractionCount?: number | null;
   spokenQuery: string | null;
   placeErrored: boolean;
 }): LivePart[] | null {
   const { loading, placeCount, addrCount, spokenQuery, placeErrored } = input;
   const webCount = input.webCount ?? null;
-  const attractionCount = input.attractionCount ?? null;
   // 1. 로딩 우선(실패 단정 금지).
   if (loading) {
     return [{ key: spokenQuery ? "search.searchingFor" : "search.searching" }];
   }
   // 2. 비로딩 + 모두 미실행 + 에러 아님 = idle(통지 없음).
-  if (
-    placeCount === null &&
-    addrCount === null &&
-    webCount === null &&
-    attractionCount === null &&
-    !placeErrored
-  ) {
+  if (placeCount === null && addrCount === null && webCount === null && !placeErrored) {
     return null;
   }
-  const attraction = attractionCount ?? 0;
   const place = placeCount ?? 0;
   const web = webCount ?? 0;
   const addr = addrCount ?? 0;
   const parts: LivePart[] = [];
-  if (attraction > 0)
-    parts.push({ key: "search.attractionCount", values: { count: attraction } });
   if (place > 0) parts.push({ key: "search.placeCount", values: { count: place } });
   if (web > 0) parts.push({ key: "search.webCount", values: { count: web } });
   if (addr > 0) parts.push({ key: "search.addressCount", values: { count: addr } });
