@@ -45,7 +45,13 @@ struct ChatConversationView<EmptyContent: View>: View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 12) {
+                    // ⚠ LazyVStack 금지(2026-07-20 실기기 cpu_resource 리포트로 확정):
+                    // 대화가 몇 턴 쌓이면 lazy 레이아웃 캐시(LazySubviewPlacements)가
+                    // 크기 추정 진동으로 매 UI 사이클 트랜잭션을 재발행해 메인 스레드
+                    // 100% CPU 무한 루프(앱 먹통, VO 전면 무응답). 채팅 히스토리는
+                    // 세션당 유한하므로 eager VStack이 정본 — 진동 기제 자체가 없고,
+                    // 화면 밖 요소 AX 컬링(완료 포커스 대입 실패 원인)도 함께 해소.
+                    VStack(alignment: .leading, spacing: 12) {
                         if model.messages.isEmpty {
                             emptyContent()
                         }
