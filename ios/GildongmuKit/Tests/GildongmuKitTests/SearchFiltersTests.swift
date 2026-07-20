@@ -3,7 +3,7 @@ import Foundation
 @testable import GildongmuKit
 
 // 웹 `src/lib/__tests__/category.test.ts`·`region.test.ts`의 대표 케이스를
-// 그대로 옮긴다(기대값 재사용). 버킷 판정·지역 판정·AND 결합·거리 정렬을 다룬다.
+// 그대로 옮긴다(기대값 재사용). 버킷 판정·지역 판정·AND 결합을 다룬다.
 
 private func place(
     id: String = "id",
@@ -161,36 +161,4 @@ func regionUnmatchedAddressFallsIntoNoRegion(address: String) {
     ]
     let byBucketThenRegion = filterPlaces(filterPlaces(places, bucket: "food"), region: "seoul")
     #expect(byBucketThenRegion.map(\.id) == ["seoul-food"])
-}
-
-// MARK: - sortPlacesByDistance
-
-@Test func sortPlacesByDistanceOrdersNearestFirstAndAssignsDistance() {
-    // origin: 서울역(37.5547, 126.9707) 근사
-    let near = place(id: "near", lat: 37.5547, lng: 126.9707)
-    let far = place(id: "far", lat: 35.1796, lng: 129.0756) // 부산
-    let sorted = sortPlacesByDistance([far, near], lat: 37.5547, lng: 126.9707)
-    #expect(sorted.map(\.id) == ["near", "far"])
-    #expect(sorted[0].distanceMeters != nil)
-    #expect(sorted[0].distanceMeters! < sorted[1].distanceMeters!)
-    #expect(sorted[0].distanceMeters! < 10) // 거의 원점과 동일
-}
-
-@Test func sortPlacesByDistancePreservesInputOrderForTies() {
-    let a = place(id: "a", lat: 37.5, lng: 127.0)
-    let b = place(id: "b", lat: 37.5, lng: 127.0)
-    let sorted = sortPlacesByDistance([a, b], lat: 37.5, lng: 127.0)
-    #expect(sorted.map(\.id) == ["a", "b"])
-}
-
-@Test func sortPlacesByDistancePushesInvalidCoordinatesToEnd() {
-    let valid = place(id: "valid", lat: 37.5547, lng: 126.9707)
-    let invalid = place(id: "invalid", lat: .nan, lng: 127.0)
-    let sorted = sortPlacesByDistance([invalid, valid], lat: 37.5547, lng: 126.9707)
-    #expect(sorted.map(\.id) == ["valid", "invalid"])
-    #expect(sorted[1].distanceMeters == .infinity)
-}
-
-@Test func sortPlacesByDistanceEmptyInputReturnsEmpty() {
-    #expect(sortPlacesByDistance([], lat: 37.5, lng: 127.0).isEmpty)
 }

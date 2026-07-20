@@ -9,7 +9,7 @@ struct SearchView: View {
     @State private var bucket: String?
     @State private var region: String?
     /// 검색 완료 후 첫 결과로 VoiceOver 포커스 이동(웹 "settled 후 1회 포커스" 원칙의 iOS 문법).
-    /// 행 키는 섹션 접두("attraction-"·"place-"·"address-"·"web-")로 List 전역 유일.
+    /// 행 키는 섹션 접두("place-"·"address-"·"web-")로 List 전역 유일.
     @AccessibilityFocusState private var focusedRowID: String?
 
     var body: some View {
@@ -36,16 +36,8 @@ struct SearchView: View {
                     )
                 }
                 if let outcome = model.outcome {
-                    if !outcome.attractions.items.isEmpty {
-                        Section(appLocalized("ios.search.attractionSection")) {
-                            ForEach(outcome.attractions.items) { place in
-                                NavigationLink(value: place) { PlaceRow(place: place) }
-                                    .accessibilityFocused($focusedRowID, equals: "attraction-\(place.id)")
-                            }
-                        }
-                    }
                     ForEach(Array(outcome.orderedSections.enumerated()), id: \.offset) { _, section in
-                        sectionView(section, attractionIDs: Set(outcome.attractions.items.map(\.id)))
+                        sectionView(section)
                     }
                 }
             }
@@ -119,17 +111,13 @@ struct SearchView: View {
         )
     }
 
-    /// 포커스 이동 목표: 명소 최우선(최상단 병치), 없으면 첫 섹션의 첫 행.
+    /// 포커스 이동 목표: 첫 섹션의 첫 행(orderedSections는 건수 내림차순).
     private var firstRowID: String? {
         guard let outcome = model.outcome else { return nil }
-        if let first = outcome.attractions.items.first { return "attraction-\(first.id)" }
-        let attractionIDs = Set(outcome.attractions.items.map(\.id))
         for section in outcome.orderedSections {
             switch section {
             case .places(let places):
-                if let first = places.first(where: { !attractionIDs.contains($0.id) }) {
-                    return "place-\(first.id)"
-                }
+                if let first = places.first { return "place-\(first.id)" }
             case .addresses(let addresses):
                 if let first = addresses.first { return "address-\(first.roadAddr)" }
             case .web(let results):
@@ -140,10 +128,10 @@ struct SearchView: View {
     }
 
     @ViewBuilder
-    private func sectionView(_ section: SearchSection, attractionIDs: Set<String>) -> some View {
+    private func sectionView(_ section: SearchSection) -> some View {
         switch section {
         case .places(let places):
-            placesSectionView(places, attractionIDs: attractionIDs)
+            placesSectionView(places)
         case .addresses(let addresses):
             Section(appLocalized("search.addressSection")) {
                 ForEach(addresses, id: \.roadAddr) { address in
@@ -166,9 +154,8 @@ struct SearchView: View {
     /// 장소 섹션: 분류·지역 두 축 필터(AND 결합) + 버킷별 Section 분할.
     /// 웹 PlaceSearch.tsx 575-660행 미러(칩 대신 iOS 문법의 Picker 2종).
     @ViewBuilder
-    private func placesSectionView(_ places: [Place], attractionIDs: Set<String>) -> some View {
-        // 명소 섹션과 같은 List에 공존하므로 동일 id 행을 제거(ForEach 정체성 충돌·중복 낭독 방지)
-        let base = places.filter { !attractionIDs.contains($0.id) }
+    private func placesSectionView(_ places: [Place]) -> some View {
+        let base = places
         if !base.isEmpty {
             // 칩/픽커 목록·카운트는 전체 결과(base) 기준 고정 — 선택해도 목록이 줄지
             // 않아 SR 탐색이 안정적이다(웹 bucketItems/regionItems 미러).

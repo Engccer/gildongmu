@@ -30,8 +30,3 @@ func fixture(_ name: String) throws -> Data {
     let result = try JSONDecoder().decode(WebSearchResponse.self, from: fixture("web"))
     #expect(result.web.allSatisfy { !$0.url.isEmpty })
 }
-
-@Test func attractionsFixtureDecodes() throws {
-    let result = try JSONDecoder().decode(PlaceSearchResult.self, from: fixture("attractions"))
-    #expect(result.places.allSatisfy { $0.lat > 33 && $0.lat < 39 })
-}

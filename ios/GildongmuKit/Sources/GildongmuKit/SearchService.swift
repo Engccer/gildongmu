@@ -32,20 +32,17 @@ public enum SearchSection: Sendable {
     }
 }
 
-/// 한 검색의 최종 산출. attractions는 별도 트랙(뷰가 건수 무관 최상단 병치).
+/// 한 검색의 최종 산출.
 public struct SearchOutcome: Sendable {
-    public let attractions: SectionState<Place>
     public let places: SectionState<Place>
     public let addresses: SectionState<JusoAddress>
     public let web: SectionState<WebSearchResult>
 
     public init(
-        attractions: SectionState<Place>,
         places: SectionState<Place>,
         addresses: SectionState<JusoAddress>,
         web: SectionState<WebSearchResult>
     ) {
-        self.attractions = attractions
         self.places = places
         self.addresses = addresses
         self.web = web
@@ -63,7 +60,9 @@ public struct SearchOutcome: Sendable {
 }
 
 /// 검색 오케스트레이션. 웹 runQuerySearch의 의미론 미러:
-/// 장소+주소(+ko 명소) 병렬, 웹은 둘 다 0건일 때만, 섹션 실패는 SectionState.failed로 격리.
+/// 장소+주소 병렬, 웹은 둘 다 0건일 때만, 섹션 실패는 SectionState.failed로 격리.
+/// 좌표는 있으면 그대로 API로 전달해 서버(카카오 정확도순+근접 블렌딩)가 정렬을
+/// 담당한다(정확도순 전환, 웹 스펙 2026-07-20 미러). 클라 재정렬은 하지 않는다.
 public struct SearchService: Sendable {
     let client: APIClient
     public init(client: APIClient) { self.client = client }
@@ -76,18 +75,9 @@ public struct SearchService: Sendable {
         }
         async let placesTask: PlaceSearchResult? = try? client.get("/api/places", query: coordQuery + [URLQueryItem(name: "lang", value: lang)])
         async let addressTask: AddressSearchResponse? = try? client.get("/api/address/search", query: [URLQueryItem(name: "query", value: query)])
-        // 명소는 ko 전용(웹 계약). en은 장소 병합 검색이 커버.
-        async let attractionsTask: PlaceSearchResult? = lang == "ko"
-            ? (try? client.get("/api/places/attractions", query: coordQuery + [URLQueryItem(name: "lang", value: lang)]))
-            : nil
 
         let places: SectionState<Place> = (await placesTask).map { .loaded($0.places) } ?? .failed
         let addresses: SectionState<JusoAddress> = (await addressTask).map { .loaded($0.addresses) } ?? .failed
-        // en은 호출 자체가 없으므로(미적용) 실패가 아니라 빈 성공으로 둔다.
-        let attractionsResult = await attractionsTask
-        let attractions: SectionState<Place> = lang == "ko"
-            ? (attractionsResult.map { .loaded($0.places) } ?? .failed)
-            : .loaded([])
 
         // 웹 폴백: 정본 두 트랙이 모두 빈 결과일 때만(실패도 빈 결과로 취급, 기존 의미 유지).
         var web: SectionState<WebSearchResult> = .loaded([])
@@ -95,6 +85,6 @@ public struct SearchService: Sendable {
             let webResponse: WebSearchResponse? = try? await client.get("/api/search/web", query: [URLQueryItem(name: "query", value: query)])
             web = webResponse.map { .loaded($0.web) } ?? .failed
         }
-        return SearchOutcome(attractions: attractions, places: places, addresses: addresses, web: web)
+        return SearchOutcome(places: places, addresses: addresses, web: web)
     }
 }

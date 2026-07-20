@@ -15,7 +15,7 @@ public struct Place: Codable, Sendable, Identifiable, Hashable {
     public let distanceMeters: Double?
 }
 
-/// 장소 검색 응답 envelope(`/api/places`·`/api/places/attractions` 공용).
+/// 장소 검색 응답 envelope(`/api/places`).
 /// provider는 웹에서 열거형이지만 신규 provider 추가에 깨지지 않도록 String으로 둔다.
 public struct PlaceSearchResult: Codable, Sendable {
     public let places: [Place]

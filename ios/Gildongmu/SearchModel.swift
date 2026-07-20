@@ -22,7 +22,7 @@ final class SearchModel {
 
     var totalCount: Int {
         guard let outcome else { return 0 }
-        return outcome.attractions.items.count + outcome.orderedSections.reduce(0) { $0 + $1.count }
+        return outcome.orderedSections.reduce(0) { $0 + $1.count }
     }
 
     func submit() {
@@ -31,18 +31,17 @@ final class SearchModel {
         searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
         isSearching = true
         searchTask = Task {
-            var result = await service.search(query: trimmed, lat: nil, lng: nil, lang: AppLanguage.dataLocale)
+            // 보유 좌표는 신규 권한 요청·취득 없이(LocationService 캐시만) API로 전달.
+            let coordinate = LocationService.shared.lastCoordinate
+            let result = await service.search(
+                query: trimmed,
+                lat: coordinate?.lat,
+                lng: coordinate?.lng,
+                lang: AppLanguage.dataLocale
+            )
             guard !Task.isCancelled else { return }
-            // 보유 좌표가 있으면 결과를 가까운 순으로 재정렬(웹 userCoords 정렬 미러).
-            // 신규 권한 요청·위치 취득은 트리거하지 않는다(LocationService 캐시만 사용).
-            if case .loaded(let items) = result.places, let coordinate = LocationService.shared.lastCoordinate {
-                result = SearchOutcome(
-                    attractions: result.attractions,
-                    places: .loaded(sortPlacesByDistance(items, lat: coordinate.lat, lng: coordinate.lng)),
-                    addresses: result.addresses,
-                    web: result.web
-                )
-            }
+            // 정확도순 전환(웹 스펙 2026-07-20 미러): 좌표는 API로 보내 카카오 근접
+            // 블렌딩에 쓰고, 클라 재정렬은 하지 않는다. distanceMeters는 서버 주석.
             outcome = result
             failed = result.allFailed && totalCount == 0
             isSearching = false
