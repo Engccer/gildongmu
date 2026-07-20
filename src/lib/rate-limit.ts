@@ -56,3 +56,12 @@ const store = new Map<string, RateLimitEntry>();
 export function checkSearchWebRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(store, ip, now, LIMIT, WINDOW_MS).allowed;
 }
+
+// TTS는 버튼 탭당 1회 호출이라 검색보다 훨씬 낮게 잡는다(무료 티어 초과분 유료 방어).
+const TTS_LIMIT = 10;
+const ttsStore = new Map<string, RateLimitEntry>();
+
+/** /api/tts 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkTtsRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(ttsStore, ip, now, TTS_LIMIT, WINDOW_MS).allowed;
+}

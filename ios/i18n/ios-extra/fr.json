@@ -23,7 +23,10 @@
       "emptyAnswer": "Impossible de préparer une réponse",
       "failed": "Impossible d'obtenir une réponse. Veuillez réessayer dans un instant.",
       "progressFallback": "Vérification des informations",
-      "clear": "Effacer le texte"
+      "clear": "Effacer le texte",
+      "listen": "Écouter",
+      "listenStop": "Arrêter la lecture",
+      "share": "Partager"
     },
     "voice": {
       "hold": "Dictée",

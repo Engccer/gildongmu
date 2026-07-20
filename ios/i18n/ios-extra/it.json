@@ -23,7 +23,10 @@
       "emptyAnswer": "Impossibile preparare una risposta",
       "failed": "Impossibile ottenere una risposta. Riprova tra poco.",
       "progressFallback": "Controllo delle informazioni",
-      "clear": "Cancella il testo"
+      "clear": "Cancella il testo",
+      "listen": "Ascolta",
+      "listenStop": "Interrompi la riproduzione",
+      "share": "Condividi"
     },
     "voice": {
       "hold": "Dettatura",

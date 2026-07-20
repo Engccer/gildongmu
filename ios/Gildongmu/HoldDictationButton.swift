@@ -92,6 +92,10 @@ struct HoldDictationButton: View {
         chatFocusLog("holdmic begin OK slideActions=\(onPause != nil)")
         #endif
         sessionActive = true
+        // 재생 중인 TTS를 먼저 정지 — 오디오 세션 소유가 겹치면(.playback↔.playAndRecord)
+        // 재생이 무음화돼도 라벨이 "재생 중지"로 남는 상태 불일치가 생기고, 낭독이
+        // 녹음에 섞인다(리뷰 검출). 미재생이면 no-op.
+        TtsPlayer.shared.stop()
         interruptVoiceOverSpeech()
         startTask = Task { await speech.start() }
     }

@@ -23,7 +23,10 @@
       "emptyAnswer": "Couldn't prepare a response",
       "failed": "Couldn't get a response. Please try again in a moment.",
       "progressFallback": "Checking information",
-      "clear": "Clear text"
+      "clear": "Clear text",
+      "listen": "Listen",
+      "listenStop": "Stop playback",
+      "share": "Share"
     },
     "voice": {
       "hold": "Dictate",

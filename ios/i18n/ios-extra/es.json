@@ -23,7 +23,10 @@
       "emptyAnswer": "No se pudo preparar una respuesta",
       "failed": "No se pudo obtener una respuesta. Inténtalo de nuevo en un momento.",
       "progressFallback": "Consultando información",
-      "clear": "Borrar texto"
+      "clear": "Borrar texto",
+      "listen": "Escuchar",
+      "listenStop": "Detener la reproducción",
+      "share": "Compartir"
     },
     "voice": {
       "hold": "Dictar",

@@ -110,6 +110,8 @@ struct ChatConversationView<EmptyContent: View>: View {
         .onDisappear {
             // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환 포함)
             Task { await speech.cancel() }
+            // TTS도 항상 정지 — 화면을 떠난 대화의 유령 낭독 방지(마이크와 같은 규율)
+            TtsPlayer.shared.stop()
             // 완료 포커스 시퀀스도 폐기(화면을 떠난 뷰의 지연 포커스 대입 방지)
             completionFocusTask?.cancel()
             completionFocusTask = nil
@@ -300,8 +302,42 @@ private struct MessageBubbleView: View {
             ForEach(message.sources, id: \.self) { source in
                 sourceRow(source)
             }
+
+            // 응답 액션 행(dodo 이식): VO 스와이프 순서상 답변 블록·카드·출처 다음이
+            // 자연스러워 맨 끝에 둔다. 완료 포커스 계약(질문 헤딩)은 건드리지 않는다.
+            if message.role == .assistant {
+                HStack(spacing: 8) {
+                    listenButton
+                    // 듣기·공유 모두 응답 원문(message.text)을 그대로 쓴다(블록 분리는
+                    // 렌더 전용). 출처는 본문 밖 sources 필드라 자연히 제외된다.
+                    ShareLink(item: message.text) {
+                        Label(appLocalized("ios.chat.share"), systemImage: "square.and.arrow.up")
+                            .labelStyle(.iconOnly)
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+    }
+
+    /// 응답 전문 듣기 버튼. 라벨 전환(듣기 ↔ 재생 중지)만으로 상태를 전달한다
+    /// (`isSelected` trait 병용 금지 — 헌장 aria-pressed 교훈의 iOS 등가). 미디어 재생
+    /// 버튼이라 `.startsMediaSession` trait. 44pt frame은 label 안쪽 + contentShape —
+    /// 버튼 바깥 frame은 히트 영역을 안 넓힌다(dodo 주석의 gildongmu 실측 역수입).
+    private var listenButton: some View {
+        let isPlaying = TtsPlayer.shared.isPlayingMessage(message.id)
+        return Button {
+            Task { await TtsPlayer.shared.playMessage(messageID: message.id, text: message.text) }
+        } label: {
+            Image(systemName: isPlaying ? "stop.circle.fill" : "speaker.wave.2.circle")
+                .accessibilityHidden(true)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(appLocalized(isPlaying ? "ios.chat.listenStop" : "ios.chat.listen"))
+        .accessibilityAddTraits(.startsMediaSession)
     }
 
     /// 어시스턴트 산문은 블록(헤딩·리스트 항목·단락)마다 별도 Text = 별도 접근성 객체.

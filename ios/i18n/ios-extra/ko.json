@@ -23,7 +23,10 @@
       "emptyAnswer": "답변을 준비하지 못했습니다",
       "failed": "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       "progressFallback": "정보 확인 중",
-      "clear": "텍스트 지우기"
+      "clear": "텍스트 지우기",
+      "listen": "듣기",
+      "listenStop": "재생 중지",
+      "share": "공유"
     },
     "voice": {
       "hold": "받아쓰기",
