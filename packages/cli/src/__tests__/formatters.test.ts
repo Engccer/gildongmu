@@ -82,15 +82,6 @@ describe("places-search", () => {
   });
 });
 
-describe("attractions-search", () => {
-  it("places-search와 동일 템플릿", () => {
-    const lines = FORMATTERS["attractions-search"]({
-      places: [{ name: "경복궁", category: "여행 > 관광,명소", address: "서울 종로구", roadAddress: "", distanceMeters: 500 }],
-    } as never);
-    expect(lines).toEqual(["경복궁, 여행 > 관광,명소, 서울 종로구, 500m"]);
-  });
-});
-
 describe("address-search", () => {
   it("도로명+지번+우편번호+영문주소", () => {
     const lines = FORMATTERS["address-search"]({

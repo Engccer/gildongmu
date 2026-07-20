@@ -277,7 +277,7 @@ function subwayArrivalLine(a: SubwayArrivalItem): string {
   return joinText(a.line, a.trainLineNm, a.message, a.express && "급행");
 }
 
-// ── 장소 검색(장소·명소 공유) ───────────────────────────────────────────
+// ── 장소 검색 ───────────────────────────────────────────────────────
 
 function placeLine(p: PlaceItem): string {
   return joinText(
@@ -553,7 +553,6 @@ function formatBarrierFreeDetail(body: { detail: BarrierFreeDetailItem | null })
 
 export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "places-search": formatPlaces,
-  "attractions-search": formatPlaces,
   "address-search": formatAddresses,
   "web-search": formatWebSearch,
   "nearby-subway": formatNearbySubway,

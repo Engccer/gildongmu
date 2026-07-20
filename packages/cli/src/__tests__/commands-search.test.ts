@@ -48,7 +48,7 @@ async function runSearch(args: Record<string, unknown>): Promise<void> {
 }
 
 describe("search 명령", () => {
-  it("장소·주소·명소를 병렬 조회해 3섹션으로 출력한다", async () => {
+  it("장소·주소를 병렬 조회해 2섹션으로 출력한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/places") {
         return { places: [{ name: "장소1", category: "음식점", address: "", roadAddress: "서울 강남구" }] };
@@ -56,32 +56,25 @@ describe("search 명령", () => {
       if (path === "/api/address/search") {
         return { addresses: [{ roadAddr: "서울 강남구 x", jibunAddr: "", zipNo: "", engAddr: "" }] };
       }
-      if (path === "/api/places/attractions") {
-        return { places: [{ name: "명소1", category: "관광,명소", address: "", roadAddress: "서울" }] };
-      }
       throw new Error(`unexpected path ${path}`);
     });
 
     await runSearch({ query: "강남", output: "text" });
 
-    expect(apiRequest).toHaveBeenCalledTimes(3);
+    expect(apiRequest).toHaveBeenCalledTimes(2);
     expect(apiRequest).toHaveBeenCalledWith("/api/places", { query: { query: "강남", lang: "ko" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/address/search", { query: { query: "강남" } });
-    expect(apiRequest).toHaveBeenCalledWith("/api/places/attractions", { query: { query: "강남" } });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
-    expect(output).toContain("명소 1건");
     expect(output).toContain("장소 1건");
     expect(output).toContain("주소 1건");
     expect(output).toContain("장소1");
-    expect(output).toContain("명소1");
   });
 
   it("전 섹션 0건이면 웹 검색으로 폴백한다(envelope은 { web } — { results } 아님)", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/places") return { places: [] };
       if (path === "/api/address/search") return { addresses: [] };
-      if (path === "/api/places/attractions") return { places: [] };
       if (path === "/api/search/web") {
         return { web: [{ title: "웹결과", url: "https://x.test", snippet: "요약" }] };
       }
@@ -101,7 +94,6 @@ describe("search 명령", () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/places") throw new Error("network down");
       if (path === "/api/address/search") throw new Error("network down");
-      if (path === "/api/places/attractions") return { places: [] };
       throw new Error(`unexpected path ${path}`);
     });
 

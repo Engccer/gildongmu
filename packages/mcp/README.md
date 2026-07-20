@@ -37,14 +37,13 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 
 - `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.vercel.app`)
 
-## 노출되는 도구 (22종)
+## 노출되는 도구 (21종)
 
 전부 읽기 전용(`readOnlyHint: true`). 도구명은 REST 카탈로그 이름을 스네이크 케이스로 바꾼 것이다(예: `nearby-subway` → `nearby_subway`).
 
 | 도구 | 설명 |
 |---|---|
 | `places_search` | 장소 검색(카카오 로컬, 좌표 있으면 거리순) |
-| `attractions_search` | 관광 명소 검색(ko 카카오/en TourAPI) |
 | `address_search` | 도로명·지번 주소와 우편번호 검색(juso) |
 | `geocode` | 장소·주소 문자열을 WGS84 좌표로 변환 |
 | `nearby_subway` | 내 주변 지하철역 실시간 도착 |

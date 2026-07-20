@@ -1,6 +1,6 @@
 # gildongmu
 
-접근성 우선 대한민국 길찾기·로컬 정보 CLI. 장소·주소·명소 검색, 대중교통 실시간 도착, 경로 브리핑, 날씨·공기질, 무장애 관광지 정보 등을 터미널에서 바로 조회한다. 스크린 리더 사용자를 1급 시민으로 삼는 [길동무](https://gildongmu.vercel.app) 프로젝트의 씬 클라이언트로, 모든 명령은 프로덕션 REST API를 그대로 호출한다.
+접근성 우선 대한민국 길찾기·로컬 정보 CLI. 장소·주소 검색, 대중교통 실시간 도착, 경로 브리핑, 날씨·공기질, 무장애 관광지 정보 등을 터미널에서 바로 조회한다. 스크린 리더 사용자를 1급 시민으로 삼는 [길동무](https://gildongmu.vercel.app) 프로젝트의 씬 클라이언트로, 모든 명령은 프로덕션 REST API를 그대로 호출한다.
 
 ## 설치
 
@@ -28,7 +28,7 @@ gil nearby subway                                # 이후 매번 지정 없이 �
 ## 자주 쓰는 명령
 
 ```bash
-gil search "맥도날드"                       # 장소·주소·명소 통합 검색(0건이면 웹 검색 폴백)
+gil search "맥도날드"                       # 장소·주소 통합 검색(0건이면 웹 검색 폴백)
 gil nearby subway --near "강동역"           # 주변 지하철역 실시간 도착
 gil nearby bus --near "강동역"              # 주변 버스 정류소 실시간 도착
 gil station info "강동역"                   # 역 정보 + 교통약자 시설(코레일·서울지하철)
@@ -64,7 +64,7 @@ gil completion fish > ~/.config/fish/completions/gil.fish
 
 | 명령 | 하위 명령 | 설명 |
 |---|---|---|
-| `search <query>` | | 장소·주소·명소 통합 검색(0건이면 웹 검색 폴백) |
+| `search <query>` | | 장소·주소 통합 검색(0건이면 웹 검색 폴백) |
 | `web <query>` | | 웹 검색(Perplexity) |
 | `nearby` | `subway`/`bus`/`bike`/`clinic`/`kids`/`around`/`barrier-free` | 내 주변 정보 7종(위치 필수) |
 | `station` | `info <역명>`, `arrivals <역명>` | 역 정보·시설·실시간 도착 |
