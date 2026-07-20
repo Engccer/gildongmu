@@ -5,17 +5,22 @@ import Foundation
 // 비의존). 두 축(버킷·지역)은 앱 계층에서 AND로 결합한다(filterPlaces(bucket:)
 // 결과에 filterPlaces(region:)을 다시 적용).
 
-/// 버킷 표시·매칭 순서. 검색 의도(관광·명소)를 위에, 부수 정보(교통)를 아래에.
-private let bucketOrder = ["attraction", "food", "shopping", "lodging", "transport", "other"]
+/// 칩 표시·매칭 순서. 정렬은 정확도(관련도)가 전담하고 버킷은 필터 축일 뿐이다.
+private let bucketOrder = ["attraction", "public", "food", "shopping", "lodging", "transport", "other"]
 
 /// 버킷별 키워드 정규식. 위에서부터 검사해 첫 매칭 버킷을 반환하므로 순서는
-/// bucketOrder와 같다(관광이 교통보다 우선). 한글(카카오)·영문(TourAPI) 키워드를
-/// 한 패턴에 담는다.
+/// bucketOrder와 같다. 한글(카카오·네이버)·영문(TourAPI) 키워드를 한 패턴에 담는다.
+/// 부분 문자열 오탐 이력(수정 시 반드시 실측 카테고리로 검증):
+/// '문화'→사진관, '미술'→가죽공예 공방, '카페'→키즈카페.
 private let bucketPatterns: [(String, String)] = [
     // '문화시설'만 매칭('문화' 단독은 카카오 최상위 "문화,예술" 트리의 사진관·즉석사진
     // 등 비명소까지 attraction으로 끌어와 금지 — '문화유적'은 '유적'이 커버).
-    ("attraction", "관광|명소|문화시설|유적|고궁|궁궐|사찰|박물|미술|공원|축제|공연|행사|레포츠|Attraction|Cultural|Festival|Leisure|Tour"),
-    ("food", "음식|맛집|카페|제과|베이커리|Restaurant|Cafe|Food"),
+    // '미술관'만 매칭('미술' 단독은 "미술,공예" 공방 트리 오탐 — 미술관은 '문화시설'도 커버).
+    ("attraction", "관광|명소|문화시설|유적|고궁|궁궐|사찰|박물|미술관|공원|축제|공연|행사|레포츠|Attraction|Cultural|Festival|Leisure|Tour"),
+    // '공공'이 카카오 "사회,공공기관"·네이버 "공공,사회기관" 트리 전체(행정·단체·복지)를 커버.
+    ("public", "교육|학교|유치원|어린이집|공공|관공서|주민센터|도서관|우체국|복지|School|University|Library|Government|Public"),
+    // 키즈카페는 놀이시설(음식점 아님) — '카페' 앞 '키즈'를 부정 후방탐색으로 제외.
+    ("food", "음식|맛집|(?<!키즈)카페|제과|베이커리|Restaurant|Cafe|Food"),
     ("shopping", "쇼핑|마트|백화점|시장|면세|아울렛|편의점|Shopping|Market"),
     ("lodging", "숙박|호텔|모텔|펜션|게스트|리조트|Accommodation|Hotel|Lodging"),
     ("transport", "교통|지하철|전철|철도|기차|버스|주차|공항|터미널|Transport|Station|Parking|Airport"),
@@ -43,24 +48,12 @@ public func filterPlaces(_ places: [Place], bucket: String?) -> [Place] {
     return places.filter { categoryOf($0.category) == bucket }
 }
 
-/// 장소들을 버킷별로 묶는다. bucketOrder를 따르고, 빈 버킷은 생략하며, 같은 버킷
-/// 안에서는 입력 순서를 보존한다.
-public func groupPlacesByBucket(_ places: [Place]) -> [(bucket: String, places: [Place])] {
-    var grouped: [String: [Place]] = [:]
-    for place in places {
-        grouped[categoryOf(place.category), default: []].append(place)
-    }
-    return bucketOrder.compactMap { bucket in
-        guard let group = grouped[bucket] else { return nil }
-        return (bucket: bucket, places: group)
-    }
-}
-
 /// 카탈로그 `category.*` 조회(웹 미러). 미지정 키는 키 그대로 반환.
 /// 키를 리터럴 switch로 두는 이유: 동적 조립 금지(린터 계약) + 허용 키 집합의 코드 명시.
 public func bucketLabel(_ key: String, lang: String) -> String {
     switch key {
     case "attraction": return kitLocalized("category.attraction", lang: lang)
+    case "public": return kitLocalized("category.public", lang: lang)
     case "food": return kitLocalized("category.food", lang: lang)
     case "shopping": return kitLocalized("category.shopping", lang: lang)
     case "lodging": return kitLocalized("category.lodging", lang: lang)

@@ -7,7 +7,6 @@ import { remarkTightLists } from "@/lib/chat/remark-tight-lists";
 import type { Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
 import { ResultList } from "@/components/ResultList";
-import { groupByCategory } from "@/lib/category";
 import { AddressResultList } from "@/components/AddressResultList";
 import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
 import { NightClinicsNearby } from "@/components/NightClinicsNearby";
@@ -114,7 +113,7 @@ function RenderBlock({
     case "places":
       return (
         <ResultList
-          groups={groupByCategory(render.places)}
+          places={render.places}
           // onOpenPlace 미주입 시 no-op: ResultList는 필수 콜백 요구,
           // 상세 진입 와이어링은 후속 Task에서 처리.
           onOpen={onOpenPlace ?? (() => {})}

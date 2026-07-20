@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CategoryBucket } from "@/lib/category";
-import {
-  bucketsPresent,
-  filterPlacesByBucket,
-  groupByCategory,
-} from "@/lib/category";
+import { bucketsPresent, filterPlacesByBucket } from "@/lib/category";
 import type { RegionCode } from "@/lib/region";
 import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import type {
@@ -520,7 +516,6 @@ export function PlaceSearch({
     filterPlacesByBucket(places, bucket),
     region,
   );
-  const groups = groupByCategory(filtered);
 
   // 세 섹션 카운트(미완료는 0으로 — 적응형 순서/헤딩 판정용). 셋 모두 병렬 공존 가능.
   const placeResultCount = status.kind === "done" ? places.length : 0;
@@ -571,7 +566,7 @@ export function PlaceSearch({
       {filtered.length === 0 ? (
         <p className="mt-3">{t("search.noFilterResults")}</p>
       ) : (
-        <ResultList groups={groups} onOpen={openDetail} headingLevel={showSectionHeadings ? 4 : 3} />
+        <ResultList places={filtered} onOpen={openDetail} />
       )}
     </>
   );

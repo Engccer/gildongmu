@@ -134,7 +134,15 @@ struct SearchView: View {
     private func sectionView(_ section: SearchSection) -> some View {
         switch section {
         case .places(let places):
-            placesSectionView(places)
+            // 둘 이상 섹션 공존 시에만 장소 섹션 헤더(웹 showSectionHeadings 미러) —
+            // 주소·웹 형제 섹션과 헤딩 점프 대칭을 맞춘다. 단독 섹션은 헤더 없이(과잉 방지).
+            if (model.outcome?.orderedSections.count ?? 0) > 1 {
+                Section(appLocalized("search.placeSection")) {
+                    placesSectionView(places)
+                }
+            } else {
+                placesSectionView(places)
+            }
         case .addresses(let addresses):
             Section(appLocalized("search.addressSection")) {
                 ForEach(addresses, id: \.roadAddr) { address in
@@ -154,8 +162,9 @@ struct SearchView: View {
         }
     }
 
-    /// 장소 섹션: 분류·지역 두 축 필터(AND 결합) + 버킷별 Section 분할.
-    /// 웹 PlaceSearch.tsx 575-660행 미러(칩 대신 iOS 문법의 Picker 2종).
+    /// 장소 섹션: 분류·지역 두 축 필터(AND 결합) + 정확도순 플랫 리스트.
+    /// 버킷 Section 분할은 폐지(2026-07-21) — 고정 섹션 서열이 정확도 1위를
+    /// 최하단에 매몰시키는 회귀 실측(웹 ResultList 미러). 버킷은 필터 축일 뿐이다.
     @ViewBuilder
     private func placesSectionView(_ places: [Place]) -> some View {
         let base = places
@@ -192,16 +201,11 @@ struct SearchView: View {
             if filtered.isEmpty {
                 Text(appLocalized("search.noFilterResults"))
             } else {
-                // 헤더 "{label} {count}건"은 ko.json category.groupHeading 정본 미러.
-                ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
-                    Section(appLocalized("category.groupHeading", bucketLabel(group.bucket, lang: AppLanguage.current), String(group.places.count))) {
-                        ForEach(group.places) { place in
-                            NavigationLink(value: place) {
-                                PlaceRow(place: place, onAskAbout: { chatPlace = place })
-                            }
-                            .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
-                        }
+                ForEach(filtered) { place in
+                    NavigationLink(value: place) {
+                        PlaceRow(place: place, onAskAbout: { chatPlace = place })
                     }
+                    .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
                 }
             }
         }

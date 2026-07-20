@@ -53,10 +53,10 @@
     "jeju": "Jeju"
   },
   "category": {
-    "groupHeading": "{label} ({count})",
     "filterLabel": "Filtrar por categoría",
     "all": "Todo",
     "attraction": "Atracciones",
+    "public": "Público y educación",
     "food": "Comida",
     "shopping": "Compras",
     "lodging": "Alojamiento",
@@ -512,13 +512,26 @@
     "chatButton": "Preguntar sobre mi ubicación actual",
     "source": "Fuente: Kakao Map. Las direcciones son rumbos desde el norte.",
     "direction": {
-      "n": "norte", "ne": "noreste", "e": "este", "se": "sureste",
-      "s": "sur", "sw": "suroeste", "w": "oeste", "nw": "noroeste"
+      "n": "norte",
+      "ne": "noreste",
+      "e": "este",
+      "se": "sureste",
+      "s": "sur",
+      "sw": "suroeste",
+      "w": "oeste",
+      "nw": "noroeste"
     },
     "category": {
-      "convenience": "tienda de conveniencia", "subway": "estación de metro", "restaurant": "restaurante",
-      "cafe": "cafetería", "bank": "banco", "pharmacy": "farmacia", "hospital": "hospital",
-      "mart": "supermercado", "public": "oficina pública", "attraction": "atracción"
+      "convenience": "tienda de conveniencia",
+      "subway": "estación de metro",
+      "restaurant": "restaurante",
+      "cafe": "cafetería",
+      "bank": "banco",
+      "pharmacy": "farmacia",
+      "hospital": "hospital",
+      "mart": "supermercado",
+      "public": "oficina pública",
+      "attraction": "atracción"
     }
   },
   "barrierFreeInfo": {

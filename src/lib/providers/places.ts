@@ -6,7 +6,7 @@ import {
   hasTourApiKey,
 } from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
-import { annotateDistances } from "../geo";
+import { annotateDistances, haversineMeters } from "../geo";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
@@ -19,20 +19,45 @@ function coordKey(p: Place): string {
   return `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
 }
 
+/** 이름 비교용 정규화 — 공백·구두점 제거 + 소문자. */
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[\s\-·.,()]/g, "");
+}
+
+/** 교차 provider 이름 중복 판정 반경. 실측 오프셋(카카오↔네이버 18~35m) 커버. */
+const DEDUPE_RADIUS_M = 50;
+
 /**
- * 교차 provider 좌표 병합 유틸 — en(카카오+TourAPI)·ko(카카오+네이버) 공용.
- * primary(카카오) 전부를 우선 담고, secondary 중 좌표가 겹치지 않는 것만
- * 이어 붙인다. 소스마다 같은 장소를 다른 이름·미세하게 다른 좌표로 주므로
- * 좌표를 유일 공통축으로 쓴다.
+ * 교차 provider 중복 판정. 두 축의 OR:
+ * 1. 좌표 4자리 일치 — en(카카오+TourAPI)의 정본 축(언어가 달라 이름 비교 불가).
+ * 2. 50m 이내 + 정규화 이름의 가장자리 일치(동등/접두/접미, 짧은 쪽 ≥5자) —
+ *    ko(카카오+네이버)는 같은 장소를 20~30m 어긋난 좌표로 줘 1이 미적중
+ *    ("키자니아 서울" 이중 노출 실측 2026-07-20). 접두/접미로 제한하는 이유:
+ *    지점명이 앵커 장소명을 품는 패턴("모모유부 키자니아서울점")은 가운데
+ *    포함이라 배제되고, "키자니아 부산"↔"키자니아 부산점"(접두)·
+ *    "곰두리체육센터"↔"시립곰두리체육센터"(접미)류 진짜 중복만 잡는다.
+ */
+function isDuplicate(a: Place, b: Place): boolean {
+  if (coordKey(a) === coordKey(b)) return true;
+  if (haversineMeters(a.lat, a.lng, b.lat, b.lng) > DEDUPE_RADIUS_M) return false;
+  const na = normalizeName(a.name);
+  const nb = normalizeName(b.name);
+  if (!na || !nb) return false;
+  const [short, long] = na.length <= nb.length ? [na, nb] : [nb, na];
+  return short.length >= 5 && (long.startsWith(short) || long.endsWith(short));
+}
+
+/**
+ * 교차 provider 병합 유틸 — en(카카오+TourAPI)·ko(카카오+네이버) 공용.
+ * primary(카카오) 전부를 순서 그대로 담고(정확도 축 보존 — primary 내부는
+ * 중복 판정하지 않는다: 한 건물 안 별개 장소가 같은 좌표를 공유하는 경우가
+ * 실재), secondary는 기존 항목과 중복이 아닌 것만 이어 붙인다.
  */
 export function mergePlaces(primary: Place[], secondary: Place[]): Place[] {
-  const seen = new Set<string>();
-  const merged: Place[] = [];
-  for (const p of [...primary, ...secondary]) {
-    const key = coordKey(p);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.push(p);
+  const merged = [...primary];
+  for (const s of secondary) {
+    if (merged.some((m) => isDuplicate(m, s))) continue;
+    merged.push(s);
   }
   return merged;
 }

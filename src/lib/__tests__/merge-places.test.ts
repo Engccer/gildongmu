@@ -3,11 +3,12 @@ import { mergePlaces } from "../providers/places";
 import type { Place } from "../types";
 
 /**
- * en 로케일 병합(카카오 기본 + TourAPI 보강)의 중복 제거 로직.
+ * 교차 provider 병합(en: 카카오+TourAPI / ko: 카카오+네이버)의 중복 제거 로직.
  *
- * 카카오(한글)와 TourAPI(영문)는 같은 장소를 서로 다른 이름·id로 주므로
- * 유일한 공통축인 좌표(WGS84)로만 중복을 판정한다. 두 소스의 좌표는
- * 소수점 아래가 미세하게 다를 수 있어 4자리(약 11m)로 반올림해 비교한다.
+ * 판정은 두 축의 OR: ① 좌표 4자리 일치(en 정본 — 언어가 달라 이름 비교 불가)
+ * ② 50m 이내 + 정규화 이름 가장자리 일치(ko — 두 소스가 같은 장소를 20~30m
+ * 어긋난 좌표로 줘 ①이 미적중, "키자니아 서울" 이중 노출 실측 2026-07-20).
+ * 좌표·이름 샘플은 실호출 응답에서 가져왔다.
  */
 
 function place(over: Partial<Place> & Pick<Place, "id" | "lat" | "lng">): Place {
@@ -65,5 +66,59 @@ describe("mergePlaces", () => {
 
   it("빈 입력을 안전하게 처리한다", () => {
     expect(mergePlaces([], [])).toEqual([]);
+  });
+
+  // 이하 ko(카카오+네이버) 이름+거리 축 — 좌표 4자리 미적중 오프셋 실측 재현
+  it("50m 이내 + 이름 동등이면 좌표 4자리가 달라도 중복으로 제외한다 (키자니아 서울)", () => {
+    const primary = [
+      place({ id: "kakao-kz", name: "키자니아 서울", lat: 37.5109, lng: 127.0969 }),
+    ];
+    const secondary = [
+      place({ id: "naver-kz", name: "키자니아 서울", lat: 37.5109, lng: 127.0966 }),
+    ];
+
+    expect(mergePlaces(primary, secondary).map((p) => p.id)).toEqual(["kakao-kz"]);
+  });
+
+  it("접두 일치(지점 접미사만 추가)도 중복으로 본다 (키자니아 부산/부산점)", () => {
+    const primary = [
+      place({ id: "kakao-bs", name: "키자니아 부산점", lat: 35.1701, lng: 129.1285 }),
+    ];
+    const secondary = [
+      place({ id: "naver-bs", name: "키자니아 부산", lat: 35.1701, lng: 129.1283 }),
+    ];
+
+    expect(mergePlaces(primary, secondary).map((p) => p.id)).toEqual(["kakao-bs"]);
+  });
+
+  it("앵커 장소명을 가운데에 품는 지점명은 별개 장소로 남긴다 (모모유부 키자니아서울점)", () => {
+    const primary = [
+      place({ id: "kakao-kz", name: "키자니아 서울", lat: 37.5109, lng: 127.0969 }),
+    ];
+    const secondary = [
+      place({ id: "naver-momo", name: "모모유부 키자니아서울점", lat: 37.5109, lng: 127.0965 }),
+    ];
+
+    expect(mergePlaces(primary, secondary)).toHaveLength(2);
+  });
+
+  it("이름이 같아도 50m 밖이면 별개 장소다 (서울/충주 신명중학교)", () => {
+    const primary = [
+      place({ id: "kakao-seoul", name: "신명중학교", lat: 37.5352, lng: 127.1428 }),
+    ];
+    const secondary = [
+      place({ id: "naver-chungju", name: "신명중학교", lat: 36.9911, lng: 127.9259 }),
+    ];
+
+    expect(mergePlaces(primary, secondary)).toHaveLength(2);
+  });
+
+  it("primary 내부는 같은 좌표라도 중복 판정하지 않는다 (한 건물 안 별개 장소)", () => {
+    const primary = [
+      place({ id: "kakao-kz", name: "키자니아 서울", lat: 37.5109, lng: 127.0969 }),
+      place({ id: "kakao-er", name: "키자니아 응급의학센터", lat: 37.5109, lng: 127.0969 }),
+    ];
+
+    expect(mergePlaces(primary, [])).toHaveLength(2);
   });
 });

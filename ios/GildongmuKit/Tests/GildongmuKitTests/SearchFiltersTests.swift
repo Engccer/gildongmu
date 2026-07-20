@@ -29,12 +29,24 @@ private func place(
     ("교통,수송 > 교통시설 > 주차장", "transport"),
     ("교통,수송 > 지하철,전철 > 수도권3호선", "transport"),
     ("음식점 > 한식 > 육류,고기", "food"),
+    ("음식점 > 카페 > 테마카페", "food"),
     ("가정,생활 > 백화점", "shopping"),
     ("여행 > 숙박 > 호텔", "lodging"),
-    ("교육,학문 > 학교 > 중학교", "other"),
+    // 공공·교육 버킷 — 학교·관공서·복지시설이 기타로 뭉개지던 회귀(2026-07-21 실측)
+    ("교육,학문 > 학교 > 중학교", "public"),
+    ("사회,공공기관 > 지방행정기관 > 구청", "public"),
+    ("사회,공공기관 > 단체,협회 > 사회복지시설 > 장애인복지시설", "public"),
+    ("사회,복지 > 장애인복지시설", "public"),
+    // 미지 카테고리는 정직하게 other(버킷은 순위를 결정하지 않는다)
+    ("부동산 > 빌딩", "other"),
+    ("스포츠,레저 > 스포츠시설 > 체육관", "other"),
     // 회귀: 카카오 최상위 "문화,예술"(사진관 등 비명소)이 단독 '문화' 키워드로
     // attraction에 잘못 묶였다(2026-07-20 "키자니아" 검색 실측 — 인생네컷이 관광·명소 섹션에)
     ("문화,예술 > 사진 > 사진관,포토스튜디오 > 즉석사진 > 인생네컷", "other"),
+    // 회귀: '미술' 단독이 "미술,공예" 공방 트리를, '카페'가 "키즈카페"를 오탐(2026-07-21 실측)
+    ("문화,예술 > 미술,공예 > 가죽공예", "other"),
+    ("문화,예술 > 문화시설 > 미술관", "attraction"),
+    ("가정,생활 > 유아 > 놀이시설 > 키즈카페", "other"),
     ("Tourist Attraction", "attraction"),
     ("Cultural Facility", "attraction"),
     ("Restaurant", "food"),
@@ -66,32 +78,9 @@ func categoryBucketJudgesRepresentativeCases(category: String, expectedBucket: S
     #expect(filterPlaces(places, bucket: nil).count == 2)
 }
 
-@Test func groupPlacesByBucketOrdersAndSkipsEmptyBuckets() {
-    let places = [
-        place(id: "kakao-역", category: "교통,수송 > 지하철,전철 > 3호선"),
-        place(id: "tour-shop", category: "Shopping"),
-        place(id: "kakao-궁", category: "여행 > 관광,명소 > 문화유적 > 고궁,궁"),
-    ]
-    let groups = groupPlacesByBucket(places)
-    #expect(groups.map(\.bucket) == ["attraction", "shopping", "transport"])
-}
-
-@Test func groupPlacesByBucketPreservesInputOrderWithinBucket() {
-    let places = [
-        place(id: "kakao-궁", category: "여행 > 관광,명소 > 문화유적 > 고궁,궁"),
-        place(id: "tour-palace", category: "Tourist Attraction"),
-    ]
-    let groups = groupPlacesByBucket(places)
-    #expect(groups.count == 1)
-    #expect(groups[0].places.map(\.id) == ["kakao-궁", "tour-palace"])
-}
-
-@Test func groupPlacesByBucketEmptyInputReturnsEmpty() {
-    #expect(groupPlacesByBucket([]).isEmpty)
-}
-
 @Test func bucketLabelKoMirrorsMessages() {
     #expect(bucketLabel("attraction", lang: "ko") == "관광·명소")
+    #expect(bucketLabel("public", lang: "ko") == "공공·교육")
     #expect(bucketLabel("food", lang: "ko") == "음식")
     #expect(bucketLabel("shopping", lang: "ko") == "쇼핑")
     #expect(bucketLabel("lodging", lang: "ko") == "숙박")
