@@ -16,7 +16,7 @@ const querySchema = z.object({
   // 자연 분류하므로 인위적 상한을 두지 않고 provider 최대치를 그대로 노출한다.
   limit: z.coerce.number().int().min(1).max(15).default(15),
   lang: z.enum(["ko", "en"]).default("ko"),
-  // 좌표는 검색 품질 보조 — 있으면 거리순, 무효/누락이면 좌표 없이 검색(400 아님).
+  // 좌표는 검색 품질 보조 — 있으면 근접 블렌딩(정확도순)과 거리 주석, 무효/누락이면 좌표 없이 검색(400 아님).
   lat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
   lng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
 });

@@ -39,7 +39,7 @@ const LATLNG: ParamSpec[] = [
 ];
 
 export const ENDPOINT_CATALOG: EndpointSpec[] = [
-  { name: "places-search", description: "장소 검색(카카오 로컬, 좌표 있으면 거리순)", path: "/api/places", method: "GET",
+  { name: "places-search", description: "장소 검색(카카오 로컬, 좌표 있으면 근접 블렌딩 정확도순)", path: "/api/places", method: "GET",
     params: [{ key: "query", type: "string", required: true, description: "검색어" },
              { key: "lang", type: "string", required: false, description: "ko|en" }, ...LATLNG.map(p => ({ ...p, required: false }))],
     envelope: "places", locationParam: false, mcp: true },

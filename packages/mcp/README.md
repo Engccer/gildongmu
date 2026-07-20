@@ -43,7 +43,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 
 | 도구 | 설명 |
 |---|---|
-| `places_search` | 장소 검색(카카오 로컬, 좌표 있으면 거리순) |
+| `places_search` | 장소 검색(카카오 로컬, 좌표 있으면 근접 블렌딩 정확도순) |
 | `address_search` | 도로명·지번 주소와 우편번호 검색(juso) |
 | `geocode` | 장소·주소 문자열을 WGS84 좌표로 변환 |
 | `nearby_subway` | 내 주변 지하철역 실시간 도착 |
