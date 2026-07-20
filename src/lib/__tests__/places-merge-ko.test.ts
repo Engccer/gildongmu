@@ -33,8 +33,9 @@ describe("searchPlacesMergedKo (ko 카카오+네이버 병합)", () => {
     expect(res.places.map((p) => p.id)).toEqual(["kakao-1", "naver-1"]);
   });
 
-  it("좌표가 있어도 재정렬하지 않는다 — 카카오 정확도순 뒤에 네이버가 그대로 이어진다(distanceMeters는 표기만)", async () => {
-    // 백년찌개 시나리오: 카카오는 원거리 유사명만, 네이버에만 근처 실가게가 있다
+  it("커버리지 공백이면 질의명 보강 항목을 최상단 승격 — 그 외 재정렬은 없다(distanceMeters는 표기만)", async () => {
+    // 백년찌개 시나리오: 카카오는 원거리 유사명만, 네이버에만 질의명 실가게가 있다
+    // → 승격(2026-07-21, 유사명+거리 꼬리 정렬에 정확 일치가 최하단 깔리는 회귀 수정).
     kakaoMock.mockResolvedValue(
       result("kakao-local", [
         place("kakao-부천-백년전골", 37.5045, 126.763),
@@ -47,11 +48,10 @@ describe("searchPlacesMergedKo (ko 카카오+네이버 병합)", () => {
 
     const res = await searchPlacesMergedKo({ query: "백년찌개", lat: 37.5319, lng: 126.914 });
 
-    // 정렬은 하지 않는다 — 카카오 정확도순 2건 뒤에 네이버 1건.
     expect(res.places.map((p) => p.id)).toEqual([
+      "naver-여의도-백년찌개집",
       "kakao-부천-백년전골",
       "kakao-용인-백년집",
-      "naver-여의도-백년찌개집",
     ]);
     // searchPlacesMergedKo 자체는 distanceMeters를 부여하지 않는다(표기는 searchPlaces가 일원화).
     expect(res.places[0].distanceMeters).toBeUndefined();

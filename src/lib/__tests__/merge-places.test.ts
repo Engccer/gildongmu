@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mergePlaces } from "../providers/places";
+import { mergePlaces, promoteCoverageGapMatches } from "../providers/places";
 import type { Place } from "../types";
 
 /**
@@ -120,5 +120,42 @@ describe("mergePlaces", () => {
     ];
 
     expect(mergePlaces(primary, [])).toHaveLength(2);
+  });
+});
+
+describe("promoteCoverageGapMatches", () => {
+  // 실측 시나리오(2026-07-21 백년찌개집): 카카오는 유사 이름만, 정확 일치는 네이버 꼬리.
+  const kakao = [
+    place({ id: "kakao-1", name: "백년집 김치찌개", lat: 37.2, lng: 127.2 }),
+    place({ id: "kakao-2", name: "백년그집", lat: 37.5, lng: 127.05 }),
+  ];
+  const naverTail = [
+    place({ id: "naver-1", name: "진주회관", lat: 37.564, lng: 126.973 }),
+    place({ id: "naver-2", name: "백년찌개집 1971", lat: 37.52, lng: 126.92 }),
+  ];
+  const merged = [...kakao, ...naverTail];
+
+  it("카카오에 질의명 항목이 없으면 질의명 보강 항목을 최상단으로 승격한다", () => {
+    const out = promoteCoverageGapMatches(merged, kakao, "백년찌개집");
+    expect(out.map((p) => p.id)).toEqual(["naver-2", "kakao-1", "kakao-2", "naver-1"]);
+  });
+
+  it("카카오에 질의명 항목이 있으면 아무것도 움직이지 않는다 (맥도날드류)", () => {
+    const k = [place({ id: "kakao-mc", name: "맥도날드 서울둔촌DT점", lat: 37.53, lng: 127.14 })];
+    const m = [...k, place({ id: "naver-mc", name: "맥도날드 명동점", lat: 37.56, lng: 126.98 })];
+    expect(promoteCoverageGapMatches(m, k, "맥도날드")).toEqual(m);
+  });
+
+  it("보강에도 질의명 항목이 없으면 무변경", () => {
+    expect(promoteCoverageGapMatches(merged, kakao, "존재하지않는가게")).toEqual(merged);
+  });
+
+  it("공백·대소문자 차이는 정규화로 흡수한다", () => {
+    const out = promoteCoverageGapMatches(merged, kakao, "백년 찌개집");
+    expect(out[0].id).toBe("naver-2");
+  });
+
+  it("한 글자 질의는 승격하지 않는다 (퇴화 방지)", () => {
+    expect(promoteCoverageGapMatches(merged, kakao, "백")).toEqual(merged);
   });
 });

@@ -149,7 +149,33 @@ export async function searchPlacesMergedKo(
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const naver = naverR.status === "fulfilled" ? naverR.value.places : [];
   const merged = mergePlaces(kakao, orderSupplementTail(naver, params));
-  return { places: merged, provider: "merged", query: params.query };
+  return {
+    places: promoteCoverageGapMatches(merged, kakao, params.query),
+    provider: "merged",
+    query: params.query,
+  };
+}
+
+/**
+ * 커버리지 공백 승격 — primary(카카오)에 질의명을 포함한 항목이 하나도 없을
+ * 때만, 질의명을 포함한 보강 항목을 리스트 최상단으로 올린다(그 외엔 무변경).
+ * 네이버 보강의 존재 이유인 "카카오 미등록 가게"(여의도 백년찌개집 1971 실측)
+ * 가 유사 이름 카카오 결과 + 거리 꼬리 정렬에 밀려 최하단에 깔리는 회귀 수정
+ * (2026-07-21). 카카오가 질의명을 찾는 일반 검색(맥도날드·아쿠아리움)에서는
+ * 발동하지 않아 정확도 축 불변. 승격 항목 간 상대 순서는 보존(안정 분할).
+ */
+export function promoteCoverageGapMatches(
+  merged: Place[],
+  primary: Place[],
+  query: string,
+): Place[] {
+  const q = normalizeName(query);
+  if (q.length < 2) return merged;
+  const matches = (p: Place) => normalizeName(p.name).includes(q);
+  if (primary.some(matches)) return merged;
+  const hit = merged.filter(matches);
+  if (hit.length === 0) return merged;
+  return [...hit, ...merged.filter((p) => !matches(p))];
 }
 
 /**
@@ -193,7 +219,11 @@ export async function searchPlacesMergedEn(
 
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const tour = tourR.status === "fulfilled" ? tourR.value.places : [];
-  const merged = mergePlaces(kakao, orderSupplementTail(tour, params));
+  const merged = promoteCoverageGapMatches(
+    mergePlaces(kakao, orderSupplementTail(tour, params)),
+    kakao,
+    params.query,
+  );
   return {
     places:
       hasJusoKey() || hasNcpMapsKeys()
