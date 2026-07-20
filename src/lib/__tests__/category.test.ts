@@ -23,6 +23,9 @@ describe("categoryOf", () => {
     ["가정,생활 > 백화점", "shopping"],
     ["여행 > 숙박 > 호텔", "lodging"],
     ["교육,학문 > 학교 > 중학교", "other"],
+    // 회귀: 카카오 최상위 "문화,예술"(사진관 등 비명소)이 단독 '문화' 키워드로
+    // attraction에 잘못 묶였다(2026-07-20 "키자니아" 검색 실측 — 인생네컷이 관광·명소 섹션에)
+    ["문화,예술 > 사진 > 사진관,포토스튜디오 > 즉석사진 > 인생네컷", "other"],
     // TourAPI 라벨 (국문/영문)
     ["Tourist Attraction", "attraction"],
     ["Cultural Facility", "attraction"],
@@ -30,6 +33,7 @@ describe("categoryOf", () => {
     ["Shopping", "shopping"],
     ["Accommodation", "lodging"],
     ["관광지", "attraction"],
+    ["문화시설", "attraction"],
     ["음식점", "food"],
     ["", "other"],
   ];

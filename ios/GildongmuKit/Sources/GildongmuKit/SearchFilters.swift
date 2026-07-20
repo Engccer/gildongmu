@@ -12,7 +12,9 @@ private let bucketOrder = ["attraction", "food", "shopping", "lodging", "transpo
 /// bucketOrder와 같다(관광이 교통보다 우선). 한글(카카오)·영문(TourAPI) 키워드를
 /// 한 패턴에 담는다.
 private let bucketPatterns: [(String, String)] = [
-    ("attraction", "관광|명소|문화|유적|고궁|궁궐|사찰|박물|미술|공원|축제|공연|행사|레포츠|Attraction|Cultural|Festival|Leisure|Tour"),
+    // '문화시설'만 매칭('문화' 단독은 카카오 최상위 "문화,예술" 트리의 사진관·즉석사진
+    // 등 비명소까지 attraction으로 끌어와 금지 — '문화유적'은 '유적'이 커버).
+    ("attraction", "관광|명소|문화시설|유적|고궁|궁궐|사찰|박물|미술|공원|축제|공연|행사|레포츠|Attraction|Cultural|Festival|Leisure|Tour"),
     ("food", "음식|맛집|카페|제과|베이커리|Restaurant|Cafe|Food"),
     ("shopping", "쇼핑|마트|백화점|시장|면세|아울렛|편의점|Shopping|Market"),
     ("lodging", "숙박|호텔|모텔|펜션|게스트|리조트|Accommodation|Hotel|Lodging"),
