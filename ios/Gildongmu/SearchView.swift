@@ -11,6 +11,8 @@ struct SearchView: View {
     /// 검색 완료 후 첫 결과로 VoiceOver 포커스 이동(웹 "settled 후 1회 포커스" 원칙의 iOS 문법).
     /// 행 키는 섹션 접두("place-"·"address-"·"web-")로 List 전역 유일.
     @AccessibilityFocusState private var focusedRowID: String?
+    /// 결과 행 커스텀 액션의 장소 채팅 sheet(내 주변 뷰들과 동형). 표시마다 새 대화.
+    @State private var chatPlace: Place?
 
     var body: some View {
         NavigationStack {
@@ -69,6 +71,7 @@ struct SearchView: View {
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
                 Button(appLocalized("ios.common.ok")) {}
             }
+            .sheet(item: $chatPlace) { ChatView(place: $0) }
             .overlay {
                 if model.isSearching {
                     ProgressView(appLocalized("ios.search.searching"))
@@ -193,8 +196,10 @@ struct SearchView: View {
                 ForEach(Array(groupPlacesByBucket(filtered).enumerated()), id: \.offset) { _, group in
                     Section(appLocalized("category.groupHeading", bucketLabel(group.bucket, lang: AppLanguage.current), String(group.places.count))) {
                         ForEach(group.places) { place in
-                            NavigationLink(value: place) { PlaceRow(place: place) }
-                                .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
+                            NavigationLink(value: place) {
+                                PlaceRow(place: place, onAskAbout: { chatPlace = place })
+                            }
+                            .accessibilityFocused($focusedRowID, equals: "place-\(place.id)")
                         }
                     }
                 }
@@ -225,6 +230,9 @@ struct SearchView: View {
 /// 화면 버튼 대신 VoiceOver 커스텀 액션(로터)으로 전화·길찾기 제공(spec §4).
 struct PlaceRow: View {
     let place: Place
+    /// 장소 채팅 진입(검색 결과 전용 — sheet 상태를 가진 화면만 넘긴다).
+    /// 채팅 카드 내 재사용은 nil로 액션 미노출(채팅 안에서 채팅 재진입 순환 방지).
+    var onAskAbout: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -235,7 +243,13 @@ struct PlaceRow: View {
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .combine)
+        // ⚠ 선언은 역순: VoiceOver 쓸기 메뉴가 빌더 선언의 역순으로 노출된다(실기기 관측).
+        // 사용자 경험 순서: 주소 복사하기 → 카카오맵 → 네이버 지도 → 전화 걸기 → 물어보기.
+        // 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 액션).
         .accessibilityActions {
+            if let onAskAbout {
+                Button(appLocalized("ios.place.askAbout", place.name)) { onAskAbout() }
+            }
             if let phone = place.phone, !phone.isEmpty,
                let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
                 Button(appLocalized("ios.place.call")) { openURL(telURL) }
@@ -247,6 +261,9 @@ struct PlaceRow: View {
             }
             Button(appLocalized("ios.route.kakao")) {
                 if let url = buildKakaoRouteDeeplink(mode: .walk, dest: dest) { openURL(url) }
+            }
+            if !place.roadAddress.isEmpty {
+                Button(appLocalized("ios.place.copyAddress")) { copyAddressToPasteboard(place.roadAddress) }
             }
         }
     }

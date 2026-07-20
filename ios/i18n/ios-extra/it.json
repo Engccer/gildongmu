@@ -49,6 +49,7 @@
       "roadAddressLine": "Indirizzo stradale, {value}",
       "jibunAddressLine": "Indirizzo catastale, {value}",
       "englishAddressLine": "Indirizzo in inglese, {value}",
+      "copyAddress": "Copia indirizzo",
       "askAbout": "Chiedi informazioni su {name}"
     },
     "route": {

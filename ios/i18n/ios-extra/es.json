@@ -49,6 +49,7 @@
       "roadAddressLine": "Dirección (calle), {value}",
       "jibunAddressLine": "Dirección (parcela), {value}",
       "englishAddressLine": "Dirección en inglés, {value}",
+      "copyAddress": "Copiar dirección",
       "askAbout": "Preguntar sobre {name}"
     },
     "route": {

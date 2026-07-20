@@ -49,6 +49,7 @@
       "roadAddressLine": "도로명 주소, {value}",
       "jibunAddressLine": "지번 주소, {value}",
       "englishAddressLine": "영문 주소, {value}",
+      "copyAddress": "주소 복사하기",
       "askAbout": "{name}에 관해 물어보기"
     },
     "route": {
