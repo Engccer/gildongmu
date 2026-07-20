@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { annotateDistances, haversineMeters } from "../geo";
+import { annotateDistances, haversineMeters, sortByDistanceFrom } from "../geo";
 
 describe("haversineMeters", () => {
   it("같은 점은 0", () => {
@@ -32,5 +32,22 @@ describe("annotateDistances", () => {
     const arr = [p];
     annotateDistances(arr, origin);
     expect(p).not.toHaveProperty("distanceMeters");
+  });
+});
+
+describe("sortByDistanceFrom", () => {
+  const origin = { lat: 37.5, lng: 127.0 };
+  function place(id: string, lat: number, lng: number) {
+    return { id, name: id, category: "", address: "", roadAddress: "", lat, lng };
+  }
+  it("거리 오름차순 새 배열을 반환하고 입력은 변형하지 않는다", () => {
+    const input = [place("먼곳", 38.0, 128.0), place("가까운곳", 37.5, 127.001), place("중간", 37.6, 127.1)];
+    const out = sortByDistanceFrom(input, origin);
+    expect(out.map((p) => p.id)).toEqual(["가까운곳", "중간", "먼곳"]);
+    expect(input.map((p) => p.id)).toEqual(["먼곳", "가까운곳", "중간"]);
+  });
+  it("비유한 좌표는 맨 뒤로 보낸다", () => {
+    const input = [place("좌표없음", NaN, 127.0), place("정상", 37.5, 127.001)];
+    expect(sortByDistanceFrom(input, origin).map((p) => p.id)).toEqual(["정상", "좌표없음"]);
   });
 });

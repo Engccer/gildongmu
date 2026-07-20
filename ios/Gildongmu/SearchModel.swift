@@ -31,8 +31,9 @@ final class SearchModel {
         searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
         isSearching = true
         searchTask = Task {
-            // 보유 좌표는 신규 권한 요청·취득 없이(LocationService 캐시만) API로 전달.
-            let coordinate = LocationService.shared.lastCoordinate
+            // 권한이 이미 허용된 세션이면 좌표를 취득해 싣는다(캐시 우선, 팝업 없음).
+            // 좌표 없는 검색은 전국 정확도순이라 근처 결과가 매몰된다(2026-07-21).
+            let coordinate = await LocationService.shared.coordinateIfAuthorized()
             let result = await service.search(
                 query: trimmed,
                 lat: coordinate?.lat,

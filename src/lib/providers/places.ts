@@ -6,7 +6,7 @@ import {
   hasTourApiKey,
 } from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
-import { annotateDistances, haversineMeters } from "../geo";
+import { annotateDistances, haversineMeters, sortByDistanceFrom } from "../geo";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
@@ -148,8 +148,20 @@ export async function searchPlacesMergedKo(
 
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const naver = naverR.status === "fulfilled" ? naverR.value.places : [];
-  const merged = mergePlaces(kakao, naver);
+  const merged = mergePlaces(kakao, orderSupplementTail(naver, params));
   return { places: merged, provider: "merged", query: params.query };
+}
+
+/**
+ * 병합 검색의 보강 꼬리(네이버·TourAPI) 정렬 — 좌표가 있으면 거리 오름차순.
+ * 카카오 본체는 정확도+근접 블렌딩이 이미 근사 거리순을 주지만, 보강 소스는
+ * 좌표 파라미터가 없어(네이버) 전국 순서 그대로 꼬리에 붙는다 → 낭독 시
+ * "…6.5km 다음에 15km 시청점"으로 거리 흐름이 깨진다(2026-07-21 맥도날드
+ * 실측). 꼬리 내부만 정렬하므로 카카오 정확도 축은 침범하지 않는다.
+ */
+function orderSupplementTail(places: Place[], params: PlaceSearchParams): Place[] {
+  if (params.lat == null || params.lng == null) return places;
+  return sortByDistanceFrom(places, { lat: params.lat, lng: params.lng });
 }
 
 /**
@@ -181,7 +193,7 @@ export async function searchPlacesMergedEn(
 
   const kakao = kakaoR.status === "fulfilled" ? kakaoR.value.places : [];
   const tour = tourR.status === "fulfilled" ? tourR.value.places : [];
-  const merged = mergePlaces(kakao, tour);
+  const merged = mergePlaces(kakao, orderSupplementTail(tour, params));
   return {
     places:
       hasJusoKey() || hasNcpMapsKeys()

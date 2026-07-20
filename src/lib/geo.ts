@@ -38,3 +38,17 @@ export function annotateDistances(places: Place[], origin: Coord): Place[] {
       : p,
   );
 }
+
+/**
+ * origin 기준 거리 오름차순 새 배열(안정 정렬, 순수). ⚠ 검색 결과 본체(카카오
+ * 정확도 축)에 쓰지 말 것 — 병합 검색의 "보강 꼬리"(네이버·TourAPI)처럼
+ * provider 자체 순서에 근접 신호가 없는 부록 구간 전용(2026-07-21). 좌표가
+ * 유한하지 않은 항목은 맨 뒤로 보낸다.
+ */
+export function sortByDistanceFrom(places: Place[], origin: Coord): Place[] {
+  const dist = (p: Place) =>
+    Number.isFinite(p.lat) && Number.isFinite(p.lng)
+      ? haversineMeters(origin.lat, origin.lng, p.lat, p.lng)
+      : Number.POSITIVE_INFINITY;
+  return [...places].sort((a, b) => dist(a) - dist(b));
+}

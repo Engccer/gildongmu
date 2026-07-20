@@ -27,6 +27,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
     }
 
+    /// 이미 권한이 허용된 세션에서만 좌표를 취득한다(캐시 우선, 팝업 절대 없음).
+    /// 검색의 근접 블렌딩용(2026-07-21) — "권한 요청은 내 주변 최초 사용 시"
+    /// 계약을 지키면서, 허용 후 세션에선 검색도 좌표를 싣게 한다. 검색이 좌표
+    /// 없이 나가면 전국 정확도순이 되어 근처 지점·시설이 매몰된다(아쿠아리움
+    /// 실측: 충주 1위). 미허용·거부·취득 실패는 조용히 nil(검색은 좌표 없이 진행).
+    func coordinateIfAuthorized() async -> (lat: Double, lng: Double)? {
+        if let cached = lastCoordinate { return cached }
+        switch manager.authorizationStatus {
+        case .authorizedWhenInUse, .authorizedAlways:
+            return try? await currentCoordinate()
+        default:
+            return nil
+        }
+    }
+
     /// 권한 요청(최초 1회 시스템 팝업) + 현재 위치 1회 취득.
     /// force=true면 캐시를 버리고 정밀 재취득(웹 awaitGeolocation({force:true}) 계약).
     /// 실패해도 lastCoordinate는 유지된다.
