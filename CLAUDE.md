@@ -63,6 +63,8 @@
 - **⚠ 장소 특징 날조 금지**: 도구가 준 필드만 — Gemini가 카페 분위기·평판을 사전지식으로 날조하면 시각장애 사용자가 검증 불가([[agentic-llm-fabricates-unstated-fields]], systemInstruction에 명시). 도구는 provider 직접 import 호출(`ToolResult{data,render?,source?}`), self-fetch 카드+출처(`SourceList`) 노출, `data`는 LLM에만(PII 누수 차단).
 - **마크다운 답변**(`react-markdown`+`remark-gfm`): 헤딩은 강조 단락으로 다운그레이드(아웃라인 오염 방지). ⚠ **loose list `remarkTightLists`로 tight 강제** — `<li><p>` 중첩이 iOS VoiceOver 이중 낭독([[markdown-loose-list-voiceover-double-read]]). 완료 통지는 효과음(`playReceive`)+포커스 이동(진행만 live region).
 - **15개 도구**: 장소2(검색·주소)·내주변5(소아진료·아이놀곳·둘러보기·지하철·무장애관광지)·좌표3(버스·따릉이·공기질)·역명2·길찾기2·웹검색1(`search_web` Perplexity). 각 게이트. `get_bus_route`는 V1 제외.
+- **iOS 채팅 AI 동의 게이트(App Review 5.1.2(i), 2026-07-21)**: 미동의 시 채팅 탭·장소 sheet가 `ChatConsentView`로 대체되고 `ChatModel.send`도 `AIChatConsent.granted` 가드로 전송을 구조 차단(이중 방어) — 채팅에 새 전송 경로를 추가하면 이 가드를 우회하지 않는지 확인. 철회는 설정 "AI 채팅" 토글. `/api/chat`엔 IP 레이트리밋(60초 10회, `checkChatRateLimit`).
+- **개인정보 3자 일치 불변식**: 수집·전송 항목을 바꾸면(새 데이터 유형·새 제3자) 웹 `/{locale}/privacy` 카피 + iOS `PrivacyInfo.xcprivacy` + ASC 영양 라벨(`docs/appstore/1.0-submission-draft.md` §7)을 **동시 갱신** — 불일치는 심사 거절·앱 제거 사유. iOS 받아쓰기는 온디바이스라 오디오는 세 곳 모두 미신고가 정본.
 
 ### 통합 카탈로그 (provider · route · 핵심 함정)
 세부 구현·검증은 각 spec(`docs/superpowers/specs`) 참조. 새 통합 추가 시 위 횡단 함정·게이트 패턴을 적용.
