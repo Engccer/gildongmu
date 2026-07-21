@@ -1,7 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+// env는 import 시점에 process.env로 동결되므로, fetchStationTimetable의 키
+// 유무 분기를 테스트하려면 env 모듈을 모킹해 키를 주입한다. 이 파일은
+// src/lib/providers/__tests__/에 있어 src/lib/env.ts까지 두 단계 위(../../env).
+vi.mock("../../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
+
 import {
   ensureItemArray, parseKeywordStations, displayLineName,
-  computeServiceDailyType, deriveFirstLast,
+  computeServiceDailyType, deriveFirstLast, fetchStationTimetable,
 } from "../tago-subway";
 
 describe("ensureItemArray", () => {
@@ -51,5 +57,175 @@ describe("deriveFirstLast", () => {
   });
   it("유효 행 0이면 null", () => {
     expect(deriveFirstLast([row("000210", SELF, "강동")], SELF)).toBeNull();
+  });
+});
+
+// --- fetchStationTimetable: 판정 표(스펙 §2-A) 5행 + lineHint ---------------
+
+function ok(json: unknown): Response {
+  return { ok: true, status: 200, json: async () => json } as unknown as Response;
+}
+
+/** data.go.kr 표준 envelope. items 0건이면 ""(빈 결과), 1건이면 객체, 다건이면 배열. */
+function envelope(items: unknown[]): unknown {
+  return {
+    response: {
+      header: { resultCode: "00" },
+      body: {
+        totalCount: items.length,
+        items: items.length === 0 ? "" : { item: items.length === 1 ? items[0] : items },
+      },
+    },
+  };
+}
+
+// 특일정보(공휴일) 호출은 매 시나리오에서 공통으로 나가므로 "그 달 공휴일
+// 없음"으로 응답해 dailyType이 요일 그대로 나오게 고정한다(holiday 자체 계약은
+// holiday.test.ts가 별도 검증).
+const NO_HOLIDAY = ok({ response: { header: { resultCode: "00" }, body: { items: "" } } });
+
+function opFromUrl(input: RequestInfo | URL): string {
+  return new URL(String(input)).pathname.split("/").pop() ?? "";
+}
+
+const LINE5_ID = "MTRS152549";
+const line5Keyword = { subwayStationId: LINE5_ID, subwayStationName: "강동", subwayRouteName: "5호선" };
+
+describe("fetchStationTimetable — 판정 표(스펙 §2-A)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("시나리오 A: 両방향 성공 → directions 2, partial 없음", async () => {
+    const upRow = { endSubwayStationId: "MTRS152501", endSubwayStationNm: "방화", depTime: "051310" };
+    const downRow = { endSubwayStationId: "MTRS152531", endSubwayStationNm: "애오개", depTime: "234500" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const url = new URL(String(input));
+          const dir = url.searchParams.get("upDownTypeCode");
+          return ok(envelope([dir === "U" ? upRow : downRow]));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result).not.toBeNull();
+    expect(result!.partial).toBeUndefined();
+    expect(result!.lines.length).toBe(1);
+    expect(result!.lines[0].lineName).toBe("5호선");
+    expect(result!.lines[0].directions.length).toBe(2);
+  });
+
+  it("시나리오 B: 상행 성공·하행 실패 → partial:true, directions는 상행만", async () => {
+    const upRow = { endSubwayStationId: "MTRS152501", endSubwayStationNm: "방화", depTime: "051310" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const url = new URL(String(input));
+          const dir = url.searchParams.get("upDownTypeCode");
+          if (dir === "D") throw new Error("network down");
+          return ok(envelope([upRow]));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result).not.toBeNull();
+    expect(result!.partial).toBe(true);
+    expect(result!.lines[0].directions.length).toBe(1);
+    expect(result!.lines[0].directions[0].direction).toBe("up");
+  });
+
+  it("시나리오 C: 両방향 실패 → throw(무운행으로 위장 금지)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        throw new Error("network down");
+      }),
+    );
+    await expect(fetchStationTimetable("강동역 5호선")).rejects.toThrow();
+  });
+
+  it("시나리오 D: 両방향 성공·유효 행 0(전부 당역종착) → lines:[]", async () => {
+    const terminusRow = { endSubwayStationId: LINE5_ID, endSubwayStationNm: "강동", depTime: "051310" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        if (op === "GetSubwaySttnAcctoSchdulList") return ok(envelope([terminusRow]));
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result).not.toBeNull();
+    expect(result!.partial).toBeUndefined();
+    expect(result!.lines).toEqual([]);
+  });
+
+  it("시나리오 E: 키워드 정확매칭 0건(다른 역만) → null, 시간표 호출 없음", async () => {
+    let scheduleCalled = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") {
+          // "강동역" 질의인데 "강동구청"만 온다 — 정확매칭 필터가 걸러야 한다.
+          return ok(envelope([{ subwayStationId: "X", subwayStationName: "강동구청", subwayRouteName: "5호선" }]));
+        }
+        if (op === "GetSubwaySttnAcctoSchdulList") scheduleCalled = true;
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역");
+    expect(result).toBeNull();
+    expect(scheduleCalled).toBe(false);
+  });
+
+  it("lineHint: 동명이역 2노선 중 힌트와 일치하는 노선만 조회", async () => {
+    const YP5_ID = "MTRS111111"; // 양평역(5호선)
+    const KJJ_ID = "MTRS999999"; // 양평역(경의중앙선, 동명이역)
+    const requestedIds: string[] = [];
+    const upRow = { endSubwayStationId: "MTRS152501", endSubwayStationNm: "방화", depTime: "051310" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") {
+          return ok(
+            envelope([
+              { subwayStationId: YP5_ID, subwayStationName: "양평", subwayRouteName: "5호선" },
+              { subwayStationId: KJJ_ID, subwayStationName: "양평", subwayRouteName: "경의중앙선" },
+            ]),
+          );
+        }
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const url = new URL(String(input));
+          requestedIds.push(url.searchParams.get("subwayStationId")!);
+          return ok(envelope([upRow]));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("양평역 5호선");
+    expect(result).not.toBeNull();
+    expect(result!.lines.length).toBe(1);
+    expect(result!.lines[0].lineName).toBe("5호선");
+    // 경의중앙선(KJJ_ID)으로는 한 번도 조회하지 않는다.
+    expect(requestedIds.every((id) => id === YP5_ID)).toBe(true);
+    expect(requestedIds).not.toContain(KJJ_ID);
   });
 });
