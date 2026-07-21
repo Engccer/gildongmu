@@ -99,7 +99,7 @@ iOS 앱을 App Store 정식 심사에 제출할 수 있는 상태로 만든다. 
 4. 스토어 설명·키워드(100자)·카테고리(내비게이션)·저작권·지원 URL(=처리방침 페이지).
 5. 접근성 라벨(Accessibility Nutrition Labels) VoiceOver 지원 신고 — §7 통합 QA 결과가 근거.
 6. 심사 노트: 접근성 우선 설계 소개, 위치·마이크 사용 이유, 동의 플로 위치 안내.
-7. **PrivacyInfo.xcprivacy에 Search History 항목 추가 여부 결정**(whole-branch 리뷰 이월 2026-07-21): 검색어가 카카오·네이버·Perplexity로 전송됨을 웹 처리방침은 고지하는데 매니페스트는 침묵 — ASC 영양 라벨에 Search History(App Functionality, not linked)를 신고한다면 매니페스트도 동시 갱신해 3자 일치 유지.
+7. ~~PrivacyInfo.xcprivacy에 Search History 항목 추가 여부 결정~~ **해소(2026-07-21)**: 검색어 전송은 Apple 정의상 수집이 명확해 매니페스트에 Search History(App Functionality, not linked)를 선반영 완료 — ASC 영양 라벨 입력 시 `docs/appstore/1.0-submission-draft.md` §7 표대로 3자 일치 신고.
 8. 1.0.0 빌드 업로드 → 심사 제출(외부 발신성 최종 행위 — 제출 직전 사용자 확인).
 
 ## 9. 오케스트레이션 판단 기록
