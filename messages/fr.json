@@ -126,6 +126,12 @@
       "useCurrentLocation": "Partir de la position actuelle",
       "showAlternatives": "Voir d'autres itinéraires",
       "alternativeHeading": "Alternative {index}"
+    },
+    "pedestrian": {
+      "heading": "À pied",
+      "summary": "Total {distanceKm} km, environ {minutes} min",
+      "noRoute": "Aucun itinéraire à pied trouvé.",
+      "error": "Impossible de charger l'itinéraire à pied. Veuillez réessayer dans un instant."
     }
   },
   "detail": {

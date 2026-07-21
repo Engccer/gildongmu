@@ -126,6 +126,12 @@
       "useCurrentLocation": "Partir desde la ubicación actual",
       "showAlternatives": "Ver otras rutas",
       "alternativeHeading": "Alternativa {index}"
+    },
+    "pedestrian": {
+      "heading": "A pie",
+      "summary": "Total {distanceKm} km, aprox. {minutes} min",
+      "noRoute": "No se encontró ninguna ruta a pie.",
+      "error": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve."
     }
   },
   "detail": {

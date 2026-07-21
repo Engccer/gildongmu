@@ -126,6 +126,12 @@
       "useCurrentLocation": "현재 위치에서 출발",
       "showAlternatives": "다른 경로 보기",
       "alternativeHeading": "대안 경로 {index}"
+    },
+    "pedestrian": {
+      "heading": "도보",
+      "summary": "총 {distanceKm}km, 약 {minutes}분",
+      "noRoute": "도보 경로를 찾지 못했습니다.",
+      "error": "도보 경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
     }
   },
   "detail": {

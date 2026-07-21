@@ -126,6 +126,12 @@
       "useCurrentLocation": "Start from current location",
       "showAlternatives": "See other routes",
       "alternativeHeading": "Alternative {index}"
+    },
+    "pedestrian": {
+      "heading": "Walk",
+      "summary": "Total {distanceKm} km, about {minutes} min",
+      "noRoute": "No walking route found.",
+      "error": "Couldn't load the walking route. Please try again shortly."
     }
   },
   "detail": {
