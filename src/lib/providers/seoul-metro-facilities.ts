@@ -1,5 +1,10 @@
 import { env } from "../env";
-import { normalizeStationName } from "../station-match";
+import {
+  normalizeStationName,
+  parseStationQuery,
+  lineHintMatches,
+  stripStationDecorations,
+} from "../station-match";
 import { parseStationItems } from "./korail-facilities";
 import type {
   SeoulMetroFacilities,
@@ -111,14 +116,18 @@ function toFacility(kind: SeoulMetroFacilityKind, item: RawItem): SeoulMetroFaci
 
 /**
  * 한 시설 종류의 raw 응답을 정규화해 그룹으로. 정확매칭 후 비면 null.
+ * lineHint가 있으면 동명이역(다른 노선의 같은 역명)까지 노선으로 좁힌다.
  */
 export function parseFacilityGroup(
   kind: SeoulMetroFacilityKind,
   raw: unknown,
   normalizedTarget: string,
+  lineHint?: string,
 ): SeoulMetroFacilityGroup | null {
   const items = parseStationItems(raw).filter(
-    (it) => normalizeStationName(str(it.stnNm)) === normalizedTarget,
+    (it) =>
+      normalizeStationName(str(it.stnNm)) === normalizedTarget &&
+      (!lineHint || lineHintMatches(str(it.lineNm), lineHint)),
   );
   if (items.length === 0) return null;
   return { kind, facilities: items.map((it) => toFacility(kind, it)) };
@@ -128,26 +137,30 @@ export function parseFacilityGroup(
  * 9종 raw 묶음을 SeoulMetroFacilities로. 데이터 있는 종류만 groups에.
  * 전부 비면 null(미커버 역).
  *
- * line은 **정확매칭된 첫 그룹의 매칭 item**에서 lineNm을 뽑는다 — 포함필터로
- * 섞인 다른 역(강동구청)의 호선이 끼지 않도록 동일한 정확매칭 필터를 다시 건다.
+ * stationName에서 노선 힌트("강동역 5호선"의 "5호선")를 추출해 동명이역을
+ * 좁힌다. line은 **정확매칭된 첫 그룹의 매칭 item**에서 lineNm을 뽑는다 —
+ * 포함필터로 섞인 다른 역(강동구청)의 호선이 끼지 않도록 동일한 정확매칭
+ * 필터를 다시 건다.
  */
 export function parseSeoulMetroFacilities(
   raws: Record<SeoulMetroFacilityKind, unknown>,
   stationName: string,
 ): SeoulMetroFacilities | null {
-  const target = normalizeStationName(stationName);
+  const { nameKey: target, lineHint } = parseStationQuery(stationName);
   if (!target) return null;
   const kinds = Object.keys(OPERATIONS) as SeoulMetroFacilityKind[];
   const groups = kinds
-    .map((k) => parseFacilityGroup(k, raws[k], target))
+    .map((k) => parseFacilityGroup(k, raws[k], target, lineHint))
     .filter((g): g is SeoulMetroFacilityGroup => g !== null);
   if (groups.length === 0) return null;
   // 첫 그룹의 raw에서 정확매칭된 첫 항목의 호선 — 다른 역(강동구청) 혼입 방지.
   const firstMatched = parseStationItems(raws[groups[0].kind]).find(
-    (it) => normalizeStationName(str(it.stnNm)) === target,
+    (it) =>
+      normalizeStationName(str(it.stnNm)) === target &&
+      (!lineHint || lineHintMatches(str(it.lineNm), lineHint)),
   ) as RawItem | undefined;
   return {
-    stationName: stationName.replace(/역$/, ""),
+    stationName: stripStationDecorations(stationName),
     line: firstMatched ? str(firstMatched.lineNm) || undefined : undefined,
     groups,
   };
@@ -202,8 +215,10 @@ export async function fetchSeoulMetroFacilities(
   if (!key) return null;
   const target = normalizeStationName(stationName);
   if (!target) return null;
-  // 포함필터 정확도를 위해 접미사 제거 전 원문에서 "역"만 떼 서버에 보낸다.
-  const query = stationName.replace(/\s*station$/i, "").replace(/역$/, "").trim();
+  // 포함필터 질의: 괄호·노선 토큰·"역"까지 벗긴 원문형("강동역 5호선"→"강동").
+  // 카카오 장소명은 노선 토큰이 붙어 오므로(예: "강동역 5호선") 벗기지 않으면
+  // stnNm 포함필터가 아무 것도 매칭하지 못해 섹션이 죽는다.
+  const query = stripStationDecorations(stationName);
   const kinds = Object.keys(OPERATIONS) as SeoulMetroFacilityKind[];
   const results = await Promise.all(
     kinds.map((k) => fetchOp(OPERATIONS[k], query, key)),

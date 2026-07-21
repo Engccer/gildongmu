@@ -53,6 +53,52 @@ describe("parseFacilityGroup — 시설별 정규화", () => {
   });
 });
 
+describe("lineHint 동명이역 분리(Task 2: 카카오 진입 死 섹션 부활)", () => {
+  // 실 wksn raw 형태를 흉내낸 합성 fixture — 같은 역명("테스트역")이 서로
+  // 다른 노선에 존재하는 상황(양평 5호선/경의중앙선과 동형)을 재현한다.
+  const dualLineRaw = {
+    response: {
+      body: {
+        items: {
+          item: [
+            { stnNm: "테스트역", lineNm: "1호선", fcltNm: "1호선측 엘리베이터" },
+            { stnNm: "테스트역", lineNm: "2호선", fcltNm: "2호선측 엘리베이터" },
+          ],
+        },
+      },
+    },
+  };
+
+  it("parseFacilityGroup: lineHint 없으면 동명이역 전부, 있으면 해당 노선만", () => {
+    // normalizedTarget은 이미 정규화된 매칭 키("역" 접미 제거)를 받는다.
+    const all = parseFacilityGroup("elevator", dualLineRaw, "테스트");
+    expect(all!.facilities.length).toBe(2);
+    const only1 = parseFacilityGroup("elevator", dualLineRaw, "테스트", "1호선");
+    expect(only1!.facilities.length).toBe(1);
+    expect(only1!.facilities[0].name).toBe("1호선측 엘리베이터");
+  });
+
+  it("parseSeoulMetroFacilities: 카카오 실명('테스트역 2호선')이 노선을 자동으로 좁힌다", () => {
+    const raws = {
+      elevator: dualLineRaw,
+      escalator: { response: { body: { items: "" } } },
+      wheelchairLift: { response: { body: { items: "" } } },
+      movingWalk: { response: { body: { items: "" } } },
+      wheelchairCharger: { response: { body: { items: "" } } },
+      safetyPlatform: { response: { body: { items: "" } } },
+      signLangPhone: { response: { body: { items: "" } } },
+      helper: { response: { body: { items: "" } } },
+      restroom: { response: { body: { items: "" } } },
+    };
+    const r = parseSeoulMetroFacilities(raws, "테스트역 2호선");
+    expect(r).not.toBeNull();
+    expect(r!.stationName).toBe("테스트"); // 노선 토큰·"역" 접미가 표시명에서도 빠진다
+    expect(r!.line).toBe("2호선");
+    expect(r!.groups[0].facilities).toHaveLength(1);
+    expect(r!.groups[0].facilities[0].name).toBe("2호선측 엘리베이터");
+  });
+});
+
 describe("parseSeoulMetroFacilities — 9종 묶음", () => {
   const raws = {
     elevator: fixture.Elvtr,
@@ -92,6 +138,36 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
   function ok(json: unknown): Response {
     return { ok: true, status: 200, json: async () => json } as unknown as Response;
   }
+
+  it("카카오 실명('강동역 5호선')의 노선 토큰을 벗겨 서버에 보낸다(死 섹션 회귀 방지)", async () => {
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const map: Record<string, unknown> = {
+      getWksnElvtr: fixture.Elvtr,
+      getWksnEsctr: fixture.Esctr,
+      getWksnWhcllift: fixture.Whcllift,
+      getWksnMvnwlk: fixture.Mvnwlk,
+      getWksnWhclCharge: fixture.WhclCharge,
+      getWksnSafePlfm: fixture.SafePlfm,
+      getWksnSlng: fixture.Slng,
+      getWksnHelper: fixture.Helper,
+      getWksnRstrm: fixture.Rstrm,
+    };
+    const sentStnNm: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = new URL(String(input));
+      sentStnNm.push(url.searchParams.get("stnNm")!);
+      const op = Object.keys(map).find((o) => url.pathname.endsWith(`/${o}`))!;
+      return Promise.resolve(ok(map[op]));
+    });
+    const r = await fetchSeoulMetroFacilities("강동역 5호선");
+    // 과거엔 "강동역 5호선" 원문 그대로 보내 stnNm 포함필터가 아무 것도
+    // 못 잡아 섹션이 죽었다 — 이제 "강동"만 보낸다.
+    expect(sentStnNm.every((v) => v === "강동")).toBe(true);
+    expect(r).not.toBeNull();
+    expect(r!.groups.length).toBe(4);
+  });
 
   it("9 오퍼레이션을 병렬 호출해 묶는다(강동 4종)", async () => {
     const { fetchSeoulMetroFacilities } = await import(

@@ -62,6 +62,49 @@ describe("matchStationsByName", () => {
   });
 });
 
+describe("lineHint 동명이역 분리(Task 2: 카카오 진입 死 섹션 부활)", () => {
+  // fixture 주입형 — 양평 5호선(서울교통공사)과 양평역 경의중앙선(코레일)은
+  // 실 seed에도 동명이역으로 존재(아래 "seed 무결성" 그룹에서 실seed로 재검증).
+  const 양평5: SubwayStation = {
+    stationId: "양평-5호선",
+    name: "양평",
+    nameEn: "Yangpyeong",
+    lineName: "5호선",
+    operator: "서울교통공사",
+    lat: 37.5254,
+    lng: 126.8853,
+    roadAddress: "서울특별시 어딘가",
+    isTransfer: false,
+  };
+  const 양평중앙: SubwayStation = {
+    stationId: "양평-경의중앙선",
+    name: "양평",
+    nameEn: "Yangpyeong",
+    lineName: "경의중앙선",
+    operator: "한국철도공사",
+    lat: 37.4925,
+    lng: 127.4896,
+    roadAddress: "경기도 양평군 어딘가",
+    isTransfer: false,
+  };
+
+  it("lineHint가 동명이역을 분리한다", () => {
+    expect(matchStationsByName([양평5, 양평중앙], "양평역 5호선", "5호선")).toEqual([
+      양평5,
+    ]);
+  });
+
+  it("findStationMeta가 카카오 실명에서 lineHint를 자동 적용한다(실 seed)", () => {
+    // seed 실데이터: "양평역 5호선"의 lines에 경의중앙선이 섞이면 안 된다.
+    const meta = findStationMeta("양평역 5호선");
+    expect(meta?.lines).toEqual(["5호선"]);
+  });
+
+  it("카카오 실명 '강동역 5호선'이 seed와 매칭된다", () => {
+    expect(findStationMeta("강동역 5호선")?.name).toBe("강동");
+  });
+});
+
 describe("nearestStations", () => {
   it("거리순 정렬 + distanceMeters 부여", () => {
     // 서울역 1호선 좌표 바로 옆 → 서울역 행들이 강동보다 가깝다.

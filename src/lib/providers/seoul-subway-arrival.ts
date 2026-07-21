@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { stripStationDecorations } from "../station-match";
 import type { SubwayArrival, SubwayStationArrivals } from "../types";
 
 /**
@@ -55,10 +56,10 @@ function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
 }
 
-/** 역명 정규화 — 접미사(역/station) 제거, trim. swopenapi 조회 키이자 표시명. */
-export function cleanName(name: string): string {
-  return name.replace(/\s*station$/i, "").replace(/역$/, "").trim();
-}
+// 조회 키이자 표시명 — swopenapi는 정확 역명("강동")을 요구한다.
+// station-match의 stripStationDecorations을 그대로 재사용(괄호·노선 토큰·
+// "역"/"station" 접미까지 제거 — "강동역 5호선"→"강동").
+export const cleanName = stripStationDecorations;
 
 /** 응답에서 결과 코드를 읽는다 — 정상은 errorMessage.code(중첩), 에러는 최상위 code(평면). */
 function resultCode(raw: unknown): string {
