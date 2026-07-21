@@ -1,6 +1,6 @@
 import type { StationMeta, SubwayStation } from "./types";
 import { haversineMeters } from "./geo";
-import { normalizeStationName } from "./station-match";
+import { normalizeStationName, parseStationQuery, lineHintMatches } from "./station-match";
 import rawStations from "./data/subway-stations.json";
 
 /**
@@ -25,14 +25,20 @@ const STATIONS = rawStations as SubwayStation[];
  * 역명 정확매칭 — 접미사("역"/"station") 무시 정규화 후 동일한 역만.
  * 환승역은 노선마다 별도 레코드라 여러 행을 반환한다.
  * 부분일치는 배제한다("강동" 검색이 "강동구청"을 끌어오지 않음 — A1 교훈).
+ * lineHint가 있으면 동명이역(예: 양평 5호선 vs 양평역 경의중앙선)을 노선으로 좁힌다.
  */
 export function matchStationsByName(
   stations: SubwayStation[],
   query: string,
+  lineHint?: string,
 ): SubwayStation[] {
   const target = normalizeStationName(query);
   if (!target) return [];
-  return stations.filter((s) => normalizeStationName(s.name) === target);
+  return stations.filter(
+    (s) =>
+      normalizeStationName(s.name) === target &&
+      (!lineHint || lineHintMatches(s.lineName, lineHint)),
+  );
 }
 
 /** nearestStations 옵션. */
@@ -107,13 +113,20 @@ export function summarizeStation(
 }
 
 /** seed 바인딩: 역명으로 표준 메타 조회(영문역명·노선·좌표 받침대). */
-export function findStationsByName(query: string): SubwayStation[] {
-  return matchStationsByName(STATIONS, query);
+export function findStationsByName(
+  query: string,
+  lineHint?: string,
+): SubwayStation[] {
+  return matchStationsByName(STATIONS, query, lineHint);
 }
 
-/** seed 바인딩: 역명으로 표시용 메타 1건 집계(없으면 null). */
+/**
+ * seed 바인딩: 역명으로 표시용 메타 1건 집계(없으면 null).
+ * query에서 노선 힌트("양평역 5호선"의 "5호선")를 자동 추출해 동명이역을 좁힌다.
+ */
 export function findStationMeta(query: string): StationMeta | null {
-  return summarizeStation(findStationsByName(query));
+  const { lineHint } = parseStationQuery(query);
+  return summarizeStation(findStationsByName(query, lineHint));
 }
 
 /** seed 바인딩: 좌표 근접 역 조회. */
