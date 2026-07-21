@@ -80,9 +80,10 @@ public struct TransitRouteResult: Codable, Sendable, Hashable {
     public let alternatives: [TransitRoute]
 }
 
-/// /api/route/transit envelope(자동차와 달리 result로 감싼다).
+/// /api/route/transit envelope(자동차와 달리 result로 감싼다). ⚠ result는 optional.
+/// null은 ODsay 경로 없음(graceful, 3-state: 조회 실패 아님, walk envelope와 동형).
 public struct TransitRouteEnvelope: Codable, Sendable {
-    public let result: TransitRouteResult
+    public let result: TransitRouteResult?
 }
 
 // MARK: - 도보 경로

@@ -46,12 +46,26 @@ private func carFixture() -> CarRouteBriefing {
 }
 
 @Test func transitAndCarClassifyGateAndSuccess() {
+    // 실계약: transit·car는 키 없음 → 503(hasOdsayKey/hasKakaoKey 미충족, walk의 404와 다름)
+    #expect(DirectionsOutcomeClassifier.classify(transit: .failure(APIError.badStatus(code: 503, message: nil))).isGated)
+    #expect(DirectionsOutcomeClassifier.classify(car: .failure(APIError.badStatus(code: 503, message: nil))).isGated)
+    // 분류기는 코드로만 판정하므로 404도 여전히 게이트(수단 불문 공통 규칙)
     #expect(DirectionsOutcomeClassifier.classify(transit: .failure(APIError.badStatus(code: 404, message: nil))).isGated)
     #expect(DirectionsOutcomeClassifier.classify(car: .failure(APIError.badStatus(code: 404, message: nil))).isGated)
-    #expect(DirectionsOutcomeClassifier.classify(transit: .success(transitFixture())).isSuccess)
+    // 회귀: 기존 non-null 성공 경로(TransitRouteResult? → .some)는 값까지 그대로 보존
+    if case .transit(let result) = DirectionsOutcomeClassifier.classify(transit: .success(transitFixture())) {
+        #expect(result.recommended.summary.departName == "길동")
+    } else { Issue.record("transit 성공(non-null)이어야 함") }
     #expect(DirectionsOutcomeClassifier.classify(car: .success(carFixture())).isSuccess)
     if case .error = DirectionsOutcomeClassifier.classify(car: .failure(APIError.badStatus(code: 500, message: nil))) {} else {
         Issue.record("500은 조회 실패여야 함")
+    }
+}
+
+@Test func transitClassifiesNullResultAsEmpty() {
+    // envelope result null(ODsay graceful) = 경로 없음(3-state, 조회 실패 아님, walk와 동형)
+    if case .empty = DirectionsOutcomeClassifier.classify(transit: .success(nil)) {} else {
+        Issue.record("result nil은 경로 없음이어야 함")
     }
 }
 

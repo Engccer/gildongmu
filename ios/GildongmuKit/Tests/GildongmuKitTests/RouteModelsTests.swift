@@ -5,7 +5,8 @@ import Foundation
 // 경로 브리핑 계약 테스트: Fixtures/route-car.json·route-transit.json·route-walk.json이 계약 정본.
 // ⚠ car 응답은 envelope 없이 CarRouteBriefing 직접(웹 /api/route/car 계약).
 // 단위 함정 회귀: durationSeconds=초·totalMinutes=분·fare/taxiFare/tollFare=원.
-// walk는 result가 optional(경로 없음 3-state) — route-walk-no-route.json으로 별도 검증.
+// transit·walk 둘 다 result가 optional(경로 없음 3-state). walk는 route-walk-no-route.json,
+// transit은 inline JSON(routeTransitNullResultDecodesToNil)으로 검증.
 
 // MARK: - fixture 디코딩
 
@@ -23,7 +24,7 @@ import Foundation
 
 @Test func routeTransitFixtureDecodes() throws {
     let envelope = try JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit"))
-    let result = envelope.result
+    let result = try #require(envelope.result)
     #expect(result.recommended.summary.transfers == 2)
     #expect(result.recommended.summary.departName == "길동")
     #expect(result.recommended.summary.arriveName == "강남")
@@ -38,13 +39,19 @@ import Foundation
     #expect(result.alternatives.flatMap(\.legs).contains { $0.mode == "bus" })
 }
 
+@Test func routeTransitNullResultDecodesToNil() throws {
+    // "경로 없음"(ODsay graceful), 조회 실패 아님, throw 대상 아님(3-state, walk 동형)
+    let envelope = try JSONDecoder().decode(TransitRouteEnvelope.self, from: Data(#"{"result":null}"#.utf8))
+    #expect(envelope.result == nil)
+}
+
 // MARK: - 단위 함정 회귀 (강동→강남 상식 범위)
 
 @Test func routeUnitsAreInSaneRanges() throws {
     let car = try JSONDecoder().decode(CarRouteBriefing.self, from: fixture("route-car"))
     // durationSeconds가 초가 아니면(밀리초 오염 등) 이 범위를 벗어난다
     #expect((600...7200).contains(car.durationSeconds))
-    let transit = try JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result
+    let transit = try #require(JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result)
     #expect((20...180).contains(transit.recommended.summary.totalMinutes))
     #expect(transit.recommended.summary.fare > 0)
 }
@@ -52,7 +59,7 @@ import Foundation
 // MARK: - walk leg 계약
 
 @Test func walkLegsHaveNoLineName() throws {
-    let transit = try JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result
+    let transit = try #require(JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result)
     let allLegs = transit.recommended.legs + transit.alternatives.flatMap(\.legs)
     let walks = allLegs.filter { $0.mode == "walk" }
     #expect(!walks.isEmpty)

@@ -21,8 +21,9 @@ public enum DirectionsMode: String, CaseIterable, Sendable, Hashable {
 }
 
 /// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated를 더한 4-state:
-/// 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트 404(gated, 섹션 자체 미노출).
-/// 웹은 서버가 게이트 플래그를 주입해 미노출을 선결정하지만, iOS는 호출 후 404로 안다.
+/// 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트(gated, 섹션 자체 미노출).
+/// 웹은 서버가 게이트 플래그를 주입해 미노출을 선결정하지만, iOS는 호출 후 상태 코드로 안다
+/// (게이트 코드는 수단마다 다르다, classifyFailure 참고).
 public enum DirectionsModeOutcome: Sendable {
     case transit(TransitRouteResult)
     case walk(WalkRouteBriefing)
@@ -44,12 +45,15 @@ public enum DirectionsModeOutcome: Sendable {
     }
 }
 
-/// 수단별 조회 결과 → 4-state 분류. 404는 키 미등록 게이트(웹 canShow* false 동형)라
+/// 수단별 조회 결과 → 4-state 분류. 404·503은 키 미등록 게이트(웹 canShow* false 동형)라
 /// 실패가 아니라 미노출이다(3-state 불변식: 게이트를 오류로 낭독하면 거짓 실패).
 public enum DirectionsOutcomeClassifier {
-    public static func classify(transit result: Result<TransitRouteResult, any Error>) -> DirectionsModeOutcome {
+    /// transit도 walk와 동형으로 envelope result가 optional: nil = "경로 없음"(empty,
+    /// 조회 실패 아님, 웹 ODsay `{result:null}` graceful 계약. src/app/api/route/transit/route.ts).
+    public static func classify(transit result: Result<TransitRouteResult?, any Error>) -> DirectionsModeOutcome {
         switch result {
-        case .success(let value): .transit(value)
+        case .success(let value?): .transit(value)
+        case .success(nil): .empty
         case .failure(let error): classifyFailure(error)
         }
     }
@@ -71,8 +75,12 @@ public enum DirectionsOutcomeClassifier {
         }
     }
 
+    /// 게이트 상태 코드는 서버 실계약마다 다르다: walk는 키 없음 → 404
+    /// (src/app/api/route/walk/route.ts), transit·car는 키 없음 → 503
+    /// (hasOdsayKey/hasKakaoKey 미충족 시 명시 503, src/app/api/route/transit/route.ts,
+    /// src/app/api/route/car/route.ts). 502(모든 라우트 공통 upstream 장애)는 조회 실패로 유지.
     private static func classifyFailure(_ error: any Error) -> DirectionsModeOutcome {
-        if case APIError.badStatus(let code, _) = error, code == 404 { return .gated }
+        if case APIError.badStatus(let code, _) = error, code == 404 || code == 503 { return .gated }
         return .error
     }
 }

@@ -13,6 +13,9 @@ enum RouteLoadState<Payload> {
     case loaded(Payload)
     case denied              // 위치 권한 거부
     case failed              // 조회 실패
+    /// 경로 없음(3-state: 조회 실패 아님, ODsay `{result:null}` graceful). car는 도달하지
+    /// 않는다(브리핑 직접 응답이라 "경로 없음" 상태가 없다, Kit classify(car:) 동형).
+    case empty
 }
 
 /// 상태 오버레이 공통(거부·실패 문장은 M2 공통, 실패 제목만 경로 전용)
@@ -26,6 +29,8 @@ private func routeStateOverlay<Payload>(_ state: RouteLoadState<Payload>) -> som
     case .failed:
         ContentUnavailableView(appLocalized("ios.route.failedTitle"), systemImage: "wifi.exclamationmark",
             description: Text(appLocalized("ios.common.retryLater")))
+    case .empty:
+        ContentUnavailableView(appLocalized("route.transit.noRoute"), systemImage: "arrow.triangle.swap")
     default: EmptyView()
     }
 }
@@ -181,10 +186,16 @@ final class TransitBriefingModel {
             let result = try await service.transit(
                 originLat: coord.lat, originLng: coord.lng,
                 destLat: place.lat, destLng: place.lng)
-            state = .loaded(result)
-            // 완료 통지 1회(진행 통지 없음)
-            AccessibilityNotification.Announcement(
-                appLocalized("ios.route.transitReady", String(result.recommended.summary.totalMinutes))).post()
+            if let result {
+                state = .loaded(result)
+                // 완료 통지 1회(진행 통지 없음)
+                AccessibilityNotification.Announcement(
+                    appLocalized("ios.route.transitReady", String(result.recommended.summary.totalMinutes))).post()
+            } else {
+                // nil = 경로 없음(3-state, 조회 실패와 다른 문구)
+                state = .empty
+                AccessibilityNotification.Announcement(appLocalized("route.transit.noRoute")).post()
+            }
         } catch let error as LocationService.LocationError {
             if case .denied = error { state = .denied } else { state = .failed }
         } catch {

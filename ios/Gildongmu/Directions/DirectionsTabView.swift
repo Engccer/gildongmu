@@ -70,8 +70,13 @@ final class DirectionsModel {
         clearResults()
     }
 
-    /// 필드가 바뀌면 이전 결과·상태 문구를 폐기한다(웹 setResults(null) 동형).
+    /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
+    /// setResults(null) 동형 + 늦은 응답이 초기화 화면을 되채우고 거짓 통지·포커스
+    /// 점프를 내는 경합 차단). performQuery의 기존 guard !Task.isCancelled 가드들이
+    /// 취소 신호를 받아 stale write(결과·통지·포커스)를 막는다.
     private func clearResults() {
+        queryTask?.cancel()
+        isInFlight = false
         results = nil
         phase = .idle
     }
@@ -91,6 +96,9 @@ final class DirectionsModel {
         isInFlight = true
         queryTask = Task {
             await performQuery(from: from, to: to)
+            // 취소된(옛) 태스크가 뒤늦게 깨어나 그 사이 clearResults가 이미 리셋했거나
+            // 새로 시작된 조회의 isInFlight를 덮어쓰지 않도록.
+            guard !Task.isCancelled else { return }
             isInFlight = false
         }
     }
@@ -164,7 +172,7 @@ final class DirectionsModel {
 
     nonisolated private static func settleTransit(
         _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)
-    ) async -> Result<TransitRouteResult, any Error> {
+    ) async -> Result<TransitRouteResult?, any Error> {
         do {
             return .success(try await withQueryTimeout {
                 try await service.transit(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng)
