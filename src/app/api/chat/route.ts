@@ -4,6 +4,7 @@ import { getGeminiClient, GEMINI_MODEL } from "@/lib/gemini/client";
 import { availableDeclarations } from "@/lib/chat/declarations";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { dataLocale } from "@/lib/data-locale";
+import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,13 @@ interface ChatRequest {
 }
 
 export async function POST(request: Request) {
+  // 무인증 공개 API의 유료 호출(Gemini·Perplexity) 비용 방어 — 스펙 §5.
+  if (!checkChatRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
+    return new Response(JSON.stringify({ error: "rate_limited" }), {
+      status: 429, headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const ai = getGeminiClient();
   if (!ai) {
     return new Response(JSON.stringify({ error: "chat_unavailable" }), {

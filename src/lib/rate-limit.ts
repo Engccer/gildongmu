@@ -65,3 +65,20 @@ const ttsStore = new Map<string, RateLimitEntry>();
 export function checkTtsRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(ttsStore, ip, now, TTS_LIMIT, WINDOW_MS).allowed;
 }
+
+// 채팅은 요청당 비용이 가장 크고(Gemini 다회 호출+도구 경유 Perplexity) 대화 턴 간격이
+// 자연히 길어, 검색(30회)보다 강한 60초 10회로 잡는다(스펙 §5).
+const CHAT_LIMIT = 10;
+const chatStore = new Map<string, RateLimitEntry>();
+
+/** /api/chat 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkChatRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(chatStore, ip, now, CHAT_LIMIT, WINDOW_MS).allowed;
+}
+
+/** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
+export function clientIpFromHeaders(headers: Headers): string {
+  const forwarded = headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  return headers.get("x-real-ip") ?? "unknown";
+}

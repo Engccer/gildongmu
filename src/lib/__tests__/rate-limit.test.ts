@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateRateLimit, type RateLimitEntry } from "../rate-limit";
+import { evaluateRateLimit, type RateLimitEntry, checkChatRateLimit, clientIpFromHeaders } from "../rate-limit";
 
 /**
  * 순수 코어 evaluateRateLimit 테스트 — store·now 주입으로 결정적.
@@ -49,5 +49,35 @@ describe("evaluateRateLimit", () => {
     // a는 소진됐지만 b는 영향 없음
     expect(evaluateRateLimit(store, "a", LIMIT, LIMIT, WINDOW).allowed).toBe(false);
     expect(evaluateRateLimit(store, "b", LIMIT, LIMIT, WINDOW).allowed).toBe(true);
+  });
+});
+
+describe("checkChatRateLimit", () => {
+  it("같은 IP 10회까지 허용, 11회째 차단", () => {
+    const ip = "203.0.113.99";
+    const now = 1_700_000_000_000;
+    for (let i = 0; i < 10; i++) {
+      expect(checkChatRateLimit(ip, now + i)).toBe(true);
+    }
+    expect(checkChatRateLimit(ip, now + 10)).toBe(false);
+  });
+
+  it("윈도우(60초) 경과 후 다시 허용", () => {
+    const ip = "203.0.113.98";
+    const now = 1_700_000_100_000;
+    for (let i = 0; i < 10; i++) checkChatRateLimit(ip, now);
+    expect(checkChatRateLimit(ip, now + 60_000)).toBe(true);
+  });
+});
+
+describe("clientIpFromHeaders", () => {
+  it("x-forwarded-for 첫 항목을 반환", () => {
+    const h = new Headers({ "x-forwarded-for": "198.51.100.1, 10.0.0.1" });
+    expect(clientIpFromHeaders(h)).toBe("198.51.100.1");
+  });
+
+  it("없으면 x-real-ip, 둘 다 없으면 unknown", () => {
+    expect(clientIpFromHeaders(new Headers({ "x-real-ip": "198.51.100.2" }))).toBe("198.51.100.2");
+    expect(clientIpFromHeaders(new Headers())).toBe("unknown");
   });
 });
