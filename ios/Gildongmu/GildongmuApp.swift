@@ -3,9 +3,13 @@ import GildongmuKit
 
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
 /// 세션 리셋 시 `.id` 재생성만으론 첫 탭(채팅) 복귀가 안 된다 — 명시 복귀 필요.
-enum AppTab {
+/// `String` rawValue = 안정 식별자(스펙 10-A §8). 정수 인덱스였다면 탭 삽입 시
+/// 순서가 밀려 저장된 값이 다른 탭을 가리키는 마이그레이션 결함이 생기지만,
+/// 이름 기반 rawValue는 케이스를 어디에 끼워 넣어도 기존 값이 계속 같은 탭을 가리킨다.
+enum AppTab: String {
     case chat
     case search
+    case directions
     case nearby
 }
 
@@ -18,6 +22,7 @@ struct GildongmuApp: App {
     /// 탭별 새로고침 세대. 해당 탭 콘텐츠만 .id 재생성한다(전체 리셋 sessionEpoch과 별개).
     @State private var chatEpoch = 0
     @State private var searchEpoch = 0
+    @State private var directionsEpoch = 0
     @State private var nearbyEpoch = 0
     @State private var backgroundedAt: Date?
     @State private var selectedTab: AppTab = .chat
@@ -42,6 +47,7 @@ struct GildongmuApp: App {
             TabView(selection: $selectedTab) {
                 Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
                 Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
+                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { DirectionsTabView().id(directionsEpoch) }
                 Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id("\(sessionEpoch)#\(languageRaw)")
@@ -82,6 +88,8 @@ struct GildongmuApp: App {
 
     /// 현재 탭만 초기 상태로(제목 메뉴 "새로고침"): 탭 이동 없음, 해당 탭 epoch만 증가.
     /// 채팅은 진행 중 스트림을 요청째 취소하고 새 대화로 교체한다(idle-reset 불변식 공유).
+    /// 다른 탭은 `.id` 재생성만으로 충분 — 뷰가 소멸하며 그 아래 Task도 함께 취소된다
+    /// (SwiftUI 자식 뷰 소멸 시 `.task`가 캔슬 신호를 받는 계약, 명시 cancel 불필요).
     private func refreshCurrentTab() {
         switch selectedTab {
         case .chat:
@@ -89,6 +97,8 @@ struct GildongmuApp: App {
             resetChatModel()
         case .search:
             searchEpoch += 1
+        case .directions:
+            directionsEpoch += 1
         case .nearby:
             nearbyEpoch += 1
         }

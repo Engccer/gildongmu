@@ -3,7 +3,11 @@
     "tab": {
       "chat": "채팅",
       "search": "검색",
+      "directions": "길찾기",
       "nearby": "내 주변"
+    },
+    "directions": {
+      "placeholder": "길찾기 기능을 준비하고 있습니다"
     },
     "common": {
       "ok": "확인",

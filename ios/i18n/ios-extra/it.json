@@ -3,7 +3,11 @@
     "tab": {
       "chat": "Chat",
       "search": "Cerca",
+      "directions": "Indicazioni",
       "nearby": "Nei dintorni"
+    },
+    "directions": {
+      "placeholder": "La funzione indicazioni sarà presto disponibile"
     },
     "common": {
       "ok": "OK",

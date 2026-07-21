@@ -3,7 +3,11 @@
     "tab": {
       "chat": "Chat",
       "search": "Recherche",
+      "directions": "Itinéraire",
       "nearby": "À proximité"
+    },
+    "directions": {
+      "placeholder": "La fonctionnalité d'itinéraire arrive bientôt"
     },
     "common": {
       "ok": "OK",

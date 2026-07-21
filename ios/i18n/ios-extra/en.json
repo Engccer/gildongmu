@@ -3,7 +3,11 @@
     "tab": {
       "chat": "Chat",
       "search": "Search",
+      "directions": "Directions",
       "nearby": "Nearby"
+    },
+    "directions": {
+      "placeholder": "Directions feature is coming soon"
     },
     "common": {
       "ok": "OK",
