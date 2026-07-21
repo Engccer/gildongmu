@@ -74,6 +74,7 @@
 | 장소 검색 | kakao-local(+naver-local ko 병합) / `/api/places` | **정확도순+좌표 블렌딩**(`buildKakaoSearchUrl` — `x`/`y`만, `sort` 미지정, 2026-07-20 전환). ko는 両키 보유 시 `searchPlacesMergedKo` 병합(카카오 15 primary + 네이버 5 보강 뒤에 이어붙임, 좌표 4자리 dedupe, **재정렬 금지** — 네이버 전용 근처 가게가 하단에 오는 트레이드오프 수용). 거리 표기는 `searchPlaces` 진입점 `annotateDistances` 주석. 카카오 미등록 가게 보강(여의도 "백년찌개집 1971" 실측 2026-07-18). 폴백 kakao>naver>mock. ⚠ 과거 명소 전용 라우트(`/api/places/attractions`)·kakao-attractions provider는 폐지 — 카카오 관광명소 판별이 필요하면 `category_name.startsWith("여행 > 관광,명소")`(AT4 group code 아님, 부속 명소는 빈 문자열) |
 | en 장소 | `searchPlacesMergedEn` | 카카오+TourAPI 병렬 병합, 중복=좌표 4자리. 영문주소 juso→NCP 폴백 |
 | 주소·우편번호 | juso `searchJusoAddresses` / `/api/address/search` | 좌표는 카카오 `/api/geocode` 재사용. `engAddr`는 국가명 미포함 |
+| 역지오코딩(현위치 주소) | kakao-address `coordToAddress`+ncp-geocode `reverseRoadAddress` / `/api/geocode/reverse` | "현재 위치" 라벨 병기용 경량 라우트. **도로명 보장 3단 체인**: 카카오 road → (null이면) NCP 최근접 도로명 → 지번(정직 최후 폴백). ⚠ 카카오 coord2address는 도로명 건물 미매핑 좌표(공터·블록 내부, GPS 빈발)에서 road_address null(실측 2026-07-22) — 지번 우선 회귀 금지 |
 | 코레일 역시설 | korail-facilities / `/api/station/facilities` | 406역 전체 받아 `normalizeStationName` 클라 매칭, `stn_cd` 조인 |
 | 서울 지하철역 시설 | seoul-metro-facilities (9 op) | 도시철도 보완, `stnNm` 포함필터→정확매칭 제외, `totalCount>300` throw |
 | 도시철도역 메타 | subway-stations (정적 seed) / `/api/station/meta` | XLSX→JSON 연1회 갱신(`scripts/build-subway-stations.py`), 서버 전용 import |
