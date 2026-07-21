@@ -59,11 +59,6 @@ function isPointFeature(f: TmapFeature): f is TmapPointFeature {
   return f.geometry.type === "Point";
 }
 
-/** Tmap 보행자 경로안내 사용 가능 여부 */
-export function hasTmapKey(): boolean {
-  return Boolean(env.TMAP_APP_KEY);
-}
-
 /**
  * Tmap 응답 → WalkRouteBriefing 정규화(순수 함수).
  *
