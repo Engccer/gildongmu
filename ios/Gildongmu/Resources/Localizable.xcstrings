@@ -5135,6 +5135,176 @@
         }
       }
     },
+    "ios.chat.consentAgree": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동의하고 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Agree and start"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceptar y empezar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accepter et commencer"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accetta e inizia"
+          }
+        }
+      }
+    },
+    "ios.chat.consentAiNotice": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "답변은 AI가 생성하며 부정확할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answers are AI-generated and may be inaccurate."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las respuestas son generadas por IA y pueden ser inexactas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les réponses sont générées par IA et peuvent être inexactes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le risposte sono generate dall'IA e possono essere imprecise."
+          }
+        }
+      }
+    },
+    "ios.chat.consentAlt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "동의하지 않아도 검색과 내 주변 탭은 그대로 사용할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can keep using the Search and Nearby tabs without agreeing."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede seguir usando las pestañas Buscar y Cerca sin aceptar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous pouvez continuer à utiliser les onglets Recherche et À proximité sans accepter."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puoi continuare a usare le schede Cerca e Nelle vicinanze senza accettare."
+          }
+        }
+      }
+    },
+    "ios.chat.consentData": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini로 전송됩니다. 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity."
+          }
+        }
+      }
+    },
+    "ios.chat.consentTitle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 채팅 사용 안내"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About AI Chat"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca del chat con IA"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos du chat IA"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni sulla chat IA"
+          }
+        }
+      }
+    },
     "ios.chat.emptyAnswer": {
       "localizations": {
         "ko": {
@@ -5675,6 +5845,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "ios.common.privacyPolicy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인정보 처리방침"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Política de privacidad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politique de confidentialité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informativa sulla privacy"
           }
         }
       }
@@ -12339,6 +12543,312 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chiedi informazioni su questo luogo"
+          }
+        }
+      }
+    },
+    "privacy.chat": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 채팅에서는 질문과 대화 내용, 함께 보는 장소 정보, 현재 위치가 답변 생성을 위해 Google Gemini에 전송되며, 웹 검색이 필요한 질문은 Perplexity에도 전달됩니다. 답변은 AI가 생성하며 부정확할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In AI chat, your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity. Answers are AI-generated and may be inaccurate."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el chat con IA, sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity. Las respuestas son generadas por IA y pueden ser inexactas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans le chat IA, vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity. Les réponses sont générées par IA et peuvent être inexactes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Le risposte sono generate dall'IA e possono essere imprecise."
+          }
+        }
+      }
+    },
+    "privacy.contact": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서비스와 개인정보 처리에 관한 문의는 engccer@gmail.com 으로 보내 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For questions about the service or this policy, email engccer@gmail.com."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para consultas sobre el servicio o esta política, escriba a engccer@gmail.com."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pour toute question sur le service ou cette politique, écrivez à engccer@gmail.com."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per domande sul servizio o su questa informativa, scrivere a engccer@gmail.com."
+          }
+        }
+      }
+    },
+    "privacy.contactHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "문의"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contacto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contact"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contatto"
+          }
+        }
+      }
+    },
+    "privacy.dictation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 앱의 받아쓰기는 기기 안에서 처리되어 음성이 기기를 떠나지 않습니다. 웹의 받아쓰기는 음성을 Deepgram에 전송해 텍스트로 변환하며, 변환 후 저장하지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictation in the iOS app is processed on your device, so audio never leaves it. Dictation on the web sends audio to Deepgram for transcription and does not store it afterwards."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El dictado en la app de iOS se procesa en el dispositivo, así que el audio nunca sale de él. El dictado en la web envía el audio a Deepgram para transcribirlo y no lo guarda después."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dictée dans l'app iOS est traitée sur l'appareil : l'audio ne le quitte jamais. La dictée sur le web envoie l'audio à Deepgram pour transcription et ne le conserve pas ensuite."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura nell'app iOS viene elaborata sul dispositivo: l'audio non lo lascia mai. La dettatura sul web invia l'audio a Deepgram per la trascrizione e non lo conserva."
+          }
+        }
+      }
+    },
+    "privacy.intro": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무는 계정 없이 사용하는 서비스이며, 자체 데이터베이스에 개인정보를 저장하지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu works without an account and does not store personal data in any database of its own."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu funciona sin cuenta y no guarda datos personales en ninguna base de datos propia."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu fonctionne sans compte et ne conserve aucune donnée personnelle dans une base de données propre."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu funziona senza account e non conserva dati personali in alcun database proprio."
+          }
+        }
+      }
+    },
+    "privacy.location": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치는 주변 장소, 교통, 길찾기 정보를 실시간으로 조회하는 데에만 사용하며 저장하지 않습니다. 요청 처리 과정에서 서버 인프라의 요청 기록에 일시적으로 남을 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your current location is used only to look up nearby places, transit, and directions in real time, and is not stored. It may appear temporarily in server infrastructure request logs while a request is processed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su ubicación actual se usa solo para consultar en tiempo real lugares cercanos, transporte e indicaciones, y no se guarda. Puede aparecer temporalmente en los registros de solicitudes de la infraestructura del servidor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre position actuelle sert uniquement à consulter en temps réel les lieux à proximité, les transports et les itinéraires, et n'est pas conservée. Elle peut apparaître temporairement dans les journaux de requêtes de l'infrastructure serveur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La posizione attuale viene usata solo per consultare in tempo reale luoghi vicini, trasporti e indicazioni, e non viene conservata. Può comparire temporaneamente nei log delle richieste dell'infrastruttura server."
+          }
+        }
+      }
+    },
+    "privacy.search": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색어는 결과 조회를 위해 카카오, 네이버 등 검색 제공자에 전달되고, 장소와 주소 결과가 모두 없을 때는 Perplexity 웹 검색에 전달됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search terms are sent to search providers such as Kakao and Naver, and to Perplexity web search only when there are no place or address results."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los términos de búsqueda se envían a proveedores como Kakao y Naver, y a la búsqueda web de Perplexity solo cuando no hay resultados de lugares ni direcciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les termes de recherche sont transmis à des fournisseurs comme Kakao et Naver, et à la recherche web Perplexity uniquement lorsqu'il n'y a aucun résultat de lieu ni d'adresse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I termini di ricerca vengono inviati a fornitori come Kakao e Naver, e alla ricerca web Perplexity solo quando non ci sono risultati di luoghi o indirizzi."
+          }
+        }
+      }
+    },
+    "privacy.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개인정보 처리방침"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Política de privacidad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Politique de confidentialité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informativa sulla privacy"
+          }
+        }
+      }
+    },
+    "privacy.useHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "데이터 사용"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How data is used"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uso de los datos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utilisation des données"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uso dei dati"
           }
         }
       }

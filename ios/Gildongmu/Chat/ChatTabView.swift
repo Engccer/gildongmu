@@ -6,6 +6,10 @@ import SwiftUI
 struct ChatTabView: View {
     let model: ChatModel
 
+    @AppStorage(AIChatConsent.key) private var consentGranted = false
+    /// 동의 직후 전환에서만 입력 필드 선점 포커스(재실행 시 기존 낭독 흐름 유지).
+    @State private var justGranted = false
+
     /// 빈 화면 추천 질문(서버 호출 없음): 탭이 무엇을 할 수 있는지 알리는 발견 경로.
     /// 채팅 도구가 실제 답할 수 있는 질문만(둘러보기·지하철·공기질·아이 놀 곳).
     /// ⚠ `static let` 금지 — 저장 프로퍼티는 최초 1회만 초기화돼 그때의 언어로
@@ -21,8 +25,17 @@ struct ChatTabView: View {
 
     var body: some View {
         NavigationStack {
-            ChatConversationView(model: model) {
-                suggestionList
+            Group {
+                if consentGranted {
+                    ChatConversationView(model: model, focusDraftOnAppear: justGranted) {
+                        suggestionList
+                    }
+                } else {
+                    ChatConsentView {
+                        justGranted = true
+                        consentGranted = true
+                    }
+                }
             }
             .navigationTitle(appLocalized("ios.tab.chat"))
             .navigationBarTitleDisplayMode(.inline)

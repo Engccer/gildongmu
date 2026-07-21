@@ -12,7 +12,8 @@
       "geoDeniedTitle": "Serve il permesso di localizzazione",
       "geoDeniedDesc": "Consenti l'accesso alla posizione per Gildongmu nelle Impostazioni",
       "failedTitle": "Impossibile caricare le informazioni",
-      "refresh": "Aggiorna"
+      "refresh": "Aggiorna",
+      "privacyPolicy": "Informativa sulla privacy"
     },
     "chat": {
       "suggestion1": "Mostrami cosa c'è qui intorno",
@@ -26,7 +27,12 @@
       "clear": "Cancella il testo",
       "listen": "Ascolta",
       "listenStop": "Interrompi la riproduzione",
-      "share": "Condividi"
+      "share": "Condividi",
+      "consentTitle": "Informazioni sulla chat IA",
+      "consentData": "Le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity.",
+      "consentAiNotice": "Le risposte sono generate dall'IA e possono essere imprecise.",
+      "consentAlt": "Puoi continuare a usare le schede Cerca e Nelle vicinanze senza accettare.",
+      "consentAgree": "Accetta e inizia"
     },
     "voice": {
       "hold": "Dettatura",

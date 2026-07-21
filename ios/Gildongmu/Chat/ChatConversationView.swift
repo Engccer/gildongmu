@@ -11,6 +11,8 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// 탭 전환은 대화 중단이 아니다(스트림은 계속 돌고 답변이 쌓인다). 탭의 세션 리셋
     /// 시 스트림 폐기는 App의 resetChatModel()이 담당. 마이크는 여기서 항상 폐기.
     let cancelsOnDisappear: Bool
+    /// true면 등장 시 1회 입력 필드로 VO 포커스를 선점 이동한다(동의→채팅 전환 직후 전용).
+    let focusDraftOnAppear: Bool
     /// 메시지 0개일 때 리스트 위치에 표시(채팅 탭 추천 질문). sheet는 EmptyView.
     private let emptyContent: () -> EmptyContent
 
@@ -34,10 +36,12 @@ struct ChatConversationView<EmptyContent: View>: View {
     init(
         model: ChatModel,
         cancelsOnDisappear: Bool = false,
+        focusDraftOnAppear: Bool = false,
         @ViewBuilder emptyContent: @escaping () -> EmptyContent
     ) {
         self.model = model
         self.cancelsOnDisappear = cancelsOnDisappear
+        self.focusDraftOnAppear = focusDraftOnAppear
         self.emptyContent = emptyContent
     }
 
@@ -106,6 +110,12 @@ struct ChatConversationView<EmptyContent: View>: View {
             #if DEBUG
             installChatFocusObserverOnce()
             #endif
+            // 동의→채팅 전환 직후 1회: 사라진 동의 버튼에서 입력 필드로 선점 이동(헌장 §5).
+            // 400ms 지연은 VO 재시도 관례(전환 렌더 안정 후 포커스).
+            guard focusDraftOnAppear else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                isDraftFocused = true
+            }
         }
         .onDisappear {
             // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환 포함)
