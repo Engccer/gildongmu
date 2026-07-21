@@ -14,7 +14,7 @@ import type {
   AddressMatch,
 } from "@/lib/types";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
-import { awaitGeolocation } from "@/lib/geolocation";
+import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { joinText } from "@/lib/format";
 import { TransitRouteResult } from "./TransitRouteBriefing";
@@ -56,6 +56,21 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
     text: ep.kind === "current" ? currentLabel : ep.label,
     resolved: ep,
   };
+}
+
+/**
+ * 좌표 → 대표 주소 문자열("현재 위치" 라벨 병기용). 주소는 부가 정보이므로
+ * 매칭 없음·실패 모두 조용히 null(3-state: 라벨은 "현재 위치"만 남아 거짓 표시 없음).
+ */
+async function fetchCurrentAddress(coord: Coord): Promise<string | null> {
+  try {
+    const res = await fetch(`/api/geocode/reverse?lat=${coord.lat}&lng=${coord.lng}`);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { address: string | null };
+    return body.address;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -117,7 +132,16 @@ export function DirectionsView({
   const tCar = useTranslations("route.briefing");
   const locale = useLocale();
 
-  const currentLabel = t("currentLocation");
+  // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
+  // "현재 위치"만 — 시각으로 위치 오차를 확인할 수 없는 사용자를 위한 병기이므로
+  // 모르면 거짓 표시 대신 생략).
+  const [currentAddress, setCurrentAddress] = useState<string | null>(null);
+  // "현재 위치 사용" 강제 재측위 진행 신호(버튼 라벨 전환용) + 재진입 ref 가드.
+  const [refreshingCurrent, setRefreshingCurrent] = useState(false);
+  const refreshCurrentRef = useRef(false);
+  const currentLabel = currentAddress
+    ? t("currentLocationNear", { address: currentAddress })
+    : t("currentLocation");
   const [fromField, setFromField] = useState<FieldState>(() =>
     endpointToField(initialFrom ?? { kind: "current" }, currentLabel),
   );
@@ -171,6 +195,49 @@ export function DirectionsView({
     window.dispatchEvent(new Event("gildongmu:locationchange"));
   }, [fromField.resolved, toField.resolved]);
 
+  // 현재 위치 필드의 표시 텍스트는 확정 시점 스냅샷이 아니라 파생 라벨을 쓴다
+  // (주소 병기·새로고침이 라벨에 즉시 반영, 편집 시작 시엔 resolved가 풀려 원문 유지).
+  const displayField = (field: FieldState): FieldState =>
+    field.resolved?.kind === "current" ? { ...field, text: currentLabel } : field;
+
+  // 이미 위치가 허용·확보된 세션에서만 조용히 주소를 병기한다(뷰 진입만으로 권한
+  // 팝업·재측위 금지 — 스토어의 ready 캐시 좌표만 읽는다). 미확보면 라벨은 "현재
+  // 위치" 그대로(주소 없음=정보 없음).
+  const addrLoadedRef = useRef(false);
+  useEffect(() => {
+    if (addrLoadedRef.current) return;
+    const isCurrent =
+      fromField.resolved?.kind === "current" ||
+      toField.resolved?.kind === "current";
+    if (!isCurrent) return;
+    const geo = getGeolocationSnapshot();
+    if (geo.status !== "ready") return;
+    addrLoadedRef.current = true;
+    void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
+  }, [fromField.resolved, toField.resolved]);
+
+  /**
+   * "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 갱신 신호는 라벨(주소)의
+   * 변화 자체이고 진행 신호는 해당 버튼의 라벨 전환뿐(별도 통지 중복 금지).
+   * 재측위 실패 시 직전 주소를 유지한다(새로고침=재조회이지 데이터 포기 아님).
+   */
+  async function selectCurrentFrom() {
+    setFromField(endpointToField({ kind: "current" }, currentLabel));
+    if (refreshCurrentRef.current) return;
+    refreshCurrentRef.current = true;
+    setRefreshingCurrent(true);
+    try {
+      const geo = await awaitGeolocation({ force: true });
+      if (geo.status === "ready") {
+        addrLoadedRef.current = true;
+        setCurrentAddress(await fetchCurrentAddress(geo.coords));
+      }
+    } finally {
+      refreshCurrentRef.current = false;
+      setRefreshingCurrent(false);
+    }
+  }
+
   function swapFields() {
     setFromField(toField);
     setToField(fromField);
@@ -203,6 +270,10 @@ export function DirectionsView({
           return;
         }
         cur = geo.coords;
+        // 측위에 성공했으니 라벨 병기 주소도 그 좌표로 동기화(표시 전용 fire-and-forget,
+        // 실패·매칭 없음은 null로 정직하게 비운다 — 옛 좌표의 주소를 남기지 않는다).
+        addrLoadedRef.current = true;
+        void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
       const dest = to.kind === "current" ? (cur as Coord) : to.coord;
@@ -284,15 +355,14 @@ export function DirectionsView({
       <EndpointField
         label={t("from")}
         searchLabel={t("searchFrom")}
-        field={fromField}
+        field={displayField(fromField)}
         onTextChange={(text) => {
           setFromField({ text, resolved: null });
           setResults(null);
         }}
         onResolve={(ep) => setFromField(endpointToField(ep, currentLabel))}
-        onUseCurrent={() =>
-          setFromField(endpointToField({ kind: "current" }, currentLabel))
-        }
+        onUseCurrent={() => void selectCurrentFrom()}
+        useCurrentBusy={refreshingCurrent}
         announce={setNotice}
         locale={locale}
         t={t}
@@ -310,7 +380,7 @@ export function DirectionsView({
       <EndpointField
         label={t("to")}
         searchLabel={t("searchTo")}
-        field={toField}
+        field={displayField(toField)}
         onTextChange={(text) => {
           setToField({ text, resolved: null });
           setResults(null);
@@ -402,6 +472,7 @@ function EndpointField({
   onTextChange,
   onResolve,
   onUseCurrent,
+  useCurrentBusy,
   announce,
   locale,
   t,
@@ -413,6 +484,8 @@ function EndpointField({
   onResolve: (ep: DirEndpoint) => void;
   /** 있으면 "현재 위치 사용" 복원 버튼 노출(출발지 전용, 도착지는 스왑으로 충분) */
   onUseCurrent?: () => void;
+  /** 강제 재측위 진행 중 — 버튼 라벨 전환이 유일한 진행 신호(별도 통지 금지) */
+  useCurrentBusy?: boolean;
   announce: (message: string) => void;
   locale: string;
   t: ReturnType<typeof useTranslations<"directions">>;
@@ -535,13 +608,15 @@ function EndpointField({
       {onUseCurrent && (
         <button
           type="button"
+          aria-disabled={useCurrentBusy}
           onClick={() => {
+            if (useCurrentBusy) return;
             setCandidates(null);
             onUseCurrent();
           }}
           className="mt-1 min-h-11 text-sm text-blue-700 underline dark:text-blue-300"
         >
-          {t("useCurrentLocation")}
+          {useCurrentBusy ? t("refreshingCurrent") : t("useCurrentLocation")}
         </button>
       )}
       {candidates &&
