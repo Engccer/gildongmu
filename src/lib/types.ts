@@ -380,6 +380,47 @@ export interface StationMeta {
   operator: string;
 }
 
+/** TAGO 지하철 노선정보(B-3) 원시 행에서 파생한 시간표 편성 하나(첫차 또는 막차). */
+export interface TimetableTrain {
+  /** 출발 시각("HH:mm", depTime 원문 그대로. 00~02시대 심야 편성도 이 시각 그대로 표기한다) */
+  time: string;
+  /** 00~02시대 심야 편성이면 true(서비스데이 정렬을 위해서만 익일로 보정하고 표시 시각은 그대로 둔다) */
+  nextDay?: true;
+  /** 종착역명(한글) */
+  terminus: string;
+  /** 종착역명(영문, seed 매칭으로 병기 가능할 때만) */
+  terminusEn?: string;
+}
+
+/** 한 방향(상행 또는 하행)의 첫차·막차 쌍. */
+export interface TimetableDirection {
+  /** 진행 방향(TAGO upDownTypeCode 매핑) */
+  direction: "up" | "down";
+  first: TimetableTrain;
+  last: TimetableTrain;
+}
+
+/** 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다). */
+export interface TimetableLine {
+  /** 노선 표시명(예 "5호선","수인분당선". displayLineName로 정규화한 값) */
+  lineName: string;
+  directions: TimetableDirection[];
+}
+
+/**
+ * 역 첫차·막차 시간표 전체(장소 상세 "역 정보"에서 표시하는 정본).
+ * dailyType은 조회에 쓴 서비스데이 타입, partial은 공휴일 판정 실패로
+ * 요일만으로 추정했을 때 true가 되어 UI가 기준을 명시하게 한다.
+ */
+export interface StationTimetable {
+  stationName: string;
+  /** 조회에 사용한 서비스데이 타입(평일/토요일/일요일) */
+  dailyType: "weekday" | "saturday" | "sunday";
+  /** 공휴일 판정 실패로 요일만으로 추정했으면 true */
+  partial?: true;
+  lines: TimetableLine[];
+}
+
 /**
  * 따릉이(서울 공공자전거) 대여소 하나 — bikeList(OA-15493) 정규화 + 계산 거리.
  * 좌표는 WGS84 십진 도. 서울 전용(따릉이는 서울시 운영).
