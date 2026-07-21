@@ -62,7 +62,7 @@
 - **장소 앵커 불변식**: `placeContext` 있으면 주변 도구는 `anchorOf(ctx)`=장소좌표 기준, 단 **길찾기 출발지는 실제 `userLocation`**(장소로 안 덮음). 장소 앵커 시 기기위치 nearby 카드는 render 생략(산문이 정본). `placeContext` 없으면 동작 byte-identical.
 - **⚠ 장소 특징 날조 금지**: 도구가 준 필드만 — Gemini가 카페 분위기·평판을 사전지식으로 날조하면 시각장애 사용자가 검증 불가([[agentic-llm-fabricates-unstated-fields]], systemInstruction에 명시). 도구는 provider 직접 import 호출(`ToolResult{data,render?,source?}`), self-fetch 카드+출처(`SourceList`) 노출, `data`는 LLM에만(PII 누수 차단).
 - **마크다운 답변**(`react-markdown`+`remark-gfm`): 헤딩은 강조 단락으로 다운그레이드(아웃라인 오염 방지). ⚠ **loose list `remarkTightLists`로 tight 강제** — `<li><p>` 중첩이 iOS VoiceOver 이중 낭독([[markdown-loose-list-voiceover-double-read]]). 완료 통지는 효과음(`playReceive`)+포커스 이동(진행만 live region).
-- **15개 도구**: 장소2(검색·주소)·내주변5(소아진료·아이놀곳·둘러보기·지하철·무장애관광지)·좌표3(버스·따릉이·공기질)·역명2·길찾기2·웹검색1(`search_web` Perplexity). 각 게이트. `get_bus_route`는 V1 제외.
+- **16개 도구**: 장소2(검색·주소)·내주변5(소아진료·아이놀곳·둘러보기·지하철·무장애관광지)·좌표3(버스·따릉이·공기질)·역명2·길찾기3(자동차·대중교통·도보 `get_walk_route`)·웹검색1(`search_web` Perplexity). 각 게이트. `get_bus_route`는 V1 제외.
 - **iOS 채팅 AI 동의 게이트(App Review 5.1.2(i), 2026-07-21)**: 미동의 시 채팅 탭·장소 sheet가 `ChatConsentView`로 대체되고 `ChatModel.send`도 `AIChatConsent.granted` 가드로 전송을 구조 차단(이중 방어) — 채팅에 새 전송 경로를 추가하면 이 가드를 우회하지 않는지 확인. 철회는 설정 "AI 채팅" 토글. `/api/chat`엔 IP 레이트리밋(60초 10회, `checkChatRateLimit`).
 - **개인정보 3자 일치 불변식**: 수집·전송 항목을 바꾸면(새 데이터 유형·새 제3자) 웹 `/{locale}/privacy` 카피 + iOS `PrivacyInfo.xcprivacy` + ASC 영양 라벨(`docs/appstore/1.0-submission-draft.md` §7)을 **동시 갱신** — 불일치는 심사 거절·앱 제거 사유. iOS 받아쓰기는 온디바이스라 오디오는 세 곳 모두 미신고가 정본.
 
@@ -87,6 +87,7 @@
 | 현재 위치 정위 | where-am-i / `/api/where-am-i` | 4조각 allSettled 조립, 산문은 결정론 템플릿(LLM 아님), `stripRegionPrefix` 중복제거 |
 | 무장애 여행 정보 | tour-barrier-free / `/api/places/barrier-free[/detail/match]` | 한국관광공사 KorWithService2(B551011). 편의시설 화이트리스트 라벨링(⚠ 필드 철자는 실호출 확정), 장소상세 매칭 좌표50m∩이름(코드 거리 가드 병행). **게이트·인증 모두 `DATA_GO_KR_API_KEY`로 일치**(split-brain 금지). ⚠ 활용신청 별도(API별 독립 승인) |
 | 자동차 경로 | 카카오모빌리티(ko) / ncp-directions(en) / `/api/route/car` | en=NCP 영문 턴바이턴, NCP duration=ms(위 단위 함정) |
+| 도보 경로 | tmap-pedestrian / `/api/route/walk` | Tmap 보행자(SK open API, `TMAP_APP_KEY`). **`description` 완성 문장이 낭독 정본**(turnType 재조합 금지), X=lng/Y=lat 반전, startName/endName ASCII 상수 필수. 오류 3102=경로 없음 graceful null(관측 코드만 추가). **V1 ko 전용**(en 미노출 — 안내문 한국어). IP 레이트리밋 60초 10회+revalidate 3600(일 1,000건 쿼터). 길찾기 뷰(`DirectionsView`, `?dir=` 동기화 — 현재 위치는 `cur` 토큰만, 좌표 직렬화 금지)가 대중교통·도보·자동차 3수단 비교 |
 | 대중교통 | odsay / `/api/route/transit` | 환승도보 `{distance:0}` leg 제외, error -98→null. **URI(도메인) 식별**: 서버 fetch가 `Referer: https://gildongmu.vercel.app/` 명시(IP 무관 — Vercel 가변 IP 해소). ⚠ ODsay 키는 발급 시점 플랫폼에 묶임 — Server 키에 URI 추가해도 referer 식별 불가, URI 전용 앱 키여야 함(PROGRESS 2026-07-04) |
 | STT | Deepgram nova-3 / `/api/speech-to-text` | ⚠ `detect_language` 금지(ko→vi 오인식), `language` 명시. 효과음으로 시작/정지 통지 |
 | 채팅 웹검색 | perplexity-search / `search_web` 도구 | `ToolResult{data,render,source}`, 결과 카드+출처 노출 |
@@ -107,7 +108,8 @@
 | `DEEPGRAM_API_KEY` | — | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(`GEMINI_MODEL=gemini-3.5-flash`). dodo `GOOGLE_GENERATIVE_AI_API_KEY` 공유 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
-| `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건 |
+| `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건. ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인(PROGRESS) |
+| `TMAP_APP_KEY` | `hasTmapKey` | SK open API 앱 `gildongmu`(2026-07-21 발급, T아이디). 보행자 경로 정본 + 자동차·POI 동일 키 커버. 일 1,000건 무료, IPS "Any IP allowed" 유지(IP 제한 금지 — Vercel 가변 egress) |
 
 상세 키 발급 경로·실호출 검증 이력은 `PROGRESS.md`, API 생태계 조사는 `docs/RESEARCH-2026-06-*.md`.
 
