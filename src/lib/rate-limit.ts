@@ -86,6 +86,15 @@ export function checkWalkRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(walkStore, ip, now, WALK_LIMIT, WINDOW_MS).allowed;
 }
 
+// 시간표는 키워드 1 + 노선×2 호출 증폭이 있어 채팅과 동일한 60초 10회.
+const TIMETABLE_LIMIT = 10;
+const timetableStore = new Map<string, RateLimitEntry>();
+
+/** /api/station/timetable 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkTimetableRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(timetableStore, ip, now, TIMETABLE_LIMIT, WINDOW_MS).allowed;
+}
+
 /** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
 export function clientIpFromHeaders(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
