@@ -65,7 +65,7 @@ interface TmapErrorBody {
 }
 
 // "경로 없음"류로 graceful(null) 처리할 Tmap error.code.
-// 3102: "해당 서비스가 지원되지 않는 구간입니다.([ZeroResults]...)" — 도보 불가
+// 3102: "해당 서비스가 지원되지 않는 구간입니다.([ZeroResults]...)", 도보 불가
 // 구간(실호출 검증 2026-07-22, 서울↔제주). 다른 경로없음 코드는 실제 관측 시
 // 추가한다(추측 금지). 그 외 코드(인증·파라미터·서버 오류)는 throw.
 const NO_ROUTE_ERROR_CODES = new Set(["3102"]);

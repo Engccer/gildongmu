@@ -172,6 +172,7 @@ export function DirectionsView({
   function swapFields() {
     setFromField(toField);
     setToField(fromField);
+    setResults(null);
     setNotice("");
   }
 
@@ -282,7 +283,10 @@ export function DirectionsView({
         label={t("from")}
         searchLabel={t("searchFrom")}
         field={fromField}
-        onTextChange={(text) => setFromField({ text, resolved: null })}
+        onTextChange={(text) => {
+          setFromField({ text, resolved: null });
+          setResults(null);
+        }}
         onResolve={(ep) => setFromField(endpointToField(ep, currentLabel))}
         onUseCurrent={() =>
           setFromField(endpointToField({ kind: "current" }, currentLabel))
@@ -305,7 +309,10 @@ export function DirectionsView({
         label={t("to")}
         searchLabel={t("searchTo")}
         field={toField}
-        onTextChange={(text) => setToField({ text, resolved: null })}
+        onTextChange={(text) => {
+          setToField({ text, resolved: null });
+          setResults(null);
+        }}
         onResolve={(ep) => setToField(endpointToField(ep, currentLabel))}
         announce={setNotice}
         locale={locale}
