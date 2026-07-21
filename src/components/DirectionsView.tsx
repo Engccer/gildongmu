@@ -20,6 +20,7 @@ import { joinText } from "@/lib/format";
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
+import { VoiceRecordButton } from "./VoiceRecordButton";
 
 type ModeKey = "transit" | "walk" | "car";
 
@@ -499,8 +500,10 @@ function EndpointField({
   const reqRef = useRef(0);
   const geocodeRef = useRef(false);
 
-  async function runCandidateSearch() {
-    const q = field.text.trim();
+  // queryOverride: 음성 전사 자동 검색용 — setState(field.text) 반영을 기다리지 않고
+  // 전사 원문으로 즉시 검색한다(타이핑 경로는 인자 없이 field.text 사용).
+  async function runCandidateSearch(queryOverride?: string) {
+    const q = (queryOverride ?? field.text).trim();
     if (!q) return;
     const myId = ++reqRef.current;
     const [placesRes, addrRes] = await Promise.allSettled([
@@ -540,6 +543,16 @@ function EndpointField({
     } else {
       announce(t("candidateNone"));
     }
+  }
+
+  // 음성 전사 결과(F-C, 메인 검색과 동형): 전사를 필드에 넣고 즉시 후보 검색.
+  // 전사 원문을 polite 통지(접근성 헌장 "받아쓰기 완료" — 원문이라 i18n 무관)하고,
+  // 후보 수·오류 통지는 runCandidateSearch 완료가 같은 채널로 이어받는다.
+  function handleTranscribed(text: string) {
+    onTextChange(text);
+    setCandidates(null);
+    announce(text);
+    void runCandidateSearch(text);
   }
 
   function resolveAndClose(ep: DirEndpoint) {
@@ -597,6 +610,9 @@ function EndpointField({
           }}
           className="min-h-11 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
+        {/* 음성은 1급 시민 — 탭 순서 [입력][음성][검색](SearchBar 동형). 오류 통지는
+            버튼 내부 announcer가 담당(부모 notice와 채널 분리 없음 문제 아님 — 오류 전용). */}
+        <VoiceRecordButton onTranscribed={handleTranscribed} />
         <button
           type="button"
           onClick={() => void runCandidateSearch()}
