@@ -85,7 +85,7 @@ struct SettingsView: View {
                     Toggle(appLocalized("ios.settings.aiConsentToggle"),
                            isOn: $aiConsentGranted)
                     Link(appLocalized("ios.common.privacyPolicy"),
-                         destination: AppConfig.apiBaseURL.appending(path: "\(AppLanguage.current)/privacy"))
+                         destination: AppConfig.privacyPolicyURL)
                     // AI 생성 콘텐츠 신고 경로의 최소 대응(스펙 §1).
                     Link(appLocalized("ios.settings.reportProblem"),
                          destination: URL(string: "mailto:engccer@gmail.com")!)

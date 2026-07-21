@@ -7,10 +7,6 @@ struct ChatConsentView: View {
     /// 동의 버튼 탭 시 호출 — 호출부가 AppStorage를 갱신해 채팅 UI로 전환한다.
     let onConsent: () -> Void
 
-    private var privacyURL: URL {
-        AppConfig.apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
@@ -20,7 +16,7 @@ struct ChatConsentView: View {
                 Text(appLocalized("ios.chat.consentData"))
                 Text(appLocalized("ios.chat.consentAiNotice"))
                 Text(appLocalized("ios.chat.consentAlt"))
-                Link(appLocalized("ios.common.privacyPolicy"), destination: privacyURL)
+                Link(appLocalized("ios.common.privacyPolicy"), destination: AppConfig.privacyPolicyURL)
                     .frame(minHeight: 44)
                 Button {
                     onConsent()

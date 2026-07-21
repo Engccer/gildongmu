@@ -10,7 +10,7 @@
       "retryLater": "잠시 후 다시 시도해 주세요",
       "checking": "확인 중",
       "geoDeniedTitle": "위치 권한이 필요합니다",
-      "geoDeniedDesc": "설정 앱에서 길동무 베타의 위치 접근을 허용해 주세요",
+      "geoDeniedDesc": "설정 앱에서 길동무의 위치 접근을 허용해 주세요",
       "failedTitle": "정보를 가져오지 못했습니다",
       "refresh": "새로고침",
       "privacyPolicy": "개인정보 처리방침"

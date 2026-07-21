@@ -14,4 +14,9 @@ enum AppConfig {
 
     /// nmap 딥링크 필수 appname(웹 NEXT_PUBLIC_APP_IDENTIFIER와 동일값)
     static let appIdentifier = "space.dodoplanet.gildongmu"
+
+    /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
+    static var privacyPolicyURL: URL {
+        apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")
+    }
 }
