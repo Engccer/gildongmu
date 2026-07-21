@@ -41,7 +41,8 @@ final class ChatModel {
     /// 전송. in-flight 가드(스트리밍 중 재진입 차단)는 호출부 가드와 이중.
     func send(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isStreaming else { return }
+        // 동의 가드(스펙 §1 이중 방어): UI 게이트가 뚫려도 미동의 전송은 구조적으로 불가.
+        guard AIChatConsent.granted, !trimmed.isEmpty, !isStreaming else { return }
 
         messages.append(ChatMessage(role: .user, text: trimmed))
         questionRevision += 1
