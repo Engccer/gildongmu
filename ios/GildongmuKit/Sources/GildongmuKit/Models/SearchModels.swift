@@ -50,6 +50,22 @@ public struct WebSearchResponse: Codable, Sendable {
     public let web: [WebSearchResult]
 }
 
+/// 주소 지오코딩 결과 하나. 웹 AddressMatch 미러(도로명/지번은 존재하는 것만 채워진다).
+public struct AddressMatch: Codable, Sendable, Hashable {
+    public let addressName: String
+    public let roadAddress: String?
+    public let jibunAddress: String?
+    public let postalCode: String?
+    public let lat: Double
+    public let lng: Double
+}
+
+/// `/api/geocode` 응답 envelope.
+public struct GeocodeResponse: Codable, Sendable {
+    public let matches: [AddressMatch]
+    public let query: String
+}
+
 /// 라우트 오류 응답 `{ "error": "..." }`.
 public struct APIErrorBody: Codable, Sendable {
     public let error: String

@@ -9,7 +9,7 @@ extension EnvironmentValues {
     @Entry var openSettings: () -> Void = {}
 }
 
-/// 세 탭 공통 principal "길동무" 메뉴: 새로고침(현재 탭만)·설정(시트).
+/// 네 탭 공통 principal "길동무" 메뉴: 새로고침(현재 탭만)·설정(시트).
 /// Menu는 네이티브 disclosure라 VoiceOver가 "길동무, 팝업 버튼"으로 낭독한다.
 /// 푸시된 상세 화면엔 표시되지 않는다(SwiftUI 화면별 toolbar 기본 동작).
 private struct GildongmuTitleMenu: ViewModifier {

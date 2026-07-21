@@ -6733,36 +6733,36 @@
         }
       }
     },
-    "ios.directions.placeholder": {
+    "ios.directions.searching": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길찾기 기능을 준비하고 있습니다"
+            "value": "조회 중"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Directions feature is coming soon"
+            "value": "Searching"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La función de indicaciones estará disponible pronto"
+            "value": "Buscando"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La fonctionnalité d'itinéraire arrive bientôt"
+            "value": "Recherche en cours"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La funzione indicazioni sarà presto disponibile"
+            "value": "Ricerca in corso"
           }
         }
       }

@@ -67,7 +67,9 @@ public struct SearchService: Sendable {
     let client: APIClient
     public init(client: APIClient) { self.client = client }
 
-    public func search(query: String, lat: Double?, lng: Double?, lang: String) async -> SearchOutcome {
+    /// includeWeb=false는 길찾기 필드 후보 검색용(웹 EndpointField 미러): 후보엔
+    /// 좌표가 필요해 웹 결과가 무의미하고, 유료 Perplexity 폴백 호출도 회피한다.
+    public func search(query: String, lat: Double?, lng: Double?, lang: String, includeWeb: Bool = true) async -> SearchOutcome {
         var coordQuery: [URLQueryItem] = [URLQueryItem(name: "query", value: query)]
         if let lat, let lng {
             coordQuery.append(URLQueryItem(name: "lat", value: String(lat)))
@@ -81,10 +83,21 @@ public struct SearchService: Sendable {
 
         // 웹 폴백: 정본 두 트랙이 모두 빈 결과일 때만(실패도 빈 결과로 취급, 기존 의미 유지).
         var web: SectionState<WebSearchResult> = .loaded([])
-        if places.items.isEmpty && addresses.items.isEmpty {
+        if includeWeb && places.items.isEmpty && addresses.items.isEmpty {
             let webResponse: WebSearchResponse? = try? await client.get("/api/search/web", query: [URLQueryItem(name: "query", value: query)])
             web = webResponse.map { .loaded($0.web) } ?? .failed
         }
         return SearchOutcome(places: places, addresses: addresses, web: web)
+    }
+
+    /// 주소 → 좌표(카카오 지오코딩 프록시 `/api/geocode`). 웹 EndpointField
+    /// selectAddress 미러: 주소 후보엔 좌표가 없어 선택 시점에 변환한다.
+    /// 실패는 throw(호출자가 coordError 통지, 3-state).
+    public func geocode(query: String, limit: Int = 1) async throws -> [AddressMatch] {
+        let response: GeocodeResponse = try await client.get("/api/geocode", query: [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ])
+        return response.matches
     }
 }

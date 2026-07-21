@@ -91,4 +91,45 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains("lat=37.5547") == true)
         #expect(capturedQuery?.contains("lng=126.9707") == true)
     }
+
+    /// 길찾기 필드 후보 검색(includeWeb=false): 두 트랙이 비어도 웹 폴백을 타지 않는다
+    /// (스텁이 웹 1건을 줘도 소비 안 됨 = 호출 자체가 없었다는 증거).
+    @Test func includeWebFalseSkipsWebFallback() async throws {
+        StubURLProtocol.handler = { request in
+            switch request.url!.path() {
+            case "/api/places":
+                return (200, Data(#"{"places":[],"provider":"none","query":"q"}"#.utf8))
+            case "/api/address/search":
+                return (200, Data(#"{"addresses":[],"query":"q"}"#.utf8))
+            case "/api/search/web":
+                return (200, Data(#"{"web":[{"title":"t","url":"https://x","snippet":"s","date":null}]}"#.utf8))
+            default: return (404, Data())
+            }
+        }
+        let outcome = await SearchService(client: stubbedClient())
+            .search(query: "q", lat: nil, lng: nil, lang: "ko", includeWeb: false)
+        #expect(outcome.orderedSections.isEmpty)
+        #expect(outcome.web.items.isEmpty)
+    }
+
+    @Test func geocodeDecodesMatches() async throws {
+        StubURLProtocol.handler = { request in
+            switch request.url!.path() {
+            case "/api/geocode":
+                return (200, Data(#"{"matches":[{"addressName":"서울 강동구 천호대로 1077","roadAddress":"서울 강동구 천호대로 1077","jibunAddress":null,"postalCode":"05340","lat":37.5385,"lng":127.1237}],"query":"천호대로 1077"}"#.utf8))
+            default: return (404, Data())
+            }
+        }
+        let matches = try await SearchService(client: stubbedClient()).geocode(query: "천호대로 1077")
+        #expect(matches.count == 1)
+        #expect(matches.first?.lat == 37.5385)
+    }
+
+    /// 지오코딩 실패는 throw(호출자가 coordError 통지). 조용한 빈 배열로 뭉개지 않는다.
+    @Test func geocodeFailureThrows() async throws {
+        StubURLProtocol.handler = { _ in (502, Data(#"{"error":"주소 변환에 실패했습니다."}"#.utf8)) }
+        await #expect(throws: APIError.self) {
+            _ = try await SearchService(client: stubbedClient()).geocode(query: "천호대로 1077")
+        }
+    }
 }

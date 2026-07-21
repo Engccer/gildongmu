@@ -35,6 +35,83 @@ private func wonText(_ amount: Int) -> String {
     amount.formatted(.number.grouping(.automatic))
 }
 
+// MARK: - 결과 행 (브리핑 단독 화면·길찾기 탭 공용)
+
+/// 자동차 결과 행들(요약 1행+턴바이턴). summaryAsHeader: 단독 브리핑 화면은 요약이
+/// 유일한 발견 경로라 heading trait, 길찾기 탭은 수단 heading이 따로 있어 평문(과잉 방지).
+struct CarRouteRows: View {
+    let briefing: CarRouteBriefing
+    var summaryAsHeader = false
+
+    var body: some View {
+        // 통행료 0원은 생략(잉여)
+        Text(joinText(
+            appLocalized("ios.route.totalDistance", String(format: "%.1f", Double(briefing.distanceMeters) / 1000)),
+            appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
+            appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
+            briefing.tollFare > 0 ? appLocalized("ios.route.tollFare", wonText(briefing.tollFare)) : nil))
+            .accessibilityAddTraits(summaryAsHeader ? .isHeader : [])
+        ForEach(Array(briefing.guides.enumerated()), id: \.offset) { _, guide in
+            // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
+            let text = guide.guidance.isEmpty ? guide.name : guide.guidance
+            if !text.isEmpty {
+                Text(joinText(text, "\(guide.distanceMeters)m"))
+            }
+        }
+    }
+}
+
+/// 대중교통 결과 행들(요약 1행+구간들). 소비 화면이 heading·섹션을 소유한다.
+struct TransitRouteRows: View {
+    let route: TransitRoute
+
+    var body: some View {
+        Text(transitSummaryText(route.summary))
+        ForEach(Array(route.legs.enumerated()), id: \.offset) { _, leg in
+            Text(transitLegText(leg))
+        }
+    }
+}
+
+func transitSummaryText(_ summary: TransitRouteSummary) -> String {
+    joinText(
+        appLocalized("ios.route.durationMinutes", String(summary.totalMinutes)),
+        appLocalized("ios.route.fare", wonText(summary.fare)),
+        appLocalized("ios.route.transfers", String(summary.transfers)),
+        appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)))
+}
+
+/// 구간 한 줄 = 한 접근성 객체. walk leg는 노선 정보가 없어 단일 분기(계약 테스트 근거)
+func transitLegText(_ leg: TransitRouteLeg) -> String {
+    if leg.mode == "walk" {
+        return appLocalized("ios.route.walkMinutes", String(leg.minutes))
+    }
+    let countKey = leg.mode == "bus" ? appLocalized("ios.route.stopCount") : appLocalized("ios.route.stationCount")
+    return joinText(
+        leg.lineName,
+        leg.fromName.map { appLocalized("ios.route.board", $0) },
+        leg.toName.map { appLocalized("ios.route.alight", $0) },
+        leg.stationCount.map { String(format: countKey, String($0)) },
+        appLocalized("ios.route.legMinutes", String(leg.minutes)))
+}
+
+/// 도보 결과 행들(요약 1행+step들). 웹 WalkRouteResult 미러: step description
+/// 완성 문장이 낭독 정본(turnType 재조합 금지), 빈 문장은 행 생략.
+struct WalkRouteRows: View {
+    let briefing: WalkRouteBriefing
+
+    var body: some View {
+        Text(appLocalized("route.pedestrian.summary",
+            String(format: "%.1f", Double(briefing.distanceMeters) / 1000),
+            String(Int((Double(briefing.durationSeconds) / 60).rounded()))))
+        ForEach(Array(briefing.steps.enumerated()), id: \.offset) { _, step in
+            if !step.description.isEmpty {
+                Text(step.description)
+            }
+        }
+    }
+}
+
 // MARK: - 자동차 경로
 
 @Observable @MainActor
@@ -74,20 +151,8 @@ struct CarBriefingView: View {
         List {
             if case .loaded(let briefing) = model.state {
                 Section {
-                    // 요약 1행이 헤더(발견 경로). 통행료 0원은 생략(잉여)
-                    Text(joinText(
-                        appLocalized("ios.route.totalDistance", String(format: "%.1f", Double(briefing.distanceMeters) / 1000)),
-                        appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
-                        appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
-                        briefing.tollFare > 0 ? appLocalized("ios.route.tollFare", wonText(briefing.tollFare)) : nil))
-                        .accessibilityAddTraits(.isHeader)
-                    ForEach(Array(briefing.guides.enumerated()), id: \.offset) { _, guide in
-                        // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
-                        let text = guide.guidance.isEmpty ? guide.name : guide.guidance
-                        if !text.isEmpty {
-                            Text(joinText(text, "\(guide.distanceMeters)m"))
-                        }
-                    }
+                    // 요약 1행이 헤더(발견 경로)
+                    CarRouteRows(briefing: briefing, summaryAsHeader: true)
                 }
             }
         }
@@ -136,10 +201,7 @@ struct TransitBriefingView: View {
         List {
             if case .loaded(let result) = model.state {
                 Section {
-                    Text(summaryText(result.recommended.summary))
-                    ForEach(Array(result.recommended.legs.enumerated()), id: \.offset) { _, leg in
-                        Text(legText(leg))
-                    }
+                    TransitRouteRows(route: result.recommended)
                 } header: {
                     Text(appLocalized("ios.route.recommended")).accessibilityAddTraits(.isHeader)
                 }
@@ -147,7 +209,7 @@ struct TransitBriefingView: View {
                 if !result.alternatives.isEmpty {
                     Section {
                         ForEach(Array(result.alternatives.enumerated()), id: \.offset) { _, route in
-                            Text(summaryText(route.summary))
+                            Text(transitSummaryText(route.summary))
                         }
                     } header: {
                         Text(appLocalized("ios.route.alternatives")).accessibilityAddTraits(.isHeader)
@@ -158,27 +220,5 @@ struct TransitBriefingView: View {
         .navigationTitle(appLocalized("ios.route.transitTitle"))
         .overlay { routeStateOverlay(model.state) }
         .task { await model.load(place: place) }
-    }
-
-    private func summaryText(_ summary: TransitRouteSummary) -> String {
-        joinText(
-            appLocalized("ios.route.durationMinutes", String(summary.totalMinutes)),
-            appLocalized("ios.route.fare", wonText(summary.fare)),
-            appLocalized("ios.route.transfers", String(summary.transfers)),
-            appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)))
-    }
-
-    /// 구간 한 줄 = 한 접근성 객체. walk leg는 노선 정보가 없어 단일 분기(계약 테스트 근거)
-    private func legText(_ leg: TransitRouteLeg) -> String {
-        if leg.mode == "walk" {
-            return appLocalized("ios.route.walkMinutes", String(leg.minutes))
-        }
-        let countKey = leg.mode == "bus" ? appLocalized("ios.route.stopCount") : appLocalized("ios.route.stationCount")
-        return joinText(
-            leg.lineName,
-            leg.fromName.map { appLocalized("ios.route.board", $0) },
-            leg.toName.map { appLocalized("ios.route.alight", $0) },
-            leg.stationCount.map { String(format: countKey, String($0)) },
-            appLocalized("ios.route.legMinutes", String(leg.minutes)))
     }
 }

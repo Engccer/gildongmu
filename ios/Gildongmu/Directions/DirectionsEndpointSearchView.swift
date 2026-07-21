@@ -1,0 +1,146 @@
+import SwiftUI
+import Observation
+import Accessibility
+import GildongmuKit
+
+/// 길찾기 필드 후보 검색 모델(웹 EndpointField 미러): 장소+주소 병렬 상위 5건씩.
+/// 웹 폴백 없음(includeWeb=false, 후보엔 좌표가 필요해 무의미 + 유료 호출 회피).
+/// 주소 후보는 좌표가 없어 선택 시점에 지오코딩으로 확정한다.
+@Observable @MainActor
+final class EndpointSearchModel {
+    var query = ""
+    private(set) var places: [Place] = []
+    private(set) var addresses: [JusoAddress] = []
+    /// 0건·실패의 시각 안내(3-state: 없음≠실패). 후보 있는 성공은 목록이 정본이라 비운다.
+    private(set) var notice = ""
+    private(set) var isSearching = false
+    private var searchTask: Task<Void, Never>?
+    /// 지오코딩 재진입 가드(웹 geocodeRef 미러)
+    private var isGeocodingInFlight = false
+
+    private let service = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+
+    func submit() {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
+        isSearching = true
+        searchTask = Task {
+            // 허용된 세션이면 좌표를 실어 근접 블렌딩(SearchModel 동형, 팝업 없음).
+            let coordinate = await LocationService.shared.coordinateIfAuthorized()
+            let outcome = await service.search(
+                query: trimmed, lat: coordinate?.lat, lng: coordinate?.lng,
+                lang: AppLanguage.dataLocale, includeWeb: false)
+            guard !Task.isCancelled else { return }
+            // 미니 검색은 필드 확정용이라 상위 5건씩만(전체 탐색은 검색 탭이 담당).
+            places = Array(outcome.places.items.prefix(5))
+            addresses = Array(outcome.addresses.items.prefix(5))
+            isSearching = false
+            let count = places.count + addresses.count
+            let message: String
+            if count > 0 {
+                message = appLocalized("directions.candidateCount", String(count))
+                notice = ""
+            } else if outcome.allFailed {
+                // 3-state: "0건"과 "조회 실패"를 뭉개지 않는다(양쪽 다 실패했을 때만 오류).
+                message = appLocalized("directions.candidateError")
+                notice = message
+            } else {
+                message = appLocalized("directions.candidateNone")
+                notice = message
+            }
+            AccessibilityNotification.Announcement(message).post()
+        }
+    }
+
+    func cancel() {
+        searchTask?.cancel()
+    }
+
+    /// 주소 후보 선택: 지오코딩 성공 시에만 확정. 실패는 coordError 통지 + 시트 유지(nil).
+    func geocode(_ address: JusoAddress) async -> DirectionsEndpoint? {
+        if isGeocodingInFlight { return nil }
+        isGeocodingInFlight = true
+        defer { isGeocodingInFlight = false }
+        let target = address.roadAddrPart1.isEmpty ? address.roadAddr : address.roadAddrPart1
+        do {
+            guard let match = try await service.geocode(query: target).first else {
+                announceCoordError()
+                return nil
+            }
+            return .place(label: target, lat: match.lat, lng: match.lng)
+        } catch {
+            announceCoordError()
+            return nil
+        }
+    }
+
+    private func announceCoordError() {
+        notice = appLocalized("directions.coordError")
+        AccessibilityNotification.Announcement(notice).post()
+    }
+}
+
+/// 출발지/도착지 후보 검색 시트. 선택 즉시 닫히고 필드에 원자 확정된다.
+/// 닫힘 후 VO 포커스는 시트를 연 필드 버튼으로 복귀(시스템 기본)하고, 확정 확인은
+/// 필드의 라벨+값 낭독이 담당한다(웹 resolveAndClose 선점 포커스의 iOS 문법,
+/// 별도 완료 통지를 더하지 않는다).
+struct DirectionsEndpointSearchView: View {
+    let target: DirectionsFieldTarget
+    let onSelect: (DirectionsEndpoint) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var model = EndpointSearchModel()
+
+    var body: some View {
+        NavigationStack {
+            List {
+                // "현재 위치 사용"은 출발지 전용(웹 동형, 도착지를 현재 위치로 두는 건 스왑이 담당)
+                if target == .from {
+                    Button(appLocalized("directions.useCurrentLocation")) { select(.current) }
+                }
+                if !model.notice.isEmpty {
+                    Text(model.notice)
+                }
+                ForEach(model.places) { place in
+                    Button {
+                        select(.place(label: place.name, lat: place.lat, lng: place.lng))
+                    } label: {
+                        // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형)
+                        Text(joinText(place.name, place.roadAddress.isEmpty ? place.address : place.roadAddress))
+                    }
+                }
+                ForEach(model.addresses, id: \.roadAddr) { address in
+                    Button(address.roadAddr) {
+                        Task {
+                            if let endpoint = await model.geocode(address) { select(endpoint) }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(sheetTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $model.query, prompt: Text(appLocalized("ios.search.prompt")))
+            .onSubmit(of: .search) { model.submit() }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(appLocalized("actions.close")) { dismiss() }
+                }
+            }
+            .overlay {
+                if model.isSearching {
+                    ProgressView(appLocalized("ios.search.searching"))
+                }
+            }
+            .onDisappear { model.cancel() }
+        }
+    }
+
+    private var sheetTitle: String {
+        target == .from ? appLocalized("directions.searchFrom") : appLocalized("directions.searchTo")
+    }
+
+    private func select(_ endpoint: DirectionsEndpoint) {
+        onSelect(endpoint)
+        dismiss()
+    }
+}
