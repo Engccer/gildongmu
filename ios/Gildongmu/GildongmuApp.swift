@@ -88,7 +88,7 @@ struct GildongmuApp: App {
 
     /// 현재 탭만 초기 상태로(제목 메뉴 "새로고침"): 탭 이동 없음, 해당 탭 epoch만 증가.
     /// 채팅은 진행 중 스트림을 요청째 취소하고 새 대화로 교체한다(idle-reset 불변식 공유).
-    /// 다른 탭은 `.id` 재생성만으로 충분 — 뷰가 소멸하며 그 아래 Task도 함께 취소된다
+    /// 다른 탭은 `.id` 재생성만으로 충분하다. 뷰가 소멸하며 그 아래 Task도 함께 취소된다
     /// (SwiftUI 자식 뷰 소멸 시 `.task`가 캔슬 신호를 받는 계약, 명시 cancel 불필요).
     private func refreshCurrentTab() {
         switch selectedTab {
