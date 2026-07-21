@@ -409,14 +409,14 @@ export interface TimetableLine {
 
 /**
  * 역 첫차·막차 시간표 전체(장소 상세 "역 정보"에서 표시하는 정본).
- * dailyType은 조회에 쓴 서비스데이 타입, partial은 공휴일 판정 실패로
- * 요일만으로 추정했을 때 true가 되어 UI가 기준을 명시하게 한다.
+ * dailyType은 조회에 쓴 서비스데이 타입. 공휴일 판정 실패 시 요일 폴백은
+ * partial이 아니라 dailyType 기준 라벨 명시로 정직성을 담보한다(스펙 §1-A-3).
  */
 export interface StationTimetable {
   stationName: string;
   /** 조회에 사용한 서비스데이 타입(평일/토요일/일요일) */
   dailyType: "weekday" | "saturday" | "sunday";
-  /** 공휴일 판정 실패로 요일만으로 추정했으면 true */
+  /** 일부 노선·방향 시간표 호출이 실패해 불완전한 결과면 true(무운행 위장 금지) */
   partial?: true;
   lines: TimetableLine[];
 }
