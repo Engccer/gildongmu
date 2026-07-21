@@ -436,6 +436,17 @@
       "generalWeather": "Indique-moi la qualité de l'air et la météo ici"
     }
   },
+  "privacy": {
+    "title": "Politique de confidentialité",
+    "intro": "Gildongmu fonctionne sans compte et ne conserve aucune donnée personnelle dans une base de données propre.",
+    "useHeading": "Utilisation des données",
+    "location": "Votre position actuelle sert uniquement à consulter en temps réel les lieux à proximité, les transports et les itinéraires, et n'est pas conservée. Elle peut apparaître temporairement dans les journaux de requêtes de l'infrastructure serveur.",
+    "chat": "Dans le chat IA, vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity. Les réponses sont générées par IA et peuvent être inexactes.",
+    "search": "Les termes de recherche sont transmis à des fournisseurs comme Kakao et Naver, et à la recherche web Perplexity uniquement lorsqu'il n'y a aucun résultat de lieu ni d'adresse.",
+    "dictation": "La dictée dans l'app iOS est traitée sur l'appareil : l'audio ne le quitte jamais. La dictée sur le web envoie l'audio à Deepgram pour transcription et ne le conserve pas ensuite.",
+    "contactHeading": "Contact",
+    "contact": "Pour toute question sur le service ou cette politique, écrivez à engccer@gmail.com."
+  },
   "beacon": {
     "heading": "Distance jusqu'à la destination",
     "start": "Démarrer le suivi de distance",
