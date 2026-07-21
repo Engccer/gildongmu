@@ -2,9 +2,10 @@ import Testing
 import Foundation
 @testable import GildongmuKit
 
-// 경로 브리핑 계약 테스트: Fixtures/route-car.json·route-transit.json(prod 실캡처)이 계약 정본.
+// 경로 브리핑 계약 테스트: Fixtures/route-car.json·route-transit.json·route-walk.json이 계약 정본.
 // ⚠ car 응답은 envelope 없이 CarRouteBriefing 직접(웹 /api/route/car 계약).
 // 단위 함정 회귀: durationSeconds=초·totalMinutes=분·fare/taxiFare/tollFare=원.
+// walk는 result가 optional(경로 없음 3-state) — route-walk-no-route.json으로 별도 검증.
 
 // MARK: - fixture 디코딩
 
@@ -58,4 +59,53 @@ import Foundation
     // 도보 leg는 노선·승하차 정보가 없다(뷰의 "도보 N분" 단일 분기 근거)
     #expect(walks.allSatisfy { $0.lineName == nil && $0.fromName == nil && $0.stationCount == nil })
     #expect(walks.allSatisfy { $0.minutes >= 0 })
+}
+
+// MARK: - 도보 경로 브리핑 계약
+
+@Test func routeWalkFixtureDecodes() throws {
+    let envelope = try JSONDecoder().decode(WalkRouteEnvelope.self, from: fixture("route-walk"))
+    let briefing = try #require(envelope.result)
+    #expect(briefing.distanceMeters == 2078)
+    #expect(briefing.durationSeconds == 1806)
+    #expect(!briefing.steps.isEmpty)
+    // description이 낭독 정본(완성 문장), 첫 단계에서 확인
+    #expect(briefing.steps.first?.description == "천호대로를 따라 119m 이동")
+    // distanceMeters는 optional(현재 서버 미전송) — nil이어도 디코딩 성공해야 함
+    #expect(briefing.steps.allSatisfy { $0.distanceMeters == nil })
+}
+
+@Test func routeWalkNoRouteFixtureDecodesToNilResult() throws {
+    // "경로 없음"(예: Tmap 3102) — 조회 실패 아님, throw 대상 아님(3-state)
+    let envelope = try JSONDecoder().decode(WalkRouteEnvelope.self, from: fixture("route-walk-no-route"))
+    #expect(envelope.result == nil)
+}
+
+@Test func routeWalkUnitsAreInSaneRange() throws {
+    let envelope = try JSONDecoder().decode(WalkRouteEnvelope.self, from: fixture("route-walk"))
+    let briefing = try #require(envelope.result)
+    // durationSeconds가 분·밀리초로 오염되면 이 범위(도보 상식 범위)를 벗어난다
+    #expect((60...14400).contains(briefing.durationSeconds))
+    #expect(briefing.distanceMeters > 0)
+}
+
+// MARK: - RouteService.walk 404 게이트 통과 확인 (Kit 계층에서 흡수하지 않고 그대로 throw)
+
+extension StubNetworkTests {
+    @Test func routeServiceWalkThrowsBadStatusOn404() async throws {
+        StubURLProtocol.handler = { _ in
+            (404, Data(#"{"error":"도보 길찾기는 API 키 등록 후 사용할 수 있습니다."}"#.utf8))
+        }
+        let service = RouteService(client: stubbedClient())
+        await #expect(throws: APIError.self) {
+            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+        }
+    }
+
+    @Test func routeServiceWalkNullResultReturnsNilNotThrow() async throws {
+        StubURLProtocol.handler = { _ in (200, Data(#"{"result":null}"#.utf8)) }
+        let service = RouteService(client: stubbedClient())
+        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+        #expect(result == nil)
+    }
 }

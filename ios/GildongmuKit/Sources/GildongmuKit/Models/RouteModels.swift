@@ -1,7 +1,7 @@
 import Foundation
 
-// 경로 브리핑 도메인 모델: 웹 /api/route/car·/api/route/transit 계약 미러
-// (계약 정본은 Fixtures/route-car.json·route-transit.json prod 실캡처).
+// 경로 브리핑 도메인 모델: 웹 /api/route/car·/api/route/transit·/api/route/walk 계약 미러
+// (계약 정본은 Fixtures/route-car.json·route-transit.json·route-walk.json).
 // 단위 함정 주의: durationSeconds=초·totalMinutes/walkMinutes/minutes=분·fare류=원.
 // mode는 신규 값 추가에 깨지지 않도록 String으로 둔다(기존 원칙).
 
@@ -83,4 +83,29 @@ public struct TransitRouteResult: Codable, Sendable, Hashable {
 /// /api/route/transit envelope(자동차와 달리 result로 감싼다).
 public struct TransitRouteEnvelope: Codable, Sendable {
     public let result: TransitRouteResult
+}
+
+// MARK: - 도보 경로
+
+/// 도보 안내 단계 하나. description이 낭독 정본(완성 문장, 예 "천호대로를 따라 119m 이동").
+/// distanceMeters는 optional — 현재 서버가 미전송(웹 계약상 옵셔널 필드).
+public struct WalkRouteStep: Codable, Sendable, Hashable {
+    public let description: String
+    public let distanceMeters: Int?
+}
+
+/// 도보 경로 브리핑(자동차 CarRouteBriefing과 동형, 지도 없이 완결되는 텍스트 정본).
+public struct WalkRouteBriefing: Codable, Sendable, Hashable {
+    /// 총 거리(m)
+    public let distanceMeters: Int
+    /// 총 소요(초)
+    public let durationSeconds: Int
+    /// 안내 단계들
+    public let steps: [WalkRouteStep]
+}
+
+/// /api/route/walk envelope. ⚠ transit과 달리 result가 optional —
+/// null은 "경로 없음"(3-state: 조회 실패 아님, throw 대상 아님).
+public struct WalkRouteEnvelope: Codable, Sendable {
+    public let result: WalkRouteBriefing?
 }
