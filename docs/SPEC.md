@@ -60,6 +60,7 @@
 | 네이버 지역 검색 | 장소 검색 | 구현 완료 (키 대기) | 중 — 카카오 보완 |
 | 카카오맵/네이버지도 딥링크 | 내비 연결 | **구현 완료 + UI 통합 (2026-06-13)** — 검색 카드에 네이버/카카오 두 그룹 | 높음 — 길찾기 코어 |
 | 한국관광공사 TourAPI 4.0 | 관광정보 (다국어) | **운영 중 (2026-06-13)** — en 로케일 자동 우선, 실응답·프로덕션 검증 완료. 개발계정 기능당 일 1,000건. 추가 실측: `locationBasedList2`(반경·dist·거리순)·`detailCommon2`(영문 overview 1,300자) — provider 함수 추가는 Phase 0b 후보 | **높음** — 외국인 여행자 + dodo 여행 도메인 정합. 카카오·네이버의 다국어 공백을 메우는 유일한 공식 소스 |
+| **Tmap 보행자 경로**(SK open API) | 도보 길찾기 | **운영 중 (2026-07-22)** — `tmap-pedestrian` provider+`/api/route/walk`+길찾기 뷰(웹)/길찾기 탭(iOS 4탭). 완성 문장 `description` 낭독 정본, 3102=경로없음 graceful, V1 ko 전용. `TMAP_APP_KEY`(일 1,000건 무료) | **높음** — dodo 이식 시 dodo용 별도 appKey 발급만(같은 T아이디 계정) |
 | NCP Directions 5/15 | 자동차 경로 (영문!) | **운영 중 (C1, 2026-06-17)** — `ncp-directions.ts` + `/api/route/car` lang 디스패치. `lang=en`+NCP 키면 NCP 영문 턴바이턴(`instructions`), 그 외 카카오 한국어 graceful 폴백. 두 provider 동일 `CarRouteBriefing` shape(컴포넌트 불변). ⚠ NCP `duration` 밀리초→초 변환(`normalizeNcpRoute`). 실호출 검증(en 14단계 영문·ko 8단계 한국어, durSec 단위 정합) | **높음** — dodo 외국인 시나리오의 영문 경로 정본 |
 | NCP Geocoding/Reverse | 주소↔좌표 (영문 보완) | **키 확보 + 원시 실측 (2026-06-13)** — 정지오코딩이 `englishAddress` 반환. 역지오는 한국어 전용 → 영문 현위치는 역지오→정지오 **2-call 체인**(실측 동작 확인). 영문 입력 질의는 미수용(0건) | 중상 — 영문 주소 표기·현위치 낭독. juso.go.kr 불필요해짐 |
 | 행안부 juso.go.kr | 영문 주소 변환 | 조사됨 | 중 — 외국인용 주소 표기 보완 |
