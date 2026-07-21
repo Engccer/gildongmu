@@ -90,10 +90,28 @@ struct DirectionsEndpointSearchView: View {
     let onSelect: (DirectionsEndpoint) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
+    @State private var speech = SpeechService()
 
     var body: some View {
         NavigationStack {
             List {
+                // 마이크는 검색 필드 바로 다음 행(SearchView 동형 배선, F-C). 검색 계열
+                // 계약: 홀드 단일 동작 — 최종 전사를 쿼리에 넣고 즉시 후보 검색(잠금·취소
+                // 슬라이드 없음). 전사 원문을 polite 통지한 뒤 결과 통지는 submit()의
+                // 후보 수 통지가 담당. 포커스는 건드리지 않는다(선택은 후보 목록 스와이프).
+                Section {
+                    HoldDictationButton(
+                        speech: speech,
+                        hint: appLocalized("ios.voice.holdHintSearch"),
+                        showsTitle: true,
+                        onTranscript: { text in
+                            model.query = text
+                            AccessibilityNotification.Announcement(text).post()
+                            model.submit()
+                        },
+                        onPause: nil
+                    )
+                }
                 // "현재 위치 사용"은 출발지 전용(웹 동형, 도착지를 현재 위치로 두는 건 스왑이 담당)
                 if target == .from {
                     Button(appLocalized("directions.useCurrentLocation")) { select(.current) }
@@ -131,8 +149,32 @@ struct DirectionsEndpointSearchView: View {
                     ProgressView(appLocalized("ios.search.searching"))
                 }
             }
-            .onDisappear { model.cancel() }
+            .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
+                Button(appLocalized("ios.common.ok")) {}
+            }
+            // 마이크는 항상 폐기(시트가 닫히면 뷰가 소멸하므로 유령 청취 방지 —
+            // SearchView 동형 teardown). 검색 Task도 함께 취소.
+            .onDisappear {
+                model.cancel()
+                Task { await speech.cancel() }
+            }
         }
+    }
+
+    /// denied·failed 안내(3-state, SearchView 미러). 확인 시 idle 복귀.
+    private var speechAlertMessage: String? {
+        switch speech.phase {
+        case .denied: appLocalized("ios.voice.denied")
+        case .failed: appLocalized("ios.voice.failed")
+        default: nil
+        }
+    }
+
+    private var speechAlertBinding: Binding<Bool> {
+        Binding(
+            get: { speechAlertMessage != nil },
+            set: { if !$0 { speech.reset() } }
+        )
     }
 
     private var sheetTitle: String {
