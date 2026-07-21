@@ -27,7 +27,7 @@ struct ChatTabView: View {
         NavigationStack {
             Group {
                 if consentGranted {
-                    ChatConversationView(model: model, focusDraftOnAppear: justGranted) {
+                    ChatConversationView(model: model, focusDraftOnAppear: $justGranted) {
                         suggestionList
                     }
                 } else {

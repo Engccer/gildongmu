@@ -12,7 +12,10 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// 시 스트림 폐기는 App의 resetChatModel()이 담당. 마이크는 여기서 항상 폐기.
     let cancelsOnDisappear: Bool
     /// true면 등장 시 1회 입력 필드로 VO 포커스를 선점 이동한다(동의→채팅 전환 직후 전용).
-    let focusDraftOnAppear: Bool
+    /// Binding인 이유: 1회성 신호라 소비 즉시 호출부 상태를 false로 리셋해야 한다 —
+    /// 값 타입(Bool)이었다면 호출부의 @State가 true로 영구 고정돼 탭 재방문(onAppear
+    /// 재호출)마다 포커스를 반복 강탈했다(리뷰 검출).
+    @Binding var focusDraftOnAppear: Bool
     /// 메시지 0개일 때 리스트 위치에 표시(채팅 탭 추천 질문). sheet는 EmptyView.
     private let emptyContent: () -> EmptyContent
 
@@ -36,12 +39,12 @@ struct ChatConversationView<EmptyContent: View>: View {
     init(
         model: ChatModel,
         cancelsOnDisappear: Bool = false,
-        focusDraftOnAppear: Bool = false,
+        focusDraftOnAppear: Binding<Bool> = .constant(false),
         @ViewBuilder emptyContent: @escaping () -> EmptyContent
     ) {
         self.model = model
         self.cancelsOnDisappear = cancelsOnDisappear
-        self.focusDraftOnAppear = focusDraftOnAppear
+        self._focusDraftOnAppear = focusDraftOnAppear
         self.emptyContent = emptyContent
     }
 
@@ -115,6 +118,9 @@ struct ChatConversationView<EmptyContent: View>: View {
             guard focusDraftOnAppear else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 isDraftFocused = true
+                // 1회 소비 후 리셋 — 탭 재방문(onAppear 재호출)마다 포커스가
+                // 반복 강탈되지 않도록 신호를 여기서 끈다.
+                focusDraftOnAppear = false
             }
         }
         .onDisappear {

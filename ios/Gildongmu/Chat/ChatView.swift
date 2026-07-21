@@ -20,7 +20,7 @@ struct ChatView: View {
             Group {
                 if consentGranted {
                     ChatConversationView(model: model, cancelsOnDisappear: true,
-                                         focusDraftOnAppear: justGranted) { EmptyView() }
+                                         focusDraftOnAppear: $justGranted) { EmptyView() }
                 } else {
                     ChatConsentView {
                         justGranted = true
