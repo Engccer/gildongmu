@@ -76,6 +76,16 @@ export function checkChatRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(chatStore, ip, now, CHAT_LIMIT, WINDOW_MS).allowed;
 }
 
+// 도보 경로(Tmap)도 일 1,000건 무료 쿼터가 있는 유료 API라 채팅과 동일하게
+// 60초 10회로 잡는다(도보 W2 브리프).
+const WALK_LIMIT = 10;
+const walkStore = new Map<string, RateLimitEntry>();
+
+/** /api/route/walk 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkWalkRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(walkStore, ip, now, WALK_LIMIT, WINDOW_MS).allowed;
+}
+
 /** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
 export function clientIpFromHeaders(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
