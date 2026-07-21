@@ -227,7 +227,7 @@ export function TransitRouteBriefing({
           >
             {tActions("close")}
           </button>
-          <RouteView
+          <TransitRouteResult
             route={status.result.recommended}
             t={t}
             locale={locale}
@@ -250,7 +250,7 @@ export function TransitRouteBriefing({
                     <h4 className="text-sm font-semibold">
                       {t("alternativeHeading", { index: i + 1 })}
                     </h4>
-                    <RouteView
+                    <TransitRouteResult
                       route={alt}
                       t={t}
                       locale={locale}
@@ -267,7 +267,7 @@ export function TransitRouteBriefing({
 }
 
 /** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 lang="ko". */
-function RouteView({
+export function TransitRouteResult({
   route,
   t,
   locale,

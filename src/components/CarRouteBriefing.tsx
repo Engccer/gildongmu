@@ -132,37 +132,54 @@ export function CarRouteBriefing({
           >
             {tActions("close")}
           </button>
-          <p className="mt-1 text-sm">
-            {t("summary", {
-              distance: formatDistance(status.briefing.distanceMeters),
-              minutes: durationToMinutes(status.briefing.durationSeconds),
-              taxi: status.briefing.taxiFare.toLocaleString(locale),
-            })}
-            {status.briefing.tollFare > 0 && (
-              <>
-                {" "}
-                {t("toll", {
-                  toll: status.briefing.tollFare.toLocaleString(locale),
-                })}
-              </>
-            )}
-          </p>
-          <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
-            {status.briefing.guides.map((guide, i) => (
-              // 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
-              // (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본).
-              <li key={`${i}-${guide.guidance}`}>
-                {joinText(
-                  guide.name,
-                  guide.guidance,
-                  guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
-                )}
-              </li>
-            ))}
-          </ol>
-          <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
+          <CarRouteResult briefing={status.briefing} locale={locale} t={t} />
         </div>
       )}
     </div>
+  );
+}
+
+/** 경로 1개의 요약 + 턴바이턴 안내 리스트. */
+export function CarRouteResult({
+  briefing,
+  locale,
+  t,
+}: {
+  briefing: Briefing;
+  locale: string;
+  t: ReturnType<typeof useTranslations<"route.briefing">>;
+}) {
+  return (
+    <>
+      <p className="mt-1 text-sm">
+        {t("summary", {
+          distance: formatDistance(briefing.distanceMeters),
+          minutes: durationToMinutes(briefing.durationSeconds),
+          taxi: briefing.taxiFare.toLocaleString(locale),
+        })}
+        {briefing.tollFare > 0 && (
+          <>
+            {" "}
+            {t("toll", {
+              toll: briefing.tollFare.toLocaleString(locale),
+            })}
+          </>
+        )}
+      </p>
+      <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
+        {briefing.guides.map((guide, i) => (
+          // 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
+          // (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본).
+          <li key={`${i}-${guide.guidance}`}>
+            {joinText(
+              guide.name,
+              guide.guidance,
+              guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
+            )}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
+    </>
   );
 }
