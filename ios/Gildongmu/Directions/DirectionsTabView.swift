@@ -3,6 +3,20 @@ import Observation
 import Accessibility
 import GildongmuKit
 
+/// 장소 상세·검색 결과 "길찾기" 진입 채널(Task I4). 도착지 페이로드를 1회 전달한다.
+/// `LaunchActionStore`와 관찰→즉시 소비 패턴은 동형이지만 별도 스토어로 분리했다:
+/// 단축어 진입(AppShortcuts)은 항상 전체 세션 리셋(진행 채팅·검색 폐기)이 계약이지만,
+/// 이건 사용자가 이미 쓰던 중인 인앱 탭 전환이라 다른 탭 상태를 보존해야 한다(리셋
+/// 의미 자체가 다르다. 같은 스토어에 얹으면 그 분기를 억지로 갈라야 한다).
+@Observable @MainActor
+final class DirectionsPrefillStore {
+    static let shared = DirectionsPrefillStore()
+    /// 보류 프리필 도착지. GildongmuApp이 관찰해 즉시 nil 대입(1회 소비 확인)한 뒤
+    /// 길찾기 탭 전환 + directionsEpoch 갱신(원자 교체: 새 DirectionsModel 재생성이라
+    /// 이전 결과·필드 상태가 함께 폐기된다).
+    var pending: DirectionsEndpoint?
+}
+
 /// 길찾기 필드 식별(출발지/도착지). 검색 시트 라우팅 공용.
 enum DirectionsFieldTarget: String, Identifiable {
     case from, to

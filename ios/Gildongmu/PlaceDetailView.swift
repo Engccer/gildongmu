@@ -43,6 +43,12 @@ struct PlaceDetailView: View {
             }
 
             Section(appLocalized("ios.route.section")) {
+                // 길찾기 탭으로 도착지 프리필 진입(Task I4). 딥링크·브리핑은 각각
+                // 외부 앱 위임/단일 수단 미리보기이고, 이건 3수단(대중교통·도보·자동차)을
+                // 앱 안에서 한 번에 비교하는 유일한 경로라 목록 맨 위에 둔다.
+                Button(appLocalized("directions.toHere")) {
+                    DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                }
                 Button(appLocalized("ios.route.naver")) { openNaverRoute() }
                 Button(appLocalized("ios.route.kakao")) { openKakaoRoute() }
                 if let kakaoId = kakaoPlaceId {

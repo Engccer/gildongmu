@@ -40,6 +40,11 @@ struct GildongmuApp: App {
     /// 의존이라 새 언어로 다시 받아야 한다.)
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
     private let launchStore = LaunchActionStore.shared
+    private let directionsPrefillStore = DirectionsPrefillStore.shared
+    /// 장소 상세·검색 "길찾기" 진입이 넘긴 도착지(Task I4). directionsEpoch와 함께
+    /// 갱신되어야 DirectionsTabView 재생성 시점에 반영된다. SwiftUI는 `.id` 불변이면
+    /// init 인자가 바뀌어도 기존 `@State`를 그대로 유지하므로, 값만 바꾸면 무시된다.
+    @State private var directionsPrefill: DirectionsEndpoint?
 
     var body: some Scene {
         WindowGroup {
@@ -47,7 +52,7 @@ struct GildongmuApp: App {
             TabView(selection: $selectedTab) {
                 Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
                 Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
-                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { DirectionsTabView().id(directionsEpoch) }
+                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch) }
                 Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id("\(sessionEpoch)#\(languageRaw)")
@@ -61,6 +66,10 @@ struct GildongmuApp: App {
             // epoch 재생성으로 .task가 다시 돌아도 멱등.
             .task { consumeLaunchAction() }
             .onChange(of: launchStore.pending) { _, _ in consumeLaunchAction() }
+            // 인앱 "길찾기" 진입(장소 상세·검색): 단축어와 달리 세션 리셋 없음(다른 탭
+            // 상태 보존). 콜드 런치 레이스가 없어(버튼은 앱 실행 중에만 눌린다)
+            // .task 대응짝은 불필요하다. .onChange만으로 충분하다.
+            .onChange(of: directionsPrefillStore.pending) { _, newValue in consumeDirectionsPrefill(newValue) }
             .onChange(of: scenePhase) { _, phase in
                 switch phase {
                 case .background:
@@ -80,10 +89,13 @@ struct GildongmuApp: App {
     }
 
     /// 초기 화면 복귀(유휴 복귀·단축어 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
+    /// directionsPrefill도 함께 비운다(Task I4). 안 비우면 지난 "길찾기" 진입의
+    /// 도착지가 리셋 후에도 살아남아 다음 길찾기 탭 진입에 유령으로 재적용된다.
     private func resetSession() {
         sessionEpoch += 1
         selectedTab = .chat
         resetChatModel()
+        directionsPrefill = nil
     }
 
     /// 현재 탭만 초기 상태로(제목 메뉴 "새로고침"): 탭 이동 없음, 해당 탭 epoch만 증가.
@@ -99,6 +111,9 @@ struct GildongmuApp: App {
             searchEpoch += 1
         case .directions:
             directionsEpoch += 1
+            // "새로고침"은 완전한 빈 상태로 돌아가는 계약이라 프리필도 함께 비운다
+            // (Task I4). 안 비우면 지난 "길찾기" 도착지가 새로고침 후에도 되살아난다.
+            directionsPrefill = nil
         case .nearby:
             nearbyEpoch += 1
         }
@@ -124,6 +139,7 @@ struct GildongmuApp: App {
         backgroundedAt = nil
         sessionEpoch += 1
         resetChatModel() // 인텐트 진입도 세션 리셋 — 채팅 스트림·대화 동반 폐기
+        directionsPrefill = nil // 길찾기 프리필도 동반 폐기(Task I4, 유령 재적용 차단)
         switch action {
         case .voiceSearch:
             selectedTab = .search
@@ -131,5 +147,17 @@ struct GildongmuApp: App {
         case .nearby:
             selectedTab = .nearby
         }
+    }
+
+    /// 장소 상세·검색 결과 "길찾기" 진입 소비(Task I4). 세션 리셋 없이 길찾기 탭으로만
+    /// 전환한다. 사용자가 이미 채팅·검색을 쓰던 중일 수 있어 단축어 진입과 달리 그
+    /// 상태를 보존해야 한다. directionsEpoch 갱신이 DirectionsTabView를 새로 만들어
+    /// 이전 도착지·결과를 원자 교체한다(브리프 §4).
+    private func consumeDirectionsPrefill(_ endpoint: DirectionsEndpoint?) {
+        guard let endpoint else { return }
+        directionsPrefillStore.pending = nil
+        directionsPrefill = endpoint
+        directionsEpoch += 1
+        selectedTab = .directions
     }
 }
