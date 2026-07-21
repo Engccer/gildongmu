@@ -237,6 +237,23 @@
     "operator": "운영기관",
     "source": "출처: 전국도시철도역사정보 표준데이터(국가철도공단)."
   },
+  "timetable": {
+    "heading": "첫차·막차",
+    "dailyType": {
+      "weekday": "평일 기준",
+      "saturday": "토요일 기준",
+      "sunday": "일요일·공휴일 기준"
+    },
+    "direction": { "up": "상행", "down": "하행" },
+    "first": "첫차",
+    "last": "막차",
+    "nextDay": "익일",
+    "toTerminus": "{terminus}행",
+    "empty": "오늘 시간표 정보가 없습니다.",
+    "error": "첫차·막차 정보를 불러오지 못했습니다.",
+    "partial": "일부 노선 정보를 불러오지 못했습니다.",
+    "source": "국토교통부 TAGO 제공"
+  },
   "bus": {
     "currentButton": "내 주변 버스 도착 정보",
     "placeButton": "근처 정류소·버스 도착",

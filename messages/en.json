@@ -237,6 +237,23 @@
     "operator": "Operator",
     "source": "Source: National urban-railway station standard data (KR National Railway)."
   },
+  "timetable": {
+    "heading": "First & last trains",
+    "dailyType": {
+      "weekday": "Weekday schedule",
+      "saturday": "Saturday schedule",
+      "sunday": "Sunday & holiday schedule"
+    },
+    "direction": { "up": "Up", "down": "Down" },
+    "first": "First train",
+    "last": "Last train",
+    "nextDay": "next day",
+    "toTerminus": "to {terminus}",
+    "empty": "No timetable information for today.",
+    "error": "Couldn't load first/last train info.",
+    "partial": "Some line info couldn't be loaded.",
+    "source": "Source: MOLIT TAGO"
+  },
   "bus": {
     "currentButton": "Bus arrivals near me",
     "placeButton": "Nearby stops & arrivals",
