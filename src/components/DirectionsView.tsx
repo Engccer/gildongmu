@@ -86,7 +86,7 @@ async function fetchMode(
 }
 
 /**
- * 길찾기 뷰: 출발지·도착지를 정해 3수단(대중교통·도보·자동차)을 한 번에 비교하는
+ * 길찾기 뷰: 출발지·도착지를 정해 3수단(대중교통·자동차·도보)을 한 번에 비교하는
  * 텍스트 브리핑 화면. 시각장애인 1급 시민 계약:
  * - 결과는 수단별 h3(tabIndex=-1) heading + 기존 결과 렌더 컴포넌트 재사용.
  * - 통지는 폼 근처 단일 polite live region 1개 뿐(수단별 개별 통지 금지, 합산 1문장).
@@ -148,12 +148,14 @@ export function DirectionsView({
     titleRef.current?.focus();
   }, []);
 
-  // 게이트 통과 수단만, 고정 순서(대중교통 → 도보 → 자동차). 도보는 V1 ko 전용:
-  // 비한국어 로케일은 조회·표시 모두 제외(prefersEnglish, useLocale 원시값 비교 금지).
+  // 게이트 통과 수단만, 고정 순서(대중교통 → 자동차 → 도보). 도보는 분량이 가장
+  // 많은데 검색 빈도는 가장 낮아 최하단(위원장 실사용 결정 2026-07-22). 도보는
+  // V1 ko 전용: 비한국어 로케일은 조회·표시 모두 제외(prefersEnglish, useLocale
+  // 원시값 비교 금지).
   const activeModes: ModeKey[] = [
     ...(canShowTransit ? (["transit"] as const) : []),
-    ...(canShowWalk && !prefersEnglish(locale) ? (["walk"] as const) : []),
     ...(canBriefCarRoute ? (["car"] as const) : []),
+    ...(canShowWalk && !prefersEnglish(locale) ? (["walk"] as const) : []),
   ];
 
   // `?dir=` 동기화: 확정(resolved) 필드만 직렬화한다. 편집 중(coord 무효) 상태는

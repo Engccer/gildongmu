@@ -75,7 +75,7 @@ private func carFixture() -> CarRouteBriefing {
         .walk: .empty,
         .car: .car(carFixture()),
     ])
-    #expect(results.displayedModes == [.walk, .car])  // 게이트는 섹션 자체 미노출
+    #expect(results.displayedModes == [.car, .walk])  // 게이트는 섹션 자체 미노출
     #expect(results.firstSuccess == .car)             // empty는 성공 아님
     #expect(results.successCount == 1)
 }
@@ -86,8 +86,8 @@ private func carFixture() -> CarRouteBriefing {
         .walk: .walk(walkFixture()),
         .car: .car(carFixture()),
     ])
-    #expect(results.displayedModes == [.transit, .walk, .car])
-    #expect(results.firstSuccess == .walk)  // 고정 순서(대중교통→도보→자동차)의 첫 성공
+    #expect(results.displayedModes == [.transit, .car, .walk])
+    #expect(results.firstSuccess == .car)  // 고정 순서(대중교통→자동차→도보)의 첫 성공
     #expect(results.successCount == 2)
 }
 

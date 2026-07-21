@@ -221,7 +221,7 @@ final class DirectionsModel {
 /// 길찾기 탭 본체(Task I3, 스펙 §6). 웹 DirectionsView 동형 계약:
 /// - 필드는 탭→검색 시트 선택(원자 확정), 스왑은 두 필드 원자 교환.
 /// - 조회 버튼은 disabled 금지: 라벨 전환("경로 조회"→"조회 중")+모델 가드(포커스 유지).
-/// - 결과는 수단 고정 순서(대중교통→도보→자동차) 섹션, 수단 heading `.isHeader`.
+/// - 결과는 수단 고정 순서(대중교통→자동차→도보) 섹션, 수단 heading `.isHeader`.
 ///   수단별 3-state(경로 없음≠오류) + 게이트 404는 섹션 자체 미노출.
 /// - 완료 시 단일 Announcement(합산 1문장) + 첫 성공 수단 heading 포커스(0건이면 이동 없음).
 struct DirectionsTabView: View {

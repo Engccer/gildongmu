@@ -13,11 +13,12 @@ public enum DirectionsEndpoint: Sendable, Hashable {
     case place(label: String, lat: Double, lng: Double)
 }
 
-/// 수단 식별. displayOrder가 결과 표시 고정 순서(대중교통→도보→자동차, 웹 activeModes 동형).
+/// 수단 식별. displayOrder가 결과 표시 고정 순서(대중교통→자동차→도보, 웹 activeModes 동형).
+/// 도보는 분량이 가장 많은데 검색 빈도는 가장 낮아 최하단(위원장 실사용 결정 2026-07-22).
 public enum DirectionsMode: String, CaseIterable, Sendable, Hashable {
     case transit, walk, car
 
-    public static let displayOrder: [DirectionsMode] = [.transit, .walk, .car]
+    public static let displayOrder: [DirectionsMode] = [.transit, .car, .walk]
 }
 
 /// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated를 더한 4-state:
