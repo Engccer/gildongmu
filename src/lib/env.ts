@@ -51,6 +51,9 @@ const envSchema = z.object({
   // 검색 응답에 공식 영문 주소(engAddr)·우편번호(zipNo)가 포함된다.
   JUSO_CONFM_KEY: z.string().min(1).optional(),
 
+  // openapi.sk.com — Tmap 보행자(+자동차) 경로안내, appKey 헤더 인증.
+  TMAP_APP_KEY: z.string().min(1).optional(),
+
   // Google Gemini — 채팅 function-calling 엔진(서버 전용). 유료 API.
   GEMINI_API_KEY: z.string().min(1).optional(),
 
@@ -75,6 +78,7 @@ export const env = envSchema.parse({
   SEOUL_SUBWAY_REALTIME_KEY: process.env.SEOUL_SUBWAY_REALTIME_KEY,
   ODSAY_API_KEY: process.env.ODSAY_API_KEY,
   JUSO_CONFM_KEY: process.env.JUSO_CONFM_KEY,
+  TMAP_APP_KEY: process.env.TMAP_APP_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
@@ -128,6 +132,11 @@ export function hasOdsayKey(): boolean {
 /** 행안부 도로명주소 검색 API 사용 가능 여부 */
 export function hasJusoKey(): boolean {
   return Boolean(env.JUSO_CONFM_KEY);
+}
+
+/** Tmap 보행자 경로안내 사용 가능 여부 */
+export function hasTmapKey(): boolean {
+  return Boolean(env.TMAP_APP_KEY);
 }
 
 /** Google Gemini 채팅 API 사용 가능 여부 */

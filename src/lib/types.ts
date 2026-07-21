@@ -248,6 +248,22 @@ export interface TransitRouteResult {
   alternatives: TransitRoute[];
 }
 
+/**
+ * 도보 경로 안내 한 단계. description은 Tmap이 완성해 주는 한국어 안내문
+ * (예: "158m 이동 후 우회전") — 스크린 리더 낭독의 정본 텍스트로 그대로 쓴다.
+ */
+export interface WalkRouteStep {
+  description: string;
+  distanceMeters?: number;
+}
+
+/** 도보 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본(자동차 CarRouteBriefing 동형). */
+export interface WalkRouteBriefing {
+  distanceMeters: number;
+  durationSeconds: number;
+  steps: WalkRouteStep[];
+}
+
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */
 export type BusSource = "tago" | "seoul";
 
