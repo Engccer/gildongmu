@@ -305,6 +305,10 @@ function RouteView({
                 from: (chunks) => <span lang="ko">{leg.fromName ?? chunks}</span>,
                 count: leg.stationCount ?? 0,
               })}
+              {/* 배차간격은 같은 li 텍스트에 쉼표로 이어붙인다(한 줄=한 객체) */}
+              {leg.intervalMinutes != null && (
+                <>, {t("legInterval", { minutes: leg.intervalMinutes })}</>
+              )}
             </li>
           );
         })}

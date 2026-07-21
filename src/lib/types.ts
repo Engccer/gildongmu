@@ -218,6 +218,8 @@ export interface TransitLeg {
   toName?: string;
   /** 정거장 수 (도보는 없음) */
   stationCount?: number;
+  /** 평균 배차간격(분, ODsay subPath.intervalTime — 도보는 없음, 미제공 시 생략) */
+  intervalMinutes?: number;
   /** 구간 소요시간(분) */
   minutes: number;
 }

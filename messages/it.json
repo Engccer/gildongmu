@@ -118,6 +118,7 @@
       "legWalk": "Cammina {minutes} min",
       "legBoard": "Sali su <line></line> a <from></from>, {count} fermate",
       "legTransfer": "Cambia per <line></line> a <from></from>, {count} fermate",
+      "legInterval": "passa circa ogni {minutes} min",
       "arrive": "Arrivo a <name></name>",
       "changeOrigin": "Cambia partenza",
       "originLabel": "Cerca punto di partenza",

@@ -28,6 +28,7 @@ const sample = {
             distance: 1700,
             sectionTime: 4,
             stationCount: 2,
+            intervalTime: 10, // 실호출 확정(2026-07-21): 배차간격(분)은 subPath 레벨
             startName: "길동",
             endName: "천호",
             lane: [{ name: "수도권 5호선" }],
@@ -118,8 +119,12 @@ describe("normalizeOdsayRoute", () => {
       fromName: "길동",
       toName: "천호",
       stationCount: 2,
+      intervalMinutes: 10,
       minutes: 4,
     });
+    // intervalTime 미제공(구간·도보)은 undefined — "0분" 거짓 낭독 차단(3-state)
+    expect(legs[2].intervalMinutes).toBeUndefined();
+    expect(legs[0].intervalMinutes).toBeUndefined();
   });
 
   it("버스 leg는 lane.busNo를 lineName으로 투영한다", () => {

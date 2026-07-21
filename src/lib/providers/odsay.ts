@@ -23,6 +23,7 @@ interface OdsaySubPath {
   distance?: number;
   sectionTime?: number;
   stationCount?: number;
+  intervalTime?: number; // 평균 배차간격(분) — 실호출 확정(2026-07-21 길동→강남, 지하철 5·8·2호선 10/5/5)
   startName?: string;
   endName?: string;
   lane?: OdsayLane[];
@@ -62,6 +63,8 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
     fromName: sp.startName,
     toName: sp.endName,
     stationCount: sp.stationCount,
+    // 0은 "정보 없음"으로 취급해 생략(3-state: 배차 0분은 존재하지 않는 값)
+    intervalMinutes: sp.intervalTime || undefined,
     minutes,
   };
 }
