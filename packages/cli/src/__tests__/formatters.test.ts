@@ -320,6 +320,23 @@ describe("route-transit", () => {
   });
 });
 
+describe("route-walk", () => {
+  it("요약 줄 + 안내 줄(거리 있는 단계만 거리 표기)", () => {
+    const lines = FORMATTERS["route-walk"]({
+      result: {
+        distanceMeters: 850, durationSeconds: 660,
+        steps: [
+          { description: "158m 이동 후 우회전", distanceMeters: 158 },
+          { description: "목적지 도착" },
+        ],
+      },
+    } as never);
+    expect(lines[0]).toBe("0.8km, 약 11분");
+    expect(lines[1]).toBe("1. 158m 이동 후 우회전, 158m");
+    expect(lines[2]).toBe("2. 목적지 도착");
+  });
+});
+
 describe("weather", () => {
   it("null(키 부재)은 실패 문장과 구분해 '제공되지 않습니다'", () => {
     expect(FORMATTERS["weather"]({ weather: null } as never)).toEqual(["날씨 정보가 제공되지 않습니다."]);

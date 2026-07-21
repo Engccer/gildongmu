@@ -51,12 +51,24 @@ vi.mock("@/lib/providers/ncp-directions", () => ({
 vi.mock("@/lib/providers/odsay", () => ({
   getTransitRoute: vi.fn(async () => null),
 }));
+vi.mock("@/lib/providers/tmap-pedestrian", () => ({
+  getWalkRouteBriefing: vi.fn(async () => ({
+    distanceMeters: 850,
+    durationSeconds: 660,
+    steps: [{ description: "158m 이동 후 우회전" }, { description: "목적지 도착" }],
+  })),
+}));
 vi.mock("@/lib/env", () => ({
   hasNcpMapsKeys: vi.fn(() => false),
+  // 기본 true — get_walk_route 정상 경로 테스트는 별도 설정 없이 통과, 게이트 off
+  // 테스트만 mockReturnValueOnce(false)로 그 1회 호출만 뒤집는다.
+  hasTmapKey: vi.fn(() => true),
 }));
 
 import { executeFunction } from "../router";
 import { searchPlaces } from "@/lib/providers/places";
+import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
+import { hasTmapKey } from "@/lib/env";
 
 const ctxKo = { locale: "ko", dataLocale: "ko" as const, userLocation: { lat: 37.5, lng: 127.1 } };
 const ctxNoLoc = { locale: "ko", dataLocale: "ko" as const };
@@ -114,5 +126,57 @@ describe("executeFunction — 실데이터 + render + source", () => {
 
   it("알 수 없는 도구는 throw", async () => {
     await expect(executeFunction("nope", {}, ctxKo)).rejects.toThrow();
+  });
+});
+
+describe("executeFunction — get_walk_route", () => {
+  it("정상 경로: destination 지오코딩 + 요약·steps + source(tmap), render 없음", async () => {
+    const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
+    expect(dig(r.data, "destination")).toBe("길동 카페");
+    expect(dig(r.data, "distanceMeters")).toBe(850);
+    expect(dig(r.data, "durationSeconds")).toBe(660);
+    expect(dig(r.data, "steps")).toHaveLength(2);
+    expect(dig(r.data, "truncated")).toBeUndefined();
+    expect(r.source).toEqual([{ label: "source.tmap" }]);
+    expect(r.render).toBeUndefined();
+  });
+
+  it("steps가 20개 넘으면 상위 20개로 캡 + truncated 플래그", async () => {
+    const manySteps = Array.from({ length: 25 }, (_, i) => ({ description: `안내 ${i}` }));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce({
+      distanceMeters: 5000,
+      durationSeconds: 4000,
+      steps: manySteps,
+    });
+    const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
+    expect(dig(r.data, "steps")).toHaveLength(20);
+    expect(dig(r.data, "truncated")).toBe(true);
+  });
+
+  it("destination 없으면 data.error", async () => {
+    const r = await executeFunction("get_walk_route", {}, ctxKo);
+    expect(dig(r.data, "error")).toBeTruthy();
+  });
+
+  it("destination 위치를 못 찾으면 data.error", async () => {
+    vi.mocked(searchPlaces).mockResolvedValueOnce({ places: [], provider: "kakao-local", query: "q" });
+    const r = await executeFunction("get_walk_route", { destination: "존재하지않는곳" }, ctxKo);
+    expect(dig(r.data, "error")).toBeTruthy();
+  });
+
+  it("현재 위치 없으면 NO_LOCATION(Tmap 호출 없음)", async () => {
+    const before = vi.mocked(getWalkRouteBriefing).mock.calls.length;
+    const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxNoLoc);
+    expect(dig(r.data, "error")).toBeTruthy();
+    expect(r.source).toEqual([{ label: "source.tmap" }]);
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls.length).toBe(before);
+  });
+
+  it("게이트 off(hasTmapKey=false)면 실행부 직접 호출도 차단(Tmap provider 미호출)", async () => {
+    vi.mocked(hasTmapKey).mockReturnValueOnce(false);
+    const before = vi.mocked(getWalkRouteBriefing).mock.calls.length;
+    const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
+    expect(dig(r.data, "error")).toBeTruthy();
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls.length).toBe(before);
   });
 });

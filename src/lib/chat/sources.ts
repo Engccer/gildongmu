@@ -14,6 +14,7 @@ const NMC: SourceAttribution = { label: "source.nmc" };
 const KAKAO_MOBILITY: SourceAttribution = { label: "source.kakaomobility" };
 const NCP: SourceAttribution = { label: "source.ncp" };
 const ODSAY: SourceAttribution = { label: "source.odsay" };
+const TMAP: SourceAttribution = { label: "source.tmap" };
 const KRIC: SourceAttribution = { label: "source.kric" };
 const KORAIL: SourceAttribution = { label: "source.korail" };
 const SEOUL_METRO: SourceAttribution = { label: "source.seoulmetro" };
@@ -51,6 +52,8 @@ export function sourceFor(
       return ctx.dataLocale === "en" ? [NCP] : [KAKAO_MOBILITY];
     case "get_transit_route":
       return [ODSAY];
+    case "get_walk_route":
+      return [TMAP];
     case "search_web":
       return [PERPLEXITY];
     default:

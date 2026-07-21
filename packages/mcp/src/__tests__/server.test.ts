@@ -4,9 +4,9 @@ import { ENDPOINT_CATALOG } from "../endpoint-catalog-shared.js";
 describe("MCP 도구 카탈로그 필터·이름 규칙", () => {
   const mcpTools = ENDPOINT_CATALOG.filter((e) => e.mcp);
 
-  it("mcp:true 항목이 21개(web-search 1건만 제외)", () => {
-    expect(ENDPOINT_CATALOG.length).toBe(22);
-    expect(mcpTools.length).toBe(21);
+  it("mcp:true 항목이 22개(web-search 1건만 제외)", () => {
+    expect(ENDPOINT_CATALOG.length).toBe(23);
+    expect(mcpTools.length).toBe(22);
     expect(ENDPOINT_CATALOG.filter((e) => !e.mcp).map((e) => e.name)).toEqual(["web-search"]);
   });
 

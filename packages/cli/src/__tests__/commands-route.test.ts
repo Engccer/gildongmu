@@ -44,7 +44,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function runRoute(verb: "car" | "transit", args: Record<string, unknown>): Promise<void> {
+async function runRoute(verb: "car" | "transit" | "walk", args: Record<string, unknown>): Promise<void> {
   const { routeCommand } = await import("../commands/route.js");
   const sub = (routeCommand.subCommands as Record<string, { run?: (...a: never[]) => unknown }>)[verb];
   await sub.run!({ args, rawArgs: [], cmd: sub } as never);
@@ -91,6 +91,19 @@ describe("route 명령", () => {
     await runRoute("transit", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
       "/api/route/transit",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+    );
+  });
+
+  it("walk는 lang을 --lang en이어도 쿼리에 포함하지 않는다(V1 국문 전용)", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/route/walk") return { result: { distanceMeters: 0, durationSeconds: 0, steps: [] } };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
       { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
     );
   });

@@ -12,7 +12,7 @@ const COMMAND_TREE: Record<string, string[]> = {
   nearby: ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free"],
   station: ["info", "arrivals"],
   bus: ["route"],
-  route: ["car", "transit"],
+  route: ["car", "transit", "walk"],
   place: ["barrier-free"],
   config: ["get", "set", "path"],
 };

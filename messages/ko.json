@@ -423,6 +423,7 @@
         "get_station_facilities": "역 편의시설",
         "get_car_route": "자동차 경로",
         "get_transit_route": "대중교통 경로",
+        "get_walk_route": "도보 경로",
         "search_web": "웹 검색"
       }
     },
@@ -439,6 +440,7 @@
       "kakaomobility": "카카오모빌리티",
       "ncp": "네이버 클라우드 플랫폼",
       "odsay": "ODsay 대중교통",
+      "tmap": "Tmap",
       "kric": "국가철도공단",
       "korail": "한국철도공사",
       "seoulmetro": "서울교통공사",

@@ -35,6 +35,7 @@ gil station info "강동역"                   # 역 정보 + 교통약자 시�
 gil station arrivals "강동역"               # 역 실시간 도착(지하철)
 gil route car "길동역" "강남역"             # 자동차 경로 턴바이턴 브리핑
 gil route transit "길동역" "강남역"         # 대중교통 경로(추천+대안)
+gil route walk "길동역" "강남역"            # 도보 경로 텍스트 브리핑
 gil weather --near "강동역"                 # 이 지역 날씨(기상청)
 gil air --near "강동역"                     # 이 지역 공기질(에어코리아)
 gil whereami --lat 37.5326 --lng 127.1265   # 현재 위치 정위(주소·행정동·가까운 역)
@@ -70,7 +71,7 @@ gil completion fish > ~/.config/fish/completions/gil.fish
 | `station` | `info <역명>`, `arrivals <역명>` | 역 정보·시설·실시간 도착 |
 | `bus` | `route --source <tago\|seoul> --route-id <id> [--city-code <code>]` | 버스 노선 경유 정류소 |
 | `place` | `barrier-free <contentId>` | 무장애 관광지 편의시설 상세 |
-| `route` | `car <출발> <도착>`, `transit <출발> <도착>` | 경로 브리핑(자동차 턴바이턴/대중교통) |
+| `route` | `car <출발> <도착>`, `transit <출발> <도착>`, `walk <출발> <도착>` | 경로 브리핑(자동차 턴바이턴/대중교통/도보) |
 | `weather` | | 이 지역 날씨(위치 필수) |
 | `air` | | 이 지역 공기질(위치 필수) |
 | `whereami` | | 현재 위치 정위(위치 필수) |

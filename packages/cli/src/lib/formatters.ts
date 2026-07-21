@@ -188,6 +188,17 @@ interface TransitRouteResultItem {
   alternatives: TransitRouteItem[];
 }
 
+interface WalkRouteStepItem {
+  description: string;
+  distanceMeters?: number;
+}
+
+interface WalkRouteBriefingItem {
+  distanceMeters: number;
+  durationSeconds: number;
+  steps: WalkRouteStepItem[];
+}
+
 type SkyLabelItem = "clear" | "partlyCloudy" | "cloudy" | "unknown";
 type PrecipLabelItem = "none" | "rain" | "rainSnow" | "snow" | "shower" | "unknown";
 
@@ -483,6 +494,18 @@ function formatRouteTransit(body: { result: TransitRouteResultItem | null }): st
   return lines;
 }
 
+/** envelope "result" — Tmap 완성 문장(description)이 낭독 정본, 재조합 없이 그대로. */
+function formatRouteWalk(body: { result: WalkRouteBriefingItem }): string[] {
+  const r = body.result;
+  const lines: string[] = [
+    joinText(`${(r.distanceMeters / 1000).toFixed(1)}km`, `약 ${Math.round(r.durationSeconds / 60)}분`),
+  ];
+  r.steps.forEach((s, i) => {
+    lines.push(joinText(`${i + 1}. ${s.description}`, typeof s.distanceMeters === "number" ? m(s.distanceMeters) : undefined));
+  });
+  return lines;
+}
+
 // ── 날씨·공기질·위치정위·웹검색 ─────────────────────────────────────────
 
 function formatWeather(body: { weather: WeatherItem | null }): string[] {
@@ -569,6 +592,7 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "bus-route-stops": formatBusRouteStops,
   "route-car": formatRouteCar,
   "route-transit": formatRouteTransit,
+  "route-walk": formatRouteWalk,
   "weather": formatWeather,
   "air-quality": formatAirQuality,
   "where-am-i": formatWhereAmI,

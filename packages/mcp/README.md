@@ -37,7 +37,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 
 - `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.vercel.app`)
 
-## 노출되는 도구 (21종)
+## 노출되는 도구 (22종)
 
 전부 읽기 전용(`readOnlyHint: true`). 도구명은 REST 카탈로그 이름을 스네이크 케이스로 바꾼 것이다(예: `nearby-subway` → `nearby_subway`).
 
@@ -60,6 +60,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 | `bus_route_stops` | 버스 노선 경유 정류소 |
 | `route_car` | 자동차 경로 텍스트 브리핑(턴바이턴) |
 | `route_transit` | 대중교통 경로(추천+대안, ODsay) |
+| `route_walk` | 도보 경로 텍스트 브리핑(Tmap) |
 | `weather` | 이 지역 날씨(기상청 실황+예보) |
 | `air_quality` | 이 지역 공기질(에어코리아) |
 | `where_am_i` | 현재 위치 정위(주소·행정동·가까운 역·기준점) |

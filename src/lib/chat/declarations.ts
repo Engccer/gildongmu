@@ -7,6 +7,7 @@ import {
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasOdsayKey,
+  hasTmapKey,
   hasPerplexityKey,
 } from "@/lib/env";
 
@@ -216,6 +217,24 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_transit_route",
       description:
         "목적지까지 대중교통(버스·지하철 환승) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치).",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          destination: {
+            type: "string",
+            description: "목적지 지명 또는 주소",
+          },
+        },
+        required: ["destination"],
+      },
+    },
+  },
+  {
+    gate: hasTmapKey,
+    declaration: {
+      name: "get_walk_route",
+      description:
+        "목적지까지 도보(걷기) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치).",
       parametersJsonSchema: {
         type: "object",
         properties: {

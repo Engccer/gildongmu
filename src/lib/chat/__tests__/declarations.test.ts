@@ -178,6 +178,19 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations().some((d) => d.name === "get_transit_route")).toBe(false);
   });
 
+  // get_walk_route — TMAP_APP_KEY 게이트
+  it("Tmap 키 있으면 get_walk_route 노출", async () => {
+    vi.stubEnv("TMAP_APP_KEY", "t");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_walk_route")).toBe(true);
+  });
+
+  it("Tmap 키 없으면 get_walk_route 미노출", async () => {
+    vi.stubEnv("TMAP_APP_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_walk_route")).toBe(false);
+  });
+
   // get_nearby_barrier_free — DATA_GO_KR_API_KEY 게이트
   it("data.go.kr 키 있으면 get_nearby_barrier_free 노출", async () => {
     vi.stubEnv("DATA_GO_KR_API_KEY", "d");

@@ -423,6 +423,7 @@
         "get_station_facilities": "station facilities",
         "get_car_route": "driving route",
         "get_transit_route": "transit route",
+        "get_walk_route": "walking route",
         "search_web": "web search"
       }
     },
@@ -439,6 +440,7 @@
       "kakaomobility": "Kakao Mobility",
       "ncp": "Naver Cloud Platform",
       "odsay": "ODsay Transit",
+      "tmap": "Tmap",
       "kric": "Korea Rail Network Authority",
       "korail": "Korail",
       "seoulmetro": "Seoul Metro",

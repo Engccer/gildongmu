@@ -20,8 +20,9 @@ import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilitie
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 import { getTransitRoute } from "@/lib/providers/odsay";
+import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
 import { searchWebPerplexity } from "./perplexity-search";
-import { hasNcpMapsKeys } from "@/lib/env";
+import { hasNcpMapsKeys, hasTmapKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { sourceFor } from "./sources";
 
@@ -46,6 +47,10 @@ async function resolveCoord(
 }
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
+
+/** get_walk_route가 LLM에 넘기는 steps 상한 — Tmap 도보 경로는 교차로마다
+ * 안내 지점이 생겨 자동차·대중교통보다 단계 수가 훨씬 많다(토큰 방어). */
+const WALK_STEPS_CAP = 20;
 
 export async function executeFunction(
   name: string,
@@ -177,6 +182,32 @@ export async function executeFunction(
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
       const route = await getTransitRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
       return { data: { destination: p.name, route }, render, source: src };
+    }
+    case "get_walk_route": {
+      // declaration 게이트가 이미 hasTmapKey()로 노출을 막지만, 직접 호출(테스트·회귀)
+      // 경로도 차단하는 실행부 이중 방어.
+      if (!hasTmapKey()) {
+        return { data: { error: "도보 길찾기는 API 키 등록 후 사용할 수 있습니다." } };
+      }
+      const destination = String(args.destination ?? "");
+      if (!destination) return { data: { error: "목적지가 필요합니다." } };
+      const r = await searchPlaces({ query: destination, lang: ctx.dataLocale });
+      const p = r.places[0];
+      if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
+      if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
+      const briefing = await getWalkRouteBriefing({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
+      const steps = briefing.steps.slice(0, WALK_STEPS_CAP);
+      const truncated = briefing.steps.length > steps.length;
+      return {
+        data: {
+          destination: p.name,
+          distanceMeters: briefing.distanceMeters,
+          durationSeconds: briefing.durationSeconds,
+          steps,
+          ...(truncated ? { truncated } : {}),
+        },
+        source: src,
+      };
     }
     case "search_web": {
       // perplexity-search가 data·render를 빚고, 출처는 여기서 부착(실패면 카드 없음).
