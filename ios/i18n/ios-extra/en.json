@@ -177,7 +177,10 @@
       "themeLight": "Light",
       "themeDark": "Dark",
       "language": "Language",
-      "languageApplied": "Language changed"
+      "languageApplied": "Language changed",
+      "aiSection": "AI Chat",
+      "aiConsentToggle": "AI chat data sharing consent",
+      "reportProblem": "Report a problem"
     },
     "shortcut": {
       "voiceSearch": {

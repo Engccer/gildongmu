@@ -44,6 +44,8 @@ struct SettingsView: View {
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
+    // AI 채팅 동의 상태. 해제하면 채팅이 다시 동의 화면으로.
+    @AppStorage(AIChatConsent.key) private var aiConsentGranted = false
     @Environment(\.dismiss) private var dismiss
 
     /// 실효 언어를 읽고, 선택 시 영속화+통지한다. 통지는 **바뀐 언어로** 낭독된다
@@ -77,6 +79,17 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+
+                Section(appLocalized("ios.settings.aiSection")) {
+                    // 해제하면 채팅이 다시 동의 화면으로 — 5.1.2(i)의 동의 재검토·철회 요건.
+                    Toggle(appLocalized("ios.settings.aiConsentToggle"),
+                           isOn: $aiConsentGranted)
+                    Link(appLocalized("ios.common.privacyPolicy"),
+                         destination: AppConfig.apiBaseURL.appending(path: "\(AppLanguage.current)/privacy"))
+                    // AI 생성 콘텐츠 신고 경로의 최소 대응(스펙 §1).
+                    Link(appLocalized("ios.settings.reportProblem"),
+                         destination: URL(string: "mailto:engccer@gmail.com")!)
+                }
             }
             .navigationTitle(appLocalized("ios.settings.title"))
             .navigationBarTitleDisplayMode(.inline)

@@ -177,7 +177,10 @@
       "themeLight": "라이트",
       "themeDark": "다크",
       "language": "언어",
-      "languageApplied": "언어를 바꿨습니다"
+      "languageApplied": "언어를 바꿨습니다",
+      "aiSection": "AI 채팅",
+      "aiConsentToggle": "AI 채팅 데이터 전송 동의",
+      "reportProblem": "문제 신고"
     },
     "shortcut": {
       "voiceSearch": {
