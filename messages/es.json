@@ -134,6 +134,29 @@
       "error": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve."
     }
   },
+  "directions": {
+    "title": "Cómo llegar",
+    "toHere": "Cómo llegar hasta aquí",
+    "back": "Atrás",
+    "from": "Origen",
+    "to": "Destino",
+    "currentLocation": "Ubicación actual",
+    "useCurrentLocation": "Usar ubicación actual",
+    "searchFrom": "Buscar origen",
+    "searchTo": "Buscar destino",
+    "candidateCount": "Se encontraron {count} candidatos. Elige uno de la lista.",
+    "candidateNone": "No se encontraron candidatos.",
+    "candidateError": "Falló la búsqueda de candidatos. Inténtalo de nuevo en breve.",
+    "coordError": "No se pudieron determinar las coordenadas de la dirección seleccionada.",
+    "swap": "Intercambiar origen y destino",
+    "submit": "Buscar rutas",
+    "loading": "Buscando rutas…",
+    "locating": "Localizándote…",
+    "geoError": "No se pudo obtener tu ubicación. Busca un punto de partida.",
+    "needEndpoints": "Elige primero un origen y un destino.",
+    "readySummary": "Guía de ruta lista para {count} modos.",
+    "allFailed": "No se encontraron rutas. Comprueba el origen y el destino."
+  },
   "detail": {
     "back": "Volver a los resultados"
   },

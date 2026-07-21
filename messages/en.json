@@ -134,6 +134,29 @@
       "error": "Couldn't load the walking route. Please try again shortly."
     }
   },
+  "directions": {
+    "title": "Directions",
+    "toHere": "Directions to here",
+    "back": "Back",
+    "from": "From",
+    "to": "To",
+    "currentLocation": "Current location",
+    "useCurrentLocation": "Use current location",
+    "searchFrom": "Search starting point",
+    "searchTo": "Search destination",
+    "candidateCount": "Found {count} candidates. Choose one from the list.",
+    "candidateNone": "No candidates found.",
+    "candidateError": "Candidate search failed. Please try again shortly.",
+    "coordError": "Couldn't determine coordinates for the selected address.",
+    "swap": "Swap start and destination",
+    "submit": "Get routes",
+    "loading": "Finding routes…",
+    "locating": "Locating you…",
+    "geoError": "Couldn't get your location. Please search for a starting point.",
+    "needEndpoints": "Please choose a starting point and destination first.",
+    "readySummary": "Route guidance is ready for {count} modes.",
+    "allFailed": "No routes found. Please check the start and destination."
+  },
   "detail": {
     "back": "Back to results"
   },

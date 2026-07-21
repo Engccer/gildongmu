@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft, Copy, MessageSquare } from "lucide-react";
+import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
@@ -41,6 +41,7 @@ export function PlaceDetail({
   canShowBarrierFree,
   canShowTransit,
   canShowChat = false,
+  onOpenDirections,
   onBack,
 }: {
   place: Place;
@@ -52,6 +53,8 @@ export function PlaceDetail({
   canShowBarrierFree: boolean;
   canShowTransit: boolean;
   canShowChat?: boolean;
+  /** 있으면 "여기까지 길찾기" 버튼 노출: 이 장소를 도착지로 길찾기 뷰 전환 */
+  onOpenDirections?: () => void;
   onBack: () => void;
 }) {
   const t = useTranslations();
@@ -185,6 +188,16 @@ export function PlaceDetail({
       </div>
 
       <RouteLinks place={place} />
+      {onOpenDirections && (
+        <button
+          type="button"
+          onClick={onOpenDirections}
+          className="mt-4 mr-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <Route aria-hidden="true" className="h-4 w-4" />
+          {t("directions.toHere")}
+        </button>
+      )}
       {canShowChat && (
         <button
           type="button"

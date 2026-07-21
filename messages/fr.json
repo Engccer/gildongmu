@@ -134,6 +134,29 @@
       "error": "Impossible de charger l'itinéraire à pied. Veuillez réessayer dans un instant."
     }
   },
+  "directions": {
+    "title": "Itinéraire",
+    "toHere": "Itinéraire jusqu'ici",
+    "back": "Retour",
+    "from": "Départ",
+    "to": "Arrivée",
+    "currentLocation": "Position actuelle",
+    "useCurrentLocation": "Utiliser la position actuelle",
+    "searchFrom": "Rechercher un départ",
+    "searchTo": "Rechercher une arrivée",
+    "candidateCount": "{count} candidats trouvés. Choisissez dans la liste.",
+    "candidateNone": "Aucun candidat trouvé.",
+    "candidateError": "Échec de la recherche de candidats. Veuillez réessayer dans un instant.",
+    "coordError": "Impossible de déterminer les coordonnées de l'adresse sélectionnée.",
+    "swap": "Inverser le départ et l'arrivée",
+    "submit": "Rechercher les itinéraires",
+    "loading": "Recherche d'itinéraires…",
+    "locating": "Localisation en cours…",
+    "geoError": "Impossible d'obtenir votre position. Veuillez rechercher un point de départ.",
+    "needEndpoints": "Choisissez d'abord un départ et une arrivée.",
+    "readySummary": "Itinéraires prêts pour {count} modes.",
+    "allFailed": "Aucun itinéraire trouvé. Vérifiez le départ et l'arrivée."
+  },
   "detail": {
     "back": "Retour aux résultats"
   },

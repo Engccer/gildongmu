@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Route } from "lucide-react";
 import type { CategoryBucket } from "@/lib/category";
 import { bucketsPresent, filterPlacesByBucket } from "@/lib/category";
 import type { RegionCode } from "@/lib/region";
@@ -15,6 +16,7 @@ import type {
 } from "@/lib/types";
 import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -29,6 +31,7 @@ import { ResultList } from "./ResultList";
 import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
+import { DirectionsView } from "./DirectionsView";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
@@ -75,6 +78,7 @@ export function PlaceSearch({
   canSearchAddress = false,
   canSearchWeb = false,
   canShowChat = false,
+  canShowWalk = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -105,6 +109,8 @@ export function PlaceSearch({
   canSearchWeb?: boolean;
   /** Gemini 키가 있어 채팅(AI 길찾기 도우미)을 제공할 수 있는지 */
   canShowChat?: boolean;
+  /** Tmap 키가 있어 길찾기 뷰에 도보 수단을 제공할 수 있는지(뷰 자체는 무관하게 성립) */
+  canShowWalk?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -122,6 +128,11 @@ export function PlaceSearch({
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
+  // 길찾기 뷰 상태(null이면 닫힘). 상세와 같은 "같은 페이지 뷰 전환" 패턴.
+  const [directions, setDirections] = useState<{
+    from?: DirEndpoint;
+    to: DirEndpoint | null;
+  } | null>(null);
   const [addrStatus, setAddrStatus] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -148,6 +159,8 @@ export function PlaceSearch({
 
   // 검색 입력창 ref (SearchBar에 전달).
   const searchInputRef = useRef<HTMLInputElement>(null);
+  // 홈 "길찾기" 진입 버튼 ref: 결과 없이 길찾기만 열었다 닫은 경우의 포커스 복귀 대상.
+  const dirEntryRef = useRef<HTMLButtonElement>(null);
 
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
@@ -166,23 +179,43 @@ export function PlaceSearch({
     addrStatusRef.current = addrStatus;
   }, [addrStatus]);
 
-  // 상세 → 목록 복귀 시 결과 헤딩으로 포커스 이동(접근성 1급).
-  // 상세 뷰가 언마운트되면 포커스가 document.body로 유실되므로, 결과 헤딩이
-  // 렌더되는 done 상태일 때만 리렌더 후(rAF 한 틱) 헤딩으로 옮긴다. ref가 아직
-  // 없을 수 있으니 옵셔널 체이닝으로 가드한다.
+  // 상세/길찾기 → 홈 복귀 시 포커스 이동(접근성 1급). 뷰 언마운트로 포커스가
+  // document.body로 유실되므로, 결과 헤딩(done 상태)으로 옮기고, 결과가 없으면
+  // (검색 전 홈에서 길찾기만 열었다 닫은 경우) 길찾기 진입 버튼으로 복귀한다.
+  // ref가 아직 없을 수 있으니 옵셔널 체이닝으로 가드한다.
   function focusResultsHeadingIfDone() {
     const hasResults =
       statusRef.current.kind === "done" || addrStatusRef.current.kind === "done";
-    if (!hasResults) return;
-    requestAnimationFrame(() => resultsHeadingRef.current?.focus());
+    requestAnimationFrame(() => {
+      if (hasResults) resultsHeadingRef.current?.focus();
+      else dirEntryRef.current?.focus();
+    });
   }
 
-  // 상세 진입/이탈을 브라우저 히스토리에 연동 — 백버튼이 목록으로 복귀.
+  // 상세·길찾기 진입/이탈을 브라우저 히스토리에 연동: 백버튼이 이전 뷰로 복귀.
+  // 스택 규율: 홈 → (상세) → 길찾기. state에 place·directions 플래그를 쌓아
+  // popstate에서 복귀 대상 뷰를 판별한다.
   useEffect(() => {
-    function onPop() {
+    function onPop(e: PopStateEvent) {
+      const st = e.state as { place?: string; directions?: boolean } | null;
+      if (st?.directions) {
+        // 앞으로가기로 길찾기 엔트리에 재진입: 복원 정본은 그 엔트리의 ?dir=
+        // (현재 위치는 cur 토큰이라 조회 시 재측위된다).
+        const parsed = parseDir(
+          new URLSearchParams(window.location.search).get("dir"),
+        );
+        setDirections(parsed ?? { to: null });
+        return;
+      }
+      setDirections(null);
+      if (st?.place) {
+        // 길찾기 → 상세 복귀: selected는 메모리에 남아 있고, PlaceDetail이
+        // 재마운트되며 자체 effect로 제목에 포커스를 준다.
+        return;
+      }
       setSelected(null);
-      // 복귀 시 결과 헤딩으로 포커스를 옮긴다(상세 언마운트로 포커스가
-      // body로 유실되는 것 방지 — 접근성 1급).
+      // 복귀 시 결과 헤딩(또는 길찾기 진입 버튼)으로 포커스를 옮긴다(뷰
+      // 언마운트로 포커스가 body로 유실되는 것 방지, 접근성 1급).
       focusResultsHeadingIfDone();
     }
     window.addEventListener("popstate", onPop);
@@ -203,6 +236,31 @@ export function PlaceSearch({
     } else {
       // 방어: pushState 없이 상세가 켜진 비정상 상태 대비.
       setSelected(null);
+      focusResultsHeadingIfDone();
+    }
+  }
+
+  // 길찾기 뷰 진입: 홈(도착지 없음) 또는 장소 상세(도착지 프리필). 기존 state
+  // (상세의 place)를 보존해 뒤로가기가 상세로 정확히 복귀하게 한다. ?dir= URL
+  // 동기화는 DirectionsView가 replaceState로 소유한다(?q= 패턴과 동형).
+  function openDirections(to: DirEndpoint | null) {
+    window.history.pushState(
+      { ...(window.history.state ?? {}), directions: true },
+      "",
+    );
+    setDirections({ to });
+  }
+  function backFromDirections() {
+    if (window.history.state?.directions) {
+      window.history.back();
+    } else {
+      // 방어: ?dir= 딥링크 직진입 등 pushState 없는 경로. 닫으면서 URL의
+      // dir도 정리해 새로고침 시 재진입하지 않게 한다.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("dir");
+      window.history.replaceState(window.history.state, "", url);
+      window.dispatchEvent(new Event("gildongmu:locationchange"));
+      setDirections(null);
       focusResultsHeadingIfDone();
     }
   }
@@ -413,12 +471,19 @@ export function PlaceSearch({
   useEffect(() => {
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
-    const q = new URLSearchParams(window.location.search).get("q");
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
     if (q)
       queueMicrotask(() => {
         setQuery(q);
         void runQuerySearch(q);
       });
+    // ?dir= 딥링크·새로고침 복원: 검색(q)은 배경에서 그대로 살리고 길찾기 뷰를
+    // 위에 연다(cur 토큰은 조회 시 재측위). 불량 문자열은 parseDir가 null을 주어
+    // 빈 폼 폴백 없이 홈 유지.
+    const dir = parseDir(params.get("dir"));
+    if (dir)
+      queueMicrotask(() => setDirections({ from: dir.from, to: dir.to }));
   }, [runQuerySearch]);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
@@ -477,11 +542,36 @@ export function PlaceSearch({
     )
     .join(", ");
 
+  // 길찾기 뷰가 열려 있으면 최우선 렌더(상세 위에도 쌓일 수 있음).
+  const canShowDirections = canShowTransit || canBriefCarRoute || canShowWalk;
+  if (directions) {
+    return (
+      <DirectionsView
+        canShowWalk={canShowWalk}
+        canShowTransit={canShowTransit}
+        canBriefCarRoute={canBriefCarRoute}
+        initialFrom={directions.from}
+        initialTo={directions.to}
+        onBack={backFromDirections}
+      />
+    );
+  }
+
   // 상세 화면이면 상세만 렌더(같은 페이지 뷰 전환).
   if (selected) {
     return (
       <PlaceDetail
         place={selected}
+        onOpenDirections={
+          canShowDirections
+            ? () =>
+                openDirections({
+                  kind: "place",
+                  label: selected.name,
+                  coord: { lat: selected.lat, lng: selected.lng },
+                })
+            : undefined
+        }
         canBriefCarRoute={canBriefCarRoute}
         canShowBus={canShowBus}
         canShowBike={canShowBike}
@@ -602,6 +692,20 @@ export function PlaceSearch({
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
         {liveMessage}
       </p>
+
+      {/* 길찾기 뷰 진입 버튼: 검색 전후 상시 노출(수단 하나라도 게이트 통과 시).
+          도보 키 유무와 무관: 뷰는 대중교통·자동차만으로도 성립한다. */}
+      {canShowDirections && (
+        <button
+          ref={dirEntryRef}
+          type="button"
+          onClick={() => openDirections(null)}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <Route aria-hidden="true" className="h-4 w-4" />
+          {t("directions.title")}
+        </button>
+      )}
 
       {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
       {canShowWhereAmI && status.kind === "idle" && (
