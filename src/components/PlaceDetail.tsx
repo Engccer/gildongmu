@@ -8,6 +8,7 @@ import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
 import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationMeta } from "./StationMeta";
+import { StationTimetable } from "./StationTimetable";
 import { StationFacilities } from "./StationFacilities";
 import { SeoulMetroFacilities } from "./SeoulMetroFacilities";
 import { SeoulSubwayArrival } from "./SeoulSubwayArrival";
@@ -226,6 +227,7 @@ export function PlaceDetail({
         <>
           <StationMeta stationName={place.name} />
           {canShowSubway && <SeoulSubwayArrival stationName={place.name} />}
+          <StationTimetable stationName={place.name} />
           <StationFacilities stationName={place.name} />
           <SeoulMetroFacilities stationName={place.name} />
         </>

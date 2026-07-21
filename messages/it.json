@@ -237,6 +237,23 @@
     "operator": "Gestore",
     "source": "Fonte: dati standard delle stazioni ferroviarie urbane nazionali (KR National Railway)."
   },
+  "timetable": {
+    "heading": "Primo e ultimo treno",
+    "dailyType": {
+      "weekday": "Orario feriale",
+      "saturday": "Orario del sabato",
+      "sunday": "Orario domenicale e festivo"
+    },
+    "direction": { "up": "Ascendente", "down": "Discendente" },
+    "first": "Primo treno",
+    "last": "Ultimo treno",
+    "nextDay": "giorno dopo",
+    "toTerminus": "verso {terminus}",
+    "empty": "Nessuna informazione sugli orari per oggi.",
+    "error": "Impossibile caricare le informazioni sul primo/ultimo treno.",
+    "partial": "Impossibile caricare le informazioni di alcune linee.",
+    "source": "Fonte: MOLIT TAGO"
+  },
   "bus": {
     "currentButton": "Arrivi degli autobus vicino a me",
     "placeButton": "Fermate e arrivi nelle vicinanze",

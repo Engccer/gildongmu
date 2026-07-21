@@ -237,6 +237,23 @@
     "operator": "Exploitant",
     "source": "Source : données standard des stations de métro urbain nationales (KR National Railway)."
   },
+  "timetable": {
+    "heading": "Premier et dernier train",
+    "dailyType": {
+      "weekday": "Horaires en semaine",
+      "saturday": "Horaires du samedi",
+      "sunday": "Horaires du dimanche et jours fériés"
+    },
+    "direction": { "up": "Montant", "down": "Descendant" },
+    "first": "Premier train",
+    "last": "Dernier train",
+    "nextDay": "lendemain",
+    "toTerminus": "vers {terminus}",
+    "empty": "Aucune information d'horaires pour aujourd'hui.",
+    "error": "Impossible de charger les horaires du premier/dernier train.",
+    "partial": "Les horaires de certaines lignes n'ont pas pu être chargés.",
+    "source": "Source : MOLIT TAGO"
+  },
   "bus": {
     "currentButton": "Arrivées de bus à proximité",
     "placeButton": "Arrêts et arrivées à proximité",
