@@ -100,4 +100,15 @@ public struct SearchService: Sendable {
         ])
         return response.matches
     }
+
+    /// 좌표 → 대표 주소 문자열(역지오코딩 `/api/geocode/reverse`, 웹 F-B 미러).
+    /// "현재 위치" 라벨 주소 병기용. 매칭 없음은 nil(정보 없음), 실패는 throw —
+    /// 호출자는 주소가 부가 정보이므로 조용히 병기를 생략한다(3-state).
+    public func reverseGeocode(lat: Double, lng: Double) async throws -> String? {
+        let response: ReverseGeocodeResponse = try await client.get("/api/geocode/reverse", query: [
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lng", value: String(lng)),
+        ])
+        return response.address
+    }
 }

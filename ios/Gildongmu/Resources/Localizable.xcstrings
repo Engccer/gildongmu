@@ -5407,6 +5407,40 @@
         }
       }
     },
+    "directions.currentLocationNear": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치(%1$@ 부근)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current location (near %1$@)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ubicación actual (cerca de %1$@)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position actuelle (près de %1$@)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione attuale (vicino a %1$@)"
+          }
+        }
+      }
+    },
     "directions.from": {
       "localizations": {
         "ko": {
@@ -5607,6 +5641,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Indicazioni pronte per %1$@ modalità."
+          }
+        }
+      }
+    },
+    "directions.refreshingCurrent": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치 다시 확인 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-checking current location"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualizando la ubicación actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualisation de la position actuelle"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornamento della posizione attuale"
           }
         }
       }

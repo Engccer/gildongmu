@@ -3741,6 +3741,142 @@
         }
       }
     },
+    "route.pedestrian.error": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load the walking route. Please try again shortly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger l'itinéraire à pied. Veuillez réessayer dans un instant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare il percorso a piedi. Riprova tra poco."
+          }
+        }
+      }
+    },
+    "route.pedestrian.heading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À pied"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A piedi"
+          }
+        }
+      }
+    },
+    "route.pedestrian.noRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 경로를 찾지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No walking route found."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró ninguna ruta a pie."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun itinéraire à pied trouvé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun percorso a piedi trovato."
+          }
+        }
+      }
+    },
+    "route.pedestrian.summary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "총 %1$@km, 약 %2$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total %1$@ km, about %2$@ min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total %1$@ km, aprox. %2$@ min"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total %1$@ km, environ %2$@ min"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totale %1$@ km, circa %2$@ min"
+          }
+        }
+      }
+    },
     "route.public": {
       "localizations": {
         "ko": {
@@ -4043,6 +4179,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sali su <line></line> a <from></from>, %1$@ fermate"
+          }
+        }
+      }
+    },
+    "route.transit.legInterval": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "배차간격 약 %1$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "runs about every %1$@ min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pasa cada %1$@ min aprox."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "passage toutes les %1$@ min environ"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "passa circa ogni %1$@ min"
           }
         }
       }

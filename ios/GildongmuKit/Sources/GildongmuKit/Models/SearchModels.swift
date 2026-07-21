@@ -66,6 +66,12 @@ public struct GeocodeResponse: Codable, Sendable {
     public let query: String
 }
 
+/// `/api/geocode/reverse` 응답 envelope. address는 매칭 없으면 null
+/// (3-state: 정보 없음 — 조회 실패는 HTTP 오류로 throw된다).
+public struct ReverseGeocodeResponse: Codable, Sendable {
+    public let address: String?
+}
+
 /// 라우트 오류 응답 `{ "error": "..." }`.
 public struct APIErrorBody: Codable, Sendable {
     public let error: String

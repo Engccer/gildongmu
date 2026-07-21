@@ -55,8 +55,15 @@ final class DirectionsModel {
     private(set) var results: DirectionsResults?
     /// 조회 완료 세대. 뷰가 포커스 이동 시점을 아는 신호(SearchModel.resultsRevision 동형).
     private(set) var resultsRevision = 0
+    /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
+    /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
+    private(set) var currentAddress: String?
+    /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
+    private(set) var isRefreshingCurrent = false
+    private var hasLoadedCurrentAddress = false
 
     private let service = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    private let searchService = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     private var queryTask: Task<Void, Never>?
     /// 재진입 가드(웹 in-flight ref 미러): 진행 중 재탭은 무시(disabled 금지 계약의 짝).
     private var isInFlight = false
@@ -102,6 +109,36 @@ final class DirectionsModel {
         isInFlight = false
     }
 
+    /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
+    /// 금지 — coordinateIfAuthorized 관례). 미허용·실패면 라벨은 "현재 위치" 그대로.
+    func loadCurrentAddressIfAuthorized() async {
+        guard !hasLoadedCurrentAddress, from == .current || to == .current else { return }
+        guard let coord = await LocationService.shared.coordinateIfAuthorized() else { return }
+        hasLoadedCurrentAddress = true
+        await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
+    }
+
+    /// "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 진행 신호는 필드 라벨
+    /// 전환뿐이고 갱신 신호는 라벨(주소)의 변화 자체(별도 통지 중복 금지). 재측위
+    /// 실패는 조용히 직전 라벨 유지(새로고침=재조회이지 데이터 포기 아님).
+    func refreshCurrentLocation() {
+        if isRefreshingCurrent { return }
+        isRefreshingCurrent = true
+        Task {
+            defer { isRefreshingCurrent = false }
+            guard let coord = try? await LocationService.shared.currentCoordinate(force: true) else { return }
+            hasLoadedCurrentAddress = true
+            await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
+        }
+    }
+
+    /// 좌표의 대표 주소를 라벨 병기용으로 동기화. 역지오코딩 실패·매칭 없음은 nil로
+    /// 정직하게 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 부가 정보라 조회
+    /// 흐름은 어떤 경우에도 막지 않는다.
+    private func syncCurrentAddress(lat: Double, lng: Double) async {
+        currentAddress = (try? await searchService.reverseGeocode(lat: lat, lng: lng)) ?? nil
+    }
+
     func runQuery() {
         if isInFlight { return }
         guard let from, let to else {
@@ -127,6 +164,12 @@ final class DirectionsModel {
             phase = .locating
             do {
                 current = try await LocationService.shared.currentCoordinate()
+                // 측위 성공 → 라벨 병기 주소도 그 좌표로 동기화(표시 전용, 조회 흐름과
+                // 독립인 비구조 태스크 — clearResults의 조회 취소에 안 딸려간다).
+                if let acquired = current {
+                    hasLoadedCurrentAddress = true
+                    Task { await self.syncCurrentAddress(lat: acquired.lat, lng: acquired.lng) }
+                }
             } catch {
                 guard !Task.isCancelled else { return }
                 // 거부와 취득 실패는 다른 문장(3-state): 거부는 설정 경로, 실패는 검색 우회 안내.
@@ -266,12 +309,16 @@ struct DirectionsTabView: View {
             .sheet(item: $searchTarget) { target in
                 DirectionsEndpointSearchView(target: target) { endpoint in
                     model.setEndpoint(endpoint, for: target)
+                    // "현재 위치 사용" 선택은 강제 재측위 + 주소 새로고침 트리거(F-B).
+                    if endpoint == .current { model.refreshCurrentLocation() }
                 }
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
             .onChange(of: model.resultsRevision) { focusedModeHeading = model.results?.firstSuccess }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
             .onDisappear { model.cancel() }
+            // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
+            .task { await model.loadCurrentAddressIfAuthorized() }
         }
     }
 
@@ -281,12 +328,22 @@ struct DirectionsTabView: View {
         let label = target == .from ? appLocalized("directions.from") : appLocalized("directions.to")
         switch model.endpoint(for: target) {
         case .current:
-            return "\(label), \(appLocalized("directions.currentLocation"))"
+            return "\(label), \(currentLocationText)"
         case .place(let name, _, _):
             return "\(label), \(name)"
         case nil:
             return target == .from ? appLocalized("directions.searchFrom") : appLocalized("directions.searchTo")
         }
+    }
+
+    /// 현재 위치 값 텍스트(F-B): 재측위 중 → 진행 라벨, 주소 확보 → 주소 병기,
+    /// 그 외 기본 "현재 위치". 한 줄 = 한 객체(필드 버튼 단일 텍스트에 흡수).
+    private var currentLocationText: String {
+        if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
+        if let address = model.currentAddress {
+            return appLocalized("directions.currentLocationNear", address)
+        }
+        return appLocalized("directions.currentLocation")
     }
 
     /// 진행 중 라벨 전환이 상태 신호(채팅 보내기 버튼 관례, disabled 금지).

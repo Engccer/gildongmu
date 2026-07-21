@@ -132,4 +132,23 @@ extension StubNetworkTests {
             _ = try await SearchService(client: stubbedClient()).geocode(query: "천호대로 1077")
         }
     }
+
+    @Test func reverseGeocodeDecodesAddress() async throws {
+        StubURLProtocol.handler = { request in
+            switch request.url!.path() {
+            case "/api/geocode/reverse":
+                return (200, Data(#"{"address":"서울 강동구 천호대로 1077"}"#.utf8))
+            default: return (404, Data())
+            }
+        }
+        let address = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237)
+        #expect(address == "서울 강동구 천호대로 1077")
+    }
+
+    /// 매칭 없음(null)은 성공의 nil — 실패(throw)와 뭉개지 않는다(3-state).
+    @Test func reverseGeocodeNoMatchIsNil() async throws {
+        StubURLProtocol.handler = { _ in (200, Data(#"{"address":null}"#.utf8)) }
+        let address = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237)
+        #expect(address == nil)
+    }
 }
