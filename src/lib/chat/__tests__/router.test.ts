@@ -172,6 +172,14 @@ describe("executeFunction — get_walk_route", () => {
     expect(vi.mocked(getWalkRouteBriefing).mock.calls.length).toBe(before);
   });
 
+  it("경로 없음(provider null)은 get_transit_route와 동형으로 briefing:null을 data에 실어 전달", async () => {
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(null);
+    const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
+    expect(dig(r.data, "destination")).toBe("길동 카페");
+    expect(dig(r.data, "briefing")).toBeNull();
+    expect(r.source).toEqual([{ label: "source.tmap" }]);
+  });
+
   it("게이트 off(hasTmapKey=false)면 실행부 직접 호출도 차단(Tmap provider 미호출)", async () => {
     vi.mocked(hasTmapKey).mockReturnValueOnce(false);
     const before = vi.mocked(getWalkRouteBriefing).mock.calls.length;

@@ -59,6 +59,14 @@ describe("GET /api/route/walk", () => {
     expect(res.status).toBe(502);
   });
 
+  it("경로 없음(provider null, 예: Tmap 3102) → 200 {result: null}", async () => {
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(null);
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.result).toBeNull();
+  });
+
   it("레이트리밋 초과 → 429", async () => {
     vi.mocked(checkWalkRateLimit).mockReturnValue(false);
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));

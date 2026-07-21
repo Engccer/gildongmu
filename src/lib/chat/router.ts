@@ -196,6 +196,9 @@ export async function executeFunction(
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
       const briefing = await getWalkRouteBriefing({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
+      // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
+      // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
+      if (!briefing) return { data: { destination: p.name, briefing: null }, source: src };
       const steps = briefing.steps.slice(0, WALK_STEPS_CAP);
       const truncated = briefing.steps.length > steps.length;
       return {

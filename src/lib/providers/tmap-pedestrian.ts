@@ -59,6 +59,17 @@ function isPointFeature(f: TmapFeature): f is TmapPointFeature {
   return f.geometry.type === "Point";
 }
 
+/** Tmap 오류 응답(비200) 형태. */
+interface TmapErrorBody {
+  error?: { id?: string; category?: string; code?: string; message?: string };
+}
+
+// "경로 없음"류로 graceful(null) 처리할 Tmap error.code.
+// 3102: "해당 서비스가 지원되지 않는 구간입니다.([ZeroResults]...)" — 도보 불가
+// 구간(실호출 검증 2026-07-22, 서울↔제주). 다른 경로없음 코드는 실제 관측 시
+// 추가한다(추측 금지). 그 외 코드(인증·파라미터·서버 오류)는 throw.
+const NO_ROUTE_ERROR_CODES = new Set(["3102"]);
+
 /**
  * Tmap 응답 → WalkRouteBriefing 정규화(순수 함수).
  *
@@ -97,14 +108,14 @@ export function normalizeTmapWalkRoute(
 }
 
 /**
- * 도보 경로 텍스트 브리핑 조회.
- * HTTP 비200이면 throw한다(라우트가 502로 전파). "경로 없음"류 응답 코드는
+ * 도보 경로 텍스트 브리핑 조회. 경로 없으면 null(graceful), 그 외 HTTP
+ * 실패/장애는 throw한다(라우트가 502로 전파). "경로 없음"류 응답 코드는
  * 실호출로 관측된 것만 graceful 처리로 보강한다(ODsay -98 패턴, 추측 금지).
  */
 export async function getWalkRouteBriefing(params: {
   origin: Coord;
   dest: Coord;
-}): Promise<WalkRouteBriefing> {
+}): Promise<WalkRouteBriefing | null> {
   const { origin, dest } = params;
   const res = await fetch(ENDPOINT, {
     method: "POST",
@@ -127,6 +138,14 @@ export async function getWalkRouteBriefing(params: {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
+    const code = (() => {
+      try {
+        return (JSON.parse(body) as TmapErrorBody).error?.code;
+      } catch {
+        return undefined;
+      }
+    })();
+    if (code !== undefined && NO_ROUTE_ERROR_CODES.has(code)) return null;
     throw new Error(`Tmap 보행자 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapRouteResponse;

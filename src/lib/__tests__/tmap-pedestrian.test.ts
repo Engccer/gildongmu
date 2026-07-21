@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   normalizeTmapWalkRoute,
+  getWalkRouteBriefing,
   type TmapRouteResponse,
 } from "@/lib/providers/tmap-pedestrian";
 
@@ -188,5 +189,65 @@ describe("normalizeTmapWalkRoute", () => {
     // 원본 Point feature는 5개(출발+안내2+경유1+도착)이나 경유점은 description이
     // 없어 제외되어 4개만 남는다.
     expect(steps).toHaveLength(4);
+  });
+});
+
+describe("getWalkRouteBriefing", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const params = {
+    origin: { lat: 37.5385, lng: 127.1368 },
+    dest: { lat: 33.4996, lng: 126.5312 }, // 서울→제주(도보 불가 구간)
+  };
+
+  it("3102(해당 서비스가 지원되지 않는 구간)는 경로 없음으로 null(graceful)", async () => {
+    // 실호출 관측(2026-07-22, 서울→제주): HTTP 400 + error.code "3102".
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                id: "400",
+                category: "tmap",
+                code: "3102",
+                message:
+                  "해당 서비스가 지원되지 않는 구간입니다.([ZeroResults]...)",
+              },
+            }),
+            { status: 400 },
+          ),
+      ),
+    );
+    expect(await getWalkRouteBriefing(params)).toBeNull();
+  });
+
+  it("3102가 아닌 400은 throw한다(장애로 분류)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: { id: "400", category: "tmap", code: "9999", message: "다른 오류" },
+            }),
+            { status: 400 },
+          ),
+      ),
+    );
+    await expect(getWalkRouteBriefing(params)).rejects.toThrow(
+      "Tmap 보행자 경로 실패",
+    );
+  });
+
+  it("비200 + JSON 파싱 불가 body도 throw한다", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>bad gateway</html>", { status: 502 })),
+    );
+    await expect(getWalkRouteBriefing(params)).rejects.toThrow(
+      "Tmap 보행자 경로 실패",
+    );
   });
 });
