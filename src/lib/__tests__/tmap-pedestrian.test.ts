@@ -59,7 +59,7 @@ const sample: TmapRouteResponse = {
       properties: { index: 1, distance: 300, time: 250 },
     },
     {
-      // 경유 좌표점 — description 없음(사용자에게 안내할 문장이 없는 지점) → 제외 대상.
+      // 경유 좌표점. description 없음(사용자에게 안내할 문장이 없는 지점), 제외 대상.
       type: "Feature",
       geometry: { type: "Point", coordinates: [127.132, 37.5345] },
       properties: { pointIndex: 2, pointType: "B" },

@@ -51,7 +51,7 @@ const envSchema = z.object({
   // 검색 응답에 공식 영문 주소(engAddr)·우편번호(zipNo)가 포함된다.
   JUSO_CONFM_KEY: z.string().min(1).optional(),
 
-  // openapi.sk.com — Tmap 보행자(+자동차) 경로안내, appKey 헤더 인증.
+  // openapi.sk.com: Tmap 보행자(+자동차) 경로안내, appKey 헤더 인증.
   TMAP_APP_KEY: z.string().min(1).optional(),
 
   // Google Gemini — 채팅 function-calling 엔진(서버 전용). 유료 API.
