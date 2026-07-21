@@ -82,8 +82,10 @@ final class DirectionsModel {
     }
 
     /// 화면 이탈·epoch 재생성 시 진행 조회 폐기(I2 계약: 뷰 로컬 상태 + 명시 cancel).
+    /// 탭 전환 취소 후 재진입 시 조회 버튼 고착 방지(취소된 태스크는 말미 가드로 리셋 불가).
     func cancel() {
         queryTask?.cancel()
+        isInFlight = false
     }
 
     func runQuery() {
