@@ -56,7 +56,8 @@ export function StationTimetable({ stationName }: { stationName: string }) {
   const isEn = prefersEnglish(locale);
   const train = (v: TimetableTrain) => {
     const time = v.nextDay ? `${t("nextDay")} ${v.time}` : v.time;
-    return `${time} ${t("toTerminus", { terminus: isEn && v.terminusEn ? v.terminusEn : v.terminus })}`;
+    const terminus = isEn && v.terminusEn ? v.terminusEn : v.terminus;
+    return terminus ? `${time} ${t("toTerminus", { terminus })}` : time;
   };
 
   return (

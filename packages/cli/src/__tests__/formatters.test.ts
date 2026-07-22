@@ -279,6 +279,22 @@ describe("station-timetable", () => {
     expect(lines[1]).toBe("5호선 상행, 첫차 05:31 방화행, 막차 익일 00:31 마천행");
     expect(lines[2]).toBe("5호선 하행, 첫차 05:40 하남검단산행, 막차 23:50 하남검단산행");
   });
+  it("종착역명이 빈 문자열이면 '행' 없이 시각만 낭독한다(실호출 김포공항 서해선 검출)", () => {
+    const lines = FORMATTERS["station-timetable"]({
+      timetable: {
+        dailyType: "weekday",
+        lines: [
+          {
+            lineName: "서해선",
+            directions: [
+              { direction: "down", first: { time: "05:21", terminus: "" }, last: { time: "23:27", terminus: "" } },
+            ],
+          },
+        ],
+      },
+    } as never);
+    expect(lines[1]).toBe("서해선 하행, 첫차 05:21, 막차 23:27");
+  });
   it("partial이면 기준 라벨 줄에 불완전 안내를 병기한다", () => {
     const lines = FORMATTERS["station-timetable"]({
       timetable: { dailyType: "sunday", partial: true, lines: [] },
