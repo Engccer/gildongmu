@@ -31,15 +31,17 @@ import type {
  *   (과소경고보다 안전). 엘리베이터·에스컬레이터에만 존재.
  * - 인증: DATA_GO_KR_API_KEY(코레일과 동일 키), 개발계정 일 10,000건/오퍼레이션.
  *
- * graceful degrade: 키 없음/전 종류 빈 결과 → null("정보 없음"). 주 fetch
- * 장애는 throw → 라우트 502(미커버 null과 구분, 코레일과 동일 정책).
+ * graceful degrade: 키 없음/전 종류 빈 결과(보강도 무실패) → null("정보 없음").
+ * 주 fetch 장애는 throw → 라우트 502(미커버 null과 구분, 코레일과 동일 정책).
  *
  * Task 7(시설 패널 보강): wksn 주 조회 결과에 두 보강 그룹을 병합한다.
  * - voiceGuide(음성유도기, 정적 seed) — 키 유무와 무관하게 항상 시도.
  * - elevatorLocation(엘리베이터 위치, OA-21212) — wksn에 elevator 그룹이
  *   없을 때만(9호선 등 wksn 미커버 노선 폴백), 방위·거리 텍스트로 합성.
  * 보강 실패(elevatorLocation fetch reject)는 supplementFailed로 표기하고
- * 기존 wksn 그룹은 그대로 보존한다 — 무음 은폐 금지(스펙 §2-C).
+ * 기존 wksn 그룹은 그대로 보존한다 — 무음 은폐 금지(스펙 §2-C). ⚠ groups가
+ * 전멸(base=null+voiceGuide 미커버)이어도 supplementFailed=true면 null을
+ * 반환하지 않는다 — "조회 실패"가 "정보 없음"으로 위장되는 것을 막는다.
  */
 
 const BASE = "https://apis.data.go.kr/B553766/wksn";
@@ -287,7 +289,21 @@ export async function fetchSeoulMetroFacilities(
     }
   }
 
-  if (groups.length === 0) return base; // null(전부 없음) 또는 기존 계약 그대로
+  if (groups.length === 0) {
+    // 보강 실패 사실만 있고 데이터가 전무해도 실패를 은폐하지 않는다(스펙 §2-C).
+    // base=null(wksn 미커버) + voiceGuide 미커버 + 보강(OA-21212) fetch 실패가
+    // 겹치면 여기서 그대로 base(null)를 반환해선 안 된다 — "조회 실패"가
+    // "정보 없음"으로 위장된다.
+    if (supplementFailed) {
+      return {
+        stationName: stripStationDecorations(stationName) || stationName,
+        line: undefined,
+        groups: [],
+        supplementFailed: true as const,
+      };
+    }
+    return base; // null(전부 없음, 보강도 무실패) 또는 기존 계약 그대로
+  }
   return {
     stationName: base?.stationName || stripStationDecorations(stationName) || stationName,
     line: base?.line,
