@@ -35,6 +35,14 @@ public struct StationService: Sendable {
             "/api/station/subway-arrival", query: stationQuery(station))
         return response.arrivals
     }
+
+    /// 첫차·막차 시간표. 미커버 역은 nil(graceful), 조회 실패는 throw
+    /// (시간표는 의사결정 정보라 실패를 미커버로 위장하지 않는다, 스펙 §2-A).
+    public func timetable(station: String) async throws -> StationTimetable? {
+        let response: StationTimetableResponse = try await client.get(
+            "/api/station/timetable", query: stationQuery(station))
+        return response.timetable
+    }
 }
 
 /// 날씨·공기질 조회 `GET ?lat=&lng=`. 두 fetch는 화면(모델)에서 독립 실행

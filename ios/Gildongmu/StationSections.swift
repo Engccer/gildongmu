@@ -2,8 +2,17 @@ import SwiftUI
 import Observation
 import GildongmuKit
 
-/// 장소 상세의 역 자동 섹션 4종 모델. 4개 API를 async let으로 병렬 독립 로드,
+/// 첫차·막차 시간표 상태. 웹과 달리 조회 실패를 null(미커버)로 뭉개지 않는다
+/// (스펙 §2-D: 시간표는 의사결정 정보라 "원래 없음"과 "고장"을 구분해야 한다).
+enum TimetableState {
+    case hidden // 미커버(null): 섹션 미노출
+    case error // 조회 실패: 숨기지 않고 문장 노출(3-state)
+    case done(StationTimetable)
+}
+
+/// 장소 상세의 역 자동 섹션 5종 모델. 5개 API를 async let으로 병렬 독립 로드,
 /// 각각 실패·null이면 해당 섹션만 미노출(자동 등장 보조 정보의 graceful degrade, 웹 미러).
+/// 단 시간표는 3-state 유지(위 TimetableState 주석 참고).
 /// station 파라미터는 place.name 그대로(매칭은 서버 몫).
 @Observable @MainActor
 final class StationSectionsModel {
@@ -11,22 +20,35 @@ final class StationSectionsModel {
     private(set) var korailFacilities: StationFacilities?
     private(set) var metroFacilities: SeoulMetroFacilities?
     private(set) var arrivals: StationArrivals?
+    private(set) var timetable: TimetableState = .hidden
     private let service = StationService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
     func load(stationName: String) async {
-        // 한 조각의 실패가 다른 조각을 안 죽인다. 실패는 null과 동일 처리(섹션 미노출)
+        // 한 조각의 실패가 다른 조각을 안 죽인다. 기존 4종은 실패=null과 동일 처리(섹션 미노출),
+        // 시간표만 실패를 error로 구분해 보존한다(무운행 위장 금지).
         async let metaTask: StationMeta? = (try? service.meta(station: stationName)) ?? nil
         async let korailTask: StationFacilities? = (try? service.korailFacilities(station: stationName)) ?? nil
         async let metroTask: SeoulMetroFacilities? = (try? service.metroFacilities(station: stationName)) ?? nil
         async let arrivalsTask: StationArrivals? = (try? service.arrivals(station: stationName)) ?? nil
+        async let timetableTask: TimetableState = loadTimetable(stationName: stationName)
         meta = await metaTask
         korailFacilities = await korailTask
         metroFacilities = await metroTask
         arrivals = await arrivalsTask
+        timetable = await timetableTask
+    }
+
+    private func loadTimetable(stationName: String) async -> TimetableState {
+        do {
+            let result = try await service.timetable(station: stationName)
+            return result.map(TimetableState.done) ?? .hidden
+        } catch {
+            return .error
+        }
     }
 }
 
-/// 역 자동 섹션 4종. 자동 등장 보조 정보라 로딩 표시·통지 없음(조용히 나타남),
+/// 역 자동 섹션 5종. 자동 등장 보조 정보라 로딩 표시·통지 없음(조용히 나타남),
 /// 각 섹션 헤더의 heading이 유일한 발견 경로(접근성 헌장 §3, .isHeader 필수).
 /// 로드 트리거는 PlaceDetailView의 .task(조건부 섹션만 있는 초기 상태의 뷰에는
 /// task를 붙일 자식이 없어 뷰 바깥에서 킥오프).
@@ -61,6 +83,40 @@ struct StationSectionsView: View {
             }
         }
 
+        // 첫차·막차: 웹 배선 순서 미러(meta→arrivals→timetable→facilities). 단 3-state 유지
+        // (미커버만 미노출, 실패는 문장 노출. 위 TimetableState 주석 참고).
+        switch model.timetable {
+        case .hidden:
+            EmptyView()
+        case .error:
+            Section {
+                Text(appLocalized("timetable.error"))
+            } header: {
+                Text(appLocalized("timetable.heading")).accessibilityAddTraits(.isHeader)
+            }
+        case .done(let timetable):
+            Section {
+                Text(joinText(
+                    dailyTypeLabel(timetable.dailyType),
+                    timetable.partial == true ? appLocalized("timetable.partial") : nil))
+                if timetable.lines.isEmpty {
+                    Text(appLocalized("timetable.empty"))
+                } else {
+                    ForEach(timetable.lines, id: \.lineName) { line in
+                        ForEach(line.directions, id: \.direction) { direction in
+                            // 한 줄=한 객체: 노선·방향·첫차·막차를 단일 텍스트로(웹 StationTimetable.tsx 미러)
+                            Text(joinText(
+                                "\(line.lineName) \(directionLabel(direction.direction))",
+                                "\(appLocalized("timetable.first")) \(trainText(direction.first))",
+                                "\(appLocalized("timetable.last")) \(trainText(direction.last))"))
+                        }
+                    }
+                }
+            } header: {
+                Text(appLocalized("timetable.heading")).accessibilityAddTraits(.isHeader)
+            }
+        }
+
         if let facilities = model.korailFacilities {
             Section {
                 Text(facilities.accessibleToilet ? appLocalized("ios.station.accessibleToiletYes") : appLocalized("ios.station.accessibleToiletNo"))
@@ -83,6 +139,14 @@ struct StationSectionsView: View {
                             facility.name, facility.location, facility.floors,
                             operatingStatusText(facility.operatingStatus), facility.detail))
                     }
+                }
+                // 보강 소스(OA-21212) 실패는 은폐하지 않고 문장으로 병기(스펙 §2-C)
+                if facilities.supplementFailed == true {
+                    Text(appLocalized("subway.supplementFailed"))
+                }
+                // 음성유도기 데이터 기준일 고지(정적 seed, 웹 미러)
+                if facilities.groups.contains(where: { $0.kind == "voiceGuide" }) {
+                    Text(appLocalized("subway.voiceGuideSource"))
                 }
             } header: {
                 Text(appLocalized("ios.station.seoulFacilities")).accessibilityAddTraits(.isHeader)
@@ -123,5 +187,35 @@ struct StationSectionsView: View {
         case "elevatorLocation": appLocalized("subway.kind.elevatorLocation")
         default: kind
         }
+    }
+
+    /// 서비스데이 타입 기준 라벨(웹 messages timetable.dailyType 미러). 미지의 값은 원문 유지.
+    private func dailyTypeLabel(_ dailyType: String) -> String {
+        switch dailyType {
+        case "weekday": appLocalized("timetable.dailyType.weekday")
+        case "saturday": appLocalized("timetable.dailyType.saturday")
+        case "sunday": appLocalized("timetable.dailyType.sunday")
+        default: dailyType
+        }
+    }
+
+    /// 진행 방향 라벨(웹 timetable.direction 미러). 미지의 값은 원문 유지.
+    private func directionLabel(_ direction: String) -> String {
+        switch direction {
+        case "up": appLocalized("timetable.direction.up")
+        case "down": appLocalized("timetable.direction.down")
+        default: direction
+        }
+    }
+
+    /// 첫차·막차 한 편성의 표시 텍스트("00:42 왕십리행"·익일 접두·en 종착지 폴백).
+    /// 웹 StationTimetable.tsx의 train() 함수를 그대로 미러.
+    private func trainText(_ train: TimetableTrain) -> String {
+        let time = train.nextDay == true
+            ? "\(appLocalized("timetable.nextDay")) \(train.time)"
+            : train.time
+        let isEn = AppLanguage.current != "ko"
+        let terminus = (isEn && train.terminusEn != nil) ? train.terminusEn! : train.terminus
+        return "\(time) \(appLocalized("timetable.toTerminus", terminus))"
     }
 }
