@@ -163,20 +163,24 @@ type MetroFacilityKind =
   | "elevator" | "escalator" | "wheelchairLift" | "movingWalk"
   | "wheelchairCharger" | "safetyPlatform" | "signLangPhone" | "helper" | "restroom";
 
+type MetroFacilityGroupKind = MetroFacilityKind | "voiceGuide" | "elevatorLocation";
+
 interface MetroFacilityItem {
   name: string;
   location: string | undefined;
   floors: string | undefined;
+  detail: string | undefined;
   operatingStatus: "normal" | "stopped" | undefined;
 }
 
 interface MetroFacilityGroupItem {
-  kind: MetroFacilityKind;
+  kind: MetroFacilityGroupKind;
   facilities: MetroFacilityItem[];
 }
 
 interface SeoulMetroFacilitiesItem {
   groups: MetroFacilityGroupItem[];
+  supplementFailed?: true;
 }
 
 interface CarRouteGuideItem {
@@ -198,6 +202,7 @@ interface TransitLegItem {
   fromName?: string;
   toName?: string;
   stationCount?: number;
+  intervalMinutes?: number;
   minutes: number;
 }
 
@@ -213,7 +218,6 @@ interface TransitRouteResultItem {
 
 interface WalkRouteStepItem {
   description: string;
-  distanceMeters?: number;
 }
 
 interface WalkRouteBriefingItem {
@@ -277,11 +281,12 @@ const KIDS_KIND_KO: Record<KidsPlaceItem["kind"], string> = {
   kidscafe: "키즈카페", playground: "놀이터", playcenter: "놀이센터", park: "어린이공원",
 };
 
-const METRO_KIND_KO: Record<MetroFacilityKind, string> = {
+const METRO_KIND_KO: Record<MetroFacilityGroupKind, string> = {
   elevator: "엘리베이터", escalator: "에스컬레이터", wheelchairLift: "휠체어 리프트",
   movingWalk: "무빙워크", wheelchairCharger: "전동휠체어 급속충전기",
   safetyPlatform: "안전발판", signLangPhone: "수어영상전화기",
   helper: "교통약자 도우미", restroom: "장애인 화장실",
+  voiceGuide: "시각장애인 음성유도기", elevatorLocation: "엘리베이터 위치",
 };
 
 // "unknown"·"none"은 의도적으로 매핑에서 빠진다 — joinText가 undefined를 걸러
@@ -453,14 +458,16 @@ function formatStationFacilities(body: { facilities: StationFacilitiesItem | nul
 
 function formatMetroFacilities(body: { facilities: SeoulMetroFacilitiesItem | null }): string[] {
   const f = body.facilities;
-  if (!f || f.groups.length === 0) return ["교통약자 시설 정보가 없습니다."];
+  // groups 전멸이어도 supplementFailed면 non-null로 온다(실패 은폐 금지) — 빈 배열+플래그 조합 보존.
+  if (!f || (f.groups.length === 0 && !f.supplementFailed)) return ["교통약자 시설 정보가 없습니다."];
   const lines: string[] = [];
   for (const g of f.groups) {
     lines.push(`${METRO_KIND_KO[g.kind]}: ${g.facilities.length}개`);
     for (const fac of g.facilities) {
-      lines.push(joinText(fac.name, fac.location, fac.floors, fac.operatingStatus === "stopped" && "가동 중지"));
+      lines.push(joinText(fac.name, fac.location, fac.floors, fac.detail, fac.operatingStatus === "stopped" && "가동 중지"));
     }
   }
+  if (f.supplementFailed) lines.push("일부 시설 정보를 불러오지 못했습니다.");
   return lines;
 }
 
@@ -532,7 +539,12 @@ function transitSummaryLine(r: TransitRouteItem): string {
 
 function transitLegLine(leg: TransitLegItem): string {
   if (leg.mode === "walk") return `도보 ${leg.minutes}분`;
-  return joinText(`${leg.lineName} ${leg.fromName}→${leg.toName}`, `${leg.stationCount}개 역`, `${leg.minutes}분`);
+  return joinText(
+    `${leg.lineName} ${leg.fromName}→${leg.toName}`,
+    `${leg.stationCount}개 역`,
+    `${leg.minutes}분`,
+    typeof leg.intervalMinutes === "number" && `배차간격 약 ${leg.intervalMinutes}분`,
+  );
 }
 
 function formatRouteTransit(body: { result: TransitRouteResultItem | null }): string[] {
@@ -549,14 +561,16 @@ function formatRouteTransit(body: { result: TransitRouteResultItem | null }): st
   return lines;
 }
 
-/** envelope "result" — Tmap 완성 문장(description)이 낭독 정본, 재조합 없이 그대로. */
-function formatRouteWalk(body: { result: WalkRouteBriefingItem }): string[] {
+/** envelope "result" — Tmap 완성 문장(description)이 낭독 정본, 재조합 없이 그대로.
+ *  null = 3102 경로 없음(라우트 200 graceful) — 조회 실패(502)와 다른 문장(3-state). */
+function formatRouteWalk(body: { result: WalkRouteBriefingItem | null }): string[] {
   const r = body.result;
+  if (!r) return ["도보 경로를 찾을 수 없습니다."];
   const lines: string[] = [
     joinText(`${(r.distanceMeters / 1000).toFixed(1)}km`, `약 ${Math.round(r.durationSeconds / 60)}분`),
   ];
   r.steps.forEach((s, i) => {
-    lines.push(joinText(`${i + 1}. ${s.description}`, typeof s.distanceMeters === "number" ? m(s.distanceMeters) : undefined));
+    lines.push(`${i + 1}. ${s.description}`);
   });
   return lines;
 }

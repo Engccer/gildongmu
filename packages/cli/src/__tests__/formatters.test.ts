@@ -235,6 +235,28 @@ describe("station-metro-facilities", () => {
   it("null이면 정보 없음", () => {
     expect(FORMATTERS["station-metro-facilities"]({ facilities: null } as never)).toEqual(["교통약자 시설 정보가 없습니다."]);
   });
+
+  it("보강 그룹(음성유도기·엘리베이터 위치)과 detail·supplementFailed를 낭독한다", () => {
+    const lines = FORMATTERS["station-metro-facilities"]({
+      facilities: {
+        groups: [
+          { kind: "voiceGuide", facilities: [{ name: "음성유도기", location: "1번 출구", floors: undefined, detail: undefined, operatingStatus: undefined }] },
+          { kind: "elevatorLocation", facilities: [{ name: "엘리베이터", location: "대합실", floors: undefined, detail: "북동쪽 120m", operatingStatus: undefined }] },
+        ],
+        supplementFailed: true,
+      },
+    } as never);
+    expect(lines).toContain("시각장애인 음성유도기: 1개");
+    expect(lines).toContain("엘리베이터 위치: 1개");
+    expect(lines).toContain("엘리베이터, 대합실, 북동쪽 120m");
+    expect(lines[lines.length - 1]).toBe("일부 시설 정보를 불러오지 못했습니다.");
+  });
+
+  it("groups 전멸 + supplementFailed면 실패 문장만(은폐 금지)", () => {
+    expect(FORMATTERS["station-metro-facilities"]({
+      facilities: { groups: [], supplementFailed: true },
+    } as never)).toEqual(["일부 시설 정보를 불러오지 못했습니다."]);
+  });
 });
 
 describe("station-timetable", () => {
@@ -352,22 +374,39 @@ describe("route-transit", () => {
     expect(lines).toContain("대안 경로 1");
     expect(lines).toContain("302 길동사거리→천호역, 5개 역, 20분");
   });
+
+  it("배차간격이 있으면 구간 줄에 병기한다", () => {
+    const lines = FORMATTERS["route-transit"]({
+      result: {
+        recommended: {
+          summary: { totalMinutes: 30, fare: 1500, transfers: 0, walkMinutes: 5 },
+          legs: [{ mode: "subway", lineName: "5호선", fromName: "길동", toName: "강남", stationCount: 10, minutes: 25, intervalMinutes: 6 }],
+        },
+        alternatives: [],
+      },
+    } as never);
+    expect(lines).toContain("5호선 길동→강남, 10개 역, 25분, 배차간격 약 6분");
+  });
 });
 
 describe("route-walk", () => {
-  it("요약 줄 + 안내 줄(거리 있는 단계만 거리 표기)", () => {
+  it("요약 줄 + 안내 줄(description 그대로, 재조합 없음)", () => {
     const lines = FORMATTERS["route-walk"]({
       result: {
         distanceMeters: 850, durationSeconds: 660,
         steps: [
-          { description: "158m 이동 후 우회전", distanceMeters: 158 },
+          { description: "158m 이동 후 우회전" },
           { description: "목적지 도착" },
         ],
       },
     } as never);
     expect(lines[0]).toBe("0.8km, 약 11분");
-    expect(lines[1]).toBe("1. 158m 이동 후 우회전, 158m");
+    expect(lines[1]).toBe("1. 158m 이동 후 우회전");
     expect(lines[2]).toBe("2. 목적지 도착");
+  });
+
+  it("result null(3102 경로 없음)은 미발견 문장(크래시 금지)", () => {
+    expect(FORMATTERS["route-walk"]({ result: null } as never)).toEqual(["도보 경로를 찾을 수 없습니다."]);
   });
 });
 
