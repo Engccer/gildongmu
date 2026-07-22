@@ -32,6 +32,7 @@ gil search "맥도날드"                       # 장소·주소 통합 검색(0
 gil nearby subway --near "강동역"           # 주변 지하철역 실시간 도착
 gil nearby bus --near "강동역"              # 주변 버스 정류소 실시간 도착
 gil station info "강동역"                   # 역 정보 + 교통약자 시설(코레일·서울지하철)
+gil station timetable "강동역"              # 역 첫차·막차 시간표
 gil station arrivals "강동역"               # 역 실시간 도착(지하철)
 gil route car "길동역" "강남역"             # 자동차 경로 턴바이턴 브리핑
 gil route transit "길동역" "강남역"         # 대중교통 경로(추천+대안)
@@ -68,7 +69,7 @@ gil completion fish > ~/.config/fish/completions/gil.fish
 | `search <query>` | | 장소·주소 통합 검색(0건이면 웹 검색 폴백) |
 | `web <query>` | | 웹 검색(Perplexity) |
 | `nearby` | `subway`/`bus`/`bike`/`clinic`/`kids`/`around`/`barrier-free` | 내 주변 정보 7종(위치 필수) |
-| `station` | `info <역명>`, `arrivals <역명>` | 역 정보·시설·실시간 도착 |
+| `station` | `info <역명>`, `timetable <역명>`, `arrivals <역명>` | 역 정보·시설·실시간 도착 |
 | `bus` | `route --source <tago\|seoul> --route-id <id> [--city-code <code>]` | 버스 노선 경유 정류소 |
 | `place` | `barrier-free <contentId>` | 무장애 관광지 편의시설 상세 |
 | `route` | `car <출발> <도착>`, `transit <출발> <도착>`, `walk <출발> <도착>` | 경로 브리핑(자동차 턴바이턴/대중교통/도보) |
