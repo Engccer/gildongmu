@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasOdsayKey } from "@/lib/env";
-import { isInKorea } from "@/lib/deeplink";
+import { coordSchema } from "@/lib/route-coord-schema";
 import { getTransitRoute } from "@/lib/providers/odsay";
 
 /**
@@ -13,15 +13,6 @@ import { getTransitRoute } from "@/lib/providers/odsay";
  * - upstream 장애 → 502
  * 실데이터만 의미 있으므로 mock 폴백 없음(키 없으면 503, 단 게이트로 호출 자체가 안 옴).
  */
-
-const coordSchema = z
-  .string()
-  .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, "좌표 형식은 '위도,경도'")
-  .transform((raw) => {
-    const [lat, lng] = raw.split(",").map(Number);
-    return { lat, lng };
-  })
-  .refine((c) => isInKorea(c.lat, c.lng), "좌표가 한반도 권역을 벗어남");
 
 const querySchema = z.object({ origin: coordSchema, dest: coordSchema });
 

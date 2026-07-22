@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasTmapKey } from "@/lib/env";
-import { isInKorea } from "@/lib/deeplink";
+import { coordSchema } from "@/lib/route-coord-schema";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
 
@@ -12,15 +12,6 @@ import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
  * Tmap도 일 1,000건 무료 쿼터가 있는 유료 API라 채팅과 동일한 IP 레이트리밋(60초 10회)으로
  * 호출 *전*에 비용을 방어한다.
  */
-
-const coordSchema = z
-  .string()
-  .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, "좌표 형식은 '위도,경도'")
-  .transform((raw) => {
-    const [lat, lng] = raw.split(",").map(Number);
-    return { lat, lng };
-  })
-  .refine((c) => isInKorea(c.lat, c.lng), "좌표가 한반도 권역을 벗어남");
 
 const querySchema = z.object({ origin: coordSchema, dest: coordSchema });
 
