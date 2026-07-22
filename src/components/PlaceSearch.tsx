@@ -39,6 +39,7 @@ import { NightClinicsNearby } from "./NightClinicsNearby";
 import { BarrierFreeNearby } from "./BarrierFreeNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
+import { WalkInfraNearby } from "./WalkInfraNearby";
 import { WhereAmI } from "./WhereAmI";
 import { LocalConditions } from "./LocalConditions";
 
@@ -744,6 +745,12 @@ export function PlaceSearch({
       {canShowSurroundings && status.kind === "idle" && (
         <div className="mt-4">
           <SurroundingsNearby canShowChat={canShowChat} />
+        </div>
+      )}
+      {/* 게이트 없음(음향신호기=무인증 seed, OSM=무키 공개 인스턴스)이라 항상 노출한다. */}
+      {status.kind === "idle" && (
+        <div className="mt-4">
+          <WalkInfraNearby />
         </div>
       )}
       {/* 이 지역 날씨 — 버튼 없이 좌표 준비 시 자동 등장하는 통합 카드(현재 날씨 +
