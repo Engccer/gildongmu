@@ -70,6 +70,8 @@ describe("getWalkInfrastructure", () => {
     expect(result.osm.data.totalCount).toBe(18);
     expect(result.osm.data.listedCount).toBe(13); // crossing 10 + tactile 3
     expect(result.osm.data.truncated).toBe(true);
+    expect(result.osm.data.crossingTotal).toBe(15); // cap 전 실개수(잘림)
+    expect(result.osm.data.tactileTotal).toBe(3); // cap 전 실개수(안 잘림)
   });
 
   it("overpass reject → osm error, audioSignals는 ok 유지(부분 실패 보존)", async () => {

@@ -103,13 +103,16 @@ type SourceStatus<T> =
   | { status: "error" };
 interface WalkInfrastructure {
   audioSignals: SourceStatus<NearbyAudioSignals>;   // ok.data.deviceCount 0 가능(0 ≠ unsupported ≠ error)
-  osm: SourceStatus<{ features: WalkFeature[]; totalCount: number; listedCount: number; truncated: boolean }>;
+  osm: SourceStatus<{
+    features: WalkFeature[]; totalCount: number; listedCount: number; truncated: boolean;
+    crossingTotal: number; tactileTotal: number;  // projection별 cap 전 실개수(§3 그룹별 문구용)
+  }>;
 }
 getWalkInfrastructure(lat, lng): Promise<WalkInfrastructure>
 ```
 
 - `count`류 필드는 `status:"ok"` 안에만 존재 — error 상태에서 0을 합성할 자리가 타입상 없다.
-- OSM `totalCount`(cap 전 실개수) / `listedCount`(cap 10 후) / `truncated` 분리 — 강남 69곳이 "10곳"으로 과소 낭독되는 것 방지(산문은 "횡단보도 69곳 중 가까운 10곳").
+- OSM `totalCount`(cap 전 실개수) / `listedCount`(cap 10 후) / `truncated` 분리. 강남 69곳이 "10곳"으로 과소 낭독되는 것 방지. `crossingTotal`·`tactileTotal`은 crossing·비-crossing tactile 두 projection 각각의 cap 전 실개수라 그룹별 문구("횡단보도 69곳 중 가까운 10곳")를 합집합 수치로 지어내지 않고 그대로 낭독한다.
 - 라우트 `/api/walk/nearby`(GET, lat/lng zod)는 이 결과를 `{ walk: WalkInfrastructure }`로 그대로 직렬화. 400(zod)/429(IP)/503(両소스 모두 error일 때만) 구분, 부분 실패는 200.
 - 채팅 도구도 같은 `WalkInfrastructure`를 data로 반환하고 `source`는 **성공한 소스만** 명시(서울시 baseDate·OSM 여부 각각).
 

@@ -22,12 +22,16 @@ export type WalkFeature = RawWalkFeature & { distanceMeters: number; bearing: Co
 
 export interface OsmWalkData {
   features: WalkFeature[];
-  /** 300m 필터 후, projection별 cap 전 실개수(spec §2-E "cap 전 실개수"). */
+  /** 300m 필터 후, crossing+비-crossing tactile 합집합 cap 전 실개수. */
   totalCount: number;
   /** cap 후 features.length(crossing 10 + 비-crossing tactile 10 합집합, 최대 20). */
   listedCount: number;
   /** crossing·tactile 두 projection 중 하나라도 cap 10에 잘렸으면 true. */
   truncated: boolean;
+  /** crossing projection cap 전 실개수(spec §2-E·§3 "횡단보도 N곳 중 가까운 M곳"). */
+  crossingTotal: number;
+  /** 비-crossing tactile projection cap 전 실개수(§3 "점자블록 N곳 중 가까운 M곳"). */
+  tactileTotal: number;
 }
 
 export interface WalkInfrastructure {
@@ -139,6 +143,8 @@ function projectOsmData(rawFeatures: RawWalkFeature[], lat: number, lng: number)
     totalCount: withDistance.length,
     listedCount: features.length,
     truncated: crossingGroup.length > GROUP_CAP || tactileGroup.length > GROUP_CAP,
+    crossingTotal: crossingGroup.length,
+    tactileTotal: tactileGroup.length,
   };
 }
 
