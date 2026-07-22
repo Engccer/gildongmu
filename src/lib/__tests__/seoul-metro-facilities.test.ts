@@ -18,6 +18,7 @@ import {
   parseSeoulMetroFacilities,
 } from "../providers/seoul-metro-facilities";
 import { fetchSeoulElevators } from "../providers/seoul-elevator";
+import { env } from "../env";
 
 describe("parseFacilityGroup — 시설별 정규화", () => {
   // fixture(stnNm=강동 포함필터)는 강동+강동구청 혼재. 정확매칭 후 강동역만:
@@ -341,5 +342,45 @@ describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유�
     expect(r).not.toBeNull();
     expect(r!.groups.map((g) => g.kind)).toEqual(["escalator"]);
     expect(r!.supplementFailed).toBe(true);
+  });
+
+  it("SEOUL_OPEN_DATA_KEY 존재 + wksn elevator 없음 + OA-21212 성공 + seed 매칭 → elevatorLocation 병합", async () => {
+    // wksn 9종 전부 빈 결과(elevator 그룹 없음) — 이 테스트만 SEOUL_OPEN_DATA_KEY를
+    // 주입해 fetchSeoulElevators가 실제 fetch를 타도록 한다(다른 테스트는 키
+    // 미주입 상태를 유지해야 하므로 finally에서 반드시 원복).
+    env.SEOUL_OPEN_DATA_KEY = "test-open-key";
+    try {
+      const empty = { response: { body: { items: "" } } };
+      // 강동역 seed 좌표(37.53581, 127.13249) 근처 2건(OA-21212 tbTraficElvtr shape).
+      const elevatorFixture = {
+        tbTraficElvtr: {
+          RESULT: { CODE: "INFO-000" },
+          row: [
+            { SBWY_STN_NM: "강동역", NODE_WKT: "POINT(127.1335 37.5365)", EMD_NM: "천호동" },
+            { SBWY_STN_NM: "강동역", NODE_WKT: "POINT(127.1315 37.5351)", EMD_NM: "천호동" },
+          ],
+        },
+      };
+      vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/json/tbTraficElvtr/")) return Promise.resolve(ok(elevatorFixture));
+        return Promise.resolve(ok(empty)); // wksn 9종 전부 빈 결과
+      });
+      const { fetchSeoulMetroFacilities } = await import(
+        "../providers/seoul-metro-facilities"
+      );
+      const r = await fetchSeoulMetroFacilities("강동역");
+      expect(r).not.toBeNull();
+      expect(r!.groups.map((g) => g.kind)).not.toContain("elevator");
+      const group = r!.groups.find((g) => g.kind === "elevatorLocation");
+      expect(group).toBeDefined();
+      expect(group!.facilities.length).toBe(2);
+      for (const f of group!.facilities) {
+        expect(f.name).toMatch(/^역 중심 기준 (북|북동|동|남동|남|남서|서|북서)쪽 약 \d+m/);
+      }
+      expect(r!.supplementFailed).toBeUndefined();
+    } finally {
+      env.SEOUL_OPEN_DATA_KEY = undefined;
+    }
   });
 });

@@ -119,6 +119,8 @@ struct StationSectionsView: View {
         case "signLangPhone": appLocalized("subway.kind.signLangPhone")
         case "helper": appLocalized("subway.kind.helper")
         case "restroom": appLocalized("subway.kind.restroom")
+        case "voiceGuide": appLocalized("subway.kind.voiceGuide")
+        case "elevatorLocation": appLocalized("subway.kind.elevatorLocation")
         default: kind
         }
     }
