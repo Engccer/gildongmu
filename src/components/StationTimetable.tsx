@@ -40,7 +40,9 @@ export function StationTimetable({ stationName }: { stationName: string }) {
         const timetable = (body.timetable as Timetable) ?? null;
         setStatus(timetable ? { kind: "done", timetable } : { kind: "hidden" });
       } catch {
-        if (active) setStatus({ kind: "hidden" }); // 취소·네트워크 중단 — 무노출(오탐 방지)
+        // cleanup의 abort는 active=false라 여기서 걸러진다. active=true로 도달하면
+        // 진짜 네트워크·파싱 실패이므로 실패 문장을 노출한다(미커버 위장 금지, 3-state).
+        if (active) setStatus({ kind: "error" });
       }
     })();
     return () => {
