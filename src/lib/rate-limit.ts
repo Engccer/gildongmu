@@ -95,6 +95,16 @@ export function checkTimetableRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(timetableStore, ip, now, TIMETABLE_LIMIT, WINDOW_MS).allowed;
 }
 
+// 보행 인프라는 Overpass 공개 인스턴스를 경유하는 공유 자원이라 도보 경로와 동일하게
+// 60초 10회로 잡는다(인스턴스 전역 카운터는 별도로 walk-infra.ts가 담당).
+const WALK_INFRA_LIMIT = 10;
+const walkInfraStore = new Map<string, RateLimitEntry>();
+
+/** /api/walk/nearby 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkWalkInfraRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(walkInfraStore, ip, now, WALK_INFRA_LIMIT, WINDOW_MS).allowed;
+}
+
 /** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
 export function clientIpFromHeaders(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
