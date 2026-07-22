@@ -12,7 +12,7 @@ import { ENDPOINT_CATALOG } from "./endpoint-catalog-shared.js";
 
 const API_URL = process.env.GILDONGMU_API_URL ?? "https://gildongmu.vercel.app";
 
-const server = new McpServer({ name: "gildongmu", version: "0.1.0" });
+const server = new McpServer({ name: "gildongmu", version: "0.4.0" });
 
 for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
   const shape: Record<string, z.ZodTypeAny> = {};
