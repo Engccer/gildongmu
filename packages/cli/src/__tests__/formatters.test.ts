@@ -237,6 +237,40 @@ describe("station-metro-facilities", () => {
   });
 });
 
+describe("station-timetable", () => {
+  it("노선·방향별 첫차·막차와 기준 라벨을 낭독한다", () => {
+    const lines = FORMATTERS["station-timetable"]({
+      timetable: {
+        dailyType: "weekday",
+        lines: [
+          {
+            lineName: "5호선",
+            directions: [
+              { direction: "up", first: { time: "05:31", terminus: "방화" }, last: { time: "00:31", nextDay: true, terminus: "마천" } },
+              { direction: "down", first: { time: "05:40", terminus: "하남검단산" }, last: { time: "23:50", terminus: "하남검단산" } },
+            ],
+          },
+        ],
+      },
+    } as never);
+    expect(lines[0]).toBe("평일 기준");
+    expect(lines[1]).toBe("5호선 상행, 첫차 05:31 방화행, 막차 익일 00:31 마천행");
+    expect(lines[2]).toBe("5호선 하행, 첫차 05:40 하남검단산행, 막차 23:50 하남검단산행");
+  });
+  it("partial이면 기준 라벨 줄에 불완전 안내를 병기한다", () => {
+    const lines = FORMATTERS["station-timetable"]({
+      timetable: { dailyType: "sunday", partial: true, lines: [] },
+    } as never);
+    expect(lines[0]).toBe("일요일·공휴일 기준, 일부 노선 정보를 불러오지 못했습니다");
+    expect(lines[1]).toBe("오늘 시간표 정보가 없습니다.");
+  });
+  it("null(미커버 역·키 없음)은 미제공 문장(3-state)", () => {
+    expect(FORMATTERS["station-timetable"]({ timetable: null } as never)).toEqual([
+      "이 역은 첫차·막차 정보 제공 대상이 아닙니다.",
+    ]);
+  });
+});
+
 describe("subway-arrival (역명 단건)", () => {
   it("미커버 역(null)과 0건(빈 배열)을 구분", () => {
     expect(FORMATTERS["subway-arrival"]({ arrivals: null } as never)).toEqual([

@@ -129,6 +129,29 @@ interface StationMetaItem {
   operator: string;
 }
 
+interface TimetableTrainItem {
+  time: string;
+  nextDay?: true;
+  terminus: string;
+}
+
+interface TimetableDirectionItem {
+  direction: "up" | "down";
+  first: TimetableTrainItem;
+  last: TimetableTrainItem;
+}
+
+interface TimetableLineItem {
+  lineName: string;
+  directions: TimetableDirectionItem[];
+}
+
+interface StationTimetableItem {
+  dailyType: "weekday" | "saturday" | "sunday";
+  partial?: true;
+  lines: TimetableLineItem[];
+}
+
 interface StationFacilitiesItem {
   accessibleToilet: boolean;
   wheelchairLifts: number | undefined;
@@ -272,6 +295,11 @@ const PRECIP_KO: Partial<Record<PrecipLabelItem, string>> = {
 
 const AIR_GRADE_KO: Record<Exclude<AirGradeItem, "unknown">, string> = {
   good: "좋음", moderate: "보통", bad: "나쁨", veryBad: "매우나쁨",
+};
+
+// 웹 messages/ko.json timetable.* 카피와 동일 유지(CLI 산문 미러).
+const DAILY_TYPE_KO: Record<StationTimetableItem["dailyType"], string> = {
+  weekday: "평일 기준", saturday: "토요일 기준", sunday: "일요일·공휴일 기준",
 };
 
 /** 카카오 category_name 계층("여행 > 관광,명소")의 마지막 조각. */
@@ -436,6 +464,33 @@ function formatMetroFacilities(body: { facilities: SeoulMetroFacilitiesItem | nu
   return lines;
 }
 
+function timetableTrainText(label: string, t: TimetableTrainItem): string {
+  return `${label} ${t.nextDay ? "익일 " : ""}${t.time} ${t.terminus}행`;
+}
+
+/** 200 + null = TAGO 미커버 역·키 없음(라우트 판정 표) — 조회 실패(502)와 다른 문장. */
+function formatStationTimetable(body: { timetable: StationTimetableItem | null }): string[] {
+  const tt = body.timetable;
+  if (!tt) return ["이 역은 첫차·막차 정보 제공 대상이 아닙니다."];
+  const lines: string[] = [
+    joinText(DAILY_TYPE_KO[tt.dailyType], tt.partial && "일부 노선 정보를 불러오지 못했습니다"),
+  ];
+  if (tt.lines.length === 0) {
+    lines.push("오늘 시간표 정보가 없습니다.");
+    return lines;
+  }
+  for (const line of tt.lines) {
+    for (const d of line.directions) {
+      lines.push(joinText(
+        `${line.lineName} ${d.direction === "up" ? "상행" : "하행"}`,
+        timetableTrainText("첫차", d.first),
+        timetableTrainText("막차", d.last),
+      ));
+    }
+  }
+  return lines;
+}
+
 function formatSubwayArrival(body: { arrivals: SubwayStationArrivalsItem | null }): string[] {
   const data = body.arrivals;
   if (!data) return ["이 역은 실시간 도착 정보 제공 대상이 아닙니다."];
@@ -588,6 +643,7 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "station-meta": formatStationMeta,
   "station-facilities": formatStationFacilities,
   "station-metro-facilities": formatMetroFacilities,
+  "station-timetable": formatStationTimetable,
   "subway-arrival": formatSubwayArrival,
   "bus-route-stops": formatBusRouteStops,
   "route-car": formatRouteCar,
