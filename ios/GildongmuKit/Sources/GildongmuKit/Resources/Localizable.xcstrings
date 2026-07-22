@@ -5509,6 +5509,40 @@
         }
       }
     },
+    "subway.kind.elevatorLocation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "엘리베이터 위치"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elevator locations"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ubicaciones de ascensores"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Emplacements des ascenseurs"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizioni degli ascensori"
+          }
+        }
+      }
+    },
     "subway.kind.escalator": {
       "localizations": {
         "ko": {
@@ -5709,6 +5743,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Videotelefono per la lingua dei segni"
+          }
+        }
+      }
+    },
+    "subway.kind.voiceGuide": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시각장애인 음성유도기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio guidance beacons"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balizas de guía sonora"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balises de guidage sonore"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segnalatori acustici di guida"
           }
         }
       }
@@ -5947,6 +6015,74 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: dati sulle strutture di accessibilità di Seoul Metro (linee 1–8 di Seoul)."
+          }
+        }
+      }
+    },
+    "subway.supplementFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일부 시설 정보를 불러오지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some facility info couldn't be loaded."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar parte de la información de las instalaciones."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Certaines informations sur les équipements n'ont pas pu être chargées."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare alcune informazioni sulle strutture."
+          }
+        }
+      }
+    },
+    "subway.voiceGuideSource": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성유도기: 서울교통공사 제공(2025-08 기준)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio guidance beacons: provided by Seoul Metro (as of 2025-08)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balizas de guía sonora: datos de Seoul Metro (a partir de 2025-08)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balises de guidage sonore : données de Seoul Metro (en date de 2025-08)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segnalatori acustici di guida: dati forniti da Seoul Metro (aggiornati a 2025-08)"
           }
         }
       }
