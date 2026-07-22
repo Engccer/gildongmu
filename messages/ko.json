@@ -467,7 +467,8 @@
       "kric": "국가철도공단",
       "korail": "한국철도공사",
       "seoulmetro": "서울교통공사",
-      "perplexity": "Perplexity"
+      "perplexity": "Perplexity",
+      "osm": "OpenStreetMap 기여자"
     },
     "webResults": {
       "heading": "참고한 웹 결과"
