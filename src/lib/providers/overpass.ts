@@ -1,9 +1,9 @@
 /**
- * OSM Overpass provider — 횡단보도(`highway=crossing`)·점자블록(`tactile_paving=yes`)
+ * OSM Overpass provider: 횡단보도(`highway=crossing`)·점자블록(`tactile_paving=yes`)
  * 노드 조회(spec §2-C, V1은 way/area 미포함).
  *
  * provider는 OSM 원시 태그를 정규화된 shape로 변환할 뿐, 거리·방위는 계산하지
- * 않는다(서비스 계층이 타일 anchor 캐시 위에서 사용자 실좌표로 계산, §2-D) —
+ * 않는다(서비스 계층이 타일 anchor 캐시 위에서 사용자 실좌표로 계산, §2-D).
  * 서비스·라우트·컴포넌트·채팅은 OSM 원시 필드를 모른다(provider 격리).
  */
 
@@ -18,7 +18,7 @@ const CROSSING_SIGNAL_MAP: Record<string, "yes" | "no"> = {
 };
 
 export interface RawWalkFeature {
-  /** "node/123" — 물리 객체 dedup 키. */
+  /** "node/123": 물리 객체 dedup 키. */
   osmId: string;
   lat: number;
   lng: number;
@@ -28,7 +28,7 @@ export interface RawWalkFeature {
   crossingSignal: "yes" | "no" | "unknown";
   /** tactile_paving=yes */
   tactilePaving: boolean;
-  /** 비-crossing tactile 노드의 호스트 — 판별 가능할 때만(spec §2-C). */
+  /** 비-crossing tactile 노드의 호스트, 판별 가능할 때만(spec §2-C). */
   hostFeature?: "busStop" | "subwayEntrance";
 }
 
@@ -43,7 +43,7 @@ interface OverpassElement {
 
 /**
  * Overpass elements → RawWalkFeature[]. 같은 osmId가 두 번 나오면(union 질의가
- * 같은 물리 노드를 두 갈래에서 각각 매치) 병합한다 — 플래그는 OR, crossingSignal은
+ * 같은 물리 노드를 두 갈래에서 각각 매치) 병합한다. 플래그는 OR, crossingSignal은
  * unknown이 아닌 값을 우선(둘 다 같은 실물 노드의 동일 태그이므로 충돌 없음이 정상).
  * 좌표는 node면 el.lat/el.lon, way/relation 폴백은 el.center.
  */
@@ -82,7 +82,7 @@ export function normalizeOverpassElements(elements: unknown[]): RawWalkFeature[]
 }
 
 function overpassUrl(): string {
-  // 실호출 게이트의 강제 실패 검증용 env 우회 허용(spec §2-C) — 일반 서버 키
+  // 실호출 게이트의 강제 실패 검증용 env 우회 허용(spec §2-C). 일반 서버 키
   // 스키마(src/lib/env.ts)와 달리 raw process.env를 직접 읽는다.
   return process.env.OVERPASS_URL ?? "https://overpass-api.de/api/interpreter";
 }
@@ -90,7 +90,7 @@ function overpassUrl(): string {
 /**
  * anchor 좌표(사용자 정밀 좌표 아님, 서비스 계층 타일 anchor) 반경 내 횡단보도·
  * 점자블록 노드 조회. 부분 응답(`remark` 필드)·malformed(elements 비배열)·
- * 비200은 모두 throw — 200 위장 성공을 차단한다(spec §2-C).
+ * 비200은 모두 throw한다: 200 위장 성공을 차단한다(spec §2-C).
  */
 export async function fetchWalkFeaturesTile(
   anchorLat: number,
