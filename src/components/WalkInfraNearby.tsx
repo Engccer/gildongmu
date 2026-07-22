@@ -221,12 +221,12 @@ function WalkInfraPanel({
         {walk.audioSignals.status === "ok" ? (
           walk.audioSignals.data.deviceCount > 0 ? (
             <>
-              <p className="mt-1 text-sm" lang="ko">
+              <p className="mt-1 text-sm">
                 {t("audioSummary", { count: walk.audioSignals.data.deviceCount })}
               </p>
               <ul className="mt-1 space-y-1">
                 {walk.audioSignals.data.sites.map((site, i) => (
-                  <li key={i} className="text-sm" lang="ko">
+                  <li key={i} className="text-sm">
                     {t("audioSite", {
                       direction: dirLabel(site.bearing),
                       distance: formatDistance(site.distanceMeters),
@@ -237,12 +237,12 @@ function WalkInfraPanel({
               </ul>
             </>
           ) : (
-            <p className="mt-1 text-sm opacity-70" lang="ko">
+            <p className="mt-1 text-sm opacity-70">
               {t("audioNone")}
             </p>
           )
         ) : (
-          <p className="mt-1 text-sm opacity-70" lang="ko">
+          <p className="mt-1 text-sm opacity-70">
             {walk.audioSignals.status === "unsupported" ? t("audioUnsupported") : t("audioError")}
           </p>
         )}
@@ -254,7 +254,7 @@ function WalkInfraPanel({
           crossing.length > 0 ? (
             <ul className="mt-1 space-y-1">
               {crossing.map((f) => (
-                <li key={f.osmId} className="text-sm" lang="ko">
+                <li key={f.osmId} className="text-sm">
                   {joinText(
                     t("itemLocation", { direction: dirLabel(f.bearing), distance: formatDistance(f.distanceMeters) }),
                     f.crossingSignal === "yes" && t("hasSignal"),
@@ -264,12 +264,12 @@ function WalkInfraPanel({
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm opacity-70" lang="ko">
+            <p className="mt-1 text-sm opacity-70">
               {t("crossingEmpty")}
             </p>
           )
         ) : (
-          <p className="mt-1 text-sm opacity-70" lang="ko">
+          <p className="mt-1 text-sm opacity-70">
             {t("crossingError")}
           </p>
         )}
@@ -281,7 +281,7 @@ function WalkInfraPanel({
           tactile.length > 0 ? (
             <ul className="mt-1 space-y-1">
               {tactile.map((f) => (
-                <li key={f.osmId} className="text-sm" lang="ko">
+                <li key={f.osmId} className="text-sm">
                   {joinText(
                     t("itemLocation", { direction: dirLabel(f.bearing), distance: formatDistance(f.distanceMeters) }),
                     f.hostFeature === "busStop" && t("hostBusStop"),
@@ -291,29 +291,29 @@ function WalkInfraPanel({
               ))}
             </ul>
           ) : (
-            <p className="mt-1 text-sm opacity-70" lang="ko">
+            <p className="mt-1 text-sm opacity-70">
               {t("tactileEmpty")}
             </p>
           )
         ) : (
-          <p className="mt-1 text-sm opacity-70" lang="ko">
+          <p className="mt-1 text-sm opacity-70">
             {t("tactileError")}
           </p>
         )}
       </div>
 
       {walk.osm.status === "ok" && walk.osm.data.truncated && (
-        <p className="mt-2 text-xs opacity-70" lang="ko">
+        <p className="mt-2 text-xs opacity-70">
           {t("osmTruncated", { listed: walk.osm.data.listedCount, total: walk.osm.data.totalCount })}
         </p>
       )}
 
       {showFootnote && (
         <>
-          <p className="mt-2 text-xs opacity-70" lang="ko">
+          <p className="mt-2 text-xs opacity-70">
             {t("footnote")}
           </p>
-          <p className="mt-1 text-xs opacity-70" lang="ko">
+          <p className="mt-1 text-xs opacity-70">
             {joinText(
               walk.osm.status === "ok" && t("sourceOsm"),
               walk.audioSignals.status === "ok" && t("sourceAudio", { baseDate: walk.audioSignals.data.baseDate }),
