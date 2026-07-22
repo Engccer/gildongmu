@@ -249,7 +249,13 @@ function WalkInfraPanel({
       </div>
 
       <div className="mt-3">
-        <h4 className="font-medium">{t("groupCrossing")}</h4>
+        <h4 className="font-medium">
+          {walk.osm.status === "ok" && walk.osm.data.crossingTotal > 0
+            ? walk.osm.data.crossingTotal > crossing.length
+              ? t("groupCrossingTruncated", { total: walk.osm.data.crossingTotal, listed: crossing.length })
+              : t("groupCrossingCount", { count: walk.osm.data.crossingTotal })
+            : t("groupCrossing")}
+        </h4>
         {walk.osm.status === "ok" ? (
           crossing.length > 0 ? (
             <ul className="mt-1 space-y-1">
@@ -276,7 +282,13 @@ function WalkInfraPanel({
       </div>
 
       <div className="mt-3">
-        <h4 className="font-medium">{t("groupTactile")}</h4>
+        <h4 className="font-medium">
+          {walk.osm.status === "ok" && walk.osm.data.tactileTotal > 0
+            ? walk.osm.data.tactileTotal > tactile.length
+              ? t("groupTactileTruncated", { total: walk.osm.data.tactileTotal, listed: tactile.length })
+              : t("groupTactileCount", { count: walk.osm.data.tactileTotal })
+            : t("groupTactile")}
+        </h4>
         {walk.osm.status === "ok" ? (
           tactile.length > 0 ? (
             <ul className="mt-1 space-y-1">
@@ -301,12 +313,6 @@ function WalkInfraPanel({
           </p>
         )}
       </div>
-
-      {walk.osm.status === "ok" && walk.osm.data.truncated && (
-        <p className="mt-2 text-xs opacity-70">
-          {t("osmTruncated", { listed: walk.osm.data.listedCount, total: walk.osm.data.totalCount })}
-        </p>
-      )}
 
       {showFootnote && (
         <>
