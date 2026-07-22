@@ -2,7 +2,7 @@
 // 재생성 절차:
 //   1) curl -sL -o /tmp/audio-signal.zip -A "Mozilla/5.0" -X POST \
 //      "https://datafile.seoul.go.kr/bigfile/iot/inf/nio_download.do?&useCache=false" \
-//      --data "infId=OA-15543&infSeq=3&seq=11"   (seq는 변동 가능 — OA-15543 페이지에서 확인)
+//      --data "infId=OA-15543&infSeq=3&seq=11"   (seq는 변동 가능, OA-15543 페이지에서 확인)
 //   2) unzip -o /tmp/audio-signal.zip -d /tmp/audio-signal
 //   3) node scripts/build-audio-signals.mjs "/tmp/audio-signal/<폴더>/<파일>.dbf"
 import { readFileSync, writeFileSync } from "node:fs";
@@ -12,7 +12,7 @@ import proj4 from "proj4";
 
 const EPSG5186 = "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs";
 const REQUIRED_FIELDS = ["MGRNU", "XCE", "YCE", "STAT_CDE"];
-// pyproj(독립 도구)로 산출한 대조점 — 5181·2097·축 교환 오변환은 수백 m 이상 어긋나 즉시 검출.
+// pyproj(독립 도구)로 산출한 대조점: 5181·2097·축 교환 오변환은 수백 m 이상 어긋나 즉시 검출.
 export const GOLDEN = [
   { x: 187968.299999927, y: 549055.306243806, lat: 37.5409278, lng: 126.8638597 },
   { x: 205994.858585621, y: 553916.705437931, lat: 37.5847878, lng: 127.0678724 },
@@ -54,7 +54,7 @@ export function buildSeed({ fields, rows }, { now, baseDate, dbfSha256 }) {
   for (const g of GOLDEN) {
     const [lng, lat] = toWgs.forward([g.x, g.y]);
     const errM = Math.hypot((lat - g.lat) * 111320, (lng - g.lng) * 88000);
-    if (errM > 1) throw new Error(`golden 좌표 오차 ${errM.toFixed(1)}m — 좌표계 정의 회귀 의심`);
+    if (errM > 1) throw new Error(`golden 좌표 오차 ${errM.toFixed(1)}m, 좌표계 정의 회귀 의심`);
   }
   let noCoord = 0,
     statExcluded = 0;
@@ -72,9 +72,13 @@ export function buildSeed({ fields, rows }, { now, baseDate, dbfSha256 }) {
     }
     const [lng, lat] = toWgs.forward([x, y]);
     if (lat < 37.4 || lat > 37.72 || lng < 126.73 || lng > 127.2) {
-      throw new Error(`서울 bbox 이탈: ${lat},${lng} — 좌표계 회귀 의심`);
+      throw new Error(`서울 bbox 이탈: ${lat},${lng}, 좌표계 회귀 의심`);
     }
     signals.push([Number(lat.toFixed(5)), Number(lng.toFixed(5))]);
+  }
+  const coordValidRatio = (rows.length - noCoord) / rows.length;
+  if (coordValidRatio < 0.7) {
+    throw new Error(`좌표 유효율 이상: ${(coordValidRatio * 100).toFixed(1)}%`);
   }
   if (signals.length < 15000) throw new Error(`유효 건수 부족: ${signals.length}`);
   const cLat = signals.reduce((s, p) => s + p[0], 0) / signals.length;
@@ -103,7 +107,7 @@ if (isMain) {
     process.exit(1);
   }
   const buf = readFileSync(dbfPath);
-  // baseDate는 폴더명(20260528_…)에서 파싱 — 수기 입력 금지(spec §2-A)
+  // baseDate는 폴더명(20260528_…)에서 파싱, 수기 입력 금지(spec §2-A)
   const m = basename(dirname(dbfPath)).match(/^(\d{4})(\d{2})(\d{2})/);
   if (!m) throw new Error("폴더명에서 기준일을 파싱할 수 없음");
   const seed = buildSeed(parseDbf(buf), {
