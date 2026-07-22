@@ -13,6 +13,9 @@ import csv, io, json, re, urllib.request, urllib.parse
 URL = "https://datafile.seoul.go.kr/bigfile/iot/inf/nio_download.do?&useCache=false"
 BODY = urllib.parse.urlencode({"infId": "OA-22526", "seq": "1", "infSeq": "2"}).encode()
 AS_OF = "2025-08"  # 원본 파일명 …_20250812.csv, 갱신 시 함께 수정
+# ⚠ messages/*.json의 subway.voiceGuideSource(5로케일)에 이 기준일이 하드코딩되어
+# 있다(VOICE_GUIDES_AS_OF는 서버 전용이라 클라이언트 컴포넌트에서 import 불가).
+# AS_OF를 갱신하면 5로케일 문구도 함께 수동 갱신할 것.
 
 
 def normalize(name: str) -> str:

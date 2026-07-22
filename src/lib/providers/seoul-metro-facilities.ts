@@ -6,6 +6,10 @@ import {
   stripStationDecorations,
 } from "../station-match";
 import { parseStationItems } from "./korail-facilities";
+import { findVoiceGuides } from "../voice-guides";
+import { findStationsByName } from "../subway-stations";
+import { fetchSeoulElevators, composeElevatorItems } from "./seoul-elevator";
+import { joinText } from "../format";
 import type {
   SeoulMetroFacilities,
   SeoulMetroFacility,
@@ -29,6 +33,13 @@ import type {
  *
  * graceful degrade: 키 없음/전 종류 빈 결과 → null("정보 없음"). 주 fetch
  * 장애는 throw → 라우트 502(미커버 null과 구분, 코레일과 동일 정책).
+ *
+ * Task 7(시설 패널 보강): wksn 주 조회 결과에 두 보강 그룹을 병합한다.
+ * - voiceGuide(음성유도기, 정적 seed) — 키 유무와 무관하게 항상 시도.
+ * - elevatorLocation(엘리베이터 위치, OA-21212) — wksn에 elevator 그룹이
+ *   없을 때만(9호선 등 wksn 미커버 노선 폴백), 방위·거리 텍스트로 합성.
+ * 보강 실패(elevatorLocation fetch reject)는 supplementFailed로 표기하고
+ * 기존 wksn 그룹은 그대로 보존한다 — 무음 은폐 금지(스펙 §2-C).
  */
 
 const BASE = "https://apis.data.go.kr/B553766/wksn";
@@ -154,7 +165,10 @@ export function parseSeoulMetroFacilities(
     .filter((g): g is SeoulMetroFacilityGroup => g !== null);
   if (groups.length === 0) return null;
   // 첫 그룹의 raw에서 정확매칭된 첫 항목의 호선 — 다른 역(강동구청) 혼입 방지.
-  const firstMatched = parseStationItems(raws[groups[0].kind]).find(
+  // groups는 이 함수 안에서 kinds(wksn 9종)만으로 구성되므로 kind는 항상
+  // SeoulMetroFacilityKind다(보강 그룹 voiceGuide/elevatorLocation은 병합
+  // 단계(fetchSeoulMetroFacilities)에서만 추가되고 이 함수엔 섞이지 않는다).
+  const firstMatched = parseStationItems(raws[groups[0].kind as SeoulMetroFacilityKind]).find(
     (it) =>
       normalizeStationName(str(it.stnNm)) === target &&
       (!lineHint || lineHintMatches(str(it.lineNm), lineHint)),
@@ -201,30 +215,83 @@ async function fetchOp(op: string, stationName: string, key: string): Promise<un
 }
 
 /**
- * 역명으로 9종 교통약자 시설을 가져온다. stnNm 포함필터로 서버 1차 축소 후
- * parseSeoulMetroFacilities가 정확매칭한다.
+ * 역명으로 교통약자 시설을 가져와 보강 그룹(음성유도기·엘리베이터 위치)까지
+ * 병합한다. wksn 9종은 stnNm 포함필터로 서버 1차 축소 후 정확매칭한다.
  *
- * - 키 없음 / 전 종류 빈 결과 → null(graceful "정보 없음").
+ * - wksn 키 없음 / 전 종류 빈 결과 → base는 null이지만 보강 그룹만으로도
+ *   비-null이 될 수 있다(voiceGuide는 키 무관 — 게이트는 wksn 부분에만).
  * - 주 fetch(9 병렬 중 하나라도) HTTP·네트워크 실패 → throw → 라우트 502.
  *   (일시 장애를 "정보 없음"으로 뭉개지 않는다 — 접근성 정본 원칙.)
+ * - 보강(엘리베이터 위치) 실패는 throw하지 않고 supplementFailed로 표기한다
+ *   (주 조회는 정상이었으므로 502로 전체를 죽이지 않는다).
  */
 export async function fetchSeoulMetroFacilities(
   stationName: string,
 ): Promise<SeoulMetroFacilities | null> {
-  const key = env.DATA_GO_KR_API_KEY;
-  if (!key) return null;
   const target = normalizeStationName(stationName);
   if (!target) return null;
-  // 포함필터 질의: 괄호·노선 토큰·"역"까지 벗긴 원문형("강동역 5호선"→"강동").
-  // 카카오 장소명은 노선 토큰이 붙어 오므로(예: "강동역 5호선") 벗기지 않으면
-  // stnNm 포함필터가 아무 것도 매칭하지 못해 섹션이 죽는다.
-  const query = stripStationDecorations(stationName);
-  const kinds = Object.keys(OPERATIONS) as SeoulMetroFacilityKind[];
-  const results = await Promise.all(
-    kinds.map((k) => fetchOp(OPERATIONS[k], query, key)),
-  );
-  const raws = Object.fromEntries(
-    kinds.map((k, i) => [k, results[i]]),
-  ) as Record<SeoulMetroFacilityKind, unknown>;
-  return parseSeoulMetroFacilities(raws, stationName);
+  const { lineHint } = parseStationQuery(stationName);
+
+  // 주 조회(wksn)와 보강(엘리베이터 위치)을 분리 — 주 실패는 throw(502) 유지,
+  // 보강 실패는 supplementFailed로 표기(무음 은폐 금지, 스펙 §2-C).
+  const key = env.DATA_GO_KR_API_KEY;
+  let base: SeoulMetroFacilities | null = null;
+  if (key) {
+    // 포함필터 질의: 괄호·노선 토큰·"역"까지 벗긴 원문형("강동역 5호선"→"강동").
+    // 카카오 장소명은 노선 토큰이 붙어 오므로(예: "강동역 5호선") 벗기지 않으면
+    // stnNm 포함필터가 아무 것도 매칭하지 못해 섹션이 죽는다.
+    const query = stripStationDecorations(stationName);
+    const kinds = Object.keys(OPERATIONS) as SeoulMetroFacilityKind[];
+    const results = await Promise.all(
+      kinds.map((k) => fetchOp(OPERATIONS[k], query, key)),
+    );
+    const raws = Object.fromEntries(
+      kinds.map((k, i) => [k, results[i]]),
+    ) as Record<SeoulMetroFacilityKind, unknown>;
+    base = parseSeoulMetroFacilities(raws, stationName);
+  }
+
+  const groups: SeoulMetroFacilityGroup[] = base ? [...base.groups] : [];
+
+  // 음성유도기(정적 seed — 키 무관·실패 경로 없음).
+  const guides = findVoiceGuides(target);
+  if (guides.length > 0) {
+    // 노선이 여럿(환승역)일 때만 위치 뒤에 호선을 병기해 항목을 구분한다.
+    const multiLine = new Set(guides.map((g) => g.line).filter(Boolean)).size > 1;
+    groups.push({
+      kind: "voiceGuide",
+      facilities: guides.map((g) => ({
+        name: joinText(g.location, multiLine && g.line ? `${g.line}호선` : ""),
+        location: undefined,
+        floors: undefined,
+        operatingStatus: undefined,
+        detail: undefined,
+      })),
+    });
+  }
+
+  // 엘리베이터 위치 폴백(OA-21212) — wksn elevator 그룹이 없을 때만(9호선 등
+  // wksn 미커버 노선 보강). 실패해도 기존 그룹은 보존하고 supplementFailed만 표기.
+  let supplementFailed = false;
+  if (!groups.some((g) => g.kind === "elevator")) {
+    const [settled] = await Promise.allSettled([fetchSeoulElevators()]);
+    if (settled.status === "fulfilled") {
+      const matched = settled.value.filter((e) => e.stationKey === target);
+      if (matched.length > 0) {
+        const seedRows = findStationsByName(stationName, lineHint);
+        const items = composeElevatorItems(matched, seedRows);
+        if (items.length > 0) groups.push({ kind: "elevatorLocation", facilities: items });
+      }
+    } else {
+      supplementFailed = true;
+    }
+  }
+
+  if (groups.length === 0) return base; // null(전부 없음) 또는 기존 계약 그대로
+  return {
+    stationName: base?.stationName || stripStationDecorations(stationName) || stationName,
+    line: base?.line,
+    groups,
+    ...(supplementFailed ? { supplementFailed: true as const } : {}),
+  };
 }

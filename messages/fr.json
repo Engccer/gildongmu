@@ -197,8 +197,12 @@
       "safetyPlatform": "Marche de sécurité",
       "signLangPhone": "Visiophone en langue des signes",
       "helper": "Assistant d'accessibilité",
-      "restroom": "Toilettes accessibles"
+      "restroom": "Toilettes accessibles",
+      "voiceGuide": "Balises de guidage sonore",
+      "elevatorLocation": "Emplacements des ascenseurs"
     },
+    "supplementFailed": "Certaines informations sur les équipements n'ont pas pu être chargées.",
+    "voiceGuideSource": "Balises de guidage sonore : données de Seoul Metro (en date de 2025-08)",
     "source": "Source : données d'équipements d'accessibilité de Seoul Metro (lignes 1 à 8 de Seoul)."
   },
   "subwayArrival": {

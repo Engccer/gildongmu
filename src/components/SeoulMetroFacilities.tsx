@@ -138,6 +138,12 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
               </div>
             ))}
           </div>
+          {status.facilities.supplementFailed && (
+            <p className="mt-2 text-sm">{t("supplementFailed")}</p>
+          )}
+          {status.facilities.groups.some((g) => g.kind === "voiceGuide") && (
+            <p className="mt-2 text-xs opacity-70">{t("voiceGuideSource")}</p>
+          )}
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}

@@ -197,8 +197,12 @@
       "safetyPlatform": "Safety step",
       "signLangPhone": "Sign-language video phone",
       "helper": "Accessibility helper",
-      "restroom": "Accessible restroom"
+      "restroom": "Accessible restroom",
+      "voiceGuide": "Audio guidance beacons",
+      "elevatorLocation": "Elevator locations"
     },
+    "supplementFailed": "Some facility info couldn't be loaded.",
+    "voiceGuideSource": "Audio guidance beacons: provided by Seoul Metro (as of 2025-08)",
     "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8)."
   },
   "subwayArrival": {
