@@ -28,7 +28,7 @@ const INFO_SECTIONS = [
  * fulfilled+값 존재만 렌더, rejected는 "<섹션> 조회 실패" 한 줄, null/빈은 생략(3-state 불변식).
  */
 const infoCommand = defineCommand({
-  meta: { name: "info", description: "역 정보 + 교통약자 시설(코레일·서울지하철) 조회" },
+  meta: { name: "info", description: "역 정보 + 첫차·막차 + 교통약자 시설(코레일·서울지하철) 조회" },
   args: {
     station: { type: "positional", description: "역명", required: true },
     output: sharedArgs.output,

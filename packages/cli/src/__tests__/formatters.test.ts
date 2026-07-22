@@ -257,6 +257,17 @@ describe("station-metro-facilities", () => {
       facilities: { groups: [], supplementFailed: true },
     } as never)).toEqual(["일부 시설 정보를 불러오지 못했습니다."]);
   });
+
+  it("이름·위치 등 모든 필드가 없는 시설은 빈 줄로 출력하지 않는다(실호출 여의도 교통약자 도우미 관찰)", () => {
+    const lines = FORMATTERS["station-metro-facilities"]({
+      facilities: {
+        groups: [
+          { kind: "helper", facilities: [{ name: "", location: undefined, floors: undefined, detail: undefined, operatingStatus: undefined }] },
+        ],
+      },
+    } as never);
+    expect(lines).toEqual(["교통약자 도우미: 1개"]);
+  });
 });
 
 describe("station-timetable", () => {
