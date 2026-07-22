@@ -464,7 +464,8 @@ function formatMetroFacilities(body: { facilities: SeoulMetroFacilitiesItem | nu
   for (const g of f.groups) {
     lines.push(`${METRO_KIND_KO[g.kind]}: ${g.facilities.length}개`);
     for (const fac of g.facilities) {
-      lines.push(joinText(fac.name, fac.location, fac.floors, fac.detail, fac.operatingStatus === "stopped" && "가동 중지"));
+      const line = joinText(fac.name, fac.location, fac.floors, fac.detail, fac.operatingStatus === "stopped" && "가동 중지");
+      if (line) lines.push(line);
     }
   }
   if (f.supplementFailed) lines.push("일부 시설 정보를 불러오지 못했습니다.");
