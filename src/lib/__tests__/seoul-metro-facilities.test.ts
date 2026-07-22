@@ -344,6 +344,23 @@ describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유�
     expect(r!.supplementFailed).toBe(true);
   });
 
+  it("groups 전멸(wksn 미커버+voiceGuide 미매칭) + 엘리베이터 fetch reject → null 아님, groups:[]+supplementFailed:true(실패 은폐 차단)", async () => {
+    // "서면역"은 부산 지하철역이라 서울교통공사 wksn(9종)·서울 음성유도기 seed
+    // (OA-22526, 서울 1~8호선 전용) 어느 쪽에도 없다 — base=null + voiceGuide=[]
+    // 조합을 실호출 없이 격리 재현한다. 위 케이스 ③("테스트역", escalator 그룹
+    // 보존)과 달리 base 자체가 전멸이라는 점이 다르다.
+    const empty = { response: { body: { items: "" } } };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(empty)); // wksn 9종 전부 빈 결과
+    vi.mocked(fetchSeoulElevators).mockRejectedValueOnce(new Error("tbTraficElvtr HTTP 503"));
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const r = await fetchSeoulMetroFacilities("서면역");
+    expect(r).not.toBeNull(); // 과거엔 groups.length===0 조건에서 base(null)를 그대로 반환해 실패가 은폐됐다.
+    expect(r!.groups).toEqual([]);
+    expect(r!.supplementFailed).toBe(true);
+  });
+
   it("SEOUL_OPEN_DATA_KEY 존재 + wksn elevator 없음 + OA-21212 성공 + seed 매칭 → elevatorLocation 병합", async () => {
     // wksn 9종 전부 빈 결과(elevator 그룹 없음) — 이 테스트만 SEOUL_OPEN_DATA_KEY를
     // 주입해 fetchSeoulElevators가 실제 fetch를 타도록 한다(다른 테스트는 키

@@ -20,7 +20,7 @@ AS_OF = "2025-08"  # 원본 파일명 …_20250812.csv, 갱신 시 함께 수정
 
 def normalize(name: str) -> str:
     n = re.sub(r"\s*\([^)]*\)", "", name).strip()
-    n = re.sub(r"(?:\s+(?:\S*(?:선|철도)|GTX-\S*))+$", "", n).strip()
+    n = re.sub(r"(?:\s+(?:\S*(?:선|철도)|GTX-\S*))+$", "", n, flags=re.I).strip()
     n = re.sub(r"\s*station$", "", n, flags=re.I)
     n = re.sub(r"역$", "", n).strip()
     return n.lower()

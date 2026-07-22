@@ -199,11 +199,16 @@ export interface SeoulMetroFacilities {
   stationName: string;
   /** 호선(첫 매칭 항목 기준) — 없으면 undefined */
   line: string | undefined;
-  /** 데이터가 있는 시설 종류만. 전부 비면 빈 배열 → 라우트가 null 처리. */
+  /**
+   * 데이터가 있는 시설 종류만. 전부 비고 supplementFailed도 없으면 provider가
+   * null을 반환(라우트가 그대로 전달). ⚠ groups가 빈 배열이어도 supplementFailed
+   * true면 이 객체 자체는 non-null — 보강 실패 사실을 은폐하지 않기 위함(스펙 §2-C).
+   */
   groups: SeoulMetroFacilityGroup[];
   /**
    * 보강 소스(OA-21212 엘리베이터 위치 폴백) 실패 시 true — wksn 주 조회는
    * 정상이었지만 보강만 실패했을 때만 표기한다. 실패 은폐 금지(스펙 §2-C).
+   * groups가 전멸(빈 배열)이어도 이 플래그가 있으면 null을 반환하지 않는다.
    */
   supplementFailed?: true;
 }
