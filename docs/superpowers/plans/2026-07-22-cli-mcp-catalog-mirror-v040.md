@@ -110,7 +110,7 @@ describe("station-timetable", () => {
     const lines = FORMATTERS["station-timetable"]({
       timetable: { dailyType: "sunday", partial: true, lines: [] },
     } as never);
-    expect(lines[0]).toBe("일요일·공휴일 기준, 일부 노선 정보를 불러오지 못했습니다");
+    expect(lines[0]).toBe("일요일·공휴일 기준, 일부 노선 정보를 불러오지 못했습니다.");
     expect(lines[1]).toBe("오늘 시간표 정보가 없습니다.");
   });
   it("null(미커버 역·키 없음)은 미제공 문장(3-state)", () => {
@@ -176,7 +176,7 @@ function formatStationTimetable(body: { timetable: StationTimetableItem | null }
   const tt = body.timetable;
   if (!tt) return ["이 역은 첫차·막차 정보 제공 대상이 아닙니다."];
   const lines: string[] = [
-    joinText(DAILY_TYPE_KO[tt.dailyType], tt.partial && "일부 노선 정보를 불러오지 못했습니다"),
+    joinText(DAILY_TYPE_KO[tt.dailyType], tt.partial && "일부 노선 정보를 불러오지 못했습니다."),
   ];
   if (tt.lines.length === 0) {
     lines.push("오늘 시간표 정보가 없습니다.");
