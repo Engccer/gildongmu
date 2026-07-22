@@ -72,6 +72,8 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "facilities", locationParam: false, mcp: true },
   { name: "station-metro-facilities", description: "서울 지하철역 교통약자 시설", path: "/api/station/metro-facilities", method: "GET",
     params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "facilities", locationParam: false, mcp: true },
+  { name: "station-timetable", description: "역 첫차·막차 시간표(TAGO, 서비스데이 기준 라벨 포함)", path: "/api/station/timetable", method: "GET",
+    params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "timetable", locationParam: false, mcp: true },
   { name: "subway-arrival", description: "지하철역 실시간 도착(역명)", path: "/api/station/subway-arrival", method: "GET",
     params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "arrivals", locationParam: false, mcp: true },
   { name: "bus-route-stops", description: "버스 노선 경유 정류소", path: "/api/bus/route", method: "GET",
