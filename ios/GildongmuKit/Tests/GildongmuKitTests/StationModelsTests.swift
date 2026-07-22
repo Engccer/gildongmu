@@ -42,6 +42,68 @@ import Foundation
     #expect(statuses.contains("stopped"))
     // location·floors·detail 옵셔널: 안전발판은 이름만(실제 결측이 있어야 옵셔널 계약 검증)
     #expect(facilities.groups.flatMap(\.facilities).contains { $0.location == nil })
+    // fixture는 구버전 캡처라 supplementFailed 필드 자체가 없음. 구서버 호환 옵션 계약 검증
+    #expect(facilities.supplementFailed == nil)
+}
+
+@Test func stationMetroFacilitiesSupplementFailedDecodes() throws {
+    // 보강 소스(OA-21212) 실패 시 groups는 남고 supplementFailed=true(실패 은폐 금지, 스펙 §2-C)
+    let json = #"{"facilities":{"stationName":"봉은사","line":null,"groups":[],"supplementFailed":true}}"#
+    let result = try JSONDecoder().decode(SeoulMetroFacilitiesResponse.self, from: Data(json.utf8))
+    let facilities = try #require(result.facilities)
+    #expect(facilities.groups.isEmpty)
+    #expect(facilities.supplementFailed == true)
+}
+
+@Test func stationTimetableFixtureDecodes() throws {
+    // fixture는 prod 실호출 캡처(강동역 5호선, 2026-07-22)
+    let result = try JSONDecoder().decode(StationTimetableResponse.self, from: fixture("station-timetable"))
+    let timetable = try #require(result.timetable)
+    #expect(timetable.stationName == "강동역 5호선")
+    #expect(timetable.dailyType == "weekday")
+    // partial 부재: 전 노선·방향 성공이면 필드 자체가 없다(true만 존재하는 계약)
+    #expect(timetable.partial == nil)
+    #expect(timetable.lines.count == 1)
+    let line = timetable.lines[0]
+    #expect(line.lineName == "5호선")
+    #expect(line.directions.count == 2)
+    let up = try #require(line.directions.first { $0.direction == "up" })
+    // 첫차는 nextDay 부재(정상 시간대), 막차는 심야 편성이라 nextDay=true(서비스데이 보정 표기)
+    #expect(up.first.nextDay == nil)
+    #expect(up.first.time == "05:32")
+    #expect(up.first.terminus == "방화")
+    #expect(up.first.terminusEn == "Banghwa")
+    #expect(up.last.nextDay == true)
+    #expect(up.last.time == "00:42")
+    #expect(up.last.terminusEn == "Wangsimni")
+}
+
+@Test func stationTimetablePartialAndMissingTerminusEnDecode() throws {
+    // partial:true + terminusEn 결측(seed 미매칭 폴백, 스펙 §7-17) 합성 케이스
+    let json = #"""
+    {"timetable":{"stationName":"동두천역","dailyType":"weekday","partial":true,
+      "lines":[{"lineName":"1호선","directions":[
+        {"direction":"up","first":{"time":"05:10","terminus":"동두천"},"last":{"time":"23:40","terminus":"동두천"}}
+      ]}]}}
+    """#
+    let result = try JSONDecoder().decode(StationTimetableResponse.self, from: Data(json.utf8))
+    let timetable = try #require(result.timetable)
+    #expect(timetable.partial == true)
+    let train = timetable.lines[0].directions[0].first
+    #expect(train.terminusEn == nil)
+    #expect(train.nextDay == nil)
+}
+
+@Test func stationTimetableEmptyLinesAndNullEnvelopeDecode() throws {
+    // 전 호출 성공·유효 행 0(§2-A 표): lines 빈 배열, null과 구분되는 상태
+    let empty = try JSONDecoder().decode(
+        StationTimetableResponse.self,
+        from: Data(#"{"timetable":{"stationName":"x","dailyType":"sunday","lines":[]}}"#.utf8))
+    #expect(empty.timetable?.lines.isEmpty == true)
+    // 미커버 역 graceful null(4종 기존 계약과 동형)
+    let uncovered = try JSONDecoder().decode(
+        StationTimetableResponse.self, from: Data(#"{"timetable":null}"#.utf8))
+    #expect(uncovered.timetable == nil)
 }
 
 @Test func stationArrivalFixtureDecodes() throws {

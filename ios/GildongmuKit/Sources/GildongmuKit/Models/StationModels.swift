@@ -77,12 +77,15 @@ public struct SeoulMetroFacilityGroup: Codable, Sendable, Hashable {
     public let facilities: [SeoulMetroFacility]
 }
 
-/// 한 지하철역의 교통약자 시설 전체(서울교통공사 1~8호선).
+/// 한 지하철역의 교통약자 시설 전체(서울교통공사 1~8호선 + 보강 그룹 2종).
 public struct SeoulMetroFacilities: Codable, Sendable, Hashable {
     public let stationName: String
     /// 호선(첫 매칭 기준, 없으면 nil)
     public let line: String?
     public let groups: [SeoulMetroFacilityGroup]
+    /// 보강 소스(OA-21212 엘리베이터 위치 폴백) 실패 시 true. wksn 주 조회는 정상이었으나
+    /// 보강만 실패했을 때만 표기(실패 은폐 금지, 스펙 §2-C). 구버전 서버 응답 호환을 위해 옵션.
+    public let supplementFailed: Bool?
 }
 
 public struct SeoulMetroFacilitiesResponse: Codable, Sendable {
@@ -99,6 +102,52 @@ public struct StationArrivals: Codable, Sendable, Hashable {
 
 public struct StationArrivalResponse: Codable, Sendable {
     public let arrivals: StationArrivals?
+}
+
+// MARK: - 역 첫차·막차 시간표
+
+/// TAGO 지하철 노선정보에서 파생한 시간표 편성 하나(첫차 또는 막차, 웹 TimetableTrain 미러).
+public struct TimetableTrain: Codable, Sendable, Hashable {
+    /// 출발 시각("HH:mm" 원문 그대로. 00~02시대 심야 편성도 이 시각 그대로 표기)
+    public let time: String
+    /// 00~02시대 심야 편성이면 true(서비스데이 정렬 보정 표기용, 서버가 이미 산출)
+    public let nextDay: Bool?
+    /// 종착역명(한글)
+    public let terminus: String
+    /// 종착역명(영문, seed 매칭으로 병기 가능할 때만)
+    public let terminusEn: String?
+}
+
+/// 한 방향(상행 또는 하행)의 첫차·막차 쌍.
+public struct TimetableDirection: Codable, Sendable, Hashable {
+    /// "up"/"down"(TAGO upDownTypeCode 매핑)
+    public let direction: String
+    public let first: TimetableTrain
+    public let last: TimetableTrain
+}
+
+/// 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다).
+public struct TimetableLine: Codable, Sendable, Hashable {
+    /// 노선 표시명(예 "5호선"·"수인분당선")
+    public let lineName: String
+    public let directions: [TimetableDirection]
+}
+
+/// 역 첫차·막차 시간표 전체(웹 StationTimetable 미러).
+/// dailyType은 조회에 쓴 서비스데이 타입. 공휴일 판정 실패 시 요일 폴백은
+/// partial이 아니라 dailyType 기준 라벨 명시로 정직성을 담보한다(스펙 §1-A-3).
+public struct StationTimetable: Codable, Sendable, Hashable {
+    public let stationName: String
+    /// "weekday"/"saturday"/"sunday": 조회에 사용한 서비스데이 타입
+    public let dailyType: String
+    /// 일부 노선·방향 시간표 호출이 실패해 불완전한 결과면 true(무운행 위장 금지)
+    public let partial: Bool?
+    public let lines: [TimetableLine]
+}
+
+/// 미커버 역 null(graceful). upstream 실패는 라우트가 502로 throw(3-state, 문장 노출 몫은 뷰).
+public struct StationTimetableResponse: Codable, Sendable {
+    public let timetable: StationTimetable?
 }
 
 // MARK: - 공기질
