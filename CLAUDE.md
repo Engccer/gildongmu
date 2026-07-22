@@ -45,6 +45,7 @@
 - **단위 함정**: NCP Directions `duration`=**밀리초**(카카오·`durationSeconds`=초, 미변환 시 28분→468시간). ODsay `totalTime`=분·`payment`=원·`totalWalk`=미터.
 - **3-state 불변식 (시각장애인 정합)**: "0대/없음"과 "정보 없음(`unknown`)"과 "조회 실패(throw→502)"를 **절대 뭉개지 않는다**. 도착·진료·공기질·날씨·시설 전반에 적용. 해석 불가한 수치는 숨기고 등급 단어를 정본으로.
 - **도착 낭독 정본은 완성 문장 필드**: 서울버스 `arrmsg1`·지하철 `arvlMsg2`("곧 도착"·"전역 출발"). ⚠ `traTime1`/`barvlDt`를 슬롯형으로 환산하면 운행종료에도 비0이라 오발화. 한 도착 항목이 1·2번째 버스를 슬롯 페어(`arrmsg1`·`arrmsg2`)로 주므로 둘 다 투영(슬롯2는 메시지가 다를 때만).
+- **역명 매칭은 확장 정규화가 정본**(`station-match.ts`, 2026-07-22): 카카오 역 place_name은 "강동역 5호선" 형태라 괄호 부가명·후행 노선 토큰(`…선`/`…철도`/`GTX-…`)을 벗겨야 seed·wksn·korail·arrival과 매칭된다(미적용 시 역 섹션 전체 死 — 실측 회귀). 노선 토큰은 버리지 않고 `parseStationQuery`의 `lineHint`로 보존(동명이역 양평 5호선 vs 경의중앙선 분리, 숫자 코어는 완전 일치만). 신규 역 데이터 소스는 `normalizeStationName`+`lineHintMatches`를 재사용하고 자체 정규화 금지.
 - **"내 주변" 거리순 정렬은 코드 책임**(Haversine). 좌표 필터 없는 목록 API(따릉이·소아진료)는 전체 받아 서버 정렬→cap. ⚠ `totalCount`/`list_total_count`는 "그 페이지 row 수"일 수 있어 **신뢰 금지** — 종료조건은 받은 row 수. ⚠ **검색 탭은 거리순이 아니다**: 카카오 키워드는 `x`/`y`만 붙이고 `sort`·radius 미지정 — 정확도순에 근접이 블렌딩된다(실호출 확정 2026-07-20: 맥도날드=근처 지점 상위, 경복궁=15km 밖 본체·부속 최상단). 거리 **표기**는 `searchPlaces` 진입점의 `annotateDistances`(정렬 없는 주석)가 일원 담당 — 클라·provider 재정렬 금지(정확도 축 파괴, 랜드마크 매몰 회귀).
 - **캐시**: 실시간(지하철·버스 도착)=`no-store`+`force-dynamic`, 준정적=`revalidate`(역메타 86400·공기질 600·날씨 1800·주소 3600).
 
@@ -76,7 +77,8 @@
 | 주소·우편번호 | juso `searchJusoAddresses` / `/api/address/search` | 좌표는 카카오 `/api/geocode` 재사용. `engAddr`는 국가명 미포함 |
 | 역지오코딩(현위치 주소) | kakao-address `coordToAddress`+ncp-geocode `reverseRoadAddress` / `/api/geocode/reverse` | "현재 위치" 라벨 병기용 경량 라우트. **도로명 보장 3단 체인**: 카카오 road → (null이면) NCP 최근접 도로명 → 지번(정직 최후 폴백). ⚠ 카카오 coord2address는 도로명 건물 미매핑 좌표(공터·블록 내부, GPS 빈발)에서 road_address null(실측 2026-07-22) — 지번 우선 회귀 금지 |
 | 코레일 역시설 | korail-facilities / `/api/station/facilities` | 406역 전체 받아 `normalizeStationName` 클라 매칭, `stn_cd` 조인 |
-| 서울 지하철역 시설 | seoul-metro-facilities (9 op) | 도시철도 보완, `stnNm` 포함필터→정확매칭 제외, `totalCount>300` throw |
+| 서울 지하철역 시설 | seoul-metro-facilities (9 op)+voice-guides seed+seoul-elevator / `/api/station/metro-facilities` | 도시철도 보완, `stnNm` 포함필터→정확매칭 제외, `totalCount>300` throw. **보강 그룹 2종**(2026-07-22): 음성유도기 정적 seed(OA-22526 CSV cp949, `build-voice-guides.py`, 1~8호선 211역)+엘리베이터 위치 폴백(OA-21212 `tbTraficElvtr`, **wksn 엘베 부재 시만** — 9호선·우이신설 커버, 최근접 seed 좌표 기준 방위·거리 ko 합성). 보강 실패는 `supplementFailed`로 표기(groups 전멸 시에도 보존 — 실패 은폐 금지) |
+| 역 첫차·막차 (전국) | tago-subway (SubwayInfo 15098554) / `/api/station/timetable` | ⚠ depTime HHMMSS·**00시대 심야열차가 배열 앞**(첫차·막차는 03:00 경계 +24h 서비스데이 보정, 요일 타입도 KST-3h 기준)·당역종착(`endSubwayStationId==자기`) 제외·keyword는 포함검색이라 정확매칭 코드 책임·item 1건은 객체. 노선명 축약("수인분당")은 `선` 접미 규칙(매핑 테이블 금지). 공휴일 보정은 특일정보(15012690) 게이트형(미신청·실패 시 요일 폴백+기준 라벨 명시). 레이트리밋 60초 10회 |
 | 도시철도역 메타 | subway-stations (정적 seed) / `/api/station/meta` | XLSX→JSON 연1회 갱신(`scripts/build-subway-stations.py`), 서버 전용 import |
 | 서울 지하철 실시간 | seoul-subway-arrival / `…/subway-arrival[/nearby]` | `arvlMsg2` 정본, 역명 기반(seed `findStationsNear`로 근접역), 부분실패 보존 |
 | 시내버스 | tago-bus + seoul-bus → `src/lib/bus.ts` 병합 | 지방=TAGO·서울=TOPIS, `mergeBusStops` allSettled, envelope 다름(위 참조) |
