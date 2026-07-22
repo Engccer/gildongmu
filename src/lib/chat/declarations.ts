@@ -230,6 +230,17 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    // 게이트 없음 - 음향신호기는 무인증 seed, OSM은 무키 공개 인스턴스(spec §4)
+    gate: () => true,
+    declaration: {
+      name: "get_walk_infrastructure",
+      description:
+        "현재 위치(또는 보고 있는 장소) 주변 음향신호기·횡단보도·점자블록을 보여준다. " +
+        "서울시·OpenStreetMap 등록 자료 기준이며, 실제 시설 유무나 작동 상태와 다를 수 있다.",
+      parametersJsonSchema: { type: "object", properties: {} },
+    },
+  },
+  {
     gate: hasTmapKey,
     declaration: {
       name: "get_walk_route",

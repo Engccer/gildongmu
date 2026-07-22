@@ -467,7 +467,8 @@
       "kric": "Autoridad de Red Ferroviaria de Corea",
       "korail": "Korail",
       "seoulmetro": "Metro de Seúl",
-      "perplexity": "Perplexity"
+      "perplexity": "Perplexity",
+      "osm": "Colaboradores de OpenStreetMap"
     },
     "webResults": {
       "heading": "Resultados web"

@@ -21,6 +21,7 @@ import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 import { getTransitRoute } from "@/lib/providers/odsay";
 import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
+import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { searchWebPerplexity } from "./perplexity-search";
 import { hasNcpMapsKeys, hasTmapKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
@@ -112,6 +113,21 @@ export async function executeFunction(
       const around = await findSurroundingsNear(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "surroundings-nearby" } as const);
       return { data: { count: around.length, places: around.slice(0, 12) }, render, source: src };
+    }
+    case "get_walk_infrastructure": {
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const walk = await getWalkInfrastructure(anchor.lat, anchor.lng);
+      // 출처는 실제로 데이터를 보여준 소스만 인용한다(성공한 소스만, 실패·미제공
+      // 소스는 인용하지 않는다).
+      const walkSource = [
+        walk.audioSignals.status === "ok" ? { label: "source.seoulopen" } : undefined,
+        walk.osm.status === "ok" ? { label: "source.osm" } : undefined,
+      ].filter((s): s is { label: string } => s !== undefined);
+      return {
+        data: { audioSignals: walk.audioSignals, osm: walk.osm },
+        source: walkSource.length > 0 ? walkSource : undefined,
+      };
     }
     case "get_bus_arrivals": {
       const explicit = args.place ? String(args.place) : undefined;
