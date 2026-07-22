@@ -57,9 +57,10 @@ async function runSub(
 }
 
 describe("station 명령", () => {
-  it("info: 세 apiRequest를 병렬로 올바른 경로·쿼리에 발사한다", async () => {
+  it("info: 네 apiRequest를 병렬로 올바른 경로·쿼리에 발사한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/station/meta") return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
+      if (path === "/api/station/timetable") return { timetable: null };
       if (path === "/api/station/facilities") return { facilities: null };
       if (path === "/api/station/metro-facilities") return { facilities: null };
       throw new Error(`unexpected path ${path}`);
@@ -68,6 +69,7 @@ describe("station 명령", () => {
     await runSub("../commands/station.js", "stationCommand", ["info"], { station: "강남", output: "text" });
 
     expect(apiRequest).toHaveBeenCalledWith("/api/station/meta", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강남" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/station/facilities", { query: { station: "강남" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남" } });
   });
@@ -77,6 +79,7 @@ describe("station 명령", () => {
       if (path === "/api/station/meta") {
         return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
       }
+      if (path === "/api/station/timetable") return { timetable: null };
       if (path === "/api/station/facilities") throw new Error("upstream down");
       if (path === "/api/station/metro-facilities") return { facilities: null };
       throw new Error(`unexpected path ${path}`);
@@ -88,13 +91,15 @@ describe("station 명령", () => {
     expect(output).toContain("역 정보");
     expect(output).toContain("강남역 (Gangnam)");
     expect(output).toContain("철도역 교통약자 시설 조회 실패");
-    // null 섹션(서울 지하철 교통약자 시설)은 생략 — 제목 줄 자체가 안 나온다.
+    // null 섹션(서울 지하철 교통약자 시설·첫차·막차)은 생략 — 제목 줄 자체가 안 나온다.
     expect(output).not.toContain("서울 지하철 교통약자 시설");
+    expect(output).not.toContain("첫차·막차");
   });
 
-  it("info: 세 섹션 모두 fulfilled인데 값이 전부 null이면 미발견 안내를 출력하고 exit 하지 않는다(3-state 침묵 금지)", async () => {
+  it("info: 네 섹션 모두 fulfilled인데 값이 전부 null이면 미발견 안내를 출력하고 exit 하지 않는다(3-state 침묵 금지)", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/station/meta") return { meta: null };
+      if (path === "/api/station/timetable") return { timetable: null };
       if (path === "/api/station/facilities") return { facilities: null };
       if (path === "/api/station/metro-facilities") return { facilities: null };
       throw new Error(`unexpected path ${path}`);
@@ -108,7 +113,7 @@ describe("station 명령", () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it("info: 세 요청이 모두 실패하면 exit 1로 종료한다", async () => {
+  it("info: 네 요청이 모두 실패하면 exit 1로 종료한다", async () => {
     apiRequest.mockImplementation(async () => {
       throw new Error("network down");
     });
@@ -120,9 +125,10 @@ describe("station 명령", () => {
     expect(stderrSpy).toHaveBeenCalled();
   });
 
-  it("info: json 모드에서 세 결과를 {meta, facilities, metroFacilities}로 합성한다", async () => {
+  it("info: json 모드에서 네 결과를 {meta, timetable, facilities, metroFacilities}로 합성한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/station/meta") return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
+      if (path === "/api/station/timetable") return { timetable: null };
       if (path === "/api/station/facilities") throw new Error("upstream down");
       if (path === "/api/station/metro-facilities") return { facilities: null };
       throw new Error(`unexpected path ${path}`);
@@ -132,9 +138,11 @@ describe("station 명령", () => {
 
     const jsonOut = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
     expect(jsonOut).toHaveProperty("meta");
+    expect(jsonOut).toHaveProperty("timetable");
     expect(jsonOut).toHaveProperty("facilities");
     expect(jsonOut).toHaveProperty("metroFacilities");
     expect(jsonOut.meta).toMatchObject({ name: "강남" });
+    expect(jsonOut.timetable).toBeNull();
     expect(jsonOut.facilities).toBeNull();
     expect(jsonOut.metroFacilities).toBeNull();
   });
@@ -148,6 +156,39 @@ describe("station 명령", () => {
     await runSub("../commands/station.js", "stationCommand", ["arrivals"], { station: "강남", output: "text" });
 
     expect(apiRequest).toHaveBeenCalledWith("/api/station/subway-arrival", { query: { station: "강남" } });
+  });
+
+  it("timetable: station-timetable 엔드포인트로 위임한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/timetable") return { timetable: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["timetable"], { station: "강동", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강동" } });
+  });
+
+  it("info: 4섹션(meta·facilities·metro-facilities·timetable)을 병렬 호출하고 timetable rejected 시 '첫차·막차 조회 실패' 한 줄을 낸다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/meta") {
+        return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
+      }
+      if (path === "/api/station/facilities") return { facilities: null };
+      if (path === "/api/station/metro-facilities") return { facilities: null };
+      if (path === "/api/station/timetable") throw new Error("upstream down");
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["info"], { station: "강남", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/meta", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/facilities", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강남" } });
+
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain("첫차·막차 조회 실패");
   });
 });
 

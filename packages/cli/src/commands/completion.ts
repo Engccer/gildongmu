@@ -10,7 +10,7 @@ import { ExitCode } from "../lib/exit-codes.js";
 
 const COMMAND_TREE: Record<string, string[]> = {
   nearby: ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free"],
-  station: ["info", "arrivals"],
+  station: ["info", "timetable", "arrivals"],
   bus: ["route"],
   route: ["car", "transit", "walk"],
   place: ["barrier-free"],
