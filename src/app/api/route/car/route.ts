@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasKakaoKey, hasNcpMapsKeys } from "@/lib/env";
-import { isInKorea } from "@/lib/deeplink";
+import { coordSchema } from "@/lib/route-coord-schema";
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 
@@ -17,15 +17,6 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
  * - 그 외(ko, 또는 en이지만 NCP 키 없음) → 카카오모빌리티(한국어, 현 동작 graceful)
  * 두 provider 모두 동일한 CarRouteBriefing shape를 반환해 컴포넌트는 불변이다.
  */
-
-const coordSchema = z
-  .string()
-  .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, "좌표 형식은 '위도,경도'")
-  .transform((raw) => {
-    const [lat, lng] = raw.split(",").map(Number);
-    return { lat, lng };
-  })
-  .refine((c) => isInKorea(c.lat, c.lng), "좌표가 한반도 권역을 벗어남");
 
 const querySchema = z.object({
   origin: coordSchema,
