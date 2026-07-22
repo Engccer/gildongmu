@@ -6,14 +6,14 @@ import seed from "../data/audio-signals.json";
  * 서울시 음향신호기(OA-15543) 정적 seed 조회 provider(서버 전용, 동기).
  *
  * seed는 scripts/build-audio-signals.mjs가 EPSG:5186→WGS84 변환해 생성한
- * (lat,lng) 목록뿐 — 좌표계·golden 가드는 빌드 타임 책임, 여기서는 순수 조회만.
+ * (lat,lng) 목록뿐, 좌표계·golden 가드는 빌드 타임 책임이고 여기서는 순수 조회만 한다.
  * 서울 bbox 밖은 "0기"가 아니라 null(서비스 미제공, spec §2-E unsupported)로
  * 구분해 "정보 없음"과 "제공 안 함"을 뭉개지 않는다.
  */
 
 const SEED = seed as unknown as { meta: { baseDate: string }; signals: Array<[number, number]> };
 
-// 빌드 스크립트와 동일 상수(scripts/build-audio-signals.mjs) — 회귀 시 함께 갱신.
+// 빌드 스크립트와 동일 상수(scripts/build-audio-signals.mjs). 회귀 시 함께 갱신.
 const SEOUL_BBOX = { latMin: 37.4, latMax: 37.72, lngMin: 126.73, lngMax: 127.2 };
 
 const DEFAULT_RADIUS_METERS = 300;
@@ -26,7 +26,7 @@ export interface AudioSignalSite {
 }
 
 export interface NearbyAudioSignals {
-  /** 반경 내 기기 총수 — sites(최대 5)에 잘리기 전 값(spec §2-B "12기" 오해 방지). */
+  /** 반경 내 기기 총수, sites(최대 5)에 잘리기 전 값(spec §2-B "12기" 오해 방지). */
   deviceCount: number;
   sites: AudioSignalSite[];
   baseDate: string;
@@ -35,7 +35,7 @@ export interface NearbyAudioSignals {
 /**
  * 좌표 toFixed(4)(≈11m 격자) 키로 지점 군집. 같은 격자에 묶인 원시 점 중
  * origin에 가장 가까운 점을 대표 좌표로 삼아 distance/bearing을 계산한다
- * (임의 첫 점이 아니라 "최근접점 기준" — 배열 순서 의존 제거).
+ * (임의 첫 점이 아니라 "최근접점 기준": 배열 순서 의존 제거).
  */
 export function clusterSites(
   points: Array<[number, number]>,
