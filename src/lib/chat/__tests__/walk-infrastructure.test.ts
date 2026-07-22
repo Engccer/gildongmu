@@ -43,6 +43,8 @@ const BOTH_OK: WalkInfrastructure = {
       totalCount: 1,
       listedCount: 1,
       truncated: false,
+      crossingTotal: 1,
+      tactileTotal: 0,
     },
   },
 };
