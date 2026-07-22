@@ -24,7 +24,7 @@ const OK_RESULT: WalkInfrastructure = {
   },
   osm: {
     status: "ok",
-    data: { features: [], totalCount: 0, listedCount: 0, truncated: false },
+    data: { features: [], totalCount: 0, listedCount: 0, truncated: false, crossingTotal: 0, tactileTotal: 0 },
   },
 };
 

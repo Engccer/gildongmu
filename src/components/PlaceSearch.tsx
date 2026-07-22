@@ -754,7 +754,7 @@ export function PlaceSearch({
         </div>
       )}
       {/* 이 지역 날씨 — 버튼 없이 좌표 준비 시 자동 등장하는 통합 카드(현재 날씨 +
-          공기질). 외출 전 환경 브리핑. 내 주변 버튼 6종(지하철~둘러보기) 아래에
+          공기질). 외출 전 환경 브리핑. 내 주변 버튼 7종(지하철~보행 인프라) 아래에
           배치(위원장 선호). LocalConditions가 두 fetch를 소유해 단일 region. */}
       {canShowAir && status.kind === "idle" && userCoords && (
         <div className="mt-4">
