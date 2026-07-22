@@ -197,8 +197,12 @@
       "safetyPlatform": "Escalón de seguridad",
       "signLangPhone": "Videoteléfono en lengua de signos",
       "helper": "Asistente de accesibilidad",
-      "restroom": "Aseo accesible"
+      "restroom": "Aseo accesible",
+      "voiceGuide": "Balizas de guía sonora",
+      "elevatorLocation": "Ubicaciones de ascensores"
     },
+    "supplementFailed": "No se pudo cargar parte de la información de las instalaciones.",
+    "voiceGuideSource": "Balizas de guía sonora: datos de Seoul Metro (a partir de 2025-08)",
     "source": "Fuente: datos de instalaciones de accesibilidad de Seoul Metro (líneas 1–8 de Seoul)."
   },
   "subwayArrival": {

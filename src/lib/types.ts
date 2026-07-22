@@ -154,7 +154,7 @@ export interface StationFacilities {
   elevators: number | undefined;
 }
 
-/** 서울 지하철 교통약자 시설 종류 키 — i18n 라벨·그룹핑용. */
+/** 서울 지하철 교통약자 시설 종류 키(서울교통공사 wksn 9종) — i18n 라벨·그룹핑용. */
 export type SeoulMetroFacilityKind =
   | "elevator"
   | "escalator"
@@ -165,6 +165,13 @@ export type SeoulMetroFacilityKind =
   | "signLangPhone"
   | "helper"
   | "restroom";
+
+/**
+ * 시설 패널 그룹 종류 — wksn 9종 + 보강 그룹 2종(음성유도기·엘리베이터 위치 폴백).
+ * 보강 그룹은 wksn과 무관한 별도 데이터 소스(정적 seed·OA-21212)라 원본
+ * SeoulMetroFacilityKind에 섞지 않고 그룹 레벨에서만 합류시킨다.
+ */
+export type SeoulMetroFacilityGroupKind = SeoulMetroFacilityKind | "voiceGuide" | "elevatorLocation";
 
 /** 시설 인스턴스 하나(엘리베이터 1대 등) — 위치·층·가동현황을 낭독 정본으로 보존. */
 export interface SeoulMetroFacility {
@@ -182,11 +189,11 @@ export interface SeoulMetroFacility {
 
 /** 한 시설 종류의 묶음 — 데이터가 있는 종류만 포함된다. */
 export interface SeoulMetroFacilityGroup {
-  kind: SeoulMetroFacilityKind;
+  kind: SeoulMetroFacilityGroupKind;
   facilities: SeoulMetroFacility[];
 }
 
-/** 한 지하철역의 교통약자 시설 전체(서울교통공사 1~8호선). */
+/** 한 지하철역의 교통약자 시설 전체(서울교통공사 1~8호선 + 보강 그룹). */
 export interface SeoulMetroFacilities {
   /** 역명(데이터셋 표기, 표시용) */
   stationName: string;
@@ -194,6 +201,11 @@ export interface SeoulMetroFacilities {
   line: string | undefined;
   /** 데이터가 있는 시설 종류만. 전부 비면 빈 배열 → 라우트가 null 처리. */
   groups: SeoulMetroFacilityGroup[];
+  /**
+   * 보강 소스(OA-21212 엘리베이터 위치 폴백) 실패 시 true — wksn 주 조회는
+   * 정상이었지만 보강만 실패했을 때만 표기한다. 실패 은폐 금지(스펙 §2-C).
+   */
+  supplementFailed?: true;
 }
 
 /** 자동차 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본 */

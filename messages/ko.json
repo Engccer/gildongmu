@@ -197,8 +197,12 @@
       "safetyPlatform": "안전발판",
       "signLangPhone": "수어영상전화기",
       "helper": "교통약자 도우미",
-      "restroom": "장애인 화장실"
+      "restroom": "장애인 화장실",
+      "voiceGuide": "시각장애인 음성유도기",
+      "elevatorLocation": "엘리베이터 위치"
     },
+    "supplementFailed": "일부 시설 정보를 불러오지 못했습니다.",
+    "voiceGuideSource": "음성유도기: 서울교통공사 제공(2025-08 기준)",
     "source": "출처: 서울교통공사 교통약자이용정보(서울 1~8호선)."
   },
   "subwayArrival": {

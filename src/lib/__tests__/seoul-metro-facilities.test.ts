@@ -5,10 +5,19 @@ import fixture from "./fixtures/seoul-metro-facilities.json";
 // 키 유무 분기를 테스트하려면 env 모듈을 모킹해 키를 주입한다.
 vi.mock("../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
 
+// 엘리베이터 위치 폴백(OA-21212)은 기본적으로 실구현을 그대로 통과시키되
+// (SEOUL_OPEN_DATA_KEY 없음 → 빈 배열, 네트워크 호출 없음), 실패 케이스만
+// 개별 테스트에서 mockRejectedValueOnce로 오버라이드한다.
+vi.mock("../providers/seoul-elevator", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../providers/seoul-elevator")>();
+  return { ...actual, fetchSeoulElevators: vi.fn(actual.fetchSeoulElevators) };
+});
+
 import {
   parseFacilityGroup,
   parseSeoulMetroFacilities,
 } from "../providers/seoul-metro-facilities";
+import { fetchSeoulElevators } from "../providers/seoul-elevator";
 
 describe("parseFacilityGroup — 시설별 정규화", () => {
   // fixture(stnNm=강동 포함필터)는 강동+강동구청 혼재. 정확매칭 후 강동역만:
@@ -166,7 +175,9 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     // 못 잡아 섹션이 죽었다 — 이제 "강동"만 보낸다.
     expect(sentStnNm.every((v) => v === "강동")).toBe(true);
     expect(r).not.toBeNull();
-    expect(r!.groups.length).toBe(4);
+    // wksn 4종(엘리베이터·에스컬레이터·안전발판·화장실) + Task 7 음성유도기 보강.
+    expect(r!.groups.filter((g) => g.kind !== "voiceGuide").length).toBe(4);
+    expect(r!.groups.some((g) => g.kind === "voiceGuide")).toBe(true);
   });
 
   it("9 오퍼레이션을 병렬 호출해 묶는다(강동 4종)", async () => {
@@ -191,7 +202,9 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     });
     const r = await fetchSeoulMetroFacilities("강동역");
     expect(r).not.toBeNull();
-    expect(r!.groups.length).toBe(4); // 엘리베이터·에스컬레이터·안전발판·화장실 (충전기는 강동구청만)
+    // 엘리베이터·에스컬레이터·안전발판·화장실 (충전기는 강동구청만) + Task 7 음성유도기 보강.
+    expect(r!.groups.filter((g) => g.kind !== "voiceGuide").length).toBe(4);
+    expect(r!.groups.some((g) => g.kind === "voiceGuide")).toBe(true);
   });
 
   it("주 fetch HTTP 실패는 throw(일시 장애 ≠ 정보 없음)", async () => {
@@ -247,5 +260,86 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(truncated));
     await expect(fetchSeoulMetroFacilities("강동역")).rejects.toThrow(/페이지 누락/);
+  });
+});
+
+describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유도기+엘리베이터 위치 폴백)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  function ok(json: unknown): Response {
+    return { ok: true, status: 200, json: async () => json } as unknown as Response;
+  }
+
+  const wksnMap: Record<string, unknown> = {
+    getWksnElvtr: fixture.Elvtr,
+    getWksnEsctr: fixture.Esctr,
+    getWksnWhcllift: fixture.Whcllift,
+    getWksnMvnwlk: fixture.Mvnwlk,
+    getWksnWhclCharge: fixture.WhclCharge,
+    getWksnSafePlfm: fixture.SafePlfm,
+    getWksnSlng: fixture.Slng,
+    getWksnHelper: fixture.Helper,
+    getWksnRstrm: fixture.Rstrm,
+  };
+
+  function mockWksnFetch() {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      const op = Object.keys(wksnMap).find((o) => url.includes(`/${o}?`))!;
+      return Promise.resolve(ok(wksnMap[op]));
+    });
+  }
+
+  it("강동(wksn elevator 그룹 존재) → elevatorLocation 그룹 없음, voiceGuide 그룹 존재(실 seed)", async () => {
+    mockWksnFetch();
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const r = await fetchSeoulMetroFacilities("강동역 5호선");
+    expect(r).not.toBeNull();
+    const kinds = r!.groups.map((g) => g.kind);
+    expect(kinds).toContain("elevator");
+    expect(kinds).not.toContain("elevatorLocation");
+    const voiceGroup = r!.groups.find((g) => g.kind === "voiceGuide");
+    expect(voiceGroup).toBeDefined();
+    expect(voiceGroup!.facilities.length).toBeGreaterThan(10);
+    expect(r!.supplementFailed).toBeUndefined();
+  });
+
+  it("wksn 전부 빈 raws + voiceGuide 매칭 있음 → 비-null 반환, groups=[voiceGuide]", async () => {
+    const empty = { response: { body: { items: "" } } };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(empty));
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const r = await fetchSeoulMetroFacilities("강동역 5호선");
+    expect(r).not.toBeNull();
+    expect(r!.groups.map((g) => g.kind)).toEqual(["voiceGuide"]);
+    expect(r!.supplementFailed).toBeUndefined();
+  });
+
+  it("엘리베이터 fetch reject 모킹 → supplementFailed: true, 기존 그룹 보존", async () => {
+    // wksn: 에스컬레이터 1종만 있는 합성역("테스트역", voiceGuide 미커버)
+    const escalatorOnlyRaw = {
+      response: {
+        body: {
+          items: { item: [{ stnNm: "테스트역", lineNm: "1호선", fcltNm: "에스컬레이터" }] },
+        },
+      },
+    };
+    const empty = { response: { body: { items: "" } } };
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("/getWksnEsctr?")) return Promise.resolve(ok(escalatorOnlyRaw));
+      return Promise.resolve(ok(empty));
+    });
+    vi.mocked(fetchSeoulElevators).mockRejectedValueOnce(new Error("tbTraficElvtr HTTP 503"));
+    const { fetchSeoulMetroFacilities } = await import(
+      "../providers/seoul-metro-facilities"
+    );
+    const r = await fetchSeoulMetroFacilities("테스트역");
+    expect(r).not.toBeNull();
+    expect(r!.groups.map((g) => g.kind)).toEqual(["escalator"]);
+    expect(r!.supplementFailed).toBe(true);
   });
 });
