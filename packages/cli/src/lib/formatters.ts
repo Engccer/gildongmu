@@ -472,7 +472,8 @@ function formatMetroFacilities(body: { facilities: SeoulMetroFacilitiesItem | nu
 }
 
 function timetableTrainText(label: string, t: TimetableTrainItem): string {
-  return `${label} ${t.nextDay ? "익일 " : ""}${t.time} ${t.terminus}행`;
+  const time = `${label} ${t.nextDay ? "익일 " : ""}${t.time}`;
+  return t.terminus ? `${time} ${t.terminus}행` : time;
 }
 
 /** 200 + null = TAGO 미커버 역·키 없음(라우트 판정 표) — 조회 실패(502)와 다른 문장. */
