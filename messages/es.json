@@ -492,6 +492,14 @@
       "generalWeather": "Dime la calidad del aire y el tiempo aquí"
     }
   },
+  "recent": {
+    "title": "Búsquedas recientes",
+    "clearAll": "Borrar todas las búsquedas recientes",
+    "delete": "Eliminar",
+    "deleteItem": "Eliminar {name}",
+    "deleted": "Eliminado",
+    "cleared": "Se borraron todas las búsquedas recientes"
+  },
   "privacy": {
     "title": "Política de privacidad",
     "intro": "Gildongmu funciona sin cuenta y no guarda datos personales en ninguna base de datos propia.",

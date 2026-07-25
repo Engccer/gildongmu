@@ -492,6 +492,14 @@
       "generalWeather": "Tell me the air quality and weather here"
     }
   },
+  "recent": {
+    "title": "Recent searches",
+    "clearAll": "Clear all recent searches",
+    "delete": "Delete",
+    "deleteItem": "Delete {name}",
+    "deleted": "Deleted",
+    "cleared": "All recent searches cleared"
+  },
   "privacy": {
     "title": "Privacy Policy",
     "intro": "Gildongmu works without an account and does not store personal data in any database of its own.",
