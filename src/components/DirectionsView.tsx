@@ -775,10 +775,14 @@ function EndpointField({
           </ul>
         )}
       {/* 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 조용히 나타나는 목록이라
-          heading이 발견 경로(h3 — 뷰 제목 h2 아래 관례). 선택은 확정 공용 경로 재사용. */}
+          heading이 발견 경로(h3 — 뷰 제목 h2 아래 관례). 출발지·도착지 두 필드가 동시에
+          노출될 수 있어 필드명을 헤딩에 포함(titleFor) — 동일 텍스트 헤딩 중복 방지
+          (리뷰 확정 2026-07-26). 선택은 확정 공용 경로 재사용. */}
       {candidates === null && visibleRecent.length > 0 && (
         <section className="mt-2">
-          <h3 className="text-sm font-semibold">{tRecent("title")}</h3>
+          <h3 className="text-sm font-semibold">
+            {tRecent("titleFor", { field: label })}
+          </h3>
           <ul className="mt-1">
             {visibleRecent.map((e, i) => (
               <li key={`${e.lat},${e.lng}`} className="flex items-center gap-2">

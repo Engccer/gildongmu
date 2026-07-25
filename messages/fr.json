@@ -494,6 +494,7 @@
   },
   "recent": {
     "title": "Recherches récentes",
+    "titleFor": "Recherches récentes ({field})",
     "clearAll": "Effacer toutes les recherches récentes",
     "delete": "Supprimer",
     "deleteItem": "Supprimer {name}",
