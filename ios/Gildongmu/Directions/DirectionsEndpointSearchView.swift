@@ -91,6 +91,12 @@ struct DirectionsEndpointSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
     @State private var speech = SpeechService()
+    /// 최근 장소(스펙 2026-07-26) — 출발지/도착지 공유 목록, 시트 열릴 때 로드.
+    private let recentStore = RecentSearchStore()
+    @State private var recentEndpoints: [RecentEndpoint] = []
+    @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
+    /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5, SearchView 동형).
+    @AccessibilityFocusState private var micRowFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -111,6 +117,7 @@ struct DirectionsEndpointSearchView: View {
                         },
                         onPause: nil
                     )
+                    .accessibilityFocused($micRowFocused)
                 }
                 // "현재 위치 사용"은 출발지 전용(웹 동형, 도착지를 현재 위치로 두는 건 스왑이 담당)
                 if target == .from {
@@ -118,6 +125,25 @@ struct DirectionsEndpointSearchView: View {
                 }
                 if !model.notice.isEmpty {
                     Text(model.notice)
+                }
+                // 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 행 활성화=재검색 없이
+                // 즉시 확정, swipeActions 삭제가 VoiceOver 로터로 자동 노출된다. 기록은
+                // select→onSelect→setEndpoint가 담당(이중 기록 금지).
+                if model.places.isEmpty && model.addresses.isEmpty && !recentEndpoints.isEmpty {
+                    Section(appLocalized("recent.title")) {
+                        ForEach(recentEndpoints, id: \.self) { endpoint in
+                            Button(endpoint.label) {
+                                select(.place(label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng))
+                            }
+                            .accessibilityFocused($focusedRecent, equals: endpoint)
+                            .swipeActions {
+                                Button(appLocalized("recent.delete"), role: .destructive) {
+                                    deleteRecent(endpoint)
+                                }
+                            }
+                        }
+                        Button(appLocalized("recent.clearAll")) { clearRecent() }
+                    }
                 }
                 ForEach(model.places) { place in
                     Button {
@@ -152,6 +178,9 @@ struct DirectionsEndpointSearchView: View {
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
                 Button(appLocalized("ios.common.ok")) {}
             }
+            .task {
+                recentEndpoints = recentStore.endpoints()
+            }
             // 마이크는 항상 폐기(시트가 닫히면 뷰가 소멸하므로 유령 청취 방지 —
             // SearchView 동형 teardown). 검색 Task도 함께 취소.
             .onDisappear {
@@ -184,5 +213,24 @@ struct DirectionsEndpointSearchView: View {
     private func select(_ endpoint: DirectionsEndpoint) {
         onSelect(endpoint)
         dismiss()
+    }
+
+    /// 항목 삭제(스펙 §5): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행. 통지 1건.
+    private func deleteRecent(_ endpoint: RecentEndpoint) {
+        guard let index = recentEndpoints.firstIndex(of: endpoint) else { return }
+        recentEndpoints = recentStore.removeEndpoint(endpoint)
+        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        if recentEndpoints.isEmpty {
+            micRowFocused = true
+            return
+        }
+        focusedRecent = recentEndpoints[min(index, recentEndpoints.count - 1)]
+    }
+
+    private func clearRecent() {
+        recentStore.clearEndpoints()
+        recentEndpoints = []
+        AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
+        micRowFocused = true
     }
 }
