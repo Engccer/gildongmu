@@ -762,10 +762,11 @@ export function PlaceSearch({
       )}
 
       {/* 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 자동 등장 정적 목록이라
-          heading이 발견 경로(h2 — 결과 헤딩과 동급). 목록 비면 섹션 자체 미노출. */}
+          heading이 발견 경로 — 같은 idle 화면의 형제 섹션 10종과 동급인 h3(section
+          heading, h2는 결과 헤딩 전용). 목록 비면 섹션 자체 미노출. */}
       {status.kind === "idle" && recentQueries.length > 0 && (
         <section className="mt-4">
-          <h2 className="text-xl font-semibold">{t("recent.title")}</h2>
+          <h3 className="text-base font-semibold">{t("recent.title")}</h3>
           <ul className="mt-2">
             {recentQueries.map((q, i) => (
               <li key={q} className="flex items-center gap-2">
