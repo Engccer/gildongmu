@@ -14,6 +14,9 @@ final class EndpointSearchModel {
     /// 0건·실패의 시각 안내(3-state: 없음≠실패). 후보 있는 성공은 목록이 정본이라 비운다.
     private(set) var notice = ""
     private(set) var isSearching = false
+    /// tri-state: "검색 전"(최근 섹션 노출)과 "검색함(진행중·0건·실패 불문)"을 구분(웹
+    /// candidates===null·SearchView outcome==nil 미러). 시트 수명=1회라 리셋 경로 없음(YAGNI).
+    private(set) var hasSearched = false
     private var searchTask: Task<Void, Never>?
     /// 지오코딩 재진입 가드(웹 geocodeRef 미러)
     private var isGeocodingInFlight = false
@@ -23,6 +26,7 @@ final class EndpointSearchModel {
     func submit() {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        hasSearched = true   // 검색 시작 시점(진행 중에도 최근 섹션 숨김, SearchView !isSearching 배제 동형)
         searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
         isSearching = true
         searchTask = Task {
@@ -126,10 +130,12 @@ struct DirectionsEndpointSearchView: View {
                 if !model.notice.isEmpty {
                     Text(model.notice)
                 }
-                // 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 행 활성화=재검색 없이
-                // 즉시 확정, swipeActions 삭제가 VoiceOver 로터로 자동 노출된다. 기록은
+                // 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만(hasSearched tri-state —
+                // "아직 검색 안 함"과 "검색함(0건·실패 포함)"을 구분, places/addresses.isEmpty만
+                // 쓰면 0건 노출 후 재노출되는 회귀). 행 활성화=재검색 없이 즉시 확정,
+                // swipeActions 삭제가 VoiceOver 로터로 자동 노출된다. 기록은
                 // select→onSelect→setEndpoint가 담당(이중 기록 금지).
-                if model.places.isEmpty && model.addresses.isEmpty && !recentEndpoints.isEmpty {
+                if !model.hasSearched && !recentEndpoints.isEmpty {
                     Section(appLocalized("recent.title")) {
                         ForEach(recentEndpoints, id: \.self) { endpoint in
                             Button(endpoint.label) {
