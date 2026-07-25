@@ -13,6 +13,12 @@ struct SearchView: View {
     @AccessibilityFocusState private var focusedRowID: String?
     /// 결과 행 커스텀 액션의 장소 채팅 sheet(내 주변 뷰들과 동형). 표시마다 새 대화.
     @State private var chatPlace: Place?
+    /// 최근 검색(스펙 2026-07-26). 검색 전 초기 화면에만 노출, 기록은 runSearch 공용 경로.
+    private let recentStore = RecentSearchStore()
+    @State private var recentQueries: [String] = []
+    @AccessibilityFocusState private var focusedRecentQuery: String?
+    /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5).
+    @AccessibilityFocusState private var micRowFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -36,6 +42,26 @@ struct SearchView: View {
                         },
                         onPause: nil
                     )
+                    .accessibilityFocused($micRowFocused)
+                }
+                // 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 행 활성화=재검색,
+                // swipeActions 삭제가 VoiceOver 로터 커스텀 액션으로 자동 노출된다.
+                if model.outcome == nil && !model.isSearching && !recentQueries.isEmpty {
+                    Section(appLocalized("recent.title")) {
+                        ForEach(recentQueries, id: \.self) { query in
+                            Button(query) {
+                                model.query = query
+                                runSearch()
+                            }
+                            .accessibilityFocused($focusedRecentQuery, equals: query)
+                            .swipeActions {
+                                Button(appLocalized("recent.delete"), role: .destructive) {
+                                    deleteRecent(query)
+                                }
+                            }
+                        }
+                        Button(appLocalized("recent.clearAll")) { clearRecent() }
+                    }
                 }
                 if let outcome = model.outcome {
                     ForEach(Array(outcome.orderedSections.enumerated()), id: \.offset) { _, section in
@@ -56,6 +82,7 @@ struct SearchView: View {
             // 홀드 없이 시작된 이 세션의 정지는 마이크 행 탭(HoldDictationButton의
             // 외부 시작 세션 공용 정지 경로)이 담당한다.
             .task {
+                recentQueries = recentStore.queries()
                 let store = LaunchActionStore.shared
                 if store.voiceStartRequested {
                     store.voiceStartRequested = false
@@ -93,9 +120,30 @@ struct SearchView: View {
     /// 제출한다(웹 performSearch의 setBucket(null)/setRegion(null) 미러) — 필터
     /// 리셋은 결과 도착 전에 끝나므로 포커스 이동 시점엔 항상 무필터 상태다.
     private func runSearch() {
+        recentQueries = recentStore.recordQuery(model.query)  // 제출 = 기록 시점(음성 경로 포함)
         bucket = nil
         region = nil
         model.submit()
+    }
+
+    /// 항목 삭제(스펙 §5 포커스 계약): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행.
+    /// 통지 1건 + 포커스 이동(이동 착지 라벨 낭독과 순서 무해 — polite 큐).
+    private func deleteRecent(_ query: String) {
+        guard let index = recentQueries.firstIndex(of: query) else { return }
+        recentQueries = recentStore.removeQuery(query)
+        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        if recentQueries.isEmpty {
+            micRowFocused = true
+            return
+        }
+        focusedRecentQuery = recentQueries[min(index, recentQueries.count - 1)]
+    }
+
+    private func clearRecent() {
+        recentStore.clearQueries()
+        recentQueries = []
+        AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
+        micRowFocused = true
     }
 
     /// denied·failed 안내(3-state: 실패와 거부를 다른 문장으로). 확인 시 idle 복귀.
