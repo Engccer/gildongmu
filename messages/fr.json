@@ -492,6 +492,14 @@
       "generalWeather": "Indique-moi la qualité de l'air et la météo ici"
     }
   },
+  "recent": {
+    "title": "Recherches récentes",
+    "clearAll": "Effacer toutes les recherches récentes",
+    "delete": "Supprimer",
+    "deleteItem": "Supprimer {name}",
+    "deleted": "Supprimé",
+    "cleared": "Toutes les recherches récentes ont été effacées"
+  },
   "privacy": {
     "title": "Politique de confidentialité",
     "intro": "Gildongmu fonctionne sans compte et ne conserve aucune donnée personnelle dans une base de données propre.",
