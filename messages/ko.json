@@ -494,6 +494,7 @@
   },
   "recent": {
     "title": "최근 검색",
+    "titleFor": "{field} 최근 검색",
     "clearAll": "최근 검색 모두 지우기",
     "delete": "삭제",
     "deleteItem": "{name} 삭제",
