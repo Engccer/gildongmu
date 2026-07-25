@@ -17,6 +17,13 @@ import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { joinText } from "@/lib/format";
+import {
+  clearRecentEndpoints,
+  loadRecentEndpoints,
+  recordRecentEndpoint,
+  removeRecentEndpoint,
+  type RecentEndpoint,
+} from "@/lib/recent-searches";
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
@@ -155,6 +162,43 @@ export function DirectionsView({
   const [results, setResults] = useState<QueryResults | null>(null);
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
+
+  // 최근 장소(스펙 2026-07-26) — 출발지/도착지 공유 목록. 마운트 후 로드(SSR 가드).
+  const [recentEndpoints, setRecentEndpoints] = useState<RecentEndpoint[]>([]);
+  const tRecent = useTranslations("recent");
+  useEffect(() => {
+    // react-hooks/set-state-in-effect 회피: 동기 setState 대신 콜백으로 한 틱 미룬다
+    // (PlaceSearch 최근 검색 로드 effect와 동형).
+    queueMicrotask(() => setRecentEndpoints(loadRecentEndpoints()));
+  }, []);
+
+  // 프리필 도착지(장소 상세 "여기까지 길찾기")도 확정 경로와 동일하게 기록(마운트 1회).
+  // ?dir= 복원의 재기록은 dedupe 끌어올림이라 무해.
+  const recordedInitialRef = useRef(false);
+  useEffect(() => {
+    if (recordedInitialRef.current) return;
+    recordedInitialRef.current = true;
+    if (initialTo?.kind === "place") {
+      const ep = initialTo;
+      queueMicrotask(() =>
+        setRecentEndpoints(
+          recordRecentEndpoint({
+            label: ep.label,
+            lat: ep.coord.lat,
+            lng: ep.coord.lng,
+          }),
+        ),
+      );
+    }
+  }, [initialTo]);
+
+  /** endpoint 확정 공용 기록 지점(현재 위치 제외 — kind:"place"만). */
+  function recordResolved(ep: DirEndpoint) {
+    if (ep.kind === "place")
+      setRecentEndpoints(
+        recordRecentEndpoint({ label: ep.label, lat: ep.coord.lat, lng: ep.coord.lng }),
+      );
+  }
 
   const titleRef = useRef<HTMLHeadingElement>(null);
   const inFlight = useRef(false);
@@ -361,12 +405,23 @@ export function DirectionsView({
           setFromField({ text, resolved: null });
           setResults(null);
         }}
-        onResolve={(ep) => setFromField(endpointToField(ep, currentLabel))}
+        onResolve={(ep) => {
+          recordResolved(ep);
+          setFromField(endpointToField(ep, currentLabel));
+        }}
         onUseCurrent={() => void selectCurrentFrom()}
         useCurrentBusy={refreshingCurrent}
         announce={setNotice}
         locale={locale}
         t={t}
+        recentEndpoints={recentEndpoints}
+        onDeleteRecent={(e) => {
+          const next = removeRecentEndpoint(e);
+          setRecentEndpoints(next);
+          return next;
+        }}
+        onClearRecent={() => setRecentEndpoints(clearRecentEndpoints())}
+        tRecent={tRecent}
       />
 
       <button
@@ -386,10 +441,21 @@ export function DirectionsView({
           setToField({ text, resolved: null });
           setResults(null);
         }}
-        onResolve={(ep) => setToField(endpointToField(ep, currentLabel))}
+        onResolve={(ep) => {
+          recordResolved(ep);
+          setToField(endpointToField(ep, currentLabel));
+        }}
         announce={setNotice}
         locale={locale}
         t={t}
+        recentEndpoints={recentEndpoints}
+        onDeleteRecent={(e) => {
+          const next = removeRecentEndpoint(e);
+          setRecentEndpoints(next);
+          return next;
+        }}
+        onClearRecent={() => setRecentEndpoints(clearRecentEndpoints())}
+        tRecent={tRecent}
       />
 
       {/* disabled 금지: aria-disabled + in-flight ref 가드로 포커스를 지킨다 */}
@@ -477,6 +543,10 @@ function EndpointField({
   announce,
   locale,
   t,
+  recentEndpoints,
+  onDeleteRecent,
+  onClearRecent,
+  tRecent,
 }: {
   label: string;
   searchLabel: string;
@@ -490,6 +560,11 @@ function EndpointField({
   announce: (message: string) => void;
   locale: string;
   t: ReturnType<typeof useTranslations<"directions">>;
+  /** 최근 장소 공유 목록(출발지·도착지 동일 소스, 스펙 2026-07-26) */
+  recentEndpoints: RecentEndpoint[];
+  onDeleteRecent: (e: RecentEndpoint) => RecentEndpoint[];
+  onClearRecent: () => void;
+  tRecent: ReturnType<typeof useTranslations<"recent">>;
 }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -499,6 +574,37 @@ function EndpointField({
   } | null>(null);
   const reqRef = useRef(0);
   const geocodeRef = useRef(false);
+
+  // 필드당 최신 5건만(두 필드 동시 노출 노이즈 완충 — 스펙 §4). 저장·삭제는 20건 공유.
+  const visibleRecent = recentEndpoints.slice(0, 5);
+  const recentDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const recentFocusIndexRef = useRef<number | null>(null);
+  const [recentRevision, setRecentRevision] = useState(0);
+  useEffect(() => {
+    const idx = recentFocusIndexRef.current;
+    if (idx === null) return;
+    recentFocusIndexRef.current = null;
+    recentDeleteRefs.current[idx]?.focus();
+  }, [recentRevision]);
+
+  function deleteRecent(e: RecentEndpoint, index: number) {
+    const next = onDeleteRecent(e);
+    announce(tRecent("deleted"));
+    const visibleCount = Math.min(next.length, 5);
+    if (visibleCount === 0) {
+      inputRef.current?.focus();
+      return;
+    }
+    recentFocusIndexRef.current = Math.min(index, visibleCount - 1);
+    setRecentRevision((r) => r + 1);
+  }
+
+  function clearRecent() {
+    // 전체 삭제 버튼도 함께 사라진다 — 제거 전 입력으로 선점 이동(§5).
+    inputRef.current?.focus();
+    onClearRecent();
+    announce(tRecent("cleared"));
+  }
 
   // queryOverride: 음성 전사 자동 검색용 — setState(field.text) 반영을 기다리지 않고
   // 전사 원문으로 즉시 검색한다(타이핑 경로는 인자 없이 field.text 사용).
@@ -668,6 +774,50 @@ function EndpointField({
             ))}
           </ul>
         )}
+      {/* 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 조용히 나타나는 목록이라
+          heading이 발견 경로(h3 — 뷰 제목 h2 아래 관례). 선택은 확정 공용 경로 재사용. */}
+      {candidates === null && visibleRecent.length > 0 && (
+        <section className="mt-2">
+          <h3 className="text-sm font-semibold">{tRecent("title")}</h3>
+          <ul className="mt-1">
+            {visibleRecent.map((e, i) => (
+              <li key={`${e.lat},${e.lng}`} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    resolveAndClose({
+                      kind: "place",
+                      label: e.label,
+                      coord: { lat: e.lat, lng: e.lng },
+                    })
+                  }
+                  className="min-h-11 flex-1 text-left text-sm underline"
+                >
+                  {e.label}
+                </button>
+                <button
+                  type="button"
+                  ref={(el) => {
+                    recentDeleteRefs.current[i] = el;
+                  }}
+                  aria-label={tRecent("deleteItem", { name: e.label })}
+                  onClick={() => deleteRecent(e, i)}
+                  className="min-h-11 rounded-md border border-border px-3 text-sm"
+                >
+                  {tRecent("delete")}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={clearRecent}
+            className="mt-1 min-h-11 text-sm underline"
+          >
+            {tRecent("clearAll")}
+          </button>
+        </section>
+      )}
     </div>
   );
 }
