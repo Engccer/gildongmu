@@ -19,6 +19,12 @@ import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { requestLocation } from "@/lib/geolocation";
+import {
+  clearRecentQueries,
+  loadRecentQueries,
+  recordRecentQuery,
+  removeRecentQuery,
+} from "@/lib/recent-searches";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
   orderResultSections,
@@ -151,6 +157,28 @@ export function PlaceSearch({
   // 음성일 때 "'{질의}' 검색 중…"으로 바꿔, 인식 텍스트를 polite 한 채널로만
   // 통지한다(VoiceRecordButton의 assertive announce 제거와 한 쌍 — a11y C1).
   const [spokenQuery, setSpokenQuery] = useState<string | null>(null);
+  // 최근 검색(스펙 2026-07-26). 초기값 []로 SSR/CSR 일치(hydration), 마운트 후 로드.
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  // 삭제·전체삭제 polite 통지(단일 live region 공유 — idle에서만 표시되므로 검색 통지와 경합 없음)
+  const [recentNotice, setRecentNotice] = useState("");
+  const recentDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // 삭제 후 포커스 복원: 렌더 반영 뒤 이동(rAF 금지 — useEffect+focus가 repo 정본 패턴)
+  const recentFocusIndexRef = useRef<number | null>(null);
+  const [recentRevision, setRecentRevision] = useState(0);
+
+  useEffect(() => {
+    // react-hooks/set-state-in-effect 회피: 동기 setState 대신 콜백으로 한 틱 미룬다
+    // (동일 패턴이 아래 ?q= 자동검색 effect에도 있음).
+    queueMicrotask(() => setRecentQueries(loadRecentQueries()));
+  }, []);
+
+  useEffect(() => {
+    const idx = recentFocusIndexRef.current;
+    if (idx === null) return;
+    recentFocusIndexRef.current = null;
+    recentDeleteRefs.current[idx]?.focus();
+  }, [recentRevision]);
+
   // 현재 위치 — 공유 스토어에서 파생한다. 결과를 가까운 순으로 정렬하는 데 쓰며,
   // 위치 정렬은 핵심이 아니라 향상 기능이라 좌표가 없으면 provider 순서를 유지한다.
   // 공유 스토어가 세션 1회 획득·캐시를 보장하므로 "내 주변" 버튼들과 권한을 공유한다.
@@ -382,6 +410,9 @@ export function PlaceSearch({
   const runQuerySearch = useCallback(
     async (raw: string) => {
       if (!raw.trim()) return;
+      // 검색 제출 = 기록 시점(0건이어도 기록 — 재시도 가치). 이전 삭제 통지는 리셋.
+      setRecentNotice("");
+      setRecentQueries(recordRecentQuery(raw));
       // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
       setWebPending(false);
       setWebResults(null);
@@ -415,6 +446,25 @@ export function PlaceSearch({
     // 남지 않도록).
     setSpokenQuery(null);
     void runQuerySearch(query);
+  }
+
+  /** 항목 삭제(스펙 §5 포커스 계약): 다음 항목 → 이전 항목 → 목록 소멸 시 검색 input. */
+  function deleteRecent(q: string, index: number) {
+    const next = removeRecentQuery(q);
+    setRecentQueries(next);
+    setRecentNotice(t("recent.deleted"));
+    if (next.length === 0) {
+      searchInputRef.current?.focus();
+      return;
+    }
+    recentFocusIndexRef.current = Math.min(index, next.length - 1);
+    setRecentRevision((r) => r + 1);
+  }
+
+  function clearRecent() {
+    setRecentQueries(clearRecentQueries());
+    setRecentNotice(t("recent.cleared"));
+    searchInputRef.current?.focus();
   }
 
   /**
@@ -535,13 +585,16 @@ export function PlaceSearch({
           spokenQuery,
           placeErrored: status.kind === "error",
         });
-  const liveMessage = (liveParts ?? [])
-    .map((p) =>
-      p.key === "search.searchingFor"
-        ? t(p.key, { query: spokenQuery ?? "" })
-        : t(p.key, p.values ?? {}),
-    )
-    .join(", ");
+  const liveMessage =
+    status.kind === "idle" && recentNotice
+      ? recentNotice
+      : (liveParts ?? [])
+          .map((p) =>
+            p.key === "search.searchingFor"
+              ? t(p.key, { query: spokenQuery ?? "" })
+              : t(p.key, p.values ?? {}),
+          )
+          .join(", ");
 
   // 길찾기 뷰가 열려 있으면 최우선 렌더(상세 위에도 쌓일 수 있음).
   const canShowDirections = canShowTransit || canBriefCarRoute || canShowWalk;
@@ -706,6 +759,50 @@ export function PlaceSearch({
           <Route aria-hidden="true" className="h-4 w-4" />
           {t("directions.title")}
         </button>
+      )}
+
+      {/* 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 자동 등장 정적 목록이라
+          heading이 발견 경로(h2 — 결과 헤딩과 동급). 목록 비면 섹션 자체 미노출. */}
+      {status.kind === "idle" && recentQueries.length > 0 && (
+        <section className="mt-4">
+          <h2 className="text-xl font-semibold">{t("recent.title")}</h2>
+          <ul className="mt-2">
+            {recentQueries.map((q, i) => (
+              <li key={q} className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSpokenQuery(null);
+                    setQuery(q);
+                    void runQuerySearch(q);
+                  }}
+                  className="min-h-11 flex-1 text-left text-sm underline"
+                >
+                  {q}
+                </button>
+                {/* 시각 라벨은 "삭제", 접근 이름은 "{항목} 삭제"(동명 버튼 구분 — 정보 보강이라 덮기 아님) */}
+                <button
+                  type="button"
+                  ref={(el) => {
+                    recentDeleteRefs.current[i] = el;
+                  }}
+                  aria-label={t("recent.deleteItem", { name: q })}
+                  onClick={() => deleteRecent(q, i)}
+                  className="min-h-11 rounded-md border border-border px-3 text-sm"
+                >
+                  {t("recent.delete")}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={clearRecent}
+            className="mt-1 min-h-11 text-sm underline"
+          >
+            {t("recent.clearAll")}
+          </button>
+        </section>
       )}
 
       {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
