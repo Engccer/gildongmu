@@ -71,7 +71,6 @@ final class DirectionsModel {
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
         to = prefilledDestination
-        recordRecent(prefilledDestination)
     }
 
     var isBusy: Bool { phase == .locating || phase == .loading }
@@ -94,8 +93,11 @@ final class DirectionsModel {
         clearResults()
     }
 
-    /// 최근 장소 기록(스펙 2026-07-26): 확정 단일 경로(setEndpoint·프리필 init)에서만
+    /// 최근 장소 기록(스펙 2026-07-26): 확정 단일 경로(setEndpoint)에서만
     /// `.place`를 기록한다("현재 위치" 제외 — 좌표가 매번 바뀌어 기록 의미가 없다).
+    /// 프리필 도착지 기록은 `GildongmuApp.consumeDirectionsPrefill`이 담당한다
+    /// (init은 App body 재평가마다 반복 호출되어 여기서 기록하면 삭제된 최근 장소가
+    /// 부활하는 부수효과가 있었다 — 스펙 §5 삭제 계약 위반, 2026-07-26 리뷰 수정).
     private func recordRecent(_ endpoint: DirectionsEndpoint?) {
         if case .place(let label, let lat, let lng) = endpoint {
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng))

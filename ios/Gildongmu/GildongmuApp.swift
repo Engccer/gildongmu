@@ -153,11 +153,18 @@ struct GildongmuApp: App {
     /// 전환한다. 사용자가 이미 채팅·검색을 쓰던 중일 수 있어 단축어 진입과 달리 그
     /// 상태를 보존해야 한다. directionsEpoch 갱신이 DirectionsTabView를 새로 만들어
     /// 이전 도착지·결과를 원자 교체한다(브리프 §4).
+    /// 최근 장소 기록(스펙 2026-07-26)도 여기서 1회 수행한다 — 프리필 이벤트가
+    /// 정확히 한 번 발생하는 지점이라, DirectionsModel.init(App body 재평가마다
+    /// 반복 호출)에서 기록하면 삭제한 최근 장소가 다음 재평가에서 부활하는
+    /// 부수효과가 있었다(2026-07-26 리뷰 발견).
     private func consumeDirectionsPrefill(_ endpoint: DirectionsEndpoint?) {
         guard let endpoint else { return }
         directionsPrefillStore.pending = nil
         directionsPrefill = endpoint
         directionsEpoch += 1
         selectedTab = .directions
+        if case .place(let label, let lat, let lng) = endpoint {
+            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng))
+        }
     }
 }
