@@ -71,6 +71,7 @@ final class DirectionsModel {
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
         to = prefilledDestination
+        recordRecent(prefilledDestination)
     }
 
     var isBusy: Bool { phase == .locating || phase == .loading }
@@ -82,13 +83,23 @@ final class DirectionsModel {
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
     func setEndpoint(_ endpoint: DirectionsEndpoint, for target: DirectionsFieldTarget) {
         if target == .from { from = endpoint } else { to = endpoint }
+        recordRecent(endpoint)
         clearResults()
     }
 
-    /// 출발↔도착 원자 교환(웹 swapFields 동형, 미확정 nil도 그대로 교환).
+    /// 출발↔도착 원자 교환(웹 swapFields 동형, 미확정 nil도 그대로 교환). 기록 없음
+    /// (스펙 §5 — 재배치일 뿐 새 확정이 아니다).
     func swap() {
         (from, to) = (to, from)
         clearResults()
+    }
+
+    /// 최근 장소 기록(스펙 2026-07-26): 확정 단일 경로(setEndpoint·프리필 init)에서만
+    /// `.place`를 기록한다("현재 위치" 제외 — 좌표가 매번 바뀌어 기록 의미가 없다).
+    private func recordRecent(_ endpoint: DirectionsEndpoint?) {
+        if case .place(let label, let lat, let lng) = endpoint {
+            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng))
+        }
     }
 
     /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
