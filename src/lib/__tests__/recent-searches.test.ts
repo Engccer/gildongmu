@@ -28,7 +28,7 @@ function memStorage(seed?: Record<string, string>): Storage {
 }
 
 const QK = "gildongmu:recent-queries:v1";
-const EK = "gildongmu:recent-endpoints:v1";
+const EK = "gildongmu:recent-endpoints-to:v1";
 
 describe("recentQueries", () => {
   it("기록은 trim 후 맨 앞 삽입, 빈 문자열은 무시한다", () => {
@@ -80,22 +80,23 @@ describe("recentEndpoints", () => {
 
   it("기록·cap·삭제·전체 삭제가 검색어와 동형으로 동작한다", () => {
     const s = memStorage();
-    expect(recordRecentEndpoint(gyeongbok, s)).toEqual([gyeongbok]);
+    expect(recordRecentEndpoint("to", gyeongbok, s)).toEqual([gyeongbok]);
     for (let i = 1; i <= RECENT_CAP; i++)
-      recordRecentEndpoint({ label: `p${i}`, lat: i, lng: i }, s);
-    expect(loadRecentEndpoints(s)).toHaveLength(RECENT_CAP);
-    expect(loadRecentEndpoints(s).some((e) => e.label === "경복궁")).toBe(false);
+      recordRecentEndpoint("to", { label: `p${i}`, lat: i, lng: i }, s);
+    expect(loadRecentEndpoints("to", s)).toHaveLength(RECENT_CAP);
+    expect(loadRecentEndpoints("to", s).some((e) => e.label === "경복궁")).toBe(false);
     const p1 = { label: "p1", lat: 1, lng: 1 };
-    expect(removeRecentEndpoint(p1, s).some((e) => e.label === "p1")).toBe(false);
-    expect(clearRecentEndpoints(s)).toEqual([]);
+    expect(removeRecentEndpoint("to", p1, s).some((e) => e.label === "p1")).toBe(false);
+    expect(clearRecentEndpoints("to", s)).toEqual([]);
   });
 
   it("좌표 소수 4자리가 같으면 같은 장소 — 최신 라벨로 교체하며 끌어올린다", () => {
     const s = memStorage();
-    recordRecentEndpoint(gyeongbok, s);
-    recordRecentEndpoint({ label: "서울역", lat: 37.5547, lng: 126.9707 }, s);
+    recordRecentEndpoint("to", gyeongbok, s);
+    recordRecentEndpoint("to", { label: "서울역", lat: 37.5547, lng: 126.9707 }, s);
     // 소수 5자리째만 다른 좌표(반올림 4자리 동일) + 라벨 변형
     const next = recordRecentEndpoint(
+      "to",
       { label: "경복궁 (고궁)", lat: 37.5796172, lng: 126.9770413 },
       s,
     );
@@ -105,6 +106,18 @@ describe("recentEndpoints", () => {
 
   it("스키마 불일치 요소는 걸러낸다", () => {
     const s = memStorage({ [EK]: '[{"label":"ok","lat":1,"lng":2},{"label":"bad"}]' });
-    expect(loadRecentEndpoints(s)).toEqual([{ label: "ok", lat: 1, lng: 2 }]);
+    expect(loadRecentEndpoints("to", s)).toEqual([{ label: "ok", lat: 1, lng: 2 }]);
+  });
+
+  it("출발지·도착지 기록은 서로 분리 저장된다", () => {
+    const s = memStorage();
+    recordRecentEndpoint("from", gyeongbok, s);
+    expect(loadRecentEndpoints("to", s)).toEqual([]);
+    recordRecentEndpoint("to", { label: "서울역", lat: 37.5547, lng: 126.9707 }, s);
+    expect(loadRecentEndpoints("from", s)).toEqual([gyeongbok]);
+    // 한쪽 전체 삭제가 다른 쪽에 영향 없음
+    clearRecentEndpoints("from", s);
+    expect(loadRecentEndpoints("from", s)).toEqual([]);
+    expect(loadRecentEndpoints("to", s)).toHaveLength(1);
   });
 });

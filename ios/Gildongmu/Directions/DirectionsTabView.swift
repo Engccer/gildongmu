@@ -82,7 +82,7 @@ final class DirectionsModel {
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
     func setEndpoint(_ endpoint: DirectionsEndpoint, for target: DirectionsFieldTarget) {
         if target == .from { from = endpoint } else { to = endpoint }
-        recordRecent(endpoint)
+        recordRecent(endpoint, scope: target == .from ? .from : .to)
         clearResults()
     }
 
@@ -95,12 +95,13 @@ final class DirectionsModel {
 
     /// 최근 장소 기록(스펙 2026-07-26): 확정 단일 경로(setEndpoint)에서만
     /// `.place`를 기록한다("현재 위치" 제외 — 좌표가 매번 바뀌어 기록 의미가 없다).
+    /// 출발지·도착지는 분리 스코프 저장(위원장 지시 2026-07-26 — 공유 목록 폐기).
     /// 프리필 도착지 기록은 `GildongmuApp.consumeDirectionsPrefill`이 담당한다
     /// (init은 App body 재평가마다 반복 호출되어 여기서 기록하면 삭제된 최근 장소가
     /// 부활하는 부수효과가 있었다 — 스펙 §5 삭제 계약 위반, 2026-07-26 리뷰 수정).
-    private func recordRecent(_ endpoint: DirectionsEndpoint?) {
+    private func recordRecent(_ endpoint: DirectionsEndpoint?, scope: RecentEndpointScope) {
         if case .place(let label, let lat, let lng) = endpoint {
-            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng))
+            RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: scope)
         }
     }
 

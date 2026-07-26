@@ -23,6 +23,7 @@ import {
   recordRecentEndpoint,
   removeRecentEndpoint,
   type RecentEndpoint,
+  type RecentEndpointField,
 } from "@/lib/recent-searches";
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
@@ -163,16 +164,23 @@ export function DirectionsView({
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
-  // 최근 장소(스펙 2026-07-26) — 출발지/도착지 공유 목록. 마운트 후 로드(SSR 가드).
-  const [recentEndpoints, setRecentEndpoints] = useState<RecentEndpoint[]>([]);
+  // 최근 장소(스펙 2026-07-26) — 출발지·도착지 **분리** 목록(위원장 지시 2026-07-26:
+  // 출발지에서 검색한 곳이 도착지 기록에 뜨는 공유 목록 폐기). 마운트 후 로드(SSR 가드).
+  const [recentFrom, setRecentFrom] = useState<RecentEndpoint[]>([]);
+  const [recentTo, setRecentTo] = useState<RecentEndpoint[]>([]);
   const tRecent = useTranslations("recent");
+  const setRecentFor = (field: RecentEndpointField) =>
+    field === "from" ? setRecentFrom : setRecentTo;
   useEffect(() => {
     // react-hooks/set-state-in-effect 회피: 동기 setState 대신 콜백으로 한 틱 미룬다
     // (PlaceSearch 최근 검색 로드 effect와 동형).
-    queueMicrotask(() => setRecentEndpoints(loadRecentEndpoints()));
+    queueMicrotask(() => {
+      setRecentFrom(loadRecentEndpoints("from"));
+      setRecentTo(loadRecentEndpoints("to"));
+    });
   }, []);
 
-  // 프리필 도착지(장소 상세 "여기까지 길찾기")도 확정 경로와 동일하게 기록(마운트 1회).
+  // 프리필 도착지(장소 상세 "여기까지 길찾기")도 확정 경로와 동일하게 도착지 기록(마운트 1회).
   // ?dir= 복원의 재기록은 dedupe 끌어올림이라 무해.
   const recordedInitialRef = useRef(false);
   useEffect(() => {
@@ -181,8 +189,8 @@ export function DirectionsView({
     if (initialTo?.kind === "place") {
       const ep = initialTo;
       queueMicrotask(() =>
-        setRecentEndpoints(
-          recordRecentEndpoint({
+        setRecentTo(
+          recordRecentEndpoint("to", {
             label: ep.label,
             lat: ep.coord.lat,
             lng: ep.coord.lng,
@@ -192,11 +200,15 @@ export function DirectionsView({
     }
   }, [initialTo]);
 
-  /** endpoint 확정 공용 기록 지점(현재 위치 제외 — kind:"place"만). */
-  function recordResolved(ep: DirEndpoint) {
+  /** endpoint 확정 공용 기록 지점(현재 위치 제외 — kind:"place"만). 필드별 분리 기록. */
+  function recordResolved(field: RecentEndpointField, ep: DirEndpoint) {
     if (ep.kind === "place")
-      setRecentEndpoints(
-        recordRecentEndpoint({ label: ep.label, lat: ep.coord.lat, lng: ep.coord.lng }),
+      setRecentFor(field)(
+        recordRecentEndpoint(field, {
+          label: ep.label,
+          lat: ep.coord.lat,
+          lng: ep.coord.lng,
+        }),
       );
   }
 
@@ -406,7 +418,7 @@ export function DirectionsView({
           setResults(null);
         }}
         onResolve={(ep) => {
-          recordResolved(ep);
+          recordResolved("from", ep);
           setFromField(endpointToField(ep, currentLabel));
         }}
         onUseCurrent={() => void selectCurrentFrom()}
@@ -414,13 +426,13 @@ export function DirectionsView({
         announce={setNotice}
         locale={locale}
         t={t}
-        recentEndpoints={recentEndpoints}
+        recentEndpoints={recentFrom}
         onDeleteRecent={(e) => {
-          const next = removeRecentEndpoint(e);
-          setRecentEndpoints(next);
+          const next = removeRecentEndpoint("from", e);
+          setRecentFrom(next);
           return next;
         }}
-        onClearRecent={() => setRecentEndpoints(clearRecentEndpoints())}
+        onClearRecent={() => setRecentFrom(clearRecentEndpoints("from"))}
         tRecent={tRecent}
       />
 
@@ -442,19 +454,19 @@ export function DirectionsView({
           setResults(null);
         }}
         onResolve={(ep) => {
-          recordResolved(ep);
+          recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
         }}
         announce={setNotice}
         locale={locale}
         t={t}
-        recentEndpoints={recentEndpoints}
+        recentEndpoints={recentTo}
         onDeleteRecent={(e) => {
-          const next = removeRecentEndpoint(e);
-          setRecentEndpoints(next);
+          const next = removeRecentEndpoint("to", e);
+          setRecentTo(next);
           return next;
         }}
-        onClearRecent={() => setRecentEndpoints(clearRecentEndpoints())}
+        onClearRecent={() => setRecentTo(clearRecentEndpoints("to"))}
         tRecent={tRecent}
       />
 
@@ -560,7 +572,7 @@ function EndpointField({
   announce: (message: string) => void;
   locale: string;
   t: ReturnType<typeof useTranslations<"directions">>;
-  /** 최근 장소 공유 목록(출발지·도착지 동일 소스, 스펙 2026-07-26) */
+  /** 이 필드 전용 최근 장소 목록(출발지·도착지 분리 저장, 스펙 2026-07-26) */
   recentEndpoints: RecentEndpoint[];
   onDeleteRecent: (e: RecentEndpoint) => RecentEndpoint[];
   onClearRecent: () => void;
@@ -575,7 +587,7 @@ function EndpointField({
   const reqRef = useRef(0);
   const geocodeRef = useRef(false);
 
-  // 필드당 최신 5건만(두 필드 동시 노출 노이즈 완충 — 스펙 §4). 저장·삭제는 20건 공유.
+  // 필드당 최신 5건만 표시(두 필드 동시 노출 노이즈 완충 — 스펙 §4). 저장은 필드별 20건.
   const visibleRecent = recentEndpoints.slice(0, 5);
   const recentDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const recentFocusIndexRef = useRef<number | null>(null);
