@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { KidsPlace } from "@/lib/types";
@@ -19,6 +19,10 @@ type Status =
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
   | { kind: "done"; kids: KidsPlace[]; at: string };
+
+/** 초기 표시 수·"더 보기" 1회 공개 수 — V1(NightClinicsNearby)과 동일 값 유지. */
+const INITIAL_VISIBLE = 10;
+const REVEAL_STEP = 10;
 
 /**
  * 근처 아이 놀 곳(키즈카페·놀이터·어린이공원, B3) — 홈 진입점.
@@ -39,6 +43,10 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  /** 공개된 항목 헤딩 참조 — "더 보기" 후 첫 새 항목으로 포커스 이동(헌장 §1). */
+  const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
   const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
@@ -61,6 +69,7 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
         hour: "2-digit",
         minute: "2-digit",
       });
+      setVisibleCount(INITIAL_VISIBLE);
       setStatus({ kind: "done", kids, at });
     } catch {
       setStatus({ kind: "error" });
@@ -129,6 +138,16 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
     }
   }, [status.kind]);
 
+  // "더 보기"로 공개된 첫 새 항목으로 포커스 이동 — 새 항목의 라벨이 곧 통지라
+  // 별도 live region은 두지 않는다(중복 낭독). 마지막 배치로 버튼이 같은 커밋에서
+  // 사라져도 useLayoutEffect는 페인트 전에 실행되어 이탈 창이 없다(V1 동형).
+  useLayoutEffect(() => {
+    const i = pendingFocusIndex.current;
+    if (i == null) return;
+    pendingFocusIndex.current = null;
+    itemHeadingRefs.current[i]?.focus();
+  }, [visibleCount]);
+
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
 
@@ -187,12 +206,18 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
           </button>
 
           <ul className="mt-2 space-y-4">
-            {status.kids.map((k) => (
+            {status.kids.slice(0, visibleCount).map((k, i) => (
               <li key={k.id}>
                 {/* 한 줄 = 한 객체: 이름·분류·실내외·거리를 단일 텍스트로 합친다.
                     분류·실내외·거리는 번역(로케일 정합)이고 이름은 한국어 전용이라,
                     SubwayArrivalsNearby와 동형으로 lang 없이 페이지 로케일을 따른다. */}
-                <h4 className="font-medium">
+                <h4
+                  className="font-medium"
+                  tabIndex={-1}
+                  ref={(el) => {
+                    itemHeadingRefs.current[i] = el;
+                  }}
+                >
                   {joinText(
                     k.name,
                     t(`kind.${k.kind}`),
@@ -247,6 +272,18 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
               </li>
             ))}
           </ul>
+          {status.kids.length > visibleCount && (
+            <button
+              type="button"
+              onClick={() => {
+                pendingFocusIndex.current = visibleCount;
+                setVisibleCount((v) => v + REVEAL_STEP);
+              }}
+              className="mt-2 min-h-11 text-sm text-accent underline"
+            >
+              {tActions("showMore")}
+            </button>
+          )}
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { SurroundingPlace } from "@/lib/types";
@@ -20,6 +20,10 @@ type Status =
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
   | { kind: "done"; places: SurroundingPlace[]; at: string };
 
+/** 초기 표시 수·"더 보기" 1회 공개 수 — V1(NightClinicsNearby)과 동일 값 유지. */
+const INITIAL_VISIBLE = 10;
+const REVEAL_STEP = 10;
+
 /**
  * 내 주변 둘러보기(기능 A) — 홈 진입점. KidsPlacesNearby 동형(geolocation 공유
  * 스토어 → 좌표 조회 → 자기완결 리스트). 차이: 각 항목에 **북 기준 8방위 방향**을
@@ -35,6 +39,10 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  /** 공개된 항목 헤딩 참조 — "더 보기" 후 첫 새 항목으로 포커스 이동(헌장 §1). */
+  const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
   const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
@@ -57,6 +65,7 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
         hour: "2-digit",
         minute: "2-digit",
       });
+      setVisibleCount(INITIAL_VISIBLE);
       setStatus({ kind: "done", places, at });
     } catch {
       setStatus({ kind: "error" });
@@ -123,6 +132,16 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
     }
   }, [status.kind]);
 
+  // "더 보기"로 공개된 첫 새 항목으로 포커스 이동 — 새 항목의 라벨이 곧 통지라
+  // 별도 live region은 두지 않는다(중복 낭독). 마지막 배치로 버튼이 같은 커밋에서
+  // 사라져도 useLayoutEffect는 페인트 전에 실행되어 이탈 창이 없다(V1 동형).
+  useLayoutEffect(() => {
+    const i = pendingFocusIndex.current;
+    if (i == null) return;
+    pendingFocusIndex.current = null;
+    itemHeadingRefs.current[i]?.focus();
+  }, [visibleCount]);
+
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
 
@@ -181,9 +200,15 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
           </button>
 
           <ul className="mt-2 space-y-4">
-            {status.places.map((p) => (
+            {status.places.slice(0, visibleCount).map((p, i) => (
               <li key={p.id}>
-                <h4 className="font-medium">
+                <h4
+                  className="font-medium"
+                  tabIndex={-1}
+                  ref={(el) => {
+                    itemHeadingRefs.current[i] = el;
+                  }}
+                >
                   {joinText(
                     p.name,
                     t("item", {
@@ -235,6 +260,18 @@ export function SurroundingsNearby({ canShowChat = false }: { canShowChat?: bool
               </li>
             ))}
           </ul>
+          {status.places.length > visibleCount && (
+            <button
+              type="button"
+              onClick={() => {
+                pendingFocusIndex.current = visibleCount;
+                setVisibleCount((v) => v + REVEAL_STEP);
+              }}
+              className="mt-2 min-h-11 text-sm text-accent underline"
+            >
+              {tActions("showMore")}
+            </button>
+          )}
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
