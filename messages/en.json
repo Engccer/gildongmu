@@ -410,7 +410,8 @@
     }
   },
   "actions": {
-    "close": "Close"
+    "close": "Close",
+    "showMore": "Show more"
   },
   "voice": {
     "start": "Search by voice",

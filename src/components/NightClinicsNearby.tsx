@@ -40,6 +40,10 @@ function formatTime(n: number | null): string {
   return `${s.slice(0, 2)}:${s.slice(2)}`;
 }
 
+/** 초기 표시 수·"더 보기" 1회 공개 수 — iOS ClinicNearbyModel과 동일 값 유지. */
+const INITIAL_VISIBLE = 10;
+const REVEAL_STEP = 10;
+
 /**
  * 내 주변 소아 야간·휴일 진료(달빛어린이병원·소아전문센터, B1) — 홈 진입점.
  *
@@ -58,6 +62,10 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  /** 공개된 항목 헤딩 참조 — "더 보기" 후 첫 새 항목으로 포커스 이동(헌장 §1). */
+  const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
   const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
@@ -80,6 +88,7 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
         hour: "2-digit",
         minute: "2-digit",
       });
+      setVisibleCount(INITIAL_VISIBLE);
       setStatus({
         kind: "done",
         clinics,
@@ -154,6 +163,16 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
     }
   }, [status.kind]);
 
+  // "더 보기"로 공개된 첫 새 항목으로 포커스 이동 — 새 항목의 라벨이 곧 통지라
+  // 별도 live region은 두지 않는다(중복 낭독). 버튼이 마지막 배치로 사라져도
+  // 포커스는 이미 새 항목에 있어 이탈(§5)이 구조적으로 없다.
+  useEffect(() => {
+    const i = pendingFocusIndex.current;
+    if (i == null) return;
+    pendingFocusIndex.current = null;
+    itemHeadingRefs.current[i]?.focus();
+  }, [visibleCount]);
+
   const busy = status.kind === "locating" || status.kind === "loading";
   const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
 
@@ -223,13 +242,20 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
           </button>
 
           <ul className="mt-2 space-y-4">
-            {status.clinics.map((c) => {
+            {status.clinics.slice(0, visibleCount).map((c, i) => {
               const holiday = c.hours[7];
               return (
                 <li key={c.id || `${c.name}-${c.distanceMeters}`}>
                   {/* 한 줄 = 한 객체: 이름·분류(한국어)·거리를 단일 텍스트로 합친다.
                       이름·분류가 한국어 전용 데이터라 lang="ko"를 줄 전체로 옮긴다. */}
-                  <h4 className="font-medium" lang="ko">
+                  <h4
+                    className="font-medium"
+                    lang="ko"
+                    tabIndex={-1}
+                    ref={(el) => {
+                      itemHeadingRefs.current[i] = el;
+                    }}
+                  >
                     {joinText(
                       c.name,
                       c.kind,
@@ -314,6 +340,18 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
               );
             })}
           </ul>
+          {status.clinics.length > visibleCount && (
+            <button
+              type="button"
+              onClick={() => {
+                pendingFocusIndex.current = visibleCount;
+                setVisibleCount((v) => v + REVEAL_STEP);
+              }}
+              className="mt-2 min-h-11 text-sm text-accent underline"
+            >
+              {tActions("showMore")}
+            </button>
+          )}
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
