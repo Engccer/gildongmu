@@ -146,10 +146,26 @@ public struct NightClinic: Codable, Sendable, Identifiable, Hashable {
     public let hours: [ClinicHours]
     /// 현재 진료 상태(라우트 계산)
     public let openStatus: OpenStatus
+    /// 달빛어린이병원 지정 여부 — 지정 명부 true, 일반 소아과 보완 소스 false.
+    /// 커버리지 확장(2026-07-26)으로 두 소스가 섞이면서 품질 보증 유무가 정보가 됐다.
+    /// 구버전 응답 호환을 위해 optional(부재 = 구분 정보 없음).
+    public let designated: Bool?
 }
 
 public struct ClinicNearbyResponse: Codable, Sendable {
     public let clinics: [NightClinic]
+    /// 병합 후 전체 수(절단 전) — "N곳 중 M곳" 표기용. 구버전 응답은 nil.
+    public let total: Int?
+    /// 지정 명부(달빛) 분 — radiusMeters 내.
+    public let designatedTotal: Int?
+    /// 보완 소스(일반 소아청소년과) 분 — supplementRadiusMeters 내.
+    public let supplementTotal: Int?
+    public let radiusMeters: Int?
+    public let supplementRadiusMeters: Int?
+    /// 진료시간 판정 축("holiday"/"weekday") — 어느 기준으로 읽었는지 UI가 밝힌다.
+    public let basis: String?
+    /// 보완 소스 조회 실패 — 지정 기관만 표시 중임을 밝힌다(은폐 금지).
+    public let supplementFailed: Bool?
 }
 
 // MARK: - 아이 놀 곳

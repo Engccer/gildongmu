@@ -4557,6 +4557,74 @@
         }
       }
     },
+    "clinicNearby.basisHoliday": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘은 공휴일 진료시간 기준입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Based on public holiday hours for today."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Según el horario de días festivos de hoy."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selon les horaires des jours fériés d'aujourd'hui."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In base agli orari festivi di oggi."
+          }
+        }
+      }
+    },
+    "clinicNearby.basisWeekday": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 요일의 진료시간 기준입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Based on today's weekday hours."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Según el horario del día de la semana de hoy."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selon les horaires du jour de la semaine."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In base agli orari del giorno feriale di oggi."
+          }
+        }
+      }
+    },
     "clinicNearby.button": {
       "localizations": {
         "ko": {
@@ -4659,6 +4727,40 @@
         }
       }
     },
+    "clinicNearby.designatedTag": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "달빛어린이병원 지정"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Designated Moonlight Children's Hospital"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moonlight Children's Hospital designado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moonlight Children's Hospital désigné"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moonlight Children's Hospital designato"
+          }
+        }
+      }
+    },
     "clinicNearby.directions": {
       "localizations": {
         "ko": {
@@ -4732,31 +4834,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "근처에 소아 야간·휴일 진료(달빛어린이병원) 기관이 없습니다."
+            "value": "근처에 소아 야간·휴일 진료 기관이 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No pediatric night/holiday clinics (Moonlight Children's Hospitals) nearby."
+            "value": "No pediatric night/holiday care found nearby."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay clínicas pediátricas nocturnas/festivas (Moonlight Children's Hospitals) cerca."
+            "value": "No se encontró atención pediátrica nocturna/festiva cerca."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune clinique pédiatrique de nuit/jours fériés (Moonlight Children's Hospitals) à proximité."
+            "value": "Aucun soin pédiatrique de nuit/jours fériés trouvé à proximité."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna clinica pediatrica notturna/festiva (Moonlight Children's Hospitals) nelle vicinanze."
+            "value": "Nessuna assistenza pediatrica notturna/festiva trovata nelle vicinanze."
           }
         }
       }
@@ -5072,31 +5174,133 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "출처: 국립중앙의료원 달빛어린이병원·소아전문센터. 공휴일 진료 여부는 진료시간을 확인하세요."
+            "value": "출처: 국립중앙의료원 응급의료정보. 신고된 진료시간 기준이라 방문 전 전화 확인을 권합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source: National Medical Center (Moonlight Children's Hospitals & pediatric centers). Check hours for holiday availability."
+            "value": "Source: National Medical Center emergency care data. Hours are as reported — call before visiting."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fuente: National Medical Center (Moonlight Children's Hospitals y centros pediátricos). Consulta el horario para la disponibilidad en festivos."
+            "value": "Fuente: datos de urgencias del National Medical Center. Los horarios son los declarados — llama antes de visitar."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Source : National Medical Center (Moonlight Children's Hospitals et centres pédiatriques). Vérifiez les horaires pour la disponibilité les jours fériés."
+            "value": "Source : données d'urgence du National Medical Center. Horaires déclarés — appelez avant de vous déplacer."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Fonte: National Medical Center (Moonlight Children's Hospitals e centri pediatrici). Verifica gli orari per la disponibilità nei giorni festivi."
+            "value": "Fonte: dati di emergenza del National Medical Center. Orari dichiarati — chiama prima di andare."
+          }
+        }
+      }
+    },
+    "clinicNearby.sources": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "달빛어린이병원 지정 %1$@km 내 %2$@곳, 일반 소아청소년과 %3$@km 내 %4$@곳입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ designated Moonlight Children's Hospitals within %1$@ km, %4$@ general pediatric clinics within %3$@ km."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ Moonlight Children's Hospitals designados en %1$@ km, %4$@ clínicas pediátricas generales en %3$@ km."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ Moonlight Children's Hospitals désignés dans un rayon de %1$@ km, %4$@ cliniques pédiatriques générales dans un rayon de %3$@ km."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ Moonlight Children's Hospitals designati entro %1$@ km, %4$@ cliniche pediatriche generali entro %3$@ km."
+          }
+        }
+      }
+    },
+    "clinicNearby.summary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@곳 중 %2$@곳입니다. 지금 진료 중인 곳을 먼저 보여드립니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing %2$@ of %1$@. Places open now come first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrando %2$@ de %1$@. Los abiertos ahora aparecen primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affichage de %2$@ sur %1$@. Les établissements ouverts en ce moment apparaissent en premier."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrati %2$@ di %1$@. Le strutture aperte ora vengono prima."
+          }
+        }
+      }
+    },
+    "clinicNearby.supplementFailedNotice": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "일반 소아청소년과 조회에 실패해 지정 기관만 표시합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General pediatric clinic lookup failed; only designated hospitals are shown."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la búsqueda de clínicas pediátricas generales; solo se muestran los hospitales designados."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recherche de cliniques pédiatriques générales a échoué ; seuls les hôpitaux désignés sont affichés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca delle cliniche pediatriche generali non riuscita; sono mostrati solo gli ospedali designati."
           }
         }
       }

@@ -32,10 +32,9 @@ public struct NearbyService: Sendable {
         return response.stations
     }
 
-    public func clinics(lat: Double, lng: Double) async throws -> [NightClinic] {
-        let response: ClinicNearbyResponse = try await client.get(
-            "/api/clinic/nearby", query: coordQuery(lat: lat, lng: lng))
-        return response.clinics
+    /// 응답 전체를 넘긴다 — 절단(total)·소스 구분·보완 실패를 화면이 밝혀야 한다.
+    public func clinics(lat: Double, lng: Double) async throws -> ClinicNearbyResponse {
+        try await client.get("/api/clinic/nearby", query: coordQuery(lat: lat, lng: lng))
     }
 
     public func kidsPlaces(lat: Double, lng: Double) async throws -> [KidsPlace] {

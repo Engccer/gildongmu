@@ -43,6 +43,20 @@ import Foundation
     // 진료시간은 월~일+공휴일 8칸, 정보 없는 요일은 start/end 둘 다 null
     #expect(result.clinics.allSatisfy { $0.hours.count == 8 })
     #expect(result.clinics.contains { $0.hours.contains { $0.start == nil && $0.end == nil } })
+    // 병합 응답(2026-07-26 프로덕션 실캡처): 절단·소스 구분·보완 실패를 화면이 밝힌다.
+    #expect((result.total ?? 0) >= result.clinics.count)
+    #expect(result.supplementRadiusMeters == 3000)
+    // fixture에 지정·일반이 모두 있어야 designated 구분 계약이 검증된다.
+    #expect(result.clinics.contains { $0.designated == true })
+    #expect(result.clinics.contains { $0.designated == false })
+}
+
+// 구버전 응답(clinics만) 호환 — 메타 필드는 전부 optional이라 부재 시 nil로 조용히 디코드.
+@Test func clinicNearbyLegacyShapeDecodes() throws {
+    let legacy = Data(#"{"clinics":[]}"#.utf8)
+    let result = try JSONDecoder().decode(ClinicNearbyResponse.self, from: legacy)
+    #expect(result.total == nil)
+    #expect(result.supplementFailed == nil)
 }
 
 @Test func kidsNearbyFixtureDecodes() throws {
