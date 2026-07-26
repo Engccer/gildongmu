@@ -28,14 +28,6 @@ type Status =
       kind: "done";
       clinics: ClinicWithStatus[];
       at: string;
-      /** 병합 후 전체 수(절단 전) — "N곳 중 M곳"을 밝히기 위한 값. */
-      total: number;
-      /** 지정 명부(달빛) 분 — radiusKm 내. */
-      designatedTotal: number;
-      /** 보완 소스(일반 소아청소년과) 분 — supplementRadiusKm 내. */
-      supplementTotal: number;
-      radiusKm: number;
-      supplementRadiusKm: number;
       basis: HoursBasis;
       /** 보완 소스 실패 — 지정 기관만 표시 중임을 밝힌다(은폐 금지). */
       supplementFailed: boolean;
@@ -92,16 +84,6 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
         kind: "done",
         clinics,
         at,
-        // total 부재(구버전 응답)면 표시 건수로 폴백 — "N곳 중 N곳"은 참이다.
-        total: typeof body.total === "number" ? body.total : clinics.length,
-        designatedTotal:
-          typeof body.designatedTotal === "number"
-            ? body.designatedTotal
-            : clinics.length,
-        supplementTotal:
-          typeof body.supplementTotal === "number" ? body.supplementTotal : 0,
-        radiusKm: Math.round((body.radiusMeters ?? 20_000) / 1000),
-        supplementRadiusKm: Math.round((body.supplementRadiusMeters ?? 3_000) / 1000),
         basis: body.basis === "holiday" ? "holiday" : "weekday",
         supplementFailed: body.supplementFailed === true,
       });
@@ -221,21 +203,13 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
             {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
-          {/* 절단·판정 기준을 한 문장 덩어리(단일 텍스트 노드 = 한 객체)로 밝힌다.
-              명부가 작아 상위 N 절단이 "근처에 없다"로 오해되던 회귀의 수정. */}
-          <p className="mt-1 text-sm">
-            {`${t("summary", {
-              total: status.total,
-              shown: status.clinics.length,
-            })} ${t("sources", {
-              radius: status.radiusKm,
-              designated: status.designatedTotal,
-              supplementRadius: status.supplementRadiusKm,
-              supplement: status.supplementTotal,
-            })} ${status.basis === "holiday" ? t("basisHoliday") : t("basisWeekday")}`}
-          </p>
+          {/* 공휴일 기준으로 읽은 날만 밝힌다 — 요일 기준 표기는 무정보 잡음
+              (항목의 "오늘 진료 X~Y"가 이미 행동 가능한 전부, 위원장 판정 2026-07-26). */}
+          {status.basis === "holiday" && (
+            <p className="mt-1 text-sm">{t("basisHoliday")}</p>
+          )}
 
-          {/* 보완 소스 실패는 표기 — 지정 기관만 보이는 이유를 숨기지 않는다. */}
+          {/* 보완 소스 실패는 표기 — 결과가 적은 이유를 숨기지 않는다(조건부라 잡음 아님). */}
           {status.supplementFailed && (
             <p className="mt-1 text-sm">{t("supplementFailedNotice")}</p>
           )}
@@ -264,12 +238,11 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
                   </h4>
 
                   {/* 진료 상태 3-state — 마감과 정보없음을 구분(분기 유지, 부가 운영시간만 흡수).
-                      달빛 지정 여부도 이 줄에 흡수 — 커버리지 확장으로 일반 소아과가 섞이면서
-                      품질 보증(소아 야간진료 지정) 유무가 정보가 됐다(장식 아님). 로케일 문자열이라
-                      lang="ko" 헤딩이 아니라 여기(로케일 문장 줄)에 둔다. */}
+                      달빛 지정 여부는 목록 미표기(위원장 판정 2026-07-26): 지정의 행동 가능한
+                      결과(늦은 진료시간·지금 열림·기관명)가 이미 항목에 전부 보인다 — 데이터
+                      designated는 보존, 상세 이식 시 조건부 노출. */}
                   <p className="mt-1 text-sm">
                     {joinText(
-                      c.designated === true && t("designatedTag"),
                       c.openStatus.state === "open"
                         ? t("open")
                         : c.openStatus.state === "closed"
