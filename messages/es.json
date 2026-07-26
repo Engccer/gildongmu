@@ -410,7 +410,8 @@
     }
   },
   "actions": {
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "showMore": "Mostrar más"
   },
   "voice": {
     "start": "Buscar por voz",
