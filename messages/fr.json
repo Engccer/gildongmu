@@ -248,7 +248,10 @@
       "saturday": "Horaires du samedi",
       "sunday": "Horaires du dimanche et jours fériés"
     },
-    "direction": { "up": "Montant", "down": "Descendant" },
+    "direction": {
+      "up": "Montant",
+      "down": "Descendant"
+    },
     "first": "Premier train",
     "last": "Dernier train",
     "nextDay": "lendemain",
@@ -305,11 +308,14 @@
     "refresh": "Actualiser",
     "locating": "Localisation en cours…",
     "loading": "Chargement des cliniques pédiatriques…",
-    "empty": "Aucune clinique pédiatrique de nuit/jours fériés (Moonlight Children's Hospitals) à proximité.",
+    "empty": "Aucun soin pédiatrique de nuit/jours fériés trouvé à proximité.",
     "error": "Échec du chargement des infos cliniques. Veuillez réessayer dans un instant.",
     "ready": "Cliniques pédiatriques de nuit et jours fériés à proximité.",
     "asOf": "à {time}",
-    "summary": "Affichage de {shown} sur {total} dans un rayon de {radius} km. Les établissements ouverts en ce moment apparaissent en premier.",
+    "summary": "Affichage de {shown} sur {total}. Les établissements ouverts en ce moment apparaissent en premier.",
+    "sources": "{designated} Moonlight Children's Hospitals désignés dans un rayon de {radius} km, {supplement} cliniques pédiatriques générales dans un rayon de {supplementRadius} km.",
+    "supplementFailedNotice": "La recherche de cliniques pédiatriques générales a échoué ; seuls les hôpitaux désignés sont affichés.",
+    "designatedTag": "Moonlight Children's Hospital désigné",
     "basisHoliday": "Selon les horaires des jours fériés d'aujourd'hui.",
     "basisWeekday": "Selon les horaires du jour de la semaine.",
     "distance": "environ {distance}",
@@ -322,7 +328,7 @@
     "directions": "Itinéraire : {text}",
     "geoDenied": "L'autorisation de localisation est requise. Veuillez autoriser l'accès à la position dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "source": "Source : National Medical Center (Moonlight Children's Hospitals et centres pédiatriques). Vérifiez les horaires pour la disponibilité les jours fériés."
+    "source": "Source : données d'urgence du National Medical Center. Horaires déclarés — appelez avant de vous déplacer."
   },
   "kidsNearby": {
     "button": "Lieux de jeux pour enfants à proximité",

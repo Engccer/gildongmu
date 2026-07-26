@@ -6,7 +6,6 @@ import type {
 } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
-import { fetchIsHoliday } from "./holiday";
 
 /**
  * 내 주변 소아 야간·휴일 진료(달빛어린이병원·소아전문센터) provider —
@@ -282,53 +281,7 @@ export function prioritizeOpen<T extends { openStatus: ClinicOpenStatus }>(
     .slice(0, limit);
 }
 
-export interface NightClinicNowResult {
-  /** 진료중 우선·거리순 상위 N. */
-  clinics: NightClinicNow[];
-  /** 반경 내 전체 수(절단 전) — 침묵 절단 금지. */
-  total: number;
-  radiusMeters: number;
-  /** 진료 상태를 어느 진료시간 칸으로 읽었는지. */
-  basis: ClinicHoursBasis;
-}
-
-/**
- * 좌표 → 반경 내 소아 야간·휴일 진료 + **지금 진료 상태**(KST·공휴일 반영).
- * 라우트와 채팅 도구의 공통 진입점 — 상태 부여를 한 곳으로 모아 LLM이
- * 진료시간 배열을 보고 "지금 진료중"을 추론(=날조)하지 못하게 막는다.
- *
- * 공휴일 판정은 게이트형(실패→null→요일 폴백)이라 목록과 병렬로 돌려도
- * 목록 실패만 throw된다 — "조회 실패"를 빈 목록으로 위장하지 않는다.
- */
-export async function findNightClinicsNow(
-  lat: number,
-  lng: number,
-  opts: { nowMs?: number; radiusMeters?: number; limit?: number } = {},
-): Promise<NightClinicNowResult> {
-  const radiusMeters = opts.radiusMeters ?? MAX_DISTANCE_METERS;
-  const limit = opts.limit ?? TOP_N;
-  const nowMs = opts.nowMs ?? Date.now();
-  if (!env.DATA_GO_KR_API_KEY) {
-    return { clinics: [], total: 0, radiusMeters, basis: "weekday" };
-  }
-  const [all, isHoliday] = await Promise.all([
-    fetchNightClinics(),
-    fetchIsHoliday(kstDateKey(nowMs)),
-  ]);
-  // 반경 내 전량을 먼저 확보해야 total(절단 전 수)이 정확하다.
-  const within = rankClinicsByDistance(all, lat, lng, {
-    radiusMeters,
-    limit: Number.POSITIVE_INFINITY,
-  });
-  const now = clinicNowBasis(nowMs, isHoliday);
-  const withStatus: NightClinicNow[] = within.map((c) => ({
-    ...c,
-    openStatus: clinicOpenStatus(c.hours, now.hoursIndex, now.hhmm),
-  }));
-  return {
-    clinics: prioritizeOpen(withStatus, limit),
-    total: within.length,
-    radiusMeters,
-    basis: now.basis,
-  };
-}
+// ⚠ 진입점 `findNightClinicsNow`는 `src/lib/clinics.ts`로 이동(2026-07-26) —
+// 일반 소아청소년과 보완 소스(pediatric-clinics)와의 병합이 필요해지면서
+// bus.ts(TAGO+TOPIS) 관례대로 병합 모듈로 승격했다. 이 파일은 달빛 지정
+// 명부 provider로만 남는다. 라우트·채팅은 clinics.ts만 import할 것.

@@ -10,7 +10,7 @@ import { findAirQualityNear } from "@/lib/providers/air-quality";
 import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
 import { fetchNearbyBusStops } from "@/lib/bus";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
-import { findNightClinicsNow } from "@/lib/providers/night-clinic";
+import { findNightClinicsNow } from "@/lib/clinics";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
@@ -90,11 +90,19 @@ export async function executeFunction(
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
       // openStatus를 서버가 계산해 넘긴다 — 진료시간 배열만 주면 LLM이 "지금
-      // 진료중"을 스스로 추론(=날조)한다(현재 KST를 모른다). count는 반경 내
-      // 전체 수라 "5곳뿐"으로 답하지 않는다.
-      const { clinics, total, basis } = await findNightClinicsNow(anchor.lat, anchor.lng);
+      // 진료중"을 스스로 추론(=날조)한다(현재 KST를 모른다). count는 병합 후
+      // 전체 수라 "5곳뿐"으로 답하지 않는다. 각 항목의 designated(달빛 지정
+      // 여부)와 supplementFailed(일반 소아과 보강 실패)도 산문에 쓸 수 있게 넘긴다.
+      const { clinics, total, basis, supplementFailed } = await findNightClinicsNow(
+        anchor.lat,
+        anchor.lng,
+      );
       const render = ctx.placeAnchor ? undefined : ({ type: "clinics-nearby" } as const);
-      return { data: { count: total, basis, clinics: clinics.slice(0, 5) }, render, source: src };
+      return {
+        data: { count: total, basis, supplementFailed, clinics: clinics.slice(0, 5) },
+        render,
+        source: src,
+      };
     }
     case "get_nearby_barrier_free": {
       const anchor = anchorOf(ctx);
