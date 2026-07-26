@@ -45,16 +45,17 @@ struct AroundNearbyView: View {
         List {
             if case .loaded(let places) = model.state {
                 ForEach(places) { place in
-                    // 이름·카테고리·방위·거리를 한 줄 = 한 접근성 객체로 합친다.
-                    Text(joinText(place.name, categoryPiece(place.categoryRaw),
-                                  bearingLabel(place.bearing), "\(place.distanceMeters)m"))
-                        // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
-                        .contextMenu {
-                            Button(chatLabel(place.name)) { chatPlace = surroundingPlaceToPlace(place) }
-                        }
-                        .accessibilityAction(named: Text(chatLabel(place.name))) {
-                            chatPlace = surroundingPlaceToPlace(place)
-                        }
+                    // 보조 텍스트 정보량은 현행 유지(카테고리·방위·거리). ⚠ 방위는 북 기준 절대 8방위만.
+                    NavigationLink {
+                        PlaceDetailView(place: surroundingPlaceToPlace(place))
+                    } label: {
+                        PlaceRow(
+                            place: surroundingPlaceToPlace(place),
+                            secondaryOverride: joinText(
+                                categoryPiece(place.categoryRaw), bearingLabel(place.bearing),
+                                appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters)))),
+                            onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
+                    }
                 }
             }
         }
@@ -64,8 +65,6 @@ struct AroundNearbyView: View {
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
-
-    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
 
     /// category_name 전체 계층 중 마지막 " > " 조각만(가장 구체적인 분류).
     private func categoryPiece(_ raw: String) -> String {

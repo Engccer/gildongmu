@@ -45,16 +45,18 @@ struct KidsNearbyView: View {
         List {
             if case .loaded(let places) = model.state {
                 ForEach(places) { place in
-                    // 이름·종류·실내외·거리·주소를 한 줄 = 한 접근성 객체로 합친다.
-                    Text(joinText(place.name, kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
-                                  "\(place.distanceMeters)m", place.roadAddress ?? place.address))
-                        // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
-                        .contextMenu {
-                            Button(chatLabel(place.name)) { chatPlace = kidsPlaceToPlace(place) }
-                        }
-                        .accessibilityAction(named: Text(chatLabel(place.name))) {
-                            chatPlace = kidsPlaceToPlace(place)
-                        }
+                    // 보조 텍스트 정보량은 현행 유지(종류·실내외·거리·주소), 이름은 PlaceRow 1행에 결합.
+                    NavigationLink {
+                        PlaceDetailView(place: kidsPlaceToPlace(place))
+                    } label: {
+                        PlaceRow(
+                            place: kidsPlaceToPlace(place),
+                            secondaryOverride: joinText(
+                                kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
+                                appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters))),
+                                place.roadAddress ?? place.address),
+                            onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
+                    }
                 }
             }
         }
@@ -64,8 +66,6 @@ struct KidsNearbyView: View {
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
     }
-
-    private func chatLabel(_ name: String) -> String { appLocalized("ios.place.askAbout", name) }
 
     /// kind 코드 → 한글 라벨. 미지 값은 원문 그대로 노출(계약 확장에 깨지지 않게).
     private func kindLabel(_ kind: String) -> String {
