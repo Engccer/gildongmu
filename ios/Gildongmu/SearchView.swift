@@ -98,7 +98,13 @@ struct SearchView: View {
                     // 권한·모델 다운로드 대기 중 커서가 밀려났으면 되돌린다.
                     // @AccessibilityFocusState는 양방향이라 이탈 시 false로 내려오므로
                     // 재대입이 no-op이 아니다(이미 마이크에 있으면 무발화 no-op).
-                    if speech.isListening { micRowFocused = true }
+                    if speech.isListening {
+                        micRowFocused = true
+                        // 커서가 실제로 이동했다면 라벨 낭독이 시작되는데, 여기는 이미
+                        // 녹음 중이라 그 발화가 전사에 혼입된다(단축어 진입 혼입과 동일
+                        // 계열) — 무음 통지로 즉시 삼킨다(녹음 중 SR 발화 0 계약, 헌장 §6).
+                        interruptVoiceOverSpeech()
+                    }
                 }
             }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
