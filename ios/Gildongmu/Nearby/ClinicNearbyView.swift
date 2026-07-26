@@ -23,6 +23,20 @@ final class ClinicNearbyModel {
     /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
     private var isLoadingInFlight = false
 
+    /// 초기 표시·공개 스텝 — 웹 INITIAL_VISIBLE/REVEAL_STEP과 동일 값 유지.
+    static let initialVisible = 10
+    static let revealStep = 10
+    private(set) var visibleCount = ClinicNearbyModel.initialVisible
+
+    /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
+    /// 더 공개할 것이 없으면 nil.
+    func revealMore() -> String? {
+        guard case .loaded(let clinics) = state, visibleCount < clinics.count else { return nil }
+        let firstNewID = clinics[visibleCount].id
+        visibleCount = min(visibleCount + Self.revealStep, clinics.count)
+        return firstNewID
+    }
+
     func load(force: Bool = false) async {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
@@ -36,6 +50,7 @@ final class ClinicNearbyModel {
             summary = ClinicSummary(
                 basis: response.basis ?? "weekday",
                 supplementFailed: response.supplementFailed ?? false)
+            visibleCount = Self.initialVisible
             state = .loaded(clinics)
             announceLoaded(count: clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
@@ -55,6 +70,8 @@ struct ClinicNearbyView: View {
     @State private var model = ClinicNearbyModel()
     /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
     @State private var chatPlace: Place?
+    /// "더 보기" 후 첫 새 행으로 VO 커서 이동(웹 포커스 계약 미러).
+    @AccessibilityFocusState private var focusedClinicID: String?
 
     var body: some View {
         List {
@@ -74,7 +91,7 @@ struct ClinicNearbyView: View {
             if case .loaded(let clinics) = model.state {
                 // 평면 1행=1객체(검색 탭 동형). 항목 heading·주소·전화 행은 상세로 이동
                 // — M2·M3 "평면 리스트 heading 잉여" 결정 동형. 실기기 VO 확인 게이트.
-                ForEach(clinics) { clinic in
+                ForEach(clinics.prefix(model.visibleCount)) { clinic in
                     NavigationLink {
                         PlaceDetailView(place: nightClinicToPlace(clinic)) {
                             ClinicDomainSection(clinic: clinic)
@@ -87,6 +104,14 @@ struct ClinicNearbyView: View {
                                 clinicStatusText(clinic.openStatus),
                                 appLocalized("place.distance", formatDistanceKo(Double(clinic.distanceMeters)))),
                             onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
+                    }
+                    .accessibilityFocused($focusedClinicID, equals: clinic.id)
+                }
+                if clinics.count > model.visibleCount {
+                    Button(appLocalized("actions.showMore")) {
+                        if let id = model.revealMore() {
+                            DispatchQueue.main.async { focusedClinicID = id }
+                        }
                     }
                 }
             }
