@@ -95,6 +95,34 @@ describe("findSurroundingsNear (부분 실패 불변식)", () => {
     await expect(findSurroundingsNear(USER.lat, USER.lng)).rejects.toThrow();
   });
 
+  it("서버 캡 50 — 표시 절단은 클라이언트 몫(V1 동형)", async () => {
+    // CS2(편의점) 화이트리스트를 통과하는 60건(고유 id) — 첫 카테고리 호출에 몰아
+    // 넣고 나머지 카테고리 호출은 빈 결과.
+    const bulk = Array.from({ length: 60 }, (_, i) => ({
+      id: `bulk-${i}`,
+      place_name: `벌크편의점${i}`,
+      category_name: "음식점 > 편의점",
+      category_group_code: "CS2",
+      x: "127.1399",
+      y: "37.5378",
+      distance: String(10 + i),
+    }));
+    let call = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        call++;
+        const isFirst = call === 1; // 값 스냅샷 — json() 지연 호출 시 call이 이미 증가해 있음
+        return {
+          ok: true,
+          json: async () => ({ documents: isFirst ? bulk : [] }),
+        } as Response;
+      }),
+    );
+    const out = await findSurroundingsNear(USER.lat, USER.lng);
+    expect(out.length).toBe(50);
+  });
+
   it("키 없으면 [] (env 재모킹)", async () => {
     vi.resetModules();
     vi.doMock("../env", () => ({

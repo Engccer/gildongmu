@@ -21,7 +21,8 @@ import { haversineMeters } from "../geo";
 
 const BASE = "https://apis.data.go.kr/B551011/KorWithService2";
 const MAX_DISTANCE_METERS = 3000; // 관광지 — 도보권보다 넓게
-const TOP_N = 8;
+/** 서버 반환 상한(numOfRows로도 전달) — 표시 절단은 클라이언트 몫(V1 동형). */
+const SERVER_CAP = 50;
 const MATCH_RADIUS_METERS = 50; // 장소 상세 매칭 — 좁게(false positive 차단)
 
 /** 무장애 편의시설 필드 화이트리스트 → 한글 라벨. ⚠ Task 6에서 실응답으로 교정. */
@@ -151,7 +152,7 @@ export async function searchBarrierFreeNearby(
 ): Promise<BarrierFreePlace[]> {
   if (!env.DATA_GO_KR_API_KEY) return [];
   const radius = opts.radiusMeters ?? MAX_DISTANCE_METERS;
-  const limit = opts.limit ?? TOP_N;
+  const limit = opts.limit ?? SERVER_CAP;
   const raw = await callKorWith("locationBasedList2", {
     mapX: String(lng),
     mapY: String(lat),

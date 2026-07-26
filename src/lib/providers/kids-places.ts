@@ -19,7 +19,8 @@ import type { IndoorOutdoor, KidsPlace, KidsPlaceKind } from "../types";
 const ENDPOINT = "https://dapi.kakao.com/v2/local/search/keyword.json";
 const KEYWORDS = ["키즈카페", "놀이터", "어린이공원"] as const;
 const RADIUS_METERS = 2000; // 도보권 "근처"
-const RESULT_CAP = 8;
+/** 서버 반환 상한 — 표시 절단(초기 10, "더 보기" +10)은 웹·iOS 클라이언트 몫(V1 소아 진료 동형). */
+const SERVER_CAP = 50;
 
 interface KakaoDoc {
   id: string;
@@ -184,5 +185,5 @@ export async function findKidsPlacesNear(
       `키즈 장소 조회 실패: ${firstRej?.reason ?? "모든 키워드 실패"}`,
     );
   }
-  return rankKidsPlaces(lists, RESULT_CAP);
+  return rankKidsPlaces(lists, SERVER_CAP);
 }

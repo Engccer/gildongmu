@@ -14,7 +14,8 @@ import type { SurroundingCategory, SurroundingPlace } from "../types";
 
 const ENDPOINT = "https://dapi.kakao.com/v2/local/search/category.json";
 const RADIUS_METERS = 500; // 도보 즉시권 "둘러보기"
-const RESULT_CAP = 12;
+/** 서버 반환 상한 — 표시 절단(초기 10, "더 보기" +10)은 웹·iOS 클라이언트 몫(V1 소아 진료 동형). */
+const SERVER_CAP = 50;
 
 /** 카카오 category_group_code → 우리 카테고리. 여기 없는 코드는 거부(null). */
 const CATEGORY_GROUPS: Record<string, SurroundingCategory> = {
@@ -152,5 +153,5 @@ export async function findSurroundingsNear(
     );
     throw new Error(`주변 조회 실패: ${firstRej?.reason ?? "모든 카테고리 실패"}`);
   }
-  return rankSurroundings(lists, lat, lng, RESULT_CAP);
+  return rankSurroundings(lists, lat, lng, SERVER_CAP);
 }

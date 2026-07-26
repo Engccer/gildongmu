@@ -1,10 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+// env는 import 시점 동결 — data.go.kr 키 있음으로 모킹(night-clinic 동형).
+vi.mock("../env", () => ({
+  env: { DATA_GO_KR_API_KEY: "test-key" },
+  hasDataGoKrKey: () => true,
+}));
+
 import {
   extractTourItems,
   labelFacilities,
   cleanFacilityValue,
   BARRIER_FREE_FIELD_LABELS,
   normalizeName,
+  searchBarrierFreeNearby,
 } from "../providers/tour-barrier-free";
 
 describe("extractTourItems", () => {
@@ -93,6 +101,22 @@ describe("cleanFacilityValue — HTML·분류 접미 정제", () => {
   it("nullish → 빈 문자열", () => {
     expect(cleanFacilityValue(null)).toBe("");
     expect(cleanFacilityValue(undefined)).toBe("");
+  });
+});
+
+describe("searchBarrierFreeNearby (서버 캡 — numOfRows 위임)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("서버 캡 50 — numOfRows=50 요청(표시 절단은 클라이언트 몫, V1 동형)", async () => {
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        response: { header: { resultCode: "0000" }, body: { items: "" } },
+      }),
+    } as unknown as Response);
+    await searchBarrierFreeNearby(37.5, 127.1);
+    const calledUrl = spy.mock.calls[0][0] as URL;
+    expect(calledUrl.searchParams.get("numOfRows")).toBe("50");
   });
 });
 
