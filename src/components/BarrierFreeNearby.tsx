@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail, BarrierFreePlace } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
@@ -18,6 +18,10 @@ type Status =
 
 /** 캐시 값: 로딩 중 / 상세 객체 / 없음(에러 또는 contentId 미등록) */
 type DetailEntry = "loading" | BarrierFreeDetail | null;
+
+/** 초기 표시 수·"더 보기" 1회 공개 수 — V1(NightClinicsNearby)과 동일 값 유지. */
+const INITIAL_VISIBLE = 10;
+const REVEAL_STEP = 10;
 
 /**
  * 내 주변 무장애 관광지 — 홈 진입점 + 채팅 카드용(autoLoad).
@@ -49,6 +53,10 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
   const inFlightRef = useRef(false);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  /** 공개된 항목 헤딩 참조 — "더 보기" 후 첫 새 항목으로 포커스 이동(헌장 §1). */
+  const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
   /** 펼침 상세 fetch in-flight(contentId별) — 메인 load의 inFlightRef와 동형.
       detailCache 가드만으론 리렌더 전 더블클릭 두 클릭이 같은 구 스냅샷을 읽어
       둘 다 fetch를 시작(stale closure 경쟁)하므로 ref Set으로 즉시 차단한다. */
@@ -93,6 +101,7 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
         hour: "2-digit",
         minute: "2-digit",
       });
+      setVisibleCount(INITIAL_VISIBLE);
       setStatus({ kind: "done", places, at });
     } catch {
       setStatus({ kind: "error" });
@@ -150,6 +159,16 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
       focusedRef.current = false;
     }
   }, [status.kind]);
+
+  // "더 보기"로 공개된 첫 새 항목으로 포커스 이동 — 새 항목의 라벨이 곧 통지라
+  // 별도 live region은 두지 않는다(중복 낭독). 마지막 배치로 버튼이 같은 커밋에서
+  // 사라져도 useLayoutEffect는 페인트 전에 실행되어 이탈 창이 없다(V1 동형).
+  useLayoutEffect(() => {
+    const i = pendingFocusIndex.current;
+    if (i == null) return;
+    pendingFocusIndex.current = null;
+    itemHeadingRefs.current[i]?.focus();
+  }, [visibleCount]);
 
   /** 항목의 편의시설 펼침/접기 토글 — 펼칠 때 캐시 없으면 lazy fetch */
   async function toggleFacilities(contentId: string) {
@@ -251,12 +270,19 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
           )}
 
           <ul className="mt-2 space-y-4">
-            {status.places.map((p) => {
+            {status.places.slice(0, visibleCount).map((p, i) => {
               const isOpen = openIds.has(p.contentId);
               const cached = detailCache[p.contentId];
               return (
                 <li key={p.contentId}>
-                  <h4 className="font-medium" lang="ko">
+                  <h4
+                    className="font-medium"
+                    lang="ko"
+                    tabIndex={-1}
+                    ref={(el) => {
+                      itemHeadingRefs.current[i] = el;
+                    }}
+                  >
                     {joinText(
                       p.name,
                       p.category,
@@ -316,6 +342,19 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
               );
             })}
           </ul>
+
+          {status.places.length > visibleCount && (
+            <button
+              type="button"
+              onClick={() => {
+                pendingFocusIndex.current = visibleCount;
+                setVisibleCount((v) => v + REVEAL_STEP);
+              }}
+              className="mt-2 min-h-11 text-sm text-accent underline"
+            >
+              {tActions("showMore")}
+            </button>
+          )}
 
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
