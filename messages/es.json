@@ -248,7 +248,10 @@
       "saturday": "Horario de sábado",
       "sunday": "Horario de domingo y festivos"
     },
-    "direction": { "up": "Ascendente", "down": "Descendente" },
+    "direction": {
+      "up": "Ascendente",
+      "down": "Descendente"
+    },
     "first": "Primer tren",
     "last": "Último tren",
     "nextDay": "día siguiente",
@@ -305,11 +308,14 @@
     "refresh": "Actualizar",
     "locating": "Obteniendo tu ubicación…",
     "loading": "Cargando clínicas pediátricas…",
-    "empty": "No hay clínicas pediátricas nocturnas/festivas (Moonlight Children's Hospitals) cerca.",
+    "empty": "No se encontró atención pediátrica nocturna/festiva cerca.",
     "error": "No se pudo cargar la información de clínicas. Inténtalo de nuevo en breve.",
     "ready": "Clínicas pediátricas nocturnas y festivas cerca de ti.",
     "asOf": "a las {time}",
-    "summary": "Mostrando {shown} de {total} en {radius} km. Los abiertos ahora aparecen primero.",
+    "summary": "Mostrando {shown} de {total}. Los abiertos ahora aparecen primero.",
+    "sources": "{designated} Moonlight Children's Hospitals designados en {radius} km, {supplement} clínicas pediátricas generales en {supplementRadius} km.",
+    "supplementFailedNotice": "Falló la búsqueda de clínicas pediátricas generales; solo se muestran los hospitales designados.",
+    "designatedTag": "Moonlight Children's Hospital designado",
     "basisHoliday": "Según el horario de días festivos de hoy.",
     "basisWeekday": "Según el horario del día de la semana de hoy.",
     "distance": "aprox. {distance}",
@@ -322,7 +328,7 @@
     "directions": "Cómo llegar: {text}",
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
-    "source": "Fuente: National Medical Center (Moonlight Children's Hospitals y centros pediátricos). Consulta el horario para la disponibilidad en festivos."
+    "source": "Fuente: datos de urgencias del National Medical Center. Los horarios son los declarados — llama antes de visitar."
   },
   "kidsNearby": {
     "button": "Lugares de juego infantil cerca de mí",

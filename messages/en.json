@@ -248,7 +248,10 @@
       "saturday": "Saturday schedule",
       "sunday": "Sunday & holiday schedule"
     },
-    "direction": { "up": "Up", "down": "Down" },
+    "direction": {
+      "up": "Up",
+      "down": "Down"
+    },
     "first": "First train",
     "last": "Last train",
     "nextDay": "next day",
@@ -305,11 +308,14 @@
     "refresh": "Refresh",
     "locating": "Getting your location…",
     "loading": "Loading pediatric clinics…",
-    "empty": "No pediatric night/holiday clinics (Moonlight Children's Hospitals) nearby.",
+    "empty": "No pediatric night/holiday care found nearby.",
     "error": "Failed to load clinic info. Please try again shortly.",
     "ready": "Pediatric night & holiday clinics near you.",
     "asOf": "as of {time}",
-    "summary": "Showing {shown} of {total} within {radius} km. Places open now come first.",
+    "summary": "Showing {shown} of {total}. Places open now come first.",
+    "sources": "{designated} designated Moonlight Children's Hospitals within {radius} km, {supplement} general pediatric clinics within {supplementRadius} km.",
+    "supplementFailedNotice": "General pediatric clinic lookup failed; only designated hospitals are shown.",
+    "designatedTag": "Designated Moonlight Children's Hospital",
     "basisHoliday": "Based on public holiday hours for today.",
     "basisWeekday": "Based on today's weekday hours.",
     "distance": "about {distance}",
@@ -322,7 +328,7 @@
     "directions": "Directions: {text}",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
-    "source": "Source: National Medical Center (Moonlight Children's Hospitals & pediatric centers). Check hours for holiday availability."
+    "source": "Source: National Medical Center emergency care data. Hours are as reported — call before visiting."
   },
   "kidsNearby": {
     "button": "Kids play places near me",

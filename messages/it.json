@@ -248,7 +248,10 @@
       "saturday": "Orario del sabato",
       "sunday": "Orario domenicale e festivo"
     },
-    "direction": { "up": "Ascendente", "down": "Discendente" },
+    "direction": {
+      "up": "Ascendente",
+      "down": "Discendente"
+    },
     "first": "Primo treno",
     "last": "Ultimo treno",
     "nextDay": "giorno dopo",
@@ -305,11 +308,14 @@
     "refresh": "Aggiorna",
     "locating": "Recupero della tua posizione…",
     "loading": "Caricamento delle cliniche pediatriche…",
-    "empty": "Nessuna clinica pediatrica notturna/festiva (Moonlight Children's Hospitals) nelle vicinanze.",
+    "empty": "Nessuna assistenza pediatrica notturna/festiva trovata nelle vicinanze.",
     "error": "Impossibile caricare le informazioni sulla clinica. Riprova tra poco.",
     "ready": "Cliniche pediatriche notturne e festive vicino a te.",
     "asOf": "alle {time}",
-    "summary": "Mostrati {shown} di {total} entro {radius} km. Le strutture aperte ora vengono prima.",
+    "summary": "Mostrati {shown} di {total}. Le strutture aperte ora vengono prima.",
+    "sources": "{designated} Moonlight Children's Hospitals designati entro {radius} km, {supplement} cliniche pediatriche generali entro {supplementRadius} km.",
+    "supplementFailedNotice": "Ricerca delle cliniche pediatriche generali non riuscita; sono mostrati solo gli ospedali designati.",
+    "designatedTag": "Moonlight Children's Hospital designato",
     "basisHoliday": "In base agli orari festivi di oggi.",
     "basisWeekday": "In base agli orari del giorno feriale di oggi.",
     "distance": "circa {distance}",
@@ -322,7 +328,7 @@
     "directions": "Indicazioni: {text}",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
-    "source": "Fonte: National Medical Center (Moonlight Children's Hospitals e centri pediatrici). Verifica gli orari per la disponibilità nei giorni festivi."
+    "source": "Fonte: dati di emergenza del National Medical Center. Orari dichiarati — chiama prima di andare."
   },
   "kidsNearby": {
     "button": "Aree gioco per bambini vicino a me",

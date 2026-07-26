@@ -18,12 +18,16 @@ vi.mock("@/lib/providers/air-quality", () => ({
 vi.mock("@/lib/providers/subway-nearby", () => ({
   fetchNearbySubwayArrivals: vi.fn(async () => [{ name: "강남", arrivals: [] }]),
 }));
-vi.mock("@/lib/providers/night-clinic", () => ({
+vi.mock("@/lib/clinics", () => ({
   findNightClinicsNow: vi.fn(async () => ({
     clinics: [],
     total: 0,
+    designatedTotal: 0,
+    supplementTotal: 0,
     radiusMeters: 20_000,
+    supplementRadiusMeters: 3_000,
     basis: "weekday" as const,
+    supplementFailed: false,
   })),
 }));
 vi.mock("@/lib/providers/kids-places", () => ({

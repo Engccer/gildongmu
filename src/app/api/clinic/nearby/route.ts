@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasDataGoKrKey } from "@/lib/env";
-import { findNightClinicsNow } from "@/lib/providers/night-clinic";
+import { findNightClinicsNow } from "@/lib/clinics";
 
 /**
  * GET /api/clinic/nearby?lat=..&lng=..
@@ -41,11 +41,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ clinics: [] });
   }
   try {
-    const { clinics, total, radiusMeters, basis } = await findNightClinicsNow(
-      parsed.data.lat,
-      parsed.data.lng,
-    );
-    return NextResponse.json({ clinics, total, radiusMeters, basis });
+    // 병합 결과를 그대로 투영 — 소스 구분(designated)·절단(total)·보완 실패
+    // (supplementFailed)를 UI가 밝힐 수 있도록 필드를 숨기지 않는다.
+    const result = await findNightClinicsNow(parsed.data.lat, parsed.data.lng);
+    return NextResponse.json(result);
   } catch (e) {
     console.error("[api/clinic/nearby]", e);
     return NextResponse.json(

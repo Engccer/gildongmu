@@ -19,14 +19,12 @@ import {
   extractItems,
   fetchNightClinics,
   findNightClinicsNear,
-  findNightClinicsNow,
   clinicNowBasis,
   kstDateKey,
   prioritizeOpen,
 } from "../providers/night-clinic";
 import type { ClinicHours, ClinicOpenState } from "../types";
 import { env } from "../env";
-import { fetchIsHoliday } from "../providers/holiday";
 
 const H = (start: number | null, end: number | null): ClinicHours => ({ start, end });
 /** 8칸 진료시간 — 전 요일 동일 [s,e]. */
@@ -264,55 +262,4 @@ describe("prioritizeOpen (진료중 우선 — 절단으로 열린 곳을 잃지
   });
 });
 
-describe("findNightClinicsNow (상태 부여 + 절단 노출 + 공휴일 축)", () => {
-  afterEach(() => vi.restoreAllMocks());
-  const ok = (json: unknown): Response =>
-    ({ ok: true, status: 200, json: async () => json } as unknown as Response);
-
-  it("total은 절단 전 반경 내 전체 수 — limit으로 잘라도 유지된다", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
-    const r = await findNightClinicsNow(37.4979, 127.0276, {
-      radiusMeters: 1e9,
-      limit: 2,
-    });
-    expect(r.clinics).toHaveLength(2);
-    expect(r.total).toBe(4); // fixture 전체
-    expect(r.radiusMeters).toBe(1e9);
-  });
-
-  it("각 기관에 openStatus가 붙는다(LLM 추론 금지 — 서버 계산 정본)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
-    const r = await findNightClinicsNow(37.4979, 127.0276);
-    for (const c of r.clinics) {
-      expect(["open", "closed", "unknown"]).toContain(c.openStatus.state);
-    }
-  });
-
-  it("공휴일 판정 true → basis=holiday", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
-    vi.mocked(fetchIsHoliday).mockResolvedValueOnce(true);
-    expect((await findNightClinicsNow(37.4979, 127.0276)).basis).toBe("holiday");
-  });
-
-  it("공휴일 판정 실패(null) → basis=weekday 폴백, 목록은 정상 반환", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
-    vi.mocked(fetchIsHoliday).mockResolvedValueOnce(null);
-    const r = await findNightClinicsNow(37.4979, 127.0276);
-    expect(r.basis).toBe("weekday");
-    expect(r.clinics.length).toBeGreaterThan(0);
-  });
-
-  it("목록 조회 실패는 throw — 빈 목록으로 위장하지 않는다", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
-    await expect(findNightClinicsNow(37.4979, 127.0276)).rejects.toThrow();
-  });
-
-  it("키 없음 → 빈 결과, fetch 미호출", async () => {
-    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "";
-    const spy = vi.spyOn(globalThis, "fetch");
-    const r = await findNightClinicsNow(37.5, 127.0);
-    expect(r).toMatchObject({ clinics: [], total: 0, basis: "weekday" });
-    expect(spy).not.toHaveBeenCalled();
-    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "test-key";
-  });
-});
+// findNightClinicsNow 테스트는 병합 진입점 이동에 따라 clinics.test.ts로 이설(2026-07-26).
