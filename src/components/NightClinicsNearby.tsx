@@ -14,6 +14,9 @@ import { ChatOverlay } from "./chat/ChatOverlay";
 /** API 응답 항목 — NightClinic + 서버 계산 진료 상태. */
 type ClinicWithStatus = NightClinic & { openStatus: ClinicOpenStatus };
 
+/** 진료시간 판정 축 — 어느 기준으로 읽었는지 UI가 밝힌다. */
+type HoursBasis = "holiday" | "weekday";
+
 type Status =
   | { kind: "idle" }
   | { kind: "locating" }
@@ -21,7 +24,15 @@ type Status =
   | { kind: "empty" }
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
-  | { kind: "done"; clinics: ClinicWithStatus[]; at: string };
+  | {
+      kind: "done";
+      clinics: ClinicWithStatus[];
+      at: string;
+      /** 반경 내 전체 수(절단 전) — "N곳 중 M곳"을 밝히기 위한 값. */
+      total: number;
+      radiusKm: number;
+      basis: HoursBasis;
+    };
 
 /** HHMM 정수(1800, 2400) → "18:00"/"24:00". null/비정상은 빈 문자열. */
 function formatTime(n: number | null): string {
@@ -70,7 +81,15 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
         hour: "2-digit",
         minute: "2-digit",
       });
-      setStatus({ kind: "done", clinics, at });
+      setStatus({
+        kind: "done",
+        clinics,
+        at,
+        // total 부재(구버전 응답)면 표시 건수로 폴백 — "N곳 중 N곳"은 참이다.
+        total: typeof body.total === "number" ? body.total : clinics.length,
+        radiusKm: Math.round((body.radiusMeters ?? 20_000) / 1000),
+        basis: body.basis === "holiday" ? "holiday" : "weekday",
+      });
     } catch {
       setStatus({ kind: "error" });
     }
@@ -187,6 +206,16 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
             {`${t("ready")} ${t("asOf", { time: status.at })}`}
           </h3>
 
+          {/* 절단·판정 기준을 한 문장 덩어리(단일 텍스트 노드 = 한 객체)로 밝힌다.
+              명부가 작아 상위 N 절단이 "근처에 없다"로 오해되던 회귀의 수정. */}
+          <p className="mt-1 text-sm">
+            {`${t("summary", {
+              radius: status.radiusKm,
+              total: status.total,
+              shown: status.clinics.length,
+            })} ${status.basis === "holiday" ? t("basisHoliday") : t("basisWeekday")}`}
+          </p>
+
           <button
             type="button"
             onClick={() => close()}
@@ -227,14 +256,19 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
                     )}
                   </p>
 
-                  {holiday && holiday.start != null && holiday.end != null && (
-                    <p className="text-sm opacity-70">
-                      {t("holidayHours", {
-                        start: formatTime(holiday.start),
-                        end: formatTime(holiday.end),
-                      })}
-                    </p>
-                  )}
+                  {/* 공휴일 기준으로 판정한 날엔 위 "오늘 진료"가 곧 공휴일 진료시간이라
+                      같은 값을 두 번 낭독하게 된다 — 요일 기준일 때만 부가 표시. */}
+                  {status.basis === "weekday" &&
+                    holiday &&
+                    holiday.start != null &&
+                    holiday.end != null && (
+                      <p className="text-sm opacity-70">
+                        {t("holidayHours", {
+                          start: formatTime(holiday.start),
+                          end: formatTime(holiday.end),
+                        })}
+                      </p>
+                    )}
 
                   {c.phone && (
                     <p className="mt-1 text-sm">

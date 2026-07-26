@@ -1,10 +1,12 @@
 import type {
   ClinicHours,
+  ClinicOpenState,
   ClinicOpenStatus,
   NightClinic,
 } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import { fetchIsHoliday } from "./holiday";
 
 /**
  * 내 주변 소아 야간·휴일 진료(달빛어린이병원·소아전문센터) provider —
@@ -20,13 +22,16 @@ import { haversineMeters } from "../geo";
  * - 진료 상태는 open/closed/**unknown** 3-state. 해당 요일 진료시간이 없으면
  *   "마감"이 아니라 "정보 없음"(시각장애인 오판 방지 — arrivalStatus 교훈).
  * - `totalCount > numOfRows`면 throw(silent truncation 방지 — metro 교훈).
+ * - **표시 절단도 침묵 금지**: 반경 내 전체 수(`total`)를 함께 반환해 UI가
+ *   "N곳 중 M곳"을 밝힌다. 명부가 전국 152개(서울 19)로 작아 상위 5곳 고정
+ *   절단은 "근처에 없다"는 오해를 낳았다(실측: 강동 좌표에서 5곳만 노출).
  */
 
 const BASE =
   "https://apis.data.go.kr/B552657/HsptlAsembySearchService/getBabyListInfoInqire";
 const NUM_OF_ROWS = 200; // 전국 ~152개 < 200 (totalCount 가드로 증가 대비)
 const MAX_DISTANCE_METERS = 20_000; // 야간 소아 응급 — 도보권보다 넓게(차량 이동 전제)
-const TOP_N = 5;
+const TOP_N = 10;
 
 type RawItem = Record<string, unknown>;
 
@@ -189,15 +194,138 @@ export async function fetchNightClinics(): Promise<NightClinic[]> {
       `달빛어린이병원 목록 ${totalCount}건 > 페이지 ${NUM_OF_ROWS} — 페이지네이션 필요(부분집합 금지)`,
     );
   }
-  return parseClinics(raw);
+  const clinics = parseClinics(raw);
+  // 좌표 누락 행은 거리 정렬이 불가해 버리지만, 조용히 사라지면 "명부에 없다"와
+  // 구분이 안 된다. 명부가 작아 한 건도 유의미하므로 드롭 수를 관측만 남긴다.
+  const dropped = extractItems(raw).length - clinics.length;
+  if (dropped > 0) {
+    console.warn(`[night-clinic] 좌표 누락 등으로 제외된 기관 ${dropped}건`);
+  }
+  return clinics;
 }
 
 /** 좌표 → 반경 내 근접 소아 야간·휴일 진료 상위 N(거리순). 키 없으면 빈 배열. */
 export async function findNightClinicsNear(
   lat: number,
   lng: number,
+  opts: { radiusMeters?: number; limit?: number } = {},
 ): Promise<NightClinic[]> {
   if (!env.DATA_GO_KR_API_KEY) return [];
   const all = await fetchNightClinics();
-  return rankClinicsByDistance(all, lat, lng);
+  return rankClinicsByDistance(all, lat, lng, opts);
+}
+
+/** KST 기준 날짜키(YYYYMMDD) — 공휴일 조회 파라미터. 순수(nowMs 주입). */
+export function kstDateKey(nowMs: number): string {
+  const kst = new Date(nowMs + 9 * 60 * 60 * 1000);
+  const m = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(kst.getUTCDate()).padStart(2, "0");
+  return `${kst.getUTCFullYear()}${m}${d}`;
+}
+
+/** 진료시간 판정에 쓰인 축 — UI가 기준을 밝히기 위한 라벨. */
+export type ClinicHoursBasis = "holiday" | "weekday";
+
+export interface ClinicNowBasis {
+  /** hours 배열 index(0=월..6=일, 7=공휴일) */
+  hoursIndex: number;
+  hhmm: number;
+  basis: ClinicHoursBasis;
+}
+
+/**
+ * KST 현재 시각 + 공휴일 판정 → 진료시간 축(순수, nowMs 주입).
+ *
+ * `isHoliday === true`면 dutyTime8(공휴일 칸)로 판정한다. **null(판정 불가 —
+ * 키 없음·미신청·조회 실패)이면 요일 폴백**이고, 호출부는 `basis`를 UI에
+ * 노출해 어느 기준으로 읽었는지 밝힌다(지하철 시간표의 기준 라벨과 동형).
+ * 공휴일에 일요일 시간표를 대신 쓰지 않는다 — 추정 대신 unknown이 정직하다.
+ */
+export function clinicNowBasis(
+  nowMs: number,
+  isHoliday: boolean | null,
+): ClinicNowBasis {
+  const kst = new Date(nowMs + 9 * 60 * 60 * 1000);
+  const hhmm = kst.getUTCHours() * 100 + kst.getUTCMinutes();
+  return isHoliday === true
+    ? { hoursIndex: 7, hhmm, basis: "holiday" }
+    : { hoursIndex: dayToHoursIndex(kst.getUTCDay()), hhmm, basis: "weekday" };
+}
+
+/** 진료 상태가 덧붙은 기관 — 라우트·채팅 공통 표현. */
+export type NightClinicNow = NightClinic & { openStatus: ClinicOpenStatus };
+
+/** 진료중 > 정보없음 > 마감. "정보 없음"은 전화로 확인 가능하므로 마감보다 위. */
+const STATE_RANK: Record<ClinicOpenState, number> = {
+  open: 0,
+  unknown: 1,
+  closed: 2,
+};
+
+/**
+ * 진료 상태 우선 정렬 후 상위 N.
+ *
+ * ⚠ 거리순으로만 자르면 **지금 문 연 곳이 닫힌 곳에 밀려 절단**된다(명부가
+ * 작아 서울 19곳 중 5곳만 보이던 회귀 — 의료 안전망에서 가장 나쁜 실패).
+ * `Array.prototype.sort`는 안정 정렬이라 같은 상태 안에서는 입력 거리순이
+ * 그대로 보존된다(입력은 `rankClinicsByDistance` 결과여야 한다).
+ */
+export function prioritizeOpen<T extends { openStatus: ClinicOpenStatus }>(
+  list: T[],
+  limit: number,
+): T[] {
+  return [...list]
+    .sort((a, b) => STATE_RANK[a.openStatus.state] - STATE_RANK[b.openStatus.state])
+    .slice(0, limit);
+}
+
+export interface NightClinicNowResult {
+  /** 진료중 우선·거리순 상위 N. */
+  clinics: NightClinicNow[];
+  /** 반경 내 전체 수(절단 전) — 침묵 절단 금지. */
+  total: number;
+  radiusMeters: number;
+  /** 진료 상태를 어느 진료시간 칸으로 읽었는지. */
+  basis: ClinicHoursBasis;
+}
+
+/**
+ * 좌표 → 반경 내 소아 야간·휴일 진료 + **지금 진료 상태**(KST·공휴일 반영).
+ * 라우트와 채팅 도구의 공통 진입점 — 상태 부여를 한 곳으로 모아 LLM이
+ * 진료시간 배열을 보고 "지금 진료중"을 추론(=날조)하지 못하게 막는다.
+ *
+ * 공휴일 판정은 게이트형(실패→null→요일 폴백)이라 목록과 병렬로 돌려도
+ * 목록 실패만 throw된다 — "조회 실패"를 빈 목록으로 위장하지 않는다.
+ */
+export async function findNightClinicsNow(
+  lat: number,
+  lng: number,
+  opts: { nowMs?: number; radiusMeters?: number; limit?: number } = {},
+): Promise<NightClinicNowResult> {
+  const radiusMeters = opts.radiusMeters ?? MAX_DISTANCE_METERS;
+  const limit = opts.limit ?? TOP_N;
+  const nowMs = opts.nowMs ?? Date.now();
+  if (!env.DATA_GO_KR_API_KEY) {
+    return { clinics: [], total: 0, radiusMeters, basis: "weekday" };
+  }
+  const [all, isHoliday] = await Promise.all([
+    fetchNightClinics(),
+    fetchIsHoliday(kstDateKey(nowMs)),
+  ]);
+  // 반경 내 전량을 먼저 확보해야 total(절단 전 수)이 정확하다.
+  const within = rankClinicsByDistance(all, lat, lng, {
+    radiusMeters,
+    limit: Number.POSITIVE_INFINITY,
+  });
+  const now = clinicNowBasis(nowMs, isHoliday);
+  const withStatus: NightClinicNow[] = within.map((c) => ({
+    ...c,
+    openStatus: clinicOpenStatus(c.hours, now.hoursIndex, now.hhmm),
+  }));
+  return {
+    clinics: prioritizeOpen(withStatus, limit),
+    total: within.length,
+    radiusMeters,
+    basis: now.basis,
+  };
 }
