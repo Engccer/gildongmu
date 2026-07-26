@@ -19,7 +19,12 @@ vi.mock("@/lib/providers/subway-nearby", () => ({
   fetchNearbySubwayArrivals: vi.fn(async () => [{ name: "강남", arrivals: [] }]),
 }));
 vi.mock("@/lib/providers/night-clinic", () => ({
-  findNightClinicsNear: vi.fn(async () => []),
+  findNightClinicsNow: vi.fn(async () => ({
+    clinics: [],
+    total: 0,
+    radiusMeters: 20_000,
+    basis: "weekday" as const,
+  })),
 }));
 vi.mock("@/lib/providers/kids-places", () => ({
   findKidsPlacesNear: vi.fn(async () => []),

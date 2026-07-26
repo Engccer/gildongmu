@@ -84,7 +84,7 @@
 | 서울 지하철 실시간 | seoul-subway-arrival / `…/subway-arrival[/nearby]` | `arvlMsg2` 정본, 역명 기반(seed `findStationsNear`로 근접역), 부분실패 보존 |
 | 시내버스 | tago-bus + seoul-bus → `src/lib/bus.ts` 병합 | 지방=TAGO·서울=TOPIS, `mergeBusStops` allSettled, envelope 다름(위 참조) |
 | 따릉이 | seoul-bike / `/api/bike/nearby` | 전체 페이지루프+서버 Haversine, row 수<1000이 종료조건 |
-| 소아 야간진료 | night-clinic NMC / `/api/clinic/nearby` | 좌표 보유는 `getBabyListInfoInqire`(15001674은 좌표 없음), 진료 3-state(KST) |
+| 소아 야간진료 | night-clinic NMC / `/api/clinic/nearby` | 좌표 보유는 `getBabyListInfoInqire`(15001674은 좌표 없음), 진료 3-state(KST). ⚠ **달빛 지정 명부라 전국 152개(서울 19)뿐** — 미지정 소아과는 일요일 진료해도 부재(커버리지 확장은 `docs/superpowers/specs/2026-07-26-clinic-coverage-expansion-design.md`). 진입점 `findNightClinicsNow`(라우트·채팅 공용)가 **진료중 우선 정렬**(`prioritizeOpen`: open>unknown>closed, 안정 정렬로 거리순 보존) 후 상위 10 — ⚠ 거리순으로만 자르면 문 연 곳이 닫힌 곳에 밀려 절단된다. 절단은 `total`로 노출(침묵 금지). 공휴일은 `fetchIsHoliday`(특일정보) 재사용해 dutyTime8 판정, 실패 시 요일 폴백+`basis` 라벨 명시 |
 | 공기질·날씨 | air-quality + weather → `LocalConditions` | 단일 region, 두 fetch 독립(allSettled), 좌표계 TM/격자(위 참조) |
 | 아이 놀 곳 | kids-places / `/api/places/kids` | 카카오 키워드→`category_name` 화이트리스트(키워드 매칭≠키즈), 실내/외 3-state |
 | 둘러보기 | surroundings / `/api/places/around` | 카카오 카테고리(10종)+8방위(`bearing.ts`), ⚠ heading 없어 정면-상대 방향 금지 |

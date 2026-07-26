@@ -6,6 +6,10 @@ vi.mock("../env", () => ({
   env: { DATA_GO_KR_API_KEY: "test-key" },
   hasDataGoKrKey: () => true,
 }));
+// 공휴일 판정은 별도 provider — 기본은 "공휴일 아님"으로 두고 케이스별로 덮는다.
+vi.mock("../providers/holiday", () => ({
+  fetchIsHoliday: vi.fn(async () => false),
+}));
 
 import {
   parseClinics,
@@ -15,9 +19,14 @@ import {
   extractItems,
   fetchNightClinics,
   findNightClinicsNear,
+  findNightClinicsNow,
+  clinicNowBasis,
+  kstDateKey,
+  prioritizeOpen,
 } from "../providers/night-clinic";
-import type { ClinicHours } from "../types";
+import type { ClinicHours, ClinicOpenState } from "../types";
 import { env } from "../env";
+import { fetchIsHoliday } from "../providers/holiday";
 
 const H = (start: number | null, end: number | null): ClinicHours => ({ start, end });
 /** 8칸 진료시간 — 전 요일 동일 [s,e]. */
@@ -188,5 +197,122 @@ describe("fetchNightClinics / findNightClinicsNear (fetch 합성)", () => {
       expect(r[i].distanceMeters).toBeGreaterThanOrEqual(r[i - 1].distanceMeters);
     }
     expect(Number.isFinite(r[0].distanceMeters)).toBe(true);
+  });
+});
+
+describe("kstDateKey / clinicNowBasis (KST 기준축)", () => {
+  // 2026-07-26T15:30:00Z = KST 2026-07-27(월) 00:30
+  const utcLateNight = Date.UTC(2026, 6, 26, 15, 30);
+
+  it("UTC 자정 전이라도 KST 날짜로 넘어간 날을 쓴다", () => {
+    expect(kstDateKey(utcLateNight)).toBe("20260727");
+  });
+
+  it("공휴일 아님 → 요일 칸(월요일=0), basis=weekday", () => {
+    const b = clinicNowBasis(utcLateNight, false);
+    expect(b.hoursIndex).toBe(0);
+    expect(b.hhmm).toBe(30);
+    expect(b.basis).toBe("weekday");
+  });
+
+  it("공휴일 → dutyTime8 칸(index 7), basis=holiday", () => {
+    expect(clinicNowBasis(utcLateNight, true)).toMatchObject({
+      hoursIndex: 7,
+      basis: "holiday",
+    });
+  });
+
+  it("판정 불가(null) → 요일 폴백 + basis=weekday (가짜 공휴일 판정 금지)", () => {
+    expect(clinicNowBasis(utcLateNight, null)).toMatchObject({
+      hoursIndex: 0,
+      basis: "weekday",
+    });
+  });
+});
+
+describe("prioritizeOpen (진료중 우선 — 절단으로 열린 곳을 잃지 않는다)", () => {
+  const item = (name: string, state: ClinicOpenState) => ({
+    name,
+    openStatus: { state, start: null, end: null },
+  });
+
+  it("open → unknown → closed 순서", () => {
+    const r = prioritizeOpen(
+      [item("닫힘", "closed"), item("모름", "unknown"), item("열림", "open")],
+      10,
+    );
+    expect(r.map((c) => c.name)).toEqual(["열림", "모름", "닫힘"]);
+  });
+
+  it("같은 상태 안에서는 입력(거리) 순서를 보존한다 — 안정 정렬", () => {
+    const r = prioritizeOpen(
+      [item("가까운열림", "open"), item("먼열림", "open"), item("가까운닫힘", "closed")],
+      10,
+    );
+    expect(r.map((c) => c.name)).toEqual(["가까운열림", "먼열림", "가까운닫힘"]);
+  });
+
+  it("절단 시 닫힌 곳이 아니라 열린 곳이 남는다(회귀 방지 핵심)", () => {
+    // 거리순 입력: 닫힌 곳 5개가 앞, 열린 곳이 6번째 — 예전 로직이면 잘려나갔다.
+    const input = [
+      ...Array.from({ length: 5 }, (_, i) => item(`닫힘${i}`, "closed")),
+      item("진료중", "open"),
+    ];
+    const r = prioritizeOpen(input, 5);
+    expect(r).toHaveLength(5);
+    expect(r[0].name).toBe("진료중");
+  });
+});
+
+describe("findNightClinicsNow (상태 부여 + 절단 노출 + 공휴일 축)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const ok = (json: unknown): Response =>
+    ({ ok: true, status: 200, json: async () => json } as unknown as Response);
+
+  it("total은 절단 전 반경 내 전체 수 — limit으로 잘라도 유지된다", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
+    const r = await findNightClinicsNow(37.4979, 127.0276, {
+      radiusMeters: 1e9,
+      limit: 2,
+    });
+    expect(r.clinics).toHaveLength(2);
+    expect(r.total).toBe(4); // fixture 전체
+    expect(r.radiusMeters).toBe(1e9);
+  });
+
+  it("각 기관에 openStatus가 붙는다(LLM 추론 금지 — 서버 계산 정본)", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
+    const r = await findNightClinicsNow(37.4979, 127.0276);
+    for (const c of r.clinics) {
+      expect(["open", "closed", "unknown"]).toContain(c.openStatus.state);
+    }
+  });
+
+  it("공휴일 판정 true → basis=holiday", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
+    vi.mocked(fetchIsHoliday).mockResolvedValueOnce(true);
+    expect((await findNightClinicsNow(37.4979, 127.0276)).basis).toBe("holiday");
+  });
+
+  it("공휴일 판정 실패(null) → basis=weekday 폴백, 목록은 정상 반환", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
+    vi.mocked(fetchIsHoliday).mockResolvedValueOnce(null);
+    const r = await findNightClinicsNow(37.4979, 127.0276);
+    expect(r.basis).toBe("weekday");
+    expect(r.clinics.length).toBeGreaterThan(0);
+  });
+
+  it("목록 조회 실패는 throw — 빈 목록으로 위장하지 않는다", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
+    await expect(findNightClinicsNow(37.4979, 127.0276)).rejects.toThrow();
+  });
+
+  it("키 없음 → 빈 결과, fetch 미호출", async () => {
+    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "";
+    const spy = vi.spyOn(globalThis, "fetch");
+    const r = await findNightClinicsNow(37.5, 127.0);
+    expect(r).toMatchObject({ clinics: [], total: 0, basis: "weekday" });
+    expect(spy).not.toHaveBeenCalled();
+    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "test-key";
   });
 });
