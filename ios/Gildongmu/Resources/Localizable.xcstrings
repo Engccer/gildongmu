@@ -6631,6 +6631,40 @@
         }
       }
     },
+    "ios.clinic.designated": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "달빛어린이병원으로 지정된 기관입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Government-designated night pediatric clinic (Moonlight Children's Hospital)."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clínica pediátrica nocturna designada por el gobierno (Moonlight Children's Hospital)."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clinique pédiatrique de nuit désignée par l'État (Moonlight Children's Hospital)."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clinica pediatrica notturna designata dal governo (Moonlight Children's Hospital)."
+          }
+        }
+      }
+    },
     "ios.common.checking": {
       "localizations": {
         "ko": {
