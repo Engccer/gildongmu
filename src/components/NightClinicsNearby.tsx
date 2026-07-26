@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MessageSquare } from "lucide-react";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
@@ -164,9 +164,12 @@ export function NightClinicsNearby({ canShowChat = false }: { canShowChat?: bool
   }, [status.kind]);
 
   // "더 보기"로 공개된 첫 새 항목으로 포커스 이동 — 새 항목의 라벨이 곧 통지라
-  // 별도 live region은 두지 않는다(중복 낭독). 버튼이 마지막 배치로 사라져도
-  // 포커스는 이미 새 항목에 있어 이탈(§5)이 구조적으로 없다.
-  useEffect(() => {
+  // 별도 live region은 두지 않는다(중복 낭독). useLayoutEffect로 페인트 전에
+  // 동기 실행한다 — 마지막 배치를 공개하는 클릭은 포커스를 쥔 "더 보기" 버튼이
+  // 같은 커밋에서 unmount되므로, 커밋·페인트 이후 실행되는 useEffect라면
+  // 재포커스 전까지 짧은 body 이탈 창이 생긴다(헌장 §5). useLayoutEffect는
+  // 그 배치가 화면에 그려지기 전에 새 항목으로 재포커스해 이탈 창을 없앤다.
+  useLayoutEffect(() => {
     const i = pendingFocusIndex.current;
     if (i == null) return;
     pendingFocusIndex.current = null;
