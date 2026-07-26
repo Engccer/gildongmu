@@ -65,6 +65,9 @@
       "copyAddress": "Copier l'adresse",
       "askAbout": "Poser une question sur {name}"
     },
+    "clinic": {
+      "designated": "Clinique pédiatrique de nuit désignée par l'État (Moonlight Children's Hospital)."
+    },
     "route": {
       "section": "Itinéraire",
       "naver": "Itinéraire dans Naver Map",

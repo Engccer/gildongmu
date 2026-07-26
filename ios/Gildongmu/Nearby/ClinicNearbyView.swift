@@ -72,34 +72,21 @@ struct ClinicNearbyView: View {
                 }
             }
             if case .loaded(let clinics) = model.state {
+                // 평면 1행=1객체(검색 탭 동형). 항목 heading·주소·전화 행은 상세로 이동
+                // — M2·M3 "평면 리스트 heading 잉여" 결정 동형. 실기기 VO 확인 게이트.
                 ForEach(clinics) { clinic in
-                    Section {
-                        // 진료 상태 3-state: "마감"과 "정보 없음"을 뭉개지 않고 문장으로 분리.
-                        // 달빛 지정 여부는 목록 미표기(위원장 판정 2026-07-26) — 데이터는 보존,
-                        // 상세 이식 시 조건부 노출.
-                        Text(clinicStatusText(clinic.openStatus))
-                        if !clinic.address.isEmpty {
-                            Text(clinic.address)
+                    NavigationLink {
+                        PlaceDetailView(place: nightClinicToPlace(clinic)) {
+                            ClinicDomainSection(clinic: clinic)
                         }
-                        if !clinic.directions.isEmpty {
-                            Text(clinic.directions)
-                        }
-                        // 전화는 인터랙티브 요소라 별도 객체로 분리(합치지 않음). 표시 라벨은 원문, tel URL만 하이픈 제거
-                        if !clinic.phone.isEmpty,
-                           let url = URL(string: "tel:\(clinic.phone.replacingOccurrences(of: "-", with: ""))") {
-                            Link(appLocalized("ios.place.callLine", clinic.phone), destination: url)
-                        }
-                    } header: {
-                        // 기관명만 heading(웹 h4 규칙). 종별·거리는 같은 줄에 흡수.
-                        Text(joinText(clinic.name, clinic.kind, "\(clinic.distanceMeters)m"))
-                            .accessibilityAddTraits(.isHeader)
-                            // 채팅 진입: 시각(길게 눌러 메뉴) + VoiceOver 로터, 동일 라벨(웹 placeChat.launchFor 미러)
-                            .contextMenu {
-                                Button(chatLabel(clinic.name)) { chatPlace = nightClinicToPlace(clinic) }
-                            }
-                            .accessibilityAction(named: Text(chatLabel(clinic.name))) {
-                                chatPlace = nightClinicToPlace(clinic)
-                            }
+                    } label: {
+                        PlaceRow(
+                            place: nightClinicToPlace(clinic),
+                            secondaryOverride: joinText(
+                                clinic.kind,
+                                clinicStatusText(clinic.openStatus),
+                                appLocalized("place.distance", formatDistanceKo(Double(clinic.distanceMeters)))),
+                            onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
                     }
                 }
             }
@@ -109,29 +96,6 @@ struct ClinicNearbyView: View {
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
-    }
-
-    private func chatLabel(_ name: String) -> String { "\(name)에 관해 물어보기" }
-
-    /// 진료 상태 3-state 문장. open이면 종료시각까지, closed/unknown은 각각의 문장으로.
-    private func clinicStatusText(_ status: NightClinic.OpenStatus) -> String {
-        switch status.state {
-        case "open":
-            if let end = status.end {
-                return joinText(appLocalized("clinicNearby.open"), endTimeText(end))
-            }
-            return appLocalized("clinicNearby.open")
-        case "closed":
-            return appLocalized("ios.nearby.clinicClosed")
-        default:
-            return appLocalized("ios.nearby.clinicUnknown")
-        }
-    }
-
-    /// HHMM 정수를 "HH시 MM분까지"로. 2400은 자정을 뜻해 "자정까지".
-    private func endTimeText(_ hhmm: Int) -> String {
-        if hhmm == 2400 { return appLocalized("ios.nearby.untilMidnight") }
-        return appLocalized("ios.nearby.untilTime", String(hhmm / 100), String(hhmm % 100))
     }
 
     @ViewBuilder private var stateOverlay: some View {
@@ -146,6 +110,46 @@ struct ClinicNearbyView: View {
         case .loaded(let clinics) where clinics.isEmpty:
             ContentUnavailableView(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case")
         default: EmptyView()
+        }
+    }
+}
+
+/// 진료 상태 3-state 문장 — 목록 행 보조 텍스트와 상세 도메인 섹션이 공유.
+/// open이면 종료시각까지, closed/unknown은 각각의 문장으로.
+func clinicStatusText(_ status: NightClinic.OpenStatus) -> String {
+    switch status.state {
+    case "open":
+        if let end = status.end {
+            return joinText(appLocalized("clinicNearby.open"), clinicEndTimeText(end))
+        }
+        return appLocalized("clinicNearby.open")
+    case "closed":
+        return appLocalized("ios.nearby.clinicClosed")
+    default:
+        return appLocalized("ios.nearby.clinicUnknown")
+    }
+}
+
+/// HHMM 정수를 "HH시 MM분까지"로. 2400은 자정을 뜻해 "자정까지".
+private func clinicEndTimeText(_ hhmm: Int) -> String {
+    if hhmm == 2400 { return appLocalized("ios.nearby.untilMidnight") }
+    return appLocalized("ios.nearby.untilTime", String(hhmm / 100), String(hhmm % 100))
+}
+
+/// 소아 진료 도메인 섹션 — 장소 상세 최상단(진료 여부가 이 화면에 온 이유).
+/// 전부 평문 단일 텍스트. 달빛 지정은 true일 때만(위원장 판정 2026-07-26: 목록 미표기·상세 조건부).
+struct ClinicDomainSection: View {
+    let clinic: NightClinic
+
+    var body: some View {
+        Section {
+            Text(clinicStatusText(clinic.openStatus))
+            if !clinic.directions.isEmpty {
+                Text(appLocalized("clinicNearby.directions", clinic.directions))
+            }
+            if clinic.designated == true {
+                Text(appLocalized("ios.clinic.designated"))
+            }
         }
     }
 }

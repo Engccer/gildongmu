@@ -65,6 +65,9 @@
       "copyAddress": "Copy address",
       "askAbout": "Ask about {name}"
     },
+    "clinic": {
+      "designated": "Government-designated night pediatric clinic (Moonlight Children's Hospital)."
+    },
     "route": {
       "section": "Directions",
       "naver": "Directions in Naver Map",
