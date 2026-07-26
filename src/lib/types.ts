@@ -507,6 +507,15 @@ export interface NightClinic {
   distanceMeters: number;
   /** 월~일·공휴일 진료시간(8칸, dutyTime1..8). */
   hours: ClinicHours[];
+  /**
+   * 달빛어린이병원·소아전문응급센터 **지정** 여부. 지정 명부(getBabyListInfoInqire)는
+   * true, 일반 소아청소년과 보완 소스(QD=D002)는 false.
+   *
+   * 커버리지 확대는 정밀도와의 거래다 — 지정 기관에는 "소아 야간진료" 품질 보증이
+   * 붙어 있고 일반 소아과에는 없다(오전만 여는 곳이 같은 목록에 섞인다). UI가 이
+   * 구분을 항목 텍스트로 밝혀야 하며 숨기면 안 된다.
+   */
+  designated?: boolean;
 }
 
 /**

@@ -64,7 +64,8 @@ export function extractItems(raw: unknown): RawItem[] {
 }
 
 /** 응답 본문에서 resultCode·totalCount 추출(envelope 검사용). */
-function header(raw: unknown): { code: string | null; totalCount: number } {
+/** 응급의료정보(B552657) 공통 envelope 헤더 — 같은 서비스의 다른 오퍼레이션도 쓴다. */
+export function header(raw: unknown): { code: string | null; totalCount: number } {
   const r = (raw as {
     response?: { header?: { resultCode?: unknown }; body?: { totalCount?: unknown } };
   })?.response;
@@ -194,7 +195,9 @@ export async function fetchNightClinics(): Promise<NightClinic[]> {
       `달빛어린이병원 목록 ${totalCount}건 > 페이지 ${NUM_OF_ROWS} — 페이지네이션 필요(부분집합 금지)`,
     );
   }
-  const clinics = parseClinics(raw);
+  // 이 소스가 곧 "달빛 지정" 명부다 — 보완 소스(QD=D002)와 섞일 때 UI가
+  // 품질 보증 유무를 밝힐 수 있도록 여기서 표시한다.
+  const clinics = parseClinics(raw).map((c) => ({ ...c, designated: true }));
   // 좌표 누락 행은 거리 정렬이 불가해 버리지만, 조용히 사라지면 "명부에 없다"와
   // 구분이 안 된다. 명부가 작아 한 건도 유의미하므로 드롭 수를 관측만 남긴다.
   const dropped = extractItems(raw).length - clinics.length;
