@@ -235,4 +235,23 @@ describe("findKidsPlacesNear (키게이트·3키워드 병합·부분실패)", (
     );
     expect(await findKidsPlacesNear(37.538, 127.139)).toEqual([]);
   });
+
+  it("서버 캡 50 — 표시 절단은 클라이언트 몫(V1 동형)", async () => {
+    // 화이트리스트 통과하는 키즈카페 60건(고유 id) — 한 키워드 응답에 몰아 넣고
+    // 나머지 두 키워드는 빈 결과.
+    const bulk: RawDoc[] = Array.from({ length: 60 }, (_, i) => ({
+      id: `bulk-${i}`,
+      place_name: `벌크키즈카페${i}`,
+      category_name: "가정,생활 > 유아 > 놀이시설 > 키즈카페",
+      x: "127.1399",
+      y: "37.5378",
+      distance: String(100 + i),
+    }));
+    const spy = vi.spyOn(globalThis, "fetch");
+    spy.mockResolvedValueOnce(ok({ documents: bulk }));
+    spy.mockResolvedValueOnce(ok({ documents: [] }));
+    spy.mockResolvedValueOnce(ok({ documents: [] }));
+    const kids = await findKidsPlacesNear(37.538, 127.139);
+    expect(kids.length).toBe(50);
+  });
 });
