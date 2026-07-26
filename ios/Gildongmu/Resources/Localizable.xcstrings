@@ -4591,40 +4591,6 @@
         }
       }
     },
-    "clinicNearby.basisWeekday": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "오늘 요일의 진료시간 기준입니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Based on today's weekday hours."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Según el horario del día de la semana de hoy."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Selon les horaires du jour de la semaine."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In base agli orari del giorno feriale di oggi."
-          }
-        }
-      }
-    },
     "clinicNearby.button": {
       "localizations": {
         "ko": {
@@ -4723,40 +4689,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chiusa ora"
-          }
-        }
-      }
-    },
-    "clinicNearby.designatedTag": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "달빛어린이병원 지정"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Designated Moonlight Children's Hospital"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonlight Children's Hospital designado"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonlight Children's Hospital désigné"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moonlight Children's Hospital designato"
           }
         }
       }
@@ -5199,74 +5131,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: dati di emergenza del National Medical Center. Orari dichiarati — chiama prima di andare."
-          }
-        }
-      }
-    },
-    "clinicNearby.sources": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "달빛어린이병원 지정 %1$@km 내 %2$@곳, 일반 소아청소년과 %3$@km 내 %4$@곳입니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%2$@ designated Moonlight Children's Hospitals within %1$@ km, %4$@ general pediatric clinics within %3$@ km."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%2$@ Moonlight Children's Hospitals designados en %1$@ km, %4$@ clínicas pediátricas generales en %3$@ km."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%2$@ Moonlight Children's Hospitals désignés dans un rayon de %1$@ km, %4$@ cliniques pédiatriques générales dans un rayon de %3$@ km."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%2$@ Moonlight Children's Hospitals designati entro %1$@ km, %4$@ cliniche pediatriche generali entro %3$@ km."
-          }
-        }
-      }
-    },
-    "clinicNearby.summary": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@곳 중 %2$@곳입니다. 지금 진료 중인 곳을 먼저 보여드립니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Showing %2$@ of %1$@. Places open now come first."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrando %2$@ de %1$@. Los abiertos ahora aparecen primero."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Affichage de %2$@ sur %1$@. Les établissements ouverts en ce moment apparaissent en premier."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mostrati %2$@ di %1$@. Le strutture aperte ora vengono prima."
           }
         }
       }

@@ -5,13 +5,10 @@ import GildongmuKit
 
 /// 내 주변 소아 야간진료. SubwayNearbyModel 규범 패턴 미러(3-state 권한 거부/조회 실패/0건).
 /// 진료 상태 3-state(open/closed/unknown)를 문장으로 분리한다.
-/// 병합 응답 메타 — 절단·소스 구분·보완 실패를 화면이 밝히기 위한 값(웹 Status.done 미러).
+/// 병합 응답 메타 — 화면이 밝히는 두 값만(웹 Status.done 미러, 위원장 판정 2026-07-26:
+/// 절단 수치·소스 구분은 목록 미표기 — 진료중 우선 정렬이 "열린 곳 절단" 실패를
+/// 구조적으로 제거해 화면 수치가 지키는 것이 없다).
 struct ClinicSummary {
-    let total: Int
-    let designatedTotal: Int
-    let supplementTotal: Int
-    let radiusKm: Int
-    let supplementRadiusKm: Int
     /// "holiday" | "weekday"
     let basis: String
     let supplementFailed: Bool
@@ -37,11 +34,6 @@ final class ClinicNearbyModel {
             let response = try await service.clinics(lat: coord.lat, lng: coord.lng)
             let clinics = response.clinics
             summary = ClinicSummary(
-                total: response.total ?? clinics.count,
-                designatedTotal: response.designatedTotal ?? clinics.count,
-                supplementTotal: response.supplementTotal ?? 0,
-                radiusKm: (response.radiusMeters ?? 20_000) / 1000,
-                supplementRadiusKm: (response.supplementRadiusMeters ?? 3_000) / 1000,
                 basis: response.basis ?? "weekday",
                 supplementFailed: response.supplementFailed ?? false)
             state = .loaded(clinics)
@@ -66,20 +58,14 @@ struct ClinicNearbyView: View {
 
     var body: some View {
         List {
+            // 공휴일 기준으로 읽은 날·보완 실패만 밝힌다(조건부라 잡음 아님, 웹 미러).
             if case .loaded(let clinics) = model.state, !clinics.isEmpty,
-               let summary = model.summary {
+               let summary = model.summary,
+               summary.basis == "holiday" || summary.supplementFailed {
                 Section {
-                    // 절단·소스 구분·판정 기준을 한 문장 덩어리로(웹 summary+sources 미러).
-                    Text(joinText(
-                        appLocalized("clinicNearby.summary",
-                            String(summary.total), String(clinics.count)),
-                        appLocalized("clinicNearby.sources",
-                            String(summary.radiusKm), String(summary.designatedTotal),
-                            String(summary.supplementRadiusKm), String(summary.supplementTotal)),
-                        summary.basis == "holiday"
-                            ? appLocalized("clinicNearby.basisHoliday")
-                            : appLocalized("clinicNearby.basisWeekday")))
-                    // 보완 소스 실패는 표기 — 지정 기관만 보이는 이유를 숨기지 않는다.
+                    if summary.basis == "holiday" {
+                        Text(appLocalized("clinicNearby.basisHoliday"))
+                    }
                     if summary.supplementFailed {
                         Text(appLocalized("clinicNearby.supplementFailedNotice"))
                     }
@@ -89,11 +75,9 @@ struct ClinicNearbyView: View {
                 ForEach(clinics) { clinic in
                     Section {
                         // 진료 상태 3-state: "마감"과 "정보 없음"을 뭉개지 않고 문장으로 분리.
-                        // 달빛 지정 여부도 이 줄에 흡수 — 일반 소아과가 섞이면서 품질 보증
-                        // 유무가 정보가 됐다(장식 아님, 웹 미러).
-                        Text(joinText(
-                            clinic.designated == true ? appLocalized("clinicNearby.designatedTag") : nil,
-                            clinicStatusText(clinic.openStatus)))
+                        // 달빛 지정 여부는 목록 미표기(위원장 판정 2026-07-26) — 데이터는 보존,
+                        // 상세 이식 시 조건부 노출.
+                        Text(clinicStatusText(clinic.openStatus))
                         if !clinic.address.isEmpty {
                             Text(clinic.address)
                         }
