@@ -195,14 +195,6 @@ struct HoldDictationButton: View {
         }
     }
 
-    /// 녹음 시작 순간 진행 중인 VO 낭독(라벨·힌트 설명)을 끊는다. 공백 1자의
-    /// interrupting(.high) 통지는 아무것도 발화하지 않으면서 발화 큐만 비운다.
-    private func interruptVoiceOverSpeech() {
-        guard UIAccessibility.isVoiceOverRunning else { return }
-        var silence = AttributedString(" ")
-        silence.accessibilitySpeechAnnouncementPriority = .high
-        AccessibilityNotification.Announcement(silence).post()
-    }
 }
 
 /// UIKit 홀드·탭 인식기 캐처(투명 오버레이). 파일 상단 주석의 실기기 결함 2건이

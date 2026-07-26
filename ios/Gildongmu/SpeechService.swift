@@ -1,9 +1,11 @@
 import Foundation
+import Accessibility
 // AVAudioNodeTapBlock 등 AVFAudio의 Sendable 미표기 API를 Swift 6에서 경고 없이 쓰기 위함
 @preconcurrency import AVFoundation
 import AudioToolbox
 import Observation
 import Speech
+import SwiftUI
 import UIKit
 
 /// 온디바이스 음성 인식(iOS 26 SpeechAnalyzer + SpeechTranscriber, ko-KR 고정).
@@ -80,6 +82,11 @@ final class SpeechService {
                 return
             }
             phase = .listening(partial: "")
+            // 녹음이 실제로 시작되는 이 지점에서 진행 중인 VO 낭독을 끊는다(발화가
+            // 마이크 입력에 겹치지 않아야 한다는 헌장 §6 계약). 홀드 경로는 누르는
+            // 즉시 한 번 더 끊지만(즉시성), 단축어처럼 홀드 없이 시작되는 경로는
+            // 여기가 유일한 차단 지점이라 진입 경로가 아니라 서비스가 책임진다.
+            interruptVoiceOverSpeech()
             notify(soundID: 1113) // 녹음 시작음
         } catch {
             await teardown()
@@ -219,6 +226,17 @@ final class SpeechService {
         AudioServicesPlaySystemSound(soundID)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
     }
+}
+
+/// 진행 중인 VoiceOver 낭독(라벨·힌트 설명)을 즉시 끊는다. 공백 1자의
+/// interrupting(.high) 통지는 아무것도 발화하지 않으면서 발화 큐만 비운다.
+/// 받아쓰기 시작 지점이면 어디서든 쓰이므로(서비스·홀드 버튼) 파일 레벨에 둔다.
+@MainActor
+func interruptVoiceOverSpeech() {
+    guard UIAccessibility.isVoiceOverRunning else { return }
+    var silence = AttributedString(" ")
+    silence.accessibilitySpeechAnnouncementPriority = .high
+    AccessibilityNotification.Announcement(silence).post()
 }
 
 /// 마이크 탭 버퍼를 분석기 포맷으로 변환해 입력 스트림에 공급.

@@ -117,8 +117,11 @@ struct DirectionsEndpointSearchView: View {
                         hint: appLocalized("ios.voice.holdHintSearch"),
                         showsTitle: true,
                         onTranscript: { text in
-                            model.query = text
-                            AccessibilityNotification.Announcement(text).post()
+                            // 후행 마침표 제거(SearchView 동형). 출발·도착 후보는 주소
+                            // 비중이 높아 마침표 한 글자에 juso가 0건으로 전멸한다.
+                            let query = normalizeVoiceQuery(text)
+                            model.query = query
+                            AccessibilityNotification.Announcement(query).post()
                             model.submit()
                         },
                         onPause: nil
