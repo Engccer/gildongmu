@@ -294,6 +294,9 @@ struct SearchView: View {
 /// 화면 버튼 대신 VoiceOver 커스텀 액션(로터)으로 전화·길찾기 제공(spec §4).
 struct PlaceRow: View {
     let place: Place
+    /// 도메인 화면(내 주변)이 보조 줄을 대체할 때 주입(진료 상태·실내외·방위 등).
+    /// nil이면 기본 조합(카테고리·주소·거리) — 검색 탭·채팅 카드 무변경.
+    var secondaryOverride: String? = nil
     /// 장소 채팅 진입(검색 결과 전용 — sheet 상태를 가진 화면만 넘긴다).
     /// 채팅 카드 내 재사용은 nil로 액션 미노출(채팅 안에서 채팅 재진입 순환 방지).
     var onAskAbout: (() -> Void)? = nil
@@ -341,6 +344,7 @@ struct PlaceRow: View {
 
     /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
     private var joined: String {
+        if let secondaryOverride { return secondaryOverride }
         var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
         if let distance = place.distanceMeters {
             // ko.json place.distance "약 {distance}" 정본 미러.
@@ -352,8 +356,8 @@ struct PlaceRow: View {
 
 /// 웹 `src/lib/format.ts` formatDistance 미러: 1,000m 미만은 "{m}m", 이상은
 /// 소수 첫째자리 "{km}km". GildongmuKit의 동형 함수는 private이라(Kit 비수정
-/// 범위) 여기 로컬로 둔다.
-private func formatDistanceKo(_ meters: Double) -> String {
+/// 범위) 여기 로컬로 둔다. private 제거: 내 주변 행 보조 텍스트와 공유.
+func formatDistanceKo(_ meters: Double) -> String {
     if meters < 1000 { return "\(Int(meters.rounded()))m" }
     return String(format: "%.1fkm", meters / 1000)
 }
