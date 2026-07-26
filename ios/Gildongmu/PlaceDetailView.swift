@@ -2,8 +2,10 @@ import SwiftUI
 import GildongmuKit
 
 /// 장소 상세. 정보 정본은 텍스트 리스트(지도 없음). 실주행은 딥링크 위임(spec §4).
-struct PlaceDetailView: View {
+/// domainSection: 도메인 전용 최상단 섹션(내 주변 소아 진료 등) — 그 화면에 온 이유이므로 서열 1위.
+struct PlaceDetailView<DomainSection: View>: View {
     let place: Place
+    @ViewBuilder var domainSection: () -> DomainSection
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
     @State private var stationSections = StationSectionsModel()
@@ -14,6 +16,7 @@ struct PlaceDetailView: View {
 
     var body: some View {
         List {
+            domainSection()
             Section {
                 // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙)
                 if !place.category.isEmpty { Text(place.category) }
@@ -114,5 +117,12 @@ struct PlaceDetailView: View {
                 openURL(fallback)
             }
         }
+    }
+}
+
+/// 기존 호출처(`PlaceDetailView(place:)`) 무변경 컴파일용 편의 init — 도메인 섹션 없음.
+extension PlaceDetailView where DomainSection == EmptyView {
+    init(place: Place) {
+        self.init(place: place, domainSection: { EmptyView() })
     }
 }
