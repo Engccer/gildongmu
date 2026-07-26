@@ -1,6 +1,6 @@
 import Foundation
 
-// 내 주변 항목(소아진료·아이 놀 곳·둘러보기)·현재 위치 정위 → Place 합성.
+// 내 주변 항목(소아진료·아이 놀 곳·둘러보기·무장애 관광지)·현재 위치 정위 → Place 합성.
 // 웹 `src/lib/nearby-place.ts`·`src/lib/where-am-i-place.ts` 미러(계약 정본은 웹).
 //
 // 각 nearby 결과는 자체 모델이라 장소별 채팅(ChatView)에 넘기려면 공통 Place로
@@ -61,6 +61,24 @@ public func surroundingPlaceToPlace(_ p: SurroundingPlace) -> Place {
         phone: p.phone,
         link: p.link,
         distanceMeters: Double(p.distanceMeters))
+}
+
+public func barrierFreePlaceToPlace(_ b: BarrierFreePlace) -> Place {
+    Place(
+        id: b.contentId,
+        name: b.name,
+        // contenttypeid 라벨(빈 문자열 허용) — 역 키워드가 없어 일반 프롬프트 버킷.
+        category: b.category,
+        // ⚠ TourAPI addr1은 도로명 주소다(fixture 실측 "서울특별시 중구 세종대로 110 (태평로1가)").
+        // 지번은 소스에 없으므로 비운다(없는 값을 지어내지 않는다).
+        address: "",
+        roadAddress: b.address,
+        englishAddress: nil,
+        lat: b.lat,
+        lng: b.lng,
+        phone: nil,
+        link: nil,
+        distanceMeters: Double(b.distanceMeters))
 }
 
 /// name은 좌표 앵커 식별 문자열 — 행정동 > 도로명 > 지번 > "현재 위치" 순 폴백

@@ -110,3 +110,21 @@ import Foundation
     let none = WhereAmIData(address: nil, region: nil, nearestStation: nil, landmarks: [])
     #expect(whereAmIToPlace(none, lat: 0, lng: 0, lang: "ko").name == "현재 위치")
 }
+
+@Test func barrierFreePlaceToPlaceMapsRoadAddressSlot() {
+    let bf = BarrierFreePlace(
+        contentId: "130183", name: "서울도서관", category: "",
+        address: "서울특별시 중구 세종대로 110 (태평로1가)",
+        lat: 37.5666, lng: 126.9784, distanceMeters: 34)
+    let place = barrierFreePlaceToPlace(bf)
+
+    #expect(place.id == "130183")
+    #expect(place.name == "서울도서관")
+    #expect(place.category == "")
+    // TourAPI addr1은 도로명 주소(fixture 실측) — 지번 슬롯이면 상세가 "지번 주소 …"로 오낭독.
+    #expect(place.roadAddress == "서울특별시 중구 세종대로 110 (태평로1가)")
+    #expect(place.address == "")
+    #expect(place.phone == nil)
+    #expect(place.link == nil)
+    #expect(place.distanceMeters == 34)
+}
