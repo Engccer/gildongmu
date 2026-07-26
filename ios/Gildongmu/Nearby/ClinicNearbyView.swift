@@ -74,43 +74,51 @@ struct ClinicNearbyView: View {
     @AccessibilityFocusState private var focusedClinicID: String?
 
     var body: some View {
-        List {
-            // 공휴일 기준으로 읽은 날·보완 실패만 밝힌다(조건부라 잡음 아님, 웹 미러).
-            if case .loaded(let clinics) = model.state, !clinics.isEmpty,
-               let summary = model.summary,
-               summary.basis == "holiday" || summary.supplementFailed {
-                Section {
-                    if summary.basis == "holiday" {
-                        Text(appLocalized("clinicNearby.basisHoliday"))
-                    }
-                    if summary.supplementFailed {
-                        Text(appLocalized("clinicNearby.supplementFailedNotice"))
-                    }
-                }
-            }
-            if case .loaded(let clinics) = model.state {
-                // 평면 1행=1객체(검색 탭 동형). 항목 heading·주소·전화 행은 상세로 이동
-                // — M2·M3 "평면 리스트 heading 잉여" 결정 동형. 실기기 VO 확인 게이트.
-                ForEach(clinics.prefix(model.visibleCount)) { clinic in
-                    NavigationLink {
-                        PlaceDetailView(place: nightClinicToPlace(clinic)) {
-                            ClinicDomainSection(clinic: clinic)
+        // ScrollViewReader+proxy.scrollTo 선행(ChatConversationView 전례 미러): List는
+        // 화면 밖 행을 AX 트리에서 컬링하므로, "더 보기"로 공개된 첫 새 행이 화면
+        // 밖이면 scrollTo 없이 바로 AccessibilityFocusState를 대입해도 조용히
+        // 실패할 수 있다 — scrollTo로 먼저 가시화한 뒤에 포커스를 대입한다.
+        ScrollViewReader { proxy in
+            List {
+                // 공휴일 기준으로 읽은 날·보완 실패만 밝힌다(조건부라 잡음 아님, 웹 미러).
+                if case .loaded(let clinics) = model.state, !clinics.isEmpty,
+                   let summary = model.summary,
+                   summary.basis == "holiday" || summary.supplementFailed {
+                    Section {
+                        if summary.basis == "holiday" {
+                            Text(appLocalized("clinicNearby.basisHoliday"))
                         }
-                    } label: {
-                        PlaceRow(
-                            place: nightClinicToPlace(clinic),
-                            secondaryOverride: joinText(
-                                clinic.kind,
-                                clinicStatusText(clinic.openStatus),
-                                appLocalized("place.distance", formatDistanceKo(Double(clinic.distanceMeters)))),
-                            onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
+                        if summary.supplementFailed {
+                            Text(appLocalized("clinicNearby.supplementFailedNotice"))
+                        }
                     }
-                    .accessibilityFocused($focusedClinicID, equals: clinic.id)
                 }
-                if clinics.count > model.visibleCount {
-                    Button(appLocalized("actions.showMore")) {
-                        if let id = model.revealMore() {
-                            DispatchQueue.main.async { focusedClinicID = id }
+                if case .loaded(let clinics) = model.state {
+                    // 평면 1행=1객체(검색 탭 동형). 항목 heading·주소·전화 행은 상세로 이동
+                    // — M2·M3 "평면 리스트 heading 잉여" 결정 동형. 실기기 VO 확인 게이트.
+                    ForEach(clinics.prefix(model.visibleCount)) { clinic in
+                        NavigationLink {
+                            PlaceDetailView(place: nightClinicToPlace(clinic)) {
+                                ClinicDomainSection(clinic: clinic)
+                            }
+                        } label: {
+                            PlaceRow(
+                                place: nightClinicToPlace(clinic),
+                                secondaryOverride: joinText(
+                                    clinic.kind,
+                                    clinicStatusText(clinic.openStatus),
+                                    appLocalized("place.distance", formatDistanceKo(Double(clinic.distanceMeters)))),
+                                onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
+                        }
+                        .id(clinic.id)
+                        .accessibilityFocused($focusedClinicID, equals: clinic.id)
+                    }
+                    if clinics.count > model.visibleCount {
+                        Button(appLocalized("actions.showMore")) {
+                            if let id = model.revealMore() {
+                                proxy.scrollTo(id, anchor: .top)
+                                DispatchQueue.main.async { focusedClinicID = id }
+                            }
                         }
                     }
                 }
