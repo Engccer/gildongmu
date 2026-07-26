@@ -171,7 +171,14 @@ struct DirectionsEndpointSearchView: View {
             }
             .navigationTitle(sheetTitle)
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $model.query, prompt: Text(appLocalized("ios.search.prompt")))
+            // 상단 고정(.always 포함): iOS 26 시트 기본값은 하단 배치라 검색 탭과
+            // 해부 구조(필드→마이크→최근→결과)가 어긋나고, 시트 안에서도 마이크 행
+            // (상단)과 필드(하단)가 분리된다 — 검색 탭과 동일한 상단 드로어로 통일
+            // (2026-07-26 위원장 승인, 하단 통일안은 VO 선형 순서 훼손으로 기각).
+            .searchable(
+                text: $model.query,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: Text(appLocalized("ios.search.prompt")))
             .onSubmit(of: .search) { model.submit() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
