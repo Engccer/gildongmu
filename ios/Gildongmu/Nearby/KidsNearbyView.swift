@@ -12,6 +12,19 @@ final class KidsNearbyModel {
     /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
     private var isLoadingInFlight = false
 
+    /// 초기 표시·공개 스텝 — 웹·V1 ClinicNearbyModel과 동일 값 유지.
+    static let initialVisible = 10
+    static let revealStep = 10
+    private(set) var visibleCount = KidsNearbyModel.initialVisible
+
+    /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
+    func revealMore() -> String? {
+        guard case .loaded(let places) = state, visibleCount < places.count else { return nil }
+        let firstNewID = places[visibleCount].id
+        visibleCount = min(visibleCount + Self.revealStep, places.count)
+        return firstNewID
+    }
+
     func load(force: Bool = false) async {
         if isLoadingInFlight { return }
         isLoadingInFlight = true
@@ -21,6 +34,7 @@ final class KidsNearbyModel {
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
             let places = try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
+            visibleCount = Self.initialVisible
             state = .loaded(places)
             announceLoaded(count: places.count, unit: appLocalized("ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
@@ -40,22 +54,38 @@ struct KidsNearbyView: View {
     @State private var model = KidsNearbyModel()
     /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 장소마다 새 대화
     @State private var chatPlace: Place?
+    /// "더 보기" 후 첫 새 행으로 VO 커서 이동(V1 포커스 계약 복제).
+    @AccessibilityFocusState private var focusedPlaceID: String?
 
     var body: some View {
-        List {
-            if case .loaded(let places) = model.state {
-                ForEach(places) { place in
-                    // 보조 텍스트 정보량은 현행 유지(종류·실내외·거리·주소), 이름은 PlaceRow 1행에 결합.
-                    NavigationLink {
-                        PlaceDetailView(place: kidsPlaceToPlace(place))
-                    } label: {
-                        PlaceRow(
-                            place: kidsPlaceToPlace(place),
-                            secondaryOverride: joinText(
-                                kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
-                                appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters))),
-                                place.roadAddress ?? place.address),
-                            onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
+        // ScrollViewReader+proxy.scrollTo 선행(ClinicNearbyView 미러): List는 화면 밖
+        // 행을 AX 트리에서 컬링하므로 scrollTo로 먼저 가시화한 뒤에 포커스를 대입한다.
+        ScrollViewReader { proxy in
+            List {
+                if case .loaded(let places) = model.state {
+                    ForEach(places.prefix(model.visibleCount)) { place in
+                        // 보조 텍스트 정보량은 현행 유지(종류·실내외·거리·주소), 이름은 PlaceRow 1행에 결합.
+                        NavigationLink {
+                            PlaceDetailView(place: kidsPlaceToPlace(place))
+                        } label: {
+                            PlaceRow(
+                                place: kidsPlaceToPlace(place),
+                                secondaryOverride: joinText(
+                                    kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
+                                    appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters))),
+                                    place.roadAddress ?? place.address),
+                                onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
+                        }
+                        .id(place.id)
+                        .accessibilityFocused($focusedPlaceID, equals: place.id)
+                    }
+                    if places.count > model.visibleCount {
+                        Button(appLocalized("actions.showMore")) {
+                            if let id = model.revealMore() {
+                                proxy.scrollTo(id, anchor: .top)
+                                DispatchQueue.main.async { focusedPlaceID = id }
+                            }
+                        }
                     }
                 }
             }
