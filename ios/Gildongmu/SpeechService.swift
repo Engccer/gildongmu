@@ -82,11 +82,6 @@ final class SpeechService {
                 return
             }
             phase = .listening(partial: "")
-            // 녹음이 실제로 시작되는 이 지점에서 진행 중인 VO 낭독을 끊는다(발화가
-            // 마이크 입력에 겹치지 않아야 한다는 헌장 §6 계약). 홀드 경로는 누르는
-            // 즉시 한 번 더 끊지만(즉시성), 단축어처럼 홀드 없이 시작되는 경로는
-            // 여기가 유일한 차단 지점이라 진입 경로가 아니라 서비스가 책임진다.
-            interruptVoiceOverSpeech()
             notify(soundID: 1113) // 녹음 시작음
         } catch {
             await teardown()
@@ -208,6 +203,13 @@ final class SpeechService {
             forwarder.forward(buffer)
         }
 
+        // 마이크가 뜨거워지기(engine.start) "직전"에 진행 중 VO 낭독을 끊는다(헌장 §6:
+        // 발화가 마이크 입력에 겹치면 안 됨). ⚠ 과거엔 start()가 beginListening 완료
+        // "후"에 끊었는데, 그 시점엔 이미 녹음 중이라 단축어 진입의 "받아쓰기" 라벨
+        // 낭독 앞부분("받아")이 전사에 혼입됐다(2026-07-27 실기기 회귀). 홀드 경로가
+        // 깨끗한 이유가 "누르는 즉시 = 마이크 hot 이전 차단"이므로 그 순서를 서비스
+        // 계층에서 보장한다 — 홀드 없이 시작되는 모든 경로(단축어 포함)의 정본 차단 지점.
+        interruptVoiceOverSpeech()
         audioEngine.prepare()
         try audioEngine.start()
         try await analyzer.start(inputSequence: stream)
