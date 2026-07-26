@@ -167,4 +167,16 @@ describe("findNightClinicsNow (지정+보완 병합)", () => {
     expect(mockDesignated).not.toHaveBeenCalled();
     expect(mockScan).not.toHaveBeenCalled();
   });
+
+  it("서버 상한 50 — 표시 절단은 클라이언트 몫, 절단 전 수는 total로 보존", async () => {
+    // 3km 내 보완 기관 60곳(전부 진료중) → 50개 반환, total 60.
+    mockSupplement.mockResolvedValue(
+      Array.from({ length: 60 }, (_, i) =>
+        clinic(`소아과${i}`, 0.0001 * (i + 1), { designated: false }),
+      ),
+    );
+    const r = await run();
+    expect(r.clinics.length).toBe(50);
+    expect(r.total).toBe(60);
+  });
 });

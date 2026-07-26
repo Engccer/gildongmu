@@ -37,7 +37,12 @@ import { scanSidos } from "./region-scan";
 const DESIGNATED_RADIUS_METERS = 20_000;
 /** 보완 소스(일반 소아과) 반경 — 동네 의원 도보·단거리 전제(V1). */
 const SUPPLEMENT_RADIUS_METERS = 3_000;
-const TOP_N = 10;
+/**
+ * 서버 반환 상한 — 표시 절단(초기 10, "더 보기" +10)은 웹·iOS 클라이언트 몫.
+ * 재조회 없이 단계 공개하기 위해 반경 내 전량을 근사로 실어 보낸다(50 초과는
+ * 밀집 지역 폭주 방어 — total이 절단 전 수를 계속 보존한다).
+ */
+const SERVER_CAP = 50;
 
 export interface ClinicsNowResult {
   /** 진료중 우선(open>unknown>closed), 같은 상태 안에서는 거리순. 상위 N. */
@@ -90,7 +95,7 @@ export async function findNightClinicsNow(
   opts: { nowMs?: number; radiusMeters?: number; limit?: number } = {},
 ): Promise<ClinicsNowResult> {
   const radiusMeters = opts.radiusMeters ?? DESIGNATED_RADIUS_METERS;
-  const limit = opts.limit ?? TOP_N;
+  const limit = opts.limit ?? SERVER_CAP;
   const nowMs = opts.nowMs ?? Date.now();
   if (!env.DATA_GO_KR_API_KEY) {
     return {
