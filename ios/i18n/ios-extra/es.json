@@ -132,8 +132,6 @@
       "directionSuffixed": "al {direction}",
       "aroundEmpty": "No hay lugares que mostrar cerca",
       "barrierFreeEmpty": "No hay atracciones sin barreras cerca",
-      "showFacilitiesFor": "Ver instalaciones de accesibilidad, {name}",
-      "facilitiesFailed": "Error al consultar las instalaciones",
       "bikesAvailable": "{count} bicis disponibles",
       "racksTotal": "{count} soportes",
       "bikeEmpty": "No hay estaciones de bicicleta cerca",

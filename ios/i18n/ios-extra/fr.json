@@ -132,8 +132,6 @@
       "directionSuffixed": "vers le {direction}",
       "aroundEmpty": "Aucun lieu à afficher à proximité",
       "barrierFreeEmpty": "Aucun site accessible à proximité",
-      "showFacilitiesFor": "Voir les équipements d'accessibilité, {name}",
-      "facilitiesFailed": "Échec du chargement des équipements",
       "bikesAvailable": "{count} vélos disponibles",
       "racksTotal": "{count} bornes",
       "bikeEmpty": "Aucune station de vélo à proximité",

@@ -132,8 +132,6 @@
       "directionSuffixed": "{direction}쪽",
       "aroundEmpty": "주변에 표시할 장소가 없습니다",
       "barrierFreeEmpty": "주변에 무장애 관광지가 없습니다",
-      "showFacilitiesFor": "무장애 편의시설 보기, {name}",
-      "facilitiesFailed": "편의시설 조회에 실패했습니다",
       "bikesAvailable": "대여 가능 {count}대",
       "racksTotal": "거치대 {count}대",
       "bikeEmpty": "주변에 따릉이 대여소가 없습니다",

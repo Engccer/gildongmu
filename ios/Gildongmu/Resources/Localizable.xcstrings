@@ -7787,40 +7787,6 @@
         }
       }
     },
-    "ios.nearby.facilitiesFailed": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "편의시설 조회에 실패했습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to load facilities"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Error al consultar las instalaciones"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Échec du chargement des équipements"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossibile caricare le strutture"
-          }
-        }
-      }
-    },
     "ios.nearby.kids": {
       "localizations": {
         "ko": {
@@ -8395,40 +8361,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fermate del bus %1$@"
-          }
-        }
-      }
-    },
-    "ios.nearby.showFacilitiesFor": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "무장애 편의시설 보기, %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "View accessibility facilities, %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver instalaciones de accesibilidad, %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir les équipements d'accessibilité, %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vedi strutture di accessibilità, %1$@"
           }
         }
       }
