@@ -5,9 +5,23 @@ import GildongmuKit
 
 /// 내 주변 소아 야간진료. SubwayNearbyModel 규범 패턴 미러(3-state 권한 거부/조회 실패/0건).
 /// 진료 상태 3-state(open/closed/unknown)를 문장으로 분리한다.
+/// 병합 응답 메타 — 절단·소스 구분·보완 실패를 화면이 밝히기 위한 값(웹 Status.done 미러).
+struct ClinicSummary {
+    let total: Int
+    let designatedTotal: Int
+    let supplementTotal: Int
+    let radiusKm: Int
+    let supplementRadiusKm: Int
+    /// "holiday" | "weekday"
+    let basis: String
+    let supplementFailed: Bool
+}
+
 @Observable @MainActor
 final class ClinicNearbyModel {
     private(set) var state: NearbyLoadState<NightClinic> = .idle
+    /// loaded와 함께 갱신 — 절단·소스 구분 표기용(구버전 응답이면 nil 유지 필드 폴백).
+    private(set) var summary: ClinicSummary?
     private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
     private var isLoadingInFlight = false
@@ -20,7 +34,16 @@ final class ClinicNearbyModel {
         if case .loaded = state {} else { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
-            let clinics = try await service.clinics(lat: coord.lat, lng: coord.lng)
+            let response = try await service.clinics(lat: coord.lat, lng: coord.lng)
+            let clinics = response.clinics
+            summary = ClinicSummary(
+                total: response.total ?? clinics.count,
+                designatedTotal: response.designatedTotal ?? clinics.count,
+                supplementTotal: response.supplementTotal ?? 0,
+                radiusKm: (response.radiusMeters ?? 20_000) / 1000,
+                supplementRadiusKm: (response.supplementRadiusMeters ?? 3_000) / 1000,
+                basis: response.basis ?? "weekday",
+                supplementFailed: response.supplementFailed ?? false)
             state = .loaded(clinics)
             announceLoaded(count: clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
         } catch let error as LocationService.LocationError {
@@ -43,11 +66,34 @@ struct ClinicNearbyView: View {
 
     var body: some View {
         List {
+            if case .loaded(let clinics) = model.state, !clinics.isEmpty,
+               let summary = model.summary {
+                Section {
+                    // 절단·소스 구분·판정 기준을 한 문장 덩어리로(웹 summary+sources 미러).
+                    Text(joinText(
+                        appLocalized("clinicNearby.summary",
+                            String(summary.total), String(clinics.count)),
+                        appLocalized("clinicNearby.sources",
+                            String(summary.radiusKm), String(summary.designatedTotal),
+                            String(summary.supplementRadiusKm), String(summary.supplementTotal)),
+                        summary.basis == "holiday"
+                            ? appLocalized("clinicNearby.basisHoliday")
+                            : appLocalized("clinicNearby.basisWeekday")))
+                    // 보완 소스 실패는 표기 — 지정 기관만 보이는 이유를 숨기지 않는다.
+                    if summary.supplementFailed {
+                        Text(appLocalized("clinicNearby.supplementFailedNotice"))
+                    }
+                }
+            }
             if case .loaded(let clinics) = model.state {
                 ForEach(clinics) { clinic in
                     Section {
-                        // 진료 상태 3-state: "마감"과 "정보 없음"을 뭉개지 않고 문장으로 분리
-                        Text(clinicStatusText(clinic.openStatus))
+                        // 진료 상태 3-state: "마감"과 "정보 없음"을 뭉개지 않고 문장으로 분리.
+                        // 달빛 지정 여부도 이 줄에 흡수 — 일반 소아과가 섞이면서 품질 보증
+                        // 유무가 정보가 됐다(장식 아님, 웹 미러).
+                        Text(joinText(
+                            clinic.designated == true ? appLocalized("clinicNearby.designatedTag") : nil,
+                            clinicStatusText(clinic.openStatus)))
                         if !clinic.address.isEmpty {
                             Text(clinic.address)
                         }

@@ -11,7 +11,7 @@ import Foundation
         id: "hpid-1", name: "길동소아과의원", address: "서울 강동구 길동",
         phone: "02-1234-5678", kind: "의원", emergencyClass: "응급의료기관 이외",
         directions: "", lat: 37.5384, lng: 127.1428, distanceMeters: 320,
-        hours: [], openStatus: .init(state: "open", start: 900, end: 1800))
+        hours: [], openStatus: .init(state: "open", start: 900, end: 1800), designated: true)
     let place = nightClinicToPlace(clinic)
 
     #expect(place.id == "hpid-1")
@@ -32,7 +32,7 @@ import Foundation
     let clinic = NightClinic(
         id: "hpid-2", name: "굽은다리소아과", address: "", phone: "", kind: "병원",
         emergencyClass: "", directions: "", lat: 37.53, lng: 127.14, distanceMeters: 500,
-        hours: [], openStatus: .init(state: "unknown", start: nil, end: nil))
+        hours: [], openStatus: .init(state: "unknown", start: nil, end: nil), designated: false)
     #expect(nightClinicToPlace(clinic).phone == nil)
 }
 
