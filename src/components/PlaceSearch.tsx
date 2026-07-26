@@ -18,6 +18,7 @@ import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
+import { normalizeVoiceQuery } from "@/lib/format";
 import { requestLocation } from "@/lib/geolocation";
 import {
   clearRecentQueries,
@@ -506,10 +507,13 @@ export function PlaceSearch({
   // 이미 보장하므로, 전사 자동검색도 그 보장을 그대로 물려받는다.
   // spokenQuery를 세팅해 로딩 라이브 메시지가 "'{질의}' 검색 중…"으로 나가
   // 인식 텍스트를 polite 한 채널로 통지한다(input에도 채워 시각·편집 확인).
+  // 후행 마침표 제거 후 소비: 통지·입력값·질의가 같은 문자열이어야 SR 사용자가
+  // 들은 것과 검색된 것이 어긋나지 않는다(normalizeVoiceQuery 주석에 실측 근거).
   function handleTranscribed(text: string) {
-    setSpokenQuery(text);
-    setQuery(text);
-    void runQuerySearch(text);
+    const query = normalizeVoiceQuery(text);
+    setSpokenQuery(query);
+    setQuery(query);
+    void runQuerySearch(query);
   }
 
   // 첫 마운트 시 ?q= 있으면 입력값 반영 + 자동 검색(장소+주소 동시 — runQuerySearch).

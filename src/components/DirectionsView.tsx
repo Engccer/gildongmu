@@ -16,7 +16,7 @@ import type {
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
-import { joinText } from "@/lib/format";
+import { joinText, normalizeVoiceQuery } from "@/lib/format";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -667,10 +667,13 @@ function EndpointField({
   // 전사 원문을 polite 통지(접근성 헌장 "받아쓰기 완료" — 원문이라 i18n 무관)하고,
   // 후보 수·오류 통지는 runCandidateSearch 완료가 같은 채널로 이어받는다.
   function handleTranscribed(text: string) {
-    onTextChange(text);
+    // 후행 마침표 제거(PlaceSearch 동형). 출발·도착 후보는 주소 검색 비중이 높아
+    // 마침표 한 글자에 juso가 0건으로 전멸한다(normalizeVoiceQuery 주석의 실측).
+    const query = normalizeVoiceQuery(text);
+    onTextChange(query);
     setCandidates(null);
-    announce(text);
-    void runCandidateSearch(text);
+    announce(query);
+    void runCandidateSearch(query);
   }
 
   function resolveAndClose(ep: DirEndpoint) {

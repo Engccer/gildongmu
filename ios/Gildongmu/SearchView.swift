@@ -36,8 +36,11 @@ struct SearchView: View {
                         hint: appLocalized("ios.voice.holdHintSearch"),
                         showsTitle: true,
                         onTranscript: { text in
-                            model.query = text
-                            AccessibilityNotification.Announcement(text).post()
+                            // 후행 마침표 제거 — 통지·입력값·질의가 같은 문자열이어야
+                            // 들은 것과 검색된 것이 어긋나지 않는다(VoiceQuery.swift 실측).
+                            let query = normalizeVoiceQuery(text)
+                            model.query = query
+                            AccessibilityNotification.Announcement(query).post()
                             runSearch()
                         },
                         onPause: nil
@@ -86,7 +89,16 @@ struct SearchView: View {
                 let store = LaunchActionStore.shared
                 if store.voiceStartRequested {
                     store.voiceStartRequested = false
+                    // 이 세션의 정지는 마이크 행 짧은 탭이므로 VO 커서를 미리 그 행에
+                    // 놓는다(위원장 지시 2026-07-26). 화면 최상단에서 마이크까지
+                    // 스와이프로 찾아가야 정지할 수 있던 번거로움을 없앤다. 홀드 경로엔
+                    // 없던 문제다: 거기선 손가락이 이미 버튼 위에 있다.
+                    micRowFocused = true
                     await speech.start()
+                    // 권한·모델 다운로드 대기 중 커서가 밀려났으면 되돌린다.
+                    // @AccessibilityFocusState는 양방향이라 이탈 시 false로 내려오므로
+                    // 재대입이 no-op이 아니다(이미 마이크에 있으면 무발화 no-op).
+                    if speech.isListening { micRowFocused = true }
                 }
             }
             .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
