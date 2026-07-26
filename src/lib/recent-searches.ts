@@ -7,9 +7,13 @@
 
 export type RecentEndpoint = { label: string; lat: number; lng: number };
 
+/** 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26). */
+export type RecentEndpointField = "from" | "to";
+
 export const RECENT_CAP = 20;
 const QUERIES_KEY = "gildongmu:recent-queries:v1";
-const ENDPOINTS_KEY = "gildongmu:recent-endpoints:v1";
+const endpointsKey = (field: RecentEndpointField) =>
+  `gildongmu:recent-endpoints-${field}:v1`;
 
 /** SSR·프라이버시 모드(접근 throw) 가드. 실패는 null → 모든 연산이 빈 목록/no-op. */
 function defaultStorage(): Storage | null {
@@ -104,35 +108,39 @@ export function sameEndpoint(a: RecentEndpoint, b: RecentEndpoint): boolean {
 }
 
 export function loadRecentEndpoints(
+  field: RecentEndpointField,
   storage: Storage | null = defaultStorage(),
 ): RecentEndpoint[] {
-  return load(storage, ENDPOINTS_KEY, isEndpoint);
+  return load(storage, endpointsKey(field), isEndpoint);
 }
 
 export function recordRecentEndpoint(
+  field: RecentEndpointField,
   e: RecentEndpoint,
   storage: Storage | null = defaultStorage(),
 ): RecentEndpoint[] {
   return save(
     storage,
-    ENDPOINTS_KEY,
-    appendRecent(loadRecentEndpoints(storage), e, sameEndpoint),
+    endpointsKey(field),
+    appendRecent(loadRecentEndpoints(field, storage), e, sameEndpoint),
   );
 }
 
 export function removeRecentEndpoint(
+  field: RecentEndpointField,
   e: RecentEndpoint,
   storage: Storage | null = defaultStorage(),
 ): RecentEndpoint[] {
   return save(
     storage,
-    ENDPOINTS_KEY,
-    loadRecentEndpoints(storage).filter((x) => !sameEndpoint(x, e)),
+    endpointsKey(field),
+    loadRecentEndpoints(field, storage).filter((x) => !sameEndpoint(x, e)),
   );
 }
 
 export function clearRecentEndpoints(
+  field: RecentEndpointField,
   storage: Storage | null = defaultStorage(),
 ): RecentEndpoint[] {
-  return save(storage, ENDPOINTS_KEY, []);
+  return save(storage, endpointsKey(field), []);
 }

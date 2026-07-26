@@ -95,8 +95,10 @@ struct DirectionsEndpointSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = EndpointSearchModel()
     @State private var speech = SpeechService()
-    /// 최근 장소(스펙 2026-07-26) — 출발지/도착지 공유 목록, 시트 열릴 때 로드.
+    /// 최근 장소(스펙 2026-07-26) — 출발지·도착지 분리 목록(위원장 지시 2026-07-26),
+    /// 이 시트의 필드 스코프만 시트 열릴 때 로드.
     private let recentStore = RecentSearchStore()
+    private var recentScope: RecentEndpointScope { target == .from ? .from : .to }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5, SearchView 동형).
@@ -185,7 +187,7 @@ struct DirectionsEndpointSearchView: View {
                 Button(appLocalized("ios.common.ok")) {}
             }
             .task {
-                recentEndpoints = recentStore.endpoints()
+                recentEndpoints = recentStore.endpoints(recentScope)
             }
             // 마이크는 항상 폐기(시트가 닫히면 뷰가 소멸하므로 유령 청취 방지 —
             // SearchView 동형 teardown). 검색 Task도 함께 취소.
@@ -224,7 +226,7 @@ struct DirectionsEndpointSearchView: View {
     /// 항목 삭제(스펙 §5): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행. 통지 1건.
     private func deleteRecent(_ endpoint: RecentEndpoint) {
         guard let index = recentEndpoints.firstIndex(of: endpoint) else { return }
-        recentEndpoints = recentStore.removeEndpoint(endpoint)
+        recentEndpoints = recentStore.removeEndpoint(endpoint, scope: recentScope)
         AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
         if recentEndpoints.isEmpty {
             micRowFocused = true
@@ -234,7 +236,7 @@ struct DirectionsEndpointSearchView: View {
     }
 
     private func clearRecent() {
-        recentStore.clearEndpoints()
+        recentStore.clearEndpoints(recentScope)
         recentEndpoints = []
         AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
         micRowFocused = true

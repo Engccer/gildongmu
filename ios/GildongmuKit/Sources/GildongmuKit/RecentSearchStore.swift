@@ -13,14 +13,22 @@ public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+/// 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26).
+public enum RecentEndpointScope: String, Sendable {
+    case from, to
+}
+
 /// 최근 검색 기록 저장소(스펙 docs/superpowers/specs/2026-07-26-recent-searches-design.md).
-/// 검색어(검색 탭)·장소(길찾기) 이원 기록, 기기 로컬(UserDefaults) 전용, 최대 20개 최신순.
-/// 파싱 실패는 빈 목록으로 조용히 복구한다(기록은 부가 기능 — 본 기능을 막지 않는다).
-/// 웹 src/lib/recent-searches.ts 미러.
+/// 검색어(검색 탭)·장소(길찾기 출발/도착 각각) 3목록 분리 기록, 기기 로컬(UserDefaults) 전용,
+/// 목록별 최대 20개 최신순. 파싱 실패는 빈 목록으로 조용히 복구한다(기록은 부가 기능 —
+/// 본 기능을 막지 않는다). 웹 src/lib/recent-searches.ts 미러.
 public struct RecentSearchStore {
     public static let cap = 20
     static let queriesKey = "recentQueries.v1"
-    static let endpointsKey = "recentEndpoints.v1"
+
+    static func endpointsKey(_ scope: RecentEndpointScope) -> String {
+        "recentEndpoints.\(scope.rawValue).v1"
+    }
 
     private let defaults: UserDefaults
 
@@ -51,25 +59,25 @@ public struct RecentSearchStore {
         save([String](), forKey: Self.queriesKey)
     }
 
-    // MARK: 장소
+    // MARK: 장소 (출발지·도착지 스코프 분리)
 
-    public func endpoints() -> [RecentEndpoint] {
-        decode([RecentEndpoint].self, forKey: Self.endpointsKey)
+    public func endpoints(_ scope: RecentEndpointScope) -> [RecentEndpoint] {
+        decode([RecentEndpoint].self, forKey: Self.endpointsKey(scope))
     }
 
     /// 좌표 4자리 dedupe — 같은 장소의 라벨 변형은 최신 라벨로 교체하며 끌어올린다.
     @discardableResult
-    public func recordEndpoint(_ endpoint: RecentEndpoint) -> [RecentEndpoint] {
-        save(Self.append(endpoint, to: endpoints(), isSame: Self.sameCoord), forKey: Self.endpointsKey)
+    public func recordEndpoint(_ endpoint: RecentEndpoint, scope: RecentEndpointScope) -> [RecentEndpoint] {
+        save(Self.append(endpoint, to: endpoints(scope), isSame: Self.sameCoord), forKey: Self.endpointsKey(scope))
     }
 
     @discardableResult
-    public func removeEndpoint(_ endpoint: RecentEndpoint) -> [RecentEndpoint] {
-        save(endpoints().filter { !Self.sameCoord($0, endpoint) }, forKey: Self.endpointsKey)
+    public func removeEndpoint(_ endpoint: RecentEndpoint, scope: RecentEndpointScope) -> [RecentEndpoint] {
+        save(endpoints(scope).filter { !Self.sameCoord($0, endpoint) }, forKey: Self.endpointsKey(scope))
     }
 
-    public func clearEndpoints() {
-        save([RecentEndpoint](), forKey: Self.endpointsKey)
+    public func clearEndpoints(_ scope: RecentEndpointScope) {
+        save([RecentEndpoint](), forKey: Self.endpointsKey(scope))
     }
 
     // MARK: 내부

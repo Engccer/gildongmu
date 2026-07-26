@@ -57,20 +57,20 @@ private func freshDefaults(_ name: String) -> UserDefaults {
 
     @Test func recordRemoveClear() {
         let store = RecentSearchStore(defaults: freshDefaults("ep"))
-        #expect(store.recordEndpoint(gyeongbok) == [gyeongbok])
-        #expect(store.removeEndpoint(gyeongbok) == [])
-        store.recordEndpoint(gyeongbok)
-        store.clearEndpoints()
-        #expect(store.endpoints() == [])
+        #expect(store.recordEndpoint(gyeongbok, scope: .to) == [gyeongbok])
+        #expect(store.removeEndpoint(gyeongbok, scope: .to) == [])
+        store.recordEndpoint(gyeongbok, scope: .to)
+        store.clearEndpoints(.to)
+        #expect(store.endpoints(.to) == [])
     }
 
     @Test func coord4DigitDedupeReplacesLabel() {
         let store = RecentSearchStore(defaults: freshDefaults("coord"))
-        store.recordEndpoint(gyeongbok)
-        store.recordEndpoint(RecentEndpoint(label: "서울역", lat: 37.5547, lng: 126.9707))
+        store.recordEndpoint(gyeongbok, scope: .to)
+        store.recordEndpoint(RecentEndpoint(label: "서울역", lat: 37.5547, lng: 126.9707), scope: .to)
         // 소수 5자리째만 다른 좌표(4자리 반올림 동일) + 라벨 변형 → 교체·끌어올림
         let next = store.recordEndpoint(
-            RecentEndpoint(label: "경복궁 (고궁)", lat: 37.5796172, lng: 126.9770413))
+            RecentEndpoint(label: "경복궁 (고궁)", lat: 37.5796172, lng: 126.9770413), scope: .to)
         #expect(next.count == 2)
         #expect(next.first?.label == "경복궁 (고궁)")
     }
@@ -78,9 +78,21 @@ private func freshDefaults(_ name: String) -> UserDefaults {
     @Test func capAt20() {
         let store = RecentSearchStore(defaults: freshDefaults("epcap"))
         for i in 1...21 {
-            store.recordEndpoint(RecentEndpoint(label: "p\(i)", lat: Double(i), lng: Double(i)))
+            store.recordEndpoint(RecentEndpoint(label: "p\(i)", lat: Double(i), lng: Double(i)), scope: .to)
         }
-        #expect(store.endpoints().count == 20)
-        #expect(store.endpoints().first?.label == "p21")
+        #expect(store.endpoints(.to).count == 20)
+        #expect(store.endpoints(.to).first?.label == "p21")
+    }
+
+    @Test func fromAndToAreSeparated() {
+        let store = RecentSearchStore(defaults: freshDefaults("scope"))
+        store.recordEndpoint(gyeongbok, scope: .from)
+        #expect(store.endpoints(.to) == [])
+        store.recordEndpoint(RecentEndpoint(label: "서울역", lat: 37.5547, lng: 126.9707), scope: .to)
+        #expect(store.endpoints(.from) == [gyeongbok])
+        // 한쪽 전체 삭제가 다른 쪽에 영향 없음
+        store.clearEndpoints(.from)
+        #expect(store.endpoints(.from) == [])
+        #expect(store.endpoints(.to).count == 1)
     }
 }

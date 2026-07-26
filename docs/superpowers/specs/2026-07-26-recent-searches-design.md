@@ -17,8 +17,10 @@
 | 검색어 기록 | 검색 탭 검색창 | 제출된 검색어 문자열 | 그 검색어로 재검색 실행 |
 | 장소 기록 | 길찾기 출발지/도착지 | 확정 endpoint(라벨+좌표) | 재검색 없이 필드 즉시 확정 |
 
-- **길찾기 출발지/도착지는 한 목록을 공유**한다(출발지로 쓴 장소를 도착지로도 쓴다).
-- 최대 **20개**, 최신순. 재사용·재기록 시 중복 생성 없이 맨 위로 끌어올림(dedupe).
+- **길찾기 출발지/도착지 기록은 분리 저장**한다(2026-07-26 실사용 개정 — 당초 공유
+  목록이었으나 출발지에서 검색한 곳이 도착지 기록에 떠 혼란, 위원장 지시로 3목록 완전 분리:
+  검색어/출발지 장소/도착지 장소).
+- 목록별 최대 **20개**, 최신순. 재사용·재기록 시 중복 생성 없이 맨 위로 끌어올림(dedupe).
   - 검색어 dedupe: trim 후 완전 일치.
   - 장소 dedupe: 좌표 소수 4자리 반올림 일치(라벨 무관 — 같은 장소의 라벨 변형은 최신 라벨로 교체).
 - **"현재 위치 사용"은 기록하지 않는다**(전용 버튼이 항상 있어 중복).
@@ -31,8 +33,8 @@
 ## 3. 저장
 
 - **기기 로컬 전용**. 서버 전송 0.
-  - iOS: `UserDefaults` (키 `recentQueries.v1` / `recentEndpoints.v1`, JSON 인코딩).
-  - 웹: `localStorage` (키 `gildongmu:recent-queries:v1` / `gildongmu:recent-endpoints:v1`).
+  - iOS: `UserDefaults` (키 `recentQueries.v1` / `recentEndpoints.from.v1` / `recentEndpoints.to.v1`, JSON 인코딩).
+  - 웹: `localStorage` (키 `gildongmu:recent-queries:v1` / `gildongmu:recent-endpoints-from:v1` / `gildongmu:recent-endpoints-to:v1`).
 - 파싱 실패·스키마 불일치는 빈 목록으로 조용히 복구(throw 금지 — 기록은 부가 기능, 본 기능을 막지 않는다).
 - 웹은 SSR 가드 필수(`localStorage`는 클라이언트 전용 접근).
 - **개인정보 3자 일치 불변식 영향 없음**: 수집·전송 항목 불변(로컬 저장만) — privacy 카피·xcprivacy·영양 라벨 갱신 불필요.
@@ -46,7 +48,7 @@
 - **길찾기**: 후보 검색 전 상태에만 노출.
   - iOS: `DirectionsEndpointSearchView` 시트에서 "현재 위치 사용" 행 다음, 후보 목록 자리.
   - 웹: `EndpointField` 입력창 아래 후보 없을 때.
-  - 웹 EndpointField는 **최신 5건만 표시**(저장은 20건 공유) — 두 필드 동시 노출로
+  - 웹 EndpointField는 **최신 5건만 표시**(저장은 필드별 20건) — 두 필드 동시 노출로
     조회 버튼이 밀리는 노이즈 완충(iOS 시트는 전용 화면이라 전량 표시).
 - 섹션 이름은 "최근 검색" 단일 heading(웹 h 계층은 주변 관례를 따름). 목록이 비면 섹션 자체 미노출(빈 섹션 금지).
   - 웹 EndpointField 헤딩은 필드명을 포함한다(예: "출발지 최근 검색") — 출발지·도착지 두
