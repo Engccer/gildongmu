@@ -30,6 +30,15 @@ const argOf = (flag, fallback) => {
 const LAT = argOf("--lat", 37.5301);
 const LNG = argOf("--lng", 127.1238);
 
+/** 기준 좌표로부터의 거리(m). 이름 매칭 오탐을 좌표로 가르기 위해 필요하다. */
+function metersFrom(lat, lng) {
+  const R = 6371000, rad = (d) => (d * Math.PI) / 180;
+  const a = rad(Number(lat) - LAT), b = rad(Number(lng) - LNG);
+  const h = Math.sin(a / 2) ** 2 + Math.cos(rad(LAT)) * Math.cos(rad(Number(lat))) * Math.sin(b / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const km = (m) => (Number.isFinite(m) ? `${(m / 1000).toFixed(1)}km` : "거리불명");
+
 const NMC = "https://apis.data.go.kr/B552657/HsptlAsembySearchService";
 const HIRA = "https://apis.data.go.kr/B551182";
 
@@ -99,12 +108,22 @@ async function main() {
     `${NMC}/getBabyListInfoInqire?serviceKey=${KEY}&pageNo=1&numOfRows=200&_type=json`,
   );
   if (baby && TARGET_NAME) {
-    const hit = baby.filter((c) => String(c.dutyName ?? "").includes(TARGET_NAME));
-    console.log(
-      hit.length
-        ? `  🔎 "${TARGET_NAME}" 명부에 있음: ${hit.map((c) => `${c.dutyName}(${c.dutyAddr})`).join(" / ")}`
-        : `  🔎 "${TARGET_NAME}" 명부에 **없음** → 소스 확장 필요(설계 §3)`,
-    );
+    // ⚠ 이름만으로 판정하지 않는다. 2026-07-26 실측에서 "연세도우리소아청소년과의원"이
+    // 강남 개포동(6.9km)과 강동구(1.6km) 두 곳으로 존재해, 이름 매칭이 명부에 있는
+    // 강남 기관을 제보 대상으로 착각했다 — 그대로 믿었으면 원인을 (B) 절단으로 잘못
+    // 종결할 뻔했다. 매칭 결과는 반드시 주소·거리와 함께 출력하고, 복수 후보면
+    // 판정을 사람에게 넘긴다(동명이원은 코드가 못 가른다).
+    const hit = baby
+      .map((c) => ({ ...c, d: metersFrom(c.wgs84Lat, c.wgs84Lon) }))
+      .filter((c) => String(c.dutyName ?? "").includes(TARGET_NAME))
+      .sort((a, b) => a.d - b.d);
+    if (!hit.length) {
+      console.log(`  🔎 "${TARGET_NAME}" 명부에 **없음** → 데이터셋 범위 문제 (A) 확정, 소스 확장(설계 §3)`);
+    } else {
+      console.log(`  🔎 "${TARGET_NAME}" 이름 매칭 ${hit.length}건 — 주소·거리로 동일 기관인지 직접 확인할 것:`);
+      hit.forEach((c) => console.log(`     · ${km(c.d)} ${c.dutyName} | ${c.dutyAddr}`));
+      if (hit.length > 1) console.log(`     ⚠ 동명이원 — 어느 쪽이 제보 대상인지 이름으로는 못 가린다.`);
+    }
   }
   if (baby) {
     const noCoord = baby.filter((c) => !Number.isFinite(Number(c.wgs84Lat)));
@@ -115,14 +134,16 @@ async function main() {
   //    duty* 스키마를 공유하면 좌표+진료시간을 한 번에 얻어 파서를 재사용할 수 있다.
   //    ⚠ 오퍼레이션마다 활용신청이 독립이라 미신청이면 비정상 응답이 정상이다.
   await probe(
-    "② NMC getHsptlMdcncLcinfoInqire (병의원 위치기반 — 단계 1 1순위)",
+    "② NMC getHsptlMdcncLcinfoInqire (병의원 위치기반)",
     `${NMC}/getHsptlMdcncLcinfoInqire?serviceKey=${KEY}&WGS84_LON=${LNG}&WGS84_LAT=${LAT}&pageNo=1&numOfRows=10&_type=json`,
-    "좌표 파라미터를 직접 받는지 + dutyTime 동반 여부가 관건",
+    "❌ 단계 1 후보 탈락(2026-07-26 실측): 좌표·distance는 주지만 요일별 dutyTime이 없고" +
+      " (startTime/endTime 단일 쌍뿐), QD·QT·QN 어떤 필터를 붙여도 totalCount=239 고정으로 무시된다.",
   );
   await probe(
-    "③ NMC getHsptlMdcncListInfoInqire (병의원 목록 — 소아청소년과 필터)",
-    `${NMC}/getHsptlMdcncListInfoInqire?serviceKey=${KEY}&Q0=${encodeURIComponent("서울특별시")}&Q1=${encodeURIComponent("강동구")}&QD=${encodeURIComponent("D009")}&pageNo=1&numOfRows=10&_type=json`,
-    "QD=진료과목 코드(D009=소아청소년과 추정 — 응답으로 확인할 것)",
+    "③ NMC getHsptlMdcncListInfoInqire (병의원 목록 — 소아청소년과 QD=D002)",
+    `${NMC}/getHsptlMdcncListInfoInqire?serviceKey=${KEY}&Q0=${encodeURIComponent("서울특별시")}&Q1=${encodeURIComponent("강동구")}&QD=D002&pageNo=1&numOfRows=10&_type=json`,
+    "★ 단계 1 정본: 좌표(wgs84Lat/Lon)+dutyTime 8칸을 함께 준다 → 기존 파서 재사용." +
+      " QD=D002가 소아청소년과(강남구 코드 전수 스캔으로 역판정 — D009는 신경외과류로 소아 0건).",
   );
 
   // ③ 단계 2 후보 — 심평원. 목록에 진료시간이 없으면 상세 조인이 필요하다.
@@ -132,11 +153,45 @@ async function main() {
     "좌표·반경 파라미터 지원 여부 + 진료시간 필드 유무(없으면 상세 조인 필요)",
   );
 
+  // ⑤ 커버리지 갭 — 단계 1의 값어치를 수치로 만든다.
+  //    "달빛 명부에 없지만 오늘 요일에 문 여는 소아청소년과"가 몇 곳인가.
+  //    ③이 시도+시군구 기반이라 반경을 덮으려면 인접 구를 훑어야 한다(--gu로 지정).
+  const guArg = process.argv.indexOf("--gu");
+  const GU = guArg >= 0 ? process.argv[guArg + 1].split(",") : ["강동구", "송파구", "광진구", "성동구"];
+  const sidoArg = process.argv.indexOf("--sido"); // argOf는 Number 강제라 문자열엔 못 쓴다
+  const SIDO = sidoArg >= 0 ? process.argv[sidoArg + 1] : "서울특별시";
+  console.log(`\n── ⑤ 커버리지 갭 (${SIDO} ${GU.join("·")}, QD=D002)`);
+  const kstDay = new Date(Date.now() + 9 * 3600 * 1000).getUTCDay(); // 0=일
+  const idx = kstDay === 0 ? 7 : kstDay; // dutyTime 배열: 1=월..7=일
+  const pool = [];
+  for (const gu of GU) {
+    const { json } = await getJson(
+      `${NMC}/getHsptlMdcncListInfoInqire?serviceKey=${KEY}&Q0=${encodeURIComponent(SIDO)}&Q1=${encodeURIComponent(gu)}&QD=D002&pageNo=1&numOfRows=300&_type=json`,
+    );
+    items(json).forEach((c) => pool.push(c));
+  }
+  const babyHpid = new Set((baby ?? []).map((c) => c.hpid));
+  const openToday = pool
+    .map((c) => ({ ...c, d: metersFrom(c.wgs84Lat, c.wgs84Lon) }))
+    .filter((c) => c.d <= 20000 && c[`dutyTime${idx}s`])
+    .sort((a, b) => a.d - b.d);
+  const missing = openToday.filter((c) => !babyHpid.has(c.hpid));
+  console.log(`  소아청소년과 ${pool.length}곳 중 20km 내 오늘(요일 ${idx}) 진료 신고: ${openToday.length}곳`);
+  console.log(`  그중 달빛 명부 중복 ${openToday.length - missing.length}곳 ⇒ **명부 누락 ${missing.length}곳**`);
+  missing.slice(0, 10).forEach((c) =>
+    console.log(`     · ${km(c.d)} ${c.dutyName} | ${c[`dutyTime${idx}s`]}~${c[`dutyTime${idx}c`]}`));
   console.log(
-    "\n판단 기준: ②·③ 중 하나가 정상 응답 + dutyTime 8칸을 주면 단계 1로 진행(파서 재사용).",
+    "  ⚠ QD=D002는 '소아청소년과 전문'이 아니라 '진료과목 보유'다 — 이비인후과·내과가 섞인다(정밀도 대가, 설계 §6-1).",
+  );
+
+  console.log(
+    "\n판정(2026-07-26 실측 완료): ③ getHsptlMdcncListInfoInqire + QD=D002로 단계 1 진행.",
   );
   console.log(
-    "둘 다 미신청/무진료시간이면 ④ + 기관별 상세(ykiho 조인)로 단계 2 — 비용이 크므로 설계 §4를 먼저 읽을 것.",
+    "②는 진료과목 필터 무시·요일별 진료시간 부재로 탈락, ④ HIRA는 403(활용신청 전)이라 단계 2는 불필요.",
+  );
+  console.log(
+    "남은 설계 과제: ③이 시군구 기반이라 반경 검색이 아니다 → 좌표를 coordToAddress로 역지오코딩해 인접 구를 병렬 조회.",
   );
 }
 
