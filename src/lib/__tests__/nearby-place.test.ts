@@ -92,8 +92,15 @@ describe("nightClinicToPlace", () => {
   it("종별을 category로 쓰고 빈 전화는 undefined로 떨군다", () => {
     const place = nightClinicToPlace(clinic);
     expect(place.category).toBe("병원");
-    expect(place.address).toBe("서울 강동구 천호대로 1000");
     expect(place.phone).toBeUndefined();
+  });
+
+  // dutyAddr은 도로명 주소(명부 153건 전수 확인) — 지번 슬롯에 넣으면 장소 상세가
+  // "지번 주소 …"로 낭독한다. 지번은 소스에 없으므로 비운다.
+  it("dutyAddr을 도로명 슬롯에 넣고 지번은 비운다", () => {
+    const place = nightClinicToPlace(clinic);
+    expect(place.roadAddress).toBe("서울 강동구 천호대로 1000");
+    expect(place.address).toBe("");
   });
 
   it("전화가 있으면 보존한다", () => {

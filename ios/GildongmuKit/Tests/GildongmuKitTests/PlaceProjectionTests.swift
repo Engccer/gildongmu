@@ -17,8 +17,10 @@ import Foundation
     #expect(place.id == "hpid-1")
     #expect(place.name == "길동소아과의원")
     #expect(place.category == "의원")
-    #expect(place.address == "서울 강동구 길동")
-    #expect(place.roadAddress == "")
+    // dutyAddr은 도로명 주소(명부 153건 전수 확인) — 지번 슬롯에 넣으면
+    // PlaceDetailView가 "지번 주소 …"로 낭독한다. 지번은 소스에 없으므로 빈다.
+    #expect(place.roadAddress == "서울 강동구 길동")
+    #expect(place.address == "")
     #expect(place.lat == 37.5384)
     #expect(place.lng == 127.1428)
     #expect(place.phone == "02-1234-5678")
