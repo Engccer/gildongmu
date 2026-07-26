@@ -49,8 +49,12 @@ export function nightClinicToPlace(c: NightClinic): Place {
     name: c.name,
     // 종별(의원/병원) — 역 키워드가 없어 일반 프롬프트 버킷으로 떨어진다.
     category: c.kind,
-    address: c.address,
-    roadAddress: "",
+    // ⚠ NMC dutyAddr은 **도로명 주소**다(명부 153건 전수 확인, 2026-07-26).
+    // 지번 슬롯에 넣으면 라벨을 붙이는 소비처(장소 상세의 "지번 주소 …")가
+    // 도로명을 지번이라 낭독한다. 채팅은 필드명을 안 붙여 드러나지 않았을 뿐이다.
+    // 지번은 소스에 없으므로 비운다(없는 값을 지어내지 않는다).
+    address: "",
+    roadAddress: c.address,
     lat: c.lat,
     lng: c.lng,
     phone: c.phone || undefined,
