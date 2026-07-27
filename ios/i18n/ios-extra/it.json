@@ -40,6 +40,7 @@
     },
     "voice": {
       "hold": "Dettatura",
+      "start": "Avvia dettatura",
       "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare",
       "holdHintChat": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare: quanto dettato finora entra nel campo di testo, dove puoi modificarlo, poi tieni premuto di nuovo per continuare a dettare. Scorri verso sinistra senza rilasciare per annullare",
       "holdGuide": "Tieni premuto per parlare",
@@ -183,6 +184,9 @@
       "themeDark": "Scuro",
       "language": "Lingua",
       "languageApplied": "Lingua cambiata",
+      "dictationStyle": "Modalità di dettatura",
+      "dictationHold": "Registra tenendo premuto",
+      "dictationTap": "Tocca per avviare e fermare",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
       "reportProblem": "Segnala un problema"

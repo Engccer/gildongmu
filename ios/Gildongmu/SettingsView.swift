@@ -41,6 +41,8 @@ struct SettingsView: View {
     ]
 
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
+    // 받아쓰기 방식(홀드 기본 / 클래식 탭 토글) — 정본 enum은 HoldDictationButton.swift
+    @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.hold.rawValue
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
@@ -76,6 +78,13 @@ struct SettingsView: View {
                 Picker(appLocalized("ios.settings.language"), selection: languageSelection) {
                     ForEach(Self.languages, id: \.code) { language in
                         Text(language.name).tag(language.code)
+                    }
+                }
+                .pickerStyle(.inline)
+
+                Picker(appLocalized("ios.settings.dictationStyle"), selection: $dictationRaw) {
+                    ForEach(DictationStyle.allCases, id: \.rawValue) { style in
+                        Text(style.label).tag(style.rawValue)
                     }
                 }
                 .pickerStyle(.inline)
