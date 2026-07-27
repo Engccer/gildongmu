@@ -8,7 +8,7 @@ export interface CliConfig {
   location?: { label: string; lat: number; lng: number };
 }
 
-const DEFAULT_API_URL = "https://gildongmu.vercel.app";
+const DEFAULT_API_URL = "https://gildongmu.dodoplanet.space";
 
 function configDir(): string {
   return process.env.GILDONGMU_CONFIG_DIR ?? join(homedir(), ".config", "gildongmu");

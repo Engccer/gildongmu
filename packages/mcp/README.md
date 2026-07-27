@@ -35,7 +35,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 
 ## 환경변수
 
-- `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.vercel.app`)
+- `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.dodoplanet.space`)
 
 ## 노출되는 도구 (23종)
 
@@ -76,7 +76,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
         ↓ MCP stdio
 [gildongmu-mcp]
         ↓ HTTPS GET
-[https://gildongmu.vercel.app/api/*]
+[https://gildongmu.dodoplanet.space/api/*]
 ```
 
 CLI(`gildongmu`)와 동일한 REST API·엔드포인트 카탈로그를 공유한다. 서버 전용 시크릿(카카오·데이터포털·기상청 등 API 키)은 프로덕션 서버에만 존재하며 사용자 머신으로 새지 않는다.

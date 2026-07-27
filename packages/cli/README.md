@@ -1,6 +1,6 @@
 # gildongmu
 
-접근성 우선 대한민국 길찾기·로컬 정보 CLI. 장소·주소 검색, 대중교통 실시간 도착, 경로 브리핑, 날씨·공기질, 무장애 관광지 정보 등을 터미널에서 바로 조회한다. 스크린 리더 사용자를 1급 시민으로 삼는 [길동무](https://gildongmu.vercel.app) 프로젝트의 씬 클라이언트로, 모든 명령은 프로덕션 REST API를 그대로 호출한다.
+접근성 우선 대한민국 길찾기·로컬 정보 CLI. 장소·주소 검색, 대중교통 실시간 도착, 경로 브리핑, 날씨·공기질, 무장애 관광지 정보 등을 터미널에서 바로 조회한다. 스크린 리더 사용자를 1급 시민으로 삼는 [길동무](https://gildongmu.dodoplanet.space) 프로젝트의 씬 클라이언트로, 모든 명령은 프로덕션 REST API를 그대로 호출한다.
 
 ## 설치
 
@@ -12,7 +12,7 @@ npm install -g gildongmu
 
 ## 인증
 
-없음. 전 명령이 공개 REST API(기본 `https://gildongmu.vercel.app`)를 호출하며 계정·토큰이 필요 없다.
+없음. 전 명령이 공개 REST API(기본 `https://gildongmu.dodoplanet.space`)를 호출하며 계정·토큰이 필요 없다.
 
 ## 위치 지정 3가지 방법
 
@@ -95,6 +95,6 @@ gil completion fish > ~/.config/fish/completions/gil.fish
 
 ## 환경변수
 
-- `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.vercel.app`)
+- `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.dodoplanet.space`)
 - `GILDONGMU_CONFIG_DIR`: 설정 디렉토리(기본 `~/.config/gildongmu`)
 - `NO_COLOR`: 색상 비활성화
