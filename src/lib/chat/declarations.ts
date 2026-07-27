@@ -135,7 +135,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_air_quality",
       description:
-        "현재 위치 또는 지명 주변의 공기질(미세먼지·초미세먼지·통합대기환경지수)을 보여준다. 사용자가 공기질·미세먼지·대기 상태를 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다. 주변 장소·길찾기 등 다른 질문에 곁들여 호출하지 마라.",
+        "현재 위치 또는 지명 주변의 공기질(미세먼지·초미세먼지·통합대기환경지수)을 보여준다. 사용자가 공기질·미세먼지·대기 상태를 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다.",
       parametersJsonSchema: {
         type: "object",
         properties: {
