@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { roundCoord } from "../coord-round";
 import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
 
 /**
@@ -20,7 +21,8 @@ import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
  * 쓰이지 않음이 실호출로 확인되어 ASCII 상수 "start"/"end"로 고정한다.
  *
  * 캐시: revalidate 3600(보행 경로는 준정적이라 같은 좌표쌍 캐시로 일 1,000건
- * 무료 쿼터를 보호한다).
+ * 무료 쿼터를 보호한다). 좌표는 4자리 반올림으로 캐시 키 안정화(측위마다
+ * 키가 달라지는 것 방지).
  */
 
 const ENDPOINT =
@@ -124,10 +126,10 @@ export async function getWalkRouteBriefing(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      startX: String(origin.lng),
-      startY: String(origin.lat),
-      endX: String(dest.lng),
-      endY: String(dest.lat),
+      startX: roundCoord(origin.lng, 4),
+      startY: roundCoord(origin.lat, 4),
+      endX: roundCoord(dest.lng, 4),
+      endY: roundCoord(dest.lat, 4),
       reqCoordType: "WGS84GEO",
       resCoordType: "WGS84GEO",
       startName: "start",

@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { roundCoord } from "../coord-round";
 import type { Coord, TransitLeg, TransitRoute, TransitRouteResult } from "../types";
 
 /**
@@ -123,10 +124,10 @@ export async function getTransitRoute(params: {
 }): Promise<TransitRouteResult | null> {
   const { origin, dest } = params;
   const q = new URLSearchParams({
-    SX: String(origin.lng),
-    SY: String(origin.lat),
-    EX: String(dest.lng),
-    EY: String(dest.lat),
+    SX: roundCoord(origin.lng, 4),
+    SY: roundCoord(origin.lat, 4),
+    EX: roundCoord(dest.lng, 4),
+    EY: roundCoord(dest.lat, 4),
     OPT: "0",
   });
   // apiKey는 인코딩하지 않고 raw로 덧붙인다(이중 인코딩 방지)
@@ -137,7 +138,8 @@ export async function getTransitRoute(params: {
     // Vercel 서버리스는 egress IP가 가변이라 Server(IP) 방식이 프로덕션에서 인증 실패
     // → 기존 앱에 URI 환경을 병행 등록하고 서버 fetch가 Referer를 명시한다(dev/prod 동일 경로).
     headers: { Referer: "https://gildongmu.vercel.app/" },
-    // 경로는 준정적 — 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호
+    // 경로는 준정적, 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호.
+    // 좌표는 4자리 반올림으로 캐시 키 안정화(측위마다 키가 달라지는 것 방지)
     next: { revalidate: 3600 },
   });
   if (!res.ok) {
