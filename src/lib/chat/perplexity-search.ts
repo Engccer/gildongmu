@@ -18,6 +18,50 @@ const TIMEOUT_MS = 10_000;
 
 const VALID_RECENCY_FILTERS = new Set(["hour", "day", "week", "month", "year"]);
 
+/**
+ * 쿼리별 in-memory TTL 캐시 — /api/search/web의 unstable_cache 1시간과 등가 정책.
+ * src/lib/chat은 React/Next 비의존 계약이라 next/cache를 쓸 수 없어 순수 Map으로
+ * 구현한다. ⚠ 인스턴스별 캐시(rate-limit.ts와 동일 한계) — 전역 정확성보다
+ * "동일 인스턴스 반복 질문 무료화"가 목적. 실패 결과는 캐시하지 않는다.
+ */
+export interface SearchCacheEntry {
+  value: ToolResult;
+  createdAt: number;
+}
+
+const CACHE_TTL_MS = 3_600_000; // 1시간(/api/search/web CACHE_TTL_SECONDS와 동조)
+const CACHE_MAX_ENTRIES = 500;
+const searchCache = new Map<string, SearchCacheEntry>();
+
+export function readSearchCache(
+  store: Map<string, SearchCacheEntry>,
+  key: string,
+  now: number,
+  ttlMs: number,
+): ToolResult | null {
+  const entry = store.get(key);
+  if (!entry) return null;
+  if (now - entry.createdAt >= ttlMs) {
+    store.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+export function writeSearchCache(
+  store: Map<string, SearchCacheEntry>,
+  key: string,
+  value: ToolResult,
+  now: number,
+): void {
+  if (store.size >= CACHE_MAX_ENTRIES) {
+    // Map은 삽입 순서를 보존 — 가장 오래된 키부터 제거(단순 FIFO로 충분).
+    const oldest = store.keys().next().value;
+    if (oldest !== undefined) store.delete(oldest);
+  }
+  store.set(key, { value, createdAt: now });
+}
+
 interface PerplexityRawResult {
   title: string;
   url: string;
@@ -72,6 +116,10 @@ export async function searchWebPerplexity(
     ? recencyRaw
     : undefined;
 
+  const cacheKey = `${query}|${maxResults}|${recencyFilter ?? ""}`;
+  const cached = readSearchCache(searchCache, cacheKey, Date.now(), CACHE_TTL_MS);
+  if (cached) return cached;
+
   const body: Record<string, unknown> = { query, max_results: maxResults };
   if (recencyFilter) body.search_recency_filter = recencyFilter;
 
@@ -109,7 +157,7 @@ export async function searchWebPerplexity(
       date: r.date,
     }));
 
-    return {
+    const result: ToolResult = {
       // LLM 추론용: last_updated까지 포함해 시의성 판단을 돕는다.
       data: {
         ok: true,
@@ -126,6 +174,8 @@ export async function searchWebPerplexity(
       // 카드는 결과가 있을 때만(빈 결과는 산문으로만 안내).
       render: results.length > 0 ? { type: "web-results", results } : undefined,
     };
+    writeSearchCache(searchCache, cacheKey, result, Date.now());
+    return result;
   } catch {
     return fail("PERPLEXITY_NETWORK_ERROR", "검색 서비스에 연결할 수 없습니다.");
   }
