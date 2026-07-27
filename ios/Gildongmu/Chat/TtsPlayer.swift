@@ -5,9 +5,11 @@ import GildongmuKit
 
 /// 채팅 응답 '듣기' 버튼 재생 단일 진입점(dodo-planet `TtsPlayer` 이식, full 모드만 —
 /// 요약 자동 듣기·배속 설정은 gildongmu에 해당 기능이 없어 이식하지 않았다).
-/// `POST /api/tts` 성공 시 MP3(AVAudioPlayer), 실패(502 fallback·4000자 초과·네트워크
-/// 오류) 시 `AVSpeechSynthesizer` 온디바이스 낭독으로 폴백한다 — 서버가 어떤 이유로
-/// 실패해도 듣기는 항상 동작한다. 동시 재생은 앱 전역 1개만(새 재생 시작 시 기존 정지).
+/// `AVSpeechSynthesizer` 온디바이스 낭독이 정본이다(즉시 재생·비용 0, 2026-07-27 승격 —
+/// 이전엔 서버 TTS가 정본이고 온디바이스가 폴백이었다). 서버 TTS(`POST /api/tts`,
+/// Chirp MP3)는 현재 로케일 보이스가 기기에 없을 때만 폴백으로 호출하고, 그마저
+/// 실패하면 시스템 기본 보이스로 낭독한다 — 듣기는 항상 동작한다.
+/// 동시 재생은 앱 전역 1개만(새 재생 시작 시 기존 정지).
 @Observable
 @MainActor
 final class TtsPlayer {
@@ -17,9 +19,13 @@ final class TtsPlayer {
     /// 현재 재생(네트워크 로딩 포함) 중인 메시지 id. 듣기 버튼 라벨 전환에 쓴다.
     private(set) var playingMessageID: UUID?
 
-    /// full 모드 서버 TTS 호출 상한(dodo 웹 `TTS_FULL_TEXT_MAX` 동일값). 초과분은
+    /// 폴백 경로의 서버 TTS 호출 상한(dodo 웹 `TTS_FULL_TEXT_MAX` 동일값). 초과분은
     /// 서버를 건너뛰고 온디바이스 낭독으로 직행한다(전문 보장 + 비용 절약).
     static let serverTextMax = 4000
+
+    /// 온디바이스 낭독 속도 — 시스템 기본 `AVSpeechUtteranceDefaultSpeechRate`(0.5)보다
+    /// 약간 빠르게(위원장 선호, 2026-07-27).
+    static let speechRate: Float = 0.55
 
     private var audioPlayer: AVAudioPlayer?
     private let synthesizer = AVSpeechSynthesizer()
@@ -53,6 +59,15 @@ final class TtsPlayer {
         let myGeneration = generation
         let speechText = MarkdownPlainText.strip(from: text)
 
+        // 온디바이스 낭독이 정본. 서버 폴백은 현재 로케일 보이스가 기기에 없을 때만
+        // (온디바이스 합성은 네트워크와 무관해 그 외 실패 모드가 없다).
+        // 지원 5개 로케일 전부 iOS 기본 보이스가 내장되어 아래 서버 경로는
+        // 실사용에서 거의 도달하지 않는 안전망이다.
+        if AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier) != nil {
+            speak(speechText, generation: myGeneration, messageID: messageID)
+            return
+        }
+
         if speechText.count > Self.serverTextMax {
             speak(speechText, generation: myGeneration, messageID: messageID)
             return
@@ -72,7 +87,7 @@ final class TtsPlayer {
             play(data: data, generation: myGeneration, messageID: messageID)
         } catch {
             guard myGeneration == generation else { return }
-            // 502 fallback shape·레이트 초과·네트워크 오류 전부 온디바이스 낭독으로 폴백.
+            // 서버까지 실패하면 시스템 기본 보이스로 최후 낭독(듣기 불능 상태 금지).
             speak(speechText, generation: myGeneration, messageID: messageID)
         }
     }
@@ -130,7 +145,9 @@ final class TtsPlayer {
         activatePlaybackSession()
         let utterance = AVSpeechUtterance(string: trimmed)
         // STT와 같은 로케일 정본(AppLanguage) — 매핑을 재서술하지 않는다.
+        // 보이스 부재 시 nil 대입 = 시스템 기본 보이스(최후 폴백 경로).
         utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
+        utterance.rate = Self.speechRate
         let delegate = TtsPlaybackDelegate { [weak self] in self?.playingMessageID = nil }
         synthesizer.delegate = delegate
         playbackDelegate = delegate
