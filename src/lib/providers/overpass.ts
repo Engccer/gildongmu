@@ -8,7 +8,7 @@
  */
 
 const DEFAULT_TIMEOUT_MS = 12_000;
-const USER_AGENT = "gildongmu/1.0 (+https://gildongmu.vercel.app)";
+const USER_AGENT = "gildongmu/1.0 (+https://gildongmu.dodoplanet.space)";
 
 /** crossing 태그 값 → crossingSignal 고정 매핑(spec §2-C, 임의 확장 금지). 표 밖·없음은 unknown. */
 const CROSSING_SIGNAL_MAP: Record<string, "yes" | "no"> = {

@@ -94,7 +94,7 @@ describe("fetchWalkFeaturesTile", () => {
     ]);
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toBe("https://overpass-api.de/api/interpreter");
-    expect((init.headers as Record<string, string>)["User-Agent"]).toBe("gildongmu/1.0 (+https://gildongmu.vercel.app)");
+    expect((init.headers as Record<string, string>)["User-Agent"]).toBe("gildongmu/1.0 (+https://gildongmu.dodoplanet.space)");
     expect(String(init.body)).toContain("data=");
   });
 });

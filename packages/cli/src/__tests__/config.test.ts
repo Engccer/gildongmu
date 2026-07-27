@@ -11,7 +11,7 @@ describe("config", () => {
 
   it("기본 apiUrl은 프로덕션", async () => {
     const { readConfig } = await import("../lib/config.js");
-    expect((await readConfig()).apiUrl).toBe("https://gildongmu.vercel.app");
+    expect((await readConfig()).apiUrl).toBe("https://gildongmu.dodoplanet.space");
   });
 
   it("GILDONGMU_API_URL env가 파일보다 우선", async () => {
