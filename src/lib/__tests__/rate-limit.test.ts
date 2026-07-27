@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluateRateLimit, type RateLimitEntry, checkChatRateLimit, checkWalkRateLimit, clientIpFromHeaders } from "../rate-limit";
+import { evaluateRateLimit, type RateLimitEntry, checkChatRateLimit, checkWalkRateLimit, checkSttRateLimit, clientIpFromHeaders } from "../rate-limit";
 
 /**
  * 순수 코어 evaluateRateLimit 테스트 — store·now 주입으로 결정적.
@@ -85,6 +85,34 @@ describe("checkWalkRateLimit", () => {
     const now = 1_700_000_300_000;
     for (let i = 0; i < 10; i++) checkWalkRateLimit(ip, now);
     expect(checkWalkRateLimit(ip, now + 60_000)).toBe(true);
+  });
+});
+
+describe("checkSttRateLimit", () => {
+  it("같은 IP 10회까지 허용, 11회째 차단", () => {
+    const ip = "203.0.113.55";
+    const now = 1_700_000_400_000;
+    for (let i = 0; i < 10; i++) {
+      expect(checkSttRateLimit(ip, now + i)).toBe(true);
+    }
+    expect(checkSttRateLimit(ip, now + 10)).toBe(false);
+  });
+
+  it("다른 IP는 독립", () => {
+    const now = 1_700_000_500_000;
+    for (let i = 0; i < 10; i++) {
+      checkSttRateLimit("1.2.3.4", now + i);
+    }
+    expect(checkSttRateLimit("1.2.3.4", now + 10)).toBe(false);
+    // 다른 IP는 독립
+    expect(checkSttRateLimit("5.6.7.8", now + 10)).toBe(true);
+  });
+
+  it("윈도우(60초) 경과 후 다시 허용", () => {
+    const ip = "203.0.113.54";
+    const now = 1_700_000_600_000;
+    for (let i = 0; i < 10; i++) checkSttRateLimit(ip, now);
+    expect(checkSttRateLimit(ip, now + 60_000)).toBe(true);
   });
 });
 

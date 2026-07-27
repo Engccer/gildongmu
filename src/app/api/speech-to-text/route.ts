@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildDeepgramParams, parseDeepgramTranscript } from "@/lib/deepgram";
 import { validateSttInput } from "@/lib/stt-validate";
+import { checkSttRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
  * 음성 받아쓰기 프록시 — 클라이언트가 녹음한 오디오 Blob을 Deepgram
@@ -11,11 +12,19 @@ import { validateSttInput } from "@/lib/stt-validate";
 const VALIDATION_ERROR: Record<string, string> = {
   missing: "오디오가 필요합니다.",
   empty: "빈 오디오입니다.",
-  too_large: "오디오가 너무 큽니다. (최대 25MB)",
+  too_large: "오디오가 너무 큽니다. (최대 5MB)",
   bad_type: "오디오 형식이 올바르지 않습니다.",
 };
 
 export async function POST(request: NextRequest) {
+  // 유료 Deepgram 비용 방어 — formData 파싱(메모리 적재) 전에 차단한다.
+  if (!checkSttRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
+    return NextResponse.json(
+      { error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 429 },
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();

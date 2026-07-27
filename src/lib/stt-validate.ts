@@ -10,7 +10,9 @@
  *   실제 로케일을 그대로 STT 언어로 쓴다.
  */
 
-export const STT_MAX_SIZE = 25 * 1024 * 1024; // 25MB
+// 서버 상한은 웹 UI 60초 녹음 캡 기준(opus 60초 ≈ 1MB 미만)의 여유분.
+// 25MB(약 100분 오디오)는 유료 Deepgram 직접 호출 어뷰징 표면이었다.
+export const STT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const SUPPORTED_LOCALES = ["ko", "en", "es", "fr", "it"] as const;
 
 export type SttLocale = (typeof SUPPORTED_LOCALES)[number];
