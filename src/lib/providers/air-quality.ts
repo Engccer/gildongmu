@@ -1,6 +1,7 @@
 import proj4 from "proj4";
 import type { AirGrade, AirPollutant, AirQuality } from "../types";
 import { env } from "../env";
+import { roundCoord } from "../coord-round";
 
 /**
  * 이 지역 공기질(B2) provider — 에어코리아 15073877·15073861.
@@ -185,12 +186,18 @@ async function fetchAirkorea(
   return raw;
 }
 
-/** 근접 측정소 조회(call 1). 측정소 목록은 거의 불변이라 하루 캐시. */
+/**
+ * 근접 측정소 조회(call 1). 측정소 목록은 거의 불변이라 하루 캐시.
+ * 측정소 간격은 km 단위라 좌표를 3자리(약 ±55m)로 양자화해 URL 캐시 키를
+ * 안정화한다(측위마다 키가 달라지는 것 방지).
+ */
 async function fetchNearestStation(
   lat: number,
   lng: number,
 ): Promise<NearestStation | null> {
-  const { tmX, tmY } = wgs84ToTm(lat, lng);
+  const quantizedLat = Number(roundCoord(lat, 3));
+  const quantizedLng = Number(roundCoord(lng, 3));
+  const { tmX, tmY } = wgs84ToTm(quantizedLat, quantizedLng);
   const raw = await fetchAirkorea(
     MSRSTN_BASE,
     { tmX, tmY, pageNo: 1, numOfRows: 5 },
