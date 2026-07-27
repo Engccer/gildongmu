@@ -37,12 +37,18 @@ describe("validateSttInput", () => {
       locale: "ko",
     });
   });
-  it("최대 크기 초과는 too_large", () => {
-    const big = { size: STT_MAX_SIZE + 1, type: "audio/webm" };
-    Object.setPrototypeOf(big, Blob.prototype);
+  it("5MB 초과 오디오는 too_large", () => {
+    const big = new Blob([new Uint8Array(5 * 1024 * 1024 + 1)], { type: "audio/webm" });
     expect(validateSttInput(big, "ko")).toEqual({
       ok: false,
       reason: "too_large",
+    });
+  });
+  it("5MB 이하는 허용", () => {
+    const atLimit = new Blob([new Uint8Array(5 * 1024 * 1024)], { type: "audio/webm" });
+    expect(validateSttInput(atLimit, "ko")).toEqual({
+      ok: true,
+      locale: "ko",
     });
   });
   it("지원 외국어 로케일(es/fr/it)은 그대로 통과(nova-3 다국어)", () => {

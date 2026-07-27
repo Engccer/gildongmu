@@ -66,6 +66,15 @@ export function checkTtsRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(ttsStore, ip, now, TTS_LIMIT, WINDOW_MS).allowed;
 }
 
+// STT는 유료 Deepgram 중계 + 웹 녹음 60초 캡이라 탭당 1회 수준 — TTS와 동일 강도.
+const STT_LIMIT = 10;
+const sttStore = new Map<string, RateLimitEntry>();
+
+/** /api/speech-to-text 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkSttRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(sttStore, ip, now, STT_LIMIT, WINDOW_MS).allowed;
+}
+
 // 채팅은 요청당 비용이 가장 크고(Gemini 다회 호출+도구 경유 Perplexity) 대화 턴 간격이
 // 자연히 길어, 검색(30회)보다 강한 60초 10회로 잡는다(스펙 §5).
 const CHAT_LIMIT = 10;
