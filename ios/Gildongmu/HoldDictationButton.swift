@@ -2,7 +2,31 @@ import SwiftUI
 import UIKit
 import Accessibility
 
+/// 받아쓰기 버튼 동작 방식 영속값(접근성 헌장 §6의 두 계약 중 택1, 2026-07-27 설정화).
+/// 기본은 홀드(위원장 선호 2026-07-20), 클래식 탭 토글을 설정에서 선택할 수 있다.
+enum DictationStyle: String, CaseIterable {
+    case hold
+    case tapToggle
+
+    static let key = "dictationStyle"
+
+    /// 뷰 밖(전달 콜백 등) 판단 지점용 현재 방식. 뷰 갱신 관찰은 @AppStorage가 담당.
+    static var current: DictationStyle {
+        DictationStyle(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .hold
+    }
+
+    var label: String {
+        switch self {
+        case .hold: appLocalized("ios.settings.dictationHold")
+        case .tapToggle: appLocalized("ios.settings.dictationTap")
+        }
+    }
+}
+
 /// WhatsApp식 홀드 받아쓰기 버튼(2026-07-20 위원장 결정, 탭 토글 대체).
+/// 2026-07-27부터 설정(`DictationStyle`)이 탭 토글이면 클래식 계약(73fb4e7 이전,
+/// 탭=시작·재탭=정지, 라벨 전환 "받아쓰기 시작"↔"받아쓰기 중지"가 상태 신호)으로
+/// 동작한다 — 아래 홀드 계약 주석은 홀드 방식에만 해당.
 /// 누르고 있는 동안(홀드 성립 250ms 후) 녹음하고 손을 떼면 최종 텍스트를 onTranscript로
 /// 전달한다(채팅=즉시 전송, 검색=자동 검색).
 ///
@@ -54,29 +78,83 @@ struct HoldDictationButton: View {
     /// 동안 재홀드하면 SpeechService 재진입 가드(.requesting no-op)에 새 start()가
     /// 삼켜진 뒤 옛 cancel()이 전체를 idle로 되돌려 두 번째 발화가 무음 소실(리뷰 검출)
     @State private var cancelInFlight = false
+    /// 방식 전환 즉시 반영을 위한 관찰 지점(설정 시트가 App 레벨이라 이 뷰는 살아 있다)
+    @AppStorage(DictationStyle.key) private var dictationStyleRaw = DictationStyle.hold.rawValue
+
+    private var style: DictationStyle {
+        DictationStyle(rawValue: dictationStyleRaw) ?? .hold
+    }
 
     var body: some View {
+        if style == .tapToggle {
+            tapToggleBody
+        } else {
+            holdBody
+        }
+    }
+
+    private var holdBody: some View {
+        micRow(title: appLocalized("ios.voice.hold"))
+            .overlay {
+                HoldGestureCatcher(
+                    onBegan: beginHold,
+                    onMoved: handleSlide,
+                    onEnded: endHold,
+                    onTapped: handleTap
+                )
+            }
+            .accessibilityElement()
+            .accessibilityLabel(appLocalized("ios.voice.hold"))
+            .accessibilityHint(hint)
+            .accessibilityAddTraits(.isButton)
+    }
+
+    /// 클래식 탭 토글(73fb4e7 이전 계약 복원): 탭=시작, 재탭=정지·전달. 라벨 전환이
+    /// 상태 신호(헌장 §6 ⓐ, disabled 금지)라 별도 힌트 불필요 — 라벨이 곧 다음 동작.
+    /// 잠금·취소 슬라이드는 없다(정지가 항상 확정, 지우기는 입력 필드 지우기 버튼 몫).
+    private var tapToggleBody: some View {
+        Button(action: handleToggleTap) {
+            micRow(title: toggleLabel)
+        }
+        .accessibilityLabel(toggleLabel)
+    }
+
+    /// 클래식 계약의 라벨: 청취 중이면 "받아쓰기 중지"(외부 시작 세션 포함 — 정지
+    /// 수단이 이 탭이므로 라벨이 그 사실을 알린다), 아니면 "받아쓰기 시작".
+    private var toggleLabel: String {
+        speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start")
+    }
+
+    private func micRow(title: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: speech.isListening ? "mic.fill" : "mic")
                 .foregroundStyle(speech.isListening ? Color.red : Color.accentColor)
             if showsTitle {
-                Text(appLocalized("ios.voice.hold"))
+                Text(title)
             }
         }
         .frame(minWidth: 44, minHeight: 44)
         .contentShape(Rectangle())
-        .overlay {
-            HoldGestureCatcher(
-                onBegan: beginHold,
-                onMoved: handleSlide,
-                onEnded: endHold,
-                onTapped: handleTap
-            )
+    }
+
+    /// 탭 토글의 탭: 청취 중(시작 준비 대기 포함)이면 정지·전달, 유휴면 시작.
+    /// 이중 정지·시작은 홀드와 같은 in-flight 가드가 차단한다.
+    /// ⚠ startTask 단독으로 정지를 판정하지 말 것: 시작 실패(denied·failed) 후에도
+    /// startTask가 남아, 다음 탭이 정지 no-op으로 소모된다(시뮬레이터 실측 2026-07-27).
+    /// phase 동반 판정으로 실패 잔재를 시작 경로로 흘린다(재대입이 곧 정리).
+    private func handleToggleTap() {
+        let starting = startTask != nil && speech.phase == .requesting
+        if speech.isListening || starting {
+            finishAndDeliver()
+        } else if speech.phase == .requesting {
+            // 외부 시작 세션(단축어)이 준비 중(권한·모델 다운로드): start 재호출은
+            // 재진입 가드 no-op일 뿐이고 정지도 아직 불가 — 무반응이 정직(홀드 판 동형)
+        } else {
+            guard !finishInFlight, !cancelInFlight else { return }
+            // 재생 중 TTS 정지 사유는 홀드(beginHold)와 동일 — 오디오 세션 소유 경합 방지
+            TtsPlayer.shared.stop()
+            startTask = Task { await speech.start() }
         }
-        .accessibilityElement()
-        .accessibilityLabel(appLocalized("ios.voice.hold"))
-        .accessibilityHint(hint)
-        .accessibilityAddTraits(.isButton)
     }
 
     private func beginHold() {

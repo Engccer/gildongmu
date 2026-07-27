@@ -40,6 +40,7 @@
     },
     "voice": {
       "hold": "받아쓰기",
+      "start": "받아쓰기 시작",
       "holdHintSearch": "누른 채로 말하고, 손을 떼면 검색합니다",
       "holdHintChat": "누른 채로 말하고, 손을 떼면 전송합니다. 누른 채 위로 밀면 잠겨서 그때까지 받아쓴 내용이 입력창에 들어가고, 수정한 뒤 다시 길게 눌러 이어서 받아쓸 수 있습니다. 누른 채 왼쪽으로 밀면 취소합니다",
       "holdGuide": "누른 채로 말해 주세요",
@@ -183,6 +184,9 @@
       "themeDark": "다크",
       "language": "언어",
       "languageApplied": "언어를 바꿨습니다",
+      "dictationStyle": "받아쓰기 방식",
+      "dictationHold": "누르고 있는 동안 녹음",
+      "dictationTap": "탭으로 시작하고 정지",
       "aiSection": "AI 채팅",
       "aiConsentToggle": "AI 채팅 데이터 전송 동의",
       "reportProblem": "문제 신고"

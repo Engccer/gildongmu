@@ -40,6 +40,7 @@
     },
     "voice": {
       "hold": "Dictate",
+      "start": "Start dictation",
       "holdHintSearch": "Press and hold to speak; release to search",
       "holdHintChat": "Press and hold to speak; release to send. Slide up while holding to lock: what you said so far goes into the text field, where you can edit it, then press and hold again to continue dictating. Slide left while holding to cancel",
       "holdGuide": "Press and hold to speak",
@@ -183,6 +184,9 @@
       "themeDark": "Dark",
       "language": "Language",
       "languageApplied": "Language changed",
+      "dictationStyle": "Dictation style",
+      "dictationHold": "Record while holding",
+      "dictationTap": "Tap to start and stop",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
       "reportProblem": "Report a problem"

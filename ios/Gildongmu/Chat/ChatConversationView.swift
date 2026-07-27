@@ -179,8 +179,11 @@ struct ChatConversationView<EmptyContent: View>: View {
                     // 초안이 고아로 방치): 보내는 것 = 초안 + 받아쓴 말 전부, 초안은 소거.
                     // 통지도 병합 원문 전체 — 사용자가 들은 것이 곧 전송된 것(결정론).
                     let message = mergedDraft(with: text)
-                    if model.isStreaming {
-                        // 생성 중엔 전송 불가: 발화 유실 금지 — 초안으로 보존(구계약 폴백)
+                    if DictationStyle.current == .tapToggle || model.isStreaming {
+                        // 탭 토글 방식은 자동 전송 없는 클래식 계약(헌장 §6 받아쓰기 완료):
+                        // 정지=초안 확정, 검토 후 전송 — 포커스를 보내기 버튼으로 이동한 뒤
+                        // 받아쓴 결과 원문을 polite 통지. 생성 중 홀드 릴리스도 같은 경로
+                        // (전송 불가 시 발화 유실 금지 — 초안으로 보존).
                         draft = message
                         isSendFocused = true
                         AccessibilityNotification.Announcement(message).post()
