@@ -1,7 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readSearchCache, writeSearchCache, type SearchCacheEntry } from "../perplexity-search";
 
 // dodo-planet의 perplexity-search 테스트 이식 — 길동무 ToolResult 적응
 // (JSON 문자열 파싱 대신 result.data / result.render 직접 검증).
+
+// 캐시 코어는 store·now 주입형이라 결정적으로 검증한다(rate-limit 테스트 동형).
+describe("searchWebPerplexity 캐시 코어", () => {
+  it("TTL 내 동일 키는 캐시 적중, TTL 경과 후 미스", () => {
+    const store = new Map<string, SearchCacheEntry>();
+    const value = { ok: true } as never;
+    writeSearchCache(store, "k", value, 1_000);
+    expect(readSearchCache(store, "k", 1_000 + 3_599_000, 3_600_000)).toBe(value);
+    expect(readSearchCache(store, "k", 1_000 + 3_600_000, 3_600_000)).toBeNull();
+  });
+
+  it("용량 상한 도달 시 가장 오래된 항목부터 제거", () => {
+    const store = new Map<string, SearchCacheEntry>();
+    for (let i = 0; i < 501; i++) writeSearchCache(store, `k${i}`, {} as never, i);
+    expect(store.size).toBeLessThanOrEqual(500);
+    expect(store.has("k0")).toBe(false);
+  });
+});
 
 const mockSearchResponse = {
   results: [
@@ -136,5 +155,31 @@ describe("searchWebPerplexity", () => {
 
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
     expect(body.search_recency_filter).toBeUndefined();
+  });
+
+  it("동일 인자 2회 호출 시 fetch 1회(in-memory 캐시 적중)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockFetchOk()));
+    const { searchWebPerplexity } = await import("../perplexity-search");
+
+    const first = await searchWebPerplexity({ query: "cache me" });
+    const second = await searchWebPerplexity({ query: "cache me" });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+  });
+
+  it("실패 결과는 캐시하지 않는다(재시도 시 fetch 재호출)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(mockFetch500()).mockResolvedValueOnce(mockFetchOk()),
+    );
+    const { searchWebPerplexity } = await import("../perplexity-search");
+
+    const first = await searchWebPerplexity({ query: "retry me" });
+    expect(first.data.error).toBe("PERPLEXITY_SERVER_ERROR");
+
+    const second = await searchWebPerplexity({ query: "retry me" });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(second.data.ok).toBe(true);
   });
 });
