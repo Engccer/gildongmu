@@ -33,6 +33,9 @@ final class ChatModel {
     private var streamTask: Task<Void, Never>?
 
     private let service = ChatService()
+    /// 전송·완료 효과음. 두 전송 진입점(입력바·추천 질문)과 두 채팅 화면(탭·장소 sheet)을
+    /// 모두 덮는 유일한 지점이 이 모델이라 여기서 재생한다(웹은 ChatInterface가 담당).
+    private let soundPlayer = SoundPlayer()
 
     init(place: Place? = nil) {
         self.place = place
@@ -45,6 +48,7 @@ final class ChatModel {
         guard AIChatConsent.granted, !trimmed.isEmpty, !isStreaming else { return }
 
         messages.append(ChatMessage(role: .user, text: trimmed))
+        soundPlayer.play(.chatSend)
         questionRevision += 1
         isStreaming = true
 
@@ -97,10 +101,12 @@ final class ChatModel {
         isStreaming = false
     }
 
-    /// 답변(성공·실패 공통)을 붙이고 완료 신호: 햅틱 + 포커스 이동 세대 증가.
+    /// 답변(성공·실패 공통)을 붙이고 완료 신호: 효과음 + 햅틱 + 포커스 이동 세대 증가.
     /// 답변 산문은 말풍선 한 곳에만. 별도 낭독 통지 없음(포커스 이동이 곧 통지).
+    /// 완료음은 웹과 동일하게 성패 무관 턴 경계 신호(성패는 햅틱·실패 문구가 구분).
     private func appendAssistant(_ message: ChatMessage, success: Bool) {
         messages.append(message)
+        soundPlayer.play(.chatReceive)
         answerRevision += 1
         UINotificationFeedbackGenerator().notificationOccurred(success ? .success : .error)
     }
