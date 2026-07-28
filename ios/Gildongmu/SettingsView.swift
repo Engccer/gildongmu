@@ -1,5 +1,6 @@
 import SwiftUI
 import Accessibility
+import GildongmuKit
 
 /// 테마 선택 영속값. rawValue가 AppStorage("themePreference")에 저장된다.
 /// 시스템=nil 반환으로 preferredColorScheme 오버라이드를 해제한다.
@@ -43,6 +44,8 @@ struct SettingsView: View {
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
     // 받아쓰기 방식(홀드 기본 / 클래식 탭 토글) — 정본 enum은 HoldDictationButton.swift
     @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.hold.rawValue
+    // 채팅 응답 듣기 속도 배율. 규칙·키 정본은 Kit ListenSpeed, 소비는 TtsPlayer 재생 시점.
+    @AppStorage(ListenSpeed.storageKey) private var listenSpeed = 1.0
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
@@ -65,6 +68,15 @@ struct SettingsView: View {
         )
     }
 
+    /// 배속 선택지 라벨(1배/1.5배/2배). 허용값 정본은 `ListenSpeed.allowedSpeeds`.
+    private static func listenSpeedLabel(_ speed: Double) -> String {
+        switch speed {
+        case 1.5: appLocalized("ios.settings.listenSpeed15x")
+        case 2: appLocalized("ios.settings.listenSpeed2x")
+        default: appLocalized("ios.settings.listenSpeed1x")
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -85,6 +97,13 @@ struct SettingsView: View {
                 Picker(appLocalized("ios.settings.dictationStyle"), selection: $dictationRaw) {
                     ForEach(DictationStyle.allCases, id: \.rawValue) { style in
                         Text(style.label).tag(style.rawValue)
+                    }
+                }
+                .pickerStyle(.inline)
+
+                Picker(appLocalized("ios.settings.listenSpeed"), selection: $listenSpeed) {
+                    ForEach(ListenSpeed.allowedSpeeds, id: \.self) { speed in
+                        Text(Self.listenSpeedLabel(speed)).tag(speed)
                     }
                 }
                 .pickerStyle(.inline)

@@ -187,6 +187,10 @@
       "dictationStyle": "Modalità di dettatura",
       "dictationHold": "Registra tenendo premuto",
       "dictationTap": "Tocca per avviare e fermare",
+      "listenSpeed": "Velocità di ascolto",
+      "listenSpeed1x": "1x",
+      "listenSpeed15x": "1,5x",
+      "listenSpeed2x": "2x",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
       "reportProblem": "Segnala un problema"

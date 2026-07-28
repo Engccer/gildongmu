@@ -187,6 +187,10 @@
       "dictationStyle": "Modo de dictado",
       "dictationHold": "Grabar mientras se mantiene pulsado",
       "dictationTap": "Tocar para iniciar y detener",
+      "listenSpeed": "Velocidad de escucha",
+      "listenSpeed1x": "1x",
+      "listenSpeed15x": "1,5x",
+      "listenSpeed2x": "2x",
       "aiSection": "Chat con IA",
       "aiConsentToggle": "Consentimiento de envío de datos del chat con IA",
       "reportProblem": "Informar de un problema"
