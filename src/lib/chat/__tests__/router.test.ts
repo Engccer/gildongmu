@@ -158,14 +158,14 @@ describe("executeFunction — 실데이터 + render + source", () => {
 });
 
 describe("executeFunction — get_walk_route", () => {
-  it("정상 경로: destination 지오코딩 + 요약·steps + source(tmap), render 없음", async () => {
+  it("정상 경로: destination 지오코딩 + 요약·steps + source(카카오·Tmap 병기), render 없음", async () => {
     const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
     expect(dig(r.data, "destination")).toBe("길동 카페");
     expect(dig(r.data, "distanceMeters")).toBe(850);
     expect(dig(r.data, "durationSeconds")).toBe(660);
     expect(dig(r.data, "steps")).toHaveLength(2);
     expect(dig(r.data, "truncated")).toBeUndefined();
-    expect(r.source).toEqual([{ label: "source.tmap" }]);
+    expect(r.source).toEqual([{ label: "source.kakao" }, { label: "source.tmap" }]);
     expect(r.render).toBeUndefined();
   });
 
@@ -196,7 +196,7 @@ describe("executeFunction — get_walk_route", () => {
     const before = vi.mocked(getWalkRouteBriefing).mock.calls.length;
     const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxNoLoc);
     expect(dig(r.data, "error")).toBeTruthy();
-    expect(r.source).toEqual([{ label: "source.tmap" }]);
+    expect(r.source).toEqual([{ label: "source.kakao" }, { label: "source.tmap" }]);
     expect(vi.mocked(getWalkRouteBriefing).mock.calls.length).toBe(before);
   });
 
@@ -205,7 +205,7 @@ describe("executeFunction — get_walk_route", () => {
     const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
     expect(dig(r.data, "destination")).toBe("길동 카페");
     expect(dig(r.data, "briefing")).toBeNull();
-    expect(r.source).toEqual([{ label: "source.tmap" }]);
+    expect(r.source).toEqual([{ label: "source.kakao" }, { label: "source.tmap" }]);
   });
 
   it("게이트 off(hasWalkRouteKey=false)면 실행부 직접 호출도 차단(Tmap provider 미호출)", async () => {
