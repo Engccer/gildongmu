@@ -16,7 +16,7 @@ import { routing } from "@/i18n/routing";
 import { withQuery } from "@/lib/locale-href";
 
 /**
- * 언어 선택기 — 버튼을 눌러 펼치는 disclosure 메뉴로 5개 언어(ko/en/es/fr/it)를
+ * 언어 선택기 — 버튼을 눌러 펼치는 disclosure 메뉴로 지원 언어(routing.locales)를
  * 전환한다. 현재 경로와 ?q= 쿼리를 보존하며, next-intl 미들웨어가 로케일 프리픽스
  * 네비게이션 시 NEXT_LOCALE 쿠키를 설정하므로 고른 언어는 재방문 시 유지된다.
  *
@@ -31,6 +31,7 @@ const LABEL_KEY: Record<string, string> = {
   es: "spanish",
   fr: "french",
   it: "italian",
+  ja: "japanese",
 };
 
 /**

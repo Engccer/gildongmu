@@ -8,12 +8,13 @@ import {
 const byteLen = (s: string) => new TextEncoder().encode(s).length;
 
 describe("getChirpVoice", () => {
-  it("5개 로케일 모두 Chirp3-HD-Puck 매핑", () => {
+  it("6개 로케일 모두 Chirp3-HD-Puck 매핑", () => {
     expect(getChirpVoice("ko")).toEqual({ languageCode: "ko-KR", name: "ko-KR-Chirp3-HD-Puck" });
     expect(getChirpVoice("en")).toEqual({ languageCode: "en-US", name: "en-US-Chirp3-HD-Puck" });
     expect(getChirpVoice("es")).toEqual({ languageCode: "es-ES", name: "es-ES-Chirp3-HD-Puck" });
     expect(getChirpVoice("fr")).toEqual({ languageCode: "fr-FR", name: "fr-FR-Chirp3-HD-Puck" });
     expect(getChirpVoice("it")).toEqual({ languageCode: "it-IT", name: "it-IT-Chirp3-HD-Puck" });
+    expect(getChirpVoice("ja")).toEqual({ languageCode: "ja-JP", name: "ja-JP-Chirp3-HD-Puck" });
   });
 });
 

@@ -1,0 +1,9 @@
+{
+  "whereAmI": {
+    "narrative": {
+      "here": "現在地は{place}です。",
+      "station": "最寄りの地下鉄駅は{name}{line}、{direction}側へ約{distance}です。",
+      "landmarkItem": "{direction}側約{distance}に{name}({category})"
+    }
+  }
+}

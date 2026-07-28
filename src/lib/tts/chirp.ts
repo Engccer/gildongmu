@@ -2,7 +2,7 @@
  * Google Cloud TTS Chirp 3 HD 합성 (서버 전용, dodo-planet `src/lib/tts/chirp.ts` 이식).
  *
  * 비용: $30/1M자 + 월 1M자 무료 티어(dodo 실측 docs/evals/2026-06-12-tts-latency-research.md,
- * short 97자 기준 2.4초). 5개 로케일 모두 Puck 보이스 보유.
+ * short 97자 기준 2.4초). 6개 로케일 모두 Puck 보이스 보유(ja는 2026-07-28 voices API 확인).
  *
  * DOMAIN RULE: Cloud TTS `text:synthesize`는 요청당 입력 5,000 bytes 한도
  * (글자 수 아님 — 한국어는 글자당 3 bytes). 초과 텍스트는 문장 경계에서
@@ -10,7 +10,7 @@
  * (MP3 concat은 AVAudioPlayer·HTMLAudioElement 재생 호환 — WAV/FLAC는 헤더 중복으로 불가).
  */
 
-export type ChirpLocale = "ko" | "en" | "es" | "fr" | "it";
+export type ChirpLocale = "ko" | "en" | "es" | "fr" | "it" | "ja";
 
 const CHIRP_LANGUAGE_CODES: Record<ChirpLocale, string> = {
   ko: "ko-KR",
@@ -18,6 +18,7 @@ const CHIRP_LANGUAGE_CODES: Record<ChirpLocale, string> = {
   es: "es-ES",
   fr: "fr-FR",
   it: "it-IT",
+  ja: "ja-JP",
 };
 
 /** 전 로케일 공통 보이스 — dodo와 같은 Puck 패밀리(음색 일관성) */

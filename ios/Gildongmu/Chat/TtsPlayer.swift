@@ -74,7 +74,7 @@ final class TtsPlayer {
 
         // 온디바이스 낭독이 정본. 서버 폴백은 현재 로케일 보이스가 기기에 없을 때만
         // (온디바이스 합성은 네트워크와 무관해 그 외 실패 모드가 없다).
-        // 지원 5개 로케일 전부 iOS 기본 보이스가 내장되어 아래 서버 경로는
+        // 지원 6개 로케일 전부 iOS 기본 보이스가 내장되어 아래 서버 경로는
         // 실사용에서 거의 도달하지 않는 안전망이다.
         if AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier) != nil {
             speak(speechText, generation: myGeneration, messageID: messageID)

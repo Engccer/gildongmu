@@ -3,7 +3,7 @@ import Foundation
 /// 앱 UI 언어 정본. 데이터 계약(검색 lang·채팅 locale·STT)과 Kit lang 인자,
 /// `appLocalized` 조회가 전부 여기서 나온다.
 enum AppLanguage {
-    static let supported = ["ko", "en", "es", "fr", "it"]
+    static let supported = ["ko", "en", "es", "fr", "it", "ja"]
 
     /// 사용자 선택 영속 키(앱 자체 소유). `AppleLanguages`를 정본으로 쓰지 않는 이유:
     /// 그 키는 오버라이드가 없어도 시스템이 채워 두고, 무엇보다 실행 중 변경이
@@ -34,6 +34,7 @@ enum AppLanguage {
         case "es": "es-ES"
         case "fr": "fr-FR"
         case "it": "it-IT"
+        case "ja": "ja-JP"
         default: "ko-KR"
         }
     }

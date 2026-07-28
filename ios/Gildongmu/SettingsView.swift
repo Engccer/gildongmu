@@ -39,6 +39,7 @@ struct SettingsView: View {
         ("es", "Español"),
         ("fr", "Français"),
         ("it", "Italiano"),
+        ("ja", "日本語"),
     ]
 
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
@@ -87,12 +88,15 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.inline)
 
+                // 언어만 메뉴 피커(dodo-planet 동형): 6개 언어를 인라인으로 펼치면
+                // 설정 목록을 압도한다 — 라벨 행에 현재 언어를 보이고 탭하면 메뉴로 선택.
+                // VoiceOver엔 "언어, 현재값" 단일 객체(한 줄=한 객체).
                 Picker(appLocalized("ios.settings.language"), selection: languageSelection) {
                     ForEach(Self.languages, id: \.code) { language in
                         Text(language.name).tag(language.code)
                     }
                 }
-                .pickerStyle(.inline)
+                .pickerStyle(.menu)
 
                 Picker(appLocalized("ios.settings.dictationStyle"), selection: $dictationRaw) {
                     ForEach(DictationStyle.allCases, id: \.rawValue) { style in
