@@ -275,8 +275,11 @@ export interface WalkRouteStep {
   /**
    * 안내 지점 좌표(내부 전달용). provider가 채우고 walk-route 서비스가
    * 음향신호기 주석 판정에 쓴 뒤 **응답 전 제거**한다 — API 응답에 노출 금지.
+   * coord는 단일 지점(Tmap Point), pathCoords는 스텝 폴리라인(카카오) —
+   * 판정은 두 형태 모두 "후보점 목록"으로 수용한다(2026-07-29 재캘리브레이션).
    */
   coord?: Coord;
+  pathCoords?: Coord[];
 }
 
 /** 도보 경로 텍스트 브리핑: 지도 없이 완결되는 경로 정보의 정본(자동차 CarRouteBriefing 동형). */
