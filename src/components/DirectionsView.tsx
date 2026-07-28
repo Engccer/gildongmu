@@ -93,6 +93,8 @@ async function fetchMode(
   dest: Coord,
   lang: "ko" | "en",
   signal: AbortSignal,
+  /** 계단 회피(도보 전용) — 꺼짐이면 파라미터 자체를 안 붙여 기존 캐시 경로 유지. */
+  walkAccessible?: boolean,
 ): Promise<ModeOutcome> {
   const qs = `origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
   if (mode === "car") {
@@ -100,7 +102,8 @@ async function fetchMode(
     if (!res.ok) return { kind: "error" };
     return { kind: "done", mode, result: (await res.json()) as CarRouteBriefing };
   }
-  const res = await fetch(`/api/route/${mode}?${qs}`, { signal });
+  const accessibleQs = mode === "walk" && walkAccessible ? "&accessible=true" : "";
+  const res = await fetch(`/api/route/${mode}?${qs}${accessibleQs}`, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown };
   if (!body.result) return { kind: "empty" };
@@ -163,6 +166,26 @@ export function DirectionsView({
   const [results, setResults] = useState<QueryResults | null>(null);
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
+
+  // 계단 회피(도보 전용) 토글. ref는 비동기 응답 도착 시점의 "최신" 상태를 읽기
+  // 위함(state 클로저는 dispatch 시점 값이라 stale 방어에 못 씀).
+  const [stepFreeEnabled, setStepFreeEnabledState] = useState(false);
+  const stepFreeRef = useRef(false);
+  function setStepFreeEnabled(v: boolean) {
+    stepFreeRef.current = v;
+    setStepFreeEnabledState(v);
+  }
+  // 마지막 전체 조회에 실제로 쓰인 좌표(토글 단독 재조회가 같은 좌표를 재사용).
+  const lastCoordsRef = useRef<{ origin: Coord; dest: Coord } | null>(null);
+
+  // `?dir=` 복원: walkAccessible=1이면 다음 조회부터 계단 회피를 적용(자동 재조회는
+  // 안 함 — 이 뷰는 원래도 복원 후 "조회" 버튼을 눌러야 결과가 뜬다).
+  useEffect(() => {
+    queueMicrotask(() => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("walkAccessible") === "1") setStepFreeEnabled(true);
+    });
+  }, []);
 
   // 최근 장소(스펙 2026-07-26) — 출발지·도착지 **분리** 목록(위원장 지시 2026-07-26:
   // 출발지에서 검색한 곳이 도착지 기록에 뜨는 공유 목록 폐기). 마운트 후 로드(SSR 가드).
@@ -247,10 +270,13 @@ export function DirectionsView({
     if (!from) return;
     const url = new URL(window.location.href);
     url.searchParams.set("dir", serializeDir(from, toField.resolved));
+    // 계단 회피 토큰은 켜짐일 때만(꺼짐=기본이라 URL에 남길 정보가 없다).
+    if (stepFreeEnabled) url.searchParams.set("walkAccessible", "1");
+    else url.searchParams.delete("walkAccessible");
     window.history.replaceState(window.history.state, "", url);
     // LanguageSwitcher가 쿼리 변경을 href에 반영하도록 통지(?q= 동기화와 동형).
     window.dispatchEvent(new Event("gildongmu:locationchange"));
-  }, [fromField.resolved, toField.resolved]);
+  }, [fromField.resolved, toField.resolved, stepFreeEnabled]);
 
   // 현재 위치 필드의 표시 텍스트는 확정 시점 스냅샷이 아니라 파생 라벨을 쓴다
   // (주소 병기·새로고침이 라벨에 즉시 반영, 편집 시작 시엔 resolved가 풀려 원문 유지).
@@ -334,13 +360,14 @@ export function DirectionsView({
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
       const dest = to.kind === "current" ? (cur as Coord) : to.coord;
+      lastCoordsRef.current = { origin, dest };
       setPhase({ kind: "loading" });
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
       const settled = await Promise.allSettled(
         activeModes.map((m) =>
-          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal),
+          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, stepFreeRef.current),
         ),
       );
       clearTimeout(timer);
@@ -365,6 +392,32 @@ export function DirectionsView({
     } finally {
       if (myGen === genRef.current) inFlight.current = false;
     }
+  }
+
+  /**
+   * 계단 회피 토글: 이미 조회된 결과가 있으면 도보만 새 상태로 재조회하고
+   * (대중교통·자동차 결과는 그대로 유지), 아직 조회 전이면 상태만 바꿔 다음
+   * "조회"에 반영한다. stale 방어 2단: ① 응답 도착 시점 토글 상태가 요청 시점과
+   * 다르면(연타로 반대 방향 응답이 늦게 옴) 폐기 ② 그 사이 전체 조회가 새로
+   * 시작·완료됐으면(genRef 변화) 그쪽이 최신이므로 이 병합을 건너뛴다.
+   */
+  async function toggleStepFree() {
+    const next = !stepFreeRef.current;
+    setStepFreeEnabled(next);
+    const coords = lastCoordsRef.current;
+    if (!results || !coords) return;
+    const genAtDispatch = genRef.current;
+    const settled = await Promise.allSettled([
+      fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), new AbortController().signal, next),
+    ]);
+    if (stepFreeRef.current !== next) return;
+    if (genRef.current !== genAtDispatch) return;
+    const s = settled[0];
+    const outcome: ModeOutcome = s.status === "fulfilled" ? s.value : { kind: "error" };
+    setResults((prev) =>
+      prev ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome } } : prev,
+    );
+    walkHeadingRef.current?.focus();
   }
 
   const busy = phase.kind === "locating" || phase.kind === "loading";
@@ -503,6 +556,16 @@ export function DirectionsView({
                 >
                   {modeHeading(mode)}
                 </h3>
+                {mode === "walk" && (
+                  <button
+                    type="button"
+                    aria-pressed={stepFreeEnabled}
+                    onClick={() => void toggleStepFree()}
+                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+                  >
+                    {tPed("stepFreeToggle")}
+                  </button>
+                )}
                 {outcome.kind === "error" && (
                   <p className="mt-1 text-sm">{modeErrorText(mode)}</p>
                 )}

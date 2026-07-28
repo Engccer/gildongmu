@@ -132,7 +132,8 @@
       "heading": "Walk",
       "summary": "Total {distanceKm} km, about {minutes} min",
       "noRoute": "No walking route found.",
-      "error": "Couldn't load the walking route. Please try again shortly."
+      "error": "Couldn't load the walking route. Please try again shortly.",
+      "stepFreeToggle": "Step-free route"
     }
   },
   "directions": {

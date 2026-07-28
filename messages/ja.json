@@ -132,7 +132,8 @@
       "heading": "徒歩",
       "summary": "計{distanceKm}km、約{minutes}分",
       "noRoute": "徒歩経路が見つかりませんでした。",
-      "error": "徒歩経路を取得できませんでした。しばらくしてからもう一度お試しください。"
+      "error": "徒歩経路を取得できませんでした。しばらくしてからもう一度お試しください。",
+      "stepFreeToggle": "階段なしのルート"
     }
   },
   "directions": {

@@ -132,7 +132,8 @@
       "heading": "도보",
       "summary": "총 {distanceKm}km, 약 {minutes}분",
       "noRoute": "도보 경로를 찾지 못했습니다.",
-      "error": "도보 경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+      "error": "도보 경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "stepFreeToggle": "계단 없는 경로"
     }
   },
   "directions": {
