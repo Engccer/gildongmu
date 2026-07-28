@@ -78,16 +78,18 @@ vi.mock("@/lib/env", () => ({
   hasNcpMapsKeys: vi.fn(() => false),
   // 기본 true — get_walk_route 정상 경로 테스트는 별도 설정 없이 통과, 게이트 off
   // 테스트만 mockReturnValueOnce(false)로 그 1회 호출만 뒤집는다.
+  hasWalkRouteKey: vi.fn(() => true),
+  // walk-route 서비스 내부 provider 선택용(라우터의 hasWalkRouteKey 게이트와 별개) —
+  // 이 테스트군은 Tmap 단독 경로를 검증하므로 카카오는 항상 false(카카오 provider는
+  // 별도 mock 없음), Tmap은 true 고정.
   hasTmapKey: vi.fn(() => true),
-  // walk-route 서비스가 기본(카카오) 우선 판정에 쓴다 — 이 테스트군은 Tmap
-  // 단독 경로를 검증하므로 항상 false(카카오 provider는 별도 mock 없음).
   hasKakaoKey: vi.fn(() => false),
 }));
 
 import { executeFunction } from "../router";
 import { searchPlaces } from "@/lib/providers/places";
 import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
-import { hasTmapKey } from "@/lib/env";
+import { hasWalkRouteKey } from "@/lib/env";
 
 const ctxKo = { locale: "ko", dataLocale: "ko" as const, userLocation: { lat: 37.5, lng: 127.1 } };
 const ctxNoLoc = { locale: "ko", dataLocale: "ko" as const };
@@ -206,11 +208,24 @@ describe("executeFunction — get_walk_route", () => {
     expect(r.source).toEqual([{ label: "source.tmap" }]);
   });
 
-  it("게이트 off(hasTmapKey=false)면 실행부 직접 호출도 차단(Tmap provider 미호출)", async () => {
-    vi.mocked(hasTmapKey).mockReturnValueOnce(false);
+  it("게이트 off(hasWalkRouteKey=false)면 실행부 직접 호출도 차단(Tmap provider 미호출)", async () => {
+    vi.mocked(hasWalkRouteKey).mockReturnValueOnce(false);
     const before = vi.mocked(getWalkRouteBriefing).mock.calls.length;
     const r = await executeFunction("get_walk_route", { destination: "강남역" }, ctxKo);
     expect(dig(r.data, "error")).toBeTruthy();
     expect(vi.mocked(getWalkRouteBriefing).mock.calls.length).toBe(before);
+  });
+
+  it("accessible=true는 서비스로 전달되고(카카오 없음→Tmap 경유) stepFree가 data에 실린다", async () => {
+    // getWalkRoute(서비스)는 mock하지 않고 실서비스를 경유시킨다 — accessible 전달
+    // 여부는 그 효과(stepFree 필드+안내 스텝 삽입)로 간접 검증한다.
+    const r = await executeFunction(
+      "get_walk_route",
+      { destination: "강남역", accessible: true },
+      ctxKo,
+    );
+    expect(dig(r.data, "stepFree")).toBe("unavailable");
+    const steps = dig(r.data, "steps") as { description: string }[];
+    expect(steps[0].description).toContain("계단 회피 경로를 조회하지 못했습니다");
   });
 });

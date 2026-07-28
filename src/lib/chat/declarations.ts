@@ -7,7 +7,7 @@ import {
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasOdsayKey,
-  hasTmapKey,
+  hasWalkRouteKey,
   hasPerplexityKey,
 } from "@/lib/env";
 
@@ -258,7 +258,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
-    gate: hasTmapKey,
+    gate: hasWalkRouteKey,
     declaration: {
       name: "get_walk_route",
       description:
@@ -269,6 +269,11 @@ const DECLARATIONS: GatedDeclaration[] = [
           destination: {
             type: "string",
             description: "목적지 지명 또는 주소",
+          },
+          accessible: {
+            type: "boolean",
+            description:
+              "계단 회피·엘리베이터 경로를 명시 요청할 때만 true(예: '계단 없는 길로', '엘리베이터로 갈 수 있는 경로').",
           },
         },
         required: ["destination"],
