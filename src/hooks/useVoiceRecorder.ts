@@ -28,6 +28,7 @@ export type VoiceRecorderErrorCode =
   | "no_audio" // 녹음된 오디오 청크 없음
   | "too_short" // 최소 길이(0.3초) 미달
   | "no_text" // STT 422 — 음성을 텍스트로 인식 못 함
+  | "rate_limited" // STT 429 — 요청 과다(재시도가 아니라 대기가 정답)
   | "stt_failed"; // 그 외 STT 실패/네트워크/예외
 
 interface UseVoiceRecorderOptions {
@@ -267,7 +268,14 @@ export function useVoiceRecorder(
           if (!response.ok) {
             // 서버의 한국어 data.error 텍스트는 무시하고 HTTP status로 코드 결정
             // (en 사용자가 영어 TTS로 한국어를 듣는 결함 차단).
-            onError?.(response.status === 422 ? "no_text" : "stt_failed");
+            // 429는 "실패"가 아니라 "과다" — 즉시 재시도 대신 대기를 안내(3-state).
+            onError?.(
+              response.status === 422
+                ? "no_text"
+                : response.status === 429
+                  ? "rate_limited"
+                  : "stt_failed",
+            );
             return;
           }
 

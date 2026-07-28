@@ -426,6 +426,7 @@
       "no_audio": "Non è stato dettato nulla.",
       "too_short": "La dettatura è troppo breve. Parla un po' più a lungo.",
       "no_text": "Impossibile riconoscere il parlato. Riprova.",
+      "rate_limited": "Troppe richieste. Attendi un momento e riprova.",
       "stt_failed": "Riconoscimento vocale non riuscito. Riprova."
     }
   },

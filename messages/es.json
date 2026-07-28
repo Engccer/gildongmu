@@ -426,6 +426,7 @@
       "no_audio": "No se dictó nada.",
       "too_short": "El dictado es demasiado corto. Habla un poco más.",
       "no_text": "No se pudo reconocer el habla. Inténtalo de nuevo.",
+      "rate_limited": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.",
       "stt_failed": "El reconocimiento de voz falló. Inténtalo de nuevo."
     }
   },
