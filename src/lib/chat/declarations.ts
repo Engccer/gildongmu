@@ -135,7 +135,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_air_quality",
       description:
-        "현재 위치 또는 지명 주변의 공기질(미세먼지·초미세먼지·통합대기환경지수)을 보여준다. 사용자가 공기질·미세먼지·대기 상태를 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다.",
+        "현재 위치 또는 지명 주변의 공기질(미세먼지·초미세먼지·통합대기환경지수)을 보여준다. 사용자가 공기질·미세먼지·대기 상태를 직접 묻거나 야외 활동 적합성을 물을 때만 호출하고, 호출할 때는 날씨가 긴밀히 연관되므로 get_weather도 함께 호출한다.",
       parametersJsonSchema: {
         type: "object",
         properties: {
@@ -152,7 +152,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_weather",
       description:
-        "현재 위치 또는 지명 주변의 현재 날씨(기온·하늘상태·강수·습도·강수확률·오늘 최고/최저)를 보여준다. 사용자가 날씨·기온·비·눈을 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다.",
+        "현재 위치 또는 지명 주변의 현재 날씨(기온·하늘상태·강수·습도·강수확률·오늘 최고/최저)를 보여준다. 사용자가 날씨·기온·비·눈이나 공기질·미세먼지를 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다.",
       parametersJsonSchema: {
         type: "object",
         properties: {
