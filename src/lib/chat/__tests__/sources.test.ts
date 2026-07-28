@@ -21,7 +21,7 @@ describe("sourceFor", () => {
       { label: "source.ncp" },
     ]);
   });
-  it("도보 경로는 Tmap", () => {
+  it("도보 경로는 카카오·Tmap 병기(기본 카카오, 폴백 Tmap)", () => {
     expect(sourceFor("get_walk_route", { dataLocale: "ko" })).toEqual([
       { label: "source.kakao" },
       { label: "source.tmap" },
