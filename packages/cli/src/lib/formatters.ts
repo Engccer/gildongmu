@@ -103,6 +103,46 @@ interface SurroundingPlaceItem {
   bearing: Bearing;
 }
 
+interface AudioSignalSiteItem {
+  distanceMeters: number;
+  bearing: Bearing;
+  deviceCount: number;
+}
+
+interface WalkAudioSignalsItem {
+  /** 반경 내 기기 총수(sites 최대 5에 잘리기 전 값). */
+  deviceCount: number;
+  sites: AudioSignalSiteItem[];
+  baseDate: string;
+}
+
+interface WalkFeatureItem {
+  crossing: boolean;
+  crossingSignal: "yes" | "no" | "unknown";
+  tactilePaving: boolean;
+  hostFeature?: "busStop" | "subwayEntrance";
+  distanceMeters: number;
+  bearing: Bearing;
+}
+
+interface WalkOsmItem {
+  features: WalkFeatureItem[];
+  /** crossing·tactile 각 projection의 cap 전 실개수("N곳 중 가까운 M곳"). */
+  crossingTotal: number;
+  tactileTotal: number;
+}
+
+/** discriminated union — count류는 ok 안에만(unsupported·error에 수치 합성 금지). */
+type WalkSourceStatusItem<T> =
+  | { status: "ok"; data: T }
+  | { status: "unsupported"; reason: "outsideSeoul" }
+  | { status: "error" };
+
+interface WalkInfrastructureItem {
+  audioSignals: WalkSourceStatusItem<WalkAudioSignalsItem>;
+  osm: WalkSourceStatusItem<WalkOsmItem>;
+}
+
 interface BarrierFreePlaceItem {
   contentId: string;
   name: string;
@@ -434,6 +474,78 @@ function formatBarrierFreeNearby(body: { places: BarrierFreePlaceItem[] }): stri
   return lines;
 }
 
+/** 그룹 헤더: cap에 잘렸으면 "N곳 중 가까운 M곳", 아니면 "N곳"(웹 walkInfra.group* 카피 미러). */
+function walkGroupHeader(label: string, total: number, listed: number): string {
+  return total > listed ? `${label} ${total}곳 중 가까운 ${listed}곳` : `${label} ${total}곳`;
+}
+
+/**
+ * 두 소스(audioSignals·osm)를 서로 독립 판정(웹 WalkInfraNearby 상태×산문 매트릭스 미러).
+ * 3-state: "0곳"(등록 없음) ≠ unsupported(서울 외 미제공) ≠ error(조회 실패)를 각자
+ * 다른 문장으로 낭독한다. 両소스 error는 라우트가 503으로 끊어 여기 오지 않는다.
+ */
+function formatWalkInfra(body: { walk: WalkInfrastructureItem }): string[] {
+  const { audioSignals, osm } = body.walk;
+  const lines: string[] = [];
+
+  if (audioSignals.status === "ok") {
+    if (audioSignals.data.deviceCount > 0) {
+      lines.push(`음향신호기 반경 300m 안 ${audioSignals.data.deviceCount}기`);
+      for (const site of audioSignals.data.sites) {
+        lines.push(`  ${COMPASS_KO[site.bearing]} ${m(site.distanceMeters)}(${site.deviceCount}기)`);
+      }
+    } else {
+      lines.push("반경 300m 안에 등록된 음향신호기가 없습니다.");
+    }
+  } else if (audioSignals.status === "unsupported") {
+    lines.push("음향신호기 정보는 서울만 제공됩니다.");
+  } else {
+    lines.push("음향신호기 정보를 불러오지 못했습니다.");
+  }
+
+  if (osm.status === "ok") {
+    const crossing = osm.data.features.filter((f) => f.crossing);
+    const tactile = osm.data.features.filter((f) => !f.crossing && f.tactilePaving);
+    if (osm.data.crossingTotal > 0) {
+      lines.push(walkGroupHeader("횡단보도", osm.data.crossingTotal, crossing.length));
+      for (const f of crossing) {
+        lines.push(`  ${joinText(
+          `${COMPASS_KO[f.bearing]} ${m(f.distanceMeters)}`,
+          f.crossingSignal === "yes" && "신호등 있음",
+          f.tactilePaving && "점자블록 있음",
+        )}`);
+      }
+    } else {
+      lines.push("주변에 등록된 횡단보도가 없습니다.");
+    }
+    if (osm.data.tactileTotal > 0) {
+      lines.push(walkGroupHeader("점자블록", osm.data.tactileTotal, tactile.length));
+      for (const f of tactile) {
+        lines.push(`  ${joinText(
+          `${COMPASS_KO[f.bearing]} ${m(f.distanceMeters)}`,
+          f.hostFeature === "busStop" && "버스정류장",
+          f.hostFeature === "subwayEntrance" && "지하철 출입구",
+        )}`);
+      }
+    } else {
+      lines.push("주변에 등록된 점자블록이 없습니다.");
+    }
+  } else {
+    lines.push("횡단보도·점자블록 정보를 불러오지 못했습니다.");
+  }
+
+  // 등록 기준 각주(정직성 표기는 API 계층 계약, 웹 walkInfra.footnote·source* 카피).
+  // 출처는 실제로 데이터를 보여준 소스만 인용한다.
+  if (audioSignals.status === "ok" || osm.status === "ok") {
+    lines.push("서울시·OSM 등록 자료 기준으로, 실제 시설 유무나 작동 상태와 다를 수 있습니다.");
+    lines.push(joinText(
+      osm.status === "ok" && "© OpenStreetMap 기여자",
+      audioSignals.status === "ok" && `음향신호기: 서울특별시 제공(${audioSignals.data.baseDate} 기준)`,
+    ));
+  }
+  return lines;
+}
+
 // ── 역명 기반 조회 ──────────────────────────────────────────────────────
 
 function formatStationMeta(body: { meta: StationMetaItem | null }): string[] {
@@ -656,6 +768,7 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "nearby-kids": formatKids,
   "nearby-around": formatAround,
   "nearby-barrier-free": formatBarrierFreeNearby,
+  "nearby-walk-infra": formatWalkInfra,
   "station-meta": formatStationMeta,
   "station-facilities": formatStationFacilities,
   "station-metro-facilities": formatMetroFacilities,
