@@ -56,7 +56,9 @@ export function sourceFor(
     case "get_transit_route":
       return [ODSAY];
     case "get_walk_route":
-      return [TMAP];
+      // 기본 카카오(dapi.kakao.com 도보)·폴백 Tmap — 응답이 어느 쪽에서 왔는지
+      // 서비스가 노출하지 않으므로(스키마 불변 계약) 두 제공처를 정직하게 병기.
+      return [KAKAO, TMAP];
     case "search_web":
       return [PERPLEXITY];
     default:
