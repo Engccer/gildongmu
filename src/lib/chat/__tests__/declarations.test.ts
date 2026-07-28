@@ -122,6 +122,19 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations().some((d) => d.name === "get_air_quality")).toBe(false);
   });
 
+  // get_weather — DATA_GO_KR_API_KEY 게이트(공기질과 동일 키)
+  it("data.go.kr 키 있으면 get_weather 노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", "d");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_weather")).toBe(true);
+  });
+
+  it("data.go.kr 키 없으면 get_weather 미노출", async () => {
+    vi.stubEnv("DATA_GO_KR_API_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_weather")).toBe(false);
+  });
+
   // get_station_meta — 게이트 없음(정적 seed), 키 전부 비어도 항상 노출
   it("get_station_meta: 키가 전부 없어도 항상 노출", async () => {
     vi.stubEnv("KAKAO_REST_API_KEY", undefined);

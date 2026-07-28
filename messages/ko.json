@@ -448,6 +448,7 @@
         "get_bus_arrivals": "버스 도착",
         "get_bike_stations": "따릉이",
         "get_air_quality": "공기질",
+        "get_weather": "날씨",
         "get_station_meta": "역 정보",
         "get_station_facilities": "역 편의시설",
         "get_car_route": "자동차 경로",

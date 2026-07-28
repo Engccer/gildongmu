@@ -448,6 +448,7 @@
         "get_bus_arrivals": "arrivi degli autobus",
         "get_bike_stations": "stazioni bici",
         "get_air_quality": "qualità dell'aria",
+        "get_weather": "meteo",
         "get_station_meta": "info sulla stazione",
         "get_station_facilities": "servizi della stazione",
         "get_car_route": "percorso in auto",

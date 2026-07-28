@@ -9,6 +9,7 @@ const TOURAPI: SourceAttribution = { label: "source.tourapi" };
 const JUSO: SourceAttribution = { label: "source.juso" };
 const SEOUL_OPEN: SourceAttribution = { label: "source.seoulopen" };
 const AIRKOREA: SourceAttribution = { label: "source.airkorea" };
+const KMA: SourceAttribution = { label: "source.kma" };
 const TAGO: SourceAttribution = { label: "source.tago" };
 const NMC: SourceAttribution = { label: "source.nmc" };
 const KAKAO_MOBILITY: SourceAttribution = { label: "source.kakaomobility" };
@@ -37,6 +38,8 @@ export function sourceFor(
       return [TAGO];
     case "get_air_quality":
       return [AIRKOREA];
+    case "get_weather":
+      return [KMA];
     case "get_night_clinics":
       return [NMC];
     case "get_nearby_barrier_free":
