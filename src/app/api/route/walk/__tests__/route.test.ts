@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-vi.mock("@/lib/env", () => ({ hasTmapKey: vi.fn(() => true) }));
+vi.mock("@/lib/env", () => ({
+  hasTmapKey: vi.fn(() => true),
+  // walk-route 서비스가 기본(카카오) 우선 판정에 쓴다 — 이 라우트 테스트는 Tmap
+  // 단독 경로를 검증하므로 항상 false(카카오 provider는 별도 mock 없음).
+  hasKakaoKey: vi.fn(() => false),
+}));
 vi.mock("@/lib/rate-limit", () => ({
   checkWalkRateLimit: vi.fn(() => true),
   clientIpFromHeaders: vi.fn(() => "1.2.3.4"),
