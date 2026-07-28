@@ -282,11 +282,16 @@ export interface WalkRouteStep {
   pathCoords?: Coord[];
 }
 
+/** 계단 회피(accessible) 요청 결과 상태 — accessible 요청 시에만 존재. */
+export type StepFreeStatus = "applied" | "no_stepfree_route" | "unavailable";
+
 /** 도보 경로 텍스트 브리핑: 지도 없이 완결되는 경로 정보의 정본(자동차 CarRouteBriefing 동형). */
 export interface WalkRouteBriefing {
   distanceMeters: number;
   durationSeconds: number;
   steps: WalkRouteStep[];
+  /** 계단 회피 요청 시에만 존재(옵트인 — 미요청 시 필드 자체 부재, 기존 응답 byte-호환). */
+  stepFree?: StepFreeStatus;
 }
 
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */

@@ -79,6 +79,9 @@ vi.mock("@/lib/env", () => ({
   // 기본 true — get_walk_route 정상 경로 테스트는 별도 설정 없이 통과, 게이트 off
   // 테스트만 mockReturnValueOnce(false)로 그 1회 호출만 뒤집는다.
   hasTmapKey: vi.fn(() => true),
+  // walk-route 서비스가 기본(카카오) 우선 판정에 쓴다 — 이 테스트군은 Tmap
+  // 단독 경로를 검증하므로 항상 false(카카오 provider는 별도 mock 없음).
+  hasKakaoKey: vi.fn(() => false),
 }));
 
 import { executeFunction } from "../router";

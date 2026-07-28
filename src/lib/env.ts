@@ -139,6 +139,11 @@ export function hasTmapKey(): boolean {
   return Boolean(env.TMAP_APP_KEY);
 }
 
+/** 도보 길찾기 사용 가능 여부 — 기본 카카오, 폴백 Tmap. 어느 한쪽 키만 있어도 동작. */
+export function hasWalkRouteKey(): boolean {
+  return hasKakaoKey() || hasTmapKey();
+}
+
 /** Google Gemini 채팅 API 사용 가능 여부 */
 export function hasGeminiKey(): boolean {
   return !!env.GEMINI_API_KEY;
