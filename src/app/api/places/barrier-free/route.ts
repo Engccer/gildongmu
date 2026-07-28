@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasDataGoKrKey } from "@/lib/env";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
+import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 
 /**
  * GET /api/places/barrier-free?lat=..&lng=..[&limit=N]
@@ -17,12 +18,11 @@ export const dynamic = "force-dynamic";
 
 /** limit 미지정 시 기본 상한 — ea18f6b 이전의 종전 캡(소비자 출력 불변 계약). */
 const DEFAULT_LIMIT = 8;
-const MAX_LIMIT = 50;
 
 const querySchema = z.object({
   lat: z.coerce.number().min(33).max(43),
   lng: z.coerce.number().min(124).max(132),
-  limit: z.coerce.number().int().min(1).max(MAX_LIMIT).optional(),
+  limit: z.coerce.number().int().min(1).max(NEARBY_LIMIT_MAX).optional(),
 });
 
 export async function GET(request: NextRequest) {
