@@ -132,7 +132,8 @@
       "heading": "A pie",
       "summary": "Total {distanceKm} km, aprox. {minutes} min",
       "noRoute": "No se encontró ninguna ruta a pie.",
-      "error": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve."
+      "error": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve.",
+      "stepFreeToggle": "Ruta sin escalones"
     }
   },
   "directions": {

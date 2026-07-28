@@ -132,7 +132,8 @@
       "heading": "A piedi",
       "summary": "Totale {distanceKm} km, circa {minutes} min",
       "noRoute": "Nessun percorso a piedi trovato.",
-      "error": "Impossibile caricare il percorso a piedi. Riprova tra poco."
+      "error": "Impossibile caricare il percorso a piedi. Riprova tra poco.",
+      "stepFreeToggle": "Percorso senza scale"
     }
   },
   "directions": {
