@@ -1,5 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { findAudioSignalsNear, clusterSites } from "../audio-signals";
+import { findAudioSignalsNear, clusterSites, hasAudioSignalNear } from "../audio-signals";
+import seed from "../../data/audio-signals.json";
+
+const signals = (seed as unknown as { signals: [number, number][] }).signals;
+
+describe("hasAudioSignalNear", () => {
+  it("seed 지점 자체는 true(반경 40m)", () => {
+    const [lat, lng] = signals[0];
+    expect(hasAudioSignalNear(lat, lng, 40)).toBe(true);
+  });
+
+  it("서울 안이지만 신호기 원거리(한강 중앙, 최근접 143m 실측)는 false", () => {
+    // 2026-07-28 seed 기준 실측: 37.5300,126.9950 최근접 143m. seed 연1회 갱신 시 재확인.
+    expect(hasAudioSignalNear(37.53, 126.995, 40)).toBe(false);
+  });
+
+  it("서울 bbox 밖(부산)은 false", () => {
+    expect(hasAudioSignalNear(35.1796, 129.0756, 40)).toBe(false);
+  });
+});
 
 describe("findAudioSignalsNear", () => {
   it("서울 좌표(길동)는 non-null이고 deviceCount≥0", () => {

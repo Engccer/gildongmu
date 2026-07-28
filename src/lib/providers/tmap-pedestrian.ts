@@ -99,7 +99,15 @@ export function normalizeTmapWalkRoute(
   const steps: WalkRouteStep[] = [];
   for (const point of points) {
     const description = point.properties.description;
-    if (description) steps.push({ description });
+    if (!description) continue;
+    // geometry.coordinates는 [lng, lat] 순서. 좌표가 깨진 Point는 주석 판정만
+    // 포기하고 안내문은 살린다(coord 생략 — walk-route 서비스가 무주석 처리).
+    const [lng, lat] = point.geometry.coordinates;
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      steps.push({ description, coord: { lat, lng } });
+    } else {
+      steps.push({ description });
+    }
   }
 
   if (steps.length === 0) {

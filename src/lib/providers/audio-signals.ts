@@ -70,13 +70,38 @@ export function clusterSites(
   return sites.sort((a, b) => a.distanceMeters - b.distanceMeters).slice(0, MAX_SITES);
 }
 
+function inSeoulBbox(lat: number, lng: number): boolean {
+  return (
+    lat >= SEOUL_BBOX.latMin && lat <= SEOUL_BBOX.latMax &&
+    lng >= SEOUL_BBOX.lngMin && lng <= SEOUL_BBOX.lngMax
+  );
+}
+
+/**
+ * 반경 내 음향신호기 존재 여부(경량, 도보 경로 주석용). 서울 bbox 밖은 false —
+ * 소비자(walk-route)가 positive-only 표기라 "미제공"과 "없음" 구분이 필요 없다
+ * (findAudioSignalsNear의 null=unsupported 구분과 다른 계약).
+ * 성능: 도(°) 박스 프리필터로 haversine 호출을 근접 후보로 줄인다(seed 16,822 × step 수십).
+ */
+export function hasAudioSignalNear(lat: number, lng: number, radiusMeters: number): boolean {
+  if (!inSeoulBbox(lat, lng)) return false;
+  const latDelta = radiusMeters / 111_320;
+  const lngDelta = radiusMeters / (111_320 * Math.cos((lat * Math.PI) / 180));
+  return SEED.signals.some(
+    ([slat, slng]) =>
+      Math.abs(slat - lat) <= latDelta &&
+      Math.abs(slng - lng) <= lngDelta &&
+      haversineMeters(lat, lng, slat, slng) <= radiusMeters,
+  );
+}
+
 /** 좌표 반경 내 음향신호기 조회. 서울 bbox 밖은 null(unsupported), 안이면 0기도 ok. */
 export function findAudioSignalsNear(
   lat: number,
   lng: number,
   radiusMeters: number = DEFAULT_RADIUS_METERS,
 ): NearbyAudioSignals | null {
-  if (lat < SEOUL_BBOX.latMin || lat > SEOUL_BBOX.latMax || lng < SEOUL_BBOX.lngMin || lng > SEOUL_BBOX.lngMax) {
+  if (!inSeoulBbox(lat, lng)) {
     return null;
   }
   const origin = { lat, lng };
