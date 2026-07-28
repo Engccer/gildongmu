@@ -426,6 +426,7 @@
       "no_audio": "Rien n'a été dicté.",
       "too_short": "La dictée est trop courte. Veuillez parler un peu plus longtemps.",
       "no_text": "Impossible de reconnaître la parole. Veuillez réessayer.",
+      "rate_limited": "Trop de requêtes. Veuillez patienter un instant avant de réessayer.",
       "stt_failed": "Échec de la reconnaissance vocale. Veuillez réessayer."
     }
   },

@@ -426,6 +426,7 @@
       "no_audio": "Nothing was dictated.",
       "too_short": "The dictation is too short. Please speak a little longer.",
       "no_text": "Could not recognize the speech. Please try again.",
+      "rate_limited": "Too many requests. Please wait a moment and try again.",
       "stt_failed": "Voice recognition failed. Please try again."
     }
   },
