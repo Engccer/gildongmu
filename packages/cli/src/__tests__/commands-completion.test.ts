@@ -31,13 +31,13 @@ const TOP_LEVEL_13 = [
   "search", "web", "nearby", "station", "bus", "route", "place",
   "weather", "air", "whereami", "chat", "config", "completion",
 ];
-const NEARBY_7 = ["subway", "bike", "clinic", "kids", "around", "barrier-free"]; // bus는 최상위와 중복이라 별도 확인 불필요
+const NEARBY_8 = ["subway", "bike", "clinic", "kids", "around", "barrier-free", "walk"]; // bus는 최상위와 중복이라 별도 확인 불필요
 
 describe("completion 명령", () => {
-  it.each(["bash", "zsh", "fish"] as const)("%s 출력에 최상위 13개와 nearby 7 verb가 포함된다", async (shell) => {
+  it.each(["bash", "zsh", "fish"] as const)("%s 출력에 최상위 13개와 nearby 8 verb가 포함된다", async (shell) => {
     const out = await runCompletion(shell);
     for (const cmd of TOP_LEVEL_13) expect(out).toContain(cmd);
-    for (const verb of NEARBY_7) expect(out).toContain(verb);
+    for (const verb of NEARBY_8) expect(out).toContain(verb);
     expect(out).toContain("barrier-free");
     for (const verb of ["get", "set", "path"]) expect(out).toContain(verb); // config 3 verb
   });

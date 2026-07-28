@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * nearby 7종 명령 테스트 — 카탈로그 팩토리(Task 8)가 만든 서브커맨드의
+ * nearby 8종 명령 테스트 — 카탈로그 팩토리(Task 8)가 만든 서브커맨드의
  * 위치 필수 안내·엔드포인트 매핑을 검증한다. api-client.js·config.js만 모킹.
  */
 
@@ -48,10 +48,10 @@ async function runNearby(verb: string, args: Record<string, unknown>): Promise<v
   await sub.run!({ args, rawArgs: [], cmd: sub } as never);
 }
 
-const EXPECTED_VERBS = ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free"];
+const EXPECTED_VERBS = ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free", "walk"];
 
 describe("nearby 명령", () => {
-  it("7개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
+  it("8개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
     const { nearbyCommand } = await import("../commands/nearby.js");
     expect(Object.keys(nearbyCommand.subCommands ?? {}).sort()).toEqual([...EXPECTED_VERBS].sort());
   });

@@ -191,6 +191,87 @@ describe("nearby-barrier-free", () => {
   });
 });
 
+describe("nearby-walk-infra", () => {
+  it("両소스 ok: 그룹별 수치·항목 한 줄·등록 기준 각주와 両출처를 낭독한다", () => {
+    const lines = FORMATTERS["nearby-walk-infra"]({
+      walk: {
+        audioSignals: {
+          status: "ok",
+          data: {
+            deviceCount: 3,
+            sites: [
+              { distanceMeters: 45, bearing: "ne", deviceCount: 2 },
+              { distanceMeters: 120, bearing: "s", deviceCount: 1 },
+            ],
+            baseDate: "2026-05-01",
+          },
+        },
+        osm: {
+          status: "ok",
+          data: {
+            features: [
+              { crossing: true, crossingSignal: "yes", tactilePaving: true, distanceMeters: 30, bearing: "n" },
+              { crossing: false, crossingSignal: "unknown", tactilePaving: true, hostFeature: "busStop", distanceMeters: 60, bearing: "e" },
+            ],
+            crossingTotal: 12,
+            tactileTotal: 1,
+          },
+        },
+      },
+    } as never);
+    expect(lines[0]).toBe("음향신호기 반경 300m 안 3기");
+    expect(lines[1]).toBe("  북동 45m(2기)");
+    expect(lines[2]).toBe("  남 120m(1기)");
+    expect(lines[3]).toBe("횡단보도 12곳 중 가까운 1곳");
+    expect(lines[4]).toBe("  북 30m, 신호등 있음, 점자블록 있음");
+    expect(lines[5]).toBe("점자블록 1곳");
+    expect(lines[6]).toBe("  동 60m, 버스정류장");
+    expect(lines[7]).toBe("서울시·OSM 등록 자료 기준으로, 실제 시설 유무나 작동 상태와 다를 수 있습니다.");
+    expect(lines[8]).toBe("© OpenStreetMap 기여자, 음향신호기: 서울특별시 제공(2026-05-01 기준)");
+  });
+
+  it("0건은 '등록 없음' 문장으로(unsupported·error와 다른 문장, 3-state)", () => {
+    const lines = FORMATTERS["nearby-walk-infra"]({
+      walk: {
+        audioSignals: { status: "ok", data: { deviceCount: 0, sites: [], baseDate: "2026-05-01" } },
+        osm: { status: "ok", data: { features: [], crossingTotal: 0, tactileTotal: 0 } },
+      },
+    } as never);
+    expect(lines).toEqual([
+      "반경 300m 안에 등록된 음향신호기가 없습니다.",
+      "주변에 등록된 횡단보도가 없습니다.",
+      "주변에 등록된 점자블록이 없습니다.",
+      "서울시·OSM 등록 자료 기준으로, 실제 시설 유무나 작동 상태와 다를 수 있습니다.",
+      "© OpenStreetMap 기여자, 음향신호기: 서울특별시 제공(2026-05-01 기준)",
+    ]);
+  });
+
+  it("unsupported(서울 외)는 미제공 문장, 성공한 osm 출처만 인용한다", () => {
+    const lines = FORMATTERS["nearby-walk-infra"]({
+      walk: {
+        audioSignals: { status: "unsupported", reason: "outsideSeoul" },
+        osm: { status: "ok", data: { features: [], crossingTotal: 0, tactileTotal: 0 } },
+      },
+    } as never);
+    expect(lines[0]).toBe("음향신호기 정보는 서울만 제공됩니다.");
+    expect(lines[lines.length - 1]).toBe("© OpenStreetMap 기여자");
+    expect(lines.join("\n")).not.toContain("서울특별시 제공");
+  });
+
+  it("한 소스 error는 실패 문장으로 강등, 다른 소스는 보존한다(부분실패 200)", () => {
+    const lines = FORMATTERS["nearby-walk-infra"]({
+      walk: {
+        audioSignals: { status: "ok", data: { deviceCount: 1, sites: [{ distanceMeters: 80, bearing: "w", deviceCount: 1 }], baseDate: "2026-05-01" } },
+        osm: { status: "error" },
+      },
+    } as never);
+    expect(lines[0]).toBe("음향신호기 반경 300m 안 1기");
+    expect(lines).toContain("횡단보도·점자블록 정보를 불러오지 못했습니다.");
+    expect(lines[lines.length - 1]).toBe("음향신호기: 서울특별시 제공(2026-05-01 기준)");
+    expect(lines.join("\n")).not.toContain("OpenStreetMap");
+  });
+});
+
 describe("station-meta", () => {
   it("영문명·노선·환승·운영기관", () => {
     const lines = FORMATTERS["station-meta"]({

@@ -66,6 +66,8 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: LATLNG, envelope: "places", locationParam: true, mcp: true },
   { name: "nearby-barrier-free", description: "내 주변 무장애 관광지", path: "/api/places/barrier-free", method: "GET",
     params: LATLNG, envelope: "places", locationParam: true, mcp: true },
+  { name: "nearby-walk-infra", description: "내 주변 보행 인프라(음향신호기·횡단보도·점자블록)", path: "/api/walk/nearby", method: "GET",
+    params: LATLNG, envelope: "walk", locationParam: true, mcp: true },
   { name: "station-meta", description: "도시철도역 메타(영문명·노선·환승)", path: "/api/station/meta", method: "GET",
     params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "meta", locationParam: false, mcp: true },
   { name: "station-facilities", description: "철도역 교통약자 시설(코레일)", path: "/api/station/facilities", method: "GET",
