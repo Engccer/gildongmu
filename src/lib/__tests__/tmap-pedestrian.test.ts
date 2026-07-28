@@ -121,6 +121,14 @@ describe("normalizeTmapWalkRoute", () => {
     ]);
   });
 
+  it("Point 단계의 좌표를 coord로 보존한다(coordinates [lng,lat] → {lat,lng} 반전)", () => {
+    const { steps } = normalizeTmapWalkRoute(sample);
+    // 첫 Point(출발지) coordinates: [127.1368, 37.5385]
+    expect(steps[0].coord).toEqual({ lat: 37.5385, lng: 127.1368 });
+    // 모든 단계가 coord를 갖는다(정상 fixture는 좌표 완비)
+    for (const s of steps) expect(s.coord).toBeDefined();
+  });
+
   it("첫 Point의 totalDistance/totalTime을 총계로 투영한다", () => {
     const { distanceMeters, durationSeconds } = normalizeTmapWalkRoute(sample);
     expect(distanceMeters).toBe(2078);
