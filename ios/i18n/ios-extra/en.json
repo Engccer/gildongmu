@@ -187,6 +187,10 @@
       "dictationStyle": "Dictation style",
       "dictationHold": "Record while holding",
       "dictationTap": "Tap to start and stop",
+      "listenSpeed": "Listening speed",
+      "listenSpeed1x": "1x",
+      "listenSpeed15x": "1.5x",
+      "listenSpeed2x": "2x",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
       "reportProblem": "Report a problem"

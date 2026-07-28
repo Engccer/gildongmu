@@ -4,7 +4,8 @@ import Observation
 import GildongmuKit
 
 /// 채팅 응답 '듣기' 버튼 재생 단일 진입점(dodo-planet `TtsPlayer` 이식, full 모드만 —
-/// 요약 자동 듣기·배속 설정은 gildongmu에 해당 기능이 없어 이식하지 않았다).
+/// 요약 자동 듣기는 gildongmu에 해당 기능이 없어 이식하지 않았다. 듣기 속도 3단 설정은
+/// 2026-07-28 이식: 규칙은 Kit `ListenSpeed`, 저장은 기기 로컬 `@AppStorage`).
 /// `AVSpeechSynthesizer` 온디바이스 낭독이 정본이다(즉시 재생·비용 0, 2026-07-27 승격 —
 /// 이전엔 서버 TTS가 정본이고 온디바이스가 폴백이었다). 서버 TTS(`POST /api/tts`,
 /// Chirp MP3)는 현재 로케일 보이스가 기기에 없을 때만 폴백으로 호출하고, 그마저
@@ -27,9 +28,13 @@ final class TtsPlayer {
     /// 서버를 건너뛰고 온디바이스 낭독으로 직행한다(전문 보장 + 비용 절약).
     static let serverTextMax = 4000
 
-    /// 온디바이스 낭독 속도 — 시스템 기본 `AVSpeechUtteranceDefaultSpeechRate`(0.5)보다
-    /// 약간 빠르게(위원장 선호, 2026-07-27).
-    static let speechRate: Float = 0.55
+    /// 듣기 속도 배율(1/1.5/2) — 재생 시점마다 설정을 조회하므로 설정 변경은 다음
+    /// 재생부터 적용된다(재생 중 실시간 변속은 비대상). 규칙·키 정본은 Kit `ListenSpeed`.
+    private var listenSpeed: Double {
+        ListenSpeed.normalizeSpeed(
+            UserDefaults.standard.object(forKey: ListenSpeed.storageKey) as? Double
+        )
+    }
 
     private var audioPlayer: AVAudioPlayer?
     private let synthesizer = AVSpeechSynthesizer()
@@ -132,6 +137,10 @@ final class TtsPlayer {
         activatePlaybackSession()
         do {
             let player = try AVAudioPlayer(data: data)
+            // `AVAudioPlayer.rate`는 진짜 시간 배율이라 설정 배율을 그대로 대입한다
+            // (온디바이스 낭독의 캘리브레이션 테이블과 축이 다름 — `ListenSpeed` 주석 참조).
+            player.enableRate = true
+            player.rate = Float(listenSpeed)
             player.delegate = playbackDelegate
             armFinishCallback(source: player, generation: generation)
             audioPlayer = player
@@ -154,7 +163,8 @@ final class TtsPlayer {
         // STT와 같은 로케일 정본(AppLanguage) — 매핑을 재서술하지 않는다.
         // 보이스 부재 시 nil 대입 = 시스템 기본 보이스(최후 폴백 경로).
         utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
-        utterance.rate = Self.speechRate
+        // 곱셈 아님 — 실측 캘리브레이션 테이블(`ListenSpeed.speechRate` 주석의 실측 표 참조).
+        utterance.rate = ListenSpeed.speechRate(forMultiplier: listenSpeed)
         armFinishCallback(source: utterance, generation: generation)
         playingMessageID = messageID
         synthesizer.speak(utterance)

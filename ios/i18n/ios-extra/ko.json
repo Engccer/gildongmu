@@ -187,6 +187,10 @@
       "dictationStyle": "받아쓰기 방식",
       "dictationHold": "누르고 있는 동안 녹음",
       "dictationTap": "탭으로 시작하고 정지",
+      "listenSpeed": "듣기 속도",
+      "listenSpeed1x": "1배",
+      "listenSpeed15x": "1.5배",
+      "listenSpeed2x": "2배",
       "aiSection": "AI 채팅",
       "aiConsentToggle": "AI 채팅 데이터 전송 동의",
       "reportProblem": "문제 신고"
