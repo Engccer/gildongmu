@@ -68,6 +68,17 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
 }
 
 /**
+ * `?walkAccessible=1` 복원값을 렌더 시점에 동기로 읽는다(SSR엔 window가 없어
+ * false 폴백). useEffect+queueMicrotask로 하면 아래 `dir` 동기화 effect가 같은
+ * 커밋에서 먼저 동기 실행되며 이 파라미터를 URL에서 지워버린 뒤에야 microtask가
+ * 읽으므로 항상 실패한다(리뷰 발견 회귀) — lazy useState 초기화로 그 경쟁을 없앤다.
+ */
+function readWalkAccessibleFromUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("walkAccessible") === "1";
+}
+
+/**
  * 좌표 → 대표 주소 문자열("현재 위치" 라벨 병기용). 주소는 부가 정보이므로
  * 매칭 없음·실패 모두 조용히 null(3-state: 라벨은 "현재 위치"만 남아 거짓 표시 없음).
  */
@@ -167,25 +178,22 @@ export function DirectionsView({
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
-  // 계단 회피(도보 전용) 토글. ref는 비동기 응답 도착 시점의 "최신" 상태를 읽기
-  // 위함(state 클로저는 dispatch 시점 값이라 stale 방어에 못 씀).
-  const [stepFreeEnabled, setStepFreeEnabledState] = useState(false);
-  const stepFreeRef = useRef(false);
+  // 계단 회피(도보 전용) 토글. 초기값은 `?walkAccessible=1`(위 lazy 초기화 참고).
+  const [stepFreeEnabled, setStepFreeEnabledState] = useState(
+    readWalkAccessibleFromUrl,
+  );
+  // ref는 비동기 콜백에서 "최신" 상태를 동기로 읽기 위함(state는 렌더 시점 클로저라
+  // async 함수 안에서 못 씀). 초기값은 위 state와 같은 렌더에서 이미 확정됐으니
+  // 함수를 다시 부르지 않고 그대로 물려받는다.
+  const stepFreeRef = useRef(stepFreeEnabled);
   function setStepFreeEnabled(v: boolean) {
     stepFreeRef.current = v;
     setStepFreeEnabledState(v);
   }
   // 마지막 전체 조회에 실제로 쓰인 좌표(토글 단독 재조회가 같은 좌표를 재사용).
   const lastCoordsRef = useRef<{ origin: Coord; dest: Coord } | null>(null);
-
-  // `?dir=` 복원: walkAccessible=1이면 다음 조회부터 계단 회피를 적용(자동 재조회는
-  // 안 함 — 이 뷰는 원래도 복원 후 "조회" 버튼을 눌러야 결과가 뜬다).
-  useEffect(() => {
-    queueMicrotask(() => {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("walkAccessible") === "1") setStepFreeEnabled(true);
-    });
-  }, []);
+  // 토글 단독 재조회 진행 신호(버튼 aria-busy 표시용, "조회" 버튼과 동일 패턴).
+  const [stepFreeBusy, setStepFreeBusy] = useState(false);
 
   // 최근 장소(스펙 2026-07-26) — 출발지·도착지 **분리** 목록(위원장 지시 2026-07-26:
   // 출발지에서 검색한 곳이 도착지 기록에 뜨는 공유 목록 폐기). 마운트 후 로드(SSR 가드).
@@ -397,27 +405,41 @@ export function DirectionsView({
   /**
    * 계단 회피 토글: 이미 조회된 결과가 있으면 도보만 새 상태로 재조회하고
    * (대중교통·자동차 결과는 그대로 유지), 아직 조회 전이면 상태만 바꿔 다음
-   * "조회"에 반영한다. stale 방어 2단: ① 응답 도착 시점 토글 상태가 요청 시점과
-   * 다르면(연타로 반대 방향 응답이 늦게 옴) 폐기 ② 그 사이 전체 조회가 새로
-   * 시작·완료됐으면(genRef 변화) 그쪽이 최신이므로 이 병합을 건너뛴다.
+   * "조회"에 반영한다(재조회 대상이 없어 가드도 불필요).
+   * 재조회 가드는 "조회" 버튼과 **같은** `inFlight`/`genRef`를 공유한다 —
+   * 별도 ref를 두면 토글끼리의 연타만 막고 "조회"와의 교차 레이스는 못 막는데,
+   * 공유하면 이 뷰에서 도보 재조회(토글이든 전체 조회든)는 항상 하나만 진행되어
+   * 교차 레이스 자체가 구조적으로 불가능해진다(연타 시 재호출은 즉시 무시).
    */
   async function toggleStepFree() {
+    const coords = lastCoordsRef.current;
+    if (!results || !coords) {
+      setStepFreeEnabled(!stepFreeRef.current);
+      return;
+    }
+    if (inFlight.current) return;
     const next = !stepFreeRef.current;
     setStepFreeEnabled(next);
-    const coords = lastCoordsRef.current;
-    if (!results || !coords) return;
-    const genAtDispatch = genRef.current;
-    const settled = await Promise.allSettled([
-      fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), new AbortController().signal, next),
-    ]);
-    if (stepFreeRef.current !== next) return;
-    if (genRef.current !== genAtDispatch) return;
-    const s = settled[0];
-    const outcome: ModeOutcome = s.status === "fulfilled" ? s.value : { kind: "error" };
-    setResults((prev) =>
-      prev ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome } } : prev,
-    );
-    walkHeadingRef.current?.focus();
+    inFlight.current = true;
+    setStepFreeBusy(true);
+    const myGen = ++genRef.current;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15_000);
+      const settled = await Promise.allSettled([
+        fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), ctrl.signal, next),
+      ]);
+      clearTimeout(timer);
+      const s = settled[0];
+      const outcome: ModeOutcome = s.status === "fulfilled" ? s.value : { kind: "error" };
+      setResults((prev) =>
+        prev ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome } } : prev,
+      );
+      walkHeadingRef.current?.focus();
+    } finally {
+      if (myGen === genRef.current) inFlight.current = false;
+      setStepFreeBusy(false);
+    }
   }
 
   const busy = phase.kind === "locating" || phase.kind === "loading";
@@ -560,8 +582,10 @@ export function DirectionsView({
                   <button
                     type="button"
                     aria-pressed={stepFreeEnabled}
+                    aria-disabled={stepFreeBusy}
+                    aria-busy={stepFreeBusy}
                     onClick={() => void toggleStepFree()}
-                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
                   >
                     {tPed("stepFreeToggle")}
                   </button>
