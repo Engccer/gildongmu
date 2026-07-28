@@ -15,6 +15,13 @@ vi.mock("@/lib/providers/juso-address", () => ({
 vi.mock("@/lib/providers/air-quality", () => ({
   findAirQualityNear: vi.fn(async () => ({ khai: 229, grade: "나쁨", pm10: 80, pm25: 40, station: "천호대로", distanceKm: 0.5 })),
 }));
+vi.mock("@/lib/providers/weather", () => ({
+  findWeatherNear: vi.fn(async () => ({
+    sky: { code: 1, label: "clear" }, precipitation: { code: 0, label: "none" },
+    tempC: 27.3, tempMax: 31, tempMin: 24, humidity: 60, precipProbability: 20,
+    baseTime: "10:00", grid: { nx: 62, ny: 126 },
+  })),
+}));
 vi.mock("@/lib/providers/subway-nearby", () => ({
   fetchNearbySubwayArrivals: vi.fn(async () => [{ name: "강남", arrivals: [] }]),
 }));
@@ -119,6 +126,13 @@ describe("executeFunction — 실데이터 + render + source", () => {
     expect(dig(r.data, "air", "grade")).toBe("나쁨");
     expect(r.render).toEqual({ type: "air-quality", lat: 37.5, lng: 127.1 });
     expect(r.source).toEqual([{ label: "source.airkorea" }]);
+  });
+
+  it("get_weather: provider 실데이터를 data에 싣고 카드 없음(산문 정본)", async () => {
+    const r = await executeFunction("get_weather", {}, ctxKo);
+    expect(dig(r.data, "weather", "tempC")).toBe(27.3);
+    expect(r.render).toBeUndefined();
+    expect(r.source).toEqual([{ label: "source.kma" }]);
   });
 
   it("get_subway_arrivals: 위치 있으면 실데이터", async () => {

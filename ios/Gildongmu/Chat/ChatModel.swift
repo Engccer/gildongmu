@@ -146,6 +146,7 @@ final class ChatModel {
         case "get_bus_arrivals": appLocalized("chat.progress.tool.get_bus_arrivals")
         case "get_bike_stations": appLocalized("chat.progress.tool.get_bike_stations")
         case "get_air_quality": appLocalized("chat.progress.tool.get_air_quality")
+        case "get_weather": appLocalized("chat.progress.tool.get_weather")
         case "get_station_meta": appLocalized("chat.progress.tool.get_station_meta")
         case "get_station_facilities": appLocalized("chat.progress.tool.get_station_facilities")
         case "get_car_route": appLocalized("chat.progress.tool.get_car_route")

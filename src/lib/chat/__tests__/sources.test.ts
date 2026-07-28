@@ -31,6 +31,11 @@ describe("sourceFor", () => {
       { label: "source.airkorea" },
     ]);
   });
+  it("날씨는 기상청", () => {
+    expect(sourceFor("get_weather", { dataLocale: "ko" })).toEqual([
+      { label: "source.kma" },
+    ]);
+  });
   it("미등록 도구는 빈 배열", () => {
     expect(sourceFor("unknown_tool", { dataLocale: "ko" })).toEqual([]);
   });

@@ -7,6 +7,7 @@ import type { ExecutionContext, ToolResult } from "./types";
 import { searchPlaces } from "@/lib/providers/places";
 import { searchJusoAddresses } from "@/lib/providers/juso-address";
 import { findAirQualityNear } from "@/lib/providers/air-quality";
+import { findWeatherNear } from "@/lib/providers/weather";
 import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
 import { fetchNearbyBusStops } from "@/lib/bus";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
@@ -168,6 +169,13 @@ export async function executeFunction(
       if (!coord) return { data: NO_LOCATION };
       const air = await findAirQualityNear(coord.lat, coord.lng);
       return { data: { air }, render: { type: "air-quality", lat: coord.lat, lng: coord.lng }, source: src };
+    }
+    case "get_weather": {
+      const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
+      if (!coord) return { data: NO_LOCATION };
+      // 카드 없음 — 산문이 정본(시각 카드 정본은 "내 주변" 탭 LocalConditions).
+      const weather = await findWeatherNear(coord.lat, coord.lng);
+      return { data: { weather }, source: src };
     }
     case "get_station_meta": {
       const stationName = String(args.stationName ?? "");

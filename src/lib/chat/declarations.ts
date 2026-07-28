@@ -148,6 +148,23 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_weather",
+      description:
+        "현재 위치 또는 지명 주변의 현재 날씨(기온·하늘상태·강수·습도·강수확률·오늘 최고/최저)를 보여준다. 사용자가 날씨·기온·비·눈을 직접 묻거나 야외 활동 적합성을 물을 때만 호출한다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          place: {
+            type: "string",
+            description: "지명(없으면 현재 위치 기준)",
+          },
+        },
+      },
+    },
+  },
+  {
     // 게이트 없음 — 정적 seed 기반, 외부 키 불필요
     gate: () => true,
     declaration: {
