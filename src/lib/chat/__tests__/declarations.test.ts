@@ -191,14 +191,23 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations().some((d) => d.name === "get_transit_route")).toBe(false);
   });
 
-  // get_walk_route — TMAP_APP_KEY 게이트
-  it("Tmap 키 있으면 get_walk_route 노출", async () => {
+  // get_walk_route — hasWalkRouteKey(KAKAO_REST_API_KEY || TMAP_APP_KEY) 게이트
+  it("Tmap 키만 있어도 get_walk_route 노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     vi.stubEnv("TMAP_APP_KEY", "t");
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_walk_route")).toBe(true);
   });
 
-  it("Tmap 키 없으면 get_walk_route 미노출", async () => {
+  it("카카오 키만 있어도 get_walk_route 노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    vi.stubEnv("TMAP_APP_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_walk_route")).toBe(true);
+  });
+
+  it("카카오·Tmap 키 둘 다 없으면 get_walk_route 미노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
     vi.stubEnv("TMAP_APP_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_walk_route")).toBe(false);

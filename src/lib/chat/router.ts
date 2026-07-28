@@ -24,7 +24,7 @@ import { getTransitRoute } from "@/lib/providers/odsay";
 import { getWalkRoute } from "@/lib/walk-route";
 import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { searchWebPerplexity } from "./perplexity-search";
-import { hasNcpMapsKeys, hasTmapKey } from "@/lib/env";
+import { hasNcpMapsKeys, hasWalkRouteKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { sourceFor } from "./sources";
 
@@ -219,9 +219,9 @@ export async function executeFunction(
       return { data: { destination: p.name, route }, render, source: src };
     }
     case "get_walk_route": {
-      // declaration 게이트가 이미 hasTmapKey()로 노출을 막지만, 직접 호출(테스트·회귀)
-      // 경로도 차단하는 실행부 이중 방어.
-      if (!hasTmapKey()) {
+      // declaration 게이트가 이미 hasWalkRouteKey()로 노출을 막지만, 직접 호출(테스트·
+      // 회귀) 경로도 차단하는 실행부 이중 방어.
+      if (!hasWalkRouteKey()) {
         return { data: { error: "도보 길찾기는 API 키 등록 후 사용할 수 있습니다." } };
       }
       const destination = String(args.destination ?? "");
@@ -230,7 +230,12 @@ export async function executeFunction(
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
-      const briefing = await getWalkRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
+      const accessible = args.accessible === true;
+      const briefing = await getWalkRoute({
+        origin: ctx.userLocation,
+        dest: { lat: p.lat, lng: p.lng },
+        accessible,
+      });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
       if (!briefing) return { data: { destination: p.name, briefing: null }, source: src };
@@ -243,6 +248,9 @@ export async function executeFunction(
           durationSeconds: briefing.durationSeconds,
           steps,
           ...(truncated ? { truncated } : {}),
+          // 안전 문장은 steps[0]에 이미 삽입돼 있어 LLM 재량과 무관하게 전달된다 —
+          // stepFree 상태값도 함께 실어 LLM이 명시적으로 언급할 수 있게 한다.
+          ...(briefing.stepFree ? { stepFree: briefing.stepFree } : {}),
         },
         source: src,
       };

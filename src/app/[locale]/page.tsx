@@ -11,7 +11,7 @@ import {
   hasJusoKey,
   hasGeminiKey,
   hasPerplexityKey,
-  hasTmapKey,
+  hasWalkRouteKey,
 } from "@/lib/env";
 
 export default async function HomePage({
@@ -41,7 +41,7 @@ export default async function HomePage({
         canSearchAddress={hasJusoKey()}
         canSearchWeb={hasPerplexityKey()}
         canShowChat={hasGeminiKey()}
-        canShowWalk={hasTmapKey()}
+        canShowWalk={hasWalkRouteKey()}
       />
       <p className="mt-8 text-center">
         <Link href="/privacy" className="underline min-h-11 inline-flex items-center">
