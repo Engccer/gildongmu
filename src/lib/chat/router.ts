@@ -21,7 +21,7 @@ import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilitie
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 import { getTransitRoute } from "@/lib/providers/odsay";
-import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
+import { getWalkRoute } from "@/lib/walk-route";
 import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { searchWebPerplexity } from "./perplexity-search";
 import { hasNcpMapsKeys, hasTmapKey } from "@/lib/env";
@@ -230,7 +230,7 @@ export async function executeFunction(
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
-      const briefing = await getWalkRouteBriefing({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
+      const briefing = await getWalkRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
       if (!briefing) return { data: { destination: p.name, briefing: null }, source: src };

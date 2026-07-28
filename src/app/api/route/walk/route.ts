@@ -3,7 +3,7 @@ import { z } from "zod";
 import { hasTmapKey } from "@/lib/env";
 import { coordSchema } from "@/lib/route-coord-schema";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
+import { getWalkRoute } from "@/lib/walk-route";
 
 /**
  * 도보 길찾기 프록시(Tmap). 좌표는 "위도,경도" 순서(도메인 표준, transit route와 동형).
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await getWalkRouteBriefing(parsed.data);
+    const result = await getWalkRoute(parsed.data);
     return NextResponse.json({ result });
   } catch (e) {
     console.error("[api/route/walk] 도보 길찾기 실패:", e);
