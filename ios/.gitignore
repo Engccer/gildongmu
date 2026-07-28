@@ -3,3 +3,4 @@ DerivedData/
 xcuserdata/
 .swiftpm/
 .build/
+build/
