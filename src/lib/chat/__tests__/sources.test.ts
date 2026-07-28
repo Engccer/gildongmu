@@ -23,6 +23,7 @@ describe("sourceFor", () => {
   });
   it("도보 경로는 Tmap", () => {
     expect(sourceFor("get_walk_route", { dataLocale: "ko" })).toEqual([
+      { label: "source.kakao" },
       { label: "source.tmap" },
     ]);
   });
