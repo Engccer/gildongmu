@@ -23,6 +23,9 @@ type Status =
 /** 초기 표시 수·"더 보기" 1회 공개 수 — V1(NightClinicsNearby)과 동일 값 유지. */
 const INITIAL_VISIBLE = 10;
 const REVEAL_STEP = 10;
+/** 옵트인 확장 요청 — 라우트 기본 상한(8)은 limit 미지정 소비자(CLI/MCP·iOS)용,
+    "더 보기" 재료는 웹이 limit으로 명시 확보한다(라우트 MAX_LIMIT과 동일 값). */
+const FETCH_LIMIT = 50;
 
 /**
  * 근처 아이 놀 곳(키즈카페·놀이터·어린이공원, B3) — 홈 진입점.
@@ -52,9 +55,10 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
     try {
-      const res = await fetch(`/api/places/kids?lat=${lat}&lng=${lng}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/places/kids?lat=${lat}&lng=${lng}&limit=${FETCH_LIMIT}`,
+        { cache: "no-store" },
+      );
       const body = await res.json();
       if (!res.ok) {
         setStatus({ kind: "error" });
