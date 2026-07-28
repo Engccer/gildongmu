@@ -5,13 +5,14 @@ import en from "../../../messages/en.json";
 import es from "../../../messages/es.json";
 import fr from "../../../messages/fr.json";
 import itMessages from "../../../messages/it.json";
+import ja from "../../../messages/ja.json";
 
 /**
  * 모든 로케일 메시지가 ko(기준)와 (1) 동일한 키 집합 (2) 키마다 동일한 ICU
  * 플레이스홀더·t.rich 태그 토큰을 갖는지 강제한다. 새 언어 추가나 키 수정 시
  * 누락·플레이스홀더 변형으로 인한 런타임 에러를 머지 전에 잡는 게이트다.
  */
-const MESSAGES: Record<string, unknown> = { ko, en, es, fr, it: itMessages };
+const MESSAGES: Record<string, unknown> = { ko, en, es, fr, it: itMessages, ja };
 
 function flatten(obj: unknown, prefix = ""): Record<string, string> {
   const out: Record<string, string> = {};

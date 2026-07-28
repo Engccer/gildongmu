@@ -747,7 +747,7 @@ export interface WhereAmI {
   landmarks: SurroundingPlace[];
 }
 
-/** 산문 렌더용 구조화 데이터 — 순수 buildLocationNarrative 산출(컴포넌트가 5개 언어로 렌더). */
+/** 산문 렌더용 구조화 데이터 — 순수 buildLocationNarrative 산출(컴포넌트가 지원 언어 전체로 렌더). */
 export interface LocationNarrative {
   /** 단락1 위치 문자열(행정동 + 도로명 조합). 둘 다 없으면 null → 위치 문장 생략. */
   place: string | null;

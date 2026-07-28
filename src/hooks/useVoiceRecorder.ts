@@ -32,7 +32,7 @@ export type VoiceRecorderErrorCode =
 
 interface UseVoiceRecorderOptions {
   maxDuration?: number; // Maximum recording duration in seconds (default: 60)
-  locale?: string; // UI locale hint for speech recognition (ko, en, es, fr)
+  locale?: string; // UI locale hint for speech recognition (routing.locales 전체)
   onTranscribed?: (text: string) => void; // Callback when transcription is complete
   onError?: (code: VoiceRecorderErrorCode) => void; // Callback on error (코드만 — 번역은 소비자 담당)
 }

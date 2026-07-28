@@ -16,7 +16,7 @@ import { synthesizeChirpMp3 } from "@/lib/tts/chirp";
 
 const ttsRequestSchema = z.object({
   text: z.string().min(1).max(8000),
-  locale: z.enum(["ko", "en", "es", "fr", "it"]),
+  locale: z.enum(["ko", "en", "es", "fr", "it", "ja"]),
 });
 
 function fallbackResponse(reason: string) {

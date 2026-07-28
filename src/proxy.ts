@@ -6,7 +6,7 @@ import { hasSupportedLanguage } from "./i18n/accept-language";
 // Next.js 16: middleware.ts 대신 proxy.ts (워크스페이스 공통 컨벤션)
 const intlMiddleware = createMiddleware(routing);
 
-// 미지원 언어(ja·zh·de 등) 브라우저는 defaultLocale(ko) 대신 en으로 폴백.
+// 미지원 언어(zh·de 등) 브라우저는 defaultLocale(ko) 대신 en으로 폴백.
 // Accept-Language에 지원 로케일이 하나도 없을 때만 헤더를 en으로 치환해
 // next-intl에 협상시키므로 쿠키 우선순위·기존 협상 경로는 그대로다.
 export default function proxy(request: NextRequest) {

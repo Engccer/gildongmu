@@ -32,6 +32,12 @@
             "state": "translated",
             "value": "Alle %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
+          }
         }
       }
     },
@@ -65,6 +71,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cattiva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "悪い"
           }
         }
       }
@@ -100,6 +112,12 @@
             "state": "translated",
             "value": "Buona"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "良い"
+          }
         }
       }
     },
@@ -133,6 +151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Moderata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "普通"
           }
         }
       }
@@ -168,6 +192,12 @@
             "state": "translated",
             "value": "Molto cattiva"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非常に悪い"
+          }
         }
       }
     },
@@ -201,6 +231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Qualità dell'aria"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この地域の大気質"
           }
         }
       }
@@ -236,6 +272,12 @@
             "state": "translated",
             "value": "Indice di qualità dell'aria"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "統合大気環境指数"
+          }
         }
       }
     },
@@ -269,6 +311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Polveri sottili (PM10)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PM10"
           }
         }
       }
@@ -304,6 +352,12 @@
             "state": "translated",
             "value": "Polveri ultrasottili (PM2.5)"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PM2.5"
+          }
         }
       }
     },
@@ -337,6 +391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: AirKorea (Korea Environment Corporation)."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: エアコリア(韓国環境公団)。"
           }
         }
       }
@@ -372,6 +432,12 @@
             "state": "translated",
             "value": "Stazione di rilevamento %1$@ · %2$@ km"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@測定所 · %2$@km"
+          }
         }
       }
     },
@@ -405,6 +471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessun dato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報なし"
           }
         }
       }
@@ -440,6 +512,12 @@
             "state": "translated",
             "value": "Strutture accessibili"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バリアフリー設備"
+          }
         }
       }
     },
@@ -473,6 +551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: Korea Tourism Organization, informazioni per viaggi senza barriere"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: 韓国観光公社のバリアフリー旅行情報"
           }
         }
       }
@@ -508,6 +592,12 @@
             "state": "translated",
             "value": "alle %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
+          }
         }
       }
     },
@@ -541,6 +631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ disponibili · %2$@ stalli"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "貸出可能%1$@台 · ラック%2$@基"
           }
         }
       }
@@ -576,6 +672,12 @@
             "state": "translated",
             "value": "Bici Ttareungyi vicino a me"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近くのタルンイ(公共自転車)ステーション"
+          }
         }
       }
     },
@@ -609,6 +711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessuna stazione bici entro 1 km."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1km以内にタルンイのステーションがありません。"
           }
         }
       }
@@ -644,6 +752,12 @@
             "state": "translated",
             "value": "Impossibile caricare le informazioni sulle bici. Riprova."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タルンイ情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+          }
         }
       }
     },
@@ -677,6 +791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。"
           }
         }
       }
@@ -712,6 +832,12 @@
             "state": "translated",
             "value": "Questo browser non supporta la localizzazione."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このブラウザは現在地に対応していません。"
+          }
         }
       }
     },
@@ -745,6 +871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Caricamento delle stazioni bici…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タルンイのステーションを照会中…"
           }
         }
       }
@@ -780,6 +912,12 @@
             "state": "translated",
             "value": "Recupero della tua posizione…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認中…"
+          }
         }
       }
     },
@@ -813,6 +951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stazioni bici nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "付近のタルンイ(公共自転車)ステーション"
           }
         }
       }
@@ -848,6 +992,12 @@
             "state": "translated",
             "value": "Stazioni bici nelle vicinanze."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "付近のタルンイのステーションです。"
+          }
         }
       }
     },
@@ -881,6 +1031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aggiorna"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
           }
         }
       }
@@ -916,6 +1072,12 @@
             "state": "translated",
             "value": "Fonte: Seoul Open Data Plaza (Ttareungyi)."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: ソウルオープンデータ広場(タルンイ)。"
+          }
         }
       }
     },
@@ -949,6 +1111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ a piedi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩約%1$@"
           }
         }
       }
@@ -984,6 +1152,12 @@
             "state": "translated",
             "value": "Linea %1$@ %2$@, a %3$@ fermate, tra circa %4$@ min"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番 %2$@、%3$@つ前のバス停、約%4$@分後に到着"
+          }
         }
       }
     },
@@ -1017,6 +1191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Linea %1$@ %2$@, %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番 %2$@、%3$@"
           }
         }
       }
@@ -1052,6 +1232,12 @@
             "state": "translated",
             "value": "Impossibile caricare le informazioni sugli arrivi per questa fermata."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このバス停の到着情報を取得できませんでした。"
+          }
         }
       }
     },
@@ -1085,6 +1271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "alle %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
           }
         }
       }
@@ -1120,6 +1312,12 @@
             "state": "translated",
             "value": "Arrivi degli autobus vicino a me"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近くのバス到着情報"
+          }
         }
       }
     },
@@ -1153,6 +1351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessuna fermata dell'autobus nelle vicinanze."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "近くにバス停がありません。"
           }
         }
       }
@@ -1188,6 +1392,12 @@
             "state": "translated",
             "value": "Impossibile caricare le informazioni sugli autobus. Riprova tra poco."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バス情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+          }
         }
       }
     },
@@ -1221,6 +1431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。"
           }
         }
       }
@@ -1256,6 +1472,12 @@
             "state": "translated",
             "value": "Questo browser non supporta la localizzazione."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このブラウザは現在地に対応していません。"
+          }
         }
       }
     },
@@ -1289,6 +1511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Caricamento di fermate e arrivi…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バス停・到着情報を照会中…"
           }
         }
       }
@@ -1324,6 +1552,12 @@
             "state": "translated",
             "value": "Recupero della tua posizione…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認中…"
+          }
         }
       }
     },
@@ -1357,6 +1591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "autobus a pianale ribassato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ノンステップバス"
           }
         }
       }
@@ -1392,6 +1632,12 @@
             "state": "translated",
             "value": "Nessun autobus in arrivo."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着予定のバスはありません。"
+          }
         }
       }
     },
@@ -1425,6 +1671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "autobus standard"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般バス"
           }
         }
       }
@@ -1460,6 +1712,12 @@
             "state": "translated",
             "value": "Fermate e arrivi nelle vicinanze"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "付近のバス停・到着情報"
+          }
         }
       }
     },
@@ -1493,6 +1751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Le informazioni sugli arrivi degli autobus sono pronte."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バスの到着情報の準備ができました。"
           }
         }
       }
@@ -1528,6 +1792,12 @@
             "state": "translated",
             "value": "Aggiorna"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
         }
       }
     },
@@ -1561,6 +1831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mostra le fermate della linea %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番の経由バス停を見る"
           }
         }
       }
@@ -1596,6 +1872,12 @@
             "state": "translated",
             "value": "Nessuna informazione sulle fermate della linea."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由バス停の情報がありません。"
+          }
         }
       }
     },
@@ -1629,6 +1911,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile caricare le fermate della linea."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由バス停の照会に失敗しました。"
           }
         }
       }
@@ -1664,6 +1952,12 @@
             "state": "translated",
             "value": "Fermate della linea %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@番の経由バス停"
+          }
         }
       }
     },
@@ -1697,6 +1991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Caricamento delle fermate della linea…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由バス停を照会中…"
           }
         }
       }
@@ -1732,6 +2032,12 @@
             "state": "translated",
             "value": "Fonte: MOLIT TAGO e Seoul TOPIS."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: 国土交通部TAGO・ソウルTOPIS。"
+          }
         }
       }
     },
@@ -1765,6 +2071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "circa %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@"
           }
         }
       }
@@ -1800,6 +2112,12 @@
             "state": "translated",
             "value": "Tutte"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "すべて"
+          }
         }
       }
     },
@@ -1833,6 +2151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Attrazioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "観光・名所"
           }
         }
       }
@@ -1868,6 +2192,12 @@
             "state": "translated",
             "value": "Filtra per categoria"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カテゴリで絞り込む"
+          }
         }
       }
     },
@@ -1901,6 +2231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cibo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グルメ"
           }
         }
       }
@@ -1936,6 +2272,12 @@
             "state": "translated",
             "value": "Alloggi"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "宿泊"
+          }
         }
       }
     },
@@ -1969,6 +2311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Altro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "その他"
           }
         }
       }
@@ -2004,6 +2352,12 @@
             "state": "translated",
             "value": "Pubblico e istruzione"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共・教育"
+          }
         }
       }
     },
@@ -2037,6 +2391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Shopping"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ショッピング"
           }
         }
       }
@@ -2072,6 +2432,12 @@
             "state": "translated",
             "value": "Trasporti"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "交通"
+          }
         }
       }
     },
@@ -2105,6 +2471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Indirizzo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "住所"
           }
         }
       }
@@ -2140,6 +2512,12 @@
             "state": "translated",
             "value": "Indirizzo copiato"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "住所をコピーしました"
+          }
         }
       }
     },
@@ -2173,6 +2551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chiama %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に電話をかける"
           }
         }
       }
@@ -2208,6 +2592,12 @@
             "state": "translated",
             "value": "Categoria"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カテゴリ"
+          }
         }
       }
     },
@@ -2241,6 +2631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copia indirizzo in inglese"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "英語住所をコピー"
           }
         }
       }
@@ -2276,6 +2672,12 @@
             "state": "translated",
             "value": "Copia indirizzo catastale"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地番住所をコピー"
+          }
         }
       }
     },
@@ -2309,6 +2711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Copia indirizzo stradale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "道路名住所をコピー"
           }
         }
       }
@@ -2344,6 +2752,12 @@
             "state": "translated",
             "value": "Pagina dei dettagli"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細情報ページ"
+          }
         }
       }
     },
@@ -2377,6 +2791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "circa %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@"
           }
         }
       }
@@ -2412,6 +2832,12 @@
             "state": "translated",
             "value": "Indirizzo catastale"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地番"
+          }
         }
       }
     },
@@ -2445,6 +2871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apri in Kakao Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カカオマップで見る"
           }
         }
       }
@@ -2480,6 +2912,12 @@
             "state": "translated",
             "value": "Apri in Naver Map"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAVERマップで見る"
+          }
         }
       }
     },
@@ -2513,6 +2951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Telefono"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電話"
           }
         }
       }
@@ -2548,6 +2992,12 @@
             "state": "translated",
             "value": "Indirizzo stradale"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "道路名"
+          }
         }
       }
     },
@@ -2581,6 +3031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tutte le regioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全国"
           }
         }
       }
@@ -2616,6 +3072,12 @@
             "state": "translated",
             "value": "Busan"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "釜山"
+          }
         }
       }
     },
@@ -2649,6 +3111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chungbuk"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忠北"
           }
         }
       }
@@ -2684,6 +3152,12 @@
             "state": "translated",
             "value": "Chungnam"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忠南"
+          }
         }
       }
     },
@@ -2717,6 +3191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Daegu"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大邱"
           }
         }
       }
@@ -2752,6 +3232,12 @@
             "state": "translated",
             "value": "Daejeon"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大田"
+          }
         }
       }
     },
@@ -2785,6 +3271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Filtra per regione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地域で絞り込む"
           }
         }
       }
@@ -2820,6 +3312,12 @@
             "state": "translated",
             "value": "Gangwon"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "江原"
+          }
         }
       }
     },
@@ -2853,6 +3351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gwangju"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "光州"
           }
         }
       }
@@ -2888,6 +3392,12 @@
             "state": "translated",
             "value": "Gyeongbuk"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慶北"
+          }
         }
       }
     },
@@ -2921,6 +3431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gyeonggi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "京畿"
           }
         }
       }
@@ -2956,6 +3472,12 @@
             "state": "translated",
             "value": "Gyeongnam"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "慶南"
+          }
         }
       }
     },
@@ -2989,6 +3511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Incheon"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仁川"
           }
         }
       }
@@ -3024,6 +3552,12 @@
             "state": "translated",
             "value": "Jeju"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "済州"
+          }
         }
       }
     },
@@ -3057,6 +3591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jeonbuk"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全北"
           }
         }
       }
@@ -3092,6 +3632,12 @@
             "state": "translated",
             "value": "Jeonnam"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全南"
+          }
         }
       }
     },
@@ -3125,6 +3671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sejong"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "世宗"
           }
         }
       }
@@ -3160,6 +3712,12 @@
             "state": "translated",
             "value": "Seoul"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソウル"
+          }
         }
       }
     },
@@ -3193,6 +3751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ulsan"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "蔚山"
           }
         }
       }
@@ -3228,6 +3792,12 @@
             "state": "translated",
             "value": "Anteprima testuale del percorso in auto"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車の経路案内"
+          }
         }
       }
     },
@@ -3261,6 +3831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stime basate sul traffico in tempo reale. Per le indicazioni svolta per svolta, usa un'app di mappe tramite i link alle indicazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リアルタイム交通に基づく推定です。実際の走行案内は地図アプリの経路検索をご利用ください。"
           }
         }
       }
@@ -3296,6 +3872,12 @@
             "state": "translated",
             "value": "Riepilogo del percorso non riuscito. Riprova tra poco."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路案内に失敗しました。しばらくしてからもう一度お試しください。"
+          }
         }
       }
     },
@@ -3329,6 +3911,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile ottenere la tua posizione. Controlla le autorizzazioni di localizzazione del browser."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を取得できません。ブラウザの位置情報の許可をご確認ください。"
           }
         }
       }
@@ -3364,6 +3952,12 @@
             "state": "translated",
             "value": "Percorso in auto per %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@までの車の経路"
+          }
         }
       }
     },
@@ -3397,6 +3991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Calcolo del percorso…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路を計算中…"
           }
         }
       }
@@ -3432,6 +4032,12 @@
             "state": "translated",
             "value": "Recupero della tua posizione…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認中…"
+          }
         }
       }
     },
@@ -3465,6 +4071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Il riepilogo del percorso è pronto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路案内の準備ができました。"
           }
         }
       }
@@ -3500,6 +4112,12 @@
             "state": "translated",
             "value": "Totale %1$@, circa %2$@ min. Tariffa taxi stimata %3$@ KRW."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "総距離%1$@、約%2$@分。タクシー料金の目安%3$@ウォン。"
+          }
         }
       }
     },
@@ -3533,6 +4151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pedaggio %1$@ KRW non incluso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通行料%1$@ウォンが別途かかります。"
           }
         }
       }
@@ -3568,6 +4192,12 @@
             "state": "translated",
             "value": "Auto"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車"
+          }
         }
       }
     },
@@ -3601,6 +4231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apre l'app Naver Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAVERマップのアプリが開きます"
           }
         }
       }
@@ -3636,6 +4272,12 @@
             "state": "translated",
             "value": "Kakao Map"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カカオマップ"
+          }
         }
       }
     },
@@ -3669,6 +4311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Indicazioni %1$@ con Kakao Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カカオマップで%1$@の経路検索"
           }
         }
       }
@@ -3704,6 +4352,12 @@
             "state": "translated",
             "value": "Naver Map"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAVERマップ"
+          }
         }
       }
     },
@@ -3737,6 +4391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Indicazioni %1$@ con Naver Map"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NAVERマップで%1$@の経路検索"
           }
         }
       }
@@ -3772,6 +4432,12 @@
             "state": "translated",
             "value": "Impossibile caricare il percorso a piedi. Riprova tra poco."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩経路を取得できませんでした。しばらくしてからもう一度お試しください。"
+          }
         }
       }
     },
@@ -3805,6 +4471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "A piedi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩"
           }
         }
       }
@@ -3840,6 +4512,12 @@
             "state": "translated",
             "value": "Nessun percorso a piedi trovato."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩経路が見つかりませんでした。"
+          }
         }
       }
     },
@@ -3873,6 +4551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Totale %1$@ km, circa %2$@ min"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "計%1$@km、約%2$@分"
           }
         }
       }
@@ -3908,6 +4592,12 @@
             "state": "translated",
             "value": "Mezzi pubblici"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通"
+          }
         }
       }
     },
@@ -3941,6 +4631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alternativa %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替経路%1$@"
           }
         }
       }
@@ -3976,6 +4672,12 @@
             "state": "translated",
             "value": "Arrivo a <name></name>"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<name></name>に到着"
+          }
         }
       }
     },
@@ -4009,6 +4711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mezzi pubblici fin qui"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここまで公共交通で経路検索"
           }
         }
       }
@@ -4044,6 +4752,12 @@
             "state": "translated",
             "value": "Cambia partenza"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発地を変更"
+          }
         }
       }
     },
@@ -4077,6 +4791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile caricare il percorso. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路を取得できませんでした。しばらくしてからもう一度お試しください。"
           }
         }
       }
@@ -4112,6 +4832,12 @@
             "state": "translated",
             "value": "Impossibile ottenere la tua posizione. Cerca un punto di partenza."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認できません。出発地を検索して指定してください。"
+          }
         }
       }
     },
@@ -4145,6 +4871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mezzi pubblici per %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@までの公共交通"
           }
         }
       }
@@ -4180,6 +4912,12 @@
             "state": "translated",
             "value": "Sali su <line></line> a <from></from>, %1$@ fermate"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<from></from>で<line></line>に乗車、%1$@駅"
+          }
         }
       }
     },
@@ -4213,6 +4951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "passa circa ogni %1$@ min"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "運転間隔約%1$@分"
           }
         }
       }
@@ -4248,6 +4992,12 @@
             "state": "translated",
             "value": "Cambia per <line></line> a <from></from>, %1$@ fermate"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "<from></from>で<line></line>に乗り換え、%1$@駅"
+          }
         }
       }
     },
@@ -4281,6 +5031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cammina %1$@ min"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩%1$@分"
           }
         }
       }
@@ -4316,6 +5072,12 @@
             "state": "translated",
             "value": "Ricerca di un percorso…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路を探しています。"
+          }
         }
       }
     },
@@ -4349,6 +5111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Localizzazione in corso…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認しています。"
           }
         }
       }
@@ -4384,6 +5152,12 @@
             "state": "translated",
             "value": "Nessun percorso con i mezzi pubblici trovato. Controlla partenza e destinazione."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通の経路が見つかりませんでした。出発地と目的地をご確認ください。"
+          }
         }
       }
     },
@@ -4417,6 +5191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cerca punto di partenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発地を検索"
           }
         }
       }
@@ -4452,6 +5232,12 @@
             "state": "translated",
             "value": "Inserisci un punto di partenza"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出発地を入力してください"
+          }
         }
       }
     },
@@ -4485,6 +5271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Il percorso è pronto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路案内の準備ができました。"
           }
         }
       }
@@ -4520,6 +5312,12 @@
             "state": "translated",
             "value": "Vedi altri percorsi"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "他の経路を見る"
+          }
         }
       }
     },
@@ -4553,6 +5351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@ min, %2$@ won, %3$@ cambio/i"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "計%1$@分、%2$@ウォン、乗り換え%3$@回"
           }
         }
       }
@@ -4588,6 +5392,12 @@
             "state": "translated",
             "value": "Parti dalla posizione attuale"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地から出発"
+          }
         }
       }
     },
@@ -4621,6 +5431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "inclusi %1$@ min a piedi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩%1$@分を含む"
           }
         }
       }
@@ -4656,6 +5472,12 @@
             "state": "translated",
             "value": "A piedi"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩"
+          }
         }
       }
     },
@@ -4689,6 +5511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rampa accessibile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スロープ"
           }
         }
       }
@@ -4724,6 +5552,12 @@
             "state": "translated",
             "value": "Bagno accessibile"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多目的トイレ"
+          }
         }
       }
     },
@@ -4757,6 +5591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vedi le strutture per l'accessibilità"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅のバリアフリー設備を見る"
           }
         }
       }
@@ -4792,6 +5632,12 @@
             "state": "translated",
             "value": "Ascensori"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エレベーター"
+          }
         }
       }
     },
@@ -4825,6 +5671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessun dato sulle strutture per l'accessibilità per questa stazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅のバリアフリー設備の情報がありません。"
           }
         }
       }
@@ -4860,6 +5712,12 @@
             "state": "translated",
             "value": "Impossibile caricare le strutture. Riprova tra poco."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設備の照会に失敗しました。しばらくしてからもう一度お試しください。"
+          }
         }
       }
     },
@@ -4893,6 +5751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Strutture per l'accessibilità a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@のバリアフリー設備"
           }
         }
       }
@@ -4928,6 +5792,12 @@
             "state": "translated",
             "value": "Caricamento delle strutture…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設備を照会中…"
+          }
         }
       }
     },
@@ -4961,6 +5831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Non disponibile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
           }
         }
       }
@@ -4996,6 +5872,12 @@
             "state": "translated",
             "value": "Le informazioni sulle strutture sono pronte."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設備情報の準備ができました。"
+          }
         }
       }
     },
@@ -5029,6 +5911,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: Korea Railroad (stazioni ferroviarie nazionali). Metropolitana urbana non inclusa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: 韓国鉄道公社(全国の鉄道駅)。地下鉄は含まれません。"
           }
         }
       }
@@ -5064,6 +5952,12 @@
             "state": "translated",
             "value": "Sconosciuto"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報なし"
+          }
         }
       }
     },
@@ -5097,6 +5991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Montascale per sedie a rotelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車いすリフト"
           }
         }
       }
@@ -5132,6 +6032,12 @@
             "state": "translated",
             "value": "Disponibile"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "あり"
+          }
         }
       }
     },
@@ -5165,6 +6071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Informazioni sulla stazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅情報"
           }
         }
       }
@@ -5200,6 +6112,12 @@
             "state": "translated",
             "value": "Linee"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "路線"
+          }
         }
       }
     },
@@ -5233,6 +6151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gestore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "運営機関"
           }
         }
       }
@@ -5268,6 +6192,12 @@
             "state": "translated",
             "value": "Fonte: dati standard delle stazioni ferroviarie urbane nazionali (KR National Railway)."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: 全国都市鉄道駅舎情報標準データ(国家鉄道公団)。"
+          }
         }
       }
     },
@@ -5301,6 +6231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Stazione di interscambio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗換駅"
           }
         }
       }
@@ -5336,6 +6272,12 @@
             "state": "translated",
             "value": "Vedi le strutture di accessibilità della metro"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄駅のバリアフリー設備を見る"
+          }
         }
       }
     },
@@ -5369,6 +6311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@か所"
           }
         }
       }
@@ -5404,6 +6352,12 @@
             "state": "translated",
             "value": "Nessun dato sulle strutture di accessibilità della metro per questa stazione. (Solo linee 1–8 di Seoul)"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅の地下鉄バリアフリー設備の情報がありません。(ソウル1〜8号線のみ対応)"
+          }
         }
       }
     },
@@ -5437,6 +6391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile caricare le strutture della stazione. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄駅の設備の照会に失敗しました。しばらくしてからもう一度お試しください。"
           }
         }
       }
@@ -5472,6 +6432,12 @@
             "state": "translated",
             "value": "Strutture di accessibilità della metro %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の地下鉄バリアフリー設備"
+          }
         }
       }
     },
@@ -5505,6 +6471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ascensore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エレベーター"
           }
         }
       }
@@ -5540,6 +6512,12 @@
             "state": "translated",
             "value": "Posizioni degli ascensori"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エレベーターの位置"
+          }
         }
       }
     },
@@ -5573,6 +6551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Scala mobile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "エスカレーター"
           }
         }
       }
@@ -5608,6 +6592,12 @@
             "state": "translated",
             "value": "Assistente per l'accessibilità"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動サポートスタッフ"
+          }
         }
       }
     },
@@ -5641,6 +6631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tappeto mobile"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "動く歩道"
           }
         }
       }
@@ -5676,6 +6672,12 @@
             "state": "translated",
             "value": "Bagno accessibile"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多目的トイレ"
+          }
         }
       }
     },
@@ -5709,6 +6711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pedana di sicurezza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "転落防止ステップ"
           }
         }
       }
@@ -5744,6 +6752,12 @@
             "state": "translated",
             "value": "Videotelefono per la lingua dei segni"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手話映像電話"
+          }
         }
       }
     },
@@ -5777,6 +6791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Segnalatori acustici di guida"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視覚障害者用音声誘導装置"
           }
         }
       }
@@ -5812,6 +6832,12 @@
             "state": "translated",
             "value": "Caricabatterie per sedia a rotelle elettrica"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "電動車いす急速充電器"
+          }
         }
       }
     },
@@ -5845,6 +6871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Montascale per sedie a rotelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車いすリフト"
           }
         }
       }
@@ -5880,6 +6912,12 @@
             "state": "translated",
             "value": "Caricamento delle strutture della stazione…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄駅の設備を照会中…"
+          }
         }
       }
     },
@@ -5913,6 +6951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "In funzione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通常稼働"
           }
         }
       }
@@ -5948,6 +6992,12 @@
             "state": "translated",
             "value": "Fuori servizio o in manutenzione"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "停止または点検中"
+          }
         }
       }
     },
@@ -5981,6 +7031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Le strutture di accessibilità della metro sono pronte."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄駅のバリアフリー設備情報の準備ができました。"
           }
         }
       }
@@ -6016,6 +7072,12 @@
             "state": "translated",
             "value": "Fonte: dati sulle strutture di accessibilità di Seoul Metro (linee 1–8 di Seoul)."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: ソウル交通公社バリアフリー利用情報(ソウル1〜8号線)。"
+          }
         }
       }
     },
@@ -6049,6 +7111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile caricare alcune informazioni sulle strutture."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一部の設備情報を取得できませんでした。"
           }
         }
       }
@@ -6084,6 +7152,12 @@
             "state": "translated",
             "value": "Segnalatori acustici di guida: dati forniti da Seoul Metro (aggiornati a 2025-08)"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声誘導装置: ソウル交通公社提供(2025年8月時点)"
+          }
         }
       }
     },
@@ -6117,6 +7191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "alle %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
           }
         }
       }
@@ -6152,6 +7232,12 @@
             "state": "translated",
             "value": "Vedi gli arrivi della metro in tempo reale"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄のリアルタイム到着情報を見る"
+          }
         }
       }
     },
@@ -6185,6 +7271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ora a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在%1$@"
           }
         }
       }
@@ -6220,6 +7312,12 @@
             "state": "translated",
             "value": "Nessun dato sugli arrivi in tempo reale per questa stazione. (Solo linee 1–9 della metro di Seoul)"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅のリアルタイム到着情報がありません。(ソウル地下鉄1〜9号線のみ対応)"
+          }
         }
       }
     },
@@ -6253,6 +7351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile caricare gli arrivi. Riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
           }
         }
       }
@@ -6288,6 +7392,12 @@
             "state": "translated",
             "value": "Espresso"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "急行"
+          }
         }
       }
     },
@@ -6321,6 +7431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Arrivi in tempo reale di %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@のリアルタイム到着"
           }
         }
       }
@@ -6356,6 +7472,12 @@
             "state": "translated",
             "value": "Caricamento degli arrivi…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着情報を照会中…"
+          }
         }
       }
     },
@@ -6389,6 +7511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessun treno in arrivo a breve."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着予定の列車はありません。"
           }
         }
       }
@@ -6424,6 +7552,12 @@
             "state": "translated",
             "value": "Gli arrivi in tempo reale sono pronti."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リアルタイム到着情報の準備ができました。"
+          }
         }
       }
     },
@@ -6457,6 +7591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aggiorna"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
           }
         }
       }
@@ -6492,6 +7632,12 @@
             "state": "translated",
             "value": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: ソウルオープンデータ広場の地下鉄リアルタイム到着情報。"
+          }
         }
       }
     },
@@ -6525,6 +7671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Qualità dell'aria"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "大気質"
           }
         }
       }
@@ -6560,6 +7712,12 @@
             "state": "translated",
             "value": "Alle %1$@"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
+          }
         }
       }
     },
@@ -6593,6 +7751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Meteo locale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この地域の天気"
           }
         }
       }
@@ -6628,6 +7792,12 @@
             "state": "translated",
             "value": "Max %1$@° Min %2$@°"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最高%1$@° 最低%2$@°"
+          }
         }
       }
     },
@@ -6661,6 +7831,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Umidità %1$@%%"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "湿度%1$@%%"
           }
         }
       }
@@ -6696,6 +7872,12 @@
             "state": "translated",
             "value": "Prob. di pioggia %1$@%%"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降水確率%1$@%%"
+          }
         }
       }
     },
@@ -6729,6 +7911,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nessuna precipitazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "降水なし"
           }
         }
       }
@@ -6764,6 +7952,12 @@
             "state": "translated",
             "value": "Pioggia"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雨"
+          }
         }
       }
     },
@@ -6797,6 +7991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pioggia e neve"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雨/雪"
           }
         }
       }
@@ -6832,6 +8032,12 @@
             "state": "translated",
             "value": "Rovesci"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "にわか雨"
+          }
         }
       }
     },
@@ -6865,6 +8071,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neve"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "雪"
           }
         }
       }
@@ -6900,6 +8112,12 @@
             "state": "translated",
             "value": "Sereno"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "晴れ"
+          }
         }
       }
     },
@@ -6933,6 +8151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nuvoloso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "くもり"
           }
         }
       }
@@ -6968,6 +8192,12 @@
             "state": "translated",
             "value": "Parzialmente nuvoloso"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "くもり多め"
+          }
         }
       }
     },
@@ -7001,6 +8231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: previsioni a breve termine KMA."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: 気象庁の短期予報。"
           }
         }
       }
@@ -7036,6 +8272,12 @@
             "state": "translated",
             "value": "Nessun dato"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "情報なし"
+          }
         }
       }
     },
@@ -7069,6 +8311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "alle %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
           }
         }
       }
@@ -7104,6 +8352,12 @@
             "state": "translated",
             "value": "Dove mi trovo"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認"
+          }
         }
       }
     },
@@ -7137,6 +8391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "attrazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "観光名所"
           }
         }
       }
@@ -7172,6 +8432,12 @@
             "state": "translated",
             "value": "banca"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "銀行"
+          }
         }
       }
     },
@@ -7205,6 +8471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "caffè"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カフェ"
           }
         }
       }
@@ -7240,6 +8512,12 @@
             "state": "translated",
             "value": "minimarket"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コンビニ"
+          }
         }
       }
     },
@@ -7273,6 +8551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ospedale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "病院"
           }
         }
       }
@@ -7308,6 +8592,12 @@
             "state": "translated",
             "value": "supermercato"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "スーパー"
+          }
         }
       }
     },
@@ -7341,6 +8631,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "farmacia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "薬局"
           }
         }
       }
@@ -7376,6 +8672,12 @@
             "state": "translated",
             "value": "ufficio pubblico"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共機関"
+          }
         }
       }
     },
@@ -7409,6 +8711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ristorante"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "飲食店"
           }
         }
       }
@@ -7444,6 +8752,12 @@
             "state": "translated",
             "value": "stazione della metropolitana"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地下鉄駅"
+          }
         }
       }
     },
@@ -7477,6 +8791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Chiedi informazioni sulla mia posizione attuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地について質問する"
           }
         }
       }
@@ -7512,6 +8832,12 @@
             "state": "translated",
             "value": "est"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "東"
+          }
         }
       }
     },
@@ -7545,6 +8871,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "nord"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北"
           }
         }
       }
@@ -7580,6 +8912,12 @@
             "state": "translated",
             "value": "nord-est"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北東"
+          }
         }
       }
     },
@@ -7613,6 +8951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "nord-ovest"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "北西"
           }
         }
       }
@@ -7648,6 +8992,12 @@
             "state": "translated",
             "value": "sud"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南"
+          }
         }
       }
     },
@@ -7681,6 +9031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "sud-est"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南東"
           }
         }
       }
@@ -7716,6 +9072,12 @@
             "state": "translated",
             "value": "sud-ovest"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "南西"
+          }
         }
       }
     },
@@ -7749,6 +9111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ovest"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "西"
           }
         }
       }
@@ -7784,6 +9152,12 @@
             "state": "translated",
             "value": "Impossibile determinare la tua posizione attuale."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の情報が見つかりませんでした。"
+          }
         }
       }
     },
@@ -7817,6 +9191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossibile localizzarti. Riprova tra poco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の照会に失敗しました。しばらくしてからもう一度お試しください。"
           }
         }
       }
@@ -7852,6 +9232,12 @@
             "state": "translated",
             "value": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso alla posizione nel browser."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。"
+          }
         }
       }
     },
@@ -7885,6 +9271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Questo browser non supporta la posizione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このブラウザは現在地に対応していません。"
           }
         }
       }
@@ -7920,6 +9312,12 @@
             "state": "translated",
             "value": "Ricerca dei dintorni…"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺情報を照会中…"
+          }
         }
       }
     },
@@ -7953,6 +9351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Controllo della tua posizione…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認中…"
           }
         }
       }
@@ -7988,6 +9392,12 @@
             "state": "translated",
             "value": "Ti trovi a %1$@."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地は%1$@です。"
+          }
         }
       }
     },
@@ -8021,6 +9431,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%3$@ (%4$@) a circa %2$@ a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@側約%2$@に%3$@(%4$@)"
           }
         }
       }
@@ -8056,6 +9472,12 @@
             "state": "translated",
             "value": "Nelle vicinanze troverai "
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺には"
+          }
         }
       }
     },
@@ -8089,6 +9511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": ", e altro ancora."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "などがあります。"
           }
         }
       }
@@ -8124,6 +9552,12 @@
             "state": "translated",
             "value": "La stazione della metropolitana più vicina è %1$@%2$@, a circa %4$@ a %3$@."
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最寄りの地下鉄駅は%1$@%2$@、%3$@側へ約%4$@です。"
+          }
         }
       }
     },
@@ -8157,6 +9591,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Posizione attuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地"
           }
         }
       }
@@ -8192,6 +9632,12 @@
             "state": "translated",
             "value": "Aggiorna posizione"
           }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置を更新"
+          }
         }
       }
     },
@@ -8225,6 +9671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fonte: Kakao Map. Le direzioni sono rilevamenti dal nord."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: カカオマップ。方角は北基準の方位です。"
           }
         }
       }

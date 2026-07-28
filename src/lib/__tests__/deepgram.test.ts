@@ -46,8 +46,8 @@ describe("buildDeepgramParams", () => {
     expect(en.get("language")).toBe("en");
     expect(en.has("detect_language")).toBe(false);
   });
-  it("외국어 로케일(es/fr/it)도 language로 명시한다(nova-3 다국어)", () => {
-    for (const loc of ["es", "fr", "it"] as const) {
+  it("외국어 로케일(es/fr/it/ja)도 language로 명시한다(nova-3 다국어)", () => {
+    for (const loc of ["es", "fr", "it", "ja"] as const) {
       const p = buildDeepgramParams(loc);
       expect(p.get("language")).toBe(loc);
       expect(p.has("detect_language")).toBe(false);

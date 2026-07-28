@@ -5,15 +5,15 @@
  * - 오디오 Blob 존재·비어있지 않음(size>0)·최대 크기 이내.
  * - MIME allowlist: 빈 type은 허용(일부 브라우저가 빈 type으로 녹음),
  *   값이 있으면 `audio/`로 시작해야 함(비-audio 명시 type 거부).
- * - locale: 앱 지원 언어(ko/en/es/fr/it)만 허용, 그 외는 `ko`로 폴백.
- *   Deepgram nova-3가 다섯 언어를 모두 인식하므로 데이터 매핑(dataLocale) 없이
- *   실제 로케일을 그대로 STT 언어로 쓴다.
+ * - locale: 앱 지원 언어(ko/en/es/fr/it/ja)만 허용, 그 외는 `ko`로 폴백.
+ *   Deepgram nova-3가 여섯 언어를 모두 인식하므로(ja는 2026-07-28 실호출 확인)
+ *   데이터 매핑(dataLocale) 없이 실제 로케일을 그대로 STT 언어로 쓴다.
  */
 
 // 서버 상한은 웹 UI 60초 녹음 캡 기준(opus 60초 ≈ 1MB 미만)의 여유분.
 // 25MB(약 100분 오디오)는 유료 Deepgram 직접 호출 어뷰징 표면이었다.
 export const STT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const SUPPORTED_LOCALES = ["ko", "en", "es", "fr", "it"] as const;
+const SUPPORTED_LOCALES = ["ko", "en", "es", "fr", "it", "ja"] as const;
 
 export type SttLocale = (typeof SUPPORTED_LOCALES)[number];
 

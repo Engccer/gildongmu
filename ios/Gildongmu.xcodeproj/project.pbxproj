@@ -94,6 +94,7 @@
 				es,
 				fr,
 				it,
+				ja,
 				Base,
 			);
 			mainGroup = AF0001;

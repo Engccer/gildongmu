@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// messages/{ko,en,es,fr,it}.json (웹 i18n 정본, flat 파일·최상위 키가 네임스페이스)
+// messages/{ko,en,es,fr,it,ja}.json (웹 i18n 정본, flat 파일·최상위 키가 네임스페이스)
 //   → ios/Gildongmu/Resources/Localizable.xcstrings (앱 타깃)
 //   → ios/GildongmuKit/Sources/GildongmuKit/Resources/Localizable.xcstrings (Kit)
 // 결정론 변환: 같은 입력으로 재실행하면 byte-identical한 출력을 생성한다.
@@ -25,7 +25,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const LOCALES = ['ko', 'en', 'es', 'fr', 'it'];
+const LOCALES = ['ko', 'en', 'es', 'fr', 'it', 'ja'];
 const SOURCE_LANGUAGE = 'ko';
 const ANY_BRACE_RE = /\{[^{}]*\}/g;
 const SIMPLE_TOKEN_RE = /^\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/;
