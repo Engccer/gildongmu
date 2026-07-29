@@ -27,12 +27,23 @@ import { searchWebPerplexity } from "./perplexity-search";
 import { hasNcpMapsKeys, hasWalkRouteKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
 import { sourceFor } from "./sources";
+import { isInKorea } from "@/lib/coverage";
 
 /** 좌표 도구의 기준 좌표 — 장소 앵커 우선, 없으면 현재 위치. */
 export function anchorOf(
   ctx: ExecutionContext,
 ): { lat: number; lng: number } | undefined {
   return ctx.placeAnchor ?? ctx.userLocation;
+}
+
+const OUT_OF_COVERAGE = {
+  outOfCoverage: true,
+  notice: "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.",
+};
+
+/** 좌표 도구 공통 커버리지 게이트 — 기준 좌표가 대한민국 밖이면 provider 미호출로 안내만 반환. */
+function coverageGate(coord: { lat: number; lng: number } | undefined) {
+  return coord && !isInKorea(coord.lat, coord.lng) ? { data: OUT_OF_COVERAGE } : null;
 }
 
 /** 지명 → 좌표(카카오 지오코딩 첫 결과). 미지정이면 장소 앵커/현재 위치. */
@@ -82,6 +93,8 @@ export async function executeFunction(
     case "get_subway_arrivals": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       const arrivals = await fetchNearbySubwayArrivals(anchor.lat, anchor.lng);
       // 장소 앵커일 땐 device-self-fetch 카드가 장소와 어긋나므로 생략(산문이 정본).
       const render = ctx.placeAnchor ? undefined : ({ type: "subway-nearby" } as const);
@@ -90,6 +103,8 @@ export async function executeFunction(
     case "get_night_clinics": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       // openStatus를 서버가 계산해 넘긴다 — 진료시간 배열만 주면 LLM이 "지금
       // 진료중"을 스스로 추론(=날조)한다(현재 KST를 모른다). count는 병합 후
       // 전체 수라 "5곳뿐"으로 답하지 않는다. 각 항목의 designated(달빛 지정
@@ -108,6 +123,8 @@ export async function executeFunction(
     case "get_nearby_barrier_free": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       const places = await searchBarrierFreeNearby(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "barrier-free-nearby" } as const);
       return { data: { count: places.length, places: places.slice(0, 8) }, render, source: src };
@@ -115,6 +132,8 @@ export async function executeFunction(
     case "get_kids_places": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       const kids = await findKidsPlacesNear(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "kids-nearby" } as const);
       return { data: { count: kids.length, places: kids.slice(0, 8) }, render, source: src };
@@ -122,6 +141,8 @@ export async function executeFunction(
     case "get_surroundings": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       const around = await findSurroundingsNear(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "surroundings-nearby" } as const);
       return { data: { count: around.length, places: around.slice(0, 12) }, render, source: src };
@@ -129,6 +150,8 @@ export async function executeFunction(
     case "get_walk_infrastructure": {
       const anchor = anchorOf(ctx);
       if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
       const walk = await getWalkInfrastructure(anchor.lat, anchor.lng);
       // 출처는 실제로 데이터를 보여준 소스만 인용한다(성공한 소스만, 실패·미제공
       // 소스는 인용하지 않는다).
@@ -145,6 +168,8 @@ export async function executeFunction(
       const explicit = args.place ? String(args.place) : undefined;
       const coord = await resolveCoord(explicit, ctx);
       if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
       const stops = await fetchNearbyBusStops(coord.lat, coord.lng);
       // 명시 지명 또는 장소 앵커 → place 모드(카드가 그 좌표를 fetch). 아니면 current.
       const placeMode = !!explicit || !!ctx.placeAnchor;
@@ -157,6 +182,8 @@ export async function executeFunction(
       const explicit = args.place ? String(args.place) : undefined;
       const coord = await resolveCoord(explicit, ctx);
       if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
       const stations = await fetchNearbyBikeStations(coord.lat, coord.lng);
       const placeMode = !!explicit || !!ctx.placeAnchor;
       const render = placeMode
@@ -167,12 +194,16 @@ export async function executeFunction(
     case "get_air_quality": {
       const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
       if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
       const air = await findAirQualityNear(coord.lat, coord.lng);
       return { data: { air }, render: { type: "air-quality", lat: coord.lat, lng: coord.lng }, source: src };
     }
     case "get_weather": {
       const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
       if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
       // 카드 없음 — 산문이 정본(시각 카드 정본은 "내 주변" 탭 LocalConditions).
       const weather = await findWeatherNear(coord.lat, coord.lng);
       return { data: { weather }, source: src };
@@ -201,6 +232,8 @@ export async function executeFunction(
       const dest = { lat: p.lat, lng: p.lng, name: p.name };
       const render = { type: "car-route" as const, dest };
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
+      const gated = coverageGate(ctx.userLocation);
+      if (gated) return gated;
       const briefing = ctx.dataLocale === "en" && hasNcpMapsKeys()
         ? await getCarRouteBriefingEn({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } })
         : await getCarRouteBriefing({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
@@ -215,6 +248,8 @@ export async function executeFunction(
       const dest = { lat: p.lat, lng: p.lng, name: p.name };
       const render = { type: "transit-route" as const, dest };
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
+      const gated = coverageGate(ctx.userLocation);
+      if (gated) return gated;
       const route = await getTransitRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
       return { data: { destination: p.name, route }, render, source: src };
     }
@@ -230,6 +265,8 @@ export async function executeFunction(
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
+      const gated = coverageGate(ctx.userLocation);
+      if (gated) return gated;
       const accessible = args.accessible === true;
       const briefing = await getWalkRoute({
         origin: ctx.userLocation,
