@@ -58,8 +58,14 @@ vi.mock("@/lib/providers/korail-facilities", () => ({
 vi.mock("@/lib/providers/seoul-metro-facilities", () => ({
   fetchSeoulMetroFacilities: vi.fn(async () => null),
 }));
-vi.mock("@/lib/providers/kakao-navi", () => ({
-  getCarRouteBriefing: vi.fn(async () => ({ steps: [], totalSeconds: 0, totalMeters: 0 })),
+vi.mock("@/lib/car-route", () => ({
+  getCarRoute: vi.fn(async () => ({
+    distanceMeters: 0,
+    durationSeconds: 0,
+    taxiFare: 0,
+    tollFare: 0,
+    guides: [],
+  })),
 }));
 vi.mock("@/lib/providers/ncp-directions", () => ({
   getCarRouteBriefingEn: vi.fn(async () => ({ steps: [], totalSeconds: 0, totalMeters: 0 })),

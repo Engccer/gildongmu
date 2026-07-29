@@ -24,8 +24,14 @@ vi.mock("@/lib/providers/air-quality", () => ({
     khai: 50, grade: "좋음", pm10: 20, pm25: 10, station: "테스트", distanceKm: 0.3,
   })),
 }));
-vi.mock("@/lib/providers/kakao-navi", () => ({
-  getCarRouteBriefing: vi.fn(async () => ({ steps: [], totalSeconds: 0, totalMeters: 0 })),
+vi.mock("@/lib/car-route", () => ({
+  getCarRoute: vi.fn(async () => ({
+    distanceMeters: 0,
+    durationSeconds: 0,
+    taxiFare: 0,
+    tollFare: 0,
+    guides: [],
+  })),
 }));
 vi.mock("@/lib/providers/ncp-directions", () => ({
   getCarRouteBriefingEn: vi.fn(async () => ({ steps: [], totalSeconds: 0, totalMeters: 0 })),
