@@ -3,6 +3,9 @@
     "title": "Gildongmu",
     "tagline": "Navigazione in Corea, accessibile a tutti"
   },
+  "common": {
+    "outOfCoverage": "Le funzionalità basate sulla posizione sono disponibili solo in Corea del Sud. La ricerca di luoghi, le informazioni sulle stazioni e gli itinerari restano disponibili."
+  },
   "nav": {
     "korean": "한국어",
     "english": "English",

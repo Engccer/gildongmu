@@ -3,6 +3,9 @@
     "title": "길동무",
     "tagline": "누구나 쓸 수 있는 대한민국 길찾기"
   },
+  "common": {
+    "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다."
+  },
   "nav": {
     "korean": "한국어",
     "english": "English",
