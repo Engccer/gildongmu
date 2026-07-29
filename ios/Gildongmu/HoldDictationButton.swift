@@ -305,7 +305,15 @@ struct HoldDictationButton: View {
             #if DEBUG
             chatFocusLog("holdmic shortTap idle → guide announce")
             #endif
-            AccessibilityNotification.Announcement(appLocalized("ios.voice.holdGuide")).post()
+            // [실험 계측] 통지는 게시되는데 VO가 발화하지 않는 실기기 회귀가
+            // 로그로 확인됐다(post() 자체는 실제 발화를 보장하지 않는 별개 계층).
+            // 활성화 직후 VO 자체 처리(활성화 피드백·포커스 갱신 발화)가 기본
+            // 우선순위 통지를 잠식하는 패턴으로 추정 — 이 통지는 사용자 활성화에
+            // 대한 직접 응답이라 고우선순위가 의미상으로도 정당하다(비요청 interrupt
+            // 아님). 단일 변수 실험이라 이 통지 한 곳만 바꾼다 — 다른 통지는 그대로.
+            var guide = AttributedString(appLocalized("ios.voice.holdGuide"))
+            guide.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(guide).post()
             // 비-VO 심사자용: 짧은 탭에 아무 가시 반응이 없다는 App Store 반려 원인 해소
             showHoldHint = true
             hintDismissTask?.cancel()
