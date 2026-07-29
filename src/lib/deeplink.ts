@@ -1,4 +1,5 @@
 import type { RouteEndpoints, RouteMode } from "./types";
+import { isInKorea } from "./coverage";
 
 /**
  * 네이버 지도 앱 딥링크(nmap:// URL Scheme) 생성.
@@ -11,17 +12,7 @@ import type { RouteEndpoints, RouteMode } from "./types";
  * 내비게이션은 이 딥링크로 네이버 지도 앱에 위임하는 것이 공식 경로다.
  */
 
-const LAT_RANGE = [31.43, 44.35] as const;
-const LNG_RANGE = [122.37, 132.0] as const;
-
-export function isInKorea(lat: number, lng: number): boolean {
-  return (
-    lat >= LAT_RANGE[0] &&
-    lat <= LAT_RANGE[1] &&
-    lng >= LNG_RANGE[0] &&
-    lng <= LNG_RANGE[1]
-  );
-}
+export { isInKorea };
 
 /**
  * 길찾기 딥링크 생성.

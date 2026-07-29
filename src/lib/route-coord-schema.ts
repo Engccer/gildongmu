@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isInKorea } from "@/lib/deeplink";
+import { isInKorea } from "@/lib/coverage";
 
 /**
  * "위도,경도" 문자열 → {lat,lng} (WGS84), 자동차·대중교통·도보 길찾기 라우트 공용.
