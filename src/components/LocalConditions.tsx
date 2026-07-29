@@ -3,6 +3,8 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { AirQuality as Air, Weather } from "@/lib/types";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { AirQualityBody } from "./AirQuality";
 
 /**
@@ -14,11 +16,18 @@ import { AirQualityBody } from "./AirQuality";
  */
 export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
   const t = useTranslations("weather");
+  const tCommon = useTranslations("common");
   const [weather, setWeather] = useState<Weather | null>(null);
   const [air, setAir] = useState<Air | null>(null);
+  // 클라 bbox 선분기(props)와 서버 마커 이중 방어를 OR로 합친다 — 둘 중 하나만
+  // 걸려도 커버리지 밖으로 취급(경계 오차 방어). lat/lng는 이 컴포넌트 마운트
+  // 중 사실상 불변이라 재설정 없이 한 번 감지되면 유지된다.
+  const [serverOutOfCoverage, setServerOutOfCoverage] = useState(false);
   const headingId = useId();
+  const outOfCoverage = !isInKorea(lat, lng) || serverOutOfCoverage;
 
   useEffect(() => {
+    if (!isInKorea(lat, lng)) return;
     const controller = new AbortController();
     let active = true;
     (async () => {
@@ -32,6 +41,10 @@ export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
           return;
         }
         const body = await res.json();
+        if (isOutOfCoverageBody(body)) {
+          if (active) setServerOutOfCoverage(true);
+          return;
+        }
         if (active) setWeather((body.weather as Weather) ?? null);
       } catch {
         if (active) setWeather(null);
@@ -44,6 +57,7 @@ export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
   }, [lat, lng]);
 
   useEffect(() => {
+    if (!isInKorea(lat, lng)) return;
     const controller = new AbortController();
     let active = true;
     (async () => {
@@ -57,6 +71,10 @@ export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
           return;
         }
         const body = await res.json();
+        if (isOutOfCoverageBody(body)) {
+          if (active) setServerOutOfCoverage(true);
+          return;
+        }
         if (active) setAir((body.air as Air) ?? null);
       } catch {
         if (active) setAir(null);
@@ -67,6 +85,12 @@ export function LocalConditions({ lat, lng }: { lat: number; lng: number }) {
       controller.abort();
     };
   }, [lat, lng]);
+
+  // 커버리지 밖은 오류가 아니다 — 일반 본문 텍스트 한 줄로만 안내(별도 region 없음,
+  // 이 컴포넌트는 버튼 없이 조용히 나타나는 자동 등장 카드라 기존 live 채널이 없다).
+  if (outOfCoverage) {
+    return <p className="mt-3 text-sm">{tCommon("outOfCoverage")}</p>;
+  }
 
   if (!weather && !air) return null;
 

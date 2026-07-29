@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail, BarrierFreePlace } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
@@ -15,6 +17,7 @@ type Status =
   | { kind: "empty" }
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
+  | { kind: "outOfCoverage" }
   | { kind: "done"; places: BarrierFreePlace[]; at: string };
 
 /** 캐시 값: 로딩 중 / 상세 객체 / 없음(에러 또는 contentId 미등록) */
@@ -47,6 +50,7 @@ const REVEAL_STEP = 10;
 export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) {
   const t = useTranslations("barrierFreeNearby");
   const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   /** contentId → 상세 캐시 (한 번 가져온 항목은 재요청 안 함) */
   const [detailCache, setDetailCache] = useState<Record<string, DetailEntry>>({});
@@ -92,6 +96,10 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
         { cache: "no-store" },
       );
       const body = await res.json();
+      if (isOutOfCoverageBody(body)) {
+        setStatus({ kind: "outOfCoverage" });
+        return;
+      }
       if (!res.ok) {
         setStatus({ kind: "error" });
         return;
@@ -125,6 +133,11 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
     // 팝업 없이 재사용한다(매 버튼마다 getCurrentPosition을 부르지 않음).
     void awaitGeolocation({ force }).then((g) => {
       if (g.status === "ready") {
+        if (!isInKorea(g.coords.lat, g.coords.lng)) {
+          setStatus({ kind: "outOfCoverage" });
+          done();
+          return;
+        }
         void fetchAt(g.coords.lat, g.coords.lng).finally(done);
       } else {
         // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
@@ -230,9 +243,11 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
               ? status.reason === "denied"
                 ? t("geoDenied")
                 : t("geoUnsupported")
-              : status.kind === "done"
-                ? t("ready")
-                : "";
+              : status.kind === "outOfCoverage"
+                ? tCommon("outOfCoverage")
+                : status.kind === "done"
+                  ? t("ready")
+                  : "";
 
   return (
     <div className="mt-3">
