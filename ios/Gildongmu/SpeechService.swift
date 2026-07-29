@@ -89,7 +89,7 @@ final class SpeechService {
         guard gen == generation else { return }
 
         do {
-            try await beginListening()
+            try await beginListening(gen: gen)
             // 모델 다운로드·analyzer 기동 대기 중 cancel()이 다녀갔으면, 방금 만든
             // 리소스를 cancel()과 같은 절차로 폐기하고 무음 종료(시작음·phase 갱신 없음).
             guard gen == generation else {
@@ -102,13 +102,20 @@ final class SpeechService {
                 return
             }
             phase = .listening(partial: "")
+            // 상태 전이가 만든 라벨 변경(준비 중 → 받아쓰기)을 VoiceOver가 읽기 시작하면
+            // 그 발화가 이미 뜨거워진 마이크에 섞인다(2026-07-27 "받아" 혼입과 동계열).
+            // 마이크 hot 직전 차단(beginListening 말미)만으로는 이 전이를 못 덮으므로,
+            // 청취 진입 시점에도 한 번 끊는다 — 홀드·탭·단축어 전 경로 공통 지점.
+            interruptVoiceOverSpeech()
             notify(soundID: 1113) // 녹음 시작음
         } catch {
+            await teardown()
+            // 취소된 세션의 뒤늦은 실패는 사용자에게 일어난 사건이 아니다 — 화면도
+            // 로그도 건드리지 않는다(취소 자체가 던지는 CancellationError 소음 차단).
+            guard gen == generation else { return }
             // 오류를 버리지 않는다: 로그에 원인, 화면에 종별 문구(3-state 정신 —
             // "권한 거부"·"로케일 미지원"·"모델 준비 실패"·"오디오 사용 불가"는 다른 사건).
             speechLog.error("받아쓰기 시작 실패: \(String(describing: error), privacy: .public)")
-            await teardown()
-            guard gen == generation else { return }
             lastError = error as? SpeechError
             phase = .failed
         }
@@ -157,7 +164,9 @@ final class SpeechService {
         if phase == .denied || phase == .failed { phase = .idle }
     }
 
-    private func beginListening() async throws {
+    /// `gen`은 호출 시점의 취소 세대. 상태를 화면에 내보내는 지점에서 이 세션이 아직
+    /// 유효한지 확인하는 데 쓴다(취소된 세션이 죽은 뒤 UI를 되살리지 못하게).
+    private func beginListening(gen: Int) async throws {
         finalizedText = ""
 
         let locale = Locale(identifier: AppLanguage.speechLocaleIdentifier)
@@ -179,6 +188,12 @@ final class SpeechService {
         let installed = await SpeechTranscriber.installedLocales
         let target = locale.identifier(.bcp47)
         if !installed.contains(where: { $0.identifier(.bcp47) == target }) {
+            // 취소된 세션은 여기서 끝낸다: cancel()이 phase를 .idle로 되돌린 뒤 이미
+            // 죽은 이 호출이 .preparing을 재기입하면, 완료 시 세대 가드가 phase를
+            // 건드리지 않으므로 아무도 내려 주지 않는 영구 고착이 된다(isStarting이
+            // true로 남아 탭·홀드 전부 무반응, reset()도 .denied/.failed만 봐서 미복구).
+            // MainActor 직렬이라 이 검사와 다음 줄 대입 사이엔 아무도 끼어들 수 없다.
+            guard gen == generation else { throw CancellationError() }
             phase = .preparing
             do {
                 if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
