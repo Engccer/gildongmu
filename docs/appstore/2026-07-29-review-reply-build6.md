@@ -1,4 +1,4 @@
-# App Review 회신 초안 — 1.0 (5) 재제출 (Submission 28eca73c, Guideline 2.1(a))
+# App Review 회신 초안 — 1.0 (6) 재제출 (Submission 28eca73c, Guideline 2.1(a))
 
 > 발송 채널: App Store Connect > App Review 페이지 > Reply. 발송 전 위원장 승인 필수.
 
@@ -10,7 +10,7 @@ Thank you for the detailed feedback and the attached screenshots. They helped us
 
 Gildongmu is a South Korea regional service. All of its data sources (Korean government open-data APIs, Kakao and Naver local search, Korea Meteorological Administration weather, AirKorea air quality, and Korean routing providers) cover South Korea only. During the review, the device's location was outside South Korea, so location-based screens (Weather and air quality, Where am I, nearby lists) had no data to show. In build 4 those screens displayed generic failure messages, which understandably looked like loading bugs. The dictation issue had a similar root: the microphone defaulted to a press-and-hold gesture that gave no visible feedback on a short tap, and first-time speech-model preparation happened silently.
 
-Build 5 (1.0.0 (5)) addresses all reported issues:
+Build 6 (1.0.0 (6)) addresses all reported issues:
 
 1. Out-of-coverage handling. When the current location is outside South Korea, every location-based feature now shows a clear informational notice instead of an error: "Location-based features are available within South Korea. Place search, station info, and directions remain available." The rest of the app remains fully functional from anywhere in the world: place and address search (for example "Gyeongbokgung"), station facilities and timetables, directions preview between Korean locations, and per-place chat.
 
@@ -19,6 +19,8 @@ Build 5 (1.0.0 (5)) addresses all reported issues:
 3. The misleading "Failed to get current location" message was replaced. It now appears only for genuine location permission or acquisition failures; out-of-coverage and server issues each have their own accurate messages.
 
 To verify during review, with the device located outside South Korea: open the Nearby tab and enter any item — each shows the coverage notice above rather than an error; search for a Korean place such as "Gyeongbokgung" and open its details; request Directions between Korean locations. Tap the microphone button in Search or Chat to see the tap-toggle dictation flow.
+
+We have attached a short demo video recorded at a Seoul location showing the location-based features (Nearby, Weather and air quality, Where am I, real-time transit arrivals) working with live data inside the service region.
 
 Thank you again for the report — it helped us make the app communicate its service region clearly.
 
