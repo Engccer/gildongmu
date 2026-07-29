@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { activeProviderName } from "@/lib/providers/places";
 import {
   hasKakaoKey,
+  hasCarRouteKey,
   hasDataGoKrKey,
   hasSeoulOpenDataKey,
   hasSeoulSubwayRealtimeKey,
@@ -27,7 +28,7 @@ export default async function HomePage({
     <>
       <PlaceSearch
         isMockMode={activeProviderName() === "mock"}
-        canBriefCarRoute={hasKakaoKey()}
+        canBriefCarRoute={hasCarRouteKey()}
         canShowBus={hasDataGoKrKey()}
         canShowBike={hasSeoulOpenDataKey()}
         canShowSubway={hasSeoulSubwayRealtimeKey()}
