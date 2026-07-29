@@ -268,31 +268,37 @@ export function TransitRouteBriefing({
   );
 }
 
-/** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 lang="ko". */
+/** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 lang="ko".
+    includeSummary=false는 대안 펼침 전용 — 펼침 버튼 라벨이 이미 요약이라
+    본문에서 재낭독하지 않는다(인접 중복 금지). */
 export function TransitRouteResult({
   route,
   t,
   locale,
   dest,
+  includeSummary = true,
 }: {
   route: TransitRoute;
   t: ReturnType<typeof useTranslations<"route.transit">>;
   locale: string;
   dest: string;
+  includeSummary?: boolean;
 }) {
   let boardSeen = 0;
   return (
     <>
-      <p className="mt-1 text-sm">
-        {t("summary", {
-          minutes: route.summary.totalMinutes,
-          fare: route.summary.fare.toLocaleString(locale),
-          transfers: route.summary.transfers,
-        })}
-        {route.summary.walkMinutes > 0 && (
-          <> {t("walkSummary", { minutes: route.summary.walkMinutes })}</>
-        )}
-      </p>
+      {includeSummary && (
+        <p className="mt-1 text-sm">
+          {t("summary", {
+            minutes: route.summary.totalMinutes,
+            fare: route.summary.fare.toLocaleString(locale),
+            transfers: route.summary.transfers,
+          })}
+          {route.summary.walkMinutes > 0 && (
+            <> {t("walkSummary", { minutes: route.summary.walkMinutes })}</>
+          )}
+        </p>
+      )}
       <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
         {route.legs.map((leg, i) => {
           if (leg.mode === "walk") {

@@ -357,6 +357,9 @@ struct DirectionsTabView: View {
     @State private var model: DirectionsModel
     @State private var searchTarget: DirectionsFieldTarget?
     @AccessibilityFocusState private var focusedModeHeading: DirectionsMode?
+    /// 펼쳐진 대중교통 대안 인덱스(웹 expandedAlts 동형). 새 조회 결과는 다른
+    /// 경로들이므로 resultsRevision 변화 시 초기화한다.
+    @State private var expandedAlts: Set<Int> = []
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -410,7 +413,10 @@ struct DirectionsTabView: View {
                 }
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
-            .onChange(of: model.resultsRevision) { focusedModeHeading = model.results?.firstSuccess }
+            .onChange(of: model.resultsRevision) {
+                focusedModeHeading = model.results?.firstSuccess
+                expandedAlts = []
+            }
             // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
             .onChange(of: model.walkRefetchRevision) { focusedModeHeading = .walk }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
@@ -494,17 +500,27 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 수단 섹션 본문. 대중교통은 추천 경로 전체 + 대안 요약 1행씩(legs 미표시,
-    /// 미니멀 — 웹 DirectionsView 동형. ODsay 상한이 대안 2개라 상시 노출).
+    /// 수단 섹션 본문. 대중교통은 추천 경로 전체 + 대안은 요약 라벨 DisclosureGroup
+    /// (웹 disclosure 버튼 동형) — 펼치면 추천 수준의 구간 상세. 라벨이 이미 요약이라
+    /// 펼침 본문은 구간만(includeSummary=false, 인접 중복 금지).
     @ViewBuilder
     private func outcomeRows(_ mode: DirectionsMode, _ outcome: DirectionsModeOutcome?) -> some View {
         switch outcome {
         case .transit(let result):
             TransitRouteRows(route: result.recommended)
             ForEach(Array(result.alternatives.enumerated()), id: \.offset) { i, route in
-                Text(joinText(
-                    appLocalized("route.transit.alternativeHeading", String(i + 1)),
-                    transitSummaryText(route.summary)))
+                DisclosureGroup(isExpanded: Binding(
+                    get: { expandedAlts.contains(i) },
+                    set: { expanded in
+                        if expanded { expandedAlts.insert(i) } else { expandedAlts.remove(i) }
+                    }
+                )) {
+                    TransitRouteRows(route: route, includeSummary: false)
+                } label: {
+                    Text(joinText(
+                        appLocalized("route.transit.alternativeHeading", String(i + 1)),
+                        transitSummaryText(route.summary)))
+                }
             }
         case .walk(let briefing): WalkRouteRows(briefing: briefing)
         case .car(let briefing): CarRouteRows(briefing: briefing)

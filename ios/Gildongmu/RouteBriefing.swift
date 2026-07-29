@@ -33,11 +33,16 @@ struct CarRouteRows: View {
 }
 
 /// 대중교통 결과 행들(요약 1행+구간들). 소비 화면이 heading·섹션을 소유한다.
+/// includeSummary=false는 대안 펼침 전용 — DisclosureGroup 라벨이 이미 요약이라
+/// 본문에서 재낭독하지 않는다(인접 중복 금지, 웹 TransitRouteResult 동형).
 struct TransitRouteRows: View {
     let route: TransitRoute
+    var includeSummary = true
 
     var body: some View {
-        Text(transitSummaryText(route.summary))
+        if includeSummary {
+            Text(transitSummaryText(route.summary))
+        }
         ForEach(Array(route.legs.enumerated()), id: \.offset) { _, leg in
             Text(transitLegText(leg))
         }
