@@ -6,7 +6,7 @@
 
 Hello,
 
-Thank you for the detailed feedback and the attached screenshots. They helped us identify the root cause precisely.
+Thank you for the detailed feedback and the attached screenshots. They helped me identify the root cause precisely.
 
 Gildongmu is a South Korea regional service. All of its data sources (Korean government open-data APIs, Kakao and Naver local search, Korea Meteorological Administration weather, AirKorea air quality, and Korean routing providers) cover South Korea only. During the review, the device's location was outside South Korea, so location-based screens (Weather and air quality, Where am I, nearby lists) had no data to show. In build 4 those screens displayed generic failure messages, which understandably looked like loading bugs. The dictation issue had a similar root: the microphone defaulted to a press-and-hold gesture that gave no visible feedback on a short tap, and first-time speech-model preparation happened silently.
 
@@ -20,9 +20,9 @@ Build 6 (1.0.0 (6)) addresses all reported issues:
 
 To verify during review, with the device located outside South Korea: open the Nearby tab and enter any item — each shows the coverage notice above rather than an error; search for a Korean place such as "Gyeongbokgung" and open its details; request Directions between Korean locations. Tap the microphone button in Search or Chat to see the tap-toggle dictation flow.
 
-We have attached a short demo video recorded at a Seoul location showing the location-based features (Nearby, Weather and air quality, Where am I, real-time transit arrivals) working with live data inside the service region.
+I have attached a short demo video recorded at a Seoul location showing the location-based features (Nearby, Weather and air quality, Where am I, real-time transit arrivals) working with live data inside the service region.
 
-Thank you again for the report — it helped us make the app communicate its service region clearly.
+Thank you again for the report. It helped me make the app communicate its service region clearly.
 
 Best regards,
 Hunyong Kim
