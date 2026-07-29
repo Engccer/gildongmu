@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasKakaoKey, hasNcpMapsKeys } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
 import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
@@ -9,6 +10,8 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
  * 자동차 경로 텍스트 브리핑 프록시.
  *
  * 좌표 파라미터는 도메인 표준대로 "위도,경도" 순서를 받는다.
+ * 좌표는 전지구 범위로 형식만 가드하고, 출발·도착 어느 한쪽이든 한국 밖이면
+ * 200 { outOfCoverage: true } 마커로 응답한다(nearby 라우트와 통일).
  * 경로 브리핑은 실데이터만 의미가 있으므로 mock 폴백이 없다 —
  * 어떤 provider도 못 쓰면 503으로 정직하게 알린다 (가짜 실데이터 금지 원칙).
  *
@@ -43,6 +46,11 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+
+  const { origin, dest } = parsed.data;
+  if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
 
   try {
