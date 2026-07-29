@@ -84,7 +84,11 @@ export function normalizeKakaoWalkRoute(
         .map(([lng, lat]) => ({ lat, lng }));
       steps.push({
         description,
-        ...(Number.isFinite(distance) ? { distanceMeters: distance } : {}),
+        // iOS가 distanceMeters를 비옵셔널 Int로 엄격 디코딩한다 — 카카오가 소수를
+        // 줄 가능성을 여기서 반올림해 차단(스키마 계약, 유한성 검사 후 적용).
+        ...(typeof distance === "number" && Number.isFinite(distance)
+          ? { distanceMeters: Math.round(distance) }
+          : {}),
         ...(pathCoords.length > 0 ? { pathCoords } : {}),
       });
     }
@@ -92,7 +96,12 @@ export function normalizeKakaoWalkRoute(
   if (steps.length === 0) {
     throw new Error("카카오 도보 경로 정규화 실패: 안내 단계 0개");
   }
-  return { distanceMeters, durationSeconds, steps };
+  // 총 거리·시간도 동일 계약으로 정수 보장(iOS Int 디코딩 방어).
+  return {
+    distanceMeters: Math.round(distanceMeters),
+    durationSeconds: Math.round(durationSeconds),
+    steps,
+  };
 }
 
 /**

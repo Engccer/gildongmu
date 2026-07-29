@@ -45,6 +45,18 @@ describe("normalizeKakaoWalkRoute", () => {
     });
   });
 
+  it("소수 거리·시간은 정수로 반올림한다(iOS 비옵셔널 Int 디코딩 방어)", () => {
+    const res = makeResponse();
+    res.route!.properties = { totalDistance: 645.6, totalTime: 644.4 };
+    res.route!.legs = [
+      { steps: [{ properties: { guidance: "안내", distance: 34.5 }, path: { points: [] } }] },
+    ];
+    const briefing = normalizeKakaoWalkRoute(res);
+    expect(briefing?.distanceMeters).toBe(646);
+    expect(briefing?.durationSeconds).toBe(644);
+    expect(briefing?.steps[0].distanceMeters).toBe(35);
+  });
+
   it("다중 leg를 순서대로 평탄화한다", () => {
     const res = makeResponse();
     res.route!.legs = [
