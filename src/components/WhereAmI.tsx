@@ -8,6 +8,8 @@ import { buildLocationNarrative } from "@/lib/where-am-i";
 import { whereAmIToPlace } from "@/lib/where-am-i-place";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 import { usePlaceChat } from "@/hooks/usePlaceChat";
 import { ChatOverlay } from "./chat/ChatOverlay";
@@ -19,6 +21,7 @@ type Status =
   | { kind: "empty" }
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
+  | { kind: "outOfCoverage" }
   | { kind: "done"; data: WhereAmIData; coord: Coord; at: string };
 
 /**
@@ -31,6 +34,7 @@ type Status =
 export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
   const t = useTranslations("whereAmI");
   const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
@@ -46,6 +50,10 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
         cache: "no-store",
       });
       const body = await res.json();
+      if (isOutOfCoverageBody(body)) {
+        setStatus({ kind: "outOfCoverage" });
+        return;
+      }
       if (!res.ok || !body.data) {
         setStatus({ kind: res.ok ? "empty" : "error" });
         return;
@@ -71,6 +79,11 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
     setStatus({ kind: "locating" });
     void awaitGeolocation({ force }).then((g) => {
       if (g.status === "ready") {
+        if (!isInKorea(g.coords.lat, g.coords.lng)) {
+          setStatus({ kind: "outOfCoverage" });
+          done();
+          return;
+        }
         void fetchAt(g.coords.lat, g.coords.lng).finally(done);
       } else {
         // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
@@ -136,7 +149,9 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
               ? status.reason === "denied"
                 ? t("geoDenied")
                 : t("geoUnsupported")
-              : "";
+              : status.kind === "outOfCoverage"
+                ? tCommon("outOfCoverage")
+                : "";
 
   const narrative =
     status.kind === "done" ? buildLocationNarrative(status.data) : null;

@@ -20,6 +20,7 @@ import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { normalizeVoiceQuery } from "@/lib/format";
 import { requestLocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
 import {
   clearRecentQueries,
   loadRecentQueries,
@@ -325,10 +326,13 @@ export function PlaceSearch({
       // LanguageSwitcher가 ?q= 변경을 즉시 반영하도록 통지(popstate는 안 뜸).
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       try {
-        // 좌표가 있으면 거리순 정렬("맥도날드" 전국 체인도 근처 지점 상위).
-        const coordQuery = userCoords
-          ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
-          : "";
+        // 좌표가 있으면 거리순 정렬("맥도날드" 전국 체인도 근처 지점 상위). 커버리지
+        // 밖 좌표는 블렌딩 파라미터 자체를 생략(검색은 계속 진행 — 좌표 없이도
+        // 카카오 정확도순 검색은 성립한다).
+        const coordQuery =
+          userCoords && isInKorea(userCoords.lat, userCoords.lng)
+            ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
+            : "";
         const res = await fetch(
           `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
         );

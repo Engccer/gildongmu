@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
 type Status =
@@ -14,6 +16,7 @@ type Status =
   | { kind: "empty" }
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
+  | { kind: "outOfCoverage" }
   | { kind: "done"; stations: BikeStation[]; at: string };
 
 /**
@@ -30,6 +33,7 @@ export function BikeStations(
 ) {
   const t = useTranslations("bike");
   const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const inFlightRef = useRef(false);
@@ -44,6 +48,10 @@ export function BikeStations(
         cache: "no-store",
       });
       const body = await res.json();
+      if (isOutOfCoverageBody(body)) {
+        setStatus({ kind: "outOfCoverage" });
+        return;
+      }
       if (!res.ok) {
         setStatus({ kind: "error" });
         return;
@@ -82,6 +90,11 @@ export function BikeStations(
     setStatus({ kind: "locating" });
     void awaitGeolocation({ force }).then((g) => {
       if (g.status === "ready") {
+        if (!isInKorea(g.coords.lat, g.coords.lng)) {
+          setStatus({ kind: "outOfCoverage" });
+          done();
+          return;
+        }
         void fetchAt(g.coords.lat, g.coords.lng).finally(done);
       } else {
         // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
@@ -152,9 +165,11 @@ export function BikeStations(
               ? status.reason === "denied"
                 ? t("geoDenied")
                 : t("geoUnsupported")
-              : status.kind === "done"
-                ? t("ready")
-                : "";
+              : status.kind === "outOfCoverage"
+                ? tCommon("outOfCoverage")
+                : status.kind === "done"
+                  ? t("ready")
+                  : "";
 
   return (
     <div className="mt-3">

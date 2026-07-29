@@ -15,6 +15,8 @@ import type {
 } from "@/lib/types";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { joinText, normalizeVoiceQuery } from "@/lib/format";
 import {
@@ -32,10 +34,14 @@ import { VoiceRecordButton } from "./VoiceRecordButton";
 
 type ModeKey = "transit" | "walk" | "car";
 
-/** 수단 하나의 조회 결과 3-state: 성공 ≠ 경로 없음 ≠ 오류(게이트 미노출은 렌더 자체가 없음). */
+/** 수단 하나의 조회 결과 3-state: 성공 ≠ 경로 없음 ≠ 오류(게이트 미노출은 렌더 자체가 없음).
+    outOfCoverage는 서버 마커 이중 방어용 — origin/dest 중 하나가 한국 밖일 때(주로
+    ?dir= 딥링크로 좌표를 직접 조작한 경로)만 도달, 발견 시 폼 전체를 outOfCoverage
+    phase로 전환한다(개별 수단 렌더 아님). */
 type ModeOutcome =
   | { kind: "empty" }
   | { kind: "error" }
+  | { kind: "outOfCoverage" }
   | { kind: "done"; mode: "transit"; result: TransitData }
   | { kind: "done"; mode: "walk"; result: WalkRouteBriefing }
   | { kind: "done"; mode: "car"; result: CarRouteBriefing };
@@ -58,6 +64,7 @@ type Phase =
   | { kind: "locating" }
   | { kind: "loading" }
   | { kind: "geoError" }
+  | { kind: "outOfCoverage" }
   | { kind: "settled"; successCount: number };
 
 function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
@@ -111,12 +118,15 @@ async function fetchMode(
   if (mode === "car") {
     const res = await fetch(`/api/route/car?${qs}&lang=${lang}`, { signal });
     if (!res.ok) return { kind: "error" };
-    return { kind: "done", mode, result: (await res.json()) as CarRouteBriefing };
+    const body = await res.json();
+    if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
+    return { kind: "done", mode, result: body as CarRouteBriefing };
   }
   const accessibleQs = mode === "walk" && walkAccessible ? "&accessible=true" : "";
   const res = await fetch(`/api/route/${mode}?${qs}${accessibleQs}`, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown };
+  if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
   if (!body.result) return { kind: "empty" };
   return mode === "transit"
     ? { kind: "done", mode, result: body.result as TransitData }
@@ -153,6 +163,7 @@ export function DirectionsView({
   const tTransit = useTranslations("route.transit");
   const tPed = useTranslations("route.pedestrian");
   const tCar = useTranslations("route.briefing");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
 
   // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
@@ -360,6 +371,13 @@ export function DirectionsView({
           setPhase({ kind: "geoError" });
           return;
         }
+        // cur 토큰 해석 시점 선분기 — 현재 위치가 한국 밖이면 조회 자체를 중단한다
+        // (수단별 fetch를 하나도 쏘지 않음). 오류가 아니라 커버리지 안내이므로
+        // 일반 phase로 표기.
+        if (!isInKorea(geo.coords.lat, geo.coords.lng)) {
+          setPhase({ kind: "outOfCoverage" });
+          return;
+        }
         cur = geo.coords;
         // 측위에 성공했으니 라벨 병기 주소도 그 좌표로 동기화(표시 전용 fire-and-forget,
         // 실패·매칭 없음은 null로 정직하게 비운다 — 옛 좌표의 주소를 남기지 않는다).
@@ -386,6 +404,13 @@ export function DirectionsView({
         const s = settled[i];
         outcomes[m] = s.status === "fulfilled" ? s.value : { kind: "error" };
       });
+      // 서버 마커 이중 방어 — "cur" 선분기를 통과했어도 place 종단점(검색 선택 또는
+      // ?dir= 딥링크로 직접 조작된 좌표)이 한국 밖일 수 있다. 한 수단이라도 감지하면
+      // 나머지 수단 결과를 버리고 폼 전체를 outOfCoverage로 전환한다.
+      if (activeModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
+        setPhase({ kind: "outOfCoverage" });
+        return;
+      }
       const successes = activeModes.filter((m) => outcomes[m]?.kind === "done");
       setResults({
         destLabel: to.kind === "current" ? currentLabel : to.label,
@@ -432,7 +457,15 @@ export function DirectionsView({
       ]);
       clearTimeout(timer);
       const s = settled[0];
-      const outcome: ModeOutcome = s.status === "fulfilled" ? s.value : { kind: "error" };
+      // lastCoordsRef는 이미 outOfCoverage 검증을 통과한 좌표라 이 토글 재조회에서
+      // 서버 마커가 다시 뜰 일은 사실상 없다 — 그래도 도달 시 빈 렌더 대신 오류로
+      // 안내한다(walk 섹션의 outcome 스위치가 outOfCoverage 분기를 갖지 않으므로).
+      const outcome: ModeOutcome =
+        s.status === "fulfilled"
+          ? s.value.kind === "outOfCoverage"
+            ? { kind: "error" }
+            : s.value
+          : { kind: "error" };
       setResults((prev) =>
         prev ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome } } : prev,
       );
@@ -455,7 +488,9 @@ export function DirectionsView({
         : t("allFailed")
       : phase.kind === "idle"
         ? ""
-        : t(phase.kind);
+        : phase.kind === "outOfCoverage"
+          ? tCommon("outOfCoverage")
+          : t(phase.kind);
   const liveMessage = notice || phaseMessage;
 
   function modeHeading(mode: ModeKey): string {
