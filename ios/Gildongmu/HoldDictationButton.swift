@@ -105,7 +105,7 @@ struct HoldDictationButton: View {
         // 가시 안내는 overlay 이탈(음수 offset)이 아니라 정상 레이아웃 흐름에 둔다 —
         // 검색·길찾기 사용처는 List 행이라 행 경계를 벗어나는 오버레이가 잘린다(실측).
         VStack(alignment: .leading, spacing: 2) {
-            micRow(title: holdLabel)
+            micRow(title: appLocalized("ios.voice.hold"))
             if showHoldHint {
                 // 비-VO 사용자용 가시 안내(VO는 handleTap의 polite 통지가 담당 —
                 // 이중 낭독 금지를 위해 이 Text는 접근성에서 숨긴다)
@@ -124,18 +124,18 @@ struct HoldDictationButton: View {
             )
         }
         .accessibilityElement()
-        .accessibilityLabel(holdLabel)
+        .accessibilityLabel(appLocalized("ios.voice.hold"))
         .accessibilityHint(hint)
         .accessibilityAddTraits(.isButton)
-    }
-
-    /// 홀드 모드 라벨. 모델 다운로드 대기(.preparing)만 상태를 알린다 — 녹음이 시작되기
-    /// 전 구간이라 "녹음 중 라벨 불변"(헌장 §6) 계약과 충돌하지 않고, 침묵한 대기가
-    /// 무반응으로 읽히는 것이 반려 원인이었다.
-    private var holdLabel: String {
-        speech.phase == .preparing
-            ? appLocalized("ios.voice.preparing")
-            : appLocalized("ios.voice.hold")
+        // 준비 중(모델 다운로드)은 통지로만 알린다. 라벨을 "음성 인식 준비 중"으로
+        // 바꿨다가 되돌리면 그 되돌림 재낭독이 다음 렌더 패스에서 생성돼 이미 뜨거워진
+        // 마이크에 실린다(인터럽트는 그 시점 큐를 비울 뿐 이후 발화를 막지 못한다 —
+        // 리뷰 재판정 2026-07-29). 세션 중 라벨 불변 계약을 지키고, 통지는 마이크가
+        // 뜨거워지기 전인 .preparing 진입 시점에 1회만 낸다. 비-VO 신호는 ProgressView.
+        .onChange(of: speech.phase == .preparing) { _, isPreparing in
+            guard isPreparing else { return }
+            AccessibilityNotification.Announcement(appLocalized("ios.voice.preparing")).post()
+        }
     }
 
     /// 클래식 탭 토글(73fb4e7 이전 계약 복원): 탭=시작, 재탭=정지·전달. 라벨 전환이
