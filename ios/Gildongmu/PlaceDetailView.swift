@@ -42,6 +42,10 @@ struct PlaceDetailView<DomainSection: View>: View {
                     // 인터랙티브 요소는 별도 객체가 정상(합치지 말 것)
                     Link(appLocalized("ios.place.callLine", phone), destination: telURL)
                 }
+                // 홈페이지(네이버 보강 등 link 보유 장소만, 웹 RouteLinks place.link 미러)
+                if let link = place.link, let linkURL = URL(string: link) {
+                    Link(appLocalized("place.detailPage"), destination: linkURL)
+                }
                 Button(appLocalized("placeChat.launch")) { isChatPresented = true }
             }
 

@@ -27,7 +27,8 @@ private let bucketPatterns: [(String, String)] = [
 ]
 
 /// 카테고리 문자열을 공통 버킷 키로 매핑. 미매칭은 "other".
-private func categoryOf(_ category: String) -> String {
+/// internal: PlaceChatPrompts(장소 유형별 추천 질문)도 food 판별에 재사용.
+func categoryOf(_ category: String) -> String {
     for (bucket, pattern) in bucketPatterns {
         if category.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil {
             return bucket

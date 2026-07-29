@@ -15,12 +15,33 @@ struct ChatView: View {
         _model = State(initialValue: ChatModel(place: place))
     }
 
+    /// 빈 화면 추천 질문(웹 placeChatPrompts 미러): 장소 성격(역/음식/일반)에 맞는
+    /// 예시 3개. 언어 전환 대응을 위해 computed(ChatTabView 관례 — static 굳힘 금지).
+    private var suggestions: [String] {
+        guard let place = model.place else { return [] }
+        return placeChatPromptKeys(place).map { appLocalized($0) }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if consentGranted {
                     ChatConversationView(model: model, cancelsOnDisappear: true,
-                                         focusDraftOnAppear: $justGranted) { EmptyView() }
+                                         focusDraftOnAppear: $justGranted) {
+                        // 각 버튼은 독립 접근성 객체(정상). 탭=즉시 전송, 첫 전송 후 소멸
+                        // (ChatTabView suggestionList 동형).
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(suggestions, id: \.self) { suggestion in
+                                Button {
+                                    model.send(suggestion)
+                                } label: {
+                                    Text(suggestion)
+                                        .frame(minHeight: 44)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                    }
                 } else {
                     ChatConsentView {
                         justGranted = true
