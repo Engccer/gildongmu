@@ -165,15 +165,24 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations().some((d) => d.name === "get_station_facilities")).toBe(false);
   });
 
-  // get_car_route — KAKAO_REST_API_KEY 게이트
-  it("카카오 키 있으면 get_car_route 노출", async () => {
-    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+  // get_car_route — hasCarRouteKey(TMAP_APP_KEY || KAKAO_REST_API_KEY) 게이트
+  it("Tmap 키만 있어도 get_car_route 노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", undefined);
+    vi.stubEnv("TMAP_APP_KEY", "t");
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(true);
   });
 
-  it("카카오 키 없으면 get_car_route 미노출", async () => {
+  it("카카오 키만 있어도 get_car_route 노출", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    vi.stubEnv("TMAP_APP_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(true);
+  });
+
+  it("카카오·Tmap 키 둘 다 없으면 get_car_route 미노출", async () => {
     vi.stubEnv("KAKAO_REST_API_KEY", undefined);
+    vi.stubEnv("TMAP_APP_KEY", undefined);
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_car_route")).toBe(false);
   });

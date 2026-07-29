@@ -52,7 +52,9 @@ export function sourceFor(
     case "get_station_facilities":
       return [KORAIL, SEOUL_METRO];
     case "get_car_route":
-      return ctx.dataLocale === "en" ? [NCP] : [KAKAO_MOBILITY];
+      // 기본 Tmap·폴백 카카오모빌리티 — 응답이 어느 쪽에서 왔는지 서비스가
+      // 노출하지 않으므로(스키마 불변 계약) 두 제공처를 정직하게 병기.
+      return ctx.dataLocale === "en" ? [NCP] : [TMAP, KAKAO_MOBILITY];
     case "get_transit_route":
       return [ODSAY];
     case "get_walk_route":

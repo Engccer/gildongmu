@@ -8,6 +8,7 @@ import {
   hasSeoulOpenDataKey,
   hasOdsayKey,
   hasWalkRouteKey,
+  hasCarRouteKey,
   hasPerplexityKey,
 } from "@/lib/env";
 
@@ -202,7 +203,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
-    gate: hasKakaoKey,
+    gate: hasCarRouteKey,
     declaration: {
       name: "get_car_route",
       description:

@@ -13,8 +13,9 @@ describe("sourceFor", () => {
       { label: "source.tourapi" },
     ]);
   });
-  it("자동차 경로는 ko=카카오모빌리티, en=NCP", () => {
+  it("자동차 경로는 ko=Tmap·카카오모빌리티 병기, en=NCP", () => {
     expect(sourceFor("get_car_route", { dataLocale: "ko" })).toEqual([
+      { label: "source.tmap" },
       { label: "source.kakaomobility" },
     ]);
     expect(sourceFor("get_car_route", { dataLocale: "en" })).toEqual([

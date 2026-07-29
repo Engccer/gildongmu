@@ -18,7 +18,7 @@ import { findSurroundingsNear } from "@/lib/providers/surroundings";
 import { findStationMeta } from "@/lib/subway-stations";
 import { fetchStationFacilities } from "@/lib/providers/korail-facilities";
 import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilities";
-import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
+import { getCarRoute } from "@/lib/car-route";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 import { getTransitRoute } from "@/lib/providers/odsay";
 import { getWalkRoute } from "@/lib/walk-route";
@@ -236,7 +236,7 @@ export async function executeFunction(
       if (gated) return gated;
       const briefing = ctx.dataLocale === "en" && hasNcpMapsKeys()
         ? await getCarRouteBriefingEn({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } })
-        : await getCarRouteBriefing({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
+        : await getCarRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
       return { data: { destination: p.name, briefing }, render, source: src };
     }
     case "get_transit_route": {
