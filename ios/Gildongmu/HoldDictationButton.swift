@@ -127,6 +127,15 @@ struct HoldDictationButton: View {
         .accessibilityLabel(appLocalized("ios.voice.hold"))
         .accessibilityHint(hint)
         .accessibilityAddTraits(.isButton)
+        // VO 더블탭(짧은 탭) 활성화는 기본적으로 "합성 터치 → HoldGestureCatcher의
+        // UITapGestureRecognizer" pass-through에 의존하는데, 이 합성 터치가 탭
+        // 인식기에 도달하지 못하면(기기·OS 상태 의존, 실기기 회귀 확인) handleTap이
+        // 아예 호출되지 않아 사용법 안내가 침묵한다. 명시적 accessibilityAction으로
+        // VO 더블탭이 이 액션을 결정론적으로 호출하게 한다. 시각 사용자의 실제 터치
+        // 경로(HoldGestureCatcher, 홀드·슬라이드 포함)는 이 액션과 무관하게 그대로
+        // 동작하고, VO의 "두 번 탭 뒤 유지"(pass-through로 홀드 녹음 시작)는 별도
+        // 제스처라 이 짧은 탭 액션과 충돌하지 않는다.
+        .accessibilityAction { handleTap() }
         // 준비 중(모델 다운로드)은 통지로만 알린다. 라벨을 "음성 인식 준비 중"으로
         // 바꿨다가 되돌리면 그 되돌림 재낭독이 다음 렌더 패스에서 생성돼 이미 뜨거워진
         // 마이크에 실린다(인터럽트는 그 시점 큐를 비울 뿐 이후 발화를 막지 못한다 —
@@ -293,6 +302,9 @@ struct HoldDictationButton: View {
             // 외부 시작 세션(단축어)의 준비 중(권한·모델 다운로드): 세션이 시작되고
             // 있으므로 "누른 채로 말해 주세요" 안내는 오발화 — 무반응이 정직하다(감사 검출)
         } else {
+            #if DEBUG
+            chatFocusLog("holdmic shortTap idle → guide announce")
+            #endif
             AccessibilityNotification.Announcement(appLocalized("ios.voice.holdGuide")).post()
             // 비-VO 심사자용: 짧은 탭에 아무 가시 반응이 없다는 App Store 반려 원인 해소
             showHoldHint = true
