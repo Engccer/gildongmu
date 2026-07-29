@@ -280,14 +280,8 @@ struct ChatConversationView<EmptyContent: View>: View {
         model.send(trimmed)
     }
 
-    /// denied·failed 안내(SearchView 동형). 확인 시 idle 복귀.
-    private var speechAlertMessage: String? {
-        switch speech.phase {
-        case .denied: appLocalized("ios.voice.denied")
-        case .failed: appLocalized("ios.voice.failed")
-        default: nil
-        }
-    }
+    /// denied·failed 안내(SearchView 동형, 판정 정본은 speechAlertText). 확인 시 idle 복귀.
+    private var speechAlertMessage: String? { speechAlertText(speech) }
 
     private var speechAlertBinding: Binding<Bool> {
         Binding(

@@ -208,14 +208,8 @@ struct DirectionsEndpointSearchView: View {
         }
     }
 
-    /// denied·failed 안내(3-state, SearchView 미러). 확인 시 idle 복귀.
-    private var speechAlertMessage: String? {
-        switch speech.phase {
-        case .denied: appLocalized("ios.voice.denied")
-        case .failed: appLocalized("ios.voice.failed")
-        default: nil
-        }
-    }
+    /// denied·failed 안내(SearchView 미러, 판정 정본은 speechAlertText). 확인 시 idle 복귀.
+    private var speechAlertMessage: String? { speechAlertText(speech) }
 
     private var speechAlertBinding: Binding<Bool> {
         Binding(

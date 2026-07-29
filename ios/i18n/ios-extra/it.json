@@ -17,7 +17,8 @@
       "geoDeniedDesc": "Consenti l'accesso alla posizione per Gildongmu nelle Impostazioni",
       "failedTitle": "Impossibile caricare le informazioni",
       "refresh": "Aggiorna",
-      "privacyPolicy": "Informativa sulla privacy"
+      "privacyPolicy": "Informativa sulla privacy",
+      "outOfCoverage": "Le funzionalità basate sulla posizione sono disponibili solo in Corea del Sud. La ricerca di luoghi, le informazioni sulle stazioni e gli itinerari restano disponibili."
     },
     "chat": {
       "suggestion1": "Mostrami cosa c'è qui intorno",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "Dettatura",
       "start": "Avvia dettatura",
+      "preparing": "Preparazione del riconoscimento vocale",
       "holdHintSearch": "Tieni premuto per parlare, rilascia per cercare",
       "holdHintChat": "Tieni premuto per parlare, rilascia per inviare. Scorri verso l'alto senza rilasciare per bloccare: quanto dettato finora entra nel campo di testo, dove puoi modificarlo, poi tieni premuto di nuovo per continuare a dettare. Scorri verso sinistra senza rilasciare per annullare",
       "holdGuide": "Tieni premuto per parlare",
+      "holdHintVisible": "Tieni premuto per parlare",
       "denied": "Consenti l'accesso al microfono nelle Impostazioni",
       "failed": "Impossibile avviare il riconoscimento vocale. Riprova.",
+      "errorLocale": "Il riconoscimento vocale non è disponibile per questa lingua.",
+      "errorAudio": "Il microfono non è disponibile. Controlla se un'altra app lo sta usando.",
+      "errorDownload": "Impossibile preparare il riconoscimento vocale. Connettiti alla rete e riprova.",
       "paused": "Dettatura bloccata"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "Meteo",
       "skyPartly": "Parzialmente nuvoloso",
       "rainSnow": "Pioggia o neve",
-      "airStationLine": "Stazione di monitoraggio {name}, {distance}km"
+      "airStationLine": "Stazione di monitoraggio {name}, {distance}km",
+      "whereAmIServerFailed": "Impossibile caricare le informazioni sulla posizione attuale"
     },
     "settings": {
       "title": "Impostazioni",

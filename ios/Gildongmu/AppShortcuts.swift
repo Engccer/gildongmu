@@ -49,6 +49,8 @@ struct OpenNearbyIntent: AppIntent {
 }
 
 /// 단축어 앱 자동 노출 + Siri 문구(앱 설치만으로 등록). 문구엔 앱 이름 토큰 필수.
+/// 한국어·영어 문구를 한 배열에 함께 둔다 — Siri는 현재 언어로 발화된 문구만 매칭하므로
+/// 두 언어가 공존해도 충돌이 없고, 한국어만 두면 영어 Siri에서 이 앱이 아예 호출되지 않는다.
 struct GildongmuShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -56,7 +58,9 @@ struct GildongmuShortcuts: AppShortcutsProvider {
             phrases: [
                 "\(.applicationName) 음성 검색",
                 "\(.applicationName)에서 음성으로 검색",
-                "\(.applicationName) 음성 입력"
+                "\(.applicationName) 음성 입력",
+                "Voice search in \(.applicationName)",
+                "Search by voice in \(.applicationName)"
             ],
             shortTitle: LocalizedStringResource("ios.shortcut.voiceSearch.title"),
             systemImageName: "mic"
@@ -65,7 +69,9 @@ struct GildongmuShortcuts: AppShortcutsProvider {
             intent: OpenNearbyIntent(),
             phrases: [
                 "\(.applicationName) 내 주변",
-                "\(.applicationName) 내 주변 열어 줘"
+                "\(.applicationName) 내 주변 열어 줘",
+                "Nearby in \(.applicationName)",
+                "Open nearby in \(.applicationName)"
             ],
             shortTitle: LocalizedStringResource("ios.shortcut.nearby.title"),
             systemImageName: "location"
