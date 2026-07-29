@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { hasKakaoKey, hasNcpMapsKeys } from "@/lib/env";
+import { hasCarRouteKey, hasNcpMapsKeys } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
-import { getCarRouteBriefing } from "@/lib/providers/kakao-navi";
+import { getCarRoute } from "@/lib/car-route";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 
 /**
@@ -17,7 +17,8 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
  *
  * provider 디스패치(lang+키 유무):
  * - lang=en + NCP 키 → NCP Directions(영문 턴바이턴, 외국인 정본)
- * - 그 외(ko, 또는 en이지만 NCP 키 없음) → 카카오모빌리티(한국어, 현 동작 graceful)
+ * - 그 외(ko, 또는 en이지만 NCP 키 없음) → car-route.ts 서비스
+ *   (기본 Tmap, Tmap 실패 시 카카오모빌리티 폴백 — 2026-07-30 전환)
  * 두 provider 모두 동일한 CarRouteBriefing shape를 반환해 컴포넌트는 불변이다.
  */
 
@@ -43,10 +44,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ outOfCoverage: true });
   }
 
-  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 카카오 한국어로 폴백
+  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 car-route 서비스(ko)로 폴백
   const useNcp =
     request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys();
-  if (!useNcp && !hasKakaoKey()) {
+  if (!useNcp && !hasCarRouteKey()) {
     return NextResponse.json(
       { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
       { status: 503 },
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
   try {
     const briefing = useNcp
       ? await getCarRouteBriefingEn(parsed.data)
-      : await getCarRouteBriefing(parsed.data);
+      : await getCarRoute(parsed.data);
     return NextResponse.json(briefing);
   } catch (e) {
     console.error("[api/route/car] 경로 브리핑 실패:", e);

@@ -144,6 +144,11 @@ export function hasWalkRouteKey(): boolean {
   return hasKakaoKey() || hasTmapKey();
 }
 
+/** 자동차 경로 브리핑(ko) 사용 가능 여부 — 기본 Tmap, 폴백 카카오모빌리티. 어느 한쪽 키만 있어도 동작. */
+export function hasCarRouteKey(): boolean {
+  return hasTmapKey() || hasKakaoKey();
+}
+
 /** Google Gemini 채팅 API 사용 가능 여부 */
 export function hasGeminiKey(): boolean {
   return !!env.GEMINI_API_KEY;
