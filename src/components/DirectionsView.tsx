@@ -412,12 +412,13 @@ export function DirectionsView({
    * 교차 레이스 자체가 구조적으로 불가능해진다(연타 시 재호출은 즉시 무시).
    */
   async function toggleStepFree() {
+    // 가드를 맨 위에 둔다(향후 토글 위치가 바뀌어도 상태-요청 불일치를 예방).
+    if (inFlight.current) return;
     const coords = lastCoordsRef.current;
     if (!results || !coords) {
       setStepFreeEnabled(!stepFreeRef.current);
       return;
     }
-    if (inFlight.current) return;
     const next = !stepFreeRef.current;
     setStepFreeEnabled(next);
     inFlight.current = true;
@@ -586,8 +587,8 @@ export function DirectionsView({
                   <button
                     type="button"
                     aria-pressed={stepFreeEnabled}
-                    aria-disabled={stepFreeBusy}
-                    aria-busy={stepFreeBusy}
+                    aria-disabled={busy}
+                    aria-busy={busy}
                     onClick={() => void toggleStepFree()}
                     className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
                   >
