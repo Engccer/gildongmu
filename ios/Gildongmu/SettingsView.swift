@@ -43,8 +43,8 @@ struct SettingsView: View {
     ]
 
     @AppStorage("themePreference") private var themeRaw = ThemePreference.system.rawValue
-    // 받아쓰기 방식(홀드 기본 / 클래식 탭 토글) — 정본 enum은 HoldDictationButton.swift
-    @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.hold.rawValue
+    // 받아쓰기 방식(탭 토글 기본 / 홀드) — 정본 enum은 HoldDictationButton.swift
+    @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.tapToggle.rawValue
     // 채팅 응답 듣기 속도 배율. 규칙·키 정본은 Kit ListenSpeed, 소비는 TtsPlayer 재생 시점.
     @AppStorage(ListenSpeed.storageKey) private var listenSpeed = 1.0
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —

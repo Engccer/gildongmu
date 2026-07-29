@@ -3,16 +3,20 @@ import UIKit
 import Accessibility
 
 /// 받아쓰기 버튼 동작 방식 영속값(접근성 헌장 §6의 두 계약 중 택1, 2026-07-27 설정화).
-/// 기본은 홀드(위원장 선호 2026-07-20), 클래식 탭 토글을 설정에서 선택할 수 있다.
+/// 기본은 탭 토글(위원장 결정 2026-07-29, App Store 심사 대응): 비-VoiceOver 심사자가
+/// 마이크를 짧게 탭했을 때 홀드 기본값에서는 가시 반응이 없어 "음성이 안 된다"로
+/// 반려됐다 — 탭 토글 기본 전환이 이 무반응을 구조적으로 제거한다. 홀드는 설정에서
+/// 선택할 수 있고 그 계약은 아래 그대로 유지된다. 순서는 CaseIterable로 설정 Picker
+/// 노출 순서를 겸한다(rawValue 문자열은 기존 저장값 호환을 위해 불변).
 enum DictationStyle: String, CaseIterable {
-    case hold
     case tapToggle
+    case hold
 
     static let key = "dictationStyle"
 
     /// 뷰 밖(전달 콜백 등) 판단 지점용 현재 방식. 뷰 갱신 관찰은 @AppStorage가 담당.
     static var current: DictationStyle {
-        DictationStyle(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .hold
+        DictationStyle(rawValue: UserDefaults.standard.string(forKey: key) ?? "") ?? .tapToggle
     }
 
     var label: String {
@@ -23,10 +27,11 @@ enum DictationStyle: String, CaseIterable {
     }
 }
 
-/// WhatsApp식 홀드 받아쓰기 버튼(2026-07-20 위원장 결정, 탭 토글 대체).
-/// 2026-07-27부터 설정(`DictationStyle`)이 탭 토글이면 클래식 계약(73fb4e7 이전,
-/// 탭=시작·재탭=정지, 라벨 전환 "받아쓰기 시작"↔"받아쓰기 중지"가 상태 신호)으로
-/// 동작한다 — 아래 홀드 계약 주석은 홀드 방식에만 해당.
+/// WhatsApp식 홀드 받아쓰기 버튼(2026-07-20 위원장 결정, 탭 토글 대체 후
+/// 2026-07-29 기본값이 다시 탭 토글로 전환 — 위 DictationStyle 주석 참조).
+/// 설정(`DictationStyle`)이 탭 토글이면 클래식 계약(73fb4e7 이전, 탭=시작·재탭=정지,
+/// 라벨 전환 "받아쓰기 시작"↔"받아쓰기 중지"가 상태 신호)으로 동작한다 — 아래 홀드
+/// 계약 주석은 설정에서 홀드를 선택했을 때에만 해당한다.
 /// 누르고 있는 동안(홀드 성립 250ms 후) 녹음하고 손을 떼면 최종 텍스트를 onTranscript로
 /// 전달한다(채팅=즉시 전송, 검색=자동 검색).
 ///
@@ -79,10 +84,13 @@ struct HoldDictationButton: View {
     /// 삼켜진 뒤 옛 cancel()이 전체를 idle로 되돌려 두 번째 발화가 무음 소실(리뷰 검출)
     @State private var cancelInFlight = false
     /// 방식 전환 즉시 반영을 위한 관찰 지점(설정 시트가 App 레벨이라 이 뷰는 살아 있다)
-    @AppStorage(DictationStyle.key) private var dictationStyleRaw = DictationStyle.hold.rawValue
+    @AppStorage(DictationStyle.key) private var dictationStyleRaw = DictationStyle.tapToggle.rawValue
+    /// 홀드 모드 짧은 탭의 비-VoiceOver용 가시 안내(3초 표시, task로 자동 소거)
+    @State private var showHoldHint = false
+    @State private var hintDismissTask: Task<Void, Never>?
 
     private var style: DictationStyle {
-        DictationStyle(rawValue: dictationStyleRaw) ?? .hold
+        DictationStyle(rawValue: dictationStyleRaw) ?? .tapToggle
     }
 
     var body: some View {
@@ -94,19 +102,31 @@ struct HoldDictationButton: View {
     }
 
     private var holdBody: some View {
-        micRow(title: appLocalized("ios.voice.hold"))
-            .overlay {
-                HoldGestureCatcher(
-                    onBegan: beginHold,
-                    onMoved: handleSlide,
-                    onEnded: endHold,
-                    onTapped: handleTap
-                )
+        // 가시 안내는 overlay 이탈(음수 offset)이 아니라 정상 레이아웃 흐름에 둔다 —
+        // 검색·길찾기 사용처는 List 행이라 행 경계를 벗어나는 오버레이가 잘린다(실측).
+        VStack(alignment: .leading, spacing: 2) {
+            micRow(title: appLocalized("ios.voice.hold"))
+            if showHoldHint {
+                // 비-VO 사용자용 가시 안내(VO는 handleTap의 polite 통지가 담당 —
+                // 이중 낭독 금지를 위해 이 Text는 접근성에서 숨긴다)
+                Text(appLocalized("ios.voice.holdHintVisible"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             }
-            .accessibilityElement()
-            .accessibilityLabel(appLocalized("ios.voice.hold"))
-            .accessibilityHint(hint)
-            .accessibilityAddTraits(.isButton)
+        }
+        .overlay {
+            HoldGestureCatcher(
+                onBegan: beginHold,
+                onMoved: handleSlide,
+                onEnded: endHold,
+                onTapped: handleTap
+            )
+        }
+        .accessibilityElement()
+        .accessibilityLabel(appLocalized("ios.voice.hold"))
+        .accessibilityHint(hint)
+        .accessibilityAddTraits(.isButton)
     }
 
     /// 클래식 탭 토글(73fb4e7 이전 계약 복원): 탭=시작, 재탭=정지·전달. 라벨 전환이
@@ -170,6 +190,9 @@ struct HoldDictationButton: View {
         chatFocusLog("holdmic begin OK slideActions=\(onPause != nil)")
         #endif
         sessionActive = true
+        // 실제 녹음이 시작되므로 직전 짧은 탭의 가시 안내는 더 이상 유효하지 않다
+        hintDismissTask?.cancel()
+        showHoldHint = false
         // 재생 중인 TTS를 먼저 정지 — 오디오 세션 소유가 겹치면(.playback↔.playAndRecord)
         // 재생이 무음화돼도 라벨이 "재생 중지"로 남는 상태 불일치가 생기고, 낭독이
         // 녹음에 섞인다(리뷰 검출). 미재생이면 no-op.
@@ -254,6 +277,14 @@ struct HoldDictationButton: View {
             // 있으므로 "누른 채로 말해 주세요" 안내는 오발화 — 무반응이 정직하다(감사 검출)
         } else {
             AccessibilityNotification.Announcement(appLocalized("ios.voice.holdGuide")).post()
+            // 비-VO 심사자용: 짧은 탭에 아무 가시 반응이 없다는 App Store 반려 원인 해소
+            showHoldHint = true
+            hintDismissTask?.cancel()
+            hintDismissTask = Task {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                showHoldHint = false
+            }
         }
     }
 
