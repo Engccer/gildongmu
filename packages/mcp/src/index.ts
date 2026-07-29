@@ -12,6 +12,19 @@ import { ENDPOINT_CATALOG } from "./endpoint-catalog-shared.js";
 
 const API_URL = process.env.GILDONGMU_API_URL ?? "https://gildongmu.dodoplanet.space";
 
+/**
+ * 서버 커버리지 마커 감지 — 한국 밖 좌표는 HTTP 200 + `{outOfCoverage:true}` 정상
+ * 응답이다(오류 아님). cli `lib/api-client.ts`의 동형 헬퍼를 미러링한다(별도 패키지라
+ * 공유 모듈 없음, endpoint-catalog-shared.ts와 같은 byte-mirror 관례).
+ */
+function isOutOfCoverage(body: unknown): boolean {
+  return typeof body === "object" && body !== null &&
+    (body as { outOfCoverage?: unknown }).outOfCoverage === true;
+}
+
+const OUT_OF_COVERAGE_NOTICE =
+  "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+
 const server = new McpServer({ name: "gildongmu", version: "0.5.0" });
 
 for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
@@ -32,6 +45,9 @@ for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
       const res = await fetch(url.toString());
       const text = await res.text();
       if (!res.ok) return { content: [{ type: "text" as const, text: `오류 (HTTP ${res.status}): ${text}` }], isError: true };
+      let parsed: unknown;
+      try { parsed = JSON.parse(text); } catch { parsed = undefined; }
+      if (isOutOfCoverage(parsed)) return { content: [{ type: "text" as const, text: OUT_OF_COVERAGE_NOTICE }] };
       return { content: [{ type: "text" as const, text }] };
     },
   );

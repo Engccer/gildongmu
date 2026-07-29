@@ -20,7 +20,12 @@ class MockApiError extends Error {
 const apiRequest = vi.fn();
 const readConfig = vi.fn();
 
-vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError }));
+function isOutOfCoverage(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { outOfCoverage?: unknown }).outOfCoverage === true;
+}
+const OUT_OF_COVERAGE_NOTICE = "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+
+vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError, isOutOfCoverage, OUT_OF_COVERAGE_NOTICE }));
 vi.mock("../lib/config.js", () => ({ readConfig }));
 
 let stdoutSpy: ReturnType<typeof vi.spyOn>;

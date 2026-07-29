@@ -20,7 +20,12 @@ class MockApiError extends Error {
 const apiRequest = vi.fn();
 const readConfig = vi.fn();
 
-vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError }));
+function isOutOfCoverage(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { outOfCoverage?: unknown }).outOfCoverage === true;
+}
+const OUT_OF_COVERAGE_NOTICE = "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+
+vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError, isOutOfCoverage, OUT_OF_COVERAGE_NOTICE }));
 vi.mock("../lib/config.js", () => ({ readConfig }));
 
 let stdoutSpy: ReturnType<typeof vi.spyOn>;
@@ -95,5 +100,27 @@ describe("nearby 명령", () => {
       "/api/station/subway-arrival/nearby",
       { query: { lat: "37.5", lng: "127.1" } },
     );
+  });
+
+  it("서버가 outOfCoverage 마커를 반환하면 안내 문구를 출력하고 exit 0로 정상 종료한다(오류 아님)", async () => {
+    apiRequest.mockImplementation(async () => ({ outOfCoverage: true }));
+
+    await runNearby("subway", { lat: "1.0", lng: "1.0", output: "text" });
+
+    expect(stdoutSpy).toHaveBeenCalled();
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain(OUT_OF_COVERAGE_NOTICE);
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
+  });
+
+  it("outOfCoverage 마커의 json 모드는 마커 바디를 그대로 구조화 출력한다", async () => {
+    apiRequest.mockImplementation(async () => ({ outOfCoverage: true }));
+
+    await runNearby("subway", { lat: "1.0", lng: "1.0", output: "json" });
+
+    const jsonOut = JSON.parse(stdoutSpy.mock.calls[0][0] as string);
+    expect(jsonOut).toEqual({ outOfCoverage: true });
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });
