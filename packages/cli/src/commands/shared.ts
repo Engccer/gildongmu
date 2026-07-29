@@ -1,4 +1,4 @@
-import { apiRequest, ApiError } from "../lib/api-client.js";
+import { apiRequest, ApiError, isOutOfCoverage, OUT_OF_COVERAGE_NOTICE } from "../lib/api-client.js";
 import { readConfig } from "../lib/config.js";
 import { ENDPOINT_CATALOG } from "../lib/endpoint-catalog-shared.js";
 import { FORMATTERS } from "../lib/formatters.js";
@@ -31,8 +31,13 @@ export async function runEndpoint(
   const cfg = await readConfig();
   try {
     const data = await apiRequest<Record<string, unknown>>(path, { query });
+    const mode = resolveOutputMode(outputFlag, cfg);
+    if (isOutOfCoverage(data)) {
+      emit(data, [OUT_OF_COVERAGE_NOTICE], mode);
+      return;
+    }
     const formatter = FORMATTERS[name];
-    emit(data, formatter ? formatter(data as never) : [JSON.stringify(data)], resolveOutputMode(outputFlag, cfg));
+    emit(data, formatter ? formatter(data as never) : [JSON.stringify(data)], mode);
   } catch (err) {
     if (err instanceof ApiError) fail(err.message, err.exitCode);
     fail(err instanceof Error ? err.message : String(err), ExitCode.Error);

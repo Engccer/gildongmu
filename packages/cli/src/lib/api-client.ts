@@ -51,3 +51,12 @@ export async function apiRequest<T = unknown>(path: string, opts: RequestOptions
   }
   return parsed as T;
 }
+
+/** 서버 커버리지 마커 감지 — 한국 밖 좌표는 HTTP 200 + `{outOfCoverage:true}` 정상 응답이다(오류 아님). */
+export function isOutOfCoverage(body: unknown): boolean {
+  return typeof body === "object" && body !== null &&
+    (body as { outOfCoverage?: unknown }).outOfCoverage === true;
+}
+
+export const OUT_OF_COVERAGE_NOTICE =
+  "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";

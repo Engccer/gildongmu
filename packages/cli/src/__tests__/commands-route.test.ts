@@ -22,7 +22,12 @@ class MockApiError extends Error {
 const apiRequest = vi.fn();
 const readConfig = vi.fn();
 
-vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError }));
+function isOutOfCoverage(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { outOfCoverage?: unknown }).outOfCoverage === true;
+}
+const OUT_OF_COVERAGE_NOTICE = "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+
+vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError, isOutOfCoverage, OUT_OF_COVERAGE_NOTICE }));
 vi.mock("../lib/config.js", () => ({ readConfig }));
 
 let stdoutSpy: ReturnType<typeof vi.spyOn>;
@@ -136,6 +141,16 @@ describe("route 명령", () => {
     const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(stderrOut).toContain("찾지 못했습니다");
   });
+
+  it("서버가 outOfCoverage 마커를 반환하면 formatter를 건너뛰고 안내 문구를 출력·exit 0로 종료한다", async () => {
+    apiRequest.mockImplementation(async () => ({ outOfCoverage: true }));
+
+    await runRoute("walk", { origin: "1.0,1.0", dest: "1.1,1.1", output: "text" });
+
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain(OUT_OF_COVERAGE_NOTICE);
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("whereami 명령", () => {
@@ -145,5 +160,15 @@ describe("whereami 명령", () => {
     expect(exitSpy).toHaveBeenCalledWith(2);
     const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(stderrOut).toContain("위치를 지정하세요");
+  });
+
+  it("서버가 outOfCoverage 마커를 반환하면 안내 문구를 출력하고 exit 0로 종료한다", async () => {
+    apiRequest.mockImplementation(async () => ({ outOfCoverage: true }));
+
+    await runWhereami({ lat: "1.0", lng: "1.0", output: "text" });
+
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain(OUT_OF_COVERAGE_NOTICE);
+    expect(exitSpy).not.toHaveBeenCalled();
   });
 });

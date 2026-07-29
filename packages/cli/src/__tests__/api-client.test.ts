@@ -30,4 +30,27 @@ describe("apiRequest", () => {
     const { apiRequest } = await import("../lib/api-client.js");
     await expect(apiRequest("/api/places")).rejects.toMatchObject({ exitCode: 7 });
   });
+
+  it("HTTP 200 + outOfCoverage:true는 throw하지 않고 마커 바디를 그대로 반환한다(오류 아님)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ outOfCoverage: true }), { status: 200 })));
+    const { apiRequest } = await import("../lib/api-client.js");
+    const res = await apiRequest("/api/where-am-i");
+    expect(res).toEqual({ outOfCoverage: true });
+  });
+});
+
+describe("isOutOfCoverage", () => {
+  it("outOfCoverage:true 바디를 감지한다", async () => {
+    const { isOutOfCoverage } = await import("../lib/api-client.js");
+    expect(isOutOfCoverage({ outOfCoverage: true })).toBe(true);
+  });
+
+  it("정상 응답·null·문자열·outOfCoverage:false는 감지하지 않는다", async () => {
+    const { isOutOfCoverage } = await import("../lib/api-client.js");
+    expect(isOutOfCoverage({ stations: [] })).toBe(false);
+    expect(isOutOfCoverage({ outOfCoverage: false })).toBe(false);
+    expect(isOutOfCoverage(null)).toBe(false);
+    expect(isOutOfCoverage("outOfCoverage")).toBe(false);
+    expect(isOutOfCoverage(undefined)).toBe(false);
+  });
 });
