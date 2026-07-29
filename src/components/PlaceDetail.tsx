@@ -6,7 +6,6 @@ import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { RouteLinks } from "./RouteLinks";
-import { CarRouteBriefing } from "./CarRouteBriefing";
 import { StationMeta } from "./StationMeta";
 import { StationTimetable } from "./StationTimetable";
 import { StationFacilities } from "./StationFacilities";
@@ -16,7 +15,6 @@ import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
 import { LocalConditions } from "./LocalConditions";
 import { BarrierFreeInfo } from "./BarrierFreeInfo";
-import { TransitRouteBriefing } from "./TransitRouteBriefing";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { ChatOverlay } from "./chat/ChatOverlay";
 
@@ -30,29 +28,26 @@ import { ChatOverlay } from "./chat/ChatOverlay";
  * - 전화는 `tel:` 링크. 목록 복귀는 lucide ArrowLeft 버튼.
  *
  * 카카오 로컬 API는 ID 단건 조회가 없으므로 상세는 메모리의 Place 객체로만
- * 그린다(추가 fetch는 CarRouteBriefing의 온디맨드 경로뿐).
+ * 그린다. 경로 미리 듣기는 "여기까지 길찾기"(DirectionsView, 3수단 비교)로
+ * 일원화 — 상세 안 단일 수단 브리핑 진입점은 중복이라 제거(2026-07-30).
  */
 export function PlaceDetail({
   place,
-  canBriefCarRoute,
   canShowBus,
   canShowBike,
   canShowSubway,
   canShowAir,
   canShowBarrierFree,
-  canShowTransit,
   canShowChat = false,
   onOpenDirections,
   onBack,
 }: {
   place: Place;
-  canBriefCarRoute: boolean;
   canShowBus: boolean;
   canShowBike: boolean;
   canShowSubway: boolean;
   canShowAir: boolean;
   canShowBarrierFree: boolean;
-  canShowTransit: boolean;
   canShowChat?: boolean;
   /** 있으면 "여기까지 길찾기" 버튼 노출: 이 장소를 도착지로 길찾기 뷰 전환 */
   onOpenDirections?: () => void;
@@ -209,16 +204,6 @@ export function PlaceDetail({
           <MessageSquare aria-hidden="true" className="h-4 w-4" />
           {t("placeChat.launch")}
         </button>
-      )}
-      {canBriefCarRoute && (
-        <CarRouteBriefing
-          dest={{ lat: place.lat, lng: place.lng, name: place.name }}
-        />
-      )}
-      {canShowTransit && (
-        <TransitRouteBriefing
-          dest={{ lat: place.lat, lng: place.lng, name: place.name }}
-        />
       )}
       <DistanceBeacon
         dest={{ lat: place.lat, lng: place.lng, name: place.name }}

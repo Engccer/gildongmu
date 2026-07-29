@@ -494,7 +494,7 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 수단 섹션 본문. 대중교통은 추천 경로만(웹 동형, 대안은 브리핑 단독 화면 전용).
+    /// 수단 섹션 본문. 대중교통은 추천 경로만(웹 DirectionsView 동형).
     @ViewBuilder
     private func outcomeRows(_ mode: DirectionsMode, _ outcome: DirectionsModeOutcome?) -> some View {
         switch outcome {

@@ -50,9 +50,9 @@ struct PlaceDetailView<DomainSection: View>: View {
             }
 
             Section(appLocalized("ios.route.section")) {
-                // 길찾기 탭으로 도착지 프리필 진입(Task I4). 딥링크·브리핑은 각각
-                // 외부 앱 위임/단일 수단 미리보기이고, 이건 3수단(대중교통·도보·자동차)을
-                // 앱 안에서 한 번에 비교하는 유일한 경로라 목록 맨 위에 둔다.
+                // 길찾기 탭으로 도착지 프리필 진입(Task I4) — 출발 전 미리 듣기는
+                // 이 3수단 비교(대중교통·도보·자동차)로 일원화(장소 상세의 단일 수단
+                // 브리핑 화면은 중복이라 제거, 2026-07-30). 딥링크는 실주행 위임.
                 Button(appLocalized("directions.toHere")) {
                     DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
                 }
@@ -61,9 +61,6 @@ struct PlaceDetailView<DomainSection: View>: View {
                 if let kakaoId = kakaoPlaceId {
                     Button(appLocalized("ios.route.kakaoPlace")) { openKakaoPlace(kakaoId) }
                 }
-                // 출발 전 미리 듣기 텍스트 브리핑(M4). 실주행은 위 딥링크 위임 유지
-                NavigationLink(appLocalized("ios.route.carBriefing")) { CarBriefingView(place: place) }
-                NavigationLink(appLocalized("ios.route.transitBriefing")) { TransitBriefingView(place: place) }
             }
 
             // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)
