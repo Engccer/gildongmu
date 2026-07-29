@@ -49,7 +49,8 @@ func transitSummaryText(_ summary: TransitRouteSummary) -> String {
         appLocalized("ios.route.durationMinutes", String(summary.totalMinutes)),
         appLocalized("ios.route.fare", wonText(summary.fare)),
         appLocalized("ios.route.transfers", String(summary.transfers)),
-        appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)))
+        // 도보 0분은 생략(웹 TransitRouteResult의 walkMinutes > 0 조건 동형)
+        summary.walkMinutes > 0 ? appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)) : nil)
 }
 
 /// 구간 한 줄 = 한 접근성 객체. walk leg는 노선 정보가 없어 단일 분기(계약 테스트 근거)

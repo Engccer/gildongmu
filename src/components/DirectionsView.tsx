@@ -637,12 +637,33 @@ export function DirectionsView({
                   <p className="mt-1 text-sm">{modeNoRouteText(mode)}</p>
                 )}
                 {outcome.kind === "done" && outcome.mode === "transit" && (
-                  <TransitRouteResult
-                    route={outcome.result.recommended}
-                    t={tTransit}
-                    locale={locale}
-                    dest={results.destLabel}
-                  />
+                  <>
+                    <TransitRouteResult
+                      route={outcome.result.recommended}
+                      t={tTransit}
+                      locale={locale}
+                      dest={results.destLabel}
+                    />
+                    {/* 대안은 요약 1행씩만(legs 미표시, 미니멀 — iOS DirectionsTab 동형).
+                        ODsay 상한이 대안 2개라 토글 없이 상시 노출, 한 줄=한 객체. */}
+                    {outcome.result.alternatives.map((alt, i) => (
+                      <p key={i} className="mt-2 text-sm">
+                        {joinText(
+                          tTransit("alternativeHeading", { index: i + 1 }),
+                          tTransit("summary", {
+                            minutes: alt.summary.totalMinutes,
+                            fare: alt.summary.fare.toLocaleString(locale),
+                            transfers: alt.summary.transfers,
+                          }),
+                          alt.summary.walkMinutes > 0
+                            ? tTransit("walkSummary", {
+                                minutes: alt.summary.walkMinutes,
+                              })
+                            : null,
+                        )}
+                      </p>
+                    ))}
+                  </>
                 )}
                 {outcome.kind === "done" && outcome.mode === "walk" && (
                   <WalkRouteResult briefing={outcome.result} t={tPed} />
