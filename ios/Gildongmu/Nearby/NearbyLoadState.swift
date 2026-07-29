@@ -8,6 +8,7 @@ enum NearbyLoadState<Item> {
     case loaded([Item])      // 빈 배열 = 정상적 0건
     case denied              // 위치 권한 거부
     case failed              // 조회 실패
+    case outOfCoverage       // 서비스 지역 밖 — 실패 아님, spec 2026-07-29
 }
 
 /// nil·빈 문자열 조각을 제거하고 ", "로 결합(웹 `joinText` 미러).
@@ -37,4 +38,12 @@ func announceRefreshFailed() {
 @MainActor
 func announcePermissionLost() {
     AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshDenied")).post()
+}
+
+/// 서비스 지역 밖 전락 통지(웹 tCommon("outOfCoverage") 미러): loaded 중 새로고침에서
+/// 커버리지 밖 좌표를 만나면 목록이 통째로 사라진다 — announcePermissionLost 동형.
+/// 오류가 아니라 안내이므로 같은 문구를 그대로 쓴다.
+@MainActor
+func announceOutOfCoverage() {
+    AccessibilityNotification.Announcement(appLocalized("ios.common.outOfCoverage")).post()
 }

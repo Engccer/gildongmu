@@ -20,6 +20,12 @@ final class BikeNearbyModel {
         if case .loaded = state {} else { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
+            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
+            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
+                if case .loaded = state { announceOutOfCoverage() }
+                state = .outOfCoverage
+                return
+            }
             let stations = try await service.bikeStations(lat: coord.lat, lng: coord.lng)
             state = .loaded(stations)
             announceLoaded(count: stations.count, unit: appLocalized("ios.nearby.unitBike"))
@@ -29,6 +35,9 @@ final class BikeNearbyModel {
                 if case .loaded = state { announcePermissionLost() }
                 state = .denied
             } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
+        } catch APIError.outOfCoverage {
+            if case .loaded = state { announceOutOfCoverage() }
+            state = .outOfCoverage
         } catch {
             // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
             if case .loaded = state { announceRefreshFailed() } else { state = .failed }
@@ -64,6 +73,8 @@ struct BikeNearbyView: View {
         case .failed:
             ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
                 description: Text(appLocalized("ios.common.retryLater")))
+        case .outOfCoverage:
+            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
         case .loaded(let stations) where stations.isEmpty:
             ContentUnavailableView(appLocalized("ios.nearby.bikeEmpty"), systemImage: "bicycle")
         default: EmptyView()

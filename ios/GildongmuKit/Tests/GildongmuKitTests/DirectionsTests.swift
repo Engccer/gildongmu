@@ -97,3 +97,26 @@ private func carFixture() -> CarRouteBriefing {
     #expect(results.successCount == 0)
     #expect(results.displayedModes == [.transit, .car])  // 미조회 수단(도보 en)은 미노출
 }
+
+@Test func outOfCoverageClassifiesAcrossAllModes() {
+    // 서버 마커(spec 2026-07-29): 좌표가 서비스 지역 밖일 때 3수단 전부 같은 방식으로 분류.
+    #expect(DirectionsOutcomeClassifier.classify(transit: .failure(APIError.outOfCoverage)).isOutOfCoverage)
+    #expect(DirectionsOutcomeClassifier.classify(walk: .failure(APIError.outOfCoverage)).isOutOfCoverage)
+    #expect(DirectionsOutcomeClassifier.classify(car: .failure(APIError.outOfCoverage)).isOutOfCoverage)
+    // outOfCoverage는 성공도 게이트도 아니다(3-state 뭉개기 금지).
+    #expect(!DirectionsOutcomeClassifier.classify(transit: .failure(APIError.outOfCoverage)).isSuccess)
+    #expect(!DirectionsOutcomeClassifier.classify(transit: .failure(APIError.outOfCoverage)).isGated)
+}
+
+@Test func outOfCoverageModeIsNotDisplayed() {
+    // DirectionsModel이 정상적으로는 outOfCoverage를 만나면 화면 전체를 전환해 여기 도달하지
+    // 않지만, 방어적으로 개별 수단 렌더에서도 게이트와 동형으로 제외되어야 한다.
+    let results = DirectionsResults(outcomes: [
+        .transit: .outOfCoverage,
+        .walk: .empty,
+        .car: .car(carFixture()),
+    ])
+    #expect(results.displayedModes == [.car, .walk])
+    #expect(results.firstSuccess == .car)
+    #expect(results.successCount == 1)
+}

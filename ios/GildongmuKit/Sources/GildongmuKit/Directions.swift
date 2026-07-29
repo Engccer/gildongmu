@@ -21,8 +21,9 @@ public enum DirectionsMode: String, CaseIterable, Sendable, Hashable {
     public static let displayOrder: [DirectionsMode] = [.transit, .car, .walk]
 }
 
-/// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated를 더한 4-state:
-/// 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트(gated, 섹션 자체 미노출).
+/// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated·outOfCoverage를 더한 5-state:
+/// 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트(gated, 섹션 자체 미노출)
+/// ≠ 서비스 지역 밖(outOfCoverage, 개별 렌더 아니라 화면 전체를 전환하는 신호).
 /// 웹은 서버가 게이트 플래그를 주입해 미노출을 선결정하지만, iOS는 호출 후 상태 코드로 안다
 /// (게이트 코드는 수단마다 다르다, classifyFailure 참고).
 public enum DirectionsModeOutcome: Sendable {
@@ -32,16 +33,22 @@ public enum DirectionsModeOutcome: Sendable {
     case empty
     case error
     case gated
+    case outOfCoverage
 
     public var isSuccess: Bool {
         switch self {
         case .transit, .walk, .car: true
-        case .empty, .error, .gated: false
+        case .empty, .error, .gated, .outOfCoverage: false
         }
     }
 
     public var isGated: Bool {
         if case .gated = self { return true }
+        return false
+    }
+
+    public var isOutOfCoverage: Bool {
+        if case .outOfCoverage = self { return true }
         return false
     }
 }
@@ -80,7 +87,10 @@ public enum DirectionsOutcomeClassifier {
     /// (src/app/api/route/walk/route.ts), transit·car는 키 없음 → 503
     /// (hasOdsayKey/hasKakaoKey 미충족 시 명시 503, src/app/api/route/transit/route.ts,
     /// src/app/api/route/car/route.ts). 502(모든 라우트 공통 upstream 장애)는 조회 실패로 유지.
+    /// outOfCoverage는 좌표(주로 origin=현재 위치)가 서비스 지역 밖일 때의 서버 마커 —
+    /// 게이트·오류와 별개로 화면 전체를 outOfCoverage로 전환하는 신호(DirectionsModel 참고).
     private static func classifyFailure(_ error: any Error) -> DirectionsModeOutcome {
+        if case APIError.outOfCoverage = error { return .outOfCoverage }
         if case APIError.badStatus(let code, _) = error, code == 404 || code == 503 { return .gated }
         return .error
     }
@@ -94,11 +104,13 @@ public struct DirectionsResults: Sendable {
         self.outcomes = outcomes
     }
 
-    /// 화면에 노출할 수단(고정 순서). 미조회 수단·게이트(404)는 섹션 자체 미노출.
+    /// 화면에 노출할 수단(고정 순서). 미조회 수단·게이트(404)·서비스 지역 밖은 섹션 자체 미노출
+    /// (outOfCoverage는 정상적으로 DirectionsModel이 화면 전체를 전환해 여기 도달하지 않지만,
+    /// 방어적으로 개별 수단 렌더에서도 제외한다).
     public var displayedModes: [DirectionsMode] {
         DirectionsMode.displayOrder.filter { mode in
             guard let outcome = outcomes[mode] else { return false }
-            return !outcome.isGated
+            return !outcome.isGated && !outcome.isOutOfCoverage
         }
     }
 

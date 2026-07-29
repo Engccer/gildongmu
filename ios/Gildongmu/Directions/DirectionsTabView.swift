@@ -46,6 +46,7 @@ private func withQueryTimeout<T: Sendable>(_ operation: @escaping @Sendable () a
 final class DirectionsModel {
     enum Phase: Equatable {
         case idle, needEndpoints, locating, loading, geoDenied, geoError
+        case outOfCoverage  // 서비스 지역 밖 — 실패 아님, spec 2026-07-29
         case settled(successCount: Int)
     }
 
@@ -178,6 +179,14 @@ final class DirectionsModel {
             phase = .locating
             do {
                 current = try await LocationService.shared.currentCoordinate()
+                // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
+                // 중단한다(수단별 fetch·주소 동기화 전부 생략). 오류가 아니라 커버리지
+                // 안내이므로 일반 phase로 표기(웹 DirectionsView 동형).
+                if let acquired = current, !isInKorea(lat: acquired.lat, lng: acquired.lng) {
+                    phase = .outOfCoverage
+                    announce(appLocalized("ios.common.outOfCoverage"))
+                    return
+                }
                 // 측위 성공 → 라벨 병기 주소도 그 좌표로 동기화(표시 전용, 조회 흐름과
                 // 독립인 비구조 태스크 — clearResults의 조회 취소에 안 딸려간다).
                 if let acquired = current {
@@ -217,6 +226,14 @@ final class DirectionsModel {
             .car: DirectionsOutcomeClassifier.classify(car: car),
         ]
         if let walk { outcomes[.walk] = DirectionsOutcomeClassifier.classify(walk: walk) }
+
+        // 서버 마커 이중 방어 — 위 "cur" 선분기를 통과했어도 place 종단점(검색 선택)이
+        // 한국 밖일 수 있다. 한 수단이라도 감지하면 나머지 결과를 버리고 화면 전체를 전환한다.
+        if outcomes.values.contains(where: { $0.isOutOfCoverage }) {
+            phase = .outOfCoverage
+            announce(appLocalized("ios.common.outOfCoverage"))
+            return
+        }
 
         let built = DirectionsResults(outcomes: outcomes)
         results = built
@@ -373,6 +390,7 @@ struct DirectionsTabView: View {
         case .loading: appLocalized("directions.loading")
         case .geoDenied: appLocalized("ios.common.geoDeniedDesc")
         case .geoError: appLocalized("directions.geoError")
+        case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
         case .settled(let count):
             count > 0 ? appLocalized("directions.readySummary", String(count)) : appLocalized("directions.allFailed")
         }
@@ -411,7 +429,7 @@ struct DirectionsTabView: View {
         case .car(let briefing): CarRouteRows(briefing: briefing)
         case .empty: Text(noRouteText(mode))
         case .error: Text(errorText(mode))
-        case .gated, nil: EmptyView()  // displayedModes가 걸러 도달하지 않는다
+        case .gated, .outOfCoverage, nil: EmptyView()  // displayedModes가 걸러 도달하지 않는다
         }
     }
 }
