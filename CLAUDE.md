@@ -40,6 +40,7 @@
 - **mock으로 조용히 폴백 금지**(가짜 실데이터 금지). 키 없음→null·섹션 미노출, upstream 장애→throw→502.
 
 ### 횡단 함정 (반복 적용 — 새 통합마다 점검)
+- **서비스 커버리지 마커(2026-07-29 심사 반려 대응)**: 좌표 의존 라우트는 zod 전지구 범위 검증 후 `isInKorea`(`src/lib/coverage.ts` 정본, iOS Kit `Coverage.swift` 미러 — 31.43~44.35/122.37~132.0) 판정. 한국 밖이면 **키 게이트보다 앞서** 200 `{"outOfCoverage":true}` 반환(오류 아님 — 3-state에 더한 4번째 정직 상태, upstream 미호출로 쿼터 보호). 신규 좌표 라우트는 파싱→마커→키 게이트→upstream 순서를 따르고, 소비자는 기존 감지 계층 재사용: 웹 `isOutOfCoverageBody`+선분기, iOS `APIError.outOfCoverage`+선분기, CLI/MCP `isOutOfCoverage`, 채팅 `coverageGate`(**앵커 좌표 기준** — 장소 앵커가 한국이면 해외 사용자도 정상, 길찾기만 userLocation). 안내 문구는 "위치 기반 기능만 제한" 톤(`common.outOfCoverage`·`ios.common.outOfCoverage`), 이름 기반 기능(검색·역 정보·목적지 길찾기·장소 앵커 채팅)은 전 세계 유효.
 - **좌표는 WGS84 십진 통일.** 단 외부 API별 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님 — false E/N 같아 혼동, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 직접 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
 - **envelope 비표준 주의**: data.go.kr 표준은 `response.body.items.item[]`·빈결과 `items:""`인데 — 에어코리아는 `body.items`가 **직접 배열** / 서울버스(TOPIS)는 `msgHeader.headerCd`(0정상·4빈결과·그외 throw)+`msgBody.itemList`(ServiceResult 래퍼 없음) / 서울지하철은 정상/에러에서 code 위치가 다름(`errorMessage?.code || code`).
 - **단위 함정**: NCP Directions `duration`=**밀리초**(카카오·`durationSeconds`=초, 미변환 시 28분→468시간). ODsay `totalTime`=분·`payment`=원·`totalWalk`=미터.
