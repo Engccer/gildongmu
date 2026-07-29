@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasDataGoKrKey } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { fetchNearbyBusStops } from "@/lib/bus";
 
 /**
  * GET /api/bus/nearby?lat=..&lng=..
  * 좌표 근접 정류소 + 각 정류소 도착예정. 실시간이라 캐시하지 않는다.
  *
- * 좌표는 한국 위경도 범위(위도 33~43, 경도 124~132)로 가드한다 — 무의미한
- * 좌표가 provider까지 통과하지 않도록(다른 라우트의 zod safeParse 컨벤션과 통일).
+ * 좌표는 전지구 범위로 형식만 가드하고, 한국 밖은 커버리지 마커로 응답한다
+ * (isInKorea — 무의미한 좌표가 provider까지 통과하지 않도록).
  */
 const querySchema = z.object({
-  lat: z.coerce.number().min(33).max(43),
-  lng: z.coerce.number().min(124).max(132),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
 });
 
 export async function GET(request: NextRequest) {
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+  if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
   if (!hasDataGoKrKey()) {
     return NextResponse.json({ stops: [] });

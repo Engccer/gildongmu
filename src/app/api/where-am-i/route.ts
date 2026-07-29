@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasKakaoKey } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { assembleWhereAmI } from "@/lib/where-am-i";
 
 /**
@@ -13,8 +14,8 @@ import { assembleWhereAmI } from "@/lib/where-am-i";
 export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
-  lat: z.coerce.number().min(33).max(43),
-  lng: z.coerce.number().min(124).max(132),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
 });
 
 export async function GET(request: NextRequest) {
@@ -27,6 +28,9 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+  if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
   if (!hasKakaoKey()) {
     return NextResponse.json({ data: null });
