@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasSeoulOpenDataKey } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
 
 /**
  * GET /api/bike/nearby?lat=..&lng=..
  * 좌표 근접 따릉이 대여소(1km 이내 상위 5). provider가 60초 revalidate.
  *
- * 좌표는 한국 위경도 범위(위도 33~43, 경도 124~132)로 가드한다(버스 라우트와 통일).
+ * 좌표는 전지구 범위로 형식만 가드하고, 한국 밖은 커버리지 마커로 응답한다(버스 라우트와 통일).
  */
 const querySchema = z.object({
-  lat: z.coerce.number().min(33).max(43),
-  lng: z.coerce.number().min(124).max(132),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
 });
 
 export async function GET(request: NextRequest) {
@@ -24,6 +25,9 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+  if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
   if (!hasSeoulOpenDataKey()) {
     return NextResponse.json({ stations: [] });

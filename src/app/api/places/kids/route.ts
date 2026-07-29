@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasKakaoKey } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 
@@ -26,8 +27,8 @@ export const dynamic = "force-dynamic";
 const DEFAULT_LIMIT = 8;
 
 const querySchema = z.object({
-  lat: z.coerce.number().min(33).max(43),
-  lng: z.coerce.number().min(124).max(132),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
   limit: z.coerce.number().int().min(1).max(NEARBY_LIMIT_MAX).optional(),
 });
 
@@ -42,6 +43,9 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+  if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
   if (!hasKakaoKey()) {
     return NextResponse.json({ kids: [], total: 0 });
