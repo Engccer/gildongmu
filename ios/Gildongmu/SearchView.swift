@@ -164,14 +164,9 @@ struct SearchView: View {
         micRowFocused = true
     }
 
-    /// denied·failed 안내(3-state: 실패와 거부를 다른 문장으로). 확인 시 idle 복귀.
-    private var speechAlertMessage: String? {
-        switch speech.phase {
-        case .denied: appLocalized("ios.voice.denied")
-        case .failed: appLocalized("ios.voice.failed")
-        default: nil
-        }
-    }
+    /// denied·failed 안내(3-state: 거부와 실패, 실패는 다시 원인별로 다른 문장).
+    /// 판정 정본은 speechAlertText — 확인 시 idle 복귀.
+    private var speechAlertMessage: String? { speechAlertText(speech) }
 
     private var speechAlertBinding: Binding<Bool> {
         Binding(

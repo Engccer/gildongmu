@@ -20,6 +20,16 @@
         "it" : { "stringUnit" : { "state" : "translated", "value" : "Il microfono è usato per inserire ricerche e domande con la voce." } },
         "ja" : { "stringUnit" : { "state" : "translated", "value" : "検索語や質問を音声で入力するためにマイクを使用します。" } }
       }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "localizations" : {
+        "ko" : { "stringUnit" : { "state" : "translated", "value" : "받아쓰기를 위해 음성 인식을 사용합니다." } },
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech recognition is used for dictation." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El reconocimiento de voz se usa para el dictado." } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La reconnaissance vocale sert à la dictée." } },
+        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il riconoscimento vocale è usato per la dettatura." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "音声入力のために音声認識を使用します。" } }
+      }
     }
   },
   "version" : "1.0"

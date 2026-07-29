@@ -17,7 +17,8 @@
       "geoDeniedDesc": "설정 앱에서 길동무의 위치 접근을 허용해 주세요",
       "failedTitle": "정보를 가져오지 못했습니다",
       "refresh": "새로고침",
-      "privacyPolicy": "개인정보 처리방침"
+      "privacyPolicy": "개인정보 처리방침",
+      "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다."
     },
     "chat": {
       "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "받아쓰기",
       "start": "받아쓰기 시작",
+      "preparing": "음성 인식 준비 중",
       "holdHintSearch": "누른 채로 말하고, 손을 떼면 검색합니다",
       "holdHintChat": "누른 채로 말하고, 손을 떼면 전송합니다. 누른 채 위로 밀면 잠겨서 그때까지 받아쓴 내용이 입력창에 들어가고, 수정한 뒤 다시 길게 눌러 이어서 받아쓸 수 있습니다. 누른 채 왼쪽으로 밀면 취소합니다",
       "holdGuide": "누른 채로 말해 주세요",
+      "holdHintVisible": "길게 누르고 말하기",
       "denied": "설정에서 마이크 접근을 허용해 주세요",
       "failed": "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요",
+      "errorLocale": "이 언어는 음성 인식을 지원하지 않습니다",
+      "errorAudio": "마이크를 사용할 수 없습니다. 다른 앱이 사용 중인지 확인해 주세요",
+      "errorDownload": "음성 인식 준비에 실패했습니다. 네트워크 연결 후 다시 시도해 주세요",
       "paused": "받아쓰기 잠김"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "날씨",
       "skyPartly": "구름 조금",
       "rainSnow": "비 또는 눈",
-      "airStationLine": "{name} 측정소, {distance}km"
+      "airStationLine": "{name} 측정소, {distance}km",
+      "whereAmIServerFailed": "현재 위치 정보를 불러오지 못했습니다"
     },
     "settings": {
       "title": "설정",

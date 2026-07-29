@@ -6241,6 +6241,46 @@
         }
       }
     },
+    "common.outOfCoverage": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location-based features are available within South Korea. Place search, station info, and directions remain available."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fonctionnalités basées sur la localisation ne sont disponibles qu'en Corée du Sud. La recherche de lieux, les informations sur les stations et les itinéraires restent disponibles."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le funzionalità basate sulla posizione sono disponibili solo in Corea del Sud. La ricerca di luoghi, le informazioni sulle stazioni e gli itinerari restano disponibili."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。"
+          }
+        }
+      }
+    },
     "detail.back": {
       "localizations": {
         "ko": {
@@ -14001,6 +14041,126 @@
         }
       }
     },
+    "ios.voice.errorAudio": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마이크를 사용할 수 없습니다. 다른 앱이 사용 중인지 확인해 주세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The microphone isn't available. Check whether another app is using it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono no está disponible. Comprueba si otra app lo está usando."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le micro n'est pas disponible. Vérifiez qu'une autre app ne l'utilise pas."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il microfono non è disponibile. Controlla se un'altra app lo sta usando."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "マイクを使用できません。他のアプリが使用中でないか確認してください"
+          }
+        }
+      }
+    },
+    "ios.voice.errorDownload": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 인식 준비에 실패했습니다. 네트워크 연결 후 다시 시도해 주세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't prepare speech recognition. Connect to the network and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo preparar el reconocimiento de voz. Conéctate a la red e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de préparer la reconnaissance vocale. Connectez-vous au réseau, puis réessayez."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile preparare il riconoscimento vocale. Connettiti alla rete e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声認識の準備に失敗しました。ネットワークに接続してからもう一度お試しください"
+          }
+        }
+      }
+    },
+    "ios.voice.errorLocale": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 언어는 음성 인식을 지원하지 않습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech recognition isn't available for this language."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reconocimiento de voz no está disponible para este idioma."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale n'est pas disponible pour cette langue."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il riconoscimento vocale non è disponibile per questa lingua."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この言語は音声認識に対応していません"
+          }
+        }
+      }
+    },
     "ios.voice.failed": {
       "localizations": {
         "ko": {
@@ -14277,6 +14437,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "音声入力をロックしました"
+          }
+        }
+      }
+    },
+    "ios.voice.preparing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 인식 준비 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing speech recognition"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparando el reconocimiento de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préparation de la reconnaissance vocale"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparazione del riconoscimento vocale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声認識を準備中"
           }
         }
       }
@@ -18757,6 +18957,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "徒歩経路が見つかりませんでした。"
+          }
+        }
+      }
+    },
+    "route.pedestrian.stepFreeToggle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "계단 없는 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step-free route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta sin escalones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire sans escaliers"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso senza scale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "階段なしのルート"
           }
         }
       }
@@ -25197,6 +25437,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "音声を認識できませんでした。もう一度話してください。"
+          }
+        }
+      }
+    },
+    "voice.errors.rate_limited": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many requests. Please wait a moment and try again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de requêtes. Veuillez patienter un instant avant de réessayer."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Troppe richieste. Attendi un momento e riprova."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リクエストが多すぎます。しばらくしてからもう一度お試しください。"
           }
         }
       }

@@ -105,7 +105,7 @@ struct HoldDictationButton: View {
         // 가시 안내는 overlay 이탈(음수 offset)이 아니라 정상 레이아웃 흐름에 둔다 —
         // 검색·길찾기 사용처는 List 행이라 행 경계를 벗어나는 오버레이가 잘린다(실측).
         VStack(alignment: .leading, spacing: 2) {
-            micRow(title: appLocalized("ios.voice.hold"))
+            micRow(title: holdLabel)
             if showHoldHint {
                 // 비-VO 사용자용 가시 안내(VO는 handleTap의 polite 통지가 담당 —
                 // 이중 낭독 금지를 위해 이 Text는 접근성에서 숨긴다)
@@ -124,9 +124,18 @@ struct HoldDictationButton: View {
             )
         }
         .accessibilityElement()
-        .accessibilityLabel(appLocalized("ios.voice.hold"))
+        .accessibilityLabel(holdLabel)
         .accessibilityHint(hint)
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// 홀드 모드 라벨. 모델 다운로드 대기(.preparing)만 상태를 알린다 — 녹음이 시작되기
+    /// 전 구간이라 "녹음 중 라벨 불변"(헌장 §6) 계약과 충돌하지 않고, 침묵한 대기가
+    /// 무반응으로 읽히는 것이 반려 원인이었다.
+    private var holdLabel: String {
+        speech.phase == .preparing
+            ? appLocalized("ios.voice.preparing")
+            : appLocalized("ios.voice.hold")
     }
 
     /// 클래식 탭 토글(73fb4e7 이전 계약 복원): 탭=시작, 재탭=정지·전달. 라벨 전환이
@@ -141,14 +150,22 @@ struct HoldDictationButton: View {
 
     /// 클래식 계약의 라벨: 청취 중이면 "받아쓰기 중지"(외부 시작 세션 포함 — 정지
     /// 수단이 이 탭이므로 라벨이 그 사실을 알린다), 아니면 "받아쓰기 시작".
+    /// 모델 다운로드 대기는 둘 다 아니므로 준비 중임을 그대로 알린다.
     private var toggleLabel: String {
-        speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start")
+        if speech.phase == .preparing { return appLocalized("ios.voice.preparing") }
+        return speech.isListening ? appLocalized("voice.stop") : appLocalized("ios.voice.start")
     }
 
     private func micRow(title: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: speech.isListening ? "mic.fill" : "mic")
-                .foregroundStyle(speech.isListening ? Color.red : Color.accentColor)
+            // 준비 중엔 아이콘 자리에 불확정 진행 표시(비-VO 사용자의 유일한 대기 신호).
+            // 접근성 이름은 상위 요소의 라벨이 담당하므로 이 뷰는 순수 시각 레이어다.
+            if speech.phase == .preparing {
+                ProgressView()
+            } else {
+                Image(systemName: speech.isListening ? "mic.fill" : "mic")
+                    .foregroundStyle(speech.isListening ? Color.red : Color.accentColor)
+            }
             if showsTitle {
                 Text(title)
             }
@@ -163,10 +180,10 @@ struct HoldDictationButton: View {
     /// startTask가 남아, 다음 탭이 정지 no-op으로 소모된다(시뮬레이터 실측 2026-07-27).
     /// phase 동반 판정으로 실패 잔재를 시작 경로로 흘린다(재대입이 곧 정리).
     private func handleToggleTap() {
-        let starting = startTask != nil && speech.phase == .requesting
+        let starting = startTask != nil && speech.isStarting
         if speech.isListening || starting {
             finishAndDeliver()
-        } else if speech.phase == .requesting {
+        } else if speech.isStarting {
             // 외부 시작 세션(단축어)이 준비 중(권한·모델 다운로드): start 재호출은
             // 재진입 가드 no-op일 뿐이고 정지도 아직 불가 — 무반응이 정직(홀드 판 동형)
         } else {
@@ -272,7 +289,7 @@ struct HoldDictationButton: View {
         if speech.isListening || startTask != nil {
             guard !sessionActive else { return }
             finishAndDeliver()
-        } else if speech.phase == .requesting {
+        } else if speech.isStarting {
             // 외부 시작 세션(단축어)의 준비 중(권한·모델 다운로드): 세션이 시작되고
             // 있으므로 "누른 채로 말해 주세요" 안내는 오발화 — 무반응이 정직하다(감사 검출)
         } else {

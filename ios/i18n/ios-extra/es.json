@@ -17,7 +17,8 @@
       "geoDeniedDesc": "Permite el acceso a la ubicación de Gildongmu en Ajustes",
       "failedTitle": "No se pudo obtener la información",
       "refresh": "Actualizar",
-      "privacyPolicy": "Política de privacidad"
+      "privacyPolicy": "Política de privacidad",
+      "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles."
     },
     "chat": {
       "suggestion1": "Muéstrame qué hay por aquí",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "Dictar",
       "start": "Iniciar dictado",
+      "preparing": "Preparando el reconocimiento de voz",
       "holdHintSearch": "Mantén pulsado para hablar y suelta para buscar",
       "holdHintChat": "Mantén pulsado para hablar y suelta para enviar. Desliza hacia arriba sin soltar para bloquear: lo dictado hasta entonces pasa al campo de texto, donde puedes editarlo, y mantén pulsado de nuevo para seguir dictando. Desliza hacia la izquierda sin soltar para cancelar",
       "holdGuide": "Mantén pulsado para hablar",
+      "holdHintVisible": "Mantén pulsado para hablar",
       "denied": "Permite el acceso al micrófono en Ajustes",
       "failed": "No se pudo iniciar el reconocimiento de voz. Inténtalo de nuevo.",
+      "errorLocale": "El reconocimiento de voz no está disponible para este idioma.",
+      "errorAudio": "El micrófono no está disponible. Comprueba si otra app lo está usando.",
+      "errorDownload": "No se pudo preparar el reconocimiento de voz. Conéctate a la red e inténtalo de nuevo.",
       "paused": "Dictado bloqueado"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "Tiempo",
       "skyPartly": "Parcialmente nublado",
       "rainSnow": "Lluvia o nieve",
-      "airStationLine": "Estación de medición {name}, {distance}km"
+      "airStationLine": "Estación de medición {name}, {distance}km",
+      "whereAmIServerFailed": "No se pudo cargar la información de la ubicación actual"
     },
     "settings": {
       "title": "Ajustes",

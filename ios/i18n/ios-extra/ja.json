@@ -17,7 +17,8 @@
       "geoDeniedDesc": "設定アプリでキルドンムの位置情報へのアクセスを許可してください",
       "failedTitle": "情報を取得できませんでした",
       "refresh": "更新",
-      "privacyPolicy": "プライバシーポリシー"
+      "privacyPolicy": "プライバシーポリシー",
+      "outOfCoverage": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。"
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "音声入力",
       "start": "音声入力を開始",
+      "preparing": "音声認識を準備中",
       "holdHintSearch": "押している間話し、指を離すと検索します",
       "holdHintChat": "押している間話し、指を離すと送信します。押したまま上にスライドするとロックされ、それまでの内容が入力欄に入り、編集してからもう一度長押しすると続けて入力できます。押したまま左にスライドするとキャンセルします",
       "holdGuide": "押したまま話してください",
+      "holdHintVisible": "長押しして話す",
       "denied": "設定でマイクへのアクセスを許可してください",
       "failed": "音声認識を開始できませんでした。もう一度お試しください",
+      "errorLocale": "この言語は音声認識に対応していません",
+      "errorAudio": "マイクを使用できません。他のアプリが使用中でないか確認してください",
+      "errorDownload": "音声認識の準備に失敗しました。ネットワークに接続してからもう一度お試しください",
       "paused": "音声入力をロックしました"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "天気",
       "skyPartly": "晴れ時々くもり",
       "rainSnow": "雨または雪",
-      "airStationLine": "{name}測定所、{distance}km"
+      "airStationLine": "{name}測定所、{distance}km",
+      "whereAmIServerFailed": "現在地の情報を取得できませんでした"
     },
     "settings": {
       "title": "設定",

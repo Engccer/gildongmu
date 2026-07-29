@@ -17,7 +17,8 @@
       "geoDeniedDesc": "Autorisez l'accès à la position pour Gildongmu dans Réglages",
       "failedTitle": "Impossible de charger les informations",
       "refresh": "Actualiser",
-      "privacyPolicy": "Politique de confidentialité"
+      "privacyPolicy": "Politique de confidentialité",
+      "outOfCoverage": "Les fonctionnalités basées sur la localisation ne sont disponibles qu'en Corée du Sud. La recherche de lieux, les informations sur les stations et les itinéraires restent disponibles."
     },
     "chat": {
       "suggestion1": "Montre-moi ce qu'il y a autour",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "Dictée",
       "start": "Démarrer la dictée",
+      "preparing": "Préparation de la reconnaissance vocale",
       "holdHintSearch": "Maintenez appuyé pour parler, relâchez pour lancer la recherche",
       "holdHintChat": "Maintenez appuyé pour parler, relâchez pour envoyer. Faites glisser vers le haut sans relâcher pour verrouiller : ce qui a été dicté passe dans le champ de texte, où vous pouvez le modifier, puis maintenez appuyé de nouveau pour continuer la dictée. Faites glisser vers la gauche sans relâcher pour annuler",
       "holdGuide": "Maintenez appuyé pour parler",
+      "holdHintVisible": "Maintenez appuyé pour parler",
       "denied": "Autorisez l'accès au micro dans Réglages",
       "failed": "Impossible de démarrer la reconnaissance vocale. Veuillez réessayer.",
+      "errorLocale": "La reconnaissance vocale n'est pas disponible pour cette langue.",
+      "errorAudio": "Le micro n'est pas disponible. Vérifiez qu'une autre app ne l'utilise pas.",
+      "errorDownload": "Impossible de préparer la reconnaissance vocale. Connectez-vous au réseau, puis réessayez.",
       "paused": "Dictée verrouillée"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "Météo",
       "skyPartly": "Partiellement nuageux",
       "rainSnow": "Pluie ou neige",
-      "airStationLine": "Station de mesure {name}, {distance}km"
+      "airStationLine": "Station de mesure {name}, {distance}km",
+      "whereAmIServerFailed": "Impossible de charger les informations de la position actuelle"
     },
     "settings": {
       "title": "Réglages",

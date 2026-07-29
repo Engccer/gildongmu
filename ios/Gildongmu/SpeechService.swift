@@ -4,9 +4,14 @@ import Accessibility
 @preconcurrency import AVFoundation
 import AudioToolbox
 import Observation
+import OSLog
 import Speech
 import SwiftUI
 import UIKit
+
+/// 받아쓰기 실패 진단 채널. 실패가 화면엔 종별 문구로, 로그엔 원인 객체로 남는다
+/// (심사 기기처럼 재현이 안 되는 환경의 유일한 단서).
+private let speechLog = Logger(subsystem: "app.gildongmu", category: "speech")
 
 /// 온디바이스 음성 인식(iOS 26 SpeechAnalyzer + SpeechTranscriber, ko-KR 고정).
 /// 웹 STT의 iOS 판이되 서버 왕복 없음. 자동 언어 감지 금지(웹 detect_language 교훈과 동형).
@@ -15,23 +20,37 @@ import UIKit
 final class SpeechService {
     enum Phase: Equatable {
         case idle
-        /// 권한 요청·모델 에셋 다운로드 대기(최초 1회 다운로드 포함)
+        /// 마이크 권한 요청 대기
         case requesting
+        /// 전사 모델 에셋 다운로드 대기(최초 1회). 수십 초~분 단위라 `requesting`과
+        /// 분리해 "준비 중"을 화면에 내보낸다 — 침묵한 채 도는 대기가 "음성이 안 된다"로
+        /// 보였던 App Store 반려 원인.
+        case preparing
         case listening(partial: String)
         case denied
         case failed
     }
 
-    private enum SpeechError: Error {
-        case localeUnsupported  // ko-KR 미지원 기기
+    enum SpeechError: Error {
+        case localeUnsupported  // 현재 앱 언어를 이 기기가 미지원
         case audioUnavailable   // 포맷·변환기 구성 실패
+        case assetDownloadFailed  // 전사 모델 다운로드·설치 실패
     }
 
     private(set) var phase: Phase = .idle
+    /// 직전 실패 원인(`.failed` 구간에서만 유효). 알럿 문구를 종별로 가르는 근거 —
+    /// 시각장애 사용자는 화면으로 원인을 짐작할 수 없어 문장이 유일한 구분 수단이다.
+    private(set) var lastError: SpeechError?
 
     var isListening: Bool {
         if case .listening = phase { return true }
         return false
+    }
+
+    /// 시작 준비 중(권한 대기·모델 다운로드). 소비자 가드는 두 단계를 함께 봐야 한다 —
+    /// 정지도 재시작도 불가한 구간이라는 점에서 동일하다.
+    var isStarting: Bool {
+        phase == .requesting || phase == .preparing
     }
 
     private let audioEngine = AVAudioEngine()
@@ -55,10 +74,11 @@ final class SpeechService {
         switch phase {
         case .idle, .denied, .failed:
             break
-        case .requesting, .listening:
+        case .requesting, .preparing, .listening:
             return
         }
         phase = .requesting
+        lastError = nil
         let gen = generation
 
         guard await AVAudioApplication.requestRecordPermission() else {
@@ -84,8 +104,13 @@ final class SpeechService {
             phase = .listening(partial: "")
             notify(soundID: 1113) // 녹음 시작음
         } catch {
+            // 오류를 버리지 않는다: 로그에 원인, 화면에 종별 문구(3-state 정신 —
+            // "권한 거부"·"로케일 미지원"·"모델 준비 실패"·"오디오 사용 불가"는 다른 사건).
+            speechLog.error("받아쓰기 시작 실패: \(String(describing: error), privacy: .public)")
             await teardown()
-            if gen == generation { phase = .failed }
+            guard gen == generation else { return }
+            lastError = error as? SpeechError
+            phase = .failed
         }
     }
 
@@ -148,9 +173,28 @@ final class SpeechService {
             attributeOptions: []
         )
 
-        // 모델 에셋 미설치면 다운로드(최초 1회, phase는 .requesting 유지)
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-            try await request.downloadAndInstall()
+        // 설치 여부를 먼저 판정한다: 무조건 설치 요청은 이미 설치된 기기에서도 불필요한
+        // 왕복이고, 미설치 기기에서는 아무 표시 없이 수십 초를 삼켰다. 미설치일 때만
+        // .preparing으로 대기를 화면에 노출하고 받는다.
+        let installed = await SpeechTranscriber.installedLocales
+        let target = locale.identifier(.bcp47)
+        if !installed.contains(where: { $0.identifier(.bcp47) == target }) {
+            phase = .preparing
+            do {
+                if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+                    try await request.downloadAndInstall()
+                }
+            } catch {
+                speechLog.error("전사 모델 설치 실패(\(target, privacy: .public)): \(String(describing: error), privacy: .public)")
+                throw SpeechError.assetDownloadFailed
+            }
+        }
+        // 예약(시스템 회수 방지)은 실패해도 이번 세션 인식엔 영향이 없다 — 비치명으로
+        // 기록만 하고 진행한다. 앱 언어를 바꾸면 다음 세션이 새 로케일로 예약한다.
+        do {
+            try await AssetInventory.reserve(locale: locale)
+        } catch {
+            speechLog.error("로케일 예약 실패(\(target, privacy: .public)): \(String(describing: error), privacy: .public)")
         }
 
         let analyzer = SpeechAnalyzer(modules: [transcriber])
@@ -172,7 +216,15 @@ final class SpeechService {
                     }
                 }
             } catch {
-                // 스트림 실패 시 이미 확정된 finalizedText는 보존(stop이 그대로 반환)
+                // 스트림 실패 시 이미 확정된 finalizedText는 보존(teardown이 건드리지 않음).
+                // 청취 중이 아니면 정상 종료(취소·정지가 스트림을 끊은 것)이므로 무시하고,
+                // stop()이 진행 중이면 그 경로가 정리·전달을 책임진다(중복 종료 금지).
+                guard let self, !self.stopping, case .listening = self.phase else { return }
+                speechLog.error("인식 스트림 실패: \(String(describing: error), privacy: .public)")
+                // 인식이 죽은 채 마이크만 뜨거운 상태를 남기지 않는다.
+                self.audioEngine.inputNode.removeTap(onBus: 0)
+                await self.teardown()
+                self.phase = .failed
             }
         }
 
@@ -227,6 +279,27 @@ final class SpeechService {
     private func notify(soundID: SystemSoundID) {
         AudioServicesPlaySystemSound(soundID)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+/// 받아쓰기 안내 알럿 문구(없으면 nil = 알럿 미표시). 권한 거부와 실패를 가르고,
+/// 실패는 다시 원인별로 가른다 — 사용자가 다음에 할 일이 각각 다르기 때문이다
+/// (설정 열기 / 언어 바꾸기 / 다른 앱 정리 / 네트워크 확인 후 재시도).
+/// 소비 3뷰가 같은 분기를 복제하지 않도록 판정을 여기 한 곳에 둔다.
+@MainActor
+func speechAlertText(_ speech: SpeechService) -> String? {
+    switch speech.phase {
+    case .denied:
+        return appLocalized("ios.voice.denied")
+    case .failed:
+        switch speech.lastError {
+        case .localeUnsupported: return appLocalized("ios.voice.errorLocale")
+        case .audioUnavailable: return appLocalized("ios.voice.errorAudio")
+        case .assetDownloadFailed: return appLocalized("ios.voice.errorDownload")
+        case nil: return appLocalized("ios.voice.failed")
+        }
+    default:
+        return nil
     }
 }
 

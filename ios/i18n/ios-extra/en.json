@@ -17,7 +17,8 @@
       "geoDeniedDesc": "Please allow location access for Gildongmu in the Settings app",
       "failedTitle": "Couldn't load information",
       "refresh": "Refresh",
-      "privacyPolicy": "Privacy Policy"
+      "privacyPolicy": "Privacy Policy",
+      "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available."
     },
     "chat": {
       "suggestion1": "Show me what's around here",
@@ -41,11 +42,16 @@
     "voice": {
       "hold": "Dictate",
       "start": "Start dictation",
+      "preparing": "Preparing speech recognition",
       "holdHintSearch": "Press and hold to speak; release to search",
       "holdHintChat": "Press and hold to speak; release to send. Slide up while holding to lock: what you said so far goes into the text field, where you can edit it, then press and hold again to continue dictating. Slide left while holding to cancel",
       "holdGuide": "Press and hold to speak",
+      "holdHintVisible": "Press and hold to speak",
       "denied": "Please allow microphone access in Settings",
       "failed": "Couldn't start speech recognition. Please try again.",
+      "errorLocale": "Speech recognition isn't available for this language.",
+      "errorAudio": "The microphone isn't available. Check whether another app is using it.",
+      "errorDownload": "Couldn't prepare speech recognition. Connect to the network and try again.",
       "paused": "Dictation locked"
     },
     "search": {
@@ -174,7 +180,8 @@
       "weatherHeading": "Weather",
       "skyPartly": "Partly cloudy",
       "rainSnow": "Rain or snow",
-      "airStationLine": "{name} monitoring station, {distance}km"
+      "airStationLine": "{name} monitoring station, {distance}km",
+      "whereAmIServerFailed": "Couldn't load information for your location"
     },
     "settings": {
       "title": "Settings",
