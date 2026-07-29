@@ -494,11 +494,18 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 수단 섹션 본문. 대중교통은 추천 경로만(웹 DirectionsView 동형).
+    /// 수단 섹션 본문. 대중교통은 추천 경로 전체 + 대안 요약 1행씩(legs 미표시,
+    /// 미니멀 — 웹 DirectionsView 동형. ODsay 상한이 대안 2개라 상시 노출).
     @ViewBuilder
     private func outcomeRows(_ mode: DirectionsMode, _ outcome: DirectionsModeOutcome?) -> some View {
         switch outcome {
-        case .transit(let result): TransitRouteRows(route: result.recommended)
+        case .transit(let result):
+            TransitRouteRows(route: result.recommended)
+            ForEach(Array(result.alternatives.enumerated()), id: \.offset) { i, route in
+                Text(joinText(
+                    appLocalized("route.transit.alternativeHeading", String(i + 1)),
+                    transitSummaryText(route.summary)))
+            }
         case .walk(let briefing): WalkRouteRows(briefing: briefing)
         case .car(let briefing): CarRouteRows(briefing: briefing)
         case .empty: Text(noRouteText(mode))
