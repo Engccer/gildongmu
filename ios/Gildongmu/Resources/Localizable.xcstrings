@@ -8121,6 +8121,46 @@
         }
       }
     },
+    "ios.common.outOfCoverage": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location-based features are available within South Korea. Place search, station info, and directions remain available."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fonctionnalités basées sur la localisation ne sont disponibles qu'en Corée du Sud. La recherche de lieux, les informations sur les stations et les itinéraires restent disponibles."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le funzionalità basate sulla posizione sono disponibili solo in Corea del Sud. La ricerca di luoghi, le informazioni sulle stazioni e gli itinerari restano disponibili."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。"
+          }
+        }
+      }
+    },
     "ios.common.privacyPolicy": {
       "localizations": {
         "ko": {
@@ -10717,6 +10757,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在地を確認しました"
+          }
+        }
+      }
+    },
+    "ios.nearby.whereAmIServerFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치 정보를 불러오지 못했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load information for your location"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la información de la ubicación actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les informations de la position actuelle"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare le informazioni sulla posizione attuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の情報を取得できませんでした"
           }
         }
       }

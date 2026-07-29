@@ -9,7 +9,7 @@ import GildongmuKit
 @Observable @MainActor
 final class ConditionsModel {
     /// 화면 공통 단계(권한 거부·위치 실패는 두 조각 공통 전제라 화면 단위)
-    enum Phase { case idle, loading, denied, failed, done }
+    enum Phase { case idle, loading, denied, failed, outOfCoverage, done }
 
     private(set) var phase: Phase = .idle
     /// nil = 조회 실패 또는 데이터 부재(둘 다 "가져오지 못했습니다"로 표시)
@@ -27,10 +27,24 @@ final class ConditionsModel {
         if case .done = phase {} else { phase = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
-            async let weatherTask: Weather? = (try? service.weather(lat: coord.lat, lng: coord.lng)) ?? nil
-            async let airTask: AirQuality? = (try? service.air(lat: coord.lat, lng: coord.lng)) ?? nil
-            let newWeather = await weatherTask
-            let newAir = await airTask
+            // 위치 취득 직후 선분기(네트워크 생략) — 두 fetch 모두 건너뛰고 화면 단위 안내.
+            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
+                if case .done = phase { announceOutOfCoverage() }
+                phase = .outOfCoverage
+                return
+            }
+            async let weatherOutcome = Self.fetchWeather(service, lat: coord.lat, lng: coord.lng)
+            async let airOutcome = Self.fetchAir(service, lat: coord.lat, lng: coord.lng)
+            let (weatherResult, airResult) = await (weatherOutcome, airOutcome)
+            // 서버 마커 이중 방어: 선분기를 통과했어도 fetch 시점에 커버리지 밖 마커를
+            // 만날 수 있다 — 한쪽이라도 감지하면 부분 데이터를 버리고 화면 전체를 전환한다.
+            if weatherResult.outOfCoverage || airResult.outOfCoverage {
+                if case .done = phase { announceOutOfCoverage() }
+                phase = .outOfCoverage
+                return
+            }
+            let newWeather = weatherResult.value
+            let newAir = airResult.value
             // 새로고침 실패 시 직전 성공 데이터 유지(재조회이지 데이터 포기 아님, M2 계약)
             if newWeather != nil { weather = newWeather }
             if newAir != nil { air = newAir }
@@ -53,6 +67,33 @@ final class ConditionsModel {
             } else if case .done = phase { announceRefreshFailed() } else { phase = .failed }
         } catch {
             if case .done = phase { announceRefreshFailed() } else { phase = .failed }
+        }
+    }
+
+    /// 날씨 fetch: 커버리지 마커는 nil(실패)과 구분해 표시(이중 방어 판정용).
+    /// 그 외 실패는 nil로 흡수(기존 graceful degrade 계약 유지 — 한쪽 실패가 다른 쪽을 안 죽임).
+    nonisolated private static func fetchWeather(
+        _ service: ConditionsService, lat: Double, lng: Double
+    ) async -> (value: Weather?, outOfCoverage: Bool) {
+        do {
+            return (try await service.weather(lat: lat, lng: lng), false)
+        } catch APIError.outOfCoverage {
+            return (nil, true)
+        } catch {
+            return (nil, false)
+        }
+    }
+
+    /// 공기질 fetch: 위 fetchWeather와 동형.
+    nonisolated private static func fetchAir(
+        _ service: ConditionsService, lat: Double, lng: Double
+    ) async -> (value: AirQuality?, outOfCoverage: Bool) {
+        do {
+            return (try await service.air(lat: lat, lng: lng), false)
+        } catch APIError.outOfCoverage {
+            return (nil, true)
+        } catch {
+            return (nil, false)
         }
     }
 }
@@ -123,6 +164,8 @@ struct ConditionsView: View {
         case .failed:
             ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
                 description: Text(appLocalized("ios.common.retryLater")))
+        case .outOfCoverage:
+            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
         default: EmptyView()
         }
     }

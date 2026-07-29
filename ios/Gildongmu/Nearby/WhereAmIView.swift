@@ -14,7 +14,9 @@ final class WhereAmIModel {
         case loaded(WhereAmIData, lat: Double, lng: Double, asOf: String)
         case empty    // data:null — 키 없음, 死기능 아님(throw와 다른 문구)
         case denied
-        case failed   // 조회 실패(throw)
+        case outOfCoverage    // 서비스 지역 밖 — 실패 아님, spec 2026-07-29
+        case failedLocation   // 위치 취득 실패(LocationError.unavailable)
+        case failedServer     // 서버 조회 실패(그 외 throw)
     }
 
     private(set) var state: State = .idle
@@ -30,6 +32,12 @@ final class WhereAmIModel {
         if case .loaded = state {} else { state = .loading }
         do {
             let coord = try await LocationService.shared.currentCoordinate(force: force)
+            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
+            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
+                if case .loaded = state { announceOutOfCoverage() }
+                state = .outOfCoverage
+                return
+            }
             let data = try await service.locate(lat: coord.lat, lng: coord.lng)
             if let data {
                 let asOf = Self.timeFormatter.string(from: Date())
@@ -47,9 +55,12 @@ final class WhereAmIModel {
                 // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
                 if case .loaded = state { announcePermissionLost() }
                 state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
+            } else if case .loaded = state { announceRefreshFailed() } else { state = .failedLocation }
+        } catch APIError.outOfCoverage {
+            if case .loaded = state { announceOutOfCoverage() }
+            state = .outOfCoverage
         } catch {
-            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
+            if case .loaded = state { announceRefreshFailed() } else { state = .failedServer }
         }
     }
 
@@ -95,8 +106,13 @@ struct WhereAmIView: View {
         case .denied:
             ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
                 description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
+        case .outOfCoverage:
+            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
+        case .failedLocation:
             ContentUnavailableView(appLocalized("ios.nearby.whereAmIFailed"), systemImage: "wifi.exclamationmark",
+                description: Text(appLocalized("ios.common.retryLater")))
+        case .failedServer:
+            ContentUnavailableView(appLocalized("ios.nearby.whereAmIServerFailed"), systemImage: "wifi.exclamationmark",
                 description: Text(appLocalized("ios.common.retryLater")))
         case .empty:
             ContentUnavailableView(appLocalized("ios.nearby.whereAmIEmpty"), systemImage: "location.slash")
