@@ -25,6 +25,7 @@ function makeRequest(origin: string, dest: string) {
 describe("GET /api/route/transit", () => {
   beforeEach(() => {
     vi.mocked(hasOdsayKey).mockReturnValue(true);
+    vi.mocked(getTransitRoute).mockClear();
   });
 
   it("origin 형식 오류 → 400", async () => {
@@ -55,6 +56,14 @@ describe("GET /api/route/transit", () => {
     vi.mocked(hasOdsayKey).mockReturnValue(false);
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
     expect(res.status).toBe(503);
+  });
+
+  it("키 없음 + 한국 밖 좌표는 커버리지 마커가 우선(503 아니라 200 outOfCoverage)", async () => {
+    vi.mocked(hasOdsayKey).mockReturnValue(false);
+    const res = await GET(makeRequest("37.7749,-122.4194", "37.5665,126.978"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ outOfCoverage: true });
+    expect(getTransitRoute).not.toHaveBeenCalled();
   });
 
   it("정상 경로 → {result} shape", async () => {

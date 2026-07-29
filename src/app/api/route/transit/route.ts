@@ -19,13 +19,6 @@ import { getTransitRoute } from "@/lib/providers/odsay";
 const querySchema = z.object({ origin: coordSchema, dest: coordSchema });
 
 export async function GET(request: NextRequest) {
-  if (!hasOdsayKey()) {
-    return NextResponse.json(
-      { error: "대중교통 길찾기는 API 키 등록 후 사용할 수 있습니다." },
-      { status: 503 },
-    );
-  }
-
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
@@ -40,6 +33,13 @@ export async function GET(request: NextRequest) {
   const { origin, dest } = parsed.data;
   if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
     return NextResponse.json({ outOfCoverage: true });
+  }
+
+  if (!hasOdsayKey()) {
+    return NextResponse.json(
+      { error: "대중교통 길찾기는 API 키 등록 후 사용할 수 있습니다." },
+      { status: 503 },
+    );
   }
 
   try {
