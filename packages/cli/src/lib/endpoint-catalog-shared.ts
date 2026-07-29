@@ -83,7 +83,7 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
              { key: "routeId", type: "string", required: true, description: "노선 ID(nearby-bus 결과의 arrivals[].routeId)" },
              { key: "cityCode", type: "string", required: false, description: "tago일 때 필수(nearby-bus 결과의 cityCode)" }],
     envelope: "stops", locationParam: false, mcp: true },
-  { name: "route-car", description: "자동차 경로 텍스트 브리핑(턴바이턴)", path: "/api/route/car", method: "GET",
+  { name: "route-car", description: "자동차 경로 텍스트 브리핑(턴바이턴, guide별 거리·시간 0=미제공·안내 문장에 거리 내장, 재조합 금지)", path: "/api/route/car", method: "GET",
     params: [{ key: "origin", type: "string", required: true, description: "출발 좌표 '위도,경도'" },
              { key: "dest", type: "string", required: true, description: "도착 좌표 '위도,경도'" },
              { key: "lang", type: "string", required: false, description: "en이면 영문 턴바이턴" }],
