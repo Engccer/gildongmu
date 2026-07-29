@@ -47,16 +47,20 @@ public struct RouteService: Sendable {
 
     /// nil = 경로 없음(3-state, throw 아님). 키 없음(404)·조회 실패(502)는 여느 라우트와
     /// 동형으로 throw.
+    /// accessible=true는 계단 회피 모드(웹 `?accessible=true` 계약). 미적용 시 서버가
+    /// 안전 문장을 steps[0]에 결정론 삽입하므로 클라이언트 별도 문구가 필요 없다.
+    /// false면 파라미터 자체를 생략해 기존 요청과 byte-identical.
     public func walk(
         originLat: Double, originLng: Double,
-        destLat: Double, destLng: Double
+        destLat: Double, destLng: Double,
+        accessible: Bool = false
     ) async throws -> WalkRouteBriefing? {
-        let envelope: WalkRouteEnvelope = try await client.get(
-            "/api/route/walk",
-            query: [
-                URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
-                URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
-            ])
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+        ]
+        if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
+        let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.result
     }
 }

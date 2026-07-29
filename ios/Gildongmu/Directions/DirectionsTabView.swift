@@ -56,6 +56,15 @@ final class DirectionsModel {
     private(set) var results: DirectionsResults?
     /// 조회 완료 세대. 뷰가 포커스 이동 시점을 아는 신호(SearchModel.resultsRevision 동형).
     private(set) var resultsRevision = 0
+    /// 계단 회피(도보 전용) 토글 상태(웹 stepFreeEnabled 미러). 조회 전 토글은 상태만
+    /// 바꿔 다음 조회에 반영, 조회 후 토글은 도보만 재조회한다(toggleStepFree).
+    private(set) var stepFreeEnabled = false
+    /// 토글 재조회 진행 신호(웹 stepFreeBusy 미러). isBusy에 합산되어 그 15초 창에서도
+    /// 조회 버튼이 같은 "조회 중" 라벨을 낸다(멀쩡해 보이는데 무시되는 버튼 방지).
+    private(set) var stepFreeBusy = false
+    /// 도보 단독 재조회 완료 세대. 뷰가 도보 heading으로 포커스를 옮기는 신호
+    /// (resultsRevision과 분리 — 전체 조회는 첫 성공 수단, 토글 재조회는 항상 도보).
+    private(set) var walkRefetchRevision = 0
     /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
     /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
     private(set) var currentAddress: String?
@@ -67,14 +76,18 @@ final class DirectionsModel {
     private let searchService = SearchService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     private var queryTask: Task<Void, Never>?
     /// 재진입 가드(웹 in-flight ref 미러): 진행 중 재탭은 무시(disabled 금지 계약의 짝).
+    /// 토글 재조회도 **같은** 가드를 공유한다(웹 계약 동형) — 분리하면 토글끼리의
+    /// 연타만 막고 "조회"와의 교차 레이스는 못 막는다.
     private var isInFlight = false
+    /// 직전 조회에 쓴 해석 좌표(웹 lastCoordsRef 미러). 토글 재조회가 재측위 없이 재사용.
+    private var lastCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double))?
 
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
         to = prefilledDestination
     }
 
-    var isBusy: Bool { phase == .locating || phase == .loading }
+    var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
 
     func endpoint(for target: DirectionsFieldTarget) -> DirectionsEndpoint? {
         target == .from ? from : to
@@ -113,6 +126,7 @@ final class DirectionsModel {
     private func clearResults() {
         queryTask?.cancel()
         isInFlight = false
+        stepFreeBusy = false
         results = nil
         phase = .idle
     }
@@ -122,6 +136,7 @@ final class DirectionsModel {
     func cancel() {
         queryTask?.cancel()
         isInFlight = false
+        stepFreeBusy = false
     }
 
     /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
@@ -209,14 +224,16 @@ final class DirectionsModel {
         guard !Task.isCancelled,
               let origin = coordinate(of: from, current: current),
               let dest = coordinate(of: to, current: current) else { return }
+        lastCoords = (origin: origin, dest: dest)
         phase = .loading
 
         // 3수단 병렬. 도보는 앱 언어 ko 전용(웹 prefersEnglish 분기 동형, 조회 자체 생략).
         let includeWalk = AppLanguage.current == "ko"
         let lang = AppLanguage.dataLocale
         let service = self.service
+        let accessible = stepFreeEnabled
         async let transitSettled = Self.settleTransit(service, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: includeWalk, origin: origin, dest: dest)
+        async let walkSettled = Self.settleWalk(service, include: includeWalk, origin: origin, dest: dest, accessible: accessible)
         async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }
@@ -245,6 +262,41 @@ final class DirectionsModel {
             : appLocalized("directions.allFailed"))
     }
 
+    /// 계단 회피 토글(웹 toggleStepFree 동형): 이미 조회된 결과가 있으면 도보만 새
+    /// 상태로 재조회하고(대중교통·자동차 유지), 조회 전이면 상태만 바꿔 다음 조회에
+    /// 반영한다. 재조회는 "조회"와 같은 isInFlight·queryTask를 공유해 교차 레이스가
+    /// 구조적으로 불가능하다(진행 중 재탭은 상태 변화 없이 무시 — 토글 시각값도 불변).
+    func toggleStepFree() {
+        if isInFlight { return }
+        stepFreeEnabled.toggle()
+        guard results != nil, let coords = lastCoords else { return }
+        isInFlight = true
+        stepFreeBusy = true
+        queryTask = Task {
+            await refetchWalk(origin: coords.origin, dest: coords.dest)
+            guard !Task.isCancelled else { return }
+            isInFlight = false
+            stepFreeBusy = false
+        }
+    }
+
+    private func refetchWalk(origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)) async {
+        let service = self.service
+        let accessible = stepFreeEnabled
+        let settled = await Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible)
+        guard !Task.isCancelled, let settled, let current = results else { return }
+        // lastCoords는 이미 커버리지 검증을 통과한 좌표라 재조회에서 서버 마커가 다시
+        // 뜰 일은 사실상 없다 — 그래도 도달 시 화면 전체 전환 대신 도보 오류로 안내한다
+        // (웹 동형: 부분 재조회가 다른 수단 결과까지 버리게 하지 않는다).
+        var outcome = DirectionsOutcomeClassifier.classify(walk: settled)
+        if outcome.isOutOfCoverage { outcome = .error }
+        var outcomes = current.outcomes
+        outcomes[.walk] = outcome
+        results = DirectionsResults(outcomes: outcomes)
+        // 재조회 완료 신호는 도보 heading 포커스 이동뿐(웹 동형, 별도 통지 중복 금지).
+        walkRefetchRevision += 1
+    }
+
     private func coordinate(
         of endpoint: DirectionsEndpoint, current: (lat: Double, lng: Double)?
     ) -> (lat: Double, lng: Double)? {
@@ -271,12 +323,15 @@ final class DirectionsModel {
     }
 
     nonisolated private static func settleWalk(
-        _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)
+        _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
+        accessible: Bool
     ) async -> Result<WalkRouteBriefing?, any Error>? {
         guard include else { return nil }
         do {
             return .success(try await withQueryTimeout {
-                try await service.walk(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng)
+                try await service.walk(
+                    originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
+                    accessible: accessible)
             })
         } catch { return .failure(error) }
     }
@@ -325,6 +380,16 @@ struct DirectionsTabView: View {
                 if let results = model.results {
                     ForEach(results.displayedModes, id: \.self) { mode in
                         Section {
+                            // 계단 회피 토글은 도보 섹션에만(웹 동형 — 결과 유무·오류와
+                            // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
+                            // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
+                            // 방금 조작한 요소가 스스로 진행을 확인시키는 라벨 전환 관례).
+                            if mode == .walk {
+                                Toggle(stepFreeToggleText, isOn: Binding(
+                                    get: { model.stepFreeEnabled },
+                                    set: { _ in model.toggleStepFree() }
+                                ))
+                            }
                             outcomeRows(mode, results.outcomes[mode])
                         } header: {
                             Text(headingText(mode))
@@ -346,6 +411,8 @@ struct DirectionsTabView: View {
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
             .onChange(of: model.resultsRevision) { focusedModeHeading = model.results?.firstSuccess }
+            // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
+            .onChange(of: model.walkRefetchRevision) { focusedModeHeading = .walk }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
             .onDisappear { model.cancel() }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
@@ -380,6 +447,13 @@ struct DirectionsTabView: View {
     /// 진행 중 라벨 전환이 상태 신호(채팅 보내기 버튼 관례, disabled 금지).
     private var submitText: String {
         model.isBusy ? appLocalized("ios.directions.searching") : appLocalized("directions.submit")
+    }
+
+    /// 토글 재조회 중 라벨 병기(한 줄 = 한 객체, 쉼표 결합). 이 창의 재탭은 가드로
+    /// 무시되므로 라벨이 유일한 진행 신호다.
+    private var stepFreeToggleText: String {
+        let label = appLocalized("route.pedestrian.stepFreeToggle")
+        return model.stepFreeBusy ? "\(label), \(appLocalized("ios.directions.searching"))" : label
     }
 
     private var statusText: String {
