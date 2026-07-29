@@ -34,6 +34,7 @@ describe("GET /api/route/car", () => {
   beforeEach(() => {
     vi.mocked(hasKakaoKey).mockReturnValue(true);
     vi.mocked(hasNcpMapsKeys).mockReturnValue(false);
+    vi.mocked(getCarRouteBriefing).mockClear();
   });
 
   it("origin 형식 오류 → 400", async () => {
@@ -75,6 +76,14 @@ describe("GET /api/route/car", () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
     expect(res.status).toBe(503);
+  });
+
+  it("키 없음 + 한국 밖 좌표는 커버리지 마커가 우선(503 아니라 200 outOfCoverage)", async () => {
+    vi.mocked(hasKakaoKey).mockReturnValue(false);
+    const res = await GET(makeRequest("37.7749,-122.4194", "37.5665,126.978"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ outOfCoverage: true });
+    expect(getCarRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("provider throw → 502", async () => {

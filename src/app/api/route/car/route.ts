@@ -27,16 +27,6 @@ const querySchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
-  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 카카오 한국어로 폴백
-  const useNcp =
-    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys();
-  if (!useNcp && !hasKakaoKey()) {
-    return NextResponse.json(
-      { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
-      { status: 503 },
-    );
-  }
-
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
@@ -51,6 +41,16 @@ export async function GET(request: NextRequest) {
   const { origin, dest } = parsed.data;
   if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
     return NextResponse.json({ outOfCoverage: true });
+  }
+
+  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 카카오 한국어로 폴백
+  const useNcp =
+    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys();
+  if (!useNcp && !hasKakaoKey()) {
+    return NextResponse.json(
+      { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
+      { status: 503 },
+    );
   }
 
   try {
