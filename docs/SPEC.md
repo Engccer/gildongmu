@@ -54,6 +54,8 @@
 
 > **2026-07-22 보행 인프라(둘러보기 기능 B) 출시** — 서울시 음향신호기(서울 열린데이터 OA-15543, 2026-05-28 기준 16,822기 정적 seed, EPSG:5186 golden 가드)+OSM Overpass(횡단보도·점자블록 노드, 타일 anchor 캐시)를 단일 서비스 `getWalkInfrastructure()`로 합성. 7번째 "내 주변" 패널+`/api/walk/nearby`+채팅 `get_walk_infrastructure`(17종). 상태는 discriminated union(0건 ≠ 서울 외 미제공 ≠ 조회 실패), 등록≠작동 각주. 설계 `superpowers/specs/2026-07-22-walk-infrastructure-design.md`(codex 적대적 리뷰 22건 반영)·plan 동일 날짜. 후속 후보: crossingSignal "no"(무신호 횡단) 안내 여부·OSM way/area 확장·전국(경찰청) 확장.
 
+> **2026-07-29 서비스 지역 커버리지 계약**: 아래 표의 데이터 소스는 사실상 전부 대한민국 전용인데, 한국 밖 좌표에서 그 사실이 "데이터 없음"이 아니라 오류로 표현되던 공백이 App Store 심사 반려(2.1(a))로 드러났다. 좌표 의존 라우트 13종이 파싱 → 커버리지 마커 → 키 게이트 순서로 200 `{"outOfCoverage":true}`를 반환하고(upstream 미호출이라 쿼터도 보호), 웹·iOS·CLI/MCP·채팅이 각자 오류 아닌 안내로 렌더한다. 술어 정본은 `src/lib/coverage.ts` ↔ iOS Kit `Coverage.swift`. 이름 기반 기능(장소 검색·역 정보·목적지 길찾기·장소 앵커 채팅)은 전 세계 유효하므로 안내 문구도 "위치 기반 기능만 제한" 톤이다. 3-state(0건·정보 없음·조회 실패)에 더한 4번째 정직 상태. 설계 `superpowers/specs/2026-07-29-coverage-contract-dictation-design.md`.
+
 | 서비스/API | 도메인 | 상태 | dodo-planet 통합 가치 |
 |------------|--------|------|----------------------|
 | 카카오 로컬 | 장소 검색 | **운영 중** — 카카오맵 활성화 + 실데이터 검증 완료 (2026-06-12) | 높음 — 장소 검색 코어 |
@@ -62,7 +64,7 @@
 | 네이버 지역 검색 | 장소 검색 | 구현 완료 (키 대기) | 중 — 카카오 보완 |
 | 카카오맵/네이버지도 딥링크 | 내비 연결 | **구현 완료 + UI 통합 (2026-06-13)** — 검색 카드에 네이버/카카오 두 그룹 | 높음 — 길찾기 코어 |
 | 한국관광공사 TourAPI 4.0 | 관광정보 (다국어) | **운영 중 (2026-06-13)** — en 로케일 자동 우선, 실응답·프로덕션 검증 완료. 개발계정 기능당 일 1,000건. 추가 실측: `locationBasedList2`(반경·dist·거리순)·`detailCommon2`(영문 overview 1,300자) — provider 함수 추가는 Phase 0b 후보 | **높음** — 외국인 여행자 + dodo 여행 도메인 정합. 카카오·네이버의 다국어 공백을 메우는 유일한 공식 소스 |
-| **Tmap 보행자 경로**(SK open API) | 도보 길찾기 | **운영 중 (2026-07-22)** — `tmap-pedestrian` provider+`/api/route/walk`+길찾기 뷰(웹)/길찾기 탭(iOS 4탭). 완성 문장 `description` 낭독 정본, 3102=경로없음 graceful, V1 ko 전용. `TMAP_APP_KEY`(일 1,000건 무료) | **높음** — dodo 이식 시 dodo용 별도 appKey 발급만(같은 T아이디 계정) |
+| **도보 경로**(카카오 도보 기본 + Tmap 폴백) | 도보 길찾기 | **운영 중 (2026-07-22 Tmap 출시 → 2026-07-29 카카오 기본 전환)**: `kakao-walk`(기본, 기존 `KAKAO_REST_API_KEY`)와 `tmap-pedestrian`(카카오 throw 시에만 폴백)을 `walk-route.ts`가 합성, `/api/route/walk`+길찾기 뷰(웹)/길찾기 탭(iOS). 카카오 채택 근거는 동좌표 문체 대조에서 확인한 의미 단위 스텝·역사 내 이동·계단/지하보도 명시. 완성 문장 낭독 정본 유지, 계단 회피 모드(`accessible=true`→`stepFree` 3-state, 미적용 시 안전 문장을 서버가 삽입, 웹 토글), 횡단보도 스텝에 음향신호기 주석(seed 40m 대조, 병합 스텝은 침묵). V1 ko 전용, 게이트 `hasWalkRouteKey()`. 유료 전환 미신청이라 비용 상한 0원 | **높음**: dodo 이식 시 카카오 키는 공유, Tmap만 dodo용 appKey 발급 |
 | NCP Directions 5/15 | 자동차 경로 (영문!) | **운영 중 (C1, 2026-06-17)** — `ncp-directions.ts` + `/api/route/car` lang 디스패치. `lang=en`+NCP 키면 NCP 영문 턴바이턴(`instructions`), 그 외 카카오 한국어 graceful 폴백. 두 provider 동일 `CarRouteBriefing` shape(컴포넌트 불변). ⚠ NCP `duration` 밀리초→초 변환(`normalizeNcpRoute`). 실호출 검증(en 14단계 영문·ko 8단계 한국어, durSec 단위 정합) | **높음** — dodo 외국인 시나리오의 영문 경로 정본 |
 | NCP Geocoding/Reverse | 주소↔좌표 (영문 보완) | **키 확보 + 원시 실측 (2026-06-13)** — 정지오코딩이 `englishAddress` 반환. 역지오는 한국어 전용 → 영문 현위치는 역지오→정지오 **2-call 체인**(실측 동작 확인). 영문 입력 질의는 미수용(0건) | 중상 — 영문 주소 표기·현위치 낭독. juso.go.kr 불필요해짐 |
 | 행안부 juso.go.kr | 영문 주소 변환 | 조사됨 | 중 — 외국인용 주소 표기 보완 |
