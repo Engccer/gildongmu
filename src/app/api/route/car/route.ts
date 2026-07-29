@@ -3,6 +3,7 @@ import { z } from "zod";
 import { hasCarRouteKey, hasNcpMapsKeys } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
+import { checkCarRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getCarRoute } from "@/lib/car-route";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 
@@ -20,6 +21,8 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
  * - 그 외(ko, 또는 en이지만 NCP 키 없음) → car-route.ts 서비스
  *   (기본 Tmap, Tmap 실패 시 카카오모빌리티 폴백 — 2026-07-30 전환)
  * 두 provider 모두 동일한 CarRouteBriefing shape를 반환해 컴포넌트는 불변이다.
+ * 기본 Tmap도 일 1,000건 무료 쿼터를 도보 경로와 공유하는 유료 API라
+ * 도보 라우트와 동일한 IP 레이트리밋(60초 10회)으로 호출 *전*에 비용을 방어한다.
  */
 
 const querySchema = z.object({
@@ -51,6 +54,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
       { status: 503 },
+    );
+  }
+
+  if (!checkCarRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
+    return NextResponse.json(
+      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 429 },
     );
   }
 

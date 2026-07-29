@@ -8,6 +8,10 @@ vi.mock("@/lib/env", () => ({
   hasCarRouteKey: vi.fn(() => true),
   hasNcpMapsKeys: vi.fn(() => false),
 }));
+vi.mock("@/lib/rate-limit", () => ({
+  checkCarRateLimit: vi.fn(() => true),
+  clientIpFromHeaders: vi.fn(() => "1.2.3.4"),
+}));
 vi.mock("@/lib/car-route", () => ({
   getCarRoute: vi.fn(async () => ({
     distanceMeters: 1000,
@@ -25,6 +29,7 @@ vi.mock("@/lib/providers/ncp-directions", () => ({
 
 import { GET } from "../route";
 import { hasCarRouteKey, hasNcpMapsKeys } from "@/lib/env";
+import { checkCarRateLimit } from "@/lib/rate-limit";
 import { getCarRoute } from "@/lib/car-route";
 
 function makeRequest(origin: string, dest: string, lang?: string) {
@@ -37,6 +42,7 @@ describe("GET /api/route/car", () => {
   beforeEach(() => {
     vi.mocked(hasCarRouteKey).mockReturnValue(true);
     vi.mocked(hasNcpMapsKeys).mockReturnValue(false);
+    vi.mocked(checkCarRateLimit).mockReturnValue(true);
     vi.mocked(getCarRoute).mockClear();
   });
 
@@ -93,5 +99,12 @@ describe("GET /api/route/car", () => {
     vi.mocked(getCarRoute).mockRejectedValueOnce(new Error("fail"));
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
     expect(res.status).toBe(502);
+  });
+
+  it("레이트리밋 초과 → 429", async () => {
+    vi.mocked(checkCarRateLimit).mockReturnValue(false);
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+    expect(res.status).toBe(429);
+    expect(getCarRoute).not.toHaveBeenCalled();
   });
 });

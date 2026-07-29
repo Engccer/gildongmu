@@ -114,6 +114,16 @@ export function checkWalkInfraRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(walkInfraStore, ip, now, WALK_INFRA_LIMIT, WINDOW_MS).allowed;
 }
 
+// 자동차 경로(Tmap 기본)도 일 1,000건 무료 쿼터를 도보 경로와 공유하는 유료 API라
+// 동일하게 60초 10회로 잡는다(2026-07-30 Tmap 승격).
+const CAR_LIMIT = 10;
+const carStore = new Map<string, RateLimitEntry>();
+
+/** /api/route/car 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkCarRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(carStore, ip, now, CAR_LIMIT, WINDOW_MS).allowed;
+}
+
 /** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
 export function clientIpFromHeaders(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
