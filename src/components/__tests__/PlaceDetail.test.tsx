@@ -7,7 +7,6 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("@/lib/station-match", () => ({ isStation: () => false }));
 vi.mock("../RouteLinks", () => ({ RouteLinks: () => null }));
-vi.mock("../CarRouteBriefing", () => ({ CarRouteBriefing: () => null }));
 vi.mock("../StationMeta", () => ({ StationMeta: () => null }));
 vi.mock("../StationFacilities", () => ({ StationFacilities: () => null }));
 vi.mock("../SeoulMetroFacilities", () => ({ SeoulMetroFacilities: () => null }));
@@ -16,7 +15,6 @@ vi.mock("../BusArrivals", () => ({ BusArrivals: () => null }));
 vi.mock("../BikeStations", () => ({ BikeStations: () => null }));
 vi.mock("../LocalConditions", () => ({ LocalConditions: () => null }));
 vi.mock("../BarrierFreeInfo", () => ({ BarrierFreeInfo: () => null }));
-vi.mock("../TransitRouteBriefing", () => ({ TransitRouteBriefing: () => null }));
 vi.mock("../chat/ChatOverlay", () => ({ ChatOverlay: () => null }));
 
 import { PlaceDetail } from "../PlaceDetail";
@@ -37,13 +35,11 @@ function renderDetail(overrides: Partial<typeof place> = {}) {
   return render(
     <PlaceDetail
       place={{ ...place, ...overrides }}
-      canBriefCarRoute={false}
       canShowBus={false}
       canShowBike={false}
       canShowSubway={false}
       canShowAir={false}
       canShowBarrierFree={false}
-      canShowTransit={false}
       onBack={() => {}}
     />,
   );
