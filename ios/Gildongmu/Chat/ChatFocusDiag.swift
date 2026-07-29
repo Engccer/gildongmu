@@ -81,5 +81,18 @@ nonisolated func chatFocusLog(_ msg: String) {
             chatFocusLog("VO focus -> \(String(label.prefix(80)))")
         }
     }
+    // VO 통지(Announcement)가 실제로 발화됐는지 관찰(홀드 짧은 탭 무발화 회귀 계측,
+    // 2026-07-29). 통지는 *게시*와 *발화*가 분리된 계층이라 — post() 호출 자체는
+    // Announcement가 도달했는지 말해주지 않는다 — 이 옵저버가 그 발화 결과를 확정한다.
+    NotificationCenter.default.addObserver(
+        forName: UIAccessibility.announcementDidFinishNotification, object: nil, queue: .main
+    ) { note in
+        nonisolated(unsafe) let note = note
+        MainActor.assumeIsolated {
+            let text = note.userInfo?[UIAccessibility.announcementStringValueUserInfoKey] as? String ?? ""
+            let success = (note.userInfo?[UIAccessibility.announcementWasSuccessfulUserInfoKey] as? Bool) ?? false
+            chatFocusLog("VO announcement didFinish success=\(success) text=\(String(text.prefix(80)))")
+        }
+    }
 }
 #endif
