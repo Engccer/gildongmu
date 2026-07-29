@@ -449,6 +449,14 @@ describe("route-car", () => {
     } as never);
     expect(lines[0]).toContain("통행료 2,500원");
   });
+
+  it("guide distanceMeters 0(Tmap 문장 내장)은 '0m' 병기 없이 안내문만", () => {
+    const lines = FORMATTERS["route-car"]({
+      distanceMeters: 5320, durationSeconds: 1140, taxiFare: 12000, tollFare: 0,
+      guides: [{ name: "", guidance: "염천교에서 좌회전 후 200m 직진", distanceMeters: 0, durationSeconds: 30 }],
+    } as never);
+    expect(lines[1]).toBe("1. 염천교에서 좌회전 후 200m 직진");
+  });
 });
 
 describe("route-transit", () => {
