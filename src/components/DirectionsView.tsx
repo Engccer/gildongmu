@@ -186,6 +186,17 @@ export function DirectionsView({
   );
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
+  // 펼쳐진 대중교통 대안 인덱스(W3C APG disclosure). 새 조회 결과는 다른
+  // 경로들이므로 결과를 비울 때 함께 초기화한다.
+  const [expandedAlts, setExpandedAlts] = useState<Set<number>>(new Set());
+  function toggleAlt(i: number) {
+    setExpandedAlts((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
@@ -344,6 +355,7 @@ export function DirectionsView({
     setFromField(toField);
     setToField(fromField);
     setResults(null);
+    setExpandedAlts(new Set());
     setNotice("");
   }
 
@@ -360,6 +372,7 @@ export function DirectionsView({
     const myGen = ++genRef.current;
     try {
       setResults(null);
+      setExpandedAlts(new Set());
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
       // 권한 팝업 세션 1회). `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
@@ -531,6 +544,7 @@ export function DirectionsView({
         onTextChange={(text) => {
           setFromField({ text, resolved: null });
           setResults(null);
+          setExpandedAlts(new Set());
         }}
         onResolve={(ep) => {
           recordResolved("from", ep);
@@ -567,6 +581,7 @@ export function DirectionsView({
         onTextChange={(text) => {
           setToField({ text, resolved: null });
           setResults(null);
+          setExpandedAlts(new Set());
         }}
         onResolve={(ep) => {
           recordResolved("to", ep);
@@ -644,25 +659,46 @@ export function DirectionsView({
                       locale={locale}
                       dest={results.destLabel}
                     />
-                    {/* 대안은 요약 1행씩만(legs 미표시, 미니멀 — iOS DirectionsTab 동형).
-                        ODsay 상한이 대안 2개라 토글 없이 상시 노출, 한 줄=한 객체. */}
-                    {outcome.result.alternatives.map((alt, i) => (
-                      <p key={i} className="mt-2 text-sm">
-                        {joinText(
-                          tTransit("alternativeHeading", { index: i + 1 }),
-                          tTransit("summary", {
-                            minutes: alt.summary.totalMinutes,
-                            fare: alt.summary.fare.toLocaleString(locale),
-                            transfers: alt.summary.transfers,
-                          }),
-                          alt.summary.walkMinutes > 0
-                            ? tTransit("walkSummary", {
-                                minutes: alt.summary.walkMinutes,
-                              })
-                            : null,
-                        )}
-                      </p>
-                    ))}
+                    {/* 대안 요약은 disclosure 버튼(W3C APG, 형제 컴포넌트 동형) —
+                        탭하면 추천 경로 수준의 구간 상세가 펼쳐진다. 버튼이 발견
+                        경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
+                        본문 요약은 생략(includeSummary=false, 인접 중복 금지). */}
+                    {outcome.result.alternatives.map((alt, i) => {
+                      const expanded = expandedAlts.has(i);
+                      return (
+                        <div key={i} className="mt-2">
+                          <button
+                            type="button"
+                            aria-expanded={expanded}
+                            onClick={() => toggleAlt(i)}
+                            className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
+                          >
+                            {joinText(
+                              tTransit("alternativeHeading", { index: i + 1 }),
+                              tTransit("summary", {
+                                minutes: alt.summary.totalMinutes,
+                                fare: alt.summary.fare.toLocaleString(locale),
+                                transfers: alt.summary.transfers,
+                              }),
+                              alt.summary.walkMinutes > 0
+                                ? tTransit("walkSummary", {
+                                    minutes: alt.summary.walkMinutes,
+                                  })
+                                : null,
+                            )}
+                          </button>
+                          {expanded && (
+                            <TransitRouteResult
+                              route={alt}
+                              t={tTransit}
+                              locale={locale}
+                              dest={results.destLabel}
+                              includeSummary={false}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </>
                 )}
                 {outcome.kind === "done" && outcome.mode === "walk" && (
