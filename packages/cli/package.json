@@ -1,19 +1,53 @@
 {
   "name": "gildongmu",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "길동무 CLI: 접근성 우선 대한민국 길찾기·로컬 정보를 터미널에서",
   "type": "module",
-  "bin": { "gildongmu": "./bin/gildongmu.mjs", "gil": "./bin/gildongmu.mjs" },
+  "bin": {
+    "gildongmu": "./bin/gildongmu.mjs",
+    "gil": "./bin/gildongmu.mjs"
+  },
   "main": "./dist/index.js",
-  "files": ["dist", "bin", "README.md"],
-  "engines": { "node": ">=20.0.0" },
-  "repository": { "type": "git", "url": "git+https://github.com/Engccer/gildongmu.git", "directory": "packages/cli" },
+  "files": [
+    "dist",
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Engccer/gildongmu.git",
+    "directory": "packages/cli"
+  },
   "homepage": "https://github.com/Engccer/gildongmu/tree/main/packages/cli#readme",
   "bugs": "https://github.com/Engccer/gildongmu/issues",
   "license": "MIT",
-  "keywords": ["gildongmu", "korea", "navigation", "accessibility", "cli"],
-  "scripts": { "build": "tsup", "dev": "tsup --watch", "test": "vitest run" },
-  "dependencies": { "citty": "^0.2.2", "picocolors": "^1.1.1", "zod": "^4.3.6" },
-  "devDependencies": { "@types/node": "^20", "tsup": "^8.5.1", "typescript": "^6.0.2", "vitest": "^4.0.18" },
-  "publishConfig": { "access": "public" }
+  "keywords": [
+    "gildongmu",
+    "korea",
+    "navigation",
+    "accessibility",
+    "cli"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "citty": "^0.2.2",
+    "picocolors": "^1.1.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.0.18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
