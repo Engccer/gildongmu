@@ -2,11 +2,7 @@ import Foundation
 
 /// 네이버·카카오 지도 앱 딥링크 빌더. 웹 `src/lib/deeplink.ts`·`deeplink-kakao.ts` 미러.
 /// 실주행 내비는 네이티브 지도 앱에 위임한다(spec §4). 권역 밖 목적지는 nil.
-
-/// 좌표 유효 범위: 한반도 권역(네이버 공식 문서 기준, 웹과 동일 상수).
-public func isInKorea(lat: Double, lng: Double) -> Bool {
-    lat >= 31.43 && lat <= 44.35 && lng >= 122.37 && lng <= 132.0
-}
+/// 좌표 유효 범위 판정은 `Coverage.swift`의 `isInKorea` 사용.
 
 /// 길찾기 이동 수단. rawValue는 nmap route 경로 세그먼트와 일치(publicTransit만 "public").
 public enum RouteMode: String, CaseIterable, Sendable {
