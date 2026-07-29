@@ -637,7 +637,7 @@ function formatRouteCar(body: CarRouteBriefingItem): string[] {
     ),
   ];
   body.guides.forEach((g, i) => {
-    lines.push(joinText(`${i + 1}. ${g.guidance}`, m(g.distanceMeters)));
+    lines.push(joinText(`${i + 1}. ${g.guidance}`, g.distanceMeters > 0 ? m(g.distanceMeters) : undefined));
   });
   return lines;
 }

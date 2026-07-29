@@ -60,7 +60,7 @@ struct CarRouteRows: View {
             // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
             let text = guide.guidance.isEmpty ? guide.name : guide.guidance
             if !text.isEmpty {
-                Text(joinText(text, "\(guide.distanceMeters)m"))
+                Text(joinText(text, guide.distanceMeters > 0 ? "\(guide.distanceMeters)m" : nil))
             }
         }
     }
