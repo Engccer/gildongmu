@@ -8,7 +8,10 @@ describe("coordSchema", () => {
   it("형식 위반은 실패한다", () => {
     expect(coordSchema.safeParse("127.140;37.535").success).toBe(false);
   });
-  it("한반도 권역 밖 좌표는 거부한다", () => {
-    expect(coordSchema.safeParse("48.85,2.35").success).toBe(false);
+  it("한반도 권역 밖이어도 전지구 범위 안이면 통과한다(커버리지 판정은 라우트 핸들러 책임)", () => {
+    expect(coordSchema.safeParse("48.85,2.35").success).toBe(true);
+  });
+  it("전지구 범위 밖 좌표는 거부한다", () => {
+    expect(coordSchema.safeParse("95,200").success).toBe(false);
   });
 });

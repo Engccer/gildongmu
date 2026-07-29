@@ -43,6 +43,25 @@ describe("GET /api/route/walk", () => {
     expect(res.status).toBe(400);
   });
 
+  it("출발지가 한국 밖이면 200 outOfCoverage(provider 미호출)", async () => {
+    const res = await GET(makeRequest("37.7749,-122.4194", "37.5665,126.978"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ outOfCoverage: true });
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+  });
+
+  it("목적지가 한국 밖이면 200 outOfCoverage(provider 미호출)", async () => {
+    const res = await GET(makeRequest("37.5665,126.978", "37.7749,-122.4194"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ outOfCoverage: true });
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+  });
+
+  it("전지구 범위 밖 좌표는 여전히 400(형식 오류와 커버리지 마커는 별개)", async () => {
+    const res = await GET(makeRequest("95,200", "37.6,127.1"));
+    expect(res.status).toBe(400);
+  });
+
   it("키 없음(hasWalkRouteKey false)은 404 유지", async () => {
     vi.mocked(hasWalkRouteKey).mockReturnValue(false);
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));

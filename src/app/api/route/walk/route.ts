@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasWalkRouteKey } from "@/lib/env";
+import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getWalkRoute } from "@/lib/walk-route";
@@ -8,7 +9,8 @@ import { getWalkRoute } from "@/lib/walk-route";
 /**
  * 도보 길찾기 프록시(기본 카카오·폴백 Tmap). 좌표는 "위도,경도" 순서(도메인 표준, transit route와 동형).
  *
- * 3-state 응답: 입력 오류(400) · 키 없음(404, 게이트) · 조회 실패(502)를 뭉개지 않는다.
+ * 3-state 응답: 입력 오류(400) · 한국 밖(200 outOfCoverage 마커) · 키 없음(404, 게이트) ·
+ * 조회 실패(502)를 뭉개지 않는다.
  * 두 provider 모두 유료 API라 채팅과 동일한 IP 레이트리밋(60초 10회)으로
  * 호출 *전*에 비용을 방어한다.
  */
@@ -35,6 +37,11 @@ export async function GET(request: NextRequest) {
       { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
       { status: 400 },
     );
+  }
+
+  const { origin, dest } = parsed.data;
+  if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
+    return NextResponse.json({ outOfCoverage: true });
   }
 
   if (!hasWalkRouteKey()) {
