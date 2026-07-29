@@ -442,7 +442,11 @@ export function DirectionsView({
     }
   }
 
-  const busy = phase.kind === "locating" || phase.kind === "loading";
+  // stepFreeBusy 포함: 토글 재조회 진행 중(inFlight 공유)에도 "조회" 버튼이 같은
+  // 시각·aria 신호를 내야 한다 — 안 그러면 그 15초 창에서 버튼이 멀쩡해 보이는데
+  // 클릭이 무시돼(runQuery 첫 줄 가드) 스크린 리더 사용자가 멈춤으로 오인한다.
+  const busy =
+    phase.kind === "locating" || phase.kind === "loading" || stepFreeBusy;
   const phaseMessage =
     phase.kind === "settled"
       ? phase.successCount > 0
