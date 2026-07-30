@@ -115,7 +115,7 @@
       "loading": "경로를 찾는 중입니다.",
       "ready": "경로 안내가 준비되었습니다.",
       "error": "경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
-      "geoError": "현재 위치를 확인할 수 없습니다. 출발지를 검색해 지정해 주세요.",
+      "geoError": "현재 위치를 확인할 수 없습니다. 위치 권한을 확인해 주세요.",
       "noRoute": "대중교통 경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요.",
       "summary": "총 {minutes}분, {fare}원, 환승 {transfers}회",
       "walkSummary": "도보 {minutes}분 포함",
@@ -124,11 +124,6 @@
       "legTransfer": "<from></from>에서 <line></line> 환승, {count}정거장",
       "legInterval": "배차간격 약 {minutes}분",
       "arrive": "<name></name> 도착",
-      "changeOrigin": "출발지 바꾸기",
-      "originLabel": "출발지 검색",
-      "originPlaceholder": "출발지를 입력하세요",
-      "useCurrentLocation": "현재 위치에서 출발",
-      "showAlternatives": "다른 경로 보기",
       "alternativeHeading": "대안 경로 {index}"
     },
     "pedestrian": {

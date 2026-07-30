@@ -1,17 +1,12 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type {
-  Place,
-  PlaceSearchResult,
-  TransitRoute,
-  TransitRouteResult,
-} from "@/lib/types";
-import { dataLocale } from "@/lib/data-locale";
+import type { TransitRoute, TransitRouteResult } from "@/lib/types";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
+import { joinText } from "@/lib/format";
 
 type Status =
   | { kind: "idle" }
@@ -26,8 +21,8 @@ type Status =
  * 대중교통 경로 텍스트 브리핑 — 자동차 브리핑(CarRouteBriefing)과 동형.
  * 채팅 렌더 카드(MessageBubble `transit-route`) 전용 온디맨드 위젯 — 장소 상세
  * 진입점은 "여기까지 길찾기"(DirectionsView)와 중복이라 제거(2026-07-30).
- * 출발지는 현재 위치 기본, "출발지 바꾸기"로 좌표 지정 가능. 추천경로 1개를
- * 낭독 정본으로 표시하고 대안은 펼치기. 실주행은 딥링크 위임(설계 §1).
+ * 출발지는 현재 위치 기본. 추천경로 1개를 낭독 정본으로 표시하고 대안은
+ * 펼치기. 실주행은 딥링크 위임(설계 §1).
  */
 export function TransitRouteBriefing({
   dest,
@@ -39,13 +34,9 @@ export function TransitRouteBriefing({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [showAlts, setShowAlts] = useState(false);
-  const [showOriginSearch, setShowOriginSearch] = useState(false);
-  const [originQuery, setOriginQuery] = useState("");
-  const [originResults, setOriginResults] = useState<Place[]>([]);
+  const [expandedAlts, setExpandedAlts] = useState<Set<number>>(new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const originInputId = useId();
   const inFlight = useRef(false);
   const reqId = useRef(0);
 
@@ -84,7 +75,7 @@ export function TransitRouteBriefing({
         setStatus({ kind: "empty" });
         return;
       }
-      setShowAlts(false);
+      setExpandedAlts(new Set());
       setStatus({ kind: "done", result: body.result as TransitRouteResult });
       requestAnimationFrame(() => headingRef.current?.focus());
     } catch {
@@ -100,7 +91,6 @@ export function TransitRouteBriefing({
     // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
     // 팝업 없이 재사용한다(내 주변 버튼들과 동형, navigator.geolocation 직접 호출 금지).
     void awaitGeolocation().then(async (g) => {
-      if (!inFlight.current) return; // selectOrigin 등으로 취소됨
       if (g.status !== "ready") {
         setStatus({ kind: "error", message: t("geoError") });
         inFlight.current = false;
@@ -114,29 +104,6 @@ export function TransitRouteBriefing({
       await fetchRoute(g.coords.lat, g.coords.lng);
       inFlight.current = false;
     });
-  }
-
-  // 출발지 변경: 기존 장소 검색(/api/places) 재사용
-  async function runOriginSearch() {
-    const q = originQuery.trim();
-    if (!q) return;
-    try {
-      const res = await fetch(
-        `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}`,
-      );
-      const body = (await res.json()) as PlaceSearchResult;
-      setOriginResults(res.ok ? (body.places ?? []) : []);
-    } catch {
-      setOriginResults([]);
-    }
-  }
-
-  function selectOrigin(place: Place) {
-    inFlight.current = false; // 진행 중 geolocation 콜백 무효화
-    setShowOriginSearch(false);
-    setOriginResults([]);
-    setOriginQuery("");
-    void fetchRoute(place.lat, place.lng);
   }
 
   const busy = status.kind === "locating" || status.kind === "loading";
@@ -167,58 +134,6 @@ export function TransitRouteBriefing({
       >
         {t("button")}
       </button>
-      <button
-        type="button"
-        onClick={() => setShowOriginSearch((v) => !v)}
-        aria-expanded={showOriginSearch}
-        className="ml-3 min-h-11 text-sm font-medium text-blue-700 underline dark:text-blue-300"
-      >
-        {t("changeOrigin")}
-      </button>
-
-      {showOriginSearch && (
-        <div className="mt-2">
-          <label htmlFor={originInputId} className="block text-sm font-medium">
-            {t("originLabel")}
-          </label>
-          <div className="mt-1 flex gap-2">
-            <input
-              id={originInputId}
-              type="text"
-              value={originQuery}
-              onChange={(e) => setOriginQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") runOriginSearch();
-              }}
-              placeholder={t("originPlaceholder")}
-              className="min-h-11 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={runOriginSearch}
-              className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
-            >
-              {t("originLabel")}
-            </button>
-          </div>
-          {originResults.length > 0 && (
-            <ul className="mt-1">
-              {originResults.map((p) => (
-                <li key={`${p.lat},${p.lng}`}>
-                  <button
-                    type="button"
-                    onClick={() => selectOrigin(p)}
-                    className="min-h-11 w-full text-left text-sm underline"
-                    lang="ko"
-                  >
-                    {p.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
 
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
         {liveMessage}
@@ -249,32 +164,47 @@ export function TransitRouteBriefing({
             dest={dest.name}
           />
 
-          {status.result.alternatives.length > 0 && (
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={() => setShowAlts((v) => !v)}
-                aria-expanded={showAlts}
-                className="min-h-11 text-sm font-medium text-blue-700 underline dark:text-blue-300"
-              >
-                {t("showAlternatives")}
-              </button>
-              {showAlts &&
-                status.result.alternatives.map((alt, i) => (
-                  <div key={i} className="mt-2 border-t border-gray-200 pt-2">
-                    <h4 className="text-sm font-semibold">
-                      {t("alternativeHeading", { index: i + 1 })}
-                    </h4>
-                    <TransitRouteResult
-                      route={alt}
-                      t={t}
-                      locale={locale}
-                      dest={dest.name}
-                    />
-                  </div>
-                ))}
-            </div>
-          )}
+          {status.result.alternatives.map((alt, i) => {
+            const expanded = expandedAlts.has(i);
+            return (
+              <div key={i} className="mt-2">
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() =>
+                    setExpandedAlts((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(i)) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    })
+                  }
+                  className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
+                >
+                  {joinText(
+                    t("alternativeHeading", { index: i + 1 }),
+                    t("summary", {
+                      minutes: alt.summary.totalMinutes,
+                      fare: alt.summary.fare.toLocaleString(locale),
+                      transfers: alt.summary.transfers,
+                    }),
+                    alt.summary.walkMinutes > 0
+                      ? t("walkSummary", { minutes: alt.summary.walkMinutes })
+                      : null,
+                  )}
+                </button>
+                {expanded && (
+                  <TransitRouteResult
+                    route={alt}
+                    t={t}
+                    locale={locale}
+                    dest={dest.name}
+                    includeSummary={false}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -115,7 +115,7 @@
       "loading": "Recherche d'un itinéraire…",
       "ready": "L'itinéraire est prêt.",
       "error": "Impossible de charger l'itinéraire. Veuillez réessayer.",
-      "geoError": "Impossible d'obtenir votre position. Veuillez rechercher un point de départ.",
+      "geoError": "Impossible de déterminer votre position actuelle. Vérifiez l'autorisation de localisation.",
       "noRoute": "Aucun itinéraire en transports en commun trouvé. Vérifiez le départ et la destination.",
       "summary": "{minutes} min, {fare} won, {transfers} correspondance(s)",
       "walkSummary": "dont {minutes} min de marche",
@@ -124,11 +124,6 @@
       "legTransfer": "Changez pour <line></line> à <from></from>, {count} arrêts",
       "legInterval": "passage toutes les {minutes} min environ",
       "arrive": "Arrivée à <name></name>",
-      "changeOrigin": "Changer de départ",
-      "originLabel": "Rechercher le point de départ",
-      "originPlaceholder": "Saisissez un point de départ",
-      "useCurrentLocation": "Partir de la position actuelle",
-      "showAlternatives": "Voir d'autres itinéraires",
       "alternativeHeading": "Alternative {index}"
     },
     "pedestrian": {
