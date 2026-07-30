@@ -1,5 +1,6 @@
 import Foundation
 import Accessibility
+import GildongmuKit
 
 /// 내 주변 도메인 화면 공통 상태: 3-state 불변식(권한 거부/조회 실패/0건)의 타입 표현.
 /// 각 화면 파일 안에 재정의하지 말고 이 공용 enum을 쓴다(M2 plan Task A).
@@ -46,4 +47,55 @@ func announcePermissionLost() {
 @MainActor
 func announceOutOfCoverage() {
     AccessibilityNotification.Announcement(appLocalized("ios.common.outOfCoverage")).post()
+}
+
+/// NearbyLoadCore 좌표 소스 어댑터. currentCoordinate는 typed throws(LocationError)라
+/// 취소가 오류로 나올 수 없고(커밋 게이트가 방어 정본), denied/unavailable만 번역한다.
+extension LocationService {
+    static func nearbyCoordinateSource() -> NearbyCoordinateSource {
+        .current { force in
+            do {
+                return try await LocationService.shared.currentCoordinate(force: force)
+            } catch {
+                // catch 변수는 any Error로 추론되므로 캐스팅해 판별한다. denied만 번역하고
+                // 나머지는 전부 unavailable — 위치 오류가 코어 default 분기로 새어
+                // 서버 실패 카피로 낭독되는 일이 없도록 total하게 닫는다.
+                if let locationError = error as? LocationService.LocationError,
+                   case .denied = locationError {
+                    throw NearbyLocationError.denied
+                }
+                throw NearbyLocationError.unavailable
+            }
+        }
+    }
+}
+
+/// 완료 통지 문구 — 구 announceLoaded의 메시지 조립부(문자열 불변). 0건도 문장으로.
+@MainActor
+func nearbyLoadedMessage(count: Int, unit: String) -> String {
+    count == 0
+        ? appLocalized("ios.nearby.announceEmpty")
+        : appLocalized("ios.nearby.announceCount", unit, String(count))
+}
+
+/// 이벤트→VO 발화 매퍼 1벌(스펙 §4): 전락 통지 3종은 기존 announce* 그대로,
+/// loaded 문구만 도메인 클로저. emptyResult는 WhereAmI만 문구를 준다.
+@MainActor
+func nearbyAnnouncer<Payload: Sendable>(
+    loaded: @escaping @MainActor (Payload) -> String,
+    emptyResult: String? = nil
+) -> @MainActor (NearbyLoadEvent<Payload>) -> Void {
+    { event in
+        switch event {
+        case .loaded(let payload):
+            AccessibilityNotification.Announcement(loaded(payload)).post()
+        case .emptyResult:
+            if let emptyResult {
+                AccessibilityNotification.Announcement(emptyResult).post()
+            }
+        case .refreshFailed: announceRefreshFailed()
+        case .permissionLost: announcePermissionLost()
+        case .wentOutOfCoverage: announceOutOfCoverage()
+        }
+    }
 }
