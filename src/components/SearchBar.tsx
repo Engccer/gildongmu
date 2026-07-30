@@ -92,6 +92,15 @@ export function SearchBar({
           type="search"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            // 듀얼 액션 키보드 계약(위원장 지정 2026-07-30): Enter=검색(폼 제출),
+            // Ctrl+Enter(맥 Cmd+Enter)=AI 질문. preventDefault로 암묵 폼 제출을
+            // 막아 질문이 검색으로 새지 않게 한다. onAsk 없으면(키 게이트) 기본 검색.
+            if (onAsk && e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              onAsk();
+            }
+          }}
           placeholder={placeholder ?? t("placeholder")}
           autoComplete="off"
           className="min-h-12 w-full rounded-md border border-border bg-background pl-4 pr-12 text-lg [&::-webkit-search-cancel-button]:appearance-none"
