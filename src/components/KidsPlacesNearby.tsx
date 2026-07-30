@@ -2,17 +2,13 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { MessageSquare } from "lucide-react";
 import type { KidsPlace } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
-import { usePlaceChat } from "@/hooks/usePlaceChat";
-import { kidsPlaceToPlace } from "@/lib/nearby-place";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
-import { ChatOverlay } from "./chat/ChatOverlay";
 
 type Status =
   | { kind: "idle" }
@@ -39,10 +35,9 @@ const REVEAL_STEP = 10;
  * 3-state 라벨(놀이터 모호 시 "정보 없음") — 우천 시 사용자가 듣고 판단.
  * 자기완결 정보 리스트(상세 연동 비포함) — 길찾기는 카카오맵 링크로 위임.
  */
-export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolean }) {
+export function KidsPlacesNearby() {
   const t = useTranslations("kidsNearby");
   const tActions = useTranslations("actions");
-  const tPlaceChat = useTranslations("placeChat");
   const tCommon = useTranslations("common");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -54,7 +49,6 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
   /** 공개된 항목 헤딩 참조 — "더 보기" 후 첫 새 항목으로 포커스 이동(헌장 §1). */
   const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
   const pendingFocusIndex = useRef<number | null>(null);
-  const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -134,8 +128,7 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
   const onDismiss = useCallback(() => close(false), [close]);
   const onEscape = useCallback(() => close(true), [close]);
   const { claim } = useNearbyPanel({
-    // 채팅이 열린 동안엔 패널 Esc·자동닫힘을 비활성(Esc 경합 차단).
-    engaged: status.kind !== "idle" && !isChatOpen,
+    engaged: status.kind !== "idle",
     onDismiss,
     onEscape,
   });
@@ -271,23 +264,6 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
                     </a>
                   </p>
                 )}
-
-                {/* 이 장소에 관해 물어보기 — 장소 상세 런처와 동형. 버튼 이름에
-                    장소명을 넣어 회전자에서 항목별로 구분되게 한다(lang="ko"). */}
-                {canShowChat && (
-                  <p className="mt-1 text-sm">
-                    <button
-                      type="button"
-                      onClick={(e) => openChat(kidsPlaceToPlace(k), e.currentTarget)}
-                      className="inline-flex min-h-11 items-center gap-1 text-accent underline"
-                    >
-                      <MessageSquare aria-hidden="true" className="h-4 w-4 shrink-0" />
-                      {tPlaceChat.rich("launchFor", {
-                        name: () => <span lang="ko">{k.name}</span>,
-                      })}
-                    </button>
-                  </p>
-                )}
               </li>
             ))}
           </ul>
@@ -306,8 +282,6 @@ export function KidsPlacesNearby({ canShowChat = false }: { canShowChat?: boolea
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
-
-      {chatPlace && <ChatOverlay place={chatPlace} onClose={closeChat} />}
     </div>
   );
 }

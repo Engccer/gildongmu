@@ -2,17 +2,13 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { MessageSquare } from "lucide-react";
-import type { Coord, WhereAmI as WhereAmIData } from "@/lib/types";
+import type { WhereAmI as WhereAmIData } from "@/lib/types";
 import { buildLocationNarrative } from "@/lib/where-am-i";
-import { whereAmIToPlace } from "@/lib/where-am-i-place";
 import { formatDistance } from "@/lib/format";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
-import { usePlaceChat } from "@/hooks/usePlaceChat";
-import { ChatOverlay } from "./chat/ChatOverlay";
 
 type Status =
   | { kind: "idle" }
@@ -22,16 +18,15 @@ type Status =
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
   | { kind: "outOfCoverage" }
-  | { kind: "done"; data: WhereAmIData; coord: Coord; at: string };
+  | { kind: "done"; data: WhereAmIData; at: string };
 
 /**
  * "현재 위치" 정위 카드 — 홈 "내 주변" 묶음 맨 위 별도 버튼. SurroundingsNearby
  * 동형(공유 geolocation·아코디언·force 새로고침·prevStatus 복원·Esc 경합 차단).
  * 차이: 카테고리 리스트가 아니라 도로명·행정동·근접역·기준점을 결정론 산문 두세
- * 단락으로 제시(buildLocationNarrative). 채팅 버튼은 현재 위치를 Place로 합성해
- * 같은 ChatOverlay(Perplexity 포함)를 연다.
+ * 단락으로 제시(buildLocationNarrative).
  */
-export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
+export function WhereAmI() {
   const t = useTranslations("whereAmI");
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
@@ -41,7 +36,6 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
-  const { chatPlace, isChatOpen, openChat, closeChat } = usePlaceChat();
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -62,7 +56,7 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
         hour: "2-digit",
         minute: "2-digit",
       });
-      setStatus({ kind: "done", data: body.data, coord: { lat, lng }, at });
+      setStatus({ kind: "done", data: body.data, at });
     } catch {
       setStatus({ kind: "error" });
     }
@@ -112,8 +106,7 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
   const onDismiss = useCallback(() => close(false), [close]);
   const onEscape = useCallback(() => close(true), [close]);
   const { claim } = useNearbyPanel({
-    // 채팅이 열린 동안엔 패널 Esc·자동닫힘을 비활성(Esc 경합 차단).
-    engaged: status.kind !== "idle" && !isChatOpen,
+    engaged: status.kind !== "idle",
     onDismiss,
     onEscape,
   });
@@ -230,26 +223,9 @@ export function WhereAmI({ canShowChat = false }: { canShowChat?: boolean }) {
             </p>
           )}
 
-          {canShowChat && (
-            <p className="mt-3 text-sm">
-              <button
-                type="button"
-                onClick={(e) =>
-                  openChat(whereAmIToPlace(status.data, status.coord), e.currentTarget)
-                }
-                className="inline-flex min-h-11 items-center gap-1 text-accent underline"
-              >
-                <MessageSquare aria-hidden="true" className="h-4 w-4 shrink-0" />
-                {t("chatButton")}
-              </button>
-            </p>
-          )}
-
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
-
-      {chatPlace && <ChatOverlay place={chatPlace} onClose={closeChat} />}
     </div>
   );
 }
