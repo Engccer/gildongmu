@@ -4,10 +4,11 @@ import Foundation
 /// "더 보기" 재료는 이 앱이 limit으로 명시 확보한다(웹 FETCH_LIMIT 미러).
 private let fetchLimit = 50
 
-/// 무장애 여행 정보 조회. `nearby`·`detail`은 여느 서비스와 같이 throw(APIError) —
+/// 무장애 여행 정보 조회. `nearby`는 여느 서비스와 같이 throw(APIError) —
 /// 3-state 매핑은 뷰모델 몫. `match`만 예외: 웹 계약상 실패를 전부 `{"detail":null}`로
 /// 반환하는 매칭 보조 엔드포인트라, 네트워크·디코딩 오류까지 nil로 수렴시켜
 /// 호출부(장소 상세)가 무음 미노출할 수 있게 한다.
+/// `/api/places/barrier-free/detail` 라우트는 웹·CLI가 소비 — iOS 필요 시 재도입.
 public struct BarrierFreeService: Sendable {
     let client: APIClient
 
@@ -22,14 +23,6 @@ public struct BarrierFreeService: Sendable {
                 URLQueryItem(name: "limit", value: String(fetchLimit)),
             ])
         return response.places
-    }
-
-    /// `{"detail":null}`이면 nil(미커버 콘텐츠).
-    public func detail(contentId: String) async throws -> BarrierFreeDetail? {
-        let response: BarrierFreeDetailResponse = try await client.get(
-            "/api/places/barrier-free/detail",
-            query: [URLQueryItem(name: "contentId", value: contentId)])
-        return response.detail
     }
 
     /// 비-throw: 네트워크 오류·디코딩 오류·`{"detail":null}` 모두 nil로 수렴(웹 match 계약).
