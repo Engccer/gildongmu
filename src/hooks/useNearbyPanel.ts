@@ -53,11 +53,21 @@ export function useNearbyPanel({ engaged, onDismiss, onEscape }: Options) {
     return () => window.removeEventListener("keydown", handler);
   }, [engaged, onEscape]);
 
-  // 언마운트 시 점유 해제(검색 시작으로 nearby가 통째로 언마운트되는 경우 등).
-  // 직접 닫기(close)는 일부러 release를 부르지 않는다 — activeId는 다음 claim이
-  // 덮어쓰거나 언마운트가 비운다. 닫힌 패널은 engaged=false라 자동닫힘 대상이
-  // 아니므로 stale activeId는 무해하고, close에서 release를 부르면 close→release→
-  // useNearbyPanel(claim) 순환 의존이 생긴다(의도적 비대칭).
+  // 닫힘(engaged: true→false, close 호출 결과) 시 점유를 해제한다. 과거엔
+  // "닫힌 패널은 engaged=false라 자동닫힘 대상이 아니므로 stale activeId는
+  // 무해하다"는 이유로 release를 부르지 않았으나, NearbyHub처럼 activeId
+  // 유무만으로 "패널이 실제로 펼쳐져 있는가"를 판정하는 상위 소비자는 이
+  // stale activeId를 영구 펼침으로 오판해 Esc-뒤로가기가 첫 패널 개폐 이후
+  // 영구 비활성되는 회귀를 낳았다(2026-07-30). releaseNearbyPanel의
+  // activeId!==id 가드가 있어 다른 패널이 이미 점유를 가져간 뒤(자동 닫힘
+  // 경로)의 뒤늦은 release는 그 점유를 탈취하지 않는다 — release는 claim을
+  // 부르지 않으므로 순환 의존도 없다(과거 우려 정정).
+  useEffect(() => {
+    if (!engaged) releaseNearbyPanel(id);
+  }, [engaged, id]);
+
+  // 언마운트 시에도 점유 해제(검색 시작으로 nearby가 통째로 언마운트되는 경우
+  // 등 — 위 이펙트는 engaged=true인 채로 unmount되면 커버하지 못한다).
   useEffect(() => () => releaseNearbyPanel(id), [id]);
 
   const claim = useCallback(() => claimNearbyPanel(id), [id]);
