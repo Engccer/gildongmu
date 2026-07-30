@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -167,12 +167,23 @@ function RenderBlock({
  * 채팅 주소 카드 — 선택 시 카카오 지오코딩으로 좌표를 확보해 requestOpenPlace로
  * 상세를 연다(PlaceSearch onSelectAddress와 동형). 채팅엔 검색 live region이
  * 없으므로 좌표 변환 실패 통지는 이 카드 지역의 단일 채널로만 낸다.
+ *
+ * aliveRef: 좌표 지오코딩 왕복 중 오버레이가 닫히면(Esc·뒤로가기) 이 컴포넌트가
+ * 언마운트된다 — 그 뒤 도착한 응답이 requestOpenPlace를 발행하면 사용자가 이미
+ * 떠난 화면에 유령 상세를 열고 포커스를 낚아챈다(헌장 §6 ⑨ 이탈 게이트 계열).
+ * 언마운트 후 도착한 성공·실패 모두 폐기한다.
  */
 function ChatAddressResults({ addresses }: { addresses: JusoAddress[] }) {
   const t = useTranslations("search");
   const locale = useLocale();
   const [failed, setFailed] = useState(false);
   const resolvingRef = useRef(false);
+  const aliveRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
   async function onSelect(addr: JusoAddress) {
     if (resolvingRef.current) return;
     resolvingRef.current = true;
@@ -183,6 +194,7 @@ function ChatAddressResults({ addresses }: { addresses: JusoAddress[] }) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { matches: AddressMatch[] };
       const coord = data.matches[0];
+      if (!aliveRef.current) return;
       if (!coord) {
         setFailed(true);
         return;
@@ -191,7 +203,7 @@ function ChatAddressResults({ addresses }: { addresses: JusoAddress[] }) {
         jusoAddressToPlace(addr, { lat: coord.lat, lng: coord.lng }, dataLocale(locale)),
       );
     } catch {
-      setFailed(true);
+      if (aliveRef.current) setFailed(true);
     } finally {
       resolvingRef.current = false;
     }
