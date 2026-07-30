@@ -258,6 +258,10 @@ export function PlaceSearch({
   // 채팅 카드의 장소 열기 요청. 상세가 이미 열려 있으면 같은 히스토리 엔트리에서
   // 교체(뒤로가기=결과 복귀 불변식 유지 — 상세 위 상세 스택은 비목표), 아니면
   // 기존 openDetail(pushState). selectedRef로 최신값을 읽는다(마운트 1회 등록).
+  // openSeq: 장소 앵커 채팅에서 앵커 자신(같은 place.id)이 카드로 돌아오면
+  // key={selected.id}만으론 값이 안 바뀌어 리마운트가 안 되고 PlaceDetail의
+  // chatOpen이 남는다 — 발행마다 증가시켜 id 불변이어도 강제 리마운트한다.
+  const [openSeq, setOpenSeq] = useState(0);
   const selectedRef = useRef(selected);
   useEffect(() => {
     selectedRef.current = selected;
@@ -265,6 +269,7 @@ export function PlaceSearch({
   useEffect(() => {
     return subscribeOpenPlace((place) => {
       setDirections(null);
+      setOpenSeq((s) => s + 1);
       if (selectedRef.current) {
         window.history.replaceState(
           { ...(window.history.state ?? {}), place: place.id },
@@ -644,14 +649,16 @@ export function PlaceSearch({
   }
 
   // 상세 화면이면 상세만 렌더(같은 페이지 뷰 전환).
-  // key={selected.id}: 채팅 카드로 다른 장소 상세로 교체될 때 같은 PlaceDetail
-  // 인스턴스가 재사용되면 내부 chatOpen 상태가 남아 새 장소 위에 옛 채팅이 뜬다 —
-  // key로 재마운트를 강제해 리셋한다(헤딩 포커스 effect는 [place.id] 의존이라
-  // key 없이도 동작하지만, key가 chatOpen 리셋까지 보장한다).
+  // key={`${selected.id}-${openSeq}`}: 채팅 카드로 다른 장소 상세로 교체될 때
+  // 같은 PlaceDetail 인스턴스가 재사용되면 내부 chatOpen 상태가 남아 새 장소
+  // 위에 옛 채팅이 뜬다 — key로 재마운트를 강제해 리셋한다. openSeq를 함께
+  // 섞는 이유: 장소 앵커 채팅에서 앵커 자신(같은 id)이 카드로 돌아오면 id만으론
+  // key가 안 바뀌어 리마운트가 스킵된다(헤딩 포커스 effect는 [place.id]
+  // 의존이라 key 없이도 동작하지만, key가 chatOpen 리셋까지 보장한다).
   if (selected) {
     return (
       <PlaceDetail
-        key={selected.id}
+        key={`${selected.id}-${openSeq}`}
         place={selected}
         onOpenDirections={
           canShowDirections

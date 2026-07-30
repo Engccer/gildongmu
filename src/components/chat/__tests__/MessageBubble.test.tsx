@@ -1,9 +1,15 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import {
+  subscribeOpenPlace,
+  __resetOpenPlaceForTest,
+} from "@/lib/place-open-request";
 
 afterEach(() => {
   cleanup();
+  __resetOpenPlaceForTest();
+  vi.unstubAllGlobals();
 });
 
 vi.mock("next-intl", () => ({
@@ -392,5 +398,89 @@ describe("MessageBubble", () => {
     expect(sf.getAttribute("data-station")).toBe("서울역");
     expect(smf).toBeTruthy();
     expect(smf.getAttribute("data-station")).toBe("서울역");
+  });
+
+  // 레거시 감사 Task 5: 채팅 카드 → 상세 진입 배선 회귀 테스트
+  const addressFixture = {
+    roadAddr: "서울특별시 중구 세종대로 110 (태평로1가)",
+    roadAddrPart1: "서울특별시 중구 세종대로 110",
+    jibunAddr: "서울특별시 중구 태평로1가 31",
+    engAddr: "110 Sejong-daero, Jung-gu, Seoul",
+    zipNo: "04524",
+    bdNm: "서울특별시청",
+  };
+
+  it("places 카드 클릭 시 requestOpenPlace 발행 — subscribeOpenPlace 구독자가 place를 수신", () => {
+    let received: unknown = null;
+    subscribeOpenPlace((place) => {
+      received = place;
+    });
+    render(
+      <MessageBubble
+        message={{
+          id: "p1",
+          role: "assistant",
+          text: "결과",
+          renders: [{ type: "places", places: [placeFixture] }],
+        }}
+      />
+    );
+    fireEvent.click(screen.getByText(/길동 카페/));
+    expect(received).toEqual(placeFixture);
+  });
+
+  it("주소 카드 선택 후 좌표 지오코딩 실패 시 addressCoordFailed 문구 노출", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 500 }),
+    );
+    render(
+      <MessageBubble
+        message={{
+          id: "a1",
+          role: "assistant",
+          text: "주소 결과",
+          renders: [{ type: "addresses", results: [addressFixture] }],
+        }}
+      />
+    );
+    fireEvent.click(screen.getByText(/세종대로 110/));
+    await waitFor(() => {
+      expect(screen.getByText("addressCoordFailed")).toBeTruthy();
+    });
+  });
+
+  it("주소 카드 좌표 조회 in-flight 중 재클릭은 fetch를 중복 발사하지 않는다", async () => {
+    let resolveFetch: (v: unknown) => void = () => {};
+    const fetchMock = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(
+      <MessageBubble
+        message={{
+          id: "a2",
+          role: "assistant",
+          text: "주소 결과",
+          renders: [{ type: "addresses", results: [addressFixture] }],
+        }}
+      />
+    );
+    const item = screen.getByText(/세종대로 110/);
+    fireEvent.click(item);
+    fireEvent.click(item);
+    fireEvent.click(item);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 정리: 대기 중인 fetch를 해소해 다음 테스트로 pending promise가 새지 않게 한다.
+    resolveFetch({
+      ok: true,
+      json: async () => ({ matches: [] }),
+    });
+    await waitFor(() => {
+      expect(screen.getByText("addressCoordFailed")).toBeTruthy();
+    });
   });
 });
