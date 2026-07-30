@@ -42,7 +42,7 @@ export function RouteLinks({ place }: { place: Place }) {
       <button
         type="button"
         onClick={openNaver}
-        className="min-h-11 rounded-md border border-border px-4 py-2 text-sm font-medium"
+        className="inline-flex min-h-11 items-center rounded-md border border-border px-4 py-2 text-sm font-medium"
       >
         {t("place.openInNaverMap")}
       </button>

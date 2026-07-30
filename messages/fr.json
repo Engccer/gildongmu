@@ -87,14 +87,9 @@
     "jibun": "Numéro de lot"
   },
   "route": {
-    "naverLabel": "Naver Map",
-    "naverModeAction": "Itinéraire {mode} avec Naver Map",
-    "kakaoLabel": "Kakao Map",
-    "kakaoModeAction": "Itinéraire {mode} avec Kakao Map",
     "walk": "À pied",
     "public": "Transports",
     "car": "Voiture",
-    "deeplinkHint": "Ouvre l'application Naver Map",
     "briefing": {
       "button": "Aperçu de l'itinéraire en voiture en texte",
       "locating": "Localisation en cours…",
@@ -489,7 +484,6 @@
   },
   "placeChat": {
     "launch": "Poser une question sur ce lieu",
-    "launchFor": "Poser une question sur <name></name>",
     "title": "Poser une question sur ce lieu",
     "close": "Fermer le chat",
     "empty": "Que voulez-vous savoir ?",
@@ -636,7 +630,6 @@
       "landmarkItem": "<name></name> ({category}) à environ {distance} {direction}",
       "landmarksTail": ", et plus encore."
     },
-    "chatButton": "Poser une question sur ma position actuelle",
     "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord.",
     "direction": {
       "n": "au nord",

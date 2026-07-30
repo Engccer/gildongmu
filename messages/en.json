@@ -87,14 +87,9 @@
     "jibun": "Lot number"
   },
   "route": {
-    "naverLabel": "Naver Map",
-    "naverModeAction": "{mode} directions with Naver Map",
-    "kakaoLabel": "Kakao Map",
-    "kakaoModeAction": "{mode} directions with Kakao Map",
     "walk": "Walk",
     "public": "Transit",
     "car": "Car",
-    "deeplinkHint": "Opens the Naver Map app",
     "briefing": {
       "button": "Preview car route as text",
       "locating": "Getting your location…",
@@ -489,7 +484,6 @@
   },
   "placeChat": {
     "launch": "Ask about this place",
-    "launchFor": "Ask about <name></name>",
     "title": "Ask about this place",
     "close": "Close chat",
     "empty": "What would you like to know?",
@@ -636,7 +630,6 @@
       "landmarkItem": "<name></name> ({category}) about {distance} to the {direction}",
       "landmarksTail": ", and more."
     },
-    "chatButton": "Ask about my current location",
     "source": "Source: Kakao Map. Directions are compass bearings from north.",
     "direction": {
       "n": "north",

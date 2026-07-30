@@ -87,14 +87,9 @@
     "jibun": "지번"
   },
   "route": {
-    "naverLabel": "네이버 지도",
-    "naverModeAction": "네이버 지도로 {mode} 길찾기",
-    "kakaoLabel": "카카오맵",
-    "kakaoModeAction": "카카오맵으로 {mode} 길찾기",
     "walk": "도보",
     "public": "대중교통",
     "car": "자동차",
-    "deeplinkHint": "네이버 지도 앱이 열립니다",
     "briefing": {
       "button": "자동차 경로 안내",
       "locating": "현재 위치 확인 중…",
@@ -489,7 +484,6 @@
   },
   "placeChat": {
     "launch": "이 장소에 관해 물어보기",
-    "launchFor": "<name></name>에 관해 물어보기",
     "title": "이 장소에 관해 물어보기",
     "close": "채팅 닫기",
     "empty": "무엇이 궁금하세요?",
@@ -636,7 +630,6 @@
       "landmarkItem": "{direction}쪽 약 {distance}에 <name></name> {category}",
       "landmarksTail": " 등이 있습니다."
     },
-    "chatButton": "내 현재 위치에 관해 물어보기",
     "source": "출처: 카카오맵. 방향은 북 기준 방위입니다.",
     "direction": {
       "n": "북",

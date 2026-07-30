@@ -25,14 +25,6 @@ const MODE_TO_BY: Record<RouteMode, string> = {
   bike: "bicycle",
 };
 
-/** map.kakao.com/link/by/{수단} 경로 세그먼트 */
-const MODE_TO_WEB_BY: Record<RouteMode, string> = {
-  car: "car",
-  public: "traffic",
-  walk: "walk",
-  bike: "bicycle",
-};
-
 function assertDestInKorea(dest: { lat: number; lng: number }): void {
   if (!isInKorea(dest.lat, dest.lng)) {
     throw new Error(
@@ -67,20 +59,6 @@ export function buildKakaoRouteDeeplink(
  */
 export function buildKakaoPlaceDeeplink(kakaoPlaceId: string): string {
   return `kakaomap://place?id=${encodeURIComponent(kakaoPlaceId)}`;
-}
-
-/**
- * 길찾기 웹 URL — 미설치/데스크톱 폴백 겸용.
- * 형식: https://map.kakao.com/link/by/{수단}/{이름},{위도},{경도}
- * (출발지 지정이 필요하면 /link/from/.../to/... 형식이 따로 있으나
- *  현재 위치 출발이 기본 시나리오라 도착지 단일 형식만 제공)
- */
-export function buildKakaoWebRouteUrl(
-  mode: RouteMode,
-  dest: { lat: number; lng: number; name: string },
-): string {
-  assertDestInKorea(dest);
-  return `https://map.kakao.com/link/by/${MODE_TO_WEB_BY[mode]}/${encodeURIComponent(dest.name)},${dest.lat},${dest.lng}`;
 }
 
 /** 지도 보기 웹 URL */
