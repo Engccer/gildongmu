@@ -25,7 +25,8 @@ function isOutOfCoverage(body: unknown): boolean {
 const OUT_OF_COVERAGE_NOTICE =
   "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
 
-const server = new McpServer({ name: "gildongmu", version: "0.5.0" });
+// ⚠ package.json version과 동조 필수(version-drift.test.ts가 강제). 릴리스 때 함께 올린다.
+const server = new McpServer({ name: "gildongmu", version: "0.6.1" });
 
 for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
   const shape: Record<string, z.ZodTypeAny> = {};

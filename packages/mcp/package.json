@@ -1,6 +1,6 @@
 {
   "name": "gildongmu-mcp",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "길동무 MCP 서버: 한국 길찾기·로컬 정보 도구",
   "type": "module",
   "bin": {
