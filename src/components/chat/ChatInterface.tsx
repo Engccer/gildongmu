@@ -67,7 +67,7 @@ export function ChatInterface({
   const lastUserId = [...messages].reverse().find((m) => m.role === "user")?.id;
 
   // 진행 상태 통지 — progressCategories 변화 시 별도 polite 채널에 갱신.
-  // t("progress.tool.<name>")가 없으면 next-intl이 키를 그대로 노출(허용, Task 6에서 채움).
+  // 18개 도구 전 라벨 보유 — 새 도구 추가 시 `chat.progress.tool.<name>` 6로케일 동반 추가.
   useEffect(() => {
     if (progressRef.current) {
       progressRef.current.textContent = progressCategories.length

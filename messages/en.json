@@ -455,7 +455,10 @@
         "get_car_route": "driving route",
         "get_transit_route": "transit route",
         "get_walk_route": "walking route",
-        "search_web": "web search"
+        "search_web": "web search",
+        "get_nearby_barrier_free": "Barrier-free places",
+        "get_walk_infrastructure": "Walking infrastructure",
+        "unknown": "Information"
       }
     },
     "sources": "Sources",

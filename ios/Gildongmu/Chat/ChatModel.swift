@@ -157,7 +157,11 @@ final class ChatModel {
         case "get_station_facilities": appLocalized("chat.progress.tool.get_station_facilities")
         case "get_car_route": appLocalized("chat.progress.tool.get_car_route")
         case "get_transit_route": appLocalized("chat.progress.tool.get_transit_route")
+        case "get_walk_route": appLocalized("chat.progress.tool.get_walk_route")
+        case "get_nearby_barrier_free": appLocalized("chat.progress.tool.get_nearby_barrier_free")
+        case "get_walk_infrastructure": appLocalized("chat.progress.tool.get_walk_infrastructure")
         case "search_web": appLocalized("chat.progress.tool.search_web")
+        case "unknown": appLocalized("chat.progress.tool.unknown")
         default: category
         }
     }
