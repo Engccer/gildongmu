@@ -16,6 +16,7 @@ import type {
 } from "@/lib/types";
 import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { subscribeOpenPlace } from "@/lib/place-open-request";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { normalizeVoiceQuery } from "@/lib/format";
@@ -252,6 +253,28 @@ export function PlaceSearch({
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
     // ref 미러를 통해 최신 상태를 읽으므로 마운트 시 한 번만 등록해도 안전하다.
+  }, []);
+
+  // 채팅 카드의 장소 열기 요청. 상세가 이미 열려 있으면 같은 히스토리 엔트리에서
+  // 교체(뒤로가기=결과 복귀 불변식 유지 — 상세 위 상세 스택은 비목표), 아니면
+  // 기존 openDetail(pushState). selectedRef로 최신값을 읽는다(마운트 1회 등록).
+  const selectedRef = useRef(selected);
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
+  useEffect(() => {
+    return subscribeOpenPlace((place) => {
+      setDirections(null);
+      if (selectedRef.current) {
+        window.history.replaceState(
+          { ...(window.history.state ?? {}), place: place.id },
+          "",
+        );
+        setSelected(place);
+      } else {
+        openDetail(place);
+      }
+    });
   }, []);
 
   function openDetail(place: Place) {
@@ -621,9 +644,14 @@ export function PlaceSearch({
   }
 
   // 상세 화면이면 상세만 렌더(같은 페이지 뷰 전환).
+  // key={selected.id}: 채팅 카드로 다른 장소 상세로 교체될 때 같은 PlaceDetail
+  // 인스턴스가 재사용되면 내부 chatOpen 상태가 남아 새 장소 위에 옛 채팅이 뜬다 —
+  // key로 재마운트를 강제해 리셋한다(헤딩 포커스 effect는 [place.id] 의존이라
+  // key 없이도 동작하지만, key가 chatOpen 리셋까지 보장한다).
   if (selected) {
     return (
       <PlaceDetail
+        key={selected.id}
         place={selected}
         onOpenDirections={
           canShowDirections
