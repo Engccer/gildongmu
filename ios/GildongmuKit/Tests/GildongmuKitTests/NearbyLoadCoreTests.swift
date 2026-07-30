@@ -595,6 +595,31 @@ struct NearbyLoadCoreTests {
         #expect(recorder.events.isEmpty)  // refreshFailed 미발화
     }
 
+    /// #17 × #8 — 좌표 취득 후 커버리지 선분기 앞에서 취소되면, 커버리지 밖 좌표를
+    /// 받았더라도 outOfCoverage로 커밋하거나 wentOutOfCoverage를 통지하지 않는다.
+    /// (취소 게이트가 선분기보다 뒤로 밀리면 떠난 화면에 "서비스 지역 밖"이 오발화한다.)
+    @Test func cooperativeCancellationBeforeCoveragePrecheckDiscards() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder, coverage: .korea)
+        await core.load()
+        #expect(loadedPayload(core.phase) == "P1")
+        recorder.resetLog()
+
+        let gate = Gate()
+        recorder.coordStub = { _ in
+            await gate.arriveAndWait()
+            return tokyoCoord   // 취소를 무시하고 커버리지 밖 좌표를 반환하는 스텁
+        }
+        let task = Task { await core.load() }
+        await gate.waitForArrival()
+        task.cancel()
+        gate.release()
+        await task.value
+
+        #expect(loadedPayload(core.phase) == "P1")   // outOfCoverage로 전락하지 않는다
+        #expect(recorder.events.isEmpty)             // wentOutOfCoverage 미발화
+    }
+
     /// 불변식 ④ — 취소 경로에서도 in-flight 가드가 해제되어 후속 load가 정상 완주한다.
     @Test func inFlightGuardIsReleasedAfterCancellation() async {
         let recorder = Recorder()
