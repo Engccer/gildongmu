@@ -75,7 +75,21 @@ export function useChat(opts?: { placeContext?: PlaceContext }) {
           }),
           signal: controller.signal,
         });
-        if (!res.ok || !res.body) { setError("chat_failed"); return; }
+        if (!res.ok || !res.body) {
+          // 라우트가 내는 코드(rate_limited·chat_unavailable)를 읽어 분기 — 전부
+          // chat_failed로 뭉개면 레이트리밋과 키 미설정이 일반 실패로 오낭독된다.
+          let code = "chat_failed";
+          try {
+            const body = (await res.json()) as { error?: string };
+            if (body.error === "rate_limited" || body.error === "chat_unavailable") {
+              code = body.error;
+            }
+          } catch {
+            // 본문 없음/비JSON — 일반 실패 유지
+          }
+          setError(code);
+          return;
+        }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();

@@ -435,6 +435,7 @@
     "error": {
       "chat_failed": "Impossibile ottenere una risposta.",
       "chat_unavailable": "La chat non è disponibile.",
+      "rate_limited": "Troppe richieste. Riprova tra poco.",
       "timeout": "La risposta ha impiegato troppo tempo. Riprova tra poco."
     },
     "progress": {
