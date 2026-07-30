@@ -282,9 +282,9 @@
     "geoUnsupported": "このブラウザは現在地に対応していません。",
     "routeStopsButton": "{route}番の経由バス停を見る",
     "routeStopsHeading": "{route}番の経由バス停",
-    "routeStopsLoading": "経由バス停を照会中…",
-    "routeStopsEmpty": "経由バス停の情報がありません。",
-    "routeStopsError": "経由バス停の照会に失敗しました。",
+    "routeStopsLoading": "{route}番の経由バス停を照会中…",
+    "routeStopsEmpty": "{route}番の経由バス停の情報がありません。",
+    "routeStopsError": "{route}番の経由バス停の照会に失敗しました。",
     "source": "出典: 国土交通部TAGO・ソウルTOPIS。"
   },
   "bike": {

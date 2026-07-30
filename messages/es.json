@@ -282,9 +282,9 @@
     "geoUnsupported": "Este navegador no admite la ubicación.",
     "routeStopsButton": "Mostrar paradas de la línea {route}",
     "routeStopsHeading": "Paradas de la línea {route}",
-    "routeStopsLoading": "Cargando paradas de la línea…",
-    "routeStopsEmpty": "No hay información de paradas de la línea.",
-    "routeStopsError": "No se pudieron cargar las paradas de la línea.",
+    "routeStopsLoading": "Cargando paradas de la línea {route}…",
+    "routeStopsEmpty": "No hay información de paradas de la línea {route}.",
+    "routeStopsError": "No se pudieron cargar las paradas de la línea {route}.",
     "source": "Fuente: MOLIT TAGO y Seoul TOPIS."
   },
   "bike": {
