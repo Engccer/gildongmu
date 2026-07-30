@@ -1,48 +1,28 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
 
-/// 내 주변 지하철 도착. 3-state(권한 거부/조회 실패/0건) 분리와
-/// 도착 문장 정본(message=arvlMsg2)이 규범. 다른 5개 화면이 이 패턴을 미러링한다.
+/// 내 주변 지하철 도착 — NearbyLoadCore 껍데기(규범 원형). 상태 머신·전이표는 Kit 정본.
 @Observable @MainActor
 final class SubwayNearbyModel {
-    private(set) var state: NearbyLoadState<NearbySubwayStation> = .idle
-    private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
-    private var isLoadingInFlight = false
+    private let core: NearbyLoadCore<[NearbySubwayStation]>
+    var phase: NearbyLoadPhase<[NearbySubwayStation]> { core.phase }
 
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
-        if case .loaded = state {} else { state = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
-            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
-                if case .loaded = state { announceOutOfCoverage() }
-                state = .outOfCoverage
-                return
-            }
-            let stations = try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
-            state = .loaded(stations)
-            announceLoaded(count: stations.count, unit: appLocalized("ios.nearby.unitStation"))
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
-                if case .loaded = state { announcePermissionLost() }
-                state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        } catch APIError.outOfCoverage {
-            if case .loaded = state { announceOutOfCoverage() }
-            state = .outOfCoverage
-        } catch {
-            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
-            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        }
+    init() {
+        let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .korea,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                return try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
+            },
+            onEvent: nearbyAnnouncer(loaded: { stations in
+                nearbyLoadedMessage(count: stations.count, unit: appLocalized("ios.nearby.unitStation"))
+            }))
     }
+
+    func load(force: Bool = false) async { await core.load(force: force) }
 }
 
 struct SubwayNearbyView: View {
@@ -50,7 +30,7 @@ struct SubwayNearbyView: View {
 
     var body: some View {
         List {
-            if case .loaded(let stations) = model.state {
+            if case .loaded(let stations) = model.phase {
                 ForEach(stations, id: \.stationName) { station in
                     Section {
                         // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
@@ -71,25 +51,12 @@ struct SubwayNearbyView: View {
             }
         }
         .navigationTitle(appLocalized("ios.nearby.subway"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                empty: NearbyOverlayCopy(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram"),
+                isEmpty: \.isEmpty))
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading: ProgressView(appLocalized("ios.common.checking"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .outOfCoverage:
-            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
-        case .loaded(let stations) where stations.isEmpty:
-            ContentUnavailableView(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram")
-        default: EmptyView()
-        }
     }
 }
