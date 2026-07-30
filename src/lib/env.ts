@@ -61,6 +61,10 @@ const envSchema = z.object({
   // dodo-planet과 공유 키. 키 없으면 search_web 도구 미노출(회귀 0).
   PERPLEXITY_API_KEY: z.string().min(1).optional(),
 
+  // Google Cloud TTS Chirp 3 HD 서버 합성 — /api/tts 라우트.
+  // 미설정 시 502 → 클라이언트 온디바이스 낭독 폴백(문서화된 경로라 게이트 함수 없음).
+  GOOGLE_CLOUD_TTS_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -81,6 +85,7 @@ export const env = envSchema.parse({
   TMAP_APP_KEY: process.env.TMAP_APP_KEY,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
+  GOOGLE_CLOUD_TTS_API_KEY: process.env.GOOGLE_CLOUD_TTS_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 

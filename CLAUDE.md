@@ -113,6 +113,7 @@
 | `SEOUL_SUBWAY_REALTIME_KEY` | `hasSeoulSubwayRealtimeKey` | "실시간 데이터 인증키"(일반키로 호출 시 `ERROR-338`), 일 1,000회 |
 | `ODSAY_API_KEY` | `hasOdsayKey` | ODsay 대중교통 — URI 전용 앱 `gildongmuweb` 키(~2027-01-04, 일 1,000회). ⚠ `+`/`/` 포함이라 **URL 인코딩 형태로 저장**(provider가 raw로 URL에 붙임), 만료 갱신·dodo 이식 시 해당 도메인 URI 앱 등록 |
 | `DEEPGRAM_API_KEY` | — | STT nova-3 (dodo 공유). ⚠ prod 502면 키 유효성 먼저([[deepgram-prod-key-401]]) |
+| `GOOGLE_CLOUD_TTS_API_KEY` | — (미설정=502->온디바이스 폴백) | iOS TtsPlayer 서버 낭독(Chirp 3 HD). 게이트 함수 없음 |
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(`GEMINI_MODEL=gemini-3.5-flash`). dodo `GOOGLE_GENERATIVE_AI_API_KEY` 공유 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건. ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인(PROGRESS) |
