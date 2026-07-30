@@ -11,7 +11,7 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("@/lib/geolocation", () => ({ awaitGeolocation: vi.fn() }));
 
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { awaitGeolocation } from "@/lib/geolocation";
 import type { GeoState } from "@/lib/geolocation";
@@ -127,7 +127,11 @@ describe("nearby 교차 패널 결함 (NightClinics ↔ KidsPlaces)", () => {
       await screen.findByText(/길동키즈카페/); // B done
 
       const bHeading = screen.getByRole("heading", { name: /kidsNearby\.ready/ });
-      expect(document.activeElement).toBe(bHeading);
+      // 전제 조건: B 헤딩 포커스 안착. 포커스 이동은 패시브 useEffect라 동기 단언은
+      // 부하에서 간헐 실패한다(waitFor 종료 드레인 setTimeout(0)과의 경합 — 계약
+      // 팩토리 done 포커스 단언과 동일 원인·동일 수정). 아래 최종 단언(142행 판정)은
+      // 안착 이후의 동기 검사라 그대로 둔다 — "포커스가 떠난 적 없음"이 계약이다.
+      await waitFor(() => expect(document.activeElement).toBe(bHeading));
 
       // A의 늦은 응답이 이제야 도착한다 — dismiss된 A는 이 사실을 모른다.
       await act(async () => {
