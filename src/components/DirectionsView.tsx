@@ -139,6 +139,8 @@ async function fetchMode(
  * - 결과는 수단별 h3(tabIndex=-1) heading + 기존 결과 렌더 컴포넌트 재사용.
  * - 통지는 폼 근처 단일 polite live region 1개 뿐(수단별 개별 통지 금지, 합산 1문장).
  * - 조회 완료 시 첫 "성공" 수단 heading으로 1회 포커스(성공 0건이면 이동 없음).
+ * - 필드 흐름 전진 포커스: 후보 검색 완료 → 첫 후보, 출발지 확정 → 도착지 입력,
+ *   도착지 확정 → 조회 버튼(다음 행동이 있는 곳으로 — 스와이프 탐색 왕복 제거).
  * - 조회 버튼은 disabled 금지: aria-disabled + in-flight ref 가드.
  * - `?dir=` 동기화: 확정(resolved) 상태만 직렬화, 현재 위치는 좌표 없는 `cur` 토큰
  *   (프라이버시), 복원 시 재측위.
@@ -266,6 +268,9 @@ export function DirectionsView({
   }
 
   const titleRef = useRef<HTMLHeadingElement>(null);
+  // 사용 흐름 전진 포커스: 출발지 확정 → 도착지 입력, 도착지 확정 → 조회 버튼.
+  const toInputRef = useRef<HTMLInputElement | null>(null);
+  const submitRef = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
   const genRef = useRef(0);
   const transitHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -552,6 +557,7 @@ export function DirectionsView({
         }}
         onUseCurrent={() => void selectCurrentFrom()}
         useCurrentBusy={refreshingCurrent}
+        focusAfterResolve={() => toInputRef.current?.focus()}
         announce={setNotice}
         locale={locale}
         t={t}
@@ -587,6 +593,10 @@ export function DirectionsView({
           recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
         }}
+        registerInput={(el) => {
+          toInputRef.current = el;
+        }}
+        focusAfterResolve={() => submitRef.current?.focus()}
         announce={setNotice}
         locale={locale}
         t={t}
@@ -603,6 +613,7 @@ export function DirectionsView({
       {/* disabled 금지: aria-disabled + in-flight ref 가드로 포커스를 지킨다 */}
       <button
         type="button"
+        ref={submitRef}
         onClick={runQuery}
         aria-disabled={busy}
         aria-busy={busy}
@@ -724,8 +735,11 @@ export function DirectionsView({
  * 출발지/도착지 필드 1개: 텍스트 입력 + 미니 검색(장소·주소 병렬, 기존
  * /api/places·/api/address/search 재사용) + 후보 선택.
  * - 텍스트를 편집하면 부모가 resolved를 즉시 무효화한다(원자 상태).
- * - 후보 선택은 리스트를 제거하므로, 제거 전에 포커스를 입력으로 선점 이동한다
- *   (포커스를 쥔 요소를 없애는 상태 전이 금지). 입력의 라벨+값 낭독이 곧 선택 확인.
+ * - 후보 도착 시 첫 후보 버튼으로 포커스 이동(동적 콘텐츠 등장 — 최상단 결과가
+ *   곧 다음 행동 후보). 0건·오류는 이동 없이 통지만.
+ * - 후보 선택은 리스트를 제거하므로, 제거 전에 포커스를 선점 이동한다(포커스를
+ *   쥔 요소를 없애는 상태 전이 금지). 이동처는 사용 흐름의 다음 컨트롤
+ *   (focusAfterResolve — 출발지는 도착지 입력, 도착지는 조회 버튼).
  * - 주소 후보는 좌표가 없어 /api/geocode로 변환 후 확정한다(PlaceSearch 동형).
  */
 function EndpointField({
@@ -736,6 +750,8 @@ function EndpointField({
   onResolve,
   onUseCurrent,
   useCurrentBusy,
+  registerInput,
+  focusAfterResolve,
   announce,
   locale,
   t,
@@ -753,6 +769,10 @@ function EndpointField({
   onUseCurrent?: () => void;
   /** 강제 재측위 진행 중 — 버튼 라벨 전환이 유일한 진행 신호(별도 통지 금지) */
   useCurrentBusy?: boolean;
+  /** 입력 요소를 부모에 노출(다른 필드 확정 시 이 입력으로 포커스 전진용) */
+  registerInput?: (el: HTMLInputElement | null) => void;
+  /** 후보 확정 직후(리스트 제거 전) 포커스 이동처. 미지정 시 자기 입력 폴백. */
+  focusAfterResolve?: () => void;
   announce: (message: string) => void;
   locale: string;
   t: ReturnType<typeof useTranslations<"directions">>;
@@ -770,6 +790,16 @@ function EndpointField({
   } | null>(null);
   const reqRef = useRef(0);
   const geocodeRef = useRef(false);
+
+  // 후보 도착 시 첫 후보로 포커스: 렌더 반영 뒤 이동(rAF 금지 — useEffect+focus가
+  // repo 정본 패턴, 최근 장소 삭제 복원과 동형).
+  const firstCandidateRef = useRef<HTMLButtonElement | null>(null);
+  const candidateListRef = useRef<HTMLUListElement | null>(null);
+  const [candidateRevision, setCandidateRevision] = useState(0);
+  useEffect(() => {
+    if (candidateRevision === 0) return;
+    firstCandidateRef.current?.focus();
+  }, [candidateRevision]);
 
   // 필드당 최신 5건만 표시(두 필드 동시 노출 노이즈 완충 — 스펙 §4). 저장은 필드별 20건.
   const visibleRecent = recentEndpoints.slice(0, 5);
@@ -832,10 +862,17 @@ function EndpointField({
       addrRes.status === "fulfilled"
         ? addrRes.value.addresses.slice(0, 5)
         : [];
+    // 재검색이 이전 후보 리스트를 갈아치우는데 포커스가 그 안에 있으면(첫 후보
+    // 자동 포커스 이후 재검색), 제거 전에 입력으로 선점 이동 — 0건·오류로 새 첫
+    // 후보가 없을 때 포커스가 body로 소실되는 창을 막는다.
+    if (candidateListRef.current?.contains(document.activeElement)) {
+      inputRef.current?.focus();
+    }
     setCandidates({ places, addresses });
     const count = places.length + addresses.length;
     if (count > 0) {
       announce(t("candidateCount", { count }));
+      setCandidateRevision((r) => r + 1);
     } else if (
       placesRes.status === "rejected" &&
       addrRes.status === "rejected"
@@ -861,8 +898,9 @@ function EndpointField({
   }
 
   function resolveAndClose(ep: DirEndpoint) {
-    // 후보 리스트 제거 전에 포커스를 입력으로 선점 이동(포커스 유실 방지).
-    inputRef.current?.focus();
+    // 후보 리스트 제거 전에 다음 흐름 컨트롤로 포커스 선점 이동(포커스 유실 방지).
+    if (focusAfterResolve) focusAfterResolve();
+    else inputRef.current?.focus();
     setCandidates(null);
     onResolve(ep);
   }
@@ -902,7 +940,10 @@ function EndpointField({
       <div className="mt-1 flex gap-2">
         <input
           id={inputId}
-          ref={inputRef}
+          ref={(el) => {
+            inputRef.current = el;
+            registerInput?.(el);
+          }}
           type="text"
           value={field.text}
           onChange={(e) => {
@@ -942,11 +983,12 @@ function EndpointField({
       )}
       {candidates &&
         (candidates.places.length > 0 || candidates.addresses.length > 0) && (
-          <ul className="mt-1">
-            {candidates.places.map((p) => (
+          <ul ref={candidateListRef} className="mt-1">
+            {candidates.places.map((p, i) => (
               <li key={p.id}>
                 <button
                   type="button"
+                  ref={i === 0 ? firstCandidateRef : undefined}
                   onClick={() =>
                     resolveAndClose({
                       kind: "place",
@@ -960,10 +1002,15 @@ function EndpointField({
                 </button>
               </li>
             ))}
-            {candidates.addresses.map((a) => (
+            {candidates.addresses.map((a, i) => (
               <li key={a.roadAddr}>
                 <button
                   type="button"
+                  ref={
+                    candidates.places.length === 0 && i === 0
+                      ? firstCandidateRef
+                      : undefined
+                  }
                   onClick={() => void selectAddress(a)}
                   className="min-h-11 w-full text-left text-sm underline"
                 >
