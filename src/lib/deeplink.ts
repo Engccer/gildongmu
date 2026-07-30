@@ -63,3 +63,12 @@ export function buildPlaceDeeplink(
 export function buildWebFallbackUrl(query: string): string {
   return `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
 }
+
+/**
+ * 모바일 UA 판별 — 네이버 "열기" 버튼의 경로 분기(모바일=앱 스킴 시도, 데스크톱=웹 지도).
+ * iPadOS 13+ 사파리는 Macintosh로 위장하지만, 위장 UA에서 nmap:// 실패 시에도
+ * 아래 폴백 타이머가 웹 지도로 회복하므로 오판의 실해가 없다(과잉 판별 금지).
+ */
+export function isMobileUserAgent(ua: string): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(ua);
+}
