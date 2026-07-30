@@ -1,19 +1,16 @@
 "use client";
 
-import { useCallback, useRef, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import type { WalkInfrastructure, WalkFeature } from "@/lib/walk-infra";
 import { formatDistance, joinText } from "@/lib/format";
-import { awaitGeolocation } from "@/lib/geolocation";
-import { useNearbyPanel } from "@/hooks/useNearbyPanel";
+import { useNearbyFetch } from "@/hooks/useNearbyFetch";
+import { NearbyPanelShell } from "@/components/NearbyPanelShell";
+import { nearbyLiveMessage } from "@/lib/nearby-live";
 
-type Status =
-  | { kind: "idle" }
-  | { kind: "locating" }
-  | { kind: "loading" }
-  | { kind: "error" }
-  | { kind: "geoerror"; reason: "denied" | "unsupported" }
-  | { kind: "done"; walk: WalkInfrastructure; at: string };
+/** done 데이터 — 두 소스 묶음 한 필드(결과 0건이라는 상태가 없다). */
+interface WalkData {
+  walk: WalkInfrastructure;
+}
 
 /**
  * 내 주변 보행 인프라: 7번째 nearby(음향신호기+OSM 횡단보도·점자블록).
@@ -33,86 +30,20 @@ export function WalkInfraNearby() {
   const t = useTranslations("walkInfra");
   const tDir = useTranslations("surroundingsNearby");
   const tActions = useTranslations("actions");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const inFlightRef = useRef(false);
-  const focusedRef = useRef(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const close = useCallback((restoreFocus = true) => {
-    setStatus({ kind: "idle" });
-    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
-  const onDismiss = useCallback(() => close(false), [close]);
-  const onEscape = useCallback(() => close(true), [close]);
-  const { claim } = useNearbyPanel({
-    engaged: status.kind !== "idle",
-    onDismiss,
-    onEscape,
-  });
-
-  async function fetchAt(lat: number, lng: number) {
-    setStatus({ kind: "loading" });
-    try {
-      const res = await fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        setStatus({ kind: "error" });
-        return;
-      }
-      const body = await res.json();
-      const at = new Date().toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      setStatus({ kind: "done", walk: body.walk as WalkInfrastructure, at });
-    } catch {
-      setStatus({ kind: "error" });
-    }
-  }
-
-  function load(force = false) {
-    const prevStatus = status;
-    claim();
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    const done = () => {
-      inFlightRef.current = false;
-    };
-    setStatus({ kind: "locating" });
-    void awaitGeolocation({ force }).then((g) => {
-      if (g.status === "ready") {
-        void fetchAt(g.coords.lat, g.coords.lng).finally(done);
-      } else {
-        setStatus(
-          prevStatus.kind === "done"
-            ? prevStatus
-            : {
-                kind: "geoerror",
-                reason: g.status === "unsupported" ? "unsupported" : "denied",
-              },
-        );
-        done();
-      }
+  // OSM은 전 지구 커버리지(coverage:"none")라 outOfCoverage 분기에 도달하지 않는다
+  // — tCommon은 공유 live 시그니처를 채우는 인자다.
+  const tCommon = useTranslations("common");
+  const { status, load, close, busy, headingRef, triggerRef } =
+    useNearbyFetch<WalkData>({
+      source: { kind: "current" },
+      coverage: "none",
+      fetchAt: ({ lat, lng }) =>
+        fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}`, { cache: "no-store" }),
+      parse: (body) => ({
+        kind: "done",
+        data: { walk: (body as { walk: WalkInfrastructure }).walk },
+      }),
     });
-  }
-
-  // done 진입 시 결과 헤딩으로 포커스 이동(다른 nearby 패널과 동형).
-  // useEffect는 React 커밋 이후 실행이 보장돼 rAF 레이스가 없다.
-  useEffect(() => {
-    if (status.kind === "done") {
-      if (!focusedRef.current) {
-        focusedRef.current = true;
-        headingRef.current?.focus();
-      }
-    } else {
-      focusedRef.current = false;
-    }
-  }, [status.kind]);
-
-  const busy = status.kind === "locating" || status.kind === "loading";
-  const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
 
   // 단일 polite 통지(§2-F): ok 소스의 수치만 낭독, error/unsupported는 실패·미제공
   // 문구로("0기" 합성 금지). 두 소스는 서로 독립적으로 강등된다.
@@ -134,67 +65,36 @@ export function WalkInfraNearby() {
     return joinText(audio, osm);
   }
 
-  const live =
-    status.kind === "locating"
-      ? t("locating")
-      : status.kind === "loading"
-        ? t("loading")
-        : status.kind === "error"
-          ? t("error")
-          : status.kind === "geoerror"
-            ? status.reason === "denied"
-              ? t("geoDenied")
-              : t("geoUnsupported")
-            : status.kind === "done"
-              ? buildLive(status.walk)
-              : "";
+  const live = nearbyLiveMessage(status, t, tCommon, () =>
+    status.kind === "done" ? buildLive(status.data.walk) : "",
+  );
 
   return (
-    <div className="mt-3">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => load(status.kind === "done")}
-        aria-disabled={busy}
-        aria-busy={busy}
-        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
-      >
-        {buttonLabel}
-      </button>
-
-      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {live}
-      </p>
-
+    <NearbyPanelShell
+      triggerLabel={status.kind === "done" ? t("refresh") : t("button")}
+      onTrigger={() => load(status.kind === "done")}
+      triggerRef={triggerRef}
+      busy={busy}
+      live={live}
+      open={status.kind === "done"}
+      heading={status.kind === "done" ? `${t("ready")} ${t("asOf", { time: status.at })}` : ""}
+      headingRef={headingRef}
+      onClose={() => close()}
+      closeLabel={tActions("close")}
+    >
       {status.kind === "done" && (
-        <WalkInfraPanel
-          walk={status.walk}
-          at={status.at}
-          headingRef={headingRef}
-          onClose={() => close()}
-          closeLabel={tActions("close")}
-          t={t}
-          tDir={tDir}
-        />
+        <WalkInfraPanel walk={status.data.walk} t={t} tDir={tDir} />
       )}
-    </div>
+    </NearbyPanelShell>
   );
 }
 
 function WalkInfraPanel({
   walk,
-  at,
-  headingRef,
-  onClose,
-  closeLabel,
   t,
   tDir,
 }: {
   walk: WalkInfrastructure;
-  at: string;
-  headingRef: React.RefObject<HTMLHeadingElement | null>;
-  onClose: () => void;
-  closeLabel: string;
   t: ReturnType<typeof useTranslations<"walkInfra">>;
   tDir: ReturnType<typeof useTranslations<"surroundingsNearby">>;
 }) {
@@ -207,15 +107,7 @@ function WalkInfraPanel({
   const showFootnote = walk.audioSignals.status === "ok" || walk.osm.status === "ok";
 
   return (
-    <div className="mt-2 rounded-md border border-border p-3">
-      <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
-        {`${t("ready")} ${t("asOf", { time: at })}`}
-      </h3>
-
-      <button type="button" onClick={onClose} className="mt-1 min-h-11 text-sm text-accent underline">
-        {closeLabel}
-      </button>
-
+    <>
       <div className="mt-3">
         <h4 className="font-medium">{t("groupAudio")}</h4>
         {walk.audioSignals.status === "ok" ? (
@@ -327,6 +219,6 @@ function WalkInfraPanel({
           </p>
         </>
       )}
-    </div>
+    </>
   );
 }
