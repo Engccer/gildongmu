@@ -1,11 +1,15 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { remarkTightLists } from "@/lib/chat/remark-tight-lists";
-import type { Place } from "@/lib/types";
+import type { AddressMatch, JusoAddress, Place } from "@/lib/types";
 import type { ChatMessage, RenderPayload } from "@/lib/chat/types";
+import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { dataLocale } from "@/lib/data-locale";
+import { requestOpenPlace } from "@/lib/place-open-request";
 import { ResultList } from "@/components/ResultList";
 import { AddressResultList } from "@/components/AddressResultList";
 import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
@@ -29,8 +33,8 @@ import { SourceList } from "./SourceList";
  * - 사용자 메시지: 오른쪽 정렬 텍스트.
  * - 어시스턴트 메시지: 텍스트 + 선택적 RenderBlock(render payload 디스패치).
  *
- * @param onOpenPlace - 장소 카드 클릭 시 상세 진입 콜백. V1 채팅은 비목표 → 미주입 시 no-op.
- *   후속 Task에서 PlaceSearch openDetail과 연결 예정.
+ * @param onOpenPlace - 장소 카드 클릭 시 상세 진입 콜백. 미주입 시 requestOpenPlace
+ *   (place-open-request 모듈 싱글턴 브릿지)로 발행해 PlaceSearch가 상세를 연다.
  * @param isLastQuery - 이 메시지가 가장 최근 사용자 질문인지. true면 lastQueryRef를 연결해
  *   응답 완료 후 포커스가 이 heading으로 이동한다(턴별 탐색).
  * @param lastQueryRef - 최신 질문 heading 참조(ChatInterface가 포커스 이동에 사용).
@@ -114,19 +118,11 @@ function RenderBlock({
       return (
         <ResultList
           places={render.places}
-          // onOpenPlace 미주입 시 no-op: ResultList는 필수 콜백 요구,
-          // 상세 진입 와이어링은 후속 Task에서 처리.
-          onOpen={onOpenPlace ?? (() => {})}
+          onOpen={onOpenPlace ?? requestOpenPlace}
         />
       );
     case "addresses":
-      return (
-        <AddressResultList
-          addresses={render.results}
-          // 채팅 V1: 상세 진입 비목표 → no-op (후속 Task에서 연결)
-          onSelect={() => {}}
-        />
-      );
+      return <ChatAddressResults addresses={render.results} />;
     case "web-results":
       return <WebResults results={render.results} />;
     case "subway-nearby":
@@ -165,4 +161,47 @@ function RenderBlock({
     default:
       return null;
   }
+}
+
+/**
+ * 채팅 주소 카드 — 선택 시 카카오 지오코딩으로 좌표를 확보해 requestOpenPlace로
+ * 상세를 연다(PlaceSearch onSelectAddress와 동형). 채팅엔 검색 live region이
+ * 없으므로 좌표 변환 실패 통지는 이 카드 지역의 단일 채널로만 낸다.
+ */
+function ChatAddressResults({ addresses }: { addresses: JusoAddress[] }) {
+  const t = useTranslations("search");
+  const locale = useLocale();
+  const [failed, setFailed] = useState(false);
+  const resolvingRef = useRef(false);
+  async function onSelect(addr: JusoAddress) {
+    if (resolvingRef.current) return;
+    resolvingRef.current = true;
+    setFailed(false);
+    try {
+      const target = addr.roadAddrPart1 || addr.roadAddr;
+      const res = await fetch(`/api/geocode?query=${encodeURIComponent(target)}&limit=1`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { matches: AddressMatch[] };
+      const coord = data.matches[0];
+      if (!coord) {
+        setFailed(true);
+        return;
+      }
+      requestOpenPlace(
+        jusoAddressToPlace(addr, { lat: coord.lat, lng: coord.lng }, dataLocale(locale)),
+      );
+    } catch {
+      setFailed(true);
+    } finally {
+      resolvingRef.current = false;
+    }
+  }
+  return (
+    <>
+      <AddressResultList addresses={addresses} onSelect={onSelect} />
+      <p aria-live="polite" role="status" className="min-h-5 text-sm">
+        {failed ? t("addressCoordFailed") : ""}
+      </p>
+    </>
+  );
 }
