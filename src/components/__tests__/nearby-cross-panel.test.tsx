@@ -21,17 +21,19 @@ import { KidsPlacesNearby } from "../KidsPlacesNearby";
 import { KOREA_COORDS } from "./nearby-contract";
 
 /**
- * 교차 패널 결함 재현(스펙 §3) — 9종이 공유하는 nearby-panel-store 아코디언 계약의
- * 잠복 결함: 패널 A(NightClinics) 조회 중 패널 B(KidsPlaces)가 claim해 A가
- * onDismiss(자동 닫힘, restoreFocus=false)로 접혀도, A의 fetchAt은 dismiss 여부를
- * 전혀 모른 채 늦게 도착한 응답으로 무조건 setStatus({kind:"done"})을 호출한다.
- * 그 결과 이미 닫혔어야 할 A가 재열리고, done 진입 포커스 이펙트가 A의 헤딩으로
- * 포커스를 옮겨 B에 있던 포커스를 빼앗는다.
+ * 교차 패널 회귀 게이트(스펙 §3) — 2026-07-30 수정된 잠복 결함의 재발 방지.
+ *
+ * 수정 전 결함: 패널 A(NightClinics) 조회 중 패널 B(KidsPlaces)가 claim해 A가
+ * onDismiss(자동 닫힘)로 접혀도, A의 fetch는 dismiss를 모른 채 늦게 도착한 응답으로
+ * setStatus(done)을 호출했다. A가 순간 재열려 포커스를 빼앗고, 자동 재닫힘이 포커스를
+ * 쥔 헤딩을 DOM에서 제거해 포커스가 body로 이탈했다(재열림 자체는 자가교정으로 가려져
+ * 마지막 단언(포커스 유지)만이 이 결함을 잡는다 — 그 단언을 절대 약화하지 말 것).
+ * 수정: useNearbyFetch의 요청 ID latest-wins — close가 ID를 증가시켜 늦은 응답을
+ * 반영 전에 폐기한다.
  *
  * 이 파일은 두 실물 컴포넌트 + 실물 nearby-panel-store로 그 실조건을 재현한다
  * (mock 경계는 nearby-contract.tsx와 동일 — awaitGeolocation과 전역 fetch만).
- * `it.fails`: 현행 코드에서 아래 단언이 실패함을 게이트가 보증한다 — Task 7이
- * 컴포넌트를 고쳐 `it`으로 전환하면 이 파일이 수정 증명이 된다.
+ * 결함 재현 이력은 git의 it.fails 시절 커밋(2b1f51c) 참조.
  */
 
 const clinic = {
