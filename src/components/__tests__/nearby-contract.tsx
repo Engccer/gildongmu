@@ -127,7 +127,10 @@ export function describeNearbyContract(config: NearbyContractConfig) {
       expect(container.textContent).toContain(config.successProbe);
       expect(heading()!.textContent).toContain(`${ns}.ready`);
       expect(heading()!.textContent).toContain(`${ns}.asOf`);
-      expect(document.activeElement).toBe(heading());
+      // 포커스 이동은 useEffect(패시브) — React의 플러시는 MessageChannel 매크로태스크라
+      // waitFor 종료 드레인(setTimeout 0)보다 늦게 도착할 수 있다. 동기 단언은 부하가
+      // 걸린 전체 스위트에서 간헐 red가 된다(실측) → 계약 8·10과 같은 waitFor로 통일.
+      await waitFor(() => expect(document.activeElement).toBe(heading()));
       if (config.liveReadyOnDone) expect(live()).toBe(`${ns}.ready`);
       else expect(live()).not.toBe(`${ns}.ready`);
     });
