@@ -115,7 +115,7 @@
       "loading": "Finding a route…",
       "ready": "Route is ready.",
       "error": "Couldn't load the route. Please try again.",
-      "geoError": "Couldn't get your location. Please search for a starting point.",
+      "geoError": "Couldn't determine your current location. Please check location permission.",
       "noRoute": "No public transit route found. Check the start and destination.",
       "summary": "{minutes} min, {fare} won, {transfers} transfer(s)",
       "walkSummary": "incl. {minutes} min walking",
@@ -124,11 +124,6 @@
       "legTransfer": "Transfer to <line></line> at <from></from>, {count} stops",
       "legInterval": "runs about every {minutes} min",
       "arrive": "Arrive at <name></name>",
-      "changeOrigin": "Change start",
-      "originLabel": "Search start point",
-      "originPlaceholder": "Enter a starting point",
-      "useCurrentLocation": "Start from current location",
-      "showAlternatives": "See other routes",
       "alternativeHeading": "Alternative {index}"
     },
     "pedestrian": {

@@ -115,7 +115,7 @@
       "loading": "経路を探しています。",
       "ready": "経路案内の準備ができました。",
       "error": "経路を取得できませんでした。しばらくしてからもう一度お試しください。",
-      "geoError": "現在地を確認できません。出発地を検索して指定してください。",
+      "geoError": "現在地を確認できません。位置情報の許可を確認してください。",
       "noRoute": "公共交通の経路が見つかりませんでした。出発地と目的地をご確認ください。",
       "summary": "計{minutes}分、{fare}ウォン、乗り換え{transfers}回",
       "walkSummary": "徒歩{minutes}分を含む",
@@ -124,11 +124,6 @@
       "legTransfer": "<from></from>で<line></line>に乗り換え、{count}駅",
       "legInterval": "運転間隔約{minutes}分",
       "arrive": "<name></name>に到着",
-      "changeOrigin": "出発地を変更",
-      "originLabel": "出発地を検索",
-      "originPlaceholder": "出発地を入力してください",
-      "useCurrentLocation": "現在地から出発",
-      "showAlternatives": "他の経路を見る",
       "alternativeHeading": "代替経路{index}"
     },
     "pedestrian": {

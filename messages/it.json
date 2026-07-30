@@ -115,7 +115,7 @@
       "loading": "Ricerca di un percorso…",
       "ready": "Il percorso è pronto.",
       "error": "Impossibile caricare il percorso. Riprova.",
-      "geoError": "Impossibile ottenere la tua posizione. Cerca un punto di partenza.",
+      "geoError": "Impossibile determinare la posizione attuale. Controlla l'autorizzazione alla localizzazione.",
       "noRoute": "Nessun percorso con i mezzi pubblici trovato. Controlla partenza e destinazione.",
       "summary": "{minutes} min, {fare} won, {transfers} cambio/i",
       "walkSummary": "inclusi {minutes} min a piedi",
@@ -124,11 +124,6 @@
       "legTransfer": "Cambia per <line></line> a <from></from>, {count} fermate",
       "legInterval": "passa circa ogni {minutes} min",
       "arrive": "Arrivo a <name></name>",
-      "changeOrigin": "Cambia partenza",
-      "originLabel": "Cerca punto di partenza",
-      "originPlaceholder": "Inserisci un punto di partenza",
-      "useCurrentLocation": "Parti dalla posizione attuale",
-      "showAlternatives": "Vedi altri percorsi",
       "alternativeHeading": "Alternativa {index}"
     },
     "pedestrian": {

@@ -18841,46 +18841,6 @@
         }
       }
     },
-    "route.transit.changeOrigin": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "출발지 바꾸기"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change start"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cambiar origen"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Changer de départ"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cambia partenza"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "出発地を変更"
-          }
-        }
-      }
-    },
     "route.transit.error": {
       "localizations": {
         "ko": {
@@ -18926,37 +18886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치를 확인할 수 없습니다. 출발지를 검색해 지정해 주세요."
+            "value": "현재 위치를 확인할 수 없습니다. 위치 권한을 확인해 주세요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't get your location. Please search for a starting point."
+            "value": "Couldn't determine your current location. Please check location permission."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo obtener tu ubicación. Busca un punto de partida."
+            "value": "No se pudo determinar tu ubicación actual. Revisa el permiso de ubicación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible d'obtenir votre position. Veuillez rechercher un point de départ."
+            "value": "Impossible de déterminer votre position actuelle. Vérifiez l'autorisation de localisation."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile ottenere la tua posizione. Cerca un punto di partenza."
+            "value": "Impossibile determinare la posizione attuale. Controlla l'autorizzazione alla localizzazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地を確認できません。出発地を検索して指定してください。"
+            "value": "現在地を確認できません。位置情報の許可を確認してください。"
           }
         }
       }
@@ -19281,86 +19241,6 @@
         }
       }
     },
-    "route.transit.originLabel": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "출발지 검색"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search start point"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Buscar punto de partida"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rechercher le point de départ"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cerca punto di partenza"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "出発地を検索"
-          }
-        }
-      }
-    },
-    "route.transit.originPlaceholder": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "출발지를 입력하세요"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enter a starting point"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Introduce un punto de partida"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Saisissez un point de départ"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inserisci un punto di partenza"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "出発地を入力してください"
-          }
-        }
-      }
-    },
     "route.transit.ready": {
       "localizations": {
         "ko": {
@@ -19401,46 +19281,6 @@
         }
       }
     },
-    "route.transit.showAlternatives": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다른 경로 보기"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "See other routes"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver otras rutas"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voir d'autres itinéraires"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vedi altri percorsi"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "他の経路を見る"
-          }
-        }
-      }
-    },
     "route.transit.summary": {
       "localizations": {
         "ko": {
@@ -19477,46 +19317,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "計%1$@分、%2$@ウォン、乗り換え%3$@回"
-          }
-        }
-      }
-    },
-    "route.transit.useCurrentLocation": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치에서 출발"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start from current location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Partir desde la ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Partir de la position actuelle"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parti dalla posizione attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地から出発"
           }
         }
       }
