@@ -1,77 +1,63 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
 
-/// 날씨·공기질. NearbyLoadState 대신 조각별 상태: 두 fetch를 async let으로 독립 실행해
+/// 두 조각을 한 커밋으로 묶는 payload. weather·air의 nil = 조회 실패 또는 데이터 부재
+/// (둘 다 "가져오지 못했습니다"로 표시), fresh*는 이번 호출의 성공 여부로 통지 판정 전용.
+struct ConditionsPayload: Sendable {
+    let weather: Weather?
+    let air: AirQuality?
+    let freshWeather: Bool
+    let freshAir: Bool
+}
+
+/// 날씨·공기질 — NearbyLoadCore 껍데기. 두 fetch를 async let으로 독립 실행해
 /// 한쪽 실패가 다른 쪽을 안 죽인다(웹 allSettled 미러). 조각의 null·실패는 동일하게
 /// "가져오지 못했습니다" 문장으로 노출(자동 등장 보조 정보의 graceful degrade).
 @Observable @MainActor
 final class ConditionsModel {
-    /// 화면 공통 단계(권한 거부·위치 실패는 두 조각 공통 전제라 화면 단위)
-    enum Phase { case idle, loading, denied, failed, outOfCoverage, done }
+    private let core: NearbyLoadCore<ConditionsPayload>
+    var phase: NearbyLoadPhase<ConditionsPayload> { core.phase }
 
-    private(set) var phase: Phase = .idle
-    /// nil = 조회 실패 또는 데이터 부재(둘 다 "가져오지 못했습니다"로 표시)
-    private(set) var weather: Weather?
-    private(set) var air: AirQuality?
-    private let service = ConditionsService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
-    private var isLoadingInFlight = false
-
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
-        if case .done = phase {} else { phase = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            // 위치 취득 직후 선분기(네트워크 생략) — 두 fetch 모두 건너뛰고 화면 단위 안내.
-            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
-                if case .done = phase { announceOutOfCoverage() }
-                phase = .outOfCoverage
-                return
-            }
-            async let weatherOutcome = Self.fetchWeather(service, lat: coord.lat, lng: coord.lng)
-            async let airOutcome = Self.fetchAir(service, lat: coord.lat, lng: coord.lng)
-            let (weatherResult, airResult) = await (weatherOutcome, airOutcome)
-            // 서버 마커 이중 방어: 선분기를 통과했어도 fetch 시점에 커버리지 밖 마커를
-            // 만날 수 있다 — 한쪽이라도 감지하면 부분 데이터를 버리고 화면 전체를 전환한다.
-            if weatherResult.outOfCoverage || airResult.outOfCoverage {
-                if case .done = phase { announceOutOfCoverage() }
-                phase = .outOfCoverage
-                return
-            }
-            let newWeather = weatherResult.value
-            let newAir = airResult.value
-            // 새로고침 실패 시 직전 성공 데이터 유지(재조회이지 데이터 포기 아님, M2 계약)
-            if newWeather != nil { weather = newWeather }
-            if newAir != nil { air = newAir }
-            phase = .done
-            // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
-            // (누적 프로퍼티 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
-            let message = if newWeather != nil && newAir != nil {
-                appLocalized("ios.nearby.conditionsReady")
-            } else if newWeather != nil || newAir != nil {
-                appLocalized("ios.nearby.conditionsPartial")
-            } else {
-                appLocalized("ios.common.failedTitle")
-            }
-            AccessibilityNotification.Announcement(message).post()
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                // done에서 권한 취소로 전락하면 내용이 통째로 사라진다 — 무신호 화면 전환 방지 통지
-                if case .done = phase { announcePermissionLost() }
-                phase = .denied
-            } else if case .done = phase { announceRefreshFailed() } else { phase = .failed }
-        } catch {
-            if case .done = phase { announceRefreshFailed() } else { phase = .failed }
-        }
+    init() {
+        let service = ConditionsService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .korea,
+            fetch: { coord, previous in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                async let weatherOutcome = Self.fetchWeather(service, lat: coord.lat, lng: coord.lng)
+                async let airOutcome = Self.fetchAir(service, lat: coord.lat, lng: coord.lng)
+                let (weatherResult, airResult) = await (weatherOutcome, airOutcome)
+                // 서버 마커 이중 방어: 좌표 선분기를 통과했어도 fetch 시점에 커버리지 밖 마커를
+                // 만날 수 있다 — 한쪽이라도 감지하면 부분 데이터를 버리고 화면 전체를 전환한다.
+                if weatherResult.outOfCoverage || airResult.outOfCoverage { throw APIError.outOfCoverage }
+                // 새로고침에 실패한 조각은 직전 성공을 유지(재조회이지 데이터 포기 아님, M2 계약)
+                return ConditionsPayload(
+                    weather: weatherResult.value ?? previous?.weather,
+                    air: airResult.value ?? previous?.air,
+                    freshWeather: weatherResult.value != nil,
+                    freshAir: airResult.value != nil)
+            },
+            onEvent: nearbyAnnouncer(loaded: { payload in
+                // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
+                // (병합된 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
+                if payload.freshWeather && payload.freshAir {
+                    appLocalized("ios.nearby.conditionsReady")
+                } else if payload.freshWeather || payload.freshAir {
+                    appLocalized("ios.nearby.conditionsPartial")
+                } else {
+                    appLocalized("ios.common.failedTitle")
+                }
+            }))
     }
+
+    func load(force: Bool = false) async { await core.load(force: force) }
 
     /// 날씨 fetch: 커버리지 마커는 nil(실패)과 구분해 표시(이중 방어 판정용).
     /// 그 외 실패는 nil로 흡수(기존 graceful degrade 계약 유지 — 한쪽 실패가 다른 쪽을 안 죽임).
+    /// ⚠ 이 catch-all은 취소도 흡수해 "両조각 실패" 페이로드를 정상 반환한다 — 떠난 화면에
+    /// 실패 통지가 나가는 것을 막는 방어는 코어의 커밋 게이트가 정본이다(조각 catch 수정 금지).
     nonisolated private static func fetchWeather(
         _ service: ConditionsService, lat: Double, lng: Double
     ) async -> (value: Weather?, outOfCoverage: Bool) {
@@ -105,20 +91,22 @@ struct ConditionsView: View {
 
     var body: some View {
         List {
-            if case .done = model.phase {
-                weatherSection
-                airSection
+            if case .loaded(let payload) = model.phase {
+                weatherSection(payload.weather)
+                airSection(payload.air)
             }
         }
         .navigationTitle(appLocalized("ios.nearby.conditions"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .plain())
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
     }
 
-    @ViewBuilder private var weatherSection: some View {
+    @ViewBuilder private func weatherSection(_ weather: Weather?) -> some View {
         Section {
-            if let weather = model.weather {
+            if let weather {
                 Text(appLocalized("ios.nearby.skyLine", skyWord(weather.sky.label)))
                 Text(appLocalized("ios.nearby.precipLine", precipWord(weather.precipitation.label)))
                 if let temp = weather.tempC { Text(appLocalized("ios.nearby.tempNow", numberText(temp))) }
@@ -139,9 +127,9 @@ struct ConditionsView: View {
         }
     }
 
-    @ViewBuilder private var airSection: some View {
+    @ViewBuilder private func airSection(_ air: AirQuality?) -> some View {
         Section {
-            if let air = model.air {
+            if let air {
                 Text(appLocalized("ios.nearby.airStationLine", air.stationName, numberText(air.distanceKm)))
                 Text(pollutantText(appLocalized("airQuality.khai"), air.khai))
                 Text(pollutantText(appLocalized("airQuality.pm10"), air.pm10))
@@ -152,21 +140,6 @@ struct ConditionsView: View {
             }
         } header: {
             Text(appLocalized("weather.airLabel")).accessibilityAddTraits(.isHeader)
-        }
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.phase {
-        case .loading: ProgressView(appLocalized("ios.common.checking"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .outOfCoverage:
-            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
-        default: EmptyView()
         }
     }
 
