@@ -32,7 +32,8 @@
     "webSection": "Web",
     "placeCount": "{count} places",
     "webCount": "{count} web results",
-    "addressCount": "{count} addresses"
+    "addressCount": "{count} addresses",
+    "askAi": "Ask AI"
   },
   "region": {
     "filterLabel": "Filter by region",

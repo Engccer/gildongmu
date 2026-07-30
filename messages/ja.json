@@ -32,7 +32,8 @@
     "webSection": "ウェブ",
     "placeCount": "場所 {count}件",
     "webCount": "ウェブ {count}件",
-    "addressCount": "住所 {count}件"
+    "addressCount": "住所 {count}件",
+    "askAi": "AIに質問"
   },
   "region": {
     "filterLabel": "地域で絞り込む",

@@ -32,7 +32,8 @@
     "webSection": "웹",
     "placeCount": "장소 {count}건",
     "webCount": "웹 {count}건",
-    "addressCount": "주소 {count}건"
+    "addressCount": "주소 {count}건",
+    "askAi": "AI에게 질문"
   },
   "region": {
     "filterLabel": "지역으로 거르기",

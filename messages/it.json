@@ -32,7 +32,8 @@
     "webSection": "Web",
     "placeCount": "{count} luoghi",
     "webCount": "{count} risultati web",
-    "addressCount": "{count} indirizzi"
+    "addressCount": "{count} indirizzi",
+    "askAi": "Chiedi all'IA"
   },
   "region": {
     "filterLabel": "Filtra per regione",
