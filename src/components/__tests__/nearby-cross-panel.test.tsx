@@ -100,7 +100,7 @@ describe("nearby 교차 패널 결함 (NightClinics ↔ KidsPlaces)", () => {
     vi.unstubAllGlobals();
   });
 
-  it.fails(
+  it(
     "패널 A 로딩 중 B를 열면 A의 늦은 응답이 폐기된다 — 닫힌 A가 재열리거나 포커스를 빼앗지 않는다",
     async () => {
       // A(NightClinics) fetch를 지연 프라미스로 보류 — 응답이 도착하기 전에 B가 claim한다.
