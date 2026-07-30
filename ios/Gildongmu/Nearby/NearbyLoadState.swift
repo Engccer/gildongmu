@@ -20,12 +20,10 @@ func joinText(_ parts: String?...) -> String {
 }
 
 /// 로드 완료 단일 통지 채널(웹 combinedLiveMessage의 iOS 문법). 0건도 문장으로 통지.
+/// 문구 조립은 nearbyLoadedMessage 한 곳이 정본 — 미이관 모델이 소비 중이라 함수는 남긴다.
 @MainActor
 func announceLoaded(count: Int, unit: String) {
-    let message = count == 0
-        ? appLocalized("ios.nearby.announceEmpty")
-        : appLocalized("ios.nearby.announceCount", unit, String(count))
-    AccessibilityNotification.Announcement(message).post()
+    AccessibilityNotification.Announcement(nearbyLoadedMessage(count: count, unit: unit)).post()
 }
 
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).

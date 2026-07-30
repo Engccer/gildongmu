@@ -31,6 +31,24 @@ struct NearbyOverlayDescriptor<Payload> {
     let failedServer: NearbyOverlayCopy
     let absent: NearbyOverlayCopy?
 
+    /// 암묵 memberwise init(internal)을 봉인한다 — 이게 없으면 앱 단일 모듈 어디서나
+    /// 팩토리를 우회해 불법 조합(리스트인데 emptyList nil 등)을 만들 수 있다.
+    private init(
+        loadingText: String,
+        isEmpty: @escaping (Payload) -> Bool,
+        emptyList: NearbyOverlayCopy?,
+        failedLocation: NearbyOverlayCopy,
+        failedServer: NearbyOverlayCopy,
+        absent: NearbyOverlayCopy?
+    ) {
+        self.loadingText = loadingText
+        self.isEmpty = isEmpty
+        self.emptyList = emptyList
+        self.failedLocation = failedLocation
+        self.failedServer = failedServer
+        self.absent = absent
+    }
+
     static func list(
         empty: NearbyOverlayCopy,
         isEmpty: @escaping (Payload) -> Bool,
