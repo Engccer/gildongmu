@@ -98,7 +98,11 @@ export function NearbyHub({
           <LocalConditions lat={userCoords.lat} lng={userCoords.lng} />
         </div>
       )}
-      {canShowWhereAmI && <WhereAmI />}
+      {canShowWhereAmI && (
+        <div className="mt-4">
+          <WhereAmI />
+        </div>
+      )}
       {canShowSubway && (
         <div className="mt-4">
           <SubwayArrivalsNearby />
