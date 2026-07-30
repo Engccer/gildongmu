@@ -61,10 +61,11 @@ export function NearbyHub({
     getServerActiveNearbyPanel,
   );
 
-  // 뷰 전환 포커스 이동(접근성 1급 — PlaceDetail·DirectionsView와 동형 rAF 패턴).
+  // 뷰 전환 포커스 이동(접근성 1급 — PlaceDetail·DirectionsView와 동형
+  // useEffect+focus 패턴, rAF 불필요: 헤딩이 마운트 시점에 이미 무조건
+  // 렌더되어 있어 fetch 콜백 이후 지연 등장하는 요소의 레이스가 없다).
   useEffect(() => {
-    const raf = requestAnimationFrame(() => headingRef.current?.focus());
-    return () => cancelAnimationFrame(raf);
+    headingRef.current?.focus();
   }, []);
 
   // Esc = 뒤로가기. 아코디언 패널 점유 중엔 그 패널 Esc가 우선(경합 차단).
