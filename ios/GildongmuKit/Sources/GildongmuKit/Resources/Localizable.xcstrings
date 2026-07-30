@@ -1601,46 +1601,6 @@
         }
       }
     },
-    "whereAmI.chatButton": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "내 현재 위치에 관해 물어보기"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ask about my current location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preguntar sobre mi ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Poser une question sur ma position actuelle"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chiedi informazioni sulla mia posizione attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地について質問する"
-          }
-        }
-      }
-    },
     "whereAmI.direction.e": {
       "localizations": {
         "ko": {

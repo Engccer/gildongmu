@@ -42,9 +42,10 @@ struct PlaceDetailView<DomainSection: View>: View {
                     // 인터랙티브 요소는 별도 객체가 정상(합치지 말 것)
                     Link(appLocalized("ios.place.callLine", phone), destination: telURL)
                 }
-                // 홈페이지(네이버 보강 등 link 보유 장소만, 웹 RouteLinks place.link 미러)
-                if let link = place.link, let linkURL = URL(string: link) {
-                    Link(appLocalized("place.detailPage"), destination: linkURL)
+                // 홈페이지(비카카오 link 보유 장소만, 웹 RouteLinks 미러) — 카카오 장소의
+                // link는 카카오맵 장소 상세라 아래 '카카오맵 장소 정보'와 중복(노출 금지)
+                if kakaoPlaceId == nil, let link = place.link, let linkURL = URL(string: link) {
+                    Link(appLocalized("place.homepage"), destination: linkURL)
                 }
                 Button(appLocalized("placeChat.launch")) { isChatPresented = true }
             }
@@ -108,7 +109,12 @@ struct PlaceDetailView<DomainSection: View>: View {
 
     private func openKakaoPlace(_ id: String) {
         guard let url = buildKakaoPlaceDeeplink(kakaoPlaceId: id) else { return }
-        openWithFallback(url)
+        // 앱 미설치 폴백은 같은 장소의 카카오맵 웹 상세로(경로 폴백은 다른 화면이라 오동작)
+        openURL(url) { accepted in
+            if !accepted, let fallback = URL(string: "https://place.map.kakao.com/\(id)") {
+                openURL(fallback)
+            }
+        }
     }
 
     /// 앱 미설치(스킴 미처리) 시 카카오 웹 지도로 폴백. canOpenURL 화이트리스트 불필요.
