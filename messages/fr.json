@@ -430,6 +430,8 @@
   "chat": {
     "inputLabel": "Message",
     "send": "Envoyer",
+    "generalTitle": "Demander à l'IA",
+    "generalEmpty": "Posez une question sur des lieux, un itinéraire ou les environs.",
     "error": {
       "chat_failed": "Impossible d'obtenir une réponse.",
       "chat_unavailable": "Le chat n'est pas disponible.",

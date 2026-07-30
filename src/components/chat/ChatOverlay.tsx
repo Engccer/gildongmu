@@ -22,8 +22,19 @@ import { placeChatPrompts } from "@/lib/chat/place-prompts";
  *
  * 뒤로가기(History) 닫기는 V1 비포함 — PlaceSearch의 기존 popstate 상세 트랩과
  * 충돌(어느 것을 닫을지 모호)하므로 Esc/버튼으로 한정한다.
+ *
+ * place 없이(옴니박스 [AI에게 질문]) 열리면 범용 모드 — placeContext·예시 프롬프트
+ * 없이 순수 채팅으로 동작하고, initialMessage가 있으면 첫 질문을 자동 전송한다.
  */
-export function ChatOverlay({ place, onClose }: { place: Place; onClose: () => void }) {
+export function ChatOverlay({
+  place,
+  initialMessage,
+  onClose,
+}: {
+  place?: Place;
+  initialMessage?: string;
+  onClose: () => void;
+}) {
   const tp = useTranslations("placeChat");
   const t = useTranslations();
   const titleId = useId();
@@ -31,14 +42,16 @@ export function ChatOverlay({ place, onClose }: { place: Place; onClose: () => v
   const headingRef = useRef<HTMLHeadingElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
 
-  const placeContext = {
-    name: place.name,
-    lat: place.lat,
-    lng: place.lng,
-    category: place.category,
-    isStation: isStation(place),
-  };
-  const examplePrompts = placeChatPrompts(place).map((key) => t(key));
+  const placeContext = place
+    ? {
+        name: place.name,
+        lat: place.lat,
+        lng: place.lng,
+        category: place.category,
+        isStation: isStation(place),
+      }
+    : undefined;
+  const examplePrompts = place ? placeChatPrompts(place).map((key) => t(key)) : undefined;
 
   // 열릴 때 제목으로 포커스 이동(맥락 안내).
   useEffect(() => {
@@ -86,7 +99,7 @@ export function ChatOverlay({ place, onClose }: { place: Place; onClose: () => v
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id={titleId} ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
-          {tp("title")}
+          {place ? tp("title") : t("chat.generalTitle")}
         </h2>
         <button
           type="button"
@@ -101,6 +114,7 @@ export function ChatOverlay({ place, onClose }: { place: Place; onClose: () => v
         inputRef={chatInputRef}
         placeContext={placeContext}
         examplePrompts={examplePrompts}
+        initialMessage={initialMessage}
       />
     </div>
   );

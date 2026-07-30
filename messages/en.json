@@ -430,6 +430,8 @@
   "chat": {
     "inputLabel": "Message",
     "send": "Send",
+    "generalTitle": "Ask AI",
+    "generalEmpty": "Ask about places, directions, or what's nearby.",
     "error": {
       "chat_failed": "Couldn't get a response.",
       "chat_unavailable": "Chat is unavailable.",

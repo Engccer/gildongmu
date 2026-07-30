@@ -430,6 +430,8 @@
   "chat": {
     "inputLabel": "메시지 입력",
     "send": "보내기",
+    "generalTitle": "AI에게 질문",
+    "generalEmpty": "장소, 길찾기, 주변 정보를 물어보세요.",
     "error": {
       "chat_failed": "답변을 가져오지 못했습니다.",
       "chat_unavailable": "채팅을 사용할 수 없습니다.",

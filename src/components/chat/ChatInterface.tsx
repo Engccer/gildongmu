@@ -18,21 +18,33 @@ import { ChatInput } from "./ChatInput";
  *   (assertive 미사용).
  * - error는 role="alert"(assertive 없이 네이티브 role 사용).
  * - inputRef: 부모(PlaceSearch)가 전달해 Shift+Esc 포커스를 채팅 입력창에 건다.
+ * - initialMessage: 옴니박스 등 place 없는 범용 진입점이 첫 질문을 마운트 1회 자동 전송한다.
  */
 export function ChatInterface({
   inputRef,
   placeContext,
   examplePrompts,
+  initialMessage,
 }: {
   inputRef?: Ref<HTMLInputElement>;
   placeContext?: PlaceContext;
   examplePrompts?: string[];
+  initialMessage?: string;
 }) {
   const t = useTranslations("chat");
   // placeChat 스코프 번역기 — 빈 상태 안내 문구(placeChat.empty)는 chat 스코프 밖이다.
   const tp = useTranslations("placeChat");
   const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext });
   const { playSend, playReceive } = useChatSound();
+  // 범용 채팅(옴니박스 [AI에게 질문])의 첫 질문 자동 전송 — 마운트 1회만.
+  // playSend는 생략: effect는 사용자 제스처 콜스택 밖이라 AudioContext unlock이
+  // 안 되며, 무음 재생 시도는 노이즈다(완료음은 이후 제스처 시점부터 정상).
+  const initialSentRef = useRef(false);
+  useEffect(() => {
+    if (!initialMessage || initialSentRef.current) return;
+    initialSentRef.current = true;
+    void sendMessage(initialMessage);
+  }, [initialMessage, sendMessage]);
   const progressRef = useRef<HTMLDivElement>(null);
   // 최신 사용자 질문 heading 참조 — 응답 완료 후 포커스 이동 앵커.
   const lastQueryRef = useRef<HTMLHeadingElement>(null);
@@ -88,13 +100,14 @@ export function ChatInterface({
           />
         ))}
       </div>
-      {/* 빈 상태 — 메시지가 없고 예시 프롬프트가 있으면 안내 문구 + 예시 버튼 3개를
-          노출한다. 버튼 클릭은 기존 handleSend(playSend + sendMessage)를 재사용해
-          그 문구를 첫 메시지로 전송한다. */}
-      {messages.length === 0 && examplePrompts && examplePrompts.length > 0 && (
+      {/* 빈 상태 — 메시지가 없으면 안내 문구를 노출한다. 예시 프롬프트가 있으면(장소
+          앵커 모드) 버튼 3개를 함께 보여 준다. 범용 모드(examplePrompts 없음)는 안내
+          문구만 — 미니멀, 예시 없이도 빈 화면이 되지 않게 한다. 버튼 클릭은 기존
+          handleSend(playSend + sendMessage)를 재사용해 그 문구를 첫 메시지로 전송한다. */}
+      {messages.length === 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-muted">{tp("empty")}</p>
-          {examplePrompts.map((prompt) => (
+          <p className="text-sm text-muted">{examplePrompts ? tp("empty") : t("generalEmpty")}</p>
+          {examplePrompts?.map((prompt) => (
             <button
               key={prompt}
               type="button"
