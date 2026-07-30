@@ -51,7 +51,7 @@ export function BusRouteStops({
     if (inFlightRef.current) return;
     inFlightRef.current = true;
     setStatus({ kind: "loading" });
-    onNotice(t("routeStopsLoading"));
+    onNotice(t("routeStopsLoading", { route: routeNo }));
     try {
       const qs = new URLSearchParams({ source, routeId });
       if (source === "tago") qs.set("cityCode", cityCode);
@@ -59,20 +59,20 @@ export function BusRouteStops({
       const body = await res.json();
       if (!res.ok) {
         setStatus({ kind: "error" });
-        onNotice(t("routeStopsError"));
+        onNotice(t("routeStopsError", { route: routeNo }));
         return;
       }
       const stops = (body.stops ?? []) as BusRouteStop[];
       if (stops.length === 0) {
         setStatus({ kind: "empty" });
-        onNotice(t("routeStopsEmpty"));
+        onNotice(t("routeStopsEmpty", { route: routeNo }));
         return;
       }
       setStatus({ kind: "done", stops });
       onNotice("");
     } catch {
       setStatus({ kind: "error" });
-      onNotice(t("routeStopsError"));
+      onNotice(t("routeStopsError", { route: routeNo }));
     } finally {
       inFlightRef.current = false;
     }

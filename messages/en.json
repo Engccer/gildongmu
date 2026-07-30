@@ -282,9 +282,9 @@
     "geoUnsupported": "This browser does not support location.",
     "routeStopsButton": "Show stops on route {route}",
     "routeStopsHeading": "Stops on route {route}",
-    "routeStopsLoading": "Loading route stops…",
-    "routeStopsEmpty": "No route stop info.",
-    "routeStopsError": "Failed to load route stops.",
+    "routeStopsLoading": "Loading stops on route {route}…",
+    "routeStopsEmpty": "No stop info for route {route}.",
+    "routeStopsError": "Failed to load stops on route {route}.",
     "source": "Source: MOLIT TAGO and Seoul TOPIS."
   },
   "bike": {

@@ -282,9 +282,9 @@
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "routeStopsButton": "{route}번 경유 정류소 보기",
     "routeStopsHeading": "{route}번 경유 정류소",
-    "routeStopsLoading": "경유 정류소 조회 중…",
-    "routeStopsEmpty": "경유 정류소 정보가 없습니다.",
-    "routeStopsError": "경유 정류소 조회에 실패했습니다.",
+    "routeStopsLoading": "{route}번 경유 정류소 조회 중…",
+    "routeStopsEmpty": "{route}번 경유 정류소 정보가 없습니다.",
+    "routeStopsError": "{route}번 경유 정류소 조회에 실패했습니다.",
     "source": "출처: 국토교통부 TAGO·서울 TOPIS."
   },
   "bike": {

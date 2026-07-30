@@ -282,9 +282,9 @@
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
     "routeStopsButton": "Mostra le fermate della linea {route}",
     "routeStopsHeading": "Fermate della linea {route}",
-    "routeStopsLoading": "Caricamento delle fermate della linea…",
-    "routeStopsEmpty": "Nessuna informazione sulle fermate della linea.",
-    "routeStopsError": "Impossibile caricare le fermate della linea.",
+    "routeStopsLoading": "Caricamento delle fermate della linea {route}…",
+    "routeStopsEmpty": "Nessuna informazione sulle fermate della linea {route}.",
+    "routeStopsError": "Impossibile caricare le fermate della linea {route}.",
     "source": "Fonte: MOLIT TAGO e Seoul TOPIS."
   },
   "bike": {

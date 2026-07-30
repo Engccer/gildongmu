@@ -282,9 +282,9 @@
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "routeStopsButton": "Afficher les arrêts de la ligne {route}",
     "routeStopsHeading": "Arrêts de la ligne {route}",
-    "routeStopsLoading": "Chargement des arrêts de la ligne…",
-    "routeStopsEmpty": "Aucune information sur les arrêts de la ligne.",
-    "routeStopsError": "Échec du chargement des arrêts de la ligne.",
+    "routeStopsLoading": "Chargement des arrêts de la ligne {route}…",
+    "routeStopsEmpty": "Aucune information sur les arrêts de la ligne {route}.",
+    "routeStopsError": "Échec du chargement des arrêts de la ligne {route}.",
     "source": "Source : MOLIT TAGO et Seoul TOPIS."
   },
   "bike": {

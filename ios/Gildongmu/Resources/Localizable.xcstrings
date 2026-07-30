@@ -3166,37 +3166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경유 정류소 정보가 없습니다."
+            "value": "%1$@번 경유 정류소 정보가 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No route stop info."
+            "value": "No stop info for route %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay información de paradas de la línea."
+            "value": "No hay información de paradas de la línea %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune information sur les arrêts de la ligne."
+            "value": "Aucune information sur les arrêts de la ligne %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna informazione sulle fermate della linea."
+            "value": "Nessuna informazione sulle fermate della linea %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経由バス停の情報がありません。"
+            "value": "%1$@番の経由バス停の情報がありません。"
           }
         }
       }
@@ -3206,37 +3206,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경유 정류소 조회에 실패했습니다."
+            "value": "%1$@번 경유 정류소 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load route stops."
+            "value": "Failed to load stops on route %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar las paradas de la línea."
+            "value": "No se pudieron cargar las paradas de la línea %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des arrêts de la ligne."
+            "value": "Échec du chargement des arrêts de la ligne %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le fermate della linea."
+            "value": "Impossibile caricare le fermate della linea %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経由バス停の照会に失敗しました。"
+            "value": "%1$@番の経由バス停の照会に失敗しました。"
           }
         }
       }
@@ -3286,37 +3286,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경유 정류소 조회 중…"
+            "value": "%1$@번 경유 정류소 조회 중…"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Loading route stops…"
+            "value": "Loading stops on route %1$@…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cargando paradas de la línea…"
+            "value": "Cargando paradas de la línea %1$@…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chargement des arrêts de la ligne…"
+            "value": "Chargement des arrêts de la ligne %1$@…"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Caricamento delle fermate della linea…"
+            "value": "Caricamento delle fermate della linea %1$@…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経由バス停を照会中…"
+            "value": "%1$@番の経由バス停を照会中…"
           }
         }
       }

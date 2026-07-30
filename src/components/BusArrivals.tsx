@@ -175,9 +175,11 @@ export function BusArrivals(
                 : t("geoUnsupported")
               : status.kind === "outOfCoverage"
                 ? tCommon("outOfCoverage")
-                : status.kind === "done"
-                  ? t("ready")
-                  : "";
+                : // done 통지는 헤딩 포커스(ready+asOf 텍스트)가 담당 — 접근성
+                  // 헌장 §5(재포커스 라벨이 곧 상태 신호, 별도 announce 중복
+                  // 금지). 빈 문자열이어야 자식(BusRouteStops) 통지가 이 단일
+                  // 채널에 노출된다.
+                  "";
 
   return (
     <div className="mt-3">
