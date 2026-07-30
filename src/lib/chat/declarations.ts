@@ -311,11 +311,6 @@ const DECLARATIONS: GatedDeclaration[] = [
   },
 ];
 
-/** 전체 도구 선언 목록 (게이트 무관) */
-export const ALL_DECLARATIONS: FunctionDeclaration[] = DECLARATIONS.map(
-  (d) => d.declaration
-);
-
 /** 게이트를 통과한 도구 선언만 반환 */
 export function availableDeclarations(): FunctionDeclaration[] {
   return DECLARATIONS.filter((d) => d.gate()).map((d) => d.declaration);

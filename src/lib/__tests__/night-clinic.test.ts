@@ -18,13 +18,11 @@ import {
   dayToHoursIndex,
   extractItems,
   fetchNightClinics,
-  findNightClinicsNear,
   clinicNowBasis,
   kstDateKey,
   prioritizeOpen,
 } from "../providers/night-clinic";
 import type { ClinicHours, ClinicOpenState } from "../types";
-import { env } from "../env";
 
 const H = (start: number | null, end: number | null): ClinicHours => ({ start, end });
 /** 8칸 진료시간 — 전 요일 동일 [s,e]. */
@@ -149,7 +147,7 @@ describe("dayToHoursIndex (JS getDay → 월~일 index)", () => {
   });
 });
 
-describe("fetchNightClinics / findNightClinicsNear (fetch 합성)", () => {
+describe("fetchNightClinics (fetch 합성)", () => {
   afterEach(() => vi.restoreAllMocks());
   const ok = (json: unknown): Response =>
     ({ ok: true, status: 200, json: async () => json } as unknown as Response);
@@ -177,24 +175,6 @@ describe("fetchNightClinics / findNightClinicsNear (fetch 합성)", () => {
       ok({ response: { header: { resultCode: "00" }, body: { items: "", totalCount: 999 } } }),
     );
     await expect(fetchNightClinics()).rejects.toThrow();
-  });
-
-  it("키 없음(env 비설정) → 빈 배열, fetch 미호출", async () => {
-    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "";
-    const spy = vi.spyOn(globalThis, "fetch");
-    expect(await findNightClinicsNear(37.5, 127.0)).toEqual([]);
-    expect(spy).not.toHaveBeenCalled();
-    (env as { DATA_GO_KR_API_KEY?: string }).DATA_GO_KR_API_KEY = "test-key";
-  });
-
-  it("findNightClinicsNear: fixture + 좌표 → 거리순 + 거리 부여", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
-    const r = await findNightClinicsNear(37.4979, 127.0276);
-    expect(r.length).toBeGreaterThan(0);
-    for (let i = 1; i < r.length; i++) {
-      expect(r[i].distanceMeters).toBeGreaterThanOrEqual(r[i - 1].distanceMeters);
-    }
-    expect(Number.isFinite(r[0].distanceMeters)).toBe(true);
   });
 });
 

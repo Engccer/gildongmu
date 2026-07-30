@@ -225,7 +225,7 @@ export function PlaceDetail({
       )}
       {canShowAir && <LocalConditions lat={place.lat} lng={place.lng} />}
       {canShowBarrierFree && (
-        <BarrierFreeInfo lat={place.lat} lng={place.lng} name={place.name} canShow={canShowBarrierFree} />
+        <BarrierFreeInfo lat={place.lat} lng={place.lng} name={place.name} />
       )}
       {chatOpen && (
         <ChatOverlay

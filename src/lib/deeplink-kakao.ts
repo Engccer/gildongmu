@@ -41,7 +41,10 @@ function assertDestInKorea(dest: { lat: number; lng: number }): void {
   }
 }
 
-/** 길찾기 앱 딥링크. 출발지(sp) 생략 시 현재 위치 출발. */
+/**
+ * 길찾기 앱 딥링크. 출발지(sp) 생략 시 현재 위치 출발.
+ * ⚠ 웹 미사용·iOS GildongmuKit Deeplink.swift 미러의 원본 — 죽은 코드 아님(제거 금지).
+ */
 export function buildKakaoRouteDeeplink(
   mode: RouteMode,
   endpoints: RouteEndpoints,
@@ -57,17 +60,10 @@ export function buildKakaoRouteDeeplink(
   return `kakaomap://route?${params.toString()}`;
 }
 
-/** 좌표 보기 앱 딥링크 */
-export function buildKakaoLookDeeplink(place: {
-  lat: number;
-  lng: number;
-}): string {
-  return `kakaomap://look?p=${place.lat},${place.lng}`;
-}
-
 /**
  * 장소 상세 앱 딥링크 — 카카오 로컬 API의 장소 id와 직접 연결되는
  * 공식 체인 (Place.id의 "kakao-" 프리픽스는 제거하고 전달할 것).
+ * ⚠ 웹 미사용·iOS GildongmuKit Deeplink.swift 미러의 원본 — 죽은 코드 아님(제거 금지).
  */
 export function buildKakaoPlaceDeeplink(kakaoPlaceId: string): string {
   return `kakaomap://place?id=${encodeURIComponent(kakaoPlaceId)}`;

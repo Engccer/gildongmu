@@ -206,17 +206,6 @@ export async function fetchNightClinics(): Promise<NightClinic[]> {
   return clinics;
 }
 
-/** 좌표 → 반경 내 근접 소아 야간·휴일 진료 상위 N(거리순). 키 없으면 빈 배열. */
-export async function findNightClinicsNear(
-  lat: number,
-  lng: number,
-  opts: { radiusMeters?: number; limit?: number } = {},
-): Promise<NightClinic[]> {
-  if (!env.DATA_GO_KR_API_KEY) return [];
-  const all = await fetchNightClinics();
-  return rankClinicsByDistance(all, lat, lng, opts);
-}
-
 /** KST 기준 날짜키(YYYYMMDD) — 공휴일 조회 파라미터. 순수(nowMs 주입). */
 export function kstDateKey(nowMs: number): string {
   const kst = new Date(nowMs + 9 * 60 * 60 * 1000);

@@ -6,9 +6,9 @@ vi.mock("../env", () => ({
 }));
 
 import fixture from "./fixtures/tago-bus.json";
+import { haversineMeters } from "../geo";
 import {
   parseTagoItems,
-  haversineMeters,
   parseBusStops,
   parseBusArrivals,
   parseBusRouteStops,

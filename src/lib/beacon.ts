@@ -52,10 +52,10 @@ export interface BeaconAnnounce {
   speak: boolean;
 }
 
-export const MAX_USABLE_ACCURACY_M = 100;
-export const BASE_DEAD_BAND_M = 15;
-export const ARRIVAL_BASE_M = 20;
-export const SPEAK_INTERVAL_M = 50;
+const MAX_USABLE_ACCURACY_M = 100;
+const BASE_DEAD_BAND_M = 15;
+const ARRIVAL_BASE_M = 20;
+const SPEAK_INTERVAL_M = 50;
 
 export const INITIAL_BEACON_STATE: BeaconState = {
   anchorDistance: null,
