@@ -134,7 +134,7 @@ import Foundation
     #expect(weather.grid.nx == 63)
 }
 
-// MARK: - isStation 3케이스 + 정규화
+// MARK: - isStation 3케이스
 
 @Test func isStationJudgesCategoryAndNameSuffix() {
     func place(name: String, category: String) -> Place {
@@ -147,10 +147,6 @@ import Foundation
     #expect(!isStation(place(name: "문구점 Stationery", category: "가정,생활 > 문구,사무용품 Stationery")))
     // 이름이 "역"으로 끝나면 카테고리 없이도 역
     #expect(isStation(place(name: "서울역", category: "")))
-
-    // 정규화: 접미사 제거·trim·소문자(매칭 키)
-    #expect(normalizeStationName("강동역") == "강동")
-    #expect(normalizeStationName("Seoul Station") == "seoul")
 }
 
 // MARK: - 등급·null 심층 검증

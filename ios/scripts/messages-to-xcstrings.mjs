@@ -36,12 +36,10 @@ const REPO_ROOT = path.resolve(__dirname, '../..');
 const MESSAGES_DIR = path.join(REPO_ROOT, 'messages');
 const I18N_DIR = path.join(REPO_ROOT, 'ios', 'i18n');
 
-// Kit 네임스페이스: Kit 소스가 실제 참조하는 도메인만. 앱 타깃은 전 네임스페이스를 담는다
+// Kit 네임스페이스: Kit 소스 `kitLocalized` 실참조 도메인만 — 감사 2026-07-30에서
+// 나머지 11종 180키 전량 미참조 확정. 앱 타깃은 전 네임스페이스를 담는다
 // (일부 중복 수록은 의도 — 카탈로그는 타깃별로 독립 컴파일되므로 정합 문제 없음).
-const KIT_NAMESPACES = [
-  'airQuality', 'barrierFreeInfo', 'bike', 'bus', 'category', 'place', 'region',
-  'route', 'station', 'stationMeta', 'subway', 'subwayArrival', 'weather', 'whereAmI',
-];
+const KIT_NAMESPACES = ['category', 'region', 'whereAmI'];
 
 const TARGETS = {
   app: {
