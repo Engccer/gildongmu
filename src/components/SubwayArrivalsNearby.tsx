@@ -1,25 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { NearbySubwayStation } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
 import { prefersEnglish } from "@/lib/data-locale";
-import { awaitGeolocation } from "@/lib/geolocation";
-import { isInKorea } from "@/lib/coverage";
-import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import { useNearbyPanel } from "@/hooks/useNearbyPanel";
+import { useNearbyFetch } from "@/hooks/useNearbyFetch";
+import { NearbyPanelShell } from "@/components/NearbyPanelShell";
+import { nearbyLiveMessage } from "@/lib/nearby-live";
 import { SubwayArrivalList } from "./SubwayArrivalList";
 
-type Status =
-  | { kind: "idle" }
-  | { kind: "locating" }
-  | { kind: "loading" }
-  | { kind: "empty" }
-  | { kind: "error" }
-  | { kind: "geoerror"; reason: "denied" | "unsupported" }
-  | { kind: "outOfCoverage" }
-  | { kind: "done"; stations: NearbySubwayStation[]; at: string };
+/** done 데이터 — 목록 한 필드. */
+interface SubwayData {
+  stations: NearbySubwayStation[];
+}
 
 /**
  * 내 주변 서울 지하철 실시간 도착 — 홈(idle) 진입점. 좌표→근접역→역별 실시간.
@@ -37,196 +30,61 @@ export function SubwayArrivalsNearby() {
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const isEn = prefersEnglish(useLocale());
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const inFlightRef = useRef(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
-  const focusedRef = useRef(false);
-
-  async function fetchAt(lat: number, lng: number) {
-    setStatus({ kind: "loading" });
-    try {
-      const res = await fetch(
-        `/api/station/subway-arrival/nearby?lat=${lat}&lng=${lng}`,
-        { cache: "no-store" },
-      );
-      const body = await res.json();
-      if (isOutOfCoverageBody(body)) {
-        setStatus({ kind: "outOfCoverage" });
-        return;
-      }
-      if (!res.ok) {
-        setStatus({ kind: "error" });
-        return;
-      }
-      const stations = (body.stations ?? []) as NearbySubwayStation[];
-      if (stations.length === 0) {
-        setStatus({ kind: "empty" });
-        return;
-      }
-      const at = new Date().toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      setStatus({ kind: "done", stations, at });
-    } catch {
-      setStatus({ kind: "error" });
-    }
-  }
-
-  function load(force = false) {
-    const prevStatus = status;
-    claim();
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    const done = () => {
-      inFlightRef.current = false;
-    };
-    setStatus({ kind: "locating" });
-    // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
-    // 팝업 없이 재사용한다(매 버튼마다 getCurrentPosition을 부르지 않음).
-    void awaitGeolocation({ force }).then((g) => {
-      if (g.status === "ready") {
-        if (!isInKorea(g.coords.lat, g.coords.lng)) {
-          setStatus({ kind: "outOfCoverage" });
-          done();
-          return;
-        }
-        void fetchAt(g.coords.lat, g.coords.lng).finally(done);
-      } else {
-        // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
-        // 복원하고, 첫 조회 실패면 geoerror. 실내 등에서 정밀 재취득(GPS)이 자주
-        // 실패할 수 있어 데이터 소멸을 막는다.
-        setStatus(
-          prevStatus.kind === "done"
-            ? prevStatus
-            : {
-                kind: "geoerror",
-                reason: g.status === "unsupported" ? "unsupported" : "denied",
-              },
-        );
-        done();
-      }
+  const { status, load, close, busy, headingRef, triggerRef } =
+    useNearbyFetch<SubwayData>({
+      source: { kind: "current" },
+      fetchAt: ({ lat, lng }) =>
+        fetch(`/api/station/subway-arrival/nearby?lat=${lat}&lng=${lng}`, {
+          cache: "no-store",
+        }),
+      parse: (body) => {
+        const b = body as { stations?: NearbySubwayStation[] };
+        const stations = b.stations ?? [];
+        if (stations.length === 0) return { kind: "empty" };
+        return { kind: "done", data: { stations } };
+      },
     });
-  }
-
-  // 펼친 결과를 다시 감춘다(idle 복귀). 닫기 버튼은 언마운트되므로 restoreFocus면
-  // 포커스를 트리거 버튼으로 되돌려 스크린 리더 사용자가 맥락을 잃지 않게 한다
-  // (직접 닫기·Esc). 다른 패널이 점유를 가져가 자동으로 닫힐 때는
-  // restoreFocus=false로 포커스를 옮기지 않는다.
-  const close = useCallback((restoreFocus = true) => {
-    setStatus({ kind: "idle" });
-    if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
-  const onDismiss = useCallback(() => close(false), [close]);
-  const onEscape = useCallback(() => close(true), [close]);
-  const { claim } = useNearbyPanel({
-    engaged: status.kind !== "idle",
-    onDismiss,
-    onEscape,
-  });
-
-  // done 진입 시 결과 헤딩으로 포커스 이동(접근성 1급). fetch 완료 직후 rAF로
-  // 옮기면 React 커밋과 인과관계가 없어 레이스가 생긴다(헤딩이 아직 DOM에
-  // 없을 수 있음) — useEffect는 커밋 이후 실행이 보장되므로 안전하다
-  // (PlaceDetail·PlaceSearch의 결과 헤딩 포커스와 동형).
-  useEffect(() => {
-    if (status.kind === "done") {
-      if (!focusedRef.current) {
-        focusedRef.current = true;
-        headingRef.current?.focus();
-      }
-    } else {
-      focusedRef.current = false;
-    }
-  }, [status.kind]);
-
-  const busy = status.kind === "locating" || status.kind === "loading";
-  const buttonLabel = status.kind === "done" ? t("refresh") : t("button");
-
-  const live =
-    status.kind === "locating"
-      ? t("locating")
-      : status.kind === "loading"
-        ? t("loading")
-        : status.kind === "empty"
-          ? t("empty")
-          : status.kind === "error"
-            ? t("error")
-            : status.kind === "geoerror"
-              ? status.reason === "denied"
-                ? t("geoDenied")
-                : t("geoUnsupported")
-              : status.kind === "outOfCoverage"
-                ? tCommon("outOfCoverage")
-                : status.kind === "done"
-                  ? t("ready")
-                  : "";
+  const live = nearbyLiveMessage(status, t, tCommon);
 
   return (
-    <div className="mt-3">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => load(status.kind === "done")}
-        aria-disabled={busy}
-        aria-busy={busy}
-        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
-      >
-        {buttonLabel}
-      </button>
-
-      <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {live}
-      </p>
-
+    <NearbyPanelShell
+      triggerLabel={status.kind === "done" ? t("refresh") : t("button")}
+      onTrigger={() => load(status.kind === "done")}
+      triggerRef={triggerRef}
+      busy={busy}
+      live={live}
+      open={status.kind === "done"}
+      heading={status.kind === "done" ? `${t("ready")} ${t("asOf", { time: status.at })}` : ""}
+      headingRef={headingRef}
+      onClose={() => close()}
+      closeLabel={tActions("close")}
+      source={t("source")}
+    >
       {status.kind === "done" && (
-        <div
-          className="mt-2 rounded-md border border-border p-3"
-        >
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-base font-semibold"
-          >
-            {`${t("ready")} ${t("asOf", { time: status.at })}`}
-          </h3>
-
-          <button
-            type="button"
-            onClick={() => close()}
-            className="mt-1 min-h-11 text-sm text-accent underline"
-          >
-            {tActions("close")}
-          </button>
-
-          <ul className="mt-2 space-y-4">
-            {status.stations.map((s) => (
-              <li key={`${s.stationName}-${s.distanceMeters}`}>
-                {/* 한 줄 = 한 객체: 역명(현재 언어)·노선·거리를 단일 텍스트로
-                    합쳐 VoiceOver가 한 번에 낭독한다. 한국어 데이터(노선)는
-                    en 로케일에서도 한국어 표기뿐이라 그대로 둔다. */}
-                <h4 className="font-medium">
-                  {joinText(
-                    isEn ? s.nameEn || s.stationName : s.stationName,
-                    s.lines.length > 0 && s.lines.join(", "),
-                    t("stationDistance", {
-                      distance: formatDistance(s.distanceMeters),
-                    }),
-                  )}
-                </h4>
-                {s.arrivalStatus === "unavailable" ? (
-                  <p className="mt-1 text-sm opacity-70">{t("arrivalUnavailable")}</p>
-                ) : (
-                  <SubwayArrivalList arrivals={s.arrivals} />
+        <ul className="mt-2 space-y-4">
+          {status.data.stations.map((s) => (
+            <li key={`${s.stationName}-${s.distanceMeters}`}>
+              {/* 한 줄 = 한 객체: 역명(현재 언어)·노선·거리를 단일 텍스트로
+                  합쳐 VoiceOver가 한 번에 낭독한다. 한국어 데이터(노선)는
+                  en 로케일에서도 한국어 표기뿐이라 그대로 둔다. */}
+              <h4 className="font-medium">
+                {joinText(
+                  isEn ? s.nameEn || s.stationName : s.stationName,
+                  s.lines.length > 0 && s.lines.join(", "),
+                  t("stationDistance", {
+                    distance: formatDistance(s.distanceMeters),
+                  }),
                 )}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-2 text-xs opacity-70">{t("source")}</p>
-        </div>
+              </h4>
+              {s.arrivalStatus === "unavailable" ? (
+                <p className="mt-1 text-sm opacity-70">{t("arrivalUnavailable")}</p>
+              ) : (
+                <SubwayArrivalList arrivals={s.arrivals} />
+              )}
+            </li>
+          ))}
+        </ul>
       )}
-    </div>
+    </NearbyPanelShell>
   );
 }
