@@ -301,6 +301,10 @@ export function PlaceSearch({
       // 구독하지 않음)지만, 방어 정규화를 directions와 동형으로 맞춰 허브→상세
       // 경로가 생기는 순간 유령 히스토리 엔트리가 남는 것을 지금 차단한다.
       setNearbyOpen(false);
+      // 범용 채팅 오버레이 잔존 시 상세 전환 후 뒤로가기 복귀에서 재마운트되어
+      // initialMessage가 재전송되는 것을 차단(홈 언마운트는 오버레이만 지우고
+      // generalChat state는 남긴다).
+      setGeneralChat(null);
       setOpenSeq((s) => s + 1);
       if (selectedRef.current) {
         window.history.replaceState(
