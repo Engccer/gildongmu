@@ -124,8 +124,8 @@
 - [x] ~~외국인용 장소 검색~~ → TourAPI provider로 설계 확정 (en 로케일 자동 우선). 키 발급 후 검증만 남음
 - [x] ~~TourAPI 키 발급~~ → **완료 + 실응답 검증 (2026-06-13)** — 국문·영문 GW 자동 승인(만료 2028-06-13), 키는 `.env.local`·Vercel 3환경. 빈 결과 `items: ""` 확인, `contenttypeid` 라벨 매핑 확정(국문 12~39·영문 75~85 비중첩 단일 맵), en 로케일 E2E 프로덕션 검증. 잔여 관찰: `arrange=A`(제목순)라 랜드마크가 후순위로 밀릴 수 있음 — 정렬 전략은 사용해 보며 결정
 - [x] ~~NCP 결제수단 등록 → Maps Application 등록~~ → **완료 (2026-06-13)** — Maps 구독 + Application `gildongmu`(API 6종, Web URL 3개), Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 키는 `.env.local` `NCP_MAPS_*`. 다음 실험 후보: 영문 주소 변환(juso.go.kr 대신 NCP `englishAddress` 활용), 카카오 vs NCP Directions A/B
-- [ ] developers.naver.com 애플리케이션 등록 (사용자 직접 — Claude in Chrome이 도메인 차단) → `NAVER_LOCAL_*` 키 확보
-- [ ] 지역 검색 API 좌표계(×10⁷) 실응답 검증 — 공식 문서 원문 확인 불가였음 (조사 보고서 §2.1)
-- [~] **Phase 0b (dodo §5b 선행 작업)** — ① ~~`ncp-directions.ts` provider + en 로케일 "자동차 경로 미리 듣기"를 NCP로 라우팅~~ **완료(C1, 2026-06-17)** — lang 디스패치, ms→s 변환, 실호출 검증 ② `getEnglishAddress()` 역지오→정지오 체인 헬퍼 (미착수) ③ (선택) tour-api에 `locationBasedList2`·`detailCommon2` 함수 추가 (미착수). 근거 실측은 dodo 스펙 §2.5 (2026-06-13)
-- [ ] VoiceOver 수동 테스트 시나리오 문서화
-- [ ] 경로 브리핑의 출발지 대안 입력 — Geolocation 거부/실패 시 주소 입력(`/api/geocode` 활용)으로 폴백
+- [x] ~~developers.naver.com 애플리케이션 등록~~ → **완료 (2026-07-18)** — 사용자 수동 발급, `NAVER_LOCAL_*` prod 등록, ko 장소 병합 운영 중
+- [x] ~~지역 검색 API 좌표계(×10⁷) 실응답 검증~~ → **완료 (2026-07-18)** — naver-local provider가 ×10⁷ 정수를 내부 변환, ko 병합 prod 실호출 검증
+- [x] **Phase 0b (dodo §5b 선행 작업)** — ① NCP en 자동차 경로 **완료(C1, 2026-06-17)** ② `getEnglishAddress()` 체인 헬퍼 ③ tour-api 함수 추가 → ②③은 **2026-07-03 전량 이식 spec(`superpowers/specs/2026-07-03-dodo-full-port-design.md`)으로 이관 종결** — dodo 이식 시점에 그 spec이 정본
+- [x] ~~VoiceOver 수동 테스트 시나리오 문서화~~ → **완료 (2026-07-27)** — `docs/appstore/1.0-voiceover-qa-checklist.md` 49항목이 정본
+- [x] ~~경로 브리핑의 출발지 대안 입력~~ → **완료 (2026-07-22)** — 길찾기 뷰(`DirectionsView`/iOS `DirectionsTab`) 출발·도착 필드가 장소+주소(`/api/address/search`) 검색을 지원, Geolocation 거부 시에도 완주 가능
