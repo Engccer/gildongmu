@@ -205,9 +205,16 @@ final class SpeechService {
             }
         }
         // 예약(시스템 회수 방지)은 실패해도 이번 세션 인식엔 영향이 없다 — 비치명으로
-        // 기록만 하고 진행한다. 앱 언어를 바꾸면 다음 세션이 새 로케일로 예약한다.
+        // 기록만 하고 진행한다. 언어 전환이 남긴 다른 로케일 예약은 먼저 회수한다:
+        // 예약 상한(maximumReservedLocales)을 잠식하면 새 로케일 예약이 거부된다.
         do {
-            try await AssetInventory.reserve(locale: locale)
+            for stale in await AssetInventory.reservedLocales
+            where stale.identifier(.bcp47) != target {
+                await AssetInventory.release(reservedLocale: stale)
+            }
+            if try await AssetInventory.reserve(locale: locale) == false {
+                speechLog.error("로케일 예약 미확보(\(target, privacy: .public)) — 인식은 계속 진행")
+            }
         } catch {
             speechLog.error("로케일 예약 실패(\(target, privacy: .public)): \(String(describing: error), privacy: .public)")
         }
