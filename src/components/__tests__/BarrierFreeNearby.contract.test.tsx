@@ -11,10 +11,11 @@ vi.mock("next-intl", () => ({
 }));
 vi.mock("@/lib/geolocation", () => ({ awaitGeolocation: vi.fn() }));
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
+import { NEARBY_INITIAL_VISIBLE, NEARBY_REVEAL_STEP } from "@/hooks/useRevealMore";
 import { BarrierFreeNearby } from "../BarrierFreeNearby";
 import { describeNearbyContract, KOREA_COORDS } from "./nearby-contract";
 
@@ -147,5 +148,41 @@ describe("BarrierFreeNearby 도메인 계약", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByText("휠체어 대여 안내소에서 대여 가능")).toBeTruthy();
     expect(detailCalls()).toBe(1);
+  });
+
+  it("더 보기: 10개씩 단계 공개, 마지막 배치에서 버튼 소멸, 새로고침으로 리셋", async () => {
+    geoMock.mockResolvedValue({ status: "ready", coords: KOREA_COORDS });
+    const manyPlaces = Array.from({ length: 25 }, (_, i) => ({
+      ...place,
+      contentId: `content-${i}`,
+      name: `무장애장소${i}`,
+    }));
+    fetchMock.mockResolvedValue(jsonResponse({ places: manyPlaces }));
+    render(<BarrierFreeNearby />);
+    fireEvent.click(screen.getByRole("button", { name: "barrierFreeNearby.button" }));
+
+    const itemHeadings = () => screen.getAllByRole("heading", { level: 4 });
+    const showMore = () => screen.getByRole("button", { name: "actions.showMore" });
+    await waitFor(() => expect(itemHeadings()).toHaveLength(NEARBY_INITIAL_VISIBLE));
+    expect(showMore()).toBeTruthy();
+
+    fireEvent.click(showMore());
+    await waitFor(() =>
+      expect(itemHeadings()).toHaveLength(NEARBY_INITIAL_VISIBLE + NEARBY_REVEAL_STEP),
+    );
+    expect(document.activeElement).toBe(itemHeadings()[NEARBY_INITIAL_VISIBLE]);
+    expect(showMore()).toBeTruthy();
+
+    fireEvent.click(showMore());
+    await waitFor(() => expect(itemHeadings()).toHaveLength(25));
+    expect(document.activeElement).toBe(
+      itemHeadings()[NEARBY_INITIAL_VISIBLE + NEARBY_REVEAL_STEP],
+    );
+    expect(screen.queryByRole("button", { name: "actions.showMore" })).toBeNull();
+
+    // 새로고침(재조회 성공) — 공개 수 10개로 리셋.
+    fireEvent.click(screen.getByRole("button", { name: "barrierFreeNearby.refresh" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(itemHeadings()).toHaveLength(NEARBY_INITIAL_VISIBLE));
   });
 });
