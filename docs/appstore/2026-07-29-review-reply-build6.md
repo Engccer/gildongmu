@@ -1,6 +1,8 @@
 # App Review 회신 초안 — 1.0 (6) 재제출 (Submission 28eca73c, Guideline 2.1(a))
 
 > 발송 채널: App Store Connect > App Review 페이지 > Reply. 발송 전 위원장 승인 필수.
+>
+> **결과: 회신 2건 발송·재제출(2026-07-29 22:47 KST) → 1.0.0(6) 승인, App Store 출시(2026-07-30 23:19 KST 통보).** 이 문서는 발송 완료된 기록이며, 이후 심사 회신 초안의 참고 선례로 보존한다.
 
 ---
 
