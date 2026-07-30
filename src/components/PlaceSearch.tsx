@@ -850,9 +850,7 @@ export function PlaceSearch({
       )}
 
       {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
-      {canShowWhereAmI && status.kind === "idle" && (
-        <WhereAmI canShowChat={canShowChat} />
-      )}
+      {canShowWhereAmI && status.kind === "idle" && <WhereAmI />}
       {canShowSubway && status.kind === "idle" && (
         <div className="mt-4">
           <SubwayArrivalsNearby />
@@ -870,7 +868,7 @@ export function PlaceSearch({
       )}
       {canShowClinic && status.kind === "idle" && (
         <div className="mt-4">
-          <NightClinicsNearby canShowChat={canShowChat} />
+          <NightClinicsNearby />
         </div>
       )}
       {canShowBarrierFree && status.kind === "idle" && (
@@ -880,12 +878,12 @@ export function PlaceSearch({
       )}
       {canShowKids && status.kind === "idle" && (
         <div className="mt-4">
-          <KidsPlacesNearby canShowChat={canShowChat} />
+          <KidsPlacesNearby />
         </div>
       )}
       {canShowSurroundings && status.kind === "idle" && (
         <div className="mt-4">
-          <SurroundingsNearby canShowChat={canShowChat} />
+          <SurroundingsNearby />
         </div>
       )}
       {/* 게이트 없음(음향신호기=무인증 seed, OSM=무키 공개 인스턴스)이라 항상 노출한다. */}
