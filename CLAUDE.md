@@ -136,7 +136,7 @@
 ### CLI/MCP 릴리스 (`packages/cli`=npm `gildongmu`, `packages/mcp`=npm `gildongmu-mcp`)
 
 - 발행은 `cli-v*` 태그 push → `.github/workflows/cli-publish.yml`이 두 패키지를 npm Trusted Publishing(OIDC)으로 자동 발행. 토큰·환경변수 불필요.
-- 릴리스 절차: 두 packages/*/package.json 버전 동조 갱신 → 커밋 → `git tag cli-v<버전> && git push origin main --tags`.
+- 릴리스 절차: **버전 4곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 이를 강제한다.
 - ⚠ `--provenance` 금지(private repo, 404로 위장된 422, dodo Round 119 실측). 카탈로그(`endpoint-catalog-shared.ts`) 수정 시 cli·mcp 両미러 동일 유지(drift 테스트가 강제).
 
 ## 명령어
