@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildDeepgramParams, parseDeepgramTranscript } from "@/lib/deepgram";
 import { validateSttInput } from "@/lib/stt-validate";
 import { checkSttRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
+import { env, hasDeepgramKey } from "@/lib/env";
 
 /**
  * 음성 받아쓰기 프록시 — 클라이언트가 녹음한 오디오 Blob을 Deepgram
@@ -45,11 +46,11 @@ export async function POST(request: NextRequest) {
   // validateSttInput가 ok면 audio는 Blob임이 보장된다.
   const audioBlob = audio as Blob;
 
-  const apiKey = process.env.DEEPGRAM_API_KEY;
-  if (!apiKey) {
+  if (!hasDeepgramKey()) {
     console.error("[stt] DEEPGRAM_API_KEY 미설정");
     return NextResponse.json({ error: "서버 설정 오류입니다." }, { status: 500 });
   }
+  const apiKey = env.DEEPGRAM_API_KEY;
 
   // 자동감지 대신 로케일 명시(detect_language의 ko→vi 오인식 결함 차단, deepgram.ts 주석).
   const params = buildDeepgramParams(locale);

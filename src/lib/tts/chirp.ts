@@ -10,6 +10,8 @@
  * (MP3 concat은 AVAudioPlayer·HTMLAudioElement 재생 호환 — WAV/FLAC는 헤더 중복으로 불가).
  */
 
+import { env } from "@/lib/env";
+
 export type ChirpLocale = "ko" | "en" | "es" | "fr" | "it" | "ja";
 
 const CHIRP_LANGUAGE_CODES: Record<ChirpLocale, string> = {
@@ -89,7 +91,7 @@ export async function synthesizeChirpMp3(
   text: string,
   locale: ChirpLocale
 ): Promise<Uint8Array> {
-  const apiKey = process.env.GOOGLE_CLOUD_TTS_API_KEY;
+  const apiKey = env.GOOGLE_CLOUD_TTS_API_KEY;
   if (!apiKey) throw new Error("GOOGLE_CLOUD_TTS_API_KEY is not set");
 
   const voice = getChirpVoice(locale);
