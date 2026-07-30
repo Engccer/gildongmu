@@ -435,6 +435,7 @@
     "error": {
       "chat_failed": "답변을 가져오지 못했습니다.",
       "chat_unavailable": "채팅을 사용할 수 없습니다.",
+      "rate_limited": "요청이 많습니다. 잠시 후 다시 시도해 주세요.",
       "timeout": "응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
     },
     "progress": {
