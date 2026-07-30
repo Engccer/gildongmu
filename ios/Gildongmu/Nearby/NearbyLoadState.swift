@@ -67,15 +67,15 @@ func nearbyLoadedMessage(count: Int, unit: String) -> String {
 @MainActor
 func nearbyAnnouncer<Payload: Sendable>(
     loaded: @escaping @MainActor (Payload) -> String,
-    emptyResult: String? = nil
+    emptyResult: @autoclosure @escaping () -> String? = nil
 ) -> @MainActor (NearbyLoadEvent<Payload>) -> Void {
     { event in
         switch event {
         case .loaded(let payload):
             AccessibilityNotification.Announcement(loaded(payload)).post()
         case .emptyResult:
-            if let emptyResult {
-                AccessibilityNotification.Announcement(emptyResult).post()
+            if let message = emptyResult() {
+                AccessibilityNotification.Announcement(message).post()
             }
         case .refreshFailed: announceRefreshFailed()
         case .permissionLost: announcePermissionLost()
