@@ -1,49 +1,30 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
 
-/// 내 주변 버스 도착. 지하철 화면(SubwayNearbyView)의 규범 패턴을 미러링한다:
-/// 3-state(권한 거부/조회 실패/0건) 분리, 도착 문장 정본은 서울 TOPIS arrivalMessage(arrmsg1),
-/// TAGO는 arrivalMessage가 nil이라 슬롯(정류장 수·초)을 조합해 렌더.
+/// 내 주변 버스 도착 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
+/// 도착 문장 정본은 서울 TOPIS arrivalMessage(arrmsg1), TAGO는 arrivalMessage가 nil이라
+/// 슬롯(정류장 수·초)을 조합해 렌더.
 @Observable @MainActor
 final class BusNearbyModel {
-    private(set) var state: NearbyLoadState<BusStop> = .idle
-    private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
-    private var isLoadingInFlight = false
+    private let core: NearbyLoadCore<[BusStop]>
+    var phase: NearbyLoadPhase<[BusStop]> { core.phase }
 
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
-        if case .loaded = state {} else { state = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
-            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
-                if case .loaded = state { announceOutOfCoverage() }
-                state = .outOfCoverage
-                return
-            }
-            let stops = try await service.busStops(lat: coord.lat, lng: coord.lng)
-            state = .loaded(stops)
-            announceLoaded(count: stops.count, unit: appLocalized("ios.nearby.unitStop"))
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
-                if case .loaded = state { announcePermissionLost() }
-                state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        } catch APIError.outOfCoverage {
-            if case .loaded = state { announceOutOfCoverage() }
-            state = .outOfCoverage
-        } catch {
-            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
-            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        }
+    init() {
+        let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .korea,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                return try await service.busStops(lat: coord.lat, lng: coord.lng)
+            },
+            onEvent: nearbyAnnouncer(loaded: { stops in
+                nearbyLoadedMessage(count: stops.count, unit: appLocalized("ios.nearby.unitStop"))
+            }))
     }
+
+    func load(force: Bool = false) async { await core.load(force: force) }
 }
 
 struct BusNearbyView: View {
@@ -51,7 +32,7 @@ struct BusNearbyView: View {
 
     var body: some View {
         List {
-            if case .loaded(let stops) = model.state {
+            if case .loaded(let stops) = model.phase {
                 // 정류소명 중복 실존(같은 이름 서로 다른 nodeId) → id는 nodeId
                 ForEach(stops, id: \.nodeId) { stop in
                     Section {
@@ -81,7 +62,11 @@ struct BusNearbyView: View {
             }
         }
         .navigationTitle(appLocalized("ios.nearby.bus"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),
+                isEmpty: \.isEmpty))
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
     }
@@ -96,22 +81,5 @@ struct BusNearbyView: View {
         return joinText(appLocalized("ios.nearby.routeNo", arrival.routeNo), arrival.routeType, lowFloor,
                         "\(arrival.prevStationCount)정류장 전",
                         appLocalized("ios.nearby.minutesAway", String(max(1, arrival.arrivalSeconds / 60))))
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading: ProgressView(appLocalized("ios.common.checking"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .outOfCoverage:
-            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
-        case .loaded(let stops) where stops.isEmpty:
-            ContentUnavailableView(appLocalized("ios.nearby.busEmpty"), systemImage: "bus")
-        default: EmptyView()
-        }
     }
 }
