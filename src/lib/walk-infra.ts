@@ -3,7 +3,8 @@ import type { NearbyAudioSignals } from "./providers/audio-signals";
 import { fetchWalkFeaturesTile } from "./providers/overpass";
 import type { RawWalkFeature } from "./providers/overpass";
 import type { CompassDirection } from "./geo/bearing";
-import { bearingDegrees, bearingToCompass8, haversineMeters } from "./geo/bearing";
+import { bearingDegrees, bearingToCompass8 } from "./geo/bearing";
+import { haversineMeters } from "./geo";
 
 /**
  * 음향신호기(서울 seed)+OSM 보행 인프라(횡단보도·점자블록)를 단일 상태 계약으로

@@ -1,7 +1,7 @@
 import { getTmapCarBriefing } from "./providers/tmap-car";
 import { getCarRouteBriefing } from "./providers/kakao-navi";
 import { hasKakaoKey, hasTmapKey } from "./env";
-import { roundCoord } from "./coord-round";
+import { logRouteFallback } from "./route-fallback-log";
 import type { CarRouteBriefing, Coord } from "./types";
 
 /**
@@ -15,22 +15,6 @@ import type { CarRouteBriefing, Coord } from "./types";
  * 관측 시 tmap-car.ts에 graceful 분기를 추가한다(추측 금지).
  */
 
-/**
- * 폴백 원인 로그 — Vercel 로그로 폴백률·구간을 관측한다(파서 회귀 조기 발견).
- * 좌표는 4자리 반올림(약 ±5.5m) — 로그 가독성용.
- */
-function logFallback(origin: Coord, dest: Coord, reason: unknown) {
-  console.warn(
-    "[car-route] Tmap 실패, 카카오모빌리티 폴백:",
-    roundCoord(origin.lat, 4),
-    roundCoord(origin.lng, 4),
-    "→",
-    roundCoord(dest.lat, 4),
-    roundCoord(dest.lng, 4),
-    reason,
-  );
-}
-
 export async function getCarRoute(params: {
   origin: Coord;
   dest: Coord;
@@ -40,7 +24,7 @@ export async function getCarRoute(params: {
       return await getTmapCarBriefing(params);
     } catch (e) {
       if (!hasKakaoKey()) throw e;
-      logFallback(params.origin, params.dest, e);
+      logRouteFallback("[car-route] Tmap 실패, 카카오모빌리티 폴백:", params.origin, params.dest, e);
       return getCarRouteBriefing(params);
     }
   }
