@@ -1,77 +1,59 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
 
-/// 내 주변 소아 야간진료. SubwayNearbyModel 규범 패턴 미러(3-state 권한 거부/조회 실패/0건).
+/// 내 주변 소아 야간진료 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
 /// 진료 상태 3-state(open/closed/unknown)를 문장으로 분리한다.
 /// 병합 응답 메타 — 화면이 밝히는 두 값만(웹 Status.done 미러, 위원장 판정 2026-07-26:
 /// 절단 수치·소스 구분은 목록 미표기 — 진료중 우선 정렬이 "열린 곳 절단" 실패를
 /// 구조적으로 제거해 화면 수치가 지키는 것이 없다).
-struct ClinicSummary {
+struct ClinicSummary: Sendable {
     /// "holiday" | "weekday"
     let basis: String
     let supplementFailed: Bool
 }
 
+/// clinics+summary를 한 커밋으로 묶는 payload — "loaded와 함께 갱신"이 phase 대입 자체로
+/// 보장된다(구버전의 별도 summary 필드+nil 폴백을 대체).
+struct ClinicPayload: Sendable {
+    let clinics: [NightClinic]
+    let summary: ClinicSummary
+}
+
 @Observable @MainActor
 final class ClinicNearbyModel {
-    private(set) var state: NearbyLoadState<NightClinic> = .idle
-    /// loaded와 함께 갱신 — 절단·소스 구분 표기용(구버전 응답이면 nil 유지 필드 폴백).
-    private(set) var summary: ClinicSummary?
-    private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
-    private var isLoadingInFlight = false
+    private var core: NearbyLoadCore<ClinicPayload>!   // willCommit이 self 캡처 — IUO 2단 초기화
+    private(set) var window = RevealWindow()
+    var phase: NearbyLoadPhase<ClinicPayload> { core.phase }
+    var visibleCount: Int { window.visibleCount }
 
-    /// 초기 표시·공개 스텝 — 웹 INITIAL_VISIBLE/REVEAL_STEP과 동일 값 유지.
-    static let initialVisible = 10
-    static let revealStep = 10
-    private(set) var visibleCount = ClinicNearbyModel.initialVisible
-
-    /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
-    /// 더 공개할 것이 없으면 nil.
-    func revealMore() -> String? {
-        guard case .loaded(let clinics) = state, visibleCount < clinics.count else { return nil }
-        let firstNewID = clinics[visibleCount].id
-        visibleCount = min(visibleCount + Self.revealStep, clinics.count)
-        return firstNewID
+    init() {
+        let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .korea,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                let response = try await service.clinics(lat: coord.lat, lng: coord.lng)
+                return ClinicPayload(
+                    clinics: response.clinics,
+                    summary: ClinicSummary(
+                        basis: response.basis ?? "weekday",
+                        supplementFailed: response.supplementFailed ?? false))
+            },
+            willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
+            onEvent: nearbyAnnouncer(loaded: { payload in
+                nearbyLoadedMessage(count: payload.clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
+            }))
     }
 
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
-        if case .loaded = state {} else { state = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
-            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
-                if case .loaded = state { announceOutOfCoverage() }
-                state = .outOfCoverage
-                return
-            }
-            let response = try await service.clinics(lat: coord.lat, lng: coord.lng)
-            let clinics = response.clinics
-            summary = ClinicSummary(
-                basis: response.basis ?? "weekday",
-                supplementFailed: response.supplementFailed ?? false)
-            visibleCount = Self.initialVisible
-            state = .loaded(clinics)
-            announceLoaded(count: clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
-                if case .loaded = state { announcePermissionLost() }
-                state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        } catch APIError.outOfCoverage {
-            if case .loaded = state { announceOutOfCoverage() }
-            state = .outOfCoverage
-        } catch {
-            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
-            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        }
+    func load(force: Bool = false) async { await core.load(force: force) }
+
+    /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
+    func revealMore() -> String? {
+        guard case .loaded(let payload) = phase,
+              let firstNewIndex = window.revealMore(totalCount: payload.clinics.count) else { return nil }
+        return payload.clinics[firstNewIndex].id
     }
 }
 
@@ -90,22 +72,21 @@ struct ClinicNearbyView: View {
         ScrollViewReader { proxy in
             List {
                 // 공휴일 기준으로 읽은 날·보완 실패만 밝힌다(조건부라 잡음 아님, 웹 미러).
-                if case .loaded(let clinics) = model.state, !clinics.isEmpty,
-                   let summary = model.summary,
-                   summary.basis == "holiday" || summary.supplementFailed {
+                if case .loaded(let payload) = model.phase, !payload.clinics.isEmpty,
+                   payload.summary.basis == "holiday" || payload.summary.supplementFailed {
                     Section {
-                        if summary.basis == "holiday" {
+                        if payload.summary.basis == "holiday" {
                             Text(appLocalized("clinicNearby.basisHoliday"))
                         }
-                        if summary.supplementFailed {
+                        if payload.summary.supplementFailed {
                             Text(appLocalized("clinicNearby.supplementFailedNotice"))
                         }
                     }
                 }
-                if case .loaded(let clinics) = model.state {
+                if case .loaded(let payload) = model.phase {
                     // 평면 1행=1객체(검색 탭 동형). 항목 heading·주소·전화 행은 상세로 이동
                     // — M2·M3 "평면 리스트 heading 잉여" 결정 동형. 실기기 VO 확인 게이트.
-                    ForEach(clinics.prefix(model.visibleCount)) { clinic in
+                    ForEach(payload.clinics.prefix(model.visibleCount)) { clinic in
                         NavigationLink {
                             PlaceDetailView(place: nightClinicToPlace(clinic)) {
                                 ClinicDomainSection(clinic: clinic)
@@ -122,7 +103,7 @@ struct ClinicNearbyView: View {
                         .id(clinic.id)
                         .accessibilityFocused($focusedClinicID, equals: clinic.id)
                     }
-                    if clinics.count > model.visibleCount {
+                    if payload.clinics.count > model.visibleCount {
                         Button(appLocalized("actions.showMore")) {
                             if let id = model.revealMore() {
                                 proxy.scrollTo(id, anchor: .top)
@@ -134,27 +115,14 @@ struct ClinicNearbyView: View {
             }
         }
         .navigationTitle(appLocalized("ios.nearby.clinic"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                empty: NearbyOverlayCopy(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case"),
+                isEmpty: { $0.clinics.isEmpty }))
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading: ProgressView(appLocalized("ios.common.checking"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .outOfCoverage:
-            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
-        case .loaded(let clinics) where clinics.isEmpty:
-            ContentUnavailableView(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case")
-        default: EmptyView()
-        }
     }
 }
 
