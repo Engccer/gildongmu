@@ -21,6 +21,11 @@ const APPNAME =
  */
 export function RouteLinks({ place }: { place: Place }) {
   const t = useTranslations();
+  // 카카오 출처 장소의 link는 카카오맵 장소 상세(place.map.kakao.com)라 좌표 핀
+  // 지도의 상위호환 — 카카오 진입점을 이 하나로 합친다(핀 지도와 중복 제거).
+  // 비카카오 장소의 link는 업체 홈페이지라 별도 버튼으로 남긴다.
+  const kakaoDetailUrl =
+    place.id.startsWith("kakao-") && place.link ? place.link : undefined;
 
   function openNaver() {
     const webUrl = buildWebFallbackUrl(place.name);
@@ -47,21 +52,24 @@ export function RouteLinks({ place }: { place: Place }) {
         {t("place.openInNaverMap")}
       </button>
       <a
-        href={buildKakaoWebMapUrl({ lat: place.lat, lng: place.lng, name: place.name })}
+        href={
+          kakaoDetailUrl ??
+          buildKakaoWebMapUrl({ lat: place.lat, lng: place.lng, name: place.name })
+        }
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex min-h-11 items-center rounded-md border border-border px-4 py-2 text-sm font-medium"
       >
         {t("place.openInKakaoMap")}
       </a>
-      {place.link && (
+      {!kakaoDetailUrl && place.link && (
         <a
           href={place.link}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex min-h-11 items-center rounded-md border border-border px-4 py-2 text-sm"
         >
-          {t("place.detailPage")}
+          {t("place.homepage")}
         </a>
       )}
     </div>
