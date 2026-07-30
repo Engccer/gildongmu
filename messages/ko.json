@@ -663,5 +663,9 @@
   "barrierFreeInfo": {
     "heading": "무장애 편의시설",
     "source": "출처: 한국관광공사 무장애 여행 정보"
+  },
+  "nearby": {
+    "hubTitle": "내 주변",
+    "hubEntry": "내 주변"
   }
 }

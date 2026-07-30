@@ -663,5 +663,9 @@
   "barrierFreeInfo": {
     "heading": "Accessibility facilities",
     "source": "Source: Korea Tourism Organization barrier-free travel data"
+  },
+  "nearby": {
+    "hubTitle": "Nearby",
+    "hubEntry": "Nearby"
   }
 }

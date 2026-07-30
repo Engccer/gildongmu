@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Route } from "lucide-react";
+import { Compass, Route } from "lucide-react";
 import type { CategoryBucket } from "@/lib/category";
 import { bucketsPresent, filterPlacesByBucket } from "@/lib/category";
 import type { RegionCode } from "@/lib/region";
@@ -41,16 +41,7 @@ import { AddressResultList } from "./AddressResultList";
 import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
 import { DirectionsView } from "./DirectionsView";
-import { BusArrivals } from "./BusArrivals";
-import { BikeStations } from "./BikeStations";
-import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
-import { NightClinicsNearby } from "./NightClinicsNearby";
-import { BarrierFreeNearby } from "./BarrierFreeNearby";
-import { KidsPlacesNearby } from "./KidsPlacesNearby";
-import { SurroundingsNearby } from "./SurroundingsNearby";
-import { WalkInfraNearby } from "./WalkInfraNearby";
-import { WhereAmI } from "./WhereAmI";
-import { LocalConditions } from "./LocalConditions";
+import { NearbyHub } from "./NearbyHub";
 
 type Status =
   | { kind: "idle" }
@@ -143,6 +134,10 @@ export function PlaceSearch({
     from?: DirEndpoint;
     to: DirEndpoint | null;
   } | null>(null);
+  // "내 주변" 허브 뷰(스펙 2026-07-30). 열림/닫힘은 URL(?panel=nearby)이 정본,
+  // History 스택은 directions와 동형 규율(직접 진입 시 스택 합성 없음 — 닫기가
+  // URL을 정리하는 방어 경로).
+  const [nearbyOpen, setNearbyOpen] = useState(false);
   const [addrStatus, setAddrStatus] = useState<
     | { kind: "idle" }
     | { kind: "loading" }
@@ -193,6 +188,8 @@ export function PlaceSearch({
   const searchInputRef = useRef<HTMLInputElement>(null);
   // 홈 "길찾기" 진입 버튼 ref: 결과 없이 길찾기만 열었다 닫은 경우의 포커스 복귀 대상.
   const dirEntryRef = useRef<HTMLButtonElement>(null);
+  // 홈 "내 주변" 진입 버튼 ref: 허브를 열었다 닫은 경우의 포커스 복귀 대상.
+  const nearbyEntryRef = useRef<HTMLButtonElement>(null);
 
   // 검색 stale-result race 방지 — 매 검색마다 증가하는 id를 발급하고, fetch가
   // 끝난 뒤 자신이 여전히 최신 요청일 때만 결과를 반영한다. 빠른 연속 검색에서
@@ -205,6 +202,12 @@ export function PlaceSearch({
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  // onPop 클로저가 최신 nearbyOpen을 읽기 위한 미러(statusRef와 동형 패턴).
+  const nearbyOpenRef = useRef(nearbyOpen);
+  useEffect(() => {
+    nearbyOpenRef.current = nearbyOpen;
+  }, [nearbyOpen]);
 
   const addrStatusRef = useRef(addrStatus);
   useEffect(() => {
@@ -229,7 +232,11 @@ export function PlaceSearch({
   // popstate에서 복귀 대상 뷰를 판별한다.
   useEffect(() => {
     function onPop(e: PopStateEvent) {
-      const st = e.state as { place?: string; directions?: boolean } | null;
+      const st = e.state as {
+        place?: string;
+        directions?: boolean;
+        nearby?: boolean;
+      } | null;
       if (st?.directions) {
         // 앞으로가기로 길찾기 엔트리에 재진입: 복원 정본은 그 엔트리의 ?dir=
         // (현재 위치는 cur 토큰이라 조회 시 재측위된다).
@@ -240,15 +247,27 @@ export function PlaceSearch({
         return;
       }
       setDirections(null);
+      if (st?.nearby) {
+        // 앞으로가기 재진입 포함 — URL ?panel=nearby가 정본이므로 상태만 복원.
+        setNearbyOpen(true);
+        return;
+      }
       if (st?.place) {
         // 길찾기 → 상세 복귀: selected는 메모리에 남아 있고, PlaceDetail이
         // 재마운트되며 자체 effect로 제목에 포커스를 준다.
+        setNearbyOpen(false);
         return;
       }
+      // 홈 복귀: 닫힌 뷰가 허브였으면 진입 칩으로(트리거 복귀 계약), 아니면 기존
+      // 결과 헤딩/길찾기 버튼 복귀.
+      const wasNearby = nearbyOpenRef.current;
       setSelected(null);
-      // 복귀 시 결과 헤딩(또는 길찾기 진입 버튼)으로 포커스를 옮긴다(뷰
-      // 언마운트로 포커스가 body로 유실되는 것 방지, 접근성 1급).
-      focusResultsHeadingIfDone();
+      setNearbyOpen(false);
+      if (wasNearby) {
+        requestAnimationFrame(() => nearbyEntryRef.current?.focus());
+      } else {
+        focusResultsHeadingIfDone();
+      }
     }
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -321,6 +340,32 @@ export function PlaceSearch({
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       setDirections(null);
       focusResultsHeadingIfDone();
+    }
+  }
+
+  // "내 주변" 허브 진입: 홈 칩에서만 연다. 화면 전환이므로 pushState(스펙 §2).
+  function openNearbyHub() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("panel", "nearby");
+    window.history.pushState(
+      { ...(window.history.state ?? {}), nearby: true },
+      "",
+      url,
+    );
+    window.dispatchEvent(new Event("gildongmu:locationchange"));
+    setNearbyOpen(true);
+  }
+  function backFromNearbyHub() {
+    if (window.history.state?.nearby) {
+      window.history.back();
+    } else {
+      // 방어: ?panel=nearby 딥링크 직진입. 닫으면서 URL 정리(backFromDirections 동형).
+      const url = new URL(window.location.href);
+      url.searchParams.delete("panel");
+      window.history.replaceState(window.history.state, "", url);
+      window.dispatchEvent(new Event("gildongmu:locationchange"));
+      setNearbyOpen(false);
+      nearbyEntryRef.current?.focus();
     }
   }
 
@@ -571,6 +616,9 @@ export function PlaceSearch({
     const dir = parseDir(params.get("dir"));
     if (dir)
       queueMicrotask(() => setDirections({ from: dir.from, to: dir.to }));
+    // ?panel=nearby 딥링크·새로고침 복원(스택 합성 없음 — 뒤로가기는 브라우저 기본).
+    if (params.get("panel") === "nearby")
+      queueMicrotask(() => setNearbyOpen(true));
   }, [runQuerySearch]);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
@@ -644,6 +692,24 @@ export function PlaceSearch({
         initialFrom={directions.from}
         initialTo={directions.to}
         onBack={backFromDirections}
+      />
+    );
+  }
+
+  // "내 주변" 허브가 열려 있으면 최우선 렌더 다음 순위(상세보다 앞 — 홈에서만 진입).
+  if (nearbyOpen) {
+    return (
+      <NearbyHub
+        canShowWhereAmI={canShowWhereAmI}
+        canShowSubway={canShowSubway}
+        canShowBus={canShowBus}
+        canShowBike={canShowBike}
+        canShowClinic={canShowClinic}
+        canShowBarrierFree={canShowBarrierFree}
+        canShowKids={canShowKids}
+        canShowSurroundings={canShowSurroundings}
+        canShowAir={canShowAir}
+        onBack={backFromNearbyHub}
       />
     );
   }
@@ -790,19 +856,31 @@ export function PlaceSearch({
         {liveMessage}
       </p>
 
-      {/* 길찾기 뷰 진입 버튼: 검색 전후 상시 노출(수단 하나라도 게이트 통과 시).
-          도보 키 유무와 무관: 뷰는 대중교통·자동차만으로도 성립한다. */}
-      {canShowDirections && (
-        <button
-          ref={dirEntryRef}
-          type="button"
-          onClick={() => openDirections(null)}
-          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
-        >
-          <Route aria-hidden="true" className="h-4 w-4" />
-          {t("directions.title")}
-        </button>
-      )}
+      {/* 결정론 내비 칩: [길찾기] [내 주변] — 홈의 기능 진입은 이 행 하나로 수렴. */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {canShowDirections && (
+          <button
+            ref={dirEntryRef}
+            type="button"
+            onClick={() => openDirections(null)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+          >
+            <Route aria-hidden="true" className="h-4 w-4" />
+            {t("directions.title")}
+          </button>
+        )}
+        {status.kind === "idle" && (
+          <button
+            ref={nearbyEntryRef}
+            type="button"
+            onClick={openNearbyHub}
+            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+          >
+            <Compass aria-hidden="true" className="h-4 w-4" />
+            {t("nearby.hubEntry")}
+          </button>
+        )}
+      </div>
 
       {/* 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 자동 등장 정적 목록이라
           heading이 발견 경로 — 같은 idle 화면의 형제 섹션 10종과 동급인 h3(section
@@ -847,58 +925,6 @@ export function PlaceSearch({
             {t("recent.clearAll")}
           </button>
         </section>
-      )}
-
-      {/* 검색 전 첫 화면 진입점 — 내 주변 정보(키 게이트). idle일 때만. */}
-      {canShowWhereAmI && status.kind === "idle" && <WhereAmI />}
-      {canShowSubway && status.kind === "idle" && (
-        <div className="mt-4">
-          <SubwayArrivalsNearby />
-        </div>
-      )}
-      {canShowBus && status.kind === "idle" && (
-        <div className="mt-4">
-          <BusArrivals mode="current" />
-        </div>
-      )}
-      {canShowBike && status.kind === "idle" && (
-        <div className="mt-4">
-          <BikeStations mode="current" />
-        </div>
-      )}
-      {canShowClinic && status.kind === "idle" && (
-        <div className="mt-4">
-          <NightClinicsNearby />
-        </div>
-      )}
-      {canShowBarrierFree && status.kind === "idle" && (
-        <div className="mt-4">
-          <BarrierFreeNearby />
-        </div>
-      )}
-      {canShowKids && status.kind === "idle" && (
-        <div className="mt-4">
-          <KidsPlacesNearby />
-        </div>
-      )}
-      {canShowSurroundings && status.kind === "idle" && (
-        <div className="mt-4">
-          <SurroundingsNearby />
-        </div>
-      )}
-      {/* 게이트 없음(음향신호기=무인증 seed, OSM=무키 공개 인스턴스)이라 항상 노출한다. */}
-      {status.kind === "idle" && (
-        <div className="mt-4">
-          <WalkInfraNearby />
-        </div>
-      )}
-      {/* 이 지역 날씨 — 버튼 없이 좌표 준비 시 자동 등장하는 통합 카드(현재 날씨 +
-          공기질). 외출 전 환경 브리핑. 내 주변 버튼 7종(지하철~보행 인프라) 아래에
-          배치(위원장 선호). LocalConditions가 두 fetch를 소유해 단일 region. */}
-      {canShowAir && status.kind === "idle" && userCoords && (
-        <div className="mt-4">
-          <LocalConditions lat={userCoords.lat} lng={userCoords.lng} />
-        </div>
       )}
 
       {/* 웹은 장소·주소와 병렬인 보조 보완 섹션이라, 장소가 에러/로딩이고 주소가

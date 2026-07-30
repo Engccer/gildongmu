@@ -663,5 +663,9 @@
   "barrierFreeInfo": {
     "heading": "バリアフリー設備",
     "source": "出典: 韓国観光公社のバリアフリー旅行情報"
+  },
+  "nearby": {
+    "hubTitle": "近く",
+    "hubEntry": "近く"
   }
 }
