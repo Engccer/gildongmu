@@ -1,71 +1,39 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
+
+/// 보행 인프라 결과와 조회 시각을 한 커밋으로 묶는 payload.
+struct WalkInfraPayload: Sendable {
+    let walk: WalkInfrastructure
+    let asOf: String
+}
 
 /// 내 주변 보행 인프라(음향신호기+OSM 횡단보도·점자블록, 웹 WalkInfraNearby 미러).
 /// 게이트 없음(음향신호기=무인증 seed, OSM=무키)이라 허브에 항상 노출한다.
 /// 두 소스는 독립 강등(WalkSourceStatus) — 그룹 섹션 3개 헤더는 항상 렌더해
 /// 헤딩 내비로 어느 그룹에 먼저 도달해도 그 자리에서 상태를 알 수 있다(웹 h4 계약).
 /// 항목은 이름 없는 인프라 점이라 heading 미부여, joinText 한 줄=한 객체.
+/// NearbyLoadCore 껍데기이되 `coverage: .none`이 의도 계약 — OSM은 전 지구 커버라
+/// 한국 밖에서도 조회한다(웹 coverage:"none" 동형, .korea로 "정리" 금지).
 @Observable @MainActor
 final class WalkInfraModel {
-    enum State {
-        case idle, loading
-        case loaded(WalkInfrastructure, asOf: String)
-        case denied
-        case failedLocation   // 위치 취득 실패
-        case failedServer     // 両소스 전멸 503 포함(한 소스 실패는 200 부분 결과)
+    private let core: NearbyLoadCore<WalkInfraPayload>
+    var phase: NearbyLoadPhase<WalkInfraPayload> { core.phase }
+
+    init() {
+        let service = WalkInfraService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .none,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                let walk = try await service.nearby(lat: coord.lat, lng: coord.lng)
+                return WalkInfraPayload(walk: walk, asOf: Self.timeFormatter.string(from: Date()))
+            },
+            onEvent: nearbyAnnouncer(loaded: { walkInfraLiveSummary($0.walk) }))
     }
 
-    private(set) var state: State = .idle
-    private let service = WalkInfraService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러)
-    private var isLoadingInFlight = false
-
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        if case .loaded = state {} else { state = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            let walk = try await service.nearby(lat: coord.lat, lng: coord.lng)
-            let asOf = Self.timeFormatter.string(from: Date())
-            state = .loaded(walk, asOf: asOf)
-            // 단일 통지 = 소스별 요약 결합(웹 buildLive 미러): ok 소스의 수치만 낭독,
-            // error·unsupported는 실패·미제공 문구로("0기" 합성 금지).
-            AccessibilityNotification.Announcement(Self.liveSummary(walk)).post()
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                if case .loaded = state { announcePermissionLost() }
-                state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failedLocation }
-        } catch {
-            if case .loaded = state { announceRefreshFailed() } else { state = .failedServer }
-        }
-    }
-
-    static func liveSummary(_ walk: WalkInfrastructure) -> String {
-        let audio: String
-        switch walk.audioSignals {
-        case .ok(let data):
-            audio = data.deviceCount > 0
-                ? appLocalized("walkInfra.audioSummary", String(data.deviceCount))
-                : appLocalized("walkInfra.audioNone")
-        case .unsupported: audio = appLocalized("walkInfra.audioUnsupported")
-        case .error: audio = appLocalized("walkInfra.audioError")
-        }
-        let osm: String
-        switch walk.osm {
-        case .ok(let data):
-            osm = data.listedCount > 0
-                ? appLocalized("walkInfra.osmSummary", String(data.listedCount))
-                : appLocalized("walkInfra.osmEmpty")
-        case .unsupported, .error: osm = appLocalized("walkInfra.osmError")
-        }
-        return joinText(audio, osm)
-    }
+    func load(force: Bool = false) async { await core.load(force: force) }
 
     private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -75,26 +43,60 @@ final class WalkInfraModel {
     }()
 }
 
+/// 완료 통지 문구 = 소스별 요약 결합(웹 buildLive 미러): ok 소스의 수치만 낭독,
+/// error·unsupported는 실패·미제공 문구로("0기" 합성 금지).
+@MainActor
+func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
+    let audio: String
+    switch walk.audioSignals {
+    case .ok(let data):
+        audio = data.deviceCount > 0
+            ? appLocalized("walkInfra.audioSummary", String(data.deviceCount))
+            : appLocalized("walkInfra.audioNone")
+    case .unsupported: audio = appLocalized("walkInfra.audioUnsupported")
+    case .error: audio = appLocalized("walkInfra.audioError")
+    }
+    let osm: String
+    switch walk.osm {
+    case .ok(let data):
+        osm = data.listedCount > 0
+            ? appLocalized("walkInfra.osmSummary", String(data.listedCount))
+            : appLocalized("walkInfra.osmEmpty")
+    case .unsupported, .error: osm = appLocalized("walkInfra.osmError")
+    }
+    return joinText(audio, osm)
+}
+
 struct WalkInfraNearbyView: View {
     @State private var model = WalkInfraModel()
 
     var body: some View {
         List {
-            if case .loaded(let walk, let asOf) = model.state {
+            if case .loaded(let payload) = model.phase {
                 // 조회 시각 헤딩(웹 패널 h3 미러, WhereAmIView asOf 동형). 웹 h3의
                 // "ready" 접두문은 navigationTitle과 중복이라 의도적 생략(미니멀리즘).
                 Section {
-                    Text(appLocalized("walkInfra.asOf", asOf))
+                    Text(appLocalized("walkInfra.asOf", payload.asOf))
                         .accessibilityAddTraits(.isHeader)
                 }
-                audioSection(walk.audioSignals)
-                crossingSection(walk.osm)
-                tactileSection(walk.osm)
-                footnoteSection(walk)
+                audioSection(payload.walk.audioSignals)
+                crossingSection(payload.walk.osm)
+                tactileSection(payload.walk.osm)
+                footnoteSection(payload.walk)
             }
         }
         .navigationTitle(appLocalized("walkInfra.button"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .plain(
+                loadingText: appLocalized("walkInfra.loading"),
+                // ⚠ 위치 실패 아이콘이 다른 도메인(wifi.exclamationmark)과 다르다 — 현행 그대로.
+                failedLocation: NearbyOverlayCopy(appLocalized("ios.common.failedTitle"),
+                                                  systemImage: "location.slash",
+                                                  description: appLocalized("ios.common.retryLater")),
+                failedServer: NearbyOverlayCopy(appLocalized("walkInfra.error"),
+                                                systemImage: "wifi.exclamationmark",
+                                                description: appLocalized("ios.common.retryLater"))))
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
     }
@@ -236,22 +238,6 @@ struct WalkInfraNearbyView: View {
         case "w": appLocalized("surroundingsNearby.direction.w")
         case "nw": appLocalized("surroundingsNearby.direction.nw")
         default: nil
-        }
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading: ProgressView(appLocalized("walkInfra.loading"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failedLocation:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .failedServer:
-            ContentUnavailableView(appLocalized("walkInfra.error"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        default: EmptyView()
         }
     }
 }
