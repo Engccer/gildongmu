@@ -126,6 +126,7 @@ export function BusArrivals(
   // restoreFocus=false로 포커스를 옮기지 않는다.
   const close = useCallback((restoreFocus = true) => {
     setStatus({ kind: "idle" });
+    setRouteStopsNotice("");
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
   const onDismiss = useCallback(() => close(false), [close]);

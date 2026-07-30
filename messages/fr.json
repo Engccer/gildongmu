@@ -455,9 +455,9 @@
         "get_transit_route": "itinéraire en transport en commun",
         "get_walk_route": "itinéraire à pied",
         "search_web": "recherche web",
-        "get_nearby_barrier_free": "Lieux accessibles",
-        "get_walk_infrastructure": "Infrastructures piétonnes",
-        "unknown": "Informations"
+        "get_nearby_barrier_free": "lieux accessibles",
+        "get_walk_infrastructure": "infrastructures piétonnes",
+        "unknown": "informations"
       }
     },
     "sources": "Sources",
