@@ -52,6 +52,7 @@
 - **캐시**: 실시간(지하철·버스 도착)=`no-store`+`force-dynamic`, 준정적=`revalidate`(역메타 86400·공기질 600·날씨 1800·주소 3600).
 
 ### UI·상태 패턴
+- **신규 "내 주변" 도메인은 공유 계층으로 만든다**(2026-07-30 중복 추출): 상태 머신 `useNearbyFetch`(요청 ID latest-wins — 닫힌 패널의 늦은 응답 폐기 포함)+렌더 골격 `NearbyPanelShell`+통지 `nearbyLiveMessage`+단계 공개 `useRevealMore`. 골격 복붙 금지 — 계약은 `src/components/__tests__/nearby-contract.tsx` 스위트로 못 박는다(신규 도메인도 이 스위트 적용). 도메인 고유물(항목 렌더·parse·fetch URL)만 컴포넌트에 남긴다.
 - **현재 위치는 공유 스토어 1곳에서만**(`src/lib/geolocation.ts` 모듈 싱글턴 + `useGeolocation`). 신규 "내 주변"은 `getCurrentPosition` 직접 호출 금지, `awaitGeolocation()` 사용(권한 팝업 세션 1회). **"새로고침"은 `awaitGeolocation({force:true})`**로 정밀 재취득(`PRECISE_OPTS`), ⚠ 실패 시 직전 `done` 데이터 복원(`prevStatus`, 새로고침=재조회이지 데이터 포기 아님).
 - **"내 주변" 9개 섹션은 홈이 아니라 허브 뷰(`NearbyHub`, `?panel=nearby` URL+History 연동)에 있다**(2026-07-30 옴니박스 IA 재편 — 홈은 "길찾기"·"내 주변" 칩 2개로 축소). 허브 안 각 패널은 닫기·Esc·아코디언으로 접는다(`nearby-panel-store.ts` 싱글턴 + `useNearbyPanel`). `claim()`/`close(restoreFocus)`. **포커스 비대칭**: 직접 닫기·Esc는 `restoreFocus=true`(trigger 복귀), 다른 패널이 점유 가져가 자동 닫힐 땐 `false`. ⚠ 채팅 오버레이가 열린 동안은 `engaged:false`로 패널 Esc 비활성(스택된 전역 Esc 경합 — [[stacked-global-esc-listener-conflict]]. 현재 허브 안 채팅 경로 없음 — 재도입 시 적용).
 - **"내 주변" 장소 목록 4종(소아 진료·둘러보기·아이 놀 곳·무장애)은 "더 보기" 단계 공개**(2026-07-27): provider `SERVER_CAP=50`, 클라 10건 초기 표시+회당 +10, 라벨은 수치 없는 `actions.showMore`(절단 수치 화면 미표기 판정 유지). ⚠ V2 3종 라우트(`/api/places/around`·`kids`·`barrier-free`)의 **기본 응답 상한은 종전 값(12/8/8) 유지 + 옵트인 `limit`(정수 1~50, 범위 밖 400) + 절단 전 `total`**(2026-07-28) — limit 미지정 소비자(CLI/MCP) 출력 팽창 방지, "더 보기"를 구현한 웹·iOS 클라이언트만 `limit=50` 명시 요청(웹 공용 상수 `src/lib/nearby-limits.ts` `NEARBY_LIMIT_MAX` ↔ Kit `NearbyService`·`BarrierFreeService`의 `fetchLimit` 미러 — 값 변경 시 동조, 소아진료 라우트는 V1대로 기본 50). 포커스 계약: 누르면 첫 새 항목으로 이동하고 별도 live region·통지 금지 — 웹은 `useLayoutEffect` 페인트 전 재포커스(마지막 배치 버튼 소멸 이탈 창 제거), iOS는 `proxy.scrollTo` 선행 가시화+`AccessibilityFocusState`(오프스크린 행 AX 컬링 대응). **정본은 `NightClinicsNearby.tsx`·`ClinicNearbyView.swift`** — 신규 장소 목록도 이 패턴을 따른다. 교통 목록(지하철 3·버스 5·따릉이 5)·보행 인프라·랜드마크는 의도적 비적용(절단 너머 항목이 행동을 바꾸지 않음, 2026-07-27 검토 판정).
@@ -148,7 +149,7 @@ npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
 
 ## 개발 규칙
 
-- 기능·버그픽스는 같은 커밋에 테스트 동반(node-env Vitest엔 컴포넌트 와이어링 레인 없음 → 순수 로직은 fixture 단위테스트, 컴포넌트는 lint+build+**실호출이 머지 게이트**).
+- 기능·버그픽스는 같은 커밋에 테스트 동반. Vitest 전역은 node-env지만 **컴포넌트 테스트는 파일 상단 `// @vitest-environment jsdom` 프라그마 + @testing-library/react 레인이 관례**(`PlaceDetail.test.tsx`·nearby 계약 스위트가 선례). 순수 로직은 node-env fixture 단위테스트, 외부 API 통합은 **실호출이 머지 게이트**.
 - **외부 API 통합은 실호출(실데이터)을 머지 게이트로 박는다** — fixture green ≠ 실계약 검증(데이터 커버리지 현실은 정적 리뷰가 못 잡음).
 - 커밋 이메일 `engccer@gmail.com`. 주석·커밋·문서 한국어, 변수/함수명 영어.
 - a11y 변경 후 `a11y-auditor` 서브에이전트 점검. 새 서비스 추가 시 `docs/SPEC.md` "실험 백로그" 갱신.
