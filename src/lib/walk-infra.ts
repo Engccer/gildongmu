@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import { findAudioSignalsNear } from "./providers/audio-signals";
 import type { NearbyAudioSignals } from "./providers/audio-signals";
 import { fetchWalkFeaturesTile } from "./providers/overpass";
@@ -45,21 +44,38 @@ const TILE_RADIUS_METERS = 400;
 const USER_RADIUS_METERS = 300;
 // crossing·비-crossing tactile 각 projection의 cap(합집합 최대 20건).
 const GROUP_CAP = 10;
-const CACHE_REVALIDATE_SECONDS = 3600;
 // 인스턴스 전역 Overpass 호출 예산(공개 인스턴스 예의, spec §2-D·§6 절대 상한 아님).
 const OVERPASS_BUDGET_PER_MINUTE = 30;
 const OVERPASS_BUDGET_WINDOW_MS = 60_000;
+
+/**
+ * 타일 fetch 결과를 지속 캐시할 래퍼(예: Next `unstable_cache`). src/lib는 Next
+ * 비의존이 항구 규칙이라(dodo-planet 이식성), 캐시 구현은 Next 쪽(소비 라우트)이
+ * `configureWalkInfraTileCache`로 주입한다. 미구성 시 캐시 없이 직접 fetch.
+ */
+export type TileCacheWrapper = (
+  fetcher: () => Promise<RawWalkFeature[]>,
+  key: string,
+) => Promise<RawWalkFeature[]>;
+
+let tileCache: TileCacheWrapper | null = null;
+
+/** Next 런타임(라우트)이 지속 캐시 구현을 주입한다. 멱등 — 재호출 시 덮어씀. */
+export function configureWalkInfraTileCache(wrapper: TileCacheWrapper): void {
+  tileCache = wrapper;
+}
 
 // 모듈 스코프 single-flight(동일 타일 동시 요청 dedup) + 분당 전역 호출 카운터.
 const inFlightTiles = new Map<string, Promise<RawWalkFeature[]>>();
 let budgetWindowStart = 0;
 let budgetCount = 0;
 
-/** 테스트 전용. in-flight Map·전역 카운터를 리셋해 테스트 간 상태 누수를 막는다. */
+/** 테스트 전용. in-flight Map·전역 카운터·주입된 캐시를 리셋해 테스트 간 상태 누수를 막는다. */
 export function __resetWalkInfraForTest(): void {
   inFlightTiles.clear();
   budgetWindowStart = 0;
   budgetCount = 0;
+  tileCache = null;
 }
 
 function consumeOverpassBudget(now: number): boolean {
@@ -80,15 +96,14 @@ function tileAnchor(lat: number, lng: number): { key: string; anchorLat: number;
 }
 
 /**
- * 타일 anchor 좌표로 Overpass를 호출하고 결과를 1시간 캐시한다. 성공만 캐시되고
- * (unstable_cache는 throw를 저장하지 않음) 실패는 매 요청 재시도된다(spec §2-D).
+ * 타일 anchor 좌표로 Overpass를 호출한다. Next 런타임이 주입한 지속 캐시
+ * (unstable_cache)가 있으면 사용하고, 없으면 직접 fetch(단발 스크립트·비-Next
+ * 이식 환경). 성공만 캐시되고(unstable_cache는 throw를 저장하지 않음) 실패는
+ * 매 요청 재시도된다(spec §2-D). single-flight·전역 예산은 별도 유지.
  */
 function cachedFetchTile(anchorLat: number, anchorLng: number, cacheKey: string): Promise<RawWalkFeature[]> {
-  return unstable_cache(
-    () => fetchWalkFeaturesTile(anchorLat, anchorLng, TILE_RADIUS_METERS),
-    [cacheKey],
-    { revalidate: CACHE_REVALIDATE_SECONDS },
-  )();
+  const fetcher = () => fetchWalkFeaturesTile(anchorLat, anchorLng, TILE_RADIUS_METERS);
+  return tileCache ? tileCache(fetcher, cacheKey) : fetcher();
 }
 
 /**

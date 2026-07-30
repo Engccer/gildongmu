@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { z } from "zod";
-import { getWalkInfrastructure } from "@/lib/walk-infra";
+import { getWalkInfrastructure, configureWalkInfraTileCache } from "@/lib/walk-infra";
 import { checkWalkInfraRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
+
+// Overpass 타일 1시간 지속 캐시 주입 — walk-infra는 Next 비의존 유지(이식성 규칙).
+configureWalkInfraTileCache((fetcher, key) =>
+  unstable_cache(fetcher, [key], { revalidate: 3600 })(),
+);
 
 /**
  * GET /api/walk/nearby?lat&lng - 내 주변 보행 인프라(음향신호기+OSM 횡단보도·점자블록).
