@@ -28,19 +28,7 @@ struct ChatView: View {
                 if consentGranted {
                     ChatConversationView(model: model, cancelsOnDisappear: true,
                                          focusDraftOnAppear: $justGranted) {
-                        // 각 버튼은 독립 접근성 객체(정상). 탭=즉시 전송, 첫 전송 후 소멸
-                        // (ChatTabView suggestionList 동형).
-                        VStack(alignment: .leading, spacing: 8) {
-                            ForEach(suggestions, id: \.self) { suggestion in
-                                Button {
-                                    model.send(suggestion)
-                                } label: {
-                                    Text(suggestion)
-                                        .frame(minHeight: 44)
-                                }
-                                .buttonStyle(.bordered)
-                            }
-                        }
+                        SuggestionButtonList(suggestions: suggestions) { model.send($0) }
                     }
                 } else {
                     ChatConsentView {

@@ -82,7 +82,7 @@ struct BarrierFreeNearbyView: View {
                                 place: barrierFreePlaceToPlace(place),
                                 secondaryOverride: joinText(
                                     place.address,
-                                    appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters)))),
+                                    appLocalized("place.distance", formatDistance(place.distanceMeters))),
                                 onAskAbout: { chatPlace = barrierFreePlaceToPlace(place) })
                         }
                         .id(place.id)

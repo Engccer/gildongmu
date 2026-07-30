@@ -81,7 +81,7 @@ struct AroundNearbyView: View {
                                 place: surroundingPlaceToPlace(place),
                                 secondaryOverride: joinText(
                                     categoryPiece(place.categoryRaw), bearingLabel(place.bearing),
-                                    appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters)))),
+                                    appLocalized("place.distance", formatDistance(place.distanceMeters))),
                                 onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
                         }
                         .id(place.id)

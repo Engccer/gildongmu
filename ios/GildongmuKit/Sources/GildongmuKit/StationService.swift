@@ -52,13 +52,6 @@ public struct ConditionsService: Sendable {
 
     public init(client: APIClient) { self.client = client }
 
-    private func coordQuery(lat: Double, lng: Double) -> [URLQueryItem] {
-        [
-            URLQueryItem(name: "lat", value: String(lat)),
-            URLQueryItem(name: "lng", value: String(lng)),
-        ]
-    }
-
     public func air(lat: Double, lng: Double) async throws -> AirQuality? {
         let response: AirNearbyResponse = try await client.get(
             "/api/air-quality/nearby", query: coordQuery(lat: lat, lng: lng))
