@@ -2,28 +2,14 @@ import Foundation
 import Accessibility
 import GildongmuKit
 
-/// 내 주변 도메인 화면 공통 상태: 3-state 불변식(권한 거부/조회 실패/0건)의 타입 표현.
-/// 각 화면 파일 안에 재정의하지 말고 이 공용 enum을 쓴다(M2 plan Task A).
-enum NearbyLoadState<Item> {
-    case idle, loading
-    case loaded([Item])      // 빈 배열 = 정상적 0건
-    case denied              // 위치 권한 거부
-    case failed              // 조회 실패
-    case outOfCoverage       // 서비스 지역 밖 — 실패 아님, spec 2026-07-29
-}
+// 내 주변 도메인 공통 부속. 상태 타입 자체는 GildongmuKit의 NearbyLoadPhase/NearbyLoadEvent가
+// 정본(전 화면 이관 완료)이며, 이 파일은 그 위에 얹는 좌표 어댑터·이벤트→VO 통지 매퍼·문구 조립만 둔다.
 
 /// nil·빈 문자열 조각을 제거하고 ", "로 결합(웹 `joinText` 미러).
 /// 한 줄 = 한 접근성 객체: 시각 목적 인라인 분절 대신 단일 텍스트로 합친다.
 /// 구분자는 쉼표(가운뎃점은 일부 스크린 리더가 단어로 낭독해 금지).
 func joinText(_ parts: String?...) -> String {
     parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
-}
-
-/// 로드 완료 단일 통지 채널(웹 combinedLiveMessage의 iOS 문법). 0건도 문장으로 통지.
-/// 문구 조립은 nearbyLoadedMessage 한 곳이 정본 — 미이관 모델이 소비 중이라 함수는 남긴다.
-@MainActor
-func announceLoaded(count: Int, unit: String) {
-    AccessibilityNotification.Announcement(nearbyLoadedMessage(count: count, unit: unit)).post()
 }
 
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).
@@ -68,7 +54,7 @@ extension LocationService {
     }
 }
 
-/// 완료 통지 문구 — 구 announceLoaded의 메시지 조립부(문자열 불변). 0건도 문장으로.
+/// 완료 통지 문구 조립부(문자열 불변). 0건도 문장으로.
 @MainActor
 func nearbyLoadedMessage(count: Int, unit: String) -> String {
     count == 0

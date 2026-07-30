@@ -200,6 +200,23 @@ struct NearbyLoadCoreTests {
         #expect(loadedPayload(core.phase) == "P1")
     }
 
+    /// 승인 예외 2호(Conditions 스테일 미부활)의 파생 원천 계약 — previous는 loaded entry
+    /// 한정이다. entry=failedServer(로드 자체가 실패한 상태)에서 재조회하면 fetch는
+    /// previous=nil을 받아야 한다(직전 실패는 "직전 성공 데이터"가 아니므로 이어붙일 게 없다).
+    @Test func fetchPreviousIsNilWhenEntryIsNotLoaded() async {
+        let recorder = Recorder()
+        recorder.fetchStub = { _, _ in throw StubError.boom }
+        let core = makeCore(recorder)
+        await core.load()
+        #expect(phaseName(core.phase) == "failedServer")
+        recorder.resetLog()
+
+        recorder.fetchStub = { _, _ in "P2" }
+        await core.load()
+        #expect((recorder.fetchPrevious.last ?? nil) == nil)
+        #expect(phaseName(core.phase) == "loaded")
+    }
+
     /// #2 — loaded에서 시작하면 직전 payload를 유지한 채 재조회하고, previous로 전달한다.
     @Test func startFromLoadedKeepsPreviousPayload() async {
         let recorder = Recorder()
