@@ -176,6 +176,8 @@ struct NearbyOverlayDescriptor {
 - **failed 상태 분해**: `failedLocation`/`failedServer` 정규화는 WhereAmI·WalkInfra가 이미 요구하는 최소 구분이며, 8종 렌더 매핑으로 화면 불변 — 상태 축소(단일 failed)로 되돌리면 이형 2종이 기계 밖 분기를 다시 갖게 되어 기각.
 - **뷰 row DSL 추상화 기각**: revealMore 뷰 블록 4벌 중복은 남는다. 모델 골격과 달리 뷰 블록은 도메인 row·상세 진입이 얽혀 있어 추상화 이득 대비 간접화 비용이 큼(YAGNI). 후속 관찰.
 
+**구현 중 확정된 승인 예외 2호(2026-07-31, Task 6 리뷰 판정)**: Conditions의 스테일 조각 부활 소멸. 구 코드는 weather/air를 모델 프로퍼티로 누적해 `done → denied/outOfCoverage → 복귀(조각 부분 실패)` 엣지에서 옛 좌표 기준 스테일 조각을 현재 정보처럼 재표시했고(3-state 위반 — SR 사용자는 스테일 판별 불가), 両조각 전멸 복귀에선 "가져오지 못했습니다" 통지와 스테일 화면이 불일치했다. 신 코드는 `previous`가 `.loaded` entry에서만 주어져 부활하지 않는다(그 조각은 "가져오지 못했습니다"로 정직 표시). `loaded → loaded` 새로고침 보존은 전수 동치 확인. 이 계약의 파생 원천(`previous`는 loaded entry 한정)은 Kit 테스트 `fetchPreviousIsNilWhenEntryIsNotLoaded`로 고정한다. §2의 "유일한 의도적 행동 변경"(취소)에 이은 두 번째이자 마지막 승인 예외.
+
 **codex 적대적 리뷰 판정(2026-07-31, 13건)**
 - **수용 9**: 취소 시 entry 상태 복원(C1)·협력적 취소 커밋 게이트(C2)·격리/Sendable 계약(C5)·커밋-이벤트 순서 동결(I6)·어댑터 오류 우선순위(I7)·willCommit 훅(I9)·force 계약(I11)·Payload 값 타입 제약(I12)·디스크립터 유효 조합 이니셜라이저(M1).
 - **부분 수용 3**: 새로고침 비구조 Task(C3 — §7 커버 범위 문구 정정, onDisappear 게이트는 상세 push 시 유효 통지까지 삼켜 기각) / Conditions 진리표(I8 — 코어가 아닌 도메인 껍데기+plan 몫, 취소 흡수 함정은 커밋 게이트가 정본) / Kit 테스트 배선 한계(C6 — 이관 커밋별 §6 표 대조 리뷰+시뮬 실측으로 완화, **앱 테스트 타깃 신설은 이번 범위 밖 잔여 리스크로 기록** — 후속 마일스톤 후보).
