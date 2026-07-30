@@ -32,9 +32,11 @@ private final class Recorder {
     var fetchStub: @MainActor (NearbyCoord?, Payload?) async throws -> Payload? = { _, _ in "P1" }
 
     /// 사전 로드로 entry 상태를 만든 뒤 관측을 리셋한다(이후 단언은 이번 호출 결과만 본다).
+    /// phaseAtWillCommit도 반드시 함께 비운다 — 사전 로드의 잔값이 남으면 willCommit 누락을 가린다.
     func resetLog() {
         log.removeAll()
         events.removeAll()
+        phaseAtWillCommit = nil
     }
 }
 
@@ -53,13 +55,32 @@ private final class Gate {
         arrivalWaiter?.resume()
         arrivalWaiter = nil
         guard !isReleased else { return }
+        guard releaseWaiter == nil else {
+            // 게이트에 동시 진입 = 상태 머신이 두 번째 load()를 막지 못했다는 뜻.
+            // 여기서 보류하면 테스트 태스크 자신이 갇혀 release()를 부를 주체가 사라지고
+            // 무한 hang이 된다(.timeLimit도 취소 비반응 continuation은 못 깬다 — 실측).
+            // 실패로 기록하고 즉시 통과시켜 hang을 실패로 바꾼다.
+            Issue.record("Gate 동시 진입 — load() 재진입 가드가 동작하지 않는다")
+            return
+        }
         await withCheckedContinuation { continuation in releaseWaiter = continuation }
     }
 
-    /// 테스트 쪽: 스텁이 진입할 때까지 대기
+    /// 테스트 쪽: 스텁이 진입할 때까지 대기.
+    /// 워치독 필수 — load()가 조기 반환하면(in-flight 가드 미해제 등) 진입이 영영 오지 않아
+    /// 테스트 태스크 자신이 갇힌다. .timeLimit은 취소 비반응 continuation을 못 깨므로(실측)
+    /// 벽시계 워치독으로 hang을 실패로 바꾼다.
     func waitForArrival() async {
         guard !hasArrived else { return }
+        let watchdog = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled, !hasArrived else { return }
+            Issue.record("스텁이 게이트에 진입하지 않았다 — load()가 조기 반환했다")
+            arrivalWaiter?.resume()
+            arrivalWaiter = nil
+        }
         await withCheckedContinuation { continuation in arrivalWaiter = continuation }
+        watchdog.cancel()
     }
 
     /// 테스트 쪽: 보류 해제
@@ -135,7 +156,10 @@ private func eventName(_ event: NearbyLoadEvent<Payload>) -> String {
     }
 }
 
+/// Gate 기반 테스트는 상태 머신이 멈추면(재진입 가드 소실 등) 실패가 아니라 무한 hang으로 나타난다
+/// — 시간 제한으로 hang을 실패로 바꾼다(Swift Testing 최소 단위가 1분이라 1분).
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct NearbyLoadCoreTests {
 
     // MARK: - #1 재진입 가드
@@ -195,6 +219,11 @@ struct NearbyLoadCoreTests {
         gate.release()
         await task.value
         #expect(loadedPayload(core.phase) == "P2")
+        // 재조회 성공도 #10 그대로 — 통지 억제나 willCommit 생략이 있으면 안 된다
+        // (entry=loaded 분기를 여기서 안 잡으면 11개 이관 커밋 어디서도 안 잡힌다).
+        #expect(recorder.events == ["loaded"])
+        #expect(recorder.log == ["willCommit", "phase=loaded", "event=loaded"])
+        #expect(recorder.phaseAtWillCommit == "loaded")  // 직전 payload가 아직 살아 있는 시점
     }
 
     // MARK: - #4·#5 좌표 denied
