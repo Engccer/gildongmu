@@ -1,7 +1,8 @@
 import type { SeoulMetroFacility, SubwayStation } from "../types";
 import { env } from "../env";
 import { normalizeStationName } from "../station-match";
-import { bearingDegrees, bearingToCompass8, haversineMeters } from "../geo/bearing";
+import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
+import { haversineMeters } from "../geo";
 
 /**
  * 서울 지하철 엘리베이터 위치(OA-21212 tbTraficElvtr) — wksn 미커버 노선(9호선·

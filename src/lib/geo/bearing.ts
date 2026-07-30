@@ -36,19 +36,3 @@ export function bearingToCompass8(degrees: number): CompassDirection {
   const norm = ((degrees % 360) + 360) % 360;
   return dirs[Math.round(norm / 45) % 8];
 }
-
-/** Haversine 거리(m). 카카오 distance 누락 시 폴백. */
-export function haversineMeters(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371000;
-  const dPhi = toRad(lat2 - lat1);
-  const dLambda = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dPhi / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLambda / 2) ** 2;
-  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
-}

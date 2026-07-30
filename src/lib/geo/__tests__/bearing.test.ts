@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
-import {
-  bearingDegrees,
-  bearingToCompass8,
-  haversineMeters,
-} from "../bearing";
+import { bearingDegrees, bearingToCompass8 } from "../bearing";
+import { haversineMeters } from "../../geo";
 
 describe("bearingDegrees (북=0, 시계방향)", () => {
   const O = { lat: 37.5, lng: 127.0 };

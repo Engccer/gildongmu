@@ -1,5 +1,6 @@
 import { env } from "../env";
-import { bearingDegrees, bearingToCompass8, haversineMeters } from "../geo/bearing";
+import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
+import { haversineMeters } from "../geo";
 import type { SurroundingCategory, SurroundingPlace } from "../types";
 
 /**

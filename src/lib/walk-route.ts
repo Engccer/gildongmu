@@ -2,7 +2,7 @@ import { getKakaoWalkBriefing } from "./providers/kakao-walk";
 import { getWalkRouteBriefing } from "./providers/tmap-pedestrian";
 import { hasAudioSignalNear } from "./providers/audio-signals";
 import { hasKakaoKey, hasTmapKey } from "./env";
-import { roundCoord } from "./coord-round";
+import { logRouteFallback } from "./route-fallback-log";
 import type { Coord, StepFreeStatus, WalkRouteBriefing } from "./types";
 
 /**
@@ -66,23 +66,6 @@ function withStepFree(
   };
 }
 
-/**
- * 폴백 원인 로그 — Vercel 로그로 폴백률·구간을 관측한다(파서 회귀 조기 발견).
- * 좌표는 4자리 반올림(`roundCoord`, 약 ±5.5m)으로 표기 — 캐시 키용이 아니라
- * 로그 가독성용(GPS 전체 정밀도는 로그에서 굳이 안 필요).
- */
-function logFallback(origin: Coord, dest: Coord, reason: unknown) {
-  console.warn(
-    "[walk-route] 카카오 실패, Tmap 폴백:",
-    roundCoord(origin.lat, 4),
-    roundCoord(origin.lng, 4),
-    "→",
-    roundCoord(dest.lat, 4),
-    roundCoord(dest.lng, 4),
-    reason,
-  );
-}
-
 async function fetchPrimaryOrFallback(params: {
   origin: Coord;
   dest: Coord;
@@ -94,7 +77,7 @@ async function fetchPrimaryOrFallback(params: {
       return { briefing: await getKakaoWalkBriefing({ origin, dest, accessible }), via: "kakao" };
     } catch (e) {
       if (!hasTmapKey()) throw e;
-      logFallback(origin, dest, e);
+      logRouteFallback("[walk-route] 카카오 실패, Tmap 폴백:", origin, dest, e);
       return { briefing: await getWalkRouteBriefing({ origin, dest }), via: "tmap" };
     }
   }
