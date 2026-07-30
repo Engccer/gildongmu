@@ -2,10 +2,6 @@ import type { BusArrival, BusRouteStop, BusStop } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 
-// Haversine 공식은 geo.ts로 단일화했다(거리 정렬 공용). 과거 이 파일에서
-// import하던 코드·테스트 호환을 위해 그대로 re-export한다.
-export { haversineMeters } from "../geo";
-
 /**
  * 국토교통부 TAGO(국가대중교통정보센터) 시내버스 provider.
  *

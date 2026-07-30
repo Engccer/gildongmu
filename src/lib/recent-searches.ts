@@ -103,7 +103,7 @@ const isEndpoint = (v: unknown): v is RecentEndpoint =>
   Number.isFinite((v as RecentEndpoint).lng);
 
 /** 좌표 소수 4자리(≈11m) 일치 = 같은 장소. 라벨 변형은 최신 라벨로 교체된다. */
-export function sameEndpoint(a: RecentEndpoint, b: RecentEndpoint): boolean {
+function sameEndpoint(a: RecentEndpoint, b: RecentEndpoint): boolean {
   return a.lat.toFixed(4) === b.lat.toFixed(4) && a.lng.toFixed(4) === b.lng.toFixed(4);
 }
 

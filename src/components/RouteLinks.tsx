@@ -19,8 +19,7 @@ const ROUTE_MODES: RouteMode[] = ["public", "walk", "car"];
 
 /**
  * 네이버·카카오 길찾기 딥링크 묶음.
- * PlaceSearch.tsx의 기존 <nav> 블록을 동작 동등하게 이식한 것이다(색 클래스
- * 정리는 M5). 내비게이션은 네이티브 앱 위임 원칙을 따른다(딥링크/웹 폴백).
+ * 내비게이션은 네이티브 앱 위임 원칙을 따른다(딥링크/웹 폴백).
  */
 export function RouteLinks({ place }: { place: Place }) {
   const t = useTranslations();

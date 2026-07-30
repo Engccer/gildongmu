@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { normalizeDocument } from "../providers/kakao-local";
 import {
-  buildKakaoLookDeeplink,
   buildKakaoPlaceDeeplink,
   buildKakaoRouteDeeplink,
   buildKakaoWebMapUrl,
@@ -79,13 +78,7 @@ describe("buildKakaoRouteDeeplink", () => {
   });
 });
 
-describe("buildKakaoLookDeeplink / buildKakaoPlaceDeeplink", () => {
-  it("좌표 보기 딥링크를 생성한다", () => {
-    expect(buildKakaoLookDeeplink({ lat: 37.5, lng: 127.0 })).toBe(
-      "kakaomap://look?p=37.5,127",
-    );
-  });
-
+describe("buildKakaoPlaceDeeplink", () => {
   it("장소 상세 딥링크를 생성한다 (로컬 API id 체인)", () => {
     expect(buildKakaoPlaceDeeplink("8129461")).toBe(
       "kakaomap://place?id=8129461",

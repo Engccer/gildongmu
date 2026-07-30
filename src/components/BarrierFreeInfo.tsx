@@ -14,12 +14,10 @@ export function BarrierFreeInfo({
   lat,
   lng,
   name,
-  canShow,
 }: {
   lat: number;
   lng: number;
   name: string;
-  canShow: boolean;
 }) {
   const t = useTranslations("barrierFreeInfo");
   const [detail, setDetail] = useState<BarrierFreeDetail | null>(null);
@@ -38,7 +36,6 @@ export function BarrierFreeInfo({
   }
 
   useEffect(() => {
-    if (!canShow) return;
     const controller = new AbortController();
     let active = true;
     (async () => {
@@ -61,7 +58,7 @@ export function BarrierFreeInfo({
       active = false;
       controller.abort();
     };
-  }, [lat, lng, name, canShow]);
+  }, [lat, lng, name]);
 
   if (!detail) return null;
 

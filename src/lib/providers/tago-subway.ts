@@ -26,8 +26,8 @@ import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrai
  * 결과 + partial:true. 전부 성공했는데 유효 행 0 → { lines: [] }.
  */
 
-export const BASE = "http://apis.data.go.kr/1613000/SubwayInfo";
-export const PAGE_SIZE = 500;
+const BASE = "http://apis.data.go.kr/1613000/SubwayInfo";
+const PAGE_SIZE = 500;
 // 키워드 매칭 노선 수 상한 — 환승역 등에서 노선별 상·하행 조회가 무한 증폭되지
 // 않도록 방어(스펙 §2-A). 실서비스 환승역도 이 상한을 넘지 않는다.
 const MAX_LINES = 8;
