@@ -288,6 +288,10 @@ export function PlaceSearch({
   useEffect(() => {
     return subscribeOpenPlace((place) => {
       setDirections(null);
+      // 현재는 허브에서 도달 불가(9개 이관 섹션 어느 것도 place-open-request를
+      // 구독하지 않음)지만, 방어 정규화를 directions와 동형으로 맞춰 허브→상세
+      // 경로가 생기는 순간 유령 히스토리 엔트리가 남는 것을 지금 차단한다.
+      setNearbyOpen(false);
       setOpenSeq((s) => s + 1);
       if (selectedRef.current) {
         window.history.replaceState(
@@ -365,7 +369,15 @@ export function PlaceSearch({
       window.history.replaceState(window.history.state, "", url);
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       setNearbyOpen(false);
-      nearbyEntryRef.current?.focus();
+      // 이 시점엔 허브가 아직 렌더 트리를 점유해 칩이 마운트되지 않았다 — rAF로
+      // 리렌더 이후 포커스한다. 칩은 status.kind==="idle" 게이트라 ?q=…&panel=nearby
+      // 조합 진입(검색 결과가 있는 상태)에서는 rAF 뒤에도 칩이 없을 수 있으므로,
+      // 그때는 기존 결과 헤딩/길찾기 버튼 복귀로 폴백한다(포커스가 body로 유실되는
+      // 것 방지 — 접근성 1급).
+      requestAnimationFrame(() => {
+        if (nearbyEntryRef.current) nearbyEntryRef.current.focus();
+        else focusResultsHeadingIfDone();
+      });
     }
   }
 
