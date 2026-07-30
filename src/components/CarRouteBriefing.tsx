@@ -5,12 +5,16 @@ import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
 import { durationToMinutes, formatDistance, joinText } from "@/lib/format";
 import { dataLocale } from "@/lib/data-locale";
+import { awaitGeolocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 
 type Status =
   | { kind: "idle" }
   | { kind: "locating" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
+  | { kind: "outOfCoverage" }
   | { kind: "done"; briefing: Briefing };
 
 /**
@@ -30,10 +34,12 @@ export function CarRouteBriefing({
 }) {
   const t = useTranslations("route.briefing");
   const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const inFlightRef = useRef(false);
 
   // 펼친 브리핑을 다시 감춘다(idle 복귀) — 홈 "내 주변" 패널과 동일하게
   // 결과 블록에 닫기 경로를 준다. 닫은 뒤 포커스를 트리거 버튼으로 되돌려
@@ -44,45 +50,50 @@ export function CarRouteBriefing({
   }, []);
 
   function requestBriefing() {
-    if (
-      status.kind === "locating" ||
-      status.kind === "loading"
-    ) {
-      return;
-    }
-    if (!("geolocation" in navigator)) {
-      setStatus({ kind: "error", message: t("geoError") });
-      return;
-    }
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setStatus({ kind: "locating" });
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        setStatus({ kind: "loading" });
-        try {
-          const origin = `${position.coords.latitude},${position.coords.longitude}`;
-          // 비한국어 로케일(en/es/fr/it)은 NCP 영문 턴바이턴으로 라우팅한다 —
-          // 카카오모빌리티는 ko 안내문 전용이라 외국인에겐 영문이 정본. dataLocale가
-          // es/fr/it를 en으로 합쳐 라우트의 lang=en 디스패치를 태운다.
-          const res = await fetch(
-            `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}&lang=${dataLocale(locale)}`,
-          );
-          const body = await res.json();
-          if (!res.ok) {
-            setStatus({
-              kind: "error",
-              message: typeof body.error === "string" ? body.error : t("error"),
-            });
-            return;
-          }
-          setStatus({ kind: "done", briefing: body as Briefing });
-          requestAnimationFrame(() => headingRef.current?.focus());
-        } catch {
-          setStatus({ kind: "error", message: t("error") });
+    // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
+    // 팝업 없이 재사용한다(내 주변 버튼들과 동형, navigator.geolocation 직접 호출 금지).
+    void awaitGeolocation().then(async (g) => {
+      try {
+        if (g.status !== "ready") {
+          setStatus({ kind: "error", message: t("geoError") });
+          return;
         }
-      },
-      () => setStatus({ kind: "error", message: t("geoError") }),
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
+        if (!isInKorea(g.coords.lat, g.coords.lng)) {
+          setStatus({ kind: "outOfCoverage" });
+          return;
+        }
+        setStatus({ kind: "loading" });
+        const origin = `${g.coords.lat},${g.coords.lng}`;
+        // 비한국어 로케일(en/es/fr/it)은 NCP 영문 턴바이턴으로 라우팅한다 —
+        // 카카오모빌리티는 ko 안내문 전용이라 외국인에겐 영문이 정본. dataLocale가
+        // es/fr/it를 en으로 합쳐 라우트의 lang=en 디스패치를 태운다.
+        const res = await fetch(
+          `/api/route/car?origin=${origin}&dest=${dest.lat},${dest.lng}&lang=${dataLocale(locale)}`,
+        );
+        const body = await res.json();
+        // 커버리지 마커는 200이라 res.ok보다 먼저 검사한다(NightClinicsNearby 정본 순서).
+        if (isOutOfCoverageBody(body)) {
+          setStatus({ kind: "outOfCoverage" });
+          return;
+        }
+        if (!res.ok) {
+          setStatus({
+            kind: "error",
+            message: typeof body.error === "string" ? body.error : t("error"),
+          });
+          return;
+        }
+        setStatus({ kind: "done", briefing: body as Briefing });
+        requestAnimationFrame(() => headingRef.current?.focus());
+      } catch {
+        setStatus({ kind: "error", message: t("error") });
+      } finally {
+        inFlightRef.current = false;
+      }
+    });
   }
 
   const busy = status.kind === "locating" || status.kind === "loading";
@@ -93,9 +104,11 @@ export function CarRouteBriefing({
         ? t("loading")
         : status.kind === "error"
           ? status.message
-          : status.kind === "done"
-            ? t("ready")
-            : "";
+          : status.kind === "outOfCoverage"
+            ? tCommon("outOfCoverage")
+            : status.kind === "done"
+              ? t("ready")
+              : "";
 
   return (
     <div className="mt-3">

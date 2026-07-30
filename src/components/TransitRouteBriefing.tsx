@@ -9,6 +9,9 @@ import type {
   TransitRouteResult,
 } from "@/lib/types";
 import { dataLocale } from "@/lib/data-locale";
+import { awaitGeolocation } from "@/lib/geolocation";
+import { isInKorea } from "@/lib/coverage";
+import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 
 type Status =
   | { kind: "idle" }
@@ -16,6 +19,7 @@ type Status =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "empty" } // 경로 없음(graceful)
+  | { kind: "outOfCoverage" }
   | { kind: "done"; result: TransitRouteResult };
 
 /**
@@ -32,6 +36,7 @@ export function TransitRouteBriefing({
 }) {
   const t = useTranslations("route.transit");
   const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [showAlts, setShowAlts] = useState(false);
@@ -63,6 +68,11 @@ export function TransitRouteBriefing({
       );
       const body = await res.json();
       if (myReq !== reqId.current) return; // stale 응답 폐기
+      // 커버리지 마커는 200이라 res.ok보다 먼저 검사한다(NightClinicsNearby 정본 순서).
+      if (isOutOfCoverageBody(body)) {
+        setStatus({ kind: "outOfCoverage" });
+        return;
+      }
       if (!res.ok) {
         setStatus({
           kind: "error",
@@ -85,24 +95,25 @@ export function TransitRouteBriefing({
 
   function requestFromCurrent() {
     if (inFlight.current) return;
-    if (!("geolocation" in navigator)) {
-      setStatus({ kind: "error", message: t("geoError") });
-      return;
-    }
     inFlight.current = true;
     setStatus({ kind: "locating" });
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        if (!inFlight.current) return; // selectOrigin 등으로 취소됨
-        await fetchRoute(pos.coords.latitude, pos.coords.longitude);
-        inFlight.current = false;
-      },
-      () => {
+    // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
+    // 팝업 없이 재사용한다(내 주변 버튼들과 동형, navigator.geolocation 직접 호출 금지).
+    void awaitGeolocation().then(async (g) => {
+      if (!inFlight.current) return; // selectOrigin 등으로 취소됨
+      if (g.status !== "ready") {
         setStatus({ kind: "error", message: t("geoError") });
         inFlight.current = false;
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
+        return;
+      }
+      if (!isInKorea(g.coords.lat, g.coords.lng)) {
+        setStatus({ kind: "outOfCoverage" });
+        inFlight.current = false;
+        return;
+      }
+      await fetchRoute(g.coords.lat, g.coords.lng);
+      inFlight.current = false;
+    });
   }
 
   // 출발지 변경: 기존 장소 검색(/api/places) 재사용
@@ -138,9 +149,11 @@ export function TransitRouteBriefing({
           ? status.message
           : status.kind === "empty"
             ? t("noRoute")
-            : status.kind === "done"
-              ? t("ready")
-              : "";
+            : status.kind === "outOfCoverage"
+              ? tCommon("outOfCoverage")
+              : status.kind === "done"
+                ? t("ready")
+                : "";
 
   return (
     <div className="mt-3">
