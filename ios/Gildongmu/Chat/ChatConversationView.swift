@@ -451,16 +451,43 @@ private struct MessageBubbleView: View {
     }
 
     /// 출처 행: url 있으면 Link, 없으면 Text. "출처" 헤더 없음(계획서, 과잉 제거).
-    /// label은 V1 ko에선 서버가 주는 값 그대로(M8 i18n에서 정리).
     @ViewBuilder
     private func sourceRow(_ source: ChatSource) -> some View {
+        let label = Self.sourceDisplayLabel(source.label)
         if let urlString = source.url, let url = URL(string: urlString) {
-            Link(source.label, destination: url)
+            Link(label, destination: url)
                 .font(.footnote)
         } else {
-            Text(source.label)
+            Text(label)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    /// 서버 SourceAttribution.label("source.<id>" i18n 키)을 표시 문자열로 변환 —
+    /// 웹 SourceList의 `chat.<label>` 번역 계약 미러. appLocalized는 린터 계약상
+    /// 리터럴 키만 허용하므로 동적 결합 대신 switch로 열거하고, 미지의 라벨은
+    /// 원문을 그대로 보여 새 출처의 키 누락이 화면에서 드러나게 한다.
+    static func sourceDisplayLabel(_ label: String) -> String {
+        switch label {
+        case "source.airkorea": return appLocalized("chat.source.airkorea")
+        case "source.juso": return appLocalized("chat.source.juso")
+        case "source.kakao": return appLocalized("chat.source.kakao")
+        case "source.kakaomobility": return appLocalized("chat.source.kakaomobility")
+        case "source.kma": return appLocalized("chat.source.kma")
+        case "source.korail": return appLocalized("chat.source.korail")
+        case "source.kric": return appLocalized("chat.source.kric")
+        case "source.ncp": return appLocalized("chat.source.ncp")
+        case "source.nmc": return appLocalized("chat.source.nmc")
+        case "source.odsay": return appLocalized("chat.source.odsay")
+        case "source.osm": return appLocalized("chat.source.osm")
+        case "source.perplexity": return appLocalized("chat.source.perplexity")
+        case "source.seoulmetro": return appLocalized("chat.source.seoulmetro")
+        case "source.seoulopen": return appLocalized("chat.source.seoulopen")
+        case "source.tago": return appLocalized("chat.source.tago")
+        case "source.tmap": return appLocalized("chat.source.tmap")
+        case "source.tourapi": return appLocalized("chat.source.tourapi")
+        default: return label
         }
     }
 }
