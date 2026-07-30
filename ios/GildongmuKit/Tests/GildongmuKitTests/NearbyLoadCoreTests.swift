@@ -201,20 +201,28 @@ struct NearbyLoadCoreTests {
     }
 
     /// 승인 예외 2호(Conditions 스테일 미부활)의 파생 원천 계약 — previous는 loaded entry
-    /// 한정이다. entry=failedServer(로드 자체가 실패한 상태)에서 재조회하면 fetch는
-    /// previous=nil을 받아야 한다(직전 실패는 "직전 성공 데이터"가 아니므로 이어붙일 게 없다).
-    @Test func fetchPreviousIsNilWhenEntryIsNotLoaded() async {
+    /// 한정이다. loaded(P1) → denied 전락(#4, 직전 성공 payload가 실제로 존재했던 상태) →
+    /// 회복 재로드에서 fetch가 받는 previous가 nil이어야 한다(전락 후 복귀 재로드에서 직전
+    /// 성공 payload를 previous로 되살리지 않는다). entry가 아니라 "마지막 성공 payload"를
+    /// 별도로 저장해 항상 전달하는 변형 구현이 있다면 이 테스트가 그 회귀를 잡는다 — entry가
+    /// 처음부터 loaded가 아니었던 경로(직전 성공이 존재한 적이 없는 경로)만으로는 구현 정오와
+    /// 무관하게 previous가 항상 nil이라 동어반복이 된다(리뷰 지적, 변이 테스트로 실증).
+    @Test func fetchPreviousIsNilAfterPermissionLostRecovery() async {
         let recorder = Recorder()
-        recorder.fetchStub = { _, _ in throw StubError.boom }
         let core = makeCore(recorder)
         await core.load()
-        #expect(phaseName(core.phase) == "failedServer")
+        #expect(loadedPayload(core.phase) == "P1")
+
+        recorder.coordStub = { _ in throw NearbyLocationError.denied }
+        await core.load()
+        #expect(phaseName(core.phase) == "denied")
         recorder.resetLog()
 
+        recorder.coordStub = { _ in seoulCoord }
         recorder.fetchStub = { _, _ in "P2" }
         await core.load()
         #expect((recorder.fetchPrevious.last ?? nil) == nil)
-        #expect(phaseName(core.phase) == "loaded")
+        #expect(loadedPayload(core.phase) == "P2")
     }
 
     /// #2 — loaded에서 시작하면 직전 payload를 유지한 채 재조회하고, previous로 전달한다.
