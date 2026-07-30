@@ -1,61 +1,39 @@
 import SwiftUI
 import Observation
-import Accessibility
 import GildongmuKit
 
-/// 내 주변 아이 놀 곳. 규범(SubwayNearbyView) 패턴 미러: 평면 행이라 Section·heading 없이
-/// 한 항목을 단일 텍스트로 합친다. indoorOutdoor는 3-state라 unknown도 문장으로 표시(생략 금지).
+/// 내 주변 아이 놀 곳 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
+/// 평면 행이라 Section·heading 없이 한 항목을 단일 텍스트로 합친다.
+/// indoorOutdoor는 3-state라 unknown도 문장으로 표시(생략 금지).
 @Observable @MainActor
 final class KidsNearbyModel {
-    private(set) var state: NearbyLoadState<KidsPlace> = .idle
-    private let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
-    /// 재진입 가드(웹 in-flight ref 가드 미러): 로드 진행 중 재호출은 즉시 무시
-    private var isLoadingInFlight = false
+    private var core: NearbyLoadCore<[KidsPlace]>!   // willCommit이 self 캡처 — IUO 2단 초기화
+    private(set) var window = RevealWindow()
+    var phase: NearbyLoadPhase<[KidsPlace]> { core.phase }
+    var visibleCount: Int { window.visibleCount }
 
-    /// 초기 표시·공개 스텝 — 웹·V1 ClinicNearbyModel과 동일 값 유지.
-    static let initialVisible = 10
-    static let revealStep = 10
-    private(set) var visibleCount = KidsNearbyModel.initialVisible
+    init() {
+        let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: LocationService.nearbyCoordinateSource(),
+            coverage: .korea,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                return try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
+            },
+            willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
+            onEvent: nearbyAnnouncer(loaded: { places in
+                nearbyLoadedMessage(count: places.count, unit: appLocalized("ios.nearby.unitPlace"))
+            }))
+    }
+
+    func load(force: Bool = false) async { await core.load(force: force) }
 
     /// "더 보기": 공개 수를 늘리고 첫 새 항목 id를 반환한다(VO 포커스 이동 대상).
     func revealMore() -> String? {
-        guard case .loaded(let places) = state, visibleCount < places.count else { return nil }
-        let firstNewID = places[visibleCount].id
-        visibleCount = min(visibleCount + Self.revealStep, places.count)
-        return firstNewID
-    }
-
-    func load(force: Bool = false) async {
-        if isLoadingInFlight { return }
-        isLoadingInFlight = true
-        defer { isLoadingInFlight = false }
-        // 직전 성공 데이터가 있으면 유지한 채 재조회, 그 외(첫 로드·실패 후 재시도)는 로딩 표시
-        if case .loaded = state {} else { state = .loading }
-        do {
-            let coord = try await LocationService.shared.currentCoordinate(force: force)
-            // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어.
-            guard isInKorea(lat: coord.lat, lng: coord.lng) else {
-                if case .loaded = state { announceOutOfCoverage() }
-                state = .outOfCoverage
-                return
-            }
-            let places = try await service.kidsPlaces(lat: coord.lat, lng: coord.lng)
-            visibleCount = Self.initialVisible
-            state = .loaded(places)
-            announceLoaded(count: places.count, unit: appLocalized("ios.nearby.unitPlace"))
-        } catch let error as LocationService.LocationError {
-            if case .denied = error {
-                // loaded에서 권한 취소로 전락하면 목록이 통째로 사라진다 — 무신호 화면 전환 방지 통지
-                if case .loaded = state { announcePermissionLost() }
-                state = .denied
-            } else if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        } catch APIError.outOfCoverage {
-            if case .loaded = state { announceOutOfCoverage() }
-            state = .outOfCoverage
-        } catch {
-            // 조회 실패: 직전 성공 데이터가 있으면 유지(새로고침=재조회이지 데이터 포기 아님)
-            if case .loaded = state { announceRefreshFailed() } else { state = .failed }
-        }
+        guard case .loaded(let places) = phase,
+              let firstNewIndex = window.revealMore(totalCount: places.count) else { return nil }
+        return places[firstNewIndex].id
     }
 }
 
@@ -71,7 +49,7 @@ struct KidsNearbyView: View {
         // 행을 AX 트리에서 컬링하므로 scrollTo로 먼저 가시화한 뒤에 포커스를 대입한다.
         ScrollViewReader { proxy in
             List {
-                if case .loaded(let places) = model.state {
+                if case .loaded(let places) = model.phase {
                     ForEach(places.prefix(model.visibleCount)) { place in
                         // 보조 텍스트 정보량은 현행 유지(종류·실내외·거리·주소), 이름은 PlaceRow 1행에 결합.
                         NavigationLink {
@@ -100,7 +78,11 @@ struct KidsNearbyView: View {
             }
         }
         .navigationTitle(appLocalized("ios.nearby.kids"))
-        .nearbyStateOverlay { stateOverlay }
+        .nearbyStateOverlay {
+            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                empty: NearbyOverlayCopy(appLocalized("ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands"),
+                isEmpty: \.isEmpty))
+        }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
         .sheet(item: $chatPlace) { ChatView(place: $0) }
@@ -123,23 +105,6 @@ struct KidsNearbyView: View {
         case "indoor": return appLocalized("kidsNearby.indoor.indoor")
         case "outdoor": return appLocalized("kidsNearby.indoor.outdoor")
         default: return appLocalized("kidsNearby.indoor.unknown")
-        }
-    }
-
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading: ProgressView(appLocalized("ios.common.checking"))
-        case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
-        case .failed:
-            ContentUnavailableView(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                description: Text(appLocalized("ios.common.retryLater")))
-        case .outOfCoverage:
-            ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
-        case .loaded(let places) where places.isEmpty:
-            ContentUnavailableView(appLocalized("ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands")
-        default: EmptyView()
         }
     }
 }
