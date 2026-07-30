@@ -42,6 +42,7 @@ import { WebResults } from "./WebResults";
 import { PlaceDetail } from "./PlaceDetail";
 import { DirectionsView } from "./DirectionsView";
 import { NearbyHub } from "./NearbyHub";
+import { ChatOverlay } from "./chat/ChatOverlay";
 
 type Status =
   | { kind: "idle" }
@@ -163,6 +164,14 @@ export function PlaceSearch({
   // 삭제 후 포커스 복원: 렌더 반영 뒤 이동(rAF 금지 — useEffect+focus가 repo 정본 패턴)
   const recentFocusIndexRef = useRef<number | null>(null);
   const [recentRevision, setRecentRevision] = useState(0);
+  // 범용 채팅(옴니박스 [AI에게 질문], 스펙 §1·§3). 입력 텍스트는 1회성 전달 —
+  // ?q= 미기록·검색 API 미호출. 닫기는 트리거(SearchBar 영역)로 포커스 복귀 대신
+  // 검색 입력창으로 복귀한다(질문 흐름의 자연스러운 다음 행동 = 재입력).
+  const [generalChat, setGeneralChat] = useState<{ seed?: string } | null>(null);
+
+  function openGeneralChat() {
+    setGeneralChat({ seed: query.trim() || undefined });
+  }
 
   useEffect(() => {
     // react-hooks/set-state-in-effect 회피: 동기 setState 대신 콜백으로 한 틱 미룬다
@@ -370,10 +379,10 @@ export function PlaceSearch({
       window.dispatchEvent(new Event("gildongmu:locationchange"));
       setNearbyOpen(false);
       // 이 시점엔 허브가 아직 렌더 트리를 점유해 칩이 마운트되지 않았다 — rAF로
-      // 리렌더 이후 포커스한다. 칩은 status.kind==="idle" 게이트라 ?q=…&panel=nearby
-      // 조합 진입(검색 결과가 있는 상태)에서는 rAF 뒤에도 칩이 없을 수 있으므로,
-      // 그때는 기존 결과 헤딩/길찾기 버튼 복귀로 폴백한다(포커스가 body로 유실되는
-      // 것 방지 — 접근성 1급).
+      // 리렌더 이후 포커스한다. [내 주변] 칩은 상시 노출([길찾기]와 대칭, 2026-07-30)
+      // 이라 통상 nearbyEntryRef로 복귀하지만, ref가 아직 없는 극단적 타이밍 등을
+      // 대비해 결과 헤딩/길찾기 버튼 복귀로 폴백한다(포커스가 body로 유실되는 것
+      // 방지 — 접근성 1급).
       requestAnimationFrame(() => {
         if (nearbyEntryRef.current) nearbyEntryRef.current.focus();
         else focusResultsHeadingIfDone();
@@ -862,7 +871,18 @@ export function PlaceSearch({
         busy={status.kind === "loading"}
         onTranscribed={handleTranscribed}
         inputRef={searchInputRef}
+        onAsk={canShowChat ? openGeneralChat : undefined}
       />
+
+      {generalChat && (
+        <ChatOverlay
+          initialMessage={generalChat.seed}
+          onClose={() => {
+            setGeneralChat(null);
+            searchInputRef.current?.focus();
+          }}
+        />
+      )}
 
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
         {liveMessage}
@@ -881,17 +901,15 @@ export function PlaceSearch({
             {t("directions.title")}
           </button>
         )}
-        {status.kind === "idle" && (
-          <button
-            ref={nearbyEntryRef}
-            type="button"
-            onClick={openNearbyHub}
-            className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
-          >
-            <Compass aria-hidden="true" className="h-4 w-4" />
-            {t("nearby.hubEntry")}
-          </button>
-        )}
+        <button
+          ref={nearbyEntryRef}
+          type="button"
+          onClick={openNearbyHub}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent/10"
+        >
+          <Compass aria-hidden="true" className="h-4 w-4" />
+          {t("nearby.hubEntry")}
+        </button>
       </div>
 
       {/* 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 자동 등장 정적 목록이라

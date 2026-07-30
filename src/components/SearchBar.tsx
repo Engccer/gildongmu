@@ -16,6 +16,7 @@ export function SearchBar({
   label,
   placeholder,
   inputRef: externalInputRef,
+  onAsk,
 }: {
   query: string;
   onQueryChange: (v: string) => void;
@@ -32,6 +33,11 @@ export function SearchBar({
    * 없으면 내부 ref를 사용해 기존 동작(지우기 버튼 클릭 후 포커스 복귀)을 유지한다.
    */
   inputRef?: Ref<HTMLInputElement>;
+  /**
+   * 옴니박스 듀얼 액션(스펙 §1) — 있으면 검색 버튼 뒤에 [AI에게 질문] 버튼을
+   * 렌더한다(Gemini 키 게이트는 호출부 책임). Enter는 여전히 폼 제출=검색.
+   */
+  onAsk?: () => void;
 }) {
   const t = useTranslations("search");
   // 외부 ref가 없을 때 사용하는 내부 ref — clearQuery의 포커스 복귀에 쓴다.
@@ -112,6 +118,15 @@ export function SearchBar({
         <Search aria-hidden="true" className="h-5 w-5" />
         {t("button")}
       </button>
+      {onAsk && (
+        <button
+          type="button"
+          onClick={onAsk}
+          className="inline-flex min-h-12 items-center rounded-md border border-accent px-4 text-lg font-semibold text-accent"
+        >
+          {t("askAi")}
+        </button>
+      )}
     </form>
   );
 }
