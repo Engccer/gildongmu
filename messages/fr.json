@@ -663,5 +663,9 @@
   "barrierFreeInfo": {
     "heading": "Équipements accessibles",
     "source": "Source : Korea Tourism Organization, informations de voyage sans barrières"
+  },
+  "nearby": {
+    "hubTitle": "À proximité",
+    "hubEntry": "À proximité"
   }
 }
