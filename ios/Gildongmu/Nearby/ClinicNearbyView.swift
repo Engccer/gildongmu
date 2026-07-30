@@ -116,7 +116,7 @@ struct ClinicNearbyView: View {
                                 secondaryOverride: joinText(
                                     clinic.kind,
                                     clinicStatusText(clinic.openStatus),
-                                    appLocalized("place.distance", formatDistanceKo(Double(clinic.distanceMeters)))),
+                                    appLocalized("place.distance", formatDistance(clinic.distanceMeters))),
                                 onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
                         }
                         .id(clinic.id)

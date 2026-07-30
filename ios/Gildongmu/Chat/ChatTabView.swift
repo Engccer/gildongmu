@@ -43,19 +43,7 @@ struct ChatTabView: View {
         }
     }
 
-    /// 각 버튼은 독립 접근성 객체(정상). 탭하면 그 문장을 즉시 전송, 첫 전송 후 리스트 소멸.
     private var suggestionList: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(suggestions, id: \.self) { suggestion in
-                // 44pt frame은 label 안쪽 — 버튼 바깥 frame은 히트 영역을 안 넓힌다
-                Button {
-                    model.send(suggestion)
-                } label: {
-                    Text(suggestion)
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.bordered)
-            }
-        }
+        SuggestionButtonList(suggestions: suggestions) { model.send($0) }
     }
 }

@@ -81,7 +81,7 @@ struct KidsNearbyView: View {
                                 place: kidsPlaceToPlace(place),
                                 secondaryOverride: joinText(
                                     kindLabel(place.kind), inOutLabel(place.indoorOutdoor),
-                                    appLocalized("place.distance", formatDistanceKo(Double(place.distanceMeters))),
+                                    appLocalized("place.distance", formatDistance(place.distanceMeters)),
                                     place.roadAddress ?? place.address),
                                 onAskAbout: { chatPlace = kidsPlaceToPlace(place) })
                         }

@@ -99,10 +99,3 @@ public func whereAmIToPlace(_ data: WhereAmIData, lat: Double, lng: Double, lang
         link: nil,
         distanceMeters: nil)
 }
-
-private func firstNonEmpty(_ values: String?...) -> String? {
-    for value in values {
-        if let value, !value.isEmpty { return value }
-    }
-    return nil
-}

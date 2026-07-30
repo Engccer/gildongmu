@@ -17,11 +17,7 @@ public struct BarrierFreeService: Sendable {
     public func nearby(lat: Double, lng: Double) async throws -> [BarrierFreePlace] {
         let response: BarrierFreeNearbyResponse = try await client.get(
             "/api/places/barrier-free",
-            query: [
-                URLQueryItem(name: "lat", value: String(lat)),
-                URLQueryItem(name: "lng", value: String(lng)),
-                URLQueryItem(name: "limit", value: String(fetchLimit)),
-            ])
+            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "limit", value: String(fetchLimit))])
         return response.places
     }
 
@@ -29,11 +25,7 @@ public struct BarrierFreeService: Sendable {
     public func match(lat: Double, lng: Double, name: String) async -> BarrierFreeDetail? {
         let response: BarrierFreeDetailResponse? = try? await client.get(
             "/api/places/barrier-free/match",
-            query: [
-                URLQueryItem(name: "lat", value: String(lat)),
-                URLQueryItem(name: "lng", value: String(lng)),
-                URLQueryItem(name: "name", value: name),
-            ])
+            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "name", value: name)])
         return response?.detail
     }
 }

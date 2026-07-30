@@ -349,18 +349,10 @@ struct PlaceRow: View {
         var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
         if let distance = place.distanceMeters {
             // ko.json place.distance "약 {distance}" 정본 미러.
-            parts.append(appLocalized("place.distance", formatDistanceKo(distance)))
+            parts.append(appLocalized("place.distance", formatDistance(Int(distance.rounded()))))
         }
         return parts.filter { !$0.isEmpty }.joined(separator: ", ")
     }
-}
-
-/// 웹 `src/lib/format.ts` formatDistance 미러: 1,000m 미만은 "{m}m", 이상은
-/// 소수 첫째자리 "{km}km". GildongmuKit의 동형 함수는 private이라(Kit 비수정
-/// 범위) 여기 로컬로 둔다. private 제거: 내 주변 행 보조 텍스트와 공유.
-func formatDistanceKo(_ meters: Double) -> String {
-    if meters < 1000 { return "\(Int(meters.rounded()))m" }
-    return String(format: "%.1fkm", meters / 1000)
 }
 
 /// 장소 필터 픽커 항목(분류·지역 공용). 라벨은 이미 로컬라이즈된 문자열.

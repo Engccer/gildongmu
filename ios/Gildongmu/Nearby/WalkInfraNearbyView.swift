@@ -206,7 +206,7 @@ struct WalkInfraNearbyView: View {
     }
 
     private func audioSiteText(_ site: AudioSignalSite) -> String {
-        let distance = formatDistanceKo(Double(site.distanceMeters))
+        let distance = formatDistance(site.distanceMeters)
         guard let direction = bearingKorean(site.bearing) else {
             // 미지 방위(계약상 도달 희박): 빈 방위를 채우면 선행 공백·쉼표가 남는다 —
             // 포맷 결과에서 잔여 구분자를 걷어내 문구를 깨끗하게(itemLocationText 동형 처리).
@@ -217,7 +217,7 @@ struct WalkInfraNearbyView: View {
     }
 
     private func itemLocationText(_ feature: WalkFeature) -> String {
-        let distance = formatDistanceKo(Double(feature.distanceMeters))
+        let distance = formatDistance(feature.distanceMeters)
         guard let direction = bearingKorean(feature.bearing) else { return distance }
         return appLocalized("walkInfra.itemLocation", direction, distance)
     }

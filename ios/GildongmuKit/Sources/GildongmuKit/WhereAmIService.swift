@@ -9,11 +9,7 @@ public struct WhereAmIService: Sendable {
 
     public func locate(lat: Double, lng: Double) async throws -> WhereAmIData? {
         let response: WhereAmIResponse = try await client.get(
-            "/api/where-am-i",
-            query: [
-                URLQueryItem(name: "lat", value: String(lat)),
-                URLQueryItem(name: "lng", value: String(lng)),
-            ])
+            "/api/where-am-i", query: coordQuery(lat: lat, lng: lng))
         return response.data
     }
 }

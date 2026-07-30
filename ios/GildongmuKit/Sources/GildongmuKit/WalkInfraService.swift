@@ -11,11 +11,7 @@ public struct WalkInfraService: Sendable {
 
     public func nearby(lat: Double, lng: Double) async throws -> WalkInfrastructure {
         let envelope: WalkInfraEnvelope = try await client.get(
-            "/api/walk/nearby",
-            query: [
-                URLQueryItem(name: "lat", value: String(lat)),
-                URLQueryItem(name: "lng", value: String(lng)),
-            ])
+            "/api/walk/nearby", query: coordQuery(lat: lat, lng: lng))
         return envelope.walk
     }
 }
