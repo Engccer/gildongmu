@@ -1,4 +1,3 @@
-import type { RouteEndpoints, RouteMode } from "./types";
 import { isInKorea } from "./coverage";
 
 /**
@@ -13,34 +12,6 @@ import { isInKorea } from "./coverage";
  */
 
 export { isInKorea };
-
-/**
- * 길찾기 딥링크 생성.
- * 출발지를 생략하면 네이버 지도 앱이 현재 위치를 출발지로 사용한다.
- */
-export function buildRouteDeeplink(
-  mode: RouteMode,
-  endpoints: RouteEndpoints,
-  appname: string,
-): string {
-  const { start, dest } = endpoints;
-  if (!isInKorea(dest.lat, dest.lng)) {
-    throw new Error(
-      `목적지 좌표가 한반도 권역을 벗어남: ${dest.lat}, ${dest.lng}`,
-    );
-  }
-  const params = new URLSearchParams();
-  if (start) {
-    params.set("slat", String(start.lat));
-    params.set("slng", String(start.lng));
-    params.set("sname", start.name);
-  }
-  params.set("dlat", String(dest.lat));
-  params.set("dlng", String(dest.lng));
-  params.set("dname", dest.name);
-  params.set("appname", appname);
-  return `nmap://route/${mode}?${params.toString()}`;
-}
 
 /** 좌표 핀 + 이름으로 지도 앱을 여는 딥링크 */
 export function buildPlaceDeeplink(
@@ -65,9 +36,9 @@ export function buildWebFallbackUrl(query: string): string {
 }
 
 /**
- * 모바일 UA 판별 — 네이버 "열기" 버튼의 경로 분기(모바일=앱 스킴 시도, 데스크톱=웹 지도).
- * iPadOS 13+ 사파리는 Macintosh로 위장하지만, 위장 UA에서 nmap:// 실패 시에도
- * 아래 폴백 타이머가 웹 지도로 회복하므로 오판의 실해가 없다(과잉 판별 금지).
+ * 모바일 UA 판별 — 네이버 "열기" 버튼의 경로 분기(모바일=앱 스킴 시도, 데스크톱=웹 URL 직행).
+ * iPadOS 13+ 사파리는 Macintosh로 위장해 데스크톱 분기로 오판되지만, 그 분기가 애초에
+ * 딥링크 시도 없이 웹 URL로 직행하므로 오판의 실해가 없다(과잉 판별 금지).
  */
 export function isMobileUserAgent(ua: string): boolean {
   return /iPhone|iPad|iPod|Android/i.test(ua);

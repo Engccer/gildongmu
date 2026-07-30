@@ -87,14 +87,9 @@
     "jibun": "地番"
   },
   "route": {
-    "naverLabel": "NAVERマップ",
-    "naverModeAction": "NAVERマップで{mode}の経路検索",
-    "kakaoLabel": "カカオマップ",
-    "kakaoModeAction": "カカオマップで{mode}の経路検索",
     "walk": "徒歩",
     "public": "公共交通",
     "car": "車",
-    "deeplinkHint": "NAVERマップのアプリが開きます",
     "briefing": {
       "button": "車の経路案内",
       "locating": "現在地を確認中…",
@@ -489,7 +484,6 @@
   },
   "placeChat": {
     "launch": "この場所について質問する",
-    "launchFor": "<name></name>について質問する",
     "title": "この場所について質問する",
     "close": "チャットを閉じる",
     "empty": "何が知りたいですか?",
@@ -636,7 +630,6 @@
       "landmarkItem": "{direction}側約{distance}に<name></name>({category})",
       "landmarksTail": "などがあります。"
     },
-    "chatButton": "現在地について質問する",
     "source": "出典: カカオマップ。方角は北基準の方位です。",
     "direction": {
       "n": "北",

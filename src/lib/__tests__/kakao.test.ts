@@ -4,7 +4,6 @@ import {
   buildKakaoPlaceDeeplink,
   buildKakaoRouteDeeplink,
   buildKakaoWebMapUrl,
-  buildKakaoWebRouteUrl,
 } from "../deeplink-kakao";
 
 describe("normalizeDocument (카카오 로컬)", () => {
@@ -86,29 +85,12 @@ describe("buildKakaoPlaceDeeplink", () => {
   });
 });
 
-describe("카카오맵 웹 URL (미설치 폴백)", () => {
+describe("buildKakaoWebMapUrl", () => {
   const DEST = { lat: 37.578897, lng: 126.976861, name: "경복궁" };
-
-  it("길찾기 웹 URL — 수단 세그먼트 매핑 (public→traffic, walk→walk)", () => {
-    expect(buildKakaoWebRouteUrl("public", DEST)).toBe(
-      `https://map.kakao.com/link/by/traffic/${encodeURIComponent("경복궁")},37.578897,126.976861`,
-    );
-    expect(buildKakaoWebRouteUrl("walk", DEST)).toContain("/link/by/walk/");
-  });
 
   it("지도 보기 웹 URL을 생성한다", () => {
     expect(buildKakaoWebMapUrl(DEST)).toBe(
       `https://map.kakao.com/link/map/${encodeURIComponent("경복궁")},37.578897,126.976861`,
     );
-  });
-
-  it("권역 밖 목적지는 거부한다", () => {
-    expect(() =>
-      buildKakaoWebRouteUrl("car", {
-        lat: 1.35,
-        lng: 103.82,
-        name: "싱가포르",
-      }),
-    ).toThrow();
   });
 });

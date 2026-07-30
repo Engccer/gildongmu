@@ -87,14 +87,9 @@
     "jibun": "Número de lote"
   },
   "route": {
-    "naverLabel": "Naver Map",
-    "naverModeAction": "Indicaciones en {mode} con Naver Map",
-    "kakaoLabel": "Kakao Map",
-    "kakaoModeAction": "Indicaciones en {mode} con Kakao Map",
     "walk": "A pie",
     "public": "Transporte público",
     "car": "Coche",
-    "deeplinkHint": "Se abre la app de Naver Map",
     "briefing": {
       "button": "Escuchar la ruta en coche como texto",
       "locating": "Obteniendo tu ubicación…",
@@ -489,7 +484,6 @@
   },
   "placeChat": {
     "launch": "Preguntar sobre este lugar",
-    "launchFor": "Preguntar sobre <name></name>",
     "title": "Preguntar sobre este lugar",
     "close": "Cerrar chat",
     "empty": "¿Qué te gustaría saber?",
@@ -636,7 +630,6 @@
       "landmarkItem": "<name></name> ({category}) a unos {distance} al {direction}",
       "landmarksTail": ", y más."
     },
-    "chatButton": "Preguntar sobre mi ubicación actual",
     "source": "Fuente: Kakao Map. Las direcciones son rumbos desde el norte.",
     "direction": {
       "n": "norte",
