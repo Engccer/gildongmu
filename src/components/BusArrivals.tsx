@@ -43,6 +43,9 @@ export function BusArrivals(
   const triggerRef = useRef<HTMLButtonElement>(null);
   /** done 진입 시 헤딩 포커스를 1회만 옮기기 위한 가드(재조회 시 재발화). */
   const focusedRef = useRef(false);
+  /** BusRouteStops(경유정류소) 통지 — 도착 항목마다 별도 live region이 생기지
+   * 않도록 단일 live region으로 승격해 받는다. */
+  const [routeStopsNotice, setRouteStopsNotice] = useState("");
 
   async function fetchAt(lat: number, lng: number) {
     setStatus({ kind: "loading" });
@@ -77,6 +80,7 @@ export function BusArrivals(
 
   function load(force = false) {
     const prevStatus = status;
+    setRouteStopsNotice("");
     // 홈(current)에서만 아코디언 점유를 가져간다 — 다른 펼친 패널이 스스로 닫힌다.
     // 상세(place)에선 단일 패널이라 조정 불필요.
     if (props.mode === "current") claim();
@@ -189,7 +193,7 @@ export function BusArrivals(
       </button>
 
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {live}
+        {live || routeStopsNotice}
       </p>
 
       {status.kind === "done" && (
@@ -262,6 +266,7 @@ export function BusArrivals(
                             cityCode={stop.cityCode}
                             routeId={a.routeId}
                             routeNo={a.routeNo}
+                            onNotice={setRouteStopsNotice}
                           />
                         </li>
                       );
