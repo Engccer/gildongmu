@@ -430,6 +430,8 @@
   "chat": {
     "inputLabel": "メッセージを入力",
     "send": "送信",
+    "generalTitle": "AIに質問",
+    "generalEmpty": "場所、道案内、周辺情報について聞いてみましょう。",
     "error": {
       "chat_failed": "回答を取得できませんでした。",
       "chat_unavailable": "チャットを利用できません。",

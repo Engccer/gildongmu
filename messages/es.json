@@ -430,6 +430,8 @@
   "chat": {
     "inputLabel": "Mensaje",
     "send": "Enviar",
+    "generalTitle": "Preguntar a la IA",
+    "generalEmpty": "Pregunta sobre lugares, cómo llegar o qué hay cerca.",
     "error": {
       "chat_failed": "No se pudo obtener una respuesta.",
       "chat_unavailable": "El chat no está disponible.",
