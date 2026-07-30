@@ -13,8 +13,6 @@ import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 interface SurroundingsData {
   places: SurroundingPlace[];
 }
-/** 옵트인 확장 요청 — 라우트 기본 상한(12)은 limit 미지정 소비자(CLI/MCP·iOS)용,
-    "더 보기" 재료는 웹이 NEARBY_LIMIT_MAX로 명시 확보한다. */
 
 /**
  * 내 주변 둘러보기(기능 A) — 홈 진입점. KidsPlacesNearby 동형(geolocation 공유
@@ -28,6 +26,8 @@ export function SurroundingsNearby() {
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } =
     useNearbyFetch<SurroundingsData>({
       source: { kind: "current" },
+      // 옵트인 확장 요청 — 라우트 기본 상한(12)은 limit 미지정 소비자(CLI/MCP·iOS)용,
+      // "더 보기" 재료는 웹이 NEARBY_LIMIT_MAX로 명시 확보한다.
       fetchAt: ({ lat, lng }) =>
         fetch(`/api/places/around?lat=${lat}&lng=${lng}&limit=${NEARBY_LIMIT_MAX}`, {
           cache: "no-store",
