@@ -58,15 +58,23 @@ export function combinedLiveMessage(input: {
   webCount?: number | null;
   spokenQuery: string | null;
   placeErrored: boolean;
+  addrErrored?: boolean;
 }): LivePart[] | null {
   const { loading, placeCount, addrCount, spokenQuery, placeErrored } = input;
   const webCount = input.webCount ?? null;
+  const addrErrored = input.addrErrored ?? false;
   // 1. 로딩 우선(실패 단정 금지).
   if (loading) {
     return [{ key: spokenQuery ? "search.searchingFor" : "search.searching" }];
   }
   // 2. 비로딩 + 모두 미실행 + 에러 아님 = idle(통지 없음).
-  if (placeCount === null && addrCount === null && webCount === null && !placeErrored) {
+  if (
+    placeCount === null &&
+    addrCount === null &&
+    webCount === null &&
+    !placeErrored &&
+    !addrErrored
+  ) {
     return null;
   }
   const place = placeCount ?? 0;
@@ -76,8 +84,15 @@ export function combinedLiveMessage(input: {
   if (place > 0) parts.push({ key: "search.placeCount", values: { count: place } });
   if (web > 0) parts.push({ key: "search.webCount", values: { count: web } });
   if (addr > 0) parts.push({ key: "search.addressCount", values: { count: addr } });
+  // 3. 주소 조회 실패는 "결과 없음"과 다른 신호라 있는 결과 뒤에 덧붙인다
+  // (3-state: 0건≠정보없음≠조회실패). 장소 에러가 이미 error로 단정하는
+  // 경로(아래 4)와 겹치지 않도록, 카운트 part가 하나도 없고 placeErrored인
+  // 경우엔 여기서 넣지 않고 4에서 search.error 단독으로 반환한다.
+  if (addrErrored && !(parts.length === 0 && placeErrored)) {
+    parts.push({ key: "search.addressError" });
+  }
   if (parts.length > 0) return parts;
-  // 3. 보여줄 결과 0 — 장소 에러면 실패 통지(무음 방지), 아니면 결과 없음.
+  // 4. 보여줄 결과 0 — 장소 에러면 실패 통지(무음 방지), 아니면 결과 없음.
   if (placeErrored) return [{ key: "search.error" }];
   return [{ key: "search.noResults" }];
 }

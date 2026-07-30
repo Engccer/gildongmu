@@ -592,6 +592,7 @@ export function PlaceSearch({
           webCount,
           spokenQuery,
           placeErrored: status.kind === "error",
+          addrErrored: addrStatus.kind === "error",
         });
   const liveMessage =
     status.kind === "idle" && recentNotice
@@ -689,6 +690,7 @@ export function PlaceSearch({
     webCount: webResults ? webResults.length : null,
     spokenQuery: null,
     placeErrored: status.kind === "error",
+    addrErrored: addrStatus.kind === "error",
   });
   const resultsHeading =
     (headingParts ?? []).map((p) => t(p.key, p.values ?? {})).join(", ");
