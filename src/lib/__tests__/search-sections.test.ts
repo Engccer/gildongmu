@@ -84,6 +84,34 @@ describe("combinedLiveMessage 공존 모델", () => {
       combinedLiveMessage({ ...base, placeCount: null, webCount: 5, addrCount: 0, placeErrored: true }),
     ).toEqual([{ key: "search.webCount", values: { count: 5 } }]);
   });
+
+  it("주소 조회 실패는 '결과 없음'과 구분해 통지한다", () => {
+    expect(
+      combinedLiveMessage({
+        loading: false, placeCount: 0, addrCount: null, webCount: null,
+        spokenQuery: null, placeErrored: false, addrErrored: true,
+      }),
+    ).toEqual([{ key: "search.addressError" }]);
+  });
+  it("장소 결과가 있어도 주소 실패는 뒤에 덧붙인다", () => {
+    expect(
+      combinedLiveMessage({
+        loading: false, placeCount: 3, addrCount: null, webCount: null,
+        spokenQuery: null, placeErrored: false, addrErrored: true,
+      }),
+    ).toEqual([
+      { key: "search.placeCount", values: { count: 3 } },
+      { key: "search.addressError" },
+    ]);
+  });
+  it("장소 에러가 주소 에러보다 우선한다", () => {
+    expect(
+      combinedLiveMessage({
+        loading: false, placeCount: null, addrCount: null, webCount: null,
+        spokenQuery: null, placeErrored: true, addrErrored: true,
+      }),
+    ).toEqual([{ key: "search.error" }]);
+  });
 });
 
 describe("orderResultSections — 웹", () => {
