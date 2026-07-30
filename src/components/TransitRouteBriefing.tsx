@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { TransitRoute, TransitRouteResult } from "@/lib/types";
 import { awaitGeolocation } from "@/lib/geolocation";
@@ -39,6 +39,7 @@ export function TransitRouteBriefing({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
   const reqId = useRef(0);
+  const focusedRef = useRef(false);
 
   // 펼친 경로를 다시 감춘다(idle 복귀) — 홈 "내 주변" 패널과 동일하게 결과
   // 블록에 닫기 경로를 준다. 닫은 뒤 포커스를 트리거 버튼으로 되돌린다.
@@ -77,12 +78,24 @@ export function TransitRouteBriefing({
       }
       setExpandedAlts(new Set());
       setStatus({ kind: "done", result: body.result as TransitRouteResult });
-      requestAnimationFrame(() => headingRef.current?.focus());
     } catch {
       if (myReq === reqId.current)
         setStatus({ kind: "error", message: t("error") });
     }
   }
+
+  // done 진입 시 결과 헤딩으로 포커스 이동 — fetch 콜백 rAF는 React 커밋과
+  // 인과관계가 없어 레이스(repo 실측) — useEffect는 커밋 이후 실행 보장.
+  useEffect(() => {
+    if (status.kind === "done") {
+      if (!focusedRef.current) {
+        focusedRef.current = true;
+        headingRef.current?.focus();
+      }
+    } else {
+      focusedRef.current = false;
+    }
+  }, [status.kind]);
 
   function requestFromCurrent() {
     if (inFlight.current) return;

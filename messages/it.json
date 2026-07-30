@@ -455,9 +455,9 @@
         "get_transit_route": "percorso con i mezzi",
         "get_walk_route": "percorso a piedi",
         "search_web": "ricerca web",
-        "get_nearby_barrier_free": "Luoghi accessibili",
-        "get_walk_infrastructure": "Infrastrutture pedonali",
-        "unknown": "Informazioni"
+        "get_nearby_barrier_free": "luoghi accessibili",
+        "get_walk_infrastructure": "infrastrutture pedonali",
+        "unknown": "informazioni"
       }
     },
     "sources": "Fonti",
