@@ -18,9 +18,6 @@ interface BarrierFreeData {
 /** 캐시 값: 로딩 중 / 상세 객체 / 없음(에러 또는 contentId 미등록) */
 type DetailEntry = "loading" | BarrierFreeDetail | null;
 
-/** 옵트인 확장 요청 — 라우트 기본 상한(8)은 limit 미지정 소비자(CLI/MCP·iOS)용,
-    "더 보기" 재료는 웹이 NEARBY_LIMIT_MAX로 명시 확보한다. */
-
 /**
  * 내 주변 무장애 관광지 — 홈 진입점 + 채팅 카드용(autoLoad).
  *
@@ -54,6 +51,8 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } =
     useNearbyFetch<BarrierFreeData>({
       source: { kind: "current", autoLoad },
+      // 옵트인 확장 요청 — 라우트 기본 상한(8)은 limit 미지정 소비자(CLI/MCP·iOS)용,
+      // "더 보기" 재료는 웹이 NEARBY_LIMIT_MAX로 명시 확보한다.
       fetchAt: ({ lat, lng }) =>
         fetch(
           `/api/places/barrier-free?lat=${lat}&lng=${lng}&limit=${NEARBY_LIMIT_MAX}`,

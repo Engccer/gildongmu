@@ -39,6 +39,9 @@ export function WalkInfraNearby() {
       coverage: "none",
       fetchAt: ({ lat, lng }) =>
         fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}`, { cache: "no-store" }),
+      // parse는 항상 done — empty 분기 도달 불가(위 spec §2-F: 결과 0건이라는 상태가
+      // 없다). WalkInfra에 empty 개념을 도입하려면 walkInfra.empty i18n 키(6로케일)부터
+      // 추가할 것.
       parse: (body) => ({
         kind: "done",
         data: { walk: (body as { walk: WalkInfrastructure }).walk },
