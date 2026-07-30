@@ -4,6 +4,7 @@ import {
   buildRouteDeeplink,
   buildWebFallbackUrl,
   isInKorea,
+  isMobileUserAgent,
 } from "../deeplink";
 
 const APPNAME = "space.dodoplanet.gildongmu";
@@ -69,5 +70,43 @@ describe("buildWebFallbackUrl", () => {
     expect(buildWebFallbackUrl("경복궁")).toBe(
       `https://map.naver.com/p/search/${encodeURIComponent("경복궁")}`,
     );
+  });
+});
+
+describe("isMobileUserAgent", () => {
+  it("iPhone UA는 모바일", () => {
+    expect(
+      isMobileUserAgent(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15",
+      ),
+    ).toBe(true);
+  });
+  it("Android UA는 모바일", () => {
+    expect(
+      isMobileUserAgent(
+        "Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36",
+      ),
+    ).toBe(true);
+  });
+  it("iPad UA는 모바일(앱 딥링크 유효)", () => {
+    expect(
+      isMobileUserAgent(
+        "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15",
+      ),
+    ).toBe(true);
+  });
+  it("macOS 데스크톱 UA는 비모바일", () => {
+    expect(
+      isMobileUserAgent(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126.0 Safari/537.36",
+      ),
+    ).toBe(false);
+  });
+  it("Windows 데스크톱 UA는 비모바일", () => {
+    expect(
+      isMobileUserAgent(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      ),
+    ).toBe(false);
   });
 });
