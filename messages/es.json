@@ -455,7 +455,10 @@
         "get_car_route": "ruta en coche",
         "get_transit_route": "ruta de transporte público",
         "get_walk_route": "ruta a pie",
-        "search_web": "búsqueda web"
+        "search_web": "búsqueda web",
+        "get_nearby_barrier_free": "Lugares accesibles",
+        "get_walk_infrastructure": "Infraestructura peatonal",
+        "unknown": "Información"
       }
     },
     "sources": "Fuentes",

@@ -455,7 +455,10 @@
         "get_car_route": "자동차 경로",
         "get_transit_route": "대중교통 경로",
         "get_walk_route": "도보 경로",
-        "search_web": "웹 검색"
+        "search_web": "웹 검색",
+        "get_nearby_barrier_free": "무장애 관광지",
+        "get_walk_infrastructure": "보행 인프라",
+        "unknown": "정보"
       }
     },
     "sources": "출처",

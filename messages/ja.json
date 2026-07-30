@@ -455,7 +455,10 @@
         "get_car_route": "車の経路",
         "get_transit_route": "公共交通の経路",
         "get_walk_route": "徒歩の経路",
-        "search_web": "ウェブ検索"
+        "search_web": "ウェブ検索",
+        "get_nearby_barrier_free": "バリアフリー観光地",
+        "get_walk_infrastructure": "歩行インフラ",
+        "unknown": "情報"
       }
     },
     "sources": "出典",
