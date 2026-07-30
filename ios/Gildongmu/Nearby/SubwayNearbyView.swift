@@ -34,7 +34,10 @@ struct SubwayNearbyView: View {
                 ForEach(stations, id: \.stationName) { station in
                     Section {
                         // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
-                        Text(joinText(station.stationName, station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
+                        // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
+                        // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
+                        // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
+                        Text(joinText(displayStationName(station), station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
                             .accessibilityAddTraits(.isHeader)
                         if station.arrivalStatus == "unavailable" {
                             Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
@@ -58,5 +61,13 @@ struct SubwayNearbyView: View {
         }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
+    }
+
+    /// 표시 역명 — en 계열 로케일은 seed 영문명, 없으면 한국어 원명으로 폴백.
+    private func displayStationName(_ station: NearbySubwayStation) -> String {
+        guard AppLanguage.dataLocale == "en", let nameEn = station.nameEn, !nameEn.isEmpty else {
+            return station.stationName
+        }
+        return nameEn
     }
 }
