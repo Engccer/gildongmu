@@ -49,7 +49,7 @@ struct RevealWindowTests {
     @Test func resetRestoresInitialCount() {
         var window = RevealWindow()
 
-        // visibleCount를 25로 진행
+        // visibleCount를 30으로 진행
         _ = window.revealMore(totalCount: 50)
         _ = window.revealMore(totalCount: 50)
         #expect(window.visibleCount == 30)
