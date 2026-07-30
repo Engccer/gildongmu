@@ -1,17 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// unstable_cache는 Next 런타임 밖(vitest node 환경)에서 incrementalCache 부재로
-// throw한다(실측). 캐시 키·revalidate는 무시하고 즉시 호출하는 passthrough로 대체.
-// single-flight·전역 카운터는 walk-infra.ts 자체 로직(모듈 스코프 Map·카운터)이라
-// 이 passthrough로도 검증 가능하다.
-vi.mock("next/cache", () => ({
-  unstable_cache: (fn: () => Promise<unknown>) => fn,
-}));
-
+// walk-infra는 Next 비의존(이식성 규칙) — 캐시는 configureWalkInfraTileCache로
+// 주입한다. 미구성 시 기본 경로는 캐시 없이 fetcher를 직접 호출(대부분의 테스트가
+// 이 경로를 쓴다). 주입 경로는 아래 전용 테스트에서 별도 검증.
 vi.mock("../providers/audio-signals");
 vi.mock("../providers/overpass");
 
-import { getWalkInfrastructure, __resetWalkInfraForTest } from "../walk-infra";
+import { getWalkInfrastructure, __resetWalkInfraForTest, configureWalkInfraTileCache } from "../walk-infra";
 import { findAudioSignalsNear } from "../providers/audio-signals";
 import type { NearbyAudioSignals } from "../providers/audio-signals";
 import { fetchWalkFeaturesTile } from "../providers/overpass";
@@ -125,5 +120,19 @@ describe("getWalkInfrastructure", () => {
     }
     const overflow = await getWalkInfrastructure(37 + 30 * 0.01, 127.0);
     expect(overflow.osm.status).toBe("error");
+  });
+
+  it("configureWalkInfraTileCache로 주입된 래퍼가 타일 키와 fetcher로 호출되고 결과가 그대로 반영된다", async () => {
+    mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
+    mockOverpass.mockResolvedValue([rawFeature({ crossing: true })]);
+
+    const wrapper = vi.fn((fetcher: () => Promise<unknown>) => fetcher());
+    configureWalkInfraTileCache(wrapper as never);
+
+    const result = await getWalkInfrastructure(37.5, 127.0);
+
+    expect(wrapper).toHaveBeenCalledTimes(1);
+    expect(wrapper).toHaveBeenCalledWith(expect.any(Function), "walk-tile:37.500:127.000");
+    expect(result.osm.status).toBe("ok");
   });
 });

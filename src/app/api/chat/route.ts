@@ -1,11 +1,18 @@
 // /api/chat — Gemini multi-turn 에이전트 루프 + NDJSON 스트리밍
 import type { Content } from "@google/genai";
+import { unstable_cache } from "next/cache";
 import { getGeminiClient, GEMINI_MODEL } from "@/lib/gemini/client";
 import { availableDeclarations } from "@/lib/chat/declarations";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { dataLocale } from "@/lib/data-locale";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
+import { configureWalkInfraTileCache } from "@/lib/walk-infra";
 import type { ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
+
+// Overpass 타일 1시간 지속 캐시 주입 — walk-infra는 Next 비의존 유지(이식성 규칙).
+configureWalkInfraTileCache((fetcher, key) =>
+  unstable_cache(fetcher, [key], { revalidate: 3600 })(),
+);
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120; // 적극 연쇄 + 여러 Gemini 호출 — 조기 중단 방지

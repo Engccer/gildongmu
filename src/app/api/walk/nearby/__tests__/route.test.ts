@@ -7,6 +7,7 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 vi.mock("@/lib/walk-infra", () => ({
   getWalkInfrastructure: vi.fn(),
+  configureWalkInfraTileCache: vi.fn(),
 }));
 
 import { GET } from "../route";
