@@ -76,10 +76,10 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
     // 0은 "정보 없음"으로 취급해 생략(3-state: 배차 0분은 존재하지 않는 값)
     intervalMinutes: sp.intervalTime || undefined,
     minutes,
-    // 운행시간 조인 키는 서울(1000)만 TOPIS ID 직결이 확정됐다. 지방은 TAGO
-    // routeid에 지역 접두사가 붙어(부산 BSB) 별도 처리가 필요하다(2단계).
-    ...(mode === "bus" && lane?.busCityCode === 1000 && lane?.busLocalBlID
-      ? { serviceRouteId: lane.busLocalBlID }
+    // 운행시간 조인 키. 서울은 TOPIS ID 직결, 지방은 TAGO 번호 검색 후 대조라
+    // 도시 코드가 함께 필요하다(bus-service-hours가 분기).
+    ...(mode === "bus" && lane?.busLocalBlID && lane?.busCityCode != null
+      ? { serviceRouteId: lane.busLocalBlID, serviceCityCode: lane.busCityCode }
       : {}),
   };
 }
@@ -216,10 +216,13 @@ export async function getTransitRoute(params: {
   // 운행시간 보강. ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다
   // (2026-08-01 실측: 03:58에 6개 대안 전부 운행 시간 밖). 조회가 실패해도 경로는
   // 그대로 반환한다 — 부가 정보가 본 기능을 죽이면 고치려다 더 큰 회귀가 된다.
-  const routeIds = [normalized.recommended, ...normalized.alternatives]
+  const refs = [normalized.recommended, ...normalized.alternatives]
     .flatMap((r) => r.legs)
-    .map((l) => l.serviceRouteId)
-    .filter((id): id is string => !!id);
-  const hours = await fetchServiceHoursMap(routeIds);
+    .flatMap((l) =>
+      l.serviceRouteId && l.serviceCityCode != null
+        ? [{ localId: l.serviceRouteId, cityCode: l.serviceCityCode, routeNo: l.lineName ?? "" }]
+        : [],
+    );
+  const hours = await fetchServiceHoursMap(refs);
   return annotateServiceStatus(normalized, hours, kstNowMinutes(new Date()));
 }
