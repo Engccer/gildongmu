@@ -1,5 +1,12 @@
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
+import {
+  judgeServiceStatus,
+  kstNowMinutes,
+  SERVICE_RANK,
+  type ServiceStatus,
+} from "../service-hours";
+import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import type { Coord, TransitLeg, TransitRoute, TransitRouteResult } from "../types";
 
 /**
@@ -18,6 +25,8 @@ const ENDPOINT = "https://api.odsay.com/v1/api/searchPubTransPathT";
 interface OdsayLane {
   name?: string; // 지하철 노선명
   busNo?: string; // 버스 번호
+  busLocalBlID?: string; // 지역 사업자 노선 ID(서울은 TOPIS busRouteId와 동일 값)
+  busCityCode?: number; // ODsay 도시 코드(서울=1000)
 }
 interface OdsaySubPath {
   trafficType: number; // 1=지하철, 2=버스, 3=도보
@@ -67,6 +76,11 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
     // 0은 "정보 없음"으로 취급해 생략(3-state: 배차 0분은 존재하지 않는 값)
     intervalMinutes: sp.intervalTime || undefined,
     minutes,
+    // 운행시간 조인 키는 서울(1000)만 TOPIS ID 직결이 확정됐다. 지방은 TAGO
+    // routeid에 지역 접두사가 붙어(부산 BSB) 별도 처리가 필요하다(2단계).
+    ...(mode === "bus" && lane?.busCityCode === 1000 && lane?.busLocalBlID
+      ? { serviceRouteId: lane.busLocalBlID }
+      : {}),
   };
 }
 
@@ -111,6 +125,54 @@ export function normalizeOdsayRoute(
   return { recommended: routes[0], alternatives: routes.slice(1) };
 }
 
+function formatHHMM(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * 운행시간 판정을 leg에 싣고 경로를 강등 정렬한다(순수).
+ *
+ * 경로 상태 = 그 경로 버스 leg 중 SERVICE_RANK 최대값.
+ * ⚠ 버스 leg가 없는 경로(지하철·도보 전용)는 판정 대상이 아니라 rank 0을 준다.
+ *   unknown(1)을 주면 지하철 경로가 운행 중 버스보다 밀리는데, 지하철 운행시간은
+ *   범위 밖이라 근거 없는 강등이 된다. 0이면 안정 정렬과 맞물려 원순서가 보존된다.
+ */
+export function annotateServiceStatus(
+  result: TransitRouteResult,
+  hours: Map<string, ServiceHours>,
+  nowMinutes: number,
+): TransitRouteResult {
+  const annotateRoute = (route: TransitRoute): TransitRoute => ({
+    ...route,
+    legs: route.legs.map((leg) => {
+      if (leg.mode !== "bus" || !leg.serviceRouteId) return leg;
+      const h = hours.get(leg.serviceRouteId);
+      const status: ServiceStatus = h
+        ? judgeServiceStatus(nowMinutes, h.firstMinutes, h.lastMinutes)
+        : "unknown";
+      return {
+        ...leg,
+        serviceStatus: status,
+        ...(h?.firstMinutes != null ? { firstServiceTime: formatHHMM(h.firstMinutes) } : {}),
+        ...(h?.lastMinutes != null ? { lastServiceTime: formatHHMM(h.lastMinutes) } : {}),
+      };
+    }),
+  });
+
+  const routeRank = (route: TransitRoute): number => {
+    const ranks = route.legs
+      .filter((l) => l.serviceStatus != null)
+      .map((l) => SERVICE_RANK[l.serviceStatus!]);
+    return ranks.length === 0 ? 0 : Math.max(...ranks);
+  };
+
+  const all = [result.recommended, ...result.alternatives].map(annotateRoute);
+  const sorted = [...all].sort((a, b) => routeRank(a) - routeRank(b));
+  return { recommended: sorted[0], alternatives: sorted.slice(1) };
+}
+
 /**
  * ODsay 대중교통 길찾기 조회. 경로 없으면 null, ODsay 오류/HTTP 실패면 throw.
  *
@@ -148,5 +210,16 @@ export async function getTransitRoute(params: {
   }
   const data = (await res.json()) as OdsayResponse;
   // error 분기(경로없음 graceful vs 장애 throw)는 normalizeOdsayRoute가 담당.
-  return normalizeOdsayRoute(data);
+  const normalized = normalizeOdsayRoute(data);
+  if (!normalized) return null;
+
+  // 운행시간 보강. ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다
+  // (2026-08-01 실측: 03:58에 6개 대안 전부 운행 시간 밖). 조회가 실패해도 경로는
+  // 그대로 반환한다 — 부가 정보가 본 기능을 죽이면 고치려다 더 큰 회귀가 된다.
+  const routeIds = [normalized.recommended, ...normalized.alternatives]
+    .flatMap((r) => r.legs)
+    .map((l) => l.serviceRouteId)
+    .filter((id): id is string => !!id);
+  const hours = await fetchServiceHoursMap(routeIds);
+  return annotateServiceStatus(normalized, hours, kstNowMinutes(new Date()));
 }
