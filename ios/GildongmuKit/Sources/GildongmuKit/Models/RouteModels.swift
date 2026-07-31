@@ -66,6 +66,12 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
     public let stationCount: Int?
     /// 이 구간 소요(분)
     public let minutes: Int
+    /// 운행 시간 판정("running"·"outside"·"unknown"). 버스만, 그 외 nil
+    public let serviceStatus: String?
+    /// 첫차 시각 "04:00"(판정된 경우만)
+    public let firstServiceTime: String?
+    /// 막차 시각 "22:30"(판정된 경우만)
+    public let lastServiceTime: String?
 }
 
 /// 대중교통 경로 하나(요약 + 구간들).
