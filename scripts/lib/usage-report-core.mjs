@@ -79,11 +79,19 @@ export function formatKoreanDateTime(date) {
   return `${y}-${m}-${d} (${w}) ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
+/**
+ * 벤더 응답 본문에는 개행이 섞여 있다. 그대로 두면 한 항목이 여러 줄로
+ * 쪼개져 "한 줄 = 한 접근성 객체" 계약이 실데이터에서 깨진다(실측).
+ */
+function collapseWhitespace(text) {
+  return String(text).replace(/\s+/g, " ").trim();
+}
+
 /** 한 줄 = 한 사실. 항목명·상태·수치를 별도 열로 흩지 않는다(스크린 리더 요구) */
 export function renderProbeLine({ label, status, detail, note }) {
   const parts = [`${label} ${status}`];
-  if (detail) parts.push(detail);
-  if (note) parts.push(note);
+  if (detail) parts.push(collapseWhitespace(detail));
+  if (note) parts.push(collapseWhitespace(note));
   return parts.join(", ");
 }
 
