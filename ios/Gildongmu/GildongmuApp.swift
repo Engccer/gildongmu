@@ -64,7 +64,15 @@ struct GildongmuApp: App {
             // 콜드 런치에서 인텐트 perform()이 첫 body보다 먼저 끝난 경우를 소비.
             // 이후(웜 진입)는 onChange가 받는다. pending을 즉시 비우므로
             // epoch 재생성으로 .task가 다시 돌아도 멱등.
-            .task { consumeLaunchAction() }
+            .task {
+                #if DEBUG
+                // 계측을 앱 수명 1회 설치로 올린다(종전엔 채팅 진입 시에만 설치돼,
+                // 검색·길찾기 탭에서 시작된 받아쓰기가 로그에서 통째로 누락됐다 —
+                // 2026-08-01 무음 통지 판정이 그 사각에 막혔던 실측).
+                installChatFocusObserverOnce()
+                #endif
+                consumeLaunchAction()
+            }
             .onChange(of: launchStore.pending) { _, _ in consumeLaunchAction() }
             // 인앱 "길찾기" 진입(장소 상세·검색): 단축어와 달리 세션 리셋 없음(다른 탭
             // 상태 보존). 콜드 런치 레이스가 없어(버튼은 앱 실행 중에만 눌린다)
