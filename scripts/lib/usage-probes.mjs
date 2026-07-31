@@ -39,9 +39,28 @@ function envelopeJudge(pick, { ok, auth = [], quota = [] }) {
 
 const USAGE_WINDOW_DAYS = 30;
 
+// GEMINI_API_KEY가 묶인 GCP 프로젝트(2026-07-31 키 문자열 대조로 확정).
+// ⚠ 이 프로젝트는 길동무 전용이 아니다. Converters의 TTS·이미지 생성과
+// dodo-planet이 같은 키를 공유하므로 프로젝트 전체 토큰 = 길동무 비용이 아니다.
+const GEMINI_GCP_PROJECT = "gen-lang-client-0040162498";
+
+// ⚠ src/lib/gemini/client.ts의 GEMINI_MODEL과 반드시 같아야 한다.
+// 어긋나면 리포트가 조용히 0토큰을 보고한다(오류가 아니라 "사용량 없음"으로 보이는
+// 최악의 실패). gemini-model-drift 테스트가 이 동조를 강제한다.
+export const GILDONGMU_GEMINI_MODEL = "gemini-3.6-flash";
+
+// 출력 100만 토큰당 단가(2026-07 기준). 입력은 $1.50이나 메트릭이 없어 계산 불가
+const GEMINI_OUTPUT_USD_PER_MILLION = 7.5;
+
 function isoDaysAgo(days) {
   const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   return d.toISOString().slice(0, 10);
+}
+
+/** Cloud Monitoring은 날짜가 아니라 RFC3339 시각을 요구한다 */
+function rfc3339DaysAgo(days) {
+  const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return `${d.toISOString().slice(0, 19)}Z`;
 }
 
 /** balances 응답 합산. 잔액이 여러 건으로 쪼개져 올 수 있다 */
@@ -51,6 +70,33 @@ export function summarizeBalances(bodyText) {
     const total = balances.reduce((sum, b) => sum + (b.amount ?? 0), 0);
     // 라벨이 이미 "잔액"이라 여기서 반복하지 않는다
     return `${total.toFixed(2)}달러`;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Cloud Monitoring 시계열에서 길동무가 쓰는 모델만 골라 합산한다.
+ *
+ * ⚠ 프로젝트 전체 합계는 내지 않는다. 이 프로젝트는 Converters·dodo-planet과
+ * 공유라 전체를 길동무 비용으로 보고하면 2단계 승격 판정이 틀린 근거로 발동하고,
+ * 게다가 전체값은 정렬 구간 경계에 따라 실행마다 흔들려(실측 1.8M vs 0.91M)
+ * 없는 문제를 쫓게 만든다. 행동을 바꾸지 않는 수치는 빼는 편이 낫다.
+ */
+export function summarizeGeminiTokens(bodyText) {
+  try {
+    const series = JSON.parse(bodyText).timeSeries ?? [];
+    let mine = 0;
+    for (const s of series) {
+      if (s.metric?.labels?.model !== GILDONGMU_GEMINI_MODEL) continue;
+      mine += (s.points ?? []).reduce(
+        (acc, p) => acc + Number(p.value?.int64Value ?? 0),
+        0,
+      );
+    }
+    const usd = (mine / 1_000_000) * GEMINI_OUTPUT_USD_PER_MILLION;
+    // "출력 기준"을 반드시 남긴다. 입력 토큰 메트릭이 없어 이 값은 하한이다
+    return `최근 ${USAGE_WINDOW_DAYS}일 ${GILDONGMU_GEMINI_MODEL} 출력 ${mine.toLocaleString("en-US")}토큰, 출력 기준 ${usd.toFixed(2)}달러`;
   } catch {
     return undefined;
   }
@@ -76,7 +122,33 @@ export const MONEY_PROBES = [
     build: (env) => ({
       url: `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1&key=${env.GEMINI_API_KEY}`,
     }),
-    note: "사용량 수치는 조회 API가 없어 정보 없음. 콘솔 aistudio.google.com",
+    note: "콘솔 aistudio.google.com",
+  },
+  {
+    id: "gemini-usage",
+    label: "Gemini 사용량",
+    envKeys: ["GCLOUD_ACCESS_TOKEN"],
+    // Gemini API에는 사용량 조회 엔드포인트가 없어 Cloud Monitoring을 경유한다
+    build: (env) => {
+      const params = new URLSearchParams({
+        filter: `metric.type="generativelanguage.googleapis.com/generate_content_usage_output_token_count"`,
+        "interval.startTime": rfc3339DaysAgo(USAGE_WINDOW_DAYS),
+        "interval.endTime": rfc3339DaysAgo(0),
+        // 하루 정렬로 창을 균일하게 덮는다. 창 길이와 같은 정렬 주기를 쓰면
+        // 구간이 경계에서 통째로 들락거려 실행마다 값이 달라진다(실측)
+        "aggregation.alignmentPeriod": "86400s",
+        "aggregation.perSeriesAligner": "ALIGN_SUM",
+      });
+      return {
+        url: `https://monitoring.googleapis.com/v3/projects/${GEMINI_GCP_PROJECT}/timeSeries?${params}`,
+        init: {
+          headers: { Authorization: `Bearer ${env.GCLOUD_ACCESS_TOKEN}` },
+        },
+      };
+    },
+    describe: ({ bodyText }) => summarizeGeminiTokens(bodyText),
+    missingHint:
+      "gcloud 인증이 없다. gcloud auth login 후 자동으로 읽는다(입력 토큰은 메트릭 미제공)",
   },
   {
     id: "perplexity",
