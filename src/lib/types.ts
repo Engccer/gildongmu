@@ -247,6 +247,8 @@ export interface TransitLeg {
   lastServiceTime?: string;
   /** 운행시간 조인 키(ODsay busLocalBlID). 내부 식별자라 낭독에 쓰지 않는다 */
   serviceRouteId?: string;
+  /** 운행시간 조회 분기용 도시 코드(ODsay busCityCode, 서울=1000) */
+  serviceCityCode?: number;
 }
 
 /** 대중교통 경로 1개(요약 + 구간 리스트). */
