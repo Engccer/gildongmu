@@ -48,3 +48,40 @@ struct VoiceQueryTests {
         #expect(normalizeVoiceQuery("") == "")
     }
 }
+
+@Suite("hasSpeechContent (전사에 실제 발화가 담겼는가)")
+struct SpeechContentTests {
+    @Test("문장부호만 남은 전사는 내용 없음: 무음 구간에서 STT가 내는 산출물")
+    func rejectsPunctuationOnly() {
+        // 실측(2026-08-01): 홀드하고 아무 말 없이 뗐을 때 전사가 "." 하나였다.
+        // normalizeVoiceQuery는 이걸 구제하지 못한다 — 부호를 지우면 빈 문자열이
+        // 되므로 "정규화는 파괴가 아니다" 규칙에 따라 원문 "."을 되돌리기 때문이다.
+        #expect(hasSpeechContent(".") == false)
+        #expect(hasSpeechContent("...") == false)
+        #expect(hasSpeechContent("?") == false)
+        #expect(hasSpeechContent("。") == false)
+        #expect(hasSpeechContent(". , !") == false)
+    }
+
+    @Test("공백뿐인 전사도 내용 없음")
+    func rejectsBlank() {
+        #expect(hasSpeechContent("") == false)
+        #expect(hasSpeechContent("   ") == false)
+        #expect(hasSpeechContent("\n\t") == false)
+    }
+
+    @Test("글자나 숫자가 하나라도 있으면 내용 있음")
+    func acceptsAnyLetterOrDigit() {
+        #expect(hasSpeechContent("네.") == true)
+        #expect(hasSpeechContent("강동구청") == true)
+        #expect(hasSpeechContent("12") == true)
+        #expect(hasSpeechContent("ok") == true)
+    }
+
+    @Test("부호에 둘러싸인 한 글자도 발화로 인정한다(짧은 대답을 삼키지 않는다)")
+    func acceptsSingleCharacterAnswer() {
+        // "응.", "네?" 같은 최단 응답이 전사의 대부분이 부호여도 살아남아야 한다.
+        #expect(hasSpeechContent("응.") == true)
+        #expect(hasSpeechContent("...네...") == true)
+    }
+}
