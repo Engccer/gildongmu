@@ -244,6 +244,9 @@ interface TransitLegItem {
   stationCount?: number;
   intervalMinutes?: number;
   minutes: number;
+  serviceStatus?: "running" | "outside" | "unknown";
+  firstServiceTime?: string;
+  lastServiceTime?: string;
 }
 
 interface TransitRouteItem {
@@ -658,6 +661,11 @@ function transitLegLine(leg: TransitLegItem): string {
     `${leg.stationCount}개 역`,
     `${leg.minutes}분`,
     typeof leg.intervalMinutes === "number" && `배차간격 약 ${leg.intervalMinutes}분`,
+    // 운행 밖만 표기(정상·정보없음은 침묵). joinText가 falsy 조각을 걸러 준다.
+    leg.serviceStatus === "outside" &&
+      !!leg.firstServiceTime &&
+      !!leg.lastServiceTime &&
+      `첫차 ${leg.firstServiceTime}, 막차 ${leg.lastServiceTime}, 지금은 운행하지 않음`,
   );
 }
 
