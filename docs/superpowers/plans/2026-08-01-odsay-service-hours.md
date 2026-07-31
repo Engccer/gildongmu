@@ -500,7 +500,7 @@ Expected: FAIL, "annotateServiceStatus is not a function"
 interface OdsayLane {
   name?: string; // 지하철 노선명
   busNo?: string; // 버스 번호
-  busLocalBlID?: string; // 지역 사업자 노선 ID — TOPIS busRouteId와 동일 값(서울)
+  busLocalBlID?: string; // 지역 사업자 노선 ID(서울은 TOPIS busRouteId와 동일 값)
   busCityCode?: number; // ODsay 도시 코드(서울=1000)
 }
 ```
