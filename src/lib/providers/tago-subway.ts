@@ -97,8 +97,11 @@ export function deriveFirstLast(
   return { first: candidates[0].train, last: candidates[candidates.length - 1].train };
 }
 
-/** TAGO 오퍼레이션 공통 호출: envelope resultCode·totalCount 검증까지 담당. */
-async function fetchTago(op: string, params: Record<string, string>): Promise<unknown> {
+/**
+ * TAGO 오퍼레이션 공통 호출: envelope resultCode·totalCount 검증까지 담당.
+ * `subway-service-hours`가 재사용한다 — envelope 처리본을 또 만들지 않는다.
+ */
+export async function fetchTago(op: string, params: Record<string, string>): Promise<unknown> {
   const key = env.DATA_GO_KR_API_KEY!;
   const search = new URLSearchParams({
     serviceKey: key, _type: "json", numOfRows: String(PAGE_SIZE), pageNo: "1", ...params,
@@ -113,6 +116,50 @@ async function fetchTago(op: string, params: Record<string, string>): Promise<un
   const total = Number((raw as { response?: { body?: { totalCount?: unknown } } })?.response?.body?.totalCount ?? 0);
   if (total > PAGE_SIZE) throw new Error(`TAGO ${op} totalCount(${total}) > ${PAGE_SIZE} — 페이지 누락`);
   return raw;
+}
+
+/**
+ * 역·방향 시간표 행 조회. 토요일(02)이 빈 결과면 휴일(03)로 한 번 더 묻는다.
+ *
+ * ⚠ 수도권 운영사는 토요일 다이어를 따로 제출하지 않는다(실호출 2026-08-01:
+ *   길동 5호선·잠실 2호선 모두 02가 정상 응답 + 0행이고 01·03만 데이터를 갖는다.
+ *   부산 1호선은 02도 164행이라 지역별로 갈린다). 폴백이 없으면 수도권 첫차·막차가
+ *   **토요일마다 통째로 사라진다** — 실호출 게이트로 발견한 선재 결함이다.
+ *   평일 대비 휴일 다이어는 첫차가 같고 막차만 이르다(길동 00:38→00:00).
+ *
+ * usedDailyTypeCode는 행이 있을 때만 채운다(없으면 null) — 호출부가 "어느
+ * 다이어로 답했는지"를 사용자에게 정직하게 표기할 수 있어야 한다.
+ */
+export async function fetchScheduleOnce(
+  stationId: string,
+  dailyTypeCode: string,
+  dir: "U" | "D",
+): Promise<unknown[]> {
+  return ensureItemArray(
+    await fetchTago("GetSubwaySttnAcctoSchdulList", {
+      subwayStationId: stationId,
+      dailyTypeCode,
+      upDownTypeCode: dir,
+    }),
+  );
+}
+
+/**
+ * 한 구간(역·방향)의 시간표 행. 토요일이 빈 결과면 휴일로 한 번 더 묻는다.
+ *
+ * 폴백을 **구간 단위**로 결정해도 되는 이유: 이 함수의 소비자(경로 운행시간
+ * 판정)는 역 하나·노선 하나·방향 하나만 다루므로 한 응답 안에 서로 다른
+ * 다이어가 섞일 수 없다. 반면 역 상세 시간표는 여러 노선을 하나의 기준 라벨로
+ * 묶어 표기하므로 폴백을 역 단위로 결정해야 한다(fetchStationTimetable 참조).
+ */
+export async function fetchScheduleRows(
+  stationId: string,
+  dailyTypeCode: string,
+  dir: "U" | "D",
+): Promise<unknown[]> {
+  const rows = await fetchScheduleOnce(stationId, dailyTypeCode, dir);
+  if (rows.length > 0 || dailyTypeCode !== "02") return rows;
+  return fetchScheduleOnce(stationId, "03", dir);
 }
 
 /** 행선지 영문 병기 — seed 미매칭이면 한글 그대로(정직 폴백, 스펙 §7-17). */
@@ -147,13 +194,21 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
   const dailyTypeCode = dailyType === "weekday" ? "01" : dailyType === "saturday" ? "02" : "03";
 
   const jobs = matched.flatMap((st) => (["U", "D"] as const).map((dir) => ({ st, dir })));
-  const settled = await Promise.allSettled(
-    jobs.map(({ st, dir }) =>
-      fetchTago("GetSubwaySttnAcctoSchdulList", {
-        subwayStationId: st.id, dailyTypeCode, upDownTypeCode: dir,
-      }),
-    ),
+  // 폴백을 **역 단위**로 결정한다. 이 응답은 여러 노선을 기준 라벨 하나로 묶어
+  // 표기하므로, 노선마다 다른 다이어를 섞으면 그 라벨이 거짓이 된다.
+  // 실측(2026-08-01): 대저역은 부산3호선이 토요일 150행인데 부산김해경전철은
+  // 0행이라 구간 단위로 폴백하면 "토요일 기준" 라벨 아래 휴일 값이 섞인다.
+  // 한 노선이라도 토요일에 답하면 그 역은 토요일 다이어를 갖는 역이므로
+  // 폴백하지 않고, 답하지 못한 노선은 미노출로 정직하게 빠진다.
+  let settled = await Promise.allSettled(
+    jobs.map(({ st, dir }) => fetchScheduleOnce(st.id, dailyTypeCode, dir)),
   );
+  let usedDailyTypeCode = dailyTypeCode;
+  const answered = settled.some((r) => r.status === "fulfilled" && r.value.length > 0);
+  if (!answered && dailyTypeCode === "02") {
+    settled = await Promise.allSettled(jobs.map(({ st, dir }) => fetchScheduleOnce(st.id, "03", dir)));
+    usedDailyTypeCode = "03";
+  }
   const failures = settled.filter((r) => r.status === "rejected").length;
   if (failures === settled.length) {
     // 전 호출 실패 — "운행 없음"으로 위장 금지(스펙 판정 표)
@@ -166,7 +221,7 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
     (["up", "down"] as const).forEach((direction, d) => {
       const r = settled[i * 2 + d];
       if (r.status !== "fulfilled") return;
-      const fl = deriveFirstLast(ensureItemArray(r.value), st.id);
+      const fl = deriveFirstLast(r.value, st.id);
       if (!fl) return; // 그 방향 유효 행 0 — 생략
       directions.push({
         direction,
@@ -177,9 +232,14 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
     if (directions.length > 0) lines.push({ lineName: displayLineName(st.routeName), directions });
   });
 
+  // 답한 다이어를 그대로 표기한다. 토요일 요청에 휴일 다이어로 답했는데
+  // "토요일 기준"이라 쓰면 거짓이다(수도권은 토요일 다이어 자체가 없다).
+  // 위에서 폴백을 역 단위로 결정했으므로 이 라벨은 모든 노선에 대해 참이다.
+  const reportedType = usedDailyTypeCode === "03" && dailyType === "saturday" ? "sunday" : dailyType;
+
   return {
     stationName,
-    dailyType,
+    dailyType: reportedType,
     ...(failures > 0 ? { partial: true as const } : {}),
     lines,
   };

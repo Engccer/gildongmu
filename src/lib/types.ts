@@ -239,7 +239,10 @@ export interface TransitLeg {
   intervalMinutes?: number;
   /** 구간 소요시간(분) */
   minutes: number;
-  /** 운행 시간 판정 결과(버스만. 지하철·도보는 판정 대상이 아니라 undefined) */
+  /**
+   * 운행 시간 판정 결과. 버스·지하철 구간은 조인 키가 없어도 반드시 갖는다
+   * (조회 불가는 "unknown"). 도보만 undefined다 — 판정 대상이 아니기 때문.
+   */
   serviceStatus?: "running" | "outside" | "unknown";
   /** 첫차 시각 "04:00"(판정된 경우만) */
   firstServiceTime?: string;
@@ -249,6 +252,8 @@ export interface TransitLeg {
   serviceRouteId?: string;
   /** 운행시간 조회 분기용 도시 코드(ODsay busCityCode, 서울=1000) */
   serviceCityCode?: number;
+  /** 지하철 방향(ODsay wayCode 1=상행·2=하행). 상·하행 첫차·막차가 달라 조인 축이다 */
+  serviceWayCode?: number;
 }
 
 /** 대중교통 경로 1개(요약 + 구간 리스트). */

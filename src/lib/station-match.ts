@@ -55,9 +55,16 @@ export function parseStationQuery(name: string): { nameKey: string; lineHint?: s
   return lineHint ? { nameKey, lineHint } : { nameKey };
 }
 
-/** 노선명 ↔ 힌트 매칭: "선"/"철도" 접미를 벗긴 코어의 상호 접두 일치(TAGO 축약형 흡수). */
+/**
+ * 노선명 ↔ 힌트 매칭: "선"/"철도" 접미를 벗긴 코어의 상호 접두 일치(TAGO 축약형 흡수).
+ *
+ * 코어에서 구분자(가운뎃점·마침표·공백)도 지운다 — 같은 노선을 소스마다 다르게
+ * 끊어 쓴다(ODsay "수도권 수인.분당선" ↔ TAGO "수인분당", 실측 2026-08-01).
+ * 구분자는 표기 습관이지 노선 구분 정보가 아니라 지워도 다른 노선과 섞이지 않는다.
+ */
 export function lineHintMatches(lineName: string, lineHint: string): boolean {
-  const core = (s: string) => s.trim().toLowerCase().replace(/(철도|호선|선)$/g, "");
+  const core = (s: string) =>
+    s.trim().toLowerCase().replace(/(철도|호선|선)$/g, "").replace(/[.·\s]/g, "");
   const a = core(lineName);
   const b = core(lineHint);
   if (!a || !b) return false;

@@ -87,4 +87,15 @@ describe("lineHintMatches", () => {
     expect(lineHintMatches("경의중앙", "5호선")).toBe(false);
     expect(lineHintMatches("11호선", "1호선")).toBe(false);
   });
+  it("구분자 표기 차이를 흡수한다 (ODsay ↔ TAGO 실측)", () => {
+    expect(lineHintMatches("수인분당", "수인.분당선")).toBe(true);
+    expect(lineHintMatches("수인분당", "수인·분당선")).toBe(true);
+    expect(lineHintMatches("신분당", "신분당선")).toBe(true);
+  });
+  it("구분자를 지워도 다른 노선이 섞이지 않는다", () => {
+    // 지역이 붙은 TAGO 노선명(인천1호선)은 숫자 완전 일치 규칙이 계속 갈라낸다.
+    expect(lineHintMatches("인천1호선", "1호선")).toBe(false);
+    expect(lineHintMatches("인천1호선", "인천1호선")).toBe(true);
+    expect(lineHintMatches("수인분당", "신분당선")).toBe(false);
+  });
 });

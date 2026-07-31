@@ -235,7 +235,7 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_transit_route",
       description:
         "목적지까지 대중교통(버스·지하철 환승) 경로를 출발 전 텍스트로 안내한다. 목적지를 destination에 넣는다(출발지는 현재 위치). " +
-        "구간에 serviceStatus가 outside인 버스가 있으면 첫차·막차와 함께 지금은 운행하지 않는다고 알린다(running·unknown은 언급하지 않는다).",
+        "serviceStatus가 outside인 구간이 있으면 첫차·막차와 함께 지금은 운행하지 않는다고 알린다(running·unknown은 언급하지 않는다).",
       parametersJsonSchema: {
         type: "object",
         properties: {
