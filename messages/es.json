@@ -117,6 +117,7 @@
       "legBoard": "Sube a <line></line> en <from></from>, {count} paradas",
       "legTransfer": "Transborda a <line></line> en <from></from>, {count} paradas",
       "legInterval": "pasa cada {minutes} min aprox.",
+      "legServiceOutside": "Primer autobús {first}, último {last}, no circula ahora",
       "arrive": "Llega a <name></name>",
       "alternativeHeading": "Alternativa {index}"
     },

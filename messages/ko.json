@@ -117,6 +117,7 @@
       "legBoard": "<from></from>에서 <line></line> 승차, {count}정거장",
       "legTransfer": "<from></from>에서 <line></line> 환승, {count}정거장",
       "legInterval": "배차간격 약 {minutes}분",
+      "legServiceOutside": "첫차 {first}, 막차 {last}, 지금은 운행하지 않습니다",
       "arrive": "<name></name> 도착",
       "alternativeHeading": "대안 경로 {index}"
     },

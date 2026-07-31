@@ -273,6 +273,19 @@ export function TransitRouteResult({
               {leg.intervalMinutes != null && (
                 <>, {t("legInterval", { minutes: leg.intervalMinutes })}</>
               )}
+              {/* 운행 밖만 표기한다. 정상·정보없음까지 표기하면 매 항목에 노이즈가
+                  붙는다(조건부 실패 표기 원칙). 같은 li에 쉼표로 이어 한 줄=한 객체 유지 */}
+              {leg.serviceStatus === "outside" &&
+                leg.firstServiceTime &&
+                leg.lastServiceTime && (
+                  <>
+                    ,{" "}
+                    {t("legServiceOutside", {
+                      first: leg.firstServiceTime,
+                      last: leg.lastServiceTime,
+                    })}
+                  </>
+                )}
             </li>
           );
         })}
