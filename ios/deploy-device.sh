@@ -21,6 +21,12 @@ xcodebuild -project "$PROJ" -scheme "$SCHEME" \
 # 번들 ID는 pbxproj 파싱 대신 빌드 산출물의 Info.plist에서 읽는다(타깃 다중일 때 오파싱 방지)
 APP=$(ls -dt ~/Library/Developer/Xcode/DerivedData/"$SCHEME"-*/Build/Products/Debug-iphoneos/*.app | head -1)
 BUNDLE_ID=$(defaults read "$APP/Info" CFBundleIdentifier)
+
+# repo가 서명 검증 훅을 두었으면 설치 전에 게이트로 건다(없는 repo에선 조용히 건너뜀).
+# 공용본의 제네릭성을 유지하려고 존재 여부로 분기한다.
+if [ -x scripts/verify-aps-environment.sh ]; then
+  ./scripts/verify-aps-environment.sh "$APP"
+fi
 xcrun devicectl device install app --device "$UDID" "$APP"
 
 xcrun devicectl device process launch --device "$UDID" "$BUNDLE_ID" \
