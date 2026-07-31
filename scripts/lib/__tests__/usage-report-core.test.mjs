@@ -15,7 +15,10 @@ import {
   AVAILABILITY_PROBES,
   summarizeBalances,
   summarizeUsage,
+  summarizeGeminiTokens,
+  GILDONGMU_GEMINI_MODEL,
 } from "../usage-probes.mjs";
+import { readFileSync } from "node:fs";
 
 describe("parseEnvFile", () => {
   it("KEY=VALUE 줄을 읽고 주석과 빈 줄을 무시한다", () => {
@@ -417,6 +420,62 @@ describe("Deepgram 응답 요약", () => {
   it("본문이 JSON이 아니면 undefined를 내 상태 판정에 맡긴다", () => {
     expect(summarizeBalances("<html>")).toBeUndefined();
     expect(summarizeUsage("<html>")).toBeUndefined();
+  });
+});
+
+// CLI/MCP 버전 4곳 동조 함정과 같은 구조다. 모델을 교체하고 여기를 잊으면
+// 리포트가 오류 없이 0토큰을 보고한다("사용량 없음"으로 보이는 최악의 실패).
+describe("Gemini 모델명 drift", () => {
+  it("리포트 상수가 client.ts의 GEMINI_MODEL과 일치한다", () => {
+    const source = readFileSync("src/lib/gemini/client.ts", "utf8");
+    const match = source.match(/GEMINI_MODEL\s*=\s*"([^"]+)"/);
+    expect(match).not.toBeNull();
+    expect(GILDONGMU_GEMINI_MODEL).toBe(match[1]);
+  });
+});
+
+describe("Gemini 토큰 요약", () => {
+  // 이 프로젝트는 Converters·dodo-planet과 공유하므로 모델로 갈라야 한다
+  const body = JSON.stringify({
+    timeSeries: [
+      {
+        metric: { labels: { model: "gemini-3.6-flash", thinking_enabled: "true" } },
+        points: [{ value: { int64Value: "91978" } }],
+      },
+      {
+        metric: { labels: { model: "gemini-3.1-flash-tts" } },
+        points: [{ value: { int64Value: "360241" } }],
+      },
+      {
+        metric: { labels: { model: "gemini-3.5-flash" } },
+        points: [{ value: { int64Value: "639762" } }],
+      },
+    ],
+  });
+
+  it("길동무 모델만 골라 비용을 계산한다", () => {
+    const out = summarizeGeminiTokens(body);
+    expect(out).toContain("gemini-3.6-flash 출력 91,978토큰");
+    // 91,978 / 1M * $7.50 = $0.69
+    expect(out).toContain("0.69달러");
+  });
+
+  // 프로젝트가 Converters·dodo와 공유라 전체 합계는 길동무 비용이 아니고,
+  // 정렬 경계에 따라 실행마다 흔들려 없는 문제를 쫓게 만든다
+  it("다른 도구의 토큰을 섞지 않는다", () => {
+    const out = summarizeGeminiTokens(body);
+    expect(out).not.toContain("360,241");
+    expect(out).not.toContain("639,762");
+    expect(out).not.toContain("1,091,981");
+  });
+
+  // 입력 토큰 메트릭이 없어 이 값은 하한이다. 표기가 사라지면 과소 보고가 사실로 읽힌다
+  it("출력 기준임을 반드시 표기한다", () => {
+    expect(summarizeGeminiTokens(body)).toContain("출력 기준");
+  });
+
+  it("빈 시계열은 0으로 낸다", () => {
+    expect(summarizeGeminiTokens('{"timeSeries":[]}')).toContain("0토큰");
   });
 });
 
