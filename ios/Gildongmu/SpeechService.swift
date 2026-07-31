@@ -1,5 +1,6 @@
 import Foundation
 import Accessibility
+import GildongmuKit
 // AVAudioNodeTapBlock 등 AVFAudio의 Sendable 미표기 API를 Swift 6에서 경고 없이 쓰기 위함
 @preconcurrency import AVFoundation
 import AudioToolbox
@@ -138,7 +139,12 @@ final class SpeechService {
         let text = finalizedText.trimmingCharacters(in: .whitespacesAndNewlines)
         await teardown()
         phase = .idle
-        return text.isEmpty ? nil : text
+        // 발화가 담기지 않은 전사는 빈 전사와 같이 nil로 돌린다. 무음 구간에서 STT가
+        // 문장부호만 내놓는 일이 있는데(무발화 릴리스에 "." 실측 2026-08-01), 그대로
+        // 소비하면 채팅은 "."을 전송해 답변을 받아오고 검색은 "."으로 조회한다 —
+        // 사용자가 한 적 없는 행동이다. 소비 지점 4곳(검색·길찾기·채팅 전송·잠금)에
+        // 가드를 흩뿌리는 대신 여기 한 곳에서 가른다.
+        return hasSpeechContent(text) ? text : nil
     }
 
     /// 결과 없이 폐기(화면 이탈 등). 통지 없음.
