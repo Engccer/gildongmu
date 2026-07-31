@@ -16,9 +16,6 @@ import { parseServiceTime } from "../service-hours";
 const SEOUL_BASE = "http://ws.bus.go.kr/api/rest";
 const TAGO_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
 
-/** ODsay busCityCode(서울). TOPIS ID 직결이 성립하는 유일한 지역이다. */
-const SEOUL_CITY_CODE = 1000;
-
 /**
  * ODsay busCityCode → TAGO cityCode. 두 체계가 달라 매핑이 불가피하다.
  * 2026-08-01 실호출로 endsWith 매칭이 확인된 지역만 넣는다.
@@ -123,7 +120,23 @@ async function fetchSeoulRouteHours(routeId: string): Promise<ServiceHours | nul
 }
 
 /**
- * 노선들의 운행 시간을 병렬 조회(서울은 TOPIS ID 직결, 지방은 TAGO 번호 검색 후 대조).
+ * 한 노선의 운행 시간. TOPIS를 먼저 시도하고 없을 때만 TAGO로 간다.
+ *
+ * ⚠ 분기 기준은 도시 코드가 아니라 "TOPIS가 답하는가"다. TOPIS는 서울 노선뿐
+ *   아니라 수도권 광역 노선도 보유한다(하남 30-3은 busCityCode 1070인데
+ *   TOPIS에서 "30-3하남" 04:15~23:40으로 조회된다 — 실측 2026-08-01).
+ *   수도권 통합 환승 탓에 서울 출발 경로에 경기 노선이 흔히 섞이므로,
+ *   도시 코드로 갈라내면 그 노선들이 전부 unknown으로 샌다.
+ *   TOPIS는 ID 직결 1회 호출이고 결과는 하루 캐시라 선시도 비용이 낮다.
+ */
+async function fetchRouteHours(ref: BusRouteRef): Promise<ServiceHours | null> {
+  const seoul = await fetchSeoulRouteHours(ref.localId);
+  if (seoul) return seoul;
+  return fetchTagoRouteHours(ref);
+}
+
+/**
+ * 노선들의 운행 시간을 병렬 조회(TOPIS 우선, 미보유 노선만 TAGO).
  * 실패·미조회 노선은 Map에서 빠진다(호출부가 부재를 unknown으로 읽는다).
  * 키 없으면 빈 Map(게이트 패턴). Map 키는 localId.
  */
@@ -134,13 +147,7 @@ export async function fetchServiceHoursMap(
   if (!env.DATA_GO_KR_API_KEY || refs.length === 0) return map;
   const unique = [...new Map(refs.filter((r) => r.localId).map((r) => [r.localId, r])).values()];
   const settled = await Promise.allSettled(
-    unique.map(async (ref) => ({
-      id: ref.localId,
-      hours:
-        ref.cityCode === SEOUL_CITY_CODE
-          ? await fetchSeoulRouteHours(ref.localId)
-          : await fetchTagoRouteHours(ref),
-    })),
+    unique.map(async (ref) => ({ id: ref.localId, hours: await fetchRouteHours(ref) })),
   );
   for (const r of settled) {
     if (r.status === "fulfilled" && r.value.hours) map.set(r.value.id, r.value.hours);
