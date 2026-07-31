@@ -161,6 +161,20 @@ describe("renderProbeLine", () => {
     expect(line).not.toMatch(/[|│─┌┐└┘]/);
   });
 
+  // 벤더 응답 본문에 개행이 섞여 실제로 줄이 쪼개진 회귀가 있었다
+  it("응답 본문의 개행이 줄을 쪼개지 않는다", () => {
+    const line = renderProbeLine({
+      label: "공공데이터포털",
+      status: STATUS.AUTH,
+      detail: "HTTP 401 Unauthorized\n",
+      note: "여러 서비스가 공유한다",
+    });
+    expect(line).not.toContain("\n");
+    expect(line).toBe(
+      "공공데이터포털 인증 실패, HTTP 401 Unauthorized, 여러 서비스가 공유한다",
+    );
+  });
+
   it("em dash를 쓰지 않는다", () => {
     const line = renderProbeLine({
       label: "Gemini",
@@ -299,6 +313,66 @@ describe("runProbe", () => {
       async () => new Response("invalid_model", { status: 400 }),
     );
     expect(result.status).toBe(STATUS.OK);
+  });
+});
+
+// 아래 본문은 무효 키를 실제로 넣어 받은 응답이다(2026-07-31 변이 주입).
+// judge가 없으면 넷 다 HTTP 200이라 "정상"으로 거짓 보고된다.
+describe("200에 오류를 담는 벤더 판정", () => {
+  const findProbe = (id) =>
+    [...MONEY_PROBES, ...AVAILABILITY_PROBES].find((p) => p.id === id);
+
+  const cases = [
+    {
+      id: "seoul-subway",
+      ok: '{"errorMessage":{"status":200,"code":"INFO-000","message":"정상 처리되었습니다.","total":4}}',
+      bad: '{"status":500,"code":"INFO-100","message":"인증키가 유효하지 않습니다."}',
+    },
+    {
+      id: "seoul-bike",
+      ok: '{"rentBikeStatus":{"list_total_count":5,"RESULT":{"CODE":"INFO-000","MESSAGE":"정상 처리되었습니다."}}}',
+      // 오류일 때만 XML로 답한다
+      bad: "<RESULT><CODE>INFO-100</CODE><MESSAGE>인증키가 유효하지 않습니다.</MESSAGE></RESULT>",
+    },
+    {
+      id: "juso",
+      ok: '{"results":{"common":{"errorCode":"0","errorMessage":"정상","totalCount":"1098"}}}',
+      bad: '{"results":{"common":{"errorCode":"E0001","errorMessage":"승인되지 않은 KEY 입니다."}}}',
+    },
+    {
+      id: "odsay",
+      ok: '{"result":{"searchType":0,"busCount":10,"subwayCount":1}}',
+      bad: '{"error":[{"code":"500","message":"[ApiKeyAuthFailed] ApiKey authentication failed."}]}',
+    },
+  ];
+
+  for (const { id, ok, bad } of cases) {
+    it(`${id}는 정상 본문을 정상으로 읽는다`, () => {
+      const judge = findProbe(id).judge;
+      expect(judge({ httpStatus: 200, bodyText: ok })).toBe(STATUS.OK);
+    });
+
+    it(`${id}는 200이어도 무효 키 본문을 인증 실패로 잡는다`, () => {
+      const judge = findProbe(id).judge;
+      expect(judge({ httpStatus: 200, bodyText: bad })).toBe(STATUS.AUTH);
+    });
+  }
+
+  it("공공데이터포털은 resultCode가 00일 때만 정상", () => {
+    const judge = findProbe("data-go-kr").judge;
+    expect(
+      judge({
+        httpStatus: 200,
+        bodyText:
+          '{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL SERVICE."}}}',
+      }),
+    ).toBe(STATUS.OK);
+    expect(
+      judge({
+        httpStatus: 200,
+        bodyText: '{"response":{"header":{"resultCode":"30"}}}',
+      }),
+    ).toBe(STATUS.ERROR);
   });
 });
 
