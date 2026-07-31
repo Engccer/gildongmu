@@ -325,13 +325,24 @@ func speechAlertText(_ speech: SpeechService) -> String? {
     }
 }
 
-/// 진행 중인 VoiceOver 낭독(라벨·힌트 설명)을 즉시 끊는다. 공백 1자의
-/// interrupting(.high) 통지는 아무것도 발화하지 않으면서 발화 큐만 비운다.
-/// 받아쓰기 시작 지점이면 어디서든 쓰이므로(서비스·홀드 버튼) 파일 레벨에 둔다.
+/// 진행 중인 VoiceOver 낭독(라벨·힌트 설명)을 즉시 끊는다. 받아쓰기 시작 지점이면
+/// 어디서든 쓰이므로(서비스·홀드 버튼) 파일 레벨에 둔다.
+///
+/// **문자열은 빈 문자열이어야 한다**(2026-08-01 실기기 4후보 판정). `.high` 통지는
+/// *게시 시점에* 발화 큐를 끊고 *발화는 내용이 있을 때만* 하는 분리된 동작이라,
+/// 빈 문자열이 "발화 0 + 차단 성공"을 동시에 만족한다(announcementDidFinish 이벤트가
+/// 아예 오지 않는 것이 발화 0의 증거).
+///
+/// ⚠ **발화 가능한 문자를 넣지 말 것 — 전사 오염과 같은 뜻이다.** 이 함수는 마이크가
+/// 뜨거워진 뒤에도 호출되므로(start()의 청취 진입) 그 발화가 스피커→마이크로 돌아
+/// 전사에 그대로 섞인다. 실측 반증된 후보: 공백 1자(" ")는 "space"로 낭독돼 홀드
+/// 한 번에 "space space"가 들리고 아무 말 없는 전사에 "자."가 찍혔다(종전 주석의
+/// "공백은 무음"은 거짓). U+200B도 발화돼 "들어가겠습니다."가 혼입됐고,
+/// `.layoutChanged` 통지는 차단에 실패하며 오히려 새 낭독을 유발했다("잠 고 정 다시.").
 @MainActor
 func interruptVoiceOverSpeech() {
     guard UIAccessibility.isVoiceOverRunning else { return }
-    var silence = AttributedString(" ")
+    var silence = AttributedString("")
     silence.accessibilitySpeechAnnouncementPriority = .high
     AccessibilityNotification.Announcement(silence).post()
 }
