@@ -2,8 +2,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { env, hasGeminiKey } from "@/lib/env";
 
-// dodo-planet MODELS.chat과 동일 모델 (function-calling eval 96%, GA)
-export const GEMINI_MODEL = "gemini-3.5-flash";
+// 2026-07-31 3.5-flash→3.6-flash 교체. 18도구 실호출 A/B 근거는 PROGRESS.md 채팅 행
+// (도구 절제 우세·다중 라운드 지연 -36%·thinking 토큰 -30.7%). SDK 무변경.
+export const GEMINI_MODEL = "gemini-3.6-flash";
 
 /** lazy 캐시 — 동일 프로세스에서 클라이언트 인스턴스를 재사용한다 */
 let cached: GoogleGenAI | null = null;
