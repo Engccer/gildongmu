@@ -239,6 +239,14 @@ export interface TransitLeg {
   intervalMinutes?: number;
   /** 구간 소요시간(분) */
   minutes: number;
+  /** 운행 시간 판정 결과(버스만. 지하철·도보는 판정 대상이 아니라 undefined) */
+  serviceStatus?: "running" | "outside" | "unknown";
+  /** 첫차 시각 "04:00"(판정된 경우만) */
+  firstServiceTime?: string;
+  /** 막차 시각 "22:30"(판정된 경우만) */
+  lastServiceTime?: string;
+  /** 운행시간 조인 키(ODsay busLocalBlID). 내부 식별자라 낭독에 쓰지 않는다 */
+  serviceRouteId?: string;
 }
 
 /** 대중교통 경로 1개(요약 + 구간 리스트). */
