@@ -117,6 +117,7 @@
       "legBoard": "Montez à bord de <line></line> à <from></from>, {count} arrêts",
       "legTransfer": "Changez pour <line></line> à <from></from>, {count} arrêts",
       "legInterval": "passage toutes les {minutes} min environ",
+      "legServiceOutside": "Premier bus {first}, dernier {last}, ne circule pas actuellement",
       "arrive": "Arrivée à <name></name>",
       "alternativeHeading": "Alternative {index}"
     },

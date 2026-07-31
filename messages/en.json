@@ -117,6 +117,7 @@
       "legBoard": "Board <line></line> at <from></from>, {count} stops",
       "legTransfer": "Transfer to <line></line> at <from></from>, {count} stops",
       "legInterval": "runs about every {minutes} min",
+      "legServiceOutside": "First bus {first}, last bus {last}, not running now",
       "arrive": "Arrive at <name></name>",
       "alternativeHeading": "Alternative {index}"
     },

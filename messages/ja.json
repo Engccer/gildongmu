@@ -117,6 +117,7 @@
       "legBoard": "<from></from>で<line></line>に乗車、{count}駅",
       "legTransfer": "<from></from>で<line></line>に乗り換え、{count}駅",
       "legInterval": "運転間隔約{minutes}分",
+      "legServiceOutside": "始発 {first}、終発 {last}、現在は運行していません",
       "arrive": "<name></name>に到着",
       "alternativeHeading": "代替経路{index}"
     },
