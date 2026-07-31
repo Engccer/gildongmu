@@ -129,14 +129,18 @@ describe("maskSecrets", () => {
     expect(out).not.toContain("abcd1234efgh");
   });
 
+  // 아래 값들은 8자 이상이어야 한다. maskSecrets는 짧은 값을 오탐으로 보고 건너뛴다
   it("여러 시크릿을 모두 가린다", () => {
-    const out = maskSecrets("a=SEC1 b=SEC2", ["SEC1", "SEC2"]);
-    expect(out).not.toContain("SEC1");
-    expect(out).not.toContain("SEC2");
+    const out = maskSecrets("a=SEC1value b=SEC2value", [
+      "SEC1value",
+      "SEC2value",
+    ]);
+    expect(out).not.toContain("SEC1value");
+    expect(out).not.toContain("SEC2value");
   });
 
   it("같은 시크릿이 여러 번 나와도 전부 가린다", () => {
-    const out = maskSecrets("k=TOP k=TOP", ["TOP"]);
+    const out = maskSecrets("k=TOPSECRET k=TOPSECRET", ["TOPSECRET"]);
     expect(out).toBe("k=*** k=***");
   });
 
