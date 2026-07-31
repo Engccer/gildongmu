@@ -2,7 +2,7 @@
 
 > Next.js 16 주의: 학습 데이터와 컨벤션이 다를 수 있다. 코드 작성 전 `node_modules/next/dist/docs/`의 관련 가이드를 먼저 읽을 것 (요청 API 전부 비동기: `await params`, `await cookies()`; `middleware.ts` 대신 `proxy.ts`).
 >
-> **진행상황·실호출 검증 로그·미해결 결정은 `PROGRESS.md`**, 설계 정본은 `docs/superpowers/specs`·`plans`. 이 파일은 **항구 규칙·패턴·함정만** 담는다(매 세션 컨텍스트에 전량 로드되므로 비대화 금지).
+> **진행상황·실호출 검증 로그는 `PROGRESS.md`, 열려 있는 백로그는 `docs/BACKLOG.md`**(폐기 항목의 근거 포함 — 같은 조사 반복 금지), 설계 정본은 `docs/superpowers/specs`·`plans`. 이 파일은 **항구 규칙·패턴·함정만** 담는다(매 세션 컨텍스트에 전량 로드되므로 비대화 금지).
 
 ## 프로젝트 정체성
 
