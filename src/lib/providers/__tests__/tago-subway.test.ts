@@ -229,3 +229,96 @@ describe("fetchStationTimetable — 판정 표(스펙 §2-A)", () => {
     expect(requestedIds).not.toContain(KJJ_ID);
   });
 });
+
+describe("fetchScheduleRows 폴백 — 토요일 다이어 부재(실호출 2026-08-01)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /** 2026-08-01(토) 09:00 KST. computeServiceDailyType이 "saturday"를 내는 시각. */
+  function freezeSaturday() {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-08-01T00:00:00Z"));
+  }
+
+  const upRow = { endSubwayStationId: "OTHER", endSubwayStationNm: "방화", depTime: "053700" };
+
+  it("토요일 코드가 빈 결과면 휴일 코드로 다시 묻고 기준을 휴일로 표기한다", async () => {
+    // 수도권 운영사는 02(토요일) 다이어를 제출하지 않는다 — 정상 응답 + 0행이다.
+    // 폴백이 없으면 lines가 비어 섹션이 통째로 사라진다(선재 결함).
+    freezeSaturday();
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const code = new URL(String(input)).searchParams.get("dailyTypeCode")!;
+          asked.push(code);
+          return ok(envelope(code === "02" ? [] : [upRow]));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(asked).toContain("02");
+    expect(asked).toContain("03");
+    expect(result!.lines[0].directions.length).toBe(2);
+    expect(result!.dailyType).toBe("sunday"); // 답한 다이어를 그대로 표기
+  });
+
+  it("토요일 다이어를 가진 지역은 폴백하지 않고 토요일 기준을 유지한다", async () => {
+    // 부산 1호선은 02도 164행이다(실호출). 지역별로 갈리므로 일괄 폴백은 거짓이 된다.
+    freezeSaturday();
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          asked.push(new URL(String(input)).searchParams.get("dailyTypeCode")!);
+          return ok(envelope([upRow]));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(asked.every((c) => c === "02")).toBe(true);
+    expect(result!.dailyType).toBe("saturday");
+  });
+
+  it("한 노선이라도 토요일에 답하면 역 전체가 폴백하지 않는다 (혼합 사업자 환승역)", async () => {
+    // 실측 2026-08-01: 대저역은 부산3호선이 토요일 150행인데 부산김해경전철은 0행이다.
+    // 구간 단위로 폴백하면 "토요일 기준" 라벨 아래 휴일 값이 섞여 라벨이 거짓이 된다.
+    freezeSaturday();
+    const asked: string[] = [];
+    const line3 = { subwayStationId: "MTRBS3301", subwayStationName: "대저", subwayRouteName: "3호선" };
+    const gimhae = { subwayStationId: "MTRBGB10101", subwayStationName: "대저", subwayRouteName: "부산김해경전철" };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const op = opFromUrl(input);
+        if (op === "getRestDeInfo") return NO_HOLIDAY;
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line3, gimhae]));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const url = new URL(String(input));
+          asked.push(url.searchParams.get("dailyTypeCode")!);
+          const id = url.searchParams.get("subwayStationId")!;
+          return ok(envelope(id === line3.subwayStationId ? [upRow] : []));
+        }
+        throw new Error(`예상 밖 오퍼레이션: ${op}`);
+      }),
+    );
+    const result = await fetchStationTimetable("대저");
+    // 03으로 재조회하지 않는다 — 이 역은 토요일 다이어를 갖는 역이다.
+    expect(asked.every((c) => c === "02")).toBe(true);
+    expect(result!.dailyType).toBe("saturday"); // 남은 노선에 대해 참
+    // 토요일에 답하지 못한 노선은 휴일 값으로 메우지 않고 정직하게 빠진다.
+    expect(result!.lines.map((l) => l.lineName)).toEqual(["3호선"]);
+  });
+
+});

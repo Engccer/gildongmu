@@ -7,6 +7,7 @@ import {
   type ServiceStatus,
 } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
+import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type { Coord, TransitLeg, TransitRoute, TransitRouteResult } from "../types";
 
 /**
@@ -36,6 +37,7 @@ interface OdsaySubPath {
   intervalTime?: number; // 평균 배차간격(분) — 실호출 확정(2026-07-21 길동→강남, 지하철 5·8·2호선 10/5/5)
   startName?: string;
   endName?: string;
+  wayCode?: number; // 지하철 방향 1=상행·2=하행 — 실호출 양방향 확정(2026-08-01)
   lane?: OdsayLane[];
 }
 interface OdsayPath {
@@ -81,6 +83,8 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
     ...(mode === "bus" && lane?.busLocalBlID && lane?.busCityCode != null
       ? { serviceRouteId: lane.busLocalBlID, serviceCityCode: lane.busCityCode }
       : {}),
+    // 지하철은 공유 식별자가 없어 (역명, 노선명, 방향)으로 시간표를 맞춘다.
+    ...(mode === "subway" && sp.wayCode != null ? { serviceWayCode: sp.wayCode } : {}),
   };
 }
 
@@ -134,21 +138,38 @@ function formatHHMM(minutes: number): string {
 /**
  * 운행시간 판정을 leg에 싣고 경로를 강등 정렬한다(순수).
  *
- * 경로 상태 = 그 경로 버스 leg 중 SERVICE_RANK 최대값.
- * ⚠ 버스 leg가 없는 경로(지하철·도보 전용)는 판정 대상이 아니라 rank 0을 준다.
- *   unknown(1)을 주면 지하철 경로가 운행 중 버스보다 밀리는데, 지하철 운행시간은
- *   범위 밖이라 근거 없는 강등이 된다. 0이면 안정 정렬과 맞물려 원순서가 보존된다.
+ * 경로 상태 = 그 경로 탑승 leg 중 SERVICE_RANK 최대값.
+ *
+ * ⚠ 버스·지하철 leg는 조인 키가 없어도 반드시 상태를 갖는다(조회 불가는 unknown).
+ *   상태를 안 붙이면 아래 rank 산출이 그 leg를 "판정 대상 아님"으로 세지 않고,
+ *   그런 leg만으로 이루어진 경로가 rank 0을 받아 확인된 running 경로와 나란히
+ *   최상단에 남는다. rank 0은 **도보 전용 경로**의 몫이다.
  */
 export function annotateServiceStatus(
   result: TransitRouteResult,
-  hours: Map<string, ServiceHours>,
+  busHours: Map<string, ServiceHours>,
+  subwayHours: Map<string, ServiceHours>,
   nowMinutes: number,
 ): TransitRouteResult {
+  const hoursFor = (leg: TransitLeg): ServiceHours | undefined => {
+    if (leg.mode === "bus") {
+      return leg.serviceRouteId ? busHours.get(leg.serviceRouteId) : undefined;
+    }
+    if (!leg.fromName || !leg.lineName || leg.serviceWayCode == null) return undefined;
+    return subwayHours.get(
+      subwayHoursKey({
+        stationName: leg.fromName,
+        lineName: leg.lineName,
+        wayCode: leg.serviceWayCode,
+      }),
+    );
+  };
+
   const annotateRoute = (route: TransitRoute): TransitRoute => ({
     ...route,
     legs: route.legs.map((leg) => {
-      if (leg.mode !== "bus" || !leg.serviceRouteId) return leg;
-      const h = hours.get(leg.serviceRouteId);
+      if (leg.mode === "walk") return leg;
+      const h = hoursFor(leg);
       const status: ServiceStatus = h
         ? judgeServiceStatus(nowMinutes, h.firstMinutes, h.lastMinutes)
         : "unknown";
@@ -216,13 +237,20 @@ export async function getTransitRoute(params: {
   // 운행시간 보강. ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다
   // (2026-08-01 실측: 03:58에 6개 대안 전부 운행 시간 밖). 조회가 실패해도 경로는
   // 그대로 반환한다 — 부가 정보가 본 기능을 죽이면 고치려다 더 큰 회귀가 된다.
-  const refs = [normalized.recommended, ...normalized.alternatives]
-    .flatMap((r) => r.legs)
-    .flatMap((l) =>
-      l.serviceRouteId && l.serviceCityCode != null
-        ? [{ localId: l.serviceRouteId, cityCode: l.serviceCityCode, routeNo: l.lineName ?? "" }]
-        : [],
-    );
-  const hours = await fetchServiceHoursMap(refs);
-  return annotateServiceStatus(normalized, hours, kstNowMinutes(new Date()));
+  const allLegs = [normalized.recommended, ...normalized.alternatives].flatMap((r) => r.legs);
+  const refs = allLegs.flatMap((l) =>
+    l.serviceRouteId && l.serviceCityCode != null
+      ? [{ localId: l.serviceRouteId, cityCode: l.serviceCityCode, routeNo: l.lineName ?? "" }]
+      : [],
+  );
+  const subwayRefs = allLegs.flatMap((l) =>
+    l.mode === "subway" && l.fromName && l.lineName && l.serviceWayCode != null
+      ? [{ stationName: l.fromName, lineName: l.lineName, wayCode: l.serviceWayCode }]
+      : [],
+  );
+  const [busHours, subwayHours] = await Promise.all([
+    fetchServiceHoursMap(refs),
+    fetchSubwayServiceHoursMap(subwayRefs),
+  ]);
+  return annotateServiceStatus(normalized, busHours, subwayHours, kstNowMinutes(new Date()));
 }
