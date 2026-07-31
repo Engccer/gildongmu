@@ -9,6 +9,11 @@ import {
   renderProbeLine,
   renderReport,
 } from "../usage-report-core.mjs";
+import {
+  runProbe,
+  MONEY_PROBES,
+  AVAILABILITY_PROBES,
+} from "../usage-probes.mjs";
 
 describe("parseEnvFile", () => {
   it("KEY=VALUE 줄을 읽고 주석과 빈 줄을 무시한다", () => {
@@ -197,5 +202,117 @@ describe("renderReport", () => {
     const out = renderReport({ ...sample, deadlines: [] });
     expect(out).toContain("[시한]");
     expect(out).toContain("해당 없음");
+  });
+});
+
+describe("runProbe", () => {
+  const probe = {
+    id: "demo",
+    label: "데모",
+    envKeys: ["DEMO_KEY"],
+    build: (env) => ({ url: `https://example.test/?key=${env.DEMO_KEY}` }),
+  };
+
+  it("키가 없으면 호출하지 않고 키 미설정을 낸다", async () => {
+    let called = false;
+    const result = await runProbe(probe, {}, async () => {
+      called = true;
+      return new Response("", { status: 200 });
+    });
+    expect(called).toBe(false);
+    expect(result.status).toBe(STATUS.MISSING);
+  });
+
+  // note는 키가 있을 때를 전제한 문장이다. 미설정 줄에 섞이면
+  // "정상, 잔액 4.21달러, 키 없으면 콘솔..." 같은 자기모순이 낭독된다
+  it("키 미설정 줄에 정상용 note를 섞지 않는다", async () => {
+    const withNote = { ...probe, note: "잔액은 콘솔에서 확인" };
+    const result = await runProbe(withNote, {}, async () => {
+      throw new Error("호출되면 안 된다");
+    });
+    expect(result.status).toBe(STATUS.MISSING);
+    expect(result.note).toBeUndefined();
+    expect(result.detail).toContain("DEMO_KEY");
+  });
+
+  it("missingHint가 있으면 그 문장을 쓴다", async () => {
+    const hinted = { ...probe, missingHint: "키를 넣으면 잔액이 나온다" };
+    const result = await runProbe(hinted, {}, async () => {
+      throw new Error("호출되면 안 된다");
+    });
+    expect(result.detail).toBe("키를 넣으면 잔액이 나온다");
+  });
+
+  it("2xx면 정상", async () => {
+    const result = await runProbe(
+      probe,
+      { DEMO_KEY: "supersecretvalue" },
+      async () => new Response("{}", { status: 200 }),
+    );
+    expect(result.status).toBe(STATUS.OK);
+  });
+
+  it("네트워크 예외를 조회 실패로 흡수하고 리포트를 죽이지 않는다", async () => {
+    const result = await runProbe(
+      probe,
+      { DEMO_KEY: "supersecretvalue" },
+      async () => {
+        throw new Error("connect ECONNREFUSED");
+      },
+    );
+    expect(result.status).toBe(STATUS.ERROR);
+    expect(result.detail).toContain("ECONNREFUSED");
+  });
+
+  it("오류 상세에 키 값이 새지 않는다", async () => {
+    const result = await runProbe(
+      probe,
+      { DEMO_KEY: "supersecretvalue" },
+      async () => {
+        throw new Error("failed on https://example.test/?key=supersecretvalue");
+      },
+    );
+    expect(result.detail).not.toContain("supersecretvalue");
+    expect(result.detail).toContain("***");
+  });
+
+  it("응답 본문이 상세에 실려도 키가 마스킹된다", async () => {
+    const result = await runProbe(
+      probe,
+      { DEMO_KEY: "supersecretvalue" },
+      async () =>
+        new Response("bad request for key=supersecretvalue", { status: 400 }),
+    );
+    expect(result.status).toBe(STATUS.ERROR);
+    expect(result.detail).not.toContain("supersecretvalue");
+  });
+
+  it("프로브의 judge가 기본 판정을 덮어쓴다", async () => {
+    const perplexityLike = {
+      ...probe,
+      judge: ({ httpStatus }) =>
+        httpStatus === 400 ? STATUS.OK : defaultJudge({ httpStatus }),
+    };
+    const result = await runProbe(
+      perplexityLike,
+      { DEMO_KEY: "supersecretvalue" },
+      async () => new Response("invalid_model", { status: 400 }),
+    );
+    expect(result.status).toBe(STATUS.OK);
+  });
+});
+
+describe("프로브 카탈로그", () => {
+  it("모든 프로브가 label과 envKeys와 build를 갖는다", () => {
+    for (const probe of [...MONEY_PROBES, ...AVAILABILITY_PROBES]) {
+      expect(typeof probe.label).toBe("string");
+      expect(Array.isArray(probe.envKeys)).toBe(true);
+      expect(typeof probe.build).toBe("function");
+    }
+  });
+
+  it("id가 중복되지 않는다", () => {
+    const ids = [...MONEY_PROBES, ...AVAILABILITY_PROBES].map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
