@@ -39,14 +39,14 @@ function envelopeJudge(pick, { ok, auth = [], quota = [] }) {
 
 const USAGE_WINDOW_DAYS = 30;
 
-// GEMINI_API_KEY가 묶인 GCP 프로젝트(2026-07-31 키 문자열 대조로 확정).
-// ⚠ 이 프로젝트는 길동무 전용이 아니다. Converters의 TTS·이미지 생성과
-// dodo-planet이 같은 키를 공유하므로 프로젝트 전체 토큰 = 길동무 비용이 아니다.
-const GEMINI_GCP_PROJECT = "gen-lang-client-0040162498";
+// 길동무 전용 GCP 프로젝트(2026-07-31 신설). 이전에는 Converters·dodo-planet과
+// 공유하는 프로젝트를 써서 model 라벨로 갈라야 했는데, dodo도 같은 모델을 쓰는
+// 것이 드러나 그 분리가 애초에 성립하지 않았다. 전용 프로젝트가 정본이다.
+const GEMINI_GCP_PROJECT = "gildongmu-prod";
 
 // ⚠ src/lib/gemini/client.ts의 GEMINI_MODEL과 반드시 같아야 한다.
-// 어긋나면 리포트가 조용히 0토큰을 보고한다(오류가 아니라 "사용량 없음"으로 보이는
-// 최악의 실패). gemini-model-drift 테스트가 이 동조를 강제한다.
+// 이제는 집계 필터가 아니라 단가를 고르는 기준이다(프로젝트가 전용이라
+// 토큰은 전량 합산한다). drift 테스트가 동조를 강제한다.
 export const GILDONGMU_GEMINI_MODEL = "gemini-3.6-flash";
 
 // 출력 100만 토큰당 단가(2026-07 기준). 입력은 $1.50이나 메트릭이 없어 계산 불가
@@ -76,27 +76,27 @@ export function summarizeBalances(bodyText) {
 }
 
 /**
- * Cloud Monitoring 시계열에서 길동무가 쓰는 모델만 골라 합산한다.
+ * Cloud Monitoring 시계열의 출력 토큰을 전량 합산한다.
  *
- * ⚠ 프로젝트 전체 합계는 내지 않는다. 이 프로젝트는 Converters·dodo-planet과
- * 공유라 전체를 길동무 비용으로 보고하면 2단계 승격 판정이 틀린 근거로 발동하고,
- * 게다가 전체값은 정렬 구간 경계에 따라 실행마다 흔들려(실측 1.8M vs 0.91M)
- * 없는 문제를 쫓게 만든다. 행동을 바꾸지 않는 수치는 빼는 편이 낫다.
+ * 프로젝트가 길동무 전용이라 model 라벨 필터를 두지 않는다. 필터를 남기면
+ * 모델을 교체했을 때 오류 없이 0을 보고하는 위험만 남는다. 단가는 현재 모델
+ * 기준이며, 입력 토큰 메트릭이 없어 결과는 실제 비용의 하한이다.
  */
 export function summarizeGeminiTokens(bodyText) {
   try {
     const series = JSON.parse(bodyText).timeSeries ?? [];
-    let mine = 0;
-    for (const s of series) {
-      if (s.metric?.labels?.model !== GILDONGMU_GEMINI_MODEL) continue;
-      mine += (s.points ?? []).reduce(
-        (acc, p) => acc + Number(p.value?.int64Value ?? 0),
-        0,
-      );
-    }
-    const usd = (mine / 1_000_000) * GEMINI_OUTPUT_USD_PER_MILLION;
-    // "출력 기준"을 반드시 남긴다. 입력 토큰 메트릭이 없어 이 값은 하한이다
-    return `최근 ${USAGE_WINDOW_DAYS}일 ${GILDONGMU_GEMINI_MODEL} 출력 ${mine.toLocaleString("en-US")}토큰, 출력 기준 ${usd.toFixed(2)}달러`;
+    const tokens = series.reduce(
+      (total, s) =>
+        total +
+        (s.points ?? []).reduce(
+          (acc, p) => acc + Number(p.value?.int64Value ?? 0),
+          0,
+        ),
+      0,
+    );
+    const usd = (tokens / 1_000_000) * GEMINI_OUTPUT_USD_PER_MILLION;
+    // "출력 기준"을 반드시 남긴다. 이 값은 하한이지 실제 청구액이 아니다
+    return `최근 ${USAGE_WINDOW_DAYS}일 출력 ${tokens.toLocaleString("en-US")}토큰, 출력 기준 ${usd.toFixed(2)}달러`;
   } catch {
     return undefined;
   }

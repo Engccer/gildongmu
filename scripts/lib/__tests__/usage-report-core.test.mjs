@@ -435,38 +435,42 @@ describe("Gemini 모델명 drift", () => {
 });
 
 describe("Gemini 토큰 요약", () => {
-  // 이 프로젝트는 Converters·dodo-planet과 공유하므로 모델로 갈라야 한다
+  // 프로젝트가 길동무 전용이라 시계열을 전량 합산한다(모델 필터 없음)
   const body = JSON.stringify({
     timeSeries: [
       {
-        metric: { labels: { model: "gemini-3.6-flash", thinking_enabled: "true" } },
+        metric: {
+          labels: { model: "gemini-3.6-flash", thinking_enabled: "true" },
+        },
         points: [{ value: { int64Value: "91978" } }],
       },
       {
-        metric: { labels: { model: "gemini-3.1-flash-tts" } },
-        points: [{ value: { int64Value: "360241" } }],
-      },
-      {
-        metric: { labels: { model: "gemini-3.5-flash" } },
-        points: [{ value: { int64Value: "639762" } }],
+        metric: {
+          labels: { model: "gemini-3.6-flash", thinking_enabled: "false" },
+        },
+        points: [{ value: { int64Value: "22" } }],
       },
     ],
   });
 
-  it("길동무 모델만 골라 비용을 계산한다", () => {
+  it("출력 토큰을 합산해 비용을 계산한다", () => {
     const out = summarizeGeminiTokens(body);
-    expect(out).toContain("gemini-3.6-flash 출력 91,978토큰");
-    // 91,978 / 1M * $7.50 = $0.69
+    expect(out).toContain("출력 92,000토큰");
+    // 92,000 / 1M * $7.50 = $0.69
     expect(out).toContain("0.69달러");
   });
 
-  // 프로젝트가 Converters·dodo와 공유라 전체 합계는 길동무 비용이 아니고,
-  // 정렬 경계에 따라 실행마다 흔들려 없는 문제를 쫓게 만든다
-  it("다른 도구의 토큰을 섞지 않는다", () => {
-    const out = summarizeGeminiTokens(body);
-    expect(out).not.toContain("360,241");
-    expect(out).not.toContain("639,762");
-    expect(out).not.toContain("1,091,981");
+  // 모델을 교체해도 집계가 멈추면 안 된다(필터를 되살리면 이 테스트가 깨진다)
+  it("모델 이름과 무관하게 전량 합산한다", () => {
+    const future = JSON.stringify({
+      timeSeries: [
+        {
+          metric: { labels: { model: "gemini-9.9-flash" } },
+          points: [{ value: { int64Value: "1000" } }],
+        },
+      ],
+    });
+    expect(summarizeGeminiTokens(future)).toContain("출력 1,000토큰");
   });
 
   // 입력 토큰 메트릭이 없어 이 값은 하한이다. 표기가 사라지면 과소 보고가 사실로 읽힌다
