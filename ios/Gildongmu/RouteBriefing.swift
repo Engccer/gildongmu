@@ -64,12 +64,20 @@ func transitLegText(_ leg: TransitRouteLeg) -> String {
         return appLocalized("ios.route.walkMinutes", String(leg.minutes))
     }
     let countKey = leg.mode == "bus" ? appLocalized("ios.route.stopCount") : appLocalized("ios.route.stationCount")
+    // 운행 밖만 표기(정상·정보없음은 침묵). 별도 Text로 쪼개면 접근성 객체가 갈라지므로
+    // joinText로 같은 한 줄에 합친다.
+    var serviceOutside: String?
+    if leg.serviceStatus == "outside",
+       let first = leg.firstServiceTime, let last = leg.lastServiceTime {
+        serviceOutside = appLocalized("ios.route.serviceOutside", first, last)
+    }
     return joinText(
         leg.lineName,
         leg.fromName.map { appLocalized("ios.route.board", $0) },
         leg.toName.map { appLocalized("ios.route.alight", $0) },
         leg.stationCount.map { String(format: countKey, String($0)) },
-        appLocalized("ios.route.legMinutes", String(leg.minutes)))
+        appLocalized("ios.route.legMinutes", String(leg.minutes)),
+        serviceOutside)
 }
 
 /// 도보 결과 행들(요약 1행+step들). 웹 WalkRouteResult 미러: step description

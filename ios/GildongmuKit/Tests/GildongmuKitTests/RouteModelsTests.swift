@@ -116,3 +116,28 @@ extension StubNetworkTests {
         #expect(result == nil)
     }
 }
+
+// MARK: - 운행 시간 판정 필드(2026-08-01)
+// ODsay가 출발 시각을 반영하지 않아 서버가 TOPIS 운행시간을 조인해 실어 준다.
+// 옵셔널이라 필드가 없는 구버전 응답과도 호환되어야 한다.
+
+extension StubNetworkTests {
+    @Test func 운행시간_필드를_디코딩한다() throws {
+        let json = Data("""
+        {"mode":"bus","lineName":"342","fromName":"강동역","toName":"길동생태공원",
+         "stationCount":14,"minutes":22,"serviceStatus":"outside",
+         "firstServiceTime":"04:00","lastServiceTime":"22:30"}
+        """.utf8)
+        let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
+        #expect(leg.serviceStatus == "outside")
+        #expect(leg.firstServiceTime == "04:00")
+        #expect(leg.lastServiceTime == "22:30")
+    }
+
+    @Test func 운행시간_필드가_없어도_디코딩된다() throws {
+        let json = Data(#"{"mode":"bus","lineName":"342","minutes":22}"#.utf8)
+        let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
+        #expect(leg.serviceStatus == nil)
+        #expect(leg.firstServiceTime == nil)
+    }
+}
