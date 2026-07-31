@@ -113,6 +113,6 @@ lastServiceTime?: string;   // "22:30"
 
 ## 범위 밖 (후속)
 
-- **지하철 운행시간 판정**: 결함은 실측 확인됐으나 판정 수단이 미확정이다. 기존 `/api/station/timetable`은 강동역에서 빈 `lines`를 반환해 신뢰할 수 없고, 실시간 도착으로 대체하면 일 1,000회 쿼터를 추가로 쓴다. 수단 확정 후 별도 spec.
+- **지하철 운행시간 판정**: ⚠ 확장 시 **en·es·fr·it 문안을 교체해야 한다** — 네 언어는 "First bus"·"Primer autobús"·"Premier bus"·"Primo autobus"로 수단이 하드코딩돼 있어 지하철에 그대로 쓰면 오낭독한다(ko "첫차/막차"·ja "始発/終発"는 수단 중립이라 유효). 현재는 `annotateServiceStatus`의 `leg.mode !== "bus"` 가드 덕에 무결함이다. 결함 자체는 실측 확인됐으나 판정 수단이 미확정이다. 기존 `/api/station/timetable`은 강동역에서 빈 `lines`를 반환해 신뢰할 수 없고, 실시간 도착으로 대체하면 일 1,000회 쿼터를 추가로 쓴다. 수단 확정 후 별도 spec.
 - ODsay `-98`(700m 이내) 근거리 경로 미제공은 별개 이슈.
 - dodo-planet 이식은 이 마일스톤 종료 후.

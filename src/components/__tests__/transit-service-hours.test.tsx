@@ -48,6 +48,10 @@ describe("운행 시간 낭독", () => {
     const item = screen.getByRole("listitem");
     expect(item.textContent).toContain("첫차 04:00");
     expect(item.textContent).toContain("지금은 운행하지 않습니다");
+    // 한 줄 = 한 접근성 객체: 운행 문구가 순수 텍스트로 붙어야 한다.
+    // 요소 노드는 기존 고유명 span 2개(승차 정류장·노선)뿐이고 늘어나면 안 된다.
+    // t()를 t.rich로 바꾸거나 강조 span을 넣는 변이를 이 단언이 잡는다.
+    expect(item.querySelectorAll("*")).toHaveLength(2);
   });
 
   it("running이면 아무 문구도 붙이지 않는다(정상은 침묵)", () => {
