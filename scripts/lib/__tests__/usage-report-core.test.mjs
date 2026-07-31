@@ -13,6 +13,8 @@ import {
   runProbe,
   MONEY_PROBES,
   AVAILABILITY_PROBES,
+  summarizeBalances,
+  summarizeUsage,
 } from "../usage-probes.mjs";
 
 describe("parseEnvFile", () => {
@@ -373,6 +375,48 @@ describe("200에 오류를 담는 벤더 판정", () => {
         bodyText: '{"response":{"header":{"resultCode":"30"}}}',
       }),
     ).toBe(STATUS.ERROR);
+  });
+});
+
+describe("Deepgram 응답 요약", () => {
+  it("잔액이 여러 건이면 합산한다", () => {
+    const body = JSON.stringify({
+      balances: [
+        { amount: 197.57, units: "usd", purchase_order_id: "a" },
+        { amount: 2.43, units: "usd", purchase_order_id: "b" },
+      ],
+    });
+    expect(summarizeBalances(body)).toBe("200.00달러");
+  });
+
+  // 라벨이 "Deepgram 잔액"이라 값에서 반복하면 "잔액 정상, 잔액 197달러"가 된다
+  it("값에 라벨 단어를 반복하지 않는다", () => {
+    expect(summarizeBalances('{"balances":[{"amount":197.57}]}')).toBe(
+      "197.57달러",
+    );
+  });
+
+  it("잔액이 없으면 0으로 낸다(조회 실패와 구분된다)", () => {
+    expect(summarizeBalances('{"balances":[]}')).toBe("0.00달러");
+  });
+
+  // 실제 응답은 일별 배열이라 창 전체를 합산해야 한다(2026-07-31 실호출)
+  it("사용량 일별 배열을 합산한다", () => {
+    const body = JSON.stringify({
+      start: "2026-07-01",
+      end: "2026-07-31",
+      results: [
+        { start: "2026-07-01", requests: 1, total_hours: 0.0020916666 },
+        { start: "2026-07-02", requests: 1, total_hours: 1.14735 },
+        { start: "2026-07-04", requests: 15, total_hours: 0.0341586 },
+      ],
+    });
+    expect(summarizeUsage(body)).toBe("최근 30일 요청 17건, 음성 1.2시간");
+  });
+
+  it("본문이 JSON이 아니면 undefined를 내 상태 판정에 맡긴다", () => {
+    expect(summarizeBalances("<html>")).toBeUndefined();
+    expect(summarizeUsage("<html>")).toBeUndefined();
   });
 });
 

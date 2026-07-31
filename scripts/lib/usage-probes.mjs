@@ -37,6 +37,37 @@ function envelopeJudge(pick, { ok, auth = [], quota = [] }) {
   };
 }
 
+const USAGE_WINDOW_DAYS = 30;
+
+function isoDaysAgo(days) {
+  const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
+/** balances 응답 합산. 잔액이 여러 건으로 쪼개져 올 수 있다 */
+export function summarizeBalances(bodyText) {
+  try {
+    const balances = JSON.parse(bodyText).balances ?? [];
+    const total = balances.reduce((sum, b) => sum + (b.amount ?? 0), 0);
+    // 라벨이 이미 "잔액"이라 여기서 반복하지 않는다
+    return `${total.toFixed(2)}달러`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** usage 응답은 일별 배열이라 창 전체를 합산해야 한다 */
+export function summarizeUsage(bodyText) {
+  try {
+    const results = JSON.parse(bodyText).results ?? [];
+    const requests = results.reduce((sum, r) => sum + (r.requests ?? 0), 0);
+    const hours = results.reduce((sum, r) => sum + (r.total_hours ?? 0), 0);
+    return `최근 ${USAGE_WINDOW_DAYS}일 요청 ${requests}건, 음성 ${hours.toFixed(1)}시간`;
+  } catch {
+    return undefined;
+  }
+}
+
 export const MONEY_PROBES = [
   {
     id: "gemini",
@@ -72,24 +103,28 @@ export const MONEY_PROBES = [
     note: "잔액은 조회 API가 없어 정보 없음. 콘솔 console.perplexity.ai",
   },
   {
-    id: "deepgram-usage",
-    label: "Deepgram",
+    id: "deepgram-balance",
+    label: "Deepgram 잔액",
     envKeys: ["DEEPGRAM_MANAGE_KEY"],
     build: (env) => ({
       url: `https://api.deepgram.com/v1/projects/${DEEPGRAM_PROJECT_ID}/balances`,
       init: { headers: { Authorization: `Token ${env.DEEPGRAM_MANAGE_KEY}` } },
     }),
-    describe: ({ bodyText }) => {
-      try {
-        const balances = JSON.parse(bodyText).balances ?? [];
-        const total = balances.reduce((sum, b) => sum + (b.amount ?? 0), 0);
-        return `잔액 ${total.toFixed(2)}달러`;
-      } catch {
-        return undefined;
-      }
-    },
+    describe: ({ bodyText }) => summarizeBalances(bodyText),
     missingHint:
       "DEEPGRAM_MANAGE_KEY를 .env.local에 넣으면 잔액이 표시된다. 콘솔 console.deepgram.com",
+  },
+  {
+    id: "deepgram-volume",
+    label: "Deepgram 사용량",
+    envKeys: ["DEEPGRAM_MANAGE_KEY"],
+    // 잔액과 엔드포인트가 다르다. 프로브 하나 = 요청 하나 = 판정 하나를 유지한다
+    build: (env) => ({
+      url: `https://api.deepgram.com/v1/projects/${DEEPGRAM_PROJECT_ID}/usage?start=${isoDaysAgo(USAGE_WINDOW_DAYS)}&end=${isoDaysAgo(0)}`,
+      init: { headers: { Authorization: `Token ${env.DEEPGRAM_MANAGE_KEY}` } },
+    }),
+    describe: ({ bodyText }) => summarizeUsage(bodyText),
+    missingHint: "DEEPGRAM_MANAGE_KEY 필요",
   },
 ];
 
@@ -265,6 +300,8 @@ export const AVAILABILITY_PROBES = [
       init: { headers: { Authorization: `Bearer ${env.VERCEL_TOKEN}` } },
     }),
     note: "Hobby라 과금 축 없음",
+    missingHint:
+      "CLI 토큰이 없거나 만료됐다. vercel login으로 갱신하면 자동으로 읽는다",
   },
 ];
 

@@ -31,14 +31,20 @@ function loadEnvFile() {
   }
 }
 
-/** Vercel CLI가 이미 로그인 토큰을 갖고 있다. 별도 발급을 요구하지 않는다 */
+/**
+ * Vercel CLI가 이미 로그인 토큰을 갖고 있다. 별도 발급을 요구하지 않는다.
+ * ⚠ expiresAt은 초 단위다. 밀리초로 비교하면 1970년이 되어 항상 만료로 읽힌다.
+ * 만료된 토큰을 그대로 보내면 "인증 실패"로 표시되어 계정 문제로 오해된다.
+ */
 function loadVercelCliToken() {
   try {
     const authPath = path.join(
       os.homedir(),
       "Library/Application Support/com.vercel.cli/auth.json",
     );
-    return JSON.parse(readFileSync(authPath, "utf8")).token || undefined;
+    const auth = JSON.parse(readFileSync(authPath, "utf8"));
+    if (auth.expiresAt && auth.expiresAt * 1000 < Date.now()) return undefined;
+    return auth.token || undefined;
   } catch {
     return undefined;
   }
