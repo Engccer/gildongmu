@@ -45,7 +45,7 @@ public struct StationService: Sendable {
     }
 }
 
-/// 날씨·공기질 조회 `GET ?lat=&lng=`. 두 fetch는 화면(모델)에서 독립 실행
+/// 날씨·공기질·혼잡도 조회 `GET ?lat=&lng=`. 세 fetch는 화면(모델)에서 독립 실행
 /// (한쪽 실패가 다른 쪽을 안 죽임, 웹 allSettled 미러).
 public struct ConditionsService: Sendable {
     let client: APIClient
@@ -62,5 +62,13 @@ public struct ConditionsService: Sendable {
         let response: WeatherNearbyResponse = try await client.get(
             "/api/weather/nearby", query: coordQuery(lat: lat, lng: lng))
         return response.weather
+    }
+
+    /// 실시간 인구 혼잡도. 본문 `area: null`은 조회 실패가 아니라 "여기는 서울 핫스팟 121곳이
+    /// 아니다"라는 답이므로 nil을 그대로 돌려준다(화면은 침묵). 실패만 throw(APIError).
+    public func congestion(lat: Double, lng: Double) async throws -> Congestion? {
+        let response: CongestionNearbyResponse = try await client.get(
+            "/api/congestion/nearby", query: coordQuery(lat: lat, lng: lng))
+        return response.area
     }
 }

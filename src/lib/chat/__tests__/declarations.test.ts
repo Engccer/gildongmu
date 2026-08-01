@@ -247,4 +247,35 @@ describe("availableDeclarations", () => {
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_nearby_events")).toBe(false);
   });
+
+  // get_congestion — SEOUL_OPEN_DATA_KEY 게이트(따릉이·문화행사와 동일 키)
+  it("서울 열린데이터 키 있으면 get_congestion 노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", "s");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_congestion")).toBe(true);
+  });
+
+  it("서울 열린데이터 키 없으면 get_congestion 미노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_congestion")).toBe(false);
+  });
+
+  // 도구 총수 — 새 도구를 더하면 이 숫자도 함께 올린다(누락 시 실패로 알린다).
+  it("모든 키가 있으면 20개 도구가 노출된다", async () => {
+    for (const k of [
+      "KAKAO_REST_API_KEY",
+      "JUSO_CONFM_KEY",
+      "SEOUL_SUBWAY_REALTIME_KEY",
+      "DATA_GO_KR_API_KEY",
+      "SEOUL_OPEN_DATA_KEY",
+      "ODSAY_API_KEY",
+      "TMAP_APP_KEY",
+      "PERPLEXITY_API_KEY",
+    ]) {
+      vi.stubEnv(k, "x");
+    }
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations()).toHaveLength(20);
+  });
 });

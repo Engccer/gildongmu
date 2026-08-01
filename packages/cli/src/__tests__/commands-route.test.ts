@@ -113,6 +113,51 @@ describe("route 명령", () => {
     );
   });
 
+  it("walk --accessible은 값을 그대로 쿼리에 싣고, 미지정이면 파라미터 자체가 없다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/route/walk") return { result: { distanceMeters: 0, durationSeconds: 0, steps: [] } };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true" } },
+    );
+
+    apiRequest.mockClear();
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+    );
+  });
+
+  it("잘못된 accessible 값도 정규화 없이 그대로 보낸다(라우트가 400으로 거절 — 침묵 강등 금지)", async () => {
+    // 400 → ExitCode.Usage(2)는 exitCodeForStatus의 실계약(실호출 확인: "Invalid input", exit 2).
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/route/walk") throw new MockApiError("Invalid input", 400, 2);
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await expect(
+      runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/route/walk",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "yes" } },
+    );
+  });
+
+  it("car·transit에 --accessible을 주면 조용히 무시하지 않고 exit 2로 거절한다", async () => {
+    await expect(
+      runRoute("car", { origin: "37.53,127.12", dest: "37.49,127.02", accessible: "true", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
+    expect(apiRequest).not.toHaveBeenCalled();
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("route walk에서만");
+  });
+
   it("지오코딩이 네트워크 오류(ApiError exit 7)로 실패하면 Usage로 뭉개지 않고 exit 7로 종료한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/geocode") throw new MockApiError("연결에 실패했습니다", 0, 7);

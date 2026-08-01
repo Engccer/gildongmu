@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
- * nearby 9종 명령 테스트 — 카탈로그 팩토리(Task 8)가 만든 서브커맨드의
+ * nearby 10종 명령 테스트 — 카탈로그 팩토리(Task 8)가 만든 서브커맨드의
  * 위치 필수 안내·엔드포인트 매핑을 검증한다. api-client.js·config.js만 모킹.
  */
 
@@ -53,10 +53,12 @@ async function runNearby(verb: string, args: Record<string, unknown>): Promise<v
   await sub.run!({ args, rawArgs: [], cmd: sub } as never);
 }
 
-const EXPECTED_VERBS = ["subway", "bus", "bike", "clinic", "kids", "around", "events", "barrier-free", "walk"];
+const EXPECTED_VERBS = [
+  "subway", "bus", "bike", "clinic", "kids", "around", "events", "barrier-free", "walk", "congestion",
+];
 
 describe("nearby 명령", () => {
-  it("9개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
+  it("10개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
     const { nearbyCommand } = await import("../commands/nearby.js");
     expect(Object.keys(nearbyCommand.subCommands ?? {}).sort()).toEqual([...EXPECTED_VERBS].sort());
   });
@@ -100,6 +102,24 @@ describe("nearby 명령", () => {
       "/api/station/subway-arrival/nearby",
       { query: { lat: "37.5", lng: "127.1" } },
     );
+  });
+
+  it("congestion은 혼잡도 라우트로 나가고, area null(영역 밖)을 오류가 아닌 안내로 출력한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/congestion/nearby") return { area: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runNearby("congestion", { lat: "37.5", lng: "127.1", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/congestion/nearby",
+      { query: { lat: "37.5", lng: "127.1" } },
+    );
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain("실시간 혼잡도 제공 대상이 아닙니다");
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(stderrSpy).not.toHaveBeenCalled();
   });
 
   it("서버가 outOfCoverage 마커를 반환하면 안내 문구를 출력하고 exit 0로 정상 종료한다(오류 아님)", async () => {

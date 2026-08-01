@@ -25,6 +25,14 @@ const ROUTE_DESCRIPTION: Record<"car" | "transit" | "walk", string> = {
   walk: "도보 경로 텍스트 브리핑",
 };
 
+/** walk 전용 — 계단 회피 경로. 값 검증은 라우트가 한다(아래 forwarding 주석). */
+const walkArgs = {
+  accessible: {
+    type: "string" as const,
+    description: "true|false, 계단 회피 경로(walk 전용)",
+  },
+};
+
 function makeRoute(verb: "car" | "transit" | "walk") {
   return defineCommand({
     meta: { name: verb, description: ROUTE_DESCRIPTION[verb] },
@@ -32,8 +40,15 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       origin: { type: "positional", description: "출발지(장소명·주소 또는 '위도,경도')", required: true },
       dest: { type: "positional", description: "도착지(장소명·주소 또는 '위도,경도')", required: true },
       ...sharedArgs,
+      ...(verb === "walk" ? walkArgs : {}),
     },
     async run({ args }) {
+      // citty는 선언하지 않은 플래그도 args에 실어 준다 — car·transit에서 --accessible을
+      // 조용히 무시하면 "계단 회피를 요청했는데 기본 경로를 받는" 침묵 강등이 된다.
+      const accessible = (args as { accessible?: unknown }).accessible;
+      if (verb !== "walk" && accessible !== undefined) {
+        fail(`--accessible은 route walk에서만 지원합니다(${verb} 미지원).`, ExitCode.Usage);
+      }
       let origin: string, dest: string;
       try {
         [origin, dest] = await Promise.all([toCoordString(args.origin), toCoordString(args.dest)]);
@@ -44,7 +59,10 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       }
       // lang은 car(en 턴바이턴)만 쓴다 — transit·walk는 V1 국문 전용(ODsay·Tmap 무료
       // 티어가 국문 응답만 제공, 보내도 라우트가 무시).
-      const extra = verb === "car" && args.lang === "en" ? { lang: "en" } : {};
+      const extra: Record<string, string> = verb === "car" && args.lang === "en" ? { lang: "en" } : {};
+      // 값은 그대로 전달한다 — "true"/"false" 외는 라우트가 400으로 거절해야 하고,
+      // CLI가 정규화하면 오타("yes")가 조용히 기본 모드(계단 포함)로 강등된다.
+      if (verb === "walk" && accessible !== undefined) extra.accessible = String(accessible);
       await runEndpoint(ROUTE_CATALOG_NAME[verb], { origin, dest, ...extra }, args.output);
     },
   });

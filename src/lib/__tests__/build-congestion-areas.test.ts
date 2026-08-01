@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error — .mjs 빌드 스크립트에 타입 선언 없음(build-audio-signals 선례)
 import { toArea, validateAreas } from "../../../scripts/build-congestion-areas.mjs";
+
+/**
+ * `toArea`는 정상적으로 null을 돌려줄 수 있다(공백 코드·지점 0개). null이
+ * 아님을 기대하는 케이스에서 `!`로 눌러 버리면 실패가 TypeError로 둔갑해
+ * 어느 단언이 깨졌는지 알 수 없으므로, 여기서 명시적으로 끊는다.
+ */
+function must<T>(v: T | null): T {
+  if (v === null) throw new Error("toArea가 null을 돌려줬다(영역이 만들어지지 않음)");
+  return v;
+}
 
 /** 가드를 통과하는 최소 입력. 강남역 golden을 반드시 포함해야 한다. */
 function okAreas() {
@@ -30,18 +39,18 @@ describe("toArea — 응답 하나를 영역으로", () => {
   };
 
   it("지하철역과 버스정류장 좌표를 모두 모은다", () => {
-    const a = toArea(raw);
+    const a = must(toArea(raw));
     expect(a.code).toBe("POI014");
     expect(a.name).toBe("강남역");
     expect(a.pts).toHaveLength(2);
   });
 
   it("좌표는 소수 6자리로 절단한다(파일 크기)", () => {
-    expect(toArea(raw).pts[1]).toEqual([37.495849, 127.028537]);
+    expect(must(toArea(raw)).pts[1]).toEqual([37.495849, 127.028537]);
   });
 
   it("중심은 구성 지점의 평균이다", () => {
-    const [lat, lng] = toArea(raw).c;
+    const [lat, lng] = must(toArea(raw)).c;
     expect(lat).toBeCloseTo((37.504598 + 37.4958485587) / 2, 5);
     expect(lng).toBeCloseTo((127.02506 + 127.0285365859) / 2, 5);
   });
@@ -55,14 +64,14 @@ describe("toArea — 응답 하나를 영역으로", () => {
   });
 
   it("좌표가 비유한인 지점은 버리고 나머지는 살린다", () => {
-    const a = toArea({
+    const a = must(toArea({
       CITYDATA: {
         AREA_NM: "x",
         AREA_CD: "POI001",
         SUB_STTS: [{ SUB_STN_X: "", SUB_STN_Y: "" }],
         BUS_STN_STTS: [{ BUS_STN_X: "127.0", BUS_STN_Y: "37.5" }],
       },
-    });
+    }));
     expect(a.pts).toEqual([[37.5, 127.0]]);
   });
 });

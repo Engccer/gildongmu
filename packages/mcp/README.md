@@ -37,7 +37,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 
 - `GILDONGMU_API_URL`: API 엔드포인트(기본 `https://gildongmu.dodoplanet.space`)
 
-## 노출되는 도구 (24종)
+## 노출되는 도구 (26종)
 
 전부 읽기 전용(`readOnlyHint: true`). 도구명은 REST 카탈로그 이름을 스네이크 케이스로 바꾼 것이다(예: `nearby-subway` → `nearby_subway`).
 
@@ -52,8 +52,10 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 | `nearby_clinic` | 내 주변 소아 야간·휴일 진료 |
 | `nearby_kids` | 내 주변 아이 놀 곳 |
 | `nearby_around` | 내 주변 둘러보기(편의점·카페 등 10종+8방위) |
+| `nearby_events` | 내 주변 오늘 진행 중인 문화행사(서울) |
 | `nearby_barrier_free` | 내 주변 무장애 관광지 |
 | `nearby_walk_infra` | 내 주변 보행 인프라(음향신호기·횡단보도·점자블록) |
+| `nearby_congestion` | 지금 있는 곳의 실시간 인구 혼잡도(서울 핫스팟 121곳 한정) |
 | `station_meta` | 도시철도역 메타(영문명·노선·환승) |
 | `station_facilities` | 철도역 교통약자 시설(코레일) |
 | `station_metro_facilities` | 서울 지하철역 교통약자 시설 |
@@ -62,7 +64,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 | `bus_route_stops` | 버스 노선 경유 정류소 |
 | `route_car` | 자동차 경로 텍스트 브리핑(턴바이턴) |
 | `route_transit` | 대중교통 경로(추천+대안, ODsay) |
-| `route_walk` | 도보 경로 텍스트 브리핑(Tmap) |
+| `route_walk` | 도보 경로 텍스트 브리핑(기본 카카오·폴백 Tmap, `accessible`로 계단 회피) |
 | `weather` | 이 지역 날씨(기상청 실황+예보) |
 | `air_quality` | 이 지역 공기질(에어코리아) |
 | `where_am_i` | 현재 위치 정위(주소·행정동·가까운 역·기준점) |

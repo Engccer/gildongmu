@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FORMATTERS } from "../lib/formatters";
+import { FORMATTERS } from "../lib/formatters.js";
 
 // FORMATTERS는 엔드포인트 키 → 포매터 레코드다. transit 키는 "route-transit"(슬래시 아님).
 const formatTransit = (body: unknown) =>

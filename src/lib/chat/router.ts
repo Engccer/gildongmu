@@ -16,6 +16,7 @@ import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
 import { findEventsNear } from "@/lib/culture-events";
+import { findCongestionNear } from "@/lib/congestion";
 import { findStationMeta } from "@/lib/subway-stations";
 import { fetchStationFacilities } from "@/lib/providers/korail-facilities";
 import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilities";
@@ -148,6 +149,19 @@ export async function executeFunction(
       // 카드 없이 산문이 정본 — 목록을 두 벌로 만들지 않는다(get_weather 동형).
       const { events, total } = await findEventsNear(anchor.lat, anchor.lng);
       return { data: { count: total, events: events.slice(0, 8) }, source: src };
+    }
+    case "get_congestion": {
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
+      // area:null은 오류가 아니라 "서울시가 혼잡도를 재는 121곳 밖"이다 —
+      // 그대로 넘겨 LLM이 "여기는 측정 지역이 아니다"로 답하게 한다(3-state).
+      // 라우트는 예보를 응답에서 빼지만(UI 미표기) 채팅은 서비스를 직접 불러
+      // forecast까지 넘긴다 — "두 시간 뒤엔 어때?"에 답해야 하므로.
+      // 카드 없음 — 산문이 정본(시각 정본은 "내 주변" 탭 LocalConditions).
+      const { area } = await findCongestionNear(anchor.lat, anchor.lng);
+      return { data: { area }, source: src };
     }
     case "get_surroundings": {
       const anchor = anchorOf(ctx);

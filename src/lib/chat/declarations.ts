@@ -178,6 +178,18 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    gate: hasSeoulOpenDataKey,
+    declaration: {
+      name: "get_congestion",
+      description:
+        "현재 위치(또는 보고 있는 장소)의 실시간 인구 혼잡도와 12시간 예보를 보여준다. 서울 주요 지역만 제공된다. 사용자가 붐비는 정도·사람이 많은지를 직접 묻거나 언제 가면 한산한지 물을 때만 호출한다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
     // 게이트 없음 — 정적 seed 기반, 외부 키 불필요
     gate: () => true,
     declaration: {

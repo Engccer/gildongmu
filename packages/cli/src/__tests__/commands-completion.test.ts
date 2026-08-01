@@ -31,13 +31,14 @@ const TOP_LEVEL_13 = [
   "search", "web", "nearby", "station", "bus", "route", "place",
   "weather", "air", "whereami", "chat", "config", "completion",
 ];
-const NEARBY_8 = ["subway", "bike", "clinic", "kids", "around", "barrier-free", "walk"]; // bus는 최상위와 중복이라 별도 확인 불필요
-
 describe("completion 명령", () => {
-  it.each(["bash", "zsh", "fish"] as const)("%s 출력에 최상위 13개와 nearby 8 verb가 포함된다", async (shell) => {
+  it.each(["bash", "zsh", "fish"] as const)("%s 출력에 최상위 13개와 nearby 전 verb가 포함된다", async (shell) => {
+    // verb 목록은 nearby 정본에서 파생한다 — 손으로 적으면 신규 도메인이 조용히
+    // 자동완성에서 빠진다(events가 실제로 그렇게 누락됐다).
+    const { NEARBY_VERBS } = await import("../commands/nearby.js");
     const out = await runCompletion(shell);
     for (const cmd of TOP_LEVEL_13) expect(out).toContain(cmd);
-    for (const verb of NEARBY_8) expect(out).toContain(verb);
+    for (const verb of NEARBY_VERBS) expect(out).toContain(verb);
     expect(out).toContain("barrier-free");
     for (const verb of ["get", "set", "path"]) expect(out).toContain(verb); // config 3 verb
   });

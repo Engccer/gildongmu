@@ -2,17 +2,19 @@ import SwiftUI
 import Observation
 import GildongmuKit
 
-/// 두 조각을 한 커밋으로 묶는 payload. weather·air의 nil = 조회 실패 또는 데이터 부재
+/// 세 조각을 한 커밋으로 묶는 payload. weather·air의 nil = 조회 실패 또는 데이터 부재
 /// (둘 다 "가져오지 못했습니다"로 표시), fresh*는 이번 호출의 성공 여부로 통지 판정 전용.
+/// congestion의 nil은 성격이 다르다: 부재가 정상이라 아무것도 그리지 않는다(아래 congestionSection).
 struct ConditionsPayload: Sendable {
     let weather: Weather?
     let air: AirQuality?
+    let congestion: Congestion?
     let freshWeather: Bool
     let freshAir: Bool
 }
 
-/// 날씨·공기질 — NearbyLoadCore 껍데기. 두 fetch를 async let으로 독립 실행해
-/// 한쪽 실패가 다른 쪽을 안 죽인다(웹 allSettled 미러). 조각의 null·실패는 동일하게
+/// 날씨·공기질·혼잡도를 담는 NearbyLoadCore 껍데기. 세 fetch를 async let으로 독립 실행해
+/// 한쪽 실패가 다른 쪽을 안 죽인다(웹 allSettled 미러). 날씨·공기질 조각의 null·실패는 동일하게
 /// "가져오지 못했습니다" 문장으로 노출(자동 등장 보조 정보의 graceful degrade).
 @Observable @MainActor
 final class ConditionsModel {
@@ -29,20 +31,30 @@ final class ConditionsModel {
                 guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 async let weatherOutcome = Self.fetchWeather(service, lat: coord.lat, lng: coord.lng)
                 async let airOutcome = Self.fetchAir(service, lat: coord.lat, lng: coord.lng)
-                let (weatherResult, airResult) = await (weatherOutcome, airOutcome)
+                async let congestionOutcome = Self.fetchCongestion(service, lat: coord.lat, lng: coord.lng)
+                let (weatherResult, airResult, congestionResult) =
+                    await (weatherOutcome, airOutcome, congestionOutcome)
                 // 서버 마커 이중 방어: 좌표 선분기를 통과했어도 fetch 시점에 커버리지 밖 마커를
                 // 만날 수 있다 — 한쪽이라도 감지하면 부분 데이터를 버리고 화면 전체를 전환한다.
-                if weatherResult.outOfCoverage || airResult.outOfCoverage { throw APIError.outOfCoverage }
+                if weatherResult.outOfCoverage || airResult.outOfCoverage || congestionResult.outOfCoverage {
+                    throw APIError.outOfCoverage
+                }
                 // 새로고침에 실패한 조각은 직전 성공을 유지(재조회이지 데이터 포기 아님, M2 계약)
                 return ConditionsPayload(
                     weather: weatherResult.value ?? previous?.weather,
                     air: airResult.value ?? previous?.air,
+                    // 혼잡도만 병합 규칙이 다르다: **성공한 조회의 nil은 "여기는 핫스팟이 아니다"라는
+                    // 답**이라 직전 값으로 되살리면 안 된다(이동 후 새로고침에서 옛 영역이 남아
+                    // 다른 동네 혼잡도를 이 자리 정보로 낭독하게 된다). 실패했을 때만 직전 값 유지.
+                    congestion: congestionResult.ok ? congestionResult.value : previous?.congestion,
                     freshWeather: weatherResult.value != nil,
                     freshAir: airResult.value != nil)
             },
             onEvent: nearbyAnnouncer(loaded: { payload in
                 // 완료 통지 1회(진행 통지 없음): 이번 호출의 두 결과로만 판정
                 // (병합된 weather·air 검사 금지 — 직전 성공이 새로고침 실패를 성공으로 오통지)
+                // ⚠ 혼잡도는 판정에 넣지 않는다: 서울 121개 핫스팟 밖이 정상 상태(서울의 91%)라
+                // 부재를 실패로 세면 대다수 사용자가 매번 "일부 정보를 가져오지 못했습니다"를 듣는다.
                 if payload.freshWeather && payload.freshAir {
                     appLocalized("ios.nearby.conditionsReady")
                 } else if payload.freshWeather || payload.freshAir {
@@ -83,10 +95,25 @@ final class ConditionsModel {
             return (nil, false)
         }
     }
+
+    /// 혼잡도 fetch: 성공 여부를 `ok`로 따로 들고 온다. 성공한 nil("핫스팟 아님")과
+    /// 실패한 nil을 값 하나로 뭉개면 위 병합 규칙(성공 nil은 덮어쓰기, 실패는 유지)이 성립하지 않는다.
+    nonisolated private static func fetchCongestion(
+        _ service: ConditionsService, lat: Double, lng: Double
+    ) async -> (value: Congestion?, ok: Bool, outOfCoverage: Bool) {
+        do {
+            return (try await service.congestion(lat: lat, lng: lng), true, false)
+        } catch APIError.outOfCoverage {
+            return (nil, false, true)
+        } catch {
+            return (nil, false, false)
+        }
+    }
 }
 
-/// 날씨·공기질 화면. 등급·상태 단어가 낭독 정본이고 수치는 보강(value null이면 단어만).
-/// 섹션 헤더 heading이 발견 경로(.isHeader), 라벨-값은 평문 단일 텍스트.
+/// 날씨·공기질·혼잡도 화면(웹 LocalConditions 대응). 등급·상태 단어가 낭독 정본이고
+/// 수치는 보강(value null이면 단어만). 섹션 헤더 heading이 발견 경로(.isHeader),
+/// 라벨-값은 평문 단일 텍스트.
 struct ConditionsView: View {
     private let anchor: PlaceAnchor?
     @State private var model: ConditionsModel
@@ -102,6 +129,7 @@ struct ConditionsView: View {
             if case .loaded(let payload) = model.phase {
                 weatherSection(payload.weather)
                 airSection(payload.air)
+                congestionSection(payload.congestion)
             }
         }
         .navigationTitle(nearbyTitle(appLocalized("ios.nearby.conditions"), anchor: anchor))
@@ -148,6 +176,38 @@ struct ConditionsView: View {
             }
         } header: {
             Text(appLocalized("weather.airLabel")).accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// 실시간 인구 혼잡도. **없으면 줄 자체가 없다**. 서울 121개 핫스팟이 아닌 곳이 서울의
+    /// 91%라 부재가 정상이고, 부재를 설명하면 대다수 사용자가 매번 그 안내를 듣는다(날씨·공기질이
+    /// 실패 문장을 내는 것과 다른 이유: 그 둘은 어디서나 값이 있는 게 정상이다). 조회 실패도
+    /// 같은 침묵인데, 사용자가 핫스팟 안에 있었는지를 실패한 응답으로는 알 수 없어 "가져오지
+    /// 못했습니다"가 핫스팟 밖 사용자에게까지 나가기 때문이다(없는 것을 잃었다고 말하지 않는다).
+    /// 별도 헤더를 두지 않는다. 요약 줄이 스스로 "혼잡도"를 말한다(스펙 §3).
+    @ViewBuilder private func congestionSection(_ congestion: Congestion?) -> some View {
+        if let congestion {
+            Section {
+                Text(appLocalized("congestion.summary", congestion.name, levelWord(congestion.level)))
+                // 완성 문장은 API가 한국어로만 주는 자유 텍스트라 번역 수단이 없다.
+                // 비한국어 사용자에겐 닫힌 집합이라 번역되는 등급어만 남긴다(웹 데이터 언어 분리 미러).
+                if AppLanguage.current == "ko", !congestion.message.isEmpty {
+                    Text(congestion.message)
+                }
+                Text(appLocalized("congestion.asOf", congestion.asOf))
+            }
+        }
+    }
+
+    /// 혼잡도 등급 단어(낭독 정본). 번역표에 없는 신설 등급은 원문 그대로 읽는다
+    /// (정보를 잃느니 한국어를 낭독한다. 등급을 임의로 접으면 없는 단정이 된다).
+    private func levelWord(_ raw: String) -> String {
+        switch CongestionLevelKey(levelText: raw) {
+        case .relaxed: appLocalized("congestion.levels.relaxed")
+        case .normal: appLocalized("congestion.levels.normal")
+        case .slightlyBusy: appLocalized("congestion.levels.slightlyBusy")
+        case .busy: appLocalized("congestion.levels.busy")
+        case nil: raw
         }
     }
 

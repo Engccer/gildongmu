@@ -143,6 +143,16 @@ interface WalkInfrastructureItem {
   osm: WalkSourceStatusItem<WalkOsmItem>;
 }
 
+interface CongestionAreaItem {
+  code: string;
+  name: string;
+  /** 등급어 원문(서울시가 단계를 늘려도 빈 값이 되지 않게 열거형으로 좁히지 않는다). */
+  level: string;
+  /** `AREA_CONGEST_MSG` 완성 문장 — 낭독 정본(재조합 금지). 빈 문자열일 수 있다. */
+  message: string;
+  asOf: string;
+}
+
 interface BarrierFreePlaceItem {
   contentId: string;
   name: string;
@@ -578,6 +588,20 @@ function formatWalkInfra(body: { walk: WalkInfrastructureItem }): string[] {
   return lines;
 }
 
+/**
+ * 200 + area null = 서울시가 혼잡도를 재는 121곳 밖(서울의 91%가 여기 해당) —
+ * **오류가 아니다**. 조회 실패는 502라 여기 오지 않는다(3-state).
+ * 등급어·완성 문장은 API가 한국어 원문만 주므로 그대로 통과시킨다.
+ */
+function formatCongestion(body: { area: CongestionAreaItem | null }): string[] {
+  const a = body.area;
+  if (!a) return ["이 지역은 실시간 혼잡도 제공 대상이 아닙니다."];
+  const lines = [joinText(`${a.name} 혼잡도 ${a.level}`, a.asOf && `${a.asOf} 기준`)];
+  // 완성 문장은 별도 줄(재조합 금지). 빈 문자열이면 줄 자체를 만들지 않는다.
+  if (a.message) lines.push(a.message);
+  return lines;
+}
+
 // ── 역명 기반 조회 ──────────────────────────────────────────────────────
 
 function formatStationMeta(body: { meta: StationMetaItem | null }): string[] {
@@ -807,6 +831,7 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "nearby-events": formatEvents,
   "nearby-barrier-free": formatBarrierFreeNearby,
   "nearby-walk-infra": formatWalkInfra,
+  "nearby-congestion": formatCongestion,
   "station-meta": formatStationMeta,
   "station-facilities": formatStationFacilities,
   "station-metro-facilities": formatMetroFacilities,
