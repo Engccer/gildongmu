@@ -22,6 +22,60 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private var authContinuations: [CheckedContinuation<Void, Never>] = []
     private var locationContinuations: [CheckedContinuation<(lat: Double, lng: Double), any Error>] = []
 
+    // MARK: - 비콘 연속 모드 (거리 추적 전용)
+
+    /// 연속 fix 페이로드. `timestamp`가 있어야 캐시 위치를 가려낼 수 있다
+    /// (`startUpdatingLocation()`의 첫 콜백은 흔히 캐시라 앵커가 수백 m 어긋난다).
+    struct BeaconFixPayload: Sendable {
+        let lat: Double
+        let lng: Double
+        /// 미터. **음수는 좌표 무효 신호**이므로 소비자가 걸러야 한다.
+        let accuracy: Double
+        let timestamp: Date
+    }
+
+    private var beaconFixSink: ((BeaconFixPayload) -> Void)?
+    private var beaconErrorSink: (() -> Void)?
+    private var beaconAuthSink: ((CLAuthorizationStatus) -> Void)?
+
+    /// 추적 중인지. one-shot 경로가 이 값을 보고 분기한다.
+    private(set) var isBeaconTracking = false
+
+    /// 연속 위치 업데이트 시작. 매니저는 이 싱글턴이 단독 소유하므로
+    /// 화면이 별도 `CLLocationManager`를 만들지 않는다(spec §3.5).
+    ///
+    /// ⚠ 권한 요청은 호출부(`BeaconModel`)가 먼저 처리한다. 여기서는 이미 허용된
+    /// 상태를 전제로 스트림만 연다.
+    func startBeaconUpdates(
+        onFix: @escaping (BeaconFixPayload) -> Void,
+        onError: @escaping () -> Void,
+        onAuthChange: @escaping (CLAuthorizationStatus) -> Void
+    ) {
+        beaconFixSink = onFix
+        beaconErrorSink = onError
+        beaconAuthSink = onAuthChange
+        isBeaconTracking = true
+
+        // 서 있는 동안 시스템이 업데이트를 자동 정지하면 tick이 사라져 "죽었나"와
+        // 구분되지 않는다(기본값 true). 보행 프로파일로 고정하고 거리 필터는 끈다
+        // (데드밴드가 이미 필터라 이중 필터링 금지).
+        manager.pausesLocationUpdatesAutomatically = false
+        manager.activityType = .fitness
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.startUpdatingLocation()
+    }
+
+    func stopBeaconUpdates() {
+        guard isBeaconTracking else { return }
+        manager.stopUpdatingLocation()
+        manager.pausesLocationUpdatesAutomatically = true
+        isBeaconTracking = false
+        beaconFixSink = nil
+        beaconErrorSink = nil
+        beaconAuthSink = nil
+    }
+
     private override init() {
         super.init()
         manager.delegate = self
@@ -46,6 +100,14 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// force=true면 캐시를 버리고 정밀 재취득(웹 awaitGeolocation({force:true}) 계약).
     /// 실패해도 lastCoordinate는 유지된다.
     func currentCoordinate(force: Bool = false) async throws(LocationError) -> (lat: Double, lng: Double) {
+        // 추적 중에는 requestLocation()을 부르지 않고 최신 스트림 fix로 답한다(spec §3.5).
+        // ① 아래 desiredAccuracy 재대입이 추적 정확도를 100m로 깎고 복원하지 않는다
+        //    (도달 경로 실재: 길찾기 재조회, 시트의 "현재 위치" 재선택)
+        // ② startUpdatingLocation 활성 중 requestLocation의 안전성이 보장되지 않는다
+        //    (1회 전달 후 스스로 정지시키는 의미론이라 스트림을 죽일 수 있다)
+        // 스트림 fix가 lastCoordinate를 갱신하므로 이 값은 오히려 더 신선하다.
+        if isBeaconTracking, let latest = lastCoordinate { return latest }
+
         if !force, let cached = lastCoordinate { return cached }
 
         if manager.authorizationStatus == .notDetermined {
@@ -78,25 +140,41 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate (콜백 스레드 비보장 → 원시값만 MainActor로 반입)
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
         Task { @MainActor in
             let continuations = self.authContinuations
             self.authContinuations = []
             for continuation in continuations { continuation.resume() }
+            // 추적 중 권한 회수는 continuation이 비어 있어 소실된다. 별도 싱크로 알린다
+            // (라벨은 "중지"인데 소리만 사라지는 무한 침묵 방지).
+            if self.isBeaconTracking { self.beaconAuthSink?(status) }
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let coordinate = locations.last?.coordinate else { return }
-        let lat = coordinate.latitude
-        let lng = coordinate.longitude
+        guard let location = locations.last else { return }
+        let lat = location.coordinate.latitude
+        let lng = location.coordinate.longitude
+        let accuracy = location.horizontalAccuracy
+        let timestamp = location.timestamp
         Task { @MainActor in
+            // 스트림 fix도 공유 스토어를 갱신한다. 안 하면 500m 걷고 조회했을 때
+            // 출발 전 캐시 좌표로 경로가 계산된다("현재 위치는 한 곳" 불변식은
+            // 호출 경로만이 아니라 값의 단일성까지를 뜻한다).
+            self.lastCoordinate = (lat: lat, lng: lng)
             self.resumeLocationContinuations(with: .success((lat: lat, lng: lng)))
+            if self.isBeaconTracking {
+                self.beaconFixSink?(
+                    BeaconFixPayload(lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp)
+                )
+            }
         }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
         Task { @MainActor in
             self.resumeLocationContinuations(with: .failure(error))
+            if self.isBeaconTracking { self.beaconErrorSink?() }
         }
     }
 
