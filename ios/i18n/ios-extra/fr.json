@@ -208,7 +208,7 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "La guidance sonore ne peut pas être jouée. Consultez l'état affiché à l'écran.",
+      "soundUnavailable": "La guidance sonore ne peut pas être jouée.",
       "stopped": "Suivi de distance arrêté."
     }
   }

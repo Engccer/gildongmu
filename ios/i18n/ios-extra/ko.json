@@ -208,7 +208,7 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "소리 안내를 재생할 수 없습니다. 화면의 안내를 확인하세요.",
+      "soundUnavailable": "소리 안내를 재생할 수 없습니다.",
       "stopped": "거리 추적을 중지했습니다."
     }
   }

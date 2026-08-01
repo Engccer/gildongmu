@@ -208,7 +208,7 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "Sound guidance cannot play. Check the on-screen status instead.",
+      "soundUnavailable": "Sound guidance cannot play.",
       "stopped": "Distance tracking stopped."
     }
   }

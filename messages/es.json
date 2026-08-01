@@ -100,7 +100,7 @@
       "heading": "Ruta en coche a {name}",
       "summary": "Total {distance}, aprox. {minutes} min. Tarifa de taxi estimada {taxi} KRW.",
       "toll": "Peaje de {toll} KRW no incluido.",
-      "disclaimer": "Estimaciones basadas en el tráfico en tiempo real. Para indicaciones paso a paso, usa una app de mapas mediante los enlaces de cómo llegar."
+      "disclaimer": "Estimaciones basadas en el tráfico en tiempo real."
     },
     "transit": {
       "button": "Transporte público hasta aquí",
@@ -448,8 +448,8 @@
       "mic_denied": "Se requiere permiso del micrófono. Permítelo en los ajustes del navegador.",
       "mic_failed": "No se pudo iniciar el micrófono.",
       "no_audio": "No se dictó nada.",
-      "too_short": "El dictado es demasiado corto. Habla un poco más.",
-      "no_text": "No se pudo reconocer el habla. Inténtalo de nuevo.",
+      "too_short": "El dictado es demasiado corto.",
+      "no_text": "No se pudo reconocer el habla.",
       "rate_limited": "Demasiadas solicitudes.",
       "stt_failed": "El reconocimiento de voz falló."
     }
@@ -561,11 +561,11 @@
     "weak": "Señal débil",
     "denied": "Se requiere permiso de ubicación",
     "screenHint": "Mantén la pantalla encendida y el teléfono en la mano. La guía se detiene cuando la pantalla se apaga.",
-    "straightLineNote": "Distancia en línea recta. Usa una app de mapas para la ruta real."
+    "straightLineNote": "Distancia en línea recta."
   },
   "offline": {
     "heading": "Estás sin conexión",
-    "body": "Revisa tu conexión e inténtalo de nuevo. La búsqueda solo funciona en línea."
+    "body": "La búsqueda solo funciona en línea."
   },
   "surroundingsNearby": {
     "button": "Explorar alrededores",
