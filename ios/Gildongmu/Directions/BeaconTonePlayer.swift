@@ -15,8 +15,13 @@ import GildongmuKit
 @MainActor
 final class BeaconTonePlayer {
     /// 엔진이 죽었는데 되살리지 못한 상태. 호출부가 통지 대상으로 삼는다
-    /// (조용한 무음은 금지 — hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다).
+    /// (조용한 무음은 금지. hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다).
     private(set) var isSilenced = false
+
+    /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **구성 변경 옵서버도 세션을
+    /// 건드리지 않는다**: 받아쓰기가 `.playAndRecord`로 잡아 둔 카테고리를 비콘이
+    /// `.ambient`로 되돌리면 진행 중인 녹음 세션이 깨진다(리뷰 I-8).
+    var isSuppressed = false
 
     private let engine = AVAudioEngine()
     private let player = AVAudioPlayerNode()
@@ -36,7 +41,10 @@ final class BeaconTonePlayer {
     }
 
     func play(_ tone: BeaconTone) {
-        guard let format, let buffer = makeBuffer(for: tone, format: format) else { return }
+        guard let format, let buffer = makeBuffer(for: tone, format: format) else {
+            isSilenced = true  // 버퍼 합성 실패도 무음이다. 조용히 넘어가면 원인이 사라진다.
+            return
+        }
         guard ensureRunning() else { return }
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
         if !player.isPlaying { player.play() }
@@ -56,6 +64,7 @@ final class BeaconTonePlayer {
     /// 세션 카테고리를 확정하고 엔진을 띄운다. 실패는 `isSilenced`로 노출한다.
     private func ensureRunning() -> Bool {
         if engine.isRunning { return true }
+        if observers.isEmpty { observeInterruptions() }  // shutdown 이후 재사용 대비
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
@@ -81,7 +90,10 @@ final class BeaconTonePlayer {
                     let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
                     AVAudioSession.InterruptionType(rawValue: raw) == .ended
                 else { return }
-                MainActor.assumeIsolated { _ = self?.ensureRunning() }
+                MainActor.assumeIsolated {
+                    guard let self, !self.isSuppressed else { return }
+                    _ = self.ensureRunning()
+                }
             }
         )
         observers.append(
@@ -89,7 +101,7 @@ final class BeaconTonePlayer {
                 forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    guard let self, let format = self.format else { return }
+                    guard let self, !self.isSuppressed, let format = self.format else { return }
                     // 구성 변경 후에는 연결이 끊겨 있을 수 있어 다시 잇는다.
                     self.engine.connect(self.player, to: self.engine.mainMixerNode, format: format)
                     _ = self.ensureRunning()

@@ -206,6 +206,10 @@
         "title": "Cerca",
         "desc": "Abre la pantalla Cerca de Gildongmu"
       }
+    },
+    "beacon": {
+      "soundUnavailable": "No se puede reproducir la guía sonora. Consulta el estado en pantalla.",
+      "stopped": "Seguimiento de distancia detenido."
     }
   }
 }

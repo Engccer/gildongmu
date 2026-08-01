@@ -35,11 +35,19 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     private var beaconFixSink: ((BeaconFixPayload) -> Void)?
-    private var beaconErrorSink: (() -> Void)?
+    private var beaconErrorSink: ((CLError.Code) -> Void)?
     private var beaconAuthSink: ((CLAuthorizationStatus) -> Void)?
 
     /// 추적 중인지. one-shot 경로가 이 값을 보고 분기한다.
     private(set) var isBeaconTracking = false
+
+    /// 현재 권한 상태. ⚠ `currentCoordinate()`는 **캐시 우선**이라 권한을 보지 않고
+    /// 반환하는 경로가 있다. 권한 게이트가 필요한 호출부는 이 값을 직접 봐야 한다
+    /// (그러지 않으면 권한 회수 후에도 캐시 좌표로 "성공"해 무한 침묵이 된다).
+    var authorizationSnapshot: CLAuthorizationStatus { manager.authorizationStatus }
+
+    /// 기기 위치 서비스 자체가 꺼져 있는지. 권한(앱별)과 다른 축이라 문구도 달라야 한다.
+    nonisolated var isLocationServiceEnabled: Bool { CLLocationManager.locationServicesEnabled() }
 
     /// 연속 위치 업데이트 시작. 매니저는 이 싱글턴이 단독 소유하므로
     /// 화면이 별도 `CLLocationManager`를 만들지 않는다(spec §3.5).
@@ -48,7 +56,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// 상태를 전제로 스트림만 연다.
     func startBeaconUpdates(
         onFix: @escaping (BeaconFixPayload) -> Void,
-        onError: @escaping () -> Void,
+        onError: @escaping (CLError.Code) -> Void,
         onAuthChange: @escaping (CLAuthorizationStatus) -> Void
     ) {
         beaconFixSink = onFix
@@ -106,7 +114,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // ② startUpdatingLocation 활성 중 requestLocation의 안전성이 보장되지 않는다
         //    (1회 전달 후 스스로 정지시키는 의미론이라 스트림을 죽일 수 있다)
         // 스트림 fix가 lastCoordinate를 갱신하므로 이 값은 오히려 더 신선하다.
-        if isBeaconTracking, let latest = lastCoordinate { return latest }
+        if isBeaconTracking {
+            guard let latest = lastCoordinate else { throw LocationError.unavailable }
+            return latest
+        }
 
         if !force, let cached = lastCoordinate { return cached }
 
@@ -174,7 +185,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
         Task { @MainActor in
             self.resumeLocationContinuations(with: .failure(error))
-            if self.isBeaconTracking { self.beaconErrorSink?() }
+            // 오류 코드를 버리면 "위치 서비스 꺼짐"과 "일시적 취득 실패"가 한 문구로
+            // 뭉개진다. locationUnknown은 Apple이 무시를 권하는 일시 오류다.
+            if self.isBeaconTracking {
+                self.beaconErrorSink?((error as? CLError)?.code ?? .locationUnknown)
+            }
         }
     }
 

@@ -121,6 +121,23 @@ private func announce(
         #expect(beaconGateStep(state: s, announce: announce(.weak), now: 6).notice == .weak)
     }
 
+    /// 첫 안내가 통째로 사라지는 회귀를 잡는다(리뷰 변이 생존 M12).
+    @Test func firstAnnounceCarriesNotice() {
+        let r = beaconGateStep(
+            state: .initial, announce: announce(.first, distance: 302.6, speak: true), now: 0
+        )
+        #expect(r.notice == .first(meters: 303))
+    }
+
+    /// weak 억제는 "직전이 weak인가"로만 판정해야 한다. hold를 거치면 재통지가 맞다
+    /// (리뷰 변이 생존 M14 + previousKind 미갱신 변이).
+    @Test func weakRenotifiesAfterAnyOtherKind() {
+        var s = BeaconGateState.initial
+        s = beaconGateStep(state: s, announce: announce(.weak), now: 0).state
+        s = beaconGateStep(state: s, announce: announce(.hold), now: 1).state
+        #expect(beaconGateStep(state: s, announce: announce(.weak), now: 2).notice == .weak)
+    }
+
     @Test func holdMakesNoNotice() {
         #expect(beaconGateStep(state: .initial, announce: announce(.hold), now: 0).notice == nil)
     }

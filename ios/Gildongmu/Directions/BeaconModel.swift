@@ -7,8 +7,8 @@ import SwiftUI
 /// 거리 추적 오케스트레이터. **판정은 전부 Kit이 하고 여기는 배선만 한다.**
 ///
 /// 이 계층에 로직을 두면 검증이 불가능하다(앱 타깃 테스트 번들이 없다). 그래서
-/// 리듀서는 `beaconStep`, 톤·통지 판정은 `beaconGateStep`이 맡고, 이 클래스는
-/// 권한·타임아웃·신선도 게이트·I/O만 담당한다.
+/// 리듀서는 `beaconStep`, 톤·통지 판정은 `beaconGateStep`, fix 수용 판정은
+/// `isUsableFix`가 맡고, 이 클래스는 권한·타임아웃·I/O만 담당한다.
 ///
 /// 전경 전용 계약: 화면을 켜 두고(`isIdleTimerDisabled`) 앱이 앞에 있는 동안만
 /// 추적한다. 백그라운드 위치는 도입하지 않는다(위원장 결정, spec §8.1).
@@ -17,9 +17,10 @@ final class BeaconModel {
     enum Status: Equatable {
         case idle
         case tracking
-        /// 권한 거부·제한. 3-state에서 "정보 없음"과 구분되는 실패다.
+        /// 권한 거부·제한.
         case denied
-        /// 위치를 얻을 수 없음(서비스 꺼짐·연속 실패).
+        /// 위치 서비스 꺼짐·취득 실패. `denied`와 문구가 달라야 한다. 사용자가 취할
+        /// 행동이 다르다(설정에서 권한 허용 vs 하늘이 트인 곳으로 이동).
         case unavailable
     }
 
@@ -28,25 +29,35 @@ final class BeaconModel {
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     private(set) var statusText = ""
 
-    /// 검색 시트가 떠 있는 동안 톤을 죽인다. 시트에 받아쓰기가 있고, 스피커로 나간
-    /// 톤이 마이크로 돌아와 전사를 오염시킨 이력이 이 repo에 세 번 있다.
-    /// `SpeechService`는 뷰별 `@State`라 여기서 관찰할 수 없으므로, 뷰가 시트 표시
-    /// 여부를 알려 주는 더 굵은 규칙을 쓴다(받아쓰기 직전까지 함께 덮여 더 안전하다).
-    var tonesSuppressed = false
+    /// 검색 시트가 떠 있는 동안 **톤과 통지를 모두** 죽인다. 시트에 받아쓰기가 있고,
+    /// 헌장 §6의 홀드 계약 불변식은 "녹음 중 SR 발화 0"이다. polite 통지는 VoiceOver가
+    /// 실제로 말하는 음성이라 톤보다 전사 오염 위험이 오히려 크다(스피커→마이크 경로는
+    /// 이 저장소에서 세 번 실측됐다). 추적과 상태 텍스트는 유지한다.
+    var outputSuppressed = false {
+        // 톤 재생기에도 전파한다. 재생 경로만 막으면 인터럽션·구성변경 옵서버가
+        // 여전히 세션 카테고리를 되돌려 받아쓰기 세션을 깬다(리뷰 I-8).
+        didSet { tones.isSuppressed = outputSuppressed }
+    }
 
     private var beaconState = BeaconState.initial
     private var gateState = BeaconGateState.initial
     private var dest: BeaconDest?
     private let tones = BeaconTonePlayer()
+    private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
     private var lastFixAt: Double?
     private var startedAt: Double?
     private var lastStaleNoticeAt: Double?
+    /// 시작 재진입 가드. 클로저 가드만으론 await를 넘는 더블탭을 못 막는다(repo 관례).
+    private var starting = false
+    /// 백그라운드 복귀 리셋 직후의 첫 안내를 삼킨다. 앵커를 버리면 다음 fix가 first-fix
+    /// 경로를 타서 절대거리가 재발화되는데, 사용자가 유발한 사건이 아니다.
+    private var suppressNextNotice = false
+    /// `.background`를 실제로 거쳤는가. `.inactive`(제어센터·알림센터 같은 짧은
+    /// 인터럽션)만으로 앵커를 버리면 추세가 계속 초기화된다(`GildongmuApp`의
+    /// `backgroundedAt` 패턴과 같은 판정).
+    private var wasBackgrounded = false
 
-    /// 첫 fix는 흔히 캐시라 앵커가 수백 m 어긋난다. 이 값보다 오래된 fix는 버린다.
-    private let freshnessWindow = 5.0
-    /// 이 시간 동안 fix가 없으면 "신호 약함"을 알린다(`startUpdatingLocation`엔
-    /// 웹 `watchPosition`의 timeout에 해당하는 개념이 없다).
     private let noFixTimeout = 15.0
     private let staleRenotifyInterval = 30.0
 
@@ -56,32 +67,55 @@ final class BeaconModel {
 
     func toggle(dest: BeaconDest) {
         if isTracking {
-            stop(playTone: true)
+            stop(playStopTone: true)
         } else {
-            Task { await start(dest: dest) }
+            guard !starting else { return }
+            starting = true
+            startTask = Task { [weak self] in
+                await self?.start(dest: dest)
+                self?.starting = false
+            }
         }
     }
 
     private func start(dest: BeaconDest) async {
         guard !isTracking else { return }
 
-        // 권한 게이트. 목적지·출발지가 둘 다 장소면 조회가 측위를 하지 않으므로,
-        // 위치 권한을 한 번도 준 적 없는 사용자가 이 버튼에 도달할 수 있다.
-        // currentCoordinate()가 notDetermined일 때 시스템 팝업을 띄운다(팝업이 곧 신호).
-        do {
-            _ = try await LocationService.shared.currentCoordinate()
-        } catch {
-            status = .denied
-            statusText = appLocalized("beacon.denied")
-            announce(statusText)
+        // 권한 게이트는 `authorizationSnapshot`을 직접 본다. `currentCoordinate()`는
+        // 캐시 우선이라 권한을 보지 않고 반환하는 경로가 있고, 그러면 권한 회수 후에도
+        // "성공"해서 시작 톤만 나고 fix는 영영 오지 않는다(무한 침묵).
+        guard LocationService.shared.isLocationServiceEnabled else {
+            fail(with: .unavailable, key: "beacon.weak")
             return
         }
+        switch LocationService.shared.authorizationSnapshot {
+        case .denied, .restricted:
+            fail(with: .denied, key: "beacon.denied")
+            return
+        case .notDetermined:
+            // 팝업 자체가 신호다. 허용 여부는 아래에서 다시 확인한다.
+            _ = try? await LocationService.shared.currentCoordinate()
+            guard !Task.isCancelled else { return }
+            switch LocationService.shared.authorizationSnapshot {
+            case .authorizedWhenInUse, .authorizedAlways: break
+            default:
+                fail(with: .denied, key: "beacon.denied")
+                return
+            }
+        default:
+            break
+        }
+
+        // await를 넘어온 뒤 화면을 떠났을 수 있다. 여기서 안 막으면 다른 탭에서 톤이
+        // 계속 나는 좀비 추적이 되고, 그 화면의 onDisappear는 이미 지나갔다.
+        guard !Task.isCancelled else { return }
 
         self.dest = dest
         beaconState = .initial
         gateState = .initial
         lastFixAt = nil
         lastStaleNoticeAt = nil
+        suppressNextNotice = false
         startedAt = ProcessInfo.processInfo.systemUptime
         status = .tracking
         statusText = ""
@@ -90,52 +124,73 @@ final class BeaconModel {
 
         LocationService.shared.startBeaconUpdates(
             onFix: { [weak self] fix in self?.handle(fix: fix) },
-            onError: { [weak self] in self?.handleLocationError() },
+            onError: { [weak self] code in self?.handle(locationError: code) },
             onAuthChange: { [weak self] status in self?.handle(authorization: status) }
         )
         startWatchdog()
     }
 
+    private func fail(with status: Status, key: String) {
+        self.status = status
+        statusText = appLocalized(key)
+        announce(statusText)
+    }
+
     /// 중지. 어느 경로로 불려도 idle timer가 반드시 풀리도록 먼저 해제한다
     /// (전역 가변 상태라 누수되면 화면이 영영 안 꺼진다).
-    func stop(playTone shouldPlayTone: Bool = false) {
+    ///
+    /// ⚠ 톤 엔진은 여기서 정리하지 않는다. 정지 톤을 예약한 직후 엔진을 멈추면
+    /// 하강 3음이 한 프레임도 나지 않는다. 정리는 `teardown()` 몫이다.
+    func stop(playStopTone: Bool = false) {
+        startTask?.cancel()
+        startTask = nil
+        starting = false
         UIApplication.shared.isIdleTimerDisabled = false
         watchdog?.cancel()
         watchdog = nil
         LocationService.shared.stopBeaconUpdates()
-        if shouldPlayTone && status == .tracking { playTone(.stop) }
+        if playStopTone && status == .tracking { playTone(.stop) }
         if status == .tracking { status = .idle }
         statusText = ""
         beaconState = .initial
         gateState = .initial
         dest = nil
+    }
+
+    /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
+    func teardown() {
+        stop()
         tones.shutdown()
     }
 
     /// 목적지가 바뀌면 옛 목적지를 추적하는 창이 생기므로 즉시 멈춘다.
-    /// 사용자가 유발하지 않은 전이라 라벨 변화만으로는 신호가 안 되어 통지한다.
+    /// 사용자가 비콘 컨트롤을 조작한 게 아니라 라벨 변화만으로는 신호가 안 되어 통지한다.
     func stopBecauseDestinationChanged() {
         guard isTracking else { return }
         stop()
-        announce(appLocalized("beacon.stop"))
+        announce(appLocalized("ios.beacon.stopped"))
     }
 
     // MARK: - 앱 생명주기 (전경 전용 계약)
 
     func handleScenePhaseChange(to phase: ScenePhase) {
-        guard isTracking else { return }
         switch phase {
+        case .background:
+            wasBackgrounded = true
+            UIApplication.shared.isIdleTimerDisabled = false
         case .active:
-            // 복귀 시 앵커를 버린다. 몇 분 전 위치 기준으로 첫 fix가 큰 점프를 만들면
-            // 거짓 추세가 발화된다.
+            guard isTracking else { return }
+            UIApplication.shared.isIdleTimerDisabled = true
+            // `.background`를 거친 복귀에서만 앵커를 버린다. 제어센터를 잠깐 여는
+            // `.inactive` 왕복까지 리셋하면 추세가 계속 초기화되고 절대거리가 재발화된다.
+            guard wasBackgrounded else { return }
+            wasBackgrounded = false
             beaconState = .initial
             gateState = .initial
             lastFixAt = nil
             startedAt = ProcessInfo.processInfo.systemUptime
-            UIApplication.shared.isIdleTimerDisabled = true
-        case .background, .inactive:
-            UIApplication.shared.isIdleTimerDisabled = false
-        @unknown default:
+            suppressNextNotice = true
+        default:
             break
         }
     }
@@ -145,9 +200,9 @@ final class BeaconModel {
     private func handle(fix: LocationService.BeaconFixPayload) {
         guard isTracking, let dest else { return }
 
-        // 신선도 게이트: 음수 accuracy(좌표 무효 신호)와 캐시 위치를 앵커에서 배제한다.
+        // 캐시 위치와 무효 좌표를 앵커에서 배제한다(판정은 Kit 순수 함수).
         let age = Date().timeIntervalSince(fix.timestamp)
-        guard fix.accuracy > 0, age <= freshnessWindow else { return }
+        guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else { return }
 
         let now = ProcessInfo.processInfo.systemUptime
         lastFixAt = now
@@ -167,13 +222,27 @@ final class BeaconModel {
         if let notice = gated.notice {
             let text = self.text(for: notice)
             statusText = text
-            announce(text)
+            if suppressNextNotice {
+                suppressNextNotice = false  // 복귀 직후 1회만 삼킨다
+            } else {
+                announce(text)
+            }
         }
     }
 
-    private func handleLocationError() {
+    /// 오류 코드를 뭉개면 "위치 서비스 꺼짐"과 "일시적 취득 실패"가 한 문구가 된다.
+    private func handle(locationError code: CLError.Code) {
         guard isTracking else { return }
-        noticeStaleIfNeeded(force: true)
+        switch code {
+        case .denied:
+            stop()
+            fail(with: .unavailable, key: "beacon.weak")
+        case .locationUnknown:
+            // Apple이 무시를 권하는 일시 오류. 진짜 끊김은 워치독이 잡는다.
+            break
+        default:
+            noticeStaleIfNeeded(force: true)
+        }
     }
 
     private func handle(authorization status: CLAuthorizationStatus) {
@@ -181,9 +250,7 @@ final class BeaconModel {
         switch status {
         case .denied, .restricted:
             stop()
-            self.status = .denied
-            statusText = appLocalized("beacon.denied")
-            announce(statusText)
+            fail(with: .denied, key: "beacon.denied")
         default:
             break
         }
@@ -198,7 +265,9 @@ final class BeaconModel {
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
-                guard let self, self.isTracking else { continue }
+                // self가 사라졌으면 루프도 끝내야 한다(무한 웨이크업 방지).
+                guard let self else { return }
+                guard self.isTracking else { continue }
                 self.noticeStaleIfNeeded(force: false)
             }
         }
@@ -217,11 +286,15 @@ final class BeaconModel {
     // MARK: - 출력
 
     private func playTone(_ tone: BeaconTone) {
-        guard !tonesSuppressed else { return }
+        guard !outputSuppressed else { return }
         tones.play(tone)
-        // 톤이 죽었는데 조용히 넘어가면 hold·tick엔 통지가 없어 사용자가 원인을 모른다.
-        if tones.isSilenced && statusText.isEmpty {
-            statusText = appLocalized("beacon.weak")
+        // 톤이 죽으면 hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다.
+        // GPS 약신호와 **다른 문구**여야 한다. 취해야 할 행동이 다르다.
+        if tones.isSilenced {
+            let text = appLocalized("ios.beacon.soundUnavailable")
+            guard statusText != text else { return }
+            statusText = text
+            announce(text)
         }
     }
 
@@ -236,6 +309,7 @@ final class BeaconModel {
     }
 
     private func announce(_ message: String) {
+        guard !outputSuppressed else { return }
         AccessibilityNotification.Announcement(message).post()
     }
 }

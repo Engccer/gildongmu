@@ -77,6 +77,27 @@ public enum BeaconConstants {
     public static let baseDeadBand = 15.0
     public static let arrivalBase = 20.0
     public static let speakInterval = 50.0
+    /// fix 신선도 창(초). 이보다 오래된(또는 미래인) fix는 앵커에 반영하지 않는다.
+    public static let freshnessWindow = 5.0
+}
+
+/// fix를 앵커·추세에 반영해도 되는지. **캐시 위치와 무효 좌표를 배제한다.**
+///
+/// `startUpdatingLocation()`의 첫 콜백은 흔히 캐시라, 그대로 앵커를 잡으면 수백 m
+/// 어긋난 기준이 서고 진짜 fix가 오는 순간 거짓 추세가 발화된다. 그러면 기능이 아니라
+/// 첫 fix가 틀렸는데 "쓸모없다"는 판정이 날 수 있다.
+///
+/// 앱이 아니라 여기 있는 이유: 앱 타깃 테스트 번들이 없어 모델에 두면 이 방어에
+/// 변이 주입조차 할 수 없다(리뷰 I-11).
+///
+/// `abs`를 쓰는 것은 기기 시계 보정으로 timestamp가 미래로 튀는 경우를 함께 거르기
+/// 위해서다(미래 fix도 신뢰할 근거가 없다).
+public func isUsableFix(
+    accuracy: Double,
+    ageSeconds: Double,
+    maxAge: Double = BeaconConstants.freshnessWindow
+) -> Bool {
+    accuracy > 0 && abs(ageSeconds) <= maxAge
 }
 
 public func beaconStep(
