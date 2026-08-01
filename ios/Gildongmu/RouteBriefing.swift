@@ -69,7 +69,9 @@ func transitLegText(_ leg: TransitRouteLeg) -> String {
     var serviceOutside: String?
     if leg.serviceStatus == "outside",
        let first = leg.firstServiceTime, let last = leg.lastServiceTime {
-        serviceOutside = appLocalized("ios.route.serviceOutside", first, last)
+        // 웹 정본 키를 그대로 쓴다. iOS 전용 사본(ios.route.serviceOutside)은 생성물인
+        // 카탈로그에만 수기로 존재해 재생성 때 소멸하는 상태였다(2026-08-01 발견).
+        serviceOutside = appLocalized("route.transit.legServiceOutside", first, last)
     }
     return joinText(
         leg.lineName,

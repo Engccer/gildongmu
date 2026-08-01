@@ -70,7 +70,8 @@
       "jibunAddressLine": "Lot address, {value}",
       "englishAddressLine": "English address, {value}",
       "copyAddress": "Copy address",
-      "askAbout": "Ask about {name}"
+      "askAbout": "Ask about {name}",
+      "nearbyHeading": "Near this place"
     },
     "clinic": {
       "designated": "Government-designated night pediatric clinic (Moonlight Children's Hospital)."

@@ -64,6 +64,24 @@ struct PlaceDetailView<DomainSection: View>: View {
                 }
             }
 
+            // "이 장소 주변" — 내 주변 화면 3종을 장소 좌표로 앵커해 push(웹 장소 상세의
+            // BusArrivals·BikeStations·LocalConditions 대응). 인라인 복제 대신 push인 이유:
+            // 기존 화면의 새로고침·상태 오버레이·완료 통지 계약이 그대로 따라오고,
+            // 상세 화면이 짧게 유지된다(스크린 리더 선형 주파). 발견 경로는 섹션 heading.
+            //
+            // ⚠ 위치가 웹과 반대(웹은 역 4종 뒤)인 것은 의도다. 웹의 역 시설 2종은
+            // 버튼으로 펼치는 접힌 패널이라 그 아래로 가는 비용이 없지만, iOS
+            // StationSectionsView는 전부 인라인 전개라 천호역에서 수백 행이다. 뒤에 두면
+            // 선형 주파로 이 3행에 닿는 비용이 3행에서 수백 행으로 뒤집힌다(둘 다 heading
+            // 점프로는 동등). 스펙 §2-1 참조 — 순서를 바꾸려면 그 구조 차이부터 확인할 것.
+            Section {
+                NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView(anchor: anchor) }
+                NavigationLink(appLocalized("ios.nearby.bike")) { BikeNearbyView(anchor: anchor) }
+                NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView(anchor: anchor) }
+            } header: {
+                Text(appLocalized("ios.place.nearbyHeading")).accessibilityAddTraits(.isHeader)
+            }
+
             // 역이면 역 정보·실시간 도착·교통약자 시설이 자동 등장(조용히 나타남, M3)
             if isStation(place) {
                 StationSectionsView(model: stationSections)
@@ -94,6 +112,12 @@ struct PlaceDetailView<DomainSection: View>: View {
 
     private var destination: RouteDestination {
         RouteDestination(lat: place.lat, lng: place.lng, name: place.name)
+    }
+
+    /// "이 장소 주변" 화면들이 쓰는 앵커(현재 위치 대신 이 장소 고정).
+    /// 이름을 함께 넘겨 앵커 화면 제목에 기준점이 드러나게 한다.
+    private var anchor: PlaceAnchor {
+        PlaceAnchor(coord: (lat: place.lat, lng: place.lng), name: place.name)
     }
 
     /// 도보 기본(1급 사용자 주 시나리오). 모드 선택 UI는 M4 경로 브리핑에서.

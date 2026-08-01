@@ -11321,6 +11321,46 @@
         }
       }
     },
+    "ios.place.nearbyHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 장소 주변"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Near this place"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca de este lugar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À proximité de ce lieu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vicino a questo luogo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この場所の周辺"
+          }
+        }
+      }
+    },
     "ios.place.roadAddressLine": {
       "localizations": {
         "ko": {
@@ -11717,46 +11757,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "経路検索"
-          }
-        }
-      }
-    },
-    "ios.route.serviceOutside": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "첫차 %1$@, 막차 %2$@, 지금은 운행하지 않습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "First bus %1$@, last bus %2$@, not running now"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Primer autobús %1$@, último %2$@, no circula ahora"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Premier bus %1$@, dernier %2$@, ne circule pas actuellement"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Primo autobus %1$@, ultimo %2$@, non in servizio ora"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "始発 %1$@、終発 %2$@、現在は運行していません"
           }
         }
       }
@@ -19117,6 +19117,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "運転間隔約%1$@分"
+          }
+        }
+      }
+    },
+    "route.transit.legServiceOutside": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "첫차 %1$@, 막차 %2$@, 지금은 운행하지 않습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First departure %1$@, last departure %2$@, not running now"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Primera salida %1$@, última %2$@, no circula ahora"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premier départ %1$@, dernier %2$@, ne circule pas actuellement"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prima corsa %1$@, ultima %2$@, non in servizio ora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "始発 %1$@、終発 %2$@、現在は運行していません"
           }
         }
       }

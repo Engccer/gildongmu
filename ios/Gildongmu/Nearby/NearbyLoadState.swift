@@ -54,6 +54,23 @@ extension LocationService {
     }
 }
 
+/// 장소 앵커 — 좌표와 그 좌표의 이름을 함께 옮긴다(장소 상세 "이 장소 주변").
+/// 이름이 딸려 오는 이유: 앵커 화면의 문구는 전부 "주변 …"인데 그 기준점이 현재
+/// 위치가 아니라는 사실이 화면 어디에도 없으면, 스크린 리더 사용자는 "주변에 대여소가
+/// 없습니다"를 자기 주변으로 읽는다(뒤로 가기 라벨은 되돌아가야 얻는 맥락이다).
+/// 카피는 그대로 두고 화면 제목에만 병기해 기준점을 밝힌다.
+struct PlaceAnchor {
+    let coord: NearbyCoord
+    let name: String
+}
+
+/// 앵커 화면 제목: 기본 제목에 기준 장소명을 쉼표로 흡수(한 줄=한 객체).
+/// 현재 위치 화면(anchor nil)은 기본 제목 그대로 — 허브 호출처 문자열 불변.
+@MainActor
+func nearbyTitle(_ base: String, anchor: PlaceAnchor?) -> String {
+    joinText(base, anchor?.name)
+}
+
 /// 완료 통지 문구 조립부(문자열 불변). 0건도 문장으로.
 @MainActor
 func nearbyLoadedMessage(count: Int, unit: String) -> String {

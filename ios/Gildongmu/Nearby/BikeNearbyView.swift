@@ -4,18 +4,20 @@ import GildongmuKit
 
 /// 내 주변 따릉이 대여소 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
 /// 정수 필드라 "0대"와 "정보 없음"의 구조적 혼동 없음.
+/// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
+/// ⚠ 따릉이는 서울 전용이라 지방 장소 앵커에서 0건이 정상이다(조회 실패 아님).
 @Observable @MainActor
 final class BikeNearbyModel {
     private let core: NearbyLoadCore<[BikeStation]>
     var phase: NearbyLoadPhase<[BikeStation]> { core.phase }
 
-    init() {
+    init(anchor: PlaceAnchor? = nil) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
         core = NearbyLoadCore(
-            coordinate: LocationService.nearbyCoordinateSource(),
+            coordinate: anchor.map { .fixed($0.coord) } ?? LocationService.nearbyCoordinateSource(),
             coverage: .korea,
             fetch: { coord, _ in
-                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 return try await service.bikeStations(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stations in
@@ -27,7 +29,14 @@ final class BikeNearbyModel {
 }
 
 struct BikeNearbyView: View {
-    @State private var model = BikeNearbyModel()
+    private let anchor: PlaceAnchor?
+    @State private var model: BikeNearbyModel
+
+    /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
+    init(anchor: PlaceAnchor? = nil) {
+        self.anchor = anchor
+        _model = State(initialValue: BikeNearbyModel(anchor: anchor))
+    }
 
     var body: some View {
         List {
@@ -39,7 +48,7 @@ struct BikeNearbyView: View {
                 }
             }
         }
-        .navigationTitle(appLocalized("ios.nearby.bike"))
+        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.bike"), anchor: anchor))
         .nearbyStateOverlay {
             NearbyStateOverlayView(phase: model.phase, descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.bikeEmpty"), systemImage: "bicycle"),

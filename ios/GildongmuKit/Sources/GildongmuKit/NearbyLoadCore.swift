@@ -24,9 +24,13 @@ public enum NearbyLocationError: Error {
     case unavailable
 }
 
-/// 좌표 소스: current = 위치 어댑터 주입, none = 파라미터형(좌표 단계 생략, coord=nil).
+/// 좌표 소스 3종.
+/// - current: 위치 어댑터 주입(측위 단계 있음 → denied·failedLocation 전이 가능)
+/// - fixed: 앵커 좌표 고정(장소 상세 "이 장소 주변" — 측위 없음, 커버리지 선분기는 동일 적용)
+/// - none: 파라미터형(좌표 자체가 없는 조회, coord=nil)
 public enum NearbyCoordinateSource {
     case current(@MainActor (_ force: Bool) async throws -> NearbyCoord)
+    case fixed(NearbyCoord)
     case none
 }
 
@@ -94,16 +98,22 @@ public final class NearbyLoadCore<Payload: Sendable> {
 
         do {
             var coord: NearbyCoord?
-            if case .current(let getCoordinate) = coordinate {
-                let got = try await getCoordinate(force)
+            switch coordinate {
+            case .current(let getCoordinate):
+                coord = try await getCoordinate(force)
                 guard !Task.isCancelled else { return restoreOnCancellation() }
-                // 위치 취득 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어(#8·#9)
-                if case .korea = coverage, !isInKorea(lat: got.lat, lng: got.lng) {
-                    phase = .outOfCoverage
-                    if case .loaded = entry { onEvent(.wentOutOfCoverage) }
-                    return
-                }
-                coord = got
+            case .fixed(let anchor):
+                coord = anchor       // 측위 없음 — force는 재조회 의미만 갖는다
+            case .none:
+                coord = nil
+            }
+            // 좌표 확보 직후 선분기(네트워크 생략) — 서버 마커 catch와 이중 방어(#8·#9).
+            // 판정 조건은 "좌표가 있는가"이지 "어디서 얻었는가"가 아니다 — fixed 앵커도
+            // 같은 보호를 받는다(웹 LocalConditions가 장소 좌표에 isInKorea를 거는 것과 동형).
+            if case .korea = coverage, let got = coord, !isInKorea(lat: got.lat, lng: got.lng) {
+                phase = .outOfCoverage
+                if case .loaded = entry { onEvent(.wentOutOfCoverage) }
+                return
             }
             let result = try await fetch(coord, previous)
             guard !Task.isCancelled else { return restoreOnCancellation() }

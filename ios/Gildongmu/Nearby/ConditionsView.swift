@@ -19,13 +19,14 @@ final class ConditionsModel {
     private let core: NearbyLoadCore<ConditionsPayload>
     var phase: NearbyLoadPhase<ConditionsPayload> { core.phase }
 
-    init() {
+    /// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
+    init(anchor: PlaceAnchor? = nil) {
         let service = ConditionsService(client: APIClient(baseURL: AppConfig.apiBaseURL))
         core = NearbyLoadCore(
-            coordinate: LocationService.nearbyCoordinateSource(),
+            coordinate: anchor.map { .fixed($0.coord) } ?? LocationService.nearbyCoordinateSource(),
             coverage: .korea,
             fetch: { coord, previous in
-                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 async let weatherOutcome = Self.fetchWeather(service, lat: coord.lat, lng: coord.lng)
                 async let airOutcome = Self.fetchAir(service, lat: coord.lat, lng: coord.lng)
                 let (weatherResult, airResult) = await (weatherOutcome, airOutcome)
@@ -87,7 +88,14 @@ final class ConditionsModel {
 /// 날씨·공기질 화면. 등급·상태 단어가 낭독 정본이고 수치는 보강(value null이면 단어만).
 /// 섹션 헤더 heading이 발견 경로(.isHeader), 라벨-값은 평문 단일 텍스트.
 struct ConditionsView: View {
-    @State private var model = ConditionsModel()
+    private let anchor: PlaceAnchor?
+    @State private var model: ConditionsModel
+
+    /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
+    init(anchor: PlaceAnchor? = nil) {
+        self.anchor = anchor
+        _model = State(initialValue: ConditionsModel(anchor: anchor))
+    }
 
     var body: some View {
         List {
@@ -96,7 +104,7 @@ struct ConditionsView: View {
                 airSection(payload.air)
             }
         }
-        .navigationTitle(appLocalized("ios.nearby.conditions"))
+        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.conditions"), anchor: anchor))
         .nearbyStateOverlay {
             NearbyStateOverlayView(phase: model.phase, descriptor: .plain())
         }

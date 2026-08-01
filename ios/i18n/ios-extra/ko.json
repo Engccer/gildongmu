@@ -70,7 +70,8 @@
       "jibunAddressLine": "지번 주소, {value}",
       "englishAddressLine": "영문 주소, {value}",
       "copyAddress": "주소 복사하기",
-      "askAbout": "{name}에 관해 물어보기"
+      "askAbout": "{name}에 관해 물어보기",
+      "nearbyHeading": "이 장소 주변"
     },
     "clinic": {
       "designated": "달빛어린이병원으로 지정된 기관입니다."
