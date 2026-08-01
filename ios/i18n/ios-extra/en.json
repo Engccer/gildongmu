@@ -176,7 +176,9 @@
       "airStationLine": "{name} monitoring station, {distance}km",
       "whereAmIServerFailed": "Couldn't load information for your location",
       "eventsEmpty": "No cultural events are running near you today",
-      "unitEvent": "events"
+      "unitEvent": "events",
+      "subwayClosed": "Not running now. First train %@",
+      "subwayNoRealtime": "Real-time arrivals are not available for this station"
     },
     "settings": {
       "title": "Settings",

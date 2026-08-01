@@ -176,7 +176,9 @@
       "airStationLine": "Estación de medición {name}, {distance}km",
       "whereAmIServerFailed": "No se pudo cargar la información de la ubicación actual",
       "eventsEmpty": "Hoy no hay eventos culturales cerca de ti",
-      "unitEvent": "eventos"
+      "unitEvent": "eventos",
+      "subwayClosed": "Fuera de servicio ahora. Primer tren %@",
+      "subwayNoRealtime": "No hay información en tiempo real para esta estación"
     },
     "settings": {
       "title": "Ajustes",

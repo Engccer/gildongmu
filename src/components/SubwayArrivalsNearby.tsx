@@ -76,8 +76,17 @@ export function SubwayArrivalsNearby() {
                   }),
                 )}
               </h4>
+              {/* 4-state를 뭉개지 않는다: 조회 실패 / 운행 시간 밖(첫차 동반) /
+                  실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가 반쪽이므로
+                  "운행이 끝났다"고 말하지 않고 미제공으로 물러선다. */}
               {s.arrivalStatus === "unavailable" ? (
                 <p className="mt-1 text-sm opacity-70">{t("arrivalUnavailable")}</p>
+              ) : s.arrivalStatus === "closed" && s.firstTime ? (
+                <p className="mt-1 text-sm opacity-70">
+                  {t("closed", { time: s.firstTime })}
+                </p>
+              ) : s.arrivalStatus === "closed" || s.arrivalStatus === "unknown" ? (
+                <p className="mt-1 text-sm opacity-70">{t("noRealtime")}</p>
               ) : (
                 <SubwayArrivalList arrivals={s.arrivals} />
               )}

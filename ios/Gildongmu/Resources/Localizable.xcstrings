@@ -11481,6 +11481,46 @@
         }
       }
     },
+    "ios.nearby.subwayClosed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "운행 시간이 아닙니다. 첫차 %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not running now. First train %@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuera de servicio ahora. Primer tren %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hors service actuellement. Premier train %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuori servizio ora. Primo treno %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "運行時間外です。始発 %@"
+          }
+        }
+      }
+    },
     "ios.nearby.subwayEmpty": {
       "localizations": {
         "ko": {
@@ -11517,6 +11557,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "周辺に地下鉄駅がありません"
+          }
+        }
+      }
+    },
+    "ios.nearby.subwayNoRealtime": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실시간 도착 정보가 제공되지 않습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Real-time arrivals are not available for this station"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay información en tiempo real para esta estación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas d'informations en temps réel pour cette station"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna informazione in tempo reale per questa stazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅のリアルタイム到着情報は提供されていません"
           }
         }
       }
@@ -23721,42 +23801,82 @@
         }
       }
     },
-    "subwayNearby.empty": {
+    "subwayNearby.closed": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변에 서울 지하철역이 없습니다. (서울 지하철 1~9호선만 지원)"
+            "value": "운행 시간이 아닙니다. 첫차 %1$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No Seoul subway stations nearby. (Seoul subway lines 1–9 only)"
+            "value": "Not running now. First train %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay estaciones de metro de Seoul cerca. (Solo líneas 1–9 del metro de Seoul)"
+            "value": "Fuera de servicio ahora. Primer tren %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucune station de métro de Seoul à proximité. (Lignes 1 à 9 du métro de Seoul uniquement)"
+            "value": "Hors service actuellement. Premier train %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna stazione della metro di Seoul nelle vicinanze. (Solo linee 1–9 della metro di Seoul)"
+            "value": "Fuori servizio ora. Primo treno %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "近くにソウルの地下鉄駅がありません。(ソウル地下鉄1〜9号線のみ対応)"
+            "value": "運行時間外です。始発 %1$@。"
+          }
+        }
+      }
+    },
+    "subwayNearby.empty": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변에 지하철역이 없습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No subway stations nearby."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay estaciones de metro cerca."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune station de métro à proximité."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna stazione della metro nelle vicinanze."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺に地下鉄駅がありません。"
           }
         }
       }
@@ -23957,6 +24077,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在地を確認中…"
+          }
+        }
+      }
+    },
+    "subwayNearby.noRealtime": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "실시간 도착 정보가 제공되지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Real-time arrivals are not available for this station."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay información en tiempo real para esta estación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas d'informations en temps réel pour cette station."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna informazione in tempo reale per questa stazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この駅のリアルタイム到着情報は提供されていません。"
           }
         }
       }

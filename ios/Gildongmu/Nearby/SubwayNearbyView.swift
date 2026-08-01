@@ -48,8 +48,15 @@ struct SubwayNearbyView: View {
                         // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
                         Text(joinText(displayStationName(station), station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
                             .accessibilityAddTraits(.isHeader)
+                        // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
+                        // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
+                        // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
                         if station.arrivalStatus == "unavailable" {
                             Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
+                        } else if station.arrivalStatus == "closed", let first = station.firstTime {
+                            Text(appLocalized("ios.nearby.subwayClosed", first))
+                        } else if station.arrivalStatus == "closed" || station.arrivalStatus == "unknown" {
+                            Text(appLocalized("ios.nearby.subwayNoRealtime"))
                         } else if station.arrivals.isEmpty {
                             Text(appLocalized("ios.station.noArrivals"))
                         } else {
