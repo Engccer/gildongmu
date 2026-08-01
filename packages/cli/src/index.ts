@@ -14,7 +14,7 @@ import { completionCommand } from "./commands/completion.js";
 
 const main = defineCommand({
   // ⚠ package.json version과 동조 필수(version-drift.test.ts가 강제). 릴리스 때 함께 올린다.
-  meta: { name: "gildongmu", version: "0.6.1", description: "길동무: 접근성 우선 대한민국 길찾기 CLI" },
+  meta: { name: "gildongmu", version: "0.7.0", description: "길동무: 접근성 우선 대한민국 길찾기 CLI" },
   subCommands: {
     search: searchCommand,
     web: webCommand,
