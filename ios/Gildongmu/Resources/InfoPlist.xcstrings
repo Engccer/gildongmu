@@ -1,46 +1,166 @@
 {
-  "sourceLanguage" : "ko",
-  "strings" : {
-    "CFBundleDisplayName" : {
-      "localizations" : {
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "길동무" } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gildongmu" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gildongmu" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gildongmu" } },
-        "it" : { "stringUnit" : { "state" : "translated", "value" : "Gildongmu" } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キルドンム" } }
+  "sourceLanguage": "ko",
+  "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンム"
+          }
+        }
       }
     },
-    "NSLocationWhenInUseUsageDescription" : {
-      "localizations" : {
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your location is used to find nearby transit, places, and local information." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tu ubicación se usa para encontrar transporte, lugares e información local cercanos." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Votre position sert à trouver les transports, lieux et informations locales à proximité." } },
-        "it" : { "stringUnit" : { "state" : "translated", "value" : "La tua posizione è usata per trovare trasporti, luoghi e informazioni locali nelle vicinanze." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "現在地の近くの交通・場所・生活情報を探すために位置情報を使用します。" } }
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾고, 목적지까지 남은 거리를 소리로 안내하기 위해 위치를 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your location is used to find nearby transit, places, and local information, and to announce your remaining distance to a destination with sound."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu ubicación se usa para encontrar transporte, lugares e información local cercanos, y para indicar con sonido la distancia restante hasta un destino."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre position sert à trouver les transports, lieux et informations locales à proximité, et à indiquer par des sons la distance restante jusqu'à une destination."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La tua posizione è usata per trovare trasporti, luoghi e informazioni locali nelle vicinanze e per segnalare con un suono la distanza rimanente verso una destinazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地の近くの交通・場所・生活情報を探すため、および目的地までの残り距離を音で知らせるために位置情報を使用します。"
+          }
+        }
       }
     },
-    "NSMicrophoneUsageDescription" : {
-      "localizations" : {
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "검색어와 질문을 음성으로 입력하기 위해 마이크를 사용합니다." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The microphone is used to enter searches and questions by voice." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "El micrófono se usa para introducir búsquedas y preguntas por voz." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Le micro sert à saisir les recherches et questions à la voix." } },
-        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il microfono è usato per inserire ricerche e domande con la voce." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "検索語や質問を音声で入力するためにマイクを使用します。" } }
+    "NSMicrophoneUsageDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "검색어와 질문을 음성으로 입력하기 위해 마이크를 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The microphone is used to enter searches and questions by voice."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El micrófono se usa para introducir búsquedas y preguntas por voz."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le micro sert à saisir les recherches et questions à la voix."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il microfono è usato per inserire ricerche e domande con la voce."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索語や質問を音声で入力するためにマイクを使用します。"
+          }
+        }
       }
     },
-    "NSSpeechRecognitionUsageDescription" : {
-      "localizations" : {
-        "ko" : { "stringUnit" : { "state" : "translated", "value" : "받아쓰기를 위해 음성 인식을 사용합니다." } },
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech recognition is used for dictation." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "El reconocimiento de voz se usa para el dictado." } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "La reconnaissance vocale sert à la dictée." } },
-        "it" : { "stringUnit" : { "state" : "translated", "value" : "Il riconoscimento vocale è usato per la dettatura." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "音声入力のために音声認識を使用します。" } }
+    "NSSpeechRecognitionUsageDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받아쓰기를 위해 음성 인식을 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speech recognition is used for dictation."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El reconocimiento de voz se usa para el dictado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La reconnaissance vocale sert à la dictée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il riconoscimento vocale è usato per la dettatura."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声入力のために音声認識を使用します。"
+          }
+        }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
