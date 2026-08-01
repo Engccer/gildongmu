@@ -5,18 +5,19 @@ import GildongmuKit
 /// 내 주변 버스 도착 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
 /// 도착 문장 정본은 서울 TOPIS arrivalMessage(arrmsg1), TAGO는 arrivalMessage가 nil이라
 /// 슬롯(정류장 수·초)을 조합해 렌더.
+/// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
 @Observable @MainActor
 final class BusNearbyModel {
     private let core: NearbyLoadCore<[BusStop]>
     var phase: NearbyLoadPhase<[BusStop]> { core.phase }
 
-    init() {
+    init(anchor: PlaceAnchor? = nil) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
         core = NearbyLoadCore(
-            coordinate: LocationService.nearbyCoordinateSource(),
+            coordinate: anchor.map { .fixed($0.coord) } ?? LocationService.nearbyCoordinateSource(),
             coverage: .korea,
             fetch: { coord, _ in
-                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 return try await service.busStops(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stops in
@@ -28,7 +29,15 @@ final class BusNearbyModel {
 }
 
 struct BusNearbyView: View {
-    @State private var model = BusNearbyModel()
+    private let anchor: PlaceAnchor?
+    @State private var model: BusNearbyModel
+
+    /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
+    /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
+    init(anchor: PlaceAnchor? = nil) {
+        self.anchor = anchor
+        _model = State(initialValue: BusNearbyModel(anchor: anchor))
+    }
 
     var body: some View {
         List {
@@ -61,7 +70,7 @@ struct BusNearbyView: View {
                 }
             }
         }
-        .navigationTitle(appLocalized("ios.nearby.bus"))
+        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.bus"), anchor: anchor))
         .nearbyStateOverlay {
             NearbyStateOverlayView(phase: model.phase, descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),

@@ -70,7 +70,8 @@
       "jibunAddressLine": "Dirección (parcela), {value}",
       "englishAddressLine": "Dirección en inglés, {value}",
       "copyAddress": "Copiar dirección",
-      "askAbout": "Preguntar sobre {name}"
+      "askAbout": "Preguntar sobre {name}",
+      "nearbyHeading": "Cerca de este lugar"
     },
     "clinic": {
       "designated": "Clínica pediátrica nocturna designada por el gobierno (Moonlight Children's Hospital)."

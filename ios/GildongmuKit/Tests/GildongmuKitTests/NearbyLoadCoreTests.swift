@@ -91,19 +91,29 @@ private final class Gate {
     }
 }
 
+/// 좌표 소스 선택(코어의 3종과 1:1). 불리언 조합으로는 3종을 표현할 수 없어 열거형으로 둔다.
+private enum SourceKind {
+    case current
+    case fixed(NearbyCoord)
+    case none
+}
+
 @MainActor
 private func makeCore(
     _ recorder: Recorder,
     coverage: NearbyCoverage = .none,
-    hasCoordinateSource: Bool = true
+    sourceKind: SourceKind = .current
 ) -> NearbyLoadCore<Payload> {
-    let source: NearbyCoordinateSource = hasCoordinateSource
-        ? .current { force in
+    let source: NearbyCoordinateSource = switch sourceKind {
+    case .current:
+        .current { force in
             recorder.coordCallCount += 1
             recorder.coordForces.append(force)
             return try await recorder.coordStub(force)
         }
-        : .none
+    case .fixed(let anchor): .fixed(anchor)
+    case .none: .none
+    }
     let core = NearbyLoadCore<Payload>(
         coordinate: source,
         coverage: coverage,
@@ -450,13 +460,58 @@ struct NearbyLoadCoreTests {
     /// 파라미터형(.none) 소스는 좌표 단계를 통째로 생략한다 — coverage=korea여도 선분기가 없다.
     @Test func noneCoordinateSourceSkipsCoordinateStage() async {
         let recorder = Recorder()
-        let core = makeCore(recorder, coverage: .korea, hasCoordinateSource: false)
+        let core = makeCore(recorder, coverage: .korea, sourceKind: .none)
 
         await core.load()
         #expect(recorder.coordCallCount == 0)
         #expect(recorder.fetchCallCount == 1)
         #expect(recorder.fetchCoords[0] == nil)
         #expect(phaseName(core.phase) == "loaded")
+    }
+
+    // MARK: - .fixed 앵커(장소 상세 "이 장소 주변")
+
+    /// 앵커 좌표가 fetch에 그대로 전달되고, force 재조회에도 같은 좌표가 간다
+    /// (측위 단계가 없으므로 force는 재조회 의미만 갖는다).
+    @Test func fixedSourcePassesAnchorAndIgnoresForce() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder, coverage: .korea, sourceKind: .fixed(seoulCoord))
+
+        await core.load()
+        await core.load(force: true)
+
+        #expect(recorder.coordCallCount == 0)          // 위치 어댑터 미사용
+        #expect(recorder.fetchCallCount == 2)
+        #expect(recorder.fetchCoords.allSatisfy { $0?.lat == seoulCoord.lat && $0?.lng == seoulCoord.lng })
+        #expect(phaseName(core.phase) == "loaded")
+    }
+
+    /// 커버리지 선분기는 좌표 출처를 가리지 않는다 — 앵커가 한국 밖이면 upstream을
+    /// **호출하지 않고** outOfCoverage. fetchCallCount 단언이 핵심: 이게 없으면 선분기를
+    /// 지워도 서버 마커(APIError.outOfCoverage)가 같은 phase를 만들어 통과한다.
+    @Test func fixedSourceOutsideKoreaSkipsUpstream() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder, coverage: .korea, sourceKind: .fixed(tokyoCoord))
+
+        await core.load()
+
+        #expect(recorder.fetchCallCount == 0)
+        #expect(phaseName(core.phase) == "outOfCoverage")
+        #expect(recorder.events.isEmpty)               // 첫 진입은 통지 없음(#13 동형)
+    }
+
+    /// 실패는 fetch throw → failedServer 하나로만 분류된다.
+    /// "denied·failedLocation에 도달할 수 없다"는 타입 구조가 보증한다(fixed 소스엔 위치
+    /// 어댑터 자체가 없다) — 그러므로 여기서 coordCallCount를 세는 단언은 어떤 구현에서도
+    /// 참이라 검출력이 없다. 이 테스트가 실제로 고정하는 축은 아래 실패 분류 한 줄이다.
+    @Test func fixedSourceHasNoLocationFailurePath() async {
+        let recorder = Recorder()
+        recorder.fetchStub = { _, _ in throw StubError.boom }
+        let core = makeCore(recorder, coverage: .korea, sourceKind: .fixed(seoulCoord))
+
+        await core.load()
+
+        #expect(phaseName(core.phase) == "failedServer")
     }
 
     /// 불변식 ⑥ — force는 getCoordinate로 그대로 전달될 뿐 전이에 영향이 없다.

@@ -70,7 +70,8 @@
       "jibunAddressLine": "地番住所、{value}",
       "englishAddressLine": "英語住所、{value}",
       "copyAddress": "住所をコピー",
-      "askAbout": "{name}について質問する"
+      "askAbout": "{name}について質問する",
+      "nearbyHeading": "この場所の周辺"
     },
     "clinic": {
       "designated": "政府指定の小児夜間診療機関(月あかりこども病院)です。"
