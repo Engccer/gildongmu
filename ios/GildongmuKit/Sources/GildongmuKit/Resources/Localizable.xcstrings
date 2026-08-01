@@ -1966,37 +1966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "현재 위치 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to look up your location. Please try again shortly."
+            "value": "Failed to look up your location."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo consultar tu ubicación. Inténtalo de nuevo en breve."
+            "value": "No se pudo consultar tu ubicación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la localisation. Veuillez réessayer dans un instant."
+            "value": "Échec de la localisation."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile localizzarti. Riprova tra poco."
+            "value": "Impossibile localizzarti."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "現在地の照会に失敗しました。"
           }
         }
       }
