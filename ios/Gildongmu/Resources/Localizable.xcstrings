@@ -8441,6 +8441,86 @@
         }
       }
     },
+    "ios.beacon.soundUnavailable": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "소리 안내를 재생할 수 없습니다. 화면의 안내를 확인하세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound guidance cannot play. Check the on-screen status instead."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede reproducir la guía sonora. Consulta el estado en pantalla."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guidance sonore ne peut pas être jouée. Consultez l'état affiché à l'écran."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida sonora non può essere riprodotta. Controlla lo stato sullo schermo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音による案内を再生できません。画面の表示を確認してください。"
+          }
+        }
+      }
+    },
+    "ios.beacon.stopped": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "거리 추적을 중지했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance tracking stopped."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguimiento de distancia detenido."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivi de distance arrêté."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracciamento della distanza interrotto."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "距離の追跡を停止しました。"
+          }
+        }
+      }
+    },
     "ios.chat.clear": {
       "localizations": {
         "ko": {

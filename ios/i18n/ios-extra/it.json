@@ -206,6 +206,10 @@
         "title": "Nei dintorni",
         "desc": "Apre la schermata Nei dintorni di Gildongmu"
       }
+    },
+    "beacon": {
+      "soundUnavailable": "La guida sonora non può essere riprodotta. Controlla lo stato sullo schermo.",
+      "stopped": "Tracciamento della distanza interrotto."
     }
   }
 }

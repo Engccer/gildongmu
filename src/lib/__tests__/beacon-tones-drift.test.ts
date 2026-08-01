@@ -17,13 +17,23 @@ import type { Tone } from "../tones";
  *
  * 대상은 추세·도착·tick 4종뿐이다. 시작·정지는 iOS가 의도적으로 다른 값을 쓴다
  * (웹 START_TONES가 CLOSER_TONES와 주파수·방향이 같아 iOS에서는 한 기능 안에서
- * 구분되지 않는다 — 근거는 `BeaconTones.swift` 주석).
+ * 구분되지 않는다(근거는 `BeaconTones.swift` 주석)).
  */
 
 const SWIFT_PATH = "ios/GildongmuKit/Sources/GildongmuKit/BeaconTones.swift";
 const swift = readFileSync(SWIFT_PATH, "utf8");
 
-/** `case .<name>:` 블록에서 ToneStep의 freq를 선언 순서대로 뽑는다. */
+/** `case .<name>:` 블록에서 ToneStep 필드를 선언 순서대로 뽑는다. */
+function swiftSteps(caseName: string): { freq: number; start: number; dur: number }[] {
+  const block = new RegExp(
+    `case \\.${caseName}:([\\s\\S]*?)(?=\\n\\s{4}case \\.|\\n\\s{4}\\})`,
+  ).exec(swift);
+  if (!block) throw new Error(`${SWIFT_PATH}에서 case .${caseName} 블록을 찾지 못했다`);
+  return [...block[1].matchAll(/freq:\s*([\d.]+),\s*start:\s*([\d.]+),\s*dur:\s*([\d.]+)/g)].map(
+    (m) => ({ freq: Number(m[1]), start: Number(m[2]), dur: Number(m[3]) }),
+  );
+}
+
 function swiftFreqs(caseName: string): number[] {
   const block = new RegExp(
     `case \\.${caseName}:([\\s\\S]*?)(?=\\n\\s{4}case \\.|\\n\\s{4}\\})`,
@@ -42,6 +52,13 @@ describe("비콘 톤 테이블 웹-iOS 드리프트", () => {
 
   it.each(shared)("%s 주파수가 웹 정본과 같다", (name, web) => {
     expect(swiftFreqs(name)).toEqual(web.map((t) => t.freq));
+  });
+
+  // 주파수만 대조하면 길이·오프셋 드리프트(예: nearby를 0.9초로)가 통과한다.
+  it.each(shared)("%s 길이·오프셋도 웹 정본과 같다", (name, web) => {
+    expect(swiftSteps(name)).toEqual(
+      web.map((t) => ({ freq: t.freq, start: t.start, dur: t.dur })),
+    );
   });
 
   it("시작·정지는 추세 톤과 구분되는 값이어야 한다", () => {

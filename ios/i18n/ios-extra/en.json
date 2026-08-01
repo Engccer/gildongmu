@@ -206,6 +206,10 @@
         "title": "Nearby",
         "desc": "Opens the Gildongmu nearby screen"
       }
+    },
+    "beacon": {
+      "soundUnavailable": "Sound guidance cannot play. Check the on-screen status instead.",
+      "stopped": "Distance tracking stopped."
     }
   }
 }

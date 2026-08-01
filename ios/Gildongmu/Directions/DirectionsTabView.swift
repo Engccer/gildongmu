@@ -56,6 +56,12 @@ final class DirectionsModel {
     private(set) var results: DirectionsResults?
     /// 조회 완료 세대. 뷰가 포커스 이동 시점을 아는 신호(SearchModel.resultsRevision 동형).
     private(set) var resultsRevision = 0
+    /// 이 세션에서 조회를 한 번이라도 마쳤는가. `results`는 필드 변경·재조회 시작에
+    /// 폐기되지만(clearResults·performQuery 첫 줄), **거리 추적 섹션의 노출 조건은
+    /// "지금 결과가 있는가"가 아니라 "목적지가 확정됐는가"**다. results로 판정하면
+    /// 추적 중 출발지를 바꾸거나 재조회하는 순간 중지 버튼이 화면에서 사라져
+    /// 탭 이탈 말고는 멈출 방법이 없어진다(리뷰 C-1).
+    private(set) var hasQueriedOnce = false
     /// 계단 회피(도보 전용) 토글 상태(웹 stepFreeEnabled 미러). 조회 전 토글은 상태만
     /// 바꿔 다음 조회에 반영, 조회 후 토글은 도보만 재조회한다(toggleStepFree).
     private(set) var stepFreeEnabled = false
@@ -255,6 +261,7 @@ final class DirectionsModel {
         let built = DirectionsResults(outcomes: outcomes)
         results = built
         phase = .settled(successCount: built.successCount)
+        hasQueriedOnce = true
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         announce(built.successCount > 0
@@ -390,7 +397,11 @@ struct DirectionsTabView: View {
                 // 노출 조건은 경로 성공 여부가 아니라 **목적지 확정 여부**다. 수단 조회가
                 // 전부 실패해도 목적지 좌표는 확정돼 있고, 경로를 못 찾은 상황일수록
                 // 방향 감각이 더 필요하다. 도착지가 "현재 위치"면 무의미하므로 숨긴다.
-                if model.results != nil, let tracked = trackedDestination {
+                // 노출 조건은 "지금 결과가 있는가"가 아니라 "조회를 한 번 마쳤는가"다.
+                // 추적 중이면 결과·목적지 상태와 무관하게 항상 렌더한다(중지 수단을
+                // 화면에서 빼앗지 않기 위한 이중 방어).
+                if beacon.isTracking || (model.hasQueriedOnce && trackedDestination != nil),
+                   let tracked = trackedDestination {
                     Section {
                         Button(beacon.isTracking
                             ? appLocalized("beacon.stop") : appLocalized("beacon.start")
@@ -459,11 +470,12 @@ struct DirectionsTabView: View {
             // List는 lazy라 행에 붙이면 도보 안내를 읽으려 스크롤하는 순간 추적이 죽는다.
             .onDisappear {
                 model.cancel()
-                beacon.stop()
+                beacon.teardown()
             }
-            // 검색 시트가 뜬 동안 톤을 죽인다(시트에 받아쓰기가 있고, 스피커로 나간 톤이
-            // 마이크로 돌아와 전사를 오염시킨 이력이 있다). 추적·통지는 유지한다.
-            .onChange(of: searchTarget) { beacon.tonesSuppressed = searchTarget != nil }
+            // 검색 시트가 뜬 동안 톤과 통지를 모두 죽인다. 시트에 받아쓰기가 있고
+            // 헌장 §6의 불변식은 "녹음 중 SR 발화 0"인데, polite 통지는 VoiceOver가
+            // 실제로 말하는 음성이라 톤보다 전사 오염 위험이 크다. 추적은 유지한다.
+            .onChange(of: searchTarget) { beacon.outputSuppressed = searchTarget != nil }
             // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
             // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
             .onChange(of: model.endpoint(for: .to)) { beacon.stopBecauseDestinationChanged() }

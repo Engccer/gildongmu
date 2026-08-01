@@ -103,6 +103,18 @@ private func fixAt(_ metersNorth: Double, accuracy: Double = 10) -> BeaconFix {
         #expect(out.announce.kind == .farther)
     }
 
+    /// 도착 임계값도 accuracy로 스케일한다. 정확도가 나쁘면 더 멀리서 "도착"이다.
+    /// (리뷰 변이 생존 M2: 기존 케이스가 accuracy 10~12만 써서 이 축이 비어 있었다.)
+    @Test func arrivalThresholdScalesWithAccuracy() {
+        let s = beaconStep(state: .initial, fix: fixAt(300), dest: dest).state
+        // accuracy 60이면 threshold도 60이라 40m는 도착 존 안이다.
+        let r = beaconStep(state: s, fix: fixAt(40, accuracy: 60), dest: dest)
+        #expect(r.announce.kind == .nearby)
+        // 같은 40m라도 정확도가 좋으면 도착이 아니다(threshold 20).
+        let precise = beaconStep(state: s, fix: fixAt(40, accuracy: 5), dest: dest)
+        #expect(precise.announce.kind == .closer)
+    }
+
     @Test func holdNeverSpeaks() {
         let s = beaconStep(state: .initial, fix: fixAt(300), dest: dest).state
         let r = beaconStep(state: s, fix: fixAt(305), dest: dest)
@@ -134,5 +146,33 @@ private func fixAt(_ metersNorth: Double, accuracy: Double = 10) -> BeaconFix {
             lat1: 37.5665, lng1: 126.978, lat2: 37.4979, lng2: 127.0276
         )
         #expect(abs(seoulToGangnam - 8792.890880750394) < 0.001)
+    }
+}
+
+@Suite struct FixFreshnessTests {
+    /// 이 게이트가 없으면 캐시 첫 fix가 앵커를 잡아 성과 지표 자체가 오염된다.
+    @Test func freshAccurateFixIsUsable() {
+        #expect(isUsableFix(accuracy: 10, ageSeconds: 0))
+        #expect(isUsableFix(accuracy: 65, ageSeconds: 4.9))
+    }
+
+    @Test func staleFixIsRejected() {
+        #expect(!isUsableFix(accuracy: 10, ageSeconds: 5.1))
+        #expect(!isUsableFix(accuracy: 10, ageSeconds: 120))
+    }
+
+    /// 기기 시계 보정으로 timestamp가 미래로 튀는 fix도 신뢰할 근거가 없다.
+    @Test func futureTimestampIsRejected() {
+        #expect(!isUsableFix(accuracy: 10, ageSeconds: -30))
+    }
+
+    /// CoreLocation의 좌표 무효 신호. 리듀서도 거르지만 앵커 앞단에서 먼저 막는다.
+    @Test func invalidAccuracyIsRejected() {
+        #expect(!isUsableFix(accuracy: -1, ageSeconds: 0))
+        #expect(!isUsableFix(accuracy: 0, ageSeconds: 0))
+    }
+
+    @Test func windowIsConfigurable() {
+        #expect(isUsableFix(accuracy: 10, ageSeconds: 20, maxAge: 30))
     }
 }
