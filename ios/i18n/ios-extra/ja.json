@@ -176,7 +176,9 @@
       "airStationLine": "{name}測定所、{distance}km",
       "whereAmIServerFailed": "現在地の情報を取得できませんでした",
       "eventsEmpty": "近くで今日開催中の文化イベントはありません",
-      "unitEvent": "件"
+      "unitEvent": "件",
+      "subwayClosed": "運行時間外です。始発 %@",
+      "subwayNoRealtime": "この駅のリアルタイム到着情報は提供されていません"
     },
     "settings": {
       "title": "設定",

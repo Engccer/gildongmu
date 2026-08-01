@@ -593,7 +593,12 @@ export interface SubwayStationArrivals {
  * 실시간 API가 역명 기반이라 버스/따릉이(좌표 직접)와 달리 seed 식별 한 단계가
  * 더 든다. BusStop.arrivalStatus와 동형으로 "조회 실패(unavailable) ≠ 도착 열차
  * 없음(ok·arrivals 빈 배열)"을 구분한다(시각장애인 정합 — 장애 은폐 금지).
- * 비서울 좌표는 seed 근접역이 잡혀도 swopenapi가 INFO-200 → 합성 단계에서 제외.
+ *
+ * ⚠ **역은 어떤 상태에서도 목록에서 빠지지 않는다**(2026-08-02). 종전에는 실시간
+ * INFO-200(데이터 없음) 역을 합성 단계에서 제외했는데, 심야에는 근접역이 전부
+ * 그렇게 되어 목록이 비고 화면이 그것을 "주변에 지하철역이 없습니다"로 읽었다.
+ * 근접역은 정적 seed 산출이라 시각과 무관하게 참이므로, 역의 존재(참)와 도착
+ * 정보의 부재(상태)를 뭉개는 거짓말이었다. 지금은 역을 남기고 상태로 가른다.
  */
 export interface NearbySubwayStation {
   /** 역명(표시·낭독용, "역" 접미사 제거) */
@@ -604,11 +609,23 @@ export interface NearbySubwayStation {
   lines: string[];
   /** 현재 위치로부터 Haversine 거리(m, 반올림) — 가까운 순 정렬 보존 */
   distanceMeters: number;
-  /** 도착조회 상태 — "ok": 실시간 성공(arrivals 정본, 0건이면 정상적 "열차 없음").
-   *  "unavailable": 실시간 실패(쿼터·인증·네트워크) → "열차 없음"과 구분, 장애 은폐 금지. */
-  arrivalStatus: "ok" | "unavailable";
-  /** 도착 열차들(arrivalStatus==="ok"일 때만 의미 — unavailable이면 []). */
+  /**
+   * 도착조회 상태 — 넷을 절대 뭉개지 않는다(시각장애인은 화면으로 구분할 수 없다).
+   * - "ok": 실시간 성공(arrivals 정본, 0건이면 정상적 "열차 없음").
+   * - "unavailable": 실시간 실패(쿼터·인증·네트워크) → 장애 은폐 금지.
+   * - "closed": 실시간 데이터 없음 + **그 역 시간표로 운행 시간 밖 확정**. firstTime 동반.
+   * - "unknown": 실시간 데이터 없음 + 운행 여부 판정 불가(서울 실시간 미커버 역이거나
+   *   시간표 조회 실패). "운행이 끝났다"고 단정하지 않는 정직한 잔여 상태다.
+   */
+  arrivalStatus: "ok" | "unavailable" | "closed" | "unknown";
+  /** 도착 열차들(arrivalStatus==="ok"일 때만 의미 — 그 외는 []). */
   arrivals: SubwayArrival[];
+  /**
+   * 다음 첫차 시각 "HH:MM"(closed일 때만, 여러 노선이면 가장 이른 것).
+   * 막차는 싣지 않는다 — closed는 막차가 지났다는 뜻이라 사용자가 물을 것은
+   * "언제 다시 타나"뿐이다.
+   */
+  firstTime?: string;
 }
 
 /** 대기질 등급 — 1좋음·2보통·3나쁨·4매우나쁨, 부재/장애는 unknown(낭독 정본). */

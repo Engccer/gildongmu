@@ -48,8 +48,11 @@ interface NearbySubwayStationItem {
   stationName: string;
   lines: string[];
   distanceMeters: number;
-  arrivalStatus: "ok" | "unavailable";
+  /** closed=운행 시간 밖(firstTime 동반) / unknown=실시간 미제공 — "열차 없음"과 구분 */
+  arrivalStatus: "ok" | "unavailable" | "closed" | "unknown";
   arrivals: SubwayArrivalItem[];
+  /** 다음 첫차 "HH:MM"(closed일 때만) */
+  firstTime?: string;
 }
 
 interface SubwayStationArrivalsItem {
@@ -451,6 +454,10 @@ function formatNearbySubway(body: { stations: NearbySubwayStationItem[] }): stri
     lines.push(joinText(`${s.stationName}역`, s.lines.join("·"), m(s.distanceMeters)));
     if (s.arrivalStatus === "unavailable") {
       lines.push("  실시간 도착 조회 실패.");
+    } else if (s.arrivalStatus === "closed" && s.firstTime) {
+      lines.push(`  운행 시간이 아님. 첫차 ${s.firstTime}.`);
+    } else if (s.arrivalStatus === "closed" || s.arrivalStatus === "unknown") {
+      lines.push("  실시간 도착 정보 미제공.");
     } else if (s.arrivals.length === 0) {
       lines.push("  도착 예정 열차 없음.");
     } else {

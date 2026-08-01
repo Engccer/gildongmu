@@ -36,9 +36,13 @@ public struct NearbySubwayStation: Codable, Sendable, Hashable {
     /// 이 역을 지나는 노선들(환승역은 여럿)
     public let lines: [String]
     public let distanceMeters: Int
-    /// "ok"(arrivals 정본, 0건=정상적 열차 없음) / "unavailable"(조회 실패 — "열차 없음"과 절대 뭉개지 않음)
+    /// 넷을 뭉개지 않는다 — "ok"(arrivals 정본, 0건=정상적 열차 없음) /
+    /// "unavailable"(조회 실패) / "closed"(운행 시간 밖 확정, firstTime 동반) /
+    /// "unknown"(실시간 미제공 역이거나 판정 불가).
     public let arrivalStatus: String
     public let arrivals: [SubwayArrival]
+    /// 다음 첫차 "HH:MM"(closed일 때만). 서버가 그 역 시간표로 판정한 값이다.
+    public let firstTime: String?
 }
 
 public struct SubwayNearbyResponse: Codable, Sendable {
@@ -78,7 +82,8 @@ public struct BusStop: Codable, Sendable, Hashable {
     public let distanceMeters: Int
     /// 제공자("tago"/"seoul")
     public let source: String
-    /// "ok" / "unavailable" — 지하철과 동형 3-state
+    /// "ok" / "unavailable" 2-state — 지하철과 달리 시간표 조인이 없어 운행 시간
+    /// 밖을 가려내지 못한다(버스는 실시간이 빈 것과 운행 종료를 구분할 소스가 없다).
     public let arrivalStatus: String
     public let arrivals: [BusArrival]
 }

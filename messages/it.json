@@ -219,7 +219,7 @@
     "refresh": "Aggiorna",
     "locating": "Recupero della tua posizione…",
     "loading": "Caricamento degli arrivi delle stazioni vicine…",
-    "empty": "Nessuna stazione della metro di Seoul nelle vicinanze. (Solo linee 1–9 della metro di Seoul)",
+    "empty": "Nessuna stazione della metro nelle vicinanze.",
     "error": "Impossibile caricare gli arrivi della metro.",
     "ready": "Arrivi della metro vicino a te.",
     "asOf": "alle {time}",
@@ -227,7 +227,9 @@
     "arrivalUnavailable": "Impossibile caricare le informazioni sugli arrivi per questa stazione.",
     "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
-    "source": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale."
+    "source": "Fonte: Seoul Open Data Plaza, arrivi della metro in tempo reale.",
+    "closed": "Fuori servizio ora. Primo treno {time}.",
+    "noRealtime": "Nessuna informazione in tempo reale per questa stazione."
   },
   "stationMeta": {
     "heading": "Informazioni sulla stazione",

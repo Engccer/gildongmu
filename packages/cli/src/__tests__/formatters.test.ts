@@ -3,7 +3,39 @@ import { FORMATTERS } from "../lib/formatters.js";
 
 // ── 브리프 필수 3-state 케이스 ──────────────────────────────────────────
 
-describe("nearby-subway 3-state", () => {
+describe("nearby-subway 4-state", () => {
+  // text 모드에서만 드러나는 축이라 테스트로 고정한다 — 파이프 실호출은 비-TTY라
+  // JSON으로 빠져 이 분기를 통과하지 못한다([[cli-formatter-registration-gap]]).
+  it("closed는 첫차를 안내하고, 첫차가 없으면 미제공으로 물러선다", () => {
+    const lines = FORMATTERS["nearby-subway"]({
+      stations: [
+        {
+          stationName: "천호", lines: ["5호선", "8호선"], distanceMeters: 14,
+          arrivalStatus: "closed", arrivals: [], firstTime: "05:32",
+        },
+        {
+          stationName: "강동구청", lines: ["8호선"], distanceMeters: 943,
+          arrivalStatus: "closed", arrivals: [],
+        },
+      ],
+    } as never);
+    expect(lines[1]).toBe("  운행 시간이 아님. 첫차 05:32.");
+    expect(lines[3]).toBe("  실시간 도착 정보 미제공.");
+  });
+
+  it("unknown은 '역 없음'이 아니라 미제공으로 표기(역은 목록에 남는다)", () => {
+    const lines = FORMATTERS["nearby-subway"]({
+      stations: [
+        {
+          stationName: "김포공항", lines: ["김포골드라인"], distanceMeters: 300,
+          arrivalStatus: "unknown", arrivals: [],
+        },
+      ],
+    } as never);
+    expect(lines[0]).toBe("김포공항역, 김포골드라인, 300m");
+    expect(lines[1]).toBe("  실시간 도착 정보 미제공.");
+  });
+
   it("unavailable은 '조회 실패', 빈 arrivals는 '없음'으로 구분", () => {
     const lines = FORMATTERS["nearby-subway"]({
       stations: [
