@@ -1,6 +1,7 @@
 import type { BarrierFreePlace, BarrierFreeDetail, BarrierFreeFacility } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import { fetchDataGoKrJson, readItems, readResultCode } from "./datagokr-envelope";
 
 /**
  * 한국관광공사 무장애 여행 정보 provider — B551011/KorWithService2.
@@ -85,23 +86,6 @@ function numF(v: unknown): number {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** data.go.kr JSON: items.item 은 단일 객체/배열/빈문자열. 안전 추출(night-clinic 동형). */
-export function extractTourItems(raw: unknown): Record<string, unknown>[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response?.body?.items;
-  if (!items || typeof items === "string") return [];
-  const item = (items as { item?: unknown }).item;
-  if (item == null) return [];
-  return Array.isArray(item)
-    ? (item as Record<string, unknown>[])
-    : [item as Record<string, unknown>];
-}
-
-function resultCode(raw: unknown): string | null {
-  const c = (raw as { response?: { header?: { resultCode?: unknown } } })?.response?.header
-    ?.resultCode;
-  return c != null ? String(c) : null;
-}
-
 /** 화이트리스트 키 중 값이 비어있지 않은 것만 → 라벨링된 편의시설 목록. */
 export function labelFacilities(item: Record<string, unknown>): BarrierFreeFacility[] {
   const out: BarrierFreeFacility[] = [];
@@ -136,10 +120,10 @@ async function callKorWith(operation: string, params: Record<string, string>): P
   url.searchParams.set("MobileApp", "gildongmu");
   url.searchParams.set("_type", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  const res = await fetch(url, { next: { revalidate: 86_400 } });
-  if (!res.ok) throw new Error(`무장애 여행 정보 조회 실패: HTTP ${res.status}`);
-  const raw = await res.json();
-  const code = resultCode(raw);
+  const raw = await fetchDataGoKrJson(url, "무장애 여행 정보", {
+    next: { revalidate: 86_400 },
+  });
+  const code = readResultCode(raw);
   if (code !== "0000") throw new Error(`무장애 여행 정보 비정상 응답: resultCode ${code}`);
   return raw;
 }
@@ -160,7 +144,7 @@ export async function searchBarrierFreeNearby(
     arrange: "E", // 거리순
     numOfRows: String(limit),
   });
-  return extractTourItems(raw)
+  return readItems(raw)
     .map((it) => normalizePlace(it, lat, lng))
     .filter((p): p is BarrierFreePlace => p !== null)
     .sort((a, b) => a.distanceMeters - b.distanceMeters) // dist 신뢰 대신 코드 정렬
@@ -171,7 +155,7 @@ export async function searchBarrierFreeNearby(
 export async function getBarrierFreeDetail(contentId: string): Promise<BarrierFreeDetail | null> {
   if (!env.DATA_GO_KR_API_KEY || !contentId) return null;
   const raw = await callKorWith("detailWithTour2", { contentId });
-  const items = extractTourItems(raw);
+  const items = readItems(raw);
   if (items.length === 0) return null;
   const item = items[0];
   return {

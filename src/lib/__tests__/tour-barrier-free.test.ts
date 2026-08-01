@@ -7,7 +7,6 @@ vi.mock("../env", () => ({
 }));
 
 import {
-  extractTourItems,
   labelFacilities,
   cleanFacilityValue,
   BARRIER_FREE_FIELD_LABELS,
@@ -15,24 +14,8 @@ import {
   searchBarrierFreeNearby,
 } from "../providers/tour-barrier-free";
 
-describe("extractTourItems", () => {
-  it("빈결과 items:'' → 빈 배열", () => {
-    const raw = { response: { body: { items: "" } } };
-    expect(extractTourItems(raw)).toEqual([]);
-  });
-  it("null/undefined 입력 → 빈 배열(optional chain 가드)", () => {
-    expect(extractTourItems(null)).toEqual([]);
-    expect(extractTourItems(undefined)).toEqual([]);
-  });
-  it("단일 객체 item → 배열 1개로 정규화", () => {
-    const raw = { response: { body: { items: { item: { contentid: "1" } } } } };
-    expect(extractTourItems(raw)).toHaveLength(1);
-  });
-  it("배열 item → 그대로", () => {
-    const raw = { response: { body: { items: { item: [{ contentid: "1" }, { contentid: "2" }] } } } };
-    expect(extractTourItems(raw)).toHaveLength(2);
-  });
-});
+// envelope 모양 계약은 providers/__tests__/datagokr-envelope.test.ts로 이관.
+// 이 파일은 무장애 도메인(라벨링·매칭·거리)만 다룬다.
 
 describe("labelFacilities — 실응답 기반 3-state + 값 정제", () => {
   // 서울도서관(130183) detailWithTour2 실응답 발췌(2026-06-30 실호출)
@@ -108,11 +91,11 @@ describe("searchBarrierFreeNearby (서버 캡 — numOfRows 위임)", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("서버 캡 50 — numOfRows=50 요청(표시 절단은 클라이언트 몫, V1 동형)", async () => {
+    const empty = { response: { header: { resultCode: "0000" }, body: { items: "" } } };
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
-      json: async () => ({
-        response: { header: { resultCode: "0000" }, body: { items: "" } },
-      }),
+      status: 200,
+      text: async () => JSON.stringify(empty),
     } as unknown as Response);
     await searchBarrierFreeNearby(37.5, 127.1);
     const calledUrl = spy.mock.calls[0][0] as URL;

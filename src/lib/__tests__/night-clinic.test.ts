@@ -16,7 +16,6 @@ import {
   rankClinicsByDistance,
   clinicOpenStatus,
   dayToHoursIndex,
-  extractItems,
   fetchNightClinics,
   clinicNowBasis,
   kstDateKey,
@@ -70,7 +69,6 @@ describe("parseClinics (달빛어린이병원 목록 정규화)", () => {
   });
 
   it("빈 결과(items:\"\")는 빈 배열", () => {
-    expect(extractItems({ response: { body: { items: "" } } })).toEqual([]);
     expect(parseClinics({ response: { body: { items: "" } } })).toEqual([]);
   });
 });
@@ -150,7 +148,7 @@ describe("dayToHoursIndex (JS getDay → 월~일 index)", () => {
 describe("fetchNightClinics (fetch 합성)", () => {
   afterEach(() => vi.restoreAllMocks());
   const ok = (json: unknown): Response =>
-    ({ ok: true, status: 200, json: async () => json } as unknown as Response);
+    ({ ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json) } as unknown as Response);
 
   it("정상 fixture → 파싱", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(ok(fixture));
@@ -166,7 +164,7 @@ describe("fetchNightClinics (fetch 합성)", () => {
   });
 
   it("HTTP 실패 → throw", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500, text: async () => "" } as Response);
     await expect(fetchNightClinics()).rejects.toThrow();
   });
 

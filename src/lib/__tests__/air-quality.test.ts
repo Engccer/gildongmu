@@ -169,8 +169,12 @@ describe("findAirQualityNear (2-call 합성·키 게이트)", () => {
   });
 
   it("upstream 장애(HTTP 실패) → throw (502 — 정보 없음과 구분)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
-    await expect(findAirQualityNear(37.5, 127.0)).rejects.toThrow();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      { ok: false, status: 500, text: async () => "" } as Response,
+    );
+    // 메시지에 상태코드를 요구한다. 맨 rejects.toThrow()는 어떤 throw든 통과해서,
+    // 목이 실제 Response와 어긋나 던진 TypeError도 green으로 보이게 한다.
+    await expect(findAirQualityNear(37.5, 127.0)).rejects.toThrow(/HTTP 500/);
   });
 
   it("인증 실패 XML이 HTTP 200으로 와도 throw (res.json SyntaxError 대신 명확한 에러)", async () => {
@@ -181,6 +185,7 @@ describe("findAirQualityNear (2-call 합성·키 게이트)", () => {
       text: async () =>
         '<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg></cmmMsgHeader></OpenAPI_ServiceResponse>',
     } as unknown as Response);
-    await expect(findAirQualityNear(37.5, 127.0)).rejects.toThrow();
+    // "XML이 왔다"는 진단이 메시지에 남아야 키를 먼저 의심할 수 있다.
+    await expect(findAirQualityNear(37.5, 127.0)).rejects.toThrow(/XML/);
   });
 });

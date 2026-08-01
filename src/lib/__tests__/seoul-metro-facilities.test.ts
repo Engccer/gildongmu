@@ -146,7 +146,7 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
   afterEach(() => vi.restoreAllMocks());
 
   function ok(json: unknown): Response {
-    return { ok: true, status: 200, json: async () => json } as unknown as Response;
+    return { ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json) } as unknown as Response;
   }
 
   it("카카오 실명('강동역 5호선')의 노선 토큰을 벗겨 서버에 보낸다(死 섹션 회귀 방지)", async () => {
@@ -215,6 +215,7 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 503,
+      text: async () => "",
     } as unknown as Response);
     await expect(fetchSeoulMetroFacilities("강동역")).rejects.toThrow();
   });
@@ -238,7 +239,7 @@ describe("fetchSeoulMetroFacilities — 9 병렬 + 장애 구분", () => {
       const url = String(input);
       // 엘리베이터 1종만 503, 나머지 8종은 정상 fixture.
       if (url.includes("/getWksnElvtr?")) {
-        return Promise.resolve({ ok: false, status: 503 } as unknown as Response);
+        return Promise.resolve({ ok: false, status: 503, text: async () => "" } as unknown as Response);
       }
       const op = Object.keys(map).find((o) => url.includes(`/${o}?`))!;
       return Promise.resolve(ok(map[op]));
@@ -268,7 +269,7 @@ describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유�
   afterEach(() => vi.restoreAllMocks());
 
   function ok(json: unknown): Response {
-    return { ok: true, status: 200, json: async () => json } as unknown as Response;
+    return { ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json) } as unknown as Response;
   }
 
   const wksnMap: Record<string, unknown> = {

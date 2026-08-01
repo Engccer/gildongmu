@@ -8,26 +8,22 @@ vi.mock("../env", () => ({
 import fixture from "./fixtures/tago-bus.json";
 import { haversineMeters } from "../geo";
 import {
-  parseTagoItems,
   parseBusStops,
   parseBusArrivals,
   parseBusRouteStops,
   fetchTagoNearby,
   fetchBusRouteStops,
 } from "../providers/tago-bus";
+import { readItems } from "../providers/datagokr-envelope";
 
-describe("parseTagoItems", () => {
+// 공용 파서가 이 서비스의 **실응답**을 읽는지 — 모양 일반 계약은
+// providers/__tests__/datagokr-envelope.test.ts가 따로 못 박는다.
+describe("readItems — TAGO 실응답", () => {
   it("envelope에서 item 배열을 뽑는다", () => {
-    expect(parseTagoItems(fixture.nearbyStops).length).toBe(2);
+    expect(readItems(fixture.nearbyStops).length).toBe(2);
   });
-  it("빈 결과(items:'')는 빈 배열", () => {
-    expect(parseTagoItems(fixture.empty)).toEqual([]);
-    expect(parseTagoItems(null)).toEqual([]);
-    expect(parseTagoItems({})).toEqual([]);
-  });
-  it("item이 단일 객체로 와도 배열로 정규화", () => {
-    const single = { response: { body: { items: { item: { nodeid: "X" } } } } };
-    expect(parseTagoItems(single).length).toBe(1);
+  it("실제 빈 결과 응답은 빈 배열", () => {
+    expect(readItems(fixture.empty)).toEqual([]);
   });
 });
 

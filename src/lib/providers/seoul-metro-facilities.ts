@@ -5,7 +5,7 @@ import {
   lineHintMatches,
   stripStationDecorations,
 } from "../station-match";
-import { parseStationItems } from "./korail-facilities";
+import { fetchDataGoKrJson, readItems, readTotalCount } from "./datagokr-envelope";
 import { findVoiceGuides } from "../voice-guides";
 import { findStationsByName } from "../subway-stations";
 import { fetchSeoulElevators, composeElevatorItems } from "./seoul-elevator";
@@ -24,7 +24,7 @@ import type {
  * - Base: https://apis.data.go.kr/B553766/wksn, 9 오퍼레이션(시설 종류별).
  * - stnNm은 "포함" 필터라 "강동"이 "강동구청"도 잡는다 → 받은 뒤
  *   normalizeStationName으로 **정확매칭**해 다른 역을 제외한다.
- * - envelope는 data.go.kr 표준(코레일과 동일) → parseStationItems 재사용.
+ * - envelope는 data.go.kr 표준(코레일과 동일) → 공용 readItems 재사용.
  * - 시설마다 필드가 달라 시설별 정규화 함수로 공통 코어(name/location/
  *   floors/operatingStatus/detail)에 투영한다.
  * - oprtngSitu: 관측값 M(정상)·S(점검·중지)뿐. M만 normal, 그 외 stopped
@@ -137,7 +137,7 @@ export function parseFacilityGroup(
   normalizedTarget: string,
   lineHint?: string,
 ): SeoulMetroFacilityGroup | null {
-  const items = parseStationItems(raw).filter(
+  const items = readItems(raw).filter(
     (it) =>
       normalizeStationName(str(it.stnNm)) === normalizedTarget &&
       (!lineHint || lineHintMatches(str(it.lineNm), lineHint)),
@@ -170,7 +170,7 @@ export function parseSeoulMetroFacilities(
   // groups는 이 함수 안에서 kinds(wksn 9종)만으로 구성되므로 kind는 항상
   // SeoulMetroFacilityKind다(보강 그룹 voiceGuide/elevatorLocation은 병합
   // 단계(fetchSeoulMetroFacilities)에서만 추가되고 이 함수엔 섞이지 않는다).
-  const firstMatched = parseStationItems(raws[groups[0].kind as SeoulMetroFacilityKind]).find(
+  const firstMatched = readItems(raws[groups[0].kind as SeoulMetroFacilityKind]).find(
     (it) =>
       normalizeStationName(str(it.stnNm)) === target &&
       (!lineHint || lineHintMatches(str(it.lineNm), lineHint)),
@@ -185,14 +185,6 @@ export function parseSeoulMetroFacilities(
 /** 단일 요청으로 다 받는 상한. 초과하면 페이지 누락이므로 throw로 검증한다. */
 const PAGE_SIZE = 300;
 
-/** data.go.kr 표준 envelope에서 totalCount를 안전하게 읽는다(없으면 0). */
-function totalCount(raw: unknown): number {
-  const tc = (raw as { response?: { body?: { totalCount?: unknown } } })?.response
-    ?.body?.totalCount;
-  const n = Number(tc);
-  return Number.isFinite(n) ? n : 0;
-}
-
 async function fetchOp(op: string, stationName: string, key: string): Promise<unknown> {
   const url = new URL(`${BASE}/${op}`);
   url.searchParams.set("serviceKey", key);
@@ -201,13 +193,13 @@ async function fetchOp(op: string, stationName: string, key: string): Promise<un
   url.searchParams.set("pageNo", "1");
   url.searchParams.set("stnNm", stationName);
   // 시설 현황은 분 단위로 안 바뀐다 — 하루 캐시로 쿼터를 아낀다(코레일과 동일).
-  const res = await fetch(url, { next: { revalidate: 86_400 } });
-  if (!res.ok) throw new Error(`서울교통공사 시설 조회 실패: HTTP ${res.status} (${op})`);
-  const raw = await res.json();
+  const raw = await fetchDataGoKrJson(url, `서울교통공사 시설 ${op}`, {
+    next: { revalidate: 86_400 },
+  });
   // 코레일은 필터 없이 전체(500)를 받지만, 이 provider는 stnNm "포함" 필터라
   // 환승역이 걸리면 totalCount가 커질 수 있다. PAGE_SIZE를 넘으면 뒤 페이지가
   // 조용히 잘리므로(접근성 정본상 silent truncation 금지) throw로 검증한다.
-  const tc = totalCount(raw);
+  const tc = readTotalCount(raw);
   if (tc > PAGE_SIZE) {
     throw new Error(
       `서울교통공사 ${op}: totalCount(${tc}) > numOfRows(${PAGE_SIZE}), 페이지 누락`,
