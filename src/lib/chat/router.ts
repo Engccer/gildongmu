@@ -15,6 +15,7 @@ import { findNightClinicsNow } from "@/lib/clinics";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
+import { findEventsNear } from "@/lib/culture-events";
 import { findStationMeta } from "@/lib/subway-stations";
 import { fetchStationFacilities } from "@/lib/providers/korail-facilities";
 import { fetchSeoulMetroFacilities } from "@/lib/providers/seoul-metro-facilities";
@@ -137,6 +138,16 @@ export async function executeFunction(
       const kids = await findKidsPlacesNear(anchor.lat, anchor.lng);
       const render = ctx.placeAnchor ? undefined : ({ type: "kids-nearby" } as const);
       return { data: { count: kids.length, places: kids.slice(0, 8) }, render, source: src };
+    }
+    case "get_nearby_events": {
+      const anchor = anchorOf(ctx);
+      if (!anchor) return { data: NO_LOCATION };
+      const gated = coverageGate(anchor);
+      if (gated) return gated;
+      // 서울 전용 데이터라 서울 밖은 0건이 정직한 답이다(오류 아님).
+      // 카드 없이 산문이 정본 — 목록을 두 벌로 만들지 않는다(get_weather 동형).
+      const { events, total } = await findEventsNear(anchor.lat, anchor.lng);
+      return { data: { count: total, events: events.slice(0, 8) }, source: src };
     }
     case "get_surroundings": {
       const anchor = anchorOf(ctx);

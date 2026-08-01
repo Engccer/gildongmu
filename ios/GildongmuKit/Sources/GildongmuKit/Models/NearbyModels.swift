@@ -233,3 +233,38 @@ public struct BusRouteStop: Codable, Sendable, Hashable {
 public struct BusRouteStopsResponse: Codable, Sendable {
     public let stops: [BusRouteStop]
 }
+
+// MARK: - 문화행사
+
+/// 근처 문화행사 하나(서울 `culturalEventInfo` 슬림 투영, 웹 CultureEvent 미러).
+/// 오늘 진행 중인 것만 서버가 판정해 내려주므로 앱에서 날짜를 다시 해석하지 않는다.
+public struct CultureEvent: Codable, Sendable, Identifiable, Hashable {
+    /// HMPG_ADDR의 cultcode("seoul-" 접두) 또는 제목|장소|시작일 복합키
+    public let id: String
+    public let title: String
+    /// "전시/미술"·"교육/체험"·"콘서트" 등
+    public let category: String
+    public let place: String
+    /// 자치구
+    public let district: String
+    /// 원본 완성 표기("2026-06-04~2026-08-23") — 재조합 금지
+    public let dateText: String
+    /// "19:30"·"10:00 ~ 18:00 (월요일 휴관)" 등 자유텍스트
+    public let timeText: String
+    public let isFree: Bool
+    /// 유료일 때만 존재하는 요금 원문
+    public let fee: String?
+    /// "누구나"·"24개월이상 관람가능" 등 자유텍스트
+    public let target: String
+    /// 상세·예매 페이지 — 유일한 후속 행동
+    public let link: String?
+    public let lat: Double
+    public let lng: Double
+    public let distanceMeters: Int
+}
+
+public struct EventsNearbyResponse: Codable, Sendable {
+    public let events: [CultureEvent]
+    /// 반경 내 절단 전 전체 수
+    public let total: Int
+}

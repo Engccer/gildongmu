@@ -348,6 +348,25 @@
     "geoUnsupported": "Este navegador no admite la ubicación.",
     "source": "Fuente: búsqueda de lugares de KakaoMap. Interior/exterior es una estimación — confírmalo antes de visitar."
   },
+  "eventsNearby": {
+    "button": "Eventos culturales cerca",
+    "refresh": "Actualizar",
+    "locating": "Comprobando tu ubicación…",
+    "loading": "Buscando eventos culturales cercanos…",
+    "empty": "Hoy no hay eventos culturales cerca de ti.",
+    "error": "No se pudieron cargar los eventos culturales. Inténtalo de nuevo en un momento.",
+    "ready": "Eventos culturales cerca de ti.",
+    "asOf": "A las {time}",
+    "distance": "aprox. {distance}",
+    "free": "Gratis",
+    "paid": "De pago {fee}",
+    "target": "Para {text}",
+    "detail": "Detalles del evento",
+    "detailAction": "Detalles del evento {name}",
+    "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
+    "geoUnsupported": "Este navegador no admite la ubicación.",
+    "source": "Fuente: eventos culturales del Portal de Datos Abiertos de Seúl. Solo se muestran los eventos de hoy."
+  },
   "barrierFreeNearby": {
     "button": "Atracciones sin barreras cerca de mí",
     "refresh": "Actualizar",

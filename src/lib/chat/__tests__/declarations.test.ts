@@ -234,4 +234,17 @@ describe("availableDeclarations", () => {
     const { availableDeclarations } = await import("../declarations");
     expect(availableDeclarations().some((d) => d.name === "get_nearby_barrier_free")).toBe(false);
   });
+
+  // get_nearby_events — SEOUL_OPEN_DATA_KEY 게이트(따릉이와 동일 키)
+  it("서울 열린데이터 키 있으면 get_nearby_events 노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", "s");
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_nearby_events")).toBe(true);
+  });
+
+  it("서울 열린데이터 키 없으면 get_nearby_events 미노출", async () => {
+    vi.stubEnv("SEOUL_OPEN_DATA_KEY", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    expect(availableDeclarations().some((d) => d.name === "get_nearby_events")).toBe(false);
+  });
 });

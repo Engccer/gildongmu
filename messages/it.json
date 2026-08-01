@@ -348,6 +348,25 @@
     "geoUnsupported": "Questo browser non supporta la localizzazione.",
     "source": "Fonte: ricerca luoghi di KakaoMap. Al chiuso/all'aperto è una stima — verifica prima di visitare."
   },
+  "eventsNearby": {
+    "button": "Eventi culturali nelle vicinanze",
+    "refresh": "Aggiorna",
+    "locating": "Verifica della tua posizione…",
+    "loading": "Ricerca di eventi culturali nelle vicinanze…",
+    "empty": "Oggi non ci sono eventi culturali nelle tue vicinanze.",
+    "error": "Impossibile caricare gli eventi culturali. Riprova tra poco.",
+    "ready": "Eventi culturali vicino a te.",
+    "asOf": "Alle {time}",
+    "distance": "circa {distance}",
+    "free": "Gratuito",
+    "paid": "A pagamento {fee}",
+    "target": "Per {text}",
+    "detail": "Dettagli dell'evento",
+    "detailAction": "Dettagli dell'evento {name}",
+    "geoDenied": "È necessaria l'autorizzazione alla localizzazione. Consenti l'accesso alla posizione nel browser.",
+    "geoUnsupported": "Questo browser non supporta la localizzazione.",
+    "source": "Fonte: eventi culturali del portale Open Data di Seoul. Vengono mostrati solo gli eventi in corso oggi."
+  },
   "barrierFreeNearby": {
     "button": "Attrazioni accessibili vicino a me",
     "refresh": "Aggiorna",

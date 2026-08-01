@@ -33,6 +33,7 @@ export function sourceFor(
     case "get_subway_arrivals":
       return [SEOUL_OPEN];
     case "get_bike_stations":
+    case "get_nearby_events":
       return [SEOUL_OPEN];
     case "get_bus_arrivals":
       return [TAGO];

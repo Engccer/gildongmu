@@ -128,3 +128,40 @@ import Foundation
     #expect(place.link == nil)
     #expect(place.distanceMeters == 34)
 }
+
+@Test func cultureEventToPlaceUsesTitleAndLeavesAddressEmpty() {
+    let event = CultureEvent(
+        id: "seoul-158804", title: "백제왕성 달빛 캠프", category: "교육/체험",
+        place: "서울백제어린이박물관 주변 잔디밭", district: "송파구",
+        dateText: "2026-04-17~2026-11-27", timeText: "17:30 ~ 20:00",
+        isFree: true, fee: nil, target: "유아·어린이 동반 30가족",
+        link: "https://culture.seoul.go.kr/x?cultcode=158804",
+        lat: 37.523991, lng: 127.124412, distanceMeters: 2310)
+    let place = cultureEventToPlace(event)
+
+    // 상세 제목은 개최 장소가 아니라 행사명이다(목록에서 고른 것이 행사이므로).
+    #expect(place.name == "백제왕성 달빛 캠프")
+    #expect(place.category == "교육/체험")
+    // ⚠ 주소 슬롯은 비운다 — `place`는 시설 설명이라 넣으면 도로명 주소로 낭독된다.
+    #expect(place.address == "")
+    #expect(place.roadAddress == "")
+    // 좌표는 개최 장소라 길찾기가 그대로 성립한다.
+    #expect(place.lat == 37.523991)
+    #expect(place.lng == 127.124412)
+    #expect(place.link == "https://culture.seoul.go.kr/x?cultcode=158804")
+    #expect(place.distanceMeters == 2310)
+}
+
+@Test func cultureEventDecodesRouteResponseShape() throws {
+    // 라우트 실응답 모양(무료 행사는 fee 키 자체가 없다) — 엄격 디코딩 방어.
+    let json = """
+    {"events":[{"id":"seoul-1","title":"행사","category":"전시/미술","place":"장소",
+    "district":"중구","dateText":"2026-08-01~2026-08-31","timeText":"10:00",
+    "isFree":true,"target":"누구나","lat":37.5,"lng":127.0,"distanceMeters":120}],"total":84}
+    """.data(using: .utf8)!
+    let decoded = try JSONDecoder().decode(EventsNearbyResponse.self, from: json)
+    #expect(decoded.total == 84)
+    #expect(decoded.events.count == 1)
+    #expect(decoded.events[0].fee == nil)
+    #expect(decoded.events[0].link == nil)
+}

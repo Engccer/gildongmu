@@ -64,6 +64,8 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: LATLNG, envelope: "kids", locationParam: true, mcp: true },
   { name: "nearby-around", description: "내 주변 둘러보기(편의점·카페 등 10종+8방위)", path: "/api/places/around", method: "GET",
     params: LATLNG, envelope: "places", locationParam: true, mcp: true },
+  { name: "nearby-events", description: "내 주변 오늘 진행 중인 문화행사(서울)", path: "/api/events/nearby", method: "GET",
+    params: LATLNG, envelope: "events", locationParam: true, mcp: true },
   { name: "nearby-barrier-free", description: "내 주변 무장애 관광지", path: "/api/places/barrier-free", method: "GET",
     params: LATLNG, envelope: "places", locationParam: true, mcp: true },
   { name: "nearby-walk-infra", description: "내 주변 보행 인프라(음향신호기·횡단보도·점자블록)", path: "/api/walk/nearby", method: "GET",

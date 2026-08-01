@@ -119,6 +119,7 @@
       "barrierFree": "무장애 관광지",
       "kids": "아이 놀 곳",
       "around": "둘러보기",
+      "events": "문화행사",
       "conditions": "날씨·공기질",
       "announceEmpty": "주변 결과가 없습니다",
       "announceCount": "주변 {unit} {count}개",
@@ -173,7 +174,9 @@
       "skyPartly": "구름 조금",
       "rainSnow": "비 또는 눈",
       "airStationLine": "{name} 측정소, {distance}km",
-      "whereAmIServerFailed": "현재 위치 정보를 불러오지 못했습니다"
+      "whereAmIServerFailed": "현재 위치 정보를 불러오지 못했습니다",
+      "eventsEmpty": "주변에 오늘 진행 중인 문화행사가 없습니다",
+      "unitEvent": "건"
     },
     "settings": {
       "title": "설정",

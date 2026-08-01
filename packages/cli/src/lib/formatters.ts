@@ -403,6 +403,35 @@ function formatKids(body: { kids: KidsPlaceItem[] }): string[] {
   );
 }
 
+interface CultureEventItem {
+  title: string;
+  category: string;
+  place: string;
+  district: string;
+  dateText: string;
+  timeText: string;
+  isFree: boolean;
+  fee?: string;
+  target: string;
+  distanceMeters: number;
+}
+
+function formatEvents(body: { events: CultureEventItem[] }): string[] {
+  if (body.events.length === 0) return ["주변에 오늘 진행 중인 문화행사가 없습니다."];
+  return body.events.map((e) =>
+    joinText(
+      e.title,
+      e.category,
+      joinText(e.place, e.district),
+      e.dateText,
+      e.timeText,
+      e.isFree ? "무료" : joinText("유료", e.fee),
+      e.target,
+      m(e.distanceMeters),
+    ),
+  );
+}
+
 // ── 내 주변(좌표 기반) ──────────────────────────────────────────────────
 
 function formatNearbySubway(body: { stations: NearbySubwayStationItem[] }): string[] {
@@ -775,6 +804,7 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "nearby-clinic": formatClinics,
   "nearby-kids": formatKids,
   "nearby-around": formatAround,
+  "nearby-events": formatEvents,
   "nearby-barrier-free": formatBarrierFreeNearby,
   "nearby-walk-infra": formatWalkInfra,
   "station-meta": formatStationMeta,

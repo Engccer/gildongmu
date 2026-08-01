@@ -348,6 +348,25 @@
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
     "source": "Source : recherche de lieux KakaoMap. Intérieur/extérieur est une estimation — veuillez confirmer avant de vous déplacer."
   },
+  "eventsNearby": {
+    "button": "Événements culturels à proximité",
+    "refresh": "Actualiser",
+    "locating": "Vérification de votre position…",
+    "loading": "Recherche d'événements culturels à proximité…",
+    "empty": "Aucun événement culturel n'a lieu près de vous aujourd'hui.",
+    "error": "Impossible de charger les événements culturels. Réessayez dans un instant.",
+    "ready": "Événements culturels près de vous.",
+    "asOf": "à {time}",
+    "distance": "environ {distance}",
+    "free": "Gratuit",
+    "paid": "Payant {fee}",
+    "target": "Pour {text}",
+    "detail": "Détails de l'événement",
+    "detailAction": "Détails de l'événement {name}",
+    "geoDenied": "L'autorisation de localisation est requise. Veuillez autoriser l'accès à la position dans votre navigateur.",
+    "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
+    "source": "Source : événements culturels du portail Open Data de Séoul. Seuls les événements en cours aujourd'hui sont affichés."
+  },
   "barrierFreeNearby": {
     "button": "Attractions accessibles à proximité",
     "refresh": "Actualiser",

@@ -119,6 +119,7 @@
       "barrierFree": "Attrazioni accessibili",
       "kids": "Luoghi per bambini",
       "around": "Esplora i dintorni",
+      "events": "Eventi culturali",
       "conditions": "Meteo e qualità dell'aria",
       "announceEmpty": "Nessun risultato nelle vicinanze",
       "announceCount": "{count} {unit} nelle vicinanze",
@@ -173,7 +174,9 @@
       "skyPartly": "Parzialmente nuvoloso",
       "rainSnow": "Pioggia o neve",
       "airStationLine": "Stazione di monitoraggio {name}, {distance}km",
-      "whereAmIServerFailed": "Impossibile caricare le informazioni sulla posizione attuale"
+      "whereAmIServerFailed": "Impossibile caricare le informazioni sulla posizione attuale",
+      "eventsEmpty": "Oggi non ci sono eventi culturali nelle tue vicinanze",
+      "unitEvent": "eventi"
     },
     "settings": {
       "title": "Impostazioni",
