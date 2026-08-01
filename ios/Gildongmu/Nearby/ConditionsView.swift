@@ -117,6 +117,12 @@ final class ConditionsModel {
 struct ConditionsView: View {
     private let anchor: PlaceAnchor?
     @State private var model: ConditionsModel
+    /// 이 화면만 목록이 아니라 섹션 구조라 착지 대상이 첫 섹션 헤더(날씨)다.
+    @AccessibilityFocusState private var focusedSection: String?
+    @State private var lander = NearbyFocusLander()
+
+    /// 첫 섹션 헤더의 포커스·스크롤 공용 키(둘이 달라지면 가시화가 조용히 실패한다).
+    private static let weatherAnchorID = "conditions-weather"
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     init(anchor: PlaceAnchor? = nil) {
@@ -125,19 +131,32 @@ struct ConditionsView: View {
     }
 
     var body: some View {
-        List {
-            if case .loaded(let payload) = model.phase {
-                weatherSection(payload.weather)
-                airSection(payload.air)
-                congestionSection(payload.congestion)
+        ScrollViewReader { proxy in
+            List {
+                if case .loaded(let payload) = model.phase {
+                    weatherSection(payload.weather)
+                    airSection(payload.air)
+                    congestionSection(payload.congestion)
+                }
             }
+            .navigationTitle(nearbyTitle(appLocalized("ios.nearby.conditions"), anchor: anchor))
+            .nearbyStateOverlay {
+                NearbyStateOverlayView(phase: model.phase, descriptor: .plain())
+            }
+            .task { await model.load() }
+            .nearbyRefreshable { await model.load(force: true) }
+            .nearbyFocusOnLoad(
+                id: loadedAnchorID, lander: lander, proxy: proxy,
+                landed: { focusedSection == $0 },
+                apply: { focusedSection = $0 })
         }
-        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.conditions"), anchor: anchor))
-        .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .plain())
-        }
-        .task { await model.load() }
-        .nearbyRefreshable { await model.load(force: true) }
+    }
+
+    /// 로드 완료 신호 — 이 화면은 payload가 단일 구조체라 항목 id가 없다.
+    /// 완료되면 고정 앵커 키를 내보내 nil→값 전이를 만든다(실패는 nil로 남는다).
+    private var loadedAnchorID: String? {
+        guard case .loaded = model.phase else { return nil }
+        return Self.weatherAnchorID
     }
 
     @ViewBuilder private func weatherSection(_ weather: Weather?) -> some View {
@@ -159,7 +178,10 @@ struct ConditionsView: View {
                 Text(appLocalized("ios.nearby.weatherFailed"))
             }
         } header: {
-            Text(appLocalized("ios.nearby.weatherHeading")).accessibilityAddTraits(.isHeader)
+            Text(appLocalized("ios.nearby.weatherHeading"))
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityFocused($focusedSection, equals: Self.weatherAnchorID)
+                .id(Self.weatherAnchorID)   // scrollTo 대상(포커스 키와 같은 값)
         }
     }
 

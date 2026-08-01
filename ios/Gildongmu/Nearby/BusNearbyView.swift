@@ -31,6 +31,9 @@ final class BusNearbyModel {
 struct BusNearbyView: View {
     private let anchor: PlaceAnchor?
     @State private var model: BusNearbyModel
+    /// 항목 정체성 옵셔널 바인딩(Bool 다중 부착 금지 — SubwayNearbyView 주석 참고)
+    @AccessibilityFocusState private var focusedStop: String?
+    @State private var lander = NearbyFocusLander()
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
@@ -40,44 +43,58 @@ struct BusNearbyView: View {
     }
 
     var body: some View {
-        List {
-            if case .loaded(let stops) = model.phase {
-                // 정류소명 중복 실존(같은 이름 서로 다른 nodeId) → id는 nodeId
-                ForEach(stops, id: \.nodeId) { stop in
-                    Section {
-                        // 정류소명만 heading(웹 h4 규칙). 표지판 번호·거리는 같은 줄에 흡수.
-                        Text(joinText(stop.name, stop.stopNo, "\(stop.distanceMeters)m"))
-                            .accessibilityAddTraits(.isHeader)
-                        if stop.arrivalStatus == "unavailable" {
-                            Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 버스 없음
-                        } else if stop.arrivals.isEmpty {
-                            Text(appLocalized("ios.nearby.noBusArrivals"))
-                        } else {
-                            ForEach(Array(stop.arrivals.enumerated()), id: \.offset) { _, arrival in
-                                NavigationLink {
-                                    BusRouteStopsView(
-                                        source: stop.source,
-                                        cityCode: stop.source == "tago" ? stop.cityCode : nil,
-                                        routeId: arrival.routeId,
-                                        routeNo: arrival.routeNo)
-                                } label: {
-                                    Text(arrivalLine(arrival))
+        ScrollViewReader { proxy in
+            List {
+                if case .loaded(let stops) = model.phase {
+                    // 정류소명 중복 실존(같은 이름 서로 다른 nodeId) → id는 nodeId
+                    ForEach(stops, id: \.nodeId) { stop in
+                        Section {
+                            // 정류소명만 heading(웹 h4 규칙). 표지판 번호·거리는 같은 줄에 흡수.
+                            Text(joinText(stop.name, stop.stopNo, "\(stop.distanceMeters)m"))
+                                .accessibilityAddTraits(.isHeader)
+                                // 첫 로드 착지 대상. 키는 ForEach 정체성(nodeId)과 같은 값.
+                                .accessibilityFocused($focusedStop, equals: stop.nodeId)
+                            if stop.arrivalStatus == "unavailable" {
+                                Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 버스 없음
+                            } else if stop.arrivals.isEmpty {
+                                Text(appLocalized("ios.nearby.noBusArrivals"))
+                            } else {
+                                ForEach(Array(stop.arrivals.enumerated()), id: \.offset) { _, arrival in
+                                    NavigationLink {
+                                        BusRouteStopsView(
+                                            source: stop.source,
+                                            cityCode: stop.source == "tago" ? stop.cityCode : nil,
+                                            routeId: arrival.routeId,
+                                            routeNo: arrival.routeNo)
+                                    } label: {
+                                        Text(arrivalLine(arrival))
+                                    }
+                                    .accessibilityHint(appLocalized("ios.nearby.routeStopsHint"))
                                 }
-                                .accessibilityHint(appLocalized("ios.nearby.routeStopsHint"))
                             }
                         }
                     }
                 }
             }
+            .navigationTitle(nearbyTitle(appLocalized("ios.nearby.bus"), anchor: anchor))
+            .nearbyStateOverlay {
+                NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                    empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),
+                    isEmpty: \.isEmpty))
+            }
+            .task { await model.load() }
+            .nearbyRefreshable { await model.load(force: true) }
+            .nearbyFocusOnLoad(
+                id: firstStopID, lander: lander, proxy: proxy,
+                landed: { focusedStop == $0 },
+                apply: { focusedStop = $0 })
         }
-        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.bus"), anchor: anchor))
-        .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
-                empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),
-                isEmpty: \.isEmpty))
-        }
-        .task { await model.load() }
-        .nearbyRefreshable { await model.load(force: true) }
+    }
+
+    /// 첫 정류소 nodeId — nil→값 전이가 곧 "로드 완료"다.
+    private var firstStopID: String? {
+        guard case .loaded(let stops) = model.phase else { return nil }
+        return stops.first?.nodeId
     }
 
     /// 도착 한 줄 결합. 저상은 교통약자 정본이라 텍스트로 흡수.
