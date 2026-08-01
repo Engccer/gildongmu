@@ -3,6 +3,7 @@ import { z } from "zod";
 import { hasSeoulOpenDataKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { findEventsNear } from "@/lib/culture-events";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 
 /**
@@ -29,18 +30,11 @@ export const dynamic = "force-dynamic";
 /** limit 미지정 시 기본 상한 — 소비자 출력 불변 계약(둘러보기와 동일). */
 const DEFAULT_LIMIT = 12;
 
-/**
- * ⚠ 좌표를 `z.coerce.number()`에 곧바로 태우지 않는다. 빈 문자열·null은
- * `Number("")===0`이라 조용히 (0,0)이 되고, 그 좌표는 한국 밖이라 응답이
- * `outOfCoverage`가 된다 — 즉 **파라미터 누락이 "서비스 지역 밖"이라는 엉뚱한
- * 답으로 위장**한다. 문자열 존재를 먼저 요구해 400으로 가른다.
- */
-const coord = (min: number, max: number) =>
-  z.string().trim().min(1).transform(Number).pipe(z.number().min(min).max(max));
-
+// 좌표는 `latParam`/`lngParam`을 쓴다(`z.coerce.number()` 직접 사용 시
+// `Number("")===0` 함정 — `@/lib/coord-param` 주석 참조).
 const querySchema = z.object({
-  lat: coord(-90, 90),
-  lng: coord(-180, 180),
+  lat: latParam(),
+  lng: lngParam(),
   limit: z.coerce.number().int().min(1).max(NEARBY_LIMIT_MAX).optional(),
 });
 
