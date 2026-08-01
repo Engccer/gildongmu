@@ -15,7 +15,11 @@ const NEARBY: Record<string, { catalog: string; description: string }> = {
   events: { catalog: "nearby-events", description: "주변 오늘 진행 중인 문화행사(서울)" },
   "barrier-free": { catalog: "nearby-barrier-free", description: "주변 무장애 관광지" },
   walk: { catalog: "nearby-walk-infra", description: "주변 보행 인프라(음향신호기·횡단보도·점자블록)" },
+  congestion: { catalog: "nearby-congestion", description: "지금 있는 곳의 실시간 인구 혼잡도(서울 핫스팟)" },
 };
+
+/** 자동완성(completion.ts)이 쓰는 verb 목록 — 여기서 파생시켜 하드코딩 드리프트를 막는다. */
+export const NEARBY_VERBS = Object.keys(NEARBY);
 
 function makeNearby(verb: string, catalog: string, description: string) {
   return defineCommand({
@@ -36,7 +40,7 @@ function makeNearby(verb: string, catalog: string, description: string) {
 }
 
 export const nearbyCommand = defineCommand({
-  meta: { name: "nearby", description: "내 주변 정보 9종" },
+  meta: { name: "nearby", description: "내 주변 정보 10종" },
   subCommands: Object.fromEntries(
     Object.entries(NEARBY).map(([verb, v]) => [verb, makeNearby(verb, v.catalog, v.description)]),
   ),

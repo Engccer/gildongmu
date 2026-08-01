@@ -7,9 +7,11 @@
 import { defineCommand } from "citty";
 import { fail } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
+import { NEARBY_VERBS } from "./nearby.js";
 
 const COMMAND_TREE: Record<string, string[]> = {
-  nearby: ["subway", "bus", "bike", "clinic", "kids", "around", "barrier-free", "walk"],
+  // nearby는 도메인이 계속 늘어 손으로 적으면 조용히 어긋난다(events 누락 실측) — 정본에서 파생.
+  nearby: NEARBY_VERBS,
   station: ["info", "timetable", "arrivals"],
   bus: ["route"],
   route: ["car", "transit", "walk"],

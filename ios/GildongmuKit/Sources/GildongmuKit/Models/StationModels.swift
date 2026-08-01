@@ -1,6 +1,6 @@
 import Foundation
 
-// 역 상세 4종 + 날씨·공기질 도메인 모델: 웹 `src/lib/types.ts` 미러
+// 역 상세 4종 + 날씨·공기질·혼잡도 도메인 모델: 웹 `src/lib/types.ts` 미러
 // (계약 정본은 웹 + Fixtures/station-*.json·air-nearby.json·weather-nearby.json prod 실캡처).
 // 미커버 역·데이터 부재는 envelope 본문 null(graceful degrade, 뷰가 섹션 미노출).
 // status·grade·label류 문자열은 신규 값 추가에 깨지지 않도록 String으로 둔다(기존 원칙).
@@ -220,4 +220,50 @@ public struct Weather: Codable, Sendable, Hashable {
 
 public struct WeatherNearbyResponse: Codable, Sendable {
     public let weather: Weather?
+}
+
+// MARK: - 실시간 인구 혼잡도
+
+/// 혼잡도 등급어 → 표시 키(웹 `congestion-level.ts` 미러).
+/// `citydata_ppltn`은 등급어를 **한국어로만** 준다. 닫힌 집합(4단계)이라 앱이 번역할 수 있지만,
+/// 서울시가 단계를 늘리면 표에 없는 값이 온다. 그때 nil을 돌려 소비자가 **원문을 그대로**
+/// 낭독하게 한다(빈 값으로 조용히 삼키지 않는다).
+public enum CongestionLevelKey: String, Sendable, CaseIterable {
+    case relaxed
+    case normal
+    case slightlyBusy
+    case busy
+
+    /// 등급어 원문에서 키를 판정. 미등재 값은 nil(원문 낭독 폴백).
+    public init?(levelText raw: String) {
+        switch raw.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case "여유": self = .relaxed
+        case "보통": self = .normal
+        case "약간 붐빔": self = .slightlyBusy
+        case "붐빔": self = .busy
+        default: return nil
+        }
+    }
+}
+
+/// 사용자가 서 있는 서울 핫스팟 영역의 실시간 혼잡도(웹 `CongestionAreaReading` 미러).
+/// 라우트가 예보와 인구수를 걷어낸 투영이라 이 모델에도 그 필드가 없다.
+/// "76,000명"은 행동으로 옮길 수 없는 수치이고 등급어가 이미 답이다.
+public struct Congestion: Codable, Sendable, Hashable {
+    /// 서울시 영역 코드("POI014")
+    public let code: String
+    /// 영역 이름("강남역"): 어디의 혼잡도인지 알리는 정본
+    public let name: String
+    /// 등급어 원문("붐빔"). 4단계 밖 값도 통과하므로 표시 계층이 `CongestionLevelKey`로 번역한다
+    public let level: String
+    /// 완성 문장(한국어 자유 텍스트). 번역 수단이 없어 ko 로케일에서만 노출한다
+    public let message: String
+    /// 기준 시각("2026-08-01 13:40"). 실시간 데이터의 신선도는 행동을 바꾼다
+    public let asOf: String
+}
+
+public struct CongestionNearbyResponse: Codable, Sendable {
+    /// null은 **오류가 아니다**: "여기는 서울시가 혼잡도를 재는 121곳이 아니다"(서울의 91%).
+    /// 조회 실패는 throw(APIError)로 갈라진다.
+    public let area: Congestion?
 }

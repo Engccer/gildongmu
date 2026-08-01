@@ -6521,6 +6521,286 @@
         }
       }
     },
+    "congestion.asOf": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 기준"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As of %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Données de %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati delle %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@時点"
+          }
+        }
+      }
+    },
+    "congestion.levels.busy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "붐빔"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "crowded"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "concurrido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "très fréquentée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "affollata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "混雑"
+          }
+        }
+      }
+    },
+    "congestion.levels.normal": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보통"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "moderate"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "moderado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "modérée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "moderata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "普通"
+          }
+        }
+      }
+    },
+    "congestion.levels.relaxed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여유"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quiet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tranquilo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "calme"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tranquilla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゆとり"
+          }
+        }
+      }
+    },
+    "congestion.levels.slightlyBusy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약간 붐빔"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "somewhat crowded"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "algo concurrido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "assez fréquentée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "abbastanza affollata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "やや混雑"
+          }
+        }
+      }
+    },
+    "congestion.source": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출처: 서울시 실시간 도시데이터."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source: Seoul Real-time City Data."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente: datos urbanos en tiempo real de Seúl."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source : données urbaines en temps réel de Séoul."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonte: dati urbani in tempo reale di Seul."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出典: ソウル市リアルタイム都市データ。"
+          }
+        }
+      }
+    },
+    "congestion.summary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 혼잡도 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crowding at %1$@, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afluencia en %1$@, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affluence à %1$@, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affluenza a %1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の混雑度 %2$@"
+          }
+        }
+      }
+    },
     "detail.back": {
       "localizations": {
         "ko": {
@@ -27606,37 +27886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 지역 날씨"
+            "value": "이 지역 상황"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Local weather"
+            "value": "Local conditions"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tiempo en la zona"
+            "value": "Condiciones de la zona"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Météo locale"
+            "value": "Conditions locales"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Meteo locale"
+            "value": "Condizioni locali"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この地域の天気"
+            "value": "この地域の状況"
           }
         }
       }

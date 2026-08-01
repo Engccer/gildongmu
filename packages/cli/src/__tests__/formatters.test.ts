@@ -571,6 +571,35 @@ describe("air-quality", () => {
   });
 });
 
+describe("nearby-congestion", () => {
+  it("area null(핫스팟 밖)은 오류가 아닌 대상 제외 안내 한 줄", () => {
+    expect(FORMATTERS["nearby-congestion"]({ area: null } as never)).toEqual([
+      "이 지역은 실시간 혼잡도 제공 대상이 아닙니다.",
+    ]);
+  });
+
+  it("영역명·등급·기준시각 한 줄 + 완성 문장 별도 줄", () => {
+    const lines = FORMATTERS["nearby-congestion"]({
+      area: {
+        code: "POI014", name: "강남역", level: "붐빔",
+        message: "사람이 몰려 있어 붐빕니다. 이동시 주의하세요.",
+        asOf: "2026-08-01 15:00",
+      },
+    } as never);
+    expect(lines).toEqual([
+      "강남역 혼잡도 붐빔, 2026-08-01 15:00 기준",
+      "사람이 몰려 있어 붐빕니다. 이동시 주의하세요.",
+    ]);
+  });
+
+  it("완성 문장이 비면 그 줄을 만들지 않는다(빈 줄 낭독 금지)", () => {
+    const lines = FORMATTERS["nearby-congestion"]({
+      area: { code: "POI014", name: "강남역", level: "여유", message: "", asOf: "2026-08-01 04:00" },
+    } as never);
+    expect(lines).toEqual(["강남역 혼잡도 여유, 2026-08-01 04:00 기준"]);
+  });
+});
+
 describe("where-am-i", () => {
   it("null(키 부재)은 제공되지 않음", () => {
     expect(FORMATTERS["where-am-i"]({ data: null } as never)).toEqual(["현재 위치 정보가 제공되지 않습니다."]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCongestion } from "../seoul-congestion";
+import { parseCongestion, readSeoulOpenJson } from "../seoul-congestion";
 
 const OK = {
   "SeoulRtd.citydata_ppltn": [
@@ -45,9 +45,17 @@ describe("parseCongestion — 봉투", () => {
     expect(parseCongestion(odd)?.level).toBe("매우 붐빔");
   });
 
-  it("FCST_YN이 N이면 예보는 빈 배열", () => {
+  it("FCST_YN이 N이면 배열이 남아 있어도 예보를 쓰지 않는다(플래그가 정본)", () => {
+    // ⚠ FCST_PPLTN을 함께 지우면 안 된다 — 두 축을 동시에 바꾸면
+    // FCST_YN 검사를 통째로 없애도 테스트가 통과한다(변이 F가 생존했던 이유).
+    const flagged = structuredClone(OK);
+    flagged["SeoulRtd.citydata_ppltn"][0].FCST_YN = "N";
+    expect(flagged["SeoulRtd.citydata_ppltn"][0].FCST_PPLTN).toHaveLength(2);
+    expect(parseCongestion(flagged)?.forecast).toEqual([]);
+  });
+
+  it("FCST_PPLTN 자체가 없어도 빈 배열(터지지 않는다)", () => {
     const noFcst = structuredClone(OK);
-    noFcst["SeoulRtd.citydata_ppltn"][0].FCST_YN = "N";
     delete (noFcst["SeoulRtd.citydata_ppltn"][0] as Record<string, unknown>).FCST_PPLTN;
     expect(parseCongestion(noFcst)?.forecast).toEqual([]);
   });
@@ -71,5 +79,44 @@ describe("parseCongestion — 봉투", () => {
   it("배열이 아닌 응답은 throw(구조 변경을 침묵으로 넘기지 않는다)", () => {
     expect(() => parseCongestion({})).toThrow();
     expect(() => parseCongestion({ "SeoulRtd.citydata_ppltn": { AREA_NM: "x" } })).toThrow();
+  });
+
+  it("정상 응답의 중첩 RESULT(INFO-000)는 오류가 아니다", () => {
+    // 실측: 성공 응답에도 `RESULT: { "RESULT.CODE": "INFO-000" }`가 함께 온다.
+    // 코드 존재만으로 오류 처리하면 **모든 정상 응답이 502가 된다.**
+    const withResult = {
+      ...structuredClone(OK),
+      RESULT: { "RESULT.CODE": "INFO-000", "RESULT.MESSAGE": "정상 처리되었습니다." },
+    };
+    expect(parseCongestion(withResult)?.level).toBe("붐빔");
+  });
+
+  it("무효 키 XML 응답은 원인을 말하고 throw한다(HTTP 200 함정)", async () => {
+    // 실측: 인증키가 무효하면 `/json/` 경로여도 200 + XML이 온다.
+    // 그냥 res.json()을 부르면 "Unexpected token '<'"가 되어 원인이 가려진다.
+    const xml =
+      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
+    await expect(readSeoulOpenJson(new Response(xml), "citydata_ppltn")).rejects.toThrow(
+      /INFO-100.*인증키/,
+    );
+  });
+
+  it("코드를 못 읽는 비-JSON도 인증키를 먼저 의심하라고 말한다", async () => {
+    await expect(readSeoulOpenJson(new Response("<html>502</html>"), "x")).rejects.toThrow(
+      /인증키/,
+    );
+  });
+
+  it("정상 JSON은 그대로 통과한다(앞 공백·배열 포함)", async () => {
+    expect(await readSeoulOpenJson(new Response('  {"a":1}'), "x")).toEqual({ a: 1 });
+    expect(await readSeoulOpenJson(new Response("[1,2]"), "x")).toEqual([1, 2]);
+  });
+
+  it("중첩 RESULT에 담긴 오류 코드도 throw하고 메시지를 싣는다", () => {
+    expect(() =>
+      parseCongestion({
+        RESULT: { "RESULT.CODE": "INFO-100", "RESULT.MESSAGE": "인증키가 유효하지 않습니다." },
+      }),
+    ).toThrow(/INFO-100.*인증키/);
   });
 });

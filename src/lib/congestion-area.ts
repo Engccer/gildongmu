@@ -23,14 +23,20 @@ import seed from "./providers/data/congestion-areas.json";
 
 export const MATCH_RADIUS_METERS = 300;
 
+/**
+ * ⚠ 좌표를 튜플(`[number, number]`)이 아니라 `number[]`로 둔다. JSON import의
+ * 추론 결과가 `number[]`이고, 튜플로 단언하려면 `as unknown`을 거쳐야 해서
+ * 오히려 검사를 통째로 끄게 된다. 쌍이라는 보장은 타입이 아니라 빌드
+ * 스크립트의 가드가 준다(`scripts/build-congestion-areas.mjs`).
+ */
 export interface CongestionAreaSeed {
   /** 서울시 영역 코드(`POI014`). 실시간 조회 키. */
   code: string;
   name: string;
   /** 구성 지점 중심 [lat, lng] — 중첩 시 우선순위 판정에만 쓴다. */
-  c: [number, number];
+  c: number[];
   /** 구성 지점 [lat, lng][] — 영역 범위의 정의. */
-  pts: [number, number][];
+  pts: number[][];
 }
 
 export interface CongestionArea {

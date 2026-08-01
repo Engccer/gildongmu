@@ -45,16 +45,47 @@ function str(v: unknown): string {
 }
 
 /**
+ * 본문을 JSON으로 읽되, **JSON이 아닐 때 원인을 말하고 죽는다.**
+ *
+ * 서울 열린데이터는 인증키가 무효하면 `/json/` 경로로 요청해도 **HTTP 200 +
+ * XML 본문**을 준다(실측: `<RESULT><CODE>INFO-100</CODE><MESSAGE>인증키가
+ * 유효하지 않습니다…`). `res.json()`을 그냥 부르면 `Unexpected token '<'`라는
+ * 원인 없는 SyntaxError가 되고, 그 502를 코드 결함으로 오진하게 된다
+ * (data.go.kr의 같은 함정을 `fetchDataGoKrJson`이 이미 이렇게 막고 있다).
+ *
+ * ⚠ 같은 함정이 이 호스트를 쓰는 따릉이·문화행사 provider에도 남아 있다.
+ * 키는 셋이 공유하므로 키가 죽으면 셋 다 같은 방식으로 오진된다(백로그 D4).
+ */
+export async function readSeoulOpenJson(res: Response, label: string): Promise<unknown> {
+  const text = await res.text();
+  const head = text.trimStart().slice(0, 1);
+  if (head !== "{" && head !== "[") {
+    const code = /<CODE>([^<]+)<\/CODE>/.exec(text)?.[1];
+    throw new Error(
+      code
+        ? `${label} 비-JSON 응답(${code}) — 인증키 유효성을 먼저 확인할 것`
+        : `${label} 비-JSON 응답 — 인증키 유효성을 먼저 확인할 것`,
+    );
+  }
+  return JSON.parse(text);
+}
+
+/**
  * 봉투 해석. 실패(throw)·데이터 없음(null)·정상을 구분한다 — 이 셋을
  * 뭉개면 시각장애 사용자에게 "조회 실패"가 "한산함"으로 낭독된다.
  */
 export function parseCongestion(raw: unknown): CongestionReading | null {
   const d = raw as Record<string, unknown> | null | undefined;
 
-  // 오류 봉투가 먼저다. 평면 키라 옵셔널 체이닝으로 파고들 수 없다.
-  const errCode = str(d?.["RESULT.CODE"]);
-  if (errCode) {
-    throw new Error(`citydata_ppltn ${errCode}: ${str(d?.["RESULT.MESSAGE"])}`);
+  // 코드는 두 자리에 온다(실측): 정상은 `RESULT` **객체 안에** `INFO-000`,
+  // 오류는 **최상위 평면 키** `"RESULT.CODE"`. 점이 든 평면 키라 옵셔널
+  // 체이닝으로 파고들 수 없어 두 자리를 각각 읽는다. 둘 다 없으면 코드가
+  // 없는 것이고, 그때는 아래 배열 검사가 판정한다.
+  const nested = d?.RESULT as Record<string, unknown> | undefined;
+  const code = str(d?.["RESULT.CODE"]) || str(nested?.["RESULT.CODE"]);
+  if (code && code !== "INFO-000") {
+    const message = str(d?.["RESULT.MESSAGE"]) || str(nested?.["RESULT.MESSAGE"]);
+    throw new Error(`citydata_ppltn ${code}: ${message}`);
   }
 
   const rows = d?.["SeoulRtd.citydata_ppltn"];
@@ -87,7 +118,7 @@ async function fetchCongestion(areaCode: string): Promise<CongestionReading | nu
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`citydata_ppltn HTTP ${res.status}`);
-  return parseCongestion(await res.json());
+  return parseCongestion(await readSeoulOpenJson(res, "citydata_ppltn"));
 }
 
 /**
