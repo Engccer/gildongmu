@@ -110,7 +110,24 @@ struct DirectionsEndpointSearchView: View {
     /// 사용자가 "검색하러 열었는데" 필드까지 스와이프해 내려가야 한다(실기기 확인).
     @FocusState private var searchFieldFocused: Bool
     /// 후보 도착 시 첫 후보로 이동(웹 계약 동형). 목록이 곧 이 화면의 목적이다.
-    @AccessibilityFocusState private var firstCandidateFocused: Bool
+    ///
+    /// ⚠ **Bool 바인딩을 여러 행에 `equals:`로 붙이면 안 된다.** 첫 행만 `equals: true`,
+    /// 나머지가 전부 `equals: false`가 되어 초기 상태(false)에서 **나머지 행 전부가
+    /// 동시에 포커스를 주장**한다. 실기기에서 "결과 중 5~6번째에 랜덤 착지"로
+    /// 나타났다(2026-08-02). 같은 파일의 `focusedRecent`처럼 **항목 정체성**을 값으로
+    /// 쓰는 것이 정본이다.
+    @AccessibilityFocusState private var focusedCandidate: String?
+
+    /// 후보 행의 안정 키. 장소와 주소가 한 목록에 섞이므로 접두사로 네임스페이스를 가른다.
+    private static func candidateKey(place: Place) -> String { "place:\(place.id)" }
+    private static func candidateKey(address: JusoAddress) -> String { "addr:\(address.roadAddr)" }
+
+    /// 렌더 순서(장소 먼저, 그다음 주소)와 일치하는 첫 후보. 둘 다 비면 nil.
+    private var firstCandidateKey: String? {
+        if let place = model.places.first { return Self.candidateKey(place: place) }
+        if let address = model.addresses.first { return Self.candidateKey(address: address) }
+        return nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -171,7 +188,7 @@ struct DirectionsEndpointSearchView: View {
                         // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형)
                         Text(joinText(place.name, place.roadAddress.isEmpty ? place.address : place.roadAddress))
                     }
-                    .accessibilityFocused($firstCandidateFocused, equals: place.id == model.places.first?.id)
+                    .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(place: place))
                 }
                 ForEach(model.addresses, id: \.roadAddr) { address in
                     Button(address.roadAddr) {
@@ -179,11 +196,7 @@ struct DirectionsEndpointSearchView: View {
                             if let endpoint = await model.geocode(address) { select(endpoint) }
                         }
                     }
-                    // 장소가 없을 때만 주소 첫 항목이 첫 후보다(렌더 순서와 일치).
-                    .accessibilityFocused(
-                        $firstCandidateFocused,
-                        equals: model.places.isEmpty && address.roadAddr == model.addresses.first?.roadAddr
-                    )
+                    .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(address: address))
                 }
             }
             .navigationTitle(sheetTitle)
@@ -201,10 +214,9 @@ struct DirectionsEndpointSearchView: View {
             // 후보가 도착하면 첫 후보로. 조회 결과 heading 이동이 실기기에서 정상
             // 작동하므로(M2 가설 1 기각) 여기서도 동기 대입으로 충분하다.
             .onChange(of: model.resultsRevision) {
-                guard model.resultsRevision > 0, !(model.places.isEmpty && model.addresses.isEmpty)
-                else { return }
+                guard model.resultsRevision > 0, let first = firstCandidateKey else { return }
                 searchFieldFocused = false
-                firstCandidateFocused = true
+                focusedCandidate = first
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
