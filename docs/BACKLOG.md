@@ -2,7 +2,7 @@
 
 > **열려 있는 항목의 정본.** 완료 이력·실호출 검증 로그는 `PROGRESS.md`, 설계는 `docs/superpowers/specs`, 항구 규칙은 `CLAUDE.md`가 정본이다. 이 파일엔 **아직 하지 않은 것**만 둔다 — 완결 항목은 남기지 않고 PROGRESS로 넘긴다.
 >
-> 기준선(2026-08-01, 실시간 혼잡도 출시 후): 웹 prod 가동, iOS 1.0 출시(2026-07-30 승인)·1.1 심사 대기(2026-07-31 제출), CLI/MCP npm v0.6.1, dodo 전량 이식 완결. 직전 5개 마일스톤(지하철 운행시간·iOS 장소 상세 3섹션·envelope 공용화·근처 문화행사·실시간 인구 혼잡도) 완결로 **A 축은 동결 1건, B 축은 신규 개발 1건만 남았다**. 열린 항목은 **코드로 닫는 12건**(A1·B1·C 3·D 4·E 3)과 **실사용으로만 닫는 7건**(F).
+> 기준선(2026-08-01, 실시간 혼잡도 출시 후): 웹 prod 가동, iOS 1.0 출시(2026-07-30 승인)·1.1 심사 대기(2026-07-31 제출), CLI/MCP npm v0.7.0, dodo 전량 이식 완결. 직전 5개 마일스톤(지하철 운행시간·iOS 장소 상세 3섹션·envelope 공용화·근처 문화행사·실시간 인구 혼잡도) 완결로 **A 축은 동결 1건, B 축은 신규 개발 1건만 남았다**. 열린 항목은 **코드로 닫는 11건**(A1·B1·C 3·D 3·E 3)과 **실사용으로만 닫는 7건**(F).
 
 ## 판정 기준
 
@@ -61,9 +61,8 @@ A·B·C·E는 이 네 축으로 판정한다. **D·F는 축이 아니라 처리 
   - **미커버 1건**: ACCESSIBLE 요청 → 무계단 경로 부재 → **기본 모드 재호출이 throw**하는 경로. `walk-route.ts`의 마지막 `fetchPrimaryOrFallback`이 던지면 502로 전파되는데 테스트가 없다(재호출의 *null* 케이스만 `walk-route.test.ts:210`에 있다).
   - **문구 부정확 1건**: ACCESSIBLE 응답이 왔는데 계단 문구가 남아 `no_stepfree_route`로 강등될 때(fail-closed), 안내 문장은 "계단 없는 경로를 찾지 못해 **일반 경로를 안내합니다**"라고 말하지만 실제로 반환하는 것은 ACCESSIBLE 경로다. 안전 방향의 오차라 급하지 않으나 사실과 다르다.
   - 다음에 도보를 손댈 때 편승.
-- **D2. CLI/MCP npm 릴리스 대기 (v0.7.0)**: 혼잡도 엔드포인트와 `route walk --accessible` 플래그가 저장소엔 있지만 **발행본(v0.6.1)엔 없다.** 발행은 `cli-v*` 태그 push가 GitHub Actions로 npm에 올리는 구조라 **외부 발신·배포(자율성 헌장 하드 스톱 2)**에 해당해 위원장 승인 대기. 승인 시 절차: 버전 4곳 동조 갱신(`packages/*/package.json` 2 + 각 `src/index.ts` 선언 2 — `version-drift.test.ts`가 강제) → 커밋 → `git tag cli-v0.7.0 && git push origin main --tags`.
-- **D3. 서울 열린데이터 무효키가 원인 불명 SyntaxError로 나타난다**: 인증키가 무효하면 `/json/` 경로여도 **HTTP 200 + XML 본문**이 온다(실측 2026-08-01: `<RESULT><CODE>INFO-100</CODE><MESSAGE>인증키가 유효하지 않습니다`). `res.json()`을 그냥 부르면 `Unexpected token '<'`가 되어 502의 원인이 키라는 사실이 가려진다. **혼잡도 provider는 막았고**(`seoul-congestion.ts`의 `readSeoulOpenJson`), 같은 키·같은 호스트를 쓰는 **따릉이(`seoul-bike.ts`)·문화행사(`seoul-culture-events.ts`)에는 그대로 남아 있다.** 키가 죽으면 셋이 동시에 같은 방식으로 오진된다. 셋을 손댈 때 공용 fetch 헬퍼로 뽑는다(`fetchDataGoKrJson` 선례 — **모양은 공용, 봉투 정책은 provider**).
-- **D4. 좌표 파라미터 누락이 "서비스 지역 밖"으로 위장된다**: 라우트 **14곳**(2026-08-01 재확인: `places`·`places/kids`·`places/around`·`places/barrier-free`·`places/barrier-free/match`·`bike/nearby`·`bus/nearby`·`walk/nearby`·`air-quality/nearby`·`weather/nearby`·`clinic/nearby`·`where-am-i`·`station/subway-arrival/nearby`·`geocode/reverse`)이 `searchParams.get("lat") ?? ""`를 `z.coerce.number()`에 직접 태운다. `Number("")===0`이라 (0,0)이 되고 `isInKorea(0,0)`이 false여서 **400이어야 할 요청이 `200 {"outOfCoverage":true}`로 응답**한다. 공용 헬퍼는 **이미 있다**(`src/lib/coord-param.ts`의 `latParam`/`lngParam`, 2026-08-01 혼잡도 마일스톤에서 두 번째 소비자가 생기며 추출). 남은 것은 14곳 백포트뿐이다. 정상 클라이언트는 항상 좌표를 보내 사용자 발현은 없고 CLI/MCP 소비자에게만 보이는 정합 결함이라 D축. 리뷰 검출(2026-08-01).
+- **D2. 서울 열린데이터 무효키가 원인 불명 SyntaxError로 나타난다**: 인증키가 무효하면 `/json/` 경로여도 **HTTP 200 + XML 본문**이 온다(실측 2026-08-01: `<RESULT><CODE>INFO-100</CODE><MESSAGE>인증키가 유효하지 않습니다`). `res.json()`을 그냥 부르면 `Unexpected token '<'`가 되어 502의 원인이 키라는 사실이 가려진다. **혼잡도 provider는 막았고**(`seoul-congestion.ts`의 `readSeoulOpenJson`), 같은 키·같은 호스트를 쓰는 **따릉이(`seoul-bike.ts`)·문화행사(`seoul-culture-events.ts`)에는 그대로 남아 있다.** 키가 죽으면 셋이 동시에 같은 방식으로 오진된다. 셋을 손댈 때 공용 fetch 헬퍼로 뽑는다(`fetchDataGoKrJson` 선례 — **모양은 공용, 봉투 정책은 provider**).
+- **D3. 좌표 파라미터 누락이 "서비스 지역 밖"으로 위장된다**: 라우트 **14곳**(2026-08-01 재확인: `places`·`places/kids`·`places/around`·`places/barrier-free`·`places/barrier-free/match`·`bike/nearby`·`bus/nearby`·`walk/nearby`·`air-quality/nearby`·`weather/nearby`·`clinic/nearby`·`where-am-i`·`station/subway-arrival/nearby`·`geocode/reverse`)이 `searchParams.get("lat") ?? ""`를 `z.coerce.number()`에 직접 태운다. `Number("")===0`이라 (0,0)이 되고 `isInKorea(0,0)`이 false여서 **400이어야 할 요청이 `200 {"outOfCoverage":true}`로 응답**한다. 공용 헬퍼는 **이미 있다**(`src/lib/coord-param.ts`의 `latParam`/`lngParam`, 2026-08-01 혼잡도 마일스톤에서 두 번째 소비자가 생기며 추출). 남은 것은 14곳 백포트뿐이다. 정상 클라이언트는 항상 좌표를 보내 사용자 발현은 없고 CLI/MCP 소비자에게만 보이는 정합 결함이라 D축. 리뷰 검출(2026-08-01).
 
 ---
 
@@ -132,8 +131,7 @@ A·B·C·E는 이 네 축으로 판정한다. **D·F는 축이 아니라 처리 
 |---|---|
 | B1 목적지 거리 비컨 | 웹 실보행 스모크로 가치 검증이 선행 |
 | C 시한 3종 | 2026-10 트리거(ODsay 3개월 전) |
-| D1·D3·D4 | 편승형 — 다음 도보 작업·서울 열린데이터 작업·라우트 작업에 얹는다 |
-| D2 CLI 릴리스 | 위원장 승인(npm 발행은 하드 스톱) |
+| D1·D2·D3 | 편승형 — 다음 도보 작업·서울 열린데이터 작업·라우트 작업에 얹는다 |
 | E1 지하철 혼잡도 통계 | 착수 전 서비스명 실호출 확인. 실시간 혼잡도가 이미 나왔으므로 가치가 더 줄었다 |
 | E2 ITS | 위원장 액션(its.go.kr 가입) 선행 |
 | F 검증 부채 | 위원장 실사용 관찰 |
