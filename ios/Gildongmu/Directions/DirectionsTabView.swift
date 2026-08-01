@@ -360,6 +360,8 @@ struct DirectionsTabView: View {
     /// 펼쳐진 대중교통 대안 인덱스(웹 expandedAlts 동형). 새 조회 결과는 다른
     /// 경로들이므로 resultsRevision 변화 시 초기화한다.
     @State private var expandedAlts: Set<Int> = []
+    @State private var beacon = BeaconModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -378,6 +380,39 @@ struct DirectionsTabView: View {
                     if !statusText.isEmpty {
                         Text(statusText)
                             .foregroundStyle(.secondary)
+                    }
+                }
+                // 목적지 거리 추적. 수단 섹션들보다 **앞**에 둔다 — 도보 섹션은
+                // 인라인 전개라 수백 행이 될 수 있어(천호역 실측) 뒤에 두면 선형 주파
+                // 비용이 몇 행에서 수백 행으로 뒤집힌다. 조회 완료 시 포커스가 첫 성공
+                // 수단 heading으로 가므로 거기서 heading 로터 1회면 닿는다.
+                //
+                // 노출 조건은 경로 성공 여부가 아니라 **목적지 확정 여부**다. 수단 조회가
+                // 전부 실패해도 목적지 좌표는 확정돼 있고, 경로를 못 찾은 상황일수록
+                // 방향 감각이 더 필요하다. 도착지가 "현재 위치"면 무의미하므로 숨긴다.
+                if model.results != nil, let tracked = trackedDestination {
+                    Section {
+                        Button(beacon.isTracking
+                            ? appLocalized("beacon.stop") : appLocalized("beacon.start")
+                        ) {
+                            beacon.toggle(dest: tracked.dest)
+                        }
+                        // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
+                        // (라벨만 바뀌고 화면이 그대로면 심사에서 무반응으로 보인다).
+                        if !beacon.statusText.isEmpty {
+                            Text(beacon.statusText).foregroundStyle(.secondary)
+                        }
+                        Text(beacon.isTracking
+                            ? appLocalized("beacon.screenHint")
+                            : appLocalized("beacon.straightLineNote")
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    } header: {
+                        // 무엇을 추적 중인지가 화면에 있어야 한다. 웹은 장소 상세 안이라
+                        // 바로 위 heading이 장소명이었지만 길찾기 결과엔 그 맥락이 없다.
+                        Text(joinText(appLocalized("beacon.heading"), tracked.label))
+                            .accessibilityAddTraits(.isHeader)
                     }
                 }
                 if let results = model.results {
@@ -420,10 +455,29 @@ struct DirectionsTabView: View {
             // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
             .onChange(of: model.walkRefetchRevision) { focusedModeHeading = .walk }
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
-            .onDisappear { model.cancel() }
+            // 전경 전용 계약의 구현부. ⚠ 행 수준이 아니라 **화면 수준**이어야 한다 —
+            // List는 lazy라 행에 붙이면 도보 안내를 읽으려 스크롤하는 순간 추적이 죽는다.
+            .onDisappear {
+                model.cancel()
+                beacon.stop()
+            }
+            // 검색 시트가 뜬 동안 톤을 죽인다(시트에 받아쓰기가 있고, 스피커로 나간 톤이
+            // 마이크로 돌아와 전사를 오염시킨 이력이 있다). 추적·통지는 유지한다.
+            .onChange(of: searchTarget) { beacon.tonesSuppressed = searchTarget != nil }
+            // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
+            // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
+            .onChange(of: model.endpoint(for: .to)) { beacon.stopBecauseDestinationChanged() }
+            .onChange(of: scenePhase) { beacon.handleScenePhaseChange(to: scenePhase) }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task { await model.loadCurrentAddressIfAuthorized() }
         }
+    }
+
+    /// 거리 추적 대상. 도착지가 좌표를 가진 장소일 때만 성립한다
+    /// ("현재 위치"가 목적지면 자기까지의 거리라 무의미).
+    private var trackedDestination: (label: String, dest: BeaconDest)? {
+        guard case .place(let label, let lat, let lng) = model.endpoint(for: .to) else { return nil }
+        return (label, BeaconDest(lat: lat, lng: lng))
     }
 
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
