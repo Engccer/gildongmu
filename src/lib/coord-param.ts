@@ -12,11 +12,19 @@ import { z } from "zod";
  * 문자열 존재를 먼저 요구해 400으로 가른다. 같은 함정이 라우트 14곳에
  * 남아 있다(백로그 D3) — 새 좌표 라우트는 반드시 이 헬퍼를 쓴다.
  */
-export const coordParam = (min: number, max: number) =>
-  z.string().trim().min(1).transform(Number).pipe(z.number().min(min).max(max));
+export const coordParam = (min: number, max: number, label = "좌표") =>
+  z
+    .string()
+    .trim()
+    // 기본 메시지("Too small: expected string to have >=1 characters")는 그대로
+    // CLI 출력에 실려, 이 가드가 겨냥한 소비자가 "좌표를 안 보냈다"가 아니라
+    // "문자열이 짧다"를 읽게 된다(리뷰 검출).
+    .min(1, `${label}가 필요합니다`)
+    .transform(Number)
+    .pipe(z.number().min(min).max(max));
 
 /** 위도(-90~90). */
-export const latParam = () => coordParam(-90, 90);
+export const latParam = () => coordParam(-90, 90, "위도(lat)");
 
 /** 경도(-180~180). */
-export const lngParam = () => coordParam(-180, 180);
+export const lngParam = () => coordParam(-180, 180, "경도(lng)");

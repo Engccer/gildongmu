@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../env", () => ({ env: { SEOUL_OPEN_DATA_KEY: "test-key" } }));
 
-import { fetchCongestion, parseCongestion, readSeoulOpenJson } from "../seoul-congestion";
+import { fetchCongestion, parseCongestion } from "../seoul-congestion";
 
 const OK = {
   "SeoulRtd.citydata_ppltn": [
@@ -94,26 +94,8 @@ describe("parseCongestion — 봉투", () => {
     expect(parseCongestion(withResult)?.level).toBe("붐빔");
   });
 
-  it("무효 키 XML 응답은 원인을 말하고 throw한다(HTTP 200 함정)", async () => {
-    // 실측: 인증키가 무효하면 `/json/` 경로여도 200 + XML이 온다.
-    // 그냥 res.json()을 부르면 "Unexpected token '<'"가 되어 원인이 가려진다.
-    const xml =
-      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
-    await expect(readSeoulOpenJson(new Response(xml), "citydata_ppltn")).rejects.toThrow(
-      /INFO-100.*인증키/,
-    );
-  });
-
-  it("코드를 못 읽는 비-JSON도 인증키를 먼저 의심하라고 말한다", async () => {
-    await expect(readSeoulOpenJson(new Response("<html>502</html>"), "x")).rejects.toThrow(
-      /인증키/,
-    );
-  });
-
-  it("정상 JSON은 그대로 통과한다(앞 공백·배열 포함)", async () => {
-    expect(await readSeoulOpenJson(new Response('  {"a":1}'), "x")).toEqual({ a: 1 });
-    expect(await readSeoulOpenJson(new Response("[1,2]"), "x")).toEqual([1, 2]);
-  });
+  // 비-JSON(무효 키의 XML 200) 판정 자체는 공용 모듈 계약이라
+  // `seoul-open-json.test.ts`가 지킨다. 여기서는 이 provider의 봉투 정책만 본다.
 
   it("중첩 RESULT에 담긴 오류 코드도 throw하고 메시지를 싣는다", () => {
     expect(() =>

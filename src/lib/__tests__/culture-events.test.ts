@@ -55,8 +55,14 @@ function ok(rows: Row[], total = rows.length) {
   };
 }
 
-function res(json: unknown, okFlag = true, status = 200) {
-  return { ok: okFlag, status, json: async () => json } as Response;
+/**
+ * 진짜 `Response`를 쓴다 — 수제 목(`{ok, status, json}`)은 provider가 부르는
+ * 메서드가 바뀌는 순간(`json()`→`text()`) 계약을 잘못 대변한다. `ok`는
+ * status에서 파생되므로 인자로 받지 않는다. ⚠ body는 한 번만 읽히므로
+ * 재사용 목은 `mockImplementation`으로 매 호출 새 Response를 만든다.
+ */
+function res(json: unknown, status = 200) {
+  return new Response(JSON.stringify(json), { status });
 }
 
 afterEach(() => {
@@ -165,7 +171,7 @@ describe("fetchRunningEvents (전수 수집 — 안전한 절단선이 없다)",
   const today = "2026-08-01";
 
   it("INFO-200(범위 밖 페이지) → 빈 배열, 오류 아님", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       res({ RESULT: { CODE: "INFO-200", MESSAGE: "해당하는 데이터가 없습니다." } }),
     );
     await expect(fetchRunningEvents(today)).resolves.toEqual([]);
@@ -173,15 +179,25 @@ describe("fetchRunningEvents (전수 수집 — 안전한 절단선이 없다)",
 
   it("그 밖의 코드·RESULT 부재 → throw (조회 실패와 0건을 구분)", async () => {
     const spy = vi.spyOn(globalThis, "fetch");
-    spy.mockResolvedValue(res({ RESULT: { CODE: "ERROR-500" } }));
+    spy.mockImplementation(async () => res({ RESULT: { CODE: "ERROR-500" } }));
     await expect(fetchRunningEvents(today)).rejects.toThrow(/ERROR-500/);
-    spy.mockResolvedValue(res({ culturalEventInfo: { row: [] } }));
+    spy.mockImplementation(async () => res({ culturalEventInfo: { row: [] } }));
     await expect(fetchRunningEvents(today)).rejects.toThrow(/RESULT.CODE 없음/);
   });
 
   it("HTTP 실패 → throw (상태코드를 메시지에 남긴다)", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(res({}, false, 503));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => res({}, 503));
     await expect(fetchRunningEvents(today)).rejects.toThrow(/HTTP 503/);
+  });
+
+  it("무효 키의 HTTP 200 + XML 본문 → 인증키를 지목하고 throw (SyntaxError 위장 금지)", async () => {
+    // 따릉이·혼잡도와 같은 키를 쓰므로 키가 죽으면 셋이 동시에 같은 방식으로 오진된다.
+    const xml =
+      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () => new Response(xml, { status: 200 }),
+    );
+    await expect(fetchRunningEvents(today)).rejects.toThrow(/INFO-100.*인증키/);
   });
 
   it("첫 페이지가 가득 차면 뒤 페이지까지 받아 진행 중만 남긴다", async () => {
@@ -200,7 +216,7 @@ describe("fetchRunningEvents (전수 수집 — 안전한 절단선이 없다)",
     // 첫 페이지 정책만 테스트하면 뒤 페이지 경로가 조용히 썩는다(변이 주입으로 확인).
     const spy = vi.spyOn(globalThis, "fetch");
     spy.mockResolvedValueOnce(res(ok(Array.from({ length: 1000 }, () => row()), 999_999)));
-    spy.mockResolvedValue(res({ RESULT: { CODE: "INFO-200" } }));
+    spy.mockImplementation(async () => res({ RESULT: { CODE: "INFO-200" } }));
     const out = await fetchRunningEvents(today);
     expect(out).toHaveLength(1000); // 1페이지분만, 예외 없이
   });
@@ -208,7 +224,7 @@ describe("fetchRunningEvents (전수 수집 — 안전한 절단선이 없다)",
   it("첫 페이지가 덜 찼으면 더 부르지 않는다 (종료 조건은 받은 row 수)", async () => {
     const spy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(res(ok([row()], 999_999))); // total 힌트가 거짓이어도
+      .mockImplementation(async () => res(ok([row()], 999_999))); // total 힌트가 거짓이어도
     const out = await fetchRunningEvents(today);
     expect(spy).toHaveBeenCalledTimes(1);
     expect(out).toHaveLength(1);
@@ -224,7 +240,7 @@ describe("findEventsNear (거리·반경·정렬·total)", () => {
   const outside = row({ TITLE: "반경밖", LAT: "37.4979", LOT: "127.0276" }); // 강남역
 
   beforeEach(() => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(res(ok([far, near, outside, mid])));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => res(ok([far, near, outside, mid])));
   });
 
   it("거리 오름차순으로 정렬한다", async () => {
@@ -244,7 +260,7 @@ describe("findEventsNear (거리·반경·정렬·total)", () => {
     const many = Array.from({ length: 60 }, (_, i) =>
       row({ TITLE: `행사${i}`, LAT: String(37.5665 - i * 0.0001), LOT: "126.9780" }),
     );
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(res(ok(many)));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => res(ok(many)));
     const { events, total } = await findEventsNear(37.5665, 126.978, { nowMs: NOW });
     expect(events).toHaveLength(50);
     expect(total).toBe(60);

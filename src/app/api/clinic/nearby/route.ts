@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { hasDataGoKrKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { findNightClinicsNow } from "@/lib/clinics";
@@ -23,8 +24,8 @@ import { findNightClinicsNow } from "@/lib/clinics";
 export const dynamic = "force-dynamic";
 
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
 });
 
 export async function GET(request: NextRequest) {

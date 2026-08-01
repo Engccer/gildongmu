@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { getWalkInfrastructure, configureWalkInfraTileCache } from "@/lib/walk-infra";
 import { checkWalkInfraRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
@@ -18,17 +19,18 @@ configureWalkInfraTileCache((fetcher, key) =>
  * getWalkInfrastructure는 allSettled로 내부 실패를 전부 SourceStatus로 강등하므로
  * throw하지 않는다.
  */
+// 좌표는 `latParam`/`lngParam`을 쓴다(`z.coerce.number()` 직접 사용 시
+// `Number("")===0` 함정 — `@/lib/coord-param` 주석 참조). 이 라우트는 커버리지
+// 마커가 없어(OSM 전 지구) 그 함정이 널 아일랜드 실조회로 이어진다.
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
 });
 
 export async function GET(request: NextRequest) {
-  // -90~90 전체 범위라 빈 문자열이 0으로 coerce돼 통과해버린다 - 누락은 undefined로
-  // 넘겨 required 검증이 잡게 한다("" ?? "" 함정, 한국 bbox 라우트와 다른 지점).
   const parsed = querySchema.safeParse({
-    lat: request.nextUrl.searchParams.get("lat") ?? undefined,
-    lng: request.nextUrl.searchParams.get("lng") ?? undefined,
+    lat: request.nextUrl.searchParams.get("lat") ?? "",
+    lng: request.nextUrl.searchParams.get("lng") ?? "",
   });
   if (!parsed.success) {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { CultureEvent } from "../types";
 import { env } from "../env";
+import { readSeoulOpenJson } from "./seoul-open-json";
 
 /**
  * 서울 문화행사 provider — `culturalEventInfo`(OA-15486).
@@ -152,7 +153,8 @@ async function fetchPage(
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`culturalEventInfo HTTP ${res.status}`);
-  const raw = await res.json();
+  // res.json() 직접 호출 금지 — 무효 키는 200 + XML로 와서 원인 없는 SyntaxError가 된다.
+  const raw = await readSeoulOpenJson(res, "culturalEventInfo");
   const code = readResultCode(raw);
   if (code === "INFO-200") return { rows: [], total: 0 };
   if (code !== "INFO-000") {

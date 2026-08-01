@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { hasDataGoKrKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { fetchNearbyBusStops } from "@/lib/bus";
@@ -12,8 +13,8 @@ import { fetchNearbyBusStops } from "@/lib/bus";
  * (isInKorea — 무의미한 좌표가 provider까지 통과하지 않도록).
  */
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
 });
 
 export async function GET(request: NextRequest) {

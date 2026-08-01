@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { searchPlaces } from "@/lib/providers/places";
 
 /**
@@ -17,8 +18,10 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(15).default(15),
   lang: z.enum(["ko", "en"]).default("ko"),
   // 좌표는 검색 품질 보조 — 있으면 근접 블렌딩(정확도순)과 거리 주석, 무효/누락이면 좌표 없이 검색(400 아님).
-  lat: z.coerce.number().min(-90).max(90).optional().catch(undefined),
-  lng: z.coerce.number().min(-180).max(180).optional().catch(undefined),
+  // `latParam`을 거치므로 빈 문자열도 `catch`로 흡수돼 "좌표 없음"이 된다
+  // (`z.coerce.number()` 직접 사용 시 `Number("")===0`이라 적도 앞바다 기준으로 블렌딩된다).
+  lat: latParam().optional().catch(undefined),
+  lng: lngParam().optional().catch(undefined),
 });
 
 export async function GET(request: NextRequest) {

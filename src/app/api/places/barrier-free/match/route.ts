@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { coordParam } from "@/lib/coord-param";
 import { hasDataGoKrKey } from "@/lib/env";
 import { matchBarrierFreePlace } from "@/lib/providers/tour-barrier-free";
 
+// 이 라우트만 한국 bbox로 좁힌다(매칭 대상이 국내 관광지뿐). 그 덕에 `Number("")===0`
+// 함정의 행동 결함은 원래 없었지만, 범위를 넓히는 순간 되살아나므로 헬퍼로 통일한다.
 const querySchema = z.object({
-  lat: z.coerce.number().min(33).max(43),
-  lng: z.coerce.number().min(124).max(132),
+  lat: coordParam(33, 43),
+  lng: coordParam(124, 132),
   name: z.string().min(1),
 });
 

@@ -1,6 +1,7 @@
 import type { BikeStation } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import { readSeoulOpenJson } from "./seoul-open-json";
 
 /**
  * 서울 따릉이(공공자전거) provider — bikeList(OA-15493).
@@ -79,7 +80,8 @@ async function fetchBikePage(start: number, end: number): Promise<unknown> {
   const url = `${BASE}/${key}/json/bikeList/${start}/${end}/`;
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) throw new Error(`bikeList HTTP ${res.status}`);
-  const data = (await res.json()) as {
+  // res.json() 직접 호출 금지 — 무효 키는 200 + XML로 와서 원인 없는 SyntaxError가 된다.
+  const data = (await readSeoulOpenJson(res, "bikeList")) as {
     rentBikeStatus?: { RESULT?: { CODE?: string } };
   };
   const status = data?.rentBikeStatus;

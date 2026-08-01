@@ -126,3 +126,34 @@ describe("GET /api/geocode/reverse", () => {
     expect(res.status).toBe(502);
   });
 });
+
+/**
+ * 좌표 파라미터 누락은 400이다(백로그 D3, 정본 헬퍼 `@/lib/coord-param`).
+ *
+ * ⚠ 이 라우트에는 커버리지 마커가 없다 — 형제 라우트의 증상("200 outOfCoverage
+ * 위장")과 달리 여기서는 `Number("") === 0`이 **널 아일랜드 좌표로 카카오
+ * 역지오코딩 실호출**로 이어진다. 그래서 상태코드만이 아니라 upstream 미호출을
+ * 함께 단언한다.
+ *
+ * 이 파일만 `makeRequest(lat, lng)` 2인자라 형제 파일의 `makeRequest(query)`
+ * 형태를 그대로 쓰면 "쓰레기 값"을 테스트하게 되어 검출력이 0이 된다(리뷰 검출).
+ */
+describe("좌표 파라미터 누락 (D3)", () => {
+  const rawRequest = (query: string) =>
+    new NextRequest(`http://x/api/geocode/reverse${query}`);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(hasKakaoKey).mockReturnValue(true); // 이 라우트는 키 게이트가 파싱보다 앞
+  });
+
+  it("lat·lng 없음 → 400, upstream 미호출 (널 아일랜드 조회 금지)", async () => {
+    expect((await GET(rawRequest(""))).status).toBe(400);
+    expect(coordToAddress).not.toHaveBeenCalled();
+  });
+
+  it("빈 문자열 좌표 → 400, upstream 미호출", async () => {
+    expect((await GET(rawRequest("?lat=&lng="))).status).toBe(400);
+    expect(coordToAddress).not.toHaveBeenCalled();
+  });
+});

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { hasSeoulOpenDataKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
@@ -11,8 +12,8 @@ import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
  * 좌표는 전지구 범위로 형식만 가드하고, 한국 밖은 커버리지 마커로 응답한다(버스 라우트와 통일).
  */
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
 });
 
 export async function GET(request: NextRequest) {
