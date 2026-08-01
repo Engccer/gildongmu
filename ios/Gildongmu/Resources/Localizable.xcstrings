@@ -1806,31 +1806,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "직선거리 기준입니다. 실제 경로는 길찾기 앱을 이용하세요."
+            "value": "직선거리 기준입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Straight-line distance. Use a maps app for the actual route."
+            "value": "Straight-line distance."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distancia en línea recta. Usa una app de mapas para la ruta real."
+            "value": "Distancia en línea recta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distance à vol d'oiseau. Utilisez une appli de cartes pour l'itinéraire réel."
+            "value": "Distance à vol d'oiseau."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distanza in linea d'aria. Usa un'app di mappe per il percorso reale."
+            "value": "Distanza in linea d'aria."
           }
         },
         "ja": {
@@ -8446,31 +8446,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "소리 안내를 재생할 수 없습니다. 화면의 안내를 확인하세요."
+            "value": "소리 안내를 재생할 수 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sound guidance cannot play. Check the on-screen status instead."
+            "value": "Sound guidance cannot play."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se puede reproducir la guía sonora. Consulta el estado en pantalla."
+            "value": "No se puede reproducir la guía sonora."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guidance sonore ne peut pas être jouée. Consultez l'état affiché à l'écran."
+            "value": "La guidance sonore ne peut pas être jouée."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guida sonora non può essere riprodotta. Controlla lo stato sullo schermo."
+            "value": "La guida sonora non può essere riprodotta."
           }
         },
         "ja": {
@@ -16766,31 +16766,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "인터넷 연결을 확인한 뒤 다시 시도해 주세요. 검색은 온라인에서만 동작합니다."
+            "value": "검색은 온라인에서만 동작합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Check your connection and try again. Search works only online."
+            "value": "Search works only online."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revisa tu conexión e inténtalo de nuevo. La búsqueda solo funciona en línea."
+            "value": "La búsqueda solo funciona en línea."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vérifiez votre connexion et réessayez. La recherche ne fonctionne qu'en ligne."
+            "value": "La recherche ne fonctionne qu'en ligne."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Controlla la connessione e riprova. La ricerca funziona solo online."
+            "value": "La ricerca funziona solo online."
           }
         },
         "ja": {
@@ -19326,31 +19326,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 교통 기준 예상치입니다. 실제 주행 안내는 지도 앱 길찾기를 이용하세요."
+            "value": "실시간 교통 기준 예상치입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
+            "value": "Estimates based on live traffic."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estimaciones basadas en el tráfico en tiempo real. Para indicaciones paso a paso, usa una app de mapas mediante los enlaces de cómo llegar."
+            "value": "Estimaciones basadas en el tráfico en tiempo real."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estimations basées sur le trafic en temps réel. Pour une navigation détaillée, utilisez une application de carte via les liens d'itinéraire."
+            "value": "Estimations basées sur le trafic en temps réel."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stime basate sul traffico in tempo reale. Per le indicazioni svolta per svolta, usa un'app di mappe tramite i link alle indicazioni."
+            "value": "Stime basate sul traffico in tempo reale."
           }
         },
         "ja": {
@@ -26126,31 +26126,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "음성을 인식하지 못했습니다. 다시 말씀해 주세요."
+            "value": "음성을 인식하지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not recognize the speech. Please try again."
+            "value": "Could not recognize the speech."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo reconocer el habla. Inténtalo de nuevo."
+            "value": "No se pudo reconocer el habla."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de reconnaître la parole. Veuillez réessayer."
+            "value": "Impossible de reconnaître la parole."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile riconoscere il parlato. Riprova."
+            "value": "Impossibile riconoscere il parlato."
           }
         },
         "ja": {
@@ -26246,31 +26246,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "받아쓰기가 너무 짧습니다. 좀 더 길게 말씀해 주세요."
+            "value": "받아쓰기가 너무 짧습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "The dictation is too short. Please speak a little longer."
+            "value": "The dictation is too short."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El dictado es demasiado corto. Habla un poco más."
+            "value": "El dictado es demasiado corto."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La dictée est trop courte. Veuillez parler un peu plus longtemps."
+            "value": "La dictée est trop courte."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La dettatura è troppo breve. Parla un po' più a lungo."
+            "value": "La dettatura è troppo breve."
           }
         },
         "ja": {
