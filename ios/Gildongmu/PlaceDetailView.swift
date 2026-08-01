@@ -64,17 +64,28 @@ struct PlaceDetailView<DomainSection: View>: View {
                 }
             }
 
-            // "이 장소 주변" — 내 주변 화면 3종을 장소 좌표로 앵커해 push(웹 장소 상세의
-            // BusArrivals·BikeStations·LocalConditions 대응). 인라인 복제 대신 push인 이유:
-            // 기존 화면의 새로고침·상태 오버레이·완료 통지 계약이 그대로 따라오고,
-            // 상세 화면이 짧게 유지된다(스크린 리더 선형 주파). 발견 경로는 섹션 heading.
+            // "이 장소 주변" — 내 주변 화면 4종을 장소 좌표로 앵커해 push(웹 장소 상세의
+            // BusArrivals·BikeStations·LocalConditions 대응 + 지하철은 iOS 선행).
+            // 인라인 복제 대신 push인 이유: 기존 화면의 새로고침·상태 오버레이·완료 통지
+            // 계약이 그대로 따라오고, 상세 화면이 짧게 유지된다(스크린 리더 선형 주파).
+            // 발견 경로는 섹션 heading. 순서는 이용 빈도순(지하철 먼저, 위원장 지시 2026-08-02).
             //
             // ⚠ 위치가 웹과 반대(웹은 역 4종 뒤)인 것은 의도다. 웹의 역 시설 2종은
             // 버튼으로 펼치는 접힌 패널이라 그 아래로 가는 비용이 없지만, iOS
             // StationSectionsView는 전부 인라인 전개라 천호역에서 수백 행이다. 뒤에 두면
-            // 선형 주파로 이 3행에 닿는 비용이 3행에서 수백 행으로 뒤집힌다(둘 다 heading
+            // 선형 주파로 이 4행에 닿는 비용이 4행에서 수백 행으로 뒤집힌다(둘 다 heading
             // 점프로는 동등). 스펙 §2-1 참조 — 순서를 바꾸려면 그 구조 차이부터 확인할 것.
+            //
+            // ⚠ 역 장소에서 지하철 행의 첫 항목은 사실상 그 역 자신이다(앵커가 역 좌표라
+            // 근접역 1위가 거리 0m). 아래 StationSectionsView가 같은 역의 도착을 인라인으로
+            // 이미 내므로 데이터가 겹치는데, 그럼에도 조건부로 숨기지 않는 이유가 셋이다:
+            // ①겹침이 강제 낭독이 아니다 — 인라인 섹션은 선형 주파 경로에 놓이지만 이 행은
+            // 눌러야 도달하는 push다 ②역에서도 근접 2개 역은 새 정보다(도보권 환승 대안)
+            // ③장소 종류에 따라 행이 사라지면 같은 섹션의 구성이 매번 달라져, 위치를 외워
+            // 쓰는 스크린 리더 탐색이 무너진다(키 게이트의 死기능 제거와는 성격이 다르다 —
+            // 저쪽은 데이터가 없고 이쪽은 있다). 리뷰 지적 수용 판정 2026-08-02.
             Section {
+                NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView(anchor: anchor) }
                 NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView(anchor: anchor) }
                 NavigationLink(appLocalized("ios.nearby.bike")) { BikeNearbyView(anchor: anchor) }
                 NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView(anchor: anchor) }

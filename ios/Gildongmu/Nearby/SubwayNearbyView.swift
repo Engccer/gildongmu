@@ -3,18 +3,19 @@ import Observation
 import GildongmuKit
 
 /// 내 주변 지하철 도착 — NearbyLoadCore 껍데기(규범 원형). 상태 머신·전이표는 Kit 정본.
+/// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
 @Observable @MainActor
 final class SubwayNearbyModel {
     private let core: NearbyLoadCore<[NearbySubwayStation]>
     var phase: NearbyLoadPhase<[NearbySubwayStation]> { core.phase }
 
-    init() {
+    init(anchor: PlaceAnchor? = nil) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
         core = NearbyLoadCore(
-            coordinate: LocationService.nearbyCoordinateSource(),
+            coordinate: anchor.map { .fixed($0.coord) } ?? LocationService.nearbyCoordinateSource(),
             coverage: .korea,
             fetch: { coord, _ in
-                guard let coord else { preconditionFailure("current 소스는 좌표 보장") }
+                guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 return try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stations in
@@ -26,7 +27,15 @@ final class SubwayNearbyModel {
 }
 
 struct SubwayNearbyView: View {
-    @State private var model = SubwayNearbyModel()
+    private let anchor: PlaceAnchor?
+    @State private var model: SubwayNearbyModel
+
+    /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
+    /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
+    init(anchor: PlaceAnchor? = nil) {
+        self.anchor = anchor
+        _model = State(initialValue: SubwayNearbyModel(anchor: anchor))
+    }
 
     var body: some View {
         List {
@@ -53,7 +62,7 @@ struct SubwayNearbyView: View {
                 }
             }
         }
-        .navigationTitle(appLocalized("ios.nearby.subway"))
+        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
         .nearbyStateOverlay {
             NearbyStateOverlayView(phase: model.phase, descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram"),

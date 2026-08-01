@@ -3,6 +3,11 @@
 > 백로그 B1. 웹 장소 상세에 있고 iOS엔 없는 3섹션(버스 도착·따릉이·날씨/공기질)을
 > iOS 장소 상세에서 도달 가능하게 한다. 같은 마일스톤에 편승 예정이던 B2·B3은
 > 착수 전 코드 대조에서 전제 소멸이 확인되어 §6으로 이관한다.
+>
+> **갱신 2026-08-02: 3행 → 4행(지하철 추가, 위원장 지시).** 지하철은 웹 장소 상세에도
+> 없어 이번엔 iOS가 선행한다(웹 대비 비대칭이 §2-1의 순서에 더해 하나 늘었다).
+> 순서는 이용 빈도를 따라 **지하철이 버스보다 앞**이다. 아래 본문의 "3행"은 이 갱신
+> 이후 4행으로 읽는다.
 
 ## 1. 문제
 
@@ -100,11 +105,12 @@ public enum NearbyCoordinateSource {
 | `ios/Gildongmu/Nearby/BusNearbyView.swift` | 모델·뷰에 `anchor` 파라미터(기본 nil = 현재 위치) |
 | `ios/Gildongmu/Nearby/BikeNearbyView.swift` | 동일 |
 | `ios/Gildongmu/Nearby/ConditionsView.swift` | 동일 |
-| `ios/Gildongmu/PlaceDetailView.swift` | `이 장소 주변` 섹션 3행 |
+| `ios/Gildongmu/Nearby/SubwayNearbyView.swift` | 동일 (2026-08-02 갱신) |
+| `ios/Gildongmu/PlaceDetailView.swift` | `이 장소 주변` 섹션 4행(2026-08-02 갱신 전 3행) |
 | `ios/i18n/ios-extra/{6로케일}.json` | `ios.place.nearbyHeading` 1키 |
 | `ios/Gildongmu/Resources/Localizable.xcstrings` | 변환 스크립트 재생성물 |
 
-행 라벨은 신규 키를 만들지 않고 기존 `ios.nearby.{bus,bike,conditions}`를 재사용한다
+행 라벨은 신규 키를 만들지 않고 기존 `ios.nearby.{subway,bus,bike,conditions}`를 재사용한다
 (허브와 같은 이름이라 학습 전이가 성립한다).
 
 ## 4. 테스트 계약
