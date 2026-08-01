@@ -34,14 +34,24 @@ describe("findCongestionArea — 실측 8지점", () => {
 });
 
 describe("임계값 경계", () => {
-  /** 모든 영역의 모든 지점 중 최근접 거리 — 판정의 정의 그 자체. */
+  /** 전체 지점을 1회만 평탄화한다(격자마다 다시 만들면 그것만으로 수천 배). */
+  const ALL_POINTS = listCongestionAreas().flatMap((a) => a.pts);
+
+  /**
+   * 모든 영역의 모든 지점 중 최근접 거리 — 판정의 정의 그 자체.
+   *
+   * ⚠ 위경도 차 사전 필터가 없으면 격자 하나마다 1,969회 하버사인을 돌아
+   * 이 테스트 하나가 수백 ms를 **동기로** 점유한다. 그 블로킹이 병렬 워커
+   * 스케줄링을 흔들어 무관한 테스트가 산발적으로 실패하는 것이 실측됐다
+   * (부하 중 10회 실행 5회 실패, 부하 없으면 8/8 통과 — 리뷰 지적).
+   * 필터 폭은 임계값 300m(위도 약 0.0027°)보다 넉넉해 판정을 바꾸지 않는다.
+   */
   function nearestPointMeters(lat: number, lng: number) {
     let min = Infinity;
-    for (const a of listCongestionAreas()) {
-      for (const [plat, plng] of a.pts) {
-        const d = haversine(lat, lng, plat, plng);
-        if (d < min) min = d;
-      }
+    for (const [plat, plng] of ALL_POINTS) {
+      if (Math.abs(plat - lat) > 0.01 || Math.abs(plng - lng) > 0.013) continue;
+      const d = haversine(lat, lng, plat, plng);
+      if (d < min) min = d;
     }
     return min;
   }

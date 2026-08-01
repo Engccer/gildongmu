@@ -63,6 +63,25 @@ describe("toArea — 응답 하나를 영역으로", () => {
     expect(toArea({ CITYDATA: { AREA_NM: "광나루한강공원", AREA_CD: "POI050", SUB_STTS: [], BUS_STN_STTS: [] } })).toBeNull();
   });
 
+  it("단건이 배열 아닌 단일 객체로 와도 흡수한다(영역이 통째로 사라지는 침묵 차단)", () => {
+    // 지점이 1개뿐인 영역에서 이 방어가 없으면 pts가 0이 되고, toArea가 null을
+    // 돌려 영역 자체가 seed에서 빠진다 — 진짜 인프라 부재와 구분되지 않는다.
+    const a = must(
+      toArea({
+        CITYDATA: {
+          AREA_NM: "안양천",
+          AREA_CD: "POI001",
+          SUB_STTS: { SUB_STN_X: "126.9", SUB_STN_Y: "37.5" },
+          BUS_STN_STTS: { BUS_STN_X: "126.91", BUS_STN_Y: "37.51" },
+        },
+      }),
+    );
+    expect(a.pts).toEqual([
+      [37.5, 126.9],
+      [37.51, 126.91],
+    ]);
+  });
+
   it("좌표가 비유한인 지점은 버리고 나머지는 살린다", () => {
     const a = must(toArea({
       CITYDATA: {
