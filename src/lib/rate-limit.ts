@@ -124,6 +124,16 @@ export function checkCarRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(carStore, ip, now, CAR_LIMIT, WINDOW_MS).allowed;
 }
 
+// 혼잡도는 서울 열린데이터 일 1,000회를 따릉이·문화행사와 나눠 쓰므로 동일하게
+// 60초 10회. 영역 코드 단위 5분 캐시가 1차 방어이고 이건 2차다.
+const CONGESTION_LIMIT = 10;
+const congestionStore = new Map<string, RateLimitEntry>();
+
+/** /api/congestion/nearby 전용 레이트 리밋(60초 10회). 허용이면 true. */
+export function checkCongestionRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(congestionStore, ip, now, CONGESTION_LIMIT, WINDOW_MS).allowed;
+}
+
 /** Vercel은 클라이언트 IP를 x-forwarded-for(첫 항목)·x-real-ip로 전달한다. */
 export function clientIpFromHeaders(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");

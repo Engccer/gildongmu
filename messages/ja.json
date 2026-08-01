@@ -402,7 +402,7 @@
     "source": "出典: エアコリア(韓国環境公団)。"
   },
   "weather": {
-    "heading": "この地域の天気",
+    "heading": "この地域の状況",
     "highLow": "最高{max}° 最低{min}°",
     "humidity": "湿度{humidity}%",
     "precipProbability": "降水確率{pop}%",
@@ -422,6 +422,17 @@
       "snow": "雪",
       "shower": "にわか雨"
     }
+  },
+  "congestion": {
+    "summary": "{area}の混雑度 {level}",
+    "levels": {
+      "relaxed": "ゆとり",
+      "normal": "普通",
+      "slightlyBusy": "やや混雑",
+      "busy": "混雑"
+    },
+    "asOf": "{time}時点",
+    "source": "出典: ソウル市リアルタイム都市データ。"
   },
   "actions": {
     "close": "閉じる",

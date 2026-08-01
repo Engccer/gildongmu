@@ -402,7 +402,7 @@
     "source": "Source : AirKorea (Korea Environment Corporation)."
   },
   "weather": {
-    "heading": "Météo locale",
+    "heading": "Conditions locales",
     "highLow": "Max {max}° Min {min}°",
     "humidity": "Humidité {humidity}%",
     "precipProbability": "Risque de pluie {pop}%",
@@ -422,6 +422,17 @@
       "snow": "Neige",
       "shower": "Averses"
     }
+  },
+  "congestion": {
+    "summary": "Affluence à {area}, {level}",
+    "levels": {
+      "relaxed": "calme",
+      "normal": "modérée",
+      "slightlyBusy": "assez fréquentée",
+      "busy": "très fréquentée"
+    },
+    "asOf": "Données de {time}",
+    "source": "Source : données urbaines en temps réel de Séoul."
   },
   "actions": {
     "close": "Fermer",

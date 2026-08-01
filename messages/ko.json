@@ -402,7 +402,7 @@
     "source": "출처: 에어코리아(한국환경공단)."
   },
   "weather": {
-    "heading": "이 지역 날씨",
+    "heading": "이 지역 상황",
     "highLow": "최고 {max}° 최저 {min}°",
     "humidity": "습도 {humidity}%",
     "precipProbability": "강수확률 {pop}%",
@@ -422,6 +422,17 @@
       "snow": "눈",
       "shower": "소나기"
     }
+  },
+  "congestion": {
+    "summary": "{area} 혼잡도 {level}",
+    "levels": {
+      "relaxed": "여유",
+      "normal": "보통",
+      "slightlyBusy": "약간 붐빔",
+      "busy": "붐빔"
+    },
+    "asOf": "{time} 기준",
+    "source": "출처: 서울시 실시간 도시데이터."
   },
   "actions": {
     "close": "닫기",
