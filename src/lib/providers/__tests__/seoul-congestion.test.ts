@@ -150,7 +150,9 @@ describe("fetchCongestion — HTTP 계층", () => {
   });
 
   it("영역 코드를 URL에 싣는다(캐시 키와 실제 조회 대상이 어긋나지 않게)", async () => {
-    const spy = vi.fn(async () => new Response(JSON.stringify(OK)));
+    // 콜백에 매개변수가 없으면 `mock.calls`가 빈 튜플로 추론돼 `[0]` 인덱싱이
+    // TS2493이 된다(vitest는 트랜스파일만 해서 안 잡고 `tsc --noEmit`만 잡는다).
+    const spy = vi.fn(async (_url?: string) => new Response(JSON.stringify(OK)));
     vi.stubGlobal("fetch", spy);
     await fetchCongestion("POI119");
     expect(String(spy.mock.calls[0]?.[0])).toContain("citydata_ppltn/1/5/POI119");
