@@ -17,6 +17,8 @@ final class EndpointSearchModel {
     /// tri-state: "검색 전"(최근 섹션 노출)과 "검색함(진행중·0건·실패 불문)"을 구분(웹
     /// candidates===null·SearchView outcome==nil 미러). 시트 수명=1회라 리셋 경로 없음(YAGNI).
     private(set) var hasSearched = false
+    /// 후보 도착 세대. 뷰가 첫 후보로 포커스를 옮기는 신호(웹 candidateRevision 동형).
+    private(set) var resultsRevision = 0
     private var searchTask: Task<Void, Never>?
     /// 지오코딩 재진입 가드(웹 geocodeRef 미러)
     private var isGeocodingInFlight = false
@@ -40,6 +42,7 @@ final class EndpointSearchModel {
             places = Array(outcome.places.items.prefix(5))
             addresses = Array(outcome.addresses.items.prefix(5))
             isSearching = false
+            resultsRevision += 1
             let count = places.count + addresses.count
             let message: String
             if count > 0 {
@@ -103,6 +106,11 @@ struct DirectionsEndpointSearchView: View {
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5, SearchView 동형).
     @AccessibilityFocusState private var micRowFocused: Bool
+    /// 시트 진입 시 검색 필드로 커서를 보낸다. 안 하면 커서가 시트 최상단에 머물러
+    /// 사용자가 "검색하러 열었는데" 필드까지 스와이프해 내려가야 한다(실기기 확인).
+    @FocusState private var searchFieldFocused: Bool
+    /// 후보 도착 시 첫 후보로 이동(웹 계약 동형). 목록이 곧 이 화면의 목적이다.
+    @AccessibilityFocusState private var firstCandidateFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -163,6 +171,7 @@ struct DirectionsEndpointSearchView: View {
                         // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형)
                         Text(joinText(place.name, place.roadAddress.isEmpty ? place.address : place.roadAddress))
                     }
+                    .accessibilityFocused($firstCandidateFocused, equals: place.id == model.places.first?.id)
                 }
                 ForEach(model.addresses, id: \.roadAddr) { address in
                     Button(address.roadAddr) {
@@ -170,6 +179,11 @@ struct DirectionsEndpointSearchView: View {
                             if let endpoint = await model.geocode(address) { select(endpoint) }
                         }
                     }
+                    // 장소가 없을 때만 주소 첫 항목이 첫 후보다(렌더 순서와 일치).
+                    .accessibilityFocused(
+                        $firstCandidateFocused,
+                        equals: model.places.isEmpty && address.roadAddr == model.addresses.first?.roadAddr
+                    )
                 }
             }
             .navigationTitle(sheetTitle)
@@ -182,7 +196,16 @@ struct DirectionsEndpointSearchView: View {
                 text: $model.query,
                 placement: .navigationBarDrawer(displayMode: .always),
                 prompt: Text(appLocalized("ios.search.prompt")))
+            .searchFocused($searchFieldFocused)
             .onSubmit(of: .search) { model.submit() }
+            // 후보가 도착하면 첫 후보로. 조회 결과 heading 이동이 실기기에서 정상
+            // 작동하므로(M2 가설 1 기각) 여기서도 동기 대입으로 충분하다.
+            .onChange(of: model.resultsRevision) {
+                guard model.resultsRevision > 0, !(model.places.isEmpty && model.addresses.isEmpty)
+                else { return }
+                searchFieldFocused = false
+                firstCandidateFocused = true
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(appLocalized("actions.close")) { dismiss() }
@@ -197,6 +220,7 @@ struct DirectionsEndpointSearchView: View {
                 Button(appLocalized("ios.common.ok")) {}
             }
             .task {
+                searchFieldFocused = true
                 recentEndpoints = recentStore.endpoints(recentScope)
             }
             // 마이크는 항상 폐기(시트가 닫히면 뷰가 소멸하므로 유령 청취 방지 —

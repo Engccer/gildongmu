@@ -472,8 +472,14 @@ struct DirectionsTabView: View {
                 }
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
+            // 조회 완료 시 **포커스를 옮기지 않는다**(위원장 판정 2026-08-02).
+            // 종전엔 첫 성공 수단 heading으로 보냈는데, 거리 추적 섹션이 조회 버튼과
+            // 수단 섹션 **사이**에 생기면서 그 점프가 섹션을 통째로 건너뛰게 됐다.
+            // 조회 버튼에 머물면 다음 스와이프가 상태 → 거리 추적 → 수단 순서로
+            // 자연히 이어진다. 완료 자체는 단일 통지(수단 수 합산)가 이미 알린다.
+            // ⚠ 계단 회피 토글 재조회(walkRefetchRevision)는 별개다. 사용자가 도보
+            // 섹션 안에서 조작한 것이라 그 heading으로 돌려보내는 게 맞다.
             .onChange(of: model.resultsRevision) {
-                focusedModeHeading = model.results?.firstSuccess
                 expandedAlts = []
             }
             // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
