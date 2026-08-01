@@ -369,6 +369,14 @@ struct DirectionsTabView: View {
     @State private var expandedAlts: Set<Int> = []
     @State private var beacon = BeaconModel()
     @Environment(\.scenePhase) private var scenePhase
+    /// 시트에서 끝점을 확정한 뒤 포커스를 보낼 곳(웹 `focusAfterResolve` 대응).
+    /// 실기기 확인(2026-08-02): 시트가 닫히면 VO 커서가 **화면 최상단으로 이탈**한다.
+    /// 사용자는 방금 고른 다음 행동 지점(도착지 입력·조회 버튼)까지 다시 스와이프해
+    /// 내려가야 한다. 취소로 닫으면 콜백이 안 오므로 nil이고, 그때는 iOS 기본
+    /// 복원 동작에 맡긴다(재현되지 않은 것을 손대지 않는다).
+    @AccessibilityFocusState private var focusedEndpointField: DirectionsFieldTarget?
+    @AccessibilityFocusState private var submitFocused: Bool
+    @State private var focusAfterResolve: DirectionsFieldTarget?
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -380,9 +388,12 @@ struct DirectionsTabView: View {
             List {
                 Section {
                     Button(fieldText(.from)) { searchTarget = .from }
+                        .accessibilityFocused($focusedEndpointField, equals: .from)
                     Button(appLocalized("directions.swap")) { model.swap() }
                     Button(fieldText(.to)) { searchTarget = .to }
+                        .accessibilityFocused($focusedEndpointField, equals: .to)
                     Button(submitText) { model.runQuery() }
+                        .accessibilityFocused($submitFocused)
                     // 시각 상태 표시(통지는 모델의 단일 Announcement가 담당, live 복제 아님)
                     if !statusText.isEmpty {
                         Text(statusText)
@@ -456,6 +467,8 @@ struct DirectionsTabView: View {
                     model.setEndpoint(endpoint, for: target)
                     // "현재 위치 사용" 선택은 강제 재측위 + 주소 새로고침 트리거(F-B).
                     if endpoint == .current { model.refreshCurrentLocation() }
+                    // 확정으로 닫힐 때만 착지점을 예약한다(취소는 콜백이 없다).
+                    focusAfterResolve = target
                 }
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
@@ -475,13 +488,44 @@ struct DirectionsTabView: View {
             // 검색 시트가 뜬 동안 톤과 통지를 모두 죽인다. 시트에 받아쓰기가 있고
             // 헌장 §6의 불변식은 "녹음 중 SR 발화 0"인데, polite 통지는 VoiceOver가
             // 실제로 말하는 음성이라 톤보다 전사 오염 위험이 크다. 추적은 유지한다.
-            .onChange(of: searchTarget) { beacon.outputSuppressed = searchTarget != nil }
+            .onChange(of: searchTarget) {
+                beacon.outputSuppressed = searchTarget != nil
+                guard searchTarget == nil, let resolved = focusAfterResolve else { return }
+                focusAfterResolve = nil
+                landFocusAfterResolve(from: resolved)
+            }
             // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
             // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
             .onChange(of: model.endpoint(for: .to)) { beacon.stopBecauseDestinationChanged() }
             .onChange(of: scenePhase) { beacon.handleScenePhaseChange(to: scenePhase) }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task { await model.loadCurrentAddressIfAuthorized() }
+        }
+    }
+
+    /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
+    /// 도착지를 고르면 조회 버튼으로 보낸다(둘 다 "다음에 할 일"이다).
+    ///
+    /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
+    /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
+    private func landFocusAfterResolve(from target: DirectionsFieldTarget) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            applyResolvedFocus(target)
+            try? await Task.sleep(for: .milliseconds(600))
+            // 먹지 않았으면 1회만 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
+            let landed = target == .from ? focusedEndpointField == .to : submitFocused
+            guard !landed else { return }
+            applyResolvedFocus(target)
+        }
+    }
+
+    private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
+        if target == .from {
+            focusedEndpointField = .to
+        } else {
+            focusedEndpointField = nil
+            submitFocused = true
         }
     }
 
