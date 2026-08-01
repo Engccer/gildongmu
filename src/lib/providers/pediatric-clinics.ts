@@ -1,6 +1,12 @@
 import type { NightClinic } from "../types";
 import { env } from "../env";
-import { extractItems, header, parseClinics } from "./night-clinic";
+import { parseClinics } from "./night-clinic";
+import {
+  fetchDataGoKrJson,
+  readItems,
+  readResultCode,
+  readTotalCount,
+} from "./datagokr-envelope";
 
 /**
  * 소아청소년과 진료과목 보유 병의원 provider — 응급의료정보 병의원 목록
@@ -65,19 +71,18 @@ async function fetchPage(
     `${BASE}?serviceKey=${key}&Q0=${encodeURIComponent(sido)}` +
     `&QD=${PEDIATRICS_QD}&pageNo=${pageNo}&numOfRows=${NUM_OF_ROWS}&_type=json`;
   // 명부는 분 단위 변동이 없다 — 하루 캐시로 쿼터를 아낀다(달빛 명부와 동형).
-  const res = await fetch(url, { next: { revalidate: 86_400 } });
-  if (!res.ok) {
-    throw new Error(`소아청소년과 목록 조회 실패: HTTP ${res.status}`);
-  }
-  const raw = await res.json();
-  const { code, totalCount } = header(raw);
+  const raw = await fetchDataGoKrJson(url, "소아청소년과 목록", {
+    next: { revalidate: 86_400 },
+  });
+  const code = readResultCode(raw);
   if (code !== "00") {
     throw new Error(`소아청소년과 목록 비정상 응답: resultCode ${code}`);
   }
+  const totalCount = readTotalCount(raw);
   const clinics = parseClinics(raw).map((c) => ({ ...c, designated: false }));
   // 좌표 누락 행은 거리 정렬이 불가해 버린다. 조용히 사라지면 "명부에 없다"와
   // 구분되지 않으므로 드롭 수를 관측만 남긴다(달빛 명부와 동형).
-  const dropped = extractItems(raw).length - clinics.length;
+  const dropped = readItems(raw).length - clinics.length;
   if (dropped > 0) {
     console.warn(
       `[pediatric-clinics] ${sido} p${pageNo}: 좌표 누락 등으로 제외 ${dropped}건`,

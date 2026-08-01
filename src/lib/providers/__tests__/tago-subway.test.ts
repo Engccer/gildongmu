@@ -6,16 +6,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 vi.mock("../../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
 
 import {
-  ensureItemArray, parseKeywordStations, displayLineName,
+  displayLineName,
   computeServiceDailyType, deriveFirstLast, fetchStationTimetable,
 } from "../tago-subway";
-
-describe("ensureItemArray", () => {
-  it("객체 1건을 배열로, 빈 문자열을 []로", () => {
-    expect(ensureItemArray({ response: { body: { items: { item: { a: 1 } } } } })).toEqual([{ a: 1 }]);
-    expect(ensureItemArray({ response: { body: { items: "" } } })).toEqual([]);
-  });
-});
 
 describe("displayLineName", () => {
   it("축약 노선명에 선을 붙인다", () => {
@@ -63,7 +56,7 @@ describe("deriveFirstLast", () => {
 // --- fetchStationTimetable: 판정 표(스펙 §2-A) 5행 + lineHint ---------------
 
 function ok(json: unknown): Response {
-  return { ok: true, status: 200, json: async () => json } as unknown as Response;
+  return { ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json) } as unknown as Response;
 }
 
 /** data.go.kr 표준 envelope. items 0건이면 ""(빈 결과), 1건이면 객체, 다건이면 배열. */

@@ -1,6 +1,13 @@
 import type { BusArrival, BusRouteStop, BusStop } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import {
+  fetchDataGoKrJson,
+  readItems,
+  readResultCode,
+  readResultMsg,
+  readTotalCount,
+} from "./datagokr-envelope";
 
 /**
  * 국토교통부 TAGO(국가대중교통정보센터) 시내버스 provider.
@@ -10,23 +17,10 @@ import { haversineMeters } from "../geo";
  * - A-1 ArvlInfoInqireService/getSttnAcctoArvlPrearngeInfoList — 정류소별 도착예정
  * - A-3 BusRouteInfoInqireService/getRouteAcctoThrghSttnList — 노선 경유정류소
  *
- * data.go.kr 표준 envelope(response.body.items.item, 빈결과 items:"")를
- * 코레일 편의시설과 동일하게 가정한다. 거리 정렬은 Haversine로 직접 계산한다
- * (A-2가 거리순을 보장하지 않으므로 — 산술은 코드의 책임).
+ * envelope 모양은 공용 `datagokr-envelope`가 읽는다. 이 파일에 남은 것은 TAGO
+ * 고유 정책(허용 resultCode·NODATA 통과)뿐이다. 거리 정렬은 Haversine로 직접
+ * 계산한다(A-2가 거리순을 보장하지 않으므로 — 산술은 코드의 책임).
  */
-
-type RawItem = Record<string, unknown>;
-
-/** data.go.kr 표준 envelope에서 item 배열을 안전 추출(코레일과 동일 규약). */
-export function parseTagoItems(raw: unknown): RawItem[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response
-    ?.body?.items;
-  if (!items || items === "") return [];
-  const item = (items as { item?: unknown }).item;
-  if (Array.isArray(item)) return item as RawItem[];
-  if (item && typeof item === "object") return [item as RawItem];
-  return [];
-}
 
 function str(v: unknown): string {
   return v == null ? "" : String(v);
@@ -51,7 +45,7 @@ export function parseBusStops(
   originLat: number,
   originLng: number,
 ): BusStop[] {
-  return parseTagoItems(raw)
+  return readItems(raw)
     .map((it): BusStop => {
       const lat = numF(it.gpslati);
       const lng = numF(it.gpslong);
@@ -74,7 +68,7 @@ export function parseBusStops(
 
 /** A-1 응답 → 도착 임박 순 BusArrival[]. */
 export function parseBusArrivals(raw: unknown): BusArrival[] {
-  return parseTagoItems(raw)
+  return readItems(raw)
     .map((it): BusArrival => ({
       routeId: str(it.routeid),
       routeNo: str(it.routeno),
@@ -90,7 +84,7 @@ export function parseBusArrivals(raw: unknown): BusArrival[] {
 
 /** A-3 응답 → 순번 오름차순 BusRouteStop[]. */
 export function parseBusRouteStops(raw: unknown): BusRouteStop[] {
-  return parseTagoItems(raw)
+  return readItems(raw)
     .map((it): BusRouteStop => ({
       nodeId: str(it.nodeid),
       name: str(it.nodenm),
@@ -107,23 +101,11 @@ const ARV_BASE = "http://apis.data.go.kr/1613000/ArvlInfoInqireService";
 const RTE_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
 
 /**
- * envelope의 response.body.totalCount를 정수로 읽는다(없으면 0).
- * A-2 근접정류소 페이징 종료 조건(개정 노트 §3)에 쓰인다 — 받은 후보 수가
- * totalCount에 도달할 때까지 페이지를 더 받아 "진짜 최근접"을 놓치지 않는다.
- */
-function readTotalCount(raw: unknown): number {
-  const tc = (raw as { response?: { body?: { totalCount?: unknown } } })?.response
-    ?.body?.totalCount;
-  const n = Number(tc);
-  return Number.isFinite(n) ? n : 0;
-}
-
-/**
  * TAGO 한 오퍼레이션을 호출하고 표준 envelope JSON을 돌려준다.
  *
- * graceful 원칙: HTTP 실패·JSON 아님·서비스 에러 envelope는 throw(라우트가
- * 502로 변환, "조회 실패"와 "정보 없음"을 구분). 정상 빈결과(resultCode "00"
- * + items:"")는 throw하지 않고 그대로 반환해 파서가 빈 배열을 만든다.
+ * HTTP·XML·게이트웨이 방어는 공용 `fetchDataGoKrJson`이 한다. 여기 남는 것은
+ * **TAGO의 resultCode 정책**뿐이다: "00"/"0" 정상, NODATA류(03)는 정상 빈결과로
+ * 통과, 그 외는 throw(라우트가 502로 변환 — "조회 실패"와 "정보 없음" 구분).
  */
 async function fetchTago(
   base: string,
@@ -137,33 +119,11 @@ async function fetchTago(
   url.searchParams.set("_type", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
 
-  const res = await fetch(url, init ?? { cache: "no-store" });
-  if (!res.ok) throw new Error(`TAGO ${op} HTTP ${res.status}`);
+  const data = await fetchDataGoKrJson(url, `TAGO ${op}`, init ?? { cache: "no-store" });
 
-  const text = await res.text();
-  let data: unknown;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    // 인증 실패 등은 _type=json이어도 XML 에러로 오기도 한다.
-    throw new Error(`TAGO ${op} 비정상 응답: ${text.slice(0, 200)}`);
-  }
-
-  const svcErr = (data as { OpenAPI_ServiceResponse?: { cmmMsgHeader?: Record<string, unknown> } })
-    .OpenAPI_ServiceResponse;
-  if (svcErr) {
-    const h = svcErr.cmmMsgHeader ?? {};
-    throw new Error(
-      `TAGO ${op} 서비스 에러: ${h.returnAuthMsg ?? h.returnReasonCode ?? "unknown"}`,
-    );
-  }
-
-  const header = (data as { response?: { header?: { resultCode?: unknown; resultMsg?: unknown } } })
-    .response?.header;
-  const code = header?.resultCode == null ? null : String(header.resultCode);
-  // "00"/"0" 정상. NODATA류(03 등)는 정상 빈결과로 통과. 그 외는 장애로 throw.
+  const code = readResultCode(data);
   if (code != null && code !== "00" && code !== "0") {
-    const msg = String(header?.resultMsg ?? code);
+    const msg = readResultMsg(data) ?? code;
     if (code === "03" || /NODATA|NO_?DATA/i.test(msg)) return data;
     throw new Error(`TAGO ${op} resultCode ${code}: ${msg}`);
   }
@@ -181,8 +141,8 @@ export async function fetchTagoNearby(
   if (!env.DATA_GO_KR_API_KEY) return [];
   // A-2가 근접순으로 주는 후보를 totalCount에 도달할 때까지(최대 5페이지=500건
   // 안전상한) 모은 뒤 Haversine 정렬→상위 5 cap(개정 노트 §3) — "10건만 받아 슬라이스" 금지.
-  // readTotalCount는 envelope의 response.body.totalCount를 숫자로 읽는 헬퍼(없으면 0).
-  // 실제 totalCount 호출량은 Task 10에서 실값으로 확정한다.
+  // 종료 조건에 totalCount를 쓰는 것은 A-2가 전체 건수를 준다는 실호출 확인에
+  // 근거한다(공용 readTotalCount는 추출만 하고 신뢰는 보증하지 않는다).
   const PAGE = 100;
   let candidates: BusStop[] = [];
   let total = Infinity;

@@ -1,5 +1,11 @@
 import { env } from "../env";
 import type { Place, PlaceSearchResult } from "../types";
+import {
+  fetchDataGoKrJson,
+  readItems,
+  readResultCode,
+  readResultMsg,
+} from "./datagokr-envelope";
 
 /**
  * 한국관광공사 TourAPI 4.0 키워드 검색 provider.
@@ -38,17 +44,6 @@ interface TourApiItem {
   mapy: string;
   tel: string;
   firstimage: string;
-}
-
-interface TourApiResponse {
-  response: {
-    header: { resultCode: string; resultMsg: string };
-    body: {
-      /** 결과 없으면 빈 문자열("")로 오는 것으로 알려짐 — 방어 처리 */
-      items: { item: TourApiItem[] } | "" | null;
-      totalCount: number;
-    };
-  };
 }
 
 /**
@@ -109,24 +104,22 @@ export async function searchPlacesTourApi(params: {
   url.searchParams.set("numOfRows", String(params.limit ?? 10));
   url.searchParams.set("arrange", "A");
 
-  const res = await fetch(url, { next: { revalidate: 3600 } });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`TourAPI 검색 실패: HTTP ${res.status} ${body}`);
+  const data = await fetchDataGoKrJson(url, "TourAPI 검색", {
+    next: { revalidate: 3600 },
+  });
+  const code = readResultCode(data);
+  // 헤더가 없는 응답(null)은 통과시키던 종전 동작을 유지한다.
+  if (code != null && code !== "0000") {
+    throw new Error(`TourAPI 검색 실패 (${code}): ${readResultMsg(data) ?? ""}`);
   }
 
-  const data = (await res.json()) as TourApiResponse;
-  const header = data.response?.header;
-  if (header && header.resultCode !== "0000") {
-    throw new Error(
-      `TourAPI 검색 실패 (${header.resultCode}): ${header.resultMsg}`,
-    );
-  }
-
-  const items = data.response?.body?.items;
-  const rawItems = items && typeof items === "object" ? items.item : [];
   return {
-    places: rawItems.map(normalizeTourItem),
+    // 종전엔 items.item을 배열로 단정하고 .map을 불렀다. 실호출로 확인한 바
+    // B551011은 1건이어도 배열을 유지하므로 그 가정은 관측 범위에서 참이었다
+    // (2026-08-01, searchKeyword2·locationBasedList2 numOfRows=1). 다만 같은
+    // data.go.kr이라도 B552657·1613000은 단일 객체를 주므로 기관코드마다
+    // 다르다 — 계열별로 알아맞히는 대신 두 모양을 다 받는 공용 파서를 쓴다.
+    places: readItems(data).map((it) => normalizeTourItem(it as unknown as TourApiItem)),
     provider: "tour-api",
     query: params.query,
   };

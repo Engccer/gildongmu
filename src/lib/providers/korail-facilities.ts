@@ -1,6 +1,7 @@
 import { env } from "../env";
 import type { StationFacilities } from "../types";
 import { normalizeStationName } from "../station-match";
+import { fetchDataGoKrJson, readItems } from "./datagokr-envelope";
 
 /**
  * 한국철도공사(B551457) 역 편의시설 provider.
@@ -27,17 +28,6 @@ import { normalizeStationName } from "../station-match";
 const BASE = "https://apis.data.go.kr/B551457/convenience";
 
 type RawItem = Record<string, unknown>;
-
-/** data.go.kr 표준 envelope에서 item 배열을 안전하게 추출한다. */
-export function parseStationItems(raw: unknown): RawItem[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response
-    ?.body?.items;
-  if (!items || items === "") return [];
-  const item = (items as { item?: unknown }).item;
-  if (Array.isArray(item)) return item as RawItem[];
-  if (item && typeof item === "object") return [item as RawItem];
-  return [];
-}
 
 function yn(v: unknown): boolean {
   const s = String(v ?? "")
@@ -95,12 +85,12 @@ export function parseStationFacilities(
   stationRaw: unknown,
   normalizedName: string,
 ): StationFacilities | null {
-  const person = findByName(parseStationItems(weekPersonRaw), normalizedName);
+  const person = findByName(readItems(weekPersonRaw), normalizedName);
   if (!person) return null;
 
   // stn_cd로만 보조 데이터를 조인 — 역명 재매칭은 하지 않는다.
   const code = stnCode(person);
-  const station = findByCode(parseStationItems(stationRaw), code);
+  const station = findByCode(readItems(stationRaw), code);
 
   return {
     stationName: stnName(person) || stnName(station ?? {}) || normalizedName,
@@ -118,9 +108,7 @@ async function fetchList(path: string, key: string): Promise<unknown> {
   url.searchParams.set("numOfRows", "500"); // 전체 406역 + 여유
   url.searchParams.set("pageNo", "1");
   // 전국 목록은 거의 불변 — 하루 캐시로 쿼터(개발계정 일 10,000건)를 아낀다.
-  const res = await fetch(url, { next: { revalidate: 86_400 } });
-  if (!res.ok) throw new Error(`철도공사 편의시설 조회 실패: HTTP ${res.status}`);
-  return res.json();
+  return fetchDataGoKrJson(url, "철도공사 편의시설", { next: { revalidate: 86_400 } });
 }
 
 /**

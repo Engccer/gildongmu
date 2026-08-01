@@ -14,6 +14,7 @@
 
 import type { PrecipLabel, SkyLabel, Weather } from "../types";
 import { env } from "../env";
+import { fetchDataGoKrJson, readItems, readResultCode } from "./datagokr-envelope";
 
 /** 기상청 격자 변환 상수(공식 dfs_xy_conv). */
 const RE = 6371.00877; // 지구 반경(km)
@@ -153,20 +154,6 @@ function numOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * 기상청 표준 envelope items 추출 — `response.body.items.item[]`.
- * (공기질 에어코리아의 직접 배열 quirk와 다름 — 기상청은 표준 item 중첩.)
- * 빈 결과 `items:""` → []. resultCode≠"00" 검증은 fetch 계층 책임.
- */
-function extractItems(raw: unknown): RawItem[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response
-    ?.body?.items;
-  if (!items || typeof items === "string") return [];
-  const item = (items as { item?: unknown }).item;
-  if (item == null) return [];
-  return Array.isArray(item) ? (item as RawItem[]) : [item as RawItem];
-}
-
 /** SKY 코드 → 라벨. 1 맑음·3 구름많음·4 흐림, 그 외 unknown. */
 export function skyLabel(code: unknown): SkyLabel {
   switch (String(code ?? "").trim()) {
@@ -210,7 +197,7 @@ export function parseNcst(raw: unknown): {
   humidity: number | null;
   precipitation: { code: number | null; label: PrecipLabel };
 } | null {
-  const items = extractItems(raw);
+  const items = readItems(raw);
   if (items.length === 0) return null;
   const ptyRaw = ncstValue(items, "PTY");
   return {
@@ -259,7 +246,7 @@ export function parseFcst(
   tempMin: number | null;
   precipProbability: number | null;
 } | null {
-  const items = extractItems(raw);
+  const items = readItems(raw);
   if (items.length === 0) return null;
   const skyRaw = firstFcst(items, "SKY");
   return {
@@ -296,19 +283,10 @@ const NCST_BASE =
 const FCST_BASE =
   "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
 
-/** envelope resultCode 추출(정상 "00"). */
-function resultCode(raw: unknown): string | null {
-  const c = (raw as { response?: { header?: { resultCode?: unknown } } })
-    ?.response?.header?.resultCode;
-  return c != null ? String(c) : null;
-}
-
 /**
- * 기상청 한 오퍼레이션 호출 → 검증된 raw JSON. 공기질 fetchAirkorea 동형 방어:
- * - serviceKey 등 모든 파라미터 URLSearchParams 인코딩.
- * - 인증 실패 등은 dataType=JSON이어도 XML 에러를 HTTP 200으로 보냄 → text()
- *   받아 JSON.parse try-catch, 게이트웨이 에러 envelope·resultCode≠"00" → throw
- *   (라우트 502 — "조회 실패"와 "정보 없음" 구분).
+ * 기상청 한 오퍼레이션 호출 → 검증된 raw JSON.
+ * HTTP·XML·게이트웨이 방어는 공용 `fetchDataGoKrJson`이 하고, 여기 남는 것은
+ * 이 서비스의 정책(정상 코드 "00")과 URL 조립뿐이다.
  */
 async function fetchKma(
   base: string,
@@ -324,20 +302,8 @@ async function fetchKma(
     url.searchParams.set(k, String(v));
   }
 
-  const res = await fetch(url, { next: { revalidate: 1800 } });
-  if (!res.ok) throw new Error(`${label} 조회 실패: HTTP ${res.status}`);
-
-  const text = await res.text();
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    throw new Error(`${label} 비정상 응답(XML?): ${text.slice(0, 200)}`);
-  }
-  if ((raw as { OpenAPI_ServiceResponse?: unknown }).OpenAPI_ServiceResponse) {
-    throw new Error(`${label} 서비스 에러(인증?): ${text.slice(0, 200)}`);
-  }
-  const code = resultCode(raw);
+  const raw = await fetchDataGoKrJson(url, label, { next: { revalidate: 1800 } });
+  const code = readResultCode(raw);
   if (code !== "00") throw new Error(`${label} 비정상 응답: resultCode ${code}`);
   return raw;
 }

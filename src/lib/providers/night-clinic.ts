@@ -6,6 +6,7 @@ import type {
 } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import { fetchDataGoKrJson, readItems, readResultCode, readTotalCount } from "./datagokr-envelope";
 
 /**
  * 내 주변 소아 야간·휴일 진료(달빛어린이병원·소아전문센터) provider —
@@ -50,33 +51,6 @@ function parseHHMM(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** data.go.kr JSON: items.item 은 단일 객체(1건) 또는 배열(N건). 안전 추출. */
-export function extractItems(raw: unknown): RawItem[] {
-  const items = (
-    raw as { response?: { body?: { items?: unknown } } }
-  )?.response?.body?.items;
-  // 빈 결과는 items:"" 또는 items.item 부재로 온다.
-  if (!items || typeof items === "string") return [];
-  const item = (items as { item?: unknown }).item;
-  if (item == null) return [];
-  return Array.isArray(item) ? (item as RawItem[]) : [(item as RawItem)];
-}
-
-/** 응답 본문에서 resultCode·totalCount 추출(envelope 검사용). */
-/** 응급의료정보(B552657) 공통 envelope 헤더 — 같은 서비스의 다른 오퍼레이션도 쓴다. */
-export function header(raw: unknown): { code: string | null; totalCount: number } {
-  const r = (raw as {
-    response?: { header?: { resultCode?: unknown }; body?: { totalCount?: unknown } };
-  })?.response;
-  return {
-    code: r?.header?.resultCode != null ? String(r.header.resultCode) : null,
-    totalCount: (() => {
-      const n = numF(r?.body?.totalCount);
-      return Number.isFinite(n) ? n : 0;
-    })(),
-  };
-}
-
 /** dutyTime1..8 → ClinicHours[8] (index 0..7 = 월~일·공휴일). */
 function parseHours(it: RawItem): ClinicHours[] {
   const hours: ClinicHours[] = [];
@@ -94,7 +68,7 @@ function parseHours(it: RawItem): ClinicHours[] {
  * 좌표 비유한 항목은 제외(지도/거리 정렬 불가 — 좌표 없는 행은 버린다).
  */
 export function parseClinics(raw: unknown): NightClinic[] {
-  return extractItems(raw)
+  return readItems(raw)
     .map((it): NightClinic | null => {
       const lat = numF(it.wgs84Lat);
       const lng = numF(it.wgs84Lon);
@@ -184,11 +158,12 @@ export async function fetchNightClinics(): Promise<NightClinic[]> {
   const key = env.DATA_GO_KR_API_KEY;
   if (!key) return [];
   const url = `${BASE}?serviceKey=${key}&pageNo=1&numOfRows=${NUM_OF_ROWS}&_type=json`;
-  const res = await fetch(url, { next: { revalidate: 86_400 } });
-  if (!res.ok) throw new Error(`달빛어린이병원 목록 조회 실패: HTTP ${res.status}`);
-  const raw = await res.json();
-  const { code, totalCount } = header(raw);
+  const raw = await fetchDataGoKrJson(url, "달빛어린이병원 목록", {
+    next: { revalidate: 86_400 },
+  });
+  const code = readResultCode(raw);
   if (code !== "00") throw new Error(`달빛어린이병원 목록 비정상 응답: resultCode ${code}`);
+  const totalCount = readTotalCount(raw);
   if (totalCount > NUM_OF_ROWS) {
     throw new Error(
       `달빛어린이병원 목록 ${totalCount}건 > 페이지 ${NUM_OF_ROWS} — 페이지네이션 필요(부분집합 금지)`,
@@ -199,7 +174,7 @@ export async function fetchNightClinics(): Promise<NightClinic[]> {
   const clinics = parseClinics(raw).map((c) => ({ ...c, designated: true }));
   // 좌표 누락 행은 거리 정렬이 불가해 버리지만, 조용히 사라지면 "명부에 없다"와
   // 구분이 안 된다. 명부가 작아 한 건도 유의미하므로 드롭 수를 관측만 남긴다.
-  const dropped = extractItems(raw).length - clinics.length;
+  const dropped = readItems(raw).length - clinics.length;
   if (dropped > 0) {
     console.warn(`[night-clinic] 좌표 누락 등으로 제외된 기관 ${dropped}건`);
   }

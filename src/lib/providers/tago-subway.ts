@@ -2,6 +2,7 @@ import { env } from "../env";
 import { parseStationQuery, lineHintMatches, normalizeStationName } from "../station-match";
 import { findStationsByName } from "../subway-stations";
 import { fetchIsHoliday } from "./holiday";
+import { fetchDataGoKrJson, readItems, readResultCode, readTotalCount } from "./datagokr-envelope";
 import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrain } from "../types";
 
 /**
@@ -12,7 +13,7 @@ import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrai
  * - `GetKwrdFndSubwaySttnList`: 역명 키워드 검색(포함검색, 정확매칭은 호출부 책임)
  * - `GetSubwaySttnAcctoSchdulList`: 역·서비스데이별 전체 발차 스케줄
  *
- * 순수 파싱·산출 로직(ensureItemArray 등)과 fetch 통합(fetchStationTimetable)을
+ * 순수 파싱·산출 로직과 fetch 통합(fetchStationTimetable)을
  * 한 파일에 담는다. 첫차·막차 산출의 핵심은 "서비스데이" 개념이다: 00~02시대
  * 심야 열차는 달력상 다음 날이지만 운행상으로는 전날 막차의 연장이다. 03:00
  * 미만 depTime을 +24h 보정해 정렬하면 첫차=최소·막차=최대로 정확히 갈린다.
@@ -33,18 +34,9 @@ const PAGE_SIZE = 500;
 const MAX_LINES = 8;
 const SERVICE_DAY_BOUNDARY = 30000; // HHMMSS 수치 03:00:00(위 헤더의 서비스데이 경계 휴리스틱)
 
-export function ensureItemArray(raw: unknown): unknown[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response?.body?.items;
-  if (items == null || items === "") return [];
-  const item = (items as { item?: unknown }).item;
-  if (item == null) return [];
-  return Array.isArray(item) ? item : [item];
-}
-
 export function parseKeywordStations(raw: unknown): Array<{ id: string; name: string; routeName: string }> {
-  return ensureItemArray(raw)
-    .map((it) => {
-      const o = it as Record<string, unknown>;
+  return readItems(raw)
+    .map((o) => {
       return {
         id: o.subwayStationId == null ? "" : String(o.subwayStationId),
         name: o.subwayStationName == null ? "" : String(o.subwayStationName),
@@ -98,7 +90,9 @@ export function deriveFirstLast(
 }
 
 /**
- * TAGO 오퍼레이션 공통 호출: envelope resultCode·totalCount 검증까지 담당.
+ * TAGO 오퍼레이션 공통 호출. 모양 방어는 공용 `fetchDataGoKrJson`이 하고,
+ * 여기 남는 것은 이 서비스의 정책 둘이다: 허용 resultCode("00"/"03")와
+ * 페이지 누락 금지(totalCount > PAGE_SIZE면 조용한 절단이므로 throw).
  * `subway-service-hours`가 재사용한다 — envelope 처리본을 또 만들지 않는다.
  */
 export async function fetchTago(op: string, params: Record<string, string>): Promise<unknown> {
@@ -106,14 +100,13 @@ export async function fetchTago(op: string, params: Record<string, string>): Pro
   const search = new URLSearchParams({
     serviceKey: key, _type: "json", numOfRows: String(PAGE_SIZE), pageNo: "1", ...params,
   });
-  const res = await fetch(`${BASE}/${op}?${search}`, { next: { revalidate: 86_400 } });
-  if (!res.ok) throw new Error(`TAGO ${op} HTTP ${res.status}`);
-  const raw: unknown = await res.json();
-  const header = (raw as { response?: { header?: { resultCode?: unknown } } })?.response?.header;
-  const code = String(header?.resultCode ?? "");
+  const raw = await fetchDataGoKrJson(`${BASE}/${op}?${search}`, `TAGO ${op}`, {
+    next: { revalidate: 86_400 },
+  });
   // 00 정상. NODATA류가 별코드(03)로 오면 통과(빈 items 처리) — 그 외는 throw.
+  const code = readResultCode(raw) ?? "";
   if (code !== "00" && code !== "03") throw new Error(`TAGO ${op} resultCode ${code}`);
-  const total = Number((raw as { response?: { body?: { totalCount?: unknown } } })?.response?.body?.totalCount ?? 0);
+  const total = readTotalCount(raw);
   if (total > PAGE_SIZE) throw new Error(`TAGO ${op} totalCount(${total}) > ${PAGE_SIZE} — 페이지 누락`);
   return raw;
 }
@@ -135,7 +128,7 @@ export async function fetchScheduleOnce(
   dailyTypeCode: string,
   dir: "U" | "D",
 ): Promise<unknown[]> {
-  return ensureItemArray(
+  return readItems(
     await fetchTago("GetSubwaySttnAcctoSchdulList", {
       subwayStationId: stationId,
       dailyTypeCode,

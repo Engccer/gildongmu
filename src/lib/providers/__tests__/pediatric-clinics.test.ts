@@ -38,6 +38,7 @@ function stubPages(pages: object[]) {
     return {
       ok: true,
       json: async () => pages[pageNo - 1],
+      text: async () => JSON.stringify(pages[pageNo - 1]),
     } as unknown as Response;
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -87,6 +88,7 @@ describe("fetchPediatricClinicsBySido", () => {
       vi.fn(async () => ({
         ok: true,
         json: async () => ({ response: { header: { resultCode: "03" }, body: {} } }),
+        text: async () => JSON.stringify(({ response: { header: { resultCode: "03" }, body: {} } })),
       })) as unknown as typeof fetch,
     );
     await expect(fetchPediatricClinicsBySido("서울특별시")).rejects.toThrow(

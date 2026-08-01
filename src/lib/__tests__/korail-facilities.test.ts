@@ -8,10 +8,10 @@ vi.mock("../env", () => ({
 }));
 
 import {
-  parseStationItems,
   parseStationFacilities,
   fetchStationFacilities,
 } from "../providers/korail-facilities";
+import { readItems } from "../providers/datagokr-envelope";
 
 /**
  * 한국철도공사 편의시설 파서 테스트 — fixture는 2026-06-14 실응답.
@@ -24,22 +24,13 @@ import {
 const wpf = fixture.weekPersonFacilities;
 const sf = fixture.stationFacilities;
 
-describe("parseStationItems", () => {
+// 공용 파서가 이 서비스의 **실응답**을 읽는지 — 모양 일반 계약은
+// providers/__tests__/datagokr-envelope.test.ts가 따로 못 박는다.
+describe("readItems — 코레일 실응답", () => {
   it("envelope에서 item 배열을 뽑는다", () => {
-    const items = parseStationItems(wpf);
+    const items = readItems(wpf);
     expect(Array.isArray(items)).toBe(true);
     expect(items.length).toBe(3);
-  });
-  it("빈 결과(items 없음)는 빈 배열", () => {
-    expect(parseStationItems({ response: { body: { items: "" } } })).toEqual([]);
-    expect(parseStationItems(null)).toEqual([]);
-    expect(parseStationItems({})).toEqual([]);
-  });
-  it("item이 단일 객체로 와도 배열로 정규화", () => {
-    const single = {
-      response: { body: { items: { item: { stn_nm: "서울", stn_cd: "1" } } } },
-    };
-    expect(parseStationItems(single).length).toBe(1);
   });
 });
 
@@ -159,13 +150,14 @@ describe("fetchStationFacilities — 일시 장애 vs 정보 없음 구분", () 
       ok: true,
       status: 200,
       json: async () => json,
+      text: async () => JSON.stringify(json),
     } as unknown as Response;
   }
 
   it("주(weekPerson) HTTP 실패는 throw — 일시 장애를 '정보 없음'으로 뭉개지 않음", async () => {
     stubFetch(async (path) => {
       if (path === "weekPersonFacilities") {
-        return { ok: false, status: 503 } as unknown as Response;
+        return { ok: false, status: 503, text: async () => "" } as unknown as Response;
       }
       return ok(sf);
     });

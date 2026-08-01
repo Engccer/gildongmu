@@ -8,7 +8,7 @@ vi.mock("../../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
 import { fetchIsHoliday } from "../holiday";
 
 function ok(json: unknown): Response {
-  return { ok: true, status: 200, json: async () => json } as unknown as Response;
+  return { ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json) } as unknown as Response;
 }
 
 describe("fetchIsHoliday", () => {
@@ -68,7 +68,7 @@ describe("fetchIsHoliday", () => {
   });
 
   it("HTTP 비정상(!res.ok) → null", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500 }) as unknown as Response));
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, text: async () => "" }) as unknown as Response));
     await expect(fetchIsHoliday("20260101")).resolves.toBeNull();
   });
 

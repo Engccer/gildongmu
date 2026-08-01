@@ -2,6 +2,7 @@ import proj4 from "proj4";
 import type { AirGrade, AirPollutant, AirQuality } from "../types";
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
+import { fetchDataGoKrJson, readItems, readResultCode } from "./datagokr-envelope";
 
 /**
  * 이 지역 공기질(B2) provider — 에어코리아 15073877·15073861.
@@ -31,8 +32,6 @@ const TM_2097 =
   "+ellps=bessel +units=m +no_defs " +
   "+towgs84=-145.907,505.034,685.756,-1.162,2.347,1.592,6.342";
 
-type RawItem = Record<string, unknown>;
-
 function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
 }
@@ -50,27 +49,6 @@ function numOrNull(v: unknown): number | null {
 export function wgs84ToTm(lat: number, lng: number): { tmX: number; tmY: number } {
   const [tmX, tmY] = proj4("EPSG:4326", TM_2097, [lng, lat]);
   return { tmX, tmY };
-}
-
-/**
- * 응답 items 안전 추출. ⚠ 에어코리아(B552584)는 다른 data.go.kr 서비스(items.item)와
- * 달리 **`body.items`가 직접 배열**이다(실응답 검증 2026-06-17). 두 형태 모두 처리.
- */
-function extractItems(raw: unknown): RawItem[] {
-  const items = (raw as { response?: { body?: { items?: unknown } } })?.response
-    ?.body?.items;
-  if (!items || typeof items === "string") return []; // 빈 결과 items:""
-  if (Array.isArray(items)) return items as RawItem[]; // 에어코리아: items 자체가 배열
-  const item = (items as { item?: unknown }).item; // 표준 envelope 폴백
-  if (item == null) return [];
-  return Array.isArray(item) ? (item as RawItem[]) : [item as RawItem];
-}
-
-/** envelope resultCode 추출(정상 "00"). */
-function resultCode(raw: unknown): string | null {
-  const c = (raw as { response?: { header?: { resultCode?: unknown } } })?.response
-    ?.header?.resultCode;
-  return c != null ? String(c) : null;
 }
 
 /** 등급 코드("1"~"4") → AirGrade. 부재·비정상 → "unknown"(낭독 정본). */
@@ -111,7 +89,7 @@ export interface NearestStation {
 
 /** 근접 측정소 응답 → 최근접 1곳(API가 이미 거리순 정렬). 빈결과 → null. */
 export function parseNearestStation(raw: unknown): NearestStation | null {
-  const items = extractItems(raw);
+  const items = readItems(raw);
   if (items.length === 0) return null;
   const it = items[0];
   return {
@@ -126,7 +104,7 @@ export function parseAirMeasure(
   raw: unknown,
   station: NearestStation,
 ): AirQuality | null {
-  const items = extractItems(raw);
+  const items = readItems(raw);
   if (items.length === 0) return null;
   const m = items[0];
   return {
@@ -145,13 +123,12 @@ export function parseAirMeasure(
 }
 
 /**
- * 에어코리아 한 오퍼레이션 호출 → 검증된 raw JSON. tago-bus.ts 동형 방어:
- * - serviceKey 포함 모든 파라미터를 `URLSearchParams`로 인코딩(Base64 키의 `+/=`
- *   가 URL을 깨는 경우 방지 — 현재 hex 키는 무해하나 키 교체 견고성).
- * - **인증 실패 등은 `returnType=json`이어도 XML 에러 body를 HTTP 200으로 보낸다**
- *   → `text()`로 받아 `JSON.parse` try-catch(미처리 시 `res.json()`이 모호한
- *   SyntaxError로 throw). 파싱 실패·서비스 에러·resultCode≠"00" 모두 throw(라우트
- *   502 — "조회 실패"와 "정보 없음" 구분).
+ * 에어코리아 한 오퍼레이션 호출 → 검증된 raw JSON.
+ *
+ * HTTP·XML·게이트웨이 방어는 공용 `fetchDataGoKrJson`이 한다. 여기 남는 것은
+ * 이 서비스의 정책 하나(정상 코드 "00")와 URL 조립뿐이다. serviceKey를
+ * `URLSearchParams`로 인코딩하는 것은 Base64 키의 `+/=`가 URL을 깨는 경우
+ * 방지다(현재 hex 키는 무해하나 키 교체 견고성).
  */
 async function fetchAirkorea(
   base: string,
@@ -166,22 +143,8 @@ async function fetchAirkorea(
   url.searchParams.set("_returnType", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
 
-  const res = await fetch(url, { next: { revalidate } });
-  if (!res.ok) throw new Error(`${label} 조회 실패: HTTP ${res.status}`);
-
-  const text = await res.text();
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    // 인증 실패 등은 _type=json이어도 XML 에러로 오기도 한다(키 만료·env 누락 진단).
-    throw new Error(`${label} 비정상 응답(XML?): ${text.slice(0, 200)}`);
-  }
-  // data.go.kr 공통 게이트웨이 인증 에러 envelope.
-  if ((raw as { OpenAPI_ServiceResponse?: unknown }).OpenAPI_ServiceResponse) {
-    throw new Error(`${label} 서비스 에러(인증?): ${text.slice(0, 200)}`);
-  }
-  const code = resultCode(raw);
+  const raw = await fetchDataGoKrJson(url, label, { next: { revalidate } });
+  const code = readResultCode(raw);
   if (code !== "00") throw new Error(`${label} 비정상 응답: resultCode ${code}`);
   return raw;
 }
