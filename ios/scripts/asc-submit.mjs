@@ -26,9 +26,10 @@
  * 분리했다 — `--apply`만으로는 초안까지만 만들어지고 제출되지 않는다.
  */
 import { createSign } from "node:crypto";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const BUNDLE_ID = "space.dodoplanet.gildongmu";
 const BASE = "https://api.appstoreconnect.apple.com/v1";
@@ -46,6 +47,40 @@ const has = (name) => process.argv.includes(`--${name}`);
 
 const APPLY = has("apply");
 const SUBMIT = has("submit");
+const CHECK = has("check");
+
+const KEY_DIR = join(homedir(), ".appstoreconnect", "private_keys");
+
+/**
+ * 자격 증명 해석. env가 우선이고, 없으면 저장소 `.env.local`(gitignore 대상)을
+ * 읽는다 — 매번 export하지 않게 하려는 것이고, 이 파일은 이미 다른 키들이
+ * 사는 곳이라 새 관리 지점을 만들지 않는다.
+ *
+ * Key ID는 파일명(`AuthKey_XXXXXXXXXX.p8`)에서 유일하게 유도되므로, 키가
+ * 한 개뿐이면 `ASC_KEY_ID`도 생략할 수 있다. 사람이 옮겨 적을 값을 줄이면
+ * 오타로 실패하는 경로가 그만큼 줄어든다.
+ */
+function credentials() {
+  const env = { ...process.env };
+  const local = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), ".env.local");
+  if (existsSync(local)) {
+    for (const line of readFileSync(local, "utf8").split("\n")) {
+      const m = /^(ASC_KEY_ID|ASC_ISSUER_ID|ASC_KEY_PATH)=(.+)$/.exec(line.trim());
+      if (m && !env[m[1]]) env[m[1]] = m[2].trim();
+    }
+  }
+  let keyId = env.ASC_KEY_ID;
+  let keyPath = env.ASC_KEY_PATH;
+  if (!keyPath && existsSync(KEY_DIR)) {
+    const keys = readdirSync(KEY_DIR).filter((f) => /^AuthKey_.+\.p8$/.test(f));
+    if (!keyId && keys.length === 1) keyId = keys[0].slice(8, -3);
+    if (keyId) {
+      const guess = join(KEY_DIR, `AuthKey_${keyId}.p8`);
+      if (existsSync(guess)) keyPath = guess;
+    }
+  }
+  return { keyId, issuerId: env.ASC_ISSUER_ID, keyPath, keysSeen: existsSync(KEY_DIR) ? readdirSync(KEY_DIR).filter((f) => f.endsWith(".p8")) : [] };
+}
 
 /** ES256 JWT. Node의 `ieee-p1363` 인코딩이 JOSE 형식과 같아 DER 변환이 불필요하다. */
 function makeToken(keyId, issuerId, privateKey, nowSec) {
@@ -95,21 +130,50 @@ function step(msg) {
   console.log(`  ${APPLY ? "▶" : "·"} ${msg}`);
 }
 
+/** 자격 증명이 준비됐는지 사람이 읽을 수 있게 진단한다(무엇이 없는지까지). */
+function setupHelp({ keyId, issuerId, keyPath, keysSeen }) {
+  const lines = ["자격 증명이 준비되지 않았다.", ""];
+  lines.push(`  .p8 위치   ${KEY_DIR}`);
+  lines.push(`  발견된 키  ${keysSeen.length ? keysSeen.join(", ") : "(없음)"}`);
+  lines.push(`  Key ID     ${keyId ?? "(미설정)"}`);
+  lines.push(`  Issuer ID  ${issuerId ?? "(미설정)"}`);
+  if (!keysSeen.length) {
+    lines.push("", "① ASC > Users and Access > Integrations > App Store Connect API >");
+    lines.push("   Team Keys > Generate API Key (권한 App Manager 이상)");
+    lines.push(`② 내려받은 AuthKey_*.p8를 ${KEY_DIR}/ 에 둔다 (.p8는 재다운로드 불가)`);
+  }
+  if (!issuerId) {
+    lines.push("", "③ 저장소 .env.local에 아래 한 줄을 추가한다(Key ID는 파일명에서 자동 인식):");
+    lines.push("   ASC_ISSUER_ID=<ASC의 Issuer ID(UUID)>");
+  }
+  lines.push("", "준비되면 검증: node ios/scripts/asc-submit.mjs --check");
+  return lines.join("\n");
+}
+
 async function main() {
+  const cred = credentials();
+  if (!cred.keyId || !cred.issuerId || !cred.keyPath) {
+    throw new Error(setupHelp(cred));
+  }
+  TOKEN = makeToken(cred.keyId, cred.issuerId, readFileSync(cred.keyPath, "utf8"), Math.floor(Date.now() / 1000));
+
+  if (CHECK) {
+    const app = (await api("GET", `/apps?filter[bundleId]=${BUNDLE_ID}`)).data[0];
+    if (!app) throw new Error(`인증은 됐으나 앱을 못 찾음: ${BUNDLE_ID} (키 권한 확인)`);
+    const vs = (await api("GET", `/apps/${app.id}/appStoreVersions?limit=3`)).data;
+    const bs = (await api("GET", `/builds?filter[app]=${app.id}&limit=3`)).data;
+    console.log(`\n인증 성공 — ${app.attributes.name} (${app.id})`);
+    console.log(`  키       ${cred.keyId} (${cred.keyPath})`);
+    console.log(`  최근 버전 ${vs.map((v) => `${v.attributes.versionString} ${v.attributes.appStoreState}`).join(" · ")}`);
+    console.log(`  최근 빌드 ${bs.map((b) => `${b.attributes.version} ${b.attributes.processingState}`).join(" · ")}\n`);
+    return;
+  }
+
   const version = arg("version");
   const buildNumber = arg("build");
   if (!version || !buildNumber) {
-    throw new Error("사용법: --version 1.3 --build 9 [--notes-ko FILE --notes-en FILE] [--apply [--submit]]");
+    throw new Error("사용법: --check | --version 1.3 --build 9 [--notes-ko FILE --notes-en FILE] [--apply [--submit]]");
   }
-
-  const keyId = process.env.ASC_KEY_ID;
-  const issuerId = process.env.ASC_ISSUER_ID;
-  if (!keyId || !issuerId) throw new Error("ASC_KEY_ID·ASC_ISSUER_ID 환경변수가 필요하다");
-  const keyPath =
-    process.env.ASC_KEY_PATH ??
-    join(homedir(), ".appstoreconnect", "private_keys", `AuthKey_${keyId}.p8`);
-  if (!existsSync(keyPath)) throw new Error(`API 키 파일 없음: ${keyPath}`);
-  TOKEN = makeToken(keyId, issuerId, readFileSync(keyPath, "utf8"), Math.floor(Date.now() / 1000));
 
   const notes = {};
   for (const [k, file] of [["ko", arg("notes-ko")], ["en", arg("notes-en")]]) {
