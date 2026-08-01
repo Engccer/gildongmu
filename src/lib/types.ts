@@ -835,3 +835,36 @@ export interface BarrierFreeDetail {
   /** 값 있는 편의시설만, 빈 배열 가능 */
   facilities: BarrierFreeFacility[];
 }
+
+/**
+ * 근처 문화행사 — 서울 `culturalEventInfo`(OA-15486) 슬림 투영.
+ *
+ * 원본 24필드 중 "행동을 바꾸는" 것만 남긴다(설계 §2-5). 전화(`INQUIRY`)는
+ * `"070-… / 02-…"`처럼 번호가 여러 개인 자유텍스트라 tel: 링크로 만들 수 없어
+ * 버리고, 후속 행동은 `link`(홈페이지) 하나로 둔다.
+ */
+export interface CultureEvent {
+  /** HMPG_ADDR의 cultcode(실측 전량 고유). 추출 실패 시 제목|장소|시작일 복합키 */
+  id: string;
+  title: string;
+  /** CODENAME — 전시/미술·교육/체험·콘서트 등 */
+  category: string;
+  place: string;
+  /** GUNAME — 자치구 */
+  district: string;
+  /** DATE 원문(`2026-08-01~2026-09-20`) — 이미 완성 표기라 재조합하지 않는다 */
+  dateText: string;
+  /** PRO_TIME(`19:30`, `10:00~18:00`) — 자유텍스트 */
+  timeText: string;
+  isFree: boolean;
+  /** 유료일 때의 요금 원문. 무료면 부재 */
+  fee?: string;
+  /** USE_TRGT — "누구나"·"24개월이상 관람가능" 등 자유텍스트(최대 53자 실측) */
+  target: string;
+  /** HMPG_ADDR — 상세·예매로 가는 유일한 후속 행동 */
+  link?: string;
+  lat: number;
+  lng: number;
+  /** 조회 좌표로부터의 거리(m, 코드 계산) */
+  distanceMeters: number;
+}

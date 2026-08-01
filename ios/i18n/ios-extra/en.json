@@ -119,6 +119,7 @@
       "barrierFree": "Barrier-free attractions",
       "kids": "Kids places",
       "around": "Look around",
+      "events": "Cultural events",
       "conditions": "Weather & air quality",
       "announceEmpty": "No nearby results",
       "announceCount": "{count} {unit} nearby",
@@ -173,7 +174,9 @@
       "skyPartly": "Partly cloudy",
       "rainSnow": "Rain or snow",
       "airStationLine": "{name} monitoring station, {distance}km",
-      "whereAmIServerFailed": "Couldn't load information for your location"
+      "whereAmIServerFailed": "Couldn't load information for your location",
+      "eventsEmpty": "No cultural events are running near you today",
+      "unitEvent": "events"
     },
     "settings": {
       "title": "Settings",

@@ -119,6 +119,7 @@
       "barrierFree": "バリアフリー観光地",
       "kids": "子どもの遊び場",
       "around": "周辺を探索",
+      "events": "文化イベント",
       "conditions": "天気・大気質",
       "announceEmpty": "周辺に結果がありません",
       "announceCount": "周辺の{unit}{count}件",
@@ -173,7 +174,9 @@
       "skyPartly": "晴れ時々くもり",
       "rainSnow": "雨または雪",
       "airStationLine": "{name}測定所、{distance}km",
-      "whereAmIServerFailed": "現在地の情報を取得できませんでした"
+      "whereAmIServerFailed": "現在地の情報を取得できませんでした",
+      "eventsEmpty": "近くで今日開催中の文化イベントはありません",
+      "unitEvent": "件"
     },
     "settings": {
       "title": "設定",

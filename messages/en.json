@@ -348,6 +348,25 @@
     "geoUnsupported": "This browser doesn't support location.",
     "source": "Source: KakaoMap place search. Indoor/outdoor is an estimate — please confirm before visiting."
   },
+  "eventsNearby": {
+    "button": "Cultural events near me",
+    "refresh": "Refresh",
+    "locating": "Checking your location…",
+    "loading": "Looking up nearby cultural events…",
+    "empty": "No cultural events are running near you today.",
+    "error": "Could not load cultural events. Please try again shortly.",
+    "ready": "Cultural events near you.",
+    "asOf": "As of {time}",
+    "distance": "about {distance}",
+    "free": "Free",
+    "paid": "Paid {fee}",
+    "target": "For {text}",
+    "detail": "Event details",
+    "detailAction": "{name} event details",
+    "geoDenied": "Location permission is required. Please allow location access in your browser.",
+    "geoUnsupported": "This browser doesn't support location.",
+    "source": "Source: Seoul Open Data Plaza cultural events. Only events running today are shown."
+  },
   "barrierFreeNearby": {
     "button": "Barrier-free attractions near me",
     "refresh": "Refresh",

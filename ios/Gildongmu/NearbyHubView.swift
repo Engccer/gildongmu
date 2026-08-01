@@ -14,6 +14,7 @@ struct NearbyHubView: View {
                 NavigationLink(appLocalized("ios.nearby.barrierFree")) { BarrierFreeNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.kids")) { KidsNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.around")) { AroundNearbyView() }
+                NavigationLink(appLocalized("ios.nearby.events")) { EventsNearbyView() }
                 NavigationLink(appLocalized("walkInfra.button")) { WalkInfraNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView() }
             }

@@ -86,6 +86,18 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    gate: hasSeoulOpenDataKey,
+    declaration: {
+      name: "get_nearby_events",
+      description:
+        "주변에서 오늘 진행 중인 문화행사(전시·공연·체험 프로그램)를 거리순으로 보여준다. 서울 지역만 제공된다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {},
+      },
+    },
+  },
+  {
     gate: hasKakaoKey,
     declaration: {
       name: "get_surroundings",

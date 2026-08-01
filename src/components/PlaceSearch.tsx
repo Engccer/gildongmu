@@ -74,6 +74,7 @@ export function PlaceSearch({
   canShowBarrierFree = false,
   canShowAir = false,
   canShowKids = false,
+  canShowEvents = false,
   canShowSurroundings = false,
   canShowWhereAmI = false,
   canShowTransit = false,
@@ -99,6 +100,8 @@ export function PlaceSearch({
   canShowAir?: boolean;
   /** 카카오 키가 있어 근처 아이 놀 곳(키즈 장소)을 제공할 수 있는지 */
   canShowKids?: boolean;
+  /** 서울 열린데이터 키가 있어 내 주변 문화행사를 제공할 수 있는지 */
+  canShowEvents?: boolean;
   /** 카카오 키가 있어 내 주변 둘러보기(주변 시설·방향)를 제공할 수 있는지 */
   canShowSurroundings?: boolean;
   /** 카카오 키가 있어 현재 위치 정위 카드를 제공할 수 있는지 */
@@ -732,6 +735,7 @@ export function PlaceSearch({
         canShowClinic={canShowClinic}
         canShowBarrierFree={canShowBarrierFree}
         canShowKids={canShowKids}
+        canShowEvents={canShowEvents}
         canShowSurroundings={canShowSurroundings}
         canShowAir={canShowAir}
         onBack={backFromNearbyHub}

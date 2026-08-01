@@ -12,6 +12,7 @@ const NEARBY: Record<string, { catalog: string; description: string }> = {
   clinic: { catalog: "nearby-clinic", description: "주변 소아 야간·휴일 진료" },
   kids: { catalog: "nearby-kids", description: "주변 아이 놀 곳" },
   around: { catalog: "nearby-around", description: "주변 둘러보기(편의점·카페 등)" },
+  events: { catalog: "nearby-events", description: "주변 오늘 진행 중인 문화행사(서울)" },
   "barrier-free": { catalog: "nearby-barrier-free", description: "주변 무장애 관광지" },
   walk: { catalog: "nearby-walk-infra", description: "주변 보행 인프라(음향신호기·횡단보도·점자블록)" },
 };
@@ -35,7 +36,7 @@ function makeNearby(verb: string, catalog: string, description: string) {
 }
 
 export const nearbyCommand = defineCommand({
-  meta: { name: "nearby", description: "내 주변 정보 8종" },
+  meta: { name: "nearby", description: "내 주변 정보 9종" },
   subCommands: Object.fromEntries(
     Object.entries(NEARBY).map(([verb, v]) => [verb, makeNearby(verb, v.catalog, v.description)]),
   ),

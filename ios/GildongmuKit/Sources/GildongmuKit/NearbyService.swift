@@ -48,6 +48,15 @@ public struct NearbyService: Sendable {
         return response.places
     }
 
+    /// 오늘 진행 중인 근처 문화행사(서울). 라우트 기본 상한은 12라 "더 보기" 재료를
+    /// limit으로 명시 확보한다(kids·around 동형).
+    public func cultureEvents(lat: Double, lng: Double) async throws -> [CultureEvent] {
+        let response: EventsNearbyResponse = try await client.get(
+            "/api/events/nearby",
+            query: coordQuery(lat: lat, lng: lng) + [URLQueryItem(name: "limit", value: String(fetchLimit))])
+        return response.events
+    }
+
     /// 노선 경유정류소(lazy 펼치기). cityCode는 source=="tago"일 때만 쿼리에 포함(웹 BusRouteStops.tsx 미러).
     public func busRouteStops(source: String, cityCode: String?, routeId: String) async throws -> [BusRouteStop] {
         var query = [

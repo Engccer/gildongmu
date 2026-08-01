@@ -99,3 +99,23 @@ public func whereAmIToPlace(_ data: WhereAmIData, lat: Double, lng: Double, lang
         link: nil,
         distanceMeters: nil)
 }
+
+/// 문화행사 → Place. name은 **행사명**이다(사용자가 목록에서 고른 것이 행사이므로
+/// 상세 제목도 행사여야 한다). 좌표는 개최 장소라 길찾기가 그대로 성립한다.
+/// ⚠ 주소 슬롯은 비운다 — 행사 데이터엔 주소가 없고 `place`는 "강동아트센터 아트랑
+/// 1층~3층" 같은 시설 설명이라, 넣으면 소비처가 그것을 도로명 주소로 낭독한다
+/// (nightClinicToPlace 주석과 같은 함정, 방향만 반대). 장소 설명은 도메인 섹션이 밝힌다.
+public func cultureEventToPlace(_ e: CultureEvent) -> Place {
+    Place(
+        id: e.id,
+        name: e.title,
+        category: e.category,
+        address: "",
+        roadAddress: "",
+        englishAddress: nil,
+        lat: e.lat,
+        lng: e.lng,
+        phone: nil,
+        link: e.link,
+        distanceMeters: Double(e.distanceMeters))
+}

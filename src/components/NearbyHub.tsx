@@ -16,6 +16,7 @@ import { BikeStations } from "./BikeStations";
 import { NightClinicsNearby } from "./NightClinicsNearby";
 import { BarrierFreeNearby } from "./BarrierFreeNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
+import { CultureEventsNearby } from "./CultureEventsNearby";
 import { SurroundingsNearby } from "./SurroundingsNearby";
 import { WalkInfraNearby } from "./WalkInfraNearby";
 import { LocalConditions } from "./LocalConditions";
@@ -36,6 +37,7 @@ export function NearbyHub({
   canShowClinic,
   canShowBarrierFree,
   canShowKids,
+  canShowEvents,
   canShowSurroundings,
   canShowAir,
   onBack,
@@ -47,6 +49,7 @@ export function NearbyHub({
   canShowClinic: boolean;
   canShowBarrierFree: boolean;
   canShowKids: boolean;
+  canShowEvents: boolean;
   canShowSurroundings: boolean;
   canShowAir: boolean;
   onBack: () => void;
@@ -132,6 +135,11 @@ export function NearbyHub({
       {canShowKids && (
         <div className="mt-4">
           <KidsPlacesNearby />
+        </div>
+      )}
+      {canShowEvents && (
+        <div className="mt-4">
+          <CultureEventsNearby />
         </div>
       )}
       {canShowSurroundings && (
