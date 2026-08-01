@@ -16,6 +16,14 @@ function fixAt(metersNorth: number, accuracy = 10): BeaconFix {
 }
 
 describe("beaconStep", () => {
+  it("음수 accuracy(무효 좌표 신호)는 weak이고 앵커를 잡지 않는다", () => {
+    // CoreLocation은 horizontalAccuracy < 0으로 좌표 무효를 신호한다. 웹 입력엔
+    // 오지 않지만 가드가 갈리면 "두 플랫폼 단일 정본"이 거짓이 된다(spec §3.2).
+    const { state, announce } = beaconStep(INITIAL_BEACON_STATE, fixAt(300, -1), DEST);
+    expect(announce.kind).toBe("weak");
+    expect(state.anchorDistance).toBeNull();
+  });
+
   it("첫 fix는 first·speak=true·앵커 설정", () => {
     const { state, announce } = beaconStep(INITIAL_BEACON_STATE, fixAt(300), DEST);
     expect(announce.kind).toBe("first");

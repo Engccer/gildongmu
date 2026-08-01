@@ -72,9 +72,13 @@ export function beaconStep(
   const distance = haversineMeters(fix.lat, fix.lng, dest.lat, dest.lng);
 
   // 신호 약함/무효: 추세·앵커 불변(상태 그대로 반환).
+  // ⚠ `!(accuracy > 0)`은 NaN·0·음수를 한 번에 거른다. 음수는 iOS
+  // `CLLocation.horizontalAccuracy`가 **좌표 무효**를 신호하는 값이고(웹 입력엔
+  // 오지 않는다), 통과시키면 `deadBand = max(15, -1) = 15`가 되어 쓰레기 좌표가
+  // 앵커를 잡는다. 가드가 플랫폼마다 갈리면 "단일 정본"이 거짓이 되므로 웹도 같이 좁힌다.
   if (
     !Number.isFinite(distance) ||
-    !Number.isFinite(fix.accuracy) ||
+    !(fix.accuracy > 0) ||
     fix.accuracy > MAX_USABLE_ACCURACY_M
   ) {
     return {
