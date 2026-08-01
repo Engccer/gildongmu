@@ -277,6 +277,9 @@ export async function fetchSeoulMetroFacilities(
         if (items.length > 0) groups.push({ kind: "elevatorLocation", facilities: items });
       }
     } else {
+      // 이유를 버리면 "인증키가 유효하지 않습니다"라는 진단이 어디에도 남지 않는다
+      // (사용자는 "보강 실패"만 듣는다 — 로그가 유일한 단서다).
+      console.error("[seoul-metro-facilities] 엘리베이터 보강 실패:", settled.reason);
       supplementFailed = true;
     }
   }

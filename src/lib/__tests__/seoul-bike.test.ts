@@ -82,6 +82,15 @@ describe("fetchNearbyBikeStations", () => {
     await expect(fetchNearbyBikeStations(O_LAT, O_LNG)).rejects.toThrow();
   });
 
+  it("무효 키의 HTTP 200 + XML 본문 → 인증키를 지목하고 throw (SyntaxError 위장 금지)", async () => {
+    // 서울 열린데이터는 키가 무효하면 /json/ 경로여도 200 + XML을 준다.
+    // res.json()을 그냥 부르면 `Unexpected token '<'`가 되어 502의 원인이 가려진다.
+    const xml =
+      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(xml, { status: 200 }));
+    await expect(fetchNearbyBikeStations(O_LAT, O_LNG)).rejects.toThrow(/INFO-100.*인증키/);
+  });
+
   it("RESULT/CODE 부재(비정상 응답)도 throw(조용한 성공 금지)", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       new Response(JSON.stringify({ rentBikeStatus: { row: [] } }), { status: 200 }),

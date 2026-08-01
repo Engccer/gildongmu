@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { hasKakaoKey, hasNcpMapsKeys } from "@/lib/env";
 import { coordToAddress } from "@/lib/providers/kakao-address";
 import { reverseRoadAddress } from "@/lib/providers/ncp-geocode";
@@ -23,8 +24,8 @@ import { reverseRoadAddress } from "@/lib/providers/ncp-geocode";
  */
 
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
 });
 
 export async function GET(request: NextRequest) {

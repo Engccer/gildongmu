@@ -1,5 +1,14 @@
-import { describe, it, expect } from "vitest";
-import { parseElevatorRows, composeElevatorItems } from "../seoul-elevator";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+vi.mock("../../env", () => ({
+  env: { SEOUL_OPEN_DATA_KEY: "test-key" },
+}));
+
+import {
+  parseElevatorRows,
+  composeElevatorItems,
+  fetchSeoulElevators,
+} from "../seoul-elevator";
 
 const raw = {
   tbTraficElvtr: {
@@ -32,5 +41,31 @@ describe("composeElevatorItems — 방위·거리 ko 합성", () => {
   });
   it("seed 좌표가 없으면 빈 배열(방위 없는 나열은 무가치)", () => {
     expect(composeElevatorItems(parseElevatorRows(raw), [])).toEqual([]);
+  });
+});
+
+/**
+ * 따릉이·문화행사·혼잡도와 **같은 키·같은 호스트**를 쓰는 네 번째 소비자다.
+ * 키가 죽으면 넷이 동시에 HTTP 200 + XML을 받으므로 진단 문구도 같아야 한다
+ * (이 provider는 호출부가 `Promise.allSettled`로 감싸 실패를 강등하기 때문에
+ * 메시지가 유일한 단서다).
+ */
+describe("fetchSeoulElevators — HTTP 계층", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("무효 키의 HTTP 200 + XML 본문 → 인증키를 지목하고 throw", async () => {
+    const xml =
+      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () => new Response(xml, { status: 200 }),
+    );
+    await expect(fetchSeoulElevators()).rejects.toThrow(/INFO-100.*인증키/);
+  });
+
+  it("HTTP 실패는 상태코드를 남기고 throw", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () => new Response("nope", { status: 503 }),
+    );
+    await expect(fetchSeoulElevators()).rejects.toThrow(/503/);
   });
 });

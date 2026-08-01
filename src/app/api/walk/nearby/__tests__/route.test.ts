@@ -82,3 +82,25 @@ describe("GET /api/walk/nearby", () => {
     expect(mockGetWalk).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * 이 라우트는 커버리지 마커가 없다(OSM은 전 지구) — 그래서 빈 문자열이
+ * (0,0)으로 coerce되면 "서비스 지역 밖"이 아니라 **널 아일랜드로 실제 조회**가
+ * 나간다. 누락(`?? undefined`)은 이미 막혀 있었고 빈 문자열만 남아 있었다(백로그 D3).
+ */
+describe("좌표 파라미터 누락 (D3)", () => {
+  beforeEach(() => {
+    mockGetWalk.mockReset();
+    mockRateLimit.mockReturnValue(true);
+  });
+
+  it("lat·lng 없음 → 400, upstream 미호출", async () => {
+    expect((await GET(makeRequest(""))).status).toBe(400);
+    expect(mockGetWalk).not.toHaveBeenCalled();
+  });
+
+  it("빈 문자열 좌표 → 400, upstream 미호출 (널 아일랜드 조회 금지)", async () => {
+    expect((await GET(makeRequest("?lat=&lng="))).status).toBe(400);
+    expect(mockGetWalk).not.toHaveBeenCalled();
+  });
+});

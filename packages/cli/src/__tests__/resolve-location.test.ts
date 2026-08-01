@@ -15,6 +15,16 @@ describe("resolveLocation", () => {
     expect(apiRequest).not.toHaveBeenCalled();
   });
 
+  it("빈 문자열 좌표는 (0,0)이 아니라 LocationError", async () => {
+    // Number("") === 0이고 Number.isFinite(0)이 true라 `--lat= --lng=`가
+    // 클라이언트에서 (0,0)으로 확정돼 서버에 "유효한 좌표"로 도착한다.
+    // 서버의 coord-param 수정으로는 못 막는 경로(서버가 보기엔 정상 좌표다).
+    const { resolveLocation, LocationError } = await import("../lib/resolve-location.js");
+    await expect(resolveLocation({ lat: "", lng: "" })).rejects.toBeInstanceOf(LocationError);
+    await expect(resolveLocation({ lat: "  ", lng: "127.1" })).rejects.toBeInstanceOf(LocationError);
+    expect(apiRequest).not.toHaveBeenCalled();
+  });
+
   it("--lat/--lng 한쪽만 지정하면 LocationError", async () => {
     const { resolveLocation, LocationError } = await import("../lib/resolve-location.js");
     await expect(resolveLocation({ lat: "37.5" })).rejects.toBeInstanceOf(LocationError);

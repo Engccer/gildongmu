@@ -1,6 +1,7 @@
 import type { SeoulMetroFacility, SubwayStation } from "../types";
 import { env } from "../env";
 import { normalizeStationName } from "../station-match";
+import { readSeoulOpenJson } from "./seoul-open-json";
 import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
 import { haversineMeters } from "../geo";
 
@@ -62,7 +63,8 @@ export async function fetchSeoulElevators(): Promise<ElevatorPoint[]> {
       next: { revalidate: 86_400 },
     });
     if (!res.ok) throw new Error(`tbTraficElvtr HTTP ${res.status}`);
-    const raw: unknown = await res.json();
+    // res.json() 직접 호출 금지 — 무효 키는 200 + XML로 와서 원인 없는 SyntaxError가 된다.
+    const raw: unknown = await readSeoulOpenJson(res, "tbTraficElvtr");
     const svc = (raw as { tbTraficElvtr?: { RESULT?: { CODE?: string }; row?: unknown[] } })
       ?.tbTraficElvtr;
     if (svc?.RESULT?.CODE !== "INFO-000") {

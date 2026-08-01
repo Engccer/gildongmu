@@ -35,7 +35,11 @@ export async function resolveLocation(
   opts: { required?: boolean } = {},
 ): Promise<{ lat: number; lng: number; label?: string } | null> {
   if (args.lat !== undefined && args.lng !== undefined) {
-    const lat = Number(args.lat), lng = Number(args.lng);
+    // `Number("") === 0`이고 `Number.isFinite(0)`이 true라, 빈 값을 그냥 Number에
+    // 넘기면 `--lat= --lng=`가 (0,0)으로 확정돼 서버엔 "유효한 좌표"로 도착한다
+    // (서버의 coord-param 가드는 이 경로를 못 막는다 — 서버가 보기엔 정상 좌표다).
+    const num = (v: string) => (v.trim() === "" ? NaN : Number(v));
+    const lat = num(args.lat), lng = num(args.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       throw new LocationError("--lat/--lng는 십진 좌표여야 합니다 (예: --lat 37.538 --lng 127.137)");
     }

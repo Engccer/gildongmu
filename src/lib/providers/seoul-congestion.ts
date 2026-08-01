@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { env } from "../env";
+import { readSeoulOpenJson } from "./seoul-open-json";
 
 /**
  * 서울 실시간 인구 혼잡도 provider — `citydata_ppltn`.
@@ -42,32 +43,6 @@ export interface CongestionReading {
 
 function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
-}
-
-/**
- * 본문을 JSON으로 읽되, **JSON이 아닐 때 원인을 말하고 죽는다.**
- *
- * 서울 열린데이터는 인증키가 무효하면 `/json/` 경로로 요청해도 **HTTP 200 +
- * XML 본문**을 준다(실측: `<RESULT><CODE>INFO-100</CODE><MESSAGE>인증키가
- * 유효하지 않습니다…`). `res.json()`을 그냥 부르면 `Unexpected token '<'`라는
- * 원인 없는 SyntaxError가 되고, 그 502를 코드 결함으로 오진하게 된다
- * (data.go.kr의 같은 함정을 `fetchDataGoKrJson`이 이미 이렇게 막고 있다).
- *
- * ⚠ 같은 함정이 이 호스트를 쓰는 따릉이·문화행사 provider에도 남아 있다.
- * 키는 셋이 공유하므로 키가 죽으면 셋 다 같은 방식으로 오진된다(백로그 D4).
- */
-export async function readSeoulOpenJson(res: Response, label: string): Promise<unknown> {
-  const text = await res.text();
-  const head = text.trimStart().slice(0, 1);
-  if (head !== "{" && head !== "[") {
-    const code = /<CODE>([^<]+)<\/CODE>/.exec(text)?.[1];
-    throw new Error(
-      code
-        ? `${label} 비-JSON 응답(${code}) — 인증키 유효성을 먼저 확인할 것`
-        : `${label} 비-JSON 응답 — 인증키 유효성을 먼저 확인할 것`,
-    );
-  }
-  return JSON.parse(text);
 }
 
 /**

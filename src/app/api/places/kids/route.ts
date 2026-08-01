@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { latParam, lngParam } from "@/lib/coord-param";
 import { hasKakaoKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
@@ -27,8 +28,8 @@ export const dynamic = "force-dynamic";
 const DEFAULT_LIMIT = 8;
 
 const querySchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lng: z.coerce.number().min(-180).max(180),
+  lat: latParam(),
+  lng: lngParam(),
   limit: z.coerce.number().int().min(1).max(NEARBY_LIMIT_MAX).optional(),
 });
 
