@@ -262,7 +262,10 @@ struct DirectionsEndpointSearchView: View {
         candidateFocusTask?.cancel()
         candidateFocusTask = Task { @MainActor in
             proxy.scrollTo(first.scroll, anchor: .top)
-            try? await Task.sleep(for: .milliseconds(400))
+            // 결과 통지("총 N건…")가 끝난 뒤에 옮긴다. 포커스 이동은 진행 중인 VO 발화를
+            // 가로채므로 먼저 옮기면 안내가 중간에 끊긴다(실기기 확인 2026-08-02).
+            // 고정 지연으로는 못 맞춘다 — 낭독 길이가 로케일·말하기 속도·건수에 따라 다르다.
+            await awaitAnnouncementFinish(timeoutMilliseconds: 4000)
             guard !Task.isCancelled else { return }
             applyCandidateFocus(first.focus)
             #if DEBUG
@@ -280,6 +283,32 @@ struct DirectionsEndpointSearchView: View {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             applyCandidateFocus(first.focus)
+        }
+    }
+
+    /// 진행 중인 VoiceOver 통지가 끝날 때까지 기다린다(최대 `timeoutMilliseconds`).
+    ///
+    /// 타임아웃 폴백이 필수다. 통지가 이미 끝났거나 VO가 삼킨 경우(다른 통지에
+    /// 잠식되면 finish 이벤트가 안 온다)에도 포커스는 반드시 옮겨야 하기 때문이다.
+    /// VO가 꺼져 있으면 통지 자체가 없으므로 스크롤 정착 시간만 준다.
+    private func awaitAnnouncementFinish(timeoutMilliseconds: UInt64) async {
+        guard UIAccessibility.isVoiceOverRunning else {
+            try? await Task.sleep(for: .milliseconds(400))
+            return
+        }
+        let finished = NotificationCenter.default.notifications(
+            named: UIAccessibility.announcementDidFinishNotification
+        )
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                var iterator = finished.makeAsyncIterator()
+                _ = await iterator.next()
+            }
+            group.addTask {
+                try? await Task.sleep(for: .milliseconds(timeoutMilliseconds))
+            }
+            _ = await group.next()
+            group.cancelAll()
         }
     }
 
