@@ -208,7 +208,7 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "No se puede reproducir la guía sonora. Consulta el estado en pantalla.",
+      "soundUnavailable": "No se puede reproducir la guía sonora.",
       "stopped": "Seguimiento de distancia detenido."
     }
   }

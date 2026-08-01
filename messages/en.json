@@ -100,7 +100,7 @@
       "heading": "Car route to {name}",
       "summary": "Total {distance}, about {minutes} min. Estimated taxi fare {taxi} KRW.",
       "toll": "Toll {toll} KRW not included.",
-      "disclaimer": "Estimates based on live traffic. For turn-by-turn driving, use a map app via the directions links."
+      "disclaimer": "Estimates based on live traffic."
     },
     "transit": {
       "button": "Public transit to here",
@@ -448,8 +448,8 @@
       "mic_denied": "Microphone permission is required. Please allow it in browser settings.",
       "mic_failed": "Could not start the microphone.",
       "no_audio": "Nothing was dictated.",
-      "too_short": "The dictation is too short. Please speak a little longer.",
-      "no_text": "Could not recognize the speech. Please try again.",
+      "too_short": "The dictation is too short.",
+      "no_text": "Could not recognize the speech.",
       "rate_limited": "Too many requests.",
       "stt_failed": "Voice recognition failed."
     }
@@ -561,11 +561,11 @@
     "weak": "Weak signal",
     "denied": "Location permission required",
     "screenHint": "Keep the screen on and the phone in hand. Guidance stops when the screen turns off.",
-    "straightLineNote": "Straight-line distance. Use a maps app for the actual route."
+    "straightLineNote": "Straight-line distance."
   },
   "offline": {
     "heading": "You are offline",
-    "body": "Check your connection and try again. Search works only online."
+    "body": "Search works only online."
   },
   "surroundingsNearby": {
     "button": "Explore nearby",

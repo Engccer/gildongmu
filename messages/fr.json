@@ -100,7 +100,7 @@
       "heading": "Itinéraire en voiture vers {name}",
       "summary": "Total {distance}, environ {minutes} min. Tarif estimé du taxi {taxi} KRW.",
       "toll": "Péage {toll} KRW non inclus.",
-      "disclaimer": "Estimations basées sur le trafic en temps réel. Pour une navigation détaillée, utilisez une application de carte via les liens d'itinéraire."
+      "disclaimer": "Estimations basées sur le trafic en temps réel."
     },
     "transit": {
       "button": "Transports en commun jusqu'ici",
@@ -448,8 +448,8 @@
       "mic_denied": "L'autorisation du microphone est requise. Veuillez l'autoriser dans les paramètres du navigateur.",
       "mic_failed": "Impossible de démarrer le microphone.",
       "no_audio": "Rien n'a été dicté.",
-      "too_short": "La dictée est trop courte. Veuillez parler un peu plus longtemps.",
-      "no_text": "Impossible de reconnaître la parole. Veuillez réessayer.",
+      "too_short": "La dictée est trop courte.",
+      "no_text": "Impossible de reconnaître la parole.",
       "rate_limited": "Trop de requêtes.",
       "stt_failed": "Échec de la reconnaissance vocale."
     }
@@ -561,11 +561,11 @@
     "weak": "Signal faible",
     "denied": "Autorisation de localisation requise",
     "screenHint": "Gardez l'écran allumé et le téléphone en main. Le guidage s'arrête quand l'écran s'éteint.",
-    "straightLineNote": "Distance à vol d'oiseau. Utilisez une appli de cartes pour l'itinéraire réel."
+    "straightLineNote": "Distance à vol d'oiseau."
   },
   "offline": {
     "heading": "Vous êtes hors ligne",
-    "body": "Vérifiez votre connexion et réessayez. La recherche ne fonctionne qu'en ligne."
+    "body": "La recherche ne fonctionne qu'en ligne."
   },
   "surroundingsNearby": {
     "button": "Explorer les environs",

@@ -208,7 +208,7 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "La guida sonora non può essere riprodotta. Controlla lo stato sullo schermo.",
+      "soundUnavailable": "La guida sonora non può essere riprodotta.",
       "stopped": "Tracciamento della distanza interrotto."
     }
   }
