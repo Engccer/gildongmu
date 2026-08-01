@@ -117,20 +117,27 @@ struct DirectionsEndpointSearchView: View {
     /// 나타났다(2026-08-02). 같은 파일의 `focusedRecent`처럼 **항목 정체성**을 값으로
     /// 쓰는 것이 정본이다.
     @AccessibilityFocusState private var focusedCandidate: String?
+    @State private var candidateFocusTask: Task<Void, Never>?
 
     /// 후보 행의 안정 키. 장소와 주소가 한 목록에 섞이므로 접두사로 네임스페이스를 가른다.
     private static func candidateKey(place: Place) -> String { "place:\(place.id)" }
     private static func candidateKey(address: JusoAddress) -> String { "addr:\(address.roadAddr)" }
 
     /// 렌더 순서(장소 먼저, 그다음 주소)와 일치하는 첫 후보. 둘 다 비면 nil.
-    private var firstCandidateKey: String? {
-        if let place = model.places.first { return Self.candidateKey(place: place) }
-        if let address = model.addresses.first { return Self.candidateKey(address: address) }
+    /// `focus`는 포커스 바인딩 값, `scroll`은 ForEach 정체성(= scrollTo 인자)이다.
+    private var firstCandidate: (focus: String, scroll: String)? {
+        if let place = model.places.first {
+            return (Self.candidateKey(place: place), place.id)
+        }
+        if let address = model.addresses.first {
+            return (Self.candidateKey(address: address), address.roadAddr)
+        }
         return nil
     }
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             List {
                 // 마이크는 검색 필드 바로 다음 행(SearchView 동형 배선, F-C). 검색 계열
                 // 계약: 홀드 단일 동작 — 최종 전사를 쿼리에 넣고 즉시 후보 검색(잠금·취소
@@ -201,6 +208,7 @@ struct DirectionsEndpointSearchView: View {
             }
             .navigationTitle(sheetTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: model.resultsRevision) { landFirstCandidateFocus(proxy) }
             // 상단 고정(.always 포함): iOS 26 시트 기본값은 하단 배치라 검색 탭과
             // 해부 구조(필드→마이크→최근→결과)가 어긋나고, 시트 안에서도 마이크 행
             // (상단)과 필드(하단)가 분리된다 — 검색 탭과 동일한 상단 드로어로 통일
@@ -211,13 +219,6 @@ struct DirectionsEndpointSearchView: View {
                 prompt: Text(appLocalized("ios.search.prompt")))
             .searchFocused($searchFieldFocused)
             .onSubmit(of: .search) { model.submit() }
-            // 후보가 도착하면 첫 후보로. 조회 결과 heading 이동이 실기기에서 정상
-            // 작동하므로(M2 가설 1 기각) 여기서도 동기 대입으로 충분하다.
-            .onChange(of: model.resultsRevision) {
-                guard model.resultsRevision > 0, let first = firstCandidateKey else { return }
-                searchFieldFocused = false
-                focusedCandidate = first
-            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(appLocalized("actions.close")) { dismiss() }
@@ -239,9 +240,55 @@ struct DirectionsEndpointSearchView: View {
             // SearchView 동형 teardown). 검색 Task도 함께 취소.
             .onDisappear {
                 model.cancel()
+                candidateFocusTask?.cancel()
                 Task { await speech.cancel() }
             }
+            }
         }
+    }
+
+    /// 후보 도착 시 첫 후보로 커서를 보낸다.
+    ///
+    /// ⚠ **동기 대입만으로는 안 된다**(실기기 2회 실패, 2026-08-02). `List`의 오프스크린
+    /// 행은 **AX 트리에서 컬링**되고, 대상이 트리에 없으면 SwiftUI가 대입을 되돌린다.
+    /// 출발지 시트는 "현재 위치 사용" 행이 하나 더 있어 첫 결과가 더 아래로 밀리는데,
+    /// 출발지만 무이동이고 도착지는 엉뚱한 행에 착지한 증상 차이가 이걸로 설명된다.
+    ///
+    /// 그래서 채팅(`ChatConversationView`)의 검증된 순서를 그대로 따른다:
+    /// **가시화(scrollTo) → 지연 → 경합 바인딩 해제 → 대입 → 되돌림 검증 → 1회 재시도.**
+    /// 검색 제출로 키보드가 내려가며 레이아웃이 흔들리는 구간이라 지연이 특히 필요하다.
+    private func landFirstCandidateFocus(_ proxy: ScrollViewProxy) {
+        guard model.resultsRevision > 0, let first = firstCandidate else { return }
+        candidateFocusTask?.cancel()
+        candidateFocusTask = Task { @MainActor in
+            proxy.scrollTo(first.scroll, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            applyCandidateFocus(first.focus)
+            #if DEBUG
+            chatFocusLog("[endpoint-search] assigned first candidate=\(first.focus)")
+            #endif
+
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            // 되돌림(nil 리셋)이 대입 실패의 진짜 신호다.
+            guard focusedCandidate != first.focus else { return }
+            #if DEBUG
+            chatFocusLog("[endpoint-search] retry (focusedCandidate=\(focusedCandidate ?? "nil"))")
+            #endif
+            proxy.scrollTo(first.scroll, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            applyCandidateFocus(first.focus)
+        }
+    }
+
+    /// 경합하는 포커스 바인딩을 먼저 놓아야 대입이 먹는다(채팅의 `isSendFocused = false` 동형).
+    private func applyCandidateFocus(_ key: String) {
+        searchFieldFocused = false
+        micRowFocused = false
+        focusedRecent = nil
+        focusedCandidate = key
     }
 
     /// denied·failed 안내(SearchView 미러, 판정 정본은 speechAlertText). 확인 시 idle 복귀.
