@@ -29,6 +29,10 @@ final class SubwayNearbyModel {
 struct SubwayNearbyView: View {
     private let anchor: PlaceAnchor?
     @State private var model: SubwayNearbyModel
+    /// 항목 정체성 옵셔널 바인딩 — `Bool`을 여러 행에 붙이면 첫 행 외 전부가
+    /// `false`가 되어 초기 상태에서 나머지 행이 포커스를 주장한다(실기기 확정).
+    @AccessibilityFocusState private var focusedStation: String?
+    @State private var lander = NearbyFocusLander()
 
     /// anchor 기본값 nil = 현재 위치(내 주변 허브 호출처 무변경).
     /// State(initialValue:) 인자는 순수 생성만(부수효과 금지) — [[swiftui-state-initialvalue-side-effect]]
@@ -38,45 +42,62 @@ struct SubwayNearbyView: View {
     }
 
     var body: some View {
-        List {
-            if case .loaded(let stations) = model.phase {
-                ForEach(stations, id: \.stationName) { station in
-                    Section {
-                        // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
-                        // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
-                        // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
-                        // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
-                        Text(joinText(displayStationName(station), station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
-                            .accessibilityAddTraits(.isHeader)
-                        // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
-                        // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
-                        // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
-                        if station.arrivalStatus == "unavailable" {
-                            Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
-                        } else if station.arrivalStatus == "closed", let first = station.firstTime {
-                            Text(appLocalized("ios.nearby.subwayClosed", first))
-                        } else if station.arrivalStatus == "closed" || station.arrivalStatus == "unknown" {
-                            Text(appLocalized("ios.nearby.subwayNoRealtime"))
-                        } else if station.arrivals.isEmpty {
-                            Text(appLocalized("ios.station.noArrivals"))
-                        } else {
-                            ForEach(Array(station.arrivals.enumerated()), id: \.offset) { _, arrival in
-                                // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수.
-                                Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+        ScrollViewReader { proxy in
+            List {
+                if case .loaded(let stations) = model.phase {
+                    // 역명이 정체성이자 포커스 키다. 근접역 조회가 `dedupeByName`으로
+                    // 같은 이름을 하나만 남기므로(`subway-nearby.ts`) 이 목록 안에서는
+                    // 중복이 생기지 않는다 — 버스가 nodeId를 쓰는 것과 조건이 다르다.
+                    ForEach(stations, id: \.stationName) { station in
+                        Section {
+                            // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
+                            // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
+                            // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
+                            // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
+                            Text(joinText(displayStationName(station), station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
+                                .accessibilityAddTraits(.isHeader)
+                                // 첫 로드 착지 대상. 키는 ForEach 정체성과 같은 값이어야 한다.
+                                .accessibilityFocused($focusedStation, equals: station.stationName)
+                            // 4-state를 뭉개지 않는다(웹 미러): 조회 실패 / 운행 시간 밖 /
+                            // 실시간 미제공 / 정상. closed인데 첫차가 없으면 판정 근거가
+                            // 반쪽이라 "운행이 끝났다"고 말하지 않고 미제공으로 물러선다.
+                            if station.arrivalStatus == "unavailable" {
+                                Text(appLocalized("ios.nearby.arrivalUnavailable"))   // 조회 실패 ≠ 열차 없음
+                            } else if station.arrivalStatus == "closed", let first = station.firstTime {
+                                Text(appLocalized("ios.nearby.subwayClosed", first))
+                            } else if station.arrivalStatus == "closed" || station.arrivalStatus == "unknown" {
+                                Text(appLocalized("ios.nearby.subwayNoRealtime"))
+                            } else if station.arrivals.isEmpty {
+                                Text(appLocalized("ios.station.noArrivals"))
+                            } else {
+                                ForEach(Array(station.arrivals.enumerated()), id: \.offset) { _, arrival in
+                                    // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수.
+                                    Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+                                }
                             }
                         }
                     }
                 }
             }
+            .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
+            .nearbyStateOverlay {
+                NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                    empty: NearbyOverlayCopy(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram"),
+                    isEmpty: \.isEmpty))
+            }
+            .task { await model.load() }
+            .nearbyRefreshable { await model.load(force: true) }
+            .nearbyFocusOnLoad(
+                id: firstStationName, lander: lander, proxy: proxy,
+                landed: { focusedStation == $0 },
+                apply: { focusedStation = $0 })
         }
-        .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
-        .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
-                empty: NearbyOverlayCopy(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram"),
-                isEmpty: \.isEmpty))
-        }
-        .task { await model.load() }
-        .nearbyRefreshable { await model.load(force: true) }
+    }
+
+    /// 첫 역명 — nil→값 전이가 곧 "로드 완료"다(0건·실패는 nil로 남는다).
+    private var firstStationName: String? {
+        guard case .loaded(let stations) = model.phase else { return nil }
+        return stations.first?.stationName
     }
 
     /// 표시 역명 — en 계열 로케일은 seed 영문명, 없으면 한국어 원명으로 폴백.
