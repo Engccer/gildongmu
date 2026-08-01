@@ -2046,37 +2046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "따릉이 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "따릉이 정보 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not load bike information. Please try again."
+            "value": "Could not load bike information."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la información de bicicletas. Inténtalo de nuevo."
+            "value": "No se pudo cargar la información de bicicletas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger les informations sur les vélos. Veuillez réessayer."
+            "value": "Impossible de charger les informations sur les vélos."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le informazioni sulle bici. Riprova."
+            "value": "Impossibile caricare le informazioni sulle bici."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "タルンイ情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "タルンイ情報の照会に失敗しました。"
           }
         }
       }
@@ -2686,37 +2686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버스 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "버스 정보 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load bus info. Please try again shortly."
+            "value": "Failed to load bus info."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la información de autobuses. Inténtalo de nuevo en breve."
+            "value": "No se pudo cargar la información de autobuses."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des infos bus. Veuillez réessayer dans un instant."
+            "value": "Échec du chargement des infos bus."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le informazioni sugli autobus. Riprova tra poco."
+            "value": "Impossibile caricare le informazioni sugli autobus."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バス情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "バス情報の照会に失敗しました。"
           }
         }
       }
@@ -3846,37 +3846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "요청이 많습니다. 잠시 후 다시 시도해 주세요."
+            "value": "요청이 많습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many requests. Please try again shortly."
+            "value": "Too many requests."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Demasiadas solicitudes. Inténtalo de nuevo en un momento."
+            "value": "Demasiadas solicitudes."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trop de requêtes. Veuillez réessayer dans un instant."
+            "value": "Trop de requêtes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Troppe richieste. Riprova tra poco."
+            "value": "Troppe richieste."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リクエストが多すぎます。しばらくしてからもう一度お試しください。"
+            "value": "リクエストが多すぎます。"
           }
         }
       }
@@ -3886,37 +3886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
+            "value": "응답 시간이 초과되었습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Response timed out. Please try again in a moment."
+            "value": "Response timed out."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La respuesta ha tardado demasiado. Por favor, inténtalo de nuevo."
+            "value": "La respuesta ha tardado demasiado."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "La réponse a expiré. Veuillez réessayer dans un instant."
+            "value": "La réponse a expiré."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La risposta ha impiegato troppo tempo. Riprova tra poco."
+            "value": "La risposta ha impiegato troppo tempo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "応答がタイムアウトしました。しばらくしてからもう一度お試しください。"
+            "value": "応答がタイムアウトしました。"
           }
         }
       }
@@ -5966,37 +5966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "진료 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "진료 정보 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load clinic info. Please try again shortly."
+            "value": "Failed to load clinic info."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la información de clínicas. Inténtalo de nuevo en breve."
+            "value": "No se pudo cargar la información de clínicas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des infos cliniques. Veuillez réessayer dans un instant."
+            "value": "Échec du chargement des infos cliniques."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le informazioni sulla clinica. Riprova tra poco."
+            "value": "Impossibile caricare le informazioni sulla clinica."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "診療情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "診療情報の照会に失敗しました。"
           }
         }
       }
@@ -6846,37 +6846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로를 찾지 못했습니다. 출발지와 도착지를 확인해 주세요."
+            "value": "경로를 찾지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No routes found. Please check the start and destination."
+            "value": "No routes found."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontraron rutas. Comprueba el origen y el destino."
+            "value": "No se encontraron rutas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun itinéraire trouvé. Vérifiez le départ et l'arrivée."
+            "value": "Aucun itinéraire trouvé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun percorso trovato. Controlla partenza e destinazione."
+            "value": "Nessun percorso trovato."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路が見つかりませんでした。出発地と目的地をご確認ください。"
+            "value": "経路が見つかりませんでした。"
           }
         }
       }
@@ -6926,37 +6926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "후보 %1$@건을 찾았습니다. 목록에서 선택해 주세요."
+            "value": "후보 %1$@건을 찾았습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Found %1$@ candidates. Choose one from the list."
+            "value": "Found %1$@ candidates."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se encontraron %1$@ candidatos. Elige uno de la lista."
+            "value": "Se encontraron %1$@ candidatos."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ candidats trouvés. Choisissez dans la liste."
+            "value": "%1$@ candidats trouvés."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trovati %1$@ candidati. Scegli dall'elenco."
+            "value": "Trovati %1$@ candidati."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "候補%1$@件が見つかりました。リストから選択してください。"
+            "value": "候補%1$@件が見つかりました。"
           }
         }
       }
@@ -6966,37 +6966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "후보 검색에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "후보 검색에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Candidate search failed. Please try again shortly."
+            "value": "Candidate search failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Falló la búsqueda de candidatos. Inténtalo de nuevo en breve."
+            "value": "Falló la búsqueda de candidatos."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la recherche de candidats. Veuillez réessayer dans un instant."
+            "value": "Échec de la recherche de candidats."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ricerca dei candidati non riuscita. Riprova tra poco."
+            "value": "Ricerca dei candidati non riuscita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "候補の検索に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "候補の検索に失敗しました。"
           }
         }
       }
@@ -8006,37 +8006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "문화행사 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "문화행사 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not load cultural events. Please try again shortly."
+            "value": "Could not load cultural events."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar los eventos culturales. Inténtalo de nuevo en un momento."
+            "value": "No se pudieron cargar los eventos culturales."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger les événements culturels. Réessayez dans un instant."
+            "value": "Impossible de charger les événements culturels."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare gli eventi culturali. Riprova tra poco."
+            "value": "Impossibile caricare gli eventi culturali."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "文化イベントの取得に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "文化イベントの取得に失敗しました。"
           }
         }
       }
@@ -8806,37 +8806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "답변을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "답변을 가져오지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't get a response. Please try again in a moment."
+            "value": "Couldn't get a response."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo obtener una respuesta. Inténtalo de nuevo en un momento."
+            "value": "No se pudo obtener una respuesta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible d'obtenir une réponse. Veuillez réessayer dans un instant."
+            "value": "Impossible d'obtenir une réponse."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile ottenere una risposta. Riprova tra poco."
+            "value": "Impossibile ottenere una risposta."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "回答を取得できませんでした。しばらくしてからもう一度お試しください。"
+            "value": "回答を取得できませんでした。"
           }
         }
       }
@@ -13286,37 +13286,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요"
+            "value": "검색에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search failed. Please try again in a moment"
+            "value": "Search failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Error en la búsqueda. Inténtalo de nuevo en un momento"
+            "value": "Error en la búsqueda."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la recherche. Veuillez réessayer dans un instant"
+            "value": "Échec de la recherche."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ricerca non riuscita. Riprova tra poco"
+            "value": "Ricerca non riuscita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "検索に失敗しました。しばらくしてからもう一度お試しください"
+            "value": "検索に失敗しました。"
           }
         }
       }
@@ -15246,37 +15246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "음성 인식을 시작하지 못했습니다. 다시 시도해 주세요"
+            "value": "음성 인식을 시작하지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't start speech recognition. Please try again."
+            "value": "Couldn't start speech recognition."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo iniciar el reconocimiento de voz. Inténtalo de nuevo."
+            "value": "No se pudo iniciar el reconocimiento de voz."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de démarrer la reconnaissance vocale. Veuillez réessayer."
+            "value": "Impossible de démarrer la reconnaissance vocale."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile avviare il riconoscimento vocale. Riprova."
+            "value": "Impossibile avviare il riconoscimento vocale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "音声認識を開始できませんでした。もう一度お試しください"
+            "value": "音声認識を開始できませんでした。"
           }
         }
       }
@@ -15806,37 +15806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아이 놀 곳 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "아이 놀 곳 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't load kids play places. Please try again."
+            "value": "Couldn't load kids play places."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar los lugares de juego infantil. Inténtalo de nuevo."
+            "value": "No se pudieron cargar los lugares de juego infantil."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger les lieux de jeux pour enfants. Veuillez réessayer."
+            "value": "Impossible de charger les lieux de jeux pour enfants."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le aree gioco per bambini. Riprova."
+            "value": "Impossibile caricare le aree gioco per bambini."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "子どもの遊び場の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "子どもの遊び場の照会に失敗しました。"
           }
         }
       }
@@ -19366,37 +19366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로 브리핑에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "경로 브리핑에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route briefing failed. Please try again shortly."
+            "value": "Route briefing failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El resumen de la ruta falló. Inténtalo de nuevo en breve."
+            "value": "El resumen de la ruta falló."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la présentation de l'itinéraire. Veuillez réessayer dans un instant."
+            "value": "Échec de la présentation de l'itinéraire."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riepilogo del percorso non riuscito. Riprova tra poco."
+            "value": "Riepilogo del percorso non riuscito."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路案内に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "経路案内に失敗しました。"
           }
         }
       }
@@ -19726,37 +19726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도보 경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "도보 경로를 불러오지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't load the walking route. Please try again shortly."
+            "value": "Couldn't load the walking route."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la ruta a pie. Inténtalo de nuevo en breve."
+            "value": "No se pudo cargar la ruta a pie."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger l'itinéraire à pied. Veuillez réessayer dans un instant."
+            "value": "Impossible de charger l'itinéraire à pied."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare il percorso a piedi. Riprova tra poco."
+            "value": "Impossibile caricare il percorso a piedi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "徒歩経路を取得できませんでした。しばらくしてからもう一度お試しください。"
+            "value": "徒歩経路を取得できませんでした。"
           }
         }
       }
@@ -20086,37 +20086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "경로를 불러오지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't load the route. Please try again."
+            "value": "Couldn't load the route."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la ruta. Inténtalo de nuevo."
+            "value": "No se pudo cargar la ruta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger l'itinéraire. Veuillez réessayer."
+            "value": "Impossible de charger l'itinéraire."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare il percorso. Riprova."
+            "value": "Impossibile caricare il percorso."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路を取得できませんでした。しばらくしてからもう一度お試しください。"
+            "value": "経路を取得できませんでした。"
           }
         }
       }
@@ -20486,37 +20486,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대중교통 경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요."
+            "value": "대중교통 경로를 찾지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No public transit route found. Check the start and destination."
+            "value": "No public transit route found."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se encontró ninguna ruta de transporte público. Revisa el origen y el destino."
+            "value": "No se encontró ninguna ruta de transporte público."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun itinéraire en transports en commun trouvé. Vérifiez le départ et la destination."
+            "value": "Aucun itinéraire en transports en commun trouvé."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun percorso con i mezzi pubblici trovato. Controlla partenza e destinazione."
+            "value": "Nessun percorso con i mezzi pubblici trovato."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "公共交通の経路が見つかりませんでした。出発地と目的地をご確認ください。"
+            "value": "公共交通の経路が見つかりませんでした。"
           }
         }
       }
@@ -20766,37 +20766,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "주소 검색에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Address search failed. Please try again shortly."
+            "value": "Address search failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La búsqueda de direcciones falló. Inténtalo de nuevo en breve."
+            "value": "La búsqueda de direcciones falló."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la recherche d'adresse. Veuillez réessayer dans un instant."
+            "value": "Échec de la recherche d'adresse."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ricerca indirizzi non riuscita. Riprova tra poco."
+            "value": "Ricerca indirizzi non riuscita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "住所検索に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "住所検索に失敗しました。"
           }
         }
       }
@@ -20966,37 +20966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "검색에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "검색에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search failed. Please try again shortly."
+            "value": "Search failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La búsqueda falló. Inténtalo de nuevo en breve."
+            "value": "La búsqueda falló."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la recherche. Veuillez réessayer dans un instant."
+            "value": "Échec de la recherche."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ricerca non riuscita. Riprova tra poco."
+            "value": "Ricerca non riuscita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "検索に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "検索に失敗しました。"
           }
         }
       }
@@ -21126,37 +21126,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "검색 결과가 없습니다. 다른 검색어로 시도해 보세요."
+            "value": "검색 결과가 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No results. Try a different search term."
+            "value": "No results."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin resultados. Prueba con otro término de búsqueda."
+            "value": "Sin resultados."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun résultat. Essayez un autre terme de recherche."
+            "value": "Aucun résultat."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun risultato. Prova con un altro termine di ricerca."
+            "value": "Nessun risultato."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "検索結果がありません。別のキーワードでお試しください。"
+            "value": "検索結果がありません。"
           }
         }
       }
@@ -21646,37 +21646,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "편의시설 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "편의시설 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load facilities. Please try again shortly."
+            "value": "Failed to load facilities."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar las instalaciones. Inténtalo de nuevo en breve."
+            "value": "No se pudieron cargar las instalaciones."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des équipements. Veuillez réessayer dans un instant."
+            "value": "Échec du chargement des équipements."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le strutture. Riprova tra poco."
+            "value": "Impossibile caricare le strutture."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設備の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "設備の照会に失敗しました。"
           }
         }
       }
@@ -22326,37 +22326,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지하철역 시설 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "지하철역 시설 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load station facilities. Please try again."
+            "value": "Failed to load station facilities."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar las instalaciones de la estación. Inténtalo de nuevo."
+            "value": "No se pudieron cargar las instalaciones de la estación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des équipements de la station. Veuillez réessayer."
+            "value": "Échec du chargement des équipements de la station."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le strutture della stazione. Riprova."
+            "value": "Impossibile caricare le strutture della stazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "地下鉄駅の設備の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "地下鉄駅の設備の照会に失敗しました。"
           }
         }
       }
@@ -23286,37 +23286,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "도착 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "도착 정보 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load arrivals. Please try again."
+            "value": "Failed to load arrivals."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar las llegadas. Inténtalo de nuevo."
+            "value": "No se pudieron cargar las llegadas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des arrivées. Veuillez réessayer."
+            "value": "Échec du chargement des arrivées."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare gli arrivi. Riprova."
+            "value": "Impossibile caricare gli arrivi."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "到着情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "到着情報の照会に失敗しました。"
           }
         }
       }
@@ -23766,37 +23766,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지하철 도착 정보 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "지하철 도착 정보 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to load subway arrivals. Please try again shortly."
+            "value": "Failed to load subway arrivals."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar las llegadas de metro. Inténtalo de nuevo en breve."
+            "value": "No se pudieron cargar las llegadas de metro."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec du chargement des arrivées de métro. Veuillez réessayer dans un instant."
+            "value": "Échec du chargement des arrivées de métro."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare gli arrivi della metro. Riprova tra poco."
+            "value": "Impossibile caricare gli arrivi della metro."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "地下鉄の到着情報の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "地下鉄の到着情報の照会に失敗しました。"
           }
         }
       }
@@ -25006,37 +25006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "주변 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not load nearby places. Please try again."
+            "value": "Could not load nearby places."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudieron cargar los lugares cercanos. Inténtalo de nuevo."
+            "value": "No se pudieron cargar los lugares cercanos."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger les lieux proches. Veuillez réessayer."
+            "value": "Impossible de charger les lieux proches."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare i luoghi vicini. Riprova."
+            "value": "Impossibile caricare i luoghi vicini."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "周辺の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "周辺の照会に失敗しました。"
           }
         }
       }
@@ -26166,37 +26166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
+            "value": "요청이 너무 많습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Too many requests. Please wait a moment and try again."
+            "value": "Too many requests."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo."
+            "value": "Demasiadas solicitudes."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trop de requêtes. Veuillez patienter un instant avant de réessayer."
+            "value": "Trop de requêtes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Troppe richieste. Attendi un momento e riprova."
+            "value": "Troppe richieste."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リクエストが多すぎます。しばらくしてからもう一度お試しください。"
+            "value": "リクエストが多すぎます。"
           }
         }
       }
@@ -26206,37 +26206,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "음성 인식에 실패했습니다. 다시 시도해 주세요."
+            "value": "음성 인식에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Voice recognition failed. Please try again."
+            "value": "Voice recognition failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El reconocimiento de voz falló. Inténtalo de nuevo."
+            "value": "El reconocimiento de voz falló."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la reconnaissance vocale. Veuillez réessayer."
+            "value": "Échec de la reconnaissance vocale."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riconoscimento vocale non riuscito. Riprova."
+            "value": "Riconoscimento vocale non riuscito."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "音声認識に失敗しました。もう一度お試しください。"
+            "value": "音声認識に失敗しました。"
           }
         }
       }
@@ -26806,37 +26806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "보행 인프라 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "보행 인프라 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not load walking infrastructure. Please try again."
+            "value": "Could not load walking infrastructure."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo cargar la infraestructura peatonal. Inténtalo de nuevo."
+            "value": "No se pudo cargar la infraestructura peatonal."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de charger les infrastructures piétonnes. Veuillez réessayer."
+            "value": "Impossible de charger les infrastructures piétonnes."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile caricare le infrastrutture pedonali. Riprova."
+            "value": "Impossibile caricare le infrastrutture pedonali."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "歩行インフラの照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "歩行インフラの照会に失敗しました。"
           }
         }
       }
@@ -29366,37 +29366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치 조회에 실패했습니다. 잠시 후 다시 시도해 주세요."
+            "value": "현재 위치 조회에 실패했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Failed to look up your location. Please try again shortly."
+            "value": "Failed to look up your location."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo consultar tu ubicación. Inténtalo de nuevo en breve."
+            "value": "No se pudo consultar tu ubicación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la localisation. Veuillez réessayer dans un instant."
+            "value": "Échec de la localisation."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile localizzarti. Riprova tra poco."
+            "value": "Impossibile localizzarti."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地の照会に失敗しました。しばらくしてからもう一度お試しください。"
+            "value": "現在地の照会に失敗しました。"
           }
         }
       }

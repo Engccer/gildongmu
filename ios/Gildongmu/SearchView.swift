@@ -19,9 +19,11 @@ struct SearchView: View {
     @AccessibilityFocusState private var focusedRecentQuery: String?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5).
     @AccessibilityFocusState private var micRowFocused: Bool
+    @State private var rowFocusTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             List {
                 // 마이크는 검색 필드 바로 다음 행: toolbar(내비 바)에 두면 VoiceOver가
                 // 제목보다 먼저 읽는다(실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
@@ -107,10 +109,11 @@ struct SearchView: View {
                     }
                 }
             }
-            .onChange(of: model.resultsRevision) { focusedRowID = firstRowID }
+            .onChange(of: model.resultsRevision) { landFirstRowFocus(proxy) }
             // 마이크는 항상 폐기(화면을 떠난 뒤 유령 청취 방지 — 탭 전환·새로고침 재생성 포함).
             // ChatConversationView 동형 teardown: 없으면 오디오 세션·인식 Task가 고아로 남는다.
             .onDisappear {
+                rowFocusTask?.cancel()
                 Task { await speech.cancel() }
             }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
@@ -131,7 +134,43 @@ struct SearchView: View {
                     ContentUnavailableView.search
                 }
             }
+            }
         }
+    }
+
+    /// 결과 도착 시 첫 행으로 커서를 보낸다.
+    ///
+    /// ⚠ **동기 대입만으로는 안 된다.** `List`의 오프스크린 행은 AX 트리에서 컬링되고,
+    /// 대상이 트리에 없으면 SwiftUI가 대입을 조용히 되돌린다. 이 화면은 첫 결과 위에
+    /// 마이크 행·최근 검색어·필터가 있어 첫 행이 화면 밖일 수 있다(길찾기 검색 시트에서
+    /// 같은 결함을 실기기로 확정, 2026-08-02). 채팅의 검증된 순서를 그대로 따른다:
+    /// **가시화(scrollTo) → 지연 → 경합 바인딩 해제 → 대입 → 되돌림 검증 → 1회 재시도.**
+    ///
+    /// 통지 완료는 기다리지 않는다(위원장 판정): 안내가 잘리더라도 즉시 결과로 가는
+    /// 쪽이 실사용 탐색이 빠르다.
+    private func landFirstRowFocus(_ proxy: ScrollViewProxy) {
+        guard let first = firstRow else { return }
+        rowFocusTask?.cancel()
+        rowFocusTask = Task { @MainActor in
+            proxy.scrollTo(first.scroll, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            applyRowFocus(first.focus)
+
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, focusedRowID != first.focus else { return }
+            proxy.scrollTo(first.scroll, anchor: .top)
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            applyRowFocus(first.focus)
+        }
+    }
+
+    /// 경합하는 포커스 바인딩을 먼저 놓아야 대입이 먹는다.
+    private func applyRowFocus(_ id: String) {
+        micRowFocused = false
+        focusedRecentQuery = nil
+        focusedRowID = id
     }
 
     /// 새 검색 시작 지점(제출·음성 확정) 공용 경로. 분류·지역 필터를 초기화한 뒤
@@ -176,16 +215,21 @@ struct SearchView: View {
     }
 
     /// 포커스 이동 목표: 첫 섹션의 첫 행(orderedSections는 건수 내림차순).
-    private var firstRowID: String? {
+    private var firstRowID: String? { firstRow?.focus }
+
+    /// 첫 결과 행. `focus`는 포커스 바인딩 값(접두사 포함), `scroll`은 **ForEach 정체성**
+    /// (= `scrollTo` 인자)이다. 둘은 다르다 — 접두사 붙은 키를 scrollTo에 넘기면
+    /// 아무 행에도 안 걸려 가시화가 조용히 실패한다.
+    private var firstRow: (focus: String, scroll: String)? {
         guard let outcome = model.outcome else { return nil }
         for section in outcome.orderedSections {
             switch section {
             case .places(let places):
-                if let first = places.first { return "place-\(first.id)" }
+                if let first = places.first { return ("place-\(first.id)", first.id) }
             case .addresses(let addresses):
-                if let first = addresses.first { return "address-\(first.roadAddr)" }
+                if let first = addresses.first { return ("address-\(first.roadAddr)", first.roadAddr) }
             case .web(let results):
-                if let first = results.first { return "web-\(first.url)" }
+                if let first = results.first { return ("web-\(first.url)", first.url) }
             }
         }
         return nil
