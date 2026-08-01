@@ -87,8 +87,12 @@ BUS_STN_STTS[0] = { BUS_STN_NM: "신분당선강남역", BUS_STN_X: "127.0285365
 
 ### 1-6. 봉투는 또 다르다 (공용 파서 스코프 밖)
 
-정상: `{"SeoulRtd.citydata_ppltn": [ {...} ]}` — 서비스명 키 아래 배열, `RESULT` 없음.
-오류: `{"RESULT.CODE": "ERROR-500", "RESULT.MESSAGE": "..."}` — **점이 들어간 평면 키**(중첩 아님).
+정상: `{"SeoulRtd.citydata_ppltn": [ {...} ], "RESULT": {"RESULT.CODE": "INFO-000", ...}}`
+오류: `{"RESULT.CODE": "ERROR-500", "RESULT.MESSAGE": "..."}` — **점이 들어간 평면 키**(최상위)
+
+**코드가 두 자리에 온다**(2026-08-01 재실측으로 정정): 정상은 `RESULT` **객체 안에** `INFO-000`, 오류는 **최상위 평면 키**. 코드 존재만으로 오류 처리하면 **모든 정상 응답이 502가 된다.** 두 자리를 다 읽고 `INFO-000`만 통과시킨다.
+
+**인증키가 무효하면 `/json/` 경로여도 HTTP 200 + XML 본문**이 온다(`<RESULT><CODE>INFO-100</CODE>…인증키가 유효하지 않습니다`). `res.json()`을 그냥 부르면 `Unexpected token '<'`가 되어 502의 원인이 키라는 사실이 가려지므로, 비-JSON을 감지해 원인을 말하고 죽는다(`readSeoulOpenJson`, data.go.kr의 `fetchDataGoKrJson` 동형).
 
 `datagokr-envelope` 공용 파서(`response` 래퍼)와도, 문화행사(`culturalEventInfo.RESULT.CODE` 중첩)와도 다르다. "봉투가 다르면 파서도 다르다"에 따라 전용 파서를 provider에 둔다.
 

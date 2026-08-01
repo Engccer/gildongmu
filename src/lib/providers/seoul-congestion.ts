@@ -112,7 +112,12 @@ export function parseCongestion(raw: unknown): CongestionReading | null {
   };
 }
 
-async function fetchCongestion(areaCode: string): Promise<CongestionReading | null> {
+/**
+ * 한 영역의 실시간 혼잡도 1회 호출. **캐시 밖**이라 테스트가 fetch를 목킹해
+ * HTTP 계층 배선(비-JSON 감지가 실제로 걸리는지)을 검증할 수 있다 — `parseCongestion`만
+ * fixture로 덮으면 그 앞단이 통째로 비어, 이 함수가 막으려는 회귀가 재발해도 아무도 못 잡는다.
+ */
+export async function fetchCongestion(areaCode: string): Promise<CongestionReading | null> {
   const key = env.SEOUL_OPEN_DATA_KEY!;
   const res = await fetch(`${BASE}/${key}/json/citydata_ppltn/1/5/${areaCode}`, {
     cache: "no-store",

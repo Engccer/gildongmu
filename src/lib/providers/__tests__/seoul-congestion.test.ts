@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
-import { parseCongestion, readSeoulOpenJson } from "../seoul-congestion";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../../env", () => ({ env: { SEOUL_OPEN_DATA_KEY: "test-key" } }));
+
+import { fetchCongestion, parseCongestion, readSeoulOpenJson } from "../seoul-congestion";
 
 const OK = {
   "SeoulRtd.citydata_ppltn": [
@@ -118,5 +121,38 @@ describe("parseCongestion — 봉투", () => {
         RESULT: { "RESULT.CODE": "INFO-100", "RESULT.MESSAGE": "인증키가 유효하지 않습니다." },
       }),
     ).toThrow(/INFO-100.*인증키/);
+  });
+});
+
+/**
+ * HTTP 계층 배선. `parseCongestion`만 fixture로 덮으면 그 앞단이 비어,
+ * `fetchCongestion`이 `readSeoulOpenJson` 대신 `res.json()`으로 되돌아가도
+ * 아무 테스트도 빨개지지 않는다(리뷰 지적).
+ */
+describe("fetchCongestion — HTTP 계층", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("정상 JSON 본문을 읽어 판정까지 간다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(OK))));
+    expect((await fetchCongestion("POI014"))?.level).toBe("붐빔");
+  });
+
+  it("무효 키의 XML 200 본문은 원인을 밝히고 throw한다(SyntaxError로 둔갑 금지)", async () => {
+    const xml =
+      "<RESULT><CODE>INFO-100</CODE><MESSAGE><![CDATA[인증키가 유효하지 않습니다.]]></MESSAGE></RESULT>";
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(xml)));
+    await expect(fetchCongestion("POI014")).rejects.toThrow(/INFO-100.*인증키/);
+  });
+
+  it("HTTP 오류는 상태코드를 싣고 throw한다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
+    await expect(fetchCongestion("POI014")).rejects.toThrow(/503/);
+  });
+
+  it("영역 코드를 URL에 싣는다(캐시 키와 실제 조회 대상이 어긋나지 않게)", async () => {
+    const spy = vi.fn(async () => new Response(JSON.stringify(OK)));
+    vi.stubGlobal("fetch", spy);
+    await fetchCongestion("POI119");
+    expect(String(spy.mock.calls[0]?.[0])).toContain("citydata_ppltn/1/5/POI119");
   });
 });

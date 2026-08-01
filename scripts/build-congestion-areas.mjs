@@ -63,16 +63,29 @@ function round6(n) {
  * 전체 citydata 응답 하나 → 영역 1건. 구성 지점이 없으면 null(한강공원류 —
  * 판정 대상에서 자연 탈락하고, 그 결과는 침묵이지 오답이 아니다. 스펙 §1-5).
  */
+/**
+ * 배열 또는 단일 객체를 목록으로. ⚠ **단건일 때 배열이 아니라 단일 객체로 오는
+ * API가 있다**(data.go.kr에서 기관코드마다 갈렸던 실측 함정). 여기서 배열만
+ * 받으면 지점이 1개뿐인 영역이 조용히 지점 0개가 되고, 그러면 `toArea`가 null을
+ * 돌려 **영역 자체가 seed에서 사라진다** — 진짜 인프라 부재(§1-5)와 구분되지
+ * 않는 침묵이라 두 모양을 다 받는다. 서울 API가 실제로 그러는지는 미확인이고,
+ * 확인되지 않았다는 것이 방어를 빼는 근거는 아니다.
+ */
+function asList(v) {
+  if (Array.isArray(v)) return v;
+  return v && typeof v === "object" ? [v] : [];
+}
+
 export function toArea(raw) {
   const c = raw?.CITYDATA;
   if (!c || typeof c !== "object") return null; // 공백 코드
   const pts = [];
-  for (const s of Array.isArray(c.SUB_STTS) ? c.SUB_STTS : []) {
+  for (const s of asList(c.SUB_STTS)) {
     const lat = num(s?.SUB_STN_Y);
     const lng = num(s?.SUB_STN_X);
     if (lat !== null && lng !== null) pts.push([round6(lat), round6(lng)]);
   }
-  for (const b of Array.isArray(c.BUS_STN_STTS) ? c.BUS_STN_STTS : []) {
+  for (const b of asList(c.BUS_STN_STTS)) {
     const lat = num(b?.BUS_STN_Y);
     const lng = num(b?.BUS_STN_X);
     if (lat !== null && lng !== null) pts.push([round6(lat), round6(lng)]);
