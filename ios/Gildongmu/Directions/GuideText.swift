@@ -50,8 +50,11 @@ enum GuideText {
     }
 
     /// 진행 상황 버튼 응답(스펙 §4.2 — 상태별로 거짓 정밀을 만들지 않는다).
+    /// straightLineMeters는 이탈 상태 전용(마지막 fix→목적지 직선거리 — 경로 잔여는
+    /// 이탈 중엔 거짓이므로 직선만 정직하다).
     static func progress(
-        route: GuideRoute, state: GuideState, destinationLabel: String, lastGuidance: String?
+        route: GuideRoute, state: GuideState, destinationLabel: String,
+        lastGuidance: String?, straightLineMeters: Double?
     ) -> String {
         let total = formatDistance(Int(max(0, route.totalMeters - state.d).rounded()))
         switch state.phase {
@@ -73,7 +76,13 @@ enum GuideText {
                 lastGuidance ?? appLocalized("guide.noGuidanceYet")
             )
         case .offRoute:
-            return appLocalized("guide.offRoute")
+            // 스펙 §4.2: 이탈 상태 명시 + 목적지 직선거리(웹 useRouteGuide와 동일 키).
+            guard let straight = straightLineMeters else {
+                return appLocalized("guide.offRoute")
+            }
+            return appLocalized(
+                "guide.progressOffRoute", formatDistance(Int(straight.rounded()))
+            )
         }
     }
 }
