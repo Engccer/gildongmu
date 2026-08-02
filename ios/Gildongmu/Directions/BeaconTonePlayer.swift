@@ -88,8 +88,12 @@ final class BeaconTonePlayer {
         }
     }
 
-    /// 긴 진동(0.5초 연속). UIKit 제너레이터는 단발 탭뿐이라 CoreHaptics가 필요하다.
-    /// 미지원 기기·엔진 실패는 단발 임팩트 폴백(무진동보다 낫다).
+    /// 긴 진동 — 시작·종료 효과음(트레몰로 험, 1.3초)의 엔벨로프에 **동기**한다
+    /// (위원장 피드백 2026-08-03: 일정 세기 0.5초는 소리가 정점에 오르기 전에 끝나
+    /// 어긋나게 느껴진다). 소리 산식이 코사인 어택 0.455초·서스테인·릴리스 0.585초라
+    /// 진동 세기 곡선을 같은 시점에 맞춘다. 소리 파일을 갈면 이 곡선도 함께 갱신할 것.
+    /// UIKit 제너레이터는 단발 탭뿐이라 CoreHaptics가 필요하고, 미지원 기기·엔진
+    /// 실패는 단발 임팩트 폴백(무진동보다 낫다).
     private var hapticEngine: CHHapticEngine?
 
     private func longBuzz() {
@@ -101,16 +105,32 @@ final class BeaconTonePlayer {
             if hapticEngine == nil { hapticEngine = try CHHapticEngine() }
             guard let engine = hapticEngine else { return }
             try engine.start()
+            let duration = 1.3
             let event = CHHapticEvent(
                 eventType: .hapticContinuous,
                 parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.8),
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
                     CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4),
                 ],
                 relativeTime: 0,
-                duration: 0.5
+                duration: duration
             )
-            let pattern = try CHHapticPattern(events: [event], parameters: [])
+            // 소리 엔벨로프 미러: 어택 0~0.455(코사인 상승), 서스테인 ~0.715, 릴리스 ~1.3.
+            let curve = CHHapticParameterCurve(
+                parameterID: .hapticIntensityControl,
+                controlPoints: [
+                    .init(relativeTime: 0, value: 0),
+                    .init(relativeTime: 0.15, value: 0.15),
+                    .init(relativeTime: 0.3, value: 0.55),
+                    .init(relativeTime: 0.455, value: 1.0),
+                    .init(relativeTime: 0.715, value: 1.0),
+                    .init(relativeTime: 0.9, value: 0.7),
+                    .init(relativeTime: 1.1, value: 0.3),
+                    .init(relativeTime: 1.3, value: 0),
+                ],
+                relativeTime: 0
+            )
+            let pattern = try CHHapticPattern(events: [event], parameterCurves: [curve])
             try engine.makePlayer(with: pattern).start(atTime: 0)
         } catch {
             hapticEngine = nil  // 죽은 엔진을 붙들지 않는다(다음 호출에서 재생성 시도)
