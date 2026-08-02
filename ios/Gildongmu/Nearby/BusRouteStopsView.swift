@@ -48,7 +48,10 @@ struct BusRouteStopsView: View {
         .navigationTitle(appLocalized("ios.nearby.routeStopsTitle", routeNo))
         .nearbyStateOverlay {
             let failedCopy = NearbyOverlayCopy(appLocalized("ios.nearby.routeStopsFailed"), systemImage: "wifi.exclamationmark")
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.routeStopsEmpty"), systemImage: "bus"),
                 isEmpty: \.isEmpty,
                 loadingText: appLocalized("ios.nearby.routeStopsLoading"),

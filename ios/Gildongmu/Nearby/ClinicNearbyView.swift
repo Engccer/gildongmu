@@ -127,7 +127,10 @@ struct ClinicNearbyView: View {
         }
         .navigationTitle(appLocalized("ios.nearby.clinic"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.clinicEmpty"), systemImage: "cross.case"),
                 isEmpty: { $0.clinics.isEmpty }))
         }

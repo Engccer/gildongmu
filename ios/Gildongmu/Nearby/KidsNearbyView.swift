@@ -90,7 +90,10 @@ struct KidsNearbyView: View {
         }
         .navigationTitle(appLocalized("ios.nearby.kids"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.kidsEmpty"), systemImage: "figure.and.child.holdinghands"),
                 isEmpty: \.isEmpty))
         }

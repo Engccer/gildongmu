@@ -104,7 +104,10 @@ struct WalkInfraNearbyView: View {
         }
         .navigationTitle(appLocalized("walkInfra.button"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .plain(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .plain(
                 loadingText: appLocalized("walkInfra.loading"),
                 // ⚠ 위치 실패 아이콘이 다른 도메인(wifi.exclamationmark)과 다르다 — 현행 그대로.
                 failedLocation: NearbyOverlayCopy(appLocalized("ios.common.failedTitle"),

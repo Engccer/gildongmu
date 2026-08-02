@@ -89,7 +89,10 @@ struct AroundNearbyView: View {
         }
         .navigationTitle(appLocalized("ios.nearby.around"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.aroundEmpty"), systemImage: "mappin.and.ellipse"),
                 isEmpty: \.isEmpty))
         }

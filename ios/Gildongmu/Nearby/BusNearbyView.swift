@@ -78,7 +78,10 @@ struct BusNearbyView: View {
             }
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.bus"), anchor: anchor))
             .nearbyStateOverlay {
-                NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                     empty: NearbyOverlayCopy(appLocalized("ios.nearby.busEmpty"), systemImage: "bus"),
                     isEmpty: \.isEmpty))
             }

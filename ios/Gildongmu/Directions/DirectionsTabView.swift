@@ -409,9 +409,23 @@ struct DirectionsTabView: View {
                         Text(statusText)
                             .foregroundStyle(.secondary)
                     }
-                    // "설정 앱에서 …" 안내에는 그 화면을 여는 버튼을 함께(NearbyOverlay 동형)
-                    if model.phase == .geoDenied || model.phase == .geoReduced {
+                    // "설정 앱에서 …" 안내에는 해결 버튼을 함께(NearbyOverlay 동형).
+                    // ⚠ reduced는 설정 열기가 아니라 그 자리 시스템 팝업이다.
+                    // openSettingsURLString이 여는 화면에는 정확한 위치 토글이 없다
+                    // (위원장 실기기 확인 2026-08-02).
+                    if model.phase == .geoDenied {
                         Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                    }
+                    if model.phase == .geoReduced {
+                        Button(appLocalized("ios.common.allowPrecise")) {
+                            Task { @MainActor in
+                                if await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                                    model.runQuery()
+                                } else {
+                                    AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                                }
+                            }
+                        }
                     }
                 }
                 // 목적지 거리 추적. 수단 섹션들보다 **앞**에 둔다 — 도보 섹션은
@@ -443,9 +457,23 @@ struct DirectionsTabView: View {
                         // 거부·위치 서비스 꺼짐은 시트가 아예 뜨지 않는 경로다.
                         if !beacon.isTracking, !beacon.statusText.isEmpty {
                             distanceText(beacon.statusText).foregroundStyle(.secondary)
-                            // 권한·정밀 위치처럼 설정에서 해결되는 실패에만 노출
-                            if beacon.settingsResolvable {
+                            // 해결 수단이 있는 실패에만 노출. reduced는 그 자리 시스템
+                            // 팝업이고, 허용되면 같은 목적지로 즉시 재시작한다.
+                            switch beacon.failResolution {
+                            case .settings:
                                 Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                            case .precise:
+                                Button(appLocalized("ios.common.allowPrecise")) {
+                                    Task { @MainActor in
+                                        if await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                                            beacon.toggle(dest: tracked.dest, label: tracked.label)
+                                        } else {
+                                            AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                                        }
+                                    }
+                                }
+                            case .none:
+                                EmptyView()
                             }
                         }
                         Text(appLocalized("beacon.straightLineNote"))

@@ -186,6 +186,27 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    /// "정확한 위치 한 번 허용" 시스템 팝업(공식 API, `Support/Info.plist`의
+    /// `NSLocationTemporaryUsageDescriptionDictionary`가 전제). 성공하면 앱이 전경에
+    /// 있는 동안 만료가 유예되어 사실상 세션 내내 정밀 좌표를 쓴다.
+    ///
+    /// 설정 앱으로 보내는 것보다 낫다: `openSettingsURLString`이 여는 화면(앱 >
+    /// 길동무)에는 정확한 위치 토글이 **없다**(위원장 실기기 확인 2026-08-02.
+    /// 그 토글은 개인정보 보호 및 보안 > 위치 서비스 > 길동무에만 있다).
+    ///
+    /// ⚠ 완료 핸들러의 error는 "프롬프트를 못 띄운 이유"이지 허가 판정이 아니다.
+    /// 결과는 `accuracyAuthorization` 재조회로 판정한다(조사 문서 §4 계약).
+    /// 같은 세션에서 이미 물었으면 재프롬프트 없이 즉시 완료된다(그때 false).
+    func requestTemporaryPreciseAccuracy() async -> Bool {
+        await withCheckedContinuation { continuation in
+            manager.requestTemporaryFullAccuracyAuthorization(withPurposeKey: "PreciseLocation") { [weak self] _ in
+                Task { @MainActor in
+                    continuation.resume(returning: self?.manager.accuracyAuthorization == .fullAccuracy)
+                }
+            }
+        }
+    }
+
     /// 권한 팝업만 띄우고 좌표는 취득하지 않는다.
     ///
     /// 쓰는 곳은 **좌표를 정말로 버리는** 소비자 하나뿐이다: 비콘의 `.notDetermined`

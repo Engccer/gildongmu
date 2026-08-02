@@ -24,8 +24,9 @@
         "noBusData": "この地域はバス停の情報が提供されていません"
       },
       "geoReducedTitle": "正確な位置情報がオフです",
-      "geoReducedDesc": "設定アプリでキルドンムの正確な位置情報をオンにしてください",
-      "openSettings": "設定を開く"
+      "geoReducedDesc": "設定のプライバシーとセキュリティ、位置情報サービス、キルドンムで常にオンにできます",
+      "openSettings": "設定を開く",
+      "allowPrecise": "正確な位置情報を許可"
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",

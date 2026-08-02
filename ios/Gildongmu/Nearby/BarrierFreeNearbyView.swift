@@ -95,7 +95,10 @@ struct BarrierFreeNearbyView: View {
         }
         .navigationTitle(appLocalized("ios.nearby.barrierFree"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.barrierFreeEmpty"), systemImage: "figure.roll"),
                 isEmpty: \.isEmpty))
         }

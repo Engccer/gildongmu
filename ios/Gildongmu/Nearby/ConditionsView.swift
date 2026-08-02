@@ -141,7 +141,10 @@ struct ConditionsView: View {
             }
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.conditions"), anchor: anchor))
             .nearbyStateOverlay {
-                NearbyStateOverlayView(phase: model.phase, descriptor: .plain())
+                NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .plain())
             }
             .task { await model.load() }
             .nearbyRefreshable { await model.load(force: true) }
