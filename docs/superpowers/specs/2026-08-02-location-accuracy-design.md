@@ -109,13 +109,13 @@ currentCoordinate(force:timeout:ttl:acceptAccuracy:)
 
 → 정밀 위치가 꺼진 세션에서 검색은 좌표 없이 나가고(전국 정확도순) 주소 병기는 생략된다. 둘 다 정직한 축소다. **종전에는 reduced를 감지하지 못해 km급 좌표로 주소를 만들어 표시하고 있었으므로, 이 축소는 회귀가 아니라 거짓 표시의 제거다.**
 
-## 4. ⑤ 임시 정밀 위치: 이번 범위 밖 (미착수 기록)
+## 4. ⑤ 임시 정밀 위치: 구현 완료 (2026-08-02 저녁, 위원장 피드백으로 착수)
 
-`NSLocationTemporaryUsageDescriptionDictionary`는 **딕셔너리**인데 이 프로젝트는 `GENERATE_INFOPLIST_FILE = YES`이고 `INFOPLIST_KEY_*`는 스칼라·배열만 받는다(실측 확인). 부분 plist를 `INFOPLIST_FILE`로 주었을 때 생성 키와 병합되는지는 **아직 실측하지 않았다.**
+당초 범위 밖이었으나 실기기 확인("설정 열기가 여는 화면에 정확한 위치 토글이 없다")이 착수 사유가 됐다. reduced 상태의 버튼이 "정확한 위치 허용"이 되어 그 자리에서 시스템 팝업을 띄우고, 허용 시 자동 재조회한다(내 주변 12곳 `onPreciseGranted` · 길찾기 `runQuery` · 비콘 재시작).
 
-**이번 사이클에서는 ①~④만 닫고 ⑤는 넣지 않았다.** ⑤가 주는 것은 "설정 앱으로 보내는 대신 그 자리에서 한 번 물어보는" 편의이고, ④가 이미 원인과 해결 경로를 정직하게 알린다. 빌드 설정 구조를 바꾸는 변경이라 정확도 수정과 같은 사이클에 섞으면 회귀 원인 분리가 어려워진다.
+**병합 실측 결과**: `GENERATE_INFOPLIST_FILE = YES` + `INFOPLIST_FILE`(부분 plist)는 **공존·병합된다**(산출물 diff가 새 딕셔너리 하나뿐, Debug·Release 양 구성 확인). ⚠ 부분 plist를 **타깃 동기화 폴더 안에 두면** 리소스로도 복사되어 "Multiple commands produce"로 깨진다 — `ios/Support/Info.plist`처럼 타깃 밖 배치가 요체다.
 
-착수할 때의 순서: 부분 plist 병합 실측 → 병합되면 reduced 감지 시 `requestTemporaryFullAccuracyAuthorization(withPurposeKey:)`를 먼저 시도하고 실패·거부일 때만 §3.3 상태로 → 병합이 안 되면 §3.3만 유지하고 그 사실을 이 절에 기록.
+구현 계약: `LocationService.requestTemporaryPreciseAccuracy()`가 3-상태(`granted`/`denied`/`alreadyInFlight`)를 반환한다. in-flight를 denied와 뭉개면 VO 더블탭 2연타에서 시스템 알럿 낭독과 경합하는 헛된 실패 통지가 나온다(리뷰 검출). 팝업 문구는 목적 키 그대로(`PreciseLocation`) `InfoPlist.xcstrings` 6로케일 — Apple 문서 원문 "add an entry ... with the same key you provide for this parameter"로 표기 확정.
 
 ⚠ 완료 핸들러의 `error == nil`은 **허가를 뜻하지 않는다**(프롬프트를 띄웠다는 뜻). 결과는 `accuracyAuthorization`을 다시 읽어 판정한다.
 
