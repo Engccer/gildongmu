@@ -26,7 +26,7 @@ struct CarRouteRows: View {
             // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
             let text = guide.guidance.isEmpty ? guide.name : guide.guidance
             if !text.isEmpty {
-                // ⚠ 종전 "\(m)m" 직접 조립은 1km 넘는 구간(고속도로)이 "1234m"로
+                // ⚠ 종전의 미터 직접 조립(보간+m)은 1km 넘는 구간(고속도로)이 "1234m"로
                 // 표기되던 결함이라 formatDistance 정본으로 교체.
                 distanceText(joinText(text, guide.distanceMeters > 0 ? formatDistance(guide.distanceMeters) : nil))
             }
