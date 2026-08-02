@@ -95,6 +95,13 @@ final class BeaconModel {
     /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
     private var rerouteToken = 0
     private var rerouteInFlight = false
+    /// 시작 경로 조회의 세대 토큰. defer가 stale task에서 새 세션의 awaitingRoute를
+    /// 조기 해제하는 레이스 차단(독립 리뷰 MEDIUM — 빠른 목적지 변경 시).
+    private var routeFetchToken = 0
+    /// 상세 모드의 마지막 수용 fix 좌표(진행 상황 버튼의 이탈 직선거리용).
+    private var lastFixCoord: (lat: Double, lng: Double)?
+    /// 상세 모드 무이벤트 fix의 하트비트 tick 스로틀 기준(웹 TICK_THROTTLE 동형 3초).
+    private var lastDetailTickAt: Double?
 
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
@@ -205,16 +212,21 @@ final class BeaconModel {
         // V1 ko 전용). 조회 중엔 비콘 발화를 보류하고, 실패는 간략으로 정직 폴백.
         if AppLanguage.dataLocale == "ko" {
             awaitingRoute = true
+            routeFetchToken += 1
+            let token = routeFetchToken
             routeFetchTask = Task { [weak self] in
-                await self?.fetchGuideRoute(dest: dest)
+                await self?.fetchGuideRoute(dest: dest, token: token)
             }
         }
     }
 
     /// 시작 시 상세 경로 조회. 성공하면 상세 모드 + 원자 시작 발화, 실패는 간략 폴백.
     /// "이 세션에서 현재 목적지에 대해 조회"가 곧 상세 적격 조건이다(스펙 §4.1).
-    private func fetchGuideRoute(dest: BeaconDest) async {
-        defer { awaitingRoute = false }
+    private func fetchGuideRoute(dest: BeaconDest, token: Int) async {
+        // defer는 다른 가드를 거치지 않으므로 세대 토큰으로 자기 세션에만 작용시킨다.
+        // 없으면 stale task의 defer가 새 세션의 awaitingRoute를 조기 해제해 이중 발화
+        // 방지(§4.1)가 깨진다(독립 리뷰 MEDIUM).
+        defer { if token == routeFetchToken { awaitingRoute = false } }
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard !Task.isCancelled, isTracking, self.dest == dest else { return }
@@ -294,7 +306,10 @@ final class BeaconModel {
         offRoute = false
         pendingRecovery = nil
         resolvePendingSince = nil
+        lastFixCoord = nil
+        lastDetailTickAt = nil
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
+        routeFetchToken += 1  // stale 경로 조회 defer 무효화
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
@@ -397,6 +412,7 @@ final class BeaconModel {
         let now = uptimeNow
         lastFixAt = now
         lastStaleNoticeAt = nil
+        lastFixCoord = (fix.lat, fix.lng)
 
         let out = guideStep(
             state: state,
@@ -407,7 +423,14 @@ final class BeaconModel {
         guideState = out.state
         // 전용음(예고·경고)은 사운드 태스크에서 교체 — 그때까지 기존 톤을 임시 배정.
         if let tone = out.tone { playTone(tone == .ahead ? .nearby : .farther) }
-        guard let event = out.event else { return }
+        guard let event = out.event else {
+            // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
+            if lastDetailTickAt == nil || now - lastDetailTickAt! >= 3 {
+                lastDetailTickAt = now
+                playTone(.tick)
+            }
+            return
+        }
         consume(event: event, route: route)
     }
 
@@ -496,9 +519,15 @@ final class BeaconModel {
 
     func announceProgress() {
         if mode == .detail, let route = guideRoute, let state = guideState {
+            // 이탈 상태의 직선거리(스펙 §4.2): 마지막 fix→목적지. 경로 잔여는 이탈 중 거짓.
+            let straight: Double? = {
+                guard state.phase == .offRoute, let c = lastFixCoord, let dest else { return nil }
+                return haversineMeters(lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng)
+            }()
             announce(GuideText.progress(
                 route: route, state: state,
-                destinationLabel: destinationLabel, lastGuidance: lastGuidance
+                destinationLabel: destinationLabel, lastGuidance: lastGuidance,
+                straightLineMeters: straight
             ))
         } else {
             // 간략: 마지막 거리 통지가 곧 진행 상황이다(별도 수치 재조합 금지).
