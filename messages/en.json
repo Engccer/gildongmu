@@ -599,7 +599,6 @@
   "guide": {
     "briefStarted": "Simple guidance started",
     "detailStart": "Detailed guidance started. {count} instructions, {distance} total. {first}",
-    "upcoming": "In {distance}, {step}",
     "next": "{distance} to {step}",
     "bundle": "Next {count} instructions. {steps}",
     "handoff": "Switching to straight-line guidance to your destination",

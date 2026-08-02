@@ -599,7 +599,6 @@
   "guide": {
     "briefStarted": "Guidage simple démarré",
     "detailStart": "Guidage détaillé démarré. {count} instructions, {distance} au total. {first}",
-    "upcoming": "Dans {distance}, {step}",
     "next": "{distance} jusqu'à {step}",
     "bundle": "{count} prochaines instructions. {steps}",
     "handoff": "Passage au guidage à vol d'oiseau jusqu'à la destination",
