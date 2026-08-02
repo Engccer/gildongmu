@@ -89,6 +89,9 @@ public func buildGuideRoute(_ steps: [GuideStepGeometry]) -> GuideRoute? {
             points.append(p)
             cum.append(d)
         }
+        // 직전 스텝 끝점과 동일한 좌표 1점뿐인 중간 스텝(Tmap 폴백류 0-길이 지시)은
+        // 거부한다(fail-closed). 통과시키면 startD==endD 유령 스텝이 spans에 남는다.
+        if d - startD <= 0 && i > 0 && pc.count < 2 { return nil }
         spans.append(GuideStepSpan(
             index: i,
             description: step.description,

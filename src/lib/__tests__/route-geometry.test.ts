@@ -87,3 +87,15 @@ describe("globalCandidates", () => {
     expect(globalCandidates(r.polyline, pt(150, 200), 30)).toHaveLength(0);
   });
 });
+
+describe("0-길이 유령 스텝 가드(리뷰 MEDIUM — fail-closed 복원)", () => {
+  it("직전 끝점과 동일한 1점뿐인 중간 스텝은 null", () => {
+    expect(
+      buildGuideRoute([
+        { description: "a", pathCoords: [pt(0), pt(100)] },
+        { description: "0m 지시", pathCoords: [pt(100)] },
+        { description: "b", pathCoords: [pt(100), pt(200)] },
+      ]),
+    ).toBeNull();
+  });
+});

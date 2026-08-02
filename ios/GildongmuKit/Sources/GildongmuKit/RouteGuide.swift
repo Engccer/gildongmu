@@ -67,6 +67,9 @@ public struct GuideState: Sendable, Equatable {
     public var speedWarned: Bool
     /// 자동 인계 무장 여부. 수동 상세 복귀 후엔 재무장선(70m) 밖으로 나가야 true.
     public var autoHandoffArmed: Bool
+    /// reacquiring 진입 직전 국면이 offRoute였는가. 없으면 이탈 확정이 GPS 공백을
+    /// 경유하며 무통지로 소실된다(복귀가 backOnRoute 대신 reacquired로 나감 — 리뷰 HIGH).
+    public var reacquiringFromOffRoute: Bool
 }
 
 public enum GuideEvent: Sendable, Equatable {
@@ -129,7 +132,8 @@ public func guideStateAt(
         speedSamples: [],
         speedGuardActive: false,
         speedWarned: false,
-        autoHandoffArmed: autoHandoffArmed
+        autoHandoffArmed: autoHandoffArmed,
+        reacquiringFromOffRoute: false
     )
 }
 
@@ -187,6 +191,8 @@ public func guideStep(
     if accBad {
         var s = state
         s.phase = .uncertain
+        // 이탈 중 진입이면 복귀도 이탈로(이탈 상태 소실 방지 — 리뷰 HIGH의 대칭 경로).
+        s.resumePhase = state.phase == .offRoute ? .offRoute : state.resumePhase
         s.lastFixAt = now
         s.speedSamples = []
         return GuideOutput(state: s, event: .uncertainEnter, tone: nil)
@@ -202,7 +208,13 @@ public func guideStep(
         var s = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: state.autoHandoffArmed)
         s.speedWarned = state.speedWarned
         s.lastFixAt = now
-        return GuideOutput(state: s, event: .reacquired, tone: nil)
+        // 이탈 확정 상태에서 공백으로 넘어온 재확보는 곧 이탈 종료다 — backOnRoute를
+        // 내야 UI의 이탈 상태(재조회 버튼)가 함께 닫힌다(리뷰 HIGH).
+        return GuideOutput(
+            state: s,
+            event: state.reacquiringFromOffRoute ? .backOnRoute : .reacquired,
+            tone: nil
+        )
     }
     let gap = state.lastFixAt.map { now - $0 > reacquireGapSeconds } ?? false
     if gap || state.windowEdgeHits >= edgeHitsMax {
@@ -211,6 +223,7 @@ public func guideStep(
         s.windowEdgeHits = 0
         s.speedSamples = []
         s.lastFixAt = now
+        s.reacquiringFromOffRoute = state.phase == .offRoute
         return GuideOutput(state: s, event: .reacquiring, tone: nil)
     }
 
