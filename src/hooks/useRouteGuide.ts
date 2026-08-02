@@ -147,8 +147,10 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const locale = useLocale();
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
-  const { playCloser, playFarther, playNearby, playTick, playStart, playStop } =
-    useBeaconSound();
+  const {
+    playCloser, playFarther, playNearby, playTick, playStart, playStop,
+    playAhead, playWarning,
+  } = useBeaconSound();
   const wakeLock = useScreenWakeLock();
 
   const [status, setStatus] = useState<BeaconStatus>("idle");
@@ -335,8 +337,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       const result = guideStep(state, fix, route, now);
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
-      if (result.tone === "ahead") playNearby();
-      else if (result.tone === "warning") playFarther();
+      if (result.tone === "ahead") playAhead();
+      else if (result.tone === "warning") playWarning();
       if (!result.event) {
         // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
         if (detailTickRef.current === null || now - detailTickRef.current >= 3) {
@@ -358,7 +360,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
     },
-    [announce, eventText, playFarther, playNearby, playTick, rememberGuidance],
+    [announce, eventText, playAhead, playTick, playWarning, rememberGuidance],
   );
 
   /**

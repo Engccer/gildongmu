@@ -1,10 +1,18 @@
 import AVFoundation
 import GildongmuKit
+import UIKit
 
-/// 거리 비콘 톤 재생기. Kit `BeaconTones`의 시퀀스를 사인파로 합성한다.
+/// 실시간 길 안내 효과음 재생기(파일 기반, 2026-08-03 위원장 선정 교체).
 ///
-/// mp3를 번들하지 않는 이유: 추세를 **음높이 방향**으로 알리는 게 이 기능의 전부라
-/// 주파수가 데이터로 남아야 하고, 파일로 렌더하면 웹 정본과 따로 굳어 드리프트한다.
+/// 소리 정본은 번들 mp3(`guide-*.mp3`, 웹 `public/sounds/guide/*`와 바이트 동일 —
+/// 드리프트 가드가 강제). 종전 사인파 합성(AVAudioEngine)은 폐기했고, 재생은
+/// 톤별 `AVAudioPlayer` 프리로드로 한다(짧은 큐를 낮은 지연으로 반복 재생).
+///
+/// 게인 위계는 종전 합성 시절의 상대 크기를 보존한다(웹 `useBeaconSound` GAIN 미러):
+/// 추세음 낮게(보행 내내 반복)·tick 더 낮게(하트비트)·이벤트음 원음. 실보행 튜닝 대상.
+///
+/// **햅틱(위원장 제안 2026-08-03)**: 크리티컬 신호는 진동 병행 — 이탈 경고=warning,
+/// 도착=success, 멀어짐=impact. 소리와 같은 지점에서 나가므로 재생기가 단일 발원지다.
 ///
 /// ⚠ **오디오 세션은 채팅 효과음(`SoundPlayer`) 선례를 따르지 않는다.** 그쪽은 가끔
 /// 한 번이고 비콘은 보행 내내 2~3초마다라 프로파일이 다르다. 기본 `.soloAmbient`는 타 앱
@@ -14,61 +22,88 @@ import GildongmuKit
 /// `.ambient` + `.mixWithOthers`를 명시 선언한다.
 @MainActor
 final class BeaconTonePlayer {
-    /// 엔진이 죽었는데 되살리지 못한 상태. 호출부가 통지 대상으로 삼는다
+    /// 재생 수단이 죽었는데 되살리지 못한 상태. 호출부가 통지 대상으로 삼는다
     /// (조용한 무음은 금지. hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다).
     private(set) var isSilenced = false
 
-    /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **구성 변경 옵서버도 세션을
+    /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **인터럽션 옵서버도 세션을
     /// 건드리지 않는다**: 받아쓰기가 `.playAndRecord`로 잡아 둔 카테고리를 비콘이
     /// `.ambient`로 되돌리면 진행 중인 녹음 세션이 깨진다(리뷰 I-8).
     var isSuppressed = false
 
-    private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
-    private let sampleRate = 44_100.0
-    private var format: AVAudioFormat?
+    /// 웹 GAIN 미러 — 값 변경 시 웹 `useBeaconSound.ts`와 동조할 것.
+    private static let gains: [BeaconTone: Float] = [
+        .closer: 0.35, .farther: 0.35, .nearby: 1, .tick: 0.3,
+        .start: 0.8, .stop: 0.8, .ahead: 0.8, .warning: 1,
+    ]
+
+    private var players: [BeaconTone: AVAudioPlayer] = [:]
     private var observers: [NSObjectProtocol] = []
+    private var sessionReady = false
+    private let notifHaptics = UINotificationFeedbackGenerator()
+    private let impactHaptics = UIImpactFeedbackGenerator(style: .medium)
 
     init() {
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1) else {
-            isSilenced = true
-            return
-        }
-        self.format = format
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
         observeInterruptions()
     }
 
     func play(_ tone: BeaconTone) {
-        guard let format, let buffer = makeBuffer(for: tone, format: format) else {
-            isSilenced = true  // 버퍼 합성 실패도 무음이다. 조용히 넘어가면 원인이 사라진다.
-            return
+        haptic(for: tone)
+        guard ensureSession() else { return }
+        let player: AVAudioPlayer
+        if let cached = players[tone] {
+            player = cached
+        } else {
+            guard
+                let url = Bundle.main.url(forResource: tone.resourceName, withExtension: "mp3"),
+                let loaded = try? AVAudioPlayer(contentsOf: url)
+            else {
+                isSilenced = true  // 리소스 누락·디코드 실패도 무음이다. 조용히 넘기면 원인이 사라진다.
+                return
+            }
+            loaded.volume = Self.gains[tone] ?? 1
+            loaded.prepareToPlay()
+            players[tone] = loaded
+            player = loaded
         }
-        guard ensureRunning() else { return }
-        player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
-        if !player.isPlaying { player.play() }
+        player.currentTime = 0
+        if player.play() {
+            isSilenced = false
+        } else {
+            isSilenced = true
+        }
+    }
+
+    /// 크리티컬 신호의 진동 병행(이탈·도착·멀어짐만 — 과잉 진동은 피로).
+    private func haptic(for tone: BeaconTone) {
+        switch tone {
+        case .warning: notifHaptics.notificationOccurred(.warning)
+        case .nearby: notifHaptics.notificationOccurred(.success)
+        case .farther: impactHaptics.impactOccurred()
+        default: break
+        }
     }
 
     /// 정리는 여기서 한다(`deinit`은 nonisolated라 MainActor 상태에 접근할 수 없다).
     /// 멱등이므로 중지·화면 이탈 어디서 불러도 안전하다.
     func shutdown() {
-        player.stop()
-        engine.stop()
+        for player in players.values { player.stop() }
+        players = [:]
+        sessionReady = false
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers = []
     }
 
-    // MARK: - 엔진 수명
+    // MARK: - 세션 수명
 
-    /// 세션 카테고리를 확정하고 엔진을 띄운다. 실패는 `isSilenced`로 노출한다.
-    private func ensureRunning() -> Bool {
-        if engine.isRunning { return true }
+    /// 세션 카테고리를 확정한다. 실패는 `isSilenced`로 노출한다.
+    private func ensureSession() -> Bool {
+        if sessionReady { return true }
         if observers.isEmpty { observeInterruptions() }  // shutdown 이후 재사용 대비
         do {
             try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
-            try engine.start()
+            sessionReady = true
             isSilenced = false
             return true
         } catch {
@@ -77,12 +112,11 @@ final class BeaconTonePlayer {
         }
     }
 
-    /// 전화 한 통이나 다른 컴포넌트의 `setActive(false)`가 엔진을 멈추면 톤이 영영
-    /// 사라진다. repo 전체에 인터럽션 처리가 없어 이 계층에서 처음 도입한다.
+    /// 전화 한 통이나 다른 컴포넌트의 `setActive(false)`가 세션을 멈추면 톤이 영영
+    /// 사라진다. 인터럽션 종료 시 세션을 되살린다.
     private func observeInterruptions() {
-        let center = NotificationCenter.default
         observers.append(
-            center.addObserver(
+            NotificationCenter.default.addObserver(
                 forName: AVAudioSession.interruptionNotification,
                 object: AVAudioSession.sharedInstance(), queue: .main
             ) { [weak self] note in
@@ -92,58 +126,10 @@ final class BeaconTonePlayer {
                 else { return }
                 MainActor.assumeIsolated {
                     guard let self, !self.isSuppressed else { return }
-                    _ = self.ensureRunning()
+                    self.sessionReady = false
+                    _ = self.ensureSession()
                 }
             }
         )
-        observers.append(
-            center.addObserver(
-                forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self, !self.isSuppressed, let format = self.format else { return }
-                    // 구성 변경 후에는 연결이 끊겨 있을 수 있어 다시 잇는다.
-                    self.engine.connect(self.player, to: self.engine.mainMixerNode, format: format)
-                    _ = self.ensureRunning()
-                }
-            }
-        )
-    }
-
-    // MARK: - 합성
-
-    /// 시퀀스 전체를 담는 버퍼 하나를 만들고 각 단계를 오프셋 위치에 사인파로 채운다.
-    /// 단계마다 짧은 페이드를 넣어 클릭 노이즈를 없앤다.
-    private func makeBuffer(for tone: BeaconTone, format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        let steps = toneSteps(for: tone)
-        guard let last = steps.map({ $0.start + $0.dur }).max(), last > 0 else { return nil }
-
-        let frameCount = AVAudioFrameCount(last * sampleRate)
-        guard
-            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-            let channel = buffer.floatChannelData?[0]
-        else { return nil }
-        buffer.frameLength = frameCount
-        for i in 0..<Int(frameCount) { channel[i] = 0 }
-
-        let peak: Float = tone == .tick ? 0.06 : 0.18  // tick은 하트비트라 낮게(웹 동형)
-        let fadeFrames = Int(0.005 * sampleRate)
-
-        for step in steps {
-            let startFrame = Int(step.start * sampleRate)
-            let stepFrames = Int(step.dur * sampleRate)
-            guard stepFrames > 0 else { continue }
-            for i in 0..<stepFrames {
-                let frame = startFrame + i
-                guard frame < Int(frameCount) else { break }
-                let envelope: Float =
-                    if i < fadeFrames { Float(i) / Float(fadeFrames) }
-                    else if i > stepFrames - fadeFrames { Float(stepFrames - i) / Float(fadeFrames) }
-                    else { 1 }
-                let phase = 2.0 * Double.pi * step.freq * (Double(i) / sampleRate)
-                channel[frame] += peak * envelope * Float(sin(phase))
-            }
-        }
-        return buffer
     }
 }

@@ -429,8 +429,7 @@ final class BeaconModel {
             now: now
         )
         guideState = out.state
-        // 전용음(예고·경고)은 사운드 태스크에서 교체 — 그때까지 기존 톤을 임시 배정.
-        if let tone = out.tone { playTone(tone == .ahead ? .nearby : .farther) }
+        if let tone = out.tone { playTone(tone == .ahead ? .ahead : .warning) }
         guard let event = out.event else {
             // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
             if lastDetailTickAt == nil || now - lastDetailTickAt! >= 3 {

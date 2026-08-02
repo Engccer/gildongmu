@@ -1,58 +1,19 @@
 import Foundation
 
-/// 거리 비콘 효과음의 톤 시퀀스(순수 데이터, 오디오 엔진 비의존).
+/// 실시간 길 안내 효과음 식별자.
 ///
-/// **음높이 방향이 정보다**: 가까워짐 = 상승, 멀어짐 = 하강, 도착 = 밝은 더블,
-/// tick = 낮은 단음("추적 중" 하트비트).
+/// 2026-08-03 위원장 청취 선정으로 **소리 정본이 합성 데이터에서 파일로 바뀌었다**:
+/// 웹 `public/sounds/guide/<이름>.mp3` ↔ 앱 리소스 `guide-<이름>.mp3`(바이트 동일,
+/// `sounds-drift.test.ts`가 강제). closer·farther는 종전 합성 음가(660↔990Hz 2음)를
+/// 그대로 렌더한 파일이라 소리는 불변이고, 나머지 6종은 ElevenLabs 생성본이다.
+/// 종전 `ToneStep`/`toneSteps` 합성 시퀀스는 이 전환으로 폐기됐다.
 ///
-/// 추세·도착·tick 4종의 정본은 웹 `src/lib/beacon-tones.ts`이고, 드리프트는
-/// `src/lib/__tests__/beacon-tones-drift.test.ts`가 이 파일을 직접 읽어 막는다.
-///
-/// ⚠ **시작·정지는 웹 값을 쓰지 않는다.** 웹은 받아쓰기용 `recording-tones.ts`의
-/// `START_TONES`(660→990)·`STOP_TONES`(990→660)를 재사용하는데, 그 값이
-/// `closer`·`farther`와 **주파수도 방향도 같다**. 웹에서는 비콘과 받아쓰기가 별개
-/// 맥락이라 무해했지만 iOS는 둘을 한 기능 안에서 듣게 되므로 "추적 시작"과
-/// "가까워지는 중"이 구분되지 않는다. 이 기능의 전제(음높이 방향 = 추세)가 무너지므로
-/// 음 수(2음 대 3음)와 음역을 함께 갈라 둔다. iOS 받아쓰기는 시스템 사운드
-/// (1113/1114)를 쓰므로 그쪽과도 충돌하지 않는다.
-public enum BeaconTone: Sendable, Equatable, CaseIterable {
-    case closer, farther, nearby, tick, start, stop
-}
+/// **의미 계약(불변)**: 가까워짐=상승, 멀어짐=하강, 도착=연타 종(마지막 바퀴 종 —
+/// 여정 끝 1회), tick=아주 짧은 저자극 하트비트, 예고=가벼운 트릴(상세 안내에서
+/// 결정 지점 40m 전 반복), 경고=낮은 이중음(이탈).
+public enum BeaconTone: String, Sendable, Equatable, CaseIterable {
+    case closer, farther, nearby, tick, start, stop, ahead, warning
 
-public struct ToneStep: Sendable, Equatable {
-    public var freq: Double
-    /// 시퀀스 시작 기준 오프셋(초).
-    public var start: Double
-    public var dur: Double
-
-    public init(freq: Double, start: Double, dur: Double) {
-        self.freq = freq
-        self.start = start
-        self.dur = dur
-    }
-}
-
-public func toneSteps(for tone: BeaconTone) -> [ToneStep] {
-    switch tone {
-    case .closer:
-        [ToneStep(freq: 660, start: 0, dur: 0.07), ToneStep(freq: 990, start: 0.08, dur: 0.09)]
-    case .farther:
-        [ToneStep(freq: 990, start: 0, dur: 0.07), ToneStep(freq: 660, start: 0.08, dur: 0.09)]
-    case .nearby:
-        [ToneStep(freq: 880, start: 0, dur: 0.08), ToneStep(freq: 1320, start: 0.1, dur: 0.14)]
-    case .tick:
-        [ToneStep(freq: 330, start: 0, dur: 0.05)]
-    case .start:
-        [
-            ToneStep(freq: 523, start: 0, dur: 0.07),
-            ToneStep(freq: 659, start: 0.08, dur: 0.07),
-            ToneStep(freq: 784, start: 0.16, dur: 0.11),
-        ]
-    case .stop:
-        [
-            ToneStep(freq: 784, start: 0, dur: 0.07),
-            ToneStep(freq: 659, start: 0.08, dur: 0.07),
-            ToneStep(freq: 523, start: 0.16, dur: 0.11),
-        ]
-    }
+    /// 앱 번들 리소스 파일명(확장자 제외). 웹 파일명과 1:1 대응.
+    public var resourceName: String { "guide-\(rawValue)" }
 }
