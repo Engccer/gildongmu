@@ -1,0 +1,183 @@
+import Foundation
+
+/// 도보 경로 기하: 폴리라인 조립·검증·투영 (순수 — CoreLocation 비의존).
+/// 웹 정본 `src/lib/route-geometry.ts`의 1:1 미러. 공유 fixture
+/// `src/lib/__tests__/fixtures/route-guide-scenarios.json`이 동조를 강제한다.
+///
+/// ⚠ 전역 최근접 매칭 금지 — 경로가 자기 자신과 12m까지 근접해(조사 §2) 엉뚱한
+/// 스텝을 고른다. 호출자는 창을 구속하고, 전역 탐색은 후보 목록으로만 받는다.
+
+/// 40m 미만 스텝은 GPS 자동 판정 대상이 아니다: 25m 미만 구간 21%·도심 오차 7~13m.
+public let longStepMinMeters = 40.0
+/// 스텝 이음매 허용 간격. 실측 0.00m지만 보증이 아니라 응답마다 검증한다(스펙 §7.2).
+public let seamToleranceMeters = 5.0
+
+/// 경로 기하 좌표 한 점(WGS84 십진). 서버 `pathCoords` 원소와 동형.
+public struct RoutePoint: Codable, Sendable, Hashable {
+    public let lat: Double
+    public let lng: Double
+
+    public init(lat: Double, lng: Double) {
+        self.lat = lat
+        self.lng = lng
+    }
+}
+
+public struct GuidePolyline: Sendable, Equatable {
+    public let points: [RoutePoint]
+    /// cum[i] = 시작점→points[i] 누적 미터.
+    public let cum: [Double]
+}
+
+public struct GuideStepSpan: Sendable, Equatable {
+    public let index: Int
+    public let description: String
+    public let startD: Double
+    public let endD: Double
+    public let isLong: Bool
+}
+
+public struct GuideRoute: Sendable, Equatable {
+    public let polyline: GuidePolyline
+    public let steps: [GuideStepSpan]
+    public let totalMeters: Double
+}
+
+public struct GuideProjection: Sendable, Equatable {
+    /// 경로 시작 기준 진행거리(m).
+    public let d: Double
+    /// 폴리라인까지 수직거리(m).
+    public let perpMeters: Double
+}
+
+/// buildGuideRoute 입력(스텝 문장 + 기하). WalkRouteStep에서 투영해 만든다.
+public struct GuideStepGeometry: Sendable {
+    public let description: String
+    public let pathCoords: [RoutePoint]?
+
+    public init(description: String, pathCoords: [RoutePoint]?) {
+        self.description = description
+        self.pathCoords = pathCoords
+    }
+}
+
+/// 스텝 기하를 하나의 연속 폴리라인 + 스텝 스팬으로 조립한다.
+/// 검증 실패는 nil — 소비자는 상세 부적격으로 간략 폴백한다(fail-closed).
+public func buildGuideRoute(_ steps: [GuideStepGeometry]) -> GuideRoute? {
+    guard !steps.isEmpty else { return nil }
+    var points: [RoutePoint] = []
+    var cum: [Double] = []
+    var spans: [GuideStepSpan] = []
+    var d = 0.0
+    for (i, step) in steps.enumerated() {
+        guard let pc = step.pathCoords, !pc.isEmpty,
+              pc.allSatisfy({ $0.lat.isFinite && $0.lng.isFinite })
+        else { return nil }
+        let startD = d
+        for (j, p) in pc.enumerated() {
+            if points.isEmpty {
+                points.append(p)
+                cum.append(0)
+                continue
+            }
+            let prev = points[points.count - 1]
+            let seg = haversineMeters(lat1: prev.lat, lng1: prev.lng, lat2: p.lat, lng2: p.lng)
+            // 스텝 첫 점은 직전 스텝 끝점과 이어져야 한다(이음매 검증).
+            if j == 0 && seg > seamToleranceMeters { return nil }
+            if seg == 0 { continue } // 중복점 제거
+            d += seg
+            points.append(p)
+            cum.append(d)
+        }
+        spans.append(GuideStepSpan(
+            index: i,
+            description: step.description,
+            startD: startD,
+            endD: d,
+            isLong: d - startD >= longStepMinMeters
+        ))
+    }
+    guard points.count >= 2, d > 0 else { return nil }
+    return GuideRoute(
+        polyline: GuidePolyline(points: points, cum: cum),
+        steps: spans,
+        totalMeters: d
+    )
+}
+
+/// 위경도를 기준점(ref) 주변 로컬 평면(m)으로 변환.
+private func toLocal(ref: RoutePoint, p: RoutePoint) -> (x: Double, y: Double) {
+    let y = (p.lat - ref.lat) * 111_320
+    let x = (p.lng - ref.lng) * 111_320 * cos(ref.lat * .pi / 180)
+    return (x, y)
+}
+
+/// [fromD, toD] 창 안에서 p의 최근접 투영. 창과 겹치는 세그먼트가 없으면 nil.
+/// ⚠ perp는 세그먼트 기하 최근접(창 클램프 전) 기준 — 클램프 후 지점까지의 거리로
+/// 재면 전방 진행이 "수직 이탈"과 구분되지 않는다(웹 정본 동일 계약).
+public func projectOnPolyline(
+    _ poly: GuidePolyline, p: RoutePoint, fromD: Double, toD: Double
+) -> GuideProjection? {
+    var best: GuideProjection?
+    for i in 0..<(poly.points.count - 1) {
+        let d0 = poly.cum[i]
+        let d1 = poly.cum[i + 1]
+        if d1 < fromD || d0 > toD || d1 == d0 { continue }
+        let a = toLocal(ref: p, p: poly.points[i])
+        let b = toLocal(ref: p, p: poly.points[i + 1])
+        let abx = b.x - a.x
+        let aby = b.y - a.y
+        let len2 = abx * abx + aby * aby
+        var t = len2 == 0 ? 0 : (-a.x * abx - a.y * aby) / len2
+        t = max(0, min(1, t))
+        let px = a.x + abx * t
+        let py = a.y + aby * t
+        let perp = (px * px + py * py).squareRoot()
+        let dd = max(fromD, min(toD, d0 + (d1 - d0) * t))
+        if best == nil || perp < best!.perpMeters {
+            best = GuideProjection(d: dd, perpMeters: perp)
+        }
+    }
+    return best
+}
+
+/// 세그먼트 i 단독 투영(t는 [0,1]만 클램프 — 창 없음).
+private func projectOnSegment(_ poly: GuidePolyline, i: Int, p: RoutePoint) -> GuideProjection {
+    let a = toLocal(ref: p, p: poly.points[i])
+    let b = toLocal(ref: p, p: poly.points[i + 1])
+    let abx = b.x - a.x
+    let aby = b.y - a.y
+    let len2 = abx * abx + aby * aby
+    var t = len2 == 0 ? 0 : (-a.x * abx - a.y * aby) / len2
+    t = max(0, min(1, t))
+    let px = a.x + abx * t
+    let py = a.y + aby * t
+    return GuideProjection(
+        d: poly.cum[i] + (poly.cum[i + 1] - poly.cum[i]) * t,
+        perpMeters: (px * px + py * py).squareRoot()
+    )
+}
+
+/// 전역 후보(국소 최소점들): perp ≤ maxPerp 후보를 진행거리 30m 간격으로 병합.
+/// 후보가 복수면 호출자는 위치를 확정하지 말아야 한다(스펙 §6 모호 규칙).
+/// ⚠ 창 기반 projectOnPolyline 재사용 금지 — 인접 세그먼트의 기하 최근접이 경계
+/// 클램프 d로 끌려 들어와 유령 후보를 만든다(웹 실측: U자 왕복에서 3후보).
+public func globalCandidates(
+    _ poly: GuidePolyline, p: RoutePoint, maxPerp: Double
+) -> [GuideProjection] {
+    var raw: [GuideProjection] = []
+    for i in 0..<(poly.points.count - 1) {
+        let pr = projectOnSegment(poly, i: i, p: p)
+        if pr.perpMeters <= maxPerp { raw.append(pr) }
+    }
+    raw.sort { $0.d < $1.d }
+    var merged: [GuideProjection] = []
+    for c in raw {
+        if let last = merged.last, c.d - last.d < 30 {
+            if c.perpMeters < last.perpMeters { merged[merged.count - 1] = c }
+        } else {
+            merged.append(c)
+        }
+    }
+    return merged
+}
