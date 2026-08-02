@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { hasSeoulOpenDataKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
-import { findEventsNear } from "@/lib/culture-events";
+import { findEventsNear, isEventServiceArea } from "@/lib/culture-events";
 import { latParam, lngParam } from "@/lib/coord-param";
 import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
 
@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
   // 커버리지 마커가 키 게이트보다 앞 — 국외 좌표는 upstream을 부르지 않는다.
   if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
     return NextResponse.json({ outOfCoverage: true });
+  }
+  // 서울 밖은 "오늘 행사 없음"이 아니라 "이 지역 행사 정보 미보유"(3-state).
+  if (!isEventServiceArea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ unavailableHere: "seoulOnly" });
   }
   if (!hasSeoulOpenDataKey()) {
     return NextResponse.json({ events: [], total: 0 });

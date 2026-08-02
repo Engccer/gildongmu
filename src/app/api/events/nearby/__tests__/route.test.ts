@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/env", () => ({
   hasSeoulOpenDataKey: vi.fn(() => true),
 }));
-vi.mock("@/lib/culture-events", () => ({
+// isEventServiceArea는 **실제 구현**을 쓴다(순수 좌표 판정) — 모킹하면 라우트가
+// 진짜 판정선을 쓰는지 검증하지 못하고, 서울 인접 좌표가 잘리는 회귀를 놓친다.
+vi.mock("@/lib/culture-events", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/culture-events")>()),
   findEventsNear: vi.fn(),
 }));
 
@@ -74,11 +77,24 @@ describe("GET /api/events/nearby", () => {
     expect(mockFind).not.toHaveBeenCalled();
   });
 
-  it("서울 밖 국내 좌표에서 0건 → 빈 배열 graceful (오류 아님)", async () => {
-    mockFind.mockResolvedValue({ events: [], total: 0 } as never);
+  it("서울 밖 국내 좌표 → unavailableHere 마커, 키 게이트보다 앞(upstream 미호출)", async () => {
+    // 출처가 서울 데이터뿐이라 부산의 0건은 "오늘 행사 없음"이 아니라 "정보 미보유"다.
+    // 둘을 뭉개면 데이터 한계가 지역의 부재로 위장된다.
+    mockHasKey.mockReturnValue(false); // 게이트가 뒤라는 것을 증명
     const res = await GET(makeRequest("?lat=35.1796&lng=129.0756")); // 부산
     expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ unavailableHere: "seoulOnly" });
+    expect(mockFind).not.toHaveBeenCalled();
+  });
+
+  it("서울 인접 시(하남 미사)는 서비스권 — 조회한다", async () => {
+    // 반경 3km가 서울 경계를 넘어 실제로 서울 행사가 잡힌다(2026-08-02 실호출 1건).
+    // 시도 경계로 잘랐다면 사라졌을 결과라, 이 케이스가 판정 방식의 근거다.
+    mockFind.mockResolvedValue({ events: [], total: 0 } as never);
+    const res = await GET(makeRequest("?lat=37.562&lng=127.193"));
+    expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ events: [], total: 0 });
+    expect(mockFind).toHaveBeenCalled();
   });
 
   it("upstream 장애 → 502 (조회 실패와 '근처에 없음'을 구분)", async () => {

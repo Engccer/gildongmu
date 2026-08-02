@@ -1,4 +1,9 @@
-import type { NearbySubwayStation, StationTimetable, SubwayStationArrivals } from "../types";
+import type {
+  NearbySubwayStation,
+  NearestSubwayStation,
+  StationTimetable,
+  SubwayStationArrivals,
+} from "../types";
 import { hasSeoulSubwayRealtimeKey } from "../env";
 import { findStationsNear, findStationMeta } from "../subway-stations";
 import { judgeServiceStatus, kstNowMinutes, parseServiceTime } from "../service-hours";
@@ -154,6 +159,37 @@ export function buildNearbyArrivals(
     throw new Error("서울 지하철 실시간 도착 근접 조회 전부 실패");
   }
   return stations;
+}
+
+/**
+ * 반경 밖이어도 **가장 가까운 역 1곳**(seed 조회, 네트워크 0). 결과 0건일 때만 쓴다.
+ *
+ * "주변에 지하철역이 없습니다"는 반경 1km 안의 사실이라 참이지만, 그것만으로는
+ * 강동(1.5km)과 강릉(90km)이 같은 문장을 받는다. 앞은 걸어갈 수 있고 뒤는 도시철도가
+ * 없는 지역인데 구분이 사라진다 — 시각장애 사용자는 지도로 그 차이를 볼 수 없다.
+ *
+ * ⚠ **거리 임계값으로 "도시철도 없는 지역"을 판정하지 않는다.** 최근접 역 거리가
+ * 전국에 연속 분포하기 때문이다(2026-08-02 50개 시 실측: 울산 3.5 · 세종 10.0 ·
+ * 나주 13.2 · 창원 17.3 · 원주 26.6km로 간격 없이 이어진다). 어떤 선을 그어도
+ * 그 근처에서 자의적이 되므로, 판정하지 말고 **거리를 그대로 알려 사용자가
+ * 판단하게 한다**(따릉이·문화행사는 "서울 전용"이라는 서비스 속성이라 판정이
+ * 성립하지만, 이쪽은 위치의 연속량이라 성격이 다르다).
+ */
+export function findNearestStationInfo(
+  lat: number,
+  lng: number,
+): NearestSubwayStation | null {
+  const [nearest] = findStationsNear(lat, lng, { limit: 1, dedupeByName: true });
+  if (!nearest) return null;
+  const meta = findStationMeta(nearest.name);
+  return {
+    // `NearbySubwayStation.stationName`과 같은 계약(접미사 제거) — 목록과 nearest가
+    // 다른 모양이면 소비자가 "역"을 붙일지 말지 판단할 수 없다(CLI에서 "남춘천역역").
+    stationName: cleanName(nearest.name),
+    nameEn: meta?.nameEn,
+    lines: meta?.lines ?? [nearest.lineName],
+    distanceMeters: Math.round(nearest.distanceMeters),
+  };
 }
 
 /**

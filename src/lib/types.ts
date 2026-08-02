@@ -628,6 +628,19 @@ export interface NearbySubwayStation {
   firstTime?: string;
 }
 
+/**
+ * 조회 반경 안에 역이 하나도 없을 때 함께 실리는 **최근접 역 1곳**.
+ * 반경(1km) 밖이므로 그 자리에서 탈 수 있다는 뜻이 아니라, 거리를 보고
+ * "걸어갈 만한가 / 이 지역엔 도시철도가 없는가"를 사용자가 판단하기 위한 정보다.
+ * 결과가 있으면 싣지 않는다(잉여).
+ */
+export interface NearestSubwayStation {
+  stationName: string;
+  nameEn?: string;
+  lines: string[];
+  distanceMeters: number;
+}
+
 /** 대기질 등급 — 1좋음·2보통·3나쁨·4매우나쁨, 부재/장애는 unknown(낭독 정본). */
 export type AirGrade = "good" | "moderate" | "bad" | "veryBad" | "unknown";
 

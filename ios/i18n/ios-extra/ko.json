@@ -18,7 +18,8 @@
       "failedTitle": "정보를 가져오지 못했습니다",
       "refresh": "새로고침",
       "privacyPolicy": "개인정보 처리방침",
-      "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다."
+      "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.",
+      "unavailableHere": "서울 지역에서만 제공됩니다"
     },
     "chat": {
       "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
@@ -154,6 +155,7 @@
       "kidsPark": "공원",
       "kidsEmpty": "주변에 아이 놀 곳이 없습니다",
       "subwayEmpty": "주변에 지하철역이 없습니다",
+      "subwayEmptyNearest": "주변에 지하철역이 없습니다. 가장 가까운 역은 %@, %@ 거리입니다",
       "whereAmIReady": "현재 위치를 확인했습니다",
       "whereAmIChat": "내 현재 위치에 관해 물어보기",
       "whereAmIAsOf": "현재 위치 {time} 기준",

@@ -688,3 +688,26 @@ describe("barrier-free-detail", () => {
     ]);
   });
 });
+
+describe("nearby-subway 0건 — 최근접 역 동봉", () => {
+  it("nearest가 있으면 역명·노선·거리를 함께 알린다", () => {
+    const lines = FORMATTERS["nearby-subway"]({
+      stations: [],
+      // provider가 cleanName으로 접미사를 떼고 주므로 "남춘천"이 온다. 여기에
+      // fixture를 "남춘천역"으로 두면 "남춘천역역"이 되는 회귀를 못 잡는다
+      // (원본 seed 1,098건 중 358건이 "역"으로 끝나 실제로 밟는 경로다).
+      nearest: { stationName: "남춘천", lines: ["경춘선"], distanceMeters: 103_888 },
+    } as never);
+    const out = lines.join("\n");
+    expect(out).toContain("주변에 지하철역이 없습니다");
+    expect(out).toContain("남춘천역");
+    expect(out).not.toContain("남춘천역역");
+    expect(out).toContain("경춘선");
+    expect(out).toContain("103.9km"); // 이 수치가 "이 지역엔 도시철도가 없다"를 말한다
+  });
+
+  it("nearest가 없으면 종전 문구 그대로(스키마 하위호환)", () => {
+    const lines = FORMATTERS["nearby-subway"]({ stations: [] } as never);
+    expect(lines).toEqual(["주변에 지하철역이 없습니다."]);
+  });
+});

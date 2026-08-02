@@ -4,7 +4,8 @@
     "tagline": "Navegación en Corea, accesible para todos"
   },
   "common": {
-    "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles."
+    "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles.",
+    "unavailableHere": "Disponible solo en Seúl."
   },
   "nav": {
     "korean": "한국어",
@@ -220,6 +221,7 @@
     "locating": "Obteniendo tu ubicación…",
     "loading": "Cargando llegadas de estaciones cercanas…",
     "empty": "No hay estaciones de metro cerca.",
+    "emptyNearest": "No hay estaciones de metro cerca. La más cercana es {station}, a {distance}.",
     "error": "No se pudieron cargar las llegadas de metro.",
     "ready": "Llegadas de metro cerca de ti.",
     "asOf": "a las {time}",

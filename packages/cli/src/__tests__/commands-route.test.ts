@@ -22,12 +22,28 @@ class MockApiError extends Error {
 const apiRequest = vi.fn();
 const readConfig = vi.fn();
 
+/**
+ * 마커 술어·문구는 구현(`lib/api-client.ts`)의 복제다. importOriginal로 실제
+ * 모듈을 쓰면 config.js mock과 호이스팅 순환이 나므로 여기서는 복제를 유지한다.
+ * ⚠ 구현에 마커를 추가하면 이 목록도 함께 갱신할 것(누락 시 이 파일이 실패한다).
+ */
 function isOutOfCoverage(body: unknown): boolean {
   return typeof body === "object" && body !== null && (body as { outOfCoverage?: unknown }).outOfCoverage === true;
 }
 const OUT_OF_COVERAGE_NOTICE = "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+function isUnavailableHere(body: unknown): boolean {
+  return typeof body === "object" && body !== null && (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly";
+}
+const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";
 
-vi.mock("../lib/api-client.js", () => ({ apiRequest, ApiError: MockApiError, isOutOfCoverage, OUT_OF_COVERAGE_NOTICE }));
+vi.mock("../lib/api-client.js", () => ({
+  apiRequest,
+  ApiError: MockApiError,
+  isOutOfCoverage,
+  OUT_OF_COVERAGE_NOTICE,
+  isUnavailableHere,
+  UNAVAILABLE_HERE_NOTICE,
+}));
 vi.mock("../lib/config.js", () => ({ readConfig }));
 
 let stdoutSpy: ReturnType<typeof vi.spyOn>;

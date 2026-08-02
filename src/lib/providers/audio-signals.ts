@@ -1,6 +1,7 @@
 import type { CompassDirection } from "../geo/bearing";
 import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
 import { haversineMeters } from "../geo";
+import { SEOUL_BBOX } from "../coverage";
 import seed from "../data/audio-signals.json";
 
 /**
@@ -14,8 +15,8 @@ import seed from "../data/audio-signals.json";
 
 const SEED = seed as unknown as { meta: { baseDate: string }; signals: Array<[number, number]> };
 
-// 빌드 스크립트와 동일 상수(scripts/build-audio-signals.mjs). 회귀 시 함께 갱신.
-const SEOUL_BBOX = { latMin: 37.4, latMax: 37.72, lngMin: 126.73, lngMax: 127.2 };
+// 서울 전용 소스의 서비스 지역 판정 정본은 coverage.ts(따릉이·문화행사와 공유).
+// seed 자체가 이 bbox로 필터되어 생성되므로 값이 어긋나면 "서비스권인데 0건"이 된다.
 
 const DEFAULT_RADIUS_METERS = 300;
 const MAX_SITES = 5; // 한 지주 다기기 반복 낭독 방지(spec §2-B)

@@ -10,6 +10,7 @@ import {
   parseBikeRows,
   parseBikeStations,
   fetchNearbyBikeStations,
+  isBikeServiceArea,
 } from "../providers/seoul-bike";
 
 // 강동구 길동 기준 좌표(설계 문서와 동일)
@@ -107,5 +108,25 @@ describe("fetchNearbyBikeStations", () => {
     expect(stations).toEqual([]);
     expect(spy).not.toHaveBeenCalled();
     mod.env.SEOUL_OPEN_DATA_KEY = orig;
+  });
+});
+
+describe("isBikeServiceArea", () => {
+  it("서울 안은 서비스권", () => {
+    expect(isBikeServiceArea(37.5385, 127.1234)).toBe(true); // 길동
+    expect(isBikeServiceArea(37.669, 127.047)).toBe(true); // 도봉
+  });
+
+  it("서울 경계 인접은 서비스권 — 대여소가 조회 반경에 들어올 수 있다", () => {
+    // 하남 미사는 최근접 대여소 1.13km(실측). 반경 1km 밖이라 0건이지만
+    // "미제공"이라 말하면 거짓이다 — 조금만 더 가면 실제로 있다.
+    expect(isBikeServiceArea(37.562, 127.193)).toBe(true);
+    expect(isBikeServiceArea(37.4292, 126.9877)).toBe(true); // 과천
+  });
+
+  it("지방은 미제공 — 0건과 뭉개지 않는다", () => {
+    expect(isBikeServiceArea(35.1578, 129.0594)).toBe(false); // 부산 서면 309km
+    expect(isBikeServiceArea(36.352, 127.378)).toBe(false); // 대전 둔산 123km
+    expect(isBikeServiceArea(37.88, 127.729)).toBe(false); // 춘천 59km
   });
 });

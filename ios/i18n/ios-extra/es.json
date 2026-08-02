@@ -18,7 +18,8 @@
       "failedTitle": "No se pudo obtener la información",
       "refresh": "Actualizar",
       "privacyPolicy": "Política de privacidad",
-      "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles."
+      "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles.",
+      "unavailableHere": "Disponible solo en Seúl"
     },
     "chat": {
       "suggestion1": "Muéstrame qué hay por aquí",
@@ -154,6 +155,7 @@
       "kidsPark": "Parque",
       "kidsEmpty": "No hay lugares para niños cerca",
       "subwayEmpty": "No hay estaciones de metro cerca",
+      "subwayEmptyNearest": "No hay estaciones de metro cerca. La más cercana es %@, a %@",
       "whereAmIReady": "Ubicación actual encontrada",
       "whereAmIChat": "Preguntar sobre mi ubicación actual",
       "whereAmIAsOf": "Ubicación actual a las {time}",
