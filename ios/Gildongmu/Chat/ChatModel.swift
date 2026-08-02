@@ -56,8 +56,15 @@ final class ChatModel {
             // 일반 채팅만 전송 직전 위치 1회 시도(캐시 있으면 즉시 반환, 최초만 권한 팝업).
             // 실패·거부 시 userLocation 없이 계속 — 위치는 필수가 아니다.
             // 장소 채팅은 기존 계약 유지(위치 요청 트리거 아님, 직전 좌표 재사용만).
+            // ⚠ 이 호출은 반환값을 버리지만 **부수효과가 목적**이다. 공유 스토어를
+            // 갱신해야 세 줄 뒤 `requestBody()`의 `lastCoordinate`가 채워진다.
+            // `primeAuthorization()`으로 바꾸면 이미 허용된 세션에서 즉시 반환해
+            // 좌표가 없는 채로 전송되고, 위치 기반 도구가 통째로 죽는다(최초 설치
+            // 세션만 우연히 동작한다). 타임아웃은 짧게 — 이 구간에 진행 통지가 없다.
             if place == nil {
-                _ = try? await LocationService.shared.currentCoordinate()
+                _ = try? await LocationService.shared.currentCoordinate(
+                    timeout: LocationFixPolicy.softTimeout
+                )
             }
             let body = requestBody()
 

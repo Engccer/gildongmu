@@ -568,7 +568,8 @@
     "weak": "Weak signal",
     "denied": "Location permission required",
     "screenHint": "Keep the screen on and the phone in hand. Guidance stops when the screen turns off.",
-    "straightLineNote": "Straight-line distance."
+    "straightLineNote": "Straight-line distance.",
+    "reduced": "Can’t track distance because Precise Location is off"
   },
   "offline": {
     "heading": "You are offline",

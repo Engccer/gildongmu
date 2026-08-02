@@ -568,7 +568,8 @@
     "weak": "Señal débil",
     "denied": "Se requiere permiso de ubicación",
     "screenHint": "Mantén la pantalla encendida y el teléfono en la mano. La guía se detiene cuando la pantalla se apaga.",
-    "straightLineNote": "Distancia en línea recta."
+    "straightLineNote": "Distancia en línea recta.",
+    "reduced": "No se puede seguir la distancia porque la ubicación precisa está desactivada"
   },
   "offline": {
     "heading": "Estás sin conexión",

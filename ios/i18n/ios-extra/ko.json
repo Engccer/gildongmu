@@ -22,7 +22,9 @@
       "unavailableHere": {
         "seoulOnly": "서울 지역에서만 제공됩니다",
         "noBusData": "이 지역은 정류소 정보가 제공되지 않습니다"
-      }
+      },
+      "geoReducedTitle": "정확한 위치가 꺼져 있습니다",
+      "geoReducedDesc": "설정 앱에서 길동무의 정확한 위치를 켜 주세요"
     },
     "chat": {
       "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
@@ -183,7 +185,8 @@
       "eventsEmpty": "주변에 오늘 진행 중인 문화행사가 없습니다",
       "unitEvent": "건",
       "subwayClosed": "운행 시간이 아닙니다. 첫차 %@",
-      "subwayNoRealtime": "실시간 도착 정보가 제공되지 않습니다"
+      "subwayNoRealtime": "실시간 도착 정보가 제공되지 않습니다",
+      "refreshReduced": "정확한 위치가 꺼져 있어 새로고침하지 못했습니다"
     },
     "settings": {
       "title": "설정",

@@ -22,7 +22,9 @@
       "unavailableHere": {
         "seoulOnly": "ソウル地域でのみご利用いただけます",
         "noBusData": "この地域はバス停の情報が提供されていません"
-      }
+      },
+      "geoReducedTitle": "正確な位置情報がオフです",
+      "geoReducedDesc": "設定アプリでキルドンムの正確な位置情報をオンにしてください"
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",
@@ -183,7 +185,8 @@
       "eventsEmpty": "近くで今日開催中の文化イベントはありません",
       "unitEvent": "件",
       "subwayClosed": "運行時間外です。始発 %@",
-      "subwayNoRealtime": "この駅のリアルタイム到着情報は提供されていません"
+      "subwayNoRealtime": "この駅のリアルタイム到着情報は提供されていません",
+      "refreshReduced": "正確な位置情報がオフのため更新できませんでした"
     },
     "settings": {
       "title": "設定",

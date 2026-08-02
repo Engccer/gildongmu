@@ -106,7 +106,7 @@ final class BeaconModel {
             return
         case .notDetermined:
             // 팝업 자체가 신호다. 허용 여부는 아래에서 다시 확인한다.
-            _ = try? await LocationService.shared.currentCoordinate()
+            await LocationService.shared.primeAuthorization()
             guard !Task.isCancelled else { return }
             switch LocationService.shared.authorizationSnapshot {
             case .authorizedWhenInUse, .authorizedAlways: break
@@ -116,6 +116,14 @@ final class BeaconModel {
             }
         default:
             break
+        }
+
+        // 정밀 위치가 꺼져 있으면 좌표가 1~20km 오차라 "가까워지는 중/멀어지는 중"이
+        // 전부 잡음이 된다. 데드밴드(max(15, accuracy))도 그 규모에서는 의미를 잃는다.
+        // 걸으면서 소리만 듣는 기능이라 틀린 안내가 화면으로 반증되지도 않는다.
+        guard LocationService.shared.accuracySnapshot != .reducedAccuracy else {
+            fail(with: .unavailable, key: "beacon.reduced")
+            return
         }
 
         // await를 넘어온 뒤 화면을 떠났을 수 있다. 여기서 안 막으면 다른 탭에서 톤이
@@ -138,7 +146,8 @@ final class BeaconModel {
         LocationService.shared.startBeaconUpdates(
             onFix: { [weak self] fix in self?.handle(fix: fix) },
             onError: { [weak self] code in self?.handle(locationError: code) },
-            onAuthChange: { [weak self] status in self?.handle(authorization: status) }
+            onAuthChange: { [weak self] status in self?.handle(authorization: status) },
+            onAccuracyChange: { [weak self] accuracy in self?.handle(accuracy: accuracy) }
         )
         startWatchdog()
     }
@@ -267,6 +276,17 @@ final class BeaconModel {
         default:
             break
         }
+    }
+
+    /// 세션 중 "정확한 위치"가 꺼지면 즉시 멈춘다.
+    ///
+    /// 시작 게이트만으로는 부족하다: 걷는 도중 설정에서 꺼도 추적이 계속되고,
+    /// 1~20km 오차 좌표로 "가까워지는 중"을 소리로 안내하게 된다. 사용자가 비콘
+    /// 컨트롤을 조작한 게 아니므로 라벨 변화가 신호가 되지 못해 통지가 필요하다.
+    private func handle(accuracy: CLAccuracyAuthorization) {
+        guard isTracking, accuracy == .reducedAccuracy else { return }
+        stop()
+        fail(with: .unavailable, key: "beacon.reduced")
     }
 
     // MARK: - 무-fix 감시

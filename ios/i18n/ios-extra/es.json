@@ -22,7 +22,9 @@
       "unavailableHere": {
         "seoulOnly": "Disponible solo en Seúl",
         "noBusData": "No se proporcionan datos de paradas de autobús en esta zona"
-      }
+      },
+      "geoReducedTitle": "La ubicación precisa está desactivada",
+      "geoReducedDesc": "Active la ubicación precisa para Gildongmu en Ajustes"
     },
     "chat": {
       "suggestion1": "Muéstrame qué hay por aquí",
@@ -183,7 +185,8 @@
       "eventsEmpty": "Hoy no hay eventos culturales cerca de ti",
       "unitEvent": "eventos",
       "subwayClosed": "Fuera de servicio ahora. Primer tren %@",
-      "subwayNoRealtime": "No hay información en tiempo real para esta estación"
+      "subwayNoRealtime": "No hay información en tiempo real para esta estación",
+      "refreshReduced": "No se pudo actualizar porque la ubicación precisa está desactivada"
     },
     "settings": {
       "title": "Ajustes",

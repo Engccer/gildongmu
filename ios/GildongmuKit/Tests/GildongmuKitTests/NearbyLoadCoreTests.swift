@@ -145,6 +145,7 @@ private func phaseName(_ phase: NearbyLoadPhase<Payload>) -> String {
     case .loaded: "loaded"
     case .empty: "empty"
     case .denied: "denied"
+    case .reducedAccuracy: "reducedAccuracy"
     case .outOfCoverage: "outOfCoverage"
     case .unavailableHere(let reason): "unavailableHere:\(reason.rawValue)"
     case .failedLocation: "failedLocation"
@@ -163,6 +164,7 @@ private func eventName(_ event: NearbyLoadEvent<Payload>) -> String {
     case .emptyResult: "emptyResult"
     case .refreshFailed: "refreshFailed"
     case .permissionLost: "permissionLost"
+    case .accuracyLost: "accuracyLost"
     case .wentOutOfCoverage: "wentOutOfCoverage"
     }
 }
@@ -289,6 +291,37 @@ struct NearbyLoadCoreTests {
         #expect(recorder.events == ["permissionLost"])
         // 불변식 ⑤ — 커밋이 이벤트보다 앞선다
         #expect(recorder.log == ["phase=denied", "event=permissionLost"])
+    }
+
+    // MARK: - 정밀 위치 꺼짐 (denied·unavailable과 별개 축)
+
+    /// 첫 로드의 reducedAccuracy는 상태만 바꾼다(denied 동형).
+    /// ⚠ **핵심은 phase가 denied도 failedLocation도 아니라는 것**이다. 뭉개면
+    /// 사용자가 이미 켜 둔 권한을 다시 찾거나 "조회 실패"로 오인한다.
+    @Test func reducedAccuracyOnFirstLoadIsSilentAndDistinct() async {
+        let recorder = Recorder()
+        recorder.coordStub = { _ in throw NearbyLocationError.reducedAccuracy }
+        let core = makeCore(recorder)
+
+        await core.load()
+        #expect(phaseName(core.phase) == "reducedAccuracy")
+        #expect(recorder.events.isEmpty)
+        // 좌표가 없으므로 upstream을 부르지 않는다(쿼터 보호 + 거짓 주변 정보 차단)
+        #expect(recorder.fetchCallCount == 0)
+    }
+
+    /// loaded 중 정밀 위치가 꺼지면 목록이 통째로 사라지므로 무신호가 되지 않게 통지한다.
+    @Test func reducedAccuracyWhileLoadedNotifiesPermissionLost() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.load()
+        recorder.resetLog()
+
+        recorder.coordStub = { _ in throw NearbyLocationError.reducedAccuracy }
+        await core.load()
+        #expect(phaseName(core.phase) == "reducedAccuracy")
+        #expect(recorder.events == ["accuracyLost"])
+        #expect(recorder.log == ["phase=reducedAccuracy", "event=accuracyLost"])
     }
 
     // MARK: - #6·#7 좌표 unavailable

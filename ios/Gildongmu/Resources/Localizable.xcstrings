@@ -1681,6 +1681,46 @@
         }
       }
     },
+    "beacon.reduced": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can’t track distance because Precise Location is off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se puede seguir la distancia porque la ubicación precisa está desactivada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de suivre la distance car la position précise est désactivée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile tracciare la distanza perché la posizione precisa è disattivata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正確な位置情報がオフのため距離を追跡できません"
+          }
+        }
+      }
+    },
     "beacon.screenHint": {
       "localizations": {
         "ko": {
@@ -9481,6 +9521,86 @@
         }
       }
     },
+    "ios.common.geoReducedDesc": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정 앱에서 길동무의 정확한 위치를 켜 주세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on Precise Location for Gildongmu in Settings"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active la ubicación precisa para Gildongmu en Ajustes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activez la position précise pour Gildongmu dans Réglages"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva la posizione precisa per Gildongmu in Impostazioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定アプリでキルドンムの正確な位置情報をオンにしてください"
+          }
+        }
+      }
+    },
+    "ios.common.geoReducedTitle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정확한 위치가 꺼져 있습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precise Location is off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ubicación precisa está desactivada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La position précise est désactivée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La posizione precisa è disattivata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正確な位置情報がオフです"
+          }
+        }
+      }
+    },
     "ios.common.ok": {
       "localizations": {
         "ko": {
@@ -11277,6 +11397,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "更新に失敗しました。以前の情報を表示しています"
+          }
+        }
+      }
+    },
+    "ios.nearby.refreshReduced": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정확한 위치가 꺼져 있어 새로고침하지 못했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t refresh because Precise Location is off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo actualizar porque la ubicación precisa está desactivada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actualisation impossible car la position précise est désactivée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornamento non riuscito perché la posizione precisa è disattivata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正確な位置情報がオフのため更新できませんでした"
           }
         }
       }

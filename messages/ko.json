@@ -568,7 +568,8 @@
     "weak": "신호 약함",
     "denied": "위치 권한이 필요합니다",
     "screenHint": "화면을 켜고 손에 든 채 사용하세요. 화면이 꺼지면 안내가 멈춥니다.",
-    "straightLineNote": "직선거리 기준입니다."
+    "straightLineNote": "직선거리 기준입니다.",
+    "reduced": "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다"
   },
   "offline": {
     "heading": "오프라인 상태입니다",
