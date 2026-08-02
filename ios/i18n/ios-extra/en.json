@@ -224,8 +224,7 @@
       "stopped": "Distance tracking stopped."
     },
     "unit": {
-      "spokenMeters": "meters",
-      "spokenKilometers": "kilometers"
+      "spokenMeters": "meters"
     }
   }
 }

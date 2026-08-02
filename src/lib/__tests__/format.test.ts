@@ -17,12 +17,13 @@ export const DISTANCE_CASES: [number, string][] = [
   [120, "120m"],
   [999, "999m"],
   [1000, "1km"],
-  [1049, "1km"],
-  [1050, "1km 100m"],
-  [1187, "1km 200m"],
-  [1999, "2km"],
-  [3640, "3km 600m"],
-  [89700, "89km 700m"],
+  [1049, "1.049km"],
+  [1050, "1.05km"],
+  [1187, "1.187km"],
+  [1999, "1.999km"],
+  [3640, "3.64km"],
+  [89700, "89.7km"],
+  [123456, "123.456km"],
 ];
 
 describe("formatDistance", () => {
@@ -39,18 +40,13 @@ describe("formatDistance", () => {
     expect(formatDistance(999.6)).toBe("1km");
   });
 
-  // 100m 단위 반올림을 km·나머지로 따로 하면 여기서 "1km 1000m"이 나온다.
-  it("자리올림이 나머지에 남지 않는다", () => {
-    expect(formatDistance(1999)).toBe("2km");
-    expect(formatDistance(1950)).toBe("2km");
-    expect(formatDistance(9999)).toBe("10km");
-  });
-
-  // 소수 km 표기는 낭독이 길어 폐기했다("일 점 영 킬로미터").
-  it("소수점을 쓰지 않는다", () => {
-    for (const [meters] of DISTANCE_CASES) {
-      expect(formatDistance(meters)).not.toMatch(/\./);
-    }
+  // 위원장 지시(2026-08-02): 원값 그대로, 후행 0 없이. "1.0km"류 죽은 0이
+  // 나오면 낭독이 "일 점 영 킬로미터"가 된다. 정수 km는 소수점 없이.
+  it("후행 0을 남기지 않는다", () => {
+    expect(formatDistance(1000)).toBe("1km");
+    expect(formatDistance(2000)).toBe("2km");
+    expect(formatDistance(1100)).toBe("1.1km");
+    expect(formatDistance(10600)).toBe("10.6km");
   });
 });
 

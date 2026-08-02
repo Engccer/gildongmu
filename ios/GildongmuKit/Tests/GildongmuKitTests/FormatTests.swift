@@ -10,12 +10,13 @@ private let distanceCases: [(Int, String)] = [
     (120, "120m"),
     (999, "999m"),
     (1000, "1km"),
-    (1049, "1km"),
-    (1050, "1km 100m"),
-    (1187, "1km 200m"),
-    (1999, "2km"),
-    (3640, "3km 600m"),
-    (89700, "89km 700m"),
+    (1049, "1.049km"),
+    (1050, "1.05km"),
+    (1187, "1.187km"),
+    (1999, "1.999km"),
+    (3640, "3.64km"),
+    (89700, "89.7km"),
+    (123456, "123.456km"),
 ]
 
 @Suite struct FormatDistanceTests {
@@ -25,39 +26,34 @@ private let distanceCases: [(Int, String)] = [
         }
     }
 
-    /// 100m 단위 반올림을 km·나머지로 따로 하면 여기서 "1km 1000m"이 나온다.
-    @Test func carryDoesNotLeakIntoRemainder() {
-        #expect(formatDistance(1999) == "2km")
-        #expect(formatDistance(1950) == "2km")
-        #expect(formatDistance(9999) == "10km")
-    }
-
-    /// 소수 km는 낭독이 길어 폐기했다("일 점 영 킬로미터").
-    @Test func neverUsesDecimalPoint() {
-        for (meters, _) in distanceCases {
-            #expect(!formatDistance(meters).contains("."))
-        }
+    /// 위원장 지시(2026-08-02): 원값 그대로, 후행 0 없이. ⚠ Swift String(Double)은
+    /// 정수에 "1.0"을 남기므로 정수 분기가 빠지면 여기서 잡힌다.
+    @Test func neverLeavesTrailingZero() {
+        #expect(formatDistance(1000) == "1km")
+        #expect(formatDistance(2000) == "2km")
+        #expect(formatDistance(1100) == "1.1km")
+        #expect(formatDistance(10600) == "10.6km")
     }
 }
 
 @Suite struct SpokenDistanceUnitsTests {
     private func spoken(_ s: String) -> String {
-        spokenDistanceUnits(s, meters: "미터", kilometers: "킬로미터")
+        spokenDistanceUnits(s, meters: "미터")
     }
 
-    @Test func expandsBothUnits() {
-        #expect(spoken("1km 200m") == "1 킬로미터 200 미터")
+    /// m만 풀고 km는 그대로 둔다(VO가 km는 정확히 발화, 위원장 실기기 확인).
+    @Test func expandsOnlyMeters() {
         #expect(spoken("300m") == "300 미터")
-        #expect(spoken("89km") == "89 킬로미터")
+        #expect(spoken("10.6km") == "10.6km")
+        #expect(spoken("6.285km") == "6.285km")
     }
 
-    /// formatDistance 전 출력 모양이 변환을 통과하는지(경계표 재사용).
+    /// formatDistance 전 출력 모양에서 **미터 약어가 남지 않는지**(경계표 재사용).
+    /// km 표기는 그대로 남는 것이 정상이다.
     @Test func coversAllFormatDistanceShapes() {
         for (input, expected) in distanceCases {
             let s = spoken(formatDistance(input))
-            #expect(!s.contains("km"), "km 잔존: \(expected) → \(s)")
-            // "미터"·"킬로미터" 단어 자체의 m은 정상이므로 숫자+m 패턴만 검사
-            #expect(s.range(of: #"\dm\b"#, options: .regularExpression) == nil,
+            #expect(s.range(of: #"\dm(?![A-Za-z])"#, options: .regularExpression) == nil,
                     "m 잔존: \(expected) → \(s)")
         }
     }
@@ -73,7 +69,6 @@ private let distanceCases: [(Int, String)] = [
         #expect(spoken("천호대로를 따라 이동") == "천호대로를 따라 이동")
         // 숫자 뒤가 아니면 불변("m" 단독, 영단어 속 m)
         #expect(spoken("markets") == "markets")
-        // km 쪽 라틴 차단도 대칭으로 지킨다(빠지는 변이가 green으로 지나가지 않게)
         #expect(spoken("10kmh") == "10kmh")
     }
 
@@ -88,7 +83,6 @@ private let distanceCases: [(Int, String)] = [
     @Test func expandsWhenCJKFollowsImmediately() {
         #expect(spoken("약 35m입니다.") == "약 35 미터입니다.")
         #expect(spoken("약 5m에 있습니다") == "약 5 미터에 있습니다")
-        #expect(spoken("3km입니다") == "3 킬로미터입니다")
         #expect(spoken("半径300m以内") == "半径300 미터以内")
     }
 }

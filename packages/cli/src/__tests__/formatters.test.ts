@@ -470,7 +470,7 @@ describe("route-car", () => {
       distanceMeters: 5320, durationSeconds: 1140, taxiFare: 12000, tollFare: 0,
       guides: [{ name: "", guidance: "염천교에서 좌회전", distanceMeters: 120, durationSeconds: 30 }, { name: "", guidance: "직진", distanceMeters: 300, durationSeconds: 60 }],
     } as never);
-    expect(lines[0]).toBe("5km 300m, 약 19분, 택시 약 12,000원");
+    expect(lines[0]).toBe("5.32km, 약 19분, 택시 약 12,000원");
     expect(lines[1]).toBe("1. 염천교에서 좌회전, 120m");
     expect(lines[2]).toBe("2. 직진, 300m");
   });
@@ -703,7 +703,7 @@ describe("nearby-subway 0건 — 최근접 역 동봉", () => {
     expect(out).toContain("남춘천역");
     expect(out).not.toContain("남춘천역역");
     expect(out).toContain("경춘선");
-    expect(out).toContain("103km 900m"); // 이 수치가 "이 지역엔 도시철도가 없다"를 말한다
+    expect(out).toContain("103.888km"); // 이 수치가 "이 지역엔 도시철도가 없다"를 말한다
   });
 
   it("nearest가 없으면 종전 문구 그대로(스키마 하위호환)", () => {

@@ -23,10 +23,11 @@ export function formatDistance(meters: number): string {
   // 1,000 미만 판정을 반올림 **뒤에** 한다. 앞에서 하면 999.6이 "1000m"가 된다.
   const rounded = Math.round(meters);
   if (rounded < 1000) return `${rounded}m`;
-  const snapped = Math.round(meters / 100) * 100;
-  const km = Math.floor(snapped / 1000);
-  const rest = snapped % 1000;
-  return rest === 0 ? `${km}km` : `${km}km ${rest}m`;
+  // 1km 이상은 소수 km(위원장 지시 2026-08-02: "1km 200m" 나눠쓰기 폐기,
+  // 원값 그대로 후행 0 없이: 1.1km·10.6km·6.285km). VoiceOver가 km는
+  // 오류 없이 kilometers로 발화하므로 낭독 별도 조치 불필요(실기기 확인).
+  // 숫자→문자열 최단 표현이 후행 0 제거를 자동으로 해 준다(1000→"1km").
+  return `${rounded / 1000}km`;
 }
 
 /** 초 → 올림한 분 (최소 1분) — "약 N분" 문구의 N */

@@ -224,8 +224,7 @@
       "stopped": "Tracciamento della distanza interrotto."
     },
     "unit": {
-      "spokenMeters": "metri",
-      "spokenKilometers": "chilometri"
+      "spokenMeters": "metri"
     }
   }
 }
