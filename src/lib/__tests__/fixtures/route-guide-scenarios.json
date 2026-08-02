@@ -1,0 +1,510 @@
+{
+  "comment": "실시간 길 안내 리듀서 경계표. 웹 route-guide.test.ts와 Kit RouteGuideTests가 함께 소비한다(드리프트 가드). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). 스텝은 len(m) 순서대로 남→북 직선 배치. expect의 afterFix는 0-기반 fix 인덱스.",
+  "scenarios": [
+    {
+      "name": "긴 구간 선행 낭독과 전진 분리",
+      "steps": [
+        {
+          "len": 200,
+          "desc": "직진A"
+        },
+        {
+          "len": 100,
+          "desc": "우회전B"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 16,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 32,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 48,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 56,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 64,
+          "along": 128,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 72,
+          "along": 144,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 160,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 88,
+          "along": 176,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 9,
+          "eventNot": "announceSteps"
+        },
+        {
+          "afterFix": 10,
+          "event": "announceSteps",
+          "indices": [
+            1
+          ],
+          "tone": "ahead"
+        },
+        {
+          "afterFix": 11,
+          "eventNot": "announceSteps"
+        }
+      ]
+    },
+    {
+      "name": "묶음 통독은 선행·재통독은 주기 (묶음 잔여 85m라 다음 선행 낭독 미발동 구간)",
+      "steps": [
+        {
+          "len": 100,
+          "desc": "직진"
+        },
+        {
+          "len": 30,
+          "desc": "횡단보도"
+        },
+        {
+          "len": 30,
+          "desc": "이동"
+        },
+        {
+          "len": 30,
+          "desc": "좌회전"
+        },
+        {
+          "len": 100,
+          "desc": "직진2"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 16,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 32,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 48,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 56,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 64,
+          "along": 128,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 4,
+          "event": "announceSteps",
+          "indices": [
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "afterFix": 7,
+          "eventNull": true
+        },
+        {
+          "afterFix": 8,
+          "event": "bundleReread",
+          "indices": [
+            1,
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "name": "인계는 전 스텝 낭독 완료 AND 잔여 50m (구속 창을 넘지 않는 점진 접근)",
+      "steps": [
+        {
+          "len": 120,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 20,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 40,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 60,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 3,
+          "eventNot": "handoff"
+        },
+        {
+          "afterFix": 4,
+          "event": "handoff"
+        }
+      ]
+    },
+    {
+      "name": "uncertain 진입·회복과 낭독 정지",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 100,
+          "lateral": 0,
+          "acc": 80
+        },
+        {
+          "t": 20,
+          "along": 150,
+          "lateral": 0,
+          "acc": 80
+        },
+        {
+          "t": 30,
+          "along": 200,
+          "lateral": 0,
+          "acc": 15
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 1,
+          "event": "uncertainEnter"
+        },
+        {
+          "afterFix": 2,
+          "eventNull": true
+        },
+        {
+          "afterFix": 3,
+          "event": "uncertainExit"
+        }
+      ]
+    },
+    {
+      "name": "이탈 20초 지속 후 통지·전역 복귀 감지",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 13,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 21,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 29,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 37,
+          "along": 150,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 2,
+          "eventNot": "offRoute"
+        },
+        {
+          "afterFixAny": [
+            3,
+            4
+          ],
+          "event": "offRoute",
+          "tone": "warning"
+        },
+        {
+          "afterFix": 5,
+          "event": "backOnRoute"
+        }
+      ]
+    },
+    {
+      "name": "차량 속도: speedSuggest 1회, 이후 재발화 없음",
+      "steps": [
+        {
+          "len": 2000,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 40,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 90,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 15,
+          "along": 140,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 190,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 2,
+          "event": "speedSuggest"
+        },
+        {
+          "afterFix": 3,
+          "eventNot": "speedSuggest"
+        },
+        {
+          "afterFix": 4,
+          "eventNot": "speedSuggest"
+        }
+      ]
+    },
+    {
+      "name": "fix 공백 10초 초과 후 reacquiring",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 30,
+          "along": 200,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 1,
+          "event": "reacquiring"
+        }
+      ]
+    },
+    {
+      "name": "다중 구간 통과는 최신만(낭독 병합 — 중간 안내 개별 낭독 없음)",
+      "steps": [
+        {
+          "len": 100,
+          "desc": "A"
+        },
+        {
+          "len": 100,
+          "desc": "B"
+        },
+        {
+          "len": 100,
+          "desc": "C"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 40,
+          "lateral": 0,
+          "acc": 5
+        },
+        {
+          "t": 6,
+          "along": 230,
+          "lateral": 0,
+          "acc": 5
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 2,
+          "eventOneOf": [
+            "announceSteps",
+            "reacquiring"
+          ]
+        }
+      ]
+    }
+  ]
+}
