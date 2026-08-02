@@ -11,7 +11,7 @@
 3. 같은 것을 GPS 단독으로 시도한 국내 앱이 시각장애 사용자 실사용에서 **실패로 판정**됐다. [2차]
 4. **국내 3사 어디에도 보행자 턴바이턴 SDK가 없다.** 카카오내비 SDK·Tmap Navi SDK 모두 자동차 전용이다. [공식]
 
-**대신 "경로 추종형 안내"를 채택 가능한 설계로 제시한다**(§5). 경로를 따라가며 다음 할 일을 알려 주되, 위치 확신도를 문장에 반영하고, 사용자가 언제든 수동으로 현재·다음 안내를 요청할 수 있게 한다.
+**대신 "경로 추종형 안내"를 채택 가능한 설계로 제시한다**(§5). 경로를 따라가며 다음 할 일을 알려 주되, 위치 확신도를 문장에 반영하고, 사용자가 언제든 현재 위치와 직전 안내를 다시 들을 수 있게 한다.
 
 ---
 
@@ -44,7 +44,7 @@
 
 **직선 구간은 지금 정확도로 충분하고, 결정 지점만 부족하다.** 이것이 이 조사의 핵심 구조다.
 
-## 3. 병합 방향이 설계를 가른다 [실측]
+## 3. 짧은 구간을 어떻게 다룰 것인가 [실측]
 
 짧은 구간을 앞 구간에 흡수시키는 단순 병합은 이렇게 된다.
 
@@ -54,17 +54,34 @@
 
 **횡단보도가 577m 직진 구간에 삼켜져 577m 미리 안내된다.** 시각장애 사용자에게 이는 안 알리는 것보다 나쁘다.
 
-올바른 병합은 **짧은 구간끼리만 묶고 긴 구간은 독립으로 두는 것**이다.
+### 3.1 그런데 "짧은 것끼리 묶는다"도 틀렸다 (초안 정정)
 
+이 조사의 초안은 여기서 "짧은 구간끼리 군집화해 한 안내로 낭독한다"로 갔다. **업계 레퍼런스 구현과 정면으로 어긋난다.**
+
+**Valhalla**(OSM 기반 오픈소스 라우팅 엔진, 사실상 표준)는 일반 보행자에 대해 13초 이내 연속 maneuver를 "Then"으로 병합하지만, **시각장애 프로파일은 그 병합에서 명시적으로 제외한다.**
+
+```cpp
+// src/odin/narrativebuilder.cc
+if (maneuver.pedestrian_type() == PedestrianType::kBlind)
+  continue;          // 다중 큐 병합 자체를 건너뜀
 ```
- 9. [구간 577m] 농협입구교차로까지 577m 이동(천호대로)
-10. [군집  27m] 농협입구교차로에서 횡단보도 이용 + 16m 이동
-11. [구간 593m] 자전거상설 할인매장까지 593m 이동(풍성로)
-```
 
-안내 발동 지점이 577m 간격이라 GPS로 충분히 가려진다. 카카오 안내문이 이미 순차 명령형이라 문장을 새로 만들 필요도 없다.
+병합을 안 할 뿐 아니라 **반대로 더 잘게 쪼갠다.** 시각장애 모드에서는 계단·다리·터널·게이트·볼라드가 있으면 병합을 금지하고(`maneuversbuilder.cc`), 교차로마다 교차 도로명과 신호등 유무를 붙이며, 일반 모드가 "레벨 변화가 있거나 3m 이상"일 때만 계단으로 치는 것을 **무조건 계단으로 표시**한다.
 
-⚠ 군집화 후에도 **연속한 짧은 단위**는 남는다(임계 40m에서 단위 길이 하위 10%가 16m). 이 구간은 두 안내를 미리 합쳐 한 번에 전달해야 한다.
+### 3.2 정정된 결론: 두 축을 분리한다
+
+초안의 오류는 **"안내 단위"와 "GPS 발동 지점"을 같은 것으로 본 것**이다. 둘은 다른 축이고, 합쳐야 하는 쪽은 후자뿐이다.
+
+| 축 | 어떻게 | 근거 |
+|---|---|---|
+| **안내 내용의 입도** | 합치지 않는다. 횡단보도·계단·신호등은 각각 별도 안내 | Valhalla 시각장애 모드 |
+| **GPS 자동 발동** | 짧은 구간에서는 **쓰지 않는다** | §2 실측 |
+
+즉 `10. 횡단보도 이용` + `11. 16m 이동`을 한 문장으로 합치는 것이 아니라, **둘 다 개별 안내로 유지하되 "지금 10번인지 11번인지"를 GPS로 판정하려 들지 않는다.** 순서와 반복 주기가 그 자리를 대신한다(§5.3).
+
+§3 첫머리의 577m 함정은 그대로 유효하다. 그것은 병합 일반의 문제가 아니라 **긴 구간이 짧은 것을 흡수할 때** 생기는 문제이고, 위 표의 "합치지 않는다"가 그 함정도 함께 닫는다.
+
+⚠ **혼동하기 쉬운 반대 증거 하나**: NavCog는 곡선 경로를 짧은 직선 edge로 근사했다가 *"This confused users, as they found it difficult to make the small turns necessary to stay on course"*로 blocking 3건을 겪었다. 이는 **실체가 없는 회전**을 만들어 낸 실패이지 **실재하는 짧은 회전**을 쪼갠 실패가 아니다. Valhalla의 원칙(실체가 있는 지점은 반드시 별도 안내)과 모순되지 않는다.
 
 ## 4. 선례: 성공한 앱은 둘 중 하나를 택했다 [2차]
 
@@ -103,9 +120,9 @@
 
 1. **폴리라인 보존**: 응답에서 스텝 좌표를 버리지 않는다. 웹·iOS·CLI 스키마에 스텝 끝점(또는 폴리라인)을 추가한다.
 2. **진행거리 추적**: 전 경로 연속 폴리라인에 현재 위치를 투영해 누적 진행거리를 구한다(최근접점이 아니라 직전 진행거리 부근으로 구속).
-3. **비콘 타깃을 목적지에서 "현재 단위의 끝"으로 바꾼다.** 검증 완료된 `beaconStep`·`beaconGateStep`·톤·데드밴드를 그대로 재사용한다. 남은 거리와 접근·이탈 톤이 그대로 성립한다.
-4. **군집화**(§3): 짧은 구간끼리 묶고 긴 구간은 독립. 연속 짧은 단위는 안내를 미리 합쳐 전달.
-5. **수동 진행 상시 제공**: "지금 안내 다시", "다음 단계"를 언제든 요청할 수 있게 한다. **GPS가 틀려도 치명적이지 않게 만드는 안전판이며, 이것이 있어야 §4.3의 실패와 갈린다.**
+3. **안내는 개별 유지, 자동 발동은 긴 구간에만**(§3.2). 짧은 구간에서는 GPS로 "지금 몇 번인지"를 판정하지 않는다.
+4. **비콘이 마지막 구간을 인계받는다**(§5.3의 상용 선례). 검증 완료된 `beaconStep`·`beaconGateStep`·톤·데드밴드를 그대로 재사용한다.
+5. **수동 제어는 "반복"이지 "건너뛰기"가 아니다**(§5.4).
 6. **이탈 시 자동 재조회 금지**: 이탈 가능성을 알리고 재조회는 사용자 확인 후. 근거는 쿼터(§6)와, 자동 재설정이 도로 중앙 안내로 이어진 실패 기록(§4.3)이다.
 
 ### 5.2 확신도를 문장에 반영한다 (Soundscape 패턴)
@@ -124,7 +141,52 @@ Soundscape는 정확도가 나빠도 **침묵하지 않고 문장의 확신도�
 
 Soundscape 교차로 통지 게이트도 참고치로 유효하다. 최대 거리 25m, 진행 방향 ±60도 이내, 같은 교차로 30초 재통지 금지, 5m 이동 + 5초 경과 스로틀. [공식]
 
-### 5.3 방위는 course를 쓰고 heading은 쓰지 않는다
+### 5.3 이 하이브리드는 이미 상용 제품으로 존재한다 (가장 직접적인 선례)
+
+**Sendero Group의 Seeing Eye GPS / RNIB Navigator**(시각장애인 전용 상용 턴바이턴 GPS)는 목적지 선택 후 route type을 `Pedestrian / Vehicle / **Getting Warmer** / Bicycle` 중에서 고르게 한다.
+
+> *"If you have chosen the Getting Warmer route type, **you will not hear any route directions**, instead you will hear 'Proceed Clock-face direction, Compass heading, X distance to your destination.'"*
+
+**턴바이턴을 끄고 직선거리 추적만 하는 모드가 1급 선택지로 존재한다. 길동무의 현재 비콘이 정확히 이것이다.**
+
+그리고 결정적으로, **같은 앱이 턴바이턴 모드에서도 마지막 구간을 이 모드로 넘긴다.**
+
+> *"the Getting Warmer function **takes over once you are near your destination**... Once you have arrived within the default arrival distance of **50 feet**, the application will automatically turn on the Getting Warmer mode which will run up to two minutes... you will hear the distance and compass direction to your destination **every 15 seconds**."*
+> *"It is also used when **a route with turns ends short of the destination** so you have some indication of where that destination is located in the final short distance."*
+
+**턴바이턴이 정밀도를 못 내는 구간에서 직선 추적으로 인계하는 하이브리드**가 상용 선례다. 50ft는 약 15m이고, 공교롭게도 같은 앱이 "GPS 불량"으로 판정하는 임계값과 같은 값이다(§5.5).
+
+→ **길동무에 주는 함의**: 우리는 이 하이브리드의 **어려운 쪽(비콘)을 이미 만들어 실보행 검증까지 마쳤다.** E4는 새 기능을 처음부터 만드는 일이 아니라 **검증된 비콘 앞에 경로 구간을 붙이는 일**이다.
+
+**통지 반복 주기**(거리대별, 밀도 조절의 정본): 5마일 초과 5분 / 1,000ft~5마일 1분 / 500~1,000ft 30초 / **500ft(≒152m) 미만 15초**. 회전 예고는 **250ft(≒76m)**에서 trill tone과 함께.
+
+⚠ 같은 매뉴얼이 밀도의 대가도 인정한다: *"if you are in a highly populated area with lots of POIs and close road junctions, increasing these announcements might result in **constant announcements and overall sluggishness**."*
+
+### 5.4 수동 제어는 "반복"이지 "건너뛰기"가 아니다 (초안 정정)
+
+초안은 "다음 단계로 넘기기"를 안전판으로 제시했다. **조사 결과 그런 컨트롤을 제공하는 앱이 없다.** 실제 선례는 셋이고 전부 "앞으로 가기"가 아니다.
+
+| 패턴 | 사례 |
+|---|---|
+| **사전 전체 목록 통독** | Sendero `Route Details`: *"hear a list of all the route turns"* |
+| **직전 안내 반복** | NavCog "Previous Instruction". 사용자 평가가 특히 좋았다: *"participants were very positive about... the ability to repeat a previous instruction if they either were unable to hear it due to ambient noise or were distracted"* |
+| **임의 시점 현위치 조회** | BlindSquare·GoodMaps 흔들기, Soundscape `Where Am I?` |
+
+**"건너뛰기"가 위험한 이유**는 사용자가 진행을 *주장*하게 만들기 때문이다. 잘못 누르면 실제 위치와 안내가 어긋난 채로 계속 간다. 반복은 그런 실패 모드가 없다.
+
+Soundscape는 한 걸음 더 나가 **자동과 수동의 게이트를 비대칭으로** 둔다. 자동 통지는 25m·±60도로 좁게, 사용자 요청은 500m·±90도로 넓게. **사용자가 물었을 때는 확신이 덜해도 답한다.**
+
+### 5.5 상태는 소리로, 내용은 음성으로
+
+**정확도가 나쁠 때 안내를 중단하는 앱은 하나도 없었다.** Sendero는 음성 안내를 계속하면서 별도 채널로 상태를 알린다.
+
+> *"**Drip sound** when GPS signal is lost or poor, meaning it will occur when **accuracy is worse than 15 meters**... and will regain better than 15 meters."*
+
+임계값 15m, 회복되면 자동으로 멎는다. **길동무 비콘은 이미 톤 채널을 갖고 있으므로** 이 패턴을 그대로 얹을 수 있다(§5.2의 문장 확신도 조절과 서로 다른 채널이라 중복이 아니다).
+
+Sendero가 문서화한 오차의 2차 증상도 참고할 만하다: *"if the GPS accuracy is poor, it might report a speed while you are standing still."*
+
+### 5.6 방위는 course를 쓰고 heading은 쓰지 않는다
 
 Soundscape의 교차로 판정도 나침반이 아니라 **진행 방향(course)** 기준이다. `CLHeading`은 Apple 문서가 인정하는 실패 모드가 둘(미캘리브레이션, 국소 자기장 간섭)이고, 캘리브레이션은 *"able to filter out only those magnetic fields that move with the device"*라 외부 간섭원을 못 거른다. [공식] 비콘 설계가 이미 "기기 heading은 보행 중 신뢰도가 낮다"로 방위 안내를 범위 밖에 둔 판단과 일치한다.
 
@@ -253,6 +315,8 @@ Soundscape의 교차로 판정도 나침반이 아니라 **진행 방향(course)
 - Tmap: [API 약관](https://tmapapi.tmapmobility.com/terms.html) · [요금표](https://openapi.sk.com/products/calc?svcSeq=4&menuSeq=5)
 - NCP: [Directions 5 가이드](https://guide.ncloud-docs.com/docs/maps-direction5-api) · Maps 서비스 이용약관(2025-03-20 시행)
 - BlindSquare 사용자 가이드·FAQ: `blindsquare.com`
+- Valhalla 시각장애 프로파일(다중 큐 병합 제외·maneuver 병합 금지·교차로 주석): `github.com/valhalla/valhalla` (`src/odin/narrativebuilder.cc`, `src/odin/maneuversbuilder.cc`, PR #3694 "Blind user mode")
+- Sendero RNIB Navigator 사용자 매뉴얼(Getting Warmer·drip·오디오 어휘 정본): `senderogroup.com/products/RNIBGPS/RNIBGPSUserGuide.htm`
 
 **[2차]**
 - NavCog(CMU): `cs.cmu.edu/~kkitani/pdf/AGKITA-MHCI16.pdf`
