@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  // DistanceBeacon(useRouteGuide)이 상세 안내 ko 게이트에 쓴다.
+  useLocale: () => "ko",
 }));
 vi.mock("@/lib/station-match", () => ({ isStation: () => false }));
 vi.mock("../RouteLinks", () => ({ RouteLinks: () => null }));
