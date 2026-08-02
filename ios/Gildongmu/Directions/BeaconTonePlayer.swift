@@ -76,15 +76,107 @@ final class BeaconTonePlayer {
     }
 
     /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐) + 세션 경계(시작·종료).
-    /// 시작·종료는 **동일한 긴 진동**(위원장 판정 2026-08-03 — 단발 임팩트 기각).
-    /// 나머지는 과잉 진동이라 두지 않는다.
+    /// **모든 햅틱은 그 사운드의 실측 파형에 동기한다**(위원장 판정 2026-08-03 —
+    /// 단발 제너레이터는 긴 소리와 어긋난다). 타이밍·세기는 각 mp3의 10ms RMS
+    /// 엔벨로프·온셋 분석에서 추출한 값이다. **소리 파일을 갈면 재분석해 갱신할 것.**
+    /// 나머지 톤(closer·tick·ahead)은 과잉 진동이라 두지 않는다.
     private func haptic(for tone: BeaconTone) {
         switch tone {
-        case .warning: notifHaptics.notificationOccurred(.warning)
-        case .nearby: notifHaptics.notificationOccurred(.success)
-        case .farther: impactHaptics.impactOccurred()
-        case .start, .stop: longBuzz()
-        default: break
+        case .warning:
+            // 단일 저음 burst 후 0.35초 감쇠(실측: RMS 1.0 → 0.32@0.1s → 0.19@0.2s).
+            playHaptic(
+                events: [
+                    transient(at: 0, intensity: 1.0, sharpness: 0.3),
+                    continuous(from: 0, duration: 0.35, intensity: 0.8, sharpness: 0.25),
+                ],
+                curves: [decayCurve(from: 0, duration: 0.35, start: 0.8)],
+                fallback: { self.notifHaptics.notificationOccurred(.warning) }
+            )
+        case .nearby:
+            // 마지막 바퀴 종 연타 — 실측 타격 시점(초)·상대 세기에 탭을 1:1 배치.
+            let strikes: [(Double, Float)] = [
+                (0.0, 1.0), (0.29, 0.75), (0.44, 0.8), (0.59, 0.85), (0.84, 0.75), (1.1, 0.5),
+            ]
+            playHaptic(
+                events: strikes.map { transient(at: $0.0, intensity: $0.1, sharpness: 0.55) },
+                curves: [],
+                fallback: { self.notifHaptics.notificationOccurred(.success) }
+            )
+        case .farther:
+            // 하강 2음(0·0.08초) — 두 번의 짧은 탭.
+            playHaptic(
+                events: [
+                    transient(at: 0, intensity: 0.75, sharpness: 0.5),
+                    transient(at: 0.08, intensity: 0.95, sharpness: 0.4),
+                ],
+                curves: [],
+                fallback: { self.impactHaptics.impactOccurred() }
+            )
+        case .start, .stop:
+            longBuzz()
+        default:
+            break
+        }
+    }
+
+    private func transient(at time: Double, intensity: Float, sharpness: Float) -> CHHapticEvent {
+        CHHapticEvent(
+            eventType: .hapticTransient,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness),
+            ],
+            relativeTime: time
+        )
+    }
+
+    private func continuous(
+        from time: Double, duration: Double, intensity: Float, sharpness: Float
+    ) -> CHHapticEvent {
+        CHHapticEvent(
+            eventType: .hapticContinuous,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness),
+            ],
+            relativeTime: time,
+            duration: duration
+        )
+    }
+
+    private func decayCurve(
+        from time: Double, duration: Double, start: Float
+    ) -> CHHapticParameterCurve {
+        CHHapticParameterCurve(
+            parameterID: .hapticIntensityControl,
+            controlPoints: [
+                .init(relativeTime: time, value: start),
+                .init(relativeTime: time + duration * 0.3, value: start * 0.4),
+                .init(relativeTime: time + duration, value: 0),
+            ],
+            relativeTime: 0
+        )
+    }
+
+    /// CoreHaptics 패턴 재생 공통 경로. 미지원·실패는 폴백 제너레이터(무진동보다 낫다).
+    private func playHaptic(
+        events: [CHHapticEvent],
+        curves: [CHHapticParameterCurve],
+        fallback: () -> Void
+    ) {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
+            fallback()
+            return
+        }
+        do {
+            if hapticEngine == nil { hapticEngine = try CHHapticEngine() }
+            guard let engine = hapticEngine else { return }
+            try engine.start()
+            let pattern = try CHHapticPattern(events: events, parameterCurves: curves)
+            try engine.makePlayer(with: pattern).start(atTime: 0)
+        } catch {
+            hapticEngine = nil  // 죽은 엔진을 붙들지 않는다(다음 호출에서 재생성 시도)
+            fallback()
         }
     }
 
@@ -97,45 +189,26 @@ final class BeaconTonePlayer {
     private var hapticEngine: CHHapticEngine?
 
     private func longBuzz() {
-        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
-            impactHaptics.impactOccurred()
-            return
-        }
-        do {
-            if hapticEngine == nil { hapticEngine = try CHHapticEngine() }
-            guard let engine = hapticEngine else { return }
-            try engine.start()
-            let duration = 1.3
-            let event = CHHapticEvent(
-                eventType: .hapticContinuous,
-                parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4),
-                ],
-                relativeTime: 0,
-                duration: duration
-            )
-            // 소리 엔벨로프 미러: 어택 0~0.455(코사인 상승), 서스테인 ~0.715, 릴리스 ~1.3.
-            let curve = CHHapticParameterCurve(
-                parameterID: .hapticIntensityControl,
-                controlPoints: [
-                    .init(relativeTime: 0, value: 0),
-                    .init(relativeTime: 0.15, value: 0.15),
-                    .init(relativeTime: 0.3, value: 0.55),
-                    .init(relativeTime: 0.455, value: 1.0),
-                    .init(relativeTime: 0.715, value: 1.0),
-                    .init(relativeTime: 0.9, value: 0.7),
-                    .init(relativeTime: 1.1, value: 0.3),
-                    .init(relativeTime: 1.3, value: 0),
-                ],
-                relativeTime: 0
-            )
-            let pattern = try CHHapticPattern(events: [event], parameterCurves: [curve])
-            try engine.makePlayer(with: pattern).start(atTime: 0)
-        } catch {
-            hapticEngine = nil  // 죽은 엔진을 붙들지 않는다(다음 호출에서 재생성 시도)
-            impactHaptics.impactOccurred()
-        }
+        // 소리 엔벨로프 미러: 어택 0~0.455(코사인 상승), 서스테인 ~0.715, 릴리스 ~1.3.
+        let curve = CHHapticParameterCurve(
+            parameterID: .hapticIntensityControl,
+            controlPoints: [
+                .init(relativeTime: 0, value: 0),
+                .init(relativeTime: 0.15, value: 0.15),
+                .init(relativeTime: 0.3, value: 0.55),
+                .init(relativeTime: 0.455, value: 1.0),
+                .init(relativeTime: 0.715, value: 1.0),
+                .init(relativeTime: 0.9, value: 0.7),
+                .init(relativeTime: 1.1, value: 0.3),
+                .init(relativeTime: 1.3, value: 0),
+            ],
+            relativeTime: 0
+        )
+        playHaptic(
+            events: [continuous(from: 0, duration: 1.3, intensity: 1.0, sharpness: 0.4)],
+            curves: [curve],
+            fallback: { self.impactHaptics.impactOccurred() }
+        )
     }
 
     /// 정리는 여기서 한다(`deinit`은 nonisolated라 MainActor 상태에 접근할 수 없다).
