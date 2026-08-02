@@ -599,7 +599,6 @@
   "guide": {
     "briefStarted": "Guida semplice avviata",
     "detailStart": "Guida dettagliata avviata. {count} indicazioni, {distance} in totale. {first}",
-    "upcoming": "Tra {distance}, {step}",
     "next": "{distance} fino a {step}",
     "bundle": "Prossime {count} indicazioni. {steps}",
     "handoff": "Passaggio alla guida in linea d'aria fino alla destinazione",

@@ -599,7 +599,6 @@
   "guide": {
     "briefStarted": "簡易案内を開始しました",
     "detailStart": "詳細案内を開始しました。案内{count}件、合計{distance}。{first}",
-    "upcoming": "{distance}先、{step}",
     "next": "{step}まで{distance}",
     "bundle": "次の案内{count}件。{steps}",
     "handoff": "目的地までの直線案内に切り替えます",

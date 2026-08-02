@@ -55,7 +55,7 @@ export function useScreenWakeLock(): {
   }, [acquire]);
 
   // ⚠ 안정 참조로 반환한다. acquire/release는 이미 stable(useCallback [])이지만
-  // 매 렌더 새 객체 리터럴을 반환하면, 이 훅을 쓰는 useDistanceBeacon의 정리 effect가
+  // 매 렌더 새 객체 리터럴을 반환하면, 이 훅을 쓰는 useRouteGuide의 정리 effect가
   // [wakeLock] 의존이라 렌더마다 발화 → start()가 방금 등록한 watchPosition을 즉시
   // clearWatch로 지워 추적이 죽었다(감사 2026-07-04, 최초 커밋부터의 회귀).
   return useMemo(() => ({ acquire, release }), [acquire, release]);

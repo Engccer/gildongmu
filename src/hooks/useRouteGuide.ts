@@ -30,7 +30,9 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { WalkRouteBriefing } from "@/lib/types";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
-import type { BeaconStatus } from "./useDistanceBeacon";
+
+/** 추적 상태(구 useDistanceBeacon 계약 승계 — 그 훅은 이 훅으로 대체돼 제거됐다). */
+export type BeaconStatus = "idle" | "tracking" | "denied" | "unsupported";
 
 /**
  * 실시간 길 안내 오케스트레이터(스펙 2026-08-03 §9의 웹 판, iOS `BeaconModel` 대응).
@@ -160,6 +162,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const watchIdRef = useRef<number | null>(null);
   const beaconRef = useRef<BeaconState>(INITIAL_BEACON_STATE);
   const guideRef = useRef<GuideState | null>(null);
+  /** 상세 모드 무이벤트 tick의 스로틀 기준(초 단위 단조 시각). */
+  const detailTickRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
   const lastGuidanceRef = useRef<string | null>(null);
@@ -327,7 +331,14 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       setOffRoute(result.state.phase === "offRoute");
       if (result.tone === "ahead") playNearby();
       else if (result.tone === "warning") playFarther();
-      if (!result.event) return;
+      if (!result.event) {
+        // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
+        if (detailTickRef.current === null || now - detailTickRef.current >= 3) {
+          detailTickRef.current = now;
+          playTick();
+        }
+        return;
+      }
       const text = eventText(result.event, route);
       if (result.event.kind === "handoff") {
         // 인계는 단방향 래치 — 여기서 간략으로 넘기면 이후 fix는 비콘 경로가 받는다.
@@ -341,7 +352,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
     },
-    [announce, eventText, playFarther, playNearby, rememberGuidance],
+    [announce, eventText, playFarther, playNearby, playTick, rememberGuidance],
   );
 
   /**
