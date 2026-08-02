@@ -45,8 +45,32 @@ public struct NearbySubwayStation: Codable, Sendable, Hashable {
     public let firstTime: String?
 }
 
+/// 조회 반경 안에 역이 0건일 때만 실리는 최근접 역 1곳.
+/// 반경 밖이므로 "그 자리에서 탈 수 있다"는 뜻이 아니라, 거리를 보고
+/// "걸어갈 만한가 / 이 지역엔 도시철도가 없는가"를 사용자가 판단하기 위한 정보다.
+public struct NearestSubwayStation: Codable, Sendable, Hashable {
+    public let stationName: String
+    public let nameEn: String?
+    public let lines: [String]
+    public let distanceMeters: Int
+}
+
 public struct SubwayNearbyResponse: Codable, Sendable {
     public let stations: [NearbySubwayStation]
+    /// 0건일 때만 서버가 싣는다(결과가 있으면 잉여라 부재).
+    public let nearest: NearestSubwayStation?
+}
+
+/// 화면 payload — 목록과 "0건일 때의 최근접 역"을 함께 옮긴다.
+/// 배열만 옮기면 0건 안내에 쓸 정보가 상태 머신을 통과하지 못한다.
+public struct SubwayNearbyResult: Sendable {
+    public let stations: [NearbySubwayStation]
+    public let nearest: NearestSubwayStation?
+
+    public init(stations: [NearbySubwayStation], nearest: NearestSubwayStation?) {
+        self.stations = stations
+        self.nearest = nearest
+    }
 }
 
 // MARK: - 버스 도착

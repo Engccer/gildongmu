@@ -94,6 +94,10 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
                 description: Text(appLocalized("ios.common.geoDeniedDesc")))
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
+        // 서비스 지역 미제공. 어느 서비스인지는 네비게이션 타이틀이 이미 말하므로
+        // 도메인별 문구를 두지 않는다(자명한 것을 다시 설명하지 않는다).
+        case .unavailableHere:
+            ContentUnavailableView(appLocalized("ios.common.unavailableHere"), systemImage: "mappin.slash")
         case .failedLocation:
             copyView(descriptor.failedLocation)
         case .failedServer:

@@ -6521,6 +6521,46 @@
         }
       }
     },
+    "common.unavailableHere": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서울 지역에서만 제공됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available in Seoul only."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible solo en Seúl."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible uniquement à Séoul."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponibile solo a Seul."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソウル地域でのみご利用いただけます。"
+          }
+        }
+      }
+    },
     "congestion.asOf": {
       "localizations": {
         "ko": {
@@ -9601,6 +9641,46 @@
         }
       }
     },
+    "ios.common.unavailableHere": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "서울 지역에서만 제공됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available in Seoul only"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible solo en Seúl"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponible uniquement à Séoul"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disponibile solo a Seul"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ソウル地域でのみご利用いただけます"
+          }
+        }
+      }
+    },
     "ios.directions.searching": {
       "localizations": {
         "ko": {
@@ -11557,6 +11637,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "周辺に地下鉄駅がありません"
+          }
+        }
+      }
+    },
+    "ios.nearby.subwayEmptyNearest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변에 지하철역이 없습니다. 가장 가까운 역은 %@, %@ 거리입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No subway stations nearby. The closest is %@, %@ away"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay estaciones de metro cerca. La más cercana es %@, a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune station de métro à proximité. La plus proche est %@, à %@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna stazione della metropolitana nelle vicinanze. La più vicina è %@, a %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺に地下鉄駅がありません。最寄りは%@、%@先です"
           }
         }
       }
@@ -23877,6 +23997,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "周辺に地下鉄駅がありません。"
+          }
+        }
+      }
+    },
+    "subwayNearby.emptyNearest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변에 지하철역이 없습니다. 가장 가까운 역은 %1$@, %2$@ 거리입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No subway stations nearby. The closest is %1$@, %2$@ away."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay estaciones de metro cerca. La más cercana es %1$@, a %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune station de métro à proximité. La plus proche est %1$@, à %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna stazione della metropolitana nelle vicinanze. La più vicina è %1$@, a %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺に地下鉄駅がありません。最寄りは%1$@、%2$@先です。"
           }
         }
       }

@@ -146,6 +146,7 @@ private func phaseName(_ phase: NearbyLoadPhase<Payload>) -> String {
     case .empty: "empty"
     case .denied: "denied"
     case .outOfCoverage: "outOfCoverage"
+    case .unavailableHere: "unavailableHere"
     case .failedLocation: "failedLocation"
     case .failedServer: "failedServer"
     }
@@ -413,6 +414,31 @@ struct NearbyLoadCoreTests {
         await core.load()
         #expect(phaseName(core.phase) == "outOfCoverage")
         #expect(recorder.events.isEmpty)
+    }
+
+    /// 서비스 지역 미제공 마커 — outOfCoverage와 **다른 상태**로 남는다.
+    /// 뭉개면 "대한민국 밖" 안내가 부산 사용자에게 낭독된다.
+    @Test func serverUnavailableHereOnFirstLoad() async {
+        let recorder = Recorder()
+        recorder.fetchStub = { _, _ in throw APIError.unavailableHere }
+        let core = makeCore(recorder)
+
+        await core.load()
+        #expect(phaseName(core.phase) == "unavailableHere")
+        #expect(recorder.events.isEmpty)
+    }
+
+    /// loaded 중 미제공 지역으로 전락하면(앵커 변경) 데이터를 잃되 침묵하지 않는다.
+    @Test func serverUnavailableHereWhileLoadedNotifies() async {
+        let recorder = Recorder()
+        let core = makeCore(recorder)
+        await core.load()
+        recorder.resetLog()
+
+        recorder.fetchStub = { _, _ in throw APIError.unavailableHere }
+        await core.load(force: true)
+        #expect(phaseName(core.phase) == "unavailableHere")
+        #expect(recorder.log == ["phase=unavailableHere", "event=refreshFailed"])
     }
 
     /// #13 — loaded 중 서버 마커는 wentOutOfCoverage를 통지한다.

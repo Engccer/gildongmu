@@ -4,7 +4,8 @@
     "tagline": "Navigation in Korea, usable by everyone"
   },
   "common": {
-    "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available."
+    "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available.",
+    "unavailableHere": "Available in Seoul only."
   },
   "nav": {
     "korean": "한국어",
@@ -220,6 +221,7 @@
     "locating": "Getting your location…",
     "loading": "Loading nearby station arrivals…",
     "empty": "No subway stations nearby.",
+    "emptyNearest": "No subway stations nearby. The closest is {station}, {distance} away.",
     "error": "Failed to load subway arrivals.",
     "ready": "Subway arrivals near you.",
     "asOf": "as of {time}",

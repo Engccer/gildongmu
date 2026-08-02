@@ -60,3 +60,21 @@ export function isOutOfCoverage(body: unknown): boolean {
 
 export const OUT_OF_COVERAGE_NOTICE =
   "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
+
+/**
+ * 서비스 지역 미제공 마커 감지 — 한국 **안**이지만 그 도메인 데이터가 그 지역에
+ * 없을 때(따릉이·문화행사 = 서울 전용). HTTP 200 정상 응답이고 오류가 아니다.
+ *
+ * ⚠ 빈 결과로 흡수하지 말 것: "지금 근처에 없다"와 "이 지역엔 서비스가 없다"는
+ * 사용자의 다음 행동이 다르다.
+ */
+export function isUnavailableHere(body: unknown): boolean {
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly"
+  );
+}
+
+/** 웹 `common.unavailableHere`와 같은 문구를 유지한다(같은 사실을 두 표현으로 말하지 않는다). */
+export const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";

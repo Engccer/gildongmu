@@ -25,6 +25,18 @@ function isOutOfCoverage(body: unknown): boolean {
 const OUT_OF_COVERAGE_NOTICE =
   "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
 
+/**
+ * 서비스 지역 미제공 마커 — 한국 **안**이지만 그 도메인 데이터가 그 지역에 없다
+ * (따릉이·문화행사 = 서울 전용). 0건으로 흡수하면 LLM이 "오늘은 없나 보다"로
+ * 요약해 데이터 한계가 지역의 부재로 위장된다. cli 동형 헬퍼 미러.
+ */
+function isUnavailableHere(body: unknown): boolean {
+  return typeof body === "object" && body !== null &&
+    (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly";
+}
+
+const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";
+
 // ⚠ package.json version과 동조 필수(version-drift.test.ts가 강제). 릴리스 때 함께 올린다.
 const server = new McpServer({ name: "gildongmu", version: "0.7.0" });
 
@@ -49,6 +61,7 @@ for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
       let parsed: unknown;
       try { parsed = JSON.parse(text); } catch { parsed = undefined; }
       if (isOutOfCoverage(parsed)) return { content: [{ type: "text" as const, text: OUT_OF_COVERAGE_NOTICE }] };
+      if (isUnavailableHere(parsed)) return { content: [{ type: "text" as const, text: UNAVAILABLE_HERE_NOTICE }] };
       return { content: [{ type: "text" as const, text }] };
     },
   );

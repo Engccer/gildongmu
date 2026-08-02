@@ -40,6 +40,30 @@ COL = {
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "src" / "lib" / "data" / "subway-stations.json"
 
+# 원본 데이터 결함 보정 — (역명, 노선명) → (lat, lng).
+# 2026-08-02 실측: 경의중앙선 양원역(서울 중랑구 망우동) 레코드에 **동명이역인
+# 영동선 양원역(경북 봉화군 소천면)의 좌표**가 들어 있다. 주소 컬럼은 서울인데
+# 좌표만 250km 떨어진 산간이라, 중랑구 사용자에게는 그 역이 영영 검색되지 않고
+# 봉화 산간에서는 있지도 않은 수도권 전철역이 잡힌다.
+# 보정 좌표 출처: 카카오 로컬 "양원역 경의중앙선"(서울 중랑구 망우동 269-5).
+COORD_FIXES = {
+    ("양원역", "경의중앙선"): (37.606606, 127.107946),
+}
+
+# 좌표 혼입 가드 — **노선 내 연속성**으로 본다.
+# 도시철도 노선은 역들이 이어져 있어 같은 노선의 최근접 역까지 거리가 짧다
+# (2026-08-02 실측 최대 11.1km, 대경선 경산역). 동명이역 좌표가 섞이면 그 역만
+# 노선에서 수백 km 떨어지므로 이 한 축으로 잡힌다.
+#
+# 주소 컬럼으로 판정하지 않는 이유: 원본의 주소 형식이 지역마다 달라 커버리지가
+# 뚫린다 — 대구 94개 역은 주소가 "동구 안심로…"처럼 시도 접두 없이 시작해 매칭이
+# 0%였고, 경기도 268건은 광역시가 아니라 아예 대상 밖이었다. 노선 연속성은 주소
+# 형식과 무관해 1,098건 전부를 검사한다.
+#
+# 임계값 30km: 정상 최대 11.1km의 약 3배이고, 양원역 실오류는 141.4km였다
+# (변이 주입으로 검출 확인). 오탐 0 · 미탐 0.
+MAX_LINE_GAP_KM = 30
+
 
 def clean(v):
     """문자열 trim, 빈값/'-'은 None으로."""
@@ -47,6 +71,37 @@ def clean(v):
         return None
     s = str(v).strip()
     return s if s and s != "-" else None
+
+
+def haversine_km(lat1, lng1, lat2, lng2):
+    from math import asin, cos, radians, sin, sqrt
+
+    p1, p2 = radians(lat1), radians(lat2)
+    dp, dl = radians(lat2 - lat1), radians(lng2 - lng1)
+    h = sin(dp / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+    return 2 * 6371 * asin(sqrt(h))
+
+
+def line_outliers(stations):
+    """같은 노선의 최근접 역까지 MAX_LINE_GAP_KM을 넘는 역들(사유 문자열 목록)."""
+    by_line = {}
+    for rec in stations:
+        by_line.setdefault(rec["lineName"], []).append(rec)
+    out = []
+    for line, group in by_line.items():
+        if len(group) < 2:
+            continue  # 단독 역 노선은 비교 대상이 없다(현재 0개)
+        for rec in group:
+            gap = min(
+                haversine_km(rec["lat"], rec["lng"], o["lat"], o["lng"])
+                for o in group
+                if o is not rec
+            )
+            if gap > MAX_LINE_GAP_KM:
+                out.append(
+                    f"{rec['name']}({line}) 좌표=({rec['lat']}, {rec['lng']}) 같은 노선 최근접 {gap:.0f}km"
+                )
+    return out
 
 
 def main():
@@ -96,7 +151,20 @@ def main():
         transfer = clean(r[COL["transferLines"]])
         if transfer:
             rec["transferLines"] = transfer
+        fix = COORD_FIXES.get((rec["name"], rec["lineName"]))
+        if fix:
+            rec["lat"], rec["lng"] = fix
         stations.append(rec)
+
+    # 보정 후에도 남은 이상치는 **중단**한다. 잘못된 좌표는 조용히 통과하면
+    # "그 역이 검색되지 않는다"는 형태로만 드러나 원인을 찾기 어렵다(양원역 실사고).
+    # 새 이상치를 만나면 실좌표를 확인해 COORD_FIXES에 추가하고 재실행할 것.
+    outliers = line_outliers(stations)
+    if outliers:
+        print(f"노선에서 떨어진 좌표 {len(outliers)}건 — COORD_FIXES 보강 필요", file=sys.stderr)
+        for m in outliers:
+            print("  ", m, file=sys.stderr)
+        sys.exit(1)
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     # ensure_ascii=False로 한글 그대로 — gzip 후 크기 동일, diff 가독성 ↑.

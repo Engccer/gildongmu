@@ -5,7 +5,8 @@ import GildongmuKit
 /// 내 주변 따릉이 대여소 — NearbyLoadCore 껍데기(SubwayNearbyModel 규범 패턴 미러).
 /// 정수 필드라 "0대"와 "정보 없음"의 구조적 혼동 없음.
 /// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
-/// ⚠ 따릉이는 서울 전용이라 지방 장소 앵커에서 0건이 정상이다(조회 실패 아님).
+/// ⚠ 따릉이는 서울 전용이라 지방 좌표는 0건이 아니라 `.unavailableHere`로 전이된다
+/// (서버가 upstream 호출 전에 마커로 응답 — 조회 실패와도 다른 상태다).
 @Observable @MainActor
 final class BikeNearbyModel {
     private let core: NearbyLoadCore<[BikeStation]>

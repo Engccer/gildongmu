@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import type { NearbySubwayStation } from "@/lib/types";
+import type { NearbySubwayStation, NearestSubwayStation } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
 import { prefersEnglish } from "@/lib/data-locale";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
@@ -9,9 +9,13 @@ import { NearbyPanelShell } from "@/components/NearbyPanelShell";
 import { nearbyLiveMessage } from "@/lib/nearby-live";
 import { SubwayArrivalList } from "./SubwayArrivalList";
 
-/** done 데이터 — 목록 한 필드. */
+/**
+ * done 데이터 — 목록 한 필드. `nearest`는 0건(empty.detail)일 때만 실린다:
+ * 반경 밖 최근접 역이라 목록에 섞으면 "탈 수 있는 역"으로 오독된다.
+ */
 interface SubwayData {
   stations: NearbySubwayStation[];
+  nearest?: NearestSubwayStation;
 }
 
 /**
@@ -38,13 +42,27 @@ export function SubwayArrivalsNearby() {
           cache: "no-store",
         }),
       parse: (body) => {
-        const b = body as { stations?: NearbySubwayStation[] };
+        const b = body as { stations?: NearbySubwayStation[]; nearest?: NearestSubwayStation };
         const stations = b.stations ?? [];
-        if (stations.length === 0) return { kind: "empty" };
+        if (stations.length === 0) {
+          return { kind: "empty", detail: { stations, nearest: b.nearest } };
+        }
         return { kind: "done", data: { stations } };
       },
     });
-  const live = nearbyLiveMessage(status, t, tCommon);
+  // 0건일 때 최근접 역 거리를 덧붙인다 — "1km 안에 없다"(강동 1.5km)와 "이 지역엔
+  // 도시철도가 없다"(강릉 90km)를 사용자가 거리로 구분한다. 서버가 판정선을 긋지
+  // 않는 이유는 provider 주석(findNearestStationInfo) 참고.
+  const nearest = status.kind === "empty" ? status.detail?.nearest : undefined;
+  const live = nearest
+    ? t("emptyNearest", {
+        station: joinText(
+          isEn ? nearest.nameEn || nearest.stationName : nearest.stationName,
+          nearest.lines.length > 0 && nearest.lines.join(", "),
+        ),
+        distance: formatDistance(nearest.distanceMeters),
+      })
+    : nearbyLiveMessage(status, t, tCommon);
 
   return (
     <NearbyPanelShell

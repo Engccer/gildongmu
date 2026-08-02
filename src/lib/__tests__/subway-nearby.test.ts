@@ -11,6 +11,7 @@ vi.mock("../env", () => ({
 import {
   buildNearbyArrivals,
   fetchNearbySubwayArrivals,
+  findNearestStationInfo,
   judgeStationService,
   type NearbyArrivalInput,
 } from "../providers/subway-nearby";
@@ -216,5 +217,42 @@ describe("fetchNearbySubwayArrivals — seed 근접 + 실시간 합성", () => {
     const r = await fetchNearbySubwayArrivals(35.0, 129.5); // 부산 앞바다(역 1km 밖)
     expect(r).toEqual([]);
     expect(spy).not.toHaveBeenCalled(); // 근접역 0 → 실시간 호출 자체가 없음
+  });
+});
+
+describe("findNearestStationInfo", () => {
+  it("반경 밖이어도 최근접 역을 준다 (강릉 = 도시철도 없는 지역)", () => {
+    const r = findNearestStationInfo(37.764, 128.8996);
+    expect(r).not.toBeNull();
+    // 90km 밖 — 이 거리 자체가 "이 지역엔 도시철도가 없다"는 신호다.
+    expect(r!.distanceMeters).toBeGreaterThan(50_000);
+    expect(r!.lines.length).toBeGreaterThan(0);
+  });
+
+  it("도시철도권 근처는 걸어갈 만한 거리로 나온다 (제주는 그렇지 않다)", () => {
+    // 판정 대신 거리를 주는 이유: 같은 "0건"이어도 사용자의 행동이 갈린다.
+    const seoulEdge = findNearestStationInfo(37.571, 127.176)!; // 서울 강일
+    const jeju = findNearestStationInfo(33.4996, 126.5312)!;
+    expect(seoulEdge.distanceMeters).toBeLessThan(3_000);
+    expect(jeju.distanceMeters).toBeGreaterThan(100_000);
+  });
+
+  it("네트워크를 쓰지 않는다 (seed 조회)", () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    findNearestStationInfo(37.5385, 127.1234);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("환승역은 노선을 모두 싣는다", () => {
+    const r = findNearestStationInfo(37.5665, 126.978)!; // 시청(1·2호선 환승)
+    expect(r.lines.length).toBeGreaterThan(1);
+  });
+
+  it("역명은 목록과 같은 계약 — '역' 접미사를 떼고 준다", () => {
+    // 원본 seed는 "남춘천역"처럼 접미사를 가진 이름이 358건 있다. 목록
+    // (NearbySubwayStation)은 cleanName을 거쳐 접미사가 없으므로 nearest도
+    // 같아야 소비자가 "역"을 붙일지 판단할 수 있다(CLI "남춘천역역" 회귀).
+    const r = findNearestStationInfo(37.764, 128.8996)!; // 강릉 → 남춘천
+    expect(r.stationName.endsWith("역")).toBe(false);
   });
 });

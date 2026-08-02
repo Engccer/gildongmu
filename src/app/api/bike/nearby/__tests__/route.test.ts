@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/env", () => ({
   hasSeoulOpenDataKey: vi.fn(() => true),
 }));
-vi.mock("@/lib/providers/seoul-bike", () => ({
+// isBikeServiceArea는 **실제 구현**을 쓴다(순수 좌표 판정). 모킹하면 라우트가
+// 진짜 판정선을 쓰는지 검증하지 못한다 — 서울 인접 좌표가 잘리는 회귀가 통과한다.
+vi.mock("@/lib/providers/seoul-bike", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/providers/seoul-bike")>()),
   fetchNearbyBikeStations: vi.fn(),
 }));
 
@@ -36,6 +39,26 @@ describe("GET /api/bike/nearby (커버리지 마커 계약)", () => {
   it("전지구 범위 밖 좌표는 여전히 400", async () => {
     const res = await GET(makeRequest("?lat=95&lng=200"));
     expect(res.status).toBe(400);
+  });
+
+  it("서울 밖 국내 좌표는 unavailableHere 마커, 키 게이트보다 앞(upstream 미호출)", async () => {
+    // 대여소가 서울 안에만 있으므로 부산의 0건은 "지금 근처에 없다"가 아니라
+    // "이 지역에 서비스가 없다"다. 뭉개면 사용자가 반경을 넓힐 여지를 상상한다.
+    mockHasKey.mockReturnValue(false); // 게이트가 뒤라는 것을 증명
+    const res = await GET(makeRequest("?lat=35.1796&lng=129.0756")); // 부산
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ unavailableHere: "seoulOnly" });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("서울 인접 시(하남 미사)는 서비스권 — 조회한다", async () => {
+    // 최근접 대여소 1.13km(실측). 조회 반경 1km 밖이라 0건이지만 "미제공"이라
+    // 말하면 거짓이다. 이 케이스가 시도 경계로 자르지 않는 근거다.
+    mockFetch.mockResolvedValue([]);
+    const res = await GET(makeRequest("?lat=37.562&lng=127.193"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ stations: [] });
+    expect(mockFetch).toHaveBeenCalled();
   });
 });
 

@@ -11,10 +11,10 @@ public struct NearbyService: Sendable {
 
     public init(client: APIClient) { self.client = client }
 
-    public func subwayArrivals(lat: Double, lng: Double) async throws -> [NearbySubwayStation] {
+    public func subwayArrivals(lat: Double, lng: Double) async throws -> SubwayNearbyResult {
         let response: SubwayNearbyResponse = try await client.get(
             "/api/station/subway-arrival/nearby", query: coordQuery(lat: lat, lng: lng))
-        return response.stations
+        return SubwayNearbyResult(stations: response.stations, nearest: response.nearest)
     }
 
     public func busStops(lat: Double, lng: Double) async throws -> [BusStop] {

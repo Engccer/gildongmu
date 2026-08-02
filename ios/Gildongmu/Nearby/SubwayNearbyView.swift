@@ -2,12 +2,21 @@ import SwiftUI
 import Observation
 import GildongmuKit
 
+/// 최근접 역 낭독 라벨 — 역명(현재 언어)과 노선을 한 텍스트로 합친다.
+/// 모델 init의 통지 클로저와 뷰 오버레이가 **같은 문구**를 써야 해서 파일 레벨에 둔다
+/// (한쪽만 고치면 들은 것과 보이는 것이 갈린다).
+private func nearestLabel(_ station: NearestSubwayStation) -> String {
+    let nameEn = station.nameEn ?? ""
+    let name = AppLanguage.dataLocale == "en" && !nameEn.isEmpty ? nameEn : station.stationName
+    return joinText(name, station.lines.joined(separator: ", "))
+}
+
 /// 내 주변 지하철 도착 — NearbyLoadCore 껍데기(규범 원형). 상태 머신·전이표는 Kit 정본.
 /// anchor: nil = 현재 위치(내 주변 허브), 좌표 = 그 좌표 고정(장소 상세 "이 장소 주변").
 @Observable @MainActor
 final class SubwayNearbyModel {
-    private let core: NearbyLoadCore<[NearbySubwayStation]>
-    var phase: NearbyLoadPhase<[NearbySubwayStation]> { core.phase }
+    private let core: NearbyLoadCore<SubwayNearbyResult>
+    var phase: NearbyLoadPhase<SubwayNearbyResult> { core.phase }
 
     init(anchor: PlaceAnchor? = nil) {
         let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
@@ -18,8 +27,15 @@ final class SubwayNearbyModel {
                 guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
                 return try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
             },
-            onEvent: nearbyAnnouncer(loaded: { stations in
-                nearbyLoadedMessage(count: stations.count, unit: appLocalized("ios.nearby.unitStation"))
+            onEvent: nearbyAnnouncer(loaded: { result in
+                // 0건이면 최근접 역 거리를 통지에 실어 "1km 안에 없다"와 "이 지역엔
+                // 도시철도가 없다"를 가른다(웹 emptyNearest 미러).
+                if result.stations.isEmpty, let nearest = result.nearest {
+                    return appLocalized("ios.nearby.subwayEmptyNearest",
+                                        nearestLabel(nearest), formatDistance(nearest.distanceMeters))
+                }
+                return nearbyLoadedMessage(count: result.stations.count,
+                                           unit: appLocalized("ios.nearby.unitStation"))
             }))
     }
 
@@ -44,11 +60,11 @@ struct SubwayNearbyView: View {
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                if case .loaded(let stations) = model.phase {
+                if case .loaded(let result) = model.phase {
                     // 역명이 정체성이자 포커스 키다. 근접역 조회가 `dedupeByName`으로
                     // 같은 이름을 하나만 남기므로(`subway-nearby.ts`) 이 목록 안에서는
                     // 중복이 생기지 않는다 — 버스가 nodeId를 쓰는 것과 조건이 다르다.
-                    ForEach(stations, id: \.stationName) { station in
+                    ForEach(result.stations, id: \.stationName) { station in
                         Section {
                             // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
                             // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
@@ -82,8 +98,8 @@ struct SubwayNearbyView: View {
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
             .nearbyStateOverlay {
                 NearbyStateOverlayView(phase: model.phase, descriptor: .list(
-                    empty: NearbyOverlayCopy(appLocalized("ios.nearby.subwayEmpty"), systemImage: "tram"),
-                    isEmpty: \.isEmpty))
+                    empty: NearbyOverlayCopy(emptyTitle, systemImage: "tram"),
+                    isEmpty: { $0.stations.isEmpty }))
             }
             .task { await model.load() }
             .nearbyRefreshable { await model.load(force: true) }
@@ -96,8 +112,17 @@ struct SubwayNearbyView: View {
 
     /// 첫 역명 — nil→값 전이가 곧 "로드 완료"다(0건·실패는 nil로 남는다).
     private var firstStationName: String? {
-        guard case .loaded(let stations) = model.phase else { return nil }
-        return stations.first?.stationName
+        guard case .loaded(let result) = model.phase else { return nil }
+        return result.stations.first?.stationName
+    }
+
+    /// 0건 오버레이 제목 — 최근접 역이 있으면 거리를 함께 알린다(통지와 같은 문구).
+    private var emptyTitle: String {
+        guard case .loaded(let result) = model.phase, let nearest = result.nearest else {
+            return appLocalized("ios.nearby.subwayEmpty")
+        }
+        return appLocalized("ios.nearby.subwayEmptyNearest",
+                            nearestLabel(nearest), formatDistance(nearest.distanceMeters))
     }
 
     /// 표시 역명 — en 계열 로케일은 seed 영문명, 없으면 한국어 원명으로 폴백.

@@ -3,17 +3,27 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
-import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
+import {
+  isOutOfCoverageBody,
+  unavailableHereReason,
+  type UnavailableHereReason,
+} from "@/lib/out-of-coverage";
 import { useNearbyPanel } from "@/hooks/useNearbyPanel";
 
 export type NearbyStatus<T> =
   | { kind: "idle" }
   | { kind: "locating" }
   | { kind: "loading" }
-  | { kind: "empty" }
+  /**
+   * 결과 0건. `detail`은 0건이어도 사용자에게 말할 것이 있는 도메인만 싣는다
+   * (지하철 = 반경 밖 최근접 역). 없으면 순수한 0건이다.
+   */
+  | { kind: "empty"; detail?: T }
   | { kind: "error" }
   | { kind: "geoerror"; reason: "denied" | "unsupported" }
   | { kind: "outOfCoverage" }
+  /** 한국 안이지만 그 도메인 데이터가 이 지역에 없음(따릉이·문화행사 = 서울 전용). */
+  | { kind: "unavailableHere"; reason: UnavailableHereReason }
   | { kind: "done"; data: T; at: string };
 
 export type NearbySource =
@@ -27,7 +37,7 @@ interface Options<T> {
   /** URL·쿼리 조립은 도메인 몫 — 훅은 호출·해석·상태만 소유한다(스펙 §2). */
   fetchAt: (coords: { lat: number; lng: number }) => Promise<Response>;
   /** 순수 함수(외부 setter 호출 금지). empty 개념 없는 도메인은 항상 done 반환. */
-  parse: (body: unknown) => { kind: "done"; data: T } | { kind: "empty" };
+  parse: (body: unknown) => { kind: "done"; data: T } | { kind: "empty"; detail?: T };
   /** close 시 도메인 부수 상태 리셋(BarrierFree 캐시, BusArrivals notice). close 한정. */
   onClose?: () => void;
 }
@@ -96,13 +106,20 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
           setStatus({ kind: "outOfCoverage" });
           return;
         }
+        // 서비스 지역 미제공 — coverage 옵션과 무관하다(전 지구 도메인도 낼 수 있고,
+        // 이 마커를 내지 않는 도메인은 애초에 여기 걸리지 않는다).
+        const unavailable = unavailableHereReason(body);
+        if (unavailable) {
+          setStatus({ kind: "unavailableHere", reason: unavailable });
+          return;
+        }
         if (!res.ok) {
           setStatus({ kind: "error" });
           return;
         }
         const parsed = parse(body);
         if (parsed.kind === "empty") {
-          setStatus({ kind: "empty" });
+          setStatus({ kind: "empty", detail: parsed.detail });
           return;
         }
         const at = new Date().toLocaleTimeString(undefined, {

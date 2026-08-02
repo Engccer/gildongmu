@@ -3,7 +3,10 @@ import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
 import { hasSeoulSubwayRealtimeKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
-import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
+import {
+  fetchNearbySubwayArrivals,
+  findNearestStationInfo,
+} from "@/lib/providers/subway-nearby";
 
 /**
  * GET /api/station/subway-arrival/nearby?lat=..&lng=..
@@ -43,6 +46,12 @@ export async function GET(request: NextRequest) {
   }
   try {
     const stations = await fetchNearbySubwayArrivals(parsed.data.lat, parsed.data.lng);
+    // 0건이면 최근접 역을 동봉 — "1km 안에 없다"와 "이 지역엔 도시철도가 없다"를
+    // 사용자가 거리로 구분한다(seed 조회라 추가 네트워크 0).
+    if (stations.length === 0) {
+      const nearest = findNearestStationInfo(parsed.data.lat, parsed.data.lng);
+      if (nearest) return NextResponse.json({ stations, nearest });
+    }
     return NextResponse.json({ stations });
   } catch (e) {
     console.error("[api/station/subway-arrival/nearby]", e);

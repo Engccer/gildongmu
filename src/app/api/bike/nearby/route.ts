@@ -3,7 +3,7 @@ import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
 import { hasSeoulOpenDataKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
-import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
+import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 
 /**
  * GET /api/bike/nearby?lat=..&lng=..
@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
   }
   if (!isInKorea(parsed.data.lat, parsed.data.lng)) {
     return NextResponse.json({ outOfCoverage: true });
+  }
+  // 서울 밖은 "0건"이 아니라 "이 지역 미제공"(3-state). 커버리지 마커와 같은 자리 —
+  // 키 게이트보다 앞이라 upstream을 부르지 않는다(서울 열린데이터 일 1,000회 공유 쿼터 보호).
+  if (!isBikeServiceArea(parsed.data.lat, parsed.data.lng)) {
+    return NextResponse.json({ unavailableHere: "seoulOnly" });
   }
   if (!hasSeoulOpenDataKey()) {
     return NextResponse.json({ stations: [] });

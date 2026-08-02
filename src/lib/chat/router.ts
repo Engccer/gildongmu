@@ -8,14 +8,17 @@ import { searchPlaces } from "@/lib/providers/places";
 import { searchJusoAddresses } from "@/lib/providers/juso-address";
 import { findAirQualityNear } from "@/lib/providers/air-quality";
 import { findWeatherNear } from "@/lib/providers/weather";
-import { fetchNearbySubwayArrivals } from "@/lib/providers/subway-nearby";
+import {
+  fetchNearbySubwayArrivals,
+  findNearestStationInfo,
+} from "@/lib/providers/subway-nearby";
 import { fetchNearbyBusStops } from "@/lib/bus";
-import { fetchNearbyBikeStations } from "@/lib/providers/seoul-bike";
+import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
-import { findEventsNear } from "@/lib/culture-events";
+import { findEventsNear, isEventServiceArea } from "@/lib/culture-events";
 import { findCongestionNear } from "@/lib/congestion";
 import { findStationMeta } from "@/lib/subway-stations";
 import { fetchStationFacilities } from "@/lib/providers/korail-facilities";
@@ -48,6 +51,7 @@ function coverageGate(coord: { lat: number; lng: number } | undefined) {
   return coord && !isInKorea(coord.lat, coord.lng) ? { data: OUT_OF_COVERAGE } : null;
 }
 
+
 /** 지명 → 좌표(카카오 지오코딩 첫 결과). 미지정이면 장소 앵커/현재 위치. */
 async function resolveCoord(
   place: string | undefined,
@@ -60,6 +64,16 @@ async function resolveCoord(
   }
   return anchorOf(ctx);
 }
+
+/**
+ * 서울 전용 데이터의 지역 밖 응답. `count: 0`을 그대로 넘기면 LLM이 "근처에 행사가
+ * 없습니다"로 요약해 **데이터 출처의 한계가 지역의 부재로 위장**된다(부산 사용자가
+ * "오늘 부산엔 행사가 없구나"로 읽는다). 판정 술어는 라우트와 같은 것을 쓴다.
+ */
+const SEOUL_ONLY = {
+  unavailableHere: "seoulOnly",
+  notice: "이 정보는 서울 지역만 제공됩니다. 다른 지역은 데이터 자체가 없으며, 근처에 없다는 뜻이 아닙니다.",
+};
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
 
@@ -100,6 +114,12 @@ export async function executeFunction(
       const arrivals = await fetchNearbySubwayArrivals(anchor.lat, anchor.lng);
       // 장소 앵커일 땐 device-self-fetch 카드가 장소와 어긋나므로 생략(산문이 정본).
       const render = ctx.placeAnchor ? undefined : ({ type: "subway-nearby" } as const);
+      // 0건이면 최근접 역을 함께 넘긴다 — 거리 없이 "없다"고만 하면 LLM이 걸어갈
+      // 만한 거리(1.5km)와 도시철도 없는 지역(90km)을 같은 문장으로 답한다.
+      if (arrivals.length === 0) {
+        const nearest = findNearestStationInfo(anchor.lat, anchor.lng);
+        if (nearest) return { data: { count: 0, arrivals, nearest }, render, source: src };
+      }
       return { data: { count: arrivals.length, arrivals }, render, source: src };
     }
     case "get_night_clinics": {
@@ -145,7 +165,8 @@ export async function executeFunction(
       if (!anchor) return { data: NO_LOCATION };
       const gated = coverageGate(anchor);
       if (gated) return gated;
-      // 서울 전용 데이터라 서울 밖은 0건이 정직한 답이다(오류 아님).
+      // 서울 전용 데이터 — 서울 밖은 0건이 아니라 "정보 미보유"다(라우트와 같은 판정).
+      if (!isEventServiceArea(anchor.lat, anchor.lng)) return { data: SEOUL_ONLY, source: src };
       // 카드 없이 산문이 정본 — 목록을 두 벌로 만들지 않는다(get_weather 동형).
       const { events, total } = await findEventsNear(anchor.lat, anchor.lng);
       return { data: { count: total, events: events.slice(0, 8) }, source: src };
@@ -209,6 +230,8 @@ export async function executeFunction(
       if (!coord) return { data: NO_LOCATION };
       const gated = coverageGate(coord);
       if (gated) return gated;
+      // 대여소가 서울 안에만 있다 — 지방의 0건은 "지금 없다"가 아니라 "서비스가 없다".
+      if (!isBikeServiceArea(coord.lat, coord.lng)) return { data: SEOUL_ONLY, source: src };
       const stations = await fetchNearbyBikeStations(coord.lat, coord.lng);
       const placeMode = !!explicit || !!ctx.placeAnchor;
       const render = placeMode

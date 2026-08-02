@@ -18,7 +18,8 @@
       "failedTitle": "情報を取得できませんでした",
       "refresh": "更新",
       "privacyPolicy": "プライバシーポリシー",
-      "outOfCoverage": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。"
+      "outOfCoverage": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。",
+      "unavailableHere": "ソウル地域でのみご利用いただけます"
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",
@@ -154,6 +155,7 @@
       "kidsPark": "公園",
       "kidsEmpty": "周辺に子どもの遊び場がありません",
       "subwayEmpty": "周辺に地下鉄駅がありません",
+      "subwayEmptyNearest": "周辺に地下鉄駅がありません。最寄りは%@、%@先です",
       "whereAmIReady": "現在地を確認しました",
       "whereAmIChat": "現在地について質問する",
       "whereAmIAsOf": "現在地 {time}時点",

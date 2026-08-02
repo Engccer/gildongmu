@@ -19,7 +19,7 @@ import {
   kstToday,
   fetchRunningEvents,
 } from "../providers/seoul-culture-events";
-import { findEventsNear } from "../culture-events";
+import { findEventsNear, isEventServiceArea } from "../culture-events";
 
 type Row = Record<string, unknown>;
 
@@ -273,5 +273,23 @@ describe("findEventsNear (거리·반경·정렬·total)", () => {
     });
     expect(events.map((e) => e.title)).toEqual(["가까움"]);
     expect(total).toBe(1);
+  });
+});
+
+describe("isEventServiceArea", () => {
+  it("서울 안은 서비스권", () => {
+    expect(isEventServiceArea(37.5665, 126.978)).toBe(true);
+  });
+
+  it("서울 인접은 서비스권 — 실제로 서울 행사가 반경 3km에 잡힌다", () => {
+    // 2026-08-02 실호출: 하남 미사·과천 각 1건. 시도로 잘랐다면 사라졌을 결과다.
+    expect(isEventServiceArea(37.562, 127.193)).toBe(true);
+    expect(isEventServiceArea(37.4292, 126.9877)).toBe(true);
+  });
+
+  it("지방은 미제공 — '오늘 행사 없음'으로 위장하지 않는다", () => {
+    expect(isEventServiceArea(35.1578, 129.0594)).toBe(false); // 부산
+    expect(isEventServiceArea(35.8659, 128.5936)).toBe(false); // 대구
+    expect(isEventServiceArea(33.4996, 126.5312)).toBe(false); // 제주
   });
 });

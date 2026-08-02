@@ -18,7 +18,8 @@
       "failedTitle": "Couldn't load information",
       "refresh": "Refresh",
       "privacyPolicy": "Privacy Policy",
-      "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available."
+      "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available.",
+      "unavailableHere": "Available in Seoul only"
     },
     "chat": {
       "suggestion1": "Show me what's around here",
@@ -154,6 +155,7 @@
       "kidsPark": "Park",
       "kidsEmpty": "No kids places nearby",
       "subwayEmpty": "No subway stations nearby",
+      "subwayEmptyNearest": "No subway stations nearby. The closest is %@, %@ away",
       "whereAmIReady": "Current location found",
       "whereAmIChat": "Ask about my current location",
       "whereAmIAsOf": "Current location as of {time}",

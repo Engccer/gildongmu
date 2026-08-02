@@ -54,3 +54,19 @@ describe("isOutOfCoverage", () => {
     expect(isOutOfCoverage(undefined)).toBe(false);
   });
 });
+
+describe("isUnavailableHere", () => {
+  it("서울 전용 마커만 true", async () => {
+    const { isUnavailableHere } = await import("../lib/api-client.js");
+    expect(isUnavailableHere({ unavailableHere: "seoulOnly" })).toBe(true);
+  });
+
+  it("0건·다른 마커·비객체는 false (근처에 없음과 구분)", async () => {
+    const { isUnavailableHere } = await import("../lib/api-client.js");
+    expect(isUnavailableHere({ stations: [] })).toBe(false);
+    expect(isUnavailableHere({ outOfCoverage: true })).toBe(false);
+    expect(isUnavailableHere({ unavailableHere: true })).toBe(false);
+    expect(isUnavailableHere(null)).toBe(false);
+    expect(isUnavailableHere("seoulOnly")).toBe(false);
+  });
+});

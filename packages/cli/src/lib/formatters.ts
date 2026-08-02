@@ -55,6 +55,13 @@ interface NearbySubwayStationItem {
   firstTime?: string;
 }
 
+/** 반경 안에 역이 0건일 때만 실리는 최근접 역(반경 밖이라 목록과 섞지 않는다). */
+interface NearestSubwayStationItem {
+  stationName: string;
+  lines: string[];
+  distanceMeters: number;
+}
+
 interface SubwayStationArrivalsItem {
   arrivals: SubwayArrivalItem[];
 }
@@ -329,6 +336,14 @@ interface WebSearchResultItem {
 
 const m = (n: number): string => `${Math.round(n)}m`;
 
+/**
+ * 적응형 거리 — 1km 미만은 미터, 그 이상은 km(웹 `formatDistance` 미러).
+ * `m()`은 도보권 항목(정류소·역) 전용이라 수십 km에 쓰면 "89700m"가 되어
+ * 낭독으로 크기를 가늠할 수 없다.
+ */
+const dist = (n: number): string =>
+  n < 1000 ? `${Math.round(n)}m` : `${(n / 1000).toFixed(1)}km`;
+
 const COMPASS_KO: Record<Bearing, string> = {
   n: "북", ne: "북동", e: "동", se: "남동", s: "남", sw: "남서", w: "서", nw: "북서",
 };
@@ -447,8 +462,20 @@ function formatEvents(body: { events: CultureEventItem[] }): string[] {
 
 // ── 내 주변(좌표 기반) ──────────────────────────────────────────────────
 
-function formatNearbySubway(body: { stations: NearbySubwayStationItem[] }): string[] {
-  if (body.stations.length === 0) return ["주변에 지하철역이 없습니다."];
+function formatNearbySubway(body: {
+  stations: NearbySubwayStationItem[];
+  nearest?: NearestSubwayStationItem;
+}): string[] {
+  if (body.stations.length === 0) {
+    // 0건이어도 최근접 역 거리를 알린다 — 걸어갈 만한 거리인지(강동 1.5km)
+    // 도시철도가 없는 지역인지(강릉 90km) 이 수치가 가른다.
+    if (!body.nearest) return ["주변에 지하철역이 없습니다."];
+    const n = body.nearest;
+    // joinText로 앞 문장까지 잇지 않는다 — 조각마다 쉼표가 끼어 "가장 가까운 역은,
+    // 정동진역"으로 낭독된다. 역 정보만 합치고 문장은 템플릿으로 조립한다.
+    const label = joinText(`${n.stationName}역`, n.lines.join("·"), dist(n.distanceMeters));
+    return [`주변에 지하철역이 없습니다. 가장 가까운 역은 ${label} 거리입니다.`];
+  }
   const lines: string[] = [];
   for (const s of body.stations) {
     lines.push(joinText(`${s.stationName}역`, s.lines.join("·"), m(s.distanceMeters)));

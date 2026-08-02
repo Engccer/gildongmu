@@ -1,6 +1,7 @@
 import type { BikeStation } from "../types";
 import { env } from "../env";
 import { haversineMeters } from "../geo";
+import { metersOutsideSeoul } from "../coverage";
 import { readSeoulOpenJson } from "./seoul-open-json";
 
 /**
@@ -69,6 +70,22 @@ const PAGE = 1000; // bikeList 1회 상한
 const MAX_PAGES = 5; // 안전상한(~5,000건, 현재 전체 ~2,720)
 const MAX_DISTANCE_METERS = 1000; // 도보권 cap
 const TOP_N = 5;
+
+/**
+ * 이 좌표에서 따릉이 대여소가 **존재할 수 있는가**. false면 upstream 호출이 무의미하다.
+ *
+ * 따릉이는 서울시 사업이라 대여소가 서울 안에만 있다(2026-08-02 전량 실측 2,743개소:
+ * lat 37.431~37.691 · lng 126.799~127.181). 따라서 서울 bbox에서 조회 반경만큼
+ * 벗어나면 대여소가 반경에 들어올 수 없고, 이는 "지금 근처에 없다"가 아니라
+ * "이 지역에는 서비스가 없다"다 — 둘을 뭉개면 부산 사용자가 반경을 넓히거나
+ * 나중에 다시 볼 여지를 상상하게 된다(3-state 불변식).
+ *
+ * ⚠ 판정선은 `MAX_DISTANCE_METERS`를 그대로 쓴다. 상수를 바꾸면 판정도 함께
+ * 움직여야 하므로 값을 복제하지 말 것.
+ */
+export function isBikeServiceArea(lat: number, lng: number): boolean {
+  return metersOutsideSeoul(lat, lng) <= MAX_DISTANCE_METERS;
+}
 
 /**
  * bikeList 한 페이지를 호출하고 정상 envelope를 반환한다.
