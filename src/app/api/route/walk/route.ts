@@ -24,6 +24,11 @@ const querySchema = z.object({
     .union([z.literal("true"), z.literal("false")])
     .nullable()
     .transform((v) => v === "true"),
+  // 스텝 폴리라인 보존 옵트인(실시간 길 안내). 누락 또는 정확히 "1"만 — 그 외 값은
+  // 400으로 거절해 옵트인을 조용히 무시하지 않는다(accessible 관례 동형, 스펙 §7.2).
+  includeGeometry: z
+    .union([z.literal("1"), z.null()])
+    .transform((v) => v === "1"),
 });
 
 export async function GET(request: NextRequest) {
@@ -31,6 +36,7 @@ export async function GET(request: NextRequest) {
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
     accessible: request.nextUrl.searchParams.get("accessible"),
+    includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
   });
   if (!parsed.success) {
     return NextResponse.json(

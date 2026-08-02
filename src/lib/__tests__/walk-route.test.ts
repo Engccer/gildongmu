@@ -217,3 +217,53 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
     expect(r && "stepFree" in r).toBe(false);
   });
 });
+
+describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () => {
+  const geomBriefing = briefing([
+    {
+      description: "10m 이동",
+      pathCoords: [
+        { lat: 37.5, lng: 127.1 },
+        { lat: 37.5001, lng: 127.1 },
+      ],
+    },
+    { description: "우회전", coord: { lat: 37.5001, lng: 127.1 } },
+  ]);
+
+  it("기본은 coord·pathCoords 전량 제거(기존 byte-호환)", () => {
+    const out = annotateAudioSignals(geomBriefing, false);
+    for (const s of out.steps) {
+      expect("coord" in s).toBe(false);
+      expect("pathCoords" in s).toBe(false);
+    }
+  });
+
+  it("보존 모드는 pathCoords로 통일 노출(coord 1점은 승격, coord 키는 제거)", () => {
+    const out = annotateAudioSignals(geomBriefing, true);
+    expect(out.steps[0].pathCoords).toHaveLength(2);
+    expect(out.steps[1].pathCoords).toEqual([{ lat: 37.5001, lng: 127.1 }]);
+    expect("coord" in out.steps[1]).toBe(false);
+  });
+
+  it("보존 모드에서도 주석 판정은 동일하게 동작한다", () => {
+    const out = annotateAudioSignals(
+      briefing([{ description: "우측 횡단보도 후 11m 이동", pathCoords: [{ lat: sigLat, lng: sigLng }] }]),
+      true,
+    );
+    expect(out.steps[0].description).toContain("음향신호기 있음");
+    expect(out.steps[0].pathCoords).toHaveLength(1);
+  });
+
+  it("getWalkRoute가 includeGeometry를 provider noStore로 전파하고 기하를 보존한다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(geomBriefing);
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    expect(r?.steps[0].pathCoords).toHaveLength(2);
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: true });
+  });
+
+  it("includeGeometry 미지정이면 provider 호출에 noStore가 없다(기존 캐시 계약 불변)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(geomBriefing);
+    await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: false });
+  });
+});
