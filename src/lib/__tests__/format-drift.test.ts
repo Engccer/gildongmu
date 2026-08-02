@@ -88,6 +88,13 @@ describe("소수 km 지역 사본 금지", () => {
   // (아래 자기 검증 테스트가 이 실수를 실제로 잡았다). 같은 줄로만 한정한다.
   const BYPASS = [/\/\s*1000\s*\)\s*\.toFixed\s*\(/, /"%\.\d+f"\s*,[^;\n]*\/\s*1000/];
 
+  // Swift 문자열 보간으로 미터를 직접 조립하는 꼴(`…\(x)m"`). 소수 km 조립만 잡던
+  // 종전 가드의 사각지대로, 따릉이·지하철·버스 행과 자동차 스텝 4곳이 이 꼴로
+  // formatDistance를 우회했다(버스·자동차는 1km 초과가 "1200m"로 표기되던 실결함,
+  // 2026-08-02 리뷰 검출). 정본 `Format.swift` 자신만 예외다.
+  const SWIFT_INTERP_METERS = /\\\([^)\n]*\)k?m"/;
+  const INTERP_ALLOWED = ["ios/GildongmuKit/Sources/GildongmuKit/Format.swift"];
+
   it("어떤 소스도 거리 km를 직접 조립하지 않는다", () => {
     const offenders: string[] = [];
     for (const root of SCAN_ROOTS) {
@@ -99,9 +106,27 @@ describe("소수 km 지역 사본 금지", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("어떤 Swift 소스도 보간으로 미터를 직접 조립하지 않는다", () => {
+    const offenders: string[] = [];
+    for (const root of SCAN_ROOTS) {
+      for (const file of sourceFiles(root)) {
+        if (!file.endsWith(".swift")) continue;
+        if (INTERP_ALLOWED.some((allowed) => file.endsWith(allowed))) continue;
+        if (SWIFT_INTERP_METERS.test(readFileSync(file, "utf8"))) offenders.push(file);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it("가드 자체가 살아 있다 (패턴이 실제로 매칭된다)", () => {
     expect(BYPASS[0].test("`${(n / 1000).toFixed(1)}km`")).toBe(true);
     expect(BYPASS[1].test('String(format: "%.1f", Double(m) / 1000)')).toBe(true);
     expect(BYPASS.some((re) => re.test("formatDistance(meters)"))).toBe(false);
+    // Swift 보간 가드: 실제 위반 꼴(버스 행이 정확히 이 꼴이었다)에 매칭되고,
+    // 정본 경유 코드에는 매칭되지 않는다.
+    expect(SWIFT_INTERP_METERS.test('Text(joinText(stop.name, "\\(stop.distanceMeters)m"))')).toBe(true);
+    expect(SWIFT_INTERP_METERS.test('"\\(km)km \\(rest)m"')).toBe(true);
+    expect(SWIFT_INTERP_METERS.test("formatDistance(stop.distanceMeters)")).toBe(false);
+    expect(SWIFT_INTERP_METERS.test('appLocalized("place.distance", formatDistance(m))')).toBe(false);
   });
 });
