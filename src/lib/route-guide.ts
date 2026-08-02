@@ -44,8 +44,12 @@ export interface GuideFix {
 
 export interface GuideState {
   phase: GuidePhase;
-  /** uncertain·reacquiring·offRoute에서 복귀할 기본 국면. */
-  resumePhase: "following" | "bundle";
+  /**
+   * uncertain에서 복귀할 국면. offRoute를 포함한다 — 이탈 확정 중 정확도 악화로
+   * uncertain을 경유했다가 following으로 돌아가면 이탈 상태가 무통지로 소실된다
+   * (reacquiringFromOffRoute와 같은 계열, 독립 리뷰 HIGH의 대칭 경로).
+   */
+  resumePhase: "following" | "bundle" | "offRoute";
   d: number;
   stepIndex: number;
   /** 낭독 완료된 마지막 스텝 index(선행 낭독 포함). */
@@ -61,6 +65,12 @@ export interface GuideState {
   speedWarned: boolean;
   /** 자동 인계 무장 여부. 수동 상세 복귀 후엔 재무장선(70m) 밖으로 나가야 true(리뷰 #11). */
   autoHandoffArmed: boolean;
+  /**
+   * reacquiring 진입 직전 국면이 offRoute였는가. 없으면 이탈 확정이 GPS 공백을
+   * 경유하며 무통지로 소실된다 — 복귀 이벤트가 backOnRoute가 아니라 reacquired로
+   * 나가 UI의 이탈 상태(재조회 버튼)가 리듀서와 어긋난 채 남는다(독립 리뷰 HIGH).
+   */
+  reacquiringFromOffRoute: boolean;
 }
 
 export type GuideEvent =
@@ -125,6 +135,7 @@ export function guideStateAt(
     speedGuardActive: false,
     speedWarned: false,
     autoHandoffArmed: opts?.autoHandoffArmed ?? true,
+    reacquiringFromOffRoute: false,
   };
 }
 
@@ -182,7 +193,14 @@ export function guideStep(
   }
   if (accBad) {
     return {
-      state: { ...state, phase: "uncertain", lastFixAt: now, speedSamples: [] },
+      state: {
+        ...state,
+        phase: "uncertain",
+        // 이탈 중 진입이면 복귀도 이탈로(이탈 상태 소실 방지).
+        resumePhase: state.phase === "offRoute" ? "offRoute" : state.resumePhase,
+        lastFixAt: now,
+        speedSamples: [],
+      },
       event: { kind: "uncertainEnter" },
       tone: null,
     };
@@ -199,12 +217,25 @@ export function guideStep(
       speedWarned: state.speedWarned,
       lastFixAt: now,
     };
-    return { state: s, event: { kind: "reacquired" }, tone: null };
+    // 이탈 확정 상태에서 공백으로 넘어온 재확보는 곧 이탈 종료다 — backOnRoute를
+    // 내야 UI의 이탈 상태(재조회 버튼)가 함께 닫힌다(독립 리뷰 HIGH).
+    return {
+      state: s,
+      event: { kind: state.reacquiringFromOffRoute ? "backOnRoute" : "reacquired" },
+      tone: null,
+    };
   }
   const gap = state.lastFixAt !== null && now - state.lastFixAt > REACQUIRE_GAP_S;
   if (gap || state.windowEdgeHits >= EDGE_HITS_MAX) {
     return {
-      state: { ...state, phase: "reacquiring", windowEdgeHits: 0, speedSamples: [], lastFixAt: now },
+      state: {
+        ...state,
+        phase: "reacquiring",
+        windowEdgeHits: 0,
+        speedSamples: [],
+        lastFixAt: now,
+        reacquiringFromOffRoute: state.phase === "offRoute",
+      },
       event: { kind: "reacquiring" },
       tone: null,
     };

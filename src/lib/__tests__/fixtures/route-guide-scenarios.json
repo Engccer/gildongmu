@@ -505,6 +505,160 @@
           ]
         }
       ]
+    },
+    {
+      "name": "이탈 확정이 GPS 공백(reacquiring)을 경유해도 복귀는 backOnRoute (리뷰 HIGH)",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 13,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 21,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 29,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 45,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 50,
+          "along": 150,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFixAny": [
+            3,
+            4
+          ],
+          "event": "offRoute"
+        },
+        {
+          "afterFix": 5,
+          "event": "reacquiring"
+        },
+        {
+          "afterFix": 6,
+          "event": "backOnRoute"
+        },
+        {
+          "afterFix": 6,
+          "eventNot": "reacquired"
+        }
+      ]
+    },
+    {
+      "name": "이탈 확정이 uncertain(정확도 악화)을 경유해도 이탈 상태 유지·복귀는 backOnRoute",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 13,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 21,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 29,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 37,
+          "along": 100,
+          "lateral": 80,
+          "acc": 80
+        },
+        {
+          "t": 45,
+          "along": 100,
+          "lateral": 80,
+          "acc": 10
+        },
+        {
+          "t": 53,
+          "along": 150,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFixAny": [
+            3,
+            4
+          ],
+          "event": "offRoute"
+        },
+        {
+          "afterFix": 5,
+          "event": "uncertainEnter"
+        },
+        {
+          "afterFix": 6,
+          "event": "uncertainExit"
+        },
+        {
+          "afterFix": 7,
+          "event": "backOnRoute"
+        }
+      ]
     }
   ]
 }
