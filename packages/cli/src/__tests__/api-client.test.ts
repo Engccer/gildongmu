@@ -55,18 +55,27 @@ describe("isOutOfCoverage", () => {
   });
 });
 
-describe("isUnavailableHere", () => {
-  it("서울 전용 마커만 true", async () => {
-    const { isUnavailableHere } = await import("../lib/api-client.js");
-    expect(isUnavailableHere({ unavailableHere: "seoulOnly" })).toBe(true);
+describe("unavailableHereReason", () => {
+  it("아는 사유는 그대로 돌려준다", async () => {
+    const { unavailableHereReason } = await import("../lib/api-client.js");
+    expect(unavailableHereReason({ unavailableHere: "seoulOnly" })).toBe("seoulOnly");
+    expect(unavailableHereReason({ unavailableHere: "noBusData" })).toBe("noBusData");
   });
 
-  it("0건·다른 마커·비객체는 false (근처에 없음과 구분)", async () => {
-    const { isUnavailableHere } = await import("../lib/api-client.js");
-    expect(isUnavailableHere({ stations: [] })).toBe(false);
-    expect(isUnavailableHere({ outOfCoverage: true })).toBe(false);
-    expect(isUnavailableHere({ unavailableHere: true })).toBe(false);
-    expect(isUnavailableHere(null)).toBe(false);
-    expect(isUnavailableHere("seoulOnly")).toBe(false);
+  it("그 외에는 null: 모르는 사유는 일반 경로로 흘려보낸다", async () => {
+    const { unavailableHereReason } = await import("../lib/api-client.js");
+    expect(unavailableHereReason({ stations: [] })).toBeNull();
+    expect(unavailableHereReason({ outOfCoverage: true })).toBeNull();
+    expect(unavailableHereReason({ unavailableHere: true })).toBeNull();
+    // 서버가 사유를 늘려도 낡은 CLI가 틀린 문장을 말하지 않는다.
+    expect(unavailableHereReason({ unavailableHere: "someFutureReason" })).toBeNull();
+    expect(unavailableHereReason(null)).toBeNull();
+    expect(unavailableHereReason("seoulOnly")).toBeNull();
+  });
+
+  it("사유마다 다른 문구를 준다", async () => {
+    const { unavailableHereNotice } = await import("../lib/api-client.js");
+    expect(unavailableHereNotice("seoulOnly")).not.toBe(unavailableHereNotice("noBusData"));
+    expect(unavailableHereNotice("noBusData")).toContain("정류소");
   });
 });

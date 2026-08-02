@@ -68,13 +68,24 @@ export const OUT_OF_COVERAGE_NOTICE =
  * ⚠ 빈 결과로 흡수하지 말 것: "지금 근처에 없다"와 "이 지역엔 서비스가 없다"는
  * 사용자의 다음 행동이 다르다.
  */
-export function isUnavailableHere(body: unknown): boolean {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly"
-  );
+export type UnavailableHereReason = "seoulOnly" | "noBusData";
+
+/** 웹 `common.unavailableHere.*`와 같은 문구를 유지한다(같은 사실을 두 표현으로 말하지 않는다). */
+const NOTICES: Record<UnavailableHereReason, string> = {
+  seoulOnly: "서울 지역에서만 제공됩니다.",
+  noBusData: "이 지역은 정류소 정보가 제공되지 않습니다.",
+};
+
+/**
+ * 사유를 돌려준다(없으면 null). ⚠ 모르는 사유는 null이라 **일반 경로로 흘러간다**.
+ * 서버가 사유를 늘렸을 때 낡은 CLI가 틀린 문장을 말하는 것보다 낫다.
+ */
+export function unavailableHereReason(body: unknown): UnavailableHereReason | null {
+  if (typeof body !== "object" || body === null) return null;
+  const reason = (body as { unavailableHere?: unknown }).unavailableHere;
+  return reason === "seoulOnly" || reason === "noBusData" ? reason : null;
 }
 
-/** 웹 `common.unavailableHere`와 같은 문구를 유지한다(같은 사실을 두 표현으로 말하지 않는다). */
-export const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";
+export function unavailableHereNotice(reason: UnavailableHereReason): string {
+  return NOTICES[reason];
+}

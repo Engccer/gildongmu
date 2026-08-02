@@ -12,7 +12,9 @@ export function isOutOfCoverageBody(body: unknown): body is { outOfCoverage: tru
  * `outOfCoverage`(한국 밖, 앱 전체가 무용)와 층이 다르다: 이쪽은 그 메뉴 하나만
  * 무용하고 나머지 기능은 정상이므로, 안내 문구도 "이 서비스는 ~ 지역만"이 된다.
  */
-export type UnavailableHereReason = "seoulOnly";
+export type UnavailableHereReason = "seoulOnly" | "noBusData";
+
+const REASONS: readonly UnavailableHereReason[] = ["seoulOnly", "noBusData"];
 
 /**
  * 서비스 지역 미제공 마커 감지 — 200 응답 body 전용, React 비의존.
@@ -24,5 +26,7 @@ export type UnavailableHereReason = "seoulOnly";
 export function unavailableHereReason(body: unknown): UnavailableHereReason | null {
   if (typeof body !== "object" || body === null) return null;
   const reason = (body as { unavailableHere?: unknown }).unavailableHere;
-  return reason === "seoulOnly" ? reason : null;
+  return REASONS.includes(reason as UnavailableHereReason)
+    ? (reason as UnavailableHereReason)
+    : null;
 }

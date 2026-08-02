@@ -3,7 +3,7 @@ import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
 import { hasDataGoKrKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
-import { fetchNearbyBusStops } from "@/lib/bus";
+import { fetchNearbyBusStops, isUncoveredBusRegion } from "@/lib/bus";
 
 /**
  * GET /api/bus/nearby?lat=..&lng=..
@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
   }
   try {
     const stops = await fetchNearbyBusStops(parsed.data.lat, parsed.data.lng);
-    return NextResponse.json({ stops });
+    if (stops.length > 0) return NextResponse.json({ stops });
+    const uncovered = await isUncoveredBusRegion(parsed.data.lat, parsed.data.lng);
+    return uncovered
+      ? NextResponse.json({ stops, unavailableHere: "noBusData" })
+      : NextResponse.json({ stops });
   } catch (e) {
     console.error("[api/bus/nearby]", e);
     return NextResponse.json({ error: "버스 정보 조회 실패" }, { status: 502 });

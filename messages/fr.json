@@ -5,7 +5,10 @@
   },
   "common": {
     "outOfCoverage": "Les fonctionnalités basées sur la localisation ne sont disponibles qu'en Corée du Sud. La recherche de lieux, les informations sur les stations et les itinéraires restent disponibles.",
-    "unavailableHere": "Disponible uniquement à Séoul."
+    "unavailableHere": {
+      "seoulOnly": "Disponible uniquement à Séoul.",
+      "noBusData": "Les données d'arrêts de bus ne sont pas fournies dans cette zone."
+    }
   },
   "nav": {
     "korean": "한국어",

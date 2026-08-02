@@ -2,9 +2,9 @@ import {
   apiRequest,
   ApiError,
   isOutOfCoverage,
-  isUnavailableHere,
+  unavailableHereReason,
   OUT_OF_COVERAGE_NOTICE,
-  UNAVAILABLE_HERE_NOTICE,
+  unavailableHereNotice,
 } from "../lib/api-client.js";
 import { readConfig } from "../lib/config.js";
 import { ENDPOINT_CATALOG } from "../lib/endpoint-catalog-shared.js";
@@ -45,8 +45,9 @@ export async function runEndpoint(
     }
     // 서비스 지역 미제공(서울 전용 도메인) — 포매터로 내려보내면 빈 목록이 되어
     // "근처에 없음"과 구분이 사라진다.
-    if (isUnavailableHere(data)) {
-      emit(data, [UNAVAILABLE_HERE_NOTICE], mode);
+    const unavailable = unavailableHereReason(data);
+    if (unavailable) {
+      emit(data, [unavailableHereNotice(unavailable)], mode);
       return;
     }
     const formatter = FORMATTERS[name];

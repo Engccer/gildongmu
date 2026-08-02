@@ -29,18 +29,25 @@ function isOutOfCoverage(body: unknown): boolean {
   return typeof body === "object" && body !== null && (body as { outOfCoverage?: unknown }).outOfCoverage === true;
 }
 const OUT_OF_COVERAGE_NOTICE = "서비스 지역(대한민국) 밖 좌표입니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.";
-function isUnavailableHere(body: unknown): boolean {
-  return typeof body === "object" && body !== null && (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly";
+type UnavailableHereReason = "seoulOnly" | "noBusData";
+function unavailableHereReason(body: unknown): UnavailableHereReason | null {
+  if (typeof body !== "object" || body === null) return null;
+  const reason = (body as { unavailableHere?: unknown }).unavailableHere;
+  return reason === "seoulOnly" || reason === "noBusData" ? reason : null;
 }
-const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";
+function unavailableHereNotice(reason: UnavailableHereReason): string {
+  return reason === "seoulOnly"
+    ? "서울 지역에서만 제공됩니다."
+    : "이 지역은 정류소 정보가 제공되지 않습니다.";
+}
 
 vi.mock("../lib/api-client.js", () => ({
   apiRequest,
   ApiError: MockApiError,
   isOutOfCoverage,
   OUT_OF_COVERAGE_NOTICE,
-  isUnavailableHere,
-  UNAVAILABLE_HERE_NOTICE,
+  unavailableHereReason,
+  unavailableHereNotice,
 }));
 vi.mock("../lib/config.js", () => ({ readConfig }));
 

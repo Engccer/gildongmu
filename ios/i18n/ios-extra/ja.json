@@ -19,7 +19,10 @@
       "refresh": "更新",
       "privacyPolicy": "プライバシーポリシー",
       "outOfCoverage": "現在地に基づく機能は韓国国内でのみご利用いただけます。場所検索、駅情報、経路案内は引き続きご利用いただけます。",
-      "unavailableHere": "ソウル地域でのみご利用いただけます"
+      "unavailableHere": {
+        "seoulOnly": "ソウル地域でのみご利用いただけます",
+        "noBusData": "この地域はバス停の情報が提供されていません"
+      }
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",

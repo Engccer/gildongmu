@@ -95,9 +95,11 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
         // 서비스 지역 미제공. 어느 서비스인지는 네비게이션 타이틀이 이미 말하므로
-        // 도메인별 문구를 두지 않는다(자명한 것을 다시 설명하지 않는다).
-        case .unavailableHere:
-            ContentUnavailableView(appLocalized("ios.common.unavailableHere"), systemImage: "mappin.slash")
+        // 도메인 이름을 문구에 넣지 않는다(자명한 것을 다시 설명하지 않는다). 다만
+        // **사유는 서로 다른 사실**이라 갈라 말한다: 서울 전용 서비스인지, 이 지역
+        // 데이터가 없는지에 따라 사용자가 할 수 있는 일이 다르다.
+        case .unavailableHere(let reason):
+            ContentUnavailableView(unavailableHereTitle(reason), systemImage: "mappin.slash")
         case .failedLocation:
             copyView(descriptor.failedLocation)
         case .failedServer:
@@ -108,6 +110,16 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
             if descriptor.isEmpty(payload), let empty = descriptor.emptyList { copyView(empty) }
         case .idle:
             EmptyView()
+        }
+    }
+
+    /// ⚠ 키를 보간(`"...\(reason.rawValue)"`)하지 않는다: `check-xcstrings-keys.mjs`가
+    /// 정적 참조만 검사하므로 보간 키는 린터의 사각지대가 되고, 카탈로그 누락이
+    /// 빌드가 아니라 화면에서 키 문자열 낭독으로 드러난다.
+    private func unavailableHereTitle(_ reason: UnavailableHereReason) -> String {
+        switch reason {
+        case .seoulOnly: appLocalized("ios.common.unavailableHere.seoulOnly")
+        case .noBusData: appLocalized("ios.common.unavailableHere.noBusData")
         }
     }
 

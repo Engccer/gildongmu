@@ -19,7 +19,10 @@
       "refresh": "Aggiorna",
       "privacyPolicy": "Informativa sulla privacy",
       "outOfCoverage": "Le funzionalità basate sulla posizione sono disponibili solo in Corea del Sud. La ricerca di luoghi, le informazioni sulle stazioni e gli itinerari restano disponibili.",
-      "unavailableHere": "Disponibile solo a Seul"
+      "unavailableHere": {
+        "seoulOnly": "Disponibile solo a Seul",
+        "noBusData": "I dati delle fermate degli autobus non sono disponibili in questa zona"
+      }
     },
     "chat": {
       "suggestion1": "Mostrami cosa c'è qui intorno",

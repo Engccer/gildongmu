@@ -6521,7 +6521,47 @@
         }
       }
     },
-    "common.unavailableHere": {
+    "common.unavailableHere.noBusData": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 지역은 정류소 정보가 제공되지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus stop data is not provided for this area."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se proporcionan datos de paradas de autobús en esta zona."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données d'arrêts de bus ne sont pas fournies dans cette zone."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I dati delle fermate degli autobus non sono disponibili in questa zona."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この地域はバス停の情報が提供されていません。"
+          }
+        }
+      }
+    },
+    "common.unavailableHere.seoulOnly": {
       "localizations": {
         "ko": {
           "stringUnit": {
@@ -9641,7 +9681,47 @@
         }
       }
     },
-    "ios.common.unavailableHere": {
+    "ios.common.unavailableHere.noBusData": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 지역은 정류소 정보가 제공되지 않습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bus stop data is not provided for this area"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se proporcionan datos de paradas de autobús en esta zona"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données d'arrêts de bus ne sont pas fournies dans cette zone"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I dati delle fermate degli autobus non sono disponibili in questa zona"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この地域はバス停の情報が提供されていません"
+          }
+        }
+      }
+    },
+    "ios.common.unavailableHere.seoulOnly": {
       "localizations": {
         "ko": {
           "stringUnit": {

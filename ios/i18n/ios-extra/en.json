@@ -19,7 +19,10 @@
       "refresh": "Refresh",
       "privacyPolicy": "Privacy Policy",
       "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available.",
-      "unavailableHere": "Available in Seoul only"
+      "unavailableHere": {
+        "seoulOnly": "Available in Seoul only",
+        "noBusData": "Bus stop data is not provided for this area"
+      }
     },
     "chat": {
       "suggestion1": "Show me what's around here",
