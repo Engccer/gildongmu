@@ -44,11 +44,16 @@ const GAIN: Record<GuideSound, number> = {
   warning: 1,
 };
 
-/** 진동 패턴(ms). 크리티컬 3종만 — 나머지는 소리로 충분(과잉 진동은 피로). */
+/**
+ * 진동 패턴(ms): 크리티컬 3종 + 세션 경계(시작·종료, 위원장 추가 2026-08-03).
+ * 나머지는 소리로 충분(과잉 진동은 피로). iOS 앱은 BeaconTonePlayer 햅틱이 미러.
+ */
 const VIBRATE: Partial<Record<GuideSound, number[]>> = {
   farther: [100],
   nearby: [80, 60, 80, 60, 80],
   warning: [150, 80, 150],
+  start: [60],
+  stop: [40],
 };
 
 function vibrate(sound: GuideSound) {
