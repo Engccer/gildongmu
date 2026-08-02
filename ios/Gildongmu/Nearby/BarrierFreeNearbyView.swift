@@ -90,7 +90,7 @@ struct BarrierFreeNearbyView: View {
             }
             .nearbyFocusOnLoad(
                 id: firstRowID, lander: lander, proxy: proxy,
-                landed: { focusedPlaceID == $0 },
+                current: { focusedPlaceID },
                 apply: { focusedPlaceID = $0 })
         }
         .navigationTitle(appLocalized("ios.nearby.barrierFree"))

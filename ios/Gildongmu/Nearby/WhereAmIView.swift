@@ -67,7 +67,8 @@ struct WhereAmIView: View {
                 Section {
                     // 산문 문단=한 접근성 객체(인라인 분절 금지). 완성 문장은 Kit이 조립.
                     ForEach(Array(buildLocationNarrative(payload.data, lang: AppLanguage.current).enumerated()), id: \.offset) { _, paragraph in
-                        Text(paragraph)
+                        // 앱에서 거리 밀도가 가장 높은 산문이라 낭독 변환 필수(리뷰 I-2)
+                        distanceText(paragraph)
                     }
                     Button(appLocalized("ios.nearby.whereAmIChat")) {
                         chatPlace = whereAmIToPlace(payload.data, lat: payload.lat, lng: payload.lng, lang: AppLanguage.current)
@@ -82,7 +83,7 @@ struct WhereAmIView: View {
         }
         .nearbyFocusOnLoad(
             id: topID, lander: lander, proxy: proxy,
-            landed: { focusedTop == $0 },
+            current: { focusedTop },
             apply: { focusedTop = $0 })
         }
         .navigationTitle(appLocalized("whereAmI.button"))

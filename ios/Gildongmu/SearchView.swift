@@ -117,6 +117,11 @@ struct SearchView: View {
                 Task { await speech.cancel() }
             }
             .alert(speechAlertMessage ?? "", isPresented: speechAlertBinding) {
+                // 권한 거부는 설정으로만 해결된다. 안내에 그 화면을 여는 버튼을 함께
+                // (위치 안내와 같은 계약, 리뷰 M-2 수용)
+                if case .denied = speech.phase {
+                    Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                }
                 Button(appLocalized("ios.common.ok")) {}
             }
             .sheet(item: $chatPlace) { ChatView(place: $0) }

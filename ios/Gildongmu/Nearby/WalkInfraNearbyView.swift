@@ -99,7 +99,7 @@ struct WalkInfraNearbyView: View {
         }
         .nearbyFocusOnLoad(
             id: topID, lander: lander, proxy: proxy,
-            landed: { focusedTop == $0 },
+            current: { focusedTop },
             apply: { focusedTop = $0 })
         }
         .navigationTitle(appLocalized("walkInfra.button"))
@@ -126,12 +126,12 @@ struct WalkInfraNearbyView: View {
             case .ok(let data):
                 if data.deviceCount > 0 {
                     // deviceCount는 sites(최대 5) 절단 전 총수 — 요약이 절단을 정직 표기
-                    Text(appLocalized("walkInfra.audioSummary", String(data.deviceCount)))
+                    distanceText(appLocalized("walkInfra.audioSummary", String(data.deviceCount)))
                     ForEach(Array(data.sites.enumerated()), id: \.offset) { _, site in
                         distanceText(audioSiteText(site))
                     }
                 } else {
-                    Text(appLocalized("walkInfra.audioNone"))
+                    distanceText(appLocalized("walkInfra.audioNone"))
                 }
             case .unsupported:
                 Text(appLocalized("walkInfra.audioUnsupported"))

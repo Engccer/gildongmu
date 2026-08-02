@@ -36,10 +36,10 @@ final class NearbyFocusLander {
     ///   - id: 포커스이자 스크롤 키(`ForEach` 정체성과 동일한 값).
     ///   - proxy: 대상 행을 화면 안으로 올리기 위한 스크롤 프록시.
     ///   - apply: 포커스 대입(경합 바인딩이 있으면 그것을 먼저 놓는 것까지 포함).
-    ///   - landed: 대입이 유지됐는지 검사(되돌림 감지). true면 재시도하지 않는다.
+    ///   - current: 현재 포커스 바인딩 값. **3-way 판정의 근거다**(아래).
     ///
-    /// ⚠ `apply`·`landed`는 **`id`를 인자로 받는다**. 호출자가 계산 프로퍼티를 그 자리에서
-    /// 다시 읽으면, 스크롤한 대상(호출 시점 값)과 포커스를 준 대상(최대 1.3초 뒤 값)이
+    /// ⚠ `apply`는 **`id`를 인자로 받는다**. 호출자가 계산 프로퍼티를 그 자리에서
+    /// 다시 읽으면, 스크롤한 대상(호출 시점 값)과 포커스를 준 대상(최대 2초 뒤 값)이
     /// 어긋나 "가시화 없이 대입만" 하는 상황이 생긴다 — 이 계층이 막으려던 AX 컬링
     /// 그 자체다. 스냅샷을 넘기는 것은 `SearchView`·`DirectionsEndpointSearchView`가
     /// `let first = firstRow`로 캡처하는 것과 같은 규율이다(리뷰 수용 2026-08-02).
@@ -47,7 +47,7 @@ final class NearbyFocusLander {
         id: String,
         proxy: ScrollViewProxy,
         apply: @escaping @MainActor (String) -> Void,
-        landed: @escaping @MainActor (String) -> Bool
+        current: @escaping @MainActor () -> String?
     ) {
         task?.cancel()
         task = Task { @MainActor in
@@ -60,11 +60,25 @@ final class NearbyFocusLander {
             #endif
 
             // 재시도 2회(실기기 관찰 2026-08-02: 로드가 느린 회차에 1회로 부족).
-            // 시퀀스 자체(가시화→지연→대입→검증)는 실기기 확정본이라 바꾸지 않고
-            // 횟수만 늘린다.
+            // 시퀀스 자체(가시화→지연→대입→검증)는 실기기 확정본이라 바꾸지 않는다.
+            //
+            // ⚠ 재시도 판정은 3-way다(리뷰 I-1). `@AccessibilityFocusState`는 양방향이라
+            // 사용자가 스와이프만 해도 바인딩이 다른 id로 바뀌는데, 그것을 "되돌려짐"과
+            // 같은 실패로 보면 **사용자의 명시적 이동을 무효화하고 커서를 끌어온다**
+            // (400WPM이면 착지 0.6초 뒤 다음 스와이프가 일상이다). 오착지(엉뚱한 행
+            // 착지)의 교정은 포기한다. 그 경우 사용자는 목록 안 한 행 옆에 있을 뿐이고,
+            // 조작 무효화가 더 큰 손해다(헌장 §5 유지 우선).
             for attempt in 1...2 {
                 try? await Task.sleep(for: .milliseconds(600))
-                guard !Task.isCancelled, !landed(id) else { return }
+                guard !Task.isCancelled else { return }
+                switch current() {
+                case id:
+                    return          // 착지 유지(성공)
+                case .some:
+                    return          // 사용자가 옮겼다. 절대 끌어오지 않는다
+                case nil:
+                    break           // 대입이 되돌려졌다. 재시도
+                }
                 #if DEBUG
                 chatFocusLog("[nearby] retry#\(attempt) first=\(id) (대입이 되돌려졌다)")
                 #endif
@@ -98,10 +112,10 @@ extension View {
         id: String?,
         lander: NearbyFocusLander,
         proxy: ScrollViewProxy,
-        landed: @escaping @MainActor (String) -> Bool,
+        current: @escaping @MainActor () -> String?,
         apply: @escaping @MainActor (String) -> Void
     ) -> some View {
-        modifier(NearbyFocusOnLoad(id: id, lander: lander, proxy: proxy, landed: landed, apply: apply))
+        modifier(NearbyFocusOnLoad(id: id, lander: lander, proxy: proxy, current: current, apply: apply))
     }
 }
 
@@ -109,7 +123,7 @@ private struct NearbyFocusOnLoad: ViewModifier {
     let id: String?
     let lander: NearbyFocusLander
     let proxy: ScrollViewProxy
-    let landed: @MainActor (String) -> Bool
+    let current: @MainActor () -> String?
     let apply: @MainActor (String) -> Void
     @State private var didLand = false
 
@@ -118,7 +132,7 @@ private struct NearbyFocusOnLoad: ViewModifier {
             .onChange(of: id) { _, newValue in
                 guard !didLand, let newValue else { return }
                 didLand = true
-                lander.land(id: newValue, proxy: proxy, apply: apply, landed: landed)
+                lander.land(id: newValue, proxy: proxy, apply: apply, current: current)
             }
             .onDisappear { lander.cancel() }
     }
