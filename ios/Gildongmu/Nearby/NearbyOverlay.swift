@@ -160,18 +160,29 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
     /// 제목·설명의 거리 표기를 낭독에서 풀어 쓴다(지하철 최근접 emptyTitle이 대상:
     /// 같은 문장의 통지는 변환되는데 화면만 약어면 둘이 어긋난다, 리뷰 I-2).
     /// 거리 없는 카피에는 no-op이라 전 오버레이 일괄 적용이 무해하다.
+    /// ⚠ 낭독 라벨은 **제목 Text에만** 건다. `Label(title, systemImage:)` 전체에
+    /// 걸면 ContentUnavailableView가 Label을 아이콘·제목으로 분해해 배치하면서
+    /// 수정자가 두 조각 모두에 내려가고, 아이콘이 제목 문장 전체를 라벨로 갖게
+    /// 되어 오버레이마다 같은 문장이 두 번 낭독될 수 있다(리뷰 실측 2026-08-02:
+    /// 아이콘 노드 라벨이 심볼 설명에서 제목 문장으로 바뀌는 것 확인).
     @ViewBuilder private func copyView(_ copy: NearbyOverlayCopy) -> some View {
         if let description = copy.description {
             ContentUnavailableView {
-                Label(copy.title, systemImage: copy.systemImage)
-                    .accessibilityLabel(Text(spokenUnits(copy.title)))
+                Label {
+                    Text(copy.title).accessibilityLabel(Text(spokenUnits(copy.title)))
+                } icon: {
+                    Image(systemName: copy.systemImage)
+                }
             } description: {
                 Text(description).accessibilityLabel(Text(spokenUnits(description)))
             }
         } else {
             ContentUnavailableView {
-                Label(copy.title, systemImage: copy.systemImage)
-                    .accessibilityLabel(Text(spokenUnits(copy.title)))
+                Label {
+                    Text(copy.title).accessibilityLabel(Text(spokenUnits(copy.title)))
+                } icon: {
+                    Image(systemName: copy.systemImage)
+                }
             }
         }
     }

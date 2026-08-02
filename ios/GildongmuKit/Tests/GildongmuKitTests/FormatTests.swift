@@ -73,6 +73,8 @@ private let distanceCases: [(Int, String)] = [
         #expect(spoken("천호대로를 따라 이동") == "천호대로를 따라 이동")
         // 숫자 뒤가 아니면 불변("m" 단독, 영단어 속 m)
         #expect(spoken("markets") == "markets")
+        // km 쪽 라틴 차단도 대칭으로 지킨다(빠지는 변이가 green으로 지나가지 않게)
+        #expect(spoken("10kmh") == "10kmh")
     }
 
     /// 서버 완성 문장 속 거리도 풀린다(브리핑 스텝 낭독 대상).
