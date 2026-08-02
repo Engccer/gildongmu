@@ -52,8 +52,9 @@ const VIBRATE: Partial<Record<GuideSound, number[]>> = {
   farther: [100],
   nearby: [80, 60, 80, 60, 80],
   warning: [150, 80, 150],
-  start: [60],
-  stop: [40],
+  // 시작·종료는 동일한 긴 진동(위원장 판정 2026-08-03, iOS CoreHaptics 0.5초 미러).
+  start: [500],
+  stop: [500],
 };
 
 function vibrate(sound: GuideSound) {

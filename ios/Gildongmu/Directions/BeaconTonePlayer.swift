@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreHaptics
 import GildongmuKit
 import UIKit
 
@@ -74,16 +75,46 @@ final class BeaconTonePlayer {
         }
     }
 
-    /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐) + 세션 경계(시작·종료, 위원장 추가
-    /// 2026-08-03). 시작은 뚜렷하게, 종료는 가볍게 — 나머지는 과잉 진동이라 두지 않는다.
+    /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐) + 세션 경계(시작·종료).
+    /// 시작·종료는 **동일한 긴 진동**(위원장 판정 2026-08-03 — 단발 임팩트 기각).
+    /// 나머지는 과잉 진동이라 두지 않는다.
     private func haptic(for tone: BeaconTone) {
         switch tone {
         case .warning: notifHaptics.notificationOccurred(.warning)
         case .nearby: notifHaptics.notificationOccurred(.success)
         case .farther: impactHaptics.impactOccurred()
-        case .start: impactHaptics.impactOccurred(intensity: 1.0)
-        case .stop: impactHaptics.impactOccurred(intensity: 0.6)
+        case .start, .stop: longBuzz()
         default: break
+        }
+    }
+
+    /// 긴 진동(0.5초 연속). UIKit 제너레이터는 단발 탭뿐이라 CoreHaptics가 필요하다.
+    /// 미지원 기기·엔진 실패는 단발 임팩트 폴백(무진동보다 낫다).
+    private var hapticEngine: CHHapticEngine?
+
+    private func longBuzz() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
+            impactHaptics.impactOccurred()
+            return
+        }
+        do {
+            if hapticEngine == nil { hapticEngine = try CHHapticEngine() }
+            guard let engine = hapticEngine else { return }
+            try engine.start()
+            let event = CHHapticEvent(
+                eventType: .hapticContinuous,
+                parameters: [
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.8),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4),
+                ],
+                relativeTime: 0,
+                duration: 0.5
+            )
+            let pattern = try CHHapticPattern(events: [event], parameters: [])
+            try engine.makePlayer(with: pattern).start(atTime: 0)
+        } catch {
+            hapticEngine = nil  // 죽은 엔진을 붙들지 않는다(다음 호출에서 재생성 시도)
+            impactHaptics.impactOccurred()
         }
     }
 
