@@ -85,7 +85,7 @@
       "naver": "Percorso in Naver Map",
       "kakao": "Percorso in KakaoMap",
       "kakaoPlace": "Info sul luogo in KakaoMap",
-      "totalDistance": "Totale {km}km",
+      "totalDistance": "Totale {distance}",
       "durationMinutes": "circa {minutes} min",
       "taxiFare": "taxi circa {won} KRW",
       "tollFare": "pedaggi {won} KRW",

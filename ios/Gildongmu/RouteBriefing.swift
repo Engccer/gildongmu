@@ -18,7 +18,7 @@ struct CarRouteRows: View {
     var body: some View {
         // 통행료 0원은 생략(잉여)
         Text(joinText(
-            appLocalized("ios.route.totalDistance", String(format: "%.1f", Double(briefing.distanceMeters) / 1000)),
+            appLocalized("ios.route.totalDistance", formatDistance(briefing.distanceMeters)),
             appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
             appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
             briefing.tollFare > 0 ? appLocalized("ios.route.tollFare", wonText(briefing.tollFare)) : nil))
@@ -88,8 +88,11 @@ struct WalkRouteRows: View {
     let briefing: WalkRouteBriefing
 
     var body: some View {
+        // 거리 표기는 `formatDistance` 정본에 맡긴다. 종전엔 여기서 소수 km를 직접
+        // 조립해(문구가 `{distanceKm}km`였다) 같은 화면의 다른 거리와 표기가 갈렸고,
+        // 1km 미만 도보 경로가 "0.8km"로 낭독됐다.
         Text(appLocalized("route.pedestrian.summary",
-            String(format: "%.1f", Double(briefing.distanceMeters) / 1000),
+            formatDistance(briefing.distanceMeters),
             String(Int((Double(briefing.durationSeconds) / 60).rounded()))))
         ForEach(Array(briefing.steps.enumerated()), id: \.offset) { _, step in
             if !step.description.isEmpty {

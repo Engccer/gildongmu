@@ -127,7 +127,7 @@
     },
     "pedestrian": {
       "heading": "Walk",
-      "summary": "Total {distanceKm} km, about {minutes} min",
+      "summary": "Total {distance}, about {minutes} min",
       "noRoute": "No walking route found.",
       "error": "Couldn't load the walking route.",
       "stepFreeToggle": "Step-free route"
@@ -561,9 +561,9 @@
     "heading": "Distance to destination",
     "start": "Start distance tracking",
     "stop": "Stop distance tracking",
-    "first": "About {meters}m to destination",
-    "closer": "{meters}m, getting closer",
-    "farther": "{meters}m, getting farther",
+    "first": "About {distance} to destination",
+    "closer": "{distance}, getting closer",
+    "farther": "{distance}, getting farther",
     "nearby": "Near destination (about ±{meters}m)",
     "weak": "Weak signal",
     "denied": "Location permission required",

@@ -127,7 +127,7 @@
     },
     "pedestrian": {
       "heading": "徒歩",
-      "summary": "計{distanceKm}km、約{minutes}分",
+      "summary": "計{distance}、約{minutes}分",
       "noRoute": "徒歩経路が見つかりませんでした。",
       "error": "徒歩経路を取得できませんでした。",
       "stepFreeToggle": "階段なしのルート"
@@ -561,9 +561,9 @@
     "heading": "目的地までの距離トラッキング",
     "start": "距離トラッキングを開始",
     "stop": "距離トラッキングを停止",
-    "first": "目的地まで約{meters}m",
-    "closer": "{meters}m、近づいています",
-    "farther": "{meters}m、遠ざかっています",
+    "first": "目的地まで約{distance}",
+    "closer": "{distance}、近づいています",
+    "farther": "{distance}、遠ざかっています",
     "nearby": "目的地付近(約±{meters}m)",
     "weak": "信号が弱い",
     "denied": "位置情報の許可が必要です",

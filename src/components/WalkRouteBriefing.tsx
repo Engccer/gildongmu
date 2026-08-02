@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { formatDistance } from "@/lib/format";
 import type { WalkRouteBriefing as Briefing } from "@/lib/types";
 
 /**
@@ -21,12 +22,14 @@ export function WalkRouteResult({
   briefing: Briefing;
   t: ReturnType<typeof useTranslations<"route.pedestrian">>;
 }) {
-  const distanceKm = (briefing.distanceMeters / 1000).toFixed(1);
+  // 거리 표기는 `formatDistance` 정본에 맡긴다. 종전엔 여기서 소수 km를 직접
+  // 조립해 같은 화면의 자동차 브리핑("3km 600m")과 표기가 갈렸다.
+  const distance = formatDistance(briefing.distanceMeters);
   const minutes = Math.round(briefing.durationSeconds / 60);
 
   return (
     <>
-      <p className="mt-1 text-sm">{t("summary", { distanceKm, minutes })}</p>
+      <p className="mt-1 text-sm">{t("summary", { distance, minutes })}</p>
       <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
         {briefing.steps.map((step, i) => (
           <li key={i}>{step.description}</li>

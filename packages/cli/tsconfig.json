@@ -2,7 +2,13 @@
   "compilerOptions": {
     "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext",
     "strict": true, "skipLibCheck": true, "types": ["node"],
-    "outDir": "dist", "declaration": false
+    "outDir": "dist", "declaration": false,
+    // 테스트가 웹 정본(`src/lib/format.ts`)을 실행 대조하려고 패키지 경계를 넘어
+    // import한다. rootDir을 명시하지 않으면 TS가 `packages/cli`로 추론해 그 import를
+    // TS6059로 거절한다(빌드는 tsup이 entry만 보므로 무관, `tsc --noEmit`만 걸린다).
+    // 저장소 루트를 rootDir로 두면 그 질문이 사라진다. 출력 경로는 tsup이 정하므로
+    // 이 값이 산출물 배치를 바꾸지 않는다.
+    "rootDir": "../.."
   },
   "include": ["src"]
 }

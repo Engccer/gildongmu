@@ -127,7 +127,7 @@
     },
     "pedestrian": {
       "heading": "A pie",
-      "summary": "Total {distanceKm} km, aprox. {minutes} min",
+      "summary": "Total {distance}, aprox. {minutes} min",
       "noRoute": "No se encontró ninguna ruta a pie.",
       "error": "No se pudo cargar la ruta a pie.",
       "stepFreeToggle": "Ruta sin escalones"
@@ -561,9 +561,9 @@
     "heading": "Distancia al destino",
     "start": "Iniciar seguimiento de distancia",
     "stop": "Detener seguimiento de distancia",
-    "first": "Unos {meters} m hasta el destino",
-    "closer": "{meters} m, acercándose",
-    "farther": "{meters} m, alejándose",
+    "first": "Unos {distance} hasta el destino",
+    "closer": "{distance}, acercándose",
+    "farther": "{distance}, alejándose",
     "nearby": "Cerca del destino (unos ±{meters} m)",
     "weak": "Señal débil",
     "denied": "Se requiere permiso de ubicación",

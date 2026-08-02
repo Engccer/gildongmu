@@ -25,6 +25,18 @@ final class BeaconModel {
     }
 
     private(set) var status: Status = .idle
+    /// 추적 중인 목적지 이름. 추적 화면이 이 값을 읽는다.
+    ///
+    /// 뷰가 파생하지 않고 모델이 드는 이유는 경합이다. 뷰의 `trackedDestination`은
+    /// 도착지가 "현재 위치"로 바뀌는 순간 nil이 되는데, 같은 변화가 추적도 멈춘다.
+    /// 두 반응이 같은 프레임에 걸리면 시트가 닫히기 직전 **내용 없는 화면**이 한 프레임
+    /// 스친다(스크린 리더에겐 빈 화면이 스쳐 지나가는 것이라 시각보다 혼란이 크다).
+    /// 시작 시점의 이름을 모델이 붙들면 그 질문 자체가 없어진다.
+    ///
+    /// ⚠ `stop()`에서 비우지 않는다. 시트 dismiss 애니메이션 동안 내용부가 다시
+    /// 평가되므로, 비우면 같은 빈 화면이 닫히는 길에 재현된다. 추적 중이 아닐 때 이
+    /// 값을 읽는 곳은 없다.
+    private(set) var destinationLabel = ""
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     private(set) var statusText = ""
@@ -65,20 +77,20 @@ final class BeaconModel {
 
     // MARK: - 시작·중지
 
-    func toggle(dest: BeaconDest) {
+    func toggle(dest: BeaconDest, label: String) {
         if isTracking {
             stop(playStopTone: true)
         } else {
             guard !starting else { return }
             starting = true
             startTask = Task { [weak self] in
-                await self?.start(dest: dest)
+                await self?.start(dest: dest, label: label)
                 self?.starting = false
             }
         }
     }
 
-    private func start(dest: BeaconDest) async {
+    private func start(dest: BeaconDest, label: String) async {
         guard !isTracking else { return }
 
         // 권한 게이트는 `authorizationSnapshot`을 직접 본다. `currentCoordinate()`는
@@ -111,6 +123,7 @@ final class BeaconModel {
         guard !Task.isCancelled else { return }
 
         self.dest = dest
+        destinationLabel = label
         beaconState = .initial
         gateState = .initial
         lastFixAt = nil
@@ -298,11 +311,15 @@ final class BeaconModel {
         }
     }
 
+    /// ⚠ 거리 3종은 `formatDistance`(Kit 정본)를 태우고 `nearby`만 원시 미터를 쓴다.
+    /// nearby의 값은 거리가 아니라 **오차 반경**이라(문구가 "약 ±N m") 거리 포맷에
+    /// 태우면 다음 사람이 두 축을 같은 것으로 읽는다. `maxUsableAccuracy`가 100이라
+    /// 결과 문자열은 어차피 같다.
     private func text(for notice: BeaconNotice) -> String {
         switch notice {
-        case .first(let meters): appLocalized("beacon.first", String(meters))
-        case .closer(let meters): appLocalized("beacon.closer", String(meters))
-        case .farther(let meters): appLocalized("beacon.farther", String(meters))
+        case .first(let meters): appLocalized("beacon.first", formatDistance(meters))
+        case .closer(let meters): appLocalized("beacon.closer", formatDistance(meters))
+        case .farther(let meters): appLocalized("beacon.farther", formatDistance(meters))
         case .nearby(let accuracyMeters): appLocalized("beacon.nearby", String(accuracyMeters))
         case .weak: appLocalized("beacon.weak")
         }

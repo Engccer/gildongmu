@@ -1446,37 +1446,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m, 가까워지는 중"
+            "value": "%1$@, 가까워지는 중"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m, getting closer"
+            "value": "%1$@, getting closer"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, acercándose"
+            "value": "%1$@, acercándose"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, vous vous rapprochez"
+            "value": "%1$@, vous vous rapprochez"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, ti stai avvicinando"
+            "value": "%1$@, ti stai avvicinando"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m、近づいています"
+            "value": "%1$@、近づいています"
           }
         }
       }
@@ -1526,37 +1526,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m, 멀어지는 중"
+            "value": "%1$@, 멀어지는 중"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m, getting farther"
+            "value": "%1$@, getting farther"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, alejándose"
+            "value": "%1$@, alejándose"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, vous vous éloignez"
+            "value": "%1$@, vous vous éloignez"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ m, ti stai allontanando"
+            "value": "%1$@, ti stai allontanando"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@m、遠ざかっています"
+            "value": "%1$@、遠ざかっています"
           }
         }
       }
@@ -1566,37 +1566,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "목적지까지 약 %1$@m"
+            "value": "목적지까지 약 %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About %1$@m to destination"
+            "value": "About %1$@ to destination"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unos %1$@ m hasta el destino"
+            "value": "Unos %1$@ hasta el destino"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Environ %1$@ m jusqu'à la destination"
+            "value": "Environ %1$@ jusqu'à la destination"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circa %1$@ m alla destinazione"
+            "value": "Circa %1$@ alla destinazione"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "目的地まで約%1$@m"
+            "value": "目的地まで約%1$@"
           }
         }
       }
@@ -13366,37 +13366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "총 %1$@km"
+            "value": "총 %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@km"
+            "value": "Total %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@km"
+            "value": "Total %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@km"
+            "value": "Total %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Totale %1$@km"
+            "value": "Totale %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "計%1$@km"
+            "value": "計%1$@"
           }
         }
       }
@@ -20166,37 +20166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "총 %1$@km, 약 %2$@분"
+            "value": "총 %1$@, 약 %2$@분"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@ km, about %2$@ min"
+            "value": "Total %1$@, about %2$@ min"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@ km, aprox. %2$@ min"
+            "value": "Total %1$@, aprox. %2$@ min"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Total %1$@ km, environ %2$@ min"
+            "value": "Total %1$@, environ %2$@ min"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Totale %1$@ km, circa %2$@ min"
+            "value": "Totale %1$@, circa %2$@ min"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "計%1$@km、約%2$@分"
+            "value": "計%1$@、約%2$@分"
           }
         }
       }

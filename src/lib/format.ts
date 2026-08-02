@@ -3,10 +3,30 @@
  * 단위 기호(m, km)는 국제 공통이라 로케일 분기 없이 쓴다.
  */
 
-/** 미터 → "850m" 또는 "3.6km" */
+/**
+ * 미터 → "850m" 또는 "3km 600m" (1,000m 이상은 km 아래 자리를 m으로).
+ *
+ * 소수 km("3.6km")를 쓰지 않는 이유는 낭독이다. 스크린 리더가 "삼 점 육 킬로미터"로
+ * 읽는 것보다 "3km 600m"가 짧고, 1,000m 정각이 "1.0km"("일 점 영 킬로미터")로
+ * 읽히던 것도 함께 사라진다(위원장 실보행 피드백 2026-08-02).
+ *
+ * ⚠ **100m 단위 반올림을 먼저 하고 나서 km과 나머지로 가른다.** 따로 반올림하면
+ * 1,999m에서 나머지가 1,000으로 올라가 "1km 1000m"이 된다. 자리올림을 분기로
+ * 처리하지 않고 산술이 흡수하게 만드는 것이 이 함수의 전부다.
+ *
+ * 정밀도는 종전과 같다(소수 1자리 == 100m 단위). 바뀐 것은 표기뿐이다.
+ *
+ * 미러 3벌: Kit `Format.swift` · CLI `formatters.ts` `dist()`.
+ * 드리프트 가드는 `__tests__/format.test.ts`.
+ */
 export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)}km`;
+  // 1,000 미만 판정을 반올림 **뒤에** 한다. 앞에서 하면 999.6이 "1000m"가 된다.
+  const rounded = Math.round(meters);
+  if (rounded < 1000) return `${rounded}m`;
+  const snapped = Math.round(meters / 100) * 100;
+  const km = Math.floor(snapped / 1000);
+  const rest = snapped % 1000;
+  return rest === 0 ? `${km}km` : `${km}km ${rest}m`;
 }
 
 /** 초 → 올림한 분 (최소 1분) — "약 N분" 문구의 N */

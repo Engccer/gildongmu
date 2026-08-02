@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { normalizeRoute } from "../providers/kakao-navi";
-import { durationToMinutes, formatDistance } from "../format";
 
 describe("normalizeRoute (카카오모빌리티 자동차 경로)", () => {
   // 2026-06-13 실호출 응답(서울역→경복궁)을 축약한 픽스처
@@ -73,16 +72,6 @@ describe("normalizeRoute (카카오모빌리티 자동차 경로)", () => {
   });
 });
 
-describe("format 유틸", () => {
-  it("1km 미만은 m, 이상은 km 한 자리 소수", () => {
-    expect(formatDistance(850)).toBe("850m");
-    expect(formatDistance(3613)).toBe("3.6km");
-    expect(formatDistance(1000)).toBe("1.0km");
-  });
-
-  it("초→분은 올림, 최소 1분", () => {
-    expect(durationToMinutes(563)).toBe(10);
-    expect(durationToMinutes(60)).toBe(1);
-    expect(durationToMinutes(5)).toBe(1);
-  });
-});
+// `formatDistance`·`durationToMinutes` 계약은 `format.test.ts`가 정본이다(경계표 +
+// 웹-iOS-CLI 드리프트 가드). 여기 있던 사본은 표기 규칙이 바뀔 때 혼자 낡아 red가
+// 되기만 했으므로 제거했다(2026-08-02).
