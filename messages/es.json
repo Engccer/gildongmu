@@ -584,7 +584,7 @@
   },
   "beacon": {
     "heading": "Guía en tiempo real",
-    "start": "Iniciar guía en tiempo real",
+    "start": "Iniciar guía",
     "stop": "Detener guía",
     "first": "Unos {distance} hasta el destino",
     "closer": "{distance}, acercándose",

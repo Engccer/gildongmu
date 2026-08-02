@@ -584,7 +584,7 @@
   },
   "beacon": {
     "heading": "リアルタイム案内",
-    "start": "リアルタイム案内を開始",
+    "start": "案内開始",
     "stop": "案内を停止",
     "first": "目的地まで約{distance}",
     "closer": "{distance}、近づいています",

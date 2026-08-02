@@ -80,8 +80,9 @@ export function DistanceBeacon({
 
       {open && (
         <div className="mt-2">
-          {/* 직선거리 주석은 간략 안내에서만 참이다 — 상세는 경로 기반 거리를 쓴다. */}
-          {guide.mode === "brief" && (
+          {/* 직선거리 주석은 간략 안내로 추적 중일 때만 — 시작 전엔 상세로 열릴 수
+              있어 거짓 예고가 된다(iOS 시트 조건과 동조, 위원장 판정 2026-08-03). */}
+          {tracking && guide.mode === "brief" && (
             <p className="text-xs text-muted">{t("straightLineNote")}</p>
           )}
           <p className="mt-0.5 text-xs text-muted">{t("screenHint")}</p>

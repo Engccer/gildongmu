@@ -584,7 +584,7 @@
   },
   "beacon": {
     "heading": "Live guidance",
-    "start": "Start live guidance",
+    "start": "Start guidance",
     "stop": "Stop guidance",
     "first": "About {distance} to destination",
     "closer": "{distance}, getting closer",
