@@ -119,6 +119,16 @@ currentCoordinate(force:timeout:ttl:acceptAccuracy:)
 
 ⚠ 완료 핸들러의 `error == nil`은 **허가를 뜻하지 않는다**(프롬프트를 띄웠다는 뜻). 결과는 `accuracyAuthorization`을 다시 읽어 판정한다.
 
+### 4.1 "항상 허용" 버튼은 어느 API에도 없다 (2026-08-02 확정 — 재조사 금지)
+
+실기기에서 임시 정밀 팝업에 "한 번 허용"만 있는 것을 보고 "항상 허용 추가" 요청이 왔으나, **불가능이 3중으로 확정**됐다.
+
+1. **공식 문서**: CoreLocation의 정밀 허가 요청 API는 `requestTemporaryFullAccuracyAuthorization` 하나뿐이고 팝업 버튼은 시스템 고정. WWDC20이 설계 의도까지 명시한다: *"it's often better to use a temporary upgrade prompt rather than to send the user to Settings"*, 영구 정밀은 사용자만 설정에서 켤 수 있다.
+2. **시뮬 실측**: "항상" 계열 버튼이 있는 것은 **다른 팝업**이다. 최초 위치 권한 팝업(권한 리셋 후 재현: 한 번 허용/앱 사용 중 허용/허용 안 함 + 정밀 토글 내장)과, 백그라운드 위치 앱의 Always 승격 팝업("항상 허용으로 변경/사용하는 동안만 유지"). 사용자가 다른 앱에서 본 "항상 허용"은 이 축이고 정밀도 축이 아니다.
+3. **업계 표준도 동일**: Apple 지도조차 근사 위치면 기능을 열화시키고 필요한 시점에 임시 정밀을 1회 요청한다. Uber는 "직접 입력해야 한다"고 문서로 안내. 프로그래매틱 복구를 하는 앱은 확인되지 않았다.
+
+임시 허가의 실무 계약: 앱을 종료하지 않는 한 유지, **콜드 런치마다 재요청 필요**(매번 팝업). iOS 18+ `CLServiceSession(authorization:fullAccuracyPurposeKey:)`는 세션이 가능한 시점에 자동으로 정밀 프롬프트를 시도하는 신 API로, 진입 시 자동 요청으로 전환하고 싶어지면 그때 후보다.
+
 ## 5. 테스트
 
 앱 타깃 테스트 번들이 없어 `LocationService`는 직접 테스트할 수 없다(비콘 설계에서 확인된 제약). 따라서 **판정 로직을 Kit 순수 함수로 내린다**(비콘의 `beaconGateStep` 선례 동형).
