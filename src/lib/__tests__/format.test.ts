@@ -6,14 +6,51 @@ import {
   normalizeVoiceQuery,
 } from "../format";
 
+/**
+ * 거리 표기 경계표: **웹·Kit·CLI 세 구현의 공유 정본**(스펙
+ * `2026-08-02-beacon-feedback-design.md` §2.2). 드리프트 가드가 이 표를 읽어
+ * Swift 테스트와 대조하므로 `[입력, 기대]` 리터럴 형태를 유지한다.
+ *
+ * Swift는 `Int`만 받으므로 소수 입력은 아래 별도 케이스로 뺀다.
+ */
+export const DISTANCE_CASES: [number, string][] = [
+  [120, "120m"],
+  [999, "999m"],
+  [1000, "1km"],
+  [1049, "1km"],
+  [1050, "1km 100m"],
+  [1187, "1km 200m"],
+  [1999, "2km"],
+  [3640, "3km 600m"],
+  [89700, "89km 700m"],
+];
+
 describe("formatDistance", () => {
-  it("1km 미만은 m, 반올림", () => {
-    expect(formatDistance(120.4)).toBe("120m");
-    expect(formatDistance(999)).toBe("999m");
+  it.each(DISTANCE_CASES)("%dm → %s", (meters, expected) => {
+    expect(formatDistance(meters)).toBe(expected);
   });
-  it("1km 이상은 km, 소수 1자리", () => {
-    expect(formatDistance(1000)).toBe("1.0km");
-    expect(formatDistance(3640)).toBe("3.6km");
+
+  it("1km 미만은 반올림한 미터", () => {
+    expect(formatDistance(120.4)).toBe("120m");
+  });
+
+  // 1,000 미만 판정을 반올림 **앞에서** 하던 선재 결함. 999.6이 "1000m"이었다.
+  it("999.6은 1000m이 아니라 1km", () => {
+    expect(formatDistance(999.6)).toBe("1km");
+  });
+
+  // 100m 단위 반올림을 km·나머지로 따로 하면 여기서 "1km 1000m"이 나온다.
+  it("자리올림이 나머지에 남지 않는다", () => {
+    expect(formatDistance(1999)).toBe("2km");
+    expect(formatDistance(1950)).toBe("2km");
+    expect(formatDistance(9999)).toBe("10km");
+  });
+
+  // 소수 km 표기는 낭독이 길어 폐기했다("일 점 영 킬로미터").
+  it("소수점을 쓰지 않는다", () => {
+    for (const [meters] of DISTANCE_CASES) {
+      expect(formatDistance(meters)).not.toMatch(/\./);
+    }
   });
 });
 

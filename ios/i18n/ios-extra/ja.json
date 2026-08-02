@@ -85,7 +85,7 @@
       "naver": "NAVERマップで経路検索",
       "kakao": "カカオマップで経路検索",
       "kakaoPlace": "カカオマップの場所情報",
-      "totalDistance": "計{km}km",
+      "totalDistance": "計{distance}",
       "durationMinutes": "約{minutes}分",
       "taxiFare": "タクシー料金約{won}ウォン",
       "tollFare": "通行料{won}ウォン",

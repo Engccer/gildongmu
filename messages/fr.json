@@ -127,7 +127,7 @@
     },
     "pedestrian": {
       "heading": "À pied",
-      "summary": "Total {distanceKm} km, environ {minutes} min",
+      "summary": "Total {distance}, environ {minutes} min",
       "noRoute": "Aucun itinéraire à pied trouvé.",
       "error": "Impossible de charger l'itinéraire à pied.",
       "stepFreeToggle": "Itinéraire sans escaliers"
@@ -561,9 +561,9 @@
     "heading": "Distance jusqu'à la destination",
     "start": "Démarrer le suivi de distance",
     "stop": "Arrêter le suivi de distance",
-    "first": "Environ {meters} m jusqu'à la destination",
-    "closer": "{meters} m, vous vous rapprochez",
-    "farther": "{meters} m, vous vous éloignez",
+    "first": "Environ {distance} jusqu'à la destination",
+    "closer": "{distance}, vous vous rapprochez",
+    "farther": "{distance}, vous vous éloignez",
     "nearby": "Près de la destination (environ ±{meters} m)",
     "weak": "Signal faible",
     "denied": "Autorisation de localisation requise",

@@ -377,6 +377,9 @@ struct DirectionsTabView: View {
     @AccessibilityFocusState private var focusedEndpointField: DirectionsFieldTarget?
     @AccessibilityFocusState private var submitFocused: Bool
     @State private var focusAfterResolve: DirectionsFieldTarget?
+    /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
+    /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
+    @AccessibilityFocusState private var beaconStartFocused: Bool
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -414,22 +417,25 @@ struct DirectionsTabView: View {
                 if beacon.isTracking || (model.hasQueriedOnce && trackedDestination != nil),
                    let tracked = trackedDestination {
                     Section {
+                        // 추적이 시작되면 시트가 이 화면을 덮으므로 아래 컨트롤은 닿을 수
+                        // 없다. 그래도 라벨·동작을 토글로 두는 것은 이중 방어다. 시트가
+                        // 어떤 이유로 뜨지 않아도 중지 수단이 화면에 남는다(리뷰 C-1).
                         Button(beacon.isTracking
                             ? appLocalized("beacon.stop") : appLocalized("beacon.start")
                         ) {
-                            beacon.toggle(dest: tracked.dest)
+                            beacon.toggle(dest: tracked.dest, label: tracked.label)
                         }
+                        .accessibilityFocused($beaconStartFocused)
                         // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
                         // (라벨만 바뀌고 화면이 그대로면 심사에서 무반응으로 보인다).
-                        if !beacon.statusText.isEmpty {
+                        // 추적 중 상태는 시트가 보여주므로 여기선 비추적 상태만이다. 권한
+                        // 거부·위치 서비스 꺼짐은 시트가 아예 뜨지 않는 경로다.
+                        if !beacon.isTracking, !beacon.statusText.isEmpty {
                             Text(beacon.statusText).foregroundStyle(.secondary)
                         }
-                        Text(beacon.isTracking
-                            ? appLocalized("beacon.screenHint")
-                            : appLocalized("beacon.straightLineNote")
-                        )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        Text(appLocalized("beacon.straightLineNote"))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     } header: {
                         // 무엇을 추적 중인지가 화면에 있어야 한다. 웹은 장소 상세 안이라
                         // 바로 위 heading이 장소명이었지만 길찾기 결과엔 그 맥락이 없다.
@@ -470,6 +476,35 @@ struct DirectionsTabView: View {
                     // 확정으로 닫힐 때만 착지점을 예약한다(취소는 콜백이 없다).
                     focusAfterResolve = target
                 }
+            }
+            // 추적 중 화면. 표시 여부를 `isTracking`에 직접 묶어 **중지 = 닫힘**을
+            // 1:1로 만든다. 권한 거부처럼 추적이 시작되지 않는 경로는 이 시트가 아예
+            // 뜨지 않고 위 인라인 상태 줄이 사유를 말한다.
+            //
+            // 위 검색 시트와 동시에 뜰 수 없다: 추적 중에는 이 시트가 화면을 덮어
+            // 끝점 버튼에 닿을 수 없고, 시작하려면 검색 시트가 닫혀 있어야 한다.
+            .sheet(isPresented: Binding(
+                get: { beacon.isTracking },
+                // 스와이프·VoiceOver escape로 닫는 경로. 중지와 같은 처리를 해야
+                // "닫혔는데 추적은 살아 있는" 좀비 상태가 생기지 않는다.
+                set: { presented in
+                    guard !presented else { return }
+                    beacon.stop(playStopTone: true)
+                }
+            )) {
+                // 목적지 이름을 뷰의 `trackedDestination`이 아니라 **모델**에서 읽는다.
+                // 도착지가 "현재 위치"로 바뀌면 뷰 쪽 값은 nil이 되는데 같은 변화가
+                // 추적도 멈추므로, 뷰에서 파생하면 닫히는 길에 빈 시트가 한 프레임 스친다.
+                BeaconTrackingSheet(
+                    destinationLabel: beacon.destinationLabel,
+                    statusText: beacon.statusText,
+                    onStop: { beacon.stop(playStopTone: true) }
+                )
+            }
+            // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리).
+            .onChange(of: beacon.isTracking) { _, tracking in
+                guard !tracking else { return }
+                landBeaconStartFocus()
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
             // 조회 완료 시 **포커스를 옮기지 않는다**(위원장 판정 2026-08-02).
@@ -523,6 +558,22 @@ struct DirectionsTabView: View {
             let landed = target == .from ? focusedEndpointField == .to : submitFocused
             guard !landed else { return }
             applyResolvedFocus(target)
+        }
+    }
+
+    /// 추적 시트가 닫힌 뒤 시작 버튼 착지. 지연·검증·1회 재시도는 위
+    /// `landFocusAfterResolve`와 같은 패턴이다(시트 dismiss 애니메이션이 끝나며
+    /// 시스템이 커서를 최상단으로 되돌리므로 그보다 늦게 대입해야 이긴다).
+    ///
+    /// 화면을 떠나며 멈춘 경우(`onDisappear` → `teardown`)에도 불리지만, 사라진
+    /// 뷰에 대한 대입은 no-op이라 따로 가르지 않는다.
+    private func landBeaconStartFocus() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            beaconStartFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !beaconStartFocused else { return }
+            beaconStartFocused = true
         }
     }
 

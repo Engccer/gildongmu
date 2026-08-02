@@ -337,12 +337,21 @@ interface WebSearchResultItem {
 const m = (n: number): string => `${Math.round(n)}m`;
 
 /**
- * 적응형 거리 — 1km 미만은 미터, 그 이상은 km(웹 `formatDistance` 미러).
+ * 적응형 거리: 1km 미만은 미터, 그 이상은 "{km}km {m}m"(웹 `formatDistance` 미러).
  * `m()`은 도보권 항목(정류소·역) 전용이라 수십 km에 쓰면 "89700m"가 되어
  * 낭독으로 크기를 가늠할 수 없다.
+ *
+ * ⚠ 웹·Kit과 **문자열이 byte 단위로 같아야 한다**(드리프트 가드가 강제). 100m 단위
+ * 반올림을 먼저 하는 이유는 1,999m가 "1km 1000m"이 되는 자리올림을 막기 위해서다.
  */
-const dist = (n: number): string =>
-  n < 1000 ? `${Math.round(n)}m` : `${(n / 1000).toFixed(1)}km`;
+export const dist = (n: number): string => {
+  const rounded = Math.round(n);
+  if (rounded < 1000) return `${rounded}m`;
+  const snapped = Math.round(n / 100) * 100;
+  const km = Math.floor(snapped / 1000);
+  const rest = snapped % 1000;
+  return rest === 0 ? `${km}km` : `${km}km ${rest}m`;
+};
 
 const COMPASS_KO: Record<Bearing, string> = {
   n: "북", ne: "북동", e: "동", se: "남동", s: "남", sw: "남서", w: "서", nw: "북서",
@@ -720,7 +729,7 @@ function formatBusRouteStops(body: { stops: BusRouteStopItem[] }): string[] {
 function formatRouteCar(body: CarRouteBriefingItem): string[] {
   const lines: string[] = [
     joinText(
-      `${(body.distanceMeters / 1000).toFixed(1)}km`,
+      dist(body.distanceMeters),
       `약 ${Math.round(body.durationSeconds / 60)}분`,
       `택시 약 ${body.taxiFare.toLocaleString()}원`,
       body.tollFare > 0 && `통행료 ${body.tollFare.toLocaleString()}원`,
@@ -776,7 +785,7 @@ function formatRouteWalk(body: { result: WalkRouteBriefingItem | null }): string
   const r = body.result;
   if (!r) return ["도보 경로를 찾을 수 없습니다."];
   const lines: string[] = [
-    joinText(`${(r.distanceMeters / 1000).toFixed(1)}km`, `약 ${Math.round(r.durationSeconds / 60)}분`),
+    joinText(dist(r.distanceMeters), `약 ${Math.round(r.durationSeconds / 60)}분`),
   ];
   r.steps.forEach((s, i) => {
     lines.push(`${i + 1}. ${s.description}`);

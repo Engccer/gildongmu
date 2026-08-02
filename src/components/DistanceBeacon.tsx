@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useDistanceBeacon } from "@/hooks/useDistanceBeacon";
+import { formatDistance } from "@/lib/format";
 import type { BeaconAnnounce } from "@/lib/beacon";
 
 /**
@@ -25,15 +26,22 @@ import type { BeaconAnnounce } from "@/lib/beacon";
  * 빈 문자열 — 톤이 즉시 피드백을 주므로 음성 통지 없어도 무방하다.
  */
 
-/** announce에서 live region 텍스트를 파생하는 순수 함수. */
+/**
+ * announce에서 live region 텍스트를 파생하는 순수 함수.
+ *
+ * ⚠ 거리 3종은 `formatDistance`를 태우고 `nearby`만 원시 미터를 쓴다. nearby의 값은
+ * 거리가 아니라 **오차 반경**이라(문구가 "약 ±N m") 거리 포맷에 태우면 다음 사람이
+ * 두 축을 같은 것으로 읽는다(`maxUsableAccuracy`가 100이라 결과 문자열은 어차피 같다).
+ */
 function buildLiveText(
   kind: BeaconAnnounce["kind"],
   meters: number,
   t: ReturnType<typeof useTranslations<"beacon">>,
 ): string {
-  if (kind === "first") return t("first", { meters });
-  if (kind === "closer") return t("closer", { meters });
-  if (kind === "farther") return t("farther", { meters });
+  const distance = formatDistance(meters);
+  if (kind === "first") return t("first", { distance });
+  if (kind === "closer") return t("closer", { distance });
+  if (kind === "farther") return t("farther", { distance });
   if (kind === "nearby") return t("nearby", { meters });
   if (kind === "weak") return t("weak");
   return "";

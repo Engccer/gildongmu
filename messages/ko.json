@@ -127,7 +127,7 @@
     },
     "pedestrian": {
       "heading": "도보",
-      "summary": "총 {distanceKm}km, 약 {minutes}분",
+      "summary": "총 {distance}, 약 {minutes}분",
       "noRoute": "도보 경로를 찾지 못했습니다.",
       "error": "도보 경로를 불러오지 못했습니다.",
       "stepFreeToggle": "계단 없는 경로"
@@ -561,9 +561,9 @@
     "heading": "목적지 거리 추적",
     "start": "거리 추적 시작",
     "stop": "거리 추적 중지",
-    "first": "목적지까지 약 {meters}m",
-    "closer": "{meters}m, 가까워지는 중",
-    "farther": "{meters}m, 멀어지는 중",
+    "first": "목적지까지 약 {distance}",
+    "closer": "{distance}, 가까워지는 중",
+    "farther": "{distance}, 멀어지는 중",
     "nearby": "목적지 근처 (약 ±{meters}m)",
     "weak": "신호 약함",
     "denied": "위치 권한이 필요합니다",

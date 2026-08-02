@@ -85,7 +85,7 @@
       "naver": "네이버 지도 길찾기",
       "kakao": "카카오맵 길찾기",
       "kakaoPlace": "카카오맵 장소 정보",
-      "totalDistance": "총 {km}km",
+      "totalDistance": "총 {distance}",
       "durationMinutes": "약 {minutes}분",
       "taxiFare": "택시 요금 약 {won}원",
       "tollFare": "통행료 {won}원",
