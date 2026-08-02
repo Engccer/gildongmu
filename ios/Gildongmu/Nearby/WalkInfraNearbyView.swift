@@ -69,8 +69,18 @@ func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
 
 struct WalkInfraNearbyView: View {
     @State private var model = WalkInfraModel()
+    /// 착지 대상은 조회 시각 헤딩(이 화면의 첫 요소이자 유일한 헤딩).
+    @AccessibilityFocusState private var focusedTop: String?
+    @State private var lander = NearbyFocusLander()
+
+    /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음).
+    private var topID: String? {
+        guard case .loaded = model.phase else { return nil }
+        return "walkinfra-top"
+    }
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             if case .loaded(let payload) = model.phase {
                 // 조회 시각 헤딩(웹 패널 h3 미러, WhereAmIView asOf 동형). 웹 h3의
@@ -78,12 +88,19 @@ struct WalkInfraNearbyView: View {
                 Section {
                     Text(appLocalized("walkInfra.asOf", payload.asOf))
                         .accessibilityAddTraits(.isHeader)
+                        .id("walkinfra-top")
+                        .accessibilityFocused($focusedTop, equals: "walkinfra-top")
                 }
                 audioSection(payload.walk.audioSignals)
                 crossingSection(payload.walk.osm)
                 tactileSection(payload.walk.osm)
                 footnoteSection(payload.walk)
             }
+        }
+        .nearbyFocusOnLoad(
+            id: topID, lander: lander, proxy: proxy,
+            landed: { focusedTop == $0 },
+            apply: { focusedTop = $0 })
         }
         .navigationTitle(appLocalized("walkInfra.button"))
         .nearbyStateOverlay {
@@ -111,7 +128,7 @@ struct WalkInfraNearbyView: View {
                     // deviceCount는 sites(최대 5) 절단 전 총수 — 요약이 절단을 정직 표기
                     Text(appLocalized("walkInfra.audioSummary", String(data.deviceCount)))
                     ForEach(Array(data.sites.enumerated()), id: \.offset) { _, site in
-                        Text(audioSiteText(site))
+                        distanceText(audioSiteText(site))
                     }
                 } else {
                     Text(appLocalized("walkInfra.audioNone"))
@@ -134,7 +151,7 @@ struct WalkInfraNearbyView: View {
                     Text(appLocalized("walkInfra.crossingEmpty"))
                 } else {
                     ForEach(data.crossings, id: \.osmId) { feature in
-                        Text(joinText(
+                        distanceText(joinText(
                             itemLocationText(feature),
                             feature.crossingSignal == "yes" ? appLocalized("walkInfra.hasSignal") : nil,
                             feature.tactilePaving ? appLocalized("walkInfra.hasTactile") : nil))
@@ -156,7 +173,7 @@ struct WalkInfraNearbyView: View {
                     Text(appLocalized("walkInfra.tactileEmpty"))
                 } else {
                     ForEach(data.tactiles, id: \.osmId) { feature in
-                        Text(joinText(
+                        distanceText(joinText(
                             itemLocationText(feature),
                             feature.hostFeature == "busStop" ? appLocalized("walkInfra.hostBusStop") : nil,
                             feature.hostFeature == "subwayEntrance" ? appLocalized("walkInfra.hostSubwayEntrance") : nil))

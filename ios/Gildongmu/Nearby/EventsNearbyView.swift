@@ -42,6 +42,13 @@ struct EventsNearbyView: View {
     @State private var chatPlace: Place?
     /// "더 보기" 후 첫 새 행으로 VO 커서 이동(웹 포커스 계약 미러).
     @AccessibilityFocusState private var focusedEventID: String?
+    @State private var lander = NearbyFocusLander()
+
+    /// 첫 항목 ID. nil→값 전이가 곧 "로드 완료"다(0건·실패는 nil 유지, 이동 없음).
+    private var firstRowID: String? {
+        guard case .loaded(let events) = model.phase else { return nil }
+        return events.first?.id
+    }
 
     var body: some View {
         // ScrollViewReader+proxy.scrollTo 선행(ClinicNearbyView 미러): List는 화면 밖
@@ -78,6 +85,10 @@ struct EventsNearbyView: View {
                     }
                 }
             }
+            .nearbyFocusOnLoad(
+                id: firstRowID, lander: lander, proxy: proxy,
+                landed: { focusedEventID == $0 },
+                apply: { focusedEventID = $0 })
         }
         .navigationTitle(appLocalized("ios.nearby.events"))
         .nearbyStateOverlay {

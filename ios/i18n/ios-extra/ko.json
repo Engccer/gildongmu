@@ -24,7 +24,8 @@
         "noBusData": "이 지역은 정류소 정보가 제공되지 않습니다"
       },
       "geoReducedTitle": "정확한 위치가 꺼져 있습니다",
-      "geoReducedDesc": "설정 앱에서 길동무의 정확한 위치를 켜 주세요"
+      "geoReducedDesc": "설정 앱에서 길동무의 정확한 위치를 켜 주세요",
+      "openSettings": "설정 열기"
     },
     "chat": {
       "suggestion1": "주변에 뭐가 있는지 둘러봐 줘",
@@ -220,6 +221,10 @@
     "beacon": {
       "soundUnavailable": "소리 안내를 재생할 수 없습니다.",
       "stopped": "거리 추적을 중지했습니다."
+    },
+    "unit": {
+      "spokenMeters": "미터",
+      "spokenKilometers": "킬로미터"
     }
   }
 }

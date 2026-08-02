@@ -24,7 +24,8 @@
         "noBusData": "Bus stop data is not provided for this area"
       },
       "geoReducedTitle": "Precise Location is off",
-      "geoReducedDesc": "Turn on Precise Location for Gildongmu in Settings"
+      "geoReducedDesc": "Turn on Precise Location for Gildongmu in Settings",
+      "openSettings": "Open Settings"
     },
     "chat": {
       "suggestion1": "Show me what's around here",
@@ -220,6 +221,10 @@
     "beacon": {
       "soundUnavailable": "Sound guidance cannot play.",
       "stopped": "Distance tracking stopped."
+    },
+    "unit": {
+      "spokenMeters": "meters",
+      "spokenKilometers": "kilometers"
     }
   }
 }

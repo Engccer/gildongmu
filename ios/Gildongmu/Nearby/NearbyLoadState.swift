@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Accessibility
 import GildongmuKit
 
@@ -10,6 +11,23 @@ import GildongmuKit
 /// 구분자는 쉼표(가운뎃점은 일부 스크린 리더가 단어로 낭독해 금지).
 func joinText(_ parts: String?...) -> String {
     parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+}
+
+/// 낭독 전용: 거리 단위 약어를 로케일 단어로 풀어 쓴다.
+/// iOS VoiceOver가 숫자 뒤 "m"을 meters가 아니라 **minutes로 낭독**하는 시스템
+/// 버그 대응(실기기 관찰 2026-08-02: km는 정확히 읽으면서 m만 오독). 시각 표기는
+/// `formatDistance` 원문을 유지하고 이 결과는 낭독 채널(라벨·통지)에만 쓴다.
+@MainActor
+func spokenUnits(_ text: String) -> String {
+    spokenDistanceUnits(text,
+        meters: appLocalized("ios.unit.spokenMeters"),
+        kilometers: appLocalized("ios.unit.spokenKilometers"))
+}
+
+/// 거리 표기가 든 행 텍스트: 시각은 원문, 낭독은 단위 풀어쓰기.
+@MainActor
+func distanceText(_ s: String) -> some View {
+    Text(s).accessibilityLabel(Text(spokenUnits(s)))
 }
 
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).
@@ -102,10 +120,11 @@ func nearbyAnnouncer<Payload: Sendable>(
     { event in
         switch event {
         case .loaded(let payload):
-            AccessibilityNotification.Announcement(loaded(payload)).post()
+            // 통지도 낭독 채널이다: 거리 포함 문구(지하철 최근접 등)의 단위를 풀어 쓴다
+            AccessibilityNotification.Announcement(spokenUnits(loaded(payload))).post()
         case .emptyResult:
             if let message = emptyResult() {
-                AccessibilityNotification.Announcement(message).post()
+                AccessibilityNotification.Announcement(spokenUnits(message)).post()
             }
         case .refreshFailed: announceRefreshFailed()
         case .permissionLost: announcePermissionLost()

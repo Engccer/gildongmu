@@ -40,6 +40,10 @@ final class BeaconModel {
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     private(set) var statusText = ""
+    /// 현재 실패가 설정 앱에서 해결되는 종류인가(권한 거부·정밀 위치 꺼짐).
+    /// 뷰가 이 값으로 "설정 열기" 버튼을 노출한다. 위치 서비스 전역 꺼짐·취득
+    /// 실패는 앱 설정 화면에서 해결되지 않으므로 false.
+    private(set) var settingsResolvable = false
 
     /// 검색 시트가 떠 있는 동안 **톤과 통지를 모두** 죽인다. 시트에 받아쓰기가 있고,
     /// 헌장 §6의 홀드 계약 불변식은 "녹음 중 SR 발화 0"이다. polite 통지는 VoiceOver가
@@ -102,7 +106,7 @@ final class BeaconModel {
         }
         switch LocationService.shared.authorizationSnapshot {
         case .denied, .restricted:
-            fail(with: .denied, key: "beacon.denied")
+            fail(with: .denied, key: "beacon.denied", settingsResolvable: true)
             return
         case .notDetermined:
             // 팝업 자체가 신호다. 허용 여부는 아래에서 다시 확인한다.
@@ -111,7 +115,7 @@ final class BeaconModel {
             switch LocationService.shared.authorizationSnapshot {
             case .authorizedWhenInUse, .authorizedAlways: break
             default:
-                fail(with: .denied, key: "beacon.denied")
+                fail(with: .denied, key: "beacon.denied", settingsResolvable: true)
                 return
             }
         default:
@@ -122,7 +126,7 @@ final class BeaconModel {
         // 전부 잡음이 된다. 데드밴드(max(15, accuracy))도 그 규모에서는 의미를 잃는다.
         // 걸으면서 소리만 듣는 기능이라 틀린 안내가 화면으로 반증되지도 않는다.
         guard LocationService.shared.accuracySnapshot != .reducedAccuracy else {
-            fail(with: .unavailable, key: "beacon.reduced")
+            fail(with: .unavailable, key: "beacon.reduced", settingsResolvable: true)
             return
         }
 
@@ -140,6 +144,7 @@ final class BeaconModel {
         startedAt = ProcessInfo.processInfo.systemUptime
         status = .tracking
         statusText = ""
+        settingsResolvable = false
         UIApplication.shared.isIdleTimerDisabled = true
         playTone(.start)
 
@@ -152,8 +157,9 @@ final class BeaconModel {
         startWatchdog()
     }
 
-    private func fail(with status: Status, key: String) {
+    private func fail(with status: Status, key: String, settingsResolvable: Bool = false) {
         self.status = status
+        self.settingsResolvable = settingsResolvable
         statusText = appLocalized(key)
         announce(statusText)
     }
@@ -174,6 +180,7 @@ final class BeaconModel {
         if playStopTone && status == .tracking { playTone(.stop) }
         if status == .tracking { status = .idle }
         statusText = ""
+        settingsResolvable = false
         beaconState = .initial
         gateState = .initial
         dest = nil
@@ -272,7 +279,7 @@ final class BeaconModel {
         switch status {
         case .denied, .restricted:
             stop()
-            fail(with: .denied, key: "beacon.denied")
+            fail(with: .denied, key: "beacon.denied", settingsResolvable: true)
         default:
             break
         }
@@ -286,7 +293,7 @@ final class BeaconModel {
     private func handle(accuracy: CLAccuracyAuthorization) {
         guard isTracking, accuracy == .reducedAccuracy else { return }
         stop()
-        fail(with: .unavailable, key: "beacon.reduced")
+        fail(with: .unavailable, key: "beacon.reduced", settingsResolvable: true)
     }
 
     // MARK: - 무-fix 감시
@@ -347,6 +354,6 @@ final class BeaconModel {
 
     private func announce(_ message: String) {
         guard !outputSuppressed else { return }
-        AccessibilityNotification.Announcement(message).post()
+        AccessibilityNotification.Announcement(spokenUnits(message)).post()
     }
 }

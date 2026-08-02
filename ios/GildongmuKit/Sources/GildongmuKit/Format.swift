@@ -26,3 +26,22 @@ func firstNonEmpty(_ values: String?...) -> String? {
     }
     return nil
 }
+
+/// 낭독 전용: 거리 단위 약어를 로케일 단어로 풀어 쓴다(순수 변환, 단어는 주입).
+///
+/// iOS VoiceOver가 숫자 뒤 "m"을 meters가 아니라 **minutes로 낭독**하는 시스템
+/// 버그 대응(실기기 관찰 2026-08-02: km는 kilometers로 정확히 읽으면서 m만 오독).
+/// 시각 표기는 `formatDistance` 원문("1km 200m")을 유지하고, 이 결과는
+/// `accessibilityLabel`에만 쓴다.
+///
+/// ⚠ km을 먼저 치환한다. m부터 바꾸면 "1km"의 매칭 여부를 패턴이 감당해야 해
+/// 규칙이 복잡해진다. 숫자 바로 뒤의 단위만 바꾸므로 서버 안내문 속 일반 단어
+/// ("이동" 등)는 건드리지 않는다.
+public func spokenDistanceUnits(_ text: String, meters: String, kilometers: String) -> String {
+    var out = text
+    out = out.replacingOccurrences(
+        of: #"(\d)km\b"#, with: "$1 \(kilometers)", options: .regularExpression)
+    out = out.replacingOccurrences(
+        of: #"(\d)m\b"#, with: "$1 \(meters)", options: .regularExpression)
+    return out
+}

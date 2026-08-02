@@ -350,7 +350,8 @@ struct PlaceRow: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text(place.name)
-            Text(joined)
+            // 낭독만 거리 단위 풀어쓰기(m→minutes 오독 대응). combine이 자식 라벨을 합친다.
+            distanceText(joined)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

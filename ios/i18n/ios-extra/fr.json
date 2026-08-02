@@ -24,7 +24,8 @@
         "noBusData": "Les données d'arrêts de bus ne sont pas fournies dans cette zone"
       },
       "geoReducedTitle": "La position précise est désactivée",
-      "geoReducedDesc": "Activez la position précise pour Gildongmu dans Réglages"
+      "geoReducedDesc": "Activez la position précise pour Gildongmu dans Réglages",
+      "openSettings": "Ouvrir Réglages"
     },
     "chat": {
       "suggestion1": "Montre-moi ce qu'il y a autour",
@@ -220,6 +221,10 @@
     "beacon": {
       "soundUnavailable": "La guidance sonore ne peut pas être jouée.",
       "stopped": "Suivi de distance arrêté."
+    },
+    "unit": {
+      "spokenMeters": "mètres",
+      "spokenKilometers": "kilomètres"
     }
   }
 }
