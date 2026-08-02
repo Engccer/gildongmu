@@ -541,8 +541,7 @@ struct DirectionsTabView: View {
                 // 도착지가 "현재 위치"로 바뀌면 뷰 쪽 값은 nil이 되는데 같은 변화가
                 // 추적도 멈추므로, 뷰에서 파생하면 닫히는 길에 빈 시트가 한 프레임 스친다.
                 BeaconTrackingSheet(
-                    destinationLabel: beacon.destinationLabel,
-                    statusText: beacon.statusText,
+                    model: beacon,
                     onStop: { beacon.stop(playStopTone: true) }
                 )
             }

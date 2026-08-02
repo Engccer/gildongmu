@@ -24,6 +24,9 @@ final class BeaconModel {
         case unavailable
     }
 
+    /// 안내 방식 = 거리의 기준(스펙 §3). 간략=직선(비콘, 전 수단), 상세=경로(도보·ko 전용).
+    enum GuideMode: Equatable { case brief, detail }
+
     private(set) var status: Status = .idle
     /// 추적 중인 목적지 이름. 추적 화면이 이 값을 읽는다.
     ///
@@ -55,8 +58,47 @@ final class BeaconModel {
     var outputSuppressed = false {
         // 톤 재생기에도 전파한다. 재생 경로만 막으면 인터럽션·구성변경 옵서버가
         // 여전히 세션 카테고리를 되돌려 받아쓰기 세션을 깬다(리뷰 I-8).
-        didSet { tones.isSuppressed = outputSuppressed }
+        didSet {
+            tones.isSuppressed = outputSuppressed
+            // 억제 해제 복구(스펙 §4.3): 받아쓰기 몇 초 사이 소비된 실행 안내(횡단보도·
+            // 회전)를 최신 1개만 되살린다. 밀린 것 전부 재생은 금지(최신 우선).
+            if !outputSuppressed, let pending = pendingRecovery {
+                pendingRecovery = nil
+                announce(pending)
+            }
+        }
     }
+
+    // MARK: - 실시간 길 안내(상세 모드) 상태
+
+    private(set) var mode: GuideMode = .brief
+    /// 상세⇄간략 전환 버튼 노출 조건. 경로는 ko 데이터 로케일에서만 조회되므로
+    /// (스펙 §4.1 ko 전용) 이 값이 곧 로케일 게이트를 겸한다.
+    var canOfferDetail: Bool { guideRoute != nil }
+    /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
+    private(set) var offRoute = false
+    /// 반복 버튼 대상: 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 상태·오류
+    /// 통지는 대상이 아니다(스펙 §4.2 리뷰 #23).
+    private(set) var lastGuidance: String?
+
+    /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
+    private var guideRoute: GuideRoute?
+    private var guideState: GuideState?
+    /// 시작 직후 경로 조회 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 → 곧바로
+    /// 상세 시작" 이중 발화를 막는다.
+    private var awaitingRoute = false
+    private var routeFetchTask: Task<Void, Never>?
+    /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
+    private var pendingRecovery: String?
+    /// 간략→상세 전환 모호 해소 대기 시작 시각(스펙 §6). nil이면 대기 없음.
+    private var resolvePendingSince: Double?
+    /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
+    private var rerouteToken = 0
+    private var rerouteInFlight = false
+
+    private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+
+    private var uptimeNow: Double { ProcessInfo.processInfo.systemUptime }
 
     private var beaconState = BeaconState.initial
     private var gateState = BeaconGateState.initial
@@ -158,6 +200,60 @@ final class BeaconModel {
             onAccuracyChange: { [weak self] accuracy in self?.handle(accuracy: accuracy) }
         )
         startWatchdog()
+
+        // 상세 적격 시도(스펙 §4.1): ko 데이터 로케일에서만 경로를 조회한다(도보 API
+        // V1 ko 전용). 조회 중엔 비콘 발화를 보류하고, 실패는 간략으로 정직 폴백.
+        if AppLanguage.dataLocale == "ko" {
+            awaitingRoute = true
+            routeFetchTask = Task { [weak self] in
+                await self?.fetchGuideRoute(dest: dest)
+            }
+        }
+    }
+
+    /// 시작 시 상세 경로 조회. 성공하면 상세 모드 + 원자 시작 발화, 실패는 간략 폴백.
+    /// "이 세션에서 현재 목적지에 대해 조회"가 곧 상세 적격 조건이다(스펙 §4.1).
+    private func fetchGuideRoute(dest: BeaconDest) async {
+        defer { awaitingRoute = false }
+        do {
+            let origin = try await LocationService.shared.currentCoordinate()
+            guard !Task.isCancelled, isTracking, self.dest == dest else { return }
+            let briefing = try await routeService.walk(
+                originLat: origin.lat, originLng: origin.lng,
+                destLat: dest.lat, destLng: dest.lng,
+                includeGeometry: true
+            )
+            guard !Task.isCancelled, isTracking, self.dest == dest else { return }
+            guard let briefing,
+                  let route = buildGuideRoute(briefing.steps.map {
+                      GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
+                  })
+            else {
+                fallbackToBrief()
+                return
+            }
+            guideRoute = route
+            let initial = initialGuideState(route: route, now: uptimeNow)
+            guideState = initial.state
+            mode = .detail
+            offRoute = false
+            // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
+            let text = GuideText.start(route: route, firstIndices: initial.firstIndices)
+            lastGuidance = GuideText.unit(route: route, indices: initial.firstIndices)
+            statusText = text
+            announce(text)
+        } catch {
+            guard !Task.isCancelled, isTracking else { return }
+            fallbackToBrief()
+        }
+    }
+
+    /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
+    private func fallbackToBrief() {
+        mode = .brief
+        let text = appLocalized("guide.detailUnavailable")
+        statusText = text
+        announce(text)
     }
 
     private func fail(with status: Status, key: String, resolution: FailResolution = .none) {
@@ -187,6 +283,18 @@ final class BeaconModel {
         beaconState = .initial
         gateState = .initial
         dest = nil
+        // 세션 종료 = 경로 폐기(스펙 §7.3 약관 경계: 메모리 한정·세션 간 재사용 금지).
+        routeFetchTask?.cancel()
+        routeFetchTask = nil
+        awaitingRoute = false
+        mode = .brief
+        guideRoute = nil
+        guideState = nil
+        lastGuidance = nil
+        offRoute = false
+        pendingRecovery = nil
+        resolvePendingSince = nil
+        rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
@@ -232,6 +340,19 @@ final class BeaconModel {
     private func handle(fix: LocationService.BeaconFixPayload) {
         guard isTracking, let dest else { return }
 
+        // 경로 조회 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의 이중 발화
+        // 차단). fix는 오고 있으므로 워치독 기준만 갱신.
+        if awaitingRoute {
+            lastFixAt = uptimeNow
+            return
+        }
+        if mode == .detail, let route = guideRoute {
+            handleDetail(fix: fix, route: route)
+            return
+        }
+        // 간략 경로 위에서의 상세 전환 모호 해소 시도(스펙 §6). 성공하면 이번 fix 소비.
+        if resolveDetailIfPending(fix: fix) { return }
+
         // 캐시 위치와 무효 좌표를 앵커에서 배제한다(판정은 Kit 순수 함수).
         let age = Date().timeIntervalSince(fix.timestamp)
         guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else { return }
@@ -254,11 +375,200 @@ final class BeaconModel {
         if let notice = gated.notice {
             let text = self.text(for: notice)
             statusText = text
+            // 반복 버튼 대상은 거리 통지만(weak는 상태라 제외, 스펙 §4.2).
+            if case .weak = notice {} else { lastGuidance = text }
             if suppressNextNotice {
                 suppressNextNotice = false  // 복귀 직후 1회만 삼킨다
             } else {
                 announce(text)
             }
+        }
+    }
+
+    // MARK: - 상세 모드 fix 처리·이벤트 배선 (판정은 전부 Kit guideStep)
+
+    private func handleDetail(fix: LocationService.BeaconFixPayload, route: GuideRoute) {
+        guard let state = guideState else { return }
+        // 캐시 fix만 거른다. 정확도 악화(50m 초과)는 버리지 않고 리듀서에 넘긴다 —
+        // uncertain 전이(진입·회복 1회 통지)가 그 정보의 소비자다(스펙 §5.0).
+        let age = Date().timeIntervalSince(fix.timestamp)
+        guard fix.accuracy > 0, age <= 10 else { return }
+
+        let now = uptimeNow
+        lastFixAt = now
+        lastStaleNoticeAt = nil
+
+        let out = guideStep(
+            state: state,
+            fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy),
+            route: route,
+            now: now
+        )
+        guideState = out.state
+        // 전용음(예고·경고)은 사운드 태스크에서 교체 — 그때까지 기존 톤을 임시 배정.
+        if let tone = out.tone { playTone(tone == .ahead ? .nearby : .farther) }
+        guard let event = out.event else { return }
+        consume(event: event, route: route)
+    }
+
+    private func consume(event: GuideEvent, route: GuideRoute) {
+        switch event {
+        case let .announceSteps(indices), let .bundleReread(indices):
+            let text = GuideText.unit(route: route, indices: indices)
+            lastGuidance = text
+            statusText = text
+            // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
+            if outputSuppressed { pendingRecovery = text } else { announce(text) }
+        case let .periodic(stepIndex, remainingMeters, accuracy):
+            let text = GuideText.periodic(
+                route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
+                accuracy: accuracy, destinationLabel: destinationLabel
+            )
+            lastGuidance = text
+            statusText = text
+            announce(text)
+        case .handoff:
+            // 간략(비콘) 인계 — 검증된 리듀서를 그대로 쓴다. 자동 인계는 래치이며
+            // 수동 상세 복귀는 전환 버튼으로(재무장은 리듀서 상태가 소유).
+            mode = .brief
+            beaconState = .initial
+            gateState = .initial
+            let text = appLocalized("guide.handoff")
+            statusText = text
+            announce(text)
+        case .offRoute:
+            offRoute = true
+            let text = appLocalized("guide.offRoute")
+            statusText = text
+            announce(text)
+        case .backOnRoute:
+            offRoute = false
+            let text = appLocalized("guide.backOnRoute")
+            statusText = text
+            announce(text)
+        case .uncertainEnter:
+            statusText = appLocalized("guide.uncertain")
+            announce(statusText)
+        case .uncertainExit, .reacquired:
+            statusText = appLocalized("guide.uncertainRecovered")
+            announce(statusText)
+        case .reacquiring:
+            statusText = appLocalized("guide.reacquiring")
+            announce(statusText)
+        case .speedSuggest:
+            // 자동 전환은 하지 않는다(스펙 §2 모드 결정 원칙) — 해법은 시트 전환 버튼.
+            announce(appLocalized("guide.speedSuggest"))
+        }
+    }
+
+    /// 간략→상세 전환의 모호 해소(스펙 §6): 후속 fix들로 전역 후보가 하나로 좁혀지면
+    /// 전환을 완료한다. 반환 true면 이번 fix를 전환 처리로 소비했다는 뜻.
+    private func resolveDetailIfPending(fix: LocationService.BeaconFixPayload) -> Bool {
+        guard let since = resolvePendingSince, let route = guideRoute else { return false }
+        guard fix.accuracy > 0 else { return false }
+        let now = uptimeNow
+        let gfix = GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy)
+        if case let .ok(d) = entryProjection(route: route, fix: gfix) {
+            resolvePendingSince = nil
+            // 수동 복귀는 자동 인계 재무장 전(armed=false)으로 시작한다(전환 루프 차단).
+            guideState = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: false)
+            mode = .detail
+            offRoute = false
+            let text = appLocalized("guide.toDetailDone")
+            statusText = text
+            announce(text)
+            return true
+        }
+        if now - since > resolveTimeoutSeconds {
+            resolvePendingSince = nil
+            let text = appLocalized("guide.resolveFailed")
+            statusText = text
+            announce(text)
+        }
+        return false
+    }
+
+    // MARK: - 시트 컨트롤 (반복·진행 상황·전환·재조회)
+
+    func repeatLastGuidance() {
+        announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"))
+    }
+
+    func announceProgress() {
+        if mode == .detail, let route = guideRoute, let state = guideState {
+            announce(GuideText.progress(
+                route: route, state: state,
+                destinationLabel: destinationLabel, lastGuidance: lastGuidance
+            ))
+        } else {
+            // 간략: 마지막 거리 통지가 곧 진행 상황이다(별도 수치 재조합 금지).
+            announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"))
+        }
+    }
+
+    /// 상세⇄간략 전환(추적 유지, 스펙 §6). 경로 미보유 세션에선 UI가 버튼을 숨긴다.
+    func toggleMode() {
+        guard isTracking, guideRoute != nil else { return }
+        if mode == .detail {
+            mode = .brief
+            beaconState = .initial  // first-fix 경로: 절대거리 1회 발화 후 추세
+            gateState = .initial
+            resolvePendingSince = nil
+            let text = appLocalized("guide.toBriefDone")
+            statusText = text
+            announce(text)
+        } else {
+            resolvePendingSince = uptimeNow
+            let text = appLocalized("guide.resolvePending")
+            statusText = text
+            announce(text)
+        }
+    }
+
+    /// 이탈 시 사용자 확인 후에만 재조회(자동 재조회 금지, 스펙 §5.6).
+    func requestReroute() {
+        guard isTracking, mode == .detail, offRoute, !rerouteInFlight else { return }
+        rerouteInFlight = true
+        rerouteToken += 1
+        let token = rerouteToken
+        Task { [weak self] in
+            await self?.performReroute(token: token)
+        }
+    }
+
+    private func performReroute(token: Int) async {
+        defer { rerouteInFlight = false }
+        guard let dest else { return }
+        do {
+            let origin = try await LocationService.shared.currentCoordinate()
+            guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
+            let briefing = try await routeService.walk(
+                originLat: origin.lat, originLng: origin.lng,
+                destLat: dest.lat, destLng: dest.lng,
+                includeGeometry: true
+            )
+            // latest-wins: 왕복 중 중지·전환·목적지 변경이면 도착 응답 폐기(이탈 게이트 동형).
+            guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
+            guard let briefing,
+                  let route = buildGuideRoute(briefing.steps.map {
+                      GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
+                  })
+            else {
+                announce(appLocalized("guide.rerouteFailed"))
+                return
+            }
+            // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
+            guideRoute = route
+            let initial = initialGuideState(route: route, now: uptimeNow)
+            guideState = initial.state
+            offRoute = false
+            let text = GuideText.unit(route: route, indices: initial.firstIndices)
+            lastGuidance = text
+            statusText = text
+            announce(text)
+        } catch {
+            guard token == rerouteToken, isTracking else { return }
+            announce(appLocalized("guide.rerouteFailed"))
         }
     }
 
