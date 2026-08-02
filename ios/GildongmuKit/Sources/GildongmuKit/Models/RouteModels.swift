@@ -96,9 +96,12 @@ public struct TransitRouteEnvelope: Codable, Sendable {
 
 /// 도보 안내 단계 하나. description이 낭독 정본(완성 문장, 예 "천호대로를 따라 119m 이동").
 /// distanceMeters는 optional — 현재 서버가 미전송(웹 계약상 옵셔널 필드).
+/// pathCoords는 `includeGeometry=1` 요청에서만 오는 스텝 폴리라인(실시간 상세 안내용).
+/// 미요청 응답엔 없으므로 옵셔널이고, 요청해도 스텝별로 빠질 수 있다.
 public struct WalkRouteStep: Codable, Sendable, Hashable {
     public let description: String
     public let distanceMeters: Int?
+    public let pathCoords: [RoutePoint]?
 }
 
 /// 도보 경로 브리핑(자동차 CarRouteBriefing과 동형, 지도 없이 완결되는 텍스트 정본).

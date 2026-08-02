@@ -50,16 +50,21 @@ public struct RouteService: Sendable {
     /// accessible=true는 계단 회피 모드(웹 `?accessible=true` 계약). 미적용 시 서버가
     /// 안전 문장을 steps[0]에 결정론 삽입하므로 클라이언트 별도 문구가 필요 없다.
     /// false면 파라미터 자체를 생략해 기존 요청과 byte-identical.
+    /// includeGeometry=true는 스텝 폴리라인 보존 옵트인(웹 `?includeGeometry=1` 계약,
+    /// 실시간 상세 안내 전용). 서버가 "1"만 허용하므로 그 값으로 보내고, false면
+    /// accessible과 동형으로 파라미터를 생략한다.
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        accessible: Bool = false
+        accessible: Bool = false,
+        includeGeometry: Bool = false
     ) async throws -> WalkRouteBriefing? {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
+        if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.result
     }

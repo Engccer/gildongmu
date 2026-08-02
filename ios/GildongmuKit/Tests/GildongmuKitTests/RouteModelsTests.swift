@@ -80,6 +80,24 @@ import Foundation
     #expect(briefing.steps.first?.description == "천호대로를 따라 119m 이동")
     // distanceMeters는 optional(현재 서버 미전송) — nil이어도 디코딩 성공해야 함
     #expect(briefing.steps.allSatisfy { $0.distanceMeters == nil })
+    // includeGeometry 미지정 응답엔 기하가 없다(기존 계약 유지)
+    #expect(briefing.steps.allSatisfy { $0.pathCoords == nil })
+}
+
+/// includeGeometry=1 응답 계약: 스텝마다 pathCoords가 붙지만 옵셔널이라
+/// 없는 스텝(서버가 기하를 못 준 스텝)과 섞여도 디코딩이 깨지지 않아야 한다.
+@Test func walkStepDecodesOptionalPathCoords() throws {
+    let json = #"""
+    {"result":{"distanceMeters":100,"durationSeconds":80,"steps":[
+      {"description":"이동","pathCoords":[{"lat":37.5,"lng":127.1},{"lat":37.5001,"lng":127.1}]},
+      {"description":"우회전"}
+    ]}}
+    """#
+    let envelope = try JSONDecoder().decode(WalkRouteEnvelope.self, from: Data(json.utf8))
+    let steps = try #require(envelope.result?.steps)
+    #expect(steps[0].pathCoords?.count == 2)
+    #expect(steps[0].pathCoords?.first == RoutePoint(lat: 37.5, lng: 127.1))
+    #expect(steps[1].pathCoords == nil)
 }
 
 @Test func routeWalkNoRouteFixtureDecodesToNilResult() throws {
