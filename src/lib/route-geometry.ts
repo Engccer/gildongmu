@@ -131,15 +131,34 @@ export function projectOnPolyline(
   return best;
 }
 
+/** 세그먼트 i 단독 투영(t는 [0,1]만 클램프 — 창 없음). */
+function projectOnSegment(poly: Polyline, i: number, p: Coord): Projection {
+  const a = toLocal(p, poly.points[i]);
+  const b = toLocal(p, poly.points[i + 1]);
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby;
+  let t = len2 === 0 ? 0 : (-a.x * abx - a.y * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const px = a.x + abx * t;
+  const py = a.y + aby * t;
+  return {
+    d: poly.cum[i] + (poly.cum[i + 1] - poly.cum[i]) * t,
+    perpMeters: Math.hypot(px, py),
+  };
+}
+
 /**
  * 전역 후보(국소 최소점들): 수직거리 ≤ maxPerp인 후보를 진행거리 30m 간격으로 병합해
  * 반환한다. 후보가 복수면 호출자는 위치를 확정하지 말아야 한다(스펙 §6 모호 규칙).
+ * ⚠ 창 기반 projectOnPolyline을 재사용하지 않는다 — 창 호출은 인접 세그먼트의
+ * 기하 최근접을 경계 클램프 d로 끌어들여 유령 후보를 만든다(실측: U자 왕복에서 3후보).
  */
 export function globalCandidates(poly: Polyline, p: Coord, maxPerp: number): Projection[] {
   const raw: Projection[] = [];
   for (let i = 0; i < poly.points.length - 1; i++) {
-    const pr = projectOnPolyline(poly, p, poly.cum[i], poly.cum[i + 1]);
-    if (pr && pr.perpMeters <= maxPerp) raw.push(pr);
+    const pr = projectOnSegment(poly, i, p);
+    if (pr.perpMeters <= maxPerp) raw.push(pr);
   }
   raw.sort((x, y) => x.d - y.d);
   const merged: Projection[] = [];
