@@ -9361,6 +9361,46 @@
         }
       }
     },
+    "ios.common.allowPrecise": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정확한 위치 허용"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Precise Location"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permitir ubicación precisa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser la position précise"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti posizione precisa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正確な位置情報を許可"
+          }
+        }
+      }
+    },
     "ios.common.checking": {
       "localizations": {
         "ko": {
@@ -9526,37 +9566,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "설정 앱에서 길동무의 정확한 위치를 켜 주세요"
+            "value": "설정의 개인정보 보호 및 보안, 위치 서비스, 길동무에서 항상 켤 수 있습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Turn on Precise Location for Gildongmu in Settings"
+            "value": "You can turn it on permanently in Settings under Privacy & Security, Location Services, Gildongmu"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Active la ubicación precisa para Gildongmu en Ajustes"
+            "value": "Puede activarla de forma permanente en Ajustes, Privacidad y seguridad, Localización, Gildongmu"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Activez la position précise pour Gildongmu dans Réglages"
+            "value": "Vous pouvez l’activer durablement dans Réglages, Confidentialité et sécurité, Service de localisation, Gildongmu"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Attiva la posizione precisa per Gildongmu in Impostazioni"
+            "value": "Puoi attivarla in modo permanente in Impostazioni, Privacy e sicurezza, Localizzazione, Gildongmu"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "設定アプリでキルドンムの正確な位置情報をオンにしてください"
+            "value": "設定のプライバシーとセキュリティ、位置情報サービス、キルドンムで常にオンにできます"
           }
         }
       }

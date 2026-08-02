@@ -88,7 +88,10 @@ struct WhereAmIView: View {
         }
         .navigationTitle(appLocalized("whereAmI.button"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .absentCapable(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .absentCapable(
                 absent: NearbyOverlayCopy(appLocalized("ios.nearby.whereAmIEmpty"), systemImage: "location.slash"),
                 failedLocation: NearbyOverlayCopy(appLocalized("ios.nearby.whereAmIFailed"),
                                                   systemImage: "wifi.exclamationmark",

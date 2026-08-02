@@ -24,8 +24,9 @@
         "noBusData": "Les données d'arrêts de bus ne sont pas fournies dans cette zone"
       },
       "geoReducedTitle": "La position précise est désactivée",
-      "geoReducedDesc": "Activez la position précise pour Gildongmu dans Réglages",
-      "openSettings": "Ouvrir Réglages"
+      "geoReducedDesc": "Vous pouvez l’activer durablement dans Réglages, Confidentialité et sécurité, Service de localisation, Gildongmu",
+      "openSettings": "Ouvrir Réglages",
+      "allowPrecise": "Autoriser la position précise"
     },
     "chat": {
       "suggestion1": "Montre-moi ce qu'il y a autour",

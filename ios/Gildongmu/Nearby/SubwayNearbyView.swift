@@ -97,7 +97,10 @@ struct SubwayNearbyView: View {
             }
             .navigationTitle(nearbyTitle(appLocalized("ios.nearby.subway"), anchor: anchor))
             .nearbyStateOverlay {
-                NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+                NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                     empty: NearbyOverlayCopy(emptyTitle, systemImage: "tram"),
                     isEmpty: { $0.stations.isEmpty }))
             }

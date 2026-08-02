@@ -24,8 +24,9 @@
         "noBusData": "Bus stop data is not provided for this area"
       },
       "geoReducedTitle": "Precise Location is off",
-      "geoReducedDesc": "Turn on Precise Location for Gildongmu in Settings",
-      "openSettings": "Open Settings"
+      "geoReducedDesc": "You can turn it on permanently in Settings under Privacy & Security, Location Services, Gildongmu",
+      "openSettings": "Open Settings",
+      "allowPrecise": "Allow Precise Location"
     },
     "chat": {
       "suggestion1": "Show me what's around here",

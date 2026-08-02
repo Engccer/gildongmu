@@ -92,7 +92,10 @@ struct EventsNearbyView: View {
         }
         .navigationTitle(appLocalized("ios.nearby.events"))
         .nearbyStateOverlay {
-            NearbyStateOverlayView(phase: model.phase, descriptor: .list(
+            NearbyStateOverlayView(
+                phase: model.phase,
+                onPreciseGranted: { Task { await model.load(force: true) } },
+                descriptor: .list(
                 empty: NearbyOverlayCopy(appLocalized("ios.nearby.eventsEmpty"), systemImage: "theatermasks"),
                 isEmpty: \.isEmpty))
         }

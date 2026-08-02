@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Accessibility
 import GildongmuKit
 
 /// 앱 전용 설정 화면을 연다(공식 API, 심사 안전). "정확한 위치" 토글이 있는
@@ -94,6 +95,8 @@ struct NearbyOverlayDescriptor<Payload> {
 /// denied·outOfCoverage 카피는 전 도메인 동일이라 고정(현행과 byte-identical).
 struct NearbyStateOverlayView<Payload: Sendable>: View {
     let phase: NearbyLoadPhase<Payload>
+    /// 임시 정밀 허가 성공 시 재조회 트리거(reduced 오버레이 전용, 기본 no-op).
+    var onPreciseGranted: (() -> Void)? = nil
     let descriptor: NearbyOverlayDescriptor<Payload>
 
     var body: some View {
@@ -122,9 +125,21 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
             } description: {
                 Text(appLocalized("ios.common.geoReducedDesc"))
             } actions: {
-                Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                // "설정 열기"가 아니라 그 자리 시스템 팝업이다. openSettingsURLString이
+                // 여는 화면에는 정확한 위치 토글이 없다(위원장 실기기 확인 2026-08-02).
+                // 거부·재프롬프트 불가 시에는 설명 문구의 경로 안내가 폴백이고, 버튼
+                // 무반응처럼 보이지 않게 그 경로를 통지로 재발화한다.
+                Button(appLocalized("ios.common.allowPrecise")) {
+                    Task { @MainActor in
+                        if await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                            onPreciseGranted?()
+                        } else {
+                            AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                        }
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")

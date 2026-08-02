@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 임시 정밀 위치 요청(A3 ⑤). 딕셔너리 키라 INFOPLIST_KEY_* 빌드 설정으로는
+	     넣을 수 없어 부분 plist로 병합한다(GENERATE_INFOPLIST_FILE=YES 유지). -->
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseLocation</key>
+		<string>주변 정보 검색과 거리 추적은 정확한 위치가 필요합니다.</string>
+	</dict>
+</dict>
+</plist>
