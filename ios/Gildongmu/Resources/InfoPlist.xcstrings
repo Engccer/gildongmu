@@ -160,6 +160,47 @@
           }
         }
       }
+    },
+    "PreciseLocation": {
+      "comment": "임시 정밀 위치 요청 사유(NSLocationTemporaryUsageDescriptionDictionary의 목적 키). Apple 문서: 번역 키는 목적 키 그대로.",
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 정보 검색과 거리 추적은 정확한 위치가 필요합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearby search and distance tracking require your precise location."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La búsqueda cercana y el seguimiento de distancia requieren su ubicación precisa."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La recherche à proximité et le suivi de distance nécessitent votre position précise."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ricerca nelle vicinanze e il tracciamento della distanza richiedono la tua posizione precisa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺情報の検索と距離の追跡には正確な位置情報が必要です。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

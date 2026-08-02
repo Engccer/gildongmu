@@ -131,10 +131,14 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
                 // 무반응처럼 보이지 않게 그 경로를 통지로 재발화한다.
                 Button(appLocalized("ios.common.allowPrecise")) {
                     Task { @MainActor in
-                        if await LocationService.shared.requestTemporaryPreciseAccuracy() {
-                            onPreciseGranted?()
-                        } else {
+                        // 보이는 안내문과 같은 문장을 통지로 재발화하는 것은 의식적
+                        // 결정이다: 사용자 행동(버튼 탭)의 응답이라 무반응 방지가
+                        // "보이는 콘텐츠 복제 금지"보다 우선한다(리뷰 Minor 2 판단 기록).
+                        switch await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                        case .granted: onPreciseGranted?()
+                        case .denied:
                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                        case .alreadyInFlight: break
                         }
                     }
                 }

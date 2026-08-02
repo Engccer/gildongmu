@@ -419,10 +419,11 @@ struct DirectionsTabView: View {
                     if model.phase == .geoReduced {
                         Button(appLocalized("ios.common.allowPrecise")) {
                             Task { @MainActor in
-                                if await LocationService.shared.requestTemporaryPreciseAccuracy() {
-                                    model.runQuery()
-                                } else {
+                                switch await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                                case .granted: model.runQuery()
+                                case .denied:
                                     AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                                case .alreadyInFlight: break
                                 }
                             }
                         }
@@ -465,10 +466,11 @@ struct DirectionsTabView: View {
                             case .precise:
                                 Button(appLocalized("ios.common.allowPrecise")) {
                                     Task { @MainActor in
-                                        if await LocationService.shared.requestTemporaryPreciseAccuracy() {
-                                            beacon.toggle(dest: tracked.dest, label: tracked.label)
-                                        } else {
+                                        switch await LocationService.shared.requestTemporaryPreciseAccuracy() {
+                                        case .granted: beacon.toggle(dest: tracked.dest, label: tracked.label)
+                                        case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
+                                        case .alreadyInFlight: break
                                         }
                                     }
                                 }
