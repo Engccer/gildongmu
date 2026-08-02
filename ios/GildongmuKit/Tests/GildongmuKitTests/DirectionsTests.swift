@@ -8,7 +8,7 @@ import Foundation
 private func walkFixture() -> WalkRouteBriefing {
     WalkRouteBriefing(
         distanceMeters: 1200, durationSeconds: 900,
-        steps: [WalkRouteStep(description: "천호대로를 따라 119m 이동", distanceMeters: nil)])
+        steps: [WalkRouteStep(description: "천호대로를 따라 119m 이동", distanceMeters: nil, pathCoords: nil)])
 }
 
 private func transitFixture() -> TransitRouteResult {
