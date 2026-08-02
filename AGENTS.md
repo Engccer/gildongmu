@@ -17,7 +17,7 @@
 1. **시각장애인** — 스크린 리더만으로 전체 흐름(검색 → 장소 정보 → 길찾기)이 완결되어야 한다.
 2. **한국 방문 외국인** — 한국어를 몰라도 쓸 수 있는 미니멀한 영어 UI.
 
-**궁극 목표**: 검증된 기능을 `~/Mac-Projects/dodo-planet/`(가족 여행 가이드 PWA)에 통합한다. 이 저장소는 인큐베이터 — **스택·컨벤션을 dodo-planet과 일치**시키고(next-intl 4, zod 4, Vitest 4, App Router), `src/lib/`는 React/Next 비의존으로 유지해 이식성을 보장한다.
+**dodo-planet과의 관계(2026-08-03 위원장 정정)**: 인큐베이터로 시작했지만 지금은 **독자 배포·독립 운영되는 앱**(웹+iOS App Store+npm CLI/MCP)이다. `~/Mac-Projects/dodo-planet/`(가족 여행 가이드 PWA)과는 **상호 보완적인 두 독립 프로젝트**로, 검증된 기능의 이식이 **양방향**으로 일어난다("dodo 통합이 궁극 목표"라는 종전 서술은 폐기). 그래서 **스택·컨벤션을 dodo-planet과 일치** 유지하고(next-intl 4, zod 4, Vitest 4, App Router), `src/lib/`는 React/Next 비의존으로 유지해 양방향 이식성을 보장한다.
 
 ## 절대 원칙: 접근성
 
@@ -145,7 +145,7 @@
 
 ## 배포
 
-- **Vercel 프로덕션**: https://gildongmu.vercel.app (팀 `hunyong-kims-projects`). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**.
+- **대외 정본 도메인**: https://gildongmu.dodoplanet.space (2026-07-27 확정, DNS는 Cloudflare 와일드카드 CNAME — 상세는 PROGRESS). Vercel 프로젝트 URL https://gildongmu.vercel.app 도 유효(팀 `hunyong-kims-projects`). GitHub `Engccer/gildongmu` 연결 — **push하면 자동 배포**. ⚠ ODsay Referer는 URI 키 묶임이라 `gildongmu.vercel.app` 유지(교체하려면 ODsay 콘솔에 새 도메인 URI 등록 선행).
 - **env 변경 후 반드시 재배포**(키는 배포 시점 함수 주입). 수동 배포 `vercel deploy --prod --yes`.
 - 비대화형 등록 `printf '%s' "$VALUE" | vercel env add <KEY> production`(`vercel@latest` 사용 — 구버전 빈값 버그 [[vercel-env-add-noninteractive-bug]]). Preview는 `git_branch_required` 결함이라 REST API/대시보드.
 - ⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.
