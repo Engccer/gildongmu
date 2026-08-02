@@ -92,6 +92,11 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
         case .denied:
             ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
                 description: Text(appLocalized("ios.common.geoDeniedDesc")))
+        // 권한은 있으나 "정확한 위치"가 꺼진 상태. denied와 카피를 공유하지 않는다 —
+        // 켜야 할 스위치가 다르고, 이걸 뭉개면 사용자가 이미 켜 둔 권한을 다시 찾는다.
+        case .reducedAccuracy:
+            ContentUnavailableView(appLocalized("ios.common.geoReducedTitle"), systemImage: "location.circle",
+                description: Text(appLocalized("ios.common.geoReducedDesc")))
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
         // 서비스 지역 미제공. 어느 서비스인지는 네비게이션 타이틀이 이미 말하므로

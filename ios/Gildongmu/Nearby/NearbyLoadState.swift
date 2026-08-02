@@ -25,6 +25,14 @@ func announcePermissionLost() {
     AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshDenied")).post()
 }
 
+/// 정밀 위치 상실 전락 통지. **화면 오버레이와 같은 원인을 말해야 한다** —
+/// `announcePermissionLost`를 재사용하면 화면은 "정확한 위치가 꺼져 있습니다"인데
+/// 낭독은 "권한이 꺼져 있어"라서 둘이 서로 다른 원인을 지목한다.
+@MainActor
+func announceAccuracyLost() {
+    AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshReduced")).post()
+}
+
 /// 서비스 지역 밖 전락 통지(웹 tCommon("outOfCoverage") 미러): loaded 중 새로고침에서
 /// 커버리지 밖 좌표를 만나면 목록이 통째로 사라진다 — announcePermissionLost 동형.
 /// 오류가 아니라 안내이므로 같은 문구를 그대로 쓴다.
@@ -44,9 +52,14 @@ extension LocationService {
                 // catch 변수는 any Error로 추론되므로 캐스팅해 판별한다. denied만 번역하고
                 // 나머지는 전부 unavailable — 위치 오류가 코어 default 분기로 새어
                 // 서버 실패 카피로 낭독되는 일이 없도록 total하게 닫는다.
-                if let locationError = error as? LocationService.LocationError,
-                   case .denied = locationError {
-                    throw NearbyLocationError.denied
+                if let locationError = error as? LocationService.LocationError {
+                    switch locationError {
+                    case .denied: throw NearbyLocationError.denied
+                    // 정밀 위치 꺼짐은 권한 거부와 별개 축이다. unavailable로 뭉개면
+                    // "조회 실패" 카피가 낭독되어 사용자가 원인을 알 수 없다.
+                    case .reducedAccuracy: throw NearbyLocationError.reducedAccuracy
+                    case .unavailable: throw NearbyLocationError.unavailable
+                    }
                 }
                 throw NearbyLocationError.unavailable
             }
@@ -96,6 +109,7 @@ func nearbyAnnouncer<Payload: Sendable>(
             }
         case .refreshFailed: announceRefreshFailed()
         case .permissionLost: announcePermissionLost()
+        case .accuracyLost: announceAccuracyLost()
         case .wentOutOfCoverage: announceOutOfCoverage()
         }
     }

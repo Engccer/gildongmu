@@ -45,7 +45,7 @@ private func withQueryTimeout<T: Sendable>(_ operation: @escaping @Sendable () a
 @Observable @MainActor
 final class DirectionsModel {
     enum Phase: Equatable {
-        case idle, needEndpoints, locating, loading, geoDenied, geoError
+        case idle, needEndpoints, locating, loading, geoDenied, geoReduced, geoError
         case outOfCoverage  // 서비스 지역 밖 — 실패 아님, spec 2026-07-29
         case settled(successCount: Int)
     }
@@ -146,10 +146,10 @@ final class DirectionsModel {
     }
 
     /// 이미 위치가 허용된 세션에서만 조용히 주소를 병기한다(탭 진입만으론 권한 팝업
-    /// 금지 — coordinateIfAuthorized 관례). 미허용·실패면 라벨은 "현재 위치" 그대로.
+    /// 금지 — coordinateForDisplay 관례). 미허용·실패면 라벨은 "현재 위치" 그대로.
     func loadCurrentAddressIfAuthorized() async {
         guard !hasLoadedCurrentAddress, from == .current || to == .current else { return }
-        guard let coord = await LocationService.shared.coordinateIfAuthorized() else { return }
+        guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
         hasLoadedCurrentAddress = true
         await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
     }
@@ -220,6 +220,13 @@ final class DirectionsModel {
                 if case .denied = error {
                     phase = .geoDenied
                     announce(appLocalized("ios.common.geoDeniedDesc"))
+                } else if case .reducedAccuracy = error {
+                    // 권한은 있으나 정밀 위치가 꺼진 상태. `geoDenied`를 재사용하면
+                    // 통지는 "정확한 위치를 켜"인데 화면에 남는 지속 텍스트는 "위치
+                    // 접근을 허용해"가 되어, 통지가 흘러간 뒤 커서를 상태 줄에 두면
+                    // 이미 켜 둔 권한을 다시 찾으러 간다(지속 텍스트가 정본이다).
+                    phase = .geoReduced
+                    announce(appLocalized("ios.common.geoReducedDesc"))
                 } else {
                     phase = .geoError
                     announce(appLocalized("directions.geoError"))
@@ -636,6 +643,7 @@ struct DirectionsTabView: View {
         case .locating: appLocalized("directions.locating")
         case .loading: appLocalized("directions.loading")
         case .geoDenied: appLocalized("ios.common.geoDeniedDesc")
+        case .geoReduced: appLocalized("ios.common.geoReducedDesc")
         case .geoError: appLocalized("directions.geoError")
         case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
         case .settled(let count):

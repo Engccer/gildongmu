@@ -22,7 +22,9 @@
       "unavailableHere": {
         "seoulOnly": "Available in Seoul only",
         "noBusData": "Bus stop data is not provided for this area"
-      }
+      },
+      "geoReducedTitle": "Precise Location is off",
+      "geoReducedDesc": "Turn on Precise Location for Gildongmu in Settings"
     },
     "chat": {
       "suggestion1": "Show me what's around here",
@@ -183,7 +185,8 @@
       "eventsEmpty": "No cultural events are running near you today",
       "unitEvent": "events",
       "subwayClosed": "Not running now. First train %@",
-      "subwayNoRealtime": "Real-time arrivals are not available for this station"
+      "subwayNoRealtime": "Real-time arrivals are not available for this station",
+      "refreshReduced": "Couldn’t refresh because Precise Location is off"
     },
     "settings": {
       "title": "Settings",

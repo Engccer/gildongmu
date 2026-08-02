@@ -12,6 +12,10 @@ public enum NearbyLoadPhase<Payload: Sendable> {
     case loaded(Payload)
     case empty
     case denied
+    /// 권한은 있으나 "정확한 위치"가 꺼져 좌표가 1~20km 오차인 상태.
+    /// `denied`·`failedLocation`과 뭉개지 않는다: 원인도 해결책도 다르고,
+    /// 그대로 조회하면 **있지도 않은 주변 정보**를 안내하게 된다.
+    case reducedAccuracy
     case outOfCoverage
     /// 한국 안이지만 그 도메인이 이 지역을 다루지 않음(서울 전용 데이터).
     case unavailableHere(UnavailableHereReason)
@@ -23,6 +27,8 @@ public enum NearbyLoadPhase<Payload: Sendable> {
 /// 어댑터 계약: 취소는 원본 그대로 rethrow — 절대 unavailable로 뭉개지 않는다(스펙 §4).
 public enum NearbyLocationError: Error {
     case denied
+    /// "정확한 위치" 꺼짐. 권한 거부와 별개 축이라 별개 상태로 옮긴다.
+    case reducedAccuracy
     case unavailable
 }
 
@@ -48,6 +54,10 @@ public enum NearbyLoadEvent<Payload: Sendable> {
     case emptyResult
     case refreshFailed
     case permissionLost
+    /// 정밀 위치 상실. `permissionLost`와 나누는 이유는 문구다 — 같은 순간 화면은
+    /// "정확한 위치가 꺼져 있습니다"를 보여주는데 낭독이 "권한이 꺼져 있어"라고 하면
+    /// 화면과 소리가 서로 다른 원인을 말한다(상태를 나눈 효과가 사라진다).
+    case accuracyLost
     case wentOutOfCoverage
 }
 
@@ -140,6 +150,12 @@ public final class NearbyLoadCore<Payload: Sendable> {
             case NearbyLocationError.denied:     // #4·#5 — 권한 전락은 무신호 화면 전환 방지 통지
                 phase = .denied
                 if case .loaded = entry { onEvent(.permissionLost) }
+            case NearbyLocationError.reducedAccuracy:
+                // denied와 동형 전이(원인만 다르다). loaded에서 전락하는 경로는
+                // 사용자가 설정에서 정확한 위치를 끈 경우이고, 목록이 통째로
+                // 사라지므로 무신호가 되지 않게 통지한다.
+                phase = .reducedAccuracy
+                if case .loaded = entry { onEvent(.accuracyLost) }
             case NearbyLocationError.unavailable: // #6·#7
                 if case .loaded = entry { onEvent(.refreshFailed) } else { phase = .failedLocation }
             case APIError.outOfCoverage:         // #13·#14 — 서버 마커 이중 방어

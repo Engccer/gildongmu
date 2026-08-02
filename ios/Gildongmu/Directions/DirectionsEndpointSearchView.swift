@@ -33,7 +33,7 @@ final class EndpointSearchModel {
         isSearching = true
         searchTask = Task {
             // 허용된 세션이면 좌표를 실어 근접 블렌딩(SearchModel 동형, 팝업 없음).
-            let coordinate = await LocationService.shared.coordinateIfAuthorized()
+            let coordinate = await LocationService.shared.coordinateForRanking()
             let outcome = await service.search(
                 query: trimmed, lat: coordinate?.lat, lng: coordinate?.lng,
                 lang: AppLanguage.dataLocale, includeWeb: false)
