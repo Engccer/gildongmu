@@ -17,7 +17,7 @@ struct CarRouteRows: View {
 
     var body: some View {
         // 통행료 0원은 생략(잉여)
-        Text(joinText(
+        distanceText(joinText(
             appLocalized("ios.route.totalDistance", formatDistance(briefing.distanceMeters)),
             appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
             appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
@@ -26,7 +26,9 @@ struct CarRouteRows: View {
             // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
             let text = guide.guidance.isEmpty ? guide.name : guide.guidance
             if !text.isEmpty {
-                Text(joinText(text, guide.distanceMeters > 0 ? "\(guide.distanceMeters)m" : nil))
+                // ⚠ 종전 "\(m)m" 직접 조립은 1km 넘는 구간(고속도로)이 "1234m"로
+                // 표기되던 결함이라 formatDistance 정본으로 교체.
+                distanceText(joinText(text, guide.distanceMeters > 0 ? formatDistance(guide.distanceMeters) : nil))
             }
         }
     }
@@ -91,12 +93,13 @@ struct WalkRouteRows: View {
         // 거리 표기는 `formatDistance` 정본에 맡긴다. 종전엔 여기서 소수 km를 직접
         // 조립해(문구가 `{distanceKm}km`였다) 같은 화면의 다른 거리와 표기가 갈렸고,
         // 1km 미만 도보 경로가 "0.8km"로 낭독됐다.
-        Text(appLocalized("route.pedestrian.summary",
+        distanceText(appLocalized("route.pedestrian.summary",
             formatDistance(briefing.distanceMeters),
             String(Int((Double(briefing.durationSeconds) / 60).rounded()))))
         ForEach(Array(briefing.steps.enumerated()), id: \.offset) { _, step in
             if !step.description.isEmpty {
-                Text(step.description)
+                // 서버 안내문 속 "244m 이동"도 같은 오독 대상이라 낭독만 풀어 쓴다
+                distanceText(step.description)
             }
         }
     }

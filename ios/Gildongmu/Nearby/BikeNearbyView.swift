@@ -48,7 +48,7 @@ struct BikeNearbyView: View {
                 if case .loaded(let stations) = model.phase {
                     ForEach(stations, id: \.stationId) { station in
                         // 한 줄 = 한 접근성 객체. 대여소명·거리·대여 가능·거치대를 단일 텍스트로 흡수(heading 없음).
-                        Text(joinText(station.name, "\(station.distanceMeters)m",
+                        distanceText(joinText(station.name, formatDistance(station.distanceMeters),
                                       appLocalized("ios.nearby.bikesAvailable", String(station.bikesAvailable)), appLocalized("ios.nearby.racksTotal", String(station.racksTotal))))
                             // 착지 대상. 이 목록만 heading이 없어(한 줄에 전부 흡수) 첫 행
                             // 자체가 결과의 시작점이다 — heading을 새로 만들지 않는다.

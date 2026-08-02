@@ -70,7 +70,7 @@ struct SubwayNearbyView: View {
                             // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
                             // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
                             // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
-                            Text(joinText(displayStationName(station), station.lines.joined(separator: ", "), "\(station.distanceMeters)m"))
+                            distanceText(joinText(displayStationName(station), station.lines.joined(separator: ", "), formatDistance(station.distanceMeters)))
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성과 같은 값이어야 한다.
                                 .accessibilityFocused($focusedStation, equals: station.stationName)

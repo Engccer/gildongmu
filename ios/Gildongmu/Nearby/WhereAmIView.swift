@@ -50,8 +50,18 @@ struct WhereAmIView: View {
     @State private var model = WhereAmIModel()
     /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 조회마다 새 대화
     @State private var chatPlace: Place?
+    /// 착지 대상은 조회 시각 헤더(이 화면의 첫 요소).
+    @AccessibilityFocusState private var focusedTop: String?
+    @State private var lander = NearbyFocusLander()
+
+    /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음).
+    private var topID: String? {
+        guard case .loaded = model.phase else { return nil }
+        return "whereami-top"
+    }
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             if case .loaded(let payload) = model.phase {
                 Section {
@@ -63,9 +73,17 @@ struct WhereAmIView: View {
                         chatPlace = whereAmIToPlace(payload.data, lat: payload.lat, lng: payload.lng, lang: AppLanguage.current)
                     }
                 } header: {
-                    Text(appLocalized("ios.nearby.whereAmIAsOf", payload.asOf)).accessibilityAddTraits(.isHeader)
+                    Text(appLocalized("ios.nearby.whereAmIAsOf", payload.asOf))
+                        .accessibilityAddTraits(.isHeader)
+                        .id("whereami-top")
+                        .accessibilityFocused($focusedTop, equals: "whereami-top")
                 }
             }
+        }
+        .nearbyFocusOnLoad(
+            id: topID, lander: lander, proxy: proxy,
+            landed: { focusedTop == $0 },
+            apply: { focusedTop = $0 })
         }
         .navigationTitle(appLocalized("whereAmI.button"))
         .nearbyStateOverlay {

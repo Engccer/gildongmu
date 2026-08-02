@@ -39,3 +39,45 @@ private let distanceCases: [(Int, String)] = [
         }
     }
 }
+
+@Suite struct SpokenDistanceUnitsTests {
+    private func spoken(_ s: String) -> String {
+        spokenDistanceUnits(s, meters: "미터", kilometers: "킬로미터")
+    }
+
+    @Test func expandsBothUnits() {
+        #expect(spoken("1km 200m") == "1 킬로미터 200 미터")
+        #expect(spoken("300m") == "300 미터")
+        #expect(spoken("89km") == "89 킬로미터")
+    }
+
+    /// formatDistance 전 출력 모양이 변환을 통과하는지(경계표 재사용).
+    @Test func coversAllFormatDistanceShapes() {
+        for (input, expected) in distanceCases {
+            let s = spoken(formatDistance(input))
+            #expect(!s.contains("km"), "km 잔존: \(expected) → \(s)")
+            // "미터"·"킬로미터" 단어 자체의 m은 정상이므로 숫자+m 패턴만 검사
+            #expect(s.range(of: #"\dm\b"#, options: .regularExpression) == nil,
+                    "m 잔존: \(expected) → \(s)")
+        }
+    }
+
+    /// 오차 반경 표기(±)도 숫자+m 꼴이라 함께 풀린다(의미 무관, 낭독 문제는 동일).
+    @Test func expandsErrorRadius() {
+        #expect(spoken("목적지 근처 (약 ±30m)") == "목적지 근처 (약 ±30 미터)")
+    }
+
+    /// 서버 안내문 속 일반 단어는 건드리지 않는다.
+    @Test func leavesProseAlone() {
+        #expect(spoken("횡단보도 이용") == "횡단보도 이용")
+        #expect(spoken("천호대로를 따라 이동") == "천호대로를 따라 이동")
+        // 숫자 뒤가 아니면 불변("m" 단독, 영단어 속 m)
+        #expect(spoken("markets") == "markets")
+    }
+
+    /// 서버 완성 문장 속 거리도 풀린다(브리핑 스텝 낭독 대상).
+    @Test func expandsInsideServerSentence() {
+        #expect(spoken("교차로에서 우회전 후 명일로를 따라 244m 이동")
+                == "교차로에서 우회전 후 명일로를 따라 244 미터 이동")
+    }
+}

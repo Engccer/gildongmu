@@ -409,6 +409,10 @@ struct DirectionsTabView: View {
                         Text(statusText)
                             .foregroundStyle(.secondary)
                     }
+                    // "설정 앱에서 …" 안내에는 그 화면을 여는 버튼을 함께(NearbyOverlay 동형)
+                    if model.phase == .geoDenied || model.phase == .geoReduced {
+                        Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                    }
                 }
                 // 목적지 거리 추적. 수단 섹션들보다 **앞**에 둔다 — 도보 섹션은
                 // 인라인 전개라 수백 행이 될 수 있어(천호역 실측) 뒤에 두면 선형 주파
@@ -438,7 +442,11 @@ struct DirectionsTabView: View {
                         // 추적 중 상태는 시트가 보여주므로 여기선 비추적 상태만이다. 권한
                         // 거부·위치 서비스 꺼짐은 시트가 아예 뜨지 않는 경로다.
                         if !beacon.isTracking, !beacon.statusText.isEmpty {
-                            Text(beacon.statusText).foregroundStyle(.secondary)
+                            distanceText(beacon.statusText).foregroundStyle(.secondary)
+                            // 권한·정밀 위치처럼 설정에서 해결되는 실패에만 노출
+                            if beacon.settingsResolvable {
+                                Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                            }
                         }
                         Text(appLocalized("beacon.straightLineNote"))
                             .font(.footnote)

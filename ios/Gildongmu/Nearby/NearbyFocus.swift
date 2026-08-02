@@ -59,15 +59,20 @@ final class NearbyFocusLander {
             chatFocusLog("[nearby] assigned first=\(id)")
             #endif
 
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled, !landed(id) else { return }
-            #if DEBUG
-            chatFocusLog("[nearby] retry first=\(id) (대입이 되돌려졌다)")
-            #endif
-            proxy.scrollTo(id)
-            try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
-            apply(id)
+            // 재시도 2회(실기기 관찰 2026-08-02: 로드가 느린 회차에 1회로 부족).
+            // 시퀀스 자체(가시화→지연→대입→검증)는 실기기 확정본이라 바꾸지 않고
+            // 횟수만 늘린다.
+            for attempt in 1...2 {
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled, !landed(id) else { return }
+                #if DEBUG
+                chatFocusLog("[nearby] retry#\(attempt) first=\(id) (대입이 되돌려졌다)")
+                #endif
+                proxy.scrollTo(id)
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                apply(id)
+            }
         }
     }
 

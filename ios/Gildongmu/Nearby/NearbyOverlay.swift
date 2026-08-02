@@ -1,5 +1,16 @@
 import SwiftUI
+import UIKit
 import GildongmuKit
+
+/// 앱 전용 설정 화면을 연다(공식 API, 심사 안전). "정확한 위치" 토글이 있는
+/// 위치 설정은 열린 화면의 "위치" 행 바로 안이다.
+/// ⚠ 위치 설정 화면으로 **직접** 가는 딥링크(`App-Prefs:` 류)는 비공개 API여서
+/// 심사 거절 사유다. 쓰지 않는다.
+@MainActor
+func openAppSettings() {
+    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+    UIApplication.shared.open(url)
+}
 
 /// 오버레이 한 칸의 카피(제목·아이콘·설명) — 전부 현행 switch에서 그대로 이관.
 struct NearbyOverlayCopy {
@@ -89,14 +100,27 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
         switch phase {
         case .loading:
             ProgressView(descriptor.loadingText)
+        // "설정 앱에서 …" 안내에는 그 화면을 여는 버튼을 함께 둔다(위원장 피드백
+        // 2026-08-02): 스크린 리더로 설정 앱을 열고 길동무 항목을 찾아가는 비용이
+        // 크다. 버튼 한 번이면 그 자리다("정확한 위치" 토글은 열린 화면의 "위치" 행).
         case .denied:
-            ContentUnavailableView(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash",
-                description: Text(appLocalized("ios.common.geoDeniedDesc")))
+            ContentUnavailableView {
+                Label(appLocalized("ios.common.geoDeniedTitle"), systemImage: "location.slash")
+            } description: {
+                Text(appLocalized("ios.common.geoDeniedDesc"))
+            } actions: {
+                Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+            }
         // 권한은 있으나 "정확한 위치"가 꺼진 상태. denied와 카피를 공유하지 않는다 —
         // 켜야 할 스위치가 다르고, 이걸 뭉개면 사용자가 이미 켜 둔 권한을 다시 찾는다.
         case .reducedAccuracy:
-            ContentUnavailableView(appLocalized("ios.common.geoReducedTitle"), systemImage: "location.circle",
-                description: Text(appLocalized("ios.common.geoReducedDesc")))
+            ContentUnavailableView {
+                Label(appLocalized("ios.common.geoReducedTitle"), systemImage: "location.circle")
+            } description: {
+                Text(appLocalized("ios.common.geoReducedDesc"))
+            } actions: {
+                Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+            }
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
         // 서비스 지역 미제공. 어느 서비스인지는 네비게이션 타이틀이 이미 말하므로

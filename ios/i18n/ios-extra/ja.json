@@ -24,7 +24,8 @@
         "noBusData": "この地域はバス停の情報が提供されていません"
       },
       "geoReducedTitle": "正確な位置情報がオフです",
-      "geoReducedDesc": "設定アプリでキルドンムの正確な位置情報をオンにしてください"
+      "geoReducedDesc": "設定アプリでキルドンムの正確な位置情報をオンにしてください",
+      "openSettings": "設定を開く"
     },
     "chat": {
       "suggestion1": "周りに何があるか教えて",
@@ -220,6 +221,10 @@
     "beacon": {
       "soundUnavailable": "音による案内を再生できません。画面の表示を確認してください。",
       "stopped": "距離の追跡を停止しました。"
+    },
+    "unit": {
+      "spokenMeters": "メートル",
+      "spokenKilometers": "キロメートル"
     }
   }
 }

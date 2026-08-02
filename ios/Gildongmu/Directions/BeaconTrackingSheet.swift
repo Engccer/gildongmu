@@ -29,7 +29,7 @@ struct BeaconTrackingSheet: View {
                 // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
                 // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
                 if !statusText.isEmpty {
-                    Text(statusText).foregroundStyle(.secondary)
+                    distanceText(statusText).foregroundStyle(.secondary)
                 }
                 Text(appLocalized("beacon.screenHint"))
                     .font(.footnote)
