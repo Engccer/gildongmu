@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
+import { SITE_ORIGIN } from "@/lib/site";
 import { Header } from "@/components/Header";
 import { SWRegister } from "@/components/SWRegister";
 import { IdleReset } from "@/components/IdleReset";
@@ -23,6 +24,8 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "app" });
   return {
+    // 상대 canonical·OG URL을 대외 정본 도메인으로 절대화한다.
+    metadataBase: new URL(SITE_ORIGIN),
     title: t("title"),
     description: t("tagline"),
     appleWebApp: { capable: true, title: "길동무", statusBarStyle: "default" },
