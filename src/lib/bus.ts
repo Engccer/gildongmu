@@ -1,6 +1,9 @@
 import type { BusStop } from "./types";
 import { fetchTagoNearby } from "./providers/tago-bus";
 import { fetchSeoulNearby } from "./providers/seoul-bus";
+import { coordToRegionNames } from "./providers/kakao-address";
+import { judgeTagoCityCoverage } from "./tago-coverage";
+import { hasKakaoKey } from "./env";
 
 /** 좌표 4자리(약 11m) 중복 판정 키 — en 장소병합과 동일 기준. */
 function coordKey(s: BusStop): string {
@@ -39,4 +42,29 @@ export async function fetchNearbyBusStops(lat: number, lng: number): Promise<Bus
   const tago = tagoR.status === "fulfilled" ? tagoR.value : [];
   const seoul = seoulR.status === "fulfilled" ? seoulR.value : [];
   return mergeBusStops(tago, seoul);
+}
+
+/**
+ * 0건이 "이 지역엔 정류소 데이터가 아예 없다"인지 판정한다(스펙
+ * `2026-08-02-bus-uncovered-region-design.md` §4). 라우트·채팅 공용 진입점이므로
+ * provider를 직접 부르지 말 것(두 소비자가 다른 규칙을 갖게 된다).
+ *
+ * ⚠ **정류소가 0건일 때만 부른다.** 좌표만 보고 미리 판정하면 담양·화순처럼 자기
+ * 도시코드가 없어도 인접 광역시 버스가 넘어오는 지역에 거짓 "미제공"이 나간다(실측
+ * 10건·23건). 그래서 이 마커만 다른 도메인과 달리 upstream **뒤**에 온다.
+ *
+ * ⚠ 0건의 대부분은 미커버가 아니라 TAGO 근접 조회의 ~700m 반경 밖이다. 판정이 서지
+ * 않으면(키 없음·조회 실패·모르는 시도) **false로 되돌아가 현행 "근처에 없음"을 유지**한다.
+ * 거짓 "미제공"이 거짓 "없음"보다 나쁘다: 전자는 다시 볼 여지까지 없앤다.
+ */
+export async function isUncoveredBusRegion(lat: number, lng: number): Promise<boolean> {
+  if (!hasKakaoKey()) return false;
+  try {
+    const region = await coordToRegionNames({ lat, lng });
+    if (!region) return false;
+    return judgeTagoCityCoverage(region.province, region.city) === "uncovered";
+  } catch (e) {
+    console.error("[bus] 지역 판정 실패", e);
+    return false;
+  }
 }

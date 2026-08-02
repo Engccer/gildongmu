@@ -30,15 +30,22 @@ const OUT_OF_COVERAGE_NOTICE =
  * (따릉이·문화행사 = 서울 전용). 0건으로 흡수하면 LLM이 "오늘은 없나 보다"로
  * 요약해 데이터 한계가 지역의 부재로 위장된다. cli 동형 헬퍼 미러.
  */
-function isUnavailableHere(body: unknown): boolean {
-  return typeof body === "object" && body !== null &&
-    (body as { unavailableHere?: unknown }).unavailableHere === "seoulOnly";
+type UnavailableHereReason = "seoulOnly" | "noBusData";
+
+const UNAVAILABLE_HERE_NOTICES: Record<UnavailableHereReason, string> = {
+  seoulOnly: "서울 지역에서만 제공됩니다.",
+  noBusData: "이 지역은 정류소 정보가 제공되지 않습니다.",
+};
+
+/** 모르는 사유는 null이라 일반 경로로 흘러간다(낡은 미러가 틀린 문장을 말하지 않게). */
+function unavailableHereReason(body: unknown): UnavailableHereReason | null {
+  if (typeof body !== "object" || body === null) return null;
+  const reason = (body as { unavailableHere?: unknown }).unavailableHere;
+  return reason === "seoulOnly" || reason === "noBusData" ? reason : null;
 }
 
-const UNAVAILABLE_HERE_NOTICE = "서울 지역에서만 제공됩니다.";
-
 // ⚠ package.json version과 동조 필수(version-drift.test.ts가 강제). 릴리스 때 함께 올린다.
-const server = new McpServer({ name: "gildongmu", version: "0.7.0" });
+const server = new McpServer({ name: "gildongmu", version: "0.8.0" });
 
 for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -61,7 +68,10 @@ for (const spec of ENDPOINT_CATALOG.filter((e) => e.mcp)) {
       let parsed: unknown;
       try { parsed = JSON.parse(text); } catch { parsed = undefined; }
       if (isOutOfCoverage(parsed)) return { content: [{ type: "text" as const, text: OUT_OF_COVERAGE_NOTICE }] };
-      if (isUnavailableHere(parsed)) return { content: [{ type: "text" as const, text: UNAVAILABLE_HERE_NOTICE }] };
+      const unavailable = unavailableHereReason(parsed);
+      if (unavailable) {
+        return { content: [{ type: "text" as const, text: UNAVAILABLE_HERE_NOTICES[unavailable] }] };
+      }
       return { content: [{ type: "text" as const, text }] };
     },
   );

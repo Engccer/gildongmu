@@ -5,7 +5,10 @@
   },
   "common": {
     "outOfCoverage": "현재 위치 기반 기능은 대한민국 안에서 제공됩니다. 장소 검색, 역 정보, 길찾기는 계속 사용할 수 있습니다.",
-    "unavailableHere": "서울 지역에서만 제공됩니다."
+    "unavailableHere": {
+      "seoulOnly": "서울 지역에서만 제공됩니다.",
+      "noBusData": "이 지역은 정류소 정보가 제공되지 않습니다."
+    }
   },
   "nav": {
     "korean": "한국어",

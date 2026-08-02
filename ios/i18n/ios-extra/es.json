@@ -19,7 +19,10 @@
       "refresh": "Actualizar",
       "privacyPolicy": "Política de privacidad",
       "outOfCoverage": "Las funciones basadas en la ubicación solo están disponibles dentro de Corea del Sur. La búsqueda de lugares, la información de estaciones y las indicaciones siguen disponibles.",
-      "unavailableHere": "Disponible solo en Seúl"
+      "unavailableHere": {
+        "seoulOnly": "Disponible solo en Seúl",
+        "noBusData": "No se proporcionan datos de paradas de autobús en esta zona"
+      }
     },
     "chat": {
       "suggestion1": "Muéstrame qué hay por aquí",

@@ -14,7 +14,7 @@ public enum NearbyLoadPhase<Payload: Sendable> {
     case denied
     case outOfCoverage
     /// 한국 안이지만 그 도메인이 이 지역을 다루지 않음(서울 전용 데이터).
-    case unavailableHere
+    case unavailableHere(UnavailableHereReason)
     case failedLocation
     case failedServer
 }
@@ -145,11 +145,11 @@ public final class NearbyLoadCore<Payload: Sendable> {
             case APIError.outOfCoverage:         // #13·#14 — 서버 마커 이중 방어
                 phase = .outOfCoverage
                 if case .loaded = entry { onEvent(.wentOutOfCoverage) }
-            case APIError.unavailableHere:
+            case APIError.unavailableHere(let reason):
                 // 좌표 선분기가 없다(서울 경계 판정은 서버 정본 — 클라가 bbox를
                 // 복제하면 반경 상수와 어긋나 조용히 갈린다). loaded에서 전락하는
                 // 경로는 앵커가 바뀔 때뿐이라 refreshFailed와 같은 통지를 쓴다.
-                phase = .unavailableHere
+                phase = .unavailableHere(reason)
                 if case .loaded = entry { onEvent(.refreshFailed) }
             default:                             // #15·#16
                 if case .loaded = entry { onEvent(.refreshFailed) } else { phase = .failedServer }

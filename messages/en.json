@@ -5,7 +5,10 @@
   },
   "common": {
     "outOfCoverage": "Location-based features are available within South Korea. Place search, station info, and directions remain available.",
-    "unavailableHere": "Available in Seoul only."
+    "unavailableHere": {
+      "seoulOnly": "Available in Seoul only.",
+      "noBusData": "Bus stop data is not provided for this area."
+    }
   },
   "nav": {
     "korean": "한국어",

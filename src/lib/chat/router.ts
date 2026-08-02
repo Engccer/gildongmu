@@ -12,7 +12,7 @@ import {
   fetchNearbySubwayArrivals,
   findNearestStationInfo,
 } from "@/lib/providers/subway-nearby";
-import { fetchNearbyBusStops } from "@/lib/bus";
+import { fetchNearbyBusStops, isUncoveredBusRegion } from "@/lib/bus";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
 import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
@@ -73,6 +73,17 @@ async function resolveCoord(
 const SEOUL_ONLY = {
   unavailableHere: "seoulOnly",
   notice: "이 정보는 서울 지역만 제공됩니다. 다른 지역은 데이터 자체가 없으며, 근처에 없다는 뜻이 아닙니다.",
+};
+
+/**
+ * TAGO가 그 지역 정류소를 아예 갖고 있지 않을 때. `count: 0`을 그대로 넘기면 LLM이
+ * "근처에 정류소가 없습니다"로 요약하는데, 강릉처럼 터미널 앞에서도 0건인 지역에서
+ * 그 문장은 거짓이다. ⚠ **0건일 때만 판정한다**(스펙 §2): 담양처럼 자기 도시코드가
+ * 없어도 인접 광역시 버스가 잡히는 지역은 이 분기에 오지 않아야 한다.
+ */
+const NO_BUS_DATA = {
+  unavailableHere: "noBusData",
+  notice: "이 지역은 정류소 정보가 제공되지 않습니다. 정류소가 없다는 뜻이 아니라 데이터가 없다는 뜻입니다.",
 };
 
 const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
@@ -217,6 +228,9 @@ export async function executeFunction(
       const gated = coverageGate(coord);
       if (gated) return gated;
       const stops = await fetchNearbyBusStops(coord.lat, coord.lng);
+      if (stops.length === 0 && (await isUncoveredBusRegion(coord.lat, coord.lng))) {
+        return { data: NO_BUS_DATA, source: src };
+      }
       // 명시 지명 또는 장소 앵커 → place 모드(카드가 그 좌표를 fetch). 아니면 current.
       const placeMode = !!explicit || !!ctx.placeAnchor;
       const render = placeMode

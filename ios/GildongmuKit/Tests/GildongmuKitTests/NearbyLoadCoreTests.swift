@@ -146,7 +146,7 @@ private func phaseName(_ phase: NearbyLoadPhase<Payload>) -> String {
     case .empty: "empty"
     case .denied: "denied"
     case .outOfCoverage: "outOfCoverage"
-    case .unavailableHere: "unavailableHere"
+    case .unavailableHere(let reason): "unavailableHere:\(reason.rawValue)"
     case .failedLocation: "failedLocation"
     case .failedServer: "failedServer"
     }
@@ -420,11 +420,11 @@ struct NearbyLoadCoreTests {
     /// 뭉개면 "대한민국 밖" 안내가 부산 사용자에게 낭독된다.
     @Test func serverUnavailableHereOnFirstLoad() async {
         let recorder = Recorder()
-        recorder.fetchStub = { _, _ in throw APIError.unavailableHere }
+        recorder.fetchStub = { _, _ in throw APIError.unavailableHere(.seoulOnly) }
         let core = makeCore(recorder)
 
         await core.load()
-        #expect(phaseName(core.phase) == "unavailableHere")
+        #expect(phaseName(core.phase) == "unavailableHere:seoulOnly")
         #expect(recorder.events.isEmpty)
     }
 
@@ -435,10 +435,21 @@ struct NearbyLoadCoreTests {
         await core.load()
         recorder.resetLog()
 
-        recorder.fetchStub = { _, _ in throw APIError.unavailableHere }
+        recorder.fetchStub = { _, _ in throw APIError.unavailableHere(.seoulOnly) }
         await core.load(force: true)
-        #expect(phaseName(core.phase) == "unavailableHere")
-        #expect(recorder.log == ["phase=unavailableHere", "event=refreshFailed"])
+        #expect(phaseName(core.phase) == "unavailableHere:seoulOnly")
+        #expect(recorder.log == ["phase=unavailableHere:seoulOnly", "event=refreshFailed"])
+    }
+
+    /// 사유가 그대로 전달돼야 화면이 다른 문장을 고를 수 있다. 사유를 버리고 한 문구로
+    /// 뭉개면 강릉 사용자가 "서울에서만 제공됩니다"를 듣는다(사실이 다르다).
+    @Test func unavailableHereReasonPropagates() async {
+        let recorder = Recorder()
+        recorder.fetchStub = { _, _ in throw APIError.unavailableHere(.noBusData) }
+        let core = makeCore(recorder)
+
+        await core.load()
+        #expect(phaseName(core.phase) == "unavailableHere:noBusData")
     }
 
     /// #13 — loaded 중 서버 마커는 wentOutOfCoverage를 통지한다.
