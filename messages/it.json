@@ -625,7 +625,8 @@
     "progressOffRoute": "Fuori percorso. {distance} in linea d'aria fino alla destinazione",
     "approx": "circa {distance}",
     "rough": "all'incirca {distance}",
-    "noGuidanceYet": "Nessuna indicazione ancora"
+    "noGuidanceYet": "Nessuna indicazione ancora",
+    "rerouteBusy": "Ricalcolo percorso, in corso"
   },
   "offline": {
     "heading": "Sei offline",

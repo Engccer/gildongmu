@@ -60,9 +60,13 @@ const TICK_THROTTLE_MS = 3000;
 /**
  * 같은 문장을 다시 통지할 때 live region을 비웠다 채우는 간격. 텍스트가 같으면 DOM이
  * 바뀌지 않아 스크린 리더가 침묵하므로("현재 안내 반복"이 아무 일도 안 하는 것처럼
- * 보인다) 빈 문자열을 한 번 거친다.
+ * 보인다) 빈 문자열을 한 번 거친다. 너무 짧으면 접근성 트리가 두 변경을 한 배치로
+ * 합쳐 낭독 0회가 된다(통상 권고 100~150ms 하단 — 실기기 VO 확인 항목).
+ * ⚠ ZWSP·공백 덧붙이기 우회 금지: iOS에서 문자로 낭독됨 실측.
  */
-const REANNOUNCE_DELAY_MS = 60;
+const REANNOUNCE_DELAY_MS = 120;
+/** 이 나이(초)를 넘긴 fix로는 직선거리를 단정하지 않는다(3-state — 거짓 정밀 금지). */
+const PROGRESS_FIX_MAX_AGE_S = 15;
 
 export type GuideMode = "brief" | "detail";
 
@@ -166,6 +170,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const detailTickRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
+  /** 마지막 fix 수신 시각(초, 단조) — 진행 상황의 직선거리 신선도 게이트용. */
+  const lastFixAtRef = useRef<number | null>(null);
   const lastGuidanceRef = useRef<string | null>(null);
   /** 간략→상세 전환 보류 시작 시각(단조 초). null이면 보류 없음. */
   const pendingResolveRef = useRef<number | null>(null);
@@ -394,7 +400,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         accuracy: pos.coords.accuracy,
       };
       lastFixRef.current = fix;
-      const now = performance.now() / 1000;
+      lastFixAtRef.current = performance.now() / 1000;
+      const now = lastFixAtRef.current;
       if (resolvePending(fix, now)) return;
       const route = routeRef.current;
       const state = guideRef.current;
@@ -456,6 +463,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     guideRef.current = null;
     routeRef.current = null;
     lastFixRef.current = null;
+    lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
     pendingResolveRef.current = null;
     if (mountedRef.current) {
@@ -483,6 +491,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     guideRef.current = null;
     routeRef.current = null;
     lastFixRef.current = null;
+    lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
     pendingResolveRef.current = null;
     prevKindRef.current = null;
@@ -590,7 +599,12 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
     const state = guideRef.current;
-    const fix = lastFixRef.current;
+    // 낡은 fix로 직선거리를 단정하지 않는다(3-state — 신호 끊긴 뒤의 거짓 정밀 차단).
+    const fixAge =
+      lastFixAtRef.current !== null
+        ? performance.now() / 1000 - lastFixAtRef.current
+        : Infinity;
+    const fix = fixAge <= PROGRESS_FIX_MAX_AGE_S ? lastFixRef.current : null;
     const straight = fix
       ? formatDistance(
           haversineMeters(fix.lat, fix.lng, destRef.current.lat, destRef.current.lng),

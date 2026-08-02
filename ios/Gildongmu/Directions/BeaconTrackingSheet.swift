@@ -20,6 +20,9 @@ struct BeaconTrackingSheet: View {
     let onStop: () -> Void
 
     @AccessibilityFocusState private var stopFocused: Bool
+    /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
+    /// 중지 버튼으로 되돌리는 근거(사용자가 누른 결과로 사라지는 경로만 결정론 처리).
+    @State private var reroutePressed = false
 
     var body: some View {
         List {
@@ -38,8 +41,23 @@ struct BeaconTrackingSheet: View {
                     )) { model.toggleMode() }
                 }
                 // 재조회: 이탈 확정 시에만 노출. 자동 재조회 금지(스펙 §5.6)의 수동 출구.
+                // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
+                // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 항상
+                // 존재하는 중지 버튼으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
                 if model.offRoute {
-                    Button(appLocalized("guide.rerouteButton")) { model.requestReroute() }
+                    Button(appLocalized(
+                        model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
+                    )) {
+                        reroutePressed = true
+                        model.requestReroute()
+                    }
+                }
+                // 직선거리 주석은 간략 안내에서만 참이다 — 상세는 경로 기반 거리를 쓴다.
+                // 시트가 인라인 섹션을 덮으므로 걷는 중 닿을 수 있는 곳은 여기뿐.
+                if model.mode == .brief {
+                    Text(appLocalized("beacon.straightLineNote"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
                 // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
@@ -57,6 +75,12 @@ struct BeaconTrackingSheet: View {
             }
         }
         .task { await landStopFocus() }
+        // 재조회 성공으로 버튼이 사라진 순간 커서를 중지 버튼으로(헌장 §5 이탈 방지).
+        .onChange(of: model.offRoute) { _, isOff in
+            guard !isOff, reroutePressed else { return }
+            reroutePressed = false
+            Task { await landStopFocus() }
+        }
     }
 
     /// 열릴 때 포커스를 **중지 버튼**에 둔다. 걷는 중 필요한 유일한 행동이고, 시트
