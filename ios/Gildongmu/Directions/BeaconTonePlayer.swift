@@ -74,12 +74,15 @@ final class BeaconTonePlayer {
         }
     }
 
-    /// 크리티컬 신호의 진동 병행(이탈·도착·멀어짐만 — 과잉 진동은 피로).
+    /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐) + 세션 경계(시작·종료, 위원장 추가
+    /// 2026-08-03). 시작은 뚜렷하게, 종료는 가볍게 — 나머지는 과잉 진동이라 두지 않는다.
     private func haptic(for tone: BeaconTone) {
         switch tone {
         case .warning: notifHaptics.notificationOccurred(.warning)
         case .nearby: notifHaptics.notificationOccurred(.success)
         case .farther: impactHaptics.impactOccurred()
+        case .start: impactHaptics.impactOccurred(intensity: 1.0)
+        case .stop: impactHaptics.impactOccurred(intensity: 0.6)
         default: break
         }
     }
