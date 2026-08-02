@@ -1,6 +1,926 @@
 {
   "sourceLanguage": "ko",
   "strings": {
+    "about.faq1a": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네. 웹과 iOS 앱 모두 무료이고 회원 가입도 없습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes. Both the web and iOS apps are free, and there is no sign-up."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí. La web y la app de iOS son gratuitas y no hay registro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui. Le site web et l'application iOS sont gratuits, sans inscription."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì. Il sito web e l'app iOS sono gratuiti e non c'è registrazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい。ウェブとiOSアプリのどちらも無料で、会員登録もありません。"
+          }
+        }
+      }
+    },
+    "about.faq1q": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무는 무료인가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Is Gildongmu free?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Gildongmu es gratuito?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu est-il gratuit ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu è gratuito?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンムは無料ですか?"
+          }
+        }
+      }
+    },
+    "about.faq2a": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네, 그것이 길동무의 출발점입니다. 모든 정보가 텍스트로 제공되어 VoiceOver 같은 스크린 리더만으로 검색, 장소 정보, 길찾기 전 과정을 쓸 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes, that is what Gildongmu is built around. All information is provided as text, so the entire flow of search, place details, and directions works with a screen reader such as VoiceOver."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí, ese es el punto de partida de Gildongmu. Toda la información se ofrece como texto, así que la búsqueda, los detalles de lugares y las indicaciones funcionan con lectores de pantalla como VoiceOver."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui, c'est le point de départ de Gildongmu. Toutes les informations sont fournies en texte : la recherche, les détails des lieux et les itinéraires fonctionnent avec un lecteur d'écran comme VoiceOver."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì, è questo il punto di partenza di Gildongmu. Tutte le informazioni sono in formato testo: ricerca, dettagli dei luoghi e indicazioni funzionano con screen reader come VoiceOver."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい、それがキルドンムの出発点です。すべての情報がテキストで提供されるため、VoiceOverなどのスクリーンリーダーだけで検索、場所の情報、経路案内の全過程を利用できます。"
+          }
+        }
+      }
+    },
+    "about.faq2q": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "시각장애인이 스크린 리더로 쓸 수 있나요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can blind users use it with a screen reader?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Pueden usarlo personas ciegas con un lector de pantalla?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les personnes aveugles peuvent-elles l'utiliser avec un lecteur d'écran ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le persone cieche possono usarlo con uno screen reader?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "視覚障害者がスクリーンリーダーで使えますか?"
+          }
+        }
+      }
+    },
+    "about.faq3a": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "네. 영어를 포함한 6개 언어 화면을 제공하고, 장소 정보는 한국어와 영어로 제공됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes. The interface is available in six languages including English, and place data is available in Korean and English."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sí. La interfaz está disponible en seis idiomas, incluido el español, y los datos de lugares están en coreano e inglés."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui. L'interface est disponible en six langues, dont le français, et les données de lieux sont en coréen et en anglais."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sì. L'interfaccia è disponibile in sei lingue, incluso l'italiano, e i dati sui luoghi sono in coreano e in inglese."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "はい。日本語を含む6言語の画面を提供しており、場所のデータは韓国語と英語で提供されます。"
+          }
+        }
+      }
+    },
+    "about.faq3q": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국어를 몰라도 쓸 수 있나요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Can I use it without knowing Korean?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Puedo usarlo sin saber coreano?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puis-je l'utiliser sans parler coréen ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posso usarlo senza conoscere il coreano?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓国語が分からなくても使えますか?"
+          }
+        }
+      }
+    },
+    "about.faq4a": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "장소 검색, 역 정보, 목적지 길찾기처럼 이름으로 조회하는 기능은 전 세계 어디서나 동작합니다. 현재 위치 기반 기능은 대한민국 안에서만 동작합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Features that look things up by name, such as place search, station information, and directions to a destination, work anywhere in the world. Features based on your current location work only within South Korea."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las funciones que consultan por nombre, como la búsqueda de lugares, la información de estaciones y las indicaciones a un destino, funcionan en todo el mundo. Las funciones basadas en tu ubicación actual solo funcionan dentro de Corea del Sur."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les fonctions qui consultent par nom, comme la recherche de lieux, les informations sur les stations et les itinéraires vers une destination, fonctionnent partout dans le monde. Les fonctions basées sur votre position actuelle ne fonctionnent qu'en Corée du Sud."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le funzioni che cercano per nome, come la ricerca di luoghi, le informazioni sulle stazioni e le indicazioni verso una destinazione, funzionano in tutto il mondo. Le funzioni basate sulla posizione attuale funzionano solo in Corea del Sud."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "場所検索、駅情報、目的地への経路案内のように名前で調べる機能は世界中どこでも使えます。現在地に基づく機能は韓国国内でのみ動作します。"
+          }
+        }
+      }
+    },
+    "about.faq4q": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한국 밖에서도 쓸 수 있나요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Does it work outside South Korea?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Funciona fuera de Corea del Sur?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonctionne-t-il en dehors de la Corée du Sud ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funziona fuori dalla Corea del Sud?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓国の外でも使えますか?"
+          }
+        }
+      }
+    },
+    "about.faq5a": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지도는 스크린 리더로 읽을 수 없어서 길동무는 모든 정보를 텍스트로 제공합니다. 실제 주행 안내가 필요하면 네이버 지도나 카카오맵 앱으로 연결합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maps cannot be read by screen readers, so Gildongmu presents everything as text. For turn-by-turn driving it hands off to the Naver Map or KakaoMap apps."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los mapas no pueden leerse con lectores de pantalla, así que Gildongmu presenta toda la información como texto. Para la conducción con guía en tiempo real te deriva a las apps Naver Map o KakaoMap."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les cartes ne peuvent pas être lues par un lecteur d'écran, donc Gildongmu présente tout en texte. Pour le guidage routier réel, vous êtes redirigé vers les applications Naver Map ou KakaoMap."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le mappe non possono essere lette dagli screen reader, quindi Gildongmu presenta tutto come testo. Per la guida su strada vera e propria si passa alle app Naver Map o KakaoMap."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地図はスクリーンリーダーで読めないため、キルドンムはすべての情報をテキストで提供します。実際の走行案内が必要な場合はNAVERマップやカカオマップのアプリに引き継ぎます。"
+          }
+        }
+      }
+    },
+    "about.faq5q": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지도 화면이 없는 이유가 있나요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Why is there no map view?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Por qué no hay mapa?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pourquoi n'y a-t-il pas de carte ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perché non c'è una mappa?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地図画面がないのはなぜですか?"
+          }
+        }
+      }
+    },
+    "about.faqHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "자주 묻는 질문"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frequently asked questions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preguntas frecuentes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questions fréquentes"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Domande frequenti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "よくある質問"
+          }
+        }
+      }
+    },
+    "about.feature1": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "장소·주소 검색: 상호명, 도로명주소, 우편번호로 전국의 장소를 찾습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place and address search: find places across Korea by name, street address, or postal code."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Búsqueda de lugares y direcciones: encuentra lugares de toda Corea por nombre, dirección o código postal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche de lieux et d'adresses : trouvez des lieux dans toute la Corée par nom, adresse ou code postal."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca di luoghi e indirizzi: trova luoghi in tutta la Corea per nome, indirizzo o codice postale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "場所・住所検索: 店舗名、道路名住所、郵便番号で韓国全国の場所を探せます。"
+          }
+        }
+      }
+    },
+    "about.feature2": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길찾기 미리 듣기: 자동차, 대중교통, 도보 경로를 출발 전에 텍스트 브리핑으로 확인합니다. 도보는 계단 없는 경로 옵션이 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route preview: get a text briefing of car, transit, and walking routes before you leave. Walking routes offer a stair-free option."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa de rutas: recibe un resumen en texto de las rutas en coche, transporte público y a pie antes de salir. Las rutas a pie ofrecen una opción sin escaleras."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aperçu d'itinéraire : recevez un résumé textuel des trajets en voiture, en transports en commun et à pied avant de partir. Les trajets à pied proposent une option sans escaliers."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anteprima del percorso: ricevi un riepilogo testuale dei percorsi in auto, con i mezzi pubblici e a piedi prima di partire. I percorsi a piedi offrono un'opzione senza scale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路の事前ブリーフィング: 車、公共交通、徒歩の経路を出発前にテキストで確認できます。徒歩には階段を避ける経路のオプションがあります。"
+          }
+        }
+      }
+    },
+    "about.feature3": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "내 주변 정보: 지하철 실시간 도착, 버스, 소아 야간진료, 무장애 관광지, 음향신호기 같은 보행 인프라를 현재 위치 기준으로 조회합니다. 따릉이, 문화행사, 혼잡도 등 일부 정보는 서울에서 제공됩니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearby information: real-time subway arrivals, buses, late-night pediatric clinics, barrier-free tourist sites, and pedestrian infrastructure such as audible signals, based on your current location. Some data, including bike share, cultural events, and crowd levels, covers Seoul."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Información cercana: llegadas de metro en tiempo real, autobuses, clínicas pediátricas nocturnas, sitios turísticos accesibles e infraestructura peatonal como señales sonoras, según tu ubicación actual. Algunos datos, como bicicletas compartidas, eventos culturales y niveles de afluencia, cubren Seúl."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations à proximité : arrivées de métro en temps réel, bus, cliniques pédiatriques de nuit, sites touristiques accessibles et infrastructures piétonnes comme les signaux sonores, selon votre position actuelle. Certaines données, comme les vélos en libre-service, les événements culturels et l'affluence, couvrent Séoul."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni nei dintorni: arrivi della metropolitana in tempo reale, autobus, cliniche pediatriche notturne, siti turistici accessibili e infrastrutture pedonali come i segnali acustici, in base alla tua posizione attuale. Alcuni dati, come bike sharing, eventi culturali e livelli di affollamento, riguardano Seul."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺情報: 地下鉄のリアルタイム到着、バス、小児夜間診療、バリアフリー観光地、音響信号機などの歩行インフラを現在地基準で調べられます。シェア自転車、文化イベント、混雑度など一部の情報はソウルで提供されます。"
+          }
+        }
+      }
+    },
+    "about.feature4": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "역 정보: 전국 지하철역의 시설, 첫차와 막차 시간표, 엘리베이터 위치를 확인합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Station information: facilities, first and last train times, and elevator locations for subway stations nationwide."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Información de estaciones: instalaciones, horarios del primer y último tren y ubicación de ascensores de las estaciones de metro de todo el país."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations sur les stations : équipements, horaires des premiers et derniers trains et emplacement des ascenseurs des stations de métro de tout le pays."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni sulle stazioni: strutture, orari del primo e dell'ultimo treno e posizione degli ascensori delle stazioni della metropolitana di tutto il Paese."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅情報: 全国の地下鉄駅の設備、始発・終電の時刻、エレベーターの位置を確認できます。"
+          }
+        }
+      }
+    },
+    "about.feature5": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI 채팅: 장소에 관해 질문하면 실시간 데이터를 조회해 답합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI chat: ask about a place and get answers grounded in live data."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat con IA: pregunta sobre un lugar y recibe respuestas basadas en datos en tiempo real."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat IA : posez une question sur un lieu et obtenez des réponses fondées sur des données en temps réel."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat IA: fai una domanda su un luogo e ricevi risposte basate su dati in tempo reale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AIチャット: 場所について質問すると、リアルタイムのデータを参照して答えます。"
+          }
+        }
+      }
+    },
+    "about.featuresHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주요 기능"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Features"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonctionnalités"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funzionalità"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "主な機能"
+          }
+        }
+      }
+    },
+    "about.howCli": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "개발자: npm 패키지 gildongmu(CLI)와 gildongmu-mcp(MCP 서버)로 터미널과 AI 에이전트에서 같은 정보를 조회할 수 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developers: the npm packages gildongmu (CLI) and gildongmu-mcp (MCP server) expose the same data to terminals and AI agents."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para desarrolladores: los paquetes de npm gildongmu (CLI) y gildongmu-mcp (servidor MCP) ofrecen los mismos datos en la terminal y para agentes de IA."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Développeurs : les paquets npm gildongmu (CLI) et gildongmu-mcp (serveur MCP) donnent accès aux mêmes données dans le terminal et pour les agents IA."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sviluppatori: i pacchetti npm gildongmu (CLI) e gildongmu-mcp (server MCP) offrono gli stessi dati nel terminale e per gli agenti IA."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開発者向け: npmパッケージ gildongmu(CLI)と gildongmu-mcp(MCPサーバー)で、ターミナルやAIエージェントから同じ情報を利用できます。"
+          }
+        }
+      }
+    },
+    "about.howHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이용 방법"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to use"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cómo usarlo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comment l'utiliser"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come si usa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使い方"
+          }
+        }
+      }
+    },
+    "about.howIosLink": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 앱: App Store에서 길동무 설치"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS app: get Gildongmu on the App Store"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App de iOS: descarga Gildongmu en el App Store"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Application iOS : télécharger Gildongmu sur l'App Store"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App iOS: scarica Gildongmu dall'App Store"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOSアプリ: App Storeでキルドンムを入手"
+          }
+        }
+      }
+    },
+    "about.howWeb": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "웹: gildongmu.dodoplanet.space 에서 설치 없이 바로 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web: use it right away at gildongmu.dodoplanet.space, no installation needed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web: úsalo directamente en gildongmu.dodoplanet.space, sin instalación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web : utilisez-le directement sur gildongmu.dodoplanet.space, sans installation."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web: usalo subito su gildongmu.dodoplanet.space, senza installazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウェブ: gildongmu.dodoplanet.space でインストール不要ですぐに使えます。"
+          }
+        }
+      }
+    },
+    "about.summary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무는 대한민국 길찾기와 장소 정보 서비스입니다. 스크린 리더 사용자가 검색부터 길찾기까지 전 과정을 텍스트로 완결할 수 있도록 설계했고, 한국어·영어·스페인어·프랑스어·이탈리아어·일본어 6개 언어를 지원합니다. 웹과 iOS 앱 모두 계정 없이 무료로 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu is a navigation and place information service for South Korea. It is designed so screen reader users can complete the entire flow from search to directions in text, and it supports six languages: Korean, English, Spanish, French, Italian, and Japanese. Both the web and iOS apps are free, with no account required."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu es un servicio de navegación e información de lugares para Corea del Sur. Está diseñado para que quienes usan lectores de pantalla completen todo el proceso, desde la búsqueda hasta las indicaciones, en texto, y admite seis idiomas: coreano, inglés, español, francés, italiano y japonés. Tanto la web como la app de iOS son gratuitas y no requieren cuenta."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu est un service d'itinéraires et d'informations sur les lieux en Corée du Sud. Il est conçu pour que les personnes utilisant un lecteur d'écran puissent accomplir tout le parcours, de la recherche à l'itinéraire, en texte, et il prend en charge six langues : coréen, anglais, espagnol, français, italien et japonais. Le site web et l'application iOS sont gratuits, sans compte."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gildongmu è un servizio di navigazione e informazioni sui luoghi per la Corea del Sud. È progettato perché chi usa uno screen reader possa completare l'intero percorso, dalla ricerca alle indicazioni, in formato testo, e supporta sei lingue: coreano, inglese, spagnolo, francese, italiano e giapponese. Il sito web e l'app iOS sono gratuiti e non richiedono un account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンムは韓国のナビゲーションと場所情報のサービスです。スクリーンリーダーの利用者が検索から経路案内までの全過程をテキストで完結できるように設計されており、韓国語・英語・スペイン語・フランス語・イタリア語・日本語の6言語に対応しています。ウェブとiOSアプリはどちらもアカウント不要で無料です。"
+          }
+        }
+      }
+    },
+    "about.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무 소개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About Gildongmu"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acerca de Gildongmu"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos de Gildongmu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informazioni su Gildongmu"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンムについて"
+          }
+        }
+      }
+    },
     "actions.close": {
       "localizations": {
         "ko": {
@@ -1606,37 +2526,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "목적지 거리 추적"
+            "value": "실시간 길 안내"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distance to destination"
+            "value": "Live guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distancia al destino"
+            "value": "Guía en tiempo real"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distance jusqu'à la destination"
+            "value": "Guidage en temps réel"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Distanza dalla destinazione"
+            "value": "Guida in tempo reale"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "目的地までの距離トラッキング"
+            "value": "リアルタイム案内"
           }
         }
       }
@@ -1766,37 +2686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "거리 추적 시작"
+            "value": "실시간 길 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start distance tracking"
+            "value": "Start live guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar seguimiento de distancia"
+            "value": "Iniciar guía en tiempo real"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le suivi de distance"
+            "value": "Démarrer le guidage en temps réel"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia il monitoraggio della distanza"
+            "value": "Avvia la guida in tempo reale"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "距離トラッキングを開始"
+            "value": "リアルタイム案内を開始"
           }
         }
       }
@@ -1806,37 +2726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "거리 추적 중지"
+            "value": "안내 중지"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stop distance tracking"
+            "value": "Stop guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Detener seguimiento de distancia"
+            "value": "Detener guía"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Arrêter le suivi de distance"
+            "value": "Arrêter le guidage"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ferma il monitoraggio della distanza"
+            "value": "Ferma la guida"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "距離トラッキングを停止"
+            "value": "案内を停止"
           }
         }
       }
@@ -1876,7 +2796,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "直線距離基準です。実際の経路はナビアプリをご利用ください。"
+            "value": "直線距離基準です。"
           }
         }
       }
@@ -8557,6 +9477,1206 @@
           "stringUnit": {
             "state": "translated",
             "value": "対象 %1$@"
+          }
+        }
+      }
+    },
+    "guide.approx": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "about %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unos %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "environ %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "circa %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@"
+          }
+        }
+      }
+    },
+    "guide.backOnRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로로 복귀했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back on the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De vuelta en la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De retour sur l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Di nuovo sul percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路に復帰しました"
+          }
+        }
+      }
+    },
+    "guide.briefStarted": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "간략 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simple guidance started"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía simple iniciada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage simple démarré"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida semplice avviata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "簡易案内を開始しました"
+          }
+        }
+      }
+    },
+    "guide.bundle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 안내 %1$@개. %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next %1$@ instructions. %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguientes %1$@ indicaciones. %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ prochaines instructions. %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossime %1$@ indicazioni. %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "次の案内%1$@件。%2$@"
+          }
+        }
+      }
+    },
+    "guide.detailStart": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상세 안내 시작. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detailed guidance started. %1$@ instructions, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guía detallada iniciada. %1$@ indicaciones, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage détaillé démarré. %1$@ instructions, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida dettagliata avviata. %1$@ indicazioni, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細案内を開始しました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
+    "guide.detailUnavailable": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 정보를 가져오지 못해 간략 안내로 시작합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route details unavailable; starting simple guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay detalles de la ruta; se inicia la guía simple"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails de l'itinéraire indisponibles, démarrage du guidage simple"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettagli del percorso non disponibili, avvio della guida semplice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路情報を取得できないため簡易案内を開始します"
+          }
+        }
+      }
+    },
+    "guide.handoff": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지까지 직선 안내로 전환합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switching to straight-line guidance to your destination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiando a guía en línea recta hasta el destino"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passage au guidage à vol d'oiseau jusqu'à la destination"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passaggio alla guida in linea d'aria fino alla destinazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地までの直線案内に切り替えます"
+          }
+        }
+      }
+    },
+    "guide.next": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ to %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ hasta %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ jusqu'à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ fino a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで%2$@"
+          }
+        }
+      }
+    },
+    "guide.noGuidanceYet": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아직 안내가 없습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No instruction yet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay indicaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore d'instruction"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna indicazione ancora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ案内はありません"
+          }
+        }
+      }
+    },
+    "guide.offRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로에서 벗어난 것 같습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You may be off the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parece que te has salido de la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous semblez avoir quitté l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sembra che tu sia fuori percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路から外れたようです"
+          }
+        }
+      }
+    },
+    "guide.progressBundle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 거리 %1$@. 다음 안내 %2$@개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ remaining. Next %2$@ instructions"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan %1$@. Siguientes %2$@ indicaciones"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ restants. %2$@ prochaines instructions"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ rimanenti. Prossime %2$@ indicazioni"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り%1$@。次の案内%2$@件"
+          }
+        }
+      }
+    },
+    "guide.progressButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "진행 상황"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progreso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progression"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avanzamento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "進行状況"
+          }
+        }
+      }
+    },
+    "guide.progressFollowing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 거리 %1$@. %2$@까지 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ remaining. %3$@ to %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan %1$@. %3$@ hasta %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ restants. %3$@ jusqu'à %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ rimanenti. %3$@ fino a %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り%1$@。%2$@まで%3$@"
+          }
+        }
+      }
+    },
+    "guide.progressOffRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 이탈 상태. 목적지까지 직선거리 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off route. %1$@ straight-line to destination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuera de la ruta. %1$@ en línea recta hasta el destino"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hors itinéraire. %1$@ à vol d'oiseau jusqu'à la destination"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuori percorso. %1$@ in linea d'aria fino alla destinazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路から外れています。目的地まで直線距離%1$@"
+          }
+        }
+      }
+    },
+    "guide.progressUncertain": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치 확신이 낮습니다. 마지막 안내, %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location confidence is low. Last instruction, %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La confianza en la ubicación es baja. Última indicación, %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La confiance dans la position est faible. Dernière instruction, %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'affidabilità della posizione è bassa. Ultima indicazione, %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置の確度が低いです。最後の案内、%1$@"
+          }
+        }
+      }
+    },
+    "guide.reacquiring": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로상 위치를 다시 찾는 중입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-locating you on the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando de nuevo tu posición en la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche de votre position sur l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca della tua posizione sul percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路上の位置を再取得しています"
+          }
+        }
+      }
+    },
+    "guide.repeatButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 안내 반복"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repeat current instruction"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir la indicación actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répéter l'instruction actuelle"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ripeti l'indicazione attuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在の案内を繰り返す"
+          }
+        }
+      }
+    },
+    "guide.rerouteButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 다시 조회"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-query route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a consultar la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Relancer la recherche d'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca di nuovo il percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路を再検索"
+          }
+        }
+      }
+    },
+    "guide.rerouteFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 조회에 실패했습니다. 기존 경로를 유지합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route query failed. Keeping the current route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló la consulta de la ruta. Se mantiene la ruta actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la recherche d'itinéraire. L'itinéraire actuel est conservé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca del percorso non riuscita. Il percorso attuale resta attivo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路の検索に失敗しました。現在の経路を維持します"
+          }
+        }
+      }
+    },
+    "guide.resolveFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로상 위치를 확정할 수 없어 간략 안내를 유지합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not fix your position on the route; keeping simple guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo determinar tu posición en la ruta; se mantiene la guía simple"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de déterminer votre position sur l'itinéraire, le guidage simple est maintenu"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile determinare la tua posizione sul percorso, la guida semplice resta attiva"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路上の位置を確定できないため簡易案内を続けます"
+          }
+        }
+      }
+    },
+    "guide.resolvePending": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로상 위치를 확정하는 중입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding your position on the route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Determinando tu posición en la ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détermination de votre position sur l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Determinazione della tua posizione sul percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路上の位置を確定しています"
+          }
+        }
+      }
+    },
+    "guide.rough": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@쯤"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "around %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "alrededor de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "à peu près %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "all'incirca %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ほど"
+          }
+        }
+      }
+    },
+    "guide.speedSuggest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동 속도가 빨라 간략 안내가 적합합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You are moving fast; simple guidance fits better"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Te mueves rápido; la guía simple es más adecuada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous vous déplacez vite, le guidage simple convient mieux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ti stai muovendo velocemente, la guida semplice è più adatta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動速度が速いため簡易案内が適しています"
+          }
+        }
+      }
+    },
+    "guide.toBriefButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "간략 안내로 전환"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to simple guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar a guía simple"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer au guidage simple"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passa alla guida semplice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "簡易案内に切り替え"
+          }
+        }
+      }
+    },
+    "guide.toBriefDone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "간략 안내로 전환했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to simple guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiado a guía simple"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passé au guidage simple"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato alla guida semplice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "簡易案内に切り替えました"
+          }
+        }
+      }
+    },
+    "guide.toDetailButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상세 안내로 전환"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to detailed guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar a guía detallada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer au guidage détaillé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passa alla guida dettagliata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細案内に切り替え"
+          }
+        }
+      }
+    },
+    "guide.toDetailDone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "상세 안내로 전환했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to detailed guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiado a guía detallada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passé au guidage détaillé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato alla guida dettagliata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "詳細案内に切り替えました"
+          }
+        }
+      }
+    },
+    "guide.uncertain": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치 확신이 낮습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location confidence is low"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La confianza en la ubicación es baja"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La confiance dans la position est faible"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'affidabilità della posizione è bassa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置の確度が低いです"
+          }
+        }
+      }
+    },
+    "guide.uncertainRecovered": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위치 확신을 회복했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location confidence recovered"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se recuperó la confianza en la ubicación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La confiance dans la position est rétablie"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Affidabilità della posizione ripristinata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置の確度が回復しました"
+          }
+        }
+      }
+    },
+    "guide.upcoming": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 앞, %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In %1$@, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En %1$@, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans %1$@, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra %1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@先、%2$@"
           }
         }
       }
