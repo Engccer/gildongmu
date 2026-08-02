@@ -1,0 +1,23 @@
+# Gildongmu (길동무)
+
+> Gildongmu is a free navigation and place-information service for South Korea, built accessibility-first: blind and low-vision users can complete the entire flow of search, place details, and directions through a screen reader alone. Available on the web and as an iOS app, with the interface in Korean, English, Spanish, French, Italian, and Japanese. No account required.
+
+Key facts:
+
+- All information is presented as text. There is no map view; for real-time driving navigation the app hands off to Naver Map or KakaoMap.
+- Directions preview covers car, public transit, and walking routes as text briefings before departure. Walking routes offer a stair-free option.
+- Nearby information includes real-time subway arrivals, buses, late-night pediatric clinics, barrier-free tourist sites, and pedestrian infrastructure such as audible signals. Some datasets (bike share, cultural events, crowd levels) cover Seoul.
+- Station information covers facilities, first and last train times, and elevator locations for subway stations nationwide.
+- AI chat answers questions about places using live data.
+- Name-based features (place search, station information, directions to a destination) work worldwide; current-location features work only within South Korea.
+
+## Links
+
+- [Web app (Korean)](https://gildongmu.dodoplanet.space/ko)
+- [Web app (English)](https://gildongmu.dodoplanet.space/en)
+- [About and FAQ (English)](https://gildongmu.dodoplanet.space/en/about)
+- [소개와 자주 묻는 질문 (한국어)](https://gildongmu.dodoplanet.space/ko/about)
+- [iOS app on the App Store](https://apps.apple.com/kr/app/id6792234349)
+- [Command-line client on npm](https://www.npmjs.com/package/gildongmu)
+- [MCP server on npm](https://www.npmjs.com/package/gildongmu-mcp)
+- [Privacy policy](https://gildongmu.dodoplanet.space/en/privacy)
