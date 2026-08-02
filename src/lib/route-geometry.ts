@@ -119,13 +119,13 @@ export function projectOnPolyline(
     // p가 로컬 원점이므로 투영 파라미터는 -a·(b-a)/|b-a|².
     let t = len2 === 0 ? 0 : (-a.x * abx - a.y * aby) / len2;
     t = Math.max(0, Math.min(1, t));
-    let dd = d0 + (d1 - d0) * t;
-    dd = Math.max(fromD, Math.min(toD, dd));
-    // 클램프된 d에 대응하는 실제 지점까지의 거리로 perp를 계산한다.
-    const tc = (dd - d0) / (d1 - d0);
-    const px = a.x + abx * tc;
-    const py = a.y + aby * tc;
+    // ⚠ perp는 세그먼트 기하 최근접(창 클램프 전) 기준이다. 클램프 후 지점까지의
+    // 거리로 재면 창보다 앞서 걷는 정상 진행이 "수직 이탈"과 구분되지 않아,
+    // 이탈 오판과 창 기아(edge hit) 판정 붕괴를 동시에 일으킨다(리듀서 계약).
+    const px = a.x + abx * t;
+    const py = a.y + aby * t;
     const perp = Math.hypot(px, py);
+    const dd = Math.max(fromD, Math.min(toD, d0 + (d1 - d0) * t));
     if (!best || perp < best.perpMeters) best = { d: dd, perpMeters: perp };
   }
   return best;
