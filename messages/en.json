@@ -625,7 +625,8 @@
     "progressOffRoute": "Off route. {distance} straight-line to destination",
     "approx": "about {distance}",
     "rough": "around {distance}",
-    "noGuidanceYet": "No instruction yet"
+    "noGuidanceYet": "No instruction yet",
+    "rerouteBusy": "Re-query route, in progress"
   },
   "offline": {
     "heading": "You are offline",

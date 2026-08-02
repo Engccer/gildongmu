@@ -625,7 +625,8 @@
     "progressOffRoute": "経路から外れています。目的地まで直線距離{distance}",
     "approx": "約{distance}",
     "rough": "{distance}ほど",
-    "noGuidanceYet": "まだ案内はありません"
+    "noGuidanceYet": "まだ案内はありません",
+    "rerouteBusy": "経路を再取得、取得中"
   },
   "offline": {
     "heading": "オフラインです",

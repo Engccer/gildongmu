@@ -625,7 +625,8 @@
     "progressOffRoute": "Hors itinéraire. {distance} à vol d'oiseau jusqu'à la destination",
     "approx": "environ {distance}",
     "rough": "à peu près {distance}",
-    "noGuidanceYet": "Pas encore d'instruction"
+    "noGuidanceYet": "Pas encore d'instruction",
+    "rerouteBusy": "Recalculer l'itinéraire, en cours"
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

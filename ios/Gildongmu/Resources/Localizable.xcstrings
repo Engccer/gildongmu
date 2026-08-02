@@ -10161,6 +10161,46 @@
         }
       }
     },
+    "guide.rerouteBusy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 다시 조회, 조회 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-query route, in progress"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconsultar ruta, en curso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recalculer l'itinéraire, en cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricalcolo percorso, in corso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路を再取得、取得中"
+          }
+        }
+      }
+    },
     "guide.rerouteButton": {
       "localizations": {
         "ko": {

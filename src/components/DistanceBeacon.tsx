@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouteGuide } from "@/hooks/useRouteGuide";
 
@@ -38,6 +38,20 @@ export function DistanceBeacon({
   const [open, setOpen] = useState(false);
   const guide = useRouteGuide(dest);
 
+  // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
+  // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),
+  // 그 버튼에 포커스가 있었다면 페인트 전에 항상 존재하는 시작/중지 토글로 선점
+  // 이동한다(useRevealMore의 useLayoutEffect 재포커스 선례). 플래그는 onFocus로
+  // 세운다 — 노드 제거 시 blur가 오지 않는 경로까지 덮는다(a11y 감사 HIGH).
+  const stopToggleRef = useRef<HTMLButtonElement>(null);
+  const rerouteFocusedRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!guide.offRoute && rerouteFocusedRef.current) {
+      rerouteFocusedRef.current = false;
+      stopToggleRef.current?.focus();
+    }
+  }, [guide.offRoute]);
+
   if (!guide.supported) return null;
 
   const tracking = guide.status === "tracking";
@@ -72,10 +86,12 @@ export function DistanceBeacon({
           )}
           <p className="mt-0.5 text-xs text-muted">{t("screenHint")}</p>
           <div className="flex flex-wrap gap-2">
+            {/* 상태 신호는 라벨 교체가 전부다 — aria-pressed 병기는 "안내 중지,
+                선택됨"처럼 모호한 이중 상태를 만든다(W3C APG, a11y 감사). */}
             <button
+              ref={stopToggleRef}
               type="button"
               onClick={() => (tracking ? guide.stop() : guide.start())}
-              aria-pressed={tracking}
               className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
             >
               {tracking ? t("stop") : t("start")}
@@ -111,12 +127,20 @@ export function DistanceBeacon({
                   <button
                     type="button"
                     onClick={guide.requestReroute}
+                    onFocus={() => {
+                      rerouteFocusedRef.current = true;
+                    }}
+                    onBlur={() => {
+                      rerouteFocusedRef.current = false;
+                    }}
                     // 조회 중 비활성은 aria-disabled + 핸들러 가드 — disabled는 포커스를
-                    // 떨궈 SR 사용자가 맥락을 잃는다.
+                    // 떨궈 SR 사용자가 맥락을 잃는다. 진행 신호는 라벨 교체가 정본
+                    // (DirectionsView "현재 위치 사용" 관례 — 별도 announce 중복 금지).
                     aria-disabled={guide.rerouting}
+                    aria-busy={guide.rerouting}
                     className={controlClass}
                   >
-                    {tGuide("rerouteButton")}
+                    {guide.rerouting ? tGuide("rerouteBusy") : tGuide("rerouteButton")}
                   </button>
                 )}
               </>

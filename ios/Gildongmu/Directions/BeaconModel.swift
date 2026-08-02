@@ -98,8 +98,11 @@ final class BeaconModel {
     /// 시작 경로 조회의 세대 토큰. defer가 stale task에서 새 세션의 awaitingRoute를
     /// 조기 해제하는 레이스 차단(독립 리뷰 MEDIUM — 빠른 목적지 변경 시).
     private var routeFetchToken = 0
-    /// 상세 모드의 마지막 수용 fix 좌표(진행 상황 버튼의 이탈 직선거리용).
+    /// 마지막 수용 fix 좌표·시각(진행 상황 버튼의 직선거리·신선도 게이트용, 양 모드 기록).
     private var lastFixCoord: (lat: Double, lng: Double)?
+    private var lastFixCoordAt: Double?
+    /// 재조회 진행 중 — 시트가 버튼 라벨 교체(rerouteBusy)에 쓴다(라벨이 곧 상태 신호).
+    private(set) var isRerouting = false
     /// 상세 모드 무이벤트 fix의 하트비트 tick 스로틀 기준(웹 TICK_THROTTLE 동형 3초).
     private var lastDetailTickAt: Double?
 
@@ -307,7 +310,9 @@ final class BeaconModel {
         pendingRecovery = nil
         resolvePendingSince = nil
         lastFixCoord = nil
+        lastFixCoordAt = nil
         lastDetailTickAt = nil
+        isRerouting = false
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
     }
@@ -375,6 +380,8 @@ final class BeaconModel {
         let now = ProcessInfo.processInfo.systemUptime
         lastFixAt = now
         lastStaleNoticeAt = nil
+        lastFixCoord = (fix.lat, fix.lng)
+        lastFixCoordAt = now
 
         let stepped = beaconStep(
             state: beaconState,
@@ -413,6 +420,7 @@ final class BeaconModel {
         lastFixAt = now
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
+        lastFixCoordAt = now
 
         let out = guideStep(
             state: state,
@@ -480,7 +488,8 @@ final class BeaconModel {
             announce(statusText)
         case .speedSuggest:
             // 자동 전환은 하지 않는다(스펙 §2 모드 결정 원칙) — 해법은 시트 전환 버튼.
-            announce(appLocalized("guide.speedSuggest"))
+            statusText = appLocalized("guide.speedSuggest")
+            announce(statusText)
         }
     }
 
@@ -513,26 +522,36 @@ final class BeaconModel {
 
     // MARK: - 시트 컨트롤 (반복·진행 상황·전환·재조회)
 
+    /// 낡은 fix로는 직선거리를 단정하지 않는다(3-state — 웹 PROGRESS_FIX_MAX_AGE_S 미러).
+    private func freshStraightLineMeters() -> Double? {
+        guard let c = lastFixCoord, let at = lastFixCoordAt, let dest,
+              uptimeNow - at <= 15
+        else { return nil }
+        return haversineMeters(lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng)
+    }
+
     func repeatLastGuidance() {
-        announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"))
+        announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"), highPriority: true)
     }
 
     func announceProgress() {
+        let text: String
         if mode == .detail, let route = guideRoute, let state = guideState {
             // 이탈 상태의 직선거리(스펙 §4.2): 마지막 fix→목적지. 경로 잔여는 이탈 중 거짓.
-            let straight: Double? = {
-                guard state.phase == .offRoute, let c = lastFixCoord, let dest else { return nil }
-                return haversineMeters(lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng)
-            }()
-            announce(GuideText.progress(
+            let straight = state.phase == .offRoute ? freshStraightLineMeters() : nil
+            text = GuideText.progress(
                 route: route, state: state,
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
                 straightLineMeters: straight
-            ))
+            )
+        } else if let straight = freshStraightLineMeters() {
+            // 간략: 목적지 직선거리 하나(웹과 동일 문구 — 반복 버튼과 역할이 갈라진다).
+            text = appLocalized("beacon.first", formatDistance(Int(straight.rounded())))
         } else {
-            // 간략: 마지막 거리 통지가 곧 진행 상황이다(별도 수치 재조합 금지).
-            announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"))
+            text = lastGuidance ?? appLocalized("guide.noGuidanceYet")
         }
+        statusText = text  // 비-VO 사용자에게도 보여야 한다(2.1(a) 계약)
+        announce(text, highPriority: true)
     }
 
     /// 상세⇄간략 전환(추적 유지, 스펙 §6). 경로 미보유 세션에선 UI가 버튼을 숨긴다.
@@ -545,12 +564,12 @@ final class BeaconModel {
             resolvePendingSince = nil
             let text = appLocalized("guide.toBriefDone")
             statusText = text
-            announce(text)
+            announce(text, highPriority: true)
         } else {
             resolvePendingSince = uptimeNow
             let text = appLocalized("guide.resolvePending")
             statusText = text
-            announce(text)
+            announce(text, highPriority: true)
         }
     }
 
@@ -558,6 +577,7 @@ final class BeaconModel {
     func requestReroute() {
         guard isTracking, mode == .detail, offRoute, !rerouteInFlight else { return }
         rerouteInFlight = true
+        isRerouting = true
         rerouteToken += 1
         let token = rerouteToken
         Task { [weak self] in
@@ -566,7 +586,10 @@ final class BeaconModel {
     }
 
     private func performReroute(token: Int) async {
-        defer { rerouteInFlight = false }
+        defer {
+            rerouteInFlight = false
+            isRerouting = false
+        }
         guard let dest else { return }
         do {
             let origin = try await LocationService.shared.currentCoordinate()
@@ -583,7 +606,8 @@ final class BeaconModel {
                       GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
                   })
             else {
-                announce(appLocalized("guide.rerouteFailed"))
+                statusText = appLocalized("guide.rerouteFailed")
+                announce(statusText, highPriority: true)
                 return
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
@@ -597,7 +621,8 @@ final class BeaconModel {
             announce(text)
         } catch {
             guard token == rerouteToken, isTracking else { return }
-            announce(appLocalized("guide.rerouteFailed"))
+            statusText = appLocalized("guide.rerouteFailed")
+            announce(statusText, highPriority: true)
         }
     }
 
@@ -694,8 +719,13 @@ final class BeaconModel {
         }
     }
 
-    private func announce(_ message: String) {
+    /// 통지 단일 경로(spokenUnits 경유). 버튼 활성화의 **직접 응답**만 `.high`로 —
+    /// 기본 우선순위 통지는 VO 활성화 처리에 잠식되어 무발화될 수 있다(헌장 §5,
+    /// HoldDictationButton 선례). 자동 통지는 기본 유지(비요청 interrupt 금지).
+    private func announce(_ message: String, highPriority: Bool = false) {
         guard !outputSuppressed else { return }
-        AccessibilityNotification.Announcement(spokenUnits(message)).post()
+        var attributed = AttributedString(spokenUnits(message))
+        if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
+        AccessibilityNotification.Announcement(attributed).post()
     }
 }
