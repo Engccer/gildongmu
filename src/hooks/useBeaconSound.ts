@@ -52,9 +52,10 @@ const VIBRATE: Partial<Record<GuideSound, number[]>> = {
   farther: [100],
   nearby: [80, 60, 80, 60, 80],
   warning: [150, 80, 150],
-  // 시작·종료는 동일한 긴 진동(위원장 판정 2026-08-03, iOS CoreHaptics 0.5초 미러).
-  start: [500],
-  stop: [500],
+  // 시작·종료는 효과음(1.3초 스웰)과 동기한 긴 진동. Vibration API는 세기 조절이
+  // 없어 펄스 폭으로 스웰을 근사한다(iOS는 CoreHaptics 세기 곡선이 정본).
+  start: [40, 90, 70, 70, 110, 50, 330, 50, 110, 70, 70, 90, 40],
+  stop: [40, 90, 70, 70, 110, 50, 330, 50, 110, 70, 70, 90, 40],
 };
 
 function vibrate(sound: GuideSound) {
