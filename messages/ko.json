@@ -584,7 +584,7 @@
   },
   "beacon": {
     "heading": "실시간 길 안내",
-    "start": "실시간 길 안내 시작",
+    "start": "안내 시작",
     "stop": "안내 중지",
     "first": "목적지까지 약 {distance}",
     "closer": "{distance}, 가까워지는 중",

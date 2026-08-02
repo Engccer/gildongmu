@@ -2686,37 +2686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 길 안내 시작"
+            "value": "안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start live guidance"
+            "value": "Start guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar guía en tiempo real"
+            "value": "Iniciar guía"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage en temps réel"
+            "value": "Démarrer le guidage"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia la guida in tempo reale"
+            "value": "Avvia guida"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リアルタイム案内を開始"
+            "value": "案内開始"
           }
         }
       }

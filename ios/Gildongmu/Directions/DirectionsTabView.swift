@@ -478,9 +478,9 @@ struct DirectionsTabView: View {
                                 EmptyView()
                             }
                         }
-                        Text(appLocalized("beacon.straightLineNote"))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                        // 직선거리 주석은 인라인(시작 전)에 두지 않는다 — 상세 모드로
+                        // 열리면 거짓이 되고, 참인 곳(간략 추적 중)은 시트가 보여준다
+                        // (위원장 실기기 판정 2026-08-03).
                     } header: {
                         // 무엇을 추적 중인지가 화면에 있어야 한다. 웹은 장소 상세 안이라
                         // 바로 위 heading이 장소명이었지만 길찾기 결과엔 그 맥락이 없다.

@@ -584,7 +584,7 @@
   },
   "beacon": {
     "heading": "Guida in tempo reale",
-    "start": "Avvia la guida in tempo reale",
+    "start": "Avvia guida",
     "stop": "Ferma la guida",
     "first": "Circa {distance} alla destinazione",
     "closer": "{distance}, ti stai avvicinando",
