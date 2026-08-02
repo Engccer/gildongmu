@@ -34,21 +34,27 @@ const STEP_FREE_NOTICE: Record<Exclude<StepFreeStatus, "applied">, string> = {
     "계단 회피 경로를 조회하지 못했습니다. 일반 경로를 안내하며 계단이 포함될 수 있습니다.",
 };
 
-export function annotateAudioSignals(briefing: WalkRouteBriefing): WalkRouteBriefing {
+export function annotateAudioSignals(
+  briefing: WalkRouteBriefing,
+  keepGeometry = false,
+): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
     const { coord, pathCoords, ...rest } = step;
     // 판정 후보점: 카카오 폴리라인 전체(재캘리브레이션 2026-07-29 — 첫 점만으로는
     // 진입 전 시작점이 신호기와 멀어 미탐) 또는 Tmap 단일 Point.
     const candidates = pathCoords ?? (coord ? [coord] : []);
-    if (
+    const annotated =
       candidates.length > 0 &&
       rest.description.includes("횡단보도") &&
       !MERGED_CROSSWALK.test(rest.description) &&
       candidates.some((c) => hasAudioSignalNear(c.lat, c.lng, MATCH_RADIUS_METERS))
-    ) {
-      return { ...rest, description: `${rest.description}, ${ANNOTATION}` };
-    }
-    return rest;
+        ? { ...rest, description: `${rest.description}, ${ANNOTATION}` }
+        : rest;
+    // 기하 보존(실시간 길 안내 옵트인): 좌표를 pathCoords 한 형태로 통일해
+    // 소비자가 카카오·Tmap 두 모양을 다루지 않게 한다. 기본 경로는 종전대로 전량 제거.
+    return keepGeometry && candidates.length > 0
+      ? { ...annotated, pathCoords: candidates }
+      : annotated;
   });
   return { ...briefing, steps };
 }
@@ -70,11 +76,15 @@ async function fetchPrimaryOrFallback(params: {
   origin: Coord;
   dest: Coord;
   accessible: boolean;
+  noStore: boolean;
 }): Promise<{ briefing: WalkRouteBriefing | null; via: "kakao" | "tmap" } | null> {
-  const { origin, dest, accessible } = params;
+  const { origin, dest, accessible, noStore } = params;
   if (hasKakaoKey()) {
     try {
-      return { briefing: await getKakaoWalkBriefing({ origin, dest, accessible }), via: "kakao" };
+      return {
+        briefing: await getKakaoWalkBriefing({ origin, dest, accessible, noStore }),
+        via: "kakao",
+      };
     } catch (e) {
       if (!hasTmapKey()) throw e;
       logRouteFallback("[walk-route] 카카오 실패, Tmap 폴백:", origin, dest, e);
@@ -91,33 +101,39 @@ export async function getWalkRoute(params: {
   origin: Coord;
   dest: Coord;
   accessible?: boolean;
+  /** 스텝 폴리라인 보존(실시간 길 안내 옵트인, 스펙 2026-08-03 §7.2). upstream fetch도 no-store. */
+  includeGeometry?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible = false } = params;
+  const { origin, dest, accessible = false, includeGeometry = false } = params;
+  const annotate = (b: WalkRouteBriefing) => annotateAudioSignals(b, includeGeometry);
 
   if (!accessible) {
-    const r = await fetchPrimaryOrFallback({ origin, dest, accessible: false });
-    return r?.briefing ? annotateAudioSignals(r.briefing) : null;
+    const r = await fetchPrimaryOrFallback({
+      origin, dest, accessible: false, noStore: includeGeometry,
+    });
+    return r?.briefing ? annotate(r.briefing) : null;
   }
 
   // 계단 회피: 카카오 전용. Tmap 경유(폴백·단독)는 동등 모드가 없어 unavailable.
-  const r = await fetchPrimaryOrFallback({ origin, dest, accessible: true });
+  const r = await fetchPrimaryOrFallback({
+    origin, dest, accessible: true, noStore: includeGeometry,
+  });
   if (!r) return null;
   if (r.via === "tmap") {
-    return r.briefing ? withStepFree(annotateAudioSignals(r.briefing), "unavailable") : null;
+    return r.briefing ? withStepFree(annotate(r.briefing), "unavailable") : null;
   }
   if (r.briefing) {
     // applied fail-closed: ACCESSIBLE 응답에 계단 문구가 남아 있으면 안전 선언 금지.
     const hasStairs = r.briefing.steps.some((s) => s.description.includes("계단"));
-    return withStepFree(
-      annotateAudioSignals(r.briefing),
-      hasStairs ? "no_stepfree_route" : "applied",
-    );
+    return withStepFree(annotate(r.briefing), hasStairs ? "no_stepfree_route" : "applied");
   }
   // 무계단 경로 부재(ROUTE_RESULT_NOT_FOUND): 기본 모드 재호출(같은 fetch 캐시 공유).
-  const base = await fetchPrimaryOrFallback({ origin, dest, accessible: false });
+  const base = await fetchPrimaryOrFallback({
+    origin, dest, accessible: false, noStore: includeGeometry,
+  });
   if (!base?.briefing) return null;
   return withStepFree(
-    annotateAudioSignals(base.briefing),
+    annotate(base.briefing),
     base.via === "tmap" ? "unavailable" : "no_stepfree_route",
   );
 }

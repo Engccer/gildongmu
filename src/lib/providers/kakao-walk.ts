@@ -113,8 +113,14 @@ export async function getKakaoWalkBriefing(params: {
   origin: Coord;
   dest: Coord;
   accessible?: boolean;
+  /**
+   * 실시간 길 안내(기하 포함) 요청은 서버 캐시를 우회한다(스펙 2026-08-03 §7.2):
+   * 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님"
+   * 약관 판단과 모순된다. 비기하 요청의 기존 캐시 계약은 불변.
+   */
+  noStore?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible } = params;
+  const { origin, dest, accessible, noStore } = params;
   const url = new URL(ENDPOINT);
   url.searchParams.set("start_x", String(roundCoord(origin.lng, 4)));
   url.searchParams.set("start_y", String(roundCoord(origin.lat, 4)));
@@ -125,7 +131,7 @@ export async function getKakaoWalkBriefing(params: {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY ?? ""}` },
     signal: AbortSignal.timeout(8_000),
     // route_mode가 URL에 포함되어 모드별 캐시가 자연 분리된다(spec §캐시).
-    next: { revalidate: 3600 },
+    ...(noStore ? { cache: "no-store" as const } : { next: { revalidate: 3600 } }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
