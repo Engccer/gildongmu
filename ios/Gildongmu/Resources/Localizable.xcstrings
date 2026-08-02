@@ -15601,46 +15601,6 @@
         }
       }
     },
-    "ios.unit.spokenKilometers": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "킬로미터"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kilometers"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kilómetros"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "kilomètres"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "chilometri"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キロメートル"
-          }
-        }
-      }
-    },
     "ios.unit.spokenMeters": {
       "localizations": {
         "ko": {

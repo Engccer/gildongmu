@@ -347,10 +347,8 @@ const m = (n: number): string => `${Math.round(n)}m`;
 export const dist = (n: number): string => {
   const rounded = Math.round(n);
   if (rounded < 1000) return `${rounded}m`;
-  const snapped = Math.round(n / 100) * 100;
-  const km = Math.floor(snapped / 1000);
-  const rest = snapped % 1000;
-  return rest === 0 ? `${km}km` : `${km}km ${rest}m`;
+  // 1km 이상은 소수 km(위원장 지시 2026-08-02, 웹 formatDistance 미러).
+  return `${rounded / 1000}km`;
 };
 
 const COMPASS_KO: Record<Bearing, string> = {

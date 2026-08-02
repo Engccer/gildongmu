@@ -19,9 +19,7 @@ func joinText(_ parts: String?...) -> String {
 /// `formatDistance` 원문을 유지하고 이 결과는 낭독 채널(라벨·통지)에만 쓴다.
 @MainActor
 func spokenUnits(_ text: String) -> String {
-    spokenDistanceUnits(text,
-        meters: appLocalized("ios.unit.spokenMeters"),
-        kilometers: appLocalized("ios.unit.spokenKilometers"))
+    spokenDistanceUnits(text, meters: appLocalized("ios.unit.spokenMeters"))
 }
 
 /// 거리 표기가 든 행 텍스트: 시각은 원문, 낭독은 단위 풀어쓰기.

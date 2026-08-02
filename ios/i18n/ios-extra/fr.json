@@ -224,8 +224,7 @@
       "stopped": "Suivi de distance arrêté."
     },
     "unit": {
-      "spokenMeters": "mètres",
-      "spokenKilometers": "kilomètres"
+      "spokenMeters": "mètres"
     }
   }
 }

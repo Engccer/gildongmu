@@ -224,8 +224,7 @@
       "stopped": "距離の追跡を停止しました。"
     },
     "unit": {
-      "spokenMeters": "メートル",
-      "spokenKilometers": "キロメートル"
+      "spokenMeters": "メートル"
     }
   }
 }

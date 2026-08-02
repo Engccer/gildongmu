@@ -12,10 +12,11 @@ import Foundation
 /// 1,999m에서 나머지가 1,000으로 올라가 "1km 1000m"이 된다.
 public func formatDistance(_ meters: Int) -> String {
     if meters < 1000 { return "\(meters)m" }
-    let snapped = Int((Double(meters) / 100).rounded()) * 100
-    let km = snapped / 1000
-    let rest = snapped % 1000
-    return rest == 0 ? "\(km)km" : "\(km)km \(rest)m"
+    // 1km 이상은 소수 km(위원장 지시 2026-08-02: 나눠쓰기 폐기, 원값 그대로
+    // 후행 0 없이: 1.1km·10.6km·6.285km). ⚠ Swift의 String(Double)은 정수에
+    // "1.0"을 남기므로 1,000의 배수만 정수 표기로 가른다.
+    if meters % 1000 == 0 { return "\(meters / 1000)km" }
+    return "\(Double(meters) / 1000)km"
 }
 
 /// 첫 non-nil·non-empty 값 반환(웹 `||` 폴백 동형). 빈 문자열 조각이 트레일링 쉼표로
@@ -27,26 +28,21 @@ func firstNonEmpty(_ values: String?...) -> String? {
     return nil
 }
 
-/// 낭독 전용: 거리 단위 약어를 로케일 단어로 풀어 쓴다(순수 변환, 단어는 주입).
+/// 낭독 전용: 미터 약어를 로케일 단어로 풀어 쓴다(순수 변환, 단어는 주입).
 ///
 /// iOS VoiceOver가 숫자 뒤 "m"을 meters가 아니라 **minutes로 낭독**하는 시스템
-/// 버그 대응(실기기 관찰 2026-08-02: km는 kilometers로 정확히 읽으면서 m만 오독).
-/// 시각 표기는 `formatDistance` 원문("1km 200m")을 유지하고, 이 결과는
+/// 버그 대응. 시각 표기는 `formatDistance` 원문("900m")을 유지하고, 이 결과는
 /// `accessibilityLabel`에만 쓴다.
 ///
-/// ⚠ km을 먼저 치환한다. m부터 바꾸면 "1km"의 매칭 여부를 패턴이 감당해야 해
-/// 규칙이 복잡해진다. 숫자 바로 뒤의 단위만 바꾸므로 서버 안내문 속 일반 단어
-/// ("이동" 등)는 건드리지 않는다.
-public func spokenDistanceUnits(_ text: String, meters: String, kilometers: String) -> String {
-    var out = text
+/// ⚠ **km는 치환하지 않는다**(위원장 실기기 확인 2026-08-02: "10.6km"류 소수
+/// 포함 km 표기를 VO가 오류 없이 kilometers로 발화한다. 오독은 m뿐이다).
+public func spokenDistanceUnits(_ text: String, meters: String) -> String {
     // ⚠ `\b`를 쓰지 않는다. ICU는 한글·한자를 word character로 보므로 "35m입니다"
     // 같은 CJK 직결 꼴에서 경계가 성립하지 않아 치환이 조용히 no-op이 된다
     // (리뷰 실측 2026-08-02: whereAmI 산문 "약 {distance}입니다"가 정확히 이 꼴).
     // 부정 전방탐색으로 "라틴 문자가 뒤따르지 않음"만 요구하면 "markets"·"mm"은
-    // 계속 막히고 CJK·문장부호·공백·문자열 끝은 풀린다.
-    out = out.replacingOccurrences(
-        of: #"(\d)km(?![A-Za-z])"#, with: "$1 \(kilometers)", options: .regularExpression)
-    out = out.replacingOccurrences(
+    // 계속 막히고 CJK·문장부호·공백·문자열 끝은 풀린다. "10.6km"의 m은 앞이
+    // k라 애초에 매칭되지 않는다.
+    text.replacingOccurrences(
         of: #"(\d)m(?![A-Za-z])"#, with: "$1 \(meters)", options: .regularExpression)
-    return out
 }

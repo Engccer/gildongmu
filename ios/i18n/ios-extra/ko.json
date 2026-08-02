@@ -224,8 +224,7 @@
       "stopped": "거리 추적을 중지했습니다."
     },
     "unit": {
-      "spokenMeters": "미터",
-      "spokenKilometers": "킬로미터"
+      "spokenMeters": "미터"
     }
   }
 }
