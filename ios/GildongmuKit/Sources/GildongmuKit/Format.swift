@@ -39,9 +39,14 @@ func firstNonEmpty(_ values: String?...) -> String? {
 /// ("이동" 등)는 건드리지 않는다.
 public func spokenDistanceUnits(_ text: String, meters: String, kilometers: String) -> String {
     var out = text
+    // ⚠ `\b`를 쓰지 않는다. ICU는 한글·한자를 word character로 보므로 "35m입니다"
+    // 같은 CJK 직결 꼴에서 경계가 성립하지 않아 치환이 조용히 no-op이 된다
+    // (리뷰 실측 2026-08-02: whereAmI 산문 "약 {distance}입니다"가 정확히 이 꼴).
+    // 부정 전방탐색으로 "라틴 문자가 뒤따르지 않음"만 요구하면 "markets"·"mm"은
+    // 계속 막히고 CJK·문장부호·공백·문자열 끝은 풀린다.
     out = out.replacingOccurrences(
-        of: #"(\d)km\b"#, with: "$1 \(kilometers)", options: .regularExpression)
+        of: #"(\d)km(?![A-Za-z])"#, with: "$1 \(kilometers)", options: .regularExpression)
     out = out.replacingOccurrences(
-        of: #"(\d)m\b"#, with: "$1 \(meters)", options: .regularExpression)
+        of: #"(\d)m(?![A-Za-z])"#, with: "$1 \(meters)", options: .regularExpression)
     return out
 }

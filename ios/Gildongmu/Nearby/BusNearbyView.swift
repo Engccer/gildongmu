@@ -50,7 +50,7 @@ struct BusNearbyView: View {
                     ForEach(stops, id: \.nodeId) { stop in
                         Section {
                             // 정류소명만 heading(웹 h4 규칙). 표지판 번호·거리는 같은 줄에 흡수.
-                            Text(joinText(stop.name, stop.stopNo, "\(stop.distanceMeters)m"))
+                            distanceText(joinText(stop.name, stop.stopNo, formatDistance(stop.distanceMeters)))
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성(nodeId)과 같은 값.
                                 .accessibilityFocused($focusedStop, equals: stop.nodeId)
@@ -86,7 +86,7 @@ struct BusNearbyView: View {
             .nearbyRefreshable { await model.load(force: true) }
             .nearbyFocusOnLoad(
                 id: firstStopID, lander: lander, proxy: proxy,
-                landed: { focusedStop == $0 },
+                current: { focusedStop },
                 apply: { focusedStop = $0 })
         }
     }

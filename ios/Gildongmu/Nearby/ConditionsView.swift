@@ -147,7 +147,7 @@ struct ConditionsView: View {
             .nearbyRefreshable { await model.load(force: true) }
             .nearbyFocusOnLoad(
                 id: loadedAnchorID, lander: lander, proxy: proxy,
-                landed: { focusedSection == $0 },
+                current: { focusedSection },
                 apply: { focusedSection = $0 })
         }
     }

@@ -109,7 +109,10 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
             } description: {
                 Text(appLocalized("ios.common.geoDeniedDesc"))
             } actions: {
+                // 기본 스타일은 텍스트 높이(실측 18pt)라 터치 타깃 44pt 미달(리뷰 M-1)
                 Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
             }
         // 권한은 있으나 "정확한 위치"가 꺼진 상태. denied와 카피를 공유하지 않는다 —
         // 켜야 할 스위치가 다르고, 이걸 뭉개면 사용자가 이미 켜 둔 권한을 다시 찾는다.
@@ -120,6 +123,8 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
                 Text(appLocalized("ios.common.geoReducedDesc"))
             } actions: {
                 Button(appLocalized("ios.common.openSettings")) { openAppSettings() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
             }
         case .outOfCoverage:
             ContentUnavailableView(appLocalized("ios.common.outOfCoverage"), systemImage: "map")
@@ -152,12 +157,22 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
         }
     }
 
+    /// 제목·설명의 거리 표기를 낭독에서 풀어 쓴다(지하철 최근접 emptyTitle이 대상:
+    /// 같은 문장의 통지는 변환되는데 화면만 약어면 둘이 어긋난다, 리뷰 I-2).
+    /// 거리 없는 카피에는 no-op이라 전 오버레이 일괄 적용이 무해하다.
     @ViewBuilder private func copyView(_ copy: NearbyOverlayCopy) -> some View {
         if let description = copy.description {
-            ContentUnavailableView(copy.title, systemImage: copy.systemImage,
-                description: Text(description))
+            ContentUnavailableView {
+                Label(copy.title, systemImage: copy.systemImage)
+                    .accessibilityLabel(Text(spokenUnits(copy.title)))
+            } description: {
+                Text(description).accessibilityLabel(Text(spokenUnits(description)))
+            }
         } else {
-            ContentUnavailableView(copy.title, systemImage: copy.systemImage)
+            ContentUnavailableView {
+                Label(copy.title, systemImage: copy.systemImage)
+                    .accessibilityLabel(Text(spokenUnits(copy.title)))
+            }
         }
     }
 }

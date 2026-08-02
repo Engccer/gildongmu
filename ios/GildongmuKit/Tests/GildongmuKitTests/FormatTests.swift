@@ -80,4 +80,13 @@ private let distanceCases: [(Int, String)] = [
         #expect(spoken("교차로에서 우회전 후 명일로를 따라 244m 이동")
                 == "교차로에서 우회전 후 명일로를 따라 244 미터 이동")
     }
+
+    /// **CJK 직결 꼴이 핵심 케이스다.** ICU `\b`는 한글을 word character로 봐서
+    /// "35m입니다"에서 경계가 성립하지 않는다. `\b` 회귀 시 이 테스트가 잡는다.
+    @Test func expandsWhenCJKFollowsImmediately() {
+        #expect(spoken("약 35m입니다.") == "약 35 미터입니다.")
+        #expect(spoken("약 5m에 있습니다") == "약 5 미터에 있습니다")
+        #expect(spoken("3km입니다") == "3 킬로미터입니다")
+        #expect(spoken("半径300m以内") == "半径300 미터以内")
+    }
 }

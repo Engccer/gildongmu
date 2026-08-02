@@ -66,7 +66,7 @@ struct BikeNearbyView: View {
             .nearbyRefreshable { await model.load(force: true) }
             .nearbyFocusOnLoad(
                 id: firstStationID, lander: lander, proxy: proxy,
-                landed: { focusedStation == $0 },
+                current: { focusedStation },
                 apply: { focusedStation = $0 })
         }
     }

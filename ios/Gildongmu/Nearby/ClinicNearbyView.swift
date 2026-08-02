@@ -122,7 +122,7 @@ struct ClinicNearbyView: View {
             }
             .nearbyFocusOnLoad(
                 id: firstRowID, lander: lander, proxy: proxy,
-                landed: { focusedClinicID == $0 },
+                current: { focusedClinicID },
                 apply: { focusedClinicID = $0 })
         }
         .navigationTitle(appLocalized("ios.nearby.clinic"))

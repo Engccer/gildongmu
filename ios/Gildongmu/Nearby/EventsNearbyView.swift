@@ -87,7 +87,7 @@ struct EventsNearbyView: View {
             }
             .nearbyFocusOnLoad(
                 id: firstRowID, lander: lander, proxy: proxy,
-                landed: { focusedEventID == $0 },
+                current: { focusedEventID },
                 apply: { focusedEventID = $0 })
         }
         .navigationTitle(appLocalized("ios.nearby.events"))
