@@ -599,7 +599,8 @@
     "carHeading": "Guidage en voiture",
     "briefGuideStart": "Démarrer le guidage simple",
     "stopped": "Guidage en temps réel arrêté",
-    "guideStart": "Démarrer le guidage en temps réel"
+    "guideStart": "Démarrer le guidage en temps réel",
+    "transitHeading": "Guidage transports"
   },
   "guide": {
     "briefStarted": "Guidage simple démarré",
@@ -810,6 +811,7 @@
     "lastUpdated": "Dernière mise à jour {time}",
     "stationCountAbout": "Environ {count} arrêts",
     "waitingLabel": "Choisissez votre véhicule",
-    "noCandidates": "Aucun véhicule en approche pour le moment"
+    "noCandidates": "Aucun véhicule en approche pour le moment",
+    "bound": "Direction {dest}"
   }
 }

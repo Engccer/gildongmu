@@ -354,7 +354,7 @@ export function terminatesBeforeAlight(
 // === 상태 머신 ===
 
 /** 세션 시작 상태 — legIndex 0의 waiting. 시작 통지는 오케스트레이터 몫. */
-export function initTransitGuide(route: TransitGuideRoute, now: number): TransitGuideState {
+export function initTransitGuide(route: TransitGuideRoute, _now: number): TransitGuideState {
   return {
     legIndex: 0,
     phase: "waiting",
@@ -486,7 +486,7 @@ function handlePoll(
     return { state, event: null };
   }
 
-  let next: TransitGuideState = { ...state, lastSeq: input.seq, pollCount: state.pollCount + 1 };
+  const next: TransitGuideState = { ...state, lastSeq: input.seq, pollCount: state.pollCount + 1 };
   let event: TransitGuideEvent | null = null;
 
   // 폴링 캡(§7): 도달 시 주기 강등을 1회 알린다(조용한 사망 금지).

@@ -599,7 +599,8 @@
     "carHeading": "Guida in auto",
     "briefGuideStart": "Avvia guida semplice",
     "stopped": "Guida in tempo reale interrotta",
-    "guideStart": "Avvia guida in tempo reale"
+    "guideStart": "Avvia guida in tempo reale",
+    "transitHeading": "Guida mezzi pubblici"
   },
   "guide": {
     "briefStarted": "Guida semplice avviata",
@@ -810,6 +811,7 @@
     "lastUpdated": "Ultimo aggiornamento {time}",
     "stationCountAbout": "Circa {count} fermate",
     "waitingLabel": "Scegli il tuo veicolo",
-    "noCandidates": "Ancora nessun veicolo in arrivo"
+    "noCandidates": "Ancora nessun veicolo in arrivo",
+    "bound": "Direzione {dest}"
   }
 }

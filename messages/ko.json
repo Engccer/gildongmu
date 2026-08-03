@@ -599,7 +599,8 @@
     "carHeading": "자동차 안내",
     "briefGuideStart": "간략 안내 시작",
     "stopped": "실시간 안내를 중지했습니다",
-    "guideStart": "실시간 길 안내 시작"
+    "guideStart": "실시간 길 안내 시작",
+    "transitHeading": "대중교통 안내"
   },
   "guide": {
     "briefStarted": "간략 안내 시작",
@@ -810,6 +811,7 @@
     "lastUpdated": "마지막 갱신 {time}",
     "stationCountAbout": "약 {count}개 정거장",
     "waitingLabel": "탑승할 차량을 선택하세요",
-    "noCandidates": "도착 예정 차량이 아직 없습니다"
+    "noCandidates": "도착 예정 차량이 아직 없습니다",
+    "bound": "{dest}행"
   }
 }
