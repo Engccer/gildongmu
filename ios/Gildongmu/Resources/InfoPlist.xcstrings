@@ -46,37 +46,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾고, 목적지까지 남은 거리를 소리로 안내하기 위해 위치를 사용합니다."
+            "value": "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your location is used to find nearby transit, places, and local information, and to announce your remaining distance to a destination with sound."
+            "value": "Your location is used to find nearby transit, places, and local information."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu ubicación se usa para encontrar transporte, lugares e información local cercanos, y para indicar con sonido la distancia restante hasta un destino."
+            "value": "Tu ubicación se usa para encontrar transporte, lugares e información local cercanos."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre position sert à trouver les transports, lieux et informations locales à proximité, et à indiquer par des sons la distance restante jusqu'à une destination."
+            "value": "Votre position sert à trouver les transports, lieux et informations locales à proximité."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La tua posizione è usata per trovare trasporti, luoghi e informazioni locali nelle vicinanze e per segnalare con un suono la distanza rimanente verso una destinazione."
+            "value": "La tua posizione è usata per trovare trasporti, luoghi e informazioni locali nelle vicinanze."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地の近くの交通・場所・生活情報を探すため、および目的地までの残り距離を音で知らせるために位置情報を使用します。"
+            "value": "現在地の近くの交通・場所・生活情報を探すために位置情報を使用します。"
           }
         }
       }

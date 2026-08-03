@@ -166,14 +166,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 72JQ7VD4V5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Support/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "길동무";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾고, 목적지까지 남은 거리를 소리로 안내하기 위해 위치를 사용합니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "검색어와 질문을 음성으로 입력하기 위해 마이크를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "받아쓰기를 위해 음성 인식을 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -182,7 +182,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = space.dodoplanet.gildongmu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -195,14 +195,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 72JQ7VD4V5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Support/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "길동무";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾고, 목적지까지 남은 거리를 소리로 안내하기 위해 위치를 사용합니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치에서 가까운 교통, 장소와 생활 정보를 찾기 위해 위치를 사용합니다.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "검색어와 질문을 음성으로 입력하기 위해 마이크를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "받아쓰기를 위해 음성 인식을 사용합니다.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -211,7 +211,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = space.dodoplanet.gildongmu;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = 1;
