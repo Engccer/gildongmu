@@ -138,24 +138,22 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
   it("ko + 도보·자동차(tmap) 성공: 두 시작 버튼 노출, 간략 폴백 없음", async () => {
     stubFetch({ walk: "ok", car: "tmap" });
     await queryRoutes();
-    expect(screen.getByRole("button", { name: "walkGuideStart" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "carGuideStart" })).toBeTruthy();
+    // 라벨은 수단 무관 공통(위원장 판정 2026-08-04) — 도보·자동차 섹션에 하나씩.
+    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
   it("ko + 자동차 kakao 폴백(도보 실패): 자동차 버튼 없음 + 간략 폴백 노출", async () => {
     stubFetch({ walk: "fail", car: "kakao" });
     await queryRoutes();
-    expect(screen.queryByRole("button", { name: "carGuideStart" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "walkGuideStart" })).toBeNull();
+    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
   it("ko + 전 수단 실패: 목적지 확정이면 간략 폴백만 노출", async () => {
     stubFetch({ walk: "fail", car: "fail" });
     await queryRoutes();
-    expect(screen.queryByRole("button", { name: "walkGuideStart" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "carGuideStart" })).toBeNull();
+    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
@@ -163,8 +161,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     mockLocale = "en";
     stubFetch({ walk: "ok", car: "tmap" });
     await queryRoutes();
-    expect(screen.queryByRole("button", { name: "carGuideStart" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "walkGuideStart" })).toBeNull();
+    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 });

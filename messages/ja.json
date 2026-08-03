@@ -597,10 +597,9 @@
     "reduced": "正確な位置情報がオフのため距離を追跡できません",
     "walkHeading": "徒歩案内",
     "carHeading": "自動車案内",
-    "walkGuideStart": "徒歩案内を開始",
-    "carGuideStart": "自動車案内を開始",
     "briefGuideStart": "簡易案内を開始",
-    "stopped": "リアルタイム案内を停止しました"
+    "stopped": "リアルタイム案内を停止しました",
+    "guideStart": "リアルタイム案内を開始"
   },
   "guide": {
     "briefStarted": "簡易案内を開始しました",

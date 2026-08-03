@@ -494,9 +494,11 @@ struct DirectionsTabView: View {
                         Section {
                             // 수단별 안내 시작 버튼(B1 §3.1) — 수단 heading 착지 후
                             // 첫 스와이프 거리. 게이트가 죽은 버튼을 사전 차단한다.
+                            // 라벨은 수단 무관 공통 — 섹션 헤딩이 이미 수단명이라
+                            // 수단 반복은 중복이다(위원장 판정 2026-08-04).
                             if mode == .walk, walkGuideStartable,
                                let tracked = trackedDestination {
-                                Button(appLocalized("beacon.walkGuideStart")) {
+                                Button(appLocalized("beacon.guideStart")) {
                                     lastGuideStart = .walk
                                     beacon.toggle(
                                         dest: tracked.dest, label: tracked.label, kind: .walk
@@ -506,7 +508,7 @@ struct DirectionsTabView: View {
                             }
                             if mode == .car, carGuideStartable,
                                let tracked = trackedDestination {
-                                Button(appLocalized("beacon.carGuideStart")) {
+                                Button(appLocalized("beacon.guideStart")) {
                                     lastGuideStart = .car
                                     beacon.toggle(
                                         dest: tracked.dest, label: tracked.label, kind: .car

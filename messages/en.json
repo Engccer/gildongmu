@@ -597,10 +597,9 @@
     "reduced": "Can’t track distance because Precise Location is off",
     "walkHeading": "Walking guidance",
     "carHeading": "Car guidance",
-    "walkGuideStart": "Start walking guidance",
-    "carGuideStart": "Start car guidance",
     "briefGuideStart": "Start simple guidance",
-    "stopped": "Live guidance stopped"
+    "stopped": "Live guidance stopped",
+    "guideStart": "Start live guidance"
   },
   "guide": {
     "briefStarted": "Simple guidance started",
