@@ -55,6 +55,11 @@ const SUBWAY_LINES: Record<string, string> = {
   "1094": "신림선",
 };
 
+/** subwayId → 노선 표시명(B2 추적의 노선 필터 축 — 매핑표 공개 조회). */
+export function subwayLineNameForId(subwayId: string): string | undefined {
+  return SUBWAY_LINES[subwayId];
+}
+
 type RawArrival = Record<string, unknown>;
 
 function str(v: unknown): string {

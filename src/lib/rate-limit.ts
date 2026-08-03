@@ -124,6 +124,17 @@ export function checkCarRateLimit(ip: string, now: number): boolean {
   return evaluateRateLimit(carStore, ip, now, CAR_LIMIT, WINDOW_MS).allowed;
 }
 
+// 대중교통 추적 폴링(B2 §7): 최소 폴링 15초 = 분당 4회 + 수동 조작·복귀 즉폴
+// 버스트 여유. NAT 공유 IP에서 10회 관례가 과도 차단을 만들 수 있어 이 라우트만
+// 20회로 상향. 1차 방어는 세션 폴링 캡(240콜)과 단일 비행이고 이건 2차다.
+const TRANSIT_TRACK_LIMIT = 20;
+const transitTrackStore = new Map<string, RateLimitEntry>();
+
+/** /api/transit/track 전용 레이트 리밋(60초 20회). 허용이면 true. */
+export function checkTransitTrackRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(transitTrackStore, ip, now, TRANSIT_TRACK_LIMIT, WINDOW_MS).allowed;
+}
+
 // 혼잡도는 서울 열린데이터 일 1,000회를 따릉이·문화행사와 나눠 쓰므로 동일하게
 // 60초 10회. 영역 코드 단위 5분 캐시가 1차 방어이고 이건 2차다.
 const CONGESTION_LIMIT = 10;
