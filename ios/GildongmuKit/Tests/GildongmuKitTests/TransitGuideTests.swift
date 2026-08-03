@@ -197,7 +197,14 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         state: state, input: .poll(seq: 2, phaseGen: 1, poll: .ok([near])), route: route, now: 2
     ).state
     #expect(transitPollIntervalMs(state) == 15_000)
-    state = transitGuideStep(state: state, input: .advance, route: route, now: 3).state
+    // advance는 arrived에서만 유효(리듀서 가드) — 도착 관측 후 전환.
+    let arrivedItem = TransitTrackItem(
+        vehicleId: "5696", direction: "하행", message: "여의도 도착", remainingStops: 0,
+        destinationName: "하남검단산", express: false, arrivalCode: "1")
+    state = transitGuideStep(
+        state: state, input: .poll(seq: 3, phaseGen: 1, poll: .ok([arrivedItem])), route: route, now: 3
+    ).state
+    state = transitGuideStep(state: state, input: .advance, route: route, now: 4).state
     #expect(state.phase == .done)
     #expect(transitPollIntervalMs(state) == 0)
     #expect(transitPollIntervalMs(initTransitGuide(route: fixture.routes["untrackableSubway"]!, now: 0)) == 0)
