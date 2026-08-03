@@ -183,6 +183,35 @@ export async function fetchTagoNearby(
   });
 }
 
+/** 단일 정류소 도착예정(B2 추적 폴링) — 도착 임박 순 BusArrival[]. */
+export async function fetchTagoArrivals(
+  cityCode: string,
+  nodeId: string,
+): Promise<BusArrival[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchTago(ARV_BASE, "getSttnAcctoArvlPrearngeInfoList", {
+    cityCode,
+    nodeId,
+    numOfRows: 50,
+  });
+  return parseBusArrivals(raw);
+}
+
+/**
+ * 좌표 최근접 정류소 후보(B2 §5.2 하차 정류소 해석) — A-2 첫 페이지(고정 ~700m
+ * 반경, 조사 §1.2)를 거리순으로. 도착 조회는 하지 않는다(해석 전용 경량 경로).
+ */
+export async function fetchTagoStopsNear(lat: number, lng: number): Promise<BusStop[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchTago(STN_BASE, "getCrdntPrxmtSttnList", {
+    gpsLati: lat,
+    gpsLong: lng,
+    numOfRows: 100,
+    pageNo: 1,
+  });
+  return parseBusStops(raw, lat, lng);
+}
+
 /** 노선 경유정류소(거의 불변 → 하루 캐시). */
 export async function fetchBusRouteStops(
   cityCode: string,

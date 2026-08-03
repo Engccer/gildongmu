@@ -110,6 +110,68 @@ export function parseSeoulArrivals(raw: unknown): BusArrival[] {
   return out;
 }
 
+/**
+ * 추적 슬롯(B2) — 도착 슬롯의 vehId를 보존하고 잔여 정거장을 추출한다.
+ * parseSeoulArrivals와 달리 차량 잠금·하차 카운트다운용이라 vehId가 1급 시민.
+ */
+export interface SeoulTrackSlot {
+  /** 차량 ID 원문(잠금 복합 키 축). 없으면 null — 잠금 불가 슬롯. */
+  vehicleId: string | null;
+  /** 완성 문장(arrmsg — 낭독 정본). */
+  message: string;
+  /** 잔여 정거장(§6.2 추출): staOrd−sectOrd 구조 필드 우선, 부재 시 arrmsg 패턴. */
+  remainingStops: number | null;
+  lowFloor: boolean;
+}
+
+/** arrmsg에서 잔여 정거장 추출 — "[4번째 전]" 패턴, "곧 도착"은 0(하차 구간 진입). */
+export function remainingFromArrmsg(message: string): number | null {
+  if (/^곧\s*도착/.test(message)) return 0;
+  const m = message.match(/\[(\d+)번째 전\]/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** 한 항목의 슬롯 n(1·2)을 추적 슬롯으로 투영. 메시지 없으면 null. */
+function slotToTrack(it: RawItem, slot: "1" | "2", staOrd: number): SeoulTrackSlot | null {
+  const message = str(it[`arrmsg${slot}`]);
+  if (!message) return null;
+  const vehId = str(it[`vehId${slot}`]);
+  const sectOrd = numF(it[`sectOrd${slot}`]);
+  // 구조 필드 우선: staOrd(조회 정류소의 노선 내 순번) − sectOrd(차량 현재 구간 순번).
+  // 음수·비유한이면 패턴 폴백(§6.2 — 추출 실패는 사다리만 비활성).
+  const structural =
+    Number.isFinite(staOrd) && Number.isFinite(sectOrd) && staOrd - sectOrd >= 0
+      ? staOrd - sectOrd
+      : null;
+  return {
+    vehicleId: vehId !== "" && vehId !== "0" ? vehId : null,
+    message,
+    remainingStops: structural ?? remainingFromArrmsg(message),
+    lowFloor: str(it[`busType${slot}`]) === "1",
+  };
+}
+
+/**
+ * 도착 응답(getStationByUid·getArrInfoByRoute 공통 형태) → 추적 슬롯.
+ * routeId를 주면 그 노선(busRouteId) 항목만. 슬롯2는 메시지가 슬롯1과 다를 때만
+ * (parseSeoulArrivals의 중복 제거 관례 동형).
+ */
+export function parseSeoulTrackSlots(raw: unknown, routeId?: string): SeoulTrackSlot[] {
+  const out: SeoulTrackSlot[] = [];
+  for (const it of parseSeoulItems(raw)) {
+    if (routeId && str(it.busRouteId) !== routeId) continue;
+    const staOrd = numF(it.staOrd);
+    const first = slotToTrack(it, "1", staOrd);
+    if (!first) continue;
+    out.push(first);
+    const second = slotToTrack(it, "2", staOrd);
+    if (second && second.message !== first.message) out.push(second);
+  }
+  return out;
+}
+
 /** 노선 경유정류소 응답 → 순번 오름차순 BusRouteStop[]. */
 export function parseSeoulRouteStops(raw: unknown): BusRouteStop[] {
   return parseSeoulItems(raw)
@@ -184,13 +246,44 @@ export async function fetchSeoulNearby(lat: number, lng: number): Promise<BusSto
   });
 }
 
-/** 노선 경유정류소(거의 불변 → 하루 캐시). */
-export async function fetchSeoulRouteStops(routeId: string): Promise<BusRouteStop[]> {
+/** 노선 경유정류소(거의 불변 → 하루 캐시. fresh는 해석 실패 시 1회 우회, B2 §5.2). */
+export async function fetchSeoulRouteStops(
+  routeId: string,
+  opts?: { fresh?: boolean },
+): Promise<BusRouteStop[]> {
   if (!env.DATA_GO_KR_API_KEY) return [];
   const raw = await fetchSeoul(
     "busRouteInfo/getStaionByRoute",
     { busRouteId: routeId },
-    { next: { revalidate: 86_400 } },
+    opts?.fresh ? { cache: "no-store" } : { next: { revalidate: 86_400 } },
   );
   return parseSeoulRouteStops(raw);
+}
+
+/** 승차 대기(B2 waiting): 정류소 전 노선 도착에서 그 노선 슬롯만(vehId 보존). */
+export async function fetchSeoulWaitSlots(
+  arsId: string,
+  routeId: string,
+): Promise<SeoulTrackSlot[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchSeoul("stationinfo/getStationByUid", { arsId });
+  return parseSeoulTrackSlots(raw, routeId);
+}
+
+/**
+ * 하차 카운트다운(B2 riding): 하차 정류소×노선 기준 도착(getArrInfoByRoute, 신규 op).
+ * ord는 그 노선 경유 시퀀스에서의 하차 정류소 순번(순환·왕복 중복 대응은 서비스 몫).
+ */
+export async function fetchSeoulRideSlots(
+  stId: string,
+  routeId: string,
+  ord: number,
+): Promise<SeoulTrackSlot[]> {
+  if (!env.DATA_GO_KR_API_KEY) return [];
+  const raw = await fetchSeoul("arrive/getArrInfoByRoute", {
+    stId,
+    busRouteId: routeId,
+    ord,
+  });
+  return parseSeoulTrackSlots(raw);
 }
