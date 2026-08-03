@@ -242,6 +242,26 @@ export interface CarRouteBriefing {
   terminalCoord?: Coord;
 }
 
+/**
+ * 대중교통 경로의 경유 정류장·역 하나(ODsay passStopList 정규화, B2 §7).
+ * `includeStops=1` 옵트인 시에만 탑승 leg에 실린다.
+ */
+export interface TransitLegStop {
+  name: string;
+  /**
+   * ODsay 내부 ID 원문 문자열. 수도권 지하철은 4자리 zero-pad 시 seed
+   * stationId와 일치(프로브 2026-08-04 — 단 부산·대구와 충돌하므로 조인은
+   * ID ∧ 정규화 역명 이중 게이트).
+   */
+  stationId?: string;
+  /** 지역 정류소 ID(버스 localStationID — 서울은 TOPIS stId 동일값, 조사 §1.1) */
+  localId?: string;
+  /** 정류소 고유번호(버스 arsID — 서울 getStationByUid 조회 키) */
+  arsId?: string;
+  lat: number;
+  lng: number;
+}
+
 /** 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로. */
 export interface TransitLeg {
   mode: "walk" | "bus" | "subway";
@@ -272,6 +292,8 @@ export interface TransitLeg {
   serviceCityCode?: number;
   /** 지하철 방향(ODsay wayCode 1=상행·2=하행). 상·하행 첫차·막차가 달라 조인 축이다 */
   serviceWayCode?: number;
+  /** 경유 정류장·역(양 끝 포함) — `includeStops=1` 옵트인 시 탑승 leg에만(B2 §7) */
+  stops?: TransitLegStop[];
 }
 
 /** 대중교통 경로 1개(요약 + 구간 리스트). */

@@ -16,12 +16,19 @@ import { getTransitRoute } from "@/lib/providers/odsay";
  * 실데이터만 의미 있으므로 mock 폴백 없음(키 없으면 503, 단 게이트로 호출 자체가 안 옴).
  */
 
-const querySchema = z.object({ origin: coordSchema, dest: coordSchema });
+const querySchema = z.object({
+  origin: coordSchema,
+  dest: coordSchema,
+  // 경유 정류장 옵트인(B2 §7, walk includeGeometry 선례): "1"만 허용, 그 외 400.
+  // 미지정 응답은 기존과 byte-호환(stops 키 자체 부재).
+  includeStops: z.union([z.literal("1"), z.null()]),
+});
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
+    includeStops: request.nextUrl.searchParams.get("includeStops"),
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -43,13 +50,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await getTransitRoute(parsed.data);
+    const result = await getTransitRoute({
+      origin: parsed.data.origin,
+      dest: parsed.data.dest,
+      includeStops: parsed.data.includeStops === "1",
+    });
     // null = 경로 없음(graceful). 컴포넌트가 "찾지 못함"으로 표시.
     return NextResponse.json({ result });
   } catch (e) {
     console.error("[api/route/transit] 길찾기 실패:", e);
+    // 꼬리 문장 금지: 실패에 재시도 권유는 자명(SR 통지 정리 판정선 2026-08-02).
     return NextResponse.json(
-      { error: "대중교통 길찾기에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "대중교통 길찾기에 실패했습니다." },
       { status: 502 },
     );
   }

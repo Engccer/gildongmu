@@ -8,7 +8,13 @@ import {
 } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
-import type { Coord, TransitLeg, TransitRoute, TransitRouteResult } from "../types";
+import type {
+  Coord,
+  TransitLeg,
+  TransitLegStop,
+  TransitRoute,
+  TransitRouteResult,
+} from "../types";
 
 /**
  * ODsay 대중교통 길찾기 provider.
@@ -29,6 +35,16 @@ interface OdsayLane {
   busLocalBlID?: string; // 지역 사업자 노선 ID(서울은 TOPIS busRouteId와 동일 값)
   busCityCode?: number; // ODsay 도시 코드(서울=1000)
 }
+// 경유 정류장(passStopList) 한 항목 — 실호출 확정(2026-08-04 프로브):
+// 버스는 localStationID(서울=TOPIS stId 동일값)·arsID 보유, 지하철은 stationID·이름·좌표만.
+interface OdsayPassStop {
+  stationID?: number | string;
+  stationName?: string;
+  localStationID?: string;
+  arsID?: string;
+  x?: string | number; // 경도
+  y?: string | number; // 위도
+}
 interface OdsaySubPath {
   trafficType: number; // 1=지하철, 2=버스, 3=도보
   distance?: number;
@@ -39,6 +55,7 @@ interface OdsaySubPath {
   endName?: string;
   wayCode?: number; // 지하철 방향 1=상행·2=하행 — 실호출 양방향 확정(2026-08-01)
   lane?: OdsayLane[];
+  passStopList?: { stations?: OdsayPassStop[] };
 }
 interface OdsayPath {
   pathType: number;
@@ -62,13 +79,44 @@ export interface OdsayResponse {
 // 실제 관측 시 추가한다(추측 금지). 그 외 코드(인증·파라미터·서버 오류)는 throw.
 const NO_ROUTE_ERROR_CODES = new Set(["-98"]);
 
-function toLeg(sp: OdsaySubPath): TransitLeg {
+/** 좌표 파싱 — 빈 문자열은 NaN(⚠ Number("")===0 함정, coord-param 계열). */
+function coordNum(v: unknown): number {
+  if (v == null || (typeof v === "string" && v.trim() === "")) return NaN;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/** passStopList → TransitLegStop[] (좌표·이름 유효 항목만, 양 끝 포함 순서 보존). */
+function toLegStops(sp: OdsaySubPath): TransitLegStop[] {
+  const stations = sp.passStopList?.stations;
+  if (!Array.isArray(stations)) return [];
+  return stations.flatMap((st): TransitLegStop[] => {
+    const name = String(st.stationName ?? "").trim();
+    const lat = coordNum(st.y);
+    const lng = coordNum(st.x);
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+    const stationId = st.stationID == null ? "" : String(st.stationID);
+    return [
+      {
+        name,
+        ...(stationId ? { stationId } : {}),
+        ...(st.localStationID ? { localId: String(st.localStationID) } : {}),
+        ...(st.arsID ? { arsId: String(st.arsID) } : {}),
+        lat,
+        lng,
+      },
+    ];
+  });
+}
+
+function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
     return { mode: "walk", minutes };
   }
   const mode = sp.trafficType === 1 ? "subway" : "bus";
   const lane = sp.lane?.[0];
+  const stops = includeStops ? toLegStops(sp) : [];
   return {
     mode,
     lineName: mode === "subway" ? lane?.name : lane?.busNo,
@@ -85,17 +133,19 @@ function toLeg(sp: OdsaySubPath): TransitLeg {
       : {}),
     // 지하철은 공유 식별자가 없어 (역명, 노선명, 방향)으로 시간표를 맞춘다.
     ...(mode === "subway" && sp.wayCode != null ? { serviceWayCode: sp.wayCode } : {}),
+    // 옵트인 시에만 키 자체가 생긴다(미지정 응답 byte-호환, B2 §7).
+    ...(stops.length > 0 ? { stops } : {}),
   };
 }
 
-function toTransitRoute(path: OdsayPath): TransitRoute {
+function toTransitRoute(path: OdsayPath, includeStops: boolean): TransitRoute {
   // 거리 0 도보는 역내 환승 통로다(실호출 검증: {trafficType:3, distance:0,
   // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
   // 리스트에서는 제외해 낭독을 간결히 한다. 단 walkMinutes(총 도보 시간)는
   // 환승 통로 시간도 실제 걷는 시간이라 필터 전 전체 도보 합으로 정직하게 센다.
   const legs = path.subPath
     .filter((sp) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
-    .map(toLeg);
+    .map((sp) => toLeg(sp, includeStops));
   const boardCount = legs.filter((l) => l.mode !== "walk").length;
   const walkMinutes = path.subPath
     .filter((sp) => sp.trafficType === 3)
@@ -116,6 +166,7 @@ function toTransitRoute(path: OdsayPath): TransitRoute {
 /** ODsay 응답 → TransitRouteResult. 경로 없으면 null(graceful "찾지 못함"). */
 export function normalizeOdsayRoute(
   data: OdsayResponse,
+  opts?: { includeStops?: boolean },
 ): TransitRouteResult | null {
   if (data.error) {
     // 출·도착 700m 이내 등 "경로 없음"류는 장애가 아니라 graceful(null).
@@ -125,7 +176,7 @@ export function normalizeOdsayRoute(
   }
   const paths = data.result?.path ?? [];
   if (paths.length === 0) return null;
-  const routes = paths.slice(0, 3).map(toTransitRoute);
+  const routes = paths.slice(0, 3).map((p) => toTransitRoute(p, opts?.includeStops === true));
   return { recommended: routes[0], alternatives: routes.slice(1) };
 }
 
@@ -204,6 +255,8 @@ export function annotateServiceStatus(
 export async function getTransitRoute(params: {
   origin: Coord;
   dest: Coord;
+  /** 경유 정류장 옵트인(B2 §7) — 응답 팽창 방지 위해 웹·iOS 클라이언트만 요청. */
+  includeStops?: boolean;
 }): Promise<TransitRouteResult | null> {
   const { origin, dest } = params;
   const q = new URLSearchParams({
@@ -231,7 +284,7 @@ export async function getTransitRoute(params: {
   }
   const data = (await res.json()) as OdsayResponse;
   // error 분기(경로없음 graceful vs 장애 throw)는 normalizeOdsayRoute가 담당.
-  const normalized = normalizeOdsayRoute(data);
+  const normalized = normalizeOdsayRoute(data, { includeStops: params.includeStops });
   if (!normalized) return null;
 
   // 운행시간 보강. ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다

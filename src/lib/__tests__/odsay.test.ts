@@ -95,6 +95,78 @@ const sample = {
   },
 };
 
+// passStopList 실응답 발췌(2026-08-04 프로브: 버스는 localStationID(=TOPIS stId)·
+// arsID 보유, 지하철은 stationID·이름·좌표만).
+const subwayStops = {
+  stations: [
+    { index: 0, stationID: 549, stationName: "길동", x: "127.14", y: "37.537778" },
+    { index: 1, stationID: 548, stationName: "강동", x: "127.132307", y: "37.535911" },
+    { index: 2, stationID: 547, stationName: "천호", x: "127.123539", y: "37.538566" },
+  ],
+};
+const busStops = {
+  stations: [
+    { index: 0, stationID: 109335, stationName: "천호역.풍납시장", localStationID: "123000017", arsID: "24101", x: "127.122667", y: "37.537186", isNonStop: "N" },
+    { index: 1, stationID: 163083, stationName: "잠실역8번출구", localStationID: "123000043", arsID: "24132", x: "127.101581", y: "37.514005", isNonStop: "N" },
+  ],
+};
+
+function sampleWithStops() {
+  const clone = JSON.parse(JSON.stringify(sample)) as typeof sample;
+  // 추천 경로 첫 지하철 leg + 대안 경로 버스 leg에 passStopList 부착
+  (clone.result.path[0].subPath[1] as Record<string, unknown>).passStopList = subwayStops;
+  (clone.result.path[1].subPath[1] as Record<string, unknown>).passStopList = busStops;
+  return clone;
+}
+
+describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
+  it("미지정이면 passStopList가 있어도 stops 키 자체가 없다(byte-호환)", () => {
+    const { legs } = normalizeOdsayRoute(sampleWithStops())!.recommended;
+    for (const leg of legs) expect("stops" in leg).toBe(false);
+  });
+
+  it("includeStops: 탑승 leg에 양 끝 포함 경유 정류장을 투영한다", () => {
+    const result = normalizeOdsayRoute(sampleWithStops(), { includeStops: true })!;
+    const subway = result.recommended.legs[1];
+    expect(subway.stops).toHaveLength(3);
+    expect(subway.stops![0]).toEqual({
+      name: "길동",
+      stationId: "549",
+      lat: 37.537778,
+      lng: 127.14,
+    });
+    const bus = result.alternatives[0].legs[1];
+    expect(bus.stops![0]).toEqual({
+      name: "천호역.풍납시장",
+      stationId: "109335",
+      localId: "123000017",
+      arsId: "24101",
+      lat: 37.537186,
+      lng: 127.122667,
+    });
+  });
+
+  it("includeStops여도 passStopList 없는 leg·도보 leg는 stops가 없다", () => {
+    const result = normalizeOdsayRoute(sampleWithStops(), { includeStops: true })!;
+    const legs = result.recommended.legs;
+    expect("stops" in legs[0]).toBe(false); // 도보
+    expect("stops" in legs[2]).toBe(false); // passStopList 미부착 지하철
+  });
+
+  it("좌표 파싱 불가·이름 결측 항목은 걸러낸다", () => {
+    const clone = sampleWithStops();
+    (clone.result.path[0].subPath[1] as Record<string, unknown>).passStopList = {
+      stations: [
+        { index: 0, stationID: 1, stationName: "정상", x: "127.1", y: "37.5" },
+        { index: 1, stationID: 2, stationName: "", x: "127.1", y: "37.5" },
+        { index: 2, stationID: 3, stationName: "좌표없음", x: "", y: "" },
+      ],
+    };
+    const result = normalizeOdsayRoute(clone, { includeStops: true })!;
+    expect(result.recommended.legs[1].stops).toHaveLength(1);
+  });
+});
+
 describe("normalizeOdsayRoute", () => {
   it("path[0]을 추천, 다음을 대안으로 분리한다", () => {
     const result = normalizeOdsayRoute(sample)!;
