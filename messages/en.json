@@ -812,6 +812,7 @@
     "stationCountAbout": "About {count} stops",
     "waitingLabel": "Choose your vehicle",
     "noCandidates": "No arriving vehicles yet",
-    "bound": "Bound for {dest}"
+    "bound": "Bound for {dest}",
+    "resumed": "Resuming guidance."
   }
 }

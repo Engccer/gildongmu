@@ -812,6 +812,7 @@
     "stationCountAbout": "약 {count}개 정거장",
     "waitingLabel": "탑승할 차량을 선택하세요",
     "noCandidates": "도착 예정 차량이 아직 없습니다",
-    "bound": "{dest}행"
+    "bound": "{dest}행",
+    "resumed": "안내를 재개합니다."
   }
 }

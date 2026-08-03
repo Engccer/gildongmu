@@ -29,6 +29,7 @@ export function TransitGuidePanel({
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
+  const tGuide = useTranslations("guide");
   const guide = useTransitGuide(route);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -179,7 +180,13 @@ export function TransitGuidePanel({
                         <li key={option.key} className="mt-1">
                           <button
                             type="button"
-                            onClick={() => guide.boardCandidate(option.candidate)}
+                            // aria-disabled는 활성화를 실제로 막지 못한다 — 핸들러
+                            // 가드 병행(repo 관례). vehId 없는 잠금은 어떤 항목과도
+                            // 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
+                            onClick={() => {
+                              if (!item.vehicleId) return;
+                              guide.boardCandidate(option.candidate);
+                            }}
                             aria-disabled={!item.vehicleId}
                             className="min-h-11 w-full rounded-md border border-gray-400 px-3 text-left text-sm aria-disabled:opacity-50"
                           >
@@ -220,6 +227,14 @@ export function TransitGuidePanel({
             </div>
           )}
 
+          {/* 진행 상황(§3.2 공통 컨트롤): 자동 통지를 기다리지 않는 임의 시점 조회. */}
+          <button
+            type="button"
+            onClick={guide.announceProgress}
+            className="mt-2 mr-2 min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+          >
+            {tGuide("progressButton")}
+          </button>
           <button
             type="button"
             onClick={() => {

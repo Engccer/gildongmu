@@ -88,7 +88,8 @@ struct TransitTrackingSheet: View {
                 Text(appLocalized("transitGuide.noCandidates")).foregroundStyle(.secondary)
             }
             // 항목 정체성 = 차량·열차 식별자(폴링 갱신이 포커스를 흔들지 않게, §5.1).
-            ForEach(classified.candidates, id: \.item.vehicleId) { candidate in
+            // vehId 없는 후보가 복수면 nil 충돌 — 웹과 동형으로 message 폴백(독립 리뷰).
+            ForEach(classified.candidates, id: \.listId) { candidate in
                 candidateRow(candidate, leg: leg)
             }
         }
@@ -108,7 +109,11 @@ struct TransitTrackingSheet: View {
             candidate.express ? appLocalized("transitGuide.expressCheck", leg.alightName) : "",
             departedMinutes.map { appLocalized("transitGuide.departed", String($0)) } ?? ""
         )
-        if candidate.terminatesEarly {
+        if item.vehicleId == nil || item.vehicleId?.isEmpty == true {
+            // vehId 없는 슬롯은 잠금 불가(§5.1 "vehId 보유 슬롯만 활성화") — 빈 잠금은
+            // 어떤 항목과도 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
+            Text(desc).foregroundStyle(.secondary)
+        } else if candidate.terminatesEarly {
             // 결정적 미도달(§5.1) — 활성화 차단, 사유 병기.
             Text(joinText(
                 desc,

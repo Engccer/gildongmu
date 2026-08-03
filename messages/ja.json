@@ -812,6 +812,7 @@
     "stationCountAbout": "約{count}駅",
     "waitingLabel": "乗車する車両を選んでください",
     "noCandidates": "まだ到着予定の車両がありません",
-    "bound": "{dest}行き"
+    "bound": "{dest}行き",
+    "resumed": "案内を再開します。"
   }
 }

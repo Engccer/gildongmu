@@ -812,6 +812,7 @@
     "stationCountAbout": "Circa {count} fermate",
     "waitingLabel": "Scegli il tuo veicolo",
     "noCandidates": "Ancora nessun veicolo in arrivo",
-    "bound": "Direzione {dest}"
+    "bound": "Direzione {dest}",
+    "resumed": "Ripresa della guida."
   }
 }
