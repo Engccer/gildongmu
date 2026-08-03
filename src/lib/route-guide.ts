@@ -34,6 +34,89 @@ export const SPEED_WINDOW_S = 10;
 export const RESOLVE_TIMEOUT_S = 30;
 export const BUNDLE_REREAD_S = 15;
 
+/**
+ * 수단별 튜닝 프로파일(B1 스펙 §4.3). walk는 현행 상수의 동결이다 — 값 변경은
+ * 회귀이며, 리듀서 본문 변경은 "상수 참조 → 인자 참조 치환"에 한정한다(분기
+ * 구조·비교 연산자·평가 순서 불변 계약, §4.2).
+ */
+export interface GuideTuning {
+  /** 임박(선행) 낭독: 잔여 ≤ max(announceAheadM, v×announceAheadSpeedS) */
+  announceAheadM: number;
+  announceAheadSpeedS: number;
+  /** 원거리 예고 경계(m). null=미사용(walk) */
+  farNoticeM: number | null;
+  windowAheadMinM: number;
+  windowAheadSpeedS: number;
+  offRouteBaseM: number;
+  offRouteHoldS: number;
+  /** 이탈 확정에 "수직거리 비감소 추세" 요구(복귀 중 오확정 차단) */
+  offRouteTrend: boolean;
+  offRouteRenotifyS: number;
+  /** 이탈 재통지의 warning 톤 여부(첫 확정은 항상 warning) */
+  offRouteRenotifyWarns: boolean;
+  handoffDistM: number;
+  handoffRearmM: number;
+  /** 재획득 전방 연속성 타이브레이크(재획득 경로 한정 — 연속 추적 모호는 거부 유지) */
+  reacquireTieBreak: boolean;
+  /** 보행 속도 가드(간략 제안). false면 가드 기계 전체 비활성 — 가드가 이탈
+   * 재통지를 억제하는 배선이 있어, 차량에서 켜 두면 재통지가 영영 죽는다. */
+  speedSuggest: boolean;
+}
+
+export const WALK_TUNING: GuideTuning = {
+  announceAheadM: ANNOUNCE_AHEAD_M,
+  announceAheadSpeedS: 0,
+  farNoticeM: null,
+  windowAheadMinM: WINDOW_AHEAD_MIN_M,
+  windowAheadSpeedS: 0,
+  offRouteBaseM: OFF_ROUTE_BASE_M,
+  offRouteHoldS: OFF_ROUTE_HOLD_S,
+  offRouteTrend: false,
+  offRouteRenotifyS: OFF_ROUTE_RENOTIFY_S,
+  offRouteRenotifyWarns: true,
+  handoffDistM: HANDOFF_DIST_M,
+  handoffRearmM: HANDOFF_REARM_M,
+  reacquireTieBreak: false,
+  speedSuggest: true,
+};
+
+/** 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정. */
+export const CAR_TUNING: GuideTuning = {
+  announceAheadM: 120,
+  announceAheadSpeedS: 15,
+  farNoticeM: 1500,
+  windowAheadMinM: 150,
+  windowAheadSpeedS: 5,
+  offRouteBaseM: 50,
+  offRouteHoldS: 10,
+  offRouteTrend: true,
+  offRouteRenotifyS: 180,
+  offRouteRenotifyWarns: false,
+  handoffDistM: 150,
+  handoffRearmM: 200,
+  reacquireTieBreak: true,
+  speedSuggest: false,
+};
+
+/**
+ * 속도 추정 v(스펙 §4.3): max(직전 구간 속도, 중앙값). 표본은 직전 fix까지의
+ * 창(state.speedSamples)이다 — 구속 창 크기는 현재 fix 수용 전에 정해져야
+ * 하므로(인과) 현재 fix를 포함하지 않는다. walk 프로파일은 속도 계수가 0이라
+ * 이 값과 무관하게 현행 동작이다.
+ */
+function estimateSpeedMps(samples: readonly { at: number; d: number }[]): number {
+  if (samples.length < 2) return 0;
+  const speeds: number[] = [];
+  for (let i = 1; i < samples.length; i++) {
+    const dt = samples[i].at - samples[i - 1].at;
+    if (dt > 0) speeds.push((samples[i].d - samples[i - 1].d) / dt);
+  }
+  if (speeds.length === 0) return 0;
+  const lastSeg = speeds[speeds.length - 1];
+  const sorted = [...speeds].sort((a, b) => a - b);
+  return Math.max(lastSeg, sorted[Math.floor(sorted.length / 2)]);
+}
+
 export type GuidePhase = "following" | "bundle" | "uncertain" | "reacquiring" | "offRoute";
 
 export interface GuideFix {
@@ -154,8 +237,9 @@ export function initialGuideState(
 export function entryProjection(
   route: GuideRoute,
   fix: GuideFix,
+  tuning: GuideTuning = WALK_TUNING,
 ): { status: "ok"; d: number } | { status: "ambiguous" } | { status: "none" } {
-  const maxPerp = Math.max(OFF_ROUTE_BASE_M, 2 * fix.accuracy);
+  const maxPerp = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
   const cands = globalCandidates(route.polyline, fix, maxPerp);
   if (cands.length === 0) return { status: "none" };
   if (cands.length > 1) return { status: "ambiguous" };
@@ -173,6 +257,7 @@ export function guideStep(
   fix: GuideFix,
   route: GuideRoute,
   now: number,
+  tuning: GuideTuning = WALK_TUNING,
 ): GuideOutput {
   // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
   if (state.lastFixAt !== null && now < state.lastFixAt) {
@@ -208,7 +293,7 @@ export function guideStep(
 
   // 2) reacquiring: 전역 재탐색(모호하면 유지 — 다음 fix에서 재시도).
   if (state.phase === "reacquiring") {
-    const entry = entryProjection(route, fix);
+    const entry = entryProjection(route, fix, tuning);
     if (entry.status !== "ok") {
       return { state: { ...state, lastFixAt: now }, event: null, tone: null };
     }
@@ -241,14 +326,20 @@ export function guideStep(
     };
   }
 
-  // 3) 구속 창 투영 + 단조 전진(스펙 §5.1).
-  const ahead = Math.max(WINDOW_AHEAD_MIN_M, 3 * fix.accuracy);
+  // 3) 구속 창 투영 + 단조 전진(스펙 §5.1). 창 크기는 직전 창 속도로 되먹인다
+  //    (walk는 속도 계수 0이라 현행 동일 — B1 §4.3 고속 fix 공백 기아 봉합).
+  const vPrev = estimateSpeedMps(state.speedSamples);
+  const ahead = Math.max(
+    tuning.windowAheadMinM,
+    3 * fix.accuracy,
+    vPrev * tuning.windowAheadSpeedS,
+  );
   const proj = projectOnPolyline(route.polyline, fix, state.d - WINDOW_BACK_M, state.d + ahead);
   if (!proj) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   const d = Math.max(state.d, proj.d);
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
-  const offThreshold = Math.max(OFF_ROUTE_BASE_M, 2 * fix.accuracy);
+  const offThreshold = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
   const edgeHit = proj.d >= state.d + ahead - 1 && proj.perpMeters <= offThreshold;
   const windowEdgeHits = edgeHit ? state.windowEdgeHits + 1 : 0;
 
@@ -265,7 +356,9 @@ export function guideStep(
   const median = speeds.length ? speeds[Math.floor(speeds.length / 2)] : 0;
   const windowSpan = samples.length >= 2 ? samples[samples.length - 1].at - samples[0].at : 0;
   let speedGuardActive = state.speedGuardActive;
-  if (windowSpan >= SPEED_WINDOW_S * 0.8) {
+  // 가드 기계는 speedSuggest 프로파일에서만 동작한다 — 차량에서 켜 두면 상시
+  // 활성이 되어 이탈 재통지 억제 배선을 영구 잠식한다(적대적 리뷰 반영).
+  if (tuning.speedSuggest && windowSpan >= SPEED_WINDOW_S * 0.8) {
     if (!speedGuardActive && median > SPEED_ENTER_MPS) speedGuardActive = true;
     else if (speedGuardActive && median < SPEED_CLEAR_MPS) speedGuardActive = false;
   }
@@ -281,7 +374,7 @@ export function guideStep(
     speedGuardActive,
   };
   // 재무장: 수동 복귀 세션은 잔여가 재무장선 밖으로 나가야 자동 인계 허용(리뷰 #11).
-  if (!next.autoHandoffArmed && remainingTotal > HANDOFF_REARM_M) {
+  if (!next.autoHandoffArmed && remainingTotal > tuning.handoffRearmM) {
     next = { ...next, autoHandoffArmed: true };
   }
 
@@ -289,7 +382,7 @@ export function guideStep(
   if (state.phase === "offRoute") {
     // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
     // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
-    const entry = entryProjection(route, fix);
+    const entry = entryProjection(route, fix, tuning);
     if (entry.status === "ok") {
       const back: GuideState = {
         ...guideStateAt(route, entry.d, now, { autoHandoffArmed: state.autoHandoffArmed }),
@@ -303,7 +396,7 @@ export function guideStep(
     const canRenotify =
       !speedGuardActive &&
       (state.lastOffRouteNoticeAt === null ||
-        now - state.lastOffRouteNoticeAt >= OFF_ROUTE_RENOTIFY_S);
+        now - state.lastOffRouteNoticeAt >= tuning.offRouteRenotifyS);
     if (canRenotify) {
       next = { ...next, lastOffRouteNoticeAt: now };
       return { state: next, event: { kind: "offRoute" }, tone: "warning" };
@@ -314,7 +407,7 @@ export function guideStep(
   if (isOff) {
     const since = state.offRouteSince ?? now;
     next = { ...next, offRouteSince: since };
-    if (now - since >= OFF_ROUTE_HOLD_S) {
+    if (now - since >= tuning.offRouteHoldS) {
       next = {
         ...next,
         phase: "offRoute",
@@ -339,15 +432,20 @@ export function guideStep(
   if (
     next.autoHandoffArmed &&
     next.announcedUpTo >= route.steps.length - 1 &&
-    remainingTotal <= HANDOFF_DIST_M
+    remainingTotal <= tuning.handoffDistM
   ) {
     return { state: next, event: { kind: "handoff" }, tone: null };
   }
 
-  // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 40m면 다음 유닛 전문(리뷰 #4).
+  // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
+  //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
     const announcedEnd = route.steps[next.announcedUpTo].endD;
-    if (announcedEnd - d <= ANNOUNCE_AHEAD_M) {
+    const announceAhead = Math.max(
+      tuning.announceAheadM,
+      vPrev * tuning.announceAheadSpeedS,
+    );
+    if (announcedEnd - d <= announceAhead) {
       const indices = unitAt(route, next.announcedUpTo + 1);
       next = { ...next, announcedUpTo: indices[indices.length - 1], lastAnnouncedAt: now };
       return { state: next, event: { kind: "announceSteps", indices }, tone: "ahead" };
