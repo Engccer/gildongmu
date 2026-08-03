@@ -32,6 +32,8 @@ import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
 import { stopActiveGuideSession } from "@/lib/guide-session-store";
 import { DistanceBeacon } from "./DistanceBeacon";
+import { TransitGuidePanel } from "./TransitGuidePanel";
+import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 
 type ModeKey = "transit" | "walk" | "car";
@@ -127,7 +129,10 @@ async function fetchMode(
     return { kind: "done", mode, result: body as CarRouteBriefing };
   }
   const accessibleQs = mode === "walk" && walkAccessible ? "&accessible=true" : "";
-  const res = await fetch(`/api/route/${mode}?${qs}${accessibleQs}`, { signal });
+  // 대중교통은 경유 정류장 옵트인(B2 §7) — 실시간 안내(승차·하차 정류소 ID·좌표)의
+  // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
+  const stopsQs = mode === "transit" ? "&includeStops=1" : "";
+  const res = await fetch(`/api/route/${mode}?${qs}${accessibleQs}${stopsQs}`, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown };
   if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
@@ -534,17 +539,27 @@ export function DirectionsView({
     return tRoute("car");
   }
 
-  // 수단별 실시간 안내 진입점(B1 §3.1). 게이트 = "그 수단으로 시작 가능한 안내가
-  // 있는가": 도보는 경로 성공 ∧ ko, 자동차는 경로 성공 ∧ ko ∧ provider tmap(카카오
-  // 폴백은 기하 미지원이라 누르자마자 강등되는 죽은 버튼 — 판별자가 사전 차단).
-  // 대중교통 안내는 B2 전까지 만들지 않는다(비활성 버튼 사전 배치 금지).
+  // 수단별 실시간 안내 진입점(B1 §3.1·B2 §3.1). 게이트 = "그 수단으로 시작 가능한
+  // 안내가 있는가": 도보는 경로 성공 ∧ ko, 자동차는 경로 성공 ∧ ko ∧ provider
+  // tmap(카카오 폴백은 기하 미지원이라 누르자마자 강등되는 죽은 버튼 — 판별자가
+  // 사전 차단), 대중교통은 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1(도보 전용 경로 제외 —
+  // 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태).
   const carOutcome = results?.outcomes.car;
+  const transitOutcome = results?.outcomes.transit;
   const walkGuideStartable =
     results?.outcomes.walk?.kind === "done" && !prefersEnglish(locale);
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
     carOutcome.result.provider === "tmap" &&
+    !prefersEnglish(locale);
+  const transitGuideRoute =
+    transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
+      ? transitOutcome.result.recommended
+      : null;
+  const transitGuideStartable =
+    transitGuideRoute !== null &&
+    buildTransitGuideRoute(transitGuideRoute) !== null &&
     !prefersEnglish(locale);
   // 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled ∧ 목적지 확정.
   // "모든 수단 실패"가 아니라 "시작 가능 0개"다 — en 로케일·카카오 폴백만 성공한
@@ -561,7 +576,8 @@ export function DirectionsView({
     phase.kind === "settled" &&
     guideDest !== null &&
     !walkGuideStartable &&
-    !carGuideStartable;
+    !carGuideStartable &&
+    !transitGuideStartable;
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -725,6 +741,13 @@ export function DirectionsView({
                     dest={guideDest}
                     kind="car"
                     startOnOpen
+                    triggerLabel={tBeacon("guideStart")}
+                  />
+                )}
+                {mode === "transit" && transitGuideStartable && transitGuideRoute && (
+                  <TransitGuidePanel
+                    key={`transit-${guideDestKey}`}
+                    route={transitGuideRoute}
                     triggerLabel={tBeacon("guideStart")}
                   />
                 )}
