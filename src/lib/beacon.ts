@@ -57,6 +57,20 @@ const BASE_DEAD_BAND_M = 15;
 const ARRIVAL_BASE_M = 20;
 const SPEAK_INTERVAL_M = 50;
 
+/**
+ * closer 발화 마일스톤(잔여 거리 적응형, 위원장 실측 판정 2026-08-03). 정상 진행
+ * (가까워짐)은 알림 가치가 낮고 추세 톤이 이미 연속 신호를 주므로 멀수록 성기게
+ * 발화한다. farther는 경고라 50m 간격을 유지한다 — 두 축의 비대칭이 정책이다.
+ * 간략 안내는 전 수단에서 참이라 차량 이동에서 50m 고정이 몇 초마다 발화되던
+ * 문제도 이 사다리가 흡수한다(추세 반전 발화는 별도라 이 간격과 무관).
+ */
+export function closerSpeakIntervalM(distance: number): number {
+  if (distance > 5000) return 1000;
+  if (distance > 1000) return 500;
+  if (distance > 300) return 200;
+  return 100;
+}
+
 export const INITIAL_BEACON_STATE: BeaconState = {
   anchorDistance: null,
   trend: "none",
@@ -147,7 +161,9 @@ export function beaconStep(
   const trendFlipped =
     kind !== "hold" && state.trend !== "none" && kind !== state.trend;
   const lastSpoken = state.lastSpokenDistance ?? distance;
-  const milestone = Math.abs(distance - lastSpoken) >= SPEAK_INTERVAL_M;
+  const speakInterval =
+    kind === "closer" ? closerSpeakIntervalM(distance) : SPEAK_INTERVAL_M;
+  const milestone = Math.abs(distance - lastSpoken) >= speakInterval;
   const speak = kind !== "hold" && (trendFlipped || milestone);
 
   return {

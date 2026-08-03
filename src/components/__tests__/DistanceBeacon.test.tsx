@@ -150,16 +150,32 @@ describe("DistanceBeacon 컨트롤 노출", () => {
 
     expect(screen.getByRole("button", { name: ko.guide.rerouteButton })).toBeTruthy();
     expect(screen.getByText(ko.guide.offRoute)).toBeTruthy();
+    // 이탈 중엔 경로 잔여가 거짓이므로 상시 표시를 숨긴다(3-state 정직).
+    expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
 
-  it("추적 중에는 반복·진행 상황 버튼이 있다", async () => {
+  it("추적 중에는 진행 상황 버튼이 있고 반복 버튼은 없다(위원장 판정 2026-08-03)", async () => {
     renderPanel("ko");
     openAndStart("ko");
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.repeatButton })).toBeTruthy(),
+      expect(screen.getByRole("button", { name: ko.guide.progressButton })).toBeTruthy(),
     );
-    expect(screen.getByRole("button", { name: ko.guide.progressButton })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "현재 안내 반복" })).toBeNull();
+  });
+
+  it("상세 모드는 경로 기준 잔여 거리·예상 시간을 상시 표시한다", async () => {
+    renderPanel("ko");
+    openAndStart("ko");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: ko.guide.toBriefButton })).toBeTruthy(),
+    );
+
+    // 경로 ≈500m·400초 → 시작 시점 잔여 ≈500m, 약 7분(비례 추정. 위도 근사로
+    // haversine이 499m를 낼 수 있어 정확 수치는 단정하지 않는다).
+    const line = screen.getByText(/남은 거리 \d+m, 약 7분/);
+    // 상시 표시는 live region 밖이어야 한다(매 fix 갱신 → polite면 통지 스팸).
+    expect(line.closest("[aria-live]")).toBeNull();
   });
 
   it("도착 인계되면 간략으로 넘어간다(전환 버튼 라벨이 상태 신호)", async () => {
@@ -185,19 +201,6 @@ describe("DistanceBeacon 컨트롤 노출", () => {
 
     expect(screen.getByText(ko.guide.handoff)).toBeTruthy();
     expect(screen.getByRole("button", { name: ko.guide.toDetailButton })).toBeTruthy();
-  });
-
-  it("반복 버튼은 마지막 실행 안내를 다시 통지한다", async () => {
-    renderPanel("ko");
-    openAndStart("ko");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.repeatButton })).toBeTruthy(),
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: ko.guide.repeatButton }));
-
-    // 시작 발화는 요약을 포함하지만 반복 대상은 첫 안내 문장뿐이다(스펙 §5.3).
-    expect(screen.getByText("직진 500m 이동")).toBeTruthy();
   });
 
   it("통지 채널은 단일 live region 하나뿐이다", async () => {

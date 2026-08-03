@@ -76,13 +76,46 @@ describe("beaconStep", () => {
     expect(r.announce.speak).toBe(true);
   });
 
-  it("같은 추세 지속은 50m 마일스톤에서만 speak", () => {
+  it("farther 지속은 50m 마일스톤 유지(경고 축은 촘촘하게)", () => {
     let s = beaconStep(INITIAL_BEACON_STATE, fixAt(300), DEST).state; // lastSpoken≈300
-    let r = beaconStep(s, fixAt(280), DEST); // 20m, closer, milestone 미달
+    let r = beaconStep(s, fixAt(330), DEST); // 30m 증가 < 50 → 침묵
+    expect(r.announce.kind).toBe("farther");
+    expect(r.announce.speak).toBe(false);
+    s = r.state;
+    r = beaconStep(s, fixAt(355), DEST); // 누적 55m ≥ 50 → speak
+    expect(r.announce.speak).toBe(true);
+  });
+
+  it("closer 지속은 300m 이내에서 100m 마일스톤(50m 누적으로는 침묵)", () => {
+    let s = beaconStep(INITIAL_BEACON_STATE, fixAt(300), DEST).state; // lastSpoken≈300
+    let r = beaconStep(s, fixAt(280), DEST); // 20m
     expect(r.announce.kind).toBe("closer");
     expect(r.announce.speak).toBe(false);
     s = r.state;
-    r = beaconStep(s, fixAt(245), DEST); // 누적 55m > 50 → speak
+    r = beaconStep(s, fixAt(245), DEST); // 누적 55m — 종전 50m 정책이면 발화했다
+    expect(r.announce.speak).toBe(false);
+    s = r.state;
+    r = beaconStep(s, fixAt(195), DEST); // 누적 105m ≥ 100 → speak
+    expect(r.announce.speak).toBe(true);
+  });
+
+  it("closer 지속은 1km 초과에서 500m 마일스톤", () => {
+    let s = beaconStep(INITIAL_BEACON_STATE, fixAt(2000), DEST).state;
+    let r = beaconStep(s, fixAt(1700), DEST); // 300m < 500 → 침묵
+    expect(r.announce.kind).toBe("closer");
+    expect(r.announce.speak).toBe(false);
+    s = r.state;
+    r = beaconStep(s, fixAt(1450), DEST); // 누적 550m ≥ 500 → speak
+    expect(r.announce.speak).toBe(true);
+  });
+
+  it("closer 지속은 5km 초과에서 1km 마일스톤(차량 이동 스팸 억제)", () => {
+    let s = beaconStep(INITIAL_BEACON_STATE, fixAt(8000), DEST).state;
+    let r = beaconStep(s, fixAt(7200), DEST); // 800m < 1000 → 침묵
+    expect(r.announce.kind).toBe("closer");
+    expect(r.announce.speak).toBe(false);
+    s = r.state;
+    r = beaconStep(s, fixAt(6900), DEST); // 누적 1,100m ≥ 1000 → speak
     expect(r.announce.speak).toBe(true);
   });
 

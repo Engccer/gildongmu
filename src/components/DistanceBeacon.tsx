@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouteGuide } from "@/hooks/useRouteGuide";
+import { formatDistance, joinText } from "@/lib/format";
 
 /**
  * 실시간 길 안내 UI — disclosure(헤더 버튼)로 접고 펴는 패널 안에 시작/중지 토글 +
@@ -101,13 +102,6 @@ export function DistanceBeacon({
               <>
                 <button
                   type="button"
-                  onClick={guide.repeatGuidance}
-                  className={controlClass}
-                >
-                  {tGuide("repeatButton")}
-                </button>
-                <button
-                  type="button"
                   onClick={guide.announceProgress}
                   className={controlClass}
                 >
@@ -147,6 +141,23 @@ export function DistanceBeacon({
               </>
             )}
           </div>
+          {/* 경로 기준 잔여 거리·예상 시간 상시 표시(위원장 실측 판정 2026-08-03 —
+              직선거리는 상시 표시 가치가 없고 경로 기준이어야 한다). 매 fix 갱신되는
+              값이라 live region 밖 일반 텍스트로만 둔다(polite에 태우면 통지 스팸).
+              이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직). */}
+          {tracking && guide.mode === "detail" && !guide.offRoute && guide.progress && (
+            <p className="mt-2 text-sm">
+              {joinText(
+                tGuide("remainingDistance", {
+                  distance: formatDistance(guide.progress.remainingMeters),
+                }),
+                guide.progress.etaSeconds !== null &&
+                  tGuide("remainingTime", {
+                    minutes: Math.max(1, Math.round(guide.progress.etaSeconds / 60)),
+                  }),
+              )}
+            </p>
+          )}
           <p aria-live="polite" className="mt-2 min-h-5 text-sm">
             {guide.liveText}
           </p>

@@ -70,13 +70,45 @@ private func fixAt(_ metersNorth: Double, accuracy: Double = 10) -> BeaconFix {
         #expect(r.announce.speak)
     }
 
-    @Test func sameTrendSpeaksOnlyAtMilestone() {
+    @Test func fartherKeepsFiftyMeterMilestone() {
+        let s0 = beaconStep(state: .initial, fix: fixAt(300), dest: dest).state
+        let r1 = beaconStep(state: s0, fix: fixAt(330), dest: dest)
+        #expect(r1.announce.kind == .farther)
+        #expect(!r1.announce.speak)  // 30m < 50 — 경고 축은 촘촘한 간격 유지
+        let r2 = beaconStep(state: r1.state, fix: fixAt(355), dest: dest)
+        #expect(r2.announce.speak)  // 누적 55m ≥ 50
+    }
+
+    @Test func closerUsesAdaptiveMilestoneNearRange() {
+        // 300m 이내는 100m 간격 — 종전 50m 정책이면 245m에서 발화했다(웹 미러).
         let s0 = beaconStep(state: .initial, fix: fixAt(300), dest: dest).state
         let r1 = beaconStep(state: s0, fix: fixAt(280), dest: dest)
         #expect(r1.announce.kind == .closer)
         #expect(!r1.announce.speak)
         let r2 = beaconStep(state: r1.state, fix: fixAt(245), dest: dest)
-        #expect(r2.announce.speak)  // 누적 55m > 50
+        #expect(!r2.announce.speak)  // 누적 55m < 100
+        let r3 = beaconStep(state: r2.state, fix: fixAt(195), dest: dest)
+        #expect(r3.announce.speak)  // 누적 105m ≥ 100
+    }
+
+    @Test func closerUsesAdaptiveMilestoneLongRange() {
+        // 1km 초과는 500m 간격(차량 이동 스팸 억제 사다리).
+        let s0 = beaconStep(state: .initial, fix: fixAt(2000), dest: dest).state
+        let r1 = beaconStep(state: s0, fix: fixAt(1700), dest: dest)
+        #expect(r1.announce.kind == .closer)
+        #expect(!r1.announce.speak)  // 누적 300m < 500
+        let r2 = beaconStep(state: r1.state, fix: fixAt(1450), dest: dest)
+        #expect(r2.announce.speak)  // 누적 550m ≥ 500
+    }
+
+    @Test func closerUsesAdaptiveMilestoneVeryLongRange() {
+        // 5km 초과는 1km 간격(웹 테스트 동형 — 사다리 최상단도 구속한다).
+        let s0 = beaconStep(state: .initial, fix: fixAt(8000), dest: dest).state
+        let r1 = beaconStep(state: s0, fix: fixAt(7200), dest: dest)
+        #expect(r1.announce.kind == .closer)
+        #expect(!r1.announce.speak)  // 누적 800m < 1000
+        let r2 = beaconStep(state: r1.state, fix: fixAt(6900), dest: dest)
+        #expect(r2.announce.speak)  // 누적 1,100m ≥ 1000
     }
 
     @Test func arrivalLatchSpeaksOnceOnEntry() {
