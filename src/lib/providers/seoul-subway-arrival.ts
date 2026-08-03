@@ -1,5 +1,10 @@
 import { env } from "../env";
-import { stripStationDecorations } from "../station-match";
+import {
+  parseStationQuery,
+  stripStationDecorations,
+  stripStationSuffixKeepParens,
+} from "../station-match";
+import { findStationsByName } from "../subway-stations";
 import type { SubwayArrival, SubwayStationArrivals } from "../types";
 
 /**
@@ -56,10 +61,26 @@ function str(v: unknown): string {
   return v == null ? "" : String(v).trim();
 }
 
-// 조회 키이자 표시명 — swopenapi는 정확 역명("강동")을 요구한다.
-// station-match의 stripStationDecorations을 그대로 재사용(괄호·노선 토큰·
-// "역"/"station" 접미까지 제거 — "강동역 5호선"→"강동").
+// 표시명 — 괄호·노선 토큰·"역"/"station" 접미까지 제거("강동역 5호선"→"강동").
+// ⚠ 조회 키로는 쓰지 않는다(아래 resolveArrivalQueryName가 정본) — 부역명을 벗긴
+// 조회는 역에 따라 INFO-200으로 위장 실패한다(천호 실측, B2 §6.3).
 export const cleanName = stripStationDecorations;
+
+/**
+ * 실시간 도착 조회용 역명 해석(B2 §6.3): seed 정식 표기(부역명 포함) 우선.
+ *
+ * - seed 매칭(노선 힌트 병용)이 **하나의 원문 표기로 수렴**할 때만 그 표기를 쓴다.
+ *   동명이역이 힌트 없이 서로 다른 표기로 갈리면 모호 — 원문 폴백(오매칭으로 다른
+ *   역을 조회하는 것이 미조회보다 나쁘다).
+ * - 미매칭·모호 시 노선 토큰·"역" 접미만 벗기고 **괄호는 보존**한 입력을 쓴다.
+ */
+export function resolveArrivalQueryName(input: string): string {
+  const { lineHint } = parseStationQuery(input);
+  const matches = findStationsByName(input, lineHint);
+  const names = new Set(matches.map((s) => s.name));
+  if (names.size === 1) return matches[0].name;
+  return stripStationSuffixKeepParens(input);
+}
 
 /** 응답에서 결과 코드를 읽는다 — 정상은 errorMessage.code(중첩), 에러는 최상위 code(평면). */
 function resultCode(raw: unknown): string {
@@ -79,6 +100,9 @@ function toArrival(item: RawArrival): SubwayArrival {
     currentLocation: str(item.arvlMsg3) || undefined,
     arrivalSeconds: Number.isFinite(seconds) ? seconds : 0,
     express: /급행/.test(str(item.btrainSttus)),
+    // 열차 잠금 조인 키(B2 §4.2) — 원문 문자열 무변형, 결측은 undefined(가짜 값 금지).
+    trainNo: str(item.btrainNo) || undefined,
+    arrivalCode: str(item.arvlCd) || undefined,
   };
 }
 
@@ -116,14 +140,25 @@ export async function fetchSubwayArrivals(
 ): Promise<SubwayStationArrivals | null> {
   const key = env.SEOUL_SUBWAY_REALTIME_KEY;
   if (!key) return null;
-  const query = cleanName(stationName);
-  if (!query) return null;
-  const url = `${BASE}/${key}/json/realtimeStationArrival/0/${ROWS}/${encodeURIComponent(query)}`;
-  // 실시간이라 캐시하지 않는다(초 단위 변동).
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`서울 지하철 실시간 도착 조회 실패: HTTP ${res.status}`);
-  }
-  const raw = await res.json();
-  return parseSubwayArrivals(raw, query);
+  const display = cleanName(stationName);
+  if (!display) return null;
+
+  const fetchByName = async (query: string): Promise<SubwayStationArrivals | null> => {
+    const url = `${BASE}/${key}/json/realtimeStationArrival/0/${ROWS}/${encodeURIComponent(query)}`;
+    // 실시간이라 캐시하지 않는다(초 단위 변동).
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`서울 지하철 실시간 도착 조회 실패: HTTP ${res.status}`);
+    }
+    // 표시명은 조회 표기와 무관하게 벗긴 이름(조회 키·표시명 분리, B2 §6.3).
+    return parseSubwayArrivals(await res.json(), display);
+  };
+
+  // 정식 표기(부역명 포함) 우선 조회 + INFO-200이면 벗긴 표기로 1회 재조회.
+  // 역마다 등록 표기가 다르다(천호는 정식만, 왕십리는 벗긴 이름도 동작 — 실측
+  // 2026-08-03·04). 양방향 폴백이라 어느 쪽 표기 역도 잃지 않는다(fail-open).
+  const official = resolveArrivalQueryName(stationName);
+  const primary = await fetchByName(official);
+  if (primary !== null || official === display) return primary;
+  return fetchByName(display);
 }

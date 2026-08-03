@@ -37,6 +37,20 @@ export function stripStationDecorations(name: string): string {
     .trim();
 }
 
+/**
+ * 노선 토큰·"역"/"station" 접미만 벗기고 **괄호 부가명은 보존**한다.
+ * 서울 실시간 도착(swopenapi)은 역마다 등록 표기가 달라 부역명이 필요한 역이
+ * 있다(천호(풍납토성) 실측, B2 §6.3) — 정식 표기 해석의 미매칭 폴백 전처리.
+ */
+export function stripStationSuffixKeepParens(name: string): string {
+  return name
+    .replace(TRAILING_LINE_TOKEN, "")
+    .trim()
+    .replace(/\s*station$/i, "")
+    .replace(/역$/, "")
+    .trim();
+}
+
 /** 역 이름 정규화(매칭 키 전용): 장식 제거 + 소문자. 표시명에는 쓰지 않는다. */
 export function normalizeStationName(name: string): string {
   return stripStationDecorations(name).toLowerCase();
