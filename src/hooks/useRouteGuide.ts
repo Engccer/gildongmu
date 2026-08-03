@@ -11,23 +11,28 @@ import {
 } from "@/lib/beacon";
 import {
   buildGuideRoute,
+  CAR_TUNING,
   entryProjection,
   guideStateAt,
   guideStep,
   initialGuideState,
   unitAt,
   RESOLVE_TIMEOUT_S,
+  WALK_TUNING,
   type GuideEvent,
   type GuideFix,
   type GuideRoute,
   type GuideState,
+  type GuideTuning,
 } from "@/lib/route-guide";
+import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import { prefersEnglish } from "@/lib/data-locale";
-import { formatDistance } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import type { WalkRouteBriefing } from "@/lib/types";
+import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
 
@@ -69,6 +74,24 @@ const REANNOUNCE_DELAY_MS = 120;
 const PROGRESS_FIX_MAX_AGE_S = 15;
 
 export type GuideMode = "brief" | "detail";
+
+/**
+ * 안내 수단(B1 스펙 §4.1). kind 하나가 리듀서 튜닝·경로 소스·낭독 문구를 봉인
+ * 구성으로 원자 결정한다 — "car인데 walk 프로파일" 같은 의미 불일치 세션이
+ * 성립하지 않는다. 세션 도중 kind 변경은 지원하지 않는다(첫 렌더 값 고정).
+ */
+export type GuideKind = "walk" | "car";
+
+const GUIDE_TUNINGS: Record<GuideKind, GuideTuning> = {
+  walk: WALK_TUNING,
+  car: CAR_TUNING,
+};
+
+/** car ETA 재조회(§4.6): 10분 주기, 시작 조회 포함 세션 캡 6회. */
+const CAR_ETA_INTERVAL_MS = 600_000;
+const CAR_ETA_CALL_CAP = 6;
+/** ETA를 "오래됨"으로 판정하는 경과(초) — 주기 + 여유. */
+const CAR_ETA_STALE_S = 660;
 
 type GuideT = ReturnType<typeof useTranslations<"guide">>;
 type BeaconT = ReturnType<typeof useTranslations<"beacon">>;
@@ -119,9 +142,14 @@ function briefText(announce: BeaconAnnounce, t: BeaconT): string {
   return "";
 }
 
-/** 반복 대상은 실행 안내뿐이다(스펙 §4.2) — 상태·오류·속도 통지는 저장하지 않는다. */
+/** 마지막 안내 저장 대상은 실행 안내뿐(스펙 §4.2) — 상태·오류·속도 통지는 제외. */
 function isGuidanceEvent(kind: GuideEvent["kind"]): boolean {
-  return kind === "announceSteps" || kind === "bundleReread" || kind === "periodic";
+  return (
+    kind === "announceSteps" ||
+    kind === "farNotice" ||
+    kind === "bundleReread" ||
+    kind === "periodic"
+  );
 }
 
 /** 상세 모드 상시 표시용 경로 기준 진행 상황(위원장 실측 판정 2026-08-03 묶음 A). */
@@ -154,10 +182,16 @@ export interface RouteGuideApi {
   requestReroute: () => void;
 }
 
-export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
+export function useRouteGuide(
+  dest: RouteGuideDest,
+  kind: GuideKind = "walk",
+): RouteGuideApi {
   const locale = useLocale();
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
+  // kind는 세션 봉인 구성의 키 — 첫 렌더 값으로 고정한다(중도 변경 미지원).
+  const kindRef = useRef(kind);
+  const tuning = GUIDE_TUNINGS[kindRef.current];
   const {
     playCloser, playFarther, playNearby, playTick, playStart, playStop,
     playAhead, playWarning,
@@ -182,8 +216,14 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   /** 상세 모드 무이벤트 tick의 스로틀 기준(초 단위 단조 시각). */
   const detailTickRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
-  /** 상세 경로의 총 소요시간(초, provider 원값) — 잔여 시간 비례 추정의 분모. */
+  /** 상세 경로의 총 소요시간(초, provider 원값) — walk 잔여 시간 비례 추정의 분모. */
   const routeDurationRef = useRef<number | null>(null);
+  /** car 도로명 스팬(§4.7 — 현재 진행거리가 속한 링크만 답한다). */
+  const roadSpansRef = useRef<CarRoadSpan[]>([]);
+  /** car ETA(§4.6): 현 위치→목적지 재조회 totalTime + 갱신 시각(단조 초). */
+  const etaRef = useRef<{ seconds: number; updatedAt: number } | null>(null);
+  const etaCallCountRef = useRef(0);
+  const etaTimerRef = useRef<number | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
   /** 마지막 fix 수신 시각(초, 단조) — 진행 상황의 직선거리 신선도 게이트용. */
   const lastFixAtRef = useRef<number | null>(null);
@@ -245,6 +285,16 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const progressOf = useCallback(
     (route: GuideRoute, state: GuideState): GuideProgress => {
       const remaining = Math.max(0, route.totalMeters - state.d);
+      // car ETA는 재조회 값의 경과 차감 카운트다운(§4.6 — 비례 축소는 정체
+      // 국소성에 취약해 폐기). walk는 총 소요의 잔여 비례(묶음 A 계약 유지).
+      if (kindRef.current === "car") {
+        const eta = etaRef.current;
+        const elapsed = eta ? performance.now() / 1000 - eta.updatedAt : 0;
+        return {
+          remainingMeters: remaining,
+          etaSeconds: eta ? Math.max(0, eta.seconds - elapsed) : null,
+        };
+      }
       const dur = routeDurationRef.current;
       return {
         remainingMeters: remaining,
@@ -289,6 +339,13 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         case "announceSteps":
         case "bundleReread":
           return unitText(route, event.indices, t);
+        case "farNotice":
+          // 원거리 예고(§4.7): 기하 기준 거리 + 원문을 독립 문장으로 결합
+          // (description 속 링크 거리와 문법 결합 금지 — 거리 기준 혼동 차단).
+          return t("farNotice", {
+            distance: formatDistance(CAR_TUNING.farNoticeM ?? 0),
+            step: unitText(route, event.indices, t),
+          });
         case "periodic":
           return t("next", {
             step: nextTarget(route, event.stepIndex, destRef.current.name),
@@ -297,7 +354,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         case "handoff":
           return t("handoff");
         case "offRoute":
-          return t("offRoute");
+          // 차량 이탈 문구는 상태 전문(§4.3) — 첫 통지를 놓쳐도 반복만으로 완결.
+          return kindRef.current === "car" ? t("carOffRoute") : t("offRoute");
         case "backOnRoute":
           return t("backOnRoute");
         case "uncertainEnter":
@@ -329,15 +387,42 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     [progressOf],
   );
 
-  /** 현재 위치에서 목적지까지 도보 경로를 받아 기하를 조립한다. 실패는 전부 null(fail-closed). */
+  /**
+   * 현재 위치에서 목적지까지 상세 경로 기하를 조립한다(시작 시 재조회 — 길찾기
+   * 뷰가 쥔 낡은 출발점 기하 재사용 금지, §5). 실패는 전부 null(fail-closed).
+   * car는 provider 판별자·기하 검증(buildCarGuide)을 통과해야 상세 적격이다.
+   */
   const fetchGuideRoute = useCallback(async (): Promise<{
     route: GuideRoute;
     durationSeconds: number | null;
+    roadSpans: CarRoadSpan[];
   } | null> => {
     const geo = await awaitGeolocation();
     if (geo.status !== "ready") return null;
     const target = destRef.current;
     try {
+      if (kindRef.current === "car") {
+        const res = await fetch(
+          `/api/route/car?origin=${geo.coords.lat},${geo.coords.lng}` +
+            `&dest=${target.lat},${target.lng}&includeGeometry=1`,
+        );
+        if (!res.ok) return null;
+        const body: unknown = await res.json();
+        if (isOutOfCoverageBody(body)) return null;
+        const briefing = body as CarRouteBriefing;
+        // 카카오 폴백은 기하 미지원(§5) — 시작 폴백으로 정직 강등.
+        if (briefing.provider !== "tmap") return null;
+        const carGuide = buildCarGuide(briefing);
+        if (!carGuide) return null;
+        return {
+          route: carGuide.route,
+          durationSeconds:
+            Number.isFinite(briefing.durationSeconds) && briefing.durationSeconds > 0
+              ? briefing.durationSeconds
+              : null,
+          roadSpans: carGuide.roadSpans,
+        };
+      }
       const res = await fetch(
         `/api/route/walk?origin=${geo.coords.lat},${geo.coords.lng}` +
           `&dest=${target.lat},${target.lng}&includeGeometry=1`,
@@ -355,9 +440,59 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
           Number.isFinite(result.durationSeconds) && result.durationSeconds > 0
             ? result.durationSeconds
             : null,
+        roadSpans: [],
       };
     } catch {
       return null;
+    }
+  }, []);
+
+  /**
+   * car ETA 갱신(§4.6): 현 위치→목적지 재조회의 totalTime을 그대로 잔여 ETA로
+   * 쓴다(기하·안내 상태는 교체하지 않는다). 세대 일치 시에만 커밋, 실패는 조용히
+   * 직전 값 유지(stale 판정은 updatedAt이 담당). 캡은 시작 조회를 포함해 6회.
+   */
+  const refreshCarEta = useCallback(async () => {
+    if (kindRef.current !== "car" || !trackingRef.current) return;
+    if (modeRef.current !== "detail") return;
+    if (etaCallCountRef.current >= CAR_ETA_CALL_CAP) return;
+    // 이탈 중 동결(§4.4): 낡은 경로 기준 ETA 갱신은 거짓이라 건너뛴다.
+    if (guideRef.current?.phase === "offRoute") return;
+    const gen = genRef.current;
+    etaCallCountRef.current += 1;
+    try {
+      const geo = await awaitGeolocation();
+      if (geo.status !== "ready") return;
+      const target = destRef.current;
+      const res = await fetch(
+        `/api/route/car?origin=${geo.coords.lat},${geo.coords.lng}` +
+          `&dest=${target.lat},${target.lng}`,
+      );
+      if (!res.ok) return;
+      const body: unknown = await res.json();
+      if (isOutOfCoverageBody(body)) return;
+      const briefing = body as CarRouteBriefing;
+      if (!Number.isFinite(briefing.durationSeconds) || briefing.durationSeconds <= 0) return;
+      // 세대 3중 일치(§4.6): 세션 세대·추적 유지·상세 모드일 때만 커밋.
+      if (gen !== genRef.current || !trackingRef.current || modeRef.current !== "detail") {
+        return;
+      }
+      etaRef.current = {
+        seconds: briefing.durationSeconds,
+        updatedAt: performance.now() / 1000,
+      };
+      const route = routeRef.current;
+      const state = guideRef.current;
+      if (route && state) setProgress(progressOf(route, state));
+    } catch {
+      // 조용히 직전 값 유지 — 반복 실패가 polite 채널을 점유하지 않는다(§4.6).
+    }
+  }, [progressOf]);
+
+  const clearEtaTimer = useCallback(() => {
+    if (etaTimerRef.current !== null) {
+      window.clearInterval(etaTimerRef.current);
+      etaTimerRef.current = null;
     }
   }, []);
 
@@ -378,7 +513,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
 
   const stepDetail = useCallback(
     (fix: GuideFix, route: GuideRoute, state: GuideState, now: number) => {
-      const result = guideStep(state, fix, route, now);
+      const result = guideStep(state, fix, route, now, tuning);
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
@@ -406,7 +541,16 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
     },
-    [announce, eventText, playAhead, playTick, playWarning, progressOf, rememberGuidance],
+    [
+      announce,
+      eventText,
+      playAhead,
+      playTick,
+      playWarning,
+      progressOf,
+      rememberGuidance,
+      tuning,
+    ],
   );
 
   /**
@@ -422,7 +566,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         pendingResolveRef.current = null;
         return false;
       }
-      const entry = entryProjection(route, fix);
+      const entry = entryProjection(route, fix, tuning);
       if (entry.status === "ok") {
         pendingResolveRef.current = null;
         commitDetail(route, guideStateAt(route, entry.d, now, { autoHandoffArmed: false }));
@@ -436,7 +580,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       }
       return false;
     },
-    [announce, commitDetail, t],
+    [announce, commitDetail, t, tuning],
   );
 
   const handleFix = useCallback(
@@ -503,6 +647,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     if (!trackingRef.current && watchIdRef.current === null) return;
     genRef.current += 1;
     clearWatch();
+    clearEtaTimer();
+    releaseGuideSession(sessionStopRef.current);
     trackingRef.current = false;
     prevKindRef.current = null;
     void wakeLock.release();
@@ -511,6 +657,9 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     guideRef.current = null;
     routeRef.current = null;
     routeDurationRef.current = null;
+    roadSpansRef.current = [];
+    etaRef.current = null;
+    etaCallCountRef.current = 0;
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
@@ -526,7 +675,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       announce("");
     }
     playStop();
-  }, [announce, clearWatch, playStop, wakeLock]);
+  }, [announce, clearEtaTimer, clearWatch, playStop, wakeLock]);
 
   const start = useCallback(() => {
     if (!supported) {
@@ -534,12 +683,17 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       return;
     }
     if (watchIdRef.current !== null) return;
+    // 세션 단일성(§3.3): 다른 패널이 쥔 세션을 먼저 종료시킨 뒤 시작한다.
+    claimGuideSession(sessionStopRef.current);
     genRef.current += 1;
     const gen = genRef.current;
     beaconRef.current = INITIAL_BEACON_STATE;
     guideRef.current = null;
     routeRef.current = null;
     routeDurationRef.current = null;
+    roadSpansRef.current = [];
+    etaRef.current = null;
+    etaCallCountRef.current = 0;
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
@@ -570,12 +724,25 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       const fetched = await fetchGuideRoute();
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
       if (!fetched) {
-        // 조용한 강등 금지 — 시작 통지가 어느 모드인지 말한다(스펙 §4.1).
+        // 조용한 강등 금지 — 시작 통지가 어느 모드인지 말한다(스펙 §4.1·§4.5).
         announce(t("detailUnavailable"));
         return;
       }
       const { route } = fetched;
       routeDurationRef.current = fetched.durationSeconds;
+      roadSpansRef.current = fetched.roadSpans;
+      if (kindRef.current === "car") {
+        // 시작 조회가 ETA 1회차(§4.6 — 캡은 시작·주기·수동 재조회 전부 포함).
+        etaCallCountRef.current = 1;
+        etaRef.current =
+          fetched.durationSeconds !== null
+            ? { seconds: fetched.durationSeconds, updatedAt: performance.now() / 1000 }
+            : null;
+        clearEtaTimer();
+        etaTimerRef.current = window.setInterval(() => {
+          void refreshCarEta();
+        }, CAR_ETA_INTERVAL_MS);
+      }
       const now = performance.now() / 1000;
       const init = initialGuideState(route, now);
       commitDetail(route, init.state);
@@ -584,7 +751,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       rememberGuidance(first);
       // 요약과 첫 안내는 한 문장으로 — 두 통지가 경합하면 앞의 것이 잘린다(스펙 §5.3).
       announce(
-        t("detailStart", {
+        t(kindRef.current === "car" ? "carStart" : "detailStart", {
           count: route.steps.length,
           distance: formatDistance(route.totalMeters),
           first,
@@ -593,10 +760,12 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     })();
   }, [
     announce,
+    clearEtaTimer,
     commitDetail,
     fetchGuideRoute,
     locale,
     playStart,
+    refreshCarEta,
     rememberGuidance,
     supported,
     t,
@@ -604,6 +773,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   ]);
 
   const toggleMode = useCallback(() => {
+    // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐(§4.5).
+    if (kindRef.current !== "walk") return;
     const route = routeRef.current;
     if (!trackingRef.current || !route) return;
     // 진행 중 재조회 응답은 모드 전환으로 무효가 된다(스펙 §5.6 폐기 조건).
@@ -628,7 +799,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       announce(t("resolvePending"));
       return;
     }
-    const entry = entryProjection(route, fix);
+    const entry = entryProjection(route, fix, tuning);
     if (entry.status === "ok") {
       pendingResolveRef.current = null;
       commitDetail(route, guideStateAt(route, entry.d, now, { autoHandoffArmed: false }));
@@ -643,7 +814,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       return;
     }
     announce(t("resolveFailed"));
-  }, [announce, commitDetail, t]);
+  }, [announce, commitDetail, t, tuning]);
 
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
@@ -691,13 +862,29 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       return;
     }
     const cur = route.steps[state.stepIndex];
-    announce(
-      t("progressFollowing", {
-        total,
-        step: nextTarget(route, state.stepIndex, destRef.current.name),
-        distance: formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
-      }),
-    );
+    const followingText = t("progressFollowing", {
+      total,
+      step: nextTarget(route, state.stepIndex, destRef.current.name),
+      distance: formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
+    });
+    if (kindRef.current === "car") {
+      // "지금 어느 도로"(§4.7): 현재 진행거리가 속한 링크만. ETA가 오래됐으면
+      // 기준 시점을 병기한다(3-state — 갱신 실패의 침묵을 여기서 보상).
+      const road = roadNameAt(roadSpansRef.current, state.d);
+      const eta = etaRef.current;
+      const etaAgeS = eta ? performance.now() / 1000 - eta.updatedAt : null;
+      announce(
+        joinText(
+          road !== null && t("carRoadNow", { road }),
+          followingText,
+          etaAgeS !== null &&
+            etaAgeS > CAR_ETA_STALE_S &&
+            t("etaStale", { minutes: Math.round(etaAgeS / 60) }),
+        ),
+      );
+      return;
+    }
+    announce(followingText);
   }, [announce, t, tBeacon]);
 
   const requestReroute = useCallback(() => {
@@ -717,6 +904,18 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         }
         const { route } = fetched;
         routeDurationRef.current = fetched.durationSeconds;
+        roadSpansRef.current = fetched.roadSpans;
+        if (kindRef.current === "car") {
+          // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
+          etaCallCountRef.current = Math.min(
+            CAR_ETA_CALL_CAP,
+            etaCallCountRef.current + 1,
+          );
+          etaRef.current =
+            fetched.durationSeconds !== null
+              ? { seconds: fetched.durationSeconds, updatedAt: performance.now() / 1000 }
+              : null;
+        }
         // 새 경로는 현재 위치에서 출발하므로 진행거리 0에서 다시 시작한다.
         const now = performance.now() / 1000;
         const init = initialGuideState(route, now);
@@ -736,6 +935,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   // 전경 전용(스펙 §9): 탭이 숨으면 중지하고 경로를 폐기한다. 복귀 후 자동 재개 없음
   // — 숨김 탭에서 멎은 watch·타이머가 좀비 상태를 만드는 것을 상태로 흡수한다.
   const stopRef = useRef(stop);
+  /** 세션 스토어에 등록하는 안정 정체성 중지 함수(claim/release 짝 맞춤용). */
+  const sessionStopRef = useRef(() => stopRef.current());
 
   // 최신 값 미러(매 렌더 후). 등록형 콜백이 등록 시점 클로저에 고정되는 것을 막는
   // 유일한 갱신 지점 — 렌더 중 ref 쓰기는 금지다(useNearbyFetch 관례 동형).
@@ -772,6 +973,11 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         window.clearTimeout(reannounceTimerRef.current);
         reannounceTimerRef.current = null;
       }
+      if (etaTimerRef.current !== null) {
+        window.clearInterval(etaTimerRef.current);
+        etaTimerRef.current = null;
+      }
+      releaseGuideSession(sessionStopRef.current);
       void wakeLock.release();
     };
   }, [wakeLock]);
@@ -783,7 +989,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     liveText,
     offRoute,
     progress,
-    canOfferDetail: !prefersEnglish(locale) && hasRoute,
+    // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐.
+    canOfferDetail: kindRef.current === "walk" && !prefersEnglish(locale) && hasRoute,
     rerouting,
     start,
     stop,
