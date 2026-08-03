@@ -65,6 +65,14 @@ describe("parseSeoulTrackSlots — 추적 슬롯(B2 §5.1·§5.2)", () => {
     expect(slots[0].vehicleId).toBeNull();
   });
 
+  it("vehId 없는 슬롯은 구조 필드를 불신한다(운행종료 + 낡은 sectOrd = 쓰레기 잔여)", () => {
+    // 심야 실호출(2026-08-04): "운행종료"인데 staOrd−sectOrd가 27로 계산됐다.
+    const slots = parseSeoulTrackSlots(
+      seoulRaw([{ busRouteId: "1", vehId1: "0", arrmsg1: "운행종료", staOrd: "28", sectOrd1: "1" }]),
+    );
+    expect(slots[0].remainingStops).toBeNull();
+  });
+
   it("슬롯2는 메시지가 슬롯1과 다를 때만(운행종료 중복 제거 관례)", () => {
     const slots = parseSeoulTrackSlots(
       seoulRaw([{ busRouteId: "1", vehId1: "7", arrmsg1: "운행종료", vehId2: "8", arrmsg2: "운행종료" }]),
@@ -183,7 +191,7 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
     }
   });
 
-  it("미커버 노선(비수도권)·미커버 역은 unsupported, 도착 0건은 empty", async () => {
+  it("미커버 노선(비수도권)은 unsupported, 도착 0건·INFO-200(null)은 empty", async () => {
     const mod = await withMockedArrivals({ stationName: "천호", arrivals: [] });
     expect((await mod.trackSubway({ station: "대전역", lineName: "대전 1호선" })).status).toBe(
       "unsupported",
@@ -191,9 +199,11 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
     expect((await mod.trackSubway({ station: "천호", lineName: "수도권 5호선" })).status).toBe(
       "empty",
     );
+    // INFO-200은 "미커버"와 "접근 열차 없음(운행 밖)"이 같은 코드 — 노선 매핑표가
+    // 수도권을 이미 걸렀으므로 empty가 정직(심야 실호출 2026-08-04 정정).
     const modNull = await withMockedArrivals(null);
-    expect((await modNull.trackSubway({ station: "부산", lineName: "수도권 5호선" })).status).toBe(
-      "unsupported",
+    expect((await modNull.trackSubway({ station: "천호", lineName: "수도권 5호선" })).status).toBe(
+      "empty",
     );
   });
 });

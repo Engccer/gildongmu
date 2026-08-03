@@ -96,9 +96,11 @@ export function parseBusRouteStops(raw: unknown): BusRouteStop[] {
     .sort((a, b) => a.order - b.order);
 }
 
-const STN_BASE = "http://apis.data.go.kr/1613000/BusSttnInfoInqireService";
-const ARV_BASE = "http://apis.data.go.kr/1613000/ArvlInfoInqireService";
-const RTE_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
+// ⚠ https 필수: http는 read ETIMEDOUT hang(71초 실측 2026-08-04, 조사 §1.2와 동일
+// 함정). 타임아웃은 fetchTago가 AbortSignal로 이중 방어한다.
+const STN_BASE = "https://apis.data.go.kr/1613000/BusSttnInfoInqireService";
+const ARV_BASE = "https://apis.data.go.kr/1613000/ArvlInfoInqireService";
+const RTE_BASE = "https://apis.data.go.kr/1613000/BusRouteInfoInqireService";
 
 /**
  * TAGO 한 오퍼레이션을 호출하고 표준 envelope JSON을 돌려준다.
@@ -119,7 +121,12 @@ async function fetchTago(
   url.searchParams.set("_type", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
 
-  const data = await fetchDataGoKrJson(url, `TAGO ${op}`, init ?? { cache: "no-store" });
+  const fetchInit = init ?? { cache: "no-store" };
+  const data = await fetchDataGoKrJson(url, `TAGO ${op}`, {
+    ...fetchInit,
+    // hang 이중 방어(https 전환과 별개) — 폴링 소비자(B2)가 71초 행에 매달리지 않게.
+    signal: AbortSignal.timeout(10_000),
+  });
 
   const code = readResultCode(data);
   if (code != null && code !== "00" && code !== "0") {

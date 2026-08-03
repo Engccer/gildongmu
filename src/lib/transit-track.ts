@@ -180,7 +180,11 @@ export async function trackSubway(params: {
   const expectedLine = subwayId ? subwayLineNameForId(subwayId) : undefined;
   if (!expectedLine) return { status: "unsupported" };
   const result = await fetchSubwayArrivals(params.station);
-  if (result === null) return { status: "unsupported" }; // 미커버 역(키 없음 포함)
+  // null(INFO-200)은 "미커버"와 "접근 열차 없음(운행 밖 포함)"이 같은 코드를
+  // 쓴다(지하철 4-state 교훈). 추적에선 노선 매핑표가 수도권 커버를 이미
+  // 걸렀으므로 empty(미등장)가 정직하다 — 심야 실호출에서 unsupported로
+  // 뭉개져 "신호 끊김"으로 오통지되는 것을 확인(2026-08-04).
+  if (result === null) return { status: "empty" };
   const items = result.arrivals
     .filter((a) => a.line === expectedLine)
     .map(
