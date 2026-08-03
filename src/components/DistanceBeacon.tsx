@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouteGuide } from "@/hooks/useRouteGuide";
+import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
 
 /**
@@ -31,13 +31,25 @@ import { formatDistance, joinText } from "@/lib/format";
  */
 export function DistanceBeacon({
   dest,
+  kind = "walk",
+  startOnOpen = false,
+  triggerLabel,
 }: {
   dest: { lat: number; lng: number; name: string };
+  /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
+  kind?: GuideKind;
+  /**
+   * 트리거를 누르는 순간 세션도 시작한다(길찾기 뷰 "OO 안내 시작" 버튼 계약 —
+   * "시작"이라 쓰인 버튼이 패널만 여는 이중 행동은 라벨 거짓말이다). 장소 상세는
+   * 기존 2단(열기 → 시작) 유지.
+   */
+  startOnOpen?: boolean;
+  triggerLabel?: string;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
   const [open, setOpen] = useState(false);
-  const guide = useRouteGuide(dest);
+  const guide = useRouteGuide(dest, kind);
 
   // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
   // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),
@@ -58,7 +70,11 @@ export function DistanceBeacon({
   const tracking = guide.status === "tracking";
 
   const togglePanel = () => {
-    if (open) guide.stop();
+    if (open) {
+      guide.stop();
+    } else if (startOnOpen) {
+      guide.start();
+    }
     setOpen(!open);
   };
 
@@ -76,7 +92,8 @@ export function DistanceBeacon({
         aria-expanded={open}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
       >
-        {t("heading")}
+        {triggerLabel ??
+          (kind === "car" ? t("carHeading") : t("walkHeading"))}
       </button>
 
       {open && (

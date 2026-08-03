@@ -83,7 +83,8 @@ function renderPanel(locale: "ko" | "en") {
 /** 패널을 펼치고 추적을 시작한다. 라벨은 로케일 메시지 정본에서 읽는다. */
 function openAndStart(locale: "ko" | "en") {
   const messages = locale === "ko" ? ko : en;
-  fireEvent.click(screen.getByRole("button", { name: messages.beacon.heading }));
+  // 장소 상세 트리거는 B1 §3.2 개명대로 "도보 안내"(수단 라벨) — heading 아님.
+  fireEvent.click(screen.getByRole("button", { name: messages.beacon.walkHeading }));
   fireEvent.click(screen.getByRole("button", { name: messages.beacon.start }));
 }
 
