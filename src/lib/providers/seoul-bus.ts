@@ -138,15 +138,18 @@ function slotToTrack(it: RawItem, slot: "1" | "2", staOrd: number): SeoulTrackSl
   const message = str(it[`arrmsg${slot}`]);
   if (!message) return null;
   const vehId = str(it[`vehId${slot}`]);
+  const vehicleId = vehId !== "" && vehId !== "0" ? vehId : null;
   const sectOrd = numF(it[`sectOrd${slot}`]);
-  // 구조 필드 우선: staOrd(조회 정류소의 노선 내 순번) − sectOrd(차량 현재 구간 순번).
-  // 음수·비유한이면 패턴 폴백(§6.2 — 추출 실패는 사다리만 비활성).
+  // 구조 필드(staOrd − sectOrd)는 **vehId가 있는 슬롯만** 신뢰한다: 운행종료에도
+  // 낡은 배차의 sectOrd가 남아 "운행종료 + 잔여 27" 같은 쓰레기 잔여를 만든다
+  // (심야 실호출 2026-08-04 — traTime1 불신 교훈과 같은 계열). 음수·비유한이면
+  // 패턴 폴백(§6.2 — 추출 실패는 사다리만 비활성).
   const structural =
-    Number.isFinite(staOrd) && Number.isFinite(sectOrd) && staOrd - sectOrd >= 0
+    vehicleId !== null && Number.isFinite(staOrd) && Number.isFinite(sectOrd) && staOrd - sectOrd >= 0
       ? staOrd - sectOrd
       : null;
   return {
-    vehicleId: vehId !== "" && vehId !== "0" ? vehId : null,
+    vehicleId,
     message,
     remainingStops: structural ?? remainingFromArrmsg(message),
     lowFloor: str(it[`busType${slot}`]) === "1",
