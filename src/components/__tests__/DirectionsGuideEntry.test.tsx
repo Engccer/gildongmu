@@ -50,9 +50,47 @@ const WALK_OK = {
   },
 };
 
+// 탑승 leg 1개(수도권 지하철, stops 포함) — transit 시작 게이트의 성립 조합.
+const TRANSIT_OK = {
+  result: {
+    recommended: {
+      summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
+      legs: [
+        { mode: "walk", minutes: 3 },
+        {
+          mode: "subway",
+          lineName: "수도권 5호선",
+          fromName: "천호",
+          toName: "여의도",
+          stationCount: 8,
+          minutes: 24,
+          serviceWayCode: 2,
+          stops: [
+            { name: "천호", stationId: "547", lat: 37.5385, lng: 127.1235 },
+            { name: "여의도", stationId: "526", lat: 37.5216, lng: 126.924 },
+          ],
+        },
+        { mode: "walk", minutes: 3 },
+      ],
+    },
+    alternatives: [],
+  },
+};
+// 도보 전용 경로 — 탑승 leg 0개라 시작 불가(§3.1).
+const TRANSIT_WALK_ONLY = {
+  result: {
+    recommended: {
+      summary: { totalMinutes: 10, fare: 0, transfers: 0, walkMinutes: 10 },
+      legs: [{ mode: "walk", minutes: 10 }],
+    },
+    alternatives: [],
+  },
+};
+
 function stubFetch(opts: {
   walk: "ok" | "fail";
   car: "tmap" | "kakao" | "fail";
+  transit?: "ok" | "walkOnly" | "none";
 }) {
   vi.stubGlobal(
     "fetch",
@@ -83,7 +121,15 @@ function stubFetch(opts: {
         return { ok: true, json: async () => WALK_OK } as Response;
       }
       if (url.startsWith("/api/route/transit")) {
-        return { ok: true, json: async () => ({ result: null }) } as Response;
+        // 길찾기 뷰 조회는 항상 경유 정류장 옵트인이어야 한다(B2 §2 경로 동일성).
+        expect(url).toContain("includeStops=1");
+        const body =
+          opts.transit === "ok"
+            ? TRANSIT_OK
+            : opts.transit === "walkOnly"
+              ? TRANSIT_WALK_ONLY
+              : { result: null };
+        return { ok: true, json: async () => body } as Response;
       }
       throw new Error(`unexpected fetch: ${url}`);
     }),
@@ -163,5 +209,33 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     await queryRoutes();
     expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+  });
+
+  // B2 §3.1: 대중교통 게이트 = 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1
+  it("ko + 대중교통만 성공(탑승 leg 有): 시작 버튼 1개, 간략 폴백 없음", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "ok" });
+    await queryRoutes();
+    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
+  });
+
+  it("ko + 3수단 전부 시작 가능: 공통 라벨 버튼 3개", async () => {
+    stubFetch({ walk: "ok", car: "tmap", transit: "ok" });
+    await queryRoutes();
+    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(3);
+  });
+
+  it("도보 전용 대중교통 경로는 시작 불가(탑승 leg 0) — 간략 폴백으로", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "walkOnly" });
+    await queryRoutes();
+    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+  });
+
+  it("en + 대중교통 성공: ko 전용이라 버튼 없음", async () => {
+    mockLocale = "en";
+    stubFetch({ walk: "fail", car: "fail", transit: "ok" });
+    await queryRoutes();
+    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
   });
 });
