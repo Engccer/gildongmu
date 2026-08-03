@@ -597,10 +597,9 @@
     "reduced": "Impossibile tracciare la distanza perché la posizione precisa è disattivata",
     "walkHeading": "Guida a piedi",
     "carHeading": "Guida in auto",
-    "walkGuideStart": "Avvia guida a piedi",
-    "carGuideStart": "Avvia guida in auto",
     "briefGuideStart": "Avvia guida semplice",
-    "stopped": "Guida in tempo reale interrotta"
+    "stopped": "Guida in tempo reale interrotta",
+    "guideStart": "Avvia guida in tempo reale"
   },
   "guide": {
     "briefStarted": "Guida semplice avviata",

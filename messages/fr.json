@@ -597,10 +597,9 @@
     "reduced": "Impossible de suivre la distance car la position précise est désactivée",
     "walkHeading": "Guidage à pied",
     "carHeading": "Guidage en voiture",
-    "walkGuideStart": "Démarrer le guidage à pied",
-    "carGuideStart": "Démarrer le guidage en voiture",
     "briefGuideStart": "Démarrer le guidage simple",
-    "stopped": "Guidage en temps réel arrêté"
+    "stopped": "Guidage en temps réel arrêté",
+    "guideStart": "Démarrer le guidage en temps réel"
   },
   "guide": {
     "briefStarted": "Guidage simple démarré",

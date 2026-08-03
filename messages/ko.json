@@ -597,10 +597,9 @@
     "reduced": "정확한 위치가 꺼져 있어 거리를 추적할 수 없습니다",
     "walkHeading": "도보 안내",
     "carHeading": "자동차 안내",
-    "walkGuideStart": "도보 안내 시작",
-    "carGuideStart": "자동차 안내 시작",
     "briefGuideStart": "간략 안내 시작",
-    "stopped": "실시간 안내를 중지했습니다"
+    "stopped": "실시간 안내를 중지했습니다",
+    "guideStart": "실시간 길 안내 시작"
   },
   "guide": {
     "briefStarted": "간략 안내 시작",
