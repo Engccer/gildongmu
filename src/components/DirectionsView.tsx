@@ -50,6 +50,8 @@ type ModeOutcome =
 type QueryResults = {
   /** 조회 시점의 도착 표시명(대중교통 "도착" 문장용), 필드 편집과 무관한 스냅샷 */
   destLabel: string;
+  /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
+  destCoord: Coord;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
 };
 
@@ -434,6 +436,7 @@ export function DirectionsView({
       const successes = activeModes.filter((m) => outcomes[m]?.kind === "done");
       setResults({
         destLabel: to.kind === "current" ? currentLabel : to.label,
+        destCoord: dest,
         outcomes,
       });
       setPhase({ kind: "settled", successCount: successes.length });
@@ -534,14 +537,13 @@ export function DirectionsView({
   // 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled ∧ 목적지 확정.
   // "모든 수단 실패"가 아니라 "시작 가능 0개"다 — en 로케일·카카오 폴백만 성공한
   // 조합에서 막다른 화면을 만들지 않는다(§3.1).
-  const guideDest =
-    results && lastCoordsRef.current
-      ? {
-          lat: lastCoordsRef.current.dest.lat,
-          lng: lastCoordsRef.current.dest.lng,
-          name: results.destLabel,
-        }
-      : null;
+  const guideDest = results
+    ? {
+        lat: results.destCoord.lat,
+        lng: results.destCoord.lng,
+        name: results.destLabel,
+      }
+    : null;
   const guideDestKey = guideDest ? `${guideDest.lat},${guideDest.lng}` : "";
   const briefFallback =
     phase.kind === "settled" &&

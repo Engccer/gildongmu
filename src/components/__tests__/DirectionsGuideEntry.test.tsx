@@ -34,7 +34,6 @@ const gangnam: Place = {
   lat: 37.497,
   lng: 127.027,
 };
-const gildong: Place = { ...gangnam, id: "p-gildong", name: "길동역", lat: 37.538, lng: 127.14 };
 
 const CAR_OK = {
   distanceMeters: 12000,

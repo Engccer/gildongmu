@@ -10,6 +10,7 @@ import {
   unitAt,
   WALK_TUNING,
   type GuideEvent,
+  type GuideState,
   type GuideTone,
 } from "../route-guide";
 
@@ -185,7 +186,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
   it("확정 후 180초 전에는 침묵, 이후 재통지는 무톤·상태 전문", () => {
     const route = routeFrom([{ len: 600, desc: "직진" }]);
-    let state = { ...guideStateAt(route, 0, 0), lastFixAt: 0 };
+    let state: GuideState = { ...guideStateAt(route, 0, 0), lastFixAt: 0 };
     const off = (along: number) => ({ ...fixCoord(along, 60), accuracy: 10 });
     const confirmSeq: [number, number][] = [
       [5, 40],

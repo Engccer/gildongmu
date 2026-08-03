@@ -35,13 +35,13 @@ describe("getCarRoute", () => {
   });
 
   it("両키 정상이면 Tmap 결과를 쓰고 카카오는 호출하지 않는다", async () => {
-    await expect(getCarRoute(COORDS)).resolves.toEqual(TMAP_BRIEFING);
+    await expect(getCarRoute(COORDS)).resolves.toEqual({ ...TMAP_BRIEFING, provider: "tmap" });
     expect(getCarRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("Tmap throw + 카카오 키 있음 → 카카오 폴백 + 폴백 경고 로그", async () => {
     vi.mocked(getTmapCarBriefing).mockRejectedValue(new Error("HTTP 500"));
-    await expect(getCarRoute(COORDS)).resolves.toEqual(KAKAO_BRIEFING);
+    await expect(getCarRoute(COORDS)).resolves.toEqual({ ...KAKAO_BRIEFING, provider: "kakao" });
     expect(console.warn).toHaveBeenCalledOnce();
   });
 
@@ -53,7 +53,7 @@ describe("getCarRoute", () => {
 
   it("Tmap 키 없음 + 카카오 키 있음 → 카카오 직행(폴백 로그 없음)", async () => {
     vi.mocked(hasTmapKey).mockReturnValue(false);
-    await expect(getCarRoute(COORDS)).resolves.toEqual(KAKAO_BRIEFING);
+    await expect(getCarRoute(COORDS)).resolves.toEqual({ ...KAKAO_BRIEFING, provider: "kakao" });
     expect(getTmapCarBriefing).not.toHaveBeenCalled();
     expect(console.warn).not.toHaveBeenCalled();
   });
