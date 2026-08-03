@@ -20,13 +20,15 @@ public struct RouteService: Sendable {
     public func car(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        lang: String? = nil
+        lang: String? = nil,
+        includeGeometry: Bool = false
     ) async throws -> CarRouteBriefing {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
         if let lang { query.append(URLQueryItem(name: "lang", value: lang)) }
+        if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         return try await client.get("/api/route/car", query: query)
     }
 

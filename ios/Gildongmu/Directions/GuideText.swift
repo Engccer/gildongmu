@@ -35,6 +35,26 @@ enum GuideText {
         )
     }
 
+    /// 자동차 시작 원자 발화(B1 — 시작 통지가 수단·모드를 말한다).
+    static func carStart(route: GuideRoute, firstIndices: [Int]) -> String {
+        appLocalized(
+            "guide.carStart",
+            String(route.steps.count),
+            formatDistance(Int(route.totalMeters.rounded())),
+            unit(route: route, indices: firstIndices)
+        )
+    }
+
+    /// 원거리 예고(B1 §4.7): 기하 기준 경계 거리 + 원문을 독립 문장으로 결합
+    /// (description 속 링크 거리와 문법 결합 금지 — 거리 기준 혼동 차단).
+    static func farNotice(route: GuideRoute, indices: [Int]) -> String {
+        appLocalized(
+            "guide.farNotice",
+            formatDistance(Int((GuideTuning.car.farNoticeM ?? 0).rounded())),
+            unit(route: route, indices: indices)
+        )
+    }
+
     /// 주기 통지: 다음 안내 지점까지 구간 잔여(마지막 스텝이면 목적지 라벨).
     static func periodic(
         route: GuideRoute, stepIndex: Int, remainingMeters: Int,

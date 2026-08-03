@@ -24,8 +24,12 @@ final class BeaconModel {
         case unavailable
     }
 
-    /// 안내 방식 = 거리의 기준(스펙 §3). 간략=직선(비콘, 전 수단), 상세=경로(도보·ko 전용).
+    /// 안내 방식 = 거리의 기준(스펙 §3). 간략=직선(비콘, 전 수단), 상세=경로 추종.
     enum GuideMode: Equatable { case brief, detail }
+
+    /// 안내 수단(B1 §4.1 봉인 구성 키): 리듀서 튜닝·경로 소스·낭독 문구를 원자
+    /// 결정한다. 세션 시작 시 고정되고 중도 변경은 없다(재시작뿐).
+    enum GuideSessionKind: Equatable { case walk, car }
 
     private(set) var status: Status = .idle
     /// 추적 중인 목적지 이름. 추적 화면이 이 값을 읽는다.
@@ -72,9 +76,11 @@ final class BeaconModel {
     // MARK: - 실시간 길 안내(상세 모드) 상태
 
     private(set) var mode: GuideMode = .brief
-    /// 상세⇄간략 전환 버튼 노출 조건. 경로는 ko 데이터 로케일에서만 조회되므로
-    /// (스펙 §4.1 ko 전용) 이 값이 곧 로케일 게이트를 겸한다.
-    var canOfferDetail: Bool { guideRoute != nil }
+    private(set) var sessionKind: GuideSessionKind = .walk
+    private var tuning: GuideTuning { sessionKind == .car ? .car : .walk }
+    /// 상세⇄간략 전환 버튼 노출 조건 — **도보 전용**(B1 §3.3, car의 brief 복귀는
+    /// 세션 재시작뿐). 경로는 ko 데이터 로케일에서만 조회되므로 로케일 게이트 겸용.
+    var canOfferDetail: Bool { sessionKind == .walk && guideRoute != nil }
     /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
     private(set) var offRoute = false
     /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
@@ -86,8 +92,16 @@ final class BeaconModel {
 
     /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
     private var guideRoute: GuideRoute?
-    /// 상세 경로의 총 소요시간(초, provider 원값) — 잔여 시간 비례 추정의 분모.
+    /// 상세 경로의 총 소요시간(초, provider 원값) — walk 잔여 시간 비례 추정의 분모.
     private var guideRouteDurationSeconds: Int?
+    /// car 도로명 스팬(§4.7 — 현재 진행거리가 속한 링크만 답한다).
+    private var roadSpans: [CarRoadSpan] = []
+    /// car ETA(§4.6): 현 위치→목적지 재조회 totalTime + 갱신 시각(단조 초).
+    private var etaSeconds: Double?
+    private var etaUpdatedAt: Double?
+    /// ETA 호출 캡(시작 조회·주기·수동 재조회 전부 포함, §4.6).
+    private var etaCallCount = 0
+    private var etaTask: Task<Void, Never>?
     private var guideState: GuideState?
     /// 시작 직후 경로 조회 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 → 곧바로
     /// 상세 시작" 이중 발화를 막는다.
@@ -141,20 +155,20 @@ final class BeaconModel {
 
     // MARK: - 시작·중지
 
-    func toggle(dest: BeaconDest, label: String) {
+    func toggle(dest: BeaconDest, label: String, kind: GuideSessionKind = .walk) {
         if isTracking {
             stop(playStopTone: true)
         } else {
             guard !starting else { return }
             starting = true
             startTask = Task { [weak self] in
-                await self?.start(dest: dest, label: label)
+                await self?.start(dest: dest, label: label, kind: kind)
                 self?.starting = false
             }
         }
     }
 
-    private func start(dest: BeaconDest, label: String) async {
+    private func start(dest: BeaconDest, label: String, kind: GuideSessionKind = .walk) async {
         guard !isTracking else { return }
 
         // 권한 게이트는 `authorizationSnapshot`을 직접 본다. `currentCoordinate()`는
@@ -196,6 +210,7 @@ final class BeaconModel {
 
         self.dest = dest
         destinationLabel = label
+        sessionKind = kind
         beaconState = .initial
         gateState = .initial
         lastFixAt = nil
@@ -228,6 +243,35 @@ final class BeaconModel {
         }
     }
 
+    /// 수단별 상세 경로 데이터(§4.1 봉인 구성의 경로 소스 축). nil = 상세 부적격
+    /// (car는 provider 비-tmap·기하 검증 실패 포함 — §5 fail-closed).
+    private func fetchDetailData(
+        origin: (lat: Double, lng: Double), dest: BeaconDest
+    ) async throws -> (route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?)? {
+        if sessionKind == .car {
+            let briefing = try await routeService.car(
+                originLat: origin.lat, originLng: origin.lng,
+                destLat: dest.lat, destLng: dest.lng,
+                includeGeometry: true
+            )
+            guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
+                return nil
+            }
+            return (car.route, car.roadSpans, briefing.durationSeconds)
+        }
+        let briefing = try await routeService.walk(
+            originLat: origin.lat, originLng: origin.lng,
+            destLat: dest.lat, destLng: dest.lng,
+            includeGeometry: true
+        )
+        guard let briefing,
+              let route = buildGuideRoute(briefing.steps.map {
+                  GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
+              })
+        else { return nil }
+        return (route, [], briefing.durationSeconds)
+    }
+
     /// 시작 시 상세 경로 조회. 성공하면 상세 모드 + 원자 시작 발화, 실패는 간략 폴백.
     /// "이 세션에서 현재 목적지에 대해 조회"가 곧 상세 적격 조건이다(스펙 §4.1).
     private func fetchGuideRoute(dest: BeaconDest, token: Int) async {
@@ -238,35 +282,83 @@ final class BeaconModel {
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard !Task.isCancelled, isTracking, self.dest == dest else { return }
-            let briefing = try await routeService.walk(
-                originLat: origin.lat, originLng: origin.lng,
-                destLat: dest.lat, destLng: dest.lng,
-                includeGeometry: true
-            )
+            let fetched = try await fetchDetailData(origin: origin, dest: dest)
             guard !Task.isCancelled, isTracking, self.dest == dest else { return }
-            guard let briefing,
-                  let route = buildGuideRoute(briefing.steps.map {
-                      GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
-                  })
-            else {
+            guard let fetched else {
                 fallbackToBrief()
                 return
             }
-            guideRoute = route
-            guideRouteDurationSeconds = briefing.durationSeconds
-            let initial = initialGuideState(route: route, now: uptimeNow)
+            guideRoute = fetched.route
+            guideRouteDurationSeconds = fetched.durationSeconds
+            roadSpans = fetched.spans
+            if sessionKind == .car {
+                // 시작 조회가 ETA 1회차(§4.6 캡 포함), 주기 타이머 가동.
+                etaCallCount = 1
+                if let dur = fetched.durationSeconds, dur > 0 {
+                    etaSeconds = Double(dur)
+                    etaUpdatedAt = uptimeNow
+                } else {
+                    etaSeconds = nil
+                    etaUpdatedAt = nil
+                }
+                startEtaTimer()
+            }
+            let initial = initialGuideState(route: fetched.route, now: uptimeNow)
             guideState = initial.state
             mode = .detail
             offRoute = false
-            updateRemaining(route: route, state: initial.state)
+            updateRemaining(route: fetched.route, state: initial.state)
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
-            let text = GuideText.start(route: route, firstIndices: initial.firstIndices)
-            lastGuidance = GuideText.unit(route: route, indices: initial.firstIndices)
+            let text = sessionKind == .car
+                ? GuideText.carStart(route: fetched.route, firstIndices: initial.firstIndices)
+                : GuideText.start(route: fetched.route, firstIndices: initial.firstIndices)
+            lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             statusText = text
             announce(text)
         } catch {
             guard !Task.isCancelled, isTracking else { return }
             fallbackToBrief()
+        }
+    }
+
+    /// car ETA 주기 갱신 타이머(§4.6 — 10분). 캡 소진·간략 전환 시 자연 무동작.
+    private func startEtaTimer() {
+        etaTask?.cancel()
+        etaTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(600))
+                guard let self else { return }
+                guard !Task.isCancelled else { return }
+                await self.refreshCarEta()
+            }
+        }
+    }
+
+    private func refreshCarEta() async {
+        guard sessionKind == .car, isTracking, mode == .detail else { return }
+        guard etaCallCount < 6 else { return }
+        // 이탈 중 동결(§4.4): 낡은 경로 기준 ETA 갱신은 거짓이라 건너뛴다.
+        guard guideState?.phase != .offRoute else { return }
+        guard let dest else { return }
+        etaCallCount += 1
+        let token = routeFetchToken
+        do {
+            let origin = try await LocationService.shared.currentCoordinate()
+            let briefing = try await routeService.car(
+                originLat: origin.lat, originLng: origin.lng,
+                destLat: dest.lat, destLng: dest.lng
+            )
+            // 세대 일치 커밋(§4.6) — 중지·재조회·목적지 변경 후 도착 응답 폐기.
+            guard token == routeFetchToken, isTracking, mode == .detail, self.dest == dest,
+                  briefing.durationSeconds > 0
+            else { return }
+            etaSeconds = Double(briefing.durationSeconds)
+            etaUpdatedAt = uptimeNow
+            if let route = guideRoute, let state = guideState {
+                updateRemaining(route: route, state: state)
+            }
+        } catch {
+            // 조용히 직전 값 유지 — stale 판정은 etaUpdatedAt이 담당(§4.6 3-state).
         }
     }
 
@@ -279,16 +371,22 @@ final class BeaconModel {
         announce(text)
     }
 
-    /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). 예상 시간은 provider
-    /// 총 소요시간의 잔여 비례 축소다 — 실측 속도로 재추정하지 않는다(보행 멈춤·GPS
-    /// 잡음에 출렁이는 수치는 상시 표시로 부적합, 결정론 우선). 근거 없으면 시간 생략.
+    /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
+    /// 총 소요시간의 잔여 비례 축소, car는 재조회 ETA의 경과 차감 카운트다운(§4.6 —
+    /// 비례 축소는 정체 국소성에 취약해 폐기). 근거 없으면 시간 생략(날조 금지).
     private func updateRemaining(route: GuideRoute, state: GuideState) {
         let remaining = max(0, route.totalMeters - state.d)
         let distancePart = appLocalized(
             "guide.remainingDistance", formatDistance(Int(remaining.rounded()))
         )
         var timePart: String?
-        if let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 {
+        if sessionKind == .car {
+            if let eta = etaSeconds, let at = etaUpdatedAt {
+                let left = max(0, eta - (uptimeNow - at))
+                let minutes = max(1, Int((left / 60).rounded()))
+                timePart = appLocalized("guide.remainingTime", String(minutes))
+            }
+        } else if let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 {
             let minutes = max(1, Int((Double(dur) * remaining / route.totalMeters / 60).rounded()))
             timePart = appLocalized("guide.remainingTime", String(minutes))
         }
@@ -327,12 +425,19 @@ final class BeaconModel {
         routeFetchTask = nil
         awaitingRoute = false
         mode = .brief
+        sessionKind = .walk
         guideRoute = nil
         guideRouteDurationSeconds = nil
         guideState = nil
         lastGuidance = nil
         remainingText = nil
         offRoute = false
+        roadSpans = []
+        etaSeconds = nil
+        etaUpdatedAt = nil
+        etaCallCount = 0
+        etaTask?.cancel()
+        etaTask = nil
         pendingRecovery = nil
         resolvePendingSince = nil
         lastFixCoord = nil
@@ -452,7 +557,8 @@ final class BeaconModel {
             state: state,
             fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy),
             route: route,
-            now: now
+            now: now,
+            tuning: tuning
         )
         guideState = out.state
         updateRemaining(route: route, state: out.state)
@@ -476,6 +582,12 @@ final class BeaconModel {
             statusText = text
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
+        case let .farNotice(indices):
+            // 원거리 예고(B1 §4.7) — 실행 안내와 같은 취급(억제 복구 대상).
+            let text = GuideText.farNotice(route: route, indices: indices)
+            lastGuidance = text
+            statusText = text
+            if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case let .periodic(stepIndex, remainingMeters, accuracy):
             let text = GuideText.periodic(
                 route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
@@ -496,7 +608,10 @@ final class BeaconModel {
             announce(text)
         case .offRoute:
             offRoute = true
-            let text = appLocalized("guide.offRoute")
+            // 차량 이탈 문구는 상태 전문(B1 §4.3 — 첫 통지를 놓쳐도 반복만으로 완결).
+            let text = appLocalized(
+                sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute"
+            )
             statusText = text
             announce(text)
         case .backOnRoute:
@@ -527,7 +642,7 @@ final class BeaconModel {
         guard fix.accuracy > 0 else { return false }
         let now = uptimeNow
         let gfix = GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy)
-        if case let .ok(d) = entryProjection(route: route, fix: gfix) {
+        if case let .ok(d) = entryProjection(route: route, fix: gfix, tuning: tuning) {
             resolvePendingSince = nil
             // 수동 복귀는 자동 인계 재무장 전(armed=false)으로 시작한다(전환 루프 차단).
             let state = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: false)
@@ -564,11 +679,25 @@ final class BeaconModel {
         if mode == .detail, let route = guideRoute, let state = guideState {
             // 이탈 상태의 직선거리(스펙 §4.2): 마지막 fix→목적지. 경로 잔여는 이탈 중 거짓.
             let straight = state.phase == .offRoute ? freshStraightLineMeters() : nil
-            text = GuideText.progress(
+            let base = GuideText.progress(
                 route: route, state: state,
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
                 straightLineMeters: straight
             )
+            if sessionKind == .car, state.phase == .following || state.phase == .bundle {
+                // car(§4.7): 현재 링크 도로명 + 진행 + ETA 오래됨 병기(3-state).
+                let road = roadNameAt(spans: roadSpans, d: state.d)
+                let etaAge = etaUpdatedAt.map { uptimeNow - $0 }
+                text = joinText(
+                    road.map { appLocalized("guide.carRoadNow", $0) },
+                    base,
+                    (etaAge ?? 0) > 660
+                        ? appLocalized("guide.etaStale", String(Int(((etaAge ?? 0) / 60).rounded())))
+                        : nil
+                )
+            } else {
+                text = base
+            }
         } else if let straight = freshStraightLineMeters() {
             // 간략: 목적지 직선거리 하나(웹과 동일 문구 — 반복 버튼과 역할이 갈라진다).
             text = appLocalized("beacon.first", formatDistance(Int(straight.rounded())))
@@ -579,9 +708,10 @@ final class BeaconModel {
         announce(text, highPriority: true)
     }
 
-    /// 상세⇄간략 전환(추적 유지, 스펙 §6). 경로 미보유 세션에선 UI가 버튼을 숨긴다.
+    /// 상세⇄간략 전환(추적 유지, 스펙 §6). **도보 전용**(B1 §3.3) — 경로 미보유
+    /// 세션과 car 세션에선 UI가 버튼을 숨기고 여기서도 이중 방어한다.
     func toggleMode() {
-        guard isTracking, guideRoute != nil else { return }
+        guard sessionKind == .walk, isTracking, guideRoute != nil else { return }
         if mode == .detail {
             mode = .brief
             remainingText = nil
@@ -620,30 +750,31 @@ final class BeaconModel {
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
-            let briefing = try await routeService.walk(
-                originLat: origin.lat, originLng: origin.lng,
-                destLat: dest.lat, destLng: dest.lng,
-                includeGeometry: true
-            )
+            let fetched = try await fetchDetailData(origin: origin, dest: dest)
             // latest-wins: 왕복 중 중지·전환·목적지 변경이면 도착 응답 폐기(이탈 게이트 동형).
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
-            guard let briefing,
-                  let route = buildGuideRoute(briefing.steps.map {
-                      GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
-                  })
-            else {
+            guard let fetched else {
                 statusText = appLocalized("guide.rerouteFailed")
                 announce(statusText, highPriority: true)
                 return
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
-            guideRoute = route
-            guideRouteDurationSeconds = briefing.durationSeconds
-            let initial = initialGuideState(route: route, now: uptimeNow)
+            guideRoute = fetched.route
+            guideRouteDurationSeconds = fetched.durationSeconds
+            roadSpans = fetched.spans
+            if sessionKind == .car {
+                // 수동 재조회도 ETA 캡에 포함(§4.6) + 새 경로 기준 원자 교체.
+                etaCallCount = min(6, etaCallCount + 1)
+                if let dur = fetched.durationSeconds, dur > 0 {
+                    etaSeconds = Double(dur)
+                    etaUpdatedAt = uptimeNow
+                }
+            }
+            let initial = initialGuideState(route: fetched.route, now: uptimeNow)
             guideState = initial.state
             offRoute = false
-            updateRemaining(route: route, state: initial.state)
-            let text = GuideText.unit(route: route, indices: initial.firstIndices)
+            updateRemaining(route: fetched.route, state: initial.state)
+            let text = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             lastGuidance = text
             statusText = text
             announce(text)
