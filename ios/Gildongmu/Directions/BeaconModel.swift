@@ -126,6 +126,8 @@ final class BeaconModel {
     private var lastDetailTickAt: Double?
 
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+    /// 세션 단일성 토큰(B2 §3.2 — GuideSessionCoordinator claim/release 검증 키).
+    private var sessionToken: Int?
 
     private var uptimeNow: Double { ProcessInfo.processInfo.systemUptime }
 
@@ -207,6 +209,11 @@ final class BeaconModel {
         // await를 넘어온 뒤 화면을 떠났을 수 있다. 여기서 안 막으면 다른 탭에서 톤이
         // 계속 나는 좀비 추적이 되고, 그 화면의 onDisappear는 이미 지나갔다.
         guard !Task.isCancelled else { return }
+
+        // 세션 단일성(B2 §3.2): 다른 안내(대중교통 포함)가 돌고 있으면 먼저 멈춘다.
+        sessionToken = GuideSessionCoordinator.shared.claim { [weak self] in
+            self?.stop()
+        }
 
         self.dest = dest
         destinationLabel = label
@@ -406,6 +413,10 @@ final class BeaconModel {
     /// ⚠ 톤 엔진은 여기서 정리하지 않는다. 정지 톤을 예약한 직후 엔진을 멈추면
     /// 하강 3음이 한 프레임도 나지 않는다. 정리는 `teardown()` 몫이다.
     func stop(playStopTone: Bool = false) {
+        if let token = sessionToken {
+            sessionToken = nil
+            GuideSessionCoordinator.shared.release(token)
+        }
         startTask?.cancel()
         startTask = nil
         starting = false

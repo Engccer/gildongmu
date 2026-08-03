@@ -599,7 +599,8 @@
     "carHeading": "自動車案内",
     "briefGuideStart": "簡易案内を開始",
     "stopped": "リアルタイム案内を停止しました",
-    "guideStart": "リアルタイム案内を開始"
+    "guideStart": "リアルタイム案内を開始",
+    "transitHeading": "公共交通案内"
   },
   "guide": {
     "briefStarted": "簡易案内を開始しました",
@@ -810,6 +811,7 @@
     "lastUpdated": "最終更新 {time}",
     "stationCountAbout": "約{count}駅",
     "waitingLabel": "乗車する車両を選んでください",
-    "noCandidates": "まだ到着予定の車両がありません"
+    "noCandidates": "まだ到着予定の車両がありません",
+    "bound": "{dest}行き"
   }
 }

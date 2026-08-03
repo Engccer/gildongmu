@@ -34,16 +34,19 @@ public struct RouteService: Sendable {
 
     /// nil = 경로 없음(3-state, throw 아님, walk와 동형). 키 없음(503)·조회 실패(502)는
     /// 여느 라우트와 동형으로 throw.
+    /// includeStops=true는 경유 정류장 옵트인(웹 `?includeStops=1` 계약, B2 실시간
+    /// 안내의 승차·하차 정류소 ID·좌표 데이터원). false면 파라미터 생략(byte-호환).
     public func transit(
         originLat: Double, originLng: Double,
-        destLat: Double, destLng: Double
+        destLat: Double, destLng: Double,
+        includeStops: Bool = false
     ) async throws -> TransitRouteResult? {
-        let envelope: TransitRouteEnvelope = try await client.get(
-            "/api/route/transit",
-            query: [
-                URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
-                URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
-            ])
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+        ]
+        if includeStops { query.append(URLQueryItem(name: "includeStops", value: "1")) }
+        let envelope: TransitRouteEnvelope = try await client.get("/api/route/transit", query: query)
         return envelope.result
     }
 

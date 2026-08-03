@@ -152,7 +152,7 @@ export function TransitGuidePanel({
                     {guide.waitingOptions.map((option) => {
                       const item = option.candidate.item;
                       const desc = joinText(
-                        item.destinationName ? `${item.destinationName}행` : "",
+                        item.destinationName ? t("bound", { dest: item.destinationName }) : "",
                         item.direction,
                         item.message,
                         option.candidate.express

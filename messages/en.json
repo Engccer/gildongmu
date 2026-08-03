@@ -599,7 +599,8 @@
     "carHeading": "Car guidance",
     "briefGuideStart": "Start simple guidance",
     "stopped": "Live guidance stopped",
-    "guideStart": "Start live guidance"
+    "guideStart": "Start live guidance",
+    "transitHeading": "Transit guidance"
   },
   "guide": {
     "briefStarted": "Simple guidance started",
@@ -810,6 +811,7 @@
     "lastUpdated": "Last updated {time}",
     "stationCountAbout": "About {count} stops",
     "waitingLabel": "Choose your vehicle",
-    "noCandidates": "No arriving vehicles yet"
+    "noCandidates": "No arriving vehicles yet",
+    "bound": "Bound for {dest}"
   }
 }

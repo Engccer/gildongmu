@@ -331,7 +331,12 @@ final class DirectionsModel {
     ) async -> Result<TransitRouteResult?, any Error> {
         do {
             return .success(try await withQueryTimeout {
-                try await service.transit(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng)
+                // includeStops: 실시간 안내의 승차·하차 정류소 데이터원(B2 §7) —
+                // 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2 경로 동일성).
+                try await service.transit(
+                    originLat: origin.lat, originLng: origin.lng,
+                    destLat: dest.lat, destLng: dest.lng,
+                    includeStops: true)
             })
         } catch { return .failure(error) }
     }
@@ -375,6 +380,7 @@ struct DirectionsTabView: View {
     /// 경로들이므로 resultsRevision 변화 시 초기화한다.
     @State private var expandedAlts: Set<Int> = []
     @State private var beacon = BeaconModel()
+    @State private var transitGuide = TransitGuideModel()
     @Environment(\.scenePhase) private var scenePhase
     /// 시트에서 끝점을 확정한 뒤 포커스를 보낼 곳(웹 `focusAfterResolve` 대응).
     /// 실기기 확인(2026-08-02): 시트가 닫히면 VO 커서가 **화면 최상단으로 이탈**한다.
@@ -388,7 +394,7 @@ struct DirectionsTabView: View {
     /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
     /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
-    enum GuideStartButton: Hashable { case fallback, walk, car }
+    enum GuideStartButton: Hashable { case fallback, walk, car, transit }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
@@ -516,6 +522,18 @@ struct DirectionsTabView: View {
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
                             }
+                            // 대중교통(B2 §3.1): 신호는 GPS가 아니라 도착 API라
+                            // BeaconModel이 아닌 전용 세션(TransitGuideModel)을 연다.
+                            if mode == .transit, let startable = transitGuideStartable,
+                               let tracked = trackedDestination {
+                                Button(appLocalized("beacon.guideStart")) {
+                                    lastGuideStart = .transit
+                                    transitGuide.start(
+                                        transitRoute: startable, destinationLabel: tracked.label
+                                    )
+                                }
+                                .accessibilityFocused($guideStartFocused, equals: .transit)
+                            }
                             // 계단 회피 토글은 도보 섹션에만(웹 동형 — 결과 유무·오류와
                             // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
                             // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
@@ -570,6 +588,23 @@ struct DirectionsTabView: View {
                     onStop: { beacon.stop(playStopTone: true) }
                 )
             }
+            // 대중교통 안내 시트(B2 §3.2) — 표시=세션, 닫힘=중지(비콘 시트 1:1 동형).
+            .sheet(isPresented: Binding(
+                get: { transitGuide.isTracking },
+                set: { presented in
+                    guard !presented else { return }
+                    transitGuide.stop(playStopTone: true)
+                }
+            )) {
+                TransitTrackingSheet(
+                    model: transitGuide,
+                    onStop: { transitGuide.stop(playStopTone: true) }
+                )
+            }
+            .onChange(of: transitGuide.isTracking) { _, tracking in
+                guard !tracking else { return }
+                landBeaconStartFocus()
+            }
             // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리).
             .onChange(of: beacon.isTracking) { _, tracking in
                 guard !tracking else { return }
@@ -594,6 +629,7 @@ struct DirectionsTabView: View {
             .onDisappear {
                 model.cancel()
                 beacon.teardown()
+                transitGuide.teardown()
             }
             // 검색 시트가 뜬 동안 톤과 통지를 모두 죽인다. 시트에 받아쓰기가 있고
             // 헌장 §6의 불변식은 "녹음 중 SR 발화 0"인데, polite 통지는 VoiceOver가
@@ -606,8 +642,14 @@ struct DirectionsTabView: View {
             }
             // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
             // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
-            .onChange(of: model.endpoint(for: .to)) { beacon.stopBecauseDestinationChanged() }
-            .onChange(of: scenePhase) { beacon.handleScenePhaseChange(to: scenePhase) }
+            .onChange(of: model.endpoint(for: .to)) {
+                beacon.stopBecauseDestinationChanged()
+                transitGuide.stopBecauseDestinationChanged()
+            }
+            .onChange(of: scenePhase) {
+                beacon.handleScenePhaseChange(to: scenePhase)
+                transitGuide.handleScenePhaseChange(to: scenePhase)
+            }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task { await model.loadCurrentAddressIfAuthorized() }
         }
@@ -663,12 +705,23 @@ struct DirectionsTabView: View {
         return true
     }
 
+    /// 대중교통 게이트(B2 §3.1): 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1(도보 전용 제외).
+    /// 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태다. 성립하면 시작에
+    /// 넘길 recommended를 그대로 돌려준다(재조회 없음 — 브리핑과 같은 경로, §2).
+    private var transitGuideStartable: TransitRoute? {
+        guard AppLanguage.dataLocale == "ko", let results = model.results,
+              case let .transit(result) = results.outcomes[.transit],
+              buildTransitGuideRoute(result.recommended) != nil
+        else { return nil }
+        return result.recommended
+    }
+
     /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
     /// 실패"가 아니라 "시작 가능 0개". en 로케일·카카오 폴백만 성공한 조합에서
     /// 막다른 화면을 만들지 않는다).
     private var briefFallbackVisible: Bool {
         guard case .settled = model.phase else { return false }
-        return !walkGuideStartable && !carGuideStartable
+        return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
     }
 
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
