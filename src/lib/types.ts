@@ -589,6 +589,13 @@ export interface SubwayArrival {
   arrivalSeconds: number;
   /** 급행 여부(btrainSttus에 "급행" 포함) — 일반 열차와 구분 */
   express: boolean;
+  /**
+   * 열차 번호(btrainNo 원문 문자열, B2 §4.2 잠금 복합 키의 식별자 축).
+   * 위치 API trainNo와 동일 값(조사 §1.3 조인 4/4). 결측이면 undefined.
+   */
+  trainNo?: string;
+  /** 도착 코드(arvlCd 원문: "1" 도착·"2" 출발·"99" 운행중 등). 결측이면 undefined. */
+  arrivalCode?: string;
 }
 
 /**
