@@ -10,6 +10,7 @@
  * 도로명 기능만 강등(빈 배열)하고 경로 안내는 유지한다 — 어긋난 스팬으로 "지금
  * 어느 도로"를 말하는 것이 가짜 정밀이고, 경로 추종 자체는 폴리라인만으로 성립한다.
  */
+import { haversineMeters } from "./geo";
 import { buildGuideRoute, type GuideRoute } from "./route-geometry";
 import type { CarRouteBriefing } from "./types";
 
@@ -26,6 +27,8 @@ export interface CarGuideData {
 }
 
 const ROAD_SPAN_TOLERANCE_RATIO = 0.05;
+/** 종점 마커와 마지막 스텝 끝의 허용 어긋남(m) — 이음매 허용치와 같은 수준. */
+const TERMINAL_TOLERANCE_M = 5;
 
 export function buildCarGuide(briefing: CarRouteBriefing): CarGuideData | null {
   const guides = briefing.guides;
@@ -35,6 +38,19 @@ export function buildCarGuide(briefing: CarRouteBriefing): CarGuideData | null {
     if (!g.pathCoords || g.pathCoords.length < 2) return null;
     for (const c of g.pathCoords) {
       if (!Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return null;
+    }
+  }
+  // 전 구간 커버리지(§5): 마지막 스텝 끝 = 종점 마커. 어긋나면 경로가 조용히 짧게
+  // 조립된 것이라 전체 부적격이다(독립 리뷰 — E 좌표를 버리면 이 검증이 불가능했다).
+  const terminal = briefing.terminalCoord;
+  if (terminal) {
+    const lastCoords = guides[guides.length - 1].pathCoords!;
+    const lastEnd = lastCoords[lastCoords.length - 1];
+    if (
+      haversineMeters(lastEnd.lat, lastEnd.lng, terminal.lat, terminal.lng) >
+      TERMINAL_TOLERANCE_M
+    ) {
+      return null;
     }
   }
 

@@ -73,6 +73,16 @@ describe("buildCarGuide (fail-closed, B1 §5)", () => {
     expect(out!.roadSpans).toEqual([]);
   });
 
+  it("종점 마커와 마지막 스텝 끝이 5m 초과로 어긋나면 전체 null(§5 커버리지)", () => {
+    const b = briefing();
+    b.terminalCoord = pt(560); // 마지막 스텝 끝 pt(500)과 ≈60m 어긋남
+    expect(buildCarGuide(b)).toBeNull();
+    // 일치하면 정상 조립
+    const ok = briefing();
+    ok.terminalCoord = pt(500);
+    expect(buildCarGuide(ok)).not.toBeNull();
+  });
+
   it("roadLinks 자체가 없으면 도로명 강등(경로 안내 유지)", () => {
     const b = briefing();
     delete b.guides[0].roadLinks;

@@ -63,10 +63,12 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     /// ko 서비스 provider 판별자("tmap"/"kakao") — 자동차 안내 버튼 게이트(B1 §3.1).
     /// en(NCP) 응답·구버전 서버는 nil.
     public let provider: String?
+    /// 종점(E) 마커 좌표(기하 옵트인 전용, B1 §5 커버리지 검증 축).
+    public let terminalCoord: RoutePoint?
 
     public init(
         distanceMeters: Int, durationSeconds: Int, taxiFare: Int, tollFare: Int,
-        guides: [CarRouteGuide], provider: String? = nil
+        guides: [CarRouteGuide], provider: String? = nil, terminalCoord: RoutePoint? = nil
     ) {
         self.distanceMeters = distanceMeters
         self.durationSeconds = durationSeconds
@@ -74,6 +76,7 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
         self.tollFare = tollFare
         self.guides = guides
         self.provider = provider
+        self.terminalCoord = terminalCoord
     }
 }
 

@@ -87,6 +87,7 @@ export function normalizeTmapCarRoute(
   }
 
   const guides: CarRouteGuide[] = [];
+  let terminal: Coord | undefined;
   if (!opts.includeGeometry) {
     // 기존 브리핑 경로 그대로(byte-호환 계약 — 스키마 스냅숏이 강제).
     for (const point of points) {
@@ -118,7 +119,15 @@ export function normalizeTmapCarRoute(
       if (isPointFeature(f)) {
         flush();
         const description = f.properties.description;
-        if (!description || f.properties.pointType === "E") continue; // 마커
+        if (!description || f.properties.pointType === "E") {
+          // 종점 마커 좌표는 보존한다 — 마지막 스텝 끝과의 일치가 전 구간 커버리지
+          // 검증 축이다(§5, 독립 리뷰: 버리면 짧은 조립이 fail-closed를 우회한다).
+          if (f.properties.pointType === "E") {
+            const [lng, lat] = f.geometry.coordinates;
+            terminal = { lat, lng };
+          }
+          continue;
+        }
         current = { name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 };
         const [lng, lat] = f.geometry.coordinates;
         coords = [{ lat, lng }];
@@ -150,6 +159,8 @@ export function normalizeTmapCarRoute(
     taxiFare: Math.round(taxiFare),
     tollFare: Math.round(head?.properties.totalFare ?? 0),
     guides,
+    // 기하 옵트인에서만 종점 마커 노출(미지정 응답 byte-호환 유지).
+    ...(terminal !== undefined ? { terminalCoord: terminal } : {}),
   };
 }
 

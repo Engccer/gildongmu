@@ -153,6 +153,7 @@ describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
       expect("pathCoords" in g).toBe(false);
       expect("roadLinks" in g).toBe(false);
     }
+    expect("terminalCoord" in out).toBe(false);
   });
 
   it("옵트인: S는 스텝, E는 마커 제외, Point 없는 LineString 연속은 같은 스텝에 병합", () => {
@@ -177,5 +178,7 @@ describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
     // 표시 수치 계약 불변(문장 내장 정본)
     expect(first.distanceMeters).toBe(0);
     expect(first.durationSeconds).toBe(0);
+    // 종점 마커 좌표 보존(§5 전 구간 커버리지 검증 축 — 독립 리뷰 반영)
+    expect(out.terminalCoord).toEqual({ lat: 37.502, lng: 127.108 });
   });
 });

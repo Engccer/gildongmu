@@ -28,6 +28,8 @@ public struct CarGuideData: Sendable {
 }
 
 private let roadSpanToleranceRatio = 0.05
+/// 종점 마커와 마지막 스텝 끝의 허용 어긋남(m) — 이음매 허용치와 같은 수준.
+private let terminalToleranceMeters = 5.0
 
 public func buildCarGuide(briefing: CarRouteBriefing) -> CarGuideData? {
     let guides = briefing.guides
@@ -36,6 +38,14 @@ public func buildCarGuide(briefing: CarRouteBriefing) -> CarGuideData? {
     for g in guides {
         guard let coords = g.pathCoords, coords.count >= 2 else { return nil }
         for c in coords where !c.lat.isFinite || !c.lng.isFinite { return nil }
+    }
+    // 전 구간 커버리지(§5): 마지막 스텝 끝 = 종점 마커(어긋나면 짧은 조립 — 부적격).
+    if let terminal = briefing.terminalCoord,
+       let lastEnd = guides.last?.pathCoords?.last,
+       haversineMeters(
+           lat1: lastEnd.lat, lng1: lastEnd.lng, lat2: terminal.lat, lng2: terminal.lng
+       ) > terminalToleranceMeters {
+        return nil
     }
 
     guard let route = buildGuideRoute(

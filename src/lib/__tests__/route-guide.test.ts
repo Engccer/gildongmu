@@ -175,11 +175,42 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
   });
 
   it("창 안 후보 복수면 거부 유지(평행도로 이탈 은폐 차단)", () => {
-    const st = { ...enterReacquiring(100), reacquireV: 20 }; // 창 상한 100+20×11×1.5+100=530
+    const st = { ...enterReacquiring(100), reacquireV: 20 }; // 창 상한 100+20×12×1.5+100=560
     const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
     // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부
     expect(out.event).toBeNull();
     expect(out.state.phase).toBe("reacquiring");
+  });
+
+  it("창 계수(×1.5)가 채택을 가른다 — 안전 계수 회귀 잠금(독립 리뷰)", () => {
+    // 북 900 → 동 40 → 남 900. prevD=100·v=20·elapsed 12초 기준 창 상한:
+    // 1.5×면 100+20×12×1.5+100=560, 1.0×이면 440 — d≈500 후보는 1.5×에서만 창 안.
+    const longRoute = buildGuideRoute([
+      { description: "북", pathCoords: [fixCoord(0, 0), fixCoord(900, 0)] },
+      { description: "동", pathCoords: [fixCoord(900, 0), fixCoord(900, 40)] },
+      { description: "남", pathCoords: [fixCoord(900, 40), fixCoord(0, 40)] },
+    ])!;
+    const state: GuideState = { ...guideStateAt(longRoute, 100, 0), lastFixAt: 0 };
+    const entered = guideStep(
+      state,
+      { ...fixCoord(100, 0), accuracy: 10 },
+      longRoute,
+      11,
+      CAR_TUNING,
+    );
+    expect(entered.event?.kind).toBe("reacquiring");
+    const st: GuideState = { ...entered.state, reacquireV: 20 };
+    const out = guideStep(st, { ...fixCoord(500, 10), accuracy: 10 }, longRoute, 12, CAR_TUNING);
+    expect(out.event?.kind).toBe("reacquired");
+    expect(out.state.d).toBeCloseTo(500, -1); // 위도-미터 근사 ±1m
+  });
+
+  it("전방 여유 버퍼(+100m)가 채택을 가른다 — 버퍼 회귀 잠금(독립 리뷰)", () => {
+    const st = enterReacquiring(100); // v=0 → 창 [100, 200]
+    // d≈180은 버퍼 100일 때만 창 안(50이면 상한 150 밖). 남 후보 d≈460은 창 밖.
+    const out = guideStep(st, { ...fixCoord(180, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    expect(out.event?.kind).toBe("reacquired");
+    expect(out.state.d).toBeCloseTo(180, 0);
   });
 });
 

@@ -599,7 +599,8 @@
     "carHeading": "자동차 안내",
     "walkGuideStart": "도보 안내 시작",
     "carGuideStart": "자동차 안내 시작",
-    "briefGuideStart": "간략 안내 시작"
+    "briefGuideStart": "간략 안내 시작",
+    "stopped": "실시간 안내를 중지했습니다"
   },
   "guide": {
     "briefStarted": "간략 안내 시작",

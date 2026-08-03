@@ -235,6 +235,11 @@ export interface CarRouteBriefing {
    * en(NCP) 경로는 미설정.
    */
   provider?: "tmap" | "kakao";
+  /**
+   * 종점(E) 마커 좌표(기하 옵트인 전용, B1 §5). 마지막 스텝의 끝이 이 좌표와
+   * 어긋나면 경로가 조용히 짧게 조립된 것 — buildCarGuide가 fail-closed 검증한다.
+   */
+  terminalCoord?: Coord;
 }
 
 /** 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로. */

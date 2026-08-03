@@ -141,7 +141,7 @@ public struct GuideState: Sendable, Equatable {
 
 public enum GuideEvent: Sendable, Equatable {
     case announceSteps([Int])
-    case farNotice([Int])
+    case farNotice(indices: [Int], remainingMeters: Int)
     case periodic(stepIndex: Int, remainingMeters: Int, accuracy: Double)
     case bundleReread([Int])
     case handoff
@@ -286,7 +286,9 @@ public func guideStep(
                   let since = state.reacquireSince {
             // 재획득 전방 연속성 타이브레이크(§4.3): 전방 창 안 후보가 정확히 1개일
             // 때만 채택. 0·복수는 거부 유지 — 평행도로 이탈 은폐 차단.
-            let elapsed = now - since + reacquireGapSeconds
+            // elapsed는 "마지막으로 확실했던 시점"부터의 경과(고정 보정 없음 —
+            // gap 트리거는 진입 시 직전 fix 시각을 reacquireSince에 담는다).
+            let elapsed = now - since
             let maxAheadD = prevD + state.reacquireV * elapsed * 1.5 + 100
             let maxPerp = max(tuning.offRouteBaseM, 2 * fix.accuracy)
             let inWindow = globalCandidates(route.polyline, p: fix.point, maxPerp: maxPerp)
@@ -318,9 +320,10 @@ public func guideStep(
         s.lastFixAt = now
         s.reacquiringFromOffRoute = state.phase == .offRoute
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
+        // 기준 시각은 "마지막으로 확실했던 시점"(gap=직전 fix 시각·edgeHits=지금).
         s.reacquirePrevD = state.d
         s.reacquireV = estimateSpeedMps(state.speedSamples)
-        s.reacquireSince = now
+        s.reacquireSince = gap ? state.lastFixAt : now
         return GuideOutput(state: s, event: .reacquiring, tone: nil)
     }
 
@@ -464,7 +467,12 @@ public func guideStep(
             let indices = unitAt(route: route, index: next.announcedUpTo + 1)
             next.farNoticedUpTo = indices[indices.count - 1]
             next.lastAnnouncedAt = now
-            return GuideOutput(state: next, event: .farNotice(indices), tone: nil)
+            // 낭독 거리는 크로싱 시점의 실측 잔여(§4.7 — 상수 낭독 금지, 리뷰 검출).
+            return GuideOutput(
+                state: next,
+                event: .farNotice(indices: indices, remainingMeters: Int(nowRemaining.rounded())),
+                tone: nil
+            )
         }
     }
 

@@ -599,7 +599,8 @@
     "carHeading": "Guía en coche",
     "walkGuideStart": "Iniciar guía a pie",
     "carGuideStart": "Iniciar guía en coche",
-    "briefGuideStart": "Iniciar guía simple"
+    "briefGuideStart": "Iniciar guía simple",
+    "stopped": "Guía en tiempo real detenida"
   },
   "guide": {
     "briefStarted": "Guía simple iniciada",

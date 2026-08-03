@@ -64,6 +64,23 @@ struct CarRouteGuideTests {
         #expect(buildCarGuide(briefing: makeBriefing(guides: guides)) == nil)
     }
 
+    @Test func terminalMarkerMismatchFailsClosed() {
+        // 종점 마커가 마지막 스텝 끝과 5m 초과 어긋나면 전체 nil(§5 커버리지, 웹 미러).
+        let base = makeBriefing()
+        let mismatch = CarRouteBriefing(
+            distanceMeters: base.distanceMeters, durationSeconds: base.durationSeconds,
+            taxiFare: base.taxiFare, tollFare: base.tollFare,
+            guides: base.guides, provider: base.provider, terminalCoord: pt(560)
+        )
+        #expect(buildCarGuide(briefing: mismatch) == nil)
+        let match = CarRouteBriefing(
+            distanceMeters: base.distanceMeters, durationSeconds: base.durationSeconds,
+            taxiFare: base.taxiFare, tollFare: base.tollFare,
+            guides: base.guides, provider: base.provider, terminalCoord: pt(500)
+        )
+        #expect(buildCarGuide(briefing: match) != nil)
+    }
+
     @Test func roadSpanMismatchDegradesRoadNamesOnly() {
         var guides = makeBriefing().guides
         guides[1] = CarRouteGuide(

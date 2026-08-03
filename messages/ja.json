@@ -599,7 +599,8 @@
     "carHeading": "自動車案内",
     "walkGuideStart": "徒歩案内を開始",
     "carGuideStart": "自動車案内を開始",
-    "briefGuideStart": "簡易案内を開始"
+    "briefGuideStart": "簡易案内を開始",
+    "stopped": "リアルタイム案内を停止しました"
   },
   "guide": {
     "briefStarted": "簡易案内を開始しました",

@@ -599,7 +599,8 @@
     "carHeading": "Car guidance",
     "walkGuideStart": "Start walking guidance",
     "carGuideStart": "Start car guidance",
-    "briefGuideStart": "Start simple guidance"
+    "briefGuideStart": "Start simple guidance",
+    "stopped": "Live guidance stopped"
   },
   "guide": {
     "briefStarted": "Simple guidance started",

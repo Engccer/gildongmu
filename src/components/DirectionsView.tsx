@@ -30,6 +30,7 @@ import {
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
+import { stopActiveGuideSession } from "@/lib/guide-session-store";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 
@@ -361,11 +362,14 @@ export function DirectionsView({
   }
 
   function swapFields() {
+    // 패널 언마운트 전 활성 안내 세션 명시 중지 + 중지 통지(a11y 감사 HIGH —
+    // 언마운트 정리는 톤·통지 없이 자원만 회수해 "살아 있다고 믿는 안내"가 남는다).
+    const stopped = stopActiveGuideSession();
     setFromField(toField);
     setToField(fromField);
     setResults(null);
     setExpandedAlts(new Set());
-    setNotice("");
+    setNotice(stopped ? tBeacon("stopped") : "");
   }
 
   async function runQuery() {
@@ -380,6 +384,10 @@ export function DirectionsView({
     inFlight.current = true;
     const myGen = ++genRef.current;
     try {
+      // 재조회는 패널을 언마운트시키므로 활성 세션을 먼저 명시 중지·통지한다
+      // (a11y 감사 HIGH). 이후 종단 phase 통지 시점에 notice를 비워 경합을 푼다.
+      const stoppedGuide = stopActiveGuideSession();
+      if (stoppedGuide) setNotice(tBeacon("stopped"));
       setResults(null);
       setExpandedAlts(new Set());
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
@@ -390,6 +398,7 @@ export function DirectionsView({
         const geo = await awaitGeolocation();
         if (myGen !== genRef.current) return;
         if (geo.status !== "ready") {
+          setNotice(""); // 중지 통지가 종단 phase 통지를 가리지 않게
           setPhase({ kind: "geoError" });
           return;
         }
@@ -397,6 +406,7 @@ export function DirectionsView({
         // (수단별 fetch를 하나도 쏘지 않음). 오류가 아니라 커버리지 안내이므로
         // 일반 phase로 표기.
         if (!isInKorea(geo.coords.lat, geo.coords.lng)) {
+          setNotice("");
           setPhase({ kind: "outOfCoverage" });
           return;
         }
@@ -430,6 +440,7 @@ export function DirectionsView({
       // ?dir= 딥링크로 직접 조작된 좌표)이 한국 밖일 수 있다. 한 수단이라도 감지하면
       // 나머지 수단 결과를 버리고 폼 전체를 outOfCoverage로 전환한다.
       if (activeModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
+        setNotice("");
         setPhase({ kind: "outOfCoverage" });
         return;
       }
@@ -439,6 +450,7 @@ export function DirectionsView({
         destCoord: dest,
         outcomes,
       });
+      setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled", successCount: successes.length });
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
       const first = successes[0];
@@ -581,6 +593,7 @@ export function DirectionsView({
         searchLabel={t("searchFrom")}
         field={displayField(fromField)}
         onTextChange={(text) => {
+          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setFromField({ text, resolved: null });
           setResults(null);
           setExpandedAlts(new Set());
@@ -619,6 +632,7 @@ export function DirectionsView({
         searchLabel={t("searchTo")}
         field={displayField(toField)}
         onTextChange={(text) => {
+          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setToField({ text, resolved: null });
           setResults(null);
           setExpandedAlts(new Set());
@@ -690,21 +704,10 @@ export function DirectionsView({
                 >
                   {modeHeading(mode)}
                 </h3>
-                {mode === "walk" && (
-                  <button
-                    type="button"
-                    aria-pressed={stepFreeEnabled}
-                    aria-disabled={busy}
-                    aria-busy={busy}
-                    onClick={() => void toggleStepFree()}
-                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
-                  >
-                    {tPed("stepFreeToggle")}
-                  </button>
-                )}
-                {/* 수단별 실시간 안내 진입점(§3.1) — 수단 heading 착지 후 첫
-                    스와이프 거리. 트리거가 곧 시작(startOnOpen — "시작" 라벨
-                    거짓말 금지). 목적지 변경은 key 재마운트로 세션 정리. */}
+                {/* 수단별 실시간 안내 진입점(§3.1) — 수단 heading 착지 후 **첫
+                    스와이프** 거리(계단 회피 토글보다 앞, iOS 동조 — 독립 리뷰).
+                    트리거가 곧 시작(startOnOpen — "시작" 라벨 거짓말 금지).
+                    목적지 변경은 key 재마운트로 세션 정리. */}
                 {mode === "walk" && walkGuideStartable && guideDest && (
                   <DistanceBeacon
                     key={`walk-${guideDestKey}`}
@@ -722,6 +725,18 @@ export function DirectionsView({
                     startOnOpen
                     triggerLabel={tBeacon("carGuideStart")}
                   />
+                )}
+                {mode === "walk" && (
+                  <button
+                    type="button"
+                    aria-pressed={stepFreeEnabled}
+                    aria-disabled={busy}
+                    aria-busy={busy}
+                    onClick={() => void toggleStepFree()}
+                    className="mt-1 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
+                  >
+                    {tPed("stepFreeToggle")}
+                  </button>
                 )}
                 {outcome.kind === "error" && (
                   <p className="mt-1 text-sm">{modeErrorText(mode)}</p>

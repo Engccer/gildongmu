@@ -582,9 +582,12 @@ final class BeaconModel {
             statusText = text
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
-        case let .farNotice(indices):
-            // 원거리 예고(B1 §4.7) — 실행 안내와 같은 취급(억제 복구 대상).
-            let text = GuideText.farNotice(route: route, indices: indices)
+        case let .farNotice(indices, remainingMeters):
+            // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
+            // 실행 안내와 같은 취급(억제 복구 대상).
+            let text = GuideText.farNotice(
+                route: route, indices: indices, remainingMeters: remainingMeters
+            )
             lastGuidance = text
             statusText = text
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
@@ -601,6 +604,8 @@ final class BeaconModel {
             // 수동 상세 복귀는 전환 버튼으로(재무장은 리듀서 상태가 소유).
             mode = .brief
             remainingText = nil
+            etaTask?.cancel() // 간략 전환 후 ETA 재조회 무의미(자원 위생 — 리뷰 반영)
+            etaTask = nil
             beaconState = .initial
             gateState = .initial
             let text = appLocalized("guide.handoff")

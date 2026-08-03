@@ -20,3 +20,17 @@ export function claimGuideSession(stop: StopFn): void {
 export function releaseGuideSession(stop: StopFn): void {
   if (currentStop === stop) currentStop = null;
 }
+
+/**
+ * 활성 세션이 있으면 명시 중지하고 true. 패널을 **언마운트시키는** 상태 전이(목적지
+ * 편집·스왑·재조회) 직전에 호출한다 — 언마운트 정리는 통지·정지 톤 없이 자원만
+ * 회수하므로, 여기서 stop()을 태워야 정지 톤이 나가고 호출자가 뷰 채널로 중지를
+ * 통지할 수 있다(a11y 감사 HIGH: 안내가 살아 있다고 믿으며 걷는 상태 차단).
+ */
+export function stopActiveGuideSession(): boolean {
+  const stop = currentStop;
+  if (stop === null) return false;
+  currentStop = null;
+  stop();
+  return true;
+}
