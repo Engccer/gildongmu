@@ -27,6 +27,8 @@ interface TmapCarPointFeature {
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: {
     description?: string;
+    /** S=출발(첫 안내 문장 보유 — 스텝), E=도착(마커), N=일반 안내(실측 2026-08-03). */
+    pointType?: string;
     totalDistance?: number;
     totalTime?: number;
     totalFare?: number;
@@ -35,11 +37,15 @@ interface TmapCarPointFeature {
   };
 }
 
-/** LineString feature(구간 폴리라인). 지도 없는 이 앱에선 쓰지 않는다. */
+/** LineString feature(구간 폴리라인) — B1 실시간 자동차 안내의 기하 원천. */
 interface TmapCarLineFeature {
   type: "Feature";
   geometry: { type: "LineString"; coordinates: [number, number][] };
-  properties: { [key: string]: unknown };
+  properties: {
+    name?: string;
+    distance?: number;
+    [key: string]: unknown;
+  };
 }
 
 type TmapCarFeature = TmapCarPointFeature | TmapCarLineFeature;
@@ -60,7 +66,10 @@ function isPointFeature(f: TmapCarFeature): f is TmapCarPointFeature {
  * 낭독하지 않는다. throw는 서비스 계층에서 카카오 폴백으로 흡수).
  * totalFare(통행료) 부재만 0으로 투영한다(무통행 구간 관례).
  */
-export function normalizeTmapCarRoute(data: TmapCarResponse): CarRouteBriefing {
+export function normalizeTmapCarRoute(
+  data: TmapCarResponse,
+  opts: { includeGeometry?: boolean } = {},
+): CarRouteBriefing {
   const points = data.features.filter(isPointFeature);
   const head = points.find((p) => p.properties.totalDistance != null);
   const distanceMeters = head?.properties.totalDistance ?? NaN;
@@ -78,10 +87,57 @@ export function normalizeTmapCarRoute(data: TmapCarResponse): CarRouteBriefing {
   }
 
   const guides: CarRouteGuide[] = [];
-  for (const point of points) {
-    const description = point.properties.description;
-    if (!description) continue;
-    guides.push({ name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 });
+  if (!opts.includeGeometry) {
+    // 기존 브리핑 경로 그대로(byte-호환 계약 — 스키마 스냅숏이 강제).
+    for (const point of points) {
+      const description = point.properties.description;
+      if (!description) continue;
+      guides.push({ name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 });
+    }
+  } else {
+    // 기하 옵트인(B1 §5): 스텝 = description 있는 Point 중 **종점(E) 제외**.
+    // 출발(S)은 실제 첫 안내 문장을 갖는 스텝이고(실측 2026-08-03: "올림픽로를
+    // 따라 12m 이동"), E("도착")는 뒤따르는 LineString이 없어 스텝화하면 0-길이
+    // 스텝이 buildGuideRoute를 null로 만들어 상세 전체가 조용히 강등된다(조사 §2).
+    // 각 스텝의 기하 = 그 Point 좌표 + 다음 Point 전까지의 LineString 병합
+    // ("동작 + 이후 구간" 기준점 계약, §4.7). guide 수치 하드코딩 0은 유지 —
+    // description에 거리가 내장돼 수치 병기는 중복 낭독이다.
+    let current: CarRouteGuide | null = null;
+    let coords: Coord[] = [];
+    let links: NonNullable<CarRouteGuide["roadLinks"]> = [];
+    const flush = () => {
+      if (!current) return;
+      current.pathCoords = coords;
+      current.roadLinks = links;
+      guides.push(current);
+      current = null;
+      coords = [];
+      links = [];
+    };
+    for (const f of data.features) {
+      if (isPointFeature(f)) {
+        flush();
+        const description = f.properties.description;
+        if (!description || f.properties.pointType === "E") continue; // 마커
+        current = { name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 };
+        const [lng, lat] = f.geometry.coordinates;
+        coords = [{ lat, lng }];
+      } else if (current) {
+        for (const [lng, lat] of f.geometry.coordinates) {
+          const prev = coords[coords.length - 1];
+          if (!prev || prev.lat !== lat || prev.lng !== lng) coords.push({ lat, lng });
+        }
+        // "일반도로"(roadType 6 무명 계열)는 도로명이 아니라 자리표시자 — null로
+        // 낮춰 가짜 정밀을 만들지 않는다(§4.7).
+        const rawName = typeof f.properties.name === "string" ? f.properties.name : "";
+        links.push({
+          name: rawName && rawName !== "일반도로" ? rawName : null,
+          distanceMeters:
+            typeof f.properties.distance === "number" ? f.properties.distance : 0,
+        });
+      }
+    }
+    flush();
   }
   if (guides.length === 0) {
     throw new Error("Tmap 자동차 경로 정규화 실패: 안내 단계 0개");
@@ -101,6 +157,7 @@ export function normalizeTmapCarRoute(data: TmapCarResponse): CarRouteBriefing {
 export async function getTmapCarBriefing(params: {
   origin: Coord;
   dest: Coord;
+  includeGeometry?: boolean;
 }): Promise<CarRouteBriefing> {
   const { origin, dest } = params;
   const res = await fetch(ENDPOINT, {
@@ -125,5 +182,5 @@ export async function getTmapCarBriefing(params: {
     throw new Error(`Tmap 자동차 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapCarResponse;
-  return normalizeTmapCarRoute(data);
+  return normalizeTmapCarRoute(data, { includeGeometry: params.includeGeometry });
 }
