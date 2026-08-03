@@ -35,8 +35,11 @@ final class TransitGuideModel {
     private var pollTask: Task<Void, Never>?
     private var seq = 0
     private var retained: [String: (item: TransitTrackItem, lastSeenAt: Date)] = [:]
-    private var tagoResolved: [Int: TransitTrackResolvedStop] = [:]
-    private var tagoUnsupported: Set<Int> = []
+    // ⚠ 키는 (legIndex, 대상 정류소) 복합 — legIndex만 쓰면 waiting에서 해석한
+    // 승차 정류소가 riding 캐시로 적중해 하차 카운트다운이 승차 정류소 도착을
+    // 읽는다(독립 리뷰 BLOCKER).
+    private var tagoResolved: [String: TransitTrackResolvedStop] = [:]
+    private var tagoUnsupported: Set<String> = []
     /// 백그라운드 일시정지 표식 — 복귀 통지 분기(§3.2).
     private var pausedInBackground = false
 
@@ -108,7 +111,11 @@ final class TransitGuideModel {
         case .active:
             guard pausedInBackground else { return }
             pausedInBackground = false
-            announce(appLocalized("transitGuide.signalRecovered"))
+            // 재개 통지는 확인되지 않은 "회복" 주장이 아니라 실제 상태를 말한다
+            // (§3.2 "안내 재개. {현재 상태}" — 3-state 정직, 독립 리뷰 MAJOR).
+            var parts = [appLocalized("transitGuide.resumed")]
+            if let signal = state?.signal { parts.append(signalStatusText(signal)) }
+            announce(parts.joined(separator: " "))
             restartPollLoop(immediate: true)
         @unknown default:
             break
@@ -229,7 +236,8 @@ final class TransitGuideModel {
             case .tagoBus:
                 guard let resolved = await resolveTagoIfNeeded(leg: leg, phase: phase) else {
                     guard let state else { return .failed }
-                    return tagoUnsupported.contains(state.legIndex) ? .unsupported : .failed
+                    return tagoUnsupported.contains(tagoCacheKey(state.legIndex, phase: phase))
+                        ? .unsupported : .failed
                 }
                 return TransitTrackService.poll(
                     from: try await trackService.tagoTrack(
@@ -248,21 +256,26 @@ final class TransitGuideModel {
     }
 
     /// 지방버스 정류소 해석(세션·leg당 1회, §5.2). 모호·부재는 unsupported 캐시.
+    private func tagoCacheKey(_ legIndex: Int, phase: TransitPhase) -> String {
+        "\(legIndex):\(phase == .waiting ? "board" : "alight")"
+    }
+
     private func resolveTagoIfNeeded(
         leg: TransitGuideLeg, phase: TransitPhase
     ) async -> TransitTrackResolvedStop? {
         guard let legIndex = state?.legIndex else { return nil }
-        if tagoUnsupported.contains(legIndex) { return nil }
-        if let cached = tagoResolved[legIndex] { return cached }
+        let key = tagoCacheKey(legIndex, phase: phase)
+        if tagoUnsupported.contains(key) { return nil }
+        if let cached = tagoResolved[key] { return cached }
         let target = phase == .waiting ? leg.boardStop : leg.alightStop
         guard let target else { return nil }
         do {
             let envelope = try await trackService.resolveTagoStop(lat: target.lat, lng: target.lng)
             if envelope.status == "ok", let stop = envelope.stop {
-                tagoResolved[legIndex] = stop
+                tagoResolved[key] = stop
                 return stop
             }
-            tagoUnsupported.insert(legIndex)
+            tagoUnsupported.insert(key)
             return nil
         } catch {
             return nil // 일시 실패 — 캐시하지 않고 다음 폴에서 재시도

@@ -99,8 +99,10 @@ export function useTransitGuide(route: TransitRoute | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   const retainedRef = useRef<Map<string, RetainedItem>>(new Map());
-  // 지방버스 하차 정류소 해석 캐시(세션 시작 시 1회, §5.2). legIndex 키.
-  const tagoResolvedRef = useRef<Map<number, { nodeId: string; cityCode: string } | "unsupported">>(
+  // 지방버스 정류소 해석 캐시(§5.2). ⚠ 키는 (legIndex, 대상 정류소) 복합 —
+  // legIndex만 쓰면 waiting에서 해석한 **승차** 정류소가 riding 캐시로 적중해
+  // 하차 카운트다운이 승차 정류소 도착을 읽는다(독립 리뷰 BLOCKER).
+  const tagoResolvedRef = useRef<Map<string, { nodeId: string; cityCode: string } | "unsupported">>(
     new Map(),
   );
 
@@ -242,7 +244,8 @@ export function useTransitGuide(route: TransitRoute | null) {
     const s = stateRef.current;
     const leg = currentLeg();
     if (!s || !leg || leg.trackMode !== "tagoBus") return null;
-    const cached = tagoResolvedRef.current.get(s.legIndex);
+    const cacheKey = `${s.legIndex}:${s.phase === "waiting" ? "board" : "alight"}`;
+    const cached = tagoResolvedRef.current.get(cacheKey);
     if (cached === "unsupported") return null;
     if (cached) return cached;
     const target = s.phase === "waiting" ? leg.boardStop : leg.alightStop;
@@ -258,10 +261,10 @@ export function useTransitGuide(route: TransitRoute | null) {
       };
       if (body.status === "ok" && body.stop) {
         const resolved = { nodeId: body.stop.nodeId, cityCode: body.stop.cityCode };
-        tagoResolvedRef.current.set(s.legIndex, resolved);
+        tagoResolvedRef.current.set(cacheKey, resolved);
         return resolved;
       }
-      tagoResolvedRef.current.set(s.legIndex, "unsupported");
+      tagoResolvedRef.current.set(cacheKey, "unsupported");
       return null;
     } catch {
       return null;
@@ -297,7 +300,8 @@ export function useTransitGuide(route: TransitRoute | null) {
       let resolvedTago: { nodeId: string; cityCode: string } | null = null;
       if (leg.trackMode === "tagoBus") {
         resolvedTago = await resolveTagoIfNeeded();
-        if (!resolvedTago && tagoResolvedRef.current.get(s.legIndex) === "unsupported") {
+        const cacheKey = `${s.legIndex}:${s.phase === "waiting" ? "board" : "alight"}`;
+        if (!resolvedTago && tagoResolvedRef.current.get(cacheKey) === "unsupported") {
           dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
           return;
         }
@@ -453,7 +457,17 @@ export function useTransitGuide(route: TransitRoute | null) {
         clearTimer();
         return;
       }
-      setLiveMessage(t("signalRecovered"));
+      const current = stateRef.current;
+      const stateText = current
+        ? {
+            tracking: t("stateTracking"),
+            notYetVisible: t("stateNotYetVisible"),
+            signalLost: t("stateSignalLost"),
+            upstreamFailed: t("stateUpstreamFailed"),
+            untrackable: t("stateUntrackable"),
+          }[current.signal]
+        : "";
+      setLiveMessage([t("resumed"), stateText].filter(Boolean).join(" "));
       void pollOnce();
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -494,6 +508,29 @@ export function useTransitGuide(route: TransitRoute | null) {
     return { options, directionUncertain };
   }, [guideRoute, state, waiting]);
 
+  /** 진행 상황(§3.2 공통 컨트롤) — 임의 시점 전문 조회, live region으로 발화. */
+  const announceProgress = useCallback(() => {
+    const s = stateRef.current;
+    const r = routeRef.current;
+    const leg = s && r ? r.legs[s.legIndex] : null;
+    if (!s || !leg) return;
+    const stateText = {
+      tracking: t("stateTracking"),
+      notYetVisible: t("stateNotYetVisible"),
+      signalLost: t("stateSignalLost"),
+      upstreamFailed: t("stateUpstreamFailed"),
+      untrackable: t("stateUntrackable"),
+    }[s.signal];
+    const parts = [contextText(leg), stateText];
+    if (s.remaining != null) parts.push(t("remainingCount", { count: s.remaining }));
+    else if (leg.stationCount != null && s.phase === "riding") {
+      parts.push(t("stationCountAbout", { count: leg.stationCount }));
+    }
+    if (s.lastMessage) parts.push(s.lastMessage);
+    if (leg.trackMode === "tagoBus") parts.push(t("approxNote"));
+    setLiveMessage(parts.filter(Boolean).join(" "));
+  }, [contextText, t]);
+
   return {
     startable: guideRoute !== null,
     guideRoute,
@@ -508,5 +545,6 @@ export function useTransitGuide(route: TransitRoute | null) {
     boardApprox,
     advance,
     changeBoarding,
+    announceProgress,
   };
 }

@@ -812,6 +812,7 @@
     "stationCountAbout": "Unas {count} paradas",
     "waitingLabel": "Elige tu vehículo",
     "noCandidates": "Aún no hay vehículos en camino",
-    "bound": "Destino {dest}"
+    "bound": "Destino {dest}",
+    "resumed": "Reanudando la guía."
   }
 }

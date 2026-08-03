@@ -289,6 +289,10 @@ public struct TransitBoardingCandidate: Sendable {
     public let terminatesEarly: Bool
     public let express: Bool
     public let directionMatched: Bool
+
+    /// 목록 정체성(§5.1 포커스 안정) — vehId 없는 후보가 복수여도 충돌하지 않게
+    /// 완성 문장 폴백(웹 `key = vehicleId ?? message` 동형).
+    public var listId: String { item.vehicleId ?? item.message }
 }
 
 private func directionMatchesWayCode(_ updnLine: String, _ wayCode: Int?) -> Bool? {
