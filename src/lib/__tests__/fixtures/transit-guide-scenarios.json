@@ -1,0 +1,264 @@
+{
+  "comment": "대중교통 안내 상태 머신 공유 fixture (B2 스펙 §8.1) — 웹 transit-guide.test.ts ↔ Kit TransitGuideTests가 같은 파일을 실행한다. 시각은 ms epoch 오프셋, expect.event는 kind + 명시 필드만 부분 대조(null = 이벤트 없음).",
+  "routes": {
+    "subwaySingle": {
+      "legs": [
+        {
+          "mode": "subway",
+          "lineName": "수도권 5호선",
+          "trackMode": "subway",
+          "boardName": "천호",
+          "alightName": "여의도",
+          "boardStop": { "name": "천호", "stationId": "547", "lat": 37.538566, "lng": 127.123539 },
+          "alightStop": { "name": "여의도", "stationId": "526", "lat": 37.521625, "lng": 126.924079 },
+          "viaStops": [],
+          "stationCount": 8,
+          "routeId": null,
+          "wayCode": 2,
+          "walkBeforeMinutes": 3
+        }
+      ],
+      "walkAfterMinutes": 4
+    },
+    "seoulBusSingle": {
+      "legs": [
+        {
+          "mode": "bus",
+          "lineName": "30-3",
+          "trackMode": "seoulBus",
+          "boardName": "천호역.풍납시장",
+          "alightName": "잠실역8번출구",
+          "boardStop": { "name": "천호역.풍납시장", "localId": "123000017", "arsId": "24101", "cityCode": "1000", "lat": 37.537186, "lng": 127.122667 },
+          "alightStop": { "name": "잠실역8번출구", "localId": "123000043", "arsId": "24132", "cityCode": "1000", "lat": 37.514005, "lng": 127.101581 },
+          "viaStops": [],
+          "stationCount": 7,
+          "routeId": "227000006",
+          "wayCode": null,
+          "walkBeforeMinutes": null
+        }
+      ],
+      "walkAfterMinutes": null
+    },
+    "tagoBusSingle": {
+      "legs": [
+        {
+          "mode": "bus",
+          "lineName": "102",
+          "trackMode": "tagoBus",
+          "boardName": "대전역",
+          "alightName": "시청",
+          "boardStop": { "name": "대전역", "lat": 36.3315, "lng": 127.4347 },
+          "alightStop": { "name": "시청", "lat": 36.3504, "lng": 127.3845 },
+          "viaStops": [],
+          "stationCount": 9,
+          "routeId": null,
+          "wayCode": null,
+          "walkBeforeMinutes": null
+        }
+      ],
+      "walkAfterMinutes": null
+    },
+    "untrackableSubway": {
+      "legs": [
+        {
+          "mode": "subway",
+          "lineName": "대전 1호선",
+          "trackMode": null,
+          "boardName": "대전역",
+          "alightName": "유성온천",
+          "boardStop": null,
+          "alightStop": null,
+          "viaStops": [],
+          "stationCount": 11,
+          "routeId": null,
+          "wayCode": 1,
+          "walkBeforeMinutes": null
+        }
+      ],
+      "walkAfterMinutes": 6
+    },
+    "twoLegs": {
+      "legs": [
+        {
+          "mode": "bus",
+          "lineName": "30-3",
+          "trackMode": "seoulBus",
+          "boardName": "천호역.풍납시장",
+          "alightName": "잠실역8번출구",
+          "boardStop": { "name": "천호역.풍납시장", "localId": "123000017", "arsId": "24101", "cityCode": "1000", "lat": 37.537186, "lng": 127.122667 },
+          "alightStop": { "name": "잠실역8번출구", "localId": "123000043", "arsId": "24132", "cityCode": "1000", "lat": 37.514005, "lng": 127.101581 },
+          "viaStops": [],
+          "stationCount": 7,
+          "routeId": "227000006",
+          "wayCode": null,
+          "walkBeforeMinutes": 2
+        },
+        {
+          "mode": "subway",
+          "lineName": "수도권 2호선",
+          "trackMode": "subway",
+          "boardName": "잠실",
+          "alightName": "강남",
+          "boardStop": { "name": "잠실", "stationId": "216", "lat": 37.51335, "lng": 127.100171 },
+          "alightStop": { "name": "강남", "stationId": "222", "lat": 37.497952, "lng": 127.027619 },
+          "viaStops": [],
+          "stationCount": 6,
+          "routeId": null,
+          "wayCode": null,
+          "walkBeforeMinutes": 1
+        }
+      ],
+      "walkAfterMinutes": null
+    }
+  },
+  "locks": {
+    "subway5696": { "mode": "subway", "routeId": "1005", "direction": "하행", "vehicleId": "5696" },
+    "seoulBusV1": { "mode": "seoulBus", "routeId": "227000006", "direction": "", "vehicleId": "111033479" },
+    "tagoApprox": { "mode": "tagoBus", "routeId": "DJB30300052", "direction": "", "vehicleId": "" }
+  },
+  "scenarios": [
+    {
+      "name": "지하철: 탑승→등장→사다리 3·2·1→도착 확정→완료(말미 도보)",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "riding", "signal": "notYetVisible", "event": { "kind": "boarded", "legIndex": 0 } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "phase": "riding", "signal": "notYetVisible", "event": null } },
+        { "at": 120000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[5]번째 전역 (신길)", "remainingStops": 5, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "phase": "riding", "signal": "tracking", "remaining": 5, "event": { "kind": "trackingStarted", "remaining": 5 } } },
+        { "at": 150000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[4]번째 전역 (영등포시장)", "remainingStops": 4, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "remaining": 4, "event": null } },
+        { "at": 180000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[3]번째 전역 (영등포구청)", "remainingStops": 3, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 3 } } },
+        { "at": 210000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[2]번째 전역 (당산)", "remainingStops": 2, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 2 } } },
+        { "at": 240000, "input": { "kind": "poll", "seq": 6, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "전역 출발", "remainingStops": 1, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 1 } } },
+        { "at": 270000, "input": { "kind": "poll", "seq": 7, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "여의도 도착", "remainingStops": 0, "destinationName": "하남검단산", "express": false, "arrivalCode": "1" } ] } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": true } } },
+        { "at": 280000, "input": { "kind": "advance" }, "expect": { "phase": "done", "event": { "kind": "legAdvanced", "final": true } } }
+      ]
+    },
+    {
+      "name": "지하철: 임계 건너뜀(5→1)은 현재 값 1만 통지",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[5]번째 전역", "remainingStops": 5, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "trackingStarted" } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "전역 출발", "remainingStops": 1, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 1 } } }
+      ]
+    },
+    {
+      "name": "지하철: 잔여 증가(데이터 정정)는 래치 비가역·무통지, 이후 더 작아질 때만 재발화",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[4]번째 전역", "remainingStops": 4, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "trackingStarted" } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[3]번째 전역", "remainingStops": 3, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 3 } } },
+        { "at": 90000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[4]번째 전역", "remainingStops": 4, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "remaining": 4, "event": null } },
+        { "at": 120000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[3]번째 전역", "remainingStops": 3, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": null } },
+        { "at": 150000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[2]번째 전역", "remainingStops": 2, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 2 } } }
+      ]
+    },
+    {
+      "name": "지하철: 원거리 소실 3폴 → signalLost → 재관측 회복 통지",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[5]번째 전역", "remainingStops": 5, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "trackingStarted" } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "signal": "tracking", "event": null } },
+        { "at": 90000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "event": null } },
+        { "at": 120000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "signal": "signalLost", "event": { "kind": "signalLost" } } },
+        { "at": 150000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[5]번째 전역", "remainingStops": 5, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "signal": "tracking", "event": { "kind": "signalRecovered" } } }
+      ]
+    },
+    {
+      "name": "지하철: 임박 소실 2폴 → 도착 추정 → 재관측 backOnTrack → 도착 확정",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "전역 출발", "remainingStops": 1, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "event": { "kind": "trackingStarted", "remaining": 1 } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "phase": "riding", "event": null } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": false } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "전역 출발", "remainingStops": 1, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "phase": "riding", "event": { "kind": "backOnTrack" } } },
+        { "at": 75000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "여의도 도착", "remainingStops": 0, "destinationName": "하남검단산", "express": false, "arrivalCode": "1" } ] } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": true } } }
+      ]
+    },
+    {
+      "name": "조회 실패 3연속 → upstreamFailed 1회 → ok로 회복 통지",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "event": null } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "event": null } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "signal": "upstreamFailed", "event": { "kind": "upstreamFailed" } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "event": null } },
+        { "at": 75000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "empty" } }, "expect": { "signal": "notYetVisible", "event": { "kind": "signalRecovered" } } }
+      ]
+    },
+    {
+      "name": "조회 실패 90초 경과가 3회보다 먼저면 그때 통지",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 10000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "event": null } },
+        { "at": 105000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "failed" } }, "expect": { "signal": "upstreamFailed", "event": { "kind": "upstreamFailed" } } }
+      ]
+    },
+    {
+      "name": "늦은 응답 폐기: phaseGen 불일치·seq 역행은 무시",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[5]번째 전역", "remainingStops": 5, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "remaining": 5, "event": { "kind": "trackingStarted" } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[9]번째 전역", "remainingStops": 9, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "remaining": 5, "event": null } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 4, "phaseGen": 0, "poll": { "kind": "empty" } }, "expect": { "remaining": 5, "signal": "tracking", "event": null } }
+      ]
+    },
+    {
+      "name": "다중 leg: 하차 확정 → advance → 다음 leg waiting → 탑승 → advance 최종",
+      "route": "twoLegs",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "seoulBusV1" }, "expect": { "phase": "riding", "event": { "kind": "boarded", "legIndex": 0 } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "111033479", "direction": "", "message": "곧 도착", "remainingStops": 0, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": true } } },
+        { "at": 30000, "input": { "kind": "advance" }, "expect": { "phase": "waiting", "legIndex": 1, "signal": "notYetVisible", "event": { "kind": "legAdvanced", "legIndex": 1, "final": false } } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 2, "phaseGen": 2, "poll": { "kind": "ok", "items": [] } }, "expect": { "event": null } },
+        { "at": 60000, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "riding", "event": { "kind": "boarded", "legIndex": 1 } } },
+        { "at": 75000, "input": { "kind": "advance" }, "expect": { "phase": "done", "event": { "kind": "legAdvanced", "final": true } } }
+      ]
+    },
+    {
+      "name": "추적 불가 leg: 폴·탑승 무시, 수동 전진만",
+      "route": "untrackableSubway",
+      "steps": [
+        { "at": 0, "input": { "kind": "poll", "seq": 1, "phaseGen": 0, "poll": { "kind": "ok", "items": [] } }, "expect": { "signal": "untrackable", "event": null } },
+        { "at": 15000, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "waiting", "event": null } },
+        { "at": 30000, "input": { "kind": "advance" }, "expect": { "phase": "done", "event": { "kind": "legAdvanced", "final": true } } }
+      ]
+    },
+    {
+      "name": "지방버스 근사: arrived 미발동(잔여 0도 카운트다운), 잔여 역행은 기준 차량 교체 통지",
+      "route": "tagoBusSingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "tagoApprox" }, "expect": { "phase": "riding", "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": null, "direction": "", "message": "", "remainingStops": 4, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "signal": "tracking", "remaining": 4, "event": { "kind": "trackingStarted" } } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": null, "direction": "", "message": "", "remainingStops": 2, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 2 } } },
+        { "at": 60000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": null, "direction": "", "message": "", "remainingStops": 0, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "phase": "riding", "event": { "kind": "countdown", "remaining": 0 } } },
+        { "at": 75000, "input": { "kind": "poll", "seq": 4, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": null, "direction": "", "message": "", "remainingStops": 6, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "remaining": 6, "event": { "kind": "approxVehicleChanged" } } },
+        { "at": 90000, "input": { "kind": "poll", "seq": 5, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": null, "direction": "", "message": "", "remainingStops": 3, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "event": { "kind": "countdown", "remaining": 3 } } }
+      ]
+    },
+    {
+      "name": "잔여 추출 실패: 사다리 비활성, 완성 문장 변화 통지로 폴백",
+      "route": "seoulBusSingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "seoulBusV1" }, "expect": { "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "111033479", "direction": "", "message": "6분47초후[4번째 전]", "remainingStops": null, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "event": { "kind": "trackingStarted" } } },
+        { "at": 45000, "input": { "kind": "poll", "seq": 2, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "111033479", "direction": "", "message": "6분47초후[4번째 전]", "remainingStops": null, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "event": null } },
+        { "at": 75000, "input": { "kind": "poll", "seq": 3, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "111033479", "direction": "", "message": "4분12초후[3번째 전]", "remainingStops": null, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "event": { "kind": "messageChanged" } } }
+      ]
+    },
+    {
+      "name": "탑승 변경: riding → waiting 재선택, 이전 세대 폴은 폐기",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "riding", "event": { "kind": "boarded" } } },
+        { "at": 15000, "input": { "kind": "changeBoarding" }, "expect": { "phase": "waiting", "event": { "kind": "boardingReset" } } },
+        { "at": 30000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "[2]번째 전역", "remainingStops": 2, "destinationName": "하남검단산", "express": false, "arrivalCode": "99" } ] } }, "expect": { "phase": "waiting", "remaining": null, "event": null } }
+      ]
+    }
+  ]
+}

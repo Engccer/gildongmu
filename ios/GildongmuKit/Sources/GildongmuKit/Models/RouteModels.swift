@@ -98,6 +98,34 @@ public struct TransitRouteSummary: Codable, Sendable, Hashable {
     public let arriveName: String?
 }
 
+/// 경유 정류장·역 하나(웹 `TransitLegStop` 미러) — `includeStops=1` 옵트인 시에만 온다(B2 §7).
+public struct TransitLegStop: Codable, Sendable, Hashable {
+    public let name: String
+    /// ODsay 내부 ID 원문(수도권 지하철은 4자리 zero-pad 시 seed stationId와 일치)
+    public let stationId: String?
+    /// 지역 정류소 ID(버스, 서울은 TOPIS stId 동일값)
+    public let localId: String?
+    /// 정류소 고유번호(버스 arsID — 서울 getStationByUid 조회 키)
+    public let arsId: String?
+    /// ODsay 정류소 도시 코드 원문(서울=1000) — TOPIS 추적 가능 판정 축
+    public let cityCode: String?
+    public let lat: Double
+    public let lng: Double
+
+    public init(
+        name: String, stationId: String? = nil, localId: String? = nil,
+        arsId: String? = nil, cityCode: String? = nil, lat: Double, lng: Double
+    ) {
+        self.name = name
+        self.stationId = stationId
+        self.localId = localId
+        self.arsId = arsId
+        self.cityCode = cityCode
+        self.lat = lat
+        self.lng = lng
+    }
+}
+
 /// 경로 구간 하나. mode "walk"/"bus"/"subway".
 /// walk leg는 lineName·fromName·toName·stationCount 전부 nil(뷰의 "도보 N분" 단일 분기 근거).
 public struct TransitRouteLeg: Codable, Sendable, Hashable {
@@ -118,6 +146,33 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
     public let firstServiceTime: String?
     /// 막차 시각 "22:30"(판정된 경우만)
     public let lastServiceTime: String?
+    /// TOPIS 노선 ID(서울버스 추적 조인 키, B2) — additive optional
+    public let serviceRouteId: String?
+    /// 지하철 방향(ODsay wayCode 1=상행·2=하행) — additive optional
+    public let serviceWayCode: Int?
+    /// 경유 정류장·역(양 끝 포함) — `includeStops=1` 시 탑승 leg에만
+    public let stops: [TransitLegStop]?
+
+    public init(
+        mode: String, lineName: String?, fromName: String?, toName: String?,
+        stationCount: Int?, minutes: Int, serviceStatus: String?,
+        firstServiceTime: String?, lastServiceTime: String?,
+        serviceRouteId: String? = nil, serviceWayCode: Int? = nil,
+        stops: [TransitLegStop]? = nil
+    ) {
+        self.mode = mode
+        self.lineName = lineName
+        self.fromName = fromName
+        self.toName = toName
+        self.stationCount = stationCount
+        self.minutes = minutes
+        self.serviceStatus = serviceStatus
+        self.firstServiceTime = firstServiceTime
+        self.lastServiceTime = lastServiceTime
+        self.serviceRouteId = serviceRouteId
+        self.serviceWayCode = serviceWayCode
+        self.stops = stops
+    }
 }
 
 /// 대중교통 경로 하나(요약 + 구간들).

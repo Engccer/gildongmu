@@ -106,8 +106,8 @@ const subwayStops = {
 };
 const busStops = {
   stations: [
-    { index: 0, stationID: 109335, stationName: "천호역.풍납시장", localStationID: "123000017", arsID: "24101", x: "127.122667", y: "37.537186", isNonStop: "N" },
-    { index: 1, stationID: 163083, stationName: "잠실역8번출구", localStationID: "123000043", arsID: "24132", x: "127.101581", y: "37.514005", isNonStop: "N" },
+    { index: 0, stationID: 109335, stationName: "천호역.풍납시장", stationCityCode: 1000, localStationID: "123000017", arsID: "24101", x: "127.122667", y: "37.537186", isNonStop: "N" },
+    { index: 1, stationID: 163083, stationName: "잠실역8번출구", stationCityCode: 1000, localStationID: "123000043", arsID: "24132", x: "127.101581", y: "37.514005", isNonStop: "N" },
   ],
 };
 
@@ -141,6 +141,7 @@ describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
       stationId: "109335",
       localId: "123000017",
       arsId: "24101",
+      cityCode: "1000",
       lat: 37.537186,
       lng: 127.122667,
     });
