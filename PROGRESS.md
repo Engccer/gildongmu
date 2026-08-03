@@ -13,6 +13,21 @@
 >
 > 릴리스 노트·절차·함정은 `docs/appstore/1.0-submission-draft.md` §13(1.1)·§14(1.2)·§15(ASC API 제출 전환).
 
+### B2: 대중교통 실시간 길 안내 (2026-08-04, ✅ 웹·iOS 동시, ⏳ 아침 실호출 잔여 + 위원장 실승차 판정)
+
+수단별 진입점의 마지막 수단. 정본: 스펙 `docs/superpowers/specs/2026-08-04-transit-guidance-design.md`(codex 적대적 리뷰 60건 반영본, 기각 10건 §11), 플랜 `docs/superpowers/plans/2026-08-04-transit-guidance.md`, 조사는 B1과 공유(`RESEARCH-2026-08-03-mode-specific-guidance.md`).
+
+- **신호 정본**: GPS가 아니라 도착 API의 차량·열차 식별자. 서울버스 `vehId` 잠금(`getArrInfoByRoute` 신설), 수도권 지하철 열차 선택 목록(네이버식, 위원장 확정 UX) + `btrainNo` 잠금, 지방버스 근사(잠금 없음 — 통지까지만, 하차 확정 근거 금지), 비수도권 지하철 추적 불가(수동 전진).
+- **차량 도착 ≠ 사용자 하차**(적대적 리뷰 최상위 수용): 도착 관측은 자동 통지(arrived 국면), **다음 leg 전환은 "다음 구간" 버튼**(사용자 확인). 잠금은 복합 키(노선·방향·식별자 원문), 사다리 {3,2,1} 래치, 도착 추정은 가역(재관측 복귀), 신호 상태 배타 5종(tracking·notYetVisible·signalLost·upstreamFailed·untrackable).
+- **상태 머신**: `src/lib/transit-guide.ts` ↔ Kit `TransitGuide.swift` 1:1 미러, 공유 fixture 13시나리오(`transit-guide-scenarios.json`)가 동조 강제. 오케스트레이터(웹 `useTransitGuide`·iOS `TransitGuideModel`)는 단일 비행 폴링·적응 주기(대기 20s/미등장 60s/원거리 30s/임박 15s)·세션 캡 240콜·phaseGen·seq 커밋만.
+- **데이터**: ODsay `passStopList`를 `/api/route/transit?includeStops=1` 옵트인으로(미지정 byte-호환, CLI/MCP 불변). `/api/transit/track` 판별 union(ok·empty·unsupported, upstream 502), ord 해석(승차 순번 이후 최소 — 순환·왕복 대응), 왕복쌍 40m 가드. 레이트리밋 60초 20회.
+- **부역명 정합 결함 수정 편승**(분리 커밋 `31ae9f8`): `fetchSubwayArrivals`가 괄호를 벗겨 조회해 천호(풍납토성) 등이 INFO-200 위장 실패하던 것을 정식 표기 우선 + 벗긴 표기 폴백(양방향 fail-open)으로. `SubwayArrival`에 `trainNo`·`arrivalCode` additive.
+- **세션 단일성**: 도보·자동차·대중교통 통틀어 플랫폼당 1개 — 웹 `guide-session-store` 공유, iOS는 `GuideSessionCoordinator` 신설(claim 동기 stop + 토큰 release, BeaconModel 연동).
+- **a11y**: 통지는 polite 단일 채널 + iOS만 잔여 1·도착 interrupting(.high, §6.1 — 실승차 판정 대상), 열차 목록은 행위구 라벨·종착 결정 차단·급행 병기·방면 전멸 시 전체 유지, arrived 시 "다음 구간" 포커스 선점, 상시 표시(신호 상태·마지막 갱신)는 live region 밖.
+- **프로브·실호출(2026-08-04 심야)**: ①ODsay 지하철 `stationID` 4자리 zero-pad = 수도권 seed `stationId`(길동 549→0549·천호 811→0811, 단 부산·대구 ID 충돌 → 이름 이중 게이트) ②버스 passStopList에 `localStationID`(=TOPIS stId)·`arsID` 실재 ③`getArrInfoByRoute` 첫 실호출 통과(staOrd·sectOrd 실재, ord 해석 포함) ④includeStops 실경로 검증 ⑤tago resolve 실호출(대전역/역전시장). **실호출이 잡은 결함 3건**(`da3bc4b`): TAGO http hang(71초 ETIMEDOUT → https+타임아웃 — 기존 provider에 있던 조사 §1.2 함정), 지하철 INFO-200을 unsupported로 뭉갬(→ empty, 4-state 교훈의 추적판), 운행종료 슬롯의 쓰레기 구조 잔여(vehId 없는 슬롯은 패턴만).
+- **잔여 — 아침 실호출 게이트(첫차 05:30 이후, §8.5 ④⑤)**: 부역명 회귀 행렬(천호·군자·강동·양평 주간 대조), 승차→하차 vehId 조인 재현, 열차 선택 목록 실값(방면·급행·종착), 2호선 내선/외선 ↔ wayCode 대응. 폴백 설계(정식↔벗긴 양방향·방면 판정 유보 시 전체 표시)라 미확정분은 안전 열화이지 오동작 아님.
+- **잔여 — 위원장 실승차 판정**: 스펙 §1 성과 지표 3항 + 사다리 시점(3·2·1 유효성) + interrupting 승격 판정 + "다음 구간" 수동 확인 마찰 + 시트 VO 동선 + 폴링 주기 체감.
+
 ### B1: 수단별 안내 진입점 재편 + 자동차 안내 (2026-08-03, ✅ 웹·iOS 동시, ⏳ 위원장 실주행 판정)
 
 위원장 실사용 판정(진입점 3종 분리)의 1차 마일스톤. 정본: 조사 `docs/RESEARCH-2026-08-03-mode-specific-guidance.md`, 스펙 `docs/superpowers/specs/2026-08-03-mode-entrypoints-car-guidance-design.md`(codex 적대적 리뷰 반영본), 플랜 `docs/superpowers/plans/2026-08-03-mode-entrypoints-car-guidance.md`. B2(대중교통 안내 — 열차 선택 목록 확정)는 별도 스펙 대기.
