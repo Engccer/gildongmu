@@ -124,21 +124,32 @@ function isGuidanceEvent(kind: GuideEvent["kind"]): boolean {
   return kind === "announceSteps" || kind === "bundleReread" || kind === "periodic";
 }
 
+/** 상세 모드 상시 표시용 경로 기준 진행 상황(위원장 실측 판정 2026-08-03 묶음 A). */
+export interface GuideProgress {
+  /** 경로 기준 잔여 거리(m) — 직선거리가 아니다. */
+  remainingMeters: number;
+  /** 경로 총 소요시간을 잔여 비례로 축소한 추정(초). 근거 없으면 null(날조 금지). */
+  etaSeconds: number | null;
+}
+
 export interface RouteGuideApi {
   status: BeaconStatus;
   supported: boolean;
   mode: GuideMode;
   /** 단일 polite live region에 실을 텍스트(패널이 그대로 렌더한다). */
   liveText: string;
-  lastGuidance: string | null;
   offRoute: boolean;
+  /**
+   * 상세 모드의 경로 기준 잔여 거리·예상 시간. live region 밖 일반 텍스트로만
+   * 렌더한다 — 매 fix 갱신되므로 polite 채널에 태우면 그 자체가 통지 스팸이 된다.
+   */
+  progress: GuideProgress | null;
   /** 전환 버튼 노출 조건 — ko 데이터 로케일이면서 유효 상세 경로를 쥔 세션만. */
   canOfferDetail: boolean;
   rerouting: boolean;
   start: () => void;
   stop: () => void;
   toggleMode: () => void;
-  repeatGuidance: () => void;
   announceProgress: () => void;
   requestReroute: () => void;
 }
@@ -156,8 +167,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   const [status, setStatus] = useState<BeaconStatus>("idle");
   const [mode, setMode] = useState<GuideMode>("brief");
   const [liveText, setLiveText] = useState("");
-  const [lastGuidance, setLastGuidance] = useState<string | null>(null);
   const [offRoute, setOffRoute] = useState(false);
+  const [progress, setProgress] = useState<GuideProgress | null>(null);
   const [hasRoute, setHasRoute] = useState(false);
   const [rerouting, setRerouting] = useState(false);
 
@@ -171,6 +182,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
   /** 상세 모드 무이벤트 tick의 스로틀 기준(초 단위 단조 시각). */
   const detailTickRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
+  /** 상세 경로의 총 소요시간(초, provider 원값) — 잔여 시간 비례 추정의 분모. */
+  const routeDurationRef = useRef<number | null>(null);
   const lastFixRef = useRef<GuideFix | null>(null);
   /** 마지막 fix 수신 시각(초, 단조) — 진행 상황의 직선거리 신선도 게이트용. */
   const lastFixAtRef = useRef<number | null>(null);
@@ -222,8 +235,27 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
 
   const rememberGuidance = useCallback((text: string) => {
     lastGuidanceRef.current = text;
-    setLastGuidance(text);
   }, []);
+
+  /**
+   * 경로 기준 잔여 거리·예상 시간(스냅숏). 예상 시간은 provider가 준 총 소요시간을
+   * 잔여 거리 비례로 축소한 값이다 — 실측 속도로 재추정하지 않는다(보행 멈춤·GPS
+   * 잡음에 출렁이는 수치는 상시 표시로 부적합, 결정론 우선).
+   */
+  const progressOf = useCallback(
+    (route: GuideRoute, state: GuideState): GuideProgress => {
+      const remaining = Math.max(0, route.totalMeters - state.d);
+      const dur = routeDurationRef.current;
+      return {
+        remainingMeters: remaining,
+        etaSeconds:
+          dur !== null && dur > 0 && route.totalMeters > 0
+            ? (dur * remaining) / route.totalMeters
+            : null,
+      };
+    },
+    [],
+  );
 
   const routeTone = useCallback(
     (kind: AnnounceKind) => {
@@ -292,12 +324,16 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       modeRef.current = "detail";
       setMode("detail");
       setOffRoute(state.phase === "offRoute");
+      setProgress(progressOf(route, state));
     },
-    [],
+    [progressOf],
   );
 
   /** 현재 위치에서 목적지까지 도보 경로를 받아 기하를 조립한다. 실패는 전부 null(fail-closed). */
-  const fetchGuideRoute = useCallback(async (): Promise<GuideRoute | null> => {
+  const fetchGuideRoute = useCallback(async (): Promise<{
+    route: GuideRoute;
+    durationSeconds: number | null;
+  } | null> => {
     const geo = await awaitGeolocation();
     if (geo.status !== "ready") return null;
     const target = destRef.current;
@@ -311,7 +347,15 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       if (isOutOfCoverageBody(body)) return null;
       const result = (body as { result?: WalkRouteBriefing | null }).result;
       if (!result) return null;
-      return buildGuideRoute(result.steps);
+      const route = buildGuideRoute(result.steps);
+      if (!route) return null;
+      return {
+        route,
+        durationSeconds:
+          Number.isFinite(result.durationSeconds) && result.durationSeconds > 0
+            ? result.durationSeconds
+            : null,
+      };
     } catch {
       return null;
     }
@@ -337,6 +381,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       const result = guideStep(state, fix, route, now);
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
+      setProgress(progressOf(route, result.state));
       if (result.tone === "ahead") playAhead();
       else if (result.tone === "warning") playWarning();
       if (!result.event) {
@@ -355,12 +400,13 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
         beaconRef.current = INITIAL_BEACON_STATE;
         prevKindRef.current = null;
         setOffRoute(false);
+        setProgress(null);
       }
       if (!text) return;
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
     },
-    [announce, eventText, playAhead, playTick, playWarning, rememberGuidance],
+    [announce, eventText, playAhead, playTick, playWarning, progressOf, rememberGuidance],
   );
 
   /**
@@ -464,6 +510,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     beaconRef.current = INITIAL_BEACON_STATE;
     guideRef.current = null;
     routeRef.current = null;
+    routeDurationRef.current = null;
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
@@ -474,8 +521,8 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       modeRef.current = "brief";
       setHasRoute(false);
       setOffRoute(false);
+      setProgress(null);
       setRerouting(false);
-      setLastGuidance(null);
       announce("");
     }
     playStop();
@@ -492,6 +539,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     beaconRef.current = INITIAL_BEACON_STATE;
     guideRef.current = null;
     routeRef.current = null;
+    routeDurationRef.current = null;
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
@@ -502,7 +550,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     setMode("brief");
     setHasRoute(false);
     setOffRoute(false);
-    setLastGuidance(null);
+    setProgress(null);
     setStatus("tracking");
     announce("");
     playStart();
@@ -519,13 +567,15 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       return;
     }
     void (async () => {
-      const route = await fetchGuideRoute();
+      const fetched = await fetchGuideRoute();
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
-      if (!route) {
+      if (!fetched) {
         // 조용한 강등 금지 — 시작 통지가 어느 모드인지 말한다(스펙 §4.1).
         announce(t("detailUnavailable"));
         return;
       }
+      const { route } = fetched;
+      routeDurationRef.current = fetched.durationSeconds;
       const now = performance.now() / 1000;
       const init = initialGuideState(route, now);
       commitDetail(route, init.state);
@@ -568,6 +618,7 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
       prevKindRef.current = null;
       pendingResolveRef.current = null;
       setOffRoute(false);
+      setProgress(null);
       announce(t("toBriefDone"));
       return;
     }
@@ -593,10 +644,6 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     }
     announce(t("resolveFailed"));
   }, [announce, commitDetail, t]);
-
-  const repeatGuidance = useCallback(() => {
-    announce(lastGuidanceRef.current ?? t("noGuidanceYet"));
-  }, [announce, t]);
 
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
@@ -661,13 +708,15 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     const gen = genRef.current;
     void (async () => {
       try {
-        const route = await fetchGuideRoute();
+        const fetched = await fetchGuideRoute();
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
-        if (!route) {
+        if (!fetched) {
           announce(t("rerouteFailed"));
           return;
         }
+        const { route } = fetched;
+        routeDurationRef.current = fetched.durationSeconds;
         // 새 경로는 현재 위치에서 출발하므로 진행거리 0에서 다시 시작한다.
         const now = performance.now() / 1000;
         const init = initialGuideState(route, now);
@@ -732,14 +781,13 @@ export function useRouteGuide(dest: RouteGuideDest): RouteGuideApi {
     supported,
     mode,
     liveText,
-    lastGuidance,
     offRoute,
+    progress,
     canOfferDetail: !prefersEnglish(locale) && hasRoute,
     rerouting,
     start,
     stop,
     toggleMode,
-    repeatGuidance,
     announceProgress,
     requestReroute,
   };

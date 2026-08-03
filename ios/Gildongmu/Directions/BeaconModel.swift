@@ -77,12 +77,17 @@ final class BeaconModel {
     var canOfferDetail: Bool { guideRoute != nil }
     /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
     private(set) var offRoute = false
-    /// 반복 버튼 대상: 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 상태·오류
-    /// 통지는 대상이 아니다(스펙 §4.2 리뷰 #23).
+    /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
+    /// 분기가 소비한다. 상태·오류 통지는 대상이 아니다(스펙 §4.2 리뷰 #23).
     private(set) var lastGuidance: String?
+    /// 경로 기준 잔여 거리·예상 시간 상시 표시 1줄(상세 모드 전용, 웹 progress 미러 —
+    /// 위원장 실측 판정 2026-08-03 묶음 A). 통지 채널에 태우지 않는다(매 fix 갱신).
+    private(set) var remainingText: String?
 
     /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
     private var guideRoute: GuideRoute?
+    /// 상세 경로의 총 소요시간(초, provider 원값) — 잔여 시간 비례 추정의 분모.
+    private var guideRouteDurationSeconds: Int?
     private var guideState: GuideState?
     /// 시작 직후 경로 조회 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 → 곧바로
     /// 상세 시작" 이중 발화를 막는다.
@@ -248,10 +253,12 @@ final class BeaconModel {
                 return
             }
             guideRoute = route
+            guideRouteDurationSeconds = briefing.durationSeconds
             let initial = initialGuideState(route: route, now: uptimeNow)
             guideState = initial.state
             mode = .detail
             offRoute = false
+            updateRemaining(route: route, state: initial.state)
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
             let text = GuideText.start(route: route, firstIndices: initial.firstIndices)
             lastGuidance = GuideText.unit(route: route, indices: initial.firstIndices)
@@ -266,9 +273,26 @@ final class BeaconModel {
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
     private func fallbackToBrief() {
         mode = .brief
+        remainingText = nil
         let text = appLocalized("guide.detailUnavailable")
         statusText = text
         announce(text)
+    }
+
+    /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). 예상 시간은 provider
+    /// 총 소요시간의 잔여 비례 축소다 — 실측 속도로 재추정하지 않는다(보행 멈춤·GPS
+    /// 잡음에 출렁이는 수치는 상시 표시로 부적합, 결정론 우선). 근거 없으면 시간 생략.
+    private func updateRemaining(route: GuideRoute, state: GuideState) {
+        let remaining = max(0, route.totalMeters - state.d)
+        let distancePart = appLocalized(
+            "guide.remainingDistance", formatDistance(Int(remaining.rounded()))
+        )
+        var timePart: String?
+        if let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 {
+            let minutes = max(1, Int((Double(dur) * remaining / route.totalMeters / 60).rounded()))
+            timePart = appLocalized("guide.remainingTime", String(minutes))
+        }
+        remainingText = joinText(distancePart, timePart)
     }
 
     private func fail(with status: Status, key: String, resolution: FailResolution = .none) {
@@ -304,8 +328,10 @@ final class BeaconModel {
         awaitingRoute = false
         mode = .brief
         guideRoute = nil
+        guideRouteDurationSeconds = nil
         guideState = nil
         lastGuidance = nil
+        remainingText = nil
         offRoute = false
         pendingRecovery = nil
         resolvePendingSince = nil
@@ -429,6 +455,7 @@ final class BeaconModel {
             now: now
         )
         guideState = out.state
+        updateRemaining(route: route, state: out.state)
         if let tone = out.tone { playTone(tone == .ahead ? .ahead : .warning) }
         guard let event = out.event else {
             // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
@@ -461,6 +488,7 @@ final class BeaconModel {
             // 간략(비콘) 인계 — 검증된 리듀서를 그대로 쓴다. 자동 인계는 래치이며
             // 수동 상세 복귀는 전환 버튼으로(재무장은 리듀서 상태가 소유).
             mode = .brief
+            remainingText = nil
             beaconState = .initial
             gateState = .initial
             let text = appLocalized("guide.handoff")
@@ -502,9 +530,11 @@ final class BeaconModel {
         if case let .ok(d) = entryProjection(route: route, fix: gfix) {
             resolvePendingSince = nil
             // 수동 복귀는 자동 인계 재무장 전(armed=false)으로 시작한다(전환 루프 차단).
-            guideState = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: false)
+            let state = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: false)
+            guideState = state
             mode = .detail
             offRoute = false
+            updateRemaining(route: route, state: state)
             let text = appLocalized("guide.toDetailDone")
             statusText = text
             announce(text)
@@ -527,10 +557,6 @@ final class BeaconModel {
               uptimeNow - at <= 15
         else { return nil }
         return haversineMeters(lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng)
-    }
-
-    func repeatLastGuidance() {
-        announce(lastGuidance ?? appLocalized("guide.noGuidanceYet"), highPriority: true)
     }
 
     func announceProgress() {
@@ -558,6 +584,7 @@ final class BeaconModel {
         guard isTracking, guideRoute != nil else { return }
         if mode == .detail {
             mode = .brief
+            remainingText = nil
             beaconState = .initial  // first-fix 경로: 절대거리 1회 발화 후 추세
             gateState = .initial
             resolvePendingSince = nil
@@ -611,9 +638,11 @@ final class BeaconModel {
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
             guideRoute = route
+            guideRouteDurationSeconds = briefing.durationSeconds
             let initial = initialGuideState(route: route, now: uptimeNow)
             guideState = initial.state
             offRoute = false
+            updateRemaining(route: route, state: initial.state)
             let text = GuideText.unit(route: route, indices: initial.firstIndices)
             lastGuidance = text
             statusText = text

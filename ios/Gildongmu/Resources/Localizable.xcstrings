@@ -10121,42 +10121,82 @@
         }
       }
     },
-    "guide.repeatButton": {
+    "guide.remainingDistance": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 안내 반복"
+            "value": "남은 거리 %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repeat current instruction"
+            "value": "Distance left %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Repetir la indicación actual"
+            "value": "Distancia restante %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Répéter l'instruction actuelle"
+            "value": "Distance restante %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ripeti l'indicazione attuale"
+            "value": "Distanza rimanente %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在の案内を繰り返す"
+            "value": "残り%1$@"
+          }
+        }
+      }
+    },
+    "guide.remainingTime": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "약 %1$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "about %1$@ min"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unos %1$@ min"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "environ %1$@ min"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "circa %1$@ min"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "約%1$@分"
           }
         }
       }

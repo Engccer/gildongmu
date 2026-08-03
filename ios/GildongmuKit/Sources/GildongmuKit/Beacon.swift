@@ -81,6 +81,18 @@ public enum BeaconConstants {
     public static let freshnessWindow = 5.0
 }
 
+/// closer 발화 마일스톤(잔여 거리 적응형, 위원장 실측 판정 2026-08-03). 웹
+/// `closerSpeakIntervalM` 미러. 정상 진행(가까워짐)은 알림 가치가 낮고 추세 톤이
+/// 이미 연속 신호를 주므로 멀수록 성기게 발화한다. farther는 경고라 50m 간격을
+/// 유지한다 — 두 축의 비대칭이 정책이다. 간략 안내는 전 수단에서 참이라 차량
+/// 이동에서 50m 고정이 몇 초마다 발화되던 문제도 이 사다리가 흡수한다.
+public func closerSpeakInterval(distance: Double) -> Double {
+    if distance > 5000 { return 1000 }
+    if distance > 1000 { return 500 }
+    if distance > 300 { return 200 }
+    return 100
+}
+
 /// fix를 앵커·추세에 반영해도 되는지. **캐시 위치와 무효 좌표를 배제한다.**
 ///
 /// `startUpdatingLocation()`의 첫 콜백은 흔히 캐시라, 그대로 앵커를 잡으면 수백 m
@@ -189,7 +201,10 @@ public func beaconStep(
 
     let trendFlipped = kind != .hold && state.trend != .none && kind != announceKind(of: state.trend)
     let lastSpoken = state.lastSpokenDistance ?? distance
-    let milestone = abs(distance - lastSpoken) >= BeaconConstants.speakInterval
+    let interval = kind == .closer
+        ? closerSpeakInterval(distance: distance)
+        : BeaconConstants.speakInterval
+    let milestone = abs(distance - lastSpoken) >= interval
     let speak = kind != .hold && (trendFlipped || milestone)
 
     return (

@@ -29,8 +29,7 @@ struct BeaconTrackingSheet: View {
             Section {
                 Button(appLocalized("beacon.stop"), action: onStop)
                     .accessibilityFocused($stopFocused)
-                // 반복: 마지막 실행 안내 재낭독(소음·딴생각 대비, NavCog 최고 호평 컨트롤).
-                Button(appLocalized("guide.repeatButton")) { model.repeatLastGuidance() }
+                // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
                 // 진행 상황: 자동 통지를 기다리지 않는 임의 시점 조회(Soundscape Where Am I).
                 Button(appLocalized("guide.progressButton")) { model.announceProgress() }
                 // 전환: 추적을 멈추지 않고 안내 방식만 바꾼다. 라벨이 곧 상태 신호.
@@ -58,6 +57,12 @@ struct BeaconTrackingSheet: View {
                     Text(appLocalized("beacon.straightLineNote"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                }
+                // 경로 기준 잔여 거리·예상 시간 상시 표시(위원장 실측 판정 2026-08-03).
+                // 매 fix 갱신되는 값이라 통지 채널에 태우지 않는다 — 스와이프로 닿는
+                // 정적 행 하나. 이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직).
+                if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {
+                    distanceText(remaining)
                 }
                 // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
                 // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
