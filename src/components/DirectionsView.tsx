@@ -30,6 +30,7 @@ import {
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
+import { DistanceBeacon } from "./DistanceBeacon";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 
 type ModeKey = "transit" | "walk" | "car";
@@ -166,6 +167,7 @@ export function DirectionsView({
   const tPed = useTranslations("route.pedestrian");
   const tCar = useTranslations("route.briefing");
   const tCommon = useTranslations("common");
+  const tBeacon = useTranslations("beacon");
   const locale = useLocale();
 
   // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
@@ -516,6 +518,36 @@ export function DirectionsView({
     if (mode === "walk") return tPed("heading");
     return tRoute("car");
   }
+
+  // 수단별 실시간 안내 진입점(B1 §3.1). 게이트 = "그 수단으로 시작 가능한 안내가
+  // 있는가": 도보는 경로 성공 ∧ ko, 자동차는 경로 성공 ∧ ko ∧ provider tmap(카카오
+  // 폴백은 기하 미지원이라 누르자마자 강등되는 죽은 버튼 — 판별자가 사전 차단).
+  // 대중교통 안내는 B2 전까지 만들지 않는다(비활성 버튼 사전 배치 금지).
+  const carOutcome = results?.outcomes.car;
+  const walkGuideStartable =
+    results?.outcomes.walk?.kind === "done" && !prefersEnglish(locale);
+  const carGuideStartable =
+    carOutcome?.kind === "done" &&
+    carOutcome.mode === "car" &&
+    carOutcome.result.provider === "tmap" &&
+    !prefersEnglish(locale);
+  // 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled ∧ 목적지 확정.
+  // "모든 수단 실패"가 아니라 "시작 가능 0개"다 — en 로케일·카카오 폴백만 성공한
+  // 조합에서 막다른 화면을 만들지 않는다(§3.1).
+  const guideDest =
+    results && lastCoordsRef.current
+      ? {
+          lat: lastCoordsRef.current.dest.lat,
+          lng: lastCoordsRef.current.dest.lng,
+          name: results.destLabel,
+        }
+      : null;
+  const guideDestKey = guideDest ? `${guideDest.lat},${guideDest.lng}` : "";
+  const briefFallback =
+    phase.kind === "settled" &&
+    guideDest !== null &&
+    !walkGuideStartable &&
+    !carGuideStartable;
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -627,6 +659,18 @@ export function DirectionsView({
         {liveMessage}
       </p>
 
+      {/* 간략 폴백(§3.1): 시작 가능한 수단 안내가 하나도 없을 때만 선두 노출 —
+          경로를 못 찾은 상황일수록 방향 감각이 더 필요하다(기존 근거 승계). */}
+      {results && briefFallback && guideDest && (
+        <DistanceBeacon
+          key={`brief-${guideDestKey}`}
+          dest={guideDest}
+          kind="walk"
+          startOnOpen
+          triggerLabel={tBeacon("briefGuideStart")}
+        />
+      )}
+
       {results && (
         <div className="mt-2">
           {activeModes.map((mode) => {
@@ -655,6 +699,27 @@ export function DirectionsView({
                   >
                     {tPed("stepFreeToggle")}
                   </button>
+                )}
+                {/* 수단별 실시간 안내 진입점(§3.1) — 수단 heading 착지 후 첫
+                    스와이프 거리. 트리거가 곧 시작(startOnOpen — "시작" 라벨
+                    거짓말 금지). 목적지 변경은 key 재마운트로 세션 정리. */}
+                {mode === "walk" && walkGuideStartable && guideDest && (
+                  <DistanceBeacon
+                    key={`walk-${guideDestKey}`}
+                    dest={guideDest}
+                    kind="walk"
+                    startOnOpen
+                    triggerLabel={tBeacon("walkGuideStart")}
+                  />
+                )}
+                {mode === "car" && carGuideStartable && guideDest && (
+                  <DistanceBeacon
+                    key={`car-${guideDestKey}`}
+                    dest={guideDest}
+                    kind="car"
+                    startOnOpen
+                    triggerLabel={tBeacon("carGuideStart")}
+                  />
                 )}
                 {outcome.kind === "error" && (
                   <p className="mt-1 text-sm">{modeErrorText(mode)}</p>
