@@ -100,20 +100,20 @@ export async function trackSeoulRide(params: {
 // === 지방 버스(TAGO 근사) ===
 
 /**
- * 하차 정류소 해석의 왕복쌍 모호 가드(§5.2 순수 판정): 최근접 두 후보가 동명이고
- * 거리 차 40m 미만이면 반대편 오선택 위험이 판별 불가 — 추적을 시작하지 않는다.
+ * 하차 정류소 해석의 왕복쌍 모호 가드(§5.2 순수 판정): 최근접 후보와 **동명**인
+ * 정류소가 40m 이내에 하나라도 더 있으면 반대편 오선택 위험이 판별 불가 —
+ * 추적을 시작하지 않는다. ⚠ 바로 다음 순위만 보면 안 된다: 도심 밀집 지역에선
+ * 왕복 짝 사이에 다른 이름의 정류소가 더 가깝게 끼어들 수 있다(독립 리뷰).
  */
 export function pickTagoStop(stops: BusStop[]): BusStop | "ambiguous" | null {
   if (stops.length === 0) return null;
-  const [top, second] = stops;
-  if (
-    second &&
-    second.distanceMeters - top.distanceMeters < 40 &&
-    top.name.trim() === second.name.trim()
-  ) {
-    return "ambiguous";
-  }
-  return top;
+  const top = stops[0];
+  const twin = stops
+    .slice(1)
+    .some(
+      (s) => s.distanceMeters - top.distanceMeters < 40 && s.name.trim() === top.name.trim(),
+    );
+  return twin ? "ambiguous" : top;
 }
 
 /** 세션 시작 시 1회: passStopList 좌표 → TAGO 정류소(nodeId·citycode) 해석(§5.2). */

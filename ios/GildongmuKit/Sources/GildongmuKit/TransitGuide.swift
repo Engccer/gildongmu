@@ -420,11 +420,20 @@ private func handleChangeBoarding(
     return (next, .boardingReset)
 }
 
-/// 다음 구간 전환 — 사용자 확인(§4.2 원자 전이).
+/// advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사(tagoBus) 상시.
+private func canAdvance(_ state: TransitGuideState, route: TransitGuideRoute) -> Bool {
+    if state.phase == .arrived { return true }
+    if state.signal == .untrackable { return true }
+    guard route.legs.indices.contains(state.legIndex) else { return false }
+    return state.phase == .riding && route.legs[state.legIndex].trackMode == .tagoBus
+}
+
+/// 다음 구간 전환 — 사용자 확인(§4.2 원자 전이). 유효 국면 밖의 advance는 no-op
+/// (UI 버튼 노출 조건에만 의존하면 웹·iOS 가드가 드리프트한다 — 독립 리뷰).
 private func handleAdvance(
     _ state: TransitGuideState, route: TransitGuideRoute
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
-    guard state.phase != .done else { return (state, nil) }
+    guard state.phase != .done, canAdvance(state, route: route) else { return (state, nil) }
     let nextIndex = state.legIndex + 1
     let final = nextIndex >= route.legs.count
     var next = state

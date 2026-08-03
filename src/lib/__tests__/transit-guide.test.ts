@@ -118,7 +118,14 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     expect(pollIntervalMs(state)).toBe(30_000);
     state = transitGuideStep(state, pollOk(2, 1, [item({ remainingStops: 3, message: "x" })]), route, 2).state;
     expect(pollIntervalMs(state)).toBe(15_000);
-    state = transitGuideStep(state, { kind: "advance" }, route, 3).state;
+    // advance는 arrived에서만 유효(리듀서 가드) — 도착 관측 후 전환.
+    state = transitGuideStep(
+      state,
+      pollOk(3, 1, [item({ remainingStops: 0, message: "여의도 도착", arrivalCode: "1" })]),
+      route,
+      3,
+    ).state;
+    state = transitGuideStep(state, { kind: "advance" }, route, 4).state;
     expect(state.phase).toBe("done");
     expect(pollIntervalMs(state)).toBe(0);
     expect(pollIntervalMs(initTransitGuide(fixture.routes.untrackableSubway, 0))).toBe(0);

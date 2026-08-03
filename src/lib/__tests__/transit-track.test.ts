@@ -127,6 +127,12 @@ describe("pickTagoStop — 왕복쌍 모호 가드(§5.2)", () => {
     expect(pickTagoStop([stop("시청", 12), stop("시청", 35)])).toBe("ambiguous");
   });
 
+  it("왕복 짝 사이에 다른 이름 정류소가 끼어도 전체 스캔으로 잡는다(독립 리뷰)", () => {
+    expect(pickTagoStop([stop("시청", 12), stop("시청앞교차로", 20), stop("시청", 30)])).toBe(
+      "ambiguous",
+    );
+  });
+
   it("이름이 다르거나 거리차가 충분하면 최근접 채택, 빈 목록은 null", () => {
     const picked = pickTagoStop([stop("시청", 12), stop("시청앞", 30)]);
     expect(picked).not.toBe("ambiguous");

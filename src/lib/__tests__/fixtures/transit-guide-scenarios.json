@@ -216,8 +216,20 @@
         { "at": 15000, "input": { "kind": "poll", "seq": 1, "phaseGen": 1, "poll": { "kind": "ok", "items": [ { "vehicleId": "111033479", "direction": "", "message": "곧 도착", "remainingStops": 0, "destinationName": null, "express": false, "arrivalCode": null } ] } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": true } } },
         { "at": 30000, "input": { "kind": "advance" }, "expect": { "phase": "waiting", "legIndex": 1, "signal": "notYetVisible", "event": { "kind": "legAdvanced", "legIndex": 1, "final": false } } },
         { "at": 45000, "input": { "kind": "poll", "seq": 2, "phaseGen": 2, "poll": { "kind": "ok", "items": [] } }, "expect": { "event": null } },
+        { "at": 50000, "input": { "kind": "advance" }, "expect": { "phase": "waiting", "legIndex": 1, "event": null } },
         { "at": 60000, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "riding", "event": { "kind": "boarded", "legIndex": 1 } } },
-        { "at": 75000, "input": { "kind": "advance" }, "expect": { "phase": "done", "event": { "kind": "legAdvanced", "final": true } } }
+        { "at": 70000, "input": { "kind": "advance" }, "expect": { "phase": "riding", "legIndex": 1, "event": null } },
+        { "at": 75000, "input": { "kind": "poll", "seq": 3, "phaseGen": 3, "poll": { "kind": "ok", "items": [ { "vehicleId": "5696", "direction": "하행", "message": "강남 도착", "remainingStops": 0, "destinationName": "하남검단산", "express": false, "arrivalCode": "1" } ] } }, "expect": { "phase": "arrived", "event": { "kind": "arrived", "certain": true } } },
+        { "at": 80000, "input": { "kind": "advance" }, "expect": { "phase": "done", "event": { "kind": "legAdvanced", "final": true } } }
+      ]
+    },
+    {
+      "name": "advance 가드: 미탑승 waiting·잠금형 riding에서는 no-op(리듀서가 판정 소유)",
+      "route": "subwaySingle",
+      "steps": [
+        { "at": 0, "input": { "kind": "advance" }, "expect": { "phase": "waiting", "legIndex": 0, "event": null } },
+        { "at": 10000, "input": { "kind": "board", "lock": "subway5696" }, "expect": { "phase": "riding", "event": { "kind": "boarded" } } },
+        { "at": 20000, "input": { "kind": "advance" }, "expect": { "phase": "riding", "legIndex": 0, "event": null } }
       ]
     },
     {

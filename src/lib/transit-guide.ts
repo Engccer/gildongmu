@@ -444,9 +444,21 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
   };
 }
 
-/** 다음 구간 전환 — 사용자 확인(§4.2 원자 전이). done까지 한 스텝. */
+/** advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사(tagoBus) 상시. */
+function canAdvance(state: TransitGuideState, route: TransitGuideRoute): boolean {
+  if (state.phase === "arrived") return true;
+  if (state.signal === "untrackable") return true;
+  const leg = route.legs[state.legIndex];
+  return state.phase === "riding" && leg?.trackMode === "tagoBus";
+}
+
+/**
+ * 다음 구간 전환 — 사용자 확인(§4.2 원자 전이). done까지 한 스텝.
+ * 유효 국면 밖(waiting 미탑승·잠금형 riding)의 advance는 no-op — UI 버튼 노출
+ * 조건에만 의존하면 웹·iOS가 같은 가드를 따로 재구현해 드리프트한다(독립 리뷰).
+ */
 function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): TransitStepResult {
-  if (state.phase === "done") return { state, event: null };
+  if (state.phase === "done" || !canAdvance(state, route)) return { state, event: null };
   const nextIndex = state.legIndex + 1;
   const final = nextIndex >= route.legs.length;
   const nextLeg = final ? null : route.legs[nextIndex];
