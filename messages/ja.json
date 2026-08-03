@@ -594,7 +594,12 @@
     "denied": "位置情報の許可が必要です",
     "screenHint": "画面をつけたまま手に持って使ってください。画面が消えると案内が止まります。",
     "straightLineNote": "直線距離基準です。",
-    "reduced": "正確な位置情報がオフのため距離を追跡できません"
+    "reduced": "正確な位置情報がオフのため距離を追跡できません",
+    "walkHeading": "徒歩案内",
+    "carHeading": "自動車案内",
+    "walkGuideStart": "徒歩案内を開始",
+    "carGuideStart": "自動車案内を開始",
+    "briefGuideStart": "簡易案内を開始"
   },
   "guide": {
     "briefStarted": "簡易案内を開始しました",
@@ -627,7 +632,12 @@
     "approx": "約{distance}",
     "rough": "{distance}ほど",
     "noGuidanceYet": "まだ案内はありません",
-    "rerouteBusy": "経路を再取得、取得中"
+    "rerouteBusy": "経路を再取得、取得中",
+    "carStart": "自動車案内を開始しました。案内{count}件、合計{distance}。{first}",
+    "farNotice": "約{distance}先に次の案内があります。{step}",
+    "carOffRoute": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます",
+    "carRoadNow": "{road}を走行中",
+    "etaStale": "所要時間は{minutes}分前の情報です"
   },
   "offline": {
     "heading": "オフラインです",
