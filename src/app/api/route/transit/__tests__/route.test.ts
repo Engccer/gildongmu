@@ -17,8 +17,9 @@ import { GET } from "../route";
 import { hasOdsayKey } from "@/lib/env";
 import { getTransitRoute } from "@/lib/providers/odsay";
 
-function makeRequest(origin: string, dest: string) {
+function makeRequest(origin: string, dest: string, includeStops?: string) {
   const params = new URLSearchParams({ origin, dest });
+  if (includeStops !== undefined) params.set("includeStops", includeStops);
   return new NextRequest(`http://x/api/route/transit?${params.toString()}`);
 }
 
@@ -90,5 +91,28 @@ describe("GET /api/route/transit", () => {
     vi.mocked(getTransitRoute).mockRejectedValueOnce(new Error("fail"));
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
     expect(res.status).toBe(502);
+  });
+
+  // includeStops 옵트인(B2 §7, walk includeGeometry 선례)
+  it("미지정은 includeStops false로 전달된다(byte-호환 계약)", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+    expect(res.status).toBe(200);
+    expect(getTransitRoute).toHaveBeenCalledWith(
+      expect.objectContaining({ includeStops: false }),
+    );
+  });
+
+  it("includeStops=1은 옵트인 true로 전달된다", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1", "1"));
+    expect(res.status).toBe(200);
+    expect(getTransitRoute).toHaveBeenCalledWith(
+      expect.objectContaining({ includeStops: true }),
+    );
+  });
+
+  it("includeStops가 1이 아닌 값이면 400(조용한 무시 금지 — walk 동형)", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1", "true"));
+    expect(res.status).toBe(400);
+    expect(getTransitRoute).not.toHaveBeenCalled();
   });
 });
