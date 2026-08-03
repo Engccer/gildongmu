@@ -692,13 +692,15 @@ struct DirectionsTabView: View {
     /// ∧ ko ∧ provider tmap(카카오 폴백은 기하 미지원 — 누르자마자 강등되는 죽은
     /// 버튼을 판별자가 사전 차단). 대중교통 버튼은 B2 전까지 만들지 않는다.
     private var walkGuideStartable: Bool {
-        guard AppLanguage.dataLocale == "ko", let results = model.results,
+        guard AppConfig.realtimeGuidanceEnabled,
+              AppLanguage.dataLocale == "ko", let results = model.results,
               case .walk = results.outcomes[.walk] else { return false }
         return true
     }
 
     private var carGuideStartable: Bool {
-        guard AppLanguage.dataLocale == "ko", let results = model.results,
+        guard AppConfig.realtimeGuidanceEnabled,
+              AppLanguage.dataLocale == "ko", let results = model.results,
               case let .car(briefing) = results.outcomes[.car],
               briefing.provider == "tmap"
         else { return false }
@@ -709,7 +711,8 @@ struct DirectionsTabView: View {
     /// 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태다. 성립하면 시작에
     /// 넘길 recommended를 그대로 돌려준다(재조회 없음 — 브리핑과 같은 경로, §2).
     private var transitGuideStartable: TransitRoute? {
-        guard AppLanguage.dataLocale == "ko", let results = model.results,
+        guard AppConfig.realtimeGuidanceEnabled,
+              AppLanguage.dataLocale == "ko", let results = model.results,
               case let .transit(result) = results.outcomes[.transit],
               buildTransitGuideRoute(result.recommended) != nil
         else { return nil }
@@ -719,7 +722,13 @@ struct DirectionsTabView: View {
     /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
     /// 실패"가 아니라 "시작 가능 0개". en 로케일·카카오 폴백만 성공한 조합에서
     /// 막다른 화면을 만들지 않는다).
+    ///
+    /// ⚠ 봉인 플래그 가드가 **여기에도** 필요하다. 아래 판정은 "수단 게이트 0개"라,
+    /// 플래그로 세 게이트를 끄면 이 값이 오히려 항상 true가 되어 간략 안내 버튼만
+    /// 남는다(봉인의 정반대). 폴백은 "수단이 안 되니 간략이라도"이지 "안내 자체가
+    /// 없음"이 아니다.
     private var briefFallbackVisible: Bool {
+        guard AppConfig.realtimeGuidanceEnabled else { return false }
         guard case .settled = model.phase else { return false }
         return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
     }
