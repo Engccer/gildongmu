@@ -594,7 +594,12 @@
     "denied": "Location permission required",
     "screenHint": "Keep the screen on and the phone in hand. Guidance stops when the screen turns off.",
     "straightLineNote": "Straight-line distance.",
-    "reduced": "Can’t track distance because Precise Location is off"
+    "reduced": "Can’t track distance because Precise Location is off",
+    "walkHeading": "Walking guidance",
+    "carHeading": "Car guidance",
+    "walkGuideStart": "Start walking guidance",
+    "carGuideStart": "Start car guidance",
+    "briefGuideStart": "Start simple guidance"
   },
   "guide": {
     "briefStarted": "Simple guidance started",
@@ -627,7 +632,12 @@
     "approx": "about {distance}",
     "rough": "around {distance}",
     "noGuidanceYet": "No instruction yet",
-    "rerouteBusy": "Re-query route, in progress"
+    "rerouteBusy": "Re-query route, in progress",
+    "carStart": "Car guidance started. {count} instructions, {distance} total. {first}",
+    "farNotice": "Next instruction in about {distance}. {step}",
+    "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume",
+    "carRoadNow": "Driving on {road}",
+    "etaStale": "ETA is from {minutes} min ago"
   },
   "offline": {
     "heading": "You are offline",

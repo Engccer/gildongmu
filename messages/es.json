@@ -594,7 +594,12 @@
     "denied": "Se requiere permiso de ubicación",
     "screenHint": "Mantén la pantalla encendida y el teléfono en la mano. La guía se detiene cuando la pantalla se apaga.",
     "straightLineNote": "Distancia en línea recta.",
-    "reduced": "No se puede seguir la distancia porque la ubicación precisa está desactivada"
+    "reduced": "No se puede seguir la distancia porque la ubicación precisa está desactivada",
+    "walkHeading": "Guía a pie",
+    "carHeading": "Guía en coche",
+    "walkGuideStart": "Iniciar guía a pie",
+    "carGuideStart": "Iniciar guía en coche",
+    "briefGuideStart": "Iniciar guía simple"
   },
   "guide": {
     "briefStarted": "Guía simple iniciada",
@@ -627,7 +632,12 @@
     "approx": "unos {distance}",
     "rough": "alrededor de {distance}",
     "noGuidanceYet": "Aún no hay indicaciones",
-    "rerouteBusy": "Reconsultar ruta, en curso"
+    "rerouteBusy": "Reconsultar ruta, en curso",
+    "carStart": "Guía en coche iniciada. {count} indicaciones, {distance} en total. {first}",
+    "farNotice": "Próxima indicación en unos {distance}. {step}",
+    "carOffRoute": "Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar",
+    "carRoadNow": "Circulando por {road}",
+    "etaStale": "Tiempo estimado de hace {minutes} min"
   },
   "offline": {
     "heading": "Estás sin conexión",
