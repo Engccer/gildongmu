@@ -341,10 +341,10 @@ export function useRouteGuide(
         case "bundleReread":
           return unitText(route, event.indices, t);
         case "farNotice":
-          // 원거리 예고(§4.7): 기하 기준 거리 + 원문을 독립 문장으로 결합
-          // (description 속 링크 거리와 문법 결합 금지 — 거리 기준 혼동 차단).
+          // 원거리 예고(§4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산해
+          // 실어 줌 — 상수 낭독 금지, 독립 리뷰 반영) + 원문을 독립 문장으로 결합.
           return t("farNotice", {
-            distance: formatDistance(CAR_TUNING.farNoticeM ?? 0),
+            distance: formatDistance(event.remainingMeters),
             step: unitText(route, event.indices, t),
           });
         case "periodic":
@@ -537,6 +537,7 @@ export function useRouteGuide(
         prevKindRef.current = null;
         setOffRoute(false);
         setProgress(null);
+        clearEtaTimer(); // 간략 전환 후 ETA 재조회는 무의미(자원 위생 — 리뷰 반영)
       }
       if (!text) return;
       announce(text);
@@ -544,6 +545,7 @@ export function useRouteGuide(
     },
     [
       announce,
+      clearEtaTimer,
       eventText,
       playAhead,
       playTick,
@@ -854,39 +856,42 @@ export function useRouteGuide(
       );
       return;
     }
-    if (state.phase === "bundle") {
-      announce(
-        t("progressBundle", {
-          total,
-          count: unitAt(route, state.stepIndex).length,
-        }),
-      );
-      return;
-    }
-    const cur = route.steps[state.stepIndex];
-    const followingText = t("progressFollowing", {
-      total,
-      step: nextTarget(route, state.stepIndex, destRef.current.name),
-      distance: formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
-    });
-    if (kindFixed === "car") {
-      // "지금 어느 도로"(§4.7): 현재 진행거리가 속한 링크만. ETA가 오래됐으면
-      // 기준 시점을 병기한다(3-state — 갱신 실패의 침묵을 여기서 보상).
+    // car 병기(§4.7): 현재 링크 도로명 + 진행 + ETA 오래됨(3-state — 갱신 실패의
+    // 침묵을 여기서 보상). following·bundle 공통(iOS와 통일 — 리뷰 드리프트 반영).
+    const wrapCar = (base: string): string => {
+      if (kindFixed !== "car") return base;
       const road = roadNameAt(roadSpansRef.current, state.d);
       const eta = etaRef.current;
       const etaAgeS = eta ? performance.now() / 1000 - eta.updatedAt : null;
+      return joinText(
+        road !== null && t("carRoadNow", { road }),
+        base,
+        etaAgeS !== null &&
+          etaAgeS > CAR_ETA_STALE_S &&
+          t("etaStale", { minutes: Math.round(etaAgeS / 60) }),
+      );
+    };
+    if (state.phase === "bundle") {
       announce(
-        joinText(
-          road !== null && t("carRoadNow", { road }),
-          followingText,
-          etaAgeS !== null &&
-            etaAgeS > CAR_ETA_STALE_S &&
-            t("etaStale", { minutes: Math.round(etaAgeS / 60) }),
+        wrapCar(
+          t("progressBundle", {
+            total,
+            count: unitAt(route, state.stepIndex).length,
+          }),
         ),
       );
       return;
     }
-    announce(followingText);
+    const cur = route.steps[state.stepIndex];
+    announce(
+      wrapCar(
+        t("progressFollowing", {
+          total,
+          step: nextTarget(route, state.stepIndex, destRef.current.name),
+          distance: formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
+        }),
+      ),
+    );
   }, [announce, kindFixed, t, tBeacon]);
 
   const requestReroute = useCallback(() => {

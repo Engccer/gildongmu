@@ -98,7 +98,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
 private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     switch event {
     case let .announceSteps(i): i
-    case let .farNotice(i): i
+    case let .farNotice(i, _): i
     case let .bundleReread(i): i
     default: nil
     }
@@ -252,7 +252,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
 @Test func carReacquireTieBreakRejectsMultipleInWindow() {
     let route = uRoute40()
     var st = enterReacquiring(route, dPrev: 100)
-    st.reacquireV = 20 // 창 상한 100 + 20×11×1.5 + 100 = 530
+    st.reacquireV = 20 // 창 상한 100 + 20×12×1.5 + 100 = 560
     let out = guideStep(
         state: st, fix: fixCoord(along: 250, lateral: 20, acc: 10),
         route: route, now: 12, tuning: .car
@@ -260,6 +260,46 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부(평행도로 이탈 은폐 차단)
     #expect(out.event == nil)
     #expect(out.state.phase == .reacquiring)
+}
+
+@Test func carReacquireTieBreakCoefficientLocksAdoption() {
+    // 북 900 → 동 40 → 남 900. prevD=100·v=20·elapsed 12초: 창 상한이 1.5×면
+    // 560, 1.0×이면 440 — d≈500 후보는 1.5×에서만 창 안(계수 회귀 잠금, 웹 미러).
+    let east = 40 * meterLat / cos(lat0 * .pi / 180)
+    let route = buildGuideRoute([
+        GuideStepGeometry(description: "북", pathCoords: [
+            RoutePoint(lat: lat0, lng: lng0),
+            RoutePoint(lat: lat0 + 900 * meterLat, lng: lng0),
+        ]),
+        GuideStepGeometry(description: "동", pathCoords: [
+            RoutePoint(lat: lat0 + 900 * meterLat, lng: lng0),
+            RoutePoint(lat: lat0 + 900 * meterLat, lng: lng0 + east),
+        ]),
+        GuideStepGeometry(description: "남", pathCoords: [
+            RoutePoint(lat: lat0 + 900 * meterLat, lng: lng0 + east),
+            RoutePoint(lat: lat0, lng: lng0 + east),
+        ]),
+    ])!
+    var entered = enterReacquiring(route, dPrev: 100)
+    entered.reacquireV = 20
+    let out = guideStep(
+        state: entered, fix: fixCoord(along: 500, lateral: 10, acc: 10),
+        route: route, now: 12, tuning: .car
+    )
+    #expect(out.event == .reacquired)
+    #expect(abs(out.state.d - 500) < 5)
+}
+
+@Test func carReacquireTieBreakBufferLocksAdoption() {
+    let route = uRoute40()
+    let st = enterReacquiring(route, dPrev: 100) // v=0 → 창 [100, 200]
+    // d≈180은 버퍼 100일 때만 창 안(50이면 상한 150 밖) — 버퍼 회귀 잠금.
+    let out = guideStep(
+        state: st, fix: fixCoord(along: 180, lateral: 10, acc: 10),
+        route: route, now: 12, tuning: .car
+    )
+    #expect(out.event == .reacquired)
+    #expect(abs(out.state.d - 180) < 5)
 }
 
 @Test func carOffRouteRenotifyIntervalAndNoTone() {

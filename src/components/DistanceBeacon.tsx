@@ -57,11 +57,14 @@ export function DistanceBeacon({
   // 이동한다(useRevealMore의 useLayoutEffect 재포커스 선례). 플래그는 onFocus로
   // 세운다 — 노드 제거 시 blur가 오지 않는 경로까지 덮는다(a11y 감사 HIGH).
   const stopToggleRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const rerouteFocusedRef = useRef(false);
   useLayoutEffect(() => {
     if (!guide.offRoute && rerouteFocusedRef.current) {
       rerouteFocusedRef.current = false;
-      stopToggleRef.current?.focus();
+      // startOnOpen 패널은 안쪽 토글이 없으므로(잉여 — 트리거가 시작/중지 겸임)
+      // 항상 존재하는 트리거로 선점 이동한다.
+      (stopToggleRef.current ?? triggerRef.current)?.focus();
     }
   }, [guide.offRoute]);
 
@@ -87,13 +90,15 @@ export function DistanceBeacon({
           렌더라 aria-controls는 닫힘 시 dangling되므로 생략(형제 동형, aria-expanded
           만으로 disclosure 상태 전달 충분 — First Rule of ARIA). */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={togglePanel}
         aria-expanded={open}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
       >
-        {triggerLabel ??
-          (kind === "car" ? t("carHeading") : t("walkHeading"))}
+        {/* startOnOpen 트리거는 시작/중지를 겸하므로 추적 중엔 라벨이 곧 상태 신호다
+            — "시작"이라 읽히는데 누르면 세션이 끝나는 라벨 거짓말 금지(a11y 감사). */}
+        {startOnOpen && tracking ? t("stop") : (triggerLabel ?? t("walkHeading"))}
       </button>
 
       {open && (
@@ -106,15 +111,18 @@ export function DistanceBeacon({
           <p className="mt-0.5 text-xs text-muted">{t("screenHint")}</p>
           <div className="flex flex-wrap gap-2">
             {/* 상태 신호는 라벨 교체가 전부다 — aria-pressed 병기는 "안내 중지,
-                선택됨"처럼 모호한 이중 상태를 만든다(W3C APG, a11y 감사). */}
-            <button
-              ref={stopToggleRef}
-              type="button"
-              onClick={() => (tracking ? guide.stop() : guide.start())}
-              className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
-            >
-              {tracking ? t("stop") : t("start")}
-            </button>
+                선택됨"처럼 모호한 이중 상태를 만든다(W3C APG, a11y 감사).
+                startOnOpen 패널에선 트리거가 시작/중지를 겸해 이 토글이 잉여다. */}
+            {!startOnOpen && (
+              <button
+                ref={stopToggleRef}
+                type="button"
+                onClick={() => (tracking ? guide.stop() : guide.start())}
+                className="mt-2 inline-flex min-h-11 items-center rounded-md bg-accent px-4 text-sm font-medium text-accent-foreground"
+              >
+                {tracking ? t("stop") : t("start")}
+              </button>
+            )}
             {tracking && (
               <>
                 <button
@@ -175,11 +183,14 @@ export function DistanceBeacon({
               )}
             </p>
           )}
-          <p aria-live="polite" className="mt-2 min-h-5 text-sm">
-            {guide.liveText}
-          </p>
         </div>
       )}
+      {/* 단일 polite live region — 패널 열림과 무관하게 상시 마운트한다. region이
+          내용과 함께 삽입되면 대부분의 AT가 첫 통지를 발화하지 않는다(startOnOpen의
+          동기 시작 통지가 en 로케일에서 무발화되던 결함 — a11y 감사 반영). */}
+      <p aria-live="polite" className="mt-2 min-h-5 text-sm">
+        {guide.liveText}
+      </p>
     </section>
   );
 }

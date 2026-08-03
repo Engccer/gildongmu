@@ -45,12 +45,12 @@ enum GuideText {
         )
     }
 
-    /// 원거리 예고(B1 §4.7): 기하 기준 경계 거리 + 원문을 독립 문장으로 결합
-    /// (description 속 링크 거리와 문법 결합 금지 — 거리 기준 혼동 차단).
-    static func farNotice(route: GuideRoute, indices: [Int]) -> String {
+    /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
+    /// 원문을 독립 문장으로 결합(문법 결합 금지 — 거리 기준 혼동 차단).
+    static func farNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String {
         appLocalized(
             "guide.farNotice",
-            formatDistance(Int((GuideTuning.car.farNoticeM ?? 0).rounded())),
+            formatDistance(remainingMeters),
             unit(route: route, indices: indices)
         )
     }

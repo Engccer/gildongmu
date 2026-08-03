@@ -169,7 +169,7 @@ export interface GuideState {
 
 export type GuideEvent =
   | { kind: "announceSteps"; indices: number[] }
-  | { kind: "farNotice"; indices: number[] }
+  | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
   | { kind: "handoff" }
@@ -324,7 +324,11 @@ export function guideStep(
       state.reacquirePrevD !== null &&
       state.reacquireSince !== null
     ) {
-      const elapsed = now - state.reacquireSince + REACQUIRE_GAP_S;
+      // elapsed = "마지막으로 확실했던 시점"부터의 경과. 진입 시 gap 트리거는
+      // 직전 fix 시각을, edgeHits 트리거는 진입 시각을 reacquireSince에 담으므로
+      // 고정 보정(+GAP) 없이 실공백이 그대로 반영된다(독립 리뷰: 터널 장공백
+      // 과소추정·무공백 과대추정 분리).
+      const elapsed = now - state.reacquireSince;
       const maxAheadD = state.reacquirePrevD + state.reacquireV * elapsed * 1.5 + 100;
       const maxPerp = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
       const inWindow = globalCandidates(route.polyline, fix, maxPerp).filter(
@@ -359,9 +363,11 @@ export function guideStep(
         lastFixAt: now,
         reacquiringFromOffRoute: state.phase === "offRoute",
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
+        // 기준 시각은 "마지막으로 확실했던 시점": gap 트리거는 직전 fix 시각(실공백
+        // 전체가 창에 반영), edgeHits 트리거는 지금(공백 없음 — 여유 과대 방지).
         reacquirePrevD: state.d,
         reacquireV: estimateSpeedMps(state.speedSamples),
-        reacquireSince: now,
+        reacquireSince: gap ? state.lastFixAt : now,
       },
       event: { kind: "reacquiring" },
       tone: null,
@@ -532,7 +538,17 @@ export function guideStep(
         farNoticedUpTo: indices[indices.length - 1],
         lastAnnouncedAt: now,
       };
-      return { state: next, event: { kind: "farNotice", indices }, tone: null };
+      // 낭독 거리는 크로싱 시점의 실측 잔여다(§4.7 "기하에서 계산" — 상수 낭독 금지,
+      // 독립 리뷰 검출: 고속에서 크로싱 잔여가 경계보다 창 상한만큼 적을 수 있다).
+      return {
+        state: next,
+        event: {
+          kind: "farNotice",
+          indices,
+          remainingMeters: Math.round(nowRemaining),
+        },
+        tone: null,
+      };
     }
   }
 
