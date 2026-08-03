@@ -78,3 +78,104 @@ describe("normalizeTmapCarRoute", () => {
     expect(() => normalizeTmapCarRoute(data)).toThrow();
   });
 });
+
+/**
+ * 기하 옵트인(B1 §5) — 실호출 구조 축약 재현: S(첫 안내) → L → N → L·L(Point 없이
+ * LineString 연속) → E("도착" 마커). 좌표는 이음매가 정확히 이어지는 형태.
+ */
+function geometryFixture(): TmapCarResponse {
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [127.1, 37.5] },
+        properties: {
+          pointType: "S",
+          totalDistance: 1000,
+          totalTime: 200,
+          totalFare: 0,
+          taxiFare: 5000,
+          description: "올림픽로를 따라 200m 이동",
+        },
+      },
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [[127.1, 37.5], [127.1, 37.502]],
+        },
+        properties: { name: "올림픽로", distance: 200, time: 30 },
+      },
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [127.1, 37.502] },
+        properties: {
+          pointType: "N",
+          description: "교차로에서 우회전 후 천호대로를 따라 800m 이동",
+        },
+      },
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [[127.1, 37.502], [127.103, 37.502]],
+        },
+        properties: { name: "천호대로", distance: 300, time: 40 },
+      },
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [[127.103, 37.502], [127.108, 37.502]],
+        },
+        properties: { name: "일반도로", distance: 500, time: 80 },
+      },
+      {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [127.108, 37.502] },
+        properties: { pointType: "E", description: "도착" },
+      },
+    ],
+  };
+}
+
+describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
+  it("미지정 응답에는 기하 키 자체가 없다(byte-호환 계약)", () => {
+    const out = normalizeTmapCarRoute(geometryFixture());
+    // 미지정 모드 guides는 기존 계약 그대로 — E("도착")도 문장이 있으니 포함된다.
+    expect(out.guides.map((g) => g.guidance)).toEqual([
+      "올림픽로를 따라 200m 이동",
+      "교차로에서 우회전 후 천호대로를 따라 800m 이동",
+      "도착",
+    ]);
+    for (const g of out.guides) {
+      expect("pathCoords" in g).toBe(false);
+      expect("roadLinks" in g).toBe(false);
+    }
+  });
+
+  it("옵트인: S는 스텝, E는 마커 제외, Point 없는 LineString 연속은 같은 스텝에 병합", () => {
+    const out = normalizeTmapCarRoute(geometryFixture(), { includeGeometry: true });
+    expect(out.guides).toHaveLength(2); // "도착" 마커 제외
+    const [first, second] = out.guides;
+    // 스텝 기하 = Point 좌표 + 뒤따르는 LineString(이음매 중복 제거)
+    expect(first.pathCoords).toEqual([
+      { lat: 37.5, lng: 127.1 },
+      { lat: 37.502, lng: 127.1 },
+    ]);
+    expect(second.pathCoords).toEqual([
+      { lat: 37.502, lng: 127.1 },
+      { lat: 37.502, lng: 127.103 },
+      { lat: 37.502, lng: 127.108 },
+    ]);
+    // 링크별 도로명 — "일반도로"는 자리표시자라 null(가짜 정밀 금지)
+    expect(second.roadLinks).toEqual([
+      { name: "천호대로", distanceMeters: 300 },
+      { name: null, distanceMeters: 500 },
+    ]);
+    // 표시 수치 계약 불변(문장 내장 정본)
+    expect(first.distanceMeters).toBe(0);
+    expect(first.durationSeconds).toBe(0);
+  });
+});

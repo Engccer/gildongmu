@@ -28,12 +28,18 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 const querySchema = z.object({
   origin: coordSchema,
   dest: coordSchema,
+  // 폴리라인 옵트인(B1 실시간 자동차 안내). 누락 또는 정확히 "1"만 — 그 외 값은
+  // 400으로 거절해 옵트인을 조용히 무시하지 않는다(walk 라우트 동형).
+  includeGeometry: z
+    .union([z.literal("1"), z.null()])
+    .transform((v) => v === "1"),
 });
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
+    includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -65,9 +71,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // en(NCP) 경로는 기하 미지원 — includeGeometry는 ko 서비스에만 전달된다.
     const briefing = useNcp
-      ? await getCarRouteBriefingEn(parsed.data)
-      : await getCarRoute(parsed.data);
+      ? await getCarRouteBriefingEn({ origin, dest })
+      : await getCarRoute({
+          origin,
+          dest,
+          includeGeometry: parsed.data.includeGeometry,
+        });
     return NextResponse.json(briefing);
   } catch (e) {
     console.error("[api/route/car] 경로 브리핑 실패:", e);

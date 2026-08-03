@@ -32,9 +32,15 @@ import { hasCarRouteKey, hasNcpMapsKeys } from "@/lib/env";
 import { checkCarRateLimit } from "@/lib/rate-limit";
 import { getCarRoute } from "@/lib/car-route";
 
-function makeRequest(origin: string, dest: string, lang?: string) {
+function makeRequest(
+  origin: string,
+  dest: string,
+  lang?: string,
+  includeGeometry?: string,
+) {
   const params = new URLSearchParams({ origin, dest });
   if (lang !== undefined) params.set("lang", lang);
+  if (includeGeometry !== undefined) params.set("includeGeometry", includeGeometry);
   return new NextRequest(`http://x/api/route/car?${params.toString()}`);
 }
 
@@ -79,6 +85,28 @@ describe("GET /api/route/car", () => {
       durationSeconds: 300,
       steps: [{ description: "직진 후 우회전" }],
     });
+  });
+
+  it("includeGeometry=1은 서비스에 옵트인으로 전달된다", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1", undefined, "1"));
+    expect(res.status).toBe(200);
+    expect(getCarRoute).toHaveBeenCalledWith(
+      expect.objectContaining({ includeGeometry: true }),
+    );
+  });
+
+  it("includeGeometry 미지정은 옵트인 false로 전달된다(byte-호환 계약)", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+    expect(res.status).toBe(200);
+    expect(getCarRoute).toHaveBeenCalledWith(
+      expect.objectContaining({ includeGeometry: false }),
+    );
+  });
+
+  it("includeGeometry가 1이 아닌 값이면 400(조용한 무시 금지 — walk 동형)", async () => {
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1", undefined, "true"));
+    expect(res.status).toBe(400);
+    expect(getCarRoute).not.toHaveBeenCalled();
   });
 
   it("키 없음(hasCarRouteKey false, lang 미지정)은 503", async () => {

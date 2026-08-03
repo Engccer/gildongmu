@@ -124,6 +124,13 @@ export interface CarRouteGuide {
   distanceMeters: number;
   /** 이 안내 지점까지의 구간 소요 시간 (초) */
   durationSeconds: number;
+  /**
+   * 이 안내 지점의 동작 이후 구간 폴리라인(B1 실시간 자동차 안내 옵트인 —
+   * `includeGeometry=1`일 때만 존재, 미지정 응답은 키 자체가 없다).
+   */
+  pathCoords?: Coord[];
+  /** 구간을 구성하는 링크별 도로명·길이(무명 링크는 name null — "일반도로" 가짜 정밀 금지). */
+  roadLinks?: { name: string | null; distanceMeters: number }[];
 }
 
 /**
@@ -222,6 +229,12 @@ export interface CarRouteBriefing {
   /** 통행 요금 (원) */
   tollFare: number;
   guides: CarRouteGuide[];
+  /**
+   * ko 서비스 provider 판별자(B1 §3.1 — 자동차 안내 버튼 게이트). 카카오 폴백
+   * 응답은 기하 미지원이라 클라이언트가 이 값으로 버튼을 내지 않는다.
+   * en(NCP) 경로는 미설정.
+   */
+  provider?: "tmap" | "kakao";
 }
 
 /** 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로. */

@@ -18,17 +18,23 @@ import type { CarRouteBriefing, Coord } from "./types";
 export async function getCarRoute(params: {
   origin: Coord;
   dest: Coord;
+  /** B1 실시간 자동차 안내 옵트인 — Tmap 경로에만 유효(카카오 폴백은 기하 미지원). */
+  includeGeometry?: boolean;
 }): Promise<CarRouteBriefing> {
   if (hasTmapKey()) {
     try {
-      return await getTmapCarBriefing(params);
+      // provider 판별자(B1 §3.1): 카카오 폴백 응답은 기하 미지원이라 클라이언트가
+      // 이 값으로 자동차 안내 버튼 노출을 게이트한다.
+      return { ...(await getTmapCarBriefing(params)), provider: "tmap" };
     } catch (e) {
       if (!hasKakaoKey()) throw e;
       logRouteFallback("[car-route] Tmap 실패, 카카오모빌리티 폴백:", params.origin, params.dest, e);
-      return getCarRouteBriefing(params);
+      return { ...(await getCarRouteBriefing(params)), provider: "kakao" };
     }
   }
-  if (hasKakaoKey()) return getCarRouteBriefing(params);
+  if (hasKakaoKey()) {
+    return { ...(await getCarRouteBriefing(params)), provider: "kakao" };
+  }
   // 게이트(hasCarRouteKey)가 먼저 막지만 직접 호출 경로 이중 방어
   throw new Error("자동차 경로 브리핑은 API 키 등록 후 사용할 수 있습니다.");
 }
