@@ -386,7 +386,12 @@ struct DirectionsTabView: View {
     @State private var focusAfterResolve: DirectionsFieldTarget?
     /// 추적 시트가 닫힌 뒤 돌아갈 자리. 시트 dismiss가 VO 커서를 화면 최상단으로
     /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
-    @AccessibilityFocusState private var beaconStartFocused: Bool
+    /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
+    /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
+    enum GuideStartButton: Hashable { case fallback, walk, car }
+    @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
+    /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
+    @State private var lastGuideStart: GuideStartButton = .fallback
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -429,29 +434,25 @@ struct DirectionsTabView: View {
                         }
                     }
                 }
-                // 목적지 거리 추적. 수단 섹션들보다 **앞**에 둔다 — 도보 섹션은
-                // 인라인 전개라 수백 행이 될 수 있어(천호역 실측) 뒤에 두면 선형 주파
-                // 비용이 몇 행에서 수백 행으로 뒤집힌다. 조회 완료 시 포커스가 첫 성공
-                // 수단 heading으로 가므로 거기서 heading 로터 1회면 닿는다.
-                //
-                // 노출 조건은 경로 성공 여부가 아니라 **목적지 확정 여부**다. 수단 조회가
-                // 전부 실패해도 목적지 좌표는 확정돼 있고, 경로를 못 찾은 상황일수록
-                // 방향 감각이 더 필요하다. 도착지가 "현재 위치"면 무의미하므로 숨긴다.
-                // 노출 조건은 "지금 결과가 있는가"가 아니라 "조회를 한 번 마쳤는가"다.
-                // 추적 중이면 결과·목적지 상태와 무관하게 항상 렌더한다(중지 수단을
-                // 화면에서 빼앗지 않기 위한 이중 방어).
-                if beacon.isTracking || (model.hasQueriedOnce && trackedDestination != nil),
+                // 간략 폴백 + 실패 상태 + 추적 이중 방어 섹션(B1 §3.1 재편).
+                // 수단별 시작 버튼이 각 수단 섹션으로 내려갔으므로, 이 선두 섹션은
+                // ①시작 가능한 수단 안내가 0개일 때의 간략 폴백 ②권한 거부·정밀
+                // 꺼짐 같은 시작 실패 상태와 해결 버튼 ③추적 중 중지 이중 방어(시트가
+                // 어떤 이유로 뜨지 않아도 중지 수단이 화면에 남는다, 리뷰 C-1)만 맡는다.
+                // 도착지가 "현재 위치"면 무의미하므로 숨긴다(기존 계약).
+                if beacon.isTracking
+                    || (model.hasQueriedOnce && trackedDestination != nil
+                        && (briefFallbackVisible || !beacon.statusText.isEmpty)),
                    let tracked = trackedDestination {
                     Section {
-                        // 추적이 시작되면 시트가 이 화면을 덮으므로 아래 컨트롤은 닿을 수
-                        // 없다. 그래도 라벨·동작을 토글로 두는 것은 이중 방어다. 시트가
-                        // 어떤 이유로 뜨지 않아도 중지 수단이 화면에 남는다(리뷰 C-1).
                         Button(beacon.isTracking
-                            ? appLocalized("beacon.stop") : appLocalized("beacon.start")
+                            ? appLocalized("beacon.stop")
+                            : appLocalized("beacon.briefGuideStart")
                         ) {
-                            beacon.toggle(dest: tracked.dest, label: tracked.label)
+                            lastGuideStart = .fallback
+                            beacon.toggle(dest: tracked.dest, label: tracked.label, kind: .walk)
                         }
-                        .accessibilityFocused($beaconStartFocused)
+                        .accessibilityFocused($guideStartFocused, equals: .fallback)
                         // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
                         // (라벨만 바뀌고 화면이 그대로면 심사에서 무반응으로 보인다).
                         // 추적 중 상태는 시트가 보여주므로 여기선 비추적 상태만이다. 권한
@@ -491,6 +492,28 @@ struct DirectionsTabView: View {
                 if let results = model.results {
                     ForEach(results.displayedModes, id: \.self) { mode in
                         Section {
+                            // 수단별 안내 시작 버튼(B1 §3.1) — 수단 heading 착지 후
+                            // 첫 스와이프 거리. 게이트가 죽은 버튼을 사전 차단한다.
+                            if mode == .walk, walkGuideStartable,
+                               let tracked = trackedDestination {
+                                Button(appLocalized("beacon.walkGuideStart")) {
+                                    lastGuideStart = .walk
+                                    beacon.toggle(
+                                        dest: tracked.dest, label: tracked.label, kind: .walk
+                                    )
+                                }
+                                .accessibilityFocused($guideStartFocused, equals: .walk)
+                            }
+                            if mode == .car, carGuideStartable,
+                               let tracked = trackedDestination {
+                                Button(appLocalized("beacon.carGuideStart")) {
+                                    lastGuideStart = .car
+                                    beacon.toggle(
+                                        dest: tracked.dest, label: tracked.label, kind: .car
+                                    )
+                                }
+                                .accessibilityFocused($guideStartFocused, equals: .car)
+                            }
                             // 계단 회피 토글은 도보 섹션에만(웹 동형 — 결과 유무·오류와
                             // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
                             // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
@@ -614,11 +637,36 @@ struct DirectionsTabView: View {
     private func landBeaconStartFocus() {
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
-            beaconStartFocused = true
+            guideStartFocused = lastGuideStart
             try? await Task.sleep(for: .milliseconds(600))
-            guard !beaconStartFocused else { return }
-            beaconStartFocused = true
+            guard guideStartFocused != lastGuideStart else { return }
+            guideStartFocused = lastGuideStart
         }
+    }
+
+    /// 수단별 안내 시작 게이트(B1 §3.1). 도보 = 경로 성공 ∧ ko, 자동차 = 경로 성공
+    /// ∧ ko ∧ provider tmap(카카오 폴백은 기하 미지원 — 누르자마자 강등되는 죽은
+    /// 버튼을 판별자가 사전 차단). 대중교통 버튼은 B2 전까지 만들지 않는다.
+    private var walkGuideStartable: Bool {
+        guard AppLanguage.dataLocale == "ko", let results = model.results,
+              case .walk = results.outcomes[.walk] else { return false }
+        return true
+    }
+
+    private var carGuideStartable: Bool {
+        guard AppLanguage.dataLocale == "ko", let results = model.results,
+              case let .car(briefing) = results.outcomes[.car],
+              briefing.provider == "tmap"
+        else { return false }
+        return true
+    }
+
+    /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
+    /// 실패"가 아니라 "시작 가능 0개". en 로케일·카카오 폴백만 성공한 조합에서
+    /// 막다른 화면을 만들지 않는다).
+    private var briefFallbackVisible: Bool {
+        guard case .settled = model.phase else { return false }
+        return !walkGuideStartable && !carGuideStartable
     }
 
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
