@@ -725,6 +725,106 @@
         { "afterFix": 1, "eventNot": "reacquiring" },
         { "afterFix": 2, "event": "reacquiring" }
       ]
+    },
+    {
+      "name": "car: 고속 5초 공백에도 거짓 재확보 없음(150m 창)",
+      "tuning": "car",
+      "steps": [{ "len": 2000, "desc": "직진" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 1, "along": 22, "lateral": 0, "acc": 10 },
+        { "t": 2, "along": 44, "lateral": 0, "acc": 10 },
+        { "t": 3, "along": 66, "lateral": 0, "acc": 10 },
+        { "t": 4, "along": 88, "lateral": 0, "acc": 10 },
+        { "t": 9, "along": 198, "lateral": 0, "acc": 10 },
+        { "t": 14, "along": 308, "lateral": 0, "acc": 10 },
+        { "t": 19, "along": 418, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFixAny": [5, 6, 7], "eventNull": true }
+      ]
+    },
+    {
+      "name": "car: 이탈 50m 초과 10초 지속 확정(첫 확정은 경고 톤)",
+      "tuning": "car",
+      "steps": [{ "len": 600, "desc": "직진" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 40, "lateral": 52, "acc": 10 },
+        { "t": 10, "along": 80, "lateral": 52, "acc": 10 },
+        { "t": 15, "along": 120, "lateral": 52, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFixAny": [1, 2], "eventNot": "offRoute" },
+        { "afterFix": 3, "event": "offRoute", "tone": "warning" }
+      ]
+    },
+    {
+      "name": "car: 복귀 추세(수직거리 감소)는 이탈 확정을 유예한다",
+      "tuning": "car",
+      "steps": [{ "len": 600, "desc": "직진" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 40, "lateral": 70, "acc": 10 },
+        { "t": 10, "along": 80, "lateral": 70, "acc": 10 },
+        { "t": 14, "along": 120, "lateral": 55, "acc": 10 },
+        { "t": 19, "along": 160, "lateral": 55, "acc": 10 },
+        { "t": 24, "along": 200, "lateral": 55, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFixAny": [3, 4], "eventNot": "offRoute" },
+        { "afterFix": 5, "event": "offRoute" }
+      ]
+    },
+    {
+      "name": "car: 원거리 예고 경계 하향 통과 1회 + 임박 별도 발화",
+      "tuning": "car",
+      "steps": [
+        { "len": 1600, "desc": "직진A" },
+        { "len": 200, "desc": "우회전B" }
+      ],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 105, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 205, "lateral": 0, "acc": 10 },
+        { "t": 15, "along": 305, "lateral": 0, "acc": 10 },
+        { "t": 20, "along": 405, "lateral": 0, "acc": 10 },
+        { "t": 25, "along": 505, "lateral": 0, "acc": 10 },
+        { "t": 30, "along": 605, "lateral": 0, "acc": 10 },
+        { "t": 35, "along": 705, "lateral": 0, "acc": 10 },
+        { "t": 40, "along": 805, "lateral": 0, "acc": 10 },
+        { "t": 45, "along": 905, "lateral": 0, "acc": 10 },
+        { "t": 50, "along": 1005, "lateral": 0, "acc": 10 },
+        { "t": 55, "along": 1105, "lateral": 0, "acc": 10 },
+        { "t": 60, "along": 1205, "lateral": 0, "acc": 10 },
+        { "t": 65, "along": 1307, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 1, "event": "farNotice", "indices": [1] },
+        { "afterFixAny": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], "eventNot": "farNotice" },
+        { "afterFix": 13, "event": "announceSteps", "indices": [1] }
+      ]
+    },
+    {
+      "name": "car: 재획득으로 경계 크로싱을 놓치면 뒤늦은 원거리 예고 없음",
+      "tuning": "car",
+      "steps": [
+        { "len": 1700, "desc": "직진A" },
+        { "len": 300, "desc": "우회전B" }
+      ],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 100, "lateral": 0, "acc": 10 },
+        { "t": 16, "along": 100, "lateral": 0, "acc": 10 },
+        { "t": 17, "along": 300, "lateral": 0, "acc": 10 },
+        { "t": 22, "along": 350, "lateral": 0, "acc": 10 },
+        { "t": 27, "along": 400, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 2, "event": "reacquiring" },
+        { "afterFix": 3, "event": "reacquired" },
+        { "afterFixAny": [4, 5], "eventNot": "farNotice" }
+      ]
     }
   ]
 }
