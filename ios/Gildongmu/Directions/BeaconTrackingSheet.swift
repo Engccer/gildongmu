@@ -74,9 +74,14 @@ struct BeaconTrackingSheet: View {
                     .foregroundStyle(.secondary)
             } header: {
                 // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
-                // 통째로 사라졌으므로 여기서만 알 수 있다.
-                Text(joinText(appLocalized("beacon.heading"), model.destinationLabel))
-                    .accessibilityAddTraits(.isHeader)
+                // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
+                Text(joinText(
+                    appLocalized(
+                        model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
+                    ),
+                    model.destinationLabel
+                ))
+                .accessibilityAddTraits(.isHeader)
             }
         }
         .task { await landStopFocus() }
