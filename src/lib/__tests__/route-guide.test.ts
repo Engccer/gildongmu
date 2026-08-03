@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/route-guide-scenarios.json";
 import {
   buildGuideRoute,
+  CAR_TUNING,
   entryProjection,
+  guideStateAt,
   guideStep,
   initialGuideState,
   unitAt,
+  WALK_TUNING,
   type GuideEvent,
   type GuideTone,
 } from "../route-guide";
@@ -51,6 +54,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
   for (const sc of (scenarios as {
     scenarios: {
       name: string;
+      tuning?: "walk" | "car";
       steps: { len: number; desc: string }[];
       fixes: { t: number; along: number; lateral: number; acc: number }[];
       expect: Expectation[];
@@ -58,10 +62,17 @@ describe("route-guide 공유 시나리오(경계표)", () => {
   }).scenarios) {
     it(sc.name, () => {
       const route = routeFrom(sc.steps);
+      const tuning = sc.tuning === "car" ? CAR_TUNING : WALK_TUNING;
       let { state } = initialGuideState(route, 0);
       const results: { event: GuideEvent | null; tone: GuideTone | null }[] = [];
       for (const f of sc.fixes) {
-        const out = guideStep(state, { ...fixCoord(f.along, f.lateral), accuracy: f.acc }, route, f.t);
+        const out = guideStep(
+          state,
+          { ...fixCoord(f.along, f.lateral), accuracy: f.acc },
+          route,
+          f.t,
+          tuning,
+        );
         state = out.state;
         results.push({ event: out.event, tone: out.tone });
       }
@@ -122,6 +133,87 @@ describe("entryProjection (전환·재조회 초기 투영, 스펙 §6)", () => 
       { description: "직진", pathCoords: [fixCoord(0, 0), fixCoord(300, 0)] },
     ])!;
     expect(entryProjection(single, { ...fixCoord(150, 200), accuracy: 10 }).status).toBe("none");
+  });
+});
+
+describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한정)", () => {
+  // U자 경로: 북 300 → 동 40 → 남 300. 평행 왕복 구간이라 전역 후보가 복수다.
+  const uRoute = buildGuideRoute([
+    { description: "북", pathCoords: [fixCoord(0, 0), fixCoord(300, 0)] },
+    { description: "동", pathCoords: [fixCoord(300, 0), fixCoord(300, 40)] },
+    { description: "남", pathCoords: [fixCoord(300, 40), fixCoord(0, 40)] },
+  ])!;
+
+  function enterReacquiring(dPrev: number) {
+    const state = { ...guideStateAt(uRoute, dPrev, 0), lastFixAt: 0 };
+    const out = guideStep(
+      state,
+      { ...fixCoord(dPrev, 0), accuracy: 10 },
+      uRoute,
+      11, // 공백 11초 > 10 → 재획득 진입
+      CAR_TUNING,
+    );
+    expect(out.event?.kind).toBe("reacquiring");
+    return out.state;
+  }
+
+  it("전방 창 안 후보가 1개면 채택(reacquired)", () => {
+    const st = enterReacquiring(100); // prevD=100, v=0 → 창 [100, 200]
+    const out = guideStep(st, { ...fixCoord(150, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    // 후보: 북 d≈150(창 안) vs 남 d≈490(창 밖) → 단일 채택
+    expect(out.event?.kind).toBe("reacquired");
+    expect(out.state.d).toBeCloseTo(150, 0);
+  });
+
+  it("창 안 후보 0개면 거부 유지(침묵)", () => {
+    const st = enterReacquiring(100);
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    // 후보: 북 d≈250·남 d≈390 — 둘 다 창 [100,200] 밖 → 확정 거부
+    expect(out.event).toBeNull();
+    expect(out.state.phase).toBe("reacquiring");
+  });
+
+  it("창 안 후보 복수면 거부 유지(평행도로 이탈 은폐 차단)", () => {
+    const st = { ...enterReacquiring(100), reacquireV: 20 }; // 창 상한 100+20×11×1.5+100=530
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
+    // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부
+    expect(out.event).toBeNull();
+    expect(out.state.phase).toBe("reacquiring");
+  });
+});
+
+describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
+  it("확정 후 180초 전에는 침묵, 이후 재통지는 무톤·상태 전문", () => {
+    const route = routeFrom([{ len: 600, desc: "직진" }]);
+    let state = { ...guideStateAt(route, 0, 0), lastFixAt: 0 };
+    const off = (along: number) => ({ ...fixCoord(along, 60), accuracy: 10 });
+    const confirmSeq: [number, number][] = [
+      [5, 40],
+      [10, 80],
+      [15, 120],
+    ];
+    let confirm: ReturnType<typeof guideStep> | null = null;
+    for (const [t, along] of confirmSeq) {
+      confirm = guideStep(state, off(along), route, t, CAR_TUNING);
+      state = confirm.state;
+    }
+    expect(confirm!.event?.kind).toBe("offRoute");
+    expect(confirm!.tone).toBe("warning"); // 첫 확정은 항상 경고 톤
+
+    let renotifyAt: number | null = null;
+    let renotifyTone: GuideTone | null = "warning";
+    for (let t = 24; t <= 210; t += 9) {
+      const out = guideStep(state, off(200), route, t, CAR_TUNING);
+      state = out.state;
+      if (out.event?.kind === "offRoute") {
+        renotifyAt = t;
+        renotifyTone = out.tone;
+        break;
+      }
+    }
+    expect(renotifyAt).not.toBeNull();
+    expect(renotifyAt!).toBeGreaterThanOrEqual(195); // 확정 15 + 180
+    expect(renotifyTone).toBeNull(); // 재통지는 무톤(§4.3)
   });
 });
 

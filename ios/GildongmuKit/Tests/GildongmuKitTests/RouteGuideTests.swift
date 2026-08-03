@@ -15,6 +15,7 @@ private struct ScenarioFile: Decodable {
 
 private struct Scenario: Decodable {
     let name: String
+    let tuning: String?
     let steps: [Step]
     let fixes: [Fix]
     let expect: [Expectation]
@@ -79,6 +80,7 @@ private func fixCoord(along: Double, lateral: Double, acc: Double) -> GuideFix {
 private func kindName(_ event: GuideEvent?) -> String? {
     switch event {
     case .announceSteps: "announceSteps"
+    case .farNotice: "farNotice"
     case .periodic: "periodic"
     case .bundleReread: "bundleReread"
     case .handoff: "handoff"
@@ -96,6 +98,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
 private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     switch event {
     case let .announceSteps(i): i
+    case let .farNotice(i): i
     case let .bundleReread(i): i
     default: nil
     }
@@ -112,6 +115,7 @@ private func toneName(_ tone: GuideTone?) -> String? {
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {
         let route = routeFrom(sc.steps)
+        let tuning: GuideTuning = sc.tuning == "car" ? .car : .walk
         var state = initialGuideState(route: route, now: 0).state
         var results: [(event: GuideEvent?, tone: GuideTone?)] = []
         for f in sc.fixes {
@@ -119,7 +123,8 @@ private func toneName(_ tone: GuideTone?) -> String? {
                 state: state,
                 fix: fixCoord(along: f.along, lateral: f.lateral, acc: f.acc),
                 route: route,
-                now: f.t
+                now: f.t,
+                tuning: tuning
             )
             state = out.state
             results.append((out.event, out.tone))
@@ -188,6 +193,109 @@ private func toneName(_ tone: GuideTone?) -> String? {
         Issue.record("단일 후보는 ok여야 한다")
     }
     #expect(entryProjection(route: single, fix: fixCoord(along: 150, lateral: 200, acc: 10)) == GuideEntryProjection.none)
+}
+
+/// U자 경로(북 300 → 동 40 → 남 300) — 재획득 타이브레이크 직접 테스트용(웹 미러).
+private func uRoute40() -> GuideRoute {
+    let east = 40 * meterLat / cos(lat0 * .pi / 180)
+    return buildGuideRoute([
+        GuideStepGeometry(description: "북", pathCoords: [
+            RoutePoint(lat: lat0, lng: lng0),
+            RoutePoint(lat: lat0 + 300 * meterLat, lng: lng0),
+        ]),
+        GuideStepGeometry(description: "동", pathCoords: [
+            RoutePoint(lat: lat0 + 300 * meterLat, lng: lng0),
+            RoutePoint(lat: lat0 + 300 * meterLat, lng: lng0 + east),
+        ]),
+        GuideStepGeometry(description: "남", pathCoords: [
+            RoutePoint(lat: lat0 + 300 * meterLat, lng: lng0 + east),
+            RoutePoint(lat: lat0, lng: lng0 + east),
+        ]),
+    ])!
+}
+
+private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState {
+    var state = guideStateAt(route: route, d: dPrev, now: 0)
+    state.lastFixAt = 0
+    let out = guideStep(
+        state: state, fix: fixCoord(along: dPrev, lateral: 0, acc: 10),
+        route: route, now: 11, tuning: .car
+    )
+    #expect(out.event == .reacquiring)
+    return out.state
+}
+
+@Test func carReacquireTieBreakAdoptsSingleForwardCandidate() {
+    let route = uRoute40()
+    let st = enterReacquiring(route, dPrev: 100) // v=0 → 창 [100, 200]
+    let out = guideStep(
+        state: st, fix: fixCoord(along: 150, lateral: 10, acc: 10),
+        route: route, now: 12, tuning: .car
+    )
+    // 후보: 북 d≈150(창 안) vs 남 d≈490(창 밖) → 단일 채택
+    #expect(out.event == .reacquired)
+    #expect(abs(out.state.d - 150) < 1)
+}
+
+@Test func carReacquireTieBreakRejectsZeroInWindow() {
+    let route = uRoute40()
+    let st = enterReacquiring(route, dPrev: 100)
+    let out = guideStep(
+        state: st, fix: fixCoord(along: 250, lateral: 20, acc: 10),
+        route: route, now: 12, tuning: .car
+    )
+    // 북 d≈250·남 d≈390 — 둘 다 창 [100,200] 밖 → 거부 유지
+    #expect(out.event == nil)
+    #expect(out.state.phase == .reacquiring)
+}
+
+@Test func carReacquireTieBreakRejectsMultipleInWindow() {
+    let route = uRoute40()
+    var st = enterReacquiring(route, dPrev: 100)
+    st.reacquireV = 20 // 창 상한 100 + 20×11×1.5 + 100 = 530
+    let out = guideStep(
+        state: st, fix: fixCoord(along: 250, lateral: 20, acc: 10),
+        route: route, now: 12, tuning: .car
+    )
+    // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부(평행도로 이탈 은폐 차단)
+    #expect(out.event == nil)
+    #expect(out.state.phase == .reacquiring)
+}
+
+@Test func carOffRouteRenotifyIntervalAndNoTone() {
+    let route = routeFrom([.init(len: 600, desc: "직진")])
+    var state = guideStateAt(route: route, d: 0, now: 0)
+    state.lastFixAt = 0
+    var confirm: GuideOutput?
+    for (t, along) in [(5.0, 40.0), (10.0, 80.0), (15.0, 120.0)] {
+        confirm = guideStep(
+            state: state, fix: fixCoord(along: along, lateral: 60, acc: 10),
+            route: route, now: t, tuning: .car
+        )
+        state = confirm!.state
+    }
+    #expect(confirm?.event == .offRoute)
+    #expect(confirm?.tone == .warning) // 첫 확정은 항상 경고 톤
+
+    var renotifyAt: Double?
+    var renotifyTone: GuideTone? = .warning
+    var t = 24.0
+    while t <= 210 {
+        let out = guideStep(
+            state: state, fix: fixCoord(along: 200, lateral: 60, acc: 10),
+            route: route, now: t, tuning: .car
+        )
+        state = out.state
+        if out.event == .offRoute {
+            renotifyAt = t
+            renotifyTone = out.tone
+            break
+        }
+        t += 9
+    }
+    #expect(renotifyAt != nil)
+    #expect((renotifyAt ?? 0) >= 195) // 확정 15 + 180
+    #expect(renotifyTone == nil) // 재통지는 무톤(§4.3)
 }
 
 @Test func unitAtContract() {

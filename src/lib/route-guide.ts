@@ -149,6 +149,17 @@ export interface GuideState {
   /** 자동 인계 무장 여부. 수동 상세 복귀 후엔 재무장선(70m) 밖으로 나가야 true(리뷰 #11). */
   autoHandoffArmed: boolean;
   /**
+   * 원거리 예고(farNotice)를 마친 마지막 스텝 index(임박 발화 시 함께 전진 —
+   * 뒤늦은 원거리 예고 금지). walk(farNoticeM=null)에선 불변.
+   */
+  farNoticedUpTo: number;
+  /** 이탈 누적 중 관측 최대 수직거리 — offRouteTrend 프로파일의 복귀 유예 기준. */
+  offRoutePeakPerp: number | null;
+  /** 재획득 타이브레이크 기준: reacquiring 진입 직전 진행거리·속도·진입 시각. */
+  reacquirePrevD: number | null;
+  reacquireV: number;
+  reacquireSince: number | null;
+  /**
    * reacquiring 진입 직전 국면이 offRoute였는가. 없으면 이탈 확정이 GPS 공백을
    * 경유하며 무통지로 소실된다 — 복귀 이벤트가 backOnRoute가 아니라 reacquired로
    * 나가 UI의 이탈 상태(재조회 버튼)가 리듀서와 어긋난 채 남는다(독립 리뷰 HIGH).
@@ -158,6 +169,7 @@ export interface GuideState {
 
 export type GuideEvent =
   | { kind: "announceSteps"; indices: number[] }
+  | { kind: "farNotice"; indices: number[] }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
   | { kind: "handoff" }
@@ -218,6 +230,13 @@ export function guideStateAt(
     speedGuardActive: false,
     speedWarned: false,
     autoHandoffArmed: opts?.autoHandoffArmed ?? true,
+    // 재진입 시점의 유닛은 원거리 예고 소비 처리 — 경계선을 이미 안에서 시작하면
+    // 크로싱이 성립하지 않아 뒤늦은 예고가 구조적으로 없다(스펙 §4.3).
+    farNoticedUpTo: unit[unit.length - 1],
+    offRoutePeakPerp: null,
+    reacquirePrevD: null,
+    reacquireV: 0,
+    reacquireSince: null,
     reacquiringFromOffRoute: false,
   };
 }
@@ -294,11 +313,30 @@ export function guideStep(
   // 2) reacquiring: 전역 재탐색(모호하면 유지 — 다음 fix에서 재시도).
   if (state.phase === "reacquiring") {
     const entry = entryProjection(route, fix, tuning);
-    if (entry.status !== "ok") {
+    let entryD: number | null = entry.status === "ok" ? entry.d : null;
+    // 재획득 전방 연속성 타이브레이크(§4.3, 재획득 경로 한정): 직전 진행거리 기준
+    // 전방 창 안 후보가 정확히 1개일 때만 채택. 0·복수는 거부 유지 — 타이브레이크가
+    // 평행도로 이탈을 감추는 경로를 막는다.
+    if (
+      entryD === null &&
+      entry.status === "ambiguous" &&
+      tuning.reacquireTieBreak &&
+      state.reacquirePrevD !== null &&
+      state.reacquireSince !== null
+    ) {
+      const elapsed = now - state.reacquireSince + REACQUIRE_GAP_S;
+      const maxAheadD = state.reacquirePrevD + state.reacquireV * elapsed * 1.5 + 100;
+      const maxPerp = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
+      const inWindow = globalCandidates(route.polyline, fix, maxPerp).filter(
+        (c) => c.d >= state.reacquirePrevD! && c.d <= maxAheadD,
+      );
+      if (inWindow.length === 1) entryD = inWindow[0].d;
+    }
+    if (entryD === null) {
       return { state: { ...state, lastFixAt: now }, event: null, tone: null };
     }
     const s: GuideState = {
-      ...guideStateAt(route, entry.d, now, { autoHandoffArmed: state.autoHandoffArmed }),
+      ...guideStateAt(route, entryD, now, { autoHandoffArmed: state.autoHandoffArmed }),
       speedWarned: state.speedWarned,
       lastFixAt: now,
     };
@@ -320,6 +358,10 @@ export function guideStep(
         speedSamples: [],
         lastFixAt: now,
         reacquiringFromOffRoute: state.phase === "offRoute",
+        // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
+        reacquirePrevD: state.d,
+        reacquireV: estimateSpeedMps(state.speedSamples),
+        reacquireSince: now,
       },
       event: { kind: "reacquiring" },
       tone: null,
@@ -399,25 +441,38 @@ export function guideStep(
         now - state.lastOffRouteNoticeAt >= tuning.offRouteRenotifyS);
     if (canRenotify) {
       next = { ...next, lastOffRouteNoticeAt: now };
-      return { state: next, event: { kind: "offRoute" }, tone: "warning" };
+      // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, 첫 확정만 경고 — §4.3).
+      return {
+        state: next,
+        event: { kind: "offRoute" },
+        tone: tuning.offRouteRenotifyWarns ? "warning" : null,
+      };
     }
     return { state: next, event: null, tone: null };
   }
   const isOff = proj.perpMeters > offThreshold;
   if (isOff) {
-    const since = state.offRouteSince ?? now;
-    next = { ...next, offRouteSince: since };
+    let since = state.offRouteSince ?? now;
+    let peak = Math.max(state.offRoutePeakPerp ?? 0, proj.perpMeters);
+    // 복귀 추세 유예(offRouteTrend): 관측 최대 대비 5m 이상 줄면 누적을 리셋한다 —
+    // 경로 쪽으로 돌아오는 중에 시간만으로 확정하는 오판 차단(§4.3).
+    if (tuning.offRouteTrend && proj.perpMeters < peak - 5) {
+      since = now;
+      peak = proj.perpMeters;
+    }
+    next = { ...next, offRouteSince: since, offRoutePeakPerp: peak };
     if (now - since >= tuning.offRouteHoldS) {
       next = {
         ...next,
         phase: "offRoute",
         resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
         lastOffRouteNoticeAt: now,
+        offRoutePeakPerp: null,
       };
       return { state: next, event: { kind: "offRoute" }, tone: "warning" };
     }
   } else if (state.offRouteSince !== null) {
-    next = { ...next, offRouteSince: null };
+    next = { ...next, offRouteSince: null, offRoutePeakPerp: null };
   }
 
   // 6) 국면·낭독.
@@ -447,8 +502,37 @@ export function guideStep(
     );
     if (announcedEnd - d <= announceAhead) {
       const indices = unitAt(route, next.announcedUpTo + 1);
-      next = { ...next, announcedUpTo: indices[indices.length - 1], lastAnnouncedAt: now };
+      next = {
+        ...next,
+        announcedUpTo: indices[indices.length - 1],
+        // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).
+        farNoticedUpTo: Math.max(next.farNoticedUpTo, indices[indices.length - 1]),
+        lastAnnouncedAt: now,
+      };
       return { state: next, event: { kind: "announceSteps", indices }, tone: "ahead" };
+    }
+  }
+
+  // 6b') 원거리 예고(§4.3 car 전용): 다음 분기 경계선(farNoticeM)을 하향 통과하는
+  //      fix에서 1회. 세션 시작·재획득 재진입이 이미 경계 안이면 크로싱이 성립하지
+  //      않아 자연 생략된다. 우선순위는 임박(6b) 뒤 — 같은 fix에 둘 다 성립할 수
+  //      없는 기하(구속 창 상한)지만 순서로도 보장한다.
+  if (
+    tuning.farNoticeM !== null &&
+    next.announcedUpTo < route.steps.length - 1 &&
+    next.farNoticedUpTo <= next.announcedUpTo
+  ) {
+    const boundary = route.steps[next.announcedUpTo].endD;
+    const prevRemaining = boundary - state.d;
+    const nowRemaining = boundary - d;
+    if (prevRemaining > tuning.farNoticeM && nowRemaining <= tuning.farNoticeM) {
+      const indices = unitAt(route, next.announcedUpTo + 1);
+      next = {
+        ...next,
+        farNoticedUpTo: indices[indices.length - 1],
+        lastAnnouncedAt: now,
+      };
+      return { state: next, event: { kind: "farNotice", indices }, tone: null };
     }
   }
 
