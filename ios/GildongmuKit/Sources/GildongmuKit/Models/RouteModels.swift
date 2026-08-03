@@ -7,8 +7,20 @@ import Foundation
 
 // MARK: - 자동차 경로
 
+/// 자동차 안내 구간의 링크별 도로명·길이(B1 기하 옵트인 — 무명 링크는 name nil).
+public struct CarRoadLink: Codable, Sendable, Hashable {
+    public let name: String?
+    public let distanceMeters: Double
+
+    public init(name: String?, distanceMeters: Double) {
+        self.name = name
+        self.distanceMeters = distanceMeters
+    }
+}
+
 /// 자동차 경로 안내 구간 하나. guidance(한국어 완성 안내문)가 낭독 정본,
 /// 빈 문자열이면 뷰가 name으로 폴백(둘 다 비면 행 생략).
+/// pathCoords·roadLinks는 `includeGeometry=1` 요청에서만 오는 B1 기하(옵셔널).
 public struct CarRouteGuide: Codable, Sendable, Hashable {
     /// 지점명(교차로·시설명). 빈 문자열 실측 존재(옵셔널 아님)
     public let name: String
@@ -18,6 +30,22 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
     public let distanceMeters: Int
     /// 이 구간 소요(초)
     public let durationSeconds: Int
+    /// 동작 이후 구간 폴리라인(기하 옵트인 전용)
+    public let pathCoords: [RoutePoint]?
+    /// 링크별 도로명·길이(기하 옵트인 전용)
+    public let roadLinks: [CarRoadLink]?
+
+    public init(
+        name: String, guidance: String, distanceMeters: Int, durationSeconds: Int,
+        pathCoords: [RoutePoint]? = nil, roadLinks: [CarRoadLink]? = nil
+    ) {
+        self.name = name
+        self.guidance = guidance
+        self.distanceMeters = distanceMeters
+        self.durationSeconds = durationSeconds
+        self.pathCoords = pathCoords
+        self.roadLinks = roadLinks
+    }
 }
 
 /// 자동차 경로 브리핑. ⚠ /api/route/car 응답은 envelope 없이 이 타입 직접.
@@ -32,6 +60,21 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     public let tollFare: Int
     /// 턴바이턴 안내 구간들
     public let guides: [CarRouteGuide]
+    /// ko 서비스 provider 판별자("tmap"/"kakao") — 자동차 안내 버튼 게이트(B1 §3.1).
+    /// en(NCP) 응답·구버전 서버는 nil.
+    public let provider: String?
+
+    public init(
+        distanceMeters: Int, durationSeconds: Int, taxiFare: Int, tollFare: Int,
+        guides: [CarRouteGuide], provider: String? = nil
+    ) {
+        self.distanceMeters = distanceMeters
+        self.durationSeconds = durationSeconds
+        self.taxiFare = taxiFare
+        self.tollFare = tollFare
+        self.guides = guides
+        self.provider = provider
+    }
 }
 
 // MARK: - 대중교통 경로
