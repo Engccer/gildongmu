@@ -659,6 +659,72 @@
           "event": "backOnRoute"
         }
       ]
+    },
+    {
+      "name": "경계: 선행 낭독 임박선 40m(±1m — 부동소수 등호 회피)",
+      "steps": [
+        { "len": 200, "desc": "직진A" },
+        { "len": 100, "desc": "우회전B" }
+      ],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 40, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 80, "lateral": 0, "acc": 10 },
+        { "t": 14, "along": 120, "lateral": 0, "acc": 10 },
+        { "t": 19, "along": 159, "lateral": 0, "acc": 10 },
+        { "t": 24, "along": 160.5, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 4, "eventNot": "announceSteps" },
+        { "afterFix": 5, "event": "announceSteps", "indices": [1] }
+      ]
+    },
+    {
+      "name": "경계: 이탈 임계 30m(29m 비이탈 / 31m 홀드 후 확정)",
+      "steps": [{ "len": 400, "desc": "직진" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 40, "lateral": 29, "acc": 10 },
+        { "t": 10, "along": 80, "lateral": 29, "acc": 10 },
+        { "t": 15, "along": 120, "lateral": 29, "acc": 10 },
+        { "t": 20, "along": 160, "lateral": 29, "acc": 10 },
+        { "t": 27, "along": 200, "lateral": 29, "acc": 10 },
+        { "t": 32, "along": 220, "lateral": 31, "acc": 10 },
+        { "t": 37, "along": 240, "lateral": 31, "acc": 10 },
+        { "t": 42, "along": 260, "lateral": 31, "acc": 10 },
+        { "t": 47, "along": 280, "lateral": 31, "acc": 10 },
+        { "t": 53, "along": 300, "lateral": 31, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFixAny": [1, 2, 3, 4, 5], "eventNot": "offRoute" },
+        { "afterFixAny": [9, 10], "event": "offRoute" }
+      ]
+    },
+    {
+      "name": "경계: 인계 잔여 50m(51m 미인계 / 49.5m 인계)",
+      "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 5, "along": 49, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 50.5, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 1, "eventNot": "handoff" },
+        { "afterFix": 2, "event": "handoff" }
+      ]
+    },
+    {
+      "name": "경계: 재획득 공백 10초(10초 유지 / 11초 재획득 진입)",
+      "steps": [{ "len": 400, "desc": "직진" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 14, "lateral": 0, "acc": 10 },
+        { "t": 21, "along": 28, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 1, "eventNot": "reacquiring" },
+        { "afterFix": 2, "event": "reacquiring" }
+      ]
     }
   ]
 }
