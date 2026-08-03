@@ -1,0 +1,663 @@
+import type { TransitLeg, TransitLegStop, TransitRoute } from "./types";
+
+/**
+ * 대중교통 실시간 길 안내 상태 머신 (B2 스펙 §4.2) — 순수, React/Next 비의존.
+ *
+ * 입력은 GPS fix가 아니라 **폴링 응답·사용자 액션·시각**이다(도보·자동차의
+ * route-guide 리듀서와 별개 — GuideKind 봉인 구성을 확장하지 않는다). 판정은
+ * 전부 여기서 하고, 오케스트레이터(웹 useTransitGuide·iOS TransitGuideModel)는
+ * 폴링 I/O·통지 게시만 한다. Kit `TransitGuide.swift`가 1:1 미러이며 공유
+ * fixture(`transit-guide-scenarios.json`)가 동조를 강제한다.
+ *
+ * 핵심 계약:
+ * - leg 전환은 사용자 확인(advance)이다. riding→arrived는 차량 신호 관측이고,
+ *   arrived→다음 leg는 사용자 행위다(차량 도착 ≠ 사용자 하차, §1·§4.2).
+ * - 신호 상태는 배타 enum — 데이터 없음(notYetVisible)과 조회 실패
+ *   (upstreamFailed)를 절대 뭉개지 않는다(3-state 불변식의 세분).
+ * - 잠금·매칭은 복합 키(§4.2), 식별자 원문 문자열 무변형.
+ * - 폴링 응답은 phaseGen·seq 일치 시에만 커밋(늦은 응답 폐기 — 단일 비행의
+ *   이중 방어).
+ * - 낭독 문구 조립은 플랫폼 몫(웹 i18n·iOS GuideText) — 머신은 구조화 이벤트만
+ *   낸다(E4 리듀서 관례). 완성 문장(message)은 원문 그대로 실어 나른다.
+ */
+
+export type TransitTrackMode = "seoulBus" | "tagoBus" | "subway";
+export type TransitPhase = "waiting" | "riding" | "arrived" | "done";
+export type TransitSignal =
+  | "tracking"
+  | "notYetVisible"
+  | "signalLost"
+  | "upstreamFailed"
+  | "untrackable";
+
+/** 잠금·매칭 복합 키(§4.2). tagoBus 근사는 vehicleId ""(차량 식별자 부재). */
+export interface TransitLock {
+  mode: TransitTrackMode;
+  routeId: string;
+  direction: string;
+  vehicleId: string;
+}
+
+/** 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다. */
+export interface TransitGuideLeg {
+  mode: "bus" | "subway";
+  lineName: string;
+  /** null = 추적 불가(비수도권 지하철·정보 결손) — 수동 전진만 가능. */
+  trackMode: TransitTrackMode | null;
+  boardName: string;
+  alightName: string;
+  boardStop: TransitLegStop | null;
+  alightStop: TransitLegStop | null;
+  /** 경유 전체(양 끝 포함, includeStops 미보유 시 []) — 종착 검사(§5.1) 축. */
+  viaStops: TransitLegStop[];
+  stationCount: number | null;
+  /** 서울버스 TOPIS 노선 ID(leg.serviceRouteId). */
+  routeId: string | null;
+  /** 지하철 방향(ODsay wayCode 1=상행·2=하행). */
+  wayCode: number | null;
+  /** 이 leg 앞의 도보 시간(분) — 대기 문맥("도보 N분 이동 후 …"). */
+  walkBeforeMinutes: number | null;
+}
+
+export interface TransitGuideRoute {
+  legs: TransitGuideLeg[];
+  /** 마지막 하차 뒤 목적지까지 도보(분) — 완료 문구 분기(§4.1). */
+  walkAfterMinutes: number | null;
+}
+
+/** 폴링 항목(라우트 판별 union의 클라 투영, §7). message는 완성 문장 원문. */
+export interface TrackItem {
+  vehicleId: string | null;
+  direction: string;
+  message: string;
+  /** 잔여 정거장 수(§6.2 추출 — 서버 계산). 추출 실패는 null(사다리만 비활성). */
+  remainingStops: number | null;
+  destinationName: string | null;
+  express: boolean;
+  arrivalCode: string | null;
+}
+
+export type TrackPoll =
+  | { kind: "ok"; items: TrackItem[] }
+  | { kind: "empty" }
+  | { kind: "unsupported" }
+  | { kind: "failed" };
+
+export type TransitInput =
+  | { kind: "poll"; seq: number; phaseGen: number; poll: TrackPoll }
+  | { kind: "board"; lock: TransitLock }
+  | { kind: "changeBoarding" }
+  | { kind: "advance" };
+
+/**
+ * 구조화 안내 이벤트 — 한 입력당 최대 1개(§4.2 원자 전이). 문구는 플랫폼이
+ * 조립하되 완성 문장(message)은 원문 병치(문법 결합 금지, §6.1).
+ */
+export type TransitGuideEvent =
+  | { kind: "boarded"; legIndex: number }
+  | { kind: "trackingStarted"; message: string; remaining: number | null }
+  | { kind: "countdown"; remaining: number; message: string }
+  | { kind: "messageChanged"; message: string }
+  | { kind: "arrived"; certain: boolean }
+  | { kind: "backOnTrack"; message: string }
+  | { kind: "approxVehicleChanged"; message: string }
+  | { kind: "signalLost" }
+  | { kind: "upstreamFailed" }
+  | { kind: "signalRecovered" }
+  | { kind: "legAdvanced"; legIndex: number; final: boolean }
+  | { kind: "boardingReset" }
+  | { kind: "capSlowed" };
+
+export interface TransitStepResult {
+  state: TransitGuideState;
+  event: TransitGuideEvent | null;
+}
+
+export interface TransitGuideState {
+  legIndex: number;
+  phase: TransitPhase;
+  /** phase 전이마다 증가 — 늦은 폴링 응답의 커밋 차단 축(§4.2). */
+  phaseGen: number;
+  /** 마지막으로 커밋한 폴링 seq(단조). */
+  lastSeq: number;
+  signal: TransitSignal;
+  lock: TransitLock | null;
+  remaining: number | null;
+  lastMessage: string | null;
+  lastUpdatedAt: number | null;
+  /** arrived 국면의 확정(도착 관측)/추정(소실) 구분 — 문구 3-state(§4.2). */
+  arrivedCertain: boolean;
+  /** 사다리 래치: 마지막 발화 잔여값(이보다 작아질 때만 재발화, 증가에 비가역). */
+  ladderAnnounced: number | null;
+  trackingAnnounced: boolean;
+  /** 잠금 차량 연속 미등장 폴 수(소실·도착 추정 판정). */
+  missCount: number;
+  failCount: number;
+  failSince: number | null;
+  pollCount: number;
+  capAnnounced: boolean;
+}
+
+// === 상수 (§4.2·§7) ===
+
+/** 사다리 임계(잔여 정거장) — 이하 도달 시 낭독, 초과 감소는 표시만(§6.1). */
+export const LADDER_MAX = 3;
+/** 조회 실패 통지: 연속 N회 또는 첫 실패 후 N초 중 먼저(§4.2). */
+export const FAIL_NOTIFY_COUNT = 3;
+export const FAIL_NOTIFY_MS = 90_000;
+/** 소실 판정: 관측되다 연속 N폴 미등장(§4.2). */
+export const MISS_LOST_COUNT = 3;
+/** 도착 추정: 직전 잔여 ≤1 ∧ 연속 N폴 미등장(§4.2). */
+export const MISS_ARRIVE_COUNT = 2;
+/** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
+export const SESSION_POLL_CAP = 240;
+
+/** 폴링 주기(§7 적응형). 0 = 폴링 없음(done·untrackable). */
+export function pollIntervalMs(state: TransitGuideState): number {
+  if (state.phase === "done" || state.signal === "untrackable") return 0;
+  if (state.capAnnounced) return 60_000;
+  if (state.phase === "waiting") return 20_000;
+  // riding·arrived(재관측 감시): 미등장 60s / 원거리 30s / 임박 15s
+  if (!state.trackingAnnounced) return 60_000;
+  if (state.remaining != null && state.remaining <= LADDER_MAX) return 15_000;
+  return 30_000;
+}
+
+/** 이벤트 → 통지 채널·톤 매핑(§6.1). 웹·iOS 공용 의미론(발화 채널은 플랫폼 재량). */
+export function eventProfile(event: TransitGuideEvent): {
+  interrupt: boolean;
+  tone: "start" | "ladder" | "imminent" | "arrive" | "weak" | null;
+} {
+  switch (event.kind) {
+    case "countdown":
+      return event.remaining <= 1
+        ? { interrupt: true, tone: "imminent" }
+        : { interrupt: false, tone: "ladder" };
+    case "arrived":
+      return { interrupt: true, tone: "arrive" };
+    case "boarded":
+    case "legAdvanced":
+      return { interrupt: false, tone: "start" };
+    case "trackingStarted":
+      return { interrupt: false, tone: "ladder" };
+    case "signalLost":
+    case "upstreamFailed":
+      return { interrupt: false, tone: "weak" };
+    default:
+      return { interrupt: false, tone: null };
+  }
+}
+
+// === 노선 매핑표 (§5.1) — ODsay 지하철 lane.name ↔ 서울 실시간 subwayId ===
+
+/**
+ * ODsay는 "수도권 5호선"·"수도권 수인.분당선"처럼 접두·구분자가 붙는다.
+ * 실시간 API 커버 노선(seoul-subway-arrival SUBWAY_LINES)과의 명시 대응표.
+ * 키는 구분자·공백 제거 + "수도권" 접두 제거의 정규화 코어.
+ */
+const ODSAY_SUBWAY_LINES: Record<string, string> = {
+  "1호선": "1001",
+  "2호선": "1002",
+  "3호선": "1003",
+  "4호선": "1004",
+  "5호선": "1005",
+  "6호선": "1006",
+  "7호선": "1007",
+  "8호선": "1008",
+  "9호선": "1009",
+  "GTX-A": "1032",
+  중앙선: "1061",
+  경의중앙선: "1063",
+  공항철도: "1065",
+  경춘선: "1067",
+  수인분당선: "1075",
+  신분당선: "1077",
+  경강선: "1081",
+  우이신설선: "1092",
+  서해선: "1093",
+  신림선: "1094",
+};
+
+function subwayLineCore(name: string): string {
+  return name
+    .replace(/^수도권\s*/, "")
+    .replace(/[.·\s]/g, "")
+    .trim();
+}
+
+/** ODsay 지하철 노선명 → 서울 실시간 subwayId(미수록 = 실시간 미커버 = null). */
+export function subwayIdForOdsayLine(lineName: string): string | null {
+  return ODSAY_SUBWAY_LINES[subwayLineCore(lineName)] ?? null;
+}
+
+// === 경로 조립 (§4.1) ===
+
+/** 탑승 leg의 추적 수단 분류(§5.1 매핑표·§5.2 판별자). */
+export function classifyTrackMode(
+  leg: TransitLeg,
+  boardStop: TransitLegStop | null,
+  alightStop: TransitLegStop | null,
+): TransitTrackMode | null {
+  if (leg.mode === "subway") {
+    return subwayIdForOdsayLine(leg.lineName ?? "") ? "subway" : null;
+  }
+  // 서울버스(TOPIS): 양 끝 정류소가 서울(stationCityCode 1000) ∧ arsID·stId ∧
+  // TOPIS 노선 ID 보유. arsID·localStationID는 지방 BIS도 채우므로 단독 판별 금지.
+  const topis =
+    leg.serviceRouteId != null &&
+    boardStop?.cityCode === "1000" &&
+    alightStop?.cityCode === "1000" &&
+    !!boardStop.arsId &&
+    !!boardStop.localId &&
+    !!alightStop.localId;
+  if (topis) return "seoulBus";
+  // 지방버스 근사: 하차 정류소 좌표(TAGO 최근접 해석)와 노선 번호만 있으면 성립.
+  if (alightStop && leg.lineName) return "tagoBus";
+  return null;
+}
+
+/**
+ * TransitRoute(+stops) → 안내 경로. 탑승 leg가 없으면 null(시작 게이트 축).
+ * 도보 leg는 다음 탑승 leg의 walkBeforeMinutes로, 말미 도보는 walkAfterMinutes로.
+ */
+export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute | null {
+  const legs: TransitGuideLeg[] = [];
+  let pendingWalk: number | null = null;
+  for (const leg of route.legs) {
+    if (leg.mode === "walk") {
+      pendingWalk = (pendingWalk ?? 0) + leg.minutes;
+      continue;
+    }
+    const stops = leg.stops ?? [];
+    const boardStop = stops.length > 0 ? stops[0] : null;
+    const alightStop = stops.length > 1 ? stops[stops.length - 1] : null;
+    legs.push({
+      mode: leg.mode,
+      lineName: leg.lineName ?? "",
+      trackMode: classifyTrackMode(leg, boardStop, alightStop),
+      boardName: leg.fromName ?? boardStop?.name ?? "",
+      alightName: leg.toName ?? alightStop?.name ?? "",
+      boardStop,
+      alightStop,
+      viaStops: stops,
+      stationCount: leg.stationCount ?? null,
+      routeId: leg.serviceRouteId ?? null,
+      wayCode: leg.serviceWayCode ?? null,
+      walkBeforeMinutes: pendingWalk,
+    });
+    pendingWalk = null;
+  }
+  if (legs.length === 0) return null;
+  return { legs, walkAfterMinutes: pendingWalk };
+}
+
+// === 열차 선택 목록 필터 (§5.1) — 순수 판정, UI가 소비 ===
+
+export interface BoardingCandidate {
+  item: TrackItem;
+  /** 종착이 하차역 이전 — 결정적 미도달이라 활성화 차단(§5.1). */
+  terminatesEarly: boolean;
+  /** 급행 — 하차역 정차 여부 확인 라벨 병기(차단 금지). */
+  express: boolean;
+  /** 방향 판정 성공 여부 — 전체 0건이면 목록 앞에 "방면 확인" 안내(§5.1). */
+  directionMatched: boolean;
+}
+
+/** wayCode(1 상행·2 하행) ↔ updnLine 원문 대응. 내선/외선 등 그 외 표기는 판정 불가. */
+function directionMatchesWayCode(updnLine: string, wayCode: number | null): boolean | null {
+  if (wayCode == null) return null;
+  if (updnLine === "상행") return wayCode === 1;
+  if (updnLine === "하행") return wayCode === 2;
+  return null; // 내선/외선 등 — 실호출 대응 확정 전 판정 유보(오필터 방지)
+}
+
+/**
+ * 승차 목록 후보 판정(§5.1): 방향은 보조(전멸 시 전체 유지 — 오필터로 숨기는
+ * 것이 과노출보다 나쁘다), 종착 검사만 결정적 차단.
+ */
+export function classifyBoardingCandidates(
+  items: TrackItem[],
+  leg: TransitGuideLeg,
+): { candidates: BoardingCandidate[]; directionUncertain: boolean } {
+  const decorated = items.map((item): BoardingCandidate => {
+    const dir = directionMatchesWayCode(item.direction, leg.wayCode);
+    return {
+      item,
+      terminatesEarly: terminatesBeforeAlight(item.destinationName, leg),
+      express: item.express,
+      directionMatched: dir === true,
+    };
+  });
+  const anyMatched = decorated.some((c) => c.directionMatched);
+  const candidates = anyMatched ? decorated.filter((c) => c.directionMatched) : decorated;
+  return { candidates, directionUncertain: !anyMatched };
+}
+
+/**
+ * 종착역이 경유 목록에서 하차역보다 앞이면 그 열차는 하차역에 가지 않는다(§5.1).
+ * 결정적 판정이므로 활성화 차단 근거. 목록에 없는 종착(노선 밖·표기 상이)은
+ * 판정 불가라 차단하지 않는다(오차단이 과노출보다 나쁘다).
+ */
+export function terminatesBeforeAlight(
+  destinationName: string | null,
+  leg: TransitGuideLeg,
+): boolean {
+  if (!destinationName || leg.viaStops.length === 0) return false;
+  const norm = (s: string) => s.replace(/\s*\([^)]*\)/g, "").replace(/역$/, "").trim();
+  const dest = norm(destinationName);
+  const destIdx = leg.viaStops.findIndex((s) => norm(s.name) === dest);
+  const alightIdx = leg.viaStops.findIndex((s) => norm(s.name) === norm(leg.alightName));
+  if (destIdx < 0 || alightIdx < 0) return false;
+  return destIdx < alightIdx;
+}
+
+// === 상태 머신 ===
+
+/** 세션 시작 상태 — legIndex 0의 waiting. 시작 통지는 오케스트레이터 몫. */
+export function initTransitGuide(route: TransitGuideRoute, now: number): TransitGuideState {
+  return {
+    legIndex: 0,
+    phase: "waiting",
+    phaseGen: 0,
+    lastSeq: 0,
+    signal: route.legs[0]?.trackMode ? "notYetVisible" : "untrackable",
+    lock: null,
+    remaining: null,
+    lastMessage: null,
+    lastUpdatedAt: null,
+    arrivedCertain: false,
+    ladderAnnounced: null,
+    trackingAnnounced: false,
+    missCount: 0,
+    failCount: 0,
+    failSince: null,
+    pollCount: 0,
+    capAnnounced: false,
+  };
+}
+
+/** 복합 키 매칭(§4.2): 식별자 원문 동일 ∧ 방향(양측 보유 시) 동일. */
+export function lockMatches(item: TrackItem, lock: TransitLock): boolean {
+  if (!item.vehicleId || item.vehicleId !== lock.vehicleId) return false;
+  if (item.direction && lock.direction && item.direction !== lock.direction) return false;
+  return true;
+}
+
+export function transitGuideStep(
+  state: TransitGuideState,
+  input: TransitInput,
+  route: TransitGuideRoute,
+  now: number,
+): TransitStepResult {
+  switch (input.kind) {
+    case "board":
+      return handleBoard(state, input.lock);
+    case "changeBoarding":
+      return handleChangeBoarding(state);
+    case "advance":
+      return handleAdvance(state, route);
+    case "poll":
+      return handlePoll(state, input, route, now);
+  }
+}
+
+function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
+  if (state.phase !== "waiting" || state.signal === "untrackable") {
+    return { state, event: null };
+  }
+  return {
+    state: {
+      ...state,
+      phase: "riding",
+      phaseGen: state.phaseGen + 1,
+      lock,
+      remaining: null,
+      lastMessage: null,
+      lastUpdatedAt: null,
+      arrivedCertain: false,
+      ladderAnnounced: null,
+      trackingAnnounced: false,
+      missCount: 0,
+    },
+    event: { kind: "boarded", legIndex: state.legIndex },
+  };
+}
+
+function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
+  if (state.phase !== "riding" && state.phase !== "arrived") {
+    return { state, event: null };
+  }
+  return {
+    state: {
+      ...state,
+      phase: "waiting",
+      phaseGen: state.phaseGen + 1,
+      lock: null,
+      remaining: null,
+      lastMessage: null,
+      arrivedCertain: false,
+      ladderAnnounced: null,
+      trackingAnnounced: false,
+      missCount: 0,
+    },
+    event: { kind: "boardingReset" },
+  };
+}
+
+/** 다음 구간 전환 — 사용자 확인(§4.2 원자 전이). done까지 한 스텝. */
+function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): TransitStepResult {
+  if (state.phase === "done") return { state, event: null };
+  const nextIndex = state.legIndex + 1;
+  const final = nextIndex >= route.legs.length;
+  const nextLeg = final ? null : route.legs[nextIndex];
+  return {
+    state: {
+      ...state,
+      legIndex: final ? state.legIndex : nextIndex,
+      phase: final ? "done" : "waiting",
+      phaseGen: state.phaseGen + 1,
+      signal: final ? state.signal : nextLeg?.trackMode ? "notYetVisible" : "untrackable",
+      lock: null,
+      remaining: null,
+      lastMessage: null,
+      lastUpdatedAt: null,
+      arrivedCertain: false,
+      ladderAnnounced: null,
+      trackingAnnounced: false,
+      missCount: 0,
+      failCount: 0,
+      failSince: null,
+    },
+    event: { kind: "legAdvanced", legIndex: final ? state.legIndex : nextIndex, final },
+  };
+}
+
+function handlePoll(
+  state: TransitGuideState,
+  input: { seq: number; phaseGen: number; poll: TrackPoll },
+  route: TransitGuideRoute,
+  now: number,
+): TransitStepResult {
+  // 세대·순번 불일치 — 늦은 응답 폐기(§4.2). 단일 비행의 이중 방어라 조용히 무시.
+  if (input.phaseGen !== state.phaseGen || input.seq <= state.lastSeq) {
+    return { state, event: null };
+  }
+  if (state.phase === "done" || state.signal === "untrackable") {
+    return { state, event: null };
+  }
+
+  let next: TransitGuideState = { ...state, lastSeq: input.seq, pollCount: state.pollCount + 1 };
+  let event: TransitGuideEvent | null = null;
+
+  // 폴링 캡(§7): 도달 시 주기 강등을 1회 알린다(조용한 사망 금지).
+  if (!next.capAnnounced && next.pollCount >= SESSION_POLL_CAP) {
+    next.capAnnounced = true;
+    event = { kind: "capSlowed" };
+  }
+
+  const poll = input.poll;
+  if (poll.kind === "failed" || poll.kind === "unsupported") {
+    // unsupported가 세션 중간에 오는 것은 구성 불일치 — 실패와 동일한 정직 강등.
+    next.failCount += 1;
+    next.failSince = next.failSince ?? now;
+    const notify =
+      next.signal !== "upstreamFailed" &&
+      (next.failCount >= FAIL_NOTIFY_COUNT || now - next.failSince >= FAIL_NOTIFY_MS);
+    if (notify) {
+      next.signal = "upstreamFailed";
+      return { state: next, event: { kind: "upstreamFailed" } };
+    }
+    return { state: next, event };
+  }
+
+  // ok·empty — 실패 카운터 리셋 + 회복 통지(있다면 이번 스텝의 이벤트로 우선).
+  const recovered = next.signal === "upstreamFailed";
+  next.failCount = 0;
+  next.failSince = null;
+  if (recovered) {
+    next.signal = state.trackingAnnounced ? "signalLost" : "notYetVisible";
+    event = { kind: "signalRecovered" };
+  }
+
+  if (state.phase === "waiting") {
+    // 대기 목록은 오케스트레이터가 직접 소비(§4.2) — 머신은 갱신 시각만 기록.
+    next.lastUpdatedAt = now;
+    return { state: next, event };
+  }
+
+  const items = poll.kind === "ok" ? poll.items : [];
+  const lock = state.lock;
+  const matched = lock ? findLockedItem(items, lock) : null;
+
+  if (matched) {
+    return commitMatched(next, matched, event, now);
+  }
+
+  // 미등장 — 잠금 차량이 목록에 없다(멀거나·지나갔거나·오선택).
+  if (!next.trackingAnnounced) {
+    // 아직 한 번도 관측 전: 정상 미등장(도착 API는 근접 차량만 담는다, §5.2).
+    if (next.signal !== "upstreamFailed" && next.signal !== "signalLost") {
+      next.signal = "notYetVisible";
+    }
+    next.lastUpdatedAt = now;
+    return { state: next, event };
+  }
+  next.missCount += 1;
+  next.lastUpdatedAt = now;
+  // 도착 추정(§4.2): 직전 잔여 ≤1에서 소실 — 확정과 문구 구분, 가역(재관측 복귀).
+  if (
+    state.phase === "riding" &&
+    state.remaining != null &&
+    state.remaining <= 1 &&
+    next.missCount >= MISS_ARRIVE_COUNT &&
+    lock?.mode !== "tagoBus"
+  ) {
+    next.phase = "arrived";
+    next.phaseGen = state.phaseGen; // poll 커밋 축은 유지(재관측 감시 계속)
+    next.arrivedCertain = false;
+    return { state: next, event: { kind: "arrived", certain: false } };
+  }
+  if (next.missCount >= MISS_LOST_COUNT && next.signal !== "signalLost") {
+    next.signal = "signalLost";
+    return { state: next, event: { kind: "signalLost" } };
+  }
+  return { state: next, event };
+}
+
+function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem | null {
+  if (lock.mode === "tagoBus") {
+    // 근사(§5.2): 같은 노선의 최근접 접근 차량(잔여 최소). 차량 식별자가 없다.
+    let best: TrackItem | null = null;
+    for (const it of items) {
+      if (it.remainingStops == null) continue;
+      if (best == null || it.remainingStops < (best.remainingStops ?? Infinity)) best = it;
+    }
+    return best ?? (items.length > 0 ? items[0] : null);
+  }
+  return items.find((it) => lockMatches(it, lock)) ?? null;
+}
+
+function commitMatched(
+  base: TransitGuideState,
+  item: TrackItem,
+  carriedEvent: TransitGuideEvent | null,
+  now: number,
+): TransitStepResult {
+  const prevRemaining = base.remaining;
+  const wasTracking = base.trackingAnnounced;
+  const next: TransitGuideState = {
+    ...base,
+    signal: "tracking",
+    missCount: 0,
+    remaining: item.remainingStops,
+    lastMessage: item.message,
+    lastUpdatedAt: now,
+    trackingAnnounced: true,
+  };
+
+  // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
+  if (base.phase === "arrived" && !base.arrivedCertain) {
+    next.phase = "riding";
+    return { state: next, event: { kind: "backOnTrack", message: item.message } };
+  }
+  if (base.phase !== "riding") {
+    return { state: next, event: carriedEvent };
+  }
+
+  // 도착 관측(§4.2): 지하철 arvlCd "1"(도착) / 서울버스 잔여 0(하차 구간 진입).
+  // ⚠ "곧 도착" 문장은 임박이지 확정이 아니다. tagoBus는 arrived 전이 없음(§5.2).
+  const arrivedObserved =
+    base.lock?.mode === "subway"
+      ? item.arrivalCode === "1"
+      : base.lock?.mode === "seoulBus"
+        ? item.remainingStops === 0
+        : false;
+  if (arrivedObserved) {
+    next.phase = "arrived";
+    next.arrivedCertain = true;
+    return { state: next, event: { kind: "arrived", certain: true } };
+  }
+
+  // 등장 1회 통지(§6.1) — 사다리 래치를 현재 잔여로 함께 세워 같은 값 중복 발화 차단.
+  if (!wasTracking) {
+    next.ladderAnnounced = item.remainingStops;
+    return {
+      state: next,
+      event: { kind: "trackingStarted", message: item.message, remaining: item.remainingStops },
+    };
+  }
+
+  const remaining = item.remainingStops;
+  if (remaining == null) {
+    // 잔여 추출 실패(§6.2) — 사다리만 비활성, 완성 문장 변화 통지로 폴백.
+    if (item.message !== base.lastMessage && base.lastMessage !== null) {
+      return { state: next, event: { kind: "messageChanged", message: item.message } };
+    }
+    return { state: next, event: carriedEvent };
+  }
+
+  // 근사 기준 차량 교체(§5.2): 잔여 역행 관측 — 조용한 기준 교체 금지.
+  if (base.lock?.mode === "tagoBus" && prevRemaining != null && remaining > prevRemaining) {
+    next.ladderAnnounced = null; // 새 차량 기준으로 사다리 재무장
+    return { state: next, event: { kind: "approxVehicleChanged", message: item.message } };
+  }
+
+  // 사다리(§6.1): {3,2,1} 도달, 임계 건너뜀은 현재 값 하나만, 증가에 래치 비가역.
+  const latch = next.ladderAnnounced;
+  if (
+    remaining <= LADDER_MAX &&
+    remaining >= 0 &&
+    (latch == null || remaining < latch) &&
+    prevRemaining != null &&
+    remaining < prevRemaining
+  ) {
+    next.ladderAnnounced = remaining;
+    return { state: next, event: { kind: "countdown", remaining, message: item.message } };
+  }
+  // 소실 후 재관측 회복(§4.2 신호 상태 변화 1회) — 상위 이벤트가 없을 때만
+  // (카운트다운·도착이 나가면 그 자체가 회복 신호라 중복 통지 금지).
+  if (base.signal === "signalLost" && carriedEvent === null) {
+    return { state: next, event: { kind: "signalRecovered" } };
+  }
+  return { state: next, event: carriedEvent };
+}

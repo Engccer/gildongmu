@@ -40,6 +40,7 @@ interface OdsayLane {
 interface OdsayPassStop {
   stationID?: number | string;
   stationName?: string;
+  stationCityCode?: number | string;
   localStationID?: string;
   arsID?: string;
   x?: string | number; // 경도
@@ -96,12 +97,14 @@ function toLegStops(sp: OdsaySubPath): TransitLegStop[] {
     const lng = coordNum(st.x);
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return [];
     const stationId = st.stationID == null ? "" : String(st.stationID);
+    const cityCode = st.stationCityCode == null ? "" : String(st.stationCityCode);
     return [
       {
         name,
         ...(stationId ? { stationId } : {}),
         ...(st.localStationID ? { localId: String(st.localStationID) } : {}),
         ...(st.arsID ? { arsId: String(st.arsID) } : {}),
+        ...(cityCode ? { cityCode } : {}),
         lat,
         lng,
       },

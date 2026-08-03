@@ -258,6 +258,11 @@ export interface TransitLegStop {
   localId?: string;
   /** 정류소 고유번호(버스 arsID — 서울 getStationByUid 조회 키) */
   arsId?: string;
+  /**
+   * ODsay 정류소 도시 코드 원문(stationCityCode, 서울=1000). TOPIS 추적 가능
+   * 판정 축 — arsID·localStationID는 지방 BIS도 채울 수 있어 단독 판별 불가.
+   */
+  cityCode?: string;
   lat: number;
   lng: number;
 }
