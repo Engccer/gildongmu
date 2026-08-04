@@ -150,6 +150,17 @@
 - 비대화형 등록 `printf '%s' "$VALUE" | vercel env add <KEY> production`(`vercel@latest` 사용 — 구버전 빈값 버그 [[vercel-env-add-noninteractive-bug]]). Preview는 `git_branch_required` 결함이라 REST API/대시보드.
 - ⚠ **배포 직후 React #418(hydration) transient**는 스테일 SW 캐시 탓, 코드 결함 아님([[pwa-stale-sw-deploy-hydration-418]]) — dev 클린·캐시제거 먼저 확인. PWA는 수제 서비스워커(`public/sw.js`, Serwist가 Next 16 Turbopack 미지원이라 폴백), document network-first·`/api/` 비캐시.
 
+### iOS 실험 기능은 빌드 구성이 가른다 (2026-08-04 신설)
+
+검증 전 기능을 릴리스에서 빼는 방법은 **플래그 값을 손으로 고치는 것이 아니라 빌드 구성을 고르는 것**이다. 구성은 셋: `Debug`(개발) · `Release`(App Store, 실험 제외) · `Experimental`(실기기 실험판, 실험 포함).
+
+- **`Experimental`이 한꺼번에 정하는 것**: `EXPERIMENTAL` 컴파일 조건 · 번들 ID `space.dodoplanet.gildongmu.dev` · 표시 이름 `…실험` · 아이콘 `AppIconExperimental` · 위치 권한 문구(거리 추적 절 포함). 번들 ID가 달라 **공식판과 한 기기에 공존**한다(설정·동의는 앱별로 분리).
+- **실기기 배포**: `CONFIGURATION=Experimental ./ios/deploy-device.sh`. 환경변수 미지정이면 `Debug`(기존 동작). ⚠ `deploy-device.sh`는 **세 repo 공통본**이라 구성 이름을 스크립트에 박지 않는다.
+- **코드 게이트**: `AppConfig.realtimeGuidanceEnabled`가 `#if EXPERIMENTAL`로 갈린다. 실험 기능을 새로 넣을 때도 같은 자리에 플래그를 두고, **기능이 검증되면 `#if`를 지운다(플래그 졸업)** — 안 지우면 플래그가 쌓인다.
+- ⚠ **`INFOPLIST_KEY_*` 빌드 설정만으로는 구성별 분기가 안 된다.** `InfoPlist.xcstrings`의 로컬라이제이션이 그 값을 **이긴다**(실측). 그래서 표시 이름·권한 문구는 빌드 페이즈 `ios/scripts/experimental-infoplist.sh`가 컴파일된 `*.lproj/InfoPlist.strings`를 후처리한다. **구성별로 달라야 하는 Info.plist 값을 추가하면 그 스크립트에도 넣어야 한다**(빌드 설정에만 쓰면 조용히 무시된다). 그 스크립트는 대상 파일이 0개면 실패한다(경로 상수가 바뀌어도 공식판 값이 그대로 나가는 것을 막는다).
+- ⚠ **아이콘 표식은 시각 구분이라 그것만으로 부족하다.** 스크린 리더 사용자에겐 **표시 이름이 유일한 구분 수단**이므로 이름 접미사를 반드시 유지한다.
+- ⚠ **pbxproj 객체 ID는 파일 전체에서 유일해야 한다.** 기존 ID를 재사용하면 그 객체를 덮어써 프로젝트가 열리지 않는다(`B30001`을 재사용해 `Project object`를 가린 실사고). **`plutil -lint`는 이것을 못 잡는다**(plist 문법은 유효하다) — 편집 후 검증은 `xcodebuild -list`로.
+
 ### CLI/MCP 릴리스 (`packages/cli`=npm `gildongmu`, `packages/mcp`=npm `gildongmu-mcp`)
 
 - 발행은 `cli-v*` 태그 push → `.github/workflows/cli-publish.yml`이 두 패키지를 npm Trusted Publishing(OIDC)으로 자동 발행. 토큰·환경변수 불필요.
