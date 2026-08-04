@@ -23,9 +23,13 @@ const PROVIDERS = join(process.cwd(), "src/lib/providers");
  */
 const HOST = "//openapi.seoul.go.kr";
 
-/** 주석은 판정에서 뺀다 — 금지 대상을 설명하는 주석이 스스로 위반으로 잡힌다. */
+/**
+ * 주석은 판정에서 뺀다 — 금지 대상을 설명하는 주석이 스스로 위반으로 잡힌다.
+ * `https://` 문자열의 `//` 뒤가 주석으로 잘려 검사 대상이 자기 소멸하지 않도록
+ * lookbehind 사용(dodo 역이식 2026-08-05).
+ */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(?<!:)\/\/.*$/gm, "");
 }
 
 function seoulOpenProviders(): { name: string; code: string }[] {
@@ -41,9 +45,12 @@ describe("서울 열린데이터 provider의 JSON 읽기 (정적 가드)", () =>
     expect(seoulOpenProviders().length).toBeGreaterThan(2);
   });
 
-  it("res.json() 직접 호출이 없다 (readSeoulOpenJson 경유)", () => {
+  it(".json() 직접 호출이 없다 (readSeoulOpenJson 경유)", () => {
+    // 수신자 변수명(res·response·r 등)과 무관하게 매치한다 — `\bres\.json`으로
+    // 좁히면 변수명 한 번 바꾸는 것으로 가드가 뚫린다(dodo 3차 이식 중 검출).
+    // `readSeoulOpenJson(`은 `.json(`이 아니라 오검출되지 않고, JSON.parse도 무관.
     const offenders = seoulOpenProviders()
-      .filter(({ code }) => /\bres\s*\.\s*json\s*\(/.test(code))
+      .filter(({ code }) => /\.\s*json\s*\(/.test(code))
       .map(({ name }) => name);
     expect(offenders).toEqual([]);
   });

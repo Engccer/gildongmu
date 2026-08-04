@@ -22,9 +22,13 @@ function routeFiles(): string[] {
     .map((p) => join(API_ROOT, p));
 }
 
-/** 주석은 판정에서 뺀다 — 금지 대상을 설명하는 주석이 스스로 위반으로 잡힌다. */
+/**
+ * 주석은 판정에서 뺀다 — 금지 대상을 설명하는 주석이 스스로 위반으로 잡힌다.
+ * `https://` 문자열의 `//` 뒤가 주석으로 잘려 검사 대상이 자기 소멸하지 않도록
+ * lookbehind 사용(dodo 역이식 2026-08-05).
+ */
 function stripComments(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(?<!:)\/\/.*$/gm, "");
 }
 
 /**
