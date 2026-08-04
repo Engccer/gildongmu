@@ -11,10 +11,17 @@ export async function fetchIsHoliday(dateYYYYMMDD: string): Promise<boolean | nu
   if (!key) return null;
   const year = dateYYYYMMDD.slice(0, 4);
   const month = dateYYYYMMDD.slice(4, 6);
-  const url = `http://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?serviceKey=${encodeURIComponent(key)}&solYear=${year}&solMonth=${month}&_type=json&numOfRows=50`;
+  // ⚠ https 필수: http는 연결만 되고 응답이 오지 않는다(read ETIMEDOUT hang,
+  // 같은 요청이 https로는 0.07초. 실측 2026-08-04).
+  const url = `https://apis.data.go.kr/B090041/openapi/service/SpcdeInfoService/getRestDeInfo?serviceKey=${encodeURIComponent(key)}&solYear=${year}&solMonth=${month}&_type=json&numOfRows=50`;
   try {
     // 게이트형이라 이 try가 모든 실패(HTTP·XML·게이트웨이)를 null로 흡수한다.
-    const raw = await fetchDataGoKrJson(url, "특일정보", { next: { revalidate: 86_400 } });
+    const raw = await fetchDataGoKrJson(url, "특일정보", {
+      next: { revalidate: 86_400 },
+      // hang 이중 방어(https 전환과 별개). 게이트형이라 타임아웃도 null로 흡수되고
+      // 호출부는 요일 폴백으로 내려간다.
+      signal: AbortSignal.timeout(10_000),
+    });
     // HTTP 200이어도 에러 envelope(자격 미신청·파라미터 오류 등)일 수 있어
     // resultCode를 먼저 확인한다 — "00"(정상) 아니면 판정 불가(null → 요일 폴백).
     if (readResultCode(raw) !== "00") return null;

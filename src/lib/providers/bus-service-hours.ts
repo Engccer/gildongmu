@@ -13,8 +13,11 @@ import { parseServiceTime } from "../service-hours";
  *   실패한 노선은 Map에서 빠지고 호출부가 unknown으로 처리한다.
  */
 
+// TOPIS는 http가 정상이다(0.02초 실측 2026-08-04). https 지원 근거가 없어 둔다.
 const SEOUL_BASE = "http://ws.bus.go.kr/api/rest";
-const TAGO_BASE = "http://apis.data.go.kr/1613000/BusRouteInfoInqireService";
+// ⚠ https 필수: http는 연결만 되고 응답이 오지 않는다(read ETIMEDOUT hang,
+// 같은 요청이 https로는 0.07초. 실측 2026-08-04). 타임아웃으로 이중 방어한다.
+const TAGO_BASE = "https://apis.data.go.kr/1613000/BusRouteInfoInqireService";
 
 /**
  * ODsay busCityCode → TAGO cityCode. 두 체계가 달라 매핑이 불가피하다.
@@ -101,7 +104,10 @@ async function fetchTagoRouteHours(ref: BusRouteRef): Promise<ServiceHours | nul
   url.searchParams.set("cityCode", String(cityCode));
   url.searchParams.set("routeNo", ref.routeNo);
   url.searchParams.set("numOfRows", "20");
-  const res = await fetch(url, { next: { revalidate: 86400 } });
+  const res = await fetch(url, {
+    next: { revalidate: 86400 },
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!res.ok) return null;
   const data = await res.json().catch(() => null);
   return parseTagoRouteHours(data, ref.localId);

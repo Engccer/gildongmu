@@ -27,7 +27,11 @@ import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrai
  * 결과 + partial:true. 전부 성공했는데 유효 행 0 → { lines: [] }.
  */
 
-const BASE = "http://apis.data.go.kr/1613000/SubwayInfo";
+// ⚠ https 필수: http는 연결만 되고 응답이 오지 않는다(read ETIMEDOUT hang,
+// 같은 요청이 https로는 0.07초. 실측 2026-08-04). 끊기지 않고 매달리므로 증상이
+// "실패"가 아니라 "느림"으로 나오고, revalidate 캐시도 채워지지 않아 매 요청이
+// 같은 시간을 다시 쓴다. 타임아웃은 fetchTago가 AbortSignal로 이중 방어한다.
+const BASE = "https://apis.data.go.kr/1613000/SubwayInfo";
 const PAGE_SIZE = 500;
 // 키워드 매칭 노선 수 상한 — 환승역 등에서 노선별 상·하행 조회가 무한 증폭되지
 // 않도록 방어(스펙 §2-A). 실서비스 환승역도 이 상한을 넘지 않는다.
@@ -102,6 +106,9 @@ export async function fetchTago(op: string, params: Record<string, string>): Pro
   });
   const raw = await fetchDataGoKrJson(`${BASE}/${op}?${search}`, `TAGO ${op}`, {
     next: { revalidate: 86_400 },
+    // hang 이중 방어(https 전환과 별개) — 대중교통 경로가 이 조회를 await하므로
+    // 한 노선이 매달리면 길찾기 응답 전체가 그만큼 늦어진다.
+    signal: AbortSignal.timeout(10_000),
   });
   // 00 정상. NODATA류가 별코드(03)로 오면 통과(빈 items 처리) — 그 외는 throw.
   const code = readResultCode(raw) ?? "";
