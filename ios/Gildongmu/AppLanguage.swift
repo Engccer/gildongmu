@@ -13,14 +13,24 @@ enum AppLanguage {
 
     /// UI 언어 코드(예: "ko"). 사용자가 고른 값이 1순위, 없으면 시스템 해석 폴백.
     /// 미지원 값은 ko로 수렴한다.
+    ///
+    /// ⚠ 실험판은 **미선택 폴백만 ko로 고정**한다(2026-08-04). 실험판은 번들 ID가
+    /// 달라 UserDefaults가 새로 시작하는데, 기기 시스템 언어가 영어면 `en`으로
+    /// 떨어지고 **ko 전용 게이트(수단별 실시간 안내·도보 경로)가 통째로 막힌다**.
+    /// 검증하려고 설치한 기능이 첫 실행에서 안 보이는 것이 이 폴백 때문이었다.
+    /// 사용자가 설정에서 고른 값은 실험판에서도 그대로 1순위다(위 분기가 먼저다).
     static var current: String {
         if let stored = UserDefaults.standard.string(forKey: selectionKey),
            supported.contains(stored) {
             return stored
         }
+        #if EXPERIMENTAL
+        return "ko"
+        #else
         let resolved = Bundle.main.preferredLocalizations.first ?? "ko"
         let base = String(resolved.prefix(2))
         return supported.contains(base) ? base : "ko"
+        #endif
     }
 
     /// 웹 data-locale.ts 동형: 외부 데이터는 ko 외 전부 en.
