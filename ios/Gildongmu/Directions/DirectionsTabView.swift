@@ -500,11 +500,12 @@ struct DirectionsTabView: View {
                         Section {
                             // 수단별 안내 시작 버튼(B1 §3.1) — 수단 heading 착지 후
                             // 첫 스와이프 거리. 게이트가 죽은 버튼을 사전 차단한다.
-                            // 라벨은 수단 무관 공통 — 섹션 헤딩이 이미 수단명이라
-                            // 수단 반복은 중복이다(위원장 판정 2026-08-04).
+                            // 라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨
+                            // 번복): VO 로터 버튼 목록은 헤딩 문맥 없이 버튼 이름만
+                            // 나열해 동일 라벨 3개가 구분 불가다.
                             if mode == .walk, walkGuideStartable,
                                let tracked = trackedDestination {
-                                Button(appLocalized("beacon.guideStart")) {
+                                Button(appLocalized("beacon.guideStartWalk")) {
                                     lastGuideStart = .walk
                                     beacon.toggle(
                                         dest: tracked.dest, label: tracked.label, kind: .walk
@@ -514,7 +515,7 @@ struct DirectionsTabView: View {
                             }
                             if mode == .car, carGuideStartable,
                                let tracked = trackedDestination {
-                                Button(appLocalized("beacon.guideStart")) {
+                                Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     beacon.toggle(
                                         dest: tracked.dest, label: tracked.label, kind: .car
@@ -526,7 +527,7 @@ struct DirectionsTabView: View {
                             // BeaconModel이 아닌 전용 세션(TransitGuideModel)을 연다.
                             if mode == .transit, let startable = transitGuideStartable,
                                let tracked = trackedDestination {
-                                Button(appLocalized("beacon.guideStart")) {
+                                Button(appLocalized("beacon.guideStartTransit")) {
                                     lastGuideStart = .transit
                                     transitGuide.start(
                                         transitRoute: startable, destinationLabel: tracked.label

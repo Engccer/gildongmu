@@ -180,26 +180,32 @@ afterEach(() => {
   mockLocale = "ko";
 });
 
+// 라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨 번복) — 세 키를 한 번에 조회.
+const GUIDE_START_NAME = /^guideStart(Walk|Car|Transit)$/;
+const guideStartButtons = () =>
+  screen.queryAllByRole("button", { name: GUIDE_START_NAME });
+
 describe("수단별 안내 진입점 게이트(§3.1)", () => {
-  it("ko + 도보·자동차(tmap) 성공: 두 시작 버튼 노출, 간략 폴백 없음", async () => {
+  it("ko + 도보·자동차(tmap) 성공: 수단별 시작 버튼 노출, 간략 폴백 없음", async () => {
     stubFetch({ walk: "ok", car: "tmap" });
     await queryRoutes();
-    // 라벨은 수단 무관 공통(위원장 판정 2026-08-04) — 도보·자동차 섹션에 하나씩.
-    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "guideStartWalk" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "guideStartCar" })).toBeTruthy();
+    expect(guideStartButtons()).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
   it("ko + 자동차 kakao 폴백(도보 실패): 자동차 버튼 없음 + 간략 폴백 노출", async () => {
     stubFetch({ walk: "fail", car: "kakao" });
     await queryRoutes();
-    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
   it("ko + 전 수단 실패: 목적지 확정이면 간략 폴백만 노출", async () => {
     stubFetch({ walk: "fail", car: "fail" });
     await queryRoutes();
-    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
@@ -207,7 +213,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     mockLocale = "en";
     stubFetch({ walk: "ok", car: "tmap" });
     await queryRoutes();
-    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
@@ -215,20 +221,21 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
   it("ko + 대중교통만 성공(탑승 leg 有): 시작 버튼 1개, 간략 폴백 없음", async () => {
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();
-    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "guideStartTransit" })).toBeTruthy();
+    expect(guideStartButtons()).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
-  it("ko + 3수단 전부 시작 가능: 공통 라벨 버튼 3개", async () => {
+  it("ko + 3수단 전부 시작 가능: 수단별 라벨 버튼 3개", async () => {
     stubFetch({ walk: "ok", car: "tmap", transit: "ok" });
     await queryRoutes();
-    expect(screen.getAllByRole("button", { name: "guideStart" })).toHaveLength(3);
+    expect(guideStartButtons()).toHaveLength(3);
   });
 
   it("도보 전용 대중교통 경로는 시작 불가(탑승 leg 0) — 간략 폴백으로", async () => {
     stubFetch({ walk: "fail", car: "fail", transit: "walkOnly" });
     await queryRoutes();
-    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
@@ -236,6 +243,6 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     mockLocale = "en";
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();
-    expect(screen.queryAllByRole("button", { name: "guideStart" })).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(0);
   });
 });

@@ -23,6 +23,11 @@ struct BeaconTrackingSheet: View {
     /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
     /// 중지 버튼으로 되돌리는 근거(사용자가 누른 결과로 사라지는 경로만 결정론 처리).
     @State private var reroutePressed = false
+    /// 화면 켜기 힌트 영구 해제(피드백 라운드1 13번): 학습되면 잉여인 안내가 매 세션
+    /// 한 행을 차지해 스와이프 비용을 늘렸다 — 첫 사용 안내 + "다시 보지 않음"으로.
+    static let screenHintDismissedKey = "beaconScreenHintDismissed"
+    @State private var screenHintDismissed =
+        UserDefaults.standard.bool(forKey: BeaconTrackingSheet.screenHintDismissedKey)
 
     var body: some View {
         List {
@@ -69,9 +74,20 @@ struct BeaconTrackingSheet: View {
                 if !model.statusText.isEmpty {
                     distanceText(model.statusText).foregroundStyle(.secondary)
                 }
-                Text(appLocalized("beacon.screenHint"))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                if !screenHintDismissed {
+                    Text(appLocalized("beacon.screenHint"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    // 해제 버튼 자신이 사라지는 전이 — 포커스를 상시 존재하는 중지
+                    // 버튼으로 되돌린다(헌장 §5, 재조회 성공 경로와 동형).
+                    Button(appLocalized("beacon.screenHintDismiss")) {
+                        UserDefaults.standard.set(
+                            true, forKey: BeaconTrackingSheet.screenHintDismissedKey
+                        )
+                        screenHintDismissed = true
+                        Task { await landStopFocus() }
+                    }
+                }
             } header: {
                 // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
                 // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.

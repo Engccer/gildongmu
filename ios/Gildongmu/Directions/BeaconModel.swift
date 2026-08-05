@@ -103,10 +103,15 @@ final class BeaconModel {
     private var etaCallCount = 0
     private var etaTask: Task<Void, Never>?
     private var guideState: GuideState?
-    /// 시작 직후 경로 조회 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 → 곧바로
-    /// 상세 시작" 이중 발화를 막는다.
+    /// 시작 직후 경로 조회 대기·진행 중 — 이 동안 비콘 발화를 보류해 "간략 첫 거리 →
+    /// 곧바로 상세 시작" 이중 발화를 막는다. 조회 자체는 첫 수용 fix가 트리거한다
+    /// (피드백 라운드1 8번): start() 직후 `currentCoordinate()`는 첫 fix 전이라 캐시
+    /// 게이트에서 즉시 실패해 첫 세션의 상세 안내가 구조적으로 죽었다.
     private var awaitingRoute = false
     private var routeFetchTask: Task<Void, Never>?
+    /// 첫 수용 fix 대기 상한 감시. 초과 시 상세를 포기하고 간략으로 정직 폴백
+    /// (위치 대기 문구 — 경로 실패와 원인이 다르므로 문구를 가른다).
+    private var fixWaitTask: Task<Void, Never>?
     /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
     private var pendingRecovery: String?
     /// 간략→상세 전환 모호 해소 대기 시작 시각(스펙 §6). nil이면 대기 없음.
@@ -239,14 +244,30 @@ final class BeaconModel {
         startWatchdog()
 
         // 상세 적격 시도(스펙 §4.1): ko 데이터 로케일에서만 경로를 조회한다(도보 API
-        // V1 ko 전용). 조회 중엔 비콘 발화를 보류하고, 실패는 간략으로 정직 폴백.
+        // V1 ko 전용). 조회 트리거는 첫 수용 fix(handle(fix:))다 — 여기서 바로 띄우면
+        // origin 취득이 첫 fix 전이라 항상 실패해 간략 폴백이 고정된다(8번).
+        // 대기·조회 중엔 비콘 발화를 보류하고, 실패는 간략으로 정직 폴백.
         if AppLanguage.dataLocale == "ko" {
             awaitingRoute = true
             routeFetchToken += 1
-            let token = routeFetchToken
-            routeFetchTask = Task { [weak self] in
-                await self?.fetchGuideRoute(dest: dest, token: token)
-            }
+            startFixWaitWatch(token: routeFetchToken)
+        }
+    }
+
+    /// 첫 수용 fix가 상한(noFixTimeout) 내에 오지 않으면 상세를 포기하고 간략 폴백.
+    /// 없으면 awaitingRoute가 발화를 무한 보류해 세션이 침묵에 갇힌다.
+    private func startFixWaitWatch(token: Int) {
+        fixWaitTask?.cancel()
+        fixWaitTask = Task { [weak self, timeout = noFixTimeout] in
+            try? await Task.sleep(for: .seconds(timeout))
+            guard let self, !Task.isCancelled else { return }
+            guard token == self.routeFetchToken, self.isTracking,
+                  self.awaitingRoute, self.routeFetchTask == nil else { return }
+            self.awaitingRoute = false
+            self.fallbackToBrief(key: "guide.detailNoLocation")
+            // 위치 부재는 이 문구가 이미 말했다 — 워치독 약신호 통지가 같은 시점에
+            // 겹치지 않게 재통지 창(30초)을 소비한다.
+            self.lastStaleNoticeAt = self.uptimeNow
         }
     }
 
@@ -279,16 +300,17 @@ final class BeaconModel {
         return (route, [], briefing.durationSeconds)
     }
 
-    /// 시작 시 상세 경로 조회. 성공하면 상세 모드 + 원자 시작 발화, 실패는 간략 폴백.
+    /// 상세 경로 조회 — 첫 수용 fix가 트리거하고 그 좌표가 origin이다(8번: 위치
+    /// 재조회 의존 제거). 성공하면 상세 모드 + 원자 시작 발화, 실패는 간략 폴백.
     /// "이 세션에서 현재 목적지에 대해 조회"가 곧 상세 적격 조건이다(스펙 §4.1).
-    private func fetchGuideRoute(dest: BeaconDest, token: Int) async {
+    private func fetchGuideRoute(
+        origin: (lat: Double, lng: Double), dest: BeaconDest, token: Int
+    ) async {
         // defer는 다른 가드를 거치지 않으므로 세대 토큰으로 자기 세션에만 작용시킨다.
         // 없으면 stale task의 defer가 새 세션의 awaitingRoute를 조기 해제해 이중 발화
         // 방지(§4.1)가 깨진다(독립 리뷰 MEDIUM).
         defer { if token == routeFetchToken { awaitingRoute = false } }
         do {
-            let origin = try await LocationService.shared.currentCoordinate()
-            guard !Task.isCancelled, isTracking, self.dest == dest else { return }
             let fetched = try await fetchDetailData(origin: origin, dest: dest)
             guard !Task.isCancelled, isTracking, self.dest == dest else { return }
             guard let fetched else {
@@ -370,10 +392,12 @@ final class BeaconModel {
     }
 
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
-    private func fallbackToBrief() {
+    /// 문구는 원인별로 가른다(8번): 경로 실패(기본)와 위치 대기 실패는 사용자가 취할
+    /// 행동이 다르다(잠시 후 전환 재시도 vs 하늘 트인 곳으로 이동).
+    private func fallbackToBrief(key: String = "guide.detailUnavailable") {
         mode = .brief
         remainingText = nil
-        let text = appLocalized("guide.detailUnavailable")
+        let text = appLocalized(key)
         statusText = text
         announce(text)
     }
@@ -434,6 +458,8 @@ final class BeaconModel {
         // 세션 종료 = 경로 폐기(스펙 §7.3 약관 경계: 메모리 한정·세션 간 재사용 금지).
         routeFetchTask?.cancel()
         routeFetchTask = nil
+        fixWaitTask?.cancel()
+        fixWaitTask = nil
         awaitingRoute = false
         mode = .brief
         sessionKind = .walk
@@ -502,10 +528,20 @@ final class BeaconModel {
     private func handle(fix: LocationService.BeaconFixPayload) {
         guard isTracking, let dest else { return }
 
-        // 경로 조회 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의 이중 발화
-        // 차단). fix는 오고 있으므로 워치독 기준만 갱신.
+        // 경로 조회 대기·진행 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의
+        // 이중 발화 차단). 첫 수용 fix가 조회 트리거이자 origin이다(8번).
         if awaitingRoute {
             lastFixAt = uptimeNow
+            let age = Date().timeIntervalSince(fix.timestamp)
+            if routeFetchTask == nil, isUsableFix(accuracy: fix.accuracy, ageSeconds: age) {
+                fixWaitTask?.cancel()
+                fixWaitTask = nil
+                let token = routeFetchToken
+                let origin = (lat: fix.lat, lng: fix.lng)
+                routeFetchTask = Task { [weak self] in
+                    await self?.fetchGuideRoute(origin: origin, dest: dest, token: token)
+                }
+            }
             return
         }
         if mode == .detail, let route = guideRoute {
@@ -856,6 +892,9 @@ final class BeaconModel {
     }
 
     private func noticeStaleIfNeeded(force: Bool) {
+        // 첫 fix 대기 창에선 fixWaitTask가 단일 권위 신호다(8번): 같은 15초에 워치독
+        // "신호 약함"과 "위치 미확인 폴백"이 연달아 발화하는 이중 통지를 막는다.
+        guard !awaitingRoute else { return }
         let now = ProcessInfo.processInfo.systemUptime
         let reference = lastFixAt ?? startedAt ?? now
         guard force || now - reference >= noFixTimeout else { return }

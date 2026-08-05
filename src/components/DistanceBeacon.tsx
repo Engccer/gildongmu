@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
 
+/** 화면 켜기 힌트 영구 해제(피드백 라운드1 13번, iOS UserDefaults 미러). */
+const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
+
 /**
  * 실시간 길 안내 UI — disclosure(헤더 버튼)로 접고 펴는 패널 안에 시작/중지 토글 +
  * 안내 컨트롤 + 단일 polite live region.
@@ -49,6 +52,15 @@ export function DistanceBeacon({
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
   const [open, setOpen] = useState(false);
+  // 학습되면 잉여인 안내가 매 세션 한 행을 차지했다(13번) — 첫 사용 안내 +
+  // "다시 보지 않음". localStorage 불가 환경은 항상 표시로 수렴(편의 기능).
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(SCREEN_HINT_DISMISSED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const guide = useRouteGuide(dest, kind);
 
   // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
@@ -108,7 +120,28 @@ export function DistanceBeacon({
           {tracking && guide.mode === "brief" && (
             <p className="text-xs text-muted">{t("straightLineNote")}</p>
           )}
-          <p className="mt-0.5 text-xs text-muted">{t("screenHint")}</p>
+          {!hintDismissed && (
+            <>
+              <p className="mt-0.5 text-xs text-muted">{t("screenHint")}</p>
+              {/* 해제 버튼 자신이 사라지는 전이 — 포커스를 상시 존재하는 토글로 먼저
+                  옮긴 뒤 상태를 바꾼다(헌장 §5, 재조회 성공 경로와 동형). */}
+              <button
+                type="button"
+                onClick={() => {
+                  (stopToggleRef.current ?? triggerRef.current)?.focus();
+                  try {
+                    localStorage.setItem(SCREEN_HINT_DISMISSED_KEY, "1");
+                  } catch {
+                    // 저장 불가면 이번 패널에서만 숨김 — 편의 기능
+                  }
+                  setHintDismissed(true);
+                }}
+                className={controlClass}
+              >
+                {t("screenHintDismiss")}
+              </button>
+            </>
+          )}
           <div className="flex flex-wrap gap-2">
             {/* 상태 신호는 라벨 교체가 전부다 — aria-pressed 병기는 "안내 중지,
                 선택됨"처럼 모호한 이중 상태를 만든다(W3C APG, a11y 감사).
