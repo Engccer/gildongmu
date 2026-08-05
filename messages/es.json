@@ -820,6 +820,12 @@
     "waitingLabel": "Elige tu vehículo",
     "noCandidates": "Aún no hay vehículos en camino",
     "bound": "Destino {dest}",
-    "resumed": "Reanudando la guía."
+    "resumed": "Reanudando la guía.",
+    "refresh": "Actualizar",
+    "boardAlready": "Ya subí",
+    "cancelChangeBoarding": "Cancelar cambio de embarque",
+    "waitingCount": "{count} opciones de embarque.",
+    "noCandidatesFiltered": "Solo se muestran vehículos de otras líneas",
+    "noCandidatesUnavailable": "No se pudo cargar la lista en tiempo real"
   }
 }

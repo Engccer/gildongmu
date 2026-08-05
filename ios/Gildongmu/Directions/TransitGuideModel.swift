@@ -22,6 +22,8 @@ final class TransitGuideModel {
     /// 대기 목록 스냅숏(§5.1): 현재 폴 항목 + 소실 항목(3분 유지, 관측 경과 분).
     private(set) var waitingLive: [TransitTrackItem] = []
     private(set) var waitingDeparted: [(item: TransitTrackItem, minutes: Int)] = []
+    /// 마지막 대기 폴의 0건 사유(§13.3) — 항목이 있으면 nil.
+    private(set) var waitingReason: TransitWaitingEmptyReason?
 
     var isTracking: Bool { state != nil }
     var currentLeg: TransitGuideLeg? {
@@ -42,6 +44,8 @@ final class TransitGuideModel {
     private var tagoUnsupported: Set<String> = []
     /// 백그라운드 일시정지 표식 — 복귀 통지 분기(§3.2).
     private var pausedInBackground = false
+    /// 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비.
+    private var refreshAnnounce = false
 
     private static let retainSeconds: TimeInterval = 180
 
@@ -82,10 +86,12 @@ final class TransitGuideModel {
         route = nil
         waitingLive = []
         waitingDeparted = []
+        waitingReason = nil
         retained = [:]
         tagoResolved = [:]
         tagoUnsupported = []
         pausedInBackground = false
+        refreshAnnounce = false
     }
 
     /// 목적지 변경으로 세션 채널이 무의미해지는 전이(§3.3 — 명시 중지 + 통지).
@@ -150,6 +156,7 @@ final class TransitGuideModel {
         } else {
             waitingLive = []
             waitingDeparted = []
+            waitingReason = nil
             retained = [:]
             restartPollLoop(immediate: true)
         }
@@ -157,9 +164,40 @@ final class TransitGuideModel {
 
     func changeBoarding() {
         dispatch(.changeBoarding)
+        // §13.1: 소실 항목 3분 버퍼(retained)는 비우지 않는다 — 잘못 잠근 채 이동한
+        // 뒤 돌아온 목록에서 원래 열차가 사라지던 경로. 스냅숏만 비우고 즉폴이 재구성.
         waitingLive = []
         waitingDeparted = []
-        retained = [:]
+        waitingReason = nil
+        restartPollLoop(immediate: true)
+    }
+
+    /// 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유).
+    func cancelChangeBoarding() {
+        guard let lock = state?.previousLock else { return }
+        dispatch(.board(lock))
+        restartPollLoop(immediate: true)
+    }
+
+    /// "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형).
+    func boardAlready() {
+        guard let leg = currentLeg, let trackMode = leg.trackMode, trackMode != .tagoBus else {
+            return
+        }
+        let direction = leg.wayCode == 1 ? "상행" : leg.wayCode == 2 ? "하행" : ""
+        dispatch(.board(TransitLock(
+            mode: trackMode,
+            routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
+            direction: direction,
+            vehicleId: ""
+        )))
+        restartPollLoop(immediate: true)
+    }
+
+    /// 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외).
+    func refreshWaiting() {
+        guard state?.phase == .waiting else { return }
+        refreshAnnounce = true
         restartPollLoop(immediate: true)
     }
 
@@ -186,7 +224,11 @@ final class TransitGuideModel {
         if let message = state.lastMessage, !message.isEmpty {
             parts.append(frameText(leg, message))
         }
-        if leg.trackMode == .tagoBus { parts.append(appLocalized("transitGuide.approxNote")) }
+        // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
+        // 대기 중에도 근사 예고로 유지).
+        if leg.trackMode == .tagoBus || (state.lock.map(isApproxTransitLock) ?? false) {
+            parts.append(appLocalized("transitGuide.approxNote"))
+        }
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.
         if state.signal == .tracking, let age = state.dataAgeSeconds {
@@ -233,53 +275,105 @@ final class TransitGuideModel {
         let phaseGen = state.phaseGen
         seq += 1
         let mySeq = seq
-        let poll = await fetchPoll(leg: leg, phase: state.phase)
+        let (poll, rawCount) = await fetchPoll(leg: leg, phase: state.phase)
         guard !Task.isCancelled else { return }
         // 대기 목록 스냅숏(§5.1) — 소실 유지·경과 계산은 폴 시점에.
         if self.state?.phase == .waiting, self.state?.phaseGen == phaseGen {
-            updateWaitingSnapshot(poll: poll)
+            updateWaitingSnapshot(poll: poll, rawCount: rawCount)
+            logWaitingPoll(seq: mySeq, poll: poll, rawCount: rawCount, leg: leg)
+            // 새로고침 직접 응답(§13.2): 자동 폴 무낭독 규칙의 대상이 아니다 —
+            // 사용자 요청의 응답이라 결과(후보 수 또는 0건 사유)를 .high로 통지.
+            if refreshAnnounce, leg.trackMode != .tagoBus {
+                refreshAnnounce = false
+                let candidates = classifyTransitBoardingCandidates(
+                    waitingLive + waitingDeparted.map(\.item), leg: leg
+                ).candidates
+                let text = candidates.isEmpty
+                    ? reasonText(waitingReason ?? TransitWaitingEmptyReason.none)
+                    : appLocalized("transitGuide.waitingCount", String(candidates.count))
+                announce(text, highPriority: true)
+            }
         }
+        refreshAnnounce = false
         dispatch(.poll(seq: mySeq, phaseGen: phaseGen, poll: poll))
     }
 
-    private func fetchPoll(leg: TransitGuideLeg, phase: TransitPhase) async -> TransitTrackPoll {
+    private func fetchPoll(
+        leg: TransitGuideLeg, phase: TransitPhase
+    ) async -> (poll: TransitTrackPoll, rawCount: Int?) {
         do {
             switch leg.trackMode {
             case .seoulBus:
                 if phase == .waiting {
                     guard let arsId = leg.boardStop?.arsId, let routeId = leg.routeId else {
-                        return .unsupported
+                        return (.unsupported, nil)
                     }
-                    return TransitTrackService.poll(
-                        from: try await trackService.seoulWait(arsId: arsId, routeId: routeId))
+                    let env = try await trackService.seoulWait(arsId: arsId, routeId: routeId)
+                    return (TransitTrackService.poll(from: env), env.rawCount)
                 }
                 guard let boardId = leg.boardStop?.localId,
                       let alightId = leg.alightStop?.localId,
                       let routeId = leg.routeId
-                else { return .unsupported }
-                return TransitTrackService.poll(
-                    from: try await trackService.seoulRide(
-                        routeId: routeId, boardId: boardId, alightId: alightId))
+                else { return (.unsupported, nil) }
+                let env = try await trackService.seoulRide(
+                    routeId: routeId, boardId: boardId, alightId: alightId)
+                return (TransitTrackService.poll(from: env), env.rawCount)
             case .tagoBus:
                 guard let resolved = await resolveTagoIfNeeded(leg: leg, phase: phase) else {
-                    guard let state else { return .failed }
-                    return tagoUnsupported.contains(tagoCacheKey(state.legIndex, phase: phase))
-                        ? .unsupported : .failed
+                    guard let state else { return (.failed, nil) }
+                    let unsupported = tagoUnsupported.contains(
+                        tagoCacheKey(state.legIndex, phase: phase))
+                    return (unsupported ? .unsupported : .failed, nil)
                 }
-                return TransitTrackService.poll(
-                    from: try await trackService.tagoTrack(
-                        cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName))
+                let env = try await trackService.tagoTrack(
+                    cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName)
+                return (TransitTrackService.poll(from: env), env.rawCount)
             case .subway:
                 let station = phase == .waiting ? leg.boardName : leg.alightName
-                guard !station.isEmpty else { return .unsupported }
-                return TransitTrackService.poll(
-                    from: try await trackService.subwayTrack(station: station, line: leg.lineName))
+                guard !station.isEmpty else { return (.unsupported, nil) }
+                let env = try await trackService.subwayTrack(station: station, line: leg.lineName)
+                return (TransitTrackService.poll(from: env), env.rawCount)
             case nil:
-                return .unsupported
+                return (.unsupported, nil)
             }
         } catch {
-            return .failed
+            return (.failed, nil)
         }
+    }
+
+    /// 0건 사유 문구(§13.3 3-state) — 목록 자리(시트)·새로고침 응답 공용.
+    func reasonText(_ reason: TransitWaitingEmptyReason) -> String {
+        switch reason {
+        case .none: appLocalized("transitGuide.noCandidates")
+        case .filtered: appLocalized("transitGuide.noCandidatesFiltered")
+        case .unavailable: appLocalized("transitGuide.noCandidatesUnavailable")
+        }
+    }
+
+    /// 대기 국면 계측(§13.5) — 실험판 전용, 폴마다 status·원시 건수·필터 단계별
+    /// 잔존·비활성 사유를 남겨 #4 원인 6후보를 다음 실승차 로그로 가른다.
+    private func logWaitingPoll(
+        seq: Int, poll: TransitTrackPoll, rawCount: Int?, leg: TransitGuideLeg
+    ) {
+        transitGuideLog({
+            let status = switch poll {
+            case let .ok(items): "ok(\(items.count))"
+            case .empty: "empty"
+            case .unsupported: "unsupported"
+            case .failed: "failed"
+            }
+            let classified = classifyTransitBoardingCandidates(
+                waitingLive + waitingDeparted.map(\.item), leg: leg)
+            let vehIdless = classified.candidates
+                .count(where: { $0.item.vehicleId?.isEmpty != false })
+            let terminates = classified.candidates.count(where: \.terminatesEarly)
+            return "waitPoll seq=\(seq) status=\(status) raw=\(rawCount.map(String.init) ?? "-")"
+                + " live=\(waitingLive.count) departed=\(waitingDeparted.count)"
+                + " candidates=\(classified.candidates.count) vehIdless=\(vehIdless)"
+                + " terminates=\(terminates)"
+                + " directionUncertain=\(classified.directionUncertain)"
+                + " reason=\(waitingReason?.rawValue ?? "-")"
+        }())
     }
 
     /// 지방버스 정류소 해석(세션·leg당 1회, §5.2). 모호·부재는 unsupported 캐시.
@@ -309,7 +403,8 @@ final class TransitGuideModel {
         }
     }
 
-    private func updateWaitingSnapshot(poll: TransitTrackPoll) {
+    private func updateWaitingSnapshot(poll: TransitTrackPoll, rawCount: Int?) {
+        waitingReason = transitWaitingEmptyReason(poll: poll, rawCount: rawCount)
         let items: [TransitTrackItem] = if case let .ok(list) = poll { list } else { [] }
         let now = Date()
         for item in items {
@@ -331,6 +426,14 @@ final class TransitGuideModel {
         guard let state, let route else { return }
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
         self.state = result.state
+        // 계측(§13.5): 국면·신호 전이와 이벤트만 기록(무이벤트 폴 소음 제외).
+        if result.event != nil || result.state.phase != state.phase
+            || result.state.signal != state.signal {
+            transitGuideLog(
+                "step phase=\(state.phase.rawValue)→\(result.state.phase.rawValue)"
+                    + " signal=\(state.signal.rawValue)→\(result.state.signal.rawValue)"
+                    + " event=\(result.event.map { String(describing: $0) } ?? "-")")
+        }
         if let event = result.event { handle(event: event) }
     }
 

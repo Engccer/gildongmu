@@ -22,7 +22,7 @@ public enum TransitSignal: String, Sendable {
     case tracking, notYetVisible, signalLost, upstreamFailed, untrackable
 }
 
-/// 잠금·매칭 복합 키(§4.2). tagoBus 근사는 vehicleId ""(차량 식별자 부재).
+/// 잠금·매칭 복합 키(§4.2). vehicleId "" = 근사 잠금(차량 식별자 부재, §13.2).
 public struct TransitLock: Codable, Sendable, Equatable {
     public let mode: TransitTrackMode
     public let routeId: String
@@ -35,6 +35,13 @@ public struct TransitLock: Codable, Sendable, Equatable {
         self.direction = direction
         self.vehicleId = vehicleId
     }
+}
+
+/// 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탑승했습니다"
+/// (seoulBus·subway에서 식별자 없이 선언)가 같은 소비 한계를 상속한다 —
+/// arrived 전이 금지·advance 상시·기준 차량 교체 통지·근사 주석.
+public func isApproxTransitLock(_ lock: TransitLock) -> Bool {
+    lock.vehicleId.isEmpty
 }
 
 /// 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다.
@@ -129,6 +136,22 @@ public enum TransitTrackPoll: Sendable {
     case failed
 }
 
+/// 대기 목록 0건 사유(§13.3): 진짜 0건 / 필터 전멸(rawCount>0) / 조회 실패·미지원.
+public enum TransitWaitingEmptyReason: String, Sendable {
+    case none, filtered, unavailable
+}
+
+/// 대기 폴 결과 → 0건 사유 판정(§13.3) — 웹 `waitingEmptyReason` 미러.
+public func transitWaitingEmptyReason(
+    poll: TransitTrackPoll, rawCount: Int?
+) -> TransitWaitingEmptyReason? {
+    switch poll {
+    case let .ok(items) where !items.isEmpty: nil
+    case .ok, .empty: (rawCount ?? 0) > 0 ? .filtered : TransitWaitingEmptyReason.none
+    case .unsupported, .failed: .unavailable
+    }
+}
+
 public enum TransitGuideInput: Sendable {
     case poll(seq: Int, phaseGen: Int, poll: TransitTrackPoll)
     case board(TransitLock)
@@ -160,6 +183,8 @@ public struct TransitGuideState: Sendable {
     public var lastSeq: Int
     public var signal: TransitSignal
     public var lock: TransitLock?
+    /// 탑승 변경으로 해제한 직전 잠금(§13.1) — "탑승 변경 취소"의 복귀 대상.
+    public var previousLock: TransitLock?
     public var remaining: Int?
     public var lastMessage: String?
     public var lastUpdatedAt: Double?
@@ -363,6 +388,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         lastSeq: 0,
         signal: route.legs.first?.trackMode != nil ? .notYetVisible : .untrackable,
         lock: nil,
+        previousLock: nil,
         remaining: nil,
         lastMessage: nil,
         lastUpdatedAt: nil,
@@ -415,6 +441,7 @@ private func handleBoard(
     next.phase = .riding
     next.phaseGen += 1
     next.lock = lock
+    next.previousLock = nil
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
@@ -436,6 +463,8 @@ private func handleChangeBoarding(
     next.phase = .waiting
     next.phaseGen += 1
     next.lock = nil
+    // 직전 잠금 보존(§13.1) — "탑승 변경 취소"가 board(previousLock)로 복귀한다.
+    next.previousLock = state.lock
     next.remaining = nil
     next.lastMessage = nil
     next.currentLocation = nil
@@ -448,12 +477,12 @@ private func handleChangeBoarding(
     return (next, .boardingReset)
 }
 
-/// advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사(tagoBus) 상시.
-private func canAdvance(_ state: TransitGuideState, route: TransitGuideRoute) -> Bool {
+/// advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사 잠금 상시(§13.2).
+private func canAdvance(_ state: TransitGuideState, route _: TransitGuideRoute) -> Bool {
     if state.phase == .arrived { return true }
     if state.signal == .untrackable { return true }
-    guard route.legs.indices.contains(state.legIndex) else { return false }
-    return state.phase == .riding && route.legs[state.legIndex].trackMode == .tagoBus
+    guard let lock = state.lock else { return false }
+    return state.phase == .riding && isApproxTransitLock(lock)
 }
 
 /// 다음 구간 전환 — 사용자 확인(§4.2 원자 전이). 유효 국면 밖의 advance는 no-op
@@ -472,6 +501,7 @@ private func handleAdvance(
         next.signal = route.legs[nextIndex].trackMode != nil ? .notYetVisible : .untrackable
     }
     next.lock = nil
+    next.previousLock = nil
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
@@ -549,10 +579,11 @@ private func handlePoll(
     }
     next.missCount += 1
     next.lastUpdatedAt = now
+    // 근사 잠금은 도착 추정 제외(§13.2 — 식별자가 없어 "소실"이 하차 신호가 아니다).
     if state.phase == .riding,
        let remaining = state.remaining, remaining <= 1,
        next.missCount >= transitMissArriveCount,
-       state.lock?.mode != .tagoBus {
+       let lock = state.lock, !isApproxTransitLock(lock) {
         next.phase = .arrived
         next.arrivedCertain = false
         return (next, .arrived(certain: false))
@@ -565,13 +596,17 @@ private func handlePoll(
 }
 
 private func findLockedItem(_ items: [TransitTrackItem], lock: TransitLock) -> TransitTrackItem? {
-    if lock.mode == .tagoBus {
-        // 근사(§5.2): 같은 노선의 최근접 접근 차량(잔여 최소).
-        let withRemaining = items.filter { $0.remainingStops != nil }
+    if isApproxTransitLock(lock) {
+        // 근사(§5.2·§13.2): 방향 일치(양측 보유 시) 항목 중 최근접 접근 차량(잔여
+        // 최소). tagoBus는 방향이 ""라 무필터 — 기존 행동 불변.
+        let pool = items.filter {
+            lock.direction.isEmpty || $0.direction.isEmpty || $0.direction == lock.direction
+        }
+        let withRemaining = pool.filter { $0.remainingStops != nil }
         if let best = withRemaining.min(by: { ($0.remainingStops ?? .max) < ($1.remainingStops ?? .max) }) {
             return best
         }
-        return items.first
+        return pool.first
     }
     return items.first { transitLockMatches($0, lock: lock) }
 }
@@ -622,12 +657,15 @@ private func commitMatched(
         return (out, carriedEvent)
     }
 
-    // 도착 관측(§4.2): 지하철 arvlCd "1" / 서울버스 잔여 0. tagoBus는 arrived 없음.
-    let arrivedObserved: Bool = switch base.lock?.mode {
+    // 도착 관측(§4.2): 지하철 arvlCd "1" / 서울버스 잔여 0. 근사 잠금은 arrived 전이
+    // 없음(§5.2·§13.2 — 식별자가 없어 그 도착이 내 차량이라는 확정이 불가능하다).
+    let approx = base.lock.map(isApproxTransitLock) ?? false
+    let arrivedByMode: Bool = switch base.lock?.mode {
     case .subway: item.arrivalCode == "1"
     case .seoulBus: item.remainingStops == 0
     default: false
     }
+    let arrivedObserved = !approx && arrivedByMode
     if arrivedObserved {
         out.phase = .arrived
         out.arrivedCertain = true
@@ -647,8 +685,8 @@ private func commitMatched(
         return (out, carriedEvent)
     }
 
-    // 근사 기준 차량 교체(§5.2): 잔여 역행 관측.
-    if base.lock?.mode == .tagoBus, let prev = prevRemaining, remaining > prev {
+    // 근사 기준 차량 교체(§5.2·§13.2): 잔여 역행 관측.
+    if approx, let prev = prevRemaining, remaining > prev {
         out.ladderAnnounced = nil
         return (out, .approxVehicleChanged(message: item.message))
     }

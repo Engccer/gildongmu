@@ -820,6 +820,12 @@
     "waitingLabel": "Choose your vehicle",
     "noCandidates": "No arriving vehicles yet",
     "bound": "Bound for {dest}",
-    "resumed": "Resuming guidance."
+    "resumed": "Resuming guidance.",
+    "refresh": "Refresh",
+    "boardAlready": "I already boarded",
+    "cancelChangeBoarding": "Cancel boarding change",
+    "waitingCount": "{count} boarding options.",
+    "noCandidatesFiltered": "Only vehicles from other routes are showing",
+    "noCandidatesUnavailable": "Couldn't load the realtime list"
   }
 }

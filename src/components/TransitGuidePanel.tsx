@@ -1,8 +1,10 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
+import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
+import { isApproxTransitLock } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
 
@@ -34,6 +36,8 @@ export function TransitGuidePanel({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const advanceRef = useRef<HTMLButtonElement>(null);
+  const waitingLabelRef = useRef<HTMLParagraphElement>(null);
+  const listHadFocusRef = useRef(false);
 
   const state = guide.state;
   // 펼침은 별도 상태가 아니라 세션 존재에서 파생한다(트리거=시작이므로 동치).
@@ -56,6 +60,18 @@ export function TransitGuidePanel({
     }
     prevPhaseRef.current = phase;
   }, [state?.phase]);
+
+  // 목록 포커스 소실 복귀(§13.4, 헌장 §5): 폴링 갱신으로 포커스가 얹힌 항목이
+  // 사라지면(브라우저는 제거된 요소의 blur를 내지 않아 body로 조용히 이탈)
+  // 목록 라벨로 선점 복귀한다. 목록 밖 포커스는 건드리지 않는다(강탈 금지).
+  const optionKeys = guide.waitingOptions.map((o) => o.key).join("|");
+  useLayoutEffect(() => {
+    if (!listHadFocusRef.current) return;
+    if (document.activeElement === document.body || document.activeElement === null) {
+      listHadFocusRef.current = false;
+      waitingLabelRef.current?.focus();
+    }
+  }, [optionKeys]);
 
   if (!guide.startable) return null;
 
@@ -111,14 +127,34 @@ export function TransitGuidePanel({
                 </button>
               ) : (
                 <>
-                  <p className="text-sm font-medium">{t("waitingLabel")}</p>
+                  {/* 포커스 소실 복귀 착지점(§13.4) — tabIndex -1로 프로그래매틱 전용. */}
+                  <p ref={waitingLabelRef} tabIndex={-1} className="text-sm font-medium">
+                    {t("waitingLabel")}
+                  </p>
                   {guide.directionUncertain && guide.waitingOptions.length > 0 && (
                     <p className="text-sm">{t("directionCheck")}</p>
                   )}
                   {guide.waitingOptions.length === 0 && (
-                    <p className="text-sm">{t("noCandidates")}</p>
+                    // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
+                    <p className="text-sm">
+                      {guide.waitingReason === "filtered"
+                        ? t("noCandidatesFiltered")
+                        : guide.waitingReason === "unavailable"
+                          ? t("noCandidatesUnavailable")
+                          : t("noCandidates")}
+                    </p>
                   )}
-                  <ul className="mt-1">
+                  <ul
+                    className="mt-1"
+                    onFocusCapture={() => {
+                      listHadFocusRef.current = true;
+                    }}
+                    onBlurCapture={(e: FocusEvent<HTMLUListElement>) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        listHadFocusRef.current = false;
+                      }
+                    }}
+                  >
                     {guide.waitingOptions.map((option) => {
                       const item = option.candidate.item;
                       const desc = joinText(
@@ -167,6 +203,32 @@ export function TransitGuidePanel({
                       );
                     })}
                   </ul>
+                  {/* 대기 국면 탈출구(§13.2) + 탑승 변경 취소(§13.1). */}
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={guide.refreshWaiting}
+                      className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                    >
+                      {t("refresh")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={guide.boardAlready}
+                      className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                    >
+                      {t("boardAlready")}
+                    </button>
+                    {state.previousLock && (
+                      <button
+                        type="button"
+                        onClick={guide.cancelChangeBoarding}
+                        className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                      >
+                        {t("cancelChangeBoarding")}
+                      </button>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -174,7 +236,9 @@ export function TransitGuidePanel({
 
           {(state.phase === "riding" || state.phase === "arrived") && (
             <div className="mt-1 flex flex-wrap gap-2">
-              {(state.phase === "arrived" || leg.trackMode === "tagoBus") && (
+              {/* 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다). */}
+              {(state.phase === "arrived" ||
+                (state.lock != null && isApproxTransitLock(state.lock))) && (
                 <button
                   type="button"
                   ref={advanceRef}

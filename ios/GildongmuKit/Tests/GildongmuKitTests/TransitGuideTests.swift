@@ -43,9 +43,13 @@ private struct FixtureExpect: Decodable {
     // remaining은 "명시 null"(추출 실패 기대)과 "미지정"을 구분해야 한다.
     let remaining: Int??
     let dataAgeSeconds: Int??
+    // previousLock은 락 참조 이름 또는 "명시 null"(소거 기대, §13.1).
+    let previousLock: String??
     let event: FixtureEvent??
 
-    enum CodingKeys: String, CodingKey { case phase, signal, legIndex, remaining, dataAgeSeconds, event }
+    enum CodingKeys: String, CodingKey {
+        case phase, signal, legIndex, remaining, dataAgeSeconds, previousLock, event
+    }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         phase = try c.decodeIfPresent(String.self, forKey: .phase)
@@ -56,6 +60,9 @@ private struct FixtureExpect: Decodable {
             : .none
         dataAgeSeconds = c.contains(.dataAgeSeconds)
             ? .some(try c.decodeIfPresent(Int.self, forKey: .dataAgeSeconds))
+            : .none
+        previousLock = c.contains(.previousLock)
+            ? .some(try c.decodeIfPresent(String.self, forKey: .previousLock))
             : .none
         event = c.contains(.event)
             ? .some(try c.decodeIfPresent(FixtureEvent.self, forKey: .event))
@@ -168,6 +175,10 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
             }
             if case let .some(expected) = step.expect.dataAgeSeconds {
                 #expect(state.dataAgeSeconds == expected, "\(ctx) dataAgeSeconds")
+            }
+            if case let .some(expectedLockRef) = step.expect.previousLock {
+                let expectedLock = expectedLockRef.flatMap { fixture.locks[$0] }
+                #expect(state.previousLock == expectedLock, "\(ctx) previousLock")
             }
             if case let .some(expectedEvent) = step.expect.event {
                 if let expectedEvent {

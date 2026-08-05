@@ -820,6 +820,12 @@
     "waitingLabel": "Choisissez votre véhicule",
     "noCandidates": "Aucun véhicule en approche pour le moment",
     "bound": "Direction {dest}",
-    "resumed": "Reprise du guidage."
+    "resumed": "Reprise du guidage.",
+    "refresh": "Actualiser",
+    "boardAlready": "Je suis déjà à bord",
+    "cancelChangeBoarding": "Annuler le changement d'embarquement",
+    "waitingCount": "{count} options d'embarquement.",
+    "noCandidatesFiltered": "Seuls des véhicules d'autres lignes apparaissent",
+    "noCandidatesUnavailable": "Impossible de charger la liste en temps réel"
   }
 }
