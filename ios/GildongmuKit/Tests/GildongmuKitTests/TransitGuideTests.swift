@@ -353,3 +353,33 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(decorated.candidates[0].express == true)
     #expect(decorated.candidates[1].terminatesEarly == true)
 }
+
+// 웹 transit-guide.test.ts "경유 목록 현재 위치 매칭(§14.1)"과 동일 케이스(미러 동조).
+@Test func viaStopCurrentIndexMatching() {
+    let leg = TransitGuideLeg(
+        mode: "subway", lineName: "수도권 5호선", trackMode: .subway,
+        boardName: "천호", alightName: "여의도",
+        boardStop: TransitLegStop(name: "천호", lat: 37.5385, lng: 127.1235),
+        alightStop: TransitLegStop(name: "여의도", lat: 37.5216, lng: 126.924),
+        viaStops: [
+            TransitLegStop(name: "천호", lat: 37.5385, lng: 127.1235),
+            TransitLegStop(name: "강동", lat: 37.5359, lng: 127.1323),
+            TransitLegStop(name: "왕십리(성동구청)", lat: 37.5613, lng: 127.0374),
+            TransitLegStop(name: "여의도", lat: 37.5216, lng: 126.924),
+            TransitLegStop(name: "화곡", lat: 37.5416, lng: 126.8406),
+        ],
+        stationCount: 4, routeId: nil, wayCode: 2, walkBeforeMinutes: nil)
+    let empty = TransitGuideLeg(
+        mode: "subway", lineName: "수도권 5호선", trackMode: .subway,
+        boardName: "천호", alightName: "여의도",
+        boardStop: nil, alightStop: nil, viaStops: [],
+        stationCount: nil, routeId: nil, wayCode: nil, walkBeforeMinutes: nil)
+
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: "강동") == 1)
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: "강동역") == 1) // "역" 접미 흡수
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: "왕십리") == 2) // 부역명 괄호 흡수
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: "미지의역") == nil) // 목록 밖 = 무표기
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: nil) == nil)
+    #expect(viaStopCurrentIndex(leg: leg, currentLocation: "") == nil)
+    #expect(viaStopCurrentIndex(leg: empty, currentLocation: "강동") == nil)
+}

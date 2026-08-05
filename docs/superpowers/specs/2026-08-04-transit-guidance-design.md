@@ -259,3 +259,29 @@ waiting에서 사용자가 상황을 움직일 수단이 없었다(자동 폴 �
 - 공유 fixture 증보: 탑승 변경 → previousLock 보존 → 취소(재탑승) 재수렴 / 근사 잠금(지하철): 방향 필터·잔여 최소 매칭·arvlCd "1"에도 arrived 미발동·riding advance 허용 / 근사 잠금 기준 차량 교체 통지. 러너에 `previousLock` 단언 축 추가.
 - 웹 컴포넌트 테스트: 0건 사유 3분기·새로고침 응답 통지·취소 버튼 노출 조건.
 - 실호출 게이트: track 라우트 rawCount가 실응답에서 필터 전·후를 옳게 가르는지(지하철 타 노선 도착 실데이터).
+
+## 14. M3 증보 — 경유역 목록·도보 핸드오프 (2026-08-06, 피드백 라운드1 #3·#6)
+
+### 14.1 경유역 목록 1단계 (피드백 #3)
+
+`viaStops`(§4.1 기보유 — 추가 upstream 호출 0회)를 disclosure로 정적 표시한다. 웹은 `aria-expanded` 버튼, iOS는 `DisclosureGroup`(펼침 시맨틱 정본 — 시뮬 무라벨 셰브런은 아티팩트). 레퍼런스는 카카오지하철 경유역 UX(위원장 캡처).
+
+- **항목은 무헤딩·단일 텍스트**(도착편 관례): "이름, 승차|하차|현재 위치"를 쉼표로 흡수(joinText). 양 끝(첫·마지막)이 승차·하차이고, 현재 위치는 §12.2의 `state.currentLocation`(arvlMsg3)을 `viaStopCurrentIndex`(웹·Kit 미러, 정규화는 종착 검사 `normalizeStopName` 공용)로 매칭 — 지하철 잠금 추적에서만 성립하고 미매칭·버스는 무표기가 정답(3-state).
+- **단계 공개(더 보기·RevealWindow) 비적용 판정**: 항목이 인터랙티브하지 않은 정적 텍스트라 절단 너머 항목이 행동을 바꾸지 않고(교통 목록 비적용 판정 동형), disclosure 펼침 자체가 사용자의 명시 행동이다.
+- leg 전환 시 disclosure는 접힌다(다음 구간의 목록은 다른 목록 — 낡은 펼침 상태 이월 금지).
+- 2단계(역별 장소 상세 링크)는 1단계 실사용 판정 후(계획 보류 유지).
+
+### 14.2 대중교통 완료 → 도보 핸드오프 A안 (피드백 #6, §4.1 비범위 개정)
+
+§4.1의 "도보 안내 **자동** 연결 비범위"는 유지하되(B안 기각 근거: 지하 역사 GPS 공백 — 하차 직후 fix가 없거나 크게 튄다), **제안형(A안)**을 추가한다: done 전이 시 말미 도보(`walkAfterMinutes`)가 있으면 "남은 도보 안내 시작" 버튼을 노출하고 포커스를 선점한다(사라진 "다음 구간" 버튼의 커서를 다음 행동으로 — 헌장 §5).
+
+- **iOS**: done의 `stop()`이 세션 상태를 소거하므로 모델 `pendingWalkHandoff`(목적지 라벨·도보 분)를 stop() **뒤에** 보존한다(stop()이 이 값까지 지우는 단일 소거 경로라 순서 필수). 시트 presentation을 `isTracking ∨ pendingWalkHandoff`로 확장 — 닫기(스와이프·escape·닫기 버튼)는 제안 소거. 수락 시 시트 dismiss 후 600ms 지연을 두고 `beacon.toggle(dest: tracked.dest, kind: .walk)`(같은 계층 두 시트의 단일 presentation 제약). 목적지 변경은 제안도 무효(무통지 소거 — 시트가 닫힌 상태에선 도달 불가 경로지만 방어).
+- **웹**: 훅이 `doneHandoff`를 남기고(다음 시작에서 소거) 패널이 `DistanceBeacon(kind walk, startOnOpen, focusTriggerOnMount)`을 마운트한다 — 세션 스토어 단일성이 상호 배제를 그대로 담당.
+- **게이트 없음**: 세션 자체가 `realtimeGuidanceEnabled ∧ ko` 게이트 안에서만 존재하므로 추가 게이트가 잉여다. 도보 경로 실패는 기존 `fallbackToBrief`가 흡수.
+- **상태 머신 무변경**: done 의미(§4.2)·fixture 불변. 핸드오프는 오케스트레이터 계층의 세션 밖 수명이다.
+
+### 14.3 테스트
+
+- `viaStopCurrentIndex` 웹·Kit 미러 단위 테스트(동일 케이스 — "역" 접미·부역명 괄호·목록 밖·무값·빈 목록).
+- 웹 컴포넌트: 경유역 disclosure 렌더·승차/하차 라벨·현재 위치 병치, done → 핸드오프 트리거 노출+포커스.
+- iOS 시트 분기(핸드오프 뷰·포커스 선점)는 실기기 VO 판정 대상(다음 실승차).

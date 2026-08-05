@@ -31321,6 +31321,206 @@
         }
       }
     },
+    "transitGuide.viaAlight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "하차"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "get off"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bajada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "descente"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "discesa"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "下車"
+          }
+        }
+      }
+    },
+    "transitGuide.viaBoard": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승차"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "board"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "subida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "montée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "salita"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗車"
+          }
+        }
+      }
+    },
+    "transitGuide.viaCurrent": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "current position"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "posición actual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "position actuelle"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "posizione attuale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在位置"
+          }
+        }
+      }
+    },
+    "transitGuide.viaStopsBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유 정류장 %1$@개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stops on this leg"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ paradas en este tramo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ arrêts sur ce tronçon"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ fermate in questa tratta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由停留所%1$@か所"
+          }
+        }
+      }
+    },
+    "transitGuide.viaStopsTrain": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유역 %1$@개"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stations on this leg"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ estaciones en este tramo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stations sur ce tronçon"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ stazioni in questa tratta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由駅%1$@駅"
+          }
+        }
+      }
+    },
     "transitGuide.waitContext": {
       "localizations": {
         "ko": {
@@ -31477,6 +31677,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "乗車する車両を選んでください"
+          }
+        }
+      }
+    },
+    "transitGuide.walkHandoffStart": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 도보 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start remaining walk guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía del trayecto a pie restante"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage à pied restant"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia la guida a piedi rimanente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残りの徒歩案内を開始"
           }
         }
       }

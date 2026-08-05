@@ -358,10 +358,21 @@ public func classifyTransitBoardingCandidates(
     return (candidates, !anyMatched)
 }
 
+/// 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용.
 private func normalizeStopName(_ s: String) -> String {
     var out = s.replacingOccurrences(of: "\\s*\\([^)]*\\)", with: "", options: .regularExpression)
     if out.hasSuffix("역") { out = String(out.dropLast()) }
     return out.trimmingCharacters(in: .whitespaces)
+}
+
+/// 경유 목록에서 현재 위치 역명(arvlMsg3, §12.2)의 인덱스(§14.1 경유역 탑승 위치).
+/// 지하철 잠금 추적에서만 값이 오고, 미매칭(노선 밖 표기·버스)은 무표기가 정답이라
+/// nil. 표기 차이는 종착 검사와 같은 정규화로 흡수한다. 웹 viaStopCurrentIndex 미러.
+public func viaStopCurrentIndex(leg: TransitGuideLeg, currentLocation: String?) -> Int? {
+    guard let currentLocation else { return nil }
+    let target = normalizeStopName(currentLocation)
+    guard !target.isEmpty else { return nil }
+    return leg.viaStops.firstIndex { normalizeStopName($0.name) == target }
 }
 
 /// 종착역이 경유 목록에서 하차역보다 앞이면 그 열차는 하차역에 가지 않는다(§5.1).

@@ -398,6 +398,8 @@ struct DirectionsTabView: View {
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
+    /// 핸드오프 수락 → 비콘 시작의 지연 Task(§14.2) — 화면 이탈 시 취소 대상.
+    @State private var walkHandoffTask: Task<Void, Never>?
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -590,20 +592,39 @@ struct DirectionsTabView: View {
                 )
             }
             // 대중교통 안내 시트(B2 §3.2) — 표시=세션, 닫힘=중지(비콘 시트 1:1 동형).
+            // §14.2: 완료 후 도보 핸드오프 제안이 남아 있는 동안은 세션 없이도 시트를
+            // 유지한다(닫기 = 제안 소거).
             .sheet(isPresented: Binding(
-                get: { transitGuide.isTracking },
+                get: { transitGuide.isTracking || transitGuide.pendingWalkHandoff != nil },
                 set: { presented in
                     guard !presented else { return }
-                    transitGuide.stop(playStopTone: true)
+                    if transitGuide.isTracking {
+                        transitGuide.stop(playStopTone: true)
+                    } else {
+                        transitGuide.clearWalkHandoff()
+                    }
                 }
             )) {
                 TransitTrackingSheet(
                     model: transitGuide,
-                    onStop: { transitGuide.stop(playStopTone: true) }
+                    onStop: { transitGuide.stop(playStopTone: true) },
+                    onWalkHandoff: trackedDestination.map { tracked in
+                        { startWalkHandoff(tracked: tracked) }
+                    }
                 )
             }
             .onChange(of: transitGuide.isTracking) { _, tracking in
-                guard !tracking else { return }
+                // 핸드오프 제안이 시트를 이어받는 전이(§14.2)에선 배경 시작 버튼으로
+                // 포커스를 되돌리지 않는다 — 시트 쪽 onChange가 제안 버튼에 선점한다.
+                guard !tracking, transitGuide.pendingWalkHandoff == nil else { return }
+                landBeaconStartFocus()
+            }
+            // 핸드오프 제안 소거로 시트가 닫히는 경로(§14.2 닫기·스와이프)는 isTracking이
+            // 이미 false라 위 onChange가 재발화하지 않는다 — 이 전이가 유일한 포커스
+            // 복귀 트리거다(독립 리뷰 MAJOR). 수락 경로에서도 발화하지만 600ms 뒤
+            // 비콘 시트가 덮으므로 무해하다.
+            .onChange(of: transitGuide.pendingWalkHandoff) { previous, handoff in
+                guard previous != nil, handoff == nil else { return }
                 landBeaconStartFocus()
             }
             // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리).
@@ -629,6 +650,8 @@ struct DirectionsTabView: View {
             // List는 lazy라 행에 붙이면 도보 안내를 읽으려 스크롤하는 순간 추적이 죽는다.
             .onDisappear {
                 model.cancel()
+                walkHandoffTask?.cancel() // 지연 창의 좀비 세션 시작 차단(§14.2)
+                walkHandoffTask = nil
                 beacon.teardown()
                 transitGuide.teardown()
             }
@@ -670,6 +693,24 @@ struct DirectionsTabView: View {
             let landed = target == .from ? focusedEndpointField == .to : submitFocused
             guard !landed else { return }
             applyResolvedFocus(target)
+        }
+    }
+
+    /// 대중교통 완료 → 남은 도보 안내(A안, §14.2 피드백 #6). 시트 dismiss 애니메이션이
+    /// 끝난 뒤 비콘을 열어야 한다 — 같은 계층의 두 시트는 동시 presentation이 안 되므로
+    /// 전환 지연이 필수(landFocusAfterResolve와 같은 근거의 시간차). 도보 경로 실패는
+    /// BeaconModel의 fallbackToBrief가 흡수한다(추가 게이트 불필요 — 세션 자체가
+    /// realtimeGuidanceEnabled ∧ ko 게이트 안에서만 존재).
+    /// ⚠ 지연 발화는 실제 부수효과(GPS 추적 시작)라 no-op 대입류와 달리 취소가
+    /// 필수다 — 지연 창에 화면을 떠나면 보이지 않는 곳에서 좀비 세션이 시작된다
+    /// (독립 리뷰 MAJOR). onDisappear가 이 Task를 취소한다.
+    private func startWalkHandoff(tracked: (label: String, dest: BeaconDest)) {
+        transitGuide.clearWalkHandoff()
+        walkHandoffTask?.cancel()
+        walkHandoffTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            beacon.toggle(dest: tracked.dest, label: tracked.label, kind: .walk)
         }
     }
 

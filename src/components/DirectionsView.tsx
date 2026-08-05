@@ -749,6 +749,7 @@ export function DirectionsView({
                     key={`transit-${guideDestKey}`}
                     route={transitGuideRoute}
                     triggerLabel={tBeacon("guideStartTransit")}
+                    dest={guideDest ?? undefined}
                   />
                 )}
                 {mode === "walk" && (

@@ -1,12 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
-import { isApproxTransitLock } from "@/lib/transit-guide";
+import { isApproxTransitLock, viaStopCurrentIndex } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
+import { DistanceBeacon } from "./DistanceBeacon";
 
 /**
  * 대중교통 실시간 안내 패널(B2 §3.2·§5) — DistanceBeacon과 같은 disclosure
@@ -25,9 +26,12 @@ import { joinText } from "@/lib/format";
 export function TransitGuidePanel({
   route,
   triggerLabel,
+  dest,
 }: {
   route: TransitRoute;
   triggerLabel: string;
+  /** 목적지 좌표·라벨 — 완료 후 도보 핸드오프(§14.2)의 대상. 없으면 핸드오프 미노출. */
+  dest?: { lat: number; lng: number; name: string };
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
@@ -45,6 +49,16 @@ export function TransitGuidePanel({
   // 세션이 밖에서 죽으면(단일성 강탈·완료) 자동으로 트리거로 복귀한다.
   const open = state !== null;
   const leg = state && guide.guideRoute ? guide.guideRoute.legs[state.legIndex] : null;
+
+  // 경유역 목록 disclosure(§14.1) — 정적 표시 1단계, leg가 바뀌면 접는다
+  // (렌더 중 파생 상태 조정 — effect 내 동기 setState의 캐스케이드 회피).
+  const [viaOpen, setViaOpen] = useState(false);
+  const legIndex = state?.legIndex ?? null;
+  const [prevLegIndex, setPrevLegIndex] = useState(legIndex);
+  if (legIndex !== prevLegIndex) {
+    setPrevLegIndex(legIndex);
+    setViaOpen(false);
+  }
 
   // arrived 진입 시 "다음 구간"으로 선점 이동(다음 행동이 있는 곳, 헌장 §5).
   // 세션 소멸로 컨트롤이 사라지며 포커스가 body로 떨어졌으면 트리거로 복귀.
@@ -108,6 +122,47 @@ export function TransitGuidePanel({
               공유한다(§12.3: 완성 문장 공백 연결, 쉼표 조립(joinText) 폐기 —
               문장 키와 쉼표 조립이 섞이며 "기준., " 이중 구두점이 났었다). */}
           <p className="text-sm">{guide.statusText}</p>
+
+          {/* 경유역 목록 1단계(§14.1, 피드백 #3): 기보유 viaStops의 정적 표시 —
+              추가 upstream 0회. 항목 무헤딩(도착편 관례)·단일 텍스트, 승차·하차
+              라벨과 현재 위치(arvlMsg3 매칭, 지하철 잠금 추적에서만)를 쉼표로
+              흡수한다. 단계 공개(더 보기)는 비적용 — 정적 텍스트라 절단 너머가
+              행동을 바꾸지 않고(교통 목록 비적용 판정 동형) 펼침 자체가 명시 행동. */}
+          {leg.viaStops.length > 0 && (
+            <div className="mt-1">
+              <button
+                type="button"
+                onClick={() => setViaOpen((v) => !v)}
+                aria-expanded={viaOpen}
+                className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+              >
+                {leg.mode === "subway"
+                  ? t("viaStopsTrain", { count: leg.viaStops.length })
+                  : t("viaStopsBus", { count: leg.viaStops.length })}
+              </button>
+              {viaOpen &&
+                (() => {
+                  const currentIndex = viaStopCurrentIndex(leg, state.currentLocation);
+                  return (
+                    <ul className="mt-1">
+                      {leg.viaStops.map((stop, index) => (
+                        <li key={`${index}-${stop.name}`} className="text-sm">
+                          {joinText(
+                            stop.name,
+                            index === 0
+                              ? t("viaBoard")
+                              : index === leg.viaStops.length - 1
+                                ? t("viaAlight")
+                                : "",
+                            index === currentIndex ? t("viaCurrent") : "",
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
+            </div>
+          )}
 
           {state.signal === "untrackable" && (
             <>
@@ -287,6 +342,20 @@ export function TransitGuidePanel({
             {tBeacon("stop")}
           </button>
         </div>
+      )}
+
+      {/* 완료 후 도보 핸드오프 A안(§14.2, 피드백 #6): 말미 도보가 있으면 도보
+          안내로의 제안형 연결 — 자동 연결(B안)은 지하 역사 GPS 공백으로 기각.
+          세션 자체가 ko 게이트 안이라 추가 게이트 없음. 트리거=시작(startOnOpen),
+          마운트 포커스로 사라진 "다음 구간" 버튼의 커서를 다음 행동으로 옮긴다. */}
+      {guide.doneHandoff && dest && (
+        <DistanceBeacon
+          dest={dest}
+          kind="walk"
+          startOnOpen
+          focusTriggerOnMount
+          triggerLabel={t("walkHandoffStart")}
+        />
       )}
     </div>
   );

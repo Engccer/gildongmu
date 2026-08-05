@@ -11,6 +11,7 @@ import {
   subwayIdForOdsayLine,
   terminatesBeforeAlight,
   transitGuideStep,
+  viaStopCurrentIndex,
   type TrackItem,
   type TransitGuideEvent,
   type TransitGuideLeg,
@@ -296,5 +297,16 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
     const { candidates } = classifyBoardingCandidates([express, short], leg);
     expect(candidates[0].express).toBe(true);
     expect(candidates[1].terminatesEarly).toBe(true);
+  });
+
+  // Kit TransitGuideTests.viaStopCurrentIndexMatching과 동일 케이스(미러 동조).
+  it("경유 목록 현재 위치 매칭(§14.1): 표기 차이 흡수, 미매칭·무값은 null", () => {
+    expect(viaStopCurrentIndex(leg, "강동")).toBe(1);
+    expect(viaStopCurrentIndex(leg, "강동역")).toBe(1); // "역" 접미 흡수
+    expect(viaStopCurrentIndex(leg, "왕십리")).toBe(2); // 부역명 괄호 흡수
+    expect(viaStopCurrentIndex(leg, "미지의역")).toBeNull(); // 목록 밖 = 무표기
+    expect(viaStopCurrentIndex(leg, null)).toBeNull();
+    expect(viaStopCurrentIndex(leg, "")).toBeNull();
+    expect(viaStopCurrentIndex({ ...leg, viaStops: [] }, "강동")).toBeNull();
   });
 });

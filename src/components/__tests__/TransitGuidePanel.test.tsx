@@ -12,6 +12,8 @@ import type { TransitRoute } from "@/lib/types";
 vi.mock("next-intl", () => ({
   useTranslations: (ns: string) => (key: string, args?: Record<string, unknown>) =>
     args ? `${ns}.${key}:${Object.values(args).join(",")}` : `${ns}.${key}`,
+  // 핸드오프가 마운트하는 DistanceBeacon(useRouteGuide)의 로케일 의존.
+  useLocale: () => "ko",
 }));
 
 import { TransitGuidePanel } from "../TransitGuidePanel";
@@ -300,6 +302,109 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     expect(screen.getByText(/approxNote/)).toBeTruthy();
     expect(screen.getByText(/remainingCount:4/)).toBeTruthy();
+  });
+
+  it("경유역 목록(§14.1): disclosure 정적 표시 + 승차·하차 라벨 + 현재 위치 병치", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }
+        // 하차 추적: 현재 위치(arvlMsg3) 왕십리 — 경유 목록의 탑승 위치 축(§12.2 결합)
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [
+              trackItem({
+                message: "[2]번째 전역 (한양대)",
+                remainingStops: 2,
+                currentLocation: "왕십리",
+              }),
+            ],
+          }),
+        } as Response;
+      }),
+    );
+
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+
+    // 대기 국면에도 disclosure는 보이고(정적 목록), 펼치면 승차·하차 라벨이 붙는다.
+    const via = await screen.findByRole("button", { name: "transitGuide.viaStopsTrain:3" });
+    expect(via.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(via);
+    expect(via.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("천호, transitGuide.viaBoard")).toBeTruthy();
+    expect(screen.getByText("여의도, transitGuide.viaAlight")).toBeTruthy();
+    expect(screen.getByText("왕십리(성동구청)")).toBeTruthy();
+
+    // 탑승 → 하차 폴의 currentLocation이 경유 목록에 현재 위치로 병치된다.
+    fireEvent.click(screen.getByRole("button", { name: /boardTrain/ }));
+    await waitFor(() => {
+      expect(screen.getByText("왕십리(성동구청), transitGuide.viaCurrent")).toBeTruthy();
+    });
+  });
+
+  it("도보 핸드오프(§14.2): 완료 시 '남은 도보 안내 시작' 노출 + 포커스 선점", async () => {
+    // DistanceBeacon은 geolocation 미지원이면 렌더하지 않으므로 스텁이 전제다.
+    Object.defineProperty(navigator, "geolocation", {
+      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(), clearWatch: vi.fn() },
+      configurable: true,
+    });
+    const routeWithTailWalk: TransitRoute = {
+      ...ROUTE,
+      legs: [...ROUTE.legs, { mode: "walk", minutes: 5 }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("station=" + encodeURIComponent("천호"))) {
+          return {
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+          } as Response;
+        }
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            rawCount: 1,
+            items: [trackItem({ message: "여의도 도착", remainingStops: 0, arrivalCode: "1" })],
+          }),
+        } as Response;
+      }),
+    );
+
+    render(
+      <TransitGuidePanel
+        route={routeWithTailWalk}
+        triggerLabel="시작"
+        dest={{ lat: 37.5216, lng: 126.924, name: "여의도" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    const board = await screen.findByRole("button", { name: /boardTrain/ });
+    fireEvent.click(board);
+
+    // 도착 관측 → 다음 구간 → done: 세션은 접히고 핸드오프 트리거가 포커스를 받는다.
+    const advance = await screen.findByRole("button", { name: "transitGuide.advance" });
+    fireEvent.click(advance);
+    const handoff = await screen.findByRole("button", { name: "transitGuide.walkHandoffStart" });
+    expect(document.activeElement).toBe(handoff);
+    // 완료 통지는 기존 계약 그대로(말미 도보 병기).
+    expect(screen.getByRole("status").textContent).toContain("transitGuide.doneWalk:5");
+    // 트리거도 함께 복귀해 재시작 경로가 남는다.
+    expect(screen.getByRole("button", { name: "시작" })).toBeTruthy();
   });
 
   it("탑승 leg가 없으면(도보 전용) 렌더하지 않는다", () => {
