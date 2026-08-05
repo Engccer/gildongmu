@@ -22,6 +22,14 @@ export function releaseGuideSession(stop: StopFn): void {
 }
 
 /**
+ * 활성 안내 세션 존재 여부 — 유휴 복귀 리셋(IdleReset)의 예외 판정용(iOS
+ * GuideSessionCoordinator.isActive 미러). 안내 중 복귀는 "유휴"가 아니다.
+ */
+export function hasActiveGuideSession(): boolean {
+  return currentStop !== null;
+}
+
+/**
  * 활성 세션이 있으면 명시 중지하고 true. 패널을 **언마운트시키는** 상태 전이(목적지
  * 편집·스왑·재조회) 직전에 호출한다 — 언마운트 정리는 통지·정지 톤 없이 자원만
  * 회수하므로, 여기서 stop()을 태워야 정지 톤이 나가고 호출자가 뷰 채널로 중지를

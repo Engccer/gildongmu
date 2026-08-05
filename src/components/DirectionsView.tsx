@@ -723,16 +723,16 @@ export function DirectionsView({
                 {/* 수단별 실시간 안내 진입점(§3.1) — 수단 heading 착지 후 **첫
                     스와이프** 거리(계단 회피 토글보다 앞, iOS 동조 — 독립 리뷰).
                     트리거가 곧 시작(startOnOpen — "시작" 라벨 거짓말 금지).
-                    라벨은 수단 무관 공통 "실시간 길 안내 시작" — 섹션 헤딩이 이미
-                    수단명이라 수단 반복은 중복이다(위원장 판정 2026-08-04).
-                    목적지 변경은 key 재마운트로 세션 정리. */}
+                    라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨 번복):
+                    SR 버튼 목록·항목 선택기는 헤딩 문맥 없이 버튼 이름만 나열해
+                    동일 라벨 3개가 구분 불가다. 목적지 변경은 key 재마운트로 세션 정리. */}
                 {mode === "walk" && walkGuideStartable && guideDest && (
                   <DistanceBeacon
                     key={`walk-${guideDestKey}`}
                     dest={guideDest}
                     kind="walk"
                     startOnOpen
-                    triggerLabel={tBeacon("guideStart")}
+                    triggerLabel={tBeacon("guideStartWalk")}
                   />
                 )}
                 {mode === "car" && carGuideStartable && guideDest && (
@@ -741,14 +741,14 @@ export function DirectionsView({
                     dest={guideDest}
                     kind="car"
                     startOnOpen
-                    triggerLabel={tBeacon("guideStart")}
+                    triggerLabel={tBeacon("guideStartCar")}
                   />
                 )}
                 {mode === "transit" && transitGuideStartable && transitGuideRoute && (
                   <TransitGuidePanel
                     key={`transit-${guideDestKey}`}
                     route={transitGuideRoute}
-                    triggerLabel={tBeacon("guideStart")}
+                    triggerLabel={tBeacon("guideStartTransit")}
                   />
                 )}
                 {mode === "walk" && (

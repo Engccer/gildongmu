@@ -85,7 +85,11 @@ struct GildongmuApp: App {
                 case .active:
                     // .inactive(전화·알림센터 등 짧은 인터럽션)는 기록하지 않아
                     // 오리셋이 없다 — .background 경유 복귀만 판정.
-                    if IdleReset.shouldReset(backgroundedAt: backgroundedAt, now: .now) {
+                    // 실시간 안내 세션이 살아 있으면 리셋하지 않는다(피드백 라운드1
+                    // 11-가): 리셋의 TabView 재생성이 진행 중인 안내를 소멸시킨다 —
+                    // 안내 중 복귀는 "유휴"가 아니다. 웹 IdleReset 동일 예외.
+                    if IdleReset.shouldReset(backgroundedAt: backgroundedAt, now: .now),
+                       !GuideSessionCoordinator.shared.isActive {
                         resetSession()
                     }
                     backgroundedAt = nil

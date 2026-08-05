@@ -6,6 +6,7 @@ import {
   shouldIdleReset,
   shouldResetOnMount,
 } from "@/lib/idle-reset";
+import { hasActiveGuideSession } from "@/lib/guide-session-store";
 
 /**
  * 유휴 복귀 초기화 — 앱을 10분 이상 쓰지 않다가 다시 활성화되면 쿼리 없는
@@ -62,10 +63,12 @@ export function IdleReset({ locale }: { locale: string }) {
         markActive();
         return;
       }
-      // visible 복귀: 화면에 무엇이 남아 있든(상세·패널·채팅) 오래됐으면 리셋
+      // visible 복귀: 화면에 무엇이 남아 있든(상세·패널·채팅) 오래됐으면 리셋.
+      // 단 실시간 안내 세션이 살아 있으면 예외(피드백 라운드1 11-가) — 하드
+      // 리로드가 진행 중인 안내를 죽인다. 안내 중 복귀는 "유휴"가 아니다.
       const stale = shouldIdleReset(readLastActive(), Date.now());
       markActive();
-      if (stale) resetToHome();
+      if (stale && !hasActiveGuideSession()) resetToHome();
     };
     const onPageHide = () => markActive();
 

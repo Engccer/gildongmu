@@ -2601,42 +2601,122 @@
         }
       }
     },
-    "beacon.guideStart": {
+    "beacon.guideStartCar": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 길 안내 시작"
+            "value": "자동차 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start live guidance"
+            "value": "Start car guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar guía en tiempo real"
+            "value": "Iniciar guía en coche"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage en temps réel"
+            "value": "Démarrer le guidage en voiture"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia guida in tempo reale"
+            "value": "Avvia guida in auto"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リアルタイム案内を開始"
+            "value": "自動車案内を開始"
+          }
+        }
+      }
+    },
+    "beacon.guideStartTransit": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대중교통 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start transit guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía de transporte"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage transports"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia guida mezzi pubblici"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通案内を開始"
+          }
+        }
+      }
+    },
+    "beacon.guideStartWalk": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start walking guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía a pie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage à pied"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia guida a piedi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩案内を開始"
           }
         }
       }
@@ -2797,6 +2877,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "画面をつけたまま手に持って使ってください。画面が消えると案内が止まります。"
+          }
+        }
+      }
+    },
+    "beacon.screenHintDismiss": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 보지 않음"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don't show again"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No mostrar de nuevo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne plus afficher"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non mostrare più"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今後表示しない"
           }
         }
       }
@@ -9997,6 +10117,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "自動車案内を開始しました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
+    "guide.detailNoLocation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치를 확인하지 못해 간략 안내로 시작합니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location unavailable; starting simple guidance"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo obtener tu ubicación; se inicia la guía simple"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position introuvable, démarrage du guidage simple"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Posizione non disponibile, avvio della guida semplice"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地を確認できないため簡易案内を開始します"
           }
         }
       }
