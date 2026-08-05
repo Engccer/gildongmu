@@ -96,6 +96,49 @@ describe("parseTagoRouteHours", () => {
       lastMinutes: 1322,
     });
   });
+  // dodo 실호출 검출(2026-08-05, dodo@9cc7408f 이식): 부산 141 실응답에서
+  // endvehicletime이 JSON 숫자 2200으로 왔다. 흡수 못 하면 parseServiceTime의
+  // raw.trim()이 TypeError를 던지고 allSettled가 삼켜 조용히 unknown 전멸한다.
+  it("endvehicletime이 JSON 숫자(2200)로 와도 파싱한다(부산 141 실호출 계약)", () => {
+    const numericEnd = {
+      response: {
+        body: {
+          items: {
+            item: {
+              routeid: "BSB5200141000",
+              routeno: "141",
+              startvehicletime: "0500",
+              endvehicletime: 2200,
+            },
+          },
+        },
+      },
+    };
+    expect(parseTagoRouteHours(numericEnd, "5200141000")).toEqual({
+      firstMinutes: 300,
+      lastMinutes: 1320,
+    });
+  });
+  it("선행 0이 없는 숫자 시각(900)은 0-패딩 후 파싱한다(900 → 09:00 → 540분)", () => {
+    const numericStart = {
+      response: {
+        body: {
+          items: {
+            item: {
+              routeid: "BSB5200141000",
+              routeno: "141",
+              startvehicletime: 900,
+              endvehicletime: 2200,
+            },
+          },
+        },
+      },
+    };
+    expect(parseTagoRouteHours(numericStart, "5200141000")).toEqual({
+      firstMinutes: 540,
+      lastMinutes: 1320,
+    });
+  });
   it("남는 접두사가 알파벳이 아니면 매칭하지 않는다(숫자 꼬리 우연 일치 차단)", () => {
     const trap = {
       response: {

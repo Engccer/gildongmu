@@ -65,8 +65,21 @@ export function parseSeoulRouteInfo(raw: unknown): ServiceHours | null {
 
 interface TagoRouteItem {
   routeid?: unknown;
-  startvehicletime?: string;
-  endvehicletime?: string;
+  startvehicletime?: string | number;
+  endvehicletime?: string | number;
+}
+
+/**
+ * TAGO 운행시각 필드는 값에 따라 JSON 타입이 갈린다: dodo 실호출(2026-08-05,
+ * 부산 141)에서 endvehicletime이 문자열 "2200"이 아니라 숫자 2200으로 왔다
+ * (선행 0 없는 시각이 숫자로 오는 것으로 보인다). parseServiceTime은 문자열만
+ * 받으므로(raw.trim()), 숫자면 4자리 0-패딩 문자열로 정규화한다(900 → "0900").
+ * 미정규화 시 TypeError를 allSettled가 삼켜 TAGO 운행시간이 조용히 unknown
+ * 전멸한다. 수정 정본 dodo@9cc7408f 이식.
+ */
+function normalizeTagoTime(raw: string | number | undefined): string | undefined {
+  if (raw == null) return undefined;
+  return typeof raw === "number" ? String(raw).padStart(4, "0") : raw;
 }
 
 /**
@@ -90,8 +103,8 @@ export function parseTagoRouteHours(raw: unknown, localId: string): ServiceHours
   });
   if (!hit) return null;
   return {
-    firstMinutes: parseServiceTime(hit.startvehicletime),
-    lastMinutes: parseServiceTime(hit.endvehicletime),
+    firstMinutes: parseServiceTime(normalizeTagoTime(hit.startvehicletime)),
+    lastMinutes: parseServiceTime(normalizeTagoTime(hit.endvehicletime)),
   };
 }
 
