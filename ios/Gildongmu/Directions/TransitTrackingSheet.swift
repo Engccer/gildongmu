@@ -15,31 +15,52 @@ struct TransitTrackingSheet: View {
 
     @AccessibilityFocusState private var stopFocused: Bool
     @AccessibilityFocusState private var advanceFocused: Bool
+    @AccessibilityFocusState private var changeBoardingFocused: Bool
     /// 목록 포커스 소실 복귀 착지점(§13.4) — 항목이 사라지면 라벨로 선점 복귀.
     @AccessibilityFocusState private var waitingLabelFocused: Bool
     /// 포커스가 얹힌 후보의 정체성(항목 정체성 옵셔널 바인딩 — Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedCandidate: String?
 
+    private static let waitingLabelId = "transit-waiting-label"
+
     var body: some View {
-        List {
-            Section {
-                Button(appLocalized("beacon.stop"), action: onStop)
-                    .accessibilityFocused($stopFocused)
-                Button(appLocalized("guide.progressButton")) { model.announceProgress() }
-                statusRows
-                phaseControls
-            } header: {
-                Text(joinText(appLocalized("beacon.transitHeading"), model.destinationLabel))
-                    .accessibilityAddTraits(.isHeader)
+        ScrollViewReader { proxy in
+            List {
+                Section {
+                    Button(appLocalized("beacon.stop"), action: onStop)
+                        .accessibilityFocused($stopFocused)
+                    Button(appLocalized("guide.progressButton")) { model.announceProgress() }
+                    statusRows
+                    phaseControls(proxy: proxy)
+                } header: {
+                    Text(joinText(appLocalized("beacon.transitHeading"), model.destinationLabel))
+                        .accessibilityAddTraits(.isHeader)
+                }
             }
-        }
-        .task { await landStopFocus() }
-        // arrived 진입 시 "다음 구간"으로 선점(사라진 컨트롤 대신 다음 행동, 헌장 §5).
-        .onChange(of: model.state?.phase) { _, phase in
-            guard phase == .arrived else { return }
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(400))
-                advanceFocused = true
+            .task { await landStopFocus() }
+            .onChange(of: model.state?.phase) { previous, phase in
+                // arrived 진입 시 "다음 구간"으로 선점(사라진 컨트롤 대신 다음 행동,
+                // 헌장 §5).
+                if phase == .arrived {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(400))
+                        advanceFocused = true
+                    }
+                    return
+                }
+                // 탑승 계열 전이(waiting→riding)는 포커스를 쥔 대기 컨트롤을 통째로
+                // 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2). arrived→riding
+                // 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
+                if phase == .riding, previous == .waiting {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(400))
+                        if model.state?.lock.map(isApproxTransitLock) == true {
+                            advanceFocused = true
+                        } else {
+                            changeBoardingFocused = true
+                        }
+                    }
+                }
             }
         }
     }
@@ -54,14 +75,14 @@ struct TransitTrackingSheet: View {
         }
     }
 
-    @ViewBuilder private var phaseControls: some View {
+    @ViewBuilder private func phaseControls(proxy: ScrollViewProxy) -> some View {
         if let state = model.state, let leg = model.currentLeg {
             if state.signal == .untrackable {
                 Text(appLocalized("transitGuide.untrackable"))
                     .foregroundStyle(.secondary)
                 Button(appLocalized("transitGuide.advanceUntrackable")) { model.advance() }
             } else if state.phase == .waiting {
-                waitingList(leg: leg, previousLock: state.previousLock)
+                waitingList(leg: leg, previousLock: state.previousLock, proxy: proxy)
             } else {
                 // 근사 잠금은 advance 상시(§13.2 소비 한계 — arrived 전이가 없다).
                 if state.phase == .arrived || (state.lock.map(isApproxTransitLock) ?? false) {
@@ -70,32 +91,36 @@ struct TransitTrackingSheet: View {
                 }
                 if state.phase == .riding, leg.trackMode != .tagoBus {
                     Button(appLocalized("transitGuide.changeBoarding")) { model.changeBoarding() }
+                        .accessibilityFocused($changeBoardingFocused)
                 }
             }
         }
     }
 
     @ViewBuilder private func waitingList(
-        leg: TransitGuideLeg, previousLock: TransitLock?
+        leg: TransitGuideLeg, previousLock: TransitLock?, proxy: ScrollViewProxy
     ) -> some View {
         if leg.trackMode == .tagoBus {
             Button(appLocalized("transitGuide.boardApprox")) { model.boardApprox() }
         } else {
             let classified = classifyTransitBoardingCandidates(
                 model.waitingLive + model.waitingDeparted.map(\.item), leg: leg)
-            let candidateIds = classified.candidates.map(\.listId)
+            // 항목 정체성 = 차량·열차 식별자(폴링 갱신이 포커스를 흔들지 않게, §5.1).
+            // vehId 없는 후보의 키를 완성 문장으로 두면 문장 갱신마다 remount되어
+            // 포커스가 폴마다 튕긴다(감사 L2) — 슬롯 위치 폴백(웹 동형).
+            let rows = classified.candidates.enumerated().map { index, candidate in
+                (id: candidate.item.vehicleId.flatMap { $0.isEmpty ? nil : $0 } ?? "slot-\(index)",
+                 candidate: candidate)
+            }
             Text(appLocalized("transitGuide.waitingLabel"))
                 .accessibilityFocused($waitingLabelFocused)
+                .id(Self.waitingLabelId)
                 // 목록 포커스 소실 복귀(§13.4, 헌장 §5): 폴링 갱신으로 포커스가 얹힌
                 // 항목이 사라지면 라벨로 선점 복귀(목록 밖 포커스는 강탈 금지).
-                .onChange(of: candidateIds) { _, ids in
+                .onChange(of: rows.map(\.id)) { _, ids in
                     guard let focused = focusedCandidate, !ids.contains(focused) else { return }
                     focusedCandidate = nil
-                    transitGuideLog("focusRecovery lostCandidate=\(focused)")
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(400))
-                        waitingLabelFocused = true
-                    }
+                    recoverWaitingLabelFocus(proxy, lost: focused)
                 }
             if classified.directionUncertain, !classified.candidates.isEmpty {
                 Text(appLocalized("transitGuide.directionCheck")).foregroundStyle(.secondary)
@@ -105,11 +130,9 @@ struct TransitTrackingSheet: View {
                 Text(model.reasonText(model.waitingReason ?? TransitWaitingEmptyReason.none))
                     .foregroundStyle(.secondary)
             }
-            // 항목 정체성 = 차량·열차 식별자(폴링 갱신이 포커스를 흔들지 않게, §5.1).
-            // vehId 없는 후보가 복수면 nil 충돌 — 웹과 동형으로 message 폴백(독립 리뷰).
-            ForEach(classified.candidates, id: \.listId) { candidate in
-                candidateRow(candidate, leg: leg)
-                    .accessibilityFocused($focusedCandidate, equals: candidate.listId)
+            ForEach(rows, id: \.id) { row in
+                candidateRow(row.candidate, leg: leg)
+                    .accessibilityFocused($focusedCandidate, equals: row.id)
             }
             // 대기 국면 탈출구(§13.2) + 탑승 변경 취소(§13.1).
             Button(appLocalized("transitGuide.refresh")) { model.refreshWaiting() }
@@ -119,6 +142,23 @@ struct TransitTrackingSheet: View {
                     model.cancelChangeBoarding()
                 }
             }
+        }
+    }
+
+    /// 라벨 복귀는 정본 시퀀스를 따른다(감사 M3): 가시화(scrollTo) → 지연 → 대입 →
+    /// 검증 → 1회 재시도. List 오프스크린 행은 AX 컬링으로 대입이 조용히 되돌아가는
+    /// 실기기 확정 함정이라 동기 대입 한 줄은 실패한다. 로그는 착지 결과까지 남긴다.
+    private func recoverWaitingLabelFocus(_ proxy: ScrollViewProxy, lost: String) {
+        Task { @MainActor in
+            proxy.scrollTo(Self.waitingLabelId)
+            try? await Task.sleep(for: .milliseconds(400))
+            waitingLabelFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            if !waitingLabelFocused {
+                waitingLabelFocused = true
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+            transitGuideLog("focusRecovery lost=\(lost) landed=\(waitingLabelFocused)")
         }
     }
 

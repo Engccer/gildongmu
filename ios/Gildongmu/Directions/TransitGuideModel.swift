@@ -278,24 +278,30 @@ final class TransitGuideModel {
         let (poll, rawCount) = await fetchPoll(leg: leg, phase: state.phase)
         guard !Task.isCancelled else { return }
         // 대기 목록 스냅숏(§5.1) — 소실 유지·경과 계산은 폴 시점에.
+        var refreshResponse: String?
         if self.state?.phase == .waiting, self.state?.phaseGen == phaseGen {
             updateWaitingSnapshot(poll: poll, rawCount: rawCount)
             logWaitingPoll(seq: mySeq, poll: poll, rawCount: rawCount, leg: leg)
             // 새로고침 직접 응답(§13.2): 자동 폴 무낭독 규칙의 대상이 아니다 —
-            // 사용자 요청의 응답이라 결과(후보 수 또는 0건 사유)를 .high로 통지.
+            // 사용자 요청의 응답이라 후보 수(0 포함)로 답한다. 조회 실패·미지원만
+            // 사유 문장(실패를 "0개"로 말하지 않는다 — 3-state). 0건의 왜는 목록
+            // 자리 지속 문장이 담당한다(통지·화면 중복 금지, 감사 M4).
             if refreshAnnounce, leg.trackMode != .tagoBus {
                 refreshAnnounce = false
                 let candidates = classifyTransitBoardingCandidates(
                     waitingLive + waitingDeparted.map(\.item), leg: leg
                 ).candidates
-                let text = candidates.isEmpty
-                    ? reasonText(waitingReason ?? TransitWaitingEmptyReason.none)
+                refreshResponse = waitingReason == .unavailable
+                    ? reasonText(.unavailable)
                     : appLocalized("transitGuide.waitingCount", String(candidates.count))
-                announce(text, highPriority: true)
             }
         }
         refreshAnnounce = false
         dispatch(.poll(seq: mySeq, phaseGen: phaseGen, poll: poll))
+        // 응답은 dispatch 뒤에 .high로 게시한다 — 같은 폴의 신호 이벤트 통지가
+        // 먼저 나가고 .high가 큐를 끊어 응답이 최종 승자가 된다(감사 M1: 역순이면
+        // 동어반복 두 문장이 연달아 나가거나 응답이 잠식된다).
+        if let refreshResponse { announce(refreshResponse, highPriority: true) }
     }
 
     private func fetchPoll(

@@ -36,6 +36,7 @@ export function TransitGuidePanel({
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const advanceRef = useRef<HTMLButtonElement>(null);
+  const changeBoardingRef = useRef<HTMLButtonElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const listHadFocusRef = useRef(false);
 
@@ -52,6 +53,12 @@ export function TransitGuidePanel({
     const phase = state?.phase ?? null;
     if (phase === "arrived" && prevPhaseRef.current !== "arrived") {
       advanceRef.current?.focus();
+    }
+    // 탑승 계열 전이(waiting→riding)는 포커스를 쥔 대기 컨트롤(탑승·이미 탑승·
+    // 취소 버튼)을 통째로 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
+    // arrived→riding 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
+    if (phase === "riding" && prevPhaseRef.current === "waiting") {
+      (advanceRef.current ?? changeBoardingRef.current)?.focus();
     }
     if (phase === null && prevPhaseRef.current !== null) {
       if (document.activeElement === document.body || document.activeElement === null) {
@@ -251,6 +258,7 @@ export function TransitGuidePanel({
               {state.phase === "riding" && leg.trackMode !== "tagoBus" && (
                 <button
                   type="button"
+                  ref={changeBoardingRef}
                   onClick={guide.changeBoarding}
                   className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                 >

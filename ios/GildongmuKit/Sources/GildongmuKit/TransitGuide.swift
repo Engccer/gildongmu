@@ -330,9 +330,8 @@ public struct TransitBoardingCandidate: Sendable {
     public let express: Bool
     public let directionMatched: Bool
 
-    /// 목록 정체성(§5.1 포커스 안정) — vehId 없는 후보가 복수여도 충돌하지 않게
-    /// 완성 문장 폴백(웹 `key = vehicleId ?? message` 동형).
-    public var listId: String { item.vehicleId ?? item.message }
+    // 목록 정체성 키는 소비자(시트·패널) 몫 — vehId, 없으면 슬롯 위치 폴백(§13.4.
+    // 종전 완성 문장 폴백은 문장 갱신마다 remount를 만들어 폐기, 감사 L2).
 }
 
 private func directionMatchesWayCode(_ updnLine: String, _ wayCode: Int?) -> Bool? {

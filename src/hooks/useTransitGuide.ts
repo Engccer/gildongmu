@@ -409,20 +409,29 @@ export function useTransitGuide(route: TransitRoute | null) {
     inFlightRef.current = true;
     const phaseGen = s.phaseGen;
     const seq = ++seqRef.current;
+    // 조기 unsupported에서도 새로고침 응답을 침묵시키지 않는다(§13.2 — 무응답이
+    // 곧 "고정" 체감, 접근성 감사 HIGH). 플래그는 항상 소비(누수 시 자동 폴 발화).
+    const finishEarlyUnsupported = () => {
+      const wasRefresh = refreshAnnounceRef.current;
+      refreshAnnounceRef.current = false;
+      dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
+      if (wasRefresh) announce(reasonText("unavailable"));
+    };
     try {
+      let refreshResponse: string | null = null;
       let resolvedTago: { nodeId: string; cityCode: string } | null = null;
       if (leg.trackMode === "tagoBus") {
         resolvedTago = await resolveTagoIfNeeded();
         const cacheKey = `${s.legIndex}:${s.phase === "waiting" ? "board" : "alight"}`;
         if (!resolvedTago && tagoResolvedRef.current.get(cacheKey) === "unsupported") {
-          dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
+          finishEarlyUnsupported();
           return;
         }
       }
       // done·untrackable은 함수 상단에서 걸렀으므로 여기의 phase는 세 국면뿐.
       const url = trackTargetUrl(leg, s.phase as "waiting" | "riding" | "arrived", resolvedTago);
       if (!url) {
-        dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
+        finishEarlyUnsupported();
         return;
       }
       const res = await fetch(url);
@@ -468,7 +477,9 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
         setWaiting({ live: items, departed, reason: waitingEmptyReason(poll, rawCount) });
         // 새로고침 직접 응답(§13.2): 자동 폴 무낭독 규칙의 대상이 아니다 — 사용자
-        // 요청의 응답이라 결과(후보 수 또는 0건 사유)를 통지한다.
+        // 요청의 응답이라 후보 수(0 포함)로 답한다. 조회 실패·미지원만 사유 문장
+        // (실패를 "0개"로 말하지 않는다 — 3-state). 0건의 왜는 목록 자리 지속
+        // 문장이 담당한다(같은 문장을 통지·화면 두 곳에 남기지 않는다, 감사 M4).
         if (refreshAnnounceRef.current) {
           refreshAnnounceRef.current = false;
           const legNow = currentLeg();
@@ -478,23 +489,25 @@ export function useTransitGuide(route: TransitRoute | null) {
               [...items, ...departed.map((d) => d.item)],
               legNow,
             );
-            announce(
-              candidates.length > 0
-                ? t("waitingCount", { count: candidates.length })
-                : reasonText(reason ?? "none"),
-            );
+            refreshResponse =
+              reason === "unavailable"
+                ? reasonText("unavailable")
+                : t("waitingCount", { count: candidates.length });
           }
         }
       }
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll });
+      // 응답은 dispatch 뒤에 게시한다 — 같은 폴의 신호 이벤트 통지(signalRecovered
+      // 등)와 배칭될 때 마지막 승자가 새로고침 응답이 되게(감사 M1: 역순이면
+      // 응답이 페인트 없이 사라진다).
+      if (refreshResponse) announce(refreshResponse);
     } catch {
       // 새로고침 응답은 실패도 침묵하지 않는다(§13.2 — 무응답이 곧 "고정" 체감).
-      if (refreshAnnounceRef.current) {
-        refreshAnnounceRef.current = false;
-        announce(reasonText("unavailable"));
-      }
+      const wasRefresh = refreshAnnounceRef.current;
+      refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "failed" } });
+      if (wasRefresh) announce(reasonText("unavailable"));
     } finally {
       inFlightRef.current = false;
       scheduleNext();
@@ -507,6 +520,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     routeRef.current = null;
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
+    refreshAnnounceRef.current = false;
     setState(null);
     setWaiting(EMPTY_WAITING);
   }, [clearTimer]);
@@ -658,19 +672,24 @@ export function useTransitGuide(route: TransitRoute | null) {
       return { options: [], directionUncertain: false };
     }
     // 스냅숏은 폴 시점에 계산됐다(렌더 순수성) — 여기서는 순수 판정·매핑만.
-    const departedMinutesByKey = new Map(
-      waiting.departed.map((d) => [d.item.vehicleId ?? d.item.message, d.minutes]),
+    // 소실 항목은 vehId 보유만 유지되므로(retained 조건) 경과 매핑 키는 vehId다.
+    const departedMinutesByKey = new Map<string, number>(
+      waiting.departed.flatMap((d) =>
+        d.item.vehicleId ? [[d.item.vehicleId, d.minutes] as [string, number]] : [],
+      ),
     );
     const { candidates, directionUncertain } = classifyBoardingCandidates(
       [...waiting.live, ...waiting.departed.map((d) => d.item)],
       leg,
     );
-    const options = candidates.map((candidate): WaitingOption => {
-      const key = candidate.item.vehicleId ?? candidate.item.message;
+    const options = candidates.map((candidate, index): WaitingOption => {
+      const vid = candidate.item.vehicleId;
       return {
         candidate,
-        departedMinutes: departedMinutesByKey.get(key) ?? null,
-        key,
+        departedMinutes: vid ? (departedMinutesByKey.get(vid) ?? null) : null,
+        // vehId 없는 항목의 키를 완성 문장으로 두면 문장 갱신마다 remount되어
+        // 포커스가 폴마다 튕긴다(감사 L2) — 슬롯 위치 폴백(§5.1 상대 순서 유지).
+        key: vid || `slot-${index}`,
       };
     });
     return { options, directionUncertain };
