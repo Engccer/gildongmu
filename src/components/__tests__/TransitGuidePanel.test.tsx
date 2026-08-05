@@ -173,19 +173,20 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       expect(screen.getByText("transitGuide.noCandidates")).toBeTruthy();
     });
 
-    // 필터 전멸(rawCount>0) — 새로고침 응답 통지 포함(목록 자리 + live region)
+    // 필터 전멸(rawCount>0): 목록 자리는 사유, 새로고침 응답은 후보 수(§13.2 ① —
+    // 사유 문장을 통지·화면 두 곳에 복제하지 않는다, 감사 M4)
     waitMode = "filtered";
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.refresh" }));
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toBe("transitGuide.noCandidatesFiltered");
+      expect(screen.getByRole("status").textContent).toBe("transitGuide.waitingCount:0");
     });
-    expect(screen.getAllByText("transitGuide.noCandidatesFiltered").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("transitGuide.noCandidatesFiltered")).toHaveLength(1);
 
-    // 조회 실패 — 실패도 침묵하지 않는다
+    // 조회 실패 — 실패는 "0개"가 아니라 사유 문장으로(3-state), 침묵하지 않는다
     waitMode = "fail";
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.refresh" }));
     await waitFor(() => {
-      expect(screen.getAllByText("transitGuide.noCandidatesUnavailable").length).toBeGreaterThan(0);
+      expect(screen.getByRole("status").textContent).toBe("transitGuide.noCandidatesUnavailable");
     });
 
     // 후보 있음 — 후보 수 통지
@@ -240,6 +241,9 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
+    // 탑승 계열 전이는 대기 컨트롤을 제거한다 — riding 컨트롤 선점(§13.4, 감사 M2).
+    // useLayoutEffect 포커스라 동기 단언 가능(jsdom flake 메모).
+    expect(document.activeElement?.textContent).toBe("transitGuide.changeBoarding");
 
     // 다시 대기로 돌아가 목록 항목에 포커스를 얹고, 폴 갱신으로 항목이 사라지면
     // 라벨로 선점 복귀한다(§13.4 — 제거된 요소는 blur 없이 body로 이탈한다).
