@@ -6,9 +6,12 @@ import {
   buildTransitGuideRoute,
   classifyBoardingCandidates,
   initTransitGuide,
+  isApproxTransitLock,
   pollIntervalMs,
   subwayIdForOdsayLine,
   transitGuideStep,
+  waitingEmptyReason,
+  type WaitingEmptyReason,
   type BoardingCandidate,
   type TrackItem,
   type TrackPoll,
@@ -51,9 +54,11 @@ interface RetainedItem {
 interface WaitingSnapshot {
   live: TrackItem[];
   departed: Array<{ item: TrackItem; minutes: number }>;
+  /** 마지막 대기 폴의 0건 사유(§13.3) — 항목이 있으면 null. */
+  reason: WaitingEmptyReason | null;
 }
 
-const EMPTY_WAITING: WaitingSnapshot = { live: [], departed: [] };
+const EMPTY_WAITING: WaitingSnapshot = { live: [], departed: [], reason: null };
 
 const RETAIN_MS = 180_000;
 
@@ -122,6 +127,8 @@ export function useTransitGuide(route: TransitRoute | null) {
   const stateRef = useRef<TransitGuideState | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
   const seqRef = useRef(0);
+  /** 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비. */
+  const refreshAnnounceRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef(false);
   const retainedRef = useRef<Map<string, RetainedItem>>(new Map());
@@ -168,6 +175,17 @@ export function useTransitGuide(route: TransitRoute | null) {
     [t],
   );
 
+  /** 0건 사유 문구(§13.3 3-state) — 목록 자리·새로고침 응답 공용. */
+  const reasonText = useCallback(
+    (reason: WaitingEmptyReason): string =>
+      reason === "filtered"
+        ? t("noCandidatesFiltered")
+        : reason === "unavailable"
+          ? t("noCandidatesUnavailable")
+          : t("noCandidates"),
+    [t],
+  );
+
   const signalText = useCallback(
     (signal: TransitGuideState["signal"]): string =>
       ({
@@ -195,7 +213,11 @@ export function useTransitGuide(route: TransitRoute | null) {
             ? t("stationCountAbout", { count: leg.stationCount })
             : "",
         s.lastMessage ? frameText(leg, s.lastMessage) : "",
-        leg.trackMode === "tagoBus" ? t("approxNote") : "",
+        // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
+        // 대기 중에도 근사 예고로 유지).
+        leg.trackMode === "tagoBus" || (s.lock != null && isApproxTransitLock(s.lock))
+          ? t("approxNote")
+          : "",
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외(미등장·소실·실패)엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼
         // 이월하지 않는다(3-state, useRouteGuide "낡은 fix 거짓 정밀 차단" 동형).
@@ -405,10 +427,16 @@ export function useTransitGuide(route: TransitRoute | null) {
       }
       const res = await fetch(url);
       let poll: TrackPoll;
+      let rawCount: number | null = null;
       if (!res.ok) {
         poll = { kind: "failed" };
       } else {
-        const body = (await res.json()) as { status: string; items?: TrackItem[] };
+        const body = (await res.json()) as {
+          status: string;
+          items?: TrackItem[];
+          rawCount?: number;
+        };
+        rawCount = typeof body.rawCount === "number" ? body.rawCount : null;
         poll =
           body.status === "ok"
             ? { kind: "ok", items: body.items ?? [] }
@@ -438,16 +466,40 @@ export function useTransitGuide(route: TransitRoute | null) {
             });
           }
         }
-        setWaiting({ live: items, departed });
+        setWaiting({ live: items, departed, reason: waitingEmptyReason(poll, rawCount) });
+        // 새로고침 직접 응답(§13.2): 자동 폴 무낭독 규칙의 대상이 아니다 — 사용자
+        // 요청의 응답이라 결과(후보 수 또는 0건 사유)를 통지한다.
+        if (refreshAnnounceRef.current) {
+          refreshAnnounceRef.current = false;
+          const legNow = currentLeg();
+          const reason = waitingEmptyReason(poll, rawCount);
+          if (legNow && legNow.trackMode !== "tagoBus") {
+            const { candidates } = classifyBoardingCandidates(
+              [...items, ...departed.map((d) => d.item)],
+              legNow,
+            );
+            announce(
+              candidates.length > 0
+                ? t("waitingCount", { count: candidates.length })
+                : reasonText(reason ?? "none"),
+            );
+          }
+        }
       }
+      refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll });
     } catch {
+      // 새로고침 응답은 실패도 침묵하지 않는다(§13.2 — 무응답이 곧 "고정" 체감).
+      if (refreshAnnounceRef.current) {
+        refreshAnnounceRef.current = false;
+        announce(reasonText("unavailable"));
+      }
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "failed" } });
     } finally {
       inFlightRef.current = false;
       scheduleNext();
     }
-  }, [currentLeg, dispatch, resolveTagoIfNeeded, scheduleNext]);
+  }, [announce, currentLeg, dispatch, reasonText, resolveTagoIfNeeded, scheduleNext, t]);
 
   const stopSession = useCallback(() => {
     clearTimer();
@@ -534,11 +586,39 @@ export function useTransitGuide(route: TransitRoute | null) {
 
   const changeBoarding = useCallback(() => {
     dispatch({ kind: "changeBoarding" });
-    retainedRef.current.clear();
+    // §13.1: 소실 항목 3분 버퍼(retained)는 비우지 않는다 — 잘못 잠근 채 이동한
+    // 뒤 돌아온 목록에서 원래 열차가 사라지던 경로(§5.1 늦은 선택 수용의 구멍).
+    // 스냅숏만 비우고 즉폴이 재구성한다(직전 국면의 낡은 목록 표시 방지).
     setWaiting(EMPTY_WAITING);
     clearTimer();
     void pollOnce();
   }, [clearTimer, dispatch, pollOnce]);
+
+  /** 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유). */
+  const cancelChangeBoarding = useCallback(() => {
+    const lock = stateRef.current?.previousLock;
+    if (lock) board(lock);
+  }, [board]);
+
+  /** "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
+  const boardAlready = useCallback(() => {
+    const leg = currentLeg();
+    if (!leg?.trackMode || leg.trackMode === "tagoBus") return;
+    board({
+      mode: leg.trackMode,
+      routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
+      direction: leg.wayCode === 1 ? "상행" : leg.wayCode === 2 ? "하행" : "",
+      vehicleId: "",
+    });
+  }, [board, currentLeg]);
+
+  /** 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외). */
+  const refreshWaiting = useCallback(() => {
+    if (stateRef.current?.phase !== "waiting") return;
+    refreshAnnounceRef.current = true;
+    clearTimer();
+    void pollOnce();
+  }, [clearTimer, pollOnce]);
 
   // 탭 숨김·복귀(§3.2): 숨김은 폴링 정지(예약 취소), 복귀는 즉시 1폴 + 상태 통지.
   useEffect(() => {
@@ -624,12 +704,17 @@ export function useTransitGuide(route: TransitRoute | null) {
     setLiveMessage: announce,
     waitingOptions: waitingOptions.options,
     directionUncertain: waitingOptions.directionUncertain,
+    /** 대기 목록 0건 사유(§13.3) — 항목이 있으면 null. */
+    waitingReason: waiting.reason,
     start,
     stop,
     boardCandidate,
     boardApprox,
+    boardAlready,
     advance,
     changeBoarding,
+    cancelChangeBoarding,
+    refreshWaiting,
     announceProgress,
   };
 }

@@ -820,6 +820,12 @@
     "waitingLabel": "乗車する車両を選んでください",
     "noCandidates": "まだ到着予定の車両がありません",
     "bound": "{dest}行き",
-    "resumed": "案内を再開します。"
+    "resumed": "案内を再開します。",
+    "refresh": "更新",
+    "boardAlready": "すでに乗車しました",
+    "cancelChangeBoarding": "乗車変更を取り消す",
+    "waitingCount": "乗車候補{count}件。",
+    "noCandidatesFiltered": "この路線以外の車両のみ表示されています",
+    "noCandidatesUnavailable": "リアルタイム一覧を取得できませんでした"
   }
 }

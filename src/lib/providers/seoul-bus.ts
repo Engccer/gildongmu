@@ -267,10 +267,12 @@ export async function fetchSeoulRouteStops(
 export async function fetchSeoulWaitSlots(
   arsId: string,
   routeId: string,
-): Promise<SeoulTrackSlot[]> {
-  if (!env.DATA_GO_KR_API_KEY) return [];
+): Promise<{ slots: SeoulTrackSlot[]; rawCount: number }> {
+  if (!env.DATA_GO_KR_API_KEY) return { slots: [], rawCount: 0 };
   const raw = await fetchSeoul("stationinfo/getStationByUid", { arsId });
-  return parseSeoulTrackSlots(raw, routeId);
+  // rawCount = 노선 필터 전 도착 항목 수(§13.3 "필터 전멸" 판정 축) — 그 정류소에
+  // 도착이 있는데 이 노선이 아닌 상태를 진짜 0건과 구분한다.
+  return { slots: parseSeoulTrackSlots(raw, routeId), rawCount: parseSeoulItems(raw).length };
 }
 
 /**

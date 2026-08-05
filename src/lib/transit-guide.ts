@@ -30,12 +30,21 @@ export type TransitSignal =
   | "upstreamFailed"
   | "untrackable";
 
-/** 잠금·매칭 복합 키(§4.2). tagoBus 근사는 vehicleId ""(차량 식별자 부재). */
+/** 잠금·매칭 복합 키(§4.2). vehicleId "" = 근사 잠금(차량 식별자 부재, §13.2). */
 export interface TransitLock {
   mode: TransitTrackMode;
   routeId: string;
   direction: string;
   vehicleId: string;
+}
+
+/**
+ * 근사 잠금 판별(§13.2): tagoBus(식별자 자체가 없다)와 "이미 탑승했습니다"
+ * (seoulBus·subway에서 식별자 없이 선언)가 같은 소비 한계를 상속한다 —
+ * arrived 전이 금지·advance 상시·기준 차량 교체 통지·근사 주석.
+ */
+export function isApproxTransitLock(lock: TransitLock): boolean {
+  return lock.vehicleId === "";
 }
 
 /** 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다. */
@@ -89,6 +98,21 @@ export type TrackPoll =
   | { kind: "unsupported" }
   | { kind: "failed" };
 
+/** 대기 목록 0건 사유(§13.3): 진짜 0건 / 필터 전멸(rawCount>0) / 조회 실패·미지원. */
+export type WaitingEmptyReason = "none" | "filtered" | "unavailable";
+
+/** 대기 폴 결과 → 0건 사유 판정(§13.3). rawCount는 노선 필터 전 원시 건수. */
+export function waitingEmptyReason(
+  poll: TrackPoll,
+  rawCount: number | null,
+): WaitingEmptyReason | null {
+  if (poll.kind === "ok" && poll.items.length > 0) return null;
+  if (poll.kind === "empty" || poll.kind === "ok") {
+    return (rawCount ?? 0) > 0 ? "filtered" : "none";
+  }
+  return "unavailable";
+}
+
 export type TransitInput =
   | { kind: "poll"; seq: number; phaseGen: number; poll: TrackPoll }
   | { kind: "board"; lock: TransitLock }
@@ -128,6 +152,8 @@ export interface TransitGuideState {
   lastSeq: number;
   signal: TransitSignal;
   lock: TransitLock | null;
+  /** 탑승 변경으로 해제한 직전 잠금(§13.1) — "탑승 변경 취소"의 복귀 대상. */
+  previousLock: TransitLock | null;
   remaining: number | null;
   lastMessage: string | null;
   lastUpdatedAt: number | null;
@@ -373,6 +399,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     lastSeq: 0,
     signal: route.legs[0]?.trackMode ? "notYetVisible" : "untrackable",
     lock: null,
+    previousLock: null,
     remaining: null,
     lastMessage: null,
     lastUpdatedAt: null,
@@ -425,6 +452,7 @@ function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepRe
       phase: "riding",
       phaseGen: state.phaseGen + 1,
       lock,
+      previousLock: null,
       remaining: null,
       lastMessage: null,
       lastUpdatedAt: null,
@@ -450,6 +478,8 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       phase: "waiting",
       phaseGen: state.phaseGen + 1,
       lock: null,
+      // 직전 잠금 보존(§13.1) — "탑승 변경 취소"가 board(previousLock)로 복귀한다.
+      previousLock: state.lock,
       remaining: null,
       lastMessage: null,
       currentLocation: null,
@@ -464,12 +494,11 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
   };
 }
 
-/** advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사(tagoBus) 상시. */
-function canAdvance(state: TransitGuideState, route: TransitGuideRoute): boolean {
+/** advance가 유효한 국면(§4.2): arrived 확인 / 추적 불가 수동 전진 / 근사 잠금 상시(§13.2). */
+function canAdvance(state: TransitGuideState, _route: TransitGuideRoute): boolean {
   if (state.phase === "arrived") return true;
   if (state.signal === "untrackable") return true;
-  const leg = route.legs[state.legIndex];
-  return state.phase === "riding" && leg?.trackMode === "tagoBus";
+  return state.phase === "riding" && state.lock != null && isApproxTransitLock(state.lock);
 }
 
 /**
@@ -490,6 +519,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       phaseGen: state.phaseGen + 1,
       signal: final ? state.signal : nextLeg?.trackMode ? "notYetVisible" : "untrackable",
       lock: null,
+      previousLock: null,
       remaining: null,
       lastMessage: null,
       lastUpdatedAt: null,
@@ -580,12 +610,14 @@ function handlePoll(
   next.missCount += 1;
   next.lastUpdatedAt = now;
   // 도착 추정(§4.2): 직전 잔여 ≤1에서 소실 — 확정과 문구 구분, 가역(재관측 복귀).
+  // 근사 잠금은 제외(§13.2 소비 한계 — 식별자가 없어 "소실"이 하차 신호가 아니다).
   if (
     state.phase === "riding" &&
     state.remaining != null &&
     state.remaining <= 1 &&
     next.missCount >= MISS_ARRIVE_COUNT &&
-    lock?.mode !== "tagoBus"
+    lock != null &&
+    !isApproxTransitLock(lock)
   ) {
     next.phase = "arrived";
     next.phaseGen = state.phaseGen; // poll 커밋 축은 유지(재관측 감시 계속)
@@ -600,14 +632,18 @@ function handlePoll(
 }
 
 function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem | null {
-  if (lock.mode === "tagoBus") {
-    // 근사(§5.2): 같은 노선의 최근접 접근 차량(잔여 최소). 차량 식별자가 없다.
+  if (isApproxTransitLock(lock)) {
+    // 근사(§5.2·§13.2): 방향 일치(양측 보유 시) 항목 중 최근접 접근 차량(잔여 최소).
+    // tagoBus는 방향이 ""라 무필터 — 기존 행동 불변.
+    const pool = items.filter(
+      (it) => !lock.direction || !it.direction || it.direction === lock.direction,
+    );
     let best: TrackItem | null = null;
-    for (const it of items) {
+    for (const it of pool) {
       if (it.remainingStops == null) continue;
       if (best == null || it.remainingStops < (best.remainingStops ?? Infinity)) best = it;
     }
-    return best ?? (items.length > 0 ? items[0] : null);
+    return best ?? (pool.length > 0 ? pool[0] : null);
   }
   return items.find((it) => lockMatches(it, lock)) ?? null;
 }
@@ -661,13 +697,16 @@ function commitMatched(
   }
 
   // 도착 관측(§4.2): 지하철 arvlCd "1"(도착) / 서울버스 잔여 0(하차 구간 진입).
-  // ⚠ "곧 도착" 문장은 임박이지 확정이 아니다. tagoBus는 arrived 전이 없음(§5.2).
+  // ⚠ "곧 도착" 문장은 임박이지 확정이 아니다. 근사 잠금은 arrived 전이 없음
+  // (§5.2·§13.2 — 식별자가 없어 그 도착이 내 차량이라는 확정이 불가능하다).
+  const approx = base.lock != null && isApproxTransitLock(base.lock);
   const arrivedObserved =
-    base.lock?.mode === "subway"
+    !approx &&
+    (base.lock?.mode === "subway"
       ? item.arrivalCode === "1"
       : base.lock?.mode === "seoulBus"
         ? item.remainingStops === 0
-        : false;
+        : false);
   if (arrivedObserved) {
     next.phase = "arrived";
     next.arrivedCertain = true;
@@ -692,8 +731,8 @@ function commitMatched(
     return { state: next, event: carriedEvent };
   }
 
-  // 근사 기준 차량 교체(§5.2): 잔여 역행 관측 — 조용한 기준 교체 금지.
-  if (base.lock?.mode === "tagoBus" && prevRemaining != null && remaining > prevRemaining) {
+  // 근사 기준 차량 교체(§5.2·§13.2): 잔여 역행 관측 — 조용한 기준 교체 금지.
+  if (approx && prevRemaining != null && remaining > prevRemaining) {
     next.ladderAnnounced = null; // 새 차량 기준으로 사다리 재무장
     return { state: next, event: { kind: "approxVehicleChanged", message: item.message } };
   }

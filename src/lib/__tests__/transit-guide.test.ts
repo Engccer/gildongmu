@@ -71,6 +71,12 @@ describe("transitGuideStep — 공유 fixture 시나리오(B2 §8.1)", () => {
         if ("legIndex" in exp) expect(state.legIndex, ctx).toBe(exp.legIndex);
         if ("remaining" in exp) expect(state.remaining, ctx).toBe(exp.remaining);
         if ("dataAgeSeconds" in exp) expect(state.dataAgeSeconds, ctx).toBe(exp.dataAgeSeconds);
+        if ("previousLock" in exp) {
+          // 값은 락 참조 이름 또는 null(§13.1 보존·소거 단언).
+          expect(state.previousLock, ctx).toEqual(
+            exp.previousLock === null ? null : fixture.locks[exp.previousLock as string],
+          );
+        }
         if ("event" in exp) {
           if (exp.event === null) {
             expect(event, ctx).toBeNull();

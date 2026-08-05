@@ -6,6 +6,8 @@ public struct TransitTrackEnvelope: Codable, Sendable {
     public let mode: String
     public let status: String
     public let items: [TransitTrackItem]?
+    /// 노선·경로 필터 전 원시 건수(§13.3, additive) — empty ∧ rawCount>0 = 필터 전멸.
+    public let rawCount: Int?
     public let stop: TransitTrackResolvedStop?
 }
 

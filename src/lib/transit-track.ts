@@ -22,12 +22,17 @@ import {
  */
 
 export type TransitTrackResult =
-  | { status: "ok"; items: TrackItem[] }
-  | { status: "empty" }
+  | { status: "ok"; items: TrackItem[]; rawCount: number }
+  | { status: "empty"; rawCount: number }
   | { status: "unsupported" };
 
-function withItems(items: TrackItem[]): TransitTrackResult {
-  return items.length > 0 ? { status: "ok", items } : { status: "empty" };
+/**
+ * rawCount = 노선·경로 필터 **전** 원시 건수(§13.3, additive). empty ∧ rawCount>0
+ * = "필터 전멸"(그 정류소·역에 도착은 있는데 이 노선이 아니다) — 진짜 0건과
+ * 구분해 대기 국면 0건 사유 3-state와 실험판 계측이 소비한다.
+ */
+function withItems(items: TrackItem[], rawCount: number): TransitTrackResult {
+  return items.length > 0 ? { status: "ok", items, rawCount } : { status: "empty", rawCount };
 }
 
 // === 서울 버스 ===
@@ -49,8 +54,8 @@ export async function trackSeoulWait(params: {
   arsId: string;
   routeId: string;
 }): Promise<TransitTrackResult> {
-  const slots = await fetchSeoulWaitSlots(params.arsId, params.routeId);
-  return withItems(slots.map(slotToItem));
+  const { slots, rawCount } = await fetchSeoulWaitSlots(params.arsId, params.routeId);
+  return withItems(slots.map(slotToItem), rawCount);
 }
 
 /**
@@ -94,7 +99,8 @@ export async function trackSeoulRide(params: {
     return { status: "unsupported" };
   }
   const slots = await fetchSeoulRideSlots(alightLocalId, routeId, ord);
-  return withItems(slots.map(slotToItem));
+  // getArrInfoByRoute는 이미 노선 스코프 조회라 필터가 없다 — rawCount = 항목 수.
+  return withItems(slots.map(slotToItem), slots.length);
 }
 
 // === 지방 버스(TAGO 근사) ===
@@ -152,7 +158,7 @@ export async function trackTago(params: {
         arrivalCode: null,
       }),
     );
-  return withItems(items);
+  return withItems(items, arrivals.length);
 }
 
 // === 지하철(수도권) ===
@@ -229,7 +235,7 @@ export async function trackSubway(params: {
   // 쓴다(지하철 4-state 교훈). 추적에선 노선 매핑표가 수도권 커버를 이미
   // 걸렀으므로 empty(미등장)가 정직하다 — 심야 실호출에서 unsupported로
   // 뭉개져 "신호 끊김"으로 오통지되는 것을 확인(2026-08-04).
-  if (result === null) return { status: "empty" };
+  if (result === null) return { status: "empty", rawCount: 0 };
   const now = Date.now();
   const items = result.arrivals
     .filter((a) => a.line === expectedLine)
@@ -247,5 +253,5 @@ export async function trackSubway(params: {
         dataAgeSeconds: subwayDataAgeSeconds(a.receivedAt, a.arrivalCode, now),
       }),
     );
-  return withItems(items);
+  return withItems(items, result.arrivals.length);
 }

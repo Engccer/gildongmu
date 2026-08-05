@@ -237,6 +237,8 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
     expect(r.status).toBe("ok");
     if (r.status === "ok") {
       expect(r.items).toHaveLength(1);
+      // rawCount = 노선 필터 전 원시 건수(§13.3 — 필터 전멸 판정 축).
+      expect(r.rawCount).toBe(2);
       expect(r.items[0]).toMatchObject({
         vehicleId: "5696",
         direction: "하행",
@@ -265,6 +267,18 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
     expect((await modNull.trackSubway({ station: "천호", lineName: "수도권 5호선" })).status).toBe(
       "empty",
     );
+  });
+
+  it("타 노선 도착만 있으면 empty + rawCount>0(필터 전멸, §13.3)", async () => {
+    const mod = await withMockedArrivals({
+      stationName: "천호",
+      arrivals: [
+        { line: "8호선", direction: "상행", trainLineNm: "별내행", destination: "별내",
+          message: "곧 도착", arrivalSeconds: 30, express: false, trainNo: "8123", arrivalCode: "1" },
+      ],
+    });
+    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선" });
+    expect(r).toEqual({ status: "empty", rawCount: 1 });
   });
 });
 
