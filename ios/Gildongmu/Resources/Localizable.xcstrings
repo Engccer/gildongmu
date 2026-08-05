@@ -29486,37 +29486,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "근사 추적: 같은 노선의 접근 차량 기준"
+            "value": "근사 추적: 같은 노선의 접근 차량 기준."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximate: based on the nearest vehicle on this route"
+            "value": "Approximate: based on the nearest vehicle on this route."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aproximado: basado en el vehículo más cercano de esta línea"
+            "value": "Aproximado: basado en el vehículo más cercano de esta línea."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approximatif : basé sur le véhicule le plus proche de cette ligne"
+            "value": "Approximatif : basé sur le véhicule le plus proche de cette ligne."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Approssimato: basato sul veicolo più vicino di questa linea"
+            "value": "Approssimato: basato sul veicolo più vicino di questa linea."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "近似追跡: 同路線の接近車両基準"
+            "value": "近似追跡: 同路線の接近車両基準。"
           }
         }
       }
@@ -30046,37 +30046,117 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, 하차 %2$@ 기준."
+            "value": "%1$@ 탑승 중, %2$@에서 하차합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, toward %2$@."
+            "value": "Riding %1$@, get off at %2$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, hacia %2$@."
+            "value": "A bordo de %1$@, baje en %2$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, vers %2$@."
+            "value": "À bord de %1$@, descendez à %2$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, verso %2$@."
+            "value": "A bordo della %1$@, scendi a %2$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@、降車 %2$@ 基準。"
+            "value": "%1$@に乗車中、%2$@で下車します。"
+          }
+        }
+      }
+    },
+    "transitGuide.currentStation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치 %1$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actuellement à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在位置 %1$@。"
+          }
+        }
+      }
+    },
+    "transitGuide.dataAge": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@초 전 기준."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As of %1$@ seconds ago."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos de hace %1$@ segundos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Données d'il y a %1$@ secondes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati di %1$@ secondi fa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@秒前の情報。"
           }
         }
       }
@@ -30286,37 +30366,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "마지막 갱신 %1$@"
+            "value": "마지막 갱신 %1$@."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Last updated %1$@"
+            "value": "Last updated %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Última actualización %1$@"
+            "value": "Última actualización %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dernière mise à jour %1$@"
+            "value": "Dernière mise à jour %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ultimo aggiornamento %1$@"
+            "value": "Ultimo aggiornamento %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最終更新 %1$@"
+            "value": "最終更新 %1$@。"
+          }
+        }
+      }
+    },
+    "transitGuide.messageFrame": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지, %2$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To %1$@: %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hasta %1$@: %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vers %1$@ : %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verso %1$@: %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで、%2$@。"
           }
         }
       }
@@ -30606,37 +30726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "차량 접근 대기"
+            "value": "차량 접근 대기."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waiting for vehicle"
+            "value": "Waiting for vehicle."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esperando el vehículo"
+            "value": "Esperando el vehículo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "En attente du véhicule"
+            "value": "En attente du véhicule."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In attesa del veicolo"
+            "value": "In attesa del veicolo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "車両接近待ち"
+            "value": "車両接近待ち。"
           }
         }
       }
@@ -30646,37 +30766,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "신호 없음"
+            "value": "신호 없음."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No signal"
+            "value": "No signal."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin señal"
+            "value": "Sin señal."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas de signal"
+            "value": "Pas de signal."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun segnale"
+            "value": "Nessun segnale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "信号なし"
+            "value": "信号なし。"
           }
         }
       }
@@ -30686,37 +30806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "추적 중"
+            "value": "추적 중."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tracking"
+            "value": "Tracking."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Siguiendo"
+            "value": "Siguiendo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Suivi en cours"
+            "value": "Suivi en cours."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In monitoraggio"
+            "value": "In monitoraggio."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "追跡中"
+            "value": "追跡中。"
           }
         }
       }
@@ -30726,37 +30846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 미제공"
+            "value": "실시간 미제공."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No live data"
+            "value": "No live data."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sin datos en vivo"
+            "value": "Sin datos en vivo."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pas de données en direct"
+            "value": "Pas de données en direct."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun dato in tempo reale"
+            "value": "Nessun dato in tempo reale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リアルタイム未提供"
+            "value": "リアルタイム未提供。"
           }
         }
       }
@@ -30766,37 +30886,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "조회 실패"
+            "value": "조회 실패."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lookup failed"
+            "value": "Lookup failed."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Consulta fallida"
+            "value": "Consulta fallida."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Échec de la consultation"
+            "value": "Échec de la consultation."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Consultazione non riuscita"
+            "value": "Consultazione non riuscita."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "照会失敗"
+            "value": "照会失敗。"
           }
         }
       }
@@ -30806,37 +30926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "약 %1$@개 정거장"
+            "value": "약 %1$@개 정거장."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About %1$@ stops"
+            "value": "About %1$@ stops."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unas %1$@ paradas"
+            "value": "Unas %1$@ paradas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Environ %1$@ arrêts"
+            "value": "Environ %1$@ arrêts."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circa %1$@ fermate"
+            "value": "Circa %1$@ fermate."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "約%1$@駅"
+            "value": "約%1$@駅。"
           }
         }
       }

@@ -5,9 +5,12 @@ import {
   remainingFromArrmsg,
 } from "../providers/seoul-bus";
 import {
+  parseRecptnDt,
   pickAlightOrd,
   pickTagoStop,
+  remainingFromArvlCd,
   remainingFromArvlMsg,
+  subwayDataAgeSeconds,
 } from "../transit-track";
 
 /** 서울 TOPIS 도착 응답 골격(getStationByUid·getArrInfoByRoute 공통 형태). */
@@ -153,6 +156,52 @@ describe("remainingFromArvlMsg — 지하철 잔여 추출(§6.2)", () => {
   });
 });
 
+describe("remainingFromArvlCd — arvlCd 잔여 폴백(§12.2)", () => {
+  it("당역(0·1·2)=0, 전역(3·4·5)=1, 운행중(99)·미지는 null", () => {
+    expect(remainingFromArvlCd("0")).toBe(0);
+    expect(remainingFromArvlCd("1")).toBe(0);
+    expect(remainingFromArvlCd("2")).toBe(0);
+    expect(remainingFromArvlCd("3")).toBe(1);
+    expect(remainingFromArvlCd("4")).toBe(1);
+    expect(remainingFromArvlCd("5")).toBe(1);
+    expect(remainingFromArvlCd("99")).toBeNull();
+    expect(remainingFromArvlCd(undefined)).toBeNull();
+  });
+});
+
+describe("recptnDt 신선도 게이트(§12.1)", () => {
+  // 2026-08-06 00:25:11 KST = 2026-08-05T15:25:11Z
+  const KST_EPOCH = Date.parse("2026-08-05T15:25:11Z");
+
+  it("parseRecptnDt는 KST 명시 오프셋으로 파싱, 형식 밖은 null", () => {
+    expect(parseRecptnDt("2026-08-06 00:25:11")).toBe(KST_EPOCH);
+    expect(parseRecptnDt("2026-08-06T00:25:11")).toBe(KST_EPOCH);
+    expect(parseRecptnDt("")).toBeNull();
+    expect(parseRecptnDt("어제")).toBeNull();
+  });
+
+  it("ⓐ 미래값(신분당선 고장)은 0 클램프, 정상 lag는 반올림 초", () => {
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "99", KST_EPOCH + 22_000)).toBe(22);
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "99", KST_EPOCH - 30_000)).toBe(0);
+  });
+
+  it("ⓑ lag>120초 ∧ 종착 상태(1·2·5)는 동결 — null(판정 불가)", () => {
+    const late = KST_EPOCH + 300_000;
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "1", late)).toBeNull();
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "2", late)).toBeNull();
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "5", late)).toBeNull();
+    // 비종착 상태는 큰 lag여도 원값 유지(정직한 큰 수치가 은폐보다 낫다)
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "99", late)).toBe(300);
+    // 종착이어도 120초 이내는 정상
+    expect(subwayDataAgeSeconds("2026-08-06 00:25:11", "1", KST_EPOCH + 60_000)).toBe(60);
+  });
+
+  it("미제공·파싱 불가는 null(버스와 동일 취급 — 표기 생략)", () => {
+    expect(subwayDataAgeSeconds(undefined, "99", KST_EPOCH)).toBeNull();
+    expect(subwayDataAgeSeconds("고장", "99", KST_EPOCH)).toBeNull();
+  });
+});
+
 describe("trackSubway — 노선 필터·3-state(모킹)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -178,7 +227,8 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
       stationName: "천호",
       arrivals: [
         { line: "5호선", direction: "하행", trainLineNm: "하남검단산행", destination: "하남검단산",
-          message: "[3]번째 전역 (길동)", arrivalSeconds: 300, express: false, trainNo: "5696", arrivalCode: "99" },
+          message: "[3]번째 전역 (길동)", arrivalSeconds: 300, express: false, trainNo: "5696", arrivalCode: "99",
+          currentLocation: "길동", receivedAt: "2026-08-06 00:25:11" },
         { line: "8호선", direction: "상행", trainLineNm: "별내행", destination: "별내",
           message: "곧 도착", arrivalSeconds: 30, express: false, trainNo: "8123", arrivalCode: "1" },
       ],
@@ -193,7 +243,11 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
         remainingStops: 3,
         destinationName: "하남검단산",
         arrivalCode: "99",
+        // §12 투영: 현재 역·스냅숏 원문 보존, 나이는 서버 계산 정수
+        currentLocation: "길동",
+        dataStamp: "2026-08-06 00:25:11",
       });
+      expect(typeof r.items[0].dataAgeSeconds).toBe("number");
     }
   });
 

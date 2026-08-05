@@ -97,10 +97,17 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
     public let destinationName: String?
     public let express: Bool
     public let arrivalCode: String?
+    /// 현재 위치 역명(지하철 arvlMsg3, §12.2) — 미제공 수단은 nil.
+    public let currentLocation: String?
+    /// 데이터 수신 시각 원문(recptnDt, §12.1 스냅숏 정체성) — 미제공은 nil.
+    public let dataStamp: String?
+    /// 데이터 나이(초, 서버 계산·클램프). nil = 미제공·동결 판정 불가(§12.1 ⓑ).
+    public let dataAgeSeconds: Int?
 
     public init(
         vehicleId: String?, direction: String, message: String, remainingStops: Int?,
-        destinationName: String?, express: Bool, arrivalCode: String?
+        destinationName: String?, express: Bool, arrivalCode: String?,
+        currentLocation: String? = nil, dataStamp: String? = nil, dataAgeSeconds: Int? = nil
     ) {
         self.vehicleId = vehicleId
         self.direction = direction
@@ -109,6 +116,9 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
         self.destinationName = destinationName
         self.express = express
         self.arrivalCode = arrivalCode
+        self.currentLocation = currentLocation
+        self.dataStamp = dataStamp
+        self.dataAgeSeconds = dataAgeSeconds
     }
 }
 
@@ -130,7 +140,7 @@ public enum TransitGuideInput: Sendable {
 public enum TransitGuideEvent: Sendable, Equatable {
     case boarded(legIndex: Int)
     case trackingStarted(message: String, remaining: Int?)
-    case countdown(remaining: Int, message: String)
+    case countdown(remaining: Int, message: String, currentLocation: String?)
     case messageChanged(message: String)
     case arrived(certain: Bool)
     case backOnTrack(message: String)
@@ -153,6 +163,12 @@ public struct TransitGuideState: Sendable {
     public var remaining: Int?
     public var lastMessage: String?
     public var lastUpdatedAt: Double?
+    /// 잠금 항목의 현재 위치 역명(arvlMsg3, §12.2) — countdown 병치·M3 탑승 위치 축.
+    public var currentLocation: String?
+    /// 잠금 항목의 recptnDt 원문(§12.1 스냅숏 정체성 — 동일 스냅숏 무정보 폴 판정).
+    public var dataStamp: String?
+    /// 데이터 나이(초, 서버 계산). nil = 미제공·동결 판정 불가(§12.1) — 표기 생략.
+    public var dataAgeSeconds: Int?
     public var arrivedCertain: Bool
     public var ladderAnnounced: Int?
     public var trackingAnnounced: Bool
@@ -177,9 +193,8 @@ public func transitPollIntervalMs(_ state: TransitGuideState) -> Int {
     if state.phase == .done || state.signal == .untrackable { return 0 }
     if state.capAnnounced { return 60_000 }
     if state.phase == .waiting { return 20_000 }
-    if !state.trackingAnnounced { return 60_000 }
-    if let remaining = state.remaining, remaining <= transitLadderMax { return 15_000 }
-    return 30_000
+    // riding·arrived(재관측 감시): 미등장 60s / 추적 중 15s(§12 — 원거리 30s 폐지).
+    return state.trackingAnnounced ? 15_000 : 60_000
 }
 
 public enum TransitGuideTone: String, Sendable {
@@ -189,7 +204,7 @@ public enum TransitGuideTone: String, Sendable {
 /// 이벤트 → 통지 채널·톤 매핑(§6.1). 잔여 1·도착만 interrupting.
 public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool, tone: TransitGuideTone?) {
     switch event {
-    case let .countdown(remaining, _):
+    case let .countdown(remaining, _, _):
         return remaining <= 1 ? (true, .imminent) : (false, .ladder)
     case .arrived:
         return (true, .arrive)
@@ -351,6 +366,9 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         remaining: nil,
         lastMessage: nil,
         lastUpdatedAt: nil,
+        currentLocation: nil,
+        dataStamp: nil,
+        dataAgeSeconds: nil,
         arrivedCertain: false,
         ladderAnnounced: nil,
         trackingAnnounced: false,
@@ -400,6 +418,9 @@ private func handleBoard(
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
+    next.currentLocation = nil
+    next.dataStamp = nil
+    next.dataAgeSeconds = nil
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
@@ -417,6 +438,9 @@ private func handleChangeBoarding(
     next.lock = nil
     next.remaining = nil
     next.lastMessage = nil
+    next.currentLocation = nil
+    next.dataStamp = nil
+    next.dataAgeSeconds = nil
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
@@ -451,6 +475,9 @@ private func handleAdvance(
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
+    next.currentLocation = nil
+    next.dataStamp = nil
+    next.dataAgeSeconds = nil
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
@@ -558,12 +585,32 @@ private func commitMatched(
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     let prevRemaining = base.remaining
     let wasTracking = base.trackingAnnounced
+
+    // 동일 스냅숏 무정보 폴(§12.1): recptnDt와 완성 문장이 직전 커밋과 같으면 새
+    // 정보가 없다 — phase·signal 불변, 이벤트 없음(동결 레코드 재등장의 재발화
+    // 차단). ⚠ 문장 동일 조건 필수: 신분당선은 stamp 동결 + 문장 정상 갱신(실측).
+    if let stamp = item.dataStamp, stamp == base.dataStamp, item.message == base.lastMessage {
+        // 무정보여도 매칭은 매칭 — 연속 미등장 카운터는 끊는다(독립 리뷰 MAJOR:
+        // 미리셋 시 미등장↔동결재등장 반복에서 signalLost·도착 추정 조기 오발화).
+        var unchanged = next
+        unchanged.missCount = 0
+        unchanged.lastUpdatedAt = now
+        unchanged.dataAgeSeconds = item.dataAgeSeconds
+        return (unchanged, carriedEvent)
+    }
+
     var out = next
     out.signal = .tracking
     out.missCount = 0
     out.remaining = item.remainingStops
     out.lastMessage = item.message
     out.lastUpdatedAt = now
+    out.currentLocation = item.currentLocation
+    out.dataStamp = item.dataStamp
+    // stamp 동결 감지(신분당선형): 같은 stamp인데 문장이 갱신됐다면 recptnDt 고장 —
+    // 그 나이는 거짓 정밀이라 nil(§12.1, 접근성 감사 반영).
+    out.dataAgeSeconds = (item.dataStamp != nil && item.dataStamp == base.dataStamp)
+        ? nil : item.dataAgeSeconds
     out.trackingAnnounced = true
 
     // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
@@ -612,7 +659,8 @@ private func commitMatched(
        latch == nil || remaining < latch!,
        let prev = prevRemaining, remaining < prev {
         out.ladderAnnounced = remaining
-        return (out, .countdown(remaining: remaining, message: item.message))
+        return (out, .countdown(
+            remaining: remaining, message: item.message, currentLocation: item.currentLocation))
     }
     // 소실 후 재관측 회복(§4.2) — 상위 이벤트가 없을 때만.
     if base.signal == .signalLost, carriedEvent == nil {

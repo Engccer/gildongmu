@@ -57,6 +57,9 @@ const EMPTY_WAITING: WaitingSnapshot = { live: [], departed: [] };
 
 const RETAIN_MS = 180_000;
 
+/** 같은 문장 재발화를 위한 빈 값 경유 지연(useRouteGuide 동일값). */
+const REANNOUNCE_DELAY_MS = 120;
+
 function trackTargetUrl(
   leg: TransitGuideLeg,
   phase: "waiting" | "riding" | "arrived",
@@ -92,6 +95,29 @@ export function useTransitGuide(route: TransitRoute | null) {
   const [state, setState] = useState<TransitGuideState | null>(null);
   const [waiting, setWaiting] = useState<WaitingSnapshot>(EMPTY_WAITING);
   const [liveMessage, setLiveMessage] = useState("");
+
+  const liveRef = useRef("");
+  const reannounceTimerRef = useRef<number | null>(null);
+  // 같은 문장이면 DOM 텍스트가 안 바뀌어 aria-live가 침묵한다(진행 상황 버튼
+  // 연타 재현) — 빈 값을 한 번 거쳐 재발화한다(useRouteGuide announce 동형).
+  const announce = useCallback((text: string) => {
+    if (reannounceTimerRef.current !== null) {
+      window.clearTimeout(reannounceTimerRef.current);
+      reannounceTimerRef.current = null;
+    }
+    if (text && text === liveRef.current) {
+      liveRef.current = "";
+      setLiveMessage("");
+      reannounceTimerRef.current = window.setTimeout(() => {
+        reannounceTimerRef.current = null;
+        liveRef.current = text;
+        setLiveMessage(text);
+      }, REANNOUNCE_DELAY_MS);
+      return;
+    }
+    liveRef.current = text;
+    setLiveMessage(text);
+  }, []);
 
   const stateRef = useRef<TransitGuideState | null>(null);
   const routeRef = useRef<TransitGuideRoute | null>(null);
@@ -129,10 +155,65 @@ export function useTransitGuide(route: TransitRoute | null) {
     [t],
   );
 
-  /** 사다리·문장 통지의 고정 문맥(§6.1 독립 두 문장, 문법 결합 금지). */
+  /** 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당. */
   const contextText = useCallback(
     (leg: TransitGuideLeg): string => t("context", { line: leg.lineName, stop: leg.alightName }),
     [t],
+  );
+
+  /** upstream 완성 문장의 라벨 프레임(§12.3) — 원문 무변형, 하차역 라벨 전치. */
+  const frameText = useCallback(
+    (leg: TransitGuideLeg, message: string): string =>
+      t("messageFrame", { stop: leg.alightName, message }),
+    [t],
+  );
+
+  const signalText = useCallback(
+    (signal: TransitGuideState["signal"]): string =>
+      ({
+        tracking: t("stateTracking"),
+        notYetVisible: t("stateNotYetVisible"),
+        signalLost: t("stateSignalLost"),
+        upstreamFailed: t("stateUpstreamFailed"),
+        untrackable: t("stateUntrackable"),
+      })[signal],
+    [t],
+  );
+
+  /**
+   * 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
+   * 단일 헬퍼. 화면과 통지가 같은 파트 목록을 공유해 드리프트를 구조 차단한다.
+   */
+  const buildStatusText = useCallback(
+    (s: TransitGuideState, leg: TransitGuideLeg): string => {
+      const parts = [
+        s.phase === "waiting" ? waitContextText(leg) : contextText(leg),
+        signalText(s.signal),
+        s.remaining != null
+          ? t("remainingCount", { count: s.remaining })
+          : leg.stationCount != null && s.phase === "riding"
+            ? t("stationCountAbout", { count: leg.stationCount })
+            : "",
+        s.lastMessage ? frameText(leg, s.lastMessage) : "",
+        leg.trackMode === "tagoBus" ? t("approxNote") : "",
+        // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
+        // 그 외(미등장·소실·실패)엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼
+        // 이월하지 않는다(3-state, useRouteGuide "낡은 fix 거짓 정밀 차단" 동형).
+        s.signal === "tracking" && s.dataAgeSeconds != null
+          ? t("dataAge", { seconds: s.dataAgeSeconds })
+          : s.lastUpdatedAt != null
+            ? t("lastUpdated", {
+                time: new Date(s.lastUpdatedAt).toLocaleTimeString("ko-KR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: false,
+                }),
+              })
+            : "",
+      ];
+      return parts.filter(Boolean).join(" ");
+    },
+    [contextText, frameText, signalText, t, waitContextText],
   );
 
   /** 이벤트 → 통지 문구(완성 문장은 원문 병치). */
@@ -153,16 +234,26 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
         case "trackingStarted":
           if (leg) parts.push(contextText(leg), t("trackingStarted"));
-          if (event.message) parts.push(event.message);
+          if (event.message) parts.push(leg ? frameText(leg, event.message) : event.message);
           else if (event.remaining != null) parts.push(t("remainingCount", { count: event.remaining }));
           break;
         case "countdown":
-          if (leg) parts.push(contextText(leg));
-          parts.push(event.message || t("remainingCount", { count: event.remaining }));
+          // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
+          parts.push(
+            event.message
+              ? leg
+                ? frameText(leg, event.message)
+                : event.message
+              : t("remainingCount", { count: event.remaining }),
+          );
+          // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
+          // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
+          if (event.remaining <= 1 && event.currentLocation) {
+            parts.push(t("currentStation", { station: event.currentLocation }));
+          }
           break;
         case "messageChanged":
-          if (leg) parts.push(contextText(leg));
-          parts.push(event.message);
+          parts.push(leg ? frameText(leg, event.message) : event.message);
           break;
         case "arrived": {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
@@ -176,7 +267,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
         case "backOnTrack":
           parts.push(t("backOnTrack"));
-          if (event.message) parts.push(event.message);
+          if (event.message) parts.push(leg ? frameText(leg, event.message) : event.message);
           break;
         case "approxVehicleChanged":
           parts.push(t("approxVehicleChanged"));
@@ -213,9 +304,9 @@ export function useTransitGuide(route: TransitRoute | null) {
           parts.push(t("changeBoardingDone"));
           break;
       }
-      if (parts.length > 0) setLiveMessage(parts.join(" "));
+      if (parts.length > 0) announce(parts.join(" "));
     },
-    [contextText, currentLeg, t, waitContextText],
+    [announce, contextText, currentLeg, frameText, t, waitContextText],
   );
 
   const dispatch = useCallback(
@@ -385,9 +476,9 @@ export function useTransitGuide(route: TransitRoute | null) {
     const first = guideRoute.legs[0];
     const parts = [t("started", { count: guideRoute.legs.length }), waitContextText(first)];
     if (!first.trackMode) parts.push(t("untrackable"));
-    setLiveMessage(parts.join(" "));
+    announce(parts.join(" "));
     void pollOnce();
-  }, [commit, guideRoute, pollOnce, stopSession, t, waitContextText]);
+  }, [announce, commit, guideRoute, pollOnce, stopSession, t, waitContextText]);
 
   const stop = useCallback(() => {
     releaseGuideSession(stopSession);
@@ -458,27 +549,24 @@ export function useTransitGuide(route: TransitRoute | null) {
         return;
       }
       const current = stateRef.current;
-      const stateText = current
-        ? {
-            tracking: t("stateTracking"),
-            notYetVisible: t("stateNotYetVisible"),
-            signalLost: t("stateSignalLost"),
-            upstreamFailed: t("stateUpstreamFailed"),
-            untrackable: t("stateUntrackable"),
-          }[current.signal]
-        : "";
-      setLiveMessage([t("resumed"), stateText].filter(Boolean).join(" "));
+      announce(
+        [t("resumed"), current ? signalText(current.signal) : ""].filter(Boolean).join(" "),
+      );
       void pollOnce();
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [clearTimer, pollOnce, t]);
+  }, [announce, clearTimer, pollOnce, signalText, t]);
 
   // 언마운트: 자원 회수(통지 없음 — 언마운트 전이의 통지는 뷰 몫, §3.3).
   useEffect(() => {
     return () => {
       releaseGuideSession(stopSession);
       stopSession();
+      if (reannounceTimerRef.current !== null) {
+        window.clearTimeout(reannounceTimerRef.current);
+        reannounceTimerRef.current = null;
+      }
     };
   }, [stopSession]);
 
@@ -508,35 +596,32 @@ export function useTransitGuide(route: TransitRoute | null) {
     return { options, directionUncertain };
   }, [guideRoute, state, waiting]);
 
-  /** 진행 상황(§3.2 공통 컨트롤) — 임의 시점 전문 조회, live region으로 발화. */
+  /**
+   * 진행 상황(§3.2 공통 컨트롤) — 임의 시점 전문 조회, live region으로 발화.
+   * 상시 표시와 같은 조립기를 공유한다(§12.3 드리프트 차단).
+   */
   const announceProgress = useCallback(() => {
     const s = stateRef.current;
     const r = routeRef.current;
     const leg = s && r ? r.legs[s.legIndex] : null;
     if (!s || !leg) return;
-    const stateText = {
-      tracking: t("stateTracking"),
-      notYetVisible: t("stateNotYetVisible"),
-      signalLost: t("stateSignalLost"),
-      upstreamFailed: t("stateUpstreamFailed"),
-      untrackable: t("stateUntrackable"),
-    }[s.signal];
-    const parts = [contextText(leg), stateText];
-    if (s.remaining != null) parts.push(t("remainingCount", { count: s.remaining }));
-    else if (leg.stationCount != null && s.phase === "riding") {
-      parts.push(t("stationCountAbout", { count: leg.stationCount }));
-    }
-    if (s.lastMessage) parts.push(s.lastMessage);
-    if (leg.trackMode === "tagoBus") parts.push(t("approxNote"));
-    setLiveMessage(parts.filter(Boolean).join(" "));
-  }, [contextText, t]);
+    announce(buildStatusText(s, leg));
+  }, [announce, buildStatusText]);
+
+  /** 상시 표시 문자열(§12.3) — 패널이 그대로 렌더한다(별도 조립 금지). */
+  const statusText = useMemo(() => {
+    const leg = state && guideRoute ? guideRoute.legs[state.legIndex] : null;
+    return state && leg ? buildStatusText(state, leg) : "";
+  }, [buildStatusText, guideRoute, state]);
 
   return {
     startable: guideRoute !== null,
     guideRoute,
     state,
+    statusText,
     liveMessage,
-    setLiveMessage,
+    // 외부(패널 중지 통지 등)도 같은 가드를 태운다 — 직접 setState 노출 금지.
+    setLiveMessage: announce,
     waitingOptions: waitingOptions.options,
     directionUncertain: waitingOptions.directionUncertain,
     start,

@@ -164,18 +164,45 @@ final class TransitGuideModel {
     }
 
     /// 진행 상황 버튼(§6.1) — 임의 시점 조회. 버튼 활성화의 직접 응답이라 .high.
+    /// 상시 표시와 같은 조립기를 공유한다(§12.3 드리프트 차단).
     func announceProgress() {
         guard let state, let leg = currentLeg else { return }
-        var parts = [contextText(leg)]
-        parts.append(signalStatusText(state.signal))
+        announce(statusLineText(state: state, leg: leg), highPriority: true)
+    }
+
+    /// 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
+    /// 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중
+    /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
+    func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
+        var parts = [
+            state.phase == .waiting ? waitContextText(leg) : contextText(leg),
+            signalStatusText(state.signal),
+        ]
         if let remaining = state.remaining {
             parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
         } else if let count = leg.stationCount, state.phase == .riding {
             parts.append(appLocalized("transitGuide.stationCountAbout", String(count)))
         }
-        if let message = state.lastMessage, !message.isEmpty { parts.append(message) }
+        if let message = state.lastMessage, !message.isEmpty {
+            parts.append(frameText(leg, message))
+        }
         if leg.trackMode == .tagoBus { parts.append(appLocalized("transitGuide.approxNote")) }
-        announce(parts.joined(separator: " "), highPriority: true)
+        // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
+        // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.
+        if state.signal == .tracking, let age = state.dataAgeSeconds {
+            parts.append(appLocalized("transitGuide.dataAge", String(age)))
+        } else if let updatedAt = state.lastUpdatedAt {
+            parts.append(appLocalized("transitGuide.lastUpdated", Self.timeText(updatedAt)))
+        }
+        return parts.joined(separator: " ")
+    }
+
+    private static func timeText(_ epochMs: Double) -> String {
+        let formatter = DateFormatter()
+        // 고정 포맷은 로케일 고정이 규칙(QA1480) — 기기 12시간제 설정에 흔들리지 않게.
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: Date(timeIntervalSince1970: epochMs / 1000))
     }
 
     // MARK: - 폴링 루프
@@ -338,18 +365,24 @@ final class TransitGuideModel {
             if let leg { parts.append(contextText(leg)) }
             parts.append(appLocalized("transitGuide.trackingStarted"))
             if !message.isEmpty {
-                parts.append(message)
+                parts.append(leg.map { frameText($0, message) } ?? message)
             } else if let remaining {
                 parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
             }
-        case let .countdown(remaining, message):
-            if let leg { parts.append(contextText(leg)) }
-            parts.append(
-                message.isEmpty
-                    ? appLocalized("transitGuide.remainingCount", String(remaining)) : message)
+        case let .countdown(remaining, message, currentLocation):
+            // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
+            if !message.isEmpty {
+                parts.append(leg.map { frameText($0, message) } ?? message)
+            } else {
+                parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
+            }
+            // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
+            // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
+            if remaining <= 1, let currentLocation, !currentLocation.isEmpty {
+                parts.append(appLocalized("transitGuide.currentStation", currentLocation))
+            }
         case let .messageChanged(message):
-            if let leg { parts.append(contextText(leg)) }
-            parts.append(message)
+            parts.append(leg.map { frameText($0, message) } ?? message)
         case let .arrived(certain):
             parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
             if let state, let route {
@@ -364,7 +397,7 @@ final class TransitGuideModel {
             }
         case let .backOnTrack(message):
             parts.append(appLocalized("transitGuide.backOnTrack"))
-            if !message.isEmpty { parts.append(message) }
+            if !message.isEmpty { parts.append(leg.map { frameText($0, message) } ?? message) }
         case .approxVehicleChanged:
             parts.append(appLocalized("transitGuide.approxVehicleChanged"))
         case .signalLost:
@@ -393,9 +426,14 @@ final class TransitGuideModel {
         return parts.joined(separator: " ")
     }
 
-    /// 사다리·문장 통지의 고정 문맥(§6.1 독립 문장 병치 — 문법 결합 금지).
+    /// 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당.
     func contextText(_ leg: TransitGuideLeg) -> String {
         appLocalized("transitGuide.context", leg.lineName, leg.alightName)
+    }
+
+    /// upstream 완성 문장의 라벨 프레임(§12.3) — 원문 무변형, 하차역 라벨 전치.
+    func frameText(_ leg: TransitGuideLeg, _ message: String) -> String {
+        appLocalized("transitGuide.messageFrame", leg.alightName, message)
     }
 
     /// 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.
