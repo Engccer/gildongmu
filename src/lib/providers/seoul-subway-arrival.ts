@@ -108,6 +108,8 @@ function toArrival(item: RawArrival): SubwayArrival {
     // 열차 잠금 조인 키(B2 §4.2) — 원문 문자열 무변형, 결측은 undefined(가짜 값 금지).
     trainNo: str(item.btrainNo) || undefined,
     arrivalCode: str(item.arvlCd) || undefined,
+    // 신선도 게이트 축(B2 §12.1) — 원문 보존, lag 계산은 소비 계층(transit-track).
+    receivedAt: str(item.recptnDt) || undefined,
   };
 }
 

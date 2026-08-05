@@ -59,26 +59,6 @@ export function TransitGuidePanel({
 
   if (!guide.startable) return null;
 
-  const signalText = state
-    ? {
-        tracking: t("stateTracking"),
-        notYetVisible: t("stateNotYetVisible"),
-        signalLost: t("stateSignalLost"),
-        upstreamFailed: t("stateUpstreamFailed"),
-        untrackable: t("stateUntrackable"),
-      }[state.signal]
-    : "";
-
-  const lastUpdatedText =
-    state?.lastUpdatedAt != null
-      ? t("lastUpdated", {
-          time: new Date(state.lastUpdatedAt).toLocaleTimeString("ko-KR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        })
-      : "";
-
   return (
     <div className="mt-1">
       {!open && (
@@ -101,21 +81,10 @@ export function TransitGuidePanel({
 
       {open && state && leg && (
         <div className="rounded-md border border-gray-300 p-3">
-          {/* 상시 표시(live region 밖, 묶음 A 계약) */}
-          <p className="text-sm">
-            {joinText(
-              t("context", { line: leg.lineName, stop: leg.alightName }),
-              signalText,
-              state.remaining != null
-                ? t("remainingCount", { count: state.remaining })
-                : leg.stationCount != null && state.phase === "riding"
-                  ? t("stationCountAbout", { count: leg.stationCount })
-                  : "",
-              state.lastMessage ?? "",
-              leg.trackMode === "tagoBus" ? t("approxNote") : "",
-              lastUpdatedText,
-            )}
-          </p>
+          {/* 상시 표시(live region 밖, 묶음 A 계약) — 통지와 같은 조립기를
+              공유한다(§12.3: 완성 문장 공백 연결, 쉼표 조립(joinText) 폐기 —
+              문장 키와 쉼표 조립이 섞이며 "기준., " 이중 구두점이 났었다). */}
+          <p className="text-sm">{guide.statusText}</p>
 
           {state.signal === "untrackable" && (
             <>

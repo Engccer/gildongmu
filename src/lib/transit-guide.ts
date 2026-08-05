@@ -75,6 +75,12 @@ export interface TrackItem {
   destinationName: string | null;
   express: boolean;
   arrivalCode: string | null;
+  /** 현재 위치 역명(지하철 arvlMsg3, §12.2) — 미제공 수단은 null. */
+  currentLocation?: string | null;
+  /** 데이터 수신 시각 원문(recptnDt, §12.1 스냅숏 정체성) — 미제공은 null. */
+  dataStamp?: string | null;
+  /** 데이터 나이(초, 서버 계산·클램프). null = 미제공 또는 동결 판정 불가(§12.1 ⓑ). */
+  dataAgeSeconds?: number | null;
 }
 
 export type TrackPoll =
@@ -96,7 +102,7 @@ export type TransitInput =
 export type TransitGuideEvent =
   | { kind: "boarded"; legIndex: number }
   | { kind: "trackingStarted"; message: string; remaining: number | null }
-  | { kind: "countdown"; remaining: number; message: string }
+  | { kind: "countdown"; remaining: number; message: string; currentLocation: string | null }
   | { kind: "messageChanged"; message: string }
   | { kind: "arrived"; certain: boolean }
   | { kind: "backOnTrack"; message: string }
@@ -125,6 +131,12 @@ export interface TransitGuideState {
   remaining: number | null;
   lastMessage: string | null;
   lastUpdatedAt: number | null;
+  /** 잠금 항목의 현재 위치 역명(arvlMsg3, §12.2) — countdown 병치·M3 탑승 위치 축. */
+  currentLocation: string | null;
+  /** 잠금 항목의 recptnDt 원문(§12.1 스냅숏 정체성 — 동일 스냅숏 무정보 폴 판정). */
+  dataStamp: string | null;
+  /** 데이터 나이(초, 서버 계산). null = 미제공·동결 판정 불가(§12.1) — 표기 생략. */
+  dataAgeSeconds: number | null;
   /** arrived 국면의 확정(도착 관측)/추정(소실) 구분 — 문구 3-state(§4.2). */
   arrivedCertain: boolean;
   /** 사다리 래치: 마지막 발화 잔여값(이보다 작아질 때만 재발화, 증가에 비가역). */
@@ -152,15 +164,14 @@ export const MISS_ARRIVE_COUNT = 2;
 /** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
 export const SESSION_POLL_CAP = 240;
 
-/** 폴링 주기(§7 적응형). 0 = 폴링 없음(done·untrackable). */
+/** 폴링 주기(§7 적응형, M1 개정). 0 = 폴링 없음(done·untrackable). */
 export function pollIntervalMs(state: TransitGuideState): number {
   if (state.phase === "done" || state.signal === "untrackable") return 0;
   if (state.capAnnounced) return 60_000;
   if (state.phase === "waiting") return 20_000;
-  // riding·arrived(재관측 감시): 미등장 60s / 원거리 30s / 임박 15s
-  if (!state.trackingAnnounced) return 60_000;
-  if (state.remaining != null && state.remaining <= LADDER_MAX) return 15_000;
-  return 30_000;
+  // riding·arrived(재관측 감시): 미등장 60s / 추적 중 15s(§12 — 원거리 30s 폐지:
+  // upstream이 이미 15~25초 낡아 폴 간격이 체감 지연의 가산 항이었다).
+  return state.trackingAnnounced ? 15_000 : 60_000;
 }
 
 /** 이벤트 → 통지 채널·톤 매핑(§6.1). 웹·iOS 공용 의미론(발화 채널은 플랫폼 재량). */
@@ -365,6 +376,9 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     remaining: null,
     lastMessage: null,
     lastUpdatedAt: null,
+    currentLocation: null,
+    dataStamp: null,
+    dataAgeSeconds: null,
     arrivedCertain: false,
     ladderAnnounced: null,
     trackingAnnounced: false,
@@ -414,6 +428,9 @@ function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepRe
       remaining: null,
       lastMessage: null,
       lastUpdatedAt: null,
+      currentLocation: null,
+      dataStamp: null,
+      dataAgeSeconds: null,
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
@@ -435,6 +452,9 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       lock: null,
       remaining: null,
       lastMessage: null,
+      currentLocation: null,
+      dataStamp: null,
+      dataAgeSeconds: null,
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
@@ -473,6 +493,9 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       remaining: null,
       lastMessage: null,
       lastUpdatedAt: null,
+      currentLocation: null,
+      dataStamp: null,
+      dataAgeSeconds: null,
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
@@ -597,6 +620,22 @@ function commitMatched(
 ): TransitStepResult {
   const prevRemaining = base.remaining;
   const wasTracking = base.trackingAnnounced;
+
+  // 동일 스냅숏 무정보 폴(§12.1): 잠금 항목의 recptnDt와 완성 문장이 직전 커밋과
+  // 같으면 새 정보가 없다 — phase·signal 불변, 이벤트 없음(동결 레코드 재등장이
+  // backOnTrack·재발화로 이어지는 경로 차단). ⚠ 문장 동일 조건 필수: 신분당선은
+  // stamp 동결 + 문장 정상 갱신이라 stamp만으로 억제하면 사다리가 죽는다(실측).
+  const stamp = item.dataStamp ?? null;
+  if (stamp != null && stamp === base.dataStamp && item.message === base.lastMessage) {
+    // 무정보여도 매칭은 매칭이다 — 연속 미등장 카운터(missCount)는 끊는다.
+    // 안 끊으면 미등장↔동결재등장 반복(분기역 근접)에서 "N연속" 계약(§4.2)보다
+    // 빨리 signalLost·도착 추정이 오발화된다(독립 리뷰 MAJOR).
+    return {
+      state: { ...base, missCount: 0, lastUpdatedAt: now, dataAgeSeconds: item.dataAgeSeconds ?? null },
+      event: carriedEvent,
+    };
+  }
+
   const next: TransitGuideState = {
     ...base,
     signal: "tracking",
@@ -604,6 +643,11 @@ function commitMatched(
     remaining: item.remainingStops,
     lastMessage: item.message,
     lastUpdatedAt: now,
+    currentLocation: item.currentLocation ?? null,
+    dataStamp: stamp,
+    // stamp 동결 감지(신분당선형): 같은 stamp인데 문장이 갱신됐다면 recptnDt가
+    // 고장난 것 — 그 나이는 거짓 정밀이라 null(§12.1, 접근성 감사 반영).
+    dataAgeSeconds: stamp != null && stamp === base.dataStamp ? null : (item.dataAgeSeconds ?? null),
     trackingAnnounced: true,
   };
 
@@ -664,7 +708,15 @@ function commitMatched(
     remaining < prevRemaining
   ) {
     next.ladderAnnounced = remaining;
-    return { state: next, event: { kind: "countdown", remaining, message: item.message } };
+    return {
+      state: next,
+      event: {
+        kind: "countdown",
+        remaining,
+        message: item.message,
+        currentLocation: item.currentLocation ?? null,
+      },
+    };
   }
   // 소실 후 재관측 회복(§4.2 신호 상태 변화 1회) — 상위 이벤트가 없을 때만
   // (카운트다운·도착이 나가면 그 자체가 회복 신호라 중복 통지 금지).

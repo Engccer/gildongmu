@@ -42,15 +42,11 @@ struct TransitTrackingSheet: View {
 
     @ViewBuilder private var statusRows: some View {
         if let state = model.state, let leg = model.currentLeg {
-            // 상시 표시(통지 채널 밖) — 한 줄 = 한 접근성 객체(joinText).
-            distanceText(joinText(
-                model.contextText(leg),
-                model.signalStatusText(state.signal),
-                state.remaining.map { appLocalized("transitGuide.remainingCount", String($0)) } ?? "",
-                state.lastMessage ?? "",
-                leg.trackMode == .tagoBus ? appLocalized("transitGuide.approxNote") : ""
-            ))
-            .foregroundStyle(.secondary)
+            // 상시 표시(통지 채널 밖) — 통지와 같은 조립기 공유(§12.3: 완성 문장
+            // 공백 연결, 쉼표 조립(joinText)은 이중 구두점을 만들어 폐기). 여전히
+            // 한 줄 = 한 접근성 객체(단일 텍스트).
+            distanceText(model.statusLineText(state: state, leg: leg))
+                .foregroundStyle(.secondary)
         }
     }
 

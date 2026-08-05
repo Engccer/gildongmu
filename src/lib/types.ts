@@ -623,6 +623,11 @@ export interface SubwayArrival {
   trainNo?: string;
   /** 도착 코드(arvlCd 원문: "1" 도착·"2" 출발·"99" 운행중 등). 결측이면 undefined. */
   arrivalCode?: string;
+  /**
+   * 데이터 수신 시각(recptnDt 원문, "yyyy-MM-dd HH:mm:ss" KST) — B2 §12.1 신선도
+   * 게이트의 축. 보정용이 아니다(신분당선 동결·미래값 고장 실측). 결측이면 undefined.
+   */
+  receivedAt?: string;
 }
 
 /**

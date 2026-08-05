@@ -169,6 +169,51 @@ export function remainingFromArvlMsg(message: string): number | null {
 }
 
 /**
+ * arvlCd 기반 잔여 폴백(§12.2): 0 진입·1 도착·2 출발(당역)=0, 3 전역출발·
+ * 4 전역진입·5 전역도착=1. 99(운행중)·미지는 null. arvlMsg2 패턴 실패
+ * ("곧 도착"류)에서 사다리가 죽지 않게 하는 보조 신호 — 패턴이 1차 정본.
+ */
+export function remainingFromArvlCd(code: string | null | undefined): number | null {
+  if (code === "0" || code === "1" || code === "2") return 0;
+  if (code === "3" || code === "4" || code === "5") return 1;
+  return null;
+}
+
+/** 종착 상태 코드(당역 1 도착·2 출발, 전역 5 도착) — 동결 레코드 판정 축(§12.1 ⓑ). */
+const TERMINAL_ARVL_CODES = new Set(["1", "2", "5"]);
+/** 이 lag를 넘긴 종착 상태 레코드는 동결로 판정한다(실측 2026-08-06). */
+export const STALE_FROZEN_SECONDS = 120;
+
+/** recptnDt("yyyy-MM-dd HH:mm:ss", KST) → epoch ms. 형식 밖은 null. */
+export function parseRecptnDt(raw: string): number | null {
+  const m = raw.trim().match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/);
+  if (!m) return null;
+  // 서버 TZ와 무관하게 KST 명시 오프셋으로 해석한다(Vercel=UTC·로컬=KST).
+  const ms = Date.parse(`${m[1]}T${m[2]}+09:00`);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * 데이터 나이(초) 판정(§12.1 신선도 게이트): ⓐ 미래값(신분당선 고장)은 0으로
+ * 클램프 ⓑ lag>120초 ∧ 종착 상태는 동결 레코드 — null(판정 불가)로 강등.
+ * 미제공·파싱 불가도 null(소비자 행동이 같아 구분하지 않는다 — 표기 생략).
+ */
+export function subwayDataAgeSeconds(
+  receivedAt: string | undefined,
+  arrivalCode: string | undefined,
+  nowMs: number,
+): number | null {
+  if (!receivedAt) return null;
+  const t = parseRecptnDt(receivedAt);
+  if (t == null) return null;
+  const lag = Math.max(0, Math.round((nowMs - t) / 1000));
+  if (lag > STALE_FROZEN_SECONDS && arrivalCode != null && TERMINAL_ARVL_CODES.has(arrivalCode)) {
+    return null;
+  }
+  return lag;
+}
+
+/**
  * 승차 대기·하차 카운트다운 공용: 역 도착조회를 노선(ODsay lineName → subwayId
  * 매핑표)으로 필터. 미커버 노선(비수도권)·미커버 역은 unsupported.
  */
@@ -185,6 +230,7 @@ export async function trackSubway(params: {
   // 걸렀으므로 empty(미등장)가 정직하다 — 심야 실호출에서 unsupported로
   // 뭉개져 "신호 끊김"으로 오통지되는 것을 확인(2026-08-04).
   if (result === null) return { status: "empty" };
+  const now = Date.now();
   const items = result.arrivals
     .filter((a) => a.line === expectedLine)
     .map(
@@ -192,10 +238,13 @@ export async function trackSubway(params: {
         vehicleId: a.trainNo ?? null,
         direction: a.direction,
         message: a.message,
-        remainingStops: remainingFromArvlMsg(a.message),
+        remainingStops: remainingFromArvlMsg(a.message) ?? remainingFromArvlCd(a.arrivalCode),
         destinationName: a.destination || null,
         express: a.express,
         arrivalCode: a.arrivalCode ?? null,
+        currentLocation: a.currentLocation || null,
+        dataStamp: a.receivedAt ?? null,
+        dataAgeSeconds: subwayDataAgeSeconds(a.receivedAt, a.arrivalCode, now),
       }),
     );
   return withItems(items);

@@ -42,9 +42,10 @@ private struct FixtureExpect: Decodable {
     let legIndex: Int?
     // remaining은 "명시 null"(추출 실패 기대)과 "미지정"을 구분해야 한다.
     let remaining: Int??
+    let dataAgeSeconds: Int??
     let event: FixtureEvent??
 
-    enum CodingKeys: String, CodingKey { case phase, signal, legIndex, remaining, event }
+    enum CodingKeys: String, CodingKey { case phase, signal, legIndex, remaining, dataAgeSeconds, event }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         phase = try c.decodeIfPresent(String.self, forKey: .phase)
@@ -52,6 +53,9 @@ private struct FixtureExpect: Decodable {
         legIndex = try c.decodeIfPresent(Int.self, forKey: .legIndex)
         remaining = c.contains(.remaining)
             ? .some(try c.decodeIfPresent(Int.self, forKey: .remaining))
+            : .none
+        dataAgeSeconds = c.contains(.dataAgeSeconds)
+            ? .some(try c.decodeIfPresent(Int.self, forKey: .dataAgeSeconds))
             : .none
         event = c.contains(.event)
             ? .some(try c.decodeIfPresent(FixtureEvent.self, forKey: .event))
@@ -65,6 +69,21 @@ private struct FixtureEvent: Decodable {
     let remaining: Int?
     let certain: Bool?
     let final: Bool?
+    // currentLocation은 "명시 null"(병치 없음 기대)과 "미지정"을 구분한다.
+    let currentLocation: String??
+
+    enum CodingKeys: String, CodingKey { case kind, legIndex, remaining, certain, final, currentLocation }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try c.decode(String.self, forKey: .kind)
+        legIndex = try c.decodeIfPresent(Int.self, forKey: .legIndex)
+        remaining = try c.decodeIfPresent(Int.self, forKey: .remaining)
+        certain = try c.decodeIfPresent(Bool.self, forKey: .certain)
+        final = try c.decodeIfPresent(Bool.self, forKey: .final)
+        currentLocation = c.contains(.currentLocation)
+            ? .some(try c.decodeIfPresent(String.self, forKey: .currentLocation))
+            : .none
+    }
 }
 
 private func loadFixture() throws -> FixtureFile {
@@ -147,14 +166,20 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
             if case let .some(expected) = step.expect.remaining {
                 #expect(state.remaining == expected, "\(ctx) remaining")
             }
+            if case let .some(expected) = step.expect.dataAgeSeconds {
+                #expect(state.dataAgeSeconds == expected, "\(ctx) dataAgeSeconds")
+            }
             if case let .some(expectedEvent) = step.expect.event {
                 if let expectedEvent {
                     #expect(kindName(result.event) == expectedEvent.kind, "\(ctx) event.kind")
                     switch result.event {
                     case let .boarded(legIndex):
                         if let e = expectedEvent.legIndex { #expect(legIndex == e, "\(ctx) event.legIndex") }
-                    case let .countdown(remaining, _):
+                    case let .countdown(remaining, _, currentLocation):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
+                        if case let .some(e) = expectedEvent.currentLocation {
+                            #expect(currentLocation == e, "\(ctx) event.currentLocation")
+                        }
                     case let .trackingStarted(_, remaining):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                     case let .arrived(certain):
@@ -189,7 +214,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     state = transitGuideStep(
         state: state, input: .poll(seq: 1, phaseGen: 1, poll: .ok([far])), route: route, now: 1
     ).state
-    #expect(transitPollIntervalMs(state) == 30_000)
+    // §12 개정: 추적 중이면 원거리도 15초(원거리 30초 폐지).
+    #expect(transitPollIntervalMs(state) == 15_000)
     let near = TransitTrackItem(
         vehicleId: "5696", direction: "하행", message: "[3]번째 전역", remainingStops: 3,
         destinationName: "하남검단산", express: false, arrivalCode: "99")
@@ -230,8 +256,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
 }
 
 @Test func eventProfileChannels() {
-    #expect(transitEventProfile(.countdown(remaining: 1, message: "")).interrupt == true)
-    #expect(transitEventProfile(.countdown(remaining: 2, message: "")).interrupt == false)
+    #expect(transitEventProfile(.countdown(remaining: 1, message: "", currentLocation: nil)).interrupt == true)
+    #expect(transitEventProfile(.countdown(remaining: 2, message: "", currentLocation: nil)).interrupt == false)
     #expect(transitEventProfile(.arrived(certain: true)).interrupt == true)
     #expect(transitEventProfile(.signalLost).interrupt == false)
 }

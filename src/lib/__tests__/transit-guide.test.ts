@@ -70,6 +70,7 @@ describe("transitGuideStep — 공유 fixture 시나리오(B2 §8.1)", () => {
         if ("signal" in exp) expect(state.signal, ctx).toBe(exp.signal);
         if ("legIndex" in exp) expect(state.legIndex, ctx).toBe(exp.legIndex);
         if ("remaining" in exp) expect(state.remaining, ctx).toBe(exp.remaining);
+        if ("dataAgeSeconds" in exp) expect(state.dataAgeSeconds, ctx).toBe(exp.dataAgeSeconds);
         if ("event" in exp) {
           if (exp.event === null) {
             expect(event, ctx).toBeNull();
@@ -108,14 +109,14 @@ function item(overrides: Partial<TrackItem>): TrackItem {
 }
 
 describe("pollIntervalMs — 적응 주기(§7)", () => {
-  it("waiting 20s, 미등장 60s, 원거리 30s, 임박 15s, done·untrackable 0", () => {
+  it("waiting 20s, 미등장 60s, 추적 중 15s(§12 원거리 30s 폐지), done·untrackable 0", () => {
     const route = SUBWAY_ROUTE();
     let state = initTransitGuide(route, 0);
     expect(pollIntervalMs(state)).toBe(20_000);
     state = transitGuideStep(state, { kind: "board", lock: SUBWAY_LOCK() }, route, 0).state;
     expect(pollIntervalMs(state)).toBe(60_000);
     state = transitGuideStep(state, pollOk(1, 1, [item({ remainingStops: 9 })]), route, 1).state;
-    expect(pollIntervalMs(state)).toBe(30_000);
+    expect(pollIntervalMs(state)).toBe(15_000);
     state = transitGuideStep(state, pollOk(2, 1, [item({ remainingStops: 3, message: "x" })]), route, 2).state;
     expect(pollIntervalMs(state)).toBe(15_000);
     // advance는 arrived에서만 유효(리듀서 가드) — 도착 관측 후 전환.
@@ -159,8 +160,12 @@ describe("세션 폴링 캡(§7) — 도달 시 1회 통지 + 60초 강등", () 
 
 describe("eventProfile — 통지 채널·톤(§6.1)", () => {
   it("잔여 1·도착만 interrupting, 나머지는 polite", () => {
-    expect(eventProfile({ kind: "countdown", remaining: 1, message: "" }).interrupt).toBe(true);
-    expect(eventProfile({ kind: "countdown", remaining: 2, message: "" }).interrupt).toBe(false);
+    expect(
+      eventProfile({ kind: "countdown", remaining: 1, message: "", currentLocation: null }).interrupt,
+    ).toBe(true);
+    expect(
+      eventProfile({ kind: "countdown", remaining: 2, message: "", currentLocation: null }).interrupt,
+    ).toBe(false);
     expect(eventProfile({ kind: "arrived", certain: true }).interrupt).toBe(true);
     expect(eventProfile({ kind: "arrived", certain: false }).interrupt).toBe(true);
     expect(eventProfile({ kind: "signalLost" }).interrupt).toBe(false);
