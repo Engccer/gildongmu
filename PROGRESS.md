@@ -15,7 +15,11 @@
 >
 > 릴리스 노트·절차·함정은 `docs/appstore/1.0-submission-draft.md` §13(1.1)·§14(1.2)·§15(ASC API 제출 전환).
 
-### 실시간 안내 실사용 피드백 라운드1 (2026-08-06, M0 배포 — M1·M2 대기)
+### 실시간 안내 실사용 피드백 라운드1 (2026-08-06, M0·M1 배포 — M2 대기)
+
+**M1 추적 정보 품질 배선 완료**(커밋 `0dcc66a`, 피드백 #1·#9·#10): 스펙 §12 증보 + §11 기각 ⑨ 전제 오류 정정 후 구현. ① recptnDt 신선도 게이트 — provider 원문 투영, track 서비스가 KST 오프셋으로 lag 계산(음수 클램프·120초 초과 종착(arvlCd 1·2·5) 동결 레코드 null), "N초 전 기준." 상시 표시 ② 동일 스냅숏(stamp·문장 동일) 무정보 폴 — 동결 레코드 재등장의 backOnTrack 재발화 차단, 매칭이므로 missCount는 리셋(독립 리뷰 MAJOR — 미리셋 시 미등장↔동결재등장 반복에서 signalLost 조기 오발화), stamp 동결(신분당선형) 감지 시 나이 null ③ arvlMsg3 현재 역 병치(잔여 1 통지 "현재 위치 {역}.")+arvlCd 잔여 폴백 ④ 폴 주기 riding 추적 중 30→15초 ⑤ 문구 조립 단일 헬퍼(웹 buildStatusText·iOS statusLineText 공유 — "기준., " 이중 구두점·iOS stationCountAbout/lastUpdated 누락 드리프트 해소), 라벨 프레임 "{stop}까지, {message}."(접근성 감사 HIGH: 초안 "도착" 어휘가 실제 도착 통지와 낭독 구분 불가라 교체), 신선도 문장 정확히 1개(tracking=나이·그 외=마지막 폴 시각), 웹 live region 재발화 가드. 공유 fixture 시나리오 4종 추가. **실호출**: 심야(01:55 KST)라 강동·천호·강남 INFO-200, 왕십리 실레코드 1건에서 recptnDt "2026-08-06 01:53:56" 파싱·lag 11초·arvlMsg3 "방화" 확정. 리뷰: 코드 리뷰 MAJOR 1(missCount)·MINOR 1(countdown leg-null 폴백), 접근성 감사 HIGH 2·MEDIUM 2·LOW 2 — 전량 반영. 부수: dodo@9cc7408f TAGO 운행시각 숫자 계약 역이식 소비(`8bcee7b`, PORTS 행 종결). 다음 실승차에서 지연 체감·프레임 어휘·현재 역 병치 판정.
+
+#### (이전 기록) M0 배포
 
 **M0 즉효 4건 완료**(커밋 `ff170d3`, 웹 push 배포 + 실기기 Experimental 설치): ① 8번 — iOS 상세 경로 조회를 첫 수용 fix 도착 후 트리거(origin=그 fix, `currentCoordinate()` 의존 제거)로 옮겨 첫 세션 간략 폴백 고정 해소, 수용 fix 15초 부재 시 위치 대기 문구(`guide.detailNoLocation`)로 정직 폴백(그 창의 워치독 약신호는 억제 — 리뷰 MEDIUM 반영) ② 11-(가) — 안내 세션 중 유휴 복귀 리셋 제외(iOS `GuideSessionCoordinator.isActive` + 웹 `hasActiveGuideSession`) ③ 13번 — 화면 켜기 힌트 "다시 보지 않음" 영구 해제(UserDefaults·localStorage 미러, 소멸 전이 포커스 선점) ④ 12번 — 시작 라벨 수단별 짧은 형 3키 분리(6로케일). 독립 리뷰 판정 머지 가능(HIGH 0). 기각 1건 기록: 백그라운드 중 fixWaitTask 시계 진행으로 복귀 직후 폴백이 앞당겨질 수 있음(LOW) — 전경 전용 계약 범위라 수용, M4 백그라운드 승격 때 재점검.
 
