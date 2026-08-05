@@ -826,6 +826,12 @@
     "cancelChangeBoarding": "乗車変更を取り消す",
     "waitingCount": "乗車候補{count}件。",
     "noCandidatesFiltered": "この路線以外の車両のみ表示されています",
-    "noCandidatesUnavailable": "リアルタイム一覧を取得できませんでした"
+    "noCandidatesUnavailable": "リアルタイム一覧を取得できませんでした",
+    "viaStopsTrain": "経由駅{count}駅",
+    "viaStopsBus": "経由停留所{count}か所",
+    "viaBoard": "乗車",
+    "viaAlight": "下車",
+    "viaCurrent": "現在位置",
+    "walkHandoffStart": "残りの徒歩案内を開始"
   }
 }

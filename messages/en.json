@@ -826,6 +826,12 @@
     "cancelChangeBoarding": "Cancel boarding change",
     "waitingCount": "{count} boarding options.",
     "noCandidatesFiltered": "Only vehicles from other routes are showing",
-    "noCandidatesUnavailable": "Couldn't load the realtime list"
+    "noCandidatesUnavailable": "Couldn't load the realtime list",
+    "viaStopsTrain": "{count} stations on this leg",
+    "viaStopsBus": "{count} stops on this leg",
+    "viaBoard": "board",
+    "viaAlight": "get off",
+    "viaCurrent": "current position",
+    "walkHandoffStart": "Start remaining walk guidance"
   }
 }

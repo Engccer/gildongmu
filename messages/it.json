@@ -826,6 +826,12 @@
     "cancelChangeBoarding": "Annulla cambio di salita",
     "waitingCount": "{count} opzioni di salita.",
     "noCandidatesFiltered": "Vengono mostrati solo veicoli di altre linee",
-    "noCandidatesUnavailable": "Impossibile caricare l'elenco in tempo reale"
+    "noCandidatesUnavailable": "Impossibile caricare l'elenco in tempo reale",
+    "viaStopsTrain": "{count} stazioni in questa tratta",
+    "viaStopsBus": "{count} fermate in questa tratta",
+    "viaBoard": "salita",
+    "viaAlight": "discesa",
+    "viaCurrent": "posizione attuale",
+    "walkHandoffStart": "Avvia la guida a piedi rimanente"
   }
 }

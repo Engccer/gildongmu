@@ -3,6 +3,13 @@ import GildongmuKit
 import Observation
 import SwiftUI
 
+/// 완료 후 도보 핸드오프 제안(A안, §14.2 — 피드백 #6). done의 stop()이 세션 상태를
+/// 소거하므로 시트가 이 값으로 살아남아 "남은 도보 안내 시작"을 제안한다.
+struct TransitWalkHandoff: Equatable {
+    let destinationLabel: String
+    let walkMinutes: Int
+}
+
 /// 대중교통 실시간 안내 오케스트레이터(B2 §4·§7). **판정은 전부 Kit이 하고 여기는
 /// 배선만 한다**(BeaconModel 관례): 상태 머신은 `transitGuideStep`, 폴 대상·주기·
 /// 잠금·사다리 전부 Kit, 이 클래스는 폴링 I/O·통지 게시·수명만 담당한다.
@@ -24,6 +31,9 @@ final class TransitGuideModel {
     private(set) var waitingDeparted: [(item: TransitTrackItem, minutes: Int)] = []
     /// 마지막 대기 폴의 0건 사유(§13.3) — 항목이 있으면 nil.
     private(set) var waitingReason: TransitWaitingEmptyReason?
+    /// 완료 후 도보 핸드오프 제안(§14.2) — 세션 밖 수명(stop()이 소거하는 상태와
+    /// 별도 보존). 시트 presentation이 isTracking ∨ 이 값으로 확장된다.
+    private(set) var pendingWalkHandoff: TransitWalkHandoff?
 
     var isTracking: Bool { state != nil }
     var currentLeg: TransitGuideLeg? {
@@ -53,6 +63,7 @@ final class TransitGuideModel {
 
     func start(transitRoute: TransitRoute, destinationLabel: String) {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return }
+        pendingWalkHandoff = nil
         sessionToken = GuideSessionCoordinator.shared.claim { [weak self] in self?.stop() }
         self.route = guideRoute
         self.destinationLabel = destinationLabel
@@ -92,10 +103,17 @@ final class TransitGuideModel {
         tagoUnsupported = []
         pausedInBackground = false
         refreshAnnounce = false
+        pendingWalkHandoff = nil
+    }
+
+    /// 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태).
+    func clearWalkHandoff() {
+        pendingWalkHandoff = nil
     }
 
     /// 목적지 변경으로 세션 채널이 무의미해지는 전이(§3.3 — 명시 중지 + 통지).
     func stopBecauseDestinationChanged() {
+        pendingWalkHandoff = nil // 옛 목적지의 핸드오프 제안도 함께 무효(무통지 소거)
         guard isTracking else { return }
         stop()
         announce(appLocalized("ios.beacon.stopped"))
@@ -151,8 +169,14 @@ final class TransitGuideModel {
     func advance() {
         dispatch(.advance)
         if state?.phase == .done {
-            // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 자원만 회수(시트 닫힘).
+            // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 자원만 회수한다.
+            // 말미 도보가 있으면 핸드오프 제안(§14.2)을 stop() **뒤에** 남긴다
+            // (stop()이 pendingWalkHandoff까지 nil로 지우는 단일 소거 경로라 순서 필수).
+            let handoff = route?.walkAfterMinutes.map {
+                TransitWalkHandoff(destinationLabel: destinationLabel, walkMinutes: $0)
+            }
             stop()
+            pendingWalkHandoff = handoff
         } else {
             waitingLive = []
             waitingDeparted = []

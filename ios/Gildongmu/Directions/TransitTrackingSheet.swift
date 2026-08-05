@@ -12,32 +12,56 @@ import SwiftUI
 struct TransitTrackingSheet: View {
     let model: TransitGuideModel
     let onStop: () -> Void
+    /// 완료 후 도보 핸드오프 수락(§14.2) — nil이면 제안 버튼 미노출(목적지 소실 등).
+    let onWalkHandoff: (() -> Void)?
 
+    @Environment(\.dismiss) private var dismiss
     @AccessibilityFocusState private var stopFocused: Bool
     @AccessibilityFocusState private var advanceFocused: Bool
     @AccessibilityFocusState private var changeBoardingFocused: Bool
+    @AccessibilityFocusState private var walkHandoffFocused: Bool
     /// 목록 포커스 소실 복귀 착지점(§13.4) — 항목이 사라지면 라벨로 선점 복귀.
     @AccessibilityFocusState private var waitingLabelFocused: Bool
     /// 포커스가 얹힌 후보의 정체성(항목 정체성 옵셔널 바인딩 — Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedCandidate: String?
+    /// 경유역 목록 펼침(§14.1) — leg가 바뀌면 접는다(다음 구간의 목록은 다른 목록).
+    @State private var viaExpanded = false
 
     private static let waitingLabelId = "transit-waiting-label"
 
     var body: some View {
         ScrollViewReader { proxy in
             List {
-                Section {
-                    Button(appLocalized("beacon.stop"), action: onStop)
-                        .accessibilityFocused($stopFocused)
-                    Button(appLocalized("guide.progressButton")) { model.announceProgress() }
-                    statusRows
-                    phaseControls(proxy: proxy)
-                } header: {
-                    Text(joinText(appLocalized("beacon.transitHeading"), model.destinationLabel))
-                        .accessibilityAddTraits(.isHeader)
+                if model.state != nil {
+                    Section {
+                        Button(appLocalized("beacon.stop"), action: onStop)
+                            .accessibilityFocused($stopFocused)
+                        Button(appLocalized("guide.progressButton")) { model.announceProgress() }
+                        statusRows
+                        viaStopsRows
+                        phaseControls(proxy: proxy)
+                    } header: {
+                        Text(joinText(appLocalized("beacon.transitHeading"), model.destinationLabel))
+                            .accessibilityAddTraits(.isHeader)
+                    }
+                } else if let handoff = model.pendingWalkHandoff {
+                    walkHandoffSection(handoff)
                 }
             }
             .task { await landStopFocus() }
+            .onChange(of: model.state?.legIndex) { viaExpanded = false }
+            // 완료 전이(세션 소거 + 핸드오프 제안): 사라진 "다음 구간" 대신 다음
+            // 행동(도보 안내 시작)으로 선점(헌장 §5, arrived 전이와 동형 패턴).
+            .onChange(of: model.pendingWalkHandoff) { _, handoff in
+                guard handoff != nil, onWalkHandoff != nil else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    walkHandoffFocused = true
+                    try? await Task.sleep(for: .milliseconds(600))
+                    guard !walkHandoffFocused else { return }
+                    walkHandoffFocused = true
+                }
+            }
             .onChange(of: model.state?.phase) { previous, phase in
                 // arrived 진입 시 "다음 구간"으로 선점(사라진 컨트롤 대신 다음 행동,
                 // 헌장 §5).
@@ -61,6 +85,52 @@ struct TransitTrackingSheet: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// 완료 후 도보 핸드오프(§14.2, 피드백 #6) — A안 제안형. 자동 연결(B안)은
+    /// 지하 역사 GPS 공백으로 기각. 닫기는 presentation 바인딩이 제안을 소거한다.
+    private func walkHandoffSection(_ handoff: TransitWalkHandoff) -> some View {
+        Section {
+            Text(appLocalized("transitGuide.doneWalk", String(handoff.walkMinutes)))
+                .foregroundStyle(.secondary)
+            if let onWalkHandoff {
+                Button(appLocalized("transitGuide.walkHandoffStart")) { onWalkHandoff() }
+                    .accessibilityFocused($walkHandoffFocused)
+            }
+            Button(appLocalized("actions.close")) { dismiss() }
+        } header: {
+            Text(joinText(appLocalized("beacon.transitHeading"), handoff.destinationLabel))
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// 경유역 목록 1단계(§14.1, 피드백 #3): 기보유 viaStops의 정적 표시 — 추가
+    /// upstream 0회. 항목 무헤딩(도착편 관례)·단일 텍스트, 승차·하차 라벨과 현재
+    /// 위치(arvlMsg3 매칭, 지하철 잠금 추적에서만)를 쉼표로 흡수. 펼침 시맨틱은
+    /// DisclosureGroup이 정본(시뮬 무라벨 셰브런은 아티팩트 — 실기기 비문제).
+    /// 단계 공개(더 보기) 비적용: 정적 텍스트라 절단 너머가 행동을 바꾸지 않는다.
+    @ViewBuilder private var viaStopsRows: some View {
+        if let state = model.state, let leg = model.currentLeg, !leg.viaStops.isEmpty {
+            DisclosureGroup(isExpanded: $viaExpanded) {
+                let currentIndex = viaStopCurrentIndex(leg: leg, currentLocation: state.currentLocation)
+                ForEach(Array(leg.viaStops.enumerated()), id: \.offset) { index, stop in
+                    Text(joinText(
+                        stop.name,
+                        index == 0
+                            ? appLocalized("transitGuide.viaBoard")
+                            : index == leg.viaStops.count - 1
+                                ? appLocalized("transitGuide.viaAlight")
+                                : "",
+                        index == currentIndex ? appLocalized("transitGuide.viaCurrent") : ""
+                    ))
+                }
+            } label: {
+                Text(appLocalized(
+                    leg.mode == "subway" ? "transitGuide.viaStopsTrain" : "transitGuide.viaStopsBus",
+                    String(leg.viaStops.count)
+                ))
             }
         }
     }

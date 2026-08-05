@@ -826,6 +826,12 @@
     "cancelChangeBoarding": "Cancelar cambio de embarque",
     "waitingCount": "{count} opciones de embarque.",
     "noCandidatesFiltered": "Solo se muestran vehículos de otras líneas",
-    "noCandidatesUnavailable": "No se pudo cargar la lista en tiempo real"
+    "noCandidatesUnavailable": "No se pudo cargar la lista en tiempo real",
+    "viaStopsTrain": "{count} estaciones en este tramo",
+    "viaStopsBus": "{count} paradas en este tramo",
+    "viaBoard": "subida",
+    "viaAlight": "bajada",
+    "viaCurrent": "posición actual",
+    "walkHandoffStart": "Iniciar guía del trayecto a pie restante"
   }
 }

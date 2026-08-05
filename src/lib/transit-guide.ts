@@ -370,6 +370,11 @@ export function classifyBoardingCandidates(
   return { candidates, directionUncertain: !anyMatched };
 }
 
+/** 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용. */
+function normalizeStopName(s: string): string {
+  return s.replace(/\s*\([^)]*\)/g, "").replace(/역$/, "").trim();
+}
+
 /**
  * 종착역이 경유 목록에서 하차역보다 앞이면 그 열차는 하차역에 가지 않는다(§5.1).
  * 결정적 판정이므로 활성화 차단 근거. 목록에 없는 종착(노선 밖·표기 상이)은
@@ -380,12 +385,29 @@ export function terminatesBeforeAlight(
   leg: TransitGuideLeg,
 ): boolean {
   if (!destinationName || leg.viaStops.length === 0) return false;
-  const norm = (s: string) => s.replace(/\s*\([^)]*\)/g, "").replace(/역$/, "").trim();
-  const dest = norm(destinationName);
-  const destIdx = leg.viaStops.findIndex((s) => norm(s.name) === dest);
-  const alightIdx = leg.viaStops.findIndex((s) => norm(s.name) === norm(leg.alightName));
+  const dest = normalizeStopName(destinationName);
+  const destIdx = leg.viaStops.findIndex((s) => normalizeStopName(s.name) === dest);
+  const alightIdx = leg.viaStops.findIndex(
+    (s) => normalizeStopName(s.name) === normalizeStopName(leg.alightName),
+  );
   if (destIdx < 0 || alightIdx < 0) return false;
   return destIdx < alightIdx;
+}
+
+/**
+ * 경유 목록에서 현재 위치 역명(arvlMsg3, §12.2)의 인덱스(§14.1 경유역 탑승 위치).
+ * 지하철 잠금 추적에서만 값이 오고, 미매칭(노선 밖 표기·버스)은 무표기가 정답이라
+ * null. 표기 차이는 종착 검사와 같은 정규화로 흡수한다.
+ */
+export function viaStopCurrentIndex(
+  leg: TransitGuideLeg,
+  currentLocation: string | null,
+): number | null {
+  if (!currentLocation) return null;
+  const target = normalizeStopName(currentLocation);
+  if (!target) return null;
+  const idx = leg.viaStops.findIndex((s) => normalizeStopName(s.name) === target);
+  return idx >= 0 ? idx : null;
 }
 
 // === 상태 머신 ===

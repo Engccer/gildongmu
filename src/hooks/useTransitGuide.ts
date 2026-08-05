@@ -100,6 +100,11 @@ export function useTransitGuide(route: TransitRoute | null) {
   const [state, setState] = useState<TransitGuideState | null>(null);
   const [waiting, setWaiting] = useState<WaitingSnapshot>(EMPTY_WAITING);
   const [liveMessage, setLiveMessage] = useState("");
+  /**
+   * 완료(done) 후 도보 핸드오프 제안(A안, §14.2) — 세션 자원은 회수하되 말미
+   * 도보가 있으면 패널이 "남은 도보 안내 시작"을 노출한다. 다음 시작에서 소거.
+   */
+  const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number } | null>(null);
 
   const liveRef = useRef("");
   const reannounceTimerRef = useRef<number | null>(null);
@@ -540,6 +545,7 @@ export function useTransitGuide(route: TransitRoute | null) {
 
   const start = useCallback(() => {
     if (!guideRoute) return;
+    setDoneHandoff(null);
     claimGuideSession(stopSession);
     routeRef.current = guideRoute;
     seqRef.current = 0;
@@ -593,9 +599,12 @@ export function useTransitGuide(route: TransitRoute | null) {
     if (s?.phase === "done") {
       // 완료 통지는 legAdvanced 이벤트가 이미 냈다 — 세션 자원만 회수하고
       // 패널은 트리거로 복귀한다(done 상태를 화면에 유지하지 않는다).
+      // 말미 도보가 있으면 핸드오프 제안을 남긴다(§14.2 — stopSession 전에 건짐).
+      const walkMinutes = routeRef.current?.walkAfterMinutes ?? null;
       releaseGuideSession(stopSession);
       clearTimer();
       stopSession();
+      if (walkMinutes != null) setDoneHandoff({ walkMinutes });
     } else {
       retainedRef.current.clear();
       setWaiting(EMPTY_WAITING);
@@ -731,6 +740,8 @@ export function useTransitGuide(route: TransitRoute | null) {
     directionUncertain: waitingOptions.directionUncertain,
     /** 대기 목록 0건 사유(§13.3) — 항목이 있으면 null. */
     waitingReason: waiting.reason,
+    /** 완료 후 도보 핸드오프 제안(§14.2) — 말미 도보가 없으면 null. */
+    doneHandoff,
     start,
     stop,
     boardCandidate,

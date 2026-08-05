@@ -826,6 +826,12 @@
     "cancelChangeBoarding": "탑승 변경 취소",
     "waitingCount": "탑승 후보 {count}개.",
     "noCandidatesFiltered": "이 노선이 아닌 차량만 조회되고 있습니다",
-    "noCandidatesUnavailable": "실시간 목록을 조회하지 못했습니다"
+    "noCandidatesUnavailable": "실시간 목록을 조회하지 못했습니다",
+    "viaStopsTrain": "경유역 {count}개",
+    "viaStopsBus": "경유 정류장 {count}개",
+    "viaBoard": "승차",
+    "viaAlight": "하차",
+    "viaCurrent": "현재 위치",
+    "walkHandoffStart": "남은 도보 안내 시작"
   }
 }

@@ -36,6 +36,7 @@ export function DistanceBeacon({
   dest,
   kind = "walk",
   startOnOpen = false,
+  focusTriggerOnMount = false,
   triggerLabel,
 }: {
   dest: { lat: number; lng: number; name: string };
@@ -47,6 +48,11 @@ export function DistanceBeacon({
    * 기존 2단(열기 → 시작) 유지.
    */
   startOnOpen?: boolean;
+  /**
+   * 마운트 시 트리거로 포커스 선점(대중교통→도보 핸드오프, §14.2) — 직전 컨트롤
+   * (다음 구간 버튼)이 사라진 전이에서 다음 행동으로 커서를 옮긴다(헌장 §5).
+   */
+  focusTriggerOnMount?: boolean;
   triggerLabel?: string;
 }) {
   const t = useTranslations("beacon");
@@ -79,6 +85,13 @@ export function DistanceBeacon({
       (stopToggleRef.current ?? triggerRef.current)?.focus();
     }
   }, [guide.offRoute]);
+
+  // 핸드오프 마운트 포커스(§14.2) — 페인트 전 선점(레이아웃 이펙트, 재실행 없음).
+  useLayoutEffect(() => {
+    if (focusTriggerOnMount) triggerRef.current?.focus();
+    // 마운트 1회 계약 — prop은 마운트 시점에만 의미가 있다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!guide.supported) return null;
 
