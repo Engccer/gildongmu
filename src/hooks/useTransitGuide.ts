@@ -411,11 +411,16 @@ export function useTransitGuide(route: TransitRoute | null) {
     const seq = ++seqRef.current;
     // 조기 unsupported에서도 새로고침 응답을 침묵시키지 않는다(§13.2 — 무응답이
     // 곧 "고정" 체감, 접근성 감사 HIGH). 플래그는 항상 소비(누수 시 자동 폴 발화).
+    // ⚠ 응답 게시는 성공 경로와 같은 국면 가드를 통과할 때만 — in-flight 중 탑승·
+    // 전환으로 국면이 바뀐 뒤의 실패 문구는 새 국면 채널 오염이다(독립 리뷰 WARNING.
+    // dispatch는 머신의 phaseGen·seq 방어가 있지만 announce는 그 밖이다).
+    const stillSameWaiting = () =>
+      stateRef.current?.phase === "waiting" && stateRef.current.phaseGen === phaseGen;
     const finishEarlyUnsupported = () => {
       const wasRefresh = refreshAnnounceRef.current;
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "unsupported" } });
-      if (wasRefresh) announce(reasonText("unavailable"));
+      if (wasRefresh && stillSameWaiting()) announce(reasonText("unavailable"));
     };
     try {
       let refreshResponse: string | null = null;
@@ -504,10 +509,11 @@ export function useTransitGuide(route: TransitRoute | null) {
       if (refreshResponse) announce(refreshResponse);
     } catch {
       // 새로고침 응답은 실패도 침묵하지 않는다(§13.2 — 무응답이 곧 "고정" 체감).
+      // 단 같은 대기 국면일 때만 게시(위 stillSameWaiting 주석 — 리뷰 WARNING).
       const wasRefresh = refreshAnnounceRef.current;
       refreshAnnounceRef.current = false;
       dispatch({ kind: "poll", seq, phaseGen, poll: { kind: "failed" } });
-      if (wasRefresh) announce(reasonText("unavailable"));
+      if (wasRefresh && stillSameWaiting()) announce(reasonText("unavailable"));
     } finally {
       inFlightRef.current = false;
       scheduleNext();
