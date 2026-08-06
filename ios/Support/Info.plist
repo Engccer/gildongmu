@@ -3,7 +3,9 @@
 <plist version="1.0">
 <dict>
 	<!-- 임시 정밀 위치 요청(A3 ⑤). 딕셔너리 키라 INFOPLIST_KEY_* 빌드 설정으로는
-	     넣을 수 없어 부분 plist로 병합한다(GENERATE_INFOPLIST_FILE=YES 유지). -->
+	     넣을 수 없어 부분 plist로 병합한다(GENERATE_INFOPLIST_FILE=YES 유지).
+	     ⚠ Experimental 구성은 형제 Info-Experimental.plist를 쓴다(수동 동기화) —
+	     이 파일의 공통 항목을 고치면 그 파일에도 반영할 것. -->
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>PreciseLocation</key>

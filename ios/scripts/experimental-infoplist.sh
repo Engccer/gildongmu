@@ -58,4 +58,10 @@ if [ "$changed" -eq 0 ]; then
   echo "error: InfoPlist.strings를 찾지 못했습니다 ($RES)" >&2
   exit 1
 fi
+
+# ⚠ 메인 Info.plist는 여기서 후처리할 수 없다: `ProcessInfoPlistFile`이 이 스크립트
+# **뒤에** 매 빌드 실행되어 덮어쓴다(실측 2026-08-06 — 스크립트가 만진 산출물이
+# 다음 재처리를 유발해 영원히 진다). 구성별로 달라야 하는 **비로컬라이즈** plist
+# 키(UIBackgroundModes 등)는 `Support/Info-Experimental.plist`(부분 plist 입력
+# 분기)가 정본이고, 이 스크립트는 로컬라이즈 문자열(InfoPlist.strings) 전용이다.
 echo "실험판 InfoPlist 후처리: ${changed}개 로케일"

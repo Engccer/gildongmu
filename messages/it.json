@@ -616,7 +616,7 @@
     "uncertain": "L'affidabilità della posizione è bassa",
     "uncertainRecovered": "Affidabilità della posizione ripristinata",
     "reacquiring": "Ricerca della tua posizione sul percorso",
-    "speedSuggest": "Ti stai muovendo velocemente, la guida semplice è più adatta",
+    "speedSuggest": "Il segnale di posizione potrebbe essere instabile o ti stai muovendo velocemente, la guida semplice potrebbe essere più adatta",
     "toDetailDone": "Passato alla guida dettagliata",
     "toBriefDone": "Passato alla guida semplice",
     "resolvePending": "Determinazione della tua posizione sul percorso",

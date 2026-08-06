@@ -249,6 +249,36 @@ describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
   });
 });
 
+describe("속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀 차단 — Kit 미러)", () => {
+  it("가드 활성 후 나쁜 정확도(21~50m) 지속으로 표본이 마르면 가드 해제", () => {
+    const route = routeFrom([{ len: 2000, desc: "직진" }]);
+    let state: GuideState = initialGuideState(route, 0).state;
+    // 진짜 빠른 이동(acc 10)으로 가드 진입.
+    const fast: [number, number][] = [
+      [0, 0],
+      [5, 40],
+      [10, 90],
+    ];
+    let out: ReturnType<typeof guideStep> | null = null;
+    for (const [t, along] of fast) {
+      out = guideStep(state, { ...fixCoord(along, 0), accuracy: 10 }, route, t, WALK_TUNING);
+      state = out.state;
+    }
+    expect(out!.event?.kind).toBe("speedSuggest");
+    expect(state.speedGuardActive).toBe(true);
+    // 정지 + acc 30 지속(uncertain 50m 미만이라 표본 배제만 발동). 시간창(10초)이
+    // 옛 표본을 배수해 t=25에 표본 전무 → 가드 해제. 미해제면 이탈 재통지가
+    // 무기한 억제된다(독립 리뷰 MAJOR).
+    for (const t of [15, 20]) {
+      state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, t, WALK_TUNING).state;
+      expect(state.speedGuardActive).toBe(true); // 잔여 표본이 남은 동안은 동결 유지
+    }
+    state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, 25, WALK_TUNING).state;
+    expect(state.speedSamples).toHaveLength(0);
+    expect(state.speedGuardActive).toBe(false);
+  });
+});
+
 describe("initialGuideState·unitAt", () => {
   it("첫 유닛이 묶음이면 firstIndices가 묶음 전체", () => {
     const route = routeFrom([

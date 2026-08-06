@@ -616,7 +616,7 @@
     "uncertain": "La confiance dans la position est faible",
     "uncertainRecovered": "La confiance dans la position est rétablie",
     "reacquiring": "Recherche de votre position sur l'itinéraire",
-    "speedSuggest": "Vous vous déplacez vite, le guidage simple convient mieux",
+    "speedSuggest": "Le signal de position est peut-être instable ou vous vous déplacez vite, le guidage simple peut mieux convenir",
     "toDetailDone": "Passé au guidage détaillé",
     "toBriefDone": "Passé au guidage simple",
     "resolvePending": "Détermination de votre position sur l'itinéraire",

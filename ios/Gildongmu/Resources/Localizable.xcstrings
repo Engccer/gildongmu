@@ -11046,37 +11046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이동 속도가 빨라 간략 안내가 적합합니다"
+            "value": "위치 신호가 불안정하거나 이동 속도가 빨라 간략 안내가 적합할 수 있습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You are moving fast; simple guidance fits better"
+            "value": "Your location signal may be unstable or you may be moving fast; simple guidance may fit better"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Te mueves rápido; la guía simple es más adecuada"
+            "value": "La señal de ubicación puede ser inestable o te mueves rápido; la guía simple puede ser más adecuada"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vous vous déplacez vite, le guidage simple convient mieux"
+            "value": "Le signal de position est peut-être instable ou vous vous déplacez vite, le guidage simple peut mieux convenir"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ti stai muovendo velocemente, la guida semplice è più adatta"
+            "value": "Il segnale di posizione potrebbe essere instabile o ti stai muovendo velocemente, la guida semplice potrebbe essere più adatta"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "移動速度が速いため簡易案内が適しています"
+            "value": "位置情報が不安定か移動速度が速いため、簡易案内が適している場合があります"
           }
         }
       }
