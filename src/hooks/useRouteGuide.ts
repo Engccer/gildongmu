@@ -122,9 +122,45 @@ function unitText(route: GuideRoute, indices: number[], t: GuideT): string {
   return t("bundle", { count: descs.length, steps: descs.join(". ") });
 }
 
-/** 다음 안내 지점 이름 — 마지막 스텝이면 목적지. */
-function nextTarget(route: GuideRoute, stepIndex: number, destName: string): string {
-  return route.steps[stepIndex + 1]?.description ?? destName;
+/**
+ * 다음 안내 통지문 — 그 자리에 들어오는 값의 **타입에 맞는 틀**을 고른다
+ * (위원장 실사용 피드백 2026-08-07).
+ *
+ * 다음 스텝이 있으면 값은 완결 서술문이고("수서역에서 …밤고개로를 따라 300m
+ * 이동"), 마지막 스텝이면 목적지 이름(명사)이다. 종전에는 둘을 한 틀
+ * "{step}까지 {distance}"에 넣어, 명사에는 맞고 서술문에는 어긋났다 —
+ * "…300m 이동까지 약 129m"처럼 두 거리가 역할 표지 없이 인접해 어느 쪽이 남은
+ * 거리인지 낭독으로 구분되지 않았고, "…까지"로 끝나는 도보 원문에는 조사가
+ * 겹쳤다. 서술문에는 잔여 거리를 앞에 두고 "앞"으로 역할을 표시한다(내비게이션
+ * 관용구 "300m 앞 좌회전"과 같은 어순 — 운전 중 필요한 순서는 "얼마 뒤에 →
+ * 무엇을"이다). 스텝 원문은 어느 틀에서도 재조합하지 않는다.
+ */
+export function nextLine(
+  route: GuideRoute,
+  stepIndex: number,
+  destName: string,
+  distance: string,
+  t: GuideT,
+): string {
+  const step = route.steps[stepIndex + 1]?.description;
+  return step
+    ? t("next", { distance, step })
+    : t("nextDestination", { dest: destName, distance });
+}
+
+/** 진행 상황 통지문 — 총 잔여를 앞세우되 뒤쪽 어순은 nextLine과 같은 계약. */
+export function progressFollowingLine(
+  route: GuideRoute,
+  stepIndex: number,
+  destName: string,
+  total: string,
+  distance: string,
+  t: GuideT,
+): string {
+  const step = route.steps[stepIndex + 1]?.description;
+  return step
+    ? t("progressFollowing", { total, distance, step })
+    : t("progressFollowingDestination", { total, dest: destName, distance });
 }
 
 /** 간략 안내 통지문(기존 비콘 문구 계약 그대로). 발화할 것이 없으면 빈 문자열. */
@@ -348,10 +384,13 @@ export function useRouteGuide(
             step: unitText(route, event.indices, t),
           });
         case "periodic":
-          return t("next", {
-            step: nextTarget(route, event.stepIndex, destRef.current.name),
-            distance: confidenceDistance(event.remainingMeters, event.accuracy, t),
-          });
+          return nextLine(
+            route,
+            event.stepIndex,
+            destRef.current.name,
+            confidenceDistance(event.remainingMeters, event.accuracy, t),
+            t,
+          );
         case "handoff":
           return t("handoff");
         case "offRoute":
@@ -885,11 +924,14 @@ export function useRouteGuide(
     const cur = route.steps[state.stepIndex];
     announce(
       wrapCar(
-        t("progressFollowing", {
+        progressFollowingLine(
+          route,
+          state.stepIndex,
+          destRef.current.name,
           total,
-          step: nextTarget(route, state.stepIndex, destRef.current.name),
-          distance: formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
-        }),
+          formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
+          t,
+        ),
       ),
     );
   }, [announce, kindFixed, t, tBeacon]);

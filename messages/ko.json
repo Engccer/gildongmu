@@ -616,7 +616,8 @@
   "guide": {
     "briefStarted": "간략 안내 시작",
     "detailStart": "상세 안내 시작. 안내 {count}개, 총 {distance}. {first}",
-    "next": "{step}까지 {distance}",
+    "next": "{distance} 앞 {step}",
+    "nextDestination": "{dest}까지 {distance}",
     "bundle": "다음 안내 {count}개. {steps}",
     "handoff": "목적지까지 직선 안내로 전환합니다",
     "offRoute": "경로에서 벗어난 것 같습니다",
@@ -638,7 +639,8 @@
     "toBriefButton": "간략 안내로 전환",
     "rerouteButton": "경로 다시 조회",
     "rerouteFailed": "경로 조회에 실패했습니다. 기존 경로를 유지합니다",
-    "progressFollowing": "남은 거리 {total}. {step}까지 {distance}",
+    "progressFollowing": "남은 거리 {total}. {distance} 앞 {step}",
+    "progressFollowingDestination": "남은 거리 {total}. {dest}까지 {distance}",
     "progressBundle": "남은 거리 {total}. 다음 안내 {count}개",
     "progressUncertain": "위치 확신이 낮습니다. 마지막 안내, {last}",
     "progressOffRoute": "경로 이탈 상태. 목적지까지 직선거리 {distance}",
@@ -647,7 +649,7 @@
     "noGuidanceYet": "아직 안내가 없습니다",
     "rerouteBusy": "경로 다시 조회, 조회 중",
     "carStart": "자동차 안내 시작. 안내 {count}개, 총 {distance}. {first}",
-    "farNotice": "약 {distance} 뒤 다음 안내가 있습니다. {step}",
+    "farNotice": "약 {distance} 앞 다음 안내가 있습니다. {step}",
     "carOffRoute": "경로에서 벗어나 안내를 일시 중지했습니다. 경로 다시 조회로 재개할 수 있습니다",
     "carRoadNow": "{road} 주행 중",
     "etaStale": "예상 시간은 {minutes}분 전 기준"

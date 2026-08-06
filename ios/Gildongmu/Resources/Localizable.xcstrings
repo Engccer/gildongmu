@@ -10326,7 +10326,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "약 %1$@ 뒤 다음 안내가 있습니다. %2$@"
+            "value": "약 %1$@ 앞 다음 안내가 있습니다. %2$@"
           }
         },
         "en": {
@@ -10402,6 +10402,46 @@
       }
     },
     "guide.next": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 앞 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In %1$@, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En %1$@, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans %1$@, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tra %1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@先、%2$@"
+          }
+        }
+      }
+    },
+    "guide.nextDestination": {
       "localizations": {
         "ko": {
           "stringUnit": {
@@ -10602,6 +10642,46 @@
       }
     },
     "guide.progressFollowing": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "남은 거리 %1$@. %2$@ 앞 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ remaining. In %2$@, %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quedan %1$@. En %2$@, %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ restants. Dans %2$@, %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ rimanenti. Tra %2$@, %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "残り%1$@。%2$@先、%3$@"
+          }
+        }
+      }
+    },
+    "guide.progressFollowingDestination": {
       "localizations": {
         "ko": {
           "stringUnit": {
