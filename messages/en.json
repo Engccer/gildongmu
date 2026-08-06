@@ -118,12 +118,19 @@
       "summary": "{minutes} min, {fare} won, {transfers} transfer(s)",
       "walkSummary": "incl. {minutes} min walking",
       "legWalk": "Walk {minutes} min",
+      "legWalkTo": "Walk {minutes} min to {name}, {distance}",
+      "legWalkToNoDistance": "Walk {minutes} min to {name}",
+      "legWalkToDest": "Walk {minutes} min to the destination, {distance}",
+      "legWalkToDestNoDistance": "Walk {minutes} min to the destination",
       "legBoard": "Board <line></line> at <from></from>, {count} stops",
       "legTransfer": "Transfer to <line></line> at <from></from>, {count} stops",
       "legInterval": "runs about every {minutes} min",
       "legServiceOutside": "First departure {first}, last departure {last}, not running now",
       "arrive": "Arrive at <name></name>",
-      "alternativeHeading": "Alternative {index}"
+      "alternativeHeading": "Alternative {index}",
+      "alternativeFastest": "Fastest route",
+      "alternativeFewestTransfers": "Fewest transfers",
+      "alternativeFastestFewestTransfers": "Fastest with fewest transfers"
     },
     "pedestrian": {
       "heading": "Walk",
@@ -603,7 +610,7 @@
     "guideStartWalk": "Start walking guidance",
     "guideStartCar": "Start car guidance",
     "guideStartTransit": "Start transit guidance",
-    "guideStartTransitAlt": "Start guidance for alternative {index}",
+    "guideStartTransitAlt": "Start guidance: {name}",
     "transitHeading": "Transit guidance"
   },
   "guide": {

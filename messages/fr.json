@@ -118,12 +118,19 @@
       "summary": "{minutes} min, {fare} won, {transfers} correspondance(s)",
       "walkSummary": "dont {minutes} min de marche",
       "legWalk": "Marcher {minutes} min",
+      "legWalkTo": "Marchez {minutes} min jusqu'à {name}, {distance}",
+      "legWalkToNoDistance": "Marchez {minutes} min jusqu'à {name}",
+      "legWalkToDest": "Marchez {minutes} min jusqu'à la destination, {distance}",
+      "legWalkToDestNoDistance": "Marchez {minutes} min jusqu'à la destination",
       "legBoard": "Montez à bord de <line></line> à <from></from>, {count} arrêts",
       "legTransfer": "Changez pour <line></line> à <from></from>, {count} arrêts",
       "legInterval": "passage toutes les {minutes} min environ",
       "legServiceOutside": "Premier départ {first}, dernier {last}, ne circule pas actuellement",
       "arrive": "Arrivée à <name></name>",
-      "alternativeHeading": "Alternative {index}"
+      "alternativeHeading": "Alternative {index}",
+      "alternativeFastest": "Itinéraire le plus rapide",
+      "alternativeFewestTransfers": "Le moins de correspondances",
+      "alternativeFastestFewestTransfers": "Le plus rapide avec le moins de correspondances"
     },
     "pedestrian": {
       "heading": "À pied",
@@ -603,7 +610,7 @@
     "guideStartWalk": "Démarrer le guidage à pied",
     "guideStartCar": "Démarrer le guidage en voiture",
     "guideStartTransit": "Démarrer le guidage transports",
-    "guideStartTransitAlt": "Démarrer le guidage de l'alternative {index}",
+    "guideStartTransitAlt": "Démarrer le guidage : {name}",
     "transitHeading": "Guidage transports"
   },
   "guide": {
