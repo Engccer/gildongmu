@@ -284,25 +284,28 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     ).toHaveLength(1);
   });
 
-  it("세션 활성 중 대안 접힘 시도는 강제 펼침이 막고, 중지 후에만 접힌다", async () => {
+  it("세션 활성 중 대안 접힘 클릭은 무시되고, 중지 후에도 펼침·트리거가 산다", async () => {
     stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
     await queryRoutes();
     const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
     fireEvent.click(discs[0]);
     fireEvent.click(screen.getByRole("button", { name: "guideStartTransitAlt" }));
-    // 세션 시작 후 접힘 시도 — activeGuideAlt 강제 펼침이 unmount(=세션 조용한
-    // 죽음)를 차단해야 한다.
+    // 세션 중 접힘 클릭은 기록조차 안 된다(감사 HIGH): 기록하면 중지 순간
+    // 뒤늦게 접히며 중지 통지 live region과 복귀 포커스가 동반 소멸한다.
     fireEvent.click(discs[0]);
     expect(discs[0].getAttribute("aria-expanded")).toBe("true");
     const stopBtn = await screen.findByRole("button", { name: "stop" });
     fireEvent.click(stopBtn);
-    // 세션 종료 후엔 사용자의 접기 의도가 반영된다(패널·시작 버튼 소멸).
+    // 중지 후에도 펼침 유지 — 트리거(시작 버튼)가 되살아나 포커스 복귀처가 있다.
+    expect(discs[0].getAttribute("aria-expanded")).toBe("true");
+    expect(
+      await screen.findByRole("button", { name: "guideStartTransitAlt" }),
+    ).toBeTruthy();
+    // 세션이 끝난 뒤의 접기는 정상 반영된다.
+    fireEvent.click(discs[0]);
     await waitFor(() => {
       expect(discs[0].getAttribute("aria-expanded")).toBe("false");
     });
-    expect(
-      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
-    ).toHaveLength(0);
   });
 
   it("en + 대안 펼침: 대안 시작 버튼도 ko 전용", async () => {
