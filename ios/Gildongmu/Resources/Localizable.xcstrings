@@ -15966,7 +15966,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 하차"
+            "value": "%1$@에서 하차"
           }
         },
         "en": {
@@ -16006,7 +16006,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 승차"
+            "value": "%1$@에서 승차"
           }
         },
         "en": {
@@ -16206,7 +16206,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@분"
+            "value": "%1$@분 소요"
           }
         },
         "en": {
@@ -16326,7 +16326,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@개 역"
+            "value": "%1$@ 정거장"
           }
         },
         "en": {
@@ -16366,7 +16366,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@개 정류장"
+            "value": "%1$@ 정거장"
           }
         },
         "en": {
@@ -23766,7 +23766,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "<from></from>에서 <line></line> 승차, %1$@정거장"
+            "value": "<from></from>에서 <line></line> 승차, %1$@ 정거장"
           }
         },
         "en": {
@@ -23886,7 +23886,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "<from></from>에서 <line></line> 환승, %1$@정거장"
+            "value": "<from></from>에서 <line></line> 환승, %1$@ 정거장"
           }
         },
         "en": {
