@@ -37,6 +37,46 @@ import Foundation
     #expect(subway.stationCount == 2)
     // 대안에 버스 leg 실측(정류장 수 낭독 분기 재료)
     #expect(result.alternatives.flatMap(\.legs).contains { $0.mode == "bus" })
+    // 절단 전 후보 총수(조용한 절단 금지). 표시하진 않지만 계약으로는 남는다
+    #expect(result.totalCandidates == 9)
+}
+
+/// 경로 식별·축 계약(spec §3.3). routeKey는 필수라 누락되면 디코딩 자체가 실패한다
+/// (펼침 상태·안내 세션 추적의 키라 "없으면 인덱스로" 폴백을 두지 않는다).
+@Test func routeTransitCarriesStableKeyAndAxes() throws {
+    let result = try #require(
+        JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result)
+    #expect(result.recommended.routeKey == "p0")
+    // 표시 순서와 키가 다른 좌표계임을 고정한다: 강등 정렬로 p3이 p1보다 앞에 온다
+    #expect(result.alternatives.map(\.routeKey) == ["p3", "p1"])
+    // 1순위는 축 라벨을 갖지 않는다(자기보다 나은 자기는 없다)
+    #expect(result.recommended.highlight == nil)
+    #expect(result.alternatives[0].highlight == ["fewestTransfers"])
+    // 축이 있는 대안엔 번호가 없고, 축 없는 대안만 번호를 받는다
+    #expect(result.alternatives[0].displayIndex == nil)
+    #expect(result.alternatives[1].highlight == nil)
+    #expect(result.alternatives[1].displayIndex == 1)
+}
+
+/// 도보 구간의 거리·행선지(spec §3.2). 3-state: 거리 필드 부재는 "0m"가 아니라
+/// "정보 없음"이라 표시 계층이 거리 없는 문구로 떨어진다.
+@Test func walkLegsCarryDistanceAndDestination() throws {
+    let result = try #require(
+        JSONDecoder().decode(TransitRouteEnvelope.self, from: fixture("route-transit")).result)
+    let walks = result.recommended.legs.filter { $0.mode == "walk" }
+    // 첫 도보의 행선지는 뒤 첫 탑승 구간의 승차역
+    #expect(walks.first?.toName == "길동")
+    #expect(walks.first?.distanceMeters == 178)
+    // 마지막 도보엔 행선지가 없다(provider가 목적지 이름을 모른다)
+    #expect(walks.last?.toName == nil)
+    // 거리 결측 도보가 fixture에 실재한다(3-state 분기가 죽은 코드가 아님을 고정)
+    let allWalks = (result.recommended.legs + result.alternatives.flatMap(\.legs))
+        .filter { $0.mode == "walk" }
+    #expect(allWalks.contains { $0.distanceMeters == nil })
+    // 탑승 구간에는 거리를 싣지 않는다(정거장 수가 이미 표현한다)
+    #expect((result.recommended.legs + result.alternatives.flatMap(\.legs))
+        .filter { $0.mode != "walk" }
+        .allSatisfy { $0.distanceMeters == nil })
 }
 
 @Test func routeTransitNullResultDecodesToNil() throws {

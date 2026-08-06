@@ -18,8 +18,9 @@ private func transitFixture() -> TransitRouteResult {
                 totalMinutes: 30, fare: 1550, transfers: 1, walkMinutes: 8,
                 departName: "길동", arriveName: "시청"),
             legs: [TransitRouteLeg(mode: "subway", lineName: "수도권 5호선", fromName: "길동", toName: "시청", stationCount: 10, minutes: 22,
-                                   serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil)]),
-        alternatives: [])
+                                   serviceStatus: nil, firstServiceTime: nil, lastServiceTime: nil)],
+            routeKey: "p0"),
+        alternatives: [], totalCandidates: 1)
 }
 
 private func carFixture() -> CarRouteBriefing {

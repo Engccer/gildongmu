@@ -376,9 +376,16 @@ struct DirectionsTabView: View {
     @State private var model: DirectionsModel
     @State private var searchTarget: DirectionsFieldTarget?
     @AccessibilityFocusState private var focusedModeHeading: DirectionsMode?
-    /// 펼쳐진 대중교통 대안 인덱스(웹 expandedAlts 동형). 새 조회 결과는 다른
+    /// 펼쳐진 대중교통 대안의 `routeKey`(웹 expandedAlts 동형). 새 조회 결과는 다른
     /// 경로들이므로 resultsRevision 변화 시 초기화한다.
-    @State private var expandedAlts: Set<Int> = []
+    /// ⚠ 배열 인덱스가 아니라 키다. 강등 정렬·재조회로 표시 순서가 바뀌면 인덱스는
+    ///   다른 경로를 가리키고, 표시 번호는 축 라벨이 붙은 대안을 건너뛰어 또 다른
+    ///   좌표계다. 둘 중 어느 것도 상태 키로 쓰지 않는다(spec §4.2).
+    @State private var expandedAlts: Set<String> = []
+    /// 도보 상세 펼침 상태(spec §4.4). nil = 자동(문턱 판정), 값 = 사용자 조작 결과.
+    /// 새 조회에서만 자동으로 되돌리고, 계단 회피 토글 재조회에서는 보존한다
+    /// (그 재조회는 사용자가 도보 섹션 안에서 일으킨 것이라 맥락이 이어진다).
+    @State private var walkExpandedOverride: Bool?
     @State private var beacon = BeaconModel()
     @State private var transitGuide = TransitGuideModel()
     @Environment(\.scenePhase) private var scenePhase
@@ -394,7 +401,8 @@ struct DirectionsTabView: View {
     /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
     /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
-    enum GuideStartButton: Hashable { case fallback, walk, car, transit, transitAlt(Int) }
+    /// ⚠ 대안은 `routeKey`로 식별한다(표시 번호·배열 인덱스 둘 다 포커스 키 금지).
+    enum GuideStartButton: Hashable { case fallback, walk, car, transit, transitAlt(String) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
@@ -642,6 +650,8 @@ struct DirectionsTabView: View {
             // 섹션 안에서 조작한 것이라 그 heading으로 돌려보내는 게 맞다.
             .onChange(of: model.resultsRevision) {
                 expandedAlts = []
+                // 새 조회 = 새 경로들이라 도보 접힘도 자동 판정으로 되돌린다(spec §4.4).
+                walkExpandedOverride = nil
             }
             // 계단 회피 토글 재조회 완료 시엔 항상 도보 heading으로(웹 walkHeadingRef 동형).
             .onChange(of: model.walkRefetchRevision) { focusedModeHeading = .walk }
@@ -799,6 +809,14 @@ struct DirectionsTabView: View {
         return (label, BeaconDest(lat: lat, lng: lng))
     }
 
+    /// 마지막 도보 구간이 가리킬 목적지 이름(spec §4.3). "현재 위치"는 좌표이지
+    /// 장소 이름이 아니라 nil이고, 그때 표시 계층이 "목적지까지"라는 구간 의미로
+    /// 떨어진다(이름 부재와 구간 의미 부재는 다른 층이다).
+    private var destinationPlaceName: String? {
+        guard case .place(let label, _, _) = model.endpoint(for: .to) else { return nil }
+        return label
+    }
+
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
     /// 미확정 필드는 검색 유도 라벨이 곧 버튼 이름.
     private func fieldText(_ target: DirectionsFieldTarget) -> String {
@@ -881,34 +899,56 @@ struct DirectionsTabView: View {
     private func outcomeRows(_ mode: DirectionsMode, _ outcome: DirectionsModeOutcome?) -> some View {
         switch outcome {
         case .transit(let result):
-            TransitRouteRows(route: result.recommended)
-            ForEach(Array(result.alternatives.enumerated()), id: \.offset) { i, route in
+            TransitRouteRows(route: result.recommended, destinationName: destinationPlaceName)
+            ForEach(result.alternatives, id: \.routeKey) { route in
+                // 축 이름(가장 빠른·환승이 가장 적은)이 번호보다 구분에 강하다.
+                // 같은 이름을 라벨과 안내 시작 버튼이 공유해야 VO 로터에서 고른
+                // 버튼과 화면의 항목이 같은 것으로 들린다(spec §4.1·§4.2).
+                let name = transitAlternativeName(route)
                 DisclosureGroup(isExpanded: Binding(
-                    get: { expandedAlts.contains(i) },
+                    get: { expandedAlts.contains(route.routeKey) },
                     set: { expanded in
-                        if expanded { expandedAlts.insert(i) } else { expandedAlts.remove(i) }
+                        if expanded { expandedAlts.insert(route.routeKey) }
+                        else { expandedAlts.remove(route.routeKey) }
                     }
                 )) {
-                    // 대안에서도 안내 시작(M5 선행분). 라벨은 대안 번호로 구분 —
-                    // VO 로터 버튼 목록은 헤딩 문맥 없이 이름만 나열한다. 세션 UI는
-                    // 별도 시트라 disclosure 접힘이 세션을 죽이지 않는다(웹과 다름).
+                    // 대안에서도 안내 시작(M5 선행분). 세션 UI는 별도 시트라
+                    // disclosure 접힘이 세션을 죽이지 않는다(웹과 다름. 웹은 세션
+                    // UI가 접힘 안에 있어 활성 대안의 접힘 클릭을 무시해야 한다).
                     if altTransitGuideStartable(route), let tracked = trackedDestination {
-                        Button(appLocalized("beacon.guideStartTransitAlt", String(i + 1))) {
-                            lastGuideStart = .transitAlt(i)
+                        Button(appLocalized("beacon.guideStartTransitAlt", name)) {
+                            lastGuideStart = .transitAlt(route.routeKey)
                             transitGuide.start(
                                 transitRoute: route, destinationLabel: tracked.label
                             )
                         }
-                        .accessibilityFocused($guideStartFocused, equals: .transitAlt(i))
+                        .accessibilityFocused($guideStartFocused, equals: .transitAlt(route.routeKey))
                     }
-                    TransitRouteRows(route: route, includeSummary: false)
+                    TransitRouteRows(
+                        route: route, includeSummary: false,
+                        destinationName: destinationPlaceName)
                 } label: {
-                    Text(joinText(
-                        appLocalized("route.transit.alternativeHeading", String(i + 1)),
-                        transitSummaryText(route.summary)))
+                    Text(joinText(name, transitSummaryText(route.summary)))
                 }
             }
-        case .walk(let briefing): WalkRouteRows(briefing: briefing)
+        case .walk(let briefing):
+            // 장거리 도보 상세는 채택 가능성이 사실상 0인데 수백 행으로 페이지
+            // 끝단을 채운다(spec §1). 표시 분이 문턱을 넘으면 접어서 시작하고,
+            // 라벨이 곧 요약 전문이라 본문은 단계만 낸다(대안 disclosure 동형).
+            // ⚠ 계단 회피 토글과 안내 시작 버튼은 이 접힘 **밖**(섹션 상단)에 있다.
+            //   접힘 안에 두면 접힌 상태에서 도달할 수 없다.
+            if walkDisplayMinutes(briefing) > walkCollapseThresholdMinutes {
+                DisclosureGroup(isExpanded: Binding(
+                    get: { walkExpandedOverride ?? false },
+                    set: { walkExpandedOverride = $0 }
+                )) {
+                    WalkRouteRows(briefing: briefing, includeSummary: false)
+                } label: {
+                    distanceText(walkSummaryText(briefing))
+                }
+            } else {
+                WalkRouteRows(briefing: briefing)
+            }
         case .car(let briefing): CarRouteRows(briefing: briefing)
         case .empty: Text(noRouteText(mode))
         case .error: Text(errorText(mode))
