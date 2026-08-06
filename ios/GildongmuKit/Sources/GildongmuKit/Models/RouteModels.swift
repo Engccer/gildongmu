@@ -127,17 +127,23 @@ public struct TransitLegStop: Codable, Sendable, Hashable {
 }
 
 /// 경로 구간 하나. mode "walk"/"bus"/"subway".
-/// walk leg는 lineName·fromName·toName·stationCount 전부 nil(뷰의 "도보 N분" 단일 분기 근거).
+/// walk leg는 lineName·fromName·stationCount가 전부 nil이고, toName·distanceMeters만
+/// 가질 수 있다(도보 구간의 행선지·거리, spec §3.2).
 public struct TransitRouteLeg: Codable, Sendable, Hashable {
     public let mode: String
     /// 노선명(예 "수도권 5호선"·"342"), walk는 nil
     public let lineName: String?
     /// 승차 지점명
     public let fromName: String?
-    /// 하차 지점명
+    /// 하차 지점명. 도보 구간에서는 "걸어서 도착할 곳"(뒤 첫 탑승 구간의 승차역).
+    /// ⚠ 마지막 도보에는 없다. provider가 목적지 이름을 모른다(뒤에 탑승이 없다).
     public let toName: String?
     /// 경유 역·정류장 수
     public let stationCount: Int?
+    /// 도보 구간 거리(미터, ODsay 원값이 정수). 탑승 구간에는 오지 않는다.
+    /// ⚠ 3-state: 서버가 결측·비수치를 0으로 채우지 않고 **필드를 빼므로** nil은
+    ///   "0m"가 아니라 "거리 정보 없음"이다. 표시는 거리 없는 문구로 떨어진다.
+    public let distanceMeters: Int?
     /// 이 구간 소요(분)
     public let minutes: Int
     /// 운행 시간 판정("running"·"outside"·"unknown"). 버스만, 그 외 nil
@@ -158,13 +164,14 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         stationCount: Int?, minutes: Int, serviceStatus: String?,
         firstServiceTime: String?, lastServiceTime: String?,
         serviceRouteId: String? = nil, serviceWayCode: Int? = nil,
-        stops: [TransitLegStop]? = nil
+        stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
         self.fromName = fromName
         self.toName = toName
         self.stationCount = stationCount
+        self.distanceMeters = distanceMeters
         self.minutes = minutes
         self.serviceStatus = serviceStatus
         self.firstServiceTime = firstServiceTime
@@ -179,12 +186,44 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
 public struct TransitRoute: Codable, Sendable, Hashable {
     public let summary: TransitRouteSummary
     public let legs: [TransitRouteLeg]
+    /// 응답 안에서 유일한 경로 식별자(서버가 정규화 시점에 부여).
+    /// ⚠ 펼침 상태·안내 세션 추적·포커스 복귀는 **배열 인덱스가 아니라 이 키로** 한다.
+    ///   강등 정렬·재조회로 표시 순서가 바뀌면 인덱스는 다른 경로를 가리킨다.
+    public let routeKey: String
+    /// 이 경로가 1순위보다 나은 축("fastest"·"fewestTransfers", 둘 다일 수 있다).
+    /// 축 없는 대안은 필드 부재. 표시 이름은 `TransitAlternativeName`이 고른다.
+    /// ⚠ 서버가 축을 늘려도 깨지지 않도록 String 배열로 둔다(mode와 같은 원칙).
+    public let highlight: [String]?
+    /// 축 라벨이 없는 대안의 표시 번호(1부터). 번호를 서버가 정해 3플랫폼이 갈리지 않는다.
+    public let displayIndex: Int?
+
+    public init(
+        summary: TransitRouteSummary, legs: [TransitRouteLeg], routeKey: String,
+        highlight: [String]? = nil, displayIndex: Int? = nil
+    ) {
+        self.summary = summary
+        self.legs = legs
+        self.routeKey = routeKey
+        self.highlight = highlight
+        self.displayIndex = displayIndex
+    }
 }
 
-/// 추천 1건 + 대안들. 대안은 뷰가 요약만 표시(미니멀).
+/// 추천 1건 + 대안 최대 4건. 대안은 뷰가 요약 라벨로 접어 표시(spec §2).
 public struct TransitRouteResult: Codable, Sendable, Hashable {
     public let recommended: TransitRoute
     public let alternatives: [TransitRoute]
+    /// 절단 전 후보 경로 총수(조용한 절단 금지). 표시하지는 않는다.
+    /// 표기 심사는 "사용자 행동을 바꾸는가"이고 후보 총수는 바꾸지 않는다.
+    public let totalCandidates: Int
+
+    public init(
+        recommended: TransitRoute, alternatives: [TransitRoute], totalCandidates: Int
+    ) {
+        self.recommended = recommended
+        self.alternatives = alternatives
+        self.totalCandidates = totalCandidates
+    }
 }
 
 /// /api/route/transit envelope(자동차와 달리 result로 감싼다). ⚠ result는 optional.

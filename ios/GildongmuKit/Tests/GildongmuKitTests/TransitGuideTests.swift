@@ -298,7 +298,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
                 mode: "walk", lineName: nil, fromName: nil, toName: nil,
                 stationCount: nil, minutes: 5, serviceStatus: nil,
                 firstServiceTime: nil, lastServiceTime: nil),
-        ])
+        ],
+        routeKey: "p0")
     let guide = buildTransitGuideRoute(route)
     #expect(guide?.legs.count == 1)
     #expect(guide?.legs.first?.walkBeforeMinutes == 3)
@@ -312,7 +313,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         legs: [TransitRouteLeg(
             mode: "walk", lineName: nil, fromName: nil, toName: nil,
             stationCount: nil, minutes: 10, serviceStatus: nil,
-            firstServiceTime: nil, lastServiceTime: nil)])
+            firstServiceTime: nil, lastServiceTime: nil)],
+        routeKey: "p0")
     #expect(buildTransitGuideRoute(walkOnly) == nil)
 }
 
