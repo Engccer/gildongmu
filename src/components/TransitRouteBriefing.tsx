@@ -6,7 +6,8 @@ import type { TransitRoute, TransitRouteResult } from "@/lib/types";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import { joinText } from "@/lib/format";
+import { formatDistance, joinText } from "@/lib/format";
+import { alternativeNameKey } from "@/lib/transit-alternative-name";
 
 type Status =
   | { kind: "idle" }
@@ -179,6 +180,7 @@ export function TransitRouteBriefing({
 
           {status.result.alternatives.map((alt, i) => {
             const expanded = expandedAlts.has(i);
+            const altName = alternativeNameKey(alt);
             return (
               <div key={i} className="mt-2">
                 <button
@@ -195,7 +197,9 @@ export function TransitRouteBriefing({
                   className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                 >
                   {joinText(
-                    t("alternativeHeading", { index: i + 1 }),
+                    // 이름 산출은 길찾기 뷰와 공유한다(두 화면의 이름이 갈리면
+                    // 같은 경로가 다른 이름으로 불린다)
+                    t(altName.key, altName.values),
                     t("summary", {
                       minutes: alt.summary.totalMinutes,
                       fare: alt.summary.fare.toLocaleString(locale),
@@ -258,7 +262,29 @@ export function TransitRouteResult({
       <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
         {route.legs.map((leg, i) => {
           if (leg.mode === "walk") {
-            return <li key={i}>{t("legWalk", { minutes: leg.minutes })}</li>;
+            // 마지막 도보는 provider가 이름을 모른다(뒤에 탑승 구간이 없다).
+            // 소비자가 목적지 이름을 알면 그것을, 모르면 "목적지까지"라는 구간
+            // 의미를 쓴다(이름 부재와 구간 의미 부재는 다른 층이다).
+            const name = leg.toName ?? dest;
+            // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다
+            const distance =
+              leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
+            const key = name
+              ? distance
+                ? "legWalkTo"
+                : "legWalkToNoDistance"
+              : distance
+                ? "legWalkToDest"
+                : "legWalkToDestNoDistance";
+            return (
+              <li key={i}>
+                {t(key, {
+                  minutes: leg.minutes,
+                  ...(name ? { name } : {}),
+                  ...(distance ? { distance } : {}),
+                })}
+              </li>
+            );
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
@@ -290,13 +316,17 @@ export function TransitRouteResult({
           );
         })}
       </ol>
-      <p className="mt-1 text-sm">
-        {t.rich("arrive", {
-          name: () => (
-            <span lang="ko">{route.summary.arriveName ?? dest}</span>
-          ),
-        })}
-      </p>
+      {/* 마지막 구간이 도보면 그 문장이 이미 목적지 도착을 말한다. 뒤에 하차역
+          이름으로 "도착"을 덧붙이면 순서가 거꾸로다(도보는 하차역에서 목적지로 간다) */}
+      {route.legs[route.legs.length - 1]?.mode !== "walk" && (
+        <p className="mt-1 text-sm">
+          {t.rich("arrive", {
+            name: () => (
+              <span lang="ko">{route.summary.arriveName ?? dest}</span>
+            ),
+          })}
+        </p>
+      )}
     </>
   );
 }
