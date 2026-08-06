@@ -126,7 +126,10 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> S
     }
     // 버스 번호는 그대로면 "370"이라 무엇인지 알 수 없다(지하철은 "수도권 5호선"이라
     // 수단이 드러난다). 웹 키를 공유한다 — iOS 전용 사본은 카탈로그 재생성 때 소멸한다.
-    let lineText = leg.lineName.map {
+    // ⚠ 빈 문자열을 없음으로 접는다: 웹은 falsy 검사가 이미 걸러내는데 Swift `.map`은
+    // ""도 값으로 통과시켜 **iOS만 "번 버스"**를 낸다(ODsay busNo 결측 시 계약 이탈).
+    let lineName = leg.lineName?.trimmingCharacters(in: .whitespaces)
+    let lineText = (lineName?.isEmpty == false ? lineName : nil).map {
         leg.mode == "bus" ? appLocalized("route.transit.busNo", $0) : $0
     }
     return joinText(
@@ -158,7 +161,8 @@ func walkSummaryText(_ briefing: WalkRouteBriefing) -> String {
 }
 
 /// 도보 결과 행들(요약 1행+step들). 웹 WalkRouteResult 미러: step description
-/// 완성 문장이 낭독 정본(turnType 재조합 금지), 빈 문장은 행 생략.
+/// 완성 문장이 낭독 정본(서버 `rewriteWalkGuidance`가 만든다 — 클라 재조합 금지),
+/// 빈 문장은 행 생략.
 struct WalkRouteRows: View {
     let briefing: WalkRouteBriefing
     /// 접힘 라벨이 이미 요약이면 본문에서 반복하지 않는다(대안 disclosure 동형).
@@ -168,10 +172,13 @@ struct WalkRouteRows: View {
         if includeSummary {
             distanceText(walkSummaryText(briefing))
         }
-        ForEach(Array(briefing.steps.enumerated()), id: \.offset) { _, step in
+        ForEach(Array(briefing.steps.enumerated()), id: \.offset) { index, step in
             if !step.description.isEmpty {
+                // 단계 번호는 웹(<ol>)·CLI("1. ")에 이미 있고 iOS만 없었다. 서로 닮은
+                // 문장이 십수 개 이어져 커서를 놓치면 복귀 지점을 찾을 단서가 없다.
+                // 번호는 표시 순서가 아니라 **원본 인덱스**라 세 소비자가 같은 값을 쓴다.
                 // 서버 안내문 속 "244m 이동"도 같은 오독 대상이라 낭독만 풀어 쓴다
-                distanceText(step.description)
+                distanceText("\(index + 1). \(step.description)")
             }
         }
     }

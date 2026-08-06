@@ -810,7 +810,9 @@ function formatRouteTransit(body: { result: TransitRouteResultItem | null }): st
   return lines;
 }
 
-/** envelope "result" — Tmap 완성 문장(description)이 낭독 정본, 재조합 없이 그대로.
+/** envelope "result" — 서버가 만든 완성 문장(description)을 재조합 없이 그대로.
+ *  ⚠ 2026-08-07부터 이 문장은 provider 원문이 아니라 `rewriteWalkGuidance` 재작성본이라
+ *  거리·도로명이 이미 안에 있다(단계 번호만 여기서 붙인다).
  *  null = 3102 경로 없음(라우트 200 graceful) — 조회 실패(502)와 다른 문장(3-state). */
 function formatRouteWalk(body: { result: WalkRouteBriefingItem | null }): string[] {
   const r = body.result;

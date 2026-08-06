@@ -8,6 +8,7 @@ import { getKakaoWalkBriefing } from "../providers/kakao-walk";
 import { getWalkRouteBriefing } from "../providers/tmap-pedestrian";
 import { hasKakaoKey, hasTmapKey } from "../env";
 import { annotateAudioSignals, getWalkRoute } from "../walk-route";
+import { rewriteWalkBriefing } from "../walk-guidance";
 import seed from "../data/audio-signals.json";
 import type { WalkRouteBriefing } from "../types";
 
@@ -89,6 +90,41 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
     expect(out.steps[0].description).toBe("2개의 횡단보도 이용");
   });
 
+  it("재작성본('횡단보도 2개 이용')도 병합 스텝이라 seed가 가까워도 무주석", () => {
+    // 서비스 파이프라인은 재작성 → 주석 순서라 병합 게이트가 **재작성된 문장**을
+    // 본다. 원문형("2개의")만 보던 정규식이 그대로였다면 이 게이트가 조용히
+    // 열려 신호기 없는 횡단보도에 "있음"이 붙었다(침묵보다 나쁜 거짓 안전 정보).
+    const out = annotateAudioSignals(
+      rewriteWalkBriefing(
+        briefing([
+          {
+            description: "길동사거리에서 2개의 횡단보도 이용",
+            distanceMeters: 58,
+            pathCoords: [{ lat: sigLat, lng: sigLng }],
+          },
+        ]),
+      ),
+    );
+    expect(out.steps[0].description).toBe("길동사거리에서 58m 이동, 횡단보도 2개 이용");
+  });
+
+  it("재작성된 단수 횡단보도에는 주석이 문장 끝에 붙는다", () => {
+    const out = annotateAudioSignals(
+      rewriteWalkBriefing(
+        briefing([
+          {
+            description: "길동사거리앞교차로에서 횡단보도 이용",
+            distanceMeters: 13,
+            pathCoords: [{ lat: sigLat, lng: sigLng }],
+          },
+        ]),
+      ),
+    );
+    expect(out.steps[0].description).toBe(
+      "길동사거리앞교차로에서 13m 이동, 횡단보도 이용, 음향신호기 있음",
+    );
+  });
+
   it("Tmap 단일 coord 스텝 기존 동작 회귀 0(coord 1원소 취급)", () => {
     const out = annotateAudioSignals(
       briefing([{ description: "우측 횡단보도 후 11m 이동", coord: { lat: sigLat, lng: sigLng } }]),
@@ -125,6 +161,41 @@ beforeEach(() => {
   vi.mocked(getWalkRouteBriefing).mockReset().mockResolvedValue(TMAP_BRIEFING);
   vi.mocked(hasKakaoKey).mockReturnValue(true);
   vi.mocked(hasTmapKey).mockReturnValue(true);
+});
+
+describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
+  // ⚠ 이 스위트가 없으면 순서를 뒤집어도 전량 green이다(변이 주입 실측 2026-08-07).
+  // 두 단계를 테스트가 직접 조합해 호출하면 순서를 테스트가 정해 버리므로,
+  // 계약은 반드시 getWalkRoute를 통과해서 검증한다.
+  it("재작성된 문장 끝에 신호기 주석이 붙는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 300,
+      durationSeconds: 280,
+      steps: [
+        {
+          description: "길동사거리앞교차로에서 횡단보도 이용",
+          distanceMeters: 13,
+          pathCoords: [{ lat: sigLat, lng: sigLng }],
+        },
+      ],
+    });
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    // 순서가 뒤집히면 주석이 먼저 붙어 재작성 정규식의 `$` 앵커가 깨지고,
+    // 그 스텝만 조용히 원문("…에서 횡단보도 이용, 음향신호기 있음")으로 남는다.
+    expect(r?.steps[0].description).toBe(
+      "길동사거리앞교차로에서 13m 이동, 횡단보도 이용, 음향신호기 있음",
+    );
+  });
+
+  it("계단 회피 안전 문장은 재작성을 거치지 않는다", async () => {
+    // 무계단 경로 부재 → 기본 모드 재호출 경로. 안전 문장은 annotate 뒤에
+    // 삽입되므로 재작성 대상이 아니고, 설령 통과해도 어미가 달라 원문 보존된다.
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(null);
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    expect(r?.steps[0].description).toBe(
+      "계단 없는 경로를 찾지 못해 일반 경로를 안내합니다. 계단이 포함될 수 있습니다.",
+    );
+  });
 });
 
 describe("getWalkRoute provider 선택·폴백", () => {

@@ -11,8 +11,10 @@ import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
  * 응답 envelope은 실호출 확정(2026-07-22·07-29): top-level `route`가 **단수
  * 객체**(배열 아님)이고 top-level `status` 문자열을 동반한다(data.go.kr류
  * response.body.items 포맷과 무관). `route.legs[].steps[]`의 `properties.guidance`
- * 가 **완성된 한국어 안내문**으로 낭독 정본이다(Tmap description·서울버스
- * arrmsg1과 동형 — turnType류 코드 재조합 금지). `path.points`는 스텝 폴리라인
+ * 가 **완성된 한국어 안내문**이다(turnType류 코드 재조합 금지 — 원문은 여기서
+ * 손대지 않는다). ⚠ 다만 **낭독 정본은 이 원문이 아니라 walk-route 서비스가
+ * `rewriteWalkGuidance`로 재작성한 문장**이다(2026-08-07 계약 전환: 거리·도로명을
+ * 문장 안으로, 방향을 앞으로). provider는 원문 전달까지만 책임진다. `path.points`는 스텝 폴리라인
  * [lng, lat] 배열이며, walk-route 서비스가 음향신호기 주석 판정의 후보점으로
  * 쓴 뒤 응답 전 제거한다(pathCoords는 API 응답 비노출).
  *
