@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getTransitRoute, normalizeOdsayRoute } from "@/lib/providers/odsay";
+import { getTransitRoute, normalizeOdsayRoutes } from "@/lib/providers/odsay";
 
 // ODsay searchPubTransPathT 실응답 발췌 (2026-06-18 강동 길동→강남 실호출로 확정).
 // 단위: totalTime/sectionTime=분, payment=원, totalWalk=미터.
@@ -119,15 +119,15 @@ function sampleWithStops() {
   return clone;
 }
 
-describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
+describe("normalizeOdsayRoutes — includeStops(B2 §7)", () => {
   it("미지정이면 passStopList가 있어도 stops 키 자체가 없다(byte-호환)", () => {
-    const { legs } = normalizeOdsayRoute(sampleWithStops())!.recommended;
+    const { legs } = normalizeOdsayRoutes(sampleWithStops())![0];
     for (const leg of legs) expect("stops" in leg).toBe(false);
   });
 
   it("includeStops: 탑승 leg에 양 끝 포함 경유 정류장을 투영한다", () => {
-    const result = normalizeOdsayRoute(sampleWithStops(), { includeStops: true })!;
-    const subway = result.recommended.legs[1];
+    const result = normalizeOdsayRoutes(sampleWithStops(), { includeStops: true })!;
+    const subway = result[0].legs[1];
     expect(subway.stops).toHaveLength(3);
     expect(subway.stops![0]).toEqual({
       name: "길동",
@@ -135,7 +135,7 @@ describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
       lat: 37.537778,
       lng: 127.14,
     });
-    const bus = result.alternatives[0].legs[1];
+    const bus = result[1].legs[1];
     expect(bus.stops![0]).toEqual({
       name: "천호역.풍납시장",
       stationId: "109335",
@@ -148,8 +148,8 @@ describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
   });
 
   it("includeStops여도 passStopList 없는 leg·도보 leg는 stops가 없다", () => {
-    const result = normalizeOdsayRoute(sampleWithStops(), { includeStops: true })!;
-    const legs = result.recommended.legs;
+    const result = normalizeOdsayRoutes(sampleWithStops(), { includeStops: true })!;
+    const legs = result[0].legs;
     expect("stops" in legs[0]).toBe(false); // 도보
     expect("stops" in legs[2]).toBe(false); // passStopList 미부착 지하철
   });
@@ -163,21 +163,21 @@ describe("normalizeOdsayRoute — includeStops(B2 §7)", () => {
         { index: 2, stationID: 3, stationName: "좌표없음", x: "", y: "" },
       ],
     };
-    const result = normalizeOdsayRoute(clone, { includeStops: true })!;
-    expect(result.recommended.legs[1].stops).toHaveLength(1);
+    const result = normalizeOdsayRoutes(clone, { includeStops: true })!;
+    expect(result[0].legs[1].stops).toHaveLength(1);
   });
 });
 
-describe("normalizeOdsayRoute", () => {
-  it("path[0]을 추천, 다음을 대안으로 분리한다", () => {
-    const result = normalizeOdsayRoute(sample)!;
-    expect(result.recommended.summary.totalMinutes).toBe(33);
-    expect(result.alternatives).toHaveLength(1);
-    expect(result.alternatives[0].summary.totalMinutes).toBe(40);
+describe("normalizeOdsayRoutes", () => {
+  it("전체 경로를 원본 순서로 정규화한다(선정은 상류가 아니라 파이프라인 몫)", () => {
+    const result = normalizeOdsayRoutes(sample)!;
+    expect(result[0].summary.totalMinutes).toBe(33);
+    expect(result).toHaveLength(2);
+    expect(result[1].summary.totalMinutes).toBe(40);
   });
 
   it("거리 0 환승 도보는 leg에서 제외하고 지하철/도보를 투영한다", () => {
-    const { legs } = normalizeOdsayRoute(sample)!.recommended;
+    const { legs } = normalizeOdsayRoutes(sample)![0];
     // 환승 통로(distance 0) 2개는 제외, 진입(210m)·도착(6m) 도보는 유지
     expect(legs.map((l) => l.mode)).toEqual([
       "walk",
@@ -201,7 +201,7 @@ describe("normalizeOdsayRoute", () => {
   });
 
   it("버스 leg는 lane.busNo를 lineName으로 투영한다", () => {
-    const alt = normalizeOdsayRoute(sample)!.alternatives[0];
+    const alt = normalizeOdsayRoutes(sample)![1];
     const bus = alt.legs.find((l) => l.mode === "bus");
     expect(bus).toMatchObject({
       lineName: "30-3",
@@ -212,7 +212,7 @@ describe("normalizeOdsayRoute", () => {
   });
 
   it("환승 = 탑승 leg 수 - 1, 도보시간은 환승 통로 포함 전체 합", () => {
-    const { summary } = normalizeOdsayRoute(sample)!.recommended;
+    const { summary } = normalizeOdsayRoutes(sample)![0];
     expect(summary.transfers).toBe(2); // 지하철 3 - 1
     expect(summary.walkMinutes).toBe(8); // 3 + 1(환승) + 3(환승) + 1
     expect(summary.fare).toBe(1650);
@@ -221,18 +221,23 @@ describe("normalizeOdsayRoute", () => {
   });
 
   it("버스 1 + 지하철 1 경로의 환승은 1", () => {
-    const { summary } = normalizeOdsayRoute(sample)!.alternatives[0];
+    const { summary } = normalizeOdsayRoutes(sample)![1];
     expect(summary.transfers).toBe(1);
   });
 
-  it("경로가 없으면 null", () => {
-    expect(normalizeOdsayRoute({ result: { path: [] } })).toBeNull();
-    expect(normalizeOdsayRoute({ result: {} })).toBeNull();
+  it("path가 빈 배열이면 null(진짜 0건)", () => {
+    expect(normalizeOdsayRoutes({ result: { path: [] } })).toBeNull();
+  });
+
+  it("result.path 자체가 없으면 throw (0건과 조회 실패를 뭉개지 않는다)", () => {
+    // 종전에는 이 응답이 null이라 인증 게이트웨이 변화·부분 장애가
+    // 사용자에게 "대중교통 경로가 없습니다"로 도달했다(3-state 위반).
+    expect(() => normalizeOdsayRoutes({ result: {} })).toThrow("스키마");
   });
 
   it("출·도착 700m 이내(error -98)는 경로 없음으로 null(graceful)", () => {
     expect(
-      normalizeOdsayRoute({
+      normalizeOdsayRoutes({
         error: { code: "-98", msg: "출, 도착지가 700m이내입니다." },
       }),
     ).toBeNull();
@@ -240,7 +245,7 @@ describe("normalizeOdsayRoute", () => {
 
   it("그 외 ODsay 오류(파라미터·인증·서버)는 throw", () => {
     expect(() =>
-      normalizeOdsayRoute({ error: { code: "500", msg: "잘못된 파라미터입니다." } }),
+      normalizeOdsayRoutes({ error: { code: "500", msg: "잘못된 파라미터입니다." } }),
     ).toThrow("ODsay 길찾기 오류");
   });
 });
