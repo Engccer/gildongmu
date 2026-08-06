@@ -122,6 +122,7 @@
       "legWalkToNoDistance": "Walk {minutes} min to {name}",
       "legWalkToDest": "Walk {minutes} min to the destination, {distance}",
       "legWalkToDestNoDistance": "Walk {minutes} min to the destination",
+      "busNo": "bus {route}",
       "legBoard": "Board <line></line> at <from></from>, {count} stops",
       "legTransfer": "Transfer to <line></line> at <from></from>, {count} stops",
       "legInterval": "runs about every {minutes} min",

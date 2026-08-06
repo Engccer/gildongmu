@@ -97,6 +97,49 @@ describe("도보 구간 문장", () => {
   });
 });
 
+describe("탑승 구간 문장", () => {
+  // 위원장이 실사용에서 본 값 그대로(천호대로 1201 → 강동역, 2026-08-07).
+  const BUS: TransitLeg = {
+    mode: "bus",
+    lineName: "370",
+    fromName: "강동자이.프라자아파트",
+    toName: "강동역",
+    stationCount: 3,
+    minutes: 9,
+  };
+
+  it("버스는 번호만 두지 않는다(그대로면 '370'이 무엇인지 알 수 없다)", () => {
+    renderRoute([BUS]);
+    expect(screen.getAllByRole("listitem")[0].textContent).toBe(
+      "강동자이.프라자아파트에서 370번 버스 승차, 3 정거장",
+    );
+  });
+
+  it("지하철 노선명은 원문 그대로다(수단이 이미 이름에 드러난다)", () => {
+    renderRoute([BOARD]);
+    const text = screen.getAllByRole("listitem")[0].textContent;
+    expect(text).toBe("길동에서 수도권 5호선 승차, 13 정거장");
+    expect(text).not.toContain("번 버스");
+  });
+
+  it("버스 표기에는 lang을 씌우지 않는다(번역문이라 en에서 'bus'까지 한국어로 읽힌다)", () => {
+    renderRoute([BUS]);
+    const marked = [...screen.getAllByRole("listitem")[0].querySelectorAll("[lang]")].map(
+      (e) => e.textContent,
+    );
+    // lang 경계는 ODsay 원문(정류장명)에만 — 노선 자리는 번역문이라 밖에 둔다
+    expect(marked).toEqual(["강동자이.프라자아파트"]);
+  });
+
+  it("지하철은 노선명도 원문이라 lang 경계가 둘이다", () => {
+    renderRoute([BOARD]);
+    const marked = [...screen.getAllByRole("listitem")[0].querySelectorAll("[lang]")].map(
+      (e) => e.textContent,
+    );
+    expect(marked).toEqual(["길동", "수도권 5호선"]);
+  });
+});
+
 describe("도착 문구", () => {
   it("마지막 구간이 도보면 도착 문단을 내지 않는다", () => {
     const { container } = renderRoute([BOARD, { mode: "walk", minutes: 3, distanceMeters: 221 }]);
