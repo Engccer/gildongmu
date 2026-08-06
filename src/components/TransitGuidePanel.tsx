@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
@@ -27,11 +27,15 @@ export function TransitGuidePanel({
   route,
   triggerLabel,
   dest,
+  onActiveChange,
 }: {
   route: TransitRoute;
   triggerLabel: string;
   /** 목적지 좌표·라벨 — 완료 후 도보 핸드오프(§14.2)의 대상. 없으면 핸드오프 미노출. */
   dest?: { lat: number; lng: number; name: string };
+  /** 세션 활성 전이 통지. 대안 disclosure 안에 마운트된 패널이 접힘으로
+      unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다. */
+  onActiveChange?: (active: boolean) => void;
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
@@ -49,6 +53,15 @@ export function TransitGuidePanel({
   // 세션이 밖에서 죽으면(단일성 강탈·완료) 자동으로 트리거로 복귀한다.
   const open = state !== null;
   const leg = state && guide.guideRoute ? guide.guideRoute.legs[state.legIndex] : null;
+
+  // 세션 활성 전이를 부모에 통지(식별자는 ref로 고정 — 부모 인라인 콜백이
+  // 렌더마다 새 함수여도 effect가 재발화하지 않는다). unmount 시 false 정리.
+  const onActiveChangeRef = useRef(onActiveChange);
+  onActiveChangeRef.current = onActiveChange;
+  useEffect(() => {
+    onActiveChangeRef.current?.(open);
+  }, [open]);
+  useEffect(() => () => onActiveChangeRef.current?.(false), []);
 
   // 경유역 목록 disclosure(§14.1) — 정적 표시 1단계, leg가 바뀌면 접는다
   // (렌더 중 파생 상태 조정 — effect 내 동기 setState의 캐스케이드 회피).

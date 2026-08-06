@@ -2681,6 +2681,46 @@
         }
       }
     },
+    "beacon.guideStartTransitAlt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안 경로 %1$@ 안내 시작"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start guidance for alternative %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar guía de la alternativa %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Démarrer le guidage de l'alternative %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia guida per l'alternativa %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替経路%1$@の案内を開始"
+          }
+        }
+      }
+    },
     "beacon.guideStartWalk": {
       "localizations": {
         "ko": {

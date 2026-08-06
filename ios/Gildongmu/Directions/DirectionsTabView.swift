@@ -394,7 +394,7 @@ struct DirectionsTabView: View {
     /// 떨어뜨리는 것은 이 저장소에서 실기기로 확인된 사실이다.
     /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
-    enum GuideStartButton: Hashable { case fallback, walk, car, transit }
+    enum GuideStartButton: Hashable { case fallback, walk, car, transit, transitAlt(Int) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
@@ -761,6 +761,14 @@ struct DirectionsTabView: View {
         return result.recommended
     }
 
+    /// 대안 경로 시작 게이트(M5 선행분, recommended 전용 해제): 추천과 같은 축
+    /// (플래그 ∧ ko ∧ 탑승 leg ≥ 1)을 경로 단위로 판정한다.
+    private func altTransitGuideStartable(_ route: TransitRoute) -> Bool {
+        AppConfig.realtimeGuidanceEnabled
+            && AppLanguage.dataLocale == "ko"
+            && buildTransitGuideRoute(route) != nil
+    }
+
     /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
     /// 실패"가 아니라 "시작 가능 0개". en 로케일·카카오 폴백만 성공한 조합에서
     /// 막다른 화면을 만들지 않는다).
@@ -881,6 +889,18 @@ struct DirectionsTabView: View {
                         if expanded { expandedAlts.insert(i) } else { expandedAlts.remove(i) }
                     }
                 )) {
+                    // 대안에서도 안내 시작(M5 선행분). 라벨은 대안 번호로 구분 —
+                    // VO 로터 버튼 목록은 헤딩 문맥 없이 이름만 나열한다. 세션 UI는
+                    // 별도 시트라 disclosure 접힘이 세션을 죽이지 않는다(웹과 다름).
+                    if altTransitGuideStartable(route), let tracked = trackedDestination {
+                        Button(appLocalized("beacon.guideStartTransitAlt", String(i + 1))) {
+                            lastGuideStart = .transitAlt(i)
+                            transitGuide.start(
+                                transitRoute: route, destinationLabel: tracked.label
+                            )
+                        }
+                        .accessibilityFocused($guideStartFocused, equals: .transitAlt(i))
+                    }
                     TransitRouteRows(route: route, includeSummary: false)
                 } label: {
                     Text(joinText(

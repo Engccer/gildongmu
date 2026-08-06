@@ -603,6 +603,7 @@
     "guideStartWalk": "Démarrer le guidage à pied",
     "guideStartCar": "Démarrer le guidage en voiture",
     "guideStartTransit": "Démarrer le guidage transports",
+    "guideStartTransitAlt": "Démarrer le guidage de l'alternative {index}",
     "transitHeading": "Guidage transports"
   },
   "guide": {

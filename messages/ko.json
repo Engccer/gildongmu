@@ -603,6 +603,7 @@
     "guideStartWalk": "도보 안내 시작",
     "guideStartCar": "자동차 안내 시작",
     "guideStartTransit": "대중교통 안내 시작",
+    "guideStartTransitAlt": "대안 경로 {index} 안내 시작",
     "transitHeading": "대중교통 안내"
   },
   "guide": {

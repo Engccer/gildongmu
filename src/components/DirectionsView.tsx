@@ -209,6 +209,9 @@ export function DirectionsView({
       return next;
     });
   }
+  // 안내 세션이 살아 있는 대안 인덱스(M5 선행분). 세션 중 disclosure가 접혀
+  // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 대안은 강제 펼침 유지.
+  const [activeGuideAlt, setActiveGuideAlt] = useState<number | null>(null);
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
@@ -374,6 +377,7 @@ export function DirectionsView({
     setToField(fromField);
     setResults(null);
     setExpandedAlts(new Set());
+    setActiveGuideAlt(null);
     setNotice(stopped ? tBeacon("stopped") : "");
   }
 
@@ -395,6 +399,7 @@ export function DirectionsView({
       if (stoppedGuide) setNotice(tBeacon("stopped"));
       setResults(null);
       setExpandedAlts(new Set());
+      setActiveGuideAlt(null);
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
       // 권한 팝업 세션 1회). `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
@@ -613,6 +618,7 @@ export function DirectionsView({
           setFromField({ text, resolved: null });
           setResults(null);
           setExpandedAlts(new Set());
+          setActiveGuideAlt(null);
         }}
         onResolve={(ep) => {
           recordResolved("from", ep);
@@ -652,10 +658,19 @@ export function DirectionsView({
           setToField({ text, resolved: null });
           setResults(null);
           setExpandedAlts(new Set());
+          setActiveGuideAlt(null);
         }}
         onResolve={(ep) => {
+          // 목적지 확정도 텍스트 변경과 같은 무효화 축(리뷰 MAJOR): "최근 장소"
+          // 직행 선택은 onTextChange를 거치지 않아 활성 세션이 옛 목적지를 향해
+          // 조용히 계속 추적했다(iOS는 .onChange(of: endpoint(.to))의 모델 레벨
+          // 방어가 있어 웹만의 구멍). 결과도 옛 목적지의 산물이라 함께 비운다.
+          if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
+          setResults(null);
+          setExpandedAlts(new Set());
+          setActiveGuideAlt(null);
         }}
         registerInput={(el) => {
           toInputRef.current = el;
@@ -783,7 +798,11 @@ export function DirectionsView({
                         경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
                         본문 요약은 생략(includeSummary=false, 인접 중복 금지). */}
                     {outcome.result.alternatives.map((alt, i) => {
-                      const expanded = expandedAlts.has(i);
+                      // 안내 세션이 살아 있는 대안은 강제 펼침(접힘 unmount가
+                      // 세션을 조용히 죽이는 경로 차단).
+                      const expanded = expandedAlts.has(i) || activeGuideAlt === i;
+                      const altGuideStartable =
+                        buildTransitGuideRoute(alt) !== null && !prefersEnglish(locale);
                       return (
                         <div key={i} className="mt-2">
                           <button
@@ -807,13 +826,33 @@ export function DirectionsView({
                             )}
                           </button>
                           {expanded && (
-                            <TransitRouteResult
-                              route={alt}
-                              t={tTransit}
-                              locale={locale}
-                              dest={results.destLabel}
-                              includeSummary={false}
-                            />
+                            <>
+                              {/* 대안에서도 안내 시작(M5 선행분, recommended 전용
+                                  해제). 라벨은 대안 번호로 구분 — VO 로터 버튼
+                                  목록은 헤딩 문맥 없이 이름만 나열한다. */}
+                              {altGuideStartable && (
+                                <TransitGuidePanel
+                                  key={`transit-alt-${i}-${guideDestKey}`}
+                                  route={alt}
+                                  triggerLabel={tBeacon("guideStartTransitAlt", {
+                                    index: i + 1,
+                                  })}
+                                  dest={guideDest ?? undefined}
+                                  onActiveChange={(active) =>
+                                    setActiveGuideAlt((prev) =>
+                                      active ? i : prev === i ? null : prev,
+                                    )
+                                  }
+                                />
+                              )}
+                              <TransitRouteResult
+                                route={alt}
+                                t={tTransit}
+                                locale={locale}
+                                dest={results.destLabel}
+                                includeSummary={false}
+                              />
+                            </>
                           )}
                         </div>
                       );

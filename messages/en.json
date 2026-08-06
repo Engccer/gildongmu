@@ -603,6 +603,7 @@
     "guideStartWalk": "Start walking guidance",
     "guideStartCar": "Start car guidance",
     "guideStartTransit": "Start transit guidance",
+    "guideStartTransitAlt": "Start guidance for alternative {index}",
     "transitHeading": "Transit guidance"
   },
   "guide": {
