@@ -96,11 +96,11 @@
       "fare": "요금 {won}원",
       "transfers": "환승 {count}회",
       "walkMinutes": "도보 {minutes}분",
-      "board": "{name} 승차",
-      "alight": "{name} 하차",
-      "stopCount": "{count}개 정류장",
-      "stationCount": "{count}개 역",
-      "legMinutes": "{minutes}분"
+      "board": "{name}에서 승차",
+      "alight": "{name}에서 하차",
+      "stopCount": "{count} 정거장",
+      "stationCount": "{count} 정거장",
+      "legMinutes": "{minutes}분 소요"
     },
     "station": {
       "nameSuffixed": "{name}역",

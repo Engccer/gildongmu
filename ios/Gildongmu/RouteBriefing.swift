@@ -112,6 +112,8 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> S
             return appLocalized("route.transit.legWalkToDestNoDistance", minutes)
         }
     }
+    // ko는 두 키가 같은 "정거장"이라 분기가 무의미해 보이지만 지우지 말 것 —
+    // en(stops/stations)·ja(バス停/駅)는 수단별로 단어가 갈린다.
     let countKey = leg.mode == "bus" ? appLocalized("ios.route.stopCount") : appLocalized("ios.route.stationCount")
     // 운행 밖만 표기(정상·정보없음은 침묵). 별도 Text로 쪼개면 접근성 객체가 갈라지므로
     // joinText로 같은 한 줄에 합친다.
