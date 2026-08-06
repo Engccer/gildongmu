@@ -122,6 +122,7 @@
       "legWalkToNoDistance": "{name}まで徒歩{minutes}分",
       "legWalkToDest": "目的地まで徒歩{minutes}分、{distance}",
       "legWalkToDestNoDistance": "目的地まで徒歩{minutes}分",
+      "busNo": "{route}番バス",
       "legBoard": "<from></from>で<line></line>に乗車、{count}駅",
       "legTransfer": "<from></from>で<line></line>に乗り換え、{count}駅",
       "legInterval": "運転間隔約{minutes}分",

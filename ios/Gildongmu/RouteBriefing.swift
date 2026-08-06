@@ -124,8 +124,13 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> S
         // 카탈로그에만 수기로 존재해 재생성 때 소멸하는 상태였다(2026-08-01 발견).
         serviceOutside = appLocalized("route.transit.legServiceOutside", first, last)
     }
+    // 버스 번호는 그대로면 "370"이라 무엇인지 알 수 없다(지하철은 "수도권 5호선"이라
+    // 수단이 드러난다). 웹 키를 공유한다 — iOS 전용 사본은 카탈로그 재생성 때 소멸한다.
+    let lineText = leg.lineName.map {
+        leg.mode == "bus" ? appLocalized("route.transit.busNo", $0) : $0
+    }
     return joinText(
-        leg.lineName,
+        lineText,
         leg.fromName.map { appLocalized("ios.route.board", $0) },
         leg.toName.map { appLocalized("ios.route.alight", $0) },
         leg.stationCount.map { String(format: countKey, String($0)) },

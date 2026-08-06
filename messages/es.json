@@ -122,6 +122,7 @@
       "legWalkToNoDistance": "Camina {minutes} min hasta {name}",
       "legWalkToDest": "Camina {minutes} min hasta el destino, {distance}",
       "legWalkToDestNoDistance": "Camina {minutes} min hasta el destino",
+      "busNo": "autobús {route}",
       "legBoard": "Sube a <line></line> en <from></from>, {count} paradas",
       "legTransfer": "Transborda a <line></line> en <from></from>, {count} paradas",
       "legInterval": "pasa cada {minutes} min aprox.",

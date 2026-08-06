@@ -291,7 +291,16 @@ export function TransitRouteResult({
           return (
             <li key={i}>
               {t.rich(messageKey, {
-                line: (chunks) => <span lang="ko">{leg.lineName ?? chunks}</span>,
+                // 버스 번호는 그대로면 "370"이라 무엇인지 알 수 없다(지하철은
+                // "수도권 5호선"이라 수단이 드러난다). ⚠ 이 자리는 번역문이라
+                // lang="ko"를 씌우지 않는다 — en "bus 370"의 "bus"까지 한국어
+                // 음성으로 낭독된다. 감싸도 되는 건 ODsay 원문뿐이다.
+                line: (chunks) =>
+                  leg.mode === "bus" && leg.lineName ? (
+                    t("busNo", { route: leg.lineName })
+                  ) : (
+                    <span lang="ko">{leg.lineName ?? chunks}</span>
+                  ),
                 from: (chunks) => <span lang="ko">{leg.fromName ?? chunks}</span>,
                 count: leg.stationCount ?? 0,
               })}
