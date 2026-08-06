@@ -8,6 +8,7 @@ import {
 } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import { isNoRouteError, readOdsayError } from "./odsay-envelope";
+import { annotateHighlights, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
   Coord,
@@ -228,11 +229,11 @@ function formatHHMM(minutes: number): string {
  *   최상단에 남는다. rank 0은 **도보 전용 경로**의 몫이다.
  */
 export function annotateServiceStatus(
-  result: TransitRouteResult,
+  routes: TransitRoute[],
   busHours: Map<string, ServiceHours>,
   subwayHours: Map<string, ServiceHours>,
   nowMinutes: number,
-): TransitRouteResult {
+): TransitRoute[] {
   const hoursFor = (leg: TransitLeg): ServiceHours | undefined => {
     if (leg.mode === "bus") {
       return leg.serviceRouteId ? busHours.get(leg.serviceRouteId) : undefined;
@@ -271,9 +272,9 @@ export function annotateServiceStatus(
     return ranks.length === 0 ? 0 : Math.max(...ranks);
   };
 
-  const all = [result.recommended, ...result.alternatives].map(annotateRoute);
-  const sorted = [...all].sort((a, b) => routeRank(a) - routeRank(b));
-  return { recommended: sorted[0], alternatives: sorted.slice(1) };
+  const all = routes.map(annotateRoute);
+  // 안정 정렬이라 같은 rank 안에서는 ODsay 추천순이 보존된다
+  return [...all].sort((a, b) => routeRank(a) - routeRank(b));
 }
 
 /**
@@ -314,14 +315,17 @@ export async function getTransitRoute(params: {
     throw new Error(`ODsay 길찾기 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as OdsayResponse;
-  // error 분기(경로없음 graceful vs 장애 throw)는 normalizeOdsayRoute가 담당.
-  const normalized = normalizeOdsayRoute(data, { includeStops: params.includeStops });
-  if (!normalized) return null;
+  // 0단계 정규화(전체). 봉투 3-state는 normalizeOdsayRoutes가 담당한다.
+  const routes = normalizeOdsayRoutes(data, { includeStops: params.includeStops });
+  if (!routes) return null;
 
-  // 운행시간 보강. ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다
+  // 1단계 강등(전체). ⚠ 선정보다 **먼저** 돈다: 선정 밖의 유일한 운행 중 경로를
+  // 못 보는 결함을 막는다. 시간표 조회는 노선·역 단위 중복 제거 + 24시간 캐시라
+  // 전체 적용 비용이 방어할 값이 아니다(spec §3.3).
+  // ODsay는 출발 시각을 반영하지 않아 심야에도 주간 노선을 추천한다
   // (2026-08-01 실측: 03:58에 6개 대안 전부 운행 시간 밖). 조회가 실패해도 경로는
   // 그대로 반환한다 — 부가 정보가 본 기능을 죽이면 고치려다 더 큰 회귀가 된다.
-  const allLegs = [normalized.recommended, ...normalized.alternatives].flatMap((r) => r.legs);
+  const allLegs = routes.flatMap((r) => r.legs);
   const refs = allLegs.flatMap((l) =>
     l.serviceRouteId && l.serviceCityCode != null
       ? [{ localId: l.serviceRouteId, cityCode: l.serviceCityCode, routeNo: l.lineName ?? "" }]
@@ -336,5 +340,8 @@ export async function getTransitRoute(params: {
     fetchServiceHoursMap(refs),
     fetchSubwayServiceHoursMap(subwayRefs),
   ]);
-  return annotateServiceStatus(normalized, busHours, subwayHours, kstNowMinutes(new Date()));
+  const ranked = annotateServiceStatus(routes, busHours, subwayHours, kstNowMinutes(new Date()));
+
+  // 2단계 선정 → 3단계 라벨. 순서를 바꾸면 축의 기준점이 낡는다.
+  return annotateHighlights(selectTransitRoutes(ranked), ranked.length);
 }

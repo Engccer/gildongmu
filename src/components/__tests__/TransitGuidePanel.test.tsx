@@ -20,6 +20,7 @@ import { TransitGuidePanel } from "../TransitGuidePanel";
 
 const ROUTE: TransitRoute = {
   summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
+  routeKey: "p0",
   legs: [
     { mode: "walk", minutes: 3 },
     {
@@ -410,6 +411,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
   it("탑승 leg가 없으면(도보 전용) 렌더하지 않는다", () => {
     const walkOnly: TransitRoute = {
       summary: { totalMinutes: 10, fare: 0, transfers: 0, walkMinutes: 10 },
+      routeKey: "p0",
       legs: [{ mode: "walk", minutes: 10 }],
     };
     const { container } = render(<TransitGuidePanel route={walkOnly} triggerLabel="시작" />);
