@@ -261,6 +261,8 @@ interface TransitLegItem {
   lineName?: string;
   fromName?: string;
   toName?: string;
+  /** 도보 구간 거리(미터). 3-state: 필드가 없으면 "정보 없음"이라 0m로 채우지 않는다. */
+  distanceMeters?: number;
   stationCount?: number;
   intervalMinutes?: number;
   minutes: number;
@@ -272,6 +274,10 @@ interface TransitLegItem {
 interface TransitRouteItem {
   summary: { totalMinutes: number; fare: number; transfers: number; walkMinutes: number };
   legs: TransitLegItem[];
+  /** 1순위보다 나은 축(둘 다일 수 있어 배열). 서버가 판정한다. */
+  highlight?: ("fastest" | "fewestTransfers")[];
+  /** 축 라벨이 없는 대안의 표시 번호(1부터). 서버가 정해 3플랫폼 갈림을 막는다. */
+  displayIndex?: number;
 }
 
 interface TransitRouteResultItem {
@@ -748,8 +754,35 @@ function transitSummaryLine(r: TransitRouteItem): string {
   );
 }
 
+/**
+ * 도보 구간 한 줄(spec §4.3). `toName`은 그 뒤 첫 탑승 구간의 승차역이고, 마지막
+ * 도보에는 없다. 이름을 몰라도 "목적지까지"라는 구간 의미는 항상 안다. CLI는
+ * 목적지 이름을 알지 못하므로(좌표로도 조회된다) 이름 주입 분기를 두지 않는다.
+ */
+function transitWalkLegLine(leg: TransitLegItem): string {
+  // 거리 필드 부재 = 정보 없음 → 거리 없는 문구로 떨어진다(0m로 둔갑 금지).
+  return joinText(
+    `${leg.toName ?? "목적지"}까지 도보 ${leg.minutes}분`,
+    typeof leg.distanceMeters === "number" && dist(leg.distanceMeters),
+  );
+}
+
+/**
+ * 대안 표시 이름(spec §4.1). 축 라벨도 번호도 서버 판정을 옮기기만 한다.
+ * 번호를 CLI가 세면 웹·iOS와 갈리고 그 갈림을 잡는 테스트가 없다.
+ */
+function transitAlternativeName(route: TransitRouteItem): string {
+  const fastest = route.highlight?.includes("fastest") ?? false;
+  const fewestTransfers = route.highlight?.includes("fewestTransfers") ?? false;
+  if (fastest && fewestTransfers) return "가장 빠르고 환승도 가장 적은 경로";
+  if (fewestTransfers) return "환승이 가장 적은 경로";
+  if (fastest) return "가장 빠른 경로";
+  // 축도 번호도 없는 응답은 스키마 위반이다. 없는 번호를 지어내지 않는다.
+  return typeof route.displayIndex === "number" ? `대안 경로 ${route.displayIndex}` : "대안 경로";
+}
+
 function transitLegLine(leg: TransitLegItem): string {
-  if (leg.mode === "walk") return `도보 ${leg.minutes}분`;
+  if (leg.mode === "walk") return transitWalkLegLine(leg);
   return joinText(
     `${leg.lineName} ${leg.fromName}→${leg.toName}`,
     `${leg.stationCount}개 역`,
@@ -773,7 +806,7 @@ function formatRouteTransit(body: { result: TransitRouteResultItem | null }): st
     for (const leg of route.legs) lines.push(transitLegLine(leg));
   };
   pushRoute("추천 경로", result.recommended);
-  result.alternatives.forEach((alt, i) => pushRoute(`대안 경로 ${i + 1}`, alt));
+  for (const alt of result.alternatives) pushRoute(transitAlternativeName(alt), alt);
   return lines;
 }
 

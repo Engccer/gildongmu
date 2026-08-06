@@ -502,22 +502,24 @@ describe("route-transit", () => {
         recommended: {
           summary: { totalMinutes: 35, fare: 1500, transfers: 1, walkMinutes: 8 },
           legs: [
-            { mode: "walk", minutes: 5 },
+            { mode: "walk", toName: "강동", minutes: 5, distanceMeters: 320 },
             { mode: "subway", lineName: "5호선", fromName: "강동", toName: "천호", stationCount: 3, minutes: 12 },
-            { mode: "walk", minutes: 3 },
+            { mode: "walk", minutes: 3, distanceMeters: 180 },
           ],
         },
         alternatives: [
           {
             summary: { totalMinutes: 42, fare: 1500, transfers: 0, walkMinutes: 10 },
             legs: [{ mode: "bus", lineName: "302", fromName: "길동사거리", toName: "천호역", stationCount: 5, minutes: 20 }],
+            displayIndex: 1,
           },
         ],
       },
     } as never);
     expect(lines).toContain("추천 경로");
     expect(lines).toContain("약 35분, 요금 1,500원, 환승 1회, 도보 8분");
-    expect(lines).toContain("도보 5분");
+    expect(lines).toContain("강동까지 도보 5분, 320m");
+    expect(lines).toContain("목적지까지 도보 3분, 180m");
     expect(lines).toContain("5호선 강동→천호, 3개 역, 12분");
     expect(lines).toContain("대안 경로 1");
     expect(lines).toContain("302 길동사거리→천호역, 5개 역, 20분");
