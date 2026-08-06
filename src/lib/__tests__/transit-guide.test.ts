@@ -220,6 +220,7 @@ describe("classifyTrackMode·buildTransitGuideRoute(§4.1·§5.2)", () => {
   it("경로 조립: 도보는 대기 문맥으로 흡수, 말미 도보는 walkAfter, 탑승 0개는 null", () => {
     const route: TransitRoute = {
       summary: { totalMinutes: 30, fare: 1500, transfers: 0, walkMinutes: 8 },
+      routeKey: "p0",
       legs: [
         { mode: "walk", minutes: 3 },
         {
@@ -242,6 +243,7 @@ describe("classifyTrackMode·buildTransitGuideRoute(§4.1·§5.2)", () => {
 
     const walkOnly: TransitRoute = {
       summary: { totalMinutes: 10, fare: 0, transfers: 0, walkMinutes: 10 },
+      routeKey: "p1",
       legs: [{ mode: "walk", minutes: 10 }],
     };
     expect(buildTransitGuideRoute(walkOnly)).toBeNull();
