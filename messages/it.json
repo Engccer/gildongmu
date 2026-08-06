@@ -118,12 +118,19 @@
       "summary": "{minutes} min, {fare} won, {transfers} cambio/i",
       "walkSummary": "inclusi {minutes} min a piedi",
       "legWalk": "Cammina {minutes} min",
+      "legWalkTo": "Cammina {minutes} min fino a {name}, {distance}",
+      "legWalkToNoDistance": "Cammina {minutes} min fino a {name}",
+      "legWalkToDest": "Cammina {minutes} min fino alla destinazione, {distance}",
+      "legWalkToDestNoDistance": "Cammina {minutes} min fino alla destinazione",
       "legBoard": "Sali su <line></line> a <from></from>, {count} fermate",
       "legTransfer": "Cambia per <line></line> a <from></from>, {count} fermate",
       "legInterval": "passa circa ogni {minutes} min",
       "legServiceOutside": "Prima corsa {first}, ultima {last}, non in servizio ora",
       "arrive": "Arrivo a <name></name>",
-      "alternativeHeading": "Alternativa {index}"
+      "alternativeHeading": "Alternativa {index}",
+      "alternativeFastest": "Percorso più veloce",
+      "alternativeFewestTransfers": "Meno cambi",
+      "alternativeFastestFewestTransfers": "Il più veloce con meno cambi"
     },
     "pedestrian": {
       "heading": "A piedi",
@@ -603,7 +610,7 @@
     "guideStartWalk": "Avvia guida a piedi",
     "guideStartCar": "Avvia guida in auto",
     "guideStartTransit": "Avvia guida mezzi pubblici",
-    "guideStartTransitAlt": "Avvia guida per l'alternativa {index}",
+    "guideStartTransitAlt": "Avvia la guida: {name}",
     "transitHeading": "Guida mezzi pubblici"
   },
   "guide": {

@@ -2686,37 +2686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대안 경로 %1$@ 안내 시작"
+            "value": "%1$@ 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start guidance for alternative %1$@"
+            "value": "Start guidance: %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar guía de la alternativa %1$@"
+            "value": "Iniciar guía: %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage de l'alternative %1$@"
+            "value": "Démarrer le guidage : %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia guida per l'alternativa %1$@"
+            "value": "Avvia la guida: %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "代替経路%1$@の案内を開始"
+            "value": "案内開始: %1$@"
           }
         }
       }
@@ -23321,6 +23321,126 @@
         }
       }
     },
+    "route.transit.alternativeFastest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 빠른 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fastest route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta más rápida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire le plus rapide"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso più veloce"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最速ルート"
+          }
+        }
+      }
+    },
+    "route.transit.alternativeFastestFewestTransfers": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "가장 빠르고 환승도 가장 적은 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fastest with fewest transfers"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La más rápida y con menos transbordos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le plus rapide avec le moins de correspondances"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il più veloce con meno cambi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最速で乗り換えも最少のルート"
+          }
+        }
+      }
+    },
+    "route.transit.alternativeFewestTransfers": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "환승이 가장 적은 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fewest transfers"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menos transbordos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le moins de correspondances"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meno cambi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗り換えが最も少ないルート"
+          }
+        }
+      }
+    },
     "route.transit.alternativeHeading": {
       "localizations": {
         "ko": {
@@ -23757,6 +23877,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "徒歩%1$@分"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkTo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 도보 %2$@분, %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %2$@ min to %1$@, %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %2$@ min hasta %1$@, %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %2$@ min jusqu'à %1$@, %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %2$@ min fino a %1$@, %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで徒歩%2$@分、%3$@"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkToDest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지까지 도보 %1$@분, %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %1$@ min to the destination, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %1$@ min hasta el destino, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %1$@ min jusqu'à la destination, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %1$@ min fino alla destinazione, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地まで徒歩%1$@分、%2$@"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkToDestNoDistance": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지까지 도보 %1$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %1$@ min to the destination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %1$@ min hasta el destino"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %1$@ min jusqu'à la destination"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %1$@ min fino alla destinazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地まで徒歩%1$@分"
+          }
+        }
+      }
+    },
+    "route.transit.legWalkToNoDistance": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 도보 %2$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walk %2$@ min to %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camina %2$@ min hasta %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marchez %2$@ min jusqu'à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cammina %2$@ min fino a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで徒歩%2$@分"
           }
         }
       }

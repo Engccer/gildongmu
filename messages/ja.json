@@ -118,12 +118,19 @@
       "summary": "計{minutes}分、{fare}ウォン、乗り換え{transfers}回",
       "walkSummary": "徒歩{minutes}分を含む",
       "legWalk": "徒歩{minutes}分",
+      "legWalkTo": "{name}まで徒歩{minutes}分、{distance}",
+      "legWalkToNoDistance": "{name}まで徒歩{minutes}分",
+      "legWalkToDest": "目的地まで徒歩{minutes}分、{distance}",
+      "legWalkToDestNoDistance": "目的地まで徒歩{minutes}分",
       "legBoard": "<from></from>で<line></line>に乗車、{count}駅",
       "legTransfer": "<from></from>で<line></line>に乗り換え、{count}駅",
       "legInterval": "運転間隔約{minutes}分",
       "legServiceOutside": "始発 {first}、終発 {last}、現在は運行していません",
       "arrive": "<name></name>に到着",
-      "alternativeHeading": "代替経路{index}"
+      "alternativeHeading": "代替経路{index}",
+      "alternativeFastest": "最速ルート",
+      "alternativeFewestTransfers": "乗り換えが最も少ないルート",
+      "alternativeFastestFewestTransfers": "最速で乗り換えも最少のルート"
     },
     "pedestrian": {
       "heading": "徒歩",
@@ -603,7 +610,7 @@
     "guideStartWalk": "徒歩案内を開始",
     "guideStartCar": "自動車案内を開始",
     "guideStartTransit": "公共交通案内を開始",
-    "guideStartTransitAlt": "代替経路{index}の案内を開始",
+    "guideStartTransitAlt": "案内開始: {name}",
     "transitHeading": "公共交通案内"
   },
   "guide": {
