@@ -54,6 +54,7 @@ const WALK_OK = {
 const TRANSIT_OK = {
   result: {
     recommended: {
+      routeKey: "p0",
       summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
       legs: [
         { mode: "walk", minutes: 3 },
@@ -80,6 +81,7 @@ const TRANSIT_OK = {
 const TRANSIT_WALK_ONLY = {
   result: {
     recommended: {
+      routeKey: "p0",
       summary: { totalMinutes: 10, fare: 0, transfers: 0, walkMinutes: 10 },
       legs: [{ mode: "walk", minutes: 10 }],
     },
@@ -89,12 +91,14 @@ const TRANSIT_WALK_ONLY = {
 
 // 대안 2개: 탑승 leg 있는 대안(시작 가능) + 도보 전용 대안(시작 불가) —
 // 대안별 게이트가 경로 단위로 갈리는지 본다(M5 선행분).
+// routeKey는 응답 안에서 유일해야 한다(펼침·세션 추적 키). 같은 키를 나눠 쓰면
+// 한 대안을 접었을 때 다른 대안이 함께 접힌다.
 const TRANSIT_WITH_ALTS = {
   result: {
     recommended: TRANSIT_OK.result.recommended,
     alternatives: [
-      TRANSIT_OK.result.recommended,
-      TRANSIT_WALK_ONLY.result.recommended,
+      { ...TRANSIT_OK.result.recommended, routeKey: "p1" },
+      { ...TRANSIT_WALK_ONLY.result.recommended, routeKey: "p2" },
     ],
   },
 };

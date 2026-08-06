@@ -18,7 +18,9 @@ import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
-import { joinText, normalizeVoiceQuery } from "@/lib/format";
+import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
+import { alternativeNameKey } from "@/lib/transit-alternative-name";
+import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -198,25 +200,33 @@ export function DirectionsView({
   );
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
-  // 펼쳐진 대중교통 대안 인덱스(W3C APG disclosure). 새 조회 결과는 다른
-  // 경로들이므로 결과를 비울 때 함께 초기화한다.
-  const [expandedAlts, setExpandedAlts] = useState<Set<number>>(new Set());
-  // 안내 세션이 살아 있는 대안 인덱스(M5 선행분). 세션 중 disclosure가 접혀
+  // 펼쳐진 대중교통 대안(W3C APG disclosure). 키는 배열 인덱스도 표시 번호도
+  // 아닌 `routeKey`다. 표시 번호는 축 라벨이 붙은 대안을 건너뛰므로 인덱스와
+  // 다른 좌표계이고, 인덱스는 순서가 바뀌면 다른 경로를 가리킨다(spec §4.2).
+  // 새 조회 결과는 다른 경로들이므로 결과를 비울 때 함께 초기화한다.
+  const [expandedAlts, setExpandedAlts] = useState<Set<string>>(new Set());
+  // 안내 세션이 살아 있는 대안의 routeKey(M5 선행분). 세션 중 disclosure가 접혀
   // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 대안은 강제 펼침 유지.
-  const [activeGuideAlt, setActiveGuideAlt] = useState<number | null>(null);
-  function toggleAlt(i: number) {
+  const [activeGuideAlt, setActiveGuideAlt] = useState<string | null>(null);
+  function toggleAlt(routeKey: string) {
     // 세션 활성 대안의 접힘 클릭은 기록하지 않는다(감사 HIGH): set에서 지워 두면
     // 세션 종료 순간 뒤늦게 접히며 패널(live region·트리거)이 unmount돼 중지
     // 통지가 무발화되고 포커스가 body로 이탈한다. 무시하면 종료 후에도 펼침이
     // 유지돼 통지·트리거 복귀 포커스가 모두 산다(접기는 종료 후 다시 누르면 됨).
-    if (i === activeGuideAlt) return;
+    if (routeKey === activeGuideAlt) return;
     setExpandedAlts((prev) => {
       const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
+      if (next.has(routeKey)) next.delete(routeKey);
+      else next.add(routeKey);
       return next;
     });
   }
+  /**
+   * 도보 상세 펼침 상태. null = 자동(문턱 판정), boolean = 사용자 조작.
+   * 사용자 조작이 자동 판정을 이긴다: 계단 회피로 경로가 바뀌며 문턱을
+   * 넘나들 때 펼쳐 둔 것이 닫히면 조작이 배신당한다.
+   */
+  const [walkExpanded, setWalkExpanded] = useState<boolean | null>(null);
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
@@ -383,6 +393,7 @@ export function DirectionsView({
     setResults(null);
     setExpandedAlts(new Set());
     setActiveGuideAlt(null);
+    setWalkExpanded(null);
     setNotice(stopped ? tBeacon("stopped") : "");
   }
 
@@ -405,6 +416,9 @@ export function DirectionsView({
       setResults(null);
       setExpandedAlts(new Set());
       setActiveGuideAlt(null);
+      // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
+      // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
+      setWalkExpanded(null);
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
       // 권한 팝업 세션 1회). `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
@@ -624,6 +638,7 @@ export function DirectionsView({
           setResults(null);
           setExpandedAlts(new Set());
           setActiveGuideAlt(null);
+          setWalkExpanded(null);
         }}
         onResolve={(ep) => {
           recordResolved("from", ep);
@@ -664,6 +679,7 @@ export function DirectionsView({
           setResults(null);
           setExpandedAlts(new Set());
           setActiveGuideAlt(null);
+          setWalkExpanded(null);
         }}
         onResolve={(ep) => {
           // 목적지 확정도 텍스트 변경과 같은 무효화 축(리뷰 MAJOR): "최근 장소"
@@ -676,6 +692,7 @@ export function DirectionsView({
           setResults(null);
           setExpandedAlts(new Set());
           setActiveGuideAlt(null);
+          setWalkExpanded(null);
         }}
         registerInput={(el) => {
           toInputRef.current = el;
@@ -802,22 +819,27 @@ export function DirectionsView({
                         탭하면 추천 경로 수준의 구간 상세가 펼쳐진다. 버튼이 발견
                         경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
                         본문 요약은 생략(includeSummary=false, 인접 중복 금지). */}
-                    {outcome.result.alternatives.map((alt, i) => {
+                    {outcome.result.alternatives.map((alt) => {
                       // 안내 세션이 살아 있는 대안은 강제 펼침(접힘 unmount가
                       // 세션을 조용히 죽이는 경로 차단).
-                      const expanded = expandedAlts.has(i) || activeGuideAlt === i;
+                      const expanded =
+                        expandedAlts.has(alt.routeKey) || activeGuideAlt === alt.routeKey;
                       const altGuideStartable =
                         buildTransitGuideRoute(alt) !== null && !prefersEnglish(locale);
+                      // 이름 산출은 채팅 카드와 공유한다(갈리면 같은 경로가 두
+                      // 화면에서 다른 이름으로 불린다).
+                      const named = alternativeNameKey(alt);
+                      const altName = tTransit(named.key, named.values);
                       return (
-                        <div key={i} className="mt-2">
+                        <div key={alt.routeKey} className="mt-2">
                           <button
                             type="button"
                             aria-expanded={expanded}
-                            onClick={() => toggleAlt(i)}
+                            onClick={() => toggleAlt(alt.routeKey)}
                             className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                           >
                             {joinText(
-                              tTransit("alternativeHeading", { index: i + 1 }),
+                              altName,
                               tTransit("summary", {
                                 minutes: alt.summary.totalMinutes,
                                 fare: alt.summary.fare.toLocaleString(locale),
@@ -833,19 +855,24 @@ export function DirectionsView({
                           {expanded && (
                             <>
                               {/* 대안에서도 안내 시작(M5 선행분, recommended 전용
-                                  해제). 라벨은 대안 번호로 구분 — VO 로터 버튼
-                                  목록은 헤딩 문맥 없이 이름만 나열한다. */}
+                                  해제). 라벨은 대안 이름으로 구분한다. VO 로터 버튼
+                                  목록은 헤딩 문맥 없이 이름만 나열하고, 번호보다
+                                  축 이름이 구분에 강하다(spec §4.2). */}
                               {altGuideStartable && (
                                 <TransitGuidePanel
-                                  key={`transit-alt-${i}-${guideDestKey}`}
+                                  key={`transit-alt-${alt.routeKey}-${guideDestKey}`}
                                   route={alt}
                                   triggerLabel={tBeacon("guideStartTransitAlt", {
-                                    index: i + 1,
+                                    name: altName,
                                   })}
                                   dest={guideDest ?? undefined}
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
-                                      active ? i : prev === i ? null : prev,
+                                      active
+                                        ? alt.routeKey
+                                        : prev === alt.routeKey
+                                          ? null
+                                          : prev,
                                     )
                                   }
                                 />
@@ -864,9 +891,33 @@ export function DirectionsView({
                     })}
                   </>
                 )}
-                {outcome.kind === "done" && outcome.mode === "walk" && (
-                  <WalkRouteResult briefing={outcome.result} t={tPed} />
-                )}
+                {/* 장거리 도보 상세는 접어 둔다(spec §4.4). 세 수단 비교 화면에서
+                    수십 단계짜리 도보 목록이 아래 수단을 화면 밖으로 밀어낸다.
+                    접히는 것은 상세뿐이고 계단 회피 토글·안내 시작 버튼은 위쪽
+                    블록에 그대로 남는다(접힘 안에 넣으면 접힌 상태에서 도달 불가). */}
+                {outcome.kind === "done" && outcome.mode === "walk" && (() => {
+                  const collapsible = shouldCollapseWalk(outcome.result.durationSeconds);
+                  const expanded = walkExpanded ?? !collapsible;
+                  if (!collapsible) return <WalkRouteResult briefing={outcome.result} t={tPed} />;
+                  return (
+                    <div className="mt-2">
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        onClick={() => setWalkExpanded(!expanded)}
+                        className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
+                      >
+                        {tPed("summary", {
+                          distance: formatDistance(outcome.result.distanceMeters),
+                          minutes: Math.round(outcome.result.durationSeconds / 60),
+                        })}
+                      </button>
+                      {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지).
+                          접힘·펼침 통지도 두지 않는다(aria-expanded가 상태다). */}
+                      {expanded && <WalkRouteResult briefing={outcome.result} t={tPed} />}
+                    </div>
+                  );
+                })()}
                 {outcome.kind === "done" && outcome.mode === "car" && (
                   <CarRouteResult
                     briefing={outcome.result}
