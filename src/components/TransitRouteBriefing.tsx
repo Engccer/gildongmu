@@ -35,7 +35,11 @@ export function TransitRouteBriefing({
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [expandedAlts, setExpandedAlts] = useState<Set<number>>(new Set());
+  // ⚠ 담기는 것은 "펼쳐진 것"이 아니라 **"기본값에서 뒤집힌 것"**이다 — 추천은
+  // 기본 펼침, 대안은 기본 접힘이라 한 집합으로 둘을 다루려면 이 의미여야 하고,
+  // 새 조회 때 비우면 그대로 각자의 기본 상태가 된다. 키는 인덱스가 아니라
+  // `routeKey`다(순서가 바뀌면 인덱스는 다른 경로를 가리킨다).
+  const [toggledRoutes, setToggledRoutes] = useState<Set<string>>(new Set());
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
@@ -77,7 +81,7 @@ export function TransitRouteBriefing({
         setStatus({ kind: "empty" });
         return;
       }
-      setExpandedAlts(new Set());
+      setToggledRoutes(new Set());
       setStatus({ kind: "done", result: body.result as TransitRouteResult });
     } catch {
       if (myReq === reqId.current)
@@ -171,48 +175,59 @@ export function TransitRouteBriefing({
           >
             {tActions("close")}
           </button>
-          <TransitRouteResult
-            route={status.result.recommended}
-            t={t}
-            locale={locale}
-            dest={dest.name}
-          />
-
-          {status.result.alternatives.map((alt, i) => {
-            const expanded = expandedAlts.has(i);
-            const altName = alternativeNameKey(alt);
+          {/* 추천·대안을 한 목록으로(길찾기 뷰와 동형). 라벨·컨트롤·본문 구성이
+              같고 초기 펼침 상태만 다르다 — 추천만 펼친 채로 시작한다. */}
+          {[
+            {
+              route: status.result.recommended,
+              // 1순위는 축 라벨을 갖지 않는다(annotateHighlights) — 고정 이름.
+              name: t("recommended"),
+              defaultExpanded: true,
+            },
+            ...status.result.alternatives.map((alt) => {
+              // 이름 산출은 길찾기 뷰와 공유한다(두 화면의 이름이 갈리면
+              // 같은 경로가 다른 이름으로 불린다)
+              const named = alternativeNameKey(alt);
+              return {
+                route: alt,
+                name: t(named.key, named.values),
+                defaultExpanded: false,
+              };
+            }),
+          ].map(({ route, name, defaultExpanded }) => {
+            const expanded = toggledRoutes.has(route.routeKey)
+              ? !defaultExpanded
+              : defaultExpanded;
             return (
-              <div key={i} className="mt-2">
+              <div key={route.routeKey} className="mt-2">
                 <button
                   type="button"
                   aria-expanded={expanded}
                   onClick={() =>
-                    setExpandedAlts((prev) => {
+                    setToggledRoutes((prev) => {
                       const next = new Set(prev);
-                      if (next.has(i)) next.delete(i);
-                      else next.add(i);
+                      if (next.has(route.routeKey)) next.delete(route.routeKey);
+                      else next.add(route.routeKey);
                       return next;
                     })
                   }
                   className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                 >
                   {joinText(
-                    // 이름 산출은 길찾기 뷰와 공유한다(두 화면의 이름이 갈리면
-                    // 같은 경로가 다른 이름으로 불린다)
-                    t(altName.key, altName.values),
+                    name,
                     t("summary", {
-                      minutes: alt.summary.totalMinutes,
-                      fare: alt.summary.fare.toLocaleString(locale),
-                      transfers: alt.summary.transfers,
+                      minutes: route.summary.totalMinutes,
+                      fare: route.summary.fare.toLocaleString(locale),
+                      transfers: route.summary.transfers,
                     }),
-                    alt.summary.walkMinutes > 0
-                      ? t("walkSummary", { minutes: alt.summary.walkMinutes })
+                    route.summary.walkMinutes > 0
+                      ? t("walkSummary", { minutes: route.summary.walkMinutes })
                       : null,
                   )}
                 </button>
                 {expanded && (
                   <TransitRouteResult
-                    route={alt}
+                    route={route}
                     t={t}
                     locale={locale}
                     dest={dest.name}

@@ -128,6 +128,7 @@
       "legInterval": "運転間隔約{minutes}分",
       "legServiceOutside": "始発 {first}、終発 {last}、現在は運行していません",
       "arrive": "<name></name>に到着",
+      "recommended": "おすすめ経路",
       "alternativeHeading": "代替経路{index}",
       "alternativeFastest": "最速ルート",
       "alternativeFewestTransfers": "乗り換えが最も少ないルート",
@@ -610,7 +611,6 @@
     "stopped": "リアルタイム案内を停止しました",
     "guideStartWalk": "徒歩案内を開始",
     "guideStartCar": "自動車案内を開始",
-    "guideStartTransit": "公共交通案内を開始",
     "guideStartTransitAlt": "案内開始: {name}",
     "transitHeading": "公共交通案内"
   },

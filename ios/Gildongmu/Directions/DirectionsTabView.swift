@@ -376,8 +376,10 @@ struct DirectionsTabView: View {
     @State private var model: DirectionsModel
     @State private var searchTarget: DirectionsFieldTarget?
     @AccessibilityFocusState private var focusedModeHeading: DirectionsMode?
-    /// 펼쳐진 대중교통 대안의 `routeKey`(웹 expandedAlts 동형). 새 조회 결과는 다른
-    /// 경로들이므로 resultsRevision 변화 시 초기화한다.
+    /// 펼침이 **기본값과 다른** 대중교통 경로의 `routeKey`(웹 toggledRoutes 동형).
+    /// 새 조회 결과는 다른 경로들이므로 resultsRevision 변화 시 초기화한다.
+    /// ⚠ "펼쳐진 것"을 담는 게 아니다 — 추천은 기본 펼침, 대안은 기본 접힘이라
+    ///   한 집합으로 둘을 다루려면 이 의미여야 하고, 비우면 각자의 기본 상태가 된다.
     /// ⚠ 배열 인덱스가 아니라 키다. 강등 정렬·재조회로 표시 순서가 바뀌면 인덱스는
     ///   다른 경로를 가리키고, 표시 번호는 축 라벨이 붙은 대안을 건너뛰어 또 다른
     ///   좌표계다. 둘 중 어느 것도 상태 키로 쓰지 않는다(spec §4.2).
@@ -402,7 +404,7 @@ struct DirectionsTabView: View {
     /// 안내 시작 버튼 3종(간략 폴백·도보·자동차)의 포커스 정체성. ⚠ Bool 바인딩을
     /// 여러 행에 붙이는 함정 회피 — 항목 정체성 옵셔널 바인딩이 정본(repo 규칙).
     /// ⚠ 대안은 `routeKey`로 식별한다(표시 번호·배열 인덱스 둘 다 포커스 키 금지).
-    enum GuideStartButton: Hashable { case fallback, walk, car, transit, transitAlt(String) }
+    enum GuideStartButton: Hashable { case fallback, walk, car, transitAlt(String) }
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
@@ -533,18 +535,10 @@ struct DirectionsTabView: View {
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
                             }
-                            // 대중교통(B2 §3.1): 신호는 GPS가 아니라 도착 API라
-                            // BeaconModel이 아닌 전용 세션(TransitGuideModel)을 연다.
-                            if mode == .transit, let startable = transitGuideStartable,
-                               let tracked = trackedDestination {
-                                Button(appLocalized("beacon.guideStartTransit")) {
-                                    lastGuideStart = .transit
-                                    transitGuide.start(
-                                        transitRoute: startable, destinationLabel: tracked.label
-                                    )
-                                }
-                                .accessibilityFocused($guideStartFocused, equals: .transit)
-                            }
+                            // 대중교통 안내 시작 버튼은 여기 없다 — 경로가 복수라
+                            // 버튼이 경로에 귀속되어야 하고(라벨이 곧 그 경로 이름),
+                            // 아래 목록의 각 disclosure 안에 하나씩 있다. 도보·자동차는
+                            // 경로가 하나라 비교 대상이 없어 이 자리가 맞다.
                             // 계단 회피 토글은 도보 섹션에만(웹 동형 — 결과 유무·오류와
                             // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
                             // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
@@ -899,36 +893,43 @@ struct DirectionsTabView: View {
     private func outcomeRows(_ mode: DirectionsMode, _ outcome: DirectionsModeOutcome?) -> some View {
         switch outcome {
         case .transit(let result):
-            TransitRouteRows(route: result.recommended, destinationName: destinationPlaceName)
-            ForEach(result.alternatives, id: \.routeKey) { route in
-                // 축 이름(가장 빠른·환승이 가장 적은)이 번호보다 구분에 강하다.
-                // 같은 이름을 라벨과 안내 시작 버튼이 공유해야 VO 로터에서 고른
-                // 버튼과 화면의 항목이 같은 것으로 들린다(spec §4.1·§4.2).
-                let name = transitAlternativeName(route)
+            // 추천·대안을 한 목록으로 낸다(disclosure를 쌓은 accordion). 라벨·컨트롤·
+            // 본문 구성이 모두 같고 **초기 펼침 상태만** 다르다 — 추천만 펼친 채로
+            // 시작한다. 종전엔 추천만 라벨 없이 통째로 펼쳐져 있어 같은 지위의
+            // 경로들이 서로 다른 컨트롤로 보였다(위원장 지적 2026-08-07).
+            ForEach(transitRouteEntries(result), id: \.route.routeKey) { entry in
                 DisclosureGroup(isExpanded: Binding(
-                    get: { expandedAlts.contains(route.routeKey) },
+                    get: {
+                        expandedAlts.contains(entry.route.routeKey)
+                            ? !entry.defaultExpanded : entry.defaultExpanded
+                    },
                     set: { expanded in
-                        if expanded { expandedAlts.insert(route.routeKey) }
-                        else { expandedAlts.remove(route.routeKey) }
+                        if expanded == entry.defaultExpanded {
+                            expandedAlts.remove(entry.route.routeKey)
+                        } else {
+                            expandedAlts.insert(entry.route.routeKey)
+                        }
                     }
                 )) {
-                    // 대안에서도 안내 시작(M5 선행분). 세션 UI는 별도 시트라
-                    // disclosure 접힘이 세션을 죽이지 않는다(웹과 다름. 웹은 세션
-                    // UI가 접힘 안에 있어 활성 대안의 접힘 클릭을 무시해야 한다).
-                    if altTransitGuideStartable(route), let tracked = trackedDestination {
-                        Button(appLocalized("beacon.guideStartTransitAlt", name)) {
-                            lastGuideStart = .transitAlt(route.routeKey)
+                    // 안내 시작은 경로에 귀속된다. 세션 UI는 별도 시트라 disclosure
+                    // 접힘이 세션을 죽이지 않는다(웹과 다름. 웹은 세션 UI가 접힘
+                    // 안에 있어 활성 경로의 접힘 클릭을 무시해야 한다).
+                    if altTransitGuideStartable(entry.route), let tracked = trackedDestination {
+                        Button(appLocalized("beacon.guideStartTransitAlt", entry.name)) {
+                            lastGuideStart = .transitAlt(entry.route.routeKey)
                             transitGuide.start(
-                                transitRoute: route, destinationLabel: tracked.label
+                                transitRoute: entry.route, destinationLabel: tracked.label
                             )
                         }
-                        .accessibilityFocused($guideStartFocused, equals: .transitAlt(route.routeKey))
+                        .accessibilityFocused(
+                            $guideStartFocused, equals: .transitAlt(entry.route.routeKey))
                     }
+                    // 라벨이 이미 요약이라 본문은 구간만(인접 중복 금지).
                     TransitRouteRows(
-                        route: route, includeSummary: false,
+                        route: entry.route, includeSummary: false,
                         destinationName: destinationPlaceName)
                 } label: {
-                    Text(joinText(name, transitSummaryText(route.summary)))
+                    Text(joinText(entry.name, transitSummaryText(entry.route.summary)))
                 }
             }
         case .walk(let briefing):
@@ -955,4 +956,26 @@ struct DirectionsTabView: View {
         case .gated, .outOfCoverage, nil: EmptyView()  // displayedModes가 걸러 도달하지 않는다
         }
     }
+}
+
+/// 대중교통 경로 목록의 한 항목(추천·대안 공통 — 컨트롤이 같고 초기 펼침만 다르다).
+private struct TransitRouteEntry {
+    let route: TransitRoute
+    let name: String
+    let defaultExpanded: Bool
+}
+
+/// 추천은 축 라벨을 갖지 않는다(`annotateHighlights`: "자기보다 나은 자기는 없다") —
+/// 고정 이름이 정답이다. 대안은 축 이름(가장 빠른·환승이 가장 적은)이 번호보다 구분에
+/// 강하고, 같은 이름을 라벨과 안내 시작 버튼이 공유해야 VO 로터에서 고른 버튼과 화면의
+/// 항목이 같은 것으로 들린다(spec §4.1·§4.2).
+private func transitRouteEntries(_ result: TransitRouteResult) -> [TransitRouteEntry] {
+    [TransitRouteEntry(
+        route: result.recommended,
+        name: appLocalized("route.transit.recommended"),
+        defaultExpanded: true)]
+        + result.alternatives.map {
+            TransitRouteEntry(
+                route: $0, name: transitAlternativeName($0), defaultExpanded: false)
+        }
 }

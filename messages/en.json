@@ -128,6 +128,7 @@
       "legInterval": "runs about every {minutes} min",
       "legServiceOutside": "First departure {first}, last departure {last}, not running now",
       "arrive": "Arrive at <name></name>",
+      "recommended": "Recommended route",
       "alternativeHeading": "Alternative {index}",
       "alternativeFastest": "Fastest route",
       "alternativeFewestTransfers": "Fewest transfers",
@@ -610,7 +611,6 @@
     "stopped": "Live guidance stopped",
     "guideStartWalk": "Start walking guidance",
     "guideStartCar": "Start car guidance",
-    "guideStartTransit": "Start transit guidance",
     "guideStartTransitAlt": "Start guidance: {name}",
     "transitHeading": "Transit guidance"
   },
