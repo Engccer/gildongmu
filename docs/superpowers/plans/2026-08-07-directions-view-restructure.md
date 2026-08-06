@@ -174,7 +174,7 @@ git commit -m "feat(odsay): error 봉투 2형(객체·배열) 판독 함수
 - [ ] **Step 1: 타입을 고친다**
 
 ```ts
-// src/lib/types.ts — TransitLeg 안, toName 주석 교체 + 필드 추가
+// src/lib/types.ts: TransitLeg 안, toName 주석 교체 + 필드 추가
   /** 하차 정류장. 도보 구간에서는 "걸어서 도착할 곳"(뒤 첫 탑승 구간의 fromName) */
   toName?: string;
   /**
@@ -187,13 +187,13 @@ git commit -m "feat(odsay): error 봉투 2형(객체·배열) 판독 함수
 ```
 
 ```ts
-// src/lib/types.ts — TransitRoute 위에 추가
+// src/lib/types.ts: TransitRoute 위에 추가
 /** 대안 경로의 축. 한 경로가 둘 다일 수 있어 배열이다(spec §3.3) */
 export type TransitHighlight = "fastest" | "fewestTransfers";
 ```
 
 ```ts
-// src/lib/types.ts — TransitRoute 안, legs 아래에 추가
+// src/lib/types.ts: TransitRoute 안, legs 아래에 추가
   legs: TransitLeg[];
   /**
    * 응답 안에서 유일한 경로 식별자(정규화 시점의 ODsay 인덱스 기반).
@@ -208,7 +208,7 @@ export type TransitHighlight = "fastest" | "fewestTransfers";
 ```
 
 ```ts
-// src/lib/types.ts — TransitRouteResult
+// src/lib/types.ts: TransitRouteResult
 export interface TransitRouteResult {
   recommended: TransitRoute;
   alternatives: TransitRoute[];
@@ -630,7 +630,7 @@ const transfersOf = (r: TransitRoute) => r.summary.transfers;
 /**
  * 강등 정렬된 전체 경로에서 표시할 5개를 고른다.
  * 축 후보는 운행 종료가 아닌 경로로 제한한다 (권할 수 없는 경로를 권유 자리에
- * 올리지 않는다 — 접힌 라벨에는 운행 상태가 안 보인다).
+ * 올리지 않는다. 접힌 라벨에는 운행 상태가 안 보인다).
  */
 export function selectTransitRoutes(routes: TransitRoute[]): TransitRoute[] {
   if (routes.length <= 1) return routes.slice();
