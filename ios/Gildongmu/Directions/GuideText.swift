@@ -56,17 +56,24 @@ enum GuideText {
     }
 
     /// 주기 통지: 다음 안내 지점까지 구간 잔여(마지막 스텝이면 목적지 라벨).
+    ///
+    /// 그 자리에 들어오는 값의 **타입에 맞는 틀**을 고른다(위원장 실사용 피드백
+    /// 2026-08-07). 다음 스텝이 있으면 값은 완결 서술문이고("수서역에서 …밤고개로를
+    /// 따라 300m 이동"), 마지막이면 목적지 이름(명사)이다. 종전에는 둘을 한 틀
+    /// "{step}까지 {distance}"에 넣어 명사에는 맞고 서술문에는 어긋났다 —
+    /// "…300m 이동까지 약 129m"처럼 두 거리가 역할 표지 없이 인접해 어느 쪽이
+    /// 남은 거리인지 낭독으로 구분되지 않았고, "…까지"로 끝나는 도보 원문에는
+    /// 조사가 겹쳤다. 서술문에는 잔여 거리를 앞세우고 "앞"으로 역할을 표시한다
+    /// (내비 관용구 "300m 앞 좌회전" 어순 — 필요한 순서는 "얼마 뒤에 → 무엇을").
     static func periodic(
         route: GuideRoute, stepIndex: Int, remainingMeters: Int,
         accuracy: Double, destinationLabel: String
     ) -> String {
-        let target = route.steps.indices.contains(stepIndex + 1)
-            ? route.steps[stepIndex + 1].description
-            : destinationLabel
-        return appLocalized(
-            "guide.next", target,
-            confidenceDistance(Double(remainingMeters), accuracy: accuracy)
-        )
+        let distance = confidenceDistance(Double(remainingMeters), accuracy: accuracy)
+        guard route.steps.indices.contains(stepIndex + 1) else {
+            return appLocalized("guide.nextDestination", destinationLabel, distance)
+        }
+        return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
     }
 
     /// 진행 상황 버튼 응답(스펙 §4.2 — 상태별로 거짓 정밀을 만들지 않는다).
@@ -80,12 +87,16 @@ enum GuideText {
         switch state.phase {
         case .following:
             let cur = route.steps[state.stepIndex]
+            // 뒤쪽 어순은 periodic과 같은 계약(거리 먼저 + 타입에 맞는 틀).
+            let segment = formatDistance(Int(max(0, cur.endD - state.d).rounded()))
+            guard route.steps.indices.contains(state.stepIndex + 1) else {
+                return appLocalized(
+                    "guide.progressFollowingDestination", total, destinationLabel, segment
+                )
+            }
             return appLocalized(
-                "guide.progressFollowing", total,
-                route.steps.indices.contains(state.stepIndex + 1)
-                    ? route.steps[state.stepIndex + 1].description
-                    : destinationLabel,
-                formatDistance(Int(max(0, cur.endD - state.d).rounded()))
+                "guide.progressFollowing", total, segment,
+                route.steps[state.stepIndex + 1].description
             )
         case .bundle:
             let count = unitAt(route: route, index: state.stepIndex).count
