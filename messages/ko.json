@@ -128,6 +128,7 @@
       "legInterval": "배차간격 약 {minutes}분",
       "legServiceOutside": "첫차 {first}, 막차 {last}, 지금은 운행하지 않습니다",
       "arrive": "<name></name> 도착",
+      "recommended": "추천 경로",
       "alternativeHeading": "대안 경로 {index}",
       "alternativeFastest": "가장 빠른 경로",
       "alternativeFewestTransfers": "환승이 가장 적은 경로",
@@ -610,7 +611,6 @@
     "stopped": "실시간 안내를 중지했습니다",
     "guideStartWalk": "도보 안내 시작",
     "guideStartCar": "자동차 안내 시작",
-    "guideStartTransit": "대중교통 안내 시작",
     "guideStartTransitAlt": "{name} 안내 시작",
     "transitHeading": "대중교통 안내"
   },

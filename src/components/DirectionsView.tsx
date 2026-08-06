@@ -200,21 +200,26 @@ export function DirectionsView({
   );
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
-  // 펼쳐진 대중교통 대안(W3C APG disclosure). 키는 배열 인덱스도 표시 번호도
-  // 아닌 `routeKey`다. 표시 번호는 축 라벨이 붙은 대안을 건너뛰므로 인덱스와
-  // 다른 좌표계이고, 인덱스는 순서가 바뀌면 다른 경로를 가리킨다(spec §4.2).
-  // 새 조회 결과는 다른 경로들이므로 결과를 비울 때 함께 초기화한다.
-  const [expandedAlts, setExpandedAlts] = useState<Set<string>>(new Set());
-  // 안내 세션이 살아 있는 대안의 routeKey(M5 선행분). 세션 중 disclosure가 접혀
-  // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 대안은 강제 펼침 유지.
+  // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
+  // 번호도 아닌 `routeKey`다. 표시 번호는 축 라벨이 붙은 대안을 건너뛰므로
+  // 인덱스와 다른 좌표계이고, 인덱스는 순서가 바뀌면 다른 경로를 가리킨다(§4.2).
+  // ⚠ 담기는 것은 "펼쳐진 것"이 아니라 **"기본값에서 뒤집힌 것"**이다 — 추천은
+  // 기본 펼침, 대안은 기본 접힘이라 한 집합으로 둘을 다루려면 이 의미여야 한다.
+  // 새 조회 결과는 다른 경로들인데, 비워 두면 그대로 각자의 기본 상태가 된다.
+  const [toggledRoutes, setToggledRoutes] = useState<Set<string>>(new Set());
+  // 안내 세션이 살아 있는 경로의 routeKey(M5 선행분). 세션 중 disclosure가 접혀
+  // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 경로는 강제 펼침 유지.
   const [activeGuideAlt, setActiveGuideAlt] = useState<string | null>(null);
-  function toggleAlt(routeKey: string) {
-    // 세션 활성 대안의 접힘 클릭은 기록하지 않는다(감사 HIGH): set에서 지워 두면
+  function routeExpanded(routeKey: string, defaultExpanded: boolean) {
+    return toggledRoutes.has(routeKey) ? !defaultExpanded : defaultExpanded;
+  }
+  function toggleRoute(routeKey: string) {
+    // 세션 활성 경로의 접힘 클릭은 기록하지 않는다(감사 HIGH): 뒤집어 두면
     // 세션 종료 순간 뒤늦게 접히며 패널(live region·트리거)이 unmount돼 중지
     // 통지가 무발화되고 포커스가 body로 이탈한다. 무시하면 종료 후에도 펼침이
     // 유지돼 통지·트리거 복귀 포커스가 모두 산다(접기는 종료 후 다시 누르면 됨).
     if (routeKey === activeGuideAlt) return;
-    setExpandedAlts((prev) => {
+    setToggledRoutes((prev) => {
       const next = new Set(prev);
       if (next.has(routeKey)) next.delete(routeKey);
       else next.add(routeKey);
@@ -391,7 +396,7 @@ export function DirectionsView({
     setFromField(toField);
     setToField(fromField);
     setResults(null);
-    setExpandedAlts(new Set());
+    setToggledRoutes(new Set());
     setActiveGuideAlt(null);
     setWalkExpanded(null);
     setNotice(stopped ? tBeacon("stopped") : "");
@@ -414,7 +419,7 @@ export function DirectionsView({
       const stoppedGuide = stopActiveGuideSession();
       if (stoppedGuide) setNotice(tBeacon("stopped"));
       setResults(null);
-      setExpandedAlts(new Set());
+      setToggledRoutes(new Set());
       setActiveGuideAlt(null);
       // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
       // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
@@ -636,7 +641,7 @@ export function DirectionsView({
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setFromField({ text, resolved: null });
           setResults(null);
-          setExpandedAlts(new Set());
+          setToggledRoutes(new Set());
           setActiveGuideAlt(null);
           setWalkExpanded(null);
         }}
@@ -677,7 +682,7 @@ export function DirectionsView({
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setToField({ text, resolved: null });
           setResults(null);
-          setExpandedAlts(new Set());
+          setToggledRoutes(new Set());
           setActiveGuideAlt(null);
           setWalkExpanded(null);
         }}
@@ -690,7 +695,7 @@ export function DirectionsView({
           recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
           setResults(null);
-          setExpandedAlts(new Set());
+          setToggledRoutes(new Set());
           setActiveGuideAlt(null);
           setWalkExpanded(null);
         }}
@@ -781,14 +786,10 @@ export function DirectionsView({
                     triggerLabel={tBeacon("guideStartCar")}
                   />
                 )}
-                {mode === "transit" && transitGuideStartable && transitGuideRoute && (
-                  <TransitGuidePanel
-                    key={`transit-${guideDestKey}`}
-                    route={transitGuideRoute}
-                    triggerLabel={tBeacon("guideStartTransit")}
-                    dest={guideDest ?? undefined}
-                  />
-                )}
+                {/* 대중교통은 안내 시작 버튼이 여기 없다 — 경로가 복수라 버튼이
+                    경로에 귀속되어야 하고(어느 경로의 안내인지 라벨로 드러난다),
+                    아래 목록의 각 disclosure 안에 하나씩 있다. 도보·자동차는
+                    경로가 하나라 비교 대상이 없어 섹션 상단이 맞다. */}
                 {mode === "walk" && (
                   <button
                     type="button"
@@ -809,68 +810,77 @@ export function DirectionsView({
                 )}
                 {outcome.kind === "done" && outcome.mode === "transit" && (
                   <>
-                    <TransitRouteResult
-                      route={outcome.result.recommended}
-                      t={tTransit}
-                      locale={locale}
-                      dest={results.destLabel}
-                    />
-                    {/* 대안 요약은 disclosure 버튼(W3C APG, 형제 컴포넌트 동형) —
-                        탭하면 추천 경로 수준의 구간 상세가 펼쳐진다. 버튼이 발견
-                        경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
-                        본문 요약은 생략(includeSummary=false, 인접 중복 금지). */}
-                    {outcome.result.alternatives.map((alt) => {
-                      // 안내 세션이 살아 있는 대안은 강제 펼침(접힘 unmount가
+                    {/* 추천·대안을 한 목록으로 낸다(W3C APG disclosure를 쌓은
+                        accordion). 라벨·펼침 컨트롤·본문 구성이 모두 같고 **초기
+                        펼침 상태만** 다르다 — 추천만 펼친 채로 시작한다. 종전엔
+                        추천만 라벨 없이 통째로 펼쳐져 있어, 같은 지위의 경로들이
+                        서로 다른 컨트롤로 보였다(위원장 지적 2026-08-07). 버튼이
+                        발견 경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
+                        본문 요약은 생략한다(includeSummary=false, 인접 중복 금지). */}
+                    {[
+                      {
+                        route: outcome.result.recommended,
+                        // 1순위는 축 라벨을 갖지 않는다(annotateHighlights: "자기보다
+                        // 나은 자기는 없다") — 고정 이름이 정답이다.
+                        name: tTransit("recommended"),
+                        defaultExpanded: true,
+                      },
+                      ...outcome.result.alternatives.map((alt) => {
+                        // 이름 산출은 채팅 카드와 공유한다(갈리면 같은 경로가 두
+                        // 화면에서 다른 이름으로 불린다).
+                        const named = alternativeNameKey(alt);
+                        return {
+                          route: alt,
+                          name: tTransit(named.key, named.values),
+                          defaultExpanded: false,
+                        };
+                      }),
+                    ].map(({ route, name, defaultExpanded }) => {
+                      // 안내 세션이 살아 있는 경로는 강제 펼침(접힘 unmount가
                       // 세션을 조용히 죽이는 경로 차단).
                       const expanded =
-                        expandedAlts.has(alt.routeKey) || activeGuideAlt === alt.routeKey;
-                      const altGuideStartable =
-                        buildTransitGuideRoute(alt) !== null && !prefersEnglish(locale);
-                      // 이름 산출은 채팅 카드와 공유한다(갈리면 같은 경로가 두
-                      // 화면에서 다른 이름으로 불린다).
-                      const named = alternativeNameKey(alt);
-                      const altName = tTransit(named.key, named.values);
+                        routeExpanded(route.routeKey, defaultExpanded) ||
+                        activeGuideAlt === route.routeKey;
+                      const guideStartable =
+                        buildTransitGuideRoute(route) !== null && !prefersEnglish(locale);
                       return (
-                        <div key={alt.routeKey} className="mt-2">
+                        <div key={route.routeKey} className="mt-2">
                           <button
                             type="button"
                             aria-expanded={expanded}
-                            onClick={() => toggleAlt(alt.routeKey)}
+                            onClick={() => toggleRoute(route.routeKey)}
                             className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                           >
                             {joinText(
-                              altName,
+                              name,
                               tTransit("summary", {
-                                minutes: alt.summary.totalMinutes,
-                                fare: alt.summary.fare.toLocaleString(locale),
-                                transfers: alt.summary.transfers,
+                                minutes: route.summary.totalMinutes,
+                                fare: route.summary.fare.toLocaleString(locale),
+                                transfers: route.summary.transfers,
                               }),
-                              alt.summary.walkMinutes > 0
+                              route.summary.walkMinutes > 0
                                 ? tTransit("walkSummary", {
-                                    minutes: alt.summary.walkMinutes,
+                                    minutes: route.summary.walkMinutes,
                                   })
                                 : null,
                             )}
                           </button>
                           {expanded && (
                             <>
-                              {/* 대안에서도 안내 시작(M5 선행분, recommended 전용
-                                  해제). 라벨은 대안 이름으로 구분한다. VO 로터 버튼
-                                  목록은 헤딩 문맥 없이 이름만 나열하고, 번호보다
-                                  축 이름이 구분에 강하다(spec §4.2). */}
-                              {altGuideStartable && (
+                              {/* 안내 시작은 경로에 귀속된다. 라벨이 곧 그 경로
+                                  이름이라 VO 로터 버튼 목록(헤딩 문맥 없이 이름만
+                                  나열된다)에서 어느 경로의 안내인지 구분된다(§4.2). */}
+                              {guideStartable && (
                                 <TransitGuidePanel
-                                  key={`transit-alt-${alt.routeKey}-${guideDestKey}`}
-                                  route={alt}
-                                  triggerLabel={tBeacon("guideStartTransitAlt", {
-                                    name: altName,
-                                  })}
+                                  key={`transit-${route.routeKey}-${guideDestKey}`}
+                                  route={route}
+                                  triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active
-                                        ? alt.routeKey
-                                        : prev === alt.routeKey
+                                        ? route.routeKey
+                                        : prev === route.routeKey
                                           ? null
                                           : prev,
                                     )
@@ -878,7 +888,7 @@ export function DirectionsView({
                                 />
                               )}
                               <TransitRouteResult
-                                route={alt}
+                                route={route}
                                 t={tTransit}
                                 locale={locale}
                                 dest={results.destLabel}

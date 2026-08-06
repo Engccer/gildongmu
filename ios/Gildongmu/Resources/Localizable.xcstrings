@@ -2641,46 +2641,6 @@
         }
       }
     },
-    "beacon.guideStartTransit": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "대중교통 안내 시작"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start transit guidance"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Iniciar guía de transporte"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Démarrer le guidage transports"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avvia guida mezzi pubblici"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "公共交通案内を開始"
-          }
-        }
-      }
-    },
     "beacon.guideStartTransitAlt": {
       "localizations": {
         "ko": {
@@ -24317,6 +24277,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "経路案内の準備ができました。"
+          }
+        }
+      }
+    },
+    "route.transit.recommended": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추천 경로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recommended route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta recomendada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire recommandé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso consigliato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おすすめ経路"
           }
         }
       }

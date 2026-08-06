@@ -11,7 +11,11 @@ import type { Place } from "@/lib/types";
  */
 let mockLocale = "ko";
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  // `name` 인자를 이름에 반영한다 — 대중교통 시작 버튼은 추천·대안이 **같은 키**를
+  // 쓰고 경로 이름만 다르므로(2026-08-07 컨트롤 통일), 키만 반환하면 둘을 구분할 수
+  // 없어 "추천 버튼이 대안으로 세어지는" 변이를 통과시킨다.
+  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
+    values && "name" in values ? `${key}:${String(values.name)}` : key,
   useLocale: () => mockLocale,
 }));
 vi.mock("@/lib/geolocation", () => ({
@@ -204,7 +208,9 @@ afterEach(() => {
 });
 
 // 라벨은 수단별 짧은 형(위원장 판정 2026-08-06, 공통 라벨 번복) — 세 키를 한 번에 조회.
-const GUIDE_START_NAME = /^guideStart(Walk|Car|Transit)$/;
+// ⚠ 대중교통만 형태가 다르다: 경로가 복수라 버튼이 경로 disclosure 안으로 들어갔고
+//   라벨이 경로 이름을 담는다. "수단 1개당 진입점 1개"에 해당하는 것은 추천 경로 버튼이다.
+const GUIDE_START_NAME = /^guideStart(Walk|Car|TransitAlt:recommended)$/;
 const guideStartButtons = () =>
   screen.queryAllByRole("button", { name: GUIDE_START_NAME });
 
@@ -244,7 +250,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
   it("ko + 대중교통만 성공(탑승 leg 有): 시작 버튼 1개, 간략 폴백 없음", async () => {
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();
-    expect(screen.getByRole("button", { name: "guideStartTransit" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "guideStartTransitAlt:recommended" })).toBeTruthy();
     expect(guideStartButtons()).toHaveLength(1);
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
@@ -274,17 +280,17 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     await queryRoutes();
     // 접힌 상태: 대안 시작 버튼 없음(추천 버튼만).
     expect(
-      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
+      screen.queryAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
     ).toHaveLength(0);
     const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
     expect(discs).toHaveLength(2);
     fireEvent.click(discs[0]); // 탑승 leg 있는 대안 → 버튼 노출
     expect(
-      screen.getAllByRole("button", { name: "guideStartTransitAlt" }),
+      screen.getAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
     ).toHaveLength(1);
     fireEvent.click(discs[1]); // 도보 전용 대안 → 게이트가 경로 단위로 차단
     expect(
-      screen.getAllByRole("button", { name: "guideStartTransitAlt" }),
+      screen.getAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
     ).toHaveLength(1);
   });
 
@@ -293,7 +299,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     await queryRoutes();
     const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
     fireEvent.click(discs[0]);
-    fireEvent.click(screen.getByRole("button", { name: "guideStartTransitAlt" }));
+    fireEvent.click(screen.getByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }));
     // 세션 중 접힘 클릭은 기록조차 안 된다(감사 HIGH): 기록하면 중지 순간
     // 뒤늦게 접히며 중지 통지 live region과 복귀 포커스가 동반 소멸한다.
     fireEvent.click(discs[0]);
@@ -303,7 +309,7 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     // 중지 후에도 펼침 유지 — 트리거(시작 버튼)가 되살아나 포커스 복귀처가 있다.
     expect(discs[0].getAttribute("aria-expanded")).toBe("true");
     expect(
-      await screen.findByRole("button", { name: "guideStartTransitAlt" }),
+      await screen.findByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
     ).toBeTruthy();
     // 세션이 끝난 뒤의 접기는 정상 반영된다.
     fireEvent.click(discs[0]);
@@ -319,7 +325,37 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
     fireEvent.click(discs[0]);
     expect(
-      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
+      screen.queryAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
     ).toHaveLength(0);
+  });
+});
+
+/**
+ * 경로 목록 컨트롤 통일(위원장 요청 2026-08-07). 추천만 라벨 없이 통째로 펼쳐져
+ * 있어 같은 지위의 경로들이 서로 다른 컨트롤로 보였다. 지금은 disclosure를 쌓은
+ * accordion이고 **초기 펼침 상태만** 다르다.
+ */
+describe("대중교통 경로 목록 컨트롤", () => {
+  it("추천도 대안과 같은 disclosure이고 초기 펼침만 다르다", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
+    await queryRoutes();
+    // 추천에 라벨이 붙었고(종전엔 이름 자체가 없었다) 펼친 채로 시작한다.
+    const rec = screen.getByRole("button", { name: /^recommended/ });
+    expect(rec.getAttribute("aria-expanded")).toBe("true");
+    // 대안은 같은 컨트롤이되 접힌 채로 시작한다.
+    for (const alt of screen.getAllByRole("button", { name: /^alternativeHeading/ })) {
+      expect(alt.getAttribute("aria-expanded")).toBe("false");
+    }
+  });
+
+  it("추천도 접힌다 — 다른 것은 초기 상태뿐이고 동작은 대안과 같다", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "ok" });
+    await queryRoutes();
+    const rec = screen.getByRole("button", { name: /^recommended/ });
+    // 안내 시작 버튼이 그 경로 disclosure 안에 있다 — 접으면 함께 감춰진다.
+    expect(guideStartButtons()).toHaveLength(1);
+    fireEvent.click(rec);
+    expect(rec.getAttribute("aria-expanded")).toBe("false");
+    expect(guideStartButtons()).toHaveLength(0);
   });
 });

@@ -128,6 +128,7 @@
       "legInterval": "passa circa ogni {minutes} min",
       "legServiceOutside": "Prima corsa {first}, ultima {last}, non in servizio ora",
       "arrive": "Arrivo a <name></name>",
+      "recommended": "Percorso consigliato",
       "alternativeHeading": "Alternativa {index}",
       "alternativeFastest": "Percorso più veloce",
       "alternativeFewestTransfers": "Meno cambi",
@@ -610,7 +611,6 @@
     "stopped": "Guida in tempo reale interrotta",
     "guideStartWalk": "Avvia guida a piedi",
     "guideStartCar": "Avvia guida in auto",
-    "guideStartTransit": "Avvia guida mezzi pubblici",
     "guideStartTransitAlt": "Avvia la guida: {name}",
     "transitHeading": "Guida mezzi pubblici"
   },
