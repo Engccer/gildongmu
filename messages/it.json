@@ -603,6 +603,7 @@
     "guideStartWalk": "Avvia guida a piedi",
     "guideStartCar": "Avvia guida in auto",
     "guideStartTransit": "Avvia guida mezzi pubblici",
+    "guideStartTransitAlt": "Avvia guida per l'alternativa {index}",
     "transitHeading": "Guida mezzi pubblici"
   },
   "guide": {

@@ -87,10 +87,22 @@ const TRANSIT_WALK_ONLY = {
   },
 };
 
+// 대안 2개: 탑승 leg 있는 대안(시작 가능) + 도보 전용 대안(시작 불가) —
+// 대안별 게이트가 경로 단위로 갈리는지 본다(M5 선행분).
+const TRANSIT_WITH_ALTS = {
+  result: {
+    recommended: TRANSIT_OK.result.recommended,
+    alternatives: [
+      TRANSIT_OK.result.recommended,
+      TRANSIT_WALK_ONLY.result.recommended,
+    ],
+  },
+};
+
 function stubFetch(opts: {
   walk: "ok" | "fail";
   car: "tmap" | "kakao" | "fail";
-  transit?: "ok" | "walkOnly" | "none";
+  transit?: "ok" | "walkOnly" | "withAlts" | "none";
 }) {
   vi.stubGlobal(
     "fetch",
@@ -120,6 +132,11 @@ function stubFetch(opts: {
         if (opts.walk === "fail") return { ok: false, json: async () => ({}) } as Response;
         return { ok: true, json: async () => WALK_OK } as Response;
       }
+      if (url.startsWith("/api/transit/track")) {
+        // 세션 폴링은 이 스위트의 관심사가 아니다 — 실패 응답이면 훅이
+        // upstreamFailed로 정직 강등하고 세션은 유지된다(강제 펼침 테스트용).
+        return { ok: false, json: async () => ({}) } as Response;
+      }
       if (url.startsWith("/api/route/transit")) {
         // 길찾기 뷰 조회는 항상 경유 정류장 옵트인이어야 한다(B2 §2 경로 동일성).
         expect(url).toContain("includeStops=1");
@@ -128,7 +145,9 @@ function stubFetch(opts: {
             ? TRANSIT_OK
             : opts.transit === "walkOnly"
               ? TRANSIT_WALK_ONLY
-              : { result: null };
+              : opts.transit === "withAlts"
+                ? TRANSIT_WITH_ALTS
+                : { result: null };
         return { ok: true, json: async () => body } as Response;
       }
       throw new Error(`unexpected fetch: ${url}`);
@@ -244,5 +263,56 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
+  });
+
+  it("대안 펼침 시 탑승 leg 있는 대안만 안내 시작 버튼(M5 선행분)", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
+    await queryRoutes();
+    // 접힌 상태: 대안 시작 버튼 없음(추천 버튼만).
+    expect(
+      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
+    ).toHaveLength(0);
+    const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
+    expect(discs).toHaveLength(2);
+    fireEvent.click(discs[0]); // 탑승 leg 있는 대안 → 버튼 노출
+    expect(
+      screen.getAllByRole("button", { name: "guideStartTransitAlt" }),
+    ).toHaveLength(1);
+    fireEvent.click(discs[1]); // 도보 전용 대안 → 게이트가 경로 단위로 차단
+    expect(
+      screen.getAllByRole("button", { name: "guideStartTransitAlt" }),
+    ).toHaveLength(1);
+  });
+
+  it("세션 활성 중 대안 접힘 시도는 강제 펼침이 막고, 중지 후에만 접힌다", async () => {
+    stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
+    await queryRoutes();
+    const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
+    fireEvent.click(discs[0]);
+    fireEvent.click(screen.getByRole("button", { name: "guideStartTransitAlt" }));
+    // 세션 시작 후 접힘 시도 — activeGuideAlt 강제 펼침이 unmount(=세션 조용한
+    // 죽음)를 차단해야 한다.
+    fireEvent.click(discs[0]);
+    expect(discs[0].getAttribute("aria-expanded")).toBe("true");
+    const stopBtn = await screen.findByRole("button", { name: "stop" });
+    fireEvent.click(stopBtn);
+    // 세션 종료 후엔 사용자의 접기 의도가 반영된다(패널·시작 버튼 소멸).
+    await waitFor(() => {
+      expect(discs[0].getAttribute("aria-expanded")).toBe("false");
+    });
+    expect(
+      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
+    ).toHaveLength(0);
+  });
+
+  it("en + 대안 펼침: 대안 시작 버튼도 ko 전용", async () => {
+    mockLocale = "en";
+    stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
+    await queryRoutes();
+    const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
+    fireEvent.click(discs[0]);
+    expect(
+      screen.queryAllByRole("button", { name: "guideStartTransitAlt" }),
+    ).toHaveLength(0);
   });
 });

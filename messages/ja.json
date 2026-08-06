@@ -603,6 +603,7 @@
     "guideStartWalk": "徒歩案内を開始",
     "guideStartCar": "自動車案内を開始",
     "guideStartTransit": "公共交通案内を開始",
+    "guideStartTransitAlt": "代替経路{index}の案内を開始",
     "transitHeading": "公共交通案内"
   },
   "guide": {
