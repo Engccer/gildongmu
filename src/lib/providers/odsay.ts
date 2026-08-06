@@ -7,6 +7,7 @@ import {
   type ServiceStatus,
 } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
+import { isNoRouteError, readOdsayError } from "./odsay-envelope";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
   Coord,
@@ -71,14 +72,9 @@ interface OdsayPath {
 }
 export interface OdsayResponse {
   result?: { path?: OdsayPath[] };
-  // ODsay는 200 + { error: { code, msg } }로 오류를 주기도 한다(실호출 검증).
-  error?: { code?: string | number; msg?: string };
+  /** ⚠ 객체와 배열 두 모양으로 온다. 직접 읽지 말고 readOdsayError를 쓴다 */
+  error?: unknown;
 }
-
-// "경로 없음"류로 graceful(null) 처리할 ODsay error 코드.
-// -98: 출·도착지가 700m 이내(실호출 검증, 2026-06-18). 다른 경로없음 코드는
-// 실제 관측 시 추가한다(추측 금지). 그 외 코드(인증·파라미터·서버 오류)는 throw.
-const NO_ROUTE_ERROR_CODES = new Set(["-98"]);
 
 /** 좌표 파싱 — 빈 문자열은 NaN(⚠ Number("")===0 함정, coord-param 계열). */
 function coordNum(v: unknown): number {
@@ -112,10 +108,18 @@ function toLegStops(sp: OdsaySubPath): TransitLegStop[] {
   });
 }
 
+/** 유한한 0 이상 수만 통과. 그 외는 undefined(3-state: 0으로 채우지 않는다) */
+function walkDistance(v: unknown): number | undefined {
+  if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return undefined;
+  return v;
+}
+
 function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
-    return { mode: "walk", minutes };
+    const distanceMeters = walkDistance(sp.distance);
+    // toName은 toTransitRoute가 뒤 첫 탑승 구간에서 유도해 채운다
+    return { mode: "walk", minutes, ...(distanceMeters != null ? { distanceMeters } : {}) };
   }
   const mode = sp.trafficType === 1 ? "subway" : "bus";
   const lane = sp.lane?.[0];
@@ -141,7 +145,7 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   };
 }
 
-function toTransitRoute(path: OdsayPath, includeStops: boolean): TransitRoute {
+function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string): TransitRoute {
   // 거리 0 도보는 역내 환승 통로다(실호출 검증: {trafficType:3, distance:0,
   // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
   // 리스트에서는 제외해 낭독을 간결히 한다. 단 walkMinutes(총 도보 시간)는
@@ -149,6 +153,17 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean): TransitRoute {
   const legs = path.subPath
     .filter((sp) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
     .map((sp) => toLeg(sp, includeStops));
+
+  // 도보 구간의 행선지 유도: 그 뒤 첫 탑승 구간의 fromName.
+  // ⚠ 환승 통로 필터 **뒤**의 배열에서 돈다. 필터 전에 돌면 0m 통로가 사이에 끼어
+  //   첫 도보가 환승역을 가리킨다. 뒤에 탑승 구간이 없으면(마지막 도보) 설정하지
+  //   않고, 그 자리는 소비자가 목적지 의미로 채운다(spec §4.3).
+  for (let i = 0; i < legs.length; i++) {
+    if (legs[i].mode !== "walk") continue;
+    const next = legs.slice(i + 1).find((l) => l.mode !== "walk");
+    if (next?.fromName) legs[i] = { ...legs[i], toName: next.fromName };
+  }
+
   const boardCount = legs.filter((l) => l.mode !== "walk").length;
   const walkMinutes = path.subPath
     .filter((sp) => sp.trafficType === 3)
@@ -163,24 +178,37 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean): TransitRoute {
       arriveName: path.info.lastEndStation,
     },
     legs,
+    routeKey,
   };
 }
 
-/** ODsay 응답 → TransitRouteResult. 경로 없으면 null(graceful "찾지 못함"). */
-export function normalizeOdsayRoute(
+/**
+ * ODsay 응답 → 전체 TransitRoute 배열. 경로 없음이면 null.
+ *
+ * ⚠ 3-state: "경로 없음"(null)과 "조회 실패"(throw)를 가른다. 종전
+ *   `data.result?.path ?? []`는 result 자체가 없는 응답을 "경로 없음"으로 바꿔
+ *   장애를 사용자에게 "대중교통 경로가 없습니다"로 전달했다.
+ *
+ * ⚠ 선정(5개)은 여기서 하지 않는다. 강등이 전체 후보에 먼저 적용돼야
+ *   선정 밖의 유일한 운행 중 경로를 놓치지 않는다(spec §3.3).
+ */
+export function normalizeOdsayRoutes(
   data: OdsayResponse,
   opts?: { includeStops?: boolean },
-): TransitRouteResult | null {
-  if (data.error) {
+): TransitRoute[] | null {
+  const err = readOdsayError(data.error);
+  if (err) {
     // 출·도착 700m 이내 등 "경로 없음"류는 장애가 아니라 graceful(null).
     // 그 외 오류(인증·파라미터·서버)는 throw해 라우트가 502로 정직하게 알린다.
-    if (NO_ROUTE_ERROR_CODES.has(String(data.error.code ?? ""))) return null;
-    throw new Error(`ODsay 길찾기 오류: ${JSON.stringify(data.error)}`);
+    if (isNoRouteError(err.code)) return null;
+    throw new Error(`ODsay 길찾기 오류: ${err.code} ${err.message}`);
   }
-  const paths = data.result?.path ?? [];
+  const paths = data.result?.path;
+  if (!Array.isArray(paths)) {
+    throw new Error("ODsay 응답 스키마 위반: result.path가 배열이 아닙니다");
+  }
   if (paths.length === 0) return null;
-  const routes = paths.slice(0, 3).map((p) => toTransitRoute(p, opts?.includeStops === true));
-  return { recommended: routes[0], alternatives: routes.slice(1) };
+  return paths.map((p, i) => toTransitRoute(p, opts?.includeStops === true, `p${i}`));
 }
 
 function formatHHMM(minutes: number): string {
