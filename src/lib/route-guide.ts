@@ -31,6 +31,12 @@ export const EDGE_HITS_MAX = 3;
 export const SPEED_ENTER_MPS = 3;
 export const SPEED_CLEAR_MPS = 2;
 export const SPEED_WINDOW_S = 10;
+/**
+ * 속도 표본 수집의 정확도 상한. uncertain 게이트(50m)보다 좁다 — 계단·실내 진입의
+ * 30~50m fix는 위치로는 쓸 만하지만 진행거리 점프를 만들어, 단조 전진 정류가 그
+ * 노이즈의 앞쪽 성분만 누적해 "속도 빠름" 오판을 낳는다(피드백 라운드1 #7).
+ */
+export const SPEED_SAMPLE_MAX_ACC_M = 20;
 export const RESOLVE_TIMEOUT_S = 30;
 export const BUNDLE_REREAD_S = 15;
 
@@ -392,9 +398,14 @@ export function guideStep(
   const windowEdgeHits = edgeHit ? state.windowEdgeHits + 1 : 0;
 
   // 4) 속도 창(10초 중앙값, 리뷰 #17) — uncertain·reacquiring 밖에서만 표본 수집.
-  const samples = [...state.speedSamples, { at: now, d }].filter(
-    (s) => now - s.at <= SPEED_WINDOW_S,
-  );
+  //    정확도 나쁜 fix(>20m)는 표본에서 배제한다(투영·전진은 유지 — 위치 축과 속도
+  //    축의 품질 요구가 다르다). 배제가 이어지면 창이 짧아져 가드 판정 자체가
+  //    멈추므로, 나쁜 fix만으로는 가드가 새로 켜지지 않는다.
+  const samples = (
+    fix.accuracy > SPEED_SAMPLE_MAX_ACC_M
+      ? state.speedSamples
+      : [...state.speedSamples, { at: now, d }]
+  ).filter((s) => now - s.at <= SPEED_WINDOW_S);
   const speeds: number[] = [];
   for (let i = 1; i < samples.length; i++) {
     const dt = samples[i].at - samples[i - 1].at;
@@ -406,9 +417,16 @@ export function guideStep(
   let speedGuardActive = state.speedGuardActive;
   // 가드 기계는 speedSuggest 프로파일에서만 동작한다 — 차량에서 켜 두면 상시
   // 활성이 되어 이탈 재통지 억제 배선을 영구 잠식한다(적대적 리뷰 반영).
-  if (tuning.speedSuggest && windowSpan >= SPEED_WINDOW_S * 0.8) {
-    if (!speedGuardActive && median > SPEED_ENTER_MPS) speedGuardActive = true;
-    else if (speedGuardActive && median < SPEED_CLEAR_MPS) speedGuardActive = false;
+  if (tuning.speedSuggest) {
+    if (windowSpan >= SPEED_WINDOW_S * 0.8) {
+      if (!speedGuardActive && median > SPEED_ENTER_MPS) speedGuardActive = true;
+      else if (speedGuardActive && median < SPEED_CLEAR_MPS) speedGuardActive = false;
+    } else if (speedGuardActive && samples.length === 0) {
+      // 표본이 전무하면(정확도 배제·시간창 배수로 소멸) 판정 근거가 없다 — 가드를
+      // 해제한다. 21~50m 정확도가 지속되는 구간에서 낡은 판정을 쥔 채 이탈
+      // 재통지를 무기한 억제하는 고착 차단(독립 리뷰 MAJOR, 정확도 배제의 2차 회귀).
+      speedGuardActive = false;
+    }
   }
 
   const remainingTotal = route.totalMeters - d;

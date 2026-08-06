@@ -10,8 +10,10 @@ import SwiftUI
 /// 리듀서는 `beaconStep`, 톤·통지 판정은 `beaconGateStep`, fix 수용 판정은
 /// `isUsableFix`가 맡고, 이 클래스는 권한·타임아웃·I/O만 담당한다.
 ///
-/// 전경 전용 계약: 화면을 켜 두고(`isIdleTimerDisabled`) 앱이 앞에 있는 동안만
-/// 추적한다. 백그라운드 위치는 도입하지 않는다(위원장 결정, spec §8.1).
+/// 백그라운드 계약(spec §12.2, 2026-08-06 — 종전 §8.1 전경 전용을 위원장 결정으로
+/// 번복): `UIBackgroundModes: location`이 선언된 빌드(Experimental)는 세션 중
+/// 백그라운드에서도 위치 스트림이 계속 흘러 추적이 산다. 미선언 빌드는 종전대로
+/// 전경 전용이며, 그 분기는 `LocationService.backgroundLocationDeclared`가 가른다.
 @Observable @MainActor
 final class BeaconModel {
     enum Status: Equatable {
@@ -499,7 +501,7 @@ final class BeaconModel {
         announce(appLocalized("ios.beacon.stopped"))
     }
 
-    // MARK: - 앱 생명주기 (전경 전용 계약)
+    // MARK: - 앱 생명주기
 
     func handleScenePhaseChange(to phase: ScenePhase) {
         switch phase {
@@ -513,6 +515,12 @@ final class BeaconModel {
             // `.inactive` 왕복까지 리셋하면 추세가 계속 초기화되고 절대거리가 재발화된다.
             guard wasBackgrounded else { return }
             wasBackgrounded = false
+            // 백그라운드 위치가 선언된 빌드는 공백이 없다 — 스트림이 계속 흘러 상태가
+            // 이미 최신이므로, 리셋하면 사용자가 화면을 확인하는 순간 누적 추세
+            // (가까워지는 중/멀어지는 중)를 오히려 버린다(독립 리뷰 MAJOR). 이 리셋은
+            // "백그라운드 동안 fix가 안 온다"는 전경 전용 전제의 산물이라 미선언
+            // 빌드에만 남긴다. 선언 빌드의 fix 공백은 워치독 약신호 채널이 잡는다.
+            guard !LocationService.backgroundLocationDeclared else { return }
             beaconState = .initial
             gateState = .initial
             lastFixAt = nil

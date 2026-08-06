@@ -616,7 +616,7 @@
     "uncertain": "La confianza en la ubicación es baja",
     "uncertainRecovered": "Se recuperó la confianza en la ubicación",
     "reacquiring": "Buscando de nuevo tu posición en la ruta",
-    "speedSuggest": "Te mueves rápido; la guía simple es más adecuada",
+    "speedSuggest": "La señal de ubicación puede ser inestable o te mueves rápido; la guía simple puede ser más adecuada",
     "toDetailDone": "Cambiado a guía detallada",
     "toBriefDone": "Cambiado a guía simple",
     "resolvePending": "Determinando tu posición en la ruta",

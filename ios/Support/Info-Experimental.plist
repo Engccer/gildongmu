@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Experimental 구성 전용 부분 plist (pbxproj Experimental의 INFOPLIST_FILE).
+	     공통 항목은 Support/Info.plist와 수동 동기화한다 — 그 파일을 고치면 여기도.
+	     ⚠ 구성별 비로컬라이즈 plist 키는 이 분기가 정본이다: INFOPLIST_KEY_* 빌드
+	     설정에 UIBackgroundModes가 없고(조용히 무시), experimental-infoplist.sh
+	     후처리는 ProcessInfoPlistFile이 뒤에서 덮어쓴다(둘 다 실측 2026-08-06). -->
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>PreciseLocation</key>
+		<string>주변 정보 검색과 거리 추적은 정확한 위치가 필요합니다.</string>
+	</dict>
+	<!-- 백그라운드 위치(피드백 라운드1 #11나): 도보·자동차 안내 세션이 잠금·백그라운드
+	     에서도 살아 있게 한다(When In Use로 충분, 전경 시작 전제). 공식판(Release)에는
+	     선언하지 않는다 — 기능이 플래그를 졸업하면 Support/Info.plist로 옮긴다. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+</dict>
+</plist>

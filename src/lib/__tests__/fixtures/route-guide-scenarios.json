@@ -432,6 +432,61 @@
       ]
     },
     {
+      "name": "계단 GPS 노이즈: 정확도 나쁜 fix(>20m)는 속도 표본 배제 — speedSuggest 미발동",
+      "steps": [
+        {
+          "len": 2000,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 30
+        },
+        {
+          "t": 5,
+          "along": 40,
+          "lateral": 0,
+          "acc": 30
+        },
+        {
+          "t": 10,
+          "along": 90,
+          "lateral": 0,
+          "acc": 30
+        },
+        {
+          "t": 15,
+          "along": 140,
+          "lateral": 0,
+          "acc": 30
+        },
+        {
+          "t": 20,
+          "along": 190,
+          "lateral": 0,
+          "acc": 30
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 2,
+          "eventNot": "speedSuggest"
+        },
+        {
+          "afterFix": 3,
+          "eventNot": "speedSuggest"
+        },
+        {
+          "afterFix": 4,
+          "eventNot": "speedSuggest"
+        }
+      ]
+    },
+    {
       "name": "fix 공백 10초 초과 후 reacquiring",
       "steps": [
         {

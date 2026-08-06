@@ -616,7 +616,7 @@
     "uncertain": "Location confidence is low",
     "uncertainRecovered": "Location confidence recovered",
     "reacquiring": "Re-locating you on the route",
-    "speedSuggest": "You are moving fast; simple guidance fits better",
+    "speedSuggest": "Your location signal may be unstable or you may be moving fast; simple guidance may fit better",
     "toDetailDone": "Switched to detailed guidance",
     "toBriefDone": "Switched to simple guidance",
     "resolvePending": "Finding your position on the route",

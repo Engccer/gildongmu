@@ -616,7 +616,7 @@
     "uncertain": "位置の確度が低いです",
     "uncertainRecovered": "位置の確度が回復しました",
     "reacquiring": "経路上の位置を再取得しています",
-    "speedSuggest": "移動速度が速いため簡易案内が適しています",
+    "speedSuggest": "位置情報が不安定か移動速度が速いため、簡易案内が適している場合があります",
     "toDetailDone": "詳細案内に切り替えました",
     "toBriefDone": "簡易案内に切り替えました",
     "resolvePending": "経路上の位置を確定しています",

@@ -22,6 +22,9 @@ public let edgeHitsMax = 3
 public let speedEnterMps = 3.0
 public let speedClearMps = 2.0
 public let speedWindowSeconds = 10.0
+/// 속도 표본 수집의 정확도 상한. uncertain 게이트(50m)보다 좁다 — 계단·실내 진입의
+/// 30~50m fix가 진행거리 점프를 만들어 "속도 빠름" 오판을 낳는다(피드백 라운드1 #7).
+public let speedSampleMaxAccuracyMeters = 20.0
 public let resolveTimeoutSeconds = 30.0
 public let bundleRereadSeconds = 15.0
 
@@ -346,8 +349,12 @@ public func guideStep(
     let windowEdgeHits = edgeHit ? state.windowEdgeHits + 1 : 0
 
     // 4) 속도 창(10초 중앙값) — uncertain·reacquiring 밖에서만 표본 수집.
+    //    정확도 나쁜 fix(>20m)는 표본에서 배제한다(투영·전진은 유지 — 위치 축과 속도
+    //    축의 품질 요구가 다르다). 배제가 이어지면 창이 짧아져 가드 판정이 멈춘다.
     var samples = state.speedSamples
-    samples.append(GuideSpeedSample(at: now, d: d))
+    if fix.accuracy <= speedSampleMaxAccuracyMeters {
+        samples.append(GuideSpeedSample(at: now, d: d))
+    }
     samples.removeAll { now - $0.at > speedWindowSeconds }
     var speeds: [Double] = []
     for i in 1..<max(samples.count, 1) where samples[i].at > samples[i - 1].at {
@@ -358,10 +365,16 @@ public func guideStep(
     let windowSpan = samples.count >= 2 ? samples[samples.count - 1].at - samples[0].at : 0
     var speedGuardActive = state.speedGuardActive
     // 가드 기계는 speedSuggest 프로파일에서만 동작한다(차량 상시 활성 → 재통지 잠식 차단).
-    if tuning.speedSuggest, windowSpan >= speedWindowSeconds * 0.8 {
-        if !speedGuardActive && median > speedEnterMps {
-            speedGuardActive = true
-        } else if speedGuardActive && median < speedClearMps {
+    if tuning.speedSuggest {
+        if windowSpan >= speedWindowSeconds * 0.8 {
+            if !speedGuardActive && median > speedEnterMps {
+                speedGuardActive = true
+            } else if speedGuardActive && median < speedClearMps {
+                speedGuardActive = false
+            }
+        } else if speedGuardActive, samples.isEmpty {
+            // 표본이 전무하면(정확도 배제·시간창 배수로 소멸) 판정 근거가 없다 —
+            // 낡은 판정을 쥔 채 이탈 재통지를 무기한 억제하는 고착 차단(독립 리뷰).
             speedGuardActive = false
         }
     }

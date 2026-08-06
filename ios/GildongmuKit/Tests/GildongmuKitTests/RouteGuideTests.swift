@@ -163,6 +163,38 @@ private func toneName(_ tone: GuideTone?) -> String? {
     }
 }
 
+/// 속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀 차단 — 웹 route-guide.test.ts 미러).
+/// 가드 활성 후 21~50m 정확도 지속(표본 배제만 발동)으로 시간창이 마르면 가드를
+/// 해제해야 한다 — 미해제면 이탈 재통지가 무기한 억제된다(독립 리뷰 MAJOR).
+@Test func speedGuardClearsWhenSamplesStarve() {
+    let route = routeFrom([.init(len: 2000, desc: "직진")])
+    var state = initialGuideState(route: route, now: 0).state
+    var lastEvent: GuideEvent?
+    for (t, along) in [(0.0, 0.0), (5.0, 40.0), (10.0, 90.0)] {
+        let out = guideStep(
+            state: state, fix: fixCoord(along: along, lateral: 0, acc: 10),
+            route: route, now: t, tuning: .walk
+        )
+        state = out.state
+        lastEvent = out.event
+    }
+    #expect(kindName(lastEvent) == "speedSuggest")
+    #expect(state.speedGuardActive)
+    for t in [15.0, 20.0] {
+        state = guideStep(
+            state: state, fix: fixCoord(along: 90, lateral: 0, acc: 30),
+            route: route, now: t, tuning: .walk
+        ).state
+        #expect(state.speedGuardActive) // 잔여 표본이 남은 동안은 동결 유지
+    }
+    state = guideStep(
+        state: state, fix: fixCoord(along: 90, lateral: 0, acc: 30),
+        route: route, now: 25, tuning: .walk
+    ).state
+    #expect(state.speedSamples.isEmpty)
+    #expect(!state.speedGuardActive)
+}
+
 @Test func entryProjectionAmbiguityContract() {
     // U자 왕복(평행 20m 간격)은 ambiguous — 임의 확정 금지(스펙 §6).
     let uRoute = buildGuideRoute([

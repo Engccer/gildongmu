@@ -121,13 +121,36 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.activityType = .fitness
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = kCLDistanceFilterNone
+        // 백그라운드 지속(피드백 라운드1 #11나): 주머니에 넣고 걸어도 안내가 살아야
+        // 한다. When In Use로 충분하다 — 전경에서 시작한 스트림은 이 플래그만으로
+        // 백그라운드에서 계속되고, 파란 표시줄은 시스템이 띄운다(끌 수 없음, 감수).
+        // 이 스트림의 소비자는 도보·자동차 세션(BeaconModel)뿐이라 세션 종류 분기가
+        // 따로 없다 — 대중교통 추적은 위치가 아니라 네트워크 폴링이 생명선이라 이
+        // 경로를 지나지 않는다.
+        if Self.backgroundLocationDeclared {
+            manager.allowsBackgroundLocationUpdates = true
+        }
         manager.startUpdatingLocation()
     }
+
+    /// `UIBackgroundModes: location` 선언 여부. **미선언 빌드에서 `allowsBackground-
+    /// LocationUpdates = true` 대입은 런타임 예외**라 반드시 이 가드를 지난다.
+    /// 모드는 Experimental 구성만 선언한다(공식판에 쓰지 않는 백그라운드 모드를
+    /// 선언하면 심사 대상만 넓어진다). 기능이 플래그를 졸업하면 `Support/Info.plist`
+    /// (부분 plist)로 이 키를 옮긴다 — ⚠ `INFOPLIST_KEY_UIBackgroundModes` 빌드
+    /// 설정은 존재하지 않아 조용히 무시된다(산출물 실측 2026-08-06).
+    /// `BeaconModel`이 전경 복귀 리셋 게이트로도 읽는다(선언 빌드는 공백이 없다).
+    static let backgroundLocationDeclared: Bool =
+        (Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String])?
+            .contains("location") ?? false
 
     func stopBeaconUpdates() {
         guard isBeaconTracking else { return }
         manager.stopUpdatingLocation()
         manager.pausesLocationUpdatesAutomatically = true
+        // false 대입은 선언 여부와 무관하게 안전하다. 세션 밖에서 켜 두면 one-shot
+        // 취득까지 백그라운드 자격을 얻으므로 세션 경계에서 반드시 내린다.
+        manager.allowsBackgroundLocationUpdates = false
         isBeaconTracking = false
         beaconFixSink = nil
         beaconErrorSink = nil
