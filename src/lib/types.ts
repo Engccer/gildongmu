@@ -274,8 +274,15 @@ export interface TransitLeg {
   lineName?: string;
   /** 승차 정류장 (도보는 없음) */
   fromName?: string;
-  /** 하차 정류장 (도보는 없음) */
+  /** 하차 정류장. 도보 구간에서는 "걸어서 도착할 곳"(뒤 첫 탑승 구간의 fromName) */
   toName?: string;
+  /**
+   * 도보 구간 거리(미터). ODsay subPath.distance.
+   * ⚠ 3-state: 값이 없거나 유한한 0 이상 수가 아니면 **필드 자체를 싣지 않는다**.
+   *   0으로 채우면 "정보 없음"이 "0m"로 둔갑한다. 탑승 구간에는 싣지 않는다
+   *   (정거장 수가 이미 표현하며 낭독에 더할 값이 아니다).
+   */
+  distanceMeters?: number;
   /** 정거장 수 (도보는 없음) */
   stationCount?: number;
   /** 평균 배차간격(분, ODsay subPath.intervalTime — 도보는 없음, 미제공 시 생략) */
@@ -301,6 +308,9 @@ export interface TransitLeg {
   stops?: TransitLegStop[];
 }
 
+/** 대안 경로의 축. 한 경로가 둘 다일 수 있어 배열이다(spec §3.3) */
+export type TransitHighlight = "fastest" | "fewestTransfers";
+
 /** 대중교통 경로 1개(요약 + 구간 리스트). */
 export interface TransitRoute {
   summary: {
@@ -317,12 +327,28 @@ export interface TransitRoute {
     arriveName?: string;
   };
   legs: TransitLeg[];
+  /**
+   * 응답 안에서 유일한 경로 식별자(정규화 시점의 ODsay 인덱스 기반).
+   * ⚠ 활성 안내 세션 추적·강제 펼침·포커스 복귀는 **배열 인덱스가 아니라 이 키로** 한다.
+   *   강등 정렬·재조회로 표시 순서가 바뀌면 인덱스는 다른 경로를 가리킨다.
+   */
+  routeKey: string;
+  /** 이 경로가 1순위보다 나은 축. 없으면 필드 부재(spec §3.3 3단계) */
+  highlight?: TransitHighlight[];
+  /** 축 라벨이 없는 대안의 표시 번호(1부터). 서버가 정해 3플랫폼 갈림을 막는다 */
+  displayIndex?: number;
 }
 
-/** 대중교통 길찾기 결과: 추천 1개 + 대안 최대 2개. */
+/** 대중교통 길찾기 결과: 추천 1개 + 대안 최대 4개(spec §2). */
 export interface TransitRouteResult {
   recommended: TransitRoute;
   alternatives: TransitRoute[];
+  /**
+   * 절단 전 후보 경로 총수(조용한 절단 금지). ODsay는 수도권 9개·부산 16개를
+   * 주는데 5개만 표시하므로 그 사실이 API에 남아야 한다. UI 표기는 하지 않는다
+   * (표기 심사는 "사용자 행동을 바꾸는가"이고 총수는 바꾸지 않는다).
+   */
+  totalCandidates: number;
 }
 
 /**
