@@ -201,7 +201,15 @@ export function DirectionsView({
   // 펼쳐진 대중교통 대안 인덱스(W3C APG disclosure). 새 조회 결과는 다른
   // 경로들이므로 결과를 비울 때 함께 초기화한다.
   const [expandedAlts, setExpandedAlts] = useState<Set<number>>(new Set());
+  // 안내 세션이 살아 있는 대안 인덱스(M5 선행분). 세션 중 disclosure가 접혀
+  // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 대안은 강제 펼침 유지.
+  const [activeGuideAlt, setActiveGuideAlt] = useState<number | null>(null);
   function toggleAlt(i: number) {
+    // 세션 활성 대안의 접힘 클릭은 기록하지 않는다(감사 HIGH): set에서 지워 두면
+    // 세션 종료 순간 뒤늦게 접히며 패널(live region·트리거)이 unmount돼 중지
+    // 통지가 무발화되고 포커스가 body로 이탈한다. 무시하면 종료 후에도 펼침이
+    // 유지돼 통지·트리거 복귀 포커스가 모두 산다(접기는 종료 후 다시 누르면 됨).
+    if (i === activeGuideAlt) return;
     setExpandedAlts((prev) => {
       const next = new Set(prev);
       if (next.has(i)) next.delete(i);
@@ -209,9 +217,6 @@ export function DirectionsView({
       return next;
     });
   }
-  // 안내 세션이 살아 있는 대안 인덱스(M5 선행분). 세션 중 disclosure가 접혀
-  // 패널이 unmount되면 세션이 조용히 죽으므로, 활성 대안은 강제 펼침 유지.
-  const [activeGuideAlt, setActiveGuideAlt] = useState<number | null>(null);
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
