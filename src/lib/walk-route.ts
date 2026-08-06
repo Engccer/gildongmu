@@ -3,6 +3,7 @@ import { getWalkRouteBriefing } from "./providers/tmap-pedestrian";
 import { hasAudioSignalNear } from "./providers/audio-signals";
 import { hasKakaoKey, hasTmapKey } from "./env";
 import { logRouteFallback } from "./route-fallback-log";
+import { rewriteWalkBriefing } from "./walk-guidance";
 import type { Coord, StepFreeStatus, WalkRouteBriefing } from "./types";
 
 /**
@@ -23,8 +24,14 @@ import type { Coord, StepFreeStatus, WalkRouteBriefing } from "./types";
 
 const ANNOTATION = "음향신호기 있음"; // 도보 경로는 V1 ko 전용 — i18n 키 불필요
 const MATCH_RADIUS_METERS = 40;
-/** "2개의 횡단보도 이용" 류 병합 스텝 — 어느 횡단보도인지 특정 불가라 주석 생략. */
-const MERGED_CROSSWALK = /\d+개의/;
+/**
+ * 병합 스텝 — 어느 횡단보도인지 특정 불가라 주석 생략.
+ * ⚠ 두 형태를 모두 받는다: 카카오 원문 "2개의 횡단보도"와 재작성본 "횡단보도 2개"
+ * (`rewriteWalkGuidance`). 원문형만 보면 재작성 뒤 이 게이트가 조용히 열려
+ * **신호기 없는 횡단보도에 "음향신호기 있음"이 붙는다** — 침묵보다 나쁜
+ * 거짓 안전 정보다. Tmap 폴백 문장은 재작성을 거치지 않으므로 원문형도 남긴다.
+ */
+const MERGED_CROSSWALK = /\d+개의|횡단보도 \d+개/;
 
 /** 계단 회피 미적용 시 브리핑 맨 앞에 삽입하는 안전 문장(모든 소비자 결정론 전달). */
 const STEP_FREE_NOTICE: Record<Exclude<StepFreeStatus, "applied">, string> = {
@@ -105,7 +112,11 @@ export async function getWalkRoute(params: {
   includeGeometry?: boolean;
 }): Promise<WalkRouteBriefing | null> {
   const { origin, dest, accessible = false, includeGeometry = false } = params;
-  const annotate = (b: WalkRouteBriefing) => annotateAudioSignals(b, includeGeometry);
+  // 재작성 → 주석 순서가 계약이다. 주석은 재작성된 문장 뒤에 붙어야 하고
+  // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
+  // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
+  const annotate = (b: WalkRouteBriefing) =>
+    annotateAudioSignals(rewriteWalkBriefing(b), includeGeometry);
 
   if (!accessible) {
     const r = await fetchPrimaryOrFallback({

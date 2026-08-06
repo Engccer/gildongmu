@@ -111,8 +111,10 @@ function confidenceDistance(meters: number, accuracy: number, t: GuideT): string
 }
 
 /**
- * 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 provider 문장을 **그대로** 싣는다 —
- * 도보 스텝 description이 낭독 정본이라 재조합 금지(스펙 §3).
+ * 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 API 문장을 **그대로** 싣는다 —
+ * 클라이언트 재조합 금지(스펙 §3). ⚠ 이 `description`은 provider 원문이 아니라
+ * 서버 `rewriteWalkGuidance`가 만든 완성 문장이다(2026-08-07): 거리·도로명이 이미
+ * 문장 안에 있으므로 여기서 거리를 덧붙이면 중복 낭독이 된다.
  */
 function unitText(route: GuideRoute, indices: number[], t: GuideT): string {
   const descs = indices
