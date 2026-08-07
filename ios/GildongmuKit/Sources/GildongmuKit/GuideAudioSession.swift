@@ -34,6 +34,10 @@ public enum GuideAudioEvent: Sendable, Equatable {
     case interrupted
     /// 출력 route 변경·media services reset. 플레이어 재생성이 필요하다.
     case routeChanged
+    /// 세션 밖 단발 재생 직전의 세션 확보. **이것만 원복 자격 없이도 적용한다** —
+    /// 종전 `ensureSession()`과 동형이라 회귀가 없고, 여기서 막으면 안내 세션 밖의
+    /// 톤(설정 미리듣기 등)이 아예 나지 않는다.
+    case ensureActive
 }
 
 public enum GuideAudioAction: Sendable, Equatable {
@@ -71,8 +75,11 @@ public func guideAudioStep(
     case .sessionEnded:
         next.desired = .ambient
         guard state.didPromote else { return (next, .none) }
-        next.didPromote = false
+        // ⚠ 억제 중이면 자격을 **유지한다**. 원복 자격은 "원복할 의무가 남아 있다"는
+        // 뜻이라, 실제로 원복하기 전에 반납하면 억제가 풀려도 `.playback`이 그대로
+        // 남는다(억제 해제 재조정이 우리 카테고리를 남의 것으로 오인한다).
         guard !next.isSuppressed else { return (next, .none) }
+        next.didPromote = false
         return (next, .apply(.ambient))
 
     case let .suppressionChanged(suppressed):
@@ -83,13 +90,24 @@ public func guideAudioStep(
         return reconcile(next, rebuild: false)
 
     case .interrupted:
-        guard !next.isSuppressed else { return (next, .none) }
+        guard !next.isSuppressed, ownsSession(next) else { return (next, .none) }
         return reconcile(next, rebuild: false)
 
     case .routeChanged:
-        guard !next.isSuppressed else { return (next, .none) }
+        guard !next.isSuppressed, ownsSession(next) else { return (next, .none) }
         return reconcile(next, rebuild: true)
+
+    case .ensureActive:
+        guard !next.isSuppressed else { return (next, .none) }
+        return reconcile(next, rebuild: false)
     }
+}
+
+/// 우리가 이 세션의 주인인가. **안내가 돌지 않는 동안에는 공유 세션을 건드리지 않는다**
+/// (스펙 §3.2 규칙 3). 이 가드가 없으면 route 변경 옵서버(신설)와 억제 해제가 세션 밖
+/// 에서도 `.ambient`를 강제해, 온디바이스 TTS가 낭독 중인 카테고리를 바꿀 수 있다.
+private func ownsSession(_ state: GuideAudioSessionState) -> Bool {
+    state.desired == .playback || state.didPromote
 }
 
 /// 저장된 의도를 지금 적용한다. 억제 중이면 의도만 남기고 나중에 다시 지난다.
@@ -98,6 +116,8 @@ private func reconcile(
 ) -> (state: GuideAudioSessionState, action: GuideAudioAction) {
     var next = state
     guard !next.isSuppressed else { return (next, .none) }
-    if next.desired == .playback { next.didPromote = true }
+    // 자격은 지금 적용하는 카테고리를 따른다 — `.ambient`를 적용하는 순간이 곧
+    // 원복을 마친 순간이다.
+    next.didPromote = next.desired == .playback
     return (next, rebuild ? .rebuild(next.desired) : .apply(next.desired))
 }

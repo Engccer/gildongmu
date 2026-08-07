@@ -59,6 +59,22 @@ describe("계층 배타성", () => {
     expect(out.state.lastTrendToneAt).toBeNull();
   });
 
+  // ⚠ 이 순서가 ahead·warning의 존재 조건이다. guideStep은 .ahead를 항상
+  // announceSteps와, .warning을 항상 offRoute와 함께 내므로 우선 톤을 실은 fix는
+  // 예외 없이 eventOwned === true다. 두 값을 서로 다른 스텝에 나눠 두면 3단계를
+  // 2단계 앞으로 옮기는 변이가 전량 green을 통과한다(코드 리뷰 실측 2026-08-08).
+  it.each(["ahead", "warning"] as const)(
+    "이벤트를 동반해도 우선 톤(%s)이 이긴다(실제로는 항상 동반한다)",
+    (tone) => {
+      const out = toneLayerStep(
+        anchored(100),
+        input({ priorityTone: tone, eventOwned: true, trend: trend(50) }),
+        10,
+      );
+      expect(out.tone).toBe(tone);
+    },
+  );
+
   it("3단계: 이벤트가 톤 자리를 소유하면 침묵하고 앵커도 불변이다", () => {
     const out = toneLayerStep(
       anchored(100), input({ eventOwned: true, trend: trend(50) }), 10,
