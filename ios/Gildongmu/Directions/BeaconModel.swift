@@ -49,6 +49,10 @@ final class BeaconModel {
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     private(set) var statusText = ""
+    /// 오디오 승격에 실패해 **잠금 중 무음이 예상되는** 상태. 세션 내내 참인 지속
+    /// 상태라 `statusText`(단일 슬롯, 곧 다음 안내가 덮는다)와 별도 행으로 낸다 —
+    /// 음성 1회는 놓치면 끝이고, 비-VO 사용자에게는 이것이 잠금 후 무음의 유일한 단서다.
+    private(set) var soundDegraded = false
     /// 현재 실패의 해결 수단. 뷰가 이 값으로 해결 버튼을 고른다.
     /// ⚠ 권한 거부(설정 열기)와 정밀 위치 꺼짐(그 자리 시스템 팝업)은 버튼이
     /// **다르다**. openSettingsURLString이 여는 화면에는 정확한 위치 토글이 없다
@@ -266,10 +270,9 @@ final class BeaconModel {
         // (`.ambient`로도 start 톤이 난다) 시작 시점에 알려야 잠그기 전에 안다.
         tones.beginSession()
         playTone(.start)
-        if tones.isDegraded {
-            let text = appLocalized("ios.beacon.soundBackgroundUnavailable")
-            statusText = text
-            announce(text)
+        if soundDegraded {
+            // 음성으로 1회 알리고, 지속 상태는 `soundDegraded` 행이 계속 든다.
+            announce(appLocalized("ios.beacon.soundBackgroundUnavailable"))
         }
 
         LocationService.shared.startBeaconUpdates(
@@ -492,6 +495,7 @@ final class BeaconModel {
         if status == .tracking { status = .idle }
         statusText = ""
         failResolution = .none
+        soundDegraded = false
         beaconState = .initial
         gateState = .initial
         toneState = .initial
@@ -1112,6 +1116,8 @@ final class BeaconModel {
     private func playTone(_ tone: BeaconTone) {
         guard !outputSuppressed else { return }
         tones.play(tone)
+        // 승격 상태는 세션 중에도 바뀐다(route 변경·인터럽션 복구가 재조정을 거친다).
+        if soundDegraded != tones.isDegraded { soundDegraded = tones.isDegraded }
         // 톤이 죽으면 hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다.
         // GPS 약신호와 **다른 문구**여야 한다. 취해야 할 행동이 다르다.
         if tones.isSilenced {

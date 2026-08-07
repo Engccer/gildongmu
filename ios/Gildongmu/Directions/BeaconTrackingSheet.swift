@@ -69,6 +69,14 @@ struct BeaconTrackingSheet: View {
                 if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {
                     distanceText(remaining)
                 }
+                // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
+                // 다투지 않는다 — 시작 시 음성 1회는 놓치면 끝이고, 비-VO 사용자에게는
+                // 이 행이 잠금 후 무음의 유일한 단서다.
+                if model.soundDegraded {
+                    Text(appLocalized("ios.beacon.soundBackgroundUnavailable"))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
                 // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
                 if !model.statusText.isEmpty {
