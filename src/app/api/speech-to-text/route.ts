@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   // 유료 Deepgram 비용 방어 — formData 파싱(메모리 적재) 전에 차단한다.
   if (!checkSttRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json(
-      { error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "요청이 많습니다." },
       { status: 429 },
     );
   }
@@ -67,14 +67,14 @@ export async function POST(request: NextRequest) {
     if (!res.ok) {
       console.error("[stt] Deepgram 오류:", res.status);
       return NextResponse.json(
-        { error: "음성 인식에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+        { error: "음성 인식에 실패했습니다." },
         { status: 502 },
       );
     }
     const transcript = parseDeepgramTranscript(await res.json(), locale);
     if (!transcript) {
       return NextResponse.json(
-        { error: "음성을 인식하지 못했습니다. 다시 말씀해 주세요." },
+        { error: "음성을 인식하지 못했습니다." },
         { status: 422 },
       );
     }
