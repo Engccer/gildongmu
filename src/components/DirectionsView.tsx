@@ -21,6 +21,7 @@ import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
+import { walkRouteUrl } from "@/lib/walk-route-url";
 import {
   clearRecentEndpoints,
   loadRecentEndpoints,
@@ -119,8 +120,11 @@ async function fetchMode(
   dest: Coord,
   lang: "ko" | "en",
   signal: AbortSignal,
-  /** 계단 회피(도보 전용) — 꺼짐이면 파라미터 자체를 안 붙여 기존 캐시 경로 유지. */
-  walkAccessible?: boolean,
+  /**
+   * 계단 회피(도보 전용). ⚠ **선택 인자로 두지 않는다** — A4가 생략 가능한 안전
+   * 인자에서 나왔다(spec §2.5). 도보가 아닌 수단은 `false`를 명시한다.
+   */
+  walkAccessible: boolean,
 ): Promise<ModeOutcome> {
   const qs = `origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
   if (mode === "car") {
@@ -130,11 +134,13 @@ async function fetchMode(
     if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
     return { kind: "done", mode, result: body as CarRouteBriefing };
   }
-  const accessibleQs = mode === "walk" && walkAccessible ? "&accessible=true" : "";
   // 대중교통은 경유 정류장 옵트인(B2 §7) — 실시간 안내(승차·하차 정류소 ID·좌표)의
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
-  const stopsQs = mode === "transit" ? "&includeStops=1" : "";
-  const res = await fetch(`/api/route/${mode}?${qs}${accessibleQs}${stopsQs}`, { signal });
+  const url =
+    mode === "walk"
+      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false })
+      : `/api/route/transit?${qs}&includeStops=1`;
+  const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown };
   if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
