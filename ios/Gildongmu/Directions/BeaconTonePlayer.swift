@@ -93,7 +93,10 @@ final class BeaconTonePlayer {
         // `.interrupted`는 "저장된 의도를 지금 적용하라"는 재조정 이벤트다 —
         // 세션 밖이면 의도가 `.ambient`라 종전 동작과 같다.
         if appliedCategory == nil { dispatch(.interrupted) }
-        guard !isSilenced else { return }
+        // ⚠ 판정 축은 **세션 확보 여부**이지 `isSilenced`가 아니다. 후자는 한 번의
+        // 재생 실패로도 켜지므로, 그걸로 막으면 일시적 실패가 영구 침묵으로 굳는다
+        // (종전 `guard ensureSession()`은 세션만 봤고 재생은 매번 다시 시도했다).
+        guard appliedCategory != nil else { return }
         let player: AVAudioPlayer
         if let cached = players[tone] {
             player = cached
@@ -306,11 +309,22 @@ final class BeaconTonePlayer {
             isSilenced = false
             if category == .playback { isDegraded = false }
         } catch {
-            appliedCategory = nil
-            if category == .playback {
-                // 세션은 계속한다(전경 톤은 `.ambient`로도 난다). 잠금 시 무음만 예고.
-                isDegraded = true
-            } else {
+            guard category == .playback else {
+                appliedCategory = nil
+                isSilenced = true
+                return
+            }
+            // 승격 실패는 **잠금 시 무음**을 뜻하지 전경 무음을 뜻하지 않는다. 여기서
+            // 세션을 포기하면 실패가 과잉 전파되어, 잠그기 전에 알리려던 장치가
+            // 잠그기 전 침묵을 만든다. `.ambient`로 물러나 재생 자체는 살린다.
+            isDegraded = true
+            do {
+                try session.setCategory(.ambient, options: [.mixWithOthers])
+                try session.setActive(true)
+                appliedCategory = .ambient
+                isSilenced = false
+            } catch {
+                appliedCategory = nil
                 isSilenced = true
             }
         }
