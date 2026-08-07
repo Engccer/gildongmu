@@ -53,7 +53,14 @@ export interface BeaconAnnounce {
 }
 
 const MAX_USABLE_ACCURACY_M = 100;
-const BASE_DEAD_BAND_M = 15;
+/**
+ * 추세 판정 데드밴드 기준(m). 간략은 정확도로 스케일하고(`max(base, accuracy)`),
+ * 상세는 이 값을 고정으로 쓴다 — 그 모드의 오차 원인은 GPS 정확도가 아니라 경로
+ * 투영의 안정성이라 정확도 스케일이 의미가 없다(점프한 fix를 통째로 버린다).
+ * ⚠ `maxNormalSilenceS` 21초가 이 값 ÷ 느린 구간 0.7m/s에서 나온다 — 축소하면
+ * GPS 지터 내성이 깎이고 침묵 계약도 함께 흔들린다. Kit `BeaconConstants.baseDeadBand` 미러.
+ */
+export const BASE_DEAD_BAND_M = 15;
 const ARRIVAL_BASE_M = 20;
 const SPEAK_INTERVAL_M = 50;
 
