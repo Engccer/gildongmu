@@ -130,7 +130,7 @@ describe("rewriteWalkGuidance", () => {
   describe("fail-safe", () => {
     it("규칙에 없는 문형은 원문 그대로 통과시킨다", () => {
       // Tmap 폴백 문장·withStepFree 안전 문장이 이 경로로 보존된다
-      const notice = "계단 없는 경로를 찾지 못해 일반 경로를 안내합니다. 계단이 포함될 수 있습니다.";
+      const notice = "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.";
       expect(rewriteWalkGuidance(notice, 0)).toBe(notice);
       expect(rewriteWalkGuidance("직진 후 광장 통과", 50)).toBe("직진 후 광장 통과");
     });

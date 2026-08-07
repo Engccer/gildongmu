@@ -175,6 +175,15 @@ function briefingWithGeometry(n: number): WalkRouteBriefing {
   };
 }
 
+/** description에 "계단"이 남은 브리핑(ACCESSIBLE 응답의 fail-closed 강등 fixture). */
+function briefingWithStairs(): WalkRouteBriefing {
+  return {
+    distanceMeters: 1000,
+    durationSeconds: 900,
+    steps: [{ description: "호텔마누 앞에서 계단이용" }],
+  };
+}
+
 beforeEach(() => {
   vi.mocked(getKakaoWalkBriefing).mockReset().mockResolvedValue(KAKAO_BRIEFING);
   vi.mocked(getWalkRouteBriefing).mockReset().mockResolvedValue(TMAP_BRIEFING);
@@ -212,7 +221,7 @@ describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(null);
     const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.steps[0].description).toBe(
-      "계단 없는 경로를 찾지 못해 일반 경로를 안내합니다. 계단이 포함될 수 있습니다.",
+      "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
     );
   });
 });
@@ -271,7 +280,7 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
     });
     const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("no_stepfree_route");
-    expect(r?.steps[0].description).toContain("계단 없는 경로를 찾지 못해");
+    expect(r?.steps[0].description).toContain("계단 없는 경로를 확정하지 못했습니다");
   });
 
   it("ACCESSIBLE 경로 없음이면 기본 모드 재호출 + no_stepfree_route + 안내 문장 삽입", async () => {
@@ -280,7 +289,7 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
       .mockResolvedValueOnce(KAKAO_BRIEFING); // 기본 재호출
     const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("no_stepfree_route");
-    expect(r?.steps[0].description).toContain("계단 없는 경로를 찾지 못해");
+    expect(r?.steps[0].description).toContain("계단 없는 경로를 확정하지 못했습니다");
     expect(r?.steps[1].description).toContain("역사 내 이동");
   });
 
@@ -354,6 +363,66 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
 
     expect(r?.stepFree).toBe("applied");
     expect(r?.stepFreeNotice).toBeUndefined();
+  });
+});
+
+describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
+  // ⚠ 부정 검사("일반 경로를 안내합니다" 미포함)로 대신하지 않는다 —
+  //    빈 문자열·문구 교환이 전부 통과한다.
+  it("no_stepfree_route 문장은 어느 경로를 반환하는지 단정하지 않는다", async () => {
+    // ACCESSIBLE 응답에 계단 문구 잔존 → fail-closed 강등. 반환은 ACCESSIBLE 경로다.
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(briefingWithStairs());
+
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+
+    expect(r?.stepFree).toBe("no_stepfree_route");
+    expect(r?.stepFreeNotice).toBe(
+      "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
+    );
+  });
+
+  it("unavailable 문장은 종전 그대로다(실제로 일반 경로를 반환하므로 참)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
+
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+
+    expect(r?.stepFree).toBe("unavailable");
+    expect(r?.stepFreeNotice).toBe(
+      "계단 회피 경로를 조회하지 못했습니다. 일반 경로를 안내하며 계단이 포함될 수 있습니다.",
+    );
+  });
+
+  // via==="tmap"과 계단 문구가 동시에 참인 칸. 개별 fixture로는 분기 순서 버그
+  // (정답 unavailable인데 no_stepfree_route로 새는 것)를 못 잡는다.
+  it("Tmap 폴백 경로에 계단 문구가 있어도 unavailable이다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithStairs());
+
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+
+    expect(r?.stepFree).toBe("unavailable");
+  });
+
+  // D1-a: 무계단 부재 → 기본 모드 재호출이 throw하면 전파된다(502의 근원).
+  it("무계단 부재 후 기본 모드 재호출이 실패하면 throw한다", async () => {
+    vi.mocked(getKakaoWalkBriefing)
+      .mockResolvedValueOnce(null)
+      .mockRejectedValueOnce(new Error("재호출 실패"));
+    vi.mocked(getWalkRouteBriefing).mockRejectedValueOnce(new Error("Tmap도 실패"));
+
+    await expect(
+      getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true }),
+    ).rejects.toThrow();
+  });
+
+  it("첫 ACCESSIBLE 호출이 throw하면 Tmap 폴백을 거쳐 unavailable이 된다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
+
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+
+    expect(r?.stepFree).toBe("unavailable");
   });
 });
 
