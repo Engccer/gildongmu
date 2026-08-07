@@ -746,6 +746,7 @@ export function DirectionsView({
           key={`brief-${guideDestKey}`}
           dest={guideDest}
           kind="walk"
+          accessible={stepFreeEnabled}
           startOnOpen
           triggerLabel={tBeacon("briefGuideStart")}
         />
@@ -779,6 +780,7 @@ export function DirectionsView({
                     key={`walk-${guideDestKey}`}
                     dest={guideDest}
                     kind="walk"
+                    accessible={stepFreeEnabled}
                     startOnOpen
                     triggerLabel={tBeacon("guideStartWalk")}
                   />
@@ -788,6 +790,7 @@ export function DirectionsView({
                     key={`car-${guideDestKey}`}
                     dest={guideDest}
                     kind="car"
+                    accessible={false}
                     startOnOpen
                     triggerLabel={tBeacon("guideStartCar")}
                   />

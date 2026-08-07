@@ -207,6 +207,7 @@ export function PlaceDetail({
       )}
       <DistanceBeacon
         dest={{ lat: place.lat, lng: place.lng, name: place.name }}
+        accessible={false}
       />
       {isStation(place) && (
         <>

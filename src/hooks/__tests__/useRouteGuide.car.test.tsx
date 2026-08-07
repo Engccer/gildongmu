@@ -44,7 +44,7 @@ const DEST = { lat: 37.5 + 500 * M, lng: 127.1, name: "목적지" };
 let fetchMock: ReturnType<typeof vi.fn>;
 
 function Harness({ kind, tag }: { kind: GuideKind; tag: string }) {
-  const g = useRouteGuide(DEST, kind);
+  const g = useRouteGuide(DEST, kind, false);
   return (
     <div>
       <button onClick={g.start}>start-{tag}</button>

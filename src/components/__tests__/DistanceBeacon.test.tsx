@@ -75,7 +75,7 @@ afterEach(() => {
 function renderPanel(locale: "ko" | "en") {
   return render(
     <NextIntlClientProvider locale={locale} messages={locale === "ko" ? ko : en}>
-      <DistanceBeacon dest={DEST} />
+      <DistanceBeacon dest={DEST} accessible={false} />
     </NextIntlClientProvider>,
   );
 }
