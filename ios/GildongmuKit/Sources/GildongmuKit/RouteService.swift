@@ -53,15 +53,19 @@ public struct RouteService: Sendable {
     /// nil = 경로 없음(3-state, throw 아님). 키 없음(404)·조회 실패(502)는 여느 라우트와
     /// 동형으로 throw.
     /// accessible=true는 계단 회피 모드(웹 `?accessible=true` 계약). 미적용 시 서버가
-    /// 안전 문장을 steps[0]에 결정론 삽입하므로 클라이언트 별도 문구가 필요 없다.
+    /// 안전 문장을 전달한다 — 산문 소비자에겐 steps[0] 삽입으로, `includeGeometry`
+    /// 소비자에겐 `stepFreeNotice` 필드로(기하 없는 스텝은 경로 빌더가 거부한다).
     /// false면 파라미터 자체를 생략해 기존 요청과 byte-identical.
     /// includeGeometry=true는 스텝 폴리라인 보존 옵트인(웹 `?includeGeometry=1` 계약,
     /// 실시간 상세 안내 전용). 서버가 "1"만 허용하므로 그 값으로 보내고, false면
     /// accessible과 동형으로 파라미터를 생략한다.
+    /// ⚠ `accessible`에 **기본값을 두지 않는다** — 백로그 A4는 이 기본값이 만든
+    /// 결함이었다. 안내 조회가 인자를 생략해도 컴파일이 통과해, 계단 회피를 켠
+    /// 사용자가 계단으로 안내받았다(spec 2026-08-08 §2.5).
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        accessible: Bool = false,
+        accessible: Bool,
         includeGeometry: Bool = false
     ) async throws -> WalkRouteBriefing? {
         var query = [
