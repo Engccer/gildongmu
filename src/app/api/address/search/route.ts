@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error("[api/address/search] 주소 검색 실패:", e);
     return NextResponse.json(
-      { error: "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "주소 검색에 실패했습니다." },
       { status: 502 },
     );
   }

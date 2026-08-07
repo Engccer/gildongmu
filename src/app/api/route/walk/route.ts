@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
   if (!checkWalkRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json(
-      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "요청이 너무 많습니다." },
       { status: 429 },
     );
   }
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error("[api/route/walk] 도보 길찾기 실패:", e);
     return NextResponse.json(
-      { error: "도보 길찾기에 실패했습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "도보 길찾기에 실패했습니다." },
       { status: 502 },
     );
   }

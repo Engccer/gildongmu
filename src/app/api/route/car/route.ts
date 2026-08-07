@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
 
   if (!checkCarRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json(
-      { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+      { error: "요청이 너무 많습니다." },
       { status: 429 },
     );
   }
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     const message =
       e instanceof Error && e.message.includes("경로 탐색 실패")
         ? "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요."
-        : "경로 브리핑에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+        : "경로 브리핑에 실패했습니다.";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
