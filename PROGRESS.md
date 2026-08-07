@@ -106,9 +106,33 @@
 
 ⚠ **배포 순서 제약**: iOS `TransitRoute.routeKey`가 필수 디코딩이라 서버가 그 필드를 안 주면 대중교통 섹션이 통째로 오류가 된다. **웹 배포가 앱보다 먼저 나가야 한다.**
 
-### 백그라운드 사운드·톤 커버리지 (2026-08-08 설계 확정, 구현 대기)
+### 백그라운드 사운드·톤 커버리지 (2026-08-08 구현 완료, 실기기 판정 대기)
 
-**스펙 정본 `docs/superpowers/specs/2026-08-08-background-tone-coverage-design.md`**(커밋 `d5daafd`→`b05b6c2`). 다음 세션은 이 파일과 아래 요약만으로 착수 가능하다.
+**스펙 정본 `docs/superpowers/specs/2026-08-08-background-tone-coverage-design.md`**(커밋 `d5daafd`→`b05b6c2`), 계획 `docs/superpowers/plans/2026-08-08-background-tone-coverage.md`.
+
+**구현 커밋 5개**(`4c50eab`→`82af72b`): 신규 소리·톤 의미 → 오디오 세션 계층 → 판정 코어 → 배선 → 변이 주입·보강. 웹 1,972 + Kit 364 테스트 green, `npm run build`·Experimental 빌드 통과.
+
+**계층 4개를 새로 만들고 판정을 전부 순수 함수로 내렸다**(앱 타깃에 테스트 번들이 없어 `BeaconModel`에 두면 검증 자체가 불가능하다):
+
+| 계층 | 위치 | 소유 |
+|---|---|---|
+| `guideAudioStep` | Kit `GuideAudioSession.swift` | 세션 승격·원복 자격·재조정 |
+| `motionStep` | Kit `GuideMotion.swift` ↔ `src/lib/guide-motion.ts` | 도플러 3-state 정지 판정 |
+| `trendStep` | `Beacon.swift` ↔ `src/lib/beacon.ts` | 두 모드가 공유하는 추세 축 |
+| `toneLayerStep` | Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts` | 배타적 계층 순서·간격·재기준화 |
+
+**계획이 스펙에 더한 것 2건**: ① **`needsRebase` 플래그** — 스펙은 "이탈·불확실에서 복귀할 때 재기준화"라고만 적었는데, 복귀하는 fix에서 상위 톤이 나면 그 fix는 추세 축에 닿지 못하고 그 사이 "직전이 불확실이었다"는 신호가 소비되어 재기준화 기회가 영영 사라진다(낡은 앵커로 거짓 추세). 추세 축에 도달하는 첫 fix가 소비하게 했다 ② **상세 데드밴드 해석** — 스펙 §4.3의 "데드밴드 = max(base, 투영 점프 가드)"는 두 개념이 섞여 있어, 데드밴드는 15m 고정으로 두고 점프한 fix를 통째로 버리는 쪽으로 명료화했다(그 모드의 오차 원인은 GPS 정확도가 아니라 투영 안정성이다).
+
+**변이 주입 12종 실측**(스크립트로 자동화, 각 변이 → Kit 테스트 → 복구): 초회 10/12 검출, 2건이 전량 green을 통과했다.
+
+| 미검출 | 원인 | 봉합 |
+|---|---|---|
+| 신뢰 불가 "진입 즉시 1회" 제거 | `lastUnreliableAt`이 nil이면 간격 조건도 참이라 **첫 진입에서는 두 판정이 겹친다**. 회복 후 재진입이 둘을 가르는 유일한 시나리오인데 테스트에 없었다 | 재진입 케이스 추가(웹·Kit) |
+| `didPromote` 무시하고 항상 원복 | 기존 "승격 안 함" 경로가 `isSuppressed`와 겹쳐 있어 **다른 가드가 대신 잡았다** | "시작한 적 없는 종료" 케이스 추가 |
+
+축 전환 재기준화는 훅·모델 안이라 변이 주입이 불가능했다 → `rebaseBeaconState`를 순수 함수로 추출해 웹·Kit 미러로 계약을 못 박았다. 워치독은 훅만 소유한 축이라 별도 스위트(`useRouteGuide.tone.test.tsx`)를 뒀고, 워치독 제거 변이가 검출되는 것까지 확인했다. ⚠ 그 스위트에서 `waitFor`는 실제 타이머 위에서 폴링하는데 fake timer가 그것을 잡고 있어 **교착한다**(`fireEvent`가 이미 `act`로 감싸므로 동기 확인이 맞다). `performance`도 `toFake`에 넣어야 한다 — 훅의 시각축이 `performance.now()`라 타이머만 진행시키면 경과가 0으로 남는다.
+
+**⏳ 잔여**: ① **`unreliable` 음가 위원장 청취**(현재는 합성 후보 A `760Hz 트레몰로` 잠정 배치. 후보 3종이 `/tmp/unreliable-candidates/`에 있고 `scripts/build-unreliable-candidates.py`로 재생성 — 배경 미디어 위 청취본 `*-gain03.mp3`과 `warning` 대조본 `*-vs-warning.mp3` 포함. ⚠ `.mixWithOthers`라 공존 확인만으로는 저이득 톤이 묻히는 결함이 안 잡힌다) ② 실기기 판정 10종(스펙 §11.2: 백그라운드 톤 가청·무음 스위치 무시·배경 미디어 위 식별·종료 후 원복·받아쓰기 경합·전화 인터럽션·route 변경·정지 임계 실보행·차량 빈도 실주행·배터리 증분) ③ 초기값 조정 대상(`unreliableIntervalS` 10초·`noFixSeconds` 8초·차량 closer 10초·`speedAccuracyCeiling` 1.0m/s).
 
 **M4가 남긴 관찰 포인트가 위원장 실측으로 닫혔다**(2026-08-07 여의도 택시): 잠금·백그라운드에서 **톤도 음성도 들리지 않는다**. 위치 스트림만 살아 있어 M4 목표가 절반만 실현된 상태였다. 확정 판단 4건: ① 백그라운드는 사운드만, 음성은 억제(주기적 음성이 다른 앱 사용을 침해) ② 오디오 세션은 안내 세션 중에만 `.playback` 승격(무음 스위치 무시 수용, 세션 경계 원복) ③ closer 최소 간격 수단별 분리(차량은 데드밴드를 매 fix 넘어 2초 창에 매번 걸림 = 30분 주행 약 900회) ④ 위치 불확실에 전용 소리 신설.
 
