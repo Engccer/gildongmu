@@ -29,16 +29,22 @@ public struct TrendInput: Sendable, Equatable {
     /// 추세 축 거리(간략=목적지 직선거리, 상세=경로 잔여 거리).
     public var distance: Double
     public var deadBand: Double
+    /// 시간 감쇠의 하한(§데드밴드 감쇠). 이보다 작은 변화는 어떤 경우에도 추세로 읽지
+    /// 않는다 — 무한 감쇠는 결국 GPS 지터를 톤으로 만든다. 간략은 `accuracy`, 상세는
+    /// 투영 지터 하한을 준다. 미지정이면 `deadBand`와 같아 **감쇠가 없다**(현행 동작).
+    public var deadBandFloor: Double
     public var motion: MotionState
     /// closer 최소 간격(초). **수단별로 가른다** — 차량은 데드밴드를 매 fix 넘어
     /// 2초 창에 매번 걸린다(30분 주행에 약 900회).
     public var closerIntervalSeconds: Double
 
     public init(
-        distance: Double, deadBand: Double, motion: MotionState, closerIntervalSeconds: Double
+        distance: Double, deadBand: Double, deadBandFloor: Double? = nil,
+        motion: MotionState, closerIntervalSeconds: Double
     ) {
         self.distance = distance
         self.deadBand = deadBand
+        self.deadBandFloor = deadBandFloor ?? deadBand
         self.motion = motion
         self.closerIntervalSeconds = closerIntervalSeconds
     }
@@ -88,10 +94,13 @@ public struct ToneLayerState: Sendable, Equatable {
     public var needsRebase: Bool
     /// 행동 안내(ahead·warning) 후 추세 톤 억제가 끝나는 시각.
     public var quietUntil: Double?
+    /// 앵커가 마지막으로 **움직인** 시각. 데드밴드 시간 감쇠의 기준이다.
+    public var anchorSetAt: Double?
 
     public static let initial = ToneLayerState(
         anchorDistance: nil, trend: .none, lastTrendToneAt: nil, lastTickAt: nil,
-        lastUnreliableAt: nil, wasUnreliable: false, needsRebase: false, quietUntil: nil
+        lastUnreliableAt: nil, wasUnreliable: false, needsRebase: false, quietUntil: nil,
+        anchorSetAt: nil
     )
 }
 
@@ -115,6 +124,34 @@ public enum ToneLayerConstants {
     /// ⚠ 최소 재확인 간격 추가는 **폐기한 하트비트가 이름만 바꿔 돌아오는 것**이라
     /// 기각됐고, 데드밴드 축소는 GPS 지터 내성을 깎아 기각됐다. 되살리지 말 것.
     public static let maxNormalSilenceSeconds = 21.0
+    /// 데드밴드 감쇠 유예(초). **계약값과 같게 둔다** — 그 안에서는 데드밴드가 원값
+    /// 그대로라 현행 동작이 한 치도 바뀌지 않고, 계약을 넘어선 뒤에만 감쇠가 시작된다.
+    /// 즉 이 장치는 계약의 변경이 아니라 **계약을 지키기 위한 구현**이다.
+    public static let deadBandGraceSeconds = maxNormalSilenceSeconds
+    /// 유예 이후 하한에 도달하기까지의 시간(초).
+    public static let deadBandDecaySpanSeconds = 21.0
+}
+
+/// 거리 축이 평평할 때의 데드밴드 감쇠(위원장 판정 2026-08-08).
+///
+/// **왜 필요한가**: 21초 계약의 산식(데드밴드 ÷ 느린 구간 속도)은 "목적지를 향해 직선으로
+/// 이동한다"는 미명시 전제 위에 서 있었다. 목적지와 평행하게 걷거나 블록을 돌아가면
+/// 거리가 거의 변하지 않아 `hold`가 무한 지속되고, `moving`이라 정지 tick도 안 난다.
+/// 종전 3초 하트비트가 그 상한을 묶고 있었는데 이 설계가 대체 없이 없앴다(접근성 감사 H1).
+///
+/// **왜 감쇠인가**: 고정 간격 재확인은 "폐기한 하트비트가 이름만 바꿔 돌아오는 것"이고,
+/// 정적 축소는 GPS 지터 내성을 처음부터 깎는다 — 위원장이 둘 다 기각했다. 시간 감쇠는
+/// 초기 내성을 온전히 유지하면서 **실제 이동이 있으면 결국 톤이 나게** 한다.
+public func decayedDeadBand(
+    base: Double, floor: Double, holdSeconds: Double
+) -> Double {
+    guard holdSeconds > ToneLayerConstants.deadBandGraceSeconds, floor < base else { return base }
+    let progress = min(
+        1,
+        (holdSeconds - ToneLayerConstants.deadBandGraceSeconds)
+            / ToneLayerConstants.deadBandDecaySpanSeconds
+    )
+    return max(floor, base - (base - floor) * progress)
 }
 
 public func toneLayerStep(
@@ -163,6 +200,7 @@ public func toneLayerStep(
     if next.needsRebase {
         next.needsRebase = false
         next.anchorDistance = t.distance
+        next.anchorSetAt = now
         // 회복 즉시 1회: 데드밴드 미달이어도 현재 상태를 알린다. 없으면 사용자가
         // 회복 여부를 모른 채 최대 `maxNormalSilenceSeconds`를 더 기다린다.
         if t.motion == .stopped {
@@ -191,11 +229,22 @@ public func toneLayerStep(
     // ⚠ `speedUnknown`에서는 tick을 내지 않는다(속도를 모르는데 정지 톤은 거짓이다).
     // 침묵이 늘지만 거짓 정지보다 낫고, 지속되면 fix 워치독이 unreliable로 잡는다.
 
+    // 앵커가 오래 제자리면 데드밴드를 점진 축소한다(평평한 거리 축의 무한 침묵 차단).
+    let band = decayedDeadBand(
+        base: t.deadBand,
+        floor: t.deadBandFloor,
+        holdSeconds: now - (next.anchorSetAt ?? now)
+    )
+    let previousAnchor = next.anchorDistance
     let stepped = trendStep(
-        anchor: next.anchorDistance, trend: next.trend, distance: t.distance, deadBand: t.deadBand
+        anchor: previousAnchor, trend: next.trend, distance: t.distance, deadBand: band
     )
     next.anchorDistance = stepped.anchor
     next.trend = stepped.trend
+    // ⚠ 앵커가 **처음 설정되는** 경우도 포함해야 한다(그때 `kind`는 hold다). 값 변화로
+    // 판정하지 않고 `kind != .hold`로만 갱신하면 기준이 영영 nil로 남아 감쇠가 작동하지
+    // 않는다 — 계약 테스트가 이 구멍을 잡았다.
+    if stepped.anchor != previousAnchor { next.anchorSetAt = now }
     let tone: BeaconTone
     let interval: Double
     switch stepped.kind {

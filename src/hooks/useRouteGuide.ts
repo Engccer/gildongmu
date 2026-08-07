@@ -84,6 +84,11 @@ const WATCH_OPTS: PositionOptions = {
  * 않아, 톤을 fix 처리에만 걸면 마지막 정상 톤 이후 영구 침묵이 된다.
  */
 const NO_FIX_S = 8;
+/**
+ * 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩 흔들리므로,
+ * 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다(iOS `detailDeadBandFloor` 미러).
+ */
+const DETAIL_DEAD_BAND_FLOOR_M = 5;
 /** 워치독 점검 주기(ms). 임계(8초)보다 촘촘해야 지연이 작다. */
 const WATCHDOG_INTERVAL_MS = 2000;
 /**
@@ -653,6 +658,9 @@ export function useRouteGuide(
             : {
                 distance: result.announce.distance,
                 deadBand: Math.max(BASE_DEAD_BAND_M, fix.accuracy),
+                // 감쇠 하한은 그 fix의 정확도다 — 정확도보다 작은 변화는 아무리
+                // 오래 기다려도 추세가 아니라 지터다.
+                deadBandFloor: fix.accuracy,
                 motion,
                 closerIntervalSeconds,
               },
@@ -696,6 +704,7 @@ export function useRouteGuide(
                 distance: remaining,
                 // 상세는 정확도로 스케일하지 않는다(투영 안정성이 오차 축이다).
                 deadBand: BASE_DEAD_BAND_M,
+                deadBandFloor: DETAIL_DEAD_BAND_FLOOR_M,
                 motion,
                 closerIntervalSeconds,
               }

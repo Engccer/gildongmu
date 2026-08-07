@@ -40,6 +40,12 @@ export interface TrendInput {
   /** 추세 축 거리(간략=목적지 직선거리, 상세=경로 잔여 거리). */
   distance: number;
   deadBand: number;
+  /**
+   * 시간 감쇠의 하한. 이보다 작은 변화는 어떤 경우에도 추세로 읽지 않는다 — 무한
+   * 감쇠는 결국 GPS 지터를 톤으로 만든다. 간략은 `accuracy`, 상세는 투영 지터 하한을
+   * 준다. 미지정이면 `deadBand`와 같아 **감쇠가 없다**(현행 동작).
+   */
+  deadBandFloor?: number;
   motion: MotionState;
   /** closer 최소 간격(초). 수단별로 가른다 — 차량은 2초 창에 매 fix 걸린다. */
   closerIntervalSeconds: number;
@@ -71,6 +77,8 @@ export interface ToneLayerState {
   needsRebase: boolean;
   /** 행동 안내 후 추세 톤 억제가 끝나는 시각. */
   quietUntil: number | null;
+  /** 앵커가 마지막으로 **움직인** 시각. 데드밴드 시간 감쇠의 기준이다. */
+  anchorSetAt: number | null;
 }
 
 export const INITIAL_TONE_LAYER_STATE: ToneLayerState = {
@@ -82,6 +90,7 @@ export const INITIAL_TONE_LAYER_STATE: ToneLayerState = {
   wasUnreliable: false,
   needsRebase: false,
   quietUntil: null,
+  anchorSetAt: null,
 };
 
 /** 신뢰 불가 반복 간격(초). 초기값이며 `MAX_NORMAL_SILENCE_S` 이하여야 한다. */
@@ -100,6 +109,35 @@ export const CAR_CLOSER_INTERVAL_S = 10;
  * 데드밴드 축소는 GPS 지터 내성을 깎아 기각됐다. 되살리지 말 것.
  */
 export const MAX_NORMAL_SILENCE_S = 21;
+/**
+ * 데드밴드 감쇠 유예(초). **계약값과 같게 둔다** — 그 안에서는 데드밴드가 원값 그대로라
+ * 현행 동작이 바뀌지 않고, 계약을 넘어선 뒤에만 감쇠가 시작된다. 즉 이 장치는 계약의
+ * 변경이 아니라 **계약을 지키기 위한 구현**이다.
+ */
+export const DEAD_BAND_GRACE_S = MAX_NORMAL_SILENCE_S;
+/** 유예 이후 하한에 도달하기까지의 시간(초). */
+export const DEAD_BAND_DECAY_SPAN_S = 21;
+
+/**
+ * 거리 축이 평평할 때의 데드밴드 감쇠(위원장 판정 2026-08-08). Kit `decayedDeadBand` 미러.
+ *
+ * **왜 필요한가**: 21초 계약의 산식(데드밴드 ÷ 느린 구간 속도)은 "목적지를 향해 직선으로
+ * 이동한다"는 미명시 전제 위에 있었다. 목적지와 평행하게 걷거나 블록을 돌아가면 거리가
+ * 거의 변하지 않아 hold가 무한 지속되고, moving이라 정지 tick도 안 난다(접근성 감사 H1).
+ *
+ * **왜 감쇠인가**: 고정 간격 재확인은 폐기한 하트비트의 재등장이고 정적 축소는 GPS 지터
+ * 내성을 처음부터 깎는다 — 둘 다 기각됐다. 시간 감쇠는 초기 내성을 온전히 유지하면서
+ * 실제 이동이 있으면 결국 톤이 나게 한다.
+ */
+export function decayedDeadBand(
+  base: number,
+  floor: number,
+  holdSeconds: number,
+): number {
+  if (holdSeconds <= DEAD_BAND_GRACE_S || floor >= base) return base;
+  const progress = Math.min(1, (holdSeconds - DEAD_BAND_GRACE_S) / DEAD_BAND_DECAY_SPAN_S);
+  return Math.max(floor, base - (base - floor) * progress);
+}
 
 export function toneLayerStep(
   state: ToneLayerState,
@@ -149,6 +187,7 @@ export function toneLayerStep(
   if (next.needsRebase) {
     next.needsRebase = false;
     next.anchorDistance = t.distance;
+    next.anchorSetAt = now;
     // 회복 즉시 1회: 데드밴드 미달이어도 현재 상태를 알린다. 없으면 사용자가 회복
     // 여부를 모른 채 최대 MAX_NORMAL_SILENCE_S를 더 기다린다.
     if (t.motion === "stopped") {
@@ -177,9 +216,19 @@ export function toneLayerStep(
   // ⚠ speedUnknown에서는 tick을 내지 않는다(속도를 모르는데 정지 톤은 거짓이다).
   // 침묵이 늘지만 거짓 정지보다 낫고, 지속되면 fix 워치독이 unreliable로 잡는다.
 
-  const stepped = trendStep(next.anchorDistance, next.trend, t.distance, t.deadBand);
+  // 앵커가 오래 제자리면 데드밴드를 점진 축소한다(평평한 거리 축의 무한 침묵 차단).
+  const band = decayedDeadBand(
+    t.deadBand,
+    t.deadBandFloor ?? t.deadBand,
+    now - (next.anchorSetAt ?? now),
+  );
+  const previousAnchor = next.anchorDistance;
+  const stepped = trendStep(previousAnchor, next.trend, t.distance, band);
   next.anchorDistance = stepped.anchor;
   next.trend = stepped.trend;
+  // ⚠ 앵커가 **처음 설정되는** 경우도 포함해야 한다(그때 kind는 hold다). kind로만
+  // 판정하면 기준이 영영 null로 남아 감쇠가 작동하지 않는다 — 계약 테스트가 잡았다.
+  if (stepped.anchor !== previousAnchor) next.anchorSetAt = now;
   if (stepped.kind === "hold") {
     // moving인데 데드밴드 미달인 침묵은 허용한다 — 직전 톤이 상태를 이미 알렸고,
     // 여기를 채우면 도보에서 2초마다 소리가 나 빈도 절제와 충돌한다.

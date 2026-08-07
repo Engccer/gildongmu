@@ -598,6 +598,10 @@ final class BeaconModel {
 
     // MARK: - 톤 계층 배선 (판정은 전부 Kit — 여기는 입력 조립뿐)
 
+    /// 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩
+    /// 흔들리므로, 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다.
+    private static let detailDeadBandFloor = 5.0
+
     /// 수단별 물리 상한(정지 판정 폴백의 산출 속도 가드 + 투영 점프 가드).
     private var maxSpeedMps: Double {
         sessionKind == .car ? MotionConstants.maxCarSpeedMps : MotionConstants.maxWalkSpeedMps
@@ -727,6 +731,9 @@ final class BeaconModel {
                     : TrendInput(
                         distance: stepped.announce.distance,
                         deadBand: max(BeaconConstants.baseDeadBand, fix.accuracy),
+                        // 감쇠 하한은 그 fix의 정확도다 — 정확도보다 작은 변화는
+                        // 아무리 오래 기다려도 추세가 아니라 지터다.
+                        deadBandFloor: fix.accuracy,
                         motion: motion,
                         closerIntervalSeconds: closerIntervalSeconds
                     ),
@@ -796,6 +803,8 @@ final class BeaconModel {
                     ? TrendInput(
                         distance: remaining,
                         deadBand: BeaconConstants.baseDeadBand,
+                        // 상세는 정확도 축이 아니라 투영 안정성 축이라 고정 하한을 쓴다.
+                        deadBandFloor: Self.detailDeadBandFloor,
                         motion: motion,
                         closerIntervalSeconds: closerIntervalSeconds
                     )

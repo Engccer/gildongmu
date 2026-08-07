@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CAR_CLOSER_INTERVAL_S,
+  decayedDeadBand,
   INITIAL_TONE_LAYER_STATE,
   MAX_NORMAL_SILENCE_S,
   toneLayerStep,
@@ -38,6 +39,8 @@ const anchored = (
   ...INITIAL_TONE_LAYER_STATE,
   anchorDistance: distance,
   trend: t,
+  // 실제 코드에서는 앵커가 처음 설정되는 fix가 이 시각을 잡는다.
+  anchorSetAt: 0,
 });
 
 describe("계층 배타성", () => {
@@ -310,4 +313,66 @@ describe("공유 fixture(웹↔Kit 동조)", () => {
       });
     });
   }
+});
+
+describe("데드밴드 시간 감쇠(평평한 거리 축)", () => {
+  /** 목적지와 평행하게 걷는 상황 — 이동 중인데 거리가 거의 안 변한다. */
+  const flat = (distance: number) => ({
+    distance,
+    deadBand: 15,
+    deadBandFloor: 5,
+    motion: "moving" as const,
+    closerIntervalSeconds: 2,
+  });
+
+  it("계약값(21초) 안에서는 데드밴드가 원값 그대로다", () => {
+    expect(decayedDeadBand(15, 5, 0)).toBe(15);
+    expect(decayedDeadBand(15, 5, 21)).toBe(15);
+  });
+
+  it("유예 이후 선형으로 하한까지 줄어든다", () => {
+    expect(decayedDeadBand(15, 5, 21 + 10.5)).toBeCloseTo(10, 5); // 절반
+    expect(decayedDeadBand(15, 5, 42)).toBe(5);
+    expect(decayedDeadBand(15, 5, 120)).toBe(5); // 하한 아래로는 안 내려간다
+  });
+
+  it("하한이 원값 이상이면 감쇠가 없다(기본 계약)", () => {
+    expect(decayedDeadBand(15, 15, 100)).toBe(15);
+  });
+
+  // ⚠ 이 시나리오가 H1의 재현이다. 감쇠가 없으면 톤이 영영 나지 않는다.
+  it("거리가 8m만 변하는 평행 이동에서도 결국 톤이 난다", () => {
+    let state = anchored(300);
+    let firstToneAt: number | null = null;
+    for (let i = 1; i <= 90; i++) {
+      // 90초 동안 목적지까지 거리가 8m만 줄어든다(데드밴드 15m 미달).
+      const out = toneLayerStep(state, input({ trend: flat(300 - i * 0.09) }), i);
+      state = out.state;
+      if (out.tone && firstToneAt === null) firstToneAt = i;
+    }
+    expect(firstToneAt).not.toBeNull();
+    // 계약값 안에서는 울리지 않는다(현행 동작 보존).
+    expect(firstToneAt!).toBeGreaterThan(MAX_NORMAL_SILENCE_S);
+  });
+
+  it("정상 접근에서는 감쇠가 발동하지 않는다(회귀 없음)", () => {
+    let state = anchored(300);
+    const tones: number[] = [];
+    for (let i = 1; i <= 40; i++) {
+      const out = toneLayerStep(state, input({ trend: flat(300 - i * 1.17) }), i);
+      state = out.state;
+      if (out.tone) tones.push(i);
+    }
+    // 평상 보행이면 13초 안에 첫 톤 — 유예(21초)에 닿기 전이다.
+    expect(tones[0]).toBeLessThanOrEqual(MAX_NORMAL_SILENCE_S);
+  });
+
+  it("톤이 나면 감쇠 기준이 리셋된다(앵커가 움직인 시각)", () => {
+    let state = anchored(300);
+    state = toneLayerStep(state, input({ trend: flat(280) }), 1).state; // closer, 앵커 전진
+    expect(state.anchorSetAt).toBe(1);
+    // 그 직후 30초는 앵커 기준 29초라 아직 하한에 못 미친다.
+    const out = toneLayerStep(state, input({ trend: flat(272) }), 30);
+    expect(out.tone).toBeNull();
+  });
 });

@@ -112,7 +112,17 @@ struct GuideToneLayerTests {
         var state = ToneLayerState.initial
         state.anchorDistance = distance
         state.trend = trend
+        // 실제 코드에서는 앵커가 처음 설정되는 fix가 이 시각을 잡는다.
+        state.anchorSetAt = 0
         return state
+    }
+
+    /// 목적지와 평행하게 걷는 상황 — 이동 중인데 거리가 거의 안 변한다.
+    private func flat(_ distance: Double) -> TrendInput {
+        TrendInput(
+            distance: distance, deadBand: 15, deadBandFloor: 5, motion: .moving,
+            closerIntervalSeconds: ToneLayerConstants.walkCloserIntervalSeconds
+        )
     }
 
     // MARK: 계층 배타성 — 상위와 추세가 **동시에 참인** fixture로만 관측 가능하다
@@ -449,5 +459,68 @@ struct GuideToneLayerTests {
             }
         }
         #expect(maxGap <= ToneLayerConstants.maxNormalSilenceSeconds)
+    }
+
+    // MARK: 데드밴드 시간 감쇠(평평한 거리 축)
+
+    @Test("계약값(21초) 안에서는 데드밴드가 원값 그대로다")
+    func decayWithinContract() {
+        #expect(decayedDeadBand(base: 15, floor: 5, holdSeconds: 0) == 15)
+        #expect(decayedDeadBand(base: 15, floor: 5, holdSeconds: 21) == 15)
+    }
+
+    @Test("유예 이후 선형으로 하한까지 줄어든다")
+    func decayLinearToFloor() {
+        #expect(abs(decayedDeadBand(base: 15, floor: 5, holdSeconds: 31.5) - 10) < 0.001)
+        #expect(decayedDeadBand(base: 15, floor: 5, holdSeconds: 42) == 5)
+        #expect(decayedDeadBand(base: 15, floor: 5, holdSeconds: 120) == 5)
+    }
+
+    @Test("하한이 원값 이상이면 감쇠가 없다(기본 계약)")
+    func noDecayWithoutFloor() {
+        #expect(decayedDeadBand(base: 15, floor: 15, holdSeconds: 100) == 15)
+    }
+
+    /// ⚠ 이 시나리오가 접근성 감사 H1의 재현이다. 감쇠가 없으면 톤이 영영 나지 않는다.
+    @Test("거리가 8m만 변하는 평행 이동에서도 결국 톤이 난다")
+    func flatAxisEventuallySounds() {
+        var state = anchored(300)
+        var firstToneAt: Double?
+        for i in 1...90 {
+            let now = Double(i)
+            let out = toneLayerStep(
+                state: state, input: ToneLayerInput(trend: flat(300 - now * 0.09)), now: now
+            )
+            state = out.state
+            if out.tone != nil, firstToneAt == nil { firstToneAt = now }
+        }
+        #expect(firstToneAt != nil)
+        // 계약값 안에서는 울리지 않는다(현행 동작 보존).
+        #expect((firstToneAt ?? 0) > ToneLayerConstants.maxNormalSilenceSeconds)
+    }
+
+    @Test("정상 접근에서는 감쇠가 발동하지 않는다(회귀 없음)")
+    func normalApproachUnaffected() {
+        var state = anchored(300)
+        var firstToneAt: Double?
+        for i in 1...40 {
+            let now = Double(i)
+            let out = toneLayerStep(
+                state: state, input: ToneLayerInput(trend: flat(300 - now * 1.17)), now: now
+            )
+            state = out.state
+            if out.tone != nil, firstToneAt == nil { firstToneAt = now }
+        }
+        // 평상 보행이면 13초 안에 첫 톤 — 유예(21초)에 닿기 전이다.
+        #expect((firstToneAt ?? .infinity) <= ToneLayerConstants.maxNormalSilenceSeconds)
+    }
+
+    @Test("톤이 나면 감쇠 기준이 리셋된다(앵커가 움직인 시각)")
+    func anchorMoveResetsDecay() {
+        var state = anchored(300)
+        state = toneLayerStep(state: state, input: ToneLayerInput(trend: flat(280)), now: 1).state
+        #expect(state.anchorSetAt == 1)
+        let out = toneLayerStep(state: state, input: ToneLayerInput(trend: flat(272)), now: 30)
+        #expect(out.tone == nil)
     }
 }
