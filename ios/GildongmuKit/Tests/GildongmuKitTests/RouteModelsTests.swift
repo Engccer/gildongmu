@@ -199,3 +199,50 @@ extension StubNetworkTests {
         #expect(leg.firstServiceTime == nil)
     }
 }
+
+// MARK: - 계단 회피 판정 필드(2026-08-08, 백로그 A4)
+// 기하 응답에는 안내 문장이 유사 스텝으로 오지 않으므로 필드가 유일한 채널이다.
+// 두 필드 모두 옵셔널 — 구버전 서버 응답에서 브리핑이 통째로 깨지면 안 된다.
+
+@Suite("도보 브리핑의 계단 회피 필드")
+struct WalkRouteBriefingStepFreeTests {
+    private func decode(_ json: String) throws -> WalkRouteBriefing {
+        try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(json.utf8))
+    }
+
+    @Test("필드가 없으면 판정 없음이다(구버전 서버 응답)")
+    func absent() throws {
+        let b = try decode(#"{"distanceMeters":100,"durationSeconds":60,"steps":[]}"#)
+        #expect(b.stepFreeStatus == nil)
+        #expect(b.stepFreeNotice == nil)
+    }
+
+    @Test("알려진 상태를 매핑한다")
+    func known() throws {
+        let b = try decode(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],
+         "stepFree":"no_stepfree_route","stepFreeNotice":"계단이 포함될 수 있습니다."}
+        """#)
+        #expect(b.stepFreeStatus == .noStepFreeRoute)
+        #expect(b.stepFreeNotice == "계단이 포함될 수 있습니다.")
+    }
+
+    @Test("applied·unavailable도 매핑한다")
+    func otherStates() throws {
+        let applied = try decode(#"{"distanceMeters":1,"durationSeconds":1,"steps":[],"stepFree":"applied"}"#)
+        #expect(applied.stepFreeStatus == .applied)
+        let unavailable = try decode(#"{"distanceMeters":1,"durationSeconds":1,"steps":[],"stepFree":"unavailable"}"#)
+        #expect(unavailable.stepFreeStatus == .unavailable)
+    }
+
+    /// ⚠ raw enum으로 직접 디코딩하면 서버가 넷째 상태를 추가할 때
+    /// `WalkRouteBriefing` **전체**가 깨진다. 모르는 값은 "판정 없음"이다.
+    @Test("미지의 상태 문자열이 브리핑 전체를 깨뜨리지 않는다")
+    func unknownStatusDoesNotBreakDecoding() throws {
+        let b = try decode(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],"stepFree":"partially_applied"}
+        """#)
+        #expect(b.distanceMeters == 100)
+        #expect(b.stepFreeStatus == nil)
+    }
+}
