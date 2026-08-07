@@ -66,17 +66,24 @@ export function annotateAudioSignals(
   return { ...briefing, steps };
 }
 
-/** 안전 문장을 스텝 0번에 삽입한다(기존 문장 개변 금지 — 별도 스텝). */
+/**
+ * 안전 문장을 전달한다. 산문 소비자에겐 스텝 0번 삽입(기존 문장 개변 금지 — 별도
+ * 스텝), 구조화 소비자(`includeGeometry`)에겐 필드로만.
+ *
+ * ⚠ 기하 응답에 유사 스텝을 넣으면 안 된다: `buildGuideRoute`(웹 route-geometry.ts ·
+ * Kit RouteGeometry.swift)가 기하 없는 스텝을 만나면 **경로 전체를 거부**해,
+ * 무계단 경로가 없을 때 상세 안내가 통째로 간략으로 조용히 강등된다(spec §1.2).
+ */
 function withStepFree(
   briefing: WalkRouteBriefing,
   status: StepFreeStatus,
+  includeGeometry: boolean,
 ): WalkRouteBriefing {
   if (status === "applied") return { ...briefing, stepFree: status };
-  return {
-    ...briefing,
-    stepFree: status,
-    steps: [{ description: STEP_FREE_NOTICE[status] }, ...briefing.steps],
-  };
+  const notice = STEP_FREE_NOTICE[status];
+  const withField = { ...briefing, stepFree: status, stepFreeNotice: notice };
+  if (includeGeometry) return withField;
+  return { ...withField, steps: [{ description: notice }, ...briefing.steps] };
 }
 
 async function fetchPrimaryOrFallback(params: {
@@ -131,12 +138,18 @@ export async function getWalkRoute(params: {
   });
   if (!r) return null;
   if (r.via === "tmap") {
-    return r.briefing ? withStepFree(annotate(r.briefing), "unavailable") : null;
+    return r.briefing
+      ? withStepFree(annotate(r.briefing), "unavailable", includeGeometry)
+      : null;
   }
   if (r.briefing) {
     // applied fail-closed: ACCESSIBLE 응답에 계단 문구가 남아 있으면 안전 선언 금지.
     const hasStairs = r.briefing.steps.some((s) => s.description.includes("계단"));
-    return withStepFree(annotate(r.briefing), hasStairs ? "no_stepfree_route" : "applied");
+    return withStepFree(
+      annotate(r.briefing),
+      hasStairs ? "no_stepfree_route" : "applied",
+      includeGeometry,
+    );
   }
   // 무계단 경로 부재(ROUTE_RESULT_NOT_FOUND): 기본 모드 재호출(같은 fetch 캐시 공유).
   const base = await fetchPrimaryOrFallback({
@@ -146,5 +159,6 @@ export async function getWalkRoute(params: {
   return withStepFree(
     annotate(base.briefing),
     base.via === "tmap" ? "unavailable" : "no_stepfree_route",
+    includeGeometry,
   );
 }

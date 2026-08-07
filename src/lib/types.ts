@@ -378,6 +378,12 @@ export interface WalkRouteBriefing {
   steps: WalkRouteStep[];
   /** 계단 회피 요청 시에만 존재(옵트인 — 미요청 시 필드 자체 부재, 기존 응답 byte-호환). */
   stepFree?: StepFreeStatus;
+  /**
+   * 열화 상태의 안내 문장(서버 정본). `stepFree`가 존재하고 `applied`가 아닐 때만
+   * 있다. `includeGeometry=1` 소비자는 유사 스텝을 받지 않으므로 이 필드가 유일한
+   * 채널이다(spec 2026-08-08 §2.1).
+   */
+  stepFreeNotice?: string;
 }
 
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */

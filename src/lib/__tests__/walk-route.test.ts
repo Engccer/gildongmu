@@ -156,6 +156,25 @@ const TMAP_BRIEFING = {
   steps: [{ description: "보행자도로를 따라 100m 이동" }],
 };
 
+/**
+ * 모든 스텝이 pathCoords를 갖는 브리핑(기하 소비자 fixture).
+ * ⚠ 기하 없는 fixture를 쓰면 "모든 스텝이 기하를 갖는다" 단언이 자명하게 거짓이
+ * 되어 테스트가 구현을 검증하지 못한다.
+ */
+function briefingWithGeometry(n: number): WalkRouteBriefing {
+  return {
+    distanceMeters: 1000,
+    durationSeconds: 900,
+    steps: Array.from({ length: n }, (_, i) => ({
+      description: `${(i + 1) * 10}m 이동`,
+      pathCoords: [
+        { lat: 37.5 + i * 0.001, lng: 127.1 },
+        { lat: 37.5 + i * 0.001 + 0.0005, lng: 127.1 },
+      ],
+    })),
+  };
+}
+
 beforeEach(() => {
   vi.mocked(getKakaoWalkBriefing).mockReset().mockResolvedValue(KAKAO_BRIEFING);
   vi.mocked(getWalkRouteBriefing).mockReset().mockResolvedValue(TMAP_BRIEFING);
@@ -286,6 +305,55 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
   it("accessible 미요청이면 stepFree 필드 자체가 없다(기존 응답 byte-호환)", async () => {
     const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
     expect(r && "stepFree" in r).toBe(false);
+  });
+});
+
+describe("계단 회피 안내 문장의 전달 채널", () => {
+  it("includeGeometry=1이면 유사 스텝 없이 필드로만 전달한다", async () => {
+    // 무계단 경로 부재 → 기본 모드 재호출(카카오) 분기
+    vi.mocked(getKakaoWalkBriefing)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(briefingWithGeometry(2));
+
+    const r = await getWalkRoute({
+      origin: ORIGIN,
+      dest: DEST,
+      accessible: true,
+      includeGeometry: true,
+    });
+
+    expect(r?.stepFree).toBe("no_stepfree_route");
+    expect(r?.stepFreeNotice).toBeTruthy();
+    // ① 기하 없는 스텝이 하나도 없다 — 있으면 buildGuideRoute가 경로를 통째로 거부한다.
+    expect(r!.steps.every((s) => s.pathCoords && s.pathCoords.length > 0)).toBe(true);
+    // ② 스텝 수 보존 — 불변식 1만으로는 실제 스텝을 걸러낸 구현도 통과한다(spec §3-2).
+    expect(r!.steps).toHaveLength(2);
+  });
+
+  it("includeGeometry 미지정이면 종전대로 유사 스텝을 맨 앞에 넣고 문장이 일치한다", async () => {
+    vi.mocked(getKakaoWalkBriefing)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(briefingWithGeometry(2));
+
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+
+    expect(r!.steps).toHaveLength(3);
+    expect(r!.steps[0].description).toBe(r!.stepFreeNotice);
+    expect(r!.steps[0].pathCoords).toBeUndefined();
+  });
+
+  it("applied면 문장 필드가 없다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
+
+    const r = await getWalkRoute({
+      origin: ORIGIN,
+      dest: DEST,
+      accessible: true,
+      includeGeometry: true,
+    });
+
+    expect(r?.stepFree).toBe("applied");
+    expect(r?.stepFreeNotice).toBeUndefined();
   });
 });
 
