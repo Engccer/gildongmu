@@ -36,12 +36,29 @@ struct GuideMotionTests {
         #expect(motion == .speedUnknown)
     }
 
-    @Test("speedAccuracy가 없으면 도플러를 채택하지 않는다(웹 계약 동조)")
-    func missingSpeedAccuracy() {
+    /// 정확도는 3-state다. nil은 "플랫폼이 그 축을 제공하지 않음"이지 "정확도가
+    /// 나쁨"이 아니다 — 뭉개면 웹에서 도플러가 절대 성립하지 않아 tick이 죽은 소리가
+    /// 된다(접근성 감사 2026-08-08).
+    @Test("speedAccuracy가 nil이면 플랫폼 미제공이라 speed를 채택한다")
+    func missingSpeedAccuracyStillTrustsSpeed() {
         let (_, motion) = motionStep(
             state: .initial, sample: sample(0), speed: 1.5, speedAccuracy: nil, maxSpeedMps: 8
         )
-        #expect(motion == .speedUnknown)
+        #expect(motion == .moving)
+    }
+
+    @Test("speedAccuracy가 nil이어도 느린 speed는 정지로 간다")
+    func missingSpeedAccuracyDetectsStop() {
+        var state = MotionJudgeState.initial
+        for t in [0.0, 1.0] {
+            state = motionStep(
+                state: state, sample: sample(t), speed: 0.1, speedAccuracy: nil, maxSpeedMps: 8
+            ).state
+        }
+        let (_, motion) = motionStep(
+            state: state, sample: sample(2.5), speed: 0.1, speedAccuracy: nil, maxSpeedMps: 8
+        )
+        #expect(motion == .stopped)
     }
 
     // MARK: 히스테리시스
@@ -182,6 +199,27 @@ struct GuideMotionTests {
             state: state, sample: sample(4.0), speed: nil, speedAccuracy: nil, maxSpeedMps: 8
         )
         #expect(motion == .stopped)
+    }
+
+    /// 폴백에 못 쓸 정확도의 fix가 `lastSample`을 덮으면 다음 fix까지 강제로
+    /// speedUnknown이 된다 — 침묵이 fix 하나만큼 더 길어진다(접근성 감사 L2).
+    @Test("폴백에 못 쓸 정확도의 fix는 기준 표본을 덮지 않는다")
+    func poorFixKeepsFallbackBaseline() {
+        var state = MotionJudgeState.initial
+        state = motionStep(
+            state: state, sample: sample(0), speed: nil, speedAccuracy: nil, maxSpeedMps: 8
+        ).state
+        // 정확도 35m — 폴백 상한(20m) 밖이라 기준으로 쓸 수 없다.
+        state = motionStep(
+            state: state, sample: sample(1, acc: 35), speed: nil, speedAccuracy: nil,
+            maxSpeedMps: 8
+        ).state
+        // 기준이 t=0(정확도 10m)으로 남아 있으면 이 fix는 폴백으로 판정된다.
+        let (_, motion) = motionStep(
+            state: state, sample: sample(2, lat: 37.50002), speed: nil, speedAccuracy: nil,
+            maxSpeedMps: 8
+        )
+        #expect(motion == .moving)
     }
 
     @Test("속도를 모르면 정지 계측이 초기화된다")

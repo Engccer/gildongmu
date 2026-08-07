@@ -408,7 +408,9 @@ export function useRouteGuide(
           at: now,
         },
         pos.coords.speed,
-        null,
+        // 웹에는 speedAccuracy 축이 **없다**(값이 무효인 것과 다른 상태다). undefined가
+        // 그 구분을 나르고, 판정 함수가 speed 유효성만으로 도플러를 채택한다.
+        undefined,
         maxSpeedMps,
       );
       motionStateRef.current = out.state;
@@ -1179,9 +1181,17 @@ export function useRouteGuide(
         },
         now,
       );
+      // 텍스트 채널도 함께 연다. iOS에는 대응물이 있고(`noticeStaleIfNeeded`), 웹에는
+      // 백그라운드 억제가 없으므로 이 침묵은 "발화를 막은 것"이 아니라 순수 누락이다 —
+      // 소리만 나고 화면은 마지막 안내 그대로면 스크린 리더 사용자는 처음 듣는 소리의
+      // 원인을 알 수 없다. geolocation 에러 콜백은 콜백이 조용히 멎는 경우를 못 잡는다.
+      if (prevKindRef.current !== "weak") {
+        prevKindRef.current = "weak";
+        announce(tBeacon("weak"));
+      }
     }, WATCHDOG_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [emitTone, status]);
+  }, [announce, emitTone, status, tBeacon]);
 
   // 언마운트 정리 — watch·Wake Lock·재통지 타이머.
   useEffect(() => {

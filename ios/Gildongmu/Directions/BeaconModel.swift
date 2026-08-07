@@ -167,14 +167,22 @@ final class BeaconModel {
     /// `backgroundedAt` 패턴과 같은 판정).
     private var wasBackgrounded = false
 
-    /// 앱이 전경 활성 상태인가. **음성 통지 게이트**(spec §3.1) — 백그라운드에서
-    /// 톤은 남기고 발화만 막는다(주기적 음성은 다른 앱 사용을 침해한다).
+    /// 앱이 전경인가. **음성 통지 게이트**(spec §3.1) — 백그라운드에서 톤은 남기고
+    /// 발화만 막는다(주기적 음성은 다른 앱 사용을 침해한다).
     ///
     /// ⚠ **플랫폼 동작에 기대지 않고 명시적으로 막는다.** 백그라운드에서
     /// announcement가 발화되지 않는 것은 실측으로 확인했으나 한 차례 실측은 API
     /// 계약이 아니다. OS 버전·VoiceOver 상태에 따라 무시·지연 전달·복귀 후 뒤늦은
-    /// 발화가 가능하다. `.inactive`는 사용자가 화면을 보고 있는 중이라 허용한다.
-    private var isForeground = true
+    /// 발화가 가능하다.
+    ///
+    /// ⚠ **캐시 플래그가 아니라 게시 시점 조회다**(접근성 감사 2026-08-08). 이 게이트는
+    /// 이제 모든 발화를 좌우하므로, `scenePhase` 전이를 한 번 놓치면 전경에서도 음성이
+    /// 영구 소실된다(톤은 계속 나서 고장으로도 안 읽힌다). 실제 상태를 읽으면 그 고착이
+    /// 구조적으로 불가능해진다. `.inactive`(제어센터·알림 센터)는 사용자가 화면을 보고
+    /// 있는 중이라 허용한다.
+    private var isForeground: Bool {
+        UIApplication.shared.applicationState != .background
+    }
     /// 백그라운드에서 억제된 발화가 있었는가. 복귀 시 **현재 상태 하나만** 낭독한다 —
     /// 누적 재생은 낡은 정보를 순서대로 읽어 혼란만 준다(spec §6.5).
     private var missedAnnouncement = false
@@ -551,15 +559,9 @@ final class BeaconModel {
     func handleScenePhaseChange(to phase: ScenePhase) {
         switch phase {
         case .background:
-            isForeground = false
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
-        case .inactive:
-            // 제어센터·알림 센터·전화 수신 화면. 사용자가 화면을 보고 있는 중이라
-            // 발화를 막지 않는다(백그라운드와 다른 축이다).
-            isForeground = true
         case .active:
-            isForeground = true
             guard isTracking else { return }
             UIApplication.shared.isIdleTimerDisabled = true
             // 억제된 동안 상태가 여러 번 바뀌었을 수 있다 — 누적 재생 대신 현재
@@ -616,6 +618,10 @@ final class BeaconModel {
         motionState = out.state
         return out.motion
     }
+
+    /// 지금 도착 상태인가. 간략은 리듀서의 존 래치가 정본이고, 상세는 `arrived`
+    /// 이벤트가 세션을 끝내는 축이라 여기서 주장하지 않는다(스펙 §4.3 도착 판정 분리).
+    private var arrivedNow: Bool { mode == .brief && beaconState.nearby }
 
     /// 톤 계층 통과 + 재생. 계층 순서·간격·재기준화는 Kit이 소유한다.
     private func routeTone(_ input: ToneLayerInput, now: Double) {
@@ -679,7 +685,7 @@ final class BeaconModel {
         let age = Date().timeIntervalSince(fix.timestamp)
         guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
             routeTone(
-                ToneLayerInput(unreliable: true, arrived: beaconState.nearby), now: now
+                ToneLayerInput(unreliable: true, arrived: arrivedNow), now: now
             )
             return
         }
@@ -787,6 +793,11 @@ final class BeaconModel {
             now: now
         )
         guard let event = out.event else { return }
+        // 인계 전제(스펙 §8.2): 국면 가드와 정확도 가드는 리듀서가 이미 보장하지만
+        // (uncertain·offRoute가 handoff 판정보다 앞에서 반환한다) **투영 점프는 보지
+        // 않는다**. 튄 잔여 거리로 인계를 확정하면 실제 경로가 남았는데 결정 지점
+        // 안내가 사라진다. 이 fix만 버리면 되고, 조건이 참이면 다음 fix에서 다시 온다.
+        if case .handoff = event, jumped { return }
         consume(event: event, route: route)
     }
 
@@ -1091,7 +1102,9 @@ final class BeaconModel {
         // 세션 시작 후 첫 fix 대기도 같은 타이머가 덮는다(기준을 시작 시각으로).
         let reference = lastFixAt ?? startedAt ?? now
         if now - reference >= noFixSeconds {
-            routeTone(ToneLayerInput(unreliable: true), now: now)
+            // 도착 종단은 여기서도 지킨다(스펙 §5.5). 목적지에서 건물로 들어가 GPS가
+            // 끊기면 사용자가 직접 멈추기 전까지 "신뢰할 수 없음"이 무한 반복된다.
+            routeTone(ToneLayerInput(unreliable: true, arrived: arrivedNow), now: now)
         }
         // 음성 통지는 별도 축이다(15초 임계·30초 재통지·원인 구분). 톤은 추가 채널이지
         // 대체가 아니다.

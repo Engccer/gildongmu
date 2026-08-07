@@ -11406,37 +11406,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "잠금 화면에서는 안내 소리가 나지 않습니다."
+            "value": "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guide sounds will not play while the screen is locked."
+            "value": "Guide sounds will not play while the screen is off or another app is in use."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Los sonidos de la guía no sonarán con la pantalla bloqueada."
+            "value": "Los sonidos de la guía no sonarán con la pantalla apagada o al usar otra aplicación."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les sons du guidage ne seront pas audibles écran verrouillé."
+            "value": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "I suoni della guida non verranno riprodotti a schermo bloccato."
+            "value": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "画面がロックされている間は案内音が鳴りません。"
+            "value": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。"
           }
         }
       }
@@ -11476,7 +11476,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "音による案内を再生できません。画面の表示を確認してください。"
+            "value": "音による案内を再生できません。"
           }
         }
       }

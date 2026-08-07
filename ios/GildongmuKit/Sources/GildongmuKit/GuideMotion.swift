@@ -95,7 +95,12 @@ public func motionStep(
         state: state, sample: sample, speed: speed, speedAccuracy: speedAccuracy,
         maxSpeedMps: maxSpeedMps
     )
-    next.lastSample = sample
+    // 폴백에 쓸 수 없는 정확도의 표본은 기준을 덮지 않는다 — 덮으면 다음 fix까지
+    // 강제로 speedUnknown이 되어 침묵이 fix 하나만큼 더 길어진다(접근성 감사 L2).
+    // 낡은 기준은 간격 상한이 알아서 걸러낸다.
+    if sample.accuracy > 0, sample.accuracy <= MotionConstants.fallbackMaxAccuracyMeters {
+        next.lastSample = sample
+    }
 
     guard let v = velocity else {
         // 모르는 구간을 정지로 셈하면 그 사이 이동이 정지로 굳는다.
@@ -133,10 +138,16 @@ private func resolveSpeed(
     speedAccuracy: Double?,
     maxSpeedMps: Double
 ) -> Double? {
-    if let speed, speed >= 0, speed.isFinite,
-       let acc = speedAccuracy, acc >= 0, acc.isFinite,
-       acc <= MotionConstants.speedAccuracyCeiling {
-        return speed
+    if let speed, speed >= 0, speed.isFinite {
+        // ⚠ 정확도는 3-state다: 좋음 / 나쁨 / **모름**. nil은 플랫폼이 그 축을 제공하지
+        // 않는다는 뜻이고(웹 `GeolocationCoordinates`에는 speedAccuracy가 없다), 그것을
+        // "나쁨"으로 뭉개면 그 플랫폼에서 도플러가 절대 성립하지 않아 `tick`(정지)이
+        // 죽은 소리가 된다. 값이 있는데 무효이거나 상한을 넘는 경우만 도플러를
+        // 버린다(iOS는 항상 값을 주므로 nil 분기는 미러 계약이다).
+        guard let acc = speedAccuracy else { return speed }
+        if acc >= 0, acc.isFinite, acc <= MotionConstants.speedAccuracyCeiling {
+            return speed
+        }
     }
     guard let prev = state.lastSample else { return nil }
     let dt = sample.at - prev.at

@@ -222,7 +222,7 @@
     "beacon": {
       "soundUnavailable": "La guida sonora non può essere riprodotta.",
       "stopped": "Tracciamento della distanza interrotto.",
-      "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo bloccato."
+      "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app."
     },
     "unit": {
       "spokenMeters": "metri"

@@ -154,12 +154,41 @@ describe("웹 고유 계약", () => {
     expect(motion).toBe("speedUnknown");
   });
 
-  it("speedAccuracy 필드가 없으면 도플러를 채택하지 않는다", () => {
-    // 웹 GeolocationCoordinates에는 speedAccuracy가 아예 없다.
+  it("speedAccuracy 필드 부재는 도플러를 버릴 근거가 아니다", () => {
+    // 웹 GeolocationCoordinates에는 speedAccuracy가 아예 없다. 그것을 "정확도 나쁨"으로
+    // 뭉개면 웹에서 도플러가 절대 성립하지 않아 tick(정지)이 죽은 소리가 된다.
     const { motion } = motionStep(
       INITIAL_MOTION_STATE, sample(0), 1.5, undefined, MAX_WALK_SPEED_MPS,
     );
-    expect(motion).toBe("speedUnknown");
+    expect(motion).toBe("moving");
+  });
+
+  it("speedAccuracy가 없어도 느린 speed는 정지로 간다", () => {
+    let state: MotionJudgeState = INITIAL_MOTION_STATE;
+    for (const t of [0, 1]) {
+      state = motionStep(state, sample(t), 0.1, undefined, MAX_WALK_SPEED_MPS).state;
+    }
+    expect(motionStep(state, sample(2.5), 0.1, undefined, MAX_WALK_SPEED_MPS).motion).toBe(
+      "stopped",
+    );
+  });
+
+  it("값이 있는데 무효이거나 상한 초과면 도플러를 버린다", () => {
+    expect(
+      motionStep(INITIAL_MOTION_STATE, sample(0), 0.2, 5, MAX_WALK_SPEED_MPS).motion,
+    ).toBe("speedUnknown");
+    expect(
+      motionStep(INITIAL_MOTION_STATE, sample(0), 0.2, null, MAX_WALK_SPEED_MPS).motion,
+    ).toBe("speedUnknown");
+  });
+
+  it("폴백에 못 쓸 정확도의 fix는 기준 표본을 덮지 않는다", () => {
+    let state: MotionJudgeState = INITIAL_MOTION_STATE;
+    state = motionStep(state, sample(0), null, null, MAX_WALK_SPEED_MPS).state;
+    state = motionStep(state, sample(1, 37.5, 127, 35), null, null, MAX_WALK_SPEED_MPS).state;
+    expect(
+      motionStep(state, sample(2, 37.50002), null, null, MAX_WALK_SPEED_MPS).motion,
+    ).toBe("moving");
   });
 
   it("speed가 null인 연속 fix는 폴백으로만 판정한다", () => {

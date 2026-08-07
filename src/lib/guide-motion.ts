@@ -12,8 +12,9 @@
  * ⚠ **웹의 속도 표현이 iOS와 다르다.** `GeolocationCoordinates.speed`는 무효일 때
  * `null`이고 음수 sentinel이 아니며, `speedAccuracy`에 해당하는 필드가 아예 없다.
  * `speed < 0` 분기를 그대로 옮기면 `null`이 암묵 변환으로 0이 되어 **거짓 정지 tick**이
- * 난다. `null`·비유한값·필드 누락을 전부 `speedUnknown`으로 보내고 결과 상태(3-state)만
- * iOS와 동조시킨다. speedAccuracy가 없으므로 웹은 폴백 경로 비중이 iOS보다 크다.
+ * 난다. `null`·비유한값은 `speedUnknown`으로 보내되, **`speedAccuracy` 필드 부재는
+ * 도플러를 버릴 근거가 아니다**(정확도를 모르는 것과 정확도가 나쁜 것은 다른 상태다).
+ * 결과 상태(3-state)만 iOS와 동조시키고 판정 수단은 플랫폼 능력에 맞춘다.
  */
 import { haversineMeters } from "./geo";
 
@@ -71,16 +72,22 @@ function resolveSpeed(
   speedAccuracy: number | null | undefined,
   maxSpeedMps: number,
 ): number | null {
-  if (
-    typeof speed === "number" &&
-    Number.isFinite(speed) &&
-    speed >= 0 &&
-    typeof speedAccuracy === "number" &&
-    Number.isFinite(speedAccuracy) &&
-    speedAccuracy >= 0 &&
-    speedAccuracy <= SPEED_ACCURACY_CEILING_MPS
-  ) {
-    return speed;
+  if (typeof speed === "number" && Number.isFinite(speed) && speed >= 0) {
+    // ⚠ 정확도는 3-state다: 좋음 / 나쁨 / **모름**. `undefined`는 플랫폼이 그 축을
+    // 제공하지 않는다는 뜻이고(웹 `GeolocationCoordinates`에는 speedAccuracy가 없다),
+    // 그것을 "나쁨"으로 뭉개면 웹에서 도플러가 절대 성립하지 않아 **`tick`(정지)이
+    // 죽은 소리가 된다** — 같은 소리가 플랫폼마다 다른 뜻을 갖는 것은 이 설계가
+    // 없애려던 부채다(접근성 감사 2026-08-08). 값이 있는데 무효이거나 상한을 넘는
+    // 경우만 도플러를 버린다.
+    if (speedAccuracy === undefined) return speed;
+    if (
+      typeof speedAccuracy === "number" &&
+      Number.isFinite(speedAccuracy) &&
+      speedAccuracy >= 0 &&
+      speedAccuracy <= SPEED_ACCURACY_CEILING_MPS
+    ) {
+      return speed;
+    }
   }
   const prev = state.lastSample;
   if (!prev) return null;
@@ -102,7 +109,13 @@ export function motionStep(
   maxSpeedMps: number,
 ): { state: MotionJudgeState; motion: MotionState } {
   const velocity = resolveSpeed(state, sample, speed, speedAccuracy, maxSpeedMps);
-  const next: MotionJudgeState = { ...state, lastSample: sample };
+  // 폴백에 쓸 수 없는 정확도의 표본은 기준을 덮지 않는다 — 덮으면 다음 fix까지 강제로
+  // speedUnknown이 되어 침묵이 fix 하나만큼 더 길어진다. 낡은 기준은 간격 상한이 거른다.
+  const usableBaseline = sample.accuracy > 0 && sample.accuracy <= FALLBACK_MAX_ACCURACY_M;
+  const next: MotionJudgeState = {
+    ...state,
+    lastSample: usableBaseline ? sample : state.lastSample,
+  };
 
   if (velocity === null) {
     // 모르는 구간을 정지로 셈하면 그 사이 이동이 정지로 굳는다.
