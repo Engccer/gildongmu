@@ -37,9 +37,14 @@ final class BeaconTonePlayer {
     /// (조용한 무음은 금지. hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다).
     private(set) var isSilenced = false
 
-    /// 승격에 실패해 **잠금 중 무음이 예상되는** 상태. 전경에서는 `.ambient`로도 톤이
-    /// 들리므로 알리지 않으면 사용자가 정상으로 믿고 잠근 뒤 무음을 만난다(spec §3.2).
-    private(set) var isDegraded = false
+    /// 지금 **잠금·백그라운드에서 소리가 날 수 있는가**. 전경에서는 `.ambient`로도 톤이
+    /// 들리므로 이 값이 거짓이어도 사용자는 알아채지 못하고, 그대로 잠그면 무음을 만난다.
+    ///
+    /// ⚠ 질문이 "승격에 **실패**했는가"가 아니라 "지금 들리는가"인 것이 핵심이다
+    /// (접근성 감사 M3). 전자로 두면 억제(받아쓰기·검색 시트) 중 세션을 시작해 승격이
+    /// **미뤄진** 경우가 "정상"으로 보고된다 — 실패한 적이 없으니 플래그가 안 서는데
+    /// 실제 카테고리는 `.ambient`다. 실패·지연·route 변경 후 재적용 실패가 이 한 축으로 모인다.
+    var isBackgroundAudible: Bool { appliedCategory == .playback }
 
     /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **인터럽션 옵서버도 세션을
     /// 건드리지 않는다**: 받아쓰기가 `.playAndRecord`로 잡아 둔 카테고리를 비콘이
@@ -78,7 +83,6 @@ final class BeaconTonePlayer {
     /// ⚠ **첫 톤 재생 전에** 불러야 한다. 승격 실패는 전경에서 보이지 않으므로
     /// 시작 시점에 알려야 사용자가 잠그기 전에 안다.
     func beginSession() {
-        isDegraded = false
         dispatch(.sessionStarted)
     }
 
@@ -87,7 +91,6 @@ final class BeaconTonePlayer {
     /// 잠금 상태에서 들리지 않는다.
     func endSession() {
         dispatch(.sessionEnded)
-        isDegraded = false
     }
 
     func play(_ tone: BeaconTone) {
@@ -310,7 +313,6 @@ final class BeaconTonePlayer {
             try session.setActive(true)
             appliedCategory = category
             isSilenced = false
-            if category == .playback { isDegraded = false }
         } catch {
             guard category == .playback else {
                 appliedCategory = nil
@@ -319,8 +321,8 @@ final class BeaconTonePlayer {
             }
             // 승격 실패는 **잠금 시 무음**을 뜻하지 전경 무음을 뜻하지 않는다. 여기서
             // 세션을 포기하면 실패가 과잉 전파되어, 잠그기 전에 알리려던 장치가
-            // 잠그기 전 침묵을 만든다. `.ambient`로 물러나 재생 자체는 살린다.
-            isDegraded = true
+            // 잠그기 전 침묵을 만든다. `.ambient`로 물러나 재생 자체는 살린다
+            // (그 결과 `isBackgroundAudible`이 거짓으로 남아 호출부가 알린다).
             do {
                 try session.setCategory(.ambient, options: [.mixWithOthers])
                 try session.setActive(true)
