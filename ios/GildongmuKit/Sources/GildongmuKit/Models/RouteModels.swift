@@ -244,6 +244,13 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     public let pathCoords: [RoutePoint]?
 }
 
+/// 계단 회피 적용 상태(웹 `StepFreeStatus` 미러 — applied·no_stepfree_route·unavailable).
+public enum StepFreeStatus: String, Codable, Sendable, Hashable {
+    case applied
+    case noStepFreeRoute = "no_stepfree_route"
+    case unavailable
+}
+
 /// 도보 경로 브리핑(자동차 CarRouteBriefing과 동형, 지도 없이 완결되는 텍스트 정본).
 public struct WalkRouteBriefing: Codable, Sendable, Hashable {
     /// 총 거리(m)
@@ -252,6 +259,18 @@ public struct WalkRouteBriefing: Codable, Sendable, Hashable {
     public let durationSeconds: Int
     /// 안내 단계들
     public let steps: [WalkRouteStep]
+    /// 계단 회피 판정(원시 문자열). `accessible` 요청에만 존재한다.
+    /// ⚠ **raw enum으로 디코딩하지 않는다** — 서버가 넷째 상태를 추가하면
+    /// 브리핑 전체의 디코딩이 실패한다. 판독은 `stepFreeStatus`가 한다.
+    public let stepFree: String?
+    /// 열화 상태의 안내 문장(서버 정본). `applied`이거나 미요청이면 nil.
+    /// ⚠ `includeGeometry=1` 응답에는 유사 스텝이 없으므로 이것이 유일한 채널이다.
+    public let stepFreeNotice: String?
+
+    /// 알려진 상태만 매핑하고 미지의 값은 nil("판정 없음")이다.
+    public var stepFreeStatus: StepFreeStatus? {
+        stepFree.flatMap(StepFreeStatus.init(rawValue:))
+    }
 }
 
 /// /api/route/walk envelope. ⚠ transit과 달리 result가 optional —
