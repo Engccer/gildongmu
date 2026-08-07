@@ -220,9 +220,9 @@
       }
     },
     "beacon": {
-      "soundUnavailable": "音による案内を再生できません。画面の表示を確認してください。",
+      "soundUnavailable": "音による案内を再生できません。",
       "stopped": "距離の追跡を停止しました。",
-      "soundBackgroundUnavailable": "画面がロックされている間は案内音が鳴りません。"
+      "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。"
     },
     "unit": {
       "spokenMeters": "メートル"
