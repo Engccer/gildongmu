@@ -116,6 +116,26 @@ public enum TrendKind: Sendable, Equatable {
     case closer, farther, hold
 }
 
+/// 거리 축이 바뀔 때(상세 경로 거리 ⇄ 간략 직선거리)의 재기준화. 웹
+/// `rebaseBeaconState` 미러.
+///
+/// 값이 **불연속으로** 줄어든다(경로 500m가 직선 120m가 되는 식). 추세 방향만 승계하고
+/// `anchorDistance`와 `lastSpokenDistance`를 **둘 다** 새 축의 현재값으로 재설정한다.
+///
+/// ⚠ `lastSpokenDistance`를 옛 축 값(500m)으로 두면 새 축 현재값(120m)과의 차이 380m가
+/// 즉시 마일스톤을 넘겨 **전환 직후 거짓 closer 음성**이 나가고, 반대 방향 전환에서는
+/// 필요한 음성이 장기 억제된다. 앵커만 재설정하는 것으로는 부족하다.
+///
+/// 새 축의 현재값을 모르면(낡은 fix) nil이 정직한 폴백이다 — 다음 fix가 first 경로를
+/// 타서 절대거리를 1회 발화하고 다시 추세를 잡는다.
+public func rebaseBeaconState(_ state: BeaconState, distance: Double?) -> BeaconState {
+    var next = BeaconState.initial
+    next.trend = state.trend  // 방향만 승계
+    next.anchorDistance = distance
+    next.lastSpokenDistance = distance
+    return next
+}
+
 /// 데드밴드 기준 추세 판정(순수, 상태 미커밋). 간략(직선거리)과 상세(경로 잔여 거리)가
 /// **같은 판정을 공유하는 유일한 지점**이다.
 ///

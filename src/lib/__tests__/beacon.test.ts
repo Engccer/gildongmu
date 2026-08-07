@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   beaconStep,
   INITIAL_BEACON_STATE,
+  rebaseBeaconState,
+  trendStep,
   type BeaconState,
   type BeaconFix,
 } from "../beacon";
@@ -151,5 +153,90 @@ describe("beaconStep", () => {
     const r = beaconStep(s, { lat: NaN, lng: NaN, accuracy: 10 }, DEST);
     expect(r.announce.kind).toBe("weak");
     expect(r.state.anchorDistance).toBe(s.anchorDistance);
+  });
+});
+
+describe("축 전환 재기준화", () => {
+  it("방향만 승계하고 앵커·발화 기준을 둘 다 새 축 값으로 재설정한다", () => {
+    const state: BeaconState = {
+      anchorDistance: 500,
+      trend: "closer",
+      lastSpokenDistance: 500,
+      nearby: false,
+    };
+    expect(rebaseBeaconState(state, 120)).toEqual({
+      anchorDistance: 120,
+      trend: "closer",
+      lastSpokenDistance: 120,
+      nearby: false,
+    });
+  });
+
+  it("재기준화 직후 fix는 거짓 closer를 발화하지 않는다", () => {
+    // 경로 500m가 직선 120m가 되는 전환. lastSpokenDistance를 옛 축 값으로 두면
+    // 차이 380m가 즉시 마일스톤(근거리 100m)을 넘겨 거짓 음성이 나간다.
+    const before: BeaconState = {
+      anchorDistance: 500,
+      trend: "closer",
+      lastSpokenDistance: 500,
+      nearby: false,
+    };
+    const rebased = rebaseBeaconState(before, 120);
+    // 새 축에서 조금 더 가까워진 fix(데드밴드 통과).
+    const out = beaconStep(rebased, { lat: 0, lng: 0, accuracy: 10 }, { lat: 0, lng: 0 });
+    expect(out.announce.speak).toBe(true); // 도착 존이라 nearby 발화는 정상
+    // 앵커만 재설정했다면 여기서 마일스톤이 즉시 성립한다.
+    const anchorOnly: BeaconState = { ...before, anchorDistance: 120 };
+    expect(anchorOnly.lastSpokenDistance).toBe(500);
+    expect(rebased.lastSpokenDistance).toBe(120);
+  });
+
+  it("새 축 값을 모르면 null로 두어 다음 fix가 first 경로를 탄다", () => {
+    const state: BeaconState = {
+      anchorDistance: 500,
+      trend: "farther",
+      lastSpokenDistance: 500,
+      nearby: true,
+    };
+    const rebased = rebaseBeaconState(state, null);
+    expect(rebased.anchorDistance).toBeNull();
+    expect(rebased.lastSpokenDistance).toBeNull();
+    expect(rebased.trend).toBe("farther");
+    expect(rebased.nearby).toBe(false);
+  });
+});
+
+describe("trendStep 추출", () => {
+  it("앵커가 없으면 현재 거리를 앵커로 잡고 hold", () => {
+    expect(trendStep(null, "none", 100, 15)).toEqual({
+      kind: "hold",
+      anchor: 100,
+      trend: "none",
+    });
+  });
+
+  it("데드밴드를 넘어 줄면 closer이고 앵커가 전진한다", () => {
+    expect(trendStep(100, "none", 84, 15)).toEqual({
+      kind: "closer",
+      anchor: 84,
+      trend: "closer",
+    });
+  });
+
+  it("데드밴드를 넘어 늘면 farther", () => {
+    expect(trendStep(100, "closer", 116, 15).kind).toBe("farther");
+  });
+
+  it("데드밴드 안이면 앵커·추세가 불변이다", () => {
+    expect(trendStep(100, "closer", 90, 15)).toEqual({
+      kind: "hold",
+      anchor: 100,
+      trend: "closer",
+    });
+  });
+
+  it("경계값은 포함이다", () => {
+    expect(trendStep(100, "none", 85, 15).kind).toBe("closer");
+    expect(trendStep(100, "none", 115, 15).kind).toBe("farther");
   });
 });

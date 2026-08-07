@@ -275,6 +275,24 @@ struct GuideToneLayerTests {
         #expect(out.tone == .unreliable)
     }
 
+    /// ⚠ **첫 진입만으로는 "즉시 1회" 계약이 관측되지 않는다.** `lastUnreliableAt`이
+    /// nil이면 간격 조건도 참이라 두 판정이 겹친다. 회복 후 재진입이 둘을 가른다
+    /// (변이 주입 M5 미검출로 발견 — 간격만 남기면 여기서 침묵한다).
+    @Test("회복 후 재진입도 즉시 1회다(간격 창 안이어도)")
+    func unreliableReentryIsImmediate() {
+        var state = anchored(500, trend: .closer)
+        state = toneLayerStep(state: state, input: ToneLayerInput(unreliable: true), now: 0).state
+        // 회복
+        state = toneLayerStep(
+            state: state, input: ToneLayerInput(trend: trend(120)), now: 3
+        ).state
+        // 재진입 — 직전 unreliable(now=0)로부터 5초뿐이라 간격 창(10초) 안이다.
+        let (_, tone) = toneLayerStep(
+            state: state, input: ToneLayerInput(unreliable: true), now: 5
+        )
+        #expect(tone == .unreliable)
+    }
+
     @Test("회복은 앵커 재기준화 후 현재 상태 톤 1회")
     func recoveryImmediateTone() {
         var state = anchored(500, trend: .closer)

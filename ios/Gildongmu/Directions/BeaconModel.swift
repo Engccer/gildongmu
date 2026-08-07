@@ -862,12 +862,7 @@ final class BeaconModel {
     /// 새 축의 현재값을 모르면(낡은 fix) nil로 두는 것이 정직한 폴백이다 — 다음 fix가
     /// first 경로를 타서 절대거리를 1회 발화하고 다시 추세를 잡는다.
     private func rebaseForAxisChange() {
-        let straight = freshStraightLineMeters()
-        var rebased = BeaconState.initial
-        rebased.trend = beaconState.trend  // 방향만 승계
-        rebased.anchorDistance = straight
-        rebased.lastSpokenDistance = straight
-        beaconState = rebased
+        beaconState = rebaseBeaconState(beaconState, distance: freshStraightLineMeters())
         gateState = .initial
         // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
         toneState.needsRebase = true
