@@ -49,9 +49,12 @@ final class BeaconModel {
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
     private(set) var statusText = ""
-    /// 오디오 승격에 실패해 **잠금 중 무음이 예상되는** 상태. 세션 내내 참인 지속
-    /// 상태라 `statusText`(단일 슬롯, 곧 다음 안내가 덮는다)와 별도 행으로 낸다 —
-    /// 음성 1회는 놓치면 끝이고, 비-VO 사용자에게는 이것이 잠금 후 무음의 유일한 단서다.
+    /// 잠금·백그라운드에서 소리가 나지 않는 상태. 세션 내내 참일 수 있는 지속 상태라
+    /// `statusText`(단일 슬롯, 곧 다음 안내가 덮는다)와 별도 행으로 낸다 — 음성 1회는
+    /// 놓치면 끝이고, 비-VO 사용자에게는 이것이 잠금 후 무음의 유일한 단서다.
+    ///
+    /// ⚠ 판정 축이 "승격에 실패했는가"가 아니라 **"지금 들리는가"**다: 억제 중 시작해
+    /// 승격이 미뤄진 세션은 실패한 적이 없어도 `.ambient`로 돌고 있다(접근성 감사 M3).
     private(set) var soundDegraded = false
     /// 현재 실패의 해결 수단. 뷰가 이 값으로 해결 버튼을 고른다.
     /// ⚠ 권한 거부(설정 열기)와 정밀 위치 꺼짐(그 자리 시스템 팝업)은 버튼이
@@ -1137,8 +1140,10 @@ final class BeaconModel {
     private func playTone(_ tone: BeaconTone) {
         guard !outputSuppressed else { return }
         tones.play(tone)
-        // 승격 상태는 세션 중에도 바뀐다(route 변경·인터럽션 복구가 재조정을 거친다).
-        if soundDegraded != tones.isDegraded { soundDegraded = tones.isDegraded }
+        // 가청 상태는 세션 중에도 바뀐다(route 변경·인터럽션 복구가 재조정을 거치고,
+        // 억제 해제가 미뤄진 승격을 성사시킨다).
+        let degraded = isTracking && !tones.isBackgroundAudible
+        if soundDegraded != degraded { soundDegraded = degraded }
         // 톤이 죽으면 hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다.
         // GPS 약신호와 **다른 문구**여야 한다. 취해야 할 행동이 다르다.
         if tones.isSilenced {
