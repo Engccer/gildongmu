@@ -221,7 +221,8 @@
     },
     "beacon": {
       "soundUnavailable": "La guidance sonore ne peut pas être jouée.",
-      "stopped": "Suivi de distance arrêté."
+      "stopped": "Suivi de distance arrêté.",
+      "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran verrouillé."
     },
     "unit": {
       "spokenMeters": "mètres"

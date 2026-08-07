@@ -221,7 +221,8 @@
     },
     "beacon": {
       "soundUnavailable": "Sound guidance cannot play.",
-      "stopped": "Distance tracking stopped."
+      "stopped": "Distance tracking stopped.",
+      "soundBackgroundUnavailable": "Guide sounds will not play while the screen is locked."
     },
     "unit": {
       "spokenMeters": "meters"
