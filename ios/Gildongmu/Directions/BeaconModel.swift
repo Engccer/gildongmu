@@ -129,8 +129,10 @@ final class BeaconModel {
     private var lastFixCoordAt: Double?
     /// 재조회 진행 중 — 시트가 버튼 라벨 교체(rerouteBusy)에 쓴다(라벨이 곧 상태 신호).
     private(set) var isRerouting = false
-    /// 상세 모드 무이벤트 fix의 하트비트 tick 스로틀 기준(웹 TICK_THROTTLE 동형 3초).
-    private var lastDetailTickAt: Double?
+    /// 상세 투영 점프 가드의 기준(직전 잔여 거리·시각). 상세 모드의 오차 원인은 GPS
+    /// 정확도가 아니라 **경로 투영의 안정성**이라 별도 축이 필요하다.
+    private var lastRemaining: Double?
+    private var lastRemainingAt: Double?
 
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     /// 세션 단일성 토큰(B2 §3.2 — GuideSessionCoordinator claim/release 검증 키).
@@ -140,6 +142,10 @@ final class BeaconModel {
 
     private var beaconState = BeaconState.initial
     private var gateState = BeaconGateState.initial
+    /// 톤 계층 상태(간략·상세 공용 — 모드 차이는 입력 조립에만 있다).
+    private var toneState = ToneLayerState.initial
+    /// 정지 판정 상태(도플러 3-state).
+    private var motionState = MotionJudgeState.initial
     private var dest: BeaconDest?
     private let tones = BeaconTonePlayer()
     private var startTask: Task<Void, Never>?
@@ -157,8 +163,25 @@ final class BeaconModel {
     /// `backgroundedAt` 패턴과 같은 판정).
     private var wasBackgrounded = false
 
+    /// 앱이 전경 활성 상태인가. **음성 통지 게이트**(spec §3.1) — 백그라운드에서
+    /// 톤은 남기고 발화만 막는다(주기적 음성은 다른 앱 사용을 침해한다).
+    ///
+    /// ⚠ **플랫폼 동작에 기대지 않고 명시적으로 막는다.** 백그라운드에서
+    /// announcement가 발화되지 않는 것은 실측으로 확인했으나 한 차례 실측은 API
+    /// 계약이 아니다. OS 버전·VoiceOver 상태에 따라 무시·지연 전달·복귀 후 뒤늦은
+    /// 발화가 가능하다. `.inactive`는 사용자가 화면을 보고 있는 중이라 허용한다.
+    private var isForeground = true
+    /// 백그라운드에서 억제된 발화가 있었는가. 복귀 시 **현재 상태 하나만** 낭독한다 —
+    /// 누적 재생은 낡은 정보를 순서대로 읽어 혼란만 준다(spec §6.5).
+    private var missedAnnouncement = false
+
     private let noFixTimeout = 15.0
     private let staleRenotifyInterval = 30.0
+    /// fix 부재를 **톤**으로 알리기 시작하는 경과(초). 음성 임계(15초)보다 짧다 —
+    /// 톤은 발화를 가로막지 않아 더 자주 울려도 침해가 적고, 백그라운드에서는 이것이
+    /// 유일한 채널이다. fix 신선도 창(5초)보다 크게 잡아 정상 지터를 걸러낸다.
+    /// 초기값이며 실사용 판정 대상이다.
+    private let noFixSeconds = 8.0
 
     var isTracking: Bool { status == .tracking }
 
@@ -227,6 +250,10 @@ final class BeaconModel {
         sessionKind = kind
         beaconState = .initial
         gateState = .initial
+        toneState = .initial
+        motionState = .initial
+        lastRemaining = nil
+        lastRemainingAt = nil
         lastFixAt = nil
         lastStaleNoticeAt = nil
         suppressNextNotice = false
@@ -235,7 +262,15 @@ final class BeaconModel {
         statusText = ""
         failResolution = .none
         UIApplication.shared.isIdleTimerDisabled = true
+        // 오디오 승격은 **첫 톤보다 먼저**. 승격 실패는 전경에서 보이지 않으므로
+        // (`.ambient`로도 start 톤이 난다) 시작 시점에 알려야 잠그기 전에 안다.
+        tones.beginSession()
         playTone(.start)
+        if tones.isDegraded {
+            let text = appLocalized("ios.beacon.soundBackgroundUnavailable")
+            statusText = text
+            announce(text)
+        }
 
         LocationService.shared.startBeaconUpdates(
             onFix: { [weak self] fix in self?.handle(fix: fix) },
@@ -451,11 +486,16 @@ final class BeaconModel {
         watchdog = nil
         LocationService.shared.stopBeaconUpdates()
         if playStopTone && status == .tracking { playTone(.stop) }
+        // 원복은 정지 톤 **뒤에**. 먼저 원복하면 그 톤이 `.ambient`로 나가 잠금
+        // 상태에서 들리지 않는다(세션 종료를 소리로 확인할 수 없게 된다).
+        tones.endSession()
         if status == .tracking { status = .idle }
         statusText = ""
         failResolution = .none
         beaconState = .initial
         gateState = .initial
+        toneState = .initial
+        motionState = .initial
         dest = nil
         // 세션 종료 = 경로 폐기(스펙 §7.3 약관 경계: 메모리 한정·세션 간 재사용 금지).
         routeFetchTask?.cancel()
@@ -481,7 +521,8 @@ final class BeaconModel {
         resolvePendingSince = nil
         lastFixCoord = nil
         lastFixCoordAt = nil
-        lastDetailTickAt = nil
+        lastRemaining = nil
+        lastRemainingAt = nil
         isRerouting = false
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
@@ -506,11 +547,23 @@ final class BeaconModel {
     func handleScenePhaseChange(to phase: ScenePhase) {
         switch phase {
         case .background:
+            isForeground = false
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
+        case .inactive:
+            // 제어센터·알림 센터·전화 수신 화면. 사용자가 화면을 보고 있는 중이라
+            // 발화를 막지 않는다(백그라운드와 다른 축이다).
+            isForeground = true
         case .active:
+            isForeground = true
             guard isTracking else { return }
             UIApplication.shared.isIdleTimerDisabled = true
+            // 억제된 동안 상태가 여러 번 바뀌었을 수 있다 — 누적 재생 대신 현재
+            // 상태 하나를 낭독한다(spec §6.5 재동기화).
+            if missedAnnouncement {
+                missedAnnouncement = false
+                if !statusText.isEmpty { announce(statusText) }
+            }
             // `.background`를 거친 복귀에서만 앵커를 버린다. 제어센터를 잠깐 여는
             // `.inactive` 왕복까지 리셋하면 추세가 계속 초기화되고 절대거리가 재발화된다.
             guard wasBackgrounded else { return }
@@ -531,15 +584,72 @@ final class BeaconModel {
         }
     }
 
+    // MARK: - 톤 계층 배선 (판정은 전부 Kit — 여기는 입력 조립뿐)
+
+    /// 수단별 물리 상한(정지 판정 폴백의 산출 속도 가드 + 투영 점프 가드).
+    private var maxSpeedMps: Double {
+        sessionKind == .car ? MotionConstants.maxCarSpeedMps : MotionConstants.maxWalkSpeedMps
+    }
+
+    /// 수단별 closer 최소 간격. 차량은 데드밴드를 매 fix 넘어 2초 창에 매번 걸린다
+    /// (30분 주행에 약 900회).
+    private var closerIntervalSeconds: Double {
+        sessionKind == .car
+            ? ToneLayerConstants.carCloserIntervalSeconds
+            : ToneLayerConstants.walkCloserIntervalSeconds
+    }
+
+    /// 이 fix의 이동 상태(양 모드 공용). **모든 fix에서 호출한다** — 거리 미분 폴백이
+    /// 직전 표본을 쓰므로 건너뛰면 폴백 기준이 낡는다.
+    private func judgeMotion(fix: LocationService.BeaconFixPayload, now: Double) -> MotionState {
+        let out = motionStep(
+            state: motionState,
+            sample: MotionSample(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, at: now),
+            speed: fix.speed,
+            speedAccuracy: fix.speedAccuracy,
+            maxSpeedMps: maxSpeedMps
+        )
+        motionState = out.state
+        return out.motion
+    }
+
+    /// 톤 계층 통과 + 재생. 계층 순서·간격·재기준화는 Kit이 소유한다.
+    private func routeTone(_ input: ToneLayerInput, now: Double) {
+        let out = toneLayerStep(state: toneState, input: input, now: now)
+        toneState = out.state
+        if let tone = out.tone { playTone(tone) }
+    }
+
+    /// 직전 fix 대비 잔여 거리 변화가 물리적으로 불가능하면 그 fix의 추세 판정을 버린다.
+    ///
+    /// **상세 모드의 오차 원인은 GPS 정확도가 아니라 경로 투영의 안정성이다**:
+    /// accuracy 5m라도 평행 도로로 투영이 점프하면 잔여 거리가 100m 튀고, accuracy
+    /// 40m라도 투영이 안정적이면 잔여 거리는 매끄럽다. 그래서 데드밴드를 정확도로
+    /// 스케일하지 않고(간략과 다른 점) 점프한 fix를 통째로 버린다.
+    private func projectionJumped(remaining: Double, now: Double) -> Bool {
+        defer {
+            lastRemaining = remaining
+            lastRemainingAt = now
+        }
+        guard let prev = lastRemaining, let at = lastRemainingAt else { return false }
+        let dt = now - at
+        guard dt > 0 else { return true }
+        // 여유 계수 1.5 — 속도 상한 자체가 보수적이라 이중으로 좁히지 않는다.
+        return abs(remaining - prev) > maxSpeedMps * dt * 1.5
+    }
+
     // MARK: - fix 처리
 
     private func handle(fix: LocationService.BeaconFixPayload) {
         guard isTracking, let dest else { return }
+        let now = uptimeNow
+        // 모든 fix에서 갱신한다(폴백이 직전 표본을 쓴다).
+        let motion = judgeMotion(fix: fix, now: now)
 
         // 경로 조회 대기·진행 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의
         // 이중 발화 차단). 첫 수용 fix가 조회 트리거이자 origin이다(8번).
         if awaitingRoute {
-            lastFixAt = uptimeNow
+            lastFixAt = now
             let age = Date().timeIntervalSince(fix.timestamp)
             if routeFetchTask == nil, isUsableFix(accuracy: fix.accuracy, ageSeconds: age) {
                 fixWaitTask?.cancel()
@@ -553,17 +663,23 @@ final class BeaconModel {
             return
         }
         if mode == .detail, let route = guideRoute {
-            handleDetail(fix: fix, route: route)
+            handleDetail(fix: fix, route: route, motion: motion, now: now)
             return
         }
         // 간략 경로 위에서의 상세 전환 모호 해소 시도(스펙 §6). 성공하면 이번 fix 소비.
         if resolveDetailIfPending(fix: fix) { return }
 
-        // 캐시 위치와 무효 좌표를 앵커에서 배제한다(판정은 Kit 순수 함수).
+        // 캐시 위치와 무효 좌표는 앵커에서 배제한다(판정은 Kit 순수 함수). ⚠ 종전에는
+        // 여기서 조용히 버렸는데, 그 침묵도 커버리지 대상이다 — 워치독(8초)이 잡기
+        // 전까지의 공백을 신뢰 불가 톤이 메운다.
         let age = Date().timeIntervalSince(fix.timestamp)
-        guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else { return }
+        guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
+            routeTone(
+                ToneLayerInput(unreliable: true, arrived: beaconState.nearby), now: now
+            )
+            return
+        }
 
-        let now = ProcessInfo.processInfo.systemUptime
         lastFixAt = now
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
@@ -576,10 +692,27 @@ final class BeaconModel {
         )
         beaconState = stepped.state
 
-        let gated = beaconGateStep(state: gateState, announce: stepped.announce, now: now)
+        let gated = beaconGateStep(state: gateState, announce: stepped.announce)
         gateState = gated.state
 
-        if let tone = gated.tone { playTone(tone) }
+        // 톤 계층 입력 조립(간략 3단계: 신뢰 불가 → 도착 → 추세).
+        let weak = stepped.announce.kind == .weak
+        routeTone(
+            ToneLayerInput(
+                unreliable: weak,
+                priorityTone: gated.nearbyTone ? .nearby : nil,
+                trend: weak
+                    ? nil
+                    : TrendInput(
+                        distance: stepped.announce.distance,
+                        deadBand: max(BeaconConstants.baseDeadBand, fix.accuracy),
+                        motion: motion,
+                        closerIntervalSeconds: closerIntervalSeconds
+                    ),
+                arrived: beaconState.nearby
+            ),
+            now: now
+        )
         if let notice = gated.notice {
             let text = self.text(for: notice)
             statusText = text
@@ -595,14 +728,20 @@ final class BeaconModel {
 
     // MARK: - 상세 모드 fix 처리·이벤트 배선 (판정은 전부 Kit guideStep)
 
-    private func handleDetail(fix: LocationService.BeaconFixPayload, route: GuideRoute) {
+    private func handleDetail(
+        fix: LocationService.BeaconFixPayload, route: GuideRoute, motion: MotionState, now: Double
+    ) {
         guard let state = guideState else { return }
         // 캐시 fix만 거른다. 정확도 악화(50m 초과)는 버리지 않고 리듀서에 넘긴다 —
         // uncertain 전이(진입·회복 1회 통지)가 그 정보의 소비자다(스펙 §5.0).
         let age = Date().timeIntervalSince(fix.timestamp)
-        guard fix.accuracy > 0, age <= 10 else { return }
+        guard fix.accuracy > 0, age <= 10 else {
+            // stale fix 폐기는 `lastFixAt`을 갱신하지 않으므로 워치독도 잡지만,
+            // 발동(8초)까지의 공백을 여기서 메운다.
+            routeTone(ToneLayerInput(unreliable: true), now: now)
+            return
+        }
 
-        let now = uptimeNow
         lastFixAt = now
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
@@ -617,15 +756,33 @@ final class BeaconModel {
         )
         guideState = out.state
         updateRemaining(route: route, state: out.state)
-        if let tone = out.tone { playTone(tone == .ahead ? .ahead : .warning) }
-        guard let event = out.event else {
-            // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
-            if lastDetailTickAt == nil || now - lastDetailTickAt! >= 3 {
-                lastDetailTickAt = now
-                playTone(.tick)
-            }
-            return
-        }
+
+        // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
+        // 폐기됐다 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다.
+        // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
+        let phase = out.state.phase
+        let remaining = max(0, route.totalMeters - out.state.d)
+        let jumped = projectionJumped(remaining: remaining, now: now)
+        // 추세 축은 정상 추종에서만 유효하다. 이탈 중 잔여 거리는 낡은 투영이라
+        // 추세로 읽으면 거짓이고, 투영이 튄 fix도 버린다.
+        let trendable = (phase == .following || phase == .bundle) && !jumped
+        routeTone(
+            ToneLayerInput(
+                unreliable: phase == .uncertain || phase == .reacquiring,
+                priorityTone: out.tone.map { $0 == .ahead ? .ahead : .warning },
+                eventOwned: out.event != nil,
+                trend: trendable
+                    ? TrendInput(
+                        distance: remaining,
+                        deadBand: BeaconConstants.baseDeadBand,
+                        motion: motion,
+                        closerIntervalSeconds: closerIntervalSeconds
+                    )
+                    : nil
+            ),
+            now: now
+        )
+        guard let event = out.event else { return }
         consume(event: event, route: route)
     }
 
@@ -661,8 +818,7 @@ final class BeaconModel {
             remainingText = nil
             etaTask?.cancel() // 간략 전환 후 ETA 재조회 무의미(자원 위생 — 리뷰 반영)
             etaTask = nil
-            beaconState = .initial
-            gateState = .initial
+            rebaseForAxisChange()
             let text = appLocalized("guide.handoff")
             statusText = text
             announce(text)
@@ -695,6 +851,30 @@ final class BeaconModel {
         }
     }
 
+    /// 거리 축이 바뀔 때(상세 경로 거리 ⇄ 간략 직선거리)의 재기준화.
+    ///
+    /// 값이 **불연속으로** 줄어든다(경로 500m가 직선 120m가 되는 식). 추세 방향만
+    /// 승계하고 `anchorDistance`와 `lastSpokenDistance`를 **둘 다** 새 축의 현재값으로
+    /// 재설정한다. ⚠ `lastSpokenDistance`를 옛 축 값으로 두면 차이 380m가 즉시
+    /// 마일스톤을 넘겨 **전환 직후 거짓 closer 음성**이 나가고, 반대 방향 전환에서는
+    /// 필요한 음성이 장기 억제된다.
+    ///
+    /// 새 축의 현재값을 모르면(낡은 fix) nil로 두는 것이 정직한 폴백이다 — 다음 fix가
+    /// first 경로를 타서 절대거리를 1회 발화하고 다시 추세를 잡는다.
+    private func rebaseForAxisChange() {
+        let straight = freshStraightLineMeters()
+        var rebased = BeaconState.initial
+        rebased.trend = beaconState.trend  // 방향만 승계
+        rebased.anchorDistance = straight
+        rebased.lastSpokenDistance = straight
+        beaconState = rebased
+        gateState = .initial
+        // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
+        toneState.needsRebase = true
+        lastRemaining = nil
+        lastRemainingAt = nil
+    }
+
     /// 간략→상세 전환의 모호 해소(스펙 §6): 후속 fix들로 전역 후보가 하나로 좁혀지면
     /// 전환을 완료한다. 반환 true면 이번 fix를 전환 처리로 소비했다는 뜻.
     private func resolveDetailIfPending(fix: LocationService.BeaconFixPayload) -> Bool {
@@ -709,6 +889,10 @@ final class BeaconModel {
             guideState = state
             mode = .detail
             offRoute = false
+            // 직선거리 → 경로 거리로 축이 바뀐다(handoff의 반대 방향, 같은 규칙).
+            toneState.needsRebase = true
+            lastRemaining = nil
+            lastRemainingAt = nil
             updateRemaining(route: route, state: state)
             let text = appLocalized("guide.toDetailDone")
             statusText = text
@@ -775,8 +959,7 @@ final class BeaconModel {
         if mode == .detail {
             mode = .brief
             remainingText = nil
-            beaconState = .initial  // first-fix 경로: 절대거리 1회 발화 후 추세
-            gateState = .initial
+            rebaseForAxisChange()  // 경로 거리 → 직선거리(handoff와 같은 규칙)
             resolvePendingSince = nil
             let text = appLocalized("guide.toBriefDone")
             statusText = text
@@ -890,13 +1073,30 @@ final class BeaconModel {
         watchdog?.cancel()
         watchdog = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
+                // 주기는 톤 임계(8초)에 맞춰 좁혔다 — 5초 주기면 최대 5초 늦게 울린다.
+                try? await Task.sleep(for: .seconds(2))
                 // self가 사라졌으면 루프도 끝내야 한다(무한 웨이크업 방지).
                 guard let self else { return }
                 guard self.isTracking else { continue }
-                self.noticeStaleIfNeeded(force: false)
+                self.tickWatchdog()
             }
         }
+    }
+
+    /// **타이머 구동**이지 fix 구동이 아니다. fix가 안 와도 돈다는 것이 요점이다 —
+    /// 권한 철회·위치 서비스 중단·Core Location 정지면 `weak`·`uncertain` 판정 경로
+    /// 자체가 실행되지 않아, 톤을 fix 처리에만 걸면 **마지막 정상 톤 이후 영구 침묵**이
+    /// 된다. 백그라운드에서는 톤이 유일한 채널이라 이 침묵이 곧 무고장 판정이 된다.
+    private func tickWatchdog() {
+        let now = uptimeNow
+        // 세션 시작 후 첫 fix 대기도 같은 타이머가 덮는다(기준을 시작 시각으로).
+        let reference = lastFixAt ?? startedAt ?? now
+        if now - reference >= noFixSeconds {
+            routeTone(ToneLayerInput(unreliable: true), now: now)
+        }
+        // 음성 통지는 별도 축이다(15초 임계·30초 재통지·원인 구분). 톤은 추가 채널이지
+        // 대체가 아니다.
+        noticeStaleIfNeeded(force: false)
     }
 
     private func noticeStaleIfNeeded(force: Bool) {
@@ -946,6 +1146,12 @@ final class BeaconModel {
     /// HoldDictationButton 선례). 자동 통지는 기본 유지(비요청 interrupt 금지).
     private func announce(_ message: String, highPriority: Bool = false) {
         guard !outputSuppressed else { return }
+        // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가
+        // 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
+        guard isForeground else {
+            missedAnnouncement = true
+            return
+        }
         var attributed = AttributedString(spokenUnits(message))
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(attributed).post()

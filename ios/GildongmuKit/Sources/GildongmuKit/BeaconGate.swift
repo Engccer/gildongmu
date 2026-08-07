@@ -1,13 +1,15 @@
 import Foundation
 
-/// 비콘 판정 결과를 **톤과 통지로 라우팅하는 순수 게이트**.
+/// 비콘 판정 결과를 **통지로 라우팅하는 순수 게이트**.
 ///
-/// `beaconStep`이 "무엇이 일어났는가"를 정하면 여기서 "그래서 소리를 낼까, 말을 할까"를
-/// 정한다. 앱 계층에 두지 않는 이유는 두 가지다. (1) 이 기능의 실제 결함 이력이 100%
-/// 이 계층이었고(웹 감사 2건: throttle 창 공유로 추세 톤 소실, 참조 불안정으로 즉시
-/// 정리) (2) 앱 타깃 테스트 번들이 없어서 앱에 두면 구조적으로 검증이 불가능하다.
+/// `beaconStep`이 "무엇이 일어났는가"를 정하면 여기서 "그래서 말을 할까"를 정한다.
+/// 앱 계층에 두지 않는 이유는 두 가지다. (1) 이 기능의 실제 결함 이력이 100% 이
+/// 계층이었고 (2) 앱 타깃 테스트 번들이 없어서 앱에 두면 구조적으로 검증이 불가능하다.
 ///
-/// 시각(`now`)을 인자로 받으므로 테스트가 실시간을 기다리지 않는다.
+/// ⚠ **톤은 여기서 내지 않는다**(2026-08-08 분리). 톤 선택은 `toneLayerStep`이 단독
+/// 소유한다 — 두 곳이 톤을 내면 어느 쪽이 정본인지 알 수 없고, 간략·상세가 같은 계층을
+/// 공유한다는 통일 계약이 깨진다. 여기가 답하는 것은 "이번 fix가 **도착 톤을 소유**
+/// 하는가"뿐이고, 그 값은 톤 계층의 `priorityTone` 입력이 된다.
 
 /// 통지 내용. Kit은 로컬라이즈하지 않고 **무엇을 알릴지**만 정한다(앱이 문자열 매핑).
 public enum BeaconNotice: Sendable, Equatable {
@@ -20,38 +22,26 @@ public enum BeaconNotice: Sendable, Equatable {
 }
 
 public struct BeaconGateState: Sendable, Equatable {
-    var lastTrendToneAt: Double?
-    var lastTickAt: Double?
-    /// 도착 존 톤 래치. 존을 벗어나 추세가 재개될 때만 재무장한다.
+    /// 도착 톤 소유 래치. 존을 벗어나 추세가 재개될 때만 재무장한다.
     var nearbyToneDone: Bool
     var previousKind: AnnounceKind?
 
-    public static let initial = BeaconGateState(
-        lastTrendToneAt: nil, lastTickAt: nil, nearbyToneDone: false, previousKind: nil
-    )
-}
-
-public enum BeaconGateConstants {
-    /// 추세 톤 창. tick과 **독립**이다(공유하면 tick이 추세 톤 예산을 잠식한다).
-    public static let trendToneWindow = 2.0
-    /// hold tick 창. 추세보다 길게 잡은 소프트 하트비트.
-    public static let tickWindow = 3.0
+    public static let initial = BeaconGateState(nearbyToneDone: false, previousKind: nil)
 }
 
 public func beaconGateStep(
     state: BeaconGateState,
-    announce: BeaconAnnounce,
-    now: Double
-) -> (state: BeaconGateState, tone: BeaconTone?, notice: BeaconNotice?) {
+    announce: BeaconAnnounce
+) -> (state: BeaconGateState, nearbyTone: Bool, notice: BeaconNotice?) {
     var next = state
-    var tone: BeaconTone?
+    var nearbyTone = false
 
     switch announce.kind {
     case .nearby:
-        // 존에 머무는 동안 매 fix가 .nearby를 내지만 톤은 진입 1회뿐이다.
-        // 리듀서의 래치는 speak(음성)만 억제하므로 톤 래치는 여기 있어야 한다.
+        // 존에 머무는 동안 매 fix가 .nearby를 내지만 톤 소유는 진입 1회뿐이다.
+        // 리듀서의 래치는 speak(음성)만 억제하므로 이 래치가 따로 필요하다.
         if !state.nearbyToneDone {
-            tone = .nearby
+            nearbyTone = true
             next.nearbyToneDone = true
         }
 
@@ -59,19 +49,9 @@ public func beaconGateStep(
         // 추세가 재개됐다 = 존을 진짜로 벗어났다. 다음 도착은 다시 알린다.
         // (존 경계에서 흔들리는 hold는 재무장하지 않는다. 그건 재진입이 아니다.)
         next.nearbyToneDone = false
-        if now - (state.lastTrendToneAt ?? -.infinity) >= BeaconGateConstants.trendToneWindow {
-            tone = announce.kind == .closer ? .closer : .farther
-            next.lastTrendToneAt = now
-        }
 
-    case .hold:
-        if now - (state.lastTickAt ?? -.infinity) >= BeaconGateConstants.tickWindow {
-            tone = .tick
-            next.lastTickAt = now
-        }
-
-    case .first, .weak:
-        break  // 톤 없음
+    case .first, .hold, .weak:
+        break
     }
 
     // 통지. weak은 리듀서에서 항상 speak=false이므로 speak만 보면 영영 통지되지 않는다.
@@ -91,5 +71,5 @@ public func beaconGateStep(
     }
 
     next.previousKind = announce.kind
-    return (next, tone, notice)
+    return (next, nearbyTone, notice)
 }

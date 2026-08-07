@@ -10,6 +10,22 @@ import {
   type BeaconState,
 } from "@/lib/beacon";
 import {
+  INITIAL_MOTION_STATE,
+  MAX_CAR_SPEED_MPS,
+  MAX_WALK_SPEED_MPS,
+  motionStep,
+  type MotionJudgeState,
+  type MotionState,
+} from "@/lib/guide-motion";
+import {
+  CAR_CLOSER_INTERVAL_S,
+  INITIAL_TONE_LAYER_STATE,
+  toneLayerStep,
+  WALK_CLOSER_INTERVAL_S,
+  type ToneLayerInput,
+  type ToneLayerState,
+} from "@/lib/guide-tone-layer";
+import {
   buildGuideRoute,
   CAR_TUNING,
   entryProjection,
@@ -60,8 +76,14 @@ const WATCH_OPTS: PositionOptions = {
   timeout: 15_000,
   maximumAge: 0,
 };
-const TONE_THROTTLE_MS = 2000;
-const TICK_THROTTLE_MS = 3000;
+/**
+ * fix 부재를 신뢰 불가 톤으로 알리기 시작하는 경과(초). iOS `noFixSeconds`와 동조.
+ * ⚠ **타이머 구동**이라야 한다 — 권한 철회·서비스 중단이면 fix 콜백 자체가 오지
+ * 않아, 톤을 fix 처리에만 걸면 마지막 정상 톤 이후 영구 침묵이 된다.
+ */
+const NO_FIX_S = 8;
+/** 워치독 점검 주기(ms). 임계(8초)보다 촘촘해야 지연이 작다. */
+const WATCHDOG_INTERVAL_MS = 2000;
 /**
  * 같은 문장을 다시 통지할 때 live region을 비웠다 채우는 간격. 텍스트가 같으면 DOM이
  * 바뀌지 않아 스크린 리더가 침묵하므로("현재 안내 반복"이 아무 일도 안 하는 것처럼
@@ -231,10 +253,7 @@ export function useRouteGuide(
   // ref가 아니라 state 초기값 고정: 렌더 중 ref 읽기 금지 규칙과의 정합).
   const [kindFixed] = useState(kind);
   const tuning = GUIDE_TUNINGS[kindFixed];
-  const {
-    playCloser, playFarther, playNearby, playTick, playStart, playStop,
-    playAhead, playWarning,
-  } = useBeaconSound();
+  const { play } = useBeaconSound();
   const wakeLock = useScreenWakeLock();
 
   const [status, setStatus] = useState<BeaconStatus>("idle");
@@ -252,8 +271,14 @@ export function useRouteGuide(
   const watchIdRef = useRef<number | null>(null);
   const beaconRef = useRef<BeaconState>(INITIAL_BEACON_STATE);
   const guideRef = useRef<GuideState | null>(null);
-  /** 상세 모드 무이벤트 tick의 스로틀 기준(초 단위 단조 시각). */
-  const detailTickRef = useRef<number | null>(null);
+  /** 톤 계층 상태(간략·상세 공용 — 모드 차이는 입력 조립에만 있다). */
+  const toneStateRef = useRef<ToneLayerState>(INITIAL_TONE_LAYER_STATE);
+  /** 정지 판정 상태(도플러 3-state). */
+  const motionStateRef = useRef<MotionJudgeState>(INITIAL_MOTION_STATE);
+  /** 상세 투영 점프 가드의 기준(직전 잔여 거리·시각). */
+  const lastRemainingRef = useRef<{ meters: number; at: number } | null>(null);
+  /** 세션 시작 시각(초, 단조) — 첫 fix 대기도 워치독이 덮게 하는 기준. */
+  const startedAtRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
   /** 상세 경로의 총 소요시간(초, provider 원값) — walk 잔여 시간 비례 추정의 분모. */
   const routeDurationRef = useRef<number | null>(null);
@@ -276,8 +301,6 @@ export function useRouteGuide(
   const genRef = useRef(0);
   const rerouteInFlightRef = useRef(false);
   const prevKindRef = useRef<AnnounceKind | null>(null);
-  const lastTrendToneAtRef = useRef(0);
-  const lastTickAtRef = useRef(0);
   const liveRef = useRef("");
   const reannounceTimerRef = useRef<number | null>(null);
 
@@ -346,30 +369,101 @@ export function useRouteGuide(
     [kindFixed],
   );
 
-  const routeTone = useCallback(
-    (kind: AnnounceKind) => {
-      const now = Date.now();
-      if (kind === "nearby") {
-        playNearby();
-        return;
-      }
-      // 추세 톤과 tick은 독립 창 — tick이 추세 톤 예산을 잠식하지 않는다.
-      if (kind === "closer" || kind === "farther") {
-        if (now - lastTrendToneAtRef.current < TONE_THROTTLE_MS) return;
-        lastTrendToneAtRef.current = now;
-        if (kind === "closer") playCloser();
-        else playFarther();
-        return;
-      }
-      if (kind === "hold") {
-        if (now - lastTickAtRef.current < TICK_THROTTLE_MS) return;
-        lastTickAtRef.current = now;
-        playTick();
-      }
-      // first·weak: 톤 없음.
+  /** 수단별 물리 상한(정지 판정 폴백 + 투영 점프 가드). */
+  const maxSpeedMps = kindFixed === "car" ? MAX_CAR_SPEED_MPS : MAX_WALK_SPEED_MPS;
+  /** 수단별 closer 최소 간격 — 차량은 데드밴드를 매 fix 넘어 2초 창에 매번 걸린다. */
+  const closerIntervalSeconds =
+    kindFixed === "car" ? CAR_CLOSER_INTERVAL_S : WALK_CLOSER_INTERVAL_S;
+
+  /**
+   * 톤 계층 통과 + 재생. 계층 순서·간격·재기준화는 순수 함수가 소유한다 — 훅은
+   * 입력 조립과 I/O만 한다(iOS `BeaconModel.routeTone`과 같은 구조).
+   */
+  const emitTone = useCallback(
+    (input: ToneLayerInput, now: number) => {
+      const out = toneLayerStep(toneStateRef.current, input, now);
+      toneStateRef.current = out.state;
+      if (out.tone) play(out.tone);
     },
-    [playCloser, playFarther, playNearby, playTick],
+    [play],
   );
+
+  /**
+   * 이 fix의 이동 상태. **모든 fix에서 호출한다** — 거리 미분 폴백이 직전 표본을
+   * 쓰므로 건너뛰면 폴백 기준이 낡는다.
+   *
+   * ⚠ `pos.coords.speed`는 무효일 때 `null`이고 웹에는 `speedAccuracy`가 없다.
+   * 그대로 넘겨 판정을 순수 함수에 맡긴다(0으로 변환하면 거짓 정지 tick).
+   */
+  const judgeMotion = useCallback(
+    (pos: GeolocationPosition, now: number): MotionState => {
+      const out = motionStep(
+        motionStateRef.current,
+        {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          at: now,
+        },
+        pos.coords.speed,
+        null,
+        maxSpeedMps,
+      );
+      motionStateRef.current = out.state;
+      return out.motion;
+    },
+    [maxSpeedMps],
+  );
+
+  /**
+   * 상세 투영 점프 가드. 상세 모드의 오차 원인은 GPS 정확도가 아니라 **경로 투영의
+   * 안정성**이라(평행 도로로 투영이 점프하면 accuracy 5m에도 잔여 거리가 100m 튄다)
+   * 데드밴드를 정확도로 스케일하지 않고 점프한 fix를 통째로 버린다.
+   */
+  const projectionJumped = useCallback(
+    (remaining: number, now: number): boolean => {
+      const prev = lastRemainingRef.current;
+      lastRemainingRef.current = { meters: remaining, at: now };
+      if (!prev) return false;
+      const dt = now - prev.at;
+      if (dt <= 0) return true;
+      // 여유 계수 1.5 — 속도 상한 자체가 보수적이라 이중으로 좁히지 않는다.
+      return Math.abs(remaining - prev.meters) > maxSpeedMps * dt * 1.5;
+    },
+    [maxSpeedMps],
+  );
+
+  /**
+   * 거리 축이 바뀔 때(상세 경로 거리 ⇄ 간략 직선거리)의 재기준화. iOS
+   * `BeaconModel.rebaseForAxisChange` 미러.
+   *
+   * 값이 **불연속으로** 줄어든다(경로 500m가 직선 120m가 되는 식). 추세 방향만
+   * 승계하고 `anchorDistance`와 `lastSpokenDistance`를 **둘 다** 새 축의 현재값으로
+   * 재설정한다. ⚠ `lastSpokenDistance`를 옛 축 값으로 두면 차이 380m가 즉시
+   * 마일스톤을 넘겨 **전환 직후 거짓 closer 음성**이 나가고, 반대 방향 전환에서는
+   * 필요한 음성이 장기 억제된다.
+   */
+  const rebaseForAxisChange = useCallback(() => {
+    const fixAge =
+      lastFixAtRef.current !== null
+        ? performance.now() / 1000 - lastFixAtRef.current
+        : Infinity;
+    const fix = fixAge <= PROGRESS_FIX_MAX_AGE_S ? lastFixRef.current : null;
+    // 새 축의 현재값을 모르면 null이 정직한 폴백이다 — 다음 fix가 first 경로를 타서
+    // 절대거리를 1회 발화하고 다시 추세를 잡는다.
+    const straight = fix
+      ? haversineMeters(fix.lat, fix.lng, destRef.current.lat, destRef.current.lng)
+      : null;
+    beaconRef.current = {
+      ...INITIAL_BEACON_STATE,
+      trend: beaconRef.current.trend, // 방향만 승계
+      anchorDistance: straight,
+      lastSpokenDistance: straight,
+    };
+    // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
+    toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
+    lastRemainingRef.current = null;
+  }, []);
 
   /** 이벤트 → 통지문. 사용자에게 말할 것이 없는 이벤트는 빈 문자열. */
   const eventText = useCallback(
@@ -425,6 +519,10 @@ export function useRouteGuide(
       setMode("detail");
       setOffRoute(state.phase === "offRoute");
       setProgress(progressOf(route, state));
+      // 거리 축이 직선 → 경로로 바뀐다(전환·재획득·재조회 공통). 다음 추세 fix가
+      // 새 축 현재값으로 앵커를 다시 잡고 현재 상태를 1회 알린다.
+      toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
+      lastRemainingRef.current = null;
     },
     [progressOf],
   );
@@ -539,42 +637,77 @@ export function useRouteGuide(
   }, []);
 
   const stepBrief = useCallback(
-    (fix: GuideFix) => {
+    (fix: GuideFix, motion: MotionState, now: number) => {
       const result = beaconStep(beaconRef.current, fix, destRef.current);
       beaconRef.current = result.state;
+      const weak = result.announce.kind === "weak";
+      // 도착 톤 소유는 존 진입 1회뿐이다(리듀서 래치는 음성만 막는다).
+      const nearbyEntry = result.announce.kind === "nearby" && result.announce.speak;
+      // 톤 계층 입력 조립(간략 3단계: 신뢰 불가 → 도착 → 추세).
+      emitTone(
+        {
+          unreliable: weak,
+          priorityTone: nearbyEntry ? "nearby" : null,
+          eventOwned: false,
+          trend: weak
+            ? null
+            : {
+                distance: result.announce.distance,
+                deadBand: Math.max(15, fix.accuracy),
+                motion,
+                closerIntervalSeconds,
+              },
+          arrived: result.state.nearby,
+          rebaseTrend: false,
+        },
+        now,
+      );
       // weak가 연속되면 재방출하지 않는다(polite live region 스팸 방지).
-      if (result.announce.kind === "weak" && prevKindRef.current === "weak") return;
+      if (weak && prevKindRef.current === "weak") return;
       prevKindRef.current = result.announce.kind;
-      routeTone(result.announce.kind);
       const text = briefText(result.announce, tBeacon);
       announce(text);
       if (text && result.announce.speak) rememberGuidance(text);
     },
-    [announce, rememberGuidance, routeTone, tBeacon],
+    [announce, closerIntervalSeconds, emitTone, rememberGuidance, tBeacon],
   );
 
   const stepDetail = useCallback(
-    (fix: GuideFix, route: GuideRoute, state: GuideState, now: number) => {
+    (fix: GuideFix, route: GuideRoute, state: GuideState, motion: MotionState, now: number) => {
       const result = guideStep(state, fix, route, now, tuning);
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
-      if (result.tone === "ahead") playAhead();
-      else if (result.tone === "warning") playWarning();
-      if (!result.event) {
-        // 무이벤트 fix는 tick 하트비트(스펙 §5.3 상세 톤 유지 — 침묵과 죽음의 구분).
-        if (detailTickRef.current === null || now - detailTickRef.current >= 3) {
-          detailTickRef.current = now;
-          playTick();
-        }
-        return;
-      }
+
+      // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
+      // 폐기됐다 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다.
+      // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
+      const phase = result.state.phase;
+      const remaining = Math.max(0, route.totalMeters - result.state.d);
+      const jumped = projectionJumped(remaining, now);
+      // 추세 축은 정상 추종에서만 유효하다(이탈 중 잔여 거리는 낡은 투영이다).
+      const trendable = (phase === "following" || phase === "bundle") && !jumped;
+      emitTone(
+        {
+          unreliable: phase === "uncertain" || phase === "reacquiring",
+          priorityTone: result.tone,
+          eventOwned: result.event !== null,
+          trend: trendable
+            ? { distance: remaining, deadBand: 15, motion, closerIntervalSeconds }
+            : null,
+          arrived: false,
+          rebaseTrend: false,
+        },
+        now,
+      );
+
+      if (!result.event) return;
       const text = eventText(result.event, route);
       if (result.event.kind === "handoff") {
         // 인계는 단방향 래치 — 여기서 간략으로 넘기면 이후 fix는 비콘 경로가 받는다.
         modeRef.current = "brief";
         setMode("brief");
-        beaconRef.current = INITIAL_BEACON_STATE;
+        rebaseForAxisChange();
         prevKindRef.current = null;
         setOffRoute(false);
         setProgress(null);
@@ -587,11 +720,12 @@ export function useRouteGuide(
     [
       announce,
       clearEtaTimer,
+      closerIntervalSeconds,
+      emitTone,
       eventText,
-      playAhead,
-      playTick,
-      playWarning,
       progressOf,
+      projectionJumped,
+      rebaseForAxisChange,
       rememberGuidance,
       tuning,
     ],
@@ -638,16 +772,18 @@ export function useRouteGuide(
       lastFixRef.current = fix;
       lastFixAtRef.current = performance.now() / 1000;
       const now = lastFixAtRef.current;
+      // 모든 fix에서 갱신한다(거리 미분 폴백이 직전 표본을 쓴다).
+      const motion = judgeMotion(pos, now);
       if (resolvePending(fix, now)) return;
       const route = routeRef.current;
       const state = guideRef.current;
       if (modeRef.current === "detail" && route && state) {
-        stepDetail(fix, route, state, now);
+        stepDetail(fix, route, state, motion, now);
         return;
       }
-      stepBrief(fix);
+      stepBrief(fix, motion, now);
     },
-    [resolvePending, stepBrief, stepDetail],
+    [judgeMotion, resolvePending, stepBrief, stepDetail],
   );
 
   const clearWatch = useCallback(() => {
@@ -698,6 +834,10 @@ export function useRouteGuide(
     void wakeLock.release();
     // 경로 데이터는 세션 메모리에만 둔다(스펙 §7.3) — 중지 시 폐기.
     beaconRef.current = INITIAL_BEACON_STATE;
+    toneStateRef.current = INITIAL_TONE_LAYER_STATE;
+    motionStateRef.current = INITIAL_MOTION_STATE;
+    lastRemainingRef.current = null;
+    startedAtRef.current = null;
     guideRef.current = null;
     routeRef.current = null;
     routeDurationRef.current = null;
@@ -718,8 +858,8 @@ export function useRouteGuide(
       setRerouting(false);
       announce("");
     }
-    playStop();
-  }, [announce, clearEtaTimer, clearWatch, playStop, wakeLock]);
+    play("stop");
+  }, [announce, clearEtaTimer, clearWatch, play, wakeLock]);
 
   const start = useCallback(() => {
     if (!supported) {
@@ -732,6 +872,11 @@ export function useRouteGuide(
     genRef.current += 1;
     const gen = genRef.current;
     beaconRef.current = INITIAL_BEACON_STATE;
+    toneStateRef.current = INITIAL_TONE_LAYER_STATE;
+    motionStateRef.current = INITIAL_MOTION_STATE;
+    lastRemainingRef.current = null;
+    // 첫 fix 대기도 워치독이 덮는다(기준을 세션 시작 시각으로).
+    startedAtRef.current = performance.now() / 1000;
     guideRef.current = null;
     routeRef.current = null;
     routeDurationRef.current = null;
@@ -751,7 +896,7 @@ export function useRouteGuide(
     setProgress(null);
     setStatus("tracking");
     announce("");
-    playStart();
+    play("start");
     void wakeLock.acquire();
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => handleFixRef.current(pos),
@@ -809,7 +954,7 @@ export function useRouteGuide(
     kindFixed,
     fetchGuideRoute,
     locale,
-    playStart,
+    play,
     refreshCarEta,
     rememberGuidance,
     supported,
@@ -829,8 +974,9 @@ export function useRouteGuide(
       modeRef.current = "brief";
       setMode("brief");
       guideRef.current = null;
-      // 간략 앵커 리셋 — 다음 fix가 절대거리 1회 발화 후 추세를 다시 잡는다(스펙 §6).
-      beaconRef.current = INITIAL_BEACON_STATE;
+      // 경로 거리 → 직선거리(handoff와 같은 규칙). 방향만 승계하고 두 기준을 새 축
+      // 현재값으로 재설정한다.
+      rebaseForAxisChange();
       prevKindRef.current = null;
       pendingResolveRef.current = null;
       setOffRoute(false);
@@ -859,7 +1005,7 @@ export function useRouteGuide(
       return;
     }
     announce(t("resolveFailed"));
-  }, [announce, commitDetail, kindFixed, t, tuning]);
+  }, [announce, commitDetail, kindFixed, rebaseForAxisChange, t, tuning]);
 
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
@@ -1005,6 +1151,34 @@ export function useRouteGuide(
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
+
+  /**
+   * fix 부재 워치독. **타이머 구동**이라야 한다 — 권한 철회·위치 서비스 중단이면
+   * `watchPosition` 콜백 자체가 오지 않아, 톤을 fix 처리에만 걸면 마지막 정상 톤
+   * 이후 영구 침묵이 된다(그 침묵은 "안 움직이는 중"과 구분되지 않는다).
+   * 세션 시작 후 첫 fix 대기도 같은 타이머가 덮는다.
+   */
+  useEffect(() => {
+    if (status !== "tracking") return;
+    const id = window.setInterval(() => {
+      if (!trackingRef.current) return;
+      const now = performance.now() / 1000;
+      const reference = lastFixAtRef.current ?? startedAtRef.current;
+      if (reference === null || now - reference < NO_FIX_S) return;
+      emitTone(
+        {
+          unreliable: true,
+          priorityTone: null,
+          eventOwned: false,
+          trend: null,
+          arrived: false,
+          rebaseTrend: false,
+        },
+        now,
+      );
+    }, WATCHDOG_INTERVAL_MS);
+    return () => window.clearInterval(id);
+  }, [emitTone, status]);
 
   // 언마운트 정리 — watch·Wake Lock·재통지 타이머.
   useEffect(() => {
