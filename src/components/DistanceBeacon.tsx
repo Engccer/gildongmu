@@ -35,6 +35,7 @@ const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
 export function DistanceBeacon({
   dest,
   kind = "walk",
+  accessible,
   startOnOpen = false,
   focusTriggerOnMount = false,
   triggerLabel,
@@ -42,6 +43,12 @@ export function DistanceBeacon({
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
   kind?: GuideKind;
+  /**
+   * 계단 회피(도보 전용). ⚠ required다 — A4가 생략 가능한 안전 인자에서 나왔다
+   * (spec 2026-08-08 §2.5). 토글이 없는 진입점(장소 상세·대중교통 인계)은
+   * `false`를 명시한다.
+   */
+  accessible: boolean;
   /**
    * 트리거를 누르는 순간 세션도 시작한다(길찾기 뷰 "OO 안내 시작" 버튼 계약 —
    * "시작"이라 쓰인 버튼이 패널만 여는 이중 행동은 라벨 거짓말이다). 장소 상세는
@@ -67,7 +74,7 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind);
+  const guide = useRouteGuide(dest, kind, accessible);
 
   // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
   // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),

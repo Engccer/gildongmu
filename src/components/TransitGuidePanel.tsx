@@ -365,6 +365,7 @@ export function TransitGuidePanel({
         <DistanceBeacon
           dest={dest}
           kind="walk"
+          accessible={false}
           startOnOpen
           focusTriggerOnMount
           triggerLabel={t("walkHandoffStart")}

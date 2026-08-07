@@ -51,6 +51,7 @@ import { awaitGeolocation } from "@/lib/geolocation";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
+import { walkRouteUrl } from "@/lib/walk-route-url";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
 
@@ -252,6 +253,13 @@ export interface RouteGuideApi {
 export function useRouteGuide(
   dest: RouteGuideDest,
   kind: GuideKind = "walk",
+  /**
+   * 계단 회피(도보 전용). ⚠ **봉인하지 않는다** — `useState` 초기값 고정은
+   * *컴포넌트 마운트* 수명이라 세션 종료 후 값이 바뀌어도 같은 마운트에서는 옛
+   * 값이 남는다(spec 2026-08-08 §2.2). 매 렌더 갱신되는 ref로 두고 조회 직전에
+   * 읽는다. ⚠ **기본값을 두지 않는다** — A4가 생략 가능한 안전 인자에서 나왔다.
+   */
+  accessible: boolean,
 ): RouteGuideApi {
   const locale = useLocale();
   const t = useTranslations("guide");
@@ -272,6 +280,8 @@ export function useRouteGuide(
   const [rerouting, setRerouting] = useState(false);
 
   const destRef = useRef(dest);
+  /** 계단 회피 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
+  const accessibleRef = useRef(accessible);
   const modeRef = useRef<GuideMode>("brief");
   const trackingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -568,8 +578,12 @@ export function useRouteGuide(
         };
       }
       const res = await fetch(
-        `/api/route/walk?origin=${geo.coords.lat},${geo.coords.lng}` +
-          `&dest=${target.lat},${target.lng}&includeGeometry=1`,
+        walkRouteUrl({
+          origin: { lat: geo.coords.lat, lng: geo.coords.lng },
+          dest: { lat: target.lat, lng: target.lng },
+          accessible: accessibleRef.current,
+          includeGeometry: true,
+        }),
       );
       if (!res.ok) return null;
       const body: unknown = await res.json();
@@ -1153,6 +1167,7 @@ export function useRouteGuide(
   // 유일한 갱신 지점 — 렌더 중 ref 쓰기는 금지다(useNearbyFetch 관례 동형).
   useEffect(() => {
     destRef.current = dest;
+    accessibleRef.current = accessible;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;
