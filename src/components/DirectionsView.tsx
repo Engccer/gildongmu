@@ -885,6 +885,7 @@ export function DirectionsView({
                                   route={route}
                                   triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
+                                  walkAccessible={stepFreeEnabled}
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active
