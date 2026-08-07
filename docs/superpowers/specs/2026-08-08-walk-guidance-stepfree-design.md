@@ -1,6 +1,8 @@
 # 계단 회피 상태의 실시간 도보 안내 전달 설계 (백로그 A4 + D1 편승)
 
 > 2026-08-08. 백로그 `docs/BACKLOG.md` §A4(정합 결함)와 §D1(카카오 도보 잔여, "다음에 도보를 손댈 때 편승")을 한 마일스톤으로 닫는다. 관련 항구 규칙은 `CLAUDE.md`의 "도보 경로" 행과 접근성 헌장 §1(3-state 불변식).
+>
+> **개정 2026-08-08 (codex 적대적 검토 19건 반영)**: 초판의 "세션 봉인" 모델을 폐기하고 조회 시점 판독으로 교체, 통지 조건을 "세션 시작"에서 "열화 전이"로 재정의. 판정 근거는 §8.
 
 ## 1. 문제
 
@@ -26,7 +28,7 @@
 - 웹 `src/lib/route-geometry.ts:62` — `if (!pc || pc.length === 0 || !pc.every(finite)) return null;`
 - Kit `RouteGeometry.swift:73-75` — 동일 판정
 
-결과: **무계단 경로가 없을 때 상세(경로 추종) 안내가 통째로 간략 모드로 조용히 강등된다.** 계단 회피를 켠 사용자가 정확히 그것이 필요한 상황에서 안내 품질을 잃는다. 폴백 자체가 정상 경로(`fallbackToBrief`)라 로그도 오류도 남지 않는다.
+결과: **무계단 경로가 없을 때 상세(경로 추종) 안내가 통째로 간략 모드로 조용히 강등된다.** 계단 회피를 켠 사용자가 정확히 그것이 필요한 상황에서 안내 품질을 잃는다.
 
 이 조합(`accessible=true` ∧ `includeGeometry=1`)은 **지금까지 한 번도 실행된 적이 없다** — 안내가 `accessible`을 보낸 적이 없기 때문이다. 두 옵트인은 라우트 스키마에서 서로 독립이라 요청 자체는 400이 아니다.
 
@@ -50,7 +52,7 @@ Kit `WalkRouteBriefing`(`Models/RouteModels.swift:248`)에 `stepFree` 필드가 
 `WalkRouteBriefing`에 `stepFreeNotice?: string`을 신설한다. **열화 상태(`no_stepfree_route`·`unavailable`)면 `includeGeometry` 여부와 무관하게 항상 채운다.** 유사 스텝 삽입은 `includeGeometry`가 **아닐 때만** 한다.
 
 ```
-includeGeometry 미지정  →  steps[0] 유사 스텝 삽입 + stepFree + stepFreeNotice   (기존 동작 + 새 필드)
+includeGeometry 미지정  →  steps[0] 유사 스텝 삽입 + stepFree + stepFreeNotice
 includeGeometry=1       →  유사 스텝 없음        + stepFree + stepFreeNotice
 ```
 
@@ -60,17 +62,27 @@ includeGeometry=1       →  유사 스텝 없음        + stepFree + stepFreeNo
 2. 지식이 서버 한 곳에 남는다. 클라이언트가 떼는 방식은 "안내 문장은 인덱스 0에 있다"는 계약을 웹·iOS 두 곳에 복제한다 — 이 저장소가 반복해 겪은 미러 드리프트의 정확한 형태다.
 3. 문장이 한 벌로 유지된다. `STEP_FREE_NOTICE` 상수를 클라이언트에 복제하지 않는다(도보는 V1 ko 전용이라 i18n 키가 없다).
 
-**기존 소비자는 byte-호환이다.** `includeGeometry` 미지정 경로의 `steps`는 그대로이고, 추가되는 것은 선택 필드 하나뿐이다. 브리핑 UI·채팅·CLI는 변경 없다.
+**기존 소비자 호환**: `includeGeometry` 미지정 응답의 **`steps` 배열과 기존 필드는 불변**이고, 추가되는 것은 선택 필드 하나뿐이다. 브리핑 UI·채팅·CLI는 코드 변경이 없다. ⚠ JSON 전체가 byte-동일하지는 않다(필드가 하나 늘었다) — 이 구분을 §5 게이트가 정확히 반영한다.
+
+**유사 스텝 제거의 영향 범위**: 도보 `includeGeometry=1` 소비자는 **웹 훅(`useRouteGuide.ts:572`)과 iOS `BeaconModel`(`:344`) 둘뿐**이다(2026-08-08 전수 확인). CLI·MCP·채팅 도구는 이 옵트인을 쓰지 않으므로 영향을 받지 않는다.
 
 **필드를 무조건 채우는 이유**: 조건을 하나만 두면(스텝 삽입) 계약이 단순해진다. "필드는 항상, 스텝은 산문 소비자에게만".
 
-### 2.2 클라이언트 — 계단 회피를 세션 봉인 구성에 넣는다
+### 2.2 클라이언트 — 계단 회피는 **조회 시점에 읽는다** (봉인하지 않는다)
 
-**값의 수명**: `kind`와 같은 봉인 축이다. 세션 시작 시 캡처하고 그 세션의 모든 경로 조회(시작·이탈 재조회)가 같은 값을 쓴다. 세션 도중 브리핑 토글을 바꿔도 진행 중인 안내는 시작 시점 계약을 유지한다 — 걷는 중에 안내 경로의 성격이 조용히 바뀌는 것이 더 나쁘다.
+⚠ **초판의 "세션 봉인" 모델을 폐기했다.** 봉인은 세 결함을 동시에 만들었다(§8 C1·C2·C3): ①이탈 재조회가 옛 값을 쓰면 실제 경로와 어긋난다 ②웹 `useState` 초기값은 *컴포넌트 마운트* 수명이지 *세션* 수명이 아니라, 세션 종료 후 토글을 바꿔도 같은 마운트에서는 옛 값이 남는다 ③화면과 안내가 다시 갈린다 — 이 마일스톤이 없애려던 바로 그 불일치.
 
-**웹**: `DirectionsView`(토글 소유) → `DistanceBeacon accessible` prop → `useRouteGuide(dest, kind, accessible)`. 훅 안에서 `kindFixed`와 같은 방식(`useState` 초기값 고정)으로 봉인한다.
+**계약 한 줄**: 도보 경로를 조회할 때마다 **그 시점의 계단 회피 값**을 읽어 싣는다. 세션 시작·이탈 재조회 모두 같은 규칙이다.
 
-**iOS**: `DirectionsTabView`(토글 소유) → `BeaconModel.toggle(dest:label:kind:accessible:)` → 모델 필드 → `fetchDetailData`가 `routeService.walk(… accessible:)`에 전달.
+- **웹**: `DirectionsView`(토글 소유) → `DistanceBeacon accessible` prop → `useRouteGuide(dest, kind, accessible)`. 훅은 `useState` 초기값 고정을 쓰지 **않고**, 매 렌더 갱신되는 ref로 보관해 fetch 직전에 읽는다(`destRef` 선례).
+- **iOS**: `DirectionsTabView`(토글 소유) → `BeaconModel.toggle(dest:label:kind:accessible:)` → 모델 필드 → `fetchDetailData`가 `routeService.walk(… accessible:)`에 전달. iOS는 추적 중 토글에 도달할 수 없으므로(아래) 시작 시 전달값이 그 세션 내내 유효하다.
+
+**세션 중 토글 변경은 능동 재조회를 일으키지 않는다.** 다음 조회(이탈 재조회)부터 새 값이 적용된다. 근거는 노출면 실측이다.
+
+- **iOS**: 추적 중에는 `.sheet(isPresented: beacon.isTracking)`(`DirectionsTabView.swift:579`)이 화면을 덮어 **토글에 물리적으로 도달할 수 없다**(추적 중 목적지 재검색이 도달 불가 판정된 것과 동형).
+- **웹**: 도달 가능하지만 웹앱 주 사용처가 컴퓨터라 실보행 중 토글이 성립하지 않는다(백로그 §폐기 "웹 거리 추적도 모달로"와 같은 근거).
+
+봉인을 없앴으므로 불일치 창은 "다음 조회까지"로 좁다. 능동 재조회를 더하는 것은 없는 문제를 위해 쿼터와 코드를 쓰는 일이다.
 
 **호출부 전수**(§2.5의 "기본값 금지"에 따라 전부 명시 전달):
 
@@ -85,34 +97,47 @@ includeGeometry=1       →  유사 스텝 없음        + stepFree + stepFreeNo
 
 ⚠ 간략 폴백 비콘도 도보 값을 싣는다. 그 세션도 시작 시 상세 경로 조회를 시도하므로(폴백 판정은 브리핑 조회 결과이지 안내 조회 결과가 아니다) 계약이 갈리면 안 된다.
 
-### 2.3 통지 — 시작 시 1회 (위원장 판정 2026-08-08)
+### 2.3 통지 — **열화 상태로의 전이**에서 1회
 
-상세 경로 조회가 **성공**하고 응답에 `stepFreeNotice`가 있으면, 세션 시작 발화에 이어 **1회 polite 통지**한다. 정상 적용(`applied`)이면 침묵한다.
+⚠ 초판의 "세션 시작 시 1회"를 일반화했다. 위원장 판정("열화일 때만, 1회, 정상이면 침묵")은 유지하되, 그 판정의 근거가 **"출발지가 다르면 판정이 달라진다"**인데 초판은 그 논리를 시작 조회에만 적용해 **이탈 재조회에서 새로 생긴 계단 위험을 놓쳤다**(§8 C1).
 
-- 웹: `liveText`에 실어 단일 polite live region으로.
-- iOS: 원자 시작 발화 경로에 흡수(별도 채널 신설 금지).
-- **상세 조회 실패로 간략 폴백된 경우엔 통지하지 않는다.** 경로 자체가 없으니 계단 회피 개념이 성립하지 않는다(3-state: "계단 있음"이 아니라 "경로 판정 없음").
+**세션 상태**: `lastStepFreeStatus: StepFreeStatus?`(초기 `nil`).
 
-**이것은 브리핑에서 들은 문장의 반복이 아니다.** 안내 세션은 브리핑과 **다른 출발지**(첫 수용 fix)로 경로를 다시 뽑으므로 계단 회피 판정이 달라질 수 있다. 브리핑이 `applied`였는데 안내가 `no_stepfree_route`인 경우가 정확히 이 통지가 필요한 상황이다.
+**판정 순서** — 상세 경로 조회가 **기하 빌드까지 성공한 뒤**에만 평가한다(§8 H5: "조회 성공"의 시점이 HTTP·디코딩·기하 셋으로 갈리므로 가장 늦은 것으로 못 박는다):
 
-**반대 방향(브리핑 열화 → 안내 적용)은 침묵한다.** 사용자가 실제보다 나쁘게 예상하는 안전한 방향의 오차이고, 정상 상태를 매번 확인 발화하면 그 자체가 노이즈다(접근성 헌장 §2 과잉 통지 금지).
+| 새 상태 | 직전 상태 | 동작 |
+|---|---|---|
+| 열화(`no_stepfree_route`·`unavailable`) | 다름 | `stepFreeNotice`를 **그 조회의 발화에 결합**해 1회 |
+| 열화 | 같음 | 침묵(반복 금지) |
+| `applied` | 무관 | 침묵, 상태만 갱신 |
+| 부재(계단 회피 미요청) | 무관 | 침묵, 상태만 갱신 |
 
-### 2.4 Kit — 필드 디코딩 추가
+**기하 빌드 실패로 간략 폴백되면 `lastStepFreeStatus`를 `nil`로 되돌린다.** 경로가 없으므로 판정도 없다(3-state). 이후 상세가 복구되고 그 경로가 열화면 다시 통지된다 — 새 경로에 대한 새 판정이므로 반복이 아니다.
 
-`WalkRouteBriefing`에 `stepFree: StepFreeStatus?`와 `stepFreeNotice: String?`을 더한다. `StepFreeStatus`는 Kit에 없으므로 웹 `src/lib/types.ts:380`의 열거형을 미러하는 `String` raw enum으로 신설한다(`applied`·`no_stepfree_route`·`unavailable`).
+**발화는 반드시 결합한다 — 두 문자열을 연속으로 내보내지 않는다**(§8 H6). 웹은 단일 `liveText`에 한 문자열로, iOS는 원자 시작 발화에 이어 붙인다. 두 번 쓰면 React 배칭이 첫 발화를 삼키거나 두 번째가 첫 낭독을 끊고, 같은 문구로 재시작하면 DOM이 안 바뀌어 아예 낭독되지 않는다.
 
-⚠ **디코딩은 옵셔널이어야 한다.** 웹 배포가 앱보다 먼저 나가는 것이 정상 순서지만, 필수 디코딩으로 만들면 구버전 서버 응답에서 도보 브리핑이 통째로 오류가 된다(대중교통 `routeKey`가 만든 배포 순서 제약을 반복하지 않는다).
+**반대 방향(열화 → `applied`)은 침묵한다.** 사용자가 실제보다 나쁘게 예상하는 안전한 방향의 오차이고, 정상 상태 확인 발화는 노이즈다(접근성 헌장 §2).
+
+### 2.4 Kit — 필드 디코딩 추가 (전방 호환)
+
+`WalkRouteBriefing`에 `stepFree: StepFreeStatus?`와 `stepFreeNotice: String?`을 더한다. `StepFreeStatus`는 Kit에 없으므로 웹 `src/lib/types.ts:380`의 열거형을 미러해 신설한다.
+
+⚠ **`String` raw enum을 그대로 디코딩하지 않는다.** 서버가 넷째 상태를 추가하면 raw enum 디코딩이 실패해 `WalkRouteBriefing` **전체가 깨진다**(§8 M16). `String?`으로 받아 알려진 값만 매핑하고 미지의 값은 `nil`로 떨어뜨린다 — 모르는 상태는 "판정 없음"이 정직한 처리다.
+
+⚠ 두 필드 모두 **옵셔널**이다. 필수로 만들면 구버전 서버 응답에서 도보 브리핑이 통째로 오류가 된다(대중교통 `routeKey`가 만든 배포 순서 제약을 반복하지 않는다).
 
 ### 2.5 재발 방지 — 기본값 있는 안전 인자를 없앤다
 
-**A4가 생긴 기제가 곧 수정 방법을 정한다.** `RouteService.walk`의 `accessible: Bool = false` 기본값이, 호출부가 안전 관련 값을 조용히 생략해도 컴파일을 통과시켰다. 같은 모양으로 고치면(기본값 있는 인자를 하나 더 추가) 정확히 같은 기제로 재발한다.
+**A4가 생긴 기제가 곧 수정 방법을 정한다.** `RouteService.walk`의 `accessible: Bool = false` 기본값이, 호출부가 안전 관련 값을 조용히 생략해도 컴파일을 통과시켰다. 같은 모양으로 고치면 정확히 같은 기제로 재발한다.
 
-- **iOS**: `RouteService.walk`의 `accessible` **기본값 제거**(실호출부 2곳: `DirectionsTabView.swift:351` 브리핑, `BeaconModel.swift:341` 안내). `BeaconModel.toggle`의 `accessible`도 required로 두고 호출부 5곳이 각자 의도를 명시한다(car·transit은 `false` — 그 수단에 계단 회피 개념이 없다는 사실이 코드에 드러난다).
-- **웹**: 도보 조회 URL 조립을 `walkRouteUrl({origin, dest, accessible, includeGeometry})` 공용 빌더로 모은다. 인자는 전부 named·required. 현재는 `DirectionsView.tsx:133`이 `&accessible=true`를 손으로 붙이고 훅은 URL을 따로 조립해, 같은 계약이 두 곳에 흩어져 있다. `DistanceBeacon`의 `accessible` prop과 `useRouteGuide`의 세 번째 인자도 **선택이 아니라 필수**로 둔다 — 계단 회피 개념이 없는 수단(car·transit 인계)에서 `false`를 적는 것은 잉여가 아니라 그 사실의 선언이다.
+- **iOS**: `RouteService.walk`의 `accessible` **기본값 제거**(실호출부 2곳). `BeaconModel.toggle`의 `accessible`도 required로 두고 호출부 5곳이 각자 의도를 명시한다(car·transit은 `false` — 그 수단에 계단 회피 개념이 없다는 사실이 코드에 드러난다).
+- **웹**: 도보 조회 URL 조립을 `walkRouteUrl({origin, dest, accessible, includeGeometry})` 공용 빌더로 모은다. 인자는 전부 named·required. 현재는 `DirectionsView.tsx:133`이 `&accessible=true`를 손으로 붙이고 훅은 URL을 따로 조립해, 같은 계약이 두 곳에 흩어져 있다. `DistanceBeacon`의 prop과 `useRouteGuide`의 세 번째 인자도 **선택이 아니라 필수**로 둔다.
+
+⚠ **한계**: 이 장치는 *누락*만 막고 *잘못된 전달*(모델 저장 시 `false` 대입 등)은 못 막는다(§8 H8). iOS 앱 타깃에 테스트 레인이 없어 그 배선은 웹 훅 계약 테스트의 미러와 코드 리뷰가 덮는다. 이 한계를 D8과 같은 방식으로 기록한다.
 
 ### 2.6 D1-b — 문장을 두 분기 모두 참인 것으로 교체
 
-열거형 `StepFreeStatus`는 공개 계약(CLI·채팅·향후 iOS 소비)이므로 **유지**한다. 상태를 넷으로 늘리지 않고 문장만 고친다 — 문장의 역할은 "어느 경로를 골랐는지 설명하는 것"이 아니라 "계단이 있을 수 있음을 경고하는 것"이다.
+열거형 `StepFreeStatus`는 공개 계약이므로 **유지**한다. 상태를 넷으로 늘리지 않고 문장만 고친다 — 문장의 역할은 "어느 경로를 골랐는지 설명하는 것"이 아니라 "계단이 있을 수 있음을 경고하는 것"이다.
 
 ```
 before: 계단 없는 경로를 찾지 못해 일반 경로를 안내합니다. 계단이 포함될 수 있습니다.
@@ -134,70 +159,128 @@ interface WalkRouteBriefing {
   distanceMeters: number;
   durationSeconds: number;
   steps: WalkRouteStep[];
-  stepFree?: StepFreeStatus;        // 기존 (accessible 요청 시에만 존재)
-  stepFreeNotice?: string;          // 신설: stepFree가 applied가 아닐 때만 존재
+  stepFree?: StepFreeStatus;        // 기존: accessible=true 요청에만 존재
+  stepFreeNotice?: string;          // 신설
 }
 ```
 
-**불변식 셋** (테스트로 못 박는다):
+**불변식 다섯** (테스트로 못 박는다):
 
-1. `includeGeometry=1` 응답의 모든 스텝은 `pathCoords`를 갖는다(기하 없는 스텝 0개).
-2. `stepFree !== "applied"` ⟺ `stepFreeNotice`가 존재한다. `stepFree`가 없으면 `stepFreeNotice`도 없다.
-3. `includeGeometry` 미지정 + `accessible=true` + 열화 응답의 `steps[0].description === stepFreeNotice`(산문 소비자와 구조화 소비자가 같은 문장을 받는다).
+1. `includeGeometry=1` 응답의 **모든 스텝이 `pathCoords`를 갖는다.**
+2. **스텝 수 보존**: 같은 좌표·같은 `accessible`로 조회했을 때 `includeGeometry=1` 응답의 스텝 수는 미지정 응답에서 유사 스텝을 뺀 수와 **정확히 같다.** ⚠ 불변식 1만 두면 구현자가 기하 없는 *실제* provider 스텝까지 걸러내 통과할 수 있고, 그러면 경로 구간이 조용히 사라진다(§8 H11).
+3. `stepFreeNotice`가 존재한다 ⟺ `stepFree`가 **존재하고** `applied`가 아니다. `stepFree`가 부재면 `stepFreeNotice`도 부재다. (초판 서술은 `undefined !== "applied"`가 참이라 자기모순이었다 — §8 H9.)
+4. **상태-문구 대응**: `stepFreeNotice`의 값이 그 `stepFree` 값에 대응하는 정확한 문자열이다. 존재 여부만 검사하면 두 문구를 서로 바꿔 붙여도 통과한다(§8 H12·M18).
+5. `includeGeometry` 미지정 + 열화 응답에서 `steps[0].description === stepFreeNotice`(산문 소비자와 구조화 소비자가 같은 문장을 받는다).
 
 ## 4. 테스트 계획
 
 ### 4.1 서버 (`src/lib/__tests__/walk-route.test.ts`)
 
-- `includeGeometry=1` + 열화: `steps[0]`이 유사 스텝이 **아니고** 모든 스텝이 기하를 갖는다
+- `includeGeometry=1` + 열화: 유사 스텝 부재 + 모든 스텝이 기하 보유 + **스텝 수가 provider 원본과 같다**(불변식 2)
 - `includeGeometry` 미지정 + 열화: 종전대로 유사 스텝이 앞에 붙고 `steps[0].description === stepFreeNotice`
 - `applied`: `stepFreeNotice` 부재
-- D1-b: `hasStairs` 분기 문장이 "일반 경로를 안내합니다"를 포함하지 **않는다**
-- D1-a: 마지막 기본 모드 재호출 throw → 전파
+- **상태별 정확 문자열 대조**(불변식 4) — 부정 검사("일반 경로를 안내합니다" 미포함)로 대신하지 않는다. 빈 문자열·문구 교환이 전부 통과한다(§8 M18)
+- **분기 곱 보강**(§8 M13·H10): `via==="tmap"` ∧ 계단 문구 동시 참(분기 순서 버그 검출), 첫 ACCESSIBLE 호출 throw, 마지막 기본 모드 재호출 throw(D1-a)
 
 ### 4.2 경로 빌더 회귀 (`route-geometry` · Kit)
 
-- 기하 없는 스텝이 섞이면 `null`을 반환한다는 기존 계약은 **유지**(이번 변경이 그 판정을 무르게 하지 않는다). 그 계약이 살아 있음을 단언하는 테스트를 이 스위트에 남긴다 — 서버가 실수로 유사 스텝을 다시 넣으면 상세 안내가 죽는다는 사실이 그 자리에 기록되어야 한다.
+기하 없는 스텝이 섞이면 `null`을 반환한다는 기존 계약은 **유지**한다(이번 변경이 그 판정을 무르게 하지 않는다). 그 계약이 살아 있음을 단언하는 테스트를 이 스위트에 남긴다 — 서버가 실수로 유사 스텝을 다시 넣으면 상세 안내가 죽는다는 사실이 그 자리에 기록되어야 한다.
 
 ### 4.3 클라이언트 배선
 
-- 웹 `walkRouteUrl` 단위 테스트: `accessible` true/false, `includeGeometry` on/off 4조합의 정확한 쿼리 문자열
-- 웹 훅 계약(신규 `src/hooks/__tests__/useRouteGuide.stepfree.test.tsx` — 기존 레인 `useRouteGuide.car.test.tsx`·`useRouteGuide.tone.test.tsx`와 동형): 세션 시작 시 `accessible=true`가 요청에 실린다 / 이탈 재조회도 같은 값 / `stepFreeNotice`가 오면 시작 통지에 1회 포함되고 두 번 반복되지 않는다 / `applied`면 통지 없음 / 상세 실패 폴백이면 통지 없음. ⚠ 이 레인은 fake timer를 쓰므로 `waitFor` 금지·`toFake`에 `performance` 포함([[jsdom-sync-focus-assertion-flake]] 및 톤 스위트 선례)
-- iOS는 앱 타깃에 테스트 레인이 없다. `RouteService.walk`·`toggle`의 기본값 제거가 **컴파일러 강제**로 대신하고, Kit `WalkRouteBriefing` 디코딩(선택 필드 부재·존재 두 모양)은 Kit 스위트가 덮는다.
+- 웹 `walkRouteUrl` 단위 테스트: `accessible` × `includeGeometry` 4조합의 정확한 쿼리 문자열
+- 웹 훅 계약(신규 `src/hooks/__tests__/useRouteGuide.stepfree.test.tsx` — 기존 레인 `useRouteGuide.car.test.tsx`·`useRouteGuide.tone.test.tsx`와 동형):
+  - 세션 시작 시 `accessible=true`가 요청에 실린다
+  - **이탈 재조회도 그 시점 값을 읽는다**(봉인 폐기 계약)
+  - **같은 마운트에서 세션 종료 → prop 변경 → 재시작 시 두 번째 요청이 새 값을 쓴다**(§8 C2)
+  - **시작 `applied` → 재조회 열화 전이에서 통지가 나간다**(§8 C1의 놓친 변이)
+  - 같은 열화 상태가 이어지면 재통지 없음
+  - `applied`·부재면 통지 없음
+  - 기하 빌드 실패 폴백이면 통지 없고 상태가 `nil`로 돌아간다
+  - **통지가 시작 발화와 한 문자열로 결합된다**(§8 H6 — 두 번 set 하지 않는다)
+  - ⚠ 이 레인은 fake timer를 쓰므로 `waitFor` 금지·`toFake`에 `performance` 포함
+- iOS는 앱 타깃에 테스트 레인이 없다. 기본값 제거가 **컴파일러 강제**로 누락을 막고, Kit `WalkRouteBriefing` 디코딩(필드 부재·존재·**미지의 `stepFree` 값** 세 모양)은 Kit 스위트가 덮는다.
 
 ### 4.4 변이 주입 후보 (하한 — 설계는 리뷰 계층에 넘긴다)
 
-[[mutation-proves-test-detection-power]] 2026-08-08 갱신: 구현자가 고른 변이는 구현자의 계약 이해를 넘지 못한다. 아래는 **하한**이고, 리뷰어에게 독립 변이를 요구한다.
+[[mutation-proves-test-detection-power]] 2026-08-08 갱신: 구현자가 고른 변이는 구현자의 계약 이해를 넘지 못한다. 아래는 **하한**이고, 리뷰어에게 독립 변이를 요구한다. M7~M10은 codex가 직접 제안한 것이다.
 
 | # | 변이 | 잡아야 할 축 |
 |---|---|---|
 | M1 | 안내 조회에서 `accessible`을 다시 뺀다 | A4 본체 |
 | M2 | `includeGeometry`일 때도 유사 스텝을 넣는다 | §1.2 함정(상세 조용한 강등) |
-| M3 | `stepFreeNotice`를 `applied`에도 채운다 | 정상 상태 침묵 계약 |
+| M3 | `stepFreeNotice`를 `applied`에도 채운다 | 정상 상태 침묵 |
 | M4 | 통지를 매 fix 반복한다 | 1회 계약 |
-| M5 | 이탈 재조회에서 `accessible`을 떨어뜨린다 | 세션 봉인 |
+| M5 | 이탈 재조회에서 `accessible`을 떨어뜨린다 | 조회 시점 판독 |
 | M6 | D1-b 문장을 원복 | 문구 정확성 |
+| M7 | 통지 조건을 "세션 시작"으로 되돌린다 | 열화 전이 계약(C1) |
+| M8 | 값 판독을 `useState` 초기값 고정으로 되돌린다 | 마운트≠세션(C2) |
+| M9 | 기하 없는 provider 스텝을 필터링해 통과시킨다 | 스텝 수 보존(H11) |
+| M10 | 두 상태의 문구를 서로 바꾼다 | 상태-문구 대응(H12) |
 
-⚠ **M2는 fixture 선택에 걸린다.** 열화 상태 fixture로만 돌리면 잡히지만, `applied` fixture에서는 유사 스텝 자체가 없어 변이가 항등이 된다. 열화 + `includeGeometry=1` 조합이 반드시 있어야 한다.
+⚠ **M2는 fixture 선택에 걸린다.** `applied` fixture에서는 유사 스텝 자체가 없어 변이가 항등이 된다. **열화 ∧ `includeGeometry=1`** 조합이 반드시 있어야 한다.
+
+⚠ **M8은 스텁 기본값에 걸린다.** prop을 처음부터 `true`로 두면 초기값 고정과 조회 시점 판독이 같은 값을 내 변이가 관측 불가다. **세션 사이에 값이 바뀌는** 시나리오여야 한다.
 
 ## 5. 실호출 게이트 (머지 조건)
 
 fixture green은 실계약 검증이 아니다. **계단이 실재하는 좌표쌍**으로 다음을 확인한다.
 
-1. `accessible=true&includeGeometry=1` 응답에 기하 없는 스텝이 0개
-2. 같은 좌표쌍에서 `accessible` 없이 조회한 경로와 **실제로 다른 경로**가 나온다(파라미터가 upstream에 도달했다는 증거 — 응답 통과만으로는 부족하다)
+1. `accessible=true&includeGeometry=1` 응답에 기하 없는 스텝이 0개이고, 스텝 수가 유사 스텝을 뺀 수와 같다
+2. **파라미터가 upstream에 도달했다는 증거**: 응답에 `stepFree` 필드가 존재한다(그 필드는 `accessible` 요청 경로에서만 생성된다). ⚠ 초판의 "다른 경로가 나온다"는 술어는 폐기한다 — 최적 경로가 하나뿐이면 정상 구현도 같은 경로를 내고, 반대로 미전달이어도 시점별 upstream 변화로 달라질 수 있다([[real-call-gate-weak-predicate]]). 경로 차이는 **보조 관찰**로만 기록한다.
 3. 무계단 경로가 없는 좌표쌍에서 `stepFree === "no_stepfree_route"` + `stepFreeNotice` 존재 + 기하 온전
-4. `includeGeometry` 미지정 응답이 종전과 byte-동일(`steps[0]` 유사 스텝 포함)
+4. `includeGeometry` 미지정 응답의 **`steps` 배열과 기존 필드가 종전과 동일**(신설 필드 하나만 늘었다)
 
 ⚠ 3번 좌표쌍은 조사가 필요하다. 실측으로 찾지 못하면 그 사실을 기록하고 fixture로 대신한다(없는 것을 있다고 적지 않는다).
 
-## 6. 범위 밖
+## 6. 배포 순서 제약
 
-- **라우트 `error` 문자열의 꼬리 문장 11건(9개 라우트)**: `[[sr-announcement-tails-live-in-server-strings]]`가 지목한 잔여분이 아직 살아 있다(`/api/route/walk` 자신도 2건). 확인된 규칙 위반이고 클라이언트가 `body.error`를 그대로 낭독하지만 A4와 무관하므로 **같은 마일스톤 안 별도 커밋**으로 처리한다. 백로그에도 등재한다(마일스톤 줄에만 남은 관찰이 백로그에 도착하지 못하는 것이 이 저장소의 알려진 실패 모드 ④다).
-- **브리핑과 안내의 경로가 다를 수 있다는 사실 자체**: 출발지가 다르므로 정상이고 결함이 아니다. 안내 경로는 "지금 있는 자리에서의" 경로다.
-- **세션 도중 토글 변경**: 진행 중 세션은 시작 시점 계약을 유지한다(§2.2). 토글을 비활성화하지도, 세션을 중지시키지도 않는다.
+**웹(서버)이 iOS 앱보다 먼저 나가야 한다.** 새 iOS 앱이 구버전 서버를 만나면 서버가 유사 스텝을 그대로 끼워 넣고 `stepFreeNotice`를 주지 않아, 기하 빌더가 경로를 거부하고 상세 안내가 다시 조용히 죽는다 — 옵셔널 디코딩은 크래시만 막을 뿐 기능 호환이 아니다(§8 H7).
+
+실제 위험은 낮다. 웹은 push=배포라 이 마일스톤에서 즉시 나가고 iOS 빌드는 심사를 거쳐 수 주 뒤 도달한다. **반대 조합(구버전 앱 + 신버전 서버)은 안전하다** — 구버전 앱은 `accessible`을 보내지 않아 열화 상태 자체가 생기지 않는다.
+
+## 7. 범위 밖
+
+- **라우트 `error` 문자열의 꼬리 문장 11건(9개 라우트)**: `[[sr-announcement-tails-live-in-server-strings]]`가 지목한 잔여분이 아직 살아 있다(`/api/route/walk` 자신도 2건). 확인된 규칙 위반이고 클라이언트가 `body.error`를 그대로 낭독하지만 A4와 무관하므로 **같은 마일스톤 안 별도 커밋**으로 처리한다. 백로그에도 등재한다.
+- **브리핑과 안내의 경로가 다를 수 있다는 사실 자체**: 출발지가 다르므로 정상이고 결함이 아니다.
+- **세션 중 토글의 능동 재조회**: §2.2 노출면 실측으로 기각.
 - **`no_stepfree_route`를 두 상태로 쪼개기**: 공개 계약을 늘리는 대신 문장을 참으로 만드는 쪽을 골랐다(§2.6).
 
-## 7. 미해결
+## 8. codex 적대적 검토 판정 (2026-08-08, 19건)
+
+초판(커밋 `f317a44`)에 대한 독립 검토. 리뷰어에게는 spec 전문과 배경 사실만 넘겼고 세션 히스토리·의도는 넘기지 않았다.
+
+**설계를 바꾼 것 (10건)**
+
+| # | 지적 | 반영 |
+|---|---|---|
+| C1 | 이탈 재조회의 열화 전환 무통지 | §2.3 통지 조건을 "시작"에서 "열화 전이"로 재정의 |
+| C2 | 웹 `useState`는 마운트 수명이지 세션 수명이 아님 | §2.2 봉인 폐기, 조회 시점 ref 판독 |
+| C3 | 진행 중 토글이 화면/안내 불일치를 재생산 | §2.2 봉인 폐기로 창 축소 + 노출면 실측 기록 |
+| H5 | "조회 성공" 시점 미정의 | §2.3 기하 빌드 성공까지로 못 박음 |
+| H6 | 두 발화 연속은 SR 이벤트를 보장 못함 | §2.3 단일 문자열 결합 |
+| H9 | 불변식 2 자기모순 | §3-3 재서술 |
+| H11 | 기하 불변식이 경로 절단도 통과시킴 | §3-2 스텝 수 보존 신설 |
+| H12·M18 | 존재 검사·부정 검사가 문구 교환을 허용 | §3-4 정확 문자열 대조 |
+| M14 | "byte-호환"이 새 필드와 양립 불가 | §2.1·§5-4 표현 정정 |
+| M16 | Swift raw enum이 미래 상태에 취약 | §2.4 `String?` 판독 후 매핑 |
+| L19 | 실호출 게이트 2번이 약한 술어 | §5-2 계약 증거로 교체 |
+
+**테스트 계획만 넓힌 것 (2건)**: H10(상태 곱 미포괄) → §4.1 분기 곱 보강, M13(tmap ∧ 계단 문구) → 같은 항목.
+
+**기록만 (3건)**
+
+- **H7 배포 순서**: §6 신설. 코드 대응 없음 — 실제 배포 순서가 구조적으로 안전하고, 방어 코드를 넣으면 §2.1이 없애려던 클라이언트 지식 복제가 되살아난다.
+- **H8 오전달 미검출**: §2.5 한계로 기록. iOS 앱 타깃 테스트 부재라는 기존 제약(D8)의 재확인이고 이번 변경이 만든 것이 아니다.
+- **M15 미업그레이드 구조화 소비자**: 전수 확인으로 무위험 확정(§2.1) — 도보 `includeGeometry` 소비자는 웹 훅과 iOS 둘뿐이다.
+
+**기각 (2건, 근거 기록)**
+
+- **C4 "상세 조회 실패 시 침묵이 `unknown`을 뭉갠다"** — 기각. 간략 폴백은 이미 발화한다: `guide.detailUnavailable` = "경로 정보를 가져오지 못해 간략 안내로 시작합니다"(`messages/ko.json:635`, iOS `fallbackToBrief`가 `announce`). 경로가 없으면 경로 기반 계단 판정도 정의상 없으므로, 덧붙이는 문장은 새 정보가 아니라 꼬리 문장이다(판정선: "뒷문장이 새 정보를 주는가"). ⚠ 다만 지적이 가리킨 상태 관리는 반영했다 — 폴백 시 `lastStepFreeStatus`를 `nil`로 되돌린다(§2.3).
+- **M17 "유사 스텝 정확히 1회 삽입이 불변식에 없다"** — 기각. `withStepFree`는 각 분기에서 정확히 한 번 호출되고 두 번 호출하는 경로가 없다. 도달 불가능한 상태를 시뮬레이션하는 테스트는 구현 유무와 무관하게 통과하는 가짜 신호다([[mutation-proves-test-detection-power]] 2026-08-07 갱신 ⓑ).
+
+**리뷰 처리 원칙 적용**: 지적을 처방으로 받지 않고 계층을 먼저 의심했다. C1·C2·C3은 서로 다른 증상으로 보고됐지만 원인이 하나(계단 회피를 "세션 봉인 축"으로 모델링한 것)여서, 세 곳을 패치하는 대신 그 계층 선택을 폐기했다. 결과 구현은 초판보다 단순하다.
+
+## 9. 미해결
 
 없음. 실호출 게이트 3번의 좌표쌍 확보만 구현 중 조사 대상이고, 실패해도 진행을 막지 않는다(fixture 대체 + 기록).
