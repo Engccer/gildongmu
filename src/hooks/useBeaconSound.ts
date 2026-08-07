@@ -31,8 +31,13 @@ type GuideSound =
   | "start"
   | "stop"
   | "ahead"
-  | "warning";
+  | "warning"
+  | "unreliable";
 
+/**
+ * ⚠ `unreliable`은 `tick`(0.3)보다 높다. 신뢰 불가는 상태 경고라 배경 미디어 위에서
+ * 묻히면 안 된다(iOS `BeaconTonePlayer.gains`와 동조 — 값 변경 시 양쪽 함께).
+ */
 const GAIN: Record<GuideSound, number> = {
   closer: 0.35,
   farther: 0.35,
@@ -42,6 +47,7 @@ const GAIN: Record<GuideSound, number> = {
   stop: 0.8,
   ahead: 0.8,
   warning: 1,
+  unreliable: 0.45,
 };
 
 /**
@@ -161,14 +167,10 @@ export function useBeaconSound() {
     [getCtx],
   );
 
-  return {
-    playCloser: useCallback(() => play("closer"), [play]),
-    playFarther: useCallback(() => play("farther"), [play]),
-    playNearby: useCallback(() => play("nearby"), [play]),
-    playTick: useCallback(() => play("tick"), [play]),
-    playStart: useCallback(() => play("start"), [play]),
-    playStop: useCallback(() => play("stop"), [play]),
-    playAhead: useCallback(() => play("ahead"), [play]),
-    playWarning: useCallback(() => play("warning"), [play]),
-  };
+  // 톤 선택은 `toneLayerStep`(순수 함수)이 하고 여기는 재생만 한다 — 톤별 래퍼를
+  // 두면 계층이 낸 이름을 다시 함수로 사상해야 해서 매핑 표가 하나 더 생긴다.
+  return { play };
 }
+
+export type { GuideSound };
+

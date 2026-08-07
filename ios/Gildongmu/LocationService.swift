@@ -60,6 +60,12 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         /// 미터. **음수는 좌표 무효 신호**이므로 소비자가 걸러야 한다.
         let accuracy: Double
         let timestamp: Date
+        /// m/s(도플러). **음수는 속도 무효 신호**(CLLocation 계약). 정지 판정이 소비한다.
+        /// 여기서는 원값만 싣고 신뢰 판정은 Kit `motionStep`이 한다.
+        let speed: Double
+        /// m/s. 음수는 무효. ⚠ **음수 여부만으로 신뢰를 판정하면 안 된다** —
+        /// `speed = 0.2`인데 이 값이 매우 크면 정지 근거가 못 된다.
+        let speedAccuracy: Double
     }
 
     private var beaconFixSink: ((BeaconFixPayload) -> Void)?
@@ -408,6 +414,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         let lng = location.coordinate.longitude
         let accuracy = location.horizontalAccuracy
         let timestamp = location.timestamp
+        // 도플러 속도는 CLLocation이 이미 들고 있어 새 호출이 없다. 정지 판정의 축이며
+        // 경로·목적지 양쪽에 독립이라 간략·상세 두 모드가 공유할 수 있다.
+        let speed = location.speed
+        let speedAccuracy = location.speedAccuracy
         // ⚠ 정밀도 허가를 **값으로 직접 읽는다.** `storeCeiling`만으로 reduced 좌표를
         // 막는 것은 "reduced fix가 km급 accuracy로 보고된다"는 가정에 기대는 것이고,
         // 그 가정이 틀리면 흐릿한 좌표가 공유 스토어에 들어가 앱 전역이 오염된다.
@@ -443,7 +453,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
             if self.isBeaconTracking {
                 self.beaconFixSink?(
-                    BeaconFixPayload(lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp)
+                    BeaconFixPayload(
+                        lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp,
+                        speed: speed, speedAccuracy: speedAccuracy
+                    )
                 )
             }
         }

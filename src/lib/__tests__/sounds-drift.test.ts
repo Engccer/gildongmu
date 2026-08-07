@@ -20,6 +20,7 @@ const SOUNDS = [
   "stop",
   "ahead",
   "warning",
+  "unreliable",
 ] as const;
 
 const ROOT = path.resolve(__dirname, "../../..");
@@ -35,7 +36,7 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
     });
   }
 
-  it("웹 재생기가 8종 전부를 알고 있다(누락 시 조용한 폴백 금지)", () => {
+  it("웹 재생기가 9종 전부를 알고 있다(누락 시 조용한 폴백 금지)", () => {
     const hook = readFileSync(path.join(ROOT, "src/hooks/useBeaconSound.ts"), "utf8");
     for (const name of SOUNDS) expect(hook).toContain(`"${name}"`);
   });
