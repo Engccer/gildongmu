@@ -50,7 +50,7 @@ import { haversineMeters } from "@/lib/geo";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
+import type { CarRouteBriefing, StepFreeStatus, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
@@ -282,6 +282,8 @@ export function useRouteGuide(
   const destRef = useRef(dest);
   /** 계단 회피 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
   const accessibleRef = useRef(accessible);
+  /** 직전 계단 회피 판정(열화 전이 통지의 기준 — spec 2026-08-08 §2.3). */
+  const lastStepFreeRef = useRef<StepFreeStatus | null>(null);
   const modeRef = useRef<GuideMode>("brief");
   const trackingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -355,6 +357,22 @@ export function useRouteGuide(
   const rememberGuidance = useCallback((text: string) => {
     lastGuidanceRef.current = text;
   }, []);
+
+  /**
+   * 열화 전이 판정(spec 2026-08-08 §2.3). 상태가 열화이고 **직전과 다를 때만**
+   * 문장을 돌려준다. 직전 상태를 갱신하는 부작용이 있으므로 **조회 성공 경로에서
+   * 정확히 1회** 부른다. 기하 빌드까지 성공한 뒤에 불러야 한다 — "조회 성공"의
+   * 시점이 HTTP·디코딩·기하 셋으로 갈리는데 가장 늦은 것이 정본이다.
+   */
+  const consumeStepFreeNotice = useCallback(
+    (status: StepFreeStatus | null, notice: string | null): string | null => {
+      const prev = lastStepFreeRef.current;
+      lastStepFreeRef.current = status;
+      if (!status || status === "applied" || status === prev) return null;
+      return notice;
+    },
+    [],
+  );
 
   /**
    * 경로 기준 잔여 거리·예상 시간(스냅숏). 예상 시간은 provider가 준 총 소요시간을
@@ -550,6 +568,10 @@ export function useRouteGuide(
     route: GuideRoute;
     durationSeconds: number | null;
     roadSpans: CarRoadSpan[];
+    /** 계단 회피 판정(도보 전용, 미요청·자동차면 null). */
+    stepFree: StepFreeStatus | null;
+    /** 열화 상태의 안내 문장(서버 정본). 기하 응답엔 유사 스텝이 없어 유일한 채널. */
+    stepFreeNotice: string | null;
   } | null> => {
     const geo = await awaitGeolocation();
     if (geo.status !== "ready") return null;
@@ -575,6 +597,9 @@ export function useRouteGuide(
               ? briefing.durationSeconds
               : null,
           roadSpans: carGuide.roadSpans,
+          // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
+          stepFree: null,
+          stepFreeNotice: null,
         };
       }
       const res = await fetch(
@@ -599,6 +624,8 @@ export function useRouteGuide(
             ? result.durationSeconds
             : null,
         roadSpans: [],
+        stepFree: result.stepFree ?? null,
+        stepFreeNotice: result.stepFreeNotice ?? null,
       };
     } catch {
       return null;
@@ -914,6 +941,7 @@ export function useRouteGuide(
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
+    lastStepFreeRef.current = null;
     pendingResolveRef.current = null;
     prevKindRef.current = null;
     trackingRef.current = true;
@@ -941,6 +969,9 @@ export function useRouteGuide(
       const fetched = await fetchGuideRoute();
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
       if (!fetched) {
+        // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
+        // 그때 다시 통지된다 — 새 경로에 대한 새 판정이므로 반복이 아니다.
+        lastStepFreeRef.current = null;
         // 조용한 강등 금지 — 시작 통지가 어느 모드인지 말한다(스펙 §4.1·§4.5).
         announce(t("detailUnavailable"));
         return;
@@ -966,19 +997,21 @@ export function useRouteGuide(
       setHasRoute(true);
       const first = unitText(route, init.firstIndices, t);
       rememberGuidance(first);
+      const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
       // 요약과 첫 안내는 한 문장으로 — 두 통지가 경합하면 앞의 것이 잘린다(스펙 §5.3).
-      announce(
-        t(kindFixed === "car" ? "carStart" : "detailStart", {
-          count: route.steps.length,
-          distance: formatDistance(route.totalMeters),
-          first,
-        }),
-      );
+      const summary = t(kindFixed === "car" ? "carStart" : "detailStart", {
+        count: route.steps.length,
+        distance: formatDistance(route.totalMeters),
+        first,
+      });
+      // 계단 회피 안내 문장이 앞이다 — 세션 전체에 걸린 조건이라 걷기 전에 들어야 한다.
+      announce(notice ? `${notice} ${summary}` : summary);
     })();
   }, [
     announce,
     clearEtaTimer,
     commitDetail,
+    consumeStepFreeNotice,
     kindFixed,
     fetchGuideRoute,
     locale,
@@ -1124,6 +1157,8 @@ export function useRouteGuide(
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
         if (!fetched) {
+          // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 시작 폴백과 동형.
+          lastStepFreeRef.current = null;
           announce(t("rerouteFailed"));
           return;
         }
@@ -1149,13 +1184,22 @@ export function useRouteGuide(
         pendingResolveRef.current = null;
         const first = unitText(route, init.firstIndices, t);
         rememberGuidance(first);
-        announce(first);
+        const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
+        announce(notice ? `${notice} ${first}` : first);
       } finally {
         rerouteInFlightRef.current = false;
         if (mountedRef.current) setRerouting(false);
       }
     })();
-  }, [announce, commitDetail, fetchGuideRoute, kindFixed, rememberGuidance, t]);
+  }, [
+    announce,
+    commitDetail,
+    consumeStepFreeNotice,
+    fetchGuideRoute,
+    kindFixed,
+    rememberGuidance,
+    t,
+  ]);
 
   // 전경 전용(스펙 §9): 탭이 숨으면 중지하고 경로를 폐기한다. 복귀 후 자동 재개 없음
   // — 숨김 탭에서 멎은 watch·타이머가 좀비 상태를 만드는 것을 상태로 흡수한다.

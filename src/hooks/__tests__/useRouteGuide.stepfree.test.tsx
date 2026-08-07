@@ -150,3 +150,74 @@ describe("계단 회피가 안내 조회에 실린다", () => {
     expect(walkUrls()[0]).toContain("accessible=true");
   });
 });
+
+const NOTICE = "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.";
+
+describe("계단 회피 열화 통지", () => {
+  it("시작 조회가 열화면 시작 발화와 한 문자열로 결합해 통지한다", async () => {
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    renderGuide(true);
+    click("start");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+
+    // ⚠ 두 번 set 하지 않는다 — React 배칭이 첫 발화를 삼키거나 두 번째가 첫
+    //   낭독을 끊는다. 요약도 같은 문자열에 있어야 한다.
+    expect(live()).toContain("상세 안내 시작");
+    // 안내 문장이 앞이다 — 세션 전체에 걸린 조건이라 걷기 전에 들어야 한다.
+    expect(live().indexOf(NOTICE)).toBeLessThan(live().indexOf("상세 안내 시작"));
+  });
+
+  it("applied면 통지하지 않는다", async () => {
+    setWalkResponse({ stepFree: "applied" });
+    renderGuide(true);
+    click("start");
+    await settleStart();
+
+    expect(live()).not.toContain("계단");
+  });
+
+  it("계단 회피 미요청(필드 부재)이면 통지하지 않는다", async () => {
+    renderGuide(false);
+    click("start");
+    await settleStart();
+
+    expect(live()).not.toContain("계단");
+  });
+
+  // 시작은 정상인데 재조회에서 열화로 바뀌는 경로 — 출발지가 달라지면 판정도 달라진다.
+  it("시작 applied → 재조회 열화 전이에서 통지한다", async () => {
+    setWalkResponse({ stepFree: "applied" });
+    renderGuide(true);
+    click("start");
+    await settleStart();
+    expect(live()).not.toContain(NOTICE);
+
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    click("reroute");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+  });
+
+  it("같은 열화 상태가 이어지면 재통지하지 않는다", async () => {
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    renderGuide(true);
+    click("start");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+
+    click("reroute");
+    await waitFor(() => expect(live()).not.toContain("상세 안내 시작"));
+    expect(live()).not.toContain(NOTICE);
+  });
+
+  it("기하 빌드 실패로 간략 폴백되면 통지하지 않고 상태가 초기화된다", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ result: null }) });
+    renderGuide(true);
+    click("start");
+    await waitFor(() => expect(live()).toBe(ko.guide.detailUnavailable));
+    expect(live()).not.toContain(NOTICE);
+
+    // 복구된 상세 경로가 열화면 다시 통지된다(새 경로에 대한 새 판정).
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    click("reroute");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+  });
+});
