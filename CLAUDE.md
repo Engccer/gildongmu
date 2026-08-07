@@ -174,7 +174,11 @@ npm run dev        # 개발 서버 (localhost:3000)
 npm run build      # 프로덕션 빌드
 npm run lint       # ESLint
 npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
+
+node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 13프로브 무과금)
 ```
+
+**"API 비용·쿼터·키가 살아 있나"는 `usage-report.mjs`가 정본이다** — Vercel 대시보드나 각 벤더 콘솔을 손으로 훑지 말 것. 돈·가용성·시한·걱정불필요 4섹션을 평문으로 내고, 200에 오류를 담는 벤더 4종(ODsay·서울지하철·따릉이·juso)까지 judge로 가른다(설계 근거는 spec `2026-07-31-usage-cost-report-design.md`). ⚠ 이 스크립트가 답하지 **못하는** 것은 **호출량**이다(Vercel Hobby는 런타임 로그 보존 1시간·Observability 조회 12시간이 상한). 호출 건수·라우트 분포가 필요하면 Vercel Observability의 External APIs·Functions를 본다.
 
 ## 개발 규칙
 
