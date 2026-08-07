@@ -563,6 +563,7 @@
     "chat": "Dans le chat IA, vos questions, la conversation, le lieu consulté et votre position actuelle sont envoyés à Google Gemini pour générer les réponses. Les questions nécessitant une recherche web sont aussi transmises à Perplexity. Les réponses sont générées par IA et peuvent être inexactes.",
     "search": "Les termes de recherche sont transmis à des fournisseurs comme Kakao et Naver, et à la recherche web Perplexity uniquement lorsqu'il n'y a aucun résultat de lieu ni d'adresse.",
     "dictation": "La dictée dans l'app iOS est traitée sur l'appareil : l'audio ne le quitte jamais. La dictée sur le web envoie l'audio à Deepgram pour transcription et ne le conserve pas ensuite.",
+    "analytics": "L'audience du site est mesurée de manière anonyme avec Vercel Analytics. Aucun cookie n'est utilisé et aucune information permettant de vous identifier n'est conservée.",
     "contactHeading": "Contact",
     "contact": "Pour toute question sur le service ou cette politique, écrivez à engccer@gmail.com."
   },

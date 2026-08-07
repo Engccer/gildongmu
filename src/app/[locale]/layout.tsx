@@ -4,6 +4,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { SITE_ORIGIN } from "@/lib/site";
+import { Analytics } from "@vercel/analytics/next";
 import { Header } from "@/components/Header";
 import { SWRegister } from "@/components/SWRegister";
 import { IdleReset } from "@/components/IdleReset";
@@ -57,6 +58,8 @@ export default async function LocaleLayout({
           <SWRegister />
           <IdleReset locale={locale} />
         </NextIntlClientProvider>
+        {/* 웹 방문 통계(익명·무쿠키). 시각 요소가 없어 접근성 트리에 영향이 없다. */}
+        <Analytics />
       </body>
     </html>
   );

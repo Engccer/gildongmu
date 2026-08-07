@@ -16,6 +16,7 @@
   "dependencies": {
     "@google/genai": "^2.15.0",
     "@tailwindcss/typography": "^0.5.20",
+    "@vercel/analytics": "^2.0.1",
     "lucide-react": "^1.18.0",
     "next": "16.2.9",
     "next-intl": "^4.13.0",
