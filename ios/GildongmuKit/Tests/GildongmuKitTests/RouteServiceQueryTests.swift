@@ -26,7 +26,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" }) == false)
     }
 
@@ -39,7 +39,8 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, includeGeometry: true)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
+            accessible: false, includeGeometry: true)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
     }
 
@@ -51,7 +52,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
 }

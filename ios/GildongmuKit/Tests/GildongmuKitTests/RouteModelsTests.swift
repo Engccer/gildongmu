@@ -163,14 +163,14 @@ extension StubNetworkTests {
         }
         let service = RouteService(client: stubbedClient())
         await #expect(throws: APIError.self) {
-            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
         }
     }
 
     @Test func routeServiceWalkNullResultReturnsNilNotThrow() async throws {
         StubURLProtocol.handler = { _ in (200, Data(#"{"result":null}"#.utf8)) }
         let service = RouteService(client: stubbedClient())
-        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1)
+        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
         #expect(result == nil)
     }
 }

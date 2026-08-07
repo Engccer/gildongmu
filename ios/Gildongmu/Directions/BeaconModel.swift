@@ -198,16 +198,30 @@ final class BeaconModel {
     /// 초기값이며 실사용 판정 대상이다.
     private let noFixSeconds = 8.0
 
+    /// 이 세션의 계단 회피(도보 전용). `toggle`이 시작 시점 값을 받아 보관한다.
+    private var accessible = false
+    /// 직전 계단 회피 판정(열화 전이 통지 기준 — spec 2026-08-08 §2.3).
+    private var lastStepFree: StepFreeStatus?
+
     var isTracking: Bool { status == .tracking }
 
     // MARK: - 시작·중지
 
-    func toggle(dest: BeaconDest, label: String, kind: GuideSessionKind = .walk) {
+    /// ⚠ `accessible`에 **기본값을 두지 않는다** — 백로그 A4는 생략 가능한 안전
+    /// 인자가 만든 결함이었다(spec 2026-08-08 §2.5). 계단 회피 개념이 없는 수단은
+    /// 호출부가 `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
+    func toggle(
+        dest: BeaconDest, label: String, kind: GuideSessionKind = .walk, accessible: Bool
+    ) {
         if isTracking {
             stop(playStopTone: true)
         } else {
             guard !starting else { return }
             starting = true
+            // 세션 시작 시점 값이 세션 내내 유효하다 — 추적 중에는 시트가 화면을
+            // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
+            self.accessible = accessible
+            lastStepFree = nil
             startTask = Task { [weak self] in
                 await self?.start(dest: dest, label: label, kind: kind)
                 self?.starting = false
@@ -326,7 +340,10 @@ final class BeaconModel {
     /// (car는 provider 비-tmap·기하 검증 실패 포함 — §5 fail-closed).
     private func fetchDetailData(
         origin: (lat: Double, lng: Double), dest: BeaconDest
-    ) async throws -> (route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?)? {
+    ) async throws -> (
+        route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
+        stepFree: StepFreeStatus?, stepFreeNotice: String?
+    )? {
         if sessionKind == .car {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
@@ -336,11 +353,13 @@ final class BeaconModel {
             guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
                 return nil
             }
-            return (car.route, car.roadSpans, briefing.durationSeconds)
+            // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
+            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil)
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
             destLat: dest.lat, destLng: dest.lng,
+            accessible: accessible,
             includeGeometry: true
         )
         guard let briefing,
@@ -348,7 +367,22 @@ final class BeaconModel {
                   GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
               })
         else { return nil }
-        return (route, [], briefing.durationSeconds)
+        return (
+            route, [], briefing.durationSeconds,
+            briefing.stepFreeStatus, briefing.stepFreeNotice
+        )
+    }
+
+    /// 열화 전이 판정(spec 2026-08-08 §2.3, 웹 `consumeStepFreeNotice` 미러). 상태가
+    /// 열화이고 직전과 다를 때만 문장을 돌려준다. 직전 상태를 갱신하는 부작용이
+    /// 있으므로 기하 빌드까지 성공한 뒤 정확히 1회 부른다.
+    private func consumeStepFreeNotice(
+        _ status: StepFreeStatus?, _ notice: String?
+    ) -> String? {
+        let prev = lastStepFree
+        lastStepFree = status
+        guard let status, status != .applied, status != prev else { return nil }
+        return notice
     }
 
     /// 상세 경로 조회 — 첫 수용 fix가 트리거하고 그 좌표가 origin이다(8번: 위치
@@ -389,9 +423,13 @@ final class BeaconModel {
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
-            let text = sessionKind == .car
+            let summary = sessionKind == .car
                 ? GuideText.carStart(route: fetched.route, firstIndices: initial.firstIndices)
                 : GuideText.start(route: fetched.route, firstIndices: initial.firstIndices)
+            // 계단 회피 열화 문장이 있으면 그 앞에 붙인다 — 세션 전체에 걸린 조건이라
+            // 걷기 전에 들어야 한다(spec §2.3). 별도 통지로 내보내면 경합한다.
+            let notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice)
+            let text = notice.map { "\($0) \(summary)" } ?? summary
             lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             statusText = text
             announce(text)
@@ -448,6 +486,9 @@ final class BeaconModel {
     private func fallbackToBrief(key: String = "guide.detailUnavailable") {
         mode = .brief
         remainingText = nil
+        // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
+        // 새 판정으로 다시 통지된다 — 반복이 아니다.
+        lastStepFree = nil
         let text = appLocalized(key)
         statusText = text
         announce(text)
@@ -1027,6 +1068,8 @@ final class BeaconModel {
             // latest-wins: 왕복 중 중지·전환·목적지 변경이면 도착 응답 폐기(이탈 게이트 동형).
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
             guard let fetched else {
+                // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 폴백과 동형.
+                lastStepFree = nil
                 statusText = appLocalized("guide.rerouteFailed")
                 announce(statusText, highPriority: true)
                 return
@@ -1047,12 +1090,17 @@ final class BeaconModel {
             guideState = initial.state
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
-            let text = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
-            lastGuidance = text
+            let first = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
+            lastGuidance = first
+            // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면
+            // 그 조회의 발화에 결합해 1회 통지한다(spec §2.3).
+            let notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice)
+            let text = notice.map { "\($0) \(first)" } ?? first
             statusText = text
             announce(text)
         } catch {
             guard token == rerouteToken, isTracking else { return }
+            lastStepFree = nil
             statusText = appLocalized("guide.rerouteFailed")
             announce(statusText, highPriority: true)
         }

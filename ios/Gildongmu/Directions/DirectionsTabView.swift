@@ -468,7 +468,10 @@ struct DirectionsTabView: View {
                             : appLocalized("beacon.briefGuideStart")
                         ) {
                             lastGuideStart = .fallback
-                            beacon.toggle(dest: tracked.dest, label: tracked.label, kind: .walk)
+                            beacon.toggle(
+                                dest: tracked.dest, label: tracked.label, kind: .walk,
+                                accessible: model.stepFreeEnabled
+                            )
                         }
                         .accessibilityFocused($guideStartFocused, equals: .fallback)
                         // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
@@ -486,7 +489,11 @@ struct DirectionsTabView: View {
                                 Button(appLocalized("ios.common.allowPrecise")) {
                                     Task { @MainActor in
                                         switch await LocationService.shared.requestTemporaryPreciseAccuracy() {
-                                        case .granted: beacon.toggle(dest: tracked.dest, label: tracked.label)
+                                        case .granted:
+                                            beacon.toggle(
+                                                dest: tracked.dest, label: tracked.label,
+                                                accessible: model.stepFreeEnabled
+                                            )
                                         case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
                                         case .alreadyInFlight: break
@@ -520,7 +527,8 @@ struct DirectionsTabView: View {
                                 Button(appLocalized("beacon.guideStartWalk")) {
                                     lastGuideStart = .walk
                                     beacon.toggle(
-                                        dest: tracked.dest, label: tracked.label, kind: .walk
+                                        dest: tracked.dest, label: tracked.label, kind: .walk,
+                                        accessible: model.stepFreeEnabled
                                     )
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .walk)
@@ -530,7 +538,8 @@ struct DirectionsTabView: View {
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     beacon.toggle(
-                                        dest: tracked.dest, label: tracked.label, kind: .car
+                                        dest: tracked.dest, label: tracked.label, kind: .car,
+                                        accessible: false
                                     )
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
@@ -714,7 +723,10 @@ struct DirectionsTabView: View {
         walkHandoffTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(600))
             guard !Task.isCancelled else { return }
-            beacon.toggle(dest: tracked.dest, label: tracked.label, kind: .walk)
+            beacon.toggle(
+                dest: tracked.dest, label: tracked.label, kind: .walk,
+                accessible: model.stepFreeEnabled
+            )
         }
     }
 
