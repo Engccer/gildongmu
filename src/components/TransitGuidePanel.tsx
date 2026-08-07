@@ -27,12 +27,19 @@ export function TransitGuidePanel({
   route,
   triggerLabel,
   dest,
+  walkAccessible,
   onActiveChange,
 }: {
   route: TransitRoute;
   triggerLabel: string;
   /** 목적지 좌표·라벨 — 완료 후 도보 핸드오프(§14.2)의 대상. 없으면 핸드오프 미노출. */
   dest?: { lat: number; lng: number; name: string };
+  /**
+   * 계단 회피 — 마지막 도보 구간 인계에 그대로 싣는다. 사용자가 길찾기 화면에서
+   * 켠 설정이므로 대중교통을 거쳐 도착한 도보 구간에도 적용되는 것이 기대에 맞고,
+   * iOS 인계 경로(`DirectionsTabView.startWalkHandoff`)와 계약이 갈리면 안 된다.
+   */
+  walkAccessible: boolean;
   /** 세션 활성 전이 통지. 대안 disclosure 안에 마운트된 패널이 접힘으로
       unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다. */
   onActiveChange?: (active: boolean) => void;
@@ -365,7 +372,7 @@ export function TransitGuidePanel({
         <DistanceBeacon
           dest={dest}
           kind="walk"
-          accessible={false}
+          accessible={walkAccessible}
           startOnOpen
           focusTriggerOnMount
           triggerLabel={t("walkHandoffStart")}
