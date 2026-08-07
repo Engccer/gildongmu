@@ -221,7 +221,8 @@
     },
     "beacon": {
       "soundUnavailable": "소리 안내를 재생할 수 없습니다.",
-      "stopped": "거리 추적을 중지했습니다."
+      "stopped": "거리 추적을 중지했습니다.",
+      "soundBackgroundUnavailable": "잠금 화면에서는 안내 소리가 나지 않습니다."
     },
     "unit": {
       "spokenMeters": "미터"

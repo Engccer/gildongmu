@@ -11401,6 +11401,46 @@
         }
       }
     },
+    "ios.beacon.soundBackgroundUnavailable": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잠금 화면에서는 안내 소리가 나지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide sounds will not play while the screen is locked."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los sonidos de la guía no sonarán con la pantalla bloqueada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les sons du guidage ne seront pas audibles écran verrouillé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I suoni della guida non verranno riprodotti a schermo bloccato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "画面がロックされている間は案内音が鳴りません。"
+          }
+        }
+      }
+    },
     "ios.beacon.soundUnavailable": {
       "localizations": {
         "ko": {

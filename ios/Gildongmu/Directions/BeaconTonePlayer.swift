@@ -20,27 +20,50 @@ import UIKit
 /// 오디오를 정지시켜 음악·팟캐스트를 들으며 걷는 사용자의 재생을 첫 tick에 끊고, 반대로
 /// 그 세션에 TTS(`.playback`)를 썼다면 카테고리가 남아 무음 스위치를 무시한다.
 /// 유일한 연속 피드백 채널의 동작이 "그 세션에 TTS를 썼는지"에 좌우되면 안 되므로
-/// `.ambient` + `.mixWithOthers`를 명시 선언한다.
+/// `.mixWithOthers`를 양쪽 카테고리에 명시 선언한다.
+///
+/// **카테고리는 안내 세션 중에만 `.playback`으로 승격한다**(2026-08-08, 위원장 결정).
+/// `.ambient`는 정의상 백그라운드에서 무음이라 "주머니에 넣고 걸어도 안내가 살아야
+/// 한다"가 절반만 실현돼 있었다(위치는 살아 있는데 출력이 전부 막혔다). 승격의 대가로
+/// 무음 스위치를 무시하게 되지만 세션 경계에서 원복하므로 영향이 세션에 갇힌다.
+/// 판정은 Kit `guideAudioStep`이 소유한다 — 세션은 프로세스 전역 자원이고 소비자가
+/// 셋(안내 톤·TTS·받아쓰기)이라 무조건 원복하면 다른 소비자를 깬다.
 @MainActor
 final class BeaconTonePlayer {
     /// 재생 수단이 죽었는데 되살리지 못한 상태. 호출부가 통지 대상으로 삼는다
     /// (조용한 무음은 금지. hold·tick엔 통지가 없어 사용자가 침묵의 원인을 모른다).
     private(set) var isSilenced = false
 
+    /// 승격에 실패해 **잠금 중 무음이 예상되는** 상태. 전경에서는 `.ambient`로도 톤이
+    /// 들리므로 알리지 않으면 사용자가 정상으로 믿고 잠근 뒤 무음을 만난다(spec §3.2).
+    private(set) var isDegraded = false
+
     /// 상위(모델)가 출력을 억제 중인지. 억제 중에는 **인터럽션 옵서버도 세션을
     /// 건드리지 않는다**: 받아쓰기가 `.playAndRecord`로 잡아 둔 카테고리를 비콘이
     /// `.ambient`로 되돌리면 진행 중인 녹음 세션이 깨진다(리뷰 I-8).
-    var isSuppressed = false
+    /// 판정은 상태 머신이 소유하므로 여기서는 이벤트로만 전달한다.
+    var isSuppressed: Bool {
+        get { audio.isSuppressed }
+        set { dispatch(.suppressionChanged(newValue)) }
+    }
 
     /// 웹 GAIN 미러 — 값 변경 시 웹 `useBeaconSound.ts`와 동조할 것.
+    /// ⚠ `unreliable`은 `tick`(0.3)보다 높다. 신뢰 불가는 상태 경고라 배경 미디어
+    /// 위에서 묻히면 안 된다(`.mixWithOthers`, spec §10.2).
     private static let gains: [BeaconTone: Float] = [
         .closer: 0.35, .farther: 0.35, .nearby: 1, .tick: 0.3,
-        .start: 0.8, .stop: 0.8, .ahead: 0.8, .warning: 1,
+        .start: 0.8, .stop: 0.8, .ahead: 0.8, .warning: 1, .unreliable: 0.45,
     ]
 
     private var players: [BeaconTone: AVAudioPlayer] = [:]
     private var observers: [NSObjectProtocol] = []
-    private var sessionReady = false
+    /// 오디오 세션 소유권(판정은 Kit `guideAudioStep`, 여기는 적용만).
+    private var audio = GuideAudioSessionState.initial
+    /// 현재 적용된 카테고리. nil이면 아직 세션을 잡지 않았다.
+    private var appliedCategory: GuideAudioCategory?
+    /// 현재 재생 중인 톤. 톤은 전부 1초 미만이라 겹치면 두 소리가 섞여 어느 쪽도
+    /// 식별되지 않는다 — 새 요청은 기존 재생을 끊고 교체한다(spec §4.4).
+    private var playing: AVAudioPlayer?
     private let notifHaptics = UINotificationFeedbackGenerator()
     private let impactHaptics = UIImpactFeedbackGenerator(style: .medium)
 
@@ -48,9 +71,29 @@ final class BeaconTonePlayer {
         observeInterruptions()
     }
 
+    /// 안내 세션 시작 — 오디오 카테고리를 `.playback`으로 승격한다.
+    /// ⚠ **첫 톤 재생 전에** 불러야 한다. 승격 실패는 전경에서 보이지 않으므로
+    /// 시작 시점에 알려야 사용자가 잠그기 전에 안다.
+    func beginSession() {
+        isDegraded = false
+        dispatch(.sessionStarted)
+    }
+
+    /// 안내 세션 종료 — **우리가 승격했을 때만** `.ambient`로 원복한다.
+    /// ⚠ 정지 톤을 재생한 **뒤에** 부를 것. 먼저 원복하면 그 톤이 `.ambient`로 나가
+    /// 잠금 상태에서 들리지 않는다.
+    func endSession() {
+        dispatch(.sessionEnded)
+        isDegraded = false
+    }
+
     func play(_ tone: BeaconTone) {
         haptic(for: tone)
-        guard ensureSession() else { return }
+        // 세션을 아직 잡지 않았으면 지금 적용한다(세션 밖 단발 재생 경로).
+        // `.interrupted`는 "저장된 의도를 지금 적용하라"는 재조정 이벤트다 —
+        // 세션 밖이면 의도가 `.ambient`라 종전 동작과 같다.
+        if appliedCategory == nil { dispatch(.interrupted) }
+        guard !isSilenced else { return }
         let player: AVAudioPlayer
         if let cached = players[tone] {
             player = cached
@@ -67,11 +110,15 @@ final class BeaconTonePlayer {
             players[tone] = loaded
             player = loaded
         }
+        // 선점: 겹치면 두 소리가 섞여 어느 쪽도 식별되지 않는다.
+        if let current = playing, current !== player, current.isPlaying { current.stop() }
         player.currentTime = 0
         if player.play() {
             isSilenced = false
+            playing = player
         } else {
             isSilenced = true
+            playing = nil
         }
     }
 
@@ -216,31 +263,61 @@ final class BeaconTonePlayer {
     func shutdown() {
         for player in players.values { player.stop() }
         players = [:]
-        sessionReady = false
+        playing = nil
+        appliedCategory = nil
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers = []
     }
 
     // MARK: - 세션 수명
 
-    /// 세션 카테고리를 확정한다. 실패는 `isSilenced`로 노출한다.
-    private func ensureSession() -> Bool {
-        if sessionReady { return true }
+    /// 이벤트를 상태 머신에 넘기고 결과 동작을 수행한다. **판정은 Kit이 한다.**
+    private func dispatch(_ event: GuideAudioEvent) {
         if observers.isEmpty { observeInterruptions() }  // shutdown 이후 재사용 대비
+        let out = guideAudioStep(state: audio, event: event)
+        audio = out.state
+        switch out.action {
+        case .none:
+            break
+        case let .apply(category):
+            apply(category, rebuildPlayers: false)
+        case let .rebuild(category):
+            apply(category, rebuildPlayers: true)
+        }
+    }
+
+    /// 카테고리 적용. 실패를 **삼키지 않는다** — 전경에서는 `.ambient`로도 톤이
+    /// 들리므로 조용히 넘기면 사용자가 정상으로 믿고 잠근 뒤 무음을 만난다.
+    private func apply(_ category: GuideAudioCategory, rebuildPlayers: Bool) {
+        if rebuildPlayers {
+            // route 변경·media reset은 기존 플레이어를 무효화한다. 재사용하면
+            // `play()`가 true를 반환하고도 소리가 안 나는 조용한 무음이 된다.
+            for player in players.values { player.stop() }
+            players = [:]
+            playing = nil
+        }
+        let session = AVAudioSession.sharedInstance()
         do {
-            try AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-            try AVAudioSession.sharedInstance().setActive(true)
-            sessionReady = true
+            try session.setCategory(
+                category == .playback ? .playback : .ambient, options: [.mixWithOthers]
+            )
+            try session.setActive(true)
+            appliedCategory = category
             isSilenced = false
-            return true
+            if category == .playback { isDegraded = false }
         } catch {
-            isSilenced = true
-            return false
+            appliedCategory = nil
+            if category == .playback {
+                // 세션은 계속한다(전경 톤은 `.ambient`로도 난다). 잠금 시 무음만 예고.
+                isDegraded = true
+            } else {
+                isSilenced = true
+            }
         }
     }
 
     /// 전화 한 통이나 다른 컴포넌트의 `setActive(false)`가 세션을 멈추면 톤이 영영
-    /// 사라진다. 인터럽션 종료 시 세션을 되살린다.
+    /// 사라진다. 인터럽션 종료·route 변경·media reset을 **같은 재조정 경로**로 모은다.
     private func observeInterruptions() {
         observers.append(
             NotificationCenter.default.addObserver(
@@ -252,11 +329,26 @@ final class BeaconTonePlayer {
                     AVAudioSession.InterruptionType(rawValue: raw) == .ended
                 else { return }
                 MainActor.assumeIsolated {
-                    guard let self, !self.isSuppressed else { return }
-                    self.sessionReady = false
-                    _ = self.ensureSession()
+                    self?.dispatch(.interrupted)
                 }
             }
         )
+        // route 변경(AirPods 해제 등)·media services reset은 플레이어를 무효화한다.
+        // ⚠ `object: nil` — mediaServicesWereReset은 세션 인스턴스가 재생성되므로
+        // 특정 객체로 필터하면 알림을 놓친다.
+        for name in [
+            AVAudioSession.routeChangeNotification,
+            AVAudioSession.mediaServicesWereResetNotification,
+        ] {
+            observers.append(
+                NotificationCenter.default.addObserver(
+                    forName: name, object: nil, queue: .main
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated {
+                        self?.dispatch(.routeChanged)
+                    }
+                }
+            )
+        }
     }
 }

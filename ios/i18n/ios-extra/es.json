@@ -221,7 +221,8 @@
     },
     "beacon": {
       "soundUnavailable": "No se puede reproducir la guía sonora.",
-      "stopped": "Seguimiento de distancia detenido."
+      "stopped": "Seguimiento de distancia detenido.",
+      "soundBackgroundUnavailable": "Los sonidos de la guía no sonarán con la pantalla bloqueada."
     },
     "unit": {
       "spokenMeters": "metros"
