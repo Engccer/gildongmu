@@ -339,6 +339,40 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
     expect(r!.steps).toHaveLength(2);
   });
 
+  it("기하 응답에서 provider 스텝을 걸러내지 않는다(스텝 수 보존)", async () => {
+    // ⚠ 모든 스텝이 기하를 가진 fixture로는 이 축이 관측되지 않는다 — 기하 없는
+    // 스텝을 걸러내는 변이가 항등이 되어 전량 green으로 통과했다(변이 M9 실측).
+    // 기하 없는 provider 스텝이 섞여야 "걸러내는 구현"과 "그대로 두는 구현"이 갈린다.
+    // 서버가 거르면 경로 구간이 조용히 사라진다 — 기하 불완전 경로를 거부할지는
+    // 클라이언트 `buildGuideRoute`의 fail-closed 판정이지 서버가 숨길 일이 아니다.
+    vi.mocked(getKakaoWalkBriefing)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        distanceMeters: 1000,
+        durationSeconds: 900,
+        steps: [
+          {
+            description: "직진",
+            pathCoords: [
+              { lat: 37.5, lng: 127.1 },
+              { lat: 37.5005, lng: 127.1 },
+            ],
+          },
+          { description: "강동역 2번 출구까지 역사 내 이동" }, // 기하 없는 실제 스텝
+        ],
+      });
+
+    const r = await getWalkRoute({
+      origin: ORIGIN,
+      dest: DEST,
+      accessible: true,
+      includeGeometry: true,
+    });
+
+    expect(r!.steps).toHaveLength(2);
+    expect(r!.steps.filter((s) => !s.pathCoords)).toHaveLength(1);
+  });
+
   it("includeGeometry 미지정이면 종전대로 유사 스텝을 맨 앞에 넣고 문장이 일치한다", async () => {
     vi.mocked(getKakaoWalkBriefing)
       .mockResolvedValueOnce(null)
