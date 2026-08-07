@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   beaconStep,
   INITIAL_BEACON_STATE,
+  rebaseBeaconState,
   type AnnounceKind,
   type BeaconAnnounce,
   type BeaconState,
@@ -454,12 +455,7 @@ export function useRouteGuide(
     const straight = fix
       ? haversineMeters(fix.lat, fix.lng, destRef.current.lat, destRef.current.lng)
       : null;
-    beaconRef.current = {
-      ...INITIAL_BEACON_STATE,
-      trend: beaconRef.current.trend, // 방향만 승계
-      anchorDistance: straight,
-      lastSpokenDistance: straight,
-    };
+    beaconRef.current = rebaseBeaconState(beaconRef.current, straight);
     // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
     toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
     lastRemainingRef.current = null;

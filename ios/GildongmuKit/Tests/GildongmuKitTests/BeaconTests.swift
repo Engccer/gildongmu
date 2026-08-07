@@ -208,3 +208,76 @@ private func fixAt(_ metersNorth: Double, accuracy: Double = 10) -> BeaconFix {
         #expect(isUsableFix(accuracy: 10, ageSeconds: 20, maxAge: 30))
     }
 }
+
+/// 두 모드가 공유하는 유일한 축. 리듀서 전체 재사용이 폐기된 근거는 `Beacon.swift`
+/// 주석에 있다(도착 판정·정확도 게이트·음성 마일스톤이 상세와 충돌한다).
+@Suite("추세 판정 추출")
+struct TrendStepTests {
+    @Test("앵커가 없으면 현재 거리를 앵커로 잡고 hold")
+    func firstCall() {
+        let r = trendStep(anchor: nil, trend: .none, distance: 100, deadBand: 15)
+        #expect(r.kind == .hold)
+        #expect(r.anchor == 100)
+        #expect(r.trend == .none)
+    }
+
+    @Test("데드밴드를 넘어 줄면 closer이고 앵커가 전진한다")
+    func closerAdvancesAnchor() {
+        let r = trendStep(anchor: 100, trend: .none, distance: 84, deadBand: 15)
+        #expect(r.kind == .closer)
+        #expect(r.anchor == 84)
+        #expect(r.trend == .closer)
+    }
+
+    @Test("데드밴드를 넘어 늘면 farther")
+    func farther() {
+        let r = trendStep(anchor: 100, trend: .closer, distance: 116, deadBand: 15)
+        #expect(r.kind == .farther)
+        #expect(r.trend == .farther)
+    }
+
+    @Test("데드밴드 안이면 hold이고 앵커·추세가 불변이다")
+    func holdKeepsAnchor() {
+        let r = trendStep(anchor: 100, trend: .closer, distance: 90, deadBand: 15)
+        #expect(r.kind == .hold)
+        #expect(r.anchor == 100)
+        #expect(r.trend == .closer)
+    }
+
+    @Test("경계값은 포함이다")
+    func boundaryInclusive() {
+        #expect(trendStep(anchor: 100, trend: .none, distance: 85, deadBand: 15).kind == .closer)
+        #expect(trendStep(anchor: 100, trend: .none, distance: 115, deadBand: 15).kind == .farther)
+    }
+}
+
+/// 축 전환(handoff·수동 전환) 재기준화. 앵커만 재설정하면 전환 직후 거짓 음성이 난다.
+@Suite("축 전환 재기준화")
+struct RebaseBeaconStateTests {
+    @Test("방향만 승계하고 앵커·발화 기준을 둘 다 새 축 값으로 재설정한다")
+    func rebasesBothAxes() {
+        var state = BeaconState.initial
+        state.anchorDistance = 500
+        state.trend = .closer
+        state.lastSpokenDistance = 500
+        let out = rebaseBeaconState(state, distance: 120)
+        #expect(out.anchorDistance == 120)
+        #expect(out.lastSpokenDistance == 120)
+        #expect(out.trend == .closer)
+        #expect(!out.nearby)
+    }
+
+    @Test("새 축 값을 모르면 nil로 두어 다음 fix가 first 경로를 탄다")
+    func nilFallback() {
+        var state = BeaconState.initial
+        state.anchorDistance = 500
+        state.trend = .farther
+        state.lastSpokenDistance = 500
+        state.nearby = true
+        let out = rebaseBeaconState(state, distance: nil)
+        #expect(out.anchorDistance == nil)
+        #expect(out.lastSpokenDistance == nil)
+        #expect(out.trend == .farther)
+        #expect(!out.nearby)
+    }
+}

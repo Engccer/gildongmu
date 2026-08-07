@@ -122,6 +122,16 @@ describe("정숙 구간과 회복", () => {
     expect(out.tone).toBe("closer");
   });
 
+  // ⚠ 첫 진입만으로는 "즉시 1회" 계약이 관측되지 않는다. lastUnreliableAt이 null이면
+  // 간격 조건도 참이라 두 판정이 겹친다 — 회복 후 재진입이 둘을 가른다(변이 주입 M5).
+  it("회복 후 재진입도 즉시 1회다(간격 창 안이어도)", () => {
+    let state = anchored(500, "closer");
+    state = toneLayerStep(state, input({ unreliable: true }), 0).state;
+    state = toneLayerStep(state, input({ trend: trend(120) }), 3).state;
+    // 직전 unreliable(now=0)로부터 5초뿐이라 간격 창(10초) 안이다.
+    expect(toneLayerStep(state, input({ unreliable: true }), 5).tone).toBe("unreliable");
+  });
+
   it("회복은 앵커 재기준화 후 현재 상태 톤 1회", () => {
     let state = anchored(500, "closer");
     state = toneLayerStep(state, input({ unreliable: true }), 0).state;

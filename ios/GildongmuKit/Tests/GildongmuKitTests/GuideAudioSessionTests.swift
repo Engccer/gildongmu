@@ -42,6 +42,16 @@ struct GuideAudioSessionTests {
         #expect(action == .none)
     }
 
+    /// ⚠ **`isSuppressed` 가드와 겹치지 않는 유일한 경로다.** 억제 중 시작 후 종료는
+    /// 두 가드가 같은 결과를 내서 `didPromote` 축이 관측되지 않는다(변이 주입 M7
+    /// 미검출로 발견). 시작한 적 없는 종료라야 원복 자격 하나만 판정에 남는다.
+    @Test("시작한 적 없는 종료는 세션을 건드리지 않는다")
+    func endWithoutStart() {
+        let (state, action) = guideAudioStep(state: .initial, event: .sessionEnded)
+        #expect(action == .none)
+        #expect(!state.didPromote)
+    }
+
     @Test("승격했으면 종료 시 .ambient로 원복한다")
     func revertAfterPromotion() {
         var state = GuideAudioSessionState.initial
