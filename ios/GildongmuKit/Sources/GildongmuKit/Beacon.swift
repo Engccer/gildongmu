@@ -112,6 +112,31 @@ public func isUsableFix(
     accuracy > 0 && abs(ageSeconds) <= maxAge
 }
 
+public enum TrendKind: Sendable, Equatable {
+    case closer, farther, hold
+}
+
+/// 데드밴드 기준 추세 판정(순수, 상태 미커밋). 간략(직선거리)과 상세(경로 잔여 거리)가
+/// **같은 판정을 공유하는 유일한 지점**이다.
+///
+/// ⚠ 리듀서(`beaconStep`) 전체를 상세에 재사용하는 안은 폐기됐다: 그 리듀서는 추세
+/// 판정 외에 도착 판정(`arrivalThreshold`)·정확도 게이트(100m)·음성 마일스톤을 함께
+/// 소유하는데 셋 다 상세와 충돌한다(잔여 40m·accuracy 50m면 비콘이 먼저 도착을 선언해
+/// 남은 결정 지점을 삼키고, 75m fix가 한쪽은 불확실 한쪽은 유효가 된다).
+///
+/// 호출부가 결과를 채택할지 결정한다 — 앵커·추세는 반환값일 뿐 여기서 저장하지 않는다.
+public func trendStep(
+    anchor: Double?,
+    trend: BeaconTrend,
+    distance: Double,
+    deadBand: Double
+) -> (kind: TrendKind, anchor: Double?, trend: BeaconTrend) {
+    guard let anchor else { return (.hold, distance, trend) }
+    if distance <= anchor - deadBand { return (.closer, distance, .closer) }
+    if distance >= anchor + deadBand { return (.farther, distance, .farther) }
+    return (.hold, anchor, trend)
+}
+
 public func beaconStep(
     state: BeaconState,
     fix: BeaconFix,
@@ -182,21 +207,16 @@ public func beaconStep(
         )
     }
 
-    // 여기부터 nearby 해제 상태에서 추세 판정.
-    var trend = state.trend
-    var newAnchor = anchor
-    let kind: AnnounceKind
-
-    if distance <= anchor - deadBand {
-        trend = .closer
-        newAnchor = distance
-        kind = .closer
-    } else if distance >= anchor + deadBand {
-        trend = .farther
-        newAnchor = distance
-        kind = .farther
-    } else {
-        kind = .hold  // 추세·앵커 불변
+    // 여기부터 nearby 해제 상태에서 추세 판정(공용 `trendStep` — 상세 모드와 같은 축).
+    let stepped = trendStep(
+        anchor: anchor, trend: state.trend, distance: distance, deadBand: deadBand
+    )
+    let trend = stepped.trend
+    let newAnchor = stepped.anchor ?? anchor
+    let kind: AnnounceKind = switch stepped.kind {
+    case .closer: .closer
+    case .farther: .farther
+    case .hold: .hold  // 추세·앵커 불변
     }
 
     let trendFlipped = kind != .hold && state.trend != .none && kind != announceKind(of: state.trend)

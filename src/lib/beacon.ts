@@ -71,6 +71,32 @@ export function closerSpeakIntervalM(distance: number): number {
   return 100;
 }
 
+export type TrendKind = "closer" | "farther" | "hold";
+
+/**
+ * 데드밴드 기준 추세 판정(순수, 상태 미커밋). Kit `trendStep` 미러. 간략(직선거리)과
+ * 상세(경로 잔여 거리)가 **같은 판정을 공유하는 유일한 지점**이다.
+ *
+ * ⚠ 리듀서(`beaconStep`) 전체를 상세에 재사용하는 안은 폐기됐다: 그 리듀서는 추세
+ * 판정 외에 도착 판정·정확도 게이트(100m)·음성 마일스톤을 함께 소유하는데 셋 다
+ * 상세와 충돌한다. 호출부가 결과를 채택할지 결정한다.
+ */
+export function trendStep(
+  anchor: number | null,
+  trend: Trend,
+  distance: number,
+  deadBand: number,
+): { kind: TrendKind; anchor: number | null; trend: Trend } {
+  if (anchor === null) return { kind: "hold", anchor: distance, trend };
+  if (distance <= anchor - deadBand) {
+    return { kind: "closer", anchor: distance, trend: "closer" };
+  }
+  if (distance >= anchor + deadBand) {
+    return { kind: "farther", anchor: distance, trend: "farther" };
+  }
+  return { kind: "hold", anchor, trend };
+}
+
 export const INITIAL_BEACON_STATE: BeaconState = {
   anchorDistance: null,
   trend: "none",
@@ -140,23 +166,12 @@ export function beaconStep(
     };
   }
 
-  // 여기부터 nearby 해제 상태에서 추세 판정.
+  // 여기부터 nearby 해제 상태에서 추세 판정(공용 `trendStep` — 상세 모드와 같은 축).
   const anchor = state.anchorDistance;
-  let trend: Trend = state.trend;
-  let newAnchor = anchor;
-  let kind: AnnounceKind;
-
-  if (distance <= anchor - deadBand) {
-    trend = "closer";
-    newAnchor = distance;
-    kind = "closer";
-  } else if (distance >= anchor + deadBand) {
-    trend = "farther";
-    newAnchor = distance;
-    kind = "farther";
-  } else {
-    kind = "hold"; // 추세·앵커 불변
-  }
+  const stepped = trendStep(anchor, state.trend, distance, deadBand);
+  const trend = stepped.trend;
+  const newAnchor = stepped.anchor ?? anchor;
+  const kind: AnnounceKind = stepped.kind; // hold면 추세·앵커 불변
 
   const trendFlipped =
     kind !== "hold" && state.trend !== "none" && kind !== state.trend;

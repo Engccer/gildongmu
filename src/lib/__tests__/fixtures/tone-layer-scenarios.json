@@ -1,0 +1,168 @@
+{
+  "_comment": "안내 톤 계층의 웹↔Kit 공유 시나리오. 웹 guide-tone-layer.test.ts와 Kit GuideToneLayerTests가 같은 입력 열로 같은 톤 열을 내는지 강제한다(route-guide-scenarios.json 선례). expect는 톤 이름 또는 null.",
+  "scenarios": [
+    {
+      "name": "신뢰 불가 진입·지속·회복",
+      "initial": { "anchorDistance": 500, "trend": "closer" },
+      "steps": [
+        { "now": 0, "unreliable": true, "expect": "unreliable" },
+        { "now": 5, "unreliable": true, "expect": null },
+        { "now": 10.1, "unreliable": true, "expect": "unreliable" },
+        {
+          "now": 12,
+          "trend": { "distance": 120, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        },
+        {
+          "now": 13,
+          "trend": { "distance": 119, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": null
+        }
+      ]
+    },
+    {
+      "name": "정지 tick과 이동 추세의 교대",
+      "initial": { "anchorDistance": 100, "trend": "none" },
+      "steps": [
+        {
+          "now": 0,
+          "trend": { "distance": 100, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        {
+          "now": 3,
+          "trend": { "distance": 84, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        },
+        {
+          "now": 6,
+          "trend": { "distance": 83, "deadBand": 15, "motion": "stopped", "closerIntervalSeconds": 2 },
+          "expect": "tick"
+        },
+        {
+          "now": 7,
+          "trend": { "distance": 83, "deadBand": 15, "motion": "stopped", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        {
+          "now": 9.5,
+          "trend": { "distance": 83, "deadBand": 15, "motion": "stopped", "closerIntervalSeconds": 2 },
+          "expect": "tick"
+        },
+        {
+          "now": 12,
+          "trend": { "distance": 60, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        }
+      ]
+    },
+    {
+      "name": "행동 안내 후 정숙 구간",
+      "initial": { "anchorDistance": 100, "trend": "none" },
+      "steps": [
+        { "now": 0, "priorityTone": "ahead", "expect": "ahead" },
+        {
+          "now": 1,
+          "trend": { "distance": 60, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        {
+          "now": 3.5,
+          "trend": { "distance": 60, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        }
+      ]
+    },
+    {
+      "name": "상위 톤이 추세 판정을 삼킨다(동시 참 fixture)",
+      "initial": { "anchorDistance": 100, "trend": "closer" },
+      "steps": [
+        {
+          "now": 0,
+          "unreliable": true,
+          "trend": { "distance": 50, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "unreliable"
+        },
+        {
+          "now": 1,
+          "priorityTone": "warning",
+          "trend": { "distance": 40, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "warning"
+        },
+        {
+          "now": 5,
+          "eventOwned": true,
+          "trend": { "distance": 30, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        {
+          "now": 6,
+          "trend": { "distance": 29, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        }
+      ]
+    },
+    {
+      "name": "차량 closer 간격과 farther 비대칭",
+      "initial": { "anchorDistance": 1000, "trend": "none" },
+      "steps": [
+        {
+          "now": 10,
+          "trend": { "distance": 900, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 10 },
+          "expect": "closer"
+        },
+        {
+          "now": 14,
+          "trend": { "distance": 800, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 10 },
+          "expect": null
+        },
+        {
+          "now": 21,
+          "trend": { "distance": 700, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 10 },
+          "expect": "closer"
+        },
+        {
+          "now": 24,
+          "trend": { "distance": 900, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 10 },
+          "expect": "farther"
+        }
+      ]
+    },
+    {
+      "name": "도착 종단은 추세·정지·신뢰 불가를 억제하고 경고는 통과시킨다",
+      "initial": { "anchorDistance": 30, "trend": "closer" },
+      "steps": [
+        {
+          "now": 0,
+          "arrived": true,
+          "trend": { "distance": 25, "deadBand": 15, "motion": "stopped", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        { "now": 3, "arrived": true, "unreliable": true, "expect": null },
+        { "now": 6, "arrived": true, "priorityTone": "warning", "expect": "warning" }
+      ]
+    },
+    {
+      "name": "축 전환 재기준화(handoff)",
+      "initial": { "anchorDistance": 500, "trend": "closer" },
+      "steps": [
+        {
+          "now": 0,
+          "rebaseTrend": true,
+          "trend": { "distance": 120, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        },
+        {
+          "now": 3,
+          "trend": { "distance": 118, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": null
+        },
+        {
+          "now": 6,
+          "trend": { "distance": 100, "deadBand": 15, "motion": "moving", "closerIntervalSeconds": 2 },
+          "expect": "closer"
+        }
+      ]
+    }
+  ]
+}
