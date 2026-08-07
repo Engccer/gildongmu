@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
+  BASE_DEAD_BAND_M,
   beaconStep,
   INITIAL_BEACON_STATE,
   rebaseBeaconState,
@@ -649,7 +650,7 @@ export function useRouteGuide(
             ? null
             : {
                 distance: result.announce.distance,
-                deadBand: Math.max(15, fix.accuracy),
+                deadBand: Math.max(BASE_DEAD_BAND_M, fix.accuracy),
                 motion,
                 closerIntervalSeconds,
               },
@@ -689,7 +690,13 @@ export function useRouteGuide(
           priorityTone: result.tone,
           eventOwned: result.event !== null,
           trend: trendable
-            ? { distance: remaining, deadBand: 15, motion, closerIntervalSeconds }
+            ? {
+                distance: remaining,
+                // 상세는 정확도로 스케일하지 않는다(투영 안정성이 오차 축이다).
+                deadBand: BASE_DEAD_BAND_M,
+                motion,
+                closerIntervalSeconds,
+              }
             : null,
           arrived: false,
           rebaseTrend: false,
