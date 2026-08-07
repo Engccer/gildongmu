@@ -82,11 +82,20 @@ struct GuideAudioSessionTests {
         #expect(action == .rebuild(.playback))
     }
 
-    @Test("세션 밖 인터럽션 종료는 .ambient를 되살린다")
-    func interruptionOutsideSession() {
-        let (state, action) = guideAudioStep(state: .initial, event: .interrupted)
+    /// ⚠ **안내가 돌지 않는 동안에는 공유 세션을 건드리지 않는다**(스펙 §3.2 규칙 3).
+    /// route 변경 옵서버가 신설되면서 세션 밖에서도 이 경로가 열렸는데, 그때 `.ambient`를
+    /// 강제하면 온디바이스 TTS가 낭독 중인 카테고리를 바꾼다(코드 리뷰 2026-08-08).
+    @Test("세션 밖 인터럽션·route 변경은 공유 세션을 건드리지 않는다")
+    func outsideSessionLeavesSharedSessionAlone() {
+        #expect(guideAudioStep(state: .initial, event: .interrupted).action == .none)
+        #expect(guideAudioStep(state: .initial, event: .routeChanged).action == .none)
+    }
+
+    /// 단발 재생 직전의 세션 확보만 원복 자격 없이도 적용된다(종전 `ensureSession()` 동형).
+    @Test("세션 밖 단발 재생은 .ambient로 세션을 확보한다")
+    func ensureActiveOutsideSession() {
+        let (state, action) = guideAudioStep(state: .initial, event: .ensureActive)
         #expect(action == .apply(.ambient))
-        // 세션 밖 복구는 승격이 아니므로 원복 자격이 생기지 않는다.
         #expect(!state.didPromote)
     }
 
@@ -106,9 +115,11 @@ struct GuideAudioSessionTests {
         state = guideAudioStep(state: state, event: .suppressionChanged(true)).state
         let ended = guideAudioStep(state: state, event: .sessionEnded)
         #expect(ended.action == .none)
-        #expect(!ended.state.didPromote)
-        // 해제 시 재조정이 .ambient를 적용한다(우리 의도는 이미 세션 밖이다).
-        let (_, action) = guideAudioStep(state: ended.state, event: .suppressionChanged(false))
+        // ⚠ 자격을 아직 반납하지 않는다 — 원복을 못 했으므로 의무가 남아 있다.
+        #expect(ended.state.didPromote)
+        // 해제 시 재조정이 .ambient를 적용하고, 그때 자격이 반납된다.
+        let (next, action) = guideAudioStep(state: ended.state, event: .suppressionChanged(false))
         #expect(action == .apply(.ambient))
+        #expect(!next.didPromote)
     }
 }

@@ -92,10 +92,10 @@ final class BeaconTonePlayer {
 
     func play(_ tone: BeaconTone) {
         haptic(for: tone)
-        // 세션을 아직 잡지 않았으면 지금 적용한다(세션 밖 단발 재생 경로).
-        // `.interrupted`는 "저장된 의도를 지금 적용하라"는 재조정 이벤트다 —
-        // 세션 밖이면 의도가 `.ambient`라 종전 동작과 같다.
-        if appliedCategory == nil { dispatch(.interrupted) }
+        // 세션을 아직 잡지 않았으면 지금 적용한다(세션 밖 단발 재생 경로 —
+        // 종전 `ensureSession()`과 동형). 인터럽션·route 변경과 달리 이 이벤트만
+        // 원복 자격 없이도 적용된다.
+        if appliedCategory == nil { dispatch(.ensureActive) }
         // ⚠ 판정 축은 **세션 확보 여부**이지 `isSilenced`가 아니다. 후자는 한 번의
         // 재생 실패로도 켜지므로, 그걸로 막으면 일시적 실패가 영구 침묵으로 굳는다
         // (종전 `guard ensureSession()`은 세션만 봤고 재생은 매번 다시 시도했다).

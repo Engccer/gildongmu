@@ -562,14 +562,17 @@ final class BeaconModel {
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
         case .active:
-            guard isTracking else { return }
-            UIApplication.shared.isIdleTimerDisabled = true
-            // 억제된 동안 상태가 여러 번 바뀌었을 수 있다 — 누적 재생 대신 현재
-            // 상태 하나를 낭독한다(spec §6.5 재동기화).
+            // ⚠ **추적 가드보다 앞이다.** 백그라운드에서 세션이 *끝나는* 경로들이 있고
+            // (권한 철회·목적지 변경·다른 세션의 claim) 그때 status가 내려가므로,
+            // 가드 뒤에 두면 종료 통지가 통째로 유실된다. 같은 순간 정지 톤도 없어
+            // (stop 기본값이 playStopTone: false) "조용히 죽은 것"과 "정상인데 데드밴드를
+            // 못 넘은 것"이 구분되지 않는다. 종료 통지는 추적 중이 아닐 때야말로 필요하다.
             if missedAnnouncement {
                 missedAnnouncement = false
                 if !statusText.isEmpty { announce(statusText) }
             }
+            guard isTracking else { return }
+            UIApplication.shared.isIdleTimerDisabled = true
             // `.background`를 거친 복귀에서만 앵커를 버린다. 제어센터를 잠깐 여는
             // `.inactive` 왕복까지 리셋하면 추세가 계속 초기화되고 절대거리가 재발화된다.
             guard wasBackgrounded else { return }
@@ -605,9 +608,16 @@ final class BeaconModel {
             : ToneLayerConstants.walkCloserIntervalSeconds
     }
 
-    /// 이 fix의 이동 상태(양 모드 공용). **모든 fix에서 호출한다** — 거리 미분 폴백이
-    /// 직전 표본을 쓰므로 건너뛰면 폴백 기준이 낡는다.
-    private func judgeMotion(fix: LocationService.BeaconFixPayload, now: Double) -> MotionState {
+    /// 이 fix의 이동 상태(양 모드 공용).
+    ///
+    /// ⚠ **신선하지 않은 fix는 판정에 넣지 않는다**(코드 리뷰 2026-08-08). 캐시 좌표가
+    /// 현재 위치 근처면(마지막 알려진 위치라 흔하다) 산출 속도가 0에 가까워 **걷는 중에
+    /// 거짓 정지**가 난다. 표본 시각이 측정 시각이 아니라 수신 시각이라 dt도 실제 간격이
+    /// 아니어서 폴백 상·하한이 제 역할을 못 한다. 낡은 표본은 기준으로도 두지 않는다.
+    private func judgeMotion(
+        fix: LocationService.BeaconFixPayload, ageSeconds: Double, now: Double
+    ) -> MotionState {
+        guard abs(ageSeconds) <= BeaconConstants.freshnessWindow else { return .speedUnknown }
         let out = motionStep(
             state: motionState,
             sample: MotionSample(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, at: now),
@@ -653,14 +663,13 @@ final class BeaconModel {
     private func handle(fix: LocationService.BeaconFixPayload) {
         guard isTracking, let dest else { return }
         let now = uptimeNow
-        // 모든 fix에서 갱신한다(폴백이 직전 표본을 쓴다).
-        let motion = judgeMotion(fix: fix, now: now)
+        let age = Date().timeIntervalSince(fix.timestamp)
+        let motion = judgeMotion(fix: fix, ageSeconds: age, now: now)
 
         // 경로 조회 대기·진행 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의
         // 이중 발화 차단). 첫 수용 fix가 조회 트리거이자 origin이다(8번).
         if awaitingRoute {
             lastFixAt = now
-            let age = Date().timeIntervalSince(fix.timestamp)
             if routeFetchTask == nil, isUsableFix(accuracy: fix.accuracy, ageSeconds: age) {
                 fixWaitTask?.cancel()
                 fixWaitTask = nil
@@ -673,7 +682,7 @@ final class BeaconModel {
             return
         }
         if mode == .detail, let route = guideRoute {
-            handleDetail(fix: fix, route: route, motion: motion, now: now)
+            handleDetail(fix: fix, route: route, motion: motion, age: age, now: now)
             return
         }
         // 간략 경로 위에서의 상세 전환 모호 해소 시도(스펙 §6). 성공하면 이번 fix 소비.
@@ -682,7 +691,6 @@ final class BeaconModel {
         // 캐시 위치와 무효 좌표는 앵커에서 배제한다(판정은 Kit 순수 함수). ⚠ 종전에는
         // 여기서 조용히 버렸는데, 그 침묵도 커버리지 대상이다 — 워치독(8초)이 잡기
         // 전까지의 공백을 신뢰 불가 톤이 메운다.
-        let age = Date().timeIntervalSince(fix.timestamp)
         guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
             routeTone(
                 ToneLayerInput(unreliable: true, arrived: arrivedNow), now: now
@@ -739,12 +747,12 @@ final class BeaconModel {
     // MARK: - 상세 모드 fix 처리·이벤트 배선 (판정은 전부 Kit guideStep)
 
     private func handleDetail(
-        fix: LocationService.BeaconFixPayload, route: GuideRoute, motion: MotionState, now: Double
+        fix: LocationService.BeaconFixPayload, route: GuideRoute, motion: MotionState,
+        age: Double, now: Double
     ) {
         guard let state = guideState else { return }
         // 캐시 fix만 거른다. 정확도 악화(50m 초과)는 버리지 않고 리듀서에 넘긴다 —
         // uncertain 전이(진입·회복 1회 통지)가 그 정보의 소비자다(스펙 §5.0).
-        let age = Date().timeIntervalSince(fix.timestamp)
         guard fix.accuracy > 0, age <= 10 else {
             // stale fix 폐기는 `lastFixAt`을 갱신하지 않으므로 워치독도 잡지만,
             // 발동(8초)까지의 공백을 여기서 메운다.

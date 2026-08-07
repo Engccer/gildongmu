@@ -140,6 +140,23 @@ struct GuideToneLayerTests {
         #expect(next.lastTrendToneAt == nil)
     }
 
+    /// ⚠ **이 순서가 `ahead`·`warning`의 존재 조건이다.** `guideStep`은 `.ahead`를 항상
+    /// `announceSteps`와, `.warning`을 항상 `offRoute`와 **함께** 내므로 우선 톤을 실은
+    /// fix는 예외 없이 `eventOwned == true`다. 두 값을 서로 다른 스텝에 나눠 두면
+    /// 3단계를 2단계 앞으로 옮기는 변이가 전량 green을 통과한다(코드 리뷰 실측 2026-08-08 —
+    /// 그 변이는 결정 지점 예고와 이탈 경고를 통째로 없앤다).
+    @Test("이벤트를 동반해도 우선 톤이 이긴다(실제로는 항상 동반한다)")
+    func priorityWinsOverEvent() {
+        for tone in [BeaconTone.ahead, .warning] {
+            let (_, out) = toneLayerStep(
+                state: anchored(100),
+                input: ToneLayerInput(priorityTone: tone, eventOwned: true, trend: trend(50)),
+                now: 10
+            )
+            #expect(out == tone)
+        }
+    }
+
     @Test("3단계: 이벤트가 톤 자리를 소유하면 침묵하고 앵커도 불변이다")
     func eventOwns() {
         let state = anchored(100)
