@@ -651,6 +651,7 @@
     "progressBundle": "{total} rimanenti. Prossime {count} indicazioni",
     "progressUncertain": "L'affidabilità della posizione è bassa. Ultima indicazione, {last}",
     "progressOffRoute": "Fuori percorso. {distance} in linea d'aria fino alla destinazione",
+    "progressFinalApproach": "{distance} in linea d'aria fino alla destinazione",
     "approx": "circa {distance}",
     "rough": "all'incirca {distance}",
     "noGuidanceYet": "Nessuna indicazione ancora",

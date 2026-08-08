@@ -651,6 +651,7 @@
     "progressBundle": "{total} restants. {count} prochaines instructions",
     "progressUncertain": "La confiance dans la position est faible. Dernière instruction, {last}",
     "progressOffRoute": "Hors itinéraire. {distance} à vol d'oiseau jusqu'à la destination",
+    "progressFinalApproach": "{distance} à vol d'oiseau jusqu'à la destination",
     "approx": "environ {distance}",
     "rough": "à peu près {distance}",
     "noGuidanceYet": "Pas encore d'instruction",

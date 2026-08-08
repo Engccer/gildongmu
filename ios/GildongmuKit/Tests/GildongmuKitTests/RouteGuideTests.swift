@@ -16,6 +16,8 @@ private struct ScenarioFile: Decodable {
 private struct Scenario: Decodable {
     let name: String
     let tuning: String?
+    /// 종점 오프셋 기하를 아는 세션인가(미지정=모름 → 옛 50m 인계).
+    let geometry: Bool?
     let steps: [Step]
     let fixes: [Fix]
     let expect: [Expectation]
@@ -83,7 +85,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
     case .farNotice: "farNotice"
     case .periodic: "periodic"
     case .bundleReread: "bundleReread"
-    case .handoff: "handoff"
+    case .finalApproachEnter: "finalApproachEnter"
     case .offRoute: "offRoute"
     case .backOnRoute: "backOnRoute"
     case .uncertainEnter: "uncertainEnter"
@@ -116,7 +118,9 @@ private func toneName(_ tone: GuideTone?) -> String? {
     for sc in try loadScenarios() {
         let route = routeFrom(sc.steps)
         let tuning: GuideTuning = sc.tuning == "car" ? .car : .walk
-        var state = initialGuideState(route: route, now: 0).state
+        var state = initialGuideState(
+            route: route, now: 0, hasFinalApproachGeometry: sc.geometry == true
+        ).state
         var results: [(event: GuideEvent?, tone: GuideTone?)] = []
         for f in sc.fixes {
             let out = guideStep(
@@ -384,4 +388,114 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
         .init(len: 20, desc: "횡단보도"), .init(len: 16, desc: "이동"), .init(len: 100, desc: "직진"),
     ])
     #expect(initialGuideState(route: bundleFirst, now: 0).firstIndices == [0, 1])
+}
+
+/// 최종 접근 진입(spec 2026-08-08 §3.2·§4) — 웹 route-guide.test.ts 미러.
+/// 공유 fixture가 거리 경계와 래치를 덮고, 여기서는 fixture 스키마로 표현할 수 없는
+/// 전이(낭독 미완·이탈 중·가드 순서)를 고정한다.
+@Suite("최종 접근 진입 조건")
+struct FinalApproachEntryTests {
+    private func straight() -> GuideRoute {
+        routeFrom([Scenario.Step(len: 100, desc: "직진 100m 이동")])
+    }
+
+    /// 종점 근처·전 스텝 낭독 완료·기하 있음인 상태.
+    private func atEnd(_ route: GuideRoute, d: Double = 96) -> GuideState {
+        var s = guideStateAt(route: route, d: d, now: 0, hasFinalApproachGeometry: true)
+        s.announcedUpTo = route.steps.count - 1
+        return s
+    }
+
+    @Test("낭독이 남아 있으면 종점에 닿아도 진입하지 않는다")
+    func announcementIncomplete() {
+        let route = routeFrom([
+            Scenario.Step(len: 60, desc: "직진A"),
+            Scenario.Step(len: 60, desc: "우회전B"),
+        ])
+        var state = atEnd(route, d: 112)
+        state.announcedUpTo = 0
+        let out = guideStep(
+            state: state, fix: fixCoord(along: 115, lateral: 0, acc: 8),
+            route: route, now: 10, tuning: .walk
+        )
+        #expect(out.event != .finalApproachEnter)
+        #expect(out.state.phase != .finalApproach)
+    }
+
+    @Test("이탈 중이면 진입하지 않는다 — 이탈 판정이 먼저 반환한다")
+    func offRouteBlocksEntry() {
+        let route = straight()
+        var state = atEnd(route)
+        state.phase = .offRoute
+        let out = guideStep(
+            state: state, fix: fixCoord(along: 97, lateral: 60, acc: 8),
+            route: route, now: 10, tuning: .walk
+        )
+        #expect(out.state.phase == .offRoute)
+    }
+
+    @Test("재무장 전이면 진입하지 않는다(수동 상세 복귀 세션)")
+    func notArmed() {
+        let route = straight()
+        var state = atEnd(route)
+        state.autoHandoffArmed = false
+        let out = guideStep(
+            state: state, fix: fixCoord(along: 97, lateral: 0, acc: 8),
+            route: route, now: 10, tuning: .walk
+        )
+        #expect(out.event != .finalApproachEnter)
+    }
+
+    /// ⚠ 가드는 uncertain 게이트보다 **앞**에 있어야 한다. 뒤에 두면 정확도가 나빠질 때
+    /// uncertain을 경유했다가 resumePhase(.following)로 복귀하며 래치가 조용히 풀린다.
+    @Test("진입 후에는 정확도가 무효여도 uncertain으로 가지 않는다")
+    func latchSurvivesBadAccuracy() {
+        let route = straight()
+        let entered = guideStep(
+            state: atEnd(route), fix: fixCoord(along: 97, lateral: 0, acc: 8),
+            route: route, now: 10, tuning: .walk
+        )
+        #expect(entered.event == .finalApproachEnter)
+        #expect(entered.state.phase == .finalApproach)
+
+        let bad = guideStep(
+            state: entered.state, fix: fixCoord(along: 97, lateral: 0, acc: 200),
+            route: route, now: 20, tuning: .walk
+        )
+        #expect(bad.state.phase == .finalApproach)
+        #expect(bad.event == nil)
+        #expect(bad.state.lastFixAt == 20)
+    }
+
+    @Test("재획득으로 상태를 다시 만들어도 기하 보유가 승계된다")
+    func geometryFlagSurvivesReacquire() {
+        let route = routeFrom([Scenario.Step(len: 400, desc: "직진")])
+        var state = guideStateAt(
+            route: route, d: 0, now: 0, hasFinalApproachGeometry: true
+        )
+        state.phase = .reacquiring
+        state.lastFixAt = 0
+        state = guideStep(
+            state: state, fix: fixCoord(along: 200, lateral: 0, acc: 10),
+            route: route, now: 10, tuning: .walk
+        ).state
+        #expect(state.phase != .reacquiring)
+        #expect(state.hasFinalApproachGeometry)
+    }
+
+    @Test("진입선: 기하를 모르면 옛 50m, 알면 정확도와 하한 중 큰 값")
+    func entryDistance() {
+        let route = straight()
+        var legacy = guideStateAt(route: route, d: 0, now: 0)
+        legacy.hasFinalApproachGeometry = false
+        #expect(
+            finalApproachEntryMeters(state: legacy, accuracy: 5, tuning: .walk)
+                == handoffDistMeters
+        )
+        let known = guideStateAt(
+            route: route, d: 0, now: 0, hasFinalApproachGeometry: true
+        )
+        #expect(finalApproachEntryMeters(state: known, accuracy: 5, tuning: .walk) == 10)
+        #expect(finalApproachEntryMeters(state: known, accuracy: 30, tuning: .walk) == 30)
+    }
 }

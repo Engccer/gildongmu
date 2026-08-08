@@ -890,7 +890,7 @@ final class BeaconModel {
         // (uncertain·offRoute가 handoff 판정보다 앞에서 반환한다) **투영 점프는 보지
         // 않는다**. 튄 잔여 거리로 인계를 확정하면 실제 경로가 남았는데 결정 지점
         // 안내가 사라진다. 이 fix만 버리면 되고, 조건이 참이면 다음 fix에서 다시 온다.
-        if case .handoff = event, jumped { return }
+        if case .finalApproachEnter = event, jumped { return }
         consume(event: event, route: route)
     }
 
@@ -919,7 +919,7 @@ final class BeaconModel {
             lastGuidance = text
             statusText = text
             announce(text)
-        case .handoff:
+        case .finalApproachEnter:
             // 간략(비콘) 인계 — 검증된 리듀서를 그대로 쓴다. 자동 인계는 래치이며
             // 수동 상세 복귀는 전환 버튼으로(재무장은 리듀서 상태가 소유).
             mode = .brief

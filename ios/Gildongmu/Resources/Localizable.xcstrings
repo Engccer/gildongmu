@@ -10601,6 +10601,46 @@
         }
       }
     },
+    "guide.progressFinalApproach": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지까지 직선거리 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ straight-line to the destination"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ en línea recta hasta el destino"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ à vol d'oiseau jusqu'à la destination"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ in linea d'aria fino alla destinazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地まで直線距離 %1$@"
+          }
+        }
+      }
+    },
     "guide.progressFollowing": {
       "localizations": {
         "ko": {

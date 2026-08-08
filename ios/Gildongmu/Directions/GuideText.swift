@@ -114,6 +114,18 @@ enum GuideText {
             return appLocalized(
                 "guide.progressOffRoute", formatDistance(Int(straight.rounded()))
             )
+        case .finalApproach:
+            // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다). 정직한 값은
+            // 목적지 직선거리뿐이고, 그것이 없으면 마지막 안내를 되돌려 준다.
+            guard let straight = straightLineMeters else {
+                return appLocalized(
+                    "guide.progressUncertain",
+                    lastGuidance ?? appLocalized("guide.noGuidanceYet")
+                )
+            }
+            return appLocalized(
+                "guide.progressFinalApproach", formatDistance(Int(straight.rounded()))
+            )
         }
     }
 }
