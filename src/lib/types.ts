@@ -72,6 +72,11 @@ export interface RouteEndpoints {
 export interface Coord {
   lat: number;
   lng: number;
+  /**
+   * 측위 정확도(m). 수동 위치의 이동 판정이 오차 원을 차감하는 데 쓴다
+   * (`effective-location.ts`). 기존 소비자는 읽지 않으므로 선택적이다.
+   */
+  accuracy?: number;
 }
 
 /**

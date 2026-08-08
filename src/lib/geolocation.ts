@@ -101,7 +101,13 @@ export function requestLocation(opts?: LocateOptions): void {
       inflight = false;
       setState({
         status: "ready",
-        coords: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        coords: {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          // 수동 위치 이동 판정이 오차 원을 차감하는 데 쓴다. 정확도를 버리면
+          // 판정이 중심점 거리만 보게 되어 오차가 큰 실내 fix에서 오해제가 난다.
+          accuracy: pos.coords.accuracy,
+        },
       });
     },
     () => {
