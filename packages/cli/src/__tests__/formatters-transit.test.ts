@@ -157,3 +157,47 @@ describe("route transit 경로 수 변화", () => {
     expect(lines).toContain("대안 경로 2");
   });
 });
+
+describe("route transit 빠른하차", () => {
+  const withQuickExit = (quickExit: unknown) => ({
+    result: {
+      recommended: {
+        summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
+        legs: [
+          {
+            mode: "subway",
+            lineName: "수도권 5호선",
+            fromName: "천호",
+            toName: "여의도",
+            stationCount: 8,
+            minutes: 24,
+            ...(quickExit ? { quickExit } : {}),
+          },
+        ],
+      },
+      alternatives: [],
+    },
+  });
+
+  it("탑승 구간 다음 줄에 나온다", () => {
+    const lines = FORMATTERS["route-transit"](
+      withQuickExit({
+        elevator: { kind: "door", doors: ["6-4"] },
+        stairs: { kind: "door", doors: ["5-4"] },
+      }) as never,
+    );
+    const i = lines.findIndex((l) => l.includes("천호→여의도"));
+    expect(lines[i + 1]).toBe("여의도 하차, 엘리베이터 6-4 문, 계단 5-4 문");
+  });
+
+  it("문 사이는 별도 형태로 나온다", () => {
+    const out = formatTransit(
+      withQuickExit({ elevator: { kind: "between", doors: ["3-2", "3-3"] } }),
+    );
+    expect(out).toContain("여의도 하차, 엘리베이터 3-2 문과 3-3 문 사이");
+  });
+
+  it("값이 없으면 줄 자체가 없다", () => {
+    expect(formatTransit(withQuickExit(null))).not.toContain("하차,");
+  });
+});

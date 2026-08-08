@@ -269,6 +269,18 @@ interface TransitLegItem {
   serviceStatus?: "running" | "outside" | "unknown";
   firstServiceTime?: string;
   lastServiceTime?: string;
+  /** 하차역 빠른하차 문 위치(E5). 판정 불가·미커버·시설 없음은 필드 부재. */
+  quickExit?: QuickExitItem;
+}
+
+interface QuickExitDoorItem {
+  kind: "door" | "between";
+  doors: string[];
+}
+
+interface QuickExitItem {
+  elevator?: QuickExitDoorItem;
+  stairs?: QuickExitDoorItem;
 }
 
 interface TransitRouteItem {
@@ -781,6 +793,30 @@ function transitAlternativeName(route: TransitRouteItem): string {
   return typeof route.displayIndex === "number" ? `대안 경로 ${route.displayIndex}` : "대안 경로";
 }
 
+/**
+ * 빠른하차 문장(E5). 웹 `quickExitText` + `messages/ko.json`의 ko 미러다 — CLI는 i18n이
+ * 없어 문구를 옮겨 적을 수밖에 없고, 갈리면 같은 사실이 화면마다 다르게 낭독된다.
+ * 동조는 `format-drift.test.ts`가 웹 정본을 실행해 대조로 강제한다(`dist()` 동형).
+ */
+function quickExitDoorPhrase(door: QuickExitDoorItem): string | null {
+  if (door.kind === "between" && door.doors.length >= 2) {
+    return `${door.doors[0]} 문과 ${door.doors[1]} 문 사이`;
+  }
+  return door.doors[0] ? `${door.doors[0]} 문` : null;
+}
+
+export function transitQuickExitLine(leg: TransitLegItem): string | null {
+  if (!leg.quickExit || !leg.toName) return null;
+  const elevator = leg.quickExit.elevator ? quickExitDoorPhrase(leg.quickExit.elevator) : null;
+  const stairs = leg.quickExit.stairs ? quickExitDoorPhrase(leg.quickExit.stairs) : null;
+  if (elevator && stairs) {
+    return `${leg.toName} 하차, 엘리베이터 ${elevator}, 계단 ${stairs}`;
+  }
+  if (elevator) return `${leg.toName} 하차, 엘리베이터 ${elevator}`;
+  if (stairs) return `${leg.toName} 하차, 계단 ${stairs}`;
+  return null;
+}
+
 function transitLegLine(leg: TransitLegItem): string {
   if (leg.mode === "walk") return transitWalkLegLine(leg);
   return joinText(
@@ -803,7 +839,12 @@ function formatRouteTransit(body: { result: TransitRouteResultItem | null }): st
   const pushRoute = (label: string, route: TransitRouteItem) => {
     lines.push(label);
     lines.push(transitSummaryLine(route));
-    for (const leg of route.legs) lines.push(transitLegLine(leg));
+    for (const leg of route.legs) {
+      lines.push(transitLegLine(leg));
+      // 별도 문장이라 별도 줄(웹이 별도 블록으로 두는 것과 같은 판단).
+      const quickExit = transitQuickExitLine(leg);
+      if (quickExit) lines.push(quickExit);
+    }
   };
   pushRoute("추천 경로", result.recommended);
   for (const alt of result.alternatives) pushRoute(transitAlternativeName(alt), alt);
