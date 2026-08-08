@@ -39,7 +39,9 @@ const I18N_DIR = path.join(REPO_ROOT, 'ios', 'i18n');
 // Kit 네임스페이스: Kit 소스 `kitLocalized` 실참조 도메인만 — 감사 2026-07-30에서
 // 나머지 11종 180키 전량 미참조 확정. 앱 타깃은 전 네임스페이스를 담는다
 // (일부 중복 수록은 의도 — 카탈로그는 타깃별로 독립 컴파일되므로 정합 문제 없음).
-const KIT_NAMESPACES = ['category', 'region', 'whereAmI'];
+// `route`는 2026-08-08 빠른하차(QuickExitText)가 참조를 만들며 추가됐다 — 규칙을
+// 되돌린 것이 아니라 "실참조 도메인만"이라는 규칙이 그대로 적용된 결과다.
+const KIT_NAMESPACES = ['category', 'region', 'route', 'whereAmI'];
 
 const TARGETS = {
   app: {

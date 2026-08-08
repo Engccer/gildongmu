@@ -158,13 +158,18 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
     public let serviceWayCode: Int?
     /// 경유 정류장·역(양 끝 포함) — `includeStops=1` 시 탑승 leg에만
     public let stops: [TransitLegStop]?
+    /// 하차역 빠른하차 문 위치(서울교통공사 1~8호선, E5) — additive optional.
+    /// ⚠ additive라도 **여기 선언하지 않으면 값이 오지 않는다**. 서버가 실었는데
+    ///   앱만 침묵하는 조용한 결함이라 계약 테스트가 디코딩부터 문장까지 훑는다.
+    public let quickExit: QuickExit?
 
     public init(
         mode: String, lineName: String?, fromName: String?, toName: String?,
         stationCount: Int?, minutes: Int, serviceStatus: String?,
         firstServiceTime: String?, lastServiceTime: String?,
         serviceRouteId: String? = nil, serviceWayCode: Int? = nil,
-        stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil
+        stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil,
+        quickExit: QuickExit? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -179,6 +184,31 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         self.serviceRouteId = serviceRouteId
         self.serviceWayCode = serviceWayCode
         self.stops = stops
+        self.quickExit = quickExit
+    }
+}
+
+/// 빠른하차 문 위치. `"6-4"`는 6번 칸 4번 문이고, 두 문 사이면 `kind == "between"`에
+/// 두 문이 순서대로 담긴다(문 번호 자리에 `"3-2,3-3 사이"`를 넣으면 문장이 깨진다).
+/// ⚠ `kind`는 String이다 — 서버가 형태를 늘려도 디코딩이 깨지지 않게(mode와 같은 원칙).
+public struct QuickExitDoor: Codable, Sendable, Hashable {
+    public let kind: String
+    public let doors: [String]
+
+    public init(kind: String, doors: [String]) {
+        self.kind = kind
+        self.doors = doors
+    }
+}
+
+/// 한쪽 시설만 있으면 그쪽만 온다 — 없는 시설을 "없음"으로 표현하지 않는다(3-state).
+public struct QuickExit: Codable, Sendable, Hashable {
+    public let elevator: QuickExitDoor?
+    public let stairs: QuickExitDoor?
+
+    public init(elevator: QuickExitDoor? = nil, stairs: QuickExitDoor? = nil) {
+        self.elevator = elevator
+        self.stairs = stairs
     }
 }
 

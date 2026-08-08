@@ -52,6 +52,12 @@ struct TransitRouteRows: View {
             // 도보 구간이 거리를 싣게 되면서 이 행에도 "178m"가 들어온다.
             // VoiceOver가 숫자 뒤 m을 minutes로 오독하므로 낭독만 풀어 쓴다.
             distanceText(transitLegText(leg, destinationName: destinationName))
+            // 빠른하차(E5)는 별도 문장이라 같은 Text에 합치지 않는다 — 합치면 한 줄이
+            // 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "몇 번 문"이 갈린다.
+            // 값이 없으면 행 자체가 없다(3-state: 문구를 만들지 않는다).
+            if let text = quickExitText(leg.quickExit, station: leg.toName ?? "", lang: AppLanguage.current) {
+                Text(text)
+            }
         }
     }
 }
