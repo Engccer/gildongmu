@@ -1,8 +1,12 @@
 # 최종 접근 안내 설계 (마지막 몇 미터)
 
-> 2026-08-08. 위원장이 실험판으로 도보 실시간 안내를 실보행하고 준 피드백 중 **"마지막 15미터에 안내가 없다"**를 닫는다. 백로그 `docs/BACKLOG.md` §F-a "실시간 길 안내(E4) 최종 판정 3묶음 ①실보행 완주 — 상수 튜닝(40m·50m·주기) 판정"이 이 spec으로 소비된다. 관련 항구 규칙은 `CLAUDE.md`의 "도보 경로"·"3-state 불변식" 행, `docs/INTEGRATIONS.md` §실시간 길 안내, 접근성 헌장 §1·§5.
+> 2026-08-08. 위원장이 실험판으로 도보 실시간 안내를 실보행하고 준 피드백 중 **"마지막 15미터에 안내가 없다"**를 닫는다. 백로그 `docs/BACKLOG.md` §F-a "실시간 길 안내(E4) 최종 판정 3묶음 ①실보행 완주 — 상수 튜닝(40m·50m·주기) 판정"이 이 spec으로 소비된다. 상위 설계는 `2026-08-03-realtime-route-guidance-design.md`(이하 **E4 spec**)이고 이 문서는 그 §5.0 상태 모델과 §5.3 인계 조건을 개정한다.
 >
-> 같은 실보행에서 나온 **주기 통지 중복 낭독**은 위원장 판정으로 이 spec에서 분리해 백로그 §A5로 보냈다(2026-08-08). 두 사안은 원인이 같지만("리듀서가 말할 값이 있는지 보지 않고 말할 시각인지만 본다") 신규 설계 판정과 기존 결함 수정을 한 리뷰에 섞지 않는다.
+> **개정 2026-08-08 (codex 적대적 검토 49건 반영)**: 초판은 배치 서술을 `handoff` 시점(경로 잔여 50m)에 두었는데, 그 문장의 거리·방향이 **경로 종점 기준**이라 사용자가 최대 50m 일찍 방향을 틀게 만든다. 검토 49건 중 9건이 이 한 계층을 반복 지적했다. 시점을 **경로 종점 도달**로 옮겨 거리 기준을 "현재 위치 → 목적지"로 통일했고, 그에 따라 §5.3 인계 조건 자체를 재정의했다. 판정 전량은 §9.
+>
+> **위원장 판정(2026-08-08)**: "기술적으로 가능한 한 최대한 목적지와 가까운 곳까지 안내한다." 이것이 §3.2 인계 시점의 정본 근거다.
+>
+> 같은 실보행에서 나온 **주기 통지 중복 낭독**은 백로그 §A5로 분리했다(신규 설계 판정과 기존 결함 수정을 한 리뷰에 섞지 않는다).
 
 ## 1. 문제
 
@@ -22,8 +26,6 @@
 
 정확도가 나쁘면 `arrivalThreshold = max(20, accuracy)`가 커지므로 **침묵 구간이 20m 이상으로 넓어진다.** GPS가 나쁠수록 안내가 줄어든다.
 
-조사가 정리한 안티패턴 9종 중 1번이 정확히 이 상태다: **"도착 존에서 한 번 알리고 침묵"**.
-
 ### 1.2 실측이 뒤집은 전제 — 경로는 목적지까지 가지 않는다
 
 **카카오 도보 경로는 목적지 좌표가 아니라 가장 가까운 보행로 지점에서 끝난다.** 프로덕션 실호출 4건:
@@ -35,235 +37,313 @@
 | 이마트 명일점 | 48.6m | +46° |
 | 서울길동초등학교 | 89.4m | −72° |
 
-**함의 셋.**
+⚠ **표본 4건이므로 "항상 오프셋이 있다"는 일반 명제가 아니다**(검토 #43). 오프셋 0인 경로가 오면 §3.1의 하한 분기가 그것을 흡수한다.
 
-1. `handoff` 임계 50m는 **경로 잔여** 기준이므로, 그 시점의 실제 목적지까지 직선거리는 50~130m다. "마지막 15m"는 그보다 뒤에 온다.
-2. 서울길동초등학교처럼 오프셋이 89m면 **경로를 완주해도 목적지까지 89m가 남는다.**
-3. **이 오프셋의 거리와 방향은 경로 수신 시점에 결정론적으로 계산된다.** GPS도 나침반도 필요 없다. 이것이 §3의 토대다.
+**E4 spec §5.3의 인계 근거가 이 실측으로 무효화된다.** 그 문서는 "50m는 직선 안내가 **더 이른 시점부터 유용하다는 판단**"이라고 적었는데, 그 판단은 **경로 종점 = 목적지**를 전제한다. 오프셋 89m인 목적지에서 경로 잔여 50m는 실제 목적지까지 **139m**이고, 거기서 경로 추종을 끄는 것은 "직선 안내가 더 유용한" 것이 아니라 **아직 따라갈 경로가 남았는데 버리는 것**이다.
 
-⚠ 부수 발견: `kakao-walk.ts:130`이 목적지 좌표를 `roundCoord(dest.lng, 4)`로 반올림해 보낸다(±5.5m). `coord-round.ts`의 판단 기준이 "반올림 오차가 결과를 못 바꾸는 곳에만 쓴다"인데, **최종 접근 안내를 도입하면 그 전제가 깨진다**(§3.1 참조).
+⚠ 부수 발견: `kakao-walk.ts:130`이 목적지 좌표를 `roundCoord(dest.lng, 4)`로 반올림해 보낸다(±5.5m). 이 값은 **캐시 키**이기도 하므로 §3.1이 별도 계약을 둔다.
 
 ## 2. 조사 근거
 
-네 갈래 조사(선행 앱·학술 문헌·방위 관례·국내 데이터)의 결론 중 **설계를 바꾼 것만** 옮긴다. **조사 원자료는 `docs/research/RESEARCH-2026-08-08-last-few-meters.md`**(여기 인용하지 않은 것 — Wayfindr 어휘 목록·안티패턴 9종·상용 앱 방향 규약 비교·OSM 지역별 실측·확인 못 한 항목 — 이 그 문서에 있다. §9가 "반영하지 않은 것"과 그 근거를 따로 적어 둔다).
+네 갈래 조사의 결론 중 **설계를 바꾼 것만** 옮긴다. 원자료는 `docs/research/RESEARCH-2026-08-08-last-few-meters.md`.
+
+⚠ **초판의 근거 오귀속 3건을 정정했다**(검토 #44~#47). 각 항목에 표기한다.
 
 ### 2.1 문제가 학술 정본이다
 
-Saha, Fiannaca, Kneisel, Cutrell, Morris (2019), "Closing the Gap: Designing for the Last-Few-Meters Wayfinding Problem for People with Visual Impairments", ASSETS '19. https://doi.org/10.1145/3308561.3353776
-
-> "smartphone GPS can guide a user to the vicinity of their destination, but not to the precise location (e.g., to the front of a building, but not to the actual door)."
+Saha et al. (2019), ASSETS '19. https://doi.org/10.1145/3308561.3353776
+> "smartphone GPS can guide a user to the vicinity of their destination, but not to the precise location (e.g., **to the front of a building, but not to the actual door**)."
 
 맹인 22명 실측에서 가장 어려운 것이 **의도한 출입문 찾기**(11명)였고, 대처법으로 "완전히 포기"를 든 사람이 2명이다.
 
 ### 2.2 인계 조건이 우리와 같은 상용 선례 — Sendero "Getting Warmer"
 
 https://senderogroup.com/products/RNIBGPS/RNIBGPSUserGuide.htm
-
-> "the Getting Warmer function takes over once you are near your destination **just in case it is a sizable distance off the street**"
 > "It is also used when **a route with turns ends short of the destination** so you have some indication of where that destination is located in the final short distance."
 > "you will hear the distance and compass direction to your destination **every 15 seconds**" (모드 상한 2분)
 
-도착 임계 선택지가 미터 단위로 **15m / 25m / 30m**다. 위원장이 말한 "마지막 15미터"가 이 제품의 첫 선택지와 같다.
+⚠ **초판은 이 인용을 "경로 잔여 50m에서 루프 시작"의 근거로 썼는데 지지하지 않는다**(검토 #45). 인용문이 말하는 것은 **경로가 목적지 못 미쳐 끝났을 때**이지 마지막 스텝을 수행 중인 시점이 아니다. 개정판은 이 인용을 §3.2(종점 도달 후 진입)의 근거로만 쓴다 — 그 시점에서야 인용과 상황이 일치한다.
 
 ### 2.3 Soundscape 오픈소스 실측 상수 (MIT, 코드 직접 확인)
 
-https://github.com/soundscape-community/soundscape
-
 | 상수 | 값 |
 |---|---|
-| `enterImmediateVicinityDistance` | 15.0 m |
-| `leaveImmediateVicinityDistance` | 30.0 m (히스테리시스) |
+| `enterImmediateVicinityDistance` / `leaveImmediateVicinityDistance` | 15.0 / 30.0 m (히스테리시스) |
 | `closeByDistance` | 15.0 m — **이 미만은 수치를 말하지 않는다** |
-| `goodAccuracy` / `averageAccuracy` | 10 m / 20 m (헤지 부사 경계) |
-| course 게이트 | 모션 "이동 중" ∧ `speed ≥ 0.4 m/s` ∧ **3초 워치독** → 만료 시 `nil` |
+| `goodAccuracy` / `averageAccuracy` | 10 / 20 m (헤지 부사 경계) |
+| course 게이트 | 모션 "이동 중" ∧ `speed ≥ 0.4 m/s` ∧ **3초 워치독** |
 
-FAQ 원문:
-> "since Location Services is only accurate to about 10 meters, we cannot guarantee the behavior of the beacon when you are within a few meters of your destination."
 > "When Soundscape is uncertain about which way you are facing, **it lowers the volume of the beacon.**"
 
-**방향 미상을 말이 아니라 볼륨으로 알린다.** 그리고 상대 방향은 8버킷(정면·좌우 각 30°, 대각 각 60°)이며 **시계 방향을 쓰지 않는다.**
+상대 방향은 8버킷(정면·좌우 각 30°, 대각 각 60°)이며 **시계 방향을 쓰지 않는다.**
+
+⚠ **`closeByDistance`를 방위 평균 창 크기의 근거로 쓰지 않는다**(검토 #44). 그것은 거리 수치 생략 임계이지 경로 접선 추정 창이 아니다. §3.1의 창 길이는 §1.2 실측(마지막 세그먼트 단독으로는 판정이 뒤집혔다)만을 근거로 하고, 값 자체는 §6 판정 대상이다.
 
 ### 2.4 표준 — 도착 안내는 "도착했습니다"가 아니다
 
-Wayfindr Open Standard(ITU-T F.921 모체, 2018-08 승인). https://www.wayfindr.net/open-standard/designing-for-vision-impaired-people/different-types-of-navigation-instructions
+Wayfindr Open Standard(ITU-T F.921 모체). 
+> "Route endings... can include information about **the physical layout of the destination** in order to help vision impaired people... **position themselves in relation to other objects**."
 
-> "Route endings are instructions that inform users that they have reached their destination... **This instruction can include information about the physical layout of the destination in order to help vision impaired people make better sense of the space and position themselves in relation to other objects.**"
+예시 문형: "You are now at the platform. **The platform edge is on your left.**" — 현재 위치 확정 + 몸 기준 상대 배치.
 
-예시 문형: "You are now at the platform. **The platform edge is on your left.**" — 현재 위치 확정 + 몸 기준 상대 배치, **거리 수치 없음**.
+⚠ **초판은 이 인용으로 "handoff 선행 발화"를 정당화했으나 지지하지 않는다**(검토 #46). 인용은 **도달이 확정된 뒤**의 문형이다. 개정판은 §3.3(종점 도달 후)의 근거로만 쓴다. "You are now at…"이라는 문두가 그 자체로 시점을 못 박는다.
 
 ### 2.5 랜드마크는 "검증 가능한 것"이어야 한다
 
-Padmanaban & Krukar (2017), "Increasing the Density of Local Landmarks in Wayfinding Instructions for the Visually Impaired". https://doi.org/10.1007/978-3-319-47289-8_7
+Padmanaban & Krukar (2017). https://doi.org/10.1007/978-3-319-47289-8_7
+> "**the key to useful local landmark selection is in understanding which spatial objects would be detected by the blind navigator spontaneously**"
 
-랜드마크를 늘려도 주관적 복잡도가 오르지 않았으나 저자가 조건을 명시한다:
+지팡이 감지 가능 응답(10명): 출입구 10/10 · 음향신호기 10/10 · 노면 재질 10/10 · 점자블록 10/10 · **쉘터 없는 정류장 0/10**.
 
-> "**the key to useful local landmark selection is in understanding which spatial objects would be detected by the blind navigator spontaneously** over the course of regular locomotion."
+### 2.6 가까울수록 발화를 줄여야 한다
 
-지팡이 감지 가능 응답(10명): 출입구 10/10 · 음향신호기 10/10 · 노면 재질 10/10 · 점자블록 10/10 · 난간 8/10 · **쉘터 없는 정류장 0/10**.
+Loomis et al. (2005), JVIB — 음성이 환경음을 **occlusion**과 **perceptual masking** 두 경로로 덮는다. Wayfindr "less is more".
 
-→ **카카오 POI 이름(카페·은행 상호)은 간판이라 검증 수단이 없다.** 우리가 이미 가진 `walk-infra`(음향신호기 seed + Overpass 횡단보도·점자블록)가 문헌이 말하는 랜드마크다.
-
-### 2.6 가까울수록 발화를 줄여야 한다 (요청과 충돌 → §3.2에서 해소)
-
-Loomis, Marston, Golledge, Klatzky (2005), JVIB. https://pmc.ncbi.nlm.nih.gov/articles/PMC2801896/ — 음성 안내가 환경음을 **occlusion**과 **perceptual masking** 두 경로로 덮는다. Wayfindr도 같은 원칙("less is more", "as few distractions as possible")을 명시한다.
-
-마지막 구간이야말로 소리·바람·냄새 랜드마크의 구간이므로, 그때 말을 늘리면 **앱이 자기 안내로 사용자의 랜드마크를 지운다.**
+**⚠ 이 원칙은 "침묵하라"가 아니다.** 줄이는 것은 **문장 길이**이지 존재가 아니다. §1.1의 현행 동작(완전 침묵)은 이 원칙의 이행이 아니라 그 반대편 실패(안티패턴 #1 "도착 존에서 한 번 알리고 침묵")다. 개정판은 마지막 구간에서 **짧게, 계속** 말한다.
 
 ### 2.7 시계 방향은 쓰지 않는다
 
-- Wayfindr 트라이얼: "many reported that it is difficult to distinguish between 1 and 2 o'clock... **clock faces should be used to communicate the general direction**" (정밀 지시에서 격하)
-- Ahmetovic, Oh, Mascetti, Asakawa (2018), ASSETS '18, 시각장애인 11명·회전 286회 로그: **평균 실행 오차 14.9°**(SD 9.9). 90° 교차로 성공률 88.3% 대 45° 교차로 73.0%. https://doi.org/10.1145/3234695.3236363
-- 시계 12분할의 허용 오차는 ±15°라 신체 오차만으로 잠긴다.
-- 한국어 1차 자료에서 시계 방향의 서식지는 **식탁 안내**이고, 보행 안내는 좌/우/앞/뒤다.
+- Wayfindr 트라이얼: "difficult to distinguish between 1 and 2 o'clock... **clock faces should be used to communicate the general direction**"
+- Ahmetovic et al. (2018), ASSETS '18, 회전 286회: **평균 실행 오차 14.9°**(SD 9.9). 90° 교차로 성공률 88.3% 대 45° 73.0%.
+- 한국어 1차 자료에서 시계 방향의 서식지는 **식탁 안내**이고 보행 안내는 좌/우/앞/뒤다.
 
-위원장 요청도 "정면인지, 좌측인지, 우측인지"였다. **세 근거가 같은 곳을 가리킨다.**
+⚠ **회전 오차 연구가 4분할을 직접 검증한 것은 아니다**(검토 #47). 그 연구는 "지시받은 각도만큼 도는 실행 오차"를 쟀고, 우리 축은 "어느 쪽인지 알리는 수신 해상도"다. 4분할 채택의 직접 근거는 **위원장 요청("정면인지 좌측인지 우측인지")**이고, 회전 오차와 Wayfindr 트라이얼은 **시계 12분할을 기각하는** 근거로만 쓴다. 뒤쪽 버킷 경계(±135°)는 어떤 문헌도 지지하지 않는 우리 선택이며 §6 판정 대상이다.
 
 ### 2.8 `horizontalAccuracy`는 거짓말을 한다
 
-Ren, Lam, Manduchi, Mirzaei (2023), "Experiments with RouteNav", ASSETS '23. https://pmc.ncbi.nlm.nih.gov/articles/PMC10691587/
+RouteNav (ASSETS '23). https://pmc.ncbi.nlm.nih.gov/articles/PMC10691587/
+> "the uncertainty radius is small (**5.4 m**) in spite of the very large error (**36.5 m**)"
+> "**The distance to the next tile is expressed only as more/less than 10 meters.**"
 
-> "**in the example to the right the uncertainty radius is small (5.4 m) in spite of the very large error (36.5 m)**"
-> "**The distance to the next tile is expressed only as more/less than 10 meters. Using higher resolution would not be advisable given possible localization errors.**"
-
-우리 데드밴드와 `confidenceDistance`가 이 값을 신뢰해 스케일한다. 최종 구간 판정을 GPS가 아니라 **경로 기하**에 거는 근거가 하나 더 생겼다.
+⚠ **이 근거와 초판 §3.5의 거리 사다리가 충돌했다**(검토 #48): "`accuracy ≤ 10`이면 헤지 없이 숫자"는 **정확히 그 사례에서 가장 강한 확신 문장**을 낸다. §3.6이 이를 흡수한다.
 
 ## 3. 설계
 
-`handoff` 이후를 침묵에서 주기 루프로 바꾼다. Sendero "Getting Warmer"의 구조를 따르되 상수는 §5에서 위원장 판정을 받는다.
+### 3.0 상태 모델 확장 (E4 spec §5.0 개정)
+
+E4 spec의 상태표에서 `handoff` 행을 **대체**한다. 나머지 상태(`following`·`bundle`·`uncertain`·`reacquiring`·`offRoute`)는 불변이다.
+
+| 상태 | 의미 | 진입 | 이탈 |
+|---|---|---|---|
+| ~~`handoff`~~ | (폐기 — `finalApproach`가 대체) | | |
+| `finalApproach` | **경로 종점 이후 오프셋 구간을 직선으로 추적** | §3.2 진입 조건 | 도착 판정(§3.4)·수동 상세 복귀 |
+
+**소유권 계약** (검토 #12·#15·#30):
+- `finalApproach`가 활성인 동안 **거리·방향·도착 발화의 소유자는 이 상태 하나뿐**이다. `beaconStep`의 `first`/`closer`/`farther`/`nearby` 발화는 **전부 억제**한다(리듀서는 계속 돌려 앵커·추세를 유지하되 `speak`를 무시한다). "근처"와 "18미터"가 같은 fix에서 연달아 나가는 경로를 구조적으로 없앤다.
+- 톤은 기존 계층을 그대로 쓴다. **`unreliable` 최우선 불변식은 유지된다**(검토 #31): 최종 접근 층은 톤 계층의 **`priorityTone`과 추세 축 사이**에 들어간다. 신뢰할 수 없는 fix에서 거리·방향을 말하지 않는다.
+- **E4 spec §5.0 이벤트 우선순위는 그대로 유효하다**(검토 #5): `인계 > 이탈/복귀 > …`. 즉 진입 조건과 offRoute가 같은 fix에서 성립하면 **진입이 이긴다**. 다만 §3.2가 진입 조건에 "경로 위에 있을 것"을 넣으므로 그 조합은 애초에 성립하지 않는다.
 
 ### 3.1 종점 오프셋 기하 (GPS 무관, 정적)
 
 서버가 도보 경로 응답에 `finalApproach`를 싣는다.
 
 ```ts
-interface FinalApproach {
-  /** 경로 종점 → 목적지 직선거리(m). 반올림 전 원값. */
+interface FinalApproachGeometry {
+  /** 경로 종점 → 목적지 직선거리(m), 반올림 전 원값. */
   offsetMeters: number;
-  /** 종점 직전 진행 방위 대비 목적지 상대각(-180~180, +우 -좌). */
-  relativeBearing: number;
-  /** 기준으로 삼은 마지막 도로명(있으면). 문장의 "…를 따라 온 방향에서"에 쓴다. */
+  /** 종점 직전 진행 방위 대비 목적지 상대각(-180~180, +우 -좌). 계산 불가·무의미면 생략. */
+  relativeBearing?: number;
+  /** relativeBearing이 없는 이유. 소비자가 "모름"과 "실패"를 가른다(검토 #22). */
+  bearingUnavailable?: "tooClose" | "degenerateGeometry";
+  /** 기준 도로명(마지막 스텝에서 추출). 없으면 생략하고 문장도 기준절을 뺀다. */
   roadName?: string;
 }
 ```
 
-**진행 방위는 종점 직전 15m 구간의 평균**으로 잡는다. 마지막 세그먼트 하나만 쓰면 짧은 꼬리에 흔들린다(실측: 강동구청 −64° vs −99°, 성심병원 −96° vs −60°로 판정이 갈렸다). 15m는 Soundscape `closeByDistance`와 같은 값이고, 사용자가 종점에서 향하고 있을 방향의 근사로 타당하다.
+**방위 계산은 결정론적으로 못 박는다** (검토 #21·#26):
 
-**오프셋이 작으면 방향을 주장하지 않는다.** `offsetMeters < 10`이면 `relativeBearing`을 **생략**한다(3-state). 근거: `roundCoord(…, 4)`의 좌표 반올림만으로 ±5.5m가 실리고, 그 규모에서 방위는 뒤집힐 수 있다.
+1. 종점에서 역방향으로 누적 길이 `BEARING_WINDOW_M = 15`까지의 폴리라인 구간을 취한다. 경로 전체가 그보다 짧으면 전체를 쓴다.
+2. 각 세그먼트의 방위를 **길이 가중 단위벡터 합**으로 평균한다: `Σ(len_i · cos θ_i)`, `Σ(len_i · sin θ_i)` → `atan2`. ⚠ **각도를 산술 평균하지 않는다** — `+179°`와 `−179°`의 산술 평균은 `0°`가 되어 **뒤쪽이 정면으로 뒤집힌다**.
+3. 합 벡터의 크기가 `1e-9` 미만이면(서로 상쇄) `bearingUnavailable = "degenerateGeometry"`.
+4. `offsetMeters < OFFSET_MIN_M = 10`이면 `relativeBearing`을 생략하고 `bearingUnavailable = "tooClose"`. 근거: `roundCoord(…,4)`의 ±5.5m만으로 그 규모에서 방위가 뒤집힐 수 있다.
+5. 좌표가 유한하지 않거나 폴리라인 점이 2개 미만이면 `finalApproach` 필드 자체를 생략한다.
 
-⚠ **`kakao-walk.ts`·`tmap-pedestrian.ts`의 목적지 좌표 반올림을 최종 접근 계산에 쓰지 않는다.** `finalApproach`는 **요청받은 원좌표**로 계산한다. provider에 보내는 값만 반올림된 채로 두면 캐시 히트율은 유지되고 우리 계산은 정확해진다.
+**4분할 경계 소유권** (검토 #27) — 부등호까지 계약이다:
 
-### 3.2 진입 1회 배치 서술 — 요청과 문헌의 충돌을 여기서 해소한다
+| 조건 | 어휘 |
+|---|---|
+| `abs(θ) <= 45` | 정면 |
+| `45 < abs(θ) <= 135` ∧ `θ > 0` | 오른쪽 |
+| `45 < abs(θ) <= 135` ∧ `θ < 0` | 왼쪽 |
+| `abs(θ) > 135` | 뒤 |
 
-§2.6(가까울수록 줄여라)과 위원장 요청(마지막 15m에 더 상세히)은 정면으로 부딪힌다. **해소는 양이 아니라 시점이다.**
+⚠ **캐시 계약** (검토 #14): `finalApproach`는 **provider 응답 캐시에 넣지 않는다.** provider URL은 `roundCoord(…,4)`로 반올림된 목적지를 쓰므로 같은 셀의 서로 다른 목적지가 한 캐시 엔트리를 공유한다. `finalApproach`는 **라우트 핸들러가 요청받은 원좌표로 매 요청 계산**한다(입력은 캐시된 폴리라인 + 원좌표뿐이라 추가 upstream 호출이 없다).
 
-`handoff` 시점(경로 잔여 50m, 즉 **최종 구간에 들어가기 전**)에 현행 `guide.handoff` 한 문장을 배치 서술로 교체한다.
+### 3.2 인계 시점 — "기술적으로 가능한 최대한 가까이" (E4 spec §5.3 개정)
+
+**현행**: 전 스텝 낭독 완료 ∧ 경로 잔여 ≤ 50m → `handoff`.
+**개정**: 전 스텝 낭독 완료 ∧ **경로 종점 도달** ∧ 경로 위(비-offRoute) → `finalApproach`.
+
+**경로 종점 도달** = `route.totalMeters - d <= ARRIVAL_TOLERANCE_M` where `ARRIVAL_TOLERANCE_M = max(10, fix.accuracy)`.
+
+- **왜 정확도에 연동하나**: 경로 잔여 5m를 정확도 30m fix로 판정하는 것은 거짓 정밀도다. 정확도가 나쁘면 종점 도달을 일찍 인정하는 것이 정직하다.
+- **⚠ 정확도 변화만으로 상태가 흔들리지 않는다** (검토 #20): 진입은 **단방향 래치**다(E4 spec의 자동 인계 래치 계약을 승계). 한 번 `finalApproach`가 되면 정확도가 좋아져 임계가 줄어도 되돌아가지 않는다.
+- **오프셋이 작으면 이 상태를 건너뛴다**: `offsetMeters < OFFSET_MIN_M`이면 종점 도달이 곧 목적지 도착이므로 `finalApproach` 없이 기존 도착 판정으로 간다(§3.4).
+- **`finalApproach`가 없는 응답**(구버전·기하 없음)이면 **현행 50m 인계를 그대로 쓴다**(검토 #33). 필드는 웹·Swift 모두 **선택**으로 디코딩한다 — 필수로 두면 Swift에서 경로 전체가 실패한다.
+
+**이 개정이 무엇을 사는가**: 오프셋 89m인 목적지에서 종전에는 실제 목적지까지 139m 지점에 경로 추종이 꺼졌다. 개정 후에는 경로를 끝까지 따라간 뒤 89m 구간만 직선으로 다룬다. 위원장 판정("최대한 가까이")의 이행이다.
+
+**이 개정이 무엇을 파는가**: 경로 종점 근처는 투영이 불안정한 구간이다(창 경계·자기근접). E4 spec이 50m에서 인계한 이유 중 하나가 그것이었다. 대가는 `reacquiring` 진입 가능성 증가이고, 그 경로는 이미 §3.0 상태표가 다룬다. **실보행 판정 대상**(§6).
+
+### 3.3 진입 1회 배치 서술
+
+`finalApproach` 진입 시점에 1회 발화한다. **이때 사용자는 경로 종점에 서 있으므로 `offsetMeters`와 `relativeBearing`이 곧 현재 위치 기준 값이다** — 초판의 근본 결함(검토 #1·#3·#29·#40·#42)이 시점 이동으로 해소된다.
 
 ```
-현행:  목적지까지 직선 안내로 전환합니다
-신규:  성내로를 따라 온 방향에서 강동구청은 왼쪽 약 16미터입니다.
+기준절 있음:  성내로 끝입니다. 강동구청은 왼쪽 약 16미터입니다.
+기준절 없음:  경로 끝입니다. 강동구청은 왼쪽 약 16미터입니다.
+방향 모름:    경로 끝입니다. 강동구청까지 약 16미터입니다.
 ```
 
-세 가지가 이 문장에 들어간다.
+**한국어 조사 계약** (검토 #39): 문장 틀에 조사를 고정하지 않는다. 고유명사 뒤 주격·목적격 조사는 **받침 유무로 갈리므로**(`강동구청은` / `이마트는`, `성내로를` / `양재대로116길을`) i18n 문구를 조사 없는 형태로 짓거나 헬퍼로 선택한다. ⚠ 이 헬퍼는 웹·Kit 미러 대상이다. 영문 로케일은 이 문제가 없으나 **최종 접근은 ko 전용**이다(도보 경로 API가 ko 전용).
 
-1. **기준**("…를 따라 온 방향에서") — 방향을 절대적으로 주장하지 않는다. 사용자가 그 사이 몸을 돌렸어도 스스로 보정할 수 있다. Wayfindr가 랜드마크 기준 표현을 권하는 이유와 같다.
-2. **상대 방향** — 4분할(정면 / 왼쪽 / 오른쪽 / 뒤). §2.7의 오차 예산상 ±45°가 안전 구간이다.
-3. **거리** — §3.5의 정직 사다리를 통과한 값.
+**랜드마크는 이 문장에 붙이지 않는다** — §3.7이 별도 문장으로 다룬다(검토 #41).
 
-`roadName`이 없으면 기준절을 생략한다(문장을 지어내지 않는다).
+### 3.4 주기 루프와 도착
 
-**이 문장은 세션당 1회다.** 반복하지 않는다.
+진입 서술 뒤 **`FINAL_INTERVAL_S = 15`초 주기**로 짧은 통지를 낸다.
 
-### 3.3 주기 루프
+```
+방향 유효:  왼쪽 약 12미터
+방향 모름:  약 12미터
+15m 미만:   목적지 근처, 왼쪽   /   목적지 근처
+```
 
-진입 서술 뒤, 최종 접근 구간에서 **15초 주기 · 상한 2분**의 거리+방향 통지를 켠다(Sendero 실사양).
+- **거리 기준은 항상 "현재 fix → 목적지" 직선거리**다. `offsetMeters`는 진입 서술에서만 쓰고 이후 재사용하지 않는다(검토 #29의 "두 거리 혼동"을 구조적으로 차단).
+- **시간 상한을 두지 않는다.** 초판의 "2분 상한"은 오프셋 89m + 저속 보행에서 **정작 마지막 15m 직전에 루프를 끄는** 결함이었다(검토 #10). 위원장 판정("최대한 가까이")과도 충돌한다. 대신 **종료 조건은 거리**다:
+  - **도착 확정**: 직선거리 ≤ `ARRIVE_M = 15` → 도착 통지 1회 후 루프 종료, 세션 종료. Soundscape `enterImmediateVicinityDistance`와 같은 값.
+  - **멀어짐**: 직선거리 > `LEAVE_M = 30`(Soundscape 히스테리시스)이면 **루프를 끄지 않고 계속 낸다.** 목적지를 지나친 사용자에게 안내가 사라지는 것이 초판 결함이었다(검토 #11). 다만 방향 어휘가 "뒤"로 바뀌므로 그 자체가 신호다.
+  - **안전 상한**: 세션 전체 상한은 사용자의 중지 버튼과 `GuideSessionCoordinator`가 이미 소유한다. 최종 접근 모드가 자체 타이머로 죽지 않는다.
+- **`uncertain`·`reacquiring` 중에는 주기 시각을 정지·유지한다**(리셋 아님). E4 spec §5.0의 타이머 계약을 그대로 따른다 — 복귀 시 밀린 주기가 몰아서 나가지 않는다(검토 #18).
+- **백그라운드**: 음성 억제·톤 유지는 기존 계약 그대로. **진입 서술은 1회뿐인 발화라 억제되면 보관했다가 전경 복귀 시 갚는다**(검토 #13). 구현 선례는 `pendingStepFreeNotice`(1회성 안전 경고의 전달 계약). 주기 통지는 갚지 않는다(다음 주기가 대신 말한다).
 
-- 상한 도달 시 루프를 끄고 톤만 남긴다. 위원장이 목적지를 못 찾은 채 계속 걸으면 무한 발화가 되는 것을 막는다.
-- 사용자가 존을 벗어나면(히스테리시스 `leave`) 루프를 끄고, 재진입 시 다시 켠다.
-- **문장은 짧다**: "{방향} 약 {거리}" 또는 방향 미상이면 "{거리}". 배치 서술은 §3.2에서 이미 한 번 했다.
-
-⚠ 이 루프는 기존 톤 계층의 주기 계산을 **우회하는 별도 우선 층**이다. `maxNormalSilenceS = 21`을 비롯한 톤 상수와 경합시키지 않는다(`docs/INTEGRATIONS.md` §실시간 길 안내의 "배타적 계층 순서"에 최종 접근 층을 추가한다).
-
-### 3.4 방향 3-state
-
-방향은 값이 아니라 상태다.
+### 3.5 방향 3-state (품질 게이트 포함)
 
 | 상태 | 조건 | 동작 |
 |---|---|---|
-| 유효 | `motionStep`이 `moving` ∧ `course ≥ 0` ∧ `courseAccuracy ≥ 0` ∧ 마지막 갱신 3초 이내 | 상대 방향 발화 |
-| 방향 모름 | 정지 · 속도 미달 · 워치독 만료 | **방향 어절을 문장에서 제거**하고 거리만. 신호는 톤으로 |
-| 실패 | `course < 0` 등 무효 | 방향 발화 금지 |
+| 유효 | `motionStep == moving` ∧ `course >= 0` ∧ `0 <= courseAccuracy <= COURSE_ACC_MAX` ∧ 마지막 갱신 ≤ 3초 | 상대 방향 발화 |
+| 모름 | 정지 · 속도 미달 · 워치독 만료 · `courseAccuracy > COURSE_ACC_MAX` | 방향 어절 제거, 거리만 |
+| 실패 | `course < 0` ∨ `courseAccuracy < 0` | 방향 어절 제거, 거리만 |
 
-근거: Apple 공식 문서가 `course`·`courseAccuracy`·`speed` 셋 다 음수로 무효를 신호한다. Soundscape는 그 위에 `speed ≥ 0.4 m/s`와 3초 워치독을 얹었다.
+- **`COURSE_ACC_MAX = 45°`** (검토 #8). 초판의 `courseAccuracy >= 0`은 값의 **존재**만 확인해 120°도 통과시켰다. 4분할 버킷 반폭이 45°이므로 그보다 큰 불확실도는 버킷을 결정할 수 없다.
+- **payload에 `course`와 `courseAccuracy`를 함께 추가한다** (검토 #9). 초판은 `course`만 적어 두고 조건에서 `courseAccuracy`를 요구했다. 하나라도 빠지면 방향이 영영 "모름"이 되거나 한 구현이 임의 기본값을 채워 **웹과 iOS가 다른 방향을 말한다**.
+- **신선도 기준 시각은 fix의 `timestamp`(측정 시각)이고 비교는 주입된 단조 시각으로 한다**(검토 #24). E4 spec의 시간 계약과 동일하다.
+- **모름과 실패는 사용자 출력에서 같다**(검토 #23). 취해야 할 행동이 같기 때문이다(기다리거나 몇 걸음 걷는다). 이는 톤 `unreliable`의 "원인이 아니라 상태를 뜻한다" 계약과 같은 판단이며, **로그·진단에서는 구분한다**.
+- ⚠ **웹은 방향을 말하지 않을 수 있다** (검토 #32). `GeolocationCoordinates`에 `heading`은 있으나 **정확도 필드가 없다.** 정확도를 모르는 방위는 위 게이트를 통과할 수 없으므로 **웹은 항상 "모름" 경로**를 탄다. 이것은 결함이 아니라 플랫폼 사실이며, 공유 fixture는 `courseAccuracy`를 입력으로 받는 **순수 함수**를 검증하고 플랫폼 취득 계층은 각자 다르다. 실시간 안내의 주 창구가 iOS라는 사실과도 정합한다.
 
-⚠ **도착 직전은 사람이 속도를 줄이고 두리번거리는 구간이라 "방향 모름"이 가장 자주 발생하는 시점이 하필 방향이 가장 필요한 시점이다.** 이것은 회피가 아니라 정직으로만 다룬다 — 거짓 방향보다 침묵이 낫다. 그리고 §3.2의 정적 배치 서술이 이 구멍을 메우는 장치다(그 문장은 course를 쓰지 않으므로 항상 나간다).
-
-⚠ **`CLLocation.course`를 `BeaconFixPayload`에 추가해야 한다.** 현재 payload는 `speed`·`speedAccuracy`만 싣는다.
-
-⚠ **나침반(`CLHeading`)은 쓰지 않는다.** 기기 방향이지 몸 방향이 아니고(Apple 문서 명시), 팔 흔들림만으로 약 60° 요동하며(arXiv 2410.06400 실험), 8자 캘리브레이션 알럿이 **시각 애니메이션 지시**라 스크린 리더 사용자에게는 완료 시점을 알 수단이 없다. 한 손이 흰지팡이에 묶여 있으면 물리적으로도 성립하지 않는다.
-
-### 3.5 거리 정직 사다리
+### 3.6 거리 정직 사다리
 
 | 조건 | 문장 |
 |---|---|
-| 반올림 거리 ≤ 15m | **수치 없이** "목적지 근처" |
-| > 15m, `accuracy ≤ 10` | "목적지까지 {distance}" |
-| > 15m, `accuracy ≤ 20` | "목적지까지 약 {distance}" |
-| 그 외 | "목적지까지 {distance}쯤" |
+| 직선거리 ≤ 15m | **수치 없이** "목적지 근처" |
+| > 15m, `accuracy <= 10` | "약 {distance}" |
+| > 15m, `accuracy <= 20` | "약 {distance}" |
+| 그 외 | "{distance}쯤" |
 
-Soundscape `DistanceStyle`의 상수 그대로다. 15m 미만에서 수치를 말하지 않는 것이 핵심이다 — GPS가 못 하는 정밀도를 문장으로 참칭하지 않는다.
+**초판과 다른 점**: `accuracy <= 10` 구간에서도 **헤지를 뺀 단정 표현을 쓰지 않는다**(검토 #48). §2.8이 인용한 RouteNav 실측이 "보고 정확도 5.4m, 실오차 36.5m"이므로, 보고값이 좋다는 이유로 확신 문장을 내는 것은 그 근거와 정면으로 충돌한다. **최종 접근 구간에서는 최소 "약"을 붙인다.**
 
-숫자 포맷은 **기존 `formatDistance`를 그대로 통과**시킨다(3벌 미러 규율 `format-drift.test.ts`를 깨지 않는다). 사다리는 문구 선택 계층에만 둔다.
+- **임계 비교는 원거리(반올림 전)로 한다**(검토 #28). `formatDistance` 통과 후 값으로 비교하면 15.4m가 런타임 반올림 규칙에 따라 "근처"와 "약 15미터"로 갈린다.
+- 숫자 포맷은 **기존 `formatDistance`를 그대로 통과**시킨다(3벌 미러 규율 `format-drift.test.ts`).
+- 현행 `beacon.nearby`의 `±{n}m` 표기는 `finalApproach` 활성 중에는 쓰지 않는다(§3.0 소유권). 비-최종접근 경로에서의 존폐는 §6 판정.
 
-⚠ 현행 `beacon.nearby` "목적지 근처 (약 ±{n}m)"의 `±` 표기는 `CLAUDE.md`가 `formatDistance`의 **명시적 예외**로 인정한 오차 반경 축이다. 15m 미만에서 "±15m"를 듣는 것은 사실상 무정보이므로 제거가 맞다고 보지만, 정확도 정보를 잃는 변경이라 §5 판정 대상으로 남긴다.
+### 3.7 랜드마크
 
-### 3.6 랜드마크
+진입 서술 **다음 문장**으로 **최대 1개** 낸다. 목적지 반경 `LANDMARK_RADIUS_M = 30`의 `getWalkInfrastructure()` 결과에서 고른다.
 
-진입 서술(§3.2)에 **보행 인프라 1개까지** 덧붙인다. 목적지 반경 30m의 `getWalkInfrastructure()` 결과에서 고른다(음향신호기 · 횡단보도 · 점자블록).
+**선택 규칙은 결정론적이다** (검토 #36): ①거리 오름차순 ②동률이면 종류 우선순위(음향신호기 > 횡단보도 > 점자블록) ③그래도 동률이면 `id` 사전순. 반환 순서에 의존하지 않는다.
 
-- **카카오 POI 이름은 기본으로 쓰지 않는다.** §2.5의 검증 가능성 기준에 걸린다. 위원장이 "바로 옆에는 어떤 건물이 있는지"를 명시 요청했으므로 **보조로만** 남기되, 보행 인프라가 없을 때의 폴백으로 순서를 둔다.
-- **1개까지, 1회만.** Soundscape "Around Me"가 분면당 1개로 자르고, Nearby Explorer 가이드가 "keep 'chatter' to a minimum"을 명시하는 이유가 §2.6이다.
+**방향과 거리를 함께 말한다** (검토 #37): "오른쪽 8미터에 음향신호기가 있습니다." 방향 없이 이름만 말하면 목적지 반대편 29m의 횡단보도가 목적지 표지로 오인되어 **사용자를 차도로 보낼 수 있다.** 방향이 "모름"이면(§3.5) **랜드마크 문장 자체를 생략한다** — 방향 없는 랜드마크는 정위에 쓸모가 없고 위험만 남는다.
 
-### 3.7 출입구 좌표 (보강, 키 발급 후)
+**POI 폴백을 두지 않는다** (검토 #38). 초판은 보행 인프라가 없을 때 카카오 POI 이름으로 폴백했는데, **보행 인프라가 없다는 사실이 간판 POI의 감지 가능성을 만들어 주지 않는다.** §2.5 기준과 정면으로 모순되는 설계였다. 인프라가 없으면 랜드마크 문장을 **생략한다**.
 
-행안부 **좌표제공 API**(`business.juso.go.kr/addrlink/addrCoordApi.do`)가 `entX`/`entY`로 **건물 출입구 좌표**를 준다. 이것이 붙으면 §3.1의 목적지 좌표가 건물 중심에서 **출입문**으로 올라간다.
+⚠ 위원장이 "바로 옆에는 어떤 건물이 있는지"를 명시 요청했으므로 이 결정은 §6 판정 대상으로 남긴다. 다만 도입한다면 폴백이 아니라 **별도 축**(사용자가 요청하는 "여기 어디" 버튼 등)이어야 한다.
 
-- 파라미터 `admCd`·`rnMgtSn`·`udrtYn`·`buldMnnm`·`buldSlno`는 **이미 쓰고 있는 `addrLinkApi.do` 검색 응답에 전부 들어 있다**(실호출 확인).
-- ⚠ **별도 승인키가 필요하다.** 보유한 `JUSO_CONFM_KEY`로 호출하면 `E0001 "승인되지 않은 KEY 입니다"`. 즉시 자동승인·무료이며 **위원장 액션**이다(백로그 §F-b).
-- ⚠ 파라미터가 빠지면 `E0002`(파라미터 누락)가 먼저 떠서 **키가 유효한 줄 착각하기 쉽다.** 키 검증은 파라미터를 다 채운 요청으로 한다.
-- ⚠ **좌표계 EPSG:5179**(UTM-K/GRS80). 이 repo가 이미 쓰는 EPSG:2097(에어코리아)·5181(카카오)·5186(음향신호기 OA-15543)과 **전부 다르다.** `proj4` 변환을 provider 내부에 명시 분리한다.
-- 게이트: 키 없으면 `finalApproach`가 카카오 목적지 좌표를 그대로 쓴다(死기능 0, 조용한 열화 아님 — 정밀도만 낮아지고 문장 구조는 같다).
+**조회 실패와 0건을 가른다** (검토 #35): `getWalkInfrastructure()`는 이미 discriminated union(`ok`/`unsupported`/`error`)을 반환한다. `error`를 "인프라 없음"으로 읽지 않는다 — 실패면 랜드마크 문장을 생략하되 그 사실은 로그에 남긴다.
 
-**OSM `entrance`는 쓰지 않는다.** 전국 실측에서 건물 폴리곤 2,847,503개 대비 출입구 노드 21,739개(0.29%)이고, **강동구 길동·강남역·판교역·부산 서면은 반경 300m에 0개**다. 단 `railway=subway_entrance` 4,669개는 커버리지가 양호해 역 출구 안내에는 유효하다.
+### 3.8 출입구 좌표 (보강, 키 발급 후)
 
-## 4. 3-state 계약 요약
+행안부 **좌표제공 API**가 `entX`/`entY`로 **건물 출입구 좌표**를 준다. 붙으면 §3.1의 목적지 좌표가 건물 중심에서 **출입문**으로 올라간다.
+
+- 파라미터 `admCd`·`rnMgtSn`·`udrtYn`·`buldMnnm`·`buldSlno`는 이미 쓰는 `addrLinkApi.do` 검색 응답에 전부 있다(실호출 확인).
+- ⚠ **별도 승인키 필요.** 보유한 `JUSO_CONFM_KEY`로는 `E0001`. 백로그 §F-b(위원장 액션).
+- ⚠ **좌표계 EPSG:5179**(UTM-K/GRS80). repo가 쓰는 2097·5181·5186과 전부 다르다.
+- **폴백은 조용하지 않다** (검토 #34): 출입구 좌표를 쓸 수 없으면 건물 중심 좌표로 계산하되, **그 사실이 문장에 드러난다.** 출입구 기준이면 "강동구청 출입구는 왼쪽 약 16미터", 건물 중심 기준이면 "강동구청은 왼쪽 약 16미터". 어휘 하나 차이지만 출입구가 건물 반대편일 수 있다는 사실을 사용자가 알 수 있다.
+
+**OSM `entrance`는 쓰지 않는다.** 전국 실측에서 **OSM 건물 대비 0.76%**(21,739 / 2,847,503), 실제 건축물 대비 0.29%다(검토 #49가 초판의 비율 오기를 잡았다). **강동구 길동·강남역·판교역·부산 서면은 반경 300m에 0개**다. 단 `railway=subway_entrance` 4,669개는 역 출구 안내에 유효하다.
+
+## 4. 상태 전이표 (검토 #5·#6·#15~#20 흡수)
+
+`finalApproach` 활성 중 각 사건의 처리. **이 표가 정본이고 산문에 흩지 않는다.**
+
+| 사건 | 처리 | 근거 |
+|---|---|---|
+| `offRoute` 확정 | **발생하지 않는다.** 이탈 판정은 경로 폴리라인 기준인데 이 상태는 경로를 이미 벗어난 구간을 다룬다. 리듀서는 `finalApproach` 진입과 동시에 이탈 판정을 정지한다 | 낡은 경로로 이탈을 주장하면 거짓 |
+| 진입 조건 ∧ `offRoute` 동시 | 진입 조건에 "경로 위(비-offRoute)"가 있으므로 성립 불가. offRoute면 진입하지 않고 기존 재조회 경로를 탄다 | 검토 #5 |
+| 사용자 재조회 성공 | **`finalApproach` 해제 후 `following`으로 복귀.** 새 경로의 `finalApproach` 기하로 교체하고 진입 래치·주기 타이머·진입 서술 래치를 **전부 초기화**한다 | 검토 #6. 새 경로는 새 종점·새 오프셋이다 |
+| 재조회 실패 | 상태 유지. 기존 기하로 계속 안내 | 실패가 데이터 포기가 아니다 |
+| 수동 `detail → brief` 전환 | `finalApproach`를 **켜지 않는다.** 사용자가 명시적으로 직선 안내를 고른 것이므로 기존 비콘 동작 | 검토 #16. 다만 종점 도달 후 수동 전환은 이미 `finalApproach`이므로 해당 없음 |
+| 수동 `brief → detail` 복귀 | `finalApproach` **해제**, 주기 타이머 취소. 경로 스텝 안내 중간에 "오른쪽 약 20미터"가 끼어드는 것을 막는다 | 검토 #17 |
+| `uncertain` 진입 | 주기 타이머 **정지·유지**(리셋 아님), 거리·방향 발화 금지, 톤은 `unreliable` | E4 spec §5.0 |
+| `uncertain` 이탈 | 타이머 재개. 밀린 주기를 몰아서 내지 않는다 | 검토 #18 |
+| `reacquiring` | `uncertain`과 동일 처리. 단 재획득은 경로 투영 복구이고 이 상태는 경로를 안 쓰므로, **`finalApproach` 중에는 `reacquiring`으로 가지 않는다**(fix 공백은 `unreliable` 톤과 워치독이 담당) | 상태 축이 다르다 |
+| 목적지 지나침(거리 > `LEAVE_M`) | **루프 유지.** 방향 어휘가 "뒤"로 바뀐다 | 검토 #11 |
+| 도착(거리 ≤ `ARRIVE_M`) | 도착 통지 1회, 루프·세션 종료 | |
+| 백그라운드 진입 | 음성 억제·톤 유지. 진입 서술이 아직 안 나갔으면 **보관** | 검토 #13 |
+| 전경 복귀 | 보관된 진입 서술을 1회 갚는다. 주기 통지는 갚지 않는다 | |
+| 세션 중지 | 전체 해제 | |
+
+## 5. 3-state 계약 요약
 
 | 축 | 있음 | 모름 | 실패 |
 |---|---|---|---|
-| 종점 오프셋 방향 | `relativeBearing` 발화 | `offsetMeters < 10` → 방향절 생략 | (없음 — 정적 계산이라 실패하지 않는다) |
-| 실시간 상대 방향 | course 유효 → 발화 | 정지·워치독 만료 → 어절 제거 + 톤 | `course < 0` → 발화 금지 |
-| 거리 | 수치 + 헤지 부사 | ≤15m → "근처"(수치 없음) | fix 부재 → 워치독 톤 |
-| 출입구 좌표 | juso `entX/entY` | 키 없음 → 카카오 좌표 폴백 | upstream 오류 → 폴백(문장 구조 불변) |
+| 종점 오프셋 방향 | `relativeBearing` | `bearingUnavailable: "tooClose"` | `bearingUnavailable: "degenerateGeometry"` · 필드 전체 부재(구버전) |
+| 실시간 상대 방향 | course 유효 | 정지·워치독·정확도 초과 | `course < 0` ∨ `courseAccuracy < 0` |
+| 거리 | 수치 + 헤지 | ≤15m → "근처"(수치 없음) | fix 부재 → 워치독 톤, 발화 없음 |
+| 출입구 좌표 | "…출입구는" 어휘 | 키 없음 → 건물 중심 + "…은" 어휘 | upstream 오류 → 동일 |
+| 랜드마크 | 방향+거리+이름 | `ok` ∧ 0건 → 문장 생략 | `error` → 문장 생략 + 로그 |
 
-## 5. 미결 — 위원장 실보행 판정 대상
+## 6. 미결 — 위원장 실보행 판정 대상
 
-**판정 전 임의 변경 금지**(B1 프로파일 상수와 같은 규율).
+**판정 전 임의 변경 금지.**
 
-1. **주기 루프 15초 · 상한 2분**(§3.3) — Sendero 실사양이나 우리 톤 계층과의 체감 경합은 실보행에서만 안다.
-2. **`beacon.nearby`의 `±{n}m` 제거 여부**(§3.5).
-3. **랜드마크 순서**(§3.6) — 보행 인프라 우선이 문헌 근거이나, 위원장 요청은 "옆 건물"이었다. 실사용에서 어느 쪽이 정위에 쓸모 있는지.
-4. **4분할 vs 8버킷**(§3.2) — §2.7은 4분할을 지지하고 Soundscape는 8버킷(정면·좌우 각 30°)을 쓴다. 초기값은 4분할.
-5. **진입 서술 시점** — 현행 `handoff` 임계 50m를 그대로 쓸지, 오프셋이 큰 목적지(89m 실측)에서 별도 시점을 둘지.
+1. **`ARRIVAL_TOLERANCE_M = max(10, accuracy)`**(§3.2) — 종점 근처 투영 불안정과의 교환. `reacquiring`이 잦아지면 완화한다.
+2. **`FINAL_INTERVAL_S = 15`**(§3.4) — Sendero 실사양이나 우리 톤 계층과의 체감 경합은 실보행에서만 안다.
+3. **`ARRIVE_M = 15` / `LEAVE_M = 30`**(§3.4) — Soundscape 상수. 도착 선언이 이른지 늦은지.
+4. **`BEARING_WINDOW_M = 15`**(§3.1) — 근거가 §1.2 실측뿐이다(문헌 근거 없음, §2.3 참조).
+5. **뒤쪽 버킷 경계 ±135°**(§3.1) — 어떤 문헌도 지지하지 않는 우리 선택.
+6. **랜드마크 POI 폴백 도입 여부**(§3.7) — 위원장 요청("옆 건물")과 검증 가능성 기준의 충돌.
+7. **`beacon.nearby`의 `±{n}m` 표기 존폐**(비-최종접근 경로).
 
-## 6. 검증
+## 7. 검증
 
-- **게이트 테스트**: `finalApproach` 기하는 §1.2 실측 4건을 golden으로. 방향 4분할 경계(±45°·±135°)와 `offsetMeters < 10` 생략을 fixture로 못 박는다.
-- **변이 주입**: 진행 방위를 "마지막 세그먼트 하나"로 되돌리면 강동구청·성심병원 golden이 깨져야 한다(그 선택이 판정을 뒤집은 실측이 §3.1의 근거다).
-- **실호출 게이트**: 도보 경로 4건으로 `finalApproach`가 실제 응답에 실리는지, 오프셋 10m 미만 목적지에서 방향이 생략되는지. juso 좌표제공 API는 키 발급 후 별도 게이트.
-- **실기기**: 위원장 실보행. §5 다섯 항목이 판정 대상이고, 그 전까지 상수는 동결이다.
+- **게이트 테스트**: `finalApproach` 기하는 §1.2 실측 4건을 golden으로. 4분할 경계값(`±45`·`±135`·`180`)과 `offsetMeters` 하한 생략을 fixture로. §4 상태 전이표는 전이 케이스마다 테스트를 둔다.
+- **변이 주입** (`mutation-proves-test-detection-power` 교훈):
+  - 방위 평균을 **각도 산술 평균**으로 되돌리면 `+179°/−179°` 케이스가 깨져야 한다.
+  - 진입 시점을 **경로 잔여 50m**로 되돌리면 "거리 기준이 현재 위치" 계약 테스트가 깨져야 한다.
+  - `COURSE_ACC_MAX` 게이트를 제거하면 `courseAccuracy=120` 입력이 방향을 발화해 깨져야 한다.
+- **실호출 게이트**: 도보 경로 4건 + 오프셋 10m 미만 목적지 1건으로 `finalApproach` 필드와 생략 분기. juso 좌표제공 API는 키 발급 후 별도 게이트.
+- **실기기**: 위원장 실보행. §6 일곱 항목이 판정 대상이고 그 전까지 상수는 동결이다.
 
-## 7. 부활 금지
+## 8. 부활 금지
 
-- **시계 방향 표기** — §2.7 근거 셋. 도입하려면 설정 선택지여야 하고 기본값이 될 수 없다.
-- **나침반(`CLHeading`) 기반 방향** — §3.4 근거 셋.
-- **OSM `entrance`를 출입구 1차 소스로 삼는 설계** — §3.7 실측.
-- **`bearing.ts`의 절대 8방위를 상대 방향으로 바꾸는 것** — 그 주석의 전제("사용자가 바라보는 방향을 모른다")는 **정지 상태의 "내 주변" 조회에서 참이다.** 최종 접근에서만 상대 방향이 성립하며, 두 문맥은 course 가용성이 다르므로 서로 다른 규칙이 정당하다.
+- **시계 방향 표기** — §2.7. 도입하려면 설정 선택지여야 하고 기본값이 될 수 없다.
+- **나침반(`CLHeading`) 기반 방향** — 기기 방향이지 몸 방향이 아니고, 팔 흔들림만으로 약 60° 요동하며, 8자 캘리브레이션 알럿이 **시각 애니메이션 지시**라 스크린 리더 사용자에게 완료 시점을 알 수단이 없다.
+- **OSM `entrance`를 출입구 1차 소스로** — §3.8 실측.
+- **최종 접근의 시간 상한** — §3.4. 거리 기반 종료가 정본이다.
+- **랜드마크 POI 폴백** — §3.7. 도입한다면 폴백이 아니라 별도 축.
+- **`bearing.ts`의 절대 8방위를 상대 방향으로 바꾸는 것** — 그 주석의 전제("사용자가 바라보는 방향을 모른다")는 **정지 상태의 "내 주변" 조회에서 참이다.** 최종 접근에서만 course가 유효해 상대 방향이 성립한다.
+- **`handoff` 식별자 재사용** — §3.0에서 폐기. 다른 뜻으로 되살리면 fixture·로그·테스트 이름이 갈린다(B3 재사용 금지와 같은 규율).
+
+## 9. codex 적대적 검토 처리 (49건, 2026-08-08)
+
+`gpt-5.6-sol`·high, diff 아닌 spec 전문 주입. **전량 수용 또는 근거 있는 기각**이고 미처리는 없다.
+
+**계층 재설계로 흡수 (9건, 검토 #1·#2·#3·#4·#29·#40·#42·#45·#46)**: 전부 "거리·방향의 기준점이 사용자가 아니라 경로 종점"이라는 한 뿌리였다. **동일 계층 9회 반복은 계층 선택 자체를 의심하라는 신호**이므로(글로벌 codex 운영 규칙) 지엽 패치 대신 §3.2 시점을 옮겼다. 인용 오귀속 2건(#45·#46)도 같은 뿌리다 — 두 인용 모두 "도달 확정 후"를 말하는데 초판이 "도달 50m 전"에 붙였다.
+
+**상태 전이표 신설로 흡수 (10건, #5·#6·#15~#20·#30)**: §4.
+
+**개별 수용 (24건)**: #8·#9(방향 품질 게이트·payload 필드) · #10(시간 상한 폐기) · #11(지나침) · #12(소유권) · #13(백그라운드 갚기) · #14(캐시) · #21·#22·#26·#27·#28(기하·경계·반올림 결정론) · #23·#24·#25(3-state·시각·미러) · #31(우선순위) · #32·#33(플랫폼 비대칭·선택 디코딩) · #34·#35·#36·#37·#38(출입구·랜드마크) · #39(조사) · #41(문형 분리) · #44·#47·#48(근거 정정) · #49(비율 오기).
+
+**기각 1건**: #43("실호출 4건이 일반 명제를 지지하지 않는다") — 지적 자체는 옳아 §1.2에 한정 표기를 넣었으나, **설계 변경은 불요**하다. `offsetMeters < OFFSET_MIN_M` 분기가 오프셋 0인 경로를 이미 흡수하므로 "항상 오프셋이 있다"에 의존하지 않는다.
+
+⚠ **`ARRIVAL_TOLERANCE_M`·`COURSE_ACC_MAX`·`BEARING_WINDOW_M`은 이 검토가 만들어 낸 상수다.** 문헌 근거가 없고 §6 판정 대상이다. 검토가 결함을 잡았다고 해서 그 자리에 넣은 값까지 검증된 것은 아니다.
