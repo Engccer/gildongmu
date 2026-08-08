@@ -8,6 +8,8 @@ import {
 } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import { isNoRouteError, readOdsayError } from "./odsay-envelope";
+import { findQuickExit } from "../quick-exit";
+import { normalizeStationName } from "../station-match";
 import { annotateHighlights, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
@@ -115,6 +117,23 @@ function walkDistance(v: unknown): number | undefined {
   return v;
 }
 
+/**
+ * 하차역 직전 정차역 — 빠른하차 방향 판정의 유일한 단서.
+ *
+ * ⚠ `includeStops`와 무관하게 원본 `passStopList`에서 읽는다(그 플래그는 방출만 통제한다).
+ * ⚠ 목록 마지막이 하차역인지 **확인하고** 쓴다: 순서가 뒤집혔거나 부분 목록이면
+ *   "끝에서 두 번째"가 직전역이 아니고, 그때 나오는 값은 반대편 승강장 안내가 된다.
+ */
+function previousStopName(sp: OdsaySubPath): string | null {
+  const stations = sp.passStopList?.stations;
+  if (!Array.isArray(stations) || stations.length < 2) return null;
+  const last = String(stations[stations.length - 1]?.stationName ?? "").trim();
+  const end = String(sp.endName ?? "").trim();
+  if (!last || !end || normalizeStationName(last) !== normalizeStationName(end)) return null;
+  const previous = String(stations[stations.length - 2]?.stationName ?? "").trim();
+  return previous || null;
+}
+
 function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
@@ -125,6 +144,14 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   const mode = sp.trafficType === 1 ? "subway" : "bus";
   const lane = sp.lane?.[0];
   const stops = includeStops ? toLegStops(sp) : [];
+  const quickExit =
+    mode === "subway" && lane?.name && sp.endName
+      ? findQuickExit({
+          stationName: sp.endName,
+          lineName: lane.name,
+          previousStopName: previousStopName(sp),
+        })
+      : null;
   return {
     mode,
     lineName: mode === "subway" ? lane?.name : lane?.busNo,
@@ -143,6 +170,8 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
     ...(mode === "subway" && sp.wayCode != null ? { serviceWayCode: sp.wayCode } : {}),
     // 옵트인 시에만 키 자체가 생긴다(미지정 응답 byte-호환, B2 §7).
     ...(stops.length > 0 ? { stops } : {}),
+    // 판정 불가·미커버·시설 없음은 전부 키 부재(3-state, E5 §7).
+    ...(quickExit ? { quickExit } : {}),
   };
 }
 
