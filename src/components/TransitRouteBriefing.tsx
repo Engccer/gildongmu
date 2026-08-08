@@ -8,6 +8,7 @@ import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { formatDistance, joinText } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
+import { quickExitText } from "@/lib/quick-exit-text";
 
 type Status =
   | { kind: "idle" }
@@ -303,6 +304,7 @@ export function TransitRouteResult({
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
+          const quickExit = quickExitText(t, leg.toName ?? "", leg.quickExit);
           return (
             <li key={i}>
               {t.rich(messageKey, {
@@ -336,6 +338,10 @@ export function TransitRouteResult({
                     })}
                   </>
                 )}
+              {/* 빠른하차는 별도 문장이라 같은 줄에 쉼표로 잇지 않고 다음 블록으로 둔다
+                  (한 줄=한 객체는 "한 줄을 쪼개지 말라"이지 "여러 문장을 합치라"가 아니다).
+                  판정 불가·미커버는 필드 부재라 이 자리가 통째로 비고 문구도 없다 */}
+              {quickExit && <p className="mt-0.5">{quickExit}</p>}
             </li>
           );
         })}

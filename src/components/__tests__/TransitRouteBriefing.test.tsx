@@ -222,3 +222,46 @@ describe("채팅 카드 대안 라벨", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("빠른하차 문장", () => {
+  const withQuickExit: TransitLeg = {
+    ...BOARD,
+    quickExit: {
+      elevator: { kind: "door", doors: ["4-4"] },
+      stairs: { kind: "door", doors: ["4-2"] },
+    },
+  };
+
+  it("탑승 구간 아래 별도 줄로 나온다", () => {
+    renderRoute([withQuickExit]);
+    const item = screen.getAllByRole("listitem")[0];
+    // 같은 줄에 이어붙이지 않는다 — 별도 문장이라 별도 블록이 옳다.
+    const line = item.querySelector("p");
+    expect(line?.textContent).toBe("서울역 하차, 엘리베이터 4-4 문, 계단 4-2 문");
+  });
+
+  it("한 줄을 시각 목적으로 쪼개지 않는다", () => {
+    renderRoute([withQuickExit]);
+    const line = screen.getAllByRole("listitem")[0].querySelector("p")!;
+    expect(line.querySelectorAll("*")).toHaveLength(0);
+  });
+
+  it("값이 없으면 아무것도 나오지 않는다(문구 없음)", () => {
+    renderRoute([BOARD]);
+    const item = screen.getAllByRole("listitem")[0];
+    expect(item.querySelector("p")).toBeNull();
+    expect(item.textContent).not.toContain("하차,");
+  });
+
+  it("live region으로 복제하지 않는다", () => {
+    renderRoute([withQuickExit]);
+    const line = screen.getAllByRole("listitem")[0].querySelector("p")!;
+    expect(line.closest("[aria-live]")).toBeNull();
+  });
+
+  it("한쪽 시설만 있으면 있는 것만 말한다", () => {
+    renderRoute([{ ...BOARD, quickExit: { stairs: { kind: "door", doors: ["3-1"] } } }]);
+    const line = screen.getAllByRole("listitem")[0].querySelector("p")!;
+    expect(line.textContent).toBe("서울역 하차, 계단 3-1 문");
+  });
+});
