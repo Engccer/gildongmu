@@ -421,3 +421,68 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(container.innerHTML).toBe("");
   });
 });
+
+describe("빠른하차 — 대기 국면 발견 경로", () => {
+  function stubWaiting() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+      })) as unknown as typeof fetch,
+    );
+  }
+
+  const withQuickExit: TransitRoute = {
+    ...ROUTE,
+    legs: [
+      ROUTE.legs[0],
+      {
+        ...ROUTE.legs[1],
+        quickExit: {
+          elevator: { kind: "door", doors: ["6-4"] },
+          stairs: { kind: "door", doors: ["5-4"] },
+        },
+      },
+    ],
+  };
+
+  it("열차 목록 앞에 나온다(포커스 착지점 다음 자리)", async () => {
+    stubWaiting();
+    const { container } = render(
+      <TransitGuidePanel route={withQuickExit} triggerLabel="시작" walkAccessible={false} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /boardTrain/ })).toBeTruthy();
+    });
+    const line = screen.getByText(/quickExitBoth/);
+    const list = container.querySelector("ul")!;
+    // compareDocumentPosition: 문장이 목록보다 앞이면 FOLLOWING 비트가 선다.
+    expect(line.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 착지점(waitingLabel)보다는 뒤여야 앞으로 스와이프해서 만난다.
+    const label = screen.getByText("transitGuide.waitingLabel");
+    expect(label.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("통지를 만들지 않는다(정적 정보라 상태 변화가 없다)", async () => {
+    stubWaiting();
+    render(<TransitGuidePanel route={withQuickExit} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /boardTrain/ })).toBeTruthy();
+    });
+    expect(screen.getByText(/quickExitBoth/).closest("[aria-live]")).toBeNull();
+    expect(screen.getByRole("status").textContent).not.toContain("quickExit");
+  });
+
+  it("값이 없으면 자리 자체가 없다", async () => {
+    stubWaiting();
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /boardTrain/ })).toBeTruthy();
+    });
+    expect(screen.queryByText(/quickExit/)).toBeNull();
+  });
+});

@@ -1,4 +1,4 @@
-import type { TransitLeg, TransitLegStop, TransitRoute } from "./types";
+import type { QuickExit, TransitLeg, TransitLegStop, TransitRoute } from "./types";
 
 /**
  * 대중교통 실시간 길 안내 상태 머신 (B2 스펙 §4.2) — 순수, React/Next 비의존.
@@ -66,6 +66,8 @@ export interface TransitGuideLeg {
   wayCode: number | null;
   /** 이 leg 앞의 도보 시간(분) — 대기 문맥("도보 N분 이동 후 …"). */
   walkBeforeMinutes: number | null;
+  /** 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 undefined. */
+  quickExit?: QuickExit;
 }
 
 export interface TransitGuideRoute {
@@ -321,6 +323,7 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
       routeId: leg.serviceRouteId ?? null,
       wayCode: leg.serviceWayCode ?? null,
       walkBeforeMinutes: pendingWalk,
+      ...(leg.quickExit ? { quickExit: leg.quickExit } : {}),
     });
     pendingWalk = null;
   }
