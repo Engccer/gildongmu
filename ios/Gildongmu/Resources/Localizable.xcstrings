@@ -11401,6 +11401,46 @@
         }
       }
     },
+    "guide.rerouteDone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 위치에서 경로를 다시 찾았습니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route recalculated from your current location. %1$@ instructions, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta recalculada desde tu ubicación actual. %1$@ indicaciones, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire recalculé depuis votre position actuelle. %1$@ instructions, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso ricalcolato dalla tua posizione attuale. %1$@ indicazioni, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在地から経路を再検索しました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
     "guide.rerouteFailed": {
       "localizations": {
         "ko": {

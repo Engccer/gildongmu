@@ -656,6 +656,7 @@
     "toBriefButton": "간략 안내로 전환",
     "rerouteButton": "경로 다시 조회",
     "rerouteFailed": "경로 조회에 실패했습니다. 기존 경로를 유지합니다",
+    "rerouteDone": "현재 위치에서 경로를 다시 찾았습니다. 안내 {count}개, 총 {distance}. {first}",
     "progressFollowing": "남은 거리 {total}. {distance} 앞 {step}",
     "progressFollowingDestination": "남은 거리 {total}. {dest}까지 {distance}",
     "progressBundle": "남은 거리 {total}. 다음 안내 {count}개",

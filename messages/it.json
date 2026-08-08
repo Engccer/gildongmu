@@ -656,6 +656,7 @@
     "toBriefButton": "Passa alla guida semplice",
     "rerouteButton": "Cerca di nuovo il percorso",
     "rerouteFailed": "Ricerca del percorso non riuscita. Il percorso attuale resta attivo",
+    "rerouteDone": "Percorso ricalcolato dalla tua posizione attuale. {count} indicazioni, {distance} in totale. {first}",
     "progressFollowing": "{total} rimanenti. Tra {distance}, {step}",
     "progressFollowingDestination": "{total} rimanenti. {distance} fino a {dest}",
     "progressBundle": "{total} rimanenti. Prossime {count} indicazioni",
