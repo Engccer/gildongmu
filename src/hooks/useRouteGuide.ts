@@ -50,7 +50,7 @@ import { haversineMeters } from "@/lib/geo";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
-import type { CarRouteBriefing, StepFreeStatus, WalkRouteBriefing } from "@/lib/types";
+import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import { useBeaconSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
@@ -282,8 +282,11 @@ export function useRouteGuide(
   const destRef = useRef(dest);
   /** 계단 회피 최신값(조회 시점 판독 — spec 2026-08-08 §2.2). */
   const accessibleRef = useRef(accessible);
-  /** 직전 계단 회피 판정(열화 전이 통지의 기준 — spec 2026-08-08 §2.3). */
-  const lastStepFreeRef = useRef<StepFreeStatus | null>(null);
+  /**
+   * 직전 계단 회피 판정(열화 전이 통지의 기준 — spec 2026-08-08 §2.3).
+   * 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
+   */
+  const lastStepFreeRef = useRef<string | null>(null);
   const modeRef = useRef<GuideMode>("brief");
   const trackingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -363,12 +366,23 @@ export function useRouteGuide(
    * 문장을 돌려준다. 직전 상태를 갱신하는 부작용이 있으므로 **조회 성공 경로에서
    * 정확히 1회** 부른다. 기하 빌드까지 성공한 뒤에 불러야 한다 — "조회 성공"의
    * 시점이 HTTP·디코딩·기하 셋으로 갈리는데 가장 늦은 것이 정본이다.
+   *
+   * ⚠ **신호는 상태 분류가 아니라 "서버가 문장을 실었는가"다**(a11y 리뷰 H2).
+   * 서버는 열화일 때만 `stepFreeNotice`를 채우므로 문장의 존재 자체가 경고를
+   * 뜻한다. 알려진 상태 셋으로 분류가 되는지로 가르면, 서버가 넷째 상태를
+   * 추가하는 순간 문장이 와 있는데도 침묵한다 — 모르는 상태일수록 보수적으로
+   * 말해야 한다. `status`를 원시 문자열로 받는 것도 같은 이유다(중복 판정을
+   * 막는 식별자로만 쓰고 값의 의미를 해석하지 않는다).
    */
   const consumeStepFreeNotice = useCallback(
-    (status: StepFreeStatus | null, notice: string | null): string | null => {
+    (status: string | null, notice: string | null): string | null => {
       const prev = lastStepFreeRef.current;
-      lastStepFreeRef.current = status;
-      if (!status || status === "applied" || status === prev) return null;
+      // 정상(applied)·미요청은 침묵하되 기준은 갱신한다 — 이후 열화가 오면 전이다.
+      const benign = status === null || status === "applied";
+      // ⚠ 열화인데 문장이 비어 오면(서버 계약 위반) 기준을 갱신하지 않는다.
+      //    갱신하면 문장이 정상화된 뒤에도 전이가 사라져 영영 침묵한다(리뷰 L5).
+      if (benign || notice) lastStepFreeRef.current = status;
+      if (benign || !notice || status === prev) return null;
       return notice;
     },
     [],
@@ -568,8 +582,12 @@ export function useRouteGuide(
     route: GuideRoute;
     durationSeconds: number | null;
     roadSpans: CarRoadSpan[];
-    /** 계단 회피 판정(도보 전용, 미요청·자동차면 null). */
-    stepFree: StepFreeStatus | null;
+    /**
+     * 계단 회피 판정(도보 전용, 미요청·자동차면 null). ⚠ 타입은 `StepFreeStatus`가
+     * 아니라 `string`이다 — 서버 응답은 런타임 검증을 거치지 않으므로 알려진 셋
+     * 밖의 값이 그대로 흘러온다. 이 값은 중복 통지를 막는 식별자로만 쓴다.
+     */
+    stepFree: string | null;
     /** 열화 상태의 안내 문장(서버 정본). 기하 응답엔 유사 스텝이 없어 유일한 채널. */
     stepFreeNotice: string | null;
   } | null> => {

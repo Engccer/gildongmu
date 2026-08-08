@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   // 유료 Deepgram 비용 방어 — formData 파싱(메모리 적재) 전에 차단한다.
   if (!checkSttRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json(
-      { error: "요청이 많습니다." },
+      { error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." },
       { status: 429 },
     );
   }

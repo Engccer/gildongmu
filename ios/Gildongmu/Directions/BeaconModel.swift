@@ -201,7 +201,14 @@ final class BeaconModel {
     /// 이 세션의 계단 회피(도보 전용). `toggle`이 시작 시점 값을 받아 보관한다.
     private var accessible = false
     /// 직전 계단 회피 판정(열화 전이 통지 기준 — spec 2026-08-08 §2.3).
-    private var lastStepFree: StepFreeStatus?
+    /// 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
+    private var lastStepFree: String?
+    /// 발화되지 못한 계단 회피 경고(백그라운드 게이트에 걸린 것).
+    /// ⚠ 진행 안내와 달리 **세션에 1회뿐인 안전 경고**라 다음 fix가 대신 말해 주지
+    /// 않는다. `missedAnnouncement` 복귀 재생은 그 시점의 `statusText` 하나만 읽는데
+    /// 그 사이 도착한 fix가 그것을 실행 안내로 덮어써, 경고가 통째로 사라진다
+    /// (a11y 리뷰 H1). 전달될 때까지 여기 남겨 두고 전경 복귀 때 갚는다.
+    private var pendingStepFreeNotice: String?
 
     var isTracking: Bool { status == .tracking }
 
@@ -222,6 +229,7 @@ final class BeaconModel {
             // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
             self.accessible = accessible
             lastStepFree = nil
+            pendingStepFreeNotice = nil
             startTask = Task { [weak self] in
                 await self?.start(dest: dest, label: label, kind: kind)
                 self?.starting = false
@@ -342,7 +350,7 @@ final class BeaconModel {
         origin: (lat: Double, lng: Double), dest: BeaconDest
     ) async throws -> (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
-        stepFree: StepFreeStatus?, stepFreeNotice: String?
+        stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?
     )? {
         if sessionKind == .car {
             let briefing = try await routeService.car(
@@ -354,7 +362,7 @@ final class BeaconModel {
                 return nil
             }
             // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
-            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil)
+            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil)
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -369,19 +377,29 @@ final class BeaconModel {
         else { return nil }
         return (
             route, [], briefing.durationSeconds,
-            briefing.stepFreeStatus, briefing.stepFreeNotice
+            briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice
         )
     }
 
     /// 열화 전이 판정(spec 2026-08-08 §2.3, 웹 `consumeStepFreeNotice` 미러). 상태가
     /// 열화이고 직전과 다를 때만 문장을 돌려준다. 직전 상태를 갱신하는 부작용이
     /// 있으므로 기하 빌드까지 성공한 뒤 정확히 1회 부른다.
+    ///
+    /// ⚠ **신호는 상태 분류가 아니라 "서버가 문장을 실었는가"다**(a11y 리뷰 H2).
+    /// 서버는 열화일 때만 문장을 채우므로 문장의 존재 자체가 경고를 뜻한다. 알려진
+    /// 상태 셋으로 분류되는지로 가르면 서버가 넷째 상태를 추가하는 순간 문장이 와
+    /// 있는데도 침묵하는데, 같은 응답에 웹은 낭독한다 — 모르는 상태일수록 보수적으로
+    /// 말해야 한다. 중복 판정은 원시 문자열로 막는다.
     private func consumeStepFreeNotice(
-        _ status: StepFreeStatus?, _ notice: String?
+        _ raw: String?, _ status: StepFreeStatus?, _ notice: String?
     ) -> String? {
         let prev = lastStepFree
-        lastStepFree = status
-        guard let status, status != .applied, status != prev else { return nil }
+        // 정상(applied)·미요청은 침묵하되 기준은 갱신한다 — 이후 열화가 오면 전이다.
+        let benign = raw == nil || status == .applied
+        // ⚠ 열화인데 문장이 비어 오면(서버 계약 위반) 기준을 갱신하지 않는다.
+        //    갱신하면 문장이 정상화된 뒤에도 전이가 사라져 영영 침묵한다(리뷰 L5).
+        if benign || notice != nil { lastStepFree = raw }
+        guard !benign, let notice, raw != prev else { return nil }
         return notice
     }
 
@@ -428,11 +446,15 @@ final class BeaconModel {
                 : GuideText.start(route: fetched.route, firstIndices: initial.firstIndices)
             // 계단 회피 열화 문장이 있으면 그 앞에 붙인다 — 세션 전체에 걸린 조건이라
             // 걷기 전에 들어야 한다(spec §2.3). 별도 통지로 내보내면 경합한다.
-            let notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice)
+            let notice = consumeStepFreeNotice(
+                fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
+            )
             let text = notice.map { "\($0) \(summary)" } ?? summary
             lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             statusText = text
-            announce(text)
+            // 발화가 버려졌으면(백그라운드·억제) 경고만 따로 남긴다 — 진행 안내와 달리
+            // 다음 fix가 대신 말해 주지 않는다(리뷰 H1).
+            if !announce(text), let notice { pendingStepFreeNotice = notice }
         } catch {
             guard !Task.isCancelled, isTracking else { return }
             fallbackToBrief()
@@ -487,8 +509,10 @@ final class BeaconModel {
         mode = .brief
         remainingText = nil
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
-        // 새 판정으로 다시 통지된다 — 반복이 아니다.
+        // 새 판정으로 다시 통지된다 — 반복이 아니다. 갚지 못한 경고도 대상이
+        // 사라졌으므로 버린다(간략 폴백엔 따라갈 경로 자체가 없다).
         lastStepFree = nil
+        pendingStepFreeNotice = nil
         let text = appLocalized(key)
         statusText = text
         announce(text)
@@ -529,6 +553,10 @@ final class BeaconModel {
     /// ⚠ 톤 엔진은 여기서 정리하지 않는다. 정지 톤을 예약한 직후 엔진을 멈추면
     /// 하강 3음이 한 프레임도 나지 않는다. 정리는 `teardown()` 몫이다.
     func stop(playStopTone: Bool = false) {
+        // 갚지 못한 계단 경고는 세션과 함께 버린다. 전경 복귀 재생이 추적 가드보다
+        // 앞이라(아래 `handleScenePhaseChange`) 남겨 두면 끝난 경로의 경고가 뒤늦게
+        // 발화된다.
+        pendingStepFreeNotice = nil
         if let token = sessionToken {
             sessionToken = nil
             GuideSessionCoordinator.shared.release(token)
@@ -611,9 +639,13 @@ final class BeaconModel {
             // 가드 뒤에 두면 종료 통지가 통째로 유실된다. 같은 순간 정지 톤도 없어
             // (stop 기본값이 playStopTone: false) "조용히 죽은 것"과 "정상인데 데드밴드를
             // 못 넘은 것"이 구분되지 않는다. 종료 통지는 추적 중이 아닐 때야말로 필요하다.
-            if missedAnnouncement {
+            if missedAnnouncement || pendingStepFreeNotice != nil {
                 missedAnnouncement = false
-                if !statusText.isEmpty { announce(statusText) }
+                // 두 문장을 연속으로 내보내지 않는다 — 경합하면 앞의 것이 잘린다.
+                // 경고가 앞이다(세션 전체에 걸린 조건).
+                let owed = [pendingStepFreeNotice, statusText.isEmpty ? nil : statusText]
+                    .compactMap { $0 }.joined(separator: " ")
+                if !owed.isEmpty, announce(owed) { pendingStepFreeNotice = nil }
             }
             guard isTracking else { return }
             UIApplication.shared.isIdleTimerDisabled = true
@@ -1094,10 +1126,12 @@ final class BeaconModel {
             lastGuidance = first
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면
             // 그 조회의 발화에 결합해 1회 통지한다(spec §2.3).
-            let notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice)
+            let notice = consumeStepFreeNotice(
+                fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
+            )
             let text = notice.map { "\($0) \(first)" } ?? first
             statusText = text
-            announce(text)
+            if !announce(text), let notice { pendingStepFreeNotice = notice }
         } catch {
             guard token == rerouteToken, isTracking else { return }
             lastStepFree = nil
@@ -1228,16 +1262,20 @@ final class BeaconModel {
     /// 통지 단일 경로(spokenUnits 경유). 버튼 활성화의 **직접 응답**만 `.high`로 —
     /// 기본 우선순위 통지는 VO 활성화 처리에 잠식되어 무발화될 수 있다(헌장 §5,
     /// HoldDictationButton 선례). 자동 통지는 기본 유지(비요청 interrupt 금지).
-    private func announce(_ message: String, highPriority: Bool = false) {
-        guard !outputSuppressed else { return }
+    /// 반환값은 **실제로 게시했는가**다. 세션에 1회뿐인 통지(계단 회피 경고)는
+    /// 버려지면 다음 fix가 대신 말해 주지 않으므로 호출부가 갚을 수 있어야 한다.
+    @discardableResult
+    private func announce(_ message: String, highPriority: Bool = false) -> Bool {
+        guard !outputSuppressed else { return false }
         // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가
         // 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
         guard isForeground else {
             missedAnnouncement = true
-            return
+            return false
         }
         var attributed = AttributedString(spokenUnits(message))
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(attributed).post()
+        return true
     }
 }
