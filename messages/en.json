@@ -132,7 +132,12 @@
       "alternativeHeading": "Alternative {index}",
       "alternativeFastest": "Fastest route",
       "alternativeFewestTransfers": "Fewest transfers",
-      "alternativeFastestFewestTransfers": "Fastest with fewest transfers"
+      "alternativeFastestFewestTransfers": "Fastest with fewest transfers",
+      "quickExitDoor": "door {door}",
+      "quickExitBetween": "between doors {first} and {second}",
+      "quickExitBoth": "Get off at {station}, elevator {elevator}, stairs {stairs}",
+      "quickExitElevator": "Get off at {station}, elevator {elevator}",
+      "quickExitStairs": "Get off at {station}, stairs {stairs}"
     },
     "pedestrian": {
       "heading": "Walk",

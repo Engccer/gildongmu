@@ -132,7 +132,12 @@
       "alternativeHeading": "대안 경로 {index}",
       "alternativeFastest": "가장 빠른 경로",
       "alternativeFewestTransfers": "환승이 가장 적은 경로",
-      "alternativeFastestFewestTransfers": "가장 빠르고 환승도 가장 적은 경로"
+      "alternativeFastestFewestTransfers": "가장 빠르고 환승도 가장 적은 경로",
+      "quickExitDoor": "{door} 문",
+      "quickExitBetween": "{first} 문과 {second} 문 사이",
+      "quickExitBoth": "{station} 하차, 엘리베이터 {elevator}, 계단 {stairs}",
+      "quickExitElevator": "{station} 하차, 엘리베이터 {elevator}",
+      "quickExitStairs": "{station} 하차, 계단 {stairs}"
     },
     "pedestrian": {
       "heading": "도보",
