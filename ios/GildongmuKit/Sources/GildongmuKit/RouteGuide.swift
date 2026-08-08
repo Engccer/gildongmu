@@ -515,7 +515,10 @@ public func guideStep(
     //     전제한 판단이었고, 실측에서 오프셋 16~89m가 확인돼 무효화됐다.
     //
     //     ⚠ 단방향 래치다. 진입하면 0a) 가드가 이후 모든 판정을 멈춘다.
-    if next.autoHandoffArmed,
+    //     ⚠ **`isOff`를 직접 본다** — 5절 early-return은 이미 확정된 offRoute만 막고,
+    //     새로 이탈 판정됐으나 확정 유예 전인 중간 상태는 6절이 phase를 되돌려 통과시킨다.
+    if !isOff,
+       next.autoHandoffArmed,
        next.announcedUpTo >= route.steps.count - 1,
        remainingTotal <= finalApproachEntryMeters(
            state: next, accuracy: fix.accuracy, tuning: tuning

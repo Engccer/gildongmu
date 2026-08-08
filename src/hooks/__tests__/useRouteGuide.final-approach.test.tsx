@@ -39,10 +39,28 @@ const WALK_STEPS = [
     ],
   },
 ];
-const DEST = { lat: along(200), lng: lateral(30), name: "강동구청" };
+/**
+ * 목적지와 서버 기하는 테스트별로 갈아끼운다 — 오프셋 구간마다 계약이 다르기 때문이다
+ * (기본은 종점 동쪽 30m, 오른쪽, 기준 도로명 있음). ⚠ **렌더 전에만 바꾼다**:
+ * 렌더 중 목적지 객체가 바뀌면 훅이 목적지 변경으로 읽어 세션을 끊는다.
+ */
+const makeDest = (east: number) => ({
+  lat: along(200),
+  lng: lateral(east),
+  name: "강동구청",
+});
+let DEST = makeDest(30);
+let FINAL_APPROACH: Record<string, unknown> = {
+  offsetMeters: 30,
+  relativeBearing: 90,
+  roadName: "성내로",
+};
 
-/** 서버가 실어 주는 종점 오프셋 기하. 오른쪽 30m, 기준 도로명 있음. */
-const FINAL_APPROACH = { offsetMeters: 30, relativeBearing: 90, roadName: "성내로" };
+/** 오프셋 구간을 바꾼다. `walkToEndpoint()` 이전에만 부른다. */
+function setGeometry(geometry: Record<string, unknown>, destEast: number) {
+  FINAL_APPROACH = geometry;
+  DEST = makeDest(destEast);
+}
 
 let watchCb: ((pos: GeolocationPosition) => void) | null = null;
 
@@ -86,6 +104,11 @@ const status = () => screen.getByTestId("status").textContent ?? "";
 
 /** 경로 종점 직전까지 걸어간다(진입선 max(10, accuracy) = 10 바로 밖에서 멈춘다). */
 async function walkToEndpoint() {
+  render(
+    <NextIntlClientProvider locale="ko" messages={ko}>
+      <Harness />
+    </NextIntlClientProvider>,
+  );
   fireEvent.click(screen.getByText("start"));
   // ⚠ `waitFor`는 가짜 타이머와 서로를 막는다(대기 자체가 타이머 구동이다).
   //   경로 조회는 프로미스 사슬이므로 타이머를 비동기로 0만큼 진행시켜 플러시한다.
@@ -104,6 +127,8 @@ beforeEach(() => {
     toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout", "performance"],
   });
   watchCb = null;
+  DEST = makeDest(30);
+  FINAL_APPROACH = { offsetMeters: 30, relativeBearing: 90, roadName: "성내로" };
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -128,11 +153,6 @@ beforeEach(() => {
         },
       }),
     })),
-  );
-  render(
-    <NextIntlClientProvider locale="ko" messages={ko}>
-      <Harness />
-    </NextIntlClientProvider>,
   );
 });
 
@@ -166,6 +186,19 @@ describe("최종 접근 배선", () => {
     expect(live()).not.toContain("오른쪽");
   });
 
+  it("오프셋 10~15m에서도 진입 서술이 먼저 나가고 수치를 생략하지 않는다", async () => {
+    // 목적지를 종점 동쪽 12m로 옮긴 세션. 진입 fix가 이미 도착 반경(15m) 안이다.
+    setGeometry({ offsetMeters: 12, relativeBearing: 90, roadName: "성내로" }, 12);
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    // 도착이 먼저 나가면 배치 서술이 통째로 소실된다(독립 리뷰 검출).
+    expect(live()).not.toBe(ko.guide.arrived);
+    expect(live()).toContain("오른쪽");
+    expect(live()).toContain("12"); // "목적지 근처"로 축약되지 않는다
+    expect(status()).toBe("tracking");
+  });
+
   it("도착 반경 안에 들어오면 1회 통지하고 세션이 끝난다", async () => {
     await walkToEndpoint();
     emitFix(198, 0);
@@ -174,6 +207,18 @@ describe("최종 접근 배선", () => {
 
     expect(live()).toBe(ko.guide.arrived);
     expect(status()).not.toBe("tracking");
+  });
+
+  it("신뢰 불가 fix에서는 거리·방향을 말하지 않는다(도착도 선언하지 않는다)", async () => {
+    await walkToEndpoint();
+    emitFix(198, 0); // 진입 서술
+    const intro = live();
+    tick(16000);
+    // 정확도 200m로 튄 fix가 도착 반경 안에 떨어져도 발화하지 않는다.
+    emitFix(200, 25, 200);
+
+    expect(live()).toBe(intro);
+    expect(status()).toBe("tracking");
   });
 
   it("진입 서술은 1회뿐이다 — 다음 주기는 짧은 통지로 바뀐다", async () => {
