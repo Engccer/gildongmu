@@ -14,6 +14,7 @@
 | `docs/BACKLOG.md` | **아직 하지 않은 것**. 열린 판정·편승 대기·신규 후보·폐기 근거 | 종결 항목(→ CHANGELOG) |
 | `docs/INTEGRATIONS.md` | 통합별 **상세 계약**. 요지만으로는 지킬 수 없고 어기면 조용히 실패하는 것 | 도메인 무관 규칙(→ 이 파일 횡단 함정) |
 | `docs/superpowers/specs`·`plans` | 설계 정본 + **그 마일스톤의 검증 상세**(실호출 게이트 결과·변이 주입·리뷰 판정) | 다른 마일스톤 이야기 |
+| `docs/research/` | 조사 기록물. **시점 고정이라 낡는 것이 정상**(결론이 뒤집히면 머리에 한 줄 표기) | 코드를 구속하는 규칙(→ 위 문서들로) |
 | `docs/appstore/release-notes.md` | App Store 버전별 What's New | 제출 절차(→ `1.0-submission-draft.md`) |
 | `packages/*/CHANGELOG.md` | npm 사용자가 보는 릴리스 노트 | 내부 구현 서사 |
 
@@ -160,7 +161,7 @@
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건. ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인(PROGRESS) |
 | `TMAP_APP_KEY` | `hasTmapKey`(도보 노출 게이트는 `hasWalkRouteKey`, 자동차 노출 게이트는 `hasCarRouteKey`) | SK open API 앱 `gildongmu`(2026-07-21 발급, T아이디). **보행자 폴백 + 자동차 기본**(2026-07-29 도보 카카오 기본 전환·2026-07-30 자동차 ko 기본 Tmap 전환)으로 확장, POI도 동일 키 커버. 일 1,000건 무료를 도보 폴백·자동차 기본이 공유, IPS "Any IP allowed" 유지(IP 제한 금지 — Vercel 가변 egress) |
 
-상세 키 발급 경로·실호출 검증 이력은 `PROGRESS.md`, API 생태계 조사는 `docs/RESEARCH-2026-06-*.md`.
+상세 키 발급 경로·실호출 검증 이력은 `PROGRESS.md`, API 생태계 조사는 `docs/research/RESEARCH-2026-06-*.md`.
 
 ⚠ **prod 채팅/STT가 502면 코드보다 키 등록 유효성을 먼저 의심**([[vercel-env-add-noninteractive-bug]]·[[deepgram-prod-key-401]]). 검증은 `env pull` 길이가 아니라 실호출로([[vercel-prod-env-pull-redacts-encrypted]]).
 
@@ -209,6 +210,7 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - 기능·버그픽스는 같은 커밋에 테스트 동반. Vitest 전역은 node-env지만 **컴포넌트 테스트는 파일 상단 `// @vitest-environment jsdom` 프라그마 + @testing-library/react 레인이 관례**(`PlaceDetail.test.tsx`·nearby 계약 스위트가 선례). 순수 로직은 node-env fixture 단위테스트, 외부 API 통합은 **실호출이 머지 게이트**.
 - **외부 API 통합은 실호출(실데이터)을 머지 게이트로 박는다** — fixture green ≠ 실계약 검증(데이터 커버리지 현실은 정적 리뷰가 못 잡음).
 - 커밋 이메일 `engccer@gmail.com`. 주석·커밋·문서 한국어, 변수/함수명 영어.
-- a11y 변경 후 `a11y-auditor` 서브에이전트 점검. 새 서비스 추가 시 `docs/SPEC.md` "실험 백로그" 갱신.
+- a11y 변경 후 `a11y-auditor` 서브에이전트 점검.
+- **신규 국내 서비스는 대장과 작업 큐가 다른 문서다**: `docs/SPEC.md` §3 "실험 백로그"는 **조사한 서비스의 대장**(존재하는가·쓸 만한가)이고, `docs/BACKLOG.md` E는 **착수 후보 큐**(다음에 뭘 할까)다. 발굴하면 SPEC에 등록하고, 착수를 결정하면 BACKLOG로 올린다. 둘은 중복이 아니라 파이프라인이다.
 - **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계): 서사 → `CHANGELOG.md`, 남은 판정 → `docs/BACKLOG.md`, 새 함정 → `CLAUDE.md`, 상태 한 줄 → `PROGRESS.md`. iOS 릴리스는 `docs/appstore/release-notes.md`에 What's New를 함께 남긴다(ASC에 입력한 문구 그대로가 정본).
 - gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).

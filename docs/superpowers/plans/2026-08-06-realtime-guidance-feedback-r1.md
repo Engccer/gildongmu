@@ -67,7 +67,7 @@
 
 ### M4. 속도 가드 + 백그라운드 승격 (7+11나, 소~중)
 - 7번: `fix.accuracy > 20` fix를 속도 표본에서 배제(투영은 유지) + 문구 원인 미단정형("위치 신호가 불안정합니다…")으로. 웹 `route-guide.ts`+fixture 동조. 도플러 속도 도입(근본)은 실주행 판정과 묶음.
-- 11-(나): `UIBackgroundModes: location` 선언 + `allowsBackgroundLocationUpdates`(도보·자동차 세션 중만). 위치 권한 문구·PrivacyInfo·ASC 라벨 3자 일치 점검(개인정보 불변식). 근거: `docs/RESEARCH-2026-08-02-realtime-walk-navigation.md` §6.1. 대중교통은 비범위(네트워크 폴링이 생명선).
+- 11-(나): `UIBackgroundModes: location` 선언 + `allowsBackgroundLocationUpdates`(도보·자동차 세션 중만). 위치 권한 문구·PrivacyInfo·ASC 라벨 3자 일치 점검(개인정보 불변식). 근거: `docs/research/RESEARCH-2026-08-02-realtime-walk-navigation.md` §6.1. 대중교통은 비범위(네트워크 폴링이 생명선).
 
 ### M5. 경로 대안 (5, 조사 선행)
 - 실호출 검증 3건: ①카카오 `v2/routing/publictraffic`(기존 키, 복수 경로 여부 판정) ②서울교통공사 최단경로 활용신청 후 커버 범위(1~8호선 한정이면 반쪽) ③ODsay `subwayPathSchedule`(복수 경로+시간표 기반 → [[odsay-ignores-departure-time]] 지하철 구간 해법 후보).

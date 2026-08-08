@@ -6,7 +6,7 @@
 
 **Architecture:** 기존 E4 경로 추종 리듀서를 "상수 치환 한정" 프로파일화(walk 동결)하고 car 전용 축(속도 기반 예고·이탈 추세·재획득 타이브레이크)을 더한다. `/api/route/car`는 walk 선례 그대로 `includeGeometry` 옵트인 + `provider` 판별자를 얻는다. 오케스트레이터(웹 `useRouteGuide`·iOS `BeaconModel`)는 `GuideKind` 봉인 구성표로 일반화한다.
 
-**Tech Stack:** Next.js 16 / React 19 / Vitest, SwiftUI / GildongmuKit / Swift Testing. 정본: 스펙 `docs/superpowers/specs/2026-08-03-mode-entrypoints-car-guidance-design.md`(이하 §n), 조사 `docs/RESEARCH-2026-08-03-mode-specific-guidance.md`.
+**Tech Stack:** Next.js 16 / React 19 / Vitest, SwiftUI / GildongmuKit / Swift Testing. 정본: 스펙 `docs/superpowers/specs/2026-08-03-mode-entrypoints-car-guidance-design.md`(이하 §n), 조사 `docs/research/RESEARCH-2026-08-03-mode-specific-guidance.md`.
 
 **구현 방식 판정(자율성 헌장):** inline. 근거 — 태스크가 강한 순차 의존(리듀서 프로파일 → car 축 → Kit 미러 → 조립 → 오케스트레이터 → UI, 선행이 후행의 인터페이스를 정의)이고 `route-guide.ts`·`RouteGuide.swift`·fixture를 여러 태스크가 연쇄 수정한다. 리뷰는 태스크 묶음별 독립 서브에이전트(요구사항+diff만 전달)로 분리한다.
 

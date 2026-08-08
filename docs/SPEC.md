@@ -25,7 +25,7 @@
 
 ## 3. 데이터 소스 전략 (2026-06 조사 기반)
 
-조사 전문: `RESEARCH-2026-06-naver-api-ecosystem.md`
+조사 전문: `research/RESEARCH-2026-06-naver-api-ecosystem.md`
 
 | 기능 | v0 (현재) | v1 후보 | 비고 |
 |------|-----------|---------|------|
@@ -42,17 +42,17 @@
 
 > **아래 표는 조사한 국내 서비스의 대장(臺帳)이지 작업 목록이 아니다.** 실제로 진행할 항목은 `docs/BACKLOG.md`가 정본(2026-08-01 분리).
 
-> **2026-06-14 대규모 확장 조사 완료** — 우편번호·시내버스·지하철·맛집·예약·접근성/여행 6개 도메인 심층 조사(deep-research 워크플로 102 에이전트 + 직접 검증 2라운드). 전문: `RESEARCH-2026-06-domestic-api-expansion.md`. 핵심: TAGO 버스 패밀리(최대 공백 메움)·전국도시철도역사정보표준데이터(외국인 정합 최강)·행안부 도로명주소 공식 API(ePost 대체)·KRIC 교통약자(접근성 차별화).
+> **2026-06-14 대규모 확장 조사 완료** — 우편번호·시내버스·지하철·맛집·예약·접근성/여행 6개 도메인 심층 조사(deep-research 워크플로 102 에이전트 + 직접 검증 2라운드). 전문: `research/RESEARCH-2026-06-domestic-api-expansion.md`. 핵심: TAGO 버스 패밀리(최대 공백 메움)·전국도시철도역사정보표준데이터(외국인 정합 최강)·행안부 도로명주소 공식 API(ePost 대체)·KRIC 교통약자(접근성 차별화).
 
 > **2026-06-14 v2 UI 개편 출시** — 단일 검색창 → 결과(카테고리 칩 필터) → **장소 상세**(같은 페이지 뷰 전환 + History API, 백버튼 복귀·포커스 이동) 흐름으로 재편. ko/en 로케일별 단일 언어 페이지 + 언어 전환기(경로·`?q=`·쿠키 보존). 상세 화면에 길찾기 딥링크·자동차 경로 브리핑과 함께 **역 교통약자 편의시설**(철도공사 15125774)을 첫 노출. 설계/계획: `superpowers/specs/2026-06-14-gildongmu-v2-upgrade-design.md`·`superpowers/plans/2026-06-14-gildongmu-v2.md`. 채팅 인터페이스는 다음 패스(같은 검색 축에 얹을 구조 유지).
 
 > **2026-06-14 v2.1 음성 받아쓰기 + PWA 출시** — 검색창에 **음성 받아쓰기**(dodo-planet Deepgram Nova-2 서버 STT 수입, 탭-토글 녹음→전사→자동검색, 언어 자동감지, aria-live 통지). **PWA**(manifest·아이콘·수제 서비스워커—Serwist가 Next 16 Turbopack 미지원이라 폴백—설치·앱셸·로케일별 오프라인 폴백, API/검색 비캐시). 설계/계획: `superpowers/specs/2026-06-14-gildongmu-v2.1-voice-pwa-design.md`·`superpowers/plans/2026-06-14-gildongmu-v2.1-voice-pwa.md`.
 
-> **2026-06-16 서울 데이터 + 가족→dodo-planet 다리 조사** — 서울 열린데이터광장 심층 조사(`RESEARCH-2026-06-seoul-open-data.md`) + 가족/육아 데이터 조사(`../child-care/docs/RESEARCH-2026-06-seoul-family-data.md`). 핵심: 서울 시내버스(연동 중, plan 문서)·**서울 지하철 실시간 도착**(swopenapi, 도시철도 공백)·지하철역 교통약자 시설. **가족 데이터 중 '여행/외출 중 위치 기반' 항목만 길동무로 올려 dodo-planet 가족 여행 가이드 기능을 선검증**한다(행정성 지원금·입소대기는 child-care 전용). 판별: 좌표 근접 + 외출/여행 + 텍스트-우선. 아래 표에 dodo-planet 통합 태그로 후보 등록.
+> **2026-06-16 서울 데이터 + 가족→dodo-planet 다리 조사** — 서울 열린데이터광장 심층 조사(`research/RESEARCH-2026-06-seoul-open-data.md`) + 가족/육아 데이터 조사(`../child-care/docs/research/RESEARCH-2026-06-seoul-family-data.md`). 핵심: 서울 시내버스(연동 중, plan 문서)·**서울 지하철 실시간 도착**(swopenapi, 도시철도 공백)·지하철역 교통약자 시설. **가족 데이터 중 '여행/외출 중 위치 기반' 항목만 길동무로 올려 dodo-planet 가족 여행 가이드 기능을 선검증**한다(행정성 지원금·입소대기는 child-care 전용). 판별: 좌표 근접 + 외출/여행 + 텍스트-우선. 아래 표에 dodo-planet 통합 태그로 후보 등록.
 
 > **2026-06-24 검색창 자연어 라우터 출시 → 2026-06-27 폐기·결정론 3섹션 회귀** — Gemini 단발 분류(1왕복)가 자연어를 `search_places`/`search_web`으로 라우팅하는 구조로 시작했으나, 실측 결과 세 기능이 모두 순가치 음수로 확인돼 전면 폐기. (a) 키워드 재해석이 멀쩡한 검색을 악화(위스키바→바 축약으로 미용실 혼입), (b) 지역 앵커링은 카카오가 원문에서 자체 처리하는 중복, (c) 웹 분류 부정확. **latent를 deterministic 위에 잘못 얹은 안티패턴**으로 정리. 대체 구조: `runQuerySearch`가 `/api/places`·`/api/address/search`·`/api/search/web`을 항상 병렬 발사(결정론, Gemini 분류 없음). 설계·계획 `docs/superpowers/plans/2026-06-27-remove-search-router-parallel-web-section.md`. 2026-06-27 dev 실호출 검증(위스키바 장소+웹 공존·캐나다 음식점 웹 보완).
 
-> **2026-07-21 길찾기 강화 조사 완료**: 도보·실시간 교통·교통약자·자전거/택시 4축 병렬 조사. 전문: `RESEARCH-2026-07-routing-enhancement.md`(우선순위 로드맵·미확정 게이트 5건 포함). 핵심: 택시요금·ODsay 정류장 리스트(키 0 필드 투영)·Tmap 보행자 경로(한국어 완성 문장 턴바이턴, 도보 최대 공백)·ITS 돌발상황 브리핑(기보유 data.go.kr 키). 자전거 라우팅·점자블록 턴바이턴은 데이터 부재로 보류. 부수 확인 2건: 카카오 신규 경로 API 4종(2026-07-21, 무료 쿼터 "첫 활성화 앱" 정책 리스크)·네이버 Search API의 NAVER API Hub 이관(지역검색 2027-06-30 데드라인). 다음: 이 조사를 입력으로 개발 spec.
+> **2026-07-21 길찾기 강화 조사 완료**: 도보·실시간 교통·교통약자·자전거/택시 4축 병렬 조사. 전문: `research/RESEARCH-2026-07-routing-enhancement.md`(우선순위 로드맵·미확정 게이트 5건 포함). 핵심: 택시요금·ODsay 정류장 리스트(키 0 필드 투영)·Tmap 보행자 경로(한국어 완성 문장 턴바이턴, 도보 최대 공백)·ITS 돌발상황 브리핑(기보유 data.go.kr 키). 자전거 라우팅·점자블록 턴바이턴은 데이터 부재로 보류. 부수 확인 2건: 카카오 신규 경로 API 4종(2026-07-21, 무료 쿼터 "첫 활성화 앱" 정책 리스크)·네이버 Search API의 NAVER API Hub 이관(지역검색 2027-06-30 데드라인). 다음: 이 조사를 입력으로 개발 spec.
 
 > **2026-07-22 보행 인프라(둘러보기 기능 B) 출시** — 서울시 음향신호기(서울 열린데이터 OA-15543, 2026-05-28 기준 16,822기 정적 seed, EPSG:5186 golden 가드)+OSM Overpass(횡단보도·점자블록 노드, 타일 anchor 캐시)를 단일 서비스 `getWalkInfrastructure()`로 합성. 7번째 "내 주변" 패널+`/api/walk/nearby`+채팅 `get_walk_infrastructure`(17종). 상태는 discriminated union(0건 ≠ 서울 외 미제공 ≠ 조회 실패), 등록≠작동 각주. 설계 `superpowers/specs/2026-07-22-walk-infrastructure-design.md`(codex 적대적 리뷰 22건 반영)·plan 동일 날짜. 후속 후보: crossingSignal "no"(무신호 횡단) 안내 여부·OSM way/area 확장·전국(경찰청) 확장.
 
@@ -108,27 +108,17 @@
 - `prefers-reduced-motion` 전역 대응, `:focus-visible` 전역 스타일.
 - 향후 지도 추가 시: 지도 컨테이너는 `aria-hidden` 또는 `role="application"`+설명, 지도 위 컨트롤은 실제 `<button>`으로.
 
-## 5. dodo-planet 통합 경로 (장기)
+## 5. dodo-planet과의 관계
 
-> **2026-06-13: 통합 계획 스펙 확정** — `~/Mac-Projects/dodo-planet/docs/plans/2026-06-13-korea-local-provider-integration.md`. 카카오 3종+딥링크는 검증 완료로 dodo Phase 1 직행 가능. 이 저장소의 잔여 역할은 **Phase 0 = TourAPI 키 발급 + 실응답 검증** (dodo 착수의 전제조건 아님, 병행).
->
-> **2026-07-03: 수용측 아키텍처 지도 확보** — dodo-planet Round 148 기준 타깃 코드베이스(49개 Gemini 함수·카탈로그 3-mirror·`isKoreaContext` 좌표 우선 라우팅·이식 1건당 수정 파일 체크리스트) 정밀 조사: `RESEARCH-2026-07-dodo-planet-target-architecture.md`. 추가 졸업 작업 착수 전 이 문서로 재탐색을 생략한다. 핵심 설계 공백: trip-less 채팅의 한국 판정이 GPS 신호뿐(문서 §3).
->
-> **2026-07-03: 전량 이식 spec 확정** — gildongmu 자산 **전체**의 dodo 이식 판정·Phase·라우팅 설계를 `superpowers/specs/2026-07-03-dodo-full-port-design.md`로 확정(2026-06-13 계약의 확장, Spec B 2026-06-21 흡수). trip-less 한국 판정은 **하이브리드 에스컬레이션**(결정론 신호 OR-래치 + 도구 내부 좌표 최종 판정)으로 사용자 확정. dodo측 대응 문서 `~/Mac-Projects/dodo-planet/docs/plans/2026-07-03-gildongmu-full-port-plan.md`.
+⚠ **2026-08-03 위원장 정정으로 "통합이 최종 목표"라는 종전 전제는 폐기됐다.** 길동무는 인큐베이터로 출발했지만 지금은 **독자 배포·독립 운영되는 앱**(웹 + iOS App Store + npm CLI/MCP)이고, dodo-planet(가족 여행 가이드 PWA)과는 **상호 보완적인 두 독립 프로젝트**다. 검증된 기능의 이식은 **양방향**으로 일어난다.
 
-1. **v0~v1**: 독립 앱으로 성숙 (이 저장소).
-2. **통합 시**: `src/lib/` (providers, deeplink, types)은 그대로 이식 가능하도록 React/Next 비의존으로 유지. UI 컴포넌트는 dodo-planet 디자인 시스템에 맞춰 재스킨.
-3. 스택을 dodo-planet과 미리 일치시켜 둠: next-intl 4 / zod 4 / Vitest 4 / App Router / proxy.ts.
-4. 통합 형태 후보: dodo-planet의 `[locale]/map` 라우트 대체 또는 "장소 찾기" 신규 탭. (시점에 가서 결정)
+- **이식 원장은 `~/Mac-Projects/PORTS.md`**(양쪽 repo 공용). 절차 정본은 `cross-port` 스킬.
+- 그래도 **스택·컨벤션은 dodo-planet과 일치**시켜 둔다(next-intl 4 / zod 4 / Vitest 4 / App Router / proxy.ts). 양방향 이식의 비용이 그만큼 낮아진다.
+- **`src/lib/`는 React·Next 비의존으로 유지**한다. 이것이 이식성의 실제 근거이고, "통합 목표"가 폐기된 뒤에도 그대로 유효하다.
+- 수용측 코드베이스 지도는 `research/RESEARCH-2026-07-dodo-planet-target-architecture.md`(라인 번호보다 파일 경로·구조를 정본으로).
 
-## 6. 미해결 항목 (2026-06-13 갱신)
+## 6. 미해결 항목
 
-- [x] ~~카카오맵 제품 활성화~~ → 완료, 카카오 로컬 실데이터 동작 확인
-- [x] ~~외국인용 장소 검색~~ → TourAPI provider로 설계 확정 (en 로케일 자동 우선). 키 발급 후 검증만 남음
-- [x] ~~TourAPI 키 발급~~ → **완료 + 실응답 검증 (2026-06-13)** — 국문·영문 GW 자동 승인(만료 2028-06-13), 키는 `.env.local`·Vercel 3환경. 빈 결과 `items: ""` 확인, `contenttypeid` 라벨 매핑 확정(국문 12~39·영문 75~85 비중첩 단일 맵), en 로케일 E2E 프로덕션 검증. 잔여 관찰: `arrange=A`(제목순)라 랜드마크가 후순위로 밀릴 수 있음 — 정렬 전략은 사용해 보며 결정
-- [x] ~~NCP 결제수단 등록 → Maps Application 등록~~ → **완료 (2026-06-13)** — Maps 구독 + Application `gildongmu`(API 6종, Web URL 3개), Geocoding(`englishAddress` 포함)·Directions 5 실호출 검증. 키는 `.env.local` `NCP_MAPS_*`. 다음 실험 후보: 영문 주소 변환(juso.go.kr 대신 NCP `englishAddress` 활용), 카카오 vs NCP Directions A/B
-- [x] ~~developers.naver.com 애플리케이션 등록~~ → **완료 (2026-07-18)** — 사용자 수동 발급, `NAVER_LOCAL_*` prod 등록, ko 장소 병합 운영 중
-- [x] ~~지역 검색 API 좌표계(×10⁷) 실응답 검증~~ → **완료 (2026-07-18)** — naver-local provider가 ×10⁷ 정수를 내부 변환, ko 병합 prod 실호출 검증
-- [x] **Phase 0b (dodo §5b 선행 작업)** — ① NCP en 자동차 경로 **완료(C1, 2026-06-17)** ② `getEnglishAddress()` 체인 헬퍼 ③ tour-api 함수 추가 → ②③은 **2026-07-03 전량 이식 spec(`superpowers/specs/2026-07-03-dodo-full-port-design.md`)으로 이관 종결** — dodo 이식 시점에 그 spec이 정본
-- [x] ~~VoiceOver 수동 테스트 시나리오 문서화~~ → **완료 (2026-07-27)** — `docs/appstore/1.0-voiceover-qa-checklist.md` 49항목이 정본
-- [x] ~~경로 브리핑의 출발지 대안 입력~~ → **완료 (2026-07-22)** — 길찾기 뷰(`DirectionsView`/iOS `DirectionsTab`) 출발·도착 필드가 장소+주소(`/api/address/search`) 검색을 지원, Geolocation 거부 시에도 완주 가능
+**정본은 `docs/BACKLOG.md`다.** 여기에 목록을 두지 않는다 — 두 곳에 적으면 어느 쪽이 참인지 판정할 수 없게 된다.
+
+종전 이 절에 있던 항목 9건(카카오맵 활성화·TourAPI 키 발급·NCP Maps 등록·네이버 앱 등록·좌표계 검증·Phase 0b·VoiceOver 시나리오 문서화·경로 브리핑 출발지 입력)은 **2026-07-22까지 전부 완료**됐고, 경위는 `CHANGELOG.md`가 정본이다.

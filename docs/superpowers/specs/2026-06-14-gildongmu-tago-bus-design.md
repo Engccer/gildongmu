@@ -2,7 +2,7 @@
 
 - **작성일**: 2026-06-14
 - **상태**: 설계 확정 + adversarial-review 반영 (구현 대기)
-- **연구 출처**: `docs/RESEARCH-2026-06-domestic-api-expansion.md` §A (시내버스)
+- **연구 출처**: `docs/research/RESEARCH-2026-06-domestic-api-expansion.md` §A (시내버스)
 - **선행 패턴**: `src/lib/providers/korail-facilities.ts`, `src/components/StationFacilities.tsx`
 
 > ## ⚠ 개정 노트 (2026-06-14, codex adversarial-review 반영 — 구현자 필독)

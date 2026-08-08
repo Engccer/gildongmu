@@ -4,7 +4,7 @@ import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
 /**
  * developers.naver.com 지역(Local) 검색 API provider.
  *
- * 제약 (2026-06 조사 기준, docs/RESEARCH-2026-06-naver-api-ecosystem.md 참고):
+ * 제약 (2026-06 조사 기준, docs/research/RESEARCH-2026-06-naver-api-ecosystem.md 참고):
  * - display 최대 5건 (다른 검색 API의 100건과 달리 지역만 5건)
  * - 일일 쿼터 25,000회 (검색 API 공통)
  * - mapx/mapy는 WGS84 경위도 × 10^7 정수 → 10^7로 나눠 십진 도로 변환
