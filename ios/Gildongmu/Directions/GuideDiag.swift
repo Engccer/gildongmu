@@ -23,7 +23,9 @@ nonisolated final class GuideFileLog: @unchecked Sendable {
     func append(_ line: String) {
         lock.withLock {
             guard let handle = ensureHandleLocked() else { return }
-            handle.write(Data((line + "\n").utf8))
+            // ⚠ `write(_:)`는 실패 시 Swift에서 잡을 수 없는 ObjC 예외를 던진다
+            //   (디스크가 차면 실보행 중 크래시가 된다). throwing 형태를 쓴다.
+            try? handle.write(contentsOf: Data((line + "\n").utf8))
         }
     }
 

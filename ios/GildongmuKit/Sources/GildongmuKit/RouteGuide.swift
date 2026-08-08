@@ -60,6 +60,13 @@ public struct GuideTuning: Sendable, Equatable {
     public var reacquireTieBreak: Bool
     /// 보행 속도 가드. false면 가드 기계 전체 비활성(차량 상시 활성 → 이탈 재통지 잠식 차단).
     public var speedSuggest: Bool
+    /// 이탈 판정 방위 축(spec 2026-08-09). **보행 전용이다.**
+    ///
+    /// ⚠ 이 축의 상수는 전부 보행 궤적으로 쟀다(속도 1.2m/s, 앞뒤 10m 접선 표본).
+    /// "모퉁이 헛경고를 ±10m 표본이 막는다"는 핵심 논거가 차량 속도에서 성립하지
+    /// 않는다 — 15m/s면 그 대역을 1.3초에 통과하고 fix 하나당 진행거리가 15m씩 뛴다.
+    /// 차량에서의 헛경고율은 **측정된 적이 없다.**
+    public var courseAxisEnabled: Bool
 
     public static let walk = GuideTuning(
         announceAheadM: announceAheadMeters, announceAheadSpeedS: 0, farNoticeM: nil,
@@ -68,7 +75,8 @@ public struct GuideTuning: Sendable, Equatable {
         offRouteTrend: false,
         offRouteRenotifyS: offRouteRenotifySeconds, offRouteRenotifyWarns: true,
         handoffDistM: handoffDistMeters, handoffRearmM: handoffRearmMeters,
-        reacquireTieBreak: false, speedSuggest: true
+        reacquireTieBreak: false, speedSuggest: true,
+        courseAxisEnabled: true
     )
 
     /// 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정.
@@ -79,7 +87,9 @@ public struct GuideTuning: Sendable, Equatable {
         offRouteTrend: true,
         offRouteRenotifyS: 180, offRouteRenotifyWarns: false,
         handoffDistM: 150, handoffRearmM: 200,
-        reacquireTieBreak: true, speedSuggest: false
+        reacquireTieBreak: true, speedSuggest: false,
+        // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
+        courseAxisEnabled: false
     )
 }
 
@@ -200,6 +210,26 @@ public struct GuideOutput: Sendable, Equatable {
     public let state: GuideState
     public let event: GuideEvent?
     public let tone: GuideTone?
+    /// 진단 계측용(spec §7 1단계). **판정에 쓰이지 않는다.**
+    ///
+    /// 실보행 로그로 §6 상수를 정하려면 "왜 그렇게 판정했나"를 되짚을 수 있어야 한다.
+    /// `verdict=unknown, votes=20`만으로는 표가 없어서인지 회색지대여서인지 구분되지
+    /// 않고, 수직거리 없이는 두 축의 상관을 볼 수 없다. 판정 전 국면에서 조기 반환하면
+    /// 계산된 적이 없으므로 `nil`이고, 그것이 정직한 값이다(0으로 접지 않는다).
+    public let perpMeters: Double?
+    /// 이 fix가 실제로 창에 넣은 표. 이탈 중에는 `entryProjection` 기준이다.
+    public let courseVote: CourseVote?
+
+    public init(
+        state: GuideState, event: GuideEvent?, tone: GuideTone?,
+        perpMeters: Double? = nil, courseVote: CourseVote? = nil
+    ) {
+        self.state = state
+        self.event = event
+        self.tone = tone
+        self.perpMeters = perpMeters
+        self.courseVote = courseVote
+    }
 }
 
 /// 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록.
@@ -327,6 +357,10 @@ public func guideStep(
         return GuideOutput(state: state, event: nil, tone: nil)
     }
 
+    // 프로파일이 방위 축을 끄면 관측을 비활성으로 중화한다. ⚠ 게이트는 여기 한 곳뿐이다 —
+    // 조건을 하위 분기마다 흩으면 하나를 빠뜨리고, 그 하나가 조용히 축을 살린다.
+    let obs = tuning.courseAxisEnabled ? course : inactiveCourse
+
     // 0a) 최종 접근 중에는 리듀서가 아무 판정도 하지 않는다(spec §4 전이표).
     //     발화 소유권이 최종 접근 층으로 넘어갔고, 이 국면은 **경로를 이미 벗어난**
     //     구간을 다루므로 낡은 폴리라인으로 이탈·재획득을 주장하면 거짓이다.
@@ -396,9 +430,13 @@ public func guideStep(
         // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다.
         //   이 경로가 §5의 offRoute 분기보다 **먼저** 실행되므로, 여기를 빼면
         //   fix 공백 10초만으로 복귀 계약이 통째로 우회된다.
+        // ⚠ 이 판정은 **구조상 항상 hold다.** 재획득 진입에서 창이 비워졌으므로 표가
+        //   하나뿐이고 courseAxisMinVotes(8)에 못 미쳐 verdict가 반드시 unknown이다.
+        //   그래도 verdict를 부르는 형태로 두는 이유는, 창 초기화 정책이 바뀌면 이
+        //   자리가 자동으로 증거 평가로 돌아가야 하기 때문이다.
         let reVotes = recordVote(
             state.courseVotes, at: now,
-            vote: courseVote(course, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
+            vote: courseVote(obs, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
         )
         if state.offRouteAxes.course, courseAxisVerdict(reVotes) != .on {
             // 위치는 되찾았지만 방향이 확인되지 않았다 — 이탈 상태를 유지한다.
@@ -453,7 +491,15 @@ public func guideStep(
     }
     let d = max(state.d, proj.d)
     // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다.
-    let vote = courseVote(course, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
+    let vote = courseVote(obs, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
+    // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
+    var loggedVote = vote
+    func emit(_ s: GuideState, _ event: GuideEvent?, _ tone: GuideTone?) -> GuideOutput {
+        GuideOutput(
+            state: s, event: event, tone: tone,
+            perpMeters: proj.perpMeters, courseVote: loggedVote
+        )
+    }
     let courseVotes = recordVote(state.courseVotes, at: now, vote: vote)
     // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
     // 그것은 이탈 증거이지 창 기아가 아니다.
@@ -519,11 +565,12 @@ public func guideStep(
         var offVote = CourseVote.unknown
         if case let .ok(entryD) = entry {
             offVote = courseVote(
-                course, poly: route.polyline, d: entryD, fixAccuracy: fix.accuracy
+                obs, poly: route.polyline, d: entryD, fixAccuracy: fix.accuracy
             )
         }
         let offVotes = recordVote(state.courseVotes, at: now, vote: offVote)
         next.courseVotes = offVotes
+        loggedVote = offVote // 진단: 이 국면에서 창에 들어간 표는 entry 기준이다.
         if case let .ok(entryD) = entry {
             // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
             let courseCleared =
@@ -535,7 +582,7 @@ public func guideStep(
                 back.speedGuardActive = speedGuardActive
                 back.speedWarned = state.speedWarned
                 back.lastFixAt = now
-                return GuideOutput(state: back, event: .backOnRoute, tone: nil)
+                return emit(back, .backOnRoute, nil)
             }
         }
         let canRenotify = !speedGuardActive &&
@@ -543,12 +590,9 @@ public func guideStep(
         if canRenotify {
             next.lastOffRouteNoticeAt = now
             // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, 첫 확정만 경고 — §4.3).
-            return GuideOutput(
-                state: next, event: .offRoute,
-                tone: tuning.offRouteRenotifyWarns ? .warning : nil
-            )
+            return emit(next, .offRoute, tuning.offRouteRenotifyWarns ? .warning : nil)
         }
-        return GuideOutput(state: next, event: nil, tone: nil)
+        return emit(next, nil, nil)
     }
     let courseVerdict = courseAxisVerdict(courseVotes)
     let isOff = proj.perpMeters > offThreshold
@@ -568,7 +612,7 @@ public func guideStep(
             next.lastOffRouteNoticeAt = now
             next.offRoutePeakPerp = nil
             next.offRouteAxes.distance = true
-            return GuideOutput(state: next, event: .offRoute, tone: .warning)
+            return emit(next, .offRoute, .warning)
         }
     } else if state.offRouteSince != nil {
         next.offRouteSince = nil
@@ -580,8 +624,12 @@ public func guideStep(
         next.phase = .offRoute
         next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
         next.lastOffRouteNoticeAt = now
+        // 거리 축 확정과 같은 상태를 남긴다 — 두 확정 경로가 서로 다른 잔여를 남기면
+        // 다음 사람이 어느 쪽을 믿어야 할지 알 수 없다(무해하더라도 읽는 비용이다).
+        next.offRouteSince = nil
+        next.offRoutePeakPerp = nil
         next.offRouteAxes.course = true
-        return GuideOutput(state: next, event: .offRoute, tone: .warning)
+        return emit(next, .offRoute, .warning)
     }
 
     // 6) 국면·낭독.
@@ -610,7 +658,7 @@ public func guideStep(
            state: next, accuracy: fix.accuracy, tuning: tuning
        ) {
         next.phase = .finalApproach
-        return GuideOutput(state: next, event: .finalApproachEnter, tone: nil)
+        return emit(next, .finalApproachEnter, nil)
     }
 
     // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문.
@@ -624,7 +672,7 @@ public func guideStep(
             // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).
             next.farNoticedUpTo = max(next.farNoticedUpTo, indices[indices.count - 1])
             next.lastAnnouncedAt = now
-            return GuideOutput(state: next, event: .announceSteps(indices), tone: .ahead)
+            return emit(next, .announceSteps(indices), .ahead)
         }
     }
 
@@ -641,10 +689,10 @@ public func guideStep(
             next.farNoticedUpTo = indices[indices.count - 1]
             next.lastAnnouncedAt = now
             // 낭독 거리는 크로싱 시점의 실측 잔여(§4.7 — 상수 낭독 금지, 리뷰 검출).
-            return GuideOutput(
-                state: next,
-                event: .farNotice(indices: indices, remainingMeters: Int(nowRemaining.rounded())),
-                tone: nil
+            return emit(
+                next,
+                .farNotice(indices: indices, remainingMeters: Int(nowRemaining.rounded())),
+                nil
             )
         }
     }
@@ -655,26 +703,26 @@ public func guideStep(
         let remainingStep = cur.endD - d
         if sinceAnnounce >= periodicIntervalSeconds(remaining: remainingStep) {
             next.lastAnnouncedAt = now
-            return GuideOutput(
-                state: next,
-                event: .periodic(
+            return emit(
+                next,
+                .periodic(
                     stepIndex: cur.index,
                     remainingMeters: Int(remainingStep.rounded()),
                     accuracy: fix.accuracy
                 ),
-                tone: nil
+                nil
             )
         }
     } else if sinceAnnounce >= bundleRereadSeconds {
         let indices = unitAt(route: route, index: cur.index)
         next.lastAnnouncedAt = now
-        return GuideOutput(state: next, event: .bundleReread(indices), tone: nil)
+        return emit(next, .bundleReread(indices), nil)
     }
 
     // 6d) 속도 제안(최하위, 세션당 1회).
     if speedGuardActive && !next.speedWarned {
         next.speedWarned = true
-        return GuideOutput(state: next, event: .speedSuggest, tone: nil)
+        return emit(next, .speedSuggest, nil)
     }
-    return GuideOutput(state: next, event: nil, tone: nil)
+    return emit(next, nil, nil)
 }

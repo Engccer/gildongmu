@@ -26,6 +26,14 @@ describe("cadence 불변", () => {
     expect(courseAxisVerdict(fill(0.5, "match"))).toBe("on");
   });
 
+  it("cadence 하한이 있다 — 0.25Hz는 표가 모자라 영구 unknown", () => {
+    // ⚠ 정직하게 적어 둔다: "cadence 불변"은 무제한이 아니다. MIN_VOTES=8과 20초
+    //   창이 만드는 하한은 fix 간격 2.5초(=0.4Hz)이고, 그보다 느리면 창을 아무리
+    //   채워도 확정하지 못한다. iOS 표준 fix 주기(~1Hz)는 여유가 있지만, 저전력
+    //   모드·실내에서 주기가 늘어지면 축이 조용히 죽는다는 뜻이다.
+    expect(courseAxisVerdict(fill(0.25, "mismatch"))).toBe("unknown");
+  });
+
   it("같은 시각에 배치 도착한 fix 묶음이 창을 장악하지 못한다", () => {
     // 2초 구간에 30개가 몰려도 시간 span이 모자라 확정하지 못한다.
     let s: CourseVoteSample[] = [];

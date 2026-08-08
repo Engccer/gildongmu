@@ -907,6 +907,13 @@ final class BeaconModel {
         )
         guideState = out.state
 
+        let voteCounts = out.state.courseVotes.reduce(into: (mismatch: 0, match: 0, unknown: 0)) {
+            switch $1.vote {
+            case .mismatch: $0.mismatch += 1
+            case .match: $0.match += 1
+            case .unknown: $0.unknown += 1
+            }
+        }
         guideDiagLog(
             "fix t=\(String(format: "%.1f", now)) "
                 + "lat=\(String(format: "%.6f", fix.lat)) lng=\(String(format: "%.6f", fix.lng)) "
@@ -922,8 +929,14 @@ final class BeaconModel {
                 // 잡혔나"·"왜 헛경고가 났나"를 위 원시값과 함께 되짚어야 파라미터를
                 // 정할 수 있다(spec §7 3단계).
                 + " courseState=\(courseObs.state)"
+                + " perp=\(out.perpMeters.map { String(format: "%.1f", $0) } ?? "-")"
+                + " vote=\(out.courseVote?.rawValue ?? "-")"
                 + " axes=d:\(out.state.offRouteAxes.distance)/c:\(out.state.offRouteAxes.course)"
-                + " votes=\(out.state.courseVotes.count)"
+                // ⚠ 표 개수만으로는 "표가 없어서 unknown"과 "회색지대라서 unknown"이
+                // 구분되지 않는다. 창의 분포를 그대로 남긴다 — 이 구분이 §6 상수를
+                // 정하는 핵심 질문이다(courseStep이 45°까지 통과시키므로 mismatch
+                // 조건이 최악의 경우 best > 105°가 되고, 그러면 회색지대가 창을 덮는다).
+                + " votes=m:\(voteCounts.mismatch)/k:\(voteCounts.match)/u:\(voteCounts.unknown)"
                 + " verdict=\(courseAxisVerdict(out.state.courseVotes).rawValue)"
         )
 
