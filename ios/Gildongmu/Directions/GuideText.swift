@@ -16,6 +16,90 @@ enum GuideText {
         return appLocalized("guide.rough", base)
     }
 
+    // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§3.6)
+
+    /// 최종 접근 거리 사다리(§3.6). **비교는 반올림 전 원거리로 한다** —
+    /// `formatDistance` 통과 후 값으로 비교하면 15.4m가 런타임 반올림에 따라
+    /// "근처"와 "약 15미터"로 갈린다.
+    ///
+    /// ⚠ **정확도가 좋아도 헤지를 빼지 않는다.** §2.8이 인용한 RouteNav 실측이
+    /// "보고 정확도 5.4m, 실오차 36.5m"라, 보고값이 좋다는 이유로 확신 문장을 내는 것은
+    /// 그 근거와 정면으로 충돌한다. 최종 접근 구간에서는 최소 "약"을 붙인다
+    /// (일반 안내의 `confidenceDistance`가 ≤10m에서 원문을 쓰는 것과 갈리는 지점).
+    static func approachDistance(_ meters: Double, accuracy: Double) -> String {
+        let base = formatDistance(Int(meters.rounded()))
+        if accuracy <= 20 { return appLocalized("guide.approx", base) }
+        return appLocalized("guide.rough", base)
+    }
+
+    static func directionWord(_ d: RelativeDirection) -> String {
+        switch d {
+        case .ahead: appLocalized("guide.dirAhead")
+        case .left: appLocalized("guide.dirLeft")
+        case .right: appLocalized("guide.dirRight")
+        case .behind: appLocalized("guide.dirBehind")
+        }
+    }
+
+    /// 방향·거리 한 조각. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지 —
+    /// "…, , 16미터"처럼 구분자가 겹친다). 어순은 로케일 문구가 소유한다.
+    static func approachDetail(distance: String, direction: String?) -> String {
+        guard let direction else { return distance }
+        return appLocalized("guide.finalApproachDetail", direction, distance)
+    }
+
+    /// 최종 접근 진입 1회 배치 서술(§3.3).
+    ///
+    /// **이 문장은 사용자가 경로 종점에 서 있을 때 나가므로 거리·방향이 곧 현재 위치
+    /// 기준이다.** 초판이 이것을 인계 시점(경로 잔여 50m)에 냈다가 기준이 어긋났다.
+    ///
+    /// 조사를 쓰지 않는다 — 한국어 주격·목적격 조사는 받침 유무로 갈리는데
+    /// (`강동구청은`/`이마트는`, `성내로를`/`양재대로116길을`) 목적지·도로명이 임의
+    /// 고유명사다. 조사 헬퍼를 만드는 대신 쉼표로 잇는다(접근성 헌장 §4 정합).
+    static func finalApproachEnter(
+        destination: String, geometry: FinalApproachPayload, accuracy: Double
+    ) -> String {
+        // ⚠ 진입 서술은 §3.6 사다리의 "≤15m는 수치 없이" 행을 타지 않는다. 그 행의
+        //   전제는 **fix에서 온 거리의 잡음**인데, 여기서 말하는 오프셋은 폴리라인에서
+        //   정적으로 계산된 값이라 그 전제가 성립하지 않는다. 12m는 열다섯 걸음이고
+        //   숫자를 지워서 얻을 것이 없다(정확도 헤지는 그대로 붙는다 — 사용자의
+        //   현재 위치는 여전히 fix에서 오기 때문이다).
+        let detail = approachDetail(
+            distance: approachDistance(geometry.offsetMeters, accuracy: accuracy),
+            direction: directionOf(geometry)
+        )
+        guard let road = geometry.roadName else {
+            return appLocalized("guide.finalApproachEnterNoRoad", destination, detail)
+        }
+        return appLocalized("guide.finalApproachEnter", road, destination, detail)
+    }
+
+    /// 최종 접근 주기 통지(§3.4). 거리는 **현재 fix → 목적지 직선거리**다 —
+    /// 진입 서술의 `offsetMeters`를 재사용하지 않는다(두 거리 혼동 차단).
+    ///
+    /// ⚠ "근처" 분기는 지금 도달하지 않는다 — 도착 반경과 사다리 하한이 둘 다 15m라
+    /// 도착이 먼저 발화하기 때문이다. 지운 것이 아니라 남겨 둔다:
+    /// `finalApproachArriveMeters`는 위원장 실보행 판정 대상(spec §6-3)이고, 도착
+    /// 선언이 이르다는 판정이 나오면 그 사이 거리가 곧바로 이 분기로 들어온다.
+    static func finalApproachTick(
+        distance meters: Double, direction: String?, accuracy: Double
+    ) -> String {
+        if meters <= finalApproachArriveMeters { return nearText(direction: direction) }
+        return approachDetail(
+            distance: approachDistance(meters, accuracy: accuracy), direction: direction
+        )
+    }
+
+    private static func nearText(direction: String?) -> String {
+        guard let direction else { return appLocalized("guide.finalApproachNear") }
+        return appLocalized("guide.finalApproachNearDir", direction)
+    }
+
+    /// 진입 서술의 방향 어휘. 기하가 사유를 실었으면(tooClose·degenerate) 말하지 않는다.
+    private static func directionOf(_ geometry: FinalApproachPayload) -> String? {
+        geometry.relativeBearing.map { directionWord(relativeDirection($0)) }
+    }
+
     /// 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 문장 그대로, 묶음이면 통독 틀.
     static func unit(route: GuideRoute, indices: [Int]) -> String {
         let descs = indices.compactMap { i in
