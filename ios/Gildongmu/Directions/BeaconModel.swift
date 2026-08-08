@@ -895,6 +895,19 @@ final class BeaconModel {
         )
         guideState = out.state
 
+        guideDiagLog(
+            "fix t=\(String(format: "%.1f", now)) "
+                + "lat=\(String(format: "%.6f", fix.lat)) lng=\(String(format: "%.6f", fix.lng)) "
+                + "acc=\(String(format: "%.1f", fix.accuracy)) "
+                + "course=\(String(format: "%.1f", fix.course)) "
+                + "courseAcc=\(String(format: "%.1f", fix.courseAccuracy)) "
+                + "speed=\(String(format: "%.2f", fix.speed)) "
+                + "speedAcc=\(String(format: "%.2f", fix.speedAccuracy)) "
+                + "motion=\(motion) age=\(String(format: "%.1f", age)) "
+                + "phase=\(out.state.phase) d=\(String(format: "%.1f", out.state.d)) "
+                + "event=\(out.event.map { "\($0)" } ?? "-")"
+        )
+
         // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로
         // 넘어가므로 상세 톤 입력을 조립하면 안 된다 — `routeTone`은 톤 상태를 전진시켜서
         // 한 fix에 두 번 부르면 전이가 두 번 일어난다.
