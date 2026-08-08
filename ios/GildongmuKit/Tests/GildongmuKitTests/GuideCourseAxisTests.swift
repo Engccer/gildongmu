@@ -62,7 +62,10 @@ private func loadScenarios() throws -> Scenarios {
 struct GuideCourseAxisTests {
     @Test("공유 fixture 표결 — 웹과 같은 판정")
     func voteMatchesWebFixture() throws {
-        for c in try loadScenarios().votes {
+        let votes = try loadScenarios().votes
+        // ⚠ 공회전 방지: 키 이름이 바뀌거나 배열이 비면 루프가 0회 돌고 조용히 통과한다.
+        #expect(votes.count >= 7)
+        for c in votes {
             let got = courseVote(
                 CourseObservation(state: .valid(course: c.course), accuracyDeg: c.courseAcc),
                 poly: straight.polyline, d: c.d, fixAccuracy: c.fixAcc
@@ -73,11 +76,20 @@ struct GuideCourseAxisTests {
 
     @Test("공유 fixture 판정 — 웹과 같은 verdict")
     func verdictMatchesWebFixture() throws {
-        for c in try loadScenarios().verdicts {
+        let verdicts = try loadScenarios().verdicts
+        #expect(verdicts.count >= 8)
+        for c in verdicts {
             var samples: [CourseVoteSample] = []
             for pair in c.votes {
-                guard case let .text(v) = pair[0], case let .number(at) = pair[1] else { continue }
-                samples.append(CourseVoteSample(at: at, vote: CourseVote(rawValue: v)!))
+                // ⚠ 어긋난 쌍을 건너뛰지 않는다 — 건너뛰면 fixture가 망가져도 남은
+                //   케이스로 통과해, 표가 실제로 무엇을 단언했는지 알 수 없게 된다.
+                guard case let .text(v) = pair[0], case let .number(at) = pair[1],
+                    let vote = CourseVote(rawValue: v)
+                else {
+                    Issue.record("\(c.name): fixture 표 형식이 어긋남 \(pair)")
+                    continue
+                }
+                samples.append(CourseVoteSample(at: at, vote: vote))
             }
             let got = courseAxisVerdict(samples)
             #expect(got.rawValue == c.expect, "\(c.name): got \(got.rawValue) want \(c.expect)")

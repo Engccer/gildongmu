@@ -41,7 +41,7 @@ public let courseAxisAheadMeters = 10.0
 public let courseAxisTangentHalfMeters = 15.0
 /// ⚠ 잠정값(spec §6·§7). 이 이상 부정확한 fix는 투영점이 틀려 접선 비교가 무의미하다.
 public let courseAxisMaxAccuracyMeters = 12.0
-/// 대조 접선 표본 간격(m).
+/// ⚠ 잠정값(spec §6·§7). 대조 접선 표본 간격(m) — 검출 입도라 다른 상수와 같은 부류다.
 private let courseAxisSampleStepMeters = 5.0
 
 /// 기기 방위 관측. `state`는 기존 `courseStep` 결과이고 `accuracyDeg`는 그 원본

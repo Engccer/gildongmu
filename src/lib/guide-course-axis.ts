@@ -49,7 +49,7 @@ export const COURSE_AXIS_AHEAD_M = 10;
 export const COURSE_AXIS_TANGENT_HALF_M = 15;
 /** ⚠ 잠정값(spec §6·§7). 이 이상 부정확한 fix는 투영점이 틀려 접선 비교가 무의미하다. */
 export const COURSE_AXIS_MAX_ACCURACY_M = 12;
-/** 대조 접선 표본 간격(m). */
+/** ⚠ 잠정값(spec §6·§7). 대조 접선 표본 간격(m) — 검출 입도라 다른 상수와 같은 부류다. */
 const SAMPLE_STEP_M = 5;
 
 /**
