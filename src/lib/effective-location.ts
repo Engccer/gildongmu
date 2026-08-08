@@ -1,5 +1,5 @@
-import { awaitGeolocation, getGeolocationSnapshot, type LocateOptions } from "./geolocation";
-import { judgeManualLocation, type Fix } from "./manual-location";
+import { awaitGeolocation, type GeoState, type LocateOptions } from "./geolocation";
+import { judgeManualLocation, type Fix, type ManualLocation } from "./manual-location";
 import { clearManualLocation, getManualLocation } from "./manual-location-store";
 
 /**
@@ -36,7 +36,7 @@ export function setManualJudgmentAnnouncer(fn: Announcer): void {
   announcer = fn;
 }
 
-function toRealFix(state: ReturnType<typeof getGeolocationSnapshot>): RealFix | null {
+function toRealFix(state: GeoState): RealFix | null {
   if (state.status !== "ready") return null;
   return {
     lat: state.coords.lat,
@@ -89,16 +89,29 @@ export async function runManualLocationJudgment(): Promise<void> {
 }
 
 /**
- * 조회용 유효 위치. "내 주변"·검색 거리·채팅 앵커·길찾기 출발지가 쓴다.
+ * 판정을 거친 뒤 **지금 유효한 수동 위치**를 준다. 없으면 null이고, 그때
+ * 호출부가 자기 GPS 경로를 그대로 탄다.
  *
  * `force:true`는 "지금 어디 있는가"를 다시 묻는 행동이므로 수동 위치라도
  * 판정을 동반한다. 이것이 없으면 앱을 켠 채 걸어가는 동안 복귀 트리거가 영영
  * 발화하지 않아 옛 자리로 계속 조회한다.
+ *
+ * ⚠ **GPS 실패 상태를 이 함수로 흡수하지 않는 것이 의도다.** 실패 분기는
+ * 호출부마다 계약이 다르고(직전 데이터 복원·unsupported/denied 구분), 여기서
+ * null 하나로 뭉개면 그 구분이 호출부에서 재구성 불가능해진다.
+ */
+export async function awaitManualLocation(opts: LocateOptions): Promise<ManualLocation | null> {
+  if (opts.force) await runManualLocationJudgment();
+  return getManualLocation();
+}
+
+/**
+ * 조회용 유효 위치. 검색 거리·채팅 앵커·길찾기 출발지처럼 "좌표 아니면 없음"
+ * 두 갈래로 충분한 소비자가 쓴다. GPS 실패 사유를 갈라야 하는 곳은
+ * `awaitManualLocation` + 자기 GPS 경로를 쓴다.
  */
 export async function awaitEffectiveLocation(opts: LocateOptions): Promise<EffectiveLocation | null> {
-  if (opts.force) await runManualLocationJudgment();
-
-  const manual = getManualLocation();
+  const manual = await awaitManualLocation(opts);
   if (manual) return { lat: manual.lat, lng: manual.lng, source: "manual" };
 
   const state = await awaitGeolocation(opts);

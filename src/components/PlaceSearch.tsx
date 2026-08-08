@@ -29,6 +29,7 @@ import {
   removeRecentQuery,
 } from "@/lib/recent-searches";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import {
   orderResultSections,
   combinedLiveMessage,
@@ -194,6 +195,8 @@ export function PlaceSearch({
   // 공유 스토어가 세션 1회 획득·캐시를 보장하므로 "내 주변" 버튼들과 권한을 공유한다.
   const geo = useGeolocation();
   const userCoords = geo.status === "ready" ? geo.coords : null;
+  // 수동 위치 이동 판정 트리거 ①·③(탭 복귀·탭 시작). 앱 진입점 한 곳에만 건다.
+  useManualLocationJudgment();
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // 검색 입력창 ref (SearchBar에 전달).
