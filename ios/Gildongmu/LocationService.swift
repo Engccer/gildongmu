@@ -214,6 +214,22 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         return try? await currentCoordinate(timeout: LocationFixPolicy.softTimeout)
     }
 
+    /// **판정용 fix** — 좌표에 정확도와 측정 시각을 함께 준다.
+    ///
+    /// `currentCoordinate`는 좌표만 반환해 수동 위치 이동 판정에 쓸 수 없다:
+    /// 오차 원을 차감하려면 정확도가, 신선도를 보려면 측정 시각이 필요하다.
+    /// `stored`는 `currentCoordinate`가 성공하면 반드시 채워져 있다.
+    func currentFix(force: Bool = false) async throws(LocationError) -> ManualFix {
+        _ = try await currentCoordinate(force: force)
+        guard let fix = stored else { throw LocationError.unavailable }
+        return ManualFix(
+            lat: fix.coord.lat,
+            lng: fix.coord.lng,
+            accuracy: fix.accuracy,
+            at: fix.fixedAt.timeIntervalSince1970
+        )
+    }
+
     /// 이미 허용된 세션인가. ⚠ 이 가드가 있어야 `currentCoordinate`의 `.notDetermined`
     /// 분기에 닿지 않는다 — 닿으면 탭 진입만으로 권한 팝업이 뜬다(계약: 권한 요청은
     /// "내 주변" 최초 사용 시점).
