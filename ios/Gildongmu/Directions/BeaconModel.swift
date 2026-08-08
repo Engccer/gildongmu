@@ -886,12 +886,24 @@ final class BeaconModel {
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
 
+        // 방위 관측은 기존 품질 게이트(`courseStep`) 결과와 **원본 불확실성**을 함께
+        // 넘긴다. ⚠ 둘 중 하나만 넘기면 이 축이 통과권 방식으로 되돌아간다 —
+        // courseStep의 45° 게이트는 방향 어절을 생략할지 정하는 기준이지 이탈을
+        // 증명하는 기준이 아니다(spec §2.1).
+        let courseObs = CourseObservation(
+            state: courseStep(
+                course: fix.course, courseAccuracy: fix.courseAccuracy,
+                speed: fix.speed, motion: motion, ageSeconds: age
+            ),
+            accuracyDeg: fix.courseAccuracy
+        )
         let out = guideStep(
             state: state,
             fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy),
             route: route,
             now: now,
-            tuning: tuning
+            tuning: tuning,
+            course: courseObs
         )
         guideState = out.state
 
@@ -906,6 +918,13 @@ final class BeaconModel {
                 + "motion=\(motion) age=\(String(format: "%.1f", age)) "
                 + "phase=\(out.state.phase) d=\(String(format: "%.1f", out.state.d)) "
                 + "event=\(out.event.map { "\($0)" } ?? "-")"
+                // ⚠ 판정 결과를 남기는 것이 이 로그의 핵심이다. 실보행에서 "왜 안
+                // 잡혔나"·"왜 헛경고가 났나"를 위 원시값과 함께 되짚어야 파라미터를
+                // 정할 수 있다(spec §7 3단계).
+                + " courseState=\(courseObs.state)"
+                + " axes=d:\(out.state.offRouteAxes.distance)/c:\(out.state.offRouteAxes.course)"
+                + " votes=\(out.state.courseVotes.count)"
+                + " verdict=\(courseAxisVerdict(out.state.courseVotes).rawValue)"
         )
 
         // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로
