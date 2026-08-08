@@ -104,8 +104,14 @@ enum GuideText {
     /// ⚠ **조사는 ko 전용이다.** 다른 로케일 문구는 `"End of %@."` 꼴이라 어절에
     /// 조사를 붙이면 그대로 낭독된다. (도보 경로가 V1 ko 전용이라 실제로 도달하지
     /// 않지만, 그 사실에 기대어 분기를 생략하면 en 도보가 열릴 때 조용히 깨진다.)
+    ///
+    /// ⚠ **빈 문자열을 `nil`과 같이 다룬다.** 도로명 소스가 이름 없는 골목·소로에 빈
+    /// 문자열을 돌려주는 것은 흔한데, 그대로 통과시키면 `" 끝입니다."`처럼 무엇이
+    /// 끝나는지 없는 문장이 낭독된다(웹 `roadEndClause`의 falsy 검사와 동조).
     private static func roadEndClause(_ road: String?) -> String {
-        guard let road else { return appLocalized("guide.finalApproachRouteEnd") }
+        guard let road, !road.isEmpty else {
+            return appLocalized("guide.finalApproachRouteEnd")
+        }
         let subject = AppLanguage.current == "ko" ? KoreanParticle.withSubject(road) : road
         guard let subject else {
             return appLocalized("guide.finalApproachRoadEndPlain", road)
@@ -120,18 +126,23 @@ enum GuideText {
     /// 도착이 먼저 발화하기 때문이다. 지운 것이 아니라 남겨 둔다:
     /// `finalApproachArriveMeters`는 위원장 실보행 판정 대상(spec §6-3)이고, 도착
     /// 선언이 이르다는 판정이 나오면 그 사이 거리가 곧바로 이 분기로 들어온다.
+    /// ⚠ **방향을 어절이 아니라 열거형으로 받는다.** 두 분기가 요구하는 어휘가 다르기
+    /// 때문이다: "근처"는 맨몸("왼쪽입니다"), 주기는 이동형("왼쪽으로 …입니다"). 종전처럼
+    /// 완성된 어절 하나를 넘기면 호출자가 고른 형태가 두 분기에 그대로 흘러 한쪽이
+    /// 반드시 틀린다 — 실제로 주기 통지가 "왼쪽 약 16m입니다"로 나갔다(리뷰 검출).
     static func finalApproachTick(
-        distance meters: Double, direction: String?, accuracy: Double
+        distance meters: Double, direction: RelativeDirection?, accuracy: Double
     ) -> String {
         if meters <= finalApproachArriveMeters { return nearText(direction: direction) }
         return approachDetail(
-            distance: approachDistance(meters, accuracy: accuracy), direction: direction
+            distance: approachDistance(meters, accuracy: accuracy),
+            direction: direction.map(directionTowardWord)
         )
     }
 
-    private static func nearText(direction: String?) -> String {
+    private static func nearText(direction: RelativeDirection?) -> String {
         guard let direction else { return appLocalized("guide.finalApproachNear") }
-        return appLocalized("guide.finalApproachNearDir", direction)
+        return appLocalized("guide.finalApproachNearDir", directionWord(direction))
     }
 
     /// 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 문장 그대로, 묶음이면 통독 틀.
