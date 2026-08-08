@@ -4,8 +4,10 @@ import {
   buildGuideRoute,
   CAR_TUNING,
   entryProjection,
+  finalApproachEntryM,
   guideStateAt,
   guideStep,
+  HANDOFF_DIST_M,
   initialGuideState,
   unitAt,
   WALK_TUNING,
@@ -56,6 +58,8 @@ describe("route-guide 공유 시나리오(경계표)", () => {
     scenarios: {
       name: string;
       tuning?: "walk" | "car";
+      /** 종점 오프셋 기하를 아는 세션인가(미지정=모름 → 옛 50m 인계). */
+      geometry?: boolean;
       steps: { len: number; desc: string }[];
       fixes: { t: number; along: number; lateral: number; acc: number }[];
       expect: Expectation[];
@@ -64,7 +68,9 @@ describe("route-guide 공유 시나리오(경계표)", () => {
     it(sc.name, () => {
       const route = routeFrom(sc.steps);
       const tuning = sc.tuning === "car" ? CAR_TUNING : WALK_TUNING;
-      let { state } = initialGuideState(route, 0);
+      let { state } = initialGuideState(route, 0, {
+        hasFinalApproachGeometry: sc.geometry === true,
+      });
       const results: { event: GuideEvent | null; tone: GuideTone | null }[] = [];
       for (const f of sc.fixes) {
         const out = guideStep(
@@ -301,5 +307,124 @@ describe("initialGuideState·unitAt", () => {
     expect(unitAt(route, 1)).toEqual([1, 2]);
     expect(unitAt(route, 2)).toEqual([1, 2]);
     expect(unitAt(route, 3)).toEqual([3]);
+  });
+});
+
+/**
+ * 최종 접근 진입(spec 2026-08-08 §3.2·§4). 공유 fixture가 거리 경계와 래치를 덮고,
+ * 여기서는 fixture 스키마로 표현할 수 없는 전이(낭독 미완·이탈 중·가드 순서)를 고정한다.
+ */
+describe("최종 접근 진입 조건", () => {
+  const straight = () => routeFrom([{ len: 100, desc: "직진 100m 이동" }]);
+  /** 종점 근처·전 스텝 낭독 완료·기하 있음인 상태. */
+  const atEnd = (route: ReturnType<typeof routeFrom>, d = 96): GuideState => ({
+    ...guideStateAt(route, d, 0, { hasFinalApproachGeometry: true }),
+    announcedUpTo: route.steps.length - 1,
+  });
+
+  it("낭독이 남아 있으면 종점에 닿아도 진입하지 않는다", () => {
+    const route = routeFrom([
+      { len: 60, desc: "직진A" },
+      { len: 60, desc: "우회전B" },
+    ]);
+    const state = { ...atEnd(route, 112), announcedUpTo: 0 };
+    const out = guideStep(
+      state,
+      { ...fixCoord(115, 0), accuracy: 8 },
+      route,
+      10,
+      WALK_TUNING,
+    );
+    expect(out.event?.kind).not.toBe("finalApproachEnter");
+    expect(out.state.phase).not.toBe("finalApproach");
+  });
+
+  it("이탈 중이면 진입하지 않는다 — 이탈 판정이 먼저 반환한다", () => {
+    const route = straight();
+    const state: GuideState = { ...atEnd(route), phase: "offRoute" };
+    const out = guideStep(
+      state,
+      { ...fixCoord(97, 60), accuracy: 8 },
+      route,
+      10,
+      WALK_TUNING,
+    );
+    expect(out.state.phase).toBe("offRoute");
+  });
+
+  it("재무장 전이면 진입하지 않는다(수동 상세 복귀 세션)", () => {
+    const route = straight();
+    const state: GuideState = { ...atEnd(route), autoHandoffArmed: false };
+    const out = guideStep(
+      state,
+      { ...fixCoord(97, 0), accuracy: 8 },
+      route,
+      10,
+      WALK_TUNING,
+    );
+    expect(out.event?.kind).not.toBe("finalApproachEnter");
+  });
+
+  /**
+   * ⚠ 가드는 uncertain 게이트보다 **앞**에 있어야 한다. 뒤에 두면 정확도가 나빠질 때
+   * uncertain을 경유했다가 resumePhase("following")로 복귀하면서 래치가 조용히 풀린다.
+   */
+  it("진입 후에는 정확도가 무효여도 uncertain으로 가지 않는다", () => {
+    const route = straight();
+    const entered = guideStep(
+      atEnd(route),
+      { ...fixCoord(97, 0), accuracy: 8 },
+      route,
+      10,
+      WALK_TUNING,
+    );
+    expect(entered.event).toEqual({ kind: "finalApproachEnter" });
+    expect(entered.state.phase).toBe("finalApproach");
+
+    const bad = guideStep(
+      entered.state,
+      { ...fixCoord(97, 0), accuracy: 200 },
+      route,
+      20,
+      WALK_TUNING,
+    );
+    expect(bad.state.phase).toBe("finalApproach");
+    expect(bad.event).toBeNull();
+    expect(bad.state.lastFixAt).toBe(20);
+  });
+
+  it("재획득으로 상태를 다시 만들어도 기하 보유가 승계된다", () => {
+    const route = routeFrom([{ len: 400, desc: "직진" }]);
+    let state: GuideState = {
+      ...guideStateAt(route, 0, 0, { hasFinalApproachGeometry: true }),
+      phase: "reacquiring",
+      lastFixAt: 0,
+    };
+    state = guideStep(
+      state,
+      { ...fixCoord(200, 0), accuracy: 10 },
+      route,
+      10,
+      WALK_TUNING,
+    ).state;
+    expect(state.phase).not.toBe("reacquiring");
+    expect(state.hasFinalApproachGeometry).toBe(true);
+  });
+});
+
+describe("finalApproachEntryM", () => {
+  it("기하를 모르면 옛 50m 인계선", () => {
+    expect(
+      finalApproachEntryM({ hasFinalApproachGeometry: false }, 5, WALK_TUNING),
+    ).toBe(HANDOFF_DIST_M);
+  });
+
+  it("기하를 알면 정확도와 하한 중 큰 값", () => {
+    expect(finalApproachEntryM({ hasFinalApproachGeometry: true }, 5, WALK_TUNING)).toBe(
+      10,
+    );
+    expect(finalApproachEntryM({ hasFinalApproachGeometry: true }, 30, WALK_TUNING)).toBe(
+      30,
+    );
   });
 });

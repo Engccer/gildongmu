@@ -254,11 +254,11 @@
       "expect": [
         {
           "afterFix": 3,
-          "eventNot": "handoff"
+          "eventNot": "finalApproachEnter"
         },
         {
           "afterFix": 4,
-          "event": "handoff"
+          "event": "finalApproachEnter"
         }
       ]
     },
@@ -756,7 +756,7 @@
       ]
     },
     {
-      "name": "경계: 인계 잔여 50m(51m 미인계 / 49.5m 인계)",
+      "name": "경계: 기하 없는 세션은 옛 50m 인계 유지(51m 미진입 / 49.5m 진입)",
       "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
       "fixes": [
         { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
@@ -764,8 +764,75 @@
         { "t": 10, "along": 50.5, "lateral": 0, "acc": 10 }
       ],
       "expect": [
-        { "afterFix": 1, "eventNot": "handoff" },
-        { "afterFix": 2, "event": "handoff" }
+        { "afterFix": 1, "eventNot": "finalApproachEnter" },
+        { "afterFix": 2, "event": "finalApproachEnter" }
+      ]
+    },
+    {
+      "name": "최종 접근: 기하를 알면 잔여 50m에서 진입하지 않고 경로 종점까지 간다",
+      "geometry": true,
+      "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 25, "lateral": 0, "acc": 10 },
+        { "t": 20, "along": 49.5, "lateral": 0, "acc": 10 },
+        { "t": 30, "along": 70, "lateral": 0, "acc": 10 },
+        { "t": 40, "along": 92, "lateral": 0, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFixAny": [1, 2, 3], "eventNot": "finalApproachEnter" },
+        { "afterFix": 4, "event": "finalApproachEnter" }
+      ]
+    },
+    {
+      "name": "최종 접근: 정확도가 나쁘면 진입선이 넓어진다(잔여 40m 미진입 / 28m 진입, acc 30)",
+      "geometry": true,
+      "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 30 },
+        { "t": 10, "along": 25, "lateral": 0, "acc": 30 },
+        { "t": 20, "along": 48, "lateral": 0, "acc": 30 },
+        { "t": 30, "along": 60, "lateral": 0, "acc": 30 },
+        { "t": 40, "along": 72, "lateral": 0, "acc": 30 }
+      ],
+      "expect": [
+        { "afterFixAny": [1, 2, 3], "eventNot": "finalApproachEnter" },
+        { "afterFix": 4, "event": "finalApproachEnter" }
+      ]
+    },
+    {
+      "name": "최종 접근: 단방향 래치 — 진입 후 정확도가 좋아져도 리듀서가 판정을 재개하지 않는다",
+      "geometry": true,
+      "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 30 },
+        { "t": 10, "along": 25, "lateral": 0, "acc": 30 },
+        { "t": 20, "along": 48, "lateral": 0, "acc": 30 },
+        { "t": 30, "along": 72, "lateral": 0, "acc": 30 },
+        { "t": 40, "along": 75, "lateral": 0, "acc": 5 }
+      ],
+      "expect": [
+        { "afterFix": 3, "event": "finalApproachEnter" },
+        { "afterFix": 4, "eventNull": true }
+      ]
+    },
+    {
+      "name": "최종 접근 중에는 이탈을 주장하지 않는다(경로에서 60m 벗어나도 무이벤트)",
+      "geometry": true,
+      "steps": [{ "len": 100, "desc": "직진 100m 이동" }],
+      "fixes": [
+        { "t": 0, "along": 0, "lateral": 0, "acc": 10 },
+        { "t": 10, "along": 25, "lateral": 0, "acc": 10 },
+        { "t": 20, "along": 49.5, "lateral": 0, "acc": 10 },
+        { "t": 30, "along": 70, "lateral": 0, "acc": 10 },
+        { "t": 40, "along": 92, "lateral": 0, "acc": 10 },
+        { "t": 50, "along": 95, "lateral": 60, "acc": 10 },
+        { "t": 60, "along": 98, "lateral": 60, "acc": 10 }
+      ],
+      "expect": [
+        { "afterFix": 4, "event": "finalApproachEnter" },
+        { "afterFix": 5, "eventNull": true },
+        { "afterFix": 6, "eventNull": true }
       ]
     },
     {

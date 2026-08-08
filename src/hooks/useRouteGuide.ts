@@ -533,7 +533,8 @@ export function useRouteGuide(
             confidenceDistance(event.remainingMeters, event.accuracy, t),
             t,
           );
-        case "handoff":
+        case "finalApproachEnter":
+          // T9에서 배치 서술로 대체한다. 지금은 종전 인계 문구 그대로.
           return t("handoff");
         case "offRoute":
           // 차량 이탈 문구는 상태 전문(§4.3) — 첫 통지를 놓쳐도 반복만으로 완결.
@@ -776,7 +777,7 @@ export function useRouteGuide(
 
       if (!result.event) return;
       const text = eventText(result.event, route);
-      if (result.event.kind === "handoff") {
+      if (result.event.kind === "finalApproachEnter") {
         // 인계는 단방향 래치 — 여기서 간략으로 넘기면 이후 fix는 비콘 경로가 받는다.
         modeRef.current = "brief";
         setMode("brief");
