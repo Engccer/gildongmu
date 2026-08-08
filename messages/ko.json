@@ -878,6 +878,7 @@
     "clear": "지정 해제",
     "useGps": "현재 위치로 되돌리기",
     "autoCleared": "이동이 감지되어 지정한 위치를 해제했습니다",
-    "guideNeedsRealLocation": "실시간 안내는 실제 위치가 필요합니다"
+    "guideNeedsRealLocation": "실시간 안내는 실제 위치가 필요합니다",
+    "pickTitle": "내 위치 지정"
   }
 }

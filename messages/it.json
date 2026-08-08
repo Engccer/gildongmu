@@ -878,6 +878,7 @@
     "clear": "Cancella posizione impostata",
     "useGps": "Torna alla posizione attuale",
     "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata.",
-    "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale."
+    "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale.",
+    "pickTitle": "Imposta la tua posizione"
   }
 }

@@ -921,8 +921,11 @@ export function PlaceSearch({
         />
       )}
 
+      {/* "현재 위치 지정" 모달이 화면을 점유하는 동안은 비워 둔다 — 모달 자신의
+          live region과 동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가
+          뒤집힌다(NearbyHub의 같은 처리와 동형). */}
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
-        {liveMessage}
+        {manualPickerOpen ? "" : liveMessage}
       </p>
 
       {/* 결정론 내비 칩: [길찾기] [내 주변] — 홈의 기능 진입은 이 행 하나로 수렴. */}
