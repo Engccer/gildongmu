@@ -10,6 +10,7 @@
     { "name": "경계 바로 아래", "course": 54, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "match" }
   ],
   "votesComment": "경계 두 케이스는 임계(COURSE_AXIS_THRESHOLD_DEG)에서 파생된 값이다. 임계를 바꾸면 여기도 함께 바꿔야 하고, 그게 정상이다 — 이 표가 임계 변경을 잡는 가드다.",
+  "verdictsComment": "⚠ 경계 케이스를 새로 만들 때: 판정은 게이트 넷(개수·판정 가능 비율·시간 span·확정/해제 비율)을 순서대로 통과해야 하므로, 재려는 축보다 **앞선 게이트에 먼저 걸리면 그 케이스는 아무것도 재지 않는다**. 통과하니까 잠근 것처럼 보이는데 실제로는 의도한 상수를 건드리지도 못한다(실사고: 판정 가능 비율 0.8을 정확히 맞춘 케이스가 span 14초라 MIN_SPAN_S에서 먼저 탈락했고, 기대값 unknown이 '맞아서'가 아니라 '다른 이유로' 나왔다). 새 케이스를 넣었으면 재려는 상수를 실제로 바꿔 보고 그 케이스가 깨지는지 확인할 것 — '테스트가 있다'와 '그 축이 지켜진다'는 다르다.",
   "verdicts": [
     { "name": "표본 부족", "votes": [["mismatch", 0]], "expect": "unknown" },
     { "name": "시간 미달", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14]], "expect": "unknown" },
