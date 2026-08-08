@@ -24,12 +24,11 @@ describe("computeFinalApproach", () => {
   it("북쪽으로 걸어와 동쪽 30m에 있는 목적지는 오른쪽", () => {
     const route = northRoute();
     const end = route.polyline.points[route.polyline.points.length - 1];
-    const out = computeFinalApproach(route, eastOf(end.lat, end.lng, 30), "테스트로");
+    const out = computeFinalApproach(route, eastOf(end.lat, end.lng, 30));
     expect(out).not.toBeNull();
     expect(out!.offsetMeters).toBeCloseTo(30, 0);
     expect(out!.relativeBearing).toBeCloseTo(90, 0);
     expect(relativeDirection(out!.relativeBearing!)).toBe("right");
-    expect(out!.roadName).toBe("테스트로");
   });
 
   it("오프셋이 하한 미만이면 방향을 주장하지 않는다", () => {

@@ -260,16 +260,15 @@ struct WalkRouteBriefingFinalApproachTests {
         #expect(b.finalApproach == nil)
     }
 
-    @Test("거리·상대각·도로명을 읽는다")
+    @Test("거리·상대각을 읽는다")
     func present() throws {
         let b = try decode(#"""
         {"distanceMeters":100,"durationSeconds":60,"steps":[],
-         "finalApproach":{"offsetMeters":16.1,"relativeBearing":-92.4,"roadName":"성내로"}}
+         "finalApproach":{"offsetMeters":16.1,"relativeBearing":-92.4}}
         """#)
         let fa = try #require(b.finalApproach)
         #expect(abs(fa.offsetMeters - 16.1) < 0.001)
         #expect(relativeDirection(try #require(fa.relativeBearing)) == .left)
-        #expect(fa.roadName == "성내로")
         #expect(fa.unavailableReason == nil)
     }
 

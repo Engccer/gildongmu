@@ -627,8 +627,6 @@
     "nextDestination": "{distance} fino a {dest}",
     "bundle": "Prossime {count} indicazioni. {steps}",
     "handoff": "Passaggio alla guida in linea d'aria fino alla destinazione",
-    "finalApproachRoadEnd": "Fine di {road}.",
-    "finalApproachRoadEndPlain": "Fine di {road}.",
     "finalApproachRouteEnd": "Il percorso termina qui.",
     "finalApproachToDest": "{dest} è a {distance} {direction}.",
     "finalApproachToDestNoDir": "{dest} è a {distance}.",
