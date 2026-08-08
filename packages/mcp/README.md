@@ -55,7 +55,7 @@ codex mcp add gildongmu --command "npx -y gildongmu-mcp"
 | `nearby_events` | 내 주변 오늘 진행 중인 문화행사(서울) |
 | `nearby_barrier_free` | 내 주변 무장애 관광지 |
 | `nearby_walk_infra` | 내 주변 보행 인프라(음향신호기·횡단보도·점자블록) |
-| `nearby_congestion` | 지금 있는 곳의 실시간 인구 혼잡도(서울 핫스팟 121곳 한정) |
+| `nearby_congestion` | 지금 있는 곳의 실시간 인구 혼잡도(서울 주요 지점 116곳 한정) |
 | `station_meta` | 도시철도역 메타(영문명·노선·환승) |
 | `station_facilities` | 철도역 교통약자 시설(코레일) |
 | `station_metro_facilities` | 서울 지하철역 교통약자 시설 |
