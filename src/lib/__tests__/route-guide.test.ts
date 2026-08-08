@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/route-guide-scenarios.json";
+import courseAxisScenarios from "./fixtures/course-axis-scenarios.json";
 import { INACTIVE_COURSE, type CourseObservation } from "../guide-course-axis";
 import {
   buildGuideRoute,
@@ -555,4 +556,66 @@ describe("방위 축 통합", () => {
     expect(state.resumePhase).toBe("offRoute");
     expect(state.offRouteAxes.course).toBe(true);
   });
+});
+
+describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
+  interface ReducerFix {
+    t: number;
+    along: number;
+    lateral: number;
+    acc: number;
+    course: number;
+    courseAcc: number;
+  }
+
+  /** fixture는 경계만 적는다 — 보간 규칙은 `reducerComment`가 정본이다. */
+  function interpolate(fixes: ReducerFix[]): ReducerFix[] {
+    const out: ReducerFix[] = [fixes[0]];
+    for (let i = 1; i < fixes.length; i++) {
+      const a = fixes[i - 1];
+      const b = fixes[i];
+      for (let t = a.t + 1; t <= b.t; t++) {
+        const r = (t - a.t) / (b.t - a.t);
+        out.push({
+          t,
+          along: a.along + r * (b.along - a.along),
+          lateral: a.lateral + r * (b.lateral - a.lateral),
+          acc: b.acc,
+          course: b.course,
+          courseAcc: b.courseAcc,
+        });
+      }
+    }
+    return out;
+  }
+
+  const observe = (f: ReducerFix): CourseObservation =>
+    f.course < 0 || f.courseAcc < 0
+      ? INACTIVE_COURSE
+      : { state: { kind: "valid", course: f.course }, accuracyDeg: f.courseAcc };
+
+  // ⚠ 공회전 방지: 키 이름이 바뀌거나 배열이 비면 아래 루프가 0개 테스트를 만들고
+  //   describe가 조용히 통과한다. 가드가 무는지는 케이스가 실제로 있는지에 달렸다.
+  it("fixture에 리듀서 케이스가 있다", () => {
+    expect(courseAxisScenarios.reducer.length).toBeGreaterThanOrEqual(2);
+  });
+
+  for (const sc of courseAxisScenarios.reducer) {
+    it(sc.name, () => {
+      const route = routeFrom(sc.steps);
+      let { state } = initialGuideState(route, 0);
+      for (const f of interpolate(sc.fixes as ReducerFix[])) {
+        state = guideStep(
+          state,
+          { ...fixCoord(f.along, f.lateral), accuracy: f.acc },
+          route,
+          f.t,
+          WALK_TUNING,
+          observe(f),
+        ).state;
+      }
+      expect(state.phase).toBe(sc.expectPhaseAtEnd);
+      expect(state.offRouteAxes).toEqual(sc.expectAxes);
+    });
+  }
 });
