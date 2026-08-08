@@ -125,6 +125,13 @@ describe("courseAxisVerdict", () => {
 });
 
 describe("공유 fixture (Kit 동조 가드)", () => {
+  // ⚠ 공회전 방지: 키 이름이 바뀌거나 배열이 비면 it.each가 0개 테스트를 만들고
+  //   describe가 조용히 통과한다. 가드가 무는지는 케이스가 실제로 있는지에 달렸다.
+  it("fixture에 표결·판정 케이스가 있다", () => {
+    expect(scenarios.votes.length).toBeGreaterThanOrEqual(7);
+    expect(scenarios.verdicts.length).toBeGreaterThanOrEqual(8);
+  });
+
   it.each(scenarios.votes)("표결: $name", (c) => {
     expect(
       courseVote(
