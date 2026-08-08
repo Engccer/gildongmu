@@ -132,7 +132,12 @@
       "alternativeHeading": "代替経路{index}",
       "alternativeFastest": "最速ルート",
       "alternativeFewestTransfers": "乗り換えが最も少ないルート",
-      "alternativeFastestFewestTransfers": "最速で乗り換えも最少のルート"
+      "alternativeFastestFewestTransfers": "最速で乗り換えも最少のルート",
+      "quickExitDoor": "{door}のドア",
+      "quickExitBetween": "{first}と{second}のドアの間",
+      "quickExitBoth": "{station}で下車、エレベーターは{elevator}、階段は{stairs}",
+      "quickExitElevator": "{station}で下車、エレベーターは{elevator}",
+      "quickExitStairs": "{station}で下車、階段は{stairs}"
     },
     "pedestrian": {
       "heading": "徒歩",
