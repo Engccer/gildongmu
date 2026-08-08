@@ -19,3 +19,4 @@
 | `RESEARCH-2026-07-routing-enhancement.md` | 2026-07-29 | 도보·실시간 교통·교통약자·자전거/택시 4축 |
 | `RESEARCH-2026-08-02-realtime-walk-navigation.md` | 2026-08-03 | 경로 추종형 안내 설계(E4의 근거) |
 | `RESEARCH-2026-08-03-mode-specific-guidance.md` | 2026-08-03 | 수단별 안내 진입점 분리 |
+| `RESEARCH-2026-08-08-last-few-meters.md` | 2026-08-08 | 마지막 몇 미터 안내 — 선행 앱 9종·ITU-T/ISO 표준·학술 문헌·방위 관례·국내 출입구 데이터 |
