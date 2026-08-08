@@ -7,14 +7,20 @@
  * ⚠ **`courseAccuracy`는 통과권이 아니라 불확실성이다.** 기존 `courseStep`의 45°
  * 게이트는 *4분할 방향 어절을 생략할지* 정하는 기준이지 *이탈을 증명하는* 기준이
  * 아니다. 각도차 50°에 불확실성 40°면 실제 차이는 10°일 수 있고, 그런 표를 모으면
- * 확신이 아니라 같은 오차의 반복 집계가 된다. 실측에서 이 구분을 빼면(다수결)
- * 지속 편향 잡음의 헛경고가 0.3% → 7.0%(가혹 조건 50.7%)로 무너졌다.
+ * 확신이 아니라 같은 오차의 반복 집계가 된다.
+ *
+ * 상수의 근거는 `__tests__/a6-probe.test.ts`가 실경로 5개를 재생해 잰다(잠정 모델
+ * 기준. 실기기 로그가 정본이 되면 §7 3단계에서 다시 잰다). 가혹 조건(기기가 자기
+ * 오차를 절반으로 축소 보고: 실제 30°+15°, 보고 20°) 헛경고 기준:
+ * 판정 가능 비율 게이트 없음 56% → 있음·임계 45° 23% → 있음·임계 60° 4.0%.
+ * 대가는 검출 속도다(지속 편향 조건 이탈 255건 중앙: 현행 54초, 임계 45° 27초,
+ * 임계 60° 46초). **거짓 이탈 경고가 지연보다 해롭다고 보고 보수적 값에서 출발한다.**
  */
 import type { CourseState } from "./guide-course";
 import { tangentAt, type Polyline } from "./route-geometry";
 
 /** ⚠ 잠정값(spec §6·§7) — 실기기 로그로 확정한다. */
-export const COURSE_AXIS_THRESHOLD_DEG = 45;
+export const COURSE_AXIS_THRESHOLD_DEG = 60;
 /** ⚠ 잠정값(spec §6·§7). */
 export const COURSE_AXIS_WINDOW_S = 20;
 /** ⚠ 잠정값(spec §6·§7). 확정 임계. */
@@ -25,6 +31,16 @@ export const COURSE_AXIS_CLEAR_RATIO = 0.3;
 export const COURSE_AXIS_MIN_SPAN_S = 16;
 /** ⚠ 잠정값(spec §6·§7). 판정 가능한 표의 최소 개수. */
 export const COURSE_AXIS_MIN_VOTES = 8;
+/**
+ * ⚠ 잠정값(spec §6·§7). 창의 표 중 **판정 가능해야 하는 비율**.
+ *
+ * ⚠ **개수 하한만으로는 부족하다.** 창의 대부분이 `unknown`이어도 남은 소수가 전부
+ * `mismatch`면 비율 판정이 통과해, 얇은 근거 위에서 이탈을 확신하게 된다(경로 재생
+ * 실측: 이 게이트가 없으면 가혹 조건 헛경고 56%). 그리고 이것을 **개수**로 표현하면
+ * cadence에 묶인다 — 10Hz는 무조건 통과하고 0.5Hz는 영영 미달이라 같은 상황을 두
+ * 기기가 다르게 판정한다. 비율이라야 두 요구가 함께 성립한다.
+ */
+export const COURSE_AXIS_MIN_DECISIVE_RATIO = 0.8;
 /** ⚠ 잠정값(spec §6·§7). 위원장 판정으로 앞뒤 10m. */
 export const COURSE_AXIS_BACK_M = 10;
 /** ⚠ 잠정값(spec §6·§7). */
@@ -127,6 +143,7 @@ export function recordVote(
 export function courseAxisVerdict(samples: readonly CourseVoteSample[]): CourseAxisVerdict {
   const decisive = samples.filter((s) => s.vote !== "unknown");
   if (decisive.length < COURSE_AXIS_MIN_VOTES) return "unknown";
+  if (decisive.length / samples.length < COURSE_AXIS_MIN_DECISIVE_RATIO) return "unknown";
   const span = Math.max(...decisive.map((s) => s.at)) - Math.min(...decisive.map((s) => s.at));
   if (span < COURSE_AXIS_MIN_SPAN_S) return "unknown";
   const ratio = decisive.filter((s) => s.vote === "mismatch").length / decisive.length;

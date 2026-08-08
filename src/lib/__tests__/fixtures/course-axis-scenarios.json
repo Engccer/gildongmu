@@ -6,15 +6,17 @@
     { "name": "불확실성이 임계를 걸침", "course": 50, "courseAcc": 40, "d": 100, "fixAcc": 10, "expect": "unknown" },
     { "name": "위치 부정확", "course": 120, "courseAcc": 5, "d": 100, "fixAcc": 40, "expect": "unknown" },
     { "name": "course 범위 밖", "course": 360, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "unknown" },
-    { "name": "경계 바로 위", "course": 56, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "mismatch" },
-    { "name": "경계 바로 아래", "course": 39, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "match" }
+    { "name": "경계 바로 위", "course": 71, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "mismatch" },
+    { "name": "경계 바로 아래", "course": 54, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "match" }
   ],
+  "votesComment": "경계 두 케이스는 임계(COURSE_AXIS_THRESHOLD_DEG)에서 파생된 값이다. 임계를 바꾸면 여기도 함께 바꿔야 하고, 그게 정상이다 — 이 표가 임계 변경을 잡는 가드다.",
   "verdicts": [
     { "name": "표본 부족", "votes": [["mismatch", 0]], "expect": "unknown" },
     { "name": "시간 미달", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14]], "expect": "unknown" },
     { "name": "확정", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16], ["mismatch", 18]], "expect": "off" },
     { "name": "해제", "votes": [["match", 0], ["match", 2], ["match", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
-    { "name": "회색지대", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "unknown" }
+    { "name": "회색지대", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "unknown" },
+    { "name": "판정 불가가 창의 다수", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16], ["mismatch", 18], ["unknown", 1], ["unknown", 3], ["unknown", 5], ["unknown", 7], ["unknown", 9], ["unknown", 11], ["unknown", 13], ["unknown", 15], ["unknown", 17], ["unknown", 19], ["unknown", 0.5], ["unknown", 2.5], ["unknown", 4.5], ["unknown", 6.5], ["unknown", 8.5], ["unknown", 10.5], ["unknown", 12.5], ["unknown", 14.5], ["unknown", 16.5], ["unknown", 18.5]], "expect": "unknown" }
   ],
   "reducerComment": "리듀서 trace 층. 순수 함수 표(votes·verdicts)는 산술만 맞추므로, 리듀서가 호출 순서를 틀리거나 offRouteAxes를 잃어도 통과한다. 이 층은 guideStep을 실제로 돌려 phase와 축 latch를 비교한다. ⚠ fixes는 경계만 적고 소비자가 1초 간격으로 보간한다(방위 축은 20초 창을 채워야 해 fix가 25개씩 필요하고, 전부 나열하면 표를 읽을 수 없다). 보간 규칙: 첫 fix는 그 t에 그대로 내보내고, 이후 각 구간 (A,B)에 대해 t=A.t+1..B.t의 정수 초마다 along·lateral만 선형 보간하며 acc·course·courseAcc는 B의 값을 쓴다. course<0 또는 courseAcc<0은 CLLocation 무효 신호라 소비자가 비활성 관측으로 바꾼다(웹 INACTIVE_COURSE ↔ Kit inactiveCourse) — 그 둘이 같은 결과를 내는지가 두 번째 케이스의 요점이다. 경로는 fixes의 along을 진행거리(m)로 쓰는 남→북 직선이다.",
   "reducer": [

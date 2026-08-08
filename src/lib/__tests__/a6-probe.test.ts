@@ -6,8 +6,8 @@
  * spec 확정 시 이 파일은 정식 계약 테스트로 승격한다(지금은 파라미터 탐사용).
  */
 import { readFileSync } from "node:fs";
-import { describe, it } from "vitest";
-import { INACTIVE_COURSE } from "../guide-course-axis";
+import { describe, expect, it } from "vitest";
+import { INACTIVE_COURSE, type CourseObservation } from "../guide-course-axis";
 import {
   buildGuideRoute,
   guideStep,
@@ -153,62 +153,24 @@ function makeTrajectory(
   return out;
 }
 
-interface Params {
-  half: number;
-  thr: number;
-  window: number;
-  need: number;
-  back: number;
-  ahead: number;
-  /** 창을 채워야 하는 최소 표본 비율 (codex 리뷰 2: 최소 증거량) */
-  minFill: number;
-  /** true면 courseAccuracy를 불확실성으로 써 3-state 판정 (codex 리뷰 9) */
-  threeState: boolean;
-}
-
-type Vote = "mismatch" | "match" | "unknown";
-
-function replay(route: GuideRoute, samples: Sample[], p: Params) {
-  const { pointAt } = frame(route);
-  const tangent = (d: number) =>
-    bearing(pointAt(Math.max(0, d - p.half)), pointAt(Math.min(route.totalMeters, d + p.half)));
-  const vote = (s: Sample, d: number): Vote => {
-    let best = 180;
-    for (let o = -p.back; o <= p.ahead; o += 5) {
-      const dd = d + o;
-      if (dd < 0 || dd > route.totalMeters) continue;
-      best = Math.min(best, angDiff(s.course, tangent(dd)));
-    }
-    if (!p.threeState) return best > p.thr ? "mismatch" : "match";
-    // 관측 각도차의 불확실 구간이 임계를 걸치면 판정하지 않는다.
-    if (best - s.courseAccuracy > p.thr) return "mismatch";
-    if (best + s.courseAccuracy < p.thr) return "match";
-    return "unknown";
-  };
+/**
+ * 궤적을 리듀서에 그대로 흘려 **첫 이탈 확정 시각**을 돌려준다.
+ *
+ * ⚠ **판정은 전부 실제 모듈이 한다.** 종전 하네스는 표결·창·임계를 자기 사본으로
+ * 구현했는데, 그러면 `guide-course-axis.ts`가 바뀌어도 이 테스트가 통과한다.
+ * `axisActive=false`가 현행 동작(수직거리 축 단독), `true`가 신규 동작이다.
+ */
+function replay(route: GuideRoute, samples: Sample[], axisActive: boolean): number | null {
   let { state } = initialGuideState(route, 0);
-  const buf: { t: number; v: Vote }[] = [];
-  let perpAt: number | null = null;
-  let courseAt: number | null = null;
   for (const s of samples) {
-    const out = guideStep(state, s.fix, route, s.t, WALK_TUNING, INACTIVE_COURSE);
+    const obs: CourseObservation = axisActive
+      ? { state: { kind: "valid", course: s.course }, accuracyDeg: s.courseAccuracy }
+      : INACTIVE_COURSE;
+    const out = guideStep(state, s.fix, route, s.t, WALK_TUNING, obs);
     state = out.state;
-    if (out.event?.kind === "offRoute" && perpAt === null) perpAt = s.t;
-    if (state.phase !== "following" && state.phase !== "bundle") {
-      buf.length = 0;
-      continue;
-    }
-    buf.push({ t: s.t, v: vote(s, state.d) });
-    while (buf.length && buf[0].t <= s.t - p.window) buf.shift();
-    const decisive = buf.filter((b) => b.v !== "unknown");
-    if (
-      courseAt === null &&
-      decisive.length >= p.window * p.minFill &&
-      decisive.filter((b) => b.v === "mismatch").length / decisive.length >= p.need
-    ) {
-      courseAt = s.t;
-    }
+    if (out.event?.kind === "offRoute") return s.t;
   }
-  return { perpAt, courseAt };
+  return null;
 }
 
 function turnPoints(route: GuideRoute): number[] {
@@ -232,65 +194,67 @@ const ROUTES = [
 
 const med = (a: number[]) => (a.length ? [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)] : null);
 
-function evaluate(p: Params, n: Noise, seeds: number) {
+function evaluate(n: Noise, seeds: number) {
   let fp = 0;
   let walks = 0;
   const now: number[] = [];
   const next: number[] = [];
   let win = 0;
-  let tot = 0;
-  let missed = 0;
   for (const { route } of ROUTES) {
+    // 헛경고: 경로를 벗어나지 않는 보행에서 이탈이 확정되면 안 된다.
     for (let s = 0; s < seeds; s++) {
       walks++;
-      if (replay(route, makeTrajectory(route, s + 5000, n, null), p).courseAt !== null) fp++;
+      if (replay(route, makeTrajectory(route, s + 5000, n, null), true) !== null) fp++;
     }
+    // 검출 지연: 같은 궤적을 현행(축 없음)과 신규(축 있음)로 각각 재생해 비교한다.
     for (const atD of turnPoints(route).slice(0, 4)) {
       for (const deg of [-30, -45, -60, -90, 0, 120, 180]) {
         for (let s = 0; s < 3; s++) {
           const splitT = Math.round(atD / SPEED);
-          const r = replay(route, makeTrajectory(route, s + 1, n, { atD, deg }), p);
-          if (r.perpAt === null || r.perpAt < splitT) continue;
-          tot++;
-          const a = r.perpAt - splitT;
-          const b = r.courseAt !== null && r.courseAt >= splitT ? Math.min(a, r.courseAt - splitT) : a;
-          now.push(a);
-          next.push(b);
-          if (b < a) win++;
-          else missed++;
+          const samples = makeTrajectory(route, s + 1, n, { atD, deg });
+          const a = replay(route, samples, false);
+          if (a === null || a < splitT) continue;
+          const b = replay(route, samples, true);
+          now.push(a - splitT);
+          // 축이 못 잡으면 현행과 같다(신규는 현행을 포함하는 OR이라 더 늦을 수 없다).
+          next.push(b !== null && b >= splitT ? Math.min(a, b) - splitT : a - splitT);
+          if (b !== null && b < a) win++;
         }
       }
     }
   }
-  return { fp, walks, nowMed: med(now), nextMed: med(next), win, tot, missed };
+  return { fp, walks, nowMed: med(now), nextMed: med(next), win, tot: now.length };
 }
 
 /**
- * ⚠ **탐사 도구이지 계약 테스트가 아니다.** 단언 없이 표만 찍으므로 `.skip`으로 둔다
- * (게이트 시간을 쓰지 않는다). spec §3.1의 근거를 재현하려면 `.skip`을 떼고
- * `npx vitest run src/lib/__tests__/a6-probe.test.ts --reporter=verbose --silent=false`.
+ * 계약 테스트. 실제 `guideStep`을 재생하므로 `guide-course-axis.ts`의 상수·판정이
+ * 바뀌면 여기가 먼저 깨진다.
  *
- * 파라미터가 실기기 로그로 확정되면(spec §7 3단계) 이 파일은 단언을 가진 계약
- * 테스트로 승격하거나 삭제한다.
+ * ⚠ **상한과 잡음 모델은 잠정값이다**(spec §6). 실기기 로그로 파라미터가 확정되면
+ * 이 수치를 함께 고친다. 지금 재는 것은 "실제 값이 얼마인가"가 아니라 "설계가
+ * 지속 편향에서 무너지지 않는가"다.
  */
-describe.skip("A6 판정 축 탐사", () => {
-  it("2-state 다수결 vs 3-state, 잡음 모델별", { timeout: 300000 }, () => {
-    const base = { half: 15, window: 20, need: 0.7, back: 10, ahead: 10, minFill: 0.8 };
-    const rows: string[] = [];
-    rows.push("판정 | 잡음 | 헛경고(보행당) | 현행중앙 | 신규중앙 | 이긴비율");
-    for (const [nName, n] of [["독립", CLEAN], ["지속편향", BIASED], ["가혹", HARSH]] as [string, Noise][]) {
-      for (const [pName, p] of [
-        ["2-state 다수결", { ...base, thr: 45, threeState: false }],
-        ["3-state(불확실성)", { ...base, thr: 45, threeState: true }],
-        ["3-state thr35", { ...base, thr: 35, threeState: true }],
-      ] as [string, Params][]) {
-        const r = evaluate(p, n, 60);
-        rows.push(
-          `${pName} | ${nName} | ${r.fp}/${r.walks} (${((r.fp / r.walks) * 100).toFixed(1)}%) | ` +
-            `${r.nowMed}s | ${r.nextMed}s | ${r.win}/${r.tot}`,
-        );
-      }
-    }
-    console.log(rows.join("\n"));
+describe("A6 방위 축 경로 재생", () => {
+  it("지속 편향 잡음에서 헛경고가 상한 아래", { timeout: 300000 }, () => {
+    const r = evaluate(BIASED, 60);
+    expect(r.walks).toBe(ROUTES.length * 60);
+    expect(r.fp / r.walks).toBeLessThan(0.03);
+  });
+
+  it("이탈 검출이 현행보다 빠르다", { timeout: 300000 }, () => {
+    const r = evaluate(BIASED, 0);
+    expect(r.tot).toBeGreaterThan(20);
+    expect(r.nextMed!).toBeLessThan(r.nowMed!);
+    expect(r.win).toBeGreaterThan(0);
+  });
+
+  it("독립 잡음에서도 헛경고가 상한 아래", { timeout: 300000 }, () => {
+    const r = evaluate(CLEAN, 60);
+    expect(r.fp / r.walks).toBeLessThan(0.03);
+  });
+
+  it("가혹 조건에서도 무너지지 않는다 — 3-state가 지키는 것", { timeout: 300000 }, () => {
+    const r = evaluate(HARSH, 40);
+    expect(r.fp / r.walks).toBeLessThan(0.1);
   });
 });
