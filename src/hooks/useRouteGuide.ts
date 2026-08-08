@@ -47,6 +47,12 @@ import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-gui
 import { prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
+import {
+  ARRIVE_M,
+  FINAL_INTERVAL_S,
+  relativeDirection,
+  type FinalApproachGeometry,
+} from "@/lib/final-approach";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
@@ -131,6 +137,14 @@ export interface RouteGuideDest {
   lng: number;
   name: string;
 }
+
+/** 4분할 방향 → i18n 키. 부등호 소유권은 `relativeDirection`이 갖는다(웹↔Kit 미러). */
+const DIRECTION_KEY = {
+  ahead: "dirAhead",
+  left: "dirLeft",
+  right: "dirRight",
+  behind: "dirBehind",
+} as const;
 
 /** 확신도 3단(스펙 §5.4): ≤10m 원문 / ≤20m "약 N" / >20m "N쯤". 잔여 200m 이상은 원문. */
 function confidenceDistance(meters: number, accuracy: number, t: GuideT): string {
@@ -293,6 +307,11 @@ export function useRouteGuide(
   const watchIdRef = useRef<number | null>(null);
   const beaconRef = useRef<BeaconState>(INITIAL_BEACON_STATE);
   const guideRef = useRef<GuideState | null>(null);
+  // 최종 접근(spec 2026-08-08 §3.0) — 활성 동안 거리·방향·도착 발화의 소유자는 이 층뿐이다.
+  const inFinalApproachRef = useRef(false);
+  const finalApproachGeoRef = useRef<FinalApproachGeometry | null>(null);
+  const finalIntroSpokenRef = useRef(false);
+  const lastFinalTickAtRef = useRef<number | null>(null);
   /** 톤 계층 상태(간략·상세 공용 — 모드 차이는 입력 조립에만 있다). */
   const toneStateRef = useRef<ToneLayerState>(INITIAL_TONE_LAYER_STATE);
   /** 정지 판정 상태(도플러 3-state). */
@@ -534,8 +553,9 @@ export function useRouteGuide(
             t,
           );
         case "finalApproachEnter":
-          // T9에서 배치 서술로 대체한다. 지금은 종전 인계 문구 그대로.
-          return t("handoff");
+          // 이 이벤트의 문장은 `stepFinalApproach`가 소유한다 — 진입 서술은 fix 기준
+          // 거리·방향을 쓰는데 이 함수는 fix를 받지 않는다. 빈 문자열은 무발화다.
+          return "";
         case "offRoute":
           // 차량 이탈 문구는 상태 전문(§4.3) — 첫 통지를 놓쳐도 반복만으로 완결.
           return kindFixed === "car" ? t("carOffRoute") : t("offRoute");
@@ -591,6 +611,8 @@ export function useRouteGuide(
     stepFree: string | null;
     /** 열화 상태의 안내 문장(서버 정본). 기하 응답엔 유사 스텝이 없어 유일한 채널. */
     stepFreeNotice: string | null;
+    /** 경로 종점 → 목적지 오프셋 기하(§3.1). 구버전 서버·기하 실패면 null. */
+    finalApproach: FinalApproachGeometry | null;
   } | null> => {
     const geo = await awaitGeolocation();
     if (geo.status !== "ready") return null;
@@ -616,9 +638,10 @@ export function useRouteGuide(
               ? briefing.durationSeconds
               : null,
           roadSpans: carGuide.roadSpans,
-          // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
+          // 자동차에는 계단 회피·최종 접근 개념이 없다(실주행은 딥링크 위임이 정본).
           stepFree: null,
           stepFreeNotice: null,
+          finalApproach: null,
         };
       }
       const res = await fetch(
@@ -645,6 +668,7 @@ export function useRouteGuide(
         roadSpans: [],
         stepFree: result.stepFree ?? null,
         stepFreeNotice: result.stepFreeNotice ?? null,
+        finalApproach: result.finalApproach ?? null,
       };
     } catch {
       return null;
@@ -700,6 +724,123 @@ export function useRouteGuide(
     }
   }, []);
 
+  /** 세션의 최종 접근 상태를 새 경로 기준으로 되돌린다(시작·재조회·중지 공용). */
+  const resetFinalApproach = useCallback((geometry: FinalApproachGeometry | null) => {
+    inFinalApproachRef.current = false;
+    finalApproachGeoRef.current = geometry;
+    finalIntroSpokenRef.current = false;
+    lastFinalTickAtRef.current = null;
+  }, []);
+
+  /** 기하는 두고 소유권만 놓는다(수동 모드 전환 — §4). */
+  const releaseFinalApproach = useCallback(() => {
+    inFinalApproachRef.current = false;
+    finalIntroSpokenRef.current = false;
+    lastFinalTickAtRef.current = null;
+  }, []);
+
+  /**
+   * 최종 접근 거리 사다리(§3.6). ⚠ **정확도가 좋아도 헤지를 빼지 않는다** — 보고 정확도
+   * 5.4m에 실오차 36.5m인 실측이 있다(일반 안내 `confidenceDistance`와 갈리는 지점).
+   * 임계 비교는 반올림 전 원거리로 한다.
+   */
+  const approachText = useCallback(
+    (meters: number, accuracy: number, direction: string | null): string => {
+      if (meters <= ARRIVE_M) {
+        return direction
+          ? t("finalApproachNearDir", { direction })
+          : t("finalApproachNear");
+      }
+      const base = formatDistance(Math.round(meters));
+      const distance =
+        accuracy <= 20 ? t("approx", { distance: base }) : t("rough", { distance: base });
+      return direction ? t("finalApproachDetail", { direction, distance }) : distance;
+    },
+    [t],
+  );
+
+  /**
+   * 최종 접근 fix 처리(§3.4). 거리는 항상 **현재 fix → 목적지 직선거리**다 —
+   * `offsetMeters`는 진입 서술에서만 쓰고 재사용하지 않는다.
+   *
+   * ⚠ **시간 상한을 두지 않는다.** 종료 조건은 거리(도착)와 사용자의 중지뿐이다.
+   * ⚠ 주기 통지에는 방향이 없다: `GeolocationCoordinates`에 `heading`은 있으나 정확도
+   * 필드가 없어 품질 게이트(`courseStep`)를 통과할 수 없다(§3.5 검토 #32). 이것은
+   * 플랫폼 사실이며, **진입 서술의 방향은 서버가 준 정적 기하라 웹에서도 나온다.**
+   */
+  const stepFinalApproach = useCallback(
+    (fix: GuideFix, motion: MotionState, now: number) => {
+      const distance = haversineMeters(
+        fix.lat,
+        fix.lng,
+        destRef.current.lat,
+        destRef.current.lng,
+      );
+      const arrived = distance <= ARRIVE_M;
+      emitTone(
+        {
+          unreliable: false,
+          priorityTone: null,
+          eventOwned: false,
+          trend: {
+            distance,
+            deadBand: Math.max(BASE_DEAD_BAND_M, fix.accuracy),
+            deadBandFloor: fix.accuracy,
+            motion,
+            closerIntervalSeconds,
+          },
+          arrived,
+          rebaseTrend: false,
+        },
+        now,
+      );
+
+      if (arrived) {
+        const text = t("arrived");
+        rememberGuidance(text);
+        // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
+        // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
+        // (react-hooks/immutability). `sessionStopRef`는 생성 후 읽기만 한다.
+        sessionStopRef.current();
+        announce(text);
+        return;
+      }
+
+      const geometry = finalApproachGeoRef.current;
+      if (!finalIntroSpokenRef.current && geometry) {
+        finalIntroSpokenRef.current = true;
+        lastFinalTickAtRef.current = now;
+        const direction =
+          geometry.relativeBearing !== undefined
+            ? t(DIRECTION_KEY[relativeDirection(geometry.relativeBearing)])
+            : null;
+        const detail = approachText(geometry.offsetMeters, fix.accuracy, direction);
+        const text = geometry.roadName
+          ? t("finalApproachEnter", {
+              road: geometry.roadName,
+              dest: destRef.current.name,
+              detail,
+            })
+          : t("finalApproachEnterNoRoad", { dest: destRef.current.name, detail });
+        rememberGuidance(text);
+        announce(text);
+        return;
+      }
+
+      const last = lastFinalTickAtRef.current;
+      if (last === null) {
+        lastFinalTickAtRef.current = now;
+        return;
+      }
+      if (now - last < FINAL_INTERVAL_S) return;
+      lastFinalTickAtRef.current = now;
+      const text = approachText(distance, fix.accuracy, null);
+      rememberGuidance(text);
+      announce(text);
+    },
+    [announce, approachText, closerIntervalSeconds, emitTone, rememberGuidance, t],
+  );
+
   const stepBrief = useCallback(
     (fix: GuideFix, motion: MotionState, now: number) => {
       const result = beaconStep(beaconRef.current, fix, destRef.current);
@@ -751,7 +892,37 @@ export function useRouteGuide(
       // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
       const phase = result.state.phase;
       const remaining = Math.max(0, route.totalMeters - result.state.d);
+      // ⚠ `projectionJumped`는 호출 자체가 기준값을 갱신하므로 한 fix에 한 번만 부른다.
       const jumped = projectionJumped(remaining, now);
+      // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로 넘어가므로
+      // 상세 톤 입력을 조립하면 안 된다 — `emitTone`은 톤 상태를 전진시켜서 한 fix에
+      // 두 번 부르면 전이가 두 번 일어난다.
+      //
+      // ⚠ 인계 전제(E4 spec §8.2): 튄 잔여 거리로 진입을 확정하면 실제 경로가 남았는데
+      // 결정 지점 안내가 사라진다. 이 fix만 버리면 되고 조건이 참이면 다음 fix에서 온다.
+      if (result.event?.kind === "finalApproachEnter") {
+        if (jumped) return;
+        setProgress(null);
+        clearEtaTimer(); // 최종 접근 중 ETA 재조회는 무의미(자원 위생)
+        rebaseForAxisChange(); // 경로 거리 → 직선거리
+        if (finalApproachGeoRef.current === null) {
+          // 기하가 없으면(구버전 응답) 말할 배치 정보가 없다. 종전 인계 그대로
+          // 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
+          modeRef.current = "brief";
+          setMode("brief");
+          prevKindRef.current = null;
+          setOffRoute(false);
+          announce(t("handoff"));
+          return;
+        }
+        inFinalApproachRef.current = true;
+        finalIntroSpokenRef.current = false;
+        lastFinalTickAtRef.current = null;
+        // 진입이 소유권을 넘겼으면 **같은 fix로** 첫 발화를 낸다. 다음 fix를 기다리면
+        // 종점에 선 채 수 초 침묵하고, 그 침묵이 이번에 고치려는 증상이다.
+        stepFinalApproach(fix, motion, now);
+        return;
+      }
       // 추세 축은 정상 추종에서만 유효하다(이탈 중 잔여 거리는 낡은 투영이다).
       const trendable = (phase === "following" || phase === "bundle") && !jumped;
       emitTone(
@@ -777,16 +948,6 @@ export function useRouteGuide(
 
       if (!result.event) return;
       const text = eventText(result.event, route);
-      if (result.event.kind === "finalApproachEnter") {
-        // 인계는 단방향 래치 — 여기서 간략으로 넘기면 이후 fix는 비콘 경로가 받는다.
-        modeRef.current = "brief";
-        setMode("brief");
-        rebaseForAxisChange();
-        prevKindRef.current = null;
-        setOffRoute(false);
-        setProgress(null);
-        clearEtaTimer(); // 간략 전환 후 ETA 재조회는 무의미(자원 위생 — 리뷰 반영)
-      }
       if (!text) return;
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
@@ -797,6 +958,8 @@ export function useRouteGuide(
       closerIntervalSeconds,
       emitTone,
       eventText,
+      stepFinalApproach,
+      t,
       progressOf,
       projectionJumped,
       rebaseForAxisChange,
@@ -849,6 +1012,12 @@ export function useRouteGuide(
       // 모든 fix에서 갱신한다(거리 미분 폴백이 직전 표본을 쓴다).
       const motion = judgeMotion(pos, now);
       if (resolvePending(fix, now)) return;
+      // 최종 접근은 모드보다 앞이다 — 이 국면의 발화 소유자는 이 층 하나뿐이라
+      // 경로 리듀서도 비콘 리듀서도 이 fix를 보지 않는다(§3.0 소유권 계약).
+      if (inFinalApproachRef.current) {
+        stepFinalApproach(fix, motion, now);
+        return;
+      }
       const route = routeRef.current;
       const state = guideRef.current;
       if (modeRef.current === "detail" && route && state) {
@@ -857,7 +1026,7 @@ export function useRouteGuide(
       }
       stepBrief(fix, motion, now);
     },
-    [judgeMotion, resolvePending, stepBrief, stepDetail],
+    [judgeMotion, resolvePending, stepBrief, stepDetail, stepFinalApproach],
   );
 
   const clearWatch = useCallback(() => {
@@ -913,6 +1082,7 @@ export function useRouteGuide(
     lastRemainingRef.current = null;
     startedAtRef.current = null;
     guideRef.current = null;
+    resetFinalApproach(null);
     routeRef.current = null;
     routeDurationRef.current = null;
     roadSpansRef.current = [];
@@ -933,7 +1103,7 @@ export function useRouteGuide(
       announce("");
     }
     play("stop");
-  }, [announce, clearEtaTimer, clearWatch, play, wakeLock]);
+  }, [announce, clearEtaTimer, clearWatch, play, resetFinalApproach, wakeLock]);
 
   const start = useCallback(() => {
     if (!supported) {
@@ -1011,7 +1181,10 @@ export function useRouteGuide(
         }, CAR_ETA_INTERVAL_MS);
       }
       const now = performance.now() / 1000;
-      const init = initialGuideState(route, now);
+      resetFinalApproach(fetched.finalApproach);
+      const init = initialGuideState(route, now, {
+        hasFinalApproachGeometry: fetched.finalApproach !== null,
+      });
       commitDetail(route, init.state);
       setHasRoute(true);
       const first = unitText(route, init.firstIndices, t);
@@ -1037,6 +1210,7 @@ export function useRouteGuide(
     play,
     refreshCarEta,
     rememberGuidance,
+    resetFinalApproach,
     supported,
     t,
     wakeLock,
@@ -1054,6 +1228,9 @@ export function useRouteGuide(
       modeRef.current = "brief";
       setMode("brief");
       guideRef.current = null;
+      // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓는다
+      // (§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
+      releaseFinalApproach();
       // 경로 거리 → 직선거리(handoff와 같은 규칙). 방향만 승계하고 두 기준을 새 축
       // 현재값으로 재설정한다.
       rebaseForAxisChange();
@@ -1073,7 +1250,15 @@ export function useRouteGuide(
     const entry = entryProjection(route, fix, tuning);
     if (entry.status === "ok") {
       pendingResolveRef.current = null;
-      commitDetail(route, guideStateAt(route, entry.d, now, { autoHandoffArmed: false }));
+      // 경로 스텝 안내 중간에 "약 20미터"가 끼어드는 것을 막는다(§4 "수동 brief → detail").
+      releaseFinalApproach();
+      commitDetail(
+        route,
+        guideStateAt(route, entry.d, now, {
+          autoHandoffArmed: false,
+          hasFinalApproachGeometry: finalApproachGeoRef.current !== null,
+        }),
+      );
       announce(t("toDetailDone"));
       return;
     }
@@ -1085,7 +1270,7 @@ export function useRouteGuide(
       return;
     }
     announce(t("resolveFailed"));
-  }, [announce, commitDetail, kindFixed, rebaseForAxisChange, t, tuning]);
+  }, [announce, commitDetail, kindFixed, rebaseForAxisChange, releaseFinalApproach, t, tuning]);
 
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
@@ -1197,7 +1382,11 @@ export function useRouteGuide(
         }
         // 새 경로는 현재 위치에서 출발하므로 진행거리 0에서 다시 시작한다.
         const now = performance.now() / 1000;
-        const init = initialGuideState(route, now);
+        // 새 경로는 새 종점·새 오프셋이다 — 래치·타이머·서술 래치를 전부 초기화한다.
+        resetFinalApproach(fetched.finalApproach);
+        const init = initialGuideState(route, now, {
+          hasFinalApproachGeometry: fetched.finalApproach !== null,
+        });
         commitDetail(route, init.state);
         setHasRoute(true);
         pendingResolveRef.current = null;
@@ -1217,6 +1406,7 @@ export function useRouteGuide(
     fetchGuideRoute,
     kindFixed,
     rememberGuidance,
+    resetFinalApproach,
     t,
   ]);
 
