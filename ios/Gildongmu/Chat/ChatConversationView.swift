@@ -50,6 +50,7 @@ struct ChatConversationView<EmptyContent: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            LocationBarView().padding(.horizontal)
             ScrollViewReader { proxy in
                 ScrollView {
                     // ⚠ LazyVStack 금지(2026-07-20 실기기 cpu_resource 리포트로 확정):

@@ -25,7 +25,8 @@ struct SearchView: View {
         NavigationStack {
             ScrollViewReader { proxy in
             List {
-                // 마이크는 검색 필드 바로 다음 행: toolbar(내비 바)에 두면 VoiceOver가
+                Section { LocationBarView() }
+                // 마이크는 위치 표시줄 다음 행: toolbar(내비 바)에 두면 VoiceOver가
                 // 제목보다 먼저 읽는다(실기기 실측). WhatsApp식 홀드(2026-07-20 탭 토글
                 // 대체): 검색어는 짧아 홀드 단일 동작만(잠금·취소 슬라이드는 채팅 전용).
                 // 최종 텍스트를 검색어로 넣고 즉시 검색(웹 음성 검색 계약). partial은
