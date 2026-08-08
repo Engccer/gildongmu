@@ -39,8 +39,6 @@ export interface FinalApproachGeometry {
   relativeBearing?: number;
   /** relativeBearing 부재 사유 — "모름"과 "실패"를 소비자가 가른다. */
   bearingUnavailable?: "tooClose" | "degenerateGeometry";
-  /** 기준 도로명. 없으면 문장에서 기준절을 뺀다(지어내지 않는다). */
-  roadName?: string;
 }
 
 /**
@@ -56,10 +54,16 @@ export function relativeDirection(
   return "behind";
 }
 
+/**
+ * ⚠ **기준 도로명(`roadName`)은 두지 않는다**(2026-08-09 폐기). 종점 도로명을 말해도
+ * 사용자의 다음 행동이 바뀌지 않고, 스펙 자신의 §2.6(가까울수록 발화를 줄인다)과
+ * §2.5(랜드마크는 검증 가능해야 한다)에 어긋난다 — 종점에 선 시각장애 보행자가
+ * 거기가 천호대로임을 확인할 수단이 없다. 게다가 실호출에서 "천호대로가 끝납니다"가
+ * 거짓이었다(끝나는 것은 경로이지 도로가 아니다). 되살리려면 백로그 폐기 사유부터 볼 것.
+ */
 export function computeFinalApproach(
   route: GuideRoute,
   dest: Coord,
-  roadName?: string,
 ): FinalApproachGeometry | null {
   const { points, cum } = route.polyline;
   if (points.length < 2) return null;
@@ -67,10 +71,7 @@ export function computeFinalApproach(
   const offsetMeters = haversineMeters(end.lat, end.lng, dest.lat, dest.lng);
   if (!Number.isFinite(offsetMeters)) return null;
 
-  const base: FinalApproachGeometry = {
-    offsetMeters,
-    ...(roadName ? { roadName } : {}),
-  };
+  const base: FinalApproachGeometry = { offsetMeters };
   if (offsetMeters < OFFSET_MIN_M) {
     return { ...base, bearingUnavailable: "tooClose" };
   }

@@ -627,8 +627,6 @@
     "nextDestination": "{distance} to {dest}",
     "bundle": "Next {count} instructions. {steps}",
     "handoff": "Switching to straight-line guidance to your destination",
-    "finalApproachRoadEnd": "End of {road}.",
-    "finalApproachRoadEndPlain": "End of {road}.",
     "finalApproachRouteEnd": "The route ends here.",
     "finalApproachToDest": "{dest} is {distance} {direction}.",
     "finalApproachToDestNoDir": "{dest} is {distance} away.",

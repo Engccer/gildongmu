@@ -45,7 +45,6 @@ import {
 } from "@/lib/route-guide";
 import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import { prefersEnglish } from "@/lib/data-locale";
-import { withSubjectParticle } from "@/lib/korean-particle";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
 import {
@@ -154,26 +153,6 @@ const DIRECTION_TO_KEY = {
   right: "dirRightTo",
   behind: "dirBehindTo",
 } as const;
-
-/**
- * 최종 접근 진입 서술의 첫 문장. `"경로가 끝납니다."` / `"성내로가 끝납니다."`
- *
- * 도로명 뒤 주격 조사는 받침으로 갈리는데(`성내로가`/`명일로24길이`) 도로명이 임의
- * 고유명사다. 한글이 아니라 판정할 수 없으면 조사 없이도 문법적인
- * `"{road} 끝입니다"`로 물러난다 — 조사를 못 정하는 것이 낭독 불능이 되지 않게 하는
- * fail-safe(`walk-guidance.ts`와 같은 정신).
- *
- * ⚠ **조사는 ko 전용이다.** 다른 로케일 문구는 `"End of {road}."` 꼴이라 어절에
- * 조사를 붙이면 그대로 낭독된다. (도보 경로가 V1 ko 전용이라 실제로 도달하지
- * 않지만, 그 사실에 기대어 분기를 생략하면 en 도보가 열릴 때 조용히 깨진다.)
- */
-function roadEndClause(road: string | undefined, locale: string, t: GuideT): string {
-  if (!road) return t("finalApproachRouteEnd");
-  const subject = locale === "ko" ? withSubjectParticle(road) : road;
-  return subject
-    ? t("finalApproachRoadEnd", { road: subject })
-    : t("finalApproachRoadEndPlain", { road });
-}
 
 /** 확신도 3단(스펙 §5.4): ≤10m 원문 / ≤20m "약 N" / >20m "N쯤". 잔여 200m 이상은 원문. */
 function confidenceDistance(meters: number, accuracy: number, t: GuideT): string {
@@ -917,7 +896,7 @@ export function useRouteGuide(
                 dest: destRef.current.name,
                 distance,
               });
-        const text = `${roadEndClause(geometry.roadName, locale, t)} ${approach}`;
+        const text = `${t("finalApproachRouteEnd")} ${approach}`;
         rememberGuidance(text);
         announce(text);
         return;
@@ -953,8 +932,6 @@ export function useRouteGuide(
       approachTick,
       closerIntervalSeconds,
       emitTone,
-      // 진입 서술의 도로명 조사가 ko에서만 붙으므로 로케일이 실제 의존이다.
-      locale,
       rememberGuidance,
       t,
     ],

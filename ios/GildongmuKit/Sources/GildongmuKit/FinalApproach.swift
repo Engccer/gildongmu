@@ -41,18 +41,15 @@ public struct FinalApproachGeometry: Sendable, Equatable {
     public let offsetMeters: Double
     public let relativeBearing: Double?
     public let bearingUnavailable: BearingUnavailable?
-    public let roadName: String?
 
     public init(
         offsetMeters: Double,
         relativeBearing: Double?,
         bearingUnavailable: BearingUnavailable?,
-        roadName: String?
     ) {
         self.offsetMeters = offsetMeters
         self.relativeBearing = relativeBearing
         self.bearingUnavailable = bearingUnavailable
-        self.roadName = roadName
     }
 }
 
@@ -66,7 +63,7 @@ public func relativeDirection(_ theta: Double) -> RelativeDirection {
 }
 
 public func computeFinalApproach(
-    route: GuideRoute, dest: RoutePoint, roadName: String? = nil
+    route: GuideRoute, dest: RoutePoint
 ) -> FinalApproachGeometry? {
     let points = route.polyline.points
     let cum = route.polyline.cum
@@ -78,7 +75,7 @@ public func computeFinalApproach(
     if offset < offsetMinMeters {
         return FinalApproachGeometry(
             offsetMeters: offset, relativeBearing: nil,
-            bearingUnavailable: .tooClose, roadName: roadName
+            bearingUnavailable: .tooClose
         )
     }
 
@@ -111,7 +108,7 @@ public func computeFinalApproach(
     guard (sx * sx + sy * sy).squareRoot() >= 1e-9 else {
         return FinalApproachGeometry(
             offsetMeters: offset, relativeBearing: nil,
-            bearingUnavailable: .degenerateGeometry, roadName: roadName
+            bearingUnavailable: .degenerateGeometry
         )
     }
     let heading = (atan2(sy, sx) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
@@ -121,6 +118,6 @@ public func computeFinalApproach(
     let rel = (toDest - heading + 540).truncatingRemainder(dividingBy: 360) - 180
     return FinalApproachGeometry(
         offsetMeters: offset, relativeBearing: rel,
-        bearingUnavailable: nil, roadName: roadName
+        bearingUnavailable: nil
     )
 }

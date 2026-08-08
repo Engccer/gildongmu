@@ -52,8 +52,7 @@ const makeDest = (east: number) => ({
 let DEST = makeDest(30);
 let FINAL_APPROACH: Record<string, unknown> = {
   offsetMeters: 30,
-  relativeBearing: 90,
-  roadName: "성내로",
+  relativeBearing: 90
 };
 
 /** 오프셋 구간을 바꾼다. `walkToEndpoint()` 이전에만 부른다. */
@@ -128,7 +127,7 @@ beforeEach(() => {
   });
   watchCb = null;
   DEST = makeDest(30);
-  FINAL_APPROACH = { offsetMeters: 30, relativeBearing: 90, roadName: "성내로" };
+  FINAL_APPROACH = { offsetMeters: 30, relativeBearing: 90 };
   Object.defineProperty(navigator, "geolocation", {
     configurable: true,
     value: {
@@ -164,11 +163,10 @@ afterEach(() => {
 });
 
 describe("최종 접근 배선", () => {
-  it("종점 도달 시 배치 서술을 낸다 — 도로명·목적지·방향·거리", async () => {
+  it("종점 도달 시 배치 서술을 낸다 — 목적지·방향·거리", async () => {
     await walkToEndpoint();
     emitFix(198, 0);
 
-    expect(live()).toContain("성내로");
     expect(live()).toContain("강동구청");
     expect(live()).toContain("오른쪽");
     expect(live()).toContain("30");
@@ -180,34 +178,7 @@ describe("최종 접근 배선", () => {
    * 실제로 산문화 전후 두 문형이 그 테스트를 똑같이 통과했다. 문장 전문을 못 박는다
    * (spec `2026-08-09-final-approach-prose-design.md`).
    */
-  it("배치 서술이 완성 문장이다 — 도로명에 주격 조사가 붙고 목적지가 문장 끝에 온다", async () => {
-    await walkToEndpoint();
-    emitFix(198, 0);
-
-    expect(live()).toBe("성내로가 끝납니다. 오른쪽으로 약 30m 가면 강동구청입니다.");
-  });
-
-  it("받침 있는 도로명은 '이'를 고른다", async () => {
-    setGeometry({ offsetMeters: 30, relativeBearing: 90, roadName: "명일로24길" }, 30);
-    await walkToEndpoint();
-    emitFix(198, 0);
-
-    expect(live()).toContain("명일로24길이 끝납니다.");
-  });
-
-  /** 한글이 아니면 조사를 정할 수 없다 — 조사 없이도 문법적인 형태로 물러난다. */
-  it("조사를 판정할 수 없는 도로명은 '끝입니다'로 물러난다", async () => {
-    setGeometry({ offsetMeters: 30, relativeBearing: 90, roadName: "Sejong-daero" }, 30);
-    await walkToEndpoint();
-    emitFix(198, 0);
-
-    expect(live()).toContain("Sejong-daero 끝입니다.");
-    // 판정 실패가 "Sejong-daeroundefined"나 빈 조사로 새지 않는다.
-    expect(live()).not.toContain("undefined");
-  });
-
-  it("도로명이 없으면 경로 문장으로 연다", async () => {
-    setGeometry({ offsetMeters: 30, relativeBearing: 90 }, 30);
+  it("배치 서술이 완성 문장이다 — 목적지가 문장 끝에 온다", async () => {
     await walkToEndpoint();
     emitFix(198, 0);
 
@@ -238,7 +209,7 @@ describe("최종 접근 배선", () => {
 
   it("오프셋 10~15m에서도 진입 서술이 먼저 나가고 수치를 생략하지 않는다", async () => {
     // 목적지를 종점 동쪽 12m로 옮긴 세션. 진입 fix가 이미 도착 반경(15m) 안이다.
-    setGeometry({ offsetMeters: 12, relativeBearing: 90, roadName: "성내로" }, 12);
+    setGeometry({ offsetMeters: 12, relativeBearing: 90 }, 12);
     await walkToEndpoint();
     emitFix(198, 0);
 
@@ -279,6 +250,6 @@ describe("최종 접근 배선", () => {
     emitFix(199, 0);
 
     expect(live()).not.toBe(intro);
-    expect(live()).not.toContain("성내로");
+    expect(live()).not.toContain("가면");
   });
 });

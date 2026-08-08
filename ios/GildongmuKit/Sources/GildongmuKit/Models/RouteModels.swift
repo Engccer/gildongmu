@@ -318,8 +318,6 @@ public struct FinalApproachPayload: Codable, Sendable, Hashable {
     public let relativeBearing: Double?
     /// relativeBearing 부재 사유(원시 문자열).
     public let bearingUnavailable: String?
-    /// 기준 도로명. 없으면 문장에서 기준절을 뺀다(지어내지 않는다).
-    public let roadName: String?
 
     /// ⚠ 기본값을 두지 않는다 — `relativeBearing`과 `bearingUnavailable`은
     /// "방향을 안다"와 "왜 모르는가"의 짝이라, 둘 다 생략된 payload는 계약 위반인데
@@ -327,13 +325,11 @@ public struct FinalApproachPayload: Codable, Sendable, Hashable {
     public init(
         offsetMeters: Double,
         relativeBearing: Double?,
-        bearingUnavailable: String?,
-        roadName: String?
+        bearingUnavailable: String?
     ) {
         self.offsetMeters = offsetMeters
         self.relativeBearing = relativeBearing
         self.bearingUnavailable = bearingUnavailable
-        self.roadName = roadName
     }
 
     public var unavailableReason: BearingUnavailable? {

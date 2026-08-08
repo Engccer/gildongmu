@@ -72,7 +72,7 @@ enum GuideText {
     ///
     /// 목적지가 문장 끝에서 `입니다`/`까지`에 붙으므로 **임의 고유명사여도 조사가
     /// 걸리지 않는다** — 이 어순을 고른 이유다(spec `2026-08-09-final-approach-prose`).
-    /// 받침 판정이 남는 곳은 도로명 뒤 주격 조사 하나뿐이고 `roadEndClause`가 진다.
+    /// ⚠ 기준 도로명은 두지 않는다(2026-08-09 폐기, 근거는 `final-approach.ts` 주석).
     static func finalApproachEnter(
         destination: String, geometry: FinalApproachPayload, accuracy: Double
     ) -> String {
@@ -91,33 +91,9 @@ enum GuideText {
         } else {
             approach = appLocalized("guide.finalApproachToDestNoDir", destination, distance)
         }
-        return "\(roadEndClause(geometry.roadName)) \(approach)"
+        return "\(appLocalized("guide.finalApproachRouteEnd")) \(approach)"
     }
 
-    /// 진입 서술의 첫 문장. `"경로가 끝납니다."` / `"성내로가 끝납니다."`
-    ///
-    /// 도로명 뒤 주격 조사는 받침으로 갈리는데(`성내로가`/`명일로24길이`) 도로명이
-    /// 임의 고유명사다. 한글이 아니라 판정할 수 없으면 조사 없이도 문법적인
-    /// `"{road} 끝입니다"`로 물러난다 — 조사를 못 정하는 것이 낭독 불능이 되지 않게
-    /// 하는 fail-safe(`walk-guidance.ts`와 같은 정신).
-    ///
-    /// ⚠ **조사는 ko 전용이다.** 다른 로케일 문구는 `"End of %@."` 꼴이라 어절에
-    /// 조사를 붙이면 그대로 낭독된다. (도보 경로가 V1 ko 전용이라 실제로 도달하지
-    /// 않지만, 그 사실에 기대어 분기를 생략하면 en 도보가 열릴 때 조용히 깨진다.)
-    ///
-    /// ⚠ **빈 문자열을 `nil`과 같이 다룬다.** 도로명 소스가 이름 없는 골목·소로에 빈
-    /// 문자열을 돌려주는 것은 흔한데, 그대로 통과시키면 `" 끝입니다."`처럼 무엇이
-    /// 끝나는지 없는 문장이 낭독된다(웹 `roadEndClause`의 falsy 검사와 동조).
-    private static func roadEndClause(_ road: String?) -> String {
-        guard let road, !road.isEmpty else {
-            return appLocalized("guide.finalApproachRouteEnd")
-        }
-        let subject = AppLanguage.current == "ko" ? KoreanParticle.withSubject(road) : road
-        guard let subject else {
-            return appLocalized("guide.finalApproachRoadEndPlain", road)
-        }
-        return appLocalized("guide.finalApproachRoadEnd", subject)
-    }
 
     /// 최종 접근 주기 통지(§3.4). 거리는 **현재 fix → 목적지 직선거리**다 —
     /// 진입 서술의 `offsetMeters`를 재사용하지 않는다(두 거리 혼동 차단).

@@ -2,8 +2,7 @@
  * 한국어 조사 판정(순수 함수, ko 전용). Kit `KoreanParticle.swift` 미러 —
  * 표 대조는 `__tests__/korean-particle-drift.test.ts`가 강제한다.
  *
- * 한국어 조사는 앞 글자의 받침 유무로 갈린다(`강동구청이`/`이마트가`,
- * `성내로를`/`양재대로116길을`). 낭독 문장을 우리가 만드는 이상 이 판정을
+ * 한국어 조사는 앞 글자의 받침 유무로 갈린다(`성내로를`/`양재대로116길을`). 낭독 문장을 우리가 만드는 이상 이 판정을
  * 피할 수 없다 — 종전에는 조사를 아예 쓰지 않고 쉼표로 잇는 방식으로 우회했는데,
  * 그 결과 "강동구청, 왼쪽 약 16m"처럼 관계를 듣는 사람이 복원해야 하는
  * 명사구 나열이 나갔다(위원장 판정 2026-08-09).
@@ -31,13 +30,6 @@ export function hasFinalConsonant(word: string): boolean | null {
   return (code - HANGUL_FIRST) % JONGSEONG_COUNT !== 0;
 }
 
-/** 주격 조사 `이`/`가`. 판정 불가면 `null`. */
-export function subjectParticle(word: string): string | null {
-  const final = hasFinalConsonant(word);
-  if (final === null) return null;
-  return final ? "이" : "가";
-}
-
 /** 목적격 조사 `을`/`를`. 판정 불가면 `null`. */
 export function objectParticle(word: string): string | null {
   const final = hasFinalConsonant(word);
@@ -45,11 +37,3 @@ export function objectParticle(word: string): string | null {
   return final ? "을" : "를";
 }
 
-/**
- * 주격 조사를 붙인 어절. 판정 불가면 `null` — 호출자가 대체 문형을 고른다.
- * (`"성내로"` → `"성내로가"`, `"명일로24길"` → `"명일로24길이"`)
- */
-export function withSubjectParticle(word: string): string | null {
-  const particle = subjectParticle(word);
-  return particle === null ? null : `${word}${particle}`;
-}

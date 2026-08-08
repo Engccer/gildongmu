@@ -627,8 +627,6 @@
     "nextDestination": "{distance} jusqu'à {dest}",
     "bundle": "{count} prochaines instructions. {steps}",
     "handoff": "Passage au guidage à vol d'oiseau jusqu'à la destination",
-    "finalApproachRoadEnd": "Fin de {road}.",
-    "finalApproachRoadEndPlain": "Fin de {road}.",
     "finalApproachRouteEnd": "L'itinéraire se termine ici.",
     "finalApproachToDest": "{dest} est à {distance} {direction}.",
     "finalApproachToDestNoDir": "{dest} est à {distance}.",

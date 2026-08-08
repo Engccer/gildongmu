@@ -3,8 +3,7 @@ import Foundation
 /// 한국어 조사 판정(순수 함수, ko 전용). 웹 `src/lib/korean-particle.ts` 미러 —
 /// 표 대조는 `KoreanParticleTests`가 강제한다.
 ///
-/// 한국어 조사는 앞 글자의 받침 유무로 갈린다(`강동구청이`/`이마트가`,
-/// `성내로를`/`양재대로116길을`). 낭독 문장을 우리가 만드는 이상 이 판정을 피할 수
+/// 한국어 조사는 앞 글자의 받침 유무로 갈린다(`성내로를`/`양재대로116길을`). 낭독 문장을 우리가 만드는 이상 이 판정을 피할 수
 /// 없다 — 종전에는 조사를 아예 쓰지 않고 쉼표로 잇는 방식으로 우회했는데, 그 결과
 /// "강동구청, 왼쪽 약 16m"처럼 관계를 듣는 사람이 복원해야 하는 명사구 나열이
 /// 나갔다(위원장 판정 2026-08-09).
@@ -31,21 +30,10 @@ public enum KoreanParticle {
         return (value - hangulFirst) % jongseongCount != 0
     }
 
-    /// 주격 조사 `이`/`가`. 판정 불가면 `nil`.
-    public static func subject(_ word: String) -> String? {
-        guard let final = hasFinalConsonant(word) else { return nil }
-        return final ? "이" : "가"
-    }
-
     /// 목적격 조사 `을`/`를`. 판정 불가면 `nil`.
     public static func object(_ word: String) -> String? {
         guard let final = hasFinalConsonant(word) else { return nil }
         return final ? "을" : "를"
     }
 
-    /// 주격 조사를 붙인 어절. 판정 불가면 `nil` — 호출자가 대체 문형을 고른다.
-    public static func withSubject(_ word: String) -> String? {
-        guard let particle = subject(word) else { return nil }
-        return word + particle
-    }
 }
