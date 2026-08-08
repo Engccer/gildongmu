@@ -337,6 +337,17 @@ export function useRouteGuide(
   /** 간략→상세 전환 보류 시작 시각(단조 초). null이면 보류 없음. */
   const pendingResolveRef = useRef<number | null>(null);
   /**
+   * 시작 경로 조회를 기다리는 중인가(iOS `awaitingRoute` 미러). 이 창 동안 들어오는
+   * fix를 간략 리듀서에 태우면 "목적지까지 216m" 뒤에 곧바로 상세 시작 요약이 붙어
+   * **이중 발화**가 된다 — 두 문장이 같은 것을 다르게 말하므로 스크린 리더에서는
+   * 앞 문장이 잘리거나 서로 경합한다.
+   *
+   * ⚠ 이 창은 시작 조회를 정밀 재취득(`force`)으로 바꾸면서 넓어졌다. 종전에는 공유
+   * 스토어가 이미 `ready`면 즉시 resolve돼 창이 사실상 없었고, 그래서 웹에만 억제가
+   * 없어도 드러나지 않았다(독립 리뷰 검출).
+   */
+  const awaitingRouteRef = useRef(false);
+  /**
    * 세대 토큰. 시작·중지·모드 전환·재조회마다 증가하고, 비동기 응답은 도착 시 자기
    * 세대를 대조해 어긋나면 폐기한다(latest-wins — 스펙 §5.6 이탈 게이트).
    */
@@ -599,8 +610,15 @@ export function useRouteGuide(
    * 현재 위치에서 목적지까지 상세 경로 기하를 조립한다(시작 시 재조회 — 길찾기
    * 뷰가 쥔 낡은 출발점 기하 재사용 금지, §5). 실패는 전부 null(fail-closed).
    * car는 provider 판별자·기하 검증(buildCarGuide)을 통과해야 상세 적격이다.
+   *
+   * ⚠ **`force`에 기본값을 두지 않는다.** 공유 위치 스토어는 TTL이 없어 한 번
+   * `ready`가 되면 force 없이는 영영 갱신되지 않는다 — 그래서 생략이 곧 "세션 최초
+   * 좌표로 조회"가 되고, 재조회 경로에서는 **기능의 존재 이유 자체가 무효화**된다
+   * (이탈해서 누른 재조회가 출발점에서 같은 경로를 다시 받아 온다). 실기기 실사용에서
+   * 발견됐고 어떤 오류도 내지 않는다. 인자를 필수로 두면 새 호출 지점이 이 판단을
+   * 건너뛸 수 없다([[no-default-for-safety-parameters]]).
    */
-  const fetchGuideRoute = useCallback(async (): Promise<{
+  const fetchGuideRoute = useCallback(async (force: boolean): Promise<{
     route: GuideRoute;
     durationSeconds: number | null;
     roadSpans: CarRoadSpan[];
@@ -615,7 +633,7 @@ export function useRouteGuide(
     /** 경로 종점 → 목적지 오프셋 기하(§3.1). 구버전 서버·기하 실패면 null. */
     finalApproach: FinalApproachGeometry | null;
   } | null> => {
-    const geo = await awaitGeolocation();
+    const geo = await awaitGeolocation({ force });
     if (geo.status !== "ready") return null;
     const target = destRef.current;
     try {
@@ -690,7 +708,9 @@ export function useRouteGuide(
     const gen = genRef.current;
     etaCallCountRef.current += 1;
     try {
-      const geo = await awaitGeolocation();
+      // ETA는 "현 위치 → 목적지" 재조회값이라 좌표가 낡으면 카운트다운이 멎는다
+      // (10분 주기 6회가 전부 같은 출발점을 조회하게 된다).
+      const geo = await awaitGeolocation({ force: true });
       if (geo.status !== "ready") return;
       const target = destRef.current;
       const res = await fetch(
@@ -1088,6 +1108,11 @@ export function useRouteGuide(
         stepDetail(fix, route, state, motion, now);
         return;
       }
+      // 시작 경로 조회 대기 중에는 간략 리듀서에 태우지 않는다(iOS 동형): 곧 나올
+      // 상세 시작 요약과 이중 발화가 된다. `judgeMotion`은 위에서 이미 지났으므로
+      // 도플러 표본은 끊기지 않고, 비콘 앵커는 상세 확정 시 어차피 재기준화된다.
+      // 조회가 실패하면 이 플래그가 풀리며 다음 fix부터 간략 안내가 정상 동작한다.
+      if (awaitingRouteRef.current) return;
       stepBrief(fix, motion, now);
     },
     [judgeMotion, resolvePending, stepBrief, stepDetail, stepFinalApproach],
@@ -1156,6 +1181,7 @@ export function useRouteGuide(
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
     pendingResolveRef.current = null;
+    awaitingRouteRef.current = false;
     if (mountedRef.current) {
       setStatus("idle");
       setMode("brief");
@@ -1218,9 +1244,16 @@ export function useRouteGuide(
       announce(t("briefStarted"));
       return;
     }
+    // 조회를 기다리는 동안 간략 발화를 보류한다(위 `awaitingRouteRef`).
+    awaitingRouteRef.current = true;
     void (async () => {
-      const fetched = await fetchGuideRoute();
+      // 시작 조회는 정밀 재취득이다(§5) — 길찾기 조회 이후 이동해 있으면 낡은
+      // 출발점 기하로 즉시 이탈·오투영이 난다.
+      const fetched = await fetchGuideRoute(true);
+      // ⚠ 세대가 어긋나면 **플래그를 건드리지 않고** 빠진다 — 이미 다음 세션의 것이다.
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
+      // 이 세션이 맞다 — 성공·실패 어느 쪽이든 여기서 보류를 끝낸다(무한 억제 차단).
+      awaitingRouteRef.current = false;
       if (!fetched) {
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 그때 다시 통지된다 — 새 경로에 대한 새 판정이므로 반복이 아니다.
@@ -1421,7 +1454,9 @@ export function useRouteGuide(
     const gen = genRef.current;
     void (async () => {
       try {
-        const fetched = await fetchGuideRoute();
+        // 재조회의 출발지는 **지금 서 있는 자리**여야 한다 — 캐시를 읽으면 이탈해서
+        // 누른 재조회가 출발점에서 같은 경로를 다시 받아 온다(실사용 발견).
+        const fetched = await fetchGuideRoute(true);
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
         if (!fetched) {
@@ -1457,7 +1492,16 @@ export function useRouteGuide(
         const first = unitText(route, init.firstIndices, t);
         rememberGuidance(first);
         const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
-        announce(notice ? `${notice} ${first}` : first);
+        // 첫 안내만 내보내면 그것이 **새 경로**인지 원래 경로의 다음 스텝인지 낭독으로
+        // 구분되지 않는다(실사용 발견: 화면 출발지 필드는 길찾기 입력값이라 갱신되지
+        // 않으므로, "출발지가 현재 위치로 바뀌었다"를 전할 채널이 이 문장뿐이다).
+        // 시작 통지(`detailStart`)와 같은 구조로 규모까지 함께 준다.
+        const summary = t("rerouteDone", {
+          count: route.steps.length,
+          distance: formatDistance(route.totalMeters),
+          first,
+        });
+        announce(notice ? `${notice} ${summary}` : summary);
       } finally {
         rerouteInFlightRef.current = false;
         if (mountedRef.current) setRerouting(false);

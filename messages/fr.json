@@ -656,6 +656,7 @@
     "toBriefButton": "Passer au guidage simple",
     "rerouteButton": "Relancer la recherche d'itinéraire",
     "rerouteFailed": "Échec de la recherche d'itinéraire. L'itinéraire actuel est conservé",
+    "rerouteDone": "Itinéraire recalculé depuis votre position actuelle. {count} instructions, {distance} au total. {first}",
     "progressFollowing": "{total} restants. Dans {distance}, {step}",
     "progressFollowingDestination": "{total} restants. {distance} jusqu'à {dest}",
     "progressBundle": "{total} restants. {count} prochaines instructions",

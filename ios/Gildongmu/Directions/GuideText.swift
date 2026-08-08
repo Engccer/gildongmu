@@ -129,6 +129,20 @@ enum GuideText {
         )
     }
 
+    /// 재조회 성공 원자 발화. **첫 안내만 내보내면 그것이 새 경로인지 원래 경로의
+    /// 다음 스텝인지 낭독으로 구분되지 않는다**(실기기 실사용 발견). 화면 출발지 필드는
+    /// 길찾기 입력값이라 세션이 갱신하지 않으므로, "출발지가 현재 위치로 바뀌었다"를
+    /// 전할 채널은 이 문장뿐이다. 시작 발화와 같은 구조로 새 경로의 규모까지 준다.
+    /// 수단별로 가르지 않는다 — 수단은 세션 시작 통지가 이미 말했다.
+    static func reroute(route: GuideRoute, firstIndices: [Int]) -> String {
+        appLocalized(
+            "guide.rerouteDone",
+            String(route.steps.count),
+            formatDistance(Int(route.totalMeters.rounded())),
+            unit(route: route, indices: firstIndices)
+        )
+    }
+
     /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
     /// 원문을 독립 문장으로 결합(문법 결합 금지 — 거리 기준 혼동 차단).
     static func farNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String {

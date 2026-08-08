@@ -656,6 +656,7 @@
     "toBriefButton": "Switch to simple guidance",
     "rerouteButton": "Re-query route",
     "rerouteFailed": "Route query failed. Keeping the current route",
+    "rerouteDone": "Route recalculated from your current location. {count} instructions, {distance} total. {first}",
     "progressFollowing": "{total} remaining. In {distance}, {step}",
     "progressFollowingDestination": "{total} remaining. {distance} to {dest}",
     "progressBundle": "{total} remaining. Next {count} instructions",

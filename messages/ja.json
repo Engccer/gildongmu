@@ -656,6 +656,7 @@
     "toBriefButton": "簡易案内に切り替え",
     "rerouteButton": "経路を再検索",
     "rerouteFailed": "経路の検索に失敗しました。現在の経路を維持します",
+    "rerouteDone": "現在地から経路を再検索しました。案内{count}件、合計{distance}。{first}",
     "progressFollowing": "残り{total}。{distance}先、{step}",
     "progressFollowingDestination": "残り{total}。{dest}まで{distance}",
     "progressBundle": "残り{total}。次の案内{count}件",

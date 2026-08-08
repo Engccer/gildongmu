@@ -1340,9 +1340,14 @@ final class BeaconModel {
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
-            let text = notice.map { "\($0) \(first)" } ?? first
+            let summary = GuideText.reroute(route: fetched.route, firstIndices: initial.firstIndices)
+            let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
-            if !announce(text), let notice { pendingStepFreeNotice = notice }
+            // ⚠ **`.high`가 아니면 이 발화는 도달하지 않는다.** 성공하면 위 `offRoute = false`가
+            // 재조회 버튼을 없애고, 시트가 커서를 중지 버튼으로 되돌리며 그 라벨을 낭독한다 —
+            // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
+            // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
+            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
         } catch {
             guard token == rerouteToken, isTracking else { return }
             lastStepFree = nil

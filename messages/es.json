@@ -656,6 +656,7 @@
     "toBriefButton": "Cambiar a guía simple",
     "rerouteButton": "Volver a consultar la ruta",
     "rerouteFailed": "Falló la consulta de la ruta. Se mantiene la ruta actual",
+    "rerouteDone": "Ruta recalculada desde tu ubicación actual. {count} indicaciones, {distance} en total. {first}",
     "progressFollowing": "Quedan {total}. En {distance}, {step}",
     "progressFollowingDestination": "Quedan {total}. {distance} hasta {dest}",
     "progressBundle": "Quedan {total}. Siguientes {count} indicaciones",
