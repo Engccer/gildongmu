@@ -7,6 +7,7 @@ import { useTransitGuide } from "@/hooks/useTransitGuide";
 import { isApproxTransitLock, viaStopCurrentIndex } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
+import { quickExitText } from "@/lib/quick-exit-text";
 import { DistanceBeacon } from "./DistanceBeacon";
 
 /**
@@ -47,6 +48,9 @@ export function TransitGuidePanel({
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
   const tGuide = useTranslations("guide");
+  // 빠른하차 문구는 경로 브리핑과 같은 카탈로그를 쓴다 — 두 화면이 같은 사실을
+  // 다른 문장으로 말하면 같은 정보인지 알 수 없다.
+  const tTransitRoute = useTranslations("route.transit");
   const guide = useTransitGuide(route);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -60,11 +64,17 @@ export function TransitGuidePanel({
   // 세션이 밖에서 죽으면(단일성 강탈·완료) 자동으로 트리거로 복귀한다.
   const open = state !== null;
   const leg = state && guide.guideRoute ? guide.guideRoute.legs[state.legIndex] : null;
+  // 대기 국면에서만 쓰지만 훅 규칙과 무관한 순수 파생이라 여기서 만든다.
+  const quickExit = quickExitText(tTransitRoute, leg?.alightName ?? "", leg?.quickExit);
 
   // 세션 활성 전이를 부모에 통지(식별자는 ref로 고정 — 부모 인라인 콜백이
   // 렌더마다 새 함수여도 effect가 재발화하지 않는다). unmount 시 false 정리.
+  // ⚠ 대입은 렌더가 아니라 effect에서 한다(react-hooks/refs). 선언 순서대로 실행되므로
+  //    아래 [open] effect는 항상 갱신된 값을 본다.
   const onActiveChangeRef = useRef(onActiveChange);
-  onActiveChangeRef.current = onActiveChange;
+  useEffect(() => {
+    onActiveChangeRef.current = onActiveChange;
+  });
   useEffect(() => {
     onActiveChangeRef.current?.(open);
   }, [open]);
@@ -216,6 +226,11 @@ export function TransitGuidePanel({
                   {guide.directionUncertain && guide.waitingOptions.length > 0 && (
                     <p className="text-sm">{t("directionCheck")}</p>
                   )}
+                  {/* 빠른하차(E5) — 목록 **앞**에 둔다. 국면 전환으로 조용히 나타나는
+                      문장이라, 포커스 착지점(waitingLabel) 다음 자리에 놓아야 목록으로
+                      내려가는 길목에서 만난다. 통지는 만들지 않는다(정적 정보라 상태
+                      변화가 없고 live region은 변화를 알리는 채널이다). */}
+                  {quickExit && <p className="text-sm">{quickExit}</p>}
                   {guide.waitingOptions.length === 0 && (
                     // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
                     <p className="text-sm">
