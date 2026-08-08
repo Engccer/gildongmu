@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGuideRoute, projectOnPolyline, globalCandidates } from "../route-geometry";
+import { buildGuideRoute, projectOnPolyline, globalCandidates, tangentAt } from "../route-geometry";
 
 // 위도 1도 ≈ 111,320m. 미터를 위도로 환산해 남북 직선 경로를 만든다(Kit 미러 fixture와 동일 규약).
 const M = 1 / 111320;
@@ -85,6 +85,59 @@ describe("globalCandidates", () => {
   it("경로에서 멀면 후보 0개", () => {
     const r = buildGuideRoute([{ description: "a", pathCoords: [pt(0), pt(300)] }])!;
     expect(globalCandidates(r.polyline, pt(150, 200), 30)).toHaveLength(0);
+  });
+});
+
+describe("tangentAt", () => {
+  // 남 → 북 직선 100m
+  const straight = buildGuideRoute([
+    {
+      description: "북진",
+      pathCoords: [
+        { lat: 37.5, lng: 127.1 },
+        { lat: 37.5 + 100 / 111320, lng: 127.1 },
+      ],
+    },
+  ])!;
+
+  it("직선 구간은 진행 방위 0도", () => {
+    expect(tangentAt(straight.polyline, 50, 15)).toBeCloseTo(0, 0);
+  });
+
+  it("경로 시작·끝에서도 방위를 낸다(구간을 잘라 쓴다)", () => {
+    expect(tangentAt(straight.polyline, 0, 15)).toBeCloseTo(0, 0);
+    expect(tangentAt(straight.polyline, 100, 15)).toBeCloseTo(0, 0);
+  });
+
+  it("앞뒤 점이 같으면 null (0도로 접지 않는다)", () => {
+    const degenerate = { points: [{ lat: 37.5, lng: 127.1 }], cum: [0] };
+    expect(tangentAt(degenerate, 0, 15)).toBeNull();
+  });
+
+  it("직각으로 꺾이는 지점의 접선은 두 방위 사이", () => {
+    // 북 50m 뒤 동 50m
+    const corner = buildGuideRoute([
+      {
+        description: "북",
+        pathCoords: [
+          { lat: 37.5, lng: 127.1 },
+          { lat: 37.5 + 50 / 111320, lng: 127.1 },
+        ],
+      },
+      {
+        description: "동",
+        pathCoords: [
+          { lat: 37.5 + 50 / 111320, lng: 127.1 },
+          {
+            lat: 37.5 + 50 / 111320,
+            lng: 127.1 + 50 / (111320 * Math.cos((37.5 * Math.PI) / 180)),
+          },
+        ],
+      },
+    ])!;
+    const t = tangentAt(corner.polyline, 50, 15)!;
+    expect(t).toBeGreaterThan(20);
+    expect(t).toBeLessThan(70);
   });
 });
 

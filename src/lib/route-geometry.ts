@@ -152,6 +152,45 @@ function projectOnSegment(poly: Polyline, i: number, p: Coord): Projection {
 }
 
 /**
+ * 진행거리 `d` 지점의 경로 접선 방위(진북 기준 도, `[0,360)`).
+ * 앞뒤 `halfMeters`의 두 점을 잇는 방위라 폴리라인 정점 노이즈를 평활한다.
+ *
+ * ⚠ **두 점이 같으면 `null`이다.** 중복 정점·짧은 경로 끝에서 방위는 정의되지
+ * 않는데, 0도로 접으면 소비자가 "북쪽"이라는 거짓 정보를 얻는다(3-state 불변식).
+ */
+export function tangentAt(poly: Polyline, d: number, halfMeters: number): number | null {
+  const total = poly.cum[poly.cum.length - 1];
+  if (!(total > 0)) return null;
+  const a = pointAtD(poly, Math.max(0, d - halfMeters));
+  const b = pointAtD(poly, Math.min(total, d + halfMeters));
+  if (!a || !b) return null;
+  const lat0 = (a.lat * Math.PI) / 180;
+  const dx = (b.lng - a.lng) * Math.cos(lat0);
+  const dy = b.lat - a.lat;
+  if (dx === 0 && dy === 0) return null;
+  return ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360;
+}
+
+/** 진행거리 `d` 지점의 좌표. 범위 밖은 끝점으로 물린다. */
+function pointAtD(poly: Polyline, d: number): Coord | null {
+  const { points, cum } = poly;
+  if (points.length === 0) return null;
+  if (points.length === 1) return points[0];
+  const dd = Math.max(0, Math.min(d, cum[cum.length - 1]));
+  for (let i = 0; i < points.length - 1; i++) {
+    if (cum[i] <= dd && dd <= cum[i + 1]) {
+      const seg = cum[i + 1] - cum[i];
+      const t = seg === 0 ? 0 : (dd - cum[i]) / seg;
+      return {
+        lat: points[i].lat + t * (points[i + 1].lat - points[i].lat),
+        lng: points[i].lng + t * (points[i + 1].lng - points[i].lng),
+      };
+    }
+  }
+  return points[points.length - 1];
+}
+
+/**
  * 전역 후보(국소 최소점들): 수직거리 ≤ maxPerp인 후보를 진행거리 30m 간격으로 병합해
  * 반환한다. 후보가 복수면 호출자는 위치를 확정하지 말아야 한다(스펙 §6 모호 규칙).
  * ⚠ 창 기반 projectOnPolyline을 재사용하지 않는다 — 창 호출은 인접 세그먼트의

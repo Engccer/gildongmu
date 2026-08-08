@@ -184,3 +184,36 @@ public func globalCandidates(
     }
     return merged
 }
+
+/// 진행거리 `d` 지점의 경로 접선 방위(진북 기준 도, `[0,360)`).
+/// 앞뒤 `halfMeters`의 두 점을 잇는 방위라 폴리라인 정점 노이즈를 평활한다.
+/// 웹 `route-geometry.ts` `tangentAt` 미러.
+///
+/// ⚠ **두 점이 같으면 `nil`이다.** 0도로 접으면 소비자가 "북쪽"이라는 거짓 정보를 얻는다.
+public func tangentAt(_ poly: GuidePolyline, d: Double, halfMeters: Double) -> Double? {
+    guard let total = poly.cum.last, total > 0 else { return nil }
+    guard let a = pointAtD(poly, d: max(0, d - halfMeters)),
+          let b = pointAtD(poly, d: min(total, d + halfMeters))
+    else { return nil }
+    let lat0 = a.lat * .pi / 180
+    let dx = (b.lng - a.lng) * cos(lat0)
+    let dy = b.lat - a.lat
+    if dx == 0 && dy == 0 { return nil }
+    return (atan2(dx, dy) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
+}
+
+/// 진행거리 `d` 지점의 좌표. 범위 밖은 끝점으로 물린다.
+private func pointAtD(_ poly: GuidePolyline, d: Double) -> RoutePoint? {
+    guard !poly.points.isEmpty else { return nil }
+    if poly.points.count == 1 { return poly.points[0] }
+    let dd = max(0, min(d, poly.cum[poly.cum.count - 1]))
+    for i in 0..<(poly.points.count - 1) where poly.cum[i] <= dd && dd <= poly.cum[i + 1] {
+        let seg = poly.cum[i + 1] - poly.cum[i]
+        let t = seg == 0 ? 0 : (dd - poly.cum[i]) / seg
+        return RoutePoint(
+            lat: poly.points[i].lat + t * (poly.points[i + 1].lat - poly.points[i].lat),
+            lng: poly.points[i].lng + t * (poly.points[i + 1].lng - poly.points[i].lng)
+        )
+    }
+    return poly.points[poly.points.count - 1]
+}

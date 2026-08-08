@@ -499,3 +499,53 @@ struct FinalApproachEntryTests {
         #expect(finalApproachEntryMeters(state: known, accuracy: 30, tuning: .walk) == 30)
     }
 }
+
+@Suite("폴리라인 접선")
+struct TangentAtTests {
+    /// 웹 `route-geometry.test.ts` "tangentAt" describe 미러.
+    @Test("직선은 진행 방위, 시작·끝에서도 방위를 낸다")
+    func tangentAtStraight() {
+        let straight = buildGuideRoute([
+            GuideStepGeometry(
+                description: "북진",
+                pathCoords: [
+                    RoutePoint(lat: 37.5, lng: 127.1),
+                    RoutePoint(lat: 37.5 + 100 / 111_320, lng: 127.1),
+                ]
+            )
+        ])!
+        #expect(abs(tangentAt(straight.polyline, d: 50, halfMeters: 15)!) < 1)
+        #expect(abs(tangentAt(straight.polyline, d: 0, halfMeters: 15)!) < 1)
+        #expect(abs(tangentAt(straight.polyline, d: 100, halfMeters: 15)!) < 1)
+    }
+
+    @Test("앞뒤 점이 같으면 nil (0도로 접지 않는다)")
+    func tangentAtDegenerate() {
+        let degenerate = GuidePolyline(points: [RoutePoint(lat: 37.5, lng: 127.1)], cum: [0])
+        #expect(tangentAt(degenerate, d: 0, halfMeters: 15) == nil)
+    }
+
+    @Test("직각으로 꺾이는 지점의 접선은 두 방위 사이")
+    func tangentAtCorner() {
+        let lngPerM = 1 / (111_320 * cos(37.5 * .pi / 180))
+        let corner = buildGuideRoute([
+            GuideStepGeometry(
+                description: "북",
+                pathCoords: [
+                    RoutePoint(lat: 37.5, lng: 127.1),
+                    RoutePoint(lat: 37.5 + 50 / 111_320, lng: 127.1),
+                ]
+            ),
+            GuideStepGeometry(
+                description: "동",
+                pathCoords: [
+                    RoutePoint(lat: 37.5 + 50 / 111_320, lng: 127.1),
+                    RoutePoint(lat: 37.5 + 50 / 111_320, lng: 127.1 + 50 * lngPerM),
+                ]
+            ),
+        ])!
+        let t = tangentAt(corner.polyline, d: 50, halfMeters: 15)!
+        #expect(t > 20)
+        #expect(t < 70)
+    }
+}
