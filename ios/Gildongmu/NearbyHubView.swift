@@ -6,6 +6,7 @@ struct NearbyHubView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section { LocationBarView() }
                 NavigationLink(appLocalized("whereAmI.button")) { WhereAmIView() }
                 NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView() }

@@ -101,6 +101,8 @@ struct DirectionsEndpointSearchView: View {
     /// 최근 장소(스펙 2026-07-26) — 출발지·도착지 분리 목록(위원장 지시 2026-07-26),
     /// 이 시트의 필드 스코프만 시트 열릴 때 로드.
     private let recentStore = RecentSearchStore()
+    // manualLocation은 전용 스코프가 없다 — "도착지" 최근 목록을 재사용한다(자주 가는
+    // 곳이 지금 서 있는 곳의 후보이기도 하다는 취지, 무해한 재사용이지 오류가 아니다).
     private var recentScope: RecentEndpointScope { target == .from ? .from : .to }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
@@ -160,9 +162,14 @@ struct DirectionsEndpointSearchView: View {
                     )
                     .accessibilityFocused($micRowFocused)
                 }
-                // "현재 위치 사용"은 출발지 전용(웹 동형, 도착지를 현재 위치로 두는 건 스왑이 담당)
-                if target == .from {
-                    Button(appLocalized("directions.useCurrentLocation")) { select(.current) }
+                // 출발지에서는 "현재 위치 사용"이 GPS 선택을, 수동 위치 지정 맥락에서는
+                // 지정 해제를 뜻한다. 도착지에는 노출하지 않는다(스왑이 담당).
+                if target == .from || target == .manualLocation {
+                    Button(appLocalized(target == .manualLocation
+                                        ? "manualLocation.useGps"
+                                        : "directions.useCurrentLocation")) {
+                        select(.current)
+                    }
                 }
                 if !model.notice.isEmpty {
                     Text(model.notice)
@@ -310,8 +317,15 @@ struct DirectionsEndpointSearchView: View {
         )
     }
 
+    // ⚠ 이분 삼항(target == .from ? A : B)으로 두면 manualLocation이 조용히 "도착지
+    // 검색" 제목으로 떨어진다(실제로 이 자리에서 나던 결함, 전수 확인 중 발견) —
+    // exhaustive switch로 새 타깃이 기존 분기에 흡수되지 않게 한다.
     private var sheetTitle: String {
-        target == .from ? appLocalized("directions.searchFrom") : appLocalized("directions.searchTo")
+        switch target {
+        case .from: appLocalized("directions.searchFrom")
+        case .to: appLocalized("directions.searchTo")
+        case .manualLocation: appLocalized("manualLocation.pickTitle")
+        }
     }
 
     private func select(_ endpoint: DirectionsEndpoint) {

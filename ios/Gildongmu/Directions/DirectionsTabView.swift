@@ -17,9 +17,11 @@ final class DirectionsPrefillStore {
     var pending: DirectionsEndpoint?
 }
 
-/// 길찾기 필드 식별(출발지/도착지). 검색 시트 라우팅 공용.
+/// 길찾기 필드 식별(출발지/도착지) + 수동 위치 지정. 검색 시트 라우팅 공용
+/// (`manualLocation`은 `LocationBarView`가 `DirectionsEndpointSearchView`를 재사용하는
+/// 별도 진입로다 — 길찾기 탭의 from/to 상태 머신(`DirectionsModel`)과는 무관하다).
 enum DirectionsFieldTarget: String, Identifiable {
-    case from, to
+    case from, to, manualLocation
     var id: String { rawValue }
 }
 
