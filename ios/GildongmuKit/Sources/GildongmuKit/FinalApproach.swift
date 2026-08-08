@@ -10,6 +10,20 @@ import Foundation
 public let offsetMinMeters = 10.0
 /// 종점 진행 방위를 평균할 역방향 창(m).
 public let bearingWindowMeters = 15.0
+/// 도착 확정 반경(m). Soundscape `enterImmediateVicinityDistance`와 같은 값.
+///
+/// **수치 없이 "목적지 근처"라고만 말하는 반경이기도 하다**(spec §3.6 사다리) —
+/// 두 이름을 두지 않는 이유는 spec이 둘을 같은 15m로 정했고 이름이 갈리면 드리프트가
+/// 생기기 때문이다. 주기 루프에서는 도착이 먼저 발화하므로 "근처" 분기가 실제로
+/// 쓰이는 곳은 오프셋 자체가 10~15m인 진입 서술이다.
+///
+/// ⚠ Soundscape의 이탈 히스테리시스(30m)는 **일부러 쓰지 않는다.** 목적지를 지나친
+/// 사용자에게 안내가 사라지는 것이 초판 결함이었고, 도착이 세션을 끝내므로 되돌아오는
+/// 전이 자체가 없어 히스테리시스가 할 일이 없다(상수를 두면 죽은 코드다).
+/// ⚠ 실보행 판정 전까지 동결(spec §6-3).
+public let finalApproachArriveMeters = 15.0
+/// 최종 접근 주기 통지 간격(초). Sendero "Getting Warmer" 실사양. 동결(spec §6-2).
+public let finalApproachIntervalSeconds = 15.0
 
 public enum BearingUnavailable: String, Sendable, Equatable {
     case tooClose

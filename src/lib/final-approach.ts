@@ -17,6 +17,20 @@ import { bearingDegrees } from "./geo/bearing";
 export const OFFSET_MIN_M = 10;
 /** 종점 진행 방위를 평균할 역방향 창(m). 마지막 세그먼트 단독은 실측에서 판정이 뒤집혔다. */
 export const BEARING_WINDOW_M = 15;
+/**
+ * 도착 확정 반경(m). Soundscape `enterImmediateVicinityDistance`와 같은 값.
+ *
+ * **수치 없이 "목적지 근처"라고만 말하는 반경이기도 하다**(spec §3.6 사다리) — 두 이름을
+ * 두지 않는 이유는 spec이 둘을 같은 15m로 정했고 이름이 갈리면 드리프트가 생기기 때문이다.
+ *
+ * ⚠ Soundscape의 이탈 히스테리시스(30m)는 **일부러 쓰지 않는다.** 목적지를 지나친
+ * 사용자에게 안내가 사라지는 것이 초판 결함이었고, 도착이 세션을 끝내므로 되돌아오는
+ * 전이 자체가 없어 히스테리시스가 할 일이 없다(상수를 두면 죽은 코드다).
+ * ⚠ 실보행 판정 전까지 동결(spec §6-3).
+ */
+export const ARRIVE_M = 15;
+/** 최종 접근 주기 통지 간격(초). Sendero "Getting Warmer" 실사양. 동결(spec §6-2). */
+export const FINAL_INTERVAL_S = 15;
 
 export interface FinalApproachGeometry {
   /** 경로 종점 → 목적지 직선거리(m), 반올림 전 원값. */
