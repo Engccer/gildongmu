@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { awaitGeolocation } from "@/lib/geolocation";
+import { awaitManualLocation } from "@/lib/effective-location";
 import { isInKorea } from "@/lib/coverage";
 import {
   isOutOfCoverageBody,
@@ -137,35 +138,58 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
       void run(source.lat, source.lng).finally(unlock);
       return;
     }
-    setStatus({ kind: "locating" });
     // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
     // 팝업 없이 재사용한다(매 버튼마다 getCurrentPosition을 부르지 않음).
-    void awaitGeolocation({ force }).then((g) => {
-      if (seqRef.current !== id) {
-        // 검사지점 ① — 닫힌(또는 대체된) 요청의 위치로 upstream을 호출하지 않는다.
-        unlock();
-        return;
-      }
-      if (g.status === "ready") {
-        if (coverage === "korea" && !isInKorea(g.coords.lat, g.coords.lng)) {
-          setStatus({ kind: "outOfCoverage" });
+    const gpsPath = () =>
+      awaitGeolocation({ force }).then((g) => {
+        if (seqRef.current !== id) {
+          // 검사지점 ① — 닫힌(또는 대체된) 요청의 위치로 upstream을 호출하지 않는다.
           unlock();
           return;
         }
-        void run(g.coords.lat, g.coords.lng).finally(unlock);
-      } else {
-        // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
-        // 복원하고, 첫 조회 실패면 geoerror(실내 GPS 재취득 실패로 데이터 소멸 방지).
-        setStatus(
-          prevStatus.kind === "done"
-            ? prevStatus
-            : {
-                kind: "geoerror",
-                reason: g.status === "unsupported" ? "unsupported" : "denied",
-              },
-        );
+        if (g.status === "ready") {
+          if (coverage === "korea" && !isInKorea(g.coords.lat, g.coords.lng)) {
+            setStatus({ kind: "outOfCoverage" });
+            unlock();
+            return;
+          }
+          void run(g.coords.lat, g.coords.lng).finally(unlock);
+        } else {
+          // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
+          // 복원하고, 첫 조회 실패면 geoerror(실내 GPS 재취득 실패로 데이터 소멸 방지).
+          setStatus(
+            prevStatus.kind === "done"
+              ? prevStatus
+              : {
+                  kind: "geoerror",
+                  reason: g.status === "unsupported" ? "unsupported" : "denied",
+                },
+          );
+          unlock();
+        }
+      });
+
+    setStatus({ kind: "locating" });
+    // 좌표 우선순위는 **장소 앵커 > 수동 위치 > GPS**다. 앵커는 위 선분기가 이미
+    // 처리했으므로 여기서는 수동 위치를 먼저 본다. force면 그 전에 이동 판정이
+    // 돌아, 사용자가 자리를 옮겼으면 수동 위치가 해제된 뒤 GPS 경로로 떨어진다.
+    void awaitManualLocation({ force }).then((manual) => {
+      if (seqRef.current !== id) {
         unlock();
+        return;
       }
+      if (!manual) {
+        // 수동 위치가 없으면 기존 GPS 경로 그대로. 실패 분기(직전 데이터 복원·
+        // unsupported/denied 구분)는 이 훅의 계약이라 상위 계층으로 흡수하지 않는다.
+        void gpsPath();
+        return;
+      }
+      if (coverage === "korea" && !isInKorea(manual.lat, manual.lng)) {
+        setStatus({ kind: "outOfCoverage" });
+        unlock();
+        return;
+      }
+      void run(manual.lat, manual.lng).finally(unlock);
     });
   }
 
