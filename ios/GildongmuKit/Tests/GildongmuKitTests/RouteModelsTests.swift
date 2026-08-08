@@ -246,3 +246,52 @@ struct WalkRouteBriefingStepFreeTests {
         #expect(b.stepFreeStatus == nil)
     }
 }
+
+/// 최종 접근 기하도 같은 규율을 따른다 — 선택 필드 + 원시 문자열 사유(spec 2026-08-08 §3.1).
+@Suite("도보 브리핑의 최종 접근 기하")
+struct WalkRouteBriefingFinalApproachTests {
+    private func decode(_ json: String) throws -> WalkRouteBriefing {
+        try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(json.utf8))
+    }
+
+    @Test("필드가 없으면 nil이다(구버전 서버 응답)")
+    func absent() throws {
+        let b = try decode(#"{"distanceMeters":100,"durationSeconds":60,"steps":[]}"#)
+        #expect(b.finalApproach == nil)
+    }
+
+    @Test("거리·상대각·도로명을 읽는다")
+    func present() throws {
+        let b = try decode(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],
+         "finalApproach":{"offsetMeters":16.1,"relativeBearing":-92.4,"roadName":"성내로"}}
+        """#)
+        let fa = try #require(b.finalApproach)
+        #expect(abs(fa.offsetMeters - 16.1) < 0.001)
+        #expect(relativeDirection(try #require(fa.relativeBearing)) == .left)
+        #expect(fa.roadName == "성내로")
+        #expect(fa.unavailableReason == nil)
+    }
+
+    @Test("부재 사유를 매핑한다")
+    func unavailable() throws {
+        let b = try decode(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],
+         "finalApproach":{"offsetMeters":4.2,"bearingUnavailable":"tooClose"}}
+        """#)
+        #expect(b.finalApproach?.unavailableReason == .tooClose)
+        #expect(b.finalApproach?.relativeBearing == nil)
+    }
+
+    /// ⚠ raw enum으로 직접 디코딩하면 서버가 넷째 사유를 추가할 때 브리핑 전체가 깨진다.
+    @Test("미지의 사유 문자열이 브리핑 전체를 깨뜨리지 않는다")
+    func unknownReasonDoesNotBreakDecoding() throws {
+        let b = try decode(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],
+         "finalApproach":{"offsetMeters":30,"bearingUnavailable":"headingUnstable"}}
+        """#)
+        #expect(b.distanceMeters == 100)
+        #expect(b.finalApproach?.unavailableReason == nil)
+        #expect(b.finalApproach?.offsetMeters == 30)
+    }
+}
