@@ -174,6 +174,56 @@ describe("최종 접근 배선", () => {
     expect(live()).toContain("30");
   });
 
+  /**
+   * ⚠ 위 조각 단언(`toContain`)은 **문형 회귀를 못 잡는다** — 슬롯형
+   * "성내로 끝입니다. 강동구청, 오른쪽 약 30m"도 같은 조각을 전부 포함한다.
+   * 실제로 산문화 전후 두 문형이 그 테스트를 똑같이 통과했다. 문장 전문을 못 박는다
+   * (spec `2026-08-09-final-approach-prose-design.md`).
+   */
+  it("배치 서술이 완성 문장이다 — 도로명에 주격 조사가 붙고 목적지가 문장 끝에 온다", async () => {
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    expect(live()).toBe("성내로가 끝납니다. 오른쪽으로 약 30m 가면 강동구청입니다.");
+  });
+
+  it("받침 있는 도로명은 '이'를 고른다", async () => {
+    setGeometry({ offsetMeters: 30, relativeBearing: 90, roadName: "명일로24길" }, 30);
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    expect(live()).toContain("명일로24길이 끝납니다.");
+  });
+
+  /** 한글이 아니면 조사를 정할 수 없다 — 조사 없이도 문법적인 형태로 물러난다. */
+  it("조사를 판정할 수 없는 도로명은 '끝입니다'로 물러난다", async () => {
+    setGeometry({ offsetMeters: 30, relativeBearing: 90, roadName: "Sejong-daero" }, 30);
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    expect(live()).toContain("Sejong-daero 끝입니다.");
+    // 판정 실패가 "Sejong-daeroundefined"나 빈 조사로 새지 않는다.
+    expect(live()).not.toContain("undefined");
+  });
+
+  it("도로명이 없으면 경로 문장으로 연다", async () => {
+    setGeometry({ offsetMeters: 30, relativeBearing: 90 }, 30);
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    expect(live()).toBe("경로가 끝납니다. 오른쪽으로 약 30m 가면 강동구청입니다.");
+  });
+
+  it("방향을 모르면 목적지까지 거리만 말한다", async () => {
+    // ⚠ `tooClose`가 아니라 `degenerateGeometry`다 — 전자는 오프셋 10m 미만일 때의
+    //   사유라 30m와 같이 두면 기하가 모순이다.
+    setGeometry({ offsetMeters: 30, bearingUnavailable: "degenerateGeometry" }, 30);
+    await walkToEndpoint();
+    emitFix(198, 0);
+
+    expect(live()).toBe("경로가 끝납니다. 강동구청까지 약 30m입니다.");
+  });
+
   it("주기 통지 거리는 오프셋이 아니라 현재 위치 기준이다", async () => {
     await walkToEndpoint();
     emitFix(198, 0); // 진입 서술

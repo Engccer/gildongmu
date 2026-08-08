@@ -45,6 +45,7 @@ import {
 } from "@/lib/route-guide";
 import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import { prefersEnglish } from "@/lib/data-locale";
+import { withSubjectParticle } from "@/lib/korean-particle";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
 import {
@@ -140,12 +141,37 @@ export interface RouteGuideDest {
 }
 
 /** 4분할 방향 → i18n 키. 부등호 소유권은 `relativeDirection`이 갖는다(웹↔Kit 미러). */
-const DIRECTION_KEY = {
-  ahead: "dirAhead",
-  left: "dirLeft",
-  right: "dirRight",
-  behind: "dirBehind",
+/**
+ * 이동 방향 어휘("왼쪽으로"). 맨몸 어휘(`DIRECTION_KEY`)와 나누는 이유는 한국어
+ * `으로`/`로`가 받침으로 갈리기 때문이다 — 다만 이 넷은 **우리 고정 어휘**라
+ * 런타임 판정 없이 i18n에 박는다(임의 고유명사인 도로명과 다른 축이다).
+ */
+const DIRECTION_TO_KEY = {
+  ahead: "dirAheadTo",
+  left: "dirLeftTo",
+  right: "dirRightTo",
+  behind: "dirBehindTo",
 } as const;
+
+/**
+ * 최종 접근 진입 서술의 첫 문장. `"경로가 끝납니다."` / `"성내로가 끝납니다."`
+ *
+ * 도로명 뒤 주격 조사는 받침으로 갈리는데(`성내로가`/`명일로24길이`) 도로명이 임의
+ * 고유명사다. 한글이 아니라 판정할 수 없으면 조사 없이도 문법적인
+ * `"{road} 끝입니다"`로 물러난다 — 조사를 못 정하는 것이 낭독 불능이 되지 않게 하는
+ * fail-safe(`walk-guidance.ts`와 같은 정신).
+ *
+ * ⚠ **조사는 ko 전용이다.** 다른 로케일 문구는 `"End of {road}."` 꼴이라 어절에
+ * 조사를 붙이면 그대로 낭독된다. (도보 경로가 V1 ko 전용이라 실제로 도달하지
+ * 않지만, 그 사실에 기대어 분기를 생략하면 en 도보가 열릴 때 조용히 깨진다.)
+ */
+function roadEndClause(road: string | undefined, locale: string, t: GuideT): string {
+  if (!road) return t("finalApproachRouteEnd");
+  const subject = locale === "ko" ? withSubjectParticle(road) : road;
+  return subject
+    ? t("finalApproachRoadEnd", { road: subject })
+    : t("finalApproachRoadEndPlain", { road });
+}
 
 /** 확신도 3단(스펙 §5.4): ≤10m 원문 / ≤20m "약 N" / >20m "N쯤". 잔여 200m 이상은 원문. */
 function confidenceDistance(meters: number, accuracy: number, t: GuideT): string {
@@ -775,10 +801,18 @@ export function useRouteGuide(
     [t],
   );
 
-  /** 방향·거리 한 조각. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지). */
+  /**
+   * 주기 통지 한 문장. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지 —
+   * "…, , 16미터"처럼 구분자가 겹친다).
+   *
+   * ⚠ 15초마다 반복되는 통지인데도 완성 문장인 것은 **일관성 우선 판정**이다
+   * (위원장 2026-08-09). 실보행에서 길게 느껴지면 이 한 줄만 되돌린다.
+   */
   const approachDetail = useCallback(
     (distance: string, direction: string | null): string =>
-      direction ? t("finalApproachDetail", { direction, distance }) : distance,
+      direction
+        ? t("finalApproachTick", { direction, distance })
+        : t("finalApproachTickNoDir", { distance }),
     [t],
   );
 
@@ -864,22 +898,24 @@ export function useRouteGuide(
       if (!finalIntroSpokenRef.current && geometry) {
         finalIntroSpokenRef.current = true;
         lastFinalTickAtRef.current = now;
-        const direction =
-          geometry.relativeBearing !== undefined
-            ? t(DIRECTION_KEY[relativeDirection(geometry.relativeBearing)])
-            : null;
+        const bearing = geometry.relativeBearing;
         // 진입 서술은 항상 수치를 낸다(§3.3) — `approachTick`의 "근처" 축약을 타지 않는다.
-        const detail = approachDetail(
-          approachDistance(geometry.offsetMeters, fix.accuracy),
-          direction,
-        );
-        const text = geometry.roadName
-          ? t("finalApproachEnter", {
-              road: geometry.roadName,
-              dest: destRef.current.name,
-              detail,
-            })
-          : t("finalApproachEnterNoRoad", { dest: destRef.current.name, detail });
+        const distance = approachDistance(geometry.offsetMeters, fix.accuracy);
+        // 방향을 알면 "왼쪽으로 … 가면 {목적지}입니다", 모르면 "{목적지}까지 …입니다".
+        // 목적지가 문장 끝에서 `입니다`/`까지`에 붙으므로 임의 고유명사여도 조사가
+        // 걸리지 않는다 — 이 어순을 고른 이유다(spec §2).
+        const approach =
+          bearing !== undefined
+            ? t("finalApproachToDest", {
+                direction: t(DIRECTION_TO_KEY[relativeDirection(bearing)]),
+                distance,
+                dest: destRef.current.name,
+              })
+            : t("finalApproachToDestNoDir", {
+                dest: destRef.current.name,
+                distance,
+              });
+        const text = `${roadEndClause(geometry.roadName, locale, t)} ${approach}`;
         rememberGuidance(text);
         announce(text);
         return;
@@ -909,11 +945,14 @@ export function useRouteGuide(
     },
     [
       announce,
-      approachDetail,
+      // `approachDetail`은 이제 `approachTick` 안에서만 쓰인다 — 진입 서술이 문구를
+      // 직접 조립하도록 바뀌면서 이 콜백의 직접 의존에서 빠졌다.
       approachDistance,
       approachTick,
       closerIntervalSeconds,
       emitTone,
+      // 진입 서술의 도로명 조사가 ko에서만 붙으므로 로케일이 실제 의존이다.
+      locale,
       rememberGuidance,
       t,
     ],

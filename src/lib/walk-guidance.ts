@@ -1,4 +1,7 @@
 import { formatDistance } from "./format";
+// 조사 판정은 공용 모듈이 정본이다 — 최종 접근 안내문도 같은 판정을 쓰므로
+// 사본을 두면 두 낭독이 갈린다(2026-08-09 승격).
+import { objectParticle } from "./korean-particle";
 import type { WalkRouteBriefing, WalkRouteStep } from "./types";
 
 /**
@@ -58,17 +61,6 @@ const BRIDGE = /^(?:(.+?에서) )?교량 진입$/;
  * 같은 폴백으로 거리를 얻기 때문이다("엘레베이터를 이용하여 강동역으로 이동" 등).
  */
 const HAS_DISTANCE = /\d+(?:\.\d+)?\s*(?:km|m|미터|킬로미터)/;
-
-/**
- * 목적격 조사. 실측 도로명 58종은 전부 한글이라 받침으로 판정되지만("…길"→을,
- * "…로"→를), 한글이 아니면 조사를 정할 수 없으므로 null을 돌려 그 문장의
- * 도로명 삽입만 포기한다(괄호 원문 보존).
- */
-function objectParticle(word: string): string | null {
-  const code = word.charCodeAt(word.length - 1);
-  if (Number.isNaN(code) || code < 0xac00 || code > 0xd7a3) return null;
-  return (code - 0xac00) % 28 !== 0 ? "을" : "를";
-}
 
 function join(...parts: (string | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");

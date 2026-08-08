@@ -41,11 +41,28 @@ enum GuideText {
         }
     }
 
-    /// 방향·거리 한 조각. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지 —
+    /// 이동 방향 어휘("왼쪽으로"). 맨몸 어휘(`directionWord`)와 나누는 이유는 한국어
+    /// `으로`/`로`가 받침으로 갈리기 때문이다 — 다만 이 넷은 **우리 고정 어휘**라
+    /// 런타임 판정 없이 로케일 문구에 박는다(임의 고유명사인 도로명과 다른 축이다).
+    static func directionTowardWord(_ d: RelativeDirection) -> String {
+        switch d {
+        case .ahead: appLocalized("guide.dirAheadTo")
+        case .left: appLocalized("guide.dirLeftTo")
+        case .right: appLocalized("guide.dirRightTo")
+        case .behind: appLocalized("guide.dirBehindTo")
+        }
+    }
+
+    /// 주기 통지 한 문장. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지 —
     /// "…, , 16미터"처럼 구분자가 겹친다). 어순은 로케일 문구가 소유한다.
+    ///
+    /// ⚠ 15초마다 반복되는 통지인데도 완성 문장인 것은 **일관성 우선 판정**이다
+    /// (위원장 2026-08-09). 실보행에서 길게 느껴지면 이 한 줄만 되돌린다.
     static func approachDetail(distance: String, direction: String?) -> String {
-        guard let direction else { return distance }
-        return appLocalized("guide.finalApproachDetail", direction, distance)
+        guard let direction else {
+            return appLocalized("guide.finalApproachTickNoDir", distance)
+        }
+        return appLocalized("guide.finalApproachTick", direction, distance)
     }
 
     /// 최종 접근 진입 1회 배치 서술(§3.3).
@@ -53,9 +70,9 @@ enum GuideText {
     /// **이 문장은 사용자가 경로 종점에 서 있을 때 나가므로 거리·방향이 곧 현재 위치
     /// 기준이다.** 초판이 이것을 인계 시점(경로 잔여 50m)에 냈다가 기준이 어긋났다.
     ///
-    /// 조사를 쓰지 않는다 — 한국어 주격·목적격 조사는 받침 유무로 갈리는데
-    /// (`강동구청은`/`이마트는`, `성내로를`/`양재대로116길을`) 목적지·도로명이 임의
-    /// 고유명사다. 조사 헬퍼를 만드는 대신 쉼표로 잇는다(접근성 헌장 §4 정합).
+    /// 목적지가 문장 끝에서 `입니다`/`까지`에 붙으므로 **임의 고유명사여도 조사가
+    /// 걸리지 않는다** — 이 어순을 고른 이유다(spec `2026-08-09-final-approach-prose`).
+    /// 받침 판정이 남는 곳은 도로명 뒤 주격 조사 하나뿐이고 `roadEndClause`가 진다.
     static func finalApproachEnter(
         destination: String, geometry: FinalApproachPayload, accuracy: Double
     ) -> String {
@@ -64,14 +81,36 @@ enum GuideText {
         //   정적으로 계산된 값이라 그 전제가 성립하지 않는다. 12m는 열다섯 걸음이고
         //   숫자를 지워서 얻을 것이 없다(정확도 헤지는 그대로 붙는다 — 사용자의
         //   현재 위치는 여전히 fix에서 오기 때문이다).
-        let detail = approachDetail(
-            distance: approachDistance(geometry.offsetMeters, accuracy: accuracy),
-            direction: directionOf(geometry)
-        )
-        guard let road = geometry.roadName else {
-            return appLocalized("guide.finalApproachEnterNoRoad", destination, detail)
+        let distance = approachDistance(geometry.offsetMeters, accuracy: accuracy)
+        let approach: String
+        if let bearing = geometry.relativeBearing {
+            approach = appLocalized(
+                "guide.finalApproachToDest",
+                directionTowardWord(relativeDirection(bearing)), distance, destination
+            )
+        } else {
+            approach = appLocalized("guide.finalApproachToDestNoDir", destination, distance)
         }
-        return appLocalized("guide.finalApproachEnter", road, destination, detail)
+        return "\(roadEndClause(geometry.roadName)) \(approach)"
+    }
+
+    /// 진입 서술의 첫 문장. `"경로가 끝납니다."` / `"성내로가 끝납니다."`
+    ///
+    /// 도로명 뒤 주격 조사는 받침으로 갈리는데(`성내로가`/`명일로24길이`) 도로명이
+    /// 임의 고유명사다. 한글이 아니라 판정할 수 없으면 조사 없이도 문법적인
+    /// `"{road} 끝입니다"`로 물러난다 — 조사를 못 정하는 것이 낭독 불능이 되지 않게
+    /// 하는 fail-safe(`walk-guidance.ts`와 같은 정신).
+    ///
+    /// ⚠ **조사는 ko 전용이다.** 다른 로케일 문구는 `"End of %@."` 꼴이라 어절에
+    /// 조사를 붙이면 그대로 낭독된다. (도보 경로가 V1 ko 전용이라 실제로 도달하지
+    /// 않지만, 그 사실에 기대어 분기를 생략하면 en 도보가 열릴 때 조용히 깨진다.)
+    private static func roadEndClause(_ road: String?) -> String {
+        guard let road else { return appLocalized("guide.finalApproachRouteEnd") }
+        let subject = AppLanguage.current == "ko" ? KoreanParticle.withSubject(road) : road
+        guard let subject else {
+            return appLocalized("guide.finalApproachRoadEndPlain", road)
+        }
+        return appLocalized("guide.finalApproachRoadEnd", subject)
     }
 
     /// 최종 접근 주기 통지(§3.4). 거리는 **현재 fix → 목적지 직선거리**다 —
@@ -93,11 +132,6 @@ enum GuideText {
     private static func nearText(direction: String?) -> String {
         guard let direction else { return appLocalized("guide.finalApproachNear") }
         return appLocalized("guide.finalApproachNearDir", direction)
-    }
-
-    /// 진입 서술의 방향 어휘. 기하가 사유를 실었으면(tooClose·degenerate) 말하지 않는다.
-    private static func directionOf(_ geometry: FinalApproachPayload) -> String? {
-        geometry.relativeBearing.map { directionWord(relativeDirection($0)) }
     }
 
     /// 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 문장 그대로, 묶음이면 통독 틀.

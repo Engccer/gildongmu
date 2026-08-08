@@ -10321,6 +10321,46 @@
         }
       }
     },
+    "guide.dirAheadTo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정면으로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "straight ahead"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "de frente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tout droit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dritto davanti"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正面"
+          }
+        }
+      }
+    },
     "guide.dirBehind": {
       "localizations": {
         "ko": {
@@ -10351,6 +10391,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "dietro"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "後ろ"
+          }
+        }
+      }
+    },
+    "guide.dirBehindTo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "뒤로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "behind you"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "detrás de ti"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "derrière vous"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "dietro di te"
           }
         },
         "ja": {
@@ -10401,6 +10481,46 @@
         }
       }
     },
+    "guide.dirLeftTo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "왼쪽으로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "to the left"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a la izquierda"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sur la gauche"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a sinistra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "左"
+          }
+        }
+      }
+    },
     "guide.dirRight": {
       "localizations": {
         "ko": {
@@ -10425,6 +10545,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "à droite"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a destra"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "右"
+          }
+        }
+      }
+    },
+    "guide.dirRightTo": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오른쪽으로"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "to the right"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a la derecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sur la droite"
           }
         },
         "it": {
@@ -10521,162 +10681,42 @@
         }
       }
     },
-    "guide.finalApproachDetail": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ %2$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ %2$@"
-          }
-        }
-      }
-    },
-    "guide.finalApproachEnter": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ 끝입니다. %2$@, %3$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End of %1$@. %2$@, %3$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fin de %1$@. %2$@, %3$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fin de %1$@. %2$@, %3$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fine di %1$@. %2$@, %3$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ の終わりです。%2$@、%3$@"
-          }
-        }
-      }
-    },
-    "guide.finalApproachEnterNoRoad": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "경로 끝입니다. %1$@, %2$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End of the route. %1$@, %2$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fin de la ruta. %1$@, %2$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fin de l'itinéraire. %1$@, %2$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fine del percorso. %1$@, %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "経路の終わりです。%1$@、%2$@"
-          }
-        }
-      }
-    },
     "guide.finalApproachNear": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "목적지 근처"
+            "value": "목적지 근처입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Near the destination"
+            "value": "You are near the destination."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca del destino"
+            "value": "Estás cerca del destino."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Près de la destination"
+            "value": "Vous êtes près de la destination."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vicino alla destinazione"
+            "value": "Sei vicino alla destinazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "目的地の近く"
+            "value": "目的地の近くです。"
           }
         }
       }
@@ -10686,37 +10726,317 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "목적지 근처, %1$@"
+            "value": "목적지 근처입니다. %1$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Near the destination, %1$@"
+            "value": "You are near the destination. It is %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca del destino, %1$@"
+            "value": "Estás cerca del destino. Está %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Près de la destination, %1$@"
+            "value": "Vous êtes près de la destination. Elle est %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vicino alla destinazione, %1$@"
+            "value": "Sei vicino alla destinazione. È %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "目的地の近く、%1$@"
+            "value": "目的地の近くです。%1$@です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachRoadEnd": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 끝납니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End of %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin de %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin de %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fine di %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の終点です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachRoadEndPlain": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 끝입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End of %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin de %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin de %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fine di %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の終点です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachRouteEnd": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로가 끝납니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The route ends here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ruta termina aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'itinéraire se termine ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il percorso termina qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルートはここで終わりです。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachTick": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A %2$@ %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À %2$@ %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A %2$@ %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に%2$@です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachTickNoDir": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ away."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachToDest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@ 가면 %3$@입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ is %2$@ %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ está a %2$@ %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ est à %2$@ %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%3$@ è a %2$@ %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に%2$@進むと%3$@です。"
+          }
+        }
+      }
+    },
+    "guide.finalApproachToDestNoDir": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@까지 %2$@입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ is %2$@ away."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ está a %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ est à %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ è a %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@まで%2$@です。"
           }
         }
       }
