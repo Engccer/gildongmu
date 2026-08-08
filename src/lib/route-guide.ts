@@ -18,8 +18,21 @@ export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geome
 /** 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(리뷰 #4 선행 원칙). */
 export const ANNOUNCE_AHEAD_M = 40;
 export const ADVANCE_MARGIN_BASE_M = 15;
+/**
+ * **기하를 모르는 세션의** 최종 접근 진입 거리(m). 기하를 아는 세션은 경로 종점까지
+ * 따라간다(아래 `ARRIVAL_TOLERANCE_MIN_M`) — 이 50m는 "경로 종점 = 목적지"를 전제한
+ * 판단이었고, 실측에서 종점→목적지 오프셋 16~89m가 확인돼 무효화됐다
+ * (spec 2026-08-08 §1.2·§3.2).
+ */
 export const HANDOFF_DIST_M = 50;
 export const HANDOFF_REARM_M = HANDOFF_DIST_M + 20;
+/**
+ * 경로 종점 도달 판정의 하한(m). 실제 임계는 `max(이 값, fix.accuracy)`다 —
+ * 경로 잔여 5m를 정확도 30m fix로 판정하는 것은 거짓 정밀도이고, 정확도가 나쁘면
+ * 종점 도달을 일찍 인정하는 것이 정직하다(spec 2026-08-08 §3.2).
+ * ⚠ 실보행 판정 전까지 동결(spec §6-1).
+ */
+export const ARRIVAL_TOLERANCE_MIN_M = 10;
 export const UNCERTAIN_ACCURACY_M = 50;
 export const OFF_ROUTE_BASE_M = 30;
 export const OFF_ROUTE_HOLD_S = 20;
@@ -123,7 +136,19 @@ function estimateSpeedMps(samples: readonly { at: number; d: number }[]): number
   return Math.max(lastSeg, sorted[Math.floor(sorted.length / 2)]);
 }
 
-export type GuidePhase = "following" | "bundle" | "uncertain" | "reacquiring" | "offRoute";
+/**
+ * `finalApproach`는 **경로 종점 이후 오프셋 구간을 직선으로 추적**하는 국면이다
+ * (spec 2026-08-08 §3.0). 단방향 래치라 이 국면에서 다른 국면으로 리듀서가 스스로
+ * 돌아가지 않는다 — 해제는 세션 재시작·재조회·수동 전환처럼 상태를 새로 만드는
+ * 경로뿐이다(§4 전이표).
+ */
+export type GuidePhase =
+  | "following"
+  | "bundle"
+  | "uncertain"
+  | "reacquiring"
+  | "offRoute"
+  | "finalApproach";
 
 export interface GuideFix {
   lat: number;
@@ -155,6 +180,18 @@ export interface GuideState {
   /** 자동 인계 무장 여부. 수동 상세 복귀 후엔 재무장선(70m) 밖으로 나가야 true(리뷰 #11). */
   autoHandoffArmed: boolean;
   /**
+   * 이 세션이 종점 오프셋 기하(`WalkRouteBriefing.finalApproach`)를 아는가.
+   *
+   * - `true`  → 최종 접근 진입 조건은 **경로 종점 도달**(`max(ARRIVAL_TOLERANCE_MIN_M, accuracy)`).
+   * - `false` → 구버전 응답이다. **현행 50m 인계를 그대로 쓴다**(spec §3.2, 검토 #33).
+   *   기하 없이 종점까지 끌고 가면 정작 종점에서 할 말이 없다.
+   *
+   * ⚠ **fix 인자가 아니라 상태에 둔다.** 이 값은 세션(경로 응답)의 성질이라 매 fix마다
+   * 다시 넘길 값이 아니고, 넘기게 하면 호출 지점 하나만 어긋나도 타입이 못 잡는다.
+   * 재조회는 `guideStateAt`을 지나가므로 새 경로의 기하로 교체되는 것이 강제된다(§4).
+   */
+  hasFinalApproachGeometry: boolean;
+  /**
    * 원거리 예고(farNotice)를 마친 마지막 스텝 index(임박 발화 시 함께 전진 —
    * 뒤늦은 원거리 예고 금지). walk(farNoticeM=null)에선 불변.
    */
@@ -178,7 +215,7 @@ export type GuideEvent =
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
-  | { kind: "handoff" }
+  | { kind: "finalApproachEnter" }
   | { kind: "offRoute" }
   | { kind: "backOnRoute" }
   | { kind: "uncertainEnter" }
@@ -217,7 +254,7 @@ export function guideStateAt(
   route: GuideRoute,
   d: number,
   now: number,
-  opts?: { autoHandoffArmed?: boolean },
+  opts?: { autoHandoffArmed?: boolean; hasFinalApproachGeometry?: boolean },
 ): GuideState {
   const step = stepAt(route, d);
   const unit = unitAt(route, step.index);
@@ -236,6 +273,8 @@ export function guideStateAt(
     speedGuardActive: false,
     speedWarned: false,
     autoHandoffArmed: opts?.autoHandoffArmed ?? true,
+    // 기본은 false(옛 50m 인계) — 기하를 안다고 주장하려면 명시해야 한다.
+    hasFinalApproachGeometry: opts?.hasFinalApproachGeometry ?? false,
     // 재진입 시점의 유닛은 원거리 예고 소비 처리 — 경계선을 이미 안에서 시작하면
     // 크로싱이 성립하지 않아 뒤늦은 예고가 구조적으로 없다(스펙 §4.3).
     farNoticedUpTo: unit[unit.length - 1],
@@ -247,12 +286,38 @@ export function guideStateAt(
   };
 }
 
+/**
+ * 같은 세션 안에서 진행거리만 바꿔 상태를 다시 만든다(재획득·복귀 공용).
+ *
+ * ⚠ **세션 성질(경로 응답에서 온 값·세션 래치)의 승계 목록은 여기 한 곳에만 둔다.**
+ * 호출 지점마다 나열하면 새 필드를 더할 때 하나를 빠뜨리게 되고, 그 결과는 조용하다 —
+ * 실제로 `hasFinalApproachGeometry`가 재획득 경로에서만 떨어져 진입선이 옛 50m로
+ * 되돌아간 적이 있다(계측으로 발견).
+ */
+function restateAt(
+  route: GuideRoute,
+  d: number,
+  now: number,
+  prev: GuideState,
+): GuideState {
+  return guideStateAt(route, d, now, {
+    autoHandoffArmed: prev.autoHandoffArmed,
+    hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
+  });
+}
+
 /** 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫. */
 export function initialGuideState(
   route: GuideRoute,
   now: number,
+  opts?: { hasFinalApproachGeometry?: boolean },
 ): { state: GuideState; firstIndices: number[] } {
-  return { state: guideStateAt(route, 0, now), firstIndices: unitAt(route, 0) };
+  return {
+    state: guideStateAt(route, 0, now, {
+      hasFinalApproachGeometry: opts?.hasFinalApproachGeometry,
+    }),
+    firstIndices: unitAt(route, 0),
+  };
 }
 
 /**
@@ -271,6 +336,22 @@ export function entryProjection(
   return { status: "ok", d: cands[0].d };
 }
 
+/**
+ * 최종 접근 진입선(경로 잔여 m). 기하를 알면 경로 종점까지 따라가고, 모르면 옛 50m다
+ * (spec 2026-08-08 §3.2).
+ *
+ * ⚠ **정확도에 연동하는 이유**: 경로 잔여 5m를 정확도 30m fix로 판정하는 것은 거짓
+ * 정밀도다. 정확도가 나쁘면 종점 도달을 일찍 인정하는 것이 정직하다.
+ */
+export function finalApproachEntryM(
+  state: Pick<GuideState, "hasFinalApproachGeometry">,
+  accuracy: number,
+  tuning: GuideTuning,
+): number {
+  if (!state.hasFinalApproachGeometry) return tuning.handoffDistM;
+  return Math.max(ARRIVAL_TOLERANCE_MIN_M, accuracy);
+}
+
 function periodicIntervalS(remaining: number): number {
   if (remaining > 500) return 60;
   if (remaining >= 150) return 30;
@@ -287,6 +368,16 @@ export function guideStep(
   // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
   if (state.lastFixAt !== null && now < state.lastFixAt) {
     return { state, event: null, tone: null };
+  }
+
+  // 0a) 최종 접근 중에는 리듀서가 아무 판정도 하지 않는다(spec §4 전이표).
+  //     발화 소유권이 최종 접근 층으로 넘어갔고, 이 국면은 **경로를 이미 벗어난**
+  //     구간을 다루므로 낡은 폴리라인으로 이탈·재획득을 주장하면 거짓이다.
+  //     ⚠ **이 가드는 반드시 uncertain 게이트보다 앞에 온다.** 뒤에 두면 정확도가
+  //     나빠질 때 uncertain을 경유했다가 resumePhase("following")로 복귀하면서
+  //     단방향 래치가 조용히 풀린다.
+  if (state.phase === "finalApproach") {
+    return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   }
 
   // 1) uncertain 게이트(정확도 무효 포함): 자동 낭독·타이머 전부 정지(리뷰 #12).
@@ -346,7 +437,7 @@ export function guideStep(
       return { state: { ...state, lastFixAt: now }, event: null, tone: null };
     }
     const s: GuideState = {
-      ...guideStateAt(route, entryD, now, { autoHandoffArmed: state.autoHandoffArmed }),
+      ...restateAt(route, entryD, now, state),
       speedWarned: state.speedWarned,
       lastFixAt: now,
     };
@@ -451,7 +542,7 @@ export function guideStep(
     const entry = entryProjection(route, fix, tuning);
     if (entry.status === "ok") {
       const back: GuideState = {
-        ...guideStateAt(route, entry.d, now, { autoHandoffArmed: state.autoHandoffArmed }),
+        ...restateAt(route, entry.d, now, state),
         speedSamples: samples,
         speedGuardActive,
         speedWarned: state.speedWarned,
@@ -507,13 +598,23 @@ export function guideStep(
     resumePhase: cur.isLong ? "following" : "bundle",
   };
 
-  // 6a) 인계(최우선): 전 스텝 낭독 완료 AND 잔여 ≤ 50m AND 재무장(스펙 §5.3, 리뷰 #2).
+  // 6a) 최종 접근 진입(최우선): 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
+  //     (스펙 2026-08-03 §5.3 + 2026-08-08 §3.2, 리뷰 #2).
+  //
+  //     기하를 아는 세션의 진입선은 **경로 종점**이다. 종전 50m는 "경로 종점 = 목적지"를
+  //     전제한 판단이었고, 실측에서 종점→목적지 오프셋 16~89m가 확인돼 무효화됐다 —
+  //     오프셋 89m 목적지는 실제 목적지까지 139m 지점에서 경로 추종이 꺼지고 있었다.
+  //
+  //     ⚠ 단방향 래치다. 진입하면 0a) 가드가 이후 모든 판정을 멈추므로, 정확도가 좋아져
+  //     임계가 줄어도 되돌아가지 않는다(spec §3.2 검토 #20).
+  //     ⚠ 이탈 중에는 도달할 수 없다 — 5절이 offRoute를 먼저 반환한다(§4 전이표).
   if (
     next.autoHandoffArmed &&
     next.announcedUpTo >= route.steps.length - 1 &&
-    remainingTotal <= tuning.handoffDistM
+    remainingTotal <= finalApproachEntryM(next, fix.accuracy, tuning)
   ) {
-    return { state: next, event: { kind: "handoff" }, tone: null };
+    next = { ...next, phase: "finalApproach" };
+    return { state: next, event: { kind: "finalApproachEnter" }, tone: null };
   }
 
   // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
