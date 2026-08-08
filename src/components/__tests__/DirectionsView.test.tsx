@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { DirEndpoint } from "@/lib/directions-state";
 import type { JusoAddress, Place } from "@/lib/types";
+import {
+  __resetManualLocationForTest,
+  setManualLocation,
+} from "@/lib/manual-location-store";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -72,9 +77,15 @@ function stubFetch({
   );
 }
 
-function renderView() {
+function renderView(overrides: { initialTo?: DirEndpoint | null } = {}) {
   return render(
-    <DirectionsView canShowWalk canShowTransit canBriefCarRoute onBack={() => {}} />,
+    <DirectionsView
+      canShowWalk
+      canShowTransit
+      canBriefCarRoute
+      onBack={() => {}}
+      {...overrides}
+    />,
   );
 }
 
@@ -208,5 +219,86 @@ describe("DirectionsView 주소→좌표 해석 결선(resolveAddressCoord)", ()
     expect((screen.getByLabelText("from") as HTMLInputElement).value).toBe(
       "성내로 12",
     );
+  });
+});
+
+// 수동 위치가 켜져 있으면 "현재 위치"라는 표현을 쓰지 않는다(LocationBar와 동형).
+// 안내 시작은 항상 실좌표를 다시 조회하므로(useRouteGuide.realfix), 이 브리핑이
+// 수동 위치 기준일 때만 그 사실을 안내 시작 진입점 근처에서 미리 말한다.
+describe("DirectionsView 수동 위치(manual location)", () => {
+  afterEach(() => {
+    __resetManualLocationForTest();
+  });
+
+  it("origin 있는 수동 위치는 출발지 필드에 manual 라벨로 표시된다", () => {
+    setManualLocation({
+      label: "길동 카페",
+      lat: 37.5384,
+      lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
+      setAt: 1,
+    });
+    renderView();
+    expect((screen.getByLabelText("from") as HTMLInputElement).value).toBe("manual");
+  });
+
+  it("origin 없는 수동 위치는 manualUnverifiable 라벨로 표시된다", () => {
+    setManualLocation({
+      label: "길동 카페",
+      lat: 37.5384,
+      lng: 127.1432,
+      origin: null,
+      setAt: 1,
+    });
+    renderView();
+    expect((screen.getByLabelText("from") as HTMLInputElement).value).toBe(
+      "manualUnverifiable",
+    );
+  });
+
+  it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 안내 시작 진입점 근처에 실좌표 필요 안내를 낸다", async () => {
+    setManualLocation({
+      label: "길동 카페",
+      lat: 37.5384,
+      lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
+      setAt: 1,
+    });
+    const calledUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calledUrls.push(url);
+        if (url.startsWith("/api/route/car")) {
+          return {
+            ok: true,
+            json: async () => ({ provider: "tmap", durationSeconds: 600 }),
+          } as Response;
+        }
+        if (url.startsWith("/api/route/transit")) {
+          return { ok: true, json: async () => ({ result: null }) } as Response;
+        }
+        if (url.startsWith("/api/route/walk")) {
+          return { ok: true, json: async () => ({ result: null }) } as Response;
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    renderView({
+      initialTo: { kind: "place", label: "잠실역", coord: { lat: 37.5, lng: 127.1 } },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("guideNeedsRealLocation")).toBeTruthy();
+    });
+    // 수동 좌표로 조회했다(GPS 아님) — awaitGeolocation 모크는 항상 error라
+    // 실좌표 경로를 탔다면 이 조회 자체가 geoError로 끝나 route fetch가 없다.
+    expect(
+      calledUrls.some((u) => u.startsWith("/api/route/car?origin=37.5384,127.1432")),
+    ).toBe(true);
+    // 수동 위치일 때는 역지오코딩(fetchCurrentAddress)을 호출하지 않는다.
+    expect(calledUrls.some((u) => u.startsWith("/api/geocode/reverse"))).toBe(false);
   });
 });

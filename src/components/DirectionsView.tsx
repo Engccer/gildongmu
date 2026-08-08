@@ -14,7 +14,9 @@ import type {
 } from "@/lib/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
-import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
+import { getGeolocationSnapshot } from "@/lib/geolocation";
+import { awaitEffectiveLocation } from "@/lib/effective-location";
+import { useManualLocation } from "@/hooks/useManualLocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
@@ -59,6 +61,13 @@ type QueryResults = {
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
+  /**
+   * 출발지가 "현재 위치"였을 때 그 좌표의 출처. `from`이 특정 장소면 null(실시간
+   * 안내는 항상 실좌표에서 시작하므로 이 브리핑의 출발지 출처와 무관하다).
+   * "manual"이면 이 브리핑은 지정 위치 기준이지만, 실시간 안내 시작은 실좌표를
+   * 다시 조회한다 — 두 출발지가 달라질 수 있음을 안내 시작 버튼 근처에서 말한다.
+   */
+  originSource: "gps" | "manual" | null;
 };
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
@@ -184,7 +193,9 @@ export function DirectionsView({
   const tCar = useTranslations("route.briefing");
   const tCommon = useTranslations("common");
   const tBeacon = useTranslations("beacon");
+  const tManual = useTranslations("manualLocation");
   const locale = useLocale();
+  const manual = useManualLocation();
 
   // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
   // "현재 위치"만 — 시각으로 위치 오차를 확인할 수 없는 사용자를 위한 병기이므로
@@ -193,9 +204,17 @@ export function DirectionsView({
   // "현재 위치 사용" 강제 재측위 진행 신호(버튼 라벨 전환용) + 재진입 ref 가드.
   const [refreshingCurrent, setRefreshingCurrent] = useState(false);
   const refreshCurrentRef = useRef(false);
-  const currentLabel = currentAddress
-    ? t("currentLocationNear", { address: currentAddress })
-    : t("currentLocation");
+  // 수동 위치가 켜져 있으면 "현재 위치"라는 표현을 쓰지 않는다(LocationBar와 동형 —
+  // GPS가 알아낸 위치와 사용자가 지정한 위치는 다른 것이고 시각장애 사용자는 화면으로
+  // 구분할 수 없다). 수동 위치가 이기므로 GPS 역지오코딩 주소(currentAddress)는
+  // 무시한다 — 아래에서도 수동 위치 활성 중엔 그 주소를 아예 조회하지 않는다.
+  const currentLabel = manual
+    ? manual.origin
+      ? tManual("manual", { label: manual.label })
+      : tManual("manualUnverifiable", { label: manual.label })
+    : currentAddress
+      ? t("currentLocationNear", { address: currentAddress })
+      : t("currentLocation");
   const [fromField, setFromField] = useState<FieldState>(() =>
     endpointToField(initialFrom ?? { kind: "current" }, currentLabel),
   );
@@ -359,10 +378,12 @@ export function DirectionsView({
 
   // 이미 위치가 허용·확보된 세션에서만 조용히 주소를 병기한다(뷰 진입만으로 권한
   // 팝업·재측위 금지 — 스토어의 ready 캐시 좌표만 읽는다). 미확보면 라벨은 "현재
-  // 위치" 그대로(주소 없음=정보 없음).
+  // 위치" 그대로(주소 없음=정보 없음). 수동 위치가 켜져 있으면 이 GPS 역지오코딩은
+  // 애초에 표시되지 않을 라벨을 위해 실좌표를 조회하는 낭비이므로 건너뛴다.
   const addrLoadedRef = useRef(false);
   useEffect(() => {
     if (addrLoadedRef.current) return;
+    if (manual) return;
     const isCurrent =
       fromField.resolved?.kind === "current" ||
       toField.resolved?.kind === "current";
@@ -371,7 +392,7 @@ export function DirectionsView({
     if (geo.status !== "ready") return;
     addrLoadedRef.current = true;
     void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
-  }, [fromField.resolved, toField.resolved]);
+  }, [fromField.resolved, toField.resolved, manual]);
 
   /**
    * "현재 위치" 재선택(F-B) = 강제 재측위 + 주소 새로고침. 갱신 신호는 라벨(주소)의
@@ -384,10 +405,14 @@ export function DirectionsView({
     refreshCurrentRef.current = true;
     setRefreshingCurrent(true);
     try {
-      const geo = await awaitGeolocation({ force: true });
-      if (geo.status === "ready") {
+      // force:true는 수동 위치가 있어도 판정을 동반한다(이동했으면 GPS로 복귀).
+      const effective = await awaitEffectiveLocation({ force: true });
+      // gps일 때만 역지오코딩 — manual이면 라벨은 이미 지정 이름을 쓰고 있다.
+      if (effective && effective.source === "gps") {
         addrLoadedRef.current = true;
-        setCurrentAddress(await fetchCurrentAddress(geo.coords));
+        setCurrentAddress(
+          await fetchCurrentAddress({ lat: effective.lat, lng: effective.lng }),
+        );
       }
     } finally {
       refreshCurrentRef.current = false;
@@ -433,28 +458,35 @@ export function DirectionsView({
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
       // 권한 팝업 세션 1회). `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
+      // "from"이 "현재 위치"였을 때 그 좌표의 출처(gps·manual). 안내 시작 버튼이
+      // 실좌표로 다시 조회한다는 것을 알려야 할지 판단하는 근거(§ guideNeedsRealLocation).
+      let originSource: "gps" | "manual" | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
-        const geo = await awaitGeolocation();
+        const effective = await awaitEffectiveLocation({ force: false });
         if (myGen !== genRef.current) return;
-        if (geo.status !== "ready") {
+        if (!effective) {
           setNotice(""); // 중지 통지가 종단 phase 통지를 가리지 않게
           setPhase({ kind: "geoError" });
           return;
         }
         // cur 토큰 해석 시점 선분기 — 현재 위치가 한국 밖이면 조회 자체를 중단한다
         // (수단별 fetch를 하나도 쏘지 않음). 오류가 아니라 커버리지 안내이므로
-        // 일반 phase로 표기.
-        if (!isInKorea(geo.coords.lat, geo.coords.lng)) {
+        // 일반 phase로 표기. 수동 위치도 같은 판정을 받는다(해외 지정도 정직하게).
+        if (!isInKorea(effective.lat, effective.lng)) {
           setNotice("");
           setPhase({ kind: "outOfCoverage" });
           return;
         }
-        cur = geo.coords;
-        // 측위에 성공했으니 라벨 병기 주소도 그 좌표로 동기화(표시 전용 fire-and-forget,
-        // 실패·매칭 없음은 null로 정직하게 비운다 — 옛 좌표의 주소를 남기지 않는다).
-        addrLoadedRef.current = true;
-        void fetchCurrentAddress(geo.coords).then(setCurrentAddress);
+        cur = { lat: effective.lat, lng: effective.lng };
+        if (from.kind === "current") originSource = effective.source;
+        // gps일 때만 라벨 병기 주소를 동기화한다(표시 전용 fire-and-forget, 실패·
+        // 매칭 없음은 null로 정직하게 비운다). manual은 이미 지정 이름을 쓰고
+        // 있어 표시되지 않을 라벨을 위해 실좌표를 조회하는 낭비를 만들지 않는다.
+        if (effective.source === "gps") {
+          addrLoadedRef.current = true;
+          void fetchCurrentAddress(cur).then(setCurrentAddress);
+        }
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
       const dest = to.kind === "current" ? (cur as Coord) : to.coord;
@@ -489,6 +521,7 @@ export function DirectionsView({
         destLabel: to.kind === "current" ? currentLabel : to.label,
         destCoord: dest,
         outcomes,
+        originSource,
       });
       setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled", successCount: successes.length });
@@ -613,6 +646,10 @@ export function DirectionsView({
     !walkGuideStartable &&
     !carGuideStartable &&
     !transitGuideStartable;
+  // 실시간 안내 진입점이 하나라도 화면에 있는가 — 아래 "실시간 안내는 실제 위치가
+  // 필요합니다" 안내는 그 진입점 근처에서만 의미가 있다(잉여 방지).
+  const anyGuideStartable =
+    walkGuideStartable || carGuideStartable || transitGuideStartable || briefFallback;
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -738,6 +775,13 @@ export function DirectionsView({
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
         {liveMessage}
       </p>
+
+      {/* 이 브리핑은 지정 위치 기준이지만 실시간 안내 시작은 실좌표를 다시
+          조회한다 — 두 출발지가 달라질 수 있음을 미리 말한다(실패 후 원인 모를
+          침묵 대신). 진입점이 하나도 없으면 잉여이므로 anyGuideStartable로 가른다. */}
+      {results && results.originSource === "manual" && anyGuideStartable && (
+        <p className="mt-1 text-xs text-muted">{tManual("guideNeedsRealLocation")}</p>
+      )}
 
       {/* 간략 폴백(§3.1): 시작 가능한 수단 안내가 하나도 없을 때만 선두 노출 —
           경로를 못 찾은 상황일수록 방향 감각이 더 필요하다(기존 근거 승계). */}
