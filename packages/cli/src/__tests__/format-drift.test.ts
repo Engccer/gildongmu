@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { dist } from "../lib/formatters.js";
+import { dist, transitQuickExitLine } from "../lib/formatters.js";
 import { formatDistance } from "../../../../src/lib/format.js";
+import { quickExitText } from "../../../../src/lib/quick-exit-text.js";
+import ko from "../../../../messages/ko.json" with { type: "json" };
 
 /**
  * CLI `dist()`는 웹 `formatDistance`의 미러다. 갈리면 같은 거리가 웹·앱과 CLI에서
@@ -20,5 +22,36 @@ describe("거리 표기 CLI-웹 드리프트", () => {
 
   it.each(inputs)("%dm에서 웹 정본과 같은 문자열", (meters) => {
     expect(dist(meters)).toBe(formatDistance(meters));
+  });
+});
+
+/**
+ * 빠른하차 문장도 같은 이유의 미러다. CLI는 i18n이 없어 ko 문구를 옮겨 적었고,
+ * 갈리면 같은 하차역이 웹·앱과 CLI에서 다른 문장으로 낭독된다.
+ */
+describe("빠른하차 문장 CLI-웹 드리프트", () => {
+  const t = (key: string, values?: Record<string, string>) =>
+    ((ko.route.transit as Record<string, string>)[key] ?? key).replace(
+      /\{(\w+)\}/g,
+      (_, name: string) => values?.[name] ?? `{${name}}`,
+    );
+
+  const cases = [
+    { elevator: { kind: "door" as const, doors: ["6-4"] }, stairs: { kind: "door" as const, doors: ["5-4"] } },
+    { elevator: { kind: "door" as const, doors: ["6-2"] } },
+    { stairs: { kind: "door" as const, doors: ["3-1"] } },
+    { elevator: { kind: "between" as const, doors: ["3-2", "3-3"] } },
+    { elevator: { kind: "between" as const, doors: ["3-2", "3-3"] }, stairs: { kind: "door" as const, doors: ["5-4"] } },
+  ];
+
+  it.each(cases)("%o에서 웹 정본과 같은 문자열", (quickExit) => {
+    const leg = { mode: "subway" as const, minutes: 24, toName: "여의도", quickExit };
+    expect(transitQuickExitLine(leg)).toBe(quickExitText(t, "여의도", quickExit));
+  });
+
+  it("값이 없으면 양쪽 다 침묵", () => {
+    const leg = { mode: "subway" as const, minutes: 24, toName: "여의도" };
+    expect(transitQuickExitLine(leg)).toBeNull();
+    expect(quickExitText(t, "여의도", undefined)).toBeNull();
   });
 });
