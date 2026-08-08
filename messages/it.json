@@ -133,7 +133,7 @@
       "alternativeFastest": "Percorso più veloce",
       "alternativeFewestTransfers": "Meno cambi",
       "alternativeFastestFewestTransfers": "Il più veloce con meno cambi",
-      "quickExitDoor": "porta {door}",
+      "quickExitDoor": "alla porta {door}",
       "quickExitBetween": "tra le porte {first} e {second}",
       "quickExitBoth": "Discesa a {station}, ascensore {elevator}, scale {stairs}",
       "quickExitElevator": "Discesa a {station}, ascensore {elevator}",

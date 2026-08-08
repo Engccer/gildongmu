@@ -65,8 +65,11 @@ describe("quickExitText", () => {
 
   it("로케일별로 절 순서가 다르다(변수만 비우는 방식이 성립하지 않는 이유)", () => {
     const value: QuickExit = { elevator: door("6-4"), stairs: between("5-3", "5-4") };
+    // ⚠ "elevator door 6-4"는 "엘리베이터의 문"으로 읽히는 고정 결합이라 뜻이 뒤집힌다
+    //   (a11y 감사 검출). 처소 표지 "at"이 그 결합을 끊는다 — es·fr·it도 같은 이유로
+    //   전치사를 갖는다. between 형태는 자기 전치사가 있어 원래 문제가 없었다.
     expect(quickExitText(tEn, "Yeouido", value)).toBe(
-      "Get off at Yeouido, elevator door 6-4, stairs between doors 5-3 and 5-4",
+      "Get off at Yeouido, elevator at door 6-4, stairs between doors 5-3 and 5-4",
     );
     expect(quickExitText(tJa, "汝矣島", value)).toBe(
       "汝矣島で下車、エレベーターは6-4のドア、階段は5-3と5-4のドアの間",

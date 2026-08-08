@@ -133,7 +133,7 @@
       "alternativeFastest": "Fastest route",
       "alternativeFewestTransfers": "Fewest transfers",
       "alternativeFastestFewestTransfers": "Fastest with fewest transfers",
-      "quickExitDoor": "door {door}",
+      "quickExitDoor": "at door {door}",
       "quickExitBetween": "between doors {first} and {second}",
       "quickExitBoth": "Get off at {station}, elevator {elevator}, stairs {stairs}",
       "quickExitElevator": "Get off at {station}, elevator {elevator}",
