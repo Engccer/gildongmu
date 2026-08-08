@@ -1,0 +1,59 @@
+{
+  "comment": "최종 접근 기하 경계표. 웹 final-approach.test.ts와 Kit FinalApproachTests가 같은 파일을 읽어 소비한다(사본 금지 — 드리프트 원천 차단, route-guide-scenarios.json 선례). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). segments는 종점까지의 폴리라인 점을 (along, lateral) 미터로 준다. dest도 같은 좌표계. ⚠ relativeBearing은 ((toDest - heading + 540) % 360) - 180 정규화라 정남은 +180이 아니라 -180이다.",
+  "scenarios": [
+    {
+      "name": "북진 직선, 동쪽 30m 목적지 → 오른쪽",
+      "segments": [[0, 0], [100, 0]],
+      "dest": [100, 30],
+      "expect": { "offsetMeters": 30, "relativeBearing": 90, "direction": "right" }
+    },
+    {
+      "name": "북진 직선, 서쪽 30m 목적지 → 왼쪽",
+      "segments": [[0, 0], [100, 0]],
+      "dest": [100, -30],
+      "expect": { "offsetMeters": 30, "relativeBearing": -90, "direction": "left" }
+    },
+    {
+      "name": "북진 직선, 정북 30m 목적지 → 정면",
+      "segments": [[0, 0], [100, 0]],
+      "dest": [130, 0],
+      "expect": { "offsetMeters": 30, "relativeBearing": 0, "direction": "ahead" }
+    },
+    {
+      "name": "북진 직선, 남쪽 30m 목적지 → 뒤 (정규화상 -180)",
+      "segments": [[0, 0], [100, 0]],
+      "dest": [70, 0],
+      "expect": { "offsetMeters": 30, "relativeBearing": -180, "direction": "behind" }
+    },
+    {
+      "name": "오프셋 하한 미만 → tooClose",
+      "segments": [[0, 0], [100, 0]],
+      "dest": [100, 4],
+      "expect": { "offsetMeters": 4, "bearingUnavailable": "tooClose" }
+    },
+    {
+      "name": "왕복 경로 → degenerateGeometry (각도 산술 평균 금지 가드)",
+      "segments": [[0, 0], [7.5, 0], [0, 0]],
+      "dest": [0, 30],
+      "expect": { "offsetMeters": 30, "bearingUnavailable": "degenerateGeometry" }
+    },
+    {
+      "name": "창(15m)보다 짧은 경로는 전체를 쓴다",
+      "segments": [[0, 0], [6, 0]],
+      "dest": [6, 30],
+      "expect": { "offsetMeters": 30, "relativeBearing": 90, "direction": "right" }
+    },
+    {
+      "name": "마지막 세그먼트만 보면 뒤집히는 곡선 (창 평균이 정본)",
+      "segments": [[0, 0], [40, 0], [42, 6]],
+      "dest": [42, 36],
+      "expect": { "offsetMeters": 30, "direction": "right" }
+    },
+    {
+      "name": "모퉁이를 돈 직후 — 걸친 세그먼트는 겹치는 길이만 가중한다",
+      "segments": [[0, 0], [100, 0], [100, 10]],
+      "dest": [100, 40],
+      "expect": { "offsetMeters": 30, "direction": "ahead" }
+    }
+  ]
+}

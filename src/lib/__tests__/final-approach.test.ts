@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildGuideRoute } from "../route-geometry";
 import { computeFinalApproach, relativeDirection } from "../final-approach";
+import fixtures from "./fixtures/final-approach-scenarios.json";
 
 /** 남→북 직선 100m 경로. lat 1도 ≈ 111320m. */
 const northRoute = () =>
@@ -87,6 +88,51 @@ describe("computeFinalApproach", () => {
     const out = computeFinalApproach(route, eastOf(end.lat, end.lng, 30));
     expect(relativeDirection(out!.relativeBearing!)).toBe("ahead");
   });
+});
+
+/** fixture 좌표 규약(파일 상단 comment 참조). Kit FinalApproachTests와 동일 하니스. */
+const M_PER_DEG_LAT = 111320;
+const mPerDegLng = 111320 * Math.cos((37.5 * Math.PI) / 180);
+const toCoord = ([along, lateral]: number[]) => ({
+  lat: 37.5 + along / M_PER_DEG_LAT,
+  lng: 127.1 + lateral / mPerDegLng,
+});
+
+interface FixtureScenario {
+  name: string;
+  segments: number[][];
+  dest: number[];
+  expect: {
+    offsetMeters?: number;
+    relativeBearing?: number;
+    bearingUnavailable?: string;
+    direction?: string;
+  };
+}
+
+describe("공유 fixture (웹↔Kit 동조)", () => {
+  for (const s of fixtures.scenarios as FixtureScenario[]) {
+    it(s.name, () => {
+      const route = buildGuideRoute([
+        { description: "고정", pathCoords: s.segments.map(toCoord) },
+      ])!;
+      const out = computeFinalApproach(route, toCoord(s.dest));
+      expect(out).not.toBeNull();
+      if (s.expect.offsetMeters !== undefined) {
+        expect(out!.offsetMeters).toBeCloseTo(s.expect.offsetMeters, 0);
+      }
+      if (s.expect.relativeBearing !== undefined) {
+        expect(out!.relativeBearing).toBeCloseTo(s.expect.relativeBearing, 0);
+      }
+      if (s.expect.bearingUnavailable !== undefined) {
+        expect(out!.bearingUnavailable).toBe(s.expect.bearingUnavailable);
+        expect(out!.relativeBearing).toBeUndefined();
+      }
+      if (s.expect.direction !== undefined) {
+        expect(relativeDirection(out!.relativeBearing!)).toBe(s.expect.direction);
+      }
+    });
+  }
 });
 
 describe("relativeDirection 경계 소유권", () => {
