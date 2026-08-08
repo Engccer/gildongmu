@@ -7,6 +7,7 @@
  */
 import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";
+import { INACTIVE_COURSE } from "../guide-course-axis";
 import {
   buildGuideRoute,
   guideStep,
@@ -189,7 +190,7 @@ function replay(route: GuideRoute, samples: Sample[], p: Params) {
   let perpAt: number | null = null;
   let courseAt: number | null = null;
   for (const s of samples) {
-    const out = guideStep(state, s.fix, route, s.t, WALK_TUNING);
+    const out = guideStep(state, s.fix, route, s.t, WALK_TUNING, INACTIVE_COURSE);
     state = out.state;
     if (out.event?.kind === "offRoute" && perpAt === null) perpAt = s.t;
     if (state.phase !== "following" && state.phase !== "bundle") {

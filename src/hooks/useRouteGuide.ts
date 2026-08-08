@@ -46,6 +46,7 @@ import {
 import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
 import { prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
+import { INACTIVE_COURSE } from "@/lib/guide-course-axis";
 import { haversineMeters } from "@/lib/geo";
 import {
   ARRIVE_M,
@@ -978,7 +979,11 @@ export function useRouteGuide(
 
   const stepDetail = useCallback(
     (fix: GuideFix, route: GuideRoute, state: GuideState, motion: MotionState, now: number) => {
-      const result = guideStep(state, fix, route, now, tuning);
+      // ⚠ 웹은 방위를 채우지 않는다 — 플랫폼 갭은 "코드 부재"가 아니라 "데이터 부재"다.
+      //   브라우저 Geolocation은 `heading`을 주지만 그 **불확실성**을 주지 않는다.
+      //   불확실성 없이 방위를 넘기면 이 축이 통과권 방식으로 되돌아가므로,
+      //   비활성 관측을 명시적으로 넘겨 축을 통째로 끈다(spec §4).
+      const result = guideStep(state, fix, route, now, tuning, INACTIVE_COURSE);
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));

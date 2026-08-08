@@ -7,6 +7,14 @@
  * 폐기·타이머 정지 계약이 주입 시각 위에서만 성립한다(리뷰 #19).
  */
 import {
+  courseAxisVerdict,
+  courseVote,
+  recordVote,
+  type CourseObservation,
+  type CourseVote,
+  type CourseVoteSample,
+} from "./guide-course-axis";
+import {
   globalCandidates,
   projectOnPolyline,
   type GuideRoute,
@@ -208,6 +216,15 @@ export interface GuideState {
    * 나가 UI의 이탈 상태(재조회 버튼)가 리듀서와 어긋난 채 남는다(독립 리뷰 HIGH).
    */
   reacquiringFromOffRoute: boolean;
+  /**
+   * 축별 이탈 latch. 확정은 OR, 복귀는 **평가 가능한 활성 축 전체 해제**다.
+   *
+   * ⚠ 단일 "원인" 문자열로 접지 않는다 — 거리 축으로 이탈한 뒤 사용자가 역주행해도
+   * 방위 상태가 기록되지 않아 방향이 어긋난 채 복귀가 선언된다(codex 리뷰 7).
+   */
+  offRouteAxes: { distance: boolean; course: boolean };
+  /** 방위 표결 창. 상태 재구성 시 비워진다(경로 identity 바인딩). */
+  courseVotes: readonly CourseVoteSample[];
 }
 
 export type GuideEvent =
@@ -283,6 +300,8 @@ export function guideStateAt(
     reacquireV: 0,
     reacquireSince: null,
     reacquiringFromOffRoute: false,
+    offRouteAxes: { distance: false, course: false },
+    courseVotes: [],
   };
 }
 
@@ -358,12 +377,18 @@ function periodicIntervalS(remaining: number): number {
   return 15;
 }
 
+/**
+ * `course`는 **필수 인자다.** 기본값을 주면 호출 지점 하나를 빠뜨려도 컴파일이
+ * 통과해, 그 플랫폼에서만 축이 조용히 죽는다(안전 인자에 기본값 금지).
+ * 방위를 제공하지 않는 플랫폼은 `INACTIVE_COURSE`를 **명시적으로** 넘긴다.
+ */
 export function guideStep(
   state: GuideState,
   fix: GuideFix,
   route: GuideRoute,
   now: number,
-  tuning: GuideTuning = WALK_TUNING,
+  tuning: GuideTuning,
+  course: CourseObservation,
 ): GuideOutput {
   // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
   if (state.lastFixAt !== null && now < state.lastFixAt) {
@@ -377,7 +402,12 @@ export function guideStep(
   //     나빠질 때 uncertain을 경유했다가 resumePhase("following")로 복귀하면서
   //     단방향 래치가 조용히 풀린다.
   if (state.phase === "finalApproach") {
-    return { state: { ...state, lastFixAt: now }, event: null, tone: null };
+    // 낡은 폴리라인 기준 표는 이 국면에서 근거가 아니다(경로를 이미 벗어난 구간).
+    return {
+      state: { ...state, lastFixAt: now, courseVotes: [] },
+      event: null,
+      tone: null,
+    };
   }
 
   // 1) uncertain 게이트(정확도 무효 포함): 자동 낭독·타이머 전부 정지(리뷰 #12).
@@ -401,6 +431,9 @@ export function guideStep(
         resumePhase: state.phase === "offRoute" ? "offRoute" : state.resumePhase,
         lastFixAt: now,
         speedSamples: [],
+        // ⚠ 창은 비우고 latch(offRouteAxes)는 스프레드로 보존한다. 투영을 못 믿는
+        //   기간의 표는 근거가 아니지만, 이탈 사실이 정확도 악화로 소실되면 안 된다.
+        courseVotes: [],
       },
       event: { kind: "uncertainEnter" },
       tone: null,
@@ -436,6 +469,30 @@ export function guideStep(
     if (entryD === null) {
       return { state: { ...state, lastFixAt: now }, event: null, tone: null };
     }
+    // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다.
+    //   이 경로가 §5의 offRoute 분기보다 **먼저** 실행되므로, 여기를 빼면
+    //   fix 공백 10초만으로 복귀 계약이 통째로 우회된다.
+    const reVotes = recordVote(
+      state.courseVotes,
+      now,
+      courseVote(course, route.polyline, entryD, fix.accuracy),
+    );
+    if (state.offRouteAxes.course && courseAxisVerdict(reVotes) !== "on") {
+      // 위치는 되찾았지만 방향이 확인되지 않았다 — 이탈 상태를 유지한다.
+      // `reacquiringFromOffRoute`를 내리는 이유: 국면을 offRoute로 되돌리므로
+      // 재획득 상태가 아니다. 남기면 다음 재획득에서 이벤트 종류를 잘못 가른다.
+      return {
+        state: {
+          ...state,
+          phase: "offRoute",
+          lastFixAt: now,
+          courseVotes: reVotes,
+          reacquiringFromOffRoute: false,
+        },
+        event: null,
+        tone: null,
+      };
+    }
     const s: GuideState = {
       ...restateAt(route, entryD, now, state),
       speedWarned: state.speedWarned,
@@ -457,6 +514,8 @@ export function guideStep(
         phase: "reacquiring",
         windowEdgeHits: 0,
         speedSamples: [],
+        // 위치를 잃은 동안의 표는 근거가 아니다(latch는 스프레드로 보존).
+        courseVotes: [],
         lastFixAt: now,
         reacquiringFromOffRoute: state.phase === "offRoute",
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
@@ -482,6 +541,9 @@ export function guideStep(
   const proj = projectOnPolyline(route.polyline, fix, state.d - WINDOW_BACK_M, state.d + ahead);
   if (!proj) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   const d = Math.max(state.d, proj.d);
+  // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다.
+  const vote = courseVote(course, route.polyline, d, fix.accuracy);
+  const courseVotes = recordVote(state.courseVotes, now, vote);
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
   const offThreshold = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
@@ -529,6 +591,7 @@ export function guideStep(
     windowEdgeHits,
     speedSamples: samples,
     speedGuardActive,
+    courseVotes,
   };
   // 재무장: 수동 복귀 세션은 잔여가 재무장선 밖으로 나가야 자동 인계 허용(리뷰 #11).
   if (!next.autoHandoffArmed && remainingTotal > tuning.handoffRearmM) {
@@ -540,15 +603,32 @@ export function guideStep(
     // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
     // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
     const entry = entryProjection(route, fix, tuning);
+    // ⚠ 이탈 중 표결 기준은 `state.d`가 아니라 `entryProjection`이 고른 지점이다.
+    //   `state.d`는 단조 전진이라 역주행·되돌아가기에서 실제 복귀 지점과 다르다.
+    //   후보가 모호하면 방위가 맞아도 복귀를 확정하지 않는다(판정 근거 없음).
+    // ⚠ 이탈 중에는 창을 비우지 않는다 — 비우면 복귀 판정 표본이 영영 최소치에
+    //   못 미친다(국면 초기화는 uncertain·reacquiring·finalApproach에만).
+    const offVote =
+      entry.status === "ok"
+        ? courseVote(course, route.polyline, entry.d, fix.accuracy)
+        : ("unknown" as CourseVote);
+    const offVotes = recordVote(state.courseVotes, now, offVote);
+    next = { ...next, courseVotes: offVotes };
     if (entry.status === "ok") {
-      const back: GuideState = {
-        ...restateAt(route, entry.d, now, state),
-        speedSamples: samples,
-        speedGuardActive,
-        speedWarned: state.speedWarned,
-        lastFixAt: now,
-      };
-      return { state: back, event: { kind: "backOnRoute" }, tone: null };
+      // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
+      const courseCleared =
+        !state.offRouteAxes.course || courseAxisVerdict(offVotes) === "on";
+      if (courseCleared) {
+        // restateAt이 guideStateAt을 거치므로 창과 latch가 함께 초기화된다(§2.8).
+        const back: GuideState = {
+          ...restateAt(route, entry.d, now, state),
+          speedSamples: samples,
+          speedGuardActive,
+          speedWarned: state.speedWarned,
+          lastFixAt: now,
+        };
+        return { state: back, event: { kind: "backOnRoute" }, tone: null };
+      }
     }
     const canRenotify =
       !speedGuardActive &&
@@ -565,6 +645,7 @@ export function guideStep(
     }
     return { state: next, event: null, tone: null };
   }
+  const courseVerdict = courseAxisVerdict(courseVotes);
   const isOff = proj.perpMeters > offThreshold;
   if (isOff) {
     let since = state.offRouteSince ?? now;
@@ -583,11 +664,24 @@ export function guideStep(
         resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
         lastOffRouteNoticeAt: now,
         offRoutePeakPerp: null,
+        offRouteAxes: { ...next.offRouteAxes, distance: true },
       };
       return { state: next, event: { kind: "offRoute" }, tone: "warning" };
     }
   } else if (state.offRouteSince !== null) {
     next = { ...next, offRouteSince: null, offRoutePeakPerp: null };
+  }
+  // 방위 축은 거리 축과 독립이다. 수직거리가 임계 안이어도 확정한다 — 자기근접으로
+  // 수직거리가 무너지는 갈림에서 이 축이 유일한 증거다(spec §1.2).
+  if (courseVerdict === "off") {
+    next = {
+      ...next,
+      phase: "offRoute",
+      resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
+      lastOffRouteNoticeAt: now,
+      offRouteAxes: { ...next.offRouteAxes, course: true },
+    };
+    return { state: next, event: { kind: "offRoute" }, tone: "warning" };
   }
 
   // 6) 국면·낭독.
@@ -613,6 +707,11 @@ export function guideStep(
   //     노이즈 fix 하나가 이탈 확정을 우회한 채 단방향 래치를 걸 수 있다
   //     (독립 리뷰 검출). §4 전이표의 "진입 조건 ∧ offRoute 동시 = 성립 불가"를
   //     문언 그대로 참으로 만든다.
+  //     ⚠ **방위 축은 여기서 다시 보지 않는다 — 순서가 곧 불변식이다.** 방위 확정
+  //     블록이 위에서 무조건 return하므로 이 지점의 `courseVerdict`는 결코 "off"가
+  //     아니다(타입 좁힘으로 증명된다). 그 배선을 이 블록 **뒤로** 옮기면 종점
+  //     부근에서 finalApproachEnter가 먼저 반환되고, 다음 fix부터 0a 가드가 모든
+  //     판정을 멈춰 확인된 이탈이 영구히 소실된다. 순서를 바꾸지 말 것.
   if (
     !isOff &&
     next.autoHandoffArmed &&
