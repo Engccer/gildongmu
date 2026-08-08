@@ -11,8 +11,8 @@ import type {
   PlaceSearchResult,
   TransitRouteResult as TransitData,
   WalkRouteBriefing,
-  AddressMatch,
 } from "@/lib/types";
+import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import { awaitGeolocation, getGeolocationSnapshot } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
@@ -1133,23 +1133,16 @@ function EndpointField({
     geocodeRef.current = true;
     try {
       const target = addr.roadAddrPart1 || addr.roadAddr;
-      const res = await fetch(
-        `/api/geocode?query=${encodeURIComponent(target)}&limit=1`,
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { matches: AddressMatch[] };
-      const coord = data.matches[0];
-      if (!coord) {
+      const r = await resolveAddressCoord(target);
+      if (r.kind !== "resolved") {
         announce(t("coordError"));
         return;
       }
       resolveAndClose({
         kind: "place",
         label: target,
-        coord: { lat: coord.lat, lng: coord.lng },
+        coord: { lat: r.lat, lng: r.lng },
       });
-    } catch {
-      announce(t("coordError"));
     } finally {
       geocodeRef.current = false;
     }

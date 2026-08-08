@@ -8,7 +8,6 @@ import { bucketsPresent, filterPlacesByBucket } from "@/lib/category";
 import type { RegionCode } from "@/lib/region";
 import { regionsPresent, filterPlacesByRegion } from "@/lib/region";
 import type {
-  AddressMatch,
   JusoAddress,
   Place,
   PlaceSearchResult,
@@ -16,6 +15,7 @@ import type {
 } from "@/lib/types";
 import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
+import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { subscribeOpenPlace } from "@/lib/place-open-request";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
@@ -586,25 +586,18 @@ export function PlaceSearch({
     addrResolveRef.current = true;
     try {
       const target = addr.roadAddrPart1 || addr.roadAddr;
-      const res = await fetch(
-        `/api/geocode?query=${encodeURIComponent(target)}&limit=1`,
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { matches: AddressMatch[] };
-      const coord = data.matches[0];
-      if (!coord) {
+      const r = await resolveAddressCoord(target);
+      if (r.kind !== "resolved") {
         setAddrStatus({ kind: "coordError" });
         return;
       }
       openDetail(
         jusoAddressToPlace(
           addr,
-          { lat: coord.lat, lng: coord.lng },
+          { lat: r.lat, lng: r.lng },
           dataLocale(locale),
         ),
       );
-    } catch {
-      setAddrStatus({ kind: "coordError" });
     } finally {
       addrResolveRef.current = false;
     }
