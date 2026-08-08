@@ -195,6 +195,32 @@ describe("계단 회피 열화 통지", () => {
     setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
     click("reroute");
     await waitFor(() => expect(live()).toContain(NOTICE));
+    // 재조회도 안내 문장이 앞이다. 시작 경로만 순서를 단언하면 재조회 분기만
+    // 뒤집히는 변이가 전량 green으로 통과한다(독립 리뷰 RC).
+    expect(live().indexOf(NOTICE)).toBe(0);
+  });
+
+  // 신호는 상태 분류가 아니라 문장의 존재다. 서버가 넷째 상태를 추가해도 문장이
+  // 실려 오면 말해야 한다 — 모르는 상태일수록 보수적으로.
+  it("알려지지 않은 stepFree 값이어도 문장이 오면 통지한다", async () => {
+    setWalkResponse({ stepFree: "partially_applied", stepFreeNotice: NOTICE });
+    renderGuide(true);
+    click("start");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+  });
+
+  // 서버 계약 위반(열화인데 문장 없음)에서 기준을 태우면, 문장이 정상화된 뒤에도
+  // 전이가 사라져 영영 침묵한다.
+  it("열화인데 문장이 비어 오면 침묵하되 기준을 태우지 않는다", async () => {
+    setWalkResponse({ stepFree: "no_stepfree_route" });
+    renderGuide(true);
+    click("start");
+    await settleStart();
+    expect(live()).not.toContain(NOTICE);
+
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    click("reroute");
+    await waitFor(() => expect(live()).toContain(NOTICE));
   });
 
   it("같은 열화 상태가 이어지면 재통지하지 않는다", async () => {
@@ -216,6 +242,23 @@ describe("계단 회피 열화 통지", () => {
     expect(live()).not.toContain(NOTICE);
 
     // 복구된 상세 경로가 열화면 다시 통지된다(새 경로에 대한 새 판정).
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    click("reroute");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+  });
+
+  // 재조회 실패 분기의 기준 초기화는 이 시나리오에서만 관측된다 — 지워도 나머지
+  // 스위트가 전량 green이라 회귀가 조용히 통과했다(독립 리뷰 RE).
+  it("재조회 실패 후 같은 열화 상태로 복구되면 다시 통지한다", async () => {
+    setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
+    renderGuide(true);
+    click("start");
+    await waitFor(() => expect(live()).toContain(NOTICE));
+
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ result: null }) });
+    click("reroute");
+    await waitFor(() => expect(live()).toBe(ko.guide.rerouteFailed));
+
     setWalkResponse({ stepFree: "no_stepfree_route", stepFreeNotice: NOTICE });
     click("reroute");
     await waitFor(() => expect(live()).toContain(NOTICE));
