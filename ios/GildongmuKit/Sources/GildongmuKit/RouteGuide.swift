@@ -159,6 +159,22 @@ public struct GuideState: Sendable, Equatable {
     /// reacquiring 진입 직전 국면이 offRoute였는가. 없으면 이탈 확정이 GPS 공백을
     /// 경유하며 무통지로 소실된다(복귀가 backOnRoute 대신 reacquired로 나감 — 리뷰 HIGH).
     public var reacquiringFromOffRoute: Bool
+    /// 축별 이탈 latch. 확정은 OR, 복귀는 평가 가능한 활성 축 전체 해제다.
+    /// ⚠ 단일 "원인"으로 접지 않는다 — 거리로 이탈한 뒤 역주행해도 방위 상태가
+    /// 기록되지 않아 방향이 어긋난 채 복귀가 선언된다.
+    public var offRouteAxes: OffRouteAxes
+    /// 방위 표결 창. 상태 재구성 시 비워진다(경로 identity 바인딩).
+    public var courseVotes: [CourseVoteSample]
+}
+
+public struct OffRouteAxes: Sendable, Equatable {
+    public var distance: Bool
+    public var course: Bool
+
+    public init(distance: Bool = false, course: Bool = false) {
+        self.distance = distance
+        self.course = course
+    }
 }
 
 public enum GuideEvent: Sendable, Equatable {
@@ -232,7 +248,9 @@ public func guideStateAt(
         reacquirePrevD: nil,
         reacquireV: 0,
         reacquireSince: nil,
-        reacquiringFromOffRoute: false
+        reacquiringFromOffRoute: false,
+        offRouteAxes: OffRouteAxes(),
+        courseVotes: []
     )
 }
 
@@ -297,9 +315,12 @@ private func periodicIntervalSeconds(remaining: Double) -> Double {
     return 15
 }
 
+/// `course`는 **필수 인자다.** 기본값을 주면 호출 지점 하나를 빠뜨려도 컴파일이
+/// 통과해, 그 플랫폼에서만 축이 조용히 죽는다(안전 인자에 기본값 금지).
+/// 방위를 제공하지 않는 경로는 `inactiveCourse`를 **명시적으로** 넘긴다.
 public func guideStep(
     state: GuideState, fix: GuideFix, route: GuideRoute, now: Double,
-    tuning: GuideTuning = .walk
+    tuning: GuideTuning, course: CourseObservation
 ) -> GuideOutput {
     // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
     if let last = state.lastFixAt, now < last {
@@ -315,6 +336,8 @@ public func guideStep(
     if state.phase == .finalApproach {
         var s = state
         s.lastFixAt = now
+        // 낡은 폴리라인 기준 표는 이 국면에서 근거가 아니다(경로를 이미 벗어난 구간).
+        s.courseVotes = []
         return GuideOutput(state: s, event: nil, tone: nil)
     }
 
@@ -339,6 +362,9 @@ public func guideStep(
         s.resumePhase = state.phase == .offRoute ? .offRoute : state.resumePhase
         s.lastFixAt = now
         s.speedSamples = []
+        // ⚠ 창은 비우고 latch(offRouteAxes)는 보존한다. 투영을 못 믿는 기간의 표는
+        //   근거가 아니지만, 이탈 사실이 정확도 악화로 소실되면 안 된다.
+        s.courseVotes = []
         return GuideOutput(state: s, event: .uncertainEnter, tone: nil)
     }
 
@@ -367,6 +393,24 @@ public func guideStep(
             s.lastFixAt = now
             return GuideOutput(state: s, event: nil, tone: nil)
         }
+        // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다.
+        //   이 경로가 §5의 offRoute 분기보다 **먼저** 실행되므로, 여기를 빼면
+        //   fix 공백 10초만으로 복귀 계약이 통째로 우회된다.
+        let reVotes = recordVote(
+            state.courseVotes, at: now,
+            vote: courseVote(course, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
+        )
+        if state.offRouteAxes.course, courseAxisVerdict(reVotes) != .on {
+            // 위치는 되찾았지만 방향이 확인되지 않았다 — 이탈 상태를 유지한다.
+            // `reacquiringFromOffRoute`를 내리는 이유: 국면을 offRoute로 되돌리므로
+            // 재획득 상태가 아니다. 남기면 다음 재획득에서 이벤트 종류를 잘못 가른다.
+            var held = state
+            held.phase = .offRoute
+            held.lastFixAt = now
+            held.courseVotes = reVotes
+            held.reacquiringFromOffRoute = false
+            return GuideOutput(state: held, event: nil, tone: nil)
+        }
         var s = restateAt(route: route, d: d, now: now, prev: state)
         s.speedWarned = state.speedWarned
         s.lastFixAt = now
@@ -384,6 +428,8 @@ public func guideStep(
         s.phase = .reacquiring
         s.windowEdgeHits = 0
         s.speedSamples = []
+        // 위치를 잃은 동안의 표는 근거가 아니다(latch는 보존).
+        s.courseVotes = []
         s.lastFixAt = now
         s.reacquiringFromOffRoute = state.phase == .offRoute
         // 타이브레이크 기준 보관 — 표본은 지금 리셋되므로 진입 시점에 계산해 둔다.
@@ -406,6 +452,9 @@ public func guideStep(
         return GuideOutput(state: s, event: nil, tone: nil)
     }
     let d = max(state.d, proj.d)
+    // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다.
+    let vote = courseVote(course, poly: route.polyline, d: d, fixAccuracy: fix.accuracy)
+    let courseVotes = recordVote(state.courseVotes, at: now, vote: vote)
     // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
     // 그것은 이탈 증거이지 창 기아가 아니다.
     let offThreshold = max(tuning.offRouteBaseM, 2 * fix.accuracy)
@@ -451,6 +500,7 @@ public func guideStep(
     next.windowEdgeHits = windowEdgeHits
     next.speedSamples = samples
     next.speedGuardActive = speedGuardActive
+    next.courseVotes = courseVotes
     // 재무장: 수동 복귀 세션은 잔여가 재무장선 밖으로 나가야 자동 인계 허용.
     if !next.autoHandoffArmed && remainingTotal > tuning.handoffRearmM {
         next.autoHandoffArmed = true
@@ -460,13 +510,33 @@ public func guideStep(
     if state.phase == .offRoute {
         // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
         // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
-        if case let .ok(entryD) = entryProjection(route: route, fix: fix, tuning: tuning) {
-            var back = restateAt(route: route, d: entryD, now: now, prev: state)
-            back.speedSamples = samples
-            back.speedGuardActive = speedGuardActive
-            back.speedWarned = state.speedWarned
-            back.lastFixAt = now
-            return GuideOutput(state: back, event: .backOnRoute, tone: nil)
+        // ⚠ 이탈 중 표결 기준은 `state.d`가 아니라 `entryProjection`이 고른 지점이다.
+        //   `state.d`는 단조 전진이라 역주행·되돌아가기에서 실제 복귀 지점과 다르다.
+        //   후보가 모호하면 방위가 맞아도 복귀를 확정하지 않는다(판정 근거 없음).
+        // ⚠ 이탈 중에는 창을 비우지 않는다 — 비우면 복귀 판정 표본이 영영 최소치에
+        //   못 미친다(국면 초기화는 uncertain·reacquiring·finalApproach에만).
+        let entry = entryProjection(route: route, fix: fix, tuning: tuning)
+        var offVote = CourseVote.unknown
+        if case let .ok(entryD) = entry {
+            offVote = courseVote(
+                course, poly: route.polyline, d: entryD, fixAccuracy: fix.accuracy
+            )
+        }
+        let offVotes = recordVote(state.courseVotes, at: now, vote: offVote)
+        next.courseVotes = offVotes
+        if case let .ok(entryD) = entry {
+            // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
+            let courseCleared =
+                !state.offRouteAxes.course || courseAxisVerdict(offVotes) == .on
+            if courseCleared {
+                // restateAt이 guideStateAt을 거치므로 창과 latch가 함께 초기화된다(§2.8).
+                var back = restateAt(route: route, d: entryD, now: now, prev: state)
+                back.speedSamples = samples
+                back.speedGuardActive = speedGuardActive
+                back.speedWarned = state.speedWarned
+                back.lastFixAt = now
+                return GuideOutput(state: back, event: .backOnRoute, tone: nil)
+            }
         }
         let canRenotify = !speedGuardActive &&
             (state.lastOffRouteNoticeAt.map { now - $0 >= tuning.offRouteRenotifyS } ?? true)
@@ -480,6 +550,7 @@ public func guideStep(
         }
         return GuideOutput(state: next, event: nil, tone: nil)
     }
+    let courseVerdict = courseAxisVerdict(courseVotes)
     let isOff = proj.perpMeters > offThreshold
     if isOff {
         var since = state.offRouteSince ?? now
@@ -496,11 +567,21 @@ public func guideStep(
             next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
             next.lastOffRouteNoticeAt = now
             next.offRoutePeakPerp = nil
+            next.offRouteAxes.distance = true
             return GuideOutput(state: next, event: .offRoute, tone: .warning)
         }
     } else if state.offRouteSince != nil {
         next.offRouteSince = nil
         next.offRoutePeakPerp = nil
+    }
+    // 방위 축은 거리 축과 독립이다. 수직거리가 임계 안이어도 확정한다 — 자기근접으로
+    // 수직거리가 무너지는 갈림에서 이 축이 유일한 증거다(spec §1.2).
+    if courseVerdict == .off {
+        next.phase = .offRoute
+        next.resumePhase = stepAt(route: route, d: d).isLong ? .following : .bundle
+        next.lastOffRouteNoticeAt = now
+        next.offRouteAxes.course = true
+        return GuideOutput(state: next, event: .offRoute, tone: .warning)
     }
 
     // 6) 국면·낭독.
@@ -517,6 +598,11 @@ public func guideStep(
     //     ⚠ 단방향 래치다. 진입하면 0a) 가드가 이후 모든 판정을 멈춘다.
     //     ⚠ **`isOff`를 직접 본다** — 5절 early-return은 이미 확정된 offRoute만 막고,
     //     새로 이탈 판정됐으나 확정 유예 전인 중간 상태는 6절이 phase를 되돌려 통과시킨다.
+    //     ⚠ **방위 축은 여기서 다시 보지 않는다 — 순서가 곧 불변식이다.** 방위 확정
+    //     블록이 위에서 무조건 return하므로 이 지점의 `courseVerdict`는 결코 .off가
+    //     아니다. 그 배선을 이 블록 **뒤로** 옮기면 종점 부근에서 finalApproachEnter가
+    //     먼저 반환되고, 다음 fix부터 0a 가드가 모든 판정을 멈춰 확인된 이탈이 영구히
+    //     소실된다. 순서를 바꾸지 말 것(웹 route-guide.ts 동형).
     if !isOff,
        next.autoHandoffArmed,
        next.announcedUpTo >= route.steps.count - 1,

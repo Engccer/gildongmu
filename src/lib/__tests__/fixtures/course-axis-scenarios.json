@@ -15,5 +15,28 @@
     { "name": "확정", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16], ["mismatch", 18]], "expect": "off" },
     { "name": "해제", "votes": [["match", 0], ["match", 2], ["match", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
     { "name": "회색지대", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "unknown" }
+  ],
+  "reducerComment": "리듀서 trace 층. 순수 함수 표(votes·verdicts)는 산술만 맞추므로, 리듀서가 호출 순서를 틀리거나 offRouteAxes를 잃어도 통과한다. 이 층은 guideStep을 실제로 돌려 phase와 축 latch를 비교한다. ⚠ fixes는 경계만 적고 소비자가 1초 간격으로 보간한다(방위 축은 20초 창을 채워야 해 fix가 25개씩 필요하고, 전부 나열하면 표를 읽을 수 없다). 보간 규칙: 첫 fix는 그 t에 그대로 내보내고, 이후 각 구간 (A,B)에 대해 t=A.t+1..B.t의 정수 초마다 along·lateral만 선형 보간하며 acc·course·courseAcc는 B의 값을 쓴다. course<0 또는 courseAcc<0은 CLLocation 무효 신호라 소비자가 비활성 관측으로 바꾼다(웹 INACTIVE_COURSE ↔ Kit inactiveCourse) — 그 둘이 같은 결과를 내는지가 두 번째 케이스의 요점이다. 경로는 fixes의 along을 진행거리(m)로 쓰는 남→북 직선이다.",
+  "reducer": [
+    {
+      "name": "경로 위 역주행은 방위 축이 확정한다",
+      "steps": [{ "len": 400, "desc": "북진" }],
+      "fixes": [
+        { "t": 1, "along": 1.2, "lateral": 0, "acc": 8, "course": 180, "courseAcc": 5 },
+        { "t": 25, "along": 30, "lateral": 0, "acc": 8, "course": 180, "courseAcc": 5 }
+      ],
+      "expectPhaseAtEnd": "offRoute",
+      "expectAxes": { "distance": false, "course": true }
+    },
+    {
+      "name": "비활성 관측이면 축이 꺼진다",
+      "steps": [{ "len": 400, "desc": "북진" }],
+      "fixes": [
+        { "t": 1, "along": 1.2, "lateral": 0, "acc": 8, "course": -1, "courseAcc": -1 },
+        { "t": 25, "along": 30, "lateral": 0, "acc": 8, "course": -1, "courseAcc": -1 }
+      ],
+      "expectPhaseAtEnd": "following",
+      "expectAxes": { "distance": false, "course": false }
+    }
   ]
 }
