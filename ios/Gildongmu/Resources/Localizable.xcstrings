@@ -13601,6 +13601,46 @@
         }
       }
     },
+    "ios.manualLocation.autoCleared": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이동이 감지되어 지정한 위치를 해제했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movement detected. The location you set has been cleared."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se detectó movimiento. Se ha borrado la ubicación que estableciste."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Déplacement détecté. Le lieu que vous avez défini a été effacé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Movimento rilevato. La posizione impostata è stata cancellata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移動を検知したため、指定した位置を解除しました"
+          }
+        }
+      }
+    },
     "ios.nearby.airFailed": {
       "localizations": {
         "ko": {

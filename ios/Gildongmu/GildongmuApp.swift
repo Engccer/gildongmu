@@ -72,6 +72,19 @@ struct GildongmuApp: App {
                 installChatFocusObserverOnce()
                 #endif
                 consumeLaunchAction()
+                // 수동 위치 자동 해제 통지 채널. 사용자가 요청하지 않은 상태 변경이라
+                // polite로 낸다. ⚠ 이 통지가 없으면 해제가 조용한 실패가 된다 —
+                // VoiceOver는 포커스 밖 텍스트 변경을 읽지 않으므로 "표시줄이 말한다"는
+                // 그 줄로 돌아갈 때만 성립하고, 표시줄이 없는 화면에서 복귀하면 아예
+                // 만나지 못한다.
+                ManualLocationJudge.announcer = {
+                    AccessibilityNotification.Announcement(
+                        appLocalized("ios.manualLocation.autoCleared")
+                    ).post()
+                }
+                // 판정 트리거 ③(앱 시작). onChange는 *변화*에만 발화하므로 콜드 런치의
+                // 첫 .active를 놓칠 수 있다 — 그 창을 이 .task가 닫는다.
+                await ManualLocationJudge.run()
             }
             .onChange(of: launchStore.pending) { _, _ in consumeLaunchAction() }
             // 인앱 "길찾기" 진입(장소 상세·검색): 단축어와 달리 세션 리셋 없음(다른 탭
@@ -93,6 +106,9 @@ struct GildongmuApp: App {
                         resetSession()
                     }
                     backgroundedAt = nil
+                    // 판정 트리거 ①(포그라운드 복귀). 유휴 리셋 여부와 무관하다 —
+                    // 짧게 나갔다 와도 그 사이에 이동했을 수 있다.
+                    Task { await ManualLocationJudge.run() }
                 default:
                     break
                 }
