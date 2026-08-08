@@ -79,7 +79,7 @@ struct GildongmuApp: App {
                 // 만나지 못한다.
                 ManualLocationJudge.announcer = {
                     AccessibilityNotification.Announcement(
-                        appLocalized("ios.manualLocation.autoCleared")
+                        appLocalized("manualLocation.autoCleared")
                     ).post()
                 }
                 // 판정 트리거 ③(앱 시작). onChange는 *변화*에만 발화하므로 콜드 런치의

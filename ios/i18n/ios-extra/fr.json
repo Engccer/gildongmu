@@ -226,9 +226,6 @@
     },
     "unit": {
       "spokenMeters": "mètres"
-    },
-    "manualLocation": {
-      "autoCleared": "Déplacement détecté. Le lieu que vous avez défini a été effacé."
     }
   }
 }

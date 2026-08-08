@@ -868,5 +868,16 @@
     "viaAlight": "하차",
     "viaCurrent": "현재 위치",
     "walkHandoffStart": "남은 도보 안내 시작"
+  },
+  "manualLocation": {
+    "gps": "현재 위치",
+    "locating": "현재 위치 확인 중",
+    "gpsFailed": "위치를 확인할 수 없습니다",
+    "manual": "지정한 위치, {label}",
+    "manualUnverifiable": "지정한 위치, {label}(위치 확인 불가)",
+    "clear": "지정 해제",
+    "useGps": "현재 위치로 되돌리기",
+    "autoCleared": "이동이 감지되어 지정한 위치를 해제했습니다",
+    "guideNeedsRealLocation": "실시간 안내는 실제 위치가 필요합니다"
   }
 }

@@ -226,9 +226,6 @@
     },
     "unit": {
       "spokenMeters": "metri"
-    },
-    "manualLocation": {
-      "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata."
     }
   }
 }
