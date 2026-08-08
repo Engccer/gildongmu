@@ -7,6 +7,7 @@
  */
 
 import type { CompassDirection } from "./geo/bearing";
+import type { FinalApproachGeometry } from "./final-approach";
 
 /** 장소 하나. 모든 provider의 응답이 이 형태로 정규화된다. */
 export interface Place {
@@ -405,6 +406,14 @@ export interface WalkRouteBriefing {
    * 채널이다(spec 2026-08-08 §2.1).
    */
   stepFreeNotice?: string;
+  /**
+   * 경로 종점 → 목적지 오프셋 기하(실시간 안내 최종 접근용, spec 2026-08-08 §3.1).
+   * `includeGeometry=1` ∧ 기하 조립 성공일 때만 존재한다.
+   *
+   * ⚠ **라우트 핸들러가 요청 원좌표로 계산해 싣는다** — provider 캐시에 넣으면
+   * `roundCoord(…,4)`(±5.5m)로 뭉친 셀이 값을 공유해 다른 목적지의 방향을 말한다.
+   */
+  finalApproach?: FinalApproachGeometry;
 }
 
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */

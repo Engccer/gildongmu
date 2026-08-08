@@ -5,6 +5,9 @@ import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getWalkRoute } from "@/lib/walk-route";
+import { buildGuideRoute } from "@/lib/route-geometry";
+import { computeFinalApproach } from "@/lib/final-approach";
+import type { Coord, WalkRouteBriefing } from "@/lib/types";
 
 /**
  * 도보 길찾기 프록시(기본 카카오·폴백 Tmap). 좌표는 "위도,경도" 순서(도메인 표준, transit route와 동형).
@@ -30,6 +33,34 @@ const querySchema = z.object({
     .union([z.literal("1"), z.null()])
     .transform((v) => v === "1"),
 });
+
+/**
+ * 종점 오프셋 기하를 **요청받은 원좌표로** 계산해 부착한다(spec 2026-08-08 §3.1).
+ *
+ * ⚠ provider 응답에 넣지 않는 이유: provider URL이 `roundCoord(…,4)`(±5.5m)로 반올림한
+ * 목적지를 쓰므로 같은 셀의 다른 목적지가 캐시 엔트리를 공유한다. 거기에 방향을 실으면
+ * 옆 건물 기준 방향이 그대로 낭독된다. 지금은 `includeGeometry`가 upstream fetch를
+ * `no-store`로 만들지만, 그 사실에 의존하지 않는다 — 캐시 정책이 바뀌어도 이 계층은 옳다.
+ *
+ * 마지막 스텝 설명에서 도로명을 뽑지 않는다(파싱 규칙이 provider 문장에 종속된다).
+ * `roadName`은 별도 계층이 정하며, 없으면 문장에서 기준절을 뺀다 — 지어내지 않는다.
+ */
+function withFinalApproach(
+  briefing: WalkRouteBriefing | null,
+  dest: Coord,
+  includeGeometry: boolean,
+): WalkRouteBriefing | null {
+  if (!briefing || !includeGeometry) return briefing;
+  const guide = buildGuideRoute(
+    briefing.steps.map((s) => ({
+      description: s.description,
+      pathCoords: s.pathCoords,
+    })),
+  );
+  if (!guide) return briefing;
+  const finalApproach = computeFinalApproach(guide, dest);
+  return finalApproach ? { ...briefing, finalApproach } : briefing;
+}
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
@@ -66,7 +97,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await getWalkRoute(parsed.data);
-    return NextResponse.json({ result });
+    return NextResponse.json({
+      result: withFinalApproach(result, dest, parsed.data.includeGeometry),
+    });
   } catch (e) {
     console.error("[api/route/walk] 도보 길찾기 실패:", e);
     return NextResponse.json(

@@ -296,10 +296,48 @@ public struct WalkRouteBriefing: Codable, Sendable, Hashable {
     /// 열화 상태의 안내 문장(서버 정본). `applied`이거나 미요청이면 nil.
     /// ⚠ `includeGeometry=1` 응답에는 유사 스텝이 없으므로 이것이 유일한 채널이다.
     public let stepFreeNotice: String?
+    /// 경로 종점 → 목적지 오프셋 기하(spec 2026-08-08 §3.1).
+    /// ⚠ **선택 필드로 디코딩한다** — 필수로 두면 구버전 응답에서 브리핑 전체가 실패한다.
+    public let finalApproach: FinalApproachPayload?
 
     /// 알려진 상태만 매핑하고 미지의 값은 nil("판정 없음")이다.
     public var stepFreeStatus: StepFreeStatus? {
         stepFree.flatMap(StepFreeStatus.init(rawValue:))
+    }
+}
+
+/// 서버 `FinalApproachGeometry`의 디코딩 표면.
+///
+/// Kit 계산 타입(`FinalApproachGeometry`)과 분리한 이유는 서버가 부재 사유에 넷째 값을
+/// 추가해도 디코딩이 죽지 않게 하기 위해서다 — `stepFree`를 원시 문자열로 받는 것과
+/// 같은 규율이다. 판독은 `unavailableReason`이 하고 미지의 값은 nil("판정 없음")이다.
+public struct FinalApproachPayload: Codable, Sendable, Hashable {
+    /// 경로 종점 → 목적지 직선거리(m), 반올림 전 원값.
+    public let offsetMeters: Double
+    /// 종점 진행 방위 대비 목적지 상대각(-180~180, +우 -좌).
+    public let relativeBearing: Double?
+    /// relativeBearing 부재 사유(원시 문자열).
+    public let bearingUnavailable: String?
+    /// 기준 도로명. 없으면 문장에서 기준절을 뺀다(지어내지 않는다).
+    public let roadName: String?
+
+    /// ⚠ 기본값을 두지 않는다 — `relativeBearing`과 `bearingUnavailable`은
+    /// "방향을 안다"와 "왜 모르는가"의 짝이라, 둘 다 생략된 payload는 계약 위반인데
+    /// 기본값이 있으면 그것이 조용히 컴파일된다(`WalkRouteBriefing` 규율 동형).
+    public init(
+        offsetMeters: Double,
+        relativeBearing: Double?,
+        bearingUnavailable: String?,
+        roadName: String?
+    ) {
+        self.offsetMeters = offsetMeters
+        self.relativeBearing = relativeBearing
+        self.bearingUnavailable = bearingUnavailable
+        self.roadName = roadName
+    }
+
+    public var unavailableReason: BearingUnavailable? {
+        bearingUnavailable.flatMap(BearingUnavailable.init(rawValue:))
     }
 }
 
