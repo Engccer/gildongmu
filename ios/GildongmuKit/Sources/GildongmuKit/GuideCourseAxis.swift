@@ -6,11 +6,16 @@ import Foundation
 /// 진행 방위로 잡는다. 두 축은 독립 병렬이고 확정은 OR, 복귀는 활성 축 전체 해제다.
 ///
 /// ⚠ **`courseAccuracy`는 통과권이 아니라 불확실성이다.** 기존 `courseStep`의 45°
-/// 게이트는 4분할 방향 어절 생략 기준이지 이탈 증명 기준이 아니다. 실측에서 이
-/// 구분을 빼면 지속 편향 잡음의 헛경고가 0.3% → 7.0%로 무너졌다.
+/// 게이트는 4분할 방향 어절 생략 기준이지 이탈 증명 기준이 아니다.
+///
+/// 상수의 근거는 웹 `__tests__/a6-probe.test.ts`가 실경로 5개를 재생해 잰다(잠정
+/// 모델 기준). 가혹 조건(기기가 자기 오차를 절반으로 축소 보고) 헛경고: 판정 가능
+/// 비율 게이트 없음 56% → 있음·임계 45° 23% → 있음·임계 60° 4.0%. 대가는 검출
+/// 속도다(이탈 255건 중앙: 현행 54초, 임계 45° 27초, 임계 60° 46초).
+/// **거짓 이탈 경고가 지연보다 해롭다고 보고 보수적 값에서 출발한다.**
 
 /// ⚠ 잠정값(spec §6·§7) — 실기기 로그로 확정한다.
-public let courseAxisThresholdDegrees = 45.0
+public let courseAxisThresholdDegrees = 60.0
 /// ⚠ 잠정값(spec §6·§7).
 public let courseAxisWindowSeconds = 20.0
 /// ⚠ 잠정값(spec §6·§7). 확정 임계.
@@ -21,6 +26,13 @@ public let courseAxisClearRatio = 0.3
 public let courseAxisMinSpanSeconds = 16.0
 /// ⚠ 잠정값(spec §6·§7). 판정 가능한 표의 최소 개수.
 public let courseAxisMinVotes = 8
+/// ⚠ 잠정값(spec §6·§7). 창의 표 중 **판정 가능해야 하는 비율**.
+///
+/// ⚠ **개수 하한만으로는 부족하다.** 창의 대부분이 `unknown`이어도 남은 소수가 전부
+/// `mismatch`면 비율 판정이 통과해, 얇은 근거 위에서 이탈을 확신하게 된다. 그리고
+/// 이것을 **개수**로 표현하면 cadence에 묶인다 — 10Hz는 무조건 통과하고 0.5Hz는
+/// 영영 미달이라 같은 상황을 두 기기가 다르게 판정한다. 비율이라야 둘 다 성립한다.
+public let courseAxisMinDecisiveRatio = 0.8
 /// ⚠ 잠정값(spec §6·§7). 위원장 판정으로 앞뒤 10m.
 public let courseAxisBackMeters = 10.0
 /// ⚠ 잠정값(spec §6·§7).
@@ -121,6 +133,9 @@ public func recordVote(
 public func courseAxisVerdict(_ samples: [CourseVoteSample]) -> CourseAxisVerdict {
     let decisive = samples.filter { $0.vote != .unknown }
     guard decisive.count >= courseAxisMinVotes else { return .unknown }
+    guard Double(decisive.count) / Double(samples.count) >= courseAxisMinDecisiveRatio else {
+        return .unknown
+    }
     let ats = decisive.map(\.at)
     guard let hi = ats.max(), let lo = ats.min(), hi - lo >= courseAxisMinSpanSeconds else {
         return .unknown

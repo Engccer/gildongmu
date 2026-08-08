@@ -105,12 +105,22 @@ describe("courseAxisVerdict", () => {
     expect(courseAxisVerdict(mixed)).toBe("unknown");
   });
 
-  it("unknown 표는 분모에서 뺀다", () => {
+  it("unknown 표는 mismatch 비율의 분모에서 뺀다", () => {
     const s: CourseVoteSample[] = [
       ...fill(10, "mismatch"),
-      ...Array.from({ length: 20 }, (_, i) => ({ at: i * 0.5, vote: "unknown" as const })),
+      { at: 0.5, vote: "unknown" },
+      { at: 1.5, vote: "unknown" },
     ];
     expect(courseAxisVerdict(s)).toBe("off");
+  });
+
+  it("창의 대부분이 판정 불가면 확정하지 않는다 — 얇은 근거 금지", () => {
+    // 비율만 보면 mismatch 100%지만, 20초 창의 2/3이 판정 불가다.
+    const s: CourseVoteSample[] = [
+      ...fill(10, "mismatch"),
+      ...Array.from({ length: 20 }, (_, i) => ({ at: i * 0.5 + 0.25, vote: "unknown" as const })),
+    ];
+    expect(courseAxisVerdict(s)).toBe("unknown");
   });
 });
 

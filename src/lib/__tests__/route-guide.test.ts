@@ -535,6 +535,95 @@ describe("방위 축 통합", () => {
     expect(fresh.offRouteAxes).toEqual({ distance: false, course: false });
   });
 
+  it("방위 축이 확정 이탈이면 최종 접근에 진입하지 않는다", () => {
+    // 종점 부근까지 이동하되 방위를 계속 반대로 보고한다. 방위 확정이 6a보다 앞에서
+    // 반환되지 않으면 단방향 래치가 걸리고 다음 fix부터 0a 가드가 모든 판정을 멈춘다.
+    let { state } = initialGuideState(route, 0, { hasFinalApproachGeometry: true });
+    let enteredFinal = false;
+    for (let t = 1; t <= 330; t++) {
+      const out = guideStep(
+        state,
+        at(Math.min(399, t * 1.2)),
+        route,
+        t,
+        WALK_TUNING,
+        facing(180),
+      );
+      state = out.state;
+      if (out.event?.kind === "finalApproachEnter") enteredFinal = true;
+    }
+    expect(enteredFinal).toBe(false);
+    expect(state.offRouteAxes.course).toBe(true);
+  });
+
+  it("같은 fix에서 둘 다 성립하면 이탈이 이긴다 — 순서가 곧 불변식", () => {
+    // 방위 확정과 최종 접근 진입이 **다른** fix에 일어나면 순서를 바꿔도 결과가 같다.
+    // 그래서 진입 시각을 리듀서에서 먼저 역산하고, 확정이 정확히 그 fix에 일어나도록
+    // 방위를 뒤집는 시점을 맞춘다. 확정은 뒤집은 뒤 13번째 fix다(20초 창에서
+    // mismatch 14/20 = 0.7).
+    const walk = (flipAt: number) => {
+      let { state } = initialGuideState(route, 0);
+      let enterT: number | null = null;
+      for (let t = 1; t <= 340; t++) {
+        const out = guideStep(
+          state,
+          at(Math.min(399, t * 1.2)),
+          route,
+          t,
+          WALK_TUNING,
+          facing(t >= flipAt ? 180 : 0),
+        );
+        state = out.state;
+        if (out.event?.kind === "finalApproachEnter" && enterT === null) enterT = t;
+      }
+      return { state, enterT };
+    };
+
+    const base = walk(Number.POSITIVE_INFINITY);
+    expect(base.enterT).not.toBeNull();
+
+    const coincide = walk(base.enterT! - 13);
+    expect(coincide.enterT).toBeNull();
+    expect(coincide.state.offRouteAxes.course).toBe(true);
+  });
+
+  it("국면 전이는 표결 창을 비우고 latch는 남긴다", () => {
+    // 투영을 못 믿는 기간(정확도 악화·위치 상실)의 표는 근거가 아니다. 반대로 이탈
+    // 사실(latch)이 그 기간에 소실되면 방향이 어긋난 채 복귀가 선언된다.
+    const primed = () => {
+      let { state } = initialGuideState(route, 0);
+      for (let t = 1; t <= 10; t++) {
+        state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
+      }
+      expect(state.courseVotes.length).toBeGreaterThan(0);
+      return state;
+    };
+
+    // uncertain 진입(정확도 악화)
+    const toUncertain = guideStep(
+      primed(),
+      { ...at(13), accuracy: 80 },
+      route,
+      11,
+      WALK_TUNING,
+      INACTIVE_COURSE,
+    ).state;
+    expect(toUncertain.phase).toBe("uncertain");
+    expect(toUncertain.courseVotes).toEqual([]);
+
+    // reacquiring 진입(fix 공백 11초)
+    const toReacquiring = guideStep(
+      primed(),
+      at(13),
+      route,
+      22,
+      WALK_TUNING,
+      facing(180),
+    ).state;
+    expect(toReacquiring.phase).toBe("reacquiring");
+    expect(toReacquiring.courseVotes).toEqual([]);
+  });
+
   it("uncertain을 경유해도 축 latch가 보존된다", () => {
     let { state } = initialGuideState(route, 0);
     for (let t = 1; t <= 25; t++) {
