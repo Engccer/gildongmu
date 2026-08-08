@@ -966,7 +966,12 @@ final class BeaconModel {
         etaTask?.cancel()
         etaTask = nil
         rebaseForAxisChange()  // 경로 거리 → 직선거리(축 전환, handoff와 같은 규칙)
-        guard finalApproachGeometry != nil else {
+        // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라 최종
+        //   접근을 건너뛴다(§3.2). 말할 배치가 없는데 진입 서술을 내면 "약 8미터"
+        //   다음에 곧바로 도착이 붙어 잉여다.
+        guard let geometry = finalApproachGeometry,
+              geometry.unavailableReason != .tooClose
+        else {
             // 기하가 없으면(구버전 응답) 말할 배치 정보가 없다. 종전 인계 그대로
             // 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
             mode = .brief
@@ -1023,17 +1028,11 @@ final class BeaconModel {
             now: now
         )
 
-        if arrived {
-            let text = appLocalized("guide.arrived")
-            playTone(.nearby)
-            stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
-            statusText = text
-            lastGuidance = text
-            announce(text, highPriority: true)
-            return
-        }
-
-        // 진입 배치 서술은 1회뿐이라 억제되면 보관했다가 전경 복귀 때 갚는다(§4).
+        // ⚠ **진입 배치 서술이 도착보다 앞이다.** 뒤에 두면 오프셋 10~15m 구간에서
+        //   진입 fix가 이미 도착 반경 안이라 배치 서술이 한 번도 나가지 않은 채 세션이
+        //   끝난다 — 방향을 못 들은 채 "도착했습니다"만 듣는 것이 이번 작업이 고치려던
+        //   증상 그 자체다(독립 리뷰 검출). 도착은 다음 fix가 낸다.
+        //   1회뿐인 발화라 억제되면 보관했다가 전경 복귀 때 갚는다(§4).
         if !finalApproachIntroSpoken, let geometry = finalApproachGeometry {
             finalApproachIntroSpoken = true
             lastFinalTickAt = now
@@ -1043,6 +1042,16 @@ final class BeaconModel {
             statusText = text
             lastGuidance = text
             if !announce(text) { pendingFinalApproachIntro = text }
+            return
+        }
+
+        if arrived {
+            let text = appLocalized("guide.arrived")
+            playTone(.nearby)
+            stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
+            statusText = text
+            lastGuidance = text
+            announce(text, highPriority: true)
             return
         }
 

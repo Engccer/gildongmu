@@ -607,8 +607,14 @@ export function guideStep(
   //
   //     ⚠ 단방향 래치다. 진입하면 0a) 가드가 이후 모든 판정을 멈추므로, 정확도가 좋아져
   //     임계가 줄어도 되돌아가지 않는다(spec §3.2 검토 #20).
-  //     ⚠ 이탈 중에는 도달할 수 없다 — 5절이 offRoute를 먼저 반환한다(§4 전이표).
+  //     ⚠ **`isOff`를 직접 본다.** 5절의 early-return은 **이미 확정된** offRoute만 막고,
+  //     이번 fix가 새로 이탈 판정됐지만 아직 20초 확정 유예를 못 채운 중간 상태는
+  //     6절이 phase를 following으로 되돌려 놓아 그대로 통과한다. 그러면 종점 부근의
+  //     노이즈 fix 하나가 이탈 확정을 우회한 채 단방향 래치를 걸 수 있다
+  //     (독립 리뷰 검출). §4 전이표의 "진입 조건 ∧ offRoute 동시 = 성립 불가"를
+  //     문언 그대로 참으로 만든다.
   if (
+    !isOff &&
     next.autoHandoffArmed &&
     next.announcedUpTo >= route.steps.length - 1 &&
     remainingTotal <= finalApproachEntryM(next, fix.accuracy, tuning)

@@ -53,6 +53,7 @@ import {
   relativeDirection,
   type FinalApproachGeometry,
 } from "@/lib/final-approach";
+import { UNCERTAIN_ACCURACY_M } from "@/lib/route-guide";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
@@ -744,19 +745,40 @@ export function useRouteGuide(
    * 5.4m에 실오차 36.5m인 실측이 있다(일반 안내 `confidenceDistance`와 갈리는 지점).
    * 임계 비교는 반올림 전 원거리로 한다.
    */
-  const approachText = useCallback(
+  const approachDistance = useCallback(
+    (meters: number, accuracy: number): string => {
+      const base = formatDistance(Math.round(meters));
+      return accuracy <= 20
+        ? t("approx", { distance: base })
+        : t("rough", { distance: base });
+    },
+    [t],
+  );
+
+  /** 방향·거리 한 조각. 방향을 모르면 거리만 남긴다(빈 문자열 보간 금지). */
+  const approachDetail = useCallback(
+    (distance: string, direction: string | null): string =>
+      direction ? t("finalApproachDetail", { direction, distance }) : distance,
+    [t],
+  );
+
+  /**
+   * 주기 통지 문장. ⚠ **진입 서술은 이 함수를 쓰지 않는다** — §3.6 사다리의
+   * "≤15m 수치 생략" 행은 **fix에서 온 거리의 잡음**을 전제하는데, 진입 서술이 말하는
+   * `offsetMeters`는 폴리라인에서 정적으로 계산된 값이라 그 전제가 성립하지 않는다
+   * (iOS `GuideText.finalApproachEnter`/`finalApproachTick` 분리와 동형 — 종전에는
+   * 웹만 한 함수를 공유해 오프셋 10~15m 진입 서술에서 거리를 통째로 빼먹었다).
+   */
+  const approachTick = useCallback(
     (meters: number, accuracy: number, direction: string | null): string => {
       if (meters <= ARRIVE_M) {
         return direction
           ? t("finalApproachNearDir", { direction })
           : t("finalApproachNear");
       }
-      const base = formatDistance(Math.round(meters));
-      const distance =
-        accuracy <= 20 ? t("approx", { distance: base }) : t("rough", { distance: base });
-      return direction ? t("finalApproachDetail", { direction, distance }) : distance;
+      return approachDetail(approachDistance(meters, accuracy), direction);
     },
-    [t],
+    [approachDetail, approachDistance, t],
   );
 
   /**
@@ -770,6 +792,25 @@ export function useRouteGuide(
    */
   const stepFinalApproach = useCallback(
     (fix: GuideFix, motion: MotionState, now: number) => {
+      // ⚠ **신뢰 불가 fix에서는 거리·방향을 말하지 않는다**(§3.0 unreliable 최우선
+      //   불변식). 이 경로는 리듀서를 타지 않으므로(§3.0 소유권) 리듀서의 uncertain
+      //   게이트가 여기엔 없다 — 그 대가로 정확도 판정을 이 층이 직접 져야 한다.
+      //   없으면 튄 fix가 도착 반경을 만족해 "도착했습니다"로 세션을 끝낼 수 있다.
+      //   주기 시각도 갱신하지 않는다: 정지·유지이지 리셋이 아니다(§4).
+      if (!(fix.accuracy > 0) || fix.accuracy > UNCERTAIN_ACCURACY_M) {
+        emitTone(
+          {
+            unreliable: true,
+            priorityTone: null,
+            eventOwned: false,
+            trend: null,
+            arrived: false,
+            rebaseTrend: false,
+          },
+          now,
+        );
+        return;
+      }
       const distance = haversineMeters(
         fix.lat,
         fix.lng,
@@ -795,17 +836,10 @@ export function useRouteGuide(
         now,
       );
 
-      if (arrived) {
-        const text = t("arrived");
-        rememberGuidance(text);
-        // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
-        // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
-        // (react-hooks/immutability). `sessionStopRef`는 생성 후 읽기만 한다.
-        sessionStopRef.current();
-        announce(text);
-        return;
-      }
-
+      // ⚠ **진입 배치 서술이 도착보다 앞이다.** 뒤에 두면 오프셋 10~15m 구간에서
+      //   진입 fix가 이미 도착 반경 안이라 배치 서술이 한 번도 나가지 않은 채 세션이
+      //   끝난다 — 방향을 못 들은 채 "도착했습니다"만 듣는 것이 이번 작업이 고치려던
+      //   증상 그 자체다(독립 리뷰 검출). 도착은 다음 fix(약 1초 뒤)가 낸다.
       const geometry = finalApproachGeoRef.current;
       if (!finalIntroSpokenRef.current && geometry) {
         finalIntroSpokenRef.current = true;
@@ -814,7 +848,11 @@ export function useRouteGuide(
           geometry.relativeBearing !== undefined
             ? t(DIRECTION_KEY[relativeDirection(geometry.relativeBearing)])
             : null;
-        const detail = approachText(geometry.offsetMeters, fix.accuracy, direction);
+        // 진입 서술은 항상 수치를 낸다(§3.3) — `approachTick`의 "근처" 축약을 타지 않는다.
+        const detail = approachDetail(
+          approachDistance(geometry.offsetMeters, fix.accuracy),
+          direction,
+        );
         const text = geometry.roadName
           ? t("finalApproachEnter", {
               road: geometry.roadName,
@@ -827,6 +865,17 @@ export function useRouteGuide(
         return;
       }
 
+      if (arrived) {
+        const text = t("arrived");
+        rememberGuidance(text);
+        // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
+        // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
+        // (react-hooks/immutability). `sessionStopRef`는 생성 후 읽기만 한다.
+        sessionStopRef.current();
+        announce(text);
+        return;
+      }
+
       const last = lastFinalTickAtRef.current;
       if (last === null) {
         lastFinalTickAtRef.current = now;
@@ -834,11 +883,20 @@ export function useRouteGuide(
       }
       if (now - last < FINAL_INTERVAL_S) return;
       lastFinalTickAtRef.current = now;
-      const text = approachText(distance, fix.accuracy, null);
+      const text = approachTick(distance, fix.accuracy, null);
       rememberGuidance(text);
       announce(text);
     },
-    [announce, approachText, closerIntervalSeconds, emitTone, rememberGuidance, t],
+    [
+      announce,
+      approachDetail,
+      approachDistance,
+      approachTick,
+      closerIntervalSeconds,
+      emitTone,
+      rememberGuidance,
+      t,
+    ],
   );
 
   const stepBrief = useCallback(
@@ -905,7 +963,13 @@ export function useRouteGuide(
         setProgress(null);
         clearEtaTimer(); // 최종 접근 중 ETA 재조회는 무의미(자원 위생)
         rebaseForAxisChange(); // 경로 거리 → 직선거리
-        if (finalApproachGeoRef.current === null) {
+        // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라
+        //   최종 접근을 건너뛴다(§3.2). 말할 배치가 없는데 진입 서술을 내면
+        //   "약 8미터" 다음에 곧바로 도착이 붙어 잉여다.
+        if (
+          finalApproachGeoRef.current === null ||
+          finalApproachGeoRef.current.bearingUnavailable === "tooClose"
+        ) {
           // 기하가 없으면(구버전 응답) 말할 배치 정보가 없다. 종전 인계 그대로
           // 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
           modeRef.current = "brief";
