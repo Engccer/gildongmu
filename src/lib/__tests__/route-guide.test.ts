@@ -499,6 +499,28 @@ describe("방위 축 통합", () => {
     expect(recovered).toBe(true);
   });
 
+  it("복귀 지연을 상한으로 잠근다 — 해제 게이트의 비용이 보이게", () => {
+    // ⚠ 확정 지연만 재면 판정 가능 비율 게이트가 만든 비용의 절반이 안 보인다.
+    //   경로 위에 서서 방향을 바로잡은 사용자가 이탈 상태에 머무는 시간이다.
+    let { state } = initialGuideState(route, 0);
+    for (let t = 1; t <= 25; t++) {
+      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
+    }
+    expect(state.phase).toBe("offRoute");
+
+    let recoveredAt: number | null = null;
+    for (let t = 26; t <= 80 && recoveredAt === null; t++) {
+      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(0));
+      state = out.state;
+      if (out.event?.kind === "backOnRoute") recoveredAt = t;
+    }
+    expect(recoveredAt).not.toBeNull();
+    // 방향을 고친 시점(t=26)부터의 지연. 창이 mismatch를 밀어내고 해제 비율에
+    // 닿기까지 걸리는 구조적 시간이며, 상수를 만지면 이 수치가 함께 움직인다.
+    const delay = recoveredAt! - 26;
+    expect(delay).toBeLessThanOrEqual(25);
+  });
+
   it("방위를 못 읽으면 복귀를 선언하지 않는다 — unknown은 정합이 아니다", () => {
     let { state } = initialGuideState(route, 0);
     for (let t = 1; t <= 25; t++) {
