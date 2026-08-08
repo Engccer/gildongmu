@@ -1,0 +1,181 @@
+# INTEGRATIONS — 통합 상세 계약
+
+`CLAUDE.md` 통합 카탈로그에서 **요지만으로는 지킬 수 없는 계약**을 옮겨 둔 곳이다. 카탈로그 행이 여기를 가리키면 **그 코드를 수정하기 전에 해당 절을 읽는다**.
+
+- 여기 있는 것은 전부 실측으로 확정된 계약이고, 어기면 대개 **조용한 실패**(거짓 안내·3-state 붕괴·낭독 오류)가 된다.
+- 설계 근거·검증 서사는 각 절이 가리키는 `docs/superpowers/specs`가 정본이다. 여기엔 "지킬 것"만 둔다.
+- 항구 규칙 중 **도메인을 가리지 않는 것**(좌표 파라미터·envelope 파서·거리 표기·3-state)은 여기가 아니라 `CLAUDE.md` 횡단 함정에 있다.
+
+---
+
+## 도보 경로 (`walk-route.ts` · `/api/route/walk`)
+
+기본 카카오(`dapi.kakao.com/v2/routing/walk`, 기존 `KAKAO_REST_API_KEY`) + Tmap 폴백. 위원장 판정 2026-07-29로 카카오가 기본이 됐다(의미 단위 스텝·역사 내 이동·계단/지하보도 명시로 브리핑 우월). spec `2026-07-29-kakao-walk-primary-design.md`·`2026-08-08-walk-guidance-stepfree-design.md`.
+
+### 봉투·폴백
+- envelope는 top-level `route` **단수** + `status`. 경로 불가는 `TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`만 null이고 **미관측 status·스키마 위반은 throw**(fail-closed).
+- **폴백은 카카오 throw 시에만 Tmap**이다. null은 폴백 없이 null이 정본. 폴백 시 좌표 포함 `console.warn`(Vercel 로그로 폴백률 관측).
+- 게이트는 `hasWalkRouteKey()`(=kakao∥tmap). 라우트·page·채팅 declaration 3곳 + router 이중 방어가 공용으로 쓴다 — **`hasTmapKey` 단독 게이트 금지**.
+- 거리·시간은 provider에서 `Math.round`(iOS 엄격 Int 디코딩 방어). **V1 ko 전용**(카카오도 en 미지원 종결).
+
+### 낭독 문장 재작성 (`rewriteWalkGuidance`)
+**서버가 만든 문장이 정본이고 소비자는 재조합하지 않는다.** 2026-08-07 위원장 판정으로 종전 "provider 원문이 정본" 계약을 뒤집었다(판정 기준은 가독성·일관성. 원문이 거리를 39% 침묵했고, 괄호 도로명은 SR 구두점 설정에서 사라지며, "왼쪽길로"가 명사처럼 읽혔다).
+
+- 결과 틀: **`{어디서} {어느 쪽으로 돌아} {어디까지} {길}을 따라 {거리} 이동`**. 교량도 같은 틀("교량을 따라 260m 이동" — "이동, 교량 진입"은 올라선 뒤 걷는 순서가 뒤집혀 들린다).
+- 횡단보도·지하보도만 `{거리} 이동, {시설} {N}개 이용`. **개수는 2 이상일 때만** — "1개"는 개수 정보가 아닌 데다 아래 병합 게이트를 잘못 열어 단일 횡단보도의 신호기 주석을 지운다.
+- ⚠ **미매칭 문장은 원문 그대로 통과**(fail-safe: 새 문형이 와도 그 문장만 종전 낭독).
+- ⚠ 단 **마지막 "…이동" 폴백은 미매칭 문장 전부를 대상으로 삼으므로 "이미 거리를 말하는가" 가드가 필수**다(`HAS_DISTANCE` — 표준 m·km보다 넓게 한글 단위까지 본다). 없으면 "100미터 이동"이 "100미터 100m 이동"이 된다. 폴백을 "역사 내 이동"으로 **좁히지 말 것** — 어미가 다른 실제 문장들("엘레베이터를 이용하여 강동역으로 이동")이 같은 폴백으로 거리를 얻는다.
+- ⚠ **도로명 조사는 받침으로 계산**한다(실측 58종 중 받침 있음 9·없음 49라 어느 쪽으로 고정해도 다른 쪽이 전부 틀린다). 한글이 아니면 삽입을 포기하고 괄호째 보존.
+- ⚠ **재작성 정규식은 `이동(…)$` 앵커가 핵심**이다. 괄호를 훑는 방식이면 "삼성역 2호선 7번출구(임시폐쇄)"가 "임시폐쇄를 따라"로 나간다(실측 유일 예외이자, 괄호 2개 문장에서 마지막 것만 도로명인 근거).
+- ⚠ **이름 있는 캡처 그룹 금지**(tsconfig target ES2017).
+- **단계 번호는 세 소비자 모두 원본 인덱스 기준**(웹 `<ol>`·CLI `"1. "`·iOS `WalkRouteRows`).
+
+### 음향신호기 주석
+라우트·채팅은 `getWalkRoute`만 호출한다(provider 직접 금지). description "횡단보도" 포함 + **병합 스텝 아님** + 후보점(카카오 `pathCoords` 폴리라인 전체 or Tmap `coord` 1점) 중 40m 내 seed 존재 시 ", 음향신호기 있음"을 흡수한다(분포 32.5m 이하 vs 91m 이상 완전 분리 실측, 병합 스텝은 특정 불가라 침묵 — positive-only).
+
+- ⚠ 병합 판정은 **원문형 "N개의"와 재작성본 "횡단보도 N개" 둘 다** 막아야 한다. 재작성이 "2개의"를 "2개"로 바꾸므로 원문형만 보면 이 게이트가 조용히 열려 신호기 없는 횡단보도에 "있음"이 붙는다.
+- ⚠ **파이프라인 순서가 계약이다: 재작성 → 주석.** 뒤집으면 주석이 먼저 붙어 재작성 정규식의 `$` 앵커가 깨진다. 그 순서는 `getWalkRoute`를 통과하는 테스트로만 검출된다 — 두 단계를 테스트가 직접 조합하면 순서를 테스트가 정해 버려 변이가 안 잡혔다.
+- step `coord`·`pathCoords`는 응답 전 제거한다.
+
+### 계단 회피 모드
+`accessible=true`(그 외 값 400) → `route_mode=ACCESSIBLE`. 응답 `stepFree`는 `"applied"|"no_stepfree_route"|"unavailable"`(요청 시 필수·미요청 시 부재 = 스키마 byte-호환). applied는 계단 guidance 존재 시 선언 금지(fail-closed), 무계단 부재 시 기본 모드 재호출.
+
+- 미적용이면 서버가 안전 문장을 결정론 전달하는데 **채널이 소비자 종류로 갈린다**: 산문 소비자(브리핑·채팅·CLI)에겐 `steps[0]` 삽입, `includeGeometry=1` 구조화 소비자에겐 **유사 스텝 없이 `stepFreeNotice` 필드로만**.
+- ⚠ 기하 응답에 기하 없는 스텝을 넣으면 `buildGuideRoute`(웹 `route-geometry.ts` · Kit `RouteGeometry.swift`)가 **경로 전체를 거부**해, 계단 회피가 가장 필요한 순간에 상세 안내가 조용히 간략으로 강등된다. UI 별도 문구·live region 금지.
+- **실시간 안내 조회에도 계단 회피가 실린다**: 값은 봉인하지 않고 **조회 시점에 읽는다**(웹 `useState` 초기값은 *마운트* 수명이지 *세션* 수명이 아니라, 세션 종료 후 토글을 바꿔도 같은 마운트에서 옛 값이 남는다). 통지는 **열화 상태로의 전이**에서 1회이며 시작·재조회 발화와 **한 문자열로 결합**한다(두 번 내보내면 배칭이 앞을 삼키거나 뒤가 앞을 끊는다).
+- ⚠ **통지의 신호는 상태 분류가 아니라 `stepFreeNotice`의 존재다.** 알려진 셋으로 분류되는지로 가르면 서버가 넷째 상태를 추가하는 순간 문장이 와 있는데도 iOS만 침묵한다(웹은 낭독 = 플랫폼 불일치). 중복 통지는 **원시 문자열**로 막고, 열화인데 문장이 비어 오면 기준을 갱신하지 않는다.
+- ⚠ **iOS는 발화 성공 시점에만 소비한다**: 백그라운드 게이트에 걸린 통지는 `pendingStepFreeNotice`로 남겨 전경 복귀 때 갚는다. 세션에 1회뿐인 안전 경고라 다음 fix가 대신 말해 주지 않고, `missedAnnouncement` 복귀 재생은 그 사이 도착한 fix가 `statusText`를 덮어써 통째로 유실된다.
+- ⚠ **안전 관련 인자에 기본값을 두지 말 것**(`RouteService.walk`·`walkRouteUrl`·`DistanceBeacon` prop·`BeaconModel.toggle` 전부 required). 백로그 A4가 정확히 그 기제에서 나왔고, 기본값을 없애자 컴파일러·타입 검사가 누락 7곳을 즉시 잡았다.
+
+### 캐시·쿼터
+IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
+
+길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다. 계단 없는 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
+
+---
+
+## 대중교통 (`odsay` + `odsay-select` + `bus-service-hours` / `/api/route/transit`)
+
+spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-service-hours-design.md`.
+
+### 파이프라인 순서가 계약이다
+**정규화(전체) → 강등(전체) → 선정(5) → 축 라벨.**
+
+- 선정을 강등보다 앞에 두면 **선정 밖의 유일한 운행 중 경로를 영영 못 본다**(종전 `slice(0,3)`이 길동→서울역 무환승 370번을 7번째에 묻었다).
+- 라벨을 선정보다 앞에 두면 강등이 1순위를 바꿨을 때 승격된 경로가 **사라진 기준으로 계산된 라벨**을 달고 올라온다. ⚠ 이 변이는 시간표 스텁이 빈 `Map`이면 강등이 no-op이라 검출되지 않는다 — 합성 테스트에 **강등이 실제로 순위를 뒤집는 케이스**가 있어야 한다.
+- 축은 최단·최소환승 2개이고 `outside` 경로는 **축 후보에서 제외**한다(접힌 disclosure 접근명에 운행 상태가 없어 권유 라벨이 못 타는 차에 붙는다). 절단 전 후보 수는 `totalCandidates`로 응답에만(UI 미표기).
+- 세션 추적·포커스 복귀는 배열 인덱스가 아니라 `routeKey`. ⚠ **iOS `routeKey`는 필수 디코딩이라 웹 배포가 앱보다 먼저 나가야 한다.**
+
+### 봉투
+⚠ **error 봉투가 2형이다**(`odsay-envelope.ts`가 흡수): 경로 없음(-98)은 객체 `{code,msg}`, 인증 실패(500)는 **배열** `[{code,message}]`이고 **무효 키도 HTTP 200**이다. `data.error.code`를 직접 읽으면 배열에서 `undefined`가 되어 코드 판정이 무력화된다. `result.path`가 배열이 아니면 **throw**(0건과 조회 실패를 뭉개지 않는다). 환승도보 `{distance:0}` leg는 제외.
+
+**URI(도메인) 식별**: 서버 fetch가 `Referer: https://gildongmu.vercel.app/`를 명시한다(IP 무관 — Vercel 가변 IP 해소). ⚠ ODsay 키는 발급 시점 플랫폼에 묶여 Server 키에 URI를 추가해도 referer 식별이 안 되므로 URI 전용 앱 키여야 한다.
+
+### 출발 시각 미반영 보정
+⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존).
+
+- 조인 키는 ODsay `lane[0].busLocalBlID`. **분기는 도시 코드가 아니라 TOPIS 보유 여부**다(TOPIS가 수도권 광역 노선도 가진다 — 하남 30-3 실측), 미보유만 TAGO 번호 검색 후 `endsWith` 대조(지역별 접두사 상이: 부산 `BSB`+숫자, 대구는 접두사 포함 동일 값).
+- 판정은 순수 함수 `src/lib/service-hours.ts`(시각 주입이라 심야 재현 불요). **조회 실패는 throw 금지**(unknown으로 두고 경로 응답 유지). 낭독은 `outside`만 표기(정상·정보없음 침묵).
+- ⚠ 첫차·막차는 **차고지 출발 기준**이라 막차 직후 중간 정류장 승차 가능 구간이 outside로 나올 수 있다(강등일 뿐 제외 아님).
+- **지하철은 범위 밖**(판정 수단 미확정, 버스 leg 없는 경로는 rank 0으로 원순서 보존).
+
+### 도보 leg
+`distanceMeters` + `toName`(뒤 첫 탑승 구간의 `fromName`, **환승 통로 필터 뒤** 배열에서 유도 — 필터 전이면 첫 도보가 환승역을 가리킨다)을 싣는다. 마지막 도보는 `toName` 부재가 정상이다(소비자가 "목적지까지"로 채운다).
+
+---
+
+## 지하철 빠른하차 (`subway-quick-exit` seed → `quick-exit.ts`)
+
+서울교통공사 1~8호선 하차역·방향별로 계단·엘리베이터에 가장 가까운 칸·문(15143840). seed 빌드 `scripts/build-subway-quick-exit.mjs`(가드 11종), spec `2026-08-08-subway-quick-exit-design.md`. 별도 라우트 없이 `TransitLeg.quickExit`로 실린다.
+
+- ⚠ **거리는 열차 선형 위치**(`(칸−1)×4+문`)로 잰다. (칸 차이, 문 차이) 사전순은 물리 거리가 아니다 — `1-4`와 `2-1`은 옆 문인데 같은 칸 양끝보다 멀다고 판정된다.
+- **엘베×계단 쌍을 최적화한다**(각자 최저면 칸 차이 0~1이 55%인데 쌍이면 91%). 두 시설을 병기하는 이유가 *도착해서* 고르게 하려는 것이라 둘이 멀면 병기가 무의미하다.
+- **방향은 직전역으로 배제**하고 정확히 하나 남을 때만, 그 방향의 방면이 **하나로 확정**될 때만 채택한다. ⚠ 배제로 살아남은 것과 확인된 것은 다르다 — 방면 없는 방향(응암 6호선 상행)은 배제될 수 없어 조용히 선택된다. 분기역(강동 5호선 하행)·급행·표기 불일치는 전부 null.
+- ⚠ ODsay는 `"수도권 5호선"`, 이 데이터는 `"5호선"`이고 **급행은 `"수도권 9호선(급행)"` 형태로 노선명에 실린다**. 접두만 벗기고 노선 화이트리스트는 두지 않는다(커버 정본은 seed 키 하나).
+- 직전역은 `passStopList` 끝에서 두 번째이고 **마지막이 하차역인지 확인하고** 쓴다(부분·역순 목록이면 반대편 승강장 안내가 된다).
+- `includeStops`와 무관하게 **항상 계산한다**(그 플래그는 방출만 통제 — 옵트인으로 두면 CLI·MCP·iOS가 조용히 침묵한다).
+- 문장은 소비자가 만든다(provider가 문장을 주지 않는다): 웹 `quick-exit-text.ts` ↔ Kit `QuickExitText.swift` ↔ CLI `transitQuickExitLine` 3벌 미러, 동조는 `format-drift.test.ts`가 웹 정본 실행 대조로 강제. **3분기 × 2형태로 키를 나눈다**(변수만 비우면 로케일별 절 순서가 깨지고, `"3-2,3-3 사이"`를 문 번호 자리에 넣으면 문장이 깨진다).
+- 노출은 경로 브리핑 + 안내 세션 **대기 국면**(포커스 착지점 뒤·열차 목록 앞), 통지는 만들지 않는다.
+
+---
+
+## 시내버스 (`tago-bus` + `seoul-bus` → `src/lib/bus.ts`)
+
+지방=TAGO·서울=TOPIS, `mergeBusStops`가 `allSettled`로 병합한다(envelope는 서로 다르다 — `CLAUDE.md` 횡단 함정 참조). spec `2026-08-02-bus-uncovered-region-design.md`.
+
+- ⚠ **TAGO `getCrdntPrxmtSttnList`는 ~700m 고정 반경**이다(반경 파라미터 없음. 해남 서림승강장 기준 600m 2건 → 800m 0건 실측). 그래서 **0건은 대개 "이 지역 미커버"가 아니라 정상적인 반경 밖**이고, 둘을 뭉개면 전국 시골이 미제공으로 낙인찍힌다.
+- 미커버 판정 정본은 `isUncoveredBusRegion`(`src/lib/bus.ts`, 라우트·채팅 공용 — **provider 직접 호출 금지**). seed는 `getCtyCodeList` 138개(`scripts/build-tago-cities.mjs` → `tago-cities.json`).
+- ⚠ **이 마커만 upstream 뒤에 온다**(다른 도메인은 파싱→마커→키 게이트→upstream). 좌표만으로 사전 판정하면 담양·화순처럼 인접 광역시 버스가 넘어오는 지역에 거짓 미제공이 나간다. **0건일 때만** 발동시키면 그 지역은 분기에 들어오지 않아 반례가 스스로 사라진다.
+- 매칭 키는 **시도+시군**(강원/경남 고성군 동명 실사고, 시도는 citycode 앞 2자리)이고 **모르는 시도는 fail-open**이다. 행정구역 개편이 표를 낡게 만든다 — 광주광역시는 전라남도와 통합돼 카카오·juso가 `전남광주통합특별시`로 주는데 TAGO는 여전히 `광주광역시`다.
+- ⚠ seed 빌드는 **`totalCount:0`을 그대로 믿지 않는다**. upstream이 장애를 HTTP 200 + 0으로 내서 천안·함평·산청이 한 빌드에서 가짜 0으로 잡혔다(재확인 + golden 가드).
+
+---
+
+## 서울 지하철 실시간 (`seoul-subway-arrival`)
+
+`arvlMsg2`가 낭독 정본, 역명 기반 조회(seed `findStationsNear`로 근접역), 부분 실패는 보존한다.
+
+⚠ **`INFO-200`은 "운행 시간 밖"과 "실시간 미제공 역"이 공유하는 코드다.** 미커버로만 읽고 역을 숨기면 심야에 근접역이 전부 사라져 화면이 "주변에 지하철역이 없습니다"로 낭독한다 — 근접역은 정적 seed라 시각과 무관하게 참인데 그 참을 부재로 뒤집는 거짓말이다(위원장 지적 2026-08-02).
+
+**역은 어떤 상태에서도 목록에서 빼지 않고 4-state로 가른다**: `ok` / `unavailable`(조회 실패) / `closed`(그 역 시간표로 운행 밖 확정, `firstTime` 동반) / `unknown`(판정 불가 — 미제공 역이거나 시간표 결측).
+
+- 판정은 `judgeStationService`(순수)가 `fetchStationTimetable`+`judgeServiceStatus`로 하고 **실시간이 빈 역에만** 조인한다(평시 0콜, 시간표는 revalidate 86400).
+- ⚠ **시각 근사(01~05시)로 가르지 말 것** — 같은 04:47에 천호 `closed`·강동 `ok`(첫차 대기 열차)가 공존한 실측이 있다.
+
+---
+
+## 실시간 혼잡도 (`seoul-congestion` + `congestion-area.ts` → `congestion.ts`)
+
+서울 `citydata_ppltn`. spec `2026-08-01-realtime-congestion-design.md`.
+
+- 영역 경계가 미공개라 종전엔 착수 불가로 판정했는데, 전체 `citydata`의 `SUB_STTS`·`BUS_STN_STTS`가 **구성 지하철역·버스정류장 좌표(WGS84)**를 준다. seed는 `scripts/build-congestion-areas.mjs`(116영역·1,969지점, 가드 4종).
+- ⚠ **중심-반경 원 금지.** 영역 크기가 0~1,872m로 제각각(중앙 475m)이라 잠실 원이 주택가를 삼킨다. 판정은 **최근접 구성 지점 ≤300m**, 중첩 시 중심 최근접 1개(잠실역 1번 출구는 3영역 동률 7m → 중심 78m인 "잠실역"). 임계값 근거: 매칭 대상 ≤120m vs 비대상 ≥676m 완전 분리, 서울 격자 8.9%.
+- **봉투 3형**: 정상은 `RESULT` 없는 `SeoulRtd.citydata_ppltn` 배열, 오류는 점 포함 **평면 키** `"RESULT.CODE"` → 공용 파서 스코프 밖.
+- 캐시는 좌표가 아니라 **영역 코드** 단위 5분. `area:null`은 오류가 아니고(서울의 91%) 이때 upstream을 호출하지 않는다.
+- 등급어는 provider가 원문 통과, 번역은 표시 계층(`congestion-level.ts`). API가 한국어만 주므로 **완성 문장은 ko 로케일에서만** 노출한다. 인구수는 라우트에서 제거(해석 불가 수치).
+
+---
+
+## 자동차 경로 (`tmap-car` 기본 + `kakao-navi` 폴백 → `car-route.ts`)
+
+ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `description`이 도로명 포함 완성 문장인 반면 카카오 `guidance`는 도로명 없는 조각이다. en은 `ncp-directions`(무변경).
+
+- guide별 `distanceMeters`/`durationSeconds`는 0이 **미제공 의미론**이다. 소비자(웹·iOS·CLI)는 >0일 때만 수치를 병기한다(0m 중복 낭독 차단).
+- 폴백은 Tmap throw 시에만 카카오모빌리티(관측된 "경로 없음"류 graceful 코드가 없어 현재는 전량 throw).
+- 게이트 `hasCarRouteKey`(=tmap∥kakao, 라우트·채팅 declaration 공용). 캐시 `no-store`(실시간 교통, 両 provider 동일) + IP 레이트리밋 60초 10회(Tmap 일 1,000건 쿼터를 도보 폴백과 공유하므로 walk 동형 비용 방어).
+- NCP `duration`은 **밀리초**다(`CLAUDE.md` 단위 함정 참조).
+
+---
+
+## 실시간 길 안내 (톤·정지 판정·오디오 세션)
+
+판정은 전부 순수 함수이고 웹 ↔ Kit 미러다(공유 fixture가 동조를 강제한다). spec `2026-08-08-background-tone-coverage-design.md`.
+
+### 톤 계층 (`toneLayerStep`)
+Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-layer-scenarios.json`이 톤 열 일치를 강제한다.
+
+**신뢰 불가 → 우선 톤 → 이벤트 소유 → 추세 축** 순으로 **배타** 판정한다. 상위가 톤을 내면 `trendStep`을 호출하지 않으므로 앵커·타이머가 불변이고, 그래서 "억제된 후보의 latch가 커밋되어 다음 fix에서 사라지는" 문제가 성립하지 않는다(중재기·2단계 커밋 계약이 불필요한 이유).
+
+- **간략·상세가 같은 함수를 쓰고 차이는 입력 조립에만 둔다.** 모드별 계층 로직을 새로 만들면 부채가 형태만 바꿔 돌아온다.
+- 소리 9종이고 **`tick`은 정지**다(종전 하트비트 폐기 — 간략에서는 정체, 상세에서는 생존 신호라는 두 뜻이었다).
+- ⚠ 최소 재확인 간격 도입은 **폐기한 하트비트의 재등장**이라 기각됐다. `maxNormalSilenceS` 21초가 계약값이고, 데드밴드 축소도 GPS 지터 내성을 깎아 기각됐다.
+- 복귀 시 앵커 재기준화는 `needsRebase`가 **추세 축에 도달하는 첫 fix**에서 소비한다(복귀 fix에 상위 톤이 나면 그 fix는 추세 축에 닿지 못해 기회를 잃는다).
+- 축 전환(handoff·모드 전환)은 `rebaseBeaconState`로 **앵커와 `lastSpokenDistance`를 함께** 재설정한다. 앵커만 바꾸면 옛 축 값이 남아 전환 직후 거짓 closer 음성이 나간다.
+
+### 정지 판정 (`motionStep`)
+도플러 3-state: `stopped`/`moving`/`speedUnknown`. 도플러가 경로·목적지 양쪽에 독립이라 두 모드가 공유할 수 있는 유일한 축이다(직선거리 미분은 "목적지 접근 속도"라 옆으로 지나쳐 걸으면 정지로 보인다).
+
+- 임계 0.4·0.6·2.0초는 **위원장 판정**(비장애 보행 90% 기준)이라 재계산 금지.
+- `speedUnknown`에서는 tick을 내지 않는다(속도를 모르는데 정지 톤은 거짓이다).
+- ⚠ 웹 `GeolocationCoordinates.speed`는 무효일 때 **`null`**이고 `speedAccuracy`가 없다. `speed < 0` 분기를 그대로 옮기면 `null`이 0이 되어 거짓 정지 tick이 난다.
+- ⚠ 기존 `speedGuardActive` 표본 기계는 다른 목적(속도 빠름 오판 가드)이라 건드리지 않는다.
+
+### fix 부재 워치독
+웹·iOS 각 8초, 주기 2초. 톤을 fix 처리 경로에만 걸면 권한 철회·서비스 중단에서 판정 자체가 실행되지 않아 **마지막 정상 톤 이후 영구 침묵**이 되고, 백그라운드에서는 톤이 유일한 채널이라 그 침묵이 곧 무고장 판정이 된다. 음성 통지(15초·원인 구분)는 별도 축으로 유지한다 — **톤은 추가 채널이지 대체가 아니다.**
+
+### 오디오 세션 (`guideAudioStep`)
+안내 세션 중 카테고리는 `.playback`(Experimental 구성). 판정은 Kit 순수 함수가 하고 **`didPromote`일 때만 원복한다** — 세션은 프로세스 전역 자원이고 소비자가 셋(안내 톤·TTS·받아쓰기)이라 무조건 원복하면 다른 소비자를 깬다.
+
+- suppression 해제·인터럽션 종료·route 변경이 **한 재조정 경로**로 모여 "받아쓰기 중 시작한 세션이 영구히 `.ambient`로 남는" 구멍을 닫는다.
+- 백그라운드에서는 **톤은 남기고 음성만 막는다**(`scenePhase` 게이트. `.inactive`는 화면을 보고 있는 중이라 허용). 상태 텍스트는 계속 갱신하고 복귀 발화는 누적이 아니라 현재 상태 하나다.
+- `UIBackgroundModes: audio`는 `Support/Info-Experimental.plist`에만 둔다(플래그 졸업 시 심사 노트 필요).
