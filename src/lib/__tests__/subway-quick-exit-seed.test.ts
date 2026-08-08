@@ -90,6 +90,16 @@ describe("빠른하차 seed 가드 변이 주입", () => {
     expect(() => build(r)).toThrow(/G4/);
   });
 
+  it("G4 범위 밖 칸·문이면 중단", () => {
+    // 형태만 보면 통과하지만 선형 위치가 충돌한다: pos("1-5")와 pos("2-1")이 둘 다 5다.
+    // 오류가 아니라 조용한 충돌이라 여기서 세우지 않으면 어디서도 드러나지 않는다.
+    for (const bad of ["1-5", "11-1", "0-1", "6-0", "1-5,2-1 사이"]) {
+      const r = rows();
+      r[0].qckgffVhclDoorNo = bad;
+      expect(() => build(r), bad).toThrow(/G4/);
+    }
+  });
+
   it("G5 미지 시설이면 중단", () => {
     const r = rows();
     r[0].plfmCmgFac = "무빙워크";
