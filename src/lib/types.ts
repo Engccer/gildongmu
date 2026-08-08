@@ -306,6 +306,27 @@ export interface TransitLeg {
   serviceWayCode?: number;
   /** 경유 정류장·역(양 끝 포함) — `includeStops=1` 옵트인 시 탑승 leg에만(B2 §7) */
   stops?: TransitLegStop[];
+  /**
+   * 하차역에서 계단·엘리베이터에 가장 가까운 문(서울교통공사 1~8호선, E5).
+   * 판정 불가·미커버·시설 없음은 전부 **필드 부재**다("정보 없음" 문구를 만들지 않는다).
+   */
+  quickExit?: QuickExit;
+}
+
+/**
+ * 빠른하차 문 위치. `"6-4"`는 6번 칸 4번 문이고, 두 문 사이면 `kind: "between"`에
+ * 두 문이 순서대로 담긴다 — 문 번호 자리에 `"3-2,3-3 사이"`를 그대로 넣으면
+ * "엘리베이터 3-2,3-3 사이 문"이 되어 문장이 깨지므로 형태를 나눈다.
+ */
+export interface QuickExitDoor {
+  kind: "door" | "between";
+  doors: string[];
+}
+
+/** 한쪽 시설만 있으면 있는 것만 싣는다 — 없는 시설을 "없음"으로 명시하지 않는다. */
+export interface QuickExit {
+  elevator?: QuickExitDoor;
+  stairs?: QuickExitDoor;
 }
 
 /** 대안 경로의 축. 한 경로가 둘 다일 수 있어 배열이다(spec §3.3) */
