@@ -11,6 +11,11 @@
 
 ## 2026-08-08
 
+### 마지막 몇 미터 — 경로 종점 이후 오프셋 구간 안내
+도보 경로는 목적지가 아니라 가장 가까운 보행로 지점에서 끝난다(실측 오프셋 16~89m). 종전 인계는 "경로 잔여 50m"였고 그 판단은 "경로 종점 = 목적지"를 전제했으므로, 오프셋 89m 목적지에서는 실제 목적지까지 139m 지점에서 경로 추종이 꺼지고 그 뒤로 아무 말도 하지 않았다. 이제 경로를 종점까지 따라간 뒤 남은 오프셋 구간을 직선으로 다루고, 종점에서 목적지의 배치(방향·거리·기준 도로명)를 1회 서술한 다음 15초 주기로 짧게 통지하며 도착까지 간다. 시간 상한은 두지 않는다.
+오프셋의 거리·방향은 경로 수신 시점에 폴리라인에서 결정론적으로 계산되므로 GPS·나침반이 필요 없다. 실시간 상대 방향은 `course` 3-state 게이트를 통과할 때만 말한다.
+정본: [spec](docs/superpowers/specs/2026-08-08-final-approach-guidance-design.md) · [plan](docs/superpowers/plans/2026-08-08-final-approach-guidance.md) · [조사](docs/research/RESEARCH-2026-08-08-last-few-meters.md).
+
 ### 지하철 빠른하차 출입문 병치
 하차역·방향별로 계단·엘리베이터에 가장 가까운 칸·문을 승차 전에 안내한다. 서울교통공사 빠른하차 데이터 2,358행을 정적 seed로 굳혀 런타임 upstream 호출이 없다. 1~8호선 범위이고 분기역·급행·방면 미확정은 침묵한다.
 정본: [spec](docs/superpowers/specs/2026-08-08-subway-quick-exit-design.md) · [plan](docs/superpowers/plans/2026-08-08-subway-quick-exit.md). 백로그 E5 종결.
