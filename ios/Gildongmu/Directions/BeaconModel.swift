@@ -1062,7 +1062,7 @@ final class BeaconModel {
         lastFinalTickAt = now
         let text = GuideText.finalApproachTick(
             distance: distance,
-            direction: liveDirectionWord(fix: fix, dest: dest, motion: motion, age: age),
+            direction: liveDirection(fix: fix, dest: dest, motion: motion, age: age),
             accuracy: fix.accuracy
         )
         statusText = text
@@ -1070,12 +1070,15 @@ final class BeaconModel {
         announce(text)
     }
 
-    /// 실시간 상대 방향 어휘. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을
+    /// 실시간 상대 방향. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을
     /// 통째로 뺀다 — "모름"과 "실패"는 사용자 출력에서 같다(§3.5).
-    private func liveDirectionWord(
+    ///
+    /// ⚠ **어절이 아니라 열거형을 돌려준다.** 소비자마다 필요한 어휘가 맨몸("왼쪽")과
+    /// 이동형("왼쪽으로")으로 갈리므로 어절 선택은 소비자가 진다.
+    private func liveDirection(
         fix: LocationService.BeaconFixPayload, dest: BeaconDest,
         motion: MotionState, age: Double
-    ) -> String? {
+    ) -> RelativeDirection? {
         guard case let .valid(course) = courseStep(
             course: fix.course, courseAccuracy: fix.courseAccuracy,
             speed: fix.speed, motion: motion, ageSeconds: age
@@ -1084,7 +1087,7 @@ final class BeaconModel {
             fromLat: fix.lat, fromLng: fix.lng, toLat: dest.lat, toLng: dest.lng
         )
         let relative = (toDest - course + 540).truncatingRemainder(dividingBy: 360) - 180
-        return GuideText.directionWord(relativeDirection(relative))
+        return relativeDirection(relative)
     }
 
     private func consume(event: GuideEvent, route: GuideRoute) {
