@@ -210,6 +210,22 @@ final class BeaconModel {
     /// (a11y 리뷰 H1). 전달될 때까지 여기 남겨 두고 전경 복귀 때 갚는다.
     private var pendingStepFreeNotice: String?
 
+    // MARK: - 최종 접근 (spec 2026-08-08 §3.0·§3.4)
+
+    /// 최종 접근 활성 여부. **이 동안 거리·방향·도착 발화의 소유자는 이 층 하나뿐이다**
+    /// — 경로 리듀서는 진입 즉시 판정을 멈추고(Kit 0a 가드), 비콘 리듀서는 아예 돌리지
+    /// 않는다. "근처"와 "18미터"가 같은 fix에서 연달아 나가는 경로를 구조적으로 없앤다.
+    private(set) var inFinalApproach = false
+    /// 세션이 쥔 종점 오프셋 기하. 재조회 시 통째로 교체한다(새 경로는 새 종점이다).
+    private var finalApproachGeometry: FinalApproachPayload?
+    /// 진입 배치 서술을 냈는가. 1회뿐이라 주기 통지와 별도로 센다.
+    private var finalApproachIntroSpoken = false
+    /// 발화되지 못한 진입 배치 서술(백그라운드 게이트에 걸린 것).
+    /// ⚠ 1회뿐인 발화라 다음 주기가 대신 말해 주지 않는다(`pendingStepFreeNotice` 선례).
+    private var pendingFinalApproachIntro: String?
+    /// 마지막 주기 통지 시각(단조). 신뢰 불가 fix에서는 갱신하지 않고 정지·유지한다.
+    private var lastFinalTickAt: Double?
+
     var isTracking: Bool { status == .tracking }
 
     // MARK: - 시작·중지
@@ -350,7 +366,8 @@ final class BeaconModel {
         origin: (lat: Double, lng: Double), dest: BeaconDest
     ) async throws -> (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
-        stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?
+        stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?,
+        finalApproach: FinalApproachPayload?
     )? {
         if sessionKind == .car {
             let briefing = try await routeService.car(
@@ -362,7 +379,8 @@ final class BeaconModel {
                 return nil
             }
             // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
-            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil)
+            // 자동차에는 최종 접근 개념이 없다(딥링크 위임이 정본) — 타입이 그 사실을 말한다.
+            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil)
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -377,7 +395,8 @@ final class BeaconModel {
         else { return nil }
         return (
             route, [], briefing.durationSeconds,
-            briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice
+            briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice,
+            briefing.finalApproach
         )
     }
 
@@ -435,7 +454,11 @@ final class BeaconModel {
                 }
                 startEtaTimer()
             }
-            let initial = initialGuideState(route: fetched.route, now: uptimeNow)
+            resetFinalApproach(geometry: fetched.finalApproach)
+            let initial = initialGuideState(
+                route: fetched.route, now: uptimeNow,
+                hasFinalApproachGeometry: fetched.finalApproach != nil
+            )
             guideState = initial.state
             mode = .detail
             offRoute = false
@@ -557,6 +580,7 @@ final class BeaconModel {
         // 앞이라(아래 `handleScenePhaseChange`) 남겨 두면 끝난 경로의 경고가 뒤늦게
         // 발화된다.
         pendingStepFreeNotice = nil
+        resetFinalApproach(geometry: nil)
         if let token = sessionToken {
             sessionToken = nil
             GuideSessionCoordinator.shared.release(token)
@@ -639,13 +663,21 @@ final class BeaconModel {
             // 가드 뒤에 두면 종료 통지가 통째로 유실된다. 같은 순간 정지 톤도 없어
             // (stop 기본값이 playStopTone: false) "조용히 죽은 것"과 "정상인데 데드밴드를
             // 못 넘은 것"이 구분되지 않는다. 종료 통지는 추적 중이 아닐 때야말로 필요하다.
-            if missedAnnouncement || pendingStepFreeNotice != nil {
+            if missedAnnouncement || pendingStepFreeNotice != nil
+                || pendingFinalApproachIntro != nil {
                 missedAnnouncement = false
                 // 두 문장을 연속으로 내보내지 않는다 — 경합하면 앞의 것이 잘린다.
                 // 경고가 앞이다(세션 전체에 걸린 조건).
-                let owed = [pendingStepFreeNotice, statusText.isEmpty ? nil : statusText]
+                // ⚠ 진입 배치 서술은 `statusText`와 같은 문장일 수 있다(억제 직후 복귀).
+                //   중복 낭독을 막으려고 statusText 쪽을 떨어뜨린다.
+                let intro = pendingFinalApproachIntro
+                let tail = statusText.isEmpty || statusText == intro ? nil : statusText
+                let owed = [pendingStepFreeNotice, intro, tail]
                     .compactMap { $0 }.joined(separator: " ")
-                if !owed.isEmpty, announce(owed) { pendingStepFreeNotice = nil }
+                if !owed.isEmpty, announce(owed) {
+                    pendingStepFreeNotice = nil
+                    pendingFinalApproachIntro = nil
+                }
             }
             guard isTracking else { return }
             UIApplication.shared.isIdleTimerDisabled = true
@@ -761,6 +793,12 @@ final class BeaconModel {
             }
             return
         }
+        // 최종 접근은 모드보다 앞이다 — 이 국면의 발화 소유자는 이 층 하나뿐이라
+        // 경로 리듀서도 비콘 리듀서도 이 fix를 보지 않는다(§3.0 소유권 계약).
+        if inFinalApproach {
+            handleFinalApproach(fix: fix, motion: motion, age: age, now: now)
+            return
+        }
         if mode == .detail, let route = guideRoute {
             handleDetail(fix: fix, route: route, motion: motion, age: age, now: now)
             return
@@ -856,14 +894,34 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
+
+        // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로
+        // 넘어가므로 상세 톤 입력을 조립하면 안 된다 — `routeTone`은 톤 상태를 전진시켜서
+        // 한 fix에 두 번 부르면 전이가 두 번 일어난다.
+        //
+        // ⚠ 인계 전제(E4 spec §8.2): 국면·정확도 가드는 리듀서가 이미 보장하지만
+        // **투영 점프는 보지 않는다**. 튄 잔여 거리로 진입을 확정하면 실제 경로가 남았는데
+        // 결정 지점 안내가 사라진다. 이 fix만 버리면 되고, 조건이 참이면 다음 fix에서
+        // 다시 온다. ⚠ `projectionJumped`는 호출 자체가 기준값을 갱신하므로 한 fix에
+        // 한 번만 부른다.
+        let remaining = max(0, route.totalMeters - out.state.d)
+        let jumped = projectionJumped(remaining: remaining, now: now)
+        if case .finalApproachEnter = out.event {
+            guard !jumped else { return }
+            beginFinalApproach()
+            // 진입이 소유권을 넘겼으면 **같은 fix로** 첫 발화를 낸다. 다음 fix를
+            // 기다리면 종점에 선 채 수 초 침묵하고, 그 침묵이 이번에 고치려는 증상이다.
+            if inFinalApproach {
+                handleFinalApproach(fix: fix, motion: motion, age: age, now: now)
+            }
+            return
+        }
         updateRemaining(route: route, state: out.state)
 
         // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
         // 폐기됐다 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다.
         // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
         let phase = out.state.phase
-        let remaining = max(0, route.totalMeters - out.state.d)
-        let jumped = projectionJumped(remaining: remaining, now: now)
         // 추세 축은 정상 추종에서만 유효하다. 이탈 중 잔여 거리는 낡은 투영이라
         // 추세로 읽으면 거짓이고, 투영이 튄 fix도 버린다.
         let trendable = (phase == .following || phase == .bundle) && !jumped
@@ -886,12 +944,138 @@ final class BeaconModel {
             now: now
         )
         guard let event = out.event else { return }
-        // 인계 전제(스펙 §8.2): 국면 가드와 정확도 가드는 리듀서가 이미 보장하지만
-        // (uncertain·offRoute가 handoff 판정보다 앞에서 반환한다) **투영 점프는 보지
-        // 않는다**. 튄 잔여 거리로 인계를 확정하면 실제 경로가 남았는데 결정 지점
-        // 안내가 사라진다. 이 fix만 버리면 되고, 조건이 참이면 다음 fix에서 다시 온다.
-        if case .finalApproachEnter = event, jumped { return }
         consume(event: event, route: route)
+    }
+
+    // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§4)
+
+    /// 세션의 최종 접근 상태를 새 경로 기준으로 되돌린다(시작·재조회 공용).
+    private func resetFinalApproach(geometry: FinalApproachPayload?) {
+        inFinalApproach = false
+        finalApproachGeometry = geometry
+        finalApproachIntroSpoken = false
+        pendingFinalApproachIntro = nil
+        lastFinalTickAt = nil
+    }
+
+    /// 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다.** 첫 발화는
+    /// `handleFinalApproach`가 같은 fix로 내며, 그래야 "도착이 진입 서술을 이긴다"가
+    /// 한 곳에서 성립한다(두 군데서 말하면 목적지 코앞에서 배치 서술과 도착 통지가 겹친다).
+    private func beginFinalApproach() {
+        remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
+        etaTask?.cancel()
+        etaTask = nil
+        rebaseForAxisChange()  // 경로 거리 → 직선거리(축 전환, handoff와 같은 규칙)
+        guard finalApproachGeometry != nil else {
+            // 기하가 없으면(구버전 응답) 말할 배치 정보가 없다. 종전 인계 그대로
+            // 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
+            mode = .brief
+            let text = appLocalized("guide.handoff")
+            statusText = text
+            announce(text)
+            return
+        }
+        inFinalApproach = true
+        finalApproachIntroSpoken = false
+        lastFinalTickAt = nil
+    }
+
+    /// 최종 접근 fix 처리(§3.4). **거리는 항상 현재 fix → 목적지 직선거리**다 —
+    /// 진입 서술의 `offsetMeters`는 그 문장에서만 쓰고 이후 재사용하지 않는다.
+    ///
+    /// ⚠ **시간 상한을 두지 않는다.** 초판의 2분 상한은 오프셋 89m·저속 보행에서 정작
+    /// 마지막 15m 직전에 루프를 껐다. 종료 조건은 거리(도착)와 사용자의 중지뿐이다.
+    ///
+    /// ⚠ 비콘 리듀서를 돌리지 않는다. 그 리듀서가 만드는 것은 발화와 `nearby` 플래그인데
+    /// 여기서는 발화 소유권이 이 층에 있고 도착 판정도 이 층이 직접 한다 — 결과를 버릴
+    /// 리듀서를 돌리는 것은 지연만 늘린다. 추세 톤은 같은 직선거리로 직접 조립한다.
+    private func handleFinalApproach(
+        fix: LocationService.BeaconFixPayload, motion: MotionState, age: Double, now: Double
+    ) {
+        guard let dest else { return }
+        // 신뢰 불가 fix에서는 거리·방향을 말하지 않는다(unreliable 최우선 불변식 유지).
+        // 주기 시각도 갱신하지 않는다 — 정지·유지이지 리셋이 아니다(§4).
+        guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
+            routeTone(ToneLayerInput(unreliable: true), now: now)
+            return
+        }
+        lastFixAt = now
+        lastStaleNoticeAt = nil
+        lastFixCoord = (fix.lat, fix.lng)
+        lastFixCoordAt = now
+
+        let distance = haversineMeters(
+            lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng
+        )
+        let arrived = distance <= finalApproachArriveMeters
+        routeTone(
+            ToneLayerInput(
+                trend: TrendInput(
+                    distance: distance,
+                    deadBand: max(BeaconConstants.baseDeadBand, fix.accuracy),
+                    // 감쇠 하한은 그 fix의 정확도다 — 정확도보다 작은 변화는 지터다.
+                    deadBandFloor: fix.accuracy,
+                    motion: motion,
+                    closerIntervalSeconds: closerIntervalSeconds
+                ),
+                arrived: arrived
+            ),
+            now: now
+        )
+
+        if arrived {
+            let text = appLocalized("guide.arrived")
+            playTone(.nearby)
+            stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
+            statusText = text
+            lastGuidance = text
+            announce(text, highPriority: true)
+            return
+        }
+
+        // 진입 배치 서술은 1회뿐이라 억제되면 보관했다가 전경 복귀 때 갚는다(§4).
+        if !finalApproachIntroSpoken, let geometry = finalApproachGeometry {
+            finalApproachIntroSpoken = true
+            lastFinalTickAt = now
+            let text = GuideText.finalApproachEnter(
+                destination: destinationLabel, geometry: geometry, accuracy: fix.accuracy
+            )
+            statusText = text
+            lastGuidance = text
+            if !announce(text) { pendingFinalApproachIntro = text }
+            return
+        }
+
+        guard let last = lastFinalTickAt, now - last >= finalApproachIntervalSeconds else {
+            if lastFinalTickAt == nil { lastFinalTickAt = now }
+            return
+        }
+        lastFinalTickAt = now
+        let text = GuideText.finalApproachTick(
+            distance: distance,
+            direction: liveDirectionWord(fix: fix, dest: dest, motion: motion, age: age),
+            accuracy: fix.accuracy
+        )
+        statusText = text
+        lastGuidance = text
+        announce(text)
+    }
+
+    /// 실시간 상대 방향 어휘. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을
+    /// 통째로 뺀다 — "모름"과 "실패"는 사용자 출력에서 같다(§3.5).
+    private func liveDirectionWord(
+        fix: LocationService.BeaconFixPayload, dest: BeaconDest,
+        motion: MotionState, age: Double
+    ) -> String? {
+        guard case let .valid(course) = courseStep(
+            course: fix.course, courseAccuracy: fix.courseAccuracy,
+            speed: fix.speed, motion: motion, ageSeconds: age
+        ) else { return nil }
+        let toDest = bearingDegrees(
+            fromLat: fix.lat, fromLng: fix.lng, toLat: dest.lat, toLng: dest.lng
+        )
+        let relative = (toDest - course + 540).truncatingRemainder(dividingBy: 360) - 180
+        return GuideText.directionWord(relativeDirection(relative))
     }
 
     private func consume(event: GuideEvent, route: GuideRoute) {
@@ -920,16 +1104,11 @@ final class BeaconModel {
             statusText = text
             announce(text)
         case .finalApproachEnter:
-            // 간략(비콘) 인계 — 검증된 리듀서를 그대로 쓴다. 자동 인계는 래치이며
-            // 수동 상세 복귀는 전환 버튼으로(재무장은 리듀서 상태가 소유).
-            mode = .brief
-            remainingText = nil
-            etaTask?.cancel() // 간략 전환 후 ETA 재조회 무의미(자원 위생 — 리뷰 반영)
-            etaTask = nil
-            rebaseForAxisChange()
-            let text = appLocalized("guide.handoff")
-            statusText = text
-            announce(text)
+            // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
+            // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는
+            // fix를 받지 않아 그 발화를 낼 수 없다. 반쪽 처리를 여기 두면 진입 직후
+            // 침묵(정확히 이번에 고치려는 증상)이 되므로 비워 둔다.
+            break
         case .offRoute:
             offRoute = true
             // 차량 이탈 문구는 상태 전문(B1 §4.3 — 첫 통지를 놓쳐도 반복만으로 완결).
@@ -988,7 +1167,16 @@ final class BeaconModel {
         if case let .ok(d) = entryProjection(route: route, fix: gfix, tuning: tuning) {
             resolvePendingSince = nil
             // 수동 복귀는 자동 인계 재무장 전(armed=false)으로 시작한다(전환 루프 차단).
-            let state = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: false)
+            // 최종 접근도 해제한다 — 경로 스텝 안내 중간에 "오른쪽 약 20미터"가
+            // 끼어드는 것을 막는다(§4 "수동 brief → detail").
+            inFinalApproach = false
+            finalApproachIntroSpoken = false
+            pendingFinalApproachIntro = nil
+            lastFinalTickAt = nil
+            let state = guideStateAt(
+                route: route, d: d, now: now, autoHandoffArmed: false,
+                hasFinalApproachGeometry: finalApproachGeometry != nil
+            )
             guideState = state
             mode = .detail
             offRoute = false
@@ -1024,8 +1212,10 @@ final class BeaconModel {
     func announceProgress() {
         let text: String
         if mode == .detail, let route = guideRoute, let state = guideState {
-            // 이탈 상태의 직선거리(스펙 §4.2): 마지막 fix→목적지. 경로 잔여는 이탈 중 거짓.
-            let straight = state.phase == .offRoute ? freshStraightLineMeters() : nil
+            // 직선거리가 정본인 두 국면(스펙 §4.2 + 2026-08-08 §3.4): 이탈 중 경로 잔여는
+            // 낡은 투영이라 거짓이고, 최종 접근에서는 이미 종점을 지나 잔여가 0에 붙는다.
+            let straight = state.phase == .offRoute || state.phase == .finalApproach
+                ? freshStraightLineMeters() : nil
             let base = GuideText.progress(
                 route: route, state: state,
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
@@ -1062,6 +1252,12 @@ final class BeaconModel {
         if mode == .detail {
             mode = .brief
             remainingText = nil
+            // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓고
+            // 비콘에 넘긴다(§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
+            inFinalApproach = false
+            finalApproachIntroSpoken = false
+            pendingFinalApproachIntro = nil
+            lastFinalTickAt = nil
             rebaseForAxisChange()  // 경로 거리 → 직선거리(handoff와 같은 규칙)
             resolvePendingSince = nil
             let text = appLocalized("guide.toBriefDone")
@@ -1118,7 +1314,13 @@ final class BeaconModel {
                     etaUpdatedAt = uptimeNow
                 }
             }
-            let initial = initialGuideState(route: fetched.route, now: uptimeNow)
+            // 새 경로는 새 종점·새 오프셋이다 — 진입 래치·주기 타이머·진입 서술 래치를
+            // 전부 초기화한다(spec §4 "사용자 재조회 성공").
+            resetFinalApproach(geometry: fetched.finalApproach)
+            let initial = initialGuideState(
+                route: fetched.route, now: uptimeNow,
+                hasFinalApproachGeometry: fetched.finalApproach != nil
+            )
             guideState = initial.state
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
