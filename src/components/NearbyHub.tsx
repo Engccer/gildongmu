@@ -82,8 +82,14 @@ export function NearbyHub({
   }, []);
 
   // Esc = 뒤로가기. 아코디언 패널 점유 중엔 그 패널 Esc가 우선(경합 차단).
+  // ⚠ "현재 위치 지정" 모달이 열려 있을 때도 비활성 — ManualLocationPicker는
+  // nearby-panel-store의 claim() 체계 밖의 독립 오버레이라 activePanel만으론
+  // 못 잡는다(둘 다 같은 window에 리스너를 걸어 stopPropagation으로 서로를
+  // 못 막으므로, 밑 리스너의 활성 조건을 false로 낮춰 이긴다 — 채팅 오버레이가
+  // 열린 동안 패널 Esc를 engaged:false로 죽이는 것과 동형 규칙).
   useEffect(() => {
     if (activePanel !== null) return;
+    if (manualPickerOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
       e.preventDefault();
@@ -91,7 +97,7 @@ export function NearbyHub({
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePanel, onBack]);
+  }, [activePanel, manualPickerOpen, onBack]);
 
   return (
     <div>
@@ -124,9 +130,11 @@ export function NearbyHub({
         />
       )}
       {/* 이 허브의 단일 polite 채널 — 지금은 수동 위치 자동 해제 통지 전용
-          (허브 자체 결과 통지는 아코디언 패널마다 자기 region을 갖는다). */}
+          (허브 자체 결과 통지는 아코디언 패널마다 자기 region을 갖는다).
+          모달이 화면을 점유하는 동안은 비워 둔다 — 모달 자신의 live region과
+          동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가 뒤집힌다. */}
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {locationNotice}
+        {manualPickerOpen ? "" : locationNotice}
       </p>
 
       {/* 날씨·공기질 — 홈에서 이동. 좌표 준비 시 자동 등장 region(계약 유지). */}

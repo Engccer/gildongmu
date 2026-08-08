@@ -36,8 +36,11 @@ type SearchStatus =
  * 즉시 실측을 시도한다.
  *
  * `role="dialog"` 풀스크린 셸(`ChatOverlay` 동형): 열릴 때 제목으로 포커스 이동,
- * Esc·닫기 버튼 두 경로, Tab 포커스 트랩. i18n 새 키를 추가하지 않는다 — 화면
- * 제목·입력 라벨은 `search.label`(장소 검색), 닫기는 `actions.close`, 좌표 실패는
+ * Esc·닫기 버튼 두 경로, Tab 포커스 트랩. 제목은 `manualLocation.pickTitle`("내
+ * 위치 지정") — 앱 기본 검색(`search.label`, "장소 검색")과 문자 그대로 같으면
+ * 헤딩만으론 이 화면이 검색인지 위치 지정인지 구분할 수 없어 별도 키를 하나
+ * 신설했다(6로케일). 그 외엔 새 키를 추가하지 않는다 — 입력 라벨은
+ * `search.label`(SearchBar 기본값 재사용), 닫기는 `actions.close`, 좌표 실패는
  * `directions.coordError`, 실측 대기는 `directions.locating`을 그대로 쓴다.
  */
 export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
@@ -204,7 +207,7 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
           tabIndex={-1}
           className="text-lg font-semibold"
         >
-          {t("search.label")}
+          {t("manualLocation.pickTitle")}
         </h2>
         <button
           type="button"

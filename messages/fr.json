@@ -878,6 +878,7 @@
     "clear": "Effacer la position définie",
     "useGps": "Revenir à la position actuelle",
     "autoCleared": "Déplacement détecté. La position définie a été effacée.",
-    "guideNeedsRealLocation": "Le guidage en temps réel nécessite votre position réelle."
+    "guideNeedsRealLocation": "Le guidage en temps réel nécessite votre position réelle.",
+    "pickTitle": "Définir votre position"
   }
 }

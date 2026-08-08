@@ -878,6 +878,7 @@
     "clear": "Borrar ubicación establecida",
     "useGps": "Volver a la ubicación actual",
     "autoCleared": "Se detectó movimiento. Se ha borrado la ubicación establecida.",
-    "guideNeedsRealLocation": "La guía en tiempo real necesita tu ubicación real."
+    "guideNeedsRealLocation": "La guía en tiempo real necesita tu ubicación real.",
+    "pickTitle": "Establecer tu ubicación"
   }
 }

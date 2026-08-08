@@ -878,6 +878,7 @@
     "clear": "Clear set location",
     "useGps": "Back to current location",
     "autoCleared": "Movement detected. The set location was cleared.",
-    "guideNeedsRealLocation": "Live guidance needs your actual location."
+    "guideNeedsRealLocation": "Live guidance needs your actual location.",
+    "pickTitle": "Set your location"
   }
 }
