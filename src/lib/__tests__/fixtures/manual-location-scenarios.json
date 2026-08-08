@@ -1,0 +1,75 @@
+{
+  "comment": "수동 위치 이동 판정 경계표. 웹 manual-location.test.ts와 Kit ManualLocationTests가 함께 소비한다(드리프트 가드). origin은 지정 시점 실측 fix, fix는 판정 시점 fix. now는 판정 시각(epoch seconds). separation = haversine(fix, origin) - fix.accuracy - origin.accuracy.",
+  "cases": [
+    {
+      "name": "기준점 없음 — 판정 불가",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": null, "setAt": 1000 },
+      "fix": { "lat": 37.6000, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2000,
+      "expect": "undecidable"
+    },
+    {
+      "name": "fix 없음 — 판정 불가",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": null,
+      "now": 2000,
+      "expect": "undecidable"
+    },
+    {
+      "name": "정확도 음수 — 판정 불가 (iOS 무효 fix)",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.6000, "lng": 127.1432, "accuracy": -1, "at": 2000 },
+      "now": 2000,
+      "expect": "undecidable"
+    },
+    {
+      "name": "정확도 자격 초과(101m) — 판정 불가",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.6000, "lng": 127.1432, "accuracy": 101, "at": 2000 },
+      "now": 2000,
+      "expect": "undecidable"
+    },
+    {
+      "name": "fix 나이 초과(11초) — 판정 불가",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.6000, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2011,
+      "expect": "undecidable"
+    },
+    {
+      "name": "같은 자리 — 유지",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2000,
+      "expect": "keep"
+    },
+    {
+      "name": "거리 121m·양쪽 정확도 10m — separation 101m 이동 확정",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.539488, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2000,
+      "expect": "drop"
+    },
+    {
+      "name": "거리 119m·양쪽 정확도 10m — separation 99m 유지",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.539470, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2000,
+      "expect": "keep"
+    },
+    {
+      "name": "거리 150m지만 fix 정확도 60m·origin 40m — separation 50m 유지(오차 원 겹침)",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 40, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.539749, "lng": 127.1432, "accuracy": 60, "at": 2000 },
+      "now": 2000,
+      "expect": "keep"
+    },
+    {
+      "name": "먼 이동(5km) — 해제",
+      "manual": { "revision": 1, "label": "길동 카페", "lat": 37.5384, "lng": 127.1432, "origin": { "lat": 37.5384, "lng": 127.1432, "accuracy": 10, "at": 1000 }, "setAt": 1000 },
+      "fix": { "lat": 37.5834, "lng": 127.1432, "accuracy": 10, "at": 2000 },
+      "now": 2000,
+      "expect": "drop"
+    }
+  ]
+}
