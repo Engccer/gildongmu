@@ -26,7 +26,11 @@ struct ChatView: View {
         NavigationStack {
             Group {
                 if consentGranted {
+                    // 장소 앵커 불변식과 충돌해 표시줄을 끈다(ChatConversationView 주석 참고) —
+                    // 이 화면은 placeContext로 장소 좌표를 앵커 삼는데, 표시줄이 있으면
+                    // 사용자가 지정한 위치가 그 답에 반영된다고 오해한다.
                     ChatConversationView(model: model, cancelsOnDisappear: true,
+                                         showsLocationBar: false,
                                          focusDraftOnAppear: $justGranted) {
                         SuggestionButtonList(suggestions: suggestions) { model.send($0) }
                     }

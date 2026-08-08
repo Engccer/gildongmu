@@ -11,6 +11,13 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// 탭 전환은 대화 중단이 아니다(스트림은 계속 돌고 답변이 쌓인다). 탭의 세션 리셋
     /// 시 스트림 폐기는 App의 resetChatModel()이 담당. 마이크는 여기서 항상 폐기.
     let cancelsOnDisappear: Bool
+    /// true면 상단에 위치 표시줄을 낸다(채팅 탭 전용, 기본값). 장소 채팅 sheet(ChatView)는
+    /// false — 그 화면은 `placeContext`로 장소 좌표를 앵커 삼는데, 표시줄이 있으면
+    /// 사용자가 지정한 위치가 그 답에 반영된다고 오해한다(장소 앵커 불변식과 충돌,
+    /// 화면을 볼 수 없는 사용자는 그 오해를 스스로 풀 수 없다). `cancelsOnDisappear`
+    /// 재활용 금지 — "스트림 폐기 시점"과 "표시줄 노출"은 서로 다른 관심사라 한 플래그에
+    /// 묶으면 한쪽을 바꾸려다 다른 쪽까지 움직이게 된다.
+    let showsLocationBar: Bool
     /// true면 등장 시 1회 입력 필드로 VO 포커스를 선점 이동한다(동의→채팅 전환 직후 전용).
     /// Binding인 이유: 1회성 신호라 소비 즉시 호출부 상태를 false로 리셋해야 한다 —
     /// 값 타입(Bool)이었다면 호출부의 @State가 true로 영구 고정돼 탭 재방문(onAppear
@@ -39,18 +46,22 @@ struct ChatConversationView<EmptyContent: View>: View {
     init(
         model: ChatModel,
         cancelsOnDisappear: Bool = false,
+        showsLocationBar: Bool = true,
         focusDraftOnAppear: Binding<Bool> = .constant(false),
         @ViewBuilder emptyContent: @escaping () -> EmptyContent
     ) {
         self.model = model
         self.cancelsOnDisappear = cancelsOnDisappear
+        self.showsLocationBar = showsLocationBar
         self._focusDraftOnAppear = focusDraftOnAppear
         self.emptyContent = emptyContent
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            LocationBarView().padding(.horizontal)
+            if showsLocationBar {
+                LocationBarView().padding(.horizontal)
+            }
             ScrollViewReader { proxy in
                 ScrollView {
                     // ⚠ LazyVStack 금지(2026-07-20 실기기 cpu_resource 리포트로 확정):
