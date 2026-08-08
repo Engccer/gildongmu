@@ -9,8 +9,17 @@ import Foundation
 /// 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(낭독 선행 원칙).
 public let announceAheadMeters = 40.0
 public let advanceMarginBaseMeters = 15.0
+/// **기하를 모르는 세션의** 최종 접근 진입 거리(m). 기하를 아는 세션은 경로 종점까지
+/// 따라간다(아래 `arrivalToleranceMinMeters`) — 이 50m는 "경로 종점 = 목적지"를 전제한
+/// 판단이었고, 실측에서 종점→목적지 오프셋 16~89m가 확인돼 무효화됐다
+/// (spec 2026-08-08 §1.2·§3.2).
 public let handoffDistMeters = 50.0
 public let handoffRearmMeters = handoffDistMeters + 20
+/// 경로 종점 도달 판정의 하한(m). 실제 임계는 `max(이 값, fix.accuracy)`다 —
+/// 경로 잔여 5m를 정확도 30m fix로 판정하는 것은 거짓 정밀도이고, 정확도가 나쁘면
+/// 종점 도달을 일찍 인정하는 것이 정직하다(spec 2026-08-08 §3.2).
+/// ⚠ 실보행 판정 전까지 동결(spec §6-1).
+public let arrivalToleranceMinMeters = 10.0
 public let uncertainAccuracyMeters = 50.0
 public let offRouteBaseMeters = 30.0
 public let offRouteHoldSeconds = 20.0
@@ -87,8 +96,10 @@ private func estimateSpeedMps(_ samples: [GuideSpeedSample]) -> Double {
     return max(lastSeg, sorted[sorted.count / 2])
 }
 
+/// `finalApproach`는 **경로 종점 이후 오프셋 구간을 직선으로 추적**하는 국면이다
+/// (spec 2026-08-08 §3.0). 단방향 래치라 리듀서가 스스로 다른 국면으로 돌아가지 않는다.
 public enum GuidePhase: Sendable, Equatable {
-    case following, bundle, uncertain, reacquiring, offRoute
+    case following, bundle, uncertain, reacquiring, offRoute, finalApproach
 }
 
 public struct GuideFix: Sendable, Equatable {
@@ -129,6 +140,14 @@ public struct GuideState: Sendable, Equatable {
     public var speedWarned: Bool
     /// 자동 인계 무장 여부. 수동 상세 복귀 후엔 재무장선(70m) 밖으로 나가야 true.
     public var autoHandoffArmed: Bool
+    /// 이 세션이 종점 오프셋 기하(`WalkRouteBriefing.finalApproach`)를 아는가.
+    ///
+    /// - `true`  → 최종 접근 진입 조건은 **경로 종점 도달**(`max(arrivalToleranceMinMeters, accuracy)`).
+    /// - `false` → 구버전 응답이다. **현행 50m 인계를 그대로 쓴다**(spec §3.2, 검토 #33).
+    ///
+    /// ⚠ **fix 인자가 아니라 상태에 둔다.** 세션(경로 응답)의 성질이라 매 fix마다 다시
+    /// 넘길 값이 아니고, 넘기게 하면 호출 지점 하나만 어긋나도 컴파일러가 못 잡는다.
+    public var hasFinalApproachGeometry: Bool
     /// 원거리 예고를 마친 마지막 스텝 index(임박 발화 시 함께 전진). walk에선 불변.
     public var farNoticedUpTo: Int
     /// 이탈 누적 중 관측 최대 수직거리 — offRouteTrend 프로파일의 복귀 유예 기준.
@@ -147,7 +166,7 @@ public enum GuideEvent: Sendable, Equatable {
     case farNotice(indices: [Int], remainingMeters: Int)
     case periodic(stepIndex: Int, remainingMeters: Int, accuracy: Double)
     case bundleReread([Int])
-    case handoff
+    case finalApproachEnter
     case offRoute
     case backOnRoute
     case uncertainEnter
@@ -185,7 +204,8 @@ private func stepAt(route: GuideRoute, d: Double) -> GuideStepSpan {
 
 /// 임의 진행거리에서의 초기 상태(전환·재획득·재조회 리셋 공용).
 public func guideStateAt(
-    route: GuideRoute, d: Double, now: Double, autoHandoffArmed: Bool = true
+    route: GuideRoute, d: Double, now: Double, autoHandoffArmed: Bool = true,
+    hasFinalApproachGeometry: Bool = false
 ) -> GuideState {
     let step = stepAt(route: route, d: d)
     let unit = unitAt(route: route, index: step.index)
@@ -204,6 +224,8 @@ public func guideStateAt(
         speedGuardActive: false,
         speedWarned: false,
         autoHandoffArmed: autoHandoffArmed,
+        // 기본은 false(옛 50m 인계) — 기하를 안다고 주장하려면 명시해야 한다.
+        hasFinalApproachGeometry: hasFinalApproachGeometry,
         // 재진입 유닛은 원거리 예고 소비 처리 — 경계 안 시작은 크로싱 불성립(§4.3).
         farNoticedUpTo: unit[unit.count - 1],
         offRoutePeakPerp: nil,
@@ -216,9 +238,39 @@ public func guideStateAt(
 
 /// 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫.
 public func initialGuideState(
-    route: GuideRoute, now: Double
+    route: GuideRoute, now: Double, hasFinalApproachGeometry: Bool = false
 ) -> (state: GuideState, firstIndices: [Int]) {
-    (guideStateAt(route: route, d: 0, now: now), unitAt(route: route, index: 0))
+    (
+        guideStateAt(
+            route: route, d: 0, now: now,
+            hasFinalApproachGeometry: hasFinalApproachGeometry
+        ),
+        unitAt(route: route, index: 0)
+    )
+}
+
+/// 같은 세션 안에서 진행거리만 바꿔 상태를 다시 만든다(재획득·복귀 공용).
+///
+/// ⚠ **세션 성질의 승계 목록은 여기 한 곳에만 둔다.** 호출 지점마다 나열하면 새 필드를
+/// 더할 때 하나를 빠뜨리고, 그 결과는 조용하다 — 웹에서 실제로 `hasFinalApproachGeometry`가
+/// 재획득 경로에서만 떨어져 진입선이 옛 50m로 되돌아간 적이 있다(계측으로 발견).
+func restateAt(
+    route: GuideRoute, d: Double, now: Double, prev: GuideState
+) -> GuideState {
+    guideStateAt(
+        route: route, d: d, now: now,
+        autoHandoffArmed: prev.autoHandoffArmed,
+        hasFinalApproachGeometry: prev.hasFinalApproachGeometry
+    )
+}
+
+/// 최종 접근 진입선(경로 잔여 m). 기하를 알면 경로 종점까지 가고, 모르면 옛 50m다
+/// (spec 2026-08-08 §3.2). 웹 `finalApproachEntryM` 미러.
+public func finalApproachEntryMeters(
+    state: GuideState, accuracy: Double, tuning: GuideTuning
+) -> Double {
+    guard state.hasFinalApproachGeometry else { return tuning.handoffDistM }
+    return max(arrivalToleranceMinMeters, accuracy)
 }
 
 public enum GuideEntryProjection: Sendable, Equatable {
@@ -252,6 +304,18 @@ public func guideStep(
     // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
     if let last = state.lastFixAt, now < last {
         return GuideOutput(state: state, event: nil, tone: nil)
+    }
+
+    // 0a) 최종 접근 중에는 리듀서가 아무 판정도 하지 않는다(spec §4 전이표).
+    //     발화 소유권이 최종 접근 층으로 넘어갔고, 이 국면은 **경로를 이미 벗어난**
+    //     구간을 다루므로 낡은 폴리라인으로 이탈·재획득을 주장하면 거짓이다.
+    //     ⚠ **이 가드는 반드시 uncertain 게이트보다 앞에 온다.** 뒤에 두면 정확도가
+    //     나빠질 때 uncertain을 경유했다가 resumePhase(.following)로 복귀하면서
+    //     단방향 래치가 조용히 풀린다.
+    if state.phase == .finalApproach {
+        var s = state
+        s.lastFixAt = now
+        return GuideOutput(state: s, event: nil, tone: nil)
     }
 
     // 1) uncertain 게이트(정확도 무효 포함): 자동 낭독·타이머 전부 정지.
@@ -303,7 +367,7 @@ public func guideStep(
             s.lastFixAt = now
             return GuideOutput(state: s, event: nil, tone: nil)
         }
-        var s = guideStateAt(route: route, d: d, now: now, autoHandoffArmed: state.autoHandoffArmed)
+        var s = restateAt(route: route, d: d, now: now, prev: state)
         s.speedWarned = state.speedWarned
         s.lastFixAt = now
         // 이탈 확정 상태에서 공백으로 넘어온 재확보는 곧 이탈 종료다 — backOnRoute를
@@ -397,9 +461,7 @@ public func guideStep(
         // 이탈 중 복귀 감지는 구속 창이 아니라 전역 후보로 한다. 이탈 동안 창이 뒤에
         // 머물러, 사용자가 경로 앞쪽으로 복귀해도 창 안 투영으로는 영영 못 잡는다.
         if case let .ok(entryD) = entryProjection(route: route, fix: fix, tuning: tuning) {
-            var back = guideStateAt(
-                route: route, d: entryD, now: now, autoHandoffArmed: state.autoHandoffArmed
-            )
+            var back = restateAt(route: route, d: entryD, now: now, prev: state)
             back.speedSamples = samples
             back.speedGuardActive = speedGuardActive
             back.speedWarned = state.speedWarned
@@ -446,11 +508,20 @@ public func guideStep(
     next.phase = cur.isLong ? .following : .bundle
     next.resumePhase = cur.isLong ? .following : .bundle
 
-    // 6a) 인계(최우선): 전 스텝 낭독 완료 AND 잔여 ≤ 인계선 AND 재무장(스펙 §5.3).
+    // 6a) 최종 접근 진입(최우선): 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
+    //     (스펙 2026-08-03 §5.3 + 2026-08-08 §3.2) — 웹 route-guide.ts 미러.
+    //
+    //     기하를 아는 세션의 진입선은 **경로 종점**이다. 종전 50m는 "경로 종점 = 목적지"를
+    //     전제한 판단이었고, 실측에서 오프셋 16~89m가 확인돼 무효화됐다.
+    //
+    //     ⚠ 단방향 래치다. 진입하면 0a) 가드가 이후 모든 판정을 멈춘다.
     if next.autoHandoffArmed,
        next.announcedUpTo >= route.steps.count - 1,
-       remainingTotal <= tuning.handoffDistM {
-        return GuideOutput(state: next, event: .handoff, tone: nil)
+       remainingTotal <= finalApproachEntryMeters(
+           state: next, accuracy: fix.accuracy, tuning: tuning
+       ) {
+        next.phase = .finalApproach
+        return GuideOutput(state: next, event: .finalApproachEnter, tone: nil)
     }
 
     // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문.

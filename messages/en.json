@@ -651,6 +651,7 @@
     "progressBundle": "{total} remaining. Next {count} instructions",
     "progressUncertain": "Location confidence is low. Last instruction, {last}",
     "progressOffRoute": "Off route. {distance} straight-line to destination",
+    "progressFinalApproach": "{distance} straight-line to the destination",
     "approx": "about {distance}",
     "rough": "around {distance}",
     "noGuidanceYet": "No instruction yet",

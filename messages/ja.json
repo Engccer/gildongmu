@@ -651,6 +651,7 @@
     "progressBundle": "残り{total}。次の案内{count}件",
     "progressUncertain": "位置の確度が低いです。最後の案内、{last}",
     "progressOffRoute": "経路から外れています。目的地まで直線距離{distance}",
+    "progressFinalApproach": "目的地まで直線距離 {distance}",
     "approx": "約{distance}",
     "rough": "{distance}ほど",
     "noGuidanceYet": "まだ案内はありません",
