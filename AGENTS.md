@@ -8,7 +8,25 @@
 
 > Next.js 16 주의: 학습 데이터와 컨벤션이 다를 수 있다. 코드 작성 전 `node_modules/next/dist/docs/`의 관련 가이드를 먼저 읽을 것 (요청 API 전부 비동기: `await params`, `await cookies()`; `middleware.ts` 대신 `proxy.ts`).
 >
-> **진행상황·실호출 검증 로그는 `PROGRESS.md`, 열려 있는 백로그는 `docs/BACKLOG.md`**(폐기 항목의 근거 포함 — 같은 조사 반복 금지), 설계 정본은 `docs/superpowers/specs`·`plans`. 이 파일은 **항구 규칙·패턴·함정만** 담는다(매 세션 컨텍스트에 전량 로드되므로 비대화 금지).
+> 이 파일은 **항구 규칙·패턴·함정만** 담는다(매 세션 컨텍스트에 전량 로드되므로 비대화 금지). 나머지는 아래 문서 지도를 따른다.
+
+## 문서 체계 (어디에 무엇을 쓰는가)
+
+| 파일 | 담는 것 | 담지 않는 것 |
+|---|---|---|
+| `CLAUDE.md` | 항구 규칙·패턴·함정. **다음에 이 코드를 만질 사람이 모르면 틀리는 것** | 날짜 있는 서사, 진행 상황, 완료 보고 |
+| `PROGRESS.md` | **지금** 무엇이 동작하고 어디까지 도달했는가. 배포 현황·운영 기능·env | 완료된 일의 경위, 검증 상세 |
+| `CHANGELOG.md` | 날짜별로 **무엇이 바뀌었나**. 항목당 2~4줄 + spec 링크 | 설계 근거, 함정 재서술(CLAUDE.md·spec이 정본) |
+| `docs/BACKLOG.md` | **아직 하지 않은 것**. 열린 판정·편승 대기·신규 후보·폐기 근거 | 종결 항목(→ CHANGELOG) |
+| `docs/superpowers/specs`·`plans` | 설계 정본 + **그 마일스톤의 검증 상세**(실호출 게이트 결과·변이 주입·리뷰 판정) | 다른 마일스톤 이야기 |
+| `docs/appstore/release-notes.md` | App Store 버전별 What's New | 제출 절차(→ `1.0-submission-draft.md`) |
+| `packages/*/CHANGELOG.md` | npm 사용자가 보는 릴리스 노트 | 내부 구현 서사 |
+
+**마일스톤을 닫는 마지막 단계는 이 분배다.** 서사는 `CHANGELOG.md`로, 남은 판정은 `docs/BACKLOG.md`로, 새로 배운 함정은 이 파일로, 상태 한 줄만 `PROGRESS.md`로 보낸다.
+
+⚠ **재팽창은 "완료된 일이 현재 상태로 위장"해서 일어난다.** `PROGRESS.md`가 273KB까지 불었던 기제가 정확히 그것이다 — 끝난 마일스톤을 "운영 중인 기능"이라는 제목 아래 두면 PROGRESS의 정의를 통과해 버리고, 그렇게 통과하면 막을 논거가 없어 매번 십수 KB씩 쌓인다. 그 사이 정작 현재 상태인 env 목록은 낡은 채 방치됐다(2026-08-08 재편에서 실측으로 발견).
+
+**판별 질문**: *"이 문장은 지금도 참이라서 여기 있는가, 그때 그랬어서 여기 있는가?"* 후자면 `CHANGELOG.md`다. 완료 보고를 쓰고 싶어지면 그것이 신호다.
 
 ## 프로젝트 정체성
 
@@ -51,7 +69,7 @@
 - **국내 지역별 미제공은 커버리지와 다른 층이다**(2026-08-02): 한국 **안**이지만 그 도메인 데이터가 그 지역에 없으면 200 `{"unavailableHere":"seoulOnly"}`(마커 자리·순서는 위와 동일, upstream 미호출). 소비자: 웹 `unavailableHereReason`→`useNearbyFetch`의 `unavailableHere` 상태→`tCommon("unavailableHere")`, iOS `APIError.unavailableHere`→`NearbyLoadPhase.unavailableHere`, CLI/MCP `isUnavailableHere`, 채팅 `SEOUL_ONLY`. **판정선은 임의로 고르지 말고 그 도메인의 조회 반경을 그대로 쓴다** — `metersOutsideSeoul`(coverage.ts)에 따릉이는 1km(`MAX_DISTANCE_METERS`), 문화행사는 3km(`RADIUS_METERS`)를 넘긴다. 반경 밖엔 대상이 존재할 수 없으므로 판정이 정의상 틀리지 않고, 상수를 복제하지 않아 drift도 없다. ⚠ **행정경계로 자르지 말 것**: 반경이 서울 경계를 넘어 하남 미사·과천에서 실제로 서울 행사가 잡힌다(실측 각 1건). ⚠ **연속량인 도메인에 이 판정을 쓰지 말 것**: 최근접 지하철역 거리는 전국에 간격 없이 분포해(울산 3.5·세종 10.0·창원 17.3·원주 26.6km, 6~26km에 국토 격자 15.7%) 어떤 임계값도 자의적이다 — 지하철은 판정 대신 0건일 때 **최근접 역을 그대로 실어**(`nearest`) 거리로 사용자가 판단하게 한다(1.5km면 걸어가고 90km면 도시철도가 없는 지역이다).
 - **역 seed는 동명이역 좌표 혼입을 의심한다**(2026-08-02 실사고): 표준데이터 XLSX가 경의중앙선 양원역(서울 중랑구) 레코드에 **영동선 양원역(경북 봉화)의 좌표**를 담고 있었다. 주소 컬럼은 서울인데 좌표만 198km 밖이라, 중랑구에서는 그 역이 영영 검색되지 않고 봉화 산간에서는 있지도 않은 수도권 전철역이 1km 안에 잡혔다. 증상이 "그 역이 안 나온다"뿐이라 지역별 처리 작업 중 최근접 역을 노출하기 전까지 드러나지 않았다. `scripts/build-subway-stations.py`가 `COORD_FIXES`로 보정하고 `line_outliers` 가드가 새 혼입에 **빌드를 중단**한다. 판정 축은 **노선 내 연속성**(같은 노선 최근접 역까지 30km 초과) — 주소 컬럼으로 보면 형식 차이로 커버리지가 뚫린다(대구 94역은 시도 접두가 없어 매칭 0%, 경기 268건은 광역시가 아니라 대상 밖). 임계값 근거: 정상 최대 11.1km(대경선 경산역) vs 양원역 오류 141.4km(변이 주입 실측), 주소 형식과 무관하게 1,098건 전부 검사.
 - **좌표는 WGS84 십진 통일.** 단 외부 API별 변환 함정: 에어코리아 측정소=**TM중부원점 EPSG:2097**(proj4, ⚠ 카카오/네이버의 EPSG:5181 아님 — false E/N 같아 혼동, Δ300m+) / 기상청=**격자 nx,ny LCC**(`dfs_xy_conv` 직접 이식) / 네이버 `mapx/mapy`(×10⁷ 정수)는 provider 내부만.
-- **data.go.kr envelope는 공용 파서를 쓴다**(`src/lib/providers/datagokr-envelope.ts`, 2026-08-01 공용화): `readItems`·`readResultCode`·`readResultMsg`·`readTotalCount`+`fetchDataGoKrJson`. **자체 추출 함수 신설 금지** — 종전 9벌이 같은 모양을 다르게 읽어 원시값 `item`을 감싼 유령 항목(전 필드 `undefined` = SR에 "이름 없는 항목")과 `items` 직접 배열의 조용한 전멸을 만들었다. 경계는 **모양은 공용, 정책은 provider**: 허용 resultCode(`"00"`/`"0"`/`"0000"`/`"03"`)·throw vs null·totalCount 가드는 서비스 계약이라 각 provider에 남기고 공용 fetch는 resultCode를 보지 않는다(합치면 `okCodes` 분기 주머니가 된다). `fetchDataGoKrJson`은 `res.json()`을 쓰지 않는 이유가 있다 — 키 만료·미신청이면 `_type=json`이어도 **HTTP 200 + XML 본문**이 와서 `Unexpected token '<'`라는 원인 없는 SyntaxError가 된다(`OpenAPI_ServiceResponse` 게이트웨이 에러도 함께 감지). ⚠ **`items.item` 단건 모양은 기관코드마다 다르다**(실측 2026-08-01 `numOfRows=1`): B551011(TourAPI)·B551457(코레일)은 1건에도 **배열 유지**, B552657(NMC 응급의료)·1613000(TAGO)은 **단일 객체**. 새 API는 호출해 봐야 알고, 틀리면 런타임 TypeError나 조용한 누락이라 두 모양을 다 받는 공용 파서가 그 질문 자체를 없앤다. ⚠ **JSON 파라미터 이름도 기관마다 다르다**: 빠른하차(B553766)는 `_type=json`을 **무시하고 XML을 준다** — `dataType=json`이어야 한다(`type`·`resultType`도 XML). 이때 `resultCode 00`에 실데이터가 실려 오므로 키 문제로 오진하기 쉽다. 새 기관코드는 첫 호출에서 파라미터 이름부터 확인할 것(실측 2026-08-08).
+- **data.go.kr envelope는 공용 파서를 쓴다**(`src/lib/providers/datagokr-envelope.ts`, 2026-08-01 공용화): `readItems`·`readResultCode`·`readResultMsg`·`readTotalCount`+`fetchDataGoKrJson`. **자체 추출 함수 신설 금지** — 종전 9벌이 같은 모양을 다르게 읽어 원시값 `item`을 감싼 유령 항목(전 필드 `undefined` = SR에 "이름 없는 항목")과 `items` 직접 배열의 조용한 전멸을 만들었다. 경계는 **모양은 공용, 정책은 provider**: 허용 resultCode(`"00"`/`"0"`/`"0000"`/`"03"`)·throw vs null·totalCount 가드는 서비스 계약이라 각 provider에 남기고 공용 fetch는 resultCode를 보지 않는다(합치면 `okCodes` 분기 주머니가 된다). `fetchDataGoKrJson`은 `res.json()`을 쓰지 않는 이유가 있다 — 키 만료·미신청이면 `_type=json`이어도 **HTTP 200 + XML 본문**이 와서 `Unexpected token '<'`라는 원인 없는 SyntaxError가 된다(`OpenAPI_ServiceResponse` 게이트웨이 에러도 함께 감지). ⚠ **`items.item` 단건 모양은 기관코드마다 다르다**(실측 2026-08-01 `numOfRows=1`): B551011(TourAPI)·B551457(코레일)은 1건에도 **배열 유지**, B552657(NMC 응급의료)·1613000(TAGO)은 **단일 객체**. 새 API는 호출해 봐야 알고, 틀리면 런타임 TypeError나 조용한 누락이라 두 모양을 다 받는 공용 파서가 그 질문 자체를 없앤다. ⚠ **JSON 파라미터 이름도 기관마다 다르다**: 빠른하차(B553766)는 `_type=json`을 **무시하고 XML을 준다** — `dataType=json`이어야 한다(`type`·`resultType`도 XML). 이때 `resultCode 00`에 실데이터가 실려 오므로 키 문제로 오진하기 쉽다. 새 기관코드는 첫 호출에서 파라미터 이름부터 확인할 것(실측 2026-08-08). ⚠ **`apis.data.go.kr`은 반드시 https로 부른다**: 평문 http는 **TCP 연결까지 되고 응답이 오지 않는다**(read ETIMEDOUT, 같은 요청이 https로는 0.07초). 프로덕션 대중교통 길찾기가 71초 걸려 앱 타임아웃으로 실패한 실사고가 있었고(2026-08-04), 원인은 한 provider만 https로 고치고 같은 호스트를 쓰는 셋을 빠뜨린 것이었다. hang이라 `revalidate` 캐시가 영영 안 채워져 두 번째 호출도 71초로 일관된다는 점이 진단 단서였다. 가드는 `datagokr-https-usage.test.ts`. ⚠ TOPIS(`ws.bus.go.kr`)는 http에서 정상이고 https 지원 근거가 없어 건드리지 않는다.
 - **서울 열린데이터(`openapi.seoul.go.kr`) 본문은 `readSeoulOpenJson`으로 읽는다**(`src/lib/providers/seoul-open-json.ts`, 2026-08-01 공용화. 소비자 4종: 따릉이·문화행사·혼잡도·엘리베이터): 인증키가 무효하면 `/json/` 경로여도 **HTTP 200 + XML 본문**이 와서 `res.json()`이 `Unexpected token '<'`로 죽는다. 키를 넷이 공유하므로 **키가 죽으면 동시에 같은 방식으로 오진**되고, 원인이 키라는 사실이 SyntaxError에 가려진다(`fetchDataGoKrJson` 동형 함정). 경계는 datagokr과 같다: **모양은 공용, 봉투 정책(정상 코드 판정)은 provider**. 가드는 `src/lib/providers/__tests__/seoul-open-json-usage.test.ts`. ⚠ 실시간 지하철은 `swopenapi.seoul.go.kr`로 **호스트도 키도 다르므로 이 계약 밖**이다.
 - **envelope 비표준 주의(공용 파서 스코프 밖 — `response` 래퍼가 없다)**: 서울버스(TOPIS)는 `msgHeader.headerCd`(0정상·4빈결과·그외 throw)+`msgBody.itemList`(ServiceResult 래퍼 없음) / 서울지하철 실시간은 정상/에러에서 code 위치가 다름(`errorMessage?.code || code`) / 서울 열린데이터는 `<서비스명>.row[]`(서비스명이 키). **봉투가 다르면 파서도 다르다** — 이 셋을 공용 모듈에 넣지 말 것.
 - **단위 함정**: NCP Directions `duration`=**밀리초**(카카오·`durationSeconds`=초, 미변환 시 28분→468시간). ODsay `totalTime`=분·`payment`=원·`totalWalk`=미터.
@@ -170,7 +188,8 @@
 ### CLI/MCP 릴리스 (`packages/cli`=npm `gildongmu`, `packages/mcp`=npm `gildongmu-mcp`)
 
 - 발행은 `cli-v*` 태그 push → `.github/workflows/cli-publish.yml`이 두 패키지를 npm Trusted Publishing(OIDC)으로 자동 발행. 토큰·환경변수 불필요.
-- 릴리스 절차: **버전 4곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 이를 강제한다.
+- 릴리스 절차: **버전 4곳 + CHANGELOG 2곳 동조 갱신**(두 `packages/*/package.json` + 두 `src/index.ts` 선언 — CLI는 citty `meta.version`, MCP는 `McpServer` version — + 두 `packages/*/CHANGELOG.md`에 그 버전 항목) → 커밋 → `git tag cli-v<버전> && git push origin main --tags`. ⚠ index.ts 버전은 하드코딩이라 package.json만 올리면 **발행본이 옛 버전을 보고한다**(0.6.0 tarball이 `--version`·MCP `serverInfo.version` 모두 0.5.0을 출력한 실사고 2026-07-31). `version-drift.test.ts`가 두 패키지에서 셋 다 강제한다(버전 일치·CHANGELOG 항목 존재·`files` 포함).
+- ⚠ **CHANGELOG는 `files`에 적어야 tarball에 들어간다.** npm이 무조건 포함하는 것은 `package.json`·README·LICENSE뿐이고 CHANGELOG는 그 목록에 없다(2026-08-08 `npm pack --dry-run` 실측). npm 페이지에서 사용자가 보는 유일한 변경 이력이라 빠지면 곧 정보 부재다.
 - ⚠ `--provenance` 금지(private repo, 404로 위장된 422, dodo Round 119 실측). 카탈로그(`endpoint-catalog-shared.ts`) 수정 시 cli·mcp 両미러 동일 유지(drift 테스트가 byte 해시로 강제).
 - **카탈로그에 항목을 더하면 `FORMATTERS`(cli `lib/formatters.ts`)에도 등록한다.** 빠뜨리면 `runEndpoint`가 조용히 `JSON.stringify` 폴백으로 떨어져 **text 모드에서만** 통짜 JSON이 나온다 — 파이프로 돌린 실호출 검증은 비-TTY라 JSON 모드가 정상이므로 이것을 못 잡는다(2026-08-01 실사고). `formatter-coverage.test.ts`가 강제하고, 폴백이 맞는 항목은 그 파일의 예외 목록에 근거와 함께 적는다.
 
@@ -193,4 +212,5 @@ node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 
 - **외부 API 통합은 실호출(실데이터)을 머지 게이트로 박는다** — fixture green ≠ 실계약 검증(데이터 커버리지 현실은 정적 리뷰가 못 잡음).
 - 커밋 이메일 `engccer@gmail.com`. 주석·커밋·문서 한국어, 변수/함수명 영어.
 - a11y 변경 후 `a11y-auditor` 서브에이전트 점검. 새 서비스 추가 시 `docs/SPEC.md` "실험 백로그" 갱신.
+- **마일스톤을 닫을 때 문서를 분배한다**(위 §문서 체계): 서사 → `CHANGELOG.md`, 남은 판정 → `docs/BACKLOG.md`, 새 함정 → `CLAUDE.md`, 상태 한 줄 → `PROGRESS.md`. iOS 릴리스는 `docs/appstore/release-notes.md`에 What's New를 함께 남긴다(ASC에 입력한 문구 그대로가 정본).
 - gildongmu는 리뷰 게이트 통과 후 묻지 말고 commit+push(자동배포 포함, [[gildongmu-auto-commit-push]]). `git add -A` 금지, 의도 파일만([[commit-stage-explicit-files]]).
