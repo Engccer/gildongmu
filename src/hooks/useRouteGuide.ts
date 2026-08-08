@@ -55,7 +55,7 @@ import {
   type FinalApproachGeometry,
 } from "@/lib/final-approach";
 import { UNCERTAIN_ACCURACY_M } from "@/lib/route-guide";
-import { awaitGeolocation } from "@/lib/geolocation";
+import { awaitRealFix } from "@/lib/effective-location";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
@@ -641,13 +641,15 @@ export function useRouteGuide(
     /** 경로 종점 → 목적지 오프셋 기하(§3.1). 구버전 서버·기하 실패면 null. */
     finalApproach: FinalApproachGeometry | null;
   } | null> => {
-    const geo = await awaitGeolocation({ force });
-    if (geo.status !== "ready") return null;
+    // fail-closed: 실좌표가 없으면 안내를 시작하지 않는다. 수동 위치로 만든
+    // 기존 경로 기하를 재사용하면 첫 실제 fix에서 즉시 이탈 판정이 난다.
+    const fix = await awaitRealFix({ force });
+    if (!fix) return null;
     const target = destRef.current;
     try {
       if (kindFixed === "car") {
         const res = await fetch(
-          `/api/route/car?origin=${geo.coords.lat},${geo.coords.lng}` +
+          `/api/route/car?origin=${fix.lat},${fix.lng}` +
             `&dest=${target.lat},${target.lng}&includeGeometry=1`,
         );
         if (!res.ok) return null;
@@ -673,7 +675,7 @@ export function useRouteGuide(
       }
       const res = await fetch(
         walkRouteUrl({
-          origin: { lat: geo.coords.lat, lng: geo.coords.lng },
+          origin: { lat: fix.lat, lng: fix.lng },
           dest: { lat: target.lat, lng: target.lng },
           accessible: accessibleRef.current,
           includeGeometry: true,
@@ -717,12 +719,13 @@ export function useRouteGuide(
     etaCallCountRef.current += 1;
     try {
       // ETA는 "현 위치 → 목적지" 재조회값이라 좌표가 낡으면 카운트다운이 멎는다
-      // (10분 주기 6회가 전부 같은 출발점을 조회하게 된다).
-      const geo = await awaitGeolocation({ force: true });
-      if (geo.status !== "ready") return;
+      // (10분 주기 6회가 전부 같은 출발점을 조회하게 된다). fail-closed: 실좌표를
+      // 못 얻으면 이번 주기는 건너뛰고 직전 값을 유지한다(수동 위치로 재조회하지 않음).
+      const fix = await awaitRealFix({ force: true });
+      if (!fix) return;
       const target = destRef.current;
       const res = await fetch(
-        `/api/route/car?origin=${geo.coords.lat},${geo.coords.lng}` +
+        `/api/route/car?origin=${fix.lat},${fix.lng}` +
           `&dest=${target.lat},${target.lng}`,
       );
       if (!res.ok) return;
