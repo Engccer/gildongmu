@@ -66,6 +66,15 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         /// m/s. 음수는 무효. ⚠ **음수 여부만으로 신뢰를 판정하면 안 된다** —
         /// `speed = 0.2`인데 이 값이 매우 크면 정지 근거가 못 된다.
         let speedAccuracy: Double
+        /// 도(진북 기준). **음수는 무효 신호**(CLLocation 계약).
+        /// 최종 접근의 실시간 상대 방향이 소비한다.
+        let course: Double
+        /// 도. 음수는 무효. ⚠ **음수 여부만으로 판정하면 안 된다** — 120°도 양수라
+        /// 통과하고, 그러면 반대 방향을 말한다. 품질 게이트는 Kit `courseStep`이 소유한다.
+        ///
+        /// ⚠ `course`와 **함께** 싣는다. 하나만 넣으면 방향이 영영 "모름"이 되거나
+        /// 소비자가 임의 기본값을 채워 웹과 iOS가 다른 방향을 말한다(spec §3.5).
+        let courseAccuracy: Double
     }
 
     private var beaconFixSink: ((BeaconFixPayload) -> Void)?
@@ -418,6 +427,10 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // 경로·목적지 양쪽에 독립이라 간략·상세 두 모드가 공유할 수 있다.
         let speed = location.speed
         let speedAccuracy = location.speedAccuracy
+        // 진행 방위도 CLLocation이 이미 들고 있어 새 호출이 없다(속도와 같은 자리).
+        // 원값만 싣고 신뢰 판정은 Kit `courseStep`이 한다 — 두 필드는 짝이라 함께 읽는다.
+        let course = location.course
+        let courseAccuracy = location.courseAccuracy
         // ⚠ 정밀도 허가를 **값으로 직접 읽는다.** `storeCeiling`만으로 reduced 좌표를
         // 막는 것은 "reduced fix가 km급 accuracy로 보고된다"는 가정에 기대는 것이고,
         // 그 가정이 틀리면 흐릿한 좌표가 공유 스토어에 들어가 앱 전역이 오염된다.
@@ -455,7 +468,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                 self.beaconFixSink?(
                     BeaconFixPayload(
                         lat: lat, lng: lng, accuracy: accuracy, timestamp: timestamp,
-                        speed: speed, speedAccuracy: speedAccuracy
+                        speed: speed, speedAccuracy: speedAccuracy,
+                        course: course, courseAccuracy: courseAccuracy
                     )
                 )
             }
