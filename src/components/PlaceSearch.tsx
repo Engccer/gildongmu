@@ -30,6 +30,7 @@ import {
 } from "@/lib/recent-searches";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
+import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
 import {
   orderResultSections,
   combinedLiveMessage,
@@ -44,6 +45,8 @@ import { PlaceDetail } from "./PlaceDetail";
 import { DirectionsView } from "./DirectionsView";
 import { NearbyHub } from "./NearbyHub";
 import { ChatOverlay } from "./chat/ChatOverlay";
+import { LocationBar } from "./LocationBar";
+import { ManualLocationPicker } from "./ManualLocationPicker";
 
 type Status =
   | { kind: "idle" }
@@ -197,6 +200,16 @@ export function PlaceSearch({
   const userCoords = geo.status === "ready" ? geo.coords : null;
   // 수동 위치 이동 판정 트리거 ①·③(탭 복귀·탭 시작). 앱 진입점 한 곳에만 건다.
   useManualLocationJudgment();
+  // "현재 위치 지정" 모달(스텝별 진입은 LocationBar가 두 화면에서 공유하지만,
+  // 열림 여부는 화면마다 로컬 — NearbyHub도 자기 것을 따로 갖는다).
+  const [manualPickerOpen, setManualPickerOpen] = useState(false);
+  // 지정 모달을 연 트리거 버튼 — 닫을 때 포커스를 되돌린다(LocationBar 시그니처는
+  // 브리프대로 최소 유지하고, 여는 순간의 activeElement를 캡처하는 편이 더 얇다).
+  const manualPickerTriggerRef = useRef<HTMLElement | null>(null);
+  // 수동 위치 자동 해제 통지. 이 컴포넌트는 뷰가 바뀌어도(홈↔"내 주변" 허브)
+  // 언마운트되지 않으므로 등록은 여기 한 곳뿐이다(훅 주석 참조) — 아래
+  // liveMessage가 이 문자열을 최우선으로 흡수한다.
+  const [manualNotice, resetManualNotice] = useManualLocationNotice();
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // 검색 입력창 ref (SearchBar에 전달).
@@ -521,6 +534,8 @@ export function PlaceSearch({
       if (!raw.trim()) return;
       // 검색 제출 = 기록 시점(0건이어도 기록 — 재시도 가치). 이전 삭제 통지는 리셋.
       setRecentNotice("");
+      // 자동 해제 통지는 1회성 — 새 검색이 일어나면 그 결과 통지가 우선한다.
+      resetManualNotice();
       setRecentQueries(recordRecentQuery(raw));
       // 새 검색 — 이전 웹 폴백 상태를 즉시 리셋(skip 경로에서도 잔류 제거).
       setWebPending(false);
@@ -546,6 +561,7 @@ export function PlaceSearch({
       performWebSearch,
       canSearchAddress,
       canSearchWeb,
+      resetManualNotice,
     ],
   );
 
@@ -694,8 +710,9 @@ export function PlaceSearch({
           placeErrored: status.kind === "error",
           addrErrored: addrStatus.kind === "error",
         });
-  const liveMessage =
-    status.kind === "idle" && recentNotice
+  const liveMessage = manualNotice
+    ? manualNotice
+    : status.kind === "idle" && recentNotice
       ? recentNotice
       : (liveParts ?? [])
           .map((p) =>
@@ -734,6 +751,7 @@ export function PlaceSearch({
         canShowEvents={canShowEvents}
         canShowSurroundings={canShowSurroundings}
         canShowAir={canShowAir}
+        locationNotice={manualNotice}
         onBack={backFromNearbyHub}
       />
     );
@@ -866,6 +884,21 @@ export function PlaceSearch({
         >
           {t("search.mockNotice")}
         </p>
+      )}
+
+      <LocationBar
+        onPick={() => {
+          manualPickerTriggerRef.current = document.activeElement as HTMLElement | null;
+          setManualPickerOpen(true);
+        }}
+      />
+      {manualPickerOpen && (
+        <ManualLocationPicker
+          onClose={() => {
+            setManualPickerOpen(false);
+            manualPickerTriggerRef.current?.focus();
+          }}
+        />
       )}
 
       <SearchBar
