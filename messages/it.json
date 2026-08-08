@@ -868,5 +868,16 @@
     "viaAlight": "discesa",
     "viaCurrent": "posizione attuale",
     "walkHandoffStart": "Avvia la guida a piedi rimanente"
+  },
+  "manualLocation": {
+    "gps": "Posizione attuale",
+    "locating": "Verifica della posizione attuale",
+    "gpsFailed": "Impossibile determinare la posizione",
+    "manual": "Posizione impostata, {label}",
+    "manualUnverifiable": "Posizione impostata, {label} (impossibile verificare)",
+    "clear": "Cancella posizione impostata",
+    "useGps": "Torna alla posizione attuale",
+    "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata.",
+    "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale."
   }
 }

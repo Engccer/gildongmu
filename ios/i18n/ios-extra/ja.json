@@ -226,9 +226,6 @@
     },
     "unit": {
       "spokenMeters": "メートル"
-    },
-    "manualLocation": {
-      "autoCleared": "移動を検知したため、指定した位置を解除しました"
     }
   }
 }

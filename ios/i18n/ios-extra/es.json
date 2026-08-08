@@ -226,9 +226,6 @@
     },
     "unit": {
       "spokenMeters": "metros"
-    },
-    "manualLocation": {
-      "autoCleared": "Se detectó movimiento. Se ha borrado la ubicación que estableciste."
     }
   }
 }
