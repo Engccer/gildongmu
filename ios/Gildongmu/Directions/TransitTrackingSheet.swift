@@ -195,6 +195,14 @@ struct TransitTrackingSheet: View {
             if classified.directionUncertain, !classified.candidates.isEmpty {
                 Text(appLocalized("transitGuide.directionCheck")).foregroundStyle(.secondary)
             }
+            // 빠른하차(E5) — 열차 목록 **앞**. 국면 전환으로 조용히 나타나는 문장이라
+            // 포커스 착지점(waitingLabel) 뒤에 두어야 앞으로 스와이프해서 만난다.
+            // 통지는 만들지 않는다(정적 정보라 상태 변화가 없다).
+            if let quickExit = quickExitText(
+                leg.quickExit, station: leg.alightName, lang: AppLanguage.current)
+            {
+                Text(quickExit)
+            }
             if classified.candidates.isEmpty {
                 // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
                 Text(model.reasonText(model.waitingReason ?? TransitWaitingEmptyReason.none))

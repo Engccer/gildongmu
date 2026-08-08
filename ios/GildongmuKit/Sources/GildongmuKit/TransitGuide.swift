@@ -60,13 +60,16 @@ public struct TransitGuideLeg: Codable, Sendable {
     public let routeId: String?
     public let wayCode: Int?
     public let walkBeforeMinutes: Int?
+    /// 하차역 빠른하차 문 위치(E5). 판정 불가·미커버는 nil.
+    public let quickExit: QuickExit?
 
     public init(
         mode: String, lineName: String, trackMode: TransitTrackMode?,
         boardName: String, alightName: String,
         boardStop: TransitLegStop?, alightStop: TransitLegStop?,
         viaStops: [TransitLegStop], stationCount: Int?,
-        routeId: String?, wayCode: Int?, walkBeforeMinutes: Int?
+        routeId: String?, wayCode: Int?, walkBeforeMinutes: Int?,
+        quickExit: QuickExit? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -80,6 +83,7 @@ public struct TransitGuideLeg: Codable, Sendable {
         self.routeId = routeId
         self.wayCode = wayCode
         self.walkBeforeMinutes = walkBeforeMinutes
+        self.quickExit = quickExit
     }
 }
 
@@ -313,7 +317,8 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
             stationCount: leg.stationCount,
             routeId: leg.serviceRouteId,
             wayCode: leg.serviceWayCode,
-            walkBeforeMinutes: pendingWalk
+            walkBeforeMinutes: pendingWalk,
+            quickExit: leg.quickExit
         ))
         pendingWalk = nil
     }

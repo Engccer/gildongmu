@@ -21321,6 +21321,46 @@
         }
       }
     },
+    "privacy.analytics": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "웹 방문 통계는 Vercel Analytics로 익명 집계합니다. 쿠키를 사용하지 않고, 개인을 식별하는 정보를 저장하지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web traffic is measured anonymously with Vercel Analytics. It uses no cookies and stores no information that identifies you."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El tráfico web se mide de forma anónima con Vercel Analytics. No utiliza cookies ni almacena información que permita identificarte."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'audience du site est mesurée de manière anonyme avec Vercel Analytics. Aucun cookie n'est utilisé et aucune information permettant de vous identifier n'est conservée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il traffico web è misurato in forma anonima con Vercel Analytics. Non utilizza cookie e non memorizza informazioni che permettano di identificarti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウェブの利用状況は Vercel Analytics で匿名に集計します。Cookie は使用せず、個人を特定する情報は保存しません。"
+          }
+        }
+      }
+    },
     "privacy.chat": {
       "localizations": {
         "ko": {
@@ -24277,6 +24317,206 @@
           "stringUnit": {
             "state": "translated",
             "value": "公共交通の経路が見つかりませんでした。"
+          }
+        }
+      }
+    },
+    "route.transit.quickExitBetween": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 문과 %2$@ 문 사이"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "between doors %1$@ and %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entre las puertas %1$@ y %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "entre les portes %1$@ et %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tra le porte %1$@ e %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@と%2$@のドアの間"
+          }
+        }
+      }
+    },
+    "route.transit.quickExitBoth": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 하차, 엘리베이터 %2$@, 계단 %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@, elevator %2$@, stairs %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajada en %1$@, ascensor %2$@, escaleras %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descente à %1$@, ascenseur %2$@, escaliers %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discesa a %1$@, ascensore %2$@, scale %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で下車、エレベーターは%2$@、階段は%3$@"
+          }
+        }
+      }
+    },
+    "route.transit.quickExitDoor": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 문"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "door %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "puerta %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "porte %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "porta %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@のドア"
+          }
+        }
+      }
+    },
+    "route.transit.quickExitElevator": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 하차, 엘리베이터 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@, elevator %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajada en %1$@, ascensor %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descente à %1$@, ascenseur %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discesa a %1$@, ascensore %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で下車、エレベーターは%2$@"
+          }
+        }
+      }
+    },
+    "route.transit.quickExitStairs": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 하차, 계단 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@, stairs %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajada en %1$@, escaleras %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descente à %1$@, escaliers %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discesa a %1$@, scale %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で下車、階段は%2$@"
           }
         }
       }
