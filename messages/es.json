@@ -133,7 +133,7 @@
       "alternativeFastest": "Ruta más rápida",
       "alternativeFewestTransfers": "Menos transbordos",
       "alternativeFastestFewestTransfers": "La más rápida y con menos transbordos",
-      "quickExitDoor": "puerta {door}",
+      "quickExitDoor": "en la puerta {door}",
       "quickExitBetween": "entre las puertas {first} y {second}",
       "quickExitBoth": "Bajada en {station}, ascensor {elevator}, escaleras {stairs}",
       "quickExitElevator": "Bajada en {station}, ascensor {elevator}",

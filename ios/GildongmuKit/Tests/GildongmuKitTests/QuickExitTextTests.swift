@@ -52,7 +52,7 @@ struct QuickExitTextTests {
     @Test func 로케일별_실문장() {
         let value = QuickExit(elevator: elevator, stairs: QuickExitDoor(kind: "between", doors: ["5-3", "5-4"]))
         #expect(quickExitText(value, station: "Yeouido", lang: "en")
-            == "Get off at Yeouido, elevator door 6-4, stairs between doors 5-3 and 5-4")
+            == "Get off at Yeouido, elevator at door 6-4, stairs between doors 5-3 and 5-4")
         #expect(quickExitText(value, station: "汝矣島", lang: "ja")
             == "汝矣島で下車、エレベーターは6-4のドア、階段は5-3と5-4のドアの間")
     }

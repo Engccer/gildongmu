@@ -2772,25 +2772,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "door %1$@"
+            "value": "at door %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "puerta %1$@"
+            "value": "en la puerta %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "porte %1$@"
+            "value": "à la porte %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "porta %1$@"
+            "value": "alla porta %1$@"
           }
         },
         "ja": {

@@ -227,9 +227,11 @@ export function TransitGuidePanel({
                     <p className="text-sm">{t("directionCheck")}</p>
                   )}
                   {/* 빠른하차(E5) — 목록 **앞**에 둔다. 국면 전환으로 조용히 나타나는
-                      문장이라, 포커스 착지점(waitingLabel) 다음 자리에 놓아야 목록으로
-                      내려가는 길목에서 만난다. 통지는 만들지 않는다(정적 정보라 상태
-                      변화가 없고 live region은 변화를 알리는 채널이다). */}
+                      문장이라 목록으로 내려가는 길목에 놓아야 순차 탐색으로 만난다.
+                      ⚠ 웹은 세션 시작 시 포커스를 어디에도 착지시키지 않는다(트리거가
+                      unmount되며 커서가 body로 떨어진다 — 선재 결함, a11y 감사 확인).
+                      그래서 이 자리는 "착지점 다음"이 아니라 "목록 앞"이 근거다.
+                      통지는 만들지 않는다(정적 정보라 상태 변화가 없다). */}
                   {quickExit && <p className="text-sm">{quickExit}</p>}
                   {guide.waitingOptions.length === 0 && (
                     // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
