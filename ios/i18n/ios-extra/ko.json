@@ -226,6 +226,9 @@
     },
     "unit": {
       "spokenMeters": "미터"
+    },
+    "manualLocation": {
+      "autoCleared": "이동이 감지되어 지정한 위치를 해제했습니다"
     }
   }
 }

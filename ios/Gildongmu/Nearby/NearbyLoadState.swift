@@ -59,11 +59,15 @@ func announceOutOfCoverage() {
 
 /// NearbyLoadCore 좌표 소스 어댑터. currentCoordinate는 typed throws(LocationError)라
 /// 취소가 오류로 나올 수 없고(커밋 게이트가 방어 정본), denied/unavailable만 번역한다.
+///
+/// 수동 위치가 있으면 그 좌표를 쓴다(`ManualLocationJudge`). `.fixed`(장소 앵커)는
+/// 이 클로저를 아예 거치지 않으므로 **앵커 > 수동 > GPS** 우선순위가
+/// `NearbyLoadCore`의 switch에서 구조적으로 성립한다.
 extension LocationService {
     static func nearbyCoordinateSource() -> NearbyCoordinateSource {
         .current { force in
             do {
-                return try await LocationService.shared.currentCoordinate(force: force)
+                return try await ManualLocationJudge.effectiveCoordinate(force: force)
             } catch {
                 // catch 변수는 any Error로 추론되므로 캐스팅해 판별한다. denied만 번역하고
                 // 나머지는 전부 unavailable — 위치 오류가 코어 default 분기로 새어
