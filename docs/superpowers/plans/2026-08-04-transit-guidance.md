@@ -6,7 +6,7 @@
 
 **Architecture:** GPS 없는 폴링 상태 머신을 신설한다(`transit-guide.ts` ↔ Kit `TransitGuide.swift`, 공유 fixture). 신호는 서울버스 vehId 잠금·지하철 btrainNo 잠금·지방버스 근사이고, 서버는 `/api/transit/track` 판별 union으로 봉투 차이를 흡수한다. ODsay `passStopList`는 `includeStops=1` 옵트인으로 노출한다. 기존 지하철 실시간 조회의 부역명 결함(§6.3)을 선행 수정한다.
 
-**Tech Stack:** Next.js 16 / React 19 / Vitest, SwiftUI / GildongmuKit / Swift Testing. 정본: 스펙 `docs/superpowers/specs/2026-08-04-transit-guidance-design.md`(이하 §n), 조사 `docs/RESEARCH-2026-08-03-mode-specific-guidance.md`.
+**Tech Stack:** Next.js 16 / React 19 / Vitest, SwiftUI / GildongmuKit / Swift Testing. 정본: 스펙 `docs/superpowers/specs/2026-08-04-transit-guidance-design.md`(이하 §n), 조사 `docs/research/RESEARCH-2026-08-03-mode-specific-guidance.md`.
 
 **구현 방식 판정(자율성 헌장):** inline. 근거 — 상태 머신 계약이 훅·모델·UI 전부의 인터페이스를 정의하는 강한 순차 의존이고, 공유 fixture·`types.ts`·`odsay.ts`를 여러 태스크가 연쇄 수정하며, T0 실호출 결과가 T2·T5의 계약을 바꾼다(탐색적). 리뷰는 묶음별 독립 서브에이전트(스펙+diff만 전달)로 분리한다.
 

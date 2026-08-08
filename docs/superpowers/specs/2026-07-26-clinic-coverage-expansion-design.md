@@ -60,7 +60,7 @@
 
 아래는 단계 1이 무너질 때를 위한 보존 기록이다. 참고로 HIRA `getHospBasisList`는 현재 **403(활용신청 전)**이라 착수하려면 신청부터 해야 한다([[datagokr-api-activation-independent]]).
 
-`docs/RESEARCH-2026-06-domestic-api-expansion.md` §F-5에 조사돼 있다(병원 15001698, 10,000건/일).
+`docs/research/RESEARCH-2026-06-domestic-api-expansion.md` §F-5에 조사돼 있다(병원 15001698, 10,000건/일).
 
 - 병원정보서비스로 좌표·진료과목·종별을 얻어 소아청소년과를 거른다.
 - **기본 목록에 진료시간이 없다** → 기관별 상세를 `ykiho`로 단건 조회하는 **N+1 조인**이 필요하다. 상위 N곳으로 한정하고 `Promise.allSettled`로 부분 실패를 보존한다(전멸 금지).

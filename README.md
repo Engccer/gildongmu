@@ -56,7 +56,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과�
 | [`CHANGELOG.md`](CHANGELOG.md) | 날짜별 변경 이력 |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | 아직 하지 않은 것(폐기 근거 포함) |
 | `docs/superpowers/specs`·`plans` | 기능별 설계 정본과 검증 기록 |
-| `docs/RESEARCH-*.md` | 국내 API 생태계 조사 |
+| `docs/research/RESEARCH-*.md` | 국내 API 생태계 조사 |
 
 ## 스택
 

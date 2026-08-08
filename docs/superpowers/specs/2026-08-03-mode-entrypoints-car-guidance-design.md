@@ -1,6 +1,6 @@
 # 수단별 안내 진입점 재편 + 자동차 안내 (묶음 B1) 설계
 
-> 2026-08-03. 위원장 실사용 판정(진입점을 도보·자동차·대중교통 3종으로 분리)의 1차 마일스톤. 조사 정본은 `docs/RESEARCH-2026-08-03-mode-specific-guidance.md`(이하 "조사"), 기반 자산은 E4 스펙 `2026-08-03-realtime-route-guidance-design.md`. 대중교통 안내는 **B2 별도 스펙**이다. codex 적대적 리뷰(gpt-5.6-sol·high) 반영본 — 반영 요지는 §11.
+> 2026-08-03. 위원장 실사용 판정(진입점을 도보·자동차·대중교통 3종으로 분리)의 1차 마일스톤. 조사 정본은 `docs/research/RESEARCH-2026-08-03-mode-specific-guidance.md`(이하 "조사"), 기반 자산은 E4 스펙 `2026-08-03-realtime-route-guidance-design.md`. 대중교통 안내는 **B2 별도 스펙**이다. codex 적대적 리뷰(gpt-5.6-sol·high) 반영본 — 반영 요지는 §11.
 
 ## 1. 배경과 목표
 

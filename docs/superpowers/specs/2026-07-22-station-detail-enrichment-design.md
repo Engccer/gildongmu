@@ -1,6 +1,6 @@
 # 역 상세 보강 — 첫차·막차 시간표 + 시설 패널 보강 + 역명 매칭 결함 수정 (2026-07-22)
 
-> 입력: `docs/RESEARCH-2026-07-routing-enhancement.md` §3·§4, PROGRESS "다음 마일스톤 후보 ①".
+> 입력: `docs/research/RESEARCH-2026-07-routing-enhancement.md` §3·§4, PROGRESS "다음 마일스톤 후보 ①".
 > 이 스펙의 모든 외부 데이터 주장은 2026-07-22 실호출로 확인한 값이다(추정 없음).
 > codex 적대적 설계 리뷰 1회 반영(17건 중 14건 수용·2건 기수용 확인·1건 기각 — §7).
 

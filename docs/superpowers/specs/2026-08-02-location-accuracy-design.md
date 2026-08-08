@@ -1,6 +1,6 @@
 # iOS 현재 위치 취득 정확도 설계 (2026-08-02)
 
-> 백로그 A3. 조사 근거는 `docs/RESEARCH-2026-08-02-realtime-walk-navigation.md` §9. 실시간 안내(E4)와 독립이며 그 착수 여부와 무관하게 성립한다.
+> 백로그 A3. 조사 근거는 `docs/research/RESEARCH-2026-08-02-realtime-walk-navigation.md` §9. 실시간 안내(E4)와 독립이며 그 착수 여부와 무관하게 성립한다.
 
 ## 1. 문제
 

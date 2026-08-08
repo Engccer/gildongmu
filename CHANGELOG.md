@@ -63,7 +63,7 @@ ODsay 정규화를 "정규화(전체) → 강등(전체) → 선정(5) → 축 �
 
 ### B1: 수단별 안내 진입점 재편 + 자동차 안내
 길찾기 뷰 수단 섹션마다 "도보/자동차 안내 시작"을 두고, 리듀서를 수단별 프로파일로 갈랐다(차량은 임박·예고·이탈 임계가 도보와 다르다).
-정본: [spec](docs/superpowers/specs/2026-08-03-mode-entrypoints-car-guidance-design.md) · [plan](docs/superpowers/plans/2026-08-03-mode-entrypoints-car-guidance.md) · [조사](docs/RESEARCH-2026-08-03-mode-specific-guidance.md).
+정본: [spec](docs/superpowers/specs/2026-08-03-mode-entrypoints-car-guidance-design.md) · [plan](docs/superpowers/plans/2026-08-03-mode-entrypoints-car-guidance.md) · [조사](docs/research/RESEARCH-2026-08-03-mode-specific-guidance.md).
 
 ### 실시간 길 안내(E4)
 "거리 추적"이 "실시간 길 안내"로 확장됐다. 간략(직선거리)·상세(경로 추종형, 도보·ko 전용) 2모드를 한 시트에서 제공한다. 사운드 8종을 위원장 청취로 선정해 교체했다.

@@ -2,7 +2,7 @@
 
 > 2026-07-03 · **spec-only(구현 없음)**. gildongmu에 구현된 API/provider **전체**를 dodo-planet으로 이식하기 위한 확정 설계. 기존 계약을 **확장**한다(대체 아님):
 > - **계약 정본**: `~/Mac-Projects/dodo-planet/docs/plans/2026-06-13-korea-local-provider-integration.md` §4 (PlaceProvider 어휘·selectPlacesProvider 시그니처·env 키) — 그대로 유효.
-> - **수용측 지도**: `docs/RESEARCH-2026-07-dodo-planet-target-architecture.md` (dodo Round 148 실측) — 이 spec의 dodo측 파일 경로·체크리스트 근거. dodo 재탐색 불필요.
+> - **수용측 지도**: `docs/research/RESEARCH-2026-07-dodo-planet-target-architecture.md` (dodo Round 148 실측) — 이 spec의 dodo측 파일 경로·체크리스트 근거. dodo 재탐색 불필요.
 > - **선행 spec**: `2026-06-21-dodo-korea-api-port-design.md`(Spec B, 4계층 아키텍처) — 본 spec이 흡수·구체화한다. Spec B의 계층 구분(ToolResult/provider/도구·카드/env)은 유지하되, 이후 반 달간 추가된 자산(무장애·명소·where-am-i·날씨)과 검증 상태 변화, 그리고 **trip-less 한국 판정 설계(§4)** 를 반영해 본 문서가 최신 정본이다.
 
 ## 0. 목표

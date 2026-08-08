@@ -2,7 +2,7 @@
 
 작성일: 2026-06-16
 대상: `gildongmu` (접근성 우선 길찾기)
-관련: `docs/RESEARCH-2026-06-seoul-open-data.md`(Top 3 #3), 버스 연동(`tago-bus.ts`/`BusArrivals`) 패턴 복제, 서울 버스(`2026-06-15-seoul-bus-api-design.md`)는 키 전파 대기로 병행 보류
+관련: `docs/research/RESEARCH-2026-06-seoul-open-data.md`(Top 3 #3), 버스 연동(`tago-bus.ts`/`BusArrivals`) 패턴 복제, 서울 버스(`2026-06-15-seoul-bus-api-design.md`)는 키 전파 대기로 병행 보류
 
 ## 배경 — 왜 따릉이가 먼저인가
 
