@@ -9,6 +9,7 @@
 import {
   courseAxisVerdict,
   courseVote,
+  INACTIVE_COURSE,
   recordVote,
   type CourseObservation,
   type CourseVote,
@@ -88,6 +89,17 @@ export interface GuideTuning {
   /** 보행 속도 가드(간략 제안). false면 가드 기계 전체 비활성 — 가드가 이탈
    * 재통지를 억제하는 배선이 있어, 차량에서 켜 두면 재통지가 영영 죽는다. */
   speedSuggest: boolean;
+  /**
+   * 이탈 판정 방위 축(spec 2026-08-09). **보행 전용이다.**
+   *
+   * ⚠ 이 축의 상수는 전부 보행 궤적으로 쟀다(속도 1.2m/s, 앞뒤 10m 접선 표본).
+   * "모퉁이 헛경고를 ±10m 표본이 막는다"는 핵심 논거가 차량 속도에서 성립하지
+   * 않는다 — 15m/s면 그 대역을 1.3초에 통과하고 fix 하나당 진행거리가 15m씩 뛴다.
+   * 차량에서의 헛경고율은 **측정된 적이 없다.** 차량을 범위에 넣으려면 차량 속도
+   * 궤적으로 다시 재고 그 결정을 spec에 적어야 한다(`offRouteTrend`와 같은 계열의
+   * 프로파일 플래그다).
+   */
+  courseAxisEnabled: boolean;
 }
 
 export const WALK_TUNING: GuideTuning = {
@@ -105,6 +117,7 @@ export const WALK_TUNING: GuideTuning = {
   handoffRearmM: HANDOFF_REARM_M,
   reacquireTieBreak: false,
   speedSuggest: true,
+  courseAxisEnabled: true,
 };
 
 /** 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정. */
@@ -123,6 +136,8 @@ export const CAR_TUNING: GuideTuning = {
   handoffRearmM: 200,
   reacquireTieBreak: true,
   speedSuggest: false,
+  // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
+  courseAxisEnabled: false,
 };
 
 /**
@@ -247,6 +262,18 @@ export interface GuideOutput {
   state: GuideState;
   event: GuideEvent | null;
   tone: GuideTone | null;
+  /**
+   * 진단 계측용(spec §7 1단계). **판정에 쓰이지 않는다.**
+   *
+   * 실보행 로그로 §6 상수를 정하려면 "왜 그렇게 판정했나"를 되짚을 수 있어야 한다.
+   * `verdict=unknown, votes=20`만으로는 표가 없어서인지 회색지대여서인지 구분되지
+   * 않고, 수직거리 없이는 두 축의 상관을 볼 수 없다(A6의 원인 진단이 그 열로
+   * 이루어졌다). 판정 전 국면에서 조기 반환하면 계산된 적이 없으므로 `undefined`이고,
+   * 그것이 정직한 값이다(0으로 접지 않는다).
+   */
+  perpMeters?: number;
+  /** 이 fix가 실제로 창에 넣은 표. 이탈 중에는 `entryProjection` 기준이다. */
+  courseVote?: CourseVote;
 }
 
 /** 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록. */
@@ -395,6 +422,10 @@ export function guideStep(
     return { state, event: null, tone: null };
   }
 
+  // 프로파일이 방위 축을 끄면 관측을 비활성으로 중화한다. ⚠ 게이트는 여기 한 곳뿐이다 —
+  // 조건을 하위 분기마다 흩으면 하나를 빠뜨리고, 그 하나가 조용히 축을 살린다.
+  const obs = tuning.courseAxisEnabled ? course : INACTIVE_COURSE;
+
   // 0a) 최종 접근 중에는 리듀서가 아무 판정도 하지 않는다(spec §4 전이표).
   //     발화 소유권이 최종 접근 층으로 넘어갔고, 이 국면은 **경로를 이미 벗어난**
   //     구간을 다루므로 낡은 폴리라인으로 이탈·재획득을 주장하면 거짓이다.
@@ -472,10 +503,15 @@ export function guideStep(
     // ⚠ 재획득 성공도 복귀다. 방위 축이 잠겨 있으면 위치만으로 풀지 않는다.
     //   이 경로가 §5의 offRoute 분기보다 **먼저** 실행되므로, 여기를 빼면
     //   fix 공백 10초만으로 복귀 계약이 통째로 우회된다.
+    // ⚠ 이 판정은 **구조상 항상 hold다.** 재획득 진입에서 창이 비워졌으므로 표가
+    //   정확히 하나뿐이고 `MIN_VOTES`(8)에 못 미쳐 `courseAxisVerdict`는 반드시
+    //   unknown이다. 그래도 verdict를 부르는 형태로 두는 이유는, 창 초기화 정책이
+    //   바뀌면(예: 짧은 공백은 창을 유지) 이 자리가 자동으로 증거 평가로 돌아가야
+    //   하기 때문이다. `if offRouteAxes.course { hold }`로 줄이면 그 연결이 끊긴다.
     const reVotes = recordVote(
       state.courseVotes,
       now,
-      courseVote(course, route.polyline, entryD, fix.accuracy),
+      courseVote(obs, route.polyline, entryD, fix.accuracy),
     );
     if (state.offRouteAxes.course && courseAxisVerdict(reVotes) !== "on") {
       // 위치는 되찾았지만 방향이 확인되지 않았다 — 이탈 상태를 유지한다.
@@ -542,8 +578,17 @@ export function guideStep(
   if (!proj) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   const d = Math.max(state.d, proj.d);
   // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다.
-  const vote = courseVote(course, route.polyline, d, fix.accuracy);
+  const vote = courseVote(obs, route.polyline, d, fix.accuracy);
   const courseVotes = recordVote(state.courseVotes, now, vote);
+  // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
+  let loggedVote = vote;
+  const emit = (s: GuideState, event: GuideEvent | null, tone: GuideTone | null): GuideOutput => ({
+    state: s,
+    event,
+    tone,
+    perpMeters: proj.perpMeters,
+    courseVote: loggedVote,
+  });
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
   const offThreshold = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
@@ -610,10 +655,11 @@ export function guideStep(
     //   못 미친다(국면 초기화는 uncertain·reacquiring·finalApproach에만).
     const offVote =
       entry.status === "ok"
-        ? courseVote(course, route.polyline, entry.d, fix.accuracy)
+        ? courseVote(obs, route.polyline, entry.d, fix.accuracy)
         : ("unknown" as CourseVote);
     const offVotes = recordVote(state.courseVotes, now, offVote);
     next = { ...next, courseVotes: offVotes };
+    loggedVote = offVote; // 진단: 이 국면에서 실제로 창에 들어간 표는 entry 기준이다.
     if (entry.status === "ok") {
       // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
       const courseCleared =
@@ -627,7 +673,7 @@ export function guideStep(
           speedWarned: state.speedWarned,
           lastFixAt: now,
         };
-        return { state: back, event: { kind: "backOnRoute" }, tone: null };
+        return emit(back, { kind: "backOnRoute" }, null);
       }
     }
     const canRenotify =
@@ -637,13 +683,9 @@ export function guideStep(
     if (canRenotify) {
       next = { ...next, lastOffRouteNoticeAt: now };
       // 재통지 톤은 프로파일 몫(차량은 이탈=정보라 무톤, 첫 확정만 경고 — §4.3).
-      return {
-        state: next,
-        event: { kind: "offRoute" },
-        tone: tuning.offRouteRenotifyWarns ? "warning" : null,
-      };
+      return emit(next, { kind: "offRoute" }, tuning.offRouteRenotifyWarns ? "warning" : null);
     }
-    return { state: next, event: null, tone: null };
+    return emit(next, null, null);
   }
   const courseVerdict = courseAxisVerdict(courseVotes);
   const isOff = proj.perpMeters > offThreshold;
@@ -666,7 +708,7 @@ export function guideStep(
         offRoutePeakPerp: null,
         offRouteAxes: { ...next.offRouteAxes, distance: true },
       };
-      return { state: next, event: { kind: "offRoute" }, tone: "warning" };
+      return emit(next, { kind: "offRoute" }, "warning");
     }
   } else if (state.offRouteSince !== null) {
     next = { ...next, offRouteSince: null, offRoutePeakPerp: null };
@@ -679,9 +721,13 @@ export function guideStep(
       phase: "offRoute",
       resumePhase: stepAt(route, d).isLong ? "following" : "bundle",
       lastOffRouteNoticeAt: now,
+      // 거리 축 확정과 같은 상태를 남긴다 — 두 확정 경로가 서로 다른 잔여를 남기면
+      // 다음 사람이 어느 쪽을 믿어야 할지 알 수 없다(무해하더라도 읽는 비용이다).
+      offRouteSince: null,
+      offRoutePeakPerp: null,
       offRouteAxes: { ...next.offRouteAxes, course: true },
     };
-    return { state: next, event: { kind: "offRoute" }, tone: "warning" };
+    return emit(next, { kind: "offRoute" }, "warning");
   }
 
   // 6) 국면·낭독.
@@ -719,7 +765,7 @@ export function guideStep(
     remainingTotal <= finalApproachEntryM(next, fix.accuracy, tuning)
   ) {
     next = { ...next, phase: "finalApproach" };
-    return { state: next, event: { kind: "finalApproachEnter" }, tone: null };
+    return emit(next, { kind: "finalApproachEnter" }, null);
   }
 
   // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
@@ -739,7 +785,7 @@ export function guideStep(
         farNoticedUpTo: Math.max(next.farNoticedUpTo, indices[indices.length - 1]),
         lastAnnouncedAt: now,
       };
-      return { state: next, event: { kind: "announceSteps", indices }, tone: "ahead" };
+      return emit(next, { kind: "announceSteps", indices }, "ahead");
     }
   }
 
@@ -764,15 +810,11 @@ export function guideStep(
       };
       // 낭독 거리는 크로싱 시점의 실측 잔여다(§4.7 "기하에서 계산" — 상수 낭독 금지,
       // 독립 리뷰 검출: 고속에서 크로싱 잔여가 경계보다 창 상한만큼 적을 수 있다).
-      return {
-        state: next,
-        event: {
+      return emit(next, {
           kind: "farNotice",
           indices,
           remainingMeters: Math.round(nowRemaining),
-        },
-        tone: null,
-      };
+        }, null);
     }
   }
 
@@ -782,27 +824,23 @@ export function guideStep(
     const remainingStep = cur.endD - d;
     if (sinceAnnounce >= periodicIntervalS(remainingStep)) {
       next = { ...next, lastAnnouncedAt: now };
-      return {
-        state: next,
-        event: {
+      return emit(next, {
           kind: "periodic",
           stepIndex: cur.index,
           remainingMeters: Math.round(remainingStep),
           accuracy: fix.accuracy,
-        },
-        tone: null,
-      };
+        }, null);
     }
   } else if (sinceAnnounce >= BUNDLE_REREAD_S) {
     const indices = unitAt(route, cur.index);
     next = { ...next, lastAnnouncedAt: now };
-    return { state: next, event: { kind: "bundleReread", indices }, tone: null };
+    return emit(next, { kind: "bundleReread", indices }, null);
   }
 
   // 6d) 속도 제안(최하위, 세션당 1회 — 리뷰 #16 플래그 분리).
   if (speedGuardActive && !next.speedWarned) {
     next = { ...next, speedWarned: true };
-    return { state: next, event: { kind: "speedSuggest" }, tone: null };
+    return emit(next, { kind: "speedSuggest" }, null);
   }
-  return { state: next, event: null, tone: null };
+  return emit(next, null, null);
 }

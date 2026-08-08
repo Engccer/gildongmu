@@ -77,7 +77,7 @@ struct GuideCourseAxisTests {
     @Test("공유 fixture 판정 — 웹과 같은 verdict")
     func verdictMatchesWebFixture() throws {
         let verdicts = try loadScenarios().verdicts
-        #expect(verdicts.count >= 8)
+        #expect(verdicts.count >= 11)
         for c in verdicts {
             var samples: [CourseVoteSample] = []
             for pair in c.votes {

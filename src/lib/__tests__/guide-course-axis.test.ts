@@ -129,7 +129,7 @@ describe("공유 fixture (Kit 동조 가드)", () => {
   //   describe가 조용히 통과한다. 가드가 무는지는 케이스가 실제로 있는지에 달렸다.
   it("fixture에 표결·판정 케이스가 있다", () => {
     expect(scenarios.votes.length).toBeGreaterThanOrEqual(7);
-    expect(scenarios.verdicts.length).toBeGreaterThanOrEqual(8);
+    expect(scenarios.verdicts.length).toBeGreaterThanOrEqual(11);
   });
 
   it.each(scenarios.votes)("표결: $name", (c) => {

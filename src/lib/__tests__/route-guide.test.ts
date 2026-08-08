@@ -513,15 +513,19 @@ describe("방위 축 통합", () => {
     expect(state.phase).toBe("offRoute");
   });
 
-  it("비활성 관측만 주면 동작이 종전과 같다(웹 회귀 0)", () => {
-    let a = initialGuideState(route, 0).state;
-    let b = initialGuideState(route, 0).state;
+  it("비활성 관측은 축을 끈 채로 유지한다 — 표는 쌓이되 판정에 닿지 않는다", () => {
+    // ⚠ 종전 이름은 "동작이 종전과 같다(웹 회귀 0)"였는데, 같은 계산을 두 번 돌려
+    //   비교하는 동어반복이었다. 회귀 0을 실제로 지키는 것은 이 테스트가 아니라
+    //   기존 시나리오 fixture 전량이 `INACTIVE_COURSE`로 재생돼 통과한다는 사실이다.
+    let state = initialGuideState(route, 0).state;
     for (let t = 1; t <= 30; t++) {
-      a = guideStep(a, at(t * 1.2), route, t, WALK_TUNING, INACTIVE_COURSE).state;
-      b = guideStep(b, at(t * 1.2), route, t, WALK_TUNING, INACTIVE_COURSE).state;
+      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, INACTIVE_COURSE).state;
     }
-    expect(a.phase).toBe(b.phase);
-    expect(a.offRouteAxes).toEqual({ distance: false, course: false });
+    expect(state.offRouteAxes).toEqual({ distance: false, course: false });
+    expect(state.phase).not.toBe("offRoute");
+    // 창은 차되 전부 unknown이라 decisive가 0 — 판정이 영구 unknown이다.
+    expect(state.courseVotes.length).toBeGreaterThan(0);
+    expect(state.courseVotes.every((v) => v.vote === "unknown")).toBe(true);
   });
 
   it("상태 재구성은 표결 창을 비운다 — 옛 경로의 표가 새 경로에 적용되면 안 된다", () => {
@@ -585,6 +589,21 @@ describe("방위 축 통합", () => {
     const coincide = walk(base.enterT! - 13);
     expect(coincide.enterT).toBeNull();
     expect(coincide.state.offRouteAxes.course).toBe(true);
+  });
+
+  it("차량 프로파일에서는 축이 통째로 꺼진다 — 보행으로만 측정된 상수다", () => {
+    // 보행과 완전히 같은 궤적·방위인데 프로파일만 차량이면 방위 축이 확정하지 않는다.
+    let walk = initialGuideState(route, 0).state;
+    let car = initialGuideState(route, 0).state;
+    for (let t = 1; t <= 25; t++) {
+      walk = guideStep(walk, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
+      car = guideStep(car, at(t * 1.2), route, t, CAR_TUNING, facing(180)).state;
+    }
+    expect(walk.offRouteAxes.course).toBe(true);
+    expect(car.offRouteAxes.course).toBe(false);
+    expect(car.phase).not.toBe("offRoute");
+    // 창에도 결정적 표가 쌓이지 않는다(관측이 진입점에서 중화된다).
+    expect(car.courseVotes.every((v) => v.vote === "unknown")).toBe(true);
   });
 
   it("국면 전이는 표결 창을 비우고 latch는 남긴다", () => {

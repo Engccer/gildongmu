@@ -32,6 +32,13 @@ enum AppConfig {
     ///
     /// ⚠ 기능이 실주행·실승차 판정을 통과해 정식 출시할 때는 이 `#if`를 지운다
     /// (플래그 졸업). 플래그가 쌓이지 않게 하는 것이 이 방식의 유일한 관리 포인트다.
+    ///
+    /// ⚠⚠ **이 `#if`를 지우기 전에 이탈 판정 방위 축의 실보행 판정을 먼저 확인한다**
+    /// (spec 2026-08-09, 상수는 `GildongmuKit/GuideCourseAxis.swift`). 그 축은 이
+    /// 플래그에 **얹혀서** 봉인돼 있을 뿐 자기 게이트가 없다 — 여기를 지우면 잠정값
+    /// 그대로 함께 출시되고, 결과는 시각장애 사용자에게 나가는 미검증 이탈 경고다.
+    /// 실보행 로그로 상수가 확정되기 전이면 축을 `GuideTuning.courseAxisEnabled`로
+    /// 따로 끄고 이 `#if`만 지운다.
     #if EXPERIMENTAL
     static let realtimeGuidanceEnabled = true
     #else

@@ -644,6 +644,27 @@ struct CourseAxisReducerTests {
         #expect(recovered)
     }
 
+    @Test("차량 프로파일에서는 축이 통째로 꺼진다 — 보행으로만 측정된 상수다")
+    func carProfileDisablesAxis() {
+        var walk = initialGuideState(route: axisRoute, now: 0).state
+        var car = initialGuideState(route: axisRoute, now: 0).state
+        for t in 1...25 {
+            walk = guideStep(
+                state: walk, fix: axisFix(Double(t) * 1.2), route: axisRoute,
+                now: Double(t), tuning: .walk, course: facing(180)
+            ).state
+            car = guideStep(
+                state: car, fix: axisFix(Double(t) * 1.2), route: axisRoute,
+                now: Double(t), tuning: .car, course: facing(180)
+            ).state
+        }
+        #expect(walk.offRouteAxes.course)
+        #expect(!car.offRouteAxes.course)
+        #expect(car.phase != .offRoute)
+        // 창에도 결정적 표가 쌓이지 않는다(관측이 진입점에서 중화된다).
+        #expect(car.courseVotes.allSatisfy { $0.vote == .unknown })
+    }
+
     @Test("uncertain을 경유해도 축 latch가 보존된다")
     func latchSurvivesUncertain() {
         var state = initialGuideState(route: axisRoute, now: 0).state
