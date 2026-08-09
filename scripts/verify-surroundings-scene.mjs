@@ -70,6 +70,18 @@ const CASES = [
     },
   },
   {
+    // 비수도권 + 일반구 보유 시(행정 depth가 서울과 다름) — juso 키워드 조립이
+    // 시도·시군구 조각으로 성립하는지. 수원시청(효원로 241, 홀수).
+    name: "수원시청 (비수도권 행정 depth — 축 성립)",
+    lat: 37.2636,
+    lng: 127.0286,
+    check(body) {
+      const s = body.data;
+      if (!s) return "data 없음";
+      return s.frame === "entrance" ? null : `frame=${s.frame} (entrance 기대)`;
+    },
+  },
+  {
     name: "해외 좌표 파리 (outOfCoverage)",
     lat: 48.85,
     lng: 2.35,

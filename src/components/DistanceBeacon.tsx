@@ -239,8 +239,12 @@ export function DistanceBeacon({
           )}
 
           {/* M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
-              이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). */}
-          <SurroundingsScene anchor={{ lat: dest.lat, lng: dest.lng }} />
+              이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5).
+              headingLevel=3: 이 섹션엔 자체 헤딩이 없어 직전 헤딩이 장소 상세 h2다. */}
+          <SurroundingsScene
+            anchor={{ lat: dest.lat, lng: dest.lng }}
+            headingLevel={3}
+          />
         </div>
       )}
       {/* 단일 polite live region — 패널 열림과 무관하게 상시 마운트한다. region이

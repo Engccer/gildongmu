@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentPropsWithRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Scene, SceneGroup } from "@/lib/surroundings-scene";
 import { formatDistance } from "@/lib/format";
@@ -25,7 +25,18 @@ import { useRevealMore } from "@/hooks/useRevealMore";
 /** 묶음이 이보다 크면 제목에 곳수를 병기한다(스와이프 전 규모 예고). */
 const COUNT_IN_TITLE_THRESHOLD = 3;
 
-function GroupSection({ group, resetKey }: { group: SceneGroup; resetKey: number }) {
+/** 임베드 컨테이너의 헤딩 깊이가 다르다 — 레벨은 호출부가 정한다(계층 스킵 금지). */
+type SceneHeadingLevel = 3 | 4;
+
+function GroupSection({
+  group,
+  resetKey,
+  headingLevel,
+}: {
+  group: SceneGroup;
+  resetKey: number;
+  headingLevel: SceneHeadingLevel;
+}) {
   const t = useTranslations("surroundings");
   const tActions = useTranslations("actions");
   const { visibleCount, reveal, itemHeadingRefs } =
@@ -34,14 +45,19 @@ function GroupSection({ group, resetKey }: { group: SceneGroup; resetKey: number
     group.items.length > COUNT_IN_TITLE_THRESHOLD
       ? `${t(`bucket.${group.bucket}`)} ${t("count", { count: group.items.length })}`
       : t(`bucket.${group.bucket}`);
+  // 묶음 제목은 장면 헤딩 바로 아래 레벨(h4→h5 또는 h3→h4).
+  const BucketHeading = headingLevel === 3 ? "h4" : "h5";
   return (
     <section className="mt-3">
-      <h5 className="font-medium">{title}</h5>
+      <BucketHeading className="font-medium">{title}</BucketHeading>
       <ul className="mt-1 space-y-1">
         {group.items.slice(0, visibleCount).map((it, i) => (
           <li
             key={`${it.name}-${it.distanceMeters}`}
             className="text-sm"
+            // 장소명·도로명은 전 로케일에서 한국어 원문이다 — lang 미지정 시 비한국어
+            // 로케일 SR이 엉뚱한 엔진으로 발화한다(NightClinics 한 줄 lang 선례).
+            lang="ko"
             tabIndex={-1}
             ref={(el) => {
               itemHeadingRefs.current[i] = el;
@@ -74,13 +90,15 @@ function GroupSection({ group, resetKey }: { group: SceneGroup; resetKey: number
   );
 }
 
-/** 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 h5 제목). */
+/** 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 묶음 제목 헤딩). */
 export function SurroundingsSceneView({
   scene,
   resetKey = 0,
+  headingLevel = 4,
 }: {
   scene: Scene;
   resetKey?: number;
+  headingLevel?: SceneHeadingLevel;
 }) {
   return (
     <>
@@ -90,13 +108,24 @@ export function SurroundingsSceneView({
         </p>
       )}
       {scene.groups.map((g) => (
-        <GroupSection key={g.bucket} group={g} resetKey={resetKey} />
+        <GroupSection
+          key={g.bucket}
+          group={g}
+          resetKey={resetKey}
+          headingLevel={headingLevel}
+        />
       ))}
     </>
   );
 }
 
-function SurroundingsSceneInner({ anchor }: { anchor: { lat: number; lng: number } }) {
+function SurroundingsSceneInner({
+  anchor,
+  headingLevel,
+}: {
+  anchor: { lat: number; lng: number };
+  headingLevel: SceneHeadingLevel;
+}) {
   const t = useTranslations("surroundings");
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
@@ -160,9 +189,14 @@ function SurroundingsSceneInner({ anchor }: { anchor: { lat: number; lng: number
 
       {status.kind === "done" && (
         <div className="mt-2 rounded-md border border-border p-3">
-          <h4 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
+          <SceneHeading
+            level={headingLevel}
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-base font-semibold"
+          >
             {t("ready")}
-          </h4>
+          </SceneHeading>
           <button
             type="button"
             onClick={() => close()}
@@ -170,7 +204,11 @@ function SurroundingsSceneInner({ anchor }: { anchor: { lat: number; lng: number
           >
             {tActions("close")}
           </button>
-          <SurroundingsSceneView scene={status.data} resetKey={doneSeq} />
+          <SurroundingsSceneView
+            scene={status.data}
+            resetKey={doneSeq}
+            headingLevel={headingLevel}
+          />
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>
       )}
@@ -178,20 +216,33 @@ function SurroundingsSceneInner({ anchor }: { anchor: { lat: number; lng: number
   );
 }
 
+function SceneHeading({
+  level,
+  ...rest
+}: { level: SceneHeadingLevel } & ComponentPropsWithRef<"h3">) {
+  const Tag = level === 3 ? "h3" : "h4";
+  return <Tag {...rest} />;
+}
+
 /**
  * 앵커가 없으면 아무것도 렌더하지 않는다(진입점이 좌표를 확보한 뒤에만 노출).
  * 앵커가 바뀌면 key로 재마운트해 이전 장면·상태를 버린다.
+ * `headingLevel`은 임베드 컨테이너의 직전 헤딩 + 1 — 계층 스킵 금지(헌장 §3):
+ * WhereAmI(패널 h3 아래)=4, DistanceBeacon(장소 상세 h2 아래)=3.
  */
 export function SurroundingsScene({
   anchor,
+  headingLevel = 4,
 }: {
   anchor: { lat: number; lng: number } | null;
+  headingLevel?: SceneHeadingLevel;
 }) {
   if (!anchor) return null;
   return (
     <SurroundingsSceneInner
       key={`${anchor.lat},${anchor.lng}`}
       anchor={anchor}
+      headingLevel={headingLevel}
     />
   );
 }
