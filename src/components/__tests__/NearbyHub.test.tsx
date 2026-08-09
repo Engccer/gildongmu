@@ -27,7 +27,7 @@ afterEach(cleanup);
  */
 function renderHub(locationNotice = "") {
   const onBack = vi.fn();
-  render(
+  const tree = (notice: string) => (
     <NextIntlClientProvider locale="ko" messages={messages}>
       <NearbyHub
         canShowWhereAmI={false}
@@ -40,12 +40,13 @@ function renderHub(locationNotice = "") {
         canShowEvents={false}
         canShowSurroundings={false}
         canShowAir={false}
-        locationNotice={locationNotice}
+        locationNotice={notice}
         onBack={onBack}
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
-  return { onBack };
+  const { rerender } = render(tree(locationNotice));
+  return { onBack, setNotice: (notice: string) => rerender(tree(notice)) };
 }
 
 function openPicker() {
@@ -98,5 +99,21 @@ describe("NearbyHub — 현재 위치 지정 모달 경합", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     observer.disconnect();
     expect(changes).toEqual([]);
+  });
+
+  it("닫은 뒤에는 다시 갱신된다(영구 동결이 아니다)", () => {
+    const notice = "이동이 감지되어 지정한 위치를 해제했습니다";
+    const { setNotice } = renderHub(notice);
+    const region = screen.getByText(notice);
+
+    openPicker();
+    // 붙든 사이에 바뀐 값은 아직 보이지 않는다(모달이 자기 채널을 쓰는 중).
+    setNotice("새 통지");
+    expect(region.textContent).toBe(notice);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    // 놓아 준 시점에 한 번 발화한다.
+    expect(region.textContent).toBe("새 통지");
   });
 });
