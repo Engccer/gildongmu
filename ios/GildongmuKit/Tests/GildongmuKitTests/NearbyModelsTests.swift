@@ -86,3 +86,26 @@ import Foundation
     // order는 정류소 통과 순서 — 오름차순 보존(서버 계약)
     #expect(result.stops.map(\.order) == result.stops.map(\.order).sorted())
 }
+
+// MARK: - M1 부근 상황 재구성
+
+@Test func surroundingsSceneFixtureDecodes() throws {
+    let response = try JSONDecoder().decode(
+        SurroundingsSceneResponse.self, from: fixture("surroundings-scene"))
+    let scene = try #require(response.data)
+    #expect(scene.frame == "entrance")
+    #expect(scene.total > 0)
+    #expect(!scene.groups.isEmpty)
+    // 서버는 항목 있는 묶음만 싣는다(빈 묶음 없음)
+    #expect(scene.groups.allSatisfy { !$0.items.isEmpty })
+    // road는 앵커와 다른 도로일 때만 채워지는 옵셔널 — 디코딩이 null을 삼키는지 확인
+    #expect(scene.groups.flatMap(\.items).allSatisfy { $0.distanceMeters >= 0 })
+}
+
+@Test func surroundingsSceneCompassFixtureDecodes() throws {
+    let response = try JSONDecoder().decode(
+        SurroundingsSceneResponse.self, from: fixture("surroundings-scene-compass"))
+    let scene = try #require(response.data)
+    #expect(scene.frame == "compass")
+    #expect(!scene.groups.isEmpty)
+}

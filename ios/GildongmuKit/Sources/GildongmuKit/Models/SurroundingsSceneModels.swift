@@ -1,0 +1,35 @@
+import Foundation
+
+// M1 도착지 부근 상황 재구성 — 서버 `/api/surroundings/scene` 응답 1:1 미러
+// (웹 `src/lib/surroundings-scene.ts` Scene). 좌우·맞은편 계산은 전부 서버에
+// 있고 앱은 소비만 한다(iOS 이식 착수 노트 2026-08-10: 계산 미러 불필요).
+
+/// 장소 한 줄 재료. 한 줄 조립(거리+이름+길 단서)은 뷰가 i18n 템플릿으로 한다.
+public struct SurroundingsSceneItem: Codable, Sendable, Hashable {
+    public let name: String
+    public let distanceMeters: Int
+    /// 앵커와 다른 도로일 때만 서버가 채운다(같은 도로면 잉여라 null).
+    public let road: String?
+    public let category: String
+}
+
+/// 묶음 하나. bucket은 frame에 따라 left|right|across|beyond 또는 8방위(n·ne·…).
+/// 신규 값 추가에 깨지지 않도록 String(NearbyModels 원칙).
+public struct SurroundingsSceneGroup: Codable, Sendable, Hashable {
+    public let bucket: String
+    public let items: [SurroundingsSceneItem]
+}
+
+public struct SurroundingsScene: Codable, Sendable {
+    /// 위치 확인 문장 재료(행정동 + 도로명주소). 못 얻으면 null.
+    public let place: String?
+    /// "entrance" = 입구 기준 좌우, "compass" = 절대 방위 폴백(3-state).
+    public let frame: String
+    public let groups: [SurroundingsSceneGroup]
+    public let total: Int
+}
+
+public struct SurroundingsSceneResponse: Codable, Sendable {
+    /// null = 서버 키 미보유(게이트). 소비자가 구성 결함으로 다룬다(빈 결과로 위장 금지).
+    public let data: SurroundingsScene?
+}
