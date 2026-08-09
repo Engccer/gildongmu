@@ -18,6 +18,7 @@
     { "name": "해제", "votes": [["match", 0], ["match", 2], ["match", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
     { "name": "회색지대", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "unknown" },
     { "name": "시간 span이 정확히 하한", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16]], "expect": "off" },
+    { "name": "성긴 표: span은 넘는데 표 수가 하한 미달", "votes": [["mismatch", 0], ["mismatch", 3], ["mismatch", 6], ["mismatch", 9], ["mismatch", 12], ["mismatch", 15], ["mismatch", 18]], "expect": "unknown" },
     { "name": "확정 비율이 정확히 임계", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "off" },
     { "name": "해제 비율이 정확히 임계", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
     { "name": "판정 가능 비율이 정확히 하한", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 16], ["unknown", 1], ["unknown", 3]], "expect": "off" },

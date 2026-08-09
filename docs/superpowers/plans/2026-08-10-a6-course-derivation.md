@@ -692,18 +692,20 @@ git commit -m "test(guide): 실사용 로그 리플레이 게이트 — spec §3
 `deriveCourse`의 전진 게이트 블록(`if (next.lastEmit !== null && ...)`)을 주석 처리.
 Run: `npx vitest run src/lib/__tests__/course-derivation.test.ts`
 Expected: **FAIL** — "전진 게이트: 직전 방출 지점에서 2m 미만이면 표를 내지 않는다" 케이스.
-원복 후 재실행 → PASS. 결과: [ ] 검출됨 / 실패한 테스트 이름: ______
+원복 후 재실행 → PASS. 결과: [x] 검출됨 / 실패한 테스트 이름: "전진 게이트: 직전 방출 지점에서 2m 미만이면 표를 내지 않는다" (1 failed | 5 passed, 원복 후 6 passed)
 
 - [ ] **Step 2: 변이 8 — 사슬 U 제거(고정 0°)**
 
 `uncertaintyDeg` 계산을 `const uncertaintyDeg = 0;`로 교체.
 Run: `npx vitest run src/lib/__tests__/course-derivation.test.ts src/lib/__tests__/course-derivation-replay.test.ts`
 Expected: **FAIL** — U 하한·굽은 사슬 단위 케이스 + 리플레이 오표율(회전 구간 표가 mismatch로 넘어간다).
-원복 후 재실행 → PASS. 결과: [ ] 검출됨 / 실패한 테스트 이름: ______
+원복 후 재실행 → PASS. 결과: [x] 검출됨 / 실패한 테스트 이름: "북으로 14m 직진이면 방위 0° 부근, U는 하한" + "굽은 사슬은 U가 팽창한다" (2 failed | 7 passed). ⚠ 리플레이 게이트는 이 변이에서 깨지지 않았다 — 전진 게이트를 통과한 실측 표들의 Δ가 전부 임계 안이라 U=0이어도 오표가 늘지 않는다(검출은 단위 케이스가 담당, 기대와의 차이만 기록).
 
 - [ ] **Step 3: 기존 변이 1~6 재확인(스폿 체크)**
 
 시그니처 교체로 기존 검출력이 죽지 않았는지 2건만 재확인: 변이 5(최소 증거량 — `COURSE_AXIS_MIN_VOTES = 0`)와 변이 6(`finalApproach` 순서)은 각각 `guide-course-axis.test.ts` verdicts 경계표와 `route-guide.test.ts`가 깨야 한다. 깨지 않으면 해당 테스트를 보강하고 이 플랜에 기록한다.
+
+**결과(2026-08-10)**: 변이 6은 검출됨("방위 축 확정이 최종 접근 진입보다 앞이다" 1 failed). **변이 5는 미검출이었다**(102 passed) — `MIN_VOTES` 하한이 기존 경계표에서 항상 span 게이트(16s)에 가려져 독립적으로 무는 케이스가 없었다(표 간격 3s의 성긴 표에서만 단독 발동). fixture verdicts에 "성긴 표: span은 넘는데 표 수가 하한 미달"(mismatch 7표·3s 간격·span 18s → unknown) 케이스를 보강했고, 보강 후 변이 5가 그 케이스를 깨는 것을 확인·원복했다.
 
 - [ ] **Step 4: 변이 결과를 이 플랜 파일에 기입하고 커밋**
 
