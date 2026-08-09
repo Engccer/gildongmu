@@ -57,6 +57,14 @@ public struct NearbyService: Sendable {
         return response.events
     }
 
+    /// M1 부근 상황 재구성(요청형). 앵커 좌표 하나를 받아 입구 기준 좌우 묶음을 준다.
+    /// nil = data:null(서버 키 미보유) — 소비자가 오류로 태운다(웹 parse 미러, 3-state).
+    public func surroundingsScene(lat: Double, lng: Double) async throws -> SurroundingsScene? {
+        let response: SurroundingsSceneResponse = try await client.get(
+            "/api/surroundings/scene", query: coordQuery(lat: lat, lng: lng))
+        return response.data
+    }
+
     /// 노선 경유정류소(lazy 펼치기). cityCode는 source=="tago"일 때만 쿼리에 포함(웹 BusRouteStops.tsx 미러).
     public func busRouteStops(source: String, cityCode: String?, routeId: String) async throws -> [BusRouteStop] {
         var query = [
