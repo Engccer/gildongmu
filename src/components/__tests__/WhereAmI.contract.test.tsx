@@ -46,6 +46,7 @@ const data = {
       name: "길동편의점",
       category: "convenience",
       categoryRaw: "가정,생활 > 편의점",
+      roadAddress: null,
       distanceMeters: 40,
       bearing: "n",
       lat: 37.5386,

@@ -709,7 +709,15 @@
       "hospital": "병원",
       "mart": "마트",
       "public": "공공기관",
-      "attraction": "관광명소"
+      "attraction": "관광명소",
+      "kindergarten": "어린이집·유치원",
+      "school": "학교",
+      "academy": "학원",
+      "parking": "주차장",
+      "gasStation": "주유소",
+      "culture": "문화시설",
+      "realEstate": "부동산",
+      "lodging": "숙박"
     },
     "direction": {
       "n": "북",
@@ -806,7 +814,15 @@
       "hospital": "병원",
       "mart": "마트",
       "public": "공공기관",
-      "attraction": "관광명소"
+      "attraction": "관광명소",
+      "kindergarten": "어린이집·유치원",
+      "school": "학교",
+      "academy": "학원",
+      "parking": "주차장",
+      "gasStation": "주유소",
+      "culture": "문화시설",
+      "realEstate": "부동산",
+      "lodging": "숙박"
     }
   },
   "barrierFreeInfo": {

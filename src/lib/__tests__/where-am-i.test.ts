@@ -8,6 +8,7 @@ function lm(id: string, distanceMeters: number): SurroundingPlace {
     name: id,
     category: "convenience",
     categoryRaw: "가정,생활 > 편의점",
+    roadAddress: null,
     distanceMeters,
     bearing: "n",
     lat: 37.5,

@@ -30,7 +30,27 @@ const CATEGORY_GROUPS: Record<string, SurroundingCategory> = {
   MT1: "mart",
   PO3: "public",
   AT4: "attraction",
+  PS3: "kindergarten",
+  SC4: "school",
+  AC5: "academy",
+  PK6: "parking",
+  OL7: "gasStation",
+  CT1: "culture",
+  AG2: "realEstate",
+  AD5: "lodging",
 };
+
+/** 현행 둘러보기 세트. 바꾸면 "내 주변 → 둘러보기"가 함께 바뀐다. */
+export const DEFAULT_CATEGORY_GROUPS = [
+  "CS2", "SW8", "FD6", "CE7", "BK9", "PM9", "HP8", "MT1", "PO3", "AT4",
+];
+
+/**
+ * 카카오 category_group_code 전 18종. M1(부근 재구성)이 쓴다.
+ * 둘러보기가 10종만 받는 것은 "갈 곳 고르기"라는 목적 때문이고, M1은
+ * "여기가 맞나"라 학교·유치원·주차장·문화시설이 오히려 핵심 단서다.
+ */
+export const ALL_CATEGORY_GROUPS = Object.keys(CATEGORY_GROUPS);
 
 export interface KakaoCatDoc {
   id: string;
@@ -42,6 +62,7 @@ export interface KakaoCatDoc {
   y: string;
   place_url?: string;
   distance?: string;
+  road_address_name?: string;
 }
 
 function numOrNaN(v: unknown): number {
@@ -78,6 +99,7 @@ export function normalizeSurroundingDoc(
     lng,
     phone: doc.phone || undefined,
     link: doc.place_url || undefined,
+    roadAddress: doc.road_address_name || null,
   };
 }
 
@@ -105,12 +127,13 @@ async function fetchKakaoCategory(
   code: string,
   lat: number,
   lng: number,
+  radiusMeters: number,
 ): Promise<KakaoCatDoc[]> {
   const url = new URL(ENDPOINT);
   url.searchParams.set("category_group_code", code);
   url.searchParams.set("x", String(lng));
   url.searchParams.set("y", String(lat));
-  url.searchParams.set("radius", String(RADIUS_METERS));
+  url.searchParams.set("radius", String(radiusMeters));
   url.searchParams.set("sort", "distance");
   url.searchParams.set("size", "15");
   const res = await fetch(url, {
@@ -128,17 +151,20 @@ async function fetchKakaoCategory(
 }
 
 /**
- * 좌표 → 내 주변 시설(카테고리 8종 병렬 병합). 키 없으면 [].
+ * 좌표 → 내 주변 시설(카테고리 병렬 병합, 기본 10종). 키 없으면 [].
  * 부분 실패 불변식(kids-places 동형): 일부 실패 보존, 전부 실패만 throw→502.
+ * `opts`는 M1 부근 재구성용 확장 — 미지정 호출부(둘러보기)는 동작 불변.
  */
 export async function findSurroundingsNear(
   lat: number,
   lng: number,
+  opts?: { groups?: string[]; radiusMeters?: number },
 ): Promise<SurroundingPlace[]> {
   if (!env.KAKAO_REST_API_KEY) return [];
-  const codes = Object.keys(CATEGORY_GROUPS);
+  const codes = opts?.groups ?? DEFAULT_CATEGORY_GROUPS;
+  const radius = opts?.radiusMeters ?? RADIUS_METERS;
   const settled = await Promise.allSettled(
-    codes.map((c) => fetchKakaoCategory(c, lat, lng)),
+    codes.map((c) => fetchKakaoCategory(c, lat, lng, radius)),
   );
   const lists: KakaoCatDoc[][] = [];
   let anyFulfilled = false;
