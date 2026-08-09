@@ -7,7 +7,6 @@ import messages from "../../../messages/ko.json";
 import { __resetGeolocationForTest } from "@/lib/geolocation";
 import {
   __resetManualLocationForTest,
-  getManualLocation,
   setManualLocation,
   setManualVerdict,
 } from "@/lib/manual-location-store";
@@ -32,23 +31,23 @@ describe("LocationBar", () => {
     __resetManualLocationForTest();
   });
 
-  it("수동 위치가 없으면 지정 버튼만 있다", () => {
+  // 위원장 실사용 판정 2026-08-09: 표시줄은 **버튼 하나**다. GPS가 기본값이라
+  // 수동 지정은 의도적으로 고른 상태이고, 되돌리기는 지정 화면 안에 이미 있어
+  // 첫 화면에 상시 노출할 빈도가 아니다. 해제 경로 생존은 ManualLocationPicker
+  // 계약 테스트가 못 박는다(그 하나가 유일한 경로가 됐다).
+  it("표시줄은 상태와 무관하게 버튼 하나다", () => {
     renderBar();
-    expect(screen.getByRole("button", { name: /현재 위치/ })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "지정 해제" })).toBeNull();
-  });
+    expect(screen.getAllByRole("button")).toHaveLength(1);
 
-  it("수동 위치가 있으면 '지정한 위치'로 읽히고 해제 버튼이 형제로 생긴다", () => {
+    cleanup();
     setManualLocation({
       label: "길동 카페", lat: 37.5384, lng: 127.1432,
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
     });
     renderBar();
-    const pick = screen.getByRole("button", { name: "지정한 위치, 길동 카페, 위치 지정하기" });
-    const clear = screen.getByRole("button", { name: "지정 해제" });
-    // 중첩 인터랙티브 금지 — 두 버튼은 형제여야 한다.
-    expect(pick.contains(clear)).toBe(false);
-    expect(clear.contains(pick)).toBe(false);
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toBe("지정한 위치, 길동 카페, 위치 지정하기");
   });
 
   it("origin이 없으면 확인 불가를 병기한다", () => {
@@ -106,17 +105,6 @@ describe("LocationBar", () => {
     const pick = screen.getByRole("button", { name: "현재 위치 확인 중, 위치 지정하기" });
     // 한 줄 = 한 접근성 객체 — 시각 텍스트를 덮는 aria-label 없이 보이는 텍스트 자체.
     expect(pick.getAttribute("aria-label")).toBeNull();
-  });
-
-  it("해제하면 포커스가 지정 버튼으로 이동한다", async () => {
-    setManualLocation({
-      label: "길동 카페", lat: 37.5384, lng: 127.1432,
-      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
-    });
-    renderBar();
-    await userEvent.click(screen.getByRole("button", { name: "지정 해제" }));
-    expect(getManualLocation()).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: /현재 위치/ }));
   });
 
   it("지정 버튼을 누르면 onPick이 불린다", async () => {

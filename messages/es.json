@@ -877,7 +877,6 @@
     "gpsFailed": "No se pudo determinar la ubicación",
     "manual": "Ubicación establecida, {label}",
     "manualUnverifiable": "Ubicación establecida, {label} (no se puede verificar)",
-    "clear": "Borrar ubicación establecida",
     "useGps": "Volver a la ubicación actual",
     "autoCleared": "Se detectó movimiento. Se ha borrado la ubicación establecida.",
     "guideNeedsRealLocation": "La guía en tiempo real necesita tu ubicación real.",

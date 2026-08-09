@@ -877,7 +877,6 @@
     "gpsFailed": "Position introuvable",
     "manual": "Position définie, {label}",
     "manualUnverifiable": "Position définie, {label} (impossible à vérifier)",
-    "clear": "Effacer la position définie",
     "useGps": "Revenir à la position actuelle",
     "autoCleared": "Déplacement détecté. La position définie a été effacée.",
     "guideNeedsRealLocation": "Le guidage en temps réel nécessite votre position réelle.",

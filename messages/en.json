@@ -877,7 +877,6 @@
     "gpsFailed": "Location unavailable",
     "manual": "Set location, {label}",
     "manualUnverifiable": "Set location, {label} (cannot verify)",
-    "clear": "Clear set location",
     "useGps": "Back to current location",
     "autoCleared": "Movement detected. The set location was cleared.",
     "guideNeedsRealLocation": "Live guidance needs your actual location.",

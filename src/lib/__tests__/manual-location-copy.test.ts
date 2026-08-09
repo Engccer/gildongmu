@@ -10,13 +10,16 @@ import ja from "../../../messages/ja.json";
 import iosExtraKo from "../../../ios/i18n/ios-extra/ko.json";
 
 const LOCALES = { ko, en, es, fr, it: it_, ja } as Record<string, Record<string, unknown>>;
+// ⚠ `clear`("지정 해제")는 2026-08-09에 사라졌다 — 표시줄의 형제 해제 버튼이
+// 제거되며 소비자가 0이 됐고, 되돌리기는 지정 화면의 `useGps`가 담당한다.
+// 테스트 이름에 개수를 박지 않는다: 키가 늘 때마다 이름과 배열이 따로 놀았다.
 const KEYS = [
   "gps", "locating", "gpsFailed", "manual", "manualUnverifiable",
-  "clear", "useGps", "autoCleared", "guideNeedsRealLocation",
+  "useGps", "autoCleared", "guideNeedsRealLocation", "pickTitle",
 ];
 
 describe("manualLocation 문구", () => {
-  it.each(Object.keys(LOCALES))("%s에 9키가 전부 있다", (locale) => {
+  it.each(Object.keys(LOCALES))(`%s에 ${KEYS.length}키가 전부 있다`, (locale) => {
     const ns = LOCALES[locale].manualLocation as Record<string, string> | undefined;
     expect(ns).toBeDefined();
     for (const k of KEYS) expect(typeof ns![k]).toBe("string");

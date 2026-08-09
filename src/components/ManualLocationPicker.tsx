@@ -9,7 +9,7 @@ import { normalizeVoiceQuery } from "@/lib/format";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { awaitRealFix } from "@/lib/effective-location";
 import { isEligibleFix } from "@/lib/manual-location";
-import { setManualLocation } from "@/lib/manual-location-store";
+import { clearManualLocation, setManualLocation } from "@/lib/manual-location-store";
 import { orderResultSections, combinedLiveMessage } from "@/lib/search-sections";
 import { SearchBar } from "./SearchBar";
 import { ResultList } from "./ResultList";
@@ -230,6 +230,34 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
         {liveMessage}
       </p>
+
+      {/*
+        "현재 위치로 되돌리기" — 수동 위치를 해제하는 **유일한 경로**다(표시줄의
+        형제 해제 버튼은 2026-08-09 위원장 판정으로 제거됐다). 이것이 사라지면
+        사용자는 지정한 위치에 갇힌다.
+
+        자리는 iOS `DirectionsEndpointSearchView`(target `.manualLocation`)와 같은
+        순서다 — 검색 입력·마이크 → 되돌리기 → 결과. 두 플랫폼을 오가는 사용자가
+        같은 스와이프 횟수로 만나야 한다.
+
+        수동 위치가 없을 때도 노출한다: 그때는 "현재 위치를 그대로 쓴다"는 확정
+        선택이라 무의미하지 않고(iOS `directions.useCurrentLocation`과 같은 의미),
+        조건을 두면 유일한 해제 경로에 조건 하나가 더 붙는다.
+
+        해제 신호는 **별도 통지가 아니라 복귀 포커스가 받는 라벨 변화**다 —
+        onClose가 표시줄 버튼으로 포커스를 되돌리고 그 이름이 "현재 위치, …"로
+        바뀌어 있다(헌장 §5: 재포커스 요소의 라벨 변화가 곧 상태 신호, 중복 금지).
+      */}
+      <button
+        type="button"
+        onClick={() => {
+          clearManualLocation();
+          onClose();
+        }}
+        className="mt-1 min-h-11 w-full rounded-md border border-border px-3 py-2 text-left hover:bg-accent/10"
+      >
+        {t("manualLocation.useGps")}
+      </button>
 
       {sectionOrder.map((kind) =>
         kind === "place" ? (
