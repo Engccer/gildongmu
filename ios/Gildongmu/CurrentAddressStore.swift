@@ -52,8 +52,15 @@ final class CurrentAddressStore {
         guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
         let key = Self.key(lat: coord.lat, lng: coord.lng)
         if key == loadedKey { return }
+        // 좌표가 갈렸으면 새 주소가 오기 전에 옛 주소를 버린다.
+        if loadedKey != nil { address = nil }
+        let resolved = (try? await service.reverseGeocode(lat: coord.lat, lng: coord.lng)) ?? nil
+        // ⚠ **취소는 "그 좌표를 확정했다"가 아니다.** 호출부 `.task(id:)`는 수동 위치가
+        // 켜지는 순간 이 태스크를 취소하는데(정상 흐름이다 — 사용자가 위치를 지정했다),
+        // 그때 loadedKey를 세워 두면 나중에 수동 위치를 해제해도 "이미 조회한 좌표"로
+        // 판정돼 주소가 영영 안 붙는다. 확정은 결과가 실제로 도착했을 때만 한다.
+        guard !Task.isCancelled else { return }
         loadedKey = key
-        address = nil
-        address = (try? await service.reverseGeocode(lat: coord.lat, lng: coord.lng)) ?? nil
+        address = resolved
     }
 }
