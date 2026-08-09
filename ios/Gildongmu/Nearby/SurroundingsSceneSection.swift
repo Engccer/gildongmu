@@ -1,0 +1,246 @@
+import SwiftUI
+import Observation
+import GildongmuKit
+
+/// M1 부근 상황 재구성 — "여기가 맞나" 확인용 요청형 섹션(웹 SurroundingsScene.tsx 미러).
+///
+/// 진입점 2곳(WhereAmI·BeaconTrackingSheet)이 모두 **다른 화면의 List 안**이라 자체
+/// 화면·nearbyStateOverlay를 만들지 않고 행들로 임베드된다. 통지는 전부 포커스·라벨
+/// 채널(헌장 §5): 조회 중 = 트리거 라벨 교체, 성공 = 결과 헤딩 포커스, 빈 결과·실패 =
+/// 메시지 행 포커스. Announcement 게시 금지 — 감싸는 화면이 이미 단일 통지 채널을
+/// 소유한다(웹 DistanceBeacon 단일 live 계약 동형).
+@Observable @MainActor
+final class SurroundingsSceneModel {
+    private var core: NearbyLoadCore<SurroundingsScene>!   // 클로저가 self 캡처 — IUO 2단 초기화
+    /// 묶음별 "더 보기" 창(웹 useRevealMore per-group 미러). 커밋 시 전체 리셋.
+    private var windows: [String: RevealWindow] = [:]
+    /// 진행 신호(트리거 라벨 교체 근거). core는 loaded 유지 재조회 중을 노출하지 않는다.
+    private(set) var busy = false
+    /// 재조회 실패 표식 — core 계약 #11이 직전 데이터를 유지하므로, 이 플래그가 없으면
+    /// 재조회 실패가 무신호가 된다(침묵 금지). 메시지 행 + 포커스의 근거.
+    private(set) var refreshFailed = false
+    /// 닫기 상태(웹 close() 미러). 데이터는 버리지 않고 표시만 접는다 — 재조회는 load가.
+    private(set) var closed = false
+    var phase: NearbyLoadPhase<SurroundingsScene> { core.phase }
+
+    init(anchor: NearbyCoord) {
+        let service = NearbyService(client: APIClient(baseURL: AppConfig.apiBaseURL))
+        core = NearbyLoadCore(
+            coordinate: .fixed(anchor),
+            coverage: .korea,
+            fetch: { coord, _ in
+                guard let coord else { preconditionFailure("fixed 소스는 좌표 보장") }
+                // data null = 서버 키 미보유. 여기 도달했다면 구성 결함이므로 빈 결과로
+                // 위장하지 않고 오류로 태운다(웹 parse 미러, 3-state).
+                guard let scene = try await service.surroundingsScene(
+                    lat: coord.lat, lng: coord.lng) else {
+                    throw APIError.badStatus(code: 200, message: "surroundings scene: data null")
+                }
+                return scene.total == 0 ? nil : scene   // nil → 코어가 .empty로
+            },
+            willCommit: { [weak self] _ in
+                self?.windows = [:]
+                self?.refreshFailed = false
+            },
+            onEvent: { [weak self] event in
+                // 발화 채널 없음(위 주석) — 재조회 실패만 화면 표식으로 옮긴다.
+                if case .refreshFailed = event { self?.refreshFailed = true }
+            })
+    }
+
+    func load() async {
+        guard !busy else { return }
+        busy = true
+        refreshFailed = false
+        closed = false
+        defer { busy = false }
+        await core.load()
+    }
+
+    func close() { closed = true }
+
+    func visibleCount(for bucket: String) -> Int {
+        windows[bucket]?.visibleCount ?? RevealWindow.initialVisible
+    }
+
+    /// "더 보기": 해당 묶음 공개 수를 늘리고 첫 새 항목 행 id를 반환(VO 포커스 대상).
+    func revealMore(bucket: String) -> String? {
+        guard case .loaded(let scene) = phase,
+              let group = scene.groups.first(where: { $0.bucket == bucket }) else { return nil }
+        var window = windows[bucket] ?? RevealWindow()
+        guard let firstNewIndex = window.revealMore(totalCount: group.items.count) else { return nil }
+        windows[bucket] = window
+        return sceneItemRowID(bucket: bucket, index: firstNewIndex)
+    }
+}
+
+private func sceneItemRowID(bucket: String, index: Int) -> String {
+    "scene-item-\(bucket)-\(index)"
+}
+
+/// 묶음이 이보다 크면 제목에 곳수를 병기한다(웹 COUNT_IN_TITLE_THRESHOLD 미러 —
+/// 스와이프 전 규모 예고).
+private let countInTitleThreshold = 3
+
+struct SurroundingsSceneSection: View {
+    let anchor: NearbyCoord
+    let proxy: ScrollViewProxy
+    @State private var model: SurroundingsSceneModel
+    @AccessibilityFocusState private var focusedID: String?
+
+    init(anchor: NearbyCoord, proxy: ScrollViewProxy) {
+        self.anchor = anchor
+        self.proxy = proxy
+        _model = State(initialValue: SurroundingsSceneModel(anchor: anchor))
+    }
+
+    private var anchorKey: String { "\(anchor.lat),\(anchor.lng)" }
+
+    private var isOpen: Bool {
+        if case .loaded = model.phase, !model.closed { return true }
+        return false
+    }
+
+    private var triggerLabel: String {
+        if model.busy { return appLocalized("surroundings.loading") }
+        return isOpen
+            ? appLocalized("surroundings.refresh") : appLocalized("surroundings.button")
+    }
+
+    private var terminalMessage: String? {
+        if model.refreshFailed { return appLocalized("surroundings.error") }
+        switch model.phase {
+        case .empty: return appLocalized("surroundings.empty")
+        case .failedServer: return appLocalized("surroundings.error")
+        case .outOfCoverage: return appLocalized("ios.common.outOfCoverage")
+        default: return nil   // denied 계열은 .fixed 소스에서 도달 불가
+        }
+    }
+
+    var body: some View {
+        // 조회 중 라벨 교체가 진행 신호(reroute 버튼 관례 — 별도 announce 금지).
+        Button(triggerLabel) {
+            guard !model.busy else { return }
+            Task {
+                await model.load()
+                await landAfterLoad()
+            }
+        }
+        .id("scene-trigger")
+        .accessibilityFocused($focusedID, equals: "scene-trigger")
+        // 앵커가 바뀌면 이전 장면·상태를 버린다(웹 key 재마운트 미러).
+        .onChange(of: anchorKey) {
+            model = SurroundingsSceneModel(anchor: anchor)
+        }
+
+        if let message = terminalMessage {
+            Text(message)
+                .id("scene-message")
+                .accessibilityFocused($focusedID, equals: "scene-message")
+        }
+
+        if isOpen, case .loaded(let scene) = model.phase {
+            Text(appLocalized("surroundings.ready"))
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+                .id("scene-heading")
+                .accessibilityFocused($focusedID, equals: "scene-heading")
+            // 닫기 자신도 사라지는 전이 — 상시 존재하는 트리거로 포커스 선점(헌장 §5).
+            Button(appLocalized("actions.close")) {
+                model.close()
+                Task { await land(on: "scene-trigger") }
+            }
+            // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
+            if let place = scene.place {
+                Text(place)
+            }
+            ForEach(scene.groups, id: \.bucket) { group in
+                // 묶음 제목이 유일한 발견 경로(spec 판정 10 — 제목 점프로 통째 건너뛰기).
+                Text(bucketTitle(group))
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                ForEach(
+                    Array(group.items.prefix(model.visibleCount(for: group.bucket)).enumerated()),
+                    id: \.offset
+                ) { index, item in
+                    // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
+                    distanceText(itemLine(item))
+                        .id(sceneItemRowID(bucket: group.bucket, index: index))
+                        .accessibilityFocused(
+                            $focusedID,
+                            equals: sceneItemRowID(bucket: group.bucket, index: index))
+                }
+                if group.items.count > model.visibleCount(for: group.bucket) {
+                    Button(appLocalized("actions.showMore")) {
+                        if let id = model.revealMore(bucket: group.bucket) {
+                            proxy.scrollTo(id, anchor: .top)   // 가시화 후 포커스(Clinic 정본)
+                            DispatchQueue.main.async { focusedID = id }
+                        }
+                    }
+                }
+            }
+            // 실재성 한계 고지(spec 판정 5 — 이름을 그대로 말하는 대신 출처로 헤지).
+            Text(appLocalized("surroundings.source"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func itemLine(_ item: SurroundingsSceneItem) -> String {
+        if let road = item.road {
+            return appLocalized(
+                "surroundings.itemWithRoad",
+                formatDistance(item.distanceMeters), item.name, road)
+        }
+        return appLocalized(
+            "surroundings.item", formatDistance(item.distanceMeters), item.name)
+    }
+
+    private func bucketTitle(_ group: SurroundingsSceneGroup) -> String {
+        let name = bucketName(group.bucket)
+        guard group.items.count > countInTitleThreshold else { return name }
+        return "\(name) \(appLocalized("surroundings.count", String(group.items.count)))"
+    }
+
+    /// bucket 값→키 매핑. 린터 계약(리터럴 키만)이라 switch에 12개를 나열한다.
+    /// 모르는 값은 원값 노출(키 문자열 노출보다 낫다 — 서버가 값을 늘려도 안 깨진다).
+    private func bucketName(_ bucket: String) -> String {
+        switch bucket {
+        case "left": appLocalized("surroundings.bucket.left")
+        case "right": appLocalized("surroundings.bucket.right")
+        case "across": appLocalized("surroundings.bucket.across")
+        case "beyond": appLocalized("surroundings.bucket.beyond")
+        case "n": appLocalized("surroundings.bucket.n")
+        case "ne": appLocalized("surroundings.bucket.ne")
+        case "e": appLocalized("surroundings.bucket.e")
+        case "se": appLocalized("surroundings.bucket.se")
+        case "s": appLocalized("surroundings.bucket.s")
+        case "sw": appLocalized("surroundings.bucket.sw")
+        case "w": appLocalized("surroundings.bucket.w")
+        case "nw": appLocalized("surroundings.bucket.nw")
+        default: bucket
+        }
+    }
+
+    /// 종단 상태로 포커스 착지. 대상 행이 트리거 바로 아래 새 행이라 scrollTo 없이
+    /// AX 트리에 있다 — 지연·대입·검증·1회 재시도(BeaconTrackingSheet.landStopFocus 동형).
+    private func landAfterLoad() async {
+        let target: String?
+        if terminalMessage != nil {
+            target = "scene-message"
+        } else if isOpen {
+            target = "scene-heading"
+        } else {
+            target = nil
+        }
+        guard let target else { return }
+        await land(on: target)
+    }
+
+    private func land(on target: String) async {
+        try? await Task.sleep(for: .milliseconds(400))
+        focusedID = target
+        try? await Task.sleep(for: .milliseconds(600))
+        if focusedID != target { focusedID = target }
+    }
+}
