@@ -466,9 +466,7 @@ E 절이 개별 기능 후보라면 여기는 **여러 항목을 한 설계로 �
 
 ### M1. 도착지 부근 상황 재구성 (위원장 의도 확정 2026-08-08)
 
-**상태(2026-08-10): 웹 + 계산 코어 구현 완료** — spec `2026-08-09-arrival-surroundings-design.md` §9.1(실호출 6/6), 서사는 CHANGELOG. **남은 판정·작업**: ①위원장 실보행("목적지를 찾는 단서가 됐는가"가 유일한 판정 축 — iOS 이식이 선행) ②실기기 VO(묶음 제목 점프·한 줄 비분절) ③iOS 이식(별도 플랜, 아래 착수 노트) ④업종 통계·버스정류소·음향신호기 문장(spec §6 하단 — 묶음 목록 값어치 확인 후) ⑤juso 내비게이션용DB 심사 회신(출입구 정밀 좌표). 아래 조사 서사는 판정 근거로 보존한다.
-
-**iOS 이식 착수 노트(2026-08-10 구조 탐색 완료 — 재조사 불필요)**: 계산이 전부 서버 라우트(`/api/surroundings/scene`)에 있어 **Swift 계산 미러(RoadAxis 등)는 불필요하다**(웹 플랜의 "Kit 미러" 가정을 대체) — 필요한 것은 ⓐ`NearbyService`에 엔드포인트 1개(`coordQuery` 패턴, `Scene` 모델은 서버 JSON 1:1 Codable) ⓑ`NearbyLoadCore` 껍데기(`.fixed` 앵커 좌표 소스, `ClinicNearbyView.swift`가 4-part 정본) + `RevealWindow` 묶음별 더 보기 ⓒ진입점 2곳: `WhereAmIView.swift`(payload가 조회 좌표 lat/lng를 이미 보존, 채팅 버튼 옆)와 `BeaconTrackingSheet.swift`(재조회 버튼 뒤 자리 — ⚠ `BeaconModel.dest`(:156)가 private이라 시트가 좌표를 읽으려면 노출 필요, 또는 `DirectionsTabView.trackedDestination`에서 주입) ⓓi18n은 `ios/i18n/ios-extra/{6로케일}.json`에 `ios.surroundings.*` 추가 후 `messages-to-xcstrings.mjs app`(웹 `surroundings.*`는 messages에 이미 있음 — kit 아닌 app 타깃이면 `KIT_NAMESPACES` 수정 불요). 실기기 배포 전 병렬 세션과 실험판 덮어쓰기 조정 필수(위원장 지시 2026-08-10).
+**상태(2026-08-10): 웹 + iOS 구현 완료** — 웹 spec `2026-08-09-arrival-surroundings-design.md` §9.1(실호출 6/6), iOS 이식 plan `2026-08-10-surroundings-scene-ios-port.md`(시뮬레이터 prod 실호출로 WhereAmI 경로 전 항목 검증), 서사는 CHANGELOG. **남은 판정·작업**: ①위원장 실보행("목적지를 찾는 단서가 됐는가"가 유일한 판정 축) ②실기기 VO — 묶음 제목 점프·한 줄 비분절에 더해 iOS 몫 둘: 시트 임베드 착지(scrollTo 선행으로 보강했으나 실기기가 정본, 실패 시 `ChatFocusDiag`로 실착지 확정)와 재조회 실패 시 직전 목록 유지+오류 행(코어 계약 #11 — 웹은 목록을 버리므로 두 플랫폼 거동이 다른 것이 의도인지 확인) ③업종 통계·버스정류소·음향신호기 문장(spec §6 하단 — 묶음 목록 값어치 확인 후) ④juso 내비게이션용DB 심사 회신(출입구 정밀 좌표). 아래 조사 서사는 판정 근거로 보존한다.
 
 > "최대한 많은 데이터를 효과적으로 사용하여 사용자가 도착지 부근에 왔을 때 **목적지뿐 아니라 근처 상황을 재구성**해 주려고 하는 게 내 의도야." (위원장)
 
