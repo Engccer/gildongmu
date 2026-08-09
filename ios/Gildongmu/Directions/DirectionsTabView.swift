@@ -76,6 +76,12 @@ final class DirectionsModel {
     /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
     /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
     private(set) var currentAddress: String?
+    /// `results`가 마지막으로 확정될 때 출발지가 수동 위치였는가(웹 originSource
+    /// 미러, DirectionsView.tsx). "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
+    /// 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다 — 조회 뒤 수동
+    /// 위치를 껐다 켰다 해도 이 값은 그 조회 시점 그대로다(안내 시작 사전 고지의
+    /// 근거, 정정 1~3).
+    private(set) var resultsUsedManualOrigin = false
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
     private(set) var isRefreshingCurrent = false
     private var hasLoadedCurrentAddress = false
@@ -136,6 +142,7 @@ final class DirectionsModel {
         isInFlight = false
         stepFreeBusy = false
         results = nil
+        resultsUsedManualOrigin = false
         phase = .idle
     }
 
@@ -164,7 +171,7 @@ final class DirectionsModel {
         isRefreshingCurrent = true
         Task {
             defer { isRefreshingCurrent = false }
-            guard let coord = try? await LocationService.shared.currentCoordinate(force: true) else { return }
+            guard let coord = try? await ManualLocationJudge.effectiveCoordinate(force: true) else { return }
             hasLoadedCurrentAddress = true
             await syncCurrentAddress(lat: coord.lat, lng: coord.lng)
         }
@@ -196,12 +203,22 @@ final class DirectionsModel {
 
     private func performQuery(from: DirectionsEndpoint, to: DirectionsEndpoint) async {
         results = nil
+        resultsUsedManualOrigin = false
         // 현재 위치 endpoint는 조회 시점에 측위(권한 팝업도 이 시점, 캐시 좌표 재사용).
+        // effectiveCoordinate는 수동 위치가 켜져 있으면 그 좌표를 돌려준다(웹
+        // awaitEffectiveLocation 동형) — "현재 위치"의 앱 전역 의미가 수동 위치일
+        // 때는 통일돼야 하기 때문(F-B 재측위도 같은 이유로 동일 함수를 쓴다).
         var current: (lat: Double, lng: Double)?
         if from == .current || to == .current {
             phase = .locating
+            // 호출 직전 스냅샷(effectiveCoordinate 내부의 분기 판정과 같은 turn) —
+            // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
+            // 받아온 좌표를 수동 기원으로 오분류하지 않는다.
+            let usedManualOrigin = ManualLocationStore.shared.current != nil
             do {
-                current = try await LocationService.shared.currentCoordinate()
+                current = try await ManualLocationJudge.effectiveCoordinate(force: false)
+                // 이 조회의 출발지가 수동 위치였는지 기록한다(안내 시작 사전 고지 근거).
+                resultsUsedManualOrigin = usedManualOrigin
                 // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
                 // 중단한다(수단별 fetch·주소 동기화 전부 생략). 오류가 아니라 커버리지
                 // 안내이므로 일반 phase로 표기(웹 DirectionsView 동형).
@@ -392,6 +409,8 @@ struct DirectionsTabView: View {
     @State private var walkExpandedOverride: Bool?
     @State private var beacon = BeaconModel()
     @State private var transitGuide = TransitGuideModel()
+    /// 필드 라벨의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
+    @State private var manualLocationStore = ManualLocationStore.shared
     @Environment(\.scenePhase) private var scenePhase
     /// 시트에서 끝점을 확정한 뒤 포커스를 보낼 곳(웹 `focusAfterResolve` 대응).
     /// 실기기 확인(2026-08-02): 시트가 닫히면 VO 커서가 **화면 최상단으로 이탈**한다.
@@ -465,6 +484,12 @@ struct DirectionsTabView: View {
                         && (briefFallbackVisible || !beacon.statusText.isEmpty)),
                    let tracked = trackedDestination {
                     Section {
+                        // 시작 전 사전 고지(정정 1~3): 차단하지 않고, 다음 스와이프에
+                        // 만나도록 버튼 바로 앞에 정적 텍스트로 둔다. 이미 추적 중이면
+                        // 재조회는 끝난 일이라 고지 대상이 아니다.
+                        if !beacon.isTracking, let notice = manualOriginNoticeText {
+                            Text(notice).foregroundStyle(.secondary)
+                        }
                         Button(beacon.isTracking
                             ? appLocalized("beacon.stop")
                             : appLocalized("beacon.briefGuideStart")
@@ -526,6 +551,9 @@ struct DirectionsTabView: View {
                             // 나열해 동일 라벨 3개가 구분 불가다.
                             if mode == .walk, walkGuideStartable,
                                let tracked = trackedDestination {
+                                if let notice = manualOriginNoticeText {
+                                    Text(notice).foregroundStyle(.secondary)
+                                }
                                 Button(appLocalized("beacon.guideStartWalk")) {
                                     lastGuideStart = .walk
                                     beacon.toggle(
@@ -537,6 +565,9 @@ struct DirectionsTabView: View {
                             }
                             if mode == .car, carGuideStartable,
                                let tracked = trackedDestination {
+                                if let notice = manualOriginNoticeText {
+                                    Text(notice).foregroundStyle(.secondary)
+                                }
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     beacon.toggle(
@@ -801,6 +832,29 @@ struct DirectionsTabView: View {
         return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
     }
 
+    /// 안내 시작 전 사전 고지(정정 1~3 — 브리프 원안은 "차단"처럼 읽혔으나, 안내는
+    /// 수동 출발지로 만든 경로를 재사용하지 않고 실좌표로 재조회하므로(BeaconModel이
+    /// LocationService만 쓴다) 안내 자체는 정확하다. 달라지는 것은 "화면에서 본
+    /// 출발지"와 "안내가 실제로 쓰는 출발지"뿐이라 차단이 아니라 고지가 맞다).
+    ///
+    /// 판정 축은 "지금 수동 위치가 켜져 있는가"가 아니라 **이 조회의 출발지가
+    /// 수동 위치였는가**다(`resultsUsedManualOrigin`, 웹 originSource 미러) —
+    /// 조회 뒤 수동 위치를 껐다 켰다 해도 화면에 보이는 이 경로가 실제로 어디서
+    /// 계산됐는지는 바뀌지 않는다.
+    ///
+    /// 전달 수단은 정적 텍스트다(웹과 달리 iOS는 조회 완료 시 포커스를 옮기지
+    /// 않으므로 — 위원장 판정 2026-08-02 — 순방향 스와이프가 이미 이 문장을
+    /// 지나간다. 별도 Announcement를 더하면 같은 문장이 텍스트·통지 양쪽에서
+    /// 이중 낭독된다).
+    ///
+    /// ⚠ 봉인 플래그도 여기서 재확인한다. 이 안내 진입점 자체가 Release 빌드엔
+    /// 없으므로(`realtimeGuidanceEnabled`가 `#if EXPERIMENTAL`), 이 문구도 그
+    /// 게이트 밖에서 평가되면 존재하지 않는 기능에 대한 경고가 된다.
+    private var manualOriginNoticeText: String? {
+        guard AppConfig.realtimeGuidanceEnabled, model.resultsUsedManualOrigin else { return nil }
+        return appLocalized("manualLocation.guideNeedsRealLocation")
+    }
+
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
         if target == .from {
             focusedEndpointField = .to
@@ -839,9 +893,16 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 현재 위치 값 텍스트(F-B): 재측위 중 → 진행 라벨, 주소 확보 → 주소 병기,
-    /// 그 외 기본 "현재 위치". 한 줄 = 한 객체(필드 버튼 단일 텍스트에 흡수).
+    /// 현재 위치 값 텍스트(F-B): 수동 위치가 켜져 있으면 그 라벨(LocationBarView
+    /// 동형, origin 유무로 검증 가능/불가 분기 — 3-state 정직성), 그 외 재측위 중 →
+    /// 진행 라벨, 주소 확보 → 주소 병기, 기본 "현재 위치". 한 줄 = 한 객체(필드
+    /// 버튼 단일 텍스트에 흡수).
     private var currentLocationText: String {
+        if let m = manualLocationStore.current {
+            return m.origin == nil
+                ? appLocalized("manualLocation.manualUnverifiable", m.label)
+                : appLocalized("manualLocation.manual", m.label)
+        }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         if let address = model.currentAddress {
             return appLocalized("directions.currentLocationNear", address)
