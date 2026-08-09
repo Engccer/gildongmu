@@ -15,13 +15,13 @@ afterEach(cleanup);
  * 헤딩만으론 구분할 수 없었다. 전용 키 `manualLocation.pickTitle`로 갈랐다.
  */
 describe("ManualLocationPicker", () => {
-  it("제목이 앱 기본 검색과 다른 '내 위치 지정' 전용 문구다", () => {
+  it("제목이 앱 기본 검색과 다른 '위치 지정하기' 전용 문구다", () => {
     render(
       <NextIntlClientProvider locale="ko" messages={messages}>
         <ManualLocationPicker onClose={vi.fn()} />
       </NextIntlClientProvider>,
     );
-    expect(screen.getByRole("heading", { name: "내 위치 지정" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "위치 지정하기" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "장소 검색" })).toBeNull();
   });
 });

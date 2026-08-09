@@ -44,7 +44,7 @@ describe("LocationBar", () => {
       origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
     });
     renderBar();
-    const pick = screen.getByRole("button", { name: "지정한 위치, 길동 카페, 내 위치 지정" });
+    const pick = screen.getByRole("button", { name: "지정한 위치, 길동 카페, 위치 지정하기" });
     const clear = screen.getByRole("button", { name: "지정 해제" });
     // 중첩 인터랙티브 금지 — 두 버튼은 형제여야 한다.
     expect(pick.contains(clear)).toBe(false);
@@ -55,7 +55,7 @@ describe("LocationBar", () => {
     setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
     renderBar();
     expect(
-      screen.getByRole("button", { name: "지정한 위치, 길동 카페(위치 확인 불가), 내 위치 지정" }),
+      screen.getByRole("button", { name: "지정한 위치, 길동 카페(위치 확인 불가), 위치 지정하기" }),
     ).toBeTruthy();
   });
 
@@ -70,7 +70,7 @@ describe("LocationBar", () => {
     setManualVerdict("undecidable");
     renderBar();
     expect(
-      screen.getByRole("button", { name: "지정한 위치, 길동 카페(위치 확인 불가), 내 위치 지정" }),
+      screen.getByRole("button", { name: "지정한 위치, 길동 카페(위치 확인 불가), 위치 지정하기" }),
     ).toBeTruthy();
   });
 
@@ -82,7 +82,7 @@ describe("LocationBar", () => {
     setManualVerdict("undecidable");
     setManualVerdict("keep");
     renderBar();
-    expect(screen.getByRole("button", { name: "지정한 위치, 길동 카페, 내 위치 지정" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "지정한 위치, 길동 카페, 위치 지정하기" })).toBeTruthy();
   });
 
   it("재지정하면 옛 판정을 물려받지 않는다", () => {
@@ -96,14 +96,14 @@ describe("LocationBar", () => {
       origin: { lat: 37.54, lng: 127.15, accuracy: 10, at: 2 }, setAt: 2,
     });
     renderBar();
-    expect(screen.getByRole("button", { name: "지정한 위치, 새 카페, 내 위치 지정" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "지정한 위치, 새 카페, 위치 지정하기" })).toBeTruthy();
   });
 
   // I3: 상태만 이름으로 쓰면 "현재 위치, 버튼"으로 읽혀 누르면 무엇이 되는지 단서가
   // 0이다. 형제 버튼("지정 해제")이 동작으로 이름이 붙어 명명이 비대칭이기도 했다.
   it("주 버튼 이름은 상태와 동작을 함께 말한다", () => {
     renderBar();
-    const pick = screen.getByRole("button", { name: "현재 위치 확인 중, 내 위치 지정" });
+    const pick = screen.getByRole("button", { name: "현재 위치 확인 중, 위치 지정하기" });
     // 한 줄 = 한 접근성 객체 — 시각 텍스트를 덮는 aria-label 없이 보이는 텍스트 자체.
     expect(pick.getAttribute("aria-label")).toBeNull();
   });
