@@ -904,5 +904,31 @@
     "autoCleared": "Se detectó movimiento. Se ha borrado la ubicación establecida.",
     "guideNeedsRealLocation": "La guía en tiempo real necesita tu ubicación real.",
     "pickTitle": "Establecer tu ubicación"
+  },
+  "surroundings": {
+    "button": "Ver alrededores",
+    "refresh": "Ver alrededores de nuevo",
+    "loading": "Consultando los alrededores…",
+    "ready": "Alrededores",
+    "empty": "No hay lugares registrados en un radio de 150 m.",
+    "error": "No se pudo cargar la información de los alrededores.",
+    "source": "Fuente: Kakao Map",
+    "bucket": {
+      "left": "Izquierda",
+      "right": "Derecha",
+      "across": "Enfrente",
+      "beyond": "Más allá del edificio",
+      "n": "Norte",
+      "ne": "Noreste",
+      "e": "Este",
+      "se": "Sureste",
+      "s": "Sur",
+      "sw": "Suroeste",
+      "w": "Oeste",
+      "nw": "Noroeste"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}, en {road}",
+    "count": "{count} lugares"
   }
 }

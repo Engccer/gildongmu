@@ -904,5 +904,31 @@
     "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata.",
     "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale.",
     "pickTitle": "Imposta la tua posizione"
+  },
+  "surroundings": {
+    "button": "Controlla i dintorni",
+    "refresh": "Controlla di nuovo i dintorni",
+    "loading": "Controllo dei dintorni…",
+    "ready": "Dintorni",
+    "empty": "Nessun luogo registrato entro 150 m.",
+    "error": "Impossibile caricare i dintorni.",
+    "source": "Fonte: Kakao Map",
+    "bucket": {
+      "left": "A sinistra",
+      "right": "A destra",
+      "across": "Di fronte",
+      "beyond": "Oltre l'edificio",
+      "n": "Nord",
+      "ne": "Nord-est",
+      "e": "Est",
+      "se": "Sud-est",
+      "s": "Sud",
+      "sw": "Sud-ovest",
+      "w": "Ovest",
+      "nw": "Nord-ovest"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}, su {road}",
+    "count": "{count} luoghi"
   }
 }

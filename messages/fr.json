@@ -904,5 +904,31 @@
     "autoCleared": "Déplacement détecté. La position définie a été effacée.",
     "guideNeedsRealLocation": "Le guidage en temps réel nécessite votre position réelle.",
     "pickTitle": "Définir votre position"
+  },
+  "surroundings": {
+    "button": "Vérifier les environs",
+    "refresh": "Vérifier à nouveau les environs",
+    "loading": "Vérification des environs…",
+    "ready": "Environs",
+    "empty": "Aucun lieu répertorié à moins de 150 m.",
+    "error": "Impossible de charger les environs.",
+    "source": "Source : Kakao Map",
+    "bucket": {
+      "left": "À gauche",
+      "right": "À droite",
+      "across": "En face",
+      "beyond": "Au-delà du bâtiment",
+      "n": "Nord",
+      "ne": "Nord-est",
+      "e": "Est",
+      "se": "Sud-est",
+      "s": "Sud",
+      "sw": "Sud-ouest",
+      "w": "Ouest",
+      "nw": "Nord-ouest"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}, sur {road}",
+    "count": "{count} lieux"
   }
 }

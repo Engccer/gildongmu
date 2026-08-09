@@ -904,5 +904,31 @@
     "autoCleared": "Movement detected. The set location was cleared.",
     "guideNeedsRealLocation": "Live guidance needs your actual location.",
     "pickTitle": "Set your location"
+  },
+  "surroundings": {
+    "button": "Check surroundings",
+    "refresh": "Check surroundings again",
+    "loading": "Checking surroundings…",
+    "ready": "Surroundings",
+    "empty": "No listed places within 150m.",
+    "error": "Could not load surroundings.",
+    "source": "Source: Kakao Map",
+    "bucket": {
+      "left": "Left",
+      "right": "Right",
+      "across": "Across the street",
+      "beyond": "Beyond the building",
+      "n": "North",
+      "ne": "Northeast",
+      "e": "East",
+      "se": "Southeast",
+      "s": "South",
+      "sw": "Southwest",
+      "w": "West",
+      "nw": "Northwest"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}, on {road}",
+    "count": "{count} places"
   }
 }

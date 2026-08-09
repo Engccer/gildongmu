@@ -904,5 +904,31 @@
     "autoCleared": "移動を検知したため、指定した位置を解除しました",
     "guideNeedsRealLocation": "リアルタイム案内には実際の位置情報が必要です",
     "pickTitle": "位置を指定"
+  },
+  "surroundings": {
+    "button": "周辺を確認",
+    "refresh": "周辺を再確認",
+    "loading": "周辺を照会中…",
+    "ready": "周辺の状況",
+    "empty": "150m以内に登録された店舗や施設がありません。",
+    "error": "周辺情報を照会できませんでした。",
+    "source": "出典: カカオマップ",
+    "bucket": {
+      "left": "左",
+      "right": "右",
+      "across": "向かい",
+      "beyond": "建物の先",
+      "n": "北",
+      "ne": "北東",
+      "e": "東",
+      "se": "南東",
+      "s": "南",
+      "sw": "南西",
+      "w": "西",
+      "nw": "北西"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}、{road}沿い",
+    "count": "{count}か所"
   }
 }

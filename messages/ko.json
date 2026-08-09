@@ -904,5 +904,31 @@
     "autoCleared": "이동이 감지되어 지정한 위치를 해제했습니다",
     "guideNeedsRealLocation": "실시간 안내는 실제 위치가 필요합니다",
     "pickTitle": "위치 지정하기"
+  },
+  "surroundings": {
+    "button": "주변 확인",
+    "refresh": "주변 다시 확인",
+    "loading": "주변 조회 중…",
+    "ready": "주변 상황",
+    "empty": "150m 안에 등록된 가게나 시설이 없습니다.",
+    "error": "주변 정보를 조회하지 못했습니다.",
+    "source": "출처: 카카오맵",
+    "bucket": {
+      "left": "왼쪽",
+      "right": "오른쪽",
+      "across": "맞은편",
+      "beyond": "건물 너머",
+      "n": "북쪽",
+      "ne": "북동쪽",
+      "e": "동쪽",
+      "se": "남동쪽",
+      "s": "남쪽",
+      "sw": "남서쪽",
+      "w": "서쪽",
+      "nw": "북서쪽"
+    },
+    "item": "{distance} {name}",
+    "itemWithRoad": "{distance} {name}, {road} 쪽",
+    "count": "{count}곳"
   }
 }
