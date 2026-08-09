@@ -4,6 +4,7 @@ import { __resetGeolocationForTest } from "../geolocation";
 import {
   __resetManualLocationForTest,
   getManualLocation,
+  getManualVerdict,
   setManualLocation,
 } from "../manual-location-store";
 import {
@@ -149,6 +150,74 @@ describe("effective-location", () => {
     release!();
     await pending;
     expect(getManualLocation()?.label).toBe("B");
+  });
+
+  // I1: 판정 결과를 버리면 라벨이 origin 유무만 보게 되어, **지금** 판정 불가한
+  // 상태가 검증 가능형으로 낭독된다(spec §4.5). 세 갈래 모두 기록해야 한다.
+  describe("판정 결과 기록", () => {
+    const nearFix = { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 0 };
+    function setNearby() {
+      setManualLocation({
+        label: "길동 카페", lat: 37.5384, lng: 127.1432,
+        origin: { ...nearFix, at: Date.now() / 1000 }, setAt: 1,
+      });
+    }
+
+    it("측위 실패는 undecidable로 기록된다", async () => {
+      setNearby();
+      stubGeolocation(null);
+      await runManualLocationJudgment();
+      expect(getManualVerdict()).toBe("undecidable");
+      // 유지가 계약이다(증거 부재는 해제 사유가 아니다).
+      expect(getManualLocation()?.label).toBe("길동 카페");
+    });
+
+    it("정확도가 자격 상한을 넘는 fix도 undecidable이다", async () => {
+      setNearby();
+      stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 500 });
+      await runManualLocationJudgment();
+      expect(getManualVerdict()).toBe("undecidable");
+    });
+
+    it("같은 자리면 keep으로 기록된다", async () => {
+      setNearby();
+      stubGeolocation({ lat: 37.5384, lng: 127.1432, accuracy: 10 });
+      await runManualLocationJudgment();
+      expect(getManualVerdict()).toBe("keep");
+    });
+
+    it("origin이 없으면 측위 없이 undecidable로 기록된다", async () => {
+      const spy = vi.fn();
+      vi.stubGlobal("navigator", { geolocation: { getCurrentPosition: spy } });
+      setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+      await runManualLocationJudgment();
+      expect(getManualVerdict()).toBe("undecidable");
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("판정 왕복 중 재지정되면 옛 판정을 새 위치에 기록하지 않는다", async () => {
+      setNearby();
+      let release: (() => void) | undefined;
+      vi.stubGlobal("navigator", {
+        geolocation: {
+          getCurrentPosition: (ok: PositionCallback) => {
+            release = () =>
+              ok({
+                coords: {
+                  latitude: 37.5384, longitude: 127.1432, accuracy: 10,
+                  altitude: null, altitudeAccuracy: null, heading: null, speed: null,
+                },
+                timestamp: Date.now(),
+              } as GeolocationPosition);
+          },
+        },
+      });
+      const pending = runManualLocationJudgment();
+      setManualLocation({ label: "B", lat: 37.6, lng: 127.2, origin: null, setAt: 2 });
+      release!();
+      await pending;
+      expect(getManualVerdict()).toBeNull();
+    });
   });
 
   it("awaitRealFix는 수동 위치를 무시하고 실좌표만 준다", async () => {

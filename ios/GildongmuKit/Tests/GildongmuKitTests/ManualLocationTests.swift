@@ -56,3 +56,24 @@ private func loadScenarios() throws -> Scenarios {
     let src = try String(contentsOf: url, encoding: .utf8)
     #expect(!src.contains("effectiveCoordinate"), "안내는 실좌표만 쓴다")
 }
+
+/// 라벨 판정선(I1): `origin` 유무만 보면 **지금** 판정 불가한 상태가 검증 가능형으로
+/// 낭독된다 — 더 나쁜 상태가 더 안심시키는 라벨을 내는 역전. 웹
+/// `isManualLocationVerified`와 같은 표를 만족해야 한다.
+@Test func 검증_가능형_라벨은_origin과_마지막_판정을_모두_본다() {
+    let withOrigin = ManualLocation(
+        revision: 1, label: "길동 카페", lat: 37.5384, lng: 127.1432,
+        origin: ManualFix(lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1), setAt: 1)
+    let withoutOrigin = ManualLocation(
+        revision: 1, label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: nil, setAt: 1)
+
+    // origin 있음 × 판정 전(nil)·keep → 검증 가능형
+    #expect(isManualLocationVerified(withOrigin, verdict: nil))
+    #expect(isManualLocationVerified(withOrigin, verdict: .keep))
+    // origin 있음 × undecidable(권한 철회·측위 실패) → 검증 불가형
+    #expect(!isManualLocationVerified(withOrigin, verdict: .undecidable))
+    // origin 없음 → 어떤 판정에서도 검증 불가형
+    #expect(!isManualLocationVerified(withoutOrigin, verdict: nil))
+    #expect(!isManualLocationVerified(withoutOrigin, verdict: .keep))
+    #expect(!isManualLocationVerified(withoutOrigin, verdict: .undecidable))
+}

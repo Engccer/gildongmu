@@ -105,6 +105,13 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// (그러지 않으면 권한 회수 후에도 캐시 좌표로 "성공"해 무한 침묵이 된다).
     var authorizationSnapshot: CLAuthorizationStatus { manager.authorizationStatus }
 
+    /// **표시용** 권한 상태 미러. 위 `authorizationSnapshot`은 계산 프로퍼티라
+    /// `@Observable`이 추적하지 못해, 그것을 읽는 뷰는 권한이 바뀌어도 다시 그려지지
+    /// 않는다(설정에서 회수하고 돌아와도 표시줄이 옛 상태를 말한다).
+    /// 가드는 계속 라이브 값(`authorizationSnapshot`)을 써야 한다 — 이 미러는 델리게이트
+    /// 콜백 뒤에야 갱신되므로 팝업 직후 판정에는 늦을 수 있다.
+    private(set) var observedAuthorization: CLAuthorizationStatus = .notDetermined
+
     /// 현재 정밀도 허가. 권한(허용/거부)과 **다른 축**이라 따로 노출한다 —
     /// reduced면 좌표가 1~20km 오차이고 `desiredAccuracy` 변경이 무효가 된다.
     var accuracySnapshot: CLAccuracyAuthorization { manager.accuracyAuthorization }
@@ -176,6 +183,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private override init() {
         super.init()
         manager.delegate = self
+        observedAuthorization = manager.authorizationStatus
     }
 
     /// **순위 가중용**(검색 근접 블렌딩, 2026-07-21). 낡거나 거친 좌표도 좌표
@@ -418,6 +426,9 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // status와 같이 여기서 값으로 읽어 반입한다.
         let accuracy = manager.accuracyAuthorization
         Task { @MainActor in
+            // 표시용 미러를 continuation 재개보다 **먼저** 갱신한다 — 뒤에 두면
+            // 깨어난 호출부가 옛 상태를 읽는 창이 생긴다.
+            self.observedAuthorization = status
             let continuations = self.authContinuations
             self.authContinuations = []
             for continuation in continuations { continuation.resume() }

@@ -16,7 +16,7 @@ import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import { getGeolocationSnapshot } from "@/lib/geolocation";
 import { awaitEffectiveLocation } from "@/lib/effective-location";
-import { useManualLocation } from "@/hooks/useManualLocation";
+import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
@@ -196,6 +196,8 @@ export function DirectionsView({
   const tManual = useTranslations("manualLocation");
   const locale = useLocale();
   const manual = useManualLocation();
+  // 검증 가능/불가 판정은 표시줄과 한 훅을 공유한다(판정선이 갈리면 화면으로 확인 불가).
+  const manualLabel = useManualLocationLabel();
 
   // "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B). null=주소 미확보(라벨은 기본
   // "현재 위치"만 — 시각으로 위치 오차를 확인할 수 없는 사용자를 위한 병기이므로
@@ -208,13 +210,9 @@ export function DirectionsView({
   // GPS가 알아낸 위치와 사용자가 지정한 위치는 다른 것이고 시각장애 사용자는 화면으로
   // 구분할 수 없다). 수동 위치가 이기므로 GPS 역지오코딩 주소(currentAddress)는
   // 무시한다 — 아래에서도 수동 위치 활성 중엔 그 주소를 아예 조회하지 않는다.
-  const currentLabel = manual
-    ? manual.origin
-      ? tManual("manual", { label: manual.label })
-      : tManual("manualUnverifiable", { label: manual.label })
-    : currentAddress
-      ? t("currentLocationNear", { address: currentAddress })
-      : t("currentLocation");
+  const currentLabel =
+    manualLabel ??
+    (currentAddress ? t("currentLocationNear", { address: currentAddress }) : t("currentLocation"));
   const [fromField, setFromField] = useState<FieldState>(() =>
     endpointToField(initialFrom ?? { kind: "current" }, currentLabel),
   );

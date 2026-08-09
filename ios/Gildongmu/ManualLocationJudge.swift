@@ -12,21 +12,36 @@ enum ManualLocationJudge {
     nonisolated(unsafe) static var announcer: (@MainActor () -> Void)?
 
     /// 판정 1회. 트리거 3종(scenePhase 복귀 · force 조회 · 앱 시작)이 호출한다.
+    /// ⚠ 어느 갈래로 끝나든 **결과를 스토어에 남긴다.** 결과를 버리면 라벨이
+    /// `origin` 유무만 보게 되어, 지금 판정할 수 없는 상태(권한 철회·실내 측위 실패)가
+    /// 검증 가능형으로 낭독된다 — 더 나쁜 상태가 더 안심시키는 라벨을 내는 역전이다
+    /// (spec §4.5). 웹 `runManualLocationJudgment`와 같은 약속이다.
     static func run() async {
         guard let manual = ManualLocationStore.shared.current else { return }
         // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
-        guard manual.origin != nil else { return }
-        // 권한이 없으면 팝업을 띄우지 않고 유지한다(증거 부재).
+        guard manual.origin != nil else {
+            ManualLocationStore.shared.setVerdict(.undecidable)
+            return
+        }
+        // 권한이 없으면 팝업을 띄우지 않고 유지한다(증거 부재). 유지하되 그 사실을
+        // 라벨이 말한다 — 이 갈래가 리뷰가 든 시나리오(권한 철회 + 이동)의 자리다.
         let auth = LocationService.shared.authorizationSnapshot
-        guard auth == .authorizedWhenInUse || auth == .authorizedAlways else { return }
+        guard auth == .authorizedWhenInUse || auth == .authorizedAlways else {
+            ManualLocationStore.shared.setVerdict(.undecidable)
+            return
+        }
 
         let captured = manual.revision
         let fix = try? await LocationService.shared.currentFix(force: true)
         let verdict = judgeManualLocation(manual: manual, fix: fix, now: Date().timeIntervalSince1970)
-        guard verdict == .drop else { return }
 
-        // CAS: 판정 왕복 중 재지정됐으면 늦게 온 옛 판정을 폐기한다.
+        // CAS: 판정 왕복 중 재지정됐으면 늦게 온 옛 판정을 폐기한다(해제도 라벨도).
         guard ManualLocationStore.shared.current?.revision == captured else { return }
+
+        guard verdict == .drop else {
+            ManualLocationStore.shared.setVerdict(verdict)
+            return
+        }
 
         ManualLocationStore.shared.clear()
         announcer?()

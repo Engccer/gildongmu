@@ -15,6 +15,13 @@ final class ManualLocationStore {
 
     private(set) var current: ManualLocation?
 
+    /// **마지막 판정 시도의 결과**. `nil` = 아직 판정하지 않음(지정 직후·복원 직후).
+    ///
+    /// 영속하지 않는다 — 저장하면 며칠 전 판정이 새 세션의 라벨을 정한다. 수명은
+    /// 지금 담긴 수동 위치와 같아 `set`/`clear`가 함께 초기화한다. 웹
+    /// `manual-location-store.ts`의 같은 이름 상태와 미러다.
+    private(set) var verdict: ManualVerdict?
+
     private init() {
         current = Self.load()
     }
@@ -52,14 +59,26 @@ final class ManualLocationStore {
         )
         guard Self.isValid(next) else { return }
         current = next
+        // 새 위치에는 아직 판정이 없다(옛 위치의 결과를 물려주면 라벨이 거짓말한다).
+        verdict = nil
         if let data = try? JSONEncoder().encode(next) {
             UserDefaults.standard.set(data, forKey: Self.storageKey)
         }
     }
 
+    /// 판정 결과 기록. `ManualLocationJudge.run()`만 부른다.
+    ///
+    /// ⚠ 호출부가 CAS(revision 동일)를 통과한 뒤에만 부를 것 — 판정 왕복 중 재지정이
+    /// 있었다면 이 결과는 다른 위치에 대한 판정이다.
+    func setVerdict(_ next: ManualVerdict) {
+        guard verdict != next else { return }
+        verdict = next
+    }
+
     func clear() {
         guard current != nil else { return }
         current = nil
+        verdict = nil
         UserDefaults.standard.removeObject(forKey: Self.storageKey)
     }
 }

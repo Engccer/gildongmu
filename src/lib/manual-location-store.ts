@@ -1,4 +1,9 @@
-import { parseManualLocation, type Fix, type ManualLocation } from "./manual-location";
+import {
+  parseManualLocation,
+  type Fix,
+  type ManualLocation,
+  type ManualVerdict,
+} from "./manual-location";
 
 /**
  * 수동 위치의 **런타임 정본**. `localStorage`는 그 뒤의 영속 매체일 뿐이다.
@@ -10,6 +15,14 @@ import { parseManualLocation, type Fix, type ManualLocation } from "./manual-loc
 const STORAGE_KEY = "gildongmu:manual-location";
 
 let state: ManualLocation | null = null;
+/**
+ * **마지막 판정 시도의 결과**. `null` = 아직 판정하지 않음(지정 직후·복원 직후).
+ *
+ * 영속하지 않는다 — 저장하면 며칠 전 판정이 새 세션의 라벨을 정한다. 수명은 지금
+ * 담긴 수동 위치와 같아 `set`/`clear`가 함께 초기화하고, 판정 기록은 CAS를 통과한
+ * 뒤에만 반영된다(늦게 온 옛 판정이 새 위치의 라벨을 정하지 않게).
+ */
+let verdict: ManualVerdict | null = null;
 let hydrated = false;
 const listeners = new Set<() => void>();
 
@@ -48,6 +61,8 @@ if (typeof window !== "undefined") {
     } catch {
       state = null;
     }
+    // 다른 탭이 바꾼 값에 이 탭의 판정 결과를 물려주지 않는다(다른 위치다).
+    verdict = null;
     // 이 시점의 state가 정본이다. hydrate가 나중에 저장소를 다시 읽어 덮지 않게 한다.
     hydrated = true;
     emit();
@@ -62,6 +77,28 @@ export function getManualLocation(): ManualLocation | null {
 /** SSR 스냅샷 — 서버에는 저장소가 없다. */
 export function getManualLocationServerSnapshot(): ManualLocation | null {
   return null;
+}
+
+/** 마지막 판정 결과. `null` = 아직 판정하지 않음. */
+export function getManualVerdict(): ManualVerdict | null {
+  return verdict;
+}
+
+/** SSR 스냅샷 — 서버에서는 판정이 돌지 않는다. */
+export function getManualVerdictServerSnapshot(): ManualVerdict | null {
+  return null;
+}
+
+/**
+ * 판정 결과 기록. `runManualLocationJudgment`만 부른다.
+ *
+ * ⚠ 호출부가 CAS(revision 동일)를 통과한 뒤에만 부를 것 — 판정 왕복 중 재지정이
+ * 있었다면 이 결과는 다른 위치에 대한 판정이다.
+ */
+export function setManualVerdict(next: ManualVerdict): void {
+  if (verdict === next) return;
+  verdict = next;
+  emit();
 }
 
 export function subscribeManualLocation(listener: () => void): () => void {
@@ -89,6 +126,8 @@ export function setManualLocation(input: ManualLocationInput): void {
   });
   if (!next) return;
   state = next;
+  // 새 위치에는 아직 판정이 없다(옛 위치의 결과를 물려주면 라벨이 거짓말한다).
+  verdict = null;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
@@ -101,6 +140,7 @@ export function clearManualLocation(): void {
   hydrate();
   if (state === null) return;
   state = null;
+  verdict = null;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
   } catch {
@@ -111,6 +151,7 @@ export function clearManualLocation(): void {
 
 export function __resetManualLocationForTest(): void {
   state = null;
+  verdict = null;
   hydrated = false;
   listeners.clear();
 }

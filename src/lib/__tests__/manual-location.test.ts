@@ -4,6 +4,7 @@ import {
   FIX_MAX_AGE_S,
   JUDGE_CEILING_M,
   MOVED_M,
+  isManualLocationVerified,
   judgeManualLocation,
   parseManualLocation,
   type Fix,
@@ -64,5 +65,37 @@ describe("parseManualLocation — 저장 경계 검증", () => {
     ["null", null],
   ])("%s를 폐기한다", (_name, raw) => {
     expect(parseManualLocation(raw)).toBeNull();
+  });
+});
+
+/**
+ * 라벨 판정선(I1). `GildongmuKit`의 `검증_가능형_라벨은_origin과_마지막_판정을_모두_본다`와
+ * **같은 표**다 — 두 플랫폼이 같은 것을 약속해야 한다.
+ */
+describe("isManualLocationVerified", () => {
+  const base: ManualLocation = {
+    revision: 1, label: "길동 카페", lat: 37.5384, lng: 127.1432,
+    origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
+  };
+  const noOrigin: ManualLocation = { ...base, origin: null };
+
+  it("origin이 있고 아직 판정 전이면 검증 가능형", () => {
+    expect(isManualLocationVerified(base, null)).toBe(true);
+  });
+
+  it("origin이 있고 keep이면 검증 가능형", () => {
+    expect(isManualLocationVerified(base, "keep")).toBe(true);
+  });
+
+  it("origin이 있어도 undecidable이면 검증 불가형", () => {
+    // 권한 철회·실내 측위 실패. 여기서 true를 내면 더 나쁜 상태가 더 안심시키는
+    // 라벨을 받는 역전이 된다(spec §4.5).
+    expect(isManualLocationVerified(base, "undecidable")).toBe(false);
+  });
+
+  it("origin이 없으면 어떤 판정에서도 검증 불가형", () => {
+    expect(isManualLocationVerified(noOrigin, null)).toBe(false);
+    expect(isManualLocationVerified(noOrigin, "keep")).toBe(false);
+    expect(isManualLocationVerified(noOrigin, "undecidable")).toBe(false);
   });
 });
