@@ -226,6 +226,11 @@
     },
     "unit": {
       "spokenMeters": "meters"
+    },
+    "guide": {
+      "routeListCurrent": "{n}. Current segment, {step}",
+      "routeListRow": "{n}. {step}",
+      "routeListClose": "Close route list"
     }
   }
 }

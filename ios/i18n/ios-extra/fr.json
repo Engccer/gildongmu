@@ -226,6 +226,11 @@
     },
     "unit": {
       "spokenMeters": "mètres"
+    },
+    "guide": {
+      "routeListCurrent": "{n}. Segment actuel, {step}",
+      "routeListRow": "{n}. {step}",
+      "routeListClose": "Fermer la liste de l'itinéraire"
     }
   }
 }

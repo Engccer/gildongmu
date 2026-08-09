@@ -11,6 +11,9 @@
 
 ## 2026-08-10
 
+### 실시간 안내 진행 상황 조망 + 하단 2행 분리 (실보행 판정 대기)
+실보행 피드백(2026-08-09) 반영 3건, 웹·iOS 미러. ①진행 상황 버튼을 조망형으로 재설계 — 서수 위치("안내 12개 중 5번째 구간")+잔여(+근거 있을 때만 시간)+현재 스텝 전문+다음 스텝. 종전 응답은 주기 통지와 뒷부분이 동일해 고유 정보가 0이었다. iOS는 버튼이 전 구간 목록도 펼친다(현재 구간 표식, 닫기 시 진행 상황 버튼 착지. 웹은 목록이 이미 화면에 있어 의도적 비적용). ②하단 상태를 역할 고정 2행으로 분리 — "현재 안내" 행(`currentGuidanceText`/`currentText`, 실행 안내 시점에만 갱신)+상태 행(기존 슬롯). ③묶음 통독 개수 제거("다음 안내. A. B"). spec `docs/superpowers/specs/2026-08-10-guide-progress-overview-design.md`.
+
 ### 도착지 부근 상황 재구성 M1 — iOS 이식 (실보행·실기기 VO 판정 대기)
 계산이 전부 서버 라우트에 있어 Swift 계산 미러 없이 소비 계층만 이식했다: Kit에 서버 JSON 1:1 Codable 모델+엔드포인트(`NearbyService.surroundingsScene`, fixture는 prod 실캡처 entrance·compass 2종), 앱에 임베드 섹션(`SurroundingsSceneSection` — `NearbyLoadCore` `.fixed` 앵커 + 묶음별 `RevealWindow`, 통지는 Announcement 없이 포커스·라벨 채널만), 진입점 2곳(WhereAmI 정위 좌표·추적 시트 목적지 좌표, `BeaconModel.dest` 읽기 노출). 시뮬레이터 prod 실호출로 트리거→묶음 헤딩→더 보기→닫기 전 경로 검증.
 편승 수정: 임박 큐의 동적 i18n 키 조립을 린터 계약대로 리터럴 switch로 교체(키 누락 무증상 결함 차단). plan `docs/superpowers/plans/2026-08-10-surroundings-scene-ios-port.md`.

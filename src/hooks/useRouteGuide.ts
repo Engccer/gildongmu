@@ -173,7 +173,9 @@ function unitText(route: GuideRoute, indices: number[], t: GuideT): string {
     .map((i) => route.steps[i]?.description)
     .filter((d): d is string => Boolean(d));
   if (descs.length <= 1) return descs[0] ?? "";
-  return t("bundle", { count: descs.length, steps: descs.join(". ") });
+  // 서두 "다음 안내."는 여러 문장이 이어진다는 신호로 유지, 개수는 행동을 바꾸지
+  // 않는 잉여라 제거(위원장 실보행 판정 2026-08-10).
+  return t("bundle", { steps: descs.join(". ") });
 }
 
 /**
@@ -202,19 +204,55 @@ export function nextLine(
     : t("nextDestination", { dest: destName, distance });
 }
 
-/** 진행 상황 통지문 — 총 잔여를 앞세우되 뒤쪽 어순은 nextLine과 같은 계약. */
-export function progressFollowingLine(
+/**
+ * 진행 상황 서두(서수 + 잔여) — 조망의 뼈대(위원장 실보행 판정 2026-08-10).
+ * 종전 응답은 뒷부분이 주기 통지와 문자 그대로 동일해 버튼 고유 정보가 0이었다.
+ * 서수 위치("안내 12개 중 5번째")가 핵심 신규 정보이고, 잔여 시간은 근거가 있을
+ * 때만 병기한다(3-state — 날조 금지).
+ */
+export function progressFrameLine(
+  route: GuideRoute,
+  stepIndex: number,
+  total: string,
+  etaMinutes: number | null,
+  t: GuideT,
+): string {
+  const ordinal = t("progressOrdinal", {
+    count: route.steps.length,
+    n: stepIndex + 1,
+  });
+  const remaining = joinText(
+    t("remainingDistance", { distance: total }),
+    etaMinutes !== null && t("remainingTime", { minutes: etaMinutes }),
+  );
+  return `${ordinal}. ${remaining}`;
+}
+
+/**
+ * 진행 상황 조망문(following) — 서두 + 현재 스텝 전문 + 다음 스텝 전문.
+ * 현재 스텝 재확인은 실행 안내를 소음으로 놓쳤을 때의 복구 수단이다. 마지막
+ * 스텝이면 다음 파트는 목적지 틀(nextDestination, distance = 구간 잔여).
+ */
+export function progressOverviewLine(
   route: GuideRoute,
   stepIndex: number,
   destName: string,
   total: string,
-  distance: string,
+  segment: string,
+  etaMinutes: number | null,
   t: GuideT,
 ): string {
-  const step = route.steps[stepIndex + 1]?.description;
-  return step
-    ? t("progressFollowing", { total, distance, step })
-    : t("progressFollowingDestination", { total, dest: destName, distance });
+  const frame = progressFrameLine(route, stepIndex, total, etaMinutes, t);
+  const cur = route.steps[stepIndex]?.description;
+  const next = route.steps[stepIndex + 1]?.description;
+  const parts = [
+    frame,
+    cur ? t("progressCurrent", { step: cur }) : null,
+    next
+      ? t("progressNext", { step: next })
+      : t("nextDestination", { dest: destName, distance: segment }),
+  ];
+  return parts.filter((p): p is string => Boolean(p)).join(". ");
 }
 
 /** 간략 안내 통지문(기존 비콘 문구 계약 그대로). 발화할 것이 없으면 빈 문자열. */
@@ -265,6 +303,13 @@ export interface RouteGuideApi {
    * 렌더한다 — 매 fix 갱신되므로 polite 채널에 태우면 그 자체가 통지 스팸이 된다.
    */
   progress: GuideProgress | null;
+  /**
+   * 지금 따르는 유닛 전문("현재 안내" 행, 위원장 판정 2026-08-10 하단 2행 분리).
+   * 실행 안내가 나가는 순간에만 갱신되고 주기 예고·임박·상태 통지가 덮지 않는다 —
+   * liveText 단일 슬롯이 현재/다음을 오가며 의미가 바뀌던 혼재의 해소. live region
+   * 밖 일반 텍스트로만 렌더한다(발화는 실행 안내 시점에 이미 나갔다).
+   */
+  currentText: string | null;
   /** 전환 버튼 노출 조건 — ko 데이터 로케일이면서 유효 상세 경로를 쥔 세션만. */
   canOfferDetail: boolean;
   rerouting: boolean;
@@ -301,6 +346,7 @@ export function useRouteGuide(
   const [liveText, setLiveText] = useState("");
   const [offRoute, setOffRoute] = useState(false);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
+  const [currentText, setCurrentText] = useState<string | null>(null);
   const [hasRoute, setHasRoute] = useState(false);
   const [rerouting, setRerouting] = useState(false);
 
@@ -401,6 +447,17 @@ export function useRouteGuide(
   const rememberGuidance = useCallback((text: string) => {
     lastGuidanceRef.current = text;
   }, []);
+
+  /**
+   * "현재 안내" 행 표시문. 단일 스텝은 라벨 틀로 감싸고, 묶음은 통독 서두
+   * ("다음 안내.")가 스스로를 설명하므로 원문 그대로 둔다 — "현재 안내, 다음
+   * 안내. …"처럼 라벨이 서두와 모순되는 조합을 막는다.
+   */
+  const currentDisplay = useCallback(
+    (text: string, isBundle: boolean): string =>
+      isBundle ? text : t("progressCurrent", { step: text }),
+    [t],
+  );
 
   /**
    * 열화 전이 판정(spec 2026-08-08 §2.3). 상태가 열화이고 **직전과 다를 때만**
@@ -612,12 +669,16 @@ export function useRouteGuide(
       setMode("detail");
       setOffRoute(state.phase === "offRoute");
       setProgress(progressOf(route, state));
+      // "현재 안내" 행은 커밋 지점에서 일괄 초기화한다 — 간략 경유 복귀·재획득에서
+      // 이전 상세 구간의 낡은 유닛이 남는 것을 막는다(이후 갱신은 실행 안내 이벤트).
+      const indices = unitAt(route, state.stepIndex);
+      setCurrentText(currentDisplay(unitText(route, indices, t), indices.length > 1));
       // 거리 축이 직선 → 경로로 바뀐다(전환·재획득·재조회 공통). 다음 추세 fix가
       // 새 축 현재값으로 앵커를 다시 잡고 현재 상태를 1회 알린다.
       toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
       lastRemainingRef.current = null;
     },
-    [progressOf],
+    [currentDisplay, progressOf, t],
   );
 
   /**
@@ -1066,11 +1127,19 @@ export function useRouteGuide(
       if (!text) return;
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
+      // 실행 안내만 "현재 안내" 행을 갱신한다(하단 2행 분리, 판정 2026-08-10).
+      if (
+        result.event.kind === "announceSteps" ||
+        result.event.kind === "bundleReread"
+      ) {
+        setCurrentText(currentDisplay(text, result.event.indices.length > 1));
+      }
     },
     [
       announce,
       clearEtaTimer,
       closerIntervalSeconds,
+      currentDisplay,
       emitTone,
       eventText,
       stepFinalApproach,
@@ -1227,6 +1296,7 @@ export function useRouteGuide(
       setHasRoute(false);
       setOffRoute(false);
       setProgress(null);
+      setCurrentText(null);
       setRerouting(false);
       announce("");
     }
@@ -1460,13 +1530,19 @@ export function useRouteGuide(
           t("etaStale", { minutes: Math.round(etaAgeS / 60) }),
       );
     };
+    // 잔여 시간은 상시 표시 행과 같은 산식(progressOf)을 재사용한다(사본 금지).
+    const etaSeconds = progressOf(route, state).etaSeconds;
+    const etaMinutes =
+      etaSeconds !== null ? Math.max(1, Math.round(etaSeconds / 60)) : null;
     if (state.phase === "bundle") {
+      // 묶음 국면은 통독 자체가 "다음 안내." 서두를 가지므로 다음 파트가 따로 없다.
       announce(
         wrapCar(
-          t("progressBundle", {
-            total,
-            count: unitAt(route, state.stepIndex).length,
-          }),
+          `${progressFrameLine(route, state.stepIndex, total, etaMinutes, t)}. ${unitText(
+            route,
+            unitAt(route, state.stepIndex),
+            t,
+          )}`,
         ),
       );
       return;
@@ -1474,17 +1550,18 @@ export function useRouteGuide(
     const cur = route.steps[state.stepIndex];
     announce(
       wrapCar(
-        progressFollowingLine(
+        progressOverviewLine(
           route,
           state.stepIndex,
           destRef.current.name,
           total,
           formatDistance(Math.max(0, (cur?.endD ?? state.d) - state.d)),
+          etaMinutes,
           t,
         ),
       ),
     );
-  }, [announce, kindFixed, t, tBeacon]);
+  }, [announce, kindFixed, progressOf, t, tBeacon]);
 
   const requestReroute = useCallback(() => {
     if (!trackingRef.current || rerouteInFlightRef.current) return;
@@ -1658,6 +1735,7 @@ export function useRouteGuide(
     liveText,
     offRoute,
     progress,
+    currentText,
     // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐.
     canOfferDetail: kindFixed === "walk" && !prefersEnglish(locale) && hasRoute,
     rerouting,

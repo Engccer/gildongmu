@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import ko from "../../../messages/ko.json";
 import type { GuideRoute } from "@/lib/route-guide";
-import { nextLine, progressFollowingLine } from "../useRouteGuide";
+import { nextLine, progressFrameLine, progressOverviewLine } from "../useRouteGuide";
 
 /**
  * 다음 안내 통지문의 어순·분기 계약(위원장 실사용 피드백 2026-08-07).
@@ -73,16 +73,31 @@ describe("다음 안내 통지문", () => {
   });
 });
 
-describe("진행 상황 통지문", () => {
-  it("총 잔여 뒤에도 같은 어순을 유지한다", () => {
+describe("진행 상황 조망문 (위원장 실보행 판정 2026-08-10)", () => {
+  // 종전 응답은 뒷부분이 주기 통지와 문자 그대로 동일해 버튼 고유 정보가 0이었다.
+  // 새 계약: 서수 위치가 맨 앞(핵심 신규 정보), 잔여(+근거 있을 때만 시간),
+  // 현재 스텝 전문 재확인, 다음 스텝 전문.
+  it("서수 + 잔여 + 현재 + 다음을 이 순서로 조립한다", () => {
     expect(
-      progressFollowingLine(routeOf("출발", CAR_STEP), 0, "수서역", "5.2km", "약 129m", t),
-    ).toBe(`남은 거리 5.2km. 약 129m 앞 ${CAR_STEP}`);
+      progressOverviewLine(
+        routeOf("출발", CAR_STEP, "도착"), 1, "수서역", "5.2km", "약 129m", 8, t,
+      ),
+    ).toBe(
+      `안내 3개 중 2번째 구간. 남은 거리 5.2km, 약 8분. 현재 안내, ${CAR_STEP}. 다음 안내, 도착`,
+    );
   });
 
-  it("마지막 스텝이면 목적지 틀로 갈아탄다", () => {
+  it("잔여 시간 근거가 없으면 시간을 생략한다(날조 금지)", () => {
+    expect(progressFrameLine(routeOf("출발", "도착"), 0, "5.2km", null, t)).toBe(
+      "안내 2개 중 1번째 구간. 남은 거리 5.2km",
+    );
+  });
+
+  it("마지막 스텝이면 다음 파트가 목적지 틀로 갈아탄다(distance = 구간 잔여)", () => {
     expect(
-      progressFollowingLine(routeOf(CAR_STEP), 0, "수서역", "5.2km", "약 129m", t),
-    ).toBe("남은 거리 5.2km. 수서역까지 약 129m");
+      progressOverviewLine(routeOf(CAR_STEP), 0, "수서역", "129m", "약 129m", null, t),
+    ).toBe(
+      `안내 1개 중 1번째 구간. 남은 거리 129m. 현재 안내, ${CAR_STEP}. 수서역까지 약 129m`,
+    );
   });
 });

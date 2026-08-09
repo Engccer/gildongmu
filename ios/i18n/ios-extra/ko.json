@@ -226,6 +226,11 @@
     },
     "unit": {
       "spokenMeters": "미터"
+    },
+    "guide": {
+      "routeListCurrent": "{n}. 지금 이 구간, {step}",
+      "routeListRow": "{n}. {step}",
+      "routeListClose": "경로 목록 닫기"
     }
   }
 }

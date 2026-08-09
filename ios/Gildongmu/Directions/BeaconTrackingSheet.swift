@@ -20,6 +20,10 @@ struct BeaconTrackingSheet: View {
     let onStop: () -> Void
 
     @AccessibilityFocusState private var stopFocused: Bool
+    @AccessibilityFocusState private var progressFocused: Bool
+    /// 전 구간 목록 펼침(위원장 판정 2026-08-10 ⓑ — 버튼으로 펼침). 평소엔 접어
+    /// 중지 버튼 등 핵심 컨트롤의 탐색 비용을 유지한다.
+    @State private var showRouteList = false
     /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
     /// 중지 버튼으로 되돌리는 근거(사용자가 누른 결과로 사라지는 경로만 결정론 처리).
     @State private var reroutePressed = false
@@ -39,7 +43,13 @@ struct BeaconTrackingSheet: View {
                     .accessibilityFocused($stopFocused)
                 // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
                 // 진행 상황: 자동 통지를 기다리지 않는 임의 시점 조회(Soundscape Where Am I).
-                Button(appLocalized("guide.progressButton")) { model.announceProgress() }
+                // 누르면 조망 낭독과 함께 전 구간 목록을 펼친다(경로 보유 세션만 —
+                // 간략 전용 세션은 낭독뿐, 죽은 펼침 금지).
+                Button(appLocalized("guide.progressButton")) {
+                    model.announceProgress()
+                    if model.routeStepDescriptions != nil { showRouteList = true }
+                }
+                .accessibilityFocused($progressFocused)
                 // 전환: 추적을 멈추지 않고 안내 방식만 바꾼다. 라벨이 곧 상태 신호.
                 // 경로 미보유 세션(비-ko·조회 실패·타 수단)에선 미노출(죽은 컨트롤 금지).
                 if model.canOfferDetail {
@@ -71,6 +81,13 @@ struct BeaconTrackingSheet: View {
                 // 정적 행 하나. 이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직).
                 if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {
                     distanceText(remaining)
+                }
+                // "현재 안내" 행(역할 고정 2행 분리, 위원장 판정 2026-08-10): 지금 따르는
+                // 유닛 전문. 실행 안내 시점에만 갱신되고 아래 상태 1줄(주기 예고·임박·
+                // 상태 전이)이 덮지 않는다. 이탈 중엔 낡은 투영이라 숨긴다(3-state 정직).
+                if model.mode == .detail, !model.offRoute,
+                   let current = model.currentGuidanceText {
+                    distanceText(current)
                 }
                 // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
                 // 다투지 않는다 — 시작 시 음성 1회는 놓치면 끝이고, 비-VO 사용자에게는
@@ -110,6 +127,32 @@ struct BeaconTrackingSheet: View {
                 ))
                 .accessibilityAddTraits(.isHeader)
             }
+            // 전 구간 목록(위원장 판정 2026-08-10 ⓑ): 시트가 길찾기 목록을 덮어 추적
+            // 중 경로 전체를 볼 수단이 없던 공백의 해소. 진행 상황 버튼이 발견 경로라
+            // landmark·헤딩 없음(헌장 §3), 조회형 정보라 live region 없음 — 표식은
+            // fix 갱신에 따라 조용히 이동한다. 행은 "{n}. {스텝}" 단일 텍스트(한 줄 =
+            // 한 객체), 현재 구간 행만 "지금 이 구간" 표식을 붙인다.
+            if showRouteList, let steps = model.routeStepDescriptions {
+                Section {
+                    ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
+                        if i == model.currentStepIndex {
+                            distanceText(appLocalized(
+                                "ios.guide.routeListCurrent", String(i + 1), desc
+                            ))
+                        } else {
+                            distanceText(appLocalized(
+                                "ios.guide.routeListRow", String(i + 1), desc
+                            ))
+                        }
+                    }
+                    // 닫기 버튼 자신과 목록이 함께 사라지는 전이 — 포커스를 상시
+                    // 존재하는 진행 상황 버튼(재펼침 경로)으로 되돌린다(헌장 §5).
+                    Button(appLocalized("ios.guide.routeListClose")) {
+                        showRouteList = false
+                        Task { await landProgressFocus() }
+                    }
+                }
+            }
             // M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
             // 이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). 컨트롤·상태
             // 행 뒤 별도 Section: 결과가 펼쳐져도 중지 버튼~상태 행 묶음이 밀리지
@@ -145,5 +188,15 @@ struct BeaconTrackingSheet: View {
         // 먹지 않았을 때만 1회 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
         guard !stopFocused else { return }
         stopFocused = true
+    }
+
+    /// 목록 닫기 후 진행 상황 버튼 착지(닫기 버튼 자신이 사라지는 전이, 헌장 §5).
+    /// 지연·검증·1회 재시도는 landStopFocus와 같은 검증된 패턴.
+    private func landProgressFocus() async {
+        try? await Task.sleep(for: .milliseconds(400))
+        progressFocused = true
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !progressFocused else { return }
+        progressFocused = true
     }
 }
