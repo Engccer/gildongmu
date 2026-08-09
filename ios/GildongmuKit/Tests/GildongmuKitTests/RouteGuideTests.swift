@@ -708,6 +708,57 @@ struct CourseAxisReducerTests {
         #expect(!toReacquiring.courseDerivation.fixes.isEmpty)
     }
 
+    @Test("상태 재구성은 표결 창을 비우고, 유도기 버퍼는 승계 인자로만 잇는다(§2.9)")
+    func rebuildClearsVotesButCarriesBufferOnlyWhenPassed() {
+        var primed = initialGuideState(route: axisRoute, now: 0).state
+        walk(&primed, fromAlong: 60, bearingDeg: 0, seconds: 20, startAt: 0)
+        #expect(!primed.courseDerivation.fixes.isEmpty)
+        // 새 세션(인자 생략)은 창·버퍼 전부 초기화.
+        let fresh = guideStateAt(route: axisRoute, d: 0, now: 100)
+        #expect(fresh.courseVotes.isEmpty)
+        #expect(fresh.courseDerivation.fixes.isEmpty)
+        // 같은 세션의 재구성(재조회·모드 전환)은 버퍼를 넘겨 잇는다 — 창은 여전히 비운다.
+        let carried = guideStateAt(
+            route: axisRoute, d: 0, now: 100, courseDerivation: primed.courseDerivation
+        )
+        #expect(carried.courseVotes.isEmpty)
+        #expect(carried.courseDerivation == primed.courseDerivation)
+        let reroute = initialGuideState(
+            route: axisRoute, now: 100, courseDerivation: primed.courseDerivation
+        )
+        #expect(reroute.state.courseDerivation == primed.courseDerivation)
+    }
+
+    @Test("방위 축 확정이 최종 접근 진입보다 앞이다 — 같은 fix에서는 이탈이 이긴다")
+    func courseVerdictWinsOverFinalApproach() {
+        // 유도 관측으로는 "종점 접근 중 + 방위 어긋남"을 한 궤적으로 만들 수 없어
+        // (관측이 곧 이동이다) 웹 테스트와 동형으로 창을 직접 구성한다:
+        // mismatch 다수 창 + 종점 잔여 ≤ 진입선(spec §2.7 순서 불변식 — 변이 6 안전망).
+        let mismatchWindow = (0..<9).map { CourseVoteSample(at: Double($0) * 2, vote: .mismatch) }
+        var nearEnd = guideStateAt(
+            route: axisRoute, d: 392, now: 0, hasFinalApproachGeometry: true
+        )
+        nearEnd.announcedUpTo = axisRoute.steps.count - 1
+        nearEnd.courseVotes = mismatchWindow
+        // 관측 없는 fix(버퍼 비어 있음) — 창은 이미 확정 다수이고 잔여 7m ≤ 진입선 10m.
+        let out = guideStep(
+            state: nearEnd, fix: fixCoord(along: 393, lateral: 0, acc: 8),
+            route: axisRoute, now: 18, tuning: .walk
+        )
+        #expect(out.event == .offRoute)
+        #expect(out.state.phase == .offRoute)
+        #expect(out.state.offRouteAxes.course)
+
+        // 대조: 창이 비어 있으면 같은 fix가 최종 접근에 진입한다(순서 외 조건 동일).
+        var clean = nearEnd
+        clean.courseVotes = []
+        let enter = guideStep(
+            state: clean, fix: fixCoord(along: 393, lateral: 0, acc: 8),
+            route: axisRoute, now: 18, tuning: .walk
+        )
+        #expect(enter.event == .finalApproachEnter)
+    }
+
     @Test("uncertain을 경유해도 축 latch가 보존된다")
     func latchSurvivesUncertain() {
         guard let r = confirmedByReversal() else {
