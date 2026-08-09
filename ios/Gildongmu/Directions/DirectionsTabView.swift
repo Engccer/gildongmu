@@ -80,7 +80,9 @@ final class DirectionsModel {
     /// 미러, DirectionsView.tsx). "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
     /// 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다 — 조회 뒤 수동
     /// 위치를 껐다 켰다 해도 이 값은 그 조회 시점 그대로다(안내 시작 사전 고지의
-    /// 근거, 정정 1~3).
+    /// 근거, 정정 1~3). ⚠ `results`와 **항상 같은 순간에만** 커밋한다(성공 경로
+    /// 단 한 곳) — 커버리지 밖 등 중간 return에서 `true·results=nil` 조합이
+    /// 관찰 가능한 채로 남지 않도록(fix 라운드 1 Minor 2).
     private(set) var resultsUsedManualOrigin = false
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
     private(set) var isRefreshingCurrent = false
@@ -209,16 +211,19 @@ final class DirectionsModel {
         // awaitEffectiveLocation 동형) — "현재 위치"의 앱 전역 의미가 수동 위치일
         // 때는 통일돼야 하기 때문(F-B 재측위도 같은 이유로 동일 함수를 쓴다).
         var current: (lat: Double, lng: Double)?
+        // 이 조회의 출발지가 수동 위치였는지(안내 시작 사전 고지 근거). 로컬로만
+        // 들고 있다가 성공 경로에서 `results`와 같은 순간에만 인스턴스 프로퍼티에
+        // 커밋한다 — 커버리지 밖 등 중간 return에서 값만 먼저 서고 `results`는
+        // 여전히 nil인 조합이 관찰 가능한 채로 남지 않도록.
+        var usedManualOrigin = false
         if from == .current || to == .current {
             phase = .locating
             // 호출 직전 스냅샷(effectiveCoordinate 내부의 분기 판정과 같은 turn) —
             // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
             // 받아온 좌표를 수동 기원으로 오분류하지 않는다.
-            let usedManualOrigin = ManualLocationStore.shared.current != nil
+            usedManualOrigin = ManualLocationStore.shared.current != nil
             do {
                 current = try await ManualLocationJudge.effectiveCoordinate(force: false)
-                // 이 조회의 출발지가 수동 위치였는지 기록한다(안내 시작 사전 고지 근거).
-                resultsUsedManualOrigin = usedManualOrigin
                 // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
                 // 중단한다(수단별 fetch·주소 동기화 전부 생략). 오류가 아니라 커버리지
                 // 안내이므로 일반 phase로 표기(웹 DirectionsView 동형).
@@ -286,6 +291,7 @@ final class DirectionsModel {
 
         let built = DirectionsResults(outcomes: outcomes)
         results = built
+        resultsUsedManualOrigin = usedManualOrigin
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
         resultsRevision += 1
@@ -486,8 +492,13 @@ struct DirectionsTabView: View {
                     Section {
                         // 시작 전 사전 고지(정정 1~3): 차단하지 않고, 다음 스와이프에
                         // 만나도록 버튼 바로 앞에 정적 텍스트로 둔다. 이미 추적 중이면
-                        // 재조회는 끝난 일이라 고지 대상이 아니다.
-                        if !beacon.isTracking, let notice = manualOriginNoticeText {
+                        // 재조회는 끝난 일이라 고지 대상이 아니다. ⚠ 도보·자동차 중
+                        // 하나라도 시작 가능하면 그쪽(ForEach 앞 통합 고지)이 이미
+                        // 담당하므로 여기서는 내지 않는다(fix 라운드 1 Important 1 —
+                        // 이 섹션은 briefFallbackVisible 외에도 실패 상태 표시로
+                        // 뜰 수 있어, 그 조건만으론 두 자리 중복이 남는다).
+                        if !beacon.isTracking, !walkGuideStartable, !carGuideStartable,
+                           let notice = manualOriginNoticeText {
                             Text(notice).foregroundStyle(.secondary)
                         }
                         Button(beacon.isTracking
@@ -542,6 +553,18 @@ struct DirectionsTabView: View {
                     }
                 }
                 if let results = model.results {
+                    // 시작 전 사전 고지(정정 1~3, fix 라운드 1 Important 1): 도보·자동차
+                    // 버튼이 각자의 수단 섹션에 있어 둘 다 성립하는 흔한 조합(도보 카카오
+                    // 성공 + 자동차 tmap 성공)에서 문장이 두 번 뜨던 것을 화면당 1회로
+                    // 합쳤다. 결과 섹션 전체보다 앞(대중교통→자동차→도보 고정 순서의
+                    // 맨 앞)에 둬 순방향 스와이프가 어떤 시작 버튼보다도 먼저 이 문장을
+                    // 지나가게 한다 — accessibilityHint는 버튼에 포커스해야만 들려
+                    // "지나칠 수 있는" 위치라 기각했다.
+                    if let notice = manualOriginNoticeText, walkGuideStartable || carGuideStartable {
+                        Section {
+                            Text(notice).foregroundStyle(.secondary)
+                        }
+                    }
                     ForEach(results.displayedModes, id: \.self) { mode in
                         Section {
                             // 수단별 안내 시작 버튼(B1 §3.1) — 수단 heading 착지 후
@@ -551,9 +574,6 @@ struct DirectionsTabView: View {
                             // 나열해 동일 라벨 3개가 구분 불가다.
                             if mode == .walk, walkGuideStartable,
                                let tracked = trackedDestination {
-                                if let notice = manualOriginNoticeText {
-                                    Text(notice).foregroundStyle(.secondary)
-                                }
                                 Button(appLocalized("beacon.guideStartWalk")) {
                                     lastGuideStart = .walk
                                     beacon.toggle(
@@ -565,9 +585,6 @@ struct DirectionsTabView: View {
                             }
                             if mode == .car, carGuideStartable,
                                let tracked = trackedDestination {
-                                if let notice = manualOriginNoticeText {
-                                    Text(notice).foregroundStyle(.secondary)
-                                }
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     beacon.toggle(
@@ -850,6 +867,13 @@ struct DirectionsTabView: View {
     /// ⚠ 봉인 플래그도 여기서 재확인한다. 이 안내 진입점 자체가 Release 빌드엔
     /// 없으므로(`realtimeGuidanceEnabled`가 `#if EXPERIMENTAL`), 이 문구도 그
     /// 게이트 밖에서 평가되면 존재하지 않는 기능에 대한 경고가 된다.
+    ///
+    /// **화면당 1회다** — 도보·자동차가 동시에 성공하는 흔한 조합에서 수단별로
+    /// 반복하면 같은 문장을 두 번 듣는다(fix 라운드 1 Important 1). 이 문자열
+    /// 자체는 어느 자리에서 낼지 모르므로, 호출부 둘(간략 폴백 섹션 / 결과
+    /// ForEach 앞)이 **정확히 상호 배타**가 되도록 각자 `walkGuideStartable`·
+    /// `carGuideStartable`을 반대로 검사한다 — 하나라도 시작 가능하면 ForEach
+    /// 앞 자리가 담당하고, 폴백 섹션은 그때 내지 않는다.
     private var manualOriginNoticeText: String? {
         guard AppConfig.realtimeGuidanceEnabled, model.resultsUsedManualOrigin else { return nil }
         return appLocalized("manualLocation.guideNeedsRealLocation")
