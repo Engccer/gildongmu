@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.3 출시 완료** · 1.0~1.3 전부 `READY_FOR_SALE` · 빌드 9 VALID |
+| iOS | **1.3 출시 완료**(1.0~1.3 `READY_FOR_SALE` · 빌드 9 VALID) · **1.4.0(빌드 10) 제출 대기** — 실기기 판정 후 |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
@@ -41,6 +41,7 @@
 | en 장소 병합 | 카카오 + TourAPI, 영문주소는 juso → NCP 폴백 |
 | 최근 검색 기록 | 검색 탭 + 길찾기 출발/도착지 |
 | 현재 위치 정위 | where-am-i, 결정론 산문 |
+| 현위치 수동 지정 | 장소 검색으로 직접 지정, 이동 시 자동 해제. 실시간 안내는 실좌표만 |
 
 ### 교통
 | 기능 | 비고 |
