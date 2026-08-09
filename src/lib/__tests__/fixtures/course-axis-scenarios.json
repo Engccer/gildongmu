@@ -1,13 +1,13 @@
 {
-  "comment": "방위 축 표결·판정 경계표. 웹 guide-course-axis.test.ts와 Kit GuideCourseAxisTests가 함께 소비한다(드리프트 가드). 경로는 남→북 직선 200m이므로 접선은 어디서나 0도다. d는 진행거리(m).",
+  "comment": "방위 축 표결·판정 경계표(유도 관측, 임계 45°). 웹 guide-course-axis.test.ts와 Kit GuideCourseAxisTests가 함께 소비한다(드리프트 가드). 경로는 남→북 직선 200m이므로 접선은 어디서나 0도다. d는 진행거리(m). bearing이 null이면 관측 없음.",
   "votes": [
-    { "name": "나란함", "course": 5, "courseAcc": 10, "d": 100, "fixAcc": 10, "expect": "match" },
-    { "name": "크게 어긋남", "course": 120, "courseAcc": 10, "d": 100, "fixAcc": 10, "expect": "mismatch" },
-    { "name": "불확실성이 임계를 걸침", "course": 50, "courseAcc": 40, "d": 100, "fixAcc": 10, "expect": "unknown" },
-    { "name": "위치 부정확", "course": 120, "courseAcc": 5, "d": 100, "fixAcc": 40, "expect": "unknown" },
-    { "name": "course 범위 밖", "course": 360, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "unknown" },
-    { "name": "경계 바로 위", "course": 71, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "mismatch" },
-    { "name": "경계 바로 아래", "course": 54, "courseAcc": 5, "d": 100, "fixAcc": 10, "expect": "match" }
+    { "name": "나란함", "bearing": 5, "uncertainty": 10, "d": 100, "expect": "match" },
+    { "name": "크게 어긋남", "bearing": 120, "uncertainty": 10, "d": 100, "expect": "mismatch" },
+    { "name": "불확실성이 임계를 걸침", "bearing": 50, "uncertainty": 40, "d": 100, "expect": "unknown" },
+    { "name": "경계 바로 안: Δ+U<45", "bearing": 20, "uncertainty": 20, "d": 100, "expect": "match" },
+    { "name": "경계 바로 밖: Δ-U>45", "bearing": 100, "uncertainty": 50, "d": 100, "expect": "mismatch" },
+    { "name": "bearing 범위 밖", "bearing": 360, "uncertainty": 5, "d": 100, "expect": "unknown" },
+    { "name": "관측 없음", "bearing": null, "uncertainty": 0, "d": 100, "expect": "unknown" }
   ],
   "votesComment": "경계 두 케이스는 임계(COURSE_AXIS_THRESHOLD_DEG)에서 파생된 값이다. 임계를 바꾸면 여기도 함께 바꿔야 하고, 그게 정상이다 — 이 표가 임계 변경을 잡는 가드다.",
   "verdictsComment": "⚠ 경계 케이스를 새로 만들 때: 판정은 게이트 넷(개수·판정 가능 비율·시간 span·확정/해제 비율)을 순서대로 통과해야 하므로, 재려는 축보다 **앞선 게이트에 먼저 걸리면 그 케이스는 아무것도 재지 않는다**. 통과하니까 잠근 것처럼 보이는데 실제로는 의도한 상수를 건드리지도 못한다(실사고: 판정 가능 비율 0.8을 정확히 맞춘 케이스가 span 14초라 MIN_SPAN_S에서 먼저 탈락했고, 기대값 unknown이 '맞아서'가 아니라 '다른 이유로' 나왔다). 새 케이스를 넣었으면 재려는 상수를 실제로 바꿔 보고 그 케이스가 깨지는지 확인할 것 — '테스트가 있다'와 '그 축이 지켜진다'는 다르다.",

@@ -3,7 +3,6 @@ import {
   courseAxisVerdict,
   courseVote,
   recordVote,
-  INACTIVE_COURSE,
   COURSE_AXIS_WINDOW_S,
   type CourseVote,
   type CourseVoteSample,
@@ -21,47 +20,42 @@ const route = buildGuideRoute([
     ],
   },
 ])!;
-const obs = (course: number, accuracyDeg: number) => ({
-  state: { kind: "valid" as const, course },
-  accuracyDeg,
-});
+const obs = (bearing: number, uncertaintyDeg: number) => ({ bearing, uncertaintyDeg });
 
 describe("courseVote", () => {
   it("나란하면 match", () => {
-    expect(courseVote(obs(5, 10), route.polyline, 100, 10)).toBe("match");
+    expect(courseVote(obs(5, 10), route.polyline, 100)).toBe("match");
   });
 
   it("크게 어긋나고 불확실성이 작으면 mismatch", () => {
-    expect(courseVote(obs(120, 10), route.polyline, 100, 10)).toBe("mismatch");
+    expect(courseVote(obs(120, 10), route.polyline, 100)).toBe("mismatch");
   });
 
   it("어긋남이 불확실성 안에 들어가면 unknown — 통과권이 아니라 오차범위로 쓴다", () => {
-    // 각도차 50°, 보고된 불확실성 40° → 실제로는 10°일 수 있다
-    expect(courseVote(obs(50, 40), route.polyline, 100, 10)).toBe("unknown");
+    // 각도차 50°, 사슬 불확실성 40° → 실제로는 10°일 수 있다
+    expect(courseVote(obs(50, 40), route.polyline, 100)).toBe("unknown");
   });
 
-  it("course가 valid가 아니면 unknown", () => {
-    expect(courseVote(INACTIVE_COURSE, route.polyline, 100, 10)).toBe("unknown");
-    expect(
-      courseVote({ state: { kind: "invalid" }, accuracyDeg: 5 }, route.polyline, 100, 10),
-    ).toBe("unknown");
+  it("관측이 없으면 unknown", () => {
+    expect(courseVote(null, route.polyline, 100)).toBe("unknown");
   });
 
-  it("위치 정확도가 나쁘면 unknown — 투영점이 틀리면 접선 비교가 무의미", () => {
-    expect(courseVote(obs(120, 5), route.polyline, 100, 40)).toBe("unknown");
-  });
-
-  it("course가 유한 [0,360) 밖이면 unknown", () => {
-    expect(courseVote(obs(Number.POSITIVE_INFINITY, 5), route.polyline, 100, 10)).toBe(
+  it("bearing이 유한 [0,360) 밖이면 unknown", () => {
+    expect(courseVote(obs(Number.POSITIVE_INFINITY, 5), route.polyline, 100)).toBe(
       "unknown",
     );
-    expect(courseVote(obs(360, 5), route.polyline, 100, 10)).toBe("unknown");
-    expect(courseVote(obs(Number.NaN, 5), route.polyline, 100, 10)).toBe("unknown");
+    expect(courseVote(obs(360, 5), route.polyline, 100)).toBe("unknown");
+    expect(courseVote(obs(Number.NaN, 5), route.polyline, 100)).toBe("unknown");
+  });
+
+  it("uncertaintyDeg가 유한 음이 아닌 값이 아니면 unknown", () => {
+    expect(courseVote(obs(120, -1), route.polyline, 100)).toBe("unknown");
+    expect(courseVote(obs(120, Number.NaN), route.polyline, 100)).toBe("unknown");
   });
 
   it("유효 접선이 하나도 없으면 unknown", () => {
     const degenerate = { points: [{ lat: 37.5, lng: 127.1 }], cum: [0] };
-    expect(courseVote(obs(120, 5), degenerate, 0, 10)).toBe("unknown");
+    expect(courseVote(obs(120, 5), degenerate, 0)).toBe("unknown");
   });
 });
 
@@ -135,10 +129,9 @@ describe("공유 fixture (Kit 동조 가드)", () => {
   it.each(scenarios.votes)("표결: $name", (c) => {
     expect(
       courseVote(
-        { state: { kind: "valid", course: c.course }, accuracyDeg: c.courseAcc },
+        c.bearing === null ? null : { bearing: c.bearing, uncertaintyDeg: c.uncertainty },
         route.polyline,
         c.d,
-        c.fixAcc,
       ),
     ).toBe(c.expect);
   });
