@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/route-guide-scenarios.json";
 import courseAxisScenarios from "./fixtures/course-axis-scenarios.json";
-import { INACTIVE_COURSE, type CourseObservation } from "../guide-course-axis";
+import type { CourseVoteSample } from "../guide-course-axis";
 import {
   buildGuideRoute,
   CAR_TUNING,
@@ -86,9 +86,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
           { ...fixCoord(f.along, f.lateral), accuracy: f.acc },
           route,
           f.t,
-          tuning,
-        INACTIVE_COURSE,
-        );
+          tuning);
         state = out.state;
         results.push({ event: out.event, tone: out.tone });
       }
@@ -168,16 +166,14 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
       { ...fixCoord(dPrev, 0), accuracy: 10 },
       uRoute,
       11, // 공백 11초 > 10 → 재획득 진입
-      CAR_TUNING,
-    INACTIVE_COURSE,
-    );
+      CAR_TUNING);
     expect(out.event?.kind).toBe("reacquiring");
     return out.state;
   }
 
   it("전방 창 안 후보가 1개면 채택(reacquired)", () => {
     const st = enterReacquiring(100); // prevD=100, v=0 → 창 [100, 200]
-    const out = guideStep(st, { ...fixCoord(150, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING, INACTIVE_COURSE);
+    const out = guideStep(st, { ...fixCoord(150, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
     // 후보: 북 d≈150(창 안) vs 남 d≈490(창 밖) → 단일 채택
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(150, 0);
@@ -185,7 +181,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 
   it("창 안 후보 0개면 거부 유지(침묵)", () => {
     const st = enterReacquiring(100);
-    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING, INACTIVE_COURSE);
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
     // 후보: 북 d≈250·남 d≈390 — 둘 다 창 [100,200] 밖 → 확정 거부
     expect(out.event).toBeNull();
     expect(out.state.phase).toBe("reacquiring");
@@ -193,7 +189,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
 
   it("창 안 후보 복수면 거부 유지(평행도로 이탈 은폐 차단)", () => {
     const st = { ...enterReacquiring(100), reacquireV: 20 }; // 창 상한 100+20×12×1.5+100=560
-    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING, INACTIVE_COURSE);
+    const out = guideStep(st, { ...fixCoord(250, 20), accuracy: 10 }, uRoute, 12, CAR_TUNING);
     // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부
     expect(out.event).toBeNull();
     expect(out.state.phase).toBe("reacquiring");
@@ -213,12 +209,10 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
       { ...fixCoord(100, 0), accuracy: 10 },
       longRoute,
       11,
-      CAR_TUNING,
-    INACTIVE_COURSE,
-    );
+      CAR_TUNING);
     expect(entered.event?.kind).toBe("reacquiring");
     const st: GuideState = { ...entered.state, reacquireV: 20 };
-    const out = guideStep(st, { ...fixCoord(500, 10), accuracy: 10 }, longRoute, 12, CAR_TUNING, INACTIVE_COURSE);
+    const out = guideStep(st, { ...fixCoord(500, 10), accuracy: 10 }, longRoute, 12, CAR_TUNING);
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(500, -1); // 위도-미터 근사 ±1m
   });
@@ -226,7 +220,7 @@ describe("car 재획득 타이브레이크(스펙 §4.3 — 재획득 경로 한
   it("전방 여유 버퍼(+100m)가 채택을 가른다 — 버퍼 회귀 잠금(독립 리뷰)", () => {
     const st = enterReacquiring(100); // v=0 → 창 [100, 200]
     // d≈180은 버퍼 100일 때만 창 안(50이면 상한 150 밖). 남 후보 d≈460은 창 밖.
-    const out = guideStep(st, { ...fixCoord(180, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING, INACTIVE_COURSE);
+    const out = guideStep(st, { ...fixCoord(180, 10), accuracy: 10 }, uRoute, 12, CAR_TUNING);
     expect(out.event?.kind).toBe("reacquired");
     expect(out.state.d).toBeCloseTo(180, 0);
   });
@@ -244,7 +238,7 @@ describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
     ];
     let confirm: ReturnType<typeof guideStep> | null = null;
     for (const [t, along] of confirmSeq) {
-      confirm = guideStep(state, off(along), route, t, CAR_TUNING, INACTIVE_COURSE);
+      confirm = guideStep(state, off(along), route, t, CAR_TUNING);
       state = confirm.state;
     }
     expect(confirm!.event?.kind).toBe("offRoute");
@@ -253,7 +247,7 @@ describe("car 이탈 재통지(스펙 §4.3 — 180초·무톤)", () => {
     let renotifyAt: number | null = null;
     let renotifyTone: GuideTone | null = "warning";
     for (let t = 24; t <= 210; t += 9) {
-      const out = guideStep(state, off(200), route, t, CAR_TUNING, INACTIVE_COURSE);
+      const out = guideStep(state, off(200), route, t, CAR_TUNING);
       state = out.state;
       if (out.event?.kind === "offRoute") {
         renotifyAt = t;
@@ -279,7 +273,7 @@ describe("속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀
     ];
     let out: ReturnType<typeof guideStep> | null = null;
     for (const [t, along] of fast) {
-      out = guideStep(state, { ...fixCoord(along, 0), accuracy: 10 }, route, t, WALK_TUNING, INACTIVE_COURSE);
+      out = guideStep(state, { ...fixCoord(along, 0), accuracy: 10 }, route, t, WALK_TUNING);
       state = out.state;
     }
     expect(out!.event?.kind).toBe("speedSuggest");
@@ -288,10 +282,10 @@ describe("속도 가드 표본 소멸 시 해제(정확도 배제의 2차 회귀
     // 옛 표본을 배수해 t=25에 표본 전무 → 가드 해제. 미해제면 이탈 재통지가
     // 무기한 억제된다(독립 리뷰 MAJOR).
     for (const t of [15, 20]) {
-      state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, t, WALK_TUNING, INACTIVE_COURSE).state;
+      state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, t, WALK_TUNING).state;
       expect(state.speedGuardActive).toBe(true); // 잔여 표본이 남은 동안은 동결 유지
     }
-    state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, 25, WALK_TUNING, INACTIVE_COURSE).state;
+    state = guideStep(state, { ...fixCoord(90, 0), accuracy: 30 }, route, 25, WALK_TUNING).state;
     expect(state.speedSamples).toHaveLength(0);
     expect(state.speedGuardActive).toBe(false);
   });
@@ -345,9 +339,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(115, 0), accuracy: 8 },
       route,
       10,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    );
+      WALK_TUNING);
     expect(out.event?.kind).not.toBe("finalApproachEnter");
     expect(out.state.phase).not.toBe("finalApproach");
   });
@@ -360,9 +352,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(97, 60), accuracy: 8 },
       route,
       10,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    );
+      WALK_TUNING);
     expect(out.state.phase).toBe("offRoute");
   });
 
@@ -374,9 +364,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(97, 0), accuracy: 8 },
       route,
       10,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    );
+      WALK_TUNING);
     expect(out.event?.kind).not.toBe("finalApproachEnter");
   });
 
@@ -391,9 +379,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(97, 0), accuracy: 8 },
       route,
       10,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    );
+      WALK_TUNING);
     expect(entered.event).toEqual({ kind: "finalApproachEnter" });
     expect(entered.state.phase).toBe("finalApproach");
 
@@ -402,9 +388,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(97, 0), accuracy: 200 },
       route,
       20,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    );
+      WALK_TUNING);
     expect(bad.state.phase).toBe("finalApproach");
     expect(bad.event).toBeNull();
     expect(bad.state.lastFixAt).toBe(20);
@@ -422,9 +406,7 @@ describe("최종 접근 진입 조건", () => {
       { ...fixCoord(200, 0), accuracy: 10 },
       route,
       10,
-      WALK_TUNING,
-    INACTIVE_COURSE,
-    ).state;
+      WALK_TUNING).state;
     expect(state.phase).not.toBe("reacquiring");
     expect(state.hasFinalApproachGeometry).toBe(true);
   });
@@ -447,7 +429,7 @@ describe("finalApproachEntryM", () => {
   });
 });
 
-describe("방위 축 통합", () => {
+describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
   // 남→북 직선 400m. 접선은 어디서나 0도.
   const route = buildGuideRoute([
     {
@@ -458,191 +440,182 @@ describe("방위 축 통합", () => {
       ],
     },
   ])!;
-  const at = (along: number) => ({
+  const at = (along: number, lateral = 0) => ({
     lat: 37.5 + along / 111320,
-    lng: 127.1,
+    lng: 127.1 + lateral / 111320 / Math.cos((37.5 * Math.PI) / 180),
     accuracy: 8,
   });
-  const facing = (deg: number): CourseObservation => ({
-    state: { kind: "valid", course: deg },
-    accuracyDeg: 5,
+
+  /** start 지점에서 bearingDeg 방향으로 1.2m/s·1Hz 보행 fix 시퀀스(관측은 유도기가 만든다). */
+  function walkFixes(
+    start: { along: number; lateral: number },
+    bearingDeg: number,
+    seconds: number,
+    startAt: number,
+  ): Array<{ fix: ReturnType<typeof at>; at: number }> {
+    const rad = (bearingDeg * Math.PI) / 180;
+    return Array.from({ length: seconds + 1 }, (_, i) => ({
+      fix: at(
+        start.along + Math.cos(rad) * i * 1.2,
+        start.lateral + Math.sin(rad) * i * 1.2,
+      ),
+      at: startAt + i,
+    }));
+  }
+
+  /** fix 시퀀스를 리듀서에 재생하고 마지막 상태·이벤트 로그를 돌려준다. */
+  function play(
+    state: GuideState,
+    fixes: Array<{ fix: ReturnType<typeof at>; at: number }>,
+    tuning = WALK_TUNING,
+  ): { state: GuideState; events: { kind: string; at: number }[] } {
+    const events: { kind: string; at: number }[] = [];
+    for (const f of fixes) {
+      const out = guideStep(state, f.fix, route, f.at, tuning);
+      state = out.state;
+      if (out.event) events.push({ kind: out.event.kind, at: f.at });
+    }
+    return { state, events };
+  }
+
+  /**
+   * 경로 위 역주행(남행)으로 방위 축을 확정시킨 상태. 수직거리는 내내 0이다.
+   * 확정 이벤트가 나온 fix에서 **멈춰** 반환한다 — 이후 케이스가 그 시각·위치에서
+   * 이어 걸을 수 있도록(시각 역행 금지).
+   */
+  function confirmedByReversal(): {
+    state: GuideState;
+    confirmedAt: number;
+    alongNow: number;
+  } {
+    let { state } = initialGuideState(route, 0);
+    // 경로 위 d≈100 지점까지 정상 북행(유도기 워밍업 겸 투영 안착).
+    state = play(state, walkFixes({ along: 60, lateral: 0 }, 0, 33, 0)).state;
+    // t=34부터 남행 — 유도 방위 180 vs 접선 0 → mismatch.
+    for (const f of walkFixes({ along: 100, lateral: 0 }, 180, 55, 34)) {
+      const out = guideStep(state, f.fix, route, f.at, WALK_TUNING);
+      state = out.state;
+      if (out.event?.kind === "offRoute") {
+        expect(state.phase).toBe("offRoute");
+        expect(state.offRouteAxes.course).toBe(true);
+        expect(state.offRouteAxes.distance).toBe(false);
+        return { state, confirmedAt: f.at, alongNow: 100 - (f.at - 34) * 1.2 };
+      }
+    }
+    throw new Error("역주행 55초 안에 방위 축이 확정해야 한다");
+  }
+
+  it("경로에서 동쪽으로 걸어 나가면 거리 축보다 먼저 방위 축이 확정한다", () => {
+    let { state } = initialGuideState(route, 0);
+    // d=50 안착 후 동쪽(90도)으로 보행. 수직거리 30m 도달(25초)+20초 hold보다
+    // 방위 창 확정(관측 시작 후 약 16~20초)이 앞선다.
+    state = play(state, walkFixes({ along: 10, lateral: 0 }, 0, 33, 0)).state;
+    const east = play(state, walkFixes({ along: 50, lateral: 0 }, 90, 30, 34));
+    const off = east.events.find((e) => e.kind === "offRoute");
+    expect(off).toBeTruthy();
+    expect(east.state.phase).toBe("offRoute");
+    expect(east.state.offRouteAxes.course).toBe(true);
+    // 확정 시점의 수직거리는 임계(30m) 미만 — 거리 축은 잠기지 않았다.
+    expect(east.state.offRouteAxes.distance).toBe(false);
   });
 
-  it("경로 위에 있어도 방향이 지속적으로 어긋나면 이탈을 확정한다", () => {
-    let { state } = initialGuideState(route, 0);
-    let sawOffRoute = false;
-    // 25초 동안 경로 위를 따라가되 방위만 남쪽(180도)으로 보고한다.
-    for (let t = 1; t <= 25; t++) {
-      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180));
-      state = out.state;
-      if (out.event?.kind === "offRoute") sawOffRoute = true;
-    }
-    expect(sawOffRoute).toBe(true);
-    expect(state.phase).toBe("offRoute");
-    expect(state.offRouteAxes.course).toBe(true);
-    // 수직거리는 0이므로 거리 축은 잠기지 않았다.
-    expect(state.offRouteAxes.distance).toBe(false);
+  it("경로 위 역주행은 방위 축이 확정한다 — 수직거리 축이 영영 못 보는 이탈", () => {
+    confirmedByReversal();
   });
 
-  it("방위 축으로 확정한 이탈은 방향이 맞아야 복귀한다", () => {
-    let { state } = initialGuideState(route, 0);
-    for (let t = 1; t <= 25; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-    }
-    expect(state.phase).toBe("offRoute");
-    // 위치는 계속 경로 위다. 방위만 어긋난 채로 두면 복귀하지 않는다.
-    for (let t = 26; t <= 40; t++) {
-      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180));
-      state = out.state;
-      expect(out.event?.kind).not.toBe("backOnRoute");
-    }
-    // 방향이 맞기 시작하면 복귀한다.
-    let recovered = false;
-    for (let t = 41; t <= 70; t++) {
-      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(0));
-      state = out.state;
-      if (out.event?.kind === "backOnRoute") recovered = true;
-    }
-    expect(recovered).toBe(true);
+  it("방위 축으로 확정한 이탈은 경로 방향으로 걸어야 복귀한다(§2.5)", () => {
+    const { state, confirmedAt, alongNow } = confirmedByReversal();
+    // 확정 지점에서 북행 재개 — 창이 match로 채워진 뒤에만 backOnRoute.
+    const fwd = play(state, walkFixes({ along: alongNow, lateral: 0 }, 0, 60, confirmedAt + 1));
+    const back = fwd.events.find((e) => e.kind === "backOnRoute");
+    expect(back).toBeTruthy();
+    expect(fwd.state.phase).not.toBe("offRoute");
+    expect(fwd.state.offRouteAxes).toEqual({ distance: false, course: false });
   });
 
   it("복귀 지연을 상한으로 잠근다 — 해제 게이트의 비용이 보이게", () => {
     // ⚠ 확정 지연만 재면 판정 가능 비율 게이트가 만든 비용의 절반이 안 보인다.
-    //   경로 위에 서서 방향을 바로잡은 사용자가 이탈 상태에 머무는 시간이다.
-    let { state } = initialGuideState(route, 0);
-    for (let t = 1; t <= 25; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-    }
-    expect(state.phase).toBe("offRoute");
-
-    let recoveredAt: number | null = null;
-    for (let t = 26; t <= 80 && recoveredAt === null; t++) {
-      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(0));
-      state = out.state;
-      if (out.event?.kind === "backOnRoute") recoveredAt = t;
-    }
-    expect(recoveredAt).not.toBeNull();
-    // 방향을 고친 시점(t=26)부터의 지연. 창이 mismatch를 밀어내고 해제 비율에
-    // 닿기까지 걸리는 구조적 시간이며, 상수를 만지면 이 수치가 함께 움직인다.
-    const delay = recoveredAt! - 26;
-    expect(delay).toBeLessThanOrEqual(25);
+    //   방향을 바로잡은 사용자가 이탈 상태에 머무는 시간이다. 유도 관측은 chord라
+    //   반전 직후 약 기저선(10m)만큼은 여전히 남행으로 읽힌다(관측의 자기 낡음,
+    //   spec §2.0) — 그 몫까지 포함한 구조적 상한이다.
+    const { state, confirmedAt, alongNow } = confirmedByReversal();
+    const turnAt = confirmedAt + 1;
+    const fwd = play(state, walkFixes({ along: alongNow, lateral: 0 }, 0, 70, turnAt));
+    const back = fwd.events.find((e) => e.kind === "backOnRoute");
+    expect(back).toBeTruthy();
+    expect(back!.at - turnAt).toBeLessThanOrEqual(35);
   });
 
-  it("방위를 못 읽으면 복귀를 선언하지 않는다 — unknown은 정합이 아니다", () => {
-    let { state } = initialGuideState(route, 0);
-    for (let t = 1; t <= 25; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-    }
-    expect(state.phase).toBe("offRoute");
-    for (let t = 26; t <= 60; t++) {
-      const out = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, INACTIVE_COURSE);
-      state = out.state;
-      expect(out.event?.kind).not.toBe("backOnRoute");
-    }
-    expect(state.phase).toBe("offRoute");
+  it("멈춰 서면 관측이 말라 복귀를 선언하지 않는다 — unknown은 정합이 아니다", () => {
+    const { state, confirmedAt, alongNow } = confirmedByReversal();
+    // 제자리 정지: 전진 게이트(2m)에 걸려 새 표가 없고, 창은 시간으로 낡는다.
+    const still = Array.from({ length: 40 }, (_, i) => ({
+      fix: at(alongNow, 0),
+      at: confirmedAt + 1 + i,
+    }));
+    const r = play(state, still);
+    expect(r.events.every((e) => e.kind !== "backOnRoute")).toBe(true);
+    expect(r.state.phase).toBe("offRoute");
+    expect(r.state.offRouteAxes.course).toBe(true);
   });
 
-  it("비활성 관측은 축을 끈 채로 유지한다 — 표는 쌓이되 판정에 닿지 않는다", () => {
-    // ⚠ 종전 이름은 "동작이 종전과 같다(웹 회귀 0)"였는데, 같은 계산을 두 번 돌려
-    //   비교하는 동어반복이었다. 회귀 0을 실제로 지키는 것은 이 테스트가 아니라
-    //   기존 시나리오 fixture 전량이 `INACTIVE_COURSE`로 재생돼 통과한다는 사실이다.
-    let state = initialGuideState(route, 0).state;
-    for (let t = 1; t <= 30; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, INACTIVE_COURSE).state;
-    }
-    expect(state.offRouteAxes).toEqual({ distance: false, course: false });
-    expect(state.phase).not.toBe("offRoute");
-    // 창은 차되 전부 unknown이라 decisive가 0 — 판정이 영구 unknown이다.
+  it("상태 재구성은 표결 창을 비우고 유도기 버퍼는 잇는다", () => {
+    let { state } = initialGuideState(route, 0);
+    state = play(state, walkFixes({ along: 10, lateral: 0 }, 0, 20, 0)).state;
     expect(state.courseVotes.length).toBeGreaterThan(0);
-    expect(state.courseVotes.every((v) => v.vote === "unknown")).toBe(true);
-  });
-
-  it("상태 재구성은 표결 창을 비운다 — 옛 경로의 표가 새 경로에 적용되면 안 된다", () => {
-    let { state } = initialGuideState(route, 0);
-    for (let t = 1; t <= 10; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-    }
-    expect(state.courseVotes.length).toBeGreaterThan(0);
+    expect(state.courseDerivation.fixes.length).toBeGreaterThan(0);
+    // 새 상태(재조회·세션 리셋)는 창·latch 초기화.
     const fresh = guideStateAt(route, 0, 100, {});
     expect(fresh.courseVotes).toEqual([]);
     expect(fresh.offRouteAxes).toEqual({ distance: false, course: false });
+    expect(fresh.courseDerivation.fixes).toEqual([]);
   });
 
-  it("방위 축이 확정 이탈이면 최종 접근에 진입하지 않는다", () => {
-    // 종점 부근까지 이동하되 방위를 계속 반대로 보고한다. 방위 확정이 6a보다 앞에서
-    // 반환되지 않으면 단방향 래치가 걸리고 다음 fix부터 0a 가드가 모든 판정을 멈춘다.
-    let { state } = initialGuideState(route, 0, { hasFinalApproachGeometry: true });
-    let enteredFinal = false;
-    for (let t = 1; t <= 330; t++) {
-      const out = guideStep(
-        state,
-        at(Math.min(399, t * 1.2)),
-        route,
-        t,
-        WALK_TUNING,
-        facing(180),
-      );
-      state = out.state;
-      if (out.event?.kind === "finalApproachEnter") enteredFinal = true;
-    }
-    expect(enteredFinal).toBe(false);
-    expect(state.offRouteAxes.course).toBe(true);
-  });
-
-  it("같은 fix에서 둘 다 성립하면 이탈이 이긴다 — 순서가 곧 불변식", () => {
-    // 방위 확정과 최종 접근 진입이 **다른** fix에 일어나면 순서를 바꿔도 결과가 같다.
-    // 그래서 진입 시각을 리듀서에서 먼저 역산하고, 확정이 정확히 그 fix에 일어나도록
-    // 방위를 뒤집는 시점을 맞춘다. 확정은 뒤집은 뒤 13번째 fix다(20초 창에서
-    // mismatch 14/20 = 0.7).
-    const walk = (flipAt: number) => {
-      let { state } = initialGuideState(route, 0);
-      let enterT: number | null = null;
-      for (let t = 1; t <= 340; t++) {
-        const out = guideStep(
-          state,
-          at(Math.min(399, t * 1.2)),
-          route,
-          t,
-          WALK_TUNING,
-          facing(t >= flipAt ? 180 : 0),
-        );
-        state = out.state;
-        if (out.event?.kind === "finalApproachEnter" && enterT === null) enterT = t;
-      }
-      return { state, enterT };
+  it("방위 축 확정이 최종 접근 진입보다 앞이다 — 같은 fix에서는 이탈이 이긴다", () => {
+    // 유도 관측으로는 "종점 접근 중 + 방위 어긋남"을 한 궤적으로 만들 수 없어
+    // (관측이 곧 이동이다) 창을 직접 구성한다: mismatch 다수 창 + 종점 잔여 ≤ 진입선.
+    const mismatchWindow: CourseVoteSample[] = Array.from({ length: 9 }, (_, i) => ({
+      at: i * 2,
+      vote: "mismatch" as const,
+    }));
+    const nearEnd: GuideState = {
+      ...guideStateAt(route, 392, 0, { hasFinalApproachGeometry: true }),
+      announcedUpTo: route.steps.length - 1,
+      courseVotes: mismatchWindow,
     };
+    // 관측 없는 fix(버퍼 비어 있음) — 창은 이미 확정 다수이고 잔여 7m ≤ 진입선 10m.
+    const out = guideStep(nearEnd, at(393), route, 18, WALK_TUNING);
+    expect(out.event?.kind).toBe("offRoute");
+    expect(out.state.phase).toBe("offRoute");
+    expect(out.state.offRouteAxes.course).toBe(true);
 
-    const base = walk(Number.POSITIVE_INFINITY);
-    expect(base.enterT).not.toBeNull();
-
-    const coincide = walk(base.enterT! - 13);
-    expect(coincide.enterT).toBeNull();
-    expect(coincide.state.offRouteAxes.course).toBe(true);
+    // 대조: 창이 비어 있으면 같은 fix가 최종 접근에 진입한다(순서 외 조건 동일).
+    const clean = { ...nearEnd, courseVotes: [] };
+    const enter = guideStep(clean, at(393), route, 18, WALK_TUNING);
+    expect(enter.event?.kind).toBe("finalApproachEnter");
   });
 
   it("차량 프로파일에서는 축이 통째로 꺼진다 — 보행으로만 측정된 상수다", () => {
-    // 보행과 완전히 같은 궤적·방위인데 프로파일만 차량이면 방위 축이 확정하지 않는다.
+    // 완전히 같은 역주행 궤적인데 프로파일만 차량이면 표도 확정도 없다.
     let walk = initialGuideState(route, 0).state;
     let car = initialGuideState(route, 0).state;
-    for (let t = 1; t <= 25; t++) {
-      walk = guideStep(walk, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-      car = guideStep(car, at(t * 1.2), route, t, CAR_TUNING, facing(180)).state;
-    }
+    const warm = walkFixes({ along: 60, lateral: 0 }, 0, 33, 0);
+    const rev = walkFixes({ along: 100, lateral: 0 }, 180, 40, 34);
+    walk = play(walk, warm).state;
+    walk = play(walk, rev).state;
+    car = play(car, warm, CAR_TUNING).state;
+    car = play(car, rev, CAR_TUNING).state;
     expect(walk.offRouteAxes.course).toBe(true);
     expect(car.offRouteAxes.course).toBe(false);
     expect(car.phase).not.toBe("offRoute");
-    // 창에도 결정적 표가 쌓이지 않는다(관측이 진입점에서 중화된다).
-    expect(car.courseVotes.every((v) => v.vote === "unknown")).toBe(true);
+    // 게이트는 관측을 중화하므로 표 자체가 창에 쌓이지 않는다(spec §2.10 — 표 없음).
+    expect(car.courseVotes).toEqual([]);
   });
 
-  it("국면 전이는 표결 창을 비우고 latch는 남긴다", () => {
-    // 투영을 못 믿는 기간(정확도 악화·위치 상실)의 표는 근거가 아니다. 반대로 이탈
-    // 사실(latch)이 그 기간에 소실되면 방향이 어긋난 채 복귀가 선언된다.
+  it("국면 전이는 표결 창을 비우고 latch·유도기 버퍼는 남긴다", () => {
     const primed = () => {
       let { state } = initialGuideState(route, 0);
-      for (let t = 1; t <= 10; t++) {
-        state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
-      }
+      state = play(state, walkFixes({ along: 60, lateral: 0 }, 0, 20, 0)).state;
       expect(state.courseVotes.length).toBeGreaterThan(0);
       return state;
     };
@@ -650,48 +623,31 @@ describe("방위 축 통합", () => {
     // uncertain 진입(정확도 악화)
     const toUncertain = guideStep(
       primed(),
-      { ...at(13), accuracy: 80 },
+      { ...at(85), accuracy: 80 },
       route,
-      11,
+      21,
       WALK_TUNING,
-      INACTIVE_COURSE,
     ).state;
     expect(toUncertain.phase).toBe("uncertain");
     expect(toUncertain.courseVotes).toEqual([]);
+    expect(toUncertain.courseDerivation.fixes.length).toBeGreaterThan(0);
 
     // reacquiring 진입(fix 공백 11초)
-    const toReacquiring = guideStep(
-      primed(),
-      at(13),
-      route,
-      22,
-      WALK_TUNING,
-      facing(180),
-    ).state;
+    const toReacquiring = guideStep(primed(), at(85), route, 32, WALK_TUNING).state;
     expect(toReacquiring.phase).toBe("reacquiring");
     expect(toReacquiring.courseVotes).toEqual([]);
+    expect(toReacquiring.courseDerivation.fixes.length).toBeGreaterThan(0);
   });
 
   it("uncertain을 경유해도 축 latch가 보존된다", () => {
-    let { state } = initialGuideState(route, 0);
-    for (let t = 1; t <= 25; t++) {
-      state = guideStep(state, at(t * 1.2), route, t, WALK_TUNING, facing(180)).state;
+    const { state, confirmedAt, alongNow } = confirmedByReversal();
+    let s = state;
+    for (let i = 1; i <= 5; i++) {
+      s = guideStep(s, { ...at(alongNow), accuracy: 80 }, route, confirmedAt + i, WALK_TUNING).state;
     }
-    expect(state.offRouteAxes.course).toBe(true);
-    // 정확도 악화로 uncertain 진입
-    for (let t = 26; t <= 30; t++) {
-      state = guideStep(
-        state,
-        { ...at(t * 1.2), accuracy: 80 },
-        route,
-        t,
-        WALK_TUNING,
-        INACTIVE_COURSE,
-      ).state;
-    }
-    expect(state.phase).toBe("uncertain");
-    expect(state.resumePhase).toBe("offRoute");
-    expect(state.offRouteAxes.course).toBe(true);
+    expect(s.phase).toBe("uncertain");
+    expect(s.resumePhase).toBe("offRoute");
+    expect(s.offRouteAxes.course).toBe(true);
   });
 });
 
@@ -701,8 +657,6 @@ describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
     along: number;
     lateral: number;
     acc: number;
-    course: number;
-    courseAcc: number;
   }
 
   /** fixture는 경계만 적는다 — 보간 규칙은 `reducerComment`가 정본이다. */
@@ -718,18 +672,11 @@ describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
           along: a.along + r * (b.along - a.along),
           lateral: a.lateral + r * (b.lateral - a.lateral),
           acc: b.acc,
-          course: b.course,
-          courseAcc: b.courseAcc,
         });
       }
     }
     return out;
   }
-
-  const observe = (f: ReducerFix): CourseObservation =>
-    f.course < 0 || f.courseAcc < 0
-      ? INACTIVE_COURSE
-      : { state: { kind: "valid", course: f.course }, accuracyDeg: f.courseAcc };
 
   // ⚠ 공회전 방지: 키 이름이 바뀌거나 배열이 비면 아래 루프가 0개 테스트를 만들고
   //   describe가 조용히 통과한다. 가드가 무는지는 케이스가 실제로 있는지에 달렸다.
@@ -748,7 +695,6 @@ describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
           route,
           f.t,
           WALK_TUNING,
-          observe(f),
         ).state;
       }
       expect(state.phase).toBe(sc.expectPhaseAtEnd);

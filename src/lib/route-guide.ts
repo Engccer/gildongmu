@@ -7,14 +7,19 @@
  * 폐기·타이머 정지 계약이 주입 시각 위에서만 성립한다(리뷰 #19).
  */
 import {
+  COURSE_AXIS_WINDOW_S,
   courseAxisVerdict,
   courseVote,
-  INACTIVE_COURSE,
   recordVote,
-  type CourseObservation,
   type CourseVote,
   type CourseVoteSample,
 } from "./guide-course-axis";
+import {
+  deriveCourse,
+  INITIAL_DERIVATION_STATE,
+  type CourseDerivationState,
+  type DerivedCourse,
+} from "./course-derivation";
 import {
   globalCandidates,
   projectOnPolyline,
@@ -275,6 +280,12 @@ export interface GuideState {
   offRouteAxes: { distance: boolean; course: boolean };
   /** 방위 표결 창. 상태 재구성 시 비워진다(경로 identity 바인딩). */
   courseVotes: readonly CourseVoteSample[];
+  /**
+   * 방위 관측 유도기 버퍼(fix 이력). ⚠ 표결 창과 수명이 다르다 — 궤적은 경로의
+   * 함수가 아니므로 경로 교체·재구성(§2.8)에서 비우지 않고(age 30s로 자체 소멸),
+   * 새 세션에서만 초기화한다(spec §2.9).
+   */
+  courseDerivation: CourseDerivationState;
 }
 
 export type GuideEvent =
@@ -312,8 +323,13 @@ export interface GuideOutput {
    * 그것이 정직한 값이다(0으로 접지 않는다).
    */
   perpMeters?: number;
-  /** 이 fix가 실제로 창에 넣은 표. 이탈 중에는 `entryProjection` 기준이다. */
+  /**
+   * 이 fix가 실제로 창에 넣은 표. 이탈 중에는 `entryProjection` 기준이다.
+   * 관측이 없어 표를 내지 않았으면 `undefined`다(spec §2.10 — 표 없음).
+   */
   courseVote?: CourseVote;
+  /** 이 fix에서 유도된 방위 관측(진단용). 없으면 null — 프로파일 게이트 통과 후 값. */
+  derivedCourse?: DerivedCourse | null;
 }
 
 /** 스텝 index가 속한 유닛(긴 스텝=자기 하나, 짧은 스텝=연속 묶음 전체)의 index 목록. */
@@ -374,6 +390,7 @@ export function guideStateAt(
     reacquiringFromOffRoute: false,
     offRouteAxes: { distance: false, course: false },
     courseVotes: [],
+    courseDerivation: INITIAL_DERIVATION_STATE,
   };
 }
 
@@ -391,10 +408,15 @@ function restateAt(
   now: number,
   prev: GuideState,
 ): GuideState {
-  return guideStateAt(route, d, now, {
-    autoHandoffArmed: prev.autoHandoffArmed,
-    hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
-  });
+  return {
+    ...guideStateAt(route, d, now, {
+      autoHandoffArmed: prev.autoHandoffArmed,
+      hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
+    }),
+    // 유도기 버퍼는 궤적의 사실이라 재구성에서도 잇는다(spec §2.9 — 비우는 것은
+    // 표결 창이지 버퍼가 아니다. 버퍼는 age 상한으로 자체 소멸한다).
+    courseDerivation: prev.courseDerivation,
+  };
 }
 
 /** 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫. */
@@ -450,9 +472,9 @@ function periodicIntervalS(remaining: number): number {
 }
 
 /**
- * `course`는 **필수 인자다.** 기본값을 주면 호출 지점 하나를 빠뜨려도 컴파일이
- * 통과해, 그 플랫폼에서만 축이 조용히 죽는다(안전 인자에 기본값 금지).
- * 방위를 제공하지 않는 플랫폼은 `INACTIVE_COURSE`를 **명시적으로** 넘긴다.
+ * 방위 관측은 인자가 아니라 **리듀서가 fix 이력에서 직접 유도한다**(spec §2.9 재설계).
+ * 플랫폼이 관측을 만들어 넘길 수 없는 구조가 1선 방어다 — 두 플랫폼의 유도가
+ * 갈리는 drift(사슬 U·전진 게이트가 플랫폼별로 달라짐)를 시그니처가 차단한다.
  */
 export function guideStep(
   state: GuideState,
@@ -460,16 +482,23 @@ export function guideStep(
   route: GuideRoute,
   now: number,
   tuning: GuideTuning,
-  course: CourseObservation,
 ): GuideOutput {
   // 0) 역순 시각 방어: now가 과거로 가면 fix 폐기(상태 불변).
   if (state.lastFixAt !== null && now < state.lastFixAt) {
     return { state, event: null, tone: null };
   }
 
-  // 프로파일이 방위 축을 끄면 관측을 비활성으로 중화한다. ⚠ 게이트는 여기 한 곳뿐이다 —
-  // 조건을 하위 분기마다 흩으면 하나를 빠뜨리고, 그 하나가 조용히 축을 살린다.
-  const obs = tuning.courseAxisEnabled ? course : INACTIVE_COURSE;
+  // 유도기 갱신은 국면과 무관하게 매 fix 1회 — 버퍼는 궤적의 사실이다(spec §2.9).
+  // finalApproach·uncertain 조기 반환보다 앞이라 어느 국면에서도 버퍼가 이어진다.
+  const dv = deriveCourse(state.courseDerivation, fix, now);
+  state = { ...state, courseDerivation: dv.state };
+  // 프로파일 게이트는 여기 한 곳뿐이다 — 조건을 하위 분기마다 흩으면 하나를
+  // 빠뜨리고, 그 하나가 조용히 축을 살린다(기존 계약 유지).
+  const derived = dv.obs !== null && tuning.courseAxisEnabled ? dv.obs : null;
+  // 관측이 없으면 표를 내지 않는다(spec §2.10 — 창에 안 쌓임). 대신 창은 시간으로
+  // 낡는다: 정지가 길어지면 표가 말라 verdict가 unknown으로 돌아간다(§2.0 ⚠).
+  const pruneVotes = (samples: readonly CourseVoteSample[]) =>
+    samples.filter((s) => s.at > now - COURSE_AXIS_WINDOW_S);
 
   // 0a) 최종 접근 중에는 리듀서가 아무 판정도 하지 않는다(spec §4 전이표).
   //     발화 소유권이 최종 접근 층으로 넘어갔고, 이 국면은 **경로를 이미 벗어난**
@@ -553,11 +582,10 @@ export function guideStep(
     //   unknown이다. 그래도 verdict를 부르는 형태로 두는 이유는, 창 초기화 정책이
     //   바뀌면(예: 짧은 공백은 창을 유지) 이 자리가 자동으로 증거 평가로 돌아가야
     //   하기 때문이다. `if offRouteAxes.course { hold }`로 줄이면 그 연결이 끊긴다.
-    const reVotes = recordVote(
-      state.courseVotes,
-      now,
-      courseVote(obs, route.polyline, entryD, fix.accuracy),
-    );
+    const reVotes =
+      derived === null
+        ? pruneVotes(state.courseVotes)
+        : recordVote(state.courseVotes, now, courseVote(derived, route.polyline, entryD));
     if (state.offRouteAxes.course && courseAxisVerdict(reVotes) !== "on") {
       // 위치는 되찾았지만 방향이 확인되지 않았다 — 이탈 상태를 유지한다.
       // `reacquiringFromOffRoute`를 내리는 이유: 국면을 offRoute로 되돌리므로
@@ -622,17 +650,19 @@ export function guideStep(
   const proj = projectOnPolyline(route.polyline, fix, state.d - WINDOW_BACK_M, state.d + ahead);
   if (!proj) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
   const d = Math.max(state.d, proj.d);
-  // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다.
-  const vote = courseVote(obs, route.polyline, d, fix.accuracy);
-  const courseVotes = recordVote(state.courseVotes, now, vote);
+  // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
+  const vote = derived === null ? null : courseVote(derived, route.polyline, d);
+  const courseVotes =
+    vote === null ? pruneVotes(state.courseVotes) : recordVote(state.courseVotes, now, vote);
   // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
-  let loggedVote = vote;
+  let loggedVote = vote ?? undefined;
   const emit = (s: GuideState, event: GuideEvent | null, tone: GuideTone | null): GuideOutput => ({
     state: s,
     event,
     tone,
     perpMeters: proj.perpMeters,
     courseVote: loggedVote,
+    derivedCourse: derived,
   });
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
@@ -699,12 +729,17 @@ export function guideStep(
     // ⚠ 이탈 중에는 창을 비우지 않는다 — 비우면 복귀 판정 표본이 영영 최소치에
     //   못 미친다(국면 초기화는 uncertain·reacquiring·finalApproach에만).
     const offVote =
-      entry.status === "ok"
-        ? courseVote(obs, route.polyline, entry.d, fix.accuracy)
-        : ("unknown" as CourseVote);
-    const offVotes = recordVote(state.courseVotes, now, offVote);
+      derived === null
+        ? null
+        : entry.status === "ok"
+          ? courseVote(derived, route.polyline, entry.d)
+          : ("unknown" as CourseVote); // 관측은 있는데 기준점이 모호 — 판정 불가 표.
+    const offVotes =
+      offVote === null
+        ? pruneVotes(state.courseVotes)
+        : recordVote(state.courseVotes, now, offVote);
     next = { ...next, courseVotes: offVotes };
-    loggedVote = offVote; // 진단: 이 국면에서 실제로 창에 들어간 표는 entry 기준이다.
+    loggedVote = offVote ?? undefined; // 진단: 이 국면에서 창에 들어간 표는 entry 기준이다.
     if (entry.status === "ok") {
       // 축별 해제. 평가 불가(`unknown`)는 해제가 아니다.
       const courseCleared =
