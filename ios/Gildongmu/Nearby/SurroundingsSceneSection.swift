@@ -113,6 +113,13 @@ struct SurroundingsSceneSection: View {
         case .empty: return appLocalized("surroundings.empty")
         case .failedServer: return appLocalized("surroundings.error")
         case .outOfCoverage: return appLocalized("ios.common.outOfCoverage")
+        case .unavailableHere(let reason):
+            // 현행 라우트는 이 마커를 안 내지만, 서버가 내기 시작하면 무음 실패가
+            // 되지 않도록 기존 문구로 받는다(리뷰 반영 — 3-state 침묵 금지).
+            switch reason {
+            case .seoulOnly: return appLocalized("ios.common.unavailableHere.seoulOnly")
+            case .noBusData: return appLocalized("ios.common.unavailableHere.noBusData")
+            }
         default: return nil   // denied 계열은 .fixed 소스에서 도달 불가
         }
     }
@@ -238,6 +245,10 @@ struct SurroundingsSceneSection: View {
     }
 
     private func land(on target: String) async {
+        // 가시화 선행(리뷰 반영 — repo 착지 정본 "가시화 → 지연 → 대입"). 트리거
+        // 인접 행이라 대개 no-op이지만, 시트처럼 위에 행이 많은 화면에서 대상이
+        // 컬링됐을 때의 조용한 실패를 막는다. anchor 미지정(sticky 헤더 잘림 방지).
+        proxy.scrollTo(target)
         try? await Task.sleep(for: .milliseconds(400))
         focusedID = target
         try? await Task.sleep(for: .milliseconds(600))
