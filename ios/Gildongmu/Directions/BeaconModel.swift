@@ -1341,7 +1341,9 @@ final class BeaconModel {
         return haversineMeters(lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng)
     }
 
-    func announceProgress() {
+    /// 진행 상황 문장 조립(발화 없음). 간략·경로 미보유 세션의 버튼 낭독과 조망
+    /// 모달 헤더가 같은 문장을 쓴다(위원장 판정 개정 2026-08-10 — 모달 전환).
+    func progressText() -> String {
         let text: String
         if mode == .detail, let route = guideRoute, let state = guideState {
             // 직선거리가 정본인 두 국면(스펙 §4.2 + 2026-08-08 §3.4): 이탈 중 경로 잔여는
@@ -1374,6 +1376,14 @@ final class BeaconModel {
         } else {
             text = lastGuidance ?? appLocalized("guide.noGuidanceYet")
         }
+        return text
+    }
+
+    /// 경로 미보유·간략 세션의 진행 상황 발화. 상세(경로 보유) 세션은 이 경로를
+    /// 타지 않는다 — 조망 모달 표시와 Announcement가 경합하므로(시트 착지 낭독이
+    /// 통지를 잠식) 문장 전달은 모달 헤더 착지가 맡는다.
+    func announceProgress() {
+        let text = progressText()
         statusText = text  // 비-VO 사용자에게도 보여야 한다(2.1(a) 계약)
         announce(text, highPriority: true)
     }
