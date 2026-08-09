@@ -9,6 +9,7 @@ vi.mock("@/hooks/useGeolocation", () => ({
   useGeolocation: () => mockUseGeolocation(),
 }));
 
+import { __resetManualLocationForTest, setManualLocation } from "@/lib/manual-location-store";
 import { useChat } from "../useChat";
 
 /** NDJSON 스트림 응답을 만드는 헬퍼. */
@@ -19,6 +20,8 @@ function makeNdjsonResponse(lines: object[], status = 200): Response {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
+  __resetManualLocationForTest();
   // 기본: idle 상태 (userLocation = undefined)
   mockUseGeolocation.mockReturnValue({ status: "idle" });
   // 기본: done 이벤트만 있는 NDJSON 스트림 응답
@@ -85,6 +88,60 @@ describe("useChat", () => {
     const { result } = renderHook(() => useChat());
     await act(async () => {
       await result.current.sendMessage("테스트");
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(body.userLocation).toEqual({ lat: 37.5, lng: 127.1 });
+  });
+
+  it("수동 위치가 GPS를 이긴다 — 채팅 앵커는 유효 위치다", async () => {
+    // 채팅 화면 첫 줄의 위치 표시줄이 "지정한 위치, X"라고 알리는데 답이 GPS
+    // 좌표로 오면 그 신호가 거짓이 된다(시각장애 사용자는 화면으로 반증 불가).
+    mockUseGeolocation.mockReturnValue({
+      status: "ready",
+      coords: { lat: 37.5, lng: 127.1 },
+    } as unknown as ReturnType<typeof mockUseGeolocation>);
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
+    });
+
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.sendMessage("근처 약국");
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(body.userLocation).toEqual({ lat: 37.5384, lng: 127.1432 });
+  });
+
+  it("수동 위치는 GPS가 없어도 앵커가 된다", async () => {
+    // 이 기능의 존재 이유가 "GPS가 안 잡히거나 틀렸을 때 스스로 고치는 것"이라
+    // GPS 부재가 곧 앵커 부재여서는 안 된다.
+    mockUseGeolocation.mockReturnValue({ status: "denied" } as unknown as ReturnType<typeof mockUseGeolocation>);
+    setManualLocation({ label: "길동 카페", lat: 37.5384, lng: 127.1432, origin: null, setAt: 1 });
+
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.sendMessage("근처 약국");
+    });
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+
+    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+    expect(body.userLocation).toEqual({ lat: 37.5384, lng: 127.1432 });
+  });
+
+  it("수동 위치가 없으면 GPS 좌표 그대로 — 기존 동작 불변", async () => {
+    mockUseGeolocation.mockReturnValue({
+      status: "ready",
+      coords: { lat: 37.5, lng: 127.1 },
+    } as unknown as ReturnType<typeof mockUseGeolocation>);
+
+    const { result } = renderHook(() => useChat());
+    await act(async () => {
+      await result.current.sendMessage("근처 약국");
     });
     await waitFor(() => expect(result.current.messages).toHaveLength(2));
 

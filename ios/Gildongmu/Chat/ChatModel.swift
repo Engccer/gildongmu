@@ -61,7 +61,8 @@ final class ChatModel {
             // `primeAuthorization()`으로 바꾸면 이미 허용된 세션에서 즉시 반환해
             // 좌표가 없는 채로 전송되고, 위치 기반 도구가 통째로 죽는다(최초 설치
             // 세션만 우연히 동작한다). 타임아웃은 짧게 — 이 구간에 진행 통지가 없다.
-            if place == nil {
+            // 수동 위치가 켜져 있으면 그 좌표가 앵커라 측위를 기다릴 이유가 없다.
+            if place == nil, ManualLocationStore.shared.current == nil {
                 _ = try? await LocationService.shared.currentCoordinate(
                     timeout: LocationFixPolicy.softTimeout
                 )
@@ -130,10 +131,19 @@ final class ChatModel {
 
     /// 대화 전체 히스토리 + 장소 앵커(웹 불변식: 주변 기준은 장소, 길찾기 출발지는 userLocation).
     /// 일반 채팅은 placeContext 미포함(키 생략) — 웹 "byte-identical" 계약.
+    ///
+    /// `userLocation`은 **유효 위치**다: 장소 앵커 > 수동 위치 > GPS(웹 `useChat` 미러).
+    /// 첫 단계는 서버 `anchorOf = placeAnchor ?? userLocation`이 보장하고, 나머지
+    /// 두 단계가 이 자리다 — 채팅 화면 첫 줄의 `LocationBarView`가 "지정한 위치, X"라고
+    /// 알리는데 답이 GPS 좌표로 오면 그 신호가 거짓이 된다(시각장애 사용자는 화면으로
+    /// 반증할 수 없다). 길찾기 도구의 출발지도 이 필드를 쓰며 그것이 맞다 — 실좌표를
+    /// 요구하는 것은 실시간 안내뿐이고 채팅엔 안내 시작 도구가 없다(spec §4.4).
     private func requestBody() -> ChatRequestBody {
-        ChatRequestBody(
+        let effective = ManualLocationStore.shared.current.map { (lat: $0.lat, lng: $0.lng) }
+            ?? LocationService.shared.lastCoordinate
+        return ChatRequestBody(
             messages: messages.map { .init(role: $0.role == .user ? "user" : "assistant", text: $0.text) },
-            userLocation: LocationService.shared.lastCoordinate.map { .init(lat: $0.lat, lng: $0.lng) },
+            userLocation: effective.map { .init(lat: $0.lat, lng: $0.lng) },
             locale: AppLanguage.current,
             placeContext: place.map { place in
                 .init(

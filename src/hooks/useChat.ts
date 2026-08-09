@@ -8,9 +8,10 @@
  * - 에러는 "chat_failed" 코드로 설정하고, dismissError()로 초기화한다.
  * - NDJSON 스트림을 라인 단위로 읽어 status/done/error 이벤트를 처리한다.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useManualLocation } from "@/hooks/useManualLocation";
 import type { ChatMessage, ChatStreamEvent } from "@/lib/chat/types";
 
 let counter = 0;
@@ -28,8 +29,25 @@ export function useChat(opts?: { placeContext?: PlaceContext }) {
   const placeContext = opts?.placeContext;
   const locale = useLocale();
   const geo = useGeolocation();
-  // status === "ready"일 때만 coords를 꺼낸다 (GeoState union 안전 접근)
-  const userLocation = geo.status === "ready" ? geo.coords : undefined;
+  const manual = useManualLocation();
+  // 채팅 앵커 우선순위: 장소 앵커 > 수동 위치 > GPS.
+  //
+  // 첫 단계는 서버가 이미 보장한다(`anchorOf = placeAnchor ?? userLocation`).
+  // 나머지 두 단계가 이 자리다 — 화면 첫 줄의 위치 표시줄이 "지정한 위치, X"라고
+  // 알리는데 답이 GPS 좌표로 오면, 그 표시줄은 시각장애 사용자에게 조회 기준을
+  // 알리는 신호이므로 신호 자체가 거짓이 된다.
+  //
+  // ⚠ 길찾기 도구(자동차·대중교통 출발지)도 이 필드를 쓰며 그것이 맞다 —
+  // 브리핑은 수동 위치를 쓰고, 실좌표를 요구하는 것은 실시간 안내뿐이다
+  // (안내 시작 도구가 채팅에 생기면 그때 `RealFix`와 분리한다, spec §4.4).
+  //
+  // 스토어의 동기 읽기다(판정은 트리거 3종이 이미 돌린다). `useCallback` deps에
+  // 실리므로 참조 안정성이 필요해 두 스토어 객체에서만 새로 만든다.
+  const geoCoords = geo.status === "ready" ? geo.coords : undefined;
+  const userLocation = useMemo(
+    () => (manual ? { lat: manual.lat, lng: manual.lng } : geoCoords),
+    [manual, geoCoords],
+  );
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // 렌더용 messages의 미러 — 히스토리 구성(전송 payload)의 단일 출처로 쓴다.
