@@ -115,6 +115,13 @@ describe("WhereAmI 도메인 계약", () => {
     expect(screen.getByRole("status").textContent).toBe("");
   });
 
+  it("정위 결과 아래에 '주변 확인' 진입점이 있다 — 앵커는 정위에 쓴 좌표", async () => {
+    await openToDone();
+    expect(
+      screen.getByRole("button", { name: "surroundings.button" }),
+    ).toBeTruthy();
+  });
+
   it("done 패널은 위치·근접역·기준점 산문을 모두 렌더한다", async () => {
     const { container } = await openToDone();
 

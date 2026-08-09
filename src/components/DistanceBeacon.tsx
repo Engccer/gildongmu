@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
+import { SurroundingsScene } from "@/components/SurroundingsScene";
 
 /** 화면 켜기 힌트 영구 해제(피드백 라운드1 13번, iOS UserDefaults 미러). */
 const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
@@ -236,6 +237,10 @@ export function DistanceBeacon({
               )}
             </p>
           )}
+
+          {/* M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
+              이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). */}
+          <SurroundingsScene anchor={{ lat: dest.lat, lng: dest.lng }} />
         </div>
       )}
       {/* 단일 polite live region — 패널 열림과 무관하게 상시 마운트한다. region이

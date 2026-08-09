@@ -1,19 +1,25 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Scene, SceneGroup } from "@/lib/surroundings-scene";
 import { formatDistance } from "@/lib/format";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
 import { useRevealMore } from "@/hooks/useRevealMore";
-import { NearbyPanelShell } from "@/components/NearbyPanelShell";
-import { nearbyLiveMessage } from "@/lib/nearby-live";
 
 /**
- * M1 도착지 부근 상황 재구성 — "여기가 맞나" 확인용 요청형 패널.
+ * M1 도착지 부근 상황 재구성 — "여기가 맞나" 확인용 요청형 섹션.
  *
  * 앵커(목적지 좌표 또는 정위에 쓴 좌표)를 받아 입구 기준 왼쪽·오른쪽·맞은편·
  * 건물 너머 묶음을 렌더한다. 축이 안 서면 서버가 절대 방위 묶음으로 물러난
  * 장면을 주므로 렌더 구조는 동일하다(bucket 키만 다르다).
+ *
+ * ⚠ 진입점 2곳(WhereAmI 패널·DistanceBeacon 시트)이 모두 **다른 패널 안**이라
+ * NearbyPanelShell을 중첩하지 않고 **live region도 만들지 않는다** — 감싸는
+ * 패널이 이미 단일 polite 채널을 소유한다(DistanceBeacon은 이를 테스트로 강제).
+ * 통지는 전부 포커스·라벨 채널이다(헌장 §5 "라벨이 곧 상태 신호"):
+ * 조회 중 = 트리거 라벨 교체, 성공 = 결과 헤딩 포커스, 빈 결과·실패 = 메시지
+ * 텍스트로 포커스 이동. 버튼이 발견 경로이므로 패널은 div, 결과 헤딩만 h4(헌장 §3).
  */
 
 /** 묶음이 이보다 크면 제목에 곳수를 병기한다(스와이프 전 규모 예고). */
@@ -30,7 +36,7 @@ function GroupSection({ group, resetKey }: { group: SceneGroup; resetKey: number
       : t(`bucket.${group.bucket}`);
   return (
     <section className="mt-3">
-      <h4 className="font-medium">{title}</h4>
+      <h5 className="font-medium">{title}</h5>
       <ul className="mt-1 space-y-1">
         {group.items.slice(0, visibleCount).map((it, i) => (
           <li
@@ -68,7 +74,7 @@ function GroupSection({ group, resetKey }: { group: SceneGroup; resetKey: number
   );
 }
 
-/** 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 h4 제목). */
+/** 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 h5 제목). */
 export function SurroundingsSceneView({
   scene,
   resetKey = 0,
@@ -110,26 +116,65 @@ function SurroundingsSceneInner({ anchor }: { anchor: { lat: number; lng: number
         return { kind: "done", data: b.data };
       },
     });
-  const live = nearbyLiveMessage(status, t, tCommon);
+
+  // 빈 결과·실패는 렌더된 메시지 텍스트로 포커스를 옮겨 통지한다(§5 — live 없음.
+  // done의 헤딩 포커스는 useNearbyFetch가 담당하므로 여기선 나머지 종단 상태만).
+  const messageRef = useRef<HTMLParagraphElement>(null);
+  const terminalMessage =
+    status.kind === "empty"
+      ? t("empty")
+      : status.kind === "error"
+        ? t("error")
+        : status.kind === "outOfCoverage"
+          ? tCommon("outOfCoverage")
+          : null;
+  useEffect(() => {
+    if (
+      status.kind === "empty" ||
+      status.kind === "error" ||
+      status.kind === "outOfCoverage"
+    ) {
+      messageRef.current?.focus();
+    }
+  }, [status.kind]);
 
   return (
-    <NearbyPanelShell
-      triggerLabel={status.kind === "done" ? t("refresh") : t("button")}
-      onTrigger={() => load(status.kind === "done")}
-      triggerRef={triggerRef}
-      busy={busy}
-      live={live}
-      open={status.kind === "done"}
-      heading={t("ready")}
-      headingRef={headingRef}
-      onClose={() => close()}
-      closeLabel={tActions("close")}
-      source={t("source")}
-    >
-      {status.kind === "done" && (
-        <SurroundingsSceneView scene={status.data} resetKey={doneSeq} />
+    <div className="mt-3">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => load(status.kind === "done")}
+        aria-disabled={busy}
+        aria-busy={busy}
+        className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
+      >
+        {/* 조회 중 라벨 교체가 진행 신호다(reroute 버튼 관례 — 별도 announce 금지). */}
+        {busy ? t("loading") : status.kind === "done" ? t("refresh") : t("button")}
+      </button>
+
+      {terminalMessage && (
+        <p ref={messageRef} tabIndex={-1} className="mt-2 text-sm">
+          {terminalMessage}
+        </p>
       )}
-    </NearbyPanelShell>
+
+      {status.kind === "done" && (
+        <div className="mt-2 rounded-md border border-border p-3">
+          <h4 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
+            {t("ready")}
+          </h4>
+          <button
+            type="button"
+            onClick={() => close()}
+            className="mt-1 min-h-11 text-sm text-accent underline"
+          >
+            {tActions("close")}
+          </button>
+          <SurroundingsSceneView scene={status.data} resetKey={doneSeq} />
+          <p className="mt-2 text-xs opacity-70">{t("source")}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

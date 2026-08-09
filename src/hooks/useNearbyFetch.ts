@@ -25,7 +25,8 @@ export type NearbyStatus<T> =
   | { kind: "outOfCoverage" }
   /** 한국 안이지만 그 도메인 데이터가 이 지역에 없음(따릉이·문화행사 = 서울 전용). */
   | { kind: "unavailableHere"; reason: UnavailableHereReason }
-  | { kind: "done"; data: T; at: string };
+  /** coords = 이 조회에 실제로 쓴 좌표(장소 앵커/수동 위치/GPS 통과 후). M1 앵커 재사용. */
+  | { kind: "done"; data: T; at: string; coords: { lat: number; lng: number } };
 
 export type NearbySource =
   | { kind: "current"; autoLoad?: boolean }
@@ -127,7 +128,7 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
           hour: "2-digit",
           minute: "2-digit",
         });
-        setStatus({ kind: "done", data: parsed.data, at });
+        setStatus({ kind: "done", data: parsed.data, at, coords: { lat, lng } });
         setDoneSeq((s) => s + 1);
       } catch {
         if (seqRef.current !== id) return;
