@@ -25,7 +25,8 @@
 
 ```
 새로운 기능
-- 현재 위치를 직접 지정할 수 있습니다. 채팅·검색·내 주변 화면 첫 줄에서 위치를 누르고 장소를 검색해 고르면, 그 자리를 현재 위치로 씁니다. 실내에서 위치가 잘 안 잡히거나 다른 곳이 잡힐 때 쓰세요.
+- 채팅·검색·내 주변 화면 첫 줄에서 지금 위치가 어디로 잡혔는지 주소로 확인할 수 있습니다.
+- 그 위치가 틀렸으면 직접 지정할 수 있습니다. 첫 줄의 위치를 누르고 장소를 검색해 고르면 그 자리를 현재 위치로 씁니다. 실내에서 잘 안 잡힐 때 쓰세요.
 - 지정한 위치는 내 주변 정보, 검색 결과 거리, 채팅 답변, 길찾기 출발지에 모두 반영됩니다.
 - 자리를 옮기면 지정한 위치를 자동으로 해제하고 알려 드립니다. 같은 자리에서 앱을 여닫는 동안에는 그대로 유지됩니다.
 - 지정할 때 실제 위치를 확인할 수 없었다면 "위치 확인 불가"를 함께 알려 드립니다.
@@ -38,7 +39,8 @@
 
 ```
 New
-- Set your location by hand. Tap the location on the first line of the Chat, Search, or Nearby screen and pick a place — the app uses that spot as your current location. Useful indoors, or when GPS puts you somewhere else.
+- See where you are right now, by address, on the first line of the Chat, Search, and Nearby screens.
+- If that is wrong, set it by hand. Tap the location on the first line and pick a place, and the app uses that spot as your current location. Useful indoors.
 - Your set location applies to nearby information, search result distances, chat answers, and directions origin.
 - Move somewhere else and the app clears it automatically and tells you. It stays put while you open and close the app in the same spot.
 - If your real location could not be confirmed when you set it, the app says so.
