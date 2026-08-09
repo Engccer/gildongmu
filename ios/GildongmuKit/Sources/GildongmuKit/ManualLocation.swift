@@ -61,6 +61,22 @@ public func isEligibleManualFix(_ fix: ManualFix, now: Double) -> Bool {
     return now - fix.at <= ManualLocationPolicy.fixMaxAgeSeconds
 }
 
+/// 라벨이 **검증 가능형**(`지정한 위치, X`)인가, **검증 불가형**(`…(위치 확인 불가)`)인가.
+/// 웹 `src/lib/manual-location.ts`의 같은 이름 함수와 미러다.
+///
+/// ⚠ `origin` 유무만 보면 안 된다. `origin`이 있어도 **지금** 판정이 불가능한 상태
+/// (권한 철회 · 실내 측위 실패 · 정확도 상한 초과 · fix 나이 초과)면 이동을 검증할
+/// 수단이 없는데도 검증 가능형 라벨이 나간다 — 애초에 검증 불가인 `origin == nil`
+/// 쪽이 오히려 정직한 라벨을 받는 **역전**이 된다(spec §4.5가 표로 금지).
+///
+/// `verdict`는 **마지막 판정 시도의 결과**이고 `nil`은 "아직 판정하지 않음"이다
+/// (지정 직후·저장소 복원 직후). 지정 시점에는 적격 실측 fix를 방금 잡아 `origin`으로
+/// 삼았으므로 판정 전 상태를 검증 가능형으로 두는 것이 마지막으로 확인된 사실과 같다.
+public func isManualLocationVerified(_ manual: ManualLocation, verdict: ManualVerdict?) -> Bool {
+    guard manual.origin != nil else { return false }
+    return verdict != .undecidable
+}
+
 /// 웹 `judgeManualLocation` 미러. separation은 "두 오차 원이 겹치지 않고도 남는 거리"다.
 public func judgeManualLocation(manual: ManualLocation, fix: ManualFix?, now: Double) -> ManualVerdict {
     guard let origin = manual.origin else { return .undecidable }

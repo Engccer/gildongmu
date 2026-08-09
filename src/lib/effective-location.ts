@@ -1,6 +1,6 @@
 import { awaitGeolocation, type GeoState, type LocateOptions } from "./geolocation";
 import { judgeManualLocation, type Fix, type ManualLocation } from "./manual-location";
-import { clearManualLocation, getManualLocation } from "./manual-location-store";
+import { clearManualLocation, getManualLocation, setManualVerdict } from "./manual-location-store";
 
 /**
  * **실측위로만 생산되는** fix. 브랜드 필드가 구조적 타이핑을 막아, 수동 좌표로
@@ -73,16 +73,26 @@ export async function runManualLocationJudgment(): Promise<void> {
   const manual = getManualLocation();
   if (!manual) return;
   // origin이 없으면 어떤 fix로도 판정할 수 없다 — 측위 비용을 치르지 않는다.
-  if (!manual.origin) return;
+  // 결과는 기록한다: 라벨은 `undecidable`을 `keep`과 구분해야 한다(3-state).
+  if (!manual.origin) {
+    setManualVerdict("undecidable");
+    return;
+  }
 
   const captured = manual.revision;
   const fix = await awaitRealFix({ force: true });
   const verdict = judgeManualLocation(manual, fix, Date.now() / 1000);
-  if (verdict !== "drop") return;
 
   // CAS: 판정 왕복 중 사용자가 새 위치를 지정했으면 늦게 온 옛 판정이 그것을
-  // 지운다. revision이 같을 때만 반영한다.
+  // 지운다(또는 그 위치의 라벨을 정한다). revision이 같을 때만 반영한다.
   if (getManualLocation()?.revision !== captured) return;
+
+  if (verdict !== "drop") {
+    // ⚠ 결과를 버리면 라벨이 `origin` 유무만 보게 되어, **지금** 판정할 수 없는
+    // 상태(권한 철회·실내 측위 실패)가 검증 가능형으로 낭독된다(spec §4.5).
+    setManualVerdict(verdict);
+    return;
+  }
 
   clearManualLocation();
   announcer?.("drop");

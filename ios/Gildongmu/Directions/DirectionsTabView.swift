@@ -917,16 +917,12 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 현재 위치 값 텍스트(F-B): 수동 위치가 켜져 있으면 그 라벨(LocationBarView
-    /// 동형, origin 유무로 검증 가능/불가 분기 — 3-state 정직성), 그 외 재측위 중 →
+    /// 현재 위치 값 텍스트(F-B): 수동 위치가 켜져 있으면 그 라벨(표시줄과 **같은 훅**을
+    /// 써 검증 가능/불가 판정선이 갈리지 않게 한다 — 3-state 정직성), 그 외 재측위 중 →
     /// 진행 라벨, 주소 확보 → 주소 병기, 기본 "현재 위치". 한 줄 = 한 객체(필드
     /// 버튼 단일 텍스트에 흡수).
     private var currentLocationText: String {
-        if let m = manualLocationStore.current {
-            return m.origin == nil
-                ? appLocalized("manualLocation.manualUnverifiable", m.label)
-                : appLocalized("manualLocation.manual", m.label)
-        }
+        if let manual = manualLocationLabel(manualLocationStore) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         if let address = model.currentAddress {
             return appLocalized("directions.currentLocationNear", address)
