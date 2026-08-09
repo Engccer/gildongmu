@@ -1155,7 +1155,7 @@ final class BeaconModel {
             //
             // ⚠ 억제 중이어도 보관(`pendingRecovery`)하지 않는다. 이 문장은 그 10m
             //   구간에서만 참이라 나중에 갚으면 이미 지난 모퉁이를 돌라고 말한다.
-            let text = appLocalized("guide.imminent.\(action.rawValue)")
+            let text = Self.imminentText(action)
             statusText = text
             if !outputSuppressed { announce(text) }
         case let .farNotice(indices, remainingMeters):
@@ -1207,6 +1207,18 @@ final class BeaconModel {
             // 자동 전환은 하지 않는다(스펙 §2 모드 결정 원칙) — 해법은 시트 전환 버튼.
             statusText = appLocalized("guide.speedSuggest")
             announce(statusText)
+        }
+    }
+
+    /// 임박 명령 문구. 키는 리터럴이어야 한다(check-xcstrings-keys 린터 계약 —
+    /// 동적 조립은 카탈로그 대조에서 빠져 키 누락이 무증상 결함이 된다). switch가
+    /// exhaustive라 WalkAction 케이스가 늘면 컴파일이 키 추가를 강제한다.
+    private static func imminentText(_ action: WalkAction) -> String {
+        switch action {
+        case .left: appLocalized("guide.imminent.left")
+        case .right: appLocalized("guide.imminent.right")
+        case .crosswalk: appLocalized("guide.imminent.crosswalk")
+        case .underpass: appLocalized("guide.imminent.underpass")
         }
     }
 
