@@ -713,7 +713,10 @@ final class BeaconModel {
                 // ⚠ 진입 배치 서술은 `statusText`와 같은 문장일 수 있다(억제 직후 복귀).
                 //   중복 낭독을 막으려고 statusText 쪽을 떨어뜨린다.
                 let intro = pendingFinalApproachIntro
-                let tail = statusText.isEmpty || statusText == intro ? nil : statusText
+                // 상태 행이 비어 있으면(실행 안내 직후 — 역할 분리로 statusText에 실행
+                // 안내가 남지 않는다) 현재 안내가 곧 현재 상태다.
+                let current = statusText.isEmpty ? (currentGuidanceText ?? "") : statusText
+                let tail = current.isEmpty || current == intro ? nil : current
                 let owed = [pendingStepFreeNotice, intro, tail]
                     .compactMap { $0 }.joined(separator: " ")
                 if !owed.isEmpty, announce(owed) {
@@ -1185,8 +1188,13 @@ final class BeaconModel {
         case let .announceSteps(indices), let .bundleReread(indices):
             let text = GuideText.unit(route: route, indices: indices)
             lastGuidance = text
-            statusText = text
-            // 실행 안내만 "현재 안내" 행을 갱신한다(하단 2행 분리, 판정 2026-08-10).
+            // 실행 안내는 "현재 안내" 행이 전담한다(역할 분리 확정 2026-08-10).
+            // 상태 행은 **비운다** — 직전 예고("약 40m 앞 오른쪽으로…")를 남기면 이미
+            // 돈 회전을 아직 남은 것처럼 읽는다. 다음 예고·임박·상태 신호가 다시 채운다.
+            // ⚠ 전경 복귀 재생의 "현재 상태" 폴백이 이 빈 값을 currentGuidanceText로
+            //   대체한다(handleScenePhaseChange) — 여기만 고치고 그쪽을 잊으면 백그라운드
+            //   크로싱 직후 복귀에서 갚을 문장이 사라진다.
+            statusText = ""
             currentGuidanceText = Self.currentDisplay(text, isBundle: indices.count > 1)
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
