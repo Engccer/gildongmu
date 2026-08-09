@@ -873,6 +873,7 @@
   },
   "manualLocation": {
     "gps": "Position actuelle",
+    "gpsNear": "Position actuelle (près de {address})",
     "locating": "Vérification de la position actuelle",
     "gpsFailed": "Position introuvable",
     "manual": "Position définie, {label}",

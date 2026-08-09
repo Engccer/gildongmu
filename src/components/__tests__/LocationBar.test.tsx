@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/ko.json";
-import { __resetGeolocationForTest } from "@/lib/geolocation";
+import { __resetGeolocationForTest, requestLocation } from "@/lib/geolocation";
+import {
+  __resetCurrentAddressForTest,
+  ensureCurrentAddress,
+} from "@/lib/current-address-store";
 import {
   __resetManualLocationForTest,
   setManualLocation,
@@ -112,5 +116,152 @@ describe("LocationBar", () => {
     renderBar(onPick);
     await userEvent.click(screen.getByRole("button", { name: /현재 위치/ }));
     expect(onPick).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * GPS 상태의 실주소 병기(위원장 실사용 판정 2026-08-09).
+ *
+ * 이 기능의 존재 이유는 "GPS가 틀렸을 때 스스로 고치는 것"인데, 표시줄이 "현재
+ * 위치"라고만 말하면 시각장애 사용자는 GPS가 틀렸다는 사실 자체를 알 수 없다 —
+ * 고칠 마음이 생길 근거가 화면에 없다.
+ */
+describe("LocationBar — GPS 주소 병기", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __resetGeolocationForTest();
+    __resetManualLocationForTest();
+    __resetCurrentAddressForTest();
+    vi.stubGlobal("navigator", {
+      geolocation: {
+        getCurrentPosition: (ok: PositionCallback) =>
+          ok({
+            coords: {
+              latitude: 37.5384, longitude: 127.1432, accuracy: 10,
+              altitude: null, altitudeAccuracy: null, heading: null, speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition),
+      },
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function stubReverse(address: string | null) {
+    const spy = vi.fn(async () => ({ ok: true, json: async () => ({ address }) }));
+    vi.stubGlobal("fetch", spy);
+    return spy;
+  }
+
+  it("주소를 얻으면 '현재 위치(주소 부근)'로 읽힌다", async () => {
+    stubReverse("성내로 12");
+    requestLocation();
+    renderBar();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "현재 위치(성내로 12 부근), 위치 지정하기" }),
+      ).toBeTruthy(),
+    );
+  });
+
+  // 3-state 정직성: 모르면 거짓을 말하지 않고 기존 라벨로 남는다.
+  it("주소를 못 얻으면 '현재 위치'로 폴백한다", async () => {
+    stubReverse(null);
+    requestLocation();
+    renderBar();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "현재 위치, 위치 지정하기" }),
+      ).toBeTruthy(),
+    );
+  });
+
+  // 수동 상태 라벨은 이미 지정한 이름을 말한다 — 주소는 잉여이고, 표시되지 않을
+  // 라벨을 위해 실좌표를 역지오코딩하는 것은 낭비다.
+  it("수동 위치가 켜져 있으면 역지오코딩하지 않는다", async () => {
+    const spy = stubReverse("성내로 12");
+    setManualLocation({
+      label: "길동 카페", lat: 37.5384, lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: 1 }, setAt: 1,
+    });
+    requestLocation();
+    renderBar();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "지정한 위치, 길동 카페, 위치 지정하기" }),
+      ).toBeTruthy(),
+    );
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  // 표시줄은 세 화면(채팅·검색·"내 주변") 첫 줄에 있다. 각자 조회하면 3배가 된다.
+  it("표시줄이 여럿이어도 역지오코딩은 한 번이다", async () => {
+    const spy = stubReverse("성내로 12");
+    requestLocation();
+    render(
+      <NextIntlClientProvider locale="ko" messages={messages}>
+        <LocationBar onPick={vi.fn()} />
+        <LocationBar onPick={vi.fn()} />
+        <LocationBar onPick={vi.fn()} />
+      </NextIntlClientProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole("button", { name: "현재 위치(성내로 12 부근), 위치 지정하기" }),
+      ).toHaveLength(3),
+    );
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * ⚠ 스토어는 좌표 하나의 주소만 들고, 표시줄은 **자기 좌표가 안 바뀌어도** 그
+   * 스토어 갱신에 재렌더된다(구독자니까). 다른 소비자가 다른 좌표를 조회해 스토어를
+   * 채우면, 표시줄은 자기 자리(X)에 앉은 채 남의 자리(Z) 주소를 낭독하게 된다 —
+   * 화면으로 반증할 수 없는 거짓 위치 주장이다. 훅의 키 대조가 그것을 막는다.
+   *
+   * 스토어의 "좌표 바뀌면 옛 주소 버리기"로는 못 막는다: 그건 **버리는** 쪽이고
+   * 여기서 새로 들어오는 값은 **남의 좌표의 확정 주소**다.
+   */
+  it("다른 좌표의 주소가 스토어에 들어와도 자기 좌표의 라벨을 오염시키지 않는다", async () => {
+    stubReverse("성내로 12");
+    requestLocation();
+    renderBar();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "현재 위치(성내로 12 부근), 위치 지정하기" }),
+      ).toBeTruthy(),
+    );
+
+    // 다른 화면이 다른 좌표를 조회해 스토어를 덮는다(표시줄의 좌표는 그대로).
+    stubReverse("천호대로 1000");
+    await act(async () => {
+      ensureCurrentAddress({ lat: 37.6, lng: 127.2 });
+      await Promise.resolve();
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "현재 위치, 위치 지정하기" }),
+      ).toBeTruthy(),
+    );
+    expect(
+      screen.queryByRole("button", { name: /천호대로 1000/ }),
+    ).toBeNull();
+  });
+
+  // 한 줄 = 한 접근성 객체 — 병기가 길어져도 시각 텍스트를 덮는 aria-label을
+  // 쓰거나 인라인 span으로 쪼개지 않는다.
+  it("병기된 이름도 단일 텍스트다", async () => {
+    stubReverse("성내로 12");
+    requestLocation();
+    renderBar();
+    await waitFor(() => {
+      const pick = screen.getByRole("button", {
+        name: "현재 위치(성내로 12 부근), 위치 지정하기",
+      });
+      expect(pick.getAttribute("aria-label")).toBeNull();
+      expect(pick.querySelector("span")).toBeNull();
+    });
   });
 });
