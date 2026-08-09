@@ -215,9 +215,12 @@ export interface GuideState {
   /** 낭독 완료된 마지막 스텝 index(선행 낭독 포함). */
   announcedUpTo: number;
   /**
-   * 임박 큐를 마친 마지막 스텝 index. `announcedUpTo`와 **같은 경계 수열을 다른
-   * 거리에서** 따라간다(40m vs 10m) — 그래서 별도 래치이고, 항상
-   * `imminentUpTo <= announcedUpTo`다.
+   * 임박 큐를 마친 마지막 스텝 index. 항상 `imminentUpTo <= announcedUpTo`다.
+   *
+   * ⚠ **스텝 단위로 전진한다 — `announcedUpTo`처럼 유닛 끝으로 뛰지 않는다.**
+   * 전문 낭독은 짧은 스텝들을 한 문장으로 묶어 읽지만 결정 지점은 그 묶음 **안에도**
+   * 있다. 유닛 끝으로 뛰면 묶음의 첫 스텝만 분류되고 나머지 회전·횡단보도는 큐를
+   * 받을 기회가 구조적으로 사라진다(6a 주석의 실측 두 건).
    *
    * ⚠ 행동이 없는 경계(단순 직진 연결)에서도 **전진한다**. 전진하지 않으면 그
    * 경계에 영원히 걸려 다음 회전의 큐가 영영 나가지 않는다.
@@ -277,8 +280,8 @@ export interface GuideState {
 export type GuideEvent =
   | { kind: "announceSteps"; indices: number[] }
   /**
-   * 결정 지점 10m 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 그 유닛이다
-   * (소비자가 전문을 다시 읽고 싶을 때를 위해 남긴다 — 지금은 문구가 짧은 명령형이다).
+   * 결정 지점 10m 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
+   * 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
    */
   | { kind: "imminent"; indices: number[]; action: WalkAction }
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
@@ -345,9 +348,11 @@ export function guideStateAt(
     d,
     stepIndex: step.index,
     announcedUpTo: unit[unit.length - 1],
-    // 재진입 시점의 유닛은 임박 큐도 소비 처리 — 지금 서 있는 유닛의 행동은 이미
-    // 지난 결정이다(`farNoticedUpTo`와 같은 규칙).
-    imminentUpTo: unit[unit.length - 1],
+    // ⚠ **유닛 끝이 아니라 지금 서 있는 스텝이다.** 지나온 것은 이 스텝의 시작
+    // 결정뿐이고, 같은 유닛의 뒤쪽 스텝들은 아직 앞에 있다 — 유닛 끝으로 두면
+    // 묶음 안의 회전이 통째로 사라진다. 그 스텝들의 전문은 이미 나갔으므로
+    // (`announcedUpTo`가 유닛 끝) `imminentUpTo < announcedUpTo` 조건도 성립한다.
+    imminentUpTo: step.index,
     lastAnnouncedAt: now,
     lastFixAt: null,
     windowEdgeHits: 0,
@@ -778,7 +783,70 @@ export function guideStep(
     resumePhase: cur.isLong ? "following" : "bundle",
   };
 
-  // 6a) 최종 접근 진입(최우선): 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
+  // 6a) 결정 지점 임박 큐(10m, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
+  //     "지금이다"를 알린다.
+  //
+  //     ⚠ **래치가 스텝 단위인 것이 계약이다 — 유닛 단위로 뛰면 안 된다.** 전문 낭독(6c)이
+  //     유닛 단위인 이유는 짧은 스텝들을 한 문장으로 묶어 읽기 위함인데, 결정 지점은
+  //     그 유닛 **안에도** 있다. 유닛 끝까지 래치를 뛰게 하면 유닛의 첫 스텝만 분류되고
+  //     나머지 결정 지점은 큐를 받을 기회가 구조적으로 사라진다(실측: 자택→고우헤어
+  //     경로의 유닛 [4,5]에서 [4]가 단순 이동이라 [5]의 마지막 좌회전이 통째로 침묵했다.
+  //     경복궁 경로는 33·36·28m 간격 3연속 회전 중 첫 회전만 울렸다).
+  //     "무엇을"은 유닛 단위, "지금이다"는 결정 지점 단위 — 같은 수열일 이유가 없다.
+  //
+  //     ⚠ **불변식: 전문이 나간 스텝만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
+  //     "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
+  //     남는다. 두 래치가 같으면 그 스텝은 아직 전문 전이므로 6c에 자리를 내준다.
+  //
+  //     ⚠ **6c(전문 낭독)보다 앞이고, 6b(최종 접근)에는 양보하지 않는다.**
+  //     6c에 밀리는 것은 짧은 유닛에서 재현되므로 앞에 둔다(다음 유닛 전문 38m와 이번
+  //     횡단보도 8m가 같은 fix에 걸리는데 급한 쪽은 8m다).
+  //     ⚠ **알려진 한계**: 최종 접근이 먼저 래치되면 마지막 결정 지점의 큐가 사라진다.
+  //     두 조건은 같은 fix에서 경쟁하는 게 아니라 거리가 달라서(최종 접근은 잔여 50m,
+  //     큐는 경계 10m 앞), 블록 순서만으로는 못 막는다. **"결정 지점이 남았으면 최종
+  //     접근을 미룬다"를 실제로 구현해 봤고 되돌렸다** — 이탈 판정이 마지막 50m까지
+  //     연장되면서 A6 헛경고율이 2배가 됐다(실측: BIASED 2.x% → 6.7%, HARSH 10.5%,
+  //     `a6-probe.test.ts` 상한 전부 초과). 도착 직전의 거짓 "경로 이탈" 경고가 놓친
+  //     큐 하나보다 나쁘다. **프로덕션 영향은 좁다**: 앱은 `includeGeometry=1`을 보내
+  //     진입선이 `max(10, accuracy)`라 큐가 먼저 나간다. 기하 없는 구버전 응답과
+  //     `accuracy > 마지막스텝길이 + 10`인 경우에만 사라진다. A6 상수 확정 뒤 재검토
+  //     대상이다(`docs/BACKLOG.md`).
+  //
+  //     ⚠ **경계를 이미 지났으면 발화하지 않는다**(`rem >= 0`). 하한이 없으면 uncertain
+  //     구간을 지나 창이 `d`를 경계 너머로 끌어올린 fix에서 "잠시 후 왼쪽으로 도세요"가
+  //     **모퉁이를 돈 뒤에** 나간다(실측: 정확도 악화 → 회복 후 d가 214m로 착지, 경계는
+  //     200m). 6c의 서술문과 달리 이 문장은 시점이 박힌 명령문이라 오독의 대가가 다르다.
+  //     지나친 경계는 한 fix 안에서 전부 흘려보낸다 — 한 개씩 따라잡으면 그 사이의
+  //     진짜 결정 지점을 놓친다.
+  //
+  //     ⚠ **행동이 없는 경계에서도 래치는 전진시키고 발화만 건너뛴다.** 직진 연결마다
+  //     소리를 내면 큐가 신호이기를 그만두고, 반대로 래치를 세워 두면 그 경계에 걸려
+  //     다음 회전을 영영 못 알린다.
+  //
+  //     ⚠ `!isOff`는 6b와 같은 이유다(아래 주석) — 이 fix가 이탈로 판정됐지만 확정
+  //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
+  if (tuning.imminentAheadM !== null && !isOff) {
+    while (
+      next.imminentUpTo < next.announcedUpTo &&
+      route.steps[next.imminentUpTo].endD < d
+    ) {
+      next = { ...next, imminentUpTo: next.imminentUpTo + 1 };
+    }
+    if (
+      next.imminentUpTo < next.announcedUpTo &&
+      route.steps[next.imminentUpTo].endD - d <= tuning.imminentAheadM
+    ) {
+      const target = next.imminentUpTo + 1;
+      const action = walkStepAction(route.steps[target].description);
+      next = { ...next, imminentUpTo: target };
+      if (action) {
+        next = { ...next, lastAnnouncedAt: now };
+        return emit(next, { kind: "imminent", indices: [target], action }, "ahead");
+      }
+    }
+  }
+
+  // 6b) 최종 접근 진입: 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
   //     (스펙 2026-08-03 §5.3 + 2026-08-08 §3.2, 리뷰 #2).
   //
   //     기하를 아는 세션의 진입선은 **경로 종점**이다. 종전 50m는 "경로 종점 = 목적지"를
@@ -808,36 +876,7 @@ export function guideStep(
     return emit(next, { kind: "finalApproachEnter" }, null);
   }
 
-  // 6a') 결정 지점 임박 큐(10m, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
-  //      "지금이다"를 알린다. 경계 수열은 6b와 같고 거리만 다르다.
-  //
-  //      ⚠ **불변식: 전문이 나간 유닛만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
-  //      "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
-  //      남는다. 두 래치가 같으면 그 유닛은 아직 전문 전이므로 6b에 자리를 내준다.
-  //
-  //      ⚠ 그 불변식을 지키므로 **6b보다 앞이다.** 뒤에 두면 짧은 유닛에서 6b가 매번
-  //      먼저 return해 큐가 한 fix씩 밀리고, 그 사이 사용자는 이미 모퉁이를 지난다
-  //      (30m 횡단보도 유닛에서 실제로 재현 — 다음 유닛 전문 38m와 이번 횡단보도 8m가
-  //      같은 fix에 걸리는데, 급한 쪽은 8m다).
-  //
-  //      ⚠ **행동이 없는 경계에서도 래치는 전진시키고 발화만 건너뛴다.** 직진 연결마다
-  //      소리를 내면 큐가 신호이기를 그만두고, 반대로 래치를 세워 두면 그 경계에 걸려
-  //      다음 회전을 영영 못 알린다.
-  if (
-    tuning.imminentAheadM !== null &&
-    next.imminentUpTo < next.announcedUpTo &&
-    route.steps[next.imminentUpTo].endD - d <= tuning.imminentAheadM
-  ) {
-    const indices = unitAt(route, next.imminentUpTo + 1);
-    const action = walkStepAction(route.steps[indices[0]].description);
-    next = { ...next, imminentUpTo: indices[indices.length - 1] };
-    if (action) {
-      next = { ...next, lastAnnouncedAt: now };
-      return emit(next, { kind: "imminent", indices, action }, "ahead");
-    }
-  }
-
-  // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
+  // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
   //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
     const announcedEnd = route.steps[next.announcedUpTo].endD;
@@ -854,13 +893,17 @@ export function guideStep(
         farNoticedUpTo: Math.max(next.farNoticedUpTo, indices[indices.length - 1]),
         lastAnnouncedAt: now,
       };
-      // ⚠ 톤 없음. `ahead` 톤은 6a'(10m 임박)로 옮겼다 — 40m에서 울리면 소리가
-      //   "곧 뭔가 있다"만 말하고 "지금이다"는 못 말한다(실보행 피드백 2026-08-09).
-      //   전문 낭독 자체가 이 시점의 신호이므로 별도 톤은 잉여다.
-      //   부수 효과 하나를 알고 넘긴다: 톤이 열던 3초 정숙 구간(`QUIET_AFTER_ACTION_S`)이
-      //   이 시점에는 더 이상 열리지 않는다. 이 fix의 추세음은 `eventOwned`가 그대로
-      //   막고, 전문 낭독은 어차피 3초보다 길어 그 창이 덮은 적이 없다.
-      return emit(next, { kind: "announceSteps", indices }, null);
+      // ⚠ **톤은 임박 층이 있는 프로파일에서만 뗀다.** walk는 `ahead`가 6a로 옮겨
+      //   갔으므로 여기서 또 울리면 소리가 "곧 뭔가 있다"와 "지금이다" 둘 다를 뜻하게
+      //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). 반대로 car는 임박 층이
+      //   없으므로 여기가 **그 자리의 유일한 소리**다 — 무조건 떼면 자동차 세션은
+      //   이탈 경고를 빼고 우선 톤이 0이 되고, `ahead`가 열던 3초 정숙 구간
+      //   (`QUIET_AFTER_ACTION_S`)까지 함께 사라진다(리뷰 검출 회귀).
+      //   ⚠ walk에서 그 정숙 구간이 40m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
+      //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
+      //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).
+      const tone = tuning.imminentAheadM === null ? "ahead" : null;
+      return emit(next, { kind: "announceSteps", indices }, tone);
     }
   }
 

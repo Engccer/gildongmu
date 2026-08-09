@@ -1840,7 +1840,7 @@
       ]
     },
     {
-      "name": "횡단보도 유닛은 회전 표지가 없어도 큐가 나간다",
+      "name": "횡단보도 유닛은 회전 표지가 없어도 큐가 나간다(전문 낭독보다 앞)",
       "steps": [
         {
           "len": 200,
@@ -1947,7 +1947,7 @@
       ]
     },
     {
-      "name": "car 프로파일은 임박 큐가 없다(보행 궤적으로만 잰 값)",
+      "name": "car 프로파일은 임박 큐가 없고, 그래서 전문 낭독이 ahead 톤을 그대로 든다",
       "tuning": "car",
       "steps": [
         {
@@ -2006,6 +2006,374 @@
             3,
             4,
             5
+          ],
+          "eventNot": "imminent"
+        },
+        {
+          "afterFix": 3,
+          "event": "announceSteps",
+          "tone": "ahead"
+        }
+      ]
+    },
+    {
+      "name": "묶음 유닛 안쪽 결정 지점도 큐를 받는다(래치가 스텝 단위)",
+      "steps": [
+        {
+          "len": 200,
+          "desc": "직진A"
+        },
+        {
+          "len": 32,
+          "desc": "한빛안경랜드 앞에서 해인한의원까지 명일로를 따라 32m 이동"
+        },
+        {
+          "len": 30,
+          "desc": "해인한의원 앞에서 왼쪽으로 돌아 30m 이동"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 16,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 32,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 48,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 56,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 64,
+          "along": 128,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 72,
+          "along": 144,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 160,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 88,
+          "along": 176,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 96,
+          "along": 192,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 104,
+          "along": 208,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 112,
+          "along": 224,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 12,
+          "eventNot": "imminent"
+        },
+        {
+          "afterFix": 14,
+          "event": "imminent",
+          "indices": [
+            2
+          ],
+          "tone": "ahead"
+        }
+      ]
+    },
+    {
+      "name": "마지막 유닛이 짧으면 최종 접근이 큐를 선점한다 (알려진 한계 — 되돌린 이유는 6a 주석)",
+      "steps": [
+        {
+          "len": 200,
+          "desc": "직진A"
+        },
+        {
+          "len": 25,
+          "desc": "정문까지 24m 이동, 횡단보도 이용"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 16,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 32,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 48,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 56,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 64,
+          "along": 128,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 72,
+          "along": 144,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 160,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 88,
+          "along": 176,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 96,
+          "along": 192,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 11,
+          "event": "finalApproachEnter"
+        },
+        {
+          "afterFixAny": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          "eventNot": "imminent"
+        }
+      ],
+      "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 이 시나리오는 imminent를 내지만, 이탈 판정이 마지막 50m까지 연장되며 A6 헛경고율이 2배가 됐다(a6-probe 상한 전부 초과). 그 교환을 다시 하려면 두 테스트를 함께 봐야 한다."
+    },
+    {
+      "name": "이미 지난 경계에는 명령형 큐를 내지 않는다(정확도 악화 후 창이 경계를 넘겨 착지)",
+      "steps": [
+        {
+          "len": 200,
+          "desc": "직진A"
+        },
+        {
+          "len": 200,
+          "desc": "사거리에서 왼쪽으로 돌아 200m 이동"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 8,
+          "along": 16,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 32,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 32,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 48,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 56,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 64,
+          "along": 128,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 72,
+          "along": 144,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 160,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 88,
+          "along": 161,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 94,
+          "along": 180,
+          "lateral": 0,
+          "acc": 120
+        },
+        {
+          "t": 100,
+          "along": 214,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 106,
+          "along": 216,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 12,
+          "event": "uncertainEnter"
+        },
+        {
+          "afterFix": 13,
+          "event": "uncertainExit"
+        },
+        {
+          "afterFixAny": [
+            13,
+            14
           ],
           "eventNot": "imminent"
         }

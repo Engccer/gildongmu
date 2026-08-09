@@ -121,7 +121,7 @@ offRouteAxes: { distance: boolean, course: boolean }
 
 ### 2.7 실행 순서
 
-**새 축의 갱신과 확정은 `finalApproach` 진입 판정(§6a)보다 앞이다.**
+**새 축의 갱신과 확정은 `finalApproach` 진입 판정(§6b, 신설 당시 §6a)보다 앞이다.**
 
 ⚠ 뒤에 두면 종점 근처에서 창이 이미 `mismatch` 다수인데도 `finalApproachEnter`가 먼저 반환되고, 다음 fix부터 `0a` 가드가 모든 판정을 멈춰 **확인된 이탈이 영구히 소실된다.** 목적지 근처 배회·종점 통과가 이 경로를 만든다. 현행 최종 접근 조건은 `!isOff`로 **거리 축만** 보므로, **"어느 축에서도 확정 이탈이 아님"**으로 넓힌다.
 

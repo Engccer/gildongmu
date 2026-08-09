@@ -22,10 +22,14 @@ private func loadCases() throws -> [CaseFile.Case] {
 }
 
 @Test func walkActionSharedTable() throws {
-    for c in try loadCases() {
+    let cases = try loadCases()
+    // fixture가 비면 아래 루프가 0건 단언으로 조용히 통과한다.
+    #expect(cases.count >= 14)
+    for c in cases {
         #expect(
             walkStepAction(c.desc)?.rawValue == c.expect,
             "\(c.desc.isEmpty ? "(빈 문장)" : c.desc) → \(c.expect ?? "nil")"
         )
     }
 }
+
