@@ -134,8 +134,7 @@ private func toneName(_ tone: GuideTone?) -> String? {
                 fix: fixCoord(along: f.along, lateral: f.lateral, acc: f.acc),
                 route: route,
                 now: f.t,
-                tuning: tuning,
-                course: inactiveCourse
+                tuning: tuning
             )
             state = out.state
             results.append((out.event, out.tone))
@@ -187,7 +186,7 @@ private func toneName(_ tone: GuideTone?) -> String? {
     for (t, along) in [(0.0, 0.0), (5.0, 40.0), (10.0, 90.0)] {
         let out = guideStep(
             state: state, fix: fixCoord(along: along, lateral: 0, acc: 10),
-            route: route, now: t, tuning: .walk, course: inactiveCourse
+            route: route, now: t, tuning: .walk
         )
         state = out.state
         lastEvent = out.event
@@ -197,13 +196,13 @@ private func toneName(_ tone: GuideTone?) -> String? {
     for t in [15.0, 20.0] {
         state = guideStep(
             state: state, fix: fixCoord(along: 90, lateral: 0, acc: 30),
-            route: route, now: t, tuning: .walk, course: inactiveCourse
+            route: route, now: t, tuning: .walk
         ).state
         #expect(state.speedGuardActive) // 잔여 표본이 남은 동안은 동결 유지
     }
     state = guideStep(
         state: state, fix: fixCoord(along: 90, lateral: 0, acc: 30),
-        route: route, now: 25, tuning: .walk, course: inactiveCourse
+        route: route, now: 25, tuning: .walk
     ).state
     #expect(state.speedSamples.isEmpty)
     #expect(!state.speedGuardActive)
@@ -265,7 +264,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     state.lastFixAt = 0
     let out = guideStep(
         state: state, fix: fixCoord(along: dPrev, lateral: 0, acc: 10),
-        route: route, now: 11, tuning: .car, course: inactiveCourse
+        route: route, now: 11, tuning: .car
     )
     #expect(out.event == .reacquiring)
     return out.state
@@ -276,7 +275,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     let st = enterReacquiring(route, dPrev: 100) // v=0 → 창 [100, 200]
     let out = guideStep(
         state: st, fix: fixCoord(along: 150, lateral: 10, acc: 10),
-        route: route, now: 12, tuning: .car, course: inactiveCourse
+        route: route, now: 12, tuning: .car
     )
     // 후보: 북 d≈150(창 안) vs 남 d≈490(창 밖) → 단일 채택
     #expect(out.event == .reacquired)
@@ -288,7 +287,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     let st = enterReacquiring(route, dPrev: 100)
     let out = guideStep(
         state: st, fix: fixCoord(along: 250, lateral: 20, acc: 10),
-        route: route, now: 12, tuning: .car, course: inactiveCourse
+        route: route, now: 12, tuning: .car
     )
     // 북 d≈250·남 d≈390 — 둘 다 창 [100,200] 밖 → 거부 유지
     #expect(out.event == nil)
@@ -301,7 +300,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     st.reacquireV = 20 // 창 상한 100 + 20×12×1.5 + 100 = 560
     let out = guideStep(
         state: st, fix: fixCoord(along: 250, lateral: 20, acc: 10),
-        route: route, now: 12, tuning: .car, course: inactiveCourse
+        route: route, now: 12, tuning: .car
     )
     // 북 d≈250·남 d≈390 둘 다 창 안 → 복수 거부(평행도로 이탈 은폐 차단)
     #expect(out.event == nil)
@@ -330,7 +329,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     entered.reacquireV = 20
     let out = guideStep(
         state: entered, fix: fixCoord(along: 500, lateral: 10, acc: 10),
-        route: route, now: 12, tuning: .car, course: inactiveCourse
+        route: route, now: 12, tuning: .car
     )
     #expect(out.event == .reacquired)
     #expect(abs(out.state.d - 500) < 5)
@@ -342,7 +341,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     // d≈180은 버퍼 100일 때만 창 안(50이면 상한 150 밖) — 버퍼 회귀 잠금.
     let out = guideStep(
         state: st, fix: fixCoord(along: 180, lateral: 10, acc: 10),
-        route: route, now: 12, tuning: .car, course: inactiveCourse
+        route: route, now: 12, tuning: .car
     )
     #expect(out.event == .reacquired)
     #expect(abs(out.state.d - 180) < 5)
@@ -356,7 +355,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     for (t, along) in [(5.0, 40.0), (10.0, 80.0), (15.0, 120.0)] {
         confirm = guideStep(
             state: state, fix: fixCoord(along: along, lateral: 60, acc: 10),
-            route: route, now: t, tuning: .car, course: inactiveCourse
+            route: route, now: t, tuning: .car
         )
         state = confirm!.state
     }
@@ -369,7 +368,7 @@ private func enterReacquiring(_ route: GuideRoute, dPrev: Double) -> GuideState 
     while t <= 210 {
         let out = guideStep(
             state: state, fix: fixCoord(along: 200, lateral: 60, acc: 10),
-            route: route, now: t, tuning: .car, course: inactiveCourse
+            route: route, now: t, tuning: .car
         )
         state = out.state
         if out.event == .offRoute {
@@ -426,7 +425,7 @@ struct FinalApproachEntryTests {
         state.announcedUpTo = 0
         let out = guideStep(
             state: state, fix: fixCoord(along: 115, lateral: 0, acc: 8),
-            route: route, now: 10, tuning: .walk, course: inactiveCourse
+            route: route, now: 10, tuning: .walk
         )
         #expect(out.event != .finalApproachEnter)
         #expect(out.state.phase != .finalApproach)
@@ -439,7 +438,7 @@ struct FinalApproachEntryTests {
         state.phase = .offRoute
         let out = guideStep(
             state: state, fix: fixCoord(along: 97, lateral: 60, acc: 8),
-            route: route, now: 10, tuning: .walk, course: inactiveCourse
+            route: route, now: 10, tuning: .walk
         )
         #expect(out.state.phase == .offRoute)
     }
@@ -451,7 +450,7 @@ struct FinalApproachEntryTests {
         state.autoHandoffArmed = false
         let out = guideStep(
             state: state, fix: fixCoord(along: 97, lateral: 0, acc: 8),
-            route: route, now: 10, tuning: .walk, course: inactiveCourse
+            route: route, now: 10, tuning: .walk
         )
         #expect(out.event != .finalApproachEnter)
     }
@@ -463,14 +462,14 @@ struct FinalApproachEntryTests {
         let route = straight()
         let entered = guideStep(
             state: atEnd(route), fix: fixCoord(along: 97, lateral: 0, acc: 8),
-            route: route, now: 10, tuning: .walk, course: inactiveCourse
+            route: route, now: 10, tuning: .walk
         )
         #expect(entered.event == .finalApproachEnter)
         #expect(entered.state.phase == .finalApproach)
 
         let bad = guideStep(
             state: entered.state, fix: fixCoord(along: 97, lateral: 0, acc: 200),
-            route: route, now: 20, tuning: .walk, course: inactiveCourse
+            route: route, now: 20, tuning: .walk
         )
         #expect(bad.state.phase == .finalApproach)
         #expect(bad.event == nil)
@@ -487,7 +486,7 @@ struct FinalApproachEntryTests {
         state.lastFixAt = 0
         state = guideStep(
             state: state, fix: fixCoord(along: 200, lateral: 0, acc: 10),
-            route: route, now: 10, tuning: .walk, course: inactiveCourse
+            route: route, now: 10, tuning: .walk
         ).state
         #expect(state.phase != .reacquiring)
         #expect(state.hasFinalApproachGeometry)
@@ -578,120 +577,148 @@ struct CourseAxisReducerTests {
         fixCoord(along: along, lateral: 0, acc: 8)
     }
 
-    private func facing(_ deg: Double) -> CourseObservation {
-        CourseObservation(state: .valid(course: deg), accuracyDeg: 5)
-    }
-
-    @Test("경로 위에 있어도 방향이 지속 어긋나면 이탈을 확정한다")
-    func courseAxisConfirmsOnRoute() {
-        var state = initialGuideState(route: axisRoute, now: 0).state
-        var sawOffRoute = false
-        for t in 1...25 {
+    /// bearingDeg 방향 1.2m/s·1Hz 보행 fix(관측은 리듀서 내부 유도기가 만든다).
+    private func walk(
+        _ state: inout GuideState, fromAlong: Double, lateral: Double = 0,
+        bearingDeg: Double, seconds: Int, startAt: Double, tuning: GuideTuning = .walk,
+        onEvent: (GuideEvent, Double) -> Bool = { _, _ in false }
+    ) {
+        let rad = bearingDeg * .pi / 180
+        for i in 0...seconds {
+            let along = fromAlong + cos(rad) * Double(i) * 1.2
+            let lat = lateral + sin(rad) * Double(i) * 1.2
             let out = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
+                state: state, fix: fixCoord(along: along, lateral: lat, acc: 8),
+                route: axisRoute, now: startAt + Double(i), tuning: tuning
             )
             state = out.state
-            if out.event == .offRoute { sawOffRoute = true }
+            if let e = out.event, onEvent(e, startAt + Double(i)) { return }
         }
-        #expect(sawOffRoute)
+    }
+
+    /// 경로 위 역주행(남행)으로 방위 축을 확정시킨 상태(웹 confirmedByReversal 미러).
+    /// 확정 이벤트가 나온 fix에서 멈춰 반환한다 — 이후 케이스가 이어 걸 수 있게.
+    private func confirmedByReversal() -> (state: GuideState, confirmedAt: Double, alongNow: Double)? {
+        var state = initialGuideState(route: axisRoute, now: 0).state
+        walk(&state, fromAlong: 60, bearingDeg: 0, seconds: 33, startAt: 0)
+        var hit: (Double, Double)?
+        walk(&state, fromAlong: 100, bearingDeg: 180, seconds: 55, startAt: 34) { e, t in
+            if e == .offRoute {
+                hit = (t, 100 - (t - 34) * 1.2)
+                return true
+            }
+            return false
+        }
+        guard let (t, along) = hit else { return nil }
+        return (state, t, along)
+    }
+
+    @Test("경로 위 역주행은 방위 축이 확정한다 — 수직거리 축이 못 보는 이탈")
+    func courseAxisConfirmsOnReversal() {
+        guard let r = confirmedByReversal() else {
+            Issue.record("역주행 55초 안에 방위 축이 확정해야 한다")
+            return
+        }
+        #expect(r.state.phase == .offRoute)
+        #expect(r.state.offRouteAxes.course)
+        // 수직거리는 내내 임계 안이므로 거리 축은 잠기지 않았다.
+        #expect(!r.state.offRouteAxes.distance)
+    }
+
+    @Test("멈춰 서면 관측이 말라 복귀를 선언하지 않는다 — unknown은 정합이 아니다")
+    func unknownIsNotRecovery() {
+        guard let r = confirmedByReversal() else {
+            Issue.record("확정 실패")
+            return
+        }
+        var state = r.state
+        for i in 1...40 {
+            let out = guideStep(
+                state: state, fix: fixCoord(along: r.alongNow, lateral: 0, acc: 8),
+                route: axisRoute, now: r.confirmedAt + Double(i), tuning: .walk
+            )
+            state = out.state
+            #expect(out.event != .backOnRoute)
+        }
         #expect(state.phase == .offRoute)
         #expect(state.offRouteAxes.course)
-        // 수직거리는 0이므로 거리 축은 잠기지 않았다.
-        #expect(!state.offRouteAxes.distance)
     }
 
-    @Test("방위를 못 읽으면 복귀를 선언하지 않는다 — unknown은 정합이 아니다")
-    func unknownIsNotRecovery() {
-        var state = initialGuideState(route: axisRoute, now: 0).state
-        for t in 1...25 {
-            state = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
-            ).state
-        }
-        #expect(state.phase == .offRoute)
-        for t in 26...60 {
-            let out = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: inactiveCourse
-            )
-            state = out.state
-            #expect(out.event != .backOnRoute)
-        }
-        #expect(state.phase == .offRoute)
-    }
-
-    @Test("방위 축으로 확정한 이탈은 방향이 맞아야 복귀한다")
+    @Test("방위 축으로 확정한 이탈은 경로 방향으로 걸어야 복귀한다")
     func recoveryRequiresMatchingCourse() {
-        var state = initialGuideState(route: axisRoute, now: 0).state
-        for t in 1...25 {
-            state = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
-            ).state
+        guard let r = confirmedByReversal() else {
+            Issue.record("확정 실패")
+            return
         }
-        #expect(state.phase == .offRoute)
-        // 위치는 계속 경로 위다. 방위만 어긋난 채로 두면 복귀하지 않는다.
-        for t in 26...40 {
-            let out = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
-            )
-            state = out.state
-            #expect(out.event != .backOnRoute)
-        }
+        var state = r.state
         var recovered = false
-        for t in 41...70 {
-            let out = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(0)
-            )
-            state = out.state
-            if out.event == .backOnRoute { recovered = true }
+        walk(&state, fromAlong: r.alongNow, bearingDeg: 0, seconds: 60, startAt: r.confirmedAt + 1) { e, _ in
+            if e == .backOnRoute {
+                recovered = true
+                return true
+            }
+            return false
         }
         #expect(recovered)
+        #expect(state.phase != .offRoute)
+        #expect(state.offRouteAxes == OffRouteAxes())
     }
 
     @Test("차량 프로파일에서는 축이 통째로 꺼진다 — 보행으로만 측정된 상수다")
     func carProfileDisablesAxis() {
-        var walk = initialGuideState(route: axisRoute, now: 0).state
-        var car = initialGuideState(route: axisRoute, now: 0).state
-        for t in 1...25 {
-            walk = guideStep(
-                state: walk, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
-            ).state
-            car = guideStep(
-                state: car, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .car, course: facing(180)
-            ).state
+        var walkState = initialGuideState(route: axisRoute, now: 0).state
+        var carState = initialGuideState(route: axisRoute, now: 0).state
+        for tuningAndState in [true, false] {
+            var s = tuningAndState ? walkState : carState
+            let tuning: GuideTuning = tuningAndState ? .walk : .car
+            walk(&s, fromAlong: 60, bearingDeg: 0, seconds: 33, startAt: 0, tuning: tuning)
+            walk(&s, fromAlong: 100, bearingDeg: 180, seconds: 40, startAt: 34, tuning: tuning)
+            if tuningAndState { walkState = s } else { carState = s }
         }
-        #expect(walk.offRouteAxes.course)
-        #expect(!car.offRouteAxes.course)
-        #expect(car.phase != .offRoute)
-        // 창에도 결정적 표가 쌓이지 않는다(관측이 진입점에서 중화된다).
-        #expect(car.courseVotes.allSatisfy { $0.vote == .unknown })
+        #expect(walkState.offRouteAxes.course)
+        #expect(!carState.offRouteAxes.course)
+        #expect(carState.phase != .offRoute)
+        // 게이트는 관측을 중화하므로 표 자체가 창에 쌓이지 않는다(spec §2.10 — 표 없음).
+        #expect(carState.courseVotes.isEmpty)
+    }
+
+    @Test("국면 전이는 표결 창을 비우고 유도기 버퍼는 남긴다")
+    func transitionsClearVotesButKeepBuffer() {
+        var primed = initialGuideState(route: axisRoute, now: 0).state
+        walk(&primed, fromAlong: 60, bearingDeg: 0, seconds: 20, startAt: 0)
+        #expect(!primed.courseVotes.isEmpty)
+        #expect(!primed.courseDerivation.fixes.isEmpty)
+
+        // uncertain 진입(정확도 악화)
+        let toUncertain = guideStep(
+            state: primed, fix: fixCoord(along: 85, lateral: 0, acc: 80),
+            route: axisRoute, now: 21, tuning: .walk
+        ).state
+        #expect(toUncertain.phase == .uncertain)
+        #expect(toUncertain.courseVotes.isEmpty)
+        #expect(!toUncertain.courseDerivation.fixes.isEmpty)
+
+        // reacquiring 진입(fix 공백 11초)
+        let toReacquiring = guideStep(
+            state: primed, fix: fixCoord(along: 85, lateral: 0, acc: 8),
+            route: axisRoute, now: 32, tuning: .walk
+        ).state
+        #expect(toReacquiring.phase == .reacquiring)
+        #expect(toReacquiring.courseVotes.isEmpty)
+        #expect(!toReacquiring.courseDerivation.fixes.isEmpty)
     }
 
     @Test("uncertain을 경유해도 축 latch가 보존된다")
     func latchSurvivesUncertain() {
-        var state = initialGuideState(route: axisRoute, now: 0).state
-        for t in 1...25 {
-            state = guideStep(
-                state: state, fix: axisFix(Double(t) * 1.2), route: axisRoute,
-                now: Double(t), tuning: .walk, course: facing(180)
-            ).state
+        guard let r = confirmedByReversal() else {
+            Issue.record("확정 실패")
+            return
         }
-        #expect(state.offRouteAxes.course)
-        for t in 26...30 {
-            let bad = GuideFix(
-                lat: axisFix(Double(t) * 1.2).lat, lng: axisFix(Double(t) * 1.2).lng,
-                accuracy: 80
-            )
+        var state = r.state
+        for i in 1...5 {
             state = guideStep(
-                state: state, fix: bad, route: axisRoute,
-                now: Double(t), tuning: .walk, course: inactiveCourse
+                state: state, fix: fixCoord(along: r.alongNow, lateral: 0, acc: 80),
+                route: axisRoute, now: r.confirmedAt + Double(i), tuning: .walk
             ).state
         }
         #expect(state.phase == .uncertain)
@@ -707,8 +734,6 @@ private struct ReducerFix: Decodable {
     let along: Double
     let lateral: Double
     let acc: Double
-    let course: Double
-    let courseAcc: Double
 }
 
 private struct ReducerCase: Decodable {
@@ -754,7 +779,7 @@ private func interpolate(_ fixes: [ReducerFix]) -> [ReducerFix] {
                     t: t,
                     along: a.along + r * (b.along - a.along),
                     lateral: a.lateral + r * (b.lateral - a.lateral),
-                    acc: b.acc, course: b.course, courseAcc: b.courseAcc
+                    acc: b.acc
                 )
             )
             t += 1
@@ -787,15 +812,13 @@ struct CourseAxisReducerTraceTests {
                 }
             )!
             var state = initialGuideState(route: route, now: 0).state
+            // ⚠ fix에 방위 필드가 없는 것 자체가 계약이다 — 관측은 리듀서 내부
+            //   유도기가 궤적에서 만들고 플랫폼은 주입할 수 없다(spec §2.9).
             for f in interpolate(sc.fixes) {
-                let obs =
-                    f.course < 0 || f.courseAcc < 0
-                    ? inactiveCourse
-                    : CourseObservation(state: .valid(course: f.course), accuracyDeg: f.courseAcc)
                 state = guideStep(
                     state: state,
                     fix: fixCoord(along: f.along, lateral: f.lateral, acc: f.acc),
-                    route: route, now: f.t, tuning: .walk, course: obs
+                    route: route, now: f.t, tuning: .walk
                 ).state
             }
             #expect(

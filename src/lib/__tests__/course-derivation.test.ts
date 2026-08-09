@@ -6,6 +6,7 @@ import {
   type CourseDerivationState,
   type DerivedCourse,
 } from "../course-derivation";
+import scenarios from "./fixtures/course-axis-scenarios.json";
 
 // 위도 1도 ≈ 111,320m. 북쪽 이동은 lat만 늘린다(방위 0°=북).
 const M_LAT = 1 / 111320;
@@ -95,5 +96,32 @@ describe("deriveCourse", () => {
       { n: 1.2, e: 0, at: 1 },
     ]);
     expect(r[2].state.fixes.length).toBe(2);
+  });
+});
+
+describe("공유 fixture derivation (Kit 동조 가드)", () => {
+  // ⚠ 공회전 방지: 배열이 비면 it.each가 0개 테스트를 만들고 조용히 통과한다.
+  it("fixture에 derivation 케이스가 있다", () => {
+    expect(scenarios.derivation.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(scenarios.derivation)("$name", (c) => {
+    let state = INITIAL_DERIVATION_STATE;
+    let last: DerivedCourse | null = null;
+    for (const f of c.fixes) {
+      const r = deriveCourse(state, { lat: f.lat, lng: f.lng }, f.at);
+      state = r.state;
+      if (r.obs !== null) last = r.obs;
+    }
+    if (c.expect === null) {
+      expect(last).toBeNull();
+      return;
+    }
+    expect(last).not.toBeNull();
+    const norm = ((last!.bearing + 540) % 360) - 180;
+    expect(norm).toBeGreaterThanOrEqual(c.expect.bearingMin);
+    expect(norm).toBeLessThanOrEqual(c.expect.bearingMax);
+    expect(last!.uncertaintyDeg).toBeGreaterThanOrEqual(c.expect.uMin);
+    expect(last!.uncertaintyDeg).toBeLessThanOrEqual(c.expect.uMax);
   });
 });

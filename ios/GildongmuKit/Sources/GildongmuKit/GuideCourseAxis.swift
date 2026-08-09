@@ -1,21 +1,22 @@
 import Foundation
 
-/// 이탈 판정 방위 축(spec 2026-08-09). 웹 `guide-course-axis.ts` 미러.
+/// 이탈 판정 방위 축(spec 2026-08-09, 재설계 2026-08-10). 웹 `guide-course-axis.ts` 미러.
 ///
 /// 수직거리 축이 못 보는 이탈(자기근접으로 수직거리가 무너지는 갈림, 역주행)을
 /// 진행 방위로 잡는다. 두 축은 독립 병렬이고 확정은 OR, 복귀는 활성 축 전체 해제다.
 ///
-/// ⚠ **`courseAccuracy`는 통과권이 아니라 불확실성이다.** 기존 `courseStep`의 45°
-/// 게이트는 4분할 방향 어절 생략 기준이지 이탈 증명 기준이 아니다.
+/// ⚠ **불확실성은 통과권이 아니라 오차범위다.** 각도차 50°에 불확실성 40°면 실제
+/// 차이는 10°일 수 있고, 그런 표를 모으면 확신이 아니라 같은 오차의 반복 집계가 된다.
+/// 관측은 기기 course가 아니라 위치 이력 유도(`CourseDerivation.swift`)에서 오고,
+/// 불확실성은 사슬 자기일관성 U다(spec §2.0·§2.10).
 ///
-/// 상수의 근거는 웹 `__tests__/a6-probe.test.ts`가 실경로 5개를 재생해 잰다(잠정
-/// 모델 기준). 가혹 조건(기기가 자기 오차를 절반으로 축소 보고) 헛경고: 판정 가능
-/// 비율 게이트 없음 56% → 있음·임계 45° 23% → 있음·임계 60° 4.0%. 대가는 검출
-/// 속도다(이탈 255건 중앙: 현행 54초, 임계 45° 27초, 임계 60° 46초).
-/// **거짓 이탈 경고가 지연보다 해롭다고 보고 보수적 값에서 출발한다.**
+/// 상수의 근거는 실사용 로그(spec §3.0, `docs/superpowers/specs/logs/`)와 웹 리플레이
+/// 게이트 `course-derivation-replay.test.ts`다(확정은 §7 3단계 검증 보행).
 
-/// ⚠ 잠정값(spec §6·§7) — 실기기 로그로 확정한다.
-public let courseAxisThresholdDegrees = 60.0
+/// ⚠ 잠정값(spec §6·§7) — 검증 보행으로 확정한다. 60은 기기 course의 두꺼운 꼬리
+/// (p90 51°)에 맞춘 값이었고 유도 방위(p90 30.8°)에서는 45°가 오표 0.4% 그대로
+/// 45° 갈림까지 검출한다(spec §3.0.5).
+public let courseAxisThresholdDegrees = 45.0
 /// ⚠ 잠정값(spec §6·§7).
 public let courseAxisWindowSeconds = 20.0
 /// ⚠ 잠정값(spec §6·§7). 확정 임계.
@@ -39,28 +40,13 @@ public let courseAxisBackMeters = 10.0
 public let courseAxisAheadMeters = 10.0
 /// ⚠ 잠정값(spec §6·§7). 접선 반폭.
 public let courseAxisTangentHalfMeters = 15.0
-/// ⚠ 잠정값(spec §6·§7). 이 이상 부정확한 fix는 투영점이 틀려 접선 비교가 무의미하다.
-public let courseAxisMaxAccuracyMeters = 12.0
 /// ⚠ 잠정값(spec §6·§7). 대조 접선 표본 간격(m) — 검출 입도라 다른 상수와 같은 부류다.
 private let courseAxisSampleStepMeters = 5.0
 
-/// 기기 방위 관측. `state`는 기존 `courseStep` 결과이고 `accuracyDeg`는 그 원본
-/// 불확실성이다.
-///
-/// ⚠ **둘을 함께 넘긴다.** `state`만 넘기면 불확실성이 사라져 이 축이 다시
-/// 통과권 방식으로 되돌아간다.
-public struct CourseObservation: Sendable, Equatable {
-    public let state: CourseState
-    public let accuracyDeg: Double
-
-    public init(state: CourseState, accuracyDeg: Double) {
-        self.state = state
-        self.accuracyDeg = accuracyDeg
-    }
-}
-
-/// 방위를 제공하지 않는 경로가 넘기는 값. 축이 통째로 꺼진다.
-public let inactiveCourse = CourseObservation(state: .unknown, accuracyDeg: 0)
+// 보고 acc 게이트(courseAxisMaxAccuracyMeters)는 폐기했다(spec §2.10): 보고 acc는
+// 실사용 로그에서 14.2m 동결(249/281)이라 판정 근거로 무의미 — 품질 증거는 사슬 U가
+// 담는다. 기기 관측 전제의 CourseObservation·inactiveCourse도 함께 소멸했다
+// (유도는 lat/lng/t만 필요해 웹에서도 축이 켜진다 — spec §4).
 
 public enum CourseVote: String, Sendable, Equatable {
     case mismatch, match, unknown
@@ -90,12 +76,13 @@ private func angDiff(_ a: Double, _ b: Double) -> Double {
 /// 모퉁이를 도는 동안 헛경고가 쏟아진다 — 사람은 2~3초에 급히 꺾는데 접선은 15m
 /// 폭으로 완만하기 때문이다. 도는 중에도 꺾기 전이나 꺾은 뒤 방향과는 나란하다.
 public func courseVote(
-    _ obs: CourseObservation, poly: GuidePolyline, d: Double, fixAccuracy: Double
+    _ obs: DerivedCourse?, poly: GuidePolyline, d: Double
 ) -> CourseVote {
-    guard case let .valid(course) = obs.state else { return .unknown }
+    guard let obs else { return .unknown }
+    let course = obs.bearing
+    // 유도기 계산값이라 범위가 보장되지만 방어로 유지한다(비용 0).
     guard course.isFinite, course >= 0, course < 360 else { return .unknown }
-    guard obs.accuracyDeg.isFinite, obs.accuracyDeg >= 0 else { return .unknown }
-    guard fixAccuracy > 0, fixAccuracy <= courseAxisMaxAccuracyMeters else { return .unknown }
+    guard obs.uncertaintyDeg.isFinite, obs.uncertaintyDeg >= 0 else { return .unknown }
 
     var best: Double?
     var offset = -courseAxisBackMeters
@@ -109,8 +96,8 @@ public func courseVote(
     // 유효 접선이 하나도 없으면 판정하지 않는다(0도로 접지 않는다).
     guard let best else { return .unknown }
 
-    if best - obs.accuracyDeg > courseAxisThresholdDegrees { return .mismatch }
-    if best + obs.accuracyDeg < courseAxisThresholdDegrees { return .match }
+    if best - obs.uncertaintyDeg > courseAxisThresholdDegrees { return .mismatch }
+    if best + obs.uncertaintyDeg < courseAxisThresholdDegrees { return .match }
     return .unknown
 }
 
