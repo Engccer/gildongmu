@@ -191,6 +191,12 @@ private struct RouteOverviewSheet: View {
                 // 자동 인계 등으로 모달이 열린 채 상세가 풀리면 목록만 비고 헤더가
                 // 그 시점의 정직한 진행 상황(직선거리)을 계속 전달한다(3-state).
                 if let steps = model.routeStepDescriptions {
+                    // 상단 닫기(위원장 판정 2026-08-10): 행 수가 많으면 말미 닫기까지
+                    // 스크롤 압박 — 헤더 착지(조망 낭독) 다음 한 스와이프에 출구를 둔다.
+                    // 나브바 toolbar 닫기(ChatView 관례)를 쓰지 않는 이유: 나브바 요소는
+                    // 섹션 헤더보다 먼저 착지 후보가 되어 "모달 착지 = 조망 낭독" 계약을
+                    // 깬다. 말미 닫기는 유지(전 구간을 훑고 난 자리에서 되스크롤 방지).
+                    Button(appLocalized("ios.guide.routeListClose")) { dismiss() }
                     ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
                         if i == model.currentStepIndex {
                             distanceText(appLocalized(
