@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useCurrentAddress } from "@/hooks/useCurrentAddress";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocationLabel } from "@/hooks/useManualLocation";
 import { joinText } from "@/lib/format";
@@ -23,11 +24,22 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
   const t = useTranslations("manualLocation");
   const manualLabel = useManualLocationLabel();
   const geo = useGeolocation();
+  // GPS 상태에서만 실주소를 병기한다. 이 기능의 존재 이유가 "GPS가 틀렸을 때
+  // 스스로 고치는 것"인데, 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는 사실
+  // 자체를 알 방법이 없다(위원장 실사용 판정 2026-08-09). 수동 상태는 이미
+  // 지정한 이름을 말하고 있어 주소가 잉여이므로 조회 자체를 하지 않는다
+  // (표시되지 않을 라벨을 위한 역지오코딩 — DirectionsView 동형).
+  const address = useCurrentAddress(
+    !manualLabel && geo.status === "ready" ? geo.coords : null,
+  );
 
   const state =
     manualLabel ??
     (geo.status === "ready"
-      ? t("gps")
+      ? // 주소 미확보는 기존 "현재 위치"로 폴백한다 — 모르면 거짓을 말하지 않는다.
+        address
+        ? t("gpsNear", { address })
+        : t("gps")
       : geo.status === "denied" || geo.status === "unsupported"
         ? t("gpsFailed")
         : // idle(요청 전, 부모 마운트 effect가 아직 안 돎)·locating 둘 다 "확인 중" —

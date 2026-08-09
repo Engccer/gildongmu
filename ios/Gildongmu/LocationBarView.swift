@@ -31,6 +31,7 @@ func manualLocationLabel(_ store: ManualLocationStore) -> String? {
 struct LocationBarView: View {
     @State private var store = ManualLocationStore.shared
     @State private var location = LocationService.shared
+    @State private var addressStore = CurrentAddressStore.shared
     @State private var pickerOpen = false
 
     var body: some View {
@@ -40,6 +41,12 @@ struct LocationBarView: View {
                 DirectionsEndpointSearchView(target: .manualLocation) { endpoint in
                     Task { await commit(endpoint) }
                 }
+            }
+            // 수동 위치가 켜지고 꺼질 때마다 다시 판정한다(`.task`는 등장 시 1회뿐이라
+            // 해제 후 주소가 영영 안 붙는다). 조회 자체는 스토어가 좌표당 1회로 막는다.
+            .task(id: store.current == nil) {
+                guard store.current == nil else { return }
+                await addressStore.ensureLoaded()
             }
     }
 
@@ -66,9 +73,17 @@ struct LocationBarView: View {
         default:
             // notDetermined(아직 안 물음)·허용인데 fix 전 둘 다 "확인 중" — 실패는
             // 확정됐을 때만 말한다(웹이 idle을 실패로 오판하지 않는 것과 같은 이유).
-            return location.lastCoordinate == nil
-                ? appLocalized("manualLocation.locating")
-                : appLocalized("manualLocation.gps")
+            guard location.lastCoordinate != nil else {
+                return appLocalized("manualLocation.locating")
+            }
+            // GPS 상태에서만 실주소를 병기한다. 이 기능의 존재 이유가 "GPS가 틀렸을
+            // 때 스스로 고치는 것"인데, 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는
+            // 사실 자체를 알 방법이 없다(위원장 실사용 판정 2026-08-09). 주소 미확보는
+            // 기존 "현재 위치"로 폴백한다 — 모르면 거짓을 말하지 않는다.
+            if let address = addressStore.address {
+                return appLocalized("manualLocation.gpsNear", address)
+            }
+            return appLocalized("manualLocation.gps")
         }
     }
 

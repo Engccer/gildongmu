@@ -14,7 +14,7 @@ const LOCALES = { ko, en, es, fr, it: it_, ja } as Record<string, Record<string,
 // 제거되며 소비자가 0이 됐고, 되돌리기는 지정 화면의 `useGps`가 담당한다.
 // 테스트 이름에 개수를 박지 않는다: 키가 늘 때마다 이름과 배열이 따로 놀았다.
 const KEYS = [
-  "gps", "locating", "gpsFailed", "manual", "manualUnverifiable",
+  "gps", "gpsNear", "locating", "gpsFailed", "manual", "manualUnverifiable",
   "useGps", "autoCleared", "guideNeedsRealLocation", "pickTitle",
 ];
 
@@ -33,6 +33,18 @@ describe("manualLocation 문구", () => {
     expect(ns.manualUnverifiable).not.toBe(ns.gps);
     expect(ns.manual).toContain("{label}");
     expect(ns.manualUnverifiable).toContain("{label}");
+  });
+
+  // GPS 주소 병기는 길찾기 필드 라벨(`directions.currentLocationNear`)과 **같은
+  // 사실을 말한다** — 두 화면이 같은 좌표를 다르게 부르면 시각장애 사용자는 둘이
+  // 같은 곳인지 알 수 없다. 별도 키인 이유는 네임스페이스 분리뿐이므로 값은 동조한다.
+  it.each(Object.keys(LOCALES))("%s의 gpsNear가 길찾기 병기 문구와 같다", (locale) => {
+    const ns = LOCALES[locale].manualLocation as Record<string, string>;
+    const dir = LOCALES[locale].directions as Record<string, string>;
+    expect(ns.gpsNear).toBe(dir.currentLocationNear);
+    expect(ns.gpsNear).toContain("{address}");
+    // 주소 미확보 폴백(`gps`)과 구분돼야 한다 — 안 그러면 병기가 무의미하다.
+    expect(ns.gpsNear).not.toBe(ns.gps);
   });
 });
 

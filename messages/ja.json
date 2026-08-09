@@ -873,6 +873,7 @@
   },
   "manualLocation": {
     "gps": "現在地",
+    "gpsNear": "現在地({address}付近)",
     "locating": "現在地を確認中",
     "gpsFailed": "現在地を確認できません",
     "manual": "指定した位置、{label}",

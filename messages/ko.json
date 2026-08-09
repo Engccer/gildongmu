@@ -873,6 +873,7 @@
   },
   "manualLocation": {
     "gps": "현재 위치",
+    "gpsNear": "현재 위치({address} 부근)",
     "locating": "현재 위치 확인 중",
     "gpsFailed": "위치를 확인할 수 없습니다",
     "manual": "지정한 위치, {label}",
