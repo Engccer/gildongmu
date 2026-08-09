@@ -63,3 +63,45 @@ export function fitRoadAxis(
   if (len < MIN_METERS_PER_NUMBER) return null;
   return { ux: dx / len, uy: dy / len, metersPerNumber: len, sampleCount: pts.length };
 }
+
+/** 입구를 마주 본 사용자의 좌표계. v=시선(도로→건물), r=오른손 방향. */
+export interface EntranceFrame {
+  vx: number;
+  vy: number;
+  rx: number;
+  ry: number;
+}
+
+/**
+ * 홀수 앵커면 건물이 축의 왼쪽에 있으므로 도로는 건물의 오른쪽(축 -90°)이고,
+ * 도로에서 건물을 보는 시선은 그 반대인 축 +90°다. 짝수는 부호가 뒤집힌다.
+ *
+ * ⚠ 이 부호를 뒤집으면 좌우가 정반대가 된다. 위원장 판정은 "입구를 마주 본" 기준이다.
+ */
+export function entranceFrame(axis: RoadAxis, anchorIsOdd: boolean): EntranceFrame {
+  const sign = anchorIsOdd ? 1 : -1;
+  const vx = -axis.uy * sign;
+  const vy = axis.ux * sign;
+  // 오른손 = 시선을 -90° 회전
+  return { vx, vy, rx: vy, ry: -vx };
+}
+
+export type SurroundingBucket = "left" | "right" | "across" | "beyond";
+
+/** 시선 방향으로 이만큼 넘어가면 건물 너머(돌아가야 한다). spec §3.3 동결값. */
+export const BEYOND_THRESHOLD_M = 25;
+
+export function classifyBucket(
+  frame: EntranceFrame,
+  origin: Coord,
+  target: Coord,
+  opts: { acrossByParity?: boolean },
+): SurroundingBucket {
+  // 맞은편은 법이 정한 판정이라 기하보다 강하다(spec §3.3).
+  if (opts.acrossByParity) return "across";
+  const q = toLocalXY(origin, target);
+  const forward = q.x * frame.vx + q.y * frame.vy;
+  if (forward > BEYOND_THRESHOLD_M) return "beyond";
+  const right = q.x * frame.rx + q.y * frame.ry;
+  return right >= 0 ? "right" : "left";
+}
