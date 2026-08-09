@@ -48,7 +48,7 @@
 - Consumes: 없음
 - Produces: `parseRoadAddress(addr: string): RoadAddress | null`, `interface RoadAddress { road: string; main: number; sub: number | null }`, `isOddSide(a: RoadAddress): boolean`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/__tests__/road-address.test.ts
@@ -94,12 +94,12 @@ describe("isOddSide", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/road-address.test.ts`
 Expected: FAIL — `Failed to resolve import "../road-address"`
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 ```ts
 // src/lib/road-address.ts
@@ -133,12 +133,12 @@ export function isOddSide(a: RoadAddress): boolean {
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/road-address.test.ts`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git commit -m "feat(m1): 도로명주소 파싱 — 건물번호가 곧 출입구 축이다" -- src/lib/road-address.ts src/lib/__tests__/road-address.test.ts
@@ -156,7 +156,7 @@ git commit -m "feat(m1): 도로명주소 파싱 — 건물번호가 곧 출입�
 - Consumes: Task 1의 `RoadAddress`
 - Produces: `fitRoadAxis(origin: Coord, samples: AxisSample[]): RoadAxis | null`, `interface AxisSample { main: number; lat: number; lng: number }`, `interface RoadAxis { ux: number; uy: number; metersPerNumber: number; sampleCount: number }`, `toLocalXY(origin: Coord, p: Coord): { x: number; y: number }`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/geo/__tests__/road-axis.test.ts
@@ -213,12 +213,12 @@ describe("fitRoadAxis", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/geo/__tests__/road-axis.test.ts`
 Expected: FAIL — 모듈 없음
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 ```ts
 // src/lib/geo/road-axis.ts
@@ -284,12 +284,12 @@ export function fitRoadAxis(origin: Coord, samples: AxisSample[]): RoadAxis | nu
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/geo/__tests__/road-axis.test.ts`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git commit -m "feat(m1): 도로 진행축 최소제곱 복원 — 번호를 독립변수로" -- src/lib/geo/road-axis.ts src/lib/geo/__tests__/road-axis.test.ts
@@ -307,7 +307,7 @@ git commit -m "feat(m1): 도로 진행축 최소제곱 복원 — 번호를 독�
 - Consumes: Task 2의 `RoadAxis`·`toLocalXY`, Task 1의 `RoadAddress`
 - Produces: `entranceFrame(axis: RoadAxis, anchorIsOdd: boolean): EntranceFrame`, `interface EntranceFrame { vx: number; vy: number; rx: number; ry: number }`, `classifyBucket(frame, origin, target, opts): SurroundingBucket`, `type SurroundingBucket = "left" | "right" | "across" | "beyond"`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/geo/__tests__/road-axis.test.ts 에 추가
@@ -366,12 +366,12 @@ describe("classifyBucket", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/geo/__tests__/road-axis.test.ts`
 Expected: FAIL — `entranceFrame is not a function`
 
-- [ ] **Step 3: 최소 구현 (`road-axis.ts`에 추가)**
+- [x] **Step 3: 최소 구현 (`road-axis.ts`에 추가)**
 
 ```ts
 /** 입구를 마주 본 사용자의 좌표계. v=시선(도로→건물), r=오른손 방향. */
@@ -417,17 +417,17 @@ export function classifyBucket(
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/geo/__tests__/road-axis.test.ts`
 Expected: PASS (14 tests)
 
-- [ ] **Step 5: 변이 주입으로 검출력을 실측한다**
+- [x] **Step 5: 변이 주입으로 검출력을 실측한다**
 
 `entranceFrame`의 `sign`을 `anchorIsOdd ? -1 : 1`로 뒤집고 테스트를 돌린다.
 Expected: 좌우 케이스가 **깨져야 한다**. 안 깨지면 테스트가 축 부호를 잠그지 못하는 것이므로 케이스를 보강한다. 확인 후 원복한다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(m1): 입구 좌표계 투영 + 네 묶음 분류" -- src/lib/geo/road-axis.ts src/lib/geo/__tests__/road-axis.test.ts
@@ -445,7 +445,7 @@ git commit -m "feat(m1): 입구 좌표계 투영 + 네 묶음 분류" -- src/lib
 - Consumes: Task 1·2, `searchJusoAddresses(keyword, page, size)` (`src/lib/providers/juso-address.ts`, `JusoAddress.roadAddrPart1`), `geocodeAddress` (아래 Step 3에서 `kakao-address.ts` 확인)
 - Produces: `resolveRoadAxis(region: string, road: string, origin: Coord): Promise<RoadAxis | null>`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/__tests__/road-axis-service.test.ts
@@ -517,12 +517,12 @@ describe("resolveRoadAxis", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/road-axis-service.test.ts`
 Expected: FAIL — 모듈 없음
 
-- [ ] **Step 3: 카카오 주소 지오코딩 함수 이름을 확인한다**
+- [x] **Step 3: 카카오 주소 지오코딩 함수 이름을 확인한다**
 
 Run: `grep -n "export async function" src/lib/providers/kakao-address.ts`
 
@@ -544,7 +544,7 @@ export async function geocodeAddress(address: string): Promise<Coord | null> {
 }
 ```
 
-- [ ] **Step 4: 최소 구현**
+- [x] **Step 4: 최소 구현**
 
 ```ts
 // src/lib/road-axis-service.ts
@@ -610,14 +610,14 @@ export function resolveRoadAxis(region: string, road: string, origin: Coord): Pr
 }
 ```
 
-- [ ] **Step 5: 통과를 확인한다**
+- [x] **Step 5: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/road-axis-service.test.ts`
 Expected: PASS (5 tests)
 
 ⚠ `unstable_cache`가 테스트 환경에서 문제를 일으키면 `fetchRoadAxis`를 export해 테스트가 그것을 부르게 하고, `resolveRoadAxis`는 캐시 래퍼로만 남긴다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(m1): 축 조립 서비스 — juso 건물로 표본을 고정한다" -- src/lib/road-axis-service.ts src/lib/__tests__/road-axis-service.test.ts src/lib/providers/kakao-address.ts
@@ -634,7 +634,7 @@ git commit -m "feat(m1): 축 조립 서비스 — juso 건물로 표본을 고�
 **Interfaces:**
 - Produces: `findSurroundingsNear(lat, lng, opts?: { groups?: string[]; radiusMeters?: number })` — 기존 호출부는 인자를 안 주므로 동작이 바뀌지 않는다. `ALL_CATEGORY_GROUPS` 상수 export.
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/providers/__tests__/surroundings.test.ts
@@ -658,12 +658,12 @@ describe("카테고리 세트", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/providers/__tests__/surroundings.test.ts`
 Expected: FAIL — `ALL_CATEGORY_GROUPS` 없음
 
-- [ ] **Step 3: 구현**
+- [x] **Step 3: 구현**
 
 `surroundings.ts`의 `CATEGORY_GROUPS` 레코드는 그대로 두고 아래를 추가한다. 그리고 `findSurroundingsNear`가 순회하는 `Object.keys(CATEGORY_GROUPS)` 자리를 `opts?.groups ?? DEFAULT_CATEGORY_GROUPS`로 바꾼다. 반경도 `opts?.radiusMeters ?? RADIUS_METERS`로 받는다.
 
@@ -695,17 +695,17 @@ roadAddress: string | null;
 roadAddress: doc.road_address_name ?? null,
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/providers/__tests__/surroundings.test.ts && npx vitest run src/lib/__tests__/i18n-messages.test.ts`
 Expected: PASS 둘 다 (i18n 키 정합이 머지 게이트다)
 
-- [ ] **Step 5: 둘러보기 회귀가 없는지 확인한다**
+- [x] **Step 5: 둘러보기 회귀가 없는지 확인한다**
 
 Run: `npx vitest run src/components/__tests__/ src/lib/__tests__/`
 Expected: PASS — 기존 호출부가 인자를 안 주므로 동작 불변
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(m1): 둘러보기 카테고리 세트를 인자로 — 기본값은 현행 10종" -- src/lib/providers/surroundings.ts src/lib/providers/__tests__/surroundings.test.ts src/lib/types.ts messages/
@@ -723,7 +723,7 @@ git commit -m "feat(m1): 둘러보기 카테고리 세트를 인자로 — 기�
 - Consumes: Task 1~5 전부, `coordToAddress`·`coordToRegion`(`kakao-address.ts`), `findSurroundingsNear`
 - Produces: `assembleScene(lat: number, lng: number): Promise<Scene>`, `interface Scene { place: string | null; frame: "entrance" | "compass"; groups: SceneGroup[]; total: number }`, `interface SceneGroup { bucket: SurroundingBucket | CompassDirection; items: SceneItem[] }`, `interface SceneItem { name: string; distanceMeters: number; road: string | null; category: string }`
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/lib/__tests__/surroundings-scene.test.ts
@@ -804,12 +804,12 @@ describe("assembleScene", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/surroundings-scene.test.ts`
 Expected: FAIL — 모듈 없음
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 ```ts
 // src/lib/surroundings-scene.ts
@@ -904,12 +904,12 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
 
 ⚠ `findSurroundingsNear`가 반환하는 항목에 `roadAddress`가 없으면 Task 5에서 `normalizeSurroundingDoc`이 `doc.road_address_name`을 실어 보내도록 함께 넓힌다(카카오 응답에 이미 들어 있다).
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/lib/__tests__/surroundings-scene.test.ts`
 Expected: PASS (6 tests)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git commit -m "feat(m1): 장면 조립 — 축이 서면 입구 기준, 아니면 방위 폴백" -- src/lib/surroundings-scene.ts src/lib/__tests__/surroundings-scene.test.ts src/lib/providers/surroundings.ts
@@ -927,7 +927,7 @@ git commit -m "feat(m1): 장면 조립 — 축이 서면 입구 기준, 아니�
 - Consumes: Task 6의 `assembleScene`
 - Produces: `GET /api/surroundings/scene?lat=..&lng=..` → `{ data: Scene }` | `{ outOfCoverage: true }` | `{ data: null }`(키 없음) | 400 | 502
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```ts
 // src/app/api/__tests__/surroundings-scene-route.test.ts
@@ -979,12 +979,12 @@ describe("GET /api/surroundings/scene", () => {
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/app/api/__tests__/surroundings-scene-route.test.ts`
 Expected: FAIL — 라우트 없음
 
-- [ ] **Step 3: 구현** (`src/app/api/where-am-i/route.ts`를 골격으로 삼는다)
+- [x] **Step 3: 구현** (`src/app/api/where-am-i/route.ts`를 골격으로 삼는다)
 
 ```ts
 import { NextRequest, NextResponse } from "next/server";
@@ -1025,12 +1025,12 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npx vitest run src/app/api/__tests__/surroundings-scene-route.test.ts && npx vitest run src/app/api/__tests__/coord-param-usage.test.ts`
 Expected: PASS 둘 다 (좌표 파라미터 가드가 신규 라우트를 스캔한다)
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 git commit -m "feat(m1): 부근 재구성 라우트" -- src/app/api/surroundings/scene/route.ts src/app/api/__tests__/surroundings-scene-route.test.ts
@@ -1049,7 +1049,7 @@ git commit -m "feat(m1): 부근 재구성 라우트" -- src/app/api/surroundings
 - Consumes: Task 6의 `Scene` 타입, `useNearbyFetch`(`src/hooks/useNearbyFetch.ts`), `NearbyPanelShell`, `formatDistance`·`joinText`(`src/lib/format.ts`)
 - Produces: `<SurroundingsScene anchor={{ lat, lng } | null} />`
 
-- [ ] **Step 1: i18n 키를 추가한다** (6로케일 전부. ko 예시)
+- [x] **Step 1: i18n 키를 추가한다** (6로케일 전부. ko 예시)
 
 ```json
 "surroundings": {
@@ -1071,7 +1071,7 @@ git commit -m "feat(m1): 부근 재구성 라우트" -- src/app/api/surroundings
 }
 ```
 
-- [ ] **Step 2: 실패하는 테스트를 쓴다**
+- [x] **Step 2: 실패하는 테스트를 쓴다**
 
 ```tsx
 // @vitest-environment jsdom
@@ -1117,12 +1117,12 @@ describe("SurroundingsScene", () => {
 });
 ```
 
-- [ ] **Step 3: 실패를 확인한다**
+- [x] **Step 3: 실패를 확인한다**
 
 Run: `npx vitest run src/components/__tests__/SurroundingsScene.test.tsx`
 Expected: FAIL — 컴포넌트 없음
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
 
 `NightClinicsNearby.tsx`를 골격 선례로 삼는다(`useNearbyFetch` + `NearbyPanelShell` + 단계 공개). 항목 한 줄은 반드시 `joinText`로 합친다.
 
@@ -1151,12 +1151,12 @@ Expected: FAIL — 컴포넌트 없음
 ⚠ `joinText`의 구분자는 쉼표다. 가운뎃점을 쓰지 않는다(일부 SR이 단어로 낭독).
 ⚠ 묶음 제목은 `<h4>`다(nearby 관례: 섹션 `h3` → 항목 `h4`).
 
-- [ ] **Step 5: 통과를 확인한다**
+- [x] **Step 5: 통과를 확인한다**
 
 Run: `npx vitest run src/components/__tests__/SurroundingsScene.test.tsx`
 Expected: PASS (4 tests)
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(m1): 부근 재구성 웹 UI — 묶음 제목 + 한 줄 한 항목" -- src/components/SurroundingsScene.tsx src/components/__tests__/SurroundingsScene.test.tsx messages/
@@ -1175,7 +1175,7 @@ git commit -m "feat(m1): 부근 재구성 웹 UI — 묶음 제목 + 한 줄 한
 - Consumes: Task 8의 `<SurroundingsScene>`
 - Produces: 없음(최종 배선)
 
-- [ ] **Step 1: 실패하는 테스트를 쓴다**
+- [x] **Step 1: 실패하는 테스트를 쓴다**
 
 ```tsx
 // WhereAmI.contract.test.tsx 에 추가
@@ -1186,27 +1186,27 @@ it("현재 위치 확인 결과 아래에 '주변 확인' 진입점이 있다", 
 });
 ```
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `npx vitest run src/components/__tests__/WhereAmI.contract.test.tsx`
 Expected: FAIL — 버튼 없음
 
-- [ ] **Step 3: 배선**
+- [x] **Step 3: 배선**
 
 - `WhereAmI.tsx`: 정위 결과가 `done`일 때 그 아래에 `<SurroundingsScene anchor={사용한 좌표} />`를 둔다. **앵커는 `useNearbyFetch`가 이미 유효 위치로 바꿔 준 좌표**를 그대로 쓴다(수동 위치가 자동 반영된다).
 - `DistanceBeacon.tsx`: 안내 시트 컨트롤 줄에 "주변 확인"을 더하고 앵커로 **목적지 좌표**를 넘긴다(실시간 안내는 실좌표를 쓰지만 이 기능의 앵커는 목적지다 — spec §5).
 
-- [ ] **Step 4: 통과를 확인한다**
+- [x] **Step 4: 통과를 확인한다**
 
 Run: `npm run test:run`
 Expected: PASS 전량
 
-- [ ] **Step 5: 타입 검사와 린트**
+- [x] **Step 5: 타입 검사와 린트**
 
 Run: `npm run build && npm run lint`
 Expected: 통과. ⚠ Vitest green은 타입 검사를 포함하지 않는다.
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 
 ```bash
 git commit -m "feat(m1): 진입점 배선 — 내 주변·안내 시트" -- src/components/WhereAmI.tsx src/components/DistanceBeacon.tsx src/components/__tests__/WhereAmI.contract.test.tsx
@@ -1221,7 +1221,7 @@ git commit -m "feat(m1): 진입점 배선 — 내 주변·안내 시트" -- src/
 
 **Interfaces:** 없음(검증 전용)
 
-- [ ] **Step 1: 검증 스크립트를 쓴다**
+- [x] **Step 1: 검증 스크립트를 쓴다**
 
 `node scripts/verify-surroundings-scene.mjs`가 dev 서버(`localhost:3000`)에 아래 좌표로 실호출하고 결과를 표로 출력한다.
 
@@ -1233,12 +1233,12 @@ git commit -m "feat(m1): 진입점 배선 — 내 주변·안내 시트" -- src/
 | 망원시장 | `frame: "compass"`로 물러나는가(도로명주소 없음) |
 | 해외 좌표 (48.85, 2.35) | `outOfCoverage: true` |
 
-- [ ] **Step 2: 돌려서 다섯 줄이 모두 예상대로인지 본다**
+- [x] **Step 2: 돌려서 다섯 줄이 모두 예상대로인지 본다**
 
 Run: `npm run dev` (별 터미널) 후 `node scripts/verify-surroundings-scene.mjs`
 Expected: 5/5 통과. **하나라도 어긋나면 그 자리에서 원인을 규명한다** — fixture green은 실계약 검증이 아니다.
 
-- [ ] **Step 3: 결과를 spec §9에 기록하고 커밋**
+- [x] **Step 3: 결과를 spec §9에 기록하고 커밋**
 
 ```bash
 git commit -m "test(m1): 실호출 게이트 5경로" -- scripts/verify-surroundings-scene.mjs docs/superpowers/specs/2026-08-09-arrival-surroundings-design.md
