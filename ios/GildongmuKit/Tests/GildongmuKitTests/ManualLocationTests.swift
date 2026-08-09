@@ -46,3 +46,13 @@ private func loadScenarios() throws -> Scenarios {
     #expect(ManualLocationPolicy.judgeCeilingMeters == 100)
     #expect(ManualLocationPolicy.fixMaxAgeSeconds == 10)
 }
+
+/// 소스 가드(Task 13): 안내(BeaconModel)는 수동 위치를 참조하지 않는다 — 실좌표만
+/// 쓴다. `effectiveCoordinate`를 부르는 순간 이 불변식이 깨진다.
+@Test func 안내_모델이_수동_위치를_참조하지_않는다() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() } // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+    url.appendPathComponent("ios/Gildongmu/Directions/BeaconModel.swift")
+    let src = try String(contentsOf: url, encoding: .utf8)
+    #expect(!src.contains("effectiveCoordinate"), "안내는 실좌표만 쓴다")
+}
