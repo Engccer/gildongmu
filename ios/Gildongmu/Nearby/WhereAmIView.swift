@@ -32,7 +32,14 @@ final class WhereAmIModel {
                                        asOf: Self.timeFormatter.string(from: Date()))
             },
             onEvent: nearbyAnnouncer(
-                loaded: { _ in appLocalized("ios.nearby.whereAmIReady") },
+                // 수동 위치일 때 "현재 위치"라고 알리지 않는다(전역 제약) — 자기가
+                // 지금 어디 있나를 묻는 전용 화면이라, 지정한 좌표를 GPS 판정처럼
+                // 낭독하면 사용자는 GPS가 고쳐졌다고 믿는다.
+                loaded: { _ in
+                    ManualLocationStore.shared.current == nil
+                        ? appLocalized("ios.nearby.whereAmIReady")
+                        : appLocalized("whereAmI.manualReady")
+                },
                 emptyResult: appLocalized("whereAmI.empty")))
     }
 
@@ -48,11 +55,24 @@ final class WhereAmIModel {
 
 struct WhereAmIView: View {
     @State private var model = WhereAmIModel()
+    /// 헤더·화면 제목의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
+    @State private var manualLocationStore = ManualLocationStore.shared
     /// 장소 채팅 sheet(웹 계약 미러). 표시마다 새 ChatView = 조회마다 새 대화
     @State private var chatPlace: Place?
     /// 착지 대상은 조회 시각 헤더(이 화면의 첫 요소).
     @AccessibilityFocusState private var focusedTop: String?
     @State private var lander = NearbyFocusLander()
+
+    /// 결과 헤더. 조회 완료 시 VO 커서가 착지하는 자리라 **이 화면에서 위치 출처를
+    /// 선언하는 문구**다 — 수동 위치일 때 "현재 위치"라고 말하면 사용자는 GPS가
+    /// 고쳐졌다고 믿는다. 검증 가능/불가 표기는 표시줄과 같은 훅이 소유한다.
+    /// 웹 `WhereAmI.tsx`의 heading과 같은 조립이다(라벨 + `whereAmI.asOf`).
+    private func headerText(_ asOf: String) -> String {
+        guard let manual = manualLocationLabel(manualLocationStore) else {
+            return appLocalized("ios.nearby.whereAmIAsOf", asOf)
+        }
+        return "\(manual) \(appLocalized("whereAmI.asOf", asOf))"
+    }
 
     /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음).
     private var topID: String? {
@@ -74,7 +94,7 @@ struct WhereAmIView: View {
                         chatPlace = whereAmIToPlace(payload.data, lat: payload.lat, lng: payload.lng, lang: AppLanguage.current)
                     }
                 } header: {
-                    Text(appLocalized("ios.nearby.whereAmIAsOf", payload.asOf))
+                    Text(headerText(payload.asOf))
                         .accessibilityAddTraits(.isHeader)
                         .id("whereami-top")
                         .accessibilityFocused($focusedTop, equals: "whereami-top")
@@ -86,7 +106,11 @@ struct WhereAmIView: View {
             current: { focusedTop },
             apply: { focusedTop = $0 })
         }
-        .navigationTitle(appLocalized("whereAmI.button"))
+        .navigationTitle(
+            manualLocationStore.current == nil
+                ? appLocalized("whereAmI.button")
+                : appLocalized("whereAmI.manualButton")
+        )
         .nearbyStateOverlay {
             NearbyStateOverlayView(
                 phase: model.phase,
