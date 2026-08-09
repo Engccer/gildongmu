@@ -31,7 +31,7 @@ import {
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
-import { useFrozenValue } from "@/hooks/useFrozenValue";
+import { useHeldValue } from "@/hooks/useHeldValue";
 import {
   orderResultSections,
   combinedLiveMessage,
@@ -723,7 +723,7 @@ export function PlaceSearch({
           )
           .join(", ");
   // 모달이 화면을 점유하는 동안 갱신을 멈춘다(아래 live region 주석이 근거).
-  const frozenLiveMessage = useFrozenValue(liveMessage, manualPickerOpen);
+  const heldLive = useHeldValue(liveMessage);
 
   // 길찾기 뷰가 열려 있으면 최우선 렌더(상세 위에도 쌓일 수 있음).
   const canShowDirections = canShowTransit || canBriefCarRoute || canShowWalk;
@@ -892,6 +892,7 @@ export function PlaceSearch({
       <LocationBar
         onPick={() => {
           manualPickerTriggerRef.current = document.activeElement as HTMLElement | null;
+          heldLive.hold();
           setManualPickerOpen(true);
         }}
       />
@@ -899,6 +900,7 @@ export function PlaceSearch({
         <ManualLocationPicker
           onClose={() => {
             setManualPickerOpen(false);
+            heldLive.release();
             manualPickerTriggerRef.current?.focus();
           }}
         />
@@ -930,7 +932,7 @@ export function PlaceSearch({
           닫는 순간 두 번째 발화를 만들고, 그 시점은 포커스가 트리거로 복귀하며
           결과 신호인 새 라벨이 낭독되는 자리라 경쟁자가 붙는다. */}
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
-        {frozenLiveMessage}
+        {heldLive.shown}
       </p>
 
       {/* 결정론 내비 칩: [길찾기] [내 주변] — 홈의 기능 진입은 이 행 하나로 수렴. */}

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useFrozenValue } from "@/hooks/useFrozenValue";
+import { useHeldValue } from "@/hooks/useHeldValue";
 import {
   getActiveNearbyPanel,
   getServerActiveNearbyPanel,
@@ -75,7 +75,7 @@ export function NearbyHub({
   const [manualPickerOpen, setManualPickerOpen] = useState(false);
   const manualPickerTriggerRef = useRef<HTMLElement | null>(null);
   // 모달이 화면을 점유하는 동안 갱신을 멈춘다(아래 live region 주석이 근거).
-  const frozenLocationNotice = useFrozenValue(locationNotice, manualPickerOpen);
+  const heldNotice = useHeldValue(locationNotice);
 
   // 뷰 전환 포커스 이동(접근성 1급 — PlaceDetail·DirectionsView와 동형
   // useEffect+focus 패턴, rAF 불필요: 헤딩이 마운트 시점에 이미 무조건
@@ -120,6 +120,7 @@ export function NearbyHub({
         <LocationBar
           onPick={() => {
             manualPickerTriggerRef.current = document.activeElement as HTMLElement | null;
+            heldNotice.hold();
             setManualPickerOpen(true);
           }}
         />
@@ -128,6 +129,7 @@ export function NearbyHub({
         <ManualLocationPicker
           onClose={() => {
             setManualPickerOpen(false);
+            heldNotice.release();
             manualPickerTriggerRef.current?.focus();
           }}
         />
@@ -139,7 +141,7 @@ export function NearbyHub({
           안 된다: `X → "" → X`가 닫는 순간 두 번째 발화를 만들고, 그 시점은 포커스가
           트리거로 복귀하며 결과 신호인 새 라벨이 낭독되는 자리다. */}
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {frozenLocationNotice}
+        {heldNotice.shown}
       </p>
 
       {/* 날씨·공기질 — 홈에서 이동. 좌표 준비 시 자동 등장 region(계약 유지). */}
