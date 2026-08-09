@@ -93,6 +93,11 @@ struct WhereAmIView: View {
                     Button(appLocalized("ios.nearby.whereAmIChat")) {
                         chatPlace = whereAmIToPlace(payload.data, lat: payload.lat, lng: payload.lng, lang: AppLanguage.current)
                     }
+                    // M1 부근 재구성 — 앵커는 이 정위에 실제로 쓴 좌표(수동 위치 자동
+                    // 반영, 웹 WhereAmI.tsx 미러). 기준점 산문과 다른 층: 입구 기준
+                    // 좌우 묶음 + 18종 단서.
+                    SurroundingsSceneSection(
+                        anchor: (lat: payload.lat, lng: payload.lng), proxy: proxy)
                 } header: {
                     Text(headerText(payload.asOf))
                         .accessibilityAddTraits(.isHeader)
