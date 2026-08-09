@@ -12,6 +12,43 @@
 
 ---
 
+## 1.4 (빌드 10)
+
+현위치 수동 지정. 실시간 길 안내는 계속 봉인(`#if EXPERIMENTAL`)이라 이 버전에도 담기지 않는다.
+
+포함 판정: 1.3(빌드 9, 제출 2026-08-04) 이후 iOS 사용자에게 보이는 변경만. 이 창의 실시간 안내
+커밋 20여 개는 전부 실험 구성 봉인이라 제외했고, 웹 전용(주소→좌표 공용화·웹 표시줄·웹 길찾기
+라벨)은 push 즉시 배포되므로 "이 업데이트의 새 기능"이 아니다. `6f28a08`(문 번호 표기)은
+2026-08-08 커밋이라 1.3에 없었고 여기 포함된다.
+
+### ko
+
+```
+새로운 기능
+- 현재 위치를 직접 지정할 수 있습니다. 채팅·검색·내 주변 화면 첫 줄에서 위치를 누르고 장소를 검색해 고르면, 그 자리를 현재 위치로 씁니다. 실내에서 위치가 잘 안 잡히거나 다른 곳이 잡힐 때 쓰세요.
+- 지정한 위치는 내 주변 정보, 검색 결과 거리, 채팅 답변, 길찾기 출발지에 모두 반영됩니다.
+- 자리를 옮기면 지정한 위치를 자동으로 해제하고 알려 드립니다. 같은 자리에서 앱을 여닫는 동안에는 그대로 유지됩니다.
+- 지정할 때 실제 위치를 확인할 수 없었다면 "위치 확인 불가"를 함께 알려 드립니다.
+
+개선
+- 영어·스페인어·프랑스어·이탈리아어에서 지하철 빠른 하차 안내의 문 번호가 자연스럽게 읽히도록 고쳤습니다.
+```
+
+### en
+
+```
+New
+- Set your location by hand. Tap the location on the first line of the Chat, Search, or Nearby screen and pick a place — the app uses that spot as your current location. Useful indoors, or when GPS puts you somewhere else.
+- Your set location applies to nearby information, search result distances, chat answers, and directions origin.
+- Move somewhere else and the app clears it automatically and tells you. It stays put while you open and close the app in the same spot.
+- If your real location could not be confirmed when you set it, the app says so.
+
+Improved
+- Fixed the wording of door numbers in subway quick-exit guidance for English, Spanish, French, and Italian.
+```
+
+---
+
 ## 1.3 (빌드 9)
 
 제출 2026-08-04 13:15 KST · `READY_FOR_SALE` 확인 2026-08-06. 실시간 길 안내 봉인본.
