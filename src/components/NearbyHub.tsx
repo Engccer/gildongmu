@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useFrozenValue } from "@/hooks/useFrozenValue";
 import {
   getActiveNearbyPanel,
   getServerActiveNearbyPanel,
@@ -73,6 +74,8 @@ export function NearbyHub({
   // ManualLocationPicker는 두 화면이 공유하는 정본, 열림 여부만 화면별 로컬).
   const [manualPickerOpen, setManualPickerOpen] = useState(false);
   const manualPickerTriggerRef = useRef<HTMLElement | null>(null);
+  // 모달이 화면을 점유하는 동안 갱신을 멈춘다(아래 live region 주석이 근거).
+  const frozenLocationNotice = useFrozenValue(locationNotice, manualPickerOpen);
 
   // 뷰 전환 포커스 이동(접근성 1급 — PlaceDetail·DirectionsView와 동형
   // useEffect+focus 패턴, rAF 불필요: 헤딩이 마운트 시점에 이미 무조건
@@ -131,10 +134,12 @@ export function NearbyHub({
       )}
       {/* 이 허브의 단일 polite 채널 — 지금은 수동 위치 자동 해제 통지 전용
           (허브 자체 결과 통지는 아코디언 패널마다 자기 region을 갖는다).
-          모달이 화면을 점유하는 동안은 비워 둔다 — 모달 자신의 live region과
-          동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가 뒤집힌다. */}
+          모달이 화면을 점유하는 동안은 **갱신을 멈춘다** — 모달 자신의 live region과
+          동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가 뒤집힌다. ⚠ 비우면
+          안 된다: `X → "" → X`가 닫는 순간 두 번째 발화를 만들고, 그 시점은 포커스가
+          트리거로 복귀하며 결과 신호인 새 라벨이 낭독되는 자리다. */}
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {manualPickerOpen ? "" : locationNotice}
+        {frozenLocationNotice}
       </p>
 
       {/* 날씨·공기질 — 홈에서 이동. 좌표 준비 시 자동 등장 region(계약 유지). */}

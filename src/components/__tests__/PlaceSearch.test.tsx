@@ -56,7 +56,7 @@ describe("PlaceSearch — 현재 위치 지정 모달과 홈 live region 경합 
     vi.unstubAllGlobals();
   });
 
-  it("모달이 열리면 홈의 live region은 비워진다(경합 방지)", async () => {
+  it("모달을 열고 닫는 동안 홈 live region 텍스트가 한 번도 바뀌지 않는다", async () => {
     // liveMessage가 실제로 비어있지 않은 상태를 먼저 만든다 — 그래야 "모달이
     // 열리면 비워진다"는 단언에 검출력이 생긴다(가드를 지워도 애초에 빈
     // 문자열이면 이 단언은 항상 통과해 결함을 못 잡는다). 이 화면의 마운트
@@ -76,10 +76,26 @@ describe("PlaceSearch — 현재 위치 지정 모달과 홈 live region 경합 
       expect(region.textContent).toBe("이동이 감지되어 지정한 위치를 해제했습니다");
     });
 
+    // 문자 데이터 변경을 세면 "재발화"를 직접 관측할 수 있다 — aria-live는 내용
+    // 변경에 반응하므로 변경 0회가 곧 발화 0회다. ⚠ 비우는 처리는 `X → "" → X`를
+    // 만들어 닫는 순간 두 번째 발화가 나고, 그 시점은 포커스가 트리거로 복귀하며
+    // 결과 신호인 새 라벨이 낭독되는 자리다(최종 리뷰 I4).
+    const changes: string[] = [];
+    const observer = new MutationObserver(() => changes.push(region.textContent ?? ""));
+    observer.observe(region, { childList: true, characterData: true, subtree: true });
+
     fireEvent.click(screen.getByRole("button", { name: /현재 위치/ }));
 
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(region.textContent).toBe("");
+    expect(region.textContent).toBe("이동이 감지되어 지정한 위치를 해제했습니다");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(region.textContent).toBe("이동이 감지되어 지정한 위치를 해제했습니다");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    observer.disconnect();
+    expect(changes).toEqual([]);
   });
 
   it("모달을 Esc로 닫으면 홈 화면은 그대로 남는다(내비 칩이 사라지지 않음)", () => {
