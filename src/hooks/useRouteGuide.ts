@@ -1099,7 +1099,14 @@ export function useRouteGuide(
       const entry = entryProjection(route, fix, tuning);
       if (entry.status === "ok") {
         pendingResolveRef.current = null;
-        commitDetail(route, guideStateAt(route, entry.d, now, { autoHandoffArmed: false }));
+        commitDetail(
+          route,
+          guideStateAt(route, entry.d, now, {
+            autoHandoffArmed: false,
+            // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
+            courseDerivation: guideRef.current?.courseDerivation,
+          }),
+        );
         announce(t("toDetailDone"));
         return true;
       }
@@ -1385,6 +1392,8 @@ export function useRouteGuide(
         guideStateAt(route, entry.d, now, {
           autoHandoffArmed: false,
           hasFinalApproachGeometry: finalApproachGeoRef.current !== null,
+          // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
+          courseDerivation: guideRef.current?.courseDerivation,
         }),
       );
       announce(t("toDetailDone"));
@@ -1516,6 +1525,10 @@ export function useRouteGuide(
         resetFinalApproach(fetched.finalApproach);
         const init = initialGuideState(route, now, {
           hasFinalApproachGeometry: fetched.finalApproach !== null,
+          // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9.
+          // 비우면 갈림 직후 재조회에서 축이 ~10m 냉시동돼, "이탈 → 재조회 →
+          // 다시 잘못된 길" 시나리오에서 이 축의 이점이 사라진다).
+          courseDerivation: guideRef.current?.courseDerivation,
         });
         commitDetail(route, init.state);
         setHasRoute(true);

@@ -288,9 +288,15 @@ private func stepAt(route: GuideRoute, d: Double) -> GuideStepSpan {
 }
 
 /// 임의 진행거리에서의 초기 상태(전환·재획득·재조회 리셋 공용).
+///
+/// ⚠ **`courseDerivation`은 같은 세션의 재구성(재조회·brief↔detail 전환)이라면 반드시
+/// 직전 상태의 버퍼를 넘긴다**(spec §2.9 — 궤적은 경로의 함수가 아니라서 경로 교체는
+/// 버퍼를 비울 사유가 아니다. 비우면 갈림 직후 재조회에서 축이 ~10m 냉시동된다).
+/// 기본값(빈 버퍼)은 **새 세션(안내 시작)에서만** 정당하다.
 public func guideStateAt(
     route: GuideRoute, d: Double, now: Double, autoHandoffArmed: Bool = true,
-    hasFinalApproachGeometry: Bool = false
+    hasFinalApproachGeometry: Bool = false,
+    courseDerivation: CourseDerivationState = initialDerivationState
 ) -> GuideState {
     let step = stepAt(route: route, d: d)
     let unit = unitAt(route: route, index: step.index)
@@ -324,18 +330,21 @@ public func guideStateAt(
         reacquiringFromOffRoute: false,
         offRouteAxes: OffRouteAxes(),
         courseVotes: [],
-        courseDerivation: initialDerivationState
+        courseDerivation: courseDerivation
     )
 }
 
 /// 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫.
 public func initialGuideState(
-    route: GuideRoute, now: Double, hasFinalApproachGeometry: Bool = false
+    route: GuideRoute, now: Double, hasFinalApproachGeometry: Bool = false,
+    courseDerivation: CourseDerivationState = initialDerivationState
 ) -> (state: GuideState, firstIndices: [Int]) {
     (
         guideStateAt(
             route: route, d: 0, now: now,
-            hasFinalApproachGeometry: hasFinalApproachGeometry
+            hasFinalApproachGeometry: hasFinalApproachGeometry,
+            // 재조회(같은 세션의 새 경로)는 직전 버퍼를 넘긴다 — guideStateAt ⚠ 참조.
+            courseDerivation: courseDerivation
         ),
         unitAt(route: route, index: 0)
     )
@@ -349,15 +358,14 @@ public func initialGuideState(
 func restateAt(
     route: GuideRoute, d: Double, now: Double, prev: GuideState
 ) -> GuideState {
-    var s = guideStateAt(
-        route: route, d: d, now: now,
-        autoHandoffArmed: prev.autoHandoffArmed,
-        hasFinalApproachGeometry: prev.hasFinalApproachGeometry
-    )
     // 유도기 버퍼는 궤적의 사실이라 재구성에서도 잇는다(spec §2.9 — 비우는 것은
     // 표결 창이지 버퍼가 아니다. 버퍼는 age 상한으로 자체 소멸한다).
-    s.courseDerivation = prev.courseDerivation
-    return s
+    guideStateAt(
+        route: route, d: d, now: now,
+        autoHandoffArmed: prev.autoHandoffArmed,
+        hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
+        courseDerivation: prev.courseDerivation
+    )
 }
 
 /// 최종 접근 진입선(경로 잔여 m). 기하를 알면 경로 종점까지 가고, 모르면 옛 50m다

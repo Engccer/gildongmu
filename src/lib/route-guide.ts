@@ -349,12 +349,24 @@ function stepAt(route: GuideRoute, d: number): StepSpan {
   return route.steps[route.steps.length - 1];
 }
 
-/** 임의 진행거리에서의 초기 상태(전환·재획득·재조회 리셋 공용). */
+/**
+ * 임의 진행거리에서의 초기 상태(전환·재획득·재조회 리셋 공용).
+ *
+ * ⚠ **`courseDerivation`은 같은 세션의 재구성(재조회·brief↔detail 전환)이라면 반드시
+ * 직전 상태의 버퍼를 넘긴다**(spec §2.9 — 궤적은 경로의 함수가 아니라서 경로 교체는
+ * 버퍼를 비울 사유가 아니다. 비우면 갈림 직후 재조회에서 축이 ~10m 냉시동돼, A6이
+ * 고치려던 "이탈 → 재조회 → 다시 잘못된 길" 반복에서 이점이 사라진다). 생략은
+ * **새 세션(안내 시작)에서만** 정당하다.
+ */
 export function guideStateAt(
   route: GuideRoute,
   d: number,
   now: number,
-  opts?: { autoHandoffArmed?: boolean; hasFinalApproachGeometry?: boolean },
+  opts?: {
+    autoHandoffArmed?: boolean;
+    hasFinalApproachGeometry?: boolean;
+    courseDerivation?: CourseDerivationState;
+  },
 ): GuideState {
   const step = stepAt(route, d);
   const unit = unitAt(route, step.index);
@@ -390,7 +402,7 @@ export function guideStateAt(
     reacquiringFromOffRoute: false,
     offRouteAxes: { distance: false, course: false },
     courseVotes: [],
-    courseDerivation: INITIAL_DERIVATION_STATE,
+    courseDerivation: opts?.courseDerivation ?? INITIAL_DERIVATION_STATE,
   };
 }
 
@@ -408,26 +420,26 @@ function restateAt(
   now: number,
   prev: GuideState,
 ): GuideState {
-  return {
-    ...guideStateAt(route, d, now, {
-      autoHandoffArmed: prev.autoHandoffArmed,
-      hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
-    }),
-    // 유도기 버퍼는 궤적의 사실이라 재구성에서도 잇는다(spec §2.9 — 비우는 것은
-    // 표결 창이지 버퍼가 아니다. 버퍼는 age 상한으로 자체 소멸한다).
+  // 유도기 버퍼는 궤적의 사실이라 재구성에서도 잇는다(spec §2.9 — 비우는 것은
+  // 표결 창이지 버퍼가 아니다. 버퍼는 age 상한으로 자체 소멸한다).
+  return guideStateAt(route, d, now, {
+    autoHandoffArmed: prev.autoHandoffArmed,
+    hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
     courseDerivation: prev.courseDerivation,
-  };
+  });
 }
 
 /** 시작 상태 + 원자 시작 발화(스펙 §5.3)에 넣을 첫 유닛. 문장 조립은 오케스트레이터 몫. */
 export function initialGuideState(
   route: GuideRoute,
   now: number,
-  opts?: { hasFinalApproachGeometry?: boolean },
+  opts?: { hasFinalApproachGeometry?: boolean; courseDerivation?: CourseDerivationState },
 ): { state: GuideState; firstIndices: number[] } {
   return {
     state: guideStateAt(route, 0, now, {
       hasFinalApproachGeometry: opts?.hasFinalApproachGeometry,
+      // 재조회(같은 세션의 새 경로)는 직전 버퍼를 넘긴다 — guideStateAt ⚠ 참조.
+      courseDerivation: opts?.courseDerivation,
     }),
     firstIndices: unitAt(route, 0),
   };

@@ -559,16 +559,22 @@ describe("방위 축 통합 (유도 관측 — 궤적 주도)", () => {
     expect(r.state.offRouteAxes.course).toBe(true);
   });
 
-  it("상태 재구성은 표결 창을 비우고 유도기 버퍼는 잇는다", () => {
+  it("상태 재구성은 표결 창을 비우고, 유도기 버퍼는 승계 opts로만 잇는다(§2.9)", () => {
     let { state } = initialGuideState(route, 0);
     state = play(state, walkFixes({ along: 10, lateral: 0 }, 0, 20, 0)).state;
     expect(state.courseVotes.length).toBeGreaterThan(0);
     expect(state.courseDerivation.fixes.length).toBeGreaterThan(0);
-    // 새 상태(재조회·세션 리셋)는 창·latch 초기화.
+    // 새 세션(opts 생략)은 창·latch·버퍼 전부 초기화.
     const fresh = guideStateAt(route, 0, 100, {});
     expect(fresh.courseVotes).toEqual([]);
     expect(fresh.offRouteAxes).toEqual({ distance: false, course: false });
     expect(fresh.courseDerivation.fixes).toEqual([]);
+    // 같은 세션의 재구성(재조회·모드 전환)은 버퍼를 넘겨 잇는다 — 창은 여전히 비운다.
+    const carried = guideStateAt(route, 0, 100, { courseDerivation: state.courseDerivation });
+    expect(carried.courseVotes).toEqual([]);
+    expect(carried.courseDerivation).toEqual(state.courseDerivation);
+    const reroute = initialGuideState(route, 100, { courseDerivation: state.courseDerivation });
+    expect(reroute.state.courseDerivation).toEqual(state.courseDerivation);
   });
 
   it("방위 축 확정이 최종 접근 진입보다 앞이다 — 같은 fix에서는 이탈이 이긴다", () => {

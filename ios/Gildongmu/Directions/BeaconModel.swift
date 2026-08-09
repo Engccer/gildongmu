@@ -1247,7 +1247,9 @@ final class BeaconModel {
             lastFinalTickAt = nil
             let state = guideStateAt(
                 route: route, d: d, now: now, autoHandoffArmed: false,
-                hasFinalApproachGeometry: finalApproachGeometry != nil
+                hasFinalApproachGeometry: finalApproachGeometry != nil,
+                // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
+                courseDerivation: guideState?.courseDerivation ?? initialDerivationState
             )
             guideState = state
             mode = .detail
@@ -1389,9 +1391,13 @@ final class BeaconModel {
             // 새 경로는 새 종점·새 오프셋이다 — 진입 래치·주기 타이머·진입 서술 래치를
             // 전부 초기화한다(spec §4 "사용자 재조회 성공").
             resetFinalApproach(geometry: fetched.finalApproach)
+            // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9. 비우면
+            // 갈림 직후 재조회에서 축이 ~10m 냉시동돼 "이탈 → 재조회 → 다시 잘못된
+            // 길" 시나리오에서 이 축의 이점이 사라진다).
             let initial = initialGuideState(
                 route: fetched.route, now: uptimeNow,
-                hasFinalApproachGeometry: fetched.finalApproach != nil
+                hasFinalApproachGeometry: fetched.finalApproach != nil,
+                courseDerivation: guideState?.courseDerivation ?? initialDerivationState
             )
             guideState = initial.state
             offRoute = false
