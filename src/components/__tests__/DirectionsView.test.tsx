@@ -227,6 +227,10 @@ describe("DirectionsView 주소→좌표 해석 결선(resolveAddressCoord)", ()
 // 수동 위치 기준일 때만 그 사실을 안내 시작 진입점 근처에서 미리 말한다.
 describe("DirectionsView 수동 위치(manual location)", () => {
   afterEach(() => {
+    // __resetManualLocationForTest는 모듈 상태만 지운다 — localStorage에 남은
+    // 값은 다음 테스트의 hydrate()가 다시 읽어 들여 오염시킨다(LocationBar.test와
+    // 동형 정리, 리뷰 발견).
+    localStorage.clear();
     __resetManualLocationForTest();
   });
 
@@ -256,7 +260,7 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     );
   });
 
-  it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 안내 시작 진입점 근처에 실좌표 필요 안내를 낸다", async () => {
+  it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 조회 완료 시 단일 live region이 실좌표 필요 안내까지 함께 발화한다", async () => {
     setManualLocation({
       label: "길동 카페",
       lat: 37.5384,
@@ -290,8 +294,15 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
 
+    // 이 뷰의 단일 live region(role="status")이 조회 완료 시 자동 포커스 이동
+    // (첫 성공 heading)과 무관하게 발화 큐에 남는 유일한 채널이다 — 별도 정적
+    // 텍스트로 두면 자동 포커스가 도는 바로 그 성공 경로에서 못 듣는다(리뷰
+    // 발견). 이 assertion은 "같은 status 요소 안에 있는가"를 확인하므로,
+    // 별도 <p>로 되돌리면 이 요소의 textContent에 더는 담기지 않아 red가 난다.
     await waitFor(() => {
-      expect(screen.getByText("guideNeedsRealLocation")).toBeTruthy();
+      expect(screen.getByRole("status").textContent).toBe(
+        "readySummary guideNeedsRealLocation",
+      );
     });
     // 수동 좌표로 조회했다(GPS 아님) — awaitGeolocation 모크는 항상 error라
     // 실좌표 경로를 탔다면 이 조회 자체가 geoError로 끝나 route fetch가 없다.
