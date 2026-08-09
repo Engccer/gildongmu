@@ -19,40 +19,32 @@ func manualLocationLabel(_ store: ManualLocationStore) -> String? {
         : appLocalized("manualLocation.manualUnverifiable", m.label)
 }
 
-/// 현재 위치 표시줄. **형제 버튼 둘**이다(중첩 인터랙티브 금지).
+/// 현재 위치 표시줄. **버튼 하나**다.
 ///
 /// 수동 위치가 켜져 있으면 "현재 위치"라는 표현을 쓰지 않는다.
+///
+/// ⚠ **형제 "지정 해제" 버튼을 되돌리지 말 것**(위원장 실사용 판정 2026-08-09).
+/// GPS가 기본값이라 수동 지정은 의도적으로 고른 상태이고, 되돌리기는 지정 시트의
+/// "현재 위치로 되돌리기"(`DirectionsEndpointSearchView`의 `.manualLocation` 분기)가
+/// 담당한다 — 첫 화면에 상시 노출할 빈도가 아니다. 해제 경로가 이제 그 한 곳뿐이므로
+/// 그 버튼이나 아래 `commit(.current)` 분기를 지우면 사용자가 수동 위치에 갇힌다.
 struct LocationBarView: View {
     @State private var store = ManualLocationStore.shared
     @State private var location = LocationService.shared
     @State private var pickerOpen = false
-    @AccessibilityFocusState private var pickFocused: Bool
 
     var body: some View {
-        HStack {
-            Button(label) { pickerOpen = true }
-                .frame(minHeight: 44)
-                .accessibilityFocused($pickFocused)
-            if store.current != nil {
-                Button(appLocalized("manualLocation.clear")) {
-                    store.clear()
-                    // 자기를 없애는 버튼이라 포커스가 이탈한다. 계속 존재하는
-                    // 지정 버튼으로 옮긴다(헌장 §5).
-                    pickFocused = true
+        Button(label) { pickerOpen = true }
+            .frame(minHeight: 44)
+            .sheet(isPresented: $pickerOpen) {
+                DirectionsEndpointSearchView(target: .manualLocation) { endpoint in
+                    Task { await commit(endpoint) }
                 }
-                .frame(minWidth: 44, minHeight: 44)
             }
-        }
-        .sheet(isPresented: $pickerOpen) {
-            DirectionsEndpointSearchView(target: .manualLocation) { endpoint in
-                Task { await commit(endpoint) }
-            }
-        }
     }
 
     /// 상태 + **동작**을 한 텍스트로. 상태만 이름으로 쓰면 VoiceOver가 "현재 위치,
-    /// 버튼"으로 읽어 누르면 무엇이 되는지 단서가 0이다 — 이 기능의 유일한 진입점이고
-    /// 형제 버튼("지정 해제")은 동작으로 이름이 붙어 한 줄 안에서 명명이 비대칭이었다.
+    /// 버튼"으로 읽어 누르면 무엇이 되는지 단서가 0이다 — 이 기능의 유일한 진입점이다.
     private var label: String {
         "\(state), \(appLocalized("manualLocation.pickTitle"))"
     }
