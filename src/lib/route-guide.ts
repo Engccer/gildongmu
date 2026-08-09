@@ -21,11 +21,23 @@ import {
   type GuideRoute,
   type StepSpan,
 } from "./route-geometry";
+import { walkStepAction, type WalkAction } from "./walk-action";
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
 
 /** 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(리뷰 #4 선행 원칙). */
 export const ANNOUNCE_AHEAD_M = 40;
+/**
+ * 결정 지점 **임박** 큐의 잔여 거리(m). 40m 전문 낭독이 *무엇을* 할지 알린다면
+ * 이 큐는 *지금이다*를 알린다 — 위원장 실보행 피드백 2026-08-09: "모퉁이를 돌기 전,
+ * 횡단보도를 건너기 전 10m에서 사운드·진동·짧은 문장으로 알려 달라".
+ *
+ * ⚠ **40m 낭독을 대체하지 않는다.** 보행 1.2m/s에서 10m는 8초라 "어디서 어느 길로
+ * 얼마나"를 담은 전문을 그 자리에 옮기면 들으면서 이미 모퉁이를 지난다. 두 층은
+ * 역할이 다르다(정보 vs 타이밍). 옮긴 것은 **`ahead` 톤 하나**다 — 종전에는 40m
+ * 전문에 붙어 있어서 소리가 "곧 뭔가 있다"만 말하고 "지금이다"는 못 말했다.
+ */
+export const IMMINENT_AHEAD_M = 10;
 export const ADVANCE_MARGIN_BASE_M = 15;
 /**
  * **기하를 모르는 세션의** 최종 접근 진입 거리(m). 기하를 아는 세션은 경로 종점까지
@@ -71,6 +83,14 @@ export interface GuideTuning {
   /** 임박(선행) 낭독: 잔여 ≤ max(announceAheadM, v×announceAheadSpeedS) */
   announceAheadM: number;
   announceAheadSpeedS: number;
+  /**
+   * 결정 지점 임박 큐 경계(m). null=미사용.
+   *
+   * ⚠ **보행 전용이다.** 10m는 보행 8초이지만 15m/s 주행에서는 0.7초라 소리를 듣고
+   * 반응할 시간이 없고, 애초에 자동차 안내는 실주행을 네이티브 앱에 위임한다.
+   * 값도 문구도(`walkStepAction`이 도보 문형만 안다) 차량에서 재본 적이 없다.
+   */
+  imminentAheadM: number | null;
   /** 원거리 예고 경계(m). null=미사용(walk) */
   farNoticeM: number | null;
   windowAheadMinM: number;
@@ -105,6 +125,7 @@ export interface GuideTuning {
 export const WALK_TUNING: GuideTuning = {
   announceAheadM: ANNOUNCE_AHEAD_M,
   announceAheadSpeedS: 0,
+  imminentAheadM: IMMINENT_AHEAD_M,
   farNoticeM: null,
   windowAheadMinM: WINDOW_AHEAD_MIN_M,
   windowAheadSpeedS: 0,
@@ -124,6 +145,8 @@ export const WALK_TUNING: GuideTuning = {
 export const CAR_TUNING: GuideTuning = {
   announceAheadM: 120,
   announceAheadSpeedS: 15,
+  // ⚠ 보행 궤적으로만 쟀다(위 필드 주석). 켜려면 먼저 재라.
+  imminentAheadM: null,
   farNoticeM: 1500,
   windowAheadMinM: 150,
   windowAheadSpeedS: 5,
@@ -191,6 +214,15 @@ export interface GuideState {
   stepIndex: number;
   /** 낭독 완료된 마지막 스텝 index(선행 낭독 포함). */
   announcedUpTo: number;
+  /**
+   * 임박 큐를 마친 마지막 스텝 index. `announcedUpTo`와 **같은 경계 수열을 다른
+   * 거리에서** 따라간다(40m vs 10m) — 그래서 별도 래치이고, 항상
+   * `imminentUpTo <= announcedUpTo`다.
+   *
+   * ⚠ 행동이 없는 경계(단순 직진 연결)에서도 **전진한다**. 전진하지 않으면 그
+   * 경계에 영원히 걸려 다음 회전의 큐가 영영 나가지 않는다.
+   */
+  imminentUpTo: number;
   /** 어떤 발화든 갱신 — 주기 통지의 기준(리뷰 #25). */
   lastAnnouncedAt: number;
   lastFixAt: number | null;
@@ -244,6 +276,11 @@ export interface GuideState {
 
 export type GuideEvent =
   | { kind: "announceSteps"; indices: number[] }
+  /**
+   * 결정 지점 10m 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 그 유닛이다
+   * (소비자가 전문을 다시 읽고 싶을 때를 위해 남긴다 — 지금은 문구가 짧은 명령형이다).
+   */
+  | { kind: "imminent"; indices: number[]; action: WalkAction }
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
@@ -308,6 +345,9 @@ export function guideStateAt(
     d,
     stepIndex: step.index,
     announcedUpTo: unit[unit.length - 1],
+    // 재진입 시점의 유닛은 임박 큐도 소비 처리 — 지금 서 있는 유닛의 행동은 이미
+    // 지난 결정이다(`farNoticedUpTo`와 같은 규칙).
+    imminentUpTo: unit[unit.length - 1],
     lastAnnouncedAt: now,
     lastFixAt: null,
     windowEdgeHits: 0,
@@ -768,6 +808,35 @@ export function guideStep(
     return emit(next, { kind: "finalApproachEnter" }, null);
   }
 
+  // 6a') 결정 지점 임박 큐(10m, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
+  //      "지금이다"를 알린다. 경계 수열은 6b와 같고 거리만 다르다.
+  //
+  //      ⚠ **불변식: 전문이 나간 유닛만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
+  //      "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
+  //      남는다. 두 래치가 같으면 그 유닛은 아직 전문 전이므로 6b에 자리를 내준다.
+  //
+  //      ⚠ 그 불변식을 지키므로 **6b보다 앞이다.** 뒤에 두면 짧은 유닛에서 6b가 매번
+  //      먼저 return해 큐가 한 fix씩 밀리고, 그 사이 사용자는 이미 모퉁이를 지난다
+  //      (30m 횡단보도 유닛에서 실제로 재현 — 다음 유닛 전문 38m와 이번 횡단보도 8m가
+  //      같은 fix에 걸리는데, 급한 쪽은 8m다).
+  //
+  //      ⚠ **행동이 없는 경계에서도 래치는 전진시키고 발화만 건너뛴다.** 직진 연결마다
+  //      소리를 내면 큐가 신호이기를 그만두고, 반대로 래치를 세워 두면 그 경계에 걸려
+  //      다음 회전을 영영 못 알린다.
+  if (
+    tuning.imminentAheadM !== null &&
+    next.imminentUpTo < next.announcedUpTo &&
+    route.steps[next.imminentUpTo].endD - d <= tuning.imminentAheadM
+  ) {
+    const indices = unitAt(route, next.imminentUpTo + 1);
+    const action = walkStepAction(route.steps[indices[0]].description);
+    next = { ...next, imminentUpTo: indices[indices.length - 1] };
+    if (action) {
+      next = { ...next, lastAnnouncedAt: now };
+      return emit(next, { kind: "imminent", indices, action }, "ahead");
+    }
+  }
+
   // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
   //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
@@ -785,7 +854,13 @@ export function guideStep(
         farNoticedUpTo: Math.max(next.farNoticedUpTo, indices[indices.length - 1]),
         lastAnnouncedAt: now,
       };
-      return emit(next, { kind: "announceSteps", indices }, "ahead");
+      // ⚠ 톤 없음. `ahead` 톤은 6a'(10m 임박)로 옮겼다 — 40m에서 울리면 소리가
+      //   "곧 뭔가 있다"만 말하고 "지금이다"는 못 말한다(실보행 피드백 2026-08-09).
+      //   전문 낭독 자체가 이 시점의 신호이므로 별도 톤은 잉여다.
+      //   부수 효과 하나를 알고 넘긴다: 톤이 열던 3초 정숙 구간(`QUIET_AFTER_ACTION_S`)이
+      //   이 시점에는 더 이상 열리지 않는다. 이 fix의 추세음은 `eventOwned`가 그대로
+      //   막고, 전문 낭독은 어차피 3초보다 길어 그 창이 덮은 적이 없다.
+      return emit(next, { kind: "announceSteps", indices }, null);
     }
   }
 

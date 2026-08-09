@@ -645,6 +645,12 @@
     "dirBehindTo": "detrás de ti",
     "offRoute": "Parece que te has salido de la ruta",
     "backOnRoute": "De vuelta en la ruta",
+    "imminent": {
+      "left": "Gire a la izquierda en breve",
+      "right": "Gire a la derecha en breve",
+      "crosswalk": "Cruce el paso de peatones en breve",
+      "underpass": "Use el paso subterráneo en breve"
+    },
     "uncertain": "La confianza en la ubicación es baja",
     "uncertainRecovered": "Se recuperó la confianza en la ubicación",
     "reacquiring": "Buscando de nuevo tu posición en la ruta",

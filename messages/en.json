@@ -645,6 +645,12 @@
     "dirBehindTo": "behind you",
     "offRoute": "You may be off the route",
     "backOnRoute": "Back on the route",
+    "imminent": {
+      "left": "Turn left shortly",
+      "right": "Turn right shortly",
+      "crosswalk": "Cross the crosswalk shortly",
+      "underpass": "Use the underpass shortly"
+    },
     "uncertain": "Location confidence is low",
     "uncertainRecovered": "Location confidence recovered",
     "reacquiring": "Re-locating you on the route",

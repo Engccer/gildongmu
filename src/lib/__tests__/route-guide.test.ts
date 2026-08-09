@@ -53,6 +53,12 @@ interface Expectation {
   eventOneOf?: string[];
   indices?: number[];
   tone?: string;
+  /**
+   * 톤이 **없어야** 하는 지점(`tone`의 부정형). 40m 전문 낭독에서 `ahead` 톤이 10m
+   * 임박 큐로 옮겨 간 계약이 이 축으로만 잠긴다 — `tone` 단언만으로는 "울리지
+   * 않아야 한다"를 표현할 수 없다.
+   */
+  toneNull?: boolean;
 }
 
 describe("route-guide 공유 시나리오(경계표)", () => {
@@ -104,6 +110,7 @@ describe("route-guide 공유 시나리오(경계표)", () => {
           expect(found && (found.event as { indices: number[] }).indices).toEqual(ex.indices);
         }
         if (ex.tone) expect(rs.some((r) => r.tone === ex.tone)).toBe(true);
+        if (ex.toneNull) rs.forEach((r) => expect(r.tone).toBeNull());
       }
     });
   }

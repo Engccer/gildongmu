@@ -645,6 +645,12 @@
     "dirBehindTo": "뒤로",
     "offRoute": "경로에서 벗어난 것 같습니다",
     "backOnRoute": "경로로 복귀했습니다",
+    "imminent": {
+      "left": "잠시 후 왼쪽으로 도세요",
+      "right": "잠시 후 오른쪽으로 도세요",
+      "crosswalk": "잠시 후 횡단보도를 건너세요",
+      "underpass": "잠시 후 지하보도로 건너세요"
+    },
     "uncertain": "위치 확신이 낮습니다",
     "uncertainRecovered": "위치 확신을 회복했습니다",
     "reacquiring": "경로상 위치를 다시 찾는 중입니다",

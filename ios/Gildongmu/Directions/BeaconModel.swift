@@ -1028,6 +1028,7 @@ final class BeaconModel {
         inFinalApproach = true
         finalApproachIntroSpoken = false
         lastFinalTickAt = nil
+        guideDiagLog("finalEnter offset=\(String(format: "%.1f", geometry.offsetMeters))")
     }
 
     /// 최종 접근 fix 처리(§3.4). **거리는 항상 현재 fix → 목적지 직선거리**다 —
@@ -1058,6 +1059,15 @@ final class BeaconModel {
             lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng
         )
         let arrived = distance <= finalApproachArriveMeters
+        // 도착 종·진동이 안 난다는 실사용 보고(2026-08-09)의 판정 근거. 원인 후보가
+        // 둘인데(도착 판정 자체가 안 옴 vs 판정은 왔는데 소리가 잘림) 증상이 같아
+        // 로그 없이는 갈리지 않는다 — 이 줄이 그 갈림을 남긴다.
+        guideDiagLog(
+            "final t=\(String(format: "%.1f", now)) "
+                + "dist=\(String(format: "%.1f", distance)) "
+                + "acc=\(String(format: "%.1f", fix.accuracy)) "
+                + "arrived=\(arrived) introSpoken=\(finalApproachIntroSpoken)"
+        )
         routeTone(
             ToneLayerInput(
                 trend: TrendInput(
@@ -1143,6 +1153,19 @@ final class BeaconModel {
             statusText = text
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
+        case let .imminent(_, action):
+            // 10m 임박 큐: 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
+            // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
+            //
+            // ⚠ `lastGuidance`를 덮지 않는다. 이 값은 신호 불량 구간에서 "마지막으로
+            //   들은 안내"로 되읽히는데, 그 자리에 "잠시 후 왼쪽으로 도세요"가 남으면
+            //   무엇을 향한 회전이었는지가 사라진다.
+            //
+            // ⚠ 억제 중이어도 보관(`pendingRecovery`)하지 않는다. 이 문장은 그 10m
+            //   구간에서만 참이라 나중에 갚으면 이미 지난 모퉁이를 돌라고 말한다.
+            let text = appLocalized("guide.imminent.\(action.rawValue)")
+            statusText = text
+            if !outputSuppressed { announce(text) }
         case let .farNotice(indices, remainingMeters):
             // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
             // 실행 안내와 같은 취급(억제 복구 대상).

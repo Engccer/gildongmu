@@ -43,6 +43,10 @@ private struct Scenario: Decodable {
         let eventOneOf: [String]?
         let indices: [Int]?
         let tone: String?
+        /// 톤이 **없어야** 하는 지점(`tone`의 부정형). 40m 전문 낭독에서 `ahead` 톤이
+        /// 10m 임박 큐로 옮겨 간 계약이 이 축으로만 잠긴다 — `tone` 단언만으로는
+        /// "울리지 않아야 한다"를 표현할 수 없다.
+        let toneNull: Bool?
     }
 }
 
@@ -82,6 +86,7 @@ private func fixCoord(along: Double, lateral: Double, acc: Double) -> GuideFix {
 private func kindName(_ event: GuideEvent?) -> String? {
     switch event {
     case .announceSteps: "announceSteps"
+    case .imminent: "imminent"
     case .farNotice: "farNotice"
     case .periodic: "periodic"
     case .bundleReread: "bundleReread"
@@ -100,6 +105,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
 private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     switch event {
     case let .announceSteps(i): i
+    case let .imminent(i, _): i
     case let .farNotice(i, _): i
     case let .bundleReread(i): i
     default: nil
@@ -163,6 +169,9 @@ private func toneName(_ tone: GuideTone?) -> String? {
             }
             if let tone = ex.tone {
                 #expect(rs.contains { toneName($0.tone) == tone }, "\(sc.name): tone \(tone)")
+            }
+            if ex.toneNull == true {
+                for r in rs { #expect(r.tone == nil, "\(sc.name): toneNull") }
             }
         }
     }
