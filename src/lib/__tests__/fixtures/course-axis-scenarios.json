@@ -1,52 +1,925 @@
 {
   "comment": "방위 축 표결·판정 경계표(유도 관측, 임계 45°). 웹 guide-course-axis.test.ts와 Kit GuideCourseAxisTests가 함께 소비한다(드리프트 가드). 경로는 남→북 직선 200m이므로 접선은 어디서나 0도다. d는 진행거리(m). bearing이 null이면 관측 없음.",
   "votes": [
-    { "name": "나란함", "bearing": 5, "uncertainty": 10, "d": 100, "expect": "match" },
-    { "name": "크게 어긋남", "bearing": 120, "uncertainty": 10, "d": 100, "expect": "mismatch" },
-    { "name": "불확실성이 임계를 걸침", "bearing": 50, "uncertainty": 40, "d": 100, "expect": "unknown" },
-    { "name": "경계 바로 안: Δ+U<45", "bearing": 20, "uncertainty": 20, "d": 100, "expect": "match" },
-    { "name": "경계 바로 밖: Δ-U>45", "bearing": 100, "uncertainty": 50, "d": 100, "expect": "mismatch" },
-    { "name": "bearing 범위 밖", "bearing": 360, "uncertainty": 5, "d": 100, "expect": "unknown" },
-    { "name": "관측 없음", "bearing": null, "uncertainty": 0, "d": 100, "expect": "unknown" }
+    {
+      "name": "나란함",
+      "bearing": 5,
+      "uncertainty": 10,
+      "d": 100,
+      "expect": "match"
+    },
+    {
+      "name": "크게 어긋남",
+      "bearing": 120,
+      "uncertainty": 10,
+      "d": 100,
+      "expect": "mismatch"
+    },
+    {
+      "name": "불확실성이 임계를 걸침",
+      "bearing": 50,
+      "uncertainty": 40,
+      "d": 100,
+      "expect": "unknown"
+    },
+    {
+      "name": "경계 바로 안: Δ+U<45",
+      "bearing": 20,
+      "uncertainty": 20,
+      "d": 100,
+      "expect": "match"
+    },
+    {
+      "name": "경계 바로 밖: Δ-U>45",
+      "bearing": 100,
+      "uncertainty": 50,
+      "d": 100,
+      "expect": "mismatch"
+    },
+    {
+      "name": "bearing 범위 밖",
+      "bearing": 360,
+      "uncertainty": 5,
+      "d": 100,
+      "expect": "unknown"
+    },
+    {
+      "name": "관측 없음",
+      "bearing": null,
+      "uncertainty": 0,
+      "d": 100,
+      "expect": "unknown"
+    }
   ],
   "votesComment": "경계 두 케이스는 임계(COURSE_AXIS_THRESHOLD_DEG)에서 파생된 값이다. 임계를 바꾸면 여기도 함께 바꿔야 하고, 그게 정상이다 — 이 표가 임계 변경을 잡는 가드다.",
   "verdictsComment": "⚠ 경계 케이스를 새로 만들 때: 판정은 게이트 넷(개수·판정 가능 비율·시간 span·확정/해제 비율)을 순서대로 통과해야 하므로, 재려는 축보다 **앞선 게이트에 먼저 걸리면 그 케이스는 아무것도 재지 않는다**. 통과하니까 잠근 것처럼 보이는데 실제로는 의도한 상수를 건드리지도 못한다(실사고: 판정 가능 비율 0.8을 정확히 맞춘 케이스가 span 14초라 MIN_SPAN_S에서 먼저 탈락했고, 기대값 unknown이 '맞아서'가 아니라 '다른 이유로' 나왔다). 새 케이스를 넣었으면 재려는 상수를 실제로 바꿔 보고 그 케이스가 깨지는지 확인할 것 — '테스트가 있다'와 '그 축이 지켜진다'는 다르다.",
   "verdicts": [
-    { "name": "표본 부족", "votes": [["mismatch", 0]], "expect": "unknown" },
-    { "name": "시간 미달", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14]], "expect": "unknown" },
-    { "name": "확정", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16], ["mismatch", 18]], "expect": "off" },
-    { "name": "해제", "votes": [["match", 0], ["match", 2], ["match", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
-    { "name": "회색지대", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "unknown" },
-    { "name": "시간 span이 정확히 하한", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16]], "expect": "off" },
-    { "name": "성긴 표: span은 넘는데 표 수가 하한 미달", "votes": [["mismatch", 0], ["mismatch", 3], ["mismatch", 6], ["mismatch", 9], ["mismatch", 12], ["mismatch", 15], ["mismatch", 18]], "expect": "unknown" },
-    { "name": "확정 비율이 정확히 임계", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "off" },
-    { "name": "해제 비율이 정확히 임계", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["match", 6], ["match", 8], ["match", 10], ["match", 12], ["match", 14], ["match", 16], ["match", 18]], "expect": "on" },
-    { "name": "판정 가능 비율이 정확히 하한", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 16], ["unknown", 1], ["unknown", 3]], "expect": "off" },
-    { "name": "판정 가능 비율이 하한 바로 아래", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 16], ["unknown", 1], ["unknown", 3], ["unknown", 5]], "expect": "unknown" },
-    { "name": "판정 불가가 창의 다수", "votes": [["mismatch", 0], ["mismatch", 2], ["mismatch", 4], ["mismatch", 6], ["mismatch", 8], ["mismatch", 10], ["mismatch", 12], ["mismatch", 14], ["mismatch", 16], ["mismatch", 18], ["unknown", 1], ["unknown", 3], ["unknown", 5], ["unknown", 7], ["unknown", 9], ["unknown", 11], ["unknown", 13], ["unknown", 15], ["unknown", 17], ["unknown", 19], ["unknown", 0.5], ["unknown", 2.5], ["unknown", 4.5], ["unknown", 6.5], ["unknown", 8.5], ["unknown", 10.5], ["unknown", 12.5], ["unknown", 14.5], ["unknown", 16.5], ["unknown", 18.5]], "expect": "unknown" }
+    {
+      "name": "표본 부족",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ]
+      ],
+      "expect": "unknown"
+    },
+    {
+      "name": "시간 미달",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          14
+        ]
+      ],
+      "expect": "unknown"
+    },
+    {
+      "name": "확정",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          14
+        ],
+        [
+          "mismatch",
+          16
+        ],
+        [
+          "mismatch",
+          18
+        ]
+      ],
+      "expect": "off"
+    },
+    {
+      "name": "해제",
+      "votes": [
+        [
+          "match",
+          0
+        ],
+        [
+          "match",
+          2
+        ],
+        [
+          "match",
+          4
+        ],
+        [
+          "match",
+          6
+        ],
+        [
+          "match",
+          8
+        ],
+        [
+          "match",
+          10
+        ],
+        [
+          "match",
+          12
+        ],
+        [
+          "match",
+          14
+        ],
+        [
+          "match",
+          16
+        ],
+        [
+          "match",
+          18
+        ]
+      ],
+      "expect": "on"
+    },
+    {
+      "name": "회색지대",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "match",
+          10
+        ],
+        [
+          "match",
+          12
+        ],
+        [
+          "match",
+          14
+        ],
+        [
+          "match",
+          16
+        ],
+        [
+          "match",
+          18
+        ]
+      ],
+      "expect": "unknown"
+    },
+    {
+      "name": "시간 span이 정확히 하한",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          14
+        ],
+        [
+          "mismatch",
+          16
+        ]
+      ],
+      "expect": "off"
+    },
+    {
+      "name": "성긴 표: span은 넘는데 표 수가 하한 미달",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          3
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          9
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          15
+        ],
+        [
+          "mismatch",
+          18
+        ]
+      ],
+      "expect": "unknown"
+    },
+    {
+      "name": "확정 비율이 정확히 임계",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "match",
+          14
+        ],
+        [
+          "match",
+          16
+        ],
+        [
+          "match",
+          18
+        ]
+      ],
+      "expect": "off"
+    },
+    {
+      "name": "해제 비율이 정확히 임계",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "match",
+          6
+        ],
+        [
+          "match",
+          8
+        ],
+        [
+          "match",
+          10
+        ],
+        [
+          "match",
+          12
+        ],
+        [
+          "match",
+          14
+        ],
+        [
+          "match",
+          16
+        ],
+        [
+          "match",
+          18
+        ]
+      ],
+      "expect": "on"
+    },
+    {
+      "name": "판정 가능 비율이 정확히 하한",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          16
+        ],
+        [
+          "unknown",
+          1
+        ],
+        [
+          "unknown",
+          3
+        ]
+      ],
+      "expect": "off"
+    },
+    {
+      "name": "판정 가능 비율이 하한 바로 아래",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          16
+        ],
+        [
+          "unknown",
+          1
+        ],
+        [
+          "unknown",
+          3
+        ],
+        [
+          "unknown",
+          5
+        ]
+      ],
+      "expect": "unknown"
+    },
+    {
+      "name": "판정 불가가 창의 다수",
+      "votes": [
+        [
+          "mismatch",
+          0
+        ],
+        [
+          "mismatch",
+          2
+        ],
+        [
+          "mismatch",
+          4
+        ],
+        [
+          "mismatch",
+          6
+        ],
+        [
+          "mismatch",
+          8
+        ],
+        [
+          "mismatch",
+          10
+        ],
+        [
+          "mismatch",
+          12
+        ],
+        [
+          "mismatch",
+          14
+        ],
+        [
+          "mismatch",
+          16
+        ],
+        [
+          "mismatch",
+          18
+        ],
+        [
+          "unknown",
+          1
+        ],
+        [
+          "unknown",
+          3
+        ],
+        [
+          "unknown",
+          5
+        ],
+        [
+          "unknown",
+          7
+        ],
+        [
+          "unknown",
+          9
+        ],
+        [
+          "unknown",
+          11
+        ],
+        [
+          "unknown",
+          13
+        ],
+        [
+          "unknown",
+          15
+        ],
+        [
+          "unknown",
+          17
+        ],
+        [
+          "unknown",
+          19
+        ],
+        [
+          "unknown",
+          0.5
+        ],
+        [
+          "unknown",
+          2.5
+        ],
+        [
+          "unknown",
+          4.5
+        ],
+        [
+          "unknown",
+          6.5
+        ],
+        [
+          "unknown",
+          8.5
+        ],
+        [
+          "unknown",
+          10.5
+        ],
+        [
+          "unknown",
+          12.5
+        ],
+        [
+          "unknown",
+          14.5
+        ],
+        [
+          "unknown",
+          16.5
+        ],
+        [
+          "unknown",
+          18.5
+        ]
+      ],
+      "expect": "unknown"
+    }
   ],
   "reducerComment": "리듀서 trace 층. 순수 함수 표(votes·verdicts)는 산술만 맞추므로, 리듀서가 호출 순서를 틀리거나 offRouteAxes를 잃어도 통과한다. 이 층은 guideStep을 실제로 돌려 phase와 축 latch를 비교한다. ⚠ fixes는 경계만 적고 소비자가 1초 간격으로 보간한다. 보간 규칙: 첫 fix는 그 t에 그대로 내보내고, 이후 각 구간 (A,B)에 대해 t=A.t+1..B.t의 정수 초마다 along·lateral만 선형 보간하며 acc는 B의 값을 쓴다. ⚠ fix에 방위 필드가 없는 것 자체가 계약이다 — 관측은 리듀서 내부 유도기가 궤적에서 만들고 플랫폼은 주입할 수 없다(spec §2.9). 경로는 fixes의 along을 진행거리(m)로 쓰는 남→북 직선이다.",
   "reducer": [
     {
       "name": "경로 위 역주행은 방위 축이 확정한다",
-      "steps": [{ "len": 400, "desc": "북진" }],
+      "steps": [
+        {
+          "len": 400,
+          "desc": "북진"
+        }
+      ],
       "fixes": [
-        { "t": 0, "along": 20, "lateral": 0, "acc": 8 },
-        { "t": 40, "along": 68, "lateral": 0, "acc": 8 },
-        { "t": 90, "along": 8, "lateral": 0, "acc": 8 }
+        {
+          "t": 0,
+          "along": 20,
+          "lateral": 0,
+          "acc": 8
+        },
+        {
+          "t": 40,
+          "along": 68,
+          "lateral": 0,
+          "acc": 8
+        },
+        {
+          "t": 90,
+          "along": 8,
+          "lateral": 0,
+          "acc": 8
+        }
       ],
       "expectPhaseAtEnd": "offRoute",
-      "expectAxes": { "distance": false, "course": true }
+      "expectAxes": {
+        "distance": false,
+        "course": true
+      }
     },
     {
       "name": "fix 이력이 기저선에 못 미치면 축이 침묵한다",
-      "steps": [{ "len": 400, "desc": "북진" }],
+      "steps": [
+        {
+          "len": 400,
+          "desc": "북진"
+        }
+      ],
       "fixes": [
-        { "t": 0, "along": 20, "lateral": 0, "acc": 8 },
-        { "t": 7, "along": 11.6, "lateral": 0, "acc": 8 }
+        {
+          "t": 0,
+          "along": 20,
+          "lateral": 0,
+          "acc": 8
+        },
+        {
+          "t": 7,
+          "along": 11.6,
+          "lateral": 0,
+          "acc": 8
+        }
       ],
       "expectPhaseAtEnd": "following",
-      "expectAxes": { "distance": false, "course": false }
+      "expectAxes": {
+        "distance": false,
+        "course": false
+      }
+    }
+  ],
+  "derivationComment": "유도기 산술 동조 케이스(웹 course-derivation.test.ts ↔ Kit CourseDerivationTests). fixes를 순서대로 먹인 뒤 **마지막으로 방출된 관측**을 단언한다(expect null = 관측이 하나도 없었음). bearingMin/Max 비교는 ((b+540)%360)-180 정규화로 한다. 좌표는 위도 1도=111,320m 산식으로 박은 리터럴이다 — 두 플랫폼이 같은 값을 읽어야 하므로 코드 생성 금지.",
+  "derivation": [
+    {
+      "name": "북 14m 직진 — 방위 0 부근, U 하한",
+      "fixes": [
+        {
+          "lat": 37.5365,
+          "lng": 127.1469,
+          "at": 0
+        },
+        {
+          "lat": 37.53650898,
+          "lng": 127.1469,
+          "at": 1
+        },
+        {
+          "lat": 37.53651797,
+          "lng": 127.1469,
+          "at": 2
+        },
+        {
+          "lat": 37.53652695,
+          "lng": 127.1469,
+          "at": 3
+        },
+        {
+          "lat": 37.53653593,
+          "lng": 127.1469,
+          "at": 4
+        },
+        {
+          "lat": 37.53654492,
+          "lng": 127.1469,
+          "at": 5
+        },
+        {
+          "lat": 37.5365539,
+          "lng": 127.1469,
+          "at": 6
+        },
+        {
+          "lat": 37.53656288,
+          "lng": 127.1469,
+          "at": 7
+        },
+        {
+          "lat": 37.53657186,
+          "lng": 127.1469,
+          "at": 8
+        },
+        {
+          "lat": 37.53658085,
+          "lng": 127.1469,
+          "at": 9
+        },
+        {
+          "lat": 37.53658983,
+          "lng": 127.1469,
+          "at": 10
+        },
+        {
+          "lat": 37.53659881,
+          "lng": 127.1469,
+          "at": 11
+        },
+        {
+          "lat": 37.5366078,
+          "lng": 127.1469,
+          "at": 12
+        },
+        {
+          "lat": 37.53661678,
+          "lng": 127.1469,
+          "at": 13
+        },
+        {
+          "lat": 37.53662576,
+          "lng": 127.1469,
+          "at": 14
+        }
+      ],
+      "expect": {
+        "bearingMin": -1.5,
+        "bearingMax": 1.5,
+        "uMin": 7.99,
+        "uMax": 8.01
+      }
+    },
+    {
+      "name": "굽은 사슬(동 8m 후 북 8m) — U 팽창",
+      "fixes": [
+        {
+          "lat": 37.5365,
+          "lng": 127.1469,
+          "at": 0
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14691133,
+          "at": 1
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14692266,
+          "at": 2
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14693399,
+          "at": 3
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14694531,
+          "at": 4
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14695664,
+          "at": 5
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14696797,
+          "at": 6
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.1469793,
+          "at": 7
+        },
+        {
+          "lat": 37.5365,
+          "lng": 127.14699063,
+          "at": 8
+        },
+        {
+          "lat": 37.53650898,
+          "lng": 127.14699063,
+          "at": 9
+        },
+        {
+          "lat": 37.53651797,
+          "lng": 127.14699063,
+          "at": 10
+        },
+        {
+          "lat": 37.53652695,
+          "lng": 127.14699063,
+          "at": 11
+        },
+        {
+          "lat": 37.53653593,
+          "lng": 127.14699063,
+          "at": 12
+        },
+        {
+          "lat": 37.53654492,
+          "lng": 127.14699063,
+          "at": 13
+        },
+        {
+          "lat": 37.5365539,
+          "lng": 127.14699063,
+          "at": 14
+        },
+        {
+          "lat": 37.53656288,
+          "lng": 127.14699063,
+          "at": 15
+        },
+        {
+          "lat": 37.53657186,
+          "lng": 127.14699063,
+          "at": 16
+        }
+      ],
+      "expect": {
+        "bearingMin": 30,
+        "bearingMax": 60,
+        "uMin": 20,
+        "uMax": 45
+      }
+    },
+    {
+      "name": "기저선 미달(6m 직진)",
+      "fixes": [
+        {
+          "lat": 37.5365,
+          "lng": 127.1469,
+          "at": 0
+        },
+        {
+          "lat": 37.53650898,
+          "lng": 127.1469,
+          "at": 1
+        },
+        {
+          "lat": 37.53651797,
+          "lng": 127.1469,
+          "at": 2
+        },
+        {
+          "lat": 37.53652695,
+          "lng": 127.1469,
+          "at": 3
+        },
+        {
+          "lat": 37.53653593,
+          "lng": 127.1469,
+          "at": 4
+        },
+        {
+          "lat": 37.53654492,
+          "lng": 127.1469,
+          "at": 5
+        },
+        {
+          "lat": 37.5365539,
+          "lng": 127.1469,
+          "at": 6
+        }
+      ],
+      "expect": null
     }
   ]
 }

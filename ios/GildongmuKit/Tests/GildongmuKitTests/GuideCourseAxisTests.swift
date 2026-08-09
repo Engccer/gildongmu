@@ -8,10 +8,9 @@ import Testing
 /// 갈리면 가드가 통과하면서 두 플랫폼이 다르게 동작한다. RouteGuideTests 선례 동형).
 private struct VoteCase: Decodable {
     let name: String
-    let course: Double
-    let courseAcc: Double
+    let bearing: Double?
+    let uncertainty: Double
     let d: Double
-    let fixAcc: Double
     let expect: String
 }
 
@@ -66,10 +65,8 @@ struct GuideCourseAxisTests {
         // ⚠ 공회전 방지: 키 이름이 바뀌거나 배열이 비면 루프가 0회 돌고 조용히 통과한다.
         #expect(votes.count >= 7)
         for c in votes {
-            let got = courseVote(
-                CourseObservation(state: .valid(course: c.course), accuracyDeg: c.courseAcc),
-                poly: straight.polyline, d: c.d, fixAccuracy: c.fixAcc
-            )
+            let obs = c.bearing.map { DerivedCourse(bearing: $0, uncertaintyDeg: c.uncertainty) }
+            let got = courseVote(obs, poly: straight.polyline, d: c.d)
             #expect(got.rawValue == c.expect, "\(c.name): got \(got.rawValue) want \(c.expect)")
         }
     }
@@ -96,11 +93,8 @@ struct GuideCourseAxisTests {
         }
     }
 
-    @Test("비활성 관측은 축을 끈다")
-    func inactiveObservationDisablesAxis() {
-        #expect(
-            courseVote(inactiveCourse, poly: straight.polyline, d: 100, fixAccuracy: 10)
-                == .unknown
-        )
+    @Test("관측 없음은 unknown이다")
+    func nilObservationIsUnknown() {
+        #expect(courseVote(nil, poly: straight.polyline, d: 100) == .unknown)
     }
 }
