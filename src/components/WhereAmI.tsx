@@ -6,6 +6,7 @@ import type { WhereAmI as WhereAmIData } from "@/lib/types";
 import { buildLocationNarrative } from "@/lib/where-am-i";
 import { formatDistance } from "@/lib/format";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
+import { useManualLocationLabel } from "@/hooks/useManualLocation";
 import { NearbyPanelShell } from "@/components/NearbyPanelShell";
 import { nearbyLiveMessage } from "@/lib/nearby-live";
 
@@ -39,19 +40,30 @@ export function WhereAmI() {
   // done 통지는 헤딩 포커스(ready+asOf 텍스트)가 담당 — 접근성 헌장 §5(재포커스
   // 라벨이 곧 상태 신호, 별도 announce 중복 금지).
   const live = nearbyLiveMessage(status, t, tCommon, () => "");
+  // 수동 위치일 때 "현재 위치"라는 표현을 쓰지 않는다(전역 제약). 좌표는 이미
+  // 관문(useNearbyFetch)이 수동으로 바꿔 주는데 문구만 GPS를 말하면, **자기가 지금
+  // 어디 있나를 묻는 전용 화면**에서 지정한 좌표가 GPS 판정처럼 낭독되어 사용자는
+  // GPS가 고쳐졌다고 믿는다. 판정선은 표시줄과 같은 훅이 소유한다.
+  const manualLabel = useManualLocationLabel();
 
   const narrative =
     status.kind === "done" ? buildLocationNarrative(status.data.data) : null;
 
   return (
     <NearbyPanelShell
-      triggerLabel={status.kind === "done" ? t("refresh") : t("button")}
+      triggerLabel={
+        status.kind === "done" ? t("refresh") : manualLabel ? t("manualButton") : t("button")
+      }
       onTrigger={() => load(status.kind === "done")}
       triggerRef={triggerRef}
       busy={busy}
       live={live}
       open={status.kind === "done" && narrative !== null}
-      heading={status.kind === "done" ? `${t("ready")} ${t("asOf", { time: status.at })}` : ""}
+      heading={
+        status.kind === "done"
+          ? `${manualLabel ?? t("ready")} ${t("asOf", { time: status.at })}`
+          : ""
+      }
       headingRef={headingRef}
       onClose={() => close()}
       closeLabel={tActions("close")}

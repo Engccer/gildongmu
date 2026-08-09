@@ -20,6 +20,10 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { awaitGeolocation } from "@/lib/geolocation";
+import {
+  __resetManualLocationForTest,
+  setManualLocation,
+} from "@/lib/manual-location-store";
 import { WhereAmI } from "../WhereAmI";
 import { describeNearbyContract, KOREA_COORDS } from "./nearby-contract";
 
@@ -118,5 +122,42 @@ describe("WhereAmI 도메인 계약", () => {
     expect(container.textContent).toContain("whereAmI.narrative.landmarksLead");
     expect(container.textContent).toContain("whereAmI.narrative.landmarkItem");
     expect(container.textContent).toContain("whereAmI.narrative.landmarksTail");
+  });
+
+  // I2: 자기가 지금 어디 있나를 묻는 **전용** 화면이라, 지정한 좌표를 GPS 판정처럼
+  // 낭독하면 사용자는 GPS가 고쳐졌다고 믿는다. 좌표는 이미 수동인데 문구만 GPS였다.
+  describe("수동 위치일 때", () => {
+    afterEach(() => {
+      localStorage.clear();
+      __resetManualLocationForTest();
+    });
+
+    function setManual() {
+      setManualLocation({
+        label: "길동 카페", lat: KOREA_COORDS.lat, lng: KOREA_COORDS.lng,
+        origin: { lat: KOREA_COORDS.lat, lng: KOREA_COORDS.lng, accuracy: 10, at: 1 },
+        setAt: 1,
+      });
+    }
+
+    it("트리거 이름이 '현재 위치 확인'이 아니라 수동 전용 문구다", () => {
+      setManual();
+      render(<WhereAmI />);
+      expect(screen.getByRole("button", { name: "whereAmI.manualButton" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "whereAmI.button" })).toBeNull();
+    });
+
+    it("결과 헤딩이 지정한 위치 라벨을 말한다", async () => {
+      setManual();
+      fetchMock.mockResolvedValue(jsonResponse({ data }));
+      render(<WhereAmI />);
+      fireEvent.click(screen.getByRole("button", { name: "whereAmI.manualButton" }));
+
+      const heading = await screen.findByRole("heading", { level: 3 });
+      expect(heading.textContent).toContain("manualLocation.manual");
+      expect(heading.textContent).not.toContain("whereAmI.ready");
+      // as-of 시각은 그대로 병기한다(신선도 표기는 출처와 다른 축).
+      expect(heading.textContent).toContain("whereAmI.asOf");
+    });
   });
 });
