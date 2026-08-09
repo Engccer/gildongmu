@@ -158,11 +158,12 @@ async function fetchKakaoCategory(
 export async function findSurroundingsNear(
   lat: number,
   lng: number,
-  opts?: { groups?: string[]; radiusMeters?: number },
+  opts?: { groups?: string[]; radiusMeters?: number; cap?: number },
 ): Promise<SurroundingPlace[]> {
   if (!env.KAKAO_REST_API_KEY) return [];
   const codes = opts?.groups ?? DEFAULT_CATEGORY_GROUPS;
   const radius = opts?.radiusMeters ?? RADIUS_METERS;
+  const cap = opts?.cap ?? SERVER_CAP;
   const settled = await Promise.allSettled(
     codes.map((c) => fetchKakaoCategory(c, lat, lng, radius)),
   );
@@ -180,5 +181,5 @@ export async function findSurroundingsNear(
     );
     throw new Error(`주변 조회 실패: ${firstRej?.reason ?? "모든 카테고리 실패"}`);
   }
-  return rankSurroundings(lists, lat, lng, SERVER_CAP);
+  return rankSurroundings(lists, lat, lng, cap);
 }

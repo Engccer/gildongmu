@@ -1,4 +1,8 @@
-import { coordToAddress, coordToRegion } from "./providers/kakao-address";
+import {
+  coordToAddress,
+  coordToRegion,
+  coordToRegionNames,
+} from "./providers/kakao-address";
 import { findSurroundingsNear, ALL_CATEGORY_GROUPS } from "./providers/surroundings";
 import { resolveRoadAxis } from "./road-axis-service";
 import { parseRoadAddress, isOddSide } from "./road-address";
@@ -26,6 +30,13 @@ import {
 /** spec §8: "한눈에 보이는" 범위. 넓히면 "옆에 있다"는 진술이 약해진다. */
 const RADIUS_M = 150;
 
+/**
+ * 후보 상한. 둘러보기 SERVER_CAP(50)을 물려받으면 밀집 상권에서 **분류 전에**
+ * 상류가 잘라 "건물 너머" 같은 큰 묶음이 조용히 축소된다(spec 판정 9 "다 말한다"
+ * 위반). 이론상 최대 18종×15건=270이지만 150m 반경에선 이 값이면 실질 무절단.
+ */
+const SCENE_CAP = 150;
+
 export interface SceneItem {
   name: string;
   distanceMeters: number;
@@ -51,12 +62,16 @@ export interface Scene {
 const BUCKET_ORDER: SurroundingBucket[] = ["left", "right", "across", "beyond"];
 
 export async function assembleScene(lat: number, lng: number): Promise<Scene> {
-  const [addr, region, places] = await Promise.all([
+  const [addr, region, regionNames, places] = await Promise.all([
     coordToAddress({ lat, lng }).catch(() => null),
     coordToRegion({ lat, lng }).catch(() => null),
+    // juso 키워드용 시도·시군구는 표시 문자열 공백 분할이 아니라 조각으로 받는다
+    // — 토큰 수가 지역마다 달라 조용히 어긋난다(kakao-address.ts 경고 주석 정본).
+    coordToRegionNames({ lat, lng }),
     findSurroundingsNear(lat, lng, {
       groups: ALL_CATEGORY_GROUPS,
       radiusMeters: RADIUS_M,
+      cap: SCENE_CAP,
     }),
   ]);
 
@@ -65,14 +80,13 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
     [region, roadAddress ?? addr?.jibunAddress].filter(Boolean).join(", ") || null;
   const anchor = roadAddress ? parseRoadAddress(roadAddress) : null;
 
-  // 행정동 문자열의 마지막 토큰(동)을 떼면 juso 키워드용 시군구가 된다.
+  // 세종은 city가 빈 문자열 — 시도만으로 juso 키워드가 성립한다.
+  const jusoRegion = regionNames
+    ? [regionNames.province, regionNames.city].filter(Boolean).join(" ")
+    : null;
   const axis =
-    anchor && region
-      ? await resolveRoadAxis(
-          region.split(" ").slice(0, -1).join(" "),
-          anchor.road,
-          { lat, lng },
-        )
+    anchor && jusoRegion
+      ? await resolveRoadAxis(jusoRegion, anchor.road, { lat, lng })
       : null;
 
   const toItem = (p: {

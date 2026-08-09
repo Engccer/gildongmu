@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const coordToAddress = vi.fn();
 const coordToRegion = vi.fn();
+const coordToRegionNames = vi.fn();
 const findSurroundingsNear = vi.fn();
 const resolveRoadAxis = vi.fn();
 
 vi.mock("../providers/kakao-address", () => ({
   coordToAddress: (...a: unknown[]) => coordToAddress(...a),
   coordToRegion: (...a: unknown[]) => coordToRegion(...a),
+  coordToRegionNames: (...a: unknown[]) => coordToRegionNames(...a),
 }));
 vi.mock("../providers/surroundings", () => ({
   findSurroundingsNear: (...a: unknown[]) => findSurroundingsNear(...a),
@@ -33,6 +35,8 @@ beforeEach(() => {
     display: "서울특별시 강동구 명일로24길 25",
   });
   coordToRegion.mockResolvedValue("서울특별시 강동구 길동");
+  coordToRegionNames.mockReset();
+  coordToRegionNames.mockResolvedValue({ province: "서울특별시", city: "강동구" });
   resolveRoadAxis.mockResolvedValue({
     ux: 1,
     uy: 0,
@@ -86,6 +90,14 @@ describe("assembleScene", () => {
     const scene = await assembleScene(37.5415, 127.1495);
     expect(scene.frame).toBe("compass");
     expect(scene.groups.flatMap((g) => g.items)).toHaveLength(2);
+  });
+
+  it("juso 키워드는 시도·시군구 조각으로 조립한다 — 표시 문자열 분할 금지", async () => {
+    await assembleScene(37.5415, 127.1495);
+    expect(resolveRoadAxis).toHaveBeenCalledWith("서울특별시 강동구", "명일로24길", {
+      lat: 37.5415,
+      lng: 127.1495,
+    });
   });
 
   it("도로명주소를 못 얻어도 방위로 물러난다", async () => {
