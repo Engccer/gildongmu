@@ -11,6 +11,10 @@
 
 ## 2026-08-10
 
+### 도착지 부근 상황 재구성 M1 — iOS 이식 (실보행·실기기 VO 판정 대기)
+계산이 전부 서버 라우트에 있어 Swift 계산 미러 없이 소비 계층만 이식했다: Kit에 서버 JSON 1:1 Codable 모델+엔드포인트(`NearbyService.surroundingsScene`, fixture는 prod 실캡처 entrance·compass 2종), 앱에 임베드 섹션(`SurroundingsSceneSection` — `NearbyLoadCore` `.fixed` 앵커 + 묶음별 `RevealWindow`, 통지는 Announcement 없이 포커스·라벨 채널만), 진입점 2곳(WhereAmI 정위 좌표·추적 시트 목적지 좌표, `BeaconModel.dest` 읽기 노출). 시뮬레이터 prod 실호출로 트리거→묶음 헤딩→더 보기→닫기 전 경로 검증.
+편승 수정: 임박 큐의 동적 i18n 키 조립을 린터 계약대로 리터럴 switch로 교체(키 누락 무증상 결함 차단). plan `docs/superpowers/plans/2026-08-10-surroundings-scene-ios-port.md`.
+
 ### 도착지 부근 상황 재구성 M1 — 웹 + 계산 코어 (실보행 판정 대기)
 "여기가 맞나"를 확인하는 요청형 기능. 도로명주소 홀짝(시행령 제7조④)과 juso 건물 목록 최소제곱 축 복원으로 **입구를 마주 본 기준의 왼쪽·오른쪽·맞은편·건물 너머** 묶음을 조립한다(추가 데이터 소스 0). 축을 못 세우면 절대 방위로 물러난다(3-state). 진입점은 "내 주변 → 현재 위치 확인" 결과 아래와 안내 시트 두 곳, 앵커는 각각 정위에 쓴 좌표(수동 위치 자동 반영)·목적지 좌표.
 카카오 카테고리 18종 전부를 받도록 provider를 인자화했고(둘러보기 기본 10종 불변), 임베드 UI는 live region 없이 포커스·라벨 채널로 통지한다(DistanceBeacon 단일 live 계약이 강제).
