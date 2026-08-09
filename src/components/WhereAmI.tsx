@@ -8,6 +8,7 @@ import { formatDistance } from "@/lib/format";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
 import { useManualLocationLabel } from "@/hooks/useManualLocation";
 import { NearbyPanelShell } from "@/components/NearbyPanelShell";
+import { SurroundingsScene } from "@/components/SurroundingsScene";
 import { nearbyLiveMessage } from "@/lib/nearby-live";
 
 /** done 데이터 — 정위 결과 한 필드. */
@@ -112,6 +113,12 @@ export function WhereAmI() {
               ))}
               {t("narrative.landmarksTail")}
             </p>
+          )}
+
+          {/* M1 부근 재구성 — 앵커는 이 정위에 실제로 쓴 좌표(수동 위치 자동 반영).
+              기준점 산문(동서남북 6곳)과 다른 층: 입구 기준 좌우 묶음 + 18종 단서. */}
+          {status.kind === "done" && (
+            <SurroundingsScene anchor={status.coords} />
           )}
         </>
       )}
