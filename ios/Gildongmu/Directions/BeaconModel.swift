@@ -886,24 +886,15 @@ final class BeaconModel {
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
 
-        // 방위 관측은 기존 품질 게이트(`courseStep`) 결과와 **원본 불확실성**을 함께
-        // 넘긴다. ⚠ 둘 중 하나만 넘기면 이 축이 통과권 방식으로 되돌아간다 —
-        // courseStep의 45° 게이트는 방향 어절을 생략할지 정하는 기준이지 이탈을
-        // 증명하는 기준이 아니다(spec §2.1).
-        let courseObs = CourseObservation(
-            state: courseStep(
-                course: fix.course, courseAccuracy: fix.courseAccuracy,
-                speed: fix.speed, motion: motion, ageSeconds: age
-            ),
-            accuracyDeg: fix.courseAccuracy
-        )
+        // 방위 관측은 넘기지 않는다 — 리듀서 내부 유도기가 fix 이력에서 직접 만든다
+        // (spec §2.9 재설계. 기기 course는 보행 속도에서 방위를 제공하지 않는다 —
+        // 실사용 로그 courseAcc 중위 83°, §3.0.1).
         let out = guideStep(
             state: state,
             fix: GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy),
             route: route,
             now: now,
-            tuning: tuning,
-            course: courseObs
+            tuning: tuning
         )
         guideState = out.state
 
@@ -927,15 +918,16 @@ final class BeaconModel {
                 + "event=\(out.event.map { "\($0)" } ?? "-")"
                 // ⚠ 판정 결과를 남기는 것이 이 로그의 핵심이다. 실보행에서 "왜 안
                 // 잡혔나"·"왜 헛경고가 났나"를 위 원시값과 함께 되짚어야 파라미터를
-                // 정할 수 있다(spec §7 3단계).
-                + " courseState=\(courseObs.state)"
+                // 정할 수 있다(spec §7 3단계). 기기 course·courseAcc 원시 필드는 위에
+                // 그대로 남긴다 — 유도 방위와 기기 방위를 같은 로그에서 대조하는 것이
+                // 다음 검증 보행의 분석 축이다.
+                + " derived=\(out.derivedCourse.map { String(format: "%.1f±%.1f", $0.bearing, $0.uncertaintyDeg) } ?? "-")"
                 + " perp=\(out.perpMeters.map { String(format: "%.1f", $0) } ?? "-")"
                 + " vote=\(out.courseVote?.rawValue ?? "-")"
                 + " axes=d:\(out.state.offRouteAxes.distance)/c:\(out.state.offRouteAxes.course)"
                 // ⚠ 표 개수만으로는 "표가 없어서 unknown"과 "회색지대라서 unknown"이
                 // 구분되지 않는다. 창의 분포를 그대로 남긴다 — 이 구분이 §6 상수를
-                // 정하는 핵심 질문이다(courseStep이 45°까지 통과시키므로 mismatch
-                // 조건이 최악의 경우 best > 105°가 되고, 그러면 회색지대가 창을 덮는다).
+                // 정하는 핵심 질문이다.
                 + " votes=m:\(voteCounts.mismatch)/k:\(voteCounts.match)/u:\(voteCounts.unknown)"
                 + " verdict=\(courseAxisVerdict(out.state.courseVotes).rawValue)"
         )
