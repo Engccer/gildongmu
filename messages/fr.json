@@ -709,7 +709,15 @@
       "hospital": "hôpital",
       "mart": "supermarché",
       "public": "service public",
-      "attraction": "attraction"
+      "attraction": "attraction",
+      "kindergarten": "crèche ou école maternelle",
+      "school": "école",
+      "academy": "institut privé",
+      "parking": "parking",
+      "gasStation": "station-service",
+      "culture": "établissement culturel",
+      "realEstate": "agence immobilière",
+      "lodging": "hébergement"
     },
     "direction": {
       "n": "nord",
@@ -806,7 +814,15 @@
       "hospital": "hôpital",
       "mart": "supermarché",
       "public": "bureau public",
-      "attraction": "attraction"
+      "attraction": "attraction",
+      "kindergarten": "crèche ou école maternelle",
+      "school": "école",
+      "academy": "institut privé",
+      "parking": "parking",
+      "gasStation": "station-service",
+      "culture": "établissement culturel",
+      "realEstate": "agence immobilière",
+      "lodging": "hébergement"
     }
   },
   "barrierFreeInfo": {

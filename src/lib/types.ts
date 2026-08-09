@@ -889,7 +889,15 @@ export type SurroundingCategory =
   | "hospital"
   | "mart"
   | "public"
-  | "attraction";
+  | "attraction"
+  | "kindergarten"
+  | "school"
+  | "academy"
+  | "parking"
+  | "gasStation"
+  | "culture"
+  | "realEstate"
+  | "lodging";
 
 /**
  * 내 주변 둘러보기 결과 1건 — 카카오 카테고리 검색 좌표 근접.
@@ -907,6 +915,8 @@ export interface SurroundingPlace {
   lng: number;
   phone?: string;
   link?: string;
+  /** 도로명주소. M1이 "같은 도로인가"·"맞은편인가" 판정에 쓴다. 없으면 null. */
+  roadAddress: string | null;
 }
 
 /**

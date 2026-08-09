@@ -709,7 +709,15 @@
       "hospital": "hospital",
       "mart": "supermarket",
       "public": "public office",
-      "attraction": "attraction"
+      "attraction": "attraction",
+      "kindergarten": "daycare or kindergarten",
+      "school": "school",
+      "academy": "private academy",
+      "parking": "parking lot",
+      "gasStation": "gas station",
+      "culture": "cultural facility",
+      "realEstate": "real estate agency",
+      "lodging": "lodging"
     },
     "direction": {
       "n": "north",
@@ -806,7 +814,15 @@
       "hospital": "hospital",
       "mart": "mart",
       "public": "public office",
-      "attraction": "attraction"
+      "attraction": "attraction",
+      "kindergarten": "daycare or kindergarten",
+      "school": "school",
+      "academy": "private academy",
+      "parking": "parking lot",
+      "gasStation": "gas station",
+      "culture": "cultural facility",
+      "realEstate": "real estate agency",
+      "lodging": "lodging"
     }
   },
   "barrierFreeInfo": {

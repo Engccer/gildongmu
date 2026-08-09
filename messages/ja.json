@@ -709,7 +709,15 @@
       "hospital": "病院",
       "mart": "スーパー",
       "public": "公共機関",
-      "attraction": "観光名所"
+      "attraction": "観光名所",
+      "kindergarten": "保育園・幼稚園",
+      "school": "学校",
+      "academy": "塾",
+      "parking": "駐車場",
+      "gasStation": "ガソリンスタンド",
+      "culture": "文化施設",
+      "realEstate": "不動産",
+      "lodging": "宿泊施設"
     },
     "direction": {
       "n": "北",
@@ -806,7 +814,15 @@
       "hospital": "病院",
       "mart": "スーパー",
       "public": "公共機関",
-      "attraction": "観光名所"
+      "attraction": "観光名所",
+      "kindergarten": "保育園・幼稚園",
+      "school": "学校",
+      "academy": "塾",
+      "parking": "駐車場",
+      "gasStation": "ガソリンスタンド",
+      "culture": "文化施設",
+      "realEstate": "不動産",
+      "lodging": "宿泊施設"
     }
   },
   "barrierFreeInfo": {
