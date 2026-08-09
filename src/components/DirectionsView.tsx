@@ -589,11 +589,23 @@ export function DirectionsView({
   // 클릭이 무시돼(runQuery 첫 줄 가드) 스크린 리더 사용자가 멈춤으로 오인한다.
   const busy =
     phase.kind === "locating" || phase.kind === "loading" || stepFreeBusy;
-  const phaseMessage =
+  // settled 요약 뒤에 "실시간 안내는 실제 위치가 필요합니다"를 붙인다(originSource가
+  // manual일 때만) — 조회 완료 시 이 문장 하나가 발화되고 곧이어 첫 성공 heading으로
+  // 포커스가 강제 이동하므로(§ requestAnimationFrame), 별도 정적 텍스트로 두면 SR
+  // 사용자가 그 자동 포커스 점프를 만드는 바로 그 시나리오(수동 위치 + 최소 1수단
+  // 성공)에서 이 문장을 절대 못 듣는다(리뷰 발견). 이 뷰의 단일 polite 채널에
+  // 합쳐야 포커스가 어디로 튀든 발화 큐에 남는다.
+  const settledSummary =
     phase.kind === "settled"
       ? phase.successCount > 0
         ? t("readySummary", { count: phase.successCount })
         : t("allFailed")
+      : "";
+  const phaseMessage =
+    phase.kind === "settled"
+      ? results?.originSource === "manual"
+        ? `${settledSummary} ${tManual("guideNeedsRealLocation")}`
+        : settledSummary
       : phase.kind === "idle"
         ? ""
         : phase.kind === "outOfCoverage"
@@ -646,10 +658,6 @@ export function DirectionsView({
     !walkGuideStartable &&
     !carGuideStartable &&
     !transitGuideStartable;
-  // 실시간 안내 진입점이 하나라도 화면에 있는가 — 아래 "실시간 안내는 실제 위치가
-  // 필요합니다" 안내는 그 진입점 근처에서만 의미가 있다(잉여 방지).
-  const anyGuideStartable =
-    walkGuideStartable || carGuideStartable || transitGuideStartable || briefFallback;
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -771,17 +779,14 @@ export function DirectionsView({
         {t("submit")}
       </button>
 
-      {/* 이 뷰의 유일한 live region. 수단별 개별 통지 금지, 합산 1문장 */}
+      {/* 이 뷰의 유일한 live region. 수단별 개별 통지 금지, 합산 1문장 — 수동 위치
+          기준 조회는 이 문장 안에 "실시간 안내는 실제 위치가 필요합니다"까지 실려
+          발화된다(phaseMessage). 별도 정적 텍스트를 두지 않는다 — 그 시나리오가
+          곧 자동 포커스 이동(첫 성공 heading) 조건과 겹쳐 놓치고, 두 곳에 같은
+          문장을 두면 회전자에서 이중 낭독된다. */}
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
         {liveMessage}
       </p>
-
-      {/* 이 브리핑은 지정 위치 기준이지만 실시간 안내 시작은 실좌표를 다시
-          조회한다 — 두 출발지가 달라질 수 있음을 미리 말한다(실패 후 원인 모를
-          침묵 대신). 진입점이 하나도 없으면 잉여이므로 anyGuideStartable로 가른다. */}
-      {results && results.originSource === "manual" && anyGuideStartable && (
-        <p className="mt-1 text-xs text-muted">{tManual("guideNeedsRealLocation")}</p>
-      )}
 
       {/* 간략 폴백(§3.1): 시작 가능한 수단 안내가 하나도 없을 때만 선두 노출 —
           경로를 못 찾은 상황일수록 방향 감각이 더 필요하다(기존 근거 승계). */}
