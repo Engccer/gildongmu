@@ -21,8 +21,9 @@ afterEach(cleanup);
  * onBack이 먼저 실행). 고친 지점은 NearbyHub의 리스너 활성 조건에
  * `manualPickerOpen`을 추가한 것 — 모달이 열려 있으면 허브 Esc 자체를 비활성화한다.
  *
- * Important: 모달이 화면을 점유하는 동안엔 그 밑 화면(NearbyHub)의 live region도
- * 비워야 두 채널이 동시에 발화하지 않는다.
+ * Important: 모달이 화면을 점유하는 동안엔 그 밑 화면(NearbyHub)의 live region이
+ * **갱신을 멈춰야** 두 채널이 동시에 발화하지 않는다. ⚠ 비우는 것은 답이 아니다 —
+ * `X → "" → X`가 닫는 순간 두 번째 발화를 만든다(최종 리뷰 I4).
  */
 function renderHub(locationNotice = "") {
   const onBack = vi.fn();
@@ -77,23 +78,25 @@ describe("NearbyHub — 현재 위치 지정 모달 경합", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it("모달이 열리면 허브 자신의 live region은 비워진다(경합 방지)", () => {
-    renderHub("이동이 감지되어 지정한 위치를 해제했습니다");
-    const region = screen.getByText("이동이 감지되어 지정한 위치를 해제했습니다");
+  it("모달을 열고 닫는 동안 허브 live region 텍스트가 한 번도 바뀌지 않는다", async () => {
+    const notice = "이동이 감지되어 지정한 위치를 해제했습니다";
+    renderHub(notice);
+    const region = screen.getByText(notice);
+
+    // 문자 데이터 변경을 세면 "재발화"를 직접 관측할 수 있다 — aria-live는 내용
+    // 변경에 반응하므로 변경 0회가 곧 발화 0회다.
+    const changes: string[] = [];
+    const observer = new MutationObserver(() => changes.push(region.textContent ?? ""));
+    observer.observe(region, { childList: true, characterData: true, subtree: true });
 
     openPicker();
-
-    expect(region.textContent).toBe("");
-  });
-
-  it("모달을 닫으면 허브 live region의 통지가 다시 보인다", () => {
-    renderHub("이동이 감지되어 지정한 위치를 해제했습니다");
-    openPicker();
+    expect(region.textContent).toBe(notice);
 
     fireEvent.keyDown(window, { key: "Escape" });
+    expect(region.textContent).toBe(notice);
 
-    expect(
-      screen.getByText("이동이 감지되어 지정한 위치를 해제했습니다"),
-    ).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    observer.disconnect();
+    expect(changes).toEqual([]);
   });
 });

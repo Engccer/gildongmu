@@ -31,6 +31,7 @@ import {
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
+import { useFrozenValue } from "@/hooks/useFrozenValue";
 import {
   orderResultSections,
   combinedLiveMessage,
@@ -721,6 +722,8 @@ export function PlaceSearch({
               : t(p.key, p.values ?? {}),
           )
           .join(", ");
+  // 모달이 화면을 점유하는 동안 갱신을 멈춘다(아래 live region 주석이 근거).
+  const frozenLiveMessage = useFrozenValue(liveMessage, manualPickerOpen);
 
   // 길찾기 뷰가 열려 있으면 최우선 렌더(상세 위에도 쌓일 수 있음).
   const canShowDirections = canShowTransit || canBriefCarRoute || canShowWalk;
@@ -921,11 +924,13 @@ export function PlaceSearch({
         />
       )}
 
-      {/* "현재 위치 지정" 모달이 화면을 점유하는 동안은 비워 둔다 — 모달 자신의
-          live region과 동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가
-          뒤집힌다(NearbyHub의 같은 처리와 동형). */}
+      {/* "현재 위치 지정" 모달이 화면을 점유하는 동안은 **갱신을 멈춘다** — 모달
+          자신의 live region과 동시에 발화하면 스크린리더에서 한쪽이 잘리거나 순서가
+          뒤집힌다(NearbyHub의 같은 처리와 동형). ⚠ 비우면 안 된다: `X → "" → X`가
+          닫는 순간 두 번째 발화를 만들고, 그 시점은 포커스가 트리거로 복귀하며
+          결과 신호인 새 라벨이 낭독되는 자리라 경쟁자가 붙는다. */}
       <p aria-live="polite" role="status" className="mt-3 min-h-6 text-sm">
-        {manualPickerOpen ? "" : liveMessage}
+        {frozenLiveMessage}
       </p>
 
       {/* 결정론 내비 칩: [길찾기] [내 주변] — 홈의 기능 진입은 이 행 하나로 수렴. */}
