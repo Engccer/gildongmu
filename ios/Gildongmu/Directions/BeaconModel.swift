@@ -153,7 +153,8 @@ final class BeaconModel {
     private var toneState = ToneLayerState.initial
     /// 정지 판정 상태(도플러 3-state).
     private var motionState = MotionJudgeState.initial
-    private var dest: BeaconDest?
+    /// 추적 시트가 부근 재구성 앵커로 읽는다(M1). 쓰기는 여전히 모델 내부만.
+    private(set) var dest: BeaconDest?
     private let tones = BeaconTonePlayer()
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?

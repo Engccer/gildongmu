@@ -30,6 +30,9 @@ struct BeaconTrackingSheet: View {
         UserDefaults.standard.bool(forKey: BeaconTrackingSheet.screenHintDismissedKey)
 
     var body: some View {
+        // "더 보기" 가시화용 proxy(WhereAmIView 동형 래핑 — List는 화면 밖 행을
+        // AX 트리에서 컬링하므로 scrollTo 선행이 필요하다).
+        ScrollViewReader { proxy in
         List {
             Section {
                 Button(appLocalized("beacon.stop"), action: onStop)
@@ -107,6 +110,16 @@ struct BeaconTrackingSheet: View {
                 ))
                 .accessibilityAddTraits(.isHeader)
             }
+            // M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
+            // 이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). 컨트롤·상태
+            // 행 뒤 별도 Section: 결과가 펼쳐져도 중지 버튼~상태 행 묶음이 밀리지
+            // 않는다(걷는 중 탐색 비용, 웹 DistanceBeacon 말미 배치 미러).
+            if let dest = model.dest {
+                Section {
+                    SurroundingsSceneSection(
+                        anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
+                }
+            }
         }
         .task { await landStopFocus() }
         // 재조회 성공으로 버튼이 사라진 순간 커서를 중지 버튼으로(헌장 §5 이탈 방지).
@@ -114,6 +127,7 @@ struct BeaconTrackingSheet: View {
             guard !isOff, reroutePressed else { return }
             reroutePressed = false
             Task { await landStopFocus() }
+        }
         }
     }
 
