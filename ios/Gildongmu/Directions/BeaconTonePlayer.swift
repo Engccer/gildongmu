@@ -72,6 +72,8 @@ final class BeaconTonePlayer {
     /// 현재 재생 중인 톤. 톤은 전부 1초 미만이라 겹치면 두 소리가 섞여 어느 쪽도
     /// 식별되지 않는다 — 새 요청은 기존 재생을 끊고 교체한다(spec §4.4).
     private var playing: AVAudioPlayer?
+    /// 재생이 끝나기를 기다리는 세션 원복(아래 `endSession`). nil이면 대기 없음.
+    private var revertTask: Task<Void, Never>?
     private let notifHaptics = UINotificationFeedbackGenerator()
     private let impactHaptics = UIImpactFeedbackGenerator(style: .medium)
 
@@ -83,14 +85,41 @@ final class BeaconTonePlayer {
     /// ⚠ **첫 톤 재생 전에** 불러야 한다. 승격 실패는 전경에서 보이지 않으므로
     /// 시작 시점에 알려야 사용자가 잠그기 전에 안다.
     func beginSession() {
+        // ⚠ 미뤄 둔 원복을 반드시 취소한다. 남겨 두면 새 세션 한복판에서 `.ambient`가
+        //   적용되어 그 세션이 통째로 잠금 무음이 된다(원복은 **끝난** 세션의 몫이다).
+        cancelPendingRevert()
         dispatch(.sessionStarted)
     }
 
     /// 안내 세션 종료 — **우리가 승격했을 때만** `.ambient`로 원복한다.
-    /// ⚠ 정지 톤을 재생한 **뒤에** 부를 것. 먼저 원복하면 그 톤이 `.ambient`로 나가
-    /// 잠금 상태에서 들리지 않는다.
+    ///
+    /// ⚠ **재생 중인 톤이 끝난 뒤에 원복한다.** 종전에는 "정지 톤을 재생한 **뒤에**
+    /// 부르라"는 순서 규칙만 있었는데, 순서는 톤의 *시작*만 `.playback` 아래에 두고
+    /// 한 줄 뒤의 카테고리 변경은 여전히 재생 **도중**에 떨어진다. 백그라운드에서
+    /// `.ambient`는 정의상 무음이고 오디오 백그라운드 모드의 근거도 함께 사라지므로,
+    /// 2.2초짜리 도착 종은 거의 들리지 않은 채 잘린다(실사용 보고 2026-08-09:
+    /// "도착할 때 종소리가 안 난다"). 정지 톤(1.3초)도 같은 경로였다.
+    ///
+    /// 전경에서는 증상이 없다 — 그래서 이 결함은 손에 들고 시험할 때 보이지 않는다.
     func endSession() {
-        dispatch(.sessionEnded)
+        guard let player = playing, player.isPlaying else {
+            dispatch(.sessionEnded)
+            return
+        }
+        // 남은 재생 시간 + 여유. 톤은 전부 3초 미만이라 상한이 필요 없다.
+        let remaining = max(0, player.duration - player.currentTime) + 0.15
+        cancelPendingRevert()
+        revertTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.revertTask = nil
+            self?.dispatch(.sessionEnded)
+        }
+    }
+
+    private func cancelPendingRevert() {
+        revertTask?.cancel()
+        revertTask = nil
     }
 
     func play(_ tone: BeaconTone) {
@@ -131,13 +160,30 @@ final class BeaconTonePlayer {
         }
     }
 
-    /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐) + 세션 경계(시작·종료).
+    /// 진동 병행: 크리티컬 신호(이탈·도착·멀어짐·**결정 지점 임박**) + 세션 경계.
     /// **모든 햅틱은 그 사운드의 실측 파형에 동기한다**(위원장 판정 2026-08-03 —
     /// 단발 제너레이터는 긴 소리와 어긋난다). 타이밍·세기는 각 mp3의 10ms RMS
     /// 엔벨로프·온셋 분석에서 추출한 값이다. **소리 파일을 갈면 재분석해 갱신할 것.**
-    /// 나머지 톤(closer·tick·ahead)은 과잉 진동이라 두지 않는다.
+    /// 나머지 톤(closer·tick)은 과잉 진동이라 두지 않는다.
+    ///
+    /// ⚠ **햅틱은 백그라운드에서 나지 않는다(플랫폼 제약).** 주머니에 넣고 걷는 세션의
+    /// 유일한 채널은 소리이고, 진동은 화면을 켜 두었거나 손에 든 동안의 **보강**이다
+    /// (spec 2026-08-08 §"햅틱 백그라운드 확장: 플랫폼 미지원"). 그래서 어떤 신호도
+    /// 진동에만 싣지 않는다 — 임박 큐도 소리·문장·진동 셋을 함께 낸다.
     private func haptic(for tone: BeaconTone) {
         switch tone {
+        case .ahead:
+            // 결정 지점 10m 앞 트릴 — 실측 타격 7회(0.68초). 소리와 같은 리듬을 손에
+            // 얹어, 이어폰을 안 꽂았거나 소음 속에서도 "지금이다"가 전달되게 한다.
+            let trill: [(Double, Float)] = [
+                (0.04, 0.86), (0.13, 0.91), (0.21, 0.96), (0.28, 0.9),
+                (0.36, 0.31), (0.42, 0.72), (0.5, 1.0),
+            ]
+            playHaptic(
+                events: trill.map { transient(at: $0.0, intensity: $0.1, sharpness: 0.6) },
+                curves: [],
+                fallback: { self.impactHaptics.impactOccurred() }
+            )
         case .warning:
             // 단일 저음 burst 후 0.35초 감쇠(실측: RMS 1.0 → 0.32@0.1s → 0.19@0.2s).
             playHaptic(
@@ -270,6 +316,13 @@ final class BeaconTonePlayer {
     /// 정리는 여기서 한다(`deinit`은 nonisolated라 MainActor 상태에 접근할 수 없다).
     /// 멱등이므로 중지·화면 이탈 어디서 불러도 안전하다.
     func shutdown() {
+        // 미뤄 둔 원복이 있으면 **버리지 말고 지금 마친다.** 아래에서 재생을 전부 멈추므로
+        // 기다릴 소리가 없고, 여기서 취소만 하면 공유 세션이 `.playback`에 남아 화면을
+        // 떠난 뒤에도 무음 스위치를 무시한다(원복 자격은 여전히 우리에게 있다).
+        // ⚠ 플레이어·옵서버 정리보다 **앞**이다 — `dispatch`는 옵서버가 비어 있으면
+        //   다시 등록하고, 카테고리 적용은 `appliedCategory`를 되살린다.
+        cancelPendingRevert()
+        dispatch(.sessionEnded)
         for player in players.values { player.stop() }
         players = [:]
         playing = nil

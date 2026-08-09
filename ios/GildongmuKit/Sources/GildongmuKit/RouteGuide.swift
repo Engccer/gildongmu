@@ -8,6 +8,14 @@ import Foundation
 
 /// 다음 안내 전문을 낭독하는 잔여 거리 — 결정 지점 앞에서 들려야 한다(낭독 선행 원칙).
 public let announceAheadMeters = 40.0
+/// 결정 지점 **임박** 큐의 잔여 거리(m). 40m 전문 낭독이 *무엇을* 할지 알린다면 이 큐는
+/// *지금이다*를 알린다 — 위원장 실보행 피드백 2026-08-09: "모퉁이를 돌기 전, 횡단보도를
+/// 건너기 전 10m에서 사운드·진동·짧은 문장으로 알려 달라".
+///
+/// ⚠ **40m 낭독을 대체하지 않는다.** 보행 1.2m/s에서 10m는 8초라 "어디서 어느 길로
+/// 얼마나"를 담은 전문을 그 자리에 옮기면 들으면서 이미 모퉁이를 지난다. 옮긴 것은
+/// **`ahead` 톤 하나**다(종전에는 40m 전문에 붙어 "지금이다"를 못 말했다).
+public let imminentAheadMeters = 10.0
 public let advanceMarginBaseMeters = 15.0
 /// **기하를 모르는 세션의** 최종 접근 진입 거리(m). 기하를 아는 세션은 경로 종점까지
 /// 따라간다(아래 `arrivalToleranceMinMeters`) — 이 50m는 "경로 종점 = 목적지"를 전제한
@@ -43,6 +51,12 @@ public struct GuideTuning: Sendable, Equatable {
     /// 임박(선행) 낭독: 잔여 ≤ max(announceAheadM, v×announceAheadSpeedS)
     public var announceAheadM: Double
     public var announceAheadSpeedS: Double
+    /// 결정 지점 임박 큐 경계(m). nil=미사용.
+    ///
+    /// ⚠ **보행 전용이다.** 10m는 보행 8초이지만 15m/s 주행에서는 0.7초라 소리를 듣고
+    /// 반응할 시간이 없고, 애초에 자동차 안내는 실주행을 네이티브 앱에 위임한다.
+    /// 값도 문구도(`walkStepAction`이 도보 문형만 안다) 차량에서 재본 적이 없다.
+    public var imminentAheadM: Double?
     /// 원거리 예고 경계(m). nil=미사용(walk)
     public var farNoticeM: Double?
     public var windowAheadMinM: Double
@@ -69,7 +83,8 @@ public struct GuideTuning: Sendable, Equatable {
     public var courseAxisEnabled: Bool
 
     public static let walk = GuideTuning(
-        announceAheadM: announceAheadMeters, announceAheadSpeedS: 0, farNoticeM: nil,
+        announceAheadM: announceAheadMeters, announceAheadSpeedS: 0,
+        imminentAheadM: imminentAheadMeters, farNoticeM: nil,
         windowAheadMinM: windowAheadMinMeters, windowAheadSpeedS: 0,
         offRouteBaseM: offRouteBaseMeters, offRouteHoldS: offRouteHoldSeconds,
         offRouteTrend: false,
@@ -81,7 +96,9 @@ public struct GuideTuning: Sendable, Equatable {
 
     /// 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정.
     public static let car = GuideTuning(
-        announceAheadM: 120, announceAheadSpeedS: 15, farNoticeM: 1500,
+        announceAheadM: 120, announceAheadSpeedS: 15,
+        // ⚠ 보행 궤적으로만 쟀다(위 필드 주석). 켜려면 먼저 재라.
+        imminentAheadM: nil, farNoticeM: 1500,
         windowAheadMinM: 150, windowAheadSpeedS: 5,
         offRouteBaseM: 50, offRouteHoldS: 10,
         offRouteTrend: true,
@@ -139,6 +156,13 @@ public struct GuideState: Sendable, Equatable {
     public var stepIndex: Int
     /// 낭독 완료된 마지막 스텝 index(선행 낭독 포함).
     public var announcedUpTo: Int
+    /// 임박 큐를 마친 마지막 스텝 index. `announcedUpTo`와 **같은 경계 수열을 다른
+    /// 거리에서** 따라간다(40m vs 10m) — 그래서 별도 래치이고, 항상
+    /// `imminentUpTo <= announcedUpTo`다.
+    ///
+    /// ⚠ 행동이 없는 경계(단순 직진 연결)에서도 **전진한다**. 전진하지 않으면 그 경계에
+    /// 영원히 걸려 다음 회전의 큐가 영영 나가지 않는다.
+    public var imminentUpTo: Int
     /// 어떤 발화든 갱신 — 주기 통지의 기준.
     public var lastAnnouncedAt: Double
     public var lastFixAt: Double?
@@ -189,6 +213,8 @@ public struct OffRouteAxes: Sendable, Equatable {
 
 public enum GuideEvent: Sendable, Equatable {
     case announceSteps([Int])
+    /// 결정 지점 10m 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 그 유닛이다.
+    case imminent(indices: [Int], action: WalkAction)
     case farNotice(indices: [Int], remainingMeters: Int)
     case periodic(stepIndex: Int, remainingMeters: Int, accuracy: Double)
     case bundleReread([Int])
@@ -261,6 +287,9 @@ public func guideStateAt(
         d: d,
         stepIndex: step.index,
         announcedUpTo: unit[unit.count - 1],
+        // 재진입 시점의 유닛은 임박 큐도 소비 처리 — 지금 서 있는 유닛의 행동은 이미
+        // 지난 결정이다(`farNoticedUpTo`와 같은 규칙).
+        imminentUpTo: unit[unit.count - 1],
         lastAnnouncedAt: now,
         lastFixAt: nil,
         windowEdgeHits: 0,
@@ -661,6 +690,33 @@ public func guideStep(
         return emit(next, .finalApproachEnter, nil)
     }
 
+    // 6a') 결정 지점 임박 큐(10m, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
+    //      "지금이다"를 알린다. 경계 수열은 6b와 같고 거리만 다르다.
+    //
+    //      ⚠ **불변식: 전문이 나간 유닛만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
+    //      "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
+    //      남는다. 두 래치가 같으면 그 유닛은 아직 전문 전이므로 6b에 자리를 내준다.
+    //
+    //      ⚠ 그 불변식을 지키므로 **6b보다 앞이다.** 뒤에 두면 짧은 유닛에서 6b가 매번
+    //      먼저 return해 큐가 한 fix씩 밀리고, 그 사이 사용자는 이미 모퉁이를 지난다
+    //      (30m 횡단보도 유닛에서 실제로 재현 — 다음 유닛 전문 38m와 이번 횡단보도 8m가
+    //      같은 fix에 걸리는데, 급한 쪽은 8m다).
+    //
+    //      ⚠ **행동이 없는 경계에서도 래치는 전진시키고 발화만 건너뛴다.** 직진 연결마다
+    //      소리를 내면 큐가 신호이기를 그만두고, 반대로 래치를 세워 두면 그 경계에 걸려
+    //      다음 회전을 영영 못 알린다.
+    if let imminentAheadM = tuning.imminentAheadM,
+       next.imminentUpTo < next.announcedUpTo,
+       route.steps[next.imminentUpTo].endD - d <= imminentAheadM {
+        let indices = unitAt(route: route, index: next.imminentUpTo + 1)
+        let action = walkStepAction(route.steps[indices[0]].description)
+        next.imminentUpTo = indices[indices.count - 1]
+        if let action {
+            next.lastAnnouncedAt = now
+            return emit(next, .imminent(indices: indices, action: action), .ahead)
+        }
+    }
+
     // 6b) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문.
     //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
     if next.announcedUpTo < route.steps.count - 1 {
@@ -672,7 +728,13 @@ public func guideStep(
             // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).
             next.farNoticedUpTo = max(next.farNoticedUpTo, indices[indices.count - 1])
             next.lastAnnouncedAt = now
-            return emit(next, .announceSteps(indices), .ahead)
+            // ⚠ 톤 없음. `ahead` 톤은 6a'(10m 임박)로 옮겼다 — 40m에서 울리면 소리가
+            //   "곧 뭔가 있다"만 말하고 "지금이다"는 못 말한다(실보행 피드백 2026-08-09).
+            //   전문 낭독 자체가 이 시점의 신호이므로 별도 톤은 잉여다.
+            //   부수 효과 하나를 알고 넘긴다: 톤이 열던 3초 정숙 구간이 이 시점에는 더
+            //   이상 열리지 않는다. 이 fix의 추세음은 `eventOwned`가 그대로 막고, 전문
+            //   낭독은 어차피 3초보다 길어 그 창이 덮은 적이 없다.
+            return emit(next, .announceSteps(indices), nil)
         }
     }
 

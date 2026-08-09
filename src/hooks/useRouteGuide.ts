@@ -235,6 +235,9 @@ function briefText(announce: BeaconAnnounce, t: BeaconT): string {
 
 /** 마지막 안내 저장 대상은 실행 안내뿐(스펙 §4.2) — 상태·오류·속도 통지는 제외. */
 function isGuidanceEvent(kind: GuideEvent["kind"]): boolean {
+  // ⚠ `imminent`는 제외한다. 이 값은 신호 불량 구간에서 "마지막으로 들은 안내"로
+  //    되읽히는데(`progressUncertain`), 그 자리에 "잠시 후 왼쪽으로 도세요"가 남으면
+  //    무엇을 향한 회전이었는지가 사라진다 — 전문이 남아 있어야 쓸모가 있다.
   return (
     kind === "announceSteps" ||
     kind === "farNotice" ||
@@ -557,6 +560,10 @@ export function useRouteGuide(
         case "announceSteps":
         case "bundleReread":
           return unitText(route, event.indices, t);
+        case "imminent":
+          // 10m 임박 큐(§6b''): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
+          // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
+          return t(`imminent.${event.action}`);
         case "farNotice":
           // 원거리 예고(§4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산해
           // 실어 줌 — 상수 낭독 금지, 독립 리뷰 반영) + 원문을 독립 문장으로 결합.

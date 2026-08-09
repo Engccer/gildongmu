@@ -645,6 +645,12 @@
     "dirBehindTo": "後ろ",
     "offRoute": "経路から外れたようです",
     "backOnRoute": "経路に復帰しました",
+    "imminent": {
+      "left": "まもなく左に曲がってください",
+      "right": "まもなく右に曲がってください",
+      "crosswalk": "まもなく横断歩道を渡ってください",
+      "underpass": "まもなく地下道を渡ってください"
+    },
     "uncertain": "位置の確度が低いです",
     "uncertainRecovered": "位置の確度が回復しました",
     "reacquiring": "経路上の位置を再取得しています",
