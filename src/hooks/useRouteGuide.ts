@@ -1073,6 +1073,9 @@ export function useRouteGuide(
       if (result.event?.kind === "finalApproachEnter") {
         if (jumped) return;
         setProgress(null);
+        // 스텝은 전부 소화됐다 — 낡은 유닛이 "현재 안내" 행에 남는 것을 막는다
+        // (iOS beginFinalApproach 미러, 리뷰 HIGH 반영).
+        setCurrentText(null);
         clearEtaTimer(); // 최종 접근 중 ETA 재조회는 무의미(자원 위생)
         rebaseForAxisChange(); // 경로 거리 → 직선거리
         // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라
@@ -1504,6 +1507,20 @@ export function useRouteGuide(
         straight
           ? t("progressOffRoute", { distance: straight })
           : t("offRoute"),
+      );
+      return;
+    }
+    if (state.phase === "finalApproach") {
+      // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났고 state가 동결된다).
+      // 정직한 값은 목적지 직선거리뿐이고, 없으면 마지막 안내를 되돌린다
+      // (iOS GuideText.progress .finalApproach 미러, 리뷰 HIGH 반영 — 종전에는
+      // 이 국면이 following으로 흘러 동결 시점 기준 "{dest}까지 0m"류가 나갔다).
+      announce(
+        straight
+          ? t("progressFinalApproach", { distance: straight })
+          : t("progressUncertain", {
+              last: lastGuidanceRef.current ?? t("noGuidanceYet"),
+            }),
       );
       return;
     }
