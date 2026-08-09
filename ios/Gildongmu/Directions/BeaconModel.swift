@@ -90,6 +90,21 @@ final class BeaconModel {
     /// 상세⇄간략 전환 버튼 노출 조건 — **도보 전용**(B1 §3.3, car의 brief 복귀는
     /// 세션 재시작뿐). 경로는 ko 데이터 로케일에서만 조회되므로 로케일 게이트 겸용.
     var canOfferDetail: Bool { sessionKind == .walk && guideRoute != nil }
+    /// 전 구간 목록(시트 조망, 위원장 판정 2026-08-10 — 시트가 길찾기 목록을 덮어
+    /// 추적 중 경로 전체를 볼 수단이 없던 공백의 해소). 상세 모드에서만.
+    var routeStepDescriptions: [String]? {
+        guard mode == .detail else { return nil }
+        return guideRoute?.steps.map(\.description)
+    }
+    /// 목록의 "지금 이 구간" 표식 위치. 이탈·불확실·최종 접근에선 nil —
+    /// 근거 없는 표식은 거짓 정밀이다(관측이 없으면 표도 없다).
+    var currentStepIndex: Int? {
+        guard mode == .detail, let state = guideState else { return nil }
+        switch state.phase {
+        case .following, .bundle: return state.stepIndex
+        case .uncertain, .reacquiring, .offRoute, .finalApproach: return nil
+        }
+    }
     /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
     private(set) var offRoute = false
     /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
@@ -98,6 +113,11 @@ final class BeaconModel {
     /// 경로 기준 잔여 거리·예상 시간 상시 표시 1줄(상세 모드 전용, 웹 progress 미러 —
     /// 위원장 실측 판정 2026-08-03 묶음 A). 통지 채널에 태우지 않는다(매 fix 갱신).
     private(set) var remainingText: String?
+    /// "현재 안내" 행 — 지금 따르는 유닛 전문(하단 2행 분리, 위원장 판정 2026-08-10).
+    /// 실행 안내가 나가는 순간에만 갱신되고 주기 예고·임박·상태 통지(`statusText`)가
+    /// 덮지 않는다 — 단일 슬롯이 현재/다음을 오가며 의미가 바뀌던 혼재의 해소.
+    /// 간략·최종 접근에선 nil(경로 기반 값이 아니거나 종점 이후), 이탈 중 숨김은 뷰 몫.
+    private(set) var currentGuidanceText: String?
 
     /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
     private var guideRoute: GuideRoute?
@@ -464,6 +484,7 @@ final class BeaconModel {
             mode = .detail
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
+            refreshCurrentGuidance(route: fetched.route, state: initial.state)
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
             let summary = sessionKind == .car
                 ? GuideText.carStart(route: fetched.route, firstIndices: initial.firstIndices)
@@ -526,12 +547,29 @@ final class BeaconModel {
         }
     }
 
+    /// "현재 안내" 행 표시문. 단일 스텝은 라벨 틀로 감싸고, 묶음은 통독 서두
+    /// ("다음 안내.")가 스스로를 설명하므로 원문 그대로 — "현재 안내, 다음 안내. …"
+    /// 처럼 라벨이 서두와 모순되는 조합을 막는다(웹 `currentDisplay` 미러).
+    private static func currentDisplay(_ text: String, isBundle: Bool) -> String {
+        isBundle ? text : appLocalized("guide.progressCurrent", text)
+    }
+
+    /// 상세 커밋 지점(시작·재조회·전환 복귀)의 "현재 안내" 일괄 초기화 — 웹
+    /// `commitDetail` 미러. 간략 경유 복귀에서 이전 구간의 낡은 유닛이 남는 것을 막는다.
+    private func refreshCurrentGuidance(route: GuideRoute, state: GuideState) {
+        let indices = unitAt(route: route, index: state.stepIndex)
+        currentGuidanceText = Self.currentDisplay(
+            GuideText.unit(route: route, indices: indices), isBundle: indices.count > 1
+        )
+    }
+
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
     /// 문구는 원인별로 가른다(8번): 경로 실패(기본)와 위치 대기 실패는 사용자가 취할
     /// 행동이 다르다(잠시 후 전환 재시도 vs 하늘 트인 곳으로 이동).
     private func fallbackToBrief(key: String = "guide.detailUnavailable") {
         mode = .brief
         remainingText = nil
+        currentGuidanceText = nil
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 새 판정으로 다시 통지된다 — 반복이 아니다. 갚지 못한 경고도 대상이
         // 사라졌으므로 버린다(간략 폴백엔 따라갈 경로 자체가 없다).
@@ -546,22 +584,24 @@ final class BeaconModel {
     /// 총 소요시간의 잔여 비례 축소, car는 재조회 ETA의 경과 차감 카운트다운(§4.6 —
     /// 비례 축소는 정체 국소성에 취약해 폐기). 근거 없으면 시간 생략(날조 금지).
     private func updateRemaining(route: GuideRoute, state: GuideState) {
-        let remaining = max(0, route.totalMeters - state.d)
         let distancePart = appLocalized(
-            "guide.remainingDistance", formatDistance(Int(remaining.rounded()))
+            "guide.remainingDistance", formatDistance(Int(max(0, route.totalMeters - state.d).rounded()))
         )
-        var timePart: String?
-        if sessionKind == .car {
-            if let eta = etaSeconds, let at = etaUpdatedAt {
-                let left = max(0, eta - (uptimeNow - at))
-                let minutes = max(1, Int((left / 60).rounded()))
-                timePart = appLocalized("guide.remainingTime", String(minutes))
-            }
-        } else if let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 {
-            let minutes = max(1, Int((Double(dur) * remaining / route.totalMeters / 60).rounded()))
-            timePart = appLocalized("guide.remainingTime", String(minutes))
-        }
+        let timePart = etaMinutesNow(route: route, state: state)
+            .map { appLocalized("guide.remainingTime", String($0)) }
         remainingText = joinText(distancePart, timePart)
+    }
+
+    /// 잔여 시간(분) — 상시 표시와 진행 상황 조망이 같은 산식을 쓴다(사본 금지).
+    /// 근거 없으면 nil(3-state — 날조 금지).
+    private func etaMinutesNow(route: GuideRoute, state: GuideState) -> Int? {
+        if sessionKind == .car {
+            guard let eta = etaSeconds, let at = etaUpdatedAt else { return nil }
+            return max(1, Int((max(0, eta - (uptimeNow - at)) / 60).rounded()))
+        }
+        guard let dur = guideRouteDurationSeconds, dur > 0, route.totalMeters > 0 else { return nil }
+        let remaining = max(0, route.totalMeters - state.d)
+        return max(1, Int((Double(dur) * remaining / route.totalMeters / 60).rounded()))
     }
 
     private func fail(with status: Status, key: String, resolution: FailResolution = .none) {
@@ -619,6 +659,7 @@ final class BeaconModel {
         guideState = nil
         lastGuidance = nil
         remainingText = nil
+        currentGuidanceText = nil
         offRoute = false
         roadSpans = []
         etaSeconds = nil
@@ -1001,6 +1042,7 @@ final class BeaconModel {
     /// 한 곳에서 성립한다(두 군데서 말하면 목적지 코앞에서 배치 서술과 도착 통지가 겹친다).
     private func beginFinalApproach() {
         remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
+        currentGuidanceText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
         etaTask?.cancel()
         etaTask = nil
         rebaseForAxisChange()  // 경로 거리 → 직선거리(축 전환, handoff와 같은 규칙)
@@ -1144,6 +1186,8 @@ final class BeaconModel {
             let text = GuideText.unit(route: route, indices: indices)
             lastGuidance = text
             statusText = text
+            // 실행 안내만 "현재 안내" 행을 갱신한다(하단 2행 분리, 판정 2026-08-10).
+            currentGuidanceText = Self.currentDisplay(text, isBundle: indices.count > 1)
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case let .imminent(_, action):
@@ -1272,6 +1316,7 @@ final class BeaconModel {
             lastRemaining = nil
             lastRemainingAt = nil
             updateRemaining(route: route, state: state)
+            refreshCurrentGuidance(route: route, state: state)
             let text = appLocalized("guide.toDetailDone")
             statusText = text
             announce(text)
@@ -1306,7 +1351,8 @@ final class BeaconModel {
             let base = GuideText.progress(
                 route: route, state: state,
                 destinationLabel: destinationLabel, lastGuidance: lastGuidance,
-                straightLineMeters: straight
+                straightLineMeters: straight,
+                etaMinutes: etaMinutesNow(route: route, state: state)
             )
             if sessionKind == .car, state.phase == .following || state.phase == .bundle {
                 // car(§4.7): 현재 링크 도로명 + 진행 + ETA 오래됨 병기(3-state).
@@ -1339,6 +1385,7 @@ final class BeaconModel {
         if mode == .detail {
             mode = .brief
             remainingText = nil
+            currentGuidanceText = nil
             // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓고
             // 비콘에 넘긴다(§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
             inFinalApproach = false
@@ -1415,6 +1462,7 @@ final class BeaconModel {
             guideState = initial.state
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
+            refreshCurrentGuidance(route: fetched.route, state: initial.state)
             let first = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             lastGuidance = first
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면

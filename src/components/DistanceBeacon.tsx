@@ -237,6 +237,13 @@ export function DistanceBeacon({
               )}
             </p>
           )}
+          {/* "현재 안내" 행(역할 고정 2행 분리, 위원장 판정 2026-08-10): 지금 따르는
+              유닛 전문. 실행 안내 시점에만 갱신되고 주기 예고·임박·상태 통지가 덮지
+              않는다. live region 밖 일반 텍스트 — 발화는 실행 안내가 이미 했다.
+              이탈 중엔 현재 유닛이 낡은 투영이라 숨긴다(remainingText와 동형). */}
+          {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
+            <p className="mt-1 text-sm">{guide.currentText}</p>
+          )}
 
           {/* M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
               이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5).

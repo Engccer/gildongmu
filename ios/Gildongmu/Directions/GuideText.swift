@@ -122,12 +122,14 @@ enum GuideText {
     }
 
     /// 유닛(단일 스텝 또는 통독 묶음) 전문. 단일이면 문장 그대로, 묶음이면 통독 틀.
+    /// 서두 "다음 안내."는 여러 문장이 이어진다는 신호로 유지, 개수는 행동을 바꾸지
+    /// 않는 잉여라 제거(위원장 실보행 판정 2026-08-10).
     static func unit(route: GuideRoute, indices: [Int]) -> String {
         let descs = indices.compactMap { i in
             route.steps.indices.contains(i) ? route.steps[i].description : nil
         }
         guard descs.count > 1 else { return descs.first ?? "" }
-        return appLocalized("guide.bundle", String(descs.count), descs.joined(separator: ". "))
+        return appLocalized("guide.bundle", descs.joined(separator: ". "))
     }
 
     /// 시작 원자 발화(스펙 §5.3 — 요약과 첫 안내를 한 문장으로, 발화 경합 제거).
@@ -195,31 +197,50 @@ enum GuideText {
         return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
     }
 
-    /// 진행 상황 버튼 응답(스펙 §4.2 — 상태별로 거짓 정밀을 만들지 않는다).
-    /// straightLineMeters는 이탈 상태 전용(마지막 fix→목적지 직선거리 — 경로 잔여는
-    /// 이탈 중엔 거짓이므로 직선만 정직하다).
-    static func progress(
-        route: GuideRoute, state: GuideState, destinationLabel: String,
-        lastGuidance: String?, straightLineMeters: Double?
+    /// 진행 상황 서두(서수 + 잔여) — 조망의 뼈대(위원장 실보행 판정 2026-08-10).
+    /// 종전 응답은 뒷부분이 주기 통지와 문자 그대로 동일해 버튼 고유 정보가 0이었다.
+    /// 서수 위치("안내 12개 중 5번째")가 핵심 신규 정보이고, 잔여 시간은 근거가
+    /// 있을 때만 병기한다(3-state — 날조 금지). 웹 `progressFrameLine` 미러.
+    static func progressFrame(
+        route: GuideRoute, state: GuideState, etaMinutes: Int?
     ) -> String {
         let total = formatDistance(Int(max(0, route.totalMeters - state.d).rounded()))
+        let ordinal = appLocalized(
+            "guide.progressOrdinal", String(route.steps.count), String(state.stepIndex + 1)
+        )
+        let remaining = joinText(
+            appLocalized("guide.remainingDistance", total),
+            etaMinutes.map { appLocalized("guide.remainingTime", String($0)) }
+        )
+        return "\(ordinal). \(remaining)"
+    }
+
+    /// 진행 상황 버튼 응답(스펙 §4.2 — 상태별로 거짓 정밀을 만들지 않는다).
+    /// straightLineMeters는 이탈 상태 전용(마지막 fix→목적지 직선거리 — 경로 잔여는
+    /// 이탈 중엔 거짓이므로 직선만 정직하다). 웹 `progressOverviewLine` 미러 —
+    /// uncertain 계열엔 서수를 붙이지 않는다(위치 확신이 낮을 때의 서수는 거짓 정밀).
+    static func progress(
+        route: GuideRoute, state: GuideState, destinationLabel: String,
+        lastGuidance: String?, straightLineMeters: Double?, etaMinutes: Int?
+    ) -> String {
         switch state.phase {
         case .following:
             let cur = route.steps[state.stepIndex]
-            // 뒤쪽 어순은 periodic과 같은 계약(거리 먼저 + 타입에 맞는 틀).
-            let segment = formatDistance(Int(max(0, cur.endD - state.d).rounded()))
+            let frame = progressFrame(route: route, state: state, etaMinutes: etaMinutes)
+            // 현재 스텝 전문 재확인 — 실행 안내를 소음으로 놓쳤을 때의 복구 수단.
+            let current = appLocalized("guide.progressCurrent", cur.description)
             guard route.steps.indices.contains(state.stepIndex + 1) else {
-                return appLocalized(
-                    "guide.progressFollowingDestination", total, destinationLabel, segment
-                )
+                let segment = formatDistance(Int(max(0, cur.endD - state.d).rounded()))
+                return "\(frame). \(current). "
+                    + appLocalized("guide.nextDestination", destinationLabel, segment)
             }
-            return appLocalized(
-                "guide.progressFollowing", total, segment,
-                route.steps[state.stepIndex + 1].description
-            )
+            return "\(frame). \(current). "
+                + appLocalized("guide.progressNext", route.steps[state.stepIndex + 1].description)
         case .bundle:
-            let count = unitAt(route: route, index: state.stepIndex).count
-            return appLocalized("guide.progressBundle", total, String(count))
+            // 묶음 국면은 통독 자체가 "다음 안내." 서두를 가지므로 다음 파트가 따로 없다.
+            let frame = progressFrame(route: route, state: state, etaMinutes: etaMinutes)
+            return "\(frame). "
+                + unit(route: route, indices: unitAt(route: route, index: state.stepIndex))
         case .uncertain, .reacquiring:
             return appLocalized(
                 "guide.progressUncertain",

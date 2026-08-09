@@ -226,6 +226,11 @@
     },
     "unit": {
       "spokenMeters": "metros"
+    },
+    "guide": {
+      "routeListCurrent": "{n}. Tramo actual, {step}",
+      "routeListRow": "{n}. {step}",
+      "routeListClose": "Cerrar lista de ruta"
     }
   }
 }

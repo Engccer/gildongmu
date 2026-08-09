@@ -10006,37 +10006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "다음 안내 %1$@개. %2$@"
+            "value": "다음 안내. %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Next %1$@ instructions. %2$@"
+            "value": "Next instructions. %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Siguientes %1$@ indicaciones. %2$@"
+            "value": "Siguientes indicaciones. %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ prochaines instructions. %2$@"
+            "value": "Prochaines instructions. %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Prossime %1$@ indicazioni. %2$@"
+            "value": "Prossime indicazioni. %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "次の案内%1$@件。%2$@"
+            "value": "次の案内。%1$@"
           }
         }
       }
@@ -11321,46 +11321,6 @@
         }
       }
     },
-    "guide.progressBundle": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "남은 거리 %1$@. 다음 안내 %2$@개"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ remaining. Next %2$@ instructions"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quedan %1$@. Siguientes %2$@ indicaciones"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ restants. %2$@ prochaines instructions"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ rimanenti. Prossime %2$@ indicazioni"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "残り%1$@。次の案内%2$@件"
-          }
-        }
-      }
-    },
     "guide.progressButton": {
       "localizations": {
         "ko": {
@@ -11397,6 +11357,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "進行状況"
+          }
+        }
+      }
+    },
+    "guide.progressCurrent": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 안내, %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current instruction, %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicación actual, %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instruction actuelle, %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Indicazione attuale, %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在の案内、%1$@"
           }
         }
       }
@@ -11441,82 +11441,42 @@
         }
       }
     },
-    "guide.progressFollowing": {
+    "guide.progressNext": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "남은 거리 %1$@. %2$@ 앞 %3$@"
+            "value": "다음 안내, %1$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ remaining. In %2$@, %3$@"
+            "value": "Next instruction, %1$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quedan %1$@. En %2$@, %3$@"
+            "value": "Siguiente indicación, %1$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ restants. Dans %2$@, %3$@"
+            "value": "Instruction suivante, %1$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ rimanenti. Tra %2$@, %3$@"
+            "value": "Prossima indicazione, %1$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "残り%1$@。%2$@先、%3$@"
-          }
-        }
-      }
-    },
-    "guide.progressFollowingDestination": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "남은 거리 %1$@. %2$@까지 %3$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ remaining. %3$@ to %2$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Quedan %1$@. %3$@ hasta %2$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ restants. %3$@ jusqu'à %2$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ rimanenti. %3$@ fino a %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "残り%1$@。%2$@まで%3$@"
+            "value": "次の案内、%1$@"
           }
         }
       }
@@ -11557,6 +11517,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "経路から外れています。目的地まで直線距離%1$@"
+          }
+        }
+      }
+    },
+    "guide.progressOrdinal": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "안내 %1$@개 중 %2$@번째 구간"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segment %2$@ of %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tramo %2$@ de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segment %2$@ sur %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tratto %2$@ di %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "案内%1$@件中%2$@件目の区間"
           }
         }
       }
@@ -13757,6 +13757,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "照会中"
+          }
+        }
+      }
+    },
+    "ios.guide.routeListClose": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경로 목록 닫기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close route list"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar lista de ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer la liste de l'itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiudi elenco percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路リストを閉じる"
+          }
+        }
+      }
+    },
+    "ios.guide.routeListCurrent": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 지금 이 구간, %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Current segment, %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Tramo actual, %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Segment actuel, %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. Tratto attuale, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. 現在の区間、%2$@"
+          }
+        }
+      }
+    },
+    "ios.guide.routeListRow": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
           }
         }
       }
