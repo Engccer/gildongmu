@@ -13,12 +13,14 @@ export const NEARBY_REVEAL_STEP = 10;
  * 재포커스는 useLayoutEffect(페인트 전) — 마지막 배치에서 "더 보기" 버튼이 같은
  * 커밋에 사라져도 body 이탈 창이 없다(헌장 §5).
  */
-export function useRevealMore(resetKey: number) {
+export function useRevealMore<E extends HTMLElement = HTMLHeadingElement>(
+  resetKey: number,
+) {
   const [state, setState] = useState({ key: resetKey, count: NEARBY_INITIAL_VISIBLE });
   if (state.key !== resetKey) {
     setState({ key: resetKey, count: NEARBY_INITIAL_VISIBLE });
   }
-  const itemHeadingRefs = useRef<(HTMLHeadingElement | null)[]>([]);
+  const itemHeadingRefs = useRef<(E | null)[]>([]);
   const pendingFocusIndex = useRef<number | null>(null);
   useLayoutEffect(() => {
     const i = pendingFocusIndex.current;
