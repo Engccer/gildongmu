@@ -128,7 +128,7 @@ export async function getWalkRoute(params: {
   // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
   const annotate = (b: WalkRouteBriefing) =>
-    annotateAudioSignals(rewriteWalkBriefing(b), includeGeometry);
+    annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), includeGeometry);
 
   if (!accessible) {
     const r = await fetchPrimaryOrFallback({
