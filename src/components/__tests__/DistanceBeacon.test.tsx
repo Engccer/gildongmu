@@ -150,7 +150,10 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     pushFix(22, 100, 80);
 
     expect(screen.getByRole("button", { name: ko.guide.rerouteButton })).toBeTruthy();
-    expect(screen.getByText(ko.guide.offRoute)).toBeTruthy();
+    // 이탈 문장은 두 곳에 나온다(spec 2026-08-11 §4.2): polite 통지 + 하단 2행 윗줄
+    // (윗줄이 이탈 상태 문장으로 대체되고 아랫줄은 비운다 — F2).
+    expect(screen.getAllByText(ko.guide.offRoute).length).toBe(2);
+    expect(screen.queryByText(/다음 안내/)).toBeNull();
     // 이탈 중엔 경로 잔여가 거짓이므로 상시 표시를 숨긴다(3-state 정직).
     expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
