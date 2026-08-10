@@ -657,6 +657,18 @@
       "crosswalk": "Cross the crosswalk shortly",
       "underpass": "Use the underpass shortly"
     },
+    "liveStraight": "Go straight {n}m toward {target}",
+    "liveStraightNoName": "Go straight {n}m",
+    "liveTurnIn": "In {n}m, {action}",
+    "liveAction": {
+      "left": "turn left",
+      "right": "turn right",
+      "crosswalk": "cross the crosswalk",
+      "underpass": "use the underpass"
+    },
+    "nextAction": "{action} at {anchor}",
+    "nextStraight": "Go straight {n}m toward {target}",
+    "nextStraightNoName": "Go straight {n}m",
     "uncertain": "Location confidence is low",
     "uncertainRecovered": "Location confidence recovered",
     "reacquiring": "Re-locating you on the route",
