@@ -122,6 +122,12 @@ struct SettingsView: View {
                     Link(appLocalized("ios.settings.reportProblem"),
                          destination: URL(string: "mailto:engccer@gmail.com")!)
                 }
+
+                Section {
+                    NavigationLink(appLocalized("ios.settings.releaseNotes")) {
+                        ReleaseNotesView()
+                    }
+                }
             }
             .navigationTitle(appLocalized("ios.settings.title"))
             .navigationBarTitleDisplayMode(.inline)

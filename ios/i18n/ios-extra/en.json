@@ -207,7 +207,10 @@
       "listenSpeed2x": "2x",
       "aiSection": "AI Chat",
       "aiConsentToggle": "AI chat data sharing consent",
-      "reportProblem": "Report a problem"
+      "reportProblem": "Report a problem",
+      "releaseNotes": "Release notes",
+      "releaseNotesVersion": "Version {version}",
+      "releaseNotesError": "Could not load release notes"
     },
     "shortcut": {
       "voiceSearch": {
