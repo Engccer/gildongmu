@@ -815,11 +815,16 @@ struct DirectionsTabView: View {
     }
 
     /// 삭제 포커스: 다음 항목 → 이전 항목 → 목록 소멸 시 조회 버튼(스펙 §1.5,
-    /// endpoint 시트의 마이크 행에 대응하는 이 화면의 안정 착지점).
+    /// endpoint 시트의 마이크 행에 대응하는 이 화면의 안정 착지점). 통지는 `.high` —
+    /// 이 핸들러가 자기를 누른 버튼(행)을 사라지게 해 포커스가 다른 컨트롤로
+    /// 옮겨가는데, 기본 우선순위면 VO가 그 컨트롤 라벨을 낭독하며 통지를 잠식한다
+    /// (헌장 §6, BeaconModel.announce 동형).
     private func deleteRecentRoute(_ route: RecentRoute) {
         guard let index = model.recentRoutes.firstIndex(of: route) else { return }
         model.removeRecentRoute(route)
-        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        var deletedMessage = AttributedString(appLocalized("recent.deleted"))
+        deletedMessage.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(deletedMessage).post()
         if model.recentRoutes.isEmpty {
             submitFocused = true
             return
@@ -827,9 +832,13 @@ struct DirectionsTabView: View {
         focusedRecentRoute = model.recentRoutes[min(index, model.recentRoutes.count - 1)]
     }
 
+    /// 전체 지우기도 자기 버튼이 속한 섹션 전체를 소멸시켜 포커스가 조회 버튼으로
+    /// 옮겨간다 — 위 `deleteRecentRoute`와 같은 이유로 `.high`.
     private func clearRecentRoutes() {
         model.clearRecentRoutes()
-        AccessibilityNotification.Announcement(appLocalized("recentRoutes.cleared")).post()
+        var clearedMessage = AttributedString(appLocalized("recentRoutes.cleared"))
+        clearedMessage.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(clearedMessage).post()
         submitFocused = true
     }
 
