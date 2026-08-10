@@ -95,9 +95,6 @@ final class BeaconModel {
     private(set) var mode: GuideMode = .brief
     private(set) var sessionKind: GuideSessionKind = .walk
     private var tuning: GuideTuning { sessionKind == .car ? .car : .walk }
-    /// 상세⇄간략 전환 버튼 노출 조건 — **도보 전용**(B1 §3.3, car의 brief 복귀는
-    /// 세션 재시작뿐). 경로는 ko 데이터 로케일에서만 조회되므로 로케일 게이트 겸용.
-    var canOfferDetail: Bool { sessionKind == .walk && guideRoute != nil }
     /// 전 구간 목록(시트 조망, 위원장 판정 2026-08-10 — 시트가 길찾기 목록을 덮어
     /// 추적 중 경로 전체를 볼 수단이 없던 공백의 해소). 상세 모드에서만.
     var routeStepDescriptions: [String]? {
@@ -163,8 +160,6 @@ final class BeaconModel {
     private var fixWaitTask: Task<Void, Never>?
     /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
     private var pendingRecovery: String?
-    /// 간략→상세 전환 모호 해소 대기 시작 시각(스펙 §6). nil이면 대기 없음.
-    private var resolvePendingSince: Double?
     /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
     private var rerouteToken = 0
     private var rerouteInFlight = false
@@ -269,6 +264,16 @@ final class BeaconModel {
 
     var isTracking: Bool { status == .tracking }
 
+    /// 도착 종료 상태(위원장 판정 2026-08-11): 도착으로 세션이 끝나도 시트를 유지해
+    /// 목적지 주변 확인의 발판을 남긴다(대중교통 `pendingWalkHandoff` 동형). 값은
+    /// 주변 확인 앵커(목적지) 좌표이고, 라벨은 `destinationLabel`이 이어 든다(stop()이
+    /// 비우지 않는 값). 소거는 닫기(시트 바인딩)와 새 세션 시작뿐 — `stop()`은
+    /// 건드리지 않는다(도착 직후의 stop()이 지우면 종료 화면이 성립하지 않는다).
+    private(set) var arrivalDest: BeaconDest?
+
+    /// 도착 종료 화면 닫기(시트 presentation 바인딩·닫기 버튼 경로).
+    func clearArrival() { arrivalDest = nil }
+
     // MARK: - 시작·중지
 
     /// ⚠ `accessible`에 **기본값을 두지 않는다** — 백로그 A4는 생략 가능한 안전
@@ -340,6 +345,7 @@ final class BeaconModel {
         }
 
         self.dest = dest
+        arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
         destinationLabel = label
         sessionKind = kind
         beaconState = .initial
@@ -740,7 +746,6 @@ final class BeaconModel {
         etaTask?.cancel()
         etaTask = nil
         pendingRecovery = nil
-        resolvePendingSince = nil
         lastFixCoord = nil
         lastFixCoordAt = nil
         lastRemaining = nil
@@ -920,9 +925,6 @@ final class BeaconModel {
             handleDetail(fix: fix, route: route, motion: motion, age: age, now: now)
             return
         }
-        // 간략 경로 위에서의 상세 전환 모호 해소 시도(스펙 §6). 성공하면 이번 fix 소비.
-        if resolveDetailIfPending(fix: fix) { return }
-
         // 캐시 위치와 무효 좌표는 앵커에서 배제한다(판정은 Kit 순수 함수). ⚠ 종전에는
         // 여기서 조용히 버렸는데, 그 침묵도 커버리지 대상이다 — 워치독(8초)이 잡기
         // 전까지의 공백을 신뢰 불가 톤이 메운다.
@@ -1235,6 +1237,10 @@ final class BeaconModel {
             let text = appLocalized("guide.arrived")
             playTone(.nearby)
             stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
+            // stop() **뒤에** 대입 — 이 값이 시트를 도착 종료 화면으로 유지한다
+            // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
+            // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
+            arrivalDest = dest
             statusText = text
             lastGuidance = text
             liveTopText = text  // 시트 dismiss 동안의 가시 상태(statusText 동형)
@@ -1359,9 +1365,10 @@ final class BeaconModel {
             statusText = appLocalized("guide.reacquiring")
             announce(statusText)
         case .speedSuggest:
-            // 자동 전환은 하지 않는다(스펙 §2 모드 결정 원칙) — 해법은 시트 전환 버튼.
-            statusText = appLocalized("guide.speedSuggest")
-            announce(statusText)
+            // 전환 버튼 폐지(위원장 판정 2026-08-11)로 실행 가능한 조언이 아니다 —
+            // 무시한다. 자동 전환도 하지 않는다(스펙 §2 모드 결정 원칙). 이벤트
+            // 자체는 Kit 공유 계약(웹 미러)이라 남는다.
+            break
         }
     }
 
@@ -1396,57 +1403,7 @@ final class BeaconModel {
         lastRemainingAt = nil
     }
 
-    /// 간략→상세 전환의 모호 해소(스펙 §6): 후속 fix들로 전역 후보가 하나로 좁혀지면
-    /// 전환을 완료한다. 반환 true면 이번 fix를 전환 처리로 소비했다는 뜻.
-    private func resolveDetailIfPending(fix: LocationService.BeaconFixPayload) -> Bool {
-        guard let since = resolvePendingSince, let route = guideRoute else { return false }
-        guard fix.accuracy > 0 else { return false }
-        let now = uptimeNow
-        let gfix = GuideFix(lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy)
-        if case let .ok(d) = entryProjection(route: route, fix: gfix, tuning: tuning) {
-            resolvePendingSince = nil
-            // 수동 복귀는 자동 인계 재무장 전(armed=false)으로 시작한다(전환 루프 차단).
-            // 최종 접근도 해제한다 — 경로 스텝 안내 중간에 "오른쪽 약 20미터"가
-            // 끼어드는 것을 막는다(§4 "수동 brief → detail").
-            inFinalApproach = false
-            finalApproachIntroSpoken = false
-            pendingFinalApproachIntro = nil
-            lastFinalTickAt = nil
-            let state = guideStateAt(
-                route: route, d: d, now: now, autoHandoffArmed: false,
-                hasFinalApproachGeometry: finalApproachGeometry != nil,
-                // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
-                courseDerivation: guideState?.courseDerivation ?? initialDerivationState
-            )
-            guideState = state
-            mode = .detail
-            offRoute = false
-            // 직선거리 → 경로 거리로 축이 바뀐다(handoff의 반대 방향, 같은 규칙).
-            toneState.needsRebase = true
-            lastRemaining = nil
-            lastRemainingAt = nil
-            updateRemaining(route: route, state: state)
-            if sessionKind == .walk {
-                // 유닛은 세션 것이라 유지 — 기준점·클램프만 새 진입 d로 리셋.
-                resetLiveRowsBaseline(state: state)
-            } else {
-                refreshCurrentGuidance(route: route, state: state)
-            }
-            let text = appLocalized("guide.toDetailDone")
-            statusText = text
-            announce(text)
-            return true
-        }
-        if now - since > resolveTimeoutSeconds {
-            resolvePendingSince = nil
-            let text = appLocalized("guide.resolveFailed")
-            statusText = text
-            announce(text)
-        }
-        return false
-    }
-
-    // MARK: - 시트 컨트롤 (반복·진행 상황·전환·재조회)
+    // MARK: - 시트 컨트롤 (반복·진행 상황·재조회)
 
     /// 낡은 fix로는 직선거리를 단정하지 않는다(3-state — 웹 PROGRESS_FIX_MAX_AGE_S 미러).
     private func freshStraightLineMeters() -> Double? {
@@ -1501,34 +1458,6 @@ final class BeaconModel {
         let text = progressText()
         statusText = text  // 비-VO 사용자에게도 보여야 한다(2.1(a) 계약)
         announce(text, highPriority: true)
-    }
-
-    /// 상세⇄간략 전환(추적 유지, 스펙 §6). **도보 전용**(B1 §3.3) — 경로 미보유
-    /// 세션과 car 세션에선 UI가 버튼을 숨기고 여기서도 이중 방어한다.
-    func toggleMode() {
-        guard sessionKind == .walk, isTracking, guideRoute != nil else { return }
-        if mode == .detail {
-            mode = .brief
-            remainingText = nil
-            currentGuidanceText = nil
-            clearLiveRows()
-            // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓고
-            // 비콘에 넘긴다(§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
-            inFinalApproach = false
-            finalApproachIntroSpoken = false
-            pendingFinalApproachIntro = nil
-            lastFinalTickAt = nil
-            rebaseForAxisChange()  // 경로 거리 → 직선거리(handoff와 같은 규칙)
-            resolvePendingSince = nil
-            let text = appLocalized("guide.toBriefDone")
-            statusText = text
-            announce(text, highPriority: true)
-        } else {
-            resolvePendingSince = uptimeNow
-            let text = appLocalized("guide.resolvePending")
-            statusText = text
-            announce(text, highPriority: true)
-        }
     }
 
     /// 이탈 시 사용자 확인 후에만 재조회(자동 재조회 금지, 스펙 §5.6).

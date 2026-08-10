@@ -683,17 +683,23 @@ struct DirectionsTabView: View {
             }
             // 추적 중 화면. 표시 여부를 `isTracking`에 직접 묶어 **중지 = 닫힘**을
             // 1:1로 만든다. 권한 거부처럼 추적이 시작되지 않는 경로는 이 시트가 아예
-            // 뜨지 않고 위 인라인 상태 줄이 사유를 말한다.
+            // 뜨지 않고 위 인라인 상태 줄이 사유를 말한다. 도착 종료 화면이 남아 있는
+            // 동안은 세션 없이도 시트를 유지한다(닫기 = 도착 화면 소거 — 대중교통
+            // 핸드오프 제안 §14.2 동형, 위원장 판정 2026-08-11).
             //
             // 위 검색 시트와 동시에 뜰 수 없다: 추적 중에는 이 시트가 화면을 덮어
             // 끝점 버튼에 닿을 수 없고, 시작하려면 검색 시트가 닫혀 있어야 한다.
             .sheet(isPresented: Binding(
-                get: { beacon.isTracking },
+                get: { beacon.isTracking || beacon.arrivalDest != nil },
                 // 스와이프·VoiceOver escape로 닫는 경로. 중지와 같은 처리를 해야
                 // "닫혔는데 추적은 살아 있는" 좀비 상태가 생기지 않는다.
                 set: { presented in
                     guard !presented else { return }
-                    beacon.stop(playStopTone: true)
+                    if beacon.isTracking {
+                        beacon.stop(playStopTone: true)
+                    } else {
+                        beacon.clearArrival()
+                    }
                 }
             )) {
                 // 목적지 이름을 뷰의 `trackedDestination`이 아니라 **모델**에서 읽는다.
@@ -740,9 +746,15 @@ struct DirectionsTabView: View {
                 guard previous != nil, handoff == nil else { return }
                 landBeaconStartFocus()
             }
-            // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리).
+            // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리). 도착 전이는
+            // 시트가 도착 종료 화면으로 계속 떠 있으므로 제외 — 그 화면이 닫힐 때
+            // (아래 arrivalDest 소거 onChange) 돌려보낸다(transit 핸드오프 동형).
             .onChange(of: beacon.isTracking) { _, tracking in
-                guard !tracking else { return }
+                guard !tracking, beacon.arrivalDest == nil else { return }
+                landBeaconStartFocus()
+            }
+            .onChange(of: beacon.arrivalDest) { previous, arrival in
+                guard previous != nil, arrival == nil else { return }
                 landBeaconStartFocus()
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
