@@ -48,7 +48,15 @@ final class BeaconModel {
     private(set) var destinationLabel = ""
     /// 화면에 보이는 상태 1줄. 웹에는 눈에 보이는 live region이 있는데 그게 없으면
     /// VoiceOver를 끈 사람에게 아무 변화도 안 보인다(2.1(a) 반려 전력과 동형).
-    private(set) var statusText = ""
+    /// ⚠ **항상 발화 원문이다** — 전경 복귀 재생(handleScenePhaseChange)이 이 값을
+    /// 그대로 발화하므로 표시용 라벨을 여기 넣으면 음성으로 샌다(리뷰 MEDIUM).
+    /// "다음 안내," 라벨은 아래 `statusIsNextPreview` 플래그로 뷰가 붙인다.
+    private(set) var statusText = "" {
+        didSet { statusIsNextPreview = false }
+    }
+    /// 상태 행이 주기 예고(다음 구간 미리보기)인가 — 뷰가 "다음 안내," 라벨을 붙이는
+    /// 근거(실보행 판정 2026-08-10 ②, 표시 전용). statusText가 바뀌면 자동 해제된다.
+    private(set) var statusIsNextPreview = false
     /// 잠금·백그라운드에서 소리가 나지 않는 상태. 세션 내내 참일 수 있는 지속 상태라
     /// `statusText`(단일 슬롯, 곧 다음 안내가 덮는다)와 별도 행으로 낸다 — 음성 1회는
     /// 놓치면 끝이고, 비-VO 사용자에게는 이것이 잠금 후 무음의 유일한 단서다.
@@ -1238,11 +1246,12 @@ final class BeaconModel {
                 accuracy: accuracy, destinationLabel: destinationLabel
             )
             lastGuidance = text
-            // 화면에는 종류 라벨을 붙인다(실보행 판정 2026-08-10 — 상태 행이 예고와
-            // 상태를 오가서 라벨 없이는 종류를 알 수 없다. 특히 마지막 구간의
-            // "신명중학교까지 약 91m"는 남은 거리 행과 숫자만 어긋난 채 나란히 보였다).
-            // 발화는 원문 그대로 — 어순 계약(2026-08-07)은 음성 채널의 것이다.
-            statusText = appLocalized("guide.progressNext", text)
+            // 상태 행에 원문을 두고 "다음 안내," 라벨은 플래그로 뷰가 붙인다(표시 전용
+            // — 상태 행이 예고와 상태를 오가서 라벨 없이는 종류를 알 수 없다는 실보행
+            // 판정 2026-08-10 ②. 특히 마지막 구간의 "…까지 약 91m"는 남은 거리 행과
+            // 숫자만 어긋난 채 나란히 보였다). 발화·복귀 재생은 원문 그대로.
+            statusText = text
+            statusIsNextPreview = true
             announce(text)
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서

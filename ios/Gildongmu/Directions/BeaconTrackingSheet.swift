@@ -102,8 +102,14 @@ struct BeaconTrackingSheet: View {
                 }
                 // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
                 // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
+                // 주기 예고에는 "다음 안내," 라벨을 뷰에서 붙인다(모델 statusText는
+                // 발화 원문 유지 — 복귀 재생 음성으로 라벨이 새는 것을 막는다).
                 if !model.statusText.isEmpty {
-                    distanceText(model.statusText).foregroundStyle(.secondary)
+                    distanceText(
+                        model.statusIsNextPreview
+                            ? appLocalized("guide.progressNext", model.statusText)
+                            : model.statusText
+                    ).foregroundStyle(.secondary)
                 }
                 if !screenHintDismissed {
                     Text(appLocalized("beacon.screenHint"))

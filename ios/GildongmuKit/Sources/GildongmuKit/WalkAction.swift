@@ -4,7 +4,7 @@ import Foundation
 /// 웹 정본 `src/lib/walk-action.ts`의 1:1 미러. 공유 fixture(walk-action-cases.json)가
 /// 동조를 강제한다.
 ///
-/// 쓰임은 하나다: 결정 지점 10m 앞 임박 큐(`guideStep` 6b'')가 무엇을 말할지 고른다.
+/// 쓰임은 하나다: 결정 지점 임박 큐(`guideStep` 6a, 거리는 `imminentAheadMeters`)가 무엇을 말할지 고른다.
 /// 분류가 없으면 큐 자체가 나가지 않으므로, **미분류의 결과는 오안내가 아니라 침묵**이다.
 ///
 /// ⚠ **입력은 서버가 재작성한 문장이다**(`rewriteWalkGuidance`). 카카오 원문
