@@ -560,6 +560,12 @@
     "deleted": "Deleted",
     "cleared": "All recent searches cleared"
   },
+  "recentRoutes": {
+    "title": "Recent routes",
+    "item": "Route from {from} to {to}",
+    "clearAll": "Clear all recent routes",
+    "cleared": "All recent routes cleared"
+  },
   "privacy": {
     "title": "Privacy Policy",
     "intro": "Gildongmu works without an account and does not store personal data in any database of its own.",

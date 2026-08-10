@@ -560,6 +560,12 @@
     "deleted": "Supprimé",
     "cleared": "Toutes les recherches récentes ont été effacées"
   },
+  "recentRoutes": {
+    "title": "Itinéraires récents",
+    "item": "Itinéraire de {from} à {to}",
+    "clearAll": "Effacer tous les itinéraires récents",
+    "cleared": "Tous les itinéraires récents ont été effacés"
+  },
   "privacy": {
     "title": "Politique de confidentialité",
     "intro": "Gildongmu fonctionne sans compte et ne conserve aucune donnée personnelle dans une base de données propre.",
