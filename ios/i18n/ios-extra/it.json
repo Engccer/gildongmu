@@ -207,7 +207,10 @@
       "listenSpeed2x": "2x",
       "aiSection": "Chat IA",
       "aiConsentToggle": "Consenso all'invio dei dati della chat IA",
-      "reportProblem": "Segnala un problema"
+      "reportProblem": "Segnala un problema",
+      "releaseNotes": "Note di rilascio",
+      "releaseNotesVersion": "Versione {version}",
+      "releaseNotesError": "Impossibile caricare le note di rilascio"
     },
     "shortcut": {
       "voiceSearch": {

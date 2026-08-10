@@ -207,7 +207,10 @@
       "listenSpeed2x": "2倍",
       "aiSection": "AIチャット",
       "aiConsentToggle": "AIチャットのデータ送信に同意",
-      "reportProblem": "問題を報告"
+      "reportProblem": "問題を報告",
+      "releaseNotes": "アップデート履歴",
+      "releaseNotesVersion": "バージョン {version}",
+      "releaseNotesError": "アップデート履歴を読み込めませんでした"
     },
     "shortcut": {
       "voiceSearch": {
