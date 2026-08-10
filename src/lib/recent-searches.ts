@@ -144,3 +144,50 @@ export function clearRecentEndpoints(
 ): RecentEndpoint[] {
   return save(storage, endpointsKey(field), []);
 }
+
+// ── 경로 (길찾기 출발·도착 쌍, 스펙 2026-08-10) ──────────────────────
+
+/** null = "현재 위치"(활성화 시점에 재측위 — 좌표를 굳히지 않는다). */
+export type RecentRoute = { from: RecentEndpoint | null; to: RecentEndpoint | null };
+
+const ROUTES_KEY = "gildongmu:recent-routes:v1";
+
+const isRouteSide = (v: unknown): v is RecentEndpoint | null => v === null || isEndpoint(v);
+
+const isRoute = (v: unknown): v is RecentRoute =>
+  typeof v === "object" && v !== null &&
+  isRouteSide((v as RecentRoute).from) && isRouteSide((v as RecentRoute).to);
+
+function sameSide(a: RecentEndpoint | null, b: RecentEndpoint | null): boolean {
+  if (a === null || b === null) return a === b;
+  return sameEndpoint(a, b);
+}
+
+/** 쌍 단위 동일 판정: from 동일 ∧ to 동일(현재 위치끼리도 동일). */
+function sameRoute(a: RecentRoute, b: RecentRoute): boolean {
+  return sameSide(a.from, b.from) && sameSide(a.to, b.to);
+}
+
+export function loadRecentRoutes(storage: Storage | null = defaultStorage()): RecentRoute[] {
+  return load(storage, ROUTES_KEY, isRoute);
+}
+
+export function recordRecentRoute(
+  route: RecentRoute,
+  storage: Storage | null = defaultStorage(),
+): RecentRoute[] {
+  // 양측 현재 위치는 자기 자리→자기 자리라 재조회 의미가 없다(스펙 §1.1).
+  if (!route.from && !route.to) return loadRecentRoutes(storage);
+  return save(storage, ROUTES_KEY, appendRecent(loadRecentRoutes(storage), route, sameRoute));
+}
+
+export function removeRecentRoute(
+  route: RecentRoute,
+  storage: Storage | null = defaultStorage(),
+): RecentRoute[] {
+  return save(storage, ROUTES_KEY, loadRecentRoutes(storage).filter((x) => !sameRoute(x, route)));
+}
+
+export function clearRecentRoutes(storage: Storage | null = defaultStorage()): RecentRoute[] {
+  return save(storage, ROUTES_KEY, []);
+}
