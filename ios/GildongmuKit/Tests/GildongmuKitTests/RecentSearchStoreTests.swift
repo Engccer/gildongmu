@@ -96,3 +96,46 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(store.endpoints(.to).count == 1)
     }
 }
+
+@Suite struct RecentRouteTests {
+    private let home = RecentEndpoint(label: "자택", lat: 37.535, lng: 127.145)
+    private let school = RecentEndpoint(label: "신명중학교", lat: 37.529, lng: 127.138)
+
+    @Test func prependAndDedupeByPair() {
+        let store = RecentSearchStore(defaults: freshDefaults("route-dedupe"))
+        let a = RecentRoute(from: home, to: school)
+        let b = RecentRoute(from: nil, to: school)
+        #expect(store.recordRoute(a) == [a])
+        #expect(store.recordRoute(b) == [b, a])   // 한쪽 nil ≠ place: 다른 쌍
+        let relabeled = RecentRoute(from: RecentEndpoint(label: "자택 아파트", lat: home.lat, lng: home.lng), to: school)
+        #expect(store.recordRoute(relabeled) == [relabeled, b])   // 같은 쌍은 끌어올림+라벨 갱신
+    }
+
+    @Test func rejectsBothCurrent() {
+        let store = RecentSearchStore(defaults: freshDefaults("route-both-nil"))
+        #expect(store.recordRoute(RecentRoute(from: nil, to: nil)) == [])
+        #expect(store.routes() == [])
+    }
+
+    @Test func capAt20() {
+        let store = RecentSearchStore(defaults: freshDefaults("route-cap"))
+        for i in 0..<25 {
+            store.recordRoute(RecentRoute(from: nil, to: RecentEndpoint(label: "t\(i)", lat: 37 + Double(i) * 0.01, lng: 127)))
+        }
+        #expect(store.routes().count == 20)
+    }
+
+    @Test func removeClearAndDecodeRecovery() {
+        let defaults = freshDefaults("route-remove")
+        let store = RecentSearchStore(defaults: defaults)
+        let a = RecentRoute(from: home, to: school)
+        let b = RecentRoute(from: nil, to: school)
+        store.recordRoute(a)
+        store.recordRoute(b)
+        #expect(store.removeRoute(b) == [a])
+        store.clearRoutes()
+        #expect(store.routes() == [])
+        defaults.set(Data("broken".utf8), forKey: "recentRoutes.v1")
+        #expect(store.routes() == [])
+    }
+}

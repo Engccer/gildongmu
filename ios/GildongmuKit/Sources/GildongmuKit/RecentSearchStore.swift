@@ -13,6 +13,18 @@ public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
     }
 }
 
+/// 최근 조회 경로(출발·도착 쌍, 스펙 2026-08-10). nil = "현재 위치" —
+/// 활성화 시점에 재측위하므로 좌표를 굳히지 않는다. 웹 RecentRoute 미러.
+public struct RecentRoute: Codable, Equatable, Hashable, Sendable {
+    public let from: RecentEndpoint?
+    public let to: RecentEndpoint?
+
+    public init(from: RecentEndpoint?, to: RecentEndpoint?) {
+        self.from = from
+        self.to = to
+    }
+}
+
 /// 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26).
 public enum RecentEndpointScope: String, Sendable {
     case from, to
@@ -78,6 +90,43 @@ public struct RecentSearchStore {
 
     public func clearEndpoints(_ scope: RecentEndpointScope) {
         save([RecentEndpoint](), forKey: Self.endpointsKey(scope))
+    }
+
+    // MARK: 경로 (출발·도착 쌍, 스펙 2026-08-10)
+
+    static let routesKey = "recentRoutes.v1"
+
+    public func routes() -> [RecentRoute] {
+        decode([RecentRoute].self, forKey: Self.routesKey)
+    }
+
+    /// 쌍 단위 dedupe 끌어올림. 양측 nil(현재 위치→현재 위치)은 재조회 의미가 없어 무기록.
+    @discardableResult
+    public func recordRoute(_ route: RecentRoute) -> [RecentRoute] {
+        guard route.from != nil || route.to != nil else { return routes() }
+        return save(Self.append(route, to: routes(), isSame: Self.sameRoute), forKey: Self.routesKey)
+    }
+
+    @discardableResult
+    public func removeRoute(_ route: RecentRoute) -> [RecentRoute] {
+        save(routes().filter { !Self.sameRoute($0, route) }, forKey: Self.routesKey)
+    }
+
+    public func clearRoutes() {
+        save([RecentRoute](), forKey: Self.routesKey)
+    }
+
+    static func sameRoute(_ a: RecentRoute, _ b: RecentRoute) -> Bool {
+        sameSide(a.from, b.from) && sameSide(a.to, b.to)
+    }
+
+    /// 한쪽 판정: 현재 위치(nil)끼리 동일, place끼리는 좌표 4자리 일치.
+    static func sameSide(_ a: RecentEndpoint?, _ b: RecentEndpoint?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): true
+        case let (l?, r?): sameCoord(l, r)
+        default: false
+        }
     }
 
     // MARK: 내부
