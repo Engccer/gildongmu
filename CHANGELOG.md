@@ -11,6 +11,12 @@
 
 ## 2026-08-10
 
+### 길찾기 최근 경로 + iOS 설정 업데이트 이력
+길찾기 조회 완료(settled) 시 출발·도착 쌍을 기기 로컬에 기록해(최대 20, 쌍 dedupe, 현재 위치는 nil/null 투영) 결과 없는 화면에 최근 경로 섹션으로 노출한다(웹·iOS). 활성화=두 필드 확정+즉시 조회+조회 버튼 포커스 선점, 삭제는 기존 최근 검색 계약을 그대로 따른다(iOS 스와이프=로터, 웹 삭제 버튼). 저장은 웹 `src/lib/recent-searches.ts` ↔ iOS `RecentSearchStore`(`RecentRoute`) 미러.
+iOS 설정에 업데이트 이력 화면을 추가했다 — `docs/appstore/release-notes.md`(정본) → `scripts/build-release-notes.mjs` → 번들 `release-notes.json`(1.1~1.4) → `ReleaseNotesView`(버전 heading 로터 점프, ko 외 5개 언어는 en 폴백). 드리프트 가드는 `src/lib/__tests__/release-notes-bundle.test.ts`.
+a11y 감사 반영으로 최근 경로 삭제·전체 지우기 통지를 `.high` 우선순위로 올렸다(자기 소멸 버튼이 기본 우선순위 통지를 잠식하는 패턴 재발 방지).
+spec `docs/superpowers/specs/2026-08-10-recent-routes-and-release-notes-design.md`.
+
 ### 실시간 안내 실보행 라운드1 반영 (같은 날 아침 실보행 4건)
 ①"현재 안내" 행을 발화 이벤트 연동에서 **현재 구간 상태 유도**로 전환(웹·iOS) — 발화는 경계 40m 선행+1회 래치라 짧은 구간의 15초 재통독이 선행분을 덮은 뒤 영구 고착됐다(마지막 구간 내내 횡단보도 안내 잔류 실사고). ②상태 행의 주기 예고에 "다음 안내," 라벨(iOS 표시 전용, 음성 불변). ③횡단보도·지하보도 재작성을 행동 동사 우선으로("메가 MGC커피 앞에서 횡단보도를 건너세요, 21m" — 서버라 웹·iOS·CLI 동시 반영). ④임박 큐 10m→**25m**(GPS·투영 지연 ~15m가 10m를 잡아먹어 회전을 지난 뒤 발화, 차도 진입 위험 실사고 — 위원장 25m 지정). 공유 시나리오 fixture 재계산 포함. spec `2026-08-10-guide-progress-overview-design.md` §8.
 
