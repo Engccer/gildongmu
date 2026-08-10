@@ -182,6 +182,11 @@ struct BeaconTrackingSheet: View {
         // 곧장 주변 확인 버튼이다.
         .onChange(of: model.arrivalDest) { previous, arrival in
             guard previous == nil, arrival != nil else { return }
+            // 조망 모달이 열린 채 도착하면 명시적으로 닫는다(독립 리뷰 MAJOR).
+            // 종전엔 도착 = 시트 닫힘이라 자식 모달도 계단식으로 함께 닫혔는데,
+            // 시트가 도착 화면으로 유지되면서 그 계단이 사라졌다 — 방치하면 stop()이
+            // 지운 경로 위에서 "아직 안내가 없습니다" 헤더가 도착 통지와 모순된다.
+            showRouteList = false
             Task { await landArrivedFocus() }
         }
         }
