@@ -118,8 +118,8 @@ export interface JusoAddress {
 
 /**
  * 자동차 경로의 턴바이턴 안내 한 단계.
- * guidance는 provider(카카오모빌리티)가 완성해 주는 한국어 안내문 —
- * 스크린 리더 낭독의 정본 텍스트로 그대로 사용한다.
+ * guidance는 provider(Tmap 기본·카카오 폴백)의 완성 한국어 안내문을 서버가
+ * 재작성한 낭독 정본이다(`rewriteCarGuidance` — `getCarRoute` 진입점에서 적용).
  */
 export interface CarRouteGuide {
   /** 교차로/지점 이름 (없으면 빈 문자열) */
