@@ -19,7 +19,25 @@ public let announceAheadMeters = 40.0
 /// 25m 근거(위원장 실보행 판정 2026-08-10): 초기값 10m는 GPS·투영 지연(~15m 관측)에
 /// 잡아먹혀 실위치 기준으로는 회전 지점을 **지난 뒤** 발화했다 — 명령을 따르면 차도로
 /// 진입하는 위험 실사고. 관측 지연 15m + 종전 여유 10m. 상수는 계속 실보행 판정 대상.
-public let imminentAheadMeters = 25.0
+///
+/// 2026-08-11부터 유도식(10 + projectionLagMeters)으로 재정의 — 값 25 불변(spec §3).
+/// 표시 좌표계의 표시 잔여 10 = 원시 계산 25 = 임박 큐 시점이 유도식으로 일치한다.
+///
+/// 표시 계층의 투영 지연 추정(m) — 웹 `PROJECTION_LAG_M` 미러. ⚠ **이 값의 갱신은
+/// imminentAheadMeters를 함께 움직이는 의도적 행동 변경이다**(불변식 A "음성 불변"은
+/// 이번 변경 한정) — 실보행 리플레이 근거 + spec 개정 + 실보행 재판정 없이 바꾸지 말
+/// 것. 표시 계층에 15·25를 직접 쓰면 drift다(불변식 B: lag 상수와 effectiveD 유도는
+/// route-guide.ts ↔ 이 파일 한 쌍에만 존재한다).
+public let projectionLagMeters = 15.0
+public let imminentAheadMeters = 10.0 + projectionLagMeters // = 25, 값 불변(유도식 재정의)
+
+/// 표시 좌표계 유효 진행거리(spec 2026-08-11 §3) — 웹 `displayEffectiveD` 미러.
+/// 표시 계층(GuideLiveRows)의 구간 선택·국면·잔여가 전부 이 좌표를 쓴다.
+/// **음성·톤·햅틱 계층은 원시 d 유지.** 램프인: 기준점(세션·재조회 시작 시점의 d)
+/// 직후에는 걸은 거리만큼만 차오른다(F7 — 출발·재조회 직후 과소 표시 방지).
+public func displayEffectiveD(d: Double, baselineD: Double) -> Double {
+    d + min(projectionLagMeters, max(0, d - baselineD))
+}
 public let advanceMarginBaseMeters = 15.0
 /// **기하를 모르는 세션의** 최종 접근 진입 거리(m). 기하를 아는 세션은 경로 종점까지
 /// 따라간다(아래 `arrivalToleranceMinMeters`) — 이 50m는 "경로 종점 = 목적지"를 전제한
