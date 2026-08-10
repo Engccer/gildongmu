@@ -7,6 +7,7 @@ import {
   __resetManualLocationForTest,
   setManualLocation,
 } from "@/lib/manual-location-store";
+import { awaitGeolocation } from "@/lib/geolocation";
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -311,5 +312,108 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     ).toBe(true);
     // 수동 위치일 때는 역지오코딩(fetchCurrentAddress)을 호출하지 않는다.
     expect(calledUrls.some((u) => u.startsWith("/api/geocode/reverse"))).toBe(false);
+  });
+});
+
+// 최근 경로(스펙 2026-08-10 §1). 저장 계층(recent-searches.ts)은 Task 1에서 검증
+// 완료 — 여기서는 DirectionsView 결선(활성화 즉시 조회·삭제 포커스·기록 시점)만.
+describe("최근 경로 섹션", () => {
+  const ROUTES_KEY = "gildongmu:recent-routes:v1";
+  const seedRoutes = () =>
+    localStorage.setItem(
+      ROUTES_KEY,
+      JSON.stringify([
+        {
+          from: { label: "자택", lat: 37.535, lng: 127.145 },
+          to: { label: "신명중학교", lat: 37.529, lng: 127.138 },
+        },
+        { from: null, to: { label: "강남역", lat: 37.497, lng: 127.027 } },
+      ]),
+    );
+
+  function renderView() {
+    return render(
+      <DirectionsView
+        canShowWalk={false}
+        canShowTransit={true}
+        canBriefCarRoute={false}
+        onBack={() => {}}
+      />,
+    );
+  }
+
+  it("결과 없을 때 섹션·항목·전체 지우기가 보인다", async () => {
+    localStorage.clear();
+    seedRoutes();
+    stubFetch();
+    renderView();
+    // ⚠ mock useTranslations는 네임스페이스를 무시하고 key만 돌려주므로 이 뷰의
+    // 제목(t("title"), directions.title)과 이 섹션 제목(tRecentRoutes("title"))이
+    // 둘 다 문자열 "title"이 된다 — level:3으로 h3만 골라 h2와의 동명 충돌을 피한다.
+    expect(
+      await screen.findByRole("heading", { name: "title", level: 3 }),
+    ).toBeTruthy();
+    expect(screen.getAllByText("item")).toHaveLength(2);
+    expect(screen.getByText("clearAll")).toBeTruthy();
+  });
+
+  it("활성화: 즉시 조회 시작 + 조회 버튼 포커스 선점, settled 후 섹션 숨김·기록 끌어올림", async () => {
+    localStorage.clear();
+    seedRoutes();
+    stubFetch(); // /api/route/* 미매핑 URL은 throw → 수단 error → settled(성공 0)
+    // 두 번째 항목은 출발지가 "현재 위치"(null) — settled까지 도달해야 기록
+    // 지점을 검증할 수 있으므로, 전역 mock(항상 error)을 이 조회 1건만 성공으로
+    // 오버라이드한다(측위 실패 시 거동은 "측위 실패 조회는 기록하지 않는다"가 커버).
+    vi.mocked(awaitGeolocation).mockResolvedValueOnce({
+      status: "ready",
+      coords: { lat: 37.5, lng: 127.0 },
+    });
+    renderView();
+    const items = await screen.findAllByText("item");
+    fireEvent.click(items[1]); // 두 번째 항목(강남역행)을 최신으로
+    expect((document.activeElement as HTMLElement).textContent).toBe("submit");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "title", level: 3 }),
+      ).toBeNull(),
+    );
+    const stored = JSON.parse(localStorage.getItem(ROUTES_KEY)!);
+    expect(stored[0].to.label).toBe("강남역"); // dedupe 끌어올림 = settled 기록 실행 증거
+  });
+
+  it("측위 실패 조회는 기록하지 않는다", async () => {
+    localStorage.clear();
+    stubFetch();
+    // 도착지만 프리필, 출발지는 현재 위치 → geolocation mock이 error → geoError
+    render(
+      <DirectionsView
+        canShowWalk={false}
+        canShowTransit={true}
+        canBriefCarRoute={false}
+        initialTo={{ kind: "place", label: "강남역", coord: { lat: 37.497, lng: 127.027 } }}
+        onBack={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByText("submit"));
+    await waitFor(() => expect(localStorage.getItem(ROUTES_KEY)).toBeNull());
+  });
+
+  it("삭제: 항목 제거 + 마지막 항목 삭제 시 조회 버튼 포커스", async () => {
+    localStorage.clear();
+    localStorage.setItem(
+      ROUTES_KEY,
+      JSON.stringify([
+        { from: null, to: { label: "강남역", lat: 37.497, lng: 127.027 } },
+      ]),
+    );
+    stubFetch();
+    renderView();
+    const del = (await screen.findAllByText("delete")).at(-1)!; // 항목 삭제 버튼(mock은 네임스페이스를 벗긴다)
+    fireEvent.click(del);
+    expect(JSON.parse(localStorage.getItem(ROUTES_KEY)!)).toEqual([]);
+    await waitFor(() =>
+      expect((document.activeElement as HTMLElement).textContent).toBe(
+        "submit",
+      ));
   });
 });

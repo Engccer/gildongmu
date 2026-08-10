@@ -29,8 +29,13 @@ import {
   loadRecentEndpoints,
   recordRecentEndpoint,
   removeRecentEndpoint,
+  loadRecentRoutes,
+  recordRecentRoute,
+  removeRecentRoute,
+  clearRecentRoutes,
   type RecentEndpoint,
   type RecentEndpointField,
+  type RecentRoute,
 } from "@/lib/recent-searches";
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
@@ -282,12 +287,28 @@ export function DirectionsView({
   const tRecent = useTranslations("recent");
   const setRecentFor = (field: RecentEndpointField) =>
     field === "from" ? setRecentFrom : setRecentTo;
+
+  // 최근 경로(스펙 2026-08-10): 출발·도착 쌍. 결과 없는 화면에서만 노출.
+  const [recentRoutes, setRecentRoutes] = useState<RecentRoute[]>([]);
+  const tRecentRoutes = useTranslations("recentRoutes");
+  const visibleRecentRoutes = recentRoutes.slice(0, 5); // 웹 최근 목록 관례(상위 5)
+  const routeDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const routeFocusIndexRef = useRef<number | null>(null);
+  const [routeRevision, setRouteRevision] = useState(0);
+  useEffect(() => {
+    const idx = routeFocusIndexRef.current;
+    if (idx === null) return;
+    routeFocusIndexRef.current = null;
+    routeDeleteRefs.current[idx]?.focus();
+  }, [routeRevision]);
+
   useEffect(() => {
     // react-hooks/set-state-in-effect 회피: 동기 setState 대신 콜백으로 한 틱 미룬다
     // (PlaceSearch 최근 검색 로드 effect와 동형).
     queueMicrotask(() => {
       setRecentFrom(loadRecentEndpoints("from"));
       setRecentTo(loadRecentEndpoints("to"));
+      setRecentRoutes(loadRecentRoutes());
     });
   }, []);
 
@@ -431,10 +452,16 @@ export function DirectionsView({
     setNotice(stopped ? tBeacon("stopped") : "");
   }
 
-  async function runQuery() {
+  /**
+   * override 인자는 최근 경로 활성화 전용(스펙 §1.4) — setFromField/setToField의
+   * setState는 비동기라 같은 틱에 이어지는 조회가 옛 fromField.resolved를 읽으므로,
+   * 확정할 endpoint를 직접 넘겨 그 경합을 우회한다. 조회 버튼 클릭은 인자 없이
+   * 호출한다(기존 필드 상태 그대로).
+   */
+  async function runQuery(fromOverride?: DirEndpoint, toOverride?: DirEndpoint) {
     if (inFlight.current) return;
-    const from = fromField.resolved;
-    const to = toField.resolved;
+    const from = fromOverride ?? fromField.resolved;
+    const to = toOverride ?? toField.resolved;
     setNotice("");
     if (!from || !to) {
       setPhase({ kind: "needEndpoints" });
@@ -523,6 +550,14 @@ export function DirectionsView({
       });
       setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled", successCount: successes.length });
+      // 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소 경로는
+      // 여기 도달하지 않아 자연 배제된다. current는 null 투영(실좌표를 굳히지 않는다).
+      setRecentRoutes(
+        recordRecentRoute({
+          from: from.kind === "current" ? null : { label: from.label, lat: from.coord.lat, lng: from.coord.lng },
+          to: to.kind === "current" ? null : { label: to.label, lat: to.coord.lat, lng: to.coord.lng },
+        }),
+      );
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
       const first = successes[0];
       if (first) {
@@ -667,6 +702,46 @@ export function DirectionsView({
     return tPed("noRoute");
   }
 
+  function routeEndpoint(side: RecentEndpoint | null): DirEndpoint {
+    return side
+      ? { kind: "place", label: side.label, coord: { lat: side.lat, lng: side.lng } }
+      : { kind: "current" };
+  }
+  function routeItemLabel(r: RecentRoute): string {
+    const side = (s: RecentEndpoint | null) => (s ? s.label : t("currentLocation"));
+    return tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
+  }
+  /** 활성화 = 두 필드 원자 확정 + 즉시 조회(스펙 §1.4). 결과 도착 시 이 섹션이 통째로
+   * 사라지므로 포커스를 먼저 조회 버튼으로 선점한다(헌장 §5). endpoint 최근 목록도
+   * 확정 경로와 동일하게 기록(iOS setEndpoint 경유와 대칭). */
+  function activateRecentRoute(r: RecentRoute) {
+    submitRef.current?.focus();
+    const fromEp = routeEndpoint(r.from);
+    const toEp = routeEndpoint(r.to);
+    setFromField(endpointToField(fromEp, currentLabel));
+    setToField(endpointToField(toEp, currentLabel));
+    if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
+    if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
+    void runQuery(fromEp, toEp);
+  }
+  function deleteRecentRoute(r: RecentRoute, index: number) {
+    const next = removeRecentRoute(r);
+    setRecentRoutes(next);
+    setNotice(tRecent("deleted"));
+    const visibleCount = Math.min(next.length, 5);
+    if (visibleCount === 0) {
+      submitRef.current?.focus();
+      return;
+    }
+    routeFocusIndexRef.current = Math.min(index, visibleCount - 1);
+    setRouteRevision((v) => v + 1);
+  }
+  function clearRoutes() {
+    setRecentRoutes(clearRecentRoutes());
+    setNotice(tRecentRoutes("cleared"));
+    submitRef.current?.focus();
+  }
+
   return (
     <div>
       <button
@@ -769,7 +844,7 @@ export function DirectionsView({
       <button
         type="button"
         ref={submitRef}
-        onClick={runQuery}
+        onClick={() => runQuery()}
         aria-disabled={busy}
         aria-busy={busy}
         className="mt-4 min-h-11 rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
@@ -785,6 +860,52 @@ export function DirectionsView({
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
         {liveMessage}
       </p>
+
+      {/* 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색 방해.
+          조용히 나타나는 목록이라 heading이 발견 경로. 항목 한 줄 = 한 객체(라벨 문장이
+          곧 버튼 이름), 삭제 버튼은 인터랙티브라 별도 객체가 정상. */}
+      {!results && !busy && visibleRecentRoutes.length > 0 && (
+        <section className="mt-4">
+          <h3 className="text-sm font-semibold">{tRecentRoutes("title")}</h3>
+          <ul className="mt-1">
+            {visibleRecentRoutes.map((r, i) => {
+              const label = routeItemLabel(r);
+              return (
+                <li
+                  key={`${r.from?.lat ?? "cur"},${r.from?.lng ?? ""}→${r.to?.lat ?? "cur"},${r.to?.lng ?? ""}`}
+                  className="flex items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => activateRecentRoute(r)}
+                    className="min-h-11 flex-1 text-left text-sm underline"
+                  >
+                    {label}
+                  </button>
+                  <button
+                    type="button"
+                    ref={(el) => {
+                      routeDeleteRefs.current[i] = el;
+                    }}
+                    aria-label={tRecent("deleteItem", { name: label })}
+                    onClick={() => deleteRecentRoute(r, i)}
+                    className="min-h-11 rounded-md border border-border px-3 text-sm"
+                  >
+                    {tRecent("delete")}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            type="button"
+            onClick={clearRoutes}
+            className="mt-1 min-h-11 text-sm underline"
+          >
+            {tRecentRoutes("clearAll")}
+          </button>
+        </section>
+      )}
 
       {/* 간략 폴백(§3.1): 시작 가능한 수단 안내가 하나도 없을 때만 선두 노출 —
           경로를 못 찾은 상황일수록 방향 감각이 더 필요하다(기존 근거 승계). */}
