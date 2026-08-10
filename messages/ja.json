@@ -657,6 +657,18 @@
       "crosswalk": "まもなく横断歩道を渡ってください",
       "underpass": "まもなく地下道を渡ってください"
     },
+    "liveStraight": "{target}まで{n}m直進してください",
+    "liveStraightNoName": "{n}m直進してください",
+    "liveTurnIn": "{n}m先、{action}",
+    "liveAction": {
+      "left": "左に曲がってください",
+      "right": "右に曲がってください",
+      "crosswalk": "横断歩道を渡ってください",
+      "underpass": "地下道で渡ってください"
+    },
+    "nextAction": "{anchor}の前で{action}",
+    "nextStraight": "{target}まで{n}m直進",
+    "nextStraightNoName": "{n}m直進",
     "uncertain": "位置の確度が低いです",
     "uncertainRecovered": "位置の確度が回復しました",
     "reacquiring": "経路上の位置を再取得しています",

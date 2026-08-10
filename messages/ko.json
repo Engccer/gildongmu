@@ -657,6 +657,18 @@
       "crosswalk": "잠시 후 횡단보도를 건너세요",
       "underpass": "잠시 후 지하보도로 건너세요"
     },
+    "liveStraight": "{target}까지 {n}m 직진하세요",
+    "liveStraightNoName": "{n}m 직진하세요",
+    "liveTurnIn": "{n}m 후 {action}",
+    "liveAction": {
+      "left": "왼쪽으로 도세요",
+      "right": "오른쪽으로 도세요",
+      "crosswalk": "횡단보도를 건너세요",
+      "underpass": "지하보도로 건너세요"
+    },
+    "nextAction": "{anchor} 앞에서 {action}",
+    "nextStraight": "{target}까지 {n}m 직진",
+    "nextStraightNoName": "{n}m 직진",
     "uncertain": "위치 확신이 낮습니다",
     "uncertainRecovered": "현재 위치를 다시 파악했습니다",
     "reacquiring": "현재 위치를 다시 파악하는 중입니다",

@@ -657,6 +657,18 @@
       "crosswalk": "Cruce el paso de peatones en breve",
       "underpass": "Use el paso subterráneo en breve"
     },
+    "liveStraight": "Siga recto {n}m hacia {target}",
+    "liveStraightNoName": "Siga recto {n}m",
+    "liveTurnIn": "En {n}m, {action}",
+    "liveAction": {
+      "left": "gire a la izquierda",
+      "right": "gire a la derecha",
+      "crosswalk": "cruce el paso de peatones",
+      "underpass": "use el paso subterráneo"
+    },
+    "nextAction": "{action} en {anchor}",
+    "nextStraight": "Siga recto {n}m hacia {target}",
+    "nextStraightNoName": "Siga recto {n}m",
     "uncertain": "La confianza en la ubicación es baja",
     "uncertainRecovered": "Se recuperó la confianza en la ubicación",
     "reacquiring": "Buscando de nuevo tu posición en la ruta",
