@@ -9,7 +9,12 @@ import {
   recordRecentEndpoint,
   removeRecentEndpoint,
   clearRecentEndpoints,
+  loadRecentRoutes,
+  recordRecentRoute,
+  removeRecentRoute,
+  clearRecentRoutes,
   type RecentEndpoint,
+  type RecentRoute,
 } from "../recent-searches";
 
 /** 인메모리 Storage 스텁(node env엔 localStorage가 없다 — 주입 경로 검증 겸용). */
@@ -119,5 +124,51 @@ describe("recentEndpoints", () => {
     clearRecentEndpoints("from", s);
     expect(loadRecentEndpoints("from", s)).toEqual([]);
     expect(loadRecentEndpoints("to", s)).toHaveLength(1);
+  });
+});
+
+describe("recent routes", () => {
+  const home = { label: "자택", lat: 37.535, lng: 127.145 };
+  const school = { label: "신명중학교", lat: 37.529, lng: 127.138 };
+  const homeToSchool: RecentRoute = { from: home, to: school };
+  const curToSchool: RecentRoute = { from: null, to: school };
+
+  it("기록은 맨 앞 삽입, 쌍 단위 dedupe(끌어올림)", () => {
+    const s = memStorage();
+    expect(recordRecentRoute(homeToSchool, s)).toEqual([homeToSchool]);
+    expect(recordRecentRoute(curToSchool, s)).toEqual([curToSchool, homeToSchool]);
+    // 같은 쌍(라벨 변형 포함)은 최신으로 끌어올림
+    const relabeled = { from: { ...home, label: "자택 아파트" }, to: school };
+    expect(recordRecentRoute(relabeled, s)).toEqual([relabeled, curToSchool]);
+  });
+
+  it("양측 현재 위치 쌍은 기록하지 않는다", () => {
+    const s = memStorage();
+    expect(recordRecentRoute({ from: null, to: null }, s)).toEqual([]);
+    expect(loadRecentRoutes(s)).toEqual([]);
+  });
+
+  it("한쪽 null과 place는 다른 쌍이다", () => {
+    const s = memStorage();
+    recordRecentRoute(homeToSchool, s);
+    recordRecentRoute(curToSchool, s);
+    expect(loadRecentRoutes(s)).toHaveLength(2);
+  });
+
+  it("cap 20 절단", () => {
+    const s = memStorage();
+    for (let i = 0; i < 25; i++) {
+      recordRecentRoute({ from: null, to: { label: `t${i}`, lat: 37 + i * 0.01, lng: 127 } }, s);
+    }
+    expect(loadRecentRoutes(s)).toHaveLength(20);
+  });
+
+  it("remove·clear·파싱 실패 복구", () => {
+    const s = memStorage();
+    recordRecentRoute(homeToSchool, s);
+    recordRecentRoute(curToSchool, s);
+    expect(removeRecentRoute(curToSchool, s)).toEqual([homeToSchool]);
+    expect(clearRecentRoutes(s)).toEqual([]);
+    expect(loadRecentRoutes(memStorage({ "gildongmu:recent-routes:v1": "{oops" }))).toEqual([]);
   });
 });
