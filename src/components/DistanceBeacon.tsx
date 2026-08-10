@@ -237,10 +237,19 @@ export function DistanceBeacon({
               )}
             </p>
           )}
-          {/* "현재 안내" 행(역할 고정 2행 분리, 위원장 판정 2026-08-10): 지금 따르는
-              유닛 전문. 실행 안내 시점에만 갱신되고 주기 예고·임박·상태 통지가 덮지
-              않는다. live region 밖 일반 텍스트 — 발화는 실행 안내가 이미 했다.
-              이탈 중엔 현재 유닛이 낡은 투영이라 숨긴다(remainingText와 동형). */}
+          {/* 하단 2행(spec 2026-08-11): 윗줄 = 현재 행동(동적 카운트다운·상태 대체·
+              최종 접근 문형), 아랫줄 = 다음 예고. live region 밖 정적 텍스트 —
+              능동 통지는 기존 polite 채널이 담당한다(이중 낭독 금지). 이탈 중에도
+              가리지 않는다 — 리듀서가 윗줄(이탈 문장)·아랫줄(비움)을 소유한다(F2).
+              빈 값은 요소 제거(빈 텍스트 낭독 금지). */}
+          {tracking && guide.mode === "detail" && guide.liveRows.top && (
+            <p className="mt-1 text-sm">{guide.liveRows.top}</p>
+          )}
+          {tracking && guide.mode === "detail" && guide.liveRows.next && (
+            <p className="mt-1 text-sm text-muted">{guide.liveRows.next}</p>
+          )}
+          {/* car 세션의 종전 "현재 안내" 행(spec §7 비범위 — walk에선 currentText가
+              항상 null이라 이 행은 자동 부재). 이탈 중엔 낡은 투영이라 숨긴다. */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
             <p className="mt-1 text-sm">{guide.currentText}</p>
           )}

@@ -44,6 +44,15 @@ import {
   type GuideTuning,
 } from "@/lib/route-guide";
 import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-guide";
+import {
+  buildDisplayUnits,
+  guideLiveRows,
+  liveStepsFrom,
+  type DisplayUnit,
+  type LiveRowsOutput,
+  type LiveRowsState,
+} from "@/lib/guide-live-rows";
+import type { WalkAction } from "@/lib/walk-action";
 import { prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
@@ -304,12 +313,17 @@ export interface RouteGuideApi {
    */
   progress: GuideProgress | null;
   /**
-   * 지금 따르는 유닛 전문("현재 안내" 행, 위원장 판정 2026-08-10 하단 2행 분리).
-   * 실행 안내가 나가는 순간에만 갱신되고 주기 예고·임박·상태 통지가 덮지 않는다 —
-   * liveText 단일 슬롯이 현재/다음을 오가며 의미가 바뀌던 혼재의 해소. live region
-   * 밖 일반 텍스트로만 렌더한다(발화는 실행 안내 시점에 이미 나갔다).
+   * "현재 안내" 행 — **car 세션 전용**(walk는 liveRows가 대체, spec 2026-08-11.
+   * 자동차 세션 화면은 그 spec의 비범위라 종전 행을 유지한다). walk에선 항상 null.
    */
   currentText: string | null;
+  /**
+   * 하단 2행(spec 2026-08-11, walk 상세 전용): 윗줄 = 현재 행동(동적 카운트다운·
+   * 상태 대체·최종 접근 문형), 아랫줄 = 다음 예고("다음 안내," 라벨 포함 완성 문자열).
+   * live region 밖 정적 텍스트로만 렌더한다 — 능동 통지는 기존 음성·통지 채널이
+   * 담당한다(이중 낭독 금지). 빈 값은 null(요소 제거 — 빈 텍스트 낭독 금지).
+   */
+  liveRows: { top: string | null; next: string | null };
   /** 전환 버튼 노출 조건 — ko 데이터 로케일이면서 유효 상세 경로를 쥔 세션만. */
   canOfferDetail: boolean;
   rerouting: boolean;
@@ -347,6 +361,10 @@ export function useRouteGuide(
   const [offRoute, setOffRoute] = useState(false);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
   const [currentText, setCurrentText] = useState<string | null>(null);
+  const [liveRows, setLiveRows] = useState<{ top: string | null; next: string | null }>({
+    top: null,
+    next: null,
+  });
   const [hasRoute, setHasRoute] = useState(false);
   const [rerouting, setRerouting] = useState(false);
 
@@ -378,6 +396,12 @@ export function useRouteGuide(
   /** 세션 시작 시각(초, 단조) — 첫 fix 대기도 워치독이 덮게 하는 기준. */
   const startedAtRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
+  /** 하단 2행 표시 유닛(walk 상세 전용, spec 2026-08-11 §4.1) — 경로 커밋 시 재구축. */
+  const displayUnitsRef = useRef<DisplayUnit[]>([]);
+  /** 하단 2행 리듀서 소상태. 재조회·이탈 복귀·모드 전환에서 null 리셋. */
+  const liveRowsStateRef = useRef<LiveRowsState | null>(null);
+  /** 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체. */
+  const liveBaselineDRef = useRef(0);
   /** 상세 경로의 총 소요시간(초, provider 원값) — walk 잔여 시간 비례 추정의 분모. */
   const routeDurationRef = useRef<number | null>(null);
   /** car 도로명 스팬(§4.7 — 현재 진행거리가 속한 링크만 답한다). */
@@ -457,6 +481,81 @@ export function useRouteGuide(
     (text: string, isBundle: boolean): string =>
       isBundle ? text : t("progressCurrent", { step: text }),
     [t],
+  );
+
+  /** 행동구("왼쪽으로 도세요") — 디스크립터 렌더의 공통 조각. */
+  const actionPhrase = useCallback((a: WalkAction): string => t(`liveAction.${a}`), [t]);
+
+  /**
+   * 하단 2행 디스크립터 → 문자열(spec §4.2·§4.3·§6). fixture 러너
+   * (guide-live-rows.test.ts)와 같은 매핑 규칙 — 여기가 갈리면 fixture가 못 잡으므로
+   * 규칙 변경은 반드시 러너와 함께 간다.
+   */
+  const renderLiveRows = useCallback(
+    (out: LiveRowsOutput): { top: string | null; next: string | null } => {
+      const top = out.top;
+      const topText =
+        top === null
+          ? null
+          : top.kind === "offRoute"
+            ? t("offRoute")
+            : top.kind === "uncertain"
+              ? t("uncertain")
+              : top.kind === "reacquiring"
+                ? t("reacquiring")
+                : top.kind === "crossing"
+                  ? top.text
+                  : top.kind === "turnSoon"
+                    ? t(`imminent.${top.action}`)
+                    : top.kind === "turnIn"
+                      ? t("liveTurnIn", { n: top.meters, action: actionPhrase(top.action) })
+                      : top.target
+                        ? t("liveStraight", { target: top.target, n: top.meters })
+                        : t("liveStraightNoName", { n: top.meters });
+      const nx = out.next;
+      const step =
+        nx === null
+          ? null
+          : nx.kind === "action"
+            ? nx.anchor
+              ? t("nextAction", { anchor: nx.anchor, action: actionPhrase(nx.action) })
+              : actionPhrase(nx.action)
+            : nx.kind === "straight"
+              ? nx.target
+                ? t("nextStraight", { target: nx.target, n: nx.meters })
+                : t("nextStraightNoName", { n: nx.meters })
+              : actionPhrase(nx.action); // crossing·turn
+      return { top: topText, next: step ? t("progressNext", { step }) : null };
+    },
+    [actionPhrase, t],
+  );
+
+  /** 값이 같으면 이전 객체를 돌려 재렌더를 막는다(매 fix 호출 — 객체 identity 베일아웃). */
+  const setLiveRowsIfChanged = useCallback(
+    (rows: { top: string | null; next: string | null }) => {
+      setLiveRows((prev) => (prev.top === rows.top && prev.next === rows.next ? prev : rows));
+    },
+    [],
+  );
+
+  /**
+   * 하단 2행 갱신(walk 상세 전용). 매 fix·커밋 지점에서 부른다 — 상태 국면
+   * (uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
+   */
+  const refreshLiveRows = useCallback(
+    (state: GuideState) => {
+      if (kindFixed !== "walk") return;
+      const out = guideLiveRows(
+        liveRowsStateRef.current,
+        displayUnitsRef.current,
+        state.d,
+        liveBaselineDRef.current,
+        state.phase,
+      );
+      liveRowsStateRef.current = out.state;
+      setLiveRowsIfChanged(renderLiveRows(out));
+    },
+    [kindFixed, renderLiveRows, setLiveRowsIfChanged],
   );
 
   /**
@@ -669,16 +768,24 @@ export function useRouteGuide(
       setMode("detail");
       setOffRoute(state.phase === "offRoute");
       setProgress(progressOf(route, state));
-      // "현재 안내" 행은 커밋 지점에서 일괄 초기화한다 — 간략 경유 복귀·재획득에서
-      // 이전 상세 구간의 낡은 유닛이 남는 것을 막는다(이후 갱신은 실행 안내 이벤트).
-      const indices = unitAt(route, state.stepIndex);
-      setCurrentText(currentDisplay(unitText(route, indices, t), indices.length > 1));
+      if (kindFixed === "walk") {
+        // 하단 2행: 커밋은 상태 재구성 지점이다 — 램프인 기준점·클램프를 새 기준으로
+        // 리셋하고 즉시 1회 계산한다(spec §3 F7·§4.2 리셋 계약).
+        liveBaselineDRef.current = state.d;
+        liveRowsStateRef.current = null;
+        refreshLiveRows(state);
+        setCurrentText(null); // walk의 "현재 안내" 행은 liveRows가 대체(spec 2026-08-11)
+      } else {
+        // car 화면은 spec 비범위 — 종전 "현재 안내" 행 유지.
+        const indices = unitAt(route, state.stepIndex);
+        setCurrentText(currentDisplay(unitText(route, indices, t), indices.length > 1));
+      }
       // 거리 축이 직선 → 경로로 바뀐다(전환·재획득·재조회 공통). 다음 추세 fix가
       // 새 축 현재값으로 앵커를 다시 잡고 현재 상태를 1회 알린다.
       toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
       lastRemainingRef.current = null;
     },
-    [currentDisplay, progressOf, t],
+    [currentDisplay, kindFixed, progressOf, refreshLiveRows, t],
   );
 
   /**
@@ -707,6 +814,8 @@ export function useRouteGuide(
     stepFreeNotice: string | null;
     /** 경로 종점 → 목적지 오프셋 기하(§3.1). 구버전 서버·기하 실패면 null. */
     finalApproach: FinalApproachGeometry | null;
+    /** 하단 2행 표시 입력(walk 전용 — 스팬 + 서버 live 조각, spec 2026-08-11). car는 []. */
+    liveSteps: ReturnType<typeof liveStepsFrom>;
   } | null> => {
     // fail-closed: 실좌표가 없으면 안내를 시작하지 않는다. 수동 위치로 만든
     // 기존 경로 기하를 재사용하면 첫 실제 fix에서 즉시 이탈 판정이 난다.
@@ -738,6 +847,7 @@ export function useRouteGuide(
           stepFree: null,
           stepFreeNotice: null,
           finalApproach: null,
+          liveSteps: [],
         };
       }
       const res = await fetch(
@@ -765,6 +875,7 @@ export function useRouteGuide(
         stepFree: result.stepFree ?? null,
         stepFreeNotice: result.stepFreeNotice ?? null,
         finalApproach: result.finalApproach ?? null,
+        liveSteps: liveStepsFrom(route, result.steps),
       };
     } catch {
       return null;
@@ -969,6 +1080,8 @@ export function useRouteGuide(
               });
         const text = `${t("finalApproachRouteEnd")} ${approach}`;
         rememberGuidance(text);
+        // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2 — 이 층이 행을 소유).
+        setLiveRowsIfChanged({ top: text, next: null });
         announce(text);
         return;
       }
@@ -993,6 +1106,7 @@ export function useRouteGuide(
       lastFinalTickAtRef.current = now;
       const text = approachTick(distance, fix.accuracy, null);
       rememberGuidance(text);
+      setLiveRowsIfChanged({ top: text, next: null });
       announce(text);
     },
     [
@@ -1004,6 +1118,7 @@ export function useRouteGuide(
       closerIntervalSeconds,
       emitTone,
       rememberGuidance,
+      setLiveRowsIfChanged,
       t,
     ],
   );
@@ -1056,11 +1171,17 @@ export function useRouteGuide(
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
-      // "현재 안내" 행은 **현재 좌표가 속한 구간에서 직접 유도**한다(실보행 판정
-      // 2026-08-10 라운드1). 발화 이벤트 연동은 선행 40m + 1회 래치 + 재통독 덮어쓰기
-      // 조합으로 마지막 구간에서 영구히 낡았다(iOS refreshCurrentGuidance 미러).
-      // 같은 문자열 재세팅은 React 베일아웃으로 재렌더가 없다.
-      if (result.state.phase === "following" || result.state.phase === "bundle") {
+      if (kindFixed === "walk") {
+        // 하단 2행(spec 2026-08-11): 이탈 복귀·재획득은 리듀서가 d를 재구성한
+        // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
+        if (result.event?.kind === "backOnRoute" || result.event?.kind === "reacquired") {
+          liveBaselineDRef.current = result.state.d;
+          liveRowsStateRef.current = null;
+        }
+        // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
+        refreshLiveRows(result.state);
+      } else if (result.state.phase === "following" || result.state.phase === "bundle") {
+        // car 화면은 spec 비범위 — 종전 "현재 안내" 행(현재 구간 직접 유도) 유지.
         const indices = unitAt(route, result.state.stepIndex);
         setCurrentText(
           currentDisplay(unitText(route, indices, t), indices.length > 1),
@@ -1086,6 +1207,10 @@ export function useRouteGuide(
         // 스텝은 전부 소화됐다 — 낡은 유닛이 "현재 안내" 행에 남는 것을 막는다
         // (iOS beginFinalApproach 미러, 리뷰 HIGH 반영).
         setCurrentText(null);
+        // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
+        // 아랫줄은 비운다 — 스텝 예고는 전부 소화됐다.
+        liveRowsStateRef.current = null;
+        setLiveRowsIfChanged({ top: null, next: null });
         clearEtaTimer(); // 최종 접근 중 ETA 재조회는 무의미(자원 위생)
         rebaseForAxisChange(); // 경로 거리 → 직선거리
         // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라
@@ -1151,6 +1276,9 @@ export function useRouteGuide(
       currentDisplay,
       emitTone,
       eventText,
+      kindFixed,
+      refreshLiveRows,
+      setLiveRowsIfChanged,
       stepFinalApproach,
       t,
       progressOf,
@@ -1298,6 +1426,9 @@ export function useRouteGuide(
     lastGuidanceRef.current = null;
     pendingResolveRef.current = null;
     awaitingRouteRef.current = false;
+    displayUnitsRef.current = [];
+    liveRowsStateRef.current = null;
+    liveBaselineDRef.current = 0;
     if (mountedRef.current) {
       setStatus("idle");
       setMode("brief");
@@ -1306,6 +1437,7 @@ export function useRouteGuide(
       setOffRoute(false);
       setProgress(null);
       setCurrentText(null);
+      setLiveRows({ top: null, next: null });
       setRerouting(false);
       announce("");
     }
@@ -1382,6 +1514,9 @@ export function useRouteGuide(
       const { route } = fetched;
       routeDurationRef.current = fetched.durationSeconds;
       roadSpansRef.current = fetched.roadSpans;
+      // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
+      displayUnitsRef.current =
+        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
       if (kindFixed === "car") {
         // 시작 조회가 ETA 1회차(§4.6 — 캡은 시작·주기·수동 재조회 전부 포함).
         etaCallCountRef.current = 1;
@@ -1452,6 +1587,9 @@ export function useRouteGuide(
       pendingResolveRef.current = null;
       setOffRoute(false);
       setProgress(null);
+      // 하단 2행은 상세 전용 — 간략 복귀 시 비운다(유닛은 세션 것이라 유지).
+      liveRowsStateRef.current = null;
+      setLiveRows({ top: null, next: null });
       announce(t("toBriefDone"));
       return;
     }
@@ -1608,6 +1746,9 @@ export function useRouteGuide(
         const { route } = fetched;
         routeDurationRef.current = fetched.durationSeconds;
         roadSpansRef.current = fetched.roadSpans;
+        // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
+        displayUnitsRef.current =
+          fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
         if (kindFixed === "car") {
           // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
           etaCallCountRef.current = Math.min(
@@ -1759,6 +1900,7 @@ export function useRouteGuide(
     offRoute,
     progress,
     currentText,
+    liveRows,
     // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐.
     canOfferDetail: kindFixed === "walk" && !prefersEnglish(locale) && hasRoute,
     rerouting,
