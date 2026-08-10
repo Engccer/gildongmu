@@ -756,8 +756,14 @@ final class BeaconModel {
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
+    ///
+    /// 도착 종료 화면도 여기서 소거한다(독립 리뷰 MINOR): `stop()`은 도착 직후에도
+    /// 불리는 경로라 이 값을 보존해야 하지만, 화면을 아예 떠나는 teardown 뒤에 남으면
+    /// 재진입 시 유령 도착 화면이 된다(현재는 시트가 탭 전환을 막아 도달 불가 —
+    /// presentationDetents 도입 등으로 열리는 경로가 생기면 이 줄이 방어선이다).
     func teardown() {
         stop()
+        arrivalDest = nil
         tones.shutdown()
     }
 
