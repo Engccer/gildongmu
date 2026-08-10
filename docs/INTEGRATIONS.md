@@ -140,6 +140,9 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 
 ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `description`이 도로명 포함 완성 문장인 반면 카카오 `guidance`는 도로명 없는 조각이다. en은 `ncp-directions`(무변경).
 
+- **낭독 문장은 서버 `rewriteCarGuidance`(`src/lib/car-guidance.ts`)가 다듬는다**(2026-08-10 위원장 판정, 도보 `rewriteWalkGuidance` 동형). Tmap 문형은 `{지점}에서 {방면}으로 {행동} 후 {도로}를 따라 {거리} 이동` 하나뿐이고(전국 12경로 212문장 전수), `{행동}` 자리의 상태·위치 명사(오른쪽 방향·터널·고가도로옆 등 53% = 112/212)가 「후」와 결합이 깨져 동사구로 푼다("오른쪽 길로 들어선 뒤"·"터널을 지나"). 적용 지점은 `getCarRoute` 진입점 한 곳(웹·iOS·CLI·채팅·실시간 안내 동조), 미매칭·회전 계열·카카오 폴백 문장은 원문 통과(fail-safe). 코퍼스 fixture는 `src/lib/__tests__/fixtures/tmap-car-corpus.json`.
+  - ⚠ **"오른쪽/왼쪽 방향"(turnType 117/118)을 회전 어휘로 바꾸지 말 것**: 코퍼스 실측으로 48%/69%가 같은 도로로 이어진다(올림픽대로→올림픽대로) — 교차로 회전이 아니라 자동차전용도로의 갈래 선택 지시라, "우회전"으로 바꾸면 문장은 자연스러워지고 의미가 틀린다.
+  - 자동차는 문장 부분 문자열 판정 계층이 없어(walk와 달리 `walkStepAction` 미호출 — car 프로파일 `imminentAheadM: null`) 재작성이 깨뜨릴 하위 판정이 없다. 임박 층을 자동차에 도입하게 되면 이 전제를 재검토할 것.
 - guide별 `distanceMeters`/`durationSeconds`는 0이 **미제공 의미론**이다. 소비자(웹·iOS·CLI)는 >0일 때만 수치를 병기한다(0m 중복 낭독 차단).
 - 폴백은 Tmap throw 시에만 카카오모빌리티(관측된 "경로 없음"류 graceful 코드가 없어 현재는 전량 throw).
 - 게이트 `hasCarRouteKey`(=tmap∥kakao, 라우트·채팅 declaration 공용). 캐시 `no-store`(실시간 교통, 両 provider 동일) + IP 레이트리밋 60초 10회(Tmap 일 1,000건 쿼터를 도보 폴백과 공유하므로 walk 동형 비용 방어).

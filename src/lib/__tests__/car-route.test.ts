@@ -63,4 +63,28 @@ describe("getCarRoute", () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
     await expect(getCarRoute(COORDS)).rejects.toThrow();
   });
+
+  it("진입점이 안내문 재작성을 적용한다 — 모든 소비자(웹·iOS·CLI·채팅)가 한 번에 동조", async () => {
+    vi.mocked(getTmapCarBriefing).mockResolvedValue({
+      ...TMAP_BRIEFING,
+      guides: [
+        {
+          name: "",
+          guidance: "천호대교남단에서 왼쪽 방향 후 올림픽대로를 따라 412m 이동",
+          distanceMeters: 0,
+          durationSeconds: 0,
+        },
+      ],
+    });
+    const out = await getCarRoute(COORDS);
+    expect(out.guides[0].guidance).toBe(
+      "천호대교남단에서 왼쪽 길로 들어선 뒤 올림픽대로를 따라 412m 이동",
+    );
+  });
+
+  it("카카오 폴백 문장은 꼬리가 없어 원문 그대로 통과한다(fail-safe)", async () => {
+    vi.mocked(getTmapCarBriefing).mockRejectedValue(new Error("HTTP 500"));
+    const out = await getCarRoute(COORDS);
+    expect(out.guides[0].guidance).toBe("우회전");
+  });
 });

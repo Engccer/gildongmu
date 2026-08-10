@@ -1,0 +1,1274 @@
+[
+  {
+    "label": "자택→주택 B",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 81m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 천호대로197길을 따라 52m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 천호대로를 따라 2635m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 111,
+    "pointType": "N",
+    "description": "천호대교남단에서 종합운동장,강일IC 방면으로 오른쪽 도시고속도로 입구 후 올림픽대로를 따라 503m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "천호대교남단에서 천호대교 방면으로 왼쪽 방향 후 올림픽대로를 따라 412m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "천호대교남단에서 천호 사거리 방면으로 왼쪽 방향 후 올림픽대로를 따라 201m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "천호대교남단에서 왼쪽 방향 후 올림픽대로를 따라 10668m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 114,
+    "pointType": "N",
+    "description": "한남대교남단에서 한남대교 방면으로 오른쪽 도시고속도로 출구 후 올림픽대로를 따라 223m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "한남대교남단에서 한남대교 방면으로 오른쪽 방향 후 올림픽대로를 따라 500m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 124,
+    "pointType": "N",
+    "description": "한남2 고가차도에서 금호 사거리 방면으로 고가도로옆 후 한남대로를 따라 255m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "한남 오거리에서 왼쪽 방향 후 한남대로를 따라 66m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "한남 오거리에서 강변북로(마포대교) 방면으로 좌회전 후 독서당로를 따라 134m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "한남역에서 마포대교 방면으로 2시 방향 우회전 후 서빙고로를 따라 276m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 124,
+    "pointType": "N",
+    "description": "서빙고 고가차도에서 이태원역 방면으로 고가도로옆 후 서빙고로를 따라 268m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "보광동에서 이태원역 방면으로 우회전 후 보광로를 따라 954m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 일반도로를 따라 197m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 일반도로를 따라 100m 이동"
+  },
+  {
+    "label": "자택→주택 B",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "성내로3가길을 따라 105m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 성내로9길을 따라 98m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 성내로를 따라 383m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "강동구청역에서 올림픽대교 방면으로 좌회전 후 올림픽로를 따라 593m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "올림픽대교남단에서 올림픽대교 방면으로 우회전 후 강동대로를 따라 1008m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 111,
+    "pointType": "N",
+    "description": "올림픽대교JC에서 김포공항 방면으로 오른쪽 도시고속도로 입구 후 올림픽대로를 따라 9529m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 114,
+    "pointType": "N",
+    "description": "한남대교남단에서 한남대교 방면으로 오른쪽 도시고속도로 출구 후 올림픽대로를 따라 223m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "한남대교남단에서 한남대교 방면으로 오른쪽 방향 후 올림픽대로를 따라 501m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 120,
+    "pointType": "N",
+    "description": "한남2 고가차도에서 장충체육관 방면으로 고가도로 후 한남대로를 따라 881m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 120,
+    "pointType": "N",
+    "description": "한남1 고가차도에서 남산1호터널 방면으로 고가도로 후 삼일대로를 따라 651m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "남산1호터널에서 터널 후 삼일대로를 따라 2928m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "을지로2가에서 을지로1가 방면으로 좌회전 후 을지로를 따라 762m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 17,
+    "pointType": "N",
+    "description": "시청에서 숭례문 방면으로 10시 방향 좌회전 후 을지로를 따라 94m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "시청에서 광화문 방면으로 우회전 후 세종대로를 따라 144m 이동"
+  },
+  {
+    "label": "강동구청→서울시청",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 17m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 일반도로를 따라 70m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 청파로를 따라 375m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "서소문로 방면으로 왼쪽 방향 후 청파로를 따라 348m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "서울아리수본부에서 신촌 로터리 방면으로 좌회전 후 서소문로를 따라 566m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "충정로 사거리에서 마포대교 방면으로 좌회전 후 서소문로를 따라 32m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "아현 교차로에서 이대역 방면으로 2시 방향 우회전 후 신촌로를 따라 1993m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "신촌 로터리에서 연세대 방면으로 오른쪽 방향 후 신촌로를 따라 1013m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "강변북로 방면으로 오른쪽 방향 후 희우정로를 따라 216m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 111,
+    "pointType": "N",
+    "description": "양화대교북단에서 일산 방면으로 오른쪽 도시고속도로 입구 후 강변북로를 따라 4433m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 101,
+    "pointType": "N",
+    "description": "북로JC에서 청라 방면으로 오른쪽 고속도로 입구 후 인천국제공항 고속도로를 따라 37182m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "분기점에서 오른쪽 방향 후 공항제1터미널 고가도로를 따라 135m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "분기점에서 오른쪽 방향 후 공항로를 따라 11m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 120,
+    "pointType": "N",
+    "description": "고가차도에서 고가도로 후 공항로를 따라 957m 이동"
+  },
+  {
+    "label": "서울역→인천공항T1",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "서초대로를 따라 16m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "국기원입구에서 역삼초교 방면으로 우회전 후 테헤란로8길을 따라 383m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "역삼초교 앞에서 강남대로 방면으로 우회전 후 역삼로를 따라 337m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "우성아파트 앞 사거리에서 양재역 방면으로 좌회전 후 강남대로를 따라 2337m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "영동1교 앞에서 선바위역 방면으로 우회전 후 일반도로를 따라 366m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "양재천 지하차도에서 지하차도 후 일반도로를 따라 812m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 123,
+    "pointType": "N",
+    "description": "남태령 지하차도에서 서울(사당),강남순환로 방면으로 지하차도옆 후 중앙로를 따라 243m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 17,
+    "pointType": "N",
+    "description": "관문 사거리에서 학의JCT,안양 방면으로 10시 방향 좌회전 후 과천대로를 따라 3414m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 113,
+    "pointType": "N",
+    "description": "과천IC에서 전방 도시고속도로 입구 후 봉담과천로를 따라 885m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "과천터널에서 터널 후 봉담과천로를 따라 1957m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "학의JC에서 의왕 방면으로 왼쪽 방향 후 봉담과천로를 따라 3098m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "의왕터널에서 터널 후 봉담과천로를 따라 7586m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 114,
+    "pointType": "N",
+    "description": "월암IC에서 의왕(월암) 방면으로 오른쪽 도시고속도로 출구 후 봉담과천로를 따라 464m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "의왕월암IC 앞에서 성균관대역 방면으로 좌회전 후 덕영대로를 따라 798m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "밤밭 지하차도에서 화서역 방면으로 지하차도 후 덕영대로를 따라 3296m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "화서 지하차도에서 인천,안산 방면으로 지하차도 후 덕영대로를 따라 55m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "안산 방면으로 오른쪽 방향 후 덕영대로를 따라 704m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "화서 지하차도에서 수원역 방면으로 오른쪽 방향 후 일반도로를 따라 321m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "서둔 교차로에서 수원역 방면으로 좌회전 후 수인로를 따라 279m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "AK주차장 방면으로 2시 방향 우회전 후 일반도로를 따라 46m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "분기점에서 왼쪽 방향 후 일반도로를 따라 78m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "교차로에서 2시 방향 우회전 후 일반도로를 따라 378m 이동"
+  },
+  {
+    "label": "강남역→수원역",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 47m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 일반도로를 따라 45m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 둔산로를 따라 1589m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "보라 삼거리에서 농수산시장 방면으로 좌회전 후 유등로를 따라 333m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 123,
+    "pointType": "N",
+    "description": "삼천 지하차도에서 오정동농수산시장 방면으로 지하차도옆 후 한밭대로를 따라 343m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "한밭대교 네거리에서 오정동농수산시장 방면으로 우회전 후 한밭대로를 따라 4060m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "동부 네거리에서 대전IC 방면으로 좌회전 후 동서대로를 따라 833m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 103,
+    "pointType": "N",
+    "description": "대전IC에서 전방 고속도로 입구 후 경부 고속도로를 따라 614m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "대전IC에서 비룡분기점 방면으로 오른쪽 방향 후 경부 고속도로를 따라 10013m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "옥천졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 46769m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "추풍령졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 7455m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "봉산졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 17239m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "대신졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 12217m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "선기졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 15138m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "석적졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 15904m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "하빈졸음쉼터에서 졸음쉼터 후 경부 고속도로를 따라 12563m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 104,
+    "pointType": "N",
+    "description": "북대구IC에서 북대구 방면으로 오른쪽 고속도로 출구 후 경부 고속도로를 따라 1103m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "북대구IC 앞에서 대구시산격,동인청사 방면으로 오른쪽 방향 후 서변남로를 따라 901m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "시청별관,경북지방경찰청 방면으로 왼쪽 방향 후 신천대로를 따라 4535m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 114,
+    "pointType": "N",
+    "description": "신천교 지하차도에서 시청 방면으로 오른쪽 도시고속도로 출구 후 신천대로를 따라 9m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "분기점에서 왼쪽 방향 후 신천대로를 따라 171m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "신천교 네거리에서 대구역 방면으로 우회전 후 태평로를 따라 588m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "동인 네거리에서 동인청사 방면으로 좌회전 후 동덕로를 따라 219m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "시청 방면으로 우회전 후 경상감영길을 따라 299m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 일반도로를 따라 25m 이동"
+  },
+  {
+    "label": "대전시청→대구시청",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 29m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "분기점에서 왼쪽 방향 후 중앙대로214번길을 따라 116m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 중앙대로226번길을 따라 136m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 중앙대로를 따라 1999m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "좌천 삼거리에서 문현 교차로 방면으로 오른쪽 방향 후 자성로를 따라 1158m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "범일 교차로에서 광안리 방면으로 오른쪽 방향 후 자성로를 따라 358m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "문현램프에서 대연동 방면으로 왼쪽 방향 후 수영로를 따라 213m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "분기점에서 오른쪽 방향 후 수영로를 따라 3290m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "대남 교차로에서 광안대교 방면으로 우회전 후 황령대로를 따라 708m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 17,
+    "pointType": "N",
+    "description": "도시가스 앞 오거리에서 광안대교 방면으로 10시 방향 좌회전 후 광안대로를 따라 93m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 113,
+    "pointType": "N",
+    "description": "도시가스 앞 오거리에서 전방 도시고속도로 입구 후 광안대로를 따라 3587m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "벡스코 방면으로 오른쪽 방향 후 광안대로를 따라 926m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 114,
+    "pointType": "N",
+    "description": "벡스코 방면으로 오른쪽 도시고속도로 출구 후 광안대로를 따라 451m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "올림픽 교차로에서 해운대 방면으로 우회전 후 해운대로를 따라 1109m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "운촌 삼거리에서 동백섬 방면으로 오른쪽 방향 후 동백로를 따라 554m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 17,
+    "pointType": "N",
+    "description": "동백 사거리에서 송정 방면으로 10시 방향 좌회전 후 해운대해변로를 따라 415m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "교차로에서 2시 방향 우회전 후 일반도로를 따라 95m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 17,
+    "pointType": "N",
+    "description": "교차로에서 10시 방향 좌회전 후 일반도로를 따라 270m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 일반도로를 따라 5m 이동"
+  },
+  {
+    "label": "부산역→해운대해수욕장",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "상무대로를 따라 341m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 14,
+    "pointType": "N",
+    "description": "교차로에서 U턴 후 상무대로를 따라 2227m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "하남산단 방면으로 오른쪽 방향 후 사암로를 따라 2094m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 123,
+    "pointType": "N",
+    "description": "하남2 지하차도에서 지하차도옆 후 무진대로를 따라 203m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "시청 방면으로 우회전 후 무진대로를 따라 3833m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "유덕1 교차로에서 시청 방면으로 오른쪽 방향 후 무진대로를 따라 526m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "계수 교차로에서 고속도로 방면으로 좌회전 후 일반도로를 따라 48m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 101,
+    "pointType": "N",
+    "description": "동림IC에서 동광주IC 방면으로 오른쪽 고속도로 입구 후 호남 고속도로를 따라 11870m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "고서JC에서 창평 방면으로 왼쪽 방향 후 호남 고속도로를 따라 7236m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "대덕졸음쉼터에서 졸음쉼터 후 호남 고속도로를 따라 18160m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "삼기졸음쉼터에서 졸음쉼터 후 호남 고속도로를 따라 22965m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "주암졸음쉼터에서 졸음쉼터 후 호남 고속도로를 따라 20182m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 104,
+    "pointType": "N",
+    "description": "순천IC에서 순천 방면으로 오른쪽 고속도로 출구 후 남해 고속도로를 따라 805m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "순천IC 앞에서 순천만습지,낙안읍성 방면으로 왼쪽 방향 후 남해 고속도로를 따라 539m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "순천IC 앞에서 율촌 방면으로 왼쪽 방향 후 무평로를 따라 6191m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "신대 교차로에서 여수 방면으로 오른쪽 방향 후 충무공로를 따라 2666m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "해룡 교차로에서 율촌 방면으로 오른쪽 방향 후 엑스포대로를 따라 885m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "해룡터널에서 터널 후 엑스포대로를 따라 2593m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "율촌터널에서 터널 후 엑스포대로를 따라 2900m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "취적터널에서 터널 후 엑스포대로를 따라 3151m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "산곡터널에서 터널 후 엑스포대로를 따라 1569m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "대포터널에서 터널 후 엑스포대로를 따라 5839m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "여수IC에서 여수산단 방면으로 오른쪽 방향 후 엑스포대로를 따라 4540m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "엑스포터널에서 터널 후 엑스포대로를 따라 2575m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "둔덕1터널에서 터널 후 엑스포대로를 따라 4113m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "마래터널에서 터널 후 엑스포대로를 따라 2036m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 124,
+    "pointType": "N",
+    "description": "엑스포 고가교에서 엑스포역 방면으로 고가도로옆 후 엑스포대로를 따라 184m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 138,
+    "pointType": "N",
+    "description": "만덕 사거리에서 여수엑스포역,여수세계박람회장 방면으로 8시 방향 후 일반도로를 따라 53m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 일반도로를 따라 89m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "교차로에서 2시 방향 우회전 후 일반도로를 따라 157m 이동"
+  },
+  {
+    "label": "광주송정역→여수엑스포역",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 18m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 중앙로를 따라 158m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "중앙 로타리에서 경찰서 방면으로 좌회전 후 금강로를 따라 529m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "운교 사거리에서 경찰서 방면으로 우회전 후 춘천로를 따라 1572m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "온의 사거리에서 국립춘천박물관 방면으로 좌회전 후 영서로를 따라 3786m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 101,
+    "pointType": "N",
+    "description": "춘천IC에서 서울양양 고속도로 방면으로 오른쪽 고속도로 입구 후 중앙 고속도로를 따라 13377m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "춘천JC에서 양양 방면으로 오른쪽 방향 후 서울양양 고속도로를 따라 1649m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "춘천JC에서 동홍천 방면으로 오른쪽 방향 후 서울양양 고속도로를 따라 44250m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "인제졸음쉼터에서 졸음쉼터 후 서울양양 고속도로를 따라 34730m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "양양졸음쉼터에서 졸음쉼터 후 서울양양 고속도로를 따라 9432m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "양양JC에서 속초 방면으로 오른쪽 방향 후 서울양양 고속도로를 따라 219m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "양양JC에서 강릉 방면으로 오른쪽 방향 후 서울양양 고속도로를 따라 489m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 104,
+    "pointType": "N",
+    "description": "북강릉IC에서 주문진 방면으로 오른쪽 고속도로 출구 후 동해 고속도로를 따라 2946m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "북강릉IC 앞에서 사천 방면으로 오른쪽 방향 후 동해 고속도로를 따라 313m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 120,
+    "pointType": "N",
+    "description": "미노 교차로에서 강릉 방면으로 고가도로 후 동해대로를 따라 2395m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 120,
+    "pointType": "N",
+    "description": "즈므 고가교에서 강릉 방면으로 고가도로 후 동해대로를 따라 2507m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "이명 사거리에서 강릉역 방면으로 좌회전 후 화부산로를 따라 641m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "화부산 교차로에서 시청 방면으로 우회전 후 명륜로를 따라 197m 이동"
+  },
+  {
+    "label": "춘천시청→강릉역",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 936m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "공항입구교차로에서 용담,도청 방면으로 우회전 후 공항로를 따라 893m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 142,
+    "pointType": "N",
+    "description": "신제주 로터리에서 정실 방면으로 12시 방향 후 신대로를 따라 28m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "방선문 방면으로 우회전 후 오남로를 따라 725m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "오라 교차로에서 제주대학교 방면으로 좌회전 후 애조로를 따라 3064m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "달무 교차로에서 서귀포,제주대학교 방면으로 오른쪽 방향 후 중앙로를 따라 332m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "달무 교차로에서 제주대학교 방면으로 우회전 후 중앙로를 따라 698m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "토평 사거리에서 신서귀포 방면으로 우회전 후 중산간동로를 따라 2579m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "서홍 사거리에서 서귀포시청 방면으로 좌회전 후 중앙로를 따라 1142m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 일반도로를 따라 74m 이동"
+  },
+  {
+    "label": "제주공항→서귀포시청",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "일반도로를 따라 81m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "교차로에서 우회전 후 천호대로197길을 따라 21m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 명일로를 따라 185m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 16,
+    "pointType": "N",
+    "description": "둔촌고교입구에서 생태공원 앞 교차로 방면으로 8시 방향 좌회전 후 천호대로를 따라 3431m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "황산 지하차도에서 지하차도 후 조정대로를 따라 1414m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "진등 지하차도에서 지하차도 후 조정대로를 따라 1038m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "조정 사거리에서 광주,양평 방면으로 우회전 후 미사대로를 따라 1104m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 119,
+    "pointType": "N",
+    "description": "신풍 지하차도에서 광주,양평 방면으로 지하차도 후 미사대로를 따라 1439m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "검단산,하남소방서 방면으로 오른쪽 방향 후 미사대로760번길을 따라 313m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "하남문화재단,하남예술회관 방면으로 우회전 후 하남유니온로를 따라 125m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 18,
+    "pointType": "N",
+    "description": "교차로에서 2시 방향 우회전 후 일반도로를 따라 210m 이동"
+  },
+  {
+    "label": "길동→하남스타필드",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "중앙로1275번길을 따라 314m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "정발산역 삼거리에서 일산동구청 방면으로 우회전 후 중앙로를 따라 3391m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 101,
+    "pointType": "N",
+    "description": "일산IC에서 일산IC 방면으로 오른쪽 고속도로 입구 후 수도권제1순환 고속도로를 따라 886m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "일산IC에서 고양 방면으로 왼쪽 방향 후 수도권제1순환 고속도로를 따라 13284m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 150,
+    "pointType": "N",
+    "description": "양주졸음쉼터에서 졸음쉼터 후 수도권제1순환 고속도로를 따라 24138m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 104,
+    "pointType": "N",
+    "description": "퇴계원IC에서 퇴계원 방면으로 오른쪽 고속도로 출구 후 수도권제1순환 고속도로를 따라 692m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "퇴계원IC에서 퇴계원 방면으로 오른쪽 방향 후 수도권제1순환 고속도로를 따라 211m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "퇴계원IC에서 일동 방면으로 오른쪽 방향 후 금강로를 따라 2289m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "진관IC에서 남양주시청 방면으로 오른쪽 방향 후 신경춘로를 따라 6996m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "호평터널에서 터널 후 신경춘로를 따라 3532m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "마석터널에서 터널 후 신경춘로를 따라 4586m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 121,
+    "pointType": "N",
+    "description": "모란터널에서 터널 후 신경춘로를 따라 5047m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 118,
+    "pointType": "N",
+    "description": "금남IC에서 청평 방면으로 왼쪽 방향 후 경춘북로를 따라 1277m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "가평역입구에서 가평역 방면으로 우회전 후 가평역로를 따라 529m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "가평역 앞 교차로에서 하수도사업소 방면으로 좌회전 후 문화로를 따라 282m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "군청,군의회 방면으로 좌회전 후 문화로를 따라 196m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 12,
+    "pointType": "N",
+    "description": "교차로에서 좌회전 후 일반도로를 따라 185m 이동"
+  },
+  {
+    "label": "일산호수공원→가평역",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  },
+  {
+    "label": "동대문→남산타워",
+    "turnType": 200,
+    "pointType": "S",
+    "description": "종로를 따라 513m 이동"
+  },
+  {
+    "label": "동대문→남산타워",
+    "turnType": 13,
+    "pointType": "N",
+    "description": "동묘 앞역에서 신당역 방면으로 우회전 후 지봉로를 따라 374m 이동"
+  },
+  {
+    "label": "동대문→남산타워",
+    "turnType": 117,
+    "pointType": "N",
+    "description": "남산공원 방면으로 오른쪽 방향 후 소월로를 따라 2452m 이동"
+  },
+  {
+    "label": "동대문→남산타워",
+    "turnType": 201,
+    "pointType": "E",
+    "description": "도착"
+  }
+]
