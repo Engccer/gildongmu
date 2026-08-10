@@ -1,16 +1,24 @@
 import GildongmuKit
 import SwiftUI
 
-/// 실시간 길 안내 중 화면. **시작이 곧 이 시트의 표시이고, 중지가 곧 닫힘이다(1:1).**
+/// 실시간 길 안내 중 화면. **시작이 곧 이 시트의 표시이고, 중지가 곧 닫힘이다(1:1)** —
+/// 단 하나의 예외가 도착 종료 화면이다(아래).
 ///
 /// 인라인 섹션에서 분리한 이유는 걷는 중의 탐색 비용이다. 길찾기 결과 화면에는 수단
 /// 섹션이 이어지고 도보는 인라인 전개라 수백 행이 될 수 있어(천호역 실측), 추적을
 /// 멈추려면 그 목록 안에서 버튼을 찾아야 했다. 시트는 VoiceOver 스코프를 이 화면으로
 /// 가두므로 스와이프 몇 번이면 상태와 중지 버튼에 닿는다(위원장 실보행 피드백 2026-08-02).
 ///
-/// 컨트롤은 스펙 §4.2의 집합이 전부다: 중지·반복·진행 상황·전환(경로 보유 시)·
-/// 재조회(이탈 시). "다음으로 건너뛰기"는 두지 않는다(선례 부재 + 사용자가 진행을
-/// 주장하게 만드는 실패 모드, 조사 §5.4).
+/// 컨트롤 집합: 중지·진행 상황·주변 확인·재조회(이탈 시). "다음으로 건너뛰기"는 두지
+/// 않는다(선례 부재 + 사용자가 진행을 주장하게 만드는 실패 모드, 조사 §5.4). 상세⇄간략
+/// 전환 버튼은 위원장 실사용 판정으로 폐지(2026-08-11 — 무용). 주변 확인은 그 자리로
+/// 올라왔다(말미 배치는 안내 정보 행을 읽다 보면 다음 스와이프가 자꾸 이 버튼에 닿는
+/// 불편 — 같은 판정).
+///
+/// **도착 종료 화면**(위원장 판정 2026-08-11): 도착으로 세션이 끝나면 시트를 닫지 않고
+/// 도착 화면으로 전환한다 — 즉시 닫혀 경로 조회 결과로 떨어지는 전이가 어색했고, 도착
+/// 직후의 자연스러운 다음 행동이 목적지 주변 확인이다. 대중교통 시트의 완료 후 핸드오프
+/// 제안(§14.2)과 같은 "세션 없이 유지되는 시트"이며, 닫기·스와이프·VO escape가 소거한다.
 ///
 /// 스와이프·VoiceOver escape로 닫아도 추적이 멈춘다(`interactiveDismissDisabled` 미사용).
 /// 걷는 중 오조작으로 꺼지는 위험보다, 시각장애 사용자가 닫을 수 없는 화면에 갇히는 쪽이
@@ -19,7 +27,11 @@ struct BeaconTrackingSheet: View {
     let model: BeaconModel
     let onStop: () -> Void
 
+    @Environment(\.dismiss) private var dismiss
     @AccessibilityFocusState private var stopFocused: Bool
+    /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
+    /// 통째로 제거한다).
+    @AccessibilityFocusState private var arrivedFocused: Bool
     /// 전 구간 조망 모달(위원장 판정 개정 2026-08-10): 인라인 펼침은 같은 화면의
     /// 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가
     /// 성립한다. 닫으면 시스템이 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
@@ -38,6 +50,9 @@ struct BeaconTrackingSheet: View {
         // AX 트리에서 컬링하므로 scrollTo 선행이 필요하다).
         ScrollViewReader { proxy in
         List {
+            if let arrival = model.arrivalDest {
+                arrivalSection(dest: arrival, proxy: proxy)
+            } else {
             Section {
                 Button(appLocalized("beacon.stop"), action: onStop)
                     .accessibilityFocused($stopFocused)
@@ -53,12 +68,15 @@ struct BeaconTrackingSheet: View {
                         model.announceProgress()
                     }
                 }
-                // 전환: 추적을 멈추지 않고 안내 방식만 바꾼다. 라벨이 곧 상태 신호.
-                // 경로 미보유 세션(비-ko·조회 실패·타 수단)에선 미노출(죽은 컨트롤 금지).
-                if model.canOfferDetail {
-                    Button(appLocalized(
-                        model.mode == .detail ? "guide.toBriefButton" : "guide.toDetailButton"
-                    )) { model.toggleMode() }
+                // 주변 확인(M1 부근 재구성) — 전환 버튼이 있던 자리(위원장 판정
+                // 2026-08-11, 전환 버튼은 무용으로 폐지): 말미 별도 섹션이던 시절엔
+                // 안내 정보 행을 읽다 보면 다음 스와이프가 자꾸 이 버튼에 닿았다.
+                // 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만 이 기능은
+                // "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). 펼친 결과가 아래
+                // 상태 행을 밀지만 펼침은 사용자가 방금 누른 행동이다.
+                if let dest = model.dest {
+                    SurroundingsSceneSection(
+                        anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
                 }
                 // 재조회: 이탈 확정 시에만 노출. 자동 재조회 금지(스펙 §5.6)의 수동 출구.
                 // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
@@ -147,15 +165,6 @@ struct BeaconTrackingSheet: View {
                 ))
                 .accessibilityAddTraits(.isHeader)
             }
-            // M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만
-            // 이 기능은 "도착지 부근이 어떤 모습인가"를 묻는다, spec §5). 컨트롤·상태
-            // 행 뒤 별도 Section: 결과가 펼쳐져도 중지 버튼~상태 행 묶음이 밀리지
-            // 않는다(걷는 중 탐색 비용, 웹 DistanceBeacon 말미 배치 미러).
-            if let dest = model.dest {
-                Section {
-                    SurroundingsSceneSection(
-                        anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
-                }
             }
         }
         .task { await landStopFocus() }
@@ -167,7 +176,42 @@ struct BeaconTrackingSheet: View {
             reroutePressed = false
             Task { await landStopFocus() }
         }
+        // 도착 전이: 포커스를 쥔 컨트롤(중지 등)이 통째로 사라진다 — 도착 문장으로
+        // 선점한다(헌장 §5, 대중교통 arrived 전이 동형). 착지 낭독이 `.high` 도착
+        // 통지와 **같은 문장**이라 겹쳐 끊겨도 정보 손실이 없고, 다음 스와이프가
+        // 곧장 주변 확인 버튼이다.
+        .onChange(of: model.arrivalDest) { previous, arrival in
+            guard previous == nil, arrival != nil else { return }
+            Task { await landArrivedFocus() }
         }
+        }
+    }
+
+    /// 도착 종료 화면(위원장 판정 2026-08-11). 헤딩이 무엇에 도착했는지를, 본문
+    /// 첫 행이 도착 사실을, 주변 확인이 다음 행동을 담는다. 닫기는 표준 dismiss —
+    /// presentation 바인딩이 `clearArrival()`로 소거한다(스와이프·VO escape 동일).
+    private func arrivalSection(dest: BeaconDest, proxy: ScrollViewProxy) -> some View {
+        Section {
+            Text(appLocalized("guide.arrived"))
+                .accessibilityFocused($arrivedFocused)
+            SurroundingsSceneSection(
+                anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
+            Button(appLocalized("actions.close")) { dismiss() }
+        } header: {
+            Text(joinText(
+                appLocalized("ios.beacon.arrivedHeading"), model.destinationLabel
+            ))
+            .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    /// 도착 문장 착지 — 지연·검증·1회 재시도(`landStopFocus` 동형).
+    private func landArrivedFocus() async {
+        try? await Task.sleep(for: .milliseconds(400))
+        arrivedFocused = true
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !arrivedFocused else { return }
+        arrivedFocused = true
     }
 
     /// 열릴 때 포커스를 **중지 버튼**에 둔다. 걷는 중 필요한 유일한 행동이고, 시트

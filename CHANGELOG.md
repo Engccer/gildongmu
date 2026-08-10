@@ -11,6 +11,9 @@
 
 ## 2026-08-11
 
+### 안내 시트 컨트롤 재편 — 전환 버튼 폐지·주변 확인 상향·도착 종료 화면
+위원장 실사용 판정 3건 반영(iOS). ①상세⇄간략 전환 버튼 폐지(무용 판정) — `toggleMode`·간략→상세 해소 기계(`resolveDetailIfPending`)까지 제거, `speedSuggest` 이벤트는 Kit 공유라 소비만 no-op. ②주변 확인을 말미 별도 섹션에서 전환 버튼 자리(진행 상황 다음)로 이동 — 말미 배치는 안내 정보 행을 읽다 보면 다음 스와이프가 자꾸 버튼에 닿았다. ③도착 종료 화면 신설 — 도착 즉시 시트가 닫혀 경로 조회 결과로 떨어지던 전이를 대체(`arrivalDest` 유지, 대중교통 핸드오프 제안 §14.2 동형): 도착 헤딩+도착 문장(포커스 착지)+주변 확인(목적지 앵커)+닫기. 웹 DistanceBeacon 미러는 BACKLOG B5.
+
 ### 실시간 도보 안내 하단 2행 재설계 — 현재 행동 실시간 갱신 + 다음 안내 예고 (H M0)
 실보행 라운드2 최상위 피드백 반영. 윗줄 = 현재 행동(직진 미터 카운트다운 → 10m부터 "{n}m 후 {행동}" → "잠시 후" / 횡단·상태 대체·최종 접근 문형), 아랫줄 = "다음 안내," 종류별 예고 — 종전 currentText/statusText 자리를 walk 상세에서 대체(car·간략은 불변). 표시 좌표계 `effectiveD = d + min(15, 기준점 이후 진행)` 통일 + `IMMINENT_AHEAD_M = 10 + PROJECTION_LAG_M` 유도식 재정의(값 25 불변, 기존 음성 fixture 웹·Kit 전체 무수정 통과가 증명 게이트). 리듀서형 `guideLiveRows` 웹 ↔ Kit 미러 + 공유 fixture(실경로 8스텝 근사, ko 최종 문자열 대조). 서버 `rewriteWalkGuidance`가 `live{target,anchor}` 조각을 `includeGeometry=1` 응답에 노출 — 실호출 게이트가 까지 절 없는 문형의 anchor 유실을 검출·수정(6/6 스텝 조각 확인). spec `2026-08-11-guide-live-two-rows-design.md`, 실보행 판정 축 5건은 BACKLOG §H M0.
 

@@ -225,6 +225,7 @@
     "beacon": {
       "soundUnavailable": "音による案内を再生できません。",
       "stopped": "距離の追跡を停止しました。",
+      "arrivedHeading": "到着",
       "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。"
     },
     "unit": {
