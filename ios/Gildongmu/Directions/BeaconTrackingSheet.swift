@@ -96,9 +96,12 @@ struct BeaconTrackingSheet: View {
                         distanceText(next).foregroundStyle(.secondary)
                     }
                 } else {
-                    // car·간략 세션은 종전 행 유지(spec §7 비범위). walk 상세에서
-                    // statusText로만 흐르는 문장(fail·handoff)은 전부 모드가 brief/idle로
-                    // 바뀌는 경로라 이 분기가 그대로 받는다.
+                    // car·간략 세션은 종전 행 유지(spec §7 비범위). walk 상세의 statusText
+                    // 중 fail·handoff는 모드가 brief/idle로 바뀌어 이 분기가 받고, 복귀·
+                    // 재획득 해소·속도 제안 같은 1회 확인 문장은 **의도적으로 화면에 남지
+                    // 않는다**(spec §2-1 상태 행 폐지 — 시각 신호는 윗줄이 상태 문장에서
+                    // 그 자리 숫자로 되돌아오는 전환 자체다. 리뷰 지적 기각 근거,
+                    // 실사용 판정은 BACKLOG H M0 축 4).
                     if model.mode == .detail, !model.offRoute,
                        let current = model.currentGuidanceText {
                         distanceText(current)
