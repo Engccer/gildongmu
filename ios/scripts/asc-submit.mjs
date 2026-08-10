@@ -207,8 +207,34 @@ async function main() {
     }
   }
 
-  // 2) 릴리스 노트. ⚠ 새 버전 초안은 프로모션 텍스트를 승계하지 않으므로
-  //    whatsNew만 쓰고 나머지는 건드리지 않는다(빈 값 덮어쓰기 사고 방지).
+  /**
+   * 직전 버전의 프로모션 텍스트. ASC는 새 버전 초안에 이 값을 승계하지 않아
+   * 1.1~1.4가 네 번 연속 빈 값이었고 매번 사람이 손으로 복사했다(BACKLOG D9).
+   * 조회는 한 번만 하고 로케일별로 캐시한다.
+   */
+  let priorPromo = null;
+  async function inheritedPromotionalText(locale) {
+    if (priorPromo === null) {
+      priorPromo = {};
+      const wanted = Object.values(LOCALES);
+      const prior = (await api("GET", `/apps/${app.id}/appStoreVersions?limit=5`)).data.filter(
+        (v) => v.id !== versionId,
+      );
+      for (const v of prior) {
+        const locs = (await api("GET", `/appStoreVersions/${v.id}/appStoreVersionLocalizations`)).data;
+        for (const l of locs) {
+          const text = l.attributes.promotionalText;
+          if (text && !priorPromo[l.attributes.locale]) priorPromo[l.attributes.locale] = text;
+        }
+        if (wanted.every((w) => priorPromo[w])) break;
+      }
+    }
+    return priorPromo[locale] ?? null;
+  }
+
+  // 2) 릴리스 노트. whatsNew 외에는 건드리지 않되, **비어 있는** 프로모션 텍스트만
+  //    직전 버전 값으로 채운다 — "값이 있으면 손대지 않는다"는 조건이 빈 값
+  //    덮어쓰기 사고를 막고, 비운 채 제출하면 스토어에서 그 줄이 사라진다.
   if (versionId && Object.keys(notes).length) {
     const locs = (await api("GET", `/appStoreVersions/${versionId}/appStoreVersionLocalizations`)).data;
     for (const [key, text] of Object.entries(notes)) {
@@ -220,7 +246,21 @@ async function main() {
       }
       const promo = loc.attributes.promotionalText;
       if (!promo) {
-        console.log(`  ⚠ ${want} 프로모션 텍스트가 비어 있다 — 새 버전은 이 값을 승계하지 않는다. 별도 입력 필요`);
+        const inherited = await inheritedPromotionalText(want);
+        if (inherited) {
+          step(`${want} 프로모션 텍스트 ${inherited.length}자 승계(직전 버전 값)`);
+          if (APPLY) {
+            await api("PATCH", `/appStoreVersionLocalizations/${loc.id}`, {
+              data: {
+                type: "appStoreVersionLocalizations",
+                id: loc.id,
+                attributes: { promotionalText: inherited },
+              },
+            });
+          }
+        } else {
+          console.log(`  ⚠ ${want} 프로모션 텍스트가 비어 있고 직전 버전에도 없다 — 별도 입력 필요`);
+        }
       }
       step(`${want} What's New ${text.length}자 기록`);
       if (APPLY) {
@@ -262,27 +302,48 @@ async function main() {
     console.log("\n드라이런이라 제출하지 않는다. 실제 제출은 --apply --submit.\n");
     return;
   }
-  step("reviewSubmission 생성");
-  const sub = await api("POST", "/reviewSubmissions", {
-    data: {
-      type: "reviewSubmissions",
-      attributes: { platform: PLATFORM },
-      relationships: { app: { data: { type: "apps", id: app.id } } },
-    },
-  });
-  step("버전을 제출 항목으로 추가");
-  await api("POST", "/reviewSubmissionItems", {
-    data: {
-      type: "reviewSubmissionItems",
-      relationships: {
-        reviewSubmission: { data: { type: "reviewSubmissions", id: sub.data.id } },
-        appStoreVersion: { data: { type: "appStoreVersions", id: versionId } },
+  // ⚠ 세 호출(생성 · 항목 추가 · 제출)은 각각 실패할 수 있고, 마지막 제출 PATCH만
+  //    ASC 500으로 죽은 실측이 있다(2026-08-11, 1.5). 그때 처음부터 다시 돌리면
+  //    미제출 submission이 하나 더 생기므로, 각 단계는 이미 있는 것을 재사용한다.
+  const pending = (
+    await api("GET", `/reviewSubmissions?filter[app]=${app.id}&filter[state]=READY_FOR_REVIEW&limit=1`)
+  ).data[0];
+  let subId = pending?.id;
+  if (pending) {
+    console.log(`  기존 미제출 reviewSubmission 재사용 (${subId})`);
+  } else {
+    step("reviewSubmission 생성");
+    subId = (
+      await api("POST", "/reviewSubmissions", {
+        data: {
+          type: "reviewSubmissions",
+          attributes: { platform: PLATFORM },
+          relationships: { app: { data: { type: "apps", id: app.id } } },
+        },
+      })
+    ).data.id;
+  }
+
+  const items = (await api("GET", `/reviewSubmissions/${subId}/items?include=appStoreVersion`)).data;
+  const already = items.some((i) => i.relationships?.appStoreVersion?.data?.id === versionId);
+  if (already) {
+    console.log(`  버전 ${version}은 이미 제출 항목에 있다`);
+  } else {
+    step("버전을 제출 항목으로 추가");
+    await api("POST", "/reviewSubmissionItems", {
+      data: {
+        type: "reviewSubmissionItems",
+        relationships: {
+          reviewSubmission: { data: { type: "reviewSubmissions", id: subId } },
+          appStoreVersion: { data: { type: "appStoreVersions", id: versionId } },
+        },
       },
-    },
-  });
+    });
+  }
+
   step("심사 제출");
-  await api("PATCH", `/reviewSubmissions/${sub.data.id}`, {
-    data: { type: "reviewSubmissions", id: sub.data.id, attributes: { submitted: true } },
+  await api("PATCH", `/reviewSubmissions/${subId}`, {
+    data: { type: "reviewSubmissions", id: subId, attributes: { submitted: true } },
   });
   console.log("\n제출 완료. 최대 48시간 내 심사 결과 이메일.\n");
 }
