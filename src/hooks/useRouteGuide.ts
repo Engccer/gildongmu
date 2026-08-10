@@ -617,7 +617,7 @@ export function useRouteGuide(
         case "bundleReread":
           return unitText(route, event.indices, t);
         case "imminent":
-          // 10m 임박 큐(§6b''): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
+          // 임박 큐(25m, §6b''): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
           return t(`imminent.${event.action}`);
         case "farNotice":
@@ -1056,6 +1056,16 @@ export function useRouteGuide(
       guideRef.current = result.state;
       setOffRoute(result.state.phase === "offRoute");
       setProgress(progressOf(route, result.state));
+      // "현재 안내" 행은 **현재 좌표가 속한 구간에서 직접 유도**한다(실보행 판정
+      // 2026-08-10 라운드1). 발화 이벤트 연동은 선행 40m + 1회 래치 + 재통독 덮어쓰기
+      // 조합으로 마지막 구간에서 영구히 낡았다(iOS refreshCurrentGuidance 미러).
+      // 같은 문자열 재세팅은 React 베일아웃으로 재렌더가 없다.
+      if (result.state.phase === "following" || result.state.phase === "bundle") {
+        const indices = unitAt(route, result.state.stepIndex);
+        setCurrentText(
+          currentDisplay(unitText(route, indices, t), indices.length > 1),
+        );
+      }
 
       // 톤 계층 입력 조립(상세 4단계). ⚠ 종전의 "무이벤트 fix마다 3초 tick 하트비트"는
       // 폐기됐다 — 같은 소리가 간략에서는 정체를 뜻해 한 소리에 두 뜻이 있었다.
@@ -1130,13 +1140,9 @@ export function useRouteGuide(
       if (!text) return;
       announce(text);
       if (isGuidanceEvent(result.event.kind)) rememberGuidance(text);
-      // 실행 안내만 "현재 안내" 행을 갱신한다(하단 2행 분리, 판정 2026-08-10).
-      if (
-        result.event.kind === "announceSteps" ||
-        result.event.kind === "bundleReread"
-      ) {
-        setCurrentText(currentDisplay(text, result.event.indices.length > 1));
-      }
+      // ⚠ 실행 안내 이벤트로 "현재 안내" 행을 갱신하지 않는다(실보행 라운드1 정정) —
+      //   이 이벤트는 경계 40m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
+      //   위의 상태 유도 세팅이 소유한다.
     },
     [
       announce,

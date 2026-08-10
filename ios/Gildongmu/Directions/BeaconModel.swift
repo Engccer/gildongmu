@@ -554,13 +554,18 @@ final class BeaconModel {
         isBundle ? text : appLocalized("guide.progressCurrent", text)
     }
 
-    /// 상세 커밋 지점(시작·재조회·전환 복귀)의 "현재 안내" 일괄 초기화 — 웹
-    /// `commitDetail` 미러. 간략 경유 복귀에서 이전 구간의 낡은 유닛이 남는 것을 막는다.
+    /// "현재 안내" 행 갱신 — **현재 좌표가 속한 구간에서 직접 유도**한다(실보행 판정
+    /// 2026-08-10 라운드1). 종전의 발화 이벤트(announceSteps) 연동은 구조적으로
+    /// 틀렸다: 발화는 경계 40m 전 선행 + 1회 래치라, 짧은 구간에서 15초 재통독이
+    /// 선행분을 도로 덮은 뒤 **다시는 갱신되지 않았다**(마지막 구간 내내 횡단보도
+    /// 안내가 남은 실사고의 기제). 매 fix·커밋 지점에서 부른다(웹 미러 동일).
     private func refreshCurrentGuidance(route: GuideRoute, state: GuideState) {
         let indices = unitAt(route: route, index: state.stepIndex)
-        currentGuidanceText = Self.currentDisplay(
+        let text = Self.currentDisplay(
             GuideText.unit(route: route, indices: indices), isBundle: indices.count > 1
         )
+        // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
+        if currentGuidanceText != text { currentGuidanceText = text }
     }
 
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
@@ -942,6 +947,11 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
+        // "현재 안내" 행은 지금 구간을 따라간다(정상 추종 국면에서만 — 이탈은 뷰가
+        // 숨기고, uncertain은 마지막 확실 구간을 유지하는 것이 정직하다).
+        if out.state.phase == .following || out.state.phase == .bundle {
+            refreshCurrentGuidance(route: route, state: out.state)
+        }
 
         let voteCounts = out.state.courseVotes.reduce(into: (mismatch: 0, match: 0, unknown: 0)) {
             switch $1.vote {
@@ -1191,22 +1201,24 @@ final class BeaconModel {
             // 실행 안내는 "현재 안내" 행이 전담한다(역할 분리 확정 2026-08-10).
             // 상태 행은 **비운다** — 직전 예고("약 40m 앞 오른쪽으로…")를 남기면 이미
             // 돈 회전을 아직 남은 것처럼 읽는다. 다음 예고·임박·상태 신호가 다시 채운다.
+            // ⚠ 여기서 currentGuidanceText를 쓰지 않는다(실보행 라운드1 정정) — 이
+            //   이벤트는 경계 40m 전 선행 + 1회 래치라 "지금 구간"과 어긋난다. 행은
+            //   refreshCurrentGuidance(매 fix, 상태 유도)가 소유한다.
             // ⚠ 전경 복귀 재생의 "현재 상태" 폴백이 이 빈 값을 currentGuidanceText로
             //   대체한다(handleScenePhaseChange) — 여기만 고치고 그쪽을 잊으면 백그라운드
             //   크로싱 직후 복귀에서 갚을 문장이 사라진다.
             statusText = ""
-            currentGuidanceText = Self.currentDisplay(text, isBundle: indices.count > 1)
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case let .imminent(_, action):
-            // 10m 임박 큐: 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
+            // 임박 큐(25m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
             //
             // ⚠ `lastGuidance`를 덮지 않는다. 이 값은 신호 불량 구간에서 "마지막으로
             //   들은 안내"로 되읽히는데, 그 자리에 "잠시 후 왼쪽으로 도세요"가 남으면
             //   무엇을 향한 회전이었는지가 사라진다.
             //
-            // ⚠ 억제 중이어도 보관(`pendingRecovery`)하지 않는다. 이 문장은 그 10m
+            // ⚠ 억제 중이어도 보관(`pendingRecovery`)하지 않는다. 이 문장은 그 임박
             //   구간에서만 참이라 나중에 갚으면 이미 지난 모퉁이를 돌라고 말한다.
             let text = Self.imminentText(action)
             statusText = text
@@ -1226,7 +1238,11 @@ final class BeaconModel {
                 accuracy: accuracy, destinationLabel: destinationLabel
             )
             lastGuidance = text
-            statusText = text
+            // 화면에는 종류 라벨을 붙인다(실보행 판정 2026-08-10 — 상태 행이 예고와
+            // 상태를 오가서 라벨 없이는 종류를 알 수 없다. 특히 마지막 구간의
+            // "신명중학교까지 약 91m"는 남은 거리 행과 숫자만 어긋난 채 나란히 보였다).
+            // 발화는 원문 그대로 — 어순 계약(2026-08-07)은 음성 채널의 것이다.
+            statusText = appLocalized("guide.progressNext", text)
             announce(text)
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
