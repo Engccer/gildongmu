@@ -70,6 +70,10 @@ final class DirectionsModel {
     /// 토글 재조회 진행 신호(웹 stepFreeBusy 미러). isBusy에 합산되어 그 15초 창에서도
     /// 조회 버튼이 같은 "조회 중" 라벨을 낸다(멀쩡해 보이는데 무시되는 버튼 방지).
     private(set) var stepFreeBusy = false
+    /// 최근 조회 경로(스펙 2026-08-10). 결과 없는 화면에서만 뷰가 노출한다.
+    /// init 로드는 읽기 전용이라 State(initialValue:) 재평가에도 안전(기록 부수효과 금지).
+    private(set) var recentRoutes: [RecentRoute]
+    private let recentStore = RecentSearchStore()
     /// 도보 단독 재조회 완료 세대. 뷰가 도보 heading으로 포커스를 옮기는 신호
     /// (resultsRevision과 분리 — 전체 조회는 첫 성공 수단, 토글 재조회는 항상 도보).
     private(set) var walkRefetchRevision = 0
@@ -101,6 +105,7 @@ final class DirectionsModel {
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
         to = prefilledDestination
+        recentRoutes = RecentSearchStore().routes()
     }
 
     var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
@@ -133,6 +138,29 @@ final class DirectionsModel {
         if case .place(let label, let lat, let lng) = endpoint {
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: scope)
         }
+    }
+
+    /// 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소는
+    /// 여기 도달하지 않는다. current는 nil 투영 — 측위된 실좌표를 굳히지 않는다.
+    private func recordRecentRoute(from: DirectionsEndpoint, to: DirectionsEndpoint) {
+        recentRoutes = recentStore.recordRoute(
+            RecentRoute(from: Self.recentSide(from), to: Self.recentSide(to)))
+    }
+
+    private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
+        if case .place(let label, let lat, let lng) = endpoint {
+            return RecentEndpoint(label: label, lat: lat, lng: lng)
+        }
+        return nil
+    }
+
+    func removeRecentRoute(_ route: RecentRoute) {
+        recentRoutes = recentStore.removeRoute(route)
+    }
+
+    func clearRecentRoutes() {
+        recentStore.clearRoutes()
+        recentRoutes = []
     }
 
     /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
@@ -294,6 +322,7 @@ final class DirectionsModel {
         resultsUsedManualOrigin = usedManualOrigin
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
+        recordRecentRoute(from: from, to: to)
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         announce(built.successCount > 0
@@ -401,6 +430,9 @@ struct DirectionsTabView: View {
     @State private var model: DirectionsModel
     @State private var searchTarget: DirectionsFieldTarget?
     @AccessibilityFocusState private var focusedModeHeading: DirectionsMode?
+    /// 최근 경로 목록 항목 포커스(⚠ Bool 바인딩 다중 부착 금지 — 항목 정체성 옵셔널
+    /// 바인딩이 정본, endpoint 시트 `focusedRecent` 동형).
+    @AccessibilityFocusState private var focusedRecentRoute: RecentRoute?
     /// 펼침이 **기본값과 다른** 대중교통 경로의 `routeKey`(웹 toggledRoutes 동형).
     /// 새 조회 결과는 다른 경로들이므로 resultsRevision 변화 시 초기화한다.
     /// ⚠ "펼쳐진 것"을 담는 게 아니다 — 추천은 기본 펼침, 대안은 기본 접힘이라
@@ -477,6 +509,26 @@ struct DirectionsTabView: View {
                                 }
                             }
                         }
+                    }
+                }
+                // 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색
+                // 방해. 실패 phase에서는 보인다(다른 경로를 고르는 우회로). swipeActions 삭제가
+                // VoiceOver 로터로 자동 노출된다(endpoint 시트 동형).
+                if model.results == nil && !model.isBusy && !model.recentRoutes.isEmpty {
+                    Section {
+                        ForEach(model.recentRoutes, id: \.self) { route in
+                            Button(recentRouteLabel(route)) { activateRecentRoute(route) }
+                                .accessibilityFocused($focusedRecentRoute, equals: route)
+                                .swipeActions {
+                                    Button(appLocalized("recent.delete"), role: .destructive) {
+                                        deleteRecentRoute(route)
+                                    }
+                                }
+                        }
+                        Button(appLocalized("recentRoutes.clearAll")) { clearRecentRoutes() }
+                    } header: {
+                        Text(appLocalized("recentRoutes.title"))
+                            .accessibilityAddTraits(.isHeader)
                     }
                 }
                 // 간략 폴백 + 실패 상태 + 추적 이중 방어 섹션(B1 §3.1 재편).
@@ -740,6 +792,45 @@ struct DirectionsTabView: View {
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task { await model.loadCurrentAddressIfAuthorized() }
         }
+    }
+
+    private func recentRouteLabel(_ route: RecentRoute) -> String {
+        let from = route.from?.label ?? appLocalized("directions.currentLocation")
+        let to = route.to?.label ?? appLocalized("directions.currentLocation")
+        return appLocalized("recentRoutes.item", from, to)
+    }
+
+    private func directionsEndpoint(_ side: RecentEndpoint?) -> DirectionsEndpoint {
+        side.map { .place(label: $0.label, lat: $0.lat, lng: $0.lng) } ?? .current
+    }
+
+    /// 활성화 = 두 필드 원자 확정 + 즉시 조회(스펙 §1.4). 결과 도착 시 이 섹션이 통째로
+    /// 사라지므로 포커스를 먼저 조회 버튼으로 선점한다(헌장 §5 — 제거될 요소에 커서를
+    /// 남기지 않는다). setEndpoint 경유라 endpoint 최근 목록 기록도 기존 규칙대로 따라온다.
+    private func activateRecentRoute(_ route: RecentRoute) {
+        submitFocused = true
+        model.setEndpoint(directionsEndpoint(route.from), for: .from)
+        model.setEndpoint(directionsEndpoint(route.to), for: .to)
+        model.runQuery()
+    }
+
+    /// 삭제 포커스: 다음 항목 → 이전 항목 → 목록 소멸 시 조회 버튼(스펙 §1.5,
+    /// endpoint 시트의 마이크 행에 대응하는 이 화면의 안정 착지점).
+    private func deleteRecentRoute(_ route: RecentRoute) {
+        guard let index = model.recentRoutes.firstIndex(of: route) else { return }
+        model.removeRecentRoute(route)
+        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        if model.recentRoutes.isEmpty {
+            submitFocused = true
+            return
+        }
+        focusedRecentRoute = model.recentRoutes[min(index, model.recentRoutes.count - 1)]
+    }
+
+    private func clearRecentRoutes() {
+        model.clearRecentRoutes()
+        AccessibilityNotification.Announcement(appLocalized("recentRoutes.cleared")).post()
+        submitFocused = true
     }
 
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
