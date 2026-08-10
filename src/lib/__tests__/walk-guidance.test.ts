@@ -213,6 +213,12 @@ describe("rewriteWalkGuidanceWithLive — live 조각(spec 2026-08-11 §5)", () 
     expect(r.live).toEqual({ anchor: "메가 MGC커피" });
   });
 
+  it("까지 절이 없어도 anchor는 뽑는다(실호출 확정 — HEAD 미매칭 head도 에서 절이다)", () => {
+    const r = rewriteWalkGuidanceWithLive("봉래면옥 앞에서 오른쪽길로 24m 이동(천호대로197길)");
+    expect(r.text).toBe("봉래면옥 앞에서 오른쪽으로 돌아 천호대로197길을 따라 24m 이동");
+    expect(r.live).toEqual({ anchor: "봉래면옥" });
+  });
+
   it("…에서/…까지 절이 없으면 필드 부재(지어내지 않는다)", () => {
     const r = rewriteWalkGuidanceWithLive("길동역 1번 출구 진출 후 94m 이동(양재대로)");
     expect(r.live).toBeUndefined();

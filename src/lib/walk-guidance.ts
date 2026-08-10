@@ -109,9 +109,11 @@ export function rewriteWalkGuidanceWithLive(
     const parsed = HEAD.exec(trimmed);
     const from = parsed ? parsed[1] : trimmed || undefined;
     const to = parsed?.[2];
-    // 조각은 HEAD가 분해한 절에서만 온다 — HEAD 미매칭 head("…진출 후" 류 서술)는
-    // 기준 이름이 아니므로 anchorFrom의 "에서" 종결 조건이 걸러 낸다.
-    const live = liveOf(targetFrom(to), anchorFrom(parsed?.[1]));
+    // anchor는 HEAD 매칭과 무관하게 from 절에서 본다 — HEAD는 까지 절이 필수라
+    // "봉래면옥 앞에서 …" 같은 까지 없는 문장에서 매칭이 실패하는데(실호출 확정),
+    // 그 head도 기준 이름이다. "…진출 후" 류 서술은 anchorFrom의 "에서" 종결
+    // 조건이 걸러 낸다.
+    const live = liveOf(targetFrom(to), anchorFrom(from));
     // 조사를 못 정하는 도로명은 문장 안으로 옮기지 않는다 — 괄호째 원문 유지.
     // 파싱된 조각은 그래도 참이므로 live는 붙인다.
     const particle = road ? objectParticle(road) : null;
