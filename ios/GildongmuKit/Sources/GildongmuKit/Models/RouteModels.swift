@@ -272,6 +272,16 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     public let description: String
     public let distanceMeters: Int?
     public let pathCoords: [RoutePoint]?
+    /// 실시간 표시 계층용 구조화 조각(spec 2026-08-11 §5). `includeGeometry=1` 응답에만
+    /// 온다. ⚠ 선택 디코딩 — 필수로 두면 구버전 응답에서 브리핑 전체가 실패한다.
+    public let live: WalkLiveFragments?
+}
+
+/// 서버 재작성 정규식이 분해한 이름 조각(웹 `WalkLiveFragments` 미러).
+/// 추출 실패는 필드 부재 — 클라이언트가 한국어 문장을 재파싱해 채우지 않는다.
+public struct WalkLiveFragments: Codable, Sendable, Hashable {
+    public let target: String?
+    public let anchor: String?
 }
 
 /// 계단 회피 적용 상태(웹 `StepFreeStatus` 미러 — applied·no_stepfree_route·unavailable).

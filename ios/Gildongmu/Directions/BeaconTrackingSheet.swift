@@ -85,12 +85,31 @@ struct BeaconTrackingSheet: View {
                 if model.mode == .detail, !model.offRoute, let remaining = model.remainingText {
                     distanceText(remaining)
                 }
-                // "현재 안내" 행(역할 고정 2행 분리, 위원장 판정 2026-08-10): 지금 따르는
-                // 유닛 전문. 실행 안내 시점에만 갱신되고 아래 상태 1줄(주기 예고·임박·
-                // 상태 전이)이 덮지 않는다. 이탈 중엔 낡은 투영이라 숨긴다(3-state 정직).
-                if model.mode == .detail, !model.offRoute,
-                   let current = model.currentGuidanceText {
-                    distanceText(current)
+                // 하단 2행(spec 2026-08-11, walk 상세 전용): 윗줄 = 현재 행동(동적
+                // 카운트다운·상태 대체·최종 접근 문형), 아랫줄 = 다음 예고. 이탈 중에도
+                // 가리지 않는다 — 리듀서가 윗줄(이탈 문장)·아랫줄(비움)을 소유한다(F2).
+                // 낭독은 distanceText(spokenDistanceUnits) 경유, live region 없음 —
+                // 능동 통지는 모델의 단일 Announcement 채널이 담당한다(이중 낭독 금지).
+                if model.sessionKind == .walk, model.mode == .detail {
+                    if let top = model.liveTopText { distanceText(top) }
+                    if let next = model.liveNextText {
+                        distanceText(next).foregroundStyle(.secondary)
+                    }
+                } else {
+                    // car·간략 세션은 종전 행 유지(spec §7 비범위). walk 상세에서
+                    // statusText로만 흐르는 문장(fail·handoff)은 전부 모드가 brief/idle로
+                    // 바뀌는 경로라 이 분기가 그대로 받는다.
+                    if model.mode == .detail, !model.offRoute,
+                       let current = model.currentGuidanceText {
+                        distanceText(current)
+                    }
+                    if !model.statusText.isEmpty {
+                        distanceText(
+                            model.statusIsNextPreview
+                                ? appLocalized("guide.progressNext", model.statusText)
+                                : model.statusText
+                        ).foregroundStyle(.secondary)
+                    }
                 }
                 // 잠금 중 무음 예고. 세션 내내 참인 지속 상태라 상태 1줄과 자리를
                 // 다투지 않는다 — 시작 시 음성 1회는 놓치면 끝이고, 비-VO 사용자에게는
@@ -99,17 +118,6 @@ struct BeaconTrackingSheet: View {
                     Text(appLocalized("ios.beacon.soundBackgroundUnavailable"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                }
-                // 가시 상태 1줄. 통지는 모델의 단일 Announcement가 담당하므로 여기서
-                // 다시 알리지 않는다(보이는 콘텐츠의 live region 복제 금지).
-                // 주기 예고에는 "다음 안내," 라벨을 뷰에서 붙인다(모델 statusText는
-                // 발화 원문 유지 — 복귀 재생 음성으로 라벨이 새는 것을 막는다).
-                if !model.statusText.isEmpty {
-                    distanceText(
-                        model.statusIsNextPreview
-                            ? appLocalized("guide.progressNext", model.statusText)
-                            : model.statusText
-                    ).foregroundStyle(.secondary)
                 }
                 if !screenHintDismissed {
                     Text(appLocalized("beacon.screenHint"))

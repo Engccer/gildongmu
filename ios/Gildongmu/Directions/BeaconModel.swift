@@ -126,6 +126,18 @@ final class BeaconModel {
     /// 덮지 않는다 — 단일 슬롯이 현재/다음을 오가며 의미가 바뀌던 혼재의 해소.
     /// 간략·최종 접근에선 nil(경로 기반 값이 아니거나 종점 이후), 이탈 중 숨김은 뷰 몫.
     private(set) var currentGuidanceText: String?
+    /// 하단 2행 윗줄(walk 상세 전용, spec 2026-08-11): 현재 행동(동적 카운트다운·상태
+    /// 대체) 또는 최종 접근 문형. 비-VO 사용자에게도 보이는 가시 상태다(2.1(a) 계열).
+    private(set) var liveTopText: String?
+    /// 하단 2행 아랫줄: 다음 예고("다음 안내," 라벨 포함 완성 문자열). 이탈·최종
+    /// 유닛에서는 nil(요소 제거 — 빈 텍스트 낭독 금지).
+    private(set) var liveNextText: String?
+    /// 하단 2행 표시 유닛(walk 상세 전용, spec §4.1) — 경로 커밋 시 재구축.
+    private var displayUnits: [DisplayUnit] = []
+    /// 하단 2행 리듀서 소상태. 재조회·이탈 복귀·모드 전환에서 nil 리셋.
+    private var liveRowsState: LiveRowsState?
+    /// 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체.
+    private var liveBaselineD: Double = 0
 
     /// 세션이 쥐는 경로. 메모리에만 두고 세션 종료와 함께 폐기한다(스펙 §7.3 약관 경계).
     private var guideRoute: GuideRoute?
@@ -396,7 +408,7 @@ final class BeaconModel {
     ) async throws -> (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
         stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?,
-        finalApproach: FinalApproachPayload?
+        finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput]
     )? {
         if sessionKind == .car {
             let briefing = try await routeService.car(
@@ -409,7 +421,8 @@ final class BeaconModel {
             }
             // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
             // 자동차에는 최종 접근 개념이 없다(딥링크 위임이 정본) — 타입이 그 사실을 말한다.
-            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil)
+            // 하단 2행도 walk 전용(spec 2026-08-11 §7)이라 표시 입력이 없다.
+            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil, [])
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -425,7 +438,11 @@ final class BeaconModel {
         return (
             route, [], briefing.durationSeconds,
             briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice,
-            briefing.finalApproach
+            briefing.finalApproach,
+            // 스팬과 응답 스텝(live 조각)을 index로 짝지어 표시 입력을 만든다(spec §5).
+            liveStepsFrom(route: route, live: briefing.steps.map {
+                $0.live.map { (target: $0.target, anchor: $0.anchor) }
+            })
         )
     }
 
@@ -492,7 +509,14 @@ final class BeaconModel {
             mode = .detail
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
-            refreshCurrentGuidance(route: fetched.route, state: initial.state)
+            if sessionKind == .walk {
+                // 하단 2행: 표시 유닛은 경로와 수명이 같다(spec 2026-08-11).
+                displayUnits = buildDisplayUnits(fetched.liveSteps)
+                resetLiveRowsBaseline(state: initial.state)
+                currentGuidanceText = nil // walk의 "현재 안내" 행은 liveRows가 대체
+            } else {
+                refreshCurrentGuidance(route: fetched.route, state: initial.state)
+            }
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
             let summary = sessionKind == .car
                 ? GuideText.carStart(route: fetched.route, firstIndices: initial.firstIndices)
@@ -576,6 +600,37 @@ final class BeaconModel {
         if currentGuidanceText != text { currentGuidanceText = text }
     }
 
+    /// 하단 2행 갱신(walk 상세 전용, spec 2026-08-11). 매 fix·커밋 지점에서 부른다 —
+    /// 상태 국면(uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
+    /// 렌더 규칙은 공유 fixture 러너와 동일해야 한다(GuideText.liveTop/liveNext).
+    private func refreshLiveRows(state: GuideState) {
+        guard sessionKind == .walk else { return }
+        let out = guideLiveRows(
+            prev: liveRowsState, units: displayUnits,
+            d: state.d, baselineD: liveBaselineD, phase: state.phase
+        )
+        liveRowsState = out.state
+        let top = out.top.map(GuideText.liveTop)
+        let next = out.next.map(GuideText.liveNext)
+        // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
+        if liveTopText != top { liveTopText = top }
+        if liveNextText != next { liveNextText = next }
+    }
+
+    /// 하단 2행 기준 재설정(상태 재구성 지점 — 커밋·이탈 복귀·재획득). 램프인
+    /// 기준점과 클램프가 함께 새 기준으로 시작한다(spec §3 F7·§4.2 리셋 계약).
+    private func resetLiveRowsBaseline(state: GuideState) {
+        liveBaselineD = state.d
+        liveRowsState = nil
+        refreshLiveRows(state: state)
+    }
+
+    private func clearLiveRows() {
+        liveTopText = nil
+        liveNextText = nil
+        liveRowsState = nil
+    }
+
     /// 상세 불가 시 간략 폴백(조용한 강등 금지 — 통지가 모드를 말한다, 스펙 §4.1).
     /// 문구는 원인별로 가른다(8번): 경로 실패(기본)와 위치 대기 실패는 사용자가 취할
     /// 행동이 다르다(잠시 후 전환 재시도 vs 하늘 트인 곳으로 이동).
@@ -583,6 +638,7 @@ final class BeaconModel {
         mode = .brief
         remainingText = nil
         currentGuidanceText = nil
+        clearLiveRows()
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 새 판정으로 다시 통지된다 — 반복이 아니다. 갚지 못한 경고도 대상이
         // 사라졌으므로 버린다(간략 폴백엔 따라갈 경로 자체가 없다).
@@ -673,6 +729,9 @@ final class BeaconModel {
         lastGuidance = nil
         remainingText = nil
         currentGuidanceText = nil
+        clearLiveRows()
+        displayUnits = []
+        liveBaselineD = 0
         offRoute = false
         roadSpans = []
         etaSeconds = nil
@@ -955,9 +1014,20 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
-        // "현재 안내" 행은 지금 구간을 따라간다(정상 추종 국면에서만 — 이탈은 뷰가
-        // 숨기고, uncertain은 마지막 확실 구간을 유지하는 것이 정직하다).
-        if out.state.phase == .following || out.state.phase == .bundle {
+        if sessionKind == .walk {
+            // 하단 2행(spec 2026-08-11): 이탈 복귀·재획득은 리듀서가 d를 재구성한
+            // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
+            switch out.event {
+            case .backOnRoute, .reacquired:
+                liveBaselineD = out.state.d
+                liveRowsState = nil
+            default:
+                break
+            }
+            // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
+            refreshLiveRows(state: out.state)
+        } else if out.state.phase == .following || out.state.phase == .bundle {
+            // car 화면은 spec 비범위 — 종전 "현재 안내" 행(현재 구간 직접 유도) 유지.
             refreshCurrentGuidance(route: route, state: out.state)
         }
 
@@ -1064,6 +1134,10 @@ final class BeaconModel {
     private func beginFinalApproach() {
         remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
         currentGuidanceText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
+        // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
+        // 아랫줄은 비운다 — 스텝 예고는 전부 소화됐다. 윗줄은 같은 fix의 진입
+        // 서술(handleFinalApproach)이 즉시 채운다.
+        clearLiveRows()
         etaTask?.cancel()
         etaTask = nil
         rebaseForAxisChange()  // 경로 거리 → 직선거리(축 전환, handoff와 같은 규칙)
@@ -1152,6 +1226,7 @@ final class BeaconModel {
             )
             statusText = text
             lastGuidance = text
+            liveTopText = text  // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2)
             if !announce(text) { pendingFinalApproachIntro = text }
             return
         }
@@ -1162,6 +1237,7 @@ final class BeaconModel {
             stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
             statusText = text
             lastGuidance = text
+            liveTopText = text  // 시트 dismiss 동안의 가시 상태(statusText 동형)
             announce(text, highPriority: true)
             return
         }
@@ -1178,6 +1254,7 @@ final class BeaconModel {
         )
         statusText = text
         lastGuidance = text
+        liveTopText = text
         announce(text)
     }
 
@@ -1349,7 +1426,12 @@ final class BeaconModel {
             lastRemaining = nil
             lastRemainingAt = nil
             updateRemaining(route: route, state: state)
-            refreshCurrentGuidance(route: route, state: state)
+            if sessionKind == .walk {
+                // 유닛은 세션 것이라 유지 — 기준점·클램프만 새 진입 d로 리셋.
+                resetLiveRowsBaseline(state: state)
+            } else {
+                refreshCurrentGuidance(route: route, state: state)
+            }
             let text = appLocalized("guide.toDetailDone")
             statusText = text
             announce(text)
@@ -1429,6 +1511,7 @@ final class BeaconModel {
             mode = .brief
             remainingText = nil
             currentGuidanceText = nil
+            clearLiveRows()
             // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓고
             // 비콘에 넘긴다(§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
             inFinalApproach = false
@@ -1505,7 +1588,13 @@ final class BeaconModel {
             guideState = initial.state
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
-            refreshCurrentGuidance(route: fetched.route, state: initial.state)
+            if sessionKind == .walk {
+                // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7).
+                displayUnits = buildDisplayUnits(fetched.liveSteps)
+                resetLiveRowsBaseline(state: initial.state)
+            } else {
+                refreshCurrentGuidance(route: fetched.route, state: initial.state)
+            }
             let first = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
             lastGuidance = first
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면

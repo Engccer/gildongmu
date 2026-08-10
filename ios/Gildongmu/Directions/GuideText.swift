@@ -215,6 +215,62 @@ enum GuideText {
         return "\(ordinal). \(remaining)"
     }
 
+    // MARK: - 하단 2행 (spec 2026-08-11 §4.2·§4.3·§6)
+
+    /// 행동구("왼쪽으로 도세요") — 디스크립터 렌더의 공통 조각.
+    /// 보간 키는 키 린터(check-xcstrings-keys)가 못 좇는다 — 명시 switch가 관례.
+    static func liveActionPhrase(_ action: WalkAction) -> String {
+        switch action {
+        case .left: appLocalized("guide.liveAction.left")
+        case .right: appLocalized("guide.liveAction.right")
+        case .crosswalk: appLocalized("guide.liveAction.crosswalk")
+        case .underpass: appLocalized("guide.liveAction.underpass")
+        }
+    }
+
+    /// "잠시 후 {행동구}"(표시 잔여 0) — 기존 임박 큐 문구 재사용(spec §4.2 행 7).
+    static func liveTurnSoon(_ action: WalkAction) -> String {
+        switch action {
+        case .left: appLocalized("guide.imminent.left")
+        case .right: appLocalized("guide.imminent.right")
+        case .crosswalk: appLocalized("guide.imminent.crosswalk")
+        case .underpass: appLocalized("guide.imminent.underpass")
+        }
+    }
+
+    /// 하단 2행 윗줄 렌더. 매핑 규칙은 공유 fixture 러너(GuideLiveRowsTests·웹
+    /// guide-live-rows.test.ts)와 동일해야 한다 — 규칙 변경은 반드시 러너와 함께 간다.
+    static func liveTop(_ row: LiveTopRow) -> String {
+        switch row {
+        case .offRoute: appLocalized("guide.offRoute")
+        case .uncertain: appLocalized("guide.uncertain")
+        case .reacquiring: appLocalized("guide.reacquiring")
+        case let .crossing(text): text
+        case let .turnSoon(action): liveTurnSoon(action)
+        case let .turnIn(meters, action):
+            appLocalized("guide.liveTurnIn", String(meters), liveActionPhrase(action))
+        case let .straight(meters, target):
+            target.map { appLocalized("guide.liveStraight", $0, String(meters)) }
+                ?? appLocalized("guide.liveStraightNoName", String(meters))
+        }
+    }
+
+    /// 하단 2행 아랫줄 렌더 — "다음 안내," 라벨(progressNext)까지 포함한 완성 문자열.
+    static func liveNext(_ row: LiveNextRow) -> String {
+        let step: String
+        switch row {
+        case let .action(action, anchor):
+            let phrase = liveActionPhrase(action)
+            step = anchor.map { appLocalized("guide.nextAction", $0, phrase) } ?? phrase
+        case let .straight(meters, target):
+            step = target.map { appLocalized("guide.nextStraight", $0, String(meters)) }
+                ?? appLocalized("guide.nextStraightNoName", String(meters))
+        case let .crossing(action), let .turn(action):
+            step = liveActionPhrase(action)
+        }
+        return appLocalized("guide.progressNext", step)
+    }
+
     /// 진행 상황 버튼 응답(스펙 §4.2 — 상태별로 거짓 정밀을 만들지 않는다).
     /// straightLineMeters는 이탈 상태 전용(마지막 fix→목적지 직선거리 — 경로 잔여는
     /// 이탈 중엔 거짓이므로 직선만 정직하다). 웹 `progressOverviewLine` 미러 —
