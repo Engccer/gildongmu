@@ -1,0 +1,87 @@
+{
+  "comment": "하단 2행 파생 계층 경계표(spec 2026-08-11 §8-1). 웹 guide-live-rows.test.ts와 Kit GuideLiveRowsTests가 함께 소비하며, 디스크립터를 messages/ko.json 템플릿으로 렌더한 최종 문자열을 대조한다(어순·키 드리프트까지 잠금). 메인 시나리오는 실경로(2026-08-10 저녁 왕복, 자택↔주택 A)의 8스텝 길이·행동 시퀀스를 이식한 근사다 — 원좌표 재생은 경로 폴리라인이 로그(guide-diag-2026-08-10.log.gz)에 없어 불가하고, 이 계층은 기하 무관이라 원시 d 직접 주입이 정본이다. eff = d + min(15, d - baselineD), 표시 잔여 = floor(유닛 끝 - eff). inputs의 reset=true는 재조회·복귀 리셋(prevRowState=null + baselineD 교체). expect.next의 빈 문자열은 아랫줄 비움(요소 제거)이다.",
+  "scenarios": [
+    {
+      "name": "실경로 8스텝 근사 — 전 국면 전이(직진→회전 접근→바닥 강등→짧은 유닛→횡단→병합→상태 대체·복귀→이탈→최종 유닛)",
+      "steps": [
+        { "len": 24, "desc": "자택 앞에서 진입로를 따라 24m 이동", "anchor": "자택" },
+        { "len": 10, "desc": "오른쪽으로 돌아 10m 이동" },
+        { "len": 58, "desc": "왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동", "target": "파리바게뜨" },
+        { "len": 21, "desc": "횡단보도를 건너세요, 21m, 음향신호기 있음" },
+        { "len": 40, "desc": "천중로를 따라 40m 이동" },
+        { "len": 30, "desc": "30m 이동" },
+        { "len": 35, "desc": "약국 앞에서 오른쪽으로 돌아 주택 A까지 35m 이동", "target": "주택 A", "anchor": "약국" },
+        { "len": 12, "desc": "왼쪽으로 돌아 목적지까지 12m 이동", "target": "목적지" }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        { "d": 0, "phase": "following" },
+        { "d": 5, "phase": "following" },
+        { "d": 10, "phase": "following" },
+        { "d": 11.6, "phase": "following" },
+        { "d": 16, "phase": "following" },
+        { "d": 25, "phase": "following" },
+        { "d": 25, "phase": "uncertain" },
+        { "d": 25, "phase": "reacquiring" },
+        { "d": 25, "phase": "following" },
+        { "d": 70, "phase": "following" },
+        { "d": 80, "phase": "following" },
+        { "d": 105, "phase": "following" },
+        { "d": 105, "phase": "offRoute" },
+        { "d": 163, "phase": "following" },
+        { "d": 200, "phase": "following" },
+        { "d": 210, "phase": "following" },
+        { "d": 230, "phase": "following" }
+      ],
+      "expect": [
+        { "afterInput": 0, "top": "24m 직진하세요", "next": "다음 안내, 오른쪽으로 도세요" },
+        { "afterInput": 1, "top": "14m 직진하세요", "next": "다음 안내, 오른쪽으로 도세요" },
+        { "afterInput": 2, "top": "4m 후 오른쪽으로 도세요", "next": "다음 안내, 왼쪽으로 도세요" },
+        { "afterInput": 3, "top": "잠시 후 오른쪽으로 도세요", "next": "다음 안내, 왼쪽으로 도세요" },
+        { "afterInput": 4, "top": "3m 후 왼쪽으로 도세요", "next": "다음 안내, 파리바게뜨까지 58m 직진" },
+        { "afterInput": 5, "top": "파리바게뜨까지 52m 직진하세요", "next": "다음 안내, 횡단보도를 건너세요" },
+        { "afterInput": 6, "top": "위치 확신이 낮습니다", "next": "다음 안내, 횡단보도를 건너세요" },
+        { "afterInput": 7, "top": "현재 위치를 다시 파악하는 중입니다", "next": "다음 안내, 횡단보도를 건너세요" },
+        { "afterInput": 8, "top": "파리바게뜨까지 52m 직진하세요", "next": "다음 안내, 횡단보도를 건너세요" },
+        { "afterInput": 9, "top": "7m 후 횡단보도를 건너세요", "next": "다음 안내, 횡단보도를 건너세요" },
+        { "afterInput": 10, "top": "횡단보도를 건너세요, 21m, 음향신호기 있음", "next": "다음 안내, 70m 직진" },
+        { "afterInput": 11, "top": "63m 직진하세요", "next": "다음 안내, 약국 앞에서 오른쪽으로 도세요" },
+        { "afterInput": 12, "top": "경로에서 벗어난 것 같습니다", "next": "" },
+        { "afterInput": 13, "top": "5m 후 오른쪽으로 도세요", "next": "다음 안내, 주택 A까지 35m 직진" },
+        { "afterInput": 14, "top": "3m 후 왼쪽으로 도세요", "next": "다음 안내, 목적지까지 12m 직진" },
+        { "afterInput": 15, "top": "목적지까지 5m 직진하세요", "next": "" },
+        { "afterInput": 16, "top": "목적지까지 0m 직진하세요", "next": "" }
+      ]
+    },
+    {
+      "name": "단조 클램프 — 주입 역행은 직전 표시값 유지(실전 d는 단조라 방어층, F4)",
+      "steps": [
+        { "len": 100, "desc": "목적지까지 100m 이동", "target": "목적지" }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        { "d": 30, "phase": "following" },
+        { "d": 28, "phase": "following" }
+      ],
+      "expect": [
+        { "afterInput": 0, "top": "목적지까지 55m 직진하세요", "next": "" },
+        { "afterInput": 1, "top": "목적지까지 55m 직진하세요", "next": "" }
+      ]
+    },
+    {
+      "name": "재조회 리셋 — 램프인 재시작으로 값이 커지는 것이 정당(F7)",
+      "steps": [
+        { "len": 100, "desc": "목적지까지 100m 이동", "target": "목적지" }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        { "d": 50, "phase": "following" },
+        { "d": 50, "phase": "following", "reset": true, "baselineD": 50 }
+      ],
+      "expect": [
+        { "afterInput": 0, "top": "목적지까지 35m 직진하세요", "next": "" },
+        { "afterInput": 1, "top": "목적지까지 50m 직진하세요", "next": "" }
+      ]
+    }
+  ]
+}
