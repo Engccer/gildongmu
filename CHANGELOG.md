@@ -11,6 +11,9 @@
 
 ## 2026-08-10
 
+### 역 seed 인접역 좌표 혼입 수정 (4호선 이촌역 = 신용산 좌표)
+CLI 실사용 리포트(Windows, `nearby subway`)로 발견 — 신용산역 앞에서 실거리 1km의 이촌역이 8m 최근접 1순위로 잡혔다. 원인은 표준데이터 XLSX 원본이 4호선 이촌(국립중앙박물관) 레코드에 한 정거장 옆 신용산역 좌표(907m 오차)를 담은 것. `COORD_FIXES` 보정(카카오 실좌표) + 환승 쌍 거리 가드 신설(동명이고 한쪽 이상 환승인 쌍이 600m~30km면 빌드 중단 — 인접역 혼입은 노선 연속성 축의 사각, 변이 주입으로 검출 확인, 오탐 0). seed 변경은 이촌 1건.
+
 ### 길찾기 최근 경로 + iOS 설정 업데이트 이력
 길찾기 조회 완료(settled) 시 출발·도착 쌍을 기기 로컬에 기록해(최대 20, 쌍 dedupe, 현재 위치는 nil/null 투영) 결과 없는 화면에 최근 경로 섹션으로 노출한다(웹·iOS). 활성화=두 필드 확정+즉시 조회+조회 버튼 포커스 선점, 삭제는 기존 최근 검색 계약을 그대로 따른다(iOS 스와이프=로터, 웹 삭제 버튼). 저장은 웹 `src/lib/recent-searches.ts` ↔ iOS `RecentSearchStore`(`RecentRoute`) 미러.
 iOS 설정에 업데이트 이력 화면을 추가했다 — `docs/appstore/release-notes.md`(정본) → `scripts/build-release-notes.mjs` → 번들 `release-notes.json`(1.1~1.4) → `ReleaseNotesView`(버전 heading 로터 점프, ko 외 5개 언어는 en 폴백). 드리프트 가드는 `src/lib/__tests__/release-notes-bundle.test.ts`.
