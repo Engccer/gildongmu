@@ -100,8 +100,20 @@ export function rewriteWalkGuidance(description: string, meters?: number): strin
     // 온다면 "횡단보도 1개 이용"은 개수 정보가 아닌 데다 병합 게이트
     // (`MERGED_CROSSWALK`)를 잘못 열어 **단일 횡단보도의 신호기 주석을 지운다**.
     const merged = Number(count) > 1;
-    const tail = merged ? `${kind} ${count}개 이용` : `${kind} 이용`;
-    return `${join(from, to, dist)} 이동, ${tail}`;
+    // 행동 동사 우선(위원장 실보행 판정 2026-08-10): 종전 "{거리} 이동, 횡단보도
+    // 이용"은 전언이 행동을 말하지 않았다 — 임박 큐와 같은 동사로 문장을 세우고
+    // 거리는 꼬리에 둔다("메가 MGC커피 앞에서 횡단보도를 건너세요, 21m").
+    // 병합 표현 "횡단보도 N개"는 MERGED_CROSSWALK 게이트가 그대로 매칭하고,
+    // 임박 분류(walkStepAction)의 "횡단보도" 부분 문자열 마커도 유지된다.
+    const action =
+      kind === "횡단보도"
+        ? merged
+          ? `횡단보도 ${count}개를 건너세요`
+          : "횡단보도를 건너세요"
+        : merged
+          ? `지하보도 ${count}개로 건너세요`
+          : "지하보도로 건너세요";
+    return `${join(from, to, action)}, ${dist}`;
   }
 
   const bridge = BRIDGE.exec(description);

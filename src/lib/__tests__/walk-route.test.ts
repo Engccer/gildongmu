@@ -105,7 +105,7 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
         ]),
       ),
     );
-    expect(out.steps[0].description).toBe("길동사거리에서 58m 이동, 횡단보도 2개 이용");
+    expect(out.steps[0].description).toBe("길동사거리에서 횡단보도 2개를 건너세요, 58m");
   });
 
   it("재작성된 단수 횡단보도에는 주석이 문장 끝에 붙는다", () => {
@@ -121,7 +121,7 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
       ),
     );
     expect(out.steps[0].description).toBe(
-      "길동사거리앞교차로에서 13m 이동, 횡단보도 이용, 음향신호기 있음",
+      "길동사거리앞교차로에서 횡단보도를 건너세요, 13m, 음향신호기 있음",
     );
   });
 
@@ -211,7 +211,7 @@ describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
     // 순서가 뒤집히면 주석이 먼저 붙어 재작성 정규식의 `$` 앵커가 깨지고,
     // 그 스텝만 조용히 원문("…에서 횡단보도 이용, 음향신호기 있음")으로 남는다.
     expect(r?.steps[0].description).toBe(
-      "길동사거리앞교차로에서 13m 이동, 횡단보도 이용, 음향신호기 있음",
+      "길동사거리앞교차로에서 횡단보도를 건너세요, 13m, 음향신호기 있음",
     );
   });
 

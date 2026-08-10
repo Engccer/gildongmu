@@ -22,7 +22,7 @@ describe("rewriteWalkGuidance", () => {
       // 실측 유일 예외. "…를 따라"를 붙였다면 "임시폐쇄를 따라"가 나갔다.
       expect(
         rewriteWalkGuidance("삼성역 2호선 7번출구(임시폐쇄)까지 횡단보도 이용", 30),
-      ).toBe("삼성역 2호선 7번출구(임시폐쇄)까지 30m 이동, 횡단보도 이용");
+      ).toBe("삼성역 2호선 7번출구(임시폐쇄)까지 횡단보도를 건너세요, 30m");
     });
 
     it("괄호가 둘이면 문장 끝의 것만 도로명으로 본다", () => {
@@ -83,21 +83,21 @@ describe("rewriteWalkGuidance", () => {
   describe("거리를 말하지 않던 단계", () => {
     it("횡단보도는 거리를 이동으로 빼고 시설을 뒤에 붙인다", () => {
       expect(rewriteWalkGuidance("길동사거리앞교차로에서 횡단보도 이용", 13)).toBe(
-        "길동사거리앞교차로에서 13m 이동, 횡단보도 이용",
+        "길동사거리앞교차로에서 횡단보도를 건너세요, 13m",
       );
     });
 
     it("복수 횡단보도만 개수를 말한다", () => {
       expect(
         rewriteWalkGuidance("둔촌고교입구교차로에서 한빛안경랜드까지 2개의 횡단보도 이용", 46),
-      ).toBe("둔촌고교입구교차로에서 한빛안경랜드까지 46m 이동, 횡단보도 2개 이용");
+      ).toBe("둔촌고교입구교차로에서 한빛안경랜드까지 횡단보도 2개를 건너세요, 46m");
       // 단수에 "1개"를 붙이면 원문에 없던 말이 된다
-      expect(rewriteWalkGuidance("횡단보도 이용", 12)).toBe("12m 이동, 횡단보도 이용");
+      expect(rewriteWalkGuidance("횡단보도 이용", 12)).toBe("횡단보도를 건너세요, 12m");
     });
 
     it("지하보도는 횡단보도와 같은 틀을 쓴다", () => {
       expect(rewriteWalkGuidance("여의도공원앞교차로에서 지하보도 이용", 356)).toBe(
-        "여의도공원앞교차로에서 356m 이동, 지하보도 이용",
+        "여의도공원앞교차로에서 지하보도로 건너세요, 356m",
       );
     });
 
@@ -119,7 +119,7 @@ describe("rewriteWalkGuidance", () => {
     it("횡단보도가 하나면 개수를 말하지 않는다", () => {
       // "1개"는 개수 정보가 아닌 데다, 병합 게이트를 잘못 열어 그 단계의
       // 음향신호기 주석을 지운다(codex 적대적 리뷰 검출).
-      expect(rewriteWalkGuidance("1개의 횡단보도 이용", 12)).toBe("12m 이동, 횡단보도 이용");
+      expect(rewriteWalkGuidance("1개의 횡단보도 이용", 12)).toBe("횡단보도를 건너세요, 12m");
     });
 
     it("1km 이상은 formatDistance 규칙(소수 km)을 따른다", () => {
@@ -182,7 +182,7 @@ describe("rewriteWalkGuidance", () => {
       ],
     });
     expect(out.steps[0]).toEqual({
-      description: "13m 이동, 횡단보도 이용",
+      description: "횡단보도를 건너세요, 13m",
       distanceMeters: 13,
       pathCoords: [{ lat: 37.5, lng: 127.1 }],
     });

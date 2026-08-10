@@ -197,11 +197,11 @@
           ]
         },
         {
-          "afterFix": 7,
+          "afterFix": 6,
           "eventNull": true
         },
         {
-          "afterFix": 8,
+          "afterFix": 7,
           "event": "bundleReread",
           "indices": [
             1,
@@ -1568,7 +1568,7 @@
       ]
     },
     {
-      "name": "결정 지점 10m 앞 임박 큐 — 40m 전문은 무톤, 10m 큐가 ahead 톤을 든다",
+      "name": "결정 지점 25m 앞 임박 큐 — 40m 전문은 무톤, 25m 큐가 ahead 톤을 든다",
       "steps": [
         {
           "len": 200,
@@ -1670,15 +1670,15 @@
         },
         {
           "afterFix": 11,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 12,
           "event": "imminent",
           "indices": [
             1
           ],
           "tone": "ahead"
+        },
+        {
+          "afterFix": 12,
+          "eventNot": "imminent"
         }
       ]
     },
@@ -1822,15 +1822,15 @@
       ],
       "expect": [
         {
-          "afterFix": 9,
+          "afterFix": 8,
+          "eventNot": "imminent"
+        },
+        {
+          "afterFix": 17,
           "eventNot": "imminent"
         },
         {
           "afterFix": 18,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 19,
           "event": "imminent",
           "indices": [
             2
@@ -1937,7 +1937,7 @@
       ],
       "expect": [
         {
-          "afterFix": 12,
+          "afterFix": 11,
           "event": "imminent",
           "indices": [
             1
@@ -2130,7 +2130,7 @@
           "eventNot": "imminent"
         },
         {
-          "afterFix": 14,
+          "afterFix": 13,
           "event": "imminent",
           "indices": [
             2
@@ -2147,8 +2147,8 @@
           "desc": "직진A"
         },
         {
-          "len": 25,
-          "desc": "정문까지 24m 이동, 횡단보도 이용"
+          "len": 15,
+          "desc": "정문까지 14m 이동, 횡단보도 이용"
         }
       ],
       "fixes": [
@@ -2220,13 +2220,13 @@
         },
         {
           "t": 88,
-          "along": 176,
+          "along": 168,
           "lateral": 0,
           "acc": 10
         },
         {
           "t": 96,
-          "along": 192,
+          "along": 176,
           "lateral": 0,
           "acc": 10
         }
@@ -2255,7 +2255,7 @@
           "eventNot": "imminent"
         }
       ],
-      "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 이 시나리오는 imminent를 내지만, 이탈 판정이 마지막 50m까지 연장되며 A6 헛경고율이 2배가 됐다(a6-probe 상한 전부 초과). 그 교환을 다시 하려면 두 테스트를 함께 봐야 한다."
+      "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. 임박 25m 상향(2026-08-10) 후 이 한계는 더 좁아졌다: 큐 자격선(경계-25m)이 진입선보다 앞이면 큐가 살아남고, 이 기하(마지막 유닛 15m, 무기하 진입선 50m → 진입 165 < 큐 175)처럼 진입선이 앞일 때만 선점된다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 imminent가 나지만 A6 헛경고율이 2배가 됐다(a6-probe 상한 초과) — 교환을 다시 하려면 두 테스트를 함께 볼 것."
     },
     {
       "name": "이미 지난 경계에는 명령형 큐를 내지 않는다(정확도 악화 후 창이 경계를 넘겨 착지)",
