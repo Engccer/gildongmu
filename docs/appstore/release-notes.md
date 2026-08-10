@@ -12,6 +12,32 @@
 
 ---
 
+## 1.5 (빌드 11)
+
+도착지 부근 상황 재구성(주변 확인) · 길찾기 최근 경로 · 설정 업데이트 이력. 실시간 길 안내는 계속 봉인(`#if EXPERIMENTAL`)이라 이 버전에도 담기지 않는다.
+
+포함 판정: 1.4(빌드 10, 제출 2026-08-09 16:56) 이후 iOS 정식 빌드에 **도달하는** 변경만. 이 창의 iOS 커밋 29개 중 실시간 안내 계열 20여 개는 `AppConfig.realtimeGuidanceEnabled` 게이트 안이라 Release에서 도달 불가고, 서버 전용 변경(자동차 안내문 재작성·도보 anchor 유실 수정·4호선 이촌역 seed 좌표 보정)은 웹 배포로 이미 1.4 사용자에게도 반영되어 "이 업데이트의 새 기능"이 아니다.
+
+⚠ **주변 확인(M1)은 실보행·실기기 VO 판정 전이다**(BACKLOG §H M1 ①②). 다만 이 기능에는 실험 게이트가 없어 Release 빌드에 이미 들어가 있으므로, 적지 않으면 숨은 기능이 된다. 정보 제공 축이고 안내·안전 축이 아니라는 점이 판정 전 출시를 받아들이는 근거다.
+
+### ko
+
+```
+새로운 기능
+- 내 주변에서 현재 위치를 확인한 뒤 "주변 확인"을 누르면, 그 자리 주변의 가게와 시설을 왼쪽, 오른쪽, 맞은편, 건물 너머로 나눠 알려 드립니다. 도로명주소로 방향을 세울 수 없는 자리에서는 동서남북으로 알려 드립니다.
+- 길찾기에 최근 경로가 생겼습니다. 전에 조회한 출발지와 목적지 쌍을 누르면 그대로 다시 조회합니다. 쓸어 넘겨 하나씩 지우거나 모두 지울 수 있습니다.
+- 설정에 업데이트 이력이 생겼습니다. 버전마다 무엇이 바뀌었는지 앱 안에서 읽을 수 있습니다.
+```
+
+### en
+
+```
+New
+- In Nearby, confirm your current location and tap "Check surroundings" to hear the shops and facilities around that spot, grouped as left, right, across the street, and beyond the building. Where the street address cannot establish a facing direction, the app falls back to compass directions.
+- Directions now keeps your recent routes. Tap a saved origin and destination pair to look it up again. Swipe to delete one, or clear them all.
+- Settings now has release notes. Read what changed in each version inside the app.
+```
+
 ## 1.4 (빌드 10)
 
 제출 2026-08-09 16:57 KST · `WAITING_FOR_REVIEW`. 현위치 수동 지정. 실시간 길 안내는 계속 봉인(`#if EXPERIMENTAL`)이라 이 버전에도 담기지 않는다.
