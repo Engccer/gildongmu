@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { rewriteWalkGuidance, rewriteWalkBriefing } from "../walk-guidance";
+import {
+  rewriteWalkBriefing,
+  rewriteWalkGuidance,
+  rewriteWalkGuidanceWithLive,
+} from "../walk-guidance";
 
 /**
  * 도보 안내문 재작성 계약. fixture는 전부 카카오 실호출 원문이다(경로 16개
@@ -174,17 +178,77 @@ describe("rewriteWalkGuidance", () => {
   });
 
   it("description 외 필드는 보존한다", () => {
-    const out = rewriteWalkBriefing({
-      distanceMeters: 100,
-      durationSeconds: 90,
-      steps: [
-        { description: "횡단보도 이용", distanceMeters: 13, pathCoords: [{ lat: 37.5, lng: 127.1 }] },
-      ],
-    });
+    const out = rewriteWalkBriefing(
+      {
+        distanceMeters: 100,
+        durationSeconds: 90,
+        steps: [
+          { description: "횡단보도 이용", distanceMeters: 13, pathCoords: [{ lat: 37.5, lng: 127.1 }] },
+        ],
+      },
+      false,
+    );
     expect(out.steps[0]).toEqual({
       description: "횡단보도를 건너세요, 13m",
       distanceMeters: 13,
       pathCoords: [{ lat: 37.5, lng: 127.1 }],
     });
+  });
+});
+
+describe("rewriteWalkGuidanceWithLive — live 조각(spec 2026-08-11 §5)", () => {
+  it("이동 문장에서 anchor(…에서)·target(…까지)을 뽑는다", () => {
+    const r = rewriteWalkGuidanceWithLive(
+      "천호역 4번 출구에서 파리바게뜨까지 왼쪽길로 58m 이동(명일로)",
+    );
+    expect(r.text).toBe(
+      "천호역 4번 출구에서 왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동",
+    );
+    expect(r.live).toEqual({ target: "파리바게뜨", anchor: "천호역 4번 출구" });
+  });
+
+  it("anchor의 후행 '앞'은 벗긴다(예고 틀 '{anchor} 앞에서'와 중복 방지)", () => {
+    const r = rewriteWalkGuidanceWithLive("메가 MGC커피 앞에서 횡단보도 이용", 21);
+    expect(r.text).toBe("메가 MGC커피 앞에서 횡단보도를 건너세요, 21m");
+    expect(r.live).toEqual({ anchor: "메가 MGC커피" });
+  });
+
+  it("…에서/…까지 절이 없으면 필드 부재(지어내지 않는다)", () => {
+    const r = rewriteWalkGuidanceWithLive("길동역 1번 출구 진출 후 94m 이동(양재대로)");
+    expect(r.live).toBeUndefined();
+  });
+
+  it("미매칭 폴백('역사 내 이동')은 조각 없음", () => {
+    expect(rewriteWalkGuidanceWithLive("역사 내 이동", 411).live).toBeUndefined();
+  });
+
+  it("rewriteWalkGuidance 래퍼는 종전 문자열 계약 그대로", () => {
+    expect(
+      rewriteWalkGuidance("천호역 4번 출구에서 파리바게뜨까지 왼쪽길로 58m 이동(명일로)"),
+    ).toBe("천호역 4번 출구에서 왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동");
+  });
+});
+
+describe("rewriteWalkBriefing — live 부착은 옵트인", () => {
+  const briefing = {
+    distanceMeters: 58,
+    durationSeconds: 60,
+    steps: [
+      {
+        description: "천호역 4번 출구에서 파리바게뜨까지 왼쪽길로 58m 이동(명일로)",
+        distanceMeters: 58,
+      },
+    ],
+  };
+
+  it("includeLive=true면 스텝에 live가 실린다", () => {
+    expect(rewriteWalkBriefing(briefing, true).steps[0].live).toEqual({
+      target: "파리바게뜨",
+      anchor: "천호역 4번 출구",
+    });
+  });
+
+  it("includeLive=false면 필드 자체 부재(기존 응답 byte-호환)", () => {
+    expect("live" in rewriteWalkBriefing(briefing, false).steps[0]).toBe(false);
   });
 });

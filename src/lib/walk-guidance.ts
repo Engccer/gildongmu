@@ -66,8 +66,42 @@ function join(...parts: (string | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-/** 안내문 한 줄 재작성. 규칙에 걸리지 않으면 원문 그대로 돌려준다. */
-export function rewriteWalkGuidance(description: string, meters?: number): string {
+/**
+ * 실시간 표시 계층용 구조화 조각(spec 2026-08-11 §5). 추출 실패 필드는 부재 —
+ * 클라이언트가 한국어 문장을 재파싱해 얻지 않는다(재조합 금지 계약의 연장).
+ */
+export interface WalkLiveFragments {
+  /** 직진 목표 이름("파리바게뜨까지"의 까지 앞). */
+  target?: string;
+  /** 경계 기준 이름("메가 MGC커피 앞에서"의 에서·후행 '앞' 제거). */
+  anchor?: string;
+}
+
+/** "…에서" 절 → 기준 이름. 후행 " 앞"은 벗긴다(예고 틀이 "앞에서"를 붙인다). */
+function anchorFrom(from: string | undefined): string | undefined {
+  if (!from?.endsWith("에서")) return undefined;
+  let name = from.slice(0, -2).trim();
+  if (name.endsWith(" 앞")) name = name.slice(0, -2).trim();
+  return name || undefined;
+}
+
+/** "…까지" 절 → 목표 이름. */
+function targetFrom(to: string | undefined): string | undefined {
+  if (!to?.endsWith("까지")) return undefined;
+  const name = to.slice(0, -2).trim();
+  return name || undefined;
+}
+
+function liveOf(target?: string, anchor?: string): WalkLiveFragments | undefined {
+  if (!target && !anchor) return undefined;
+  return { ...(target && { target }), ...(anchor && { anchor }) };
+}
+
+/** 안내문 한 줄 재작성 + 구조화 조각. 규칙에 걸리지 않으면 원문 그대로 돌려준다. */
+export function rewriteWalkGuidanceWithLive(
+  description: string,
+  meters?: number,
+): { text: string; live?: WalkLiveFragments } {
   const move = MOVE.exec(description);
   if (move) {
     const [, head = "", turn, dist, road] = move;
@@ -75,20 +109,27 @@ export function rewriteWalkGuidance(description: string, meters?: number): strin
     const parsed = HEAD.exec(trimmed);
     const from = parsed ? parsed[1] : trimmed || undefined;
     const to = parsed?.[2];
+    // 조각은 HEAD가 분해한 절에서만 온다 — HEAD 미매칭 head("…진출 후" 류 서술)는
+    // 기준 이름이 아니므로 anchorFrom의 "에서" 종결 조건이 걸러 낸다.
+    const live = liveOf(targetFrom(to), anchorFrom(parsed?.[1]));
     // 조사를 못 정하는 도로명은 문장 안으로 옮기지 않는다 — 괄호째 원문 유지.
+    // 파싱된 조각은 그래도 참이므로 live는 붙인다.
     const particle = road ? objectParticle(road) : null;
-    if (road && !particle) return description;
-    return `${join(
-      from,
-      turn ? `${turn}으로 돌아` : undefined,
-      to,
-      road ? `${road}${particle} 따라` : undefined,
-      dist,
-    )} 이동`;
+    if (road && !particle) return { text: description, live };
+    return {
+      text: `${join(
+        from,
+        turn ? `${turn}으로 돌아` : undefined,
+        to,
+        road ? `${road}${particle} 따라` : undefined,
+        dist,
+      )} 이동`,
+      live,
+    };
   }
 
   // 아래 규칙들은 원문에 거리가 없어 distanceMeters를 문장 안으로 들여온다.
-  if (meters === undefined) return description;
+  if (meters === undefined) return { text: description };
   // 거리 표기 정본은 formatDistance 하나뿐이다 — 여기서 조립하면 같은 화면의
   // 다른 거리와 갈린다(1km 미만을 "0.8km"로 낸 사본 4곳의 전례).
   const dist = formatDistance(meters);
@@ -113,28 +154,47 @@ export function rewriteWalkGuidance(description: string, meters?: number): strin
         : merged
           ? `지하보도 ${count}개로 건너세요`
           : "지하보도로 건너세요";
-    return `${join(from, to, action)}, ${dist}`;
+    return {
+      text: `${join(from, to, action)}, ${dist}`,
+      live: liveOf(targetFrom(to), anchorFrom(from)),
+    };
   }
 
   const bridge = BRIDGE.exec(description);
   if (bridge) {
     // "N m 이동, 교량 진입"은 다리에 올라선 뒤 걷는 순서가 뒤집혀 들린다 —
     // 도로명과 같은 "…를 따라 이동" 틀로 통일한다(위원장 판정 2026-08-07).
-    return `${join(bridge[1], "교량을 따라", dist)} 이동`;
+    return {
+      text: `${join(bridge[1], "교량을 따라", dist)} 이동`,
+      live: liveOf(undefined, anchorFrom(bridge[1])),
+    };
   }
 
   // "…역사 내 이동"류: 목적어 없이 동사로 끝나므로 거리만 앞에 끼운다.
   if (description.endsWith("이동") && !HAS_DISTANCE.test(description)) {
-    return `${description.slice(0, -2)}${dist} 이동`;
+    return { text: `${description.slice(0, -2)}${dist} 이동` };
   }
-  return description;
+  return { text: description };
 }
 
-/** 브리핑 전체 재작성. description 외 필드(좌표·거리)는 그대로 보존한다. */
-export function rewriteWalkBriefing(briefing: WalkRouteBriefing): WalkRouteBriefing {
-  const steps: WalkRouteStep[] = briefing.steps.map((step) => ({
-    ...step,
-    description: rewriteWalkGuidance(step.description, step.distanceMeters),
-  }));
+/** 종전 계약 유지 래퍼 — 기존 소비자는 문자열만 필요하다. */
+export function rewriteWalkGuidance(description: string, meters?: number): string {
+  return rewriteWalkGuidanceWithLive(description, meters).text;
+}
+
+/**
+ * 브리핑 전체 재작성. description 외 필드(좌표·거리)는 그대로 보존한다.
+ * ⚠ `includeLive`는 기본값 없는 필수 인자다 — 응답 모양을 바꾸는 스위치라 호출
+ * 지점이 판단을 건너뛸 수 없어야 한다([[no-default-for-safety-parameters]] 동형).
+ * live 조각은 `includeGeometry=1`(실시간 안내 옵트인) 응답에만 싣는다(spec §5).
+ */
+export function rewriteWalkBriefing(
+  briefing: WalkRouteBriefing,
+  includeLive: boolean,
+): WalkRouteBriefing {
+  const steps: WalkRouteStep[] = briefing.steps.map((step) => {
+    const { text, live } = rewriteWalkGuidanceWithLive(step.description, step.distanceMeters);
+    return { ...step, description: text, ...(includeLive && live ? { live } : {}) };
+  });
   return { ...briefing, steps };
 }

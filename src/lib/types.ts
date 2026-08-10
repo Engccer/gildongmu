@@ -393,6 +393,12 @@ export interface WalkRouteStep {
    */
   coord?: Coord;
   pathCoords?: Coord[];
+  /**
+   * 실시간 표시 계층용 구조화 조각(서버 재작성 정규식의 분해 결과, spec 2026-08-11 §5).
+   * `includeGeometry=1` 응답에만 실린다. 추출 실패는 필드 부재 — 클라이언트가
+   * 한국어 문장을 재파싱해 얻지 않는다(재조합 금지 계약의 연장).
+   */
+  live?: { target?: string; anchor?: string };
 }
 
 /** 계단 회피(accessible) 요청 결과 상태 — accessible 요청 시에만 존재. */
