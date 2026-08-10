@@ -10646,7 +10646,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "약 %1$@ 앞 다음 안내가 있습니다. %2$@"
+            "value": "약 %1$@ 앞에 다음 안내가 있습니다. %2$@"
           }
         },
         "en": {
@@ -11606,7 +11606,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로상 위치를 다시 찾는 중입니다"
+            "value": "현재 위치를 다시 파악하는 중입니다"
           }
         },
         "en": {
@@ -11886,7 +11886,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로상 위치를 확정할 수 없어 간략 안내를 유지합니다"
+            "value": "현재 위치를 파악할 수 없어 간략 안내를 유지합니다"
           }
         },
         "en": {
@@ -11926,7 +11926,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로상 위치를 확정하는 중입니다"
+            "value": "현재 위치를 파악하는 중입니다"
           }
         },
         "en": {
@@ -12246,7 +12246,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "위치 확신을 회복했습니다"
+            "value": "현재 위치를 다시 파악했습니다"
           }
         },
         "en": {
