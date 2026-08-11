@@ -214,8 +214,12 @@ final class DirectionsModel {
         currentAddress = (try? await searchService.reverseGeocode(lat: lat, lng: lng)) ?? nil
     }
 
-    func runQuery() {
+    /// 안내 주도 재조회(스펙 2026-08-12 §5.3)는 silently=true — 완료·실패 통지를
+    /// 전부 삼킨다. 결과는 안내 시트 뒤 화면 최신화용이라 통지가 안내 발화와 경합할
+    /// 이유가 없다. stale 경합은 기존 latest-wins(queryTask 취소·isInFlight)가 그대로.
+    func runQuery(silently: Bool = false) {
         if isInFlight { return }
+        silentQuery = silently
         guard let from, let to else {
             phase = .needEndpoints
             announce(appLocalized("directions.needEndpoints"))
@@ -374,7 +378,12 @@ final class DirectionsModel {
         }
     }
 
+    /// 무통지 조회 표식(§5.3). 다음 runQuery 진입이 매번 다시 정한다 — 수동 조회가
+    /// 뒤따르면 자연 복원되고, 진행 중 조회는 하나뿐이라(isInFlight) 혼선이 없다.
+    private var silentQuery = false
+
     private func announce(_ message: String) {
+        guard !silentQuery else { return }
         AccessibilityNotification.Announcement(message).post()
     }
 
@@ -469,6 +478,9 @@ struct DirectionsTabView: View {
     @State private var lastGuideStart: GuideStartButton = .fallback
     /// 핸드오프 수락 → 비콘 시작의 지연 Task(§14.2) — 화면 이탈 시 취소 대상.
     @State private var walkHandoffTask: Task<Void, Never>?
+    /// 안내 주도 목적지 변경의 값 결합 1회 소비 플래그(스펙 2026-08-12 §5.2 —
+    /// Boolean 금지: 예상 값과 일치하는 변경 1회만 중지 가드를 통과시킨다).
+    @State private var guidanceInitiatedEndpoint: DirectionsEndpoint?
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -707,7 +719,8 @@ struct DirectionsTabView: View {
                 // 추적도 멈추므로, 뷰에서 파생하면 닫히는 길에 빈 시트가 한 프레임 스친다.
                 BeaconTrackingSheet(
                     model: beacon,
-                    onStop: { beacon.stop(playStopTone: true) }
+                    onStop: { beacon.stop(playStopTone: true) },
+                    onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
                 )
             }
             // 대중교통 안내 시트(B2 §3.2) — 표시=세션, 닫힘=중지(비콘 시트 1:1 동형).
@@ -793,7 +806,14 @@ struct DirectionsTabView: View {
             }
             // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
             // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
-            .onChange(of: model.endpoint(for: .to)) {
+            // 안내 주도 변경(스펙 2026-08-12 §5.2)만 예외: 예상 값과 일치하는 1회만
+            // 중지를 생략하고 플래그를 소비한다(불일치·잔류는 종전대로 양쪽 중지).
+            .onChange(of: model.endpoint(for: .to)) { _, newValue in
+                if let expected = guidanceInitiatedEndpoint, expected == newValue {
+                    guidanceInitiatedEndpoint = nil
+                    return
+                }
+                guidanceInitiatedEndpoint = nil
                 beacon.stopBecauseDestinationChanged()
                 transitGuide.stopBecauseDestinationChanged()
             }
@@ -814,6 +834,18 @@ struct DirectionsTabView: View {
 
     private func directionsEndpoint(_ side: RecentEndpoint?) -> DirectionsEndpoint {
         side.map { .place(label: $0.label, lat: $0.lat, lng: $0.lng) } ?? .current
+    }
+
+    /// 안내 주도 목적지 변경의 폼 동기화(스펙 2026-08-12 §5): 출발지=현재 위치(안내
+    /// 세션이 실제로 그렇다 — 재조회 결과의 출발점 의미 일치, 리뷰 M1), 도착지=새
+    /// 목적지(최근 목록 기록은 setEndpoint 기존 경로), 무통지 재조회. 같은 목적지
+    /// 재선택은 전부 생략한다(§3.2 — 플래그가 남을 경로 원천 차단).
+    private func syncFormAfterGuidanceChange(_ endpoint: DirectionsEndpoint) {
+        guard endpoint != model.endpoint(for: .to) else { return }
+        if model.endpoint(for: .from) != .current { model.setEndpoint(.current, for: .from) }
+        guidanceInitiatedEndpoint = endpoint
+        model.setEndpoint(endpoint, for: .to)
+        model.runQuery(silently: true)
     }
 
     /// 활성화 = 두 필드 원자 확정 + 즉시 조회(스펙 §1.4). 결과 도착 시 이 섹션이 통째로
