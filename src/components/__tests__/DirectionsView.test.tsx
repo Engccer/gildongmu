@@ -315,6 +315,58 @@ describe("DirectionsView 수동 위치(manual location)", () => {
   });
 });
 
+// A8: 계단 회피 토글은 outcomes.walk만 갈아끼우는데 요약 수치("N개 수단 준비됨")는
+// phase.successCount가 든다 — 토글이 성공↔실패를 뒤집으면 수치가 함께 움직여야 한다.
+// 낭독되는 수치라 시각으로 반증되지 않는다(백로그 A8, 2026-08-09 최종 리뷰 검출).
+describe("DirectionsView 계단 회피 토글 요약 수치(A8)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    __resetManualLocationForTest();
+  });
+
+  it("토글 재조회가 도보를 실패로 뒤집으면 요약도 성공 0으로 갱신된다", async () => {
+    setManualLocation({
+      label: "길동 카페",
+      lat: 37.5384,
+      lng: 127.1432,
+      origin: { lat: 37.5384, lng: 127.1432, accuracy: 10, at: Date.now() / 1000 },
+      setAt: 1,
+    });
+    let walkCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/route/walk")) {
+          walkCalls += 1;
+          // 1회차(조회) 성공 → 2회차(토글 재조회) 실패.
+          return walkCalls === 1
+            ? ({ ok: true, json: async () => ({ result: { steps: [] } }) } as Response)
+            : ({ ok: false, status: 502, json: async () => ({}) } as Response);
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    render(
+      <DirectionsView
+        canShowWalk
+        canShowTransit={false}
+        canBriefCarRoute={false}
+        initialTo={{ kind: "place", label: "잠실역", coord: { lat: 37.5, lng: 127.1 } }}
+        onBack={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toContain("readySummary");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "stepFreeToggle" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toContain("allFailed");
+    });
+  });
+});
+
 // 최근 경로(스펙 2026-08-10 §1). 저장 계층(recent-searches.ts)은 Task 1에서 검증
 // 완료 — 여기서는 DirectionsView 결선(활성화 즉시 조회·삭제 포커스·기록 시점)만.
 describe("최근 경로 섹션", () => {

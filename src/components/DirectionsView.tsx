@@ -88,7 +88,7 @@ type Phase =
   | { kind: "loading" }
   | { kind: "geoError" }
   | { kind: "outOfCoverage" }
-  | { kind: "settled"; successCount: number };
+  | { kind: "settled" };
 
 function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
   return {
@@ -549,7 +549,7 @@ export function DirectionsView({
         originSource,
       });
       setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
-      setPhase({ kind: "settled", successCount: successes.length });
+      setPhase({ kind: "settled" });
       // 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소 경로는
       // 여기 도달하지 않아 자연 배제된다. current는 null 투영(실좌표를 굳히지 않는다).
       setRecentRoutes(
@@ -628,10 +628,19 @@ export function DirectionsView({
   // 사용자가 그 자동 포커스 점프를 만드는 바로 그 시나리오(수동 위치 + 최소 1수단
   // 성공)에서 이 문장을 절대 못 듣는다(리뷰 발견). 이 뷰의 단일 polite 채널에
   // 합쳐야 포커스가 어디로 튀든 발화 큐에 남는다.
+  // 요약 수치는 저장하지 않고 results에서 파생한다(A8 + 독립 리뷰 2026-08-11) —
+  // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로(계단 회피 토글)마다
+  // 동기화가 필요하고, 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
+  // 커밋되는 상태 불일치가 재발한다. 낭독되는 수치라 시각으로 반증되지 않으므로
+  // 진실원을 하나(results.outcomes)로 줄이는 것이 수정이다. settled인데 results가
+  // 없으면(재조회 중 편집으로 리셋) 요약도 없다 — 없는 경로를 세지 않는다.
+  const settledCount = results
+    ? activeModes.filter((m) => results.outcomes[m]?.kind === "done").length
+    : null;
   const settledSummary =
-    phase.kind === "settled"
-      ? phase.successCount > 0
-        ? t("readySummary", { count: phase.successCount })
+    phase.kind === "settled" && settledCount !== null
+      ? settledCount > 0
+        ? t("readySummary", { count: settledCount })
         : t("allFailed")
       : "";
   const phaseMessage =
