@@ -197,6 +197,31 @@ enum GuideText {
         return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
     }
 
+    /// walk 주기 통지 단문(위원장 실보행 피드백 2026-08-12, 웹 eventText periodic 미러).
+    /// 직진 구간 반복은 "{target}까지 {distance} 직진하세요"만 — 다음 스텝 전문을 실은
+    /// 종전 틀은 한 문장에 행동 세 개(현재 이동·회전·다음 이동)가 실려 과잉이었고,
+    /// 조망은 40m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱 금지, 부재는
+    /// 이름 생략). 마지막 스텝은 목적지 틀 유지(값이 명사라 종전에도 단문이었다).
+    static func periodicWalk(
+        route: GuideRoute, stepIndex: Int, remainingMeters: Int,
+        accuracy: Double, destinationLabel: String, target: String?
+    ) -> String {
+        // 횡단 스텝(병합 횡단보도는 40m를 넘어 following으로 온다)에 "직진하세요"는
+        // 오지시다 — 정본 문장(…건너세요)을 재낭독한다(웹 walkPeriodicLine 미러).
+        if route.steps.indices.contains(stepIndex) {
+            let cur = route.steps[stepIndex].description
+            if isCrossingStep(walkStepAction(cur), cur) { return cur }
+        }
+        let distance = confidenceDistance(Double(remainingMeters), accuracy: accuracy)
+        guard route.steps.indices.contains(stepIndex + 1) else {
+            return appLocalized("guide.nextDestination", destinationLabel, distance)
+        }
+        guard let target else {
+            return appLocalized("guide.periodicStraightNoName", distance)
+        }
+        return appLocalized("guide.periodicStraight", target, distance)
+    }
+
     /// 진행 상황 서두(서수 + 잔여) — 조망의 뼈대(위원장 실보행 판정 2026-08-10).
     /// 종전 응답은 뒷부분이 주기 통지와 문자 그대로 동일해 버튼 고유 정보가 0이었다.
     /// 서수 위치("안내 12개 중 5번째")가 핵심 신규 정보이고, 잔여 시간은 근거가

@@ -898,11 +898,11 @@ private func phaseName(_ p: GuidePhase) -> String {
 
 /// 표시 좌표계(spec 2026-08-11 §3) — 웹 route-guide.test.ts 동형 경계표.
 @Test func displayCoordinate() {
-    #expect(projectionLagMeters == 15)
-    #expect(imminentAheadMeters == 25) // 10 + lag 유도식, 값 불변
+    #expect(projectionLagMeters == 10)
+    #expect(imminentAheadMeters == 20) // 10 + lag 유도식(lag 하향은 실보행 재판정 2026-08-12)
     #expect(displayEffectiveD(d: 0, baselineD: 0) == 0)
     #expect(displayEffectiveD(d: 5, baselineD: 0) == 10) // 램프인: lag 5
-    #expect(displayEffectiveD(d: 20, baselineD: 0) == 35) // lag 15 포화
-    #expect(displayEffectiveD(d: 60, baselineD: 50) == 70) // 재조회 기준점 50
+    #expect(displayEffectiveD(d: 20, baselineD: 0) == 30) // lag 10 포화
+    #expect(displayEffectiveD(d: 60, baselineD: 50) == 70) // 재조회 기준점 50 이후 10 → lag 10(포화점)
     #expect(displayEffectiveD(d: 40, baselineD: 50) == 40) // 기준점 이전(방어)
 }

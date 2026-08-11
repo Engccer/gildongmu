@@ -631,6 +631,8 @@
     "detailStart": "Detailed guidance started. {count} instructions, {distance} total. {first}",
     "next": "In {distance}, {step}",
     "nextDestination": "{distance} to {dest}",
+    "periodicStraight": "Go straight {distance} toward {target}",
+    "periodicStraightNoName": "Go straight {distance}",
     "bundle": "Next instructions. {steps}",
     "handoff": "Switching to straight-line guidance to your destination",
     "finalApproachRouteEnd": "The route ends here.",

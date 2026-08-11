@@ -12,7 +12,7 @@ import Foundation
 /// 우선순위 1·2(도착·최종 접근)는 이 계층 밖이다 — 그 국면의 발화·표시 소유자는
 /// 오케스트레이터의 최종 접근 층이고, 여기는 finalApproach에서 빈 행을 낸다.
 
-/// 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 25 = 임박 큐 시점(spec §2-4).
+/// 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 20 = 임박 큐 시점(spec §2-4, lag 10).
 public let turnApproachMeters = 10.0
 /// 예고에서 "연속 회전"으로 접는 유닛 길이(m) — 직진 창이 사실상 없는 유닛.
 public let shortUnitPreviewMeters = 10.0
@@ -58,7 +58,9 @@ public struct DisplayUnit: Sendable, Equatable {
 /// 횡단 유닛 판정. walkStepAction만으로는 부족하다 — "횡단보도"는 지명으로도
 /// 등장하므로(회전 우선순위가 회전 문장은 걸러 주지만, 회전 없는 "천호역 횡단보도까지
 /// 100m 이동"이 남는다) 재작성 행동문("…건너세요")까지 요구한다.
-private func isCrossing(_ action: WalkAction?, _ description: String) -> Bool {
+// public은 walk 주기 통지(`GuideText.periodicWalk`)의 "횡단 중 직진 오지시 금지" 분기
+// 몫 — 판정을 복제하지 않는다(웹 `isCrossingStep` 미러).
+public func isCrossingStep(_ action: WalkAction?, _ description: String) -> Bool {
     (action == .crosswalk || action == .underpass) && description.contains("건너")
 }
 
@@ -71,7 +73,7 @@ public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
     var groups: [Group] = []
     for i in steps.indices {
         let action = walkStepAction(steps[i].description)
-        let crossing = isCrossing(action, steps[i].description)
+        let crossing = isCrossingStep(action, steps[i].description)
         // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
         // 국면이 유닛 단위라 꼬리를 붙이면 다 건넌 뒤에도 "건너세요"가 남는다.
         if i > 0, action == nil, let last = groups.indices.last, !groups[last].crossing {

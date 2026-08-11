@@ -713,16 +713,16 @@ describe("방위 축 리듀서 trace (Kit 동조 가드)", () => {
 });
 
 describe("표시 좌표계 (spec 2026-08-11 §3)", () => {
-  it("IMMINENT_AHEAD_M은 10 + lag 유도식이고 값은 25 불변", () => {
-    expect(PROJECTION_LAG_M).toBe(15);
-    expect(IMMINENT_AHEAD_M).toBe(25);
+  it("IMMINENT_AHEAD_M은 10 + lag 유도식이다(lag 하향은 실보행 재판정 2026-08-12)", () => {
+    expect(PROJECTION_LAG_M).toBe(10);
+    expect(IMMINENT_AHEAD_M).toBe(20);
   });
 
   it("램프인: 기준점 직후엔 걸은 만큼만 지연을 더한다(F7)", () => {
     expect(displayEffectiveD(0, 0)).toBe(0);
     expect(displayEffectiveD(5, 0)).toBe(10); // lag 5
-    expect(displayEffectiveD(20, 0)).toBe(35); // lag 15 포화
-    expect(displayEffectiveD(60, 50)).toBe(70); // 재조회 기준점 50 이후 10 → lag 10
+    expect(displayEffectiveD(20, 0)).toBe(30); // lag 10 포화
+    expect(displayEffectiveD(60, 50)).toBe(70); // 재조회 기준점 50 이후 10 → lag 10(포화점)
   });
 
   it("기준점 이전 d(방어)는 지연 0", () => {

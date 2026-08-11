@@ -631,6 +631,8 @@
     "detailStart": "Guida dettagliata avviata. {count} indicazioni, {distance} in totale. {first}",
     "next": "Tra {distance}, {step}",
     "nextDestination": "{distance} fino a {dest}",
+    "periodicStraight": "Prosegui dritto per {distance} verso {target}",
+    "periodicStraightNoName": "Prosegui dritto per {distance}",
     "bundle": "Prossime indicazioni. {steps}",
     "handoff": "Passaggio alla guida in linea d'aria fino alla destinazione",
     "finalApproachRouteEnd": "Il percorso termina qui.",

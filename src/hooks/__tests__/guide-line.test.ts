@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import ko from "../../../messages/ko.json";
 import type { GuideRoute } from "@/lib/route-guide";
-import { nextLine, progressFrameLine, progressOverviewLine } from "../useRouteGuide";
+import {
+  nextLine,
+  progressFrameLine,
+  progressOverviewLine,
+  walkPeriodicLine,
+} from "../useRouteGuide";
 
 /**
  * 다음 안내 통지문의 어순·분기 계약(위원장 실사용 피드백 2026-08-07).
@@ -70,6 +75,43 @@ describe("다음 안내 통지문", () => {
 
     // 목적지는 명사라 "…까지 거리"가 자연스럽다(서술문 틀을 강요하지 않는다).
     expect(line).toBe("수서역까지 약 129m");
+  });
+});
+
+describe("walk 주기 통지 단문 (위원장 실보행 피드백 2026-08-12)", () => {
+  // 직진 구간 반복 통지는 다음 스텝 전문(행동 3개짜리 조망)이 아니라
+  // "{target}까지 {distance} 직진하세요" 하나여야 한다. 조망은 40m 선행 전문 1회.
+  const NEXT_STEP = "만석빌딩에서 왼쪽으로 돌아 청원파크빌 3차 아파트까지 59m 이동";
+
+  it("직진 목표 이름이 있으면 단문 직진 안내만 낸다(다음 스텝 전문 미포함)", () => {
+    const line = walkPeriodicLine(
+      routeOf("출발", NEXT_STEP), 0, "오아시스마켓", "약 30m", "만석빌딩", t,
+    );
+
+    expect(line).toBe("만석빌딩까지 약 30m 직진하세요");
+    expect(line).not.toContain(NEXT_STEP);
+  });
+
+  it("live target이 없으면 이름 없이 거리만 말한다(재파싱 금지)", () => {
+    expect(
+      walkPeriodicLine(routeOf("출발", NEXT_STEP), 0, "오아시스마켓", "30m", undefined, t),
+    ).toBe("30m 직진하세요");
+  });
+
+  it("마지막 스텝이면 목적지 틀 유지(종전에도 단문이었다)", () => {
+    expect(
+      walkPeriodicLine(routeOf(NEXT_STEP), 0, "오아시스마켓", "약 30m", undefined, t),
+    ).toBe("오아시스마켓까지 약 30m");
+  });
+
+  it("횡단 스텝에는 '직진하세요' 대신 정본 문장을 재낭독한다(오지시 금지)", () => {
+    const CROSS_STEP = "길동사거리까지 횡단보도를 건너세요, 횡단보도 길이 45m";
+    const line = walkPeriodicLine(
+      routeOf(CROSS_STEP, NEXT_STEP), 0, "오아시스마켓", "약 20m", "길동사거리", t,
+    );
+
+    expect(line).toBe(CROSS_STEP);
+    expect(line).not.toContain("직진");
   });
 });
 

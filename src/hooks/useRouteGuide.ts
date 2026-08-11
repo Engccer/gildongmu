@@ -47,12 +47,13 @@ import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-gui
 import {
   buildDisplayUnits,
   guideLiveRows,
+  isCrossingStep,
   liveStepsFrom,
   type DisplayUnit,
   type LiveRowsOutput,
   type LiveRowsState,
 } from "@/lib/guide-live-rows";
-import type { WalkAction } from "@/lib/walk-action";
+import { walkStepAction, type WalkAction } from "@/lib/walk-action";
 import { prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
@@ -107,14 +108,14 @@ const NO_FIX_S = 8;
  * 간략 비콘의 `BASE_DEAD_BAND_M`(15)과 값을 나눈 이유는 축이 다르기 때문이다. 간략은
  * 직선거리라 GPS 지터가 그대로 실리지만, 상세의 잔여 거리는 구속 창 투영 + 단조 전진을
  * 거치고 `phase` 게이트·`jumped`가 이탈·튐 fix를 앞서 버린다(실보행 로그 5세션 6,047
- * 스텝에서 진행 거리 역행 0건). 즉 이 축에서 데드밴드는 지터 방어가 아니라 빈도 노브이고,
- * 15는 그 목적에 과하게 커서 closer 간격 중위가 17.5초였다. 10에서 11.5초가 된다.
- * 자동차는 주행 속도(5.4km/h 이상)에서 `closerIntervalSeconds` 10초가 병목이라 영향이
- * 없고, 그 아래 정체·신호 대기에서만 도보와 같은 기제로 잦아진다(느릴수록 최대 1.5배).
- * 정체 중 진행 신호가 잦은 것은 해롭지 않아 수단을 가르지 않는다.
- * ⚠ 실보행 판정 대상 잠정값(`docs/BACKLOG.md`).
+ * 스텝에서 진행 거리 역행 0건). 즉 이 축에서 데드밴드는 지터 방어가 아니라 빈도 노브다.
+ * 15(중위 17.5초)→10(11.5초)을 거쳐 위원장 실보행 판정(2026-08-12)으로 6 — 10m 간격도
+ * 성기게 느껴져 "6m 간격" 직접 지정. 자동차는 주행 속도(5.4km/h 이상)에서
+ * `closerIntervalSeconds` 10초가 병목이라 영향이 없고, 그 아래 정체·신호 대기에서만
+ * 도보와 같은 기제로 잦아진다. 정체 중 진행 신호가 잦은 것은 해롭지 않아 수단을
+ * 가르지 않는다. ⚠ 감쇠 하한(5)보다 커야 감쇠가 산다(드리프트 테스트가 강제).
  */
-const DETAIL_DEAD_BAND_M = 10;
+const DETAIL_DEAD_BAND_M = 6;
 /**
  * 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩 흔들리므로,
  * 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다(iOS `detailDeadBandFloor` 미러).
@@ -225,6 +226,35 @@ export function nextLine(
   return step
     ? t("next", { distance, step })
     : t("nextDestination", { dest: destName, distance });
+}
+
+/**
+ * walk 주기 통지 단문(위원장 실보행 피드백 2026-08-12, iOS `GuideText.periodicWalk`
+ * 미러). 직진 구간 반복은 "{target}까지 {distance} 직진하세요"만 — 다음 스텝 전문을
+ * 실은 종전 틀(`nextLine`)은 한 문장에 행동 세 개(현재 이동·회전·다음 이동)가 실려
+ * 과잉이었고, 조망은 40m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱
+ * 금지, 부재는 이름 생략). 마지막 스텝은 목적지 틀 유지(값이 명사라 종전에도
+ * 단문이었다). car는 임박 층이 없어 주기 통지가 다음 행동의 유일한 반복 채널이라
+ * `nextLine`을 유지한다.
+ */
+export function walkPeriodicLine(
+  route: GuideRoute,
+  stepIndex: number,
+  destName: string,
+  distance: string,
+  target: string | undefined,
+  t: GuideT,
+): string {
+  // 횡단 스텝(병합 횡단보도는 40m를 넘어 following으로 온다)에 "직진하세요"는
+  // 오지시다 — 정본 문장(…건너세요)을 재낭독한다(리뷰 검출 2026-08-12).
+  const cur = route.steps[stepIndex]?.description ?? "";
+  if (isCrossingStep(walkStepAction(cur), cur)) return cur;
+  if (!route.steps[stepIndex + 1]) {
+    return t("nextDestination", { dest: destName, distance });
+  }
+  return target
+    ? t("periodicStraight", { target, distance })
+    : t("periodicStraightNoName", { distance });
 }
 
 /**
@@ -410,6 +440,12 @@ export function useRouteGuide(
   const routeRef = useRef<GuideRoute | null>(null);
   /** 하단 2행 표시 유닛(walk 상세 전용, spec 2026-08-11 §4.1) — 경로 커밋 시 재구축. */
   const displayUnitsRef = useRef<DisplayUnit[]>([]);
+  /**
+   * 표시 입력 스텝(live.target 조각 포함) — walk 주기 통지의 직진 목표 이름이 여기서
+   * 나온다(위원장 실보행 피드백 2026-08-12: 직진 구간 반복 통지는 다음 스텝 전문이
+   * 아니라 "{target}까지 {distance} 직진하세요" 단문). 표시 유닛과 수명이 같다.
+   */
+  const liveStepsRef = useRef<ReturnType<typeof liveStepsFrom>>([]);
   /** 하단 2행 리듀서 소상태. 재조회·이탈 복귀·모드 전환에서 null 리셋. */
   const liveRowsStateRef = useRef<LiveRowsState | null>(null);
   /** 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체. */
@@ -709,7 +745,7 @@ export function useRouteGuide(
         case "bundleReread":
           return unitText(route, event.indices, t);
         case "imminent":
-          // 임박 큐(25m, §6b''): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
+          // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
           return t(`imminent.${event.action}`);
         case "farNotice":
@@ -719,14 +755,20 @@ export function useRouteGuide(
             distance: formatDistance(event.remainingMeters),
             step: unitText(route, event.indices, t),
           });
-        case "periodic":
-          return nextLine(
-            route,
-            event.stepIndex,
-            destRef.current.name,
-            confidenceDistance(event.remainingMeters, event.accuracy, t),
-            t,
-          );
+        case "periodic": {
+          const distance = confidenceDistance(event.remainingMeters, event.accuracy, t);
+          // walk는 단문, car는 종전 틀 — 근거는 walkPeriodicLine 주석.
+          return kindFixed === "walk"
+            ? walkPeriodicLine(
+                route,
+                event.stepIndex,
+                destRef.current.name,
+                distance,
+                liveStepsRef.current[event.stepIndex]?.live?.target,
+                t,
+              )
+            : nextLine(route, event.stepIndex, destRef.current.name, distance, t);
+        }
         case "finalApproachEnter":
           // 이 이벤트의 문장은 `stepFinalApproach`가 소유한다 — 진입 서술은 fix 기준
           // 거리·방향을 쓰는데 이 함수는 fix를 받지 않는다. 빈 문자열은 무발화다.
@@ -1415,6 +1457,7 @@ export function useRouteGuide(
     pendingResolveRef.current = null;
     awaitingRouteRef.current = false;
     displayUnitsRef.current = [];
+    liveStepsRef.current = [];
     liveRowsStateRef.current = null;
     liveBaselineDRef.current = 0;
     if (mountedRef.current) {
@@ -1504,6 +1547,7 @@ export function useRouteGuide(
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
         fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
+      liveStepsRef.current = fetched.liveSteps;
       if (kindFixed === "car") {
         // 시작 조회가 ETA 1회차(§4.6 — 캡은 시작·주기·수동 재조회 전부 포함).
         etaCallCountRef.current = 1;
@@ -1736,6 +1780,7 @@ export function useRouteGuide(
         // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
         displayUnitsRef.current =
           fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
+        liveStepsRef.current = fetched.liveSteps;
         if (kindFixed === "car") {
           // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
           etaCallCountRef.current = Math.min(

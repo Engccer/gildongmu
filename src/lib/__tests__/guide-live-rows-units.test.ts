@@ -67,21 +67,21 @@ describe("guideLiveRows — 클램프·리셋(F4)", () => {
   );
 
   it("역행 잔여는 직전 표시값 유지, 국면도 클램프 값으로 판정", () => {
-    const a = guideLiveRows(null, units, 30, 0, "following"); // eff 45 → 55
-    expect(a.top).toEqual({ kind: "straight", meters: 55, target: "목적지" });
-    const b = guideLiveRows(a.state, units, 28, 0, "following"); // raw 57 → 클램프 55
-    expect(b.top).toEqual({ kind: "straight", meters: 55, target: "목적지" });
+    const a = guideLiveRows(null, units, 30, 0, "following"); // eff 40 → 60
+    expect(a.top).toEqual({ kind: "straight", meters: 60, target: "목적지" });
+    const b = guideLiveRows(a.state, units, 28, 0, "following"); // raw 62 → 클램프 60
+    expect(b.top).toEqual({ kind: "straight", meters: 60, target: "목적지" });
   });
 
   it("prev=null 리셋이면 새 기준으로 다시 계산한다", () => {
-    const a = guideLiveRows(null, units, 50, 0, "following"); // eff 65 → 35
-    expect(a.top).toEqual({ kind: "straight", meters: 35, target: "목적지" });
+    const a = guideLiveRows(null, units, 50, 0, "following"); // eff 60 → 40
+    expect(a.top).toEqual({ kind: "straight", meters: 40, target: "목적지" });
     const r = guideLiveRows(null, units, 50, 50, "following"); // 재조회: 램프인 재시작
     expect(r.top).toEqual({ kind: "straight", meters: 50, target: "목적지" });
   });
 
   it("이탈은 両행 처리 — top=offRoute, next=null, state 리셋", () => {
-    const o = guideLiveRows({ unitIndex: 0, clamped: 55 }, units, 30, 0, "offRoute");
+    const o = guideLiveRows({ unitIndex: 0, clamped: 60 }, units, 30, 0, "offRoute");
     expect(o).toEqual({ state: null, top: { kind: "offRoute" }, next: null });
   });
 });

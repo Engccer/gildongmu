@@ -16,20 +16,19 @@ public let announceAheadMeters = 40.0
 /// 이미 모퉁이를 지난다. 옮긴 것은 **`ahead` 톤 하나**다(종전에는 40m 전문에 붙어
 /// "지금이다"를 못 말했다).
 ///
-/// 25m 근거(위원장 실보행 판정 2026-08-10): 초기값 10m는 GPS·투영 지연(~15m 관측)에
-/// 잡아먹혀 실위치 기준으로는 회전 지점을 **지난 뒤** 발화했다 — 명령을 따르면 차도로
-/// 진입하는 위험 실사고. 관측 지연 15m + 종전 여유 10m. 상수는 계속 실보행 판정 대상.
+/// 유도식 10 + projectionLagMeters(2026-08-11 재정의, spec §3): "실위치 여유 10m +
+/// 관측 지연 보정"이라는 구조를 상수 관계로 박아, lag 재판정이 임박 시점을 자동으로
+/// 함께 움직인다. 초기값 10m가 지연에 잡아먹혀 회전을 지난 뒤 발화한 위험 실사고
+/// (2026-08-10)가 이 구조의 근거다. 상수는 계속 실보행 판정 대상.
 ///
-/// 2026-08-11부터 유도식(10 + projectionLagMeters)으로 재정의 — 값 25 불변(spec §3).
-/// 표시 좌표계의 표시 잔여 10 = 원시 계산 25 = 임박 큐 시점이 유도식으로 일치한다.
-///
-/// 표시 계층의 투영 지연 추정(m) — 웹 `PROJECTION_LAG_M` 미러. ⚠ **이 값의 갱신은
-/// imminentAheadMeters를 함께 움직이는 의도적 행동 변경이다**(불변식 A "음성 불변"은
-/// 이번 변경 한정) — 실보행 리플레이 근거 + spec 개정 + 실보행 재판정 없이 바꾸지 말
-/// 것. 표시 계층에 15·25를 직접 쓰면 drift다(불변식 B: lag 상수와 effectiveD 유도는
-/// route-guide.ts ↔ 이 파일 한 쌍에만 존재한다).
-public let projectionLagMeters = 15.0
-public let imminentAheadMeters = 10.0 + projectionLagMeters // = 25, 값 불변(유도식 재정의)
+/// 표시 계층의 투영 지연 추정(m) — 웹 `PROJECTION_LAG_M` 미러. 실보행 2회 실측
+/// (~15m)으로 15에서 시작했으나 위원장 실보행 재판정(2026-08-12)으로 10으로 하향 —
+/// 15는 실제 지연보다 크게 잡혀 표시·임박이 실위치보다 앞서갔다. ⚠ **이 값의 갱신은
+/// imminentAheadMeters를 함께 움직이는 의도적 행동 변경이다** — 실보행 재판정 없이
+/// 바꾸지 말 것. 표시 계층에 10·20을 직접 쓰면 drift다(불변식 B: lag 상수와
+/// effectiveD 유도는 route-guide.ts ↔ 이 파일 한 쌍에만 존재한다).
+public let projectionLagMeters = 10.0
+public let imminentAheadMeters = 10.0 + projectionLagMeters // = 20 (유도식 — lag 재판정 연동)
 
 /// 표시 좌표계 유효 진행거리(spec 2026-08-11 §3) — 웹 `displayEffectiveD` 미러.
 /// 표시 계층(GuideLiveRows)의 구간 선택·국면·잔여가 전부 이 좌표를 쓴다.
@@ -75,7 +74,7 @@ public struct GuideTuning: Sendable, Equatable {
     public var announceAheadSpeedS: Double
     /// 결정 지점 임박 큐 경계(m). nil=미사용.
     ///
-    /// ⚠ **보행 전용이다.** 25m는 보행 ~20초이지만 15m/s 주행에서는 2초 미만이라 소리를 듣고
+    /// ⚠ **보행 전용이다.** 20m는 보행 ~15초이지만 15m/s 주행에서는 2초 미만이라 소리를 듣고
     /// 반응할 시간이 없고, 애초에 자동차 안내는 실주행을 네이티브 앱에 위임한다.
     /// 값도 문구도(`walkStepAction`이 도보 문형만 안다) 차량에서 재본 적이 없다.
     public var imminentAheadM: Double?
@@ -254,7 +253,7 @@ public struct OffRouteAxes: Sendable, Equatable {
 
 public enum GuideEvent: Sendable, Equatable {
     case announceSteps([Int])
-    /// 결정 지점 임박(25m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
+    /// 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
     /// 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
     case imminent(indices: [Int], action: WalkAction)
     case farNotice(indices: [Int], remainingMeters: Int)
@@ -758,7 +757,7 @@ public func guideStep(
     next.phase = cur.isLong ? .following : .bundle
     next.resumePhase = cur.isLong ? .following : .bundle
 
-    // 6a) 결정 지점 임박 큐(25m, walk 전용 — 10m→25m 실보행 판정 2026-08-10): 소리·진동과 짧은 명령형 한 문장으로
+    // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
     //     "지금이다"를 알린다.
     //
     //     ⚠ **래치가 스텝 단위인 것이 계약이다 — 유닛 단위로 뛰면 안 된다.** 전문 낭독(6c)이
@@ -778,7 +777,7 @@ public func guideStep(
     //     횡단보도 8m가 같은 fix에 걸리는데 급한 쪽은 8m다).
     //     ⚠ **알려진 한계**: 최종 접근이 먼저 래치되면 마지막 결정 지점의 큐가 사라진다.
     //     두 조건은 같은 fix에서 경쟁하는 게 아니라 거리가 달라서(최종 접근은 잔여 50m,
-    //     큐는 경계 25m 앞), 블록 순서만으로는 못 막는다. **"결정 지점이 남았으면 최종
+    //     큐는 경계 20m 앞), 블록 순서만으로는 못 막는다. **"결정 지점이 남았으면 최종
     //     접근을 미룬다"를 실제로 구현해 봤고 되돌렸다** — 이탈 판정이 마지막 50m까지
     //     연장되면서 A6 헛경고율이 2배가 됐다(실측: BIASED 2.x% → 6.7%, HARSH 10.5%,
     //     `a6-probe.test.ts` 상한 전부 초과). 도착 직전의 거짓 "경로 이탈" 경고가 놓친
