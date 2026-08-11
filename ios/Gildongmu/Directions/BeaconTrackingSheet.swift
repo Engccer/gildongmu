@@ -26,6 +26,9 @@ import SwiftUI
 struct BeaconTrackingSheet: View {
     let model: BeaconModel
     let onStop: () -> Void
+    /// 목적지 전환 확정 통보(스펙 2026-08-12 §5) — 탭이 폼 동기화(도착지 필드·무통지
+    /// 재조회)를 맡는다. 세션에 반영되지 않은 선택(§3.2)은 통보하지 않는다.
+    let onDestinationCommitted: (DirectionsEndpoint) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @AccessibilityFocusState private var stopFocused: Bool
@@ -36,6 +39,10 @@ struct BeaconTrackingSheet: View {
     /// 탐색 개체를 너무 늘렸다 — 별도 시트로 스코프를 가둬 "딱 확인하고 닫기"가
     /// 성립한다. 닫으면 시스템이 트리거 버튼으로 포커스를 복원한다(표준 dismiss).
     @State private var showRouteList = false
+    /// 목적지 검색 시트(스펙 §3) — 열린 동안 톤·통지 전부 억제(받아쓰기 마이크).
+    @State private var changeDestPresented = false
+    /// 장소 상세 시트(스펙 §2) — 안내 신호는 유지(억제 없음, 임박 큐는 안전 계층).
+    @State private var showPlaceDetail = false
     /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
     /// 중지 버튼으로 되돌리는 근거(사용자가 누른 결과로 사라지는 경로만 결정론 처리).
     @State private var reroutePressed = false
@@ -157,19 +164,48 @@ struct BeaconTrackingSheet: View {
             } header: {
                 // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
                 // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
-                Text(joinText(
-                    appLocalized(
+                // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기).
+                GuideTitleMenu(
+                    heading: appLocalized(
                         model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
                     ),
-                    model.destinationLabel
-                ))
-                .accessibilityAddTraits(.isHeader)
+                    label: model.destinationLabel,
+                    onShowDetail: { showPlaceDetail = true },
+                    onChangeDestination: { changeDestPresented = true })
             }
             }
         }
         .task { await landStopFocus() }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
         .sheet(isPresented: $showRouteList) { RouteOverviewSheet(model: model) }
+        // 목적지 검색(스펙 §3): 최근 목록 포함 기존 시트 재사용. 세션이 죽었으면
+        // changeDestination이 false를 돌려 폼도 건드리지 않는다(§3.2 확정 가드).
+        .sheet(isPresented: $changeDestPresented) {
+            DirectionsEndpointSearchView(target: .to) { endpoint in
+                guard case .place(let label, let lat, let lng) = endpoint else { return }
+                if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
+                    onDestinationCommitted(endpoint)
+                }
+                // 검색 시트가 닫히면 중지 버튼 착지(§3.3 — dismiss 후 지연·검증·재시도 정본).
+                Task { await landStopFocus() }
+            }
+        }
+        // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 톤·통지 전부 억제(스펙 §5.4,
+        // 메인 화면 검색 시트의 outputSuppressed 계약 동형).
+        .onChange(of: changeDestPresented) { _, presented in
+            model.outputSuppressed = presented
+        }
+        // 장소 상세(스펙 §2): 표준 중첩 시트. 목적지는 이름+좌표뿐이라 최소 Place로
+        // 열고, 길찾기 진입 버튼은 숨긴다(이미 그곳으로 안내 중).
+        .sheet(isPresented: $showPlaceDetail) {
+            if let dest = model.dest {
+                NavigationStack {
+                    PlaceDetailView(
+                        place: guideDestinationPlace(dest: dest, label: model.destinationLabel),
+                        showsDirectionsEntry: false)
+                }
+            }
+        }
         // 재조회 성공으로 버튼이 사라진 순간 커서를 중지 버튼으로(헌장 §5 이탈 방지).
         .onChange(of: model.offRoute) { _, isOff in
             guard !isOff, reroutePressed else { return }
