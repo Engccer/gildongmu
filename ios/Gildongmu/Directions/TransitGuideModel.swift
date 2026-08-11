@@ -298,7 +298,9 @@ final class TransitGuideModel {
             let token = destChangeToken
             pendingDestChange?.phase = .loading
             pendingDestChange?.fetchedAt = nil
-            announce(appLocalized("ios.transitGuide.destChangeRefetched"))
+            // .high(리뷰 MINOR): 활성화한 후보 버튼이 사라지고 로딩 행 착지 낭독이
+            // 뒤따른다 — 재조회 사유는 이 통지가 유일한 전달 경로다(헌장 §6).
+            announce(appLocalized("ios.transitGuide.destChangeRefetched"), highPriority: true)
             Task { await fetchDestChangeCandidates(token: token) }
             return false
         }

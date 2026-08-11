@@ -348,6 +348,10 @@ final class BeaconModel {
 
         self.dest = dest
         arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
+        // 억제 잔류 차단(스펙 2026-08-12 §5.4, 마일스톤 리뷰 BLOCKER): 검색 시트가
+        // 열린 채 세션이 죽으면 시트 onChange가 발화할 기회 없이 뷰가 소멸해 억제가
+        // 고착된다 — 세션 경계가 무조건 해제한다(TransitGuideModel.stop() 동형).
+        outputSuppressed = false
         destinationLabel = label
         sessionKind = kind
         beaconState = .initial
@@ -542,7 +546,10 @@ final class BeaconModel {
             statusText = text
             // 발화가 버려졌으면(백그라운드·억제) 경고만 따로 남긴다 — 진행 안내와 달리
             // 다음 fix가 대신 말해 주지 않는다(리뷰 H1).
-            if !announce(text), let notice { pendingStepFreeNotice = notice }
+            // ⚠ .high 필수(스펙 2026-08-12 §3.1, 마일스톤 리뷰 MAJOR): 목적지 전환
+            // 경로에서는 이 요약이 검색 시트 닫힘 후 중지 버튼 착지 낭독과 겹칠 수
+            // 있다 — 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
+            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
         } catch {
             guard !Task.isCancelled, isTracking else { return }
             fallbackToBrief()
@@ -721,6 +728,9 @@ final class BeaconModel {
         statusText = ""
         failResolution = .none
         soundDegraded = false
+        // 억제 잔류 차단(스펙 §5.4, 리뷰 BLOCKER) — 검색 시트째 소멸하는 종료
+        // 경로(권한 철회·정밀 꺼짐)에서 onChange 해제가 오지 않는다.
+        outputSuppressed = false
         beaconState = .initial
         gateState = .initial
         toneState = .initial
