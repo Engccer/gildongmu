@@ -405,8 +405,6 @@ export function useRouteGuide(
   const toneStateRef = useRef<ToneLayerState>(INITIAL_TONE_LAYER_STATE);
   /** 정지 판정 상태(도플러 3-state). */
   const motionStateRef = useRef<MotionJudgeState>(INITIAL_MOTION_STATE);
-  /** 상세 투영 점프 가드의 기준(직전 잔여 거리·시각). */
-  const lastRemainingRef = useRef<{ meters: number; at: number } | null>(null);
   /** 세션 시작 시각(초, 단조) — 첫 fix 대기도 워치독이 덮게 하는 기준. */
   const startedAtRef = useRef<number | null>(null);
   const routeRef = useRef<GuideRoute | null>(null);
@@ -678,24 +676,6 @@ export function useRouteGuide(
   );
 
   /**
-   * 상세 투영 점프 가드. 상세 모드의 오차 원인은 GPS 정확도가 아니라 **경로 투영의
-   * 안정성**이라(평행 도로로 투영이 점프하면 accuracy 5m에도 잔여 거리가 100m 튄다)
-   * 데드밴드를 정확도로 스케일하지 않고 점프한 fix를 통째로 버린다.
-   */
-  const projectionJumped = useCallback(
-    (remaining: number, now: number): boolean => {
-      const prev = lastRemainingRef.current;
-      lastRemainingRef.current = { meters: remaining, at: now };
-      if (!prev) return false;
-      const dt = now - prev.at;
-      if (dt <= 0) return true;
-      // 여유 계수 1.5 — 속도 상한 자체가 보수적이라 이중으로 좁히지 않는다.
-      return Math.abs(remaining - prev.meters) > maxSpeedMps * dt * 1.5;
-    },
-    [maxSpeedMps],
-  );
-
-  /**
    * 거리 축이 바뀔 때(상세 경로 거리 ⇄ 간략 직선거리)의 재기준화. iOS
    * `BeaconModel.rebaseForAxisChange` 미러.
    *
@@ -719,7 +699,6 @@ export function useRouteGuide(
     beaconRef.current = rebaseBeaconState(beaconRef.current, straight);
     // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
     toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
-    lastRemainingRef.current = null;
   }, []);
 
   /** 이벤트 → 통지문. 사용자에게 말할 것이 없는 이벤트는 빈 문자열. */
@@ -797,7 +776,6 @@ export function useRouteGuide(
       // 거리 축이 직선 → 경로로 바뀐다(전환·재획득·재조회 공통). 다음 추세 fix가
       // 새 축 현재값으로 앵커를 다시 잡고 현재 상태를 1회 알린다.
       toneStateRef.current = { ...toneStateRef.current, needsRebase: true };
-      lastRemainingRef.current = null;
     },
     [currentDisplay, kindFixed, progressOf, refreshLiveRows, t],
   );
@@ -1207,16 +1185,14 @@ export function useRouteGuide(
       // 그 자리를 추세 축이 대신하므로 별도 중재가 필요 없다.
       const phase = result.state.phase;
       const remaining = Math.max(0, route.totalMeters - result.state.d);
-      // ⚠ `projectionJumped`는 호출 자체가 기준값을 갱신하므로 한 fix에 한 번만 부른다.
-      const jumped = projectionJumped(remaining, now);
+      // 투영 점프 판정은 리듀서 소유다(A10 — `GuideTuning.maxSpeedMps` 주석). 튄 fix의
+      // 진입 확정은 리듀서가 6b에서 이미 한 fix 미뤘으므로 여기서 사후 거부하지 않는다 —
+      // 종전의 커밋 후 거부는 phase만 finalApproach로 잠긴 세션 영구 정지를 만들었다.
+      const jumped = result.projectionJumped === true;
       // 최종 접근 진입은 **톤 조립 앞에서** 갈라진다. 이 fix의 소유권이 통째로 넘어가므로
       // 상세 톤 입력을 조립하면 안 된다 — `emitTone`은 톤 상태를 전진시켜서 한 fix에
       // 두 번 부르면 전이가 두 번 일어난다.
-      //
-      // ⚠ 인계 전제(E4 spec §8.2): 튄 잔여 거리로 진입을 확정하면 실제 경로가 남았는데
-      // 결정 지점 안내가 사라진다. 이 fix만 버리면 되고 조건이 참이면 다음 fix에서 온다.
       if (result.event?.kind === "finalApproachEnter") {
-        if (jumped) return;
         setProgress(null);
         // 스텝은 전부 소화됐다 — 낡은 유닛이 "현재 안내" 행에 남는 것을 막는다
         // (iOS beginFinalApproach 미러, 리뷰 HIGH 반영).
@@ -1296,7 +1272,6 @@ export function useRouteGuide(
       stepFinalApproach,
       t,
       progressOf,
-      projectionJumped,
       rebaseForAxisChange,
       rememberGuidance,
       tuning,
@@ -1426,7 +1401,6 @@ export function useRouteGuide(
     beaconRef.current = INITIAL_BEACON_STATE;
     toneStateRef.current = INITIAL_TONE_LAYER_STATE;
     motionStateRef.current = INITIAL_MOTION_STATE;
-    lastRemainingRef.current = null;
     startedAtRef.current = null;
     guideRef.current = null;
     resetFinalApproach(null);
@@ -1471,7 +1445,6 @@ export function useRouteGuide(
     beaconRef.current = INITIAL_BEACON_STATE;
     toneStateRef.current = INITIAL_TONE_LAYER_STATE;
     motionStateRef.current = INITIAL_MOTION_STATE;
-    lastRemainingRef.current = null;
     // 첫 fix 대기도 워치독이 덮는다(기준을 세션 시작 시각으로).
     startedAtRef.current = performance.now() / 1000;
     guideRef.current = null;

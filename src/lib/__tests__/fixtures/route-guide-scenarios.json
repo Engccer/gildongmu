@@ -2378,6 +2378,98 @@
           "eventNot": "imminent"
         }
       ]
+    },
+    {
+      "name": "최종 접근: 진입 fix의 투영 점프는 진입을 한 fix 미룬다(A10 — 2026-08-11 하교 로그 동역학)",
+      "geometry": true,
+      "steps": [
+        {
+          "len": 505.2,
+          "desc": "직진"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 8,
+          "along": 58,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 16,
+          "along": 116,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 24,
+          "along": 174,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 32,
+          "along": 232,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 40,
+          "along": 290,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 48,
+          "along": 348,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 56,
+          "along": 407.6,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 57,
+          "along": 458.3,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 58,
+          "along": 501.2,
+          "lateral": 0,
+          "acc": 22
+        },
+        {
+          "t": 59,
+          "along": 501.2,
+          "lateral": 0,
+          "acc": 22
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 8,
+          "eventNot": "finalApproachEnter"
+        },
+        {
+          "afterFix": 9,
+          "eventNot": "finalApproachEnter"
+        },
+        {
+          "afterFix": 10,
+          "event": "finalApproachEnter"
+        }
+      ]
     }
   ]
 }
