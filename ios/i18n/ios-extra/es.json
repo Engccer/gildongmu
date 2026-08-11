@@ -233,8 +233,7 @@
     },
     "guide": {
       "routeListCurrent": "{n}. Tramo actual, {step}",
-      "routeListRow": "{n}. {step}",
-      "routeListClose": "Cerrar lista de ruta"
+      "routeListRow": "{n}. {step}"
     }
   }
 }

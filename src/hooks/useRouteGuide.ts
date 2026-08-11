@@ -102,6 +102,20 @@ const WATCH_OPTS: PositionOptions = {
  */
 const NO_FIX_S = 8;
 /**
+ * 상세 모드 추세 축 데드밴드(m). iOS `BeaconModel.detailDeadBand` 미러.
+ *
+ * 간략 비콘의 `BASE_DEAD_BAND_M`(15)과 값을 나눈 이유는 축이 다르기 때문이다. 간략은
+ * 직선거리라 GPS 지터가 그대로 실리지만, 상세의 잔여 거리는 구속 창 투영 + 단조 전진을
+ * 거치고 `phase` 게이트·`jumped`가 이탈·튐 fix를 앞서 버린다(실보행 로그 5세션 6,047
+ * 스텝에서 진행 거리 역행 0건). 즉 이 축에서 데드밴드는 지터 방어가 아니라 빈도 노브이고,
+ * 15는 그 목적에 과하게 커서 closer 간격 중위가 17.5초였다. 10에서 11.5초가 된다.
+ * 자동차는 주행 속도(5.4km/h 이상)에서 `closerIntervalSeconds` 10초가 병목이라 영향이
+ * 없고, 그 아래 정체·신호 대기에서만 도보와 같은 기제로 잦아진다(느릴수록 최대 1.5배).
+ * 정체 중 진행 신호가 잦은 것은 해롭지 않아 수단을 가르지 않는다.
+ * ⚠ 실보행 판정 대상 잠정값(`docs/BACKLOG.md`).
+ */
+const DETAIL_DEAD_BAND_M = 10;
+/**
  * 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩 흔들리므로,
  * 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다(iOS `detailDeadBandFloor` 미러).
  */
@@ -1248,7 +1262,7 @@ export function useRouteGuide(
             ? {
                 distance: remaining,
                 // 상세는 정확도로 스케일하지 않는다(투영 안정성이 오차 축이다).
-                deadBand: BASE_DEAD_BAND_M,
+                deadBand: DETAIL_DEAD_BAND_M,
                 deadBandFloor: DETAIL_DEAD_BAND_FLOOR_M,
                 motion,
                 closerIntervalSeconds,

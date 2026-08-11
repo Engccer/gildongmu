@@ -233,8 +233,7 @@
     },
     "guide": {
       "routeListCurrent": "{n}. 現在の区間、{step}",
-      "routeListRow": "{n}. {step}",
-      "routeListClose": "経路リストを閉じる"
+      "routeListRow": "{n}. {step}"
     }
   }
 }

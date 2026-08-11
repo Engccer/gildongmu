@@ -831,6 +831,24 @@ final class BeaconModel {
 
     // MARK: - 톤 계층 배선 (판정은 전부 Kit — 여기는 입력 조립뿐)
 
+    /// 상세 모드 추세 축 데드밴드(m). 웹 `DETAIL_DEAD_BAND_M` 미러.
+    ///
+    /// **간략 비콘의 `baseDeadBand`(15)와 값을 나눈 이유는 축이 다르기 때문이다.**
+    /// 간략은 직선거리라 GPS 지터가 그대로 실리지만, 상세의 잔여 거리는 구속 창
+    /// 투영 + `max(state.d, proj.d)` 단조 전진(`RouteGuide` 3단계)을 거치고
+    /// `phase` 게이트·`projectionJumped`가 이탈·튐 fix를 앞서 버린다. 실보행 로그
+    /// 5세션 6,047 스텝에서 진행 거리 역행이 0건인 것이 그 계약의 관측이다
+    /// (`docs/superpowers/specs/logs/`). 즉 이 축에서 데드밴드는 지터 방어가
+    /// 아니라 **빈도 노브**이고, 15는 그 목적에 과하게 컸다 — 같은 로그 리플레이로
+    /// closer 간격 중위 17.5초, 15~25초 구간이 절반이었다(위원장 실보행 체감과 일치).
+    /// 10에서 중위 11.5초가 된다. 자동차는 주행 속도(5.4km/h 이상)에서
+    /// `closerIntervalSeconds` 10초가 병목이라 영향이 없고, 그 아래 정체·신호 대기에서만
+    /// 도보와 같은 기제로 잦아진다(3.6~5.4km/h는 상한에 붙고, 그보다 느리면 데드밴드가
+    /// 다시 병목이라 1.5배). 정체 중 진행 신호가 더 자주 나는 것은 해롭지 않아 수단을
+    /// 가르지 않는다.
+    /// ⚠ 실보행 판정 대상 잠정값이다(`docs/BACKLOG.md`).
+    private static let detailDeadBand = 10.0
+
     /// 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩
     /// 흔들리므로, 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다.
     private static let detailDeadBandFloor = 5.0
@@ -1111,7 +1129,7 @@ final class BeaconModel {
                 trend: trendable
                     ? TrendInput(
                         distance: remaining,
-                        deadBand: BeaconConstants.baseDeadBand,
+                        deadBand: Self.detailDeadBand,
                         // 상세는 정확도 축이 아니라 투영 안정성 축이라 고정 하한을 쓴다.
                         deadBandFloor: Self.detailDeadBandFloor,
                         motion: motion,

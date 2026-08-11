@@ -14201,46 +14201,6 @@
         }
       }
     },
-    "ios.guide.routeListClose": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "경로 목록 닫기"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Close route list"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cerrar lista de ruta"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fermer la liste de l'itinéraire"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chiudi elenco percorso"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "経路リストを閉じる"
-          }
-        }
-      }
-    },
     "ios.guide.routeListCurrent": {
       "localizations": {
         "ko": {
