@@ -262,7 +262,7 @@ private struct RouteOverviewSheet: View {
                     // 나브바 toolbar 닫기(ChatView 관례)를 쓰지 않는 이유: 나브바 요소는
                     // 섹션 헤더보다 먼저 착지 후보가 되어 "모달 착지 = 조망 낭독" 계약을
                     // 깬다. 말미 닫기는 유지(전 구간을 훑고 난 자리에서 되스크롤 방지).
-                    Button(appLocalized("ios.guide.routeListClose")) { dismiss() }
+                    Button(appLocalized("actions.close")) { dismiss() }
                     ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
                         if i == model.currentStepIndex {
                             distanceText(appLocalized(
@@ -275,7 +275,7 @@ private struct RouteOverviewSheet: View {
                         }
                     }
                 }
-                Button(appLocalized("ios.guide.routeListClose")) { dismiss() }
+                Button(appLocalized("actions.close")) { dismiss() }
             } header: {
                 distanceText(model.progressText())
                     .accessibilityAddTraits(.isHeader)
