@@ -233,7 +233,19 @@
     },
     "guide": {
       "routeListCurrent": "{n}. Tratto attuale, {step}",
-      "routeListRow": "{n}. {step}"
+      "routeListRow": "{n}. {step}",
+      "destMenuDetail": "Vedi dettagli del luogo",
+      "destMenuChange": "Cambia destinazione",
+      "destChanged": "Nuova destinazione: {name}.",
+      "destChangedFetching": "Ricerca di un nuovo percorso."
+    },
+    "transitGuide": {
+      "destChangeHeading": "Scegli un nuovo percorso, {name}",
+      "destChangeLoading": "Ricerca di nuovi percorsi.",
+      "destChangeNone": "Nessun percorso con i mezzi pubblici verso la nuova destinazione.",
+      "destChangeError": "Ricerca del percorso non riuscita.",
+      "destChangeRefetched": "Percorsi aggiornati in base alla tua posizione attuale.",
+      "destChangeCancel": "Annulla il cambio di destinazione"
     }
   }
 }

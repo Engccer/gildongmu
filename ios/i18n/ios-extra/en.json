@@ -233,7 +233,19 @@
     },
     "guide": {
       "routeListCurrent": "{n}. Current segment, {step}",
-      "routeListRow": "{n}. {step}"
+      "routeListRow": "{n}. {step}",
+      "destMenuDetail": "View place details",
+      "destMenuChange": "Change destination",
+      "destChanged": "New destination: {name}.",
+      "destChangedFetching": "Finding a new route."
+    },
+    "transitGuide": {
+      "destChangeHeading": "Choose a new route, {name}",
+      "destChangeLoading": "Finding new routes.",
+      "destChangeNone": "No transit route to the new destination.",
+      "destChangeError": "Route lookup failed.",
+      "destChangeRefetched": "Routes refreshed for your current location.",
+      "destChangeCancel": "Cancel destination change"
     }
   }
 }

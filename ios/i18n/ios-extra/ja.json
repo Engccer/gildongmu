@@ -233,7 +233,19 @@
     },
     "guide": {
       "routeListCurrent": "{n}. 現在の区間、{step}",
-      "routeListRow": "{n}. {step}"
+      "routeListRow": "{n}. {step}",
+      "destMenuDetail": "場所の詳細を見る",
+      "destMenuChange": "目的地を変更",
+      "destChanged": "新しい目的地 {name}。",
+      "destChangedFetching": "新しいルートを検索しています。"
+    },
+    "transitGuide": {
+      "destChangeHeading": "新しいルートを選択、{name}",
+      "destChangeLoading": "新しいルートを検索しています。",
+      "destChangeNone": "新しい目的地への公共交通ルートがありません。",
+      "destChangeError": "ルート検索に失敗しました。",
+      "destChangeRefetched": "現在地に合わせてルートを再検索しました。",
+      "destChangeCancel": "目的地の変更をキャンセル"
     }
   }
 }
