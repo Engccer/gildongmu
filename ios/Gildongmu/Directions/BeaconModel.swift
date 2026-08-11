@@ -131,6 +131,9 @@ final class BeaconModel {
     private(set) var liveNextText: String?
     /// 하단 2행 표시 유닛(walk 상세 전용, spec §4.1) — 경로 커밋 시 재구축.
     private var displayUnits: [DisplayUnit] = []
+    /// 표시 입력 스텝(live target 조각 포함) — walk 주기 통지의 직진 목표 이름이
+    /// 여기서 나온다(위원장 실보행 피드백 2026-08-12). 표시 유닛과 수명이 같다.
+    private var liveSteps: [LiveStepInput] = []
     /// 하단 2행 리듀서 소상태. 재조회·이탈 복귀·모드 전환에서 nil 리셋.
     private var liveRowsState: LiveRowsState?
     /// 표시 좌표계 램프인 기준점(원시 d) — 상태 재구성 지점마다 그 시점 d로 교체.
@@ -512,6 +515,7 @@ final class BeaconModel {
             if sessionKind == .walk {
                 // 하단 2행: 표시 유닛은 경로와 수명이 같다(spec 2026-08-11).
                 displayUnits = buildDisplayUnits(fetched.liveSteps)
+                liveSteps = fetched.liveSteps
                 resetLiveRowsBaseline(state: initial.state)
                 currentGuidanceText = nil // walk의 "현재 안내" 행은 liveRows가 대체
             } else {
@@ -731,6 +735,7 @@ final class BeaconModel {
         currentGuidanceText = nil
         clearLiveRows()
         displayUnits = []
+        liveSteps = []
         liveBaselineD = 0
         offRoute = false
         roadSpans = []
@@ -832,15 +837,13 @@ final class BeaconModel {
     /// 이탈·튐 fix를 앞서 버린다. 실보행 로그
     /// 5세션 6,047 스텝에서 진행 거리 역행이 0건인 것이 그 계약의 관측이다
     /// (`docs/superpowers/specs/logs/`). 즉 이 축에서 데드밴드는 지터 방어가
-    /// 아니라 **빈도 노브**이고, 15는 그 목적에 과하게 컸다 — 같은 로그 리플레이로
-    /// closer 간격 중위 17.5초, 15~25초 구간이 절반이었다(위원장 실보행 체감과 일치).
-    /// 10에서 중위 11.5초가 된다. 자동차는 주행 속도(5.4km/h 이상)에서
-    /// `closerIntervalSeconds` 10초가 병목이라 영향이 없고, 그 아래 정체·신호 대기에서만
-    /// 도보와 같은 기제로 잦아진다(3.6~5.4km/h는 상한에 붙고, 그보다 느리면 데드밴드가
-    /// 다시 병목이라 1.5배). 정체 중 진행 신호가 더 자주 나는 것은 해롭지 않아 수단을
-    /// 가르지 않는다.
-    /// ⚠ 실보행 판정 대상 잠정값이다(`docs/BACKLOG.md`).
-    private static let detailDeadBand = 10.0
+    /// 아니라 **빈도 노브**다. 15(중위 17.5초)→10(11.5초)을 거쳐 위원장 실보행
+    /// 판정(2026-08-12)으로 6 — 10m 간격도 성기게 느껴져 "6m 간격" 직접 지정.
+    /// 자동차는 주행 속도(5.4km/h 이상)에서 `closerIntervalSeconds` 10초가 병목이라
+    /// 영향이 없고, 그 아래 정체·신호 대기에서만 도보와 같은 기제로 잦아진다.
+    /// 정체 중 진행 신호가 더 자주 나는 것은 해롭지 않아 수단을 가르지 않는다.
+    /// ⚠ 감쇠 하한(5)보다 커야 감쇠가 산다(웹 드리프트 테스트가 강제).
+    private static let detailDeadBand = 6.0
 
     /// 상세 모드 데드밴드 감쇠의 하한(m). 경로 투영은 정확도와 무관하게 몇 미터씩
     /// 흔들리므로, 이보다 작은 잔여 거리 변화는 이동이 아니라 투영 지터로 본다.
@@ -1299,7 +1302,7 @@ final class BeaconModel {
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case let .imminent(_, action):
-            // 임박 큐(25m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
+            // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
             //
             // ⚠ `lastGuidance`를 덮지 않는다. 이 값은 신호 불량 구간에서 "마지막으로
@@ -1321,10 +1324,20 @@ final class BeaconModel {
             statusText = text
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case let .periodic(stepIndex, remainingMeters, accuracy):
-            let text = GuideText.periodic(
-                route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
-                accuracy: accuracy, destinationLabel: destinationLabel
-            )
+            // walk 직진 구간 반복 통지는 단문이다(위원장 실보행 피드백 2026-08-12) —
+            // 조망은 40m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
+            // car는 임박 층이 없어 주기 통지가 다음 행동의 유일한 반복 채널이라 종전 유지.
+            let text = sessionKind == .walk
+                ? GuideText.periodicWalk(
+                    route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
+                    accuracy: accuracy, destinationLabel: destinationLabel,
+                    target: liveSteps.indices.contains(stepIndex)
+                        ? liveSteps[stepIndex].target : nil
+                )
+                : GuideText.periodic(
+                    route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
+                    accuracy: accuracy, destinationLabel: destinationLabel
+                )
             lastGuidance = text
             // 상태 행에 원문을 두고 "다음 안내," 라벨은 플래그로 뷰가 붙인다(표시 전용
             // — 상태 행이 예고와 상태를 오가서 라벨 없이는 종류를 알 수 없다는 실보행
@@ -1515,6 +1528,7 @@ final class BeaconModel {
             if sessionKind == .walk {
                 // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7).
                 displayUnits = buildDisplayUnits(fetched.liveSteps)
+                liveSteps = fetched.liveSteps
                 resetLiveRowsBaseline(state: initial.state)
             } else {
                 refreshCurrentGuidance(route: fetched.route, state: initial.state)

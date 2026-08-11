@@ -631,6 +631,8 @@
     "detailStart": "Guidage détaillé démarré. {count} instructions, {distance} au total. {first}",
     "next": "Dans {distance}, {step}",
     "nextDestination": "{distance} jusqu'à {dest}",
+    "periodicStraight": "Continuez tout droit sur {distance} vers {target}",
+    "periodicStraightNoName": "Continuez tout droit sur {distance}",
     "bundle": "Prochaines instructions. {steps}",
     "handoff": "Passage au guidage à vol d'oiseau jusqu'à la destination",
     "finalApproachRouteEnd": "L'itinéraire se termine ici.",

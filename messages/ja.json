@@ -631,6 +631,8 @@
     "detailStart": "詳細案内を開始しました。案内{count}件、合計{distance}。{first}",
     "next": "{distance}先、{step}",
     "nextDestination": "{dest}まで{distance}",
+    "periodicStraight": "{target}まで{distance}直進してください",
+    "periodicStraightNoName": "{distance}直進してください",
     "bundle": "次の案内。{steps}",
     "handoff": "目的地までの直線案内に切り替えます",
     "finalApproachRouteEnd": "ルートはここで終わりです。",

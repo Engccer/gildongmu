@@ -15,7 +15,7 @@ import { displayEffectiveD, type GuidePhase } from "./route-guide";
 import type { GuideRoute } from "./route-geometry";
 import { walkStepAction, type WalkAction } from "./walk-action";
 
-/** 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 25 = 임박 큐 시점(spec §2-4). */
+/** 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 20 = 임박 큐 시점(spec §2-4, lag 10). */
 export const TURN_APPROACH_M = 10;
 /** 예고에서 "연속 회전"으로 접는 유닛 길이(m) — 직진 창이 사실상 없는 유닛. */
 export const SHORT_UNIT_PREVIEW_M = 10;
@@ -50,8 +50,10 @@ export interface DisplayUnit {
  * 횡단 유닛 판정. walkStepAction만으로는 부족하다 — "횡단보도"는 지명으로도
  * 등장하므로(회전 우선순위가 회전 문장은 걸러 주지만, 회전 없는 "천호역 횡단보도까지
  * 100m 이동"이 남는다) 재작성 행동문("…건너세요")까지 요구한다.
+ * export는 walk 주기 통지(`walkPeriodicLine`)의 "횡단 중 직진 오지시 금지" 분기 몫 —
+ * 판정을 복제하지 않는다(Kit `isCrossingStep` 미러).
  */
-function isCrossing(action: WalkAction | null, description: string): boolean {
+export function isCrossingStep(action: WalkAction | null, description: string): boolean {
   return (action === "crosswalk" || action === "underpass") && description.includes("건너");
 }
 
@@ -59,7 +61,7 @@ export function buildDisplayUnits(steps: LiveStepInput[]): DisplayUnit[] {
   const groups: { indices: number[]; crossing: boolean; action: WalkAction | null }[] = [];
   for (let i = 0; i < steps.length; i++) {
     const action = walkStepAction(steps[i].description);
-    const crossing = isCrossing(action, steps[i].description);
+    const crossing = isCrossingStep(action, steps[i].description);
     const prev = groups[groups.length - 1];
     // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
     // 국면이 유닛 단위라 꼬리를 붙이면 다 건넌 뒤에도 "건너세요"가 남는다.
