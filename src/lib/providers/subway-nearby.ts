@@ -5,7 +5,7 @@ import type {
   SubwayStationArrivals,
 } from "../types";
 import { hasSeoulSubwayRealtimeKey } from "../env";
-import { findStationsNear, findStationMeta } from "../subway-stations";
+import { findStationsNear, findStationMetaNear } from "../subway-stations";
 import { judgeServiceStatus, kstNowMinutes, parseServiceTime } from "../service-hours";
 import { cleanName, fetchSubwayArrivals } from "./seoul-subway-arrival";
 import { fetchStationTimetable } from "./tago-subway";
@@ -181,7 +181,8 @@ export function findNearestStationInfo(
 ): NearestSubwayStation | null {
   const [nearest] = findStationsNear(lat, lng, { limit: 1, dedupeByName: true });
   if (!nearest) return null;
-  const meta = findStationMeta(nearest.name);
+  // 이름 집계 금지(A9): 앵커는 매칭된 레코드 좌표 — 전국 동명이역 노선 혼입 차단.
+  const meta = findStationMetaNear(nearest.name, nearest.lat, nearest.lng);
   return {
     // `NearbySubwayStation.stationName`과 같은 계약(접미사 제거) — 목록과 nearest가
     // 다른 모양이면 소비자가 "역"을 붙일지 말지 판단할 수 없다(CLI에서 "남춘천역역").
@@ -232,7 +233,8 @@ export async function fetchNearbySubwayArrivals(
     }),
   );
   const inputs: NearbyArrivalInput[] = near.map((s, i) => {
-    const meta = findStationMeta(s.name);
+    // 이름 집계 금지(A9): 앵커는 매칭된 레코드 좌표 — 전국 동명이역 노선 혼입 차단.
+    const meta = findStationMetaNear(s.name, s.lat, s.lng);
     return {
       name: s.name,
       nameEn: meta?.nameEn,

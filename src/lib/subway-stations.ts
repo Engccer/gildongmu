@@ -112,6 +112,32 @@ export function summarizeStation(
   return meta;
 }
 
+/**
+ * 같은 역 복합체 판정 반경(m). `scripts/build-subway-stations.py`의 환승 쌍 가드와
+ * 같은 경계다 — 정당한 환승 복합의 레코드 간 최대 실측 435m, 오염(타 역 좌표 혼입)
+ * 판정 시작이 600m. 그 사이가 비어 있어 이 값은 실측상 자의적이지 않다.
+ */
+const SAME_COMPLEX_RADIUS_M = 600;
+
+/**
+ * 좌표 문맥이 있는 노선 집계 — **같은 이름이라도 앵커 좌표에서 600m 밖 레코드는
+ * 다른 역이다**(A9, 2026-08-10 이촌 검증 부수 발견). 이름만으로 집계하면 서울
+ * 용산역의 lines에 대구 용산역의 "대구 도시철도 2호선"이 섞이고(전국 동명이역),
+ * 서울 안에서도 2호선 신촌과 경의중앙선 신촌(701m)이 한 역으로 합쳐진다.
+ * SR 사용자에게 노선 문자열은 역 식별 정보라 오염이 곧 혼란 축이다.
+ */
+export function summarizeStationNear(
+  stations: SubwayStation[],
+  lat: number,
+  lng: number,
+): StationMeta | null {
+  return summarizeStation(
+    stations.filter(
+      (s) => haversineMeters(lat, lng, s.lat, s.lng) <= SAME_COMPLEX_RADIUS_M,
+    ),
+  );
+}
+
 /** seed 바인딩: 역명으로 표준 메타 조회(영문역명·노선·좌표 받침대). */
 export function findStationsByName(
   query: string,
@@ -127,6 +153,20 @@ export function findStationsByName(
 export function findStationMeta(query: string): StationMeta | null {
   const { lineHint } = parseStationQuery(query);
   return summarizeStation(findStationsByName(query, lineHint));
+}
+
+/**
+ * seed 바인딩: **근접 조회가 이미 좌표를 아는 소비자용** 메타 집계(A9).
+ * 앵커는 사용자 위치가 아니라 매칭된 seed 레코드의 좌표다 — 사용자 위치를 쓰면
+ * 복합체 경계(600m)와 조회 반경(1km)이 섞인다. 이름 기반 소비자(채팅 router·
+ * `/api/station/meta`)는 좌표 문맥이 없어 `findStationMeta`를 그대로 쓴다.
+ */
+export function findStationMetaNear(
+  name: string,
+  lat: number,
+  lng: number,
+): StationMeta | null {
+  return summarizeStationNear(findStationsByName(name), lat, lng);
 }
 
 /** seed 바인딩: 좌표 근접 역 조회. */

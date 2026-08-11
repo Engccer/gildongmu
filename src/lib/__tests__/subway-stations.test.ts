@@ -4,9 +4,11 @@ import {
   matchStationsByName,
   nearestStations,
   summarizeStation,
+  summarizeStationNear,
   findStationsByName,
   findStationsNear,
   findStationMeta,
+  findStationMetaNear,
 } from "../subway-stations";
 
 // 순수 로직은 작은 fixture로 결정적 검증 — 연간 seed 갱신과 무관하게 안정적.
@@ -167,6 +169,34 @@ describe("summarizeStation", () => {
   });
 });
 
+describe("summarizeStationNear — 좌표 문맥 집계(A9: 동명이역 혼입 차단)", () => {
+  // 서울 용산(경부·경원, 같은 좌표) + 대구 용산(300km 밖) 동형 fixture.
+  const seoul1 = st("용산역", "Yongsan", "경부선", 37.5299, 126.9648, true);
+  const seoul2 = st("용산역", "Yongsan", "경원선", 37.5299, 126.9648, true);
+  const daegu = st("용산(서부법원․검찰청입구)", "Yongsan", "대구 도시철도 2호선", 35.8491, 128.5288);
+
+  it("앵커 600m 밖의 동명 레코드는 다른 역이다 — 노선에서 배제", () => {
+    const meta = summarizeStationNear([seoul1, seoul2, daegu], 37.5299, 126.9648);
+    expect(meta?.lines).toEqual(["경부선", "경원선"]);
+  });
+
+  it("반대로 대구 쪽 앵커면 대구 노선만 남는다", () => {
+    const meta = summarizeStationNear([seoul1, seoul2, daegu], 35.8491, 128.5288);
+    expect(meta?.lines).toEqual(["대구 도시철도 2호선"]);
+  });
+
+  it("서울 안 동명 분리역(2호선 신촌 vs 경의중앙선 신촌, 701m)도 합치지 않는다", () => {
+    const sinchon2 = st("신촌(지하)", "Sinchon", "2호선", 37.5552, 126.9369);
+    const sinchonGl = st("신촌역", "Sinchon", "경의중앙선", 37.5598, 126.9423);
+    const meta = summarizeStationNear([sinchon2, sinchonGl], 37.5552, 126.9369);
+    expect(meta?.lines).toEqual(["2호선"]);
+  });
+
+  it("전부 반경 밖이면 null(집계 근거 없음)", () => {
+    expect(summarizeStationNear([daegu], 37.5299, 126.9648)).toBeNull();
+  });
+});
+
 describe("seed 무결성(실제 번들 데이터)", () => {
   it("1,000개 이상의 역이 로드된다", () => {
     expect(findStationsByName("서울역").length).toBeGreaterThan(0);
@@ -197,5 +227,12 @@ describe("seed 무결성(실제 번들 데이터)", () => {
     const meta = findStationMeta("서울역");
     expect(meta?.nameEn).toBeTruthy();
     expect(meta?.lines.length).toBeGreaterThan(0);
+  });
+
+  it("findStationMetaNear: 서울 용산역 앵커에 대구 2호선이 섞이지 않는다(A9 prod 실사고)", () => {
+    // seed에 '용산(서부법원․검찰청입구)'(대구 2호선)가 있어 이름 집계는 오염된다.
+    const meta = findStationMetaNear("용산역", 37.5299, 126.9648);
+    expect(meta?.lines.length).toBeGreaterThan(0);
+    expect(meta?.lines.some((l) => l.includes("대구"))).toBe(false);
   });
 });

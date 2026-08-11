@@ -243,6 +243,15 @@ describe("findNearestStationInfo", () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it("서울 용산역 앞에서 노선에 대구 2호선이 섞이지 않는다(A9 — 좌표 문맥 집계)", () => {
+    // seed의 대구 '용산(서부법원․검찰청입구)'이 정규화 후 동명이라, 이름 집계였던
+    // 시절 prod 응답 lines에 "대구 도시철도 2호선"이 실렸다(2026-08-10 실호출 확정).
+    const r = findNearestStationInfo(37.5299, 126.9648)!;
+    expect(r.stationName).toBe("용산");
+    expect(r.lines.length).toBeGreaterThan(0);
+    expect(r.lines.some((l) => l.includes("대구"))).toBe(false);
+  });
+
   it("환승역은 노선을 모두 싣는다", () => {
     const r = findNearestStationInfo(37.5665, 126.978)!; // 시청(1·2호선 환승)
     expect(r.lines.length).toBeGreaterThan(1);
