@@ -171,10 +171,6 @@ final class BeaconModel {
     private var lastFixCoordAt: Double?
     /// 재조회 진행 중 — 시트가 버튼 라벨 교체(rerouteBusy)에 쓴다(라벨이 곧 상태 신호).
     private(set) var isRerouting = false
-    /// 상세 투영 점프 가드의 기준(직전 잔여 거리·시각). 상세 모드의 오차 원인은 GPS
-    /// 정확도가 아니라 **경로 투영의 안정성**이라 별도 축이 필요하다.
-    private var lastRemaining: Double?
-    private var lastRemainingAt: Double?
 
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     /// 세션 단일성 토큰(B2 §3.2 — GuideSessionCoordinator claim/release 검증 키).
@@ -352,8 +348,6 @@ final class BeaconModel {
         gateState = .initial
         toneState = .initial
         motionState = .initial
-        lastRemaining = nil
-        lastRemainingAt = nil
         lastFixAt = nil
         lastStaleNoticeAt = nil
         suppressNextNotice = false
@@ -748,8 +742,6 @@ final class BeaconModel {
         pendingRecovery = nil
         lastFixCoord = nil
         lastFixCoordAt = nil
-        lastRemaining = nil
-        lastRemainingAt = nil
         isRerouting = false
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
@@ -836,7 +828,8 @@ final class BeaconModel {
     /// **간략 비콘의 `baseDeadBand`(15)와 값을 나눈 이유는 축이 다르기 때문이다.**
     /// 간략은 직선거리라 GPS 지터가 그대로 실리지만, 상세의 잔여 거리는 구속 창
     /// 투영 + `max(state.d, proj.d)` 단조 전진(`RouteGuide` 3단계)을 거치고
-    /// `phase` 게이트·`projectionJumped`가 이탈·튐 fix를 앞서 버린다. 실보행 로그
+    /// `phase` 게이트·리듀서의 투영 점프 판정(`GuideOutput.projectionJumped`)이
+    /// 이탈·튐 fix를 앞서 버린다. 실보행 로그
     /// 5세션 6,047 스텝에서 진행 거리 역행이 0건인 것이 그 계약의 관측이다
     /// (`docs/superpowers/specs/logs/`). 즉 이 축에서 데드밴드는 지터 방어가
     /// 아니라 **빈도 노브**이고, 15는 그 목적에 과하게 컸다 — 같은 로그 리플레이로
@@ -896,24 +889,6 @@ final class BeaconModel {
         let out = toneLayerStep(state: toneState, input: input, now: now)
         toneState = out.state
         if let tone = out.tone { playTone(tone) }
-    }
-
-    /// 직전 fix 대비 잔여 거리 변화가 물리적으로 불가능하면 그 fix의 추세 판정을 버린다.
-    ///
-    /// **상세 모드의 오차 원인은 GPS 정확도가 아니라 경로 투영의 안정성이다**:
-    /// accuracy 5m라도 평행 도로로 투영이 점프하면 잔여 거리가 100m 튀고, accuracy
-    /// 40m라도 투영이 안정적이면 잔여 거리는 매끄럽다. 그래서 데드밴드를 정확도로
-    /// 스케일하지 않고(간략과 다른 점) 점프한 fix를 통째로 버린다.
-    private func projectionJumped(remaining: Double, now: Double) -> Bool {
-        defer {
-            lastRemaining = remaining
-            lastRemainingAt = now
-        }
-        guard let prev = lastRemaining, let at = lastRemainingAt else { return false }
-        let dt = now - at
-        guard dt > 0 else { return true }
-        // 여유 계수 1.5 — 속도 상한 자체가 보수적이라 이중으로 좁히지 않는다.
-        return abs(remaining - prev) > maxSpeedMps * dt * 1.5
     }
 
     // MARK: - fix 처리
@@ -1095,15 +1070,13 @@ final class BeaconModel {
         // 넘어가므로 상세 톤 입력을 조립하면 안 된다 — `routeTone`은 톤 상태를 전진시켜서
         // 한 fix에 두 번 부르면 전이가 두 번 일어난다.
         //
-        // ⚠ 인계 전제(E4 spec §8.2): 국면·정확도 가드는 리듀서가 이미 보장하지만
-        // **투영 점프는 보지 않는다**. 튄 잔여 거리로 진입을 확정하면 실제 경로가 남았는데
-        // 결정 지점 안내가 사라진다. 이 fix만 버리면 되고, 조건이 참이면 다음 fix에서
-        // 다시 온다. ⚠ `projectionJumped`는 호출 자체가 기준값을 갱신하므로 한 fix에
-        // 한 번만 부른다.
+        // 투영 점프 판정은 리듀서 소유다(A10 — `GuideTuning.maxSpeedMps` 주석). 튄 fix의
+        // 진입 확정은 리듀서가 6b에서 이미 한 fix 미뤘으므로 여기서 사후 거부하지 않는다 —
+        // 종전의 커밋 후 거부는 phase만 finalApproach로 잠긴 세션 영구 정지를 만들었다
+        // (2026-08-11 하교 실사고: 잔여 4m 동결·도착 무통지).
         let remaining = max(0, route.totalMeters - out.state.d)
-        let jumped = projectionJumped(remaining: remaining, now: now)
+        let jumped = out.projectionJumped == true
         if case .finalApproachEnter = out.event {
-            guard !jumped else { return }
             beginFinalApproach()
             // 진입이 소유권을 넘겼으면 **같은 fix로** 첫 발화를 낸다. 다음 fix를
             // 기다리면 종점에 선 채 수 초 침묵하고, 그 침묵이 이번에 고치려는 증상이다.
@@ -1423,8 +1396,6 @@ final class BeaconModel {
         gateState = .initial
         // 톤 축도 같은 규칙 — 다음 추세 fix가 재기준화 후 현재 상태를 1회 알린다.
         toneState.needsRebase = true
-        lastRemaining = nil
-        lastRemainingAt = nil
     }
 
     // MARK: - 시트 컨트롤 (반복·진행 상황·재조회)

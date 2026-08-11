@@ -103,6 +103,16 @@ public struct GuideTuning: Sendable, Equatable {
     /// 않는다 — 15m/s면 그 대역을 1.3초에 통과하고 fix 하나당 진행거리가 15m씩 뛴다.
     /// 차량에서의 헛경고율은 **측정된 적이 없다.**
     public var courseAxisEnabled: Bool
+    /// 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러).
+    /// 직전 fix 대비 진행거리 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.
+    ///
+    /// ⚠ **이 판정은 리듀서 소유다(A10, 2026-08-11).** 종전에는 오케스트레이터
+    /// (`BeaconModel.projectionJumped`)가 별도 기준값으로 판정해 `finalApproachEnter`를
+    /// 상태 커밋 **뒤에** 거부했는데, 거부된 세션이 0a 가드 국면에 갇혀 영구 정지했다
+    /// (하교 실보행 실사고). 리듀서 안에서는 직전 d가 `state.d`, 직전 시각이
+    /// `state.lastFixAt`이라 별도 기준값 없이 진입 확정 **전에** 같은 판정이 성립하고,
+    /// 진입 이벤트와 phase 전이가 원자적이 된다.
+    public var maxSpeedMps: Double
 
     public static let walk = GuideTuning(
         announceAheadM: announceAheadMeters, announceAheadSpeedS: 0,
@@ -113,7 +123,8 @@ public struct GuideTuning: Sendable, Equatable {
         offRouteRenotifyS: offRouteRenotifySeconds, offRouteRenotifyWarns: true,
         handoffDistM: handoffDistMeters, handoffRearmM: handoffRearmMeters,
         reacquireTieBreak: false, speedSuggest: true,
-        courseAxisEnabled: true
+        courseAxisEnabled: true,
+        maxSpeedMps: MotionConstants.maxWalkSpeedMps
     )
 
     /// 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정.
@@ -128,7 +139,8 @@ public struct GuideTuning: Sendable, Equatable {
         handoffDistM: 150, handoffRearmM: 200,
         reacquireTieBreak: true, speedSuggest: false,
         // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
-        courseAxisEnabled: false
+        courseAxisEnabled: false,
+        maxSpeedMps: MotionConstants.maxCarSpeedMps
     )
 }
 
@@ -278,11 +290,16 @@ public struct GuideOutput: Sendable, Equatable {
     public let courseVote: CourseVote?
     /// 이 fix에서 유도된 방위 관측(진단용). 프로파일 게이트 통과 후 값 — 없으면 nil.
     public let derivedCourse: DerivedCourse?
+    /// 이 fix의 진행거리 전진이 물리적으로 불가능했는가(투영 점프). 오케스트레이터의
+    /// 추세 톤 게이트가 소비한다 — 튄 잔여 거리를 추세로 읽으면 거짓 closer가 난다.
+    /// 판정 자체는 리듀서가 소유하고 최종 접근 진입(6b)을 한 fix 미룬다(A10).
+    /// 투영에 도달하지 못한 조기 반환 경로에서는 `nil`(판정 없음). 웹 미러.
+    public let projectionJumped: Bool?
 
     public init(
         state: GuideState, event: GuideEvent?, tone: GuideTone?,
         perpMeters: Double? = nil, courseVote: CourseVote? = nil,
-        derivedCourse: DerivedCourse? = nil
+        derivedCourse: DerivedCourse? = nil, projectionJumped: Bool? = nil
     ) {
         self.state = state
         self.event = event
@@ -290,6 +307,7 @@ public struct GuideOutput: Sendable, Equatable {
         self.perpMeters = perpMeters
         self.courseVote = courseVote
         self.derivedCourse = derivedCourse
+        self.projectionJumped = projectionJumped
     }
 }
 
@@ -580,6 +598,14 @@ public func guideStep(
         return GuideOutput(state: s, event: nil, tone: nil)
     }
     let d = max(state.d, proj.d)
+    // 투영 점프: 직전 수용 fix 대비 물리 불가능한 전진(tuning.maxSpeedMps 주석 — A10).
+    // 단조 전진이라 감소 방향은 없고, 재구성 직후(lastFixAt 초기화)는 기준이 없어 false다.
+    // dt=0(동시각 fix)은 전진이 있을 때만 점프다 — 종전 오케스트레이터는 무조건 true였는데,
+    // 전진 0을 점프로 보면 직전 fix에서 거부된 진입이 동시각 중복 fix에서도 계속 막힌다
+    // (의도적 변경, 독립 리뷰 2026-08-11 확인).
+    let jumped = state.lastFixAt.map {
+        d - state.d > tuning.maxSpeedMps * max(0, now - $0) * 1.5
+    } ?? false
     // 방위 축 표결(spec §2.1). 추종 중 기준은 구속 창 투영 결과다. 관측 없으면 표 없음.
     let vote: CourseVote? = derived == nil ? nil : courseVote(derived, poly: route.polyline, d: d)
     // 진단 계측: 이 fix가 실제로 넣은 표. 이탈 분기에서 entry 기준으로 덮인다.
@@ -587,7 +613,8 @@ public func guideStep(
     func emit(_ s: GuideState, _ event: GuideEvent?, _ tone: GuideTone?) -> GuideOutput {
         GuideOutput(
             state: s, event: event, tone: tone,
-            perpMeters: proj.perpMeters, courseVote: loggedVote, derivedCourse: derived
+            perpMeters: proj.perpMeters, courseVote: loggedVote, derivedCourse: derived,
+            projectionJumped: jumped
         )
     }
     let courseVotes = vote.map { recordVote(state.courseVotes, at: now, vote: $0) }
@@ -804,7 +831,13 @@ public func guideStep(
     //     아니다. 그 배선을 이 블록 **뒤로** 옮기면 종점 부근에서 finalApproachEnter가
     //     먼저 반환되고, 다음 fix부터 0a 가드가 모든 판정을 멈춰 확인된 이탈이 영구히
     //     소실된다. 순서를 바꾸지 말 것(웹 route-guide.ts 동형).
+    //     ⚠ **`!jumped`: 튄 잔여 거리로 진입을 확정하지 않는다**(A10, 2026-08-11 하교
+    //     실사고). 종전에는 오케스트레이터가 진입 이벤트를 사후 거부했는데, phase는
+    //     이미 커밋된 뒤라 0a 가드에 갇혀 세션이 영구 정지했다. 여기서 미루면 진입과
+    //     phase 전이가 원자적이고, d가 유계라 반복 점프는 자기 종결된다 — 조건이
+    //     참이면 다음 fix(전진 0 = 점프 아님)에서 진입한다.
     if !isOff,
+       !jumped,
        next.autoHandoffArmed,
        next.announcedUpTo >= route.steps.count - 1,
        remainingTotal <= finalApproachEntryMeters(
