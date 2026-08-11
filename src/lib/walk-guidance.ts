@@ -145,7 +145,11 @@ export function rewriteWalkGuidanceWithLive(
     const merged = Number(count) > 1;
     // 행동 동사 우선(위원장 실보행 판정 2026-08-10): 종전 "{거리} 이동, 횡단보도
     // 이용"은 전언이 행동을 말하지 않았다 — 임박 큐와 같은 동사로 문장을 세우고
-    // 거리는 꼬리에 둔다("메가 MGC커피 앞에서 횡단보도를 건너세요, 21m").
+    // 거리는 꼬리에 둔다("메가 MGC커피 앞에서 횡단보도를 건너세요, 횡단보도 길이 21m").
+    // ⚠ 꼬리는 **무엇의 거리인지 이름을 달고** 나간다(위원장 실보행 판정 2026-08-11):
+    // 벌거벗은 "21m"는 같은 화면·낭독의 다른 거리(구간 잔여·다음 안내까지)와
+    // 구분되지 않아 "21m 더 가서 건너라"로 들린다. 문장에 "횡단보도"가 두 번
+    // 나오는 중복은 그 혼동을 없애는 대가로 의도적으로 수용한다.
     // 병합 표현 "횡단보도 N개"는 MERGED_CROSSWALK 게이트가 그대로 매칭하고,
     // 임박 분류(walkStepAction)의 "횡단보도" 부분 문자열 마커도 유지된다.
     const action =
@@ -157,7 +161,7 @@ export function rewriteWalkGuidanceWithLive(
           ? `지하보도 ${count}개로 건너세요`
           : "지하보도로 건너세요";
     return {
-      text: `${join(from, to, action)}, ${dist}`,
+      text: `${join(from, to, action)}, ${kind} 길이 ${dist}`,
       live: liveOf(targetFrom(to), anchorFrom(from)),
     };
   }

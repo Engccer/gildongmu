@@ -31,14 +31,14 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     const u = buildDisplayUnits(
       steps(
         [58, "파리바게뜨까지 58m 이동", { target: "파리바게뜨" }],
-        [21, "횡단보도를 건너세요, 21m, 음향신호기 있음"],
+        [21, "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음"],
         [40, "40m 이동"],
       ),
     );
     expect(u.map((x) => x.stepIndices)).toEqual([[0], [1], [2]]);
     expect(u[0].endAction).toBe("crosswalk");
     expect(u[1].crossing).toBe(true);
-    expect(u[1].crossingText).toBe("횡단보도를 건너세요, 21m, 음향신호기 있음");
+    expect(u[1].crossingText).toBe("횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음");
   });
 
   it("이름은 서버 조각에서만 온다 — target·endAnchor 배선", () => {
