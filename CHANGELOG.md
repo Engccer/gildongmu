@@ -11,6 +11,9 @@
 
 ## 2026-08-12
 
+### 안내 시트 목적지 메뉴 — 장소 상세 보기·끊김 없는 목적지 전환
+안내 시트(도보·자동차·대중교통) 제목을 네이티브 Menu로 교체(헤딩 trait 유지 시도, 실기기 판정 대기). "장소 상세 보기"는 최소 Place 합성(`guideDestinationPlace`, Kit)으로 시트 위 시트, 길찾기 진입 버튼은 문맥상 숨김. "목적지 바꾸기"는 기존 도착지 검색 시트(최근 목록 포함) 재사용 — 도보·자동차는 `BeaconModel.changeDestination`(세션 유지 경로 재획득, `awaitingRoute` 보류로 전환 중 옛 경로 발화 0, 즉시 `.high` 확인 통지), 대중교통은 2단 확정(`prepareDestinationChange` 사이드 채널 후보 → 선택 시 `changeRoute` 세션 연속 교체, stale 120초 재조회 가드, 취소 시 전체 무효). 폼은 출발지 `.current`+도착지 갱신 후 무통지 재조회, 기존 "도착지 변경 = 안내 중지" 가드는 값 결합 1회 소비 플래그로 안내 주도 변경만 통과. 어제(8/11) 실보행에서 목적지 전환에 중지·재검색·재시작이 필요했던 부담의 해소. 적대적 설계 리뷰 13건 중 12건 수용·1건 기각. spec `2026-08-12-guide-destination-menu-design.md` · plan `2026-08-12-guide-destination-menu.md`.
+
 ### 실보행 피드백 3종 반영 (오아시스마켓 왕복, 위원장 판정)
 ①**walk 주기 통지 단문화**: 직진 구간 반복 통지가 다음 스텝 전문(한 문장에 행동 3개)을 싣던 것을 "{target}까지 {distance} 직진하세요" 단문으로 교체(`walkPeriodicLine` ↔ `GuideText.periodicWalk`, target은 현재 스텝 서버 `live` 조각 재사용). 조망은 40m 선행 전문 1회가 담당하고, car는 임박 층이 없어 종전 틀 유지. BACKLOG A5-2 부분 종결(A5-1·A5-3 잔존). ②**투영 지연 보정 15→10m**: `PROJECTION_LAG_M` 하향(15는 실지연보다 커 표시·임박이 실위치보다 앞서갔다), 유도식으로 임박 큐 25→20m 연동. 공유 fixture는 같은 유효 진행거리를 만드는 입력으로 이동해 국면 워크스루 보존. ③**closer 데드밴드 10→6m**: 위원장 "6m 간격" 직접 지정(감쇠 하한 5m 유지). spec `2026-08-11-guide-live-two-rows-design.md` 개정 노트 참조.
 
