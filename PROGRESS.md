@@ -121,7 +121,7 @@
 
 ## 정적 게이트 기준선
 
-`docs/BACKLOG.md` 서두가 실측 기준선의 정본이다. 요약하면 테스트는 전량 green이고 `npm run lint`는 error 0이며, **`tsc --noEmit`에 선재 5 error가 남아 있다**(BACKLOG D10). 0이 아닌 게이트는 새 결함을 자기 노이즈에 숨기므로 기준선을 알고 읽어야 한다.
+`docs/BACKLOG.md` 서두가 실측 기준선의 정본이다. 요약하면 테스트는 전량 green이고 `npm run lint` error 0, `tsc --noEmit` error 0이다(선재 5건은 2026-08-11 종결). 세 게이트 모두 0이 기준선이므로, 0에서 벗어난 출력은 그 자체가 신규 결함이다.
 
 ---
 
