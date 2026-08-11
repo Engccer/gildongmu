@@ -34,6 +34,16 @@ final class TransitGuideModel {
     /// 완료 후 도보 핸드오프 제안(§14.2) — 세션 밖 수명(stop()이 소거하는 상태와
     /// 별도 보존). 시트 presentation이 isTracking ∨ 이 값으로 확장된다.
     private(set) var pendingWalkHandoff: TransitWalkHandoff?
+    /// 목적지 전환 준비 상태(스펙 2026-08-12 §4). nil = 진행 중인 전환 없음.
+    /// 확정 전에는 세션·폼 어느 것도 변하지 않는다(2단 확정 단위).
+    struct PendingDestChange {
+        let dest: BeaconDest
+        let label: String
+        var phase: Phase
+        var fetchedAt: Date?
+        enum Phase: Equatable { case loading, loaded(TransitRouteResult), empty, failed }
+    }
+    private(set) var pendingDestChange: PendingDestChange?
 
     var isTracking: Bool { state != nil }
     var currentLeg: TransitGuideLeg? {
@@ -56,8 +66,19 @@ final class TransitGuideModel {
     private var pausedInBackground = false
     /// 다음 대기 폴 결과를 직접 응답으로 통지(새로고침, §13.2) — 폴 1회 소비.
     private var refreshAnnounce = false
+    /// 목적지 전환 조회의 latest-wins 토큰(스펙 §4.1) — 취소·재시도가 늦은 응답을 폐기.
+    private var destChangeToken = 0
+    /// 검색 시트가 열린 동안 통지·톤 억제(스펙 §5.4, BeaconModel 동형 — 받아쓰기
+    /// 전사 오염 방지). stop()이 무조건 해제한다(잔류 억제로 다음 세션 무음 방지).
+    var outputSuppressed = false {
+        didSet { tones.isSuppressed = outputSuppressed }
+    }
+    private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
 
     private static let retainSeconds: TimeInterval = 180
+    /// stale 후보 문턱(스펙 §4.2, 잠정값 — 실사용 판정 대상): 조회 시점 위치의
+    /// 스냅샷인 후보를 이동 후에도 확정하는 경로를 막는다.
+    private static let destChangeStaleSeconds: TimeInterval = 120
 
     // MARK: - 세션 수명
 
@@ -104,6 +125,10 @@ final class TransitGuideModel {
         pausedInBackground = false
         refreshAnnounce = false
         pendingWalkHandoff = nil
+        // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
+        destChangeToken += 1
+        pendingDestChange = nil
+        outputSuppressed = false
     }
 
     /// 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태).
@@ -223,6 +248,102 @@ final class TransitGuideModel {
         guard state?.phase == .waiting else { return }
         refreshAnnounce = true
         restartPollLoop(immediate: true)
+    }
+
+    // MARK: - 목적지 전환(스펙 2026-08-12 §4)
+
+    /// 1단(목적지 선택): 아직 아무것도 확정하지 않는다 — 사이드 채널로 현재 위치 →
+    /// 새 목적지 대중교통 경로를 조회해 후보 목록만 준비한다(폼·세션 불변).
+    func prepareDestinationChange(dest: BeaconDest, label: String) {
+        guard isTracking else { return }
+        destChangeToken += 1
+        let token = destChangeToken
+        pendingDestChange = PendingDestChange(dest: dest, label: label, phase: .loading, fetchedAt: nil)
+        Task { await fetchDestChangeCandidates(token: token) }
+    }
+
+    private func fetchDestChangeCandidates(token: Int) async {
+        guard let pending = pendingDestChange else { return }
+        do {
+            let origin = try await LocationService.shared.currentCoordinate()
+            guard token == destChangeToken, isTracking else { return }
+            // includeStops: 안내용 승차·하차 정류소 데이터원(§4.1 — 브리핑 조회 동형).
+            let result = try await routeService.transit(
+                originLat: origin.lat, originLng: origin.lng,
+                destLat: pending.dest.lat, destLng: pending.dest.lng,
+                includeStops: true)
+            guard token == destChangeToken, isTracking else { return }
+            if let result {
+                pendingDestChange?.phase = .loaded(result)
+                pendingDestChange?.fetchedAt = Date()
+            } else {
+                pendingDestChange?.phase = .empty  // 3-state: 경로 없음 ≠ 조회 실패
+            }
+        } catch {
+            guard token == destChangeToken, isTracking else { return }
+            pendingDestChange?.phase = .failed
+        }
+    }
+
+    /// 2단(후보 선택) = 확정(§4.1·§4.3). false = 확정 불발(세션 사망·stale 재조회) —
+    /// 호출부는 폼 동기화를 하지 않는다.
+    func commitDestinationChange(_ route: TransitRoute) -> Bool {
+        guard isTracking, let pending = pendingDestChange,
+              case .loaded = pending.phase else { return false }
+        // stale 후보 가드(§4.2): 조회 후 문턱 경과면 그 후보로 확정하지 않고 재조회 —
+        // 이동 중 지나친 정류장을 첫 승차 지점으로 확정하는 경로 차단.
+        if let fetchedAt = pending.fetchedAt,
+           Date().timeIntervalSince(fetchedAt) > Self.destChangeStaleSeconds {
+            destChangeToken += 1
+            let token = destChangeToken
+            pendingDestChange?.phase = .loading
+            pendingDestChange?.fetchedAt = nil
+            announce(appLocalized("ios.transitGuide.destChangeRefetched"))
+            Task { await fetchDestChangeCandidates(token: token) }
+            return false
+        }
+        guard changeRoute(transitRoute: route, destinationLabel: pending.label) else { return false }
+        pendingDestChange = nil
+        return true
+    }
+
+    /// 취소 = 전체 무효(§4.1): 세션·폼·최근 목록 모두 옛 목적지 그대로.
+    func cancelDestinationChange() {
+        destChangeToken += 1
+        pendingDestChange = nil
+    }
+
+    /// 세션 연속 경로 교체(§4.3). pollTask 취소가 곧 세대 경계다 — 루프의
+    /// `Task.isCancelled`·`self.state` 재조회 가드가 옛 응답 커밋을 이미 막는다
+    /// (별도 세대 카운터 불요, 스펙 "최소 보강"). `state`는 이 동기 함수 안에서만
+    /// 갈아끼워 nil을 스치지 않는다(시트 presentation이 `state != nil`에 묶여 있다).
+    private func changeRoute(transitRoute: TransitRoute, destinationLabel: String) -> Bool {
+        guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
+        pollTask?.cancel()
+        pollTask = nil
+        pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
+        self.route = guideRoute
+        self.destinationLabel = destinationLabel
+        seq = 0
+        retained = [:]
+        tagoResolved = [:]
+        tagoUnsupported = []
+        waitingLive = []
+        waitingDeparted = []
+        waitingReason = nil
+        refreshAnnounce = false
+        state = initTransitGuide(route: guideRoute, now: nowMs())
+        let first = guideRoute.legs[0]
+        var parts = [
+            appLocalized("ios.guide.destChanged", destinationLabel),
+            appLocalized("transitGuide.started", String(guideRoute.legs.count)),
+            waitContextText(first),
+        ]
+        if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
+        // 활성화 응답(후보 버튼이 사라지는 전이) — .high(헌장 §6).
+        announce(parts.joined(separator: " "), highPriority: true)
+        restartPollLoop(immediate: true)
+        return true
     }
 
     /// 진행 상황 버튼(§6.1) — 임의 시점 조회. 버튼 활성화의 직접 응답이라 .high.
@@ -593,6 +714,8 @@ final class TransitGuideModel {
 
     /// 통지 단일 경로. 하차 임박·도착·직접 응답만 .high(§6.1 — 헌장 §5 계열).
     private func announce(_ message: String, highPriority: Bool = false) {
+        // 검색 시트(받아쓰기 마이크)가 열린 동안은 발화 0(스펙 §5.4).
+        guard !outputSuppressed else { return }
         var attributed = AttributedString(spokenUnits(message))
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(attributed).post()
