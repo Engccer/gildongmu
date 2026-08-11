@@ -103,6 +103,7 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
             pathCoords: [{ lat: sigLat, lng: sigLng }],
           },
         ]),
+        false,
       ),
     );
     expect(out.steps[0].description).toBe("길동사거리에서 횡단보도 2개를 건너세요, 횡단보도 길이 58m");
@@ -118,6 +119,7 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
             pathCoords: [{ lat: sigLat, lng: sigLng }],
           },
         ]),
+        false,
       ),
     );
     expect(out.steps[0].description).toBe(

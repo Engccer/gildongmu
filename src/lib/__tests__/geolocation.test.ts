@@ -80,25 +80,25 @@ describe("geolocation 공유 스토어", () => {
   });
 
   it("force:true는 정확도 우선 옵션(highAccuracy·maximumAge:0)으로 호출한다", async () => {
-    const getPos = vi.fn((ok: SuccessCb) =>
+    const getPos = vi.fn((ok: SuccessCb, _err?: ErrorCb, _opts?: PositionOptions) =>
       ok({ coords: { latitude: 1, longitude: 2 } }),
     );
     stubGeo(getPos);
 
     await awaitGeolocation({ force: true });
-    const opts = getPos.mock.calls[0][2] as PositionOptions;
+    const opts = getPos.mock.calls[0][2]!;
     expect(opts.enableHighAccuracy).toBe(true);
     expect(opts.maximumAge).toBe(0);
   });
 
   it("기본 호출은 빠른 옵션(저정밀·짧은 maximumAge)으로 호출한다", async () => {
-    const getPos = vi.fn((ok: SuccessCb) =>
+    const getPos = vi.fn((ok: SuccessCb, _err?: ErrorCb, _opts?: PositionOptions) =>
       ok({ coords: { latitude: 1, longitude: 2 } }),
     );
     stubGeo(getPos);
 
     await awaitGeolocation();
-    const opts = getPos.mock.calls[0][2] as PositionOptions;
+    const opts = getPos.mock.calls[0][2]!;
     expect(opts.enableHighAccuracy).toBe(false);
     expect(opts.maximumAge).toBeGreaterThan(0);
     // 5분(기존 stale 위험)보다 짧아야 한다.

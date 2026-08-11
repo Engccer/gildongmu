@@ -28,7 +28,9 @@ function looseTree() {
         ],
       },
     ],
-  } as Parameters<ReturnType<typeof remarkTightLists>>[0];
+    // MdastNode에 없는 실전 필드(ordered·value)를 담은 fixture라 직접 캐스트가
+    // 겹침 검사에 걸린다 — unknown 경유가 TS의 공식 우회다(테스트 전용).
+  } as unknown as Parameters<ReturnType<typeof remarkTightLists>>[0];
 }
 
 describe("remarkTightLists", () => {
