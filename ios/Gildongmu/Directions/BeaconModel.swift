@@ -189,6 +189,9 @@ final class BeaconModel {
     private var motionState = MotionJudgeState.initial
     /// 추적 시트가 부근 재구성 앵커로 읽는다(M1). 쓰기는 여전히 모델 내부만.
     private(set) var dest: BeaconDest?
+    /// 목적지 전환이 보관한 유도기 버퍼(스펙 2026-08-12 §3.1 승계 조항) —
+    /// 다음 fetchGuideRoute 성공이 1회 소비한다. stop()이 소거.
+    private var carriedCourseDerivation: CourseDerivationState?
     private let tones = BeaconTonePlayer()
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
@@ -504,10 +507,14 @@ final class BeaconModel {
                 startEtaTimer()
             }
             resetFinalApproach(geometry: fetched.finalApproach)
+            // 목적지 전환이 보관해 둔 유도기 버퍼가 있으면 잇는다(§3.1 승계 —
+            // 세션 시작 경로에서는 nil이라 종전 냉시동과 동일).
             let initial = initialGuideState(
                 route: fetched.route, now: uptimeNow,
-                hasFinalApproachGeometry: fetched.finalApproach != nil
+                hasFinalApproachGeometry: fetched.finalApproach != nil,
+                courseDerivation: carriedCourseDerivation ?? initialDerivationState
             )
+            carriedCourseDerivation = nil
             guideState = initial.state
             mode = .detail
             offRoute = false
@@ -748,6 +755,7 @@ final class BeaconModel {
         lastFixCoord = nil
         lastFixCoordAt = nil
         isRerouting = false
+        carriedCourseDerivation = nil
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
     }
@@ -770,6 +778,71 @@ final class BeaconModel {
         guard isTracking else { return }
         stop()
         announce(appLocalized("ios.beacon.stopped"))
+    }
+
+    /// 목적지 전환(스펙 2026-08-12 §3.1) — 같은 세션의 경로 재획득. 세션(톤·위치
+    /// 스트림·워치독)은 유지하고 경로·목적지 종속 상태만 내려놓은 뒤, 다음 수용
+    /// fix가 fetchGuideRoute를 트리거한다(start()와 같은 기계 — 조회 왕복 동안
+    /// 옛 경로의 회전·도착 신호가 나갈 창을 `awaitingRoute` 보류가 구조적으로 막는다).
+    /// 반환 false = 세션이 이미 죽어 선택을 폐기(§3.2 — 호출부는 폼도 건드리지 않는다).
+    @discardableResult
+    func changeDestination(dest newDest: BeaconDest, label: String) -> Bool {
+        guard isTracking else { return false }
+        if dest == newDest {
+            // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
+            destinationLabel = label
+            announce(appLocalized("ios.guide.destChanged", label),
+                     highPriority: true, bypassSuppression: true)
+            return true
+        }
+        dest = newDest
+        destinationLabel = label
+        // — 경로 종속 상태 초기화(stop()의 부분집합, §3.1 목록) —
+        routeFetchTask?.cancel(); routeFetchTask = nil
+        fixWaitTask?.cancel(); fixWaitTask = nil
+        rerouteToken += 1   // in-flight 재조회 응답 폐기(latest-wins)
+        routeFetchToken += 1
+        isRerouting = false
+        offRoute = false
+        // 유도기 버퍼는 위치 종속이라 승계한다(§3.1, 재조회 §2.9 동형) — 다음
+        // fetchGuideRoute 성공이 1회 소비한다.
+        carriedCourseDerivation = guideState?.courseDerivation
+        guideRoute = nil
+        guideRouteDurationSeconds = nil
+        guideState = nil
+        lastGuidance = nil
+        remainingText = nil
+        currentGuidanceText = nil
+        clearLiveRows()
+        displayUnits = []
+        liveSteps = []
+        liveBaselineD = 0
+        roadSpans = []
+        etaTask?.cancel(); etaTask = nil
+        etaSeconds = nil; etaUpdatedAt = nil; etaCallCount = 0
+        pendingRecovery = nil
+        pendingStepFreeNotice = nil
+        lastStepFree = nil
+        resetFinalApproach(geometry: nil)
+        mode = .brief
+        statusText = ""
+        // — 목적지 종속 추세 초기화(간략 접근/이탈 추세·톤 계층은 옛 목적지 기준.
+        //   motionState(도플러)는 위치 종속이라 승계) —
+        beaconState = .initial
+        gateState = .initial
+        toneState = .initial
+        // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
+        let fetching = AppLanguage.dataLocale == "ko"
+        let ack = fetching
+            ? appLocalized("ios.guide.destChanged", label) + " "
+                + appLocalized("ios.guide.destChangedFetching")
+            : appLocalized("ios.guide.destChanged", label)
+        announce(ack, highPriority: true, bypassSuppression: true)
+        if fetching {
+            awaitingRoute = true
+            startFixWaitWatch(token: routeFetchToken)
+        }
+        return true
     }
 
     // MARK: - 앱 생명주기
@@ -1681,8 +1754,13 @@ final class BeaconModel {
     /// 반환값은 **실제로 게시했는가**다. 세션에 1회뿐인 통지(계단 회피 경고)는
     /// 버려지면 다음 fix가 대신 말해 주지 않으므로 호출부가 갚을 수 있어야 한다.
     @discardableResult
-    private func announce(_ message: String, highPriority: Bool = false) -> Bool {
-        guard !outputSuppressed else { return false }
+    private func announce(
+        _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
+    ) -> Bool {
+        // bypassSuppression은 목적지 전환 확인 통지 전용(스펙 2026-08-12 §3.1) —
+        // 검색 시트 dismiss와 억제 해제의 경합에서 사용자 활성화의 직접 응답이
+        // 버려지는 창을 막는다(마이크는 select 시점에 이미 닫혀 전사 오염 없음).
+        guard bypassSuppression || !outputSuppressed else { return false }
         // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가
         // 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
         guard isForeground else {
