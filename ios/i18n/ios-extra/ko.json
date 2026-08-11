@@ -233,7 +233,19 @@
     },
     "guide": {
       "routeListCurrent": "{n}. 지금 이 구간, {step}",
-      "routeListRow": "{n}. {step}"
+      "routeListRow": "{n}. {step}",
+      "destMenuDetail": "장소 상세 보기",
+      "destMenuChange": "목적지 바꾸기",
+      "destChanged": "새 목적지 {name}.",
+      "destChangedFetching": "경로를 조회하고 있습니다."
+    },
+    "transitGuide": {
+      "destChangeHeading": "새 경로 선택, {name}",
+      "destChangeLoading": "새 경로를 조회하고 있습니다.",
+      "destChangeNone": "새 목적지로 가는 대중교통 경로가 없습니다.",
+      "destChangeError": "경로 조회에 실패했습니다.",
+      "destChangeRefetched": "위치가 바뀌어 경로를 다시 조회했습니다.",
+      "destChangeCancel": "목적지 변경 취소"
     }
   }
 }

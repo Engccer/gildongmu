@@ -233,7 +233,19 @@
     },
     "guide": {
       "routeListCurrent": "{n}. Segment actuel, {step}",
-      "routeListRow": "{n}. {step}"
+      "routeListRow": "{n}. {step}",
+      "destMenuDetail": "Voir les détails du lieu",
+      "destMenuChange": "Changer de destination",
+      "destChanged": "Nouvelle destination : {name}.",
+      "destChangedFetching": "Recherche d'un nouvel itinéraire."
+    },
+    "transitGuide": {
+      "destChangeHeading": "Choisissez un nouvel itinéraire, {name}",
+      "destChangeLoading": "Recherche de nouveaux itinéraires.",
+      "destChangeNone": "Aucun itinéraire en transports en commun vers la nouvelle destination.",
+      "destChangeError": "Échec de la recherche d'itinéraire.",
+      "destChangeRefetched": "Itinéraires actualisés selon votre position actuelle.",
+      "destChangeCancel": "Annuler le changement de destination"
     }
   }
 }
