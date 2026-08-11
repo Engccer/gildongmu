@@ -5,6 +5,10 @@ import GildongmuKit
 /// domainSection: 도메인 전용 최상단 섹션(내 주변 소아 진료 등) — 그 화면에 온 이유이므로 서열 1위.
 struct PlaceDetailView<DomainSection: View>: View {
     let place: Place
+    /// 길찾기 프리필 진입 버튼 노출 여부(기본 표시). 안내 시트의 "장소 상세 보기"
+    /// 문맥에서만 숨긴다 — 이미 그곳으로 안내 중이라 무의미하고, 누르면 시트 뒤
+    /// 길찾기 폼을 조작해 보이지 않는 상태 변화를 만든다(스펙 2026-08-12 §2).
+    var showsDirectionsEntry: Bool = true
     @ViewBuilder var domainSection: () -> DomainSection
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
@@ -54,8 +58,10 @@ struct PlaceDetailView<DomainSection: View>: View {
                 // 길찾기 탭으로 도착지 프리필 진입(Task I4) — 출발 전 미리 듣기는
                 // 이 3수단 비교(대중교통·도보·자동차)로 일원화(장소 상세의 단일 수단
                 // 브리핑 화면은 중복이라 제거, 2026-07-30). 딥링크는 실주행 위임.
-                Button(appLocalized("directions.toHere")) {
-                    DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                if showsDirectionsEntry {
+                    Button(appLocalized("directions.toHere")) {
+                        DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                    }
                 }
                 Button(appLocalized("ios.route.naver")) { openNaverRoute() }
                 Button(appLocalized("ios.route.kakao")) { openKakaoRoute() }
@@ -164,7 +170,9 @@ struct PlaceDetailView<DomainSection: View>: View {
 
 /// 기존 호출처(`PlaceDetailView(place:)`) 무변경 컴파일용 편의 init — 도메인 섹션 없음.
 extension PlaceDetailView where DomainSection == EmptyView {
-    init(place: Place) {
-        self.init(place: place, domainSection: { EmptyView() })
+    init(place: Place, showsDirectionsEntry: Bool = true) {
+        self.init(
+            place: place, showsDirectionsEntry: showsDirectionsEntry,
+            domainSection: { EmptyView() })
     }
 }

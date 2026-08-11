@@ -165,3 +165,18 @@ import Foundation
     #expect(decoded.events[0].fee == nil)
     #expect(decoded.events[0].link == nil)
 }
+
+@Test func guideDestinationPlaceKeepsCoordsAndLabelWithEmptyCategory() {
+    let place = guideDestinationPlace(
+        dest: BeaconDest(lat: 37.5361, lng: 127.1462), label: "오아시스마켓")
+
+    #expect(place.name == "오아시스마켓")
+    #expect(place.lat == 37.5361)
+    #expect(place.lng == 127.1462)
+    // category 빈 문자열 고정 — 라벨만으로 역 프롬프트 버킷을 판정하지 않는다.
+    #expect(place.category == "")
+    // 주소는 소스에 없으므로 비운다(없는 값을 지어내지 않는다).
+    #expect(place.address == "")
+    #expect(place.roadAddress == "")
+    #expect(place.id == "guide-dest:37.5361,127.1462")
+}

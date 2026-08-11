@@ -119,3 +119,22 @@ public func cultureEventToPlace(_ e: CultureEvent) -> Place {
         link: e.link,
         distanceMeters: Double(e.distanceMeters))
 }
+
+/// 안내 목적지(이름+좌표뿐) → 최소 Place(스펙 2026-08-12 §2 — 안내 시트 "장소 상세
+/// 보기"). 주소·카테고리 빈 값이어도 상세의 주변 섹션(지하철·버스·공기질)은 좌표만으로
+/// 성립한다. category는 빈 문자열 고정 — 목적지 라벨만으로는 역 여부를 판정할 근거가
+/// 없다(whereAmIToPlace와 같은 오분류 방지).
+public func guideDestinationPlace(dest: BeaconDest, label: String) -> Place {
+    Place(
+        id: "guide-dest:\(dest.lat),\(dest.lng)",
+        name: label,
+        category: "",
+        address: "",
+        roadAddress: "",
+        englishAddress: nil,
+        lat: dest.lat,
+        lng: dest.lng,
+        phone: nil,
+        link: nil,
+        distanceMeters: nil)
+}
