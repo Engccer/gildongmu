@@ -14,8 +14,22 @@ struct TransitTrackingSheet: View {
     let onStop: () -> Void
     /// 완료 후 도보 핸드오프 수락(§14.2) — nil이면 제안 버튼 미노출(목적지 소실 등).
     let onWalkHandoff: (() -> Void)?
+    /// 장소 상세 앵커(스펙 2026-08-12 §2) — 모델은 라벨만 알므로 탭의
+    /// trackedDestination 좌표를 받는다. nil이면 상세 시트는 열리지 않는다.
+    let detailDest: BeaconDest?
+    /// 목적지 전환 확정 통보(스펙 §5) — 후보 선택으로 세션이 실제 교체됐을 때만.
+    let onDestinationCommitted: (DirectionsEndpoint) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    /// 목적지 검색 시트(스펙 §4.1 1단) — 열린 동안 통지·톤 억제(받아쓰기 마이크).
+    @State private var changeDestPresented = false
+    /// 장소 상세 시트(스펙 §2) — 안내 신호 유지(억제 없음).
+    @State private var showPlaceDetail = false
+    /// 후보 상태 행(조회 중·0건·오류) 착지(스펙 §4.4).
+    @AccessibilityFocusState private var destChangeStatusFocused: Bool
+    /// 후보 항목 착지 — 항목 정체성 = routeKey(Bool equals 금지 정본).
+    @AccessibilityFocusState private var focusedDestChangeRoute: String?
+    private static let destChangeStatusId = "transit-dest-change-status"
     @AccessibilityFocusState private var stopFocused: Bool
     @AccessibilityFocusState private var advanceFocused: Bool
     @AccessibilityFocusState private var changeBoardingFocused: Bool
@@ -41,9 +55,15 @@ struct TransitTrackingSheet: View {
                         viaStopsRows
                         phaseControls(proxy: proxy)
                     } header: {
-                        Text(joinText(appLocalized("beacon.transitHeading"), model.destinationLabel))
-                            .accessibilityAddTraits(.isHeader)
+                        // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1). 핸드오프 화면
+                        // 헤더는 불변 — 세션이 끝나 목적지 바꾸기가 성립하지 않는다.
+                        GuideTitleMenu(
+                            heading: appLocalized("beacon.transitHeading"),
+                            label: model.destinationLabel,
+                            onShowDetail: { showPlaceDetail = true },
+                            onChangeDestination: { changeDestPresented = true })
                     }
+                    destChangeSection(proxy: proxy)
                 } else if let handoff = model.pendingWalkHandoff {
                     walkHandoffSection(handoff)
                 }
@@ -86,6 +106,120 @@ struct TransitTrackingSheet: View {
                     }
                 }
             }
+            // 목적지 검색(스펙 §4.1 1단): 선택은 아직 아무것도 확정하지 않는다 —
+            // 사이드 채널 후보 조회만 시작한다(취소 시 전체 무효).
+            .sheet(isPresented: $changeDestPresented) {
+                DirectionsEndpointSearchView(target: .to) { endpoint in
+                    guard case .place(let label, let lat, let lng) = endpoint else { return }
+                    model.prepareDestinationChange(
+                        dest: BeaconDest(lat: lat, lng: lng), label: label)
+                }
+            }
+            .onChange(of: changeDestPresented) { _, presented in
+                // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 통지·톤 억제(스펙 §5.4).
+                model.outputSuppressed = presented
+                // 시트가 닫히고 전환이 준비 중이면 상태 행 착지(스펙 §4.4).
+                if !presented, model.pendingDestChange != nil {
+                    landDestChangeStatusFocus(proxy)
+                }
+            }
+            .onChange(of: model.pendingDestChange?.phase) { _, phase in
+                guard let phase else { return }
+                switch phase {
+                case .loaded(let result):
+                    landFirstDestChangeRouteFocus(proxy, result: result)
+                case .empty, .failed:
+                    // 조회 중 행이 사라지는 전이(헌장 §5) — 같은 자리 문구 행에 착지.
+                    landDestChangeStatusFocus(proxy)
+                case .loading:
+                    break  // 검색 시트 닫힘 onChange가 이미 착지를 맡았다
+                }
+            }
+            // 장소 상세(스펙 §2): 표준 중첩 시트, 안내 신호 유지. 길찾기 진입 버튼은
+            // 숨긴다(이미 그곳으로 안내 중).
+            .sheet(isPresented: $showPlaceDetail) {
+                if let dest = detailDest {
+                    NavigationStack {
+                        PlaceDetailView(
+                            place: guideDestinationPlace(dest: dest, label: model.destinationLabel),
+                            showsDirectionsEntry: false)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 새 경로 후보 섹션(스펙 §4). 확정 전이라 메인 컨트롤(옛 목적지 안내)은 그대로
+    /// 남는다 — 중간 상태를 만들지 않는 것이 계약이고, 두 섹션 공존이 그 표현이다.
+    @ViewBuilder private func destChangeSection(proxy: ScrollViewProxy) -> some View {
+        if let pending = model.pendingDestChange {
+            Section {
+                switch pending.phase {
+                case .loading:
+                    Text(appLocalized("ios.transitGuide.destChangeLoading"))
+                        .accessibilityFocused($destChangeStatusFocused)
+                        .id(Self.destChangeStatusId)
+                case .empty:
+                    // 3-state: 경로 없음 ≠ 조회 실패. 출구는 취소뿐(재시도는 메뉴 재진입).
+                    Text(appLocalized("ios.transitGuide.destChangeNone"))
+                        .accessibilityFocused($destChangeStatusFocused)
+                        .id(Self.destChangeStatusId)
+                case .failed:
+                    Text(appLocalized("ios.transitGuide.destChangeError"))
+                        .accessibilityFocused($destChangeStatusFocused)
+                        .id(Self.destChangeStatusId)
+                case .loaded(let result):
+                    ForEach(transitRouteEntries(result), id: \.route.routeKey) { entry in
+                        // 후보 선택 = 확정(§4.1 2단). 라벨은 결과 목록과 같은 조립
+                        // (이름+요약)이라 VO 로터에서 같은 것으로 들린다.
+                        Button(joinText(entry.name, transitSummaryText(entry.route.summary))) {
+                            if model.commitDestinationChange(entry.route) {
+                                onDestinationCommitted(.place(
+                                    label: pending.label,
+                                    lat: pending.dest.lat, lng: pending.dest.lng))
+                                Task { await landStopFocus() }
+                            } else {
+                                // stale 재조회(§4.2) — 선택 행들이 사라지고 조회 중
+                                // 상태 행으로 돌아간다(헌장 §5 선점).
+                                landDestChangeStatusFocus(proxy)
+                            }
+                        }
+                        .accessibilityFocused($focusedDestChangeRoute, equals: entry.route.routeKey)
+                    }
+                }
+                Button(appLocalized("ios.transitGuide.destChangeCancel")) {
+                    model.cancelDestinationChange()
+                    Task { await landStopFocus() }
+                }
+            } header: {
+                Text(appLocalized("ios.transitGuide.destChangeHeading", pending.label))
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+
+    /// 상태 행 착지 — 정본 시퀀스(가시화→지연→대입→검증→1회 재시도).
+    private func landDestChangeStatusFocus(_ proxy: ScrollViewProxy) {
+        Task { @MainActor in
+            proxy.scrollTo(Self.destChangeStatusId)
+            try? await Task.sleep(for: .milliseconds(400))
+            destChangeStatusFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !destChangeStatusFocused else { return }
+            destChangeStatusFocused = true
+        }
+    }
+
+    /// 첫 후보 착지(스펙 §4.4) — 도착 통지는 내지 않는다(착지 낭독이 첫 후보를 읽는다).
+    private func landFirstDestChangeRouteFocus(_ proxy: ScrollViewProxy, result: TransitRouteResult) {
+        guard let first = transitRouteEntries(result).first?.route.routeKey else { return }
+        Task { @MainActor in
+            proxy.scrollTo(first)
+            try? await Task.sleep(for: .milliseconds(400))
+            focusedDestChangeRoute = first
+            try? await Task.sleep(for: .milliseconds(600))
+            guard focusedDestChangeRoute != first else { return }
+            focusedDestChangeRoute = first
         }
     }
 
