@@ -742,7 +742,9 @@ struct DirectionsTabView: View {
                     onStop: { transitGuide.stop(playStopTone: true) },
                     onWalkHandoff: trackedDestination.map { tracked in
                         { startWalkHandoff(tracked: tracked) }
-                    }
+                    },
+                    detailDest: trackedDestination?.dest,
+                    onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
                 )
             }
             .onChange(of: transitGuide.isTracking) { _, tracking in
@@ -1198,7 +1200,9 @@ struct DirectionsTabView: View {
 }
 
 /// 대중교통 경로 목록의 한 항목(추천·대안 공통 — 컨트롤이 같고 초기 펼침만 다르다).
-private struct TransitRouteEntry {
+/// TransitTrackingSheet의 목적지 전환 후보 섹션도 공유한다(스펙 2026-08-12 §4.1 —
+/// 같은 라벨 조립이라 private 해제).
+struct TransitRouteEntry {
     let route: TransitRoute
     let name: String
     let defaultExpanded: Bool
@@ -1208,7 +1212,7 @@ private struct TransitRouteEntry {
 /// 고정 이름이 정답이다. 대안은 축 이름(가장 빠른·환승이 가장 적은)이 번호보다 구분에
 /// 강하고, 같은 이름을 라벨과 안내 시작 버튼이 공유해야 VO 로터에서 고른 버튼과 화면의
 /// 항목이 같은 것으로 들린다(spec §4.1·§4.2).
-private func transitRouteEntries(_ result: TransitRouteResult) -> [TransitRouteEntry] {
+func transitRouteEntries(_ result: TransitRouteResult) -> [TransitRouteEntry] {
     [TransitRouteEntry(
         route: result.recommended,
         name: appLocalized("route.transit.recommended"),
