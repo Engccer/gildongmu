@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { hasWalkRouteKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
-import { coordSchema } from "@/lib/route-coord-schema";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-import { getWalkRoute } from "@/lib/walk-route";
+import { getWalkRoute, getWalkRouteAlternatives } from "@/lib/walk-route";
+import { parseWalkQuery } from "./route-schema";
 import { buildGuideRoute } from "@/lib/route-geometry";
 import { computeFinalApproach } from "@/lib/final-approach";
 import type { Coord, WalkRouteBriefing } from "@/lib/types";
@@ -17,22 +16,6 @@ import type { Coord, WalkRouteBriefing } from "@/lib/types";
  * 두 provider 모두 유료 API라 채팅과 동일한 IP 레이트리밋(60초 10회)으로
  * 호출 *전*에 비용을 방어한다.
  */
-
-const querySchema = z.object({
-  origin: coordSchema,
-  dest: coordSchema,
-  // 부재(null) → false. "true"/"false" 외 값(1·yes·True 등)은 union 불일치로 400 —
-  // 안전 옵션(계단 회피)을 조용히 기본 모드로 강등하지 않는다.
-  accessible: z
-    .union([z.literal("true"), z.literal("false")])
-    .nullable()
-    .transform((v) => v === "true"),
-  // 스텝 폴리라인 보존 옵트인(실시간 길 안내). 누락 또는 정확히 "1"만 — 그 외 값은
-  // 400으로 거절해 옵트인을 조용히 무시하지 않는다(accessible 관례 동형, 스펙 §7.2).
-  includeGeometry: z
-    .union([z.literal("1"), z.null()])
-    .transform((v) => v === "1"),
-});
 
 /**
  * 종점 오프셋 기하를 **요청받은 원좌표로** 계산해 부착한다(spec 2026-08-08 §3.1).
@@ -63,17 +46,16 @@ function withFinalApproach(
 }
 
 export async function GET(request: NextRequest) {
-  const parsed = querySchema.safeParse({
+  const parsed = parseWalkQuery({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
     accessible: request.nextUrl.searchParams.get("accessible"),
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
+    variant: request.nextUrl.searchParams.get("variant"),
+    alternatives: request.nextUrl.searchParams.get("alternatives"),
   });
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "잘못된 요청" },
-      { status: 400 },
-    );
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const { origin, dest } = parsed.data;
@@ -96,7 +78,23 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await getWalkRoute(parsed.data);
+    if (parsed.data.alternatives) {
+      // 추천+최단 병렬(M3). 기하 없음 — withFinalApproach 미적용(조회 화면 전용).
+      // 부분 성공 비대칭: 기본 실패는 catch로 떨어져 502, 최단 실패만 null 흡수.
+      const { result, ...rest } = await getWalkRouteAlternatives({
+        origin,
+        dest,
+        accessible: parsed.data.accessible,
+      });
+      return NextResponse.json({ result, ...("shortest" in rest ? { shortest: rest.shortest } : {}) });
+    }
+    const result = await getWalkRoute({
+      origin,
+      dest,
+      accessible: parsed.data.accessible,
+      includeGeometry: parsed.data.includeGeometry,
+      variant: parsed.data.variant,
+    });
     return NextResponse.json({
       result: withFinalApproach(result, dest, parsed.data.includeGeometry),
     });
