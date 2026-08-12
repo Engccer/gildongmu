@@ -29,10 +29,12 @@ import {
   loadRecentEndpoints,
   recordRecentEndpoint,
   removeRecentEndpoint,
+  setRecentEndpointPinned,
   loadRecentRoutes,
   recordRecentRoute,
   removeRecentRoute,
   clearRecentRoutes,
+  setRecentRoutePinned,
   type RecentEndpoint,
   type RecentEndpointField,
   type RecentRoute,
@@ -745,10 +747,24 @@ export function DirectionsView({
     routeFocusIndexRef.current = Math.min(index, visibleCount - 1);
     setRouteRevision((v) => v + 1);
   }
+  /** 고정 토글(스펙 2026-08-12 §4): 화면 순서는 그대로(정렬은 다음 로드부터),
+   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다. */
+  function togglePinRoute(r: RecentRoute) {
+    const pinned = !r.pinned;
+    setRecentRoutePinned(r, pinned);
+    setRecentRoutes((prev) => prev.map((x) => (x === r ? { ...x, pinned } : x)));
+    setNotice(tRecent(pinned ? "pinned" : "unpinned"));
+  }
   function clearRoutes() {
-    setRecentRoutes(clearRecentRoutes());
-    setNotice(tRecentRoutes("cleared"));
-    submitRef.current?.focus();
+    const kept = clearRecentRoutes();
+    setRecentRoutes(kept);
+    if (kept.length === 0) {
+      setNotice(tRecentRoutes("cleared"));
+      submitRef.current?.focus(); // 섹션 소멸 — 기존 계약
+    } else {
+      // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동.
+      setNotice(tRecent("clearedExceptPinned"));
+    }
   }
 
   return (
@@ -794,7 +810,16 @@ export function DirectionsView({
           setRecentFrom(next);
           return next;
         }}
-        onClearRecent={() => setRecentFrom(clearRecentEndpoints("from"))}
+        onClearRecent={() => {
+          const kept = clearRecentEndpoints("from");
+          setRecentFrom(kept);
+          return kept;
+        }}
+        onTogglePinRecent={(e, pinned) => {
+          setRecentEndpointPinned("from", e, pinned);
+          // 화면 순서 유지 계약(스펙 §4) — 참조 동일 항목만 in-place 교체
+          setRecentFrom((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
+        }}
         tRecent={tRecent}
       />
 
@@ -845,7 +870,16 @@ export function DirectionsView({
           setRecentTo(next);
           return next;
         }}
-        onClearRecent={() => setRecentTo(clearRecentEndpoints("to"))}
+        onClearRecent={() => {
+          const kept = clearRecentEndpoints("to");
+          setRecentTo(kept);
+          return kept;
+        }}
+        onTogglePinRecent={(e, pinned) => {
+          setRecentEndpointPinned("to", e, pinned);
+          // 화면 순서 유지 계약(스펙 §4) — 참조 동일 항목만 in-place 교체
+          setRecentTo((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
+        }}
         tRecent={tRecent}
       />
 
@@ -889,7 +923,19 @@ export function DirectionsView({
                     onClick={() => activateRecentRoute(r)}
                     className="min-h-11 flex-1 text-left text-sm underline"
                   >
-                    {label}
+                    {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}
+                    {r.pinned ? joinText(label, tRecent("pinned")) : label}
+                  </button>
+                  {/* 고정이 삭제보다 앞(위원장 지시 2026-08-12) */}
+                  <button
+                    type="button"
+                    aria-label={tRecent(r.pinned ? "unpinItem" : "pinItem", {
+                      name: label,
+                    })}
+                    onClick={() => togglePinRoute(r)}
+                    className="min-h-11 rounded-md border border-border px-3 text-sm"
+                  >
+                    {tRecent(r.pinned ? "unpin" : "pin")}
                   </button>
                   <button
                     type="button"
@@ -1158,6 +1204,7 @@ function EndpointField({
   recentEndpoints,
   onDeleteRecent,
   onClearRecent,
+  onTogglePinRecent,
   tRecent,
 }: {
   label: string;
@@ -1179,7 +1226,10 @@ function EndpointField({
   /** 이 필드 전용 최근 장소 목록(출발지·도착지 분리 저장, 스펙 2026-07-26) */
   recentEndpoints: RecentEndpoint[];
   onDeleteRecent: (e: RecentEndpoint) => RecentEndpoint[];
-  onClearRecent: () => void;
+  /** 모두 지우기 — 고정 보존(스펙 2026-08-12 §3), 남은 목록을 반환한다 */
+  onClearRecent: () => RecentEndpoint[];
+  /** 고정 토글 — 부모가 저장 + 로컬 상태 in-place 교체(화면 재정렬 금지) */
+  onTogglePinRecent: (e: RecentEndpoint, pinned: boolean) => void;
   tRecent: ReturnType<typeof useTranslations<"recent">>;
 }) {
   const inputId = useId();
@@ -1225,11 +1275,23 @@ function EndpointField({
     setRecentRevision((r) => r + 1);
   }
 
+  /** 고정 토글(스펙 2026-08-12 §4): 저장·상태는 부모, 통지는 이 필드의 채널로. */
+  function togglePinRecent(e: RecentEndpoint) {
+    const pinned = !e.pinned;
+    onTogglePinRecent(e, pinned);
+    announce(tRecent(pinned ? "pinned" : "unpinned"));
+  }
+
   function clearRecent() {
-    // 전체 삭제 버튼도 함께 사라진다 — 제거 전 입력으로 선점 이동(§5).
-    inputRef.current?.focus();
-    onClearRecent();
-    announce(tRecent("cleared"));
+    const kept = onClearRecent();
+    if (kept.length === 0) {
+      // 전체 삭제 버튼도 함께 사라진다 — 제거 전 입력으로 선점 이동(§5).
+      inputRef.current?.focus();
+      announce(tRecent("cleared"));
+    } else {
+      // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동.
+      announce(tRecent("clearedExceptPinned"));
+    }
   }
 
   // queryOverride: 음성 전사 자동 검색용 — setState(field.text) 반영을 기다리지 않고
@@ -1436,7 +1498,19 @@ function EndpointField({
                   }
                   className="min-h-11 flex-1 text-left text-sm underline"
                 >
-                  {e.label}
+                  {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}
+                  {e.pinned ? joinText(e.label, tRecent("pinned")) : e.label}
+                </button>
+                {/* 고정이 삭제보다 앞(위원장 지시 2026-08-12) */}
+                <button
+                  type="button"
+                  aria-label={tRecent(e.pinned ? "unpinItem" : "pinItem", {
+                    name: e.label,
+                  })}
+                  onClick={() => togglePinRecent(e)}
+                  className="min-h-11 rounded-md border border-border px-3 text-sm"
+                >
+                  {tRecent(e.pinned ? "unpin" : "pin")}
                 </button>
                 <button
                   type="button"
