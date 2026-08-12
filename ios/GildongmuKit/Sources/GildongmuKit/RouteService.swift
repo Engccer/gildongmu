@@ -62,11 +62,14 @@ public struct RouteService: Sendable {
     /// ⚠ `accessible`에 **기본값을 두지 않는다** — 백로그 A4는 이 기본값이 만든
     /// 결함이었다. 안내 조회가 인자를 생략해도 컴파일이 통과해, 계단 회피를 켠
     /// 사용자가 계단으로 안내받았다(spec 2026-08-08 §2.5).
+    /// `variant`(M3): nil이면 파라미터 생략(현행 요청 byte-identical), `.shortest`면
+    /// Tmap 최단 축 단일 조회(안내 시작·전환·제안 경로).
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
-        includeGeometry: Bool = false
+        includeGeometry: Bool = false,
+        variant: WalkRouteVariant? = nil
     ) async throws -> WalkRouteBriefing? {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
@@ -74,7 +77,32 @@ public struct RouteService: Sendable {
         ]
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
+        if let variant { query.append(URLQueryItem(name: "variant", value: variant.rawValue)) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.result
     }
+
+    /// 추천+최단 병렬 조회(M3, 조회 화면 전용 — 기하 없음).
+    /// `shortest` nil은 "필드 부재(키 없음)"와 "최단 실패 흡수(null)"를 뭉친 것 —
+    /// 両경우 소비자 행동이 같다(최단 행 미노출). 기본 경로 실패는 서버가 502로
+    /// 던지므로 여기 도달하지 않는다(부분 성공 비대칭, spec §3.1).
+    public func walkAlternatives(
+        originLat: Double, originLng: Double,
+        destLat: Double, destLng: Double,
+        accessible: Bool
+    ) async throws -> (result: WalkRouteBriefing?, shortest: WalkRouteBriefing?) {
+        var query = [
+            URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
+            URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
+            URLQueryItem(name: "alternatives", value: "1"),
+        ]
+        if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
+        let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
+        return (envelope.result, envelope.shortest)
+    }
+}
+
+/// 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1.
+public enum WalkRouteVariant: String, Sendable {
+    case shortest
 }
