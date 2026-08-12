@@ -7,7 +7,9 @@
       "nearby": "Nei dintorni"
     },
     "directions": {
-      "searching": "Ricerca in corso"
+      "searching": "Ricerca in corso",
+      "walkRecommended": "Percorso consigliato",
+      "walkShortest": "Percorso più breve"
     },
     "common": {
       "ok": "OK",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "Percorsi aggiornati in base alla tua posizione attuale.",
       "destChangeCancel": "Annulla il cambio di destinazione"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "Avvia la guida sul percorso più breve"
   }
 }
