@@ -7,7 +7,9 @@
       "nearby": "À proximité"
     },
     "directions": {
-      "searching": "Recherche en cours"
+      "searching": "Recherche en cours",
+      "walkRecommended": "Itinéraire recommandé",
+      "walkShortest": "Itinéraire le plus court"
     },
     "common": {
       "ok": "OK",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "Itinéraires actualisés selon votre position actuelle.",
       "destChangeCancel": "Annuler le changement de destination"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
   }
 }

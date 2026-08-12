@@ -7,7 +7,9 @@
       "nearby": "Cerca"
     },
     "directions": {
-      "searching": "Buscando"
+      "searching": "Buscando",
+      "walkRecommended": "Ruta recomendada",
+      "walkShortest": "Ruta más corta"
     },
     "common": {
       "ok": "Aceptar",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "Rutas actualizadas según tu ubicación actual.",
       "destChangeCancel": "Cancelar el cambio de destino"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "Iniciar guía por la ruta más corta"
   }
 }

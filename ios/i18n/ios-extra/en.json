@@ -7,7 +7,9 @@
       "nearby": "Nearby"
     },
     "directions": {
-      "searching": "Searching"
+      "searching": "Searching",
+      "walkRecommended": "Recommended route",
+      "walkShortest": "Shortest route"
     },
     "common": {
       "ok": "OK",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "Routes refreshed for your current location.",
       "destChangeCancel": "Cancel destination change"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "Start shortest route guidance"
   }
 }

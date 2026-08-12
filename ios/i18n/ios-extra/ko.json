@@ -7,7 +7,9 @@
       "nearby": "내 주변"
     },
     "directions": {
-      "searching": "조회 중"
+      "searching": "조회 중",
+      "walkRecommended": "추천 경로",
+      "walkShortest": "최단 경로"
     },
     "common": {
       "ok": "확인",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "위치가 바뀌어 경로를 다시 조회했습니다.",
       "destChangeCancel": "목적지 변경 취소"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "최단 경로 안내 시작"
   }
 }

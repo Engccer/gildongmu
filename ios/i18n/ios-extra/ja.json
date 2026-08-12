@@ -7,7 +7,9 @@
       "nearby": "周辺"
     },
     "directions": {
-      "searching": "照会中"
+      "searching": "照会中",
+      "walkRecommended": "おすすめルート",
+      "walkShortest": "最短ルート"
     },
     "common": {
       "ok": "OK",
@@ -247,5 +249,8 @@
       "destChangeRefetched": "現在地に合わせてルートを再検索しました。",
       "destChangeCancel": "目的地の変更をキャンセル"
     }
+  },
+  "beacon": {
+    "guideStartWalkShortest": "最短ルート案内を開始"
   }
 }
