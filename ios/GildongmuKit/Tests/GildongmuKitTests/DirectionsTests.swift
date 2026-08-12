@@ -85,14 +85,16 @@ private func carFixture() -> CarRouteBriefing {
     #expect(results.successCount == 1)
 }
 
-@Test func firstSuccessFollowsDisplayOrder() {
+@Test func firstSuccessFollowsDynamicOrder() {
+    // E11 동적 순서: 성공(자동차·도보)이 앞, 실패(대중교통)가 뒤. walkFixture는
+    // 15분이라 30분 이하 승격 규칙으로 도보가 성공군 맨 앞이다.
     let results = DirectionsResults(outcomes: [
         .transit: .error,
         .walk: .walk(walkFixture()),
         .car: .car(carFixture()),
     ])
-    #expect(results.displayedModes == [.transit, .car, .walk])
-    #expect(results.firstSuccess == .car)  // 고정 순서(대중교통→자동차→도보)의 첫 성공
+    #expect(results.displayedModes == [.walk, .car, .transit])
+    #expect(results.firstSuccess == .walk)  // 새 순서의 첫 성공이 포커스 목적지
     #expect(results.successCount == 2)
 }
 
@@ -124,4 +126,78 @@ private func carFixture() -> CarRouteBriefing {
     #expect(results.displayedModes == [.car, .walk])
     #expect(results.firstSuccess == .car)
     #expect(results.successCount == 1)
+}
+
+// E11 섹션 동적 순서 — 웹 공유 fixture 동조(CourseDerivationTests 로딩 패턴).
+private struct OrderCase: Decodable {
+    let name: String
+    let modes: [String]
+    let success: [String: Bool]
+    let walkDurationSeconds: Int?
+    let expect: [String]
+}
+
+private struct OrderScenarios: Decodable {
+    let order: [OrderCase]
+}
+
+private func loadOrderScenarios() throws -> OrderScenarios {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() } // GildongmuKitTests→Tests→GildongmuKit→ios→repo
+    url.appendPathComponent("src/lib/__tests__/fixtures/directions-order-scenarios.json")
+    return try JSONDecoder().decode(OrderScenarios.self, from: Data(contentsOf: url))
+}
+
+@Suite("길찾기 섹션 동적 순서 (E11, 웹 공유 fixture 동조)")
+struct DirectionsOrderTests {
+    @Test("공유 fixture order — 웹과 같은 순서")
+    func orderMatchesWebFixture() throws {
+        let cases = try loadOrderScenarios().order
+        // ⚠ 공회전 방지: 배열이 비면 루프가 0회 돌고 조용히 통과한다.
+        #expect(cases.count >= 9)
+        for c in cases {
+            let modes = c.modes.compactMap(DirectionsMode.init(rawValue:))
+            #expect(modes.count == c.modes.count, "\(c.name): 미지의 수단")
+            let got = DirectionsOrder.orderModes(
+                modes: modes,
+                isSuccess: { c.success[$0.rawValue] == true },
+                walkDurationSeconds: c.walkDurationSeconds
+            )
+            #expect(got.map(\.rawValue) == c.expect, "\(c.name)")
+        }
+    }
+
+    @Test("30분 판정은 웹과 같은 반올림(분 값 > 30)")
+    func walkCollapseMirrorsWeb() {
+        #expect(WalkCollapse.shouldCollapse(durationSeconds: 31 * 60))
+        #expect(!WalkCollapse.shouldCollapse(durationSeconds: 30 * 60))
+        #expect(!WalkCollapse.shouldCollapse(durationSeconds: 30 * 60 + 1))
+        #expect(WalkCollapse.shouldCollapse(durationSeconds: 30 * 60 + 31))
+    }
+
+    @Test("replacingWalk는 outcome만 바꾸고 순서를 보존한다")
+    func replacingWalkPreservesOrder() {
+        // 도보 empty로 settled → 순서 확정. 전 수단 비성공이라 현행 고정 순서.
+        let initial = DirectionsResults(outcomes: [
+            .transit: .empty, .car: .error, .walk: .empty,
+        ])
+        #expect(initial.orderedModes == [.transit, .car, .walk])
+        // 계단 회피 재조회로 도보가 15분 성공이 되어도 순서는 스냅샷 그대로(spec §2 규칙 3).
+        let updated = initial.replacingWalk(.walk(walkFixture()))
+        #expect(updated.orderedModes == [.transit, .car, .walk])
+        #expect(updated.outcomes[.walk]?.isSuccess == true)
+        // 파생값은 새 outcome을 본다: 유일한 성공인 도보가 첫 성공.
+        #expect(updated.firstSuccess == .walk)
+        #expect(updated.successCount == 1)
+    }
+
+    @Test("새 조회(init)는 순서를 다시 계산한다 — 30분 이하 도보 최상단")
+    func initPromotesWalkableWalk() {
+        let results = DirectionsResults(outcomes: [
+            .transit: .empty, .walk: .walk(walkFixture()),
+        ])
+        #expect(results.orderedModes == [.walk, .transit])
+        #expect(results.displayedModes == [.walk, .transit])
+        #expect(results.firstSuccess == .walk)
+    }
 }
