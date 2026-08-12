@@ -11,6 +11,9 @@
 
 ## 2026-08-12
 
+### 길찾기 결과 섹션 동적 순서 (E11)
+결과 섹션 순서를 조회 결과로 결정 — 성공 수단 앞·비성공(경로 없음·실패) 뒤, 도보 성공이 30분 이하(`shouldCollapseWalk` 경계 재사용)면 최상단. 순서는 settled 시점 1회 스냅샷(웹 `QueryResults.orderedModes`, Kit `DirectionsResults.orderedModes` 저장 프로퍼티 + `replacingWalk` 보존 교체)이라 계단 회피 재조회에도 불변. 순수 함수 웹↔Kit 미러(`directions-order.ts` ↔ `DirectionsOrder`)를 공유 fixture로 동조. 첫 성공 포커스·합산 집계도 새 순서 기준. spec `2026-08-12-directions-dynamic-order-design.md` · plan `2026-08-12-directions-dynamic-order.md`.
+
 ### 도보 경로 대안 제시·안내 중 전환·이탈 시 제안 (M3+E10ⓑ)
 서버 `/api/route/walk`에 옵트인 2종 additive 추가 — `variant=shortest`(Tmap `searchOption=10` 단독, 폴백 없음)·`alternatives=1`(추천+최단 병렬, **기본 실패는 502 유지·최단 실패만 `shortest:null` 흡수**), 금지 조합 2건 400. Tmap normalize가 `includeLineGeometry`로 LineString을 스텝 `pathCoords`에 귀속(최단 실시간 안내의 성립 조건). iOS 조회 화면 도보 섹션은 추천·최단 2행 disclosure(Release·Experimental 공통, 안내 시작 버튼은 경로 귀속으로 행 안 이동), 안내 세션은 `sessionVariant`를 보유하고 시트 "다른 경로로 전환"이 반대 variant로 현위치 재조회(기존 재조회 커밋 경로 재사용). 이탈 확정 회차당 1회 자동 조회 후 **제안**(E10ⓑ 수락제 — 자동 전환 금지 유지): Kit `RerouteProposalGate`(신선도 30m/120초·세션 상한 5회, 잠정값) + `BeaconModel` 상태 머신(latest-wins 토큰·만료 능동 전이·기존 버튼 라벨 전환이 지속 신호). 실호출 게이트가 결함 1건 검출·수정(Tmap 종점 도착 마커가 기하 모드 경로 전체를 거부 → finalApproach 소실). 등굣길 실호출: 추천 956m·최단 689m 이면도로 재현, 시뮬 실측으로 전환(최단→추천) 동작 확인. spec `2026-08-12-walk-route-alternatives-design.md` · plan `2026-08-12-walk-route-alternatives.md`.
 
