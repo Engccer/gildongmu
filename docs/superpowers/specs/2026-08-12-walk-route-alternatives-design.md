@@ -97,6 +97,12 @@
 ## 8. 검증
 
 - **실호출 머지 게이트**: 등굣길 구간 両경로 실호출 — 최단이 715m 이면도로를 재현하는가, `alternatives=1` 응답에 両경로가 실리는가, 계단 회피 시 `stepFreeNotice` 전용 문장이 실리는가. fixture green으로 닫지 않는다.
+- **서버 실호출 게이트 결과(2026-08-12, 집 37.53657,127.14732 → 신명중 본관)**:
+  - `alternatives=1`: `result` 956m/7스텝(명일로 447m 직진 — 카카오 추천, 08-11 실측과 동일 성격. 총거리 차이는 origin이 실측 세션과 미세하게 다른 탓) + `shortest` 689m/12스텝(세븐일레븐·코사할인마트 경유 이면도로 — 실측 715m 계열 재현). 両경로 문장 정상 한국어.
+  - `variant=shortest&includeGeometry=1`: 전 스텝 `pathCoords` 존재, 인접 스텝 기하 전부 이어짐(단절 0), `finalApproach` 존재(오프셋 48.6m).
+  - `variant=shortest&accessible=true`: `stepFree: "unavailable"` + 전용 문장("최단 경로에는 계단 회피가 적용되지 않습니다…") + 비기하 스텝 0번 삽입 확인.
+  - 금지 조합 2건(`alternatives+includeGeometry`, `variant+alternatives`) 実HTTP 400 확인.
+  - ⚠ **게이트가 검출한 결함 1건(수정 완료)**: Tmap 종점 "도착" Point는 후속 LineString이 없는 0길이 단일점이라 `buildGuideRoute` 유령 스텝 가드가 **경로 전체를 거부** → `finalApproach` 소실·상세 안내가 조용히 간략 강등(§3.3이 경고한 바로 그 유형). 카카오는 도착 스텝 자체를 내지 않으므로, 기하 모드의 `normalizeTmapWalkRoute`가 기하 없는 후행 마커를 떨구는 것으로 수정(비기하 브리핑은 "도착" 유지 — byte 동일). fixture green이었고 실호출에서만 드러났다.
 - **게이트 테스트**: 라우트 파라미터 검증(옵트인 오값·금지 조합 400), 부분 실패 비대칭(기본 실패 502·최단 실패만 흡수), Tmap LineString 귀속 순서 + 파이프라인 종단 기하 보존(fixture), 전환 시 `accessible` 보존, 기본 응답 byte 동일(기하 미요청·옵트인 미요청 시 현행과 무변).
 - **하위 호환 계약 테스트**(리뷰 #17 반영): 직전 App Store 배포판의 `WalkRouteEnvelope` 디코더 형태 fixture로 새 응답 6종(기본·`shortest` 객체·`shortest: null`·필드 부재·기본 실패 502·최단 실패)을 디코딩 검증한다. "Codable은 미지 필드를 무시한다"를 가정이 아니라 테스트로 확정한다.
 - **구성별 확인**: Release 빌드에서 복수 경로 제시가 보이고 안내 시작·전환·제안 계층은 나타나지 않는지, Experimental에서 전부 나타나는지 両구성 산출물로 확인한다(§4 빌드 구성 계약).

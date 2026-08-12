@@ -133,6 +133,17 @@ export function normalizeTmapWalkRoute(
     }
   }
 
+  // 기하 모드: 기하 없는 후행 스텝(Tmap 종점 "도착" 마커 — 후속 LineString이
+  // 없어 0길이 단일점)을 떨군다. 그대로 두면 buildGuideRoute의 유령 스텝
+  // 가드가 경로 전체를 거부해 상세 안내가 조용히 간략으로 강등된다(실호출
+  // 게이트 검출 2026-08-12). 카카오는 도착 스텝 자체를 내지 않으므로 떨군
+  // 모양이 기존 소비자 계약과 정합. 비기하 브리핑은 현행 그대로("도착" 유지).
+  if (includeLineGeometry) {
+    while (steps.length > 1 && !steps[steps.length - 1].pathCoords) {
+      steps.pop();
+    }
+  }
+
   if (steps.length === 0) {
     throw new Error("Tmap 보행자 경로 정규화 실패: 안내 단계 0개");
   }
