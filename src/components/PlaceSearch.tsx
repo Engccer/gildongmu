@@ -590,12 +590,16 @@ export function PlaceSearch({
   }
 
   /** 고정 토글(스펙 2026-08-12 §4): 화면 순서는 그대로 두고(정렬은 다음 로드부터)
-   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다. */
+   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다.
+   *  통지는 항목명 포함 — 다른 항목 연속 고정 시 같은 문자열이면 setState bail out으로
+   *  live region이 안 바뀌어 두 번째부터 침묵한다(a11y 감사 실측 2026-08-12). */
   function togglePinRecent(item: RecentQuery) {
     const pinned = !item.pinned;
     setRecentQueryPinned(item.text, pinned);
     setRecentQueries((prev) => prev.map((x) => (x === item ? { ...x, pinned } : x)));
-    setRecentNotice(t(pinned ? "recent.pinned" : "recent.unpinned"));
+    setRecentNotice(
+      t(pinned ? "recent.pinnedItem" : "recent.unpinnedItem", { name: item.text }),
+    );
   }
 
   function clearRecent() {

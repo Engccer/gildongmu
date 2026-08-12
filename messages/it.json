@@ -565,7 +565,9 @@
     "unpinItem": "Sblocca {name}",
     "pinned": "Fissato",
     "unpinned": "Sbloccato",
-    "clearedExceptPinned": "Cancellato tutto tranne gli elementi fissati"
+    "clearedExceptPinned": "Cancellato tutto tranne gli elementi fissati",
+    "pinnedItem": "{name} fissato",
+    "unpinnedItem": "{name} sbloccato"
   },
   "recentRoutes": {
     "title": "Percorsi recenti",

@@ -565,7 +565,9 @@
     "unpinItem": "Désépingler {name}",
     "pinned": "Épinglé",
     "unpinned": "Désépinglé",
-    "clearedExceptPinned": "Tout est effacé sauf les éléments épinglés"
+    "clearedExceptPinned": "Tout est effacé sauf les éléments épinglés",
+    "pinnedItem": "{name} épinglé",
+    "unpinnedItem": "{name} désépinglé"
   },
   "recentRoutes": {
     "title": "Itinéraires récents",

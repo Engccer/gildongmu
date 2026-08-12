@@ -130,6 +130,17 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         store.recordQuery("a")
         #expect(store.setQueryPinned("ghost", pinned: true) == [RecentQuery(text: "a")])
     }
+
+    /// ForEach 행 정체성(Identifiable)은 고정 토글·라벨 갱신에 불변이어야 한다 —
+    /// 정체성이 바뀌면 List가 행을 파괴+재생성해 VO 포커스가 이탈한다(a11y 감사 2026-08-12).
+    @Test func listIdentityStableAcrossPinToggleAndLabelRefresh() {
+        #expect(RecentQuery(text: "a").id == RecentQuery(text: "a", pinned: true).id)
+        let home = RecentEndpoint(label: "집", lat: 37.5, lng: 127.1)
+        let toggled = RecentEndpoint(label: "우리집", lat: 37.50001, lng: 127.09999, pinned: true)
+        #expect(home.id == toggled.id) // 좌표 4자리 축 = sameCoord와 동일
+        #expect(RecentRoute(from: nil, to: home).id == RecentRoute(from: nil, to: toggled, pinned: true).id)
+        #expect(RecentRoute(from: home, to: nil).id != RecentRoute(from: nil, to: home).id)
+    }
 }
 
 @Suite struct RecentEndpointTests {

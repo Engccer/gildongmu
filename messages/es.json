@@ -565,7 +565,9 @@
     "unpinItem": "Dejar de fijar {name}",
     "pinned": "Fijado",
     "unpinned": "Ya no está fijado",
-    "clearedExceptPinned": "Se borró todo excepto los elementos fijados"
+    "clearedExceptPinned": "Se borró todo excepto los elementos fijados",
+    "pinnedItem": "{name} fijado",
+    "unpinnedItem": "{name} ya no está fijado"
   },
   "recentRoutes": {
     "title": "Rutas recientes",

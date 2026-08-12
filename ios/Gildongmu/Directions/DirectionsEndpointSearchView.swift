@@ -183,7 +183,9 @@ struct DirectionsEndpointSearchView: View {
                     Section(appLocalized("recent.title")) {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
-                        ForEach(recentEndpoints, id: \.self) { endpoint in
+                        // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
+                        // 파괴(포커스 이탈)한다. Identifiable(좌표 4자리 키)로 제자리 유지.
+                        ForEach(recentEndpoints) { endpoint in
                             Button(endpoint.pinned
                                 ? joinText(endpoint.label, appLocalized("recent.pinned"))
                                 : endpoint.label
@@ -368,10 +370,13 @@ struct DirectionsEndpointSearchView: View {
     private func clearRecent() {
         recentEndpoints = recentStore.clearEndpoints(recentScope)
         if recentEndpoints.isEmpty {
-            AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
-            micRowFocused = true // 섹션 소멸 — 기존 계약
+            // 섹션 소멸로 포커스가 마이크 행으로 옮겨간다 — 잠식 방지 .high(SearchView 동형).
+            var cleared = AttributedString(appLocalized("recent.cleared"))
+            cleared.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(cleared).post()
+            micRowFocused = true
         } else {
-            // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동(SearchView 동형).
+            // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동, 기본 우선순위(SearchView 동형).
             AccessibilityNotification.Announcement(appLocalized("recent.clearedExceptPinned")).post()
         }
     }

@@ -65,6 +65,31 @@ public enum RecentEndpointScope: String, Sendable {
     case from, to
 }
 
+// MARK: 목록 정체성 (a11y 감사 2026-08-12)
+//
+// ⚠ ForEach에 `id: \.self`를 쓰면 안 된다 — Hashable에 pinned가 포함되어 고정 토글이
+// 행의 정체성을 바꾸고, SwiftUI List는 정체성 변경을 삭제+삽입으로 처리해 VO 포커스를
+// 쥔 행이 파괴된다(포커스 이탈). 아래 id는 dedupe 판정(텍스트/좌표 4자리/쌍)과 같은
+// 축이라 토글·라벨 갱신에도 불변이다 — 행은 제자리에서 라벨만 바뀐다.
+
+extension RecentQuery: Identifiable {
+    public var id: String { text }
+}
+
+extension RecentEndpoint: Identifiable {
+    /// 좌표 4자리 키 — sameCoord와 같은 축(라벨 변형·고정 토글에 불변).
+    public var id: String {
+        String(format: "%.4f,%.4f", lat, lng)
+    }
+}
+
+extension RecentRoute: Identifiable {
+    /// 출발·도착 쌍 키 — sameRoute와 같은 축(nil = 현재 위치).
+    public var id: String {
+        "\(from?.id ?? "cur")>\(to?.id ?? "cur")"
+    }
+}
+
 /// 최근 검색 기록 저장소(스펙 docs/superpowers/specs/2026-07-26-recent-searches-design.md,
 /// 고정은 2026-08-12-recent-pinning-design.md).
 /// 검색어(검색 탭)·장소(길찾기 출발/도착 각각)·경로 목록 분리 기록, 기기 로컬(UserDefaults) 전용.
