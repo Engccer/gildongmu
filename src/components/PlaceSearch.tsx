@@ -19,7 +19,7 @@ import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { subscribeOpenPlace } from "@/lib/place-open-request";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
-import { normalizeVoiceQuery } from "@/lib/format";
+import { joinText, normalizeVoiceQuery } from "@/lib/format";
 import { requestLocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
 import {
@@ -27,6 +27,8 @@ import {
   loadRecentQueries,
   recordRecentQuery,
   removeRecentQuery,
+  setRecentQueryPinned,
+  type RecentQuery,
 } from "@/lib/recent-searches";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
@@ -165,7 +167,7 @@ export function PlaceSearch({
   // 통지한다(VoiceRecordButton의 assertive announce 제거와 한 쌍 — a11y C1).
   const [spokenQuery, setSpokenQuery] = useState<string | null>(null);
   // 최근 검색(스펙 2026-07-26). 초기값 []로 SSR/CSR 일치(hydration), 마운트 후 로드.
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  const [recentQueries, setRecentQueries] = useState<RecentQuery[]>([]);
   // 삭제·전체삭제 polite 통지(단일 live region 공유 — idle에서만 표시되므로 검색 통지와 경합 없음)
   const [recentNotice, setRecentNotice] = useState("");
   const recentDeleteRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -587,10 +589,25 @@ export function PlaceSearch({
     setRecentRevision((r) => r + 1);
   }
 
+  /** 고정 토글(스펙 2026-08-12 §4): 화면 순서는 그대로 두고(정렬은 다음 로드부터)
+   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다. */
+  function togglePinRecent(item: RecentQuery) {
+    const pinned = !item.pinned;
+    setRecentQueryPinned(item.text, pinned);
+    setRecentQueries((prev) => prev.map((x) => (x === item ? { ...x, pinned } : x)));
+    setRecentNotice(t(pinned ? "recent.pinned" : "recent.unpinned"));
+  }
+
   function clearRecent() {
-    setRecentQueries(clearRecentQueries());
-    setRecentNotice(t("recent.cleared"));
-    searchInputRef.current?.focus();
+    const kept = clearRecentQueries();
+    setRecentQueries(kept);
+    if (kept.length === 0) {
+      setRecentNotice(t("recent.cleared"));
+      searchInputRef.current?.focus(); // 섹션 소멸 — 기존 계약
+    } else {
+      // 고정이 남아 섹션·버튼이 그대로다 — "모두 지웠습니다"는 거짓, 포커스 무이동.
+      setRecentNotice(t("recent.clearedExceptPinned"));
+    }
   }
 
   /**
@@ -967,26 +984,38 @@ export function PlaceSearch({
           <h3 className="text-base font-semibold">{t("recent.title")}</h3>
           <ul className="mt-2">
             {recentQueries.map((q, i) => (
-              <li key={q} className="flex items-center gap-2">
+              <li key={q.text} className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     setSpokenQuery(null);
-                    setQuery(q);
-                    void runQuerySearch(q);
+                    setQuery(q.text);
+                    void runQuerySearch(q.text);
                   }}
                   className="min-h-11 flex-1 text-left text-sm underline"
                 >
-                  {q}
+                  {/* 고정 항목은 라벨 접미사 하나로 시각·낭독 동시 전달(한 줄 = 한 객체) */}
+                  {q.pinned ? joinText(q.text, t("recent.pinned")) : q.text}
                 </button>
-                {/* 시각 라벨은 "삭제", 접근 이름은 "{항목} 삭제"(동명 버튼 구분 — 정보 보강이라 덮기 아님) */}
+                {/* 시각 라벨은 "고정"/"삭제", 접근 이름은 항목명 포함(동명 버튼 구분 — 정보 보강이라 덮기 아님).
+                    고정이 삭제보다 앞(위원장 지시 2026-08-12). */}
+                <button
+                  type="button"
+                  aria-label={t(q.pinned ? "recent.unpinItem" : "recent.pinItem", {
+                    name: q.text,
+                  })}
+                  onClick={() => togglePinRecent(q)}
+                  className="min-h-11 rounded-md border border-border px-3 text-sm"
+                >
+                  {t(q.pinned ? "recent.unpin" : "recent.pin")}
+                </button>
                 <button
                   type="button"
                   ref={(el) => {
                     recentDeleteRefs.current[i] = el;
                   }}
-                  aria-label={t("recent.deleteItem", { name: q })}
-                  onClick={() => deleteRecent(q, i)}
+                  aria-label={t("recent.deleteItem", { name: q.text })}
+                  onClick={() => deleteRecent(q.text, i)}
                   className="min-h-11 rounded-md border border-border px-3 text-sm"
                 >
                   {t("recent.delete")}

@@ -469,3 +469,77 @@ describe("최근 경로 섹션", () => {
       ));
   });
 });
+
+// 최근 목록 고정(스펙 2026-08-12). 저장 계층은 recent-searches.test.ts가 검증 —
+// 여기서는 결선(버튼 순서·라벨 접미사·화면 순서 유지·모두 지우기 보존 통지)만.
+describe("최근 경로 고정", () => {
+  const ROUTES_KEY = "gildongmu:recent-routes:v1";
+  const seedRoutes = () =>
+    localStorage.setItem(
+      ROUTES_KEY,
+      JSON.stringify([
+        { from: null, to: { label: "잠실역", lat: 37.513, lng: 127.1 } },
+        { from: null, to: { label: "강남역", lat: 37.497, lng: 127.027 } },
+      ]),
+    );
+
+  function renderView() {
+    return render(
+      <DirectionsView
+        canShowWalk={false}
+        canShowTransit={true}
+        canBriefCarRoute={false}
+        onBack={() => {}}
+      />,
+    );
+  }
+
+  it("항목 버튼 순서는 [활성화, 고정, 삭제]다 — 고정이 삭제보다 앞", async () => {
+    localStorage.clear();
+    seedRoutes();
+    stubFetch();
+    renderView();
+    const item = (await screen.findAllByText("item"))[0];
+    const rowButtons = Array.from(item.closest("li")!.querySelectorAll("button"));
+    expect(rowButtons.map((b) => b.textContent)).toEqual(["item", "pin", "delete"]);
+  });
+
+  it("고정 토글: 라벨 접미사·버튼 라벨 전환·화면 순서 유지, 저장은 고정 우선", async () => {
+    localStorage.clear();
+    seedRoutes();
+    stubFetch();
+    renderView();
+    await screen.findAllByText("item");
+    fireEvent.click(screen.getAllByText("pin")[1]); // 두 번째 항목(강남역행) 고정
+    // 화면: 자리 유지(스펙 §4 — 정렬은 다음 로드부터), 접미사는 두 번째 행에
+    const labels = screen
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector("button")!.textContent);
+    expect(labels).toEqual(["item", "item, pinned"]);
+    // 토글 버튼 라벨 전환 = 상태 신호
+    expect(screen.getAllByText("unpin")).toHaveLength(1);
+    // 저장은 불변식 정렬(고정 블록이 앞)
+    const stored = JSON.parse(localStorage.getItem(ROUTES_KEY)!);
+    expect(stored[0].to.label).toBe("강남역");
+    expect(stored[0].pinned).toBe(true);
+    expect(stored[1].pinned).toBe(false);
+  });
+
+  it("모두 지우기는 고정을 남기고 clearedExceptPinned를 통지한다", async () => {
+    localStorage.clear();
+    localStorage.setItem(
+      ROUTES_KEY,
+      JSON.stringify([
+        { from: null, to: { label: "강남역", lat: 37.497, lng: 127.027 }, pinned: true },
+        { from: null, to: { label: "잠실역", lat: 37.513, lng: 127.1 } },
+      ]),
+    );
+    stubFetch();
+    renderView();
+    await screen.findAllByRole("listitem");
+    fireEvent.click(screen.getByText("clearAll"));
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(1));
+    expect(screen.getByRole("status").textContent).toContain("clearedExceptPinned");
+    expect(JSON.parse(localStorage.getItem(ROUTES_KEY)!)).toHaveLength(1);
+  });
+});
