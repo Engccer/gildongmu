@@ -11,6 +11,9 @@
 
 ## 2026-08-12
 
+### 도보 경로 대안 제시·안내 중 전환·이탈 시 제안 (M3+E10ⓑ)
+서버 `/api/route/walk`에 옵트인 2종 additive 추가 — `variant=shortest`(Tmap `searchOption=10` 단독, 폴백 없음)·`alternatives=1`(추천+최단 병렬, **기본 실패는 502 유지·최단 실패만 `shortest:null` 흡수**), 금지 조합 2건 400. Tmap normalize가 `includeLineGeometry`로 LineString을 스텝 `pathCoords`에 귀속(최단 실시간 안내의 성립 조건). iOS 조회 화면 도보 섹션은 추천·최단 2행 disclosure(Release·Experimental 공통, 안내 시작 버튼은 경로 귀속으로 행 안 이동), 안내 세션은 `sessionVariant`를 보유하고 시트 "다른 경로로 전환"이 반대 variant로 현위치 재조회(기존 재조회 커밋 경로 재사용). 이탈 확정 회차당 1회 자동 조회 후 **제안**(E10ⓑ 수락제 — 자동 전환 금지 유지): Kit `RerouteProposalGate`(신선도 30m/120초·세션 상한 5회, 잠정값) + `BeaconModel` 상태 머신(latest-wins 토큰·만료 능동 전이·기존 버튼 라벨 전환이 지속 신호). 실호출 게이트가 결함 1건 검출·수정(Tmap 종점 도착 마커가 기하 모드 경로 전체를 거부 → finalApproach 소실). 등굣길 실호출: 추천 956m·최단 689m 이면도로 재현, 시뮬 실측으로 전환(최단→추천) 동작 확인. spec `2026-08-12-walk-route-alternatives-design.md` · plan `2026-08-12-walk-route-alternatives.md`.
+
 ### 최근 목록 고정(pin) — 4목록 공통, 웹+iOS
 최근 목록 4종(검색어·출발지·도착지 장소·경로)의 각 항목에 고정/고정 해제 액션 추가(iOS는 swipeActions로 VO 로터 자동 노출, 웹은 항목별 버튼 — 両쪽 다 고정이 삭제보다 앞). 고정 항목은 상단 유지(고정 시점 순 자리 안정), cap 20·"모두 지우기" 면제, 라벨 접미사 "고정됨" 단일 텍스트. 토글 직후엔 재정렬하지 않고(포커스 유실 방지) 다음 로드부터 정렬. 검색어 저장은 `{text,pinned}` v2 키로 승계. a11y 감사 MAJOR 2건 반영(웹 통지 동일 문자열 bail out 침묵 → 항목명 포함 통지, iOS `ForEach id: \.self` 행 파괴 → Identifiable 안정 키). 로터 액션 순서·토글 후 커서 잔류는 실기기 검증 대기(spec §7). spec `2026-08-12-recent-pinning-design.md` · plan `2026-08-12-recent-pinning.md`.
 
