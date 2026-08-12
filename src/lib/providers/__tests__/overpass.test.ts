@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { normalizeOverpassElements, fetchWalkFeaturesTile } from "../overpass";
+import {
+  normalizeOverpassElements,
+  fetchWalkFeaturesTile,
+  OVERPASS_CLIENT_TIMEOUT_MS,
+} from "../overpass";
+import type { OverpassError } from "../overpass";
 
 describe("normalizeOverpassElements", () => {
   it("crossing=traffic_signals → crossing:true, crossingSignal:yes", () => {
@@ -77,6 +82,40 @@ describe("fetchWalkFeaturesTile", () => {
       vi.fn(async () => ({ ok: false, status: 503, json: async () => ({}) }) as unknown as Response),
     );
     await expect(fetchWalkFeaturesTile(37.5, 127.1, 400)).rejects.toThrow();
+  });
+
+  it("서버 timeout은 클라이언트 abort 예산보다 작다(버려진 질의가 상류 쿼터를 계속 태우지 않도록)", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => ok({ elements: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    await fetchWalkFeaturesTile(37.5, 127.1, 400);
+
+    const body = decodeURIComponent(String(fetchMock.mock.calls[0][1].body));
+    const serverTimeoutS = Number(/\[timeout:(\d+)\]/.exec(body)?.[1]);
+    expect(Number.isFinite(serverTimeoutS)).toBe(true);
+    // 서버가 먼저 포기해야 우리가 abort한 질의를 Overpass가 계속 붙들지 않는다.
+    expect(serverTimeoutS * 1000).toBeLessThan(OVERPASS_CLIENT_TIMEOUT_MS);
+  });
+
+  it.each([429, 503, 504])("비200(%i)은 scope upstream을 실어 throw한다(우리 IP·상류 전체 상태)", async (status) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status, json: async () => ({}) }) as unknown as Response),
+    );
+    const error = await fetchWalkFeaturesTile(37.5, 127.1, 400).catch((e: unknown) => e);
+    expect((error as OverpassError).overpassScope).toBe("upstream");
+    expect((error as OverpassError).overpassStatus).toBe(status);
+  });
+
+  it("부분 응답(remark)은 scope tile을 실어 throw한다(서버 timeout을 넘긴 이 질의의 문제)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ remark: "runtime error: Query timed out", elements: [] })));
+    const error = await fetchWalkFeaturesTile(37.5, 127.1, 400).catch((e: unknown) => e);
+    expect((error as OverpassError).overpassScope).toBe("tile");
+  });
+
+  it("malformed 응답은 scope tile을 실어 throw한다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ elements: "not-an-array" })));
+    const error = await fetchWalkFeaturesTile(37.5, 127.1, 400).catch((e: unknown) => e);
+    expect((error as OverpassError).overpassScope).toBe("tile");
   });
 
   it("정상 응답은 정규화 결과를 반환하고 User-Agent·POST body를 포함한다", async () => {

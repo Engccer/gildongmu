@@ -1,7 +1,7 @@
 import { findAudioSignalsNear } from "./providers/audio-signals";
 import type { NearbyAudioSignals } from "./providers/audio-signals";
 import { fetchWalkFeaturesTile } from "./providers/overpass";
-import type { RawWalkFeature } from "./providers/overpass";
+import type { OverpassError, RawWalkFeature } from "./providers/overpass";
 import type { CompassDirection } from "./geo/bearing";
 import { bearingDegrees, bearingToCompass8 } from "./geo/bearing";
 import { haversineMeters } from "./geo";
@@ -45,9 +45,19 @@ const TILE_RADIUS_METERS = 400;
 const USER_RADIUS_METERS = 300;
 // crossing·비-crossing tactile 각 projection의 cap(합집합 최대 20건).
 const GROUP_CAP = 10;
-// 인스턴스 전역 Overpass 호출 예산(공개 인스턴스 예의, spec §2-D·§6 절대 상한 아님).
-const OVERPASS_BUDGET_PER_MINUTE = 30;
+/**
+ * 인스턴스 전역 Overpass 호출 예산(공개 인스턴스 예의, spec §2-D·§6 절대 상한 아님).
+ * 실측(2026-08-13)에서 1.2초 간격 4번째 호출이 이미 HTTP 429를 받았다 — 종전 30은
+ * 공용 인스턴스가 참아 주는 수준보다 훨씬 높아 예산이 보호 역할을 하지 못했다.
+ * 보행자 한 명이 필요한 양은 분당 1회 미만이다(110m 격자 ÷ 보행 속도).
+ */
+export const OVERPASS_BUDGET_PER_MINUTE = 10;
 const OVERPASS_BUDGET_WINDOW_MS = 60_000;
+/**
+ * 실패 쿨다운. 성공 캐시(1시간)보다 훨씬 짧아 일시 장애를 영구 실패로 굳히지 않되,
+ * 걸어가며 타일을 연달아 넘는 사용자의 재시도 폭주를 끊을 만큼은 길다.
+ */
+export const OVERPASS_FAILURE_COOLDOWN_MS = 60_000;
 
 /**
  * 타일 fetch 결과를 지속 캐시할 래퍼(예: Next `unstable_cache`). src/lib는 Next
@@ -70,13 +80,42 @@ export function configureWalkInfraTileCache(wrapper: TileCacheWrapper): void {
 const inFlightTiles = new Map<string, Promise<RawWalkFeature[]>>();
 let budgetWindowStart = 0;
 let budgetCount = 0;
+// 실패 쿨다운. 성공은 주입된 지속 캐시가 맡고 여기엔 실패만 기록한다(3-state 불변식
+// 유지 — 쿨다운 중 응답은 종전과 같은 `error`이고 "0건"으로 위장하지 않는다).
+let upstreamCooldownUntil = 0;
+const tileCooldownUntil = new Map<string, number>();
 
-/** 테스트 전용. in-flight Map·전역 카운터·주입된 캐시를 리셋해 테스트 간 상태 누수를 막는다. */
+/** 테스트 전용. in-flight Map·전역 카운터·쿨다운·주입된 캐시를 리셋해 테스트 간 상태 누수를 막는다. */
 export function __resetWalkInfraForTest(): void {
   inFlightTiles.clear();
   budgetWindowStart = 0;
   budgetCount = 0;
+  upstreamCooldownUntil = 0;
+  tileCooldownUntil.clear();
   tileCache = null;
+}
+
+/**
+ * 실패를 쿨다운에 기록한다. 범위는 provider가 실은 `overpassScope`가 정한다.
+ * `tile`(부분 응답·malformed)만 타일별이고 **나머지는 전역이 기본값**이다 — scope가
+ * 없는 실패(클라이언트 타임아웃·네트워크 오류)는 그 타일이 무겁다는 뜻이 아니라
+ * 우리 IP가 대기 큐에 밀렸다는 뜻이므로(근거는 `overpass.ts`의 `OverpassFailureScope`
+ * 주석 실측) 다른 타일을 더 두드리면 악화된다.
+ */
+function recordTileFailure(key: string, error: unknown, now: number): void {
+  if ((error as OverpassError | null)?.overpassScope === "tile") {
+    tileCooldownUntil.set(key, now + OVERPASS_FAILURE_COOLDOWN_MS);
+    return;
+  }
+  upstreamCooldownUntil = now + OVERPASS_FAILURE_COOLDOWN_MS;
+}
+
+/** 쿨다운 중이면 사유를 반환한다(호출 없이 즉시 실패). */
+function cooldownReason(key: string, now: number): string | null {
+  if (now < upstreamCooldownUntil) return "overpass 상류 쿨다운";
+  const until = tileCooldownUntil.get(key);
+  if (until !== undefined && now < until) return "overpass 타일 실패 쿨다운";
+  return null;
 }
 
 function consumeOverpassBudget(now: number): boolean {
@@ -99,8 +138,10 @@ function tileAnchor(lat: number, lng: number): { key: string; anchorLat: number;
 /**
  * 타일 anchor 좌표로 Overpass를 호출한다. Next 런타임이 주입한 지속 캐시
  * (unstable_cache)가 있으면 사용하고, 없으면 직접 fetch(단발 스크립트·비-Next
- * 이식 환경). 성공만 캐시되고(unstable_cache는 throw를 저장하지 않음) 실패는
- * 매 요청 재시도된다(spec §2-D). single-flight·전역 예산은 별도 유지.
+ * 이식 환경). 지속 캐시에는 성공만 담긴다(unstable_cache는 throw를 저장하지 않음).
+ * 실패는 이 모듈의 쿨다운(`recordTileFailure`)이 짧게 억제한다 — 종전처럼 매 요청
+ * 재시도하면 걸어가며 타일을 넘는 사용자가 상류 레이트 리밋을 스스로 유발한다.
+ * single-flight·전역 예산은 별도 유지.
  */
 function cachedFetchTile(anchorLat: number, anchorLng: number, cacheKey: string): Promise<RawWalkFeature[]> {
   const fetcher = () => fetchWalkFeaturesTile(anchorLat, anchorLng, TILE_RADIUS_METERS);
@@ -117,10 +158,18 @@ async function fetchTileWithBudget(lat: number, lng: number): Promise<RawWalkFea
   if (inFlight) return inFlight;
 
   const promise = (async () => {
-    if (!consumeOverpassBudget(Date.now())) {
-      throw new Error("overpass 전역 호출 한도 초과(분당 30회)");
+    const now = Date.now();
+    const cooldown = cooldownReason(key, now);
+    if (cooldown) throw new Error(cooldown);
+    if (!consumeOverpassBudget(now)) {
+      throw new Error(`overpass 전역 호출 한도 초과(분당 ${OVERPASS_BUDGET_PER_MINUTE}회)`);
     }
-    return cachedFetchTile(anchorLat, anchorLng, `walk-tile:${key}`);
+    try {
+      return await cachedFetchTile(anchorLat, anchorLng, `walk-tile:${key}`);
+    } catch (error) {
+      recordTileFailure(key, error, Date.now());
+      throw error;
+    }
   })();
 
   inFlightTiles.set(key, promise);
