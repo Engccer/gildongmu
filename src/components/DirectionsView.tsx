@@ -23,7 +23,7 @@ import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
-import { orderDirectionsModes } from "@/lib/directions-order";
+import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import {
   clearRecentEndpoints,
@@ -49,7 +49,7 @@ import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
 
-type ModeKey = "transit" | "walk" | "car";
+type ModeKey = DirectionsModeKey;
 
 /** 수단 하나의 조회 결과 3-state: 성공 ≠ 경로 없음 ≠ 오류(게이트 미노출은 렌더 자체가 없음).
     outOfCoverage는 서버 마커 이중 방어용 — origin/dest 중 하나가 한국 밖일 때(주로
@@ -372,10 +372,10 @@ export function DirectionsView({
     titleRef.current?.focus();
   }, []);
 
-  // 게이트 통과 수단만, 고정 순서(대중교통 → 자동차 → 도보). 도보는 분량이 가장
-  // 많은데 검색 빈도는 가장 낮아 최하단(위원장 실사용 결정 2026-07-22). 도보는
-  // V1 ko 전용: 비한국어 로케일은 조회·표시 모두 제외(prefersEnglish, useLocale
-  // 원시값 비교 금지).
+  // 게이트 통과 수단만 — **조회 대상 결정 전용**(E11부터 표시 순서는
+  // results.orderedModes가 정본이고, 이 배열 순서는 각 군 안의 타이브레이커로만
+  // 쓰인다). 도보는 V1 ko 전용: 비한국어 로케일은 조회·표시 모두 제외
+  // (prefersEnglish, useLocale 원시값 비교 금지).
   const activeModes: ModeKey[] = [
     ...(canShowTransit ? (["transit"] as const) : []),
     ...(canBriefCarRoute ? (["car"] as const) : []),

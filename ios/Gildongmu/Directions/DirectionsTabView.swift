@@ -658,8 +658,8 @@ struct DirectionsTabView: View {
                     // 시작 전 사전 고지(정정 1~3, fix 라운드 1 Important 1): 도보·자동차
                     // 버튼이 각자의 수단 섹션에 있어 둘 다 성립하는 흔한 조합(도보 카카오
                     // 성공 + 자동차 tmap 성공)에서 문장이 두 번 뜨던 것을 화면당 1회로
-                    // 합쳤다. 결과 섹션 전체보다 앞(대중교통→자동차→도보 고정 순서의
-                    // 맨 앞)에 둬 순방향 스와이프가 어떤 시작 버튼보다도 먼저 이 문장을
+                    // 합쳤다. 결과 섹션 전체보다 앞(E11 동적 순서와 무관하게 첫 섹션보다
+                    // 위)에 둬 순방향 스와이프가 어떤 시작 버튼보다도 먼저 이 문장을
                     // 지나가게 한다 — accessibilityHint는 버튼에 포커스해야만 들려
                     // "지나칠 수 있는" 위치라 기각했다.
                     if let notice = manualOriginNoticeText, walkGuideStartable || carGuideStartable {

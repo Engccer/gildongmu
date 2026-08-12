@@ -19,8 +19,10 @@ export function orderDirectionsModes(
 ): DirectionsModeKey[] {
   const successes = modes.filter((m) => isSuccess[m] === true);
   const failures = modes.filter((m) => isSuccess[m] !== true);
+  // 승격 판정은 성공군 소속으로 본다(Kit 미러의 successes.contains(.walk)와 동일
+  // 판정 공간 — isSuccess.walk만 보면 modes에 없는 도보를 승격하는 drift가 생긴다).
   const promoteWalk =
-    isSuccess.walk === true &&
+    successes.includes("walk") &&
     walkDurationSeconds !== null &&
     !shouldCollapseWalk(walkDurationSeconds);
   const orderedSuccesses = promoteWalk
