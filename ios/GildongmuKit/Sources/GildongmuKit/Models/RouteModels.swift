@@ -349,6 +349,10 @@ public struct FinalApproachPayload: Codable, Sendable, Hashable {
 
 /// /api/route/walk envelope. ⚠ transit과 달리 result가 optional —
 /// null은 "경로 없음"(3-state: 조회 실패 아님, throw 대상 아님).
+/// `shortest`(M3, additive): `alternatives=1` 응답에만 실린다. 필드 부재(키 없음·
+/// 옵트인 미요청)와 null(최단 조회 실패 흡수) 모두 nil로 안전 디코딩한다 —
+/// 両경우 소비자 행동이 같다(최단 행을 그리지 않는다).
 public struct WalkRouteEnvelope: Codable, Sendable {
     public let result: WalkRouteBriefing?
+    public let shortest: WalkRouteBriefing?
 }
