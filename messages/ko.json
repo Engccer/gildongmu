@@ -565,7 +565,9 @@
     "unpinItem": "{name} 고정 해제",
     "pinned": "고정됨",
     "unpinned": "고정 해제됨",
-    "clearedExceptPinned": "고정 항목을 제외하고 모두 지웠습니다"
+    "clearedExceptPinned": "고정 항목을 제외하고 모두 지웠습니다",
+    "pinnedItem": "{name} 고정됨",
+    "unpinnedItem": "{name} 고정 해제됨"
   },
   "recentRoutes": {
     "title": "최근 경로",

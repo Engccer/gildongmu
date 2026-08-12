@@ -518,6 +518,8 @@ describe("최근 경로 고정", () => {
     expect(labels).toEqual(["item", "item, pinned"]);
     // 토글 버튼 라벨 전환 = 상태 신호
     expect(screen.getAllByText("unpin")).toHaveLength(1);
+    // 통지는 항목명 포함 키(연속 고정 시 동일 문자열 bail out 침묵 방지 — a11y 감사)
+    expect(screen.getByRole("status").textContent).toContain("pinnedItem");
     // 저장은 불변식 정렬(고정 블록이 앞)
     const stored = JSON.parse(localStorage.getItem(ROUTES_KEY)!);
     expect(stored[0].to.label).toBe("강남역");

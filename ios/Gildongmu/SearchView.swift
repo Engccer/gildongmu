@@ -56,7 +56,9 @@ struct SearchView: View {
                 // "고정됨" 하나로 시각·낭독 동시 전달(한 줄 = 한 객체, 스펙 §4).
                 if model.outcome == nil && !model.isSearching && !recentQueries.isEmpty {
                     Section(appLocalized("recent.title")) {
-                        ForEach(recentQueries, id: \.self) { query in
+                        // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
+                        // 파괴(포커스 이탈)한다. Identifiable(text 키)로 행을 제자리 유지.
+                        ForEach(recentQueries) { query in
                             Button(query.pinned
                                 ? joinText(query.text, appLocalized("recent.pinned"))
                                 : query.text
@@ -225,10 +227,15 @@ struct SearchView: View {
     private func clearRecent() {
         recentQueries = recentStore.clearQueries()
         if recentQueries.isEmpty {
-            AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
-            micRowFocused = true // 섹션 소멸 — 기존 계약
+            // 섹션 소멸로 포커스가 마이크 행으로 옮겨간다 — 기본 우선순위면 착지 라벨
+            // 낭독에 통지가 잠식된다(헌장 §6, DirectionsTabView clear와 정합화 2026-08-12).
+            var cleared = AttributedString(appLocalized("recent.cleared"))
+            cleared.accessibilitySpeechAnnouncementPriority = .high
+            AccessibilityNotification.Announcement(cleared).post()
+            micRowFocused = true
         } else {
-            // 고정이 남아 섹션·버튼이 그대로다 — "모두 지웠습니다"는 거짓, 포커스 무이동.
+            // 고정이 남아 섹션·버튼이 그대로다 — "모두 지웠습니다"는 거짓, 포커스 무이동
+            // (이동이 없으니 잠식도 없다 — 기본 우선순위).
             AccessibilityNotification.Announcement(appLocalized("recent.clearedExceptPinned")).post()
         }
     }

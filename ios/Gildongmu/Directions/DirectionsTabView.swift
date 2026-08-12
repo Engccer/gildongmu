@@ -539,7 +539,9 @@ struct DirectionsTabView: View {
                     Section {
                         // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
                         // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
-                        ForEach(model.recentRoutes, id: \.self) { route in
+                        // ⚠ id: \.self 금지 — pinned가 Hashable에 포함되어 토글이 행을
+                        // 파괴(포커스 이탈)한다. Identifiable(출발·도착 쌍 키)로 제자리 유지.
+                        ForEach(model.recentRoutes) { route in
                             Button(route.pinned
                                 ? joinText(recentRouteLabel(route), appLocalized("recent.pinned"))
                                 : recentRouteLabel(route)

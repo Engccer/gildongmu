@@ -748,12 +748,16 @@ export function DirectionsView({
     setRouteRevision((v) => v + 1);
   }
   /** 고정 토글(스펙 2026-08-12 §4): 화면 순서는 그대로(정렬은 다음 로드부터),
-   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다. */
+   *  로컬 상태만 in-place 교체 — 토글 순간 항목이 이동하면 탐색 맥락이 깨진다.
+   *  통지는 항목명 포함 — 연속 고정 시 동일 문자열 bail out으로 두 번째부터
+   *  침묵하는 것을 막는다(a11y 감사 실측 2026-08-12, PlaceSearch 동형). */
   function togglePinRoute(r: RecentRoute) {
     const pinned = !r.pinned;
     setRecentRoutePinned(r, pinned);
     setRecentRoutes((prev) => prev.map((x) => (x === r ? { ...x, pinned } : x)));
-    setNotice(tRecent(pinned ? "pinned" : "unpinned"));
+    setNotice(
+      tRecent(pinned ? "pinnedItem" : "unpinnedItem", { name: routeItemLabel(r) }),
+    );
   }
   function clearRoutes() {
     const kept = clearRecentRoutes();
@@ -1275,11 +1279,12 @@ function EndpointField({
     setRecentRevision((r) => r + 1);
   }
 
-  /** 고정 토글(스펙 2026-08-12 §4): 저장·상태는 부모, 통지는 이 필드의 채널로. */
+  /** 고정 토글(스펙 2026-08-12 §4): 저장·상태는 부모, 통지는 이 필드의 채널로.
+   *  항목명 포함 — 연속 고정 시 동일 문자열 bail out 침묵 방지(PlaceSearch 동형). */
   function togglePinRecent(e: RecentEndpoint) {
     const pinned = !e.pinned;
     onTogglePinRecent(e, pinned);
-    announce(tRecent(pinned ? "pinned" : "unpinned"));
+    announce(tRecent(pinned ? "pinnedItem" : "unpinnedItem", { name: e.label }));
   }
 
   function clearRecent() {

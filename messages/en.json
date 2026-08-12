@@ -565,7 +565,9 @@
     "unpinItem": "Unpin {name}",
     "pinned": "Pinned",
     "unpinned": "Unpinned",
-    "clearedExceptPinned": "Cleared all except pinned items"
+    "clearedExceptPinned": "Cleared all except pinned items",
+    "pinnedItem": "{name} pinned",
+    "unpinnedItem": "{name} unpinned"
   },
   "recentRoutes": {
     "title": "Recent routes",
