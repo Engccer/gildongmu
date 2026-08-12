@@ -12121,6 +12121,86 @@
         }
       }
     },
+    "guide.proposalAdopt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "준비된 새 경로로 안내"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide with the prepared new route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guiar con la nueva ruta preparada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guider avec le nouvel itinéraire préparé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guida con il nuovo percorso preparato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "準備した新しいルートで案内"
+          }
+        }
+      }
+    },
+    "guide.proposalReady": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 경로가 준비되었습니다. %1$@, 전체 %2$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new route is ready. %1$@, %2$@ total."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hay una nueva ruta lista. %1$@, %2$@ en total."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nouvel itinéraire est prêt. %1$@, %2$@ au total."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un nuovo percorso è pronto. %1$@, %2$@ in totale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいルートの準備ができました。%1$@、合計%2$@。"
+          }
+        }
+      }
+    },
     "guide.reacquiring": {
       "localizations": {
         "ko": {

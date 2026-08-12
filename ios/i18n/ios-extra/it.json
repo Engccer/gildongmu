@@ -257,6 +257,8 @@
     "switchRoute": "Passa all’altro percorso",
     "switchRouteBusy": "Passa all’altro percorso, ricerca in corso",
     "switchedToShortest": "Passato al percorso più breve. {count} indicazioni, {distance} in totale. {first}",
-    "switchedToRecommended": "Passato al percorso consigliato. {count} indicazioni, {distance} in totale. {first}"
+    "switchedToRecommended": "Passato al percorso consigliato. {count} indicazioni, {distance} in totale. {first}",
+    "proposalReady": "Un nuovo percorso è pronto. {first}, {distance} in totale.",
+    "proposalAdopt": "Guida con il nuovo percorso preparato"
   }
 }

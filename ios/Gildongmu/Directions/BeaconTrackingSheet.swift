@@ -90,8 +90,12 @@ struct BeaconTrackingSheet: View {
                 // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 항상
                 // 존재하는 중지 버튼으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
                 if model.offRoute {
+                    // 제안이 준비되면 같은 버튼의 라벨만 바뀐다(E10ⓑ — 별도 버튼
+                    // 추가 금지: SR 읽기 순서 비용. 라벨이 지속 신호의 정본이다).
                     Button(appLocalized(
-                        model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
+                        model.isRerouting ? "guide.rerouteBusy"
+                            : model.hasPreparedProposal ? "guide.proposalAdopt"
+                            : "guide.rerouteButton"
                     )) {
                         reroutePressed = true
                         model.requestReroute()
