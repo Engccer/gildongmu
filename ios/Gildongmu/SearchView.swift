@@ -15,8 +15,8 @@ struct SearchView: View {
     @State private var chatPlace: Place?
     /// 최근 검색(스펙 2026-07-26). 검색 전 초기 화면에만 노출, 기록은 runSearch 공용 경로.
     private let recentStore = RecentSearchStore()
-    @State private var recentQueries: [String] = []
-    @AccessibilityFocusState private var focusedRecentQuery: String?
+    @State private var recentQueries: [RecentQuery] = []
+    @AccessibilityFocusState private var focusedRecentQuery: RecentQuery?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5).
     @AccessibilityFocusState private var micRowFocused: Bool
     @State private var rowFocusTask: Task<Void, Never>?
@@ -51,16 +51,24 @@ struct SearchView: View {
                     .accessibilityFocused($micRowFocused)
                 }
                 // 최근 검색(스펙 2026-07-26): 검색 전 초기 상태에만. 행 활성화=재검색,
-                // swipeActions 삭제가 VoiceOver 로터 커스텀 액션으로 자동 노출된다.
+                // swipeActions(고정 토글·삭제 — 고정이 앞, 위원장 지시 2026-08-12)가
+                // VoiceOver 로터 커스텀 액션으로 자동 노출된다. 고정 항목은 라벨 접미사
+                // "고정됨" 하나로 시각·낭독 동시 전달(한 줄 = 한 객체, 스펙 §4).
                 if model.outcome == nil && !model.isSearching && !recentQueries.isEmpty {
                     Section(appLocalized("recent.title")) {
                         ForEach(recentQueries, id: \.self) { query in
-                            Button(query) {
-                                model.query = query
+                            Button(query.pinned
+                                ? joinText(query.text, appLocalized("recent.pinned"))
+                                : query.text
+                            ) {
+                                model.query = query.text
                                 runSearch()
                             }
                             .accessibilityFocused($focusedRecentQuery, equals: query)
                             .swipeActions {
+                                Button(appLocalized(query.pinned ? "recent.unpin" : "recent.pin")) {
+                                    togglePinRecent(query)
+                                }
                                 Button(appLocalized("recent.delete"), role: .destructive) {
                                     deleteRecent(query)
                                 }
@@ -191,9 +199,9 @@ struct SearchView: View {
 
     /// 항목 삭제(스펙 §5 포커스 계약): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행.
     /// 통지 1건 + 포커스 이동(이동 착지 라벨 낭독과 순서 무해 — polite 큐).
-    private func deleteRecent(_ query: String) {
+    private func deleteRecent(_ query: RecentQuery) {
         guard let index = recentQueries.firstIndex(of: query) else { return }
-        recentQueries = recentStore.removeQuery(query)
+        recentQueries = recentStore.removeQuery(query.text)
         AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
         if recentQueries.isEmpty {
             micRowFocused = true
@@ -202,11 +210,27 @@ struct SearchView: View {
         focusedRecentQuery = recentQueries[min(index, recentQueries.count - 1)]
     }
 
+    /// 고정 토글(스펙 2026-08-12 §4): 화면 자리는 유지하고(정렬은 다음 로드부터 —
+    /// 토글 순간 행이 이동하면 VO 포커스가 유실된다) 그 항목만 교체한다. 포커스를
+    /// 갱신된 값으로 재확정하면 새 라벨("…, 고정됨") 낭독이 곧 상태 신호다(헌장 §5,
+    /// pinned가 정체성에 포함되어 같은 값 no-op이 아니다).
+    private func togglePinRecent(_ query: RecentQuery) {
+        guard let index = recentQueries.firstIndex(of: query) else { return }
+        let updated = RecentQuery(text: query.text, pinned: !query.pinned)
+        recentQueries[index] = updated
+        recentStore.setQueryPinned(query.text, pinned: updated.pinned)
+        focusedRecentQuery = updated
+    }
+
     private func clearRecent() {
-        recentStore.clearQueries()
-        recentQueries = []
-        AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
-        micRowFocused = true
+        recentQueries = recentStore.clearQueries()
+        if recentQueries.isEmpty {
+            AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
+            micRowFocused = true // 섹션 소멸 — 기존 계약
+        } else {
+            // 고정이 남아 섹션·버튼이 그대로다 — "모두 지웠습니다"는 거짓, 포커스 무이동.
+            AccessibilityNotification.Announcement(appLocalized("recent.clearedExceptPinned")).post()
+        }
     }
 
     /// denied·failed 안내(3-state: 거부와 실패, 실패는 다시 원인별로 다른 문장).
