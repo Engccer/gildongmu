@@ -11,6 +11,9 @@
 
 ## 2026-08-12
 
+### 최근 목록 고정(pin) — 4목록 공통, 웹+iOS
+최근 목록 4종(검색어·출발지·도착지 장소·경로)의 각 항목에 고정/고정 해제 액션 추가(iOS는 swipeActions로 VO 로터 자동 노출, 웹은 항목별 버튼 — 両쪽 다 고정이 삭제보다 앞). 고정 항목은 상단 유지(고정 시점 순 자리 안정), cap 20·"모두 지우기" 면제, 라벨 접미사 "고정됨" 단일 텍스트. 토글 직후엔 재정렬하지 않고(포커스 유실 방지) 다음 로드부터 정렬. 검색어 저장은 `{text,pinned}` v2 키로 승계. a11y 감사 MAJOR 2건 반영(웹 통지 동일 문자열 bail out 침묵 → 항목명 포함 통지, iOS `ForEach id: \.self` 행 파괴 → Identifiable 안정 키). 로터 액션 순서·토글 후 커서 잔류는 실기기 검증 대기(spec §7). spec `2026-08-12-recent-pinning-design.md` · plan `2026-08-12-recent-pinning.md`.
+
 ### 안내 시트 목적지 메뉴 — 장소 상세 보기·끊김 없는 목적지 전환
 안내 시트(도보·자동차·대중교통) 제목을 네이티브 Menu로 교체(헤딩 trait 유지 시도, 실기기 판정 대기). "장소 상세 보기"는 최소 Place 합성(`guideDestinationPlace`, Kit)으로 시트 위 시트, 길찾기 진입 버튼은 문맥상 숨김. "목적지 바꾸기"는 기존 도착지 검색 시트(최근 목록 포함) 재사용 — 도보·자동차는 `BeaconModel.changeDestination`(세션 유지 경로 재획득, `awaitingRoute` 보류로 전환 중 옛 경로 발화 0, 즉시 `.high` 확인 통지), 대중교통은 2단 확정(`prepareDestinationChange` 사이드 채널 후보 → 선택 시 `changeRoute` 세션 연속 교체, stale 120초 재조회 가드, 취소 시 전체 무효). 폼은 출발지 `.current`+도착지 갱신 후 무통지 재조회, 기존 "도착지 변경 = 안내 중지" 가드는 값 결합 1회 소비 플래그로 안내 주도 변경만 통과. 어제(8/11) 실보행에서 목적지 전환에 중지·재검색·재시작이 필요했던 부담의 해소. 적대적 설계 리뷰 13건 중 12건 수용·1건 기각. spec `2026-08-12-guide-destination-menu-design.md` · plan `2026-08-12-guide-destination-menu.md`.
 
