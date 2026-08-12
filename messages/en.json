@@ -558,7 +558,14 @@
     "delete": "Delete",
     "deleteItem": "Delete {name}",
     "deleted": "Deleted",
-    "cleared": "All recent searches cleared"
+    "cleared": "All recent searches cleared",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinItem": "Pin {name}",
+    "unpinItem": "Unpin {name}",
+    "pinned": "Pinned",
+    "unpinned": "Unpinned",
+    "clearedExceptPinned": "Cleared all except pinned items"
   },
   "recentRoutes": {
     "title": "Recent routes",
