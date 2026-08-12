@@ -385,9 +385,8 @@ final class DirectionsModel {
         // (웹 동형: 부분 재조회가 다른 수단 결과까지 버리게 하지 않는다).
         var outcome = DirectionsOutcomeClassifier.classify(walk: settled.map(\.result))
         if outcome.isOutOfCoverage { outcome = .error }
-        var outcomes = current.outcomes
-        outcomes[.walk] = outcome
-        results = DirectionsResults(outcomes: outcomes)
+        // 순서는 settled 스냅샷을 보존한다(E11 spec §2 규칙 3) — 재계산 init 금지.
+        results = current.replacingWalk(outcome)
         // 최단도 같은 응답 쌍으로 교체(실패 응답이면 nil — 세대 혼합 금지, spec §4).
         walkShortest = (try? settled.get())?.shortest
         // 재조회 완료 신호는 도보 heading 포커스 이동뿐(웹 동형, 별도 통지 중복 금지).
