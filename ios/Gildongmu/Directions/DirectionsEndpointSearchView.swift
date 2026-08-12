@@ -181,12 +181,20 @@ struct DirectionsEndpointSearchView: View {
                 // select→onSelect→setEndpoint가 담당(이중 기록 금지).
                 if !model.hasSearched && !recentEndpoints.isEmpty {
                     Section(appLocalized("recent.title")) {
+                        // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
+                        // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
                         ForEach(recentEndpoints, id: \.self) { endpoint in
-                            Button(endpoint.label) {
+                            Button(endpoint.pinned
+                                ? joinText(endpoint.label, appLocalized("recent.pinned"))
+                                : endpoint.label
+                            ) {
                                 select(.place(label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng))
                             }
                             .accessibilityFocused($focusedRecent, equals: endpoint)
                             .swipeActions {
+                                Button(appLocalized(endpoint.pinned ? "recent.unpin" : "recent.pin")) {
+                                    togglePinRecent(endpoint)
+                                }
                                 Button(appLocalized("recent.delete"), role: .destructive) {
                                     deleteRecent(endpoint)
                                 }
@@ -345,10 +353,26 @@ struct DirectionsEndpointSearchView: View {
         focusedRecent = recentEndpoints[min(index, recentEndpoints.count - 1)]
     }
 
+    /// 고정 토글(스펙 2026-08-12 §4): 화면 자리는 유지하고(정렬은 다음 로드부터)
+    /// 그 항목만 교체, 포커스를 갱신된 값으로 재확정 — 새 라벨 낭독이 상태 신호
+    /// (헌장 §5, pinned가 정체성에 포함되어 같은 값 no-op이 아니다. SearchView 동형).
+    private func togglePinRecent(_ endpoint: RecentEndpoint) {
+        guard let index = recentEndpoints.firstIndex(of: endpoint) else { return }
+        let updated = RecentEndpoint(
+            label: endpoint.label, lat: endpoint.lat, lng: endpoint.lng, pinned: !endpoint.pinned)
+        recentEndpoints[index] = updated
+        recentStore.setEndpointPinned(endpoint, scope: recentScope, pinned: updated.pinned)
+        focusedRecent = updated
+    }
+
     private func clearRecent() {
-        recentStore.clearEndpoints(recentScope)
-        recentEndpoints = []
-        AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
-        micRowFocused = true
+        recentEndpoints = recentStore.clearEndpoints(recentScope)
+        if recentEndpoints.isEmpty {
+            AccessibilityNotification.Announcement(appLocalized("recent.cleared")).post()
+            micRowFocused = true // 섹션 소멸 — 기존 계약
+        } else {
+            // 고정이 남아 섹션·버튼이 그대로다 — 포커스 무이동(SearchView 동형).
+            AccessibilityNotification.Announcement(appLocalized("recent.clearedExceptPinned")).post()
+        }
     }
 }

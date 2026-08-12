@@ -158,9 +158,18 @@ final class DirectionsModel {
         recentRoutes = recentStore.removeRoute(route)
     }
 
+    /// 모두 지우기 — 고정은 보존한다(스펙 2026-08-12 §3). 남은 목록으로 갱신.
     func clearRecentRoutes() {
-        recentStore.clearRoutes()
-        recentRoutes = []
+        recentRoutes = recentStore.clearRoutes()
+    }
+
+    /// 고정 토글(스펙 2026-08-12 §4): 저장은 store가 불변식 정렬로 하되, 화면 배열은
+    /// 그 자리에서 항목만 교체한다(토글 순간 행이 이동하면 VO 포커스가 유실된다 —
+    /// 정렬은 다음 로드부터).
+    func setRoutePinned(_ route: RecentRoute, pinned: Bool) {
+        guard let index = recentRoutes.firstIndex(of: route) else { return }
+        recentStore.setRoutePinned(route, pinned: pinned)
+        recentRoutes[index] = RecentRoute(from: route.from, to: route.to, pinned: pinned)
     }
 
     /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
@@ -528,10 +537,18 @@ struct DirectionsTabView: View {
                 // VoiceOver 로터로 자동 노출된다(endpoint 시트 동형).
                 if model.results == nil && !model.isBusy && !model.recentRoutes.isEmpty {
                     Section {
+                        // 고정 항목은 라벨 접미사 "고정됨"(한 줄 = 한 객체), 고정 토글이
+                        // 삭제보다 앞(위원장 지시 2026-08-12) — 로터 커스텀 액션 자동 노출.
                         ForEach(model.recentRoutes, id: \.self) { route in
-                            Button(recentRouteLabel(route)) { activateRecentRoute(route) }
+                            Button(route.pinned
+                                ? joinText(recentRouteLabel(route), appLocalized("recent.pinned"))
+                                : recentRouteLabel(route)
+                            ) { activateRecentRoute(route) }
                                 .accessibilityFocused($focusedRecentRoute, equals: route)
                                 .swipeActions {
+                                    Button(appLocalized(route.pinned ? "recent.unpin" : "recent.pin")) {
+                                        togglePinRecentRoute(route)
+                                    }
                                     Button(appLocalized("recent.delete"), role: .destructive) {
                                         deleteRecentRoute(route)
                                     }
@@ -878,14 +895,25 @@ struct DirectionsTabView: View {
         focusedRecentRoute = model.recentRoutes[min(index, model.recentRoutes.count - 1)]
     }
 
-    /// 전체 지우기도 자기 버튼이 속한 섹션 전체를 소멸시켜 포커스가 조회 버튼으로
-    /// 옮겨간다 — 위 `deleteRecentRoute`와 같은 이유로 `.high`.
+    /// 고정 토글(스펙 2026-08-12 §4): 모델이 화면 자리를 유지한 채 항목만 교체하고,
+    /// 포커스를 갱신된 값으로 재확정 — 새 라벨 낭독이 상태 신호(헌장 §5, pinned가
+    /// 정체성에 포함되어 같은 값 no-op이 아니다. endpoint 시트 동형).
+    private func togglePinRecentRoute(_ route: RecentRoute) {
+        let pinned = !route.pinned
+        model.setRoutePinned(route, pinned: pinned)
+        focusedRecentRoute = RecentRoute(from: route.from, to: route.to, pinned: pinned)
+    }
+
+    /// 전체 지우기(고정 보존 — 스펙 2026-08-12 §3). 목록이 전부 사라질 때만 섹션이
+    /// 소멸해 포커스가 조회 버튼으로 옮겨간다 — 위 `deleteRecentRoute`와 같은 이유로
+    /// `.high`(활성화 응답). 고정이 남으면 섹션·버튼이 그대로라 포커스 무이동.
     private func clearRecentRoutes() {
         model.clearRecentRoutes()
-        var clearedMessage = AttributedString(appLocalized("recentRoutes.cleared"))
+        let key = model.recentRoutes.isEmpty ? "recentRoutes.cleared" : "recent.clearedExceptPinned"
+        var clearedMessage = AttributedString(appLocalized(key))
         clearedMessage.accessibilitySpeechAnnouncementPriority = .high
         AccessibilityNotification.Announcement(clearedMessage).post()
-        submitFocused = true
+        if model.recentRoutes.isEmpty { submitFocused = true }
     }
 
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
