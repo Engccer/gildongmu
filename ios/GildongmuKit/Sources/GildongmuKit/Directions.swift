@@ -13,12 +13,47 @@ public enum DirectionsEndpoint: Sendable, Hashable {
     case place(label: String, lat: Double, lng: Double)
 }
 
-/// 수단 식별. displayOrder가 결과 표시 고정 순서(대중교통→자동차→도보, 웹 activeModes 동형).
-/// 도보는 분량이 가장 많은데 검색 빈도는 가장 낮아 최하단(위원장 실사용 결정 2026-07-22).
+/// 수단 식별. displayOrder는 각 군(성공·비성공) 안의 고정 순서다(웹 activeModes 동형) —
+/// E11부터 화면 순서 자체는 DirectionsResults.orderedModes(조회 결과 파생 스냅샷)가 정한다.
 public enum DirectionsMode: String, CaseIterable, Sendable, Hashable {
     case transit, walk, car
 
     public static let displayOrder: [DirectionsMode] = [.transit, .car, .walk]
+}
+
+/// 도보 상세 접기 경계(웹 src/lib/walk-collapse.ts 미러 — E11이 승격 판정에 재사용).
+/// ⚠ 판정과 표시가 같은 분 값을 써야 한다(웹 정본 주석 동일) — 초 단위로 가르면
+///   "약 30분"으로 표시되는 경로가 접혀 사용자가 경계를 설명할 수 없다.
+public enum WalkCollapse {
+    public static let minutes = 30
+    public static func shouldCollapse(durationSeconds: Int) -> Bool {
+        Int((Double(durationSeconds) / 60).rounded()) > minutes
+    }
+}
+
+/// E11 섹션 표시 순서(웹 src/lib/directions-order.ts 미러 — 공유 fixture
+/// directions-order-scenarios.json이 동조 강제).
+/// 1. 성공 수단 앞, 비성공(경로 없음·조회 실패) 뒤 — 각 군 안은 입력 순서 유지.
+/// 2. 도보 성공이고 30분 이하(도보 상세 접기와 같은 경계)면 성공군 맨 앞.
+public enum DirectionsOrder {
+    public static func orderModes(
+        modes: [DirectionsMode],
+        isSuccess: (DirectionsMode) -> Bool,
+        walkDurationSeconds: Int?
+    ) -> [DirectionsMode] {
+        let successes = modes.filter(isSuccess)
+        let failures = modes.filter { !isSuccess($0) }
+        let promoteWalk: Bool
+        if let walkDurationSeconds, successes.contains(.walk) {
+            promoteWalk = !WalkCollapse.shouldCollapse(durationSeconds: walkDurationSeconds)
+        } else {
+            promoteWalk = false
+        }
+        let orderedSuccesses = promoteWalk
+            ? [.walk] + successes.filter { $0 != .walk }
+            : successes
+        return orderedSuccesses + failures
+    }
 }
 
 /// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated·outOfCoverage를 더한 5-state:
@@ -99,24 +134,52 @@ public enum DirectionsOutcomeClassifier {
 /// 한 조회의 최종 산출. 표시·포커스·통지 문장이 전부 여기서 파생된다.
 public struct DirectionsResults: Sendable {
     public let outcomes: [DirectionsMode: DirectionsModeOutcome]
+    /// 표시 순서 스냅샷(E11 spec §2) — 조회 settled의 init에서 1회 확정한다.
+    /// ⚠ computed로 바꾸지 말 것: 부분 재조회가 암묵 재계산을 일으켜 사용자가
+    ///   조작 중인 섹션이 이동한다. 부분 교체는 replacingWalk가 순서를 보존한다.
+    public let orderedModes: [DirectionsMode]
 
     public init(outcomes: [DirectionsMode: DirectionsModeOutcome]) {
         self.outcomes = outcomes
+        let walkDuration: Int?
+        if case .walk(let brief)? = outcomes[.walk] {
+            walkDuration = brief.durationSeconds
+        } else {
+            walkDuration = nil
+        }
+        self.orderedModes = DirectionsOrder.orderModes(
+            modes: DirectionsMode.displayOrder.filter { outcomes[$0] != nil },
+            isSuccess: { outcomes[$0]?.isSuccess == true },
+            walkDurationSeconds: walkDuration
+        )
     }
 
-    /// 화면에 노출할 수단(고정 순서). 미조회 수단·게이트(404)·서비스 지역 밖은 섹션 자체 미노출
+    private init(outcomes: [DirectionsMode: DirectionsModeOutcome], orderedModes: [DirectionsMode]) {
+        self.outcomes = outcomes
+        self.orderedModes = orderedModes
+    }
+
+    /// 계단 회피 재조회: 도보 outcome만 교체하고 순서는 보존한다(웹 toggleStepFree 동형,
+    /// spec §2 규칙 3 — 사용자가 조작 중인 섹션이 발밑에서 이동하지 않는다).
+    public func replacingWalk(_ outcome: DirectionsModeOutcome) -> DirectionsResults {
+        var next = outcomes
+        next[.walk] = outcome
+        return DirectionsResults(outcomes: next, orderedModes: orderedModes)
+    }
+
+    /// 화면에 노출할 수단(동적 순서). 미조회 수단·게이트(404)·서비스 지역 밖은 섹션 자체 미노출
     /// (outOfCoverage는 정상적으로 DirectionsModel이 화면 전체를 전환해 여기 도달하지 않지만,
     /// 방어적으로 개별 수단 렌더에서도 제외한다).
     public var displayedModes: [DirectionsMode] {
-        DirectionsMode.displayOrder.filter { mode in
+        orderedModes.filter { mode in
             guard let outcome = outcomes[mode] else { return false }
             return !outcome.isGated && !outcome.isOutOfCoverage
         }
     }
 
-    /// 성공 수단(고정 순서). 첫 항목이 완료 시 포커스 목적지(성공 0건이면 이동 없음).
+    /// 성공 수단(동적 순서). 첫 항목이 완료 시 포커스 목적지(성공 0건이면 이동 없음).
     public var successModes: [DirectionsMode] {
-        DirectionsMode.displayOrder.filter { outcomes[$0]?.isSuccess == true }
+        orderedModes.filter { outcomes[$0]?.isSuccess == true }
     }
 
     public var firstSuccess: DirectionsMode? { successModes.first }
