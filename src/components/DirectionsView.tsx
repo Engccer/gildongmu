@@ -23,6 +23,7 @@ import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
+import { orderDirectionsModes } from "@/lib/directions-order";
 import { walkRouteUrl } from "@/lib/walk-route-url";
 import {
   clearRecentEndpoints,
@@ -68,6 +69,11 @@ type QueryResults = {
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
+  /**
+   * 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정.
+   * 계단 회피 토글은 outcomes.walk만 교체하므로 순서는 자동 불변이다.
+   */
+  orderedModes: ModeKey[];
   /**
    * 출발지가 "현재 위치"였을 때 그 좌표의 출처. `from`이 특정 장소면 null(실시간
    * 안내는 항상 실좌표에서 시작하므로 이 브리핑의 출발지 출처와 무관하다).
@@ -543,11 +549,21 @@ export function DirectionsView({
         setPhase({ kind: "outOfCoverage" });
         return;
       }
-      const successes = activeModes.filter((m) => outcomes[m]?.kind === "done");
+      const walkOutcome = outcomes.walk;
+      const orderedModes = orderDirectionsModes(
+        activeModes,
+        Object.fromEntries(
+          activeModes.map((m) => [m, outcomes[m]?.kind === "done"]),
+        ),
+        walkOutcome?.kind === "done" && walkOutcome.mode === "walk"
+          ? walkOutcome.result.durationSeconds
+          : null,
+      );
       setResults({
         destLabel: to.kind === "current" ? currentLabel : to.label,
         destCoord: dest,
         outcomes,
+        orderedModes,
         originSource,
       });
       setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
@@ -561,7 +577,8 @@ export function DirectionsView({
         }),
       );
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
-      const first = successes[0];
+      // 성공군이 앞이므로 새 순서에서 첫 성공 = 사용자가 처음 만나는 유용한 섹션.
+      const first = orderedModes.find((m) => outcomes[m]?.kind === "done");
       if (first) {
         requestAnimationFrame(() => headingRefs[first].current?.focus());
       }
@@ -637,7 +654,7 @@ export function DirectionsView({
   // 진실원을 하나(results.outcomes)로 줄이는 것이 수정이다. settled인데 results가
   // 없으면(재조회 중 편집으로 리셋) 요약도 없다 — 없는 경로를 세지 않는다.
   const settledCount = results
-    ? activeModes.filter((m) => results.outcomes[m]?.kind === "done").length
+    ? results.orderedModes.filter((m) => results.outcomes[m]?.kind === "done").length
     : null;
   const settledSummary =
     phase.kind === "settled" && settledCount !== null
@@ -981,7 +998,7 @@ export function DirectionsView({
 
       {results && (
         <div className="mt-2">
-          {activeModes.map((mode) => {
+          {results.orderedModes.map((mode) => {
             const outcome = results.outcomes[mode];
             if (!outcome) return null;
             return (
