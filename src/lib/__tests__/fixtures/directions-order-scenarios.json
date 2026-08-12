@@ -1,0 +1,13 @@
+{
+  "order": [
+    { "name": "전 성공, 도보 29분 — 도보 최상단", "modes": ["transit", "car", "walk"], "success": { "transit": true, "car": true, "walk": true }, "walkDurationSeconds": 1740, "expect": ["walk", "transit", "car"] },
+    { "name": "전 성공, 도보 30분 — 경계 포함 승격", "modes": ["transit", "car", "walk"], "success": { "transit": true, "car": true, "walk": true }, "walkDurationSeconds": 1800, "expect": ["walk", "transit", "car"] },
+    { "name": "전 성공, 도보 30분 1초 — 반올림 30분이라 승격(표시와 같은 분 값)", "modes": ["transit", "car", "walk"], "success": { "transit": true, "car": true, "walk": true }, "walkDurationSeconds": 1801, "expect": ["walk", "transit", "car"] },
+    { "name": "전 성공, 도보 31분 — 제자리", "modes": ["transit", "car", "walk"], "success": { "transit": true, "car": true, "walk": true }, "walkDurationSeconds": 1860, "expect": ["transit", "car", "walk"] },
+    { "name": "대중교통 실패 — 최하단", "modes": ["transit", "car", "walk"], "success": { "transit": false, "car": true, "walk": true }, "walkDurationSeconds": 2400, "expect": ["car", "walk", "transit"] },
+    { "name": "도보 비성공(empty·error 공통) — 하단, 승격 판정 미적용", "modes": ["transit", "car", "walk"], "success": { "transit": true, "car": false, "walk": false }, "walkDurationSeconds": null, "expect": ["transit", "car", "walk"] },
+    { "name": "도보만 성공(장거리) — 승격 없이도 성공군이라 맨 앞", "modes": ["transit", "car", "walk"], "success": { "transit": false, "car": false, "walk": true }, "walkDurationSeconds": 2400, "expect": ["walk", "transit", "car"] },
+    { "name": "전 실패 — 현행 순서 유지", "modes": ["transit", "car", "walk"], "success": { "transit": false, "car": false, "walk": false }, "walkDurationSeconds": null, "expect": ["transit", "car", "walk"] },
+    { "name": "도보 제외 조회(en 로케일 등) — 2수단만", "modes": ["transit", "car"], "success": { "transit": false, "car": true }, "walkDurationSeconds": null, "expect": ["car", "transit"] }
+  ]
+}
