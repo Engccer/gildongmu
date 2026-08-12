@@ -100,15 +100,24 @@ struct BeaconTrackingSheet: View {
                         reroutePressed = true
                         model.requestReroute()
                     }
+                    // busy는 isRerouting만 본다(전환 진행은 isSwitchingVariant —
+                    // 공유하면 진행 중이 아닌 버튼에 "조회 중"이 오귀속된다).
                 }
                 // 수동 전환(M3 spec §5): 반대 variant로 현위치 재조회. 정상 추종
                 // 중에도 노출(offRoute 무관). SR 읽기 순서는 재조회 버튼 **뒤** —
                 // 이탈 국면에선 재조회가 1순위 동작이다(자주 쓰는 순서 우선).
-                // 진행 신호는 라벨 교체가 정본(재조회 버튼 관례 동형).
-                if model.sessionKind == .walk, model.mode == .detail {
-                    Button(appLocalized(
-                        model.isRerouting ? "guide.switchRouteBusy" : "guide.switchRoute"
-                    )) {
+                // 라벨은 전환 **목표**를 밝힌다(a11y 감사 2026-08-12 — 결정론이므로
+                // "다른 경로"보다 정보가 많고, 세션 중 현재 축을 아는 유일한 채널).
+                // 진행 신호는 라벨 병기(한 줄 = 한 객체, 쉼표). 최단 축이 이 목적지에
+                // 성립할 때만 노출(죽은 버튼 사전 차단 — carGuideStartable 선례).
+                if model.sessionKind == .walk, model.mode == .detail,
+                   model.shortestVariantAvailable {
+                    let target = appLocalized(model.sessionVariant == nil
+                        ? "guide.switchToShortest" : "guide.switchToRecommended")
+                    Button(model.isSwitchingVariant
+                        ? joinText(target, appLocalized("ios.directions.searching"))
+                        : target
+                    ) {
                         model.requestVariantSwitch()
                     }
                 }

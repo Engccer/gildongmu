@@ -174,6 +174,8 @@ final class BeaconModel {
     private var lastFixCoordAt: Double?
     /// 재조회 진행 중 — 시트가 버튼 라벨 교체(rerouteBusy)에 쓴다(라벨이 곧 상태 신호).
     private(set) var isRerouting = false
+    /// 수동 전환 진행 신호(M3) — isRerouting과 분리(버튼별 busy 귀속).
+    private(set) var isSwitchingVariant = false
 
     private let routeService = RouteService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     /// 세션 단일성 토큰(B2 §3.2 — GuideSessionCoordinator claim/release 검증 키).
@@ -243,6 +245,10 @@ final class BeaconModel {
     /// 기존 경로·기존 variant 유지). 재조회·이탈 제안은 이 값을 그대로 쓴다(spec §3.2
     /// — 경로 정체성은 세션 인자가 고정하고 variant만 축이다).
     private(set) var sessionVariant: WalkRouteVariant?
+    /// 이 목적지에 최단 축이 성립하는가(조회 화면의 `walkShortest` 존재 스냅샷).
+    /// 전환 버튼 노출 게이트 — 죽은 버튼(키 부재·해당 구간 최단 실패)을 사전
+    /// 차단한다(`carGuideStartable` 선례). 최단 세션은 자명히 true(추천은 항상 있다).
+    private(set) var shortestVariantAvailable = false
 
     // MARK: - 이탈 시 제안 (E10ⓑ, spec §6)
 
@@ -310,7 +316,7 @@ final class BeaconModel {
     /// 호출부가 `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
     func toggle(
         dest: BeaconDest, label: String, kind: GuideSessionKind = .walk, accessible: Bool,
-        variant: WalkRouteVariant? = nil
+        variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
     ) {
         if isTracking {
             stop(playStopTone: true)
@@ -321,6 +327,7 @@ final class BeaconModel {
             // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
             self.accessible = accessible
             sessionVariant = variant
+            shortestVariantAvailable = variant == .shortest || shortestAvailable
             lastStepFree = nil
             pendingStepFreeNotice = nil
             startTask = Task { [weak self] in
@@ -799,6 +806,7 @@ final class BeaconModel {
         lastFixCoord = nil
         lastFixCoordAt = nil
         isRerouting = false
+        isSwitchingVariant = false
         carriedCourseDerivation = nil
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
@@ -850,6 +858,7 @@ final class BeaconModel {
         rerouteToken += 1   // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1
         isRerouting = false
+        isSwitchingVariant = false
         offRoute = false
         // 제안은 옛 목적지의 경로다 — 폐기(회차 카운터는 세션당이라 유지, E10ⓑ).
         clearProposal()
@@ -1477,6 +1486,12 @@ final class BeaconModel {
             // 침묵(정확히 이번에 고치려는 증상)이 되므로 비워 둔다.
             break
         case .offRoute:
+            // ⚠ 이 이벤트는 확정 1회가 아니다 — 이탈 지속 중 재통지 주기(60초)마다
+            // 재발화된다(offRouteRenotifySeconds). 회차 시작 판정은 offRoute 플래그
+            // 전이(false→true)로 가른다. 재통지에서 제안을 재트리거하면 준비된 제안이
+            // 파기되며 라벨과 동작이 어긋나고, 만료 후 재조회로 세션 예산(5회)이 한
+            // 국면 안에서 소진된다(품질 리뷰 BLOCKER 2026-08-12).
+            let isEpisodeStart = !offRoute
             offRoute = true
             // 차량 이탈 문구는 상태 전문(B1 §4.3 — 첫 통지를 놓쳐도 반복만으로 완결).
             let text = appLocalized(
@@ -1485,7 +1500,7 @@ final class BeaconModel {
             statusText = text
             announce(text)
             // 확정 회차당 1회 자동 조회 후 제안(E10ⓑ — 자동 전환 아님, 수락제).
-            maybeFetchProposal()
+            if isEpisodeStart { maybeFetchProposal() }
         case .backOnRoute:
             offRoute = false
             // 이탈 복귀 = 제안 근거 소멸(조용히 원복 + 진행 조회 커밋 차단).
@@ -1651,7 +1666,9 @@ final class BeaconModel {
     func requestVariantSwitch() {
         guard sessionKind == .walk, isTracking, mode == .detail, !rerouteInFlight else { return }
         rerouteInFlight = true
-        isRerouting = true
+        // busy 신호는 누른 버튼에만 귀속한다(isRerouting과 분리 — 공유하면 이탈 중
+        // 두 버튼이 동시에 "조회 중"이 되어 어느 조회가 도는지 라벨이 오귀속된다).
+        isSwitchingVariant = true
         rerouteToken += 1
         let token = rerouteToken
         let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
@@ -1664,6 +1681,7 @@ final class BeaconModel {
         defer {
             rerouteInFlight = false
             isRerouting = false
+            isSwitchingVariant = false
         }
         guard let dest else { return }
         // 전환은 fetch 성공 커밋 전까지 sessionVariant를 건드리지 않는다(실패 시
@@ -1806,10 +1824,9 @@ final class BeaconModel {
             hasPreparedProposal = true
             // polite 1회 best-effort — 이탈 경고 반복 채널에 잠식돼도 재발화하지
             // 않는다. 지속 신호의 정본은 시트 버튼 라벨이다(spec §6 리뷰 #2).
-            announce(appLocalized(
-                "guide.proposalReady",
-                GuideText.unit(route: fetched.route, indices: unitAt(route: fetched.route, index: 0)),
-                formatDistance(Int(fetched.route.totalMeters.rounded()))
+            announce(GuideText.proposalReady(
+                route: fetched.route,
+                firstIndices: unitAt(route: fetched.route, index: 0)
             ))
         } catch {
             // 조회 실패는 그 회차 종결(재시도 없음 — 쿼터 방어, spec §6).

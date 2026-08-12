@@ -173,13 +173,19 @@ struct WalkRouteRows: View {
     let briefing: WalkRouteBriefing
     /// 접힘 라벨이 이미 요약이면 본문에서 반복하지 않는다(대안 disclosure 동형).
     var includeSummary = true
+    /// 라벨이 stepFreeNotice를 병기하는 소비자(M3 2행 disclosure)는 서버가 비기하
+    /// 응답 스텝 0번에 삽입한 같은 문장을 본문에서 생략한다 — 라벨·본문 이중 낭독
+    /// 방지(a11y 감사 2026-08-12). 번호는 원본 인덱스 유지(웹·CLI와 같은 값 계약).
+    var omitNoticeStep = false
 
     var body: some View {
         if includeSummary {
             distanceText(walkSummaryText(briefing))
         }
         ForEach(Array(briefing.steps.enumerated()), id: \.offset) { index, step in
-            if !step.description.isEmpty {
+            if !step.description.isEmpty,
+               !(omitNoticeStep && index == 0
+                   && step.description == briefing.stepFreeNotice) {
                 // 단계 번호는 웹(<ol>)·CLI("1. ")에 이미 있고 iOS만 없었다. 서로 닮은
                 // 문장이 십수 개 이어져 커서를 놓치면 복귀 지점을 찾을 단서가 없다.
                 // 번호는 표시 순서가 아니라 **원본 인덱스**라 세 소비자가 같은 값을 쓴다.

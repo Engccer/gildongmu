@@ -254,11 +254,11 @@
     "guideStartWalkShortest": "최단 경로 안내 시작"
   },
   "guide": {
-    "switchRoute": "다른 경로로 전환",
-    "switchRouteBusy": "다른 경로로 전환, 조회 중",
     "switchedToShortest": "최단 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "switchedToRecommended": "추천 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
-    "proposalReady": "새 경로가 준비되었습니다. {first}, 전체 {distance}.",
-    "proposalAdopt": "준비된 새 경로로 안내"
+    "proposalReady": "새 경로가 준비되었습니다. 안내 {count}개, 총 {distance}. {first}",
+    "proposalAdopt": "준비된 새 경로로 안내",
+    "switchToShortest": "최단 경로로 전환",
+    "switchToRecommended": "추천 경로로 전환"
   }
 }

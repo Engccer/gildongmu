@@ -177,6 +177,18 @@ enum GuideText {
         )
     }
 
+    /// 제안 준비 통지(E10ⓑ). 형제(rerouteDone·switchedTo*)와 같은 "규모(개수·총
+    /// 거리) → 첫 안내" 구조 — {first}가 거리 포함 서술문이라 뒤에 총 거리를 붙이면
+    /// 두 거리가 인접해 판독이 흐려진다(a11y 감사 LOW, periodic 실사용 결함 계열).
+    static func proposalReady(route: GuideRoute, firstIndices: [Int]) -> String {
+        appLocalized(
+            "guide.proposalReady",
+            String(route.steps.count),
+            formatDistance(Int(route.totalMeters.rounded())),
+            unit(route: route, indices: firstIndices)
+        )
+    }
+
     /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
     /// 원문을 독립 문장으로 결합(문법 결합 금지 — 거리 기준 혼동 차단).
     static func farNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String {
