@@ -257,6 +257,8 @@
     "switchRoute": "Cambiar a la otra ruta",
     "switchRouteBusy": "Cambiar a la otra ruta, buscando",
     "switchedToShortest": "Se cambió a la ruta más corta. {count} indicaciones, {distance} en total. {first}",
-    "switchedToRecommended": "Se cambió a la ruta recomendada. {count} indicaciones, {distance} en total. {first}"
+    "switchedToRecommended": "Se cambió a la ruta recomendada. {count} indicaciones, {distance} en total. {first}",
+    "proposalReady": "Hay una nueva ruta lista. {first}, {distance} en total.",
+    "proposalAdopt": "Guiar con la nueva ruta preparada"
   }
 }

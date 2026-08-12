@@ -257,6 +257,8 @@
     "switchRoute": "別のルートに切り替え",
     "switchRouteBusy": "別のルートに切り替え、検索中",
     "switchedToShortest": "最短ルートに切り替えました。案内{count}件、合計{distance}。{first}",
-    "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}"
+    "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}",
+    "proposalReady": "新しいルートの準備ができました。{first}、合計{distance}。",
+    "proposalAdopt": "準備した新しいルートで案内"
   }
 }

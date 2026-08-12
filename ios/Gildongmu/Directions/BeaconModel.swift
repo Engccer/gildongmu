@@ -243,6 +243,28 @@ final class BeaconModel {
     /// 기존 경로·기존 variant 유지). 재조회·이탈 제안은 이 값을 그대로 쓴다(spec §3.2
     /// — 경로 정체성은 세션 인자가 고정하고 variant만 축이다).
     private(set) var sessionVariant: WalkRouteVariant?
+
+    // MARK: - 이탈 시 제안 (E10ⓑ, spec §6)
+
+    /// 제안 상태 4분류(spec §6 리뷰 #2·#12): 없음 → 조회 중 → 준비됨 → (수락·폐기·
+    /// 만료는 전이이지 상태가 아니다 — 전부 `.none` 복귀). 조회 실패는 그 회차
+    /// 종결(`.none`, 재시도·통지 없음 — 쿼터 방어. 다음 확정 회차가 새 기회다).
+    private enum ProposalState {
+        case none
+        case fetching(token: Int)
+        case ready(RerouteProposal, fetched: DetailFetchResult)
+    }
+    private var proposalState: ProposalState = .none
+    /// latest-wins 토큰(spec §6 리뷰 #1) — 폐기·수락·목적지 변경·세션 종료 시 증가.
+    /// 토큰이 일치하고 이탈 지속 중일 때만 응답을 보관 상태로 커밋한다(복귀 후 늦게
+    /// 도착한 첫 회차 응답이 폐기된 제안을 되살리는 경로 차단).
+    private var proposalToken = 0
+    /// 세션당 자동 조회 횟수(상한 5, RerouteProposalGate — GPS 진동으로 확정 회차가
+    /// 반복 생성될 때 쿼터·통지 폭주의 마지막 방어선).
+    private var proposalFetchCount = 0
+    /// 시트 버튼 라벨 바인딩("준비된 새 경로로 안내" ↔ "경로 다시 조회").
+    /// 지속 신호의 정본은 통지가 아니라 이 라벨이다(spec §6 리뷰 #2).
+    private(set) var hasPreparedProposal = false
     /// 직전 계단 회피 판정(열화 전이 통지 기준 — spec 2026-08-08 §2.3).
     /// 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
     private var lastStepFree: String?
@@ -420,14 +442,17 @@ final class BeaconModel {
 
     /// 수단별 상세 경로 데이터(§4.1 봉인 구성의 경로 소스 축). nil = 상세 부적격
     /// (car는 provider 비-tmap·기하 검증 실패 포함 — §5 fail-closed).
-    private func fetchDetailData(
-        origin: (lat: Double, lng: Double), dest: BeaconDest,
-        variant: WalkRouteVariant?
-    ) async throws -> (
+    /// 상세 경로 fetch 결과 — 시작 조회·재조회·전환·제안 채택이 공유하는 커밋 입력.
+    typealias DetailFetchResult = (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
         stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?,
         finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput]
-    )? {
+    )
+
+    private func fetchDetailData(
+        origin: (lat: Double, lng: Double), dest: BeaconDest,
+        variant: WalkRouteVariant?
+    ) async throws -> DetailFetchResult? {
         if sessionKind == .car {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
@@ -777,6 +802,9 @@ final class BeaconModel {
         carriedCourseDerivation = nil
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
+        // 세션 종료 = 제안·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
+        clearProposal()
+        proposalFetchCount = 0
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
@@ -823,6 +851,8 @@ final class BeaconModel {
         routeFetchToken += 1
         isRerouting = false
         offRoute = false
+        // 제안은 옛 목적지의 경로다 — 폐기(회차 카운터는 세션당이라 유지, E10ⓑ).
+        clearProposal()
         // 유도기 버퍼는 위치 종속이라 승계한다(§3.1, 재조회 §2.9 동형) — 다음
         // fetchGuideRoute 성공이 1회 소비한다.
         carriedCourseDerivation = guideState?.courseDerivation
@@ -1098,6 +1128,8 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
+        // 제안 만료는 능동 전이다(매 수용 fix 검사 — spec §6 리뷰 #12).
+        expireProposalIfStale(currentLat: fix.lat, currentLng: fix.lng)
 
         // 방위 관측은 넘기지 않는다 — 리듀서 내부 유도기가 fix 이력에서 직접 만든다
         // (spec §2.9 재설계. 기기 course는 보행 속도에서 방위를 제공하지 않는다 —
@@ -1452,8 +1484,12 @@ final class BeaconModel {
             )
             statusText = text
             announce(text)
+            // 확정 회차당 1회 자동 조회 후 제안(E10ⓑ — 자동 전환 아님, 수락제).
+            maybeFetchProposal()
         case .backOnRoute:
             offRoute = false
+            // 이탈 복귀 = 제안 근거 소멸(조용히 원복 + 진행 조회 커밋 차단).
+            clearProposal()
             let text = appLocalized("guide.backOnRoute")
             statusText = text
             announce(text)
@@ -1561,8 +1597,22 @@ final class BeaconModel {
     }
 
     /// 이탈 시 사용자 확인 후에만 재조회(자동 재조회 금지, 스펙 §5.6).
+    /// 준비된 제안이 있고 신선하면 **왕복 없이** 보관 경로를 채택한다(E10ⓑ 수락 —
+    /// 같은 버튼이 라벨만 "준비된 새 경로로 안내"로 바뀐다. 별도 버튼 금지, spec §6).
     func requestReroute() {
         guard isTracking, mode == .detail, offRoute, !rerouteInFlight else { return }
+        if case .ready(let proposal, let fetched) = proposalState {
+            // 수락 시점 신선도는 최후 안전망이다(만료 능동 전이가 정본 — 여기 도달은
+            // fix 공백 등 경계). 현재 좌표를 단정할 수 없으면 채택하지 않는다(낡은
+            // 출발점의 경로 채택은 §5.6 실사고 계열 — 일반 재조회로 정직 폴백).
+            if let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
+               RerouteProposalGate.isFresh(
+                   proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng) {
+                adoptProposal(fetched)
+                return
+            }
+            clearProposal()
+        }
         rerouteInFlight = true
         isRerouting = true
         rerouteToken += 1
@@ -1570,6 +1620,21 @@ final class BeaconModel {
         Task { [weak self] in
             await self?.performReroute(token: token, intent: .keepVariant)
         }
+    }
+
+    /// 제안 수락 — 보관 경로를 performReroute의 성공 커밋 경로 그대로 채택(왕복 없음).
+    private func adoptProposal(_ fetched: DetailFetchResult) {
+        clearProposal()
+        let firstIndices = commitReroutedRoute(fetched)
+        let notice = consumeStepFreeNotice(
+            fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
+        )
+        let summary = GuideText.reroute(route: fetched.route, firstIndices: firstIndices)
+        let text = notice.map { "\($0) \(summary)" } ?? summary
+        statusText = text
+        // 채택 성공 통지는 `.high`(버튼 활성화의 결과 통지 계약 — 성공하면 이 버튼이
+        // 사라져 포커스가 옮겨가고 기본 우선순위는 그 낭독에 잠식된다).
+        if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
     }
 
     /// 재조회 의도(M3): 이탈 재조회·제안은 세션 variant 유지, 수동 전환만 반대 variant.
@@ -1624,41 +1689,7 @@ final class BeaconModel {
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
             // 전환 커밋: 경로 교체와 같은 원자 블록에서만 variant가 바뀐다(세션 수명 불변식).
             if case .switchTo(let target) = intent { sessionVariant = target }
-            guideRoute = fetched.route
-            guideRouteDurationSeconds = fetched.durationSeconds
-            roadSpans = fetched.spans
-            if sessionKind == .car {
-                // 수동 재조회도 ETA 캡에 포함(§4.6) + 새 경로 기준 원자 교체.
-                etaCallCount = min(6, etaCallCount + 1)
-                if let dur = fetched.durationSeconds, dur > 0 {
-                    etaSeconds = Double(dur)
-                    etaUpdatedAt = uptimeNow
-                }
-            }
-            // 새 경로는 새 종점·새 오프셋이다 — 진입 래치·주기 타이머·진입 서술 래치를
-            // 전부 초기화한다(spec §4 "사용자 재조회 성공").
-            resetFinalApproach(geometry: fetched.finalApproach)
-            // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9. 비우면
-            // 갈림 직후 재조회에서 축이 ~10m 냉시동돼 "이탈 → 재조회 → 다시 잘못된
-            // 길" 시나리오에서 이 축의 이점이 사라진다).
-            let initial = initialGuideState(
-                route: fetched.route, now: uptimeNow,
-                hasFinalApproachGeometry: fetched.finalApproach != nil,
-                courseDerivation: guideState?.courseDerivation ?? initialDerivationState
-            )
-            guideState = initial.state
-            offRoute = false
-            updateRemaining(route: fetched.route, state: initial.state)
-            if sessionKind == .walk {
-                // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7).
-                displayUnits = buildDisplayUnits(fetched.liveSteps)
-                liveSteps = fetched.liveSteps
-                resetLiveRowsBaseline(state: initial.state)
-            } else {
-                refreshCurrentGuidance(route: fetched.route, state: initial.state)
-            }
-            let first = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
-            lastGuidance = first
+            let firstIndices = commitReroutedRoute(fetched)
             // 재조회는 출발지가 달라 계단 회피 판정이 바뀔 수 있다 — 열화로 전이하면
             // 그 조회의 발화에 결합해 1회 통지한다(spec §2.3).
             let notice = consumeStepFreeNotice(
@@ -1669,10 +1700,10 @@ final class BeaconModel {
             let summary: String
             switch intent {
             case .keepVariant:
-                summary = GuideText.reroute(route: fetched.route, firstIndices: initial.firstIndices)
+                summary = GuideText.reroute(route: fetched.route, firstIndices: firstIndices)
             case .switchTo(let target):
                 summary = GuideText.variantSwitch(
-                    route: fetched.route, firstIndices: initial.firstIndices,
+                    route: fetched.route, firstIndices: firstIndices,
                     shortest: target == .shortest
                 )
             }
@@ -1689,6 +1720,121 @@ final class BeaconModel {
             statusText = appLocalized("guide.rerouteFailed")
             announce(statusText, highPriority: true)
         }
+    }
+
+    /// 재조회·전환·제안 채택 공통의 성공 커밋(spec §6 리뷰 #4 — 별도 채택 전이 신설
+    /// 금지). 경로·기준선·이탈 표결·finalApproach·표시 유닛을 한 지점에서 원자
+    /// 교체한다. 발화 문구는 호출부 몫이라 첫 안내 유닛 인덱스를 돌려준다.
+    private func commitReroutedRoute(_ fetched: DetailFetchResult) -> [Int] {
+        // 경로 교체는 보관 제안의 근거를 무효화한다(새 경로 기준의 이탈 확정이 새
+        // 제안을 만든다) — 수락 경로는 이미 clearProposal을 지났으므로 no-op.
+        clearProposal()
+        guideRoute = fetched.route
+        guideRouteDurationSeconds = fetched.durationSeconds
+        roadSpans = fetched.spans
+        if sessionKind == .car {
+            // 수동 재조회도 ETA 캡에 포함(§4.6) + 새 경로 기준 원자 교체.
+            etaCallCount = min(6, etaCallCount + 1)
+            if let dur = fetched.durationSeconds, dur > 0 {
+                etaSeconds = Double(dur)
+                etaUpdatedAt = uptimeNow
+            }
+        }
+        // 새 경로는 새 종점·새 오프셋이다 — 진입 래치·주기 타이머·진입 서술 래치를
+        // 전부 초기화한다(spec §4 "사용자 재조회 성공").
+        resetFinalApproach(geometry: fetched.finalApproach)
+        // 재조회는 같은 세션의 새 경로다 — 유도기 버퍼를 잇는다(spec §2.9. 비우면
+        // 갈림 직후 재조회에서 축이 ~10m 냉시동돼 "이탈 → 재조회 → 다시 잘못된
+        // 길" 시나리오에서 이 축의 이점이 사라진다).
+        let initial = initialGuideState(
+            route: fetched.route, now: uptimeNow,
+            hasFinalApproachGeometry: fetched.finalApproach != nil,
+            courseDerivation: guideState?.courseDerivation ?? initialDerivationState
+        )
+        guideState = initial.state
+        offRoute = false
+        updateRemaining(route: fetched.route, state: initial.state)
+        if sessionKind == .walk {
+            // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7).
+            displayUnits = buildDisplayUnits(fetched.liveSteps)
+            liveSteps = fetched.liveSteps
+            resetLiveRowsBaseline(state: initial.state)
+        } else {
+            refreshCurrentGuidance(route: fetched.route, state: initial.state)
+        }
+        lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
+        return initial.firstIndices
+    }
+
+    // MARK: - 이탈 시 제안 조회·만료·수락 (E10ⓑ, spec §6)
+
+    /// 이탈 확정 회차의 자동 조회 트리거(`case .offRoute` 소비 지점에서 1회).
+    /// 활성 조건: walk 상세 세션 ∧ 최종 접근 전 ∧ 세션 상한 미달(spec §6 리뷰 #14 —
+    /// 이탈 표결이 최종 접근보다 앞이라는 기존 불변식 순서에 제안도 그대로 걸린다).
+    private func maybeFetchProposal() {
+        guard sessionKind == .walk, isTracking, mode == .detail, !inFinalApproach,
+              RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount)
+        else { return }
+        proposalToken += 1
+        proposalFetchCount += 1
+        let token = proposalToken
+        proposalState = .fetching(token: token)
+        Task { [weak self] in await self?.fetchProposal(token: token) }
+    }
+
+    private func fetchProposal(token: Int) async {
+        guard let dest else { return }
+        do {
+            // 출발점은 확정 시점의 최신 세션 fix(연속 수신 중이라 currentCoordinate가
+            // 그 값이다 — 싱글턴 TTL 함정과 다른 층, spec §6 리뷰 #3 명시).
+            let origin = try await LocationService.shared.currentCoordinate()
+            guard token == proposalToken, offRoute, isTracking, mode == .detail,
+                  self.dest == dest else { return }
+            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: sessionVariant)
+            // 커밋 가드: 토큰 일치 ∧ 이탈 지속 중일 때만 보관(복귀 후 늦은 응답이
+            // 폐기된 제안을 되살리는 경로 차단 — latest-wins, spec §6 리뷰 #1).
+            guard token == proposalToken, offRoute, isTracking, mode == .detail,
+                  self.dest == dest else { return }
+            guard let fetched else {
+                // 경로 없음도 그 회차 종결(통지 없음 — spec §6 명시적 트레이드오프).
+                if case .fetching(let t) = proposalState, t == token { proposalState = .none }
+                return
+            }
+            let proposal = RerouteProposal(
+                originLat: origin.lat, originLng: origin.lng, acquiredAt: uptimeNow)
+            proposalState = .ready(proposal, fetched: fetched)
+            hasPreparedProposal = true
+            // polite 1회 best-effort — 이탈 경고 반복 채널에 잠식돼도 재발화하지
+            // 않는다. 지속 신호의 정본은 시트 버튼 라벨이다(spec §6 리뷰 #2).
+            announce(appLocalized(
+                "guide.proposalReady",
+                GuideText.unit(route: fetched.route, indices: unitAt(route: fetched.route, index: 0)),
+                formatDistance(Int(fetched.route.totalMeters.rounded()))
+            ))
+        } catch {
+            // 조회 실패는 그 회차 종결(재시도 없음 — 쿼터 방어, spec §6).
+            if case .fetching(let t) = proposalState, t == token { proposalState = .none }
+        }
+    }
+
+    /// 만료 능동 전이(매 수용 fix에서 검사) — 라벨이 "준비된 새 경로로 안내"인데
+    /// 눌러 보니 일반 재조회가 시작되는 어긋남을 만들지 않는다(spec §6 리뷰 #12).
+    /// 통지 없음: 라벨 원복이 신호다.
+    private func expireProposalIfStale(currentLat: Double, currentLng: Double) {
+        guard case .ready(let proposal, _) = proposalState else { return }
+        guard !RerouteProposalGate.isFresh(
+            proposal, nowUptime: uptimeNow, currentLat: currentLat, currentLng: currentLng
+        ) else { return }
+        proposalState = .none
+        hasPreparedProposal = false
+    }
+
+    /// 제안 폐기(이탈 복귀·경로 교체·세션 종료·목적지 변경) — 조용히 원복(통지 없음,
+    /// 근거가 사라지면 표시도 사라진다). 토큰 증가로 진행 중 조회의 커밋도 차단.
+    private func clearProposal() {
+        proposalToken += 1
+        proposalState = .none
+        hasPreparedProposal = false
     }
 
     /// 오류 코드를 뭉개면 "위치 서비스 꺼짐"과 "일시적 취득 실패"가 한 문구가 된다.
