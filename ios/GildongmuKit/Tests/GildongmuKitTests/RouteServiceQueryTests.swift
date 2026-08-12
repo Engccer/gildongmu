@@ -55,4 +55,47 @@ extension StubNetworkTests {
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
+
+    /// M3 전환·재조회의 accessible 보존 게이트(spec §3.2 ⚠ — A4 회귀 축).
+    /// variant가 붙어도 accessible이 조용히 탈락하지 않아야 한다.
+    @Test func walkVariantKeepsAccessible() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).walk(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
+            accessible: true, includeGeometry: true, variant: .shortest)
+        #expect(capturedQuery?.contains(where: { $0.name == "variant" && $0.value == "shortest" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
+    }
+
+    /// 대조: variant 미지정이면 파라미터 자체를 생략한다(기존 요청 byte-identical).
+    @Test func walkDefaultOmitsVariantParam() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).walk(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+        #expect(capturedQuery?.contains(where: { $0.name == "variant" }) == false)
+    }
+
+    /// 대안 병렬 조회도 accessible을 보존하고 alternatives=1을 명시한다(spec §3.1).
+    @Test func walkAlternativesKeepsAccessible() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).walkAlternatives(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true)
+        #expect(capturedQuery?.contains(where: { $0.name == "alternatives" && $0.value == "1" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
+        // 조회 화면 전용 — 기하는 싣지 않는다(조합표: alternatives+includeGeometry는 400).
+        #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
+    }
 }

@@ -33,4 +33,10 @@ import Testing
         #expect(RerouteProposalGate.mayFetch(episodeFetchCount: 4))
         #expect(!RerouteProposalGate.mayFetch(episodeFetchCount: 5))
     }
+
+    @Test func 시간축_단독_판정은_좌표_없이_만료를_가른다() {
+        // fix 끊김(실내·권한 철회)에서 워치독이 쓰는 축 — 119초 fresh, 121초 만료.
+        #expect(RerouteProposalGate.isFreshInTime(base, nowUptime: 1_119))
+        #expect(!RerouteProposalGate.isFreshInTime(base, nowUptime: 1_121))
+    }
 }

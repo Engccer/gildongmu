@@ -1138,7 +1138,7 @@ final class BeaconModel {
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
         // 제안 만료는 능동 전이다(매 수용 fix 검사 — spec §6 리뷰 #12).
-        expireProposalIfStale(currentLat: fix.lat, currentLng: fix.lng)
+        expireProposalIfStale(current: (fix.lat, fix.lng))
 
         // 방위 관측은 넘기지 않는다 — 리듀서 내부 유도기가 fix 이력에서 직접 만든다
         // (spec §2.9 재설계. 기기 course는 보행 속도에서 방위를 제공하지 않는다 —
@@ -1267,6 +1267,11 @@ final class BeaconModel {
     /// `handleFinalApproach`가 같은 fix로 내며, 그래야 "도착이 진입 서술을 이긴다"가
     /// 한 곳에서 성립한다(두 군데서 말하면 목적지 코앞에서 배치 서술과 도착 통지가 겹친다).
     private func beginFinalApproach() {
+        // 제안의 트리거·커밋·수락은 최종 접근 진입 전에만 성립한다(spec §6 활성
+        // 조건, spec 리뷰 MAJOR 2026-08-12). 여기서 폐기하면 토큰 증가가 진행 중
+        // 조회의 커밋을 막고 .ready 소멸이 수락을 막아, 세 조건이 이 한 줄로
+        // 구조적으로 성립한다(진입 후 새 트리거는 maybeFetchProposal 가드 몫).
+        clearProposal()
         remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
         currentGuidanceText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
         // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
@@ -1806,6 +1811,10 @@ final class BeaconModel {
             // 출발점은 확정 시점의 최신 세션 fix(연속 수신 중이라 currentCoordinate가
             // 그 값이다 — 싱글턴 TTL 함정과 다른 층, spec §6 리뷰 #3 명시).
             let origin = try await LocationService.shared.currentCoordinate()
+            // 취득 시각은 좌표와 같은 시점에 캡처한다(신선도 기준값은 한 쌍 — fetch
+            // 완료 후 시각을 쓰면 왕복이 긴 만큼 실제보다 신선하게 판정된다.
+            // 같은 호스트 71초 hang 실사고 전례, spec 리뷰 MINOR 2026-08-12).
+            let acquiredAt = uptimeNow
             guard token == proposalToken, offRoute, isTracking, mode == .detail,
                   self.dest == dest else { return }
             let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: sessionVariant)
@@ -1819,7 +1828,7 @@ final class BeaconModel {
                 return
             }
             let proposal = RerouteProposal(
-                originLat: origin.lat, originLng: origin.lng, acquiredAt: uptimeNow)
+                originLat: origin.lat, originLng: origin.lng, acquiredAt: acquiredAt)
             proposalState = .ready(proposal, fetched: fetched)
             hasPreparedProposal = true
             // polite 1회 best-effort — 이탈 경고 반복 채널에 잠식돼도 재발화하지
@@ -1834,14 +1843,22 @@ final class BeaconModel {
         }
     }
 
-    /// 만료 능동 전이(매 수용 fix에서 검사) — 라벨이 "준비된 새 경로로 안내"인데
-    /// 눌러 보니 일반 재조회가 시작되는 어긋남을 만들지 않는다(spec §6 리뷰 #12).
-    /// 통지 없음: 라벨 원복이 신호다.
-    private func expireProposalIfStale(currentLat: Double, currentLng: Double) {
+    /// 만료 능동 전이 — 라벨이 "준비된 새 경로로 안내"인데 눌러 보니 일반 재조회가
+    /// 시작되는 어긋남을 만들지 않는다(spec §6 리뷰 #12). 통지 없음: 라벨 원복이 신호.
+    /// 호출 두 곳: 매 수용 fix(両축 판정)와 워치독 틱(시간 축만 — fix가 끊기면
+    /// 시간 만료가 영구히 발동하지 못하는 구멍을 워치독이 메운다. spec 리뷰 MAJOR
+    /// 2026-08-12, "fix 경로에만 걸면 영구 침묵" 계열). 좌표를 단정할 수 없을 때
+    /// 드리프트 축을 낡은 좌표로 판정하지 않는다(3-state — 시간 축이 상한을 지킨다).
+    private func expireProposalIfStale(current: (lat: Double, lng: Double)?) {
         guard case .ready(let proposal, _) = proposalState else { return }
-        guard !RerouteProposalGate.isFresh(
-            proposal, nowUptime: uptimeNow, currentLat: currentLat, currentLng: currentLng
-        ) else { return }
+        let fresh: Bool = if let current {
+            RerouteProposalGate.isFresh(
+                proposal, nowUptime: uptimeNow,
+                currentLat: current.lat, currentLng: current.lng)
+        } else {
+            RerouteProposalGate.isFreshInTime(proposal, nowUptime: uptimeNow)
+        }
+        guard !fresh else { return }
         proposalState = .none
         hasPreparedProposal = false
     }
@@ -1915,6 +1932,9 @@ final class BeaconModel {
     /// 된다. 백그라운드에서는 톤이 유일한 채널이라 이 침묵이 곧 무고장 판정이 된다.
     private func tickWatchdog() {
         let now = uptimeNow
+        // 제안 시간 만료는 fix 없이도 진행돼야 한다(실내·권한 철회 — 좌표는 단정하지
+        // 않으므로 시간 축만, spec 리뷰 MAJOR 2026-08-12).
+        expireProposalIfStale(current: nil)
         // 세션 시작 후 첫 fix 대기도 같은 타이머가 덮는다(기준을 시작 시각으로).
         let reference = lastFixAt ?? startedAt ?? now
         if now - reference >= noFixSeconds {
