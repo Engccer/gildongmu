@@ -26,12 +26,21 @@ public enum RerouteProposalGate {
     /// 쿼터·통지 폭주를 막는 마지막 방어선(spec §6 리뷰 #8).
     public static let maxFetchesPerSession = 5
 
+    /// 시간 축 단독 판정 — 현재 좌표를 단정할 수 없을 때(fix 끊김·최종 접근 중)의
+    /// 만료 검사용. 시간 축을 fix 도착에만 걸면 실내·권한 철회에서 만료가 영구히
+    /// 발동하지 못한다(워치독 계열 교훈 — fix 경로에만 걸면 영구 침묵).
+    public static func isFreshInTime(
+        _ proposal: RerouteProposal, nowUptime: TimeInterval
+    ) -> Bool {
+        nowUptime - proposal.acquiredAt <= maxAgeSeconds
+    }
+
     /// 취득 위치에서 30m 초과 이동 또는 120초 경과면 만료.
     public static func isFresh(
         _ proposal: RerouteProposal, nowUptime: TimeInterval,
         currentLat: Double, currentLng: Double
     ) -> Bool {
-        guard nowUptime - proposal.acquiredAt <= maxAgeSeconds else { return false }
+        guard isFreshInTime(proposal, nowUptime: nowUptime) else { return false }
         let drift = haversineMeters(
             lat1: proposal.originLat, lng1: proposal.originLng,
             lat2: currentLat, lng2: currentLng
