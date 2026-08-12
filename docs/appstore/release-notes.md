@@ -12,6 +12,37 @@
 
 ---
 
+## 1.6 (빌드 12)
+
+최근 목록 고정 · 도보 경로 대안(추천·최단) · 길찾기 결과 섹션 동적 순서. 실시간 길 안내는 계속 봉인(`#if EXPERIMENTAL`)이라 이 버전에도 담기지 않는다.
+
+포함 판정: 1.5(빌드 11, 아카이브 커밋 `aa4b823`) 이후 63개 커밋 중 Release 바이너리에 **도달하면서** iOS 사용자에게 보이는 것만. 제외 근거 — 실시간 안내 계열 20여 개(목적지 메뉴 M5·안내 중 경로 전환·이탈 시 제안 E10ⓑ·투영 지연 10m·closer 6m)는 `AppConfig.realtimeGuidanceEnabled` 게이트 안이라 Release에 진입점이 없고, 서버 전용(A9 근접역 동명이역 혼입·횡단 안내 꼬리 거리 이름 부여·`/api/route/walk` variant 계약)은 웹 배포로 이미 1.5 사용자에게 반영됐으며, A8(조회 요약 수치)은 `src/components/DirectionsView.tsx` 웹 전용이다.
+
+⚠ **도보 경로 대안은 ko 노트에만 적었다.** iOS 도보 섹션은 `AppLanguage.current == "ko"` 전용이라 조회 자체를 생략한다(`DirectionsTabView.swift:316`) — 비한국어 사용자는 그 화면을 볼 수 없으므로 en 노트에 적으면 찾다가 못 찾는 기능이 된다.
+
+⚠ **M3 실보행 판정 전에 출시한다**(BACKLOG §H M3). Release에 도달하는 면은 "추천·최단 두 경로를 읽을 수 있다"는 정보 제공 축이고, 판정이 남은 면(최단 경로 실안내 품질·전환 발화·제안 계열)은 전부 실험 구성 안이다. 1.5의 M1과 같은 근거다.
+
+### ko
+
+```
+새로운 기능
+- 최근 목록에 고정이 생겼습니다. 검색어, 출발지, 도착지, 최근 경로 네 목록에서 항목을 쓸어 넘겨 고정하면 목록 맨 위에 남고, 20개 제한과 "모두 지우기"에서 제외됩니다.
+- 도보 길찾기가 추천 경로와 최단 경로를 함께 보여 줍니다. 각 경로를 펼치면 구간별 안내를 읽을 수 있습니다. 계단 회피를 켠 상태에서 최단 경로가 계단을 피하지 못하면 요약에 함께 알려 드립니다.
+
+개선
+- 길찾기 결과에서 갈 수 있는 수단이 먼저 나오고, 경로가 없거나 조회에 실패한 수단은 뒤로 갑니다. 도보로 30분 안에 갈 수 있으면 도보가 맨 위에 옵니다.
+```
+
+### en
+
+```
+New
+- Recent lists can now be pinned. Swipe an item in any of the four recent lists — searches, origins, destinations, and routes — to pin it. Pinned items stay at the top and are exempt from the 20-item limit and from Clear all.
+
+Improved
+- Directions results are ordered by what you can actually take: modes with a route come first, and modes with no route or a failed lookup move to the bottom.
+```
+
 ## 1.5 (빌드 11)
 
 제출 2026-08-11 05:15 KST · `WAITING_FOR_REVIEW`. 도착지 부근 상황 재구성(주변 확인) · 길찾기 최근 경로 · 설정 업데이트 이력. 실시간 길 안내는 계속 봉인(`#if EXPERIMENTAL`)이라 이 버전에도 담기지 않는다.
