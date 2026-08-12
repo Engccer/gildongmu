@@ -7,8 +7,49 @@
  * 서비스·라우트·컴포넌트·채팅은 OSM 원시 필드를 모른다(provider 격리).
  */
 
-const DEFAULT_TIMEOUT_MS = 12_000;
+/**
+ * 클라이언트 abort 예산. 실측(2026-08-13, 서울 타일 6곳)에서 성공은 1.4~3.9초에
+ * 끝났고 실패(429·504)만 7.9~8.9초까지 끌었다. 종전 12초는 그 실패를 전부 기다린
+ * 뒤 "조회 실패"를 냈다 — 기다림이 정보를 주지 않는 최악의 조합이다.
+ */
+export const OVERPASS_CLIENT_TIMEOUT_MS = 6_000;
+/**
+ * Overpass 자체 timeout(초). 클라이언트 abort보다 **먼저** 끝나야 우리가 버린
+ * 질의를 상류가 계속 붙들지 않는다(그 낭비가 429를 부른다). 그래서 값을 따로
+ * 두지 않고 클라이언트 예산에서 유도한다 — 두 값이 갈리는 것이 조용한 결함이다.
+ */
+const SERVER_TIMEOUT_S = Math.floor(OVERPASS_CLIENT_TIMEOUT_MS / 1000) - 1;
 const USER_AGENT = "gildongmu/1.0 (+https://gildongmu.dodoplanet.space)";
+
+/**
+ * 실패의 대응 범위. 소비자가 쿨다운 범위를 정하는 데 쓴다.
+ * - `upstream`: 우리 IP·상류 전체 상태(비200 전부). 다른 타일을 더 두드리면 악화된다.
+ * - `tile`: 이 질의 자체의 문제(부분 응답·malformed). 다른 타일은 정상일 수 있다.
+ *
+ * ⚠ 실측(2026-08-13)으로 확정한 경계다: 같은 타일이 `[timeout:5]`로도 11.33초 뒤
+ * 23건을 **정상 반환**했다. Overpass의 timeout은 *실행* 시간에만 걸리고 슬롯 대기는
+ * 포함하지 않으므로, 긴 대기는 질의 비용이 아니라 대기 큐 포화다. 그래서 클라이언트
+ * 타임아웃(scope 없음)은 타일이 아니라 upstream 신호로 다뤄야 한다.
+ */
+export type OverpassFailureScope = "upstream" | "tile";
+
+/**
+ * 실패가 실어 보내는 판정 정보. 메시지 문자열 파싱 금지 — 문구가 바뀌면 조용히 깨진다.
+ * `overpassScope`가 없는 실패(fetch abort·네트워크 오류)는 소비자가 `upstream`으로
+ * 취급한다(위 주석의 대기 큐 근거).
+ */
+export interface OverpassError extends Error {
+  overpassScope?: OverpassFailureScope;
+  /** 비200일 때의 HTTP status(진단용). 범위 판정은 `overpassScope`가 정본. */
+  overpassStatus?: number;
+}
+
+function overpassError(message: string, scope: OverpassFailureScope, status?: number): OverpassError {
+  const error = new Error(message) as OverpassError;
+  error.overpassScope = scope;
+  if (status !== undefined) error.overpassStatus = status;
+  return error;
+}
 
 /** crossing 태그 값 → crossingSignal 고정 매핑(spec §2-C, 임의 확장 금지). 표 밖·없음은 unknown. */
 const CROSSING_SIGNAL_MAP: Record<string, "yes" | "no"> = {
@@ -100,11 +141,11 @@ export async function fetchWalkFeaturesTile(
 ): Promise<RawWalkFeature[]> {
   const around = `around:${radiusMeters},${anchorLat},${anchorLng}`;
   const query =
-    `[out:json][timeout:10];` +
+    `[out:json][timeout:${SERVER_TIMEOUT_S}];` +
     `(node(${around})[highway=crossing];node(${around})[tactile_paving=yes];);` +
     `out tags center;`;
 
-  const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+  const timeoutSignal = AbortSignal.timeout(OVERPASS_CLIENT_TIMEOUT_MS);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeoutSignal]) : timeoutSignal;
 
   const res = await fetch(overpassUrl(), {
@@ -116,9 +157,9 @@ export async function fetchWalkFeaturesTile(
     body: `data=${encodeURIComponent(query)}`,
     signal,
   });
-  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+  if (!res.ok) throw overpassError(`Overpass HTTP ${res.status}`, "upstream", res.status);
   const raw = (await res.json()) as { remark?: string; elements?: unknown };
-  if (raw.remark) throw new Error(`Overpass 부분 응답: ${raw.remark}`);
-  if (!Array.isArray(raw.elements)) throw new Error("Overpass elements 비정상 응답");
+  if (raw.remark) throw overpassError(`Overpass 부분 응답: ${raw.remark}`, "tile");
+  if (!Array.isArray(raw.elements)) throw overpassError("Overpass elements 비정상 응답", "tile");
   return normalizeOverpassElements(raw.elements);
 }
