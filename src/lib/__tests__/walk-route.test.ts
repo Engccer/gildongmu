@@ -7,7 +7,11 @@ vi.mock("../env", () => ({ hasKakaoKey: vi.fn(() => true), hasTmapKey: vi.fn(() 
 import { getKakaoWalkBriefing } from "../providers/kakao-walk";
 import { getWalkRouteBriefing } from "../providers/tmap-pedestrian";
 import { hasKakaoKey, hasTmapKey } from "../env";
-import { annotateAudioSignals, getWalkRoute } from "../walk-route";
+import {
+  annotateAudioSignals,
+  getWalkRoute,
+  getWalkRouteAlternatives,
+} from "../walk-route";
 import { rewriteWalkBriefing } from "../walk-guidance";
 import seed from "../data/audio-signals.json";
 import type { WalkRouteBriefing } from "../types";
@@ -509,5 +513,108 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(geomBriefing);
     await getWalkRoute({ origin: ORIGIN, dest: DEST });
     expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: false });
+  });
+});
+
+describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
+  it("tmap이 searchOption '10'으로 호출되고 카카오는 미호출", async () => {
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" });
+    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
+      searchOption: "10",
+    });
+    expect(r?.steps[0].description).toContain("보행자도로");
+  });
+
+  it("accessible과의 곱은 unavailable + 최단 전용 경고 문장(비기하는 스텝 0번 삽입)", async () => {
+    const r = await getWalkRoute({
+      origin: ORIGIN,
+      dest: DEST,
+      variant: "shortest",
+      accessible: true,
+    });
+    expect(r?.stepFree).toBe("unavailable");
+    expect(r?.stepFreeNotice).toBe(
+      "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.",
+    );
+    expect(r?.steps[0].description).toBe(
+      "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.",
+    );
+  });
+
+  it("includeGeometry면 tmap에 기하 보존·noStore를 전파한다", async () => {
+    await getWalkRoute({
+      origin: ORIGIN,
+      dest: DEST,
+      variant: "shortest",
+      includeGeometry: true,
+    });
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
+      searchOption: "10",
+      includeLineGeometry: true,
+      noStore: true,
+    });
+  });
+
+  it("Tmap throw면 카카오 폴백 없이 throw(502 전파)", async () => {
+    vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
+    await expect(
+      getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" }),
+    ).rejects.toThrow();
+    expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
+  });
+
+  it("Tmap 키 부재면 throw(최단 축 자체가 성립 안 함 — null로 위장 금지)", async () => {
+    vi.mocked(hasTmapKey).mockReturnValue(false);
+    await expect(
+      getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" }),
+    ).rejects.toThrow();
+  });
+});
+
+describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대칭)", () => {
+  it("両성공이면 { result, shortest } — 최단은 searchOption '10'", async () => {
+    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    expect(r.result?.steps[0].description).toContain("역사 내 이동");
+    expect(r.shortest?.steps[0].description).toContain("보행자도로");
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
+      searchOption: "10",
+    });
+  });
+
+  it("기본 성공 + 최단 throw → shortest: null (최단 실패 흡수)", async () => {
+    vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
+    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    expect(r.result?.steps[0].description).toContain("역사 내 이동");
+    expect(r.shortest).toBeNull();
+    expect("shortest" in r).toBe(true);
+  });
+
+  it("기본 throw → 전체 reject (기본 실패 502 계약)", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
+    await expect(
+      getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST }),
+    ).rejects.toThrow();
+  });
+
+  it("Tmap 키 부재면 shortest 키 자체 생략 + 최단 조회 미발생", async () => {
+    vi.mocked(hasTmapKey).mockReturnValue(false);
+    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    expect(r.result?.steps[0].description).toContain("역사 내 이동");
+    expect("shortest" in r).toBe(false);
+    expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+  });
+
+  it("accessible은 両경로에 전달된다(추천 applied·최단 경고)", async () => {
+    const r = await getWalkRouteAlternatives({
+      origin: ORIGIN,
+      dest: DEST,
+      accessible: true,
+    });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].accessible).toBe(true);
+    expect(r.result?.stepFree).toBe("applied");
+    expect(r.shortest?.stepFree).toBe("unavailable");
+    expect(r.shortest?.stepFreeNotice).toContain("최단 경로에는");
   });
 });

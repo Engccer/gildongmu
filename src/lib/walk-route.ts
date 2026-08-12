@@ -33,6 +33,14 @@ const MATCH_RADIUS_METERS = 40;
  */
 const MERGED_CROSSWALK = /\d+개의|횡단보도 \d+개/;
 
+/**
+ * 최단 경로(variant=shortest)×계단 회피의 곱 전용 경고(M3 spec §3.2).
+ * Tmap searchOption=30("최단+계단제외")이 실측상 추천과 동일해 "최단이면서
+ * 계단을 피하는 경로"는 어느 API도 제공하지 못한다 — 숨기지 않고 경고 병기.
+ */
+const SHORTEST_STEPFREE_NOTICE =
+  "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.";
+
 /** 계단 회피 미적용 시 전달하는 안전 문장(모든 소비자 결정론 전달). */
 const STEP_FREE_NOTICE: Record<Exclude<StepFreeStatus, "applied">, string> = {
   // ⚠ 이 상태는 두 분기가 공유한다: ACCESSIBLE 응답의 계단 문구 잔존(fail-closed —
@@ -83,9 +91,10 @@ function withStepFree(
   briefing: WalkRouteBriefing,
   status: StepFreeStatus,
   includeGeometry: boolean,
+  noticeOverride?: string,
 ): WalkRouteBriefing {
   if (status === "applied") return { ...briefing, stepFree: status };
-  const notice = STEP_FREE_NOTICE[status];
+  const notice = noticeOverride ?? STEP_FREE_NOTICE[status];
   const withField = { ...briefing, stepFree: status, stepFreeNotice: notice };
   if (includeGeometry) return withField;
   return { ...withField, steps: [{ description: notice }, ...briefing.steps] };
@@ -122,13 +131,36 @@ export async function getWalkRoute(params: {
   accessible?: boolean;
   /** 스텝 폴리라인 보존(실시간 길 안내 옵트인, 스펙 2026-08-03 §7.2). upstream fetch도 no-store. */
   includeGeometry?: boolean;
+  /** 경로 축(M3): 미지정=추천(현행 파이프라인), "shortest"=Tmap searchOption=10 단독. */
+  variant?: "shortest";
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible = false, includeGeometry = false } = params;
+  const { origin, dest, accessible = false, includeGeometry = false, variant } = params;
   // 재작성 → 주석 순서가 계약이다. 주석은 재작성된 문장 뒤에 붙어야 하고
   // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
   const annotate = (b: WalkRouteBriefing) =>
     annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), includeGeometry);
+
+  if (variant === "shortest") {
+    // 최단은 Tmap 전용 축(카카오에 동등 옵션 없음) — 폴백 없음, 실패는 throw(502).
+    // 키 부재도 throw다: null은 "경로 없음"의 의미라 "축 자체가 성립 안 함"을
+    // 정상 결과로 위장하게 된다(소비자는 alternatives의 shortest 존재로 이미 게이트됨).
+    if (!hasTmapKey()) {
+      throw new Error("[walk-route] variant=shortest는 Tmap 키가 필요합니다");
+    }
+    const briefing = await getWalkRouteBriefing({
+      origin,
+      dest,
+      searchOption: "10",
+      includeLineGeometry: includeGeometry,
+      noStore: includeGeometry,
+    });
+    if (!briefing) return null;
+    const annotated = annotate(briefing);
+    return accessible
+      ? withStepFree(annotated, "unavailable", includeGeometry, SHORTEST_STEPFREE_NOTICE)
+      : annotated;
+  }
 
   if (!accessible) {
     const r = await fetchPrimaryOrFallback({
@@ -166,4 +198,31 @@ export async function getWalkRoute(params: {
     base.via === "tmap" ? "unavailable" : "no_stepfree_route",
     includeGeometry,
   );
+}
+
+/**
+ * 추천(기본 파이프라인)+최단(Tmap searchOption=10)을 병렬 조회한다(M3, 조회 화면 전용).
+ * 부분 성공은 비대칭이다(spec §3.1 리뷰 #5): 기본 실패는 rethrow(502 계약 유지),
+ * 최단 실패만 흡수해 `shortest: null`(현행과 동일한 화면 성립). Tmap 키 부재면
+ * 최단 조회 자체를 생략하고 `shortest` 키를 싣지 않는다.
+ * 기하는 싣지 않는다(조회 화면 불필요 — 안내 시작 시 variant 단일 조회가 담당).
+ */
+export async function getWalkRouteAlternatives(params: {
+  origin: Coord;
+  dest: Coord;
+  accessible?: boolean;
+}): Promise<{ result: WalkRouteBriefing | null; shortest?: WalkRouteBriefing | null }> {
+  const { origin, dest, accessible = false } = params;
+  if (!hasTmapKey()) {
+    return { result: await getWalkRoute({ origin, dest, accessible }) };
+  }
+  const [primary, shortest] = await Promise.allSettled([
+    getWalkRoute({ origin, dest, accessible }),
+    getWalkRoute({ origin, dest, accessible, variant: "shortest" }),
+  ]);
+  if (primary.status === "rejected") throw primary.reason;
+  return {
+    result: primary.value,
+    shortest: shortest.status === "fulfilled" ? shortest.value : null,
+  };
 }
