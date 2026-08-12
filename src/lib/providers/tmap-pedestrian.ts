@@ -11,10 +11,13 @@ import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
  *
  * 응답은 GeoJSON FeatureCollection이며 Point(안내 지점)와 LineString(폴리라인
  * 좌표) feature가 섞여 있다. **낭독 정본은 Point feature의 properties.description**
- * (이미 완성된 한국어 안내문, 예 "158m 이동 후 우회전")이다. LineString은 지도
- * 없는 이 앱에선 쓰지 않는다(좌표를 받지도 않는다). turnType(코드)로 문장을
- * 재조합하지 않는다(서울버스 arrmsg1·카카오모빌리티 guidance 원칙과 동형).
+ * (이미 완성된 한국어 안내문, 예 "158m 이동 후 우회전")이다. turnType(코드)로
+ * 문장을 재조합하지 않는다(서울버스 arrmsg1·카카오모빌리티 guidance 원칙과 동형).
  * description이 없는 Point는 경유 좌표점이라 안내 단계에서 제외한다.
+ *
+ * LineString은 기본적으로 버리되, includeLineGeometry 옵션이면 직전 안내
+ * 스텝의 pathCoords로 귀속한다(실시간 안내의 이탈 판정이 실경로 곡률을
+ * 따라가는 성립 조건 — 안내 지점 사이 직선 보간은 곡률에서 헛경고를 낸다).
  *
  * 주의: 좌표 파라미터는 startX/endX=경도(lng), startY/endY=위도(lat).
  * 이 파일 밖은 lat/lng 도메인. startName/endName은 응답 안내문에 실제로
@@ -80,10 +83,17 @@ const NO_ROUTE_ERROR_CODES = new Set(["3102"]);
  * 투영한다. 총 거리/시간이 유한 양수가 아니거나 안내 단계가 0개면 깨진 경로를
  * 시각장애 사용자에게 확정 낭독하지 않도록 throw한다(3-state 원칙, "조회 실패"
  * 를 "정상 결과"로 뭉개지 않는다).
+ *
+ * includeLineGeometry면 features 순회 중 만나는 LineString 좌표를 직전 안내
+ * 스텝의 pathCoords에 이어붙인다(접점 중복 1개 제거). description 없는 경유
+ * Point는 스텝을 만들지 않지만 귀속 대상 포인터를 끊지도 않는다 — 경유점
+ * 앞뒤의 LineString이 모두 같은 안내 스텝의 구간이기 때문이다.
  */
 export function normalizeTmapWalkRoute(
   data: TmapRouteResponse,
+  opts?: { includeLineGeometry?: boolean },
 ): WalkRouteBriefing {
+  const includeLineGeometry = opts?.includeLineGeometry === true;
   const points = data.features.filter(isPointFeature);
   const first = points[0];
   const distanceMeters = first?.properties.totalDistance ?? NaN;
@@ -97,16 +107,29 @@ export function normalizeTmapWalkRoute(
   }
 
   const steps: WalkRouteStep[] = [];
-  for (const point of points) {
-    const description = point.properties.description;
-    if (!description) continue;
-    // geometry.coordinates는 [lng, lat] 순서. 좌표가 깨진 Point는 주석 판정만
-    // 포기하고 안내문은 살린다(coord 생략 — walk-route 서비스가 무주석 처리).
-    const [lng, lat] = point.geometry.coordinates;
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      steps.push({ description, coord: { lat, lng } });
-    } else {
-      steps.push({ description });
+  // 직후 LineString을 귀속할 스텝(마지막으로 push된 안내 스텝).
+  let attachTarget: WalkRouteStep | undefined;
+  for (const feature of data.features) {
+    if (isPointFeature(feature)) {
+      const description = feature.properties.description;
+      if (!description) continue; // 경유점 — attachTarget은 유지
+      // geometry.coordinates는 [lng, lat] 순서. 좌표가 깨진 Point는 주석 판정만
+      // 포기하고 안내문은 살린다(coord 생략 — walk-route 서비스가 무주석 처리).
+      const [lng, lat] = feature.geometry.coordinates;
+      const step: WalkRouteStep =
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? { description, coord: { lat, lng } }
+          : { description };
+      steps.push(step);
+      attachTarget = step;
+    } else if (includeLineGeometry && attachTarget) {
+      for (const [lng, lat] of feature.geometry.coordinates) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const acc = (attachTarget.pathCoords ??= []);
+        const prev = acc[acc.length - 1];
+        if (prev && prev.lat === lat && prev.lng === lng) continue; // 접점 중복 제거
+        acc.push({ lat, lng });
+      }
     }
   }
 
@@ -125,8 +148,14 @@ export function normalizeTmapWalkRoute(
 export async function getWalkRouteBriefing(params: {
   origin: Coord;
   dest: Coord;
+  /** Tmap 탐색 옵션. "10"=최단. 미지정이면 미전송(폴백 경로 동작 불변). */
+  searchOption?: "10";
+  /** LineString 좌표를 스텝 pathCoords로 보존(실시간 안내용). */
+  includeLineGeometry?: boolean;
+  /** 안내 중 전환·제안 재조회처럼 현시점 조회가 필요한 소비자용(kakao-walk 관례 동형). */
+  noStore?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest } = params;
+  const { origin, dest, searchOption, includeLineGeometry, noStore } = params;
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
@@ -142,9 +171,12 @@ export async function getWalkRouteBriefing(params: {
       resCoordType: "WGS84GEO",
       startName: "start",
       endName: "end",
+      ...(searchOption ? { searchOption } : {}),
     }),
     // 보행 경로는 준정적이라 같은 좌표쌍 캐시로 일 1,000건 무료 쿼터를 보호
-    next: { revalidate: 3600 },
+    // (단 POST fetch의 revalidate는 실효가 없어 사실상 비캐시 — 쿼터 방어의
+    // 실질은 옵트인 축소다. noStore는 의도를 명시하는 계약 표기).
+    ...(noStore ? { cache: "no-store" as const } : { next: { revalidate: 3600 } }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -159,5 +191,5 @@ export async function getWalkRouteBriefing(params: {
     throw new Error(`Tmap 보행자 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapRouteResponse;
-  return normalizeTmapWalkRoute(data);
+  return normalizeTmapWalkRoute(data, { includeLineGeometry });
 }
