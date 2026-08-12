@@ -66,9 +66,12 @@
 
 ## 5. i18n
 
-`recent` 네임스페이스 4키 × 6로케일(ko/en/es/fr/it/ja): `pin`("고정"), `unpin`("고정 해제"),
-`pinned`("고정됨" — 라벨 접미사 겸 웹 통지), `unpinned`("고정 해제됨" — 웹 통지).
-iOS는 messages→xcstrings 파이프라인 재생성.
+`recent` 네임스페이스 7키 × 6로케일(ko/en/es/fr/it/ja): `pin`("고정"), `unpin`("고정 해제"),
+`pinItem`/`unpinItem`("{name} 고정"/"{name} 고정 해제" — 웹 항목별 버튼 접근명, deleteItem
+동명 버튼 구분 관례), `pinned`("고정됨" — 라벨 접미사 겸 웹 통지), `unpinned`("고정 해제됨" —
+웹 통지), `clearedExceptPinned`("고정 항목을 제외하고 모두 지웠습니다" — 모두 지우기 후 고정이
+남을 때. 기존 `cleared` "모두 지웠습니다"가 거짓이 되면 안 된다). iOS swipe 액션은 행 문맥이
+있어 `pin`/`unpin`만 쓴다. messages→xcstrings 파이프라인 재생성.
 
 ## 6. 테스트
 
