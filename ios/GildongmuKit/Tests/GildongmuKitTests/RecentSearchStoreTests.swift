@@ -15,16 +15,16 @@ private func freshDefaults(_ name: String) -> UserDefaults {
 @Suite struct RecentQueryTests {
     @Test func trimAndPrependAndIgnoreEmpty() {
         let store = RecentSearchStore(defaults: freshDefaults("trim"))
-        #expect(store.recordQuery("  경복궁  ") == ["경복궁"])
-        #expect(store.recordQuery("서울역") == ["서울역", "경복궁"])
-        #expect(store.recordQuery("   ") == ["서울역", "경복궁"])
+        #expect(store.recordQuery("  경복궁  ") == [RecentQuery(text: "경복궁")])
+        #expect(store.recordQuery("서울역") == [RecentQuery(text: "서울역"), RecentQuery(text: "경복궁")])
+        #expect(store.recordQuery("   ") == [RecentQuery(text: "서울역"), RecentQuery(text: "경복궁")])
     }
 
     @Test func dedupeMovesToTop() {
         let store = RecentSearchStore(defaults: freshDefaults("dedupe"))
         store.recordQuery("a")
         store.recordQuery("b")
-        #expect(store.recordQuery("a") == ["a", "b"])
+        #expect(store.recordQuery("a").map(\.text) == ["a", "b"])
     }
 
     @Test func capAt20() {
@@ -32,15 +32,15 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         for i in 1...21 { store.recordQuery("q\(i)") }
         let list = store.queries()
         #expect(list.count == 20)
-        #expect(list.first == "q21")
-        #expect(!list.contains("q1"))
+        #expect(list.first?.text == "q21")
+        #expect(!list.map(\.text).contains("q1"))
     }
 
     @Test func removeAndClear() {
         let store = RecentSearchStore(defaults: freshDefaults("remove"))
         store.recordQuery("a")
         store.recordQuery("b")
-        #expect(store.removeQuery("a") == ["b"])
+        #expect(store.removeQuery("a") == [RecentQuery(text: "b")])
         store.clearQueries()
         #expect(store.queries() == [])
     }
@@ -49,6 +49,86 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         let defaults = freshDefaults("corrupt")
         defaults.set(Data("{oops".utf8), forKey: "recentQueries.v1")
         #expect(RecentSearchStore(defaults: defaults).queries() == [])
+        defaults.set(Data("{oops".utf8), forKey: "recentQueries.v2")
+        #expect(RecentSearchStore(defaults: defaults).queries() == [])
+    }
+
+    // MARK: 고정(스펙 2026-08-12)
+
+    @Test func migratesV1Strings() throws {
+        let defaults = freshDefaults("migrate")
+        defaults.set(try JSONEncoder().encode(["a", "b"]), forKey: "recentQueries.v1")
+        let store = RecentSearchStore(defaults: defaults)
+        #expect(store.queries() == [RecentQuery(text: "a"), RecentQuery(text: "b")])
+        // 첫 저장 이후는 v2가 정본
+        #expect(store.recordQuery("c").map(\.text) == ["c", "a", "b"])
+    }
+
+    @Test func clearAfterMigrationDoesNotResurrectV1() throws {
+        let defaults = freshDefaults("migrate-clear")
+        defaults.set(try JSONEncoder().encode(["a", "b"]), forKey: "recentQueries.v1")
+        let store = RecentSearchStore(defaults: defaults)
+        #expect(store.queries().count == 2)
+        store.clearQueries() // 고정 없음 → v2에 빈 배열 저장(빈 v2 ≠ v2 부재)
+        #expect(store.queries() == [])
+    }
+
+    @Test func pinAppendsToEndOfPinBlock() {
+        let store = RecentSearchStore(defaults: freshDefaults("pin-order"))
+        store.recordQuery("a")
+        store.recordQuery("b")
+        store.recordQuery("c") // [c, b, a]
+        store.setQueryPinned("a", pinned: true) // [a(pin), c, b]
+        let after = store.setQueryPinned("b", pinned: true) // [a(pin), b(pin), c]
+        #expect(after == [
+            RecentQuery(text: "a", pinned: true),
+            RecentQuery(text: "b", pinned: true),
+            RecentQuery(text: "c"),
+        ])
+    }
+
+    @Test func unpinMovesToHeadOfUnpinnedBlock() {
+        let store = RecentSearchStore(defaults: freshDefaults("unpin"))
+        store.recordQuery("a")
+        store.recordQuery("b") // [b, a]
+        store.setQueryPinned("a", pinned: true) // [a(pin), b]
+        #expect(store.setQueryPinned("a", pinned: false) == [RecentQuery(text: "a"), RecentQuery(text: "b")])
+    }
+
+    @Test func recordingPinnedItemKeepsItsPlace() {
+        let store = RecentSearchStore(defaults: freshDefaults("pin-record"))
+        store.recordQuery("a")
+        store.recordQuery("b") // [b, a]
+        store.setQueryPinned("a", pinned: true) // [a(pin), b]
+        #expect(store.recordQuery("a") == [RecentQuery(text: "a", pinned: true), RecentQuery(text: "b")])
+        // 비고정 신규 기록은 고정 블록 바로 뒤로
+        #expect(store.recordQuery("c").map(\.text) == ["a", "c", "b"])
+    }
+
+    @Test func capAppliesOnlyToUnpinned() {
+        let store = RecentSearchStore(defaults: freshDefaults("pin-cap"))
+        store.recordQuery("keep")
+        store.setQueryPinned("keep", pinned: true)
+        for i in 1...21 { store.recordQuery("q\(i)") }
+        let list = store.queries()
+        #expect(list.count == 21) // 고정 1 + 비고정 20
+        #expect(list.first == RecentQuery(text: "keep", pinned: true))
+        #expect(!list.map(\.text).contains("q1"))
+    }
+
+    @Test func clearKeepsPinned() {
+        let store = RecentSearchStore(defaults: freshDefaults("pin-clear"))
+        store.recordQuery("a")
+        store.recordQuery("b")
+        store.setQueryPinned("a", pinned: true)
+        #expect(store.clearQueries() == [RecentQuery(text: "a", pinned: true)])
+        #expect(store.queries() == [RecentQuery(text: "a", pinned: true)])
+    }
+
+    @Test func pinUnknownItemIsNoOp() {
+        let store = RecentSearchStore(defaults: freshDefaults("pin-ghost"))
+        store.recordQuery("a")
+        #expect(store.setQueryPinned("ghost", pinned: true) == [RecentQuery(text: "a")])
     }
 }
 
@@ -95,6 +175,35 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(store.endpoints(.from) == [])
         #expect(store.endpoints(.to).count == 1)
     }
+
+    // MARK: 고정(스펙 2026-08-12)
+
+    @Test func legacyDataWithoutPinnedDecodesUnpinned() {
+        let defaults = freshDefaults("ep-legacy")
+        let raw = #"[{"label":"집","lat":37.5,"lng":127.1}]"#  // pinned 필드 없는 기존 데이터
+        defaults.set(Data(raw.utf8), forKey: "recentEndpoints.to.v1")
+        let store = RecentSearchStore(defaults: defaults)
+        #expect(store.endpoints(.to) == [RecentEndpoint(label: "집", lat: 37.5, lng: 127.1)])
+    }
+
+    @Test func pinKeepsTopAndLabelRefreshKeepsPlaceAndClearKeepsPins() {
+        let store = RecentSearchStore(defaults: freshDefaults("ep-pin"))
+        let home = RecentEndpoint(label: "집", lat: 37.5, lng: 127.1)
+        store.recordEndpoint(home, scope: .to)
+        store.recordEndpoint(RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0), scope: .to) // [회사, 집]
+        store.setEndpointPinned(home, scope: .to, pinned: true) // [집(pin), 회사]
+        #expect(store.endpoints(.to).map(\.label) == ["집", "회사"])
+        // 고정 항목 재기록(라벨 변형) → 자리 유지 + 라벨 교체 + 고정 유지
+        let relabeled = store.recordEndpoint(RecentEndpoint(label: "우리집", lat: 37.5, lng: 127.1), scope: .to)
+        #expect(relabeled.first == RecentEndpoint(label: "우리집", lat: 37.5, lng: 127.1, pinned: true))
+        // cap: 고정 1 + 비고정 20
+        for i in 1...21 {
+            store.recordEndpoint(RecentEndpoint(label: "p\(i)", lat: Double(i), lng: Double(i)), scope: .to)
+        }
+        #expect(store.endpoints(.to).count == 21)
+        // clear는 고정만 남긴다
+        #expect(store.clearEndpoints(.to).map(\.label) == ["우리집"])
+    }
 }
 
 @Suite struct RecentRouteTests {
@@ -137,5 +246,32 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(store.routes() == [])
         defaults.set(Data("broken".utf8), forKey: "recentRoutes.v1")
         #expect(store.routes() == [])
+    }
+
+    // MARK: 고정(스펙 2026-08-12)
+
+    @Test func legacyDataWithoutPinnedDecodesUnpinned() {
+        let defaults = freshDefaults("route-legacy")
+        let raw = #"[{"from":null,"to":{"label":"학교","lat":37.529,"lng":127.138}}]"#
+        defaults.set(Data(raw.utf8), forKey: "recentRoutes.v1")
+        let store = RecentSearchStore(defaults: defaults)
+        #expect(store.routes() == [RecentRoute(from: nil, to: RecentEndpoint(label: "학교", lat: 37.529, lng: 127.138))])
+    }
+
+    @Test func pinnedRouteStaysOnTopAcrossRecordsAndClear() {
+        let store = RecentSearchStore(defaults: freshDefaults("route-pin"))
+        let toSchool = RecentRoute(from: home, to: school)
+        let toWork = RecentRoute(from: nil, to: RecentEndpoint(label: "회사", lat: 37.6, lng: 127.0))
+        store.recordRoute(toSchool)
+        store.recordRoute(toWork) // [회사, 학교]
+        store.setRoutePinned(toSchool, pinned: true) // [학교(pin), 회사]
+        #expect(store.routes().first?.to?.label == "신명중학교")
+        store.recordRoute(toWork) // 재기록해도 고정이 위
+        #expect(store.routes().first?.to?.label == "신명중학교")
+        #expect(store.routes().first?.pinned == true)
+        // clear 보존 → 해제 후 clear는 전량 삭제
+        #expect(store.clearRoutes().count == 1)
+        store.setRoutePinned(store.routes()[0], pinned: false)
+        #expect(store.clearRoutes() == [])
     }
 }
