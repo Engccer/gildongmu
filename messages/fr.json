@@ -558,7 +558,14 @@
     "delete": "Supprimer",
     "deleteItem": "Supprimer {name}",
     "deleted": "Supprimé",
-    "cleared": "Toutes les recherches récentes ont été effacées"
+    "cleared": "Toutes les recherches récentes ont été effacées",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "pinItem": "Épingler {name}",
+    "unpinItem": "Désépingler {name}",
+    "pinned": "Épinglé",
+    "unpinned": "Désépinglé",
+    "clearedExceptPinned": "Tout est effacé sauf les éléments épinglés"
   },
   "recentRoutes": {
     "title": "Itinéraires récents",

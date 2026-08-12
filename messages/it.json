@@ -558,7 +558,14 @@
     "delete": "Elimina",
     "deleteItem": "Elimina {name}",
     "deleted": "Eliminato",
-    "cleared": "Tutte le ricerche recenti sono state cancellate"
+    "cleared": "Tutte le ricerche recenti sono state cancellate",
+    "pin": "Fissa",
+    "unpin": "Sblocca",
+    "pinItem": "Fissa {name}",
+    "unpinItem": "Sblocca {name}",
+    "pinned": "Fissato",
+    "unpinned": "Sbloccato",
+    "clearedExceptPinned": "Cancellato tutto tranne gli elementi fissati"
   },
   "recentRoutes": {
     "title": "Percorsi recenti",
