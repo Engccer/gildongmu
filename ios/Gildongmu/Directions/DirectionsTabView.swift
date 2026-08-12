@@ -1255,11 +1255,9 @@ struct DirectionsTabView: View {
                     if walkGuideStartable, let tracked = trackedDestination {
                         Button(appLocalized("beacon.guideStartWalkShortest")) {
                             lastGuideStart = .walkShortest
-                            // 세션 variant 전달은 Task 7에서 배선 — 그 전까지 기존
-                            // 도보 시작과 동일 동작(컴파일·화면 유지).
                             beacon.toggle(
                                 dest: tracked.dest, label: tracked.label, kind: .walk,
-                                accessible: model.stepFreeEnabled
+                                accessible: model.stepFreeEnabled, variant: .shortest
                             )
                         }
                         .accessibilityFocused($guideStartFocused, equals: .walkShortest)

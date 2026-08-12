@@ -166,6 +166,17 @@ enum GuideText {
         )
     }
 
+    /// 수동 전환 성공 발화(M3 spec §5). 재조회와 같은 구조(새 경로 규모 + 첫 안내)에
+    /// 첫 문장만 variant를 밝힌다 — "다시 찾았습니다"는 전환에선 거짓 서술이라 대체.
+    static func variantSwitch(route: GuideRoute, firstIndices: [Int], shortest: Bool) -> String {
+        appLocalized(
+            shortest ? "guide.switchedToShortest" : "guide.switchedToRecommended",
+            String(route.steps.count),
+            formatDistance(Int(route.totalMeters.rounded())),
+            unit(route: route, indices: firstIndices)
+        )
+    }
+
     /// 원거리 예고(B1 §4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산) +
     /// 원문을 독립 문장으로 결합(문법 결합 금지 — 거리 기준 혼동 차단).
     static func farNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String {

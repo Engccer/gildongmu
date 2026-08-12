@@ -238,6 +238,11 @@ final class BeaconModel {
 
     /// 이 세션의 계단 회피(도보 전용). `toggle`이 시작 시점 값을 받아 보관한다.
     private var accessible = false
+    /// 이 세션의 도보 경로 축(M3, nil=추천·`.shortest`=최단). 세션 시작 시 확정되고
+    /// 세션 수명 동안 불변 — **수동 전환의 fetch 성공 커밋에서만** 바뀐다(실패 시
+    /// 기존 경로·기존 variant 유지). 재조회·이탈 제안은 이 값을 그대로 쓴다(spec §3.2
+    /// — 경로 정체성은 세션 인자가 고정하고 variant만 축이다).
+    private(set) var sessionVariant: WalkRouteVariant?
     /// 직전 계단 회피 판정(열화 전이 통지 기준 — spec 2026-08-08 §2.3).
     /// 원시 문자열이다: 알려진 셋 밖의 값도 중복 통지를 막는 식별자로 쓴다.
     private var lastStepFree: String?
@@ -282,7 +287,8 @@ final class BeaconModel {
     /// 인자가 만든 결함이었다(spec 2026-08-08 §2.5). 계단 회피 개념이 없는 수단은
     /// 호출부가 `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
     func toggle(
-        dest: BeaconDest, label: String, kind: GuideSessionKind = .walk, accessible: Bool
+        dest: BeaconDest, label: String, kind: GuideSessionKind = .walk, accessible: Bool,
+        variant: WalkRouteVariant? = nil
     ) {
         if isTracking {
             stop(playStopTone: true)
@@ -292,6 +298,7 @@ final class BeaconModel {
             // 세션 시작 시점 값이 세션 내내 유효하다 — 추적 중에는 시트가 화면을
             // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
             self.accessible = accessible
+            sessionVariant = variant
             lastStepFree = nil
             pendingStepFreeNotice = nil
             startTask = Task { [weak self] in
@@ -414,7 +421,8 @@ final class BeaconModel {
     /// 수단별 상세 경로 데이터(§4.1 봉인 구성의 경로 소스 축). nil = 상세 부적격
     /// (car는 provider 비-tmap·기하 검증 실패 포함 — §5 fail-closed).
     private func fetchDetailData(
-        origin: (lat: Double, lng: Double), dest: BeaconDest
+        origin: (lat: Double, lng: Double), dest: BeaconDest,
+        variant: WalkRouteVariant?
     ) async throws -> (
         route: GuideRoute, spans: [CarRoadSpan], durationSeconds: Int?,
         stepFreeRaw: String?, stepFree: StepFreeStatus?, stepFreeNotice: String?,
@@ -438,7 +446,8 @@ final class BeaconModel {
             originLat: origin.lat, originLng: origin.lng,
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
-            includeGeometry: true
+            includeGeometry: true,
+            variant: variant
         )
         guard let briefing,
               let route = buildGuideRoute(briefing.steps.map {
@@ -489,7 +498,7 @@ final class BeaconModel {
         // 방지(§4.1)가 깨진다(독립 리뷰 MEDIUM).
         defer { if token == routeFetchToken { awaitingRoute = false } }
         do {
-            let fetched = try await fetchDetailData(origin: origin, dest: dest)
+            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: sessionVariant)
             guard !Task.isCancelled, isTracking, self.dest == dest else { return }
             guard let fetched else {
                 fallbackToBrief()
@@ -1559,20 +1568,50 @@ final class BeaconModel {
         rerouteToken += 1
         let token = rerouteToken
         Task { [weak self] in
-            await self?.performReroute(token: token)
+            await self?.performReroute(token: token, intent: .keepVariant)
         }
     }
 
-    private func performReroute(token: Int) async {
+    /// 재조회 의도(M3): 이탈 재조회·제안은 세션 variant 유지, 수동 전환만 반대 variant.
+    private enum RerouteIntent {
+        case keepVariant
+        case switchTo(WalkRouteVariant?)
+    }
+
+    /// 안내 중 수동 전환(M3 spec §5): **현위치 기준으로 반대 variant 재조회**. 정상
+    /// 추종 중에도 가능(offRoute 조건 없음 — requestReroute와의 유일한 가드 차이).
+    /// walk 전용(variant는 도보 축, car는 M3 범위 밖). 그 외 토큰·latest-wins·커밋은
+    /// performReroute 기존 계약 그대로. 출발 전에 받아 둔 대안을 재사용하지 않는
+    /// 이유: 걷는 중이라 그 경로의 출발점이 낡았다.
+    func requestVariantSwitch() {
+        guard sessionKind == .walk, isTracking, mode == .detail, !rerouteInFlight else { return }
+        rerouteInFlight = true
+        isRerouting = true
+        rerouteToken += 1
+        let token = rerouteToken
+        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        Task { [weak self] in
+            await self?.performReroute(token: token, intent: .switchTo(target))
+        }
+    }
+
+    private func performReroute(token: Int, intent: RerouteIntent) async {
         defer {
             rerouteInFlight = false
             isRerouting = false
         }
         guard let dest else { return }
+        // 전환은 fetch 성공 커밋 전까지 sessionVariant를 건드리지 않는다(실패 시
+        // 기존 경로·기존 variant 유지 — 라벨·다음 전환 방향이 실제 경로와 어긋나지 않게).
+        let fetchVariant: WalkRouteVariant?
+        switch intent {
+        case .keepVariant: fetchVariant = sessionVariant
+        case .switchTo(let target): fetchVariant = target
+        }
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
-            let fetched = try await fetchDetailData(origin: origin, dest: dest)
+            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: fetchVariant)
             // latest-wins: 왕복 중 중지·전환·목적지 변경이면 도착 응답 폐기(이탈 게이트 동형).
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
             guard let fetched else {
@@ -1583,6 +1622,8 @@ final class BeaconModel {
                 return
             }
             // 재조회 출발지가 현재 위치이므로 새 경로의 d=0이 곧 현 위치다(전역 재투영 불요).
+            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 variant가 바뀐다(세션 수명 불변식).
+            if case .switchTo(let target) = intent { sessionVariant = target }
             guideRoute = fetched.route
             guideRouteDurationSeconds = fetched.durationSeconds
             roadSpans = fetched.spans
@@ -1623,7 +1664,18 @@ final class BeaconModel {
             let notice = consumeStepFreeNotice(
                 fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice
             )
-            let summary = GuideText.reroute(route: fetched.route, firstIndices: initial.firstIndices)
+            // 전환은 variant를 밝히는 문장으로 시작한다(spec §5 — 새 경로 요약 구조는
+            // 재조회와 동일, 첫 문장만 교체).
+            let summary: String
+            switch intent {
+            case .keepVariant:
+                summary = GuideText.reroute(route: fetched.route, firstIndices: initial.firstIndices)
+            case .switchTo(let target):
+                summary = GuideText.variantSwitch(
+                    route: fetched.route, firstIndices: initial.firstIndices,
+                    shortest: target == .shortest
+                )
+            }
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             // ⚠ **`.high`가 아니면 이 발화는 도달하지 않는다.** 성공하면 위 `offRoute = false`가

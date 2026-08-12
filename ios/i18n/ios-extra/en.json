@@ -252,5 +252,11 @@
   },
   "beacon": {
     "guideStartWalkShortest": "Start shortest route guidance"
+  },
+  "guide": {
+    "switchRoute": "Switch to the other route",
+    "switchRouteBusy": "Switch to the other route, searching",
+    "switchedToShortest": "Switched to the shortest route. {count} steps, {distance} total. {first}",
+    "switchedToRecommended": "Switched to the recommended route. {count} steps, {distance} total. {first}"
   }
 }
