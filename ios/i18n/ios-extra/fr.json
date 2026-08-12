@@ -254,11 +254,11 @@
     "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
   },
   "guide": {
-    "switchRoute": "Passer à l’autre itinéraire",
-    "switchRouteBusy": "Passer à l’autre itinéraire, recherche en cours",
     "switchedToShortest": "Itinéraire le plus court activé. {count} instructions, {distance} au total. {first}",
     "switchedToRecommended": "Itinéraire recommandé activé. {count} instructions, {distance} au total. {first}",
-    "proposalReady": "Un nouvel itinéraire est prêt. {first}, {distance} au total.",
-    "proposalAdopt": "Guider avec le nouvel itinéraire préparé"
+    "proposalReady": "Un nouvel itinéraire est prêt. {count} instructions, {distance} au total. {first}",
+    "proposalAdopt": "Guider avec le nouvel itinéraire préparé",
+    "switchToShortest": "Passer à l’itinéraire le plus court",
+    "switchToRecommended": "Passer à l’itinéraire recommandé"
   }
 }

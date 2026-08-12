@@ -976,12 +976,33 @@ struct DirectionsTabView: View {
     /// 화면을 떠나며 멈춘 경우(`onDisappear` → `teardown`)에도 불리지만, 사라진
     /// 뷰에 대한 대입은 no-op이라 따로 가르지 않는다.
     private func landBeaconStartFocus() {
+        // 도보 시작 버튼이 경로 행 disclosure 안으로 이동(M3)해, 접힌 행 안의 버튼은
+        // AX 트리에 없어 대입이 조용히 되돌려진다(오프스크린 컬링과 같은 기제) —
+        // 대입 전에 소유 행을 강제 펼친다(a11y 감사 HIGH 2026-08-12). 최단 행이
+        // 새 조회에서 사라졌으면(.walkShortest인데 walkShortest nil — 최단 실패
+        // 흡수·스냅샷 교체) 항상 존재하는 추천 행 버튼으로 폴백한다.
+        // transitAlt는 종전 동작 유지(M3 비범위 — 대안 행 접힘은 기존 계약).
+        var target = lastGuideStart
+        switch target {
+        case .walk:
+            walkExpandedOverride = true
+        case .walkShortest:
+            if model.walkShortest == nil {
+                target = .walk
+                walkExpandedOverride = true
+            } else {
+                walkShortestExpanded = true
+            }
+        default:
+            break
+        }
+        let landTarget = target
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(400))
-            guideStartFocused = lastGuideStart
+            guideStartFocused = landTarget
             try? await Task.sleep(for: .milliseconds(600))
-            guard guideStartFocused != lastGuideStart else { return }
-            guideStartFocused = lastGuideStart
+            guard guideStartFocused != landTarget else { return }
+            guideStartFocused = landTarget
         }
     }
 
@@ -1237,15 +1258,20 @@ struct DirectionsTabView: View {
                         lastGuideStart = .walk
                         beacon.toggle(
                             dest: tracked.dest, label: tracked.label, kind: .walk,
-                            accessible: model.stepFreeEnabled
+                            accessible: model.stepFreeEnabled,
+                            shortestAvailable: model.walkShortest != nil
                         )
                     }
                     .accessibilityFocused($guideStartFocused, equals: .walk)
                 }
-                WalkRouteRows(briefing: briefing, includeSummary: false)
+                WalkRouteRows(briefing: briefing, includeSummary: false, omitNoticeStep: true)
             } label: {
+                // stepFreeNotice는 両행 라벨에 병기한다(a11y 감사 — 안전 문장이 접힘
+                // 뒤에 갇히면 안 되고, 접힘 상태에선 라벨이 유일한 전달 채널이다).
                 distanceText(joinText(
-                    appLocalized("ios.directions.walkRecommended"), walkSummaryText(briefing)))
+                    appLocalized("ios.directions.walkRecommended"),
+                    walkSummaryText(briefing),
+                    briefing.stepFreeNotice))
             }
             // 최단 행: 같은 응답에서 온 쌍만(model.walkShortest 계약). 실패·부재 시
             // 행 자체를 그리지 않는다(死행 금지, spec §4). stepFreeNotice는 요약 뒤
@@ -1262,7 +1288,7 @@ struct DirectionsTabView: View {
                         }
                         .accessibilityFocused($guideStartFocused, equals: .walkShortest)
                     }
-                    WalkRouteRows(briefing: shortest, includeSummary: false)
+                    WalkRouteRows(briefing: shortest, includeSummary: false, omitNoticeStep: true)
                 } label: {
                     distanceText(joinText(
                         appLocalized("ios.directions.walkShortest"),
