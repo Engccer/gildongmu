@@ -206,6 +206,32 @@ describe("getWalkInfrastructure", () => {
       }
     });
 
+    it("쿨다운은 지속 캐시 적중을 막지 않는다(이미 가진 데이터를 없다고 답하지 않는다)", async () => {
+      // 쿨다운의 목적은 "상류를 더 두드리지 않는 것"이지 "캐시를 못 읽게 하는 것"이
+      // 아니다. 게이트가 캐시보다 앞에 있으면 무관한 타일의 실패가 이미 성공해 둔
+      // 타일까지 60초간 조회 실패로 만든다. 실제 캐시하는 래퍼를 주입해 확인한다.
+      const store = new Map<string, RawWalkFeature[]>();
+      configureWalkInfraTileCache(async (fetcher, key) => {
+        const hit = store.get(key);
+        if (hit) return hit;
+        const fresh = await fetcher();
+        store.set(key, fresh);
+        return fresh;
+      });
+      mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
+
+      mockOverpass.mockResolvedValueOnce([rawFeature({ crossing: true, lat: 37.5, lng: 127.0 })]);
+      expect((await getWalkInfrastructure(37.5, 127.0)).osm.status).toBe("ok"); // 타일 A 캐시 적재
+
+      mockOverpass.mockRejectedValueOnce(scopedError("upstream", 429));
+      expect((await getWalkInfrastructure(37.6, 127.2)).osm.status).toBe("error"); // 타일 B 실패 → 전역 쿨다운
+
+      const cachedTileA = await getWalkInfrastructure(37.5, 127.0);
+
+      expect(cachedTileA.osm.status).toBe("ok");
+      expect(mockOverpass).toHaveBeenCalledTimes(2); // 캐시 적중이라 상류 재호출 없음
+    });
+
     it("전역 쿨다운은 예산을 소비하지 않는다(호출하지 않은 몫을 셈에서 빼지 않는다)", async () => {
       mockAudioSignals.mockReturnValue(SAMPLE_AUDIO);
       mockOverpass.mockRejectedValueOnce(scopedError("upstream", 429));

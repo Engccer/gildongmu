@@ -17,8 +17,12 @@ export const OVERPASS_CLIENT_TIMEOUT_MS = 6_000;
  * Overpass 자체 timeout(초). 클라이언트 abort보다 **먼저** 끝나야 우리가 버린
  * 질의를 상류가 계속 붙들지 않는다(그 낭비가 429를 부른다). 그래서 값을 따로
  * 두지 않고 클라이언트 예산에서 유도한다 — 두 값이 갈리는 것이 조용한 결함이다.
+ *
+ * ⚠ 하한 1초를 둔다 — 유도식만 두면 클라이언트 예산을 1초 이하로 낮출 때 `[timeout:0]`
+ * ·`[timeout:-1]`처럼 Overpass가 거부하는 질의가 조용히 만들어진다(막으려던 것과 같은
+ * 종류의 결함을 다른 자리에 남기는 셈이다).
  */
-const SERVER_TIMEOUT_S = Math.floor(OVERPASS_CLIENT_TIMEOUT_MS / 1000) - 1;
+const SERVER_TIMEOUT_S = Math.max(1, Math.floor(OVERPASS_CLIENT_TIMEOUT_MS / 1000) - 1);
 const USER_AGENT = "gildongmu/1.0 (+https://gildongmu.dodoplanet.space)";
 
 /**

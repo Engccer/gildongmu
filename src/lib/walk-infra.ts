@@ -110,11 +110,16 @@ function recordTileFailure(key: string, error: unknown, now: number): void {
   upstreamCooldownUntil = now + OVERPASS_FAILURE_COOLDOWN_MS;
 }
 
-/** 쿨다운 중이면 사유를 반환한다(호출 없이 즉시 실패). */
+/**
+ * 쿨다운 중이면 사유를 반환한다(상류 호출 없이 즉시 실패). 만료된 타일 항목은 이때
+ * 지운다 — warm 인스턴스가 오래 살아 있으면 Map이 무한정 자라기만 한다.
+ */
 function cooldownReason(key: string, now: number): string | null {
   if (now < upstreamCooldownUntil) return "overpass 상류 쿨다운";
   const until = tileCooldownUntil.get(key);
-  if (until !== undefined && now < until) return "overpass 타일 실패 쿨다운";
+  if (until === undefined) return null;
+  if (now < until) return "overpass 타일 실패 쿨다운";
+  tileCooldownUntil.delete(key);
   return null;
 }
 
@@ -141,37 +146,43 @@ function tileAnchor(lat: number, lng: number): { key: string; anchorLat: number;
  * 이식 환경). 지속 캐시에는 성공만 담긴다(unstable_cache는 throw를 저장하지 않음).
  * 실패는 이 모듈의 쿨다운(`recordTileFailure`)이 짧게 억제한다 — 종전처럼 매 요청
  * 재시도하면 걸어가며 타일을 넘는 사용자가 상류 레이트 리밋을 스스로 유발한다.
- * single-flight·전역 예산은 별도 유지.
+ *
+ * ⚠ **쿨다운·예산 게이트는 캐시 미스가 확정된 뒤에만 적용한다**(리뷰 검출 2026-08-13).
+ * 게이트를 캐시 앞에 두면 무관한 타일의 실패가 **이미 성공해 캐시에 있는 타일까지**
+ * 쿨다운 내내 "조회 실패"로 만든다. 게이트의 목적은 "상류를 더 두드리지 않는 것"이고
+ * 캐시 적중은 상류 호출이 아니다.
  */
-function cachedFetchTile(anchorLat: number, anchorLng: number, cacheKey: string): Promise<RawWalkFeature[]> {
-  const fetcher = () => fetchWalkFeaturesTile(anchorLat, anchorLng, TILE_RADIUS_METERS);
-  return tileCache ? tileCache(fetcher, cacheKey) : fetcher();
-}
-
-/**
- * 같은 타일 동시 요청을 single-flight로 묶고, 실제 새 fetch 시도에만 전역 예산을
- * 소비한다(같은 타일에 묶인 대기자는 예산을 소비하지 않는다).
- */
-async function fetchTileWithBudget(lat: number, lng: number): Promise<RawWalkFeature[]> {
-  const { key, anchorLat, anchorLng } = tileAnchor(lat, lng);
-  const inFlight = inFlightTiles.get(key);
-  if (inFlight) return inFlight;
-
-  const promise = (async () => {
+function cachedFetchTile(anchorLat: number, anchorLng: number, key: string): Promise<RawWalkFeature[]> {
+  const fetchUpstream = async (): Promise<RawWalkFeature[]> => {
     const now = Date.now();
     const cooldown = cooldownReason(key, now);
     if (cooldown) throw new Error(cooldown);
     if (!consumeOverpassBudget(now)) {
       throw new Error(`overpass 전역 호출 한도 초과(분당 ${OVERPASS_BUDGET_PER_MINUTE}회)`);
     }
+    // ⚠ 위 두 게이트의 throw는 이 try 바깥이어야 한다 — 쿨다운으로 막힌 요청을 다시
+    // 실패로 기록하면 매 요청이 쿨다운을 갱신해 영구 차단이 된다.
     try {
-      return await cachedFetchTile(anchorLat, anchorLng, `walk-tile:${key}`);
+      return await fetchWalkFeaturesTile(anchorLat, anchorLng, TILE_RADIUS_METERS);
     } catch (error) {
       recordTileFailure(key, error, Date.now());
       throw error;
     }
-  })();
+  };
+  return tileCache ? tileCache(fetchUpstream, `walk-tile:${key}`) : fetchUpstream();
+}
 
+/**
+ * 같은 타일 동시 요청을 single-flight로 묶는다. 쿨다운·예산은 실제 상류 호출 직전
+ * (`cachedFetchTile` 내부)에서 판정하므로 같은 타일에 묶인 대기자도, 캐시 적중도
+ * 예산을 소비하지 않는다.
+ */
+async function fetchTileDeduped(lat: number, lng: number): Promise<RawWalkFeature[]> {
+  const { key, anchorLat, anchorLng } = tileAnchor(lat, lng);
+  const inFlight = inFlightTiles.get(key);
+  if (inFlight) return inFlight;
+
+  const promise = cachedFetchTile(anchorLat, anchorLng, key);
   inFlightTiles.set(key, promise);
   try {
     return await promise;
@@ -220,7 +231,7 @@ async function loadAudioSignals(lat: number, lng: number): Promise<SourceStatus<
 }
 
 async function loadOsm(lat: number, lng: number): Promise<SourceStatus<OsmWalkData>> {
-  const rawFeatures = await fetchTileWithBudget(lat, lng);
+  const rawFeatures = await fetchTileDeduped(lat, lng);
   return { status: "ok", data: projectOsmData(rawFeatures, lat, lng) };
 }
 
