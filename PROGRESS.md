@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.5 심사 중**(`WAITING_FOR_REVIEW`, 빌드 11 VALID, 제출 2026-08-11) · 1.0~1.4 `READY_FOR_SALE` |
+| iOS | **1.6 심사 중**(`WAITING_FOR_REVIEW`, 빌드 12 VALID, 제출 2026-08-12) · 1.0~1.5 `READY_FOR_SALE` |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`

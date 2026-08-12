@@ -11,6 +11,9 @@
 
 ## 2026-08-12
 
+### App Store 1.6 제출 (빌드 12)
+1.5 출시 이후 iOS 정식 빌드에 **도달하는** 변경 3종을 담았다: 최근 목록 고정(4목록) · 도보 경로 대안 2행(추천·최단) · 길찾기 결과 섹션 동적 순서. 1.5 아카이브(`aa4b823`) 이후 63커밋 중 실시간 안내 계열 20여 개는 `realtimeGuidanceEnabled` 게이트 안이라 Release에서 도달 불가, 서버 전용(A9 근접역 동명이역·횡단 꼬리 거리 이름 부여·`/api/route/walk` variant 계약)은 웹 배포로 이미 1.5 사용자에게 반영, A8(조회 요약 수치)은 웹 전용이라 제외했다. **도보 대안은 ko 노트에만** 적었다 — iOS 도보 섹션이 `AppLanguage.current == "ko"` 전용이라 조회 자체를 생략하므로 en에 적으면 없는 화면을 찾게 된다. M3의 실보행 판정 잔여분은 전부 실험 구성 안이고 Release에 도달하는 면은 정보 제공 축이라 1.5의 M1과 같은 근거로 판정 전 출시를 받아들였다. 노트는 `docs/appstore/release-notes.md` §1.6.
+
 ### 길찾기 결과 섹션 동적 순서 (E11)
 결과 섹션 순서를 조회 결과로 결정 — 성공 수단 앞·비성공(경로 없음·실패) 뒤, 도보 성공이 30분 이하(`shouldCollapseWalk` 경계 재사용)면 최상단. 순서는 settled 시점 1회 스냅샷(웹 `QueryResults.orderedModes`, Kit `DirectionsResults.orderedModes` 저장 프로퍼티 + `replacingWalk` 보존 교체)이라 계단 회피 재조회에도 불변. 순수 함수 웹↔Kit 미러(`directions-order.ts` ↔ `DirectionsOrder`)를 공유 fixture로 동조. 첫 성공 포커스·합산 집계도 새 순서 기준. spec `2026-08-12-directions-dynamic-order-design.md` · plan `2026-08-12-directions-dynamic-order.md`.
 
