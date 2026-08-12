@@ -252,5 +252,11 @@
   },
   "beacon": {
     "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
+  },
+  "guide": {
+    "switchRoute": "Passer à l’autre itinéraire",
+    "switchRouteBusy": "Passer à l’autre itinéraire, recherche en cours",
+    "switchedToShortest": "Itinéraire le plus court activé. {count} instructions, {distance} au total. {first}",
+    "switchedToRecommended": "Itinéraire recommandé activé. {count} instructions, {distance} au total. {first}"
   }
 }

@@ -12561,6 +12561,166 @@
         }
       }
     },
+    "guide.switchRoute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 경로로 전환"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to the other route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar a la otra ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer à l’autre itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passa all’altro percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のルートに切り替え"
+          }
+        }
+      }
+    },
+    "guide.switchRouteBusy": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 경로로 전환, 조회 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch to the other route, searching"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar a la otra ruta, buscando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passer à l’autre itinéraire, recherche en cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passa all’altro percorso, ricerca in corso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別のルートに切り替え、検索中"
+          }
+        }
+      }
+    },
+    "guide.switchedToRecommended": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "추천 경로로 전환했습니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to the recommended route. %1$@ steps, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió a la ruta recomendada. %1$@ indicaciones, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire recommandé activé. %1$@ instructions, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato al percorso consigliato. %1$@ indicazioni, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "おすすめルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
+    "guide.switchedToShortest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "최단 경로로 전환했습니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switched to the shortest route. %1$@ steps, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se cambió a la ruta más corta. %1$@ indicaciones, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire le plus court activé. %1$@ instructions, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passato al percorso più breve. %1$@ indicazioni, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最短ルートに切り替えました。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
     "guide.toBriefButton": {
       "localizations": {
         "ko": {

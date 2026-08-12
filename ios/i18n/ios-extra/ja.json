@@ -252,5 +252,11 @@
   },
   "beacon": {
     "guideStartWalkShortest": "最短ルート案内を開始"
+  },
+  "guide": {
+    "switchRoute": "別のルートに切り替え",
+    "switchRouteBusy": "別のルートに切り替え、検索中",
+    "switchedToShortest": "最短ルートに切り替えました。案内{count}件、合計{distance}。{first}",
+    "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}"
   }
 }

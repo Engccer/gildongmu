@@ -97,6 +97,17 @@ struct BeaconTrackingSheet: View {
                         model.requestReroute()
                     }
                 }
+                // 수동 전환(M3 spec §5): 반대 variant로 현위치 재조회. 정상 추종
+                // 중에도 노출(offRoute 무관). SR 읽기 순서는 재조회 버튼 **뒤** —
+                // 이탈 국면에선 재조회가 1순위 동작이다(자주 쓰는 순서 우선).
+                // 진행 신호는 라벨 교체가 정본(재조회 버튼 관례 동형).
+                if model.sessionKind == .walk, model.mode == .detail {
+                    Button(appLocalized(
+                        model.isRerouting ? "guide.switchRouteBusy" : "guide.switchRoute"
+                    )) {
+                        model.requestVariantSwitch()
+                    }
+                }
                 // 직선거리 주석은 간략 안내에서만 참이다 — 상세는 경로 기반 거리를 쓴다.
                 // 시트가 인라인 섹션을 덮으므로 걷는 중 닿을 수 있는 곳은 여기뿐.
                 if model.mode == .brief {
