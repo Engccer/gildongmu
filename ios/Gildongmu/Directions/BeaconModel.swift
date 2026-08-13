@@ -311,6 +311,9 @@ final class BeaconModel {
     /// 채택 성공 세대 — 시트(프리뷰·조망)가 onChange로 연쇄 닫힘·포커스 복귀에 쓴다.
     /// 값 자체는 의미 없고 증가가 이벤트다(offRoute onChange 관례의 세대 판).
     private(set) var variantAdoptedSeq = 0
+    /// 반대 variant(추천⇄최단) — 헤더 라벨·프리뷰 조회·채택·수동 전환이 같은 판정을
+    /// 공유한다(사본 4곳 drift 방지 — 이 파일은 단위 테스트 레인이 없다).
+    private var oppositeVariant: WalkRouteVariant? { sessionVariant == nil ? .shortest : nil }
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.0·§3.4)
 
@@ -1787,7 +1790,7 @@ final class BeaconModel {
         isSwitchingVariant = true
         rerouteToken += 1
         let token = rerouteToken
-        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        let target = oppositeVariant
         Task { [weak self] in
             await self?.performReroute(token: token, intent: .switchTo(target))
         }
@@ -2001,7 +2004,7 @@ final class BeaconModel {
             return appLocalized("guide.altPreviewFailed")
         case .ready(_, let fetched):
             // 대안 = 반대 variant의 라벨(조회 화면과 같은 이름 — 다른 이름 금지).
-            let label = appLocalized(sessionVariant == nil
+            let label = appLocalized(oppositeVariant == .shortest
                 ? "ios.directions.walkShortest" : "ios.directions.walkRecommended")
             let summary = appLocalized(
                 "guide.altPreviewSummary", label,
@@ -2043,7 +2046,7 @@ final class BeaconModel {
     }
 
     private func fetchAlternativePreview(token: Int, dest: BeaconDest) async {
-        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        let target = oppositeVariant
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             // 신선도 기준값은 좌표와 한 쌍(E10ⓑ 동형 — fetch 완료 후 시각을 쓰면
@@ -2079,7 +2082,7 @@ final class BeaconModel {
     func adoptAlternativePreview() {
         guard case .ready(let proposal, let fetched) = alternativePreviewState,
               !rerouteInFlight else { return }
-        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        let target = oppositeVariant
         if let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
            RerouteProposalGate.isFresh(
                proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng) {
