@@ -652,6 +652,7 @@
     "finalApproachNear": "Vous êtes près de la destination.",
     "finalApproachNearDir": "Vous êtes près de la destination. Elle est {direction}.",
     "arrived": "Vous êtes arrivé à destination",
+    "arrivedPresumed": "Vous semblez être arrivé près de la destination, le guidage est donc terminé",
     "dirAhead": "devant",
     "dirLeft": "à gauche",
     "dirRight": "à droite",

@@ -228,6 +228,7 @@
       "soundUnavailable": "La guidance sonore ne peut pas être jouée.",
       "stopped": "Suivi de distance arrêté.",
       "arrivedHeading": "Arrivée",
+      "arrivedPresumedHeading": "Arrivée estimée",
       "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application."
     },
     "unit": {

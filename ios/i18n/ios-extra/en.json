@@ -228,6 +228,7 @@
       "soundUnavailable": "Sound guidance cannot play.",
       "stopped": "Distance tracking stopped.",
       "arrivedHeading": "Arrived",
+      "arrivedPresumedHeading": "Presumed arrival",
       "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use."
     },
     "unit": {
