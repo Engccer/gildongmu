@@ -1,7 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { buildGuideRoute } from "../route-geometry";
-import { computeFinalApproach, relativeDirection } from "../final-approach";
+import {
+  advanceProgressAnchor,
+  computeFinalApproach,
+  presumedArrivalStep,
+  relativeDirection,
+  type PresumedArrivalInput,
+} from "../final-approach";
 import fixtures from "./fixtures/final-approach-scenarios.json";
+import presumedFixture from "./fixtures/presumed-arrival-scenarios.json";
 
 /** 남→북 직선 100m 경로. lat 1도 ≈ 111320m. */
 const northRoute = () =>
@@ -150,4 +157,48 @@ describe("relativeDirection 경계 소유권", () => {
   ] as const)("%s도 → %s", (theta, expected) => {
     expect(relativeDirection(theta)).toBe(expected);
   });
+});
+
+// ── 도착 추정(잊힌 세션 정리, spec 2026-08-13) ──────────────────────────────
+// 좌표는 위 공유 fixture 하니스의 toCoord(미터 오프셋 → 위경도)를 재사용한다.
+
+describe("presumedArrivalStep (공유 fixture)", () => {
+  for (const s of presumedFixture.stepScenarios) {
+    it(s.name, () => {
+      expect(presumedArrivalStep(s.input as PresumedArrivalInput)).toBe(s.expect);
+    });
+  }
+
+  it("무효 입력(음수·NaN·무한)은 null", () => {
+    const base: PresumedArrivalInput = {
+      inFinalApproach: true,
+      secondsSinceUsableFix: 200,
+      secondsSinceProgress: 0,
+      lastKnownDistanceToDestMeters: 20,
+    };
+    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: -1 })).toBeNull();
+    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: NaN })).toBeNull();
+    expect(presumedArrivalStep({ ...base, secondsSinceProgress: Infinity })).toBeNull();
+    expect(
+      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: NaN }),
+    ).toBeNull();
+    expect(
+      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: -5 }),
+    ).toBeNull();
+  });
+});
+
+describe("advanceProgressAnchor (공유 fixture)", () => {
+  for (const s of presumedFixture.anchorScenarios) {
+    it(s.name, () => {
+      let anchor: { lat: number; lng: number } | null = null;
+      const progressedAt: number[] = [];
+      s.steps.forEach((step, i) => {
+        const out = advanceProgressAnchor(anchor, toCoord(step), s.epsilonMeters);
+        anchor = out.anchor;
+        if (out.progressed) progressedAt.push(i);
+      });
+      expect(progressedAt).toEqual(s.expectProgressedAt);
+    });
+  }
 });
