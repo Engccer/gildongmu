@@ -25,6 +25,7 @@
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)
 - **실시간 안내 계열은 iOS에서 봉인 중**이다(`AppConfig.realtimeGuidanceEnabled`의 `#if EXPERIMENTAL`). 해제 선행 조건은 코드가 아니라 판정이며 `docs/BACKLOG.md` G3·F-a가 정본이다.
+- 도보 안내의 도착 추정 자동 종료(잊힌 세션 정리)는 구현·배포 완료, **실보행 판정 대기**(`docs/BACKLOG.md` E13).
 
 ---
 

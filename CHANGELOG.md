@@ -11,6 +11,10 @@
 
 ## 2026-08-13
 
+### 도착 추정 자동 종료 — 잊힌 안내 세션 정리 (walk 전용)
+
+귀가 실사고(최종 접근 진입 직후 실내 진입 → 도착 판정 부재 → 세션이 수동 종료까지 수 시간 생존) 대응. 최종 접근 국면 + 마지막 확인 거리 ≤150m에서 usable fix 두절 180초(워치독 경로) 또는 앵커 기준 무진행 300초(fix 경로)이면 도착 종 + `.high` 중립 낭독 후 자동 종료, 도착 시트는 확정/추정 문구 분기. 판정은 순수 함수 웹·Kit 미러(`presumedArrivalStep`·`advanceProgressAnchor`, 공유 fixture) + `GuideTuning.presumedArrivalEnabled`(car=false). 설계 적대적 리뷰가 저속 연속 보행 오판(직전 fix 비교 → 앵커 재정의)·거리 캡 부재·자동차 공통 적용 위험을 구현 전 차단. 리플레이 게이트(8-13 실사고 로그)·변이 2종 검출 확인. spec `docs/superpowers/specs/2026-08-13-presumed-arrival-auto-end-design.md`. 상수 4종은 실보행 판정 전 잠정값(BACKLOG E13). 리마인더·대중교통·자동차 축은 범위 제외(E13).
+
 ### Overpass 실패 처리 3건 — 대응 범위·타임아웃·예산
 
 `/api/walk/nearby`의 OSM 축이 실패할 때의 동작을 실측 근거로 바꿨다. ①**실패 쿨다운 신설**(60초, 성공 캐시 1시간과 별개): `overpassScope`가 `tile`(부분 응답·malformed)이면 그 타일만, **비200과 scope 없는 실패(클라이언트 타임아웃·네트워크)는 전역**. ②**클라이언트 abort 12초 → 6초**, Overpass `[timeout:N]`은 그 예산에서 유도(`OVERPASS_CLIENT_TIMEOUT_MS`)해 두 값이 갈리지 않게 했다. ③**분당 예산 30 → 10**. 실호출 게이트: 성공 1.35~1.62초 12~13건, 실패 직후 다른 새 타일이 5ms·2ms 즉시 실패(종전엔 각각 6~12초 대기), `audioSignals=ok` 유지로 부분 실패 보존 불변식 무손상. 변이 2종(429를 타일별로·쿨다운 무만료) 검출 확인. 함정은 `CLAUDE.md` 보행 인프라 행이 정본.
