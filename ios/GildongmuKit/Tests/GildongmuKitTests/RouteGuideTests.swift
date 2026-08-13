@@ -906,3 +906,9 @@ private func phaseName(_ p: GuidePhase) -> String {
     #expect(displayEffectiveD(d: 60, baselineD: 50) == 70) // 재조회 기준점 50 이후 10 → lag 10(포화점)
     #expect(displayEffectiveD(d: 40, baselineD: 50) == 40) // 기준점 이전(방어)
 }
+
+@Test("도착 추정은 walk 전용이다 (spec 2026-08-13 §4)")
+func presumedArrivalGateIsWalkOnly() {
+    #expect(GuideTuning.walk.presumedArrivalEnabled)
+    #expect(!GuideTuning.car.presumedArrivalEnabled)
+}

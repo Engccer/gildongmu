@@ -729,3 +729,10 @@ describe("표시 좌표계 (spec 2026-08-11 §3)", () => {
     expect(displayEffectiveD(40, 50)).toBe(40);
   });
 });
+
+describe("도착 추정 게이트", () => {
+  it("도착 추정은 walk 전용이다 (spec 2026-08-13 §4)", () => {
+    expect(WALK_TUNING.presumedArrivalEnabled).toBe(true);
+    expect(CAR_TUNING.presumedArrivalEnabled).toBe(false);
+  });
+});

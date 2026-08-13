@@ -102,6 +102,9 @@ public struct GuideTuning: Sendable, Equatable {
     /// 않는다 — 15m/s면 그 대역을 1.3초에 통과하고 fix 하나당 진행거리가 15m씩 뛴다.
     /// 차량에서의 헛경고율은 **측정된 적이 없다.**
     public var courseAxisEnabled: Bool
+    /// 도착 추정 자동 종료(spec 2026-08-13). **보행 전용** — 자동차는 정체 5분 정지·
+    /// 지하차도가 일상이라 도보 상수를 공유하면 주행 중 안내가 끊긴다(설계 리뷰 C5).
+    public var presumedArrivalEnabled: Bool
     /// 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러).
     /// 직전 fix 대비 진행거리 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.
     ///
@@ -123,6 +126,7 @@ public struct GuideTuning: Sendable, Equatable {
         handoffDistM: handoffDistMeters, handoffRearmM: handoffRearmMeters,
         reacquireTieBreak: false, speedSuggest: true,
         courseAxisEnabled: true,
+        presumedArrivalEnabled: true,
         maxSpeedMps: MotionConstants.maxWalkSpeedMps
     )
 
@@ -139,6 +143,8 @@ public struct GuideTuning: Sendable, Equatable {
         reacquireTieBreak: true, speedSuggest: false,
         // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
         courseAxisEnabled: false,
+        // ⚠ 정체 5분 정지가 일상이라 도보 상수로는 주행 중 종료가 된다(설계 리뷰 C5).
+        presumedArrivalEnabled: false,
         maxSpeedMps: MotionConstants.maxCarSpeedMps
     )
 }
