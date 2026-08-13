@@ -259,8 +259,6 @@
     "switchedToRecommended": "Switched to the recommended route. {count} steps, {distance} total. {first}",
     "proposalReady": "A route from your current location is ready. {count} steps, {distance} total. {first}",
     "proposalAdopt": "Restart guidance from current location",
-    "switchToShortest": "Switch to the shortest route",
-    "switchToRecommended": "Switch to the recommended route",
     "viewAlternative": "View alternative route",
     "adoptAlternative": "Switch guidance to this route",
     "altPreviewLoading": "Finding alternative route",

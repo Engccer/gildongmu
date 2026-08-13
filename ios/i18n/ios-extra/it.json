@@ -259,8 +259,6 @@
     "switchedToRecommended": "Passato al percorso consigliato. {count} indicazioni, {distance} in totale. {first}",
     "proposalReady": "Un percorso dalla posizione attuale è pronto. {count} indicazioni, {distance} in totale. {first}",
     "proposalAdopt": "Riavvia la guida dalla posizione attuale",
-    "switchToShortest": "Passa al percorso più breve",
-    "switchToRecommended": "Passa al percorso consigliato",
     "viewAlternative": "Vedi percorso alternativo",
     "adoptAlternative": "Passa alla guida su questo percorso",
     "altPreviewLoading": "Ricerca percorso alternativo",

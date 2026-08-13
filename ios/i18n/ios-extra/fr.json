@@ -259,8 +259,6 @@
     "switchedToRecommended": "Itinéraire recommandé activé. {count} instructions, {distance} au total. {first}",
     "proposalReady": "Un itinéraire depuis votre position actuelle est prêt. {count} instructions, {distance} au total. {first}",
     "proposalAdopt": "Reprendre le guidage depuis la position actuelle",
-    "switchToShortest": "Passer à l’itinéraire le plus court",
-    "switchToRecommended": "Passer à l’itinéraire recommandé",
     "viewAlternative": "Voir l’itinéraire alternatif",
     "adoptAlternative": "Basculer le guidage sur cet itinéraire",
     "altPreviewLoading": "Recherche d’itinéraire alternatif",

@@ -103,24 +103,8 @@ struct BeaconTrackingSheet: View {
                     // busy는 isRerouting만 본다(전환 진행은 isSwitchingVariant —
                     // 공유하면 진행 중이 아닌 버튼에 "조회 중"이 오귀속된다).
                 }
-                // 수동 전환(M3 spec §5): 반대 variant로 현위치 재조회. 정상 추종
-                // 중에도 노출(offRoute 무관). SR 읽기 순서는 재조회 버튼 **뒤** —
-                // 이탈 국면에선 재조회가 1순위 동작이다(자주 쓰는 순서 우선).
-                // 라벨은 전환 **목표**를 밝힌다(a11y 감사 2026-08-12 — 결정론이므로
-                // "다른 경로"보다 정보가 많고, 세션 중 현재 축을 아는 유일한 채널).
-                // 진행 신호는 라벨 병기(한 줄 = 한 객체, 쉼표). 최단 축이 이 목적지에
-                // 성립할 때만 노출(죽은 버튼 사전 차단 — carGuideStartable 선례).
-                if model.sessionKind == .walk, model.mode == .detail,
-                   model.shortestVariantAvailable {
-                    let target = appLocalized(model.sessionVariant == nil
-                        ? "guide.switchToShortest" : "guide.switchToRecommended")
-                    Button(model.isSwitchingVariant
-                        ? joinText(target, appLocalized("ios.directions.searching"))
-                        : target
-                    ) {
-                        model.requestVariantSwitch()
-                    }
-                }
+                // 수동 전환 버튼은 폐기(spec 2026-08-14 §1 — 상시 노출이 경로 변경
+                // 압박으로 읽힘). 전환 진입점은 진행 상황 조망의 프리뷰다(§2).
                 // 직선거리 주석은 간략 안내에서만 참이다 — 상세는 경로 기반 거리를 쓴다.
                 // 시트가 인라인 섹션을 덮으므로 걷는 중 닿을 수 있는 곳은 여기뿐.
                 if model.mode == .brief {
@@ -236,6 +220,12 @@ struct BeaconTrackingSheet: View {
             reroutePressed = false
             Task { await landStopFocus() }
         }
+        // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고 중지 버튼으로 복귀(spec
+        // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형).
+        .onChange(of: model.variantAdoptedSeq) {
+            showRouteList = false
+            Task { await landStopFocus() }
+        }
         // 도착 전이: 포커스를 쥔 컨트롤(중지 등)이 통째로 사라진다 — 도착 문장으로
         // 선점한다(헌장 §5, 대중교통 arrived 전이 동형). 착지 낭독이 `.high` 도착
         // 통지와 **같은 문장**이라 겹쳐 끊겨도 정보 손실이 없고, 다음 스와이프가
@@ -318,6 +308,8 @@ struct BeaconTrackingSheet: View {
 private struct RouteOverviewSheet: View {
     let model: BeaconModel
     @Environment(\.dismiss) private var dismiss
+    /// 대안 경로 프리뷰(spec 2026-08-14 §3) — 시트 위 시트(조망과 같은 문법).
+    @State private var showAltPreview = false
 
     var body: some View {
         List {
@@ -343,9 +335,63 @@ private struct RouteOverviewSheet: View {
                         }
                     }
                 }
+                // 대안 경로 보기(spec 2026-08-14 §2): 스텝 목록 뒤·말미 닫기 앞 —
+                // 조망의 주 목적(진행 확인)을 밀지 않으면서 "조망하다 대안 탐색"
+                // 흐름과 읽기 순서가 일치한다. 노출은 반대 축 성립 세션만(죽은 버튼 금지).
+                if model.alternativePreviewAvailable {
+                    Button(appLocalized("guide.viewAlternative")) {
+                        model.openAlternativePreview()
+                        showAltPreview = true
+                    }
+                }
                 Button(appLocalized("actions.close")) { dismiss() }
             } header: {
                 distanceText(model.progressText())
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+        .sheet(isPresented: $showAltPreview) { AlternativeRoutePreviewSheet(model: model) }
+        // 닫힘(스와이프·VO escape 포함) 시 진행 중 조회 폐기 — 늦은 응답이 닫힌
+        // 화면 상태를 되살리지 않는다(spec 2026-08-14 §3 latest-wins). 도착 전이는
+        // 부모(showRouteList=false)가 이 시트까지 연쇄 소거한다.
+        .onChange(of: showAltPreview) { _, presented in
+            if !presented { model.closeAlternativePreview() }
+        }
+    }
+}
+
+/// 대안 경로 미리 보기(spec 2026-08-14 §3·§4). 헤더(요약·비교) → 전환 버튼 →
+/// 스텝 행 → 말미 닫기. 시스템 헤더 착지가 요약을 낭독하고(조망 선례), 결과 도착은
+/// 모델의 polite 통지 1회가 알린다(헤더는 조용 갱신 — 조회형 정보). 전환 버튼이
+/// 헤더 다음 한 스와이프인 이유: 이 화면의 결정 행동이고, 사용자가 능동적으로 연
+/// 화면이라 압박 문제가 없다(spec §0-1의 압박은 "걷는 내내 상시 노출"이었다).
+private struct AlternativeRoutePreviewSheet: View {
+    let model: BeaconModel
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Section {
+                // 전환은 ready에서만(조회 중·실패에 죽은 버튼 금지). 낡음 폴백
+                // 재조회 중엔 라벨 병기(한 줄 = 한 객체, 쉼표).
+                if case .ready = model.alternativePreviewState {
+                    Button(model.isSwitchingVariant
+                        ? joinText(appLocalized("guide.adoptAlternative"),
+                                   appLocalized("ios.directions.searching"))
+                        : appLocalized("guide.adoptAlternative")
+                    ) {
+                        model.adoptAlternativePreview()
+                    }
+                }
+                if let steps = model.alternativePreviewSteps {
+                    // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
+                    ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
+                        distanceText(appLocalized("ios.guide.routeListRow", String(i + 1), desc))
+                    }
+                }
+                Button(appLocalized("actions.close")) { dismiss() }
+            } header: {
+                distanceText(model.alternativePreviewHeaderText())
                     .accessibilityAddTraits(.isHeader)
             }
         }
