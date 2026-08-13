@@ -308,6 +308,9 @@ final class BeaconModel {
     }
     private(set) var alternativePreviewState: AlternativePreviewState = .idle
     private var alternativePreviewToken = 0
+    /// 채택 성공 세대 — 시트(프리뷰·조망)가 onChange로 연쇄 닫힘·포커스 복귀에 쓴다.
+    /// 값 자체는 의미 없고 증가가 이벤트다(offRoute onChange 관례의 세대 판).
+    private(set) var variantAdoptedSeq = 0
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.0·§3.4)
 
@@ -1845,6 +1848,9 @@ final class BeaconModel {
             // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
             if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+            // 전환 성공은 채택 완료 세대를 올린다(프리뷰 낡음 폴백 경로 포함 —
+            // 시트 연쇄 닫힘 트리거. keepVariant 재조회는 시트 밖 버튼이라 무관).
+            if case .switchTo = intent { variantAdoptedSeq += 1 }
         } catch {
             guard token == rerouteToken, isTracking else { return }
             lastStepFree = nil
@@ -2065,6 +2071,37 @@ final class BeaconModel {
             alternativePreviewState = .failed
             announce(appLocalized("guide.altPreviewFailed"))
         }
+    }
+
+    /// 프리뷰 채택(spec 2026-08-14 §4): 신선하면 본 경로를 즉시 채택(왕복 없음 —
+    /// "본 것 = 안내받는 것"), 낡았으면 같은 목표 variant로 현위치 재조회에 조용히
+    /// 폴백(requestVariantSwitch 재사용, 진행 신호는 isSwitchingVariant 라벨 병기).
+    func adoptAlternativePreview() {
+        guard case .ready(let proposal, let fetched) = alternativePreviewState,
+              !rerouteInFlight else { return }
+        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        if let c = lastFixCoord, let at = lastFixCoordAt, uptimeNow - at <= 15,
+           RerouteProposalGate.isFresh(
+               proposal, nowUptime: uptimeNow, currentLat: c.lat, currentLng: c.lng) {
+            // 전환 커밋: 경로 교체와 같은 원자 블록에서만 variant가 바뀐다
+            // (performReroute 동형 — commitReroutedRoute가 프리뷰도 함께 리셋).
+            sessionVariant = target
+            let firstIndices = commitReroutedRoute(fetched)
+            let notice = consumeStepFreeNotice(
+                fetched.stepFreeRaw, fetched.stepFree, fetched.stepFreeNotice)
+            let summary = GuideText.variantSwitch(
+                route: fetched.route, firstIndices: firstIndices, shortest: target == .shortest)
+            let text = notice.map { "\($0) \(summary)" } ?? summary
+            statusText = text
+            // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며
+            // 그 라벨 낭독에 기본 우선순위가 잠식된다(adoptProposal 동형).
+            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+            variantAdoptedSeq += 1
+            return
+        }
+        // 낡음 폴백: 프리뷰는 열린 채 두고(실패 시 사용자가 상태를 본다) 재조회.
+        // 성공하면 performReroute가 variantAdoptedSeq를 올려 시트가 닫힌다.
+        requestVariantSwitch()
     }
 
     /// 오류 코드를 뭉개면 "위치 서비스 꺼짐"과 "일시적 취득 실패"가 한 문구가 된다.
