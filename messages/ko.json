@@ -629,7 +629,7 @@
     "walkHeading": "도보 안내",
     "carHeading": "자동차 안내",
     "briefGuideStart": "간략 안내 시작",
-    "stopped": "실시간 안내를 중지했습니다",
+    "stopped": "실시간 안내를 종료했습니다",
     "guideStartWalk": "도보 안내 시작",
     "guideStartCar": "자동차 안내 시작",
     "guideStartTransitAlt": "{name} 안내 시작",

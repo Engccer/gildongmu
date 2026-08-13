@@ -3046,7 +3046,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 안내를 중지했습니다"
+            "value": "실시간 안내를 종료했습니다"
           }
         },
         "en": {
@@ -13246,7 +13246,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "거리 추적을 중지했습니다."
+            "value": "거리 추적을 종료했습니다."
           }
         },
         "en": {
