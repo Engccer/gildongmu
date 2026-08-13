@@ -9881,6 +9881,286 @@
         }
       }
     },
+    "guide.adoptAlternative": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 경로 안내로 전환"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch guidance to this route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar la guía a esta ruta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basculer le guidage sur cet itinéraire"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passa alla guida su questo percorso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このルートの案内に切り替え"
+          }
+        }
+      }
+    },
+    "guide.altPreviewFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안 경로 조회에 실패했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load the alternative route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la ruta alternativa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec du chargement de l’itinéraire alternatif"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare il percorso alternativo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替ルートの取得に失敗しました"
+          }
+        }
+      }
+    },
+    "guide.altPreviewLoading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안 경로 조회 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding alternative route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando ruta alternativa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche d’itinéraire alternatif"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricerca percorso alternativo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替ルートを検索中"
+          }
+        }
+      }
+    },
+    "guide.altPreviewNone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안 경로가 없습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No alternative route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ruta alternativa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun itinéraire alternatif"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun percorso alternativo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替ルートがありません"
+          }
+        }
+      }
+    },
+    "guide.altPreviewRemaining": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 경로 잔여 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "current route remaining %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ruta actual restante %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "itinéraire actuel restant %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "percorso attuale rimanente %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のルート残り%1$@"
+          }
+        }
+      }
+    },
+    "guide.altPreviewSummary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, 총 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ total"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ en total"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ au total"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@ in totale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、合計%2$@"
+          }
+        }
+      }
+    },
+    "guide.altPreviewTime": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 약 %1$@분"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "about %1$@ min walk"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unos %1$@ min a pie"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "environ %1$@ min à pied"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "circa %1$@ min a piedi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩約%1$@分"
+          }
+        }
+      }
+    },
     "guide.approx": {
       "localizations": {
         "ko": {
@@ -12166,37 +12446,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "준비된 새 경로로 안내"
+            "value": "현재 위치부터 다시 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guide with the prepared new route"
+            "value": "Restart guidance from current location"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guiar con la nueva ruta preparada"
+            "value": "Reiniciar la guía desde la ubicación actual"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guider avec le nouvel itinéraire préparé"
+            "value": "Reprendre le guidage depuis la position actuelle"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida con il nuovo percorso preparato"
+            "value": "Riavvia la guida dalla posizione attuale"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "準備した新しいルートで案内"
+            "value": "現在地から案内をやり直す"
           }
         }
       }
@@ -12206,37 +12486,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "새 경로가 준비되었습니다. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "현재 위치 기준 경로가 준비되었습니다. 안내 %1$@개, 총 %2$@. %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A new route is ready. %1$@ steps, %2$@ total. %3$@"
+            "value": "A route from your current location is ready. %1$@ steps, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hay una nueva ruta lista. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "La ruta desde tu ubicación actual está lista. %1$@ indicaciones, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un nouvel itinéraire est prêt. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Un itinéraire depuis votre position actuelle est prêt. %1$@ instructions, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un nuovo percorso è pronto. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Un percorso dalla posizione attuale è pronto. %1$@ indicazioni, %2$@ in totale. %3$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "新しいルートの準備ができました。案内%1$@件、合計%2$@。%3$@"
+            "value": "現在地からのルートが準備できました。案内%1$@件、合計%2$@。%3$@"
           }
         }
       }
@@ -13077,6 +13357,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "位置の確度が回復しました"
+          }
+        }
+      }
+    },
+    "guide.viewAlternative": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대안 경로 보기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View alternative route"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver ruta alternativa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voir l’itinéraire alternatif"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vedi percorso alternativo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "代替ルートを見る"
           }
         }
       }

@@ -257,9 +257,17 @@
   "guide": {
     "switchedToShortest": "Se cambió a la ruta más corta. {count} indicaciones, {distance} en total. {first}",
     "switchedToRecommended": "Se cambió a la ruta recomendada. {count} indicaciones, {distance} en total. {first}",
-    "proposalReady": "Hay una nueva ruta lista. {count} indicaciones, {distance} en total. {first}",
-    "proposalAdopt": "Guiar con la nueva ruta preparada",
+    "proposalReady": "La ruta desde tu ubicación actual está lista. {count} indicaciones, {distance} en total. {first}",
+    "proposalAdopt": "Reiniciar la guía desde la ubicación actual",
     "switchToShortest": "Cambiar a la ruta más corta",
-    "switchToRecommended": "Cambiar a la ruta recomendada"
+    "switchToRecommended": "Cambiar a la ruta recomendada",
+    "viewAlternative": "Ver ruta alternativa",
+    "adoptAlternative": "Cambiar la guía a esta ruta",
+    "altPreviewLoading": "Buscando ruta alternativa",
+    "altPreviewNone": "No hay ruta alternativa",
+    "altPreviewFailed": "No se pudo cargar la ruta alternativa",
+    "altPreviewSummary": "{variant}, {distance} en total",
+    "altPreviewTime": "unos {minutes} min a pie",
+    "altPreviewRemaining": "ruta actual restante {distance}"
   }
 }

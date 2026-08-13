@@ -257,9 +257,17 @@
   "guide": {
     "switchedToShortest": "最短ルートに切り替えました。案内{count}件、合計{distance}。{first}",
     "switchedToRecommended": "おすすめルートに切り替えました。案内{count}件、合計{distance}。{first}",
-    "proposalReady": "新しいルートの準備ができました。案内{count}件、合計{distance}。{first}",
-    "proposalAdopt": "準備した新しいルートで案内",
+    "proposalReady": "現在地からのルートが準備できました。案内{count}件、合計{distance}。{first}",
+    "proposalAdopt": "現在地から案内をやり直す",
     "switchToShortest": "最短ルートに切り替え",
-    "switchToRecommended": "おすすめルートに切り替え"
+    "switchToRecommended": "おすすめルートに切り替え",
+    "viewAlternative": "代替ルートを見る",
+    "adoptAlternative": "このルートの案内に切り替え",
+    "altPreviewLoading": "代替ルートを検索中",
+    "altPreviewNone": "代替ルートがありません",
+    "altPreviewFailed": "代替ルートの取得に失敗しました",
+    "altPreviewSummary": "{variant}、合計{distance}",
+    "altPreviewTime": "徒歩約{minutes}分",
+    "altPreviewRemaining": "現在のルート残り{distance}"
   }
 }
