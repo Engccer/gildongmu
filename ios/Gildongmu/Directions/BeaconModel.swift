@@ -110,6 +110,20 @@ final class BeaconModel {
         case .uncertain, .reacquiring, .offRoute, .finalApproach: return nil
         }
     }
+    /// 조망 모달 "대안 경로 보기" 노출 조건(spec 2026-08-14 §2): 반대 축이 성립하는
+    /// 세션. `shortestVariantAvailable`은 세션 시작 시 최단 세션이면 참으로 강제되므로
+    /// (최단 안내 중의 반대 축 = 추천은 항상 성립) 이 플래그 하나가 両방향을 담는다.
+    var alternativePreviewAvailable: Bool {
+        sessionKind == .walk && mode == .detail && shortestVariantAvailable
+    }
+
+    /// 프리뷰 스텝 목록(조망 행 문법 재사용) — ready에서만. "지금 이 구간" 표식은
+    /// 없다(대안 경로 위에 현재 위치가 없다 — 근거 없는 표식은 거짓 정밀).
+    var alternativePreviewSteps: [String]? {
+        guard case .ready(_, let fetched) = alternativePreviewState else { return nil }
+        return fetched.route.steps.map(\.description)
+    }
+
     /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
     private(set) var offRoute = false
     /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
@@ -280,6 +294,20 @@ final class BeaconModel {
     /// 그 사이 도착한 fix가 그것을 실행 안내로 덮어써, 경고가 통째로 사라진다
     /// (a11y 리뷰 H1). 전달될 때까지 여기 남겨 두고 전경 복귀 때 갚는다.
     private var pendingStepFreeNotice: String?
+
+    // MARK: 대안 경로 프리뷰 상태 (spec 2026-08-14 §3)
+
+    /// 프리뷰 상태 — proposalState와 같은 토큰(latest-wins) 패턴. `noRoute`와
+    /// `failed`를 가른다(3-state: "대안 없음"과 "조회 실패"는 다른 사실이다).
+    enum AlternativePreviewState {
+        case idle
+        case fetching(token: Int)
+        case ready(RerouteProposal, fetched: DetailFetchResult)
+        case noRoute
+        case failed
+    }
+    private(set) var alternativePreviewState: AlternativePreviewState = .idle
+    private var alternativePreviewToken = 0
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.0·§3.4)
 
@@ -826,6 +854,7 @@ final class BeaconModel {
         // 세션 종료 = 제안·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
         clearProposal()
         proposalFetchCount = 0
+        resetAlternativePreview()
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
@@ -876,6 +905,7 @@ final class BeaconModel {
         offRoute = false
         // 제안은 옛 목적지의 경로다 — 폐기(회차 카운터는 세션당이라 유지, E10ⓑ).
         clearProposal()
+        resetAlternativePreview()
         // 유도기 버퍼는 위치 종속이라 승계한다(§3.1, 재조회 §2.9 동형) — 다음
         // fetchGuideRoute 성공이 1회 소비한다.
         carriedCourseDerivation = guideState?.courseDerivation
@@ -1290,6 +1320,7 @@ final class BeaconModel {
         // 조회의 커밋을 막고 .ready 소멸이 수락을 막아, 세 조건이 이 한 줄로
         // 구조적으로 성립한다(진입 후 새 트리거는 maybeFetchProposal 가드 몫).
         clearProposal()
+        resetAlternativePreview()
         remainingText = nil  // 경로 잔여는 이 국면에서 의미가 없다(이미 종점을 지났다)
         currentGuidanceText = nil  // 스텝은 전부 소화됐다 — 남은 것은 직선 안내뿐
         // 하단 2행: 윗줄 소유권이 최종 접근 층으로 넘어간다(§4.2 우선순위 2).
@@ -1829,6 +1860,8 @@ final class BeaconModel {
         // 경로 교체는 보관 제안의 근거를 무효화한다(새 경로 기준의 이탈 확정이 새
         // 제안을 만든다) — 수락 경로는 이미 clearProposal을 지났으므로 no-op.
         clearProposal()
+        // 경로 교체는 프리뷰 비교 기준(잔여·대안)도 무효화한다(spec 2026-08-14 §3).
+        resetAlternativePreview()
         guideRoute = fetched.route
         guideRouteDurationSeconds = fetched.durationSeconds
         roadSpans = fetched.spans
@@ -1946,6 +1979,92 @@ final class BeaconModel {
         proposalToken += 1
         proposalState = .none
         hasPreparedProposal = false
+    }
+
+    // MARK: - 대안 경로 프리뷰 조회·채택 (spec 2026-08-14 §3·§4)
+
+    /// 프리뷰 헤더 문장. 시트 헤더 착지가 낭독하고(조망 선례), 이후 갱신은 조용하다
+    /// (조회형 정보). 결과 커밋 시 polite 통지 1회가 완료 신호(fetch 쪽 책임).
+    func alternativePreviewHeaderText() -> String {
+        switch alternativePreviewState {
+        case .idle, .fetching:
+            return appLocalized("guide.altPreviewLoading")
+        case .noRoute:
+            return appLocalized("guide.altPreviewNone")
+        case .failed:
+            return appLocalized("guide.altPreviewFailed")
+        case .ready(_, let fetched):
+            // 대안 = 반대 variant의 라벨(조회 화면과 같은 이름 — 다른 이름 금지).
+            let label = appLocalized(sessionVariant == nil
+                ? "ios.directions.walkShortest" : "ios.directions.walkRecommended")
+            let summary = appLocalized(
+                "guide.altPreviewSummary", label,
+                formatDistance(Int(fetched.route.totalMeters.rounded())))
+            let time = fetched.durationSeconds.flatMap { dur in
+                dur > 0 ? appLocalized("guide.altPreviewTime", String(max(1, dur / 60))) : nil
+            }
+            // 잔여·대안 총거리가 둘 다 현위치 기준이라 비교가 성립한다(spec §3).
+            // 이탈 중 잔여는 거짓이라 생략(시트 잔여 행과 같은 3-state 근거).
+            let remaining: String? = if !offRoute, let route = guideRoute, let state = guideState {
+                appLocalized(
+                    "guide.altPreviewRemaining",
+                    formatDistance(Int(max(0, route.totalMeters - state.d).rounded())))
+            } else {
+                nil
+            }
+            return joinText(summary, time, remaining)
+        }
+    }
+
+    /// 프리뷰 열림 — 열리는 즉시 최신 세션 fix 기준으로 반대 variant를 조회한다.
+    /// 출발 전에 받아 둔 대안을 재사용하지 않는 이유: 걷는 중이라 출발점이 낡았다.
+    func openAlternativePreview() {
+        guard alternativePreviewAvailable, let dest else { return }
+        alternativePreviewToken += 1
+        let token = alternativePreviewToken
+        alternativePreviewState = .fetching(token: token)
+        Task { [weak self] in await self?.fetchAlternativePreview(token: token, dest: dest) }
+    }
+
+    /// 프리뷰 닫힘 — 진행 중 조회의 도착 응답을 폐기한다(latest-wins, spec §3).
+    func closeAlternativePreview() {
+        resetAlternativePreview()
+    }
+
+    private func resetAlternativePreview() {
+        alternativePreviewToken += 1
+        alternativePreviewState = .idle
+    }
+
+    private func fetchAlternativePreview(token: Int, dest: BeaconDest) async {
+        let target: WalkRouteVariant? = sessionVariant == nil ? .shortest : nil
+        do {
+            let origin = try await LocationService.shared.currentCoordinate()
+            // 신선도 기준값은 좌표와 한 쌍(E10ⓑ 동형 — fetch 완료 후 시각을 쓰면
+            // 왕복이 긴 만큼 실제보다 신선하게 판정된다).
+            let acquiredAt = uptimeNow
+            guard token == alternativePreviewToken, isTracking, mode == .detail,
+                  self.dest == dest else { return }
+            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: target)
+            // 커밋 가드: 닫힘·재열림·세션 변화 후 도착한 응답 폐기(latest-wins).
+            guard token == alternativePreviewToken, isTracking, mode == .detail,
+                  self.dest == dest else { return }
+            guard let fetched else {
+                alternativePreviewState = .noRoute
+                announce(appLocalized("guide.altPreviewNone"))
+                return
+            }
+            alternativePreviewState = .ready(
+                RerouteProposal(originLat: origin.lat, originLng: origin.lng, acquiredAt: acquiredAt),
+                fetched: fetched)
+            // 완료 신호 polite 1회(nearby 결과 통지 관례) — 헤더는 조용 갱신이라
+            // 이 통지가 없으면 결과 도착을 알 길이 없다.
+            announce(alternativePreviewHeaderText())
+        } catch {
+            guard token == alternativePreviewToken else { return }
+            alternativePreviewState = .failed
+            announce(appLocalized("guide.altPreviewFailed"))
+        }
     }
 
     /// 오류 코드를 뭉개면 "위치 서비스 꺼짐"과 "일시적 취득 실패"가 한 문구가 된다.
