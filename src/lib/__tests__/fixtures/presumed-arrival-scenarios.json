@@ -1,0 +1,70 @@
+{
+  "comment": "presumedArrivalStep·advanceProgressAnchor 웹·Kit 동조 fixture (spec 2026-08-13 §3·§6). 무효 입력(NaN 등)은 JSON 표현 불가라 각 플랫폼 단위 테스트가 별도 커버. anchorScenarios 좌표는 기준점 37.5/127.1의 미터 오프셋 [dLat, dLng].",
+  "stepScenarios": [
+    {
+      "name": "국면 밖은 항상 none",
+      "input": { "inFinalApproach": false, "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999, "lastKnownDistanceToDestMeters": 20 },
+      "expect": null
+    },
+    {
+      "name": "거리 미확인(null)은 none",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999, "lastKnownDistanceToDestMeters": null },
+      "expect": null
+    },
+    {
+      "name": "거리 캡 초과는 none",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999, "lastKnownDistanceToDestMeters": 150.1 },
+      "expect": null
+    },
+    {
+      "name": "거리 캡 경계 150m는 통과",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 180, "secondsSinceProgress": 0, "lastKnownDistanceToDestMeters": 150 },
+      "expect": "noFix"
+    },
+    {
+      "name": "noFix 임계 직전은 none",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 179.9, "secondsSinceProgress": 0, "lastKnownDistanceToDestMeters": 42.6 },
+      "expect": null
+    },
+    {
+      "name": "noFix 180s 발동 (2026-08-13 실사고 모양)",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 180, "secondsSinceProgress": 0, "lastKnownDistanceToDestMeters": 42.6 },
+      "expect": "noFix"
+    },
+    {
+      "name": "stationary 임계 직전은 none",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 2, "secondsSinceProgress": 299.9, "lastKnownDistanceToDestMeters": 42.6 },
+      "expect": null
+    },
+    {
+      "name": "stationary 300s 발동 (fix는 살아 있음)",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 2, "secondsSinceProgress": 300, "lastKnownDistanceToDestMeters": 42.6 },
+      "expect": "stationary"
+    },
+    {
+      "name": "両축 초과 시 noFix 우선(순서 고정)",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 400, "secondsSinceProgress": 400, "lastKnownDistanceToDestMeters": 42.6 },
+      "expect": "noFix"
+    }
+  ],
+  "anchorScenarios": [
+    {
+      "name": "저속 연속 보행은 진행이다 (리뷰 C2 반례)",
+      "epsilonMeters": 10,
+      "steps": [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6], [0, 7], [0, 8], [0, 9], [0, 10.5], [0, 11.5]],
+      "expectProgressedAt": [10]
+    },
+    {
+      "name": "앵커 주변 지터 왕복은 진행이 아니다",
+      "epsilonMeters": 10,
+      "steps": [[0, 0], [0, 6], [0, -6], [6, 0], [-6, 0], [0, 6]],
+      "expectProgressedAt": []
+    },
+    {
+      "name": "재앵커 후 재이동도 진행",
+      "epsilonMeters": 10,
+      "steps": [[0, 0], [0, 12], [0, 13], [0, 24]],
+      "expectProgressedAt": [1, 3]
+    }
+  ]
+}

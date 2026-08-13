@@ -109,3 +109,68 @@ export function computeFinalApproach(
   const relativeBearing = ((toDest - heading + 540) % 360) - 180;
   return { ...base, relativeBearing };
 }
+
+// ── 도착 추정(잊힌 세션 정리, spec 2026-08-13) ──────────────────────────────
+// Kit 미러는 `FinalApproach.swift`, 공유 fixture `presumed-arrival-scenarios.json`.
+
+/** usable fix 두절이 이만큼 지속되면 실내 진입으로 간주(잠정 — 실보행 재판정). */
+export const PRESUMED_ARRIVAL_NO_FIX_S = 180;
+/** usable fix는 오는데 무진행이 이만큼 지속되면 실내 고정 좌표로 간주(잠정). */
+export const PRESUMED_ARRIVAL_STATIONARY_S = 300;
+/** 진행 관측 앵커 이탈 하한(m). 직전 fix 비교 금지 — 저속 연속 보행이 제자리로 오판된다. */
+export const PROGRESS_EPSILON_M = 10;
+/** 마지막 확인 거리 캡(m). 오프셋 실측 상한 89m + GPS 여유. 이 밖은 이탈이지 도착이 아니다. */
+export const PRESUMED_ARRIVAL_MAX_DIST_M = 150;
+
+export type PresumedArrivalReason = "noFix" | "stationary";
+
+export interface PresumedArrivalInput {
+  inFinalApproach: boolean;
+  /** 기준: max(최종 접근 진입, 마지막 usable fix) — 진입 전 노화가 새면 즉시 발동한다. */
+  secondsSinceUsableFix: number;
+  /** 기준: max(최종 접근 진입, 마지막 진행 관측). */
+  secondsSinceProgress: number;
+  /** 마지막 usable fix 기준 목적지 직선거리. null = 미확인(발동 불가). */
+  lastKnownDistanceToDestMeters: number | null;
+}
+
+const finiteNonNegative = (x: number) => Number.isFinite(x) && x >= 0;
+
+/**
+ * 도착 추정 판정. 판정 순서(국면 → 거리 캡 → noFix → stationary)까지 계약이다 —
+ * 국면 게이트가 경로 중간 자동 종료 금지의 1선 방어다(spec §3).
+ */
+export function presumedArrivalStep(
+  input: PresumedArrivalInput,
+): PresumedArrivalReason | null {
+  if (!input.inFinalApproach) return null;
+  if (
+    !finiteNonNegative(input.secondsSinceUsableFix) ||
+    !finiteNonNegative(input.secondsSinceProgress)
+  ) {
+    return null;
+  }
+  const dist = input.lastKnownDistanceToDestMeters;
+  if (dist === null || !finiteNonNegative(dist) || dist > PRESUMED_ARRIVAL_MAX_DIST_M) {
+    return null;
+  }
+  if (input.secondsSinceUsableFix >= PRESUMED_ARRIVAL_NO_FIX_S) return "noFix";
+  if (input.secondsSinceProgress >= PRESUMED_ARRIVAL_STATIONARY_S) return "stationary";
+  return null;
+}
+
+/**
+ * 진행 관측 앵커 전진. **직전 fix가 아니라 앵커 기준 누적 변위**다 — 직전 비교는
+ * 1m/s 연속 보행(fix 간 1m)을 5분 300m 걷고도 제자리로 오판한다(설계 리뷰 C2).
+ */
+export function advanceProgressAnchor(
+  anchor: Coord | null,
+  fix: Coord,
+  epsilonMeters: number = PROGRESS_EPSILON_M,
+): { anchor: Coord; progressed: boolean } {
+  if (!anchor) return { anchor: fix, progressed: false };
+  if (haversineMeters(anchor.lat, anchor.lng, fix.lat, fix.lng) >= epsilonMeters) {
+    return { anchor: fix, progressed: true };
+  }
+  return { anchor, progressed: false };
+}
