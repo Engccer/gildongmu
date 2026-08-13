@@ -257,9 +257,17 @@
   "guide": {
     "switchedToShortest": "Passato al percorso più breve. {count} indicazioni, {distance} in totale. {first}",
     "switchedToRecommended": "Passato al percorso consigliato. {count} indicazioni, {distance} in totale. {first}",
-    "proposalReady": "Un nuovo percorso è pronto. {count} indicazioni, {distance} in totale. {first}",
-    "proposalAdopt": "Guida con il nuovo percorso preparato",
+    "proposalReady": "Un percorso dalla posizione attuale è pronto. {count} indicazioni, {distance} in totale. {first}",
+    "proposalAdopt": "Riavvia la guida dalla posizione attuale",
     "switchToShortest": "Passa al percorso più breve",
-    "switchToRecommended": "Passa al percorso consigliato"
+    "switchToRecommended": "Passa al percorso consigliato",
+    "viewAlternative": "Vedi percorso alternativo",
+    "adoptAlternative": "Passa alla guida su questo percorso",
+    "altPreviewLoading": "Ricerca percorso alternativo",
+    "altPreviewNone": "Nessun percorso alternativo",
+    "altPreviewFailed": "Impossibile caricare il percorso alternativo",
+    "altPreviewSummary": "{variant}, {distance} in totale",
+    "altPreviewTime": "circa {minutes} min a piedi",
+    "altPreviewRemaining": "percorso attuale rimanente {distance}"
   }
 }

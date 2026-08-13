@@ -257,9 +257,17 @@
   "guide": {
     "switchedToShortest": "Switched to the shortest route. {count} steps, {distance} total. {first}",
     "switchedToRecommended": "Switched to the recommended route. {count} steps, {distance} total. {first}",
-    "proposalReady": "A new route is ready. {count} steps, {distance} total. {first}",
-    "proposalAdopt": "Guide with the prepared new route",
+    "proposalReady": "A route from your current location is ready. {count} steps, {distance} total. {first}",
+    "proposalAdopt": "Restart guidance from current location",
     "switchToShortest": "Switch to the shortest route",
-    "switchToRecommended": "Switch to the recommended route"
+    "switchToRecommended": "Switch to the recommended route",
+    "viewAlternative": "View alternative route",
+    "adoptAlternative": "Switch guidance to this route",
+    "altPreviewLoading": "Finding alternative route",
+    "altPreviewNone": "No alternative route",
+    "altPreviewFailed": "Couldn't load the alternative route",
+    "altPreviewSummary": "{variant}, {distance} total",
+    "altPreviewTime": "about {minutes} min walk",
+    "altPreviewRemaining": "current route remaining {distance}"
   }
 }

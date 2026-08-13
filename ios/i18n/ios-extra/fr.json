@@ -257,9 +257,17 @@
   "guide": {
     "switchedToShortest": "Itinéraire le plus court activé. {count} instructions, {distance} au total. {first}",
     "switchedToRecommended": "Itinéraire recommandé activé. {count} instructions, {distance} au total. {first}",
-    "proposalReady": "Un nouvel itinéraire est prêt. {count} instructions, {distance} au total. {first}",
-    "proposalAdopt": "Guider avec le nouvel itinéraire préparé",
+    "proposalReady": "Un itinéraire depuis votre position actuelle est prêt. {count} instructions, {distance} au total. {first}",
+    "proposalAdopt": "Reprendre le guidage depuis la position actuelle",
     "switchToShortest": "Passer à l’itinéraire le plus court",
-    "switchToRecommended": "Passer à l’itinéraire recommandé"
+    "switchToRecommended": "Passer à l’itinéraire recommandé",
+    "viewAlternative": "Voir l’itinéraire alternatif",
+    "adoptAlternative": "Basculer le guidage sur cet itinéraire",
+    "altPreviewLoading": "Recherche d’itinéraire alternatif",
+    "altPreviewNone": "Aucun itinéraire alternatif",
+    "altPreviewFailed": "Échec du chargement de l’itinéraire alternatif",
+    "altPreviewSummary": "{variant}, {distance} au total",
+    "altPreviewTime": "environ {minutes} min à pied",
+    "altPreviewRemaining": "itinéraire actuel restant {distance}"
   }
 }
