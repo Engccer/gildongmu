@@ -652,6 +652,7 @@
     "finalApproachNear": "You are near the destination.",
     "finalApproachNearDir": "You are near the destination. It is {direction}.",
     "arrived": "You have arrived at the destination",
+    "arrivedPresumed": "You appear to have arrived near the destination, so guidance has ended",
     "dirAhead": "ahead",
     "dirLeft": "on the left",
     "dirRight": "on the right",

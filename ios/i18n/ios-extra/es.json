@@ -228,6 +228,7 @@
       "soundUnavailable": "No se puede reproducir la guía sonora.",
       "stopped": "Seguimiento de distancia detenido.",
       "arrivedHeading": "Llegada",
+      "arrivedPresumedHeading": "Llegada estimada",
       "soundBackgroundUnavailable": "Los sonidos de la guía no sonarán con la pantalla apagada o al usar otra aplicación."
     },
     "unit": {

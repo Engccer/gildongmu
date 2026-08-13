@@ -9961,6 +9961,46 @@
         }
       }
     },
+    "guide.arrivedPresumed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You appear to have arrived near the destination, so guidance has ended"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parece que has llegado cerca del destino, así que la guía ha finalizado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous semblez être arrivé près de la destination, le guidage est donc terminé"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sembra che tu sia arrivato vicino alla destinazione, quindi la guida è terminata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目的地付近に到着したと判断し、案内を終了しました"
+          }
+        }
+      }
+    },
     "guide.backOnRoute": {
       "localizations": {
         "ko": {
@@ -13077,6 +13117,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "到着"
+          }
+        }
+      }
+    },
+    "ios.beacon.arrivedPresumedHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도착 추정"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presumed arrival"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada estimada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée estimée"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivo stimato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "到着推定"
           }
         }
       }
