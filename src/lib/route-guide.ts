@@ -152,6 +152,11 @@ export interface GuideTuning {
    */
   courseAxisEnabled: boolean;
   /**
+   * 도착 추정 자동 종료(spec 2026-08-13). **보행 전용** — 자동차는 정체 5분 정지·
+   * 지하차도가 일상이라 도보 상수를 공유하면 주행 중 안내가 끊긴다(설계 리뷰 C5).
+   */
+  presumedArrivalEnabled: boolean;
+  /**
    * 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준. 직전 fix 대비 진행거리
    * 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다(여유 계수 1.5 —
    * 상한 자체가 보수적이라 이중으로 좁히지 않는다).
@@ -183,6 +188,7 @@ export const WALK_TUNING: GuideTuning = {
   reacquireTieBreak: false,
   speedSuggest: true,
   courseAxisEnabled: true,
+  presumedArrivalEnabled: true,
   maxSpeedMps: MAX_WALK_SPEED_MPS,
 };
 
@@ -206,6 +212,8 @@ export const CAR_TUNING: GuideTuning = {
   speedSuggest: false,
   // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
   courseAxisEnabled: false,
+  // ⚠ 정체 5분 정지가 일상이라 도보 상수로는 주행 중 종료가 된다(설계 리뷰 C5).
+  presumedArrivalEnabled: false,
   maxSpeedMps: MAX_CAR_SPEED_MPS,
 };
 
