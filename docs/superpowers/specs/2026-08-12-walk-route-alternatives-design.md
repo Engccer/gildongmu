@@ -70,6 +70,8 @@
 
 ## 5. 안내 중 수동 전환
 
+> ⚠ 2026-08-14 개정: 이 절의 **안내 시트 전환 버튼 배치는 폐기**됐다(상시 노출이 경로 변경 압박으로 읽힘 — 위원장 판정). 정본은 `2026-08-14-guide-alternative-preview-design.md`(진행 상황 조망 경유 프리뷰 전환). 전환 메커니즘(현위치 재조회·커밋 계약)은 그 spec이 재사용한다.
+
 - `BeaconModel`(iOS)·`useRouteGuide`(웹, 후속 이식)이 세션의 `variant`를 보유한다. 안내 시작 시 선택한 경로의 variant로 `includeGeometry=1` 조회(현행 흐름에 파라미터 하나 추가).
 - 안내 시트에 "다른 경로로 전환" 버튼: **현위치 기준으로 반대 variant 재조회**. `performReroute`에 variant 인자를 추가하는 것이 전부다 — 위치 강제 재취득(`{force:true}` 동형)·상태 리셋(`resetFinalApproach`·`rebaseForAxisChange`·래치)·latest-wins 응답 폐기·전환 성공 통지 `.high`가 전부 기존 검증 계약이다. 출발 전에 받아 둔 대안 경로를 재사용하지 않는 이유: 걷는 중이라 그 경로의 출발점이 낡았다.
 - 전환 성공 통지에 variant를 밝힌다: "최단 경로로 전환했습니다. 전체 715m." (새 경로임을 알리는 기존 재조회 문구 계약의 확장).
