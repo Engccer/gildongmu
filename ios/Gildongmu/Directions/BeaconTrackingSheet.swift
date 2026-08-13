@@ -257,14 +257,22 @@ struct BeaconTrackingSheet: View {
     /// presentation 바인딩이 `clearArrival()`로 소거한다(스와이프·VO escape 동일).
     private func arrivalSection(dest: BeaconDest, proxy: ScrollViewProxy) -> some View {
         Section {
-            Text(appLocalized("guide.arrived"))
+            // 확정/추정 분기(3-state 정직성, spec 2026-08-13 §4-5): 추정 종료를
+            // 확정 도착과 뭉개지 않는다.
+            Text(appLocalized(
+                model.arrivalPresumed ? "guide.arrivedPresumed" : "guide.arrived"
+            ))
                 .accessibilityFocused($arrivedFocused)
             SurroundingsSceneSection(
                 anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
             Button(appLocalized("actions.close")) { dismiss() }
         } header: {
             Text(joinText(
-                appLocalized("ios.beacon.arrivedHeading"), model.destinationLabel
+                appLocalized(
+                    model.arrivalPresumed
+                        ? "ios.beacon.arrivedPresumedHeading" : "ios.beacon.arrivedHeading"
+                ),
+                model.destinationLabel
             ))
             .accessibilityAddTraits(.isHeader)
         }

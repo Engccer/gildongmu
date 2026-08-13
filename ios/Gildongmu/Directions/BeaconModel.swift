@@ -289,6 +289,15 @@ final class BeaconModel {
     private(set) var inFinalApproach = false
     /// 세션이 쥔 종점 오프셋 기하. 재조회 시 통째로 교체한다(새 경로는 새 종점이다).
     private var finalApproachGeometry: FinalApproachPayload?
+    // 도착 추정(spec 2026-08-13): 최종 접근 한정 상태. resetFinalApproach가 전부
+    // 소거하고 beginFinalApproach가 에피소드 기준을 다시 세운다 — 이전 에피소드
+    // 값이 새 에피소드로 새면 조기 종료가 된다(§4 상태 초기화 계약).
+    private var finalApproachEnteredAt: Double?
+    private var progressAnchor: RoutePoint?
+    private var lastProgressAt: Double?
+    private var lastUsableDistanceToDest: Double?
+    /// 도착 종료 화면의 확정/추정 분기(3-state 정직성 — 시트가 소비).
+    private(set) var arrivalPresumed = false
     /// 진입 배치 서술을 냈는가. 1회뿐이라 주기 통지와 별도로 센다.
     private var finalApproachIntroSpoken = false
     /// 발화되지 못한 진입 배치 서술(백그라운드 게이트에 걸린 것).
@@ -307,7 +316,10 @@ final class BeaconModel {
     private(set) var arrivalDest: BeaconDest?
 
     /// 도착 종료 화면 닫기(시트 presentation 바인딩·닫기 버튼 경로).
-    func clearArrival() { arrivalDest = nil }
+    func clearArrival() {
+        arrivalDest = nil
+        arrivalPresumed = false
+    }
 
     // MARK: - 시작·중지
 
@@ -384,6 +396,7 @@ final class BeaconModel {
 
         self.dest = dest
         arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
+        arrivalPresumed = false
         // 억제 잔류 차단(스펙 2026-08-12 §5.4, 마일스톤 리뷰 BLOCKER): 검색 시트가
         // 열린 채 세션이 죽으면 시트 onChange가 발화할 기회 없이 뷰가 소멸해 억제가
         // 고착된다 — 세션 경계가 무조건 해제한다(TransitGuideModel.stop() 동형).
@@ -824,6 +837,7 @@ final class BeaconModel {
     func teardown() {
         stop()
         arrivalDest = nil
+        arrivalPresumed = false
         tones.shutdown()
     }
 
@@ -1261,6 +1275,10 @@ final class BeaconModel {
         finalApproachIntroSpoken = false
         pendingFinalApproachIntro = nil
         lastFinalTickAt = nil
+        finalApproachEnteredAt = nil
+        progressAnchor = nil
+        lastProgressAt = nil
+        lastUsableDistanceToDest = nil
     }
 
     /// 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다.** 첫 발화는
@@ -1298,6 +1316,17 @@ final class BeaconModel {
         inFinalApproach = true
         finalApproachIntroSpoken = false
         lastFinalTickAt = nil
+        finalApproachEnteredAt = uptimeNow
+        progressAnchor = nil
+        lastProgressAt = nil
+        // 진입 fix가 곧 마지막 usable fix일 수 있다(2026-08-13 실사고가 정확히 그
+        // 모양) — 거리 캡 입력을 진입 시점 좌표로 미리 세운다. 이후 usable fix마다
+        // handleFinalApproach가 갱신한다.
+        if let c = lastFixCoord, let dest {
+            lastUsableDistanceToDest = haversineMeters(
+                lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng
+            )
+        }
         guideDiagLog("finalEnter offset=\(String(format: "%.1f", geometry.offsetMeters))")
     }
 
@@ -1328,6 +1357,14 @@ final class BeaconModel {
         let distance = haversineMeters(
             lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng
         )
+        // 도착 추정 입력 갱신(spec 2026-08-13 §4): 거리 캡은 마지막 usable fix 기준,
+        // 진행은 앵커 기준 누적 변위(직전 fix 비교 금지 — 저속 연속 보행 오판).
+        lastUsableDistanceToDest = distance
+        let anchorStep = advanceProgressAnchor(
+            anchor: progressAnchor, fix: RoutePoint(lat: fix.lat, lng: fix.lng)
+        )
+        progressAnchor = anchorStep.anchor
+        if anchorStep.progressed { lastProgressAt = now }
         let arrived = distance <= finalApproachArriveMeters
         // 도착 종·진동이 안 난다는 실사용 보고(2026-08-09)의 판정 근거. 원인 후보가
         // 둘인데(도착 판정 자체가 안 옴 vs 판정은 왔는데 소리가 잘림) 증상이 같아
@@ -1386,6 +1423,10 @@ final class BeaconModel {
             return
         }
 
+        // 확정 도착이 항상 이긴다 — 추정(.stationary 모양)은 확정 판정이 지나간
+        // 뒤에만 본다(spec 2026-08-13 §4).
+        if maybePresumeArrival(now: now) { return }
+
         guard let last = lastFinalTickAt, now - last >= finalApproachIntervalSeconds else {
             if lastFinalTickAt == nil { lastFinalTickAt = now }
             return
@@ -1400,6 +1441,42 @@ final class BeaconModel {
         lastGuidance = text
         liveTopText = text
         announce(text)
+    }
+
+    /// 도착 추정 자동 종료(spec 2026-08-13 §4) — 자동 종료의 유일한 추가 경로.
+    /// 판정은 순수 함수가, 실행은 확정 도착(handleFinalApproach의 arrived)과 같은
+    /// 모양이 맡는다(문구만 분리). true = 세션을 끝냈다.
+    ///
+    /// 백그라운드면 announce가 missedAnnouncement만 세우고 떨어지는데, 전경 복귀
+    /// 상환(handleScenePhaseChange)이 추적 가드보다 앞이라 stop() 뒤에도 statusText
+    /// 꼬리로 갚아진다 — statusText 대입이 stop() 뒤인 것이 그 전제다(설계 리뷰 M7).
+    @discardableResult
+    private func maybePresumeArrival(now: Double) -> Bool {
+        guard isTracking, inFinalApproach, tuning.presumedArrivalEnabled,
+              let dest, let enteredAt = finalApproachEnteredAt
+        else { return false }
+        let fixRef = max(enteredAt, lastFixAt ?? enteredAt)
+        let progressRef = max(enteredAt, lastProgressAt ?? enteredAt)
+        guard let reason = presumedArrivalStep(
+            inFinalApproach: true,
+            secondsSinceUsableFix: now - fixRef,
+            secondsSinceProgress: now - progressRef,
+            lastKnownDistanceToDestMeters: lastUsableDistanceToDest
+        ) else { return false }
+        guideDiagLog(
+            "presumedArrival reason=\(reason.rawValue) "
+                + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-")"
+        )
+        let text = appLocalized("guide.arrivedPresumed")
+        playTone(.nearby)
+        stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
+        arrivalDest = dest
+        arrivalPresumed = true
+        statusText = text
+        lastGuidance = text
+        liveTopText = text
+        announce(text, highPriority: true)
+        return true
     }
 
     /// 실시간 상대 방향. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을
@@ -1942,6 +2019,10 @@ final class BeaconModel {
             // 끊기면 사용자가 직접 멈추기 전까지 "신뢰할 수 없음"이 무한 반복된다.
             routeTone(ToneLayerInput(unreliable: true, arrived: arrivedNow), now: now)
         }
+        // 도착 추정(.noFix 모양)은 fix가 안 와서 fix 경로에 걸 수 없다 — 워치독이
+        // 유일한 도달 경로다(spec 2026-08-13 §4). 발동하면 세션이 끝났으므로 약신호
+        // 통지도 없다.
+        if maybePresumeArrival(now: now) { return }
         // 음성 통지는 별도 축이다(15초 임계·30초 재통지·원인 구분). 톤은 추가 채널이지
         // 대체가 아니다.
         noticeStaleIfNeeded(force: false)
