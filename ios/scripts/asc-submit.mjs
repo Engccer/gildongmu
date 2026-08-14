@@ -159,8 +159,16 @@ function setupHelp({ keyId, issuerId, keyPath, keysSeen }) {
 function checkReleaseArtifact() {
   step("산출물 Info.plist 사전 점검");
   const script = join(dirname(fileURLToPath(import.meta.url)), "check-release-artifact.mjs");
+  // ⚠ 버전·빌드를 반드시 넘긴다. 안 넘기면 검사가 "가장 최근 아카이브"를 고르는데
+  // 그것이 지금 올린 빌드라는 보장이 없어, 낡은 산출물을 보고 통과를 내줄 수 있다.
+  // 통과가 무엇을 보증하는지 불분명해지면 이 관문은 없는 것과 같다.
+  const args = [script];
+  const version = arg("version");
+  const build = arg("build");
+  if (version) args.push("--expect-version", version);
+  if (build) args.push("--expect-build", build);
   try {
-    execFileSync(process.execPath, [script], { stdio: "inherit" });
+    execFileSync(process.execPath, args, { stdio: "inherit" });
   } catch {
     // 실패 내역은 위 stdio로 이미 나왔다. 여기서 되풀이하면 노이즈만 된다.
     throw new Error("산출물 점검에서 막혔다. 위 항목을 고치고 Release로 다시 아카이브하라.");
