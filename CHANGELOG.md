@@ -15,6 +15,10 @@
 
 수단 축으로 봉인을 분할해 도보만 내보낸다. `AppConfig.realtimeGuidanceEnabled` → `experimentalGuidanceEnabled`로 대체하고 도보 경로(`walkGuideStartable`·`manualOriginNoticeText`)는 플래그를 보지 않는다 — 자동차·대중교통·간략 단독 진입점은 봉인 유지(간략 단독 버튼은 `isTracking ∨ experimental` 조건으로 정식판 실패 상태 화면에서도 차단). 정식 `Info.plist`에 `UIBackgroundModes`(location·audio) 승격, 위치 권한 문구 ko에 거리 안내 절 추가(비한국어는 ko 게이트 안 기능이라 현행 유지), 안내 시트의 화면 켜기 힌트 삭제(백그라운드 승격으로 거짓 문장화 — 진짜 무음은 `soundDegraded`가 런타임 판정으로 알린다). `experimental-infoplist.sh`는 표시 이름 전용으로 축소하고 파일-존재 카운트를 접미사 적용 결과 검증으로 교체. 가드는 소스 드리프트 6종 + 제출 전 산출물 검사. spec `docs/superpowers/specs/2026-08-15-walk-guidance-ship-design.md`, 계획 `docs/superpowers/plans/2026-08-15-walk-guidance-ship.md`
 
+### 도보 출시 독립 리뷰 처리
+
+리뷰 2건(결함 0건·SHIP / MAJOR 2 + MINOR 6). 반영: 산출물 검사가 ko 권한 문구를 마커뿐 아니라 카탈로그 전문과도 대조(마커만 남기고 문구가 갈린 변이가 종전엔 통과했다), `beacon.toggle` 계수 스캔을 iOS 전체로 확대, 제출 대상 버전·빌드 대조 신설(낡은 아카이브가 통과하던 구멍). **기각 1건**: 공지 문안이 disclosure 펼침 단계를 담지 않는다는 MAJOR 지적은 위원장 판정으로 기각했다(의도적 단순화 — 1회성 공지의 몫은 절차 완전 기술이 아니다). 근거·재개 조건은 `docs/BACKLOG.md` A14. 신규 등재 A15(공지 시트 표시 경합, 추측)·G4.
+
 ### 길찾기 탭 도보 안내 공지 모달 (iOS)
 
 길찾기 탭 첫 진입에 1회성 시트(미확인 ∧ 한국어). 계약은 "한 번 뜨면 다시 안 뜬다"가 아니라 **"확인을 누르면 다시 뜨지 않는다"** — 드래그·VoiceOver 탈출은 막지 않고(1급 사용자의 표준 탈출 수단) 저장을 확인 버튼에만 걸어 읽지 않고 닫으면 다음 진입에 다시 뜬다. 제목·소제목 2개는 별도 `Text` + `.isHeader`, 본문은 문단마다 별도 `Text`. 문안은 위원장 확정본(spec §5.4)이고 미판정 항목(A11·A6·A12·최종 접근 상수)은 항목별 열거가 아니라 포괄 문장으로 덮는다.
