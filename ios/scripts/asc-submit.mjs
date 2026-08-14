@@ -25,6 +25,7 @@
  * 심사 제출까지는 `--apply --submit`. 제출은 되돌리기 어려우므로 두 플래그를
  * 분리했다 — `--apply`만으로는 초안까지만 만들어지고 제출되지 않는다.
  */
+import { execFileSync } from "node:child_process";
 import { createSign } from "node:crypto";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -150,7 +151,27 @@ function setupHelp({ keyId, issuerId, keyPath, keysSeen }) {
   return lines.join("\n");
 }
 
+/**
+ * 산출물 Info.plist 사전 점검 (spec §7.2). 백그라운드 모드·권한 문구가 빠진 채로
+ * 나가면 빌드는 성공하고 전경에서도 정상인데 화면을 끄면 안내가 죽는다 — 제출
+ * 직전이 그것을 잡는 마지막 관문이다. 실패하면 throw되어 제출이 멈춘다.
+ */
+function checkReleaseArtifact() {
+  step("산출물 Info.plist 사전 점검");
+  const script = join(dirname(fileURLToPath(import.meta.url)), "check-release-artifact.mjs");
+  try {
+    execFileSync(process.execPath, [script], { stdio: "inherit" });
+  } catch {
+    // 실패 내역은 위 stdio로 이미 나왔다. 여기서 되풀이하면 노이즈만 된다.
+    throw new Error("산출물 점검에서 막혔다. 위 항목을 고치고 Release로 다시 아카이브하라.");
+  }
+}
+
 async function main() {
+  // ASC를 건드리기 전에 막아야 하므로 자격 증명보다 앞이다. 실제 제출 경로에서만
+  // 돌린다 — `--check`나 드라이런은 아카이브가 없을 수 있다.
+  if (APPLY && SUBMIT) checkReleaseArtifact();
+
   const cred = credentials();
   if (!cred.keyId || !cred.issuerId || !cred.keyPath) {
     throw new Error(setupHelp(cred));
