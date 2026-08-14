@@ -9,7 +9,18 @@
     "directions": {
       "searching": "Ricerca in corso",
       "walkRecommended": "Percorso consigliato",
-      "walkShortest": "Percorso più breve"
+      "walkShortest": "Percorso più breve",
+      "walkNotice": {
+        "title": "La guida a piedi è arrivata.",
+        "intro": "Grazie per usare Gildongmu!",
+        "head1": "Novità",
+        "body1": "Ora, quando cerchi un percorso nella scheda Indicazioni, la sezione a piedi mostra il pulsante \"Avvia guida a piedi\". Toccalo per avviare la guida in tempo reale. Durante la guida, lo schermo mostra la distanza rimanente fino alla destinazione, la distanza che resta del tratto corrente e la prossima indicazione. La guida continua a funzionare in background anche con lo schermo bloccato.",
+        "head2": "Da tenere presente",
+        "body2": "La guida si basa sui dati cartografici di API esterne e sul GPS, quindi può differire dalla situazione reale.",
+        "body3": "Presta particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione complementare e provala prima su percorsi che già conosci.",
+        "body4": "La guida in tempo reale per i mezzi pubblici e l'auto è in preparazione.",
+        "confirm": "OK"
+      }
     },
     "common": {
       "ok": "OK",

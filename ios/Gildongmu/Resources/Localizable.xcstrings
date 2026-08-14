@@ -14881,6 +14881,366 @@
         }
       }
     },
+    "ios.directions.walkNotice.body1": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이제 길찾기 탭에서 경로를 조회하면 도보 섹션에 \"도보 안내 시작\" 버튼이 나와요. 버튼을 누르면 실시간 안내가 시작돼요. 안내를 받는 동안 도착지까지 남은 거리, 현재 구간의 남은 거리, 다음 안내 등을 화면에서 바로 확인하실 수 있어요. 안내 중에는 화면을 잠가도 백그라운드에서 작동해요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you look up a route in the Directions tab, the walking section now shows a \"Start walking guidance\" button. Tap it to begin real-time guidance. While guidance is active, the screen shows the remaining distance to your destination, the distance left in the current segment, and the next instruction. Guidance keeps working in the background even when the screen is locked."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora, al consultar una ruta en la pestaña Cómo llegar, la sección a pie muestra el botón \"Iniciar guía a pie\". Púlsalo para comenzar la guía en tiempo real. Durante la guía, la pantalla muestra la distancia restante hasta tu destino, la distancia que queda del tramo actual y la siguiente indicación. La guía sigue funcionando en segundo plano aunque la pantalla esté bloqueada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désormais, lorsque vous recherchez un itinéraire dans l'onglet Itinéraire, la section à pied affiche le bouton \"Démarrer le guidage à pied\". Appuyez dessus pour lancer le guidage en temps réel. Pendant le guidage, l'écran affiche la distance restante jusqu'à votre destination, la distance restante du tronçon en cours et la prochaine instruction. Le guidage continue de fonctionner en arrière-plan même lorsque l'écran est verrouillé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora, quando cerchi un percorso nella scheda Indicazioni, la sezione a piedi mostra il pulsante \"Avvia guida a piedi\". Toccalo per avviare la guida in tempo reale. Durante la guida, lo schermo mostra la distanza rimanente fino alla destinazione, la distanza che resta del tratto corrente e la prossima indicazione. La guida continua a funzionare in background anche con lo schermo bloccato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経路タブでルートを検索すると、徒歩セクションに「徒歩案内を開始」ボタンが表示されるようになりました。ボタンを押すとリアルタイム案内が始まります。案内中は、目的地までの残り距離、現在区間の残り距離、次の案内などを画面ですぐに確認できます。案内中は画面をロックしてもバックグラウンドで動作します。"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.body2": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "안내는 API가 주는 지도 데이터와 GPS를 기반으로 이루어져요. 따라서 실제 상황과는 차이가 있을 수 있어요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidance is based on map data from external APIs and on GPS, so it may differ from actual conditions."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guía se basa en datos de mapas de APIs externas y en el GPS, por lo que puede diferir de la situación real."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage repose sur les données cartographiques d'API externes et sur le GPS ; il peut donc différer de la situation réelle."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida si basa sui dati cartografici di API esterne e sul GPS, quindi può differire dalla situazione reale."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "案内はAPIが提供する地図データとGPSに基づいています。そのため、実際の状況とは異なる場合があります。"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.body3": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "횡단보도 등에서는 특별히 유의해 주세요. 이 앱의 안내를 보조 정보로만 사용하시고, 익숙한 길에서 먼저 테스트해 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take special care at crosswalks. Use this app's guidance only as supplementary information, and try it first on routes you already know."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información complementaria y pruébala primero en caminos que ya conozcas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soyez particulièrement vigilant aux passages piétons. Utilisez le guidage de cette application uniquement comme information complémentaire et essayez-le d'abord sur des trajets que vous connaissez déjà."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Presta particolare attenzione agli attraversamenti pedonali. Usa la guida di questa app solo come informazione complementare e provala prima su percorsi che già conosci."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横断歩道などでは特にご注意ください。このアプリの案内は補助情報としてのみ使用し、慣れた道で先にお試しください。"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.body4": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대중교통과 자동차 실시간 안내는 준비 중이에요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Real-time transit and driving guidance are on the way."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guía en tiempo real de transporte público y coche está en preparación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage en temps réel pour les transports en commun et la voiture est en préparation."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida in tempo reale per i mezzi pubblici e l'auto è in preparazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通機関と自動車のリアルタイム案内は準備中です。"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.confirm": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aceptar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.head1": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "바뀐 것"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's new"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Novedades"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveautés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Novità"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "変わったこと"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.head2": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "유의해야 할 것"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Things to keep in mind"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A tener en cuenta"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À garder à l'esprit"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da tenere presente"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ご注意いただきたいこと"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.intro": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무 앱을 이용해 주셔서 감사합니다!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thank you for using Gildongmu!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Gracias por usar Gildongmu!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merci d'utiliser Gildongmu !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grazie per usare Gildongmu!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ギルドンムをご利用いただきありがとうございます!"
+          }
+        }
+      }
+    },
+    "ios.directions.walkNotice.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 안내 기능이 추가되었어요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walking guidance is here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llega la guía a pie."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage à pied est arrivé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida a piedi è arrivata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩案内機能が追加されました。"
+          }
+        }
+      }
+    },
     "ios.directions.walkRecommended": {
       "localizations": {
         "ko": {

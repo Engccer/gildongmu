@@ -9,7 +9,18 @@
     "directions": {
       "searching": "Searching",
       "walkRecommended": "Recommended route",
-      "walkShortest": "Shortest route"
+      "walkShortest": "Shortest route",
+      "walkNotice": {
+        "title": "Walking guidance is here.",
+        "intro": "Thank you for using Gildongmu!",
+        "head1": "What's new",
+        "body1": "When you look up a route in the Directions tab, the walking section now shows a \"Start walking guidance\" button. Tap it to begin real-time guidance. While guidance is active, the screen shows the remaining distance to your destination, the distance left in the current segment, and the next instruction. Guidance keeps working in the background even when the screen is locked.",
+        "head2": "Things to keep in mind",
+        "body2": "Guidance is based on map data from external APIs and on GPS, so it may differ from actual conditions.",
+        "body3": "Take special care at crosswalks. Use this app's guidance only as supplementary information, and try it first on routes you already know.",
+        "body4": "Real-time transit and driving guidance are on the way.",
+        "confirm": "OK"
+      }
     },
     "common": {
       "ok": "OK",

@@ -484,6 +484,9 @@ struct DirectionsTabView: View {
     @State private var walkShortestExpanded = false
     @State private var beacon = BeaconModel()
     @State private var transitGuide = TransitGuideModel()
+    /// 도보 안내 1회성 공지(spec 2026-08-15 §5). 저장은 확인 버튼만 — 시스템 닫기
+    /// (드래그·VoiceOver 탈출)는 저장하지 않아 다음 탭 진입에 다시 뜬다.
+    @State private var walkNoticePresented = false
     /// 필드 라벨의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
     @State private var manualLocationStore = ManualLocationStore.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -785,6 +788,16 @@ struct DirectionsTabView: View {
                     onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
                 )
             }
+            // 도보 안내 정식 출시 1회성 공지(spec §5). 다른 두 시트와 달리 세션 상태에
+            // 묶이지 않는다 — 첫 진입에는 어느 시트도 떠 있지 않아 경합이 없다.
+            // ⚠ `interactiveDismissDisabled`를 붙이지 않는다(§5.1) — 저장이 확인
+            // 버튼에만 걸려 있어, 읽지 않고 닫은 사용자에게는 다음 진입에 다시 뜬다.
+            .sheet(isPresented: $walkNoticePresented) {
+                WalkGuideNoticeSheet {
+                    UserDefaults.standard.set(true, forKey: WalkGuideNotice.key)
+                    walkNoticePresented = false
+                }
+            }
             .onChange(of: transitGuide.isTracking) { _, tracking in
                 // 핸드오프 제안이 시트를 이어받는 전이(§14.2)에선 배경 시작 버튼으로
                 // 포커스를 되돌리지 않는다 — 시트 쪽 onChange가 제안 버튼에 선점한다.
@@ -863,7 +876,16 @@ struct DirectionsTabView: View {
                 transitGuide.handleScenePhaseChange(to: scenePhase)
             }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
-            .task { await model.loadCurrentAddressIfAuthorized() }
+            .task {
+                // 도보 안내 공지(spec §5.2 — 미확인 ∧ 한국어). 조회를 기다리지 않고
+                // 탭 진입 즉시 판정한다. 한국어 전용인 이유는 도보 안내 자체가
+                // `walkGuideStartable`의 ko 게이트 안에만 존재하기 때문이다 — 다른
+                // 언어 사용자에게 띄우면 없는 기능을 설명하는 공지가 된다.
+                if !WalkGuideNotice.confirmed, AppLanguage.dataLocale == "ko" {
+                    walkNoticePresented = true
+                }
+                await model.loadCurrentAddressIfAuthorized()
+            }
         }
     }
 
