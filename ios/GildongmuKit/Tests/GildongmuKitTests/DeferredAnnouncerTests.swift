@@ -17,7 +17,7 @@ struct DeferredAnnouncerTests {
     final class Harness {
         var now: Double = 0
         private(set) var sleeps: [Double] = []
-        private(set) var posts: [(text: String, highPriority: Bool)] = []
+        private(set) var posts: [(text: String, highPriority: Bool, bypass: Bool)] = []
         /// post의 반환값(게시 성공 여부). 억제·백그라운드 실패를 흉내 낸다.
         var postResult = true
         /// toneEndsAt 스크립트 — 호출마다 하나씩 소비, 소진되면 마지막 값 반복.
@@ -43,8 +43,8 @@ struct DeferredAnnouncerTests {
                 self?.now += seconds
             },
             toneEndsAt: { [weak self] in self?.nextToneEndsAt() },
-            post: { [weak self] text, high in
-                self?.posts.append((text, high))
+            post: { [weak self] text, high, bypass in
+                self?.posts.append((text, high, bypass))
                 return self?.postResult ?? true
             }
         )
@@ -104,7 +104,7 @@ struct DeferredAnnouncerTests {
         #expect(h.posts.map(\.text) == ["새 문장"])
     }
 
-    // §4-1: 즉시 창구(announceNow에 해당하는 즉시 경로)도 보류 슬롯을 버린다 —
+    // §4-1: 즉시 창구(announce의 무톤 경로)도 보류 슬롯을 버린다 —
     // 즉시 문장이 나간 **뒤에** 이전 문장이 발화하면 순서가 뒤집힌다(BLOCKER 2).
     @Test func immediateAnnounceDropsPendingFirst() async {
         let h = Harness()
@@ -112,6 +112,21 @@ struct DeferredAnnouncerTests {
         h.announcer.announce("이전 목적지 명령")
         h.announcer.announce("목적지가 변경되었습니다")
         #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
+        await drain()
+        #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
+    }
+
+    // §4-1·BLOCKER 2: announceNow는 톤과 무관하게 즉시 게시하되 보류 슬롯을 버린다.
+    // 목적지 변경 확인이 즉시 나간 뒤 이전 목적지의 "오른쪽으로 도세요"가 발화하는
+    // 역전이 이 무효화가 막는 실사고다.
+    @Test func announceNowDropsPendingAndPostsImmediately() async {
+        let h = Harness()
+        h.toneScript = [2.246, 2.246]  // 톤이 재생 중이어도 announceNow는 미루지 않는다
+        h.announcer.announce("이전 목적지 명령")
+        h.announcer.announceNow("목적지가 변경되었습니다", highPriority: true,
+                                bypassSuppression: true)
+        #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
+        #expect(h.posts.first?.bypass == true)
         await drain()
         #expect(h.posts.map(\.text) == ["목적지가 변경되었습니다"])
     }
