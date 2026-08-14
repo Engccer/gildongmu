@@ -7,7 +7,7 @@ import ko from "../../../messages/ko.json";
 const { playSpy } = vi.hoisted(() => ({ playSpy: vi.fn() }));
 
 vi.mock("../useBeaconSound", () => ({
-  useBeaconSound: () => ({ play: playSpy }),
+  useBeaconSound: () => ({ play: playSpy, preload: vi.fn() }),
 }));
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({

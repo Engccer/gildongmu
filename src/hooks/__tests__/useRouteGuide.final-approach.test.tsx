@@ -4,7 +4,9 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl";
 import ko from "../../../messages/ko.json";
 
-vi.mock("../useBeaconSound", () => ({ useBeaconSound: () => ({ play: vi.fn() }) }));
+vi.mock("../useBeaconSound", () => ({
+  useBeaconSound: () => ({ play: vi.fn(() => 0), preload: vi.fn() }),
+}));
 vi.mock("@/lib/geolocation", () => ({
   awaitGeolocation: vi.fn(async () => ({
     status: "ready" as const,

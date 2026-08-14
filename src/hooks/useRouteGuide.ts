@@ -69,7 +69,11 @@ import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-stor
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
-import { useBeaconSound } from "./useBeaconSound";
+import {
+  SPEECH_DEFER_MAX_S,
+  speechDeferStep,
+} from "@/lib/guide-speech-gate";
+import { useBeaconSound, type GuideSound } from "./useBeaconSound";
 import { useScreenWakeLock } from "./useScreenWakeLock";
 
 /** 추적 상태(구 useDistanceBeacon 계약 승계 — 그 훅은 이 훅으로 대체돼 제거됐다). */
@@ -131,6 +135,13 @@ const WATCHDOG_INTERVAL_MS = 2000;
  * ⚠ ZWSP·공백 덧붙이기 우회 금지: iOS에서 문자로 낭독됨 실측.
  */
 const REANNOUNCE_DELAY_MS = 120;
+/**
+ * 지연 발화 예약이 이보다 늦게 깨어나면 폐기한다(초). 백그라운드 탭 throttling으로
+ * setTimeout이 수 초 뒤에 깨면 이미 지난 모퉁이의 "왼쪽으로 도세요"가 된다
+ * (spec 2026-08-14 §6, 리뷰 MAJOR 6 — 웹에는 iOS의 전경 가드·missedAnnouncement
+ * 상환이 없고 mountedRef는 참인 채라 이 대조가 유일한 방어선이다).
+ */
+const DEFER_LATE_DISCARD_S = 1;
 /** 이 나이(초)를 넘긴 fix로는 직선거리를 단정하지 않는다(3-state — 거짓 정밀 금지). */
 const PROGRESS_FIX_MAX_AGE_S = 15;
 
@@ -396,7 +407,7 @@ export function useRouteGuide(
   // ref가 아니라 state 초기값 고정: 렌더 중 ref 읽기 금지 규칙과의 정합).
   const [kindFixed] = useState(kind);
   const tuning = GUIDE_TUNINGS[kindFixed];
-  const { play } = useBeaconSound();
+  const { play, preload } = useBeaconSound();
   const wakeLock = useScreenWakeLock();
 
   const [status, setStatus] = useState<BeaconStatus>("idle");
@@ -483,7 +494,14 @@ export function useRouteGuide(
   const rerouteInFlightRef = useRef(false);
   const prevKindRef = useRef<AnnounceKind | null>(null);
   const liveRef = useRef("");
+  /**
+   * 발화 보류 단일 슬롯(재발화 우회 + 지연 발화 공유 — spec 2026-08-14 §6).
+   * ⚠ 타이머 ref를 둘로 늘리지 말 것: 두 타이머가 서로의 문장을 덮는 경합이 생긴다.
+   * latest-wins(§4-1)는 `announce` 진입의 clearTimeout 한 곳이 지킨다.
+   */
   const reannounceTimerRef = useRef<number | null>(null);
+  /** 지금 재생 중인 안내 톤이 끝나는 단조 시각(초) — `speechDeferStep` 입력. */
+  const toneEndsAtRef = useRef<number | null>(null);
 
   const supported = typeof navigator !== "undefined" && !!navigator.geolocation;
 
@@ -494,12 +512,9 @@ export function useRouteGuide(
     };
   }, []);
 
-  const announce = useCallback((text: string) => {
+  /** live region 반영(같은 문자열 재발화 우회 포함) — 지연 판정 없이 즉시 쓴다. */
+  const commit = useCallback((text: string) => {
     if (!mountedRef.current) return;
-    if (reannounceTimerRef.current !== null) {
-      window.clearTimeout(reannounceTimerRef.current);
-      reannounceTimerRef.current = null;
-    }
     // 같은 문장이면 DOM 텍스트가 안 바뀌어 낭독이 안 된다 — 빈 값을 한 번 거친다.
     if (text && text === liveRef.current) {
       liveRef.current = "";
@@ -515,6 +530,69 @@ export function useRouteGuide(
     liveRef.current = text;
     setLiveText(text);
   }, []);
+
+  /**
+   * 통지 창구(spec 2026-08-14 §6): 안내 톤이 재생 중이면(잔여 0.6초 이상) 그 소리가
+   * 끝난 뒤에 live region에 쓴다 — 톤과 발화가 같은 청각 채널이라 겹치면 스크린
+   * 리더 사용자는 문장 앞머리를 잃는다. 판정은 `speechDeferStep`(Kit 미러) 소유.
+   */
+  const announce = useCallback(
+    (text: string) => {
+      if (!mountedRef.current) return;
+      // 단일 슬롯 latest-wins(§4-1): 새 통지가 보류 문장(지연·재발화 불문)을 버린다.
+      // 안내는 최신이 참이다 — 늦게 말한 임박 명령은 이미 돈 모퉁이를 돌라는 명령이다.
+      if (reannounceTimerRef.current !== null) {
+        window.clearTimeout(reannounceTimerRef.current);
+        reannounceTimerRef.current = null;
+      }
+      // 빈 문자열은 지우기라 지연이 무의미하다(세션 경계의 announce("")).
+      const wait = text
+        ? speechDeferStep(performance.now() / 1000, toneEndsAtRef.current)
+        : 0;
+      if (wait <= 0) {
+        commit(text);
+        return;
+      }
+      const gen = genRef.current;
+      const scheduledAt = performance.now() / 1000;
+      const schedule = (delay: number) => {
+        const due = performance.now() / 1000 + delay;
+        reannounceTimerRef.current = window.setTimeout(() => {
+          reannounceTimerRef.current = null;
+          if (!mountedRef.current || gen !== genRef.current) return;
+          const now = performance.now() / 1000;
+          // 낡은 예약 폐기(리뷰 MAJOR 6): throttled 탭에서 늦게 깬 명령은 버린다.
+          if (now - due > DEFER_LATE_DISCARD_S) return;
+          // 게시 직전 재평가(§4-5): 예약 후 새 톤(발화 없는 tick 등)이 시작됐으면
+          // 더 기다리되, 예약 시각부터의 총 대기는 상한 안(무한 연기 구조 차단).
+          const elapsed = now - scheduledAt;
+          const more = speechDeferStep(now, toneEndsAtRef.current);
+          if (more > 0 && elapsed < SPEECH_DEFER_MAX_S) {
+            schedule(Math.min(more, SPEECH_DEFER_MAX_S - elapsed));
+            return;
+          }
+          commit(text);
+        }, delay * 1000);
+      };
+      schedule(wait);
+    },
+    [commit],
+  );
+
+  /**
+   * 톤 재생 + 종료 시각 기록(발화 지연 판정 입력). 길이 0(버퍼 미준비·재생 실패)은
+   * 기록하지 않는다 — 소리가 안 났는데 이전 톤 시각으로 문장이 미뤄지는 결함 차단
+   * (iOS `BeaconTonePlayer.toneEndsAt`과 같은 계약). 마지막 재생이 이긴다(iOS는
+   * 선점 재생이라 마지막 톤이 곧 들리는 톤 — 웹 Web Audio는 겹쳐 울리지만 지연
+   * 판정 기준은 한 값으로 통일한다).
+   */
+  const playTone = useCallback(
+    (sound: GuideSound, now: number) => {
+      const length = play(sound);
+      if (length > 0) toneEndsAtRef.current = now + length;
+    },
+    [play],
+  );
 
   const rememberGuidance = useCallback((text: string) => {
     lastGuidanceRef.current = text;
@@ -677,9 +755,9 @@ export function useRouteGuide(
     (input: ToneLayerInput, now: number) => {
       const out = toneLayerStep(toneStateRef.current, input, now);
       toneStateRef.current = out.state;
-      if (out.tone) play(out.tone);
+      if (out.tone) playTone(out.tone, now);
     },
-    [play],
+    [playTone],
   );
 
   /**
@@ -1472,8 +1550,8 @@ export function useRouteGuide(
       setRerouting(false);
       announce("");
     }
-    play("stop");
-  }, [announce, clearEtaTimer, clearWatch, play, resetFinalApproach, wakeLock]);
+    playTone("stop", performance.now() / 1000);
+  }, [announce, clearEtaTimer, clearWatch, playTone, resetFinalApproach, wakeLock]);
 
   const start = useCallback(() => {
     if (!supported) {
@@ -1510,7 +1588,10 @@ export function useRouteGuide(
     setProgress(null);
     setStatus("tracking");
     announce("");
-    play("start");
+    playTone("start", performance.now() / 1000);
+    // 긴 톤 3종 사전 디코드(spec 2026-08-14 §6): 웹은 첫 재생이 fetch 왕복이라
+    // 길이를 몰라, 프리로드 없이는 각 톤의 첫 발생에서 겹침 결함이 그대로 남는다.
+    preload(["ahead", "warning", "nearby"]);
     void wakeLock.acquire();
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => handleFixRef.current(pos),
@@ -1587,7 +1668,8 @@ export function useRouteGuide(
     kindFixed,
     fetchGuideRoute,
     locale,
-    play,
+    playTone,
+    preload,
     refreshCarEta,
     rememberGuidance,
     resetFinalApproach,
