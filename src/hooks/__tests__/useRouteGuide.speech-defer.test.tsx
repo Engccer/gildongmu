@@ -187,6 +187,36 @@ describe("발화 지연 게이트 훅 배선", () => {
     expect(live()).toContain("200m");
   });
 
+  it("짧은 톤이 재생 중인 긴 톤의 종료 시각을 앞당기지 않는다(도착 종·stop 톤 겹침 축)", async () => {
+    // 웹 Web Audio는 소스가 겹쳐 울린다 — 도착 경로(nearby 종 → stop 톤)처럼 긴
+    // 톤이 아직 울리는데 짧은 톤이 겹치면, 지연 기준은 더 늦게 끝나는 쪽이어야 한다.
+    // 마지막-이김 정책(회귀형)이면 아래 closer(0.235)가 기록을 덮어 즉시 발화된다.
+    playSpy.mockImplementation((sound: string) =>
+      sound === "start" ? 5 : (TONE_LENGTHS[sound] ?? 0),
+    );
+    renderHarness();
+    await startSession(); // start 톤 5초 기록(detailUnavailable은 3초 clamp 예약)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    await act(async () => {
+      emitFix(0); // 앵커(잔여 4.9초 → 통지는 3초 clamp 예약)
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+    await act(async () => {
+      emitFix(300); // closer 톤(0.235) 겹침 + "200m, 가까워지는 중" 통지
+    });
+    expect(playSpy).toHaveBeenCalledWith("closer");
+    // start 톤 잔여(약 2.4초)가 기준으로 남아야 한다 — 즉시 발화면 회귀.
+    expect(live()).not.toContain("200m");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2700);
+    });
+    expect(live()).toContain("200m");
+  });
+
   it("타이머가 예정보다 1초 이상 늦게 깨면 낡은 예약을 폐기한다(MAJOR 6)", async () => {
     renderHarness();
     await startSession();
