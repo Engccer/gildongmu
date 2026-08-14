@@ -603,17 +603,25 @@ struct DirectionsTabView: View {
                            let notice = manualOriginNoticeText {
                             Text(notice).foregroundStyle(.secondary)
                         }
-                        Button(beacon.isTracking
-                            ? appLocalized("beacon.stop")
-                            : appLocalized("beacon.briefGuideStart")
-                        ) {
-                            lastGuideStart = .fallback
-                            beacon.toggle(
-                                dest: tracked.dest, label: tracked.label, kind: .walk,
-                                accessible: model.stepFreeEnabled
-                            )
+                        // 이 버튼은 두 얼굴이다: 추적 중엔 중지 이중 방어(항상 유효),
+                        // 비추적이면 간략 단독 시작(실험판 전용 — 정식판의 간략 상태는
+                        // 세션이 경로를 잃었을 때의 내부 강등뿐이다, spec 2026-08-15
+                        // §3.3). 정식판 실패 상태 경로로 섹션이 떠도 이 버튼이 남으면
+                        // 봉인이 뚫리므로, 둘 다 아니면 버튼을 두지 않는다(섹션은 실패
+                        // 상태 표시와 해결 버튼으로 계속 유효하다).
+                        if beacon.isTracking || AppConfig.experimentalGuidanceEnabled {
+                            Button(beacon.isTracking
+                                ? appLocalized("beacon.stop")
+                                : appLocalized("beacon.briefGuideStart")
+                            ) {
+                                lastGuideStart = .fallback
+                                beacon.toggle(
+                                    dest: tracked.dest, label: tracked.label, kind: .walk,
+                                    accessible: model.stepFreeEnabled
+                                )
+                            }
+                            .accessibilityFocused($guideStartFocused, equals: .fallback)
                         }
-                        .accessibilityFocused($guideStartFocused, equals: .fallback)
                         // 가시 상태 1줄. VoiceOver를 끈 사용자에게도 변화가 보여야 한다
                         // (라벨만 바뀌고 화면이 그대로면 심사에서 무반응으로 보인다).
                         // 추적 중 상태는 시트가 보여주므로 여기선 비추적 상태만이다. 권한
@@ -950,8 +958,9 @@ struct DirectionsTabView: View {
     /// 대중교통 완료 → 남은 도보 안내(A안, §14.2 피드백 #6). 시트 dismiss 애니메이션이
     /// 끝난 뒤 비콘을 열어야 한다 — 같은 계층의 두 시트는 동시 presentation이 안 되므로
     /// 전환 지연이 필수(landFocusAfterResolve와 같은 근거의 시간차). 도보 경로 실패는
-    /// BeaconModel의 fallbackToBrief가 흡수한다(추가 게이트 불필요 — 세션 자체가
-    /// realtimeGuidanceEnabled ∧ ko 게이트 안에서만 존재).
+    /// BeaconModel의 fallbackToBrief가 흡수한다(추가 게이트 불필요 — 이 핸드오프는
+    /// 대중교통 세션 안에서만 호출되고 그 세션이 `experimentalGuidanceEnabled ∧ ko`
+    /// 게이트 안에서만 존재한다, spec 2026-08-15 §3.2 964행).
     /// ⚠ 지연 발화는 실제 부수효과(GPS 추적 시작)라 no-op 대입류와 달리 취소가
     /// 필수다 — 지연 창에 화면을 떠나면 보이지 않는 곳에서 좀비 세션이 시작된다
     /// (독립 리뷰 MAJOR). onDisappear가 이 Task를 취소한다.
@@ -1009,14 +1018,13 @@ struct DirectionsTabView: View {
     /// ∧ ko ∧ provider tmap(카카오 폴백은 기하 미지원 — 누르자마자 강등되는 죽은
     /// 버튼을 판별자가 사전 차단). 대중교통 버튼은 B2 전까지 만들지 않는다.
     private var walkGuideStartable: Bool {
-        guard AppConfig.realtimeGuidanceEnabled,
-              AppLanguage.dataLocale == "ko", let results = model.results,
+        guard AppLanguage.dataLocale == "ko", let results = model.results,
               case .walk = results.outcomes[.walk] else { return false }
         return true
     }
 
     private var carGuideStartable: Bool {
-        guard AppConfig.realtimeGuidanceEnabled,
+        guard AppConfig.experimentalGuidanceEnabled,
               AppLanguage.dataLocale == "ko", let results = model.results,
               case let .car(briefing) = results.outcomes[.car],
               briefing.provider == "tmap"
@@ -1028,7 +1036,7 @@ struct DirectionsTabView: View {
     /// 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태다. 성립하면 시작에
     /// 넘길 recommended를 그대로 돌려준다(재조회 없음 — 브리핑과 같은 경로, §2).
     private var transitGuideStartable: TransitRoute? {
-        guard AppConfig.realtimeGuidanceEnabled,
+        guard AppConfig.experimentalGuidanceEnabled,
               AppLanguage.dataLocale == "ko", let results = model.results,
               case let .transit(result) = results.outcomes[.transit],
               buildTransitGuideRoute(result.recommended) != nil
@@ -1039,7 +1047,7 @@ struct DirectionsTabView: View {
     /// 대안 경로 시작 게이트(M5 선행분, recommended 전용 해제): 추천과 같은 축
     /// (플래그 ∧ ko ∧ 탑승 leg ≥ 1)을 경로 단위로 판정한다.
     private func altTransitGuideStartable(_ route: TransitRoute) -> Bool {
-        AppConfig.realtimeGuidanceEnabled
+        AppConfig.experimentalGuidanceEnabled
             && AppLanguage.dataLocale == "ko"
             && buildTransitGuideRoute(route) != nil
     }
@@ -1053,7 +1061,7 @@ struct DirectionsTabView: View {
     /// 남는다(봉인의 정반대). 폴백은 "수단이 안 되니 간략이라도"이지 "안내 자체가
     /// 없음"이 아니다.
     private var briefFallbackVisible: Bool {
-        guard AppConfig.realtimeGuidanceEnabled else { return false }
+        guard AppConfig.experimentalGuidanceEnabled else { return false }
         guard case .settled = model.phase else { return false }
         return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
     }
@@ -1073,9 +1081,9 @@ struct DirectionsTabView: View {
     /// 지나간다. 별도 Announcement를 더하면 같은 문장이 텍스트·통지 양쪽에서
     /// 이중 낭독된다).
     ///
-    /// ⚠ 봉인 플래그도 여기서 재확인한다. 이 안내 진입점 자체가 Release 빌드엔
-    /// 없으므로(`realtimeGuidanceEnabled`가 `#if EXPERIMENTAL`), 이 문구도 그
-    /// 게이트 밖에서 평가되면 존재하지 않는 기능에 대한 경고가 된다.
+    /// ⚠ 봉인 플래그를 보지 않는다(도보 졸업, spec 2026-08-15 §3.2) — 정식판에서 도보
+    /// 안내를 시작할 수 있게 된 순간부터 이 고지는 정식판 사용자에게 필요한 문장이다.
+    /// `experimentalGuidanceEnabled`로 치환하면 그 사용자만 고지 없이 안내를 시작한다.
     ///
     /// **화면당 1회다** — 도보·자동차가 동시에 성공하는 흔한 조합에서 수단별로
     /// 반복하면 같은 문장을 두 번 듣는다(fix 라운드 1 Important 1). 이 문자열
@@ -1084,7 +1092,7 @@ struct DirectionsTabView: View {
     /// `carGuideStartable`을 반대로 검사한다 — 하나라도 시작 가능하면 ForEach
     /// 앞 자리가 담당하고, 폴백 섹션은 그때 내지 않는다.
     private var manualOriginNoticeText: String? {
-        guard AppConfig.realtimeGuidanceEnabled, model.resultsUsedManualOrigin else { return nil }
+        guard model.resultsUsedManualOrigin else { return nil }
         return appLocalized("manualLocation.guideNeedsRealLocation")
     }
 
