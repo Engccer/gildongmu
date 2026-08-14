@@ -215,7 +215,9 @@ final class BeaconModel {
     @ObservationIgnored private lazy var deferredAnnouncer = DeferredAnnouncer(
         clock: { ProcessInfo.processInfo.systemUptime },
         toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
-        post: { [weak self] text, high in self?.post(text, highPriority: high) ?? false }
+        post: { [weak self] text, high, bypass in
+            self?.post(text, highPriority: high, bypassSuppression: bypass) ?? false
+        }
     )
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
@@ -2280,14 +2282,13 @@ final class BeaconModel {
     }
 
     /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(목적지 전환 확인 — §4-6).
-    /// 즉시성이 문장의 본질이라 톤과 겹치더라도 미루지 않는다. 단 보류 슬롯은 진입
-    /// 즉시 버린다(§4-1 — 즉시 문장이 나간 **뒤에** 이전 목적지의 명령이 발화하는
-    /// 역전 차단. latest-wins는 창구와 무관한 성질이다).
+    /// 즉시성이 문장의 본질이라 톤과 겹치더라도 미루지 않는다. 슬롯 무효화(§4-1)는
+    /// `DeferredAnnouncer.announceNow`가 소유한다(수명 테스트가 그쪽에서 강제).
     private func announceNow(
         _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
     ) {
-        deferredAnnouncer.invalidatePending()
-        _ = post(message, highPriority: highPriority, bypassSuppression: bypassSuppression)
+        deferredAnnouncer.announceNow(
+            message, highPriority: highPriority, bypassSuppression: bypassSuppression)
     }
 
     /// 실제 게시(spokenUnits 경유). 지연은 타이밍만 바꾸고 실패 처리 계약은 바꾸지

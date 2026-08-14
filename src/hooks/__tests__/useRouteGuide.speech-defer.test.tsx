@@ -150,12 +150,18 @@ describe("발화 지연 게이트 훅 배선", () => {
     renderHarness();
     await startSession();
     expect(live()).toBe("");
-    // 지연 창 안에서 첫 fix 통지가 도착 — 옛 detailUnavailable 예약을 대체한다.
+    // 지연 창 안(0.8초)에서 첫 fix 통지가 도착 — 이 시점 톤 잔여는 0.53초라 임계
+    // 미만이므로 새 문장은 즉시 게시되고, 옛 detailUnavailable 예약은 폐기돼야 한다.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
     await act(async () => {
       emitFix(0);
     });
+    expect(live()).toContain("목적지까지");
+    // 옛 예약의 예정 시각(1.48초)을 지나도 옛 문장이 되살아나지 않는다.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(START_DEFER_MS + 500);
+      await vi.advanceTimersByTimeAsync(1200);
     });
     expect(live()).not.toBe(DETAIL_UNAVAILABLE);
     expect(live()).toContain("목적지까지");
