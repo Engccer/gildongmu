@@ -176,9 +176,14 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * ⚠ 이 수가 늘면 실패하는 것이 **의도**다. 새 진입점이 생기면 spec §3.2 표를
    * 갱신하며 그 자리가 정식판에 도달하는지 판정한 뒤 이 수를 올린다. 플래그 참조만
    * 세는 검사로는 "진입점인데 플래그를 안 보는 자리"를 영영 못 잡는다.
+   *
+   * ⚠ 스캔은 앱 타깃이 아니라 **iOS 전체**다(독립 리뷰 관찰 2026-08-15). 지금은
+   * `beacon`이 `DirectionsTabView`의 `@State`라 밖에서 호출될 수 없지만, 모델이
+   * 서브뷰나 Kit으로 전달되는 리팩터링이 오면 앱 타깃만 세는 가드는 그 새 진입점을
+   * 놓친다. 스캔 범위를 좁힐 이유가 없으므로 넓은 쪽이 기본이다.
    */
   it("beacon.toggle( 호출이 정확히 6곳이다", () => {
-    const sites = swiftFiles(APP_DIR).flatMap((file) => {
+    const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(/beacon\.toggle\(/g) ?? [];
       return hits.map(() => file);
     });
