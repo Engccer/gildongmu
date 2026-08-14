@@ -137,11 +137,22 @@ function main() {
     strings[locale] = readPlist(path);
   }
 
+  // ko는 두 축으로 본다: ①거리 안내 절이 있는가(의미 — 이 마일스톤이 넣은 것) ②카탈로그
+  // 정본과 같은가(드리프트 — 다른 로케일과 같은 축). 마커만 보면 카탈로그가 개정됐는데
+  // 산출물이 낡아도 마커가 남아 있으면 통과한다(독립 리뷰 m5).
   const ko = strings.ko?.[LOCATION_KEY];
   if (strings.ko && !ko) {
     failures.push(`ko ${LOCATION_KEY}가 없다`);
-  } else if (ko && !ko.includes(KO_DISTANCE_MARKER)) {
-    failures.push(`ko ${LOCATION_KEY}에 거리 안내 절("${KO_DISTANCE_MARKER}")이 없다: "${ko}"`);
+  } else if (ko) {
+    if (!ko.includes(KO_DISTANCE_MARKER)) {
+      failures.push(`ko ${LOCATION_KEY}에 거리 안내 절("${KO_DISTANCE_MARKER}")이 없다: "${ko}"`);
+    }
+    const wantKo = expected.ko?.stringUnit?.value;
+    if (!wantKo) {
+      failures.push(`카탈로그에 ko ${LOCATION_KEY} 정본이 없다`);
+    } else if (ko !== wantKo) {
+      failures.push(`ko ${LOCATION_KEY}가 카탈로그 정본과 다르다\n      산출물: "${ko}"\n      카탈로그: "${wantKo}"`);
+    }
   }
 
   for (const locale of OTHER_LOCALES) {
