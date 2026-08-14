@@ -49,8 +49,15 @@ const GEMINI_GCP_PROJECT = "gildongmu-prod";
 // 토큰은 전량 합산한다). drift 테스트가 동조를 강제한다.
 export const GILDONGMU_GEMINI_MODEL = "gemini-3.6-flash";
 
-// 출력 100만 토큰당 단가(2026-07 기준). 입력은 $1.50이나 메트릭이 없어 계산 불가
-const GEMINI_OUTPUT_USD_PER_MILLION = 7.5;
+// 출력 100만 토큰당 단가. ⚠ 상수가 아니라 날짜의 함수다 — 공식 가격표가
+// 2026-12-31까지 프로모 $3.75, 2027-01-01부터 $7.50이다(3.6·3.7 flash 동일,
+// 원문 실측 2026-08-15). 한쪽 값을 박으면 경계 전후 어느 한쪽을 조용히 2배
+// 어긋나게 보고한다(종전 $7.50 고정이 프로모 기간 내내 과다 보고했다).
+// 입력은 $0.75→$1.50이나 메트릭이 없어 계산 불가.
+const GEMINI_PROMO_END_MS = Date.UTC(2027, 0, 1);
+function geminiOutputUsdPerMillion(nowMs) {
+  return nowMs < GEMINI_PROMO_END_MS ? 3.75 : 7.5;
+}
 
 function isoDaysAgo(days) {
   const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -81,8 +88,11 @@ export function summarizeBalances(bodyText) {
  * 프로젝트가 길동무 전용이라 model 라벨 필터를 두지 않는다. 필터를 남기면
  * 모델을 교체했을 때 오류 없이 0을 보고하는 위험만 남는다. 단가는 현재 모델
  * 기준이며, 입력 토큰 메트릭이 없어 결과는 실제 비용의 하한이다.
+ *
+ * @param {string} bodyText Cloud Monitoring 응답 본문
+ * @param {number} [nowMs] 단가 판정 기준 시각(프로모 경계용, 테스트가 고정한다)
  */
-export function summarizeGeminiTokens(bodyText) {
+export function summarizeGeminiTokens(bodyText, nowMs = Date.now()) {
   try {
     const series = JSON.parse(bodyText).timeSeries ?? [];
     const tokens = series.reduce(
@@ -94,7 +104,7 @@ export function summarizeGeminiTokens(bodyText) {
         ),
       0,
     );
-    const usd = (tokens / 1_000_000) * GEMINI_OUTPUT_USD_PER_MILLION;
+    const usd = (tokens / 1_000_000) * geminiOutputUsdPerMillion(nowMs);
     // "출력 기준"을 반드시 남긴다. 이 값은 하한이지 실제 청구액이 아니다
     return `최근 ${USAGE_WINDOW_DAYS}일 출력 ${tokens.toLocaleString("en-US")}토큰, 출력 기준 ${usd.toFixed(2)}달러`;
   } catch {

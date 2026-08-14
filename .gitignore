@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Python 캐시
 __pycache__/
+
+# 모델 A/B 실호출 원시 결과(로컬 전용)
+.ab-out/
