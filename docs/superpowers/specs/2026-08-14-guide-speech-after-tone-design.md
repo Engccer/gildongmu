@@ -157,6 +157,23 @@ iOS `announce`는 "실제로 게시했는가"를 반환하고, 호출부 일부(
   6. `onDropped` 미호출.
 - **웹 훅 테스트**(vitest, fake timers): ① 긴 톤 뒤 통지가 지연 후에만 live region에 들어간다 ② 지연 중 새 통지가 오면 옛 문장은 끝내 게시되지 않는다 ③ 짧은 톤은 지연 없음 ④ 타이머가 늦게 깨면(시계를 예정+2초로 밀어 놓고 실행) 폐기된다.
 - **변이 주입으로 검출력을 실증한다**([[mutation-proves-test-detection-power]]): 위 변이들이 어느 테스트를 깨는지 확인하고 결과를 이 절에 기록한다. 깨지지 않으면 그 축은 테스트가 없는 것이다.
+
+### 변이 주입 실측 결과 (2026-08-14 구현 세션)
+
+구현 참고: 앱 타깃에는 테스트 타깃이 없어 `DeferredAnnouncer`는 §11 표와 달리 **Kit**에 두었고(§5의 "테스트가 열려야 한다"가 상위 요구, `NearbyLoadCore` 선례), 같은 이유로 `announceNow`의 슬롯 무효화도 `DeferredAnnouncer.announceNow`로 내려 Kit 테스트가 강제한다(BeaconModel은 위임만).
+
+| 변이 | 결과 | 깨진 테스트 |
+|---|---|---|
+| 1. 대기 뒤 토큰·`Task.isCancelled` 확인 삭제 | **검출** | `invalidatedPendingNeverPosts`·`generationAdvanceDropsPending`·`immediateAnnounceDropsPendingFirst`·`announceNowDropsPendingAndPostsImmediately` (4건) |
+| 2. `announceNow`의 슬롯 무효화 삭제 | **검출** | `announceNowDropsPendingAndPostsImmediately` 외 2건 |
+| 3. 세대 증가 삭제 | **검출(両층 동시 삭제 시)** | `advanceGeneration`은 세대 증가+슬롯 무효화 2층 방어라 한 층만 삭제하면 다른 층이 흡수한다(3a: `generation += 1`만 삭제 → 0건, 3b: `invalidatePending()`만 삭제 → 세대 가드가 잡아 0건 — **각 층이 단독으로 계약을 지킴을 상호 실증**). 両층 삭제(3c)는 `generationAdvanceDropsPending`이 잡는다. 무효화 층 단독 계약은 `invalidatedPendingNeverPosts`가 별도로 잡는다. |
+| 4. 게시·실패 판정을 예약 시점에 캡처(게시 시점 재평가 삭제) | **검출** | 10건 일괄 실패(`longToneDefersUntilToneEnds` 등 — 예약 즉시 post가 관측된다) |
+| 5. ABA: 슬롯 해제를 무조건 `slot = nil`로 | **미검출(구조상 도달 불가)** | 토큰 가드와 해제 사이에 await가 없다(MainActor 동기 구간) — 가로챈 Task는 해제 라인에 도달하기 전에 토큰 가드에서 반환되므로 이 변이는 의미상 중립이다. 조건부 해제는 가드·해제 사이에 suspension이 끼는 미래 수정에 대한 보험으로 유지한다. |
+| 6. `onDropped` 미호출 | **검출** | `onDroppedFiresWhenPostFails` |
+| 웹 W1. `announce` 진입 latest-wins 해제 삭제 | **검출** | latest-wins 케이스(옛 예약이 새 문장을 덮음) |
+| 웹 W2. 낡은 예약 폐기 삭제 | **검출** | 늦게 깬 타이머 폐기 케이스 |
+| 웹 W3. `playTone`의 `toneEndsAt` 기록 삭제 | **검출** | 3건(지연·latest-wins·프리로드 경로) |
+| 웹 W4. 세션 시작 `preload` 삭제 | **검출** | 프리로드 케이스 |
 - **실기기 판정이 최종 게이트다.** 시뮬레이터는 VoiceOver 발화와 mp3의 겹침을 재현하지 못한다. `CONFIGURATION=Experimental ./ios/deploy-device.sh`로 올린 뒤 실보행에서 확인할 시나리오:
   1. 임박 큐 — 단독 상황.
   2. 임박 큐 — **VoiceOver가 다른 콘텐츠(진행 상황 행 등)를 읽는 중**에 발생(§7의 큐 누적 축).
