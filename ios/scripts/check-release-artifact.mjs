@@ -12,9 +12,16 @@
  * ## 사용
  *
  *   node ios/scripts/check-release-artifact.mjs [<.app 또는 .xcarchive 경로>]
+ *                                              [--expect-version 1.7] [--expect-build 13]
  *
  * 경로를 생략하면 `ios/build/*.xcarchive`와 `/tmp/gildongmu-archive/*.xcarchive`
  * 중 가장 최근 것을 찾는다.
+ *
+ * ⚠ `--expect-*`가 없으면 이 검사는 **어떤 산출물이든** 통과시킬 수 있다. "가장 최근
+ * 아카이브"가 지금 제출하려는 빌드라는 보장이 없어서다 — 아카이브를 만든 뒤 소스를
+ * 고치고 다른 빌드를 올리면, 검사는 낡은 아카이브를 보고 통과를 내준다. 그 통과는
+ * 아무것도 보증하지 않는다. 그래서 `asc-submit.mjs`는 제출할 버전·빌드를 반드시
+ * 넘긴다(사람이 손으로 돌릴 때도 넘기는 편이 낫다).
  *
  * ## 검사 항목
  *
@@ -69,8 +76,15 @@ function resolveApp(path) {
   return join(apps, app);
 }
 
+/** `--이름 값` 형태 인자. 없으면 null. */
+function flag(name) {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : null;
+}
+
 function main() {
-  const given = process.argv[2] ?? latestArchive();
+  const positional = process.argv.slice(2).find((a) => !a.startsWith("--"));
+  const given = positional ?? latestArchive();
   if (!given) {
     throw new Error(`검사할 산출물이 없다. 경로를 인자로 주거나 아카이브를 만들어라 (탐색 위치: ${ARCHIVE_DIRS.join(", ")})`);
   }
@@ -89,6 +103,17 @@ function main() {
   }
 
   const failures = [];
+
+  // 0-2) 검사 대상이 지금 제출하는 그 빌드인가. 이것이 어긋나면 아래 검사가 전부
+  // 무의미하다 — 통과한 산출물과 심사에 올라가는 산출물이 다른 것이기 때문이다.
+  const expectVersion = flag("expect-version");
+  const expectBuild = flag("expect-build");
+  if (expectVersion && info.CFBundleShortVersionString !== expectVersion) {
+    failures.push(`버전이 다르다: 산출물 ${info.CFBundleShortVersionString}, 제출 대상 ${expectVersion}`);
+  }
+  if (expectBuild && String(info.CFBundleVersion) !== String(expectBuild)) {
+    failures.push(`빌드 번호가 다르다: 산출물 ${info.CFBundleVersion}, 제출 대상 ${expectBuild}`);
+  }
 
   // 1) 백그라운드 모드 (§4.1) — location이 앱을 깨어 있게 하고 audio가 재생을 허용한다.
   const modes = info.UIBackgroundModes ?? [];
