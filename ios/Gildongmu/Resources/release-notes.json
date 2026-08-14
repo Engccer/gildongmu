@@ -1,5 +1,10 @@
 [
   {
+    "version": "1.7",
+    "ko": "새로운 기능\n- 도보 길찾기에 실시간 안내가 생겼습니다. 경로를 조회한 뒤 도보 섹션에서 \"도보 안내 시작\"을 누르면, 걷는 동안 남은 거리와 다음에 할 일을 소리와 음성으로 알려 드립니다. 방향을 바꿀 지점이 가까워지면 미리 알리고, 경로에서 벗어나면 알려 드립니다. 화면을 잠가도 안내가 이어집니다.\n- 길찾기 탭에 처음 들어가면 이 기능을 안내하는 창이 한 번 뜹니다. 안내의 한계와 횡단보도에서 유의할 점을 함께 담았습니다.",
+    "en": "Improved\n- Various fixes and refinements."
+  },
+  {
     "version": "1.6",
     "ko": "새로운 기능\n- 최근 목록에 고정이 생겼습니다. 검색어, 출발지, 도착지, 최근 경로 네 목록에서 항목을 쓸어 넘겨 고정하면 목록 맨 위에 남고, 20개 제한과 \"모두 지우기\"에서 제외됩니다.\n- 도보 길찾기가 추천 경로와 최단 경로를 함께 보여 줍니다. 각 경로를 펼치면 구간별 안내를 읽을 수 있습니다. 계단 회피를 켠 상태에서 최단 경로가 계단을 피하지 못하면 요약에 함께 알려 드립니다.\n\n개선\n- 길찾기 결과에서 갈 수 있는 수단이 먼저 나오고, 경로가 없거나 조회에 실패한 수단은 뒤로 갑니다. 도보로 30분 안에 갈 수 있으면 도보가 맨 위에 옵니다.",
     "en": "New\n- Recent lists can now be pinned. Swipe an item in any of the four recent lists — searches, origins, destinations, and routes — to pin it. Pinned items stay at the top and are exempt from the 20-item limit and from Clear all.\n\nImproved\n- Directions results are ordered by what you can actually take: modes with a route come first, and modes with no route or a failed lookup move to the bottom."

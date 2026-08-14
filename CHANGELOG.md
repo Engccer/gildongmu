@@ -11,6 +11,14 @@
 
 ## 2026-08-15
 
+### 도보 실시간 안내 정식 출시 (iOS)
+
+수단 축으로 봉인을 분할해 도보만 내보낸다. `AppConfig.realtimeGuidanceEnabled` → `experimentalGuidanceEnabled`로 대체하고 도보 경로(`walkGuideStartable`·`manualOriginNoticeText`)는 플래그를 보지 않는다 — 자동차·대중교통·간략 단독 진입점은 봉인 유지(간략 단독 버튼은 `isTracking ∨ experimental` 조건으로 정식판 실패 상태 화면에서도 차단). 정식 `Info.plist`에 `UIBackgroundModes`(location·audio) 승격, 위치 권한 문구 ko에 거리 안내 절 추가(비한국어는 ko 게이트 안 기능이라 현행 유지), 안내 시트의 화면 켜기 힌트 삭제(백그라운드 승격으로 거짓 문장화 — 진짜 무음은 `soundDegraded`가 런타임 판정으로 알린다). `experimental-infoplist.sh`는 표시 이름 전용으로 축소하고 파일-존재 카운트를 접미사 적용 결과 검증으로 교체. 가드는 소스 드리프트 6종 + 제출 전 산출물 검사. spec `docs/superpowers/specs/2026-08-15-walk-guidance-ship-design.md`, 계획 `docs/superpowers/plans/2026-08-15-walk-guidance-ship.md`
+
+### 길찾기 탭 도보 안내 공지 모달 (iOS)
+
+길찾기 탭 첫 진입에 1회성 시트(미확인 ∧ 한국어). 계약은 "한 번 뜨면 다시 안 뜬다"가 아니라 **"확인을 누르면 다시 뜨지 않는다"** — 드래그·VoiceOver 탈출은 막지 않고(1급 사용자의 표준 탈출 수단) 저장을 확인 버튼에만 걸어 읽지 않고 닫으면 다음 진입에 다시 뜬다. 제목·소제목 2개는 별도 `Text` + `.isHeader`, 본문은 문단마다 별도 `Text`. 문안은 위원장 확정본(spec §5.4)이고 미판정 항목(A11·A6·A12·최종 접근 상수)은 항목별 열거가 아니라 포괄 문장으로 덮는다.
+
 ### Gemini 3.7-flash 교체 기각 + 모델 A/B 실호출 하네스
 
 `gemini-3.7-flash`(2026-08-13 출시) 검증 결과 **3.6-flash 유지**. 비용·지연·필수 도구 선택은 동률인데 장소 앵커 채팅의 날조 축에서 5/5 회귀(도구가 주지 않은 매장 분위기를 `search_web` 우회로 서술). 판정 근거·재평가 트리거는 `docs/BACKLOG.md` C5, 근거 주석은 `src/lib/gemini/client.ts`. 하네스 `src/__ab__` + `npm run test:ab`는 프로덕션 채팅 경로를 그대로 태우고 프로덕션 코드엔 계측 훅을 두지 않는다(클라이언트 프록시 계측). 동형성을 가드 테스트가 아니라 단일 정의로 보장하려고 systemInstruction을 `src/lib/chat/system-instruction.ts`로 분리했다(라우트·하네스 공용, 동작 무변경).
