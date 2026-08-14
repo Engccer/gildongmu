@@ -3,6 +3,7 @@ import type { Content } from "@google/genai";
 import { unstable_cache } from "next/cache";
 import { getGeminiClient, GEMINI_MODEL } from "@/lib/gemini/client";
 import { availableDeclarations } from "@/lib/chat/declarations";
+import { buildChatSystemInstruction } from "@/lib/chat/system-instruction";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { dataLocale } from "@/lib/data-locale";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
@@ -58,24 +59,7 @@ export async function POST(request: Request) {
     dataLocale: dataLocale(locale),
   };
 
-  const placeInstruction = pc
-    ? `\n[장소 컨텍스트]\n` +
-      `- 사용자는 지금 '${pc.name}'${pc.category ? `(${pc.category})` : ""}에 관해 묻고 있다. "여기/이곳/근처/주변"은 이 장소를 가리킨다.\n` +
-      `- 주변 시설·교통·공기질 등 위치 기반 조회는 이 장소를 기준으로 한다(지명을 따로 주지 않아도 이 장소가 기본 위치다).\n` +
-      `- 단 "여기까지 가는 법" 같은 길찾기는 사용자의 현재 위치에서 '${pc.name}'(으)로 가는 경로다 — 길찾기 도구의 목적지로 '${pc.name}'을(를) 넘겨라.`
-    : "";
-
-  const systemInstruction =
-    `너는 한국 로컬 정보 에이전트다. 사용자 언어(${locale})로 답한다.\n` +
-    `[도구 사용]\n` +
-    `- 사용자 의도를 충족하는 데 필요한 도구를 충분히 호출하라. 관련 정보는 자율적으로 연쇄 조회하되, 명백히 무관한 건 호출하지 마라.\n` +
-    `- "확인 중", "잠시만요" 같은 대기 멘트로 턴을 끝내지 마라. 이 채팅엔 자동 후속이 없다 — 도구를 쓸 거면 같은 턴에 호출하고, 충분한 결과를 모은 뒤에만 최종 답변하라.\n` +
-    `- 최신·실시간 웹 정보(뉴스·정책·환율·임시 운영시간 등)는 search_web으로 조회하라. 단 국내 장소·교통·공기질·날씨는 전용 도구가 정본이니 그쪽을 우선하고, 전용 도구가 못 다루는 시의성 정보일 때만 search_web을 쓴다.\n` +
-    `[신뢰성]\n` +
-    `- 도구가 돌려준 필드(이름·분류·주소·수치·등급·경로 등)만 사실로 전달하라. 장소의 분위기·평판·메뉴·인테리어처럼 도구가 주지 않은 특징은 네 사전지식으로라도 지어내지 마라(사용자는 시각으로 검증할 수 없다). 더 알아야 하면 도구를 호출하고, 없으면 그 한계를 인정하라.\n` +
-    `- 도구가 실패하거나 빈 결과면 지어내지 말고, 실패를 분명히 알려라. 대안은 이 앱 안에서 사용자가 할 수 있는 행동 한 가지로 제시하라(다른 지도·내비 앱 안내는 대안이 아니다).\n` +
-    `- 출처·딥링크는 시스템이 응답 하단에 자동으로 붙인다. 본문엔 URL을 나열하지 말고 간결하게 핵심만 종합하라.` +
-    placeInstruction;
+  const systemInstruction = buildChatSystemInstruction(locale, pc);
 
   const tools = [{ functionDeclarations: availableDeclarations() }];
   const history: Content[] = body.messages.map((m) => ({

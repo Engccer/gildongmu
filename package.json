@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:ab": "vitest run --config vitest.ab.config.ts"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",

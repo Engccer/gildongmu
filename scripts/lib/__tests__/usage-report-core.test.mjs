@@ -454,10 +454,16 @@ describe("Gemini 토큰 요약", () => {
   });
 
   it("출력 토큰을 합산해 비용을 계산한다", () => {
-    const out = summarizeGeminiTokens(body);
+    // 프로모 기간(~2026-12-31): 92,000 / 1M * $3.75 = $0.345 → 표기 $0.34
+    const out = summarizeGeminiTokens(body, Date.UTC(2026, 7, 15));
     expect(out).toContain("출력 92,000토큰");
+    expect(out).toContain("0.34달러");
+  });
+
+  // 단가는 날짜의 함수다 — 경계를 넘기면 두 배가 되어야 한다
+  it("프로모 종료 후에는 두 배 단가를 쓴다", () => {
     // 92,000 / 1M * $7.50 = $0.69
-    expect(out).toContain("0.69달러");
+    expect(summarizeGeminiTokens(body, Date.UTC(2027, 0, 1))).toContain("0.69달러");
   });
 
   // 모델을 교체해도 집계가 멈추면 안 된다(필터를 되살리면 이 테스트가 깨진다)
