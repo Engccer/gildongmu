@@ -11,6 +11,10 @@
 
 ## 2026-08-14
 
+### 안내 효과음이 끝난 뒤 발화 (웹·iOS)
+
+톤(잔여 0.6초 이상)이 재생 중이면 그 소리가 끝난 뒤에 SR 통지를 게시한다 — 임박 큐·도착 종이 문장 앞머리를 덮던 실보행 결함 해소. 판정은 `speechDeferStep`(Kit·웹 미러), 지연은 단일 슬롯 latest-wins(iOS `DeferredAnnouncer`·웹 재발화 타이머 공유), 변이 주입 10종으로 검출력 실증. spec `docs/superpowers/specs/2026-08-14-guide-speech-after-tone-design.md`
+
 ### 안내 중 대안 경로 프리뷰·전환 중립화 (iOS)
 
 안내 시트의 상시 전환 버튼 제거(경로 변경 압박 해소), 진행 상황 조망에 "대안 경로 보기" → 현위치 기준 프리뷰(요약·잔여 비교·스텝) → "이 경로 안내로 전환"(신선 즉시 채택·낡음 재조회 폴백). E10ⓑ 라벨은 "현재 위치부터 다시 안내 시작"으로 교체. spec `docs/superpowers/specs/2026-08-14-guide-alternative-preview-design.md`
