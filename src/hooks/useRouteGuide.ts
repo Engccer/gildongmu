@@ -582,14 +582,21 @@ export function useRouteGuide(
   /**
    * 톤 재생 + 종료 시각 기록(발화 지연 판정 입력). 길이 0(버퍼 미준비·재생 실패)은
    * 기록하지 않는다 — 소리가 안 났는데 이전 톤 시각으로 문장이 미뤄지는 결함 차단
-   * (iOS `BeaconTonePlayer.toneEndsAt`과 같은 계약). 마지막 재생이 이긴다(iOS는
-   * 선점 재생이라 마지막 톤이 곧 들리는 톤 — 웹 Web Audio는 겹쳐 울리지만 지연
-   * 판정 기준은 한 값으로 통일한다).
+   * (iOS `BeaconTonePlayer.toneEndsAt`과 같은 계약).
+   *
+   * ⚠ **더 늦게 끝나는 쪽이 이긴다**(iOS와 정책이 다른 이유): iOS는 선점 재생이라
+   * 마지막 톤이 곧 유일하게 들리는 톤이지만, 웹 Web Audio는 소스가 겹쳐 울린다 —
+   * 도착 경로에서 nearby 종(2.246초) 직후 stop() 경유 stop 톤(1.332초)이 겹치는데,
+   * 마지막-이김으로 두면 "도착했습니다"가 아직 울리는 종 꼬리와 다시 겹친다
+   * (spec 리뷰 검출 2026-08-14 — 이 spec의 동기였던 경로 그 자체).
    */
   const playTone = useCallback(
     (sound: GuideSound, now: number) => {
       const length = play(sound);
-      if (length > 0) toneEndsAtRef.current = now + length;
+      if (length <= 0) return;
+      const endsAt = now + length;
+      const current = toneEndsAtRef.current;
+      toneEndsAtRef.current = current !== null && current > endsAt ? current : endsAt;
     },
     [play],
   );

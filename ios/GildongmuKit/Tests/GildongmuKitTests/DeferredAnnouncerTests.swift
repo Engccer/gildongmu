@@ -172,6 +172,34 @@ struct DeferredAnnouncerTests {
         #expect(droppedDeferred == 1)
     }
 
+    // 선점(latest-wins)으로 버려진 문장의 onDropped는 그 시점에 불린다(구현 리뷰
+    // 2건 독립 수렴 2026-08-14): 상환 문장이 지연 창 안에서 다른 안내에 밀리면 게시도
+    // 상환도 없이 영구 소실되기 때문이다 — 게시 실패(§4-4)와 같은 "전달 못함"이다.
+    @Test func supersededPendingFiresOnDropped() async {
+        let h = Harness()
+        var dropped = 0
+        h.toneScript = [2.246, 2.246, 2.246]
+        h.announcer.announce("계단 경고 합본") { dropped += 1 }
+        h.announcer.announce("새 안내")
+        #expect(dropped == 1)  // 선점 시점에 동기 호출
+        await drain()
+        #expect(h.posts.map(\.text) == ["새 안내"])
+        #expect(dropped == 1)  // 이중 호출 없음
+    }
+
+    // 세션 경계 폐기는 onDropped를 부르지 않는다 — stop()이 상환 장부를 먼저 비우고
+    // 세대를 올리므로, 여기서 복원이 실행되면 끝난 세션의 경고가 부활한다.
+    @Test func generationAdvanceDoesNotFireOnDropped() async {
+        let h = Harness()
+        var dropped = 0
+        h.toneScript = [2.246]
+        h.announcer.announce("끝난 세션의 경고") { dropped += 1 }
+        h.announcer.advanceGeneration()
+        await drain()
+        #expect(dropped == 0)
+        #expect(h.posts.isEmpty)
+    }
+
     @Test func onDroppedNotFiredWhenPosted() async {
         let h = Harness()
         var dropped = 0

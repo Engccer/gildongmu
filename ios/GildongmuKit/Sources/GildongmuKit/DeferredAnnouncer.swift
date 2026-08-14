@@ -25,8 +25,9 @@ public final class DeferredAnnouncer {
     private var generation = 0
     private var nextToken = 0
     /// 단일 슬롯(§4-1) — 큐를 만들지 않는다. 안내는 최신이 참이다(늦게 말한 임박
-    /// 명령은 이미 돈 모퉁이를 돌라는 명령이 된다).
-    private var slot: (token: Int, task: Task<Void, Never>)?
+    /// 명령은 이미 돈 모퉁이를 돌라는 명령이 된다). onDropped를 함께 보관하는 이유는
+    /// 아래 `invalidatePending()` 참조.
+    private var slot: (token: Int, task: Task<Void, Never>, onDropped: (() -> Void)?)?
 
     public init(
         clock: @escaping () -> Double,
@@ -42,19 +43,30 @@ public final class DeferredAnnouncer {
         self.post = post
     }
 
-    /// 세션 경계(시작·stop·teardown) — 세대를 올리고 보류 문장을 버린다(§4-2).
-    /// 취소하지 않으면 일반 정지 뒤 끝난 경로의 명령이 뒤늦게 발화하고, 그사이 새
-    /// 세션을 시작했으면 이전 목적지의 명령이 새 세션 안에서 나온다(리뷰 BLOCKER 1).
+    /// 세션 경계(시작·stop·teardown) — 세대를 올리고 보류 문장을 **onDropped 없이**
+    /// 버린다(§4-2). 취소하지 않으면 일반 정지 뒤 끝난 경로의 명령이 뒤늦게 발화하고,
+    /// 그사이 새 세션을 시작했으면 이전 목적지의 명령이 새 세션 안에서 나온다(리뷰
+    /// BLOCKER 1). ⚠ 여기서 onDropped를 부르면 안 된다 — `stop()`은 상환 장부
+    /// (계단 경고 등)를 먼저 비우고 이 함수를 부르므로, 복원이 그 소거 **뒤에**
+    /// 실행되어 끝난 세션의 경고가 부활한다.
     public func advanceGeneration() {
         generation += 1
-        invalidatePending()
-    }
-
-    /// 보류 슬롯 폐기. 즉시 발화 창구(`announceNow`)도 진입 즉시 부른다(§4-1 —
-    /// latest-wins는 어느 창구로 들어왔는가와 무관한 성질이다. 리뷰 BLOCKER 2).
-    public func invalidatePending() {
         slot?.task.cancel()
         slot = nil
+    }
+
+    /// 선점(latest-wins) 폐기 — 새 통지·즉시 창구(`announceNow`) 진입 즉시 부른다
+    /// (§4-1은 창구와 무관한 성질이다. 리뷰 BLOCKER 2). 선점으로 버려지는 문장의
+    /// `onDropped`는 **이 시점에 호출한다**(구현 리뷰 2건 독립 수렴 2026-08-14):
+    /// 상환이 필요한 문장(계단 회피 경고·owed 합본)은 지연 창(최대 3초) 안에서 다른
+    /// 안내에 선점되면 게시도 상환도 없이 영구 소실되기 때문이다 — 게시 실패(§4-4)와
+    /// 같은 "전달하지 못했다"이므로 장부 보존도 같아야 한다. 세션 경계 폐기
+    /// (`advanceGeneration`)와 달리 여기서는 장부가 아직 유효하다.
+    public func invalidatePending() {
+        guard let slot else { return }
+        slot.task.cancel()
+        self.slot = nil
+        slot.onDropped?()
     }
 
     /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(§4-6 — 목적지 전환 확인).
@@ -110,6 +122,6 @@ public final class DeferredAnnouncer {
                 return
             }
         }
-        slot = (token, task)
+        slot = (token, task, onDropped)
     }
 }

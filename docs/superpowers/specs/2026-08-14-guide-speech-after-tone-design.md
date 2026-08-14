@@ -174,6 +174,10 @@ iOS `announce`는 "실제로 게시했는가"를 반환하고, 호출부 일부(
 | 웹 W2. 낡은 예약 폐기 삭제 | **검출** | 늦게 깬 타이머 폐기 케이스 |
 | 웹 W3. `playTone`의 `toneEndsAt` 기록 삭제 | **검출** | 3건(지연·latest-wins·프리로드 경로) |
 | 웹 W4. 세션 시작 `preload` 삭제 | **검출** | 프리로드 케이스 |
+
+**구현 리뷰 반영(2026-08-14, spec-compliance·code-quality 2건)**:
+1. **(MAJOR, 채택)** 웹 도착 경로에서 `stop()`의 stop 톤이 nearby 종의 종료 시각을 마지막-이김으로 덮어 "도착했습니다"가 종 꼬리와 다시 겹치는 결함 — 웹 `playTone`을 **더 늦게 끝나는 쪽 유지**로 수정(+회귀 테스트·변이 재검출 확인). iOS는 선점 재생이라 마지막-이김이 옳고 해당 없음(웹 Web Audio는 소스가 겹쳐 울린다는 재생 모델 차이가 정책 차이의 근거).
+2. **(MAJOR, 채택 — 두 리뷰 독립 수렴)** 지연 대기 중 **선점(latest-wins)으로 취소된 문장의 `onDropped`가 불리지 않아** 상환 문장(계단 경고·owed 합본)이 게시도 상환도 없이 영구 소실되는 공백. 초안 §4-6의 "게시하지 못한 그 시점" 한정을 다음처럼 정밀화했다 — **선점 폐기(`invalidatePending`, 새 통지·announceNow 진입)는 그 시점에 onDropped를 호출**(게시 실패와 같은 "전달 못함"이므로 장부 보존도 같다), **세션 경계 폐기(`advanceGeneration`)는 onDropped 없이 침묵 폐기**(`stop()`이 장부를 먼저 비우므로 여기서 복원하면 끝난 세션의 경고가 부활하는 역결함). 두 축의 테스트(`supersededPendingFiresOnDropped`·`generationAdvanceDoesNotFireOnDropped`)를 추가했다. 상환된 장부의 실제 재발화 시점은 종전과 같이 전경 복귀(scene-active)다.
 - **실기기 판정이 최종 게이트다.** 시뮬레이터는 VoiceOver 발화와 mp3의 겹침을 재현하지 못한다. `CONFIGURATION=Experimental ./ios/deploy-device.sh`로 올린 뒤 실보행에서 확인할 시나리오:
   1. 임박 큐 — 단독 상황.
   2. 임박 큐 — **VoiceOver가 다른 콘텐츠(진행 상황 행 등)를 읽는 중**에 발생(§7의 큐 누적 축).

@@ -4,7 +4,8 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { NextIntlClientProvider } from "next-intl";
 import ko from "../../../messages/ko.json";
 
-const { playSpy } = vi.hoisted(() => ({ playSpy: vi.fn() }));
+// play는 재생 길이(초)를 반환하는 계약 — 이 스위트는 톤 선택만 보므로 0(즉시)로 고정.
+const { playSpy } = vi.hoisted(() => ({ playSpy: vi.fn(() => 0) }));
 
 vi.mock("../useBeaconSound", () => ({
   useBeaconSound: () => ({ play: playSpy, preload: vi.fn() }),
