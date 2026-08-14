@@ -9,7 +9,18 @@
     "directions": {
       "searching": "Buscando",
       "walkRecommended": "Ruta recomendada",
-      "walkShortest": "Ruta más corta"
+      "walkShortest": "Ruta más corta",
+      "walkNotice": {
+        "title": "Llega la guía a pie.",
+        "intro": "¡Gracias por usar Gildongmu!",
+        "head1": "Novedades",
+        "body1": "Ahora, al consultar una ruta en la pestaña Cómo llegar, la sección a pie muestra el botón \"Iniciar guía a pie\". Púlsalo para comenzar la guía en tiempo real. Durante la guía, la pantalla muestra la distancia restante hasta tu destino, la distancia que queda del tramo actual y la siguiente indicación. La guía sigue funcionando en segundo plano aunque la pantalla esté bloqueada.",
+        "head2": "A tener en cuenta",
+        "body2": "La guía se basa en datos de mapas de APIs externas y en el GPS, por lo que puede diferir de la situación real.",
+        "body3": "Ten especial cuidado en los pasos de peatones. Usa la guía de esta app solo como información complementaria y pruébala primero en caminos que ya conozcas.",
+        "body4": "La guía en tiempo real de transporte público y coche está en preparación.",
+        "confirm": "Aceptar"
+      }
     },
     "common": {
       "ok": "Aceptar",

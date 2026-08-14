@@ -9,7 +9,18 @@
     "directions": {
       "searching": "Recherche en cours",
       "walkRecommended": "Itinéraire recommandé",
-      "walkShortest": "Itinéraire le plus court"
+      "walkShortest": "Itinéraire le plus court",
+      "walkNotice": {
+        "title": "Le guidage à pied est arrivé.",
+        "intro": "Merci d'utiliser Gildongmu !",
+        "head1": "Nouveautés",
+        "body1": "Désormais, lorsque vous recherchez un itinéraire dans l'onglet Itinéraire, la section à pied affiche le bouton \"Démarrer le guidage à pied\". Appuyez dessus pour lancer le guidage en temps réel. Pendant le guidage, l'écran affiche la distance restante jusqu'à votre destination, la distance restante du tronçon en cours et la prochaine instruction. Le guidage continue de fonctionner en arrière-plan même lorsque l'écran est verrouillé.",
+        "head2": "À garder à l'esprit",
+        "body2": "Le guidage repose sur les données cartographiques d'API externes et sur le GPS ; il peut donc différer de la situation réelle.",
+        "body3": "Soyez particulièrement vigilant aux passages piétons. Utilisez le guidage de cette application uniquement comme information complémentaire et essayez-le d'abord sur des trajets que vous connaissez déjà.",
+        "body4": "Le guidage en temps réel pour les transports en commun et la voiture est en préparation.",
+        "confirm": "OK"
+      }
     },
     "common": {
       "ok": "OK",
