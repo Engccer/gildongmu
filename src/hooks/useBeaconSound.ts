@@ -120,56 +120,86 @@ export function useBeaconSound() {
     return ctxRef.current;
   }, []);
 
-  const play = useCallback(
-    (sound: GuideSound) => {
-      vibrate(sound);
-      const ctx = getCtx();
-      if (!ctx) return;
-      if (ctx.state === "suspended") void ctx.resume();
-      const cached = buffersRef.current.get(sound);
-      if (cached) {
-        try {
-          const src = ctx.createBufferSource();
-          const gain = ctx.createGain();
-          gain.gain.value = GAIN[sound];
-          src.buffer = cached;
-          src.connect(gain).connect(ctx.destination);
-          src.start();
-        } catch {
-          // InvalidStateError 등 — graceful no-op.
-        }
-        return;
-      }
-      // 첫 재생은 로드로 대체(다음부터 즉시). 동시 중복 fetch는 가드.
-      if (loadingRef.current.has(sound)) return;
-      loadingRef.current.add(sound);
-      void fetch(`/sounds/guide/${sound}.mp3`)
+  /** fetch → decode → 버퍼 캐시 저장. 실패는 null(가드만 해제해 다음 시도에서 재시도). */
+  const loadBuffer = useCallback(
+    (ctx: AudioContext, sound: GuideSound): Promise<AudioBuffer | null> =>
+      fetch(`/sounds/guide/${sound}.mp3`)
         .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(res.status)))
         .then((data) => ctx.decodeAudioData(data))
         .then((buffer) => {
           buffersRef.current.set(sound, buffer);
-          try {
-            const src = ctx.createBufferSource();
-            const gain = ctx.createGain();
-            gain.gain.value = GAIN[sound];
-            src.buffer = buffer;
-            src.connect(gain).connect(ctx.destination);
-            src.start();
-          } catch {
-            // graceful no-op
-          }
+          return buffer;
         })
-        .catch(() => {
-          // 로드 실패 — 다음 재생 시도에서 재시도할 수 있게 가드만 해제.
+        .catch(() => null),
+    [],
+  );
+
+  /** 버퍼 재생 시작. 반환 = 실제로 시작했는가(InvalidStateError 등은 false). */
+  const startBuffer = useCallback(
+    (ctx: AudioContext, sound: GuideSound, buffer: AudioBuffer): boolean => {
+      try {
+        const src = ctx.createBufferSource();
+        const gain = ctx.createGain();
+        gain.gain.value = GAIN[sound];
+        src.buffer = buffer;
+        src.connect(gain).connect(ctx.destination);
+        src.start();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [],
+  );
+
+  /**
+   * 재생. 반환은 **재생 길이(초)** — 발화 지연 판정(`speechDeferStep`)의 입력이다
+   * (spec 2026-08-14 §6). 버퍼가 없어 즉시 재생하지 못하면 0(cold 경로는 로드 후
+   * 늦게 재생되지만 길이를 동기로 알 수 없다 — 세션 시작의 `preload`가 이 창을 줄인다).
+   */
+  const play = useCallback(
+    (sound: GuideSound): number => {
+      vibrate(sound);
+      const ctx = getCtx();
+      if (!ctx) return 0;
+      if (ctx.state === "suspended") void ctx.resume();
+      const cached = buffersRef.current.get(sound);
+      if (cached) return startBuffer(ctx, sound, cached) ? cached.duration : 0;
+      // 첫 재생은 로드로 대체(다음부터 즉시). 동시 중복 fetch는 가드.
+      if (loadingRef.current.has(sound)) return 0;
+      loadingRef.current.add(sound);
+      void loadBuffer(ctx, sound)
+        .then((buffer) => {
+          if (buffer) startBuffer(ctx, sound, buffer);
         })
         .finally(() => loadingRef.current.delete(sound));
+      return 0;
     },
-    [getCtx],
+    [getCtx, loadBuffer, startBuffer],
+  );
+
+  /**
+   * 긴 톤 사전 디코드(spec 2026-08-14 §6, 리뷰 BLOCKER 4). 웹은 첫 재생이 fetch →
+   * decodeAudioData 왕복이라 길이를 모르고, 그 상태로 두면 각 톤의 첫 발생에서
+   * 음성이 먼저 나가고 톤이 뒤늦게 문장 중간을 덮는다 — 세션 시작에서 미리 디코드해
+   * iOS의 로컬 파일 프리로드와 같은 성질을 만든다. 재생은 하지 않는다.
+   */
+  const preload = useCallback(
+    (sounds: GuideSound[]) => {
+      const ctx = getCtx();
+      if (!ctx) return;
+      for (const sound of sounds) {
+        if (buffersRef.current.has(sound) || loadingRef.current.has(sound)) continue;
+        loadingRef.current.add(sound);
+        void loadBuffer(ctx, sound).finally(() => loadingRef.current.delete(sound));
+      }
+    },
+    [getCtx, loadBuffer],
   );
 
   // 톤 선택은 `toneLayerStep`(순수 함수)이 하고 여기는 재생만 한다 — 톤별 래퍼를
   // 두면 계층이 낸 이름을 다시 함수로 사상해야 해서 매핑 표가 하나 더 생긴다.
-  return { play };
+  return { play, preload };
 }
 
 export type { GuideSound };
