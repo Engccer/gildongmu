@@ -72,6 +72,19 @@ final class BeaconTonePlayer {
     /// 현재 재생 중인 톤. 톤은 전부 1초 미만이라 겹치면 두 소리가 섞여 어느 쪽도
     /// 식별되지 않는다 — 새 요청은 기존 재생을 끊고 교체한다(spec §4.4).
     private var playing: AVAudioPlayer?
+    /// 지금 재생 중인 톤이 끝나는 단조 시각(초, systemUptime 축) — 발화 지연 판정
+    /// (`speechDeferStep`)의 입력. 톤을 튼 적이 없거나 재생에 실패했으면 nil.
+    /// ⚠ `play()` **진입 즉시** 지우고 재생 성공 시에만 대입한다 — 조기 반환 경로
+    /// (세션 미확보·리소스 누락·`play()` 실패)가 셋이라 "실패했을 때 지운다"로 쓰면
+    /// 하나를 빠뜨리고, 소리가 안 나는데 이전 톤의 종료 시각 때문에 문장이 미뤄진다
+    /// (spec 2026-08-14 §5, 리뷰 MINOR 3).
+    private(set) var toneEndsAt: Double?
+    /// 현재 재생의 남은 초. 산출을 한 곳에 모은다 — `endSession()`의 원복 대기와
+    /// `toneEndsAt`이 서로 다른 잔여를 보면 원복과 발화 지연이 갈린다.
+    private var remainingPlaybackSeconds: Double? {
+        guard let player = playing, player.isPlaying else { return nil }
+        return max(0, player.duration - player.currentTime)
+    }
     /// 재생이 끝나기를 기다리는 세션 원복(아래 `endSession`). nil이면 대기 없음.
     private var revertTask: Task<Void, Never>?
     private let notifHaptics = UINotificationFeedbackGenerator()
@@ -102,12 +115,12 @@ final class BeaconTonePlayer {
     ///
     /// 전경에서는 증상이 없다 — 그래서 이 결함은 손에 들고 시험할 때 보이지 않는다.
     func endSession() {
-        guard let player = playing, player.isPlaying else {
+        guard let playbackRemaining = remainingPlaybackSeconds else {
             dispatch(.sessionEnded)
             return
         }
         // 남은 재생 시간 + 여유. 톤은 전부 3초 미만이라 상한이 필요 없다.
-        let remaining = max(0, player.duration - player.currentTime) + 0.15
+        let remaining = playbackRemaining + 0.15
         cancelPendingRevert()
         revertTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
@@ -123,6 +136,7 @@ final class BeaconTonePlayer {
     }
 
     func play(_ tone: BeaconTone) {
+        toneEndsAt = nil  // 진입 즉시 — 아래 성공 분기만이 되살린다(조기 반환 3경로 공통)
         haptic(for: tone)
         // 세션을 아직 잡지 않았으면 지금 적용한다(세션 밖 단발 재생 경로 —
         // 종전 `ensureSession()`과 동형). 인터럽션·route 변경과 달리 이 이벤트만
@@ -154,6 +168,9 @@ final class BeaconTonePlayer {
         if player.play() {
             isSilenced = false
             playing = player
+            toneEndsAt =
+                ProcessInfo.processInfo.systemUptime
+                + (remainingPlaybackSeconds ?? player.duration)
         } else {
             isSilenced = true
             playing = nil
@@ -326,6 +343,7 @@ final class BeaconTonePlayer {
         for player in players.values { player.stop() }
         players = [:]
         playing = nil
+        toneEndsAt = nil
         appliedCategory = nil
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers = []

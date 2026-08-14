@@ -209,6 +209,14 @@ final class BeaconModel {
     /// 다음 fetchGuideRoute 성공이 1회 소비한다. stop()이 소거.
     private var carriedCourseDerivation: CourseDerivationState?
     private let tones = BeaconTonePlayer()
+    /// 발화 지연 슬롯(spec 2026-08-14) — 안내 효과음이 재생 중이면 그 잔여만큼
+    /// 통지를 미룬다. 수명 계약(latest-wins·세대·재평가)은 Kit 타입이 소유하고
+    /// 여기는 톤 잔여·실제 게시를 클로저로 주입만 한다(§5 배선).
+    @ObservationIgnored private lazy var deferredAnnouncer = DeferredAnnouncer(
+        clock: { ProcessInfo.processInfo.systemUptime },
+        toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
+        post: { [weak self] text, high in self?.post(text, highPriority: high) ?? false }
+    )
     private var startTask: Task<Void, Never>?
     private var watchdog: Task<Void, Never>?
     private var lastFixAt: Double?
@@ -428,6 +436,9 @@ final class BeaconModel {
             self?.stop()
         }
 
+        // 보류 발화 폐기 + 세대 증가(spec 2026-08-14 §4-2): 이전 세션이 남긴 지연
+        // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다.
+        deferredAnnouncer.advanceGeneration()
         self.dest = dest
         arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
         arrivalPresumed = false
@@ -637,7 +648,9 @@ final class BeaconModel {
             // ⚠ .high 필수(스펙 2026-08-12 §3.1, 마일스톤 리뷰 MAJOR): 목적지 전환
             // 경로에서는 이 요약이 검색 시트 닫힘 후 중지 버튼 착지 낭독과 겹칠 수
             // 있다 — 기본 우선순위만 잠식되는 비대칭이 performReroute 실사고의 기제.
-            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+            announce(text, highPriority: true) { [weak self] in
+                if let notice { self?.pendingStepFreeNotice = notice }
+            }
         } catch {
             guard !Task.isCancelled, isTracking else { return }
             fallbackToBrief()
@@ -796,6 +809,11 @@ final class BeaconModel {
         // 앞이라(아래 `handleScenePhaseChange`) 남겨 두면 끝난 경로의 경고가 뒤늦게
         // 발화된다.
         pendingStepFreeNotice = nil
+        // 보류 발화 폐기(spec 2026-08-14 §4-2): 취소하지 않으면 일반 정지 뒤 끝난
+        // 경로의 명령이 약 0.8초 뒤에 발화한다. 도착 통지는 stop() **뒤에** 새로
+        // 예약되므로 여기서 비워도 소실되지 않는다(호출 순서가 계약 — 게시 시점에
+        // isTracking을 검사하지 않는 이유이기도 하다). teardown()은 stop() 경유.
+        deferredAnnouncer.advanceGeneration()
         resetFinalApproach(geometry: nil)
         if let token = sessionToken {
             sessionToken = nil
@@ -895,8 +913,8 @@ final class BeaconModel {
         if dest == newDest {
             // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
             destinationLabel = label
-            announce(appLocalized("ios.guide.destChanged", label),
-                     highPriority: true, bypassSuppression: true)
+            announceNow(appLocalized("ios.guide.destChanged", label),
+                        highPriority: true, bypassSuppression: true)
             return true
         }
         dest = newDest
@@ -945,7 +963,7 @@ final class BeaconModel {
             ? appLocalized("ios.guide.destChanged", label) + " "
                 + appLocalized("ios.guide.destChangedFetching")
             : appLocalized("ios.guide.destChanged", label)
-        announce(ack, highPriority: true, bypassSuppression: true)
+        announceNow(ack, highPriority: true, bypassSuppression: true)
         if fetching {
             awaitingRoute = true
             startFixWaitWatch(token: routeFetchToken)
@@ -980,9 +998,16 @@ final class BeaconModel {
                 let tail = current.isEmpty || current == intro ? nil : current
                 let owed = [pendingStepFreeNotice, intro, tail]
                     .compactMap { $0 }.joined(separator: " ")
-                if !owed.isEmpty, announce(owed) {
+                if !owed.isEmpty {
+                    // 먼저 지우고, 게시하지 못하면(억제 잔류 등) onDropped가 복원한다
+                    // — "성공 시에만 지운다"의 등가 형태(§4-6 반환값 폐지 이관).
+                    let notice = pendingStepFreeNotice
                     pendingStepFreeNotice = nil
                     pendingFinalApproachIntro = nil
+                    announce(owed) { [weak self] in
+                        self?.pendingStepFreeNotice = notice
+                        self?.pendingFinalApproachIntro = intro
+                    }
                 }
             }
             guard isTracking else { return }
@@ -1441,7 +1466,7 @@ final class BeaconModel {
             statusText = text
             lastGuidance = text
             liveTopText = text  // 하단 2행 윗줄 = 기존 최종 접근 문형(§4.2 우선순위 2)
-            if !announce(text) { pendingFinalApproachIntro = text }
+            announce(text) { [weak self] in self?.pendingFinalApproachIntro = text }
             return
         }
 
@@ -1768,7 +1793,9 @@ final class BeaconModel {
         statusText = text
         // 채택 성공 통지는 `.high`(버튼 활성화의 결과 통지 계약 — 성공하면 이 버튼이
         // 사라져 포커스가 옮겨가고 기본 우선순위는 그 낭독에 잠식된다).
-        if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+        announce(text, highPriority: true) { [weak self] in
+                if let notice { self?.pendingStepFreeNotice = notice }
+            }
     }
 
     /// 재조회 의도(M3): 이탈 재조회·제안은 세션 variant 유지, 수동 전환만 반대 variant.
@@ -1850,7 +1877,9 @@ final class BeaconModel {
             // 재조회 버튼을 없애고, 시트가 커서를 중지 버튼으로 되돌리며 그 라벨을 낭독한다 —
             // 기본 우선순위 통지는 그 VO 활성화 처리에 잠식된다(헌장 §6 실기기 확정).
             // 바로 아래 실패 경로만 `.high`였던 비대칭이 실사용 무발화의 원인이었다.
-            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+            announce(text, highPriority: true) { [weak self] in
+                if let notice { self?.pendingStepFreeNotice = notice }
+            }
             // 전환 성공은 채택 완료 세대를 올린다(프리뷰 낡음 폴백 경로 포함 —
             // 시트 연쇄 닫힘 트리거. keepVariant 재조회는 시트 밖 버튼이라 무관).
             if case .switchTo = intent { variantAdoptedSeq += 1 }
@@ -2098,7 +2127,9 @@ final class BeaconModel {
             statusText = text
             // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며
             // 그 라벨 낭독에 기본 우선순위가 잠식된다(adoptProposal 동형).
-            if !announce(text, highPriority: true), let notice { pendingStepFreeNotice = notice }
+            announce(text, highPriority: true) { [weak self] in
+                if let notice { self?.pendingStepFreeNotice = notice }
+            }
             variantAdoptedSeq += 1
             return
         }
@@ -2233,13 +2264,37 @@ final class BeaconModel {
         }
     }
 
-    /// 통지 단일 경로(spokenUnits 경유). 버튼 활성화의 **직접 응답**만 `.high`로 —
-    /// 기본 우선순위 통지는 VO 활성화 처리에 잠식되어 무발화될 수 있다(헌장 §5,
-    /// HoldDictationButton 선례). 자동 통지는 기본 유지(비요청 interrupt 금지).
-    /// 반환값은 **실제로 게시했는가**다. 세션에 1회뿐인 통지(계단 회피 경고)는
-    /// 버려지면 다음 fix가 대신 말해 주지 않으므로 호출부가 갚을 수 있어야 한다.
-    @discardableResult
+    /// 자동 통지 창구(spec 2026-08-14 §4-6). 안내 효과음이 재생 중이면 그 소리가
+    /// 끝난 뒤에 게시한다(지연·latest-wins·세대는 `DeferredAnnouncer` 소유).
+    /// 버튼 활성화의 **직접 응답**만 `.high`로 — 기본 우선순위 통지는 VO 활성화
+    /// 처리에 잠식되어 무발화될 수 있다(헌장 §5, HoldDictationButton 선례).
+    ///
+    /// 세션에 1회뿐인 통지(계단 회피 경고·최종 접근 진입 서술)는 버려지면 다음 fix가
+    /// 대신 말해 주지 않는다 — 상환이 필요한 문장은 `onDropped`에 "갚기"를 담는다
+    /// (억제·백그라운드로 게시하지 못한 **그 시점에** 불린다). 반환값이 없는 것이
+    /// 강제 수단이다: 새 호출부가 "게시했는가"를 물어볼 방법 자체가 없다.
     private func announce(
+        _ message: String, highPriority: Bool = false, onDropped: (() -> Void)? = nil
+    ) {
+        deferredAnnouncer.announce(message, highPriority: highPriority, onDropped: onDropped)
+    }
+
+    /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(목적지 전환 확인 — §4-6).
+    /// 즉시성이 문장의 본질이라 톤과 겹치더라도 미루지 않는다. 단 보류 슬롯은 진입
+    /// 즉시 버린다(§4-1 — 즉시 문장이 나간 **뒤에** 이전 목적지의 명령이 발화하는
+    /// 역전 차단. latest-wins는 창구와 무관한 성질이다).
+    private func announceNow(
+        _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
+    ) {
+        deferredAnnouncer.invalidatePending()
+        _ = post(message, highPriority: highPriority, bypassSuppression: bypassSuppression)
+    }
+
+    /// 실제 게시(spokenUnits 경유). 지연은 타이밍만 바꾸고 실패 처리 계약은 바꾸지
+    /// 않는다(§4-4) — 대기가 끝난 게시 시도도 억제 가드 → 전경 가드 →
+    /// `missedAnnouncement` → 게시의 같은 경로를 지난다. 반환 = 실제로 게시했는가.
+    @discardableResult
+    private func post(
         _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
     ) -> Bool {
         // bypassSuppression은 목적지 전환 확인 통지 전용(스펙 2026-08-12 §3.1) —
