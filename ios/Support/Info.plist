@@ -11,5 +11,14 @@
 		<key>PreciseLocation</key>
 		<string>주변 정보 검색과 거리 추적은 정확한 위치가 필요합니다.</string>
 	</dict>
+	<!-- 백그라운드 위치·오디오(도보 안내 정식 출시, spec 2026-08-15 §4.1): 잠금 화면에서
+	     세션 생존 + 톤 재생. 역할이 갈린다 — 앱을 깨어 있게 유지하는 것은 location이고
+	     audio는 재생만 허용한다(위치만 승격 시 무음, 2026-08-07 실측). When In Use로
+	     충분(전경 시작 세션). 심사 노트에 백그라운드 오디오 용도를 명시할 것(§6). -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>
