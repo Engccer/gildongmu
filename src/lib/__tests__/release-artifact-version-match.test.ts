@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — 검사 스크립트는 순수 JS(.mjs)라 타입 선언이 없다.
-import { sameVersion } from "../../../ios/scripts/check-release-artifact.mjs";
+import { positionalArg, sameVersion } from "../../../ios/scripts/check-release-artifact.mjs";
 
 /**
  * 산출물 검사의 버전 대조가 **제출 경로의 실제 입력 조합**에서 통과하는지 고정한다.
@@ -33,5 +33,22 @@ describe("sameVersion — 산출물 버전 대조", () => {
   it("숫자가 아닌 세그먼트가 섞이면 판정을 지어내지 않고 문자열 일치로 되돌린다", () => {
     expect(sameVersion("1.7.0-beta", "1.7")).toBe(false);
     expect(sameVersion("1.7.0-beta", "1.7.0-beta")).toBe(true);
+  });
+});
+
+/**
+ * 위치 인자 파싱. `asc-submit.mjs`가 넘기는 형태(경로 없이 `--expect-*`만)에서
+ * 플래그 값을 산출물 경로로 오인하던 결함을 고정한다 — 오인하면 `경로가 없다: 1.7`로
+ * 제출이 항상 막혔다(1.7 제출에서 실측).
+ */
+describe("positionalArg — 산출물 경로 인자", () => {
+  it("값을 갖는 플래그의 값을 경로로 읽지 않는다", () => {
+    expect(positionalArg(["--expect-version", "1.7", "--expect-build", "13"])).toBe(null);
+  });
+
+  it("진짜 경로는 플래그와 섞여 있어도 찾는다", () => {
+    expect(positionalArg(["--expect-version", "1.7", "/tmp/a.xcarchive"])).toBe("/tmp/a.xcarchive");
+    expect(positionalArg(["/tmp/a.xcarchive", "--expect-build", "13"])).toBe("/tmp/a.xcarchive");
+    expect(positionalArg([])).toBe(null);
   });
 });
