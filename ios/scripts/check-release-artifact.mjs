@@ -76,6 +76,25 @@ function resolveApp(path) {
   return join(apps, app);
 }
 
+/**
+ * 같은 버전인가. ASC의 `versionString`은 `1.7`인데 산출물의
+ * `CFBundleShortVersionString`은 `MARKETING_VERSION` 그대로 `1.7.0`이라 표기가 다르다.
+ * `asc-submit.mjs`가 ASC 표기를 그대로 넘기므로 문자열 완전 일치로 비교하면
+ * **제출 경로가 항상 막힌다**(1.7 제출에서 실측). 빠진 세그먼트를 0으로 채워 비교하되
+ * 자릿수는 그대로 본다 — `1.7`과 `1.7.0`은 같고 `1.7`과 `1.8.0`은 다르다.
+ * 숫자가 아닌 세그먼트가 섞이면 판정을 지어내지 않고 문자열 일치로 되돌린다.
+ */
+export function sameVersion(a, b) {
+  const seg = (v) => String(v).split(".");
+  const [x, y] = [seg(a), seg(b)];
+  if ([...x, ...y].some((s) => !/^\d+$/.test(s))) return String(a) === String(b);
+  const len = Math.max(x.length, y.length);
+  for (let i = 0; i < len; i++) {
+    if (Number(x[i] ?? 0) !== Number(y[i] ?? 0)) return false;
+  }
+  return true;
+}
+
 /** `--이름 값` 형태 인자. 없으면 null. */
 function flag(name) {
   const i = process.argv.indexOf(`--${name}`);
@@ -108,7 +127,7 @@ function main() {
   // 무의미하다 — 통과한 산출물과 심사에 올라가는 산출물이 다른 것이기 때문이다.
   const expectVersion = flag("expect-version");
   const expectBuild = flag("expect-build");
-  if (expectVersion && info.CFBundleShortVersionString !== expectVersion) {
+  if (expectVersion && !sameVersion(info.CFBundleShortVersionString, expectVersion)) {
     failures.push(`버전이 다르다: 산출물 ${info.CFBundleShortVersionString}, 제출 대상 ${expectVersion}`);
   }
   if (expectBuild && String(info.CFBundleVersion) !== String(expectBuild)) {
@@ -181,9 +200,13 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (e) {
-  console.error(`\n산출물 검사 실패: ${e.message}\n`);
-  process.exit(1);
+// 직접 실행일 때만 검사한다 — 테스트가 `sameVersion`을 import할 때 아카이브를
+// 뒤지기 시작하면 그 자리에 아카이브가 없어 테스트가 환경에 의존하게 된다.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (e) {
+    console.error(`\n산출물 검사 실패: ${e.message}\n`);
+    process.exit(1);
+  }
 }
