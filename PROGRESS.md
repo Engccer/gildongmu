@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | 1.0~**1.6** 전부 `READY_FOR_SALE`(빌드 12 VALID). **1.7 제출 대기** — 도보 실시간 안내 정식 출시분이 main에 있고 아직 아카이브·제출 전이다(아래 §다음 단계) |
+| iOS | 1.0~1.6 전부 `READY_FOR_SALE`. **1.7 `WAITING_FOR_REVIEW`**(빌드 13, 제출 2026-08-15 09:08 KST, 아카이브 커밋 `cb3402a`) — 도보 실시간 안내 정식 출시 |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
@@ -138,16 +138,6 @@
 **정본은 `docs/BACKLOG.md`다.** 여기에 목록을 복제하지 않는다 — 두 곳에 적으면 어느 쪽이 참인지 판정할 수 없게 된다.
 
 축 요약(2026-08-15 기준): 열려 있는 것은 **도달(G3 — 자동차·대중교통·간략 단독 진입만 남음)·판정(F-a 실기기·실사용)·편승(D)·신규(E)**다. 결함 축(A)에 A15(공지 시트 표시 경합, 추측·실기기 확인 선행)가 올랐고 A14는 위원장 판정으로 기각됐다. 갭 축(B)에 B4(웹 안내 세션 시작 포커스 착지) 1건.
-
-### 다음 단계: 1.7 App Store 제출
-
-도보 실시간 안내 정식 출시분이 main(`e4a4a04`)에 있고 **아카이브·제출 전**이다. 1.6은 `READY_FOR_SALE`이라 제출 경로가 비어 있다. 순서:
-
-1. `MARKETING_VERSION`을 1.7.0으로, 빌드 번호를 13으로 올린다(현재 1.6.0/12).
-2. **`git worktree`로 커밋을 격리해** 아카이브한다(병렬 세션이 도는 동안 메인 트리 빌드는 섞인 바이너리를 낳는다).
-3. `node ios/scripts/check-release-artifact.mjs <아카이브> --expect-version 1.7 --expect-build 13`으로 산출물을 확인한다(`asc-submit --submit`도 자동으로 돌리지만, 아카이브 직후 한 번 보는 편이 원인 규명이 쉽다).
-4. 릴리스 노트는 `docs/appstore/release-notes.md` 1.7 초안이 정본이고, **심사 노트에 백그라운드 오디오 절**(`docs/appstore/1.0-submission-draft.md` §9의 "1.7부터 추가")을 반드시 넣는다.
-5. **프로모션 텍스트는 승계되지 않는다** — 비운 채 제출하면 스토어에서 그 줄이 사라진다.
 
 ---
 

@@ -11,6 +11,10 @@
 
 ## 2026-08-15
 
+### 제출 파이프라인 수정 2건 (1.7 제출 중 발견)
+
+산출물 검사의 버전 대조가 **제출 경로에서 항상 실패**했다 — ASC `versionString`(`1.7`)과 산출물 `CFBundleShortVersionString`(`1.7.0`)은 같은 버전인데 `asc-submit`이 ASC 표기를 그대로 넘겨 문자열 완전 일치 비교가 어긋났다. 게이트를 도입한 마일스톤이 실제 제출로 밟아보지 않아 드러나지 않았다. 세그먼트 비교로 바꾸고 반대 방향(다른 버전은 막는가)까지 테스트로 고정했다(`src/lib/__tests__/release-artifact-version-match.test.ts`). 그리고 `asc-submit`에 `--review-notes`를 더해 심사 노트 갱신을 API 경로로 흡수했다 — 종전엔 그 항목만 ASC 콘솔을 손으로 여는 경로로 남아 있었다(값이 같으면 무변경, appStoreReviewDetail이 없으면 연락처를 지어내지 않고 멈춘다).
+
 ### 도보 실시간 안내 정식 출시 (iOS)
 
 수단 축으로 봉인을 분할해 도보만 내보낸다. `AppConfig.realtimeGuidanceEnabled` → `experimentalGuidanceEnabled`로 대체하고 도보 경로(`walkGuideStartable`·`manualOriginNoticeText`)는 플래그를 보지 않는다 — 자동차·대중교통·간략 단독 진입점은 봉인 유지(간략 단독 버튼은 `isTracking ∨ experimental` 조건으로 정식판 실패 상태 화면에서도 차단). 정식 `Info.plist`에 `UIBackgroundModes`(location·audio) 승격, 위치 권한 문구 ko에 거리 안내 절 추가(비한국어는 ko 게이트 안 기능이라 현행 유지), 안내 시트의 화면 켜기 힌트 삭제(백그라운드 승격으로 거짓 문장화 — 진짜 무음은 `soundDegraded`가 런타임 판정으로 알린다). `experimental-infoplist.sh`는 표시 이름 전용으로 축소하고 파일-존재 카운트를 접미사 적용 결과 검증으로 교체. 가드는 소스 드리프트 6종 + 제출 전 산출물 검사. spec `docs/superpowers/specs/2026-08-15-walk-guidance-ship-design.md`, 계획 `docs/superpowers/plans/2026-08-15-walk-guidance-ship.md`
