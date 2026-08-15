@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error — 검사 스크립트는 순수 JS(.mjs)라 타입 선언이 없다.
+// 검사 스크립트는 순수 JS(.mjs)라 타입 선언이 없다(allowJs가 추론을 대신한다).
 import { positionalArg, sameVersion } from "../../../ios/scripts/check-release-artifact.mjs";
 
 /**
