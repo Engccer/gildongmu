@@ -78,6 +78,12 @@ describe("judgeTagoCityCoverage", () => {
     expect(judgeTagoCityCoverage("전남광주통합특별시", "담양군")).toBe("uncovered");
   });
 
+  it("광역시 코드가 물고 있는 인접 도의 시도 커버로 본다 (D5)", () => {
+    // TAGO는 계룡시(충남) 정류소를 대전(25) 코드 아래 둔다. 2자리 코드를 seed 적재에서
+    // 빼면서 이 이름까지 함께 사라지면 실제로 제공되는 지역에 거짓 "미제공"이 나간다.
+    expect(judgeTagoCityCoverage("충청남도", "계룡시")).toBe("covered");
+  });
+
   it("모르는 시도는 unknown: 개편이 표를 낡게 만들어도 미제공으로 단정하지 않는다", () => {
     expect(judgeTagoCityCoverage("가상통합특별시", "어딘가시")).toBe("unknown");
     expect(judgeTagoCityCoverage("", "")).toBe("unknown");

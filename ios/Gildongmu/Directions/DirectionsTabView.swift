@@ -93,6 +93,18 @@ final class DirectionsModel {
     /// 단 한 곳) — 커버리지 밖 등 중간 return에서 `true·results=nil` 조합이
     /// 관찰 가능한 채로 남지 않도록(fix 라운드 1 Minor 2).
     private(set) var resultsUsedManualOrigin = false
+    /// 이 조회의 목적지가 출입구로 승격됐으면 그 이름·좌표(A11). nil이면 승격 없음
+    /// — **조회 실패와 구분하지 않는다**(둘 다 대표 좌표로 안내하므로 행동이 같다).
+    ///
+    /// ⚠ **승격본은 입력 필드가 아니라 여기 산다.** `trackedDestination`·
+    /// `destinationPlaceName`이 `endpoint(for: .to)`에서 직접 파생되므로, 필드를
+    /// 그대로 두면서 "안내가 승격본을 쓴다"는 계약은 이 필드 없이는 성립하지 않는다
+    /// (그 상태로 두면 브리핑은 정문까지인데 안내 세션은 본관으로 가고, 화면은
+    /// "정문까지 안내합니다"라고 말한다 — 거짓 문장).
+    ///
+    /// ⚠ `results`와 **같은 순간에만** 커밋한다(`resultsUsedManualOrigin` 동형) —
+    /// 중간 return에서 승격본만 먼저 선 상태가 관찰 가능하면 안 된다.
+    private(set) var promotedDestination: (label: String, lat: Double, lng: Double)?
     /// "현재 위치 사용" 강제 재측위 진행 신호. 필드 라벨 전환이 유일한 진행 표시.
     private(set) var isRefreshingCurrent = false
     private var hasLoadedCurrentAddress = false
@@ -188,6 +200,7 @@ final class DirectionsModel {
         results = nil
         walkShortest = nil
         resultsUsedManualOrigin = false
+        promotedDestination = nil
         phase = .idle
     }
 
@@ -254,6 +267,7 @@ final class DirectionsModel {
         results = nil
         walkShortest = nil // 스냅샷 교체(spec §4) — 이전 세대 대안을 지우고 시작
         resultsUsedManualOrigin = false
+        promotedDestination = nil
         // 현재 위치 endpoint는 조회 시점에 측위(권한 팝업도 이 시점, 캐시 좌표 재사용).
         // effectiveCoordinate는 수동 위치가 켜져 있으면 그 좌표를 돌려준다(웹
         // awaitEffectiveLocation 동형) — "현재 위치"의 앱 전역 의미가 수동 위치일
@@ -308,7 +322,24 @@ final class DirectionsModel {
         }
         guard !Task.isCancelled,
               let origin = coordinate(of: from, current: current),
-              let dest = coordinate(of: to, current: current) else { return }
+              let queried = coordinate(of: to, current: current) else { return }
+
+        // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만(도보 경로
+        // 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다). 승격본은 여기서
+        // 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은 목적지**를 쓴다
+        // (§5.1 — 조회마다 다른 목적지를 갖지 않는다). 실패·부재는 조용히 원래 목적지.
+        var entrance: EntranceMatch?
+        if case .place(let label, _, _) = to, AppLanguage.dataLocale == "ko" {
+            entrance = await searchService.destinationEntrance(
+                name: label, lat: queried.lat, lng: queried.lng,
+                fromLat: origin.lat, fromLng: origin.lng
+            )
+            guard !Task.isCancelled else { return }
+        }
+        // ⚠ `dest`는 **let**이어야 한다 — 아래 `async let` 3수단이 캡처하므로 가변이면
+        // Swift 동시성이 data race로 거부한다(빌드 실패로 드러났다).
+        let promoted = entrance.map { (label: $0.name, lat: $0.lat, lng: $0.lng) }
+        let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
         lastCoords = (origin: origin, dest: dest)
         phase = .loading
 
@@ -347,6 +378,7 @@ final class DirectionsModel {
         results = built
         walkShortest = shortestCandidate
         resultsUsedManualOrigin = usedManualOrigin
+        promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
         recordRecentRoute(from: from, to: to)
@@ -641,10 +673,12 @@ struct DirectionsTabView: View {
                                     Task { @MainActor in
                                         switch await LocationService.shared.requestTemporaryPreciseAccuracy() {
                                         case .granted:
-                                            beacon.toggle(
-                                                dest: tracked.dest, label: tracked.label,
-                                                accessible: model.stepFreeEnabled
-                                            )
+                                            // ⚠ 인자를 여기서 다시 조립하지 않는다(A13).
+                                            // 시작 인자는 모델이 들고 있고, 재시작은 그
+                                            // 한 벌을 그대로 쓴다 — 여기서 다시 적으면
+                                            // 최단 경로가 추천 경로로, 자동차가 도보로
+                                            // 조용히 바뀐다.
+                                            beacon.restart()
                                         case .denied:
                                             AccessibilityNotification.Announcement(appLocalized("ios.common.geoReducedDesc")).post()
                                         case .alreadyInFlight: break
@@ -676,6 +710,17 @@ struct DirectionsTabView: View {
                     if let notice = manualOriginNoticeText, walkGuideStartable || carGuideStartable {
                         Section {
                             Text(notice).foregroundStyle(.secondary)
+                        }
+                    }
+                    // A11 승격 고지 — 목적지 이름이 바뀌는 것을 침묵으로 넘기지 않는다.
+                    // 정적 텍스트인 이유는 iOS가 조회 완료 시 포커스를 옮기지 않아
+                    // 순방향 스와이프가 이 문장을 지나가기 때문이다(별도 통지를 더하면
+                    // 이중 낭독). ⚠ 웹은 반대로 포커스가 첫 성공 heading으로 뛰므로
+                    // 같은 문장을 합산 통지에 싣는다 — 구현을 복사하면 한쪽이 깨진다.
+                    if let promoted = model.promotedDestination {
+                        Section {
+                            Text(appLocalized("directions.entrancePromoted", promoted.label))
+                                .foregroundStyle(.secondary)
                         }
                     }
                     ForEach(results.displayedModes, id: \.self) { mode in
@@ -1129,7 +1174,13 @@ struct DirectionsTabView: View {
 
     /// 거리 추적 대상. 도착지가 좌표를 가진 장소일 때만 성립한다
     /// ("현재 위치"가 목적지면 자기까지의 거리라 무의미).
+    /// ⚠ **승격본(A11)이 있으면 그쪽이 목적지다.** 입력 필드는 사용자가 고른 원명을
+    /// 유지하고(최근 경로·URL도 원명), 안내·경로 층만 승격본을 쓴다 — 그 비대칭이
+    /// 의도이며, 조회 완료 문장이 차이를 설명하는 유일한 자리다(spec §4·N1).
     private var trackedDestination: (label: String, dest: BeaconDest)? {
+        if let promoted = model.promotedDestination {
+            return (promoted.label, BeaconDest(lat: promoted.lat, lng: promoted.lng))
+        }
         guard case .place(let label, let lat, let lng) = model.endpoint(for: .to) else { return nil }
         return (label, BeaconDest(lat: lat, lng: lng))
     }
@@ -1138,6 +1189,7 @@ struct DirectionsTabView: View {
     /// 장소 이름이 아니라 nil이고, 그때 표시 계층이 "목적지까지"라는 구간 의미로
     /// 떨어진다(이름 부재와 구간 의미 부재는 다른 층이다).
     private var destinationPlaceName: String? {
+        if let promoted = model.promotedDestination { return promoted.label }
         guard case .place(let label, _, _) = model.endpoint(for: .to) else { return nil }
         return label
     }

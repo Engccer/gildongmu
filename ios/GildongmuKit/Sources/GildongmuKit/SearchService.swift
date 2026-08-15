@@ -111,4 +111,43 @@ public struct SearchService: Sendable {
         ])
         return response.address
     }
+
+    /// 목적지 출입구 승격 조회(A11, `/api/places/entrance`).
+    ///
+    /// 넓은 부지(학교·아파트단지)는 검색이 주는 대표 좌표가 본관이고 도보 경로는 정문에서
+    /// 끝나, 그 차이가 통째로 종점 오프셋이 되어 도착 판정이 성립하지 않는다(등교 실보행
+    /// 실측 58.8m → 승격 후 4.5m).
+    ///
+    /// ⚠ 어느 출입구인지는 **서버가 정한다**(자격·이득 게이트 포함) — Kit 미러를 두지
+    /// 않는 것이 설계다. 여기서는 좌표 하나를 받아 그대로 목적지로 삼는다.
+    ///
+    /// ⚠ 실패·부재 모두 nil이다. 둘 다 "대표 좌표로 안내"라는 같은 행동으로 수렴하므로
+    /// 호출자가 가를 이유가 없다(3-state의 예외가 아니라, 상태가 둘뿐인 축이다).
+    public func destinationEntrance(
+        name: String, lat: Double, lng: Double, fromLat: Double?, fromLng: Double?
+    ) async -> EntranceMatch? {
+        var query = [
+            URLQueryItem(name: "name", value: name),
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lng", value: String(lng)),
+        ]
+        if let fromLat, let fromLng {
+            query.append(URLQueryItem(name: "fromLat", value: String(fromLat)))
+            query.append(URLQueryItem(name: "fromLng", value: String(fromLng)))
+        }
+        let response: EntranceResponse? = try? await client.get("/api/places/entrance", query: query)
+        return response?.entrance
+    }
+}
+
+/// 승격된 출입구. `meters`는 대표 좌표에서의 거리(= 승격 폭).
+public struct EntranceMatch: Decodable, Sendable, Equatable {
+    public let name: String
+    public let lat: Double
+    public let lng: Double
+    public let meters: Double
+}
+
+struct EntranceResponse: Decodable, Sendable {
+    let entrance: EntranceMatch?
 }

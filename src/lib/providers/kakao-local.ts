@@ -1,3 +1,4 @@
+import { roundCoord } from "../coord-round";
 import { env } from "../env";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
 
@@ -70,6 +71,49 @@ export function buildKakaoSearchUrl(params: PlaceSearchParams): URL {
     url.searchParams.set("y", String(params.lat));
   }
   return url;
+}
+
+/**
+ * 출입구 POI 후보 조회(A11 목적지 승격).
+ *
+ * ⚠ **질의어는 `"{목적지명} 출입구"`다.** 목적지명 단독 질의는 불안정하다 — 실측에서
+ * `고덕그라시움`은 게이트 6개를 주는데 실제 POI 이름인 `고덕그라시움아파트`는 0개다
+ * (2026-08-16). 카카오가 출입구에 붙이는 카테고리는 `교통,수송 > 입출구`이고, 지하철
+ * 출구는 `지하철출구`로 **다른 카테고리**라 오탐하지 않는다.
+ *
+ * ⚠ `x`/`y`에 **목적지 좌표**를 넘긴다(사용자 좌표가 아니다). 관련도 블렌딩이 타 시설
+ * 혼입을 줄이고, 어느 출입구를 고를지는 서버 순수 계층(`chooseEntrance`)이 정하지
+ * 응답 순위가 정하지 않는다. 좌표는 `roundCoord(…,4)`(±5.5m)로 뭉쳐 **캐시 키**가
+ * 되게 한다 — 원시 좌표를 그대로 실으면 적중률이 사실상 0이라 캐시가 쿼터를 아끼지
+ * 못한다(`kakao-walk` 선례).
+ *
+ * 1페이지(15건)만 본다. 포화된 응답에서 자격 후보가 0이면 승격하지 않는다 —
+ * 2페이지 추적은 호출·지연을 배로 늘린다(명시적 판정, spec §2.1).
+ */
+export async function searchEntranceCandidatesKakao(
+  name: string,
+  dest: { lat: number; lng: number },
+  signal?: AbortSignal,
+): Promise<KakaoLocalDocument[]> {
+  const url = new URL(ENDPOINT);
+  url.searchParams.set("query", `${name} 출입구`);
+  url.searchParams.set("size", "15");
+  url.searchParams.set("x", roundCoord(dest.lng, 4));
+  url.searchParams.set("y", roundCoord(dest.lat, 4));
+
+  const res = await fetch(url, {
+    headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY}` },
+    signal,
+    // 출입구 POI는 정적이지만 이 엔드포인트(kakao-local)의 판정값은 300이다.
+    // 같은 엔드포인트에 네 번째 캐시 수명을 새로 놓지 않는다(백로그 §9 카카오 캐시 행).
+    next: { revalidate: 300 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`카카오 출입구 검색 실패: HTTP ${res.status} ${body}`);
+  }
+  const data = (await res.json()) as KakaoLocalResponse;
+  return data.documents;
 }
 
 export async function searchPlacesKakaoLocal(

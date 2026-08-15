@@ -8,6 +8,7 @@ import fr from "../../../messages/fr.json";
 import it_ from "../../../messages/it.json";
 import ja from "../../../messages/ja.json";
 import iosExtraKo from "../../../ios/i18n/ios-extra/ko.json";
+import { NEARBY_LIVE_DOMAIN_KEYS } from "../nearby-live";
 
 const LOCALES = { ko, en, es, fr, it: it_, ja } as Record<string, Record<string, unknown>>;
 // ⚠ `clear`("지정 해제")는 2026-08-09에 사라졌다 — 표시줄의 형제 해제 버튼이
@@ -125,11 +126,47 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "directions.currentLocation": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
   "directions.currentLocationNear": "위와 같음.",
   "directions.refreshingCurrent": "위와 같음.",
+  "manualLocation.gps": "표시줄 자신의 GPS 라벨. `manualLabel ?? …` 폴백 뒤라 수동 상태에서 도달 불가 — 이 파일이 스캔 대상이 된 것이 D20②의 요지이고, 대상이 되고 보니 분기는 이미 있었다.",
+  "manualLocation.gpsNear": "위와 같음(주소 병기형).",
+  "manualLocation.locating": "측위 진행 문구(조회 기준 선언 아님).",
   "whereAmI.ready": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
   "whereAmI.button": "위와 같음(수동이면 `manualButton`).",
   "ios.nearby.whereAmIAsOf": "위와 같음(수동이면 라벨 + `whereAmI.asOf`).",
   "ios.nearby.whereAmIReady": "위와 같음(수동이면 `manualReady`).",
 };
+
+/**
+ * `nearbyLiveMessage` 간접 키(D20①)의 공통 근거. 세 키가 축이 둘뿐이라 한 문장으로 묶는다:
+ * `locating`은 **측위 진행** 문구라 조회 기준의 선언이 아니고(`directions.locating`과 같은
+ * 근거), `geoDenied`/`geoUnsupported`는 GPS 실패 문구라 **수동 위치가 유지되는 동안 도달하지
+ * 않는다**(`effectiveCoordinate`가 먼저 답한다 — `directions.geoError`와 같은 근거).
+ *
+ * ⚠ 네임스페이스를 명시하는 이유: 새 "내 주변" 도메인은 새 네임스페이스를 쓰므로 목록에
+ * 없어 **가드가 실패한다**. 그때 그 도메인이 수동 위치를 어떻게 다루는지 판정하고 여기 적는다.
+ * 자동 확장으로 두면 모든 신규 도메인이 조용히 면제된다.
+ */
+const NEARBY_LIVE_NAMESPACES = [
+  "bike",
+  "bus",
+  "clinicNearby",
+  "eventsNearby",
+  "kidsNearby",
+  "subwayNearby",
+  "surroundingsNearby",
+  "walkInfra",
+  "whereAmI",
+];
+const NEARBY_LIVE_UNBRANCHED_SUFFIXES = ["locating", "error", "geoDenied", "geoUnsupported"];
+const NEARBY_LIVE_UNBRANCHED_REASON =
+  "nearbyLiveMessage 간접 키: locating·error는 진행·실패 상태 문구(조회 기준 선언 아님), geoDenied·geoUnsupported는 수동 위치가 유지되는 동안 도달 불가.";
+for (const ns of NEARBY_LIVE_NAMESPACES) {
+  for (const suffix of NEARBY_LIVE_UNBRANCHED_SUFFIXES) {
+    const key = `${ns}.${suffix}`;
+    if (KO_FLAT[key]?.includes(GPS_PHRASE)) {
+      KNOWN_UNBRANCHED_KEYS[key] = NEARBY_LIVE_UNBRANCHED_REASON;
+    }
+  }
+}
 
 interface Surface {
   file: string;
@@ -138,18 +175,41 @@ interface Surface {
   branches: boolean;
 }
 
-/** 웹: `source: { kind: "current" }`를 쓰는 파일이 유효 위치 소비자다. */
+/**
+ * 웹 소비자 판정. **세 축**이다(백로그 D20②):
+ * ① `source: { kind: "current" }` — "내 주변" 계열
+ * ② `useManualLocationLabel` — 수동 라벨을 직접 렌더하는 화면
+ * ③ `useGeolocation(` — GPS 스냅샷을 직접 읽는 화면
+ *
+ * ①만 보던 종전 판은 **표시줄(`LocationBar.tsx`) 자신을 스캔 밖에 두었다.** 이 기능의
+ * 핵심 화면이자 GPS 문구를 직접 렌더하는 유일한 상시 표면인데, 누가 수동 분기를
+ * 지워도 가드가 초록이었다.
+ */
+function isWebSurface(src: string): boolean {
+  return (
+    src.includes('kind: "current"') ||
+    src.includes("useManualLocationLabel") ||
+    src.includes("useGeolocation(")
+  );
+}
+
 function webSurfaces(): Surface[] {
   const out: Surface[] = [];
   for (const file of walk(path.join(REPO_ROOT, "src"), ".tsx").concat(
     walk(path.join(REPO_ROOT, "src"), ".ts"),
   )) {
     const src = readFileSync(file, "utf8");
-    if (!src.includes('kind: "current"')) continue;
+    if (!isWebSurface(src)) continue;
     const namespaces = [...src.matchAll(/useTranslations\("([^"]+)"\)/g)].map((m) => m[1]);
     const literals = new Set(
       [...src.matchAll(/\bt[A-Za-z]*\.?(?:rich)?\("([a-zA-Z0-9_.]+)"/g)].map((m) => m[1]),
     );
+    // `nearbyLiveMessage(status, t, …)`는 키를 **자기 안에** 들고 있어 소비 파일에
+    // 리터럴이 없다. 그 목록을 이 파일의 네임스페이스에 얹어야 스캔 커버리지가
+    // 실제와 같아진다(D20① — 지금 새는 것이 없어도 넓어 보이는 것이 문제다).
+    if (src.includes("nearbyLiveMessage(")) {
+      for (const key of NEARBY_LIVE_DOMAIN_KEYS) literals.add(key);
+    }
     const gpsKeys = new Set<string>();
     for (const lit of literals) {
       for (const ns of [...namespaces, ""]) {
@@ -160,7 +220,13 @@ function webSurfaces(): Surface[] {
     out.push({
       file: path.relative(REPO_ROOT, file),
       gpsKeys: [...gpsKeys],
-      branches: src.includes("useManualLocationLabel"),
+      // 분기의 형태는 둘이다: ①라벨을 직접 렌더하는 화면은 `useManualLocationLabel`로
+      // 가르고 ②"내 주변" 계열은 좌표원 자체가 수동 우선이라(`useNearbyFetch`의
+      // `source: { kind: "current" }` → `awaitManualLocation`) 화면에 분기 코드가 없다.
+      // ②를 미분기로 세면 **좌표는 이미 옳은데** 가드가 매번 위반을 외친다.
+      branches:
+        src.includes("useManualLocationLabel") ||
+        (src.includes("useNearbyFetch") && src.includes('kind: "current"')),
     });
   }
   return out;
@@ -190,6 +256,17 @@ describe("유효 위치 소비 화면의 GPS 문구 가드", () => {
   it("스캔이 실제로 화면을 찾는다(정규식이 비면 가드가 조용히 죽는다)", () => {
     expect(surfaces.length).toBeGreaterThanOrEqual(10);
     expect(surfaces.some((s) => s.gpsKeys.length > 0)).toBe(true);
+  });
+
+  it("표시줄 자신이 스캔 대상이다 (D20②)", () => {
+    // 이 기능의 핵심 화면이자 GPS 문구를 직접 렌더하는 유일한 상시 표면인데, 종전
+    // 유니버스 조건(`kind: "current"` 문자열)에 걸리지 않아 스캔 밖이었다.
+    expect(surfaces.map((s) => s.file)).toContain("src/components/LocationBar.tsx");
+  });
+
+  it("t를 인자로 받는 헬퍼의 키도 스캔에 잡힌다 (D20①)", () => {
+    const subway = surfaces.find((s) => s.file.endsWith("SubwayArrivalsNearby.tsx"));
+    expect(subway?.gpsKeys).toContain("subwayNearby.locating");
   });
 
   it("GPS 전용 문구를 쓰는 화면은 수동 분기를 갖는다", () => {

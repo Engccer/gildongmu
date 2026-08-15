@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Compass, Route } from "lucide-react";
 import type { CategoryBucket } from "@/lib/category";
@@ -31,6 +31,7 @@ import {
   type RecentQuery,
 } from "@/lib/recent-searches";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useManualLocation } from "@/hooks/useManualLocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
 import { useHeldValue } from "@/hooks/useHeldValue";
@@ -196,11 +197,23 @@ export function PlaceSearch({
     recentDeleteRefs.current[idx]?.focus();
   }, [recentRevision]);
 
-  // 현재 위치 — 공유 스토어에서 파생한다. 결과를 가까운 순으로 정렬하는 데 쓰며,
-  // 위치 정렬은 핵심이 아니라 향상 기능이라 좌표가 없으면 provider 순서를 유지한다.
-  // 공유 스토어가 세션 1회 획득·캐시를 보장하므로 "내 주변" 버튼들과 권한을 공유한다.
+  // 현재 위치 — **유효 위치**(수동 위치 > GPS)에서 파생한다. 결과에 거리를 붙이고
+  // 근접을 관련도에 블렌딩하는 데 쓰며, 위치는 핵심이 아니라 향상 기능이라 좌표가
+  // 없으면 provider 순서를 유지한다. 공유 스토어가 세션 1회 획득·캐시를 보장하므로
+  // "내 주변" 버튼들과 권한을 공유한다.
+  //
+  // ⚠ **GPS 스냅샷만 읽으면 안 된다**(백로그 D18①): 화면 첫 줄의 표시줄이 "지정한
+  // 위치, X"라고 알리는데 결과 거리가 GPS 기준으로 오면, 시각장애 사용자에게 조회
+  // 기준을 알리는 유일한 신호가 거짓이 된다(채팅 앵커가 같은 이유로 수동 우선이다).
   const geo = useGeolocation();
-  const userCoords = geo.status === "ready" ? geo.coords : null;
+  const manualLocation = useManualLocation();
+  const geoCoords = geo.status === "ready" ? geo.coords : null;
+  // 두 스토어 값에서만 새로 만든다 — 매 렌더 새 객체를 만들면 이 값을 deps에 실은
+  // `useCallback`(검색 실행)이 렌더마다 재생성된다(useChat의 같은 자리와 동형).
+  const userCoords = useMemo(
+    () => (manualLocation ? { lat: manualLocation.lat, lng: manualLocation.lng } : geoCoords),
+    [manualLocation, geoCoords],
+  );
   // 수동 위치 이동 판정 트리거 ①·③(탭 복귀·탭 시작). 앱 진입점 한 곳에만 건다.
   useManualLocationJudgment();
   // "현재 위치 지정" 모달(스텝별 진입은 LocationBar가 두 화면에서 공유하지만,

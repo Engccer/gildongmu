@@ -112,6 +112,15 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// 콜백 뒤에야 갱신되므로 팝업 직후 판정에는 늦을 수 있다.
     private(set) var observedAuthorization: CLAuthorizationStatus = .notDetermined
 
+    /// 마지막 단발 취득 시도가 **실패했는가**(권한은 있는데 좌표를 못 받은 상태).
+    ///
+    /// 왜 필요한가: 표시줄은 `lastCoordinate == nil`을 전부 "확인 중"으로 읽었다. 권한을
+    /// 아직 안 물은 상태(진짜 진행 중)와 허용된 뒤 실내·타임아웃으로 실패한 상태가
+    /// 구분되지 않아, 후자가 **무기한 "확인 중"에 머문다**(백로그 D22). 거짓 성공이
+    /// 아니라 멈춘 진행이라 화면으로 반증되지 않는다 — 웹은 거부·위치불가·타임아웃을
+    /// 모두 `denied`로 합쳐 이 갈래가 애초에 없다.
+    private(set) var lastFixFailed = false
+
     /// 현재 정밀도 허가. 권한(허용/거부)과 **다른 축**이라 따로 노출한다 —
     /// reduced면 좌표가 1~20km 오차이고 `desiredAccuracy` 변경이 무효가 된다.
     var accuracySnapshot: CLAccuracyAuthorization { manager.accuracyAuthorization }
@@ -200,7 +209,16 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// 직접 보므로 `stored`에는 정밀 fix만 담긴다. 순위 가중만 놓고 보면 reduced를
     /// 받아도 거짓 주장이 아니지만(반증 가능), 열려면 저장 게이트를 우회하는 별도
     /// 경로가 필요하고 이득은 "정밀 위치를 끈 사용자의 검색 순위"뿐이라 두지 않았다.
+    ///
+    /// ⚠ **수동 위치가 켜져 있으면 그 좌표가 먼저다**(백로그 D18①). 검색 결과에는
+    /// 거리가 붙고 근접이 관련도에 블렌딩되는데, 화면 첫 줄의 표시줄이 "지정한 위치,
+    /// X"라고 알리는 상태에서 그 거리가 GPS 기준이면 표시줄이 약속한 조회 기준이
+    /// 거짓이 된다(채팅 앵커가 같은 이유로 수동 우선이다). 수동 좌표는 측위가 아니라
+    /// **사용자가 고른 값**이므로 권한·타임아웃·TTL 정책이 적용되지 않는다.
     func coordinateForRanking() async -> (lat: Double, lng: Double)? {
+        if let manual = ManualLocationStore.shared.current {
+            return (lat: manual.lat, lng: manual.lng)
+        }
         guard isAuthorized else { return nil }
         let coord = try? await currentCoordinate(
             timeout: LocationFixPolicy.softTimeout,
@@ -351,16 +369,21 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         // 무효가 된다(Apple 문서). 그 좌표로 "주변"을 말하면 있지도 않은 정보를
         // 안내하게 되므로, 조회하지 않고 별개 상태로 돌린다(3-state 불변식).
         if manager.accuracyAuthorization == .reducedAccuracy {
+            lastFixFailed = true
             throw LocationError.reducedAccuracy
         }
 
         do {
             // 저장은 fix 수신 지점(`didUpdateLocations`)이 담당한다. 여기서 다시 쓰면
             // **수신 시각으로 도장을 덮어써** 나이가 과소평가되고 실효 수명이 늘어난다.
-            return try await acquireGatedFix(timeout: timeout)
+            let coord = try await acquireGatedFix(timeout: timeout)
+            lastFixFailed = false
+            return coord
         } catch let error as LocationError {
+            lastFixFailed = true
             throw error
         } catch {
+            lastFixFailed = true
             throw LocationError.unavailable
         }
     }

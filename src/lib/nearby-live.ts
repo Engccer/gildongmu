@@ -19,6 +19,26 @@ export type NearbyLiveStatus =
   | { kind: "unavailableHere"; reason: UnavailableHereReason }
   | { kind: "done" };
 
+/**
+ * 이 함수가 **도메인 네임스페이스에서** 읽는 키 전수(`t(...)` 인자).
+ *
+ * 문구 게이트(`manual-location-copy.test.ts`)가 이 목록을 쓴다. 키가 `t`를 인자로
+ * 받는 이 함수 안에 살기 때문에 소비 컴포넌트에는 **리터럴이 하나도 없고**, 리터럴만
+ * 훑는 스캔은 `subwayNearby.locating` 계열 30여 키를 통째로 놓친다 — 지금 새는 것이
+ * 없더라도 **커버리지가 실제보다 넓어 보이는** 것이 문제다(백로그 D20①).
+ *
+ * ⚠ 분기를 추가하면 여기에도 적는다. 목록이 낡으면 가드가 조용히 좁아진다.
+ */
+export const NEARBY_LIVE_DOMAIN_KEYS = [
+  "locating",
+  "loading",
+  "empty",
+  "error",
+  "geoDenied",
+  "geoUnsupported",
+  "ready",
+] as const;
+
 export function nearbyLiveMessage(
   status: NearbyLiveStatus,
   t: Translator,

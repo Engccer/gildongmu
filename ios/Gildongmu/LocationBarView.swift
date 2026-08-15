@@ -71,10 +71,17 @@ struct LocationBarView: View {
         case .denied, .restricted:
             return appLocalized("manualLocation.gpsFailed")
         default:
-            // notDetermined(아직 안 물음)·허용인데 fix 전 둘 다 "확인 중" — 실패는
+            // notDetermined(아직 안 물음)·허용인데 fix 전은 "확인 중"이다 — 실패는
             // 확정됐을 때만 말한다(웹이 idle을 실패로 오판하지 않는 것과 같은 이유).
+            //
+            // ⚠ 다만 **시도해서 실패한 상태는 확정된 실패다**(백로그 D22). 그것까지
+            // "확인 중"으로 두면 실내 측위 실패·타임아웃 뒤 표시줄이 무기한 진행 중을
+            // 말한다 — 거짓 성공이 아니라 멈춘 진행이라 화면으로 반증되지 않는다.
+            // 웹은 거부·위치불가·타임아웃을 모두 `denied`로 합쳐 이 갈래가 없다.
             guard location.lastCoordinate != nil else {
-                return appLocalized("manualLocation.locating")
+                return appLocalized(location.lastFixFailed
+                    ? "manualLocation.gpsFailed"
+                    : "manualLocation.locating")
             }
             // GPS 상태에서만 실주소를 병기한다. 이 기능의 존재 이유가 "GPS가 틀렸을
             // 때 스스로 고치는 것"인데, 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는

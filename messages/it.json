@@ -170,7 +170,8 @@
     "geoError": "Impossibile ottenere la tua posizione. Cerca un punto di partenza.",
     "needEndpoints": "Scegli prima una partenza e una destinazione.",
     "readySummary": "Indicazioni pronte per {count} modalità.",
-    "allFailed": "Nessun percorso trovato."
+    "allFailed": "Nessun percorso trovato.",
+    "entrancePromoted": "Percorso fino a {name}, l'ingresso."
   },
   "detail": {
     "back": "Torna ai risultati"
@@ -933,7 +934,8 @@
     "useGps": "Torna alla posizione attuale",
     "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata.",
     "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale.",
-    "pickTitle": "Imposta la tua posizione"
+    "pickTitle": "Imposta la tua posizione",
+    "addrNoCoord": "Nessuna coordinata registrata per questo indirizzo."
   },
   "surroundings": {
     "button": "Controlla i dintorni",

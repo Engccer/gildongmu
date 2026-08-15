@@ -8601,6 +8601,46 @@
         }
       }
     },
+    "directions.entrancePromoted": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "출입구를 찾아 %1$@까지 안내합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guiding you to %1$@, the entrance."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guiándote hasta %1$@, la entrada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire jusqu'à %1$@, l'entrée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso fino a %1$@, l'ingresso."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "出入口の%1$@まで案内します。"
+          }
+        }
+      }
+    },
     "directions.from": {
       "localizations": {
         "ko": {
