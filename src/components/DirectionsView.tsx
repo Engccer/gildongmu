@@ -589,6 +589,10 @@ export function DirectionsView({
       // 승격본은 여기서 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은
       // 목적지**를 쓰게 한다(§5.1 — 조회마다 다른 목적지를 갖지 않는다).
       let promotedEntranceName: string | null = null;
+      // ⚠ 승격 조회 **전에** loading으로 넘긴다. 이 왕복(최대 2초)도 이 조회의 일부라
+      // 그 사이 화면이 직전 phase에 머물면 결과는 이미 비웠는데 상태 줄만 빈 채로
+      // 남는다(장소→장소 조회에서 settled가 남아 있는 창).
+      setPhase({ kind: "loading" });
       if (to.kind === "place" && dataLocale(locale) === "ko") {
         const entrance = await fetchEntrance(to.label, dest, origin);
         if (myGen !== genRef.current) return;
@@ -599,7 +603,6 @@ export function DirectionsView({
         }
       }
       lastCoordsRef.current = { origin, dest };
-      setPhase({ kind: "loading" });
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);

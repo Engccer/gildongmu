@@ -152,3 +152,47 @@ extension StubNetworkTests {
         #expect(address == nil)
     }
 }
+
+extension StubNetworkTests {
+    /// A11 출입구 승격 조회. **판정은 서버가 소유**하므로 Kit이 검증할 것은 셋뿐이다:
+    /// 요청 파라미터가 맞게 나가는가, 응답이 디코딩되는가, 그리고 **부재·실패가 같은
+    /// nil로 수렴하는가**(둘 다 "대표 좌표로 안내"라는 같은 행동이라 호출자가 가를
+    /// 이유가 없다).
+    @Test func destinationEntranceDecodesMatch() async throws {
+        var seen: URL?
+        StubURLProtocol.handler = { request in
+            seen = request.url
+            return (200, Data(#"{"entrance":{"name":"신명중학교 정문","lat":37.5416844,"lng":127.1489539,"meters":56}}"#.utf8))
+        }
+        let match = await SearchService(client: stubbedClient()).destinationEntrance(
+            name: "신명중학교", lat: 37.5414909, lng: 127.1495375, fromLat: 37.5352, fromLng: 127.1441
+        )
+        #expect(match?.name == "신명중학교 정문")
+        #expect(match?.meters == 56)
+        let query = seen?.query ?? ""
+        #expect(query.contains("fromLat=37.5352"))
+        #expect(query.contains("fromLng=127.1441"))
+    }
+
+    @Test func destinationEntranceOmitsOriginWhenUnknown() async throws {
+        var seen: URL?
+        StubURLProtocol.handler = { request in
+            seen = request.url
+            return (200, Data(#"{"entrance":null}"#.utf8))
+        }
+        let match = await SearchService(client: stubbedClient()).destinationEntrance(
+            name: "천호역", lat: 37.5385, lng: 127.1239, fromLat: nil, fromLng: nil
+        )
+        #expect(match == nil)  // 출입구 없음
+        let query = seen?.query ?? ""
+        #expect(query.contains("fromLat") == false)
+    }
+
+    @Test func destinationEntranceFailureIsNil() async throws {
+        StubURLProtocol.handler = { _ in (502, Data(#"{"error":"실패"}"#.utf8)) }
+        let match = await SearchService(client: stubbedClient()).destinationEntrance(
+            name: "신명중학교", lat: 37.5414909, lng: 127.1495375, fromLat: nil, fromLng: nil
+        )
+        #expect(match == nil)  // 실패도 부재와 같은 행동(원래 목적지로 조회)
+    }
+}
