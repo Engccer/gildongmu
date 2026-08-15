@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   awaitGeolocation,
+  getGeolocationSnapshot,
   requestLocation,
+  subscribeGeolocation,
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
   __resetGeolocationForTest,
 } from "../geolocation";
@@ -126,6 +128,49 @@ describe("geolocation 공유 스토어", () => {
     const [r1, r2] = await Promise.all([p1, p2]);
     expect(r1).toMatchObject({ status: "ready", coords: { lat: 9, lng: 9 } });
     expect(r2).toEqual(r1);
+  });
+});
+
+
+/**
+ * D19 — 화면이 요청하지 않은 측위(수동 위치 이동 판정)가 표시 상태를 흔들면, 그 좌표를
+ * 쓰는 섹션이 통째로 언마운트·재마운트된다(포커스 이탈 + 재fetch). 판정은 옳고 비용만
+ * 문제였다.
+ */
+describe("조용한 갱신 (silent)", () => {
+  it("ready 상태에서는 locating으로 후퇴하지 않고 좌표만 갈아 끼운다", async () => {
+    const seen: string[] = [];
+    const unsub = subscribeGeolocation(() => {
+      seen.push(getGeolocationSnapshot().status);
+    });
+    stubGeo((ok) => ok({ coords: { latitude: 37.5, longitude: 127.1 }, timestamp: Date.now() }));
+    await awaitGeolocation();
+
+    seen.length = 0;
+    stubGeo((ok) => ok({ coords: { latitude: 35.2, longitude: 129.1 }, timestamp: Date.now() }));
+    await awaitGeolocation({ force: true, silent: true });
+    unsub();
+
+    expect(seen).not.toContain("locating");
+    expect(getGeolocationSnapshot()).toMatchObject({
+      status: "ready",
+      coords: { lat: 35.2 },
+    });
+  });
+
+  it("조용한 갱신의 실패는 직전 좌표를 유지한다(denied로 비우지 않는다)", async () => {
+    stubGeo((ok) => ok({ coords: { latitude: 37.5, longitude: 127.1 }, timestamp: Date.now() }));
+    await awaitGeolocation();
+
+    stubGeo((_ok, err) => err({ code: 2 }));
+    const after = await awaitGeolocation({ force: true, silent: true });
+    expect(after).toMatchObject({ status: "ready", coords: { lat: 37.5 } });
+  });
+
+  it("아직 좌표가 없으면 silent여도 평소대로 실패를 말한다", async () => {
+    // 숨길 상태가 없다 — 여기서 조용하면 "확인 중"에 영영 머문다.
+    stubGeo((_ok, err) => err({ code: 1 }));
+    expect(await awaitGeolocation({ silent: true })).toEqual({ status: "denied" });
   });
 });
 

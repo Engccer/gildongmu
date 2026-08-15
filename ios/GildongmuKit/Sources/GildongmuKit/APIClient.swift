@@ -44,13 +44,23 @@ public struct APIClient: Sendable {
         self.session = session
     }
 
-    public func get<T: Decodable & Sendable>(_ path: String, query: [URLQueryItem]) async throws -> T {
+    /// `timeout`을 주면 그 초 안에 끝나지 않는 요청을 포기한다(기본은 URLSession 기본값 60초).
+    ///
+    /// ⚠ **조회 흐름 중간에 직렬로 끼는 보조 요청은 예산을 명시해야 한다.** 그런 요청은
+    /// 실패해도 화면이 진행되지만(예: 출입구 승격), 상한이 없으면 upstream이 느려질 때
+    /// **본 조회 전체가 그만큼 멈춘다** — 시각장애 사용자에게 그 침묵은 고장과 구분되지
+    /// 않는다(웹은 같은 자리를 `AbortController` 2초로 막았고, iOS만 60초로 열려 있었다).
+    public func get<T: Decodable & Sendable>(
+        _ path: String, query: [URLQueryItem], timeout: TimeInterval? = nil
+    ) async throws -> T {
         var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { components.queryItems = query }
+        var request = URLRequest(url: components.url!)
+        if let timeout { request.timeoutInterval = timeout }
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(from: components.url!)
+            (data, response) = try await session.data(for: request)
         } catch {
             throw APIError.network(error)
         }

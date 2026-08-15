@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { DirEndpoint } from "@/lib/directions-state";
 import type { JusoAddress, Place } from "@/lib/types";
@@ -315,6 +315,96 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     ).toBe(true);
     // 수동 위치일 때는 역지오코딩(fetchCurrentAddress)을 호출하지 않는다.
     expect(calledUrls.some((u) => u.startsWith("/api/geocode/reverse"))).toBe(false);
+  });
+});
+
+// A11: 넓은 부지 목적지를 출입구로 승격한다. 검증 축 둘 — **전 수단 조회가 승격
+// 좌표로 나가는가**(승격이 표시만 바꾸고 경로는 본관으로 가면 도착 판정이 그대로
+// 안 선다)와 **승격 문장이 단일 live region에 실리는가**(결과 앞 정적 텍스트로
+// 두면 조회 완료 시 첫 성공 heading으로 포커스가 뛰어 SR이 그 문장을 지나친다).
+describe("DirectionsView 출입구 승격(A11)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    __resetManualLocationForTest();
+  });
+
+  beforeEach(() => {
+    // 출발지는 "현재 위치"라 측위가 성공해야 조회가 진행된다(전역 mock은 항상 error).
+    vi.mocked(awaitGeolocation).mockResolvedValue({
+      status: "ready",
+      coords: { lat: 37.5352, lng: 127.1441 },
+    });
+  });
+
+  /** 승격 응답을 주는 fetch 스텁. 호출 URL을 모아 조회 좌표를 검증한다. */
+  function stubWithEntrance(entrance: unknown) {
+    const calledUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calledUrls.push(url);
+        if (url.startsWith("/api/places/entrance")) {
+          return { ok: true, json: async () => ({ entrance }) } as Response;
+        }
+        if (url.startsWith("/api/route/car")) {
+          return {
+            ok: true,
+            json: async () => ({ provider: "tmap", durationSeconds: 600 }),
+          } as Response;
+        }
+        if (url.startsWith("/api/route/")) {
+          return { ok: true, json: async () => ({ result: null }) } as Response;
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    return calledUrls;
+  }
+
+  it("승격되면 승격 좌표로 조회하고 고지가 단일 live region에 실린다", async () => {
+    const calledUrls = stubWithEntrance({
+      name: "신명중학교 정문",
+      lat: 37.5416844,
+      lng: 127.1489539,
+      meters: 56,
+    });
+    renderView({
+      initialTo: {
+        kind: "place",
+        label: "신명중학교",
+        coord: { lat: 37.5414909, lng: 127.1495375 },
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "readySummary entrancePromoted",
+      );
+    });
+    // 경로 조회가 승격 좌표로 나갔다 — 표시만 바꾸고 본관으로 조회하면 이 단언이 red다.
+    expect(
+      calledUrls.some((u) => u.includes("dest=37.5416844,127.1489539")),
+    ).toBe(true);
+    expect(calledUrls.some((u) => u.includes("dest=37.5414909,127.1495375"))).toBe(false);
+  });
+
+  it("승격이 없으면 원래 목적지로 조회하고 고지도 없다", async () => {
+    const calledUrls = stubWithEntrance(null);
+    renderView({
+      initialTo: {
+        kind: "place",
+        label: "강동성심병원",
+        coord: { lat: 37.5335, lng: 127.131 },
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("readySummary");
+    });
+    expect(calledUrls.some((u) => u.includes("dest=37.5335,127.131"))).toBe(true);
   });
 });
 

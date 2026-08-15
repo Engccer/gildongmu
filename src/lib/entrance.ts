@@ -32,7 +32,6 @@ export interface EntranceMatch {
  * 자격·이득 게이트 상수(§2·§3.1). **셋 다 잠정값이고 실보행 재판정 대상이다.**
  * 도착 반경(15m)과 달리 이것들은 "승격이 이득인가"라는 다른 축이라 동결 대상이 아니다.
  */
-export const ENTRANCE_CANDIDATE_RADIUS_M = 1000;
 export const ENTRANCE_MAX_PROMOTION_M = 300;
 export const ENTRANCE_MIN_ORIGIN_DISTANCE_M = 200;
 /** 거리 동률 판정 폭(m). 이 안이면 이름으로 결정론적으로 가른다. */
@@ -70,7 +69,7 @@ function normalizeName(name: string): string {
  * 승격이 아니라 다른 목적지다.
  */
 const ENTRANCE_TOKEN =
-  /^(?:\d+단지|제?\d*정문|제?\d*후문|측문|쪽문|[동서남북]{1,2}\d*문|\d+문|\d*번?출입구\d*|입구|\d*번?게이트\d*(?:-\d+)?|gate\d*)/;
+  /^(?:\d+단지|제?\d*정문|제?\d*후문|측문|쪽문|제?[동서남북]{1,2}\d*문|제?\d+문|\d*번?출입구\d*|입구|\d*번?게이트\d*(?:-\d+)?|gate\d*)/;
 
 /**
  * POI 이름에서 목적지 이름을 뗀 **잔여**. 출입구로 볼 수 없으면 null.
@@ -144,8 +143,9 @@ export function chooseEntrance(input: ChooseEntranceInput): EntranceMatch | null
       meters: metersBetween(dest, poi),
       fromMeters: from ? metersBetween(from, poi) : null,
     }))
-    .filter((c) => c.meters <= ENTRANCE_CANDIDATE_RADIUS_M)
-    // 승격 폭 상한 — 후보 반경(1km)과 다른 축이다.
+    // 유일한 기하 경계는 **승격 폭 상한**이다. 후보 반경을 따로 두면(초안은 1km)
+    // 상한이 그것보다 좁아 영영 발화하지 않는 죽은 필터가 된다 — 이름이 같은 타
+    // 도시 시설은 이 상한이 이미 훨씬 앞에서 거른다.
     .filter((c) => c.meters <= ENTRANCE_MAX_PROMOTION_M);
   // ⚠ "출입구가 출발지에서 더 가까울 때만"이라는 게이트는 두지 않는다(설계 리뷰 B4의
   // 셋 중 하나만 기각). 부지 반대편에 문이 하나뿐이면 도보 경로는 **어차피 그 문에서

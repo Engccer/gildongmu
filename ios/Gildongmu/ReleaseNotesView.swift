@@ -19,17 +19,20 @@ enum ReleaseNotesLoader {
     /// 리소스 부재·디코드 실패는 nil — 화면이 오류 1행으로 정직하게 알린다
     /// (빈 목록으로 위장 금지, 3-state).
     ///
-    /// 설치된 빌드보다 높은 버전은 여기서 걸러진다. 필터가 **전부** 걸러내면 빈 배열이
-    /// 아니라 원본을 그대로 준다 — 그 경우는 "이 빌드가 번들보다 오래됐다"가 아니라
-    /// 버전 표기가 어긋났다는 뜻이고, 목록을 비우면 "이력이 없다"는 거짓이 된다.
+    /// 설치된 빌드보다 높은 버전은 여기서 걸러진다.
+    ///
+    /// ⚠ **필터 결과가 비어도 원본으로 되돌리지 않는다.** 초안은 "그러면 버전 표기가
+    /// 어긋난 것"이라며 전량 폴백을 뒀는데, 그 분기가 실제로 열리는 유일한 조건은
+    /// **번들에 미래 버전 노트만 있는 상태**이고 그것이 정확히 이 필터가 막으려던
+    /// 누출이다(독립 리뷰 지적). 출하된 빌드의 번들에는 자기 버전 이하 항목이 반드시
+    /// 들어 있으므로 빈 목록은 실무상 도달하지 않는다.
     static func load(bundle: Bundle = .main) -> [ReleaseNote]? {
         guard let url = bundle.url(forResource: "release-notes", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let all = try? JSONDecoder().decode([ReleaseNote].self, from: data)
         else { return nil }
         let installed = installedVersion(bundle: bundle)
-        let visible = all.filter { isReleaseNoteVisible(noteVersion: $0.version, appVersion: installed) }
-        return visible.isEmpty ? all : visible
+        return all.filter { isReleaseNoteVisible(noteVersion: $0.version, appVersion: installed) }
     }
 
     /// 설치된 빌드의 표시 버전(`CFBundleShortVersionString`). 예: `1.7.0`.

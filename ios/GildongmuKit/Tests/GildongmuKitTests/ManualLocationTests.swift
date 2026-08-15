@@ -47,7 +47,8 @@ private func loadScenarios() throws -> Scenarios {
     #expect(ManualLocationPolicy.fixMaxAgeSeconds == 10)
 }
 
-/// 주석·문자열 리터럴을 뺀 구현 본문. **소스 가드는 주석을 보면 안 된다** — 금지
+/// 주석을 뺀 구현 본문(문자열 리터럴은 남긴다 — 이 가드가 찾는 식별자는 리터럴 안에
+/// 등장하지 않는다). **소스 가드는 주석을 보면 안 된다** — 금지
 /// 대상을 설명하는 주석이 스스로 위반으로 잡히고(그래서 종전 가드는 주석에도 반응했다),
 /// 반대로 코드에서 사라진 참조가 주석에 남아 통과를 막는다.
 private func strippingComments(_ source: String) -> String {

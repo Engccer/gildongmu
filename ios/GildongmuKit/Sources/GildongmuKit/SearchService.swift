@@ -135,7 +135,12 @@ public struct SearchService: Sendable {
             query.append(URLQueryItem(name: "fromLat", value: String(fromLat)))
             query.append(URLQueryItem(name: "fromLng", value: String(fromLng)))
         }
-        let response: EntranceResponse? = try? await client.get("/api/places/entrance", query: query)
+        // 웹 `fetchEntrance`와 같은 2초 예산(spec §5). 대부분의 목적지는 출입구가 없어
+        // 이 왕복은 **이득 없이 본 조회 앞에 붙는 지연**이고, 상한이 없으면 upstream이
+        // 느릴 때 길찾기 조회 전체가 최대 60초 멈춘다(독립 리뷰 2건이 같은 지적).
+        let response: EntranceResponse? = try? await client.get(
+            "/api/places/entrance", query: query, timeout: 2
+        )
         return response?.entrance
     }
 }

@@ -328,6 +328,9 @@ final class DirectionsModel {
         // 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다). 승격본은 여기서
         // 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은 목적지**를 쓴다
         // (§5.1 — 조회마다 다른 목적지를 갖지 않는다). 실패·부재는 조용히 원래 목적지.
+        // ⚠ 승격 왕복도 이 조회의 일부라 **그 전에** loading으로 넘긴다. 아니면 그
+        // 사이 화면이 직전 phase(settled)에 머물면서 결과만 비어 있는 창이 생긴다.
+        phase = .loading
         var entrance: EntranceMatch?
         if case .place(let label, _, _) = to, AppLanguage.dataLocale == "ko" {
             entrance = await searchService.destinationEntrance(
@@ -341,7 +344,6 @@ final class DirectionsModel {
         let promoted = entrance.map { (label: $0.name, lat: $0.lat, lng: $0.lng) }
         let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
         lastCoords = (origin: origin, dest: dest)
-        phase = .loading
 
         // 3수단 병렬. 도보는 앱 언어 ko 전용(웹 prefersEnglish 분기 동형, 조회 자체 생략).
         let includeWalk = AppLanguage.current == "ko"
