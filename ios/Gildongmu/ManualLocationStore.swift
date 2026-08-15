@@ -38,12 +38,17 @@ final class ManualLocationStore {
         return decoded
     }
 
+    /// ⚠ **시각(`at`·`setAt`)의 유한성도 본다**(백로그 D18④, 웹 zod 스키마와 축 동조).
+    /// `at`이 NaN이면 판정 경로의 나이 비교(`nowSeconds - fix.at <= 상한`)가 **항상
+    /// 거짓**이 되어 판정이 영구 `undecidable`이 되고, 수동 위치가 해제도 확정도 되지
+    /// 않는 상태에 갇힌다. 오류가 아니라 조용한 고착이라 화면으로 드러나지 않는다.
     private static func isValid(_ m: ManualLocation) -> Bool {
-        guard m.lat.isFinite, m.lng.isFinite,
+        guard m.lat.isFinite, m.lng.isFinite, m.setAt.isFinite,
               (-90...90).contains(m.lat), (-180...180).contains(m.lng),
               !m.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if let o = m.origin {
             guard o.lat.isFinite, o.lng.isFinite, o.accuracy.isFinite, o.accuracy > 0,
+                  o.at.isFinite,
                   (-90...90).contains(o.lat), (-180...180).contains(o.lng) else { return false }
         }
         return true

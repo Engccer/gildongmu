@@ -45,11 +45,12 @@ function toRealFix(state: GeoState): RealFix | null {
     // 상한과 같은 값으로 취급한다 — 이 값이 separation에서 차감되므로 판정은
     // 보수적(유지 쪽)으로 기운다.
     accuracy: state.coords.accuracy ?? 100,
-    // 웹은 fix 시각을 스토어에 보관하지 않는다. 판정은 항상 force:true라
-    // `maximumAge:0`으로 방금 받은 좌표이고, 예외적으로 진행 중인 요청에
-    // 합류해 최대 60초 된 좌표를 받더라도 그 좌표는 **옛 자리**를 가리켜
+    // 스토어가 보관한 fix 취득 시각(A7). 없으면(구 좌표·시각 불명) 지금으로
+    // 도장을 찍는다 — 판정 나이 상한(10초)을 통과시키는 쪽이라 보수적으로 보이지만,
+    // 판정은 항상 force:true라 `maximumAge:0`으로 방금 받은 좌표이고, 예외적으로
+    // 진행 중인 요청에 합류해 낡은 좌표를 받더라도 그 좌표는 **옛 자리**를 가리켜
     // 판정을 유지 쪽으로 기울인다(안전한 실패 방향).
-    at: Date.now() / 1000,
+    at: state.coords.at ?? Date.now() / 1000,
     __source: "real",
   };
 }
@@ -80,7 +81,16 @@ export async function runManualLocationJudgment(): Promise<void> {
   }
 
   const captured = manual.revision;
-  const fix = await awaitRealFix({ force: true });
+  // silent: 이 측위는 **화면이 요청한 것이 아니다**(포그라운드 복귀 트리거). 공유
+  // 스토어를 `locating`으로 되돌리면 그 좌표를 쓰는 섹션이 언마운트·재마운트된다
+  // (백로그 D19).
+  //
+  // ⚠ silent 실패는 직전 `ready`를 그대로 두므로 **여기서 옛 좌표를 받을 수 있다.**
+  // 그것이 안전한 이유는 좌표에 취득 시각(`at`)이 실려 있고 `isEligibleFix`가 나이
+  // 상한(10초)으로 거르기 때문이다 — 옛 fix는 판정 자격을 잃어 `undecidable`이 된다
+  // (증거 부재를 유지로 읽는 안전한 방향). `at`이 없던 시절이라면 이 조합이 옛 자리로
+  // 판정하는 결함이 됐다.
+  const fix = await awaitRealFix({ force: true, silent: true });
   const verdict = judgeManualLocation(manual, fix, Date.now() / 1000);
 
   // CAS: 판정 왕복 중 사용자가 새 위치를 지정했으면 늦게 온 옛 판정이 그것을

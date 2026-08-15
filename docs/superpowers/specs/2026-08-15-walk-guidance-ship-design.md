@@ -81,21 +81,21 @@ static let experimentalGuidanceEnabled = false
 
 ### 3.2 봉인의 판정 축은 "세션을 시작시키는 호출"이다
 
-⚠ **플래그 참조 목록과 세션 진입점 목록은 같은 집합이 아니다**(리뷰 #3). 종전 판은 `DirectionsTabView`의 플래그 참조 6곳만 열거했는데, 그중 일부는 진입점이 아니고(고지 문구) 반대로 진입점인데 플래그를 안 보는 자리가 있다. **봉인의 정본 축은 `beacon.toggle`·`transitGuide` 세션 시작 호출 전수**다.
+⚠ **플래그 참조 목록과 세션 진입점 목록은 같은 집합이 아니다**(리뷰 #3). 종전 판은 `DirectionsTabView`의 플래그 참조 6곳만 열거했는데, 그중 일부는 진입점이 아니고(고지 문구) 반대로 진입점인데 플래그를 안 보는 자리가 있다. **봉인의 정본 축은 `beacon.toggle`·`beacon.restart`·`transitGuide` 세션 시작 호출 전수**다.
 
-**세션을 시작시키는 호출 전수**(2026-08-15 코드 실측, `beacon.toggle` 6곳 + 대중교통):
+**세션을 시작시키는 호출 전수**(2026-08-15 코드 실측, 진입점 6곳 + 대중교통. ⚠ 2026-08-16 A13으로 재시작 자리의 **호출 형태가 바뀌었다** — `toggle`만 세면 그 진입점이 시야에서 사라진다):
 
 | 자리 | 무엇을 시작하는가 | 정식판 도달 | 근거 |
 |---|---|---|---|
 | `1258` 도보 추천 시작 버튼 | 도보 세션 | **가능** | `walkGuideStartable` 안 |
 | `1283` 도보 최단 시작 버튼 | 도보 세션(`variant: .shortest`) | **가능** | 같은 `walkGuideStartable` 안(§3.4) |
-| `633` 정밀 위치 허용 후 재시작 | 도보 세션(`kind` 기본값 `.walk`) | **가능** | 게이트 밖이지만 도달 조건이 "이미 실패한 세션"이라 정당(§3.3) |
+| 정밀 위치 허용 후 재시작(`beacon.restart()`) | **직전 세션과 같은 수단·경로**(A13, 2026-08-16) | **가능** | 게이트 밖이지만 도달 조건이 "이미 실패한 세션"이라 정당(§3.3) |
 | `611` 간략 단독 시작 버튼 | 도보 세션 | **차단** | `experimentalGuidanceEnabled`(§3.3) |
 | `684` 자동차 시작 버튼 | 자동차 세션 | **차단** | `experimentalGuidanceEnabled` |
 | `964` 대중교통→도보 인계 | 도보 세션 | **차단** | 대중교통 세션 안에서만 호출되고 그 세션이 봉인된다 |
 | `transitGuideStartable`·`altTransitGuideStartable` | 대중교통 세션 | **차단** | `experimentalGuidanceEnabled` |
 
-**외부 진입 경로는 없다**(리뷰 #3의 "확인 필요"에 대한 실측 답): `beacon.toggle` 호출은 `DirectionsTabView` 밖에 없고, `AppShortcuts`·App Intent·딥링크에 안내 시작 경로가 없다. 세션 복원 기능도 없다(앱을 내리면 세션이 끝난다). 따라서 `964`의 안전성이 "대중교통 세션의 유일한 생성 경로가 UI 게이트"라는 가정에 의존한다는 지적은 맞지만, 그 가정은 실측으로 참이다. **신규 진입점을 만들 때 이 표를 갱신하는 것이 계약이다.**
+**외부 진입 경로는 없다**(리뷰 #3의 "확인 필요"에 대한 실측 답): `beacon.toggle`·`beacon.restart` 호출은 `DirectionsTabView` 밖에 없고, `AppShortcuts`·App Intent·딥링크에 안내 시작 경로가 없다. 세션 복원 기능도 없다(앱을 내리면 세션이 끝난다). 따라서 `964`의 안전성이 "대중교통 세션의 유일한 생성 경로가 UI 게이트"라는 가정에 의존한다는 지적은 맞지만, 그 가정은 실측으로 참이다. **신규 진입점을 만들 때 이 표를 갱신하는 것이 계약이다.**
 
 **플래그 참조 6곳의 처리**(위 축의 구현):
 
@@ -297,7 +297,7 @@ iOS 전용 문자열이므로 `ios/i18n/ios-extra/{locale}.json`에 넣는다(�
 
 1. **봉인 유지**: `beacon.toggle` 호출 중 자동차 시작(`684`)·간략 단독 시작(`611`)이 `experimentalGuidanceEnabled` 게이트 안에 있고, `transitGuideStartable`·`altTransitGuideStartable`도 같은 플래그를 참조한다.
 2. **졸업 완료**: `walkGuideStartable`과 `manualOriginNoticeText`에 `experimentalGuidanceEnabled` 참조가 **없다**.
-3. **진입점 증가 감시**: `ios/Gildongmu` 전체의 `beacon.toggle(` 호출 수가 §3.2 표의 개수와 같다. 늘면 테스트가 실패하고, 그때 표를 갱신하며 정식판 도달 여부를 판정한다. **이것이 "플래그 참조만 세다가 새 진입점을 놓치는" 실패를 막는 유일한 자동 장치다.**
+3. **진입점 증가 감시**: `ios/Gildongmu` 전체의 `beacon.toggle(`·`beacon.restart(` 호출 수 합이 §3.2 표의 개수와 같다. 늘면 테스트가 실패하고, 그때 표를 갱신하며 정식판 도달 여부를 판정한다. **이것이 "플래그 참조만 세다가 새 진입점을 놓치는" 실패를 막는 유일한 자동 장치다.**
 4. **백그라운드 모드**: `ios/Support/Info.plist`의 `UIBackgroundModes`에 `location`과 `audio`가 둘 다 있다.
 5. **권한 문구 단일 관리**: `experimental-infoplist.sh`에 `NSLocationWhenInUseUsageDescription`이 더 이상 등장하지 않는다.
 6. **화면 힌트 부재**(§4.4): `ios/Gildongmu` 전체에 `beacon.screenHint`·`beaconScreenHintDismissed` 참조가 없다. 웹(`src/`)에는 남아 있어야 하므로 스캔 범위를 iOS로 한정한다. 이 가드가 없으면 삭제가 되돌아와도 조용하다 — 두 문장의 모순은 **잠금 화면에서 걸을 때만** 드러나기 때문이다.

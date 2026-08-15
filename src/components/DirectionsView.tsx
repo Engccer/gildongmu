@@ -14,7 +14,10 @@ import type {
 } from "@/lib/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
-import { getGeolocationSnapshot } from "@/lib/geolocation";
+import {
+  DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
+  getGeolocationSnapshot,
+} from "@/lib/geolocation";
 import { awaitEffectiveLocation } from "@/lib/effective-location";
 import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLocation";
 import { isInKorea } from "@/lib/coverage";
@@ -68,6 +71,14 @@ type QueryResults = {
   destLabel: string;
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
+  /**
+   * 출입구로 승격됐으면 그 이름(A11). null이면 승격 없음 — **조회 실패와 구분하지
+   * 않는다**(둘 다 대표 좌표로 안내하므로 사용자 행동이 같다).
+   *
+   * ⚠ 승격본은 `destCoord`·`destLabel`에 이미 반영돼 있다. 이 필드는 "승격이
+   * 일어났다"는 고지 문장의 근거일 뿐이고, 목적지의 정본은 위 둘이다.
+   */
+  promotedEntranceName: string | null;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /**
    * 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정.
@@ -128,6 +139,48 @@ async function fetchCurrentAddress(coord: Coord): Promise<string | null> {
     return body.address;
   } catch {
     return null;
+  }
+}
+
+/**
+ * 목적지 출입구 승격 조회(A11, spec 2026-08-16).
+ *
+ * 넓은 부지(학교·아파트단지)는 검색이 주는 대표 좌표가 본관이고 도보 경로는 정문에서
+ * 끝나, 그 차이가 통째로 종점 오프셋이 되어 도착 판정이 성립하지 않는다(등교 실보행
+ * 실측 58.8m → 승격 후 4.5m).
+ *
+ * ⚠ 실패·시간 초과는 **조용히 null**이다. 승격 부재와 조회 실패는 사용자 행동이 같고
+ * (대표 좌표로 안내), 여기서 오류를 말하면 길찾기 자체가 실패한 것으로 들린다. 이 조용함이
+ * 정직한 이유는 승격이 한 번 성립하면 그 조회 안에서 되돌아가지 않기 때문이다(§5.1).
+ *
+ * ⚠ 예산 2초. 대부분의 목적지는 출입구 POI가 없으므로(실측) 이 조회는 **다수 조회에
+ * 아무 이득 없이 붙는 지연**이다 — 상한을 짧게 두는 이유다.
+ */
+async function fetchEntrance(
+  name: string,
+  dest: Coord,
+  origin: Coord,
+): Promise<{ name: string; lat: number; lng: number } | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 2_000);
+  try {
+    const params = new URLSearchParams({
+      name,
+      lat: String(dest.lat),
+      lng: String(dest.lng),
+      fromLat: String(origin.lat),
+      fromLng: String(origin.lng),
+    });
+    const res = await fetch(`/api/places/entrance?${params}`, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      entrance?: { name: string; lat: number; lng: number } | null;
+    };
+    return body.entrance ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -488,15 +541,22 @@ export function DirectionsView({
       // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
       // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
       setWalkExpanded(null);
-      // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(캐시 좌표 재사용,
-      // 권한 팝업 세션 1회). `?dir=` 복원 경로도 같은 재측위를 탄다.
+      // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(권한 팝업 세션 1회).
+      // 캐시를 재사용하되 **나이 상한**을 건다(A7) — 이 스토어에는 TTL이 없어서 앱을
+      // 켜고 처음 잰 좌표가 세션 내내 출발지가 되고, 그 좌표는 경로 origin이자 네이티브
+      // 지도 앱 딥링크 출발지로 그대로 나간다. 이동한 뒤 조회하면 오류도 빈 결과도 아닌
+      // **옛 자리에서 출발하는 그럴듯한 경로**가 오므로 실패가 보이지 않는다.
+      // `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
       // "from"이 "현재 위치"였을 때 그 좌표의 출처(gps·manual). 안내 시작 버튼이
       // 실좌표로 다시 조회한다는 것을 알려야 할지 판단하는 근거(§ guideNeedsRealLocation).
       let originSource: "gps" | "manual" | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
-        const effective = await awaitEffectiveLocation({ force: false });
+        const effective = await awaitEffectiveLocation({
+          force: false,
+          maxAgeSeconds: DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
+        });
         if (myGen !== genRef.current) return;
         if (!effective) {
           setNotice(""); // 중지 통지가 종단 phase 통지를 가리지 않게
@@ -522,7 +582,22 @@ export function DirectionsView({
         }
       }
       const origin = from.kind === "current" ? (cur as Coord) : from.coord;
-      const dest = to.kind === "current" ? (cur as Coord) : to.coord;
+      let dest = to.kind === "current" ? (cur as Coord) : to.coord;
+      let destLabel = to.kind === "current" ? currentLabel : to.label;
+      // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만
+      // (도보 경로 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다).
+      // 승격본은 여기서 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은
+      // 목적지**를 쓰게 한다(§5.1 — 조회마다 다른 목적지를 갖지 않는다).
+      let promotedEntranceName: string | null = null;
+      if (to.kind === "place" && dataLocale(locale) === "ko") {
+        const entrance = await fetchEntrance(to.label, dest, origin);
+        if (myGen !== genRef.current) return;
+        if (entrance) {
+          dest = { lat: entrance.lat, lng: entrance.lng };
+          destLabel = entrance.name;
+          promotedEntranceName = entrance.name;
+        }
+      }
       lastCoordsRef.current = { origin, dest };
       setPhase({ kind: "loading" });
 
@@ -560,8 +635,9 @@ export function DirectionsView({
           : null,
       );
       setResults({
-        destLabel: to.kind === "current" ? currentLabel : to.label,
+        destLabel,
         destCoord: dest,
+        promotedEntranceName,
         outcomes,
         orderedModes,
         originSource,
@@ -662,11 +738,23 @@ export function DirectionsView({
         ? t("readySummary", { count: settledCount })
         : t("allFailed")
       : "";
+  // A11 승격 고지도 같은 단일 polite 채널에 합친다. 결과 앞 정적 텍스트로 두면
+  // settled 직후 첫 성공 heading으로 포커스가 강제 이동하므로(위 requestAnimationFrame)
+  // SR 순방향 탐색이 이미 지나친 자리가 되어 **목적지 이름이 바뀐 사실을 못 듣는다**
+  // (guideNeedsRealLocation이 같은 이유로 여기 있다). iOS는 조회 후 포커스를 옮기지
+  // 않아 정적 텍스트가 맞다 — 같은 선례가 플랫폼마다 다른 구현으로 귀결되는 자리다.
+  const entranceNotice = results?.promotedEntranceName
+    ? t("entrancePromoted", { name: results.promotedEntranceName })
+    : "";
   const phaseMessage =
     phase.kind === "settled"
-      ? results?.originSource === "manual"
-        ? `${settledSummary} ${tManual("guideNeedsRealLocation")}`
-        : settledSummary
+      ? [
+          settledSummary,
+          entranceNotice,
+          results?.originSource === "manual" ? tManual("guideNeedsRealLocation") : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
       : phase.kind === "idle"
         ? ""
         : phase.kind === "outOfCoverage"

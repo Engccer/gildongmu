@@ -12,7 +12,7 @@ import { join } from "node:path";
  *
  * ⚠ 판정 축은 **플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수**다(spec §3.2).
  * 플래그가 몇 군데 있는지만 세면 "진입점인데 플래그를 안 보는 자리"를 놓친다. 그래서
- * 아래 검사 3(`beacon.toggle(` 호출 수 고정)이 이 파일의 중심이다.
+ * 아래 검사 3(세션 시작 호출 수 고정 — `beacon.toggle(`·`beacon.restart(`)이 이 파일의 중심이다.
  */
 
 const ROOT = join(__dirname, "../../..");
@@ -21,7 +21,6 @@ const INFO_PLIST = join(ROOT, "ios/Support/Info.plist");
 const EXPERIMENTAL_SH = join(ROOT, "ios/scripts/experimental-infoplist.sh");
 const INFOPLIST_XCSTRINGS = join(ROOT, "ios/Gildongmu/Resources/InfoPlist.xcstrings");
 const IOS_DIR = join(ROOT, "ios");
-const APP_DIR = join(ROOT, "ios/Gildongmu");
 
 const FLAG = "AppConfig.experimentalGuidanceEnabled";
 
@@ -169,9 +168,13 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
 
 describe("3. 안내 세션 진입점이 늘지 않았다", () => {
   /**
-   * `beacon.toggle(` 호출 = 안내 세션을 시작시키는 자리. spec §3.2가 6곳을 전수
-   * 판정해 두었다(도보 추천·도보 최단·정밀 위치 허용 후 재시작은 정식판 도달, 간략
-   * 단독·자동차·대중교통 인계는 차단).
+   * 안내 세션을 시작시키는 자리의 **전수**. spec §3.2가 6곳을 판정해 두었다(도보
+   * 추천·도보 최단·정밀 위치 허용 후 재시작은 정식판 도달, 간략 단독·자동차·대중교통
+   * 인계는 차단).
+   *
+   * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
+   * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는
+   * 그 진입점을 통째로 시야에서 잃었다 — 호출 형태가 늘면 여기에 함께 적는다.
    *
    * ⚠ 이 수가 늘면 실패하는 것이 **의도**다. 새 진입점이 생기면 spec §3.2 표를
    * 갱신하며 그 자리가 정식판에 도달하는지 판정한 뒤 이 수를 올린다. 플래그 참조만
@@ -182,12 +185,23 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 서브뷰나 Kit으로 전달되는 리팩터링이 오면 앱 타깃만 세는 가드는 그 새 진입점을
    * 놓친다. 스캔 범위를 좁힐 이유가 없으므로 넓은 쪽이 기본이다.
    */
-  it("beacon.toggle( 호출이 정확히 6곳이다", () => {
+  const ENTRY_CALL = /beacon\.(?:toggle|restart)\(/g;
+
+  it("안내 세션 진입점 호출이 정확히 6곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
-      const hits = readFileSync(file, "utf8").match(/beacon\.toggle\(/g) ?? [];
+      const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
     expect(sites).toHaveLength(6);
+  });
+
+  it("재시작 진입점은 인자를 다시 조립하지 않는다(A13)", () => {
+    // `restart()`가 인자를 받게 되는 순간 호출부가 다시 시작 인자의 소유자가 되고,
+    // 그 자리에서 하나를 빠뜨리는 것이 정확히 A13의 결함이었다.
+    const hits = swiftFiles(IOS_DIR).flatMap(
+      (file) => readFileSync(file, "utf8").match(/beacon\.restart\([^)]*\)/g) ?? [],
+    );
+    expect(hits).toEqual(["beacon.restart()"]);
   });
 });
 

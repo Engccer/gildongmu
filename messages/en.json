@@ -170,7 +170,8 @@
     "geoError": "Couldn't get your location. Please search for a starting point.",
     "needEndpoints": "Please choose a starting point and destination first.",
     "readySummary": "Route guidance is ready for {count} modes.",
-    "allFailed": "No routes found."
+    "allFailed": "No routes found.",
+    "entrancePromoted": "Guiding you to {name}, the entrance."
   },
   "detail": {
     "back": "Back to results"
@@ -933,7 +934,8 @@
     "useGps": "Back to current location",
     "autoCleared": "Movement detected. The set location was cleared.",
     "guideNeedsRealLocation": "Live guidance needs your actual location.",
-    "pickTitle": "Set your location"
+    "pickTitle": "Set your location",
+    "addrNoCoord": "No coordinates are registered for that address."
   },
   "surroundings": {
     "button": "Check surroundings",

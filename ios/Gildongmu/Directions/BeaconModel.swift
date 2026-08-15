@@ -367,29 +367,68 @@ final class BeaconModel {
 
     // MARK: - 시작·중지
 
-    /// ⚠ `accessible`에 **기본값을 두지 않는다** — 백로그 A4는 생략 가능한 안전
-    /// 인자가 만든 결함이었다(spec 2026-08-08 §2.5). 계단 회피 개념이 없는 수단은
-    /// 호출부가 `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
+    /// 세션 시작 인자 **한 벌**. 재시작이 이것을 그대로 다시 쓴다.
+    ///
+    /// ⚠ 인자가 호출부마다 흩어져 있는 것이 A13의 근본 원인이었다: 정밀 위치 복구
+    /// 경로가 `dest`·`label`·`accessible`만 다시 적고 `variant`·`shortestAvailable`·
+    /// `kind`를 빠뜨려, **최단 경로로 시작한 세션이 재시작 뒤 추천 경로가 되고**
+    /// 자동차 세션은 도보가 됐다. 증상이 조용하다(재시작은 성공하고 안내도 정상이라
+    /// 사용자는 자기가 고른 경로가 아니라는 것을 한참 듣고서야 안다). 인자를 하나 더
+    /// 넘기는 수정은 다음 인자가 늘 때 같은 자리에서 재발한다.
+    private struct StartRequest {
+        let dest: BeaconDest
+        let label: String
+        let kind: GuideSessionKind
+        let accessible: Bool
+        let variant: WalkRouteVariant?
+        let shortestAvailable: Bool
+    }
+
+    /// 직전에 시작한 세션의 인자. 시작 실패(정밀 위치 꺼짐 등) 뒤에도 남아 있어야
+    /// 복구 재시작이 같은 세션을 재현한다.
+    private var lastStartRequest: StartRequest?
+
+    /// ⚠ `accessible`·`kind`에 **기본값을 두지 않는다** — 백로그 A4·A13이 둘 다
+    /// 생략 가능한 안전 인자가 만든 결함이었다(spec 2026-08-08 §2.5,
+    /// [[no-default-for-safety-parameters]]). 계단 회피 개념이 없는 수단은 호출부가
+    /// `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
     func toggle(
-        dest: BeaconDest, label: String, kind: GuideSessionKind = .walk, accessible: Bool,
+        dest: BeaconDest, label: String, kind: GuideSessionKind, accessible: Bool,
         variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
     ) {
         if isTracking {
             stop(playStopTone: true)
         } else {
-            guard !starting else { return }
-            starting = true
-            // 세션 시작 시점 값이 세션 내내 유효하다 — 추적 중에는 시트가 화면을
-            // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
-            self.accessible = accessible
-            sessionVariant = variant
-            shortestVariantAvailable = variant == .shortest || shortestAvailable
-            lastStepFree = nil
-            pendingStepFreeNotice = nil
-            startTask = Task { [weak self] in
-                await self?.start(dest: dest, label: label, kind: kind)
-                self?.starting = false
-            }
+            begin(StartRequest(
+                dest: dest, label: label, kind: kind, accessible: accessible,
+                variant: variant, shortestAvailable: shortestAvailable))
+        }
+    }
+
+    /// 같은 세션을 다시 시작한다(정밀 위치 허용 후 복구 경로).
+    ///
+    /// ⚠ 저장된 시작 인자가 없으면 **아무것도 하지 않는다.** 추측 기본값으로 시작하면
+    /// 사용자가 고르지 않은 수단·경로로 안내가 시작되고, 그것이 A13이 만든 증상 그
+    /// 자체다. 추적 중에도 no-op이다 — 이 함수는 시작이지 토글이 아니다.
+    func restart() {
+        guard !isTracking, let request = lastStartRequest else { return }
+        begin(request)
+    }
+
+    private func begin(_ request: StartRequest) {
+        guard !starting else { return }
+        starting = true
+        lastStartRequest = request
+        // 세션 시작 시점 값이 세션 내내 유효하다 — 추적 중에는 시트가 화면을
+        // 덮어 토글에 물리적으로 도달할 수 없다(spec §2.2).
+        self.accessible = request.accessible
+        sessionVariant = request.variant
+        shortestVariantAvailable = request.variant == .shortest || request.shortestAvailable
+        lastStepFree = nil
+        pendingStepFreeNotice = nil
+        startTask = Task { [weak self] in
+            await self?.start(dest: request.dest, label: request.label, kind: request.kind)
+            self?.starting = false
         }
     }
 
@@ -1325,8 +1364,27 @@ final class BeaconModel {
             ),
             now: now
         )
-        guard let event = out.event else { return }
+        guard let event = out.event else {
+            syncStatusTextWithPhase(out.state.phase)
+            return
+        }
         consume(event: event, route: route)
+    }
+
+    /// 이벤트 없이 **국면만** 바뀐 fix의 상태 텍스트를 되돌린다(백로그 D12).
+    ///
+    /// 왜 필요한가: `statusText`는 이벤트 소비 시점에만 대입되는 **래치**다. 재획득
+    /// 국면에서 위치는 되찾았는데 방위가 확인되지 않으면 리듀서가 국면을 `.offRoute`로
+    /// 되돌리면서 **이벤트는 내지 않는다**(이탈은 이미 통지한 상태라 재통지가 아니라는
+    /// 판정이며 그 판정은 옳다). 그 결과 `offRoute` 플래그와 재조회 버튼은 정확한데
+    /// 화면·복귀 재생만 "현재 위치를 다시 파악하는 중"에 머문다 — walk 기준 최대 60초.
+    ///
+    /// ⚠ **통지하지 않는다.** 이벤트가 없다는 것은 새로 알릴 일이 없다는 뜻이고, 여기서
+    /// 발화하면 이탈 재통지 주기(60초)를 우회해 fix마다 같은 문장을 말한다.
+    /// ⚠ 되돌리는 것은 **재획득 문구일 때뿐**이다. 다른 문구는 그 자리의 최신 사실이다.
+    private func syncStatusTextWithPhase(_ phase: GuidePhase) {
+        guard phase == .offRoute, statusText == appLocalized("guide.reacquiring") else { return }
+        statusText = appLocalized(sessionKind == .car ? "guide.carOffRoute" : "guide.offRoute")
     }
 
     // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§4)

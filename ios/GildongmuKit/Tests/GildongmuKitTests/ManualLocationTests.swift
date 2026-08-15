@@ -47,14 +47,50 @@ private func loadScenarios() throws -> Scenarios {
     #expect(ManualLocationPolicy.fixMaxAgeSeconds == 10)
 }
 
-/// 소스 가드(Task 13): 안내(BeaconModel)는 수동 위치를 참조하지 않는다 — 실좌표만
-/// 쓴다. `effectiveCoordinate`를 부르는 순간 이 불변식이 깨진다.
+/// 주석·문자열 리터럴을 뺀 구현 본문. **소스 가드는 주석을 보면 안 된다** — 금지
+/// 대상을 설명하는 주석이 스스로 위반으로 잡히고(그래서 종전 가드는 주석에도 반응했다),
+/// 반대로 코드에서 사라진 참조가 주석에 남아 통과를 막는다.
+private func strippingComments(_ source: String) -> String {
+    var out = ""
+    var rest = Substring(source)
+    while let start = rest.range(of: "/*") {
+        out += rest[..<start.lowerBound]
+        guard let end = rest[start.upperBound...].range(of: "*/") else { rest = ""; break }
+        rest = rest[end.upperBound...]
+    }
+    out += rest
+    return out
+        .split(separator: "\n", omittingEmptySubsequences: false)
+        .map { line -> String in
+            // `https://`처럼 콜론 뒤의 `//`는 주석이 아니다.
+            var scan = line.startIndex
+            while let hit = line[scan...].range(of: "//") {
+                let before = hit.lowerBound == line.startIndex ? nil : line[line.index(before: hit.lowerBound)]
+                if before == ":" { scan = hit.upperBound; continue }
+                return String(line[..<hit.lowerBound])
+            }
+            return String(line)
+        }
+        .joined(separator: "\n")
+}
+
+/// 소스 가드(Task 13 · 백로그 D23): 안내(BeaconModel)는 수동 위치를 참조하지 않는다 —
+/// 실좌표만 쓴다.
+///
+/// ⚠ **정본은 구조다**: `toggle()`이 좌표 인자를 받지 않아 수동 좌표가 주입될 자리가
+/// 없다. 이 가드는 그 구조가 흔들릴 때를 위한 2선이고, 웹 `useRouteGuide.realfix.test.ts`의
+/// 정규식 3축(부정·긍정·스토어 부정)과 **대칭**이어야 한다 — 부정 1축만 두면 파일이
+/// 통째로 비어도 통과하고, 스토어를 직접 읽는 우회를 못 잡는다.
 @Test func 안내_모델이_수동_위치를_참조하지_않는다() throws {
     var url = URL(fileURLWithPath: #filePath)
     for _ in 0..<5 { url.deleteLastPathComponent() } // GildongmuKitTests→Tests→GildongmuKit→ios→repo
     url.appendPathComponent("ios/Gildongmu/Directions/BeaconModel.swift")
-    let src = try String(contentsOf: url, encoding: .utf8)
-    #expect(!src.contains("effectiveCoordinate"), "안내는 실좌표만 쓴다")
+    let src = strippingComments(try String(contentsOf: url, encoding: .utf8))
+    #expect(!src.contains("effectiveCoordinate"), "안내는 유효 좌표(수동 우선)를 쓰지 않는다")
+    #expect(!src.contains("ManualLocationStore"), "수동 위치 스토어를 직접 읽지 않는다")
+    #expect(!src.contains("manualLocationLabel"), "수동 위치 라벨을 읽지 않는다")
+    // 긍정 축이 없으면 참조가 통째로 사라져도 통과한다(가드가 자기 대상을 잃는다).
+    #expect(src.contains("currentCoordinate") || src.contains("currentFix"), "실좌표 경로를 실제로 쓴다")
 }
 
 /// 라벨 판정선(I1): `origin` 유무만 보면 **지금** 판정 불가한 상태가 검증 가능형으로

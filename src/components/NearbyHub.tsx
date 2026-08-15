@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useManualLocation } from "@/hooks/useManualLocation";
 import { useHeldValue } from "@/hooks/useHeldValue";
 import {
   getActiveNearbyPanel,
@@ -64,7 +65,15 @@ export function NearbyHub({
   const t = useTranslations();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const geo = useGeolocation();
-  const userCoords = geo.status === "ready" ? geo.coords : null;
+  // 유효 위치(수동 위치 > GPS). ⚠ **GPS 스냅샷만 읽으면 안 된다**(백로그 D18②):
+  // 이 화면 첫 줄의 표시줄이 "지정한 위치, X"라고 알리는데 "이 지역 상황"이 GPS
+  // 좌표로 조회되면, 표시줄이 약속한 조회 기준이 거짓이 된다. iOS는 같은 화면에서
+  // 이미 유효 좌표를 쓴다(`nearbyCoordinateSource`) — 플랫폼 갭이기도 했다.
+  const manualLocation = useManualLocation();
+  const geoCoords = geo.status === "ready" ? geo.coords : null;
+  const userCoords = manualLocation
+    ? { lat: manualLocation.lat, lng: manualLocation.lng }
+    : geoCoords;
   const activePanel = useSyncExternalStore(
     subscribeNearbyPanel,
     getActiveNearbyPanel,

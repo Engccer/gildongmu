@@ -170,7 +170,8 @@
     "geoError": "현재 위치를 확인할 수 없습니다. 출발지를 검색해 지정해 주세요.",
     "needEndpoints": "출발지와 도착지를 먼저 선택해 주세요.",
     "readySummary": "{count}개 수단의 경로 안내가 준비되었습니다.",
-    "allFailed": "경로를 찾지 못했습니다."
+    "allFailed": "경로를 찾지 못했습니다.",
+    "entrancePromoted": "출입구를 찾아 {name}까지 안내합니다."
   },
   "detail": {
     "back": "검색 결과로 돌아가기"
@@ -933,7 +934,8 @@
     "useGps": "현재 위치로 되돌리기",
     "autoCleared": "이동이 감지되어 지정한 위치를 해제했습니다",
     "guideNeedsRealLocation": "실시간 안내는 실제 위치가 필요합니다",
-    "pickTitle": "위치 지정하기"
+    "pickTitle": "위치 지정하기",
+    "addrNoCoord": "선택한 주소에 등록된 좌표가 없습니다."
   },
   "surroundings": {
     "button": "주변 확인",

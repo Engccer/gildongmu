@@ -52,7 +52,11 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<SearchStatus>({ kind: "idle" });
-  const [addrCoordError, setAddrCoordError] = useState(false);
+  // 주소 → 좌표 해석 결과 중 **사용자에게 다르게 들려야 하는 두 갈래**만 남긴다:
+  // "좌표가 없다"(정보 부재)와 "조회에 실패했다"(실패). 4-state를 불리언으로 뭉개면
+  // 시각장애 사용자는 다시 시도할 일인지 다른 주소를 골라야 할 일인지 알 수 없다
+  // (백로그 D18③ — 수동 위치 지정은 이 해석의 유일한 진입점이라 손실 대가가 가장 크다).
+  const [addrCoordState, setAddrCoordState] = useState<"none" | "failed" | null>(null);
   const [committing, setCommitting] = useState(false);
   const reqIdRef = useRef(0);
   // 좌표 확정(주소 지오코딩 → 실측 fix 대기) in-flight 가드. state만으론 같은
@@ -107,7 +111,7 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
     const q = (rawQuery ?? query).trim();
     if (!q) return;
     const myId = ++reqIdRef.current;
-    setAddrCoordError(false);
+    setAddrCoordState(null);
     setStatus({ kind: "loading" });
     const [placesRes, addrRes] = await Promise.allSettled([
       fetch(
@@ -164,11 +168,13 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
 
   async function selectAddress(addr: JusoAddress) {
     if (committingRef.current) return;
-    setAddrCoordError(false);
+    setAddrCoordState(null);
     const target = addr.roadAddrPart1 || addr.roadAddr;
     const r = await resolveAddressCoord(target);
     if (r.kind !== "resolved") {
-      setAddrCoordError(true);
+      // `invalid`(빈 주소 문자열)는 목록 선택으로는 도달하지 않지만, 도달하면
+      // 좌표가 없는 것과 사용자 행동이 같다 — 없는 상태에 별도 문장을 만들지 않는다.
+      setAddrCoordState(r.kind === "failed" ? "failed" : "none");
       return;
     }
     void commitManual(target, r.lat, r.lng);
@@ -186,8 +192,10 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
     spokenQuery: null,
     placeErrored: status.kind === "error",
   });
-  const liveMessage = addrCoordError
-    ? t("directions.coordError")
+  const liveMessage = addrCoordState
+    ? addrCoordState === "failed"
+      ? t("directions.coordError")
+      : t("manualLocation.addrNoCoord")
     : committing
       ? t("directions.locating")
       : (liveParts ?? []).map((p) => t(p.key, p.values ?? {})).join(", ");

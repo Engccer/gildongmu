@@ -77,6 +77,16 @@ export interface Coord {
    * (`effective-location.ts`). 기존 소비자는 읽지 않으므로 선택적이다.
    */
   accuracy?: number;
+  /**
+   * fix **취득 시각**(epoch **초**). 나이 기준 재취득이 이 값을 읽는다
+   * (`geolocation.ts`의 `maxAgeSeconds`). 단위를 밀리초로 섞으면 나이가 1000배로
+   * 어긋나 재취득이 영영 걸리지 않으므로, 초로 통일한다(`ManualFix.at`과 같은 단위).
+   *
+   * 없을 수 있다(저장된 구 좌표·수기 조립분). **없으면 "나이 불명"이고 신선하지
+   * 않은 것으로 본다** — 나이 없는 캐시를 신선으로 치면 수명 무한이던 종전 동작으로
+   * 되돌아간다(Kit `isCacheFresh` 계약과 같은 방향).
+   */
+  at?: number;
 }
 
 /**
