@@ -19,7 +19,12 @@
  *   export ASC_KEY_ID=XXXXXXXXXX ASC_ISSUER_ID=xxxxxxxx-xxxx-...
  *   node ios/scripts/asc-submit.mjs --version 1.3 --build 9 \
  *     --notes-ko docs/appstore/notes/1.3-ko.txt \
- *     --notes-en docs/appstore/notes/1.3-en.txt
+ *     --notes-en docs/appstore/notes/1.3-en.txt \
+ *     [--review-notes docs/appstore/notes/1.3-review.txt]
+ *
+ * `--review-notes`는 심사 노트(App Review Information > Notes)를 그 파일 내용으로
+ * 맞춘다. ASC가 직전 버전 값을 승계하므로 대개 필요 없고, 심사에 설명할 내용이
+ * 늘어나는 버전에서만 준다(정본 `docs/appstore/1.0-submission-draft.md` §9).
  *
  * 기본은 **드라이런**이다(무엇을 바꿀지만 출력). 실제 반영은 `--apply`,
  * 심사 제출까지는 `--apply --submit`. 제출은 되돌리기 어려우므로 두 플래그를
@@ -201,7 +206,9 @@ async function main() {
   const version = arg("version");
   const buildNumber = arg("build");
   if (!version || !buildNumber) {
-    throw new Error("사용법: --check | --version 1.3 --build 9 [--notes-ko FILE --notes-en FILE] [--apply [--submit]]");
+    throw new Error(
+      "사용법: --check | --version 1.3 --build 9 [--notes-ko FILE --notes-en FILE] [--review-notes FILE] [--apply [--submit]]",
+    );
   }
 
   const notes = {};
@@ -295,6 +302,33 @@ async function main() {
       if (APPLY) {
         await api("PATCH", `/appStoreVersionLocalizations/${loc.id}`, {
           data: { type: "appStoreVersionLocalizations", id: loc.id, attributes: { whatsNew: text } },
+        });
+      }
+    }
+  }
+
+  // 2-2) 심사 노트. ASC는 직전 버전 값을 승계하므로 대개 손댈 것이 없지만, 앱이
+  //      심사에 설명할 내용이 늘어나는 버전이 있다(1.7의 백그라운드 오디오 절 —
+  //      백그라운드 오디오는 심사가 실제로 들여다보는 항목이다). 승계된 값이 보내려는
+  //      값과 같으면 건드리지 않고, 다를 때만 갱신한다. 정본은
+  //      `docs/appstore/1.0-submission-draft.md` §9이고 이 파일은 그 파생물이다.
+  if (versionId && arg("review-notes")) {
+    const want = readFileSync(arg("review-notes"), "utf8").trim();
+    let detail;
+    try {
+      detail = (await api("GET", `/appStoreVersions/${versionId}/appStoreReviewDetail`)).data;
+    } catch (e) {
+      // 자동 생성하지 않는다 — 연락처 필드를 지어내야 하고, 그것이 틀리면 심사가
+      // 사람에게 연락하지 못한다. 사람이 ASC에서 한 번 만들면 이후 버전은 승계된다.
+      throw new Error(`심사 노트를 읽지 못했다(ASC에서 App Review Information을 먼저 채울 것): ${e.message}`);
+    }
+    if (detail?.attributes?.notes?.trim() === want) {
+      console.log(`  심사 노트 이미 최신 (${want.length}자)`);
+    } else {
+      step(`심사 노트 ${want.length}자 갱신`);
+      if (APPLY) {
+        await api("PATCH", `/appStoreReviewDetails/${detail.id}`, {
+          data: { type: "appStoreReviewDetails", id: detail.id, attributes: { notes: want } },
         });
       }
     }
