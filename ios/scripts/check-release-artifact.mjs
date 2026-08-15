@@ -101,9 +101,31 @@ function flag(name) {
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : null;
 }
 
+/** 값을 갖는 플래그. 이 다음 토큰은 위치 인자가 아니다. */
+const VALUE_FLAGS = new Set(["--expect-version", "--expect-build"]);
+
+/**
+ * 위치 인자(산출물 경로). 없으면 null이고 호출부가 최근 아카이브를 찾는다.
+ *
+ * ⚠ **값을 갖는 플래그의 값을 경로로 오인하면 안 된다.** `asc-submit.mjs`는 경로 없이
+ * `--expect-version 1.7 --expect-build 13`만 넘기므로, "`--`로 시작하지 않는 첫 토큰"을
+ * 고르던 종전 구현은 `1.7`을 경로로 읽어 `경로가 없다: 1.7`로 **제출을 항상 막았다**
+ * (1.7 제출에서 실측 — 버전 대조 결함과 같은 뿌리다. 이 게이트가 asc-submit 경유로
+ * 한 번도 실행되지 않았다는 뜻이다).
+ */
+export function positionalArg(argv) {
+  for (let i = 0; i < argv.length; i++) {
+    if (VALUE_FLAGS.has(argv[i])) {
+      i++;
+      continue;
+    }
+    if (!argv[i].startsWith("--")) return argv[i];
+  }
+  return null;
+}
+
 function main() {
-  const positional = process.argv.slice(2).find((a) => !a.startsWith("--"));
-  const given = positional ?? latestArchive();
+  const given = positionalArg(process.argv.slice(2)) ?? latestArchive();
   if (!given) {
     throw new Error(`검사할 산출물이 없다. 경로를 인자로 주거나 아카이브를 만들어라 (탐색 위치: ${ARCHIVE_DIRS.join(", ")})`);
   }
