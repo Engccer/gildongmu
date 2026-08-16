@@ -392,6 +392,11 @@ export function useTransitGuide(route: TransitRoute | null) {
       if (input.kind === "board" || input.kind === "advance") {
         setBoardOverride(null);
       }
+      // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
+      // 남아, 다음 riding 진입에서 묻지도 않은 역 선택 화면이 되살아난다(독립 리뷰
+      // MAJOR). ⚠ 국면 기반인 이유: board·advance만 열거하면 폴이 일으키는 arrived
+      // 전이를 놓친다. boardOverride는 waiting에서 쓰이므로 같은 축으로 못 묶는다.
+      if (next.phase !== "riding") setReboardPickerActive(false);
       commit(next);
       if (event) announceEvent(event);
     },

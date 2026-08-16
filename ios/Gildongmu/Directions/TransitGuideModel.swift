@@ -627,6 +627,13 @@ final class TransitGuideModel {
         case .board, .advance: boardOverrideName = nil
         case .changeBoarding, .poll: break
         }
+        // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
+        // 남아, 다음 riding 진입에서 **묻지도 않은 역 선택 화면이 되살아나고** 포커스를
+        // 강탈한다(독립 리뷰 MAJOR: 픽커를 연 채 폴이 도착 추정으로 전이 → advance →
+        // 다음 leg 탑승). ⚠ 국면 기반인 이유: `.board`/`.advance`만 열거하면 폴이
+        // 일으키는 arrived 전이를 놓친다. `boardOverrideName`은 waiting에서 쓰이므로
+        // 같은 축으로 묶을 수 없고, 그래서 둘의 소거 조건이 다르다.
+        if result.state.phase != .riding { reboardPickerActive = false }
         // 계측(§13.5): 국면·신호 전이와 이벤트만 기록(무이벤트 폴 소음 제외).
         if result.event != nil || result.state.phase != state.phase
             || result.state.signal != state.signal {

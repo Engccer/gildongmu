@@ -61,11 +61,13 @@ let station = phase == .waiting ? leg.boardName : leg.alightName
 
 ```swift
 if !next.trackingAnnounced {
-    if next.signal != .upstreamFailed, next.signal != .signalLost {
+    // ⚠ 보존 목록에 neverSeen이 없으면 매 폴마다 되돌아가 아래 1회성 가드가 무력해진다.
+    if next.signal != .upstreamFailed, next.signal != .signalLost,
+       next.signal != .neverSeen {
         next.signal = .notYetVisible
     }
     next.lastUpdatedAt = now
-    if next.signal != .neverSeen, next.phase == .riding,
+    if !recovered, next.signal == .notYetVisible, next.phase == .riding,
        let since = next.ridingSince, now - since >= transitNeverSeenMs {
         next.signal = .neverSeen
         return (next, .neverSeen)
@@ -74,8 +76,8 @@ if !next.trackingAnnounced {
 }
 ```
 
-**불변식 넷**:
-1. **1회성이다.** `signal != .neverSeen` 가드가 반복 발화를 막는다(`signalLost`·`upstreamFailed` 동형).
+**불변식 다섯**:
+1. **1회성이다.** `signal == .notYetVisible` 가드가 반복 발화를 막는다 — 확정된 신호는 위 보존 목록이 지키므로 이 조건이 자기 자신도 함께 배제한다(`signalLost`·`upstreamFailed` 동형).
 2. **`upstreamFailed`·`signalLost`를 덮지 않는다.** 조회 자체가 실패 중이면 원인이 다르고, 그 둘은 이미 자기 통지를 냈다.
 3. **riding 국면 전용.** 대기 중 미등장은 정상이고 이미 다른 어휘를 쓴다.
 4. **관측이 한 번이라도 있었으면 이 경로에 오지 않는다** — `trackingAnnounced`가 true면 기존 `missCount` 축이 담당한다. 두 축이 같은 결함을 잡지 않는다.
@@ -88,6 +90,9 @@ if !next.trackingAnnounced {
 **Kit 상태 머신은 어느 역을 조회할지 모른다** — 폴 *결과*만 받는다. 조회 대상 역은 앱이 정해 fetch하므로 **L3는 Kit 계약도 공유 fixture도 건드리지 않는다.**
 
 - 앱 상태 `boardOverrideName: String?` 추가. `changeBoarding` 흐름이 세팅하고, `board`(재잠금) 성공·`advance`·세션 종료에서 nil로 되돌린다.
+- 🚨 **픽커 단계 상태(`reboardPickerActive`)의 수명은 국면이 정한다**(2026-08-16 독립 리뷰 MAJOR — 초판이 이 상태의 수명을 아예 규정하지 않아, override는 중앙 소거되는데 그 짝만 호출부에 흩어져 있었다): **riding을 벗어나면 내린다.** 안 그러면 픽커를 연 채 폴이 도착 추정으로 전이할 때 화면에서만 사라지고 플래그가 남아, 다음 구간에서 탑승하는 순간 **묻지도 않은 역 선택 화면이 되살아나며 iOS는 VO 포커스까지 강탈한다**(방금 탄 열차의 추적 상태를 들으려는 참에).
+- ⚠ **두 상태의 소거 조건이 다른 것이 의도다**: `boardOverrideName`은 waiting 국면에서 쓰이므로 국면 축으로 묶을 수 없고 입력 종류(`board`·`advance`)로 지운다. 픽커는 riding 전용 UI라 국면 축이 맞다 — `.board`/`.advance`만 열거하면 **폴이 일으키는 arrived 전이를 놓친다.**
+- **지하철 전용이다**(초판 미기재): 조회 파라미터가 수단마다 다르고(지하철만 역 *이름*, 서울버스는 정류소 ID) 버스는 갈아타면 대개 다른 leg다. `viaStops`가 비었을 때도 종전 동작으로 떨어진다. **결과적으로 서울버스 leg의 "탑승 변경"은 여전히 원래 정류소로 돌아간다** — 결함이 아니라 범위 밖이다.
 - 조회 역 결정을 `state.boardOverrideName ?? leg.boardName`으로 바꾼다(waiting 국면 한정. riding은 `leg.alightName` 유지 — 그쪽은 L1 영역이라 이번 범위 밖이다).
 - 🚨 **조회 역만 바꾸면 안 된다**(2026-08-16 독립 리뷰 MAJOR — **이 문단이 초판 spec의 구멍이었고 두 플랫폼이 똑같이 그 구멍을 복제했다**): 같은 waiting 국면의 **상시 표시·진행 상황 발화 문맥**(`waitContextText`)도 기준 역을 따라가야 한다. 어긋나면 화면·음성은 "천호역에서 승차 대기"라고 말하는데 그 아래 목록은 왕십리 도착 정보인 상태가 된다. **목록 항목에는 역명이 없으므로**(전 목록이 한 역 기준이라는 전제) SR 사용자에게는 그 문장이 **화면의 유일한 역 정보원**이고, `announceProgress`로 재확인해도 같은 거짓이 재확인된다 — A16이 고치려던 혼란을 새 UI가 재생산한다.
 - ⚠ **선행 도보 문구는 함께 떨군다.** `waitContextWalk`("3분 걸어 {역}에서")의 도보는 **원래 승차역까지의 구간**이라 재선택 시점에는 이미 지난 일이다. 역명만 갈아 끼우면 "3분 걸어 왕십리역에서"라는 새 거짓이 된다.
@@ -108,6 +113,7 @@ if !next.trackingAnnounced {
 | `transitGuide.stateNeverSeen` | "차량 확인 안 됨." | 표시 |
 | `transitGuide.stateRidingNotYetVisible` | "차량 위치 확인 중." | 표시(승차 중 `notYetVisible` 전용) |
 | `transitGuide.reboardStationPrompt` | "지금 어느 역에 계신가요?" | 역 선택 단계 헤딩 |
+| `transitGuide.reboardCancel` | "역 선택 취소" | 역 선택 단계 취소(⚠ 기존 `cancelChangeBoarding`("탑승 변경 취소")과 **다른 동작**이라 라벨을 나눈다 — 이쪽은 아무것도 바꾸지 않고 되돌아간다) |
 
 ⚠ **통지 뒷문장은 꼬리 문장 금지 규칙에 걸리지 않는다.** 판정선은 "뒷문장이 새 정보를 주는가"이고, 이 문장은 재시도 권유가 아니라 **행동 경로**를 알린다(백로그가 명명한 제거 대상은 "잠시 후 다시 시도해 주세요" 계열이다).
 
@@ -117,10 +123,9 @@ i18n은 6개 로케일(`messages/*.json`) + iOS xcstrings 파이프라인을 지
 
 ### 3.4 접근성 계약
 
-- **역 선택 목록 포커스**: repo 정본(가시화 → 지연 → 경합 해제 → 대입 → 검증 → 1회 재시도)을 따른다. `.accessibilityFocused`에 **Bool 바인딩 금지**, 항목 정체성 옵셔널 바인딩. ⚠ 시뮬레이터로는 검출 불가라 실기기 VO가 판정이다.
+- **역 선택 포커스**: 착지점은 **헤딩**(`reboardStationPrompt`)이고 — 목록 첫 항목이 아닌 이유는 "무엇을 고르는지"가 먼저 와야 하기 때문이다 — 목록 항목에는 포커스 바인딩을 두지 않는다(초판은 "목록 포커스 정본 + 항목 정체성 바인딩"과 "헤딩 착지"를 함께 요구해 **서로 배타였다** — 독립 리뷰 지적이며 헤딩 쪽이 옳다). 착지 절차는 repo 정본(가시화 → 지연 → 대입 → 검증 → 1회 재시도)을 따르고 `.accessibilityFocused` **Bool 바인딩은 그 헤딩 하나에만** 붙인다. ⚠ 시뮬레이터로는 검출 불가라 실기기 VO가 판정이다.
 - **`neverSeen` 통지 우선순위**: 기본 우선순위로 둔다. 자기 소멸 버튼이 없고 포커스 이동을 유발하지 않으므로 잠식 패턴에 해당하지 않는다(대비: `performReroute`는 `.high`가 정답이었다).
-- **역 선택 진입 시 포커스**: 헤딩(`reboardStationPrompt`)에 착지. 목록 첫 항목이 아니라 헤딩인 이유는 "무엇을 고르는지"가 먼저 와야 하기 때문이다.
-- 취소하면 포커스가 "탑승 변경" 버튼으로 복귀한다.
+- 취소하면 포커스가 "탑승 변경" 버튼으로 복귀한다. ⚠ **이 복귀도 같은 착지 절차를 지난다** — 그 버튼은 픽커가 닫히는 렌더에서 막 재생성되므로 동기 대입 한 줄은 트리에 없는 대상에 대입해 조용히 되돌아간다(초판이 절차를 명시하지 않아 iOS만 동기 대입으로 갔다).
 
 ## 4. 미러·게이트
 

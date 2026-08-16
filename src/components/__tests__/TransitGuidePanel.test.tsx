@@ -207,6 +207,52 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     expect(screen.queryByText(/waitContextWalk/)).toBeNull();
   });
 
+  it("픽커를 연 채 국면이 바뀌면 다음 구간에서 되살아나지 않는다(A16 L3, 리뷰 MAJOR)", async () => {
+    // 리뷰가 준 재현 경로: 픽커를 연 채 riding을 벗어나면 화면에서는 사라지지만
+    // 플래그가 남아, 다음 riding 진입에서 묻지도 않은 역 선택 화면이 되살아난다.
+    // 국면 왕복은 근사 잠금("이미 탑승했습니다")으로 만든다 — 그 잠금은 riding에서
+    // advance를 상시 노출하므로 폴 주기(15초)를 기다리지 않고 전이시킬 수 있다.
+    const twoLegs: TransitRoute = {
+      ...ROUTE,
+      legs: [
+        ROUTE.legs[0],
+        { ...ROUTE.legs[1], toName: "왕십리(성동구청)" },
+        { ...ROUTE.legs[1], lineName: "수도권 2호선", fromName: "왕십리(성동구청)", toName: "강남" },
+      ],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+          }) as Response,
+      ),
+    );
+
+    render(<TransitGuidePanel route={twoLegs} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.boardAlready" }));
+
+    // riding 국면에서 픽커를 연다(근사 잠금이라 advance도 함께 떠 있다).
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    expect(screen.getByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeTruthy();
+
+    // 픽커를 연 채 다음 구간으로 — 국면이 바뀌며 플래그도 함께 내려가야 한다.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.advance" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "transitGuide.boardAlready" })).toBeTruthy();
+    });
+
+    // 다시 탑승해도 되살아나지 않고, 그 자리엔 탑승 변경 버튼이 있다.
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.boardAlready" }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
+    });
+    expect(screen.queryByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeNull();
+  });
+
   it("역 선택 취소는 아무것도 바꾸지 않고 눌렀던 자리로 돌려보낸다(A16 L3)", async () => {
     vi.stubGlobal(
       "fetch",
