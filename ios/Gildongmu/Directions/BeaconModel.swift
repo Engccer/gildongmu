@@ -386,10 +386,20 @@ final class BeaconModel {
     }
 
     /// 도착 종료 화면 닫기(시트 presentation 바인딩·닫기 버튼 경로).
+    ///
+    /// 도착 문장(`guide.arrived`·`guide.arrivedPresumed`)은 `stop()` **뒤에** `statusText`에
+    /// 다시 넣은 값이라 세션 종료를 살아 넘긴다 — 도착 종료 화면과 전경 복귀 상환이
+    /// 그것을 읽기 때문이다. 화면을 닫으면 두 소비자가 모두 사라지므로 여기서 함께
+    /// 비운다. 안 비우면 길찾기 탭 선두 섹션(비추적 상태 줄, `!statusText.isEmpty`)이
+    /// 그 문장을 시작 실패 상태처럼 계속 띄우고, 새 경로 조회는 이 모델을 건드리지
+    /// 않아 다음 세션까지 남는다(위원장 실사용 발견 2026-08-17: 도착 뒤 목적지를
+    /// 바꿔 조회해도 첫 수단 섹션 위에 도착 문장이 남았다).
     func clearArrival() {
         arrivalDest = nil
         arrivalPresumed = false
         resetArrivalHealth()
+        statusText = ""
+        liveTopText = nil
     }
 
     private func resetArrivalHealth() {
