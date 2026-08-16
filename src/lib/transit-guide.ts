@@ -26,6 +26,8 @@ export type TransitPhase = "waiting" | "riding" | "arrived" | "done";
 export type TransitSignal =
   | "tracking"
   | "notYetVisible"
+  /** 잠금 이후 한 번도 관측되지 않은 채 상한 경과(A16 L2) — signalLost와 원인이 다르다. */
+  | "neverSeen"
   | "signalLost"
   | "upstreamFailed"
   | "untrackable";
@@ -134,6 +136,7 @@ export type TransitGuideEvent =
   | { kind: "backOnTrack"; message: string }
   | { kind: "approxVehicleChanged"; message: string }
   | { kind: "signalLost" }
+  | { kind: "neverSeen" }
   | { kind: "upstreamFailed" }
   | { kind: "signalRecovered" }
   | { kind: "legAdvanced"; legIndex: number; final: boolean }
@@ -170,6 +173,11 @@ export interface TransitGuideState {
   /** 사다리 래치: 마지막 발화 잔여값(이보다 작아질 때만 재발화, 증가에 비가역). */
   ladderAnnounced: number | null;
   trackingAnnounced: boolean;
+  /**
+   * riding 진입 시각(ms). 한 번도 관측되지 않은 채 NEVER_SEEN_MS를 넘기면 neverSeen.
+   * ⚠ null이면 판정하지 않는다 — "시각 불명"을 "방금 탔다"로도 "오래됐다"로도 읽지 않는다.
+   */
+  ridingSince: number | null;
   /** 잠금 차량 연속 미등장 폴 수(소실·도착 추정 판정). */
   missCount: number;
   failCount: number;
@@ -189,6 +197,15 @@ export const FAIL_NOTIFY_MS = 90_000;
 export const MISS_LOST_COUNT = 3;
 /** 도착 추정: 직전 잔여 ≤1 ∧ 연속 N폴 미등장(§4.2). */
 export const MISS_ARRIVE_COUNT = 2;
+/**
+ * 첫 관측 전 미등장 상한(A16 L2). 관측된 뒤의 소실은 MISS_LOST_COUNT가 맡고,
+ * 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
+ *
+ * ⚠ 폴 횟수가 아니라 시간인 이유: 화면 잠금 중 폴 타이머가 멎으면 횟수 기반은
+ * 화면을 끌수록 시한이 늦게 온다(실측 35분에 11폴, 주기 60초면 35폴이어야 한다).
+ * ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
+ */
+export const NEVER_SEEN_MS = 600_000;
 /** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
 export const SESSION_POLL_CAP = 240;
 
@@ -220,6 +237,7 @@ export function eventProfile(event: TransitGuideEvent): {
     case "trackingStarted":
       return { interrupt: false, tone: "ladder" };
     case "signalLost":
+    case "neverSeen":
     case "upstreamFailed":
       return { interrupt: false, tone: "weak" };
     default:
@@ -434,6 +452,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     arrivedCertain: false,
     ladderAnnounced: null,
     trackingAnnounced: false,
+    ridingSince: null,
     missCount: 0,
     failCount: 0,
     failSince: null,
@@ -457,7 +476,7 @@ export function transitGuideStep(
 ): TransitStepResult {
   switch (input.kind) {
     case "board":
-      return handleBoard(state, input.lock);
+      return handleBoard(state, input.lock, now);
     case "changeBoarding":
       return handleChangeBoarding(state);
     case "advance":
@@ -467,7 +486,11 @@ export function transitGuideStep(
   }
 }
 
-function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepResult {
+function handleBoard(
+  state: TransitGuideState,
+  lock: TransitLock,
+  now: number,
+): TransitStepResult {
   if (state.phase !== "waiting" || state.signal === "untrackable") {
     return { state, event: null };
   }
@@ -487,6 +510,8 @@ function handleBoard(state: TransitGuideState, lock: TransitLock): TransitStepRe
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
+      // 미관측 상한의 기준점(A16 L2). 재탑승·leg 전진마다 새로 찍힌다.
+      ridingSince: now,
       missCount: 0,
     },
     event: { kind: "boarded", legIndex: state.legIndex },
@@ -513,6 +538,8 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
+      // 대기 국면엔 기준점이 없다 — 다음 board가 새로 찍는다.
+      ridingSince: null,
       missCount: 0,
     },
     event: { kind: "boardingReset" },
@@ -554,6 +581,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       arrivedCertain: false,
       ladderAnnounced: null,
       trackingAnnounced: false,
+      ridingSince: null,
       missCount: 0,
       failCount: 0,
       failSince: null,
@@ -626,10 +654,35 @@ function handlePoll(
   // 미등장 — 잠금 차량이 목록에 없다(멀거나·지나갔거나·오선택).
   if (!next.trackingAnnounced) {
     // 아직 한 번도 관측 전: 정상 미등장(도착 API는 근접 차량만 담는다, §5.2).
-    if (next.signal !== "upstreamFailed" && next.signal !== "signalLost") {
+    // ⚠ neverSeen을 이 목록에서 빼면 매 폴마다 notYetVisible로 되돌아가 아래
+    // 1회성 가드가 무력화된다(반복 발화). 확정된 신호는 여기서 덮지 않는다.
+    if (
+      next.signal !== "upstreamFailed" &&
+      next.signal !== "signalLost" &&
+      next.signal !== "neverSeen"
+    ) {
       next.signal = "notYetVisible";
     }
     next.lastUpdatedAt = now;
+    // 그러나 그 상태를 빠져나오는 문이 있어야 한다(A16 L2). 종전에는 여기서
+    // 바로 반환해 missCount가 오르지 않았고, 그래서 signalLost 임계에 도달할
+    // 산술적 경로가 없어 침묵이 무한했다(실측 35분).
+    //
+    // 판정하지 않는 경우 셋:
+    //  - recovered: 방금 조회가 살아난 폴이다. 최소 한 번은 실제로 보고 나서
+    //    말한다(그리고 signalRecovered 이벤트를 덮지 않는다 — 입력당 1이벤트).
+    //  - upstreamFailed·signalLost: 원인이 다르고 이미 자기 통지를 냈다.
+    //  - ridingSince == null: 기준 시각 불명이면 판정 자격이 없다.
+    if (
+      !recovered &&
+      next.signal === "notYetVisible" &&
+      next.phase === "riding" &&
+      next.ridingSince != null &&
+      now - next.ridingSince >= NEVER_SEEN_MS
+    ) {
+      next.signal = "neverSeen";
+      return { state: next, event: { kind: "neverSeen" } };
+    }
     return { state: next, event };
   }
   next.missCount += 1;
