@@ -191,11 +191,17 @@ export function useTransitGuide(route: TransitRoute | null) {
     [t],
   );
 
+  /**
+   * 신호 → 상시 표시 문구. ⚠ notYetVisible은 국면으로 갈린다 — "차량 접근 대기"는
+   * 대기 국면 어휘라 승차 중에 뜨면 "아직 못 탔다"로 뒤집혀 읽힌다(A16).
+   */
   const signalText = useCallback(
-    (signal: TransitGuideState["signal"]): string =>
+    (signal: TransitGuideState["signal"], phase: TransitGuideState["phase"]): string =>
       ({
         tracking: t("stateTracking"),
-        notYetVisible: t("stateNotYetVisible"),
+        notYetVisible:
+          phase === "riding" ? t("stateRidingNotYetVisible") : t("stateNotYetVisible"),
+        neverSeen: t("stateNeverSeen"),
         signalLost: t("stateSignalLost"),
         upstreamFailed: t("stateUpstreamFailed"),
         untrackable: t("stateUntrackable"),
@@ -211,7 +217,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     (s: TransitGuideState, leg: TransitGuideLeg): string => {
       const parts = [
         s.phase === "waiting" ? waitContextText(leg) : contextText(leg),
-        signalText(s.signal),
+        signalText(s.signal, s.phase),
         s.remaining != null
           ? t("remainingCount", { count: s.remaining })
           : leg.stationCount != null && s.phase === "riding"
@@ -301,6 +307,9 @@ export function useTransitGuide(route: TransitRoute | null) {
           break;
         case "signalLost":
           parts.push(t("signalLost"));
+          break;
+        case "neverSeen":
+          parts.push(t("neverSeen"));
           break;
         case "upstreamFailed":
           parts.push(t("upstreamFailed"));
@@ -659,7 +668,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       }
       const current = stateRef.current;
       announce(
-        [t("resumed"), current ? signalText(current.signal) : ""].filter(Boolean).join(" "),
+        [t("resumed"), current ? signalText(current.signal, current.phase) : ""].filter(Boolean).join(" "),
       );
       void pollOnce();
     };

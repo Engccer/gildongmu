@@ -2509,6 +2509,296 @@
      }
     }
    ]
+  },
+  {
+   "name": "미관측 시한 경과 → neverSeen 1회(반복 발화 없음)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0
+      }
+     }
+    },
+    {
+     "at": 300000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": null
+     }
+    },
+    {
+     "at": 600000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "neverSeen",
+      "event": {
+       "kind": "neverSeen"
+      }
+     }
+    },
+    {
+     "at": 660000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "neverSeen",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "시한 전 첫 관측이면 neverSeen은 영영 발화하지 않는다(축 배타)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0
+      }
+     }
+    },
+    {
+     "at": 300000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[5]번째 전역 (신길)",
+         "remainingStops": 5,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 5,
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 5
+      }
+     }
+    },
+    {
+     "at": 900000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "event": null
+     }
+    },
+    {
+     "at": 960000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "event": null
+     }
+    },
+    {
+     "at": 1020000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "signalLost",
+      "event": {
+       "kind": "signalLost"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "upstreamFailed 복구 폴은 neverSeen을 내지 않는다(다음 폴에서)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null
+     }
+    },
+    {
+     "at": 180000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "signal": "upstreamFailed",
+      "event": {
+       "kind": "upstreamFailed"
+      }
+     }
+    },
+    {
+     "at": 900000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "failed"
+      }
+     },
+     "expect": {
+      "signal": "upstreamFailed",
+      "event": null
+     }
+    },
+    {
+     "at": 960000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "signalRecovered"
+      }
+     }
+    },
+    {
+     "at": 1020000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "neverSeen",
+      "event": {
+       "kind": "neverSeen"
+      }
+     }
+    }
+   ]
   }
  ]
 }
