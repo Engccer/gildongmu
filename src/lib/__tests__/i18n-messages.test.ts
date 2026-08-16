@@ -14,6 +14,14 @@ import ja from "../../../messages/ja.json";
  */
 const MESSAGES: Record<string, unknown> = { ko, en, es, fr, it: itMessages, ja };
 
+/**
+ * 비-ko 로케일에 한글이 남아도 되는 키. 언어 선택 메뉴는 각 언어를 **자국어
+ * 표기**로 보여 주므로(국기 이모지 금지 규칙의 짝) 한국어 항목은 어느 로케일에서도
+ * "한국어"다. 예외를 늘릴 때는 "그 언어 사용자에게 한글이 보이는 것이 옳은가"로
+ * 판정한다 — 번역 누락은 이 목록이 아니라 번역으로 해결한다.
+ */
+const HANGUL_ALLOWED = new Set(["nav.korean"]);
+
 function flatten(obj: unknown, prefix = ""): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
@@ -64,6 +72,16 @@ describe("i18n 메시지 일관성", () => {
         if (a !== b) mismatches.push(`${key}: ko[${a}] ≠ ${loc}[${b}]`);
       }
       expect(mismatches).toEqual([]);
+    });
+
+    // 번역 누락은 키 집합·토큰 검사를 통과한다(ko 문장을 그대로 복사해 넣으면
+    // 키도 플레이스홀더도 맞다). 비-ko 로케일에 한글이 남아 있는지가 그것을
+    // 잡는 유일한 축이고, `docs/SPEC.md` §2 "영어 UI 완결성"의 측정 수단이다.
+    it(`${loc}: 한글 잔존 없음(자국어 표기 예외만 허용)`, () => {
+      const leaked = Object.entries(flat)
+        .filter(([key, value]) => !HANGUL_ALLOWED.has(key) && /[가-힣]/.test(value))
+        .map(([key, value]) => `${key} = ${value}`);
+      expect(leaked).toEqual([]);
     });
   }
 });
