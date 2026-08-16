@@ -24,5 +24,13 @@
 		<string>location</string>
 		<string>audio</string>
 	</array>
+	<!-- 블루투스(음향신호기 BLE 진단, spec 2026-08-17 §5.2): ⚠ 의도적으로 이 파일에만 있고
+	     정식 Support/Info.plist에는 없다 — 수동 동기화 계약의 첫 예외. 진단 섹션이
+	     `#if DEBUG || EXPERIMENTAL`이라 정식판은 이 권한을 쓰지 않으며, 쓰지 않는 권한
+	     선언은 심사 신호이자 개인정보 3자 일치(웹 privacy·PrivacyInfo.xcprivacy·ASC 영양
+	     라벨)의 근거 없는 확장이다. 정식판으로 복사하지 말 것 — check-release-artifact.mjs가
+	     릴리스 산출물에 이 키가 있으면 제출을 막는다. 제품 승격 시 세 곳을 함께 갱신한다. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>주변 음향신호기를 찾아 작동 여부를 시험합니다(실험판 전용).</string>
 </dict>
 </plist>

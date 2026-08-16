@@ -120,6 +120,7 @@ public enum AudioSignalReply: Sendable, Equatable {
 
 - 진단 섹션·컨트롤러 사용처 전부 `#if DEBUG || EXPERIMENTAL`.
 - **Kit의 두 파일은 게이트하지 않는다.** 아무도 부르지 않으면 죽은 코드일 뿐이고, 게이트를 Kit에 넣으면 제품 승격 때 지울 것이 늘어난다. 진입점만 막는다(`guidance-gate-drift.test.ts`가 "판정 축은 플래그 참조가 아니라 진입점 전수"라고 못 박은 것과 같은 정신).
+- ⚠ **Debug 구성에서는 섹션이 컴파일되지만 스캔은 열리지 않는다.** Debug는 정식 `Info.plist`를 쓰므로 §5.2의 권한 문구가 없고, 그 상태로 `CBCentralManager`를 만들면 iOS가 앱을 종료한다. 모델이 번들 plist에 키가 있는지 먼저 보고 없으면 스캔을 막고 그 사실을 화면에 적는다(구현 2026-08-17). 실측은 **Experimental로 설치한 것**으로만 한다.
 
 ### 5.2 권한 문구 — ⚠ 정식 plist를 건드리지 말 것
 
@@ -192,7 +193,7 @@ ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs | �
 6. `check-release-artifact.mjs`에 역방향 가드 + **`asc-submit` 경로로 실행 확인**.
 7. 빌드 → `CONFIGURATION=Experimental ./ios/deploy-device.sh`.
 8. ⚠ **정식판도 함께 배포**([[ios-device-deploy-both-configurations]])할지 판단: 이번 변경은 **전부 실험 게이트 안**이므로 정식판 재배포는 불필요하다. 실험판만 올린다.
-9. 위원장 실측 → 로그 회수 → research 문서에 §11 실측 결과 절 추가 → E20 게이트 판정.
+9. 위원장 실측 → 로그 회수 → research 문서에 §11 실측 결과 절 추가 → E20 게이트 판정. ⚠ 실측 중에는 **현위치 수동 지정을 끈다** — 로그의 좌표 열은 GPS 마지막 fix이고 seed 최근접 거리는 조회 시점 기준(수동 위치면 그 좌표)이라 둘의 기준이 어긋난다.
 
 **예상 규모**: 신규 4파일 + 기존 3파일 소폭 수정. 순수 층과 UI를 합쳐도 크지 않다.
 

@@ -31,6 +31,11 @@
  * 2. 권한 문구 (§4.2): ko는 거리 안내 절이 있고, 비한국어 5로케일은 카탈로그
  *    (`InfoPlist.xcstrings`) 정본과 일치하는가. 기대값을 여기 적지 않는 이유는
  *    카탈로그가 바뀌면 이 검사도 함께 움직여야 하기 때문이다.
+ * 3. 실험 전용 권한이 새지 않았는가 (spec 2026-08-17 §5.3): 릴리스 산출물에
+ *    `NSBluetoothAlwaysUsageDescription`이 있으면 실패. 1번의 거울상이다 — 그때는
+ *    실험판에만 있던 키를 정식으로 올리는 것을 잊었고, 이번엔 실험 전용 키가 정식으로
+ *    새는 경우다. 둘 다 소스 검사로는 못 잡는다(어느 INFOPLIST_FILE이 병합됐는지는
+ *    산출물에만 있다).
  *
  * 실패는 첫 건에서 멈추지 않고 전부 모아 출력한다(한 번에 고칠 수 있게).
  */
@@ -45,6 +50,8 @@ const BUNDLE_ID = "space.dodoplanet.gildongmu";
 const KO_DISTANCE_MARKER = "남은 거리를 소리로";
 const OTHER_LOCALES = ["en", "es", "fr", "it", "ja"];
 const LOCATION_KEY = "NSLocationWhenInUseUsageDescription";
+/** 실험판(Info-Experimental.plist)에만 있어야 하는 키. 정식 산출물에 보이면 새는 것이다. */
+const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */
@@ -206,6 +213,18 @@ function main() {
     const got = strings[locale][LOCATION_KEY];
     if (got !== want) {
       failures.push(`${locale} ${LOCATION_KEY}가 카탈로그 정본과 다르다\n      산출물: "${got ?? "(없음)"}"\n      카탈로그: "${want}"`);
+    }
+  }
+
+  // 3) 실험 전용 권한 누출 (spec 2026-08-17 §5.3) — 정식판이 쓰지 않는 권한을 선언하면
+  //    심사 신호이자 개인정보 3자 일치의 근거 없는 확장이다. Info.plist뿐 아니라 로케일별
+  //    InfoPlist.strings도 본다(키가 나중에 카탈로그로 로컬라이즈되면 거기에만 나타난다).
+  for (const key of EXPERIMENTAL_ONLY_KEYS) {
+    if (key in info) {
+      failures.push(`실험 전용 키 ${key}가 정식 산출물에 있다 (Info-Experimental.plist에만 있어야 한다): "${info[key]}"`);
+    }
+    for (const [locale, table] of Object.entries(strings)) {
+      if (key in table) failures.push(`실험 전용 키 ${key}가 정식 산출물 ${locale}.lproj/InfoPlist.strings에 있다`);
     }
   }
 

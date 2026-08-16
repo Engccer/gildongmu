@@ -6,49 +6,7 @@ import UIKit
 /// 실기기 전용에 침묵 실패라(시뮬레이터 AX 브리지로 검증 불가) 실패 시 가설 패치를
 /// 반복하지 말고 이 로그로 실착지를 확정한다(계측 우선). 콘솔과 기기 파일
 /// (Documents/chat-focus-diag.log, 2MB 초과 시 .old로 교체)에 함께 남기므로 USB 콘솔
-/// 없는 실사용 테스트에서도 보존된다. 회수:
-/// `xcrun devicectl device copy from --domain-type appDataContainer`
-nonisolated final class ChatFocusFileLog: @unchecked Sendable {
-    static let shared = ChatFocusFileLog()
-    private let lock = NSLock()
-    private var handle: FileHandle?
-    private static let maxBytes: UInt64 = 2_000_000
-
-    private static var logURL: URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("chat-focus-diag.log")
-    }
-
-    func append(_ line: String) {
-        lock.withLock {
-            guard let handle = ensureHandleLocked() else { return }
-            handle.write(Data((line + "\n").utf8))
-        }
-    }
-
-    private func ensureHandleLocked() -> FileHandle? {
-        if let handle {
-            if (try? handle.offset()) ?? 0 > Self.maxBytes {
-                try? handle.close()
-                self.handle = nil
-                let url = Self.logURL
-                let old = url.deletingLastPathComponent().appendingPathComponent("chat-focus-diag.old.log")
-                try? FileManager.default.removeItem(at: old)
-                try? FileManager.default.moveItem(at: url, to: old)
-            } else {
-                return handle
-            }
-        }
-        let url = Self.logURL
-        if !FileManager.default.fileExists(atPath: url.path) {
-            FileManager.default.createFile(atPath: url.path, contents: nil)
-        }
-        guard let newHandle = try? FileHandle(forWritingTo: url) else { return nil }
-        _ = try? newHandle.seekToEnd()
-        handle = newHandle
-        return newHandle
-    }
-}
+/// 없는 실사용 테스트에서도 보존된다(파일 싱크는 공용 DiagFileLog).
 
 /// ISO8601DateFormatter는 문서상 스레드 안전(NSDateFormatter와 달리) — 컴파일러가 Sendable을
 /// 증명 못 해 unsafe 표기만 붙인다(호출당 할당 회피 목적의 공유 인스턴스).
@@ -58,7 +16,7 @@ nonisolated func chatFocusLog(_ msg: String) {
     let wallClock = chatFocusDateFormatter.string(from: Date())
     let line = "[ChatFocus] [\(String(format: "%.1f", ProcessInfo.processInfo.systemUptime))s] [\(wallClock)] \(msg)"
     print(line)
-    ChatFocusFileLog.shared.append(line)
+    DiagFileLog.chatFocus.append(line)
 }
 
 /// VoiceOver 포커스가 실제 어느 요소에 앉는지 파일 로그로 남긴다(앱 수명 1회 설치).
