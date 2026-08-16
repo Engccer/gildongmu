@@ -14,7 +14,7 @@
 | Q2 | 몇 미터에서 잡히는가 | RSSI + 등록 seed 최근접 거리 대조 |
 | Q3 | 연결에 비밀번호가 걸려 있는가 | 연결 후 10초 생존 여부 |
 | Q4 | 명령이 먹는가 | ACK/NAK 수신 |
-| Q5 | 한 번 눌렀을 때 몇 대가 우는가 | 위원장 청취 + 로그 대조 |
+| Q5 | 한 번 눌렀을 때 몇 대가 우는가 | 위원장 청취를 §7.1 기록 버튼으로 로그에 박아 ACK와 대조 |
 
 **Q1만 답해도 E20의 착수 게이트는 열린다.** Q3~Q5는 제품 spec의 입력이라 같은 걸음에 얻으면 이득이지, 이번 성공 조건은 아니다.
 
@@ -164,7 +164,17 @@ ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs | �
 
 ⚠ **`disconnect`에 연결 후 경과 초를 반드시 넣는다.** Q3(비밀번호 여부)의 판정이 **"10초 언저리에 끊겼는가"** 하나이므로, 그 숫자가 없으면 걸음 전체가 답을 못 낸다.
 
-회수: `xcrun devicectl device copy from --domain-type appDataContainer`.
+### 7.1 청취 결과는 사람만 안다 — 기록 버튼을 둔다
+
+**앱이 로그로 못 남기는 관측이 정확히 하나 있다: 실제로 소리가 났는가.** 그런데 Q4(명령이 먹었는가)와 Q5(몇 대가 우는가)의 진짜 답이 거기 있다. ACK가 왔는데 소리가 안 날 수도, ACK가 없는데 소리가 날 수도 있고, **그 어긋남 자체가 가장 값어치 있는 관측**이다.
+
+그래서 명령 버튼 아래에 **기록 버튼 셋**을 둔다: `소리 남` · `소리 안 남` · `여러 대 남`. 누르면 그 순간이 직전 명령과 묶여 로그에 `heard(yes/no/multiple)`로 박힌다.
+
+⚠ **기억에 의존하게 두지 말 것.** 후보 지점이 14곳이고 각 지점에서 명령이 셋이다. 걸음이 끝난 뒤 "몇 번째 교차로에서 소리가 났더라"를 되살리는 것은 불가능하고, 그러면 로그의 ACK 열이 대조군을 잃은 채 남는다. 버튼 한 번이 그걸 막는다.
+
+### 7.2 회수
+
+`xcrun devicectl device copy from --domain-type appDataContainer` (선례: `docs/superpowers/specs/logs/transit-guide-diag-2026-08-16.log`). 회수한 로그는 같은 `logs/` 폴더에 `audio-signal-diag-<날짜>.log`로 두고 research 문서에서 가리킨다.
 
 ## 8. 테스트
 
@@ -176,8 +186,8 @@ ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs | �
 
 1. `AudioSignalProtocol.swift`(순수) + `AudioSignalProtocolTests.swift` → `swift test` 통과.
 2. `AudioSignalController.swift`(CoreBluetooth) — 스캔·연결·write·notify, `@Observable`.
-3. `AudioSignalDiag.swift`(로그) — `GuideDiag` 복제 후 이벤트만 교체.
-4. `AudioSignalProbeSection.swift`(UI) + `WalkInfraNearbyView`에 한 줄 삽입(`#if DEBUG || EXPERIMENTAL`).
+3. `AudioSignalDiag.swift`(로그) — `GuideDiag` 복제 후 이벤트만 교체. §7.1 `heard` 이벤트 포함.
+4. `AudioSignalProbeSection.swift`(UI) + `WalkInfraNearbyView`에 한 줄 삽입(`#if DEBUG || EXPERIMENTAL`). 버튼은 스캔 2 + 연결 1 + 명령 3 + 청취 기록 3.
 5. `Info-Experimental.plist`에 권한 문구 + 양쪽 plist 주석.
 6. `check-release-artifact.mjs`에 역방향 가드 + **`asc-submit` 경로로 실행 확인**.
 7. 빌드 → `CONFIGURATION=Experimental ./ios/deploy-device.sh`.
