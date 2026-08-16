@@ -179,6 +179,9 @@ final class BeaconModel {
     /// 세션 시작 fix는 대개 그 세션에서 가장 나쁜 fix라 그대로 origin으로 삼으면
     /// 경로가 다른 곳에서 출발한다. 판정은 Kit `routeOriginStep`.
     private var routeOriginBest: RouteOriginFix?
+    /// `routeOriginBest`를 보관한 uptime. 대기 상한에 소비할 때 계측 `age`는 저장 시점
+    /// 스냅샷이 아니라 **소비 시점 기준**이어야 한다(15초 뒤 쓰면 그만큼 낡은 좌표다).
+    private var routeOriginBestAt: Double?
     /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
     private var pendingRecovery: String?
     /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
@@ -571,12 +574,14 @@ final class BeaconModel {
     private func startFixWaitWatch(token: Int) {
         fixWaitTask?.cancel()
         routeOriginBest = nil
+        routeOriginBestAt = nil
         fixWaitTask = Task { [weak self, timeout = noFixTimeout] in
             try? await Task.sleep(for: .seconds(timeout))
             guard let self, !Task.isCancelled else { return }
             guard token == self.routeFetchToken, self.isTracking,
                   self.awaitingRoute, self.routeFetchTask == nil else { return }
-            if let best = self.routeOriginBest, let dest = self.dest {
+            if var best = self.routeOriginBest, let dest = self.dest {
+                if let at = self.routeOriginBestAt { best.ageSeconds += self.uptimeNow - at }
                 self.startRouteFetch(origin: best, reason: "best", dest: dest, token: token)
                 return
             }
@@ -673,6 +678,7 @@ final class BeaconModel {
                 + "age=\(String(format: "%.1f", origin.ageSeconds)) reason=\(reason)"
         )
         routeOriginBest = nil
+        routeOriginBestAt = nil
         let coord = (lat: origin.lat, lng: origin.lng)
         routeFetchTask = Task { [weak self] in
             await self?.fetchGuideRoute(origin: coord, dest: dest, token: token)
@@ -950,6 +956,7 @@ final class BeaconModel {
         fixWaitTask?.cancel()
         fixWaitTask = nil
         routeOriginBest = nil
+        routeOriginBestAt = nil
         awaitingRoute = false
         mode = .brief
         sessionKind = .walk
@@ -1025,6 +1032,7 @@ final class BeaconModel {
         // — 경로 종속 상태 초기화(stop()의 부분집합, §3.1 목록) —
         routeFetchTask?.cancel(); routeFetchTask = nil
         fixWaitTask?.cancel(); fixWaitTask = nil
+        routeOriginBest = nil; routeOriginBestAt = nil   // 옛 목적지 세션의 최선값이 새 origin으로 새지 않게(게이트 우연 일치에 의존하지 않는다)
         rerouteToken += 1   // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1
         isRerouting = false
@@ -1231,6 +1239,7 @@ final class BeaconModel {
                     fixWaitTask = nil
                     startRouteFetch(origin: origin, reason: "accepted", dest: dest, token: routeFetchToken)
                 case .wait(let best):
+                    if best != routeOriginBest { routeOriginBestAt = now }
                     routeOriginBest = best
                     // 대기 동안 버린 fix도 남긴다 — "정확한 fix를 기다리는 침묵"이
                     // 얼마나 긴지, 정확도가 어떻게 수렴하는지가 상수 판정의 근거다
