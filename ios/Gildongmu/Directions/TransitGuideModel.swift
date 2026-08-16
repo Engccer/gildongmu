@@ -163,7 +163,7 @@ final class TransitGuideModel {
             // 재개 통지는 확인되지 않은 "회복" 주장이 아니라 실제 상태를 말한다
             // (§3.2 "안내 재개. {현재 상태}" — 3-state 정직, 독립 리뷰 MAJOR).
             var parts = [appLocalized("transitGuide.resumed")]
-            if let signal = state?.signal { parts.append(signalStatusText(signal)) }
+            if let s = state { parts.append(signalStatusText(s.signal, phase: s.phase)) }
             announce(parts.joined(separator: " "))
             restartPollLoop(immediate: true)
         @unknown default:
@@ -361,7 +361,7 @@ final class TransitGuideModel {
     func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
         var parts = [
             state.phase == .waiting ? waitContextText(leg) : contextText(leg),
-            signalStatusText(state.signal),
+            signalStatusText(state.signal, phase: state.phase),
         ]
         if let remaining = state.remaining {
             parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
@@ -658,6 +658,10 @@ final class TransitGuideModel {
             parts.append(appLocalized("transitGuide.approxVehicleChanged"))
         case .signalLost:
             parts.append(appLocalized("transitGuide.signalLost"))
+        case .neverSeen:
+            // 기본 우선순위로 둔다(A16 §3.4): 자기 소멸 버튼이 없고 포커스 이동을
+            // 유발하지 않아 잠식 패턴에 해당하지 않는다.
+            parts.append(appLocalized("transitGuide.neverSeen"))
         case .upstreamFailed:
             parts.append(appLocalized("transitGuide.upstreamFailed"))
         case .signalRecovered:
@@ -700,10 +704,16 @@ final class TransitGuideModel {
         return appLocalized("transitGuide.waitContext", leg.boardName, leg.lineName)
     }
 
-    func signalStatusText(_ signal: TransitSignal) -> String {
+    /// 신호 → 상시 표시 문구. ⚠ notYetVisible은 국면으로 갈린다 — "차량 접근 대기"는
+    /// 대기 국면 어휘라 승차 중에 뜨면 "아직 못 탔다"로 뒤집혀 읽힌다(A16).
+    func signalStatusText(_ signal: TransitSignal, phase: TransitPhase) -> String {
         switch signal {
         case .tracking: appLocalized("transitGuide.stateTracking")
-        case .notYetVisible: appLocalized("transitGuide.stateNotYetVisible")
+        case .notYetVisible:
+            phase == .riding
+                ? appLocalized("transitGuide.stateRidingNotYetVisible")
+                : appLocalized("transitGuide.stateNotYetVisible")
+        case .neverSeen: appLocalized("transitGuide.stateNeverSeen")
         case .signalLost: appLocalized("transitGuide.stateSignalLost")
         case .upstreamFailed: appLocalized("transitGuide.stateUpstreamFailed")
         case .untrackable: appLocalized("transitGuide.stateUntrackable")

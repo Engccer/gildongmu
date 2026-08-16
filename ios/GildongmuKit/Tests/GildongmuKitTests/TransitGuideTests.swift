@@ -139,6 +139,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     case .backOnTrack: "backOnTrack"
     case .approxVehicleChanged: "approxVehicleChanged"
     case .signalLost: "signalLost"
+    case .neverSeen: "neverSeen"
     case .upstreamFailed: "upstreamFailed"
     case .signalRecovered: "signalRecovered"
     case .legAdvanced: "legAdvanced"

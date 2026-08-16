@@ -19,7 +19,9 @@ public enum TransitPhase: String, Sendable {
 }
 
 public enum TransitSignal: String, Sendable {
-    case tracking, notYetVisible, signalLost, upstreamFailed, untrackable
+    /// neverSeen: 잠금 이후 한 번도 관측되지 않은 채 상한 경과(A16 L2).
+    /// signalLost(관측되다 소실)와 원인도 사용자 행동도 다르다 — 합치지 말 것.
+    case tracking, notYetVisible, neverSeen, signalLost, upstreamFailed, untrackable
 }
 
 /// 잠금·매칭 복합 키(§4.2). vehicleId "" = 근사 잠금(차량 식별자 부재, §13.2).
@@ -173,6 +175,7 @@ public enum TransitGuideEvent: Sendable, Equatable {
     case backOnTrack(message: String)
     case approxVehicleChanged(message: String)
     case signalLost
+    case neverSeen
     case upstreamFailed
     case signalRecovered
     case legAdvanced(legIndex: Int, final: Bool)
@@ -201,6 +204,10 @@ public struct TransitGuideState: Sendable {
     public var arrivedCertain: Bool
     public var ladderAnnounced: Int?
     public var trackingAnnounced: Bool
+    /// riding 진입 시각(ms). 한 번도 관측되지 않은 채 `transitNeverSeenMs`를 넘기면
+    /// neverSeen. ⚠ nil이면 판정하지 않는다 — "시각 불명"을 "방금 탔다"로도
+    /// "오래됐다"로도 읽지 않는다.
+    public var ridingSince: Double?
     public var missCount: Int
     public var failCount: Int
     public var failSince: Double?
@@ -215,6 +222,13 @@ public let transitFailNotifyCount = 3
 public let transitFailNotifyMs: Double = 90_000
 public let transitMissLostCount = 3
 public let transitMissArriveCount = 2
+/// 첫 관측 전 미등장 상한(A16 L2). 관측된 뒤의 소실은 `transitMissLostCount`가 맡고
+/// 이 축은 "한 번도 못 본" 상태 전용이라 두 축이 같은 결함을 잡지 않는다.
+///
+/// ⚠ 폴 횟수가 아니라 시간인 이유: 화면 잠금 중 폴 타이머가 멎으면 횟수 기반은
+/// 화면을 끌수록 시한이 늦게 온다(실측 35분에 11폴, 주기 60초면 35폴이어야 한다).
+/// ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
+public let transitNeverSeenMs: Double = 600_000
 public let transitSessionPollCap = 240
 
 /// 폴링 주기(ms, §7 적응형). 0 = 폴링 없음(done·untrackable).
@@ -241,7 +255,7 @@ public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool,
         return (false, .start)
     case .trackingStarted:
         return (false, .ladder)
-    case .signalLost, .upstreamFailed:
+    case .signalLost, .neverSeen, .upstreamFailed:
         return (false, .weak)
     default:
         return (false, nil)
@@ -413,6 +427,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         arrivedCertain: false,
         ladderAnnounced: nil,
         trackingAnnounced: false,
+        ridingSince: nil,
         missCount: 0,
         failCount: 0,
         failSince: nil,
@@ -438,7 +453,7 @@ public func transitGuideStep(
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     switch input {
     case let .board(lock):
-        return handleBoard(state, lock: lock)
+        return handleBoard(state, lock: lock, now: now)
     case .changeBoarding:
         return handleChangeBoarding(state)
     case .advance:
@@ -449,11 +464,13 @@ public func transitGuideStep(
 }
 
 private func handleBoard(
-    _ state: TransitGuideState, lock: TransitLock
+    _ state: TransitGuideState, lock: TransitLock, now: Double
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
     guard state.phase == .waiting, state.signal != .untrackable else { return (state, nil) }
     var next = state
     next.phase = .riding
+    // 미관측 상한의 기준점(A16 L2). 재탑승·leg 전진마다 새로 찍힌다.
+    next.ridingSince = now
     next.phaseGen += 1
     next.lock = lock
     next.previousLock = nil
@@ -488,6 +505,8 @@ private func handleChangeBoarding(
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
+    // 대기 국면엔 기준점이 없다 — 다음 board가 새로 찍는다.
+    next.ridingSince = nil
     next.missCount = 0
     return (next, .boardingReset)
 }
@@ -526,6 +545,8 @@ private func handleAdvance(
     next.arrivedCertain = false
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
+    // 다음 leg는 아직 승차 전이다.
+    next.ridingSince = nil
     next.missCount = 0
     next.failCount = 0
     next.failSince = nil
@@ -586,10 +607,22 @@ private func handlePoll(
     }
 
     if !next.trackingAnnounced {
-        if next.signal != .upstreamFailed, next.signal != .signalLost {
+        // ⚠ neverSeen을 이 목록에서 빼면 매 폴마다 notYetVisible로 되돌아가 아래
+        // 1회성 가드가 무력화된다(반복 발화). 확정된 신호는 여기서 덮지 않는다.
+        if next.signal != .upstreamFailed, next.signal != .signalLost,
+           next.signal != .neverSeen {
             next.signal = .notYetVisible
         }
         next.lastUpdatedAt = now
+        // 그 상태를 빠져나오는 문(A16 L2) — 웹 transit-guide.ts 미러.
+        // 판정하지 않는 경우 셋: 방금 조회가 살아난 폴(recovered — 최소 한 번은
+        // 실제로 보고 말한다, 그리고 signalRecovered를 덮지 않는다) · 원인이 다른
+        // 신호(upstreamFailed·signalLost·자기 자신) · 기준 시각 불명.
+        if !recovered, next.signal == .notYetVisible, next.phase == .riding,
+           let since = next.ridingSince, now - since >= transitNeverSeenMs {
+            next.signal = .neverSeen
+            return (next, .neverSeen)
+        }
         return (next, event)
     }
     next.missCount += 1
