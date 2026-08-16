@@ -84,7 +84,7 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 
 ### 승차 후보 판정
 
-방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고, 두 판정이 쓰는 필드는 **서울 지하철 실시간 도착 API**가 준다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
+방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고, 두 판정이 쓰는 필드(`direction`·`destinationName`)는 **서울 지하철 실시간 도착 API**가 주고, **버스 upstream은 `direction`을 주지 않는다**(`transit-track.ts`가 빈 문자열로 채운다). 그래서 `directionUncertain`은 "방향 축이 있는데(후보 중 `direction`이 비어 있지 않은 것이 하나라도 있음) 매칭이 전멸했다"일 때만 참이다(A17, 2026-08-17) — 전원 빈 문자열이면 축 부재라 uncertain이 아니다. 어기면 모든 버스 세션에 "방면을 확인해 주세요"가 상시 붙는데 버스 목록엔 확인할 방면 정보가 없다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
 
 ### 안내 상태 머신에 신호를 추가할 때 (A16에서 배운 것)
 
@@ -122,6 +122,12 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 - ⚠ **이 마커만 upstream 뒤에 온다**(다른 도메인은 파싱→마커→키 게이트→upstream). 좌표만으로 사전 판정하면 담양·화순처럼 인접 광역시 버스가 넘어오는 지역에 거짓 미제공이 나간다. **0건일 때만** 발동시키면 그 지역은 분기에 들어오지 않아 반례가 스스로 사라진다.
 - 매칭 키는 **시도+시군**(강원/경남 고성군 동명 실사고, 시도는 citycode 앞 2자리)이고 **모르는 시도는 fail-open**이다. 행정구역 개편이 표를 낡게 만든다 — 광주광역시는 전라남도와 통합돼 카카오·juso가 `전남광주통합특별시`로 주는데 TAGO는 여전히 `광주광역시`다.
 - ⚠ seed 빌드는 **`totalCount:0`을 그대로 믿지 않는다**. upstream이 장애를 HTTP 200 + 0으로 내서 천안·함평·산청이 한 빌드에서 가짜 0으로 잡혔다(재확인 + golden 가드).
+
+### 도착 완성 문장(`arrmsg1`)의 국면별 재작성 (`rewriteBusArrivalMessage`, 2026-08-16)
+
+- 낭독 정본은 `arrmsg1`·`arrmsg2` 완성 문장이고(`CLAUDE.md` 횡단 함정), **다듬는 것은 승차 국면뿐**이다. 승차 상태줄은 잔여 수를 따로 말해 원문 꼬리 `[N번째 전]`과 중복되므로 꼬리를 떼고 어미를 "남음"으로 바꾼다. **대기 후보 목록·정류소 도착 목록은 `remainingStops`를 별도로 싣지 않아 그 꼬리가 잔여 정보의 유일한 채널**이다(웹 `TransitGuidePanel`·iOS `TransitTrackingSheet` 모두 `item.message`만 조립) — 거기서 떼면 어느 버스를 탈지 고를 정보가 사라진다.
+- 같은 원문이 국면에 따라 뜻이 다르다: 대기 중 "2분55초후"는 *버스가 오기까지*, 승차 중에는 *내릴 곳까지*. 그래서 `slotToItem`의 국면 인자에 **기본값이 없다**([[no-default-for-safety-parameters]]).
+- 꼬리 정규식은 `ARRMSG_REMAINING_TAIL` 하나를 읽는 쪽(`remainingFromArrmsg`)과 지우는 쪽이 공유한다 — 한쪽만 무는 변형이 생기면 잔여 수와 문장이 동시에 사라진다.
 
 ---
 
@@ -201,11 +207,11 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 웹·iOS 각 8초, 주기 2초. 톤을 fix 처리 경로에만 걸면 권한 철회·서비스 중단에서 판정 자체가 실행되지 않아 **마지막 정상 톤 이후 영구 침묵**이 되고, 백그라운드에서는 톤이 유일한 채널이라 그 침묵이 곧 무고장 판정이 된다. 음성 통지(15초·원인 구분)는 별도 축으로 유지한다 — **톤은 추가 채널이지 대체가 아니다.**
 
 ### 오디오 세션 (`guideAudioStep`)
-안내 세션 중 카테고리는 `.playback`(Experimental 구성). 판정은 Kit 순수 함수가 하고 **`didPromote`일 때만 원복한다** — 세션은 프로세스 전역 자원이고 소비자가 셋(안내 톤·TTS·받아쓰기)이라 무조건 원복하면 다른 소비자를 깬다.
+안내 세션 중 카테고리는 `.playback`(정식·실험 모두 — 1.7 도보 졸업으로 구성 게이트 없음). 판정은 Kit 순수 함수가 하고 **`didPromote`일 때만 원복한다** — 세션은 프로세스 전역 자원이고 소비자가 셋(안내 톤·TTS·받아쓰기)이라 무조건 원복하면 다른 소비자를 깬다.
 
 - suppression 해제·인터럽션 종료·route 변경이 **한 재조정 경로**로 모여 "받아쓰기 중 시작한 세션이 영구히 `.ambient`로 남는" 구멍을 닫는다.
 - 백그라운드에서는 **톤은 남기고 음성만 막는다**(`scenePhase` 게이트. `.inactive`는 화면을 보고 있는 중이라 허용). 상태 텍스트는 계속 갱신하고 복귀 발화는 누적이 아니라 현재 상태 하나다.
-- `UIBackgroundModes: audio`는 `Support/Info-Experimental.plist`에만 둔다(플래그 졸업 시 심사 노트 필요).
+- `UIBackgroundModes: location`·`audio`는 **두 plist 모두**(`Support/Info.plist`·`Support/Info-Experimental.plist`)에 둔다 — 1.7 도보 졸업 때 승격했다. 실험 전용 키는 `NSBluetoothAlwaysUsageDescription` 하나뿐이다(`check-release-artifact.mjs`가 누출을 막는다).
 
 ## 이탈 판정 방위 축 (`course-derivation.ts`·`guide-course-axis.ts` ↔ `CourseDerivation.swift`·`GuideCourseAxis.swift`)
 
