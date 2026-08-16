@@ -292,6 +292,27 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
     expect(uncertain.candidates).toHaveLength(1); // 오필터로 숨기지 않는다
   });
 
+  // A17(2026-08-17): 버스 후보는 upstream이 방향 필드를 주지 않아 direction이 전부
+  // 빈 문자열이다. 그건 "방향 축이 없다"이지 "매칭이 전멸했다"가 아니다 — uncertain으로
+  // 분류하면 모든 버스 세션에 "방면을 확인해 주세요"가 붙는데 확인할 대상이 목록에 없다.
+  it("후보 전원의 direction이 비어 있으면(버스) directionUncertain이 아니다", () => {
+    const busA = item({ direction: "", vehicleId: "b1" });
+    const busB = item({ direction: "", vehicleId: "b2" });
+    const result = classifyBoardingCandidates([busA, busB], leg);
+    expect(result.directionUncertain).toBe(false);
+    expect(result.candidates.map((c) => c.item.vehicleId)).toEqual(["b1", "b2"]);
+    // 후보 0건도 축 부재 — 통지할 목록 자체가 없다.
+    expect(classifyBoardingCandidates([], leg).directionUncertain).toBe(false);
+  });
+
+  it("방향 값이 하나라도 있는데 전멸이면 여전히 uncertain(지하철 미지 표기)", () => {
+    const blank = item({ direction: "", vehicleId: "1" });
+    const unknown = item({ direction: "알수없음", vehicleId: "2" });
+    const result = classifyBoardingCandidates([blank, unknown], leg);
+    expect(result.directionUncertain).toBe(true);
+    expect(result.candidates).toHaveLength(2);
+  });
+
   // 순환선(2호선) 실호출 확정 2026-08-16 — 내선=wayCode 2·외선=1, 종착 검사 제외.
   describe("순환선 2호선(내선·외선)", () => {
     // 실측 표본: 을지로입구 도착 4건이 전부 종착 "성수"였고, 그 leg의 경유

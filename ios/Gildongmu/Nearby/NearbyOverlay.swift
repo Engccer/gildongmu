@@ -13,16 +13,17 @@ func openAppSettings() {
     UIApplication.shared.open(url)
 }
 
-/// 오버레이 한 칸의 카피(제목·아이콘·설명) — 전부 현행 switch에서 그대로 이관.
+/// 오버레이 한 칸의 카피(제목·아이콘). 부연 문장 자리는 없다 — 제목이 상태를 말하고
+/// 꼬리 문장은 새 정보가 없다(2026-08-02 정리 규칙). D7이 마지막 부연 소비자를 지운
+/// 뒤 `description` 필드가 소비자 0인 채 남아 "부연을 붙이는 길이 있다"고 읽혔으므로
+/// 필드째 제거했다(D25, 2026-08-17). 부연이 정말 필요한 화면은 자기 뷰를 쓴다.
 struct NearbyOverlayCopy {
     let title: String
     let systemImage: String
-    let description: String?
 
-    init(_ title: String, systemImage: String, description: String? = nil) {
+    init(_ title: String, systemImage: String) {
         self.title = title
         self.systemImage = systemImage
-        self.description = description
     }
 
     /// 기본 실패 카피(8종 리스트 도메인의 구 .failed와 동일).
@@ -177,7 +178,7 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
         }
     }
 
-    /// 제목·설명의 거리 표기를 낭독에서 풀어 쓴다(지하철 최근접 emptyTitle이 대상:
+    /// 제목의 거리 표기를 낭독에서 풀어 쓴다(지하철 최근접 emptyTitle이 대상:
     /// 같은 문장의 통지는 변환되는데 화면만 약어면 둘이 어긋난다, 리뷰 I-2).
     /// 거리 없는 카피에는 no-op이라 전 오버레이 일괄 적용이 무해하다.
     /// ⚠ 낭독 라벨은 **제목 Text에만** 건다. `Label(title, systemImage:)` 전체에
@@ -185,24 +186,12 @@ struct NearbyStateOverlayView<Payload: Sendable>: View {
     /// 수정자가 두 조각 모두에 내려가고, 아이콘이 제목 문장 전체를 라벨로 갖게
     /// 되어 오버레이마다 같은 문장이 두 번 낭독될 수 있다(리뷰 실측 2026-08-02:
     /// 아이콘 노드 라벨이 심볼 설명에서 제목 문장으로 바뀌는 것 확인).
-    @ViewBuilder private func copyView(_ copy: NearbyOverlayCopy) -> some View {
-        if let description = copy.description {
-            ContentUnavailableView {
-                Label {
-                    Text(copy.title).accessibilityLabel(Text(spokenUnits(copy.title)))
-                } icon: {
-                    Image(systemName: copy.systemImage)
-                }
-            } description: {
-                Text(description).accessibilityLabel(Text(spokenUnits(description)))
-            }
-        } else {
-            ContentUnavailableView {
-                Label {
-                    Text(copy.title).accessibilityLabel(Text(spokenUnits(copy.title)))
-                } icon: {
-                    Image(systemName: copy.systemImage)
-                }
+    private func copyView(_ copy: NearbyOverlayCopy) -> some View {
+        ContentUnavailableView {
+            Label {
+                Text(copy.title).accessibilityLabel(Text(spokenUnits(copy.title)))
+            } icon: {
+                Image(systemName: copy.systemImage)
             }
         }
     }

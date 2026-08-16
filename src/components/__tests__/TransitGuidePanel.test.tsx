@@ -60,6 +60,25 @@ afterEach(() => {
 });
 
 describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
+  it("시작하면 사라진 트리거 대신 상태 텍스트에 커서가 착지한다(B4)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+      })) as unknown as typeof fetch,
+    );
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    const trigger = screen.getByRole("button", { name: "시작" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    // 트리거는 unmount됐고 커서는 body가 아니라 세션 상태 텍스트에 있다.
+    expect(screen.queryByRole("button", { name: "시작" })).toBeNull();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.tagName).toBe("P");
+    await screen.findByRole("button", { name: /boardTrain/ });
+  });
+
   it("탑승 변경은 지금 있는 역을 묻고, 고른 역이 조회 기준이 된다(A16 L3)", async () => {
     const calls: string[] = [];
     vi.stubGlobal(

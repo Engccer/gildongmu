@@ -196,22 +196,28 @@ struct ChatConversationView<EmptyContent: View>: View {
                     // 초안이 고아로 방치): 보내는 것 = 초안 + 받아쓴 말 전부, 초안은 소거.
                     // 통지도 병합 원문 전체 — 사용자가 들은 것이 곧 전송된 것(결정론).
                     let message = mergedDraft(with: text)
+                    // 전사 통지는 `.high`(D24, 2026-08-17): 바로 앞에서 포커스를 보내기
+                    // 버튼으로 선점 이동하므로 VO가 그 라벨("보내기")을 낭독하고, 기본
+                    // 우선순위면 이 통지가 거기에 잠식된다 — 잠식되는 것이 **사용자가
+                    // 방금 말한 내용 전체**라 손실이 가장 크다. ⚠ 종전 주석의 "polite
+                    // 큐라 순서 무해"가 바로 그 폐기된 전제였다(헌장 §6).
+                    var spoken = AttributedString(message)
+                    spoken.accessibilitySpeechAnnouncementPriority = .high
                     if DictationStyle.current == .tapToggle || model.isStreaming {
                         // 탭 토글 방식은 자동 전송 없는 클래식 계약(헌장 §6 받아쓰기 완료):
                         // 정지=초안 확정, 검토 후 전송 — 포커스를 보내기 버튼으로 이동한 뒤
-                        // 받아쓴 결과 원문을 polite 통지. 생성 중 홀드 릴리스도 같은 경로
+                        // 받아쓴 결과 원문을 통지. 생성 중 홀드 릴리스도 같은 경로
                         // (전송 불가 시 발화 유실 금지 — 초안으로 보존).
                         draft = message
                         isSendFocused = true
-                        AccessibilityNotification.Announcement(message).post()
+                        AccessibilityNotification.Announcement(spoken).post()
                     } else {
                         // 릴리스=즉시 전송(위원장 실기기 지시 2026-07-20, WhatsApp 동형).
                         // 순서는 헌장 §6 "포커스 먼저, 통지 나중": 보내기 버튼 포커스를
-                        // 동기 선점한 뒤 통지 — questionRevision onChange의 재대입은 같은
-                        // 값 no-op이라 통지를 인터럽트하지 않는다(리뷰 검출).
+                        // 동기 선점한 뒤 통지.
                         draft = ""
                         isSendFocused = true
-                        AccessibilityNotification.Announcement(message).post()
+                        AccessibilityNotification.Announcement(spoken).post()
                         model.send(message)
                     }
                 },

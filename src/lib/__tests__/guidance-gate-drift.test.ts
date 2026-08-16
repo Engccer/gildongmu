@@ -85,6 +85,94 @@ function declarationBody(source: string, name: string): string {
   throw new Error(`Swift 선언 ${name}의 닫는 중괄호를 찾지 못했다`);
 }
 
+/**
+ * Swift 소스에서 주석·문자열 리터럴을 같은 길이의 공백으로 지운다(오프셋 보존).
+ * 아래 `enclosingHeaders`가 중괄호를 셀 때 주석·문자열 안의 `{`·`}`와, 주석에만
+ * 적힌 플래그 이름("이 플래그를 보지 않는다")이 판정에 끼지 않게 한다.
+ */
+function blankSwiftCommentsAndStrings(source: string): string {
+  let out = "";
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") {
+        out += " ";
+        i++;
+      }
+      out += "\n";
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) {
+        out += source[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += "  ";
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      out += " ";
+      i++;
+      while (i < source.length && source[i] !== '"') {
+        if (source[i] === "\\") {
+          out += " ";
+          i++;
+        }
+        out += source[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += " ";
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+/**
+ * `marker`의 매 등장 자리마다, 그 자리를 감싸는 **모든 블록의 머리말**(각 미닫힘 `{`
+ * 앞 — 직전 `{`/`}`부터 그 `{`까지의 텍스트)과 마커 자신이 든 문장을 배열로 준다.
+ * 안쪽 → 바깥쪽 순. 소비 지점이 어떤 조건 아래에 있는지 **줄 수 창 없이** 본다 —
+ * 조건이 여러 줄이어도, 바깥 `if`로 감싸도 그 머리말에 잡힌다(G4).
+ */
+function enclosingHeaders(source: string, marker: string): string[][] {
+  const clean = blankSwiftCommentsAndStrings(source);
+  const results: string[][] = [];
+  let from = 0;
+  for (;;) {
+    const at = clean.indexOf(marker, from);
+    if (at < 0) break;
+    from = at + marker.length;
+    // 마커가 든 문장: 직전 `{`/`}`부터 다음 `{`/`}` 사이(줄바꿈은 경계가 아니다 —
+    // 여러 줄 조건을 한 문장으로 잡기 위함).
+    let stmtStart = at;
+    while (stmtStart > 0 && clean[stmtStart - 1] !== "{" && clean[stmtStart - 1] !== "}") stmtStart--;
+    let stmtEnd = at;
+    while (stmtEnd < clean.length && clean[stmtEnd] !== "{" && clean[stmtEnd] !== "}") stmtEnd++;
+    const headers = [clean.slice(stmtStart, stmtEnd)];
+    // 바깥으로 올라가며 미닫힘 `{`마다 그 머리말을 모은다.
+    let depth = 0;
+    for (let i = at; i >= 0; i--) {
+      const c = clean[i];
+      if (c === "}") depth++;
+      else if (c === "{") {
+        if (depth > 0) {
+          depth--;
+          continue;
+        }
+        let start = i;
+        while (start > 0 && clean[start - 1] !== "{" && clean[start - 1] !== "}") start--;
+        headers.push(clean.slice(start, i));
+      }
+    }
+    results.push(headers);
+  }
+  if (results.length === 0) throw new Error(`마커 ${marker}를 찾지 못했다`);
+  return results;
+}
+
 /** 마커가 있는 줄과 그 앞 `lines`줄. 버튼이 어느 게이트 안에 있는지 보는 데 쓴다. */
 function windowBefore(source: string, marker: string, lines: number): string {
   const all = source.split("\n");
@@ -157,6 +245,20 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
       );
     },
   );
+
+  it("manualOriginNoticeText 소비 지점이 봉인 플래그 아래에 있지 않다(G4)", () => {
+    // 선언 본문만 보면 소비 지점을 `experimentalGuidanceEnabled`로 감싸는 회귀를 못
+    // 잡는다 — 그때 정식판 사용자만 고지 없이 안내를 시작한다(spec §3.2). 각 소비
+    // 지점을 감싸는 모든 블록 머리말과 그 문장 자체에 플래그가 없어야 한다.
+    const sites = enclosingHeaders(directions(), "manualOriginNoticeText").filter(
+      // 선언 자체(`var manualOriginNoticeText`)는 소비 지점이 아니다.
+      (headers) => !/var\s+manualOriginNoticeText/.test(headers[0]),
+    );
+    expect(sites.length).toBeGreaterThanOrEqual(2);
+    for (const headers of sites) {
+      expect(headers.join("\n")).not.toContain("experimentalGuidanceEnabled");
+    }
+  });
 
   it("구 플래그 realtimeGuidanceEnabled가 남아 있지 않다", () => {
     const offenders = swiftFiles(IOS_DIR).filter((file) =>
@@ -284,6 +386,33 @@ describe("가드 자체가 살아 있다", () => {
     );
     expect(body).not.toContain("experimentalGuidanceEnabled");
     expect(body).toContain("return flag(");
+  });
+
+  it("enclosingHeaders는 여러 줄 조건과 바깥 블록의 플래그를 모두 잡고 주석은 무시한다", () => {
+    const src = [
+      "var body: some View {",
+      "  // experimentalGuidanceEnabled 주석은 무시",
+      "  if AppConfig.experimentalGuidanceEnabled {",
+      "    if !beacon.isTracking,",
+      '       let notice = manualOriginNoticeText { Text("x") }',
+      "  }",
+      "  if let notice = manualOriginNoticeText,",
+      "     AppConfig.experimentalGuidanceEnabled { Text(notice) }",
+      "}",
+    ].join("\n");
+    const sites = enclosingHeaders(src, "manualOriginNoticeText");
+    expect(sites).toHaveLength(2);
+    // 첫 자리: 자기 문장엔 없지만 바깥 if 머리말에 플래그.
+    expect(sites[0][0]).not.toContain("experimentalGuidanceEnabled");
+    expect(sites[0].join("\n")).toContain("experimentalGuidanceEnabled");
+    // 둘째 자리: 여러 줄 조건의 다음 줄에 플래그.
+    expect(sites[1][0]).toContain("experimentalGuidanceEnabled");
+    // 주석에만 있는 플래그는 어느 머리말에도 없다.
+    const clean = ["var body: some View {", "  // experimentalGuidanceEnabled", "  if let n = manualOriginNoticeText { }", "}"].join("\n");
+    expect(enclosingHeaders(clean, "manualOriginNoticeText")[0].join("\n")).not.toContain(
+      "experimentalGuidanceEnabled",
+    );
+    expect(() => enclosingHeaders("a", "없는마커")).toThrow(/찾지 못했다/);
   });
 
   it("windowBefore는 마커를 못 찾으면 throw한다", () => {

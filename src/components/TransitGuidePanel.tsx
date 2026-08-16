@@ -59,6 +59,7 @@ export function TransitGuidePanel({
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
+  const statusRef = useRef<HTMLParagraphElement>(null);
   const listHadFocusRef = useRef(false);
 
   const state = guide.state;
@@ -97,6 +98,12 @@ export function TransitGuidePanel({
   const prevPhaseRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     const phase = state?.phase ?? null;
+    // 세션 시작(B4): 트리거 버튼이 unmount되며 커서가 body로 떨어지는 전이다(헌장 §5
+    // "포커스를 쥔 요소를 제거하는 상태 전이"). 세션 내내 존재하는 상태 텍스트로 선점
+    // — 시작 통지는 live region이 이미 내므로 착지는 위치 보존만 맡는다.
+    if (phase !== null && prevPhaseRef.current === null) {
+      statusRef.current?.focus();
+    }
     if (phase === "arrived" && prevPhaseRef.current !== "arrived") {
       advanceRef.current?.focus();
     }
@@ -164,7 +171,9 @@ export function TransitGuidePanel({
           {/* 상시 표시(live region 밖, 묶음 A 계약) — 통지와 같은 조립기를
               공유한다(§12.3: 완성 문장 공백 연결, 쉼표 조립(joinText) 폐기 —
               문장 키와 쉼표 조립이 섞이며 "기준., " 이중 구두점이 났었다). */}
-          <p className="text-sm">{guide.statusText}</p>
+          <p ref={statusRef} tabIndex={-1} className="text-sm">
+            {guide.statusText}
+          </p>
 
           {/* 경유역 목록 1단계(§14.1, 피드백 #3): 기보유 viaStops의 정적 표시 —
               추가 upstream 0회. 항목 무헤딩(도착편 관례)·단일 텍스트, 승차·하차
@@ -241,9 +250,8 @@ export function TransitGuidePanel({
                   )}
                   {/* 빠른하차(E5) — 목록 **앞**에 둔다. 국면 전환으로 조용히 나타나는
                       문장이라 목록으로 내려가는 길목에 놓아야 순차 탐색으로 만난다.
-                      ⚠ 웹은 세션 시작 시 포커스를 어디에도 착지시키지 않는다(트리거가
-                      unmount되며 커서가 body로 떨어진다 — 선재 결함, a11y 감사 확인).
-                      그래서 이 자리는 "착지점 다음"이 아니라 "목록 앞"이 근거다.
+                      세션 시작 착지점은 상태 텍스트(B4, 2026-08-17)이고 그 다음 순차
+                      탐색이 여기를 지나 목록으로 내려간다 — 자리의 근거는 "목록 앞"이다.
                       통지는 만들지 않는다(정적 정보라 상태 변화가 없다). */}
                   {quickExit && <p className="text-sm">{quickExit}</p>}
                   {guide.waitingOptions.length === 0 && (
