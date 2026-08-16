@@ -1,6 +1,8 @@
 # 실기기 계측 로그 보관소
 
-실보행·실주행에서 회수한 `guide-diag.log` 원본(gzip). 각 로그는 그것을 판정 근거로 쓴 spec·BACKLOG 항목이 소비자다. 판독은 `gunzip -c <파일> | less`.
+실보행·실주행에서 회수한 `guide-diag.log` 원본(gzip)의 **목록과 판독 요지**. 각 로그는 그것을 판정 근거로 쓴 spec·BACKLOG 항목이 소비자다. 판독은 `gunzip -c <파일> | less`.
+
+⚠ **로그 파일 자체는 이 저장소에 없다.** 초 단위 위경도는 개발자의 실제 이동 경로라 공개 저장소에 싣지 않는다(`.gitignore`가 `docs/superpowers/specs/logs/*.log*`를 막는다). 원본은 개발자가 저장소 밖(`~/gildongmu-private/field-logs/`)에 보관하며, 아래 표는 그 파일들의 색인이다. 게이트 테스트가 쓰는 부분만 익명화 fixture로 떼어 두었다: `src/lib/__tests__/fixtures/guide-diag-2026-08-09-walk.json`(경도 평행이동, 거리·방위 불변)·`guide-diag-2026-08-13-final-approach.json`(t·event만). 재현 연구에 원본이 필요하면 저자에게 요청한다.
 
 ⚠ **로그가 답하지 못하는 질문은 앱 URLCache가 답한다**(2026-08-16 A18 판정에서 확립). `GuideDiag`는 스텝 **인덱스**만 남기므로 "그 스텝이 무슨 문장이었나"·"경로를 어느 좌표에서 조회했나"는 로그만으로 못 푼다. 앱이 주고받은 요청 URL과 응답 본문은 `Library/Caches/<bundle id>/`의 `Cache.db`(+`-wal`·`-shm`)와 `fsCachedData/`에 남아 있다 — 넷을 함께 회수해 `cfurl_cache_response`(요청 URL·타임스탬프)와 `cfurl_cache_receiver_data`(본문, `isDataOnFS=1`이면 `fsCachedData/<파일명>`)를 조인한다. **정식판(`space.dodoplanet.gildongmu`)에도 있다** — 계측이 없는 정식판 세션에서 유일하게 남는 증거다.
 

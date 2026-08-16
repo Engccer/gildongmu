@@ -52,3 +52,7 @@ __pycache__/
 
 # 모델 A/B 실호출 원시 결과(로컬 전용)
 .ab-out/
+
+# 실기기 계측 로그 원본(초 단위 위경도 = 개발자 이동 경로). repo 밖 보관, 색인만 logs/README.md에.
+docs/superpowers/specs/logs/*.log
+docs/superpowers/specs/logs/*.log.gz

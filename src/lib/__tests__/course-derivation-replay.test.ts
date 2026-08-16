@@ -1,8 +1,6 @@
 // @vitest-environment node
-import { gunzipSync } from "node:zlib";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
+import walkFixture from "./fixtures/guide-diag-2026-08-09-walk.json";
 import {
   DERIVE_BASELINE_M,
   deriveCourse,
@@ -31,33 +29,20 @@ import type { Polyline } from "../route-geometry";
  * 표 없음) 창은 시간으로 낡는다. 가용률은 §3.0.3의 정의(기저선 확보 가능)로 잰다 —
  * 전진 게이트는 표 밀도 통제 장치라 가용률의 분자가 아니다.
  */
-const LOG = path.join(
-  process.cwd(),
-  "docs/superpowers/specs/logs/guide-diag-2026-08-09.log.gz",
-);
-
 interface LogFix {
   t: number;
   lat: number;
   lng: number;
 }
 
+/**
+ * fixture는 원본 `guide-diag-2026-08-09.log.gz`의 첫 세션(도보 281 fix)이다.
+ * 원본 로그는 사생활(실제 이동 경로) 때문에 repo 밖에 보관하고, fixture는 경도를
+ * 일정량 평행이동해 두었다 — haversine 거리와 방위는 경도 평행이동에 불변이라
+ * 리플레이 수치는 원본과 동일하다.
+ */
 function parseWalkSession(): LogFix[] {
-  const text = gunzipSync(readFileSync(LOG)).toString("utf8");
-  const re = /t=([\d.]+) lat=([\d.-]+) lng=([\d.-]+)/;
-  const all: LogFix[] = [];
-  for (const line of text.split("\n")) {
-    const m = re.exec(line);
-    if (m) all.push({ t: +m[1], lat: +m[2], lng: +m[3] });
-  }
-  // 세션 경계: t 역행 또는 120s 공백. 첫 세션이 도보다.
-  const walk: LogFix[] = [all[0]];
-  for (const f of all.slice(1)) {
-    const prev = walk[walk.length - 1];
-    if (f.t < prev.t || f.t > prev.t + 120) break;
-    walk.push(f);
-  }
-  return walk;
+  return walkFixture.fixes;
 }
 
 function toPolyline(fixes: LogFix[]): Polyline {
