@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,9 +6,16 @@ import { describe, expect, it } from "vitest";
 // 도보 상세 안내가 출시되며 끝났다(위원장 전제 정정 2026-08-16, 백로그 E16).
 // 이 가드는 그 명칭이 사용자 노출 문자열로 다시 들어오는 것을 막는다.
 //
-// ⚠ 로케일 파일을 정적 import 하지 않고 디렉터리를 훑는다 — import 목록 방식은
-// 새 로케일이 추가될 때 추가를 잊으면 그 파일만 조용히 비검사로 남는다.
-const ROOTS = ["messages", path.join("ios", "i18n", "ios-extra")];
+// ⚠ 로케일 파일도 그 파일이 담긴 디렉터리도 손으로 적지 않는다 — 목록 방식은
+// 새 로케일·새 보조 카탈로그가 추가될 때 추가를 잊으면 그것만 조용히 비검사로
+// 남는다(`ios/i18n` 아래에 `ios-extra`·`kit-extra` 둘이 있고 셋째가 생길 수 있다).
+const I18N_ROOT = path.join("ios", "i18n");
+const ROOTS = [
+  "messages",
+  ...readdirSync(I18N_ROOT)
+    .map((d) => path.join(I18N_ROOT, d))
+    .filter((p) => statSync(p).isDirectory()),
+];
 
 // "간략 안내"만 지우면 짝인 "상세 안내"가 홀로 남아 무엇과 대비되는지 알 수 없는
 // 말이 된다 — 지우는 대상은 낱말이 아니라 대비 구조다.
