@@ -14,7 +14,7 @@
 
 ## 1.7 (빌드 13)
 
-제출 2026-08-15 09:08 KST · `WAITING_FOR_REVIEW`. 아카이브 커밋 `cb3402a`(`git worktree`로 격리해 빌드). 산출물 `Info.plist`로 번들 ID `space.dodoplanet.gildongmu`(`.dev` 아님)·표시 이름 무접미사·1.7.0(13)·`UIBackgroundModes`(location·audio)·ko 권한 문구 거리 안내 절을 확인했다. 프로모션 텍스트 자동 승계 세 번째 동작(ko 86자·en 142자), 심사 노트는 `--review-notes`로 백그라운드 오디오 절을 더해 1,729자.
+제출 2026-08-15 09:08 KST · **심사 통과 확인 2026-08-16 (`READY_FOR_SALE`)**. 아카이브 커밋 `cb3402a`(`git worktree`로 격리해 빌드). 산출물 `Info.plist`로 번들 ID `space.dodoplanet.gildongmu`(`.dev` 아님)·표시 이름 무접미사·1.7.0(13)·`UIBackgroundModes`(location·audio)·ko 권한 문구 거리 안내 절을 확인했다. 프로모션 텍스트 자동 승계 세 번째 동작(ko 86자·en 142자), 심사 노트는 `--review-notes`로 백그라운드 오디오 절을 더해 1,729자.
 
 ⚠ **산출물 검사가 제출을 두 번 막았고 둘 다 검사 자신의 결함이었다**(같은 날 수정·테스트). ①ASC `versionString`(`1.7`)과 산출물 `CFBundleShortVersionString`(`1.7.0`)을 문자열 완전 일치로 비교 ②`asc-submit`이 경로 없이 넘기는 `--expect-version 1.7`의 값 `1.7`을 산출물 경로로 오인. **이 게이트가 `asc-submit` 경유로 한 번도 실행된 적이 없었다는 뜻**이라, 게이트를 새로 도입하면 그 게이트가 실제로 호출되는 경로로 한 번 밟아 봐야 한다.
 
