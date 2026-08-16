@@ -1703,6 +1703,8 @@ final class BeaconModel {
     /// 한 번 더 부른다. 커밋 조건은 세션 토큰 일치 AND 도착 화면이 아직 열려 있음.
     /// 도착 낭독 문장에는 넣지 않고, 값은 로그에 남기지 않는다(지연만 계측).
     private func loadArrivalHealth() {
+        // ⚠ 실제 `.car` 배제선은 `sessionStartedAt`(car면 nil)이다 — 두 도착 경로 모두 stop()이
+        // sessionKind를 walk로 되돌린 뒤 여기 오므로 아래 sessionKind 검사는 항상 참이다.
         guard sessionKind == .walk, let start = sessionStartedAt, arrivalDest != nil else { return }
         guard arrivalHealthLoad == .idle || arrivalHealthLoad == .failed else { return }
         arrivalHealthLoad = .loading
