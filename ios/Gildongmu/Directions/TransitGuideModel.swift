@@ -98,7 +98,7 @@ final class TransitGuideModel {
         let first = guideRoute.legs[0]
         var parts = [
             appLocalized("transitGuide.started", String(guideRoute.legs.count)),
-            waitContextText(first),
+            waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
         announce(parts.joined(separator: " "))
@@ -375,7 +375,7 @@ final class TransitGuideModel {
         var parts = [
             appLocalized("ios.guide.destChanged", destinationLabel),
             appLocalized("transitGuide.started", String(guideRoute.legs.count)),
-            waitContextText(first),
+            waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
         // 활성화 응답(후보 버튼이 사라지는 전이) — .high(헌장 §6).
@@ -396,7 +396,7 @@ final class TransitGuideModel {
     /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
     func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
         var parts = [
-            state.phase == .waiting ? waitContextText(leg) : contextText(leg),
+            state.phase == .waiting ? waitContextText(leg, isCurrentLeg: true) : contextText(leg),
             signalStatusText(state.signal, phase: state.phase),
         ]
         if let remaining = state.remaining {
@@ -700,7 +700,8 @@ final class TransitGuideModel {
                 let nextIndex = state.legIndex + 1
                 if route.legs.indices.contains(nextIndex) {
                     parts.append(appLocalized(
-                        "transitGuide.nextLeg", waitContextText(route.legs[nextIndex])))
+                        "transitGuide.nextLeg",
+                        waitContextText(route.legs[nextIndex], isCurrentLeg: false)))
                 } else if let walk = route.walkAfterMinutes {
                     parts.append(appLocalized(
                         "transitGuide.nextLeg", appLocalized("transitGuide.doneWalk", String(walk))))
@@ -732,7 +733,7 @@ final class TransitGuideModel {
                 }
             } else if let route, route.legs.indices.contains(legIndex) {
                 let next = route.legs[legIndex]
-                parts.append(waitContextText(next))
+                parts.append(waitContextText(next, isCurrentLeg: false))
                 if next.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
             }
         case .boardingReset:
@@ -758,8 +759,12 @@ final class TransitGuideModel {
     /// 대기"라고 말하는데 그 아래 목록은 왕십리 도착 정보인 상태가 된다. 목록 항목에
     /// 역명이 없으므로(전 목록이 한 역 기준이라는 전제) **SR 사용자에게는 이 문장이
     /// 그 화면의 유일한 역 정보원**이다.
-    func waitContextText(_ leg: TransitGuideLeg) -> String {
-        if let override = boardOverrideName {
+    /// - Parameter isCurrentLeg: 이 문맥이 **지금 안내 중인 구간**을 설명하는가.
+    ///   ⚠ 기본값을 두지 않는 이유: 다음 구간 안내(`nextLeg`·`legAdvanced`)가 이전
+    ///   구간에서 고른 역을 말하면 안 되는데, 생략이 컴파일을 통과하면 그 결함이
+    ///   조용히 들어온다([[no-default-for-safety-parameters]]).
+    func waitContextText(_ leg: TransitGuideLeg, isCurrentLeg: Bool) -> String {
+        if isCurrentLeg, let override = boardOverrideName {
             // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다 —
             // 역명만 바꾸면 "3분 걸어 왕십리역에서"라는 새 거짓말이 된다.
             return appLocalized("transitGuide.waitContext", override, leg.lineName)
