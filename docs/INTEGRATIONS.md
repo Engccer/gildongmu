@@ -82,6 +82,15 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 ### 도보 leg
 `distanceMeters` + `toName`(뒤 첫 탑승 구간의 `fromName`, **환승 통로 필터 뒤** 배열에서 유도 — 필터 전이면 첫 도보가 환승역을 가리킨다)을 싣는다. 마지막 도보는 `toName` 부재가 정상이다(소비자가 "목적지까지"로 채운다).
 
+### 안내 상태 머신에 신호를 추가할 때 (A16에서 배운 것)
+
+`transit-guide.ts`(웹 정본) ↔ `TransitGuide.swift`(Kit 미러)에 새 `TransitSignal`을 더할 때 세 가지가 조용히 어긋난다.
+
+- ⚠ **그 상태를 덮는 기존 대입을 먼저 찾는다.** 미등장 블록의 `signal = "notYetVisible"` 대입은 보호 목록(`upstreamFailed`·`signalLost`)에 없는 신호를 **매 폴마다 되돌린다**. 새 신호를 목록에 넣지 않으면 1회성 가드가 무력해져 반복 발화한다(실측). 신호를 추가하는 작업의 절반은 **덮는 자리를 찾는 일**이다.
+- ⚠ **조회 대상 역은 상태 머신이 모른다.** 머신은 폴 *결과*만 받고 어느 역을 조회할지는 소비자(`trackTargetUrl` · `fetchPoll`)가 정한다. 그래서 "무엇을 조회할까"에 속하는 기능(A16 L3 역 재선택)은 **Kit·공유 fixture를 건드리지 않고** 앱·훅 계층에서 끝난다. 반대로 판정에 속하는 것은 반드시 양쪽 미러 + fixture를 지난다.
+- ⚠ **국면이 조회 대상을 정한다**(`phase === "waiting" ? boardName : alightName`). 그래서 국면을 되돌리는 액션(`changeBoarding`)은 조회 대상도 함께 되돌린다 — 이것이 A16 L3 결함의 기제였다. 국면 전이를 추가할 때 "이 전이가 조회 대상을 어디로 옮기는가"를 함께 답할 것.
+- **소거는 dispatch 한 곳에서.** 사용자가 고른 기준 역(`boardOverride`)처럼 수명이 짧은 값은 호출부마다 지우지 말고 디스패치에서 입력 종류로 판정한다 — `board` 디스패치만 네 곳이라 하나만 빠져도 다음 대기 국면이 조용히 틀린 역을 조회한다.
+
 ---
 
 ## 지하철 빠른하차 (`subway-quick-exit` seed → `quick-exit.ts`)
