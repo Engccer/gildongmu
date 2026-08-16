@@ -70,7 +70,7 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: LATLNG, envelope: "places", locationParam: true, mcp: true },
   { name: "nearby-walk-infra", description: "내 주변 보행 인프라(음향신호기·횡단보도·점자블록)", path: "/api/walk/nearby", method: "GET",
     params: LATLNG, envelope: "walk", locationParam: true, mcp: true },
-  { name: "nearby-congestion", description: "지금 있는 곳의 실시간 인구 혼잡도(서울 핫스팟 121곳 한정, 대상 밖이면 오류가 아니라 area:null)", path: "/api/congestion/nearby", method: "GET",
+  { name: "nearby-congestion", description: "지금 있는 곳의 실시간 인구 혼잡도(서울 핫스팟 116곳 한정, 대상 밖이면 오류가 아니라 area:null)", path: "/api/congestion/nearby", method: "GET",
     params: LATLNG, envelope: "area", locationParam: true, mcp: true },
   { name: "station-meta", description: "도시철도역 메타(영문명·노선·환승)", path: "/api/station/meta", method: "GET",
     params: [{ key: "station", type: "string", required: true, description: "역명" }], envelope: "meta", locationParam: false, mcp: true },

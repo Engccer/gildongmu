@@ -82,6 +82,10 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 ### 도보 leg
 `distanceMeters` + `toName`(뒤 첫 탑승 구간의 `fromName`, **환승 통로 필터 뒤** 배열에서 유도 — 필터 전이면 첫 도보가 환승역을 가리킨다)을 싣는다. 마지막 도보는 `toName` 부재가 정상이다(소비자가 "목적지까지"로 채운다).
 
+### 승차 후보 판정
+
+방향 필터·종착 검사는 `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)에 있고, 두 판정이 쓰는 필드는 **서울 지하철 실시간 도착 API**가 준다. **2호선은 그 두 필드가 모두 다르게 동작하므로 이 계층을 수정하기 전에 아래 §서울 지하철 실시간의 "순환선(2호선)" 절을 읽는다.**
+
 ### 안내 상태 머신에 신호를 추가할 때 (A16에서 배운 것)
 
 `transit-guide.ts`(웹 정본) ↔ `TransitGuide.swift`(Kit 미러)에 새 `TransitSignal`을 더하거나 국면 UI를 붙일 때 아래가 조용히 어긋난다.
@@ -264,6 +268,6 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 
 ⚠ **보행 전용이다.** `GuideTuning.courseAxisEnabled`가 walk에서만 켜져 있고 게이트는 `guideStep` 진입점 한 곳뿐이다. 차량 속도에서는 ±10m 표본 대역을 1.3초에 통과해 헛경고 논거가 성립하지 않고, 차량 헛경고율은 측정된 적이 없다.
 
-⚠ **상수는 전부 잠정값이다.** 확정은 검증 보행(spec §7 3단계 — 탐색 로그와 분리된 새 보행)이 하고, A6은 그 판정이 날 때까지 열려 있다. ⚠ **`AppConfig.realtimeGuidanceEnabled`의 `#if`를 지우기 전에 그 판정을 먼저 확인한다** — 이 축은 그 플래그에 얹혀 봉인돼 있을 뿐 자기 게이트가 없다.
+⚠ **상수는 전부 잠정값이다.** 확정은 검증 보행(spec §7 3단계 — 탐색 로그와 분리된 새 보행)이 하고, A6은 그 판정이 날 때까지 열려 있다. ⚠ **이 축은 자기 게이트가 없어 도보 졸업과 함께 정식판으로 나갔다**(1.7, 2026-08-15). 얹혀 있던 `AppConfig.realtimeGuidanceEnabled`는 그때 삭제됐다. 출하는 의도된 결정이었으나(축을 끄면 갈림길 원증상이 남고 그쪽이 헛경고보다 위험하다) **판정이 끝나서 나간 것이 아니다** — 상수를 "정식판에 있으니 확정된 값"으로 읽지 말 것. 검증 보행은 **실험판에서** 해야 한다(`GuideDiag`가 `#if DEBUG || EXPERIMENTAL`이라 정식판엔 계측 로그가 없다).
 
 ⚠ **진짜 평행 도로는 이 축으로도 못 잡는다.** 30m 안에서 실제로 나란한 두 도로는 방위도 같아 수학적으로 구분 불가다. 유도 방위로 바뀌어도 같다.
