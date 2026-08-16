@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
 import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
-import { getWalkInfrastructure, configureWalkInfraTileCache } from "@/lib/walk-infra";
+import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { checkWalkInfraRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
-
-// Overpass 타일 1시간 지속 캐시 주입 — walk-infra는 Next 비의존 유지(이식성 규칙).
-configureWalkInfraTileCache((fetcher, key) =>
-  unstable_cache(fetcher, [key], { revalidate: 3600 })(),
-);
 
 /**
  * GET /api/walk/nearby?lat&lng - 내 주변 보행 인프라(음향신호기+OSM 횡단보도·점자블록).
@@ -20,8 +14,9 @@ configureWalkInfraTileCache((fetcher, key) =>
  * throw하지 않는다.
  */
 // 좌표는 `latParam`/`lngParam`을 쓴다(`z.coerce.number()` 직접 사용 시
-// `Number("")===0` 함정 — `@/lib/coord-param` 주석 참조). 이 라우트는 커버리지
-// 마커가 없어(OSM 전 지구) 그 함정이 널 아일랜드 실조회로 이어진다.
+// `Number("")===0` 함정 — `@/lib/coord-param` 주석 참조). 파라미터 누락이 (0,0)으로
+// 위장하면 이 라우트는 그것을 "커버리지 밖"이라는 그럴듯한 200으로 답하게 되므로
+// 400 판정이 여전히 이 자리의 책임이다.
 const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),

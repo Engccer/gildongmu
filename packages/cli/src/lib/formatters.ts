@@ -145,7 +145,7 @@ interface WalkOsmItem {
 /** discriminated union — count류는 ok 안에만(unsupported·error에 수치 합성 금지). */
 type WalkSourceStatusItem<T> =
   | { status: "ok"; data: T }
-  | { status: "unsupported"; reason: "outsideSeoul" }
+  | { status: "unsupported"; reason: "outsideSeoul" | "outsideKorea" }
   | { status: "error" };
 
 interface WalkInfrastructureItem {
@@ -582,7 +582,7 @@ function walkGroupHeader(label: string, total: number, listed: number): string {
 
 /**
  * 두 소스(audioSignals·osm)를 서로 독립 판정(웹 WalkInfraNearby 상태×산문 매트릭스 미러).
- * 3-state: "0곳"(등록 없음) ≠ unsupported(서울 외 미제공) ≠ error(조회 실패)를 각자
+ * 3-state: "0곳"(등록 없음) ≠ unsupported(제공 지역 밖) ≠ error(조회 실패)를 각자
  * 다른 문장으로 낭독한다. 両소스 error는 라우트가 503으로 끊어 여기 오지 않는다.
  */
 function formatWalkInfra(body: { walk: WalkInfrastructureItem }): string[] {
@@ -631,6 +631,11 @@ function formatWalkInfra(body: { walk: WalkInfrastructureItem }): string[] {
     } else {
       lines.push("주변에 등록된 점자블록이 없습니다.");
     }
+  } else if (osm.status === "unsupported") {
+    // 국내 전역 정적 seed라 한국 밖은 실패가 아니라 미제공이다(3-state). 그룹 이름을
+    // 각 문장에 넣어야 연속 낭독에서 두 줄이 중복으로 들리지 않는다.
+    lines.push("횡단보도 정보는 국내만 제공됩니다.");
+    lines.push("점자블록 정보는 국내만 제공됩니다.");
   } else {
     lines.push("횡단보도·점자블록 정보를 불러오지 못했습니다.");
   }

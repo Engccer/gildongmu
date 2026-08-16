@@ -613,6 +613,13 @@
     "faq5q": "Perché non c'è una mappa?",
     "faq5a": "Le mappe non possono essere lette dagli screen reader, quindi Gildongmu presenta tutto come testo. Per la guida su strada vera e propria si passa alle app Naver Map o KakaoMap."
   },
+  "dataSources": {
+    "title": "Fonti dei dati",
+    "intro": "Ecco da dove provengono i dati usati da Gildongmu.",
+    "osmLicense": "Dati dei contributori di OpenStreetMap, con licenza ODbL 1.0",
+    "osmLink": "Leggi il testo completo della licenza",
+    "osmCopyRequest": "Una copia dei dati cartografici viene fornita su richiesta."
+  },
   "beacon": {
     "heading": "Guida in tempo reale",
     "start": "Avvia guida",
@@ -795,11 +802,14 @@
     "hostSubwayEntrance": "ingresso della metropolitana",
     "crossingEmpty": "Nessun attraversamento pedonale registrato nelle vicinanze",
     "crossingError": "Impossibile caricare le informazioni sugli attraversamenti pedonali",
+    "crossingUnsupported": "Le informazioni sugli attraversamenti pedonali sono disponibili solo in Corea del Sud",
     "tactileEmpty": "Nessuna pavimentazione tattile registrata nelle vicinanze",
     "tactileError": "Impossibile caricare le informazioni sulla pavimentazione tattile",
+    "tactileUnsupported": "Le informazioni sulla pavimentazione tattile sono disponibili solo in Corea del Sud",
     "osmSummary": "{count} attraversamenti pedonali/punti di pavimentazione tattile",
     "osmEmpty": "Nessuna informazione su attraversamenti pedonali o pavimentazione tattile registrata nelle vicinanze",
     "osmError": "Impossibile caricare le informazioni su attraversamenti pedonali o pavimentazione tattile",
+    "osmUnsupported": "Le informazioni su attraversamenti pedonali e pavimentazione tattile sono disponibili solo in Corea del Sud",
     "footnote": "In base ai dati registrati dalla città di Seul e da OSM; può differire dalla presenza reale o dallo stato di funzionamento.",
     "sourceOsm": "© Contributori di OpenStreetMap",
     "sourceAudio": "Semafori acustici: fornito da Seul (aggiornato al {baseDate})"

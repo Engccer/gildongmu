@@ -64,7 +64,9 @@ export function WalkInfraNearby() {
         ? walk.osm.data.listedCount > 0
           ? t("osmSummary", { count: walk.osm.data.listedCount })
           : t("osmEmpty")
-        : t("osmError");
+        : walk.osm.status === "unsupported"
+          ? t("osmUnsupported")
+          : t("osmError");
     return joinText(audio, osm);
   }
 
@@ -171,7 +173,9 @@ function WalkInfraPanel({
           )
         ) : (
           <p className="mt-1 text-sm opacity-70">
-            {t("crossingError")}
+            {/* 국내 전역 seed라 한국 밖은 실패가 아니라 미제공이다(3-state).
+                "0건"으로도, "조회 실패"로도 뭉개지 않는다. */}
+            {walk.osm.status === "unsupported" ? t("crossingUnsupported") : t("crossingError")}
           </p>
         )}
       </div>
@@ -204,7 +208,7 @@ function WalkInfraPanel({
           )
         ) : (
           <p className="mt-1 text-sm opacity-70">
-            {t("tactileError")}
+            {walk.osm.status === "unsupported" ? t("tactileUnsupported") : t("tactileError")}
           </p>
         )}
       </div>

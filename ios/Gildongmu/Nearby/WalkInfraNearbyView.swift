@@ -13,8 +13,10 @@ struct WalkInfraPayload: Sendable {
 /// 두 소스는 독립 강등(WalkSourceStatus) — 그룹 섹션 3개 헤더는 항상 렌더해
 /// 헤딩 내비로 어느 그룹에 먼저 도달해도 그 자리에서 상태를 알 수 있다(웹 h4 계약).
 /// 항목은 이름 없는 인프라 점이라 heading 미부여, joinText 한 줄=한 객체.
-/// NearbyLoadCore 껍데기이되 `coverage: .none`이 의도 계약 — OSM은 전 지구 커버라
-/// 한국 밖에서도 조회한다(웹 coverage:"none" 동형, .korea로 "정리" 금지).
+/// NearbyLoadCore 껍데기이되 `coverage: .none`이 의도 계약 — 라우트에 커버리지 마커가
+/// 없고 두 소스가 각자 unsupported로 강등되므로 한국 밖에서도 조회해 소스별 미제공
+/// 문구를 낸다(웹 coverage:"none" 동형, .korea로 "정리" 금지 — 그러면 소스별 구분이
+/// 사라지고 화면 전체가 커버리지 밖 한 문구로 뭉개진다).
 @Observable @MainActor
 final class WalkInfraModel {
     private let core: NearbyLoadCore<WalkInfraPayload>
@@ -62,7 +64,8 @@ func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
         osm = data.listedCount > 0
             ? appLocalized("walkInfra.osmSummary", String(data.listedCount))
             : appLocalized("walkInfra.osmEmpty")
-    case .unsupported, .error: osm = appLocalized("walkInfra.osmError")
+    case .unsupported: osm = appLocalized("walkInfra.osmUnsupported")
+    case .error: osm = appLocalized("walkInfra.osmError")
     }
     return joinText(audio, osm)
 }
@@ -158,7 +161,9 @@ struct WalkInfraNearbyView: View {
                             feature.tactilePaving ? appLocalized("walkInfra.hasTactile") : nil))
                     }
                 }
-            case .unsupported, .error:
+            case .unsupported:
+                Text(appLocalized("walkInfra.crossingUnsupported"))
+            case .error:
                 Text(appLocalized("walkInfra.crossingError"))
             }
         } header: {
@@ -180,7 +185,9 @@ struct WalkInfraNearbyView: View {
                             feature.hostFeature == "subwayEntrance" ? appLocalized("walkInfra.hostSubwayEntrance") : nil))
                     }
                 }
-            case .unsupported, .error:
+            case .unsupported:
+                Text(appLocalized("walkInfra.tactileUnsupported"))
+            case .error:
                 Text(appLocalized("walkInfra.tactileError"))
             }
         } header: {

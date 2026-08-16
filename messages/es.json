@@ -613,6 +613,13 @@
     "faq5q": "¿Por qué no hay mapa?",
     "faq5a": "Los mapas no pueden leerse con lectores de pantalla, así que Gildongmu presenta toda la información como texto. Para la conducción con guía en tiempo real te deriva a las apps Naver Map o KakaoMap."
   },
+  "dataSources": {
+    "title": "Fuentes de datos",
+    "intro": "De aquí proceden los datos que usa Gildongmu.",
+    "osmLicense": "Datos de los colaboradores de OpenStreetMap, con licencia ODbL 1.0",
+    "osmLink": "Ver el texto completo de la licencia",
+    "osmCopyRequest": "Una copia de los datos cartográficos se facilita a quien la solicite."
+  },
   "beacon": {
     "heading": "Guía en tiempo real",
     "start": "Iniciar guía",
@@ -795,11 +802,14 @@
     "hostSubwayEntrance": "entrada de metro",
     "crossingEmpty": "No hay pasos de peatones registrados cerca",
     "crossingError": "No se pudo cargar la información de pasos de peatones",
+    "crossingUnsupported": "La información de pasos de peatones solo está disponible en Corea del Sur",
     "tactileEmpty": "No hay pavimento táctil registrado cerca",
     "tactileError": "No se pudo cargar la información de pavimento táctil",
+    "tactileUnsupported": "La información de pavimento táctil solo está disponible en Corea del Sur",
     "osmSummary": "{count} pasos de peatones/puntos de pavimento táctil",
     "osmEmpty": "No hay información de pasos de peatones ni pavimento táctil registrada cerca",
     "osmError": "No se pudo cargar la información de pasos de peatones ni pavimento táctil",
+    "osmUnsupported": "La información de pasos de peatones y pavimento táctil solo está disponible en Corea del Sur",
     "footnote": "Según datos registrados de la ciudad de Seúl y OSM; puede diferir de la existencia real o el estado de funcionamiento.",
     "sourceOsm": "© Colaboradores de OpenStreetMap",
     "sourceAudio": "Semáforos con aviso sonoro: proporcionado por Seúl (a fecha de {baseDate})"

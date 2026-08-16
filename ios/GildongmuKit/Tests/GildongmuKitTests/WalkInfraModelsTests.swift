@@ -51,6 +51,22 @@ import Foundation
     }
 }
 
+/// 한국 밖: OSM 축도 unsupported로 온다(횡단보도·점자블록이 Overpass 실시간 호출에서
+/// 국내 전역 정적 seed로 바뀌어 생긴 상태 — 종전 전 지구 커버 시절엔 ok·error뿐이었다).
+/// 미제공을 실패로 뭉개면 "정보를 불러오지 못했습니다"가 낭독되는데, 시각장애 사용자는
+/// 화면으로 그 차이를 확인할 수 없어 낭독 문장이 유일한 정보원이다(3-state 불변식).
+/// 픽스처가 아니라 인라인인 이유: 서버 변경분이라 실호출 캡처가 아직 없다.
+@Test func walkNearbyDecodesOsmUnsupportedOutsideKorea() throws {
+    let json = #"""
+    {"walk":{"audioSignals":{"status":"unsupported","reason":"outsideSeoul"},
+             "osm":{"status":"unsupported","reason":"outsideKorea"}}}
+    """#
+    let envelope = try JSONDecoder().decode(WalkInfraEnvelope.self, from: Data(json.utf8))
+    guard case .unsupported = envelope.walk.osm else {
+        Issue.record("osm이 unsupported가 아님"); return
+    }
+}
+
 /// 미지의 status는 웹 소비자와 동형으로 error 취급(신규 상태 추가에 크래시 금지).
 @Test func walkSourceUnknownStatusFallsBackToError() throws {
     let json = #"{"walk":{"audioSignals":{"status":"future-new"},"osm":{"status":"error"}}}"#

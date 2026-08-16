@@ -613,6 +613,13 @@
     "faq5q": "地図画面がないのはなぜですか?",
     "faq5a": "地図はスクリーンリーダーで読めないため、キルドンムはすべての情報をテキストで提供します。実際の走行案内が必要な場合はNAVERマップやカカオマップのアプリに引き継ぎます。"
   },
+  "dataSources": {
+    "title": "データの出典",
+    "intro": "キルドンムが使っているデータの出典です。",
+    "osmLicense": "OpenStreetMap貢献者提供、ODbL 1.0ライセンス",
+    "osmLink": "ライセンス全文を見る",
+    "osmCopyRequest": "地図データのコピーはお問い合わせに応じて提供します。"
+  },
   "beacon": {
     "heading": "リアルタイム案内",
     "start": "案内開始",
@@ -795,11 +802,14 @@
     "hostSubwayEntrance": "地下鉄出入口",
     "crossingEmpty": "周辺に登録された横断歩道がありません",
     "crossingError": "横断歩道の情報を取得できませんでした",
+    "crossingUnsupported": "横断歩道の情報は韓国国内のみ提供されます",
     "tactileEmpty": "周辺に登録された点字ブロックがありません",
     "tactileError": "点字ブロックの情報を取得できませんでした",
+    "tactileUnsupported": "点字ブロックの情報は韓国国内のみ提供されます",
     "osmSummary": "横断歩道・点字ブロック{count}件",
     "osmEmpty": "周辺に登録された横断歩道・点字ブロックの情報がありません",
     "osmError": "横断歩道・点字ブロックの情報を取得できませんでした",
+    "osmUnsupported": "横断歩道・点字ブロックの情報は韓国国内のみ提供されます",
     "footnote": "ソウル市・OSMの登録データに基づくため、実際の設備の有無や作動状態と異なる場合があります",
     "sourceOsm": "© OpenStreetMap貢献者",
     "sourceAudio": "音響信号機: ソウル特別市提供({baseDate}時点)"
