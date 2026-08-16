@@ -634,8 +634,10 @@ function formatWalkInfra(body: { walk: WalkInfrastructureItem }): string[] {
   } else if (osm.status === "unsupported") {
     // 국내 전역 정적 seed라 한국 밖은 실패가 아니라 미제공이다(3-state). 그룹 이름을
     // 각 문장에 넣어야 연속 낭독에서 두 줄이 중복으로 들리지 않는다.
-    lines.push("횡단보도 정보는 국내만 제공됩니다.");
-    lines.push("점자블록 정보는 국내만 제공됩니다.");
+    // ⚠ 이 문장은 정의상 한국 밖에서만 들리므로 "국내" 같은 상대어를 쓰지 않는다
+    // (기준점이 화자인지 청자인지 문장 안에서 확정되지 않는다). 웹 walkInfra.*Unsupported 카피.
+    lines.push("횡단보도 정보는 한국에서만 제공됩니다.");
+    lines.push("점자블록 정보는 한국에서만 제공됩니다.");
   } else {
     lines.push("횡단보도·점자블록 정보를 불러오지 못했습니다.");
   }

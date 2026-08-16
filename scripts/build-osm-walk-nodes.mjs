@@ -54,6 +54,20 @@ export const KR_IDS_QUERY =
   `out skel qt;`;
 
 /**
+ * 국경 폴리곤 질의.
+ *
+ * ⚠ **이것이 "제공 지역인가" 판정의 정본이다.** 사각형 bbox로는 판정할 수 없다 —
+ * 후쿠오카·기타큐슈·대마도·시모노세키가 한국 bbox 안에 있고(그 좌표에서 0건을 내면
+ * "이 근처에 횡단보도가 없다"는 거짓말이 된다), 반대로 개성·해주는 파주와 위경도가
+ * 겹쳐 사각형 뺄셈으로 갈리지 않는다. 두 문제를 동시에 푸는 것은 폴리곤뿐이다.
+ *
+ * `admin_level=2` 경계는 **해안선이 아니라 영해 경계선**이라 좌표점이 2,686개뿐이다
+ * (해안선을 따라갔다면 수십만 점이었다). 링 4개 = 본토+제주 · 서해5도 · 울릉도 · 독도.
+ */
+export const BOUNDARY_QUERY =
+  `[out:json][timeout:${SERVER_TIMEOUT_S}];rel["ISO3166-1"="KR"][admin_level=2];out geom;`;
+
+/**
  * 태그 질의는 **위도 1도 밴드로 쪼개서** 받는다.
  *
  * ⚠ 전국을 한 번에 요구하면 504가 난다(2026-08-16 실측). Overpass의 `[timeout:N]`은
@@ -119,6 +133,27 @@ export const GOLDEN_PRESENT = [
   { name: "제주", lat: 33.4996, lng: 126.5312 },
 ];
 
+/**
+ * G9~G11 국경 판정 golden. 사각형 bbox로는 이 표를 통과할 수 없다는 것이 폴리곤을
+ * 쓰는 이유다 — 앞의 넷은 한국 bbox **안**이고, 뒤의 넷 중 셋은 별개 링에 있다.
+ */
+export const BOUNDARY_GOLDEN = [
+  { name: "후쿠오카", lat: 33.5902, lng: 130.4017, inside: false },
+  { name: "기타큐슈", lat: 33.8835, lng: 130.8752, inside: false },
+  { name: "대마도", lat: 34.2, lng: 129.29, inside: false },
+  { name: "시모노세키", lat: 33.9578, lng: 130.9414, inside: false },
+  { name: "개성", lat: 37.97, lng: 126.5544, inside: false },
+  { name: "해주", lat: 38.04, lng: 125.715, inside: false },
+  { name: "파주 문산", lat: 37.8556, lng: 126.7869, inside: true },
+  { name: "강원 고성", lat: 38.3806, lng: 128.4678, inside: true },
+  { name: "정선읍", lat: 37.3806, lng: 128.6608, inside: true },
+  { name: "마라도", lat: 33.1128, lng: 126.2683, inside: true },
+  { name: "울릉도", lat: 37.4844, lng: 130.9057, inside: true },
+  { name: "독도", lat: 37.2429, lng: 131.8664, inside: true },
+  { name: "백령도", lat: 37.9658, lng: 124.71, inside: true },
+  { name: "가덕도", lat: 34.98, lng: 128.82, inside: true },
+];
+
 /** G7 도심 밀도 golden. 태그 매핑이 무너지면 crossing 플래그가 통째로 꺼진다. */
 export const GOLDEN_DENSE = { name: "강남역", lat: 37.4979, lng: 127.0276, radiusMeters: 300, minCrossing: 5 };
 
@@ -144,7 +179,7 @@ const SIGNAL_UNKNOWN = 2;
  * 같은 id가 두 번 나오면(union 질의가 같은 물리 노드를 두 갈래에서 각각 매치) 병합한다.
  * 플래그는 OR, crossingSignal은 unknown이 아닌 값을 우선.
  */
-export function normalizeElements(elements, krIds = null) {
+export function normalizeElements(elements, /** @type {Set<number>|null} */ krIds = null) {
   const byId = new Map();
   for (const el of elements) {
     if (typeof el?.lat !== "number" || typeof el?.lon !== "number") continue;
@@ -192,6 +227,56 @@ export function normalizeElements(elements, krIds = null) {
     .sort((a, b) => a[1] - b[1] || a[2] - b[2]);
 }
 
+/**
+ * 경계 relation의 outer way들을 닫힌 링으로 잇는다. way는 방향·순서가 제각각이라
+ * 끝점을 맞춰 가며 붙이고, 닫히지 않는 링이 남으면 가드가 잡는다.
+ */
+export function buildRings(relation) {
+  const segments = (relation.members ?? [])
+    .filter((m) => m.role === "outer" && Array.isArray(m.geometry))
+    .map((m) => m.geometry.map((p) => [p.lat, p.lon]));
+
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1];
+  const rings = [];
+  while (segments.length > 0) {
+    let ring = segments.shift();
+    let joined = true;
+    while (joined && !same(ring[0], ring[ring.length - 1])) {
+      joined = false;
+      for (let i = 0; i < segments.length; i += 1) {
+        const seg = segments[i];
+        if (same(seg[0], ring[ring.length - 1])) ring = ring.concat(seg.slice(1));
+        else if (same(seg[seg.length - 1], ring[ring.length - 1])) ring = ring.concat(seg.slice().reverse().slice(1));
+        else if (same(seg[seg.length - 1], ring[0])) ring = seg.slice(0, -1).concat(ring);
+        else if (same(seg[0], ring[0])) ring = seg.slice().reverse().slice(0, -1).concat(ring);
+        else continue;
+        segments.splice(i, 1);
+        joined = true;
+        break;
+      }
+    }
+    rings.push(ring.map(([lat, lng]) => [Number(lat.toFixed(5)), Number(lng.toFixed(5))]));
+  }
+  return rings;
+}
+
+/** ray casting. 링은 닫혀 있다고 가정한다(가드가 보장). */
+export function insideRings(lat, lng, rings) {
+  for (const ring of rings) {
+    let inside = false;
+    for (let i = 0; i < ring.length - 1; i += 1) {
+      const [y1, x1] = ring[i];
+      const [y2, x2] = ring[i + 1];
+      if (y1 > lat !== y2 > lat) {
+        const xAt = x1 + ((lat - y1) * (x2 - x1)) / (y2 - y1);
+        if (lng < xAt) inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
+}
+
 function countNear(nodes, lat, lng, radiusMeters, pred) {
   const degLat = radiusMeters / 111_000;
   const degLng = degLat / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
@@ -207,7 +292,7 @@ function countNear(nodes, lat, lng, radiusMeters, pred) {
 }
 
 /** 가드 전부. 조용한 축소가 아니라 빌드 실패가 되게 한다. */
-export function validateNodes(nodes) {
+export function validateNodes(nodes, /** @type {Array<Array<[number, number]>>|null} */ rings = null) {
   const crossing = nodes.filter((n) => (n[3] & 1) === 1).length;
   const tactile = nodes.filter((n) => ((n[3] >> 3) & 1) === 1).length;
 
@@ -242,7 +327,34 @@ export function validateNodes(nodes) {
     throw new Error(`G7 ${GOLDEN_DENSE.name} ${GOLDEN_DENSE.radiusMeters}m 내 횡단보도 ${dense} < ${GOLDEN_DENSE.minCrossing} — 태그 매핑 회귀 의심`);
   }
 
-  return { total: nodes.length, crossing, tactile, dense };
+  if (rings) {
+    if (rings.length < 4) throw new Error(`G9 국경 링 ${rings.length}개 < 4(본토·서해5도·울릉·독도)`);
+    const points = rings.reduce((sum, r) => sum + r.length, 0);
+    if (points < 2_000) throw new Error(`G9 국경 좌표점 ${points} < 2000`);
+    for (const [i, ring] of rings.entries()) {
+      const first = ring[0];
+      const last = ring[ring.length - 1];
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        throw new Error(`G9 링 ${i}이 닫히지 않았다 — outer way 연결 실패(PIP가 무의미해진다)`);
+      }
+    }
+
+    for (const g of BOUNDARY_GOLDEN) {
+      if (insideRings(g.lat, g.lng, rings) !== g.inside) {
+        throw new Error(`G10 ${g.name} 국경 판정이 ${g.inside ? "밖" : "안"}으로 뒤집혔다`);
+      }
+    }
+
+    // ⚠ seed 노드는 area(KR) 질의 산물이므로 정의상 전부 폴리곤 안이어야 한다.
+    // 하나라도 밖이면 두 데이터가 서로 다른 시점·정의의 국경을 보고 있다는 뜻이고,
+    // 그 어긋남은 "국내인데 미제공"이라는 조용한 결함이 된다.
+    const stray = nodes.find((n) => !insideRings(n[1], n[2], rings));
+    if (stray) {
+      throw new Error(`G11 seed 노드 ${stray[0]}(${stray[1]}, ${stray[2]})가 국경 폴리곤 밖 — 경계와 노드의 정의가 어긋났다`);
+    }
+  }
+
+  return { total: nodes.length, crossing, tactile, dense, boundaryPoints: rings ? rings.reduce((s, r) => s + r.length, 0) : 0 };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -252,7 +364,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * 문제가 아니다). 부분 응답(remark)은 재시도해도 같으므로 즉시 실패시킨다 — 조용히
  * 줄어든 seed가 가장 나쁜 결과다.
  */
-async function fetchOverpass(query, attempts = 4) {
+export async function fetchOverpass(query, attempts = 4) {
   let lastError;
   for (let i = 0; i < attempts; i += 1) {
     if (i > 0) {
@@ -296,7 +408,15 @@ async function main() {
   }
   const nodes = normalizeElements(elements, krIds);
   console.log(`   bbox ${elements.length}건 → KR 교집합 ${nodes.length}건`);
-  const stats = validateNodes(nodes);
+
+  console.log("③ 국경 폴리곤 질의...");
+  const boundaryRaw = await fetchOverpass(BOUNDARY_QUERY);
+  const relation = boundaryRaw.elements.find((el) => el.type === "relation");
+  if (!relation) throw new Error("국경 relation을 찾지 못했다");
+  const rings = buildRings(relation);
+  console.log(`   링 ${rings.length}개 · 좌표점 ${rings.reduce((s, r) => s + r.length, 0)}`);
+
+  const stats = validateNodes(nodes, rings);
 
   const seed = {
     meta: {
@@ -309,12 +429,15 @@ async function main() {
       fetchedAt: new Date().toISOString(),
       counts: { total: stats.total, crossing: stats.crossing, tactile: stats.tactile },
     },
+    // 제공 지역 판정용 국경 링(본토+제주·서해5도·울릉·독도). 사각형으로는 후쿠오카와
+    // 개성을 동시에 가를 수 없다 — BOUNDARY_QUERY 주석 참조.
+    boundary: rings,
     nodes,
   };
 
   writeFileSync(OUT, `${JSON.stringify(seed)}\n`);
   console.log(
-    `완료: 노드 ${stats.total} · 횡단보도 ${stats.crossing} · 점자블록 ${stats.tactile} · 강남역 300m ${stats.dense}`,
+    `완료: 노드 ${stats.total} · 횡단보도 ${stats.crossing} · 점자블록 ${stats.tactile} · 강남역 300m ${stats.dense} · 국경 좌표점 ${stats.boundaryPoints}`,
   );
   console.log(`→ ${OUT}`);
 }

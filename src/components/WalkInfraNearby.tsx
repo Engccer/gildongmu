@@ -17,7 +17,7 @@ interface WalkData {
  *
  * 게이트 없음(음향신호기=무인증 seed, OSM=무키 공개 인스턴스)이라 항상 노출한다.
  * spec §2-F 상태×산문 매트릭스: audioSignals(ok>0/ok=0/unsupported/error)와
- * osm(ok>0/ok=0/error)을 서로 독립적으로 판정해 각자의 문구를 낭독한다(소스별
+ * osm(ok>0/ok=0/unsupported/error)을 서로 독립적으로 판정해 각자의 문구를 낭독한다(소스별
  * 강등이 다른 소스를 오염시키지 않음). render 카드 없음(채팅 도구는 별도).
  *
  * a11y: 패널은 버튼이 발견 경로라 <div>(region 금지). 그룹 헤더 <h4> 3개
@@ -30,8 +30,11 @@ export function WalkInfraNearby() {
   const t = useTranslations("walkInfra");
   const tDir = useTranslations("surroundingsNearby");
   const tActions = useTranslations("actions");
-  // OSM은 전 지구 커버리지(coverage:"none")라 outOfCoverage 분기에 도달하지 않는다
-  // — tCommon은 공유 live 시그니처를 채우는 인자다.
+  // coverage:"none"이 의도 계약이다 — 라우트에 커버리지 마커가 없고 두 소스가 각자
+  // unsupported로 강등되므로 한국 밖에서도 조회해 소스별 미제공 문구를 낸다. 화면 단위
+  // outOfCoverage 분기에는 도달하지 않으며, tCommon은 공유 live 시그니처를 채우는 인자다.
+  // ⚠ "korea"로 "정리"하지 말 것 — 소스별 구분이 사라지고 화면 전체가 커버리지 밖 한
+  // 문구로 뭉개진다(iOS WalkInfraNearbyView의 `.none` 주석과 같은 이유).
   const tCommon = useTranslations("common");
   const { status, load, close, busy, headingRef, triggerRef } =
     useNearbyFetch<WalkData>({

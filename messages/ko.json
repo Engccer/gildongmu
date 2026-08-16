@@ -615,10 +615,9 @@
   },
   "dataSources": {
     "title": "정보 출처",
-    "intro": "길동무가 쓰는 자료의 출처입니다.",
     "osmLicense": "OpenStreetMap 기여자 제공, ODbL 1.0 라이선스",
     "osmLink": "라이선스 전문 보기",
-    "osmCopyRequest": "지도 자료 사본은 문의하면 제공합니다."
+    "osmCopyRequest": "지도 자료 사본 요청"
   },
   "beacon": {
     "heading": "실시간 길 안내",
@@ -802,14 +801,14 @@
     "hostSubwayEntrance": "지하철 출입구",
     "crossingEmpty": "주변에 등록된 횡단보도가 없습니다",
     "crossingError": "횡단보도 정보를 불러오지 못했습니다",
-    "crossingUnsupported": "횡단보도 정보는 국내만 제공됩니다",
+    "crossingUnsupported": "횡단보도 정보는 한국에서만 제공됩니다",
     "tactileEmpty": "주변에 등록된 점자블록이 없습니다",
     "tactileError": "점자블록 정보를 불러오지 못했습니다",
-    "tactileUnsupported": "점자블록 정보는 국내만 제공됩니다",
+    "tactileUnsupported": "점자블록 정보는 한국에서만 제공됩니다",
     "osmSummary": "횡단보도·점자블록 {count}건",
     "osmEmpty": "주변에 등록된 횡단보도·점자블록 정보가 없습니다",
     "osmError": "횡단보도·점자블록 정보를 불러오지 못했습니다",
-    "osmUnsupported": "횡단보도·점자블록 정보는 국내만 제공됩니다",
+    "osmUnsupported": "횡단보도·점자블록 정보는 한국에서만 제공됩니다",
     "footnote": "서울시·OSM 등록 자료 기준으로, 실제 시설 유무나 작동 상태와 다를 수 있습니다",
     "sourceOsm": "© OpenStreetMap 기여자",
     "sourceAudio": "음향신호기: 서울특별시 제공({baseDate} 기준)"

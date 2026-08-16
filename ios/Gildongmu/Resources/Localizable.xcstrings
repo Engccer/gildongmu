@@ -8241,82 +8241,42 @@
         }
       }
     },
-    "dataSources.intro": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "길동무가 쓰는 자료의 출처입니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Where the data Gildongmu uses comes from."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "De aquí proceden los datos que usa Gildongmu."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Voici d'où proviennent les données utilisées par Gildongmu."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ecco da dove provengono i dati usati da Gildongmu."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キルドンムが使っているデータの出典です。"
-          }
-        }
-      }
-    },
     "dataSources.osmCopyRequest": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지도 자료 사본은 문의하면 제공합니다."
+            "value": "지도 자료 사본 요청"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A copy of the map data is available on request."
+            "value": "Request a copy of the map data"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una copia de los datos cartográficos se facilita a quien la solicite."
+            "value": "Solicitar una copia de los datos cartográficos"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Une copie des données cartographiques est fournie sur demande."
+            "value": "Demander une copie des données cartographiques"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Una copia dei dati cartografici viene fornita su richiesta."
+            "value": "Richiedere una copia dei dati cartografici"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "地図データのコピーはお問い合わせに応じて提供します。"
+            "value": "地図データのコピーを請求"
           }
         }
       }
@@ -38886,7 +38846,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "횡단보도 정보는 국내만 제공됩니다"
+            "value": "횡단보도 정보는 한국에서만 제공됩니다"
           }
         },
         "en": {
@@ -39766,7 +39726,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "횡단보도·점자블록 정보는 국내만 제공됩니다"
+            "value": "횡단보도·점자블록 정보는 한국에서만 제공됩니다"
           }
         },
         "en": {
@@ -40046,7 +40006,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "점자블록 정보는 국내만 제공됩니다"
+            "value": "점자블록 정보는 한국에서만 제공됩니다"
           }
         },
         "en": {

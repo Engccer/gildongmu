@@ -615,10 +615,9 @@
   },
   "dataSources": {
     "title": "Fuentes de datos",
-    "intro": "De aquí proceden los datos que usa Gildongmu.",
     "osmLicense": "Datos de los colaboradores de OpenStreetMap, con licencia ODbL 1.0",
     "osmLink": "Ver el texto completo de la licencia",
-    "osmCopyRequest": "Una copia de los datos cartográficos se facilita a quien la solicite."
+    "osmCopyRequest": "Solicitar una copia de los datos cartográficos"
   },
   "beacon": {
     "heading": "Guía en tiempo real",
