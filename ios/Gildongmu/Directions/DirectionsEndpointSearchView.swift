@@ -344,10 +344,15 @@ struct DirectionsEndpointSearchView: View {
     }
 
     /// 항목 삭제(스펙 §5): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행. 통지 1건.
+    /// 통지는 `.high`(위원장 판정 2026-08-16 — 판별선은 **포커스가 움직이는지**다):
+    /// 자기를 누른 행이 사라져 포커스가 반드시 옮겨가므로, 기본 우선순위면 VO가
+    /// 착지 라벨을 낭독하며 통지를 잠식한다(헌장 §6, `SearchView.deleteRecent` 동형).
     private func deleteRecent(_ endpoint: RecentEndpoint) {
         guard let index = recentEndpoints.firstIndex(of: endpoint) else { return }
         recentEndpoints = recentStore.removeEndpoint(endpoint, scope: recentScope)
-        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        var deletedMessage = AttributedString(appLocalized("recent.deleted"))
+        deletedMessage.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(deletedMessage).post()
         if recentEndpoints.isEmpty {
             micRowFocused = true
             return

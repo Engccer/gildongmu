@@ -123,11 +123,9 @@ struct WhereAmIView: View {
                 descriptor: .absentCapable(
                 absent: NearbyOverlayCopy(appLocalized("ios.nearby.whereAmIEmpty"), systemImage: "location.slash"),
                 failedLocation: NearbyOverlayCopy(appLocalized("ios.nearby.whereAmIFailed"),
-                                                  systemImage: "wifi.exclamationmark",
-                                                  description: appLocalized("ios.common.retryLater")),
+                                                  systemImage: "wifi.exclamationmark"),
                 failedServer: NearbyOverlayCopy(appLocalized("ios.nearby.whereAmIServerFailed"),
-                                                systemImage: "wifi.exclamationmark",
-                                                description: appLocalized("ios.common.retryLater"))))
+                                                systemImage: "wifi.exclamationmark")))
         }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }

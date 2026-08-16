@@ -24,7 +24,6 @@
     },
     "common": {
       "ok": "확인",
-      "retryLater": "잠시 후 다시 시도해 주세요",
       "checking": "확인 중",
       "geoDeniedTitle": "위치 권한이 필요합니다",
       "geoDeniedDesc": "설정 앱에서 길동무의 위치 접근을 허용해 주세요",

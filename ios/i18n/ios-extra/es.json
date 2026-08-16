@@ -24,7 +24,6 @@
     },
     "common": {
       "ok": "Aceptar",
-      "retryLater": "Inténtalo de nuevo en un momento",
       "checking": "Comprobando",
       "geoDeniedTitle": "Se necesita permiso de ubicación",
       "geoDeniedDesc": "Permite el acceso a la ubicación de Gildongmu en Ajustes",

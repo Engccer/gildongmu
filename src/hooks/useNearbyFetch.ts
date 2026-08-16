@@ -25,8 +25,29 @@ export type NearbyStatus<T> =
   | { kind: "outOfCoverage" }
   /** 한국 안이지만 그 도메인 데이터가 이 지역에 없음(따릉이·문화행사 = 서울 전용). */
   | { kind: "unavailableHere"; reason: UnavailableHereReason }
-  /** coords = 이 조회에 실제로 쓴 좌표(장소 앵커/수동 위치/GPS 통과 후). M1 앵커 재사용. */
-  | { kind: "done"; data: T; at: string; coords: { lat: number; lng: number } };
+  /**
+   * coords = 이 조회에 실제로 쓴 좌표(장소 앵커/수동 위치/GPS 통과 후). M1 앵커 재사용.
+   * origin = 그 좌표가 **어디서 왔나**(D21). 좌표만으로는 되짚을 수 없다 — 지정한
+   * 위치가 마침 GPS와 같은 지점이면 두 출처가 같은 값을 갖는다. 화면이 "이 결과는
+   * 무엇을 기준으로 만들어졌나"를 말하려면 판정이 아니라 **기록**이어야 한다.
+   */
+  | {
+      kind: "done";
+      data: T;
+      at: string;
+      coords: { lat: number; lng: number };
+      origin: NearbyOrigin;
+      /**
+       * origin === "manual"일 때 **그 좌표를 준 지정 위치의 그때 라벨**. 라벨도 기록이다 —
+       * 조회 뒤 이동 판정이나 직접 해제로 지정이 풀려도 이미 만들어진 산문의 출처는
+       * 바뀌지 않는다. 이것을 훅이 들지 않으면 화면은 "지금 라벨"에 기댈 수밖에 없고,
+       * 그 순간 D21이 고친 거짓말의 **대칭형**(수동으로 만든 산문이 GPS로 낭독됨)이 생긴다.
+       */
+      manualLabel?: string;
+    };
+
+/** 좌표의 출처 — `useNearbyFetch`가 좌표를 고른 경로 그대로다. */
+export type NearbyOrigin = "place" | "manual" | "gps";
 
 export type NearbySource =
   | { kind: "current"; autoLoad?: boolean }
@@ -98,7 +119,12 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
     const unlock = () => {
       if (lockRef.current === id) lockRef.current = null;
     };
-    const run = async (lat: number, lng: number) => {
+    const run = async (
+      lat: number,
+      lng: number,
+      origin: NearbyOrigin,
+      manualLabel?: string,
+    ) => {
       setStatus({ kind: "loading" });
       try {
         const res = await fetchAt({ lat, lng });
@@ -128,7 +154,7 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
           hour: "2-digit",
           minute: "2-digit",
         });
-        setStatus({ kind: "done", data: parsed.data, at, coords: { lat, lng } });
+        setStatus({ kind: "done", data: parsed.data, at, coords: { lat, lng }, origin, manualLabel });
         setDoneSeq((s) => s + 1);
       } catch {
         if (seqRef.current !== id) return;
@@ -136,7 +162,7 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
       }
     };
     if (source.kind === "place") {
-      void run(source.lat, source.lng).finally(unlock);
+      void run(source.lat, source.lng, "place").finally(unlock);
       return;
     }
     // 공유 스토어에서 좌표를 얻는다 — 세션 1회 권한 획득 뒤로는 캐시 좌표를
@@ -154,7 +180,7 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
             unlock();
             return;
           }
-          void run(g.coords.lat, g.coords.lng).finally(unlock);
+          void run(g.coords.lat, g.coords.lng, "gps").finally(unlock);
         } else {
           // 새로고침(force) 실패 시 보던 데이터를 잃지 않는다 — done이면 직전 결과를
           // 복원하고, 첫 조회 실패면 geoerror(실내 GPS 재취득 실패로 데이터 소멸 방지).
@@ -190,7 +216,7 @@ export function useNearbyFetch<T>({ source, coverage = "korea", fetchAt, parse, 
         unlock();
         return;
       }
-      void run(manual.lat, manual.lng).finally(unlock);
+      void run(manual.lat, manual.lng, "manual", manual.label).finally(unlock);
     });
   }
 
