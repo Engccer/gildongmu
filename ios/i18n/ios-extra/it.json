@@ -222,7 +222,8 @@
       "reportProblem": "Segnala un problema",
       "releaseNotes": "Note di rilascio",
       "releaseNotesVersion": "Versione {version}",
-      "releaseNotesError": "Impossibile caricare le note di rilascio"
+      "releaseNotesError": "Impossibile caricare le note di rilascio",
+      "weightKg": "Peso per la stima delle calorie (kg)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -239,7 +240,9 @@
       "stopped": "Tracciamento della distanza interrotto.",
       "arrivedHeading": "Arrivo",
       "arrivedPresumedHeading": "Arrivo stimato",
-      "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app."
+      "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app.",
+      "healthSummary": "Questo tratto: {steps} passi, circa {kcal} kcal",
+      "healthDefaultWeight": "in base a {kg} kg"
     },
     "unit": {
       "spokenMeters": "metri"
@@ -277,5 +280,8 @@
     "altPreviewSummary": "{variant}, {distance} in totale",
     "altPreviewTime": "circa {minutes} min a piedi",
     "altPreviewRemaining": "percorso attuale rimanente {distance}"
+  },
+  "dataSources": {
+    "walkHealth": "I passi vengono dal pedometro dell'iPhone; le calorie sono una stima da distanza e peso"
   }
 }

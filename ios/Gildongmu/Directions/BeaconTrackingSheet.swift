@@ -238,6 +238,19 @@ struct BeaconTrackingSheet: View {
                 model.arrivalPresumed ? "guide.arrivedPresumed" : "guide.arrived"
             ))
                 .accessibilityFocused($arrivedFocused)
+            // 걸음·칼로리 요약(spec 2026-08-17). 값이 없으면 행이 없다 — 부재를 설명하지
+            // 않는다. 한 줄 = 한 접근성 객체(joinText). 도착 낭독 문장에는 넣지 않는다.
+            if let health = model.arrivalHealth {
+                Text(joinText(
+                    appLocalized(
+                        "ios.beacon.healthSummary",
+                        Self.decimal.string(from: NSNumber(value: health.steps)) ?? "\(health.steps)",
+                        "\(health.kcal)"),
+                    health.usedDefaultWeight
+                        ? appLocalized("ios.beacon.healthDefaultWeight", "\(Int(WalkHealth.defaultWeightKg))")
+                        : nil
+                ))
+            }
             SurroundingsSceneSection(
                 anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
             Button(appLocalized("actions.close")) { dismiss() }
@@ -252,6 +265,13 @@ struct BeaconTrackingSheet: View {
             .accessibilityAddTraits(.isHeader)
         }
     }
+
+    /// 걸음 수 천 단위 구분(로케일 관례).
+    private static let decimal: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        return f
+    }()
 
     /// 도착 문장 착지 — 지연·검증·1회 재시도(`landStopFocus` 동형).
     private func landArrivedFocus() async {
