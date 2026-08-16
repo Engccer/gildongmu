@@ -1,0 +1,8 @@
+# gitleaks 설정 — 공개 저장소 전환 시 전 이력 스캔에 쓴다.
+#   gitleaks git --redact . 
+[extend]
+useDefault = true
+
+[allowlist]
+description = "테스트·플랜 문서의 더미 값(실제 비밀값 아님)"
+regexes = ['''abcd1234efgh''']

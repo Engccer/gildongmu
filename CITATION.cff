@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "이 소프트웨어를 연구에 인용할 때는 아래 정보를 사용해 주세요."
+title: "길동무 (Gildongmu): 접근성 우선 대한민국 길찾기"
+type: software
+authors:
+  - family-names: Kim
+    given-names: Hunyong
+    email: engccer@gmail.com
+repository-code: "https://github.com/Engccer/gildongmu"
+url: "https://gildongmu.dodoplanet.space"
+license: MIT
+abstract: "스크린 리더만으로 검색·장소 정보·길찾기·실시간 도보 안내가 완결되는 것을 1급 요구사항으로 둔 대한민국 길찾기 앱(웹·iOS·CLI·MCP). 국내 로컬 서비스 API와 공공데이터를 접근성 우선 텍스트 UI로 재구성한다."
+keywords:
+  - accessibility
+  - screen-reader
+  - navigation
+  - blind
+  - korea

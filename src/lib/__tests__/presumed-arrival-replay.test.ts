@@ -1,8 +1,6 @@
 // @vitest-environment node
-import { gunzipSync } from "node:zlib";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
+import sessionFixture from "./fixtures/guide-diag-2026-08-13-final-approach.json";
 import { presumedArrivalStep } from "../final-approach";
 
 /**
@@ -12,26 +10,14 @@ import { presumedArrivalStep } from "../final-approach";
  * 회귀 기준으로 잠근다. 거리 입력은 진입 fix의 perp(42.6m)를 근사로 쓴다
  * (목적지 좌표는 로그에 없다 — 최종 접근 진입 직후라 직선거리와 대차 없음).
  */
-const LOG = path.join(
-  process.cwd(),
-  "docs/superpowers/specs/logs/guide-diag-2026-08-13.log.gz",
-);
-
 interface Entry {
   t: number;
   event: string;
 }
 
+/** fixture는 원본 `guide-diag-2026-08-13.log.gz`에서 이 세션의 t·event만 뽑은 것(좌표 없음). 원본은 repo 밖 보관. */
 function parseSession(): Entry[] {
-  const lines = gunzipSync(readFileSync(LOG)).toString("utf8").split("\n");
-  const out: Entry[] = [];
-  for (const line of lines) {
-    if (!line.includes("[2026-08-13T08:0")) continue;
-    const t = /fix t=([0-9.]+)/.exec(line);
-    const ev = /event=([a-zA-Z-]+)/.exec(line);
-    if (t) out.push({ t: Number(t[1]), event: ev?.[1] ?? "-" });
-  }
-  return out;
+  return sessionFixture.fixes;
 }
 
 describe("도착 추정 리플레이 (2026-08-13 실사고)", () => {

@@ -32,6 +32,10 @@ gil route walk "길동역" "강남역" --accessible true   # 계단 없는 도�
 
 접근성 규칙의 정본은 글로벌 접근성 헌장이고, 이 저장소 고유의 구현 디테일은 [`CLAUDE.md`](CLAUDE.md)에 있다.
 
+## 이 코드로 새 서비스 시작하기
+
+이 프로젝트는 누구든 가져다 자기 지역·자기 사용자에 맞는 접근성 길찾기를 만들 수 있도록 공개한다. 클론에서 자기 서비스까지 바꿔야 할 자리(도메인·번들 ID·이름·provider·seed)와 그대로 가져가도 되는 핵심 자산(접근성 계약·순수 함수 판정 계층)은 [`docs/FORKING.md`](docs/FORKING.md)에 정리했다. 키 하나(카카오)만 채워도 장소 검색과 경로가 켜진다.
+
 ## 개발
 
 ```bash
@@ -63,6 +67,12 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료 상태(무과�
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind 4 · next-intl 4 · zod 4 · Vitest 4
 iOS는 SwiftUI + GildongmuKit(SPM), 판정 로직은 웹과 미러링해 공유 fixture로 드리프트를 막는다.
+
+## 라이선스
+
+코드는 [MIT](LICENSE). 저장소에 번들된 공공데이터·OpenStreetMap 파생 파일은 각 원출처의 조건(공공누리 제1유형·ODbL 1.0)을 따르며 목록은 [`NOTICE.md`](NOTICE.md)에 있다. "길동무"라는 이름·아이콘·도메인·npm 패키지명은 프로젝트 식별자라 fork는 다른 이름을 쓴다.
+
+기여는 [`CONTRIBUTING.md`](CONTRIBUTING.md), 취약점 신고는 [`SECURITY.md`](SECURITY.md), 연구 인용은 [`CITATION.cff`](CITATION.cff).
 
 ## 관련 프로젝트
 
