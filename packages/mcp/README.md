@@ -30,7 +30,7 @@ claude mcp add gildongmu -- npx -y gildongmu-mcp
 ### Codex
 
 ```bash
-codex mcp add gildongmu --command "npx -y gildongmu-mcp"
+codex mcp add gildongmu -- npx -y gildongmu-mcp
 ```
 
 ## 환경변수
