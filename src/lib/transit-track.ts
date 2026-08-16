@@ -2,6 +2,7 @@ import type { TrackItem } from "./transit-guide";
 import { subwayIdForOdsayLine } from "./transit-guide";
 import type { BusRouteStop, BusStop } from "./types";
 import {
+  ARRMSG_REMAINING_TAIL,
   fetchSeoulRideSlots,
   fetchSeoulRouteStops,
   fetchSeoulWaitSlots,
@@ -37,11 +38,42 @@ function withItems(items: TrackItem[], rawCount: number): TransitTrackResult {
 
 // === 서울 버스 ===
 
-function slotToItem(slot: SeoulTrackSlot): TrackItem {
+/**
+ * **승차 국면** 도착 문장 정리 — 잔여 꼬리 `[N번째 전]`을 떼고 `…후`를 `… 남음`으로 맺는다.
+ *
+ * 승차 중 상태줄이 `transitGuide.remainingCount`("남은 정거장 N개")를 이미 말하므로
+ * 원문을 그대로 실으면 한 문장 안에서 같은 수를 두 번 듣는다(실승차 피드백 2026-08-16 —
+ * "…까지, 2분55초후[3번째 전]"). 다듬는 것은 **꼬리와 어미뿐**이고 상태 어휘
+ * ("곧 도착"·"운행종료"·"출발대기")는 건드리지 않는다 — 완성 문장이 낭독 정본이라는
+ * 계약(CLAUDE.md)은 그대로다.
+ *
+ * ⚠ **대기 국면에는 쓰지 않는다.** 같은 원문이 국면에 따라 다른 뜻이다 — 대기 중
+ * "2분55초후"는 *버스가 여기 오기까지*이고 승차 중에는 *내릴 곳까지*라 어미가 갈린다.
+ * 게다가 대기 후보 목록은 `remainingStops`를 별도로 싣지 않아(웹 `TransitGuidePanel`·
+ * iOS `TransitTrackingSheet` 모두 `item.message`만 조립) **그 꼬리가 "몇 정거장 전에
+ * 있는 버스인가"의 유일한 채널**이다. 국면 구분 없이 걸었다가 리뷰에서 잡혔다.
+ *
+ * ⚠ **`remainingStops` 추출보다 뒤에 와야 한다.** provider가 구조 필드
+ * (`staOrd − sectOrd`)를 우선 쓰고 대괄호는 그 폴백이라(`remainingFromArrmsg`),
+ * 순서를 뒤집으면 폴백 경로가 조용히 죽어 사다리 통지가 사라진다. 꼬리 패턴을 그
+ * 추출 함수와 **공유**하는 것도 같은 이유다 — 한쪽만 읽는 형태가 생기면 잔여 수와
+ * 문장이 동시에 사라진다.
+ */
+export function rewriteBusArrivalMessage(message: string): string {
+  const withoutTail = message.replace(ARRMSG_REMAINING_TAIL, "").trim();
+  return withoutTail.replace(/(\d(?:분|초))후$/, "$1 남음");
+}
+
+/**
+ * 슬롯 → 추적 항목. **국면 인자는 필수다** — 같은 원문이 국면에 따라 다른 뜻이라
+ * 문장도 달라야 한다(`rewriteBusArrivalMessage` 주석). 기본값을 두면 신규 호출부가
+ * 국면을 빠뜨려도 컴파일이 통과해 조용히 틀린 문장을 낸다([[no-default-for-safety-parameters]]).
+ */
+function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride"): TrackItem {
   return {
     vehicleId: slot.vehicleId,
     direction: "",
-    message: slot.message,
+    message: phase === "ride" ? rewriteBusArrivalMessage(slot.message) : slot.message,
     remainingStops: slot.remainingStops,
     destinationName: null,
     express: false,
@@ -55,7 +87,10 @@ export async function trackSeoulWait(params: {
   routeId: string;
 }): Promise<TransitTrackResult> {
   const { slots, rawCount } = await fetchSeoulWaitSlots(params.arsId, params.routeId);
-  return withItems(slots.map(slotToItem), rawCount);
+  return withItems(
+    slots.map((s) => slotToItem(s, "wait")),
+    rawCount,
+  );
 }
 
 /**
@@ -100,7 +135,10 @@ export async function trackSeoulRide(params: {
   }
   const slots = await fetchSeoulRideSlots(alightLocalId, routeId, ord);
   // getArrInfoByRoute는 이미 노선 스코프 조회라 필터가 없다 — rawCount = 항목 수.
-  return withItems(slots.map(slotToItem), slots.length);
+  return withItems(
+    slots.map((s) => slotToItem(s, "ride")),
+    slots.length,
+  );
 }
 
 // === 지방 버스(TAGO 근사) ===

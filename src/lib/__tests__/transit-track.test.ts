@@ -10,6 +10,7 @@ import {
   pickTagoStop,
   remainingFromArvlCd,
   remainingFromArvlMsg,
+  rewriteBusArrivalMessage,
   subwayDataAgeSeconds,
 } from "../transit-track";
 
@@ -153,6 +154,40 @@ describe("remainingFromArvlMsg — 지하철 잔여 추출(§6.2)", () => {
     expect(remainingFromArvlMsg("전역 도착")).toBe(1);
     expect(remainingFromArvlMsg("4분 후 (길동)")).toBeNull();
     expect(remainingFromArvlMsg("여의도 도착")).toBeNull();
+  });
+});
+
+describe("rewriteBusArrivalMessage — 잔여 꼬리 제거·어미 정리", () => {
+  it("잔여 정거장 꼬리를 떼고 '남음'으로 맺는다", () => {
+    // 화면이 "남은 정거장 3개"를 이미 말하므로 "[3번째 전]"은 같은 정보 반복이다.
+    expect(rewriteBusArrivalMessage("2분55초후[3번째 전]")).toBe("2분55초 남음");
+    expect(rewriteBusArrivalMessage("55초후[1번째 전]")).toBe("55초 남음");
+    expect(rewriteBusArrivalMessage("12분3초후[9번째 전]")).toBe("12분3초 남음");
+  });
+
+  it("실승차 로그의 실제 arrmsg 3건(강동01, 2026-08-16)", () => {
+    // `docs/superpowers/specs/logs/transit-guide-diag-2026-08-16.log`의 countdown·
+    // trackingStarted 이벤트 message 원문. 합성 표본이 아니라 그날 화면에 뜬 문자열이다.
+    expect(rewriteBusArrivalMessage("6분18초후[5번째 전]")).toBe("6분18초 남음");
+    expect(rewriteBusArrivalMessage("3분48초후[3번째 전]")).toBe("3분48초 남음");
+    expect(rewriteBusArrivalMessage("1분32초후[1번째 전]")).toBe("1분32초 남음");
+  });
+
+  it("시간형이 아닌 상태 문장은 원문 그대로 둔다", () => {
+    // upstream 완성 문장이 낭독 정본이라는 계약(CLAUDE.md)은 여기서도 유효하다 —
+    // 다듬는 것은 잔여 꼬리와 어미뿐이고 상태 어휘는 우리가 만들지 않는다.
+    for (const raw of ["곧 도착", "출발대기", "운행종료", "차고지 대기"]) {
+      expect(rewriteBusArrivalMessage(raw)).toBe(raw);
+    }
+  });
+
+  it("꼬리만 있고 어미가 없거나, 어미만 있고 꼬리가 없어도 각각 처리한다", () => {
+    expect(rewriteBusArrivalMessage("3분후")).toBe("3분 남음");
+    expect(rewriteBusArrivalMessage("곧 도착[1번째 전]")).toBe("곧 도착");
+  });
+
+  it("빈 문자열은 빈 문자열로 — 없는 문장을 만들지 않는다", () => {
+    expect(rewriteBusArrivalMessage("")).toBe("");
   });
 });
 
@@ -305,5 +340,58 @@ describe("trackSeoulRide — ord 해석 실패의 정직 강등(모킹)", () => 
     expect(r.status).toBe("unsupported");
     expect(fetchStops).toHaveBeenCalledTimes(2); // 캐시 1 + fresh 1
     expect(fetchStops).toHaveBeenNthCalledWith(2, "227000006", { fresh: true });
+  });
+});
+
+describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원문 유지(모킹)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  const slot = {
+    vehicleId: "1234",
+    message: "2분55초후[3번째 전]",
+    remainingStops: 3,
+    lowFloor: false,
+  };
+
+  it("대기 후보 목록은 잔여 꼬리를 남긴다 — 그 화면의 유일한 잔여 정보 채널이다", async () => {
+    vi.resetModules();
+    vi.doMock("../providers/seoul-bus", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../providers/seoul-bus")>()),
+      fetchSeoulWaitSlots: vi.fn(async () => ({ slots: [slot], rawCount: 1 })),
+    }));
+    const mod = await import("../transit-track");
+    const r = await mod.trackSeoulWait({ arsId: "25107", routeId: "4130081" });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    // 후보 버튼은 remainingStops를 별도로 싣지 않는다(웹 TransitGuidePanel·iOS
+    // TransitTrackingSheet 모두 item.message만 조립) — 여기서 꼬리를 지우면
+    // "몇 정거장 전에 있는 버스인가"가 화면에서 사라진다.
+    expect(r.items[0].message).toBe("2분55초후[3번째 전]");
+  });
+
+  it("승차 카운트다운은 꼬리를 떼고 '남음'으로 맺는다 — 상태줄이 잔여를 이미 말한다", async () => {
+    vi.resetModules();
+    vi.doMock("../providers/seoul-bus", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("../providers/seoul-bus")>()),
+      fetchSeoulRouteStops: vi.fn(async () => [
+        { nodeId: "123000017", order: 3 },
+        { nodeId: "123000043", order: 8 },
+      ]),
+      fetchSeoulRideSlots: vi.fn(async () => [slot]),
+    }));
+    const mod = await import("../transit-track");
+    const r = await mod.trackSeoulRide({
+      routeId: "227000006",
+      boardLocalId: "123000017",
+      alightLocalId: "123000043",
+    });
+    expect(r.status).toBe("ok");
+    if (r.status !== "ok") return;
+    expect(r.items[0].message).toBe("2분55초 남음");
+    // 다듬기가 잔여 추출보다 앞서면 여기서 살아남지 못한다.
+    expect(r.items[0].remainingStops).toBe(3);
   });
 });

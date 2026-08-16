@@ -18,7 +18,9 @@ import type { QuickExit, TransitLeg, TransitLegStop, TransitRoute } from "./type
  * - 폴링 응답은 phaseGen·seq 일치 시에만 커밋(늦은 응답 폐기 — 단일 비행의
  *   이중 방어).
  * - 낭독 문구 조립은 플랫폼 몫(웹 i18n·iOS GuideText) — 머신은 구조화 이벤트만
- *   낸다(E4 리듀서 관례). 완성 문장(message)은 원문 그대로 실어 나른다.
+ *   낸다(E4 리듀서 관례). 완성 문장(message)은 서버가 준 대로 실어 나른다 — 여기서
+ *   다시 파싱하지 않는다(서울버스 승차 국면은 서버가 이미 다듬었다,
+ *   `transit-track.ts`의 `rewriteBusArrivalMessage`).
  */
 
 export type TransitTrackMode = "seoulBus" | "tagoBus" | "subway";
@@ -78,7 +80,11 @@ export interface TransitGuideRoute {
   walkAfterMinutes: number | null;
 }
 
-/** 폴링 항목(라우트 판별 union의 클라 투영, §7). message는 완성 문장 원문. */
+/**
+ * 폴링 항목(라우트 판별 union의 클라 투영, §7). message는 완성 문장이되 **upstream
+ * 원문이라고 가정하지 말 것** — 서울버스 승차 국면은 서버가 잔여 꼬리를 떼고 어미를
+ * 다듬어 내려보낸다. 이 안에서 브래킷 패턴을 다시 파싱하면 조용히 어긋난다.
+ */
 export interface TrackItem {
   vehicleId: string | null;
   direction: string;

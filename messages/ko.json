@@ -880,7 +880,7 @@
     "boarded": "{line} 탑승. 하차: {stop}.",
     "boardedCount": "{line} 탑승. 하차: {stop}, 정거장 {count}개.",
     "context": "{line} 탑승 중, {stop}에서 하차합니다.",
-    "messageFrame": "{stop}까지, {message}.",
+    "messageFrame": "{stop}까지 {message}.",
     "currentStation": "현재 위치 {station}.",
     "trackingStarted": "추적을 시작합니다.",
     "remainingCount": "남은 정거장 {count}개.",

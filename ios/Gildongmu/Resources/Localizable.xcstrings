@@ -36566,7 +36566,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@까지, %2$@."
+            "value": "%1$@까지 %2$@."
           }
         },
         "en": {
