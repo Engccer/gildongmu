@@ -137,10 +137,12 @@ es·fr·it·ja는 §4 어휘표를 그대로 적용한다(간략→`guía en lí
 | 축 | 방법 |
 |---|---|
 | 문자열 파리티 | `npm run test:run`의 `i18n-messages.test.ts`(6로케일 키 일치) |
-| 명칭 재유입 | 신규 `guidance-mode-name.test.ts` + **변이 주입 실측**(§6) |
+| 명칭 재유입 | 신규 `guidance-mode-name.test.ts` + **변이 주입 실측**(§6) — ✅ **6/6 검출**(2026-08-16): 로케일마다 `toBriefDone`을 옛 값으로 되돌렸을 때 매번 **그 파일의 케이스 하나만** 실패했다(교차 오탐 0) |
 | iOS 카탈로그 동조 | `node ios/scripts/messages-to-xcstrings.mjs` 후 `node ios/scripts/check-xcstrings-keys.mjs` |
 | 봉인 가드 무손상 | `guidance-gate-drift.test.ts`(키를 안 바꾸므로 통과해야 한다 — 통과가 곧 "키를 안 건드렸다"의 증거다) |
 | 기준선 | `npm run test:run` · `npx tsc --noEmit` · `npm run lint` 전부 0/green |
+
+⚠ **옛 문자열을 축자로 단언하던 기존 테스트 3건이 함께 움직인다**(`useRouteGuide.reroute.test.tsx` 2건 · `useRouteGuide.stepfree.test.tsx` 3개 지점). 그중 하나는 `not.toContain("상세 안내 시작")`이라 **문자열을 바꾸면 조용히 참이 되어 검사 대상을 잃는다** — 부재 단언은 문자열 교체의 사각이므로 새 값으로 함께 옮긴다.
 
 **실기기 판정은 필요 없다.** 동작이 바뀌지 않고 문자열만 바뀌며, 낭독 문안은 위원장이 이미 선택했다. 다만 다음 실보행에서 강등이 자연 발생하면 §5.1 두 문장이 실제로 들리는지 귀로 확인할 수 있다(판정 항목으로 등재하지는 않는다 — 자연 발생 대기 항목을 늘리지 않는다).
 

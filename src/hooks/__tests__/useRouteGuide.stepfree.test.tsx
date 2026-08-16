@@ -162,9 +162,9 @@ describe("계단 회피 열화 통지", () => {
 
     // ⚠ 두 번 set 하지 않는다 — React 배칭이 첫 발화를 삼키거나 두 번째가 첫
     //   낭독을 끊는다. 요약도 같은 문자열에 있어야 한다.
-    expect(live()).toContain("상세 안내 시작");
+    expect(live()).toContain("도보 안내 시작");
     // 안내 문장이 앞이다 — 세션 전체에 걸린 조건이라 걷기 전에 들어야 한다.
-    expect(live().indexOf(NOTICE)).toBeLessThan(live().indexOf("상세 안내 시작"));
+    expect(live().indexOf(NOTICE)).toBeLessThan(live().indexOf("도보 안내 시작"));
   });
 
   it("applied면 통지하지 않는다", async () => {
@@ -230,7 +230,7 @@ describe("계단 회피 열화 통지", () => {
     await waitFor(() => expect(live()).toContain(NOTICE));
 
     click("reroute");
-    await waitFor(() => expect(live()).not.toContain("상세 안내 시작"));
+    await waitFor(() => expect(live()).not.toContain("도보 안내 시작"));
     expect(live()).not.toContain(NOTICE);
   });
 

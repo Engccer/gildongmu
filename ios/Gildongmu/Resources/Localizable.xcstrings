@@ -2366,37 +2366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "간략 안내 시작"
+            "value": "직선거리 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Start simple guidance"
+            "value": "Start straight-line guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciar guía simple"
+            "value": "Iniciar guía en línea recta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrer le guidage simple"
+            "value": "Démarrer le guidage à vol d'oiseau"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvia guida semplice"
+            "value": "Avvia guida in linea d'aria"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "簡易案内を開始"
+            "value": "直線距離案内を開始"
           }
         }
       }
@@ -10366,37 +10366,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "간략 안내 시작"
+            "value": "직선거리 안내 시작"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Simple guidance started"
+            "value": "Straight-line guidance started"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía simple iniciada"
+            "value": "Guía en línea recta iniciada"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage simple démarré"
+            "value": "Guidage à vol d'oiseau démarré"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida semplice avviata"
+            "value": "Guida in linea d'aria avviata"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "簡易案内を開始しました"
+            "value": "直線距離案内を開始しました"
           }
         }
       }
@@ -10566,37 +10566,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치를 확인하지 못해 간략 안내로 시작합니다"
+            "value": "현재 위치를 확인하지 못했습니다. 위치가 잡히면 직선거리로 안내합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Location unavailable; starting simple guidance"
+            "value": "Location unavailable. Guidance will use straight-line distance once your position is found."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo obtener tu ubicación; se inicia la guía simple"
+            "value": "No se pudo obtener tu ubicación. Cuando se obtenga, se guiará por distancia en línea recta."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Position introuvable, démarrage du guidage simple"
+            "value": "Position introuvable. Le guidage se fera à vol d'oiseau dès que votre position sera trouvée."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Posizione non disponibile, avvio della guida semplice"
+            "value": "Posizione non disponibile. La guida userà la linea d'aria appena la posizione sarà disponibile."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在地を確認できないため簡易案内を開始します"
+            "value": "現在地を確認できませんでした。現在地が分かり次第、直線距離で案内します。"
           }
         }
       }
@@ -10606,37 +10606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "상세 안내 시작. 안내 %1$@개, 총 %2$@. %3$@"
+            "value": "도보 안내 시작. 안내 %1$@개, 총 %2$@. %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Detailed guidance started. %1$@ instructions, %2$@ total. %3$@"
+            "value": "Walking guidance started. %1$@ instructions, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía detallada iniciada. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Guía a pie iniciada. %1$@ indicaciones, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage détaillé démarré. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Guidage à pied démarré. %1$@ instructions, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida dettagliata avviata. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Guida a piedi avviata. %1$@ indicazioni, %2$@ in totale. %3$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "詳細案内を開始しました。案内%1$@件、合計%2$@。%3$@"
+            "value": "徒歩案内を開始しました。案内%1$@件、合計%2$@。%3$@"
           }
         }
       }
@@ -10646,37 +10646,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "경로 정보를 가져오지 못해 간략 안내로 시작합니다"
+            "value": "경로 정보를 가져오지 못했습니다. 목적지까지 직선거리로 안내합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route details unavailable; starting simple guidance"
+            "value": "Route details unavailable. Guiding by straight-line distance to the destination."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay detalles de la ruta; se inicia la guía simple"
+            "value": "No hay detalles de la ruta. Se guiará por distancia en línea recta hasta el destino."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Détails de l'itinéraire indisponibles, démarrage du guidage simple"
+            "value": "Détails de l'itinéraire indisponibles. Guidage à vol d'oiseau jusqu'à la destination."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dettagli del percorso non disponibili, avvio della guida semplice"
+            "value": "Dettagli del percorso non disponibili. Guida in linea d'aria fino alla destinazione."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路情報を取得できないため簡易案内を開始します"
+            "value": "経路情報を取得できませんでした。目的地まで直線距離で案内します。"
           }
         }
       }
@@ -12846,37 +12846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 위치를 파악할 수 없어 간략 안내를 유지합니다"
+            "value": "현재 위치를 경로 위에서 확인하지 못해 직선거리 안내를 유지합니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Could not fix your position on the route; keeping simple guidance"
+            "value": "Could not fix your position on the route; keeping straight-line guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No se pudo determinar tu posición en la ruta; se mantiene la guía simple"
+            "value": "No se pudo determinar tu posición en la ruta; se mantiene la guía en línea recta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossible de déterminer votre position sur l'itinéraire, le guidage simple est maintenu"
+            "value": "Impossible de déterminer votre position sur l'itinéraire, le guidage à vol d'oiseau est maintenu"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Impossibile determinare la tua posizione sul percorso, la guida semplice resta attiva"
+            "value": "Impossibile determinare la tua posizione sul percorso, la guida in linea d'aria resta attiva"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "経路上の位置を確定できないため簡易案内を続けます"
+            "value": "経路上の位置を確定できないため直線距離案内を続けます"
           }
         }
       }
@@ -12966,37 +12966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "위치 신호가 불안정하거나 이동 속도가 빨라 간략 안내가 적합할 수 있습니다"
+            "value": "위치 신호가 불안정하거나 이동 속도가 빨라 직선거리 안내가 적합할 수 있습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your location signal may be unstable or you may be moving fast; simple guidance may fit better"
+            "value": "Your location signal may be unstable or you may be moving fast; straight-line guidance may fit better"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La señal de ubicación puede ser inestable o te mueves rápido; la guía simple puede ser más adecuada"
+            "value": "La señal de ubicación puede ser inestable o te mueves rápido; la guía en línea recta puede ser más adecuada"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le signal de position est peut-être instable ou vous vous déplacez vite, le guidage simple peut mieux convenir"
+            "value": "Le signal de position est peut-être instable ou vous vous déplacez vite, le guidage à vol d'oiseau peut mieux convenir"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il segnale di posizione potrebbe essere instabile o ti stai muovendo velocemente, la guida semplice potrebbe essere più adatta"
+            "value": "Il segnale di posizione potrebbe essere instabile o ti stai muovendo velocemente, la guida in linea d'aria potrebbe essere più adatta"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "位置情報が不安定か移動速度が速いため、簡易案内が適している場合があります"
+            "value": "位置情報が不安定か移動速度が速いため、直線距離案内が適している場合があります"
           }
         }
       }
@@ -13086,37 +13086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "간략 안내로 전환"
+            "value": "직선거리 안내로 전환"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switch to simple guidance"
+            "value": "Switch to straight-line guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiar a guía simple"
+            "value": "Cambiar a guía en línea recta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passer au guidage simple"
+            "value": "Passer au guidage à vol d'oiseau"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passa alla guida semplice"
+            "value": "Passa alla guida in linea d'aria"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "簡易案内に切り替え"
+            "value": "直線距離案内に切り替え"
           }
         }
       }
@@ -13126,37 +13126,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "간략 안내로 전환했습니다"
+            "value": "직선거리 안내로 전환했습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switched to simple guidance"
+            "value": "Switched to straight-line guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiado a guía simple"
+            "value": "Cambiado a guía en línea recta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passé au guidage simple"
+            "value": "Passé au guidage à vol d'oiseau"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passato alla guida semplice"
+            "value": "Passato alla guida in linea d'aria"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "簡易案内に切り替えました"
+            "value": "直線距離案内に切り替えました"
           }
         }
       }
@@ -13166,37 +13166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "상세 안내로 전환"
+            "value": "경로 안내로 전환"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switch to detailed guidance"
+            "value": "Switch to route guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiar a guía detallada"
+            "value": "Cambiar a guía de ruta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passer au guidage détaillé"
+            "value": "Passer au guidage d'itinéraire"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passa alla guida dettagliata"
+            "value": "Passa alla guida del percorso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "詳細案内に切り替え"
+            "value": "経路案内に切り替え"
           }
         }
       }
@@ -13206,37 +13206,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "상세 안내로 전환했습니다"
+            "value": "경로 안내로 전환했습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switched to detailed guidance"
+            "value": "Switched to route guidance"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambiado a guía detallada"
+            "value": "Cambiado a guía de ruta"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passé au guidage détaillé"
+            "value": "Passé au guidage d'itinéraire"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passato alla guida dettagliata"
+            "value": "Passato alla guida del percorso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "詳細案内に切り替えました"
+            "value": "経路案内に切り替えました"
           }
         }
       }
