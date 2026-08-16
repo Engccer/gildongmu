@@ -52,6 +52,10 @@ struct SettingsView: View {
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
     // AI 채팅 동의 상태. 해제하면 채팅이 다시 동의 화면으로.
     @AppStorage(AIChatConsent.key) private var aiConsentGranted = false
+    // 칼로리 추정용 체중(spec 2026-08-17 §5). 0 = 미입력(도착 화면이 기본 65kg으로 계산하고
+    // "기준 체중"을 밝힌다). 범위 밖(20~300)은 미입력으로 되돌린다. 기기 밖으로 나가지 않는다.
+    @AppStorage(WalkHealth.weightStorageKey) private var weightKg = 0.0
+    @State private var weightText = ""
     @Environment(\.dismiss) private var dismiss
 
     /// 실효 언어를 읽고, 선택 시 영속화+통지한다. 통지는 **바뀐 언어로** 낭독된다
@@ -67,6 +71,16 @@ struct SettingsView: View {
                 ).post()
             }
         )
+    }
+
+    private static func formatWeight(_ w: Double) -> String {
+        w == w.rounded() ? String(Int(w)) : String(w)
+    }
+
+    /// 입력 문자열 → 저장값. 유효 범위 밖·비수치는 0(미입력)으로 — 잘못된 값으로 계산하지 않는다.
+    private func commitWeight() {
+        let raw = Double(weightText.replacingOccurrences(of: ",", with: "."))
+        weightKg = WalkHealth.normalizedWeight(raw) ?? 0
     }
 
     /// 배속 선택지 라벨(1배/1.5배/2배). 허용값 정본은 `ListenSpeed.allowedSpeeds`.
@@ -111,6 +125,13 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+
+                Section {
+                    TextField(appLocalized("ios.settings.weightKg"), text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
+                        .onChange(of: weightText) { _, _ in commitWeight() }
+                }
 
                 Section(appLocalized("ios.settings.aiSection")) {
                     // 해제하면 채팅이 다시 동의 화면으로 — 5.1.2(i)의 동의 재검토·철회 요건.

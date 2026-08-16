@@ -18,6 +18,8 @@ struct DataSourcesView: View {
                 ForEach(Array(sourceLabels.enumerated()), id: \.offset) { _, label in
                     Text(label)
                 }
+                // 걸음·칼로리 요약의 방법 고지(spec 2026-08-17 §7): 실측/추정 구분.
+                Text(appLocalized("dataSources.walkHealth"))
             }
 
             Section {
