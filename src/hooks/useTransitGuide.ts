@@ -188,8 +188,13 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 역명이 없으므로 SR 사용자에게는 이 문장이 그 화면의 유일한 역 정보원이다.
    */
   const waitContextText = useCallback(
-    (leg: TransitGuideLeg): string => {
-      if (boardOverride != null) {
+    /**
+     * @param isCurrentLeg 이 문맥이 **지금 안내 중인 구간**을 설명하는가. ⚠ 기본값을
+     * 두지 않는 이유: 다음 구간 안내(`nextLeg`·`legAdvanced`)가 이전 구간에서 고른
+     * 역을 말하면 안 되는데, 생략이 통과하면 그 결함이 조용히 들어온다.
+     */
+    (leg: TransitGuideLeg, isCurrentLeg: boolean): string => {
+      if (isCurrentLeg && boardOverride != null) {
         // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다 —
         // 역명만 바꾸면 "3분 걸어 왕십리역에서"라는 새 거짓말이 된다.
         return t("waitContext", { stop: boardOverride, line: leg.lineName });
@@ -251,7 +256,7 @@ export function useTransitGuide(route: TransitRoute | null) {
   const buildStatusText = useCallback(
     (s: TransitGuideState, leg: TransitGuideLeg): string => {
       const parts = [
-        s.phase === "waiting" ? waitContextText(leg) : contextText(leg),
+        s.phase === "waiting" ? waitContextText(leg, true) : contextText(leg),
         signalText(s.signal, s.phase),
         s.remaining != null
           ? t("remainingCount", { count: s.remaining })
@@ -327,7 +332,7 @@ export function useTransitGuide(route: TransitRoute | null) {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
           const s = stateRef.current;
           const next = s && r ? r.legs[s.legIndex + 1] : null;
-          if (next) parts.push(t("nextLeg", { context: waitContextText(next) }));
+          if (next) parts.push(t("nextLeg", { context: waitContextText(next, false) }));
           else if (r?.walkAfterMinutes != null) {
             parts.push(t("nextLeg", { context: t("doneWalk", { minutes: r.walkAfterMinutes }) }));
           }
@@ -365,7 +370,7 @@ export function useTransitGuide(route: TransitRoute | null) {
           } else {
             const nextLeg = r?.legs[event.legIndex];
             if (nextLeg) {
-              parts.push(waitContextText(nextLeg));
+              parts.push(waitContextText(nextLeg, false));
               if (!nextLeg.trackMode) parts.push(t("untrackable"));
             }
           }
@@ -616,7 +621,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     const init = initTransitGuide(guideRoute, Date.now());
     commit(init);
     const first = guideRoute.legs[0];
-    const parts = [t("started", { count: guideRoute.legs.length }), waitContextText(first)];
+    const parts = [t("started", { count: guideRoute.legs.length }), waitContextText(first, true)];
     if (!first.trackMode) parts.push(t("untrackable"));
     announce(parts.join(" "));
     void pollOnce();
