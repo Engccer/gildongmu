@@ -115,7 +115,7 @@ es·fr·it·ja는 §4 어휘표를 그대로 적용한다(간략→`guía en lí
 
 **전 로케일 파일 전수 스캔**으로 만든다. 네임스페이스 내부만 보는 검사는 실패한 전례가 있다(`manualLocation` 안만 보던 게이트가 `whereAmI.ready`="현재 위치"를 통과시켰다).
 
-- 대상: `messages/{ko,en,es,fr,it,ja}.json` + `ios/i18n/ios-extra/*.json` **전 키 전 값**.
+- 대상: `messages/*.json` + **`ios/i18n` 아래 모든 하위 디렉터리**의 `*.json` **전 키 전 값**. ⚠ 디렉터리 목록도 손으로 적지 않는다 — `ios-extra`·`kit-extra` 둘이 있고 셋째가 생길 수 있다. 종전 초안이 `ios-extra`만 적어 `kit-extra` 6개 파일이 스캔 밖이었다(독립 리뷰 검출 2026-08-16. 당시 그 디렉터리에 걸릴 문자열이 없어 **실질 갭은 아니었으나, 목록을 손으로 적는 방식 자체가 이 가드가 피하려던 실패**다).
 - 금지 표현(대소문자 무시): ko `간략 안내`·`상세 안내` / en `simple guidance`·`detailed guidance` / es `guía simple`·`guía detallada` / fr `guidage simple`·`guidage détaillé` / it `guida semplice`·`guida dettagliata` / ja `簡易案内`·`詳細案内`.
 - ⚠ **낱말이 아니라 구(句)로 검사한다.** `상세`·`detail` 단독은 장소 상세 등 정당한 용례가 있어 오탐이 난다.
 - 파일: `src/lib/__tests__/guidance-mode-name.test.ts` (신규).
@@ -137,7 +137,7 @@ es·fr·it·ja는 §4 어휘표를 그대로 적용한다(간략→`guía en lí
 | 축 | 방법 |
 |---|---|
 | 문자열 파리티 | `npm run test:run`의 `i18n-messages.test.ts`(6로케일 키 일치) |
-| 명칭 재유입 | 신규 `guidance-mode-name.test.ts` + **변이 주입 실측**(§6) — ✅ **6/6 검출**(2026-08-16): 로케일마다 `toBriefDone`을 옛 값으로 되돌렸을 때 매번 **그 파일의 케이스 하나만** 실패했다(교차 오탐 0) |
+| 명칭 재유입 | 신규 `guidance-mode-name.test.ts` + **변이 주입 실측**(§6) — ✅ **6/6 검출**(2026-08-16): 로케일마다 `toBriefDone`을 옛 값으로 되돌렸을 때 매번 **그 파일의 케이스 하나만** 실패했다(교차 오탐 0). 독립 리뷰가 같은 절차를 재현해 일치 확인. 범위 확대분(`kit-extra`)도 별도 변이 1건으로 검출 확인 — **새로 넓힌 범위는 그 범위에서 다시 잰다** |
 | iOS 카탈로그 동조 | `node ios/scripts/messages-to-xcstrings.mjs` 후 `node ios/scripts/check-xcstrings-keys.mjs` |
 | 봉인 가드 무손상 | `guidance-gate-drift.test.ts`(키를 안 바꾸므로 통과해야 한다 — 통과가 곧 "키를 안 건드렸다"의 증거다) |
 | 기준선 | `npm run test:run` · `npx tsc --noEmit` · `npm run lint` 전부 0/green |
