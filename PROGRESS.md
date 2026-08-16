@@ -21,7 +21,7 @@
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
 | iOS | **1.7까지 전부 `READY_FOR_SALE`**(1.7 = 빌드 13, 아카이브 커밋 `cb3402a`, 심사 통과 확인 2026-08-16) — 도보 실시간 안내 정식 출시 |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
-| 저장소 | GitHub **private**. 오픈소스 공개 준비 완료(MIT + `NOTICE.md` 데이터 라이선스, gitleaks 0건, GPS 로그 이력 제거) — public 전환은 위원장 실행 대기(`docs/BACKLOG.md` E21) |
+| 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
 - 미릴리스 iOS 변경량: `git rev-list --count <직전 릴리스 커밋>..HEAD -- ios/` (숫자를 문서에 박지 않는다 — 사흘에 세 번 낡은 이력이 있다)
