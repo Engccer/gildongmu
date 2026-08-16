@@ -175,6 +175,10 @@ final class BeaconModel {
     /// 첫 수용 fix 대기 상한 감시. 초과 시 상세를 포기하고 간략으로 정직 폴백
     /// (위치 대기 문구 — 경로 실패와 원인이 다르므로 문구를 가른다).
     private var fixWaitTask: Task<Void, Never>?
+    /// 수용 정확도 미달 fix 중 최선값(A18). 대기 상한이 끝나면 이것으로 조회한다 —
+    /// 세션 시작 fix는 대개 그 세션에서 가장 나쁜 fix라 그대로 origin으로 삼으면
+    /// 경로가 다른 곳에서 출발한다. 판정은 Kit `routeOriginStep`.
+    private var routeOriginBest: RouteOriginFix?
     /// 억제 중 소비된 실행 안내의 최신 1개(해제 시 복구 발화).
     private var pendingRecovery: String?
     /// 재조회 latest-wins 세대 토큰 + in-flight 가드(repo 관례).
@@ -359,10 +363,37 @@ final class BeaconModel {
     /// 건드리지 않는다(도착 직후의 stop()이 지우면 종료 화면이 성립하지 않는다).
     private(set) var arrivalDest: BeaconDest?
 
+    // MARK: - 도착 건강 요약(spec 2026-08-17)
+
+    private let pedometer: PedometerQuerying
+    /// 도보 세션 창의 시작(벽시계). `.car`는 nil. stop()에서 지우지 않는다 —
+    /// 도착 처리가 stop() 뒤에 읽는다(arrivalDest 대입과 같은 순서 계약).
+    private var sessionStartedAt: Date?
+    /// 세션 세대. 비동기 조회 결과는 이 토큰이 그대로일 때만 커밋한다(같은 목적지 재시작을
+    /// 목적지 비교로는 못 가른다 — 설계 리뷰 BLOCKER 3).
+    private var arrivalSessionToken = UUID()
+    private enum ArrivalHealthLoad { case idle, loading, loaded, unavailable, failed }
+    private var arrivalHealthLoad: ArrivalHealthLoad = .idle
+    private var arrivalHealthTask: Task<Void, Never>?
+    /// 도착 종료 화면의 건강 요약 행. nil이면 행이 없다(부재를 설명하지 않는다).
+    private(set) var arrivalHealth: WalkHealthSummary?
+
+    init(pedometer: PedometerQuerying = PedometerService()) {
+        self.pedometer = pedometer
+    }
+
     /// 도착 종료 화면 닫기(시트 presentation 바인딩·닫기 버튼 경로).
     func clearArrival() {
         arrivalDest = nil
         arrivalPresumed = false
+        resetArrivalHealth()
+    }
+
+    private func resetArrivalHealth() {
+        arrivalHealthTask?.cancel()
+        arrivalHealthTask = nil
+        arrivalHealth = nil
+        arrivalHealthLoad = .idle
     }
 
     // MARK: - 시작·중지
@@ -483,6 +514,11 @@ final class BeaconModel {
         self.dest = dest
         arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
         arrivalPresumed = false
+        resetArrivalHealth()
+        arrivalSessionToken = UUID()
+        sessionStartedAt = kind == .walk ? Date() : nil
+        // 권한 팝업은 여기(사용자가 전경에서 시작을 누른 자리)에서만 — 도착 시 팝업 금지.
+        if kind == .walk { pedometer.requestAuthorizationIfNeeded() }
         // 억제 잔류 차단(스펙 2026-08-12 §5.4, 마일스톤 리뷰 BLOCKER): 검색 시트가
         // 열린 채 세션이 죽으면 시트 onChange가 발화할 기회 없이 뷰가 소멸해 억제가
         // 고착된다 — 세션 경계가 무조건 해제한다(TransitGuideModel.stop() 동형).
@@ -529,15 +565,22 @@ final class BeaconModel {
         }
     }
 
-    /// 첫 수용 fix가 상한(noFixTimeout) 내에 오지 않으면 상세를 포기하고 간략 폴백.
-    /// 없으면 awaitingRoute가 발화를 무한 보류해 세션이 침묵에 갇힌다.
+    /// 수용 fix가 상한(noFixTimeout) 내에 오지 않으면 그때까지의 최선 fix로 조회하고,
+    /// 최선값조차 없으면 상세를 포기하고 간략 폴백(A18 — 단발 취득의 최선값 정책과
+    /// 같은 모양). 없으면 awaitingRoute가 발화를 무한 보류해 세션이 침묵에 갇힌다.
     private func startFixWaitWatch(token: Int) {
         fixWaitTask?.cancel()
+        routeOriginBest = nil
         fixWaitTask = Task { [weak self, timeout = noFixTimeout] in
             try? await Task.sleep(for: .seconds(timeout))
             guard let self, !Task.isCancelled else { return }
             guard token == self.routeFetchToken, self.isTracking,
                   self.awaitingRoute, self.routeFetchTask == nil else { return }
+            if let best = self.routeOriginBest, let dest = self.dest {
+                self.startRouteFetch(origin: best, reason: "best", dest: dest, token: token)
+                return
+            }
+            guideDiagLog("routeOrigin reason=none")
             self.awaitingRoute = false
             self.fallbackToBrief(key: "guide.detailNoLocation")
             // 위치 부재는 이 문구가 이미 말했다 — 워치독 약신호 통지가 같은 시점에
@@ -616,6 +659,24 @@ final class BeaconModel {
         if benign || notice != nil { lastStepFree = raw }
         guard !benign, let notice, raw != prev else { return nil }
         return notice
+    }
+
+    /// 시작 경로 조회 착수 + origin 계측(A18). `reason`은 `accepted`(수용 정확도
+    /// 통과)·`best`(대기 상한에 최선값). 종전엔 이 분기가 계측 전에 반환해 origin
+    /// fix의 정확도·나이가 로그에 없었고, 그래서 115m 어긋남의 원인 값을 역산으로만
+    /// 추정해야 했다.
+    private func startRouteFetch(origin: RouteOriginFix, reason: String, dest: BeaconDest, token: Int) {
+        guideDiagLog(
+            "routeOrigin lat=\(String(format: "%.6f", origin.lat)) "
+                + "lng=\(String(format: "%.6f", origin.lng)) "
+                + "acc=\(String(format: "%.1f", origin.accuracy)) "
+                + "age=\(String(format: "%.1f", origin.ageSeconds)) reason=\(reason)"
+        )
+        routeOriginBest = nil
+        let coord = (lat: origin.lat, lng: origin.lng)
+        routeFetchTask = Task { [weak self] in
+            await self?.fetchGuideRoute(origin: coord, dest: dest, token: token)
+        }
     }
 
     /// 상세 경로 조회 — 첫 수용 fix가 트리거하고 그 좌표가 origin이다(8번: 위치
@@ -888,6 +949,7 @@ final class BeaconModel {
         routeFetchTask = nil
         fixWaitTask?.cancel()
         fixWaitTask = nil
+        routeOriginBest = nil
         awaitingRoute = false
         mode = .brief
         sessionKind = .walk
@@ -1020,6 +1082,9 @@ final class BeaconModel {
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
         case .active:
+            // 도착 종료 화면이 열린 채 조회가 실패했으면 1회 재조회(spec 2026-08-17 §3 —
+            // 도착 직후 정지·권한 응답 지연 구제). `.unavailable`은 다시 보지 않는다.
+            if arrivalDest != nil, arrivalHealthLoad == .failed { loadArrivalHealth() }
             // ⚠ **추적 가드보다 앞이다.** 백그라운드에서 세션이 *끝나는* 경로들이 있고
             // (권한 철회·목적지 변경·다른 세션의 claim) 그때 status가 내려가므로,
             // 가드 뒤에 두면 종료 통지가 통째로 유실된다. 같은 순간 정지 톤도 없어
@@ -1150,16 +1215,31 @@ final class BeaconModel {
         let motion = judgeMotion(fix: fix, ageSeconds: age, now: now)
 
         // 경로 조회 대기·진행 중엔 발화를 보류한다(간략 첫 거리 → 곧바로 상세 시작의
-        // 이중 발화 차단). 첫 수용 fix가 조회 트리거이자 origin이다(8번).
+        // 이중 발화 차단). 첫 **수용** fix가 조회 트리거이자 origin이다(8번). ⚠ 여기의
+        // 술어는 `isUsableFix`(정확도 상한 없음)가 아니다 — 세션 시작 fix는 대개 그
+        // 세션에서 가장 나쁜 fix라 그대로 쓰면 경로가 다른 곳에서 출발한다(A18,
+        // 2026-08-16 실보행 115m). 미달 fix는 최선값으로 보관하고 대기 상한에 쓴다.
         if awaitingRoute {
             lastFixAt = now
-            if routeFetchTask == nil, isUsableFix(accuracy: fix.accuracy, ageSeconds: age) {
-                fixWaitTask?.cancel()
-                fixWaitTask = nil
-                let token = routeFetchToken
-                let origin = (lat: fix.lat, lng: fix.lng)
-                routeFetchTask = Task { [weak self] in
-                    await self?.fetchGuideRoute(origin: origin, dest: dest, token: token)
+            if routeFetchTask == nil {
+                let candidate = RouteOriginFix(
+                    lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age
+                )
+                switch routeOriginStep(best: routeOriginBest, fix: candidate) {
+                case .fetch(let origin):
+                    fixWaitTask?.cancel()
+                    fixWaitTask = nil
+                    startRouteFetch(origin: origin, reason: "accepted", dest: dest, token: routeFetchToken)
+                case .wait(let best):
+                    routeOriginBest = best
+                    // 대기 동안 버린 fix도 남긴다 — "정확한 fix를 기다리는 침묵"이
+                    // 얼마나 긴지, 정확도가 어떻게 수렴하는지가 상수 판정의 근거다
+                    // (상한 15초라 부피는 유한).
+                    guideDiagLog(
+                        "routeOriginWait acc=\(String(format: "%.1f", fix.accuracy)) "
+                            + "age=\(String(format: "%.1f", age)) "
+                            + "best=\(best.map { String(format: "%.1f", $0.accuracy) } ?? "-")"
+                    )
                 }
             }
             return
@@ -1302,6 +1382,12 @@ final class BeaconModel {
                 + "motion=\(motion) age=\(String(format: "%.1f", age)) "
                 + "phase=\(out.state.phase) d=\(String(format: "%.1f", out.state.d)) "
                 + "event=\(out.event.map { "\($0)" } ?? "-")"
+                // A18 2선(심층 방어)의 근거 축 — 첫 fix가 창 끝에 걸렸는지(edgeHits)와
+                // 수직거리(perp). 세션 시작 직후 이 둘이 함께 크면 경로가 내 위치와
+                // 안 맞는 신호인데, 다음 fix에서 카운터가 0으로 돌아가 증거가 스스로
+                // 지워진다. 자동 재조회는 실보행 값 없이 임계를 못 정하니 로그만 남긴다.
+                + " perp=\(out.perpMeters.map { String(format: "%.1f", $0) } ?? "-")"
+                + " edgeHits=\(out.state.windowEdgeHits)"
                 // ⚠ 판정 결과를 남기는 것이 이 로그의 핵심이다. 실보행에서 "왜 안
                 // 잡혔나"·"왜 헛경고가 났나"를 위 원시값과 함께 되짚어야 파라미터를
                 // 정할 수 있다(spec §7 3단계). 기기 course·courseAcc 원시 필드는 위에
@@ -1538,6 +1624,7 @@ final class BeaconModel {
             // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
             // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
             arrivalDest = dest
+            loadArrivalHealth()
             statusText = text
             lastGuidance = text
             liveTopText = text  // 시트 dismiss 동안의 가시 상태(statusText 동형)
@@ -1594,11 +1681,43 @@ final class BeaconModel {
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
         arrivalDest = dest
         arrivalPresumed = true
+        loadArrivalHealth()
         statusText = text
         lastGuidance = text
         liveTopText = text
         announce(text, highPriority: true)
         return true
+    }
+
+    /// 도착 종료 화면의 걸음·칼로리 요약을 비동기로 채운다(spec 2026-08-17 §3).
+    /// 확정·추정 도착 두 경로가 `arrivalDest` 대입 직후 부르고, 전경 복귀가 `.failed`일 때
+    /// 한 번 더 부른다. 커밋 조건은 세션 토큰 일치 AND 도착 화면이 아직 열려 있음.
+    /// 도착 낭독 문장에는 넣지 않고, 값은 로그에 남기지 않는다(지연만 계측).
+    private func loadArrivalHealth() {
+        guard sessionKind == .walk, let start = sessionStartedAt, arrivalDest != nil else { return }
+        guard arrivalHealthLoad == .idle || arrivalHealthLoad == .failed else { return }
+        arrivalHealthLoad = .loading
+        let token = arrivalSessionToken
+        let requestedAt = ProcessInfo.processInfo.systemUptime
+        arrivalHealthTask = Task { [weak self, pedometer] in
+            let result = await pedometer.summary(from: start, to: Date())
+            guard let self, !Task.isCancelled, self.arrivalSessionToken == token,
+                  self.arrivalDest != nil else { return }
+            switch result {
+            case .sample(let steps, let distance):
+                let weight = WalkHealth.normalizedWeight(
+                    UserDefaults.standard.object(forKey: WalkHealth.weightStorageKey) as? Double)
+                self.arrivalHealth = WalkHealth.summary(
+                    steps: steps, distanceMeters: distance, weightKg: weight)
+                self.arrivalHealthLoad = .loaded
+            case .unavailable:
+                self.arrivalHealthLoad = .unavailable
+            case .failed:
+                self.arrivalHealthLoad = .failed
+            }
+            let ms = Int((ProcessInfo.processInfo.systemUptime - requestedAt) * 1000)
+            guideDiagLog("arrivalHealth load=\(self.arrivalHealthLoad) latencyMs=\(ms)")
+        }
     }
 
     /// 실시간 상대 방향. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을
