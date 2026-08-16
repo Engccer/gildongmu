@@ -11,6 +11,14 @@
 
 ## 2026-08-17
 
+### 도보 도착 화면에 걸음·칼로리 요약 한 줄 (iOS)
+
+spec `docs/superpowers/specs/2026-08-17-walk-arrival-health-summary-design.md`, 플랜 `docs/superpowers/plans/2026-08-17-walk-arrival-health-summary.md`. 정식·실험판 모두, 웹 미러 없음(만보계·도착 화면이 없다). 실기기 판정(행 존재·VO 순서·조회 지연)은 `docs/FIELD-TEST.md` §3.
+
+- 도착 종료 화면(확정·추정 도착 모두)의 도착 문장 아래에 "이번 구간 N걸음, 약 Mkcal"(체중 미입력이면 ", 기준 체중 65kg") 한 줄. 걸음은 `CMPedometer` 구간 사후 질의(`PedometerService`, 세션 시작 Date~도착), 칼로리는 Kit `WalkHealth.summary` 활동 칼로리(거리×체중×0.5kcal/kg/km, ACSM 보행식 순 대사분 — 시간 항이 소거돼 정지·속도 무관). 못 읽으면 행 부재(0걸음은 표시).
+- `BeaconModel`: 세션 토큰+`arrivalDest` 이중 조건으로 비동기 결과 커밋, `start`/`clearArrival`에서 취소, 전경 복귀 시 `.failed`만 1회 재조회. 도착 낭독 문장 불변, 건강 값은 로그 미기록(지연만).
+- 설정 "칼로리 추정용 체중(kg)"(`walkWeightKg`, 20~300 밖은 미입력), 정보 출처에 실측/추정 방법 한 행, `NSMotionUsageDescription` 6개 로케일(pbxproj 세 구성 + `InfoPlist.xcstrings`). `PrivacyInfo`·영양 라벨 불변(기기 밖 전송 없음).
+
 ### 음향신호기 BLE 진단 화면 구현 — 실험판에만 들어갔다
 
 spec `docs/superpowers/specs/2026-08-17-audio-signal-ble-probe-design.md` §9 순서 그대로. 정식판 변경 없음(전부 `#if DEBUG || EXPERIMENTAL`), 웹 미러 없음. 위원장 실측·로그 회수·E20 게이트 판정은 열려 있다.
