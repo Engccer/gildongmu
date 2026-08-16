@@ -266,12 +266,14 @@ struct BeaconTrackingSheet: View {
         }
     }
 
-    /// 걸음 수 천 단위 구분(로케일 관례).
-    private static let decimal: NumberFormatter = {
+    /// 걸음 수 천 단위 구분. 문장이 `appLocalized`(앱 선택 언어)로 나가므로 구분자도
+    /// 기기 로케일이 아니라 앱 언어를 따른다(`SpeechService` 선례). 언어 전환에 따라가도록 매 호출 생성.
+    private static var decimal: NumberFormatter {
         let f = NumberFormatter()
         f.numberStyle = .decimal
+        f.locale = Locale(identifier: AppLanguage.current)
         return f
-    }()
+    }
 
     /// 도착 문장 착지 — 지연·검증·1회 재시도(`landStopFocus` 동형).
     private func landArrivedFocus() async {
