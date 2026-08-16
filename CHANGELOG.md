@@ -16,7 +16,7 @@
 위원장이 App Store 출시와 함께 공언한 오픈소스 공개의 준비 작업. public 전환 자체는 아직이다(`docs/BACKLOG.md` E21).
 
 - **데이터 라이선스를 코드에서 분리**: `NOTICE.md` 신설 — 코드는 MIT, 번들 seed 7종은 각 원출처(OSM ODbL 1.0 · 서울 열린데이터 공공누리 1유형 · 공공데이터포털 제한 없음)를 따른다고 파일별로 명시. 라이선스 유형은 각 데이터셋 페이지에서 실확인. 이름·아이콘·도메인·npm 패키지명은 MIT 대상 밖임을 명시.
-- **실보행 GPS 로그를 저장소와 git 이력에서 제거**(`git filter-repo` + force push): `docs/superpowers/specs/logs/*.log.gz` 7개는 위원장의 실제 이동 경로라 공개 불가(위원장 결정). 원본은 저장소 밖 보관, `logs/README.md`는 색인으로 남김. 게이트 테스트 2개(`course-derivation-replay`·`presumed-arrival-replay`)가 읽던 부분만 익명화 fixture로 분리 — 도보 281 fix는 경도 평행이동(haversine·방위 불변이라 수치 동일), 최종 접근 세션은 t·event만. `.gitignore`가 재커밋을 막는다.
+- **실보행 GPS 로그를 저장소와 git 이력에서 제거**(`git filter-repo` + force push): `docs/superpowers/specs/logs/*.log.gz` 7개는 위원장의 실제 이동 경로라 공개 불가(위원장 결정). 원본은 저장소 밖 보관, `logs/README.md`는 색인으로 남김. 게이트 테스트 2개(`course-derivation-replay`·`presumed-arrival-replay`)가 읽던 부분만 익명화 fixture로 분리 — 도보 281 fix는 경도 평행이동(haversine·방위 불변이라 수치 동일), 최종 접근 세션은 t·event만. `.gitignore`가 재커밋을 막는다. 같은 재작성에서 **자택·지인 주택 주소도 전 이력 치환**(`--replace-text`·`--replace-message`): 자택 아파트 동 표기 → "자택", 주택 두 곳 → "주택 A/B", 실보행 fixture 파일명 `gildong-hyundai-gowoo.json` → `home-gowoo.json`. 대응표는 저장소 밖(`~/gildongmu-private/places.md`). 리뷰어(별도 컨텍스트)가 로그 파일 밖 문서의 상세 주소를 지적한 것이 계기 — gitleaks는 자연어 주소를 보지 않는다.
 - **비밀값 스캔**: gitleaks 전 이력(1,515커밋) 스캔 — 실제 유출 0건(오탐 2건은 테스트 더미, `.gitleaks.toml` allowlist).
 - **사람용 문서**: `docs/FORKING.md`(클론→내 서비스 사이 바꿔야 할 자리·지역 교체·그대로 가져갈 자산), `CONTRIBUTING.md`, `SECURITY.md`, `CITATION.cff`, README에 라이선스·시작하기 절. GitHub 저장소 설명·토픽 설정.
 
