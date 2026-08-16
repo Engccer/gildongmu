@@ -56,6 +56,8 @@ export function TransitGuidePanel({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const advanceRef = useRef<HTMLButtonElement>(null);
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
+  /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
+  const reboardPromptRef = useRef<HTMLHeadingElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const listHadFocusRef = useRef(false);
 
@@ -111,6 +113,17 @@ export function TransitGuidePanel({
     }
     prevPhaseRef.current = phase;
   }, [state?.phase]);
+
+  // 역 재선택 진입(A16 L3): 누른 버튼이 사라지는 전이라 방치하면 커서가 body로
+  // 떨어진다(헌장 §5). 프롬프트 heading으로 선점 — 목록 첫 항목이 아니라 heading인
+  // 이유는 "무엇을 고르는지"가 먼저 와야 하기 때문이다.
+  const prevReboardRef = useRef(false);
+  useLayoutEffect(() => {
+    if (guide.reboardPickerActive && !prevReboardRef.current) {
+      reboardPromptRef.current?.focus();
+    }
+    prevReboardRef.current = guide.reboardPickerActive;
+  }, [guide.reboardPickerActive]);
 
   // 목록 포커스 소실 복귀(§13.4, 헌장 §5): 폴링 갱신으로 포커스가 얹힌 항목이
   // 사라지면(브라우저는 제거된 요소의 blur를 내지 않아 body로 조용히 이탈)
@@ -347,16 +360,56 @@ export function TransitGuidePanel({
                   {t("advance")}
                 </button>
               )}
-              {state.phase === "riding" && leg.trackMode !== "tagoBus" && (
-                <button
-                  type="button"
-                  ref={changeBoardingRef}
-                  onClick={guide.changeBoarding}
-                  className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
-                >
-                  {t("changeBoarding")}
-                </button>
-              )}
+              {state.phase === "riding" &&
+                leg.trackMode !== "tagoBus" &&
+                !guide.reboardPickerActive && (
+                  <button
+                    type="button"
+                    ref={changeBoardingRef}
+                    onClick={guide.beginReboard}
+                    className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                  >
+                    {t("changeBoarding")}
+                  </button>
+                )}
+            </div>
+          )}
+
+          {/*
+            역 재선택(A16 L3) — 갈아탄 뒤 지금 있는 역을 묻는다. 위치가 아니라
+            목록인 근거(위원장 판정): 지하철 안에서는 GPS가 잡히지 않는다.
+            ⚠ 조용히 나타나는 섹션이 아니라 버튼으로 펼친 것이라 region이 아니라
+            heading이 발견 경로다(헌장 §3 판단 규칙).
+          */}
+          {state.phase === "riding" && guide.reboardPickerActive && (
+            <div className="mt-2">
+              <h4 ref={reboardPromptRef} tabIndex={-1} className="text-sm font-medium">
+                {t("reboardStationPrompt")}
+              </h4>
+              <ul className="mt-1 flex flex-wrap gap-2">
+                {leg.viaStops.map((stop, index) => (
+                  <li key={`${index}-${stop.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => guide.changeBoardingAt(stop.name)}
+                      className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                    >
+                      {stop.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={() => {
+                  guide.cancelReboard();
+                  // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
+                  requestAnimationFrame(() => changeBoardingRef.current?.focus());
+                }}
+                className="mt-2 min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+              >
+                {t("reboardCancel")}
+              </button>
             </div>
           )}
 

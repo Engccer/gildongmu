@@ -60,6 +60,150 @@ afterEach(() => {
 });
 
 describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
+  it("탑승 변경은 지금 있는 역을 묻고, 고른 역이 조회 기준이 된다(A16 L3)", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        return {
+          ok: true,
+          json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+        } as Response;
+      }),
+    );
+
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /boardTrain/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+
+    // 역 선택 단계: 경유역 전체가 후보이고 프롬프트가 착지점이다(버튼이 사라지는 전이).
+    expect(screen.getByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeTruthy();
+    expect(document.activeElement?.textContent).toBe("transitGuide.reboardStationPrompt");
+    expect(screen.getByRole("button", { name: "왕십리(성동구청)" })).toBeTruthy();
+
+    // 중간역을 고르면 그 역이 조회 기준이 된다 — 종전에는 원래 승차역(천호)만 봤다.
+    calls.length = 0;
+    fireEvent.click(screen.getByRole("button", { name: "왕십리(성동구청)" }));
+    await waitFor(() => {
+      expect(
+        calls.some((u) => u.includes("station=" + encodeURIComponent("왕십리(성동구청)"))),
+      ).toBe(true);
+    });
+    expect(calls.some((u) => u.includes("station=" + encodeURIComponent("천호")))).toBe(false);
+  });
+
+  it("환승하면 고른 기준 역이 다음 구간으로 따라오지 않는다(A16 L3)", async () => {
+    // leg1에 중간역을 두어 승차역과 다른 역을 고를 수 있게 한다 — 같은 역을 고르면
+    // 소거 여부와 무관하게 같은 URL이 나와 검증이 무력해진다(변이 주입으로 확인).
+    const transferRoute: TransitRoute = {
+      ...ROUTE,
+      legs: [
+        ROUTE.legs[0],
+        {
+          ...ROUTE.legs[1],
+          toName: "왕십리(성동구청)",
+          stops: [
+            { name: "천호", stationId: "547", lat: 37.5385, lng: 127.1235 },
+            { name: "군자", stationId: "544", lat: 37.5573, lng: 127.0794 },
+            { name: "왕십리(성동구청)", stationId: "540", lat: 37.5613, lng: 127.0374 },
+          ],
+        },
+        {
+          ...ROUTE.legs[1],
+          lineName: "수도권 2호선",
+          fromName: "왕십리(성동구청)",
+          toName: "강남",
+          stops: [
+            { name: "왕십리(성동구청)", stationId: "540", lat: 37.5613, lng: 127.0374 },
+            { name: "강남", stationId: "222", lat: 37.4979, lng: 127.0276 },
+          ],
+        },
+      ],
+    };
+
+    const calls: string[] = [];
+    // leg1 하차역 추적은 첫 폴을 임박으로 둔다 — 곧바로 도착시키면 국면이 arrived로
+    // 넘어가 재선택 UI가 렌더되지 않는다(riding 전용 컨트롤).
+    let ridePolls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        const onLeg1Alight =
+          url.includes("station=" + encodeURIComponent("왕십리(성동구청)")) &&
+          url.includes("line=" + encodeURIComponent("수도권 5호선"));
+        if (onLeg1Alight) ridePolls += 1;
+        const arrived = onLeg1Alight && ridePolls > 1;
+        return {
+          ok: true,
+          json: async () => ({
+            mode: "subway",
+            status: "ok",
+            items: [
+              arrived
+                ? trackItem({ message: "왕십리 도착", remainingStops: 0, arrivalCode: "1" })
+                : onLeg1Alight
+                  ? trackItem({ message: "전역 출발", remainingStops: 1 })
+                  : trackItem({}),
+            ],
+          }),
+        } as Response;
+      }),
+    );
+
+    render(<TransitGuidePanel route={transferRoute} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /boardTrain/ }));
+
+    // 중간역(군자)을 기준으로 재선택한 뒤 다시 탑승한다.
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "군자" }));
+    fireEvent.click(await screen.findByRole("button", { name: /boardTrain/ }));
+
+    // 도착 → 다음 구간으로 전진하면 leg2의 대기 조회는 leg2 승차역을 봐야 한다.
+    // ⚠ 비우는 시점은 클릭 **전**이다 — advance는 즉폴이라 클릭 직후 비우면 그 조회가
+    // 지워진다(이 테스트를 처음 쓸 때 실제로 그렇게 놓쳤다).
+    calls.length = 0;
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.advance" }));
+    await waitFor(() => {
+      expect(calls.some((u) => u.includes("line=" + encodeURIComponent("수도권 2호선")))).toBe(true);
+    });
+    const leg2Calls = calls.filter((u) => u.includes("line=" + encodeURIComponent("수도권 2호선")));
+    expect(leg2Calls.some((u) => u.includes("station=" + encodeURIComponent("군자")))).toBe(false);
+    expect(
+      leg2Calls.some((u) => u.includes("station=" + encodeURIComponent("왕십리(성동구청)"))),
+    ).toBe(true);
+  });
+
+  it("역 선택 취소는 아무것도 바꾸지 않고 눌렀던 자리로 돌려보낸다(A16 L3)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+          }) as Response,
+      ),
+    );
+
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /boardTrain/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.reboardCancel" }));
+
+    // 국면은 riding 그대로(열차 목록으로 떨어지지 않는다).
+    expect(screen.queryByRole("button", { name: /boardTrain/ })).toBeNull();
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toBe("transitGuide.changeBoarding");
+    });
+  });
+
   it("시작 → 열차 목록(종착 차단 항목은 비버튼) → 탑승 → 하차 추적 → 도착 → 다음 구간 → 완료", async () => {
     const calls: string[] = [];
     let ridePollCount = 0;
@@ -122,8 +266,10 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
 
-    // 도착 폴은 타이머 뒤라 탑승 변경 → 재탑승으로 즉폴을 한 번 더 유도해 검증
+    // 도착 폴은 타이머 뒤라 탑승 변경 → 재탑승으로 즉폴을 한 번 더 유도해 검증.
+    // 탑승 변경은 이제 "지금 어느 역인가"를 먼저 묻는다(A16 L3) — 원래 승차역을 고른다.
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "천호" }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /boardTrain/ })).toBeTruthy();
     });
@@ -239,6 +385,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
       expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     });
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "천호" }));
     const cancel = await screen.findByRole("button", { name: "transitGuide.cancelChangeBoarding" });
     fireEvent.click(cancel);
     await waitFor(() => {
@@ -252,6 +399,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     // 라벨로 선점 복귀한다(§13.4 — 제거된 요소는 blur 없이 body로 이탈한다).
     // 소실 항목은 3분 유지 버퍼가 붙잡으므로(§5.1) 시계를 그 너머로 전진시킨다.
     fireEvent.click(screen.getByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "천호" }));
     const boardButton = await screen.findByRole("button", { name: /boardTrain/ });
     boardButton.focus();
     waitItems = [];

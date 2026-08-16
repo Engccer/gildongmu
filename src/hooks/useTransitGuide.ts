@@ -69,6 +69,7 @@ function trackTargetUrl(
   leg: TransitGuideLeg,
   phase: "waiting" | "riding" | "arrived",
   resolvedTago: { nodeId: string; cityCode: string } | null,
+  boardOverride: string | null,
 ): string | null {
   const mode = leg.trackMode;
   if (!mode) return null;
@@ -84,7 +85,9 @@ function trackTargetUrl(
     if (!resolvedTago) return null;
     return `/api/transit/track?mode=tagoBus&phase=track&cityCode=${encodeURIComponent(resolvedTago.cityCode)}&nodeId=${encodeURIComponent(resolvedTago.nodeId)}&routeNo=${encodeURIComponent(leg.lineName)}`;
   }
-  const station = phase === "waiting" ? leg.boardName : leg.alightName;
+  // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
+  // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
+  const station = phase === "waiting" ? (boardOverride ?? leg.boardName) : leg.alightName;
   if (!station) return null;
   return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}`;
 }
@@ -105,6 +108,17 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 도보가 있으면 패널이 "남은 도보 안내 시작"을 노출한다. 다음 시작에서 소거.
    */
   const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number } | null>(null);
+  /** 역 재선택 단계 표시 여부(A16 L3, 지하철 전용). */
+  const [reboardPickerActive, setReboardPickerActive] = useState(false);
+  /**
+   * 사용자가 고른 기준 역(A16 L3). nil이면 leg 원래 승차역.
+   *
+   * ⚠ 이 값이 상태 머신이 아니라 훅에 사는 이유: 머신은 **어느 역을 조회할지
+   * 모른다**(폴 결과만 받는다). 조회 대상은 trackTargetUrl이 정하므로 L3는
+   * 공유 계약도 fixture도 건드리지 않는다. state가 아니라 ref인 이유는 폴 루프가
+   * 렌더 사이클 밖에서 읽기 때문이다.
+   */
+  const boardOverrideRef = useRef<string | null>(null);
 
   const liveRef = useRef("");
   const reannounceTimerRef = useRef<number | null>(null);
@@ -351,6 +365,12 @@ export function useTransitGuide(route: TransitRoute | null) {
       const r = routeRef.current;
       if (!s || !r) return;
       const { state: next, event } = transitGuideStep(s, input, r, Date.now());
+      // 사용자가 고른 기준 역(A16 L3)의 수명은 딱 한 번의 재선택이다. 재잠금·전진
+      // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
+      // 흩뿌리지 않는 이유가 그것이다(iOS dispatch 동형).
+      if (input.kind === "board" || input.kind === "advance") {
+        boardOverrideRef.current = null;
+      }
       commit(next);
       if (event) announceEvent(event);
     },
@@ -448,7 +468,12 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
       }
       // done·untrackable은 함수 상단에서 걸렀으므로 여기의 phase는 세 국면뿐.
-      const url = trackTargetUrl(leg, s.phase as "waiting" | "riding" | "arrived", resolvedTago);
+      const url = trackTargetUrl(
+        leg,
+        s.phase as "waiting" | "riding" | "arrived",
+        resolvedTago,
+        boardOverrideRef.current,
+      );
       if (!url) {
         finishEarlyUnsupported();
         return;
@@ -541,6 +566,8 @@ export function useTransitGuide(route: TransitRoute | null) {
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
     refreshAnnounceRef.current = false;
+    boardOverrideRef.current = null;
+    setReboardPickerActive(false);
     setState(null);
     setWaiting(EMPTY_WAITING);
   }, [clearTimer]);
@@ -631,6 +658,33 @@ export function useTransitGuide(route: TransitRoute | null) {
     clearTimer();
     void pollOnce();
   }, [clearTimer, dispatch, pollOnce]);
+
+  /**
+   * 탑승 변경 진입(A16 L3). 지하철은 지금 있는 역을 먼저 묻는다.
+   *
+   * ⚠ 지하철 전용인 근거 둘: 조회 파라미터가 수단마다 다르고(지하철만 역 *이름*,
+   * 서울버스는 정류소 ID), 버스는 갈아타면 대개 다른 leg다. iOS `beginReboard` 미러.
+   */
+  const beginReboard = useCallback(() => {
+    const leg = currentLeg();
+    if (leg?.trackMode === "subway" && leg.viaStops.length > 0) {
+      setReboardPickerActive(true);
+      return;
+    }
+    changeBoarding();
+  }, [changeBoarding, currentLeg]);
+
+  const cancelReboard = useCallback(() => setReboardPickerActive(false), []);
+
+  /** 사용자가 고른 현재 역으로 재선택한다(A16 L3). */
+  const changeBoardingAt = useCallback(
+    (stationName: string) => {
+      boardOverrideRef.current = stationName;
+      setReboardPickerActive(false);
+      changeBoarding();
+    },
+    [changeBoarding],
+  );
 
   /** 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유). */
   const cancelChangeBoarding = useCallback(() => {
@@ -758,6 +812,10 @@ export function useTransitGuide(route: TransitRoute | null) {
     boardAlready,
     advance,
     changeBoarding,
+    beginReboard,
+    cancelReboard,
+    changeBoardingAt,
+    reboardPickerActive,
     cancelChangeBoarding,
     refreshWaiting,
     announceProgress,
