@@ -41,11 +41,28 @@ export function useManualVerdict(): ManualVerdict | null {
  * iOS는 `manualLocationLabel()`(앱 타깃)이 같은 약속을 미러한다.
  */
 export function useManualLocationLabel(): string | null {
+  const format = useManualLabelFormatter();
+  const manual = useManualLocation();
+  if (!manual) return null;
+  return format(manual.label);
+}
+
+/**
+ * **조회 시점에 기록해 둔** 원시 라벨을 지금 판정으로 감싼다(`WhereAmI` 헤딩).
+ *
+ * 축이 둘이고 서로 다른 시제를 갖는다: *어느 위치로 조회했나*는 기록이라 얼려야 하고
+ * (`NearbyStatus.done.manualLabel`), *지금 검증 가능한가*는 현재 상태라 살아 있어야
+ * 한다(며칠 전 판정이 새 세션의 라벨을 정하면 안 된다 — `CLAUDE.md` 수동 위치 절).
+ * 그래서 라벨 전체를 얼리지도, 전체를 지금 상태에서 만들지도 않는다.
+ *
+ * ⚠ 지정이 해제된 뒤에는 검증 가능형을 쓰지 않는다 — 확인할 대상 자체가 없으므로
+ * "검증 가능"이라 말할 근거가 사라진다(더 나쁜 상태가 더 안심시키는 역전 방지).
+ */
+export function useManualLabelFormatter(): (rawLabel: string) => string {
   const t = useTranslations("manualLocation");
   const manual = useManualLocation();
   const verdict = useManualVerdict();
-  if (!manual) return null;
-  return isManualLocationVerified(manual, verdict)
-    ? t("manual", { label: manual.label })
-    : t("manualUnverifiable", { label: manual.label });
+  const verified = manual !== null && isManualLocationVerified(manual, verdict);
+  return (rawLabel: string) =>
+    verified ? t("manual", { label: rawLabel }) : t("manualUnverifiable", { label: rawLabel });
 }

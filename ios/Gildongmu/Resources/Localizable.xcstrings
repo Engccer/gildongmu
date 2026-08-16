@@ -14761,46 +14761,6 @@
         }
       }
     },
-    "ios.common.retryLater": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "잠시 후 다시 시도해 주세요"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Please try again in a moment"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inténtalo de nuevo en un momento"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Veuillez réessayer dans un instant"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Riprova tra poco"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "しばらくしてからもう一度お試しください"
-          }
-        }
-      }
-    },
     "ios.common.unavailableHere.noBusData": {
       "localizations": {
         "ko": {

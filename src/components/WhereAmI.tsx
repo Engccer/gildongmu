@@ -6,7 +6,7 @@ import type { WhereAmI as WhereAmIData } from "@/lib/types";
 import { buildLocationNarrative } from "@/lib/where-am-i";
 import { formatDistance } from "@/lib/format";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
-import { useManualLocationLabel } from "@/hooks/useManualLocation";
+import { useManualLabelFormatter, useManualLocationLabel } from "@/hooks/useManualLocation";
 import { NearbyPanelShell } from "@/components/NearbyPanelShell";
 import { SurroundingsScene } from "@/components/SurroundingsScene";
 import { nearbyLiveMessage } from "@/lib/nearby-live";
@@ -46,6 +46,22 @@ export function WhereAmI() {
   // 어디 있나를 묻는 전용 화면**에서 지정한 좌표가 GPS 판정처럼 낭독되어 사용자는
   // GPS가 고쳐졌다고 믿는다. 판정선은 표시줄과 같은 훅이 소유한다.
   const manualLabel = useManualLocationLabel();
+  // ⚠ 헤딩은 **이 산문이 무엇을 기준으로 만들어졌나**를 말한다(D21, 2026-08-16).
+  // `manualLabel`은 *지금* 상태라, GPS 결과가 떠 있는 채로 위치를 지정하면 GPS 산문에
+  // "지정한 위치" 딱지가 붙었다 — 시각장애 사용자에겐 이 문구가 유일한 정보원이라
+  // 반증할 방법이 없다. 근거는 `done.origin`(관문이 좌표를 고른 경로 그대로)이다.
+  // ⚠ 좌표 대조로 되짚는 방법은 **틀린다** — 지정한 위치가 마침 GPS와 같은 지점이면
+  //   두 출처가 같은 값을 갖는다(변이 주입에서 실제로 드러났다). 트리거 시점 라벨을
+  //   얼리는 방법도 틀린다 — force 재조회는 이동 판정으로 수동 위치를 해제한 뒤 GPS로
+  //   떨어질 수 있어, 누를 때의 라벨과 실제로 쓰인 좌표가 갈린다.
+  // ⚠ 라벨도 `done`에서 읽는다(`useManualLocationLabel`이 아니라) — 조회 뒤 이동 판정이나
+  //   직접 해제로 지정이 풀리면 지금 라벨은 null이 되고, 그러면 수동 좌표로 만든 산문이
+  //   "현재 위치"로 낭독되는 **대칭형 거짓말**이 생긴다(독립 리뷰 검출 2026-08-16).
+  const formatManualLabel = useManualLabelFormatter();
+  const fetchedLabel =
+    status.kind === "done" && status.origin === "manual" && status.manualLabel
+      ? formatManualLabel(status.manualLabel)
+      : undefined;
 
   const narrative =
     status.kind === "done" ? buildLocationNarrative(status.data.data) : null;
@@ -62,7 +78,7 @@ export function WhereAmI() {
       open={status.kind === "done" && narrative !== null}
       heading={
         status.kind === "done"
-          ? `${manualLabel ?? t("ready")} ${t("asOf", { time: status.at })}`
+          ? `${fetchedLabel ?? t("ready")} ${t("asOf", { time: status.at })}`
           : ""
       }
       headingRef={headingRef}

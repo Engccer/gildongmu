@@ -12,6 +12,7 @@ vi.mock("next-intl", () => ({
 vi.mock("@/lib/geolocation", () => ({ awaitGeolocation: vi.fn() }));
 
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -22,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { awaitGeolocation } from "@/lib/geolocation";
 import {
   __resetManualLocationForTest,
+  clearManualLocation,
   setManualLocation,
 } from "@/lib/manual-location-store";
 import { WhereAmI } from "../WhereAmI";
@@ -166,6 +168,57 @@ describe("WhereAmI 도메인 계약", () => {
       expect(heading.textContent).not.toContain("whereAmI.ready");
       // as-of 시각은 그대로 병기한다(신선도 표기는 출처와 다른 축).
       expect(heading.textContent).toContain("whereAmI.asOf");
+    });
+
+    // D21(2026-08-16): 헤딩은 **이 산문이 무엇을 기준으로 만들어졌나**를 말한다.
+    // GPS로 조회해 둔 결과가 떠 있는 채로 위치를 지정하면 종전엔 그 GPS 산문에
+    // "지정한 위치" 딱지가 붙었다 — 산문은 그대로인데 출처만 바뀌어 낭독된다.
+    // 시각장애 사용자에겐 이 문구가 유일한 정보원이라 반증할 수단이 없다.
+    // ⚠ 부정 단언은 **아무 일도 안 일어나면 저절로 참**이 된다(첫 판이 그랬다 —
+    // 변이 주입에서 옛 코드가 그대로 통과했다). 그래서 "수동 지정이 이 컴포넌트에
+    // 실제로 반영됐다"는 증거(트리거 이름 전환)를 같은 테스트 안에 함께 세운다.
+    it("GPS로 조회한 뒤 위치를 지정해도 그 결과 헤딩은 지정 라벨로 바뀌지 않는다", async () => {
+      await openToDone();
+      const heading = screen.getByRole("heading", { level: 3 });
+      expect(heading.textContent).toContain("whereAmI.ready");
+
+      act(() => setManual());
+
+      // 헤딩은 그대로다 — 이 산문이 GPS로 만들어졌기 때문이다.
+      expect(heading.textContent).toContain("whereAmI.ready");
+      expect(heading.textContent).not.toContain("manualLocation.manual");
+
+      // 증거: 수동 지정이 이 컴포넌트에 실제로 도달했다. 도달하지 않았다면 위 두 단언은
+      // "아무 일도 안 일어나서" 통과한 것이라 무의미하다(done 상태의 트리거는 항상
+      // '새로고침'이라 증거가 못 된다 — 닫아서 유휴 상태의 트리거 이름으로 확인한다).
+      fireEvent.click(screen.getByRole("button", { name: "actions.close" }));
+      expect(
+        await screen.findByRole("button", { name: "whereAmI.manualButton" }),
+      ).toBeTruthy();
+    });
+
+    // 위 계약의 **대칭형**(독립 리뷰 검출 2026-08-16): 지정한 위치로 조회한 뒤 그 지정이
+    // 풀리면(이동 판정 drop·직접 해제) 헤딩이 "현재 위치"로 떨어져, 수동 좌표로 만든
+    // 산문이 GPS로 낭독된다. 라벨을 지금 상태에서 만들면 반드시 생기는 구멍이라
+    // `done`에 그때 라벨을 함께 싣는다.
+    it("지정한 위치로 조회한 뒤 지정이 풀려도 그 결과 헤딩은 지정 라벨을 유지한다", async () => {
+      setManual();
+      fetchMock.mockResolvedValue(jsonResponse({ data }));
+      render(<WhereAmI />);
+      fireEvent.click(screen.getByRole("button", { name: "whereAmI.manualButton" }));
+      const heading = await screen.findByRole("heading", { level: 3 });
+      expect(heading.textContent).toContain("길동 카페");
+
+      expect(heading.textContent).toContain("manualLocation.manual");
+
+      act(() => clearManualLocation());
+
+      // 라벨은 그대로다 — 이 산문을 만든 좌표는 그 지정에서 왔기 때문이다.
+      expect(heading.textContent).toContain("길동 카페");
+      // 증거이자 계약: 해제가 도달했고(검증 가능형 → 불가형 전환), 두 축의 시제가
+      // 다르다는 것이 여기서 함께 확인된다. 확인할 대상이 없어졌으니 "검증 가능"이라
+      // 말할 근거도 사라진다.
+      expect(heading.textContent).toContain("manualLocation.manualUnverifiable");
     });
   });
 });

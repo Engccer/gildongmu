@@ -24,7 +24,6 @@
     },
     "common": {
       "ok": "OK",
-      "retryLater": "しばらくしてからもう一度お試しください",
       "checking": "確認中",
       "geoDeniedTitle": "位置情報の許可が必要です",
       "geoDeniedDesc": "設定アプリでキルドンムの位置情報へのアクセスを許可してください",

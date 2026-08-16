@@ -995,16 +995,21 @@ struct DirectionsTabView: View {
         focusedRecentRoute = RecentRoute(from: route.from, to: route.to, pinned: pinned)
     }
 
-    /// 전체 지우기(고정 보존 — 스펙 2026-08-12 §3). 목록이 전부 사라질 때만 섹션이
-    /// 소멸해 포커스가 조회 버튼으로 옮겨간다 — 위 `deleteRecentRoute`와 같은 이유로
-    /// `.high`(활성화 응답). 고정이 남으면 섹션·버튼이 그대로라 포커스 무이동.
+    /// 전체 지우기(고정 보존 — 스펙 2026-08-12 §3). **우선순위는 분기로 가른다**
+    /// (위원장 판정 2026-08-16): 목록이 전부 사라질 때만 섹션이 소멸해 포커스가 조회
+    /// 버튼으로 옮겨가므로 그때만 `.high`(위 `deleteRecentRoute`와 같은 이유 — 기본
+    /// 우선순위면 VO가 새 컨트롤 라벨을 낭독하며 통지를 잠식한다). 고정이 남으면
+    /// 섹션·버튼이 그대로라 **포커스 무이동**이고, 잠식할 것이 없으니 끊을 이유도 없다.
+    /// ⚠ 종전에는 두 분기 모두 `.high`라 검색 시트(`DirectionsEndpointSearchView`)와
+    /// 갈려 있었다 — 판별선은 키가 아니라 **포커스가 움직이는지**다.
     private func clearRecentRoutes() {
         model.clearRecentRoutes()
-        let key = model.recentRoutes.isEmpty ? "recentRoutes.cleared" : "recent.clearedExceptPinned"
+        let emptied = model.recentRoutes.isEmpty
+        let key = emptied ? "recentRoutes.cleared" : "recent.clearedExceptPinned"
         var clearedMessage = AttributedString(appLocalized(key))
-        clearedMessage.accessibilitySpeechAnnouncementPriority = .high
+        if emptied { clearedMessage.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(clearedMessage).post()
-        if model.recentRoutes.isEmpty { submitFocused = true }
+        if emptied { submitFocused = true }
     }
 
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,

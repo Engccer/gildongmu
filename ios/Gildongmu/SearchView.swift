@@ -143,8 +143,7 @@ struct SearchView: View {
                     // 3-state: "조회 실패"는 "결과 없음"과 다른 화면·문장(뭉개기 금지)
                     ContentUnavailableView(
                         appLocalized("ios.search.failedTitle"),
-                        systemImage: "wifi.exclamationmark",
-                        description: Text(appLocalized("ios.common.retryLater"))
+                        systemImage: "wifi.exclamationmark"
                     )
                 } else if model.outcome != nil && model.totalCount == 0 {
                     ContentUnavailableView.search
@@ -200,11 +199,16 @@ struct SearchView: View {
     }
 
     /// 항목 삭제(스펙 §5 포커스 계약): 다음 항목 → 이전 항목 → 목록 소멸 시 마이크 행.
-    /// 통지 1건 + 포커스 이동(이동 착지 라벨 낭독과 순서 무해 — polite 큐).
+    /// 통지는 `.high`(위원장 판정 2026-08-16 — 판별선은 **포커스가 움직이는지**다):
+    /// 이 핸들러는 자기를 누른 행을 사라지게 해 **포커스가 반드시 옮겨가고**, 기본
+    /// 우선순위면 VO가 착지 라벨을 낭독하며 통지를 잠식한다(헌장 §6).
+    /// ⚠ 종전 주석의 "polite 큐라 순서 무해"가 바로 그 잘못된 전제였다.
     private func deleteRecent(_ query: RecentQuery) {
         guard let index = recentQueries.firstIndex(of: query) else { return }
         recentQueries = recentStore.removeQuery(query.text)
-        AccessibilityNotification.Announcement(appLocalized("recent.deleted")).post()
+        var deletedMessage = AttributedString(appLocalized("recent.deleted"))
+        deletedMessage.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(deletedMessage).post()
         if recentQueries.isEmpty {
             micRowFocused = true
             return

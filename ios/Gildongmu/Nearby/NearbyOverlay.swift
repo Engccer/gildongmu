@@ -25,10 +25,11 @@ struct NearbyOverlayCopy {
         self.description = description
     }
 
-    /// 기본 실패 카피(8종 리스트 도메인의 구 .failed와 동일)
+    /// 기본 실패 카피(8종 리스트 도메인의 구 .failed와 동일).
+    /// ⚠ 부연을 붙이지 않는다 — 제목이 이미 실패를 말하고, "잠시 후 다시 시도"는
+    /// 새 정보가 없는 꼬리 문장이다(2026-08-02 정리 규칙, D7로 뒤늦게 소화).
     static var defaultFailure: NearbyOverlayCopy {
-        NearbyOverlayCopy(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark",
-                          description: appLocalized("ios.common.retryLater"))
+        NearbyOverlayCopy(appLocalized("ios.common.failedTitle"), systemImage: "wifi.exclamationmark")
     }
 }
 

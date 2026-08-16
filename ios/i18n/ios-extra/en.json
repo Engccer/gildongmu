@@ -24,7 +24,6 @@
     },
     "common": {
       "ok": "OK",
-      "retryLater": "Please try again in a moment",
       "checking": "Checking",
       "geoDeniedTitle": "Location permission needed",
       "geoDeniedDesc": "Please allow location access for Gildongmu in the Settings app",
