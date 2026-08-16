@@ -613,6 +613,13 @@
     "faq5q": "Why is there no map view?",
     "faq5a": "Maps cannot be read by screen readers, so Gildongmu presents everything as text. For turn-by-turn driving it hands off to the Naver Map or KakaoMap apps."
   },
+  "dataSources": {
+    "title": "Data sources",
+    "intro": "Where the data Gildongmu uses comes from.",
+    "osmLicense": "Provided by OpenStreetMap contributors, licensed under ODbL 1.0",
+    "osmLink": "View the full license",
+    "osmCopyRequest": "A copy of the map data is available on request."
+  },
   "beacon": {
     "heading": "Live guidance",
     "start": "Start guidance",
@@ -795,11 +802,14 @@
     "hostSubwayEntrance": "subway entrance",
     "crossingEmpty": "No crosswalks registered nearby",
     "crossingError": "Could not load crosswalk info",
+    "crossingUnsupported": "Crosswalk info is only available in South Korea",
     "tactileEmpty": "No tactile paving registered nearby",
     "tactileError": "Could not load tactile paving info",
+    "tactileUnsupported": "Tactile paving info is only available in South Korea",
     "osmSummary": "{count} crosswalks/tactile paving points",
     "osmEmpty": "No crosswalk or tactile paving info registered nearby",
     "osmError": "Could not load crosswalk/tactile paving info",
+    "osmUnsupported": "Crosswalk and tactile paving info is only available in South Korea",
     "footnote": "Based on Seoul city and OSM registered data, and may differ from actual facility presence or working condition.",
     "sourceOsm": "© OpenStreetMap contributors",
     "sourceAudio": "Audio traffic signals: provided by Seoul (as of {baseDate})"

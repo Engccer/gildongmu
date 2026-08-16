@@ -124,6 +124,9 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink(appLocalized("dataSources.title")) {
+                        DataSourcesView()
+                    }
                     NavigationLink(appLocalized("ios.settings.releaseNotes")) {
                         ReleaseNotesView()
                     }

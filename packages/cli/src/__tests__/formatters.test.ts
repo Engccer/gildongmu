@@ -290,6 +290,23 @@ describe("nearby-walk-infra", () => {
     expect(lines.join("\n")).not.toContain("서울특별시 제공");
   });
 
+  it("osm unsupported(국내 밖)는 그룹별 미제공 문장으로, error 문구와 뭉개지 않는다", () => {
+    const lines = FORMATTERS["nearby-walk-infra"]({
+      walk: {
+        audioSignals: { status: "unsupported", reason: "outsideSeoul" },
+        osm: { status: "unsupported", reason: "outsideKorea" },
+      },
+    } as never);
+    expect(lines).toEqual([
+      "음향신호기 정보는 서울만 제공됩니다.",
+      "횡단보도 정보는 국내만 제공됩니다.",
+      "점자블록 정보는 국내만 제공됩니다.",
+    ]);
+    // 미제공은 조회 실패가 아니다 — 두 상태가 같은 문장으로 뭉개지면 시각장애 사용자는
+    // 화면으로 그 차이를 확인할 수 없다.
+    expect(lines.join("\n")).not.toContain("불러오지 못했습니다");
+  });
+
   it("한 소스 error는 실패 문장으로 강등, 다른 소스는 보존한다(부분실패 200)", () => {
     const lines = FORMATTERS["nearby-walk-infra"]({
       walk: {

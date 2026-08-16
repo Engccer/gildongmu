@@ -8241,6 +8241,206 @@
         }
       }
     },
+    "dataSources.intro": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "길동무가 쓰는 자료의 출처입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where the data Gildongmu uses comes from."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De aquí proceden los datos que usa Gildongmu."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voici d'où proviennent les données utilisées par Gildongmu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ecco da dove provengono i dati usati da Gildongmu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キルドンムが使っているデータの出典です。"
+          }
+        }
+      }
+    },
+    "dataSources.osmCopyRequest": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지도 자료 사본은 문의하면 제공합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A copy of the map data is available on request."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una copia de los datos cartográficos se facilita a quien la solicite."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une copie des données cartographiques est fournie sur demande."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una copia dei dati cartografici viene fornita su richiesta."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "地図データのコピーはお問い合わせに応じて提供します。"
+          }
+        }
+      }
+    },
+    "dataSources.osmLicense": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenStreetMap 기여자 제공, ODbL 1.0 라이선스"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provided by OpenStreetMap contributors, licensed under ODbL 1.0"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datos de los colaboradores de OpenStreetMap, con licencia ODbL 1.0"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Données des contributeurs d'OpenStreetMap, sous licence ODbL 1.0"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dati dei contributori di OpenStreetMap, con licenza ODbL 1.0"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenStreetMap貢献者提供、ODbL 1.0ライセンス"
+          }
+        }
+      }
+    },
+    "dataSources.osmLink": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 전문 보기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View the full license"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver el texto completo de la licencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lire le texte intégral de la licence"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leggi il testo completo della licenza"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンス全文を見る"
+          }
+        }
+      }
+    },
+    "dataSources.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "정보 출처"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data sources"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes de datos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sources des données"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fonti dei dati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "データの出典"
+          }
+        }
+      }
+    },
     "detail.back": {
       "localizations": {
         "ko": {
@@ -38681,6 +38881,46 @@
         }
       }
     },
+    "walkInfra.crossingUnsupported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "횡단보도 정보는 국내만 제공됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crosswalk info is only available in South Korea"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La información de pasos de peatones solo está disponible en Corea del Sur"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les informations sur les passages piétons ne sont disponibles qu'en Corée du Sud"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le informazioni sugli attraversamenti pedonali sono disponibili solo in Corea del Sud"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横断歩道の情報は韓国国内のみ提供されます"
+          }
+        }
+      }
+    },
     "walkInfra.error": {
       "localizations": {
         "ko": {
@@ -39521,6 +39761,46 @@
         }
       }
     },
+    "walkInfra.osmUnsupported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "횡단보도·점자블록 정보는 국내만 제공됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crosswalk and tactile paving info is only available in South Korea"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La información de pasos de peatones y pavimento táctil solo está disponible en Corea del Sur"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les informations sur les passages piétons et les bandes podotactiles ne sont disponibles qu'en Corée du Sud"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le informazioni su attraversamenti pedonali e pavimentazione tattile sono disponibili solo in Corea del Sud"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "横断歩道・点字ブロックの情報は韓国国内のみ提供されます"
+          }
+        }
+      }
+    },
     "walkInfra.ready": {
       "localizations": {
         "ko": {
@@ -39757,6 +40037,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "点字ブロックの情報を取得できませんでした"
+          }
+        }
+      }
+    },
+    "walkInfra.tactileUnsupported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "점자블록 정보는 국내만 제공됩니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tactile paving info is only available in South Korea"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La información de pavimento táctil solo está disponible en Corea del Sur"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les informations sur les bandes podotactiles ne sont disponibles qu'en Corée du Sud"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le informazioni sulla pavimentazione tattile sono disponibili solo in Corea del Sud"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点字ブロックの情報は韓国国内のみ提供されます"
           }
         }
       }

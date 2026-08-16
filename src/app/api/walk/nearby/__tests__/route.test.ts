@@ -7,7 +7,6 @@ vi.mock("@/lib/rate-limit", () => ({
 }));
 vi.mock("@/lib/walk-infra", () => ({
   getWalkInfrastructure: vi.fn(),
-  configureWalkInfraTileCache: vi.fn(),
 }));
 
 import { GET } from "../route";
@@ -73,6 +72,20 @@ describe("GET /api/walk/nearby", () => {
     const body = await res.json();
     expect(body.walk.osm).toEqual({ status: "error" });
     expect(body.walk.audioSignals).toEqual(OK_RESULT.audioSignals);
+  });
+
+  it("한국 밖 좌표 → 200 + osm unsupported(outsideKorea), 오류도 0건도 아니다", async () => {
+    // seed 범위 밖은 조회 실패(503)가 아니라 "그 지역은 자료가 없다"는 정직한 상태다.
+    // 음향신호기도 서울 밖이라 unsupported이지만, 둘 다 error가 아니므로 200이 맞다.
+    mockGetWalk.mockResolvedValue({
+      audioSignals: { status: "unsupported", reason: "outsideSeoul" },
+      osm: { status: "unsupported", reason: "outsideKorea" },
+    });
+    const res = await GET(makeRequest("?lat=35.68&lng=139.77"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.walk.osm).toEqual({ status: "unsupported", reason: "outsideKorea" });
+    expect(body.walk.audioSignals).toEqual({ status: "unsupported", reason: "outsideSeoul" });
   });
 
   it("레이트리밋 초과 → 429", async () => {
