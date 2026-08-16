@@ -101,21 +101,24 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> S
         let name = [leg.toName, destinationName].compactMap { $0 }.first { !$0.isEmpty }
         // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다.
         // 조립은 formatDistance 정본을 지난다(소수 km 직접 조립 금지).
-        let distance = leg.distanceMeters.map(formatDistance)
-        let minutes = String(leg.minutes)
-        // ⚠ 위치 인자 순서는 **ko 문장의 플레이스홀더 등장 순서**가 정본이다.
-        //   ko "{name}까지 도보 {minutes}분, {distance}" → (name, minutes, distance).
-        //   영어처럼 어순이 다른 로케일은 변환 스크립트가 인덱스를 재배치하므로
-        //   호출부는 로케일과 무관하게 이 순서 하나만 지킨다.
-        switch (name, distance) {
-        case let (name?, distance?):
-            return appLocalized("route.transit.legWalkTo", name, minutes, distance)
-        case let (name?, nil):
-            return appLocalized("route.transit.legWalkToNoDistance", name, minutes)
-        case let (nil, distance?):
-            return appLocalized("route.transit.legWalkToDest", minutes, distance)
-        case (nil, nil):
-            return appLocalized("route.transit.legWalkToDestNoDistance", minutes)
+        // 키·인자 순서 판정은 Kit `TransitWalkLegText`(테스트가 잠근다, D8). 아래
+        // switch는 키 → 리터럴 조회의 항등 매핑이다(키 린터 계약: 리터럴 호출만).
+        let resolved = TransitWalkLegText.resolve(
+            name: name, distance: leg.distanceMeters.map(formatDistance), minutes: leg.minutes)
+        switch resolved.key {
+        case "route.transit.legWalkTo":
+            return appLocalized("route.transit.legWalkTo", arguments: resolved.args)
+        case "route.transit.legWalkToNoDistance":
+            return appLocalized("route.transit.legWalkToNoDistance", arguments: resolved.args)
+        case "route.transit.legWalkToDest":
+            return appLocalized("route.transit.legWalkToDest", arguments: resolved.args)
+        case "route.transit.legWalkToDestNoDistance":
+            return appLocalized("route.transit.legWalkToDestNoDistance", arguments: resolved.args)
+        default:
+            // Kit이 키를 늘렸는데 여기 case가 빠진 것 — 문자열 switch라 컴파일러가 못
+            // 잡으므로 디버그에서 즉시 드러내고, 릴리스는 키를 그대로 노출해 침묵을 피한다.
+            assertionFailure("TransitWalkLegText 키 미매핑: \(resolved.key)")
+            return resolved.key
         }
     }
     // ko는 두 키가 같은 "정거장"이라 분기가 무의미해 보이지만 지우지 말 것 —

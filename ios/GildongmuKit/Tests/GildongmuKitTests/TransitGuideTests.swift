@@ -351,6 +351,16 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(uncertain.directionUncertain == true)
     #expect(uncertain.candidates.count == 1)
 
+    // A17: 후보 전원 direction 빈 문자열(버스)은 방향 축 부재 — uncertain 아님. 웹 동일 케이스.
+    let bus = classifyTransitBoardingCandidates([item("", "b1"), item("", "b2")], leg: leg)
+    #expect(bus.directionUncertain == false)
+    #expect(bus.candidates.map(\.item.vehicleId) == ["b1", "b2"])
+    #expect(classifyTransitBoardingCandidates([], leg: leg).directionUncertain == false)
+    // 방향 값이 하나라도 있는데 전멸이면 여전히 uncertain.
+    let mixed = classifyTransitBoardingCandidates([item("", "1"), item("알수없음", "2")], leg: leg)
+    #expect(mixed.directionUncertain == true)
+    #expect(mixed.candidates.count == 2)
+
     let decorated = classifyTransitBoardingCandidates(
         [item("하행", "5", express: true), item("하행", "6", dest: "왕십리")], leg: leg)
     #expect(decorated.candidates[0].express == true)

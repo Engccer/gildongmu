@@ -386,6 +386,12 @@ private func directionMatchesWayCode(_ updnLine: String, _ wayCode: Int?) -> Boo
 }
 
 /// 승차 목록 후보 판정(§5.1): 방향은 보조(전멸 시 전체 유지), 종착 검사만 결정적 차단.
+///
+/// `directionUncertain`은 **"방향 축이 있는데 매칭이 전멸했다"**로 좁힌다(A17,
+/// 2026-08-17). 후보 전원의 `direction`이 비어 있으면(버스 — upstream이 방향 필드를
+/// 주지 않는다) 방향 축 자체가 없는 것이라 uncertain이 아니다. 종전엔 빈 문자열이
+/// 매칭 실패로 분류돼 모든 버스 세션에 "방면을 확인해 주세요"가 붙었는데, 버스
+/// 목록엔 방면 정보가 없어 확인할 대상 없는 지시문이었다. 웹 classifyBoardingCandidates 미러.
 public func classifyTransitBoardingCandidates(
     _ items: [TransitTrackItem], leg: TransitGuideLeg
 ) -> (candidates: [TransitBoardingCandidate], directionUncertain: Bool) {
@@ -402,8 +408,9 @@ public func classifyTransitBoardingCandidates(
         )
     }
     let anyMatched = decorated.contains { $0.directionMatched }
+    let hasDirectionAxis = decorated.contains { !$0.item.direction.isEmpty }
     let candidates = anyMatched ? decorated.filter(\.directionMatched) : decorated
-    return (candidates, !anyMatched)
+    return (candidates, hasDirectionAxis && !anyMatched)
 }
 
 /// 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용.

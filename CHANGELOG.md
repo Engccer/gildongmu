@@ -11,6 +11,18 @@
 
 ## 2026-08-17
 
+### 백로그 코드 잔일 묶음 — A17·B4·G4·D24·D25·D8 종결, D10 낡은 등재 정리
+
+병목이 판정으로 넘어간 뒤 코드만으로 닫히던 소규모 항목 6건을 단독 정리했다(편승 정책이 "얹힐 작업"이 오지 않아 무기한 보류로 작동하던 것을 2026-08-16과 같은 판정으로 치웠다). 웹·iOS 모두, 실기기 판정 없이 닫히는 축만.
+
+- **A17** 버스 승차 대기 "방면을 확인해 주세요" 상시 노출: `classifyBoardingCandidates`(웹) ↔ `classifyTransitBoardingCandidates`(Kit)의 `directionUncertain`을 "방향 축이 있는데 매칭 전멸"로 좁혔다 — 후보 전원 `direction`이 빈 문자열(버스)이면 축 부재라 uncertain이 아니다. 両미러 테스트 추가.
+- **B4** 웹 대중교통 안내 시작 시 트리거 unmount로 커서가 body로 떨어지던 것: 세션 상태 텍스트(`statusRef`, `tabIndex=-1`)로 선점 착지(`TransitGuidePanel`), 계약 테스트 추가(변이 검출 확인).
+- **G4** `guidance-gate-drift.test.ts`에 `manualOriginNoticeText` **소비 지점** 가드: 줄 수 창 대신 중괄호 구조를 거슬러 모든 바깥 블록 머리말·해당 문장에서 봉인 플래그 부재를 검사(`enclosingHeaders`, 주석·문자열 제거). 실파일 변이 주입으로 검출 확인.
+- **D24** 통지 우선순위 판별선 잔여 적용: `NearbyLoadState`의 권한·정밀도·커버리지 전락 3종(목록이 오버레이로 교체)과 `ChatConversationView` 받아쓰기 전사 통지 2분기(보내기 버튼 선점 이동 직후)를 `.high`로. `announceRefreshFailed`는 의도적으로 기본값 유지. `CLAUDE.md` 규칙 문구를 "포커스가 움직이고 착지 라벨로 대체될 수 없을 때"로 정정.
+- **D25** `NearbyOverlayCopy.description` 죽은 필드·`copyView` 분기 제거(소비자 0). `list/plain`의 위치·서버 실패 동일 화면은 기록만(회귀 아님).
+- **D8** iOS `transitLegText` 도보 4분기의 키·인자 순서 판정을 Kit `TransitWalkLegText.resolve`로 이관(테스트 5건), 앱은 키→리터럴 항등 매핑 + `appLocalized(_:arguments:)` 배열 오버로드.
+- **D10** 파일 로거 3벌 통합은 같은 날 E20 계측기가 `DiagFileLog`로 이미 끝냈으므로 백로그에서 내렸다(등재만 낡아 있던 사례).
+
 ### 도보 도착 화면에 걸음·칼로리 요약 한 줄 (iOS)
 
 spec `docs/superpowers/specs/2026-08-17-walk-arrival-health-summary-design.md`, 플랜 `docs/superpowers/plans/2026-08-17-walk-arrival-health-summary.md`. 정식·실험판 모두, 웹 미러 없음(만보계·도착 화면이 없다). 실기기 판정(행 존재·VO 순서·조회 지연)은 `docs/FIELD-TEST.md` §3.

@@ -29,16 +29,29 @@ func distanceText(_ s: String) -> some View {
 }
 
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).
+/// ⚠ 기본 우선순위를 유지한다 — 목록이 그대로 남아 포커스가 움직이지 않으므로
+/// 잠식될 착지 낭독이 없다(아래 전락 3종과 갈리는 정확한 판별선, D24).
 @MainActor
 func announceRefreshFailed() {
     AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshFailed")).post()
+}
+
+/// 목록이 통째로 오버레이로 교체되는 전락 통지 3종의 공통 게시(D24, 2026-08-17).
+/// 화면 교체로 포커스가 옮겨가고 VO가 착지 라벨을 낭독하는데, 기본 우선순위면
+/// "왜 화면이 바뀌었는가"를 말하는 이 통지가 거기에 잠식돼 무발화된다(헌장 §6 —
+/// 포커스가 움직이고 그 통지가 착지 라벨로 대체될 수 없을 때는 `.high`).
+@MainActor
+private func announceListReplaced(_ text: String) {
+    var attributed = AttributedString(text)
+    attributed.accessibilitySpeechAnnouncementPriority = .high
+    AccessibilityNotification.Announcement(attributed).post()
 }
 
 /// 권한 취소 전락 통지: loaded 중 새로고침에서 위치 권한 거부를 만나면 목록이
 /// denied 화면으로 통째로 바뀐다 — 무신호 화면 전환(SR 맥락 상실) 방지.
 @MainActor
 func announcePermissionLost() {
-    AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshDenied")).post()
+    announceListReplaced(appLocalized("ios.nearby.refreshDenied"))
 }
 
 /// 정밀 위치 상실 전락 통지. **화면 오버레이와 같은 원인을 말해야 한다** —
@@ -46,7 +59,7 @@ func announcePermissionLost() {
 /// 낭독은 "권한이 꺼져 있어"라서 둘이 서로 다른 원인을 지목한다.
 @MainActor
 func announceAccuracyLost() {
-    AccessibilityNotification.Announcement(appLocalized("ios.nearby.refreshReduced")).post()
+    announceListReplaced(appLocalized("ios.nearby.refreshReduced"))
 }
 
 /// 서비스 지역 밖 전락 통지(웹 tCommon("outOfCoverage") 미러): loaded 중 새로고침에서
@@ -54,7 +67,7 @@ func announceAccuracyLost() {
 /// 오류가 아니라 안내이므로 같은 문구를 그대로 쓴다.
 @MainActor
 func announceOutOfCoverage() {
-    AccessibilityNotification.Announcement(appLocalized("ios.common.outOfCoverage")).post()
+    announceListReplaced(appLocalized("ios.common.outOfCoverage"))
 }
 
 /// NearbyLoadCore 좌표 소스 어댑터. currentCoordinate는 typed throws(LocationError)라

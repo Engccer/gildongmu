@@ -19,3 +19,12 @@ func appLocalized(_ key: String, _ args: CVarArg...) -> String {
     let format = bundle.localizedString(forKey: key, value: nil, table: nil)
     return args.isEmpty ? format : String(format: format, arguments: args)
 }
+
+/// 위치 인자를 배열로 받는 판(Kit이 키·인자를 함께 돌려주는 자리용, `TransitWalkLegText`).
+/// 키는 여전히 리터럴로 호출한다 — 이 오버로드가 그 계약을 풀지 않는다.
+func appLocalized(_ key: String, arguments: [String]) -> String {
+    let bundle = Bundle.main.path(forResource: AppLanguage.current, ofType: "lproj")
+        .flatMap(Bundle.init(path:)) ?? .main
+    let format = bundle.localizedString(forKey: key, value: nil, table: nil)
+    return arguments.isEmpty ? format : String(format: format, arguments: arguments.map { $0 as CVarArg })
+}
