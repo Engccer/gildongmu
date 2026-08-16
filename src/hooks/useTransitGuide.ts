@@ -119,6 +119,15 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 렌더 사이클 밖에서 읽기 때문이다.
    */
   const boardOverrideRef = useRef<string | null>(null);
+  /**
+   * 위 ref의 렌더용 사본(`stateRef`+`state` 관례 동형). 폴 루프는 ref를, 화면·발화
+   * 문구는 이 값을 읽는다 — 둘을 함께 갱신하는 곳은 `setBoardOverride` 하나다.
+   */
+  const [boardOverride, setBoardOverrideState] = useState<string | null>(null);
+  const setBoardOverride = useCallback((name: string | null) => {
+    boardOverrideRef.current = name;
+    setBoardOverrideState(name);
+  }, []);
 
   const liveRef = useRef("");
   const reannounceTimerRef = useRef<number | null>(null);
@@ -170,15 +179,27 @@ export function useTransitGuide(route: TransitRoute | null) {
     return r.legs[s.legIndex] ?? null;
   }, []);
 
-  /** 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선. */
+  /**
+   * 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.
+   *
+   * ⚠ **재선택한 기준 역이 있으면 그 역이 승차 지점이다**(A16 L3, 독립 리뷰 MAJOR).
+   * 이 문장은 상시 표시이자 진행 상황 발화라, 조회 대상과 어긋나면 화면은 "천호역
+   * 대기"라고 말하는데 그 아래 목록은 왕십리 도착 정보인 상태가 된다. 목록 항목에
+   * 역명이 없으므로 SR 사용자에게는 이 문장이 그 화면의 유일한 역 정보원이다.
+   */
   const waitContextText = useCallback(
     (leg: TransitGuideLeg): string => {
+      if (boardOverride != null) {
+        // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다 —
+        // 역명만 바꾸면 "3분 걸어 왕십리역에서"라는 새 거짓말이 된다.
+        return t("waitContext", { stop: boardOverride, line: leg.lineName });
+      }
       const args = { stop: leg.boardName, line: leg.lineName };
       return leg.walkBeforeMinutes != null && leg.walkBeforeMinutes > 0
         ? t("waitContextWalk", { ...args, minutes: leg.walkBeforeMinutes })
         : t("waitContext", args);
     },
-    [t],
+    [boardOverride, t],
   );
 
   /** 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당. */
@@ -369,12 +390,12 @@ export function useTransitGuide(route: TransitRoute | null) {
       // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
       // 흩뿌리지 않는 이유가 그것이다(iOS dispatch 동형).
       if (input.kind === "board" || input.kind === "advance") {
-        boardOverrideRef.current = null;
+        setBoardOverride(null);
       }
       commit(next);
       if (event) announceEvent(event);
     },
-    [announceEvent, commit],
+    [announceEvent, commit, setBoardOverride],
   );
 
   const clearTimer = useCallback(() => {
@@ -566,11 +587,13 @@ export function useTransitGuide(route: TransitRoute | null) {
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
     refreshAnnounceRef.current = false;
-    boardOverrideRef.current = null;
+    setBoardOverride(null);
     setReboardPickerActive(false);
     setState(null);
     setWaiting(EMPTY_WAITING);
-  }, [clearTimer]);
+    // ⚠ setBoardOverride는 useCallback([])이라 안정 정체성이다 — 아래 주석의
+    // "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
+  }, [clearTimer, setBoardOverride]);
   // stopSession·pollOnce는 상태 의존이 없어 안정 정체성이다(참조 동일성이
   // 세션 스토어의 소유 판정 키 — 별도 ref 고정 불필요).
 
@@ -679,11 +702,11 @@ export function useTransitGuide(route: TransitRoute | null) {
   /** 사용자가 고른 현재 역으로 재선택한다(A16 L3). */
   const changeBoardingAt = useCallback(
     (stationName: string) => {
-      boardOverrideRef.current = stationName;
+      setBoardOverride(stationName);
       setReboardPickerActive(false);
       changeBoarding();
     },
-    [changeBoarding],
+    [changeBoarding, setBoardOverride],
   );
 
   /** 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유). */

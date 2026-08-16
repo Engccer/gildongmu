@@ -179,6 +179,34 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     ).toBe(true);
   });
 
+  it("재선택 뒤 상시 표시 문맥이 조회 대상 역과 같은 역을 말한다(A16 L3, 리뷰 MAJOR)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            json: async () => ({ mode: "subway", status: "ok", items: [trackItem({})] }),
+          }) as Response,
+      ),
+    );
+
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(await screen.findByRole("button", { name: /boardTrain/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "transitGuide.changeBoarding" }));
+    fireEvent.click(await screen.findByRole("button", { name: "왕십리(성동구청)" }));
+
+    // 목록 항목엔 역명이 없으므로(전 목록이 한 역 기준) 이 문장이 SR 사용자에게
+    // 그 화면의 유일한 역 정보원이다 — 조회 대상과 어긋나면 되돌릴 수단이 없다.
+    await waitFor(() => {
+      expect(screen.getByText(/waitContext:왕십리\(성동구청\)/)).toBeTruthy();
+    });
+    expect(screen.queryByText(/waitContext.*천호/)).toBeNull();
+    // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다.
+    expect(screen.queryByText(/waitContextWalk/)).toBeNull();
+  });
+
   it("역 선택 취소는 아무것도 바꾸지 않고 눌렀던 자리로 돌려보낸다(A16 L3)", async () => {
     vi.stubGlobal(
       "fetch",

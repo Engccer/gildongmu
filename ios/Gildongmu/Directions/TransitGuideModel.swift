@@ -745,7 +745,18 @@ final class TransitGuideModel {
     }
 
     /// 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.
+    ///
+    /// ⚠ **재선택한 기준 역이 있으면 그 역이 승차 지점이다**(A16 L3, 독립 리뷰 MAJOR).
+    /// 이 문장은 상시 표시이자 진행 상황 발화라, 조회 대상과 어긋나면 화면은 "천호역
+    /// 대기"라고 말하는데 그 아래 목록은 왕십리 도착 정보인 상태가 된다. 목록 항목에
+    /// 역명이 없으므로(전 목록이 한 역 기준이라는 전제) **SR 사용자에게는 이 문장이
+    /// 그 화면의 유일한 역 정보원**이다.
     func waitContextText(_ leg: TransitGuideLeg) -> String {
+        if let override = boardOverrideName {
+            // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다 —
+            // 역명만 바꾸면 "3분 걸어 왕십리역에서"라는 새 거짓말이 된다.
+            return appLocalized("transitGuide.waitContext", override, leg.lineName)
+        }
         if let walk = leg.walkBeforeMinutes, walk > 0 {
             return appLocalized("transitGuide.waitContextWalk", String(walk), leg.boardName, leg.lineName)
         }
