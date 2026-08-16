@@ -221,6 +221,7 @@ iOS 안내 시트의 제목 메뉴(장소 상세 보기·끊김 없는 목적지
 준비 작업(라이선스 분리 `NOTICE.md`·GPS 로그 이력 제거·gitleaks 0건·`FORKING.md` 등)은 CHANGELOG 2026-08-17. 남은 것은 GitHub `Settings > Danger Zone > Change visibility` 한 번이며 외부 발신이라 위원장이 누른다(또는 `gh repo edit Engccer/gildongmu --visibility public --accept-visibility-change-consequences`).
 
 - ⚠ **전환 전 확인 1건**: `subway-stations.json`의 직접 출처인 국가철도공단 레일포털(data.kric.go.kr)의 이용약관은 페이지가 JS 렌더라 자동 확인이 안 됐다. 같은 데이터가 공공데이터포털 표준데이터 15013205(제한 없음)로 제공돼 위험은 낮지만, 위원장이 레일포털 로그인 후 약관 한 번 보거나 seed를 표준데이터 15013205에서 재생성해 출처를 바꾸면 의문이 사라진다.
+- ⚠ **이력 재작성 후속 2건**: ①GitHub는 force push 뒤에도 옛 커밋 객체를 한동안 보관해 옛 SHA URL로 직접 접근하면 보인다(옛 main `fe40d5f` 계열). 공개 전에 GitHub Support에 "cached views 제거(gc)"를 요청하면 지워진다(위원장 판단, 대개 며칠). ②이 저장소의 다른 클론(Windows 등)이 있으면 pull이 아니라 **재클론**해야 한다(이력이 갈렸다). 백업 번들은 `~/gildongmu-private/pre-filter-repo-backup-20260817.bundle`.
 - 전환 후: README의 App Store·npm 링크가 사람 유입 경로가 되므로 첫 이슈·PR 응대 정책은 `CONTRIBUTING.md`대로(응대는 시간이 허락하는 만큼).
 - 전환 후 `.github/ISSUE_TEMPLATE`은 실제 이슈가 오기 시작하면 그때 만든다(미니멀).
 
