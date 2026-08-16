@@ -11,6 +11,25 @@
 
 ## 2026-08-17
 
+### 음향신호기 BLE 진단 화면 구현 — 실험판에만 들어갔다
+
+spec `docs/superpowers/specs/2026-08-17-audio-signal-ble-probe-design.md` §9 순서 그대로. 정식판 변경 없음(전부 `#if DEBUG || EXPERIMENTAL`), 웹 미러 없음. 위원장 실측·로그 회수·E20 게이트 판정은 열려 있다.
+
+- Kit 순수 층 `AudioSignalProtocol.swift`(이름 파싱·명령 3종·ACK/NAK/규격 밖 응답, 계약 테스트 12건) + 전송 층 `AudioSignalController.swift`(스캔 `withServices: nil`, `0003cdd2` write · `0003cdd1` notify, 연결 15초 타임아웃, 옛 기기 늦은 콜백 정체성 가드, 서비스·특성 nil 발견으로 UUID+properties 관측).
+- 앱 `AudioSignalProbeSection`(스캔 토글·연결 확인·명령 3·청취 기록 3, 고지 한 줄, 상태 줄 고정 슬롯) + `AudioSignalDiag`(파이프 구분 로그, `Documents/audio-signal-diag.log`). 진단 모델 수명은 `WalkInfraNearbyView`가 쥐고 화면 수준 `onDisappear`에서만 shutdown.
+- 진단 파일 로그 싱크를 `DiagFileLog` 하나로 통합(GuideDiag·TransitGuideDiag·ChatFocusDiag의 사본 셋 제거, TransitGuideDiag의 비-throwing write도 throwing으로 통일).
+- `Info-Experimental.plist`에만 `NSBluetoothAlwaysUsageDescription`, 양쪽 plist 주석. `check-release-artifact.mjs`에 실험 전용 키 누출 검사(Info.plist + 로케일별 InfoPlist.strings) — 1.7 아카이브 통과·키 주입 사본 실패로 확인.
+
+### 도보 안내 경로 출발점에 정확도 판정을 되돌렸다 (A18)
+
+2026-08-16 실보행에서 버스 하차 직후 명일로 횡단보도 안내가 빠진 원인 — 경로 origin이 실제 위치보다 115m 북쪽 — 을 고쳤다. iOS만(웹 실시간 안내는 origin 취득 경로가 다르다). 백로그 §1 A18 종결(코드), 판정은 §2 도보 표.
+
+- **1선(근본)**: `BeaconModel`의 시작 조회 대기 분기가 `isUsableFix`(정확도 상한 없음) 대신 Kit 순수 함수 `routeOriginStep`을 지난다 — `shouldAcceptFix`(≤30m·≤10초) 통과 fix면 즉시 조회, 미달이면 `storeCeiling`(100m) 이내 최선값만 보관, 15초 대기 상한에 최선값으로 조회, 최선값조차 없을 때만 종전 간략 폴백. 단발 취득 `currentCoordinate()`의 최선값 정책과 같은 모양이고 재측위 의존은 되살리지 않았다. `RouteOriginTests` 9건 + 변이 3종(상한 제거·최선값 방향 반전·ceiling 무시) 전부 검출.
+- **3선(계측)**: `routeOrigin lat lng acc age reason=accepted|best|none` 1줄 + 대기 중 버린 fix마다 `routeOriginWait acc age best`(상한 15초라 부피 유한). 종전엔 이 분기가 계측 전에 반환해 origin 정확도가 로그에 없었다.
+- **2선은 로그까지만**: 상세 fix 로그에 `perp`·`edgeHits`를 병기했다. 첫 fix 창 끝 적중을 즉시 재조회로 잇는 것은 상수를 실보행 없이 못 정하고 리듀서를 만지면 웹 미러(`route-guide.ts`)까지 따라오므로 이번엔 넣지 않았다.
+- ⚠ `isUsableFix` 자체는 건드리지 않았다 — 비콘 앵커·최종 접근의 느슨한 정확도는 의도다.
+- 새 대가는 "정확한 fix를 기다리는 침묵"이고 `docs/FIELD-TEST.md` §2 첫 세 줄이 그것을 듣는 대본이다.
+
 ### 음향신호기 BLE 진단 화면 설계 — 계측기를 먼저 만들기로 했다
 
 E20의 착수 게이트를 벤더 앱이 아니라 우리 계측기로 열기로 했다(위원장 결정). 벤더 앱은 자사 기기만 볼 가능성을 배제할 수 없어 0건이 결론이 못 되고, 그러면 두 번 걷게 된다. spec `docs/superpowers/specs/2026-08-17-audio-signal-ble-probe-design.md`, 구현은 다음 세션. **코드 변경 없음.**

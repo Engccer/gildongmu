@@ -20,5 +20,9 @@
 		<string>location</string>
 		<string>audio</string>
 	</array>
+	<!-- ⚠ NSBluetoothAlwaysUsageDescription은 형제 Info-Experimental.plist에만 있다 —
+	     동기화 누락이 아니라 의도다(음향신호기 BLE 진단은 실험 게이트 안, spec 2026-08-17
+	     §5.2). 정식판이 쓰지 않는 권한을 선언하지 않는다. 여기 추가하면
+	     check-release-artifact.mjs가 제출을 막는다. -->
 </dict>
 </plist>
