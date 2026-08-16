@@ -15,7 +15,6 @@ struct DataSourcesView: View {
         List {
             Section {
                 // 한 줄 = 한 접근성 객체: 각 출처는 단일 Text 한 행.
-                Text(appLocalized("dataSources.intro"))
                 ForEach(Array(sourceLabels.enumerated()), id: \.offset) { _, label in
                     Text(label)
                 }
@@ -27,7 +26,9 @@ struct DataSourcesView: View {
                 Text(appLocalized("dataSources.osmLicense"))
                 // 인터랙티브 요소는 별도 접근성 객체가 정상이라 합치지 않는다.
                 Link(appLocalized("dataSources.osmLink"), destination: Self.osmLicenseURL)
-                Text(appLocalized("dataSources.osmCopyRequest"))
+                // ODbL 1.0 §4.6 사본 제공 고지 — 문의처가 없으면 이행이 성립하지 않으므로
+                // 문장이 아니라 메일 링크로 둔다(설정의 "문제 신고"와 같은 주소).
+                Link(appLocalized("dataSources.osmCopyRequest"), destination: Self.copyRequestURL)
             }
         }
         .navigationTitle(appLocalized("dataSources.title"))
@@ -35,6 +36,7 @@ struct DataSourcesView: View {
     }
 
     private static let osmLicenseURL = URL(string: "https://www.openstreetmap.org/copyright")!
+    private static let copyRequestURL = URL(string: "mailto:engccer@gmail.com")!
 
     /// `chat.source` 사전 선언 순서 그대로(osm은 위 라이선스 행이 담당).
     private var sourceLabels: [String] {

@@ -18,20 +18,24 @@ import seed from "../data/osm-walk-nodes.json";
 
 interface SeedShape {
   meta: { source: string; license: string; counts: { total: number } };
+  /** 제공 지역 판정용 국경 링(본토+제주·서해5도·울릉·독도). 각 링은 닫혀 있다. */
+  boundary: Array<Array<[number, number]>>;
   nodes: Array<[number, number, number, number]>;
 }
 
 const SEED = seed as unknown as SeedShape;
 
 /**
- * seed가 실제로 담은 범위(빌드 스크립트 `SEED_BBOX`와 같은 값).
+ * seed가 담은 범위를 감싸는 사각형. **판정이 아니라 프리필터다.**
  *
- * ⚠ `KOREA_COVERAGE_BBOX`(31.43~44.35 / 122.37~132.0)와 **다른 것이 정상**이다.
- * 그쪽은 "이 앱이 서비스한다고 선언한 범위"이고 이것은 "이 파일이 담은 범위"다.
- * 넓은 쪽으로 판정하면 북한 좌표에서 "0건"이라는 거짓말이 나온다 — audio-signals가
- * SEOUL_BBOX로 판정하는 것과 같은 층이다.
+ * ⚠ 이 사각형을 판정에 쓰면 안 된다(2026-08-16 리뷰 검출): 후쿠오카·기타큐슈·대마도·
+ * 시모노세키가 이 안에 있어서 그 좌표들이 `unsupported`가 아니라 **0건 `ok`**가 되고,
+ * 화면은 "주변에 등록된 횡단보도가 없습니다"라고 낭독한다 — 이 마일스톤이 없애려던
+ * 바로 그 거짓말이다(종전 Overpass 실시간 경로는 그곳에서 실제 일본 데이터를 냈으므로
+ * 회귀이기도 하다). 반대로 개성·해주는 파주와 위경도가 겹쳐 사각형 뺄셈으로 갈리지
+ * 않는다. 그래서 판정은 `boundary` 폴리곤이 한다.
  */
-export const KOREA_WALK_SEED_BBOX = {
+const SEED_BBOX = {
   latMin: 33.0,
   latMax: 38.7,
   lngMin: 124.5,
@@ -85,25 +89,42 @@ function decodeNode(node: [number, number, number, number]): RawWalkFeature {
   };
 }
 
-function inSeedBbox(lat: number, lng: number): boolean {
-  return (
-    lat >= KOREA_WALK_SEED_BBOX.latMin &&
-    lat <= KOREA_WALK_SEED_BBOX.latMax &&
-    lng >= KOREA_WALK_SEED_BBOX.lngMin &&
-    lng <= KOREA_WALK_SEED_BBOX.lngMax
-  );
+/**
+ * 제공 지역 판정: 국경 폴리곤 안인가(ray casting).
+ *
+ * 사각형 프리필터로 먼 좌표를 먼저 떨어뜨리고, 그 안쪽만 링을 훑는다. 링 좌표점이
+ * 전부 합쳐 2,580개뿐이라(국가 경계는 해안선이 아니라 영해 경계선이다) 비용은 무시할
+ * 수준이고, 조회당 한 번만 돈다.
+ */
+export function isInWalkSeedCoverage(lat: number, lng: number): boolean {
+  if (lat < SEED_BBOX.latMin || lat > SEED_BBOX.latMax) return false;
+  if (lng < SEED_BBOX.lngMin || lng > SEED_BBOX.lngMax) return false;
+
+  for (const ring of SEED.boundary) {
+    let inside = false;
+    for (let i = 0; i < ring.length - 1; i += 1) {
+      const [y1, x1] = ring[i];
+      const [y2, x2] = ring[i + 1];
+      if (y1 > lat !== y2 > lat) {
+        const xAt = x1 + ((lat - y1) * (x2 - x1)) / (y2 - y1);
+        if (lng < xAt) inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
 }
 
 /**
- * 반경 내 보행 노드. seed 범위 밖이면 **null**(=서비스 미제공)이고, 범위 안이면
- * 0건도 빈 배열이다 — "그 근처에 없다"와 "그 지역은 자료가 없다"를 뭉개지 않는다.
+ * 반경 내 보행 노드. 제공 지역 밖이면 **null**(=서비스 미제공)이고, 안이면 0건도
+ * 빈 배열이다 — "그 근처에 없다"와 "그 지역은 자료가 없다"를 뭉개지 않는다.
  */
 export function findWalkFeaturesNear(
   lat: number,
   lng: number,
   radiusMeters: number,
 ): RawWalkFeature[] | null {
-  if (!inSeedBbox(lat, lng)) return null;
+  if (!isInWalkSeedCoverage(lat, lng)) return null;
 
   // 도(°) 박스 프리필터 후 haversine. 전국 79,574건 전수 스캔이 0.19ms(실측).
   const degLat = radiusMeters / 111_000;

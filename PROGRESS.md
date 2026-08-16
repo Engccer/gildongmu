@@ -120,7 +120,7 @@
 
 ⚠ 이 목록은 **명령으로 재확인한다**. 재편 직전까지 `TMAP_APP_KEY`(18일 전 등록)와 `GOOGLE_CLOUD_TTS_API_KEY`가 이 문서에서 빠져 있었다 — 파일이 273KB로 불어 있는 동안 정작 현재 상태인 이 목록이 낡았다.
 
-⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 16개 밖의 것(`BASE_URL`·`GILDONGMU_*`·`OVERPASS_URL`·`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER`·A/B 하네스 `MODELS`·`ONLY`·`REPS`)은 전부 기본값이 있거나 로컬 전용이라 prod 등록이 불필요하다(2026-08-16 대조).
+⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 16개 밖의 것(`BASE_URL`·`GILDONGMU_*`·`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER`·A/B 하네스 `MODELS`·`ONLY`·`REPS`)은 전부 기본값이 있거나 로컬 전용이라 prod 등록이 불필요하다(2026-08-16 대조).
 
 ⚠ **env 변경 후 반드시 재배포** — 키는 배포 시점에 함수로 주입된다(`vercel deploy --prod --yes` 또는 push). 키만 추가하고 재배포하지 않으면 기존 함수는 옛 env를 본다.
 

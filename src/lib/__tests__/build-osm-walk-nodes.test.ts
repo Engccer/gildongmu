@@ -2,11 +2,16 @@ import { describe, it, expect } from "vitest";
 import {
   normalizeElements,
   validateNodes,
+  buildRings,
+  insideRings,
+  fetchOverpass,
+  BOUNDARY_GOLDEN,
   GOLDEN_ABSENT,
   GOLDEN_DENSE,
   GOLDEN_PRESENT,
   SEED_BBOX,
 } from "../../../scripts/build-osm-walk-nodes.mjs";
+import seed from "../data/osm-walk-nodes.json";
 
 /**
  * OSM 보행 노드 seed 빌드 스크립트 가드.
@@ -186,5 +191,91 @@ describe("validateNodes: 가드", () => {
       (n) => Math.abs(n[1] - GOLDEN_DENSE.lat) > 0.001 || Math.abs(n[2] - GOLDEN_DENSE.lng) > 0.001,
     );
     expect(() => validateNodes(nodes)).toThrow(/G7/);
+  });
+});
+
+describe("buildRings: outer way → 닫힌 링", () => {
+  it("방향이 뒤집힌 way도 끝점을 맞춰 잇는다", () => {
+    // 사각형을 세 조각으로 쪼개고 그중 하나를 뒤집어 넣는다. OSM way는 방향·순서가
+    // 제각각이라 이 결합이 안 되면 링이 안 닫히고 PIP가 조용히 틀린다.
+    const relation = {
+      members: [
+        { role: "outer", geometry: [{ lat: 0, lon: 0 }, { lat: 0, lon: 1 }] },
+        { role: "outer", geometry: [{ lat: 1, lon: 1 }, { lat: 0, lon: 1 }] },
+        { role: "outer", geometry: [{ lat: 1, lon: 1 }, { lat: 0, lon: 0 }] },
+        { role: "admin_centre", geometry: null },
+      ],
+    };
+    const rings = buildRings(relation);
+    expect(rings).toHaveLength(1);
+    expect(rings[0][0]).toEqual(rings[0][rings[0].length - 1]);
+    expect(insideRings(0.3, 0.5, rings)).toBe(true);
+    expect(insideRings(5, 5, rings)).toBe(false);
+  });
+});
+
+describe("국경 폴리곤 가드 (실 seed의 boundary로)", () => {
+  const rings = (seed as unknown as { boundary: Array<Array<[number, number]>> }).boundary;
+
+  it("실 seed의 경계는 링 넷이고 전부 닫혀 있다", () => {
+    expect(rings.length).toBeGreaterThanOrEqual(4);
+    for (const ring of rings) {
+      expect(ring[0]).toEqual(ring[ring.length - 1]);
+    }
+  });
+
+  it("G10 golden 14지점을 실제 경계가 전부 맞힌다", () => {
+    // 사각형 판정으로는 통과할 수 없는 표다 — 앞의 여섯은 한국 bbox 안이고,
+    // 개성은 파주와 위경도가 겹쳐 어떤 사각형으로도 갈리지 않는다.
+    for (const g of BOUNDARY_GOLDEN) {
+      expect(insideRings(g.lat, g.lng, rings), g.name).toBe(g.inside);
+    }
+  });
+
+  it("G9 링이 모자라면 실패한다", () => {
+    expect(() => validateNodes(validNodes(), rings.slice(0, 3))).toThrow(/G9/);
+  });
+
+  it("G9 링이 닫히지 않으면 실패한다", () => {
+    const broken = rings.map((r) => r.slice(0, -1));
+    expect(() => validateNodes(validNodes(), broken)).toThrow(/G9/);
+  });
+
+  it("G10 판정이 뒤집히면 실패한다(링 수·닫힘은 그대로)", () => {
+    // 울릉도 링을 통째로 옮긴다. 링 개수와 닫힘은 유지되므로 G9가 아니라 G10만 발화한다.
+    const moved = rings.map((r) =>
+      r[0][1] > 130 && r[0][1] < 131.5 ? r.map(([la, lo]) => [la + 5, lo + 5] as [number, number]) : r,
+    );
+    expect(() => validateNodes(validNodes(), moved)).toThrow(/G10/);
+  });
+
+  it("G11 seed 노드가 경계 밖이면 실패한다", () => {
+    const nodes = validNodes();
+    nodes.push([999_999, 33.5902, 130.4017, 1 | (2 << 1)]); // 후쿠오카
+    expect(() => validateNodes(nodes, rings)).toThrow(/G11/);
+  });
+
+  it("정상 조합은 통과하고 경계 좌표점 수를 낸다", () => {
+    const stats = validateNodes(validNodes(), rings);
+    expect(stats.boundaryPoints).toBeGreaterThan(2_000);
+  });
+});
+
+describe("G8: Overpass 부분 응답", () => {
+  it("200 + remark는 재시도 없이 즉시 실패한다", async () => {
+    // 부분 응답은 다시 물어도 같으므로 재시도가 의미 없고, 조용히 줄어든 seed가
+    // 가장 나쁜 결과라 throw가 정답이다.
+    const original = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = (async () => {
+      calls += 1;
+      return { ok: true, json: async () => ({ remark: "runtime error: Query timed out" }) };
+    }) as unknown as typeof fetch;
+    try {
+      await expect(fetchOverpass("dummy")).rejects.toThrow(/G8/);
+      expect(calls).toBe(1);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });

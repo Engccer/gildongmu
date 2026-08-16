@@ -218,6 +218,9 @@ npm run dev        # 개발 서버 (localhost:3000)
 npm run build      # 프로덕션 빌드
 npm run lint       # ESLint
 npm run test:run   # Vitest (게이트 테스트 — 매 커밋 통과 필수)
+                   # ⚠ 루트 include는 `src/**`뿐이다: `packages/cli`·`packages/mcp` 테스트는
+                   # 여기서 이름을 넘겨도 "No test files found"로 **통과가 아니라 무실행**이 된다.
+                   # 그 둘은 해당 디렉터리에서 `npx vitest run`으로 돌려야 실제로 돈다.
 
 node scripts/usage-report.mjs   # API 과금·쿼터·키 만료 상태 (로컬 전용, 13프로브 무과금)
 ```

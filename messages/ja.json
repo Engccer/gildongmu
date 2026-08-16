@@ -615,10 +615,9 @@
   },
   "dataSources": {
     "title": "データの出典",
-    "intro": "キルドンムが使っているデータの出典です。",
     "osmLicense": "OpenStreetMap貢献者提供、ODbL 1.0ライセンス",
     "osmLink": "ライセンス全文を見る",
-    "osmCopyRequest": "地図データのコピーはお問い合わせに応じて提供します。"
+    "osmCopyRequest": "地図データのコピーを請求"
   },
   "beacon": {
     "heading": "リアルタイム案内",
