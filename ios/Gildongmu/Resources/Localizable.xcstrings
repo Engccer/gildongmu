@@ -22961,6 +22961,46 @@
         }
       }
     },
+    "manualLocation.addrNoCoord": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 주소에 등록된 좌표가 없습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No coordinates are registered for that address."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esa dirección no tiene coordenadas registradas."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune coordonnée n'est enregistrée pour cette adresse."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna coordinata registrata per questo indirizzo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した住所に登録された座標がありません。"
+          }
+        }
+      }
+    },
     "manualLocation.autoCleared": {
       "localizations": {
         "ko": {
@@ -36441,6 +36481,46 @@
         }
       }
     },
+    "transitGuide.neverSeen": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탑승하신 차량을 찾지 못하고 있습니다. 다른 차량을 타셨다면 탑승 변경을 눌러 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We can't find the vehicle you boarded. If you took a different one, use Change boarding."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No encontramos el vehículo en el que subiste. Si tomaste otro, usa Cambiar embarque."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nous ne trouvons pas le véhicule dans lequel vous êtes monté. Si vous en avez pris un autre, utilisez Changer d'embarquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non troviamo il veicolo su cui sei salito. Se ne hai preso un altro, usa Cambia imbarco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ご乗車の車両が見つかりません。別の車両に乗り換えた場合は、乗車変更を押してください。"
+          }
+        }
+      }
+    },
     "transitGuide.nextLeg": {
       "localizations": {
         "ko": {
@@ -36597,6 +36677,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "リアルタイム一覧を取得できませんでした"
+          }
+        }
+      }
+    },
+    "transitGuide.reboardCancel": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "역 선택 취소"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel stop selection"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar selección de parada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler la sélection d'arrêt"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla selezione fermata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "駅の選択を取り消す"
+          }
+        }
+      }
+    },
+    "transitGuide.reboardStationPrompt": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 어느 역에 계신가요?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Which stop are you at now?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿En qué parada estás ahora?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À quel arrêt êtes-vous maintenant ?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A quale fermata ti trovi adesso?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今どの駅にいますか。"
           }
         }
       }
@@ -36841,6 +37001,46 @@
         }
       }
     },
+    "transitGuide.stateNeverSeen": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "차량 확인 안 됨."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vehicle not confirmed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vehículo sin confirmar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Véhicule non confirmé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veicolo non confermato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車両を確認できません。"
+          }
+        }
+      }
+    },
     "transitGuide.stateNotYetVisible": {
       "localizations": {
         "ko": {
@@ -36877,6 +37077,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "車両接近待ち。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateRidingNotYetVisible": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "차량 위치 확인 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locating vehicle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localizando el vehículo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localisation du véhicule."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localizzazione del veicolo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車両の位置を確認中。"
           }
         }
       }
