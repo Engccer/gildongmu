@@ -387,8 +387,24 @@ struct TransitTrackingSheet: View {
         }
         Button(appLocalized("transitGuide.reboardCancel")) {
             model.cancelReboard()
-            // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
+            landChangeBoardingFocus()
+        }
+    }
+
+    /// 취소 복귀 착지(§3.4) — 되돌아가는 "탑승 변경" 버튼은 `reboardPickerActive`
+    /// 플립으로 이번 렌더에 막 재생성되는 뷰라, 프롬프트 착지와 **같은 위험군**이다.
+    /// 동기 대입 한 줄이면 트리에 없는 대상에 대입해 조용히 되돌아간다(독립 리뷰 MINOR
+    /// — 이 파일이 스스로 적어 둔 정본을 이 자리만 어기고 있었다).
+    private func landChangeBoardingFocus() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
             changeBoardingFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            if !changeBoardingFocused {
+                changeBoardingFocused = true
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+            transitGuideLog("reboardCancelFocus landed=\(changeBoardingFocused)")
         }
     }
 
