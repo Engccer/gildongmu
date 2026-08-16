@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | 1.0~1.6 전부 `READY_FOR_SALE`. **1.7 `IN_REVIEW`**(빌드 13, 제출 2026-08-15 09:08 KST, 아카이브 커밋 `cb3402a`) — 도보 실시간 안내 정식 출시 |
+| iOS | **1.7까지 전부 `READY_FOR_SALE`**(1.7 = 빌드 13, 아카이브 커밋 `cb3402a`, 심사 통과 확인 2026-08-16) — 도보 실시간 안내 정식 출시 |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
