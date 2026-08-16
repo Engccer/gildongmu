@@ -121,6 +121,46 @@
         }
       }
     },
+    "NSMotionUsageDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 안내로 도착했을 때 걸은 걸음 수를 보여 주기 위해 동작 및 피트니스 데이터를 사용합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motion & Fitness data is used to show how many steps you walked when you arrive with walking guidance."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los datos de Movimiento y Forma física se usan para mostrar cuántos pasos diste al llegar con la guía a pie."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les données Mouvement et forme sont utilisées pour afficher le nombre de pas parcourus à l'arrivée du guidage à pied."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I dati Movimento e fitness sono usati per mostrare quanti passi hai fatto all'arrivo con la guida a piedi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩案内で到着したときに歩いた歩数を表示するために、モーションとフィットネスのデータを使用します。"
+          }
+        }
+      }
+    },
     "NSSpeechRecognitionUsageDescription": {
       "localizations": {
         "ko": {
