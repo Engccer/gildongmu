@@ -36,12 +36,16 @@ struct TransitTrackingSheet: View {
     @AccessibilityFocusState private var walkHandoffFocused: Bool
     /// 목록 포커스 소실 복귀 착지점(§13.4) — 항목이 사라지면 라벨로 선점 복귀.
     @AccessibilityFocusState private var waitingLabelFocused: Bool
+    /// 역 재선택 프롬프트 착지(A16 L3). ⚠ Bool은 이 헤딩 하나에만 — 역 목록 항목에
+    /// 같은 바인딩을 붙이면 모든 행이 포커스를 주장한다(Bool equals 오용 정본).
+    @AccessibilityFocusState private var reboardPromptFocused: Bool
     /// 포커스가 얹힌 후보의 정체성(항목 정체성 옵셔널 바인딩 — Bool equals 금지 정본).
     @AccessibilityFocusState private var focusedCandidate: String?
     /// 경유역 목록 펼침(§14.1) — leg가 바뀌면 접는다(다음 구간의 목록은 다른 목록).
     @State private var viaExpanded = false
 
     private static let waitingLabelId = "transit-waiting-label"
+    private static let reboardPromptId = "transit-reboard-prompt"
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -294,8 +298,12 @@ struct TransitTrackingSheet: View {
                         .accessibilityFocused($advanceFocused)
                 }
                 if state.phase == .riding, leg.trackMode != .tagoBus {
-                    Button(appLocalized("transitGuide.changeBoarding")) { model.changeBoarding() }
-                        .accessibilityFocused($changeBoardingFocused)
+                    if model.reboardPickerActive {
+                        reboardStationPicker(leg: leg, proxy: proxy)
+                    } else {
+                        Button(appLocalized("transitGuide.changeBoarding")) { model.beginReboard() }
+                            .accessibilityFocused($changeBoardingFocused)
+                    }
                 }
             }
         }
@@ -360,6 +368,46 @@ struct TransitTrackingSheet: View {
     /// 라벨 복귀는 정본 시퀀스를 따른다(감사 M3): 가시화(scrollTo) → 지연 → 대입 →
     /// 검증 → 1회 재시도. List 오프스크린 행은 AX 컬링으로 대입이 조용히 되돌아가는
     /// 실기기 확정 함정이라 동기 대입 한 줄은 실패한다. 로그는 착지 결과까지 남긴다.
+    /// 역 재선택 단계(A16 L3) — 갈아탄 뒤 지금 있는 역을 묻는다.
+    ///
+    /// ⚠ 위치가 아니라 목록인 근거(위원장 판정): 지하철 안에서는 GPS가 잡히지
+    /// 않는다. 역 이름은 안내방송으로 사용자가 이미 아는 정보라 목록이 지하·지상
+    /// 무관하게 항상 성립한다.
+    @ViewBuilder private func reboardStationPicker(
+        leg: TransitGuideLeg, proxy: ScrollViewProxy
+    ) -> some View {
+        Text(appLocalized("transitGuide.reboardStationPrompt"))
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityFocused($reboardPromptFocused)
+            .id(Self.reboardPromptId)
+            .task { landReboardPromptFocus(proxy) }
+        // 항목 정체성은 순번 복합 키 — 동명 정차가 있어도 행이 합쳐지지 않는다.
+        ForEach(Array(leg.viaStops.enumerated()), id: \.offset) { _, stop in
+            Button(stop.name) { model.changeBoarding(at: stop.name) }
+        }
+        Button(appLocalized("transitGuide.reboardCancel")) {
+            model.cancelReboard()
+            // 취소는 아무것도 바꾸지 않으므로 눌렀던 자리로 돌려보낸다.
+            changeBoardingFocused = true
+        }
+    }
+
+    /// 프롬프트 착지(§3.4) — 동기 대입 한 줄은 실패한다(오프스크린 AX 컬링).
+    /// `recoverWaitingLabelFocus`와 같은 계약: 가시화 → 지연 → 대입 → 검증 → 1회 재시도.
+    private func landReboardPromptFocus(_ proxy: ScrollViewProxy) {
+        Task { @MainActor in
+            proxy.scrollTo(Self.reboardPromptId)
+            try? await Task.sleep(for: .milliseconds(400))
+            reboardPromptFocused = true
+            try? await Task.sleep(for: .milliseconds(600))
+            if !reboardPromptFocused {
+                reboardPromptFocused = true
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+            transitGuideLog("reboardPromptFocus landed=\(reboardPromptFocused)")
+        }
+    }
+
     private func recoverWaitingLabelFocus(_ proxy: ScrollViewProxy, lost: String) {
         Task { @MainActor in
             proxy.scrollTo(Self.waitingLabelId)

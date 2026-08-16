@@ -125,6 +125,8 @@ final class TransitGuideModel {
         pausedInBackground = false
         refreshAnnounce = false
         pendingWalkHandoff = nil
+        boardOverrideName = nil
+        reboardPickerActive = false
         // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
         destChangeToken += 1
         pendingDestChange = nil
@@ -209,6 +211,40 @@ final class TransitGuideModel {
             retained = [:]
             restartPollLoop(immediate: true)
         }
+    }
+
+    /// 탑승 변경의 조회 기준 역(A16 L3). nil이면 leg 원래 승차역.
+    ///
+    /// ⚠ 이 상태가 Kit이 아니라 앱에 사는 이유: 상태 머신은 **어느 역을 조회할지
+    /// 모른다**(폴 결과만 받는다). 조회 대상은 `fetchPoll`이 정하므로 L3는 공유
+    /// 계약도 fixture도 건드리지 않는다.
+    private(set) var boardOverrideName: String?
+    /// 역 선택 단계 표시 여부(지하철 전용 — 아래 beginReboard 주석).
+    private(set) var reboardPickerActive = false
+
+    /// "탑승 변경" 진입. 지하철은 지금 있는 역을 먼저 묻고, 그 외 수단은 종전대로
+    /// 곧장 재선택으로 간다.
+    ///
+    /// ⚠ 지하철 전용인 근거 둘: ①조회 파라미터가 수단마다 다르다(지하철만 역
+    /// *이름*으로 조회하고 서울버스는 정류소 ID를 쓴다) ②문제의 성격이 다르다 —
+    /// 지하철은 같은 노선에서 급행↔완행을 갈아타지만 버스는 갈아타면 다른 leg다.
+    func beginReboard() {
+        guard let leg = currentLeg, leg.trackMode == .subway, !leg.viaStops.isEmpty else {
+            changeBoarding()
+            return
+        }
+        reboardPickerActive = true
+    }
+
+    func cancelReboard() {
+        reboardPickerActive = false
+    }
+
+    /// 사용자가 고른 현재 역으로 재선택한다(A16 L3).
+    func changeBoarding(at stationName: String) {
+        boardOverrideName = stationName
+        reboardPickerActive = false
+        changeBoarding()
     }
 
     func changeBoarding() {
@@ -482,7 +518,11 @@ final class TransitGuideModel {
                     cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case .subway:
-                let station = phase == .waiting ? leg.boardName : leg.alightName
+                // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
+                // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
+                let station = phase == .waiting
+                    ? (boardOverrideName ?? leg.boardName)
+                    : leg.alightName
                 guard !station.isEmpty else { return (.unsupported, nil) }
                 let env = try await trackService.subwayTrack(station: station, line: leg.lineName)
                 return (TransitTrackService.poll(from: env), env.rawCount)
@@ -579,6 +619,14 @@ final class TransitGuideModel {
         guard let state, let route else { return }
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
         self.state = result.state
+        // 사용자가 고른 기준 역(A16 L3)의 수명은 딱 한 번의 재선택이다. 재잠금·전진
+        // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
+        // 흩뿌리지 않는 이유가 그것이다 — board 디스패치만 네 곳이라 하나만 빠져도
+        // 조용히 틀린다.
+        switch input {
+        case .board, .advance: boardOverrideName = nil
+        case .changeBoarding, .poll: break
+        }
         // 계측(§13.5): 국면·신호 전이와 이벤트만 기록(무이벤트 폴 소음 제외).
         if result.event != nil || result.state.phase != state.phase
             || result.state.signal != state.signal {
