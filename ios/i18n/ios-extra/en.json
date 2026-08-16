@@ -222,7 +222,8 @@
       "reportProblem": "Report a problem",
       "releaseNotes": "Release notes",
       "releaseNotesVersion": "Version {version}",
-      "releaseNotesError": "Could not load release notes"
+      "releaseNotesError": "Could not load release notes",
+      "weightKg": "Weight for calorie estimate (kg)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -239,7 +240,9 @@
       "stopped": "Distance tracking stopped.",
       "arrivedHeading": "Arrived",
       "arrivedPresumedHeading": "Presumed arrival",
-      "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use."
+      "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use.",
+      "healthSummary": "This leg: {steps} steps, about {kcal} kcal",
+      "healthDefaultWeight": "based on {kg} kg"
     },
     "unit": {
       "spokenMeters": "meters"
@@ -277,5 +280,8 @@
     "altPreviewSummary": "{variant}, {distance} total",
     "altPreviewTime": "about {minutes} min walk",
     "altPreviewRemaining": "current route remaining {distance}"
+  },
+  "dataSources": {
+    "walkHealth": "Steps come from the iPhone pedometer; calories are an estimate from distance and weight"
   }
 }

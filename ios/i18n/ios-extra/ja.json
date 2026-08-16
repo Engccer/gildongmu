@@ -222,7 +222,8 @@
       "reportProblem": "問題を報告",
       "releaseNotes": "アップデート履歴",
       "releaseNotesVersion": "バージョン {version}",
-      "releaseNotesError": "アップデート履歴を読み込めませんでした"
+      "releaseNotesError": "アップデート履歴を読み込めませんでした",
+      "weightKg": "カロリー推定用の体重(kg)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -239,7 +240,9 @@
       "stopped": "距離の追跡を停止しました。",
       "arrivedHeading": "到着",
       "arrivedPresumedHeading": "到着推定",
-      "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。"
+      "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。",
+      "healthSummary": "この区間 {steps}歩、約{kcal}kcal",
+      "healthDefaultWeight": "基準体重{kg}kg"
     },
     "unit": {
       "spokenMeters": "メートル"
@@ -277,5 +280,8 @@
     "altPreviewSummary": "{variant}、合計{distance}",
     "altPreviewTime": "徒歩約{minutes}分",
     "altPreviewRemaining": "現在のルート残り{distance}"
+  },
+  "dataSources": {
+    "walkHealth": "歩数はiPhoneの歩数計の実測、カロリーは歩いた距離と体重から計算した推定値です"
   }
 }

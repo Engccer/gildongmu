@@ -222,7 +222,8 @@
       "reportProblem": "문제 신고",
       "releaseNotes": "업데이트 이력",
       "releaseNotesVersion": "버전 {version}",
-      "releaseNotesError": "업데이트 이력을 불러올 수 없습니다"
+      "releaseNotesError": "업데이트 이력을 불러올 수 없습니다",
+      "weightKg": "칼로리 추정용 체중(kg)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -239,7 +240,9 @@
       "stopped": "거리 추적을 종료했습니다.",
       "arrivedHeading": "도착",
       "arrivedPresumedHeading": "도착 추정",
-      "soundBackgroundUnavailable": "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다."
+      "soundBackgroundUnavailable": "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다.",
+      "healthSummary": "이번 구간 {steps}걸음, 약 {kcal}kcal",
+      "healthDefaultWeight": "기준 체중 {kg}kg"
     },
     "unit": {
       "spokenMeters": "미터"
@@ -277,5 +280,8 @@
     "altPreviewSummary": "{variant}, 총 {distance}",
     "altPreviewTime": "도보 약 {minutes}분",
     "altPreviewRemaining": "지금 경로 잔여 {distance}"
+  },
+  "dataSources": {
+    "walkHealth": "걸음 수는 iPhone 만보계 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다"
   }
 }

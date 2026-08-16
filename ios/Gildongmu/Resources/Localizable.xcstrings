@@ -8401,6 +8401,46 @@
         }
       }
     },
+    "dataSources.walkHealth": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "걸음 수는 iPhone 만보계 실측, 칼로리는 걸은 거리와 체중으로 계산한 추정치입니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steps come from the iPhone pedometer; calories are an estimate from distance and weight"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los pasos vienen del podómetro del iPhone; las calorías son una estimación según distancia y peso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les pas viennent du podomètre de l'iPhone ; les calories sont une estimation d'après la distance et le poids"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I passi vengono dal pedometro dell'iPhone; le calorie sono una stima da distanza e peso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歩数はiPhoneの歩数計の実測、カロリーは歩いた距離と体重から計算した推定値です"
+          }
+        }
+      }
+    },
     "detail.back": {
       "localizations": {
         "ko": {
@@ -13597,6 +13637,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "到着推定"
+          }
+        }
+      }
+    },
+    "ios.beacon.healthDefaultWeight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "기준 체중 %1$@kg"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "based on %1$@ kg"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "según %1$@ kg"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "base %1$@ kg"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in base a %1$@ kg"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "基準体重%1$@kg"
+          }
+        }
+      }
+    },
+    "ios.beacon.healthSummary": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이번 구간 %1$@걸음, 약 %2$@kcal"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This leg: %1$@ steps, about %2$@ kcal"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este tramo: %1$@ pasos, unas %2$@ kcal"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce trajet : %1$@ pas, environ %2$@ kcal"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo tratto: %1$@ passi, circa %2$@ kcal"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この区間 %1$@歩、約%2$@kcal"
           }
         }
       }
@@ -20517,6 +20637,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "設定"
+          }
+        }
+      }
+    },
+    "ios.settings.weightKg": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "칼로리 추정용 체중(kg)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weight for calorie estimate (kg)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peso para estimar calorías (kg)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poids pour l'estimation des calories (kg)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Peso per la stima delle calorie (kg)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カロリー推定用の体重(kg)"
           }
         }
       }

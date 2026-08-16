@@ -222,7 +222,8 @@
       "reportProblem": "Signaler un problème",
       "releaseNotes": "Notes de version",
       "releaseNotesVersion": "Version {version}",
-      "releaseNotesError": "Impossible de charger les notes de version"
+      "releaseNotesError": "Impossible de charger les notes de version",
+      "weightKg": "Poids pour l'estimation des calories (kg)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -239,7 +240,9 @@
       "stopped": "Suivi de distance arrêté.",
       "arrivedHeading": "Arrivée",
       "arrivedPresumedHeading": "Arrivée estimée",
-      "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application."
+      "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application.",
+      "healthSummary": "Ce trajet : {steps} pas, environ {kcal} kcal",
+      "healthDefaultWeight": "base {kg} kg"
     },
     "unit": {
       "spokenMeters": "mètres"
@@ -277,5 +280,8 @@
     "altPreviewSummary": "{variant}, {distance} au total",
     "altPreviewTime": "environ {minutes} min à pied",
     "altPreviewRemaining": "itinéraire actuel restant {distance}"
+  },
+  "dataSources": {
+    "walkHealth": "Les pas viennent du podomètre de l'iPhone ; les calories sont une estimation d'après la distance et le poids"
   }
 }
