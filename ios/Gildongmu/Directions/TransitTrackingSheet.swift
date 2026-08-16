@@ -381,7 +381,8 @@ struct TransitTrackingSheet: View {
             .accessibilityFocused($reboardPromptFocused)
             .id(Self.reboardPromptId)
             .task { landReboardPromptFocus(proxy) }
-        // 항목 정체성은 순번 복합 키 — 동명 정차가 있어도 행이 합쳐지지 않는다.
+        // 항목 정체성은 순번(웹은 순번+이름 복합) — 동명 정차가 있어도 행이 합쳐지지
+        // 않는다. 두 표기가 다르지만 고유성은 양쪽 다 순번이 보장한다.
         ForEach(Array(leg.viaStops.enumerated()), id: \.offset) { _, stop in
             Button(stop.name) { model.changeBoarding(at: stop.name) }
         }
