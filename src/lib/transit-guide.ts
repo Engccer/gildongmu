@@ -361,12 +361,36 @@ export interface BoardingCandidate {
   directionMatched: boolean;
 }
 
-/** wayCode(1 상행·2 하행) ↔ updnLine 원문 대응. 내선/외선 등 그 외 표기는 판정 불가. */
+/**
+ * 순환선 방향 표기(2호선 내선·외선). 노선이 닫힌 고리라 **종착 검사의 전제가
+ * 성립하지 않는다**: 경유 목록의 순서는 이 leg의 구간 순서일 뿐이고, 진행 방향
+ * 어느 역이든 앞에 있다.
+ */
+function isLoopDirection(updnLine: string): boolean {
+  return updnLine === "내선" || updnLine === "외선";
+}
+
+/**
+ * wayCode(1 상행·2 하행) ↔ updnLine 원문 대응. **실호출로 확정한 표기만 판정**하고
+ * 나머지는 유보한다(오필터가 과노출보다 나쁘다).
+ *
+ * 순환선 대응(내선=2·외선=1)은 2026-08-16 실호출로 확정했다: 순환선 반대편 4개 역
+ * (을지로입구·강남·신도림·홍대입구)에서 뽑은 ODsay leg 8건이 방향별로 갈렸고,
+ * 13개 역 도착 표본 52건의 직전 역(`currentLocation`)이 같은 순환 순서를 어긋남
+ * 없이 따랐다.
+ */
 function directionMatchesWayCode(updnLine: string, wayCode: number | null): boolean | null {
   if (wayCode == null) return null;
-  if (updnLine === "상행") return wayCode === 1;
-  if (updnLine === "하행") return wayCode === 2;
-  return null; // 내선/외선 등 — 실호출 대응 확정 전 판정 유보(오필터 방지)
+  switch (updnLine) {
+    case "상행":
+    case "외선":
+      return wayCode === 1;
+    case "하행":
+    case "내선":
+      return wayCode === 2;
+    default:
+      return null;
+  }
 }
 
 /**
@@ -381,7 +405,11 @@ export function classifyBoardingCandidates(
     const dir = directionMatchesWayCode(item.direction, leg.wayCode);
     return {
       item,
-      terminatesEarly: terminatesBeforeAlight(item.destinationName, leg),
+      // 순환선은 종착 검사에서 제외한다 — 2호선 도착 표기의 종착은 **상수**라
+      // (13역 52표본 전부 "성수", 2026-08-16) 판정 근거가 아니라 오차단원이다.
+      terminatesEarly: isLoopDirection(item.direction)
+        ? false
+        : terminatesBeforeAlight(item.destinationName, leg),
       express: item.express,
       directionMatched: dir === true,
     };
