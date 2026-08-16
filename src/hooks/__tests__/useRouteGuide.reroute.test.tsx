@@ -208,7 +208,7 @@ describe("시작 조회를 기다리는 동안 간략 안내가 끼어들지 않
 
     openGate();
     // 창이 닫히면 첫 발화는 상세 시작 요약이다(간략 문장이 앞서지 않는다).
-    await waitFor(() => expect(live()).toContain("상세 안내 시작"));
+    await waitFor(() => expect(live()).toContain("도보 안내 시작"));
   });
 
   it("조회가 실패하면 보류가 풀려 간략 안내가 되살아난다", async () => {
@@ -216,7 +216,7 @@ describe("시작 조회를 기다리는 동안 간략 안내가 끼어들지 않
 
     renderGuide();
     click("start");
-    await waitFor(() => expect(live()).toContain("간략 안내로 시작합니다"));
+    await waitFor(() => expect(live()).toContain("직선거리로 안내합니다"));
     const fallbackText = live();
 
     // 폴백 이후의 fix는 정상적으로 간략 발화를 만든다(무한 억제 차단).
