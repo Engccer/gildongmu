@@ -100,7 +100,9 @@ public struct TransitGuideRoute: Codable, Sendable {
     }
 }
 
-/// 폴링 항목(`/api/transit/track` 판별 union의 투영, §7). message는 완성 문장 원문.
+/// 폴링 항목(`/api/transit/track` 판별 union의 투영, §7). message는 완성 문장이되
+/// **upstream 원문이라고 가정하지 말 것** — 서울버스 승차 국면은 서버가 잔여 꼬리를
+/// 떼고 어미를 다듬어 내려보낸다(웹 `transit-track.ts`의 `rewriteBusArrivalMessage`).
 public struct TransitTrackItem: Codable, Sendable, Equatable {
     public let vehicleId: String?
     public let direction: String
