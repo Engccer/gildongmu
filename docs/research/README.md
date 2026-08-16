@@ -20,3 +20,12 @@
 | `RESEARCH-2026-08-02-realtime-walk-navigation.md` | 2026-08-03 | 경로 추종형 안내 설계(E4의 근거) |
 | `RESEARCH-2026-08-03-mode-specific-guidance.md` | 2026-08-03 | 수단별 안내 진입점 분리 |
 | `RESEARCH-2026-08-08-last-few-meters.md` | 2026-08-08 | 마지막 몇 미터 안내 — 선행 앱 9종·ITU-T/ISO 표준·학술 문헌·방위 관례·국내 출입구 데이터 |
+| `RESEARCH-2026-08-09-streetscape-reconstruction.md` | 2026-08-09 | 도착지 부근 상황 재구성(M1의 근거) |
+| `RESEARCH-2026-08-12-nearby-tab-restructure.md` | 2026-08-12 | iOS "내 주변" 탭 현재 구조 실측(M4의 근거) |
+| `RESEARCH-2026-08-16-map-app-deeplinks.md` | 2026-08-16 | 지도 앱 딥링크 |
+| `RESEARCH-2026-08-16-odbl-compliance.md` | 2026-08-16 | OSM ODbL 준수 조건(E12의 근거) |
+| `RESEARCH-2026-08-16-audio-signal-ble-control.md` | 2026-08-16 | 음향신호기 앱 조작 — 경찰청 규격서 BLE 공용 프로토콜·보급률 실측·선행 앱(E20의 근거) |
+
+## `refs/` — 1차 사료 사본
+
+조사 근거가 **재취득이 어려운 원문**일 때 그 사본을 둔다(현재: 경찰청 음향신호기 규격서 PDF + 파싱본, 신·구조문 대비표). police.go.kr 다운로드는 쿠키 왕복이 필요해 링크만으로는 다음 사람이 같은 문서에 도달하지 못한다. 파싱본은 `docparse` 산출물이고, 표 열 이동을 교차 파서로 패치한 이력은 해당 research 문서 §10에 남아 있다.
