@@ -347,14 +347,43 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(matched.directionUncertain == false)
     #expect(matched.candidates.map(\.item.vehicleId) == ["2"])
 
-    let uncertain = classifyTransitBoardingCandidates([item("내선", "3"), item("외선", "4")], leg: leg)
+    let uncertain = classifyTransitBoardingCandidates([item("알수없음", "3")], leg: leg)
     #expect(uncertain.directionUncertain == true)
-    #expect(uncertain.candidates.count == 2)
+    #expect(uncertain.candidates.count == 1)
 
     let decorated = classifyTransitBoardingCandidates(
         [item("하행", "5", express: true), item("하행", "6", dest: "왕십리")], leg: leg)
     #expect(decorated.candidates[0].express == true)
     #expect(decorated.candidates[1].terminatesEarly == true)
+}
+
+// 웹 transit-guide.test.ts "순환선 2호선(내선·외선)"과 동일 케이스(미러 동조).
+// 실호출 확정 2026-08-16 — 내선=wayCode 2·외선=1, 종착 상수 "성수"는 차단 근거 아님.
+@Test func loopLineBoardingCandidates() {
+    let names = [
+        "을지로입구", "을지로3가", "을지로4가", "동대문역사문화공원", "신당",
+        "상왕십리", "왕십리", "한양대", "뚝섬", "성수",
+        "건대입구", "구의", "강변", "잠실나루", "잠실",
+    ]
+    let leg = TransitGuideLeg(
+        mode: "subway", lineName: "수도권 2호선", trackMode: .subway,
+        boardName: "을지로입구", alightName: "잠실",
+        boardStop: TransitLegStop(name: "을지로입구", lat: 37.565998, lng: 126.982569),
+        alightStop: TransitLegStop(name: "잠실", lat: 37.51395, lng: 127.100138),
+        viaStops: names.map { TransitLegStop(name: $0, lat: 37.5, lng: 127) },
+        stationCount: 14, routeId: nil, wayCode: 2, walkBeforeMinutes: nil)
+
+    func item(_ direction: String, _ vid: String) -> TransitTrackItem {
+        TransitTrackItem(
+            vehicleId: vid, direction: direction, message: "m", remainingStops: 5,
+            destinationName: "성수", express: false, arrivalCode: nil)
+    }
+    let result = classifyTransitBoardingCandidates([item("내선", "3"), item("외선", "4")], leg: leg)
+    #expect(result.directionUncertain == false)
+    #expect(result.candidates.map(\.item.vehicleId) == ["3"])
+    // 순수 판정 자체는 여전히 "앞선 종착"이라 답한다 — 순환선 제외는 분류기 몫.
+    #expect(transitTerminatesBeforeAlight("성수", leg: leg) == true)
+    #expect(result.candidates[0].terminatesEarly == false)
 }
 
 // 웹 transit-guide.test.ts "경유 목록 현재 위치 매칭(§14.1)"과 동일 케이스(미러 동조).

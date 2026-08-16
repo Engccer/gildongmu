@@ -353,11 +353,26 @@ public struct TransitBoardingCandidate: Sendable {
     // 종전 완성 문장 폴백은 문장 갱신마다 remount를 만들어 폐기, 감사 L2).
 }
 
+/// 순환선 방향 표기(2호선 내선·외선). 노선이 닫힌 고리라 **종착 검사의 전제가
+/// 성립하지 않는다**: 경유 목록의 순서는 이 leg의 구간 순서일 뿐이고, 진행 방향
+/// 어느 역이든 앞에 있다. 웹 isLoopDirection 미러.
+private func isLoopDirection(_ updnLine: String) -> Bool {
+    updnLine == "내선" || updnLine == "외선"
+}
+
+/// wayCode(1 상행·2 하행) ↔ updnLine 원문 대응. **실호출로 확정한 표기만 판정**하고
+/// 나머지는 유보한다(오필터가 과노출보다 나쁘다).
+///
+/// 순환선 대응(내선=2·외선=1)은 2026-08-16 실호출로 확정했다: 순환선 반대편 4개 역
+/// 에서 뽑은 ODsay leg 8건이 방향별로 갈렸고, 13개 역 도착 표본 52건의 직전 역이
+/// 같은 순환 순서를 어긋남 없이 따랐다. 웹 directionMatchesWayCode 미러.
 private func directionMatchesWayCode(_ updnLine: String, _ wayCode: Int?) -> Bool? {
     guard let wayCode else { return nil }
-    if updnLine == "상행" { return wayCode == 1 }
-    if updnLine == "하행" { return wayCode == 2 }
-    return nil // 내선/외선 등 — 판정 유보(오필터 방지)
+    switch updnLine {
+    case "상행", "외선": return wayCode == 1
+    case "하행", "내선": return wayCode == 2
+    default: return nil
+    }
 }
 
 /// 승차 목록 후보 판정(§5.1): 방향은 보조(전멸 시 전체 유지), 종착 검사만 결정적 차단.
@@ -367,7 +382,11 @@ public func classifyTransitBoardingCandidates(
     let decorated = items.map { item in
         TransitBoardingCandidate(
             item: item,
-            terminatesEarly: transitTerminatesBeforeAlight(item.destinationName, leg: leg),
+            // 순환선은 종착 검사에서 제외한다 — 2호선 도착 표기의 종착은 **상수**라
+            // (13역 52표본 전부 "성수", 2026-08-16) 판정 근거가 아니라 오차단원이다.
+            terminatesEarly: isLoopDirection(item.direction)
+                ? false
+                : transitTerminatesBeforeAlight(item.destinationName, leg: leg),
             express: item.express,
             directionMatched: directionMatchesWayCode(item.direction, leg.wayCode) == true
         )

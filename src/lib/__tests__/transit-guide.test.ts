@@ -286,11 +286,48 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
     expect(matched.directionUncertain).toBe(false);
     expect(matched.candidates.map((c) => c.item.vehicleId)).toEqual(["2"]);
 
-    const inner = item({ direction: "내선", vehicleId: "3" });
-    const outer = item({ direction: "외선", vehicleId: "4" });
-    const uncertain = classifyBoardingCandidates([inner, outer], leg);
+    const unknown = item({ direction: "알수없음", vehicleId: "3" });
+    const uncertain = classifyBoardingCandidates([unknown], leg);
     expect(uncertain.directionUncertain).toBe(true);
-    expect(uncertain.candidates).toHaveLength(2); // 오필터로 숨기지 않는다
+    expect(uncertain.candidates).toHaveLength(1); // 오필터로 숨기지 않는다
+  });
+
+  // 순환선(2호선) 실호출 확정 2026-08-16 — 내선=wayCode 2·외선=1, 종착 검사 제외.
+  describe("순환선 2호선(내선·외선)", () => {
+    // 실측 표본: 을지로입구 도착 4건이 전부 종착 "성수"였고, 그 leg의 경유
+    // 목록에서 성수(9)는 하차역 잠실(14)보다 앞이라 종전 코드는 전부 차단했다.
+    const loopLeg: TransitGuideLeg = {
+      ...leg,
+      lineName: "수도권 2호선",
+      boardName: "을지로입구",
+      alightName: "잠실",
+      viaStops: [
+        "을지로입구", "을지로3가", "을지로4가", "동대문역사문화공원", "신당",
+        "상왕십리", "왕십리", "한양대", "뚝섬", "성수",
+        "건대입구", "구의", "강변", "잠실나루", "잠실",
+      ].map((name) => ({ name, lat: 37.5, lng: 127 })),
+      stationCount: 14,
+      wayCode: 2, // ODsay 을지로입구 → 잠실 실측
+    };
+
+    it("내선=2·외선=1로 방향이 갈린다", () => {
+      const inner = item({ direction: "내선", vehicleId: "3", destinationName: "성수" });
+      const outer = item({ direction: "외선", vehicleId: "4", destinationName: "성수" });
+      const { candidates, directionUncertain } = classifyBoardingCandidates(
+        [inner, outer],
+        loopLeg,
+      );
+      expect(directionUncertain).toBe(false);
+      expect(candidates.map((c) => c.item.vehicleId)).toEqual(["3"]);
+    });
+
+    it("종착 상수 '성수'가 순환선 구간을 오차단하지 않는다", () => {
+      // 순수 판정 자체는 여전히 "앞선 종착"이라 답한다 — 순환선 제외는 분류기 몫.
+      expect(terminatesBeforeAlight("성수", loopLeg)).toBe(true);
+      const inner = item({ direction: "내선", vehicleId: "3", destinationName: "성수" });
+      const { candidates } = classifyBoardingCandidates([inner], loopLeg);
+      expect(candidates[0].terminatesEarly).toBe(false);
+    });
   });
 
   it("급행·조기 종착 데코레이션", () => {
