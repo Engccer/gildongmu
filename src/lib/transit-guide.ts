@@ -671,8 +671,17 @@ function handlePoll(
     // 판정하지 않는 경우 셋:
     //  - recovered: 방금 조회가 살아난 폴이다. 최소 한 번은 실제로 보고 나서
     //    말한다(그리고 signalRecovered 이벤트를 덮지 않는다 — 입력당 1이벤트).
-    //  - upstreamFailed·signalLost: 원인이 다르고 이미 자기 통지를 냈다.
+    //  - signal !== notYetVisible: 원인이 다른 신호(upstreamFailed·signalLost)와
+    //    이미 확정된 자기 자신을 배제한다(1회성).
     //  - ridingSince == null: 기준 시각 불명이면 판정 자격이 없다.
+    //
+    // ⚠ 변이 주입 실측(2026-08-16)으로 각 조건의 검증 수단이 갈렸다:
+    // recovered·확정 신호 보존은 fixture가, ridingSince는 **타입 검사**가 잡는다
+    // (제거하면 TS18047). 반면 phase === "riding"은 어느 게이트도 잡지 못한다 —
+    // 위 waiting 조기 반환 때문에 현재 도달 불가한 방어다. 지우지 않는 이유는
+    // 이 축의 불변식("riding 전용")을 다른 블록의 조기 반환에 의존하지 않고
+    // 여기서 자립적으로 표현하기 위해서이고, 검증된 가드가 아니라는 사실을
+    // 여기 적어 두어 다음 사람이 오해하지 않게 한다.
     if (
       !recovered &&
       next.signal === "notYetVisible" &&

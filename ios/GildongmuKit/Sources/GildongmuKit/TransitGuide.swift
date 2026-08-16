@@ -618,6 +618,10 @@ private func handlePoll(
         // 판정하지 않는 경우 셋: 방금 조회가 살아난 폴(recovered — 최소 한 번은
         // 실제로 보고 말한다, 그리고 signalRecovered를 덮지 않는다) · 원인이 다른
         // 신호(upstreamFailed·signalLost·자기 자신) · 기준 시각 불명.
+        //
+        // ⚠ phase == .riding은 현재 **도달 불가 방어**다(위 waiting 조기 반환).
+        // 웹에서 변이 주입으로 실측했고 어느 게이트도 그 제거를 잡지 못했다 —
+        // 검증된 가드가 아니라는 사실을 알고 남긴다(불변식의 자립적 표현).
         if !recovered, next.signal == .notYetVisible, next.phase == .riding,
            let since = next.ridingSince, now - since >= transitNeverSeenMs {
             next.signal = .neverSeen
