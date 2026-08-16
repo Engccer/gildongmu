@@ -321,6 +321,36 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
       expect(candidates.map((c) => c.item.vehicleId)).toEqual(["3"]);
     });
 
+    // 지선(성수·신정)도 내선/외선 표기를 쓴다(실호출 2026-08-16, 8개 역 확인).
+    // 방향 대응은 본선과 같고(ODsay 지선 leg 4건 일치), 종착은 지선 라벨이거나
+    // 그 지선의 종점이라 어느 쪽도 하차역보다 앞설 수 없다.
+    it("지선도 같은 표기를 쓰고 방향 대응이 같다", () => {
+      const branchLeg: TransitGuideLeg = {
+        ...leg,
+        lineName: "수도권 2호선",
+        boardName: "용답",
+        alightName: "신설동",
+        viaStops: ["용답", "신답", "용두", "신설동"].map((name) => ({
+          name,
+          lat: 37.56,
+          lng: 127.04,
+        })),
+        stationCount: 3,
+        wayCode: 2, // ODsay 용답 → 신설동 실측
+      };
+      const toward = item({ direction: "내선", vehicleId: "7", destinationName: "신설동" });
+      const away = item({ direction: "외선", vehicleId: "8", destinationName: "성수지선" });
+      const { candidates, directionUncertain } = classifyBoardingCandidates(
+        [toward, away],
+        branchLeg,
+      );
+      expect(directionUncertain).toBe(false);
+      expect(candidates.map((c) => c.item.vehicleId)).toEqual(["7"]);
+      // 종점 종착·지선 라벨 둘 다 순수 판정에서도 차단 근거가 아니다.
+      expect(terminatesBeforeAlight("신설동", branchLeg)).toBe(false);
+      expect(terminatesBeforeAlight("성수지선", branchLeg)).toBe(false);
+    });
+
     it("종착 상수 '성수'가 순환선 구간을 오차단하지 않는다", () => {
       // 순수 판정 자체는 여전히 "앞선 종착"이라 답한다 — 순환선 제외는 분류기 몫.
       expect(terminatesBeforeAlight("성수", loopLeg)).toBe(true);

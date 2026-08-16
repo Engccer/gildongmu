@@ -384,6 +384,30 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     // 순수 판정 자체는 여전히 "앞선 종착"이라 답한다 — 순환선 제외는 분류기 몫.
     #expect(transitTerminatesBeforeAlight("성수", leg: leg) == true)
     #expect(result.candidates[0].terminatesEarly == false)
+
+    // 지선(성수·신정)도 내선/외선을 쓴다. 방향 대응은 본선과 같고, 종착은 지선
+    // 라벨이거나 그 지선의 종점이라 어느 쪽도 하차역보다 앞설 수 없다.
+    let branch = TransitGuideLeg(
+        mode: "subway", lineName: "수도권 2호선", trackMode: .subway,
+        boardName: "용답", alightName: "신설동",
+        boardStop: TransitLegStop(name: "용답", lat: 37.562066, lng: 127.050879),
+        alightStop: TransitLegStop(name: "신설동", lat: 37.574653, lng: 127.025158),
+        viaStops: ["용답", "신답", "용두", "신설동"].map {
+            TransitLegStop(name: $0, lat: 37.56, lng: 127.04)
+        },
+        stationCount: 3, routeId: nil, wayCode: 2, walkBeforeMinutes: nil)
+
+    func branchItem(_ direction: String, _ vid: String, _ dest: String) -> TransitTrackItem {
+        TransitTrackItem(
+            vehicleId: vid, direction: direction, message: "m", remainingStops: 2,
+            destinationName: dest, express: false, arrivalCode: nil)
+    }
+    let branchResult = classifyTransitBoardingCandidates(
+        [branchItem("내선", "7", "신설동"), branchItem("외선", "8", "성수지선")], leg: branch)
+    #expect(branchResult.directionUncertain == false)
+    #expect(branchResult.candidates.map(\.item.vehicleId) == ["7"])
+    #expect(transitTerminatesBeforeAlight("신설동", leg: branch) == false)
+    #expect(transitTerminatesBeforeAlight("성수지선", leg: branch) == false)
 }
 
 // 웹 transit-guide.test.ts "경유 목록 현재 위치 매칭(§14.1)"과 동일 케이스(미러 동조).

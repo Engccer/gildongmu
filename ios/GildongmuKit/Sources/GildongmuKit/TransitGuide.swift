@@ -353,10 +353,18 @@ public struct TransitBoardingCandidate: Sendable {
     // 종전 완성 문장 폴백은 문장 갱신마다 remount를 만들어 폐기, 감사 L2).
 }
 
-/// 순환선 방향 표기(2호선 내선·외선). 노선이 닫힌 고리라 **종착 검사의 전제가
-/// 성립하지 않는다**: 경유 목록의 순서는 이 leg의 구간 순서일 뿐이고, 진행 방향
-/// 어느 역이든 앞에 있다. 웹 isLoopDirection 미러.
-private func isLoopDirection(_ updnLine: String) -> Bool {
+/// 2호선 계열 방향 표기. 내선·외선은 2호선 본선 순환과 두 지선(성수·신정)만 쓰고,
+/// **그 계열의 종착 필드는 잔여 경로 판정에 쓸 수 없다**(실호출 2026-08-16).
+///
+/// - 본선: 13개 역 52표본이 전부 `"성수"`인 **상수**라, 경유 목록에서 성수가
+///   하차역보다 앞선 구간이 통째로 오차단됐다. 닫힌 고리엔 종착 검사가 기대는
+///   전제("경유 순서 = 잔여 경로")가 없다 — 진행 방향 어느 역이든 앞에 있다.
+/// - 지선: 종착이 `"성수지선"`·`"신도림지선"`(역명이 아님) 또는 `"신설동"`·`"까치산"`
+///   (그 지선의 종점)이라 어느 쪽도 하차역보다 앞설 수 없다. 지선은 선형이지만
+///   검사가 잡아낼 조기 종착이 애초에 존재하지 않아 제외해도 잃는 보호가 없다.
+///
+/// 웹 isLine2Direction 미러.
+private func isLine2Direction(_ updnLine: String) -> Bool {
     updnLine == "내선" || updnLine == "외선"
 }
 
@@ -382,9 +390,9 @@ public func classifyTransitBoardingCandidates(
     let decorated = items.map { item in
         TransitBoardingCandidate(
             item: item,
-            // 순환선은 종착 검사에서 제외한다 — 2호선 도착 표기의 종착은 **상수**라
-            // (13역 52표본 전부 "성수", 2026-08-16) 판정 근거가 아니라 오차단원이다.
-            terminatesEarly: isLoopDirection(item.direction)
+            // 2호선 계열은 종착 검사에서 제외한다 — 그 종착 필드가 판정 근거가
+            // 아니라 오차단원이기 때문이다(isLine2Direction 주석에 표본).
+            terminatesEarly: isLine2Direction(item.direction)
                 ? false
                 : transitTerminatesBeforeAlight(item.destinationName, leg: leg),
             express: item.express,
