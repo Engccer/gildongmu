@@ -386,10 +386,20 @@ private struct MessageBubbleView: View {
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
+            // 구획 헤딩(위원장 실기기 판정 2026-08-17): 산문 → 카드 → 출처 경계가 VO 선형
+            // 읽기에서 들리지 않았다. 카드 묶음·출처 앞에 헤딩을 둔다 — 질문 헤딩 아래
+            // 하위 구획이 되어 로터로 카드 시작점 점프도 된다. 수를 실어 몇 개를 지나갈지
+            // 알린다. 있는 것만 낸다(빈 묶음에 헤딩 금지).
             ForEach(Array(message.renders.enumerated()), id: \.offset) { _, render in
+                if let heading = renderHeading(render) {
+                    sectionHeading(heading)
+                }
                 renderView(render)
             }
 
+            if !message.sources.isEmpty {
+                sectionHeading(appLocalized("ios.chat.sourcesHeading"))
+            }
             ForEach(message.sources, id: \.self) { source in
                 sourceRow(source)
             }
@@ -547,6 +557,29 @@ private struct MessageBubbleView: View {
         return mentions[index]
     }
 
+    /// 구획 헤딩 한 줄: 시각은 작은 보조 캡션, VO는 헤딩.
+    private func sectionHeading(_ title: String) -> some View {
+        Text(title)
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .padding(.top, 4)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    /// 렌더 묶음의 헤딩 문구(수 포함). 미표시 렌더(.unsupported)·빈 묶음은 nil.
+    private func renderHeading(_ render: ChatRenderPayload) -> String? {
+        switch render {
+        case .places(let places) where !places.isEmpty:
+            return appLocalized("ios.chat.placesHeading", String(places.count))
+        case .addresses(let addresses) where !addresses.isEmpty:
+            return appLocalized("ios.chat.addressesHeading", String(addresses.count))
+        case .webResults(let results) where !results.isEmpty:
+            return appLocalized("ios.chat.webResultsHeading", String(results.count))
+        default:
+            return nil
+        }
+    }
+
     /// V1 렌더 정책: props-driven 3종만, .unsupported는 미표시(산문이 정본).
     @ViewBuilder
     private func renderView(_ render: ChatRenderPayload) -> some View {
@@ -601,7 +634,7 @@ private struct MessageBubbleView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// 출처 행: url 있으면 Link, 없으면 Text. "출처" 헤더 없음(계획서, 과잉 제거).
+    /// 출처 행: url 있으면 Link, 없으면 Text. 묶음 앞 "출처" 헤딩은 호출부(`sectionHeading`)가 낸다.
     @ViewBuilder
     private func sourceRow(_ source: ChatSource) -> some View {
         let label = Self.sourceDisplayLabel(source.label)
