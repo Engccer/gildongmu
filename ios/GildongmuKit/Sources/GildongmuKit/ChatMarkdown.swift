@@ -12,6 +12,11 @@ public enum ChatMarkdownBlock: Equatable, Sendable {
     /// 단락(빈 줄로 구분, 내부 줄바꿈 보존).
     case paragraph(String)
 
+    public var isHeading: Bool {
+        if case .heading = self { return true }
+        return false
+    }
+
     /// 블록의 표시 텍스트(인라인 강조 마커 포함). 장소 언급 대응(`chatPlaceMentions`)의 입력.
     public var text: String {
         switch self {

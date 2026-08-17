@@ -446,13 +446,7 @@ private struct MessageBubbleView: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(blocks.indices, id: \.self) { index in
-                        blockView(blocks[index])
-                            .modifier(PlaceMentionActions(
-                                mentions: chatPlaceMentions(in: blocks[index].text, places: cardPlaces),
-                                originKey: "block-\(message.id.uuidString)-\(index)",
-                                focusedOriginKey: $focusedOriginKey,
-                                onOpenPlace: onOpenPlace
-                            ))
+                        blockView(blocks[index], index: index)
                     }
                 }
             }
@@ -465,29 +459,92 @@ private struct MessageBubbleView: View {
         }
     }
 
+    /// 산문 블록 하나. 블록은 언제나 **한 접근성 객체**이고, 카드 장소 언급 수에 따라
+    /// 활성화 방식만 가른다(위원장 판정 2026-08-17, 실호출 표본 27블록 중 26이 1개):
+    /// - 0개: 평문.
+    /// - 1개(지배적): 블록 전체가 버튼 — VO는 "…, 버튼"으로 읽고 더블탭이 곧 상세, 시각
+    ///   사용자는 그 줄 어디를 탭해도 열린다. 이름만 링크색으로 표시(링크 속성 없음 —
+    ///   Text가 단일 객체로 남는 것이 보장된다). 로터 액션은 잉여라 붙이지 않는다.
+    /// - 2개 이상(드묾): 이름마다 인라인 링크(시각 사용자의 이름별 탭) + 로터 커스텀
+    ///   액션(VO). ⚠ Text 안 링크가 VO 객체를 쪼개는지는 실기기 판정 대기 — 쪼개면
+    ///   `.accessibilityElement(children: .combine)`으로 묶는다(실측 전 선반영 금지).
+    ///   헤딩 블록에 언급 1개인 경우 `.isHeader`가 감싼 Button으로 전파되는지도 같은 판정
+    ///   항목(선례 없음, 실패해도 헤딩 로터 발견성만 잃는다).
     @ViewBuilder
-    private func blockView(_ block: ChatMarkdownBlock) -> some View {
-        switch block {
-        case .heading(let text):
-            inlineText(text)
-                .font(.headline)
-                .accessibilityAddTraits(.isHeader)
-        case .listItem(let text):
-            inlineText(text)
-        case .paragraph(let text):
-            inlineText(text)
+    private func blockView(_ block: ChatMarkdownBlock, index: Int) -> some View {
+        let mentions = chatPlaceMentions(in: block.text, places: cardPlaces)
+        let originKey = "block-\(message.id.uuidString)-\(index)"
+        let text = styledBlockText(block, mentions: mentions)
+        switch mentions.count {
+        case 0:
+            text
+        case 1:
+            Button {
+                onOpenPlace(mentions[0], originKey)
+            } label: {
+                text
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityFocused($focusedOriginKey, equals: originKey)
+        default:
+            text
+                // 인라인 링크 탭(시각 사용자): 자체 스킴 URL을 가로채 상세로.
+                .environment(\.openURL, OpenURLAction { url in
+                    guard let place = Self.mentionedPlace(for: url, in: mentions) else { return .systemAction }
+                    onOpenPlace(place, originKey)
+                    return .handled
+                })
+                .accessibilityFocused($focusedOriginKey, equals: originKey)
+                // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow 실측).
+                // 산문 등장 순으로 들리도록 뒤집어 선언.
+                .accessibilityActions {
+                    ForEach(Array(mentions.reversed())) { place in
+                        Button(appLocalized("ios.chat.openPlace", place.name)) {
+                            onOpenPlace(place, originKey)
+                        }
+                    }
+                }
         }
     }
 
-    /// 블록 내부 인라인 강조(**) 해석. 파싱 실패는 평문 강등.
-    private func inlineText(_ string: String) -> Text {
-        if let attributed = try? AttributedString(
-            markdown: string,
+    /// 인라인 강조(**) 해석 + 헤딩 스타일 + 장소명 강조. 언급 1개면 이름을 링크색으로만
+    /// 물들이고, 2개 이상이면 이름마다 링크 속성(자체 스킴)을 건다. 파싱 실패는 평문 강등.
+    private func styledBlockText(_ block: ChatMarkdownBlock, mentions: [Place]) -> some View {
+        var attributed = (try? AttributedString(
+            markdown: block.text,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) {
-            return Text(attributed)
+        )) ?? AttributedString(block.text)
+        for (index, place) in mentions.enumerated() {
+            var search = attributed.startIndex
+            while search < attributed.endIndex,
+                  let range = attributed[search...].range(of: place.name) {
+                if mentions.count == 1 {
+                    attributed[range].foregroundColor = .accentColor
+                } else {
+                    attributed[range].link = Self.mentionURL(index: index)
+                }
+                search = range.upperBound
+            }
         }
-        return Text(string)
+        var text = Text(attributed)
+        if block.isHeading {
+            text = text.font(.headline)
+        }
+        return text.accessibilityAddTraits(block.isHeading ? .isHeader : [])
+    }
+
+    /// 인라인 링크용 자체 스킴. 언급 순번만 담는다(장소 id는 URL에 안전하지 않은 문자를 가질 수 있다).
+    private static func mentionURL(index: Int) -> URL {
+        URL(string: "gildongmu-place-mention:///\(index)")!
+    }
+
+    private static func mentionedPlace(for url: URL, in mentions: [Place]) -> Place? {
+        guard url.scheme == "gildongmu-place-mention",
+              let index = Int(url.lastPathComponent),
+              mentions.indices.contains(index) else { return nil }
+        return mentions[index]
     }
 
     /// V1 렌더 정책: props-driven 3종만, .unsupported는 미표시(산문이 정본).
@@ -583,30 +640,6 @@ private struct MessageBubbleView: View {
         case "source.tourapi": return appLocalized("chat.source.tourapi")
         default: return label
         }
-    }
-}
-
-/// 산문 블록에 "○○ 상세 보기" 커스텀 액션을 단다. 블록은 여전히 한 접근성 객체로
-/// 한 번에 낭독되고, 장소가 셋이면 로터 액션이 셋이다 — 인라인 링크로 단락을 쪼개지
-/// 않는다(위원장 판정 2026-08-17). 언급 없는 블록엔 액션이 붙지 않는다.
-private struct PlaceMentionActions: ViewModifier {
-    let mentions: [Place]
-    let originKey: String
-    @AccessibilityFocusState.Binding var focusedOriginKey: String?
-    let onOpenPlace: (Place, String) -> Void
-
-    func body(content: Content) -> some View {
-        content
-            .accessibilityFocused($focusedOriginKey, equals: originKey)
-            // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow 실측).
-            // 산문 등장 순으로 들리도록 뒤집어 선언.
-            .accessibilityActions {
-                ForEach(Array(mentions.reversed())) { place in
-                    Button(appLocalized("ios.chat.openPlace", place.name)) {
-                        onOpenPlace(place, originKey)
-                    }
-                }
-            }
     }
 }
 
