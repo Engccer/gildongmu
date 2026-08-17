@@ -79,6 +79,17 @@ struct SearchView: View {
                         Button(appLocalized("recent.clearAll")) { clearRecent() }
                     }
                 }
+                // 리뷰순 토글(spec 2026-08-17 §6): ko + 네이버 키(응답 provider 관측)일 때만.
+                // 라벨 전환이 곧 상태 신호. 섹션 밖에 두는 이유 — 리뷰순 0건이면 장소 섹션이
+                // 사라지는데 토글은 남아 있어야 되돌아갈 수 있다. 칩(클라 필터)과 다른 층이라
+                // 칩 행에 넣지 않는다.
+                if model.canSortByReview, model.outcome != nil {
+                    Button(appLocalized(model.sort == .review ? "search.sortByAccuracy" : "search.sortByReview")) {
+                        bucket = nil
+                        region = nil
+                        model.toggleSort()
+                    }
+                }
                 if let outcome = model.outcome {
                     ForEach(Array(outcome.orderedSections.enumerated()), id: \.offset) { _, section in
                         sectionView(section)
