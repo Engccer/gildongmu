@@ -15,6 +15,13 @@ public struct Place: Codable, Sendable, Identifiable, Hashable {
     public let distanceMeters: Double?
 }
 
+/// 장소 검색 정렬 축(웹 `PlaceSort` 미러). review = 네이버 리뷰 개수순 단독
+/// (값 없음·최대 5건·좌표 무시, spec 2026-08-17-naver-review-sort).
+public enum PlaceSort: String, Sendable, Codable {
+    case accuracy
+    case review
+}
+
 /// 장소 검색 응답 envelope(`/api/places`).
 /// provider는 웹에서 열거형이지만 신규 provider 추가에 깨지지 않도록 String으로 둔다.
 public struct PlaceSearchResult: Codable, Sendable {

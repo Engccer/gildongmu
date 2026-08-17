@@ -33,6 +33,34 @@ extension StubNetworkTests {
         if case .web(let w) = outcome.orderedSections[0] { #expect(w.count == 1) } else { Issue.record("웹 폴백 섹션이어야 함") }
     }
 
+    @Test func reviewSortSendsSortParamOnlyToPlacesAndKeepsProvider() async throws {
+        // spec 2026-08-17 §6: sort=.review는 /api/places에만 sort=review, 주소·웹엔 없음.
+        // provider는 그대로 outcome에 실려 토글 노출 판정(네이버 키 관측)에 쓰인다.
+        nonisolated(unsafe) var placesQuery = ""
+        nonisolated(unsafe) var addressQuery = ""
+        StubURLProtocol.handler = { request in
+            switch request.url!.path() {
+            case "/api/places":
+                placesQuery = request.url!.query() ?? ""
+                return (200, Data(#"{"places":[],"provider":"naver-local","query":"q"}"#.utf8))
+            case "/api/address/search":
+                addressQuery = request.url!.query() ?? ""
+                return (200, Data(#"{"addresses":[],"query":"q"}"#.utf8))
+            case "/api/search/web":
+                return (200, Data(#"{"web":[]}"#.utf8))
+            default: return (404, Data())
+            }
+        }
+        let outcome = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko", sort: .review)
+        #expect(placesQuery.contains("sort=review"))
+        #expect(!addressQuery.contains("sort="))
+        #expect(outcome.placesProvider == "naver-local")
+
+        let plain = await SearchService(client: stubbedClient()).search(query: "q", lat: nil, lng: nil, lang: "ko")
+        #expect(!placesQuery.contains("sort="))
+        #expect(plain.placesProvider == "naver-local")
+    }
+
     @Test func sectionFailureIsIsolated() async throws {
         StubURLProtocol.handler = { request in
             switch request.url!.path() {

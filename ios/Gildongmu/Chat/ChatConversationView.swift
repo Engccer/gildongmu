@@ -370,7 +370,7 @@ private struct MessageBubbleView: View {
     /// 서버가 카드를 생략하면 자연히 빈 배열이라 액션도 없다).
     private var cardPlaces: [Place] {
         message.renders.flatMap { render -> [Place] in
-            if case .places(let places) = render { return places }
+            if case .places(let places, _) = render { return places }
             return []
         }
     }
@@ -569,8 +569,12 @@ private struct MessageBubbleView: View {
     /// 렌더 묶음의 헤딩 문구(수 포함). 미표시 렌더(.unsupported)·빈 묶음은 nil.
     private func renderHeading(_ render: ChatRenderPayload) -> String? {
         switch render {
-        case .places(let places) where !places.isEmpty:
-            return appLocalized("ios.chat.placesHeading", String(places.count))
+        case .places(let places, let sort) where !places.isEmpty:
+            // 리뷰순 묶음은 헤딩이 갈린다 — 정확도순 묶음과 한 답변에 공존할 때 낭독의
+            // 유일한 경계(spec 2026-08-17 §5.3, 웹 MessageBubble 캡션 미러).
+            return sort == .review
+                ? appLocalized("chat.reviewPlacesHeading", String(places.count))
+                : appLocalized("ios.chat.placesHeading", String(places.count))
         case .addresses(let addresses) where !addresses.isEmpty:
             return appLocalized("ios.chat.addressesHeading", String(addresses.count))
         case .webResults(let results) where !results.isEmpty:
@@ -584,7 +588,7 @@ private struct MessageBubbleView: View {
     @ViewBuilder
     private func renderView(_ render: ChatRenderPayload) -> some View {
         switch render {
-        case .places(let places):
+        case .places(let places, _):
             // 카드 활성화 = 장소 상세(검색 탭 NavigationLink 래핑 동형 — 커스텀 액션은
             // 라벨 안 PlaceRow의 것이 그대로 로터에 오른다). 시각은 정보 행 그대로(.plain).
             ForEach(places) { place in

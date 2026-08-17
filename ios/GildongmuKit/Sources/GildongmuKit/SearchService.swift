@@ -37,15 +37,21 @@ public struct SearchOutcome: Sendable {
     public let places: SectionState<Place>
     public let addresses: SectionState<JusoAddress>
     public let web: SectionState<WebSearchResult>
+    /// 장소 섹션에 답한 provider(`PlaceSearchResult.provider`, 실패면 nil). iOS는 서버 키를
+    /// 모르므로 "merged"·"naver-local"이 곧 네이버 키 보유의 유일한 관측 채널이다
+    /// (리뷰순 토글 노출 조건, spec 2026-08-17 §6).
+    public let placesProvider: String?
 
     public init(
         places: SectionState<Place>,
         addresses: SectionState<JusoAddress>,
-        web: SectionState<WebSearchResult>
+        web: SectionState<WebSearchResult>,
+        placesProvider: String? = nil
     ) {
         self.places = places
         self.addresses = addresses
         self.web = web
+        self.placesProvider = placesProvider
     }
 
     /// 정본 두 트랙(장소·주소) 호출이 모두 실패했는가. 3-state 불변식의 신호:
@@ -69,16 +75,23 @@ public struct SearchService: Sendable {
 
     /// includeWeb=false는 길찾기 필드 후보 검색용(웹 EndpointField 미러): 후보엔
     /// 좌표가 필요해 웹 결과가 무의미하고, 유료 Perplexity 폴백 호출도 회피한다.
-    public func search(query: String, lat: Double?, lng: Double?, lang: String, includeWeb: Bool = true) async -> SearchOutcome {
+    /// sort=.review는 장소 트랙만 네이버 리뷰순으로 바꾼다(주소·웹은 정렬 축이 없다).
+    /// 미지정(.accuracy)이면 sort 파라미터를 붙이지 않는다(기존 요청과 바이트 동일).
+    public func search(query: String, lat: Double?, lng: Double?, lang: String, includeWeb: Bool = true, sort: PlaceSort = .accuracy) async -> SearchOutcome {
         var coordQuery: [URLQueryItem] = [URLQueryItem(name: "query", value: query)]
         if let lat, let lng {
             coordQuery.append(URLQueryItem(name: "lat", value: String(lat)))
             coordQuery.append(URLQueryItem(name: "lng", value: String(lng)))
         }
-        async let placesTask: PlaceSearchResult? = try? client.get("/api/places", query: coordQuery + [URLQueryItem(name: "lang", value: lang)])
+        var placesQuery = coordQuery + [URLQueryItem(name: "lang", value: lang)]
+        if sort == .review {
+            placesQuery.append(URLQueryItem(name: "sort", value: "review"))
+        }
+        async let placesTask: PlaceSearchResult? = try? client.get("/api/places", query: placesQuery)
         async let addressTask: AddressSearchResponse? = try? client.get("/api/address/search", query: [URLQueryItem(name: "query", value: query)])
 
-        let places: SectionState<Place> = (await placesTask).map { .loaded($0.places) } ?? .failed
+        let placesResult = await placesTask
+        let places: SectionState<Place> = placesResult.map { .loaded($0.places) } ?? .failed
         let addresses: SectionState<JusoAddress> = (await addressTask).map { .loaded($0.addresses) } ?? .failed
 
         // 웹 폴백: 정본 두 트랙이 모두 빈 결과일 때만(실패도 빈 결과로 취급, 기존 의미 유지).
@@ -87,7 +100,7 @@ public struct SearchService: Sendable {
             let webResponse: WebSearchResponse? = try? await client.get("/api/search/web", query: [URLQueryItem(name: "query", value: query)])
             web = webResponse.map { .loaded($0.web) } ?? .failed
         }
-        return SearchOutcome(places: places, addresses: addresses, web: web)
+        return SearchOutcome(places: places, addresses: addresses, web: web, placesProvider: placesResult?.provider)
     }
 
     /// 주소 → 좌표(카카오 지오코딩 프록시 `/api/geocode`). 웹 EndpointField
