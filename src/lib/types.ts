@@ -39,6 +39,10 @@ export interface Place {
 }
 
 /** 장소 검색 요청 파라미터 */
+/** 장소 검색 정렬 축. review = 네이버 지역검색 sort=comment(카페·블로그 리뷰 '개수'순 —
+ * 값 없음·최대 5건·좌표 무시, spec 2026-08-17-naver-review-sort). */
+export type PlaceSort = "accuracy" | "review";
+
 export interface PlaceSearchParams {
   query: string;
   /** 결과 개수 (카카오 로컬 단일 요청 최대 15, 네이버 지역 검색은 최대 5) */
@@ -48,6 +52,8 @@ export interface PlaceSearchParams {
   /** 검색 기준 좌표(WGS84). 있으면 카카오가 근접성을 정확도에 블렌딩하고, 결과에 distanceMeters를 표기한다(정렬 축 아님). */
   lat?: number;
   lng?: number;
+  /** 미지정=accuracy(기존 동작과 바이트 동일). review는 네이버 단독 — 병합·거리 재정렬 없음. */
+  sort?: PlaceSort;
 }
 
 /** 장소 검색 결과 + 메타데이터 */
