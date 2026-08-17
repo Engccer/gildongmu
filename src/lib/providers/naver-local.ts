@@ -27,7 +27,8 @@ interface NaverLocalItem {
   mapy: string;
 }
 
-/** 무효 파라미터(예: sort=rating)는 HTTP 200 + 이 봉투로 온다(실측 2026-08-17: SE04). */
+/** 오류 봉투(예: 무효 sort → SE04). 실측 2026-08-17엔 HTTP 400과 함께 와서 `res.ok` 가드가
+ * 먼저 잡지만, 200 + 봉투로 오는 경우도 items가 없어 조용한 TypeError가 되므로 방어한다. */
 interface NaverErrorEnvelope {
   errorCode: string;
   errorMessage?: string;
