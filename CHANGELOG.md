@@ -17,7 +17,7 @@
 
 ### 길찾기 수동 위치 고지 이동
 
-결과 화면 상시 문장 폐기 → 안내 시작 버튼의 직접 응답으로 "지정한 위치가 아니라 현재 위치에서 안내를 시작합니다"(웹 live region·iOS `.high`). 출발지가 현재 위치일 때만, 정지 탭엔 발화 안 함. spec `docs/superpowers/specs/2026-08-09-manual-location-design.md` §4 갱신.
+결과 화면 상시 문장 폐기 → 안내 시작 버튼의 직접 응답으로 "현재 위치에서 안내를 시작합니다"(웹 live region·iOS `.high`). 출발지가 현재 위치일 때만, 정지 탭엔 발화 안 함. spec `docs/superpowers/specs/2026-08-09-manual-location-design.md` §4 갱신.
 
 ### 채팅 답변의 장소를 상세로 잇는다 (iOS)
 

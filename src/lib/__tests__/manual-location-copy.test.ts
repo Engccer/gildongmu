@@ -130,7 +130,7 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "manualLocation.gpsNear": "위와 같음(주소 병기형).",
   "manualLocation.locating": "측위 진행 문구(조회 기준 선언 아님).",
   "manualLocation.guideStartsFromCurrent":
-    "수동 위치 기준 결과에서 안내를 시작하는 순간의 고지 — 수동 상태에서 **의도적으로** GPS를 명명한다('지정한 위치가 아니라 현재 위치에서'). 이 문장의 존재 이유가 곧 그 대비라, 수동 분기가 아니라 수동 조건이 발화 조건이다.",
+    "수동 위치 기준 결과에서 안내를 시작하는 순간의 고지 — 수동 상태에서 **의도적으로** GPS를 명명한다('현재 위치에서'). 이 문장의 존재 이유가 곧 그 대비라, 수동 분기가 아니라 수동 조건이 발화 조건이다.",
   "whereAmI.ready": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
   "whereAmI.button": "위와 같음(수동이면 `manualButton`).",
   "ios.nearby.whereAmIAsOf": "위와 같음(수동이면 라벨 + `whereAmI.asOf`).",
