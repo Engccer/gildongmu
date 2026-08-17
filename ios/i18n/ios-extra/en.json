@@ -45,6 +45,7 @@
       "suggestion2": "Tell me arrivals at the nearest subway station",
       "suggestion3": "How's the air quality right now?",
       "suggestion4": "Any good places nearby to go with kids?",
+      "openPlace": "View details for {name}",
       "sending": "Sending",
       "emptyAnswer": "Couldn't prepare a response",
       "failed": "Couldn't get a response.",

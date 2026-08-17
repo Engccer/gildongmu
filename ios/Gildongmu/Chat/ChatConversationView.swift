@@ -42,6 +42,15 @@ struct ChatConversationView<EmptyContent: View>: View {
     /// 진행 중인 완료 포커스 시퀀스(400ms 가시화 대기 + 600ms 실패 감지 + 재시도).
     /// 새 답변 도착·뷰 이탈 시 취소해 옛 질문으로의 지연 대입 잔류를 막는다.
     @State private var completionFocusTask: Task<Void, Never>?
+    /// 채팅 안 장소 상세 시트(카드 활성화·산문 블록 커스텀 액션 공용 진입). item 기반이라
+    /// 다른 장소를 열면 시트 내용이 교체된다.
+    @State private var detailPlace: Place?
+    /// 상세 시트를 연 원점(카드 행·산문 블록)의 포커스 키. 시트가 닫히면 여기로 복원한다 —
+    /// 시트 소멸은 포커스를 쥔 화면이 통째로 바뀌는 전이라 방치하면 VO가 최상단으로
+    /// 이탈한다(헌장 §5). 키는 "card-<메시지>-<장소>" / "block-<메시지>-<블록>".
+    @AccessibilityFocusState private var focusedOriginKey: String?
+    @State private var pendingOriginKey: String?
+    @State private var originFocusTask: Task<Void, Never>?
 
     init(
         model: ChatModel,
@@ -75,8 +84,16 @@ struct ChatConversationView<EmptyContent: View>: View {
                             emptyContent()
                         }
                         ForEach(model.messages) { message in
-                            MessageBubbleView(message: message, focusedMessageID: $focusedMessageID)
-                                .id(message.id)
+                            MessageBubbleView(
+                                message: message,
+                                focusedMessageID: $focusedMessageID,
+                                focusedOriginKey: $focusedOriginKey,
+                                onOpenPlace: { place, originKey in
+                                    pendingOriginKey = originKey
+                                    detailPlace = place
+                                }
+                            )
+                            .id(message.id)
                         }
                         if let progress = model.progress {
                             // 진행 상태는 여기 한 곳(통지는 모델의 Announcement가 담당)
@@ -121,6 +138,11 @@ struct ChatConversationView<EmptyContent: View>: View {
             Divider()
             inputBar
         }
+        // 장소 상세: 표준 시트 + 닫기 버튼(장소 채팅 시트·안내 시트 "장소 상세 보기" 동형).
+        // 닫히면 연 원점(카드·블록)으로 포커스 복원 — 대입은 지연·검증·1회 재시도(정본 절차).
+        .sheet(item: $detailPlace, onDismiss: restoreOriginFocus) { place in
+            ChatPlaceDetailSheet(place: place)
+        }
         .onAppear {
             #if DEBUG
             installChatFocusObserverOnce()
@@ -143,6 +165,9 @@ struct ChatConversationView<EmptyContent: View>: View {
             // 완료 포커스 시퀀스도 폐기(화면을 떠난 뷰의 지연 포커스 대입 방지)
             completionFocusTask?.cancel()
             completionFocusTask = nil
+            originFocusTask?.cancel()
+            originFocusTask = nil
+            pendingOriginKey = nil
             guard cancelsOnDisappear else { return }
             model.cancel()
         }
@@ -290,6 +315,23 @@ struct ChatConversationView<EmptyContent: View>: View {
         }
     }
 
+    /// 상세 시트가 닫힌 뒤 연 원점으로 VO 커서를 되돌린다. 시트 dismiss 애니메이션이
+    /// 끝나기 전 대입은 조용히 되돌아가므로 400ms 뒤 대입, 600ms 뒤 검증·1회 재시도
+    /// (`runCompletionFocusSequence` 동형). 메시지 목록은 eager VStack이라 AX 컬링은 없다.
+    private func restoreOriginFocus() {
+        guard let key = pendingOriginKey else { return }
+        pendingOriginKey = nil
+        originFocusTask?.cancel()
+        originFocusTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            focusedOriginKey = key
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, focusedOriginKey != key else { return }
+            focusedOriginKey = key
+        }
+    }
+
     /// 초안(타이핑·잠금 확정분)에 새 전사를 공백 한 칸으로 병합. 공백뿐인 초안은 버린다.
     private func mergedDraft(with text: String) -> String {
         let typed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -319,6 +361,19 @@ struct ChatConversationView<EmptyContent: View>: View {
 private struct MessageBubbleView: View {
     let message: ChatMessage
     @AccessibilityFocusState.Binding var focusedMessageID: UUID?
+    /// 상세 시트 원점 복원용(카드 행·산문 블록). ChatConversationView 소유.
+    @AccessibilityFocusState.Binding var focusedOriginKey: String?
+    /// 장소 상세 열기(장소, 원점 포커스 키).
+    let onOpenPlace: (Place, String) -> Void
+
+    /// 이 답변의 카드 장소 — 산문 블록 커스텀 액션의 유일한 근거(장소 앵커 모드처럼
+    /// 서버가 카드를 생략하면 자연히 빈 배열이라 액션도 없다).
+    private var cardPlaces: [Place] {
+        message.renders.flatMap { render -> [Place] in
+            if case .places(let places) = render { return places }
+            return []
+        }
+    }
 
     var body: some View {
         VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 8) {
@@ -392,6 +447,12 @@ private struct MessageBubbleView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(blocks.indices, id: \.self) { index in
                         blockView(blocks[index])
+                            .modifier(PlaceMentionActions(
+                                mentions: chatPlaceMentions(in: blocks[index].text, places: cardPlaces),
+                                originKey: "block-\(message.id.uuidString)-\(index)",
+                                focusedOriginKey: $focusedOriginKey,
+                                onOpenPlace: onOpenPlace
+                            ))
                     }
                 }
             }
@@ -434,9 +495,19 @@ private struct MessageBubbleView: View {
     private func renderView(_ render: ChatRenderPayload) -> some View {
         switch render {
         case .places(let places):
+            // 카드 활성화 = 장소 상세(검색 탭 NavigationLink 래핑 동형 — 커스텀 액션은
+            // 라벨 안 PlaceRow의 것이 그대로 로터에 오른다). 시각은 정보 행 그대로(.plain).
             ForEach(places) { place in
-                PlaceRow(place: place)
-                    .padding(.vertical, 4)
+                let originKey = "card-\(message.id.uuidString)-\(place.id)"
+                Button {
+                    onOpenPlace(place, originKey)
+                } label: {
+                    PlaceRow(place: place)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityFocused($focusedOriginKey, equals: originKey)
             }
         case .addresses(let addresses):
             ForEach(addresses, id: \.roadAddr) { address in
@@ -511,6 +582,48 @@ private struct MessageBubbleView: View {
         case "source.tmap": return appLocalized("chat.source.tmap")
         case "source.tourapi": return appLocalized("chat.source.tourapi")
         default: return label
+        }
+    }
+}
+
+/// 산문 블록에 "○○ 상세 보기" 커스텀 액션을 단다. 블록은 여전히 한 접근성 객체로
+/// 한 번에 낭독되고, 장소가 셋이면 로터 액션이 셋이다 — 인라인 링크로 단락을 쪼개지
+/// 않는다(위원장 판정 2026-08-17). 언급 없는 블록엔 액션이 붙지 않는다.
+private struct PlaceMentionActions: ViewModifier {
+    let mentions: [Place]
+    let originKey: String
+    @AccessibilityFocusState.Binding var focusedOriginKey: String?
+    let onOpenPlace: (Place, String) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .accessibilityFocused($focusedOriginKey, equals: originKey)
+            // ⚠ 선언은 역순: VoiceOver 로터가 빌더 선언의 역순으로 노출된다(PlaceRow 실측).
+            // 산문 등장 순으로 들리도록 뒤집어 선언.
+            .accessibilityActions {
+                ForEach(Array(mentions.reversed())) { place in
+                    Button(appLocalized("ios.chat.openPlace", place.name)) {
+                        onOpenPlace(place, originKey)
+                    }
+                }
+            }
+    }
+}
+
+/// 채팅 안 장소 상세 시트: 닫기 버튼으로 채팅으로 돌아온다(ChatView 시트 툴바 동형).
+private struct ChatPlaceDetailSheet: View {
+    let place: Place
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            // 채팅 안에서 연 상세라 "물어보기"는 숨긴다(채팅 위 채팅 시트 순환 방지).
+            PlaceDetailView(place: place, showsChatEntry: false)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(appLocalized("actions.close")) { dismiss() }
+                    }
+                }
         }
     }
 }
