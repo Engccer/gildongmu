@@ -4,6 +4,7 @@
  * 출처(source)를 함께 반환한다. 도구 내부 실패는 호출자(agent-loop)가 흡수한다.
  */
 import type { ExecutionContext, ToolResult } from "./types";
+import type { PlaceSort } from "@/lib/types";
 import {
   barrierFreePlaceToPlace,
   kidsPlaceToPlace,
@@ -110,13 +111,17 @@ export async function executeFunction(
       // 장소 앵커 있으면 그 장소 기준, 없으면 현재 위치 — 다른 좌표 도구와 동일.
       // 좌표가 있으면 카카오가 거리순으로 정렬한다(없으면 정확도순).
       const anchor = anchorOf(ctx);
+      // LLM 오값("rating" 등)은 서버 throw로 번지지 않게 정확도순으로 흡수한다 — declaration
+      // enum이 "review" 하나뿐이라 정상 경로에선 여기 오지 않는다.
+      const sort: PlaceSort | undefined = args.sort === "review" ? "review" : undefined;
       const result = await searchPlaces({
         query,
         lang: ctx.dataLocale,
         lat: anchor?.lat,
         lng: anchor?.lng,
+        sort,
       });
-      return { data: placesToData(result.places), render: placesToRender(result.places), source: src };
+      return { data: placesToData(result.places), render: placesToRender(result.places, sort), source: src };
     }
     case "search_address": {
       const keyword = String(args.keyword ?? "");

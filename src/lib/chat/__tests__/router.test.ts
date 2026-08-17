@@ -125,6 +125,18 @@ describe("executeFunction — 실데이터 + render + source", () => {
     );
   });
 
+  it("search_places: sort=review를 searchPlaces에 넘기고 렌더에 싣는다", async () => {
+    const r = await executeFunction("search_places", { query: "길동 맛집", sort: "review" }, ctxKo);
+    expect(vi.mocked(searchPlaces)).toHaveBeenLastCalledWith(expect.objectContaining({ sort: "review" }));
+    expect(r.render).toEqual({ type: "places", places: expect.any(Array), sort: "review" });
+  });
+
+  it("search_places: 무효 sort는 정확도순으로 흡수(LLM 오값이 서버 throw로 번지지 않게)", async () => {
+    const r = await executeFunction("search_places", { query: "길동 맛집", sort: "rating" }, ctxKo);
+    expect(vi.mocked(searchPlaces)).toHaveBeenLastCalledWith(expect.objectContaining({ sort: undefined }));
+    expect(r.render).toEqual({ type: "places", places: expect.any(Array) });
+  });
+
   it("search_places: 위치 없으면 좌표 없이 검색(현행 동작)", async () => {
     await executeFunction("search_places", { query: "맥도날드" }, ctxNoLoc);
     expect(vi.mocked(searchPlaces)).toHaveBeenCalledWith(

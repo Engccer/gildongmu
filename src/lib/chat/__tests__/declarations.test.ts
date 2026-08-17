@@ -19,6 +19,27 @@ describe("availableDeclarations", () => {
     expect(availableDeclarations().some((d) => d.name === "search_places")).toBe(false);
   });
 
+  it("네이버 키가 있으면 search_places에 sort 속성이 실린다(인자 단위 게이트)", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    vi.stubEnv("NAVER_LOCAL_CLIENT_ID", "n");
+    vi.stubEnv("NAVER_LOCAL_CLIENT_SECRET", "s");
+    const { availableDeclarations } = await import("../declarations");
+    const d = availableDeclarations().find((x) => x.name === "search_places")!;
+    const props = (d.parametersJsonSchema as { properties: Record<string, unknown> }).properties;
+    expect(props.sort).toMatchObject({ enum: ["review"] });
+  });
+
+  it("네이버 키가 없으면 sort 속성이 없다(도구 자체는 카카오 게이트로 유지)", async () => {
+    vi.stubEnv("KAKAO_REST_API_KEY", "k");
+    vi.stubEnv("NAVER_LOCAL_CLIENT_ID", undefined);
+    vi.stubEnv("NAVER_LOCAL_CLIENT_SECRET", undefined);
+    const { availableDeclarations } = await import("../declarations");
+    const d = availableDeclarations().find((x) => x.name === "search_places")!;
+    const props = (d.parametersJsonSchema as { properties: Record<string, unknown> }).properties;
+    expect(props.sort).toBeUndefined();
+    expect(props.query).toBeDefined();
+  });
+
   it("juso 키 있으면 search_address 노출", async () => {
     vi.stubEnv("JUSO_CONFM_KEY", "j");
     const { availableDeclarations } = await import("../declarations");

@@ -2,11 +2,12 @@
  * provider 결과 → RenderPayload + LLM용 data. React/Next 비의존.
  */
 
-import type { Place, JusoAddress } from "@/lib/types";
+import type { Place, JusoAddress, PlaceSort } from "@/lib/types";
 import type { RenderPayload } from "./types";
 
-export function placesToRender(places: Place[]): RenderPayload {
-  return { type: "places", places };
+/** review일 때만 sort를 싣는다 — 그 외 페이로드는 종전과 동일(키 없음). */
+export function placesToRender(places: Place[], sort?: PlaceSort): RenderPayload {
+  return sort === "review" ? { type: "places", places, sort: "review" } : { type: "places", places };
 }
 
 /** LLM용: 상위 N건·핵심 필드만(토큰 절약). */

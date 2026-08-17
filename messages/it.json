@@ -37,7 +37,9 @@
     "placeCount": "{count} luoghi",
     "webCount": "{count} risultati web",
     "addressCount": "{count} indirizzi",
-    "askAi": "Chiedi all'IA"
+    "askAi": "Chiedi all'IA",
+    "sortByReview": "Ordina per recensioni Naver",
+    "sortByAccuracy": "Ordina per rilevanza"
   },
   "region": {
     "filterLabel": "Filtra per regione",
@@ -533,7 +535,8 @@
     },
     "webResults": {
       "heading": "Risultati web"
-    }
+    },
+    "reviewPlacesHeading": "{count} luoghi per recensioni Naver"
   },
   "placeChat": {
     "launch": "Chiedi informazioni su questo luogo",

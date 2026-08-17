@@ -10,30 +10,46 @@ import {
   hasWalkRouteKey,
   hasCarRouteKey,
   hasPerplexityKey,
+  hasNaverLocalKeys,
 } from "@/lib/env";
 
 interface GatedDeclaration {
-  declaration: FunctionDeclaration;
+  /** 함수형은 호출 시점의 키 상태로 선언을 조립한다(인자 단위 게이트용). */
+  declaration: FunctionDeclaration | (() => FunctionDeclaration);
   gate: () => boolean;
 }
 
-const DECLARATIONS: GatedDeclaration[] = [
-  {
-    gate: hasKakaoKey,
-    declaration: {
-      name: "search_places",
+/**
+ * search_places 선언. 도구의 존재는 카카오 키가, `sort` 인자는 네이버 키가 정한다 —
+ * 게이트가 둘로 갈리는 것이 정상이다(spec 2026-08-17 §5.1). 두 키 중 하나만 있는 상태가
+ * 실재하므로 하나로 합치면 死기능이나 호출 불가가 생긴다. 키가 없으면 인자 자체가 없어
+ * LLM이 리뷰순을 부를 수 없다(서버 throw에 도달하지 않는다).
+ */
+function buildSearchPlacesDeclaration(): FunctionDeclaration {
+  const properties: Record<string, unknown> = {
+    query: { type: "string", description: "검색 키워드" },
+  };
+  if (hasNaverLocalKeys()) {
+    properties.sort = {
+      type: "string",
+      enum: ["review"],
       description:
-        "키워드로 장소(상호·POI)를 검색한다. 예: '길동 카페', '강남역 맛집'. " +
-        "사용자가 특정 지명/상호를 찾을 때 사용.",
-      parametersJsonSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "검색 키워드" },
-        },
-        required: ["query"],
-      },
-    },
-  },
+        "\"review\" — 네이버 카페·블로그 리뷰 '개수'가 많은 순. " +
+        "⚠ 별점·평점·리뷰 수의 '값'은 제공되지 않는다(순서만). ⚠ 최대 5곳. " +
+        "⚠ 좌표를 쓰지 않으므로 query에 지역명을 반드시 포함할 것(예: '길동 맛집').",
+    };
+  }
+  return {
+    name: "search_places",
+    description:
+      "키워드로 장소(상호·POI)를 검색한다. 예: '길동 카페', '강남역 맛집'. " +
+      "사용자가 특정 지명/상호를 찾을 때 사용.",
+    parametersJsonSchema: { type: "object", properties, required: ["query"] },
+  };
+}
+
+const DECLARATIONS: GatedDeclaration[] = [
+  { gate: hasKakaoKey, declaration: buildSearchPlacesDeclaration },
   {
     gate: hasJusoKey,
     declaration: {
@@ -338,5 +354,7 @@ const DECLARATIONS: GatedDeclaration[] = [
 
 /** 게이트를 통과한 도구 선언만 반환 */
 export function availableDeclarations(): FunctionDeclaration[] {
-  return DECLARATIONS.filter((d) => d.gate()).map((d) => d.declaration);
+  return DECLARATIONS.filter((d) => d.gate()).map((d) =>
+    typeof d.declaration === "function" ? d.declaration() : d.declaration,
+  );
 }

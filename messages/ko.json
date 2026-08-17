@@ -37,7 +37,9 @@
     "placeCount": "장소 {count}건",
     "webCount": "웹 {count}건",
     "addressCount": "주소 {count}건",
-    "askAi": "AI에게 질문"
+    "askAi": "AI에게 질문",
+    "sortByReview": "네이버 리뷰순으로 보기",
+    "sortByAccuracy": "정확도순으로 보기"
   },
   "region": {
     "filterLabel": "지역으로 거르기",
@@ -533,7 +535,8 @@
     },
     "webResults": {
       "heading": "참고한 웹 결과"
-    }
+    },
+    "reviewPlacesHeading": "네이버 리뷰순 {count}곳"
   },
   "placeChat": {
     "launch": "이 장소에 관해 물어보기",
