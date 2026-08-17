@@ -11,6 +11,10 @@
 
 ## 2026-08-17
 
+### iOS 1.8 심사 제출 (빌드 15)
+
+20:10 KST `WAITING_FOR_REVIEW`. 1.7 아카이브 커밋(`45f1412`) 이후 107커밋 전수 판정 — 채팅 답변의 장소 상세 진입·말풍선 구획 헤딩·"내 주변" 전락 통지(D24)는 ko·en, 검색 리뷰순 정렬·걸음/칼로리 요약·안내 출발 좌표 정확도는 ko 게이트라 ko만. 대중교통 승차 추적 계열은 `experimentalGuidanceEnabled` 안이라 정식판에 진입점이 없어 전부 제외했다. **동작 및 피트니스 권한이 들어간 첫 버전**이지만 걸음(`CMPedometer`)·체중(`@AppStorage`) 모두 기기를 떠나지 않아 영양 라벨·`PrivacyInfo.xcprivacy`는 불변이고, 개인정보 처리방침에 `privacy.activity` 문단을 6로케일에 추가했으며 심사 노트에 `Motion & Fitness` 절을 넣었다(2,134자). 빌드 14는 버리고 15로 재업로드 — 노트 정정 뒤 `release-notes.json`이 앱 번들 리소스라 바이너리에 굳는다는 것을 업로드본 `.app`을 열어 확인했다. 노트·판정 정본은 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
+
 ### 네이버 리뷰순 정렬 (웹·iOS 검색 토글 + 채팅 인자)
 
 위원장 실사용 요청 "장소 검색을 리뷰·별점 순으로". 전 provider 실호출 결과 별점 **값**을 주는 소스는 없고 네이버 지역검색의 리뷰 개수순(`sort=comment`)만 실재해, 그 하나를 정직하게 노출한다 — 값 없음·최대 5건·좌표 무시(지역명은 질의에)라는 제약 3종을 그대로 사용자에게 전달한다. 서버 `PlaceSearchParams.sort`(`review`면 네이버 단독, 병합·거리 재정렬 없음, 키 부재는 throw) + `/api/places?sort=`; 웹·iOS 검색 결과 위 토글 하나(라벨 전환 "네이버 리뷰순으로 보기"↔"정확도순으로 보기"가 상태 신호, 재조회 중 포커스 유지, ko + 네이버 키일 때만); 채팅 `search_places`에 `sort` 인자(네이버 키 게이트) + 프롬프트 한 줄 + 렌더에 `sort`를 실어 iOS 카드 묶음 헤딩 "네이버 리뷰순 N곳"(웹은 캡션). 실호출 게이트 4축(`scripts/verify-naver-review-sort.mjs`)·A/B 3케이스 6/6 통과. CLI/MCP·영어·둘러보기 행 표기(E22)는 범위 밖. spec `docs/superpowers/specs/2026-08-17-naver-review-sort-design.md`.
