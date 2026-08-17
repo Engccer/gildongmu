@@ -61,7 +61,7 @@
 **Interfaces:**
 - Produces: `export type PlaceSort = "accuracy" | "review"`; `PlaceSearchParams.sort?: PlaceSort`; `searchPlaces({query, sort:"review", ...})`가 `provider:"naver-local"` 5건 이하 반환, 네이버 키 없으면 `throw new Error("리뷰순 정렬은 네이버 지역검색 키가 필요합니다")`.
 
-- [ ] **Step 1: 실패 테스트 — search-places.test.ts에 리뷰순 describe 추가**
+- [x] **Step 1: 실패 테스트 — search-places.test.ts에 리뷰순 describe 추가**
 
 ```ts
 // search-places.test.ts 상단 import에 추가
@@ -109,7 +109,7 @@ describe("searchPlaces (sort=review — 네이버 단독, spec §2·§3.1)", () 
 });
 ```
 
-- [ ] **Step 2: 실패 테스트 — naver-local.test.ts 신규**
+- [x] **Step 2: 실패 테스트 — naver-local.test.ts 신규**
 
 ```ts
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -154,9 +154,9 @@ describe("searchPlacesNaverLocal — sort 파라미터·오류 봉투", () => {
 });
 ```
 
-- [ ] **Step 3: 실행해 실패 확인** — `npx vitest run src/lib/__tests__/search-places.test.ts src/lib/providers/__tests__/naver-local.test.ts` → FAIL(`sort` 미전달·throw 없음).
+- [x] **Step 3: 실행해 실패 확인** — `npx vitest run src/lib/__tests__/search-places.test.ts src/lib/providers/__tests__/naver-local.test.ts` → FAIL(`sort` 미전달·throw 없음).
 
-- [ ] **Step 4: 구현**
+- [x] **Step 4: 구현**
 
 `src/lib/types.ts`:
 ```ts
@@ -208,9 +208,9 @@ with `interface NaverErrorEnvelope { errorCode: string; errorMessage?: string }`
 ```
 `searchPlaces` 주석에 한 줄: "리뷰순도 이 주석(annotateDistances)만 지난다 — 정렬 없음".
 
-- [ ] **Step 5: 테스트 통과 확인** — 위 두 파일 + `npx vitest run src/lib/__tests__/places-merge-ko.test.ts` PASS(기존 무수정).
+- [x] **Step 5: 테스트 통과 확인** — 위 두 파일 + `npx vitest run src/lib/__tests__/places-merge-ko.test.ts` PASS(기존 무수정).
 
-- [ ] **Step 6: 커밋**
+- [x] **Step 6: 커밋**
 ```bash
 git commit -- src/lib/types.ts src/lib/providers/naver-local.ts src/lib/providers/places.ts src/lib/__tests__/search-places.test.ts src/lib/providers/__tests__/naver-local.test.ts -m "feat(places): 리뷰순 정렬 축 — sort=review는 네이버 단독(sort=comment), 병합·거리 재정렬 없음, 키 부재는 throw"
 ```
@@ -227,7 +227,7 @@ git commit -- src/lib/types.ts src/lib/providers/naver-local.ts src/lib/provider
 **Interfaces:**
 - Produces: `parsePlacesQuery(sp: URLSearchParams): { ok: true; data: PlacesQuery } | { ok: false; message: string }`, `PlacesQuery.sort: PlaceSort`(기본 `"accuracy"`).
 
-- [ ] **Step 1: 실패 테스트**
+- [x] **Step 1: 실패 테스트**
 ```ts
 import { describe, expect, it } from "vitest";
 import { parsePlacesQuery } from "../places/query-schema";
@@ -251,10 +251,10 @@ describe("/api/places 쿼리 — sort 축(spec §3.2)", () => {
   });
 });
 ```
-- [ ] **Step 2: 실패 확인** — `npx vitest run src/app/api/__tests__/places-query.test.ts` → 모듈 없음.
-- [ ] **Step 3: 구현** — `query-schema.ts`에 route.ts의 `querySchema`를 이동하고 `sort: z.enum(["accuracy","review"]).default("accuracy")` 추가, `parsePlacesQuery`가 `safeParse` 결과를 `{ok,data}|{ok:false,message}`로 감싼다. route.ts는 `parsePlacesQuery(request.nextUrl.searchParams)`로 교체하고 `searchPlaces(parsed.data)`. 주석: "리뷰순에서 좌표는 거리 표기에만 쓰인다 — 순위에 영향 없음(spec §3.2)".
-- [ ] **Step 4: 통과 확인 + `npx vitest run src/app/api/__tests__/coord-param-usage.test.ts`**(가드가 새 파일의 `latParam` 사용을 인정하는지).
-- [ ] **Step 5: 커밋** `feat(api/places): sort 파라미터(accuracy|review) — 스키마 분리, 무효값 400`
+- [x] **Step 2: 실패 확인** — `npx vitest run src/app/api/__tests__/places-query.test.ts` → 모듈 없음.
+- [x] **Step 3: 구현** — `query-schema.ts`에 route.ts의 `querySchema`를 이동하고 `sort: z.enum(["accuracy","review"]).default("accuracy")` 추가, `parsePlacesQuery`가 `safeParse` 결과를 `{ok,data}|{ok:false,message}`로 감싼다. route.ts는 `parsePlacesQuery(request.nextUrl.searchParams)`로 교체하고 `searchPlaces(parsed.data)`. 주석: "리뷰순에서 좌표는 거리 표기에만 쓰인다 — 순위에 영향 없음(spec §3.2)".
+- [x] **Step 4: 통과 확인 + `npx vitest run src/app/api/__tests__/coord-param-usage.test.ts`**(가드가 새 파일의 `latParam` 사용을 인정하는지).
+- [x] **Step 5: 커밋** `feat(api/places): sort 파라미터(accuracy|review) — 스키마 분리, 무효값 400`
 
 ---
 
@@ -264,13 +264,13 @@ describe("/api/places 쿼리 — sort 축(spec §3.2)", () => {
 - Create: `scripts/verify-naver-review-sort.mjs`
 - Modify: spec §7 아래 "실호출 결과(2026-08-17)" 표.
 
-- [ ] **Step 1: 스크립트 작성** — `.env.local`에서 `NAVER_LOCAL_CLIENT_ID/SECRET` 로드(env 미설정 시 `.env.local` 파싱), 질의 `여의도 맛집`으로 4호출: `sort=random`·`sort=comment`(display=5)·`sort=bogus`·`sort=comment&start=6&display=10`. 판정 4축을 **각각 PASS/FAIL로 출력하고 하나라도 FAIL이면 exit 1**:
+- [x] **Step 1: 스크립트 작성** — `.env.local`에서 `NAVER_LOCAL_CLIENT_ID/SECRET` 로드(env 미설정 시 `.env.local` 파싱), 질의 `여의도 맛집`으로 4호출: `sort=random`·`sort=comment`(display=5)·`sort=bogus`·`sort=comment&start=6&display=10`. 판정 4축을 **각각 PASS/FAIL로 출력하고 하나라도 FAIL이면 exit 1**:
   1. `random` 상위 5건 이름 집합 ≠ `comment` 상위 5건 이름 집합
   2. `bogus` → `errorCode === "SE04"`
   3. `display=10` 요청 응답 items ≤ 5
   4. `start=6` 응답의 첫 항목 == `start=1` 응답의 첫 항목(페이지네이션 무시)
-- [ ] **Step 2: 실행** `node scripts/verify-naver-review-sort.mjs` → 4축 PASS. FAIL이면 spec §1 전제가 무너진 것 — 멈추고 spec으로 되돌아간다.
-- [ ] **Step 3: spec §7 아래에 결과 표(호출 시각·질의·두 정렬 상위 5·판정)를 남기고 커밋** `test(places): 네이버 리뷰순 실호출 게이트 스크립트 + 결과 기록`
+- [x] **Step 2: 실행** `node scripts/verify-naver-review-sort.mjs` → 4축 PASS. FAIL이면 spec §1 전제가 무너진 것 — 멈추고 spec으로 되돌아간다.
+- [x] **Step 3: spec §7 아래에 결과 표(호출 시각·질의·두 정렬 상위 5·판정)를 남기고 커밋** `test(places): 네이버 리뷰순 실호출 게이트 스크립트 + 결과 기록`
 
 ---
 
@@ -286,7 +286,7 @@ describe("/api/places 쿼리 — sort 축(spec §3.2)", () => {
 - Produces: `RenderPayload` `{ type: "places"; places: Place[]; sort?: "review" }`; `placesToRender(places, sort?: PlaceSort)`가 `sort==="review"`일 때만 `sort` 키를 싣는다(그 외 페이로드 불변 — 기존 `toEqual` 테스트 통과).
 - Consumes: Task 1의 `PlaceSort`, `hasNaverLocalKeys`.
 
-- [ ] **Step 1: 실패 테스트**
+- [x] **Step 1: 실패 테스트**
 ```ts
 // declarations.test.ts
 it("네이버 키가 있으면 search_places에 sort 속성이 실린다", async () => {
@@ -321,8 +321,8 @@ it("search_places: 무효 sort는 accuracy로(LLM 오값이 서버 throw로 번�
   expect(vi.mocked(searchPlaces)).toHaveBeenLastCalledWith(expect.not.objectContaining({ sort: "rating" }));
 });
 ```
-- [ ] **Step 2: 실패 확인** `npx vitest run src/lib/chat/__tests__/declarations.test.ts src/lib/chat/__tests__/render.test.ts src/lib/chat/__tests__/router.test.ts`
-- [ ] **Step 3: 구현**
+- [x] **Step 2: 실패 확인** `npx vitest run src/lib/chat/__tests__/declarations.test.ts src/lib/chat/__tests__/render.test.ts src/lib/chat/__tests__/router.test.ts`
+- [x] **Step 3: 구현**
   - `types.ts`: `| { type: "places"; places: Place[]; sort?: "review" }`
   - `render.ts`: `export function placesToRender(places: Place[], sort?: PlaceSort): RenderPayload { return sort === "review" ? { type: "places", places, sort: "review" } : { type: "places", places }; }`
   - `declarations.ts`: `GatedDeclaration.declaration: FunctionDeclaration | (() => FunctionDeclaration)`; search_places를 `buildSearchPlacesDeclaration()` 함수로 — `hasNaverLocalKeys()`면 `properties.sort = { type: "string", enum: ["review"], description: "\"review\" — 네이버 카페·블로그 리뷰 '개수'가 많은 순. ⚠ 별점·평점·리뷰 수의 '값'은 제공되지 않는다(순서만). ⚠ 최대 5곳. ⚠ 좌표를 쓰지 않으므로 query에 지역명을 반드시 포함할 것(예: '길동 맛집')." }`. `availableDeclarations`는 `typeof d.declaration === "function" ? d.declaration() : d.declaration`. 주석: 도구 존재는 카카오, 이 인자는 네이버가 정한다 — 게이트가 둘로 갈리는 것이 정상(spec §5.1).
@@ -330,8 +330,8 @@ it("search_places: 무효 sort는 accuracy로(LLM 오값이 서버 throw로 번�
   - `system-instruction.ts` [신뢰성] 뒤 한 줄: `` `- 별점·평점·리뷰 수를 물으면 그 값은 제공되지 않음을 밝히고, 대신 search_places의 sort "review"(네이버 리뷰 많은 순, 최대 5곳)를 제안하거나 호출하라. 지명이 없으면 위치를 먼저 확인해 query에 지역명을 넣어라.\n` `` (sort 속성이 없을 때 이 문장이 무의미해지지 않게 `hasNaverLocalKeys()` 조건부로 삽입).
   - `MessageBubble.tsx` case "places": `render.sort === "review"`면 `<p className="font-semibold">{tChat("reviewPlacesHeading", { count: render.places.length })}</p>` 를 `ResultList` 위에(웹 SourceList "출처 " 접두와 같은 역할 — 두 묶음 경계). `useTranslations("chat")` 훅은 RenderBlock 안에서.
   - `messages/*.json` `chat.reviewPlacesHeading`: ko `"네이버 리뷰순 {count}곳"`, en `"Top {count} by Naver reviews"`, es `"{count} lugares por reseñas de Naver"`, fr `"{count} lieux par avis Naver"`, it `"{count} luoghi per recensioni Naver"`, ja `"Naverレビュー順{count}件"`.
-- [ ] **Step 4: 통과 확인** + `npx vitest run src/lib/__tests__/i18n-messages.test.ts src/lib/chat`
-- [ ] **Step 5: 커밋** `feat(chat): search_places sort=review 인자(네이버 키 게이트) + 렌더 sort + 프롬프트 한 줄 + 웹 리뷰순 캡션`
+- [x] **Step 4: 통과 확인** + `npx vitest run src/lib/__tests__/i18n-messages.test.ts src/lib/chat`
+- [x] **Step 5: 커밋** `feat(chat): search_places sort=review 인자(네이버 키 게이트) + 렌더 sort + 프롬프트 한 줄 + 웹 리뷰순 캡션`
 
 ---
 
@@ -345,7 +345,7 @@ it("search_places: 무효 sort는 accuracy로(LLM 오값이 서버 throw로 번�
 **Interfaces:**
 - Produces: `PlaceSearch` prop `canSortByReview?: boolean`(page.tsx가 `hasNaverLocalKeys()` 전달). URL `?sort=review` 동기화(`replaceState`).
 
-- [ ] **Step 1: 실패 테스트(jsdom)** — `PlaceSearch.test.tsx`의 하네스(NextIntlClientProvider ko + geolocation stub)를 재사용하고 `fetch`를 스텁해 `/api/places` 호출 URL을 기록:
+- [x] **Step 1: 실패 테스트(jsdom)** — `PlaceSearch.test.tsx`의 하네스(NextIntlClientProvider ko + geolocation stub)를 재사용하고 `fetch`를 스텁해 `/api/places` 호출 URL을 기록:
 ```ts
 it("ko+키: 검색 후 토글이 뜨고, 누르면 sort=review로 재조회되며 라벨이 전환되고 포커스가 토글에 남는다", async () => {
   renderHome({ canSortByReview: true });
@@ -362,8 +362,8 @@ it("ko+키: 검색 후 토글이 뜨고, 누르면 sort=review로 재조회되�
 it("키 없음 또는 en 로케일이면 토글이 없다", ...); // canSortByReview=false / locale en 두 케이스
 it("재조회 중 토글은 disabled가 아니라 aria-disabled이고 재클릭은 무시된다", ...); // fetch를 pending으로 두고 두 번 클릭 → fetch 1회
 ```
-- [ ] **Step 2: 실패 확인**
-- [ ] **Step 3: 구현**
+- [x] **Step 2: 실패 확인**
+- [x] **Step 3: 구현**
   - state `const [sort, setSort] = useState<PlaceSort>("accuracy")`, `sortRef`(fetch가 최신값을 읽음), `sortInFlightRef = useRef(false)`, `keepFocusOnSortRef = useRef(false)`, `lastQueryRef`.
   - `performSearch`: URL에 `sort`(review면 set, 아니면 delete), fetch에 `sortRef.current === "review" ? "&sort=review" : ""`, `lastQueryRef.current = q`.
   - 마운트 effect: `params.get("sort") === "review"`면 `setSort("review"); sortRef.current="review"` **before** 자동검색.
@@ -383,8 +383,8 @@ async function toggleSort() {
   - 렌더(결과 컨테이너 **바로 앞**, live region 뒤 — 컨테이너는 loading 중 언마운트되므로 밖에 둬야 포커스가 산다): `{canSortByReview && dataLocale(locale) === "ko" && status.kind !== "idle" && (<button type="button" onClick={toggleSort} aria-disabled={status.kind === "loading" || undefined} className="mt-3 min-h-11 underline">{t(sort === "review" ? "search.sortByAccuracy" : "search.sortByReview")}</button>)}`
   - `page.tsx`: `canSortByReview={hasNaverLocalKeys()}` (import from `@/lib/env`).
   - messages: ko `sortByReview: "네이버 리뷰순으로 보기"`, `sortByAccuracy: "정확도순으로 보기"`; en `"Sort by Naver reviews"`/`"Sort by relevance"`; es `"Ordenar por reseñas de Naver"`/`"Ordenar por relevancia"`; fr `"Trier par avis Naver"`/`"Trier par pertinence"`; it `"Ordina per recensioni Naver"`/`"Ordina per rilevanza"`; ja `"Naverレビュー順で見る"`/`"関連度順で見る"`.
-- [ ] **Step 4: 통과 확인** `npx vitest run src/components/__tests__/PlaceSearch` + `npm run lint`
-- [ ] **Step 5: 커밋** `feat(web): 검색 결과 리뷰순 토글 — 라벨 전환이 상태 신호, 포커스 유지, ?sort=review 동기화`
+- [x] **Step 4: 통과 확인** `npx vitest run src/components/__tests__/PlaceSearch` + `npm run lint`
+- [x] **Step 5: 커밋** `feat(web): 검색 결과 리뷰순 토글 — 라벨 전환이 상태 신호, 포커스 유지, ?sort=review 동기화`
 
 ---
 
@@ -398,7 +398,7 @@ async function toggleSort() {
 **Interfaces:**
 - Produces: `public enum PlaceSort: String, Sendable { case accuracy, review }`; `SearchService.search(query:lat:lng:lang:includeWeb:sort:)`(기본 `.accuracy`, review면 `sort=review` 쿼리 추가); `SearchOutcome.placesProvider: String?`; `ChatRenderPayload.places([Place], sort: PlaceSort)`(디코더: `sort` 키 `"review"`면 `.review`, 없으면 `.accuracy`).
 
-- [ ] **Step 1: 실패 테스트(Swift Testing)**
+- [x] **Step 1: 실패 테스트(Swift Testing)**
 ```swift
 @Test func placesRender_decodesReviewSort() throws {
     let json = #"{"type":"places","places":[],"sort":"review"}"#.data(using: .utf8)!
@@ -408,10 +408,10 @@ async function toggleSort() {
 }
 @Test func placesRender_defaultsToAccuracy() throws { /* sort 키 없음 → .accuracy */ }
 ```
-- [ ] **Step 2: 실패 확인** `cd ios/GildongmuKit && swift test --filter ChatModelsTests`
-- [ ] **Step 3: 구현** — 위 인터페이스대로. `ChatRenderPayload` CodingKeys에 `sort` 추가; nearby 4종 투영 분기는 `.places(places, sort: .accuracy)`. `ChatConversationView` 3곳(`chatPlaceMentions` 추출·`renderHeading`·`renderView`)과 `ChatModel` 패턴을 `.places(let places, _)`로. `SearchService.search`: `if sort == .review { placesQuery.append(URLQueryItem(name: "sort", value: "review")) }`; `SearchOutcome`에 `placesProvider` 저장(`init` 기본값 nil).
-- [ ] **Step 4: 통과 확인** `swift test` 전체.
-- [ ] **Step 5: 커밋** `feat(ios-kit): PlaceSort 미러 — SearchService sort 쿼리, 채팅 렌더 sort 디코딩`
+- [x] **Step 2: 실패 확인** `cd ios/GildongmuKit && swift test --filter ChatModelsTests`
+- [x] **Step 3: 구현** — 위 인터페이스대로. `ChatRenderPayload` CodingKeys에 `sort` 추가; nearby 4종 투영 분기는 `.places(places, sort: .accuracy)`. `ChatConversationView` 3곳(`chatPlaceMentions` 추출·`renderHeading`·`renderView`)과 `ChatModel` 패턴을 `.places(let places, _)`로. `SearchService.search`: `if sort == .review { placesQuery.append(URLQueryItem(name: "sort", value: "review")) }`; `SearchOutcome`에 `placesProvider` 저장(`init` 기본값 nil).
+- [x] **Step 4: 통과 확인** `swift test` 전체.
+- [x] **Step 5: 커밋** `feat(ios-kit): PlaceSort 미러 — SearchService sort 쿼리, 채팅 렌더 sort 디코딩`
 
 ---
 
@@ -425,13 +425,13 @@ async function toggleSort() {
 - Consumes: Task 6 `PlaceSort`, `SearchService.search(sort:)`, `SearchOutcome.placesProvider`.
 - Produces: `SearchModel.sort: PlaceSort`, `SearchModel.canSortByReview: Bool`(`AppLanguage.dataLocale == "ko" && naverBackedSeen`; `naverBackedSeen`은 outcome.placesProvider ∈ {"merged","naver-local"}를 관측하면 세션 내 래치 — iOS는 서버 키를 모르므로 응답 provider가 키 보유의 유일한 관측 채널), `SearchModel.toggleSort()`(마지막 제출 질의로 재조회, `resultsRevision` 미증가 → 첫 행 착지 없음, 통지는 `announce()` 그대로).
 
-- [ ] **Step 1: 구현**
+- [x] **Step 1: 구현**
   - `SearchModel`: `private(set) var sort: PlaceSort = .accuracy`, `private var lastSubmittedQuery = ""`, `private(set) var naverBackedSeen = false`, `var canSortByReview: Bool { AppLanguage.dataLocale == "ko" && naverBackedSeen }`. `submit()`을 `submit(landFocus: Bool = true)`로 — 성공 후 `if landFocus { resultsRevision += 1 }`, `if let p = result.placesProvider, p == "merged" || p == "naver-local" { naverBackedSeen = true }`. `func toggleSort() { guard !isSearching, !lastSubmittedQuery.isEmpty else { return }; sort = sort == .review ? .accuracy : .review; query = lastSubmittedQuery; submit(landFocus: false) }`. `service.search(..., sort: sort)`.
   - `SearchView`: `if model.canSortByReview, model.outcome != nil { Button(appLocalized(model.sort == .review ? "search.sortByAccuracy" : "search.sortByReview")) { bucket = nil; region = nil; model.toggleSort() } }` — `if let outcome = model.outcome` 블록 **앞**(리뷰순 0건이어도 토글이 남아 되돌아갈 수 있다).
   - `ChatConversationView.renderHeading`: `case .places(let places, let sort) where !places.isEmpty: return sort == .review ? appLocalized("chat.reviewPlacesHeading", String(places.count)) : appLocalized("ios.chat.placesHeading", String(places.count))`.
   - `node ios/scripts/messages-to-xcstrings.mjs app` → 카탈로그 재생성, `node ios/scripts/check-xcstrings-keys.mjs`(있으면) 통과.
-- [ ] **Step 2: 빌드** `xcodebuildmcp` 또는 `xcodebuild -scheme Gildongmu -destination 'generic/platform=iOS Simulator' build` 성공.
-- [ ] **Step 3: 커밋** `feat(ios): 검색 리뷰순 토글(라벨 전환·포커스 유지) + 채팅 렌더 헤딩 "네이버 리뷰순 N곳"`
+- [x] **Step 2: 빌드** `xcodebuildmcp` 또는 `xcodebuild -scheme Gildongmu -destination 'generic/platform=iOS Simulator' build` 성공.
+- [x] **Step 3: 커밋** `feat(ios): 검색 리뷰순 토글(라벨 전환·포커스 유지) + 채팅 렌더 헤딩 "네이버 리뷰순 N곳"`
 
 ---
 
@@ -441,23 +441,23 @@ async function toggleSort() {
 - Create: `src/lib/__tests__/review-sort-drift.test.ts`
 - Modify: `src/__ab__/model-ab.spec.ts`
 
-- [ ] **Step 1: 드리프트 테스트** — 소스 스캔 3축: ① `src/lib/chat/types.ts`에 `sort?: "review"` ② Kit `ChatModels.swift`가 `sort` CodingKey와 `"review"` 리터럴을 디코드 ③ Kit `SearchService.swift`가 `URLQueryItem(name: "sort", value: "review")`를 보낸다. 실패 메시지에 어느 쪽을 고쳐야 하는지 명시.
-- [ ] **Step 2: A/B 하네스** — 라운드 기록에 `toolArgs: parts.filter(p=>p.functionCall).map(p=>({name, args}))` 추가(출력 JSON·요약표에 포함). `Case`에 `expectArg?: { tool: string; key: string; value: unknown }` 추가해 `argPass` 판정. 케이스 3종:
+- [x] **Step 1: 드리프트 테스트** — 소스 스캔 3축: ① `src/lib/chat/types.ts`에 `sort?: "review"` ② Kit `ChatModels.swift`가 `sort` CodingKey와 `"review"` 리터럴을 디코드 ③ Kit `SearchService.swift`가 `URLQueryItem(name: "sort", value: "review")`를 보낸다. 실패 메시지에 어느 쪽을 고쳐야 하는지 명시.
+- [x] **Step 2: A/B 하네스** — 라운드 기록에 `toolArgs: parts.filter(p=>p.functionCall).map(p=>({name, args}))` 추가(출력 JSON·요약표에 포함). `Case`에 `expectArg?: { tool: string; key: string; value: unknown }` 추가해 `argPass` 판정. 케이스 3종:
   - `21-리뷰순-지명`: `["여의도 맛집 리뷰 많은 순으로 알려줘"]`, expectAny `search_places`, expectArg `{tool:"search_places", key:"sort", value:"review"}`, judge "5곳 이내, 리뷰 수·별점 값 날조 없음, '리뷰 개수순'임을 밝히는가".
   - `22-별점요청`: `["이 근처 별점 높은 카페 추천해 줘"]`, expectAny `search_places`, judge "별점 값이 없음을 밝히는가, 리뷰순 대체 제안·호출을 하는가, 별점 날조 0".
   - `23-리뷰순-지명없음`: `["근처 맛집 리뷰순으로"]`(withLocation true), expectAny `search_places`, judge "query에 지역명(동·역명)을 넣었는가(도구 인자에서 확인) — 지명 없이 '맛집' 단독이면 실패".
-- [ ] **Step 3: 실측** `MODELS=gemini-3.6-flash REPS=2 ONLY=21,22,23 npm run test:ab` → `.ab-out/*.json`과 요약표를 읽고 판정 축 3종을 spec §7 아래에 기록. 축이 깨지면 그때만 systemInstruction 보강(최소 1문장, 재실측).
-- [ ] **Step 4: 게이트 전체** `npm run test:run` + `npm run lint` + `npm run build`.
-- [ ] **Step 5: 커밋** `test(review-sort): 웹↔Kit 드리프트 가드 + A/B 하네스 리뷰순 케이스·도구 인자 기록`
+- [x] **Step 3: 실측** `MODELS=gemini-3.6-flash REPS=2 ONLY=21,22,23 npm run test:ab` → `.ab-out/*.json`과 요약표를 읽고 판정 축 3종을 spec §7 아래에 기록. 축이 깨지면 그때만 systemInstruction 보강(최소 1문장, 재실측).
+- [x] **Step 4: 게이트 전체** `npm run test:run` + `npm run lint` + `npm run build`.
+- [x] **Step 5: 커밋** `test(review-sort): 웹↔Kit 드리프트 가드 + A/B 하네스 리뷰순 케이스·도구 인자 기록`
 
 ---
 
 ### Task 9: 리뷰·문서 분배·배포
 
-- [ ] **Step 1: 서브에이전트 리뷰 2종(spec-compliance + code-quality)** — 요구사항(spec + 이 플랜)과 diff(커밋 범위)만 넘긴다. 지적은 계층 대조 후 처리, 기각은 근거 기록.
-- [ ] **Step 2: 문서 분배** — `CHANGELOG.md` 항목(spec 링크), `PROGRESS.md` 상태 한 줄(검색·채팅 리뷰순 운영, iOS 다음 릴리스 대기), `CLAUDE.md` 통합 카탈로그 장소 검색 행에 함정 한 줄("리뷰순은 병합·재정렬·폴백 3금지, 렌더에 sort 필수"), `docs/BACKLOG.md` E22 착수 조건 문구는 유지. `PORTS.md`는 dodo에 장소 검색 리뷰순이 무의미(dodo는 네이버 미통합)라 미등록.
-- [ ] **Step 3: push + Vercel 자동 배포**, iOS 실기기 두 구성 배포(`./ios/deploy-device.sh`, `CONFIGURATION=Experimental ./ios/deploy-device.sh`).
-- [ ] **Step 4: 상태 보고** DONE / DONE_WITH_CONCERNS.
+- [x] **Step 1: 서브에이전트 리뷰 2종(spec-compliance + code-quality)** — 요구사항(spec + 이 플랜)과 diff(커밋 범위)만 넘긴다. 지적은 계층 대조 후 처리, 기각은 근거 기록.
+- [x] **Step 2: 문서 분배** — `CHANGELOG.md` 항목(spec 링크), `PROGRESS.md` 상태 한 줄(검색·채팅 리뷰순 운영, iOS 다음 릴리스 대기), `CLAUDE.md` 통합 카탈로그 장소 검색 행에 함정 한 줄("리뷰순은 병합·재정렬·폴백 3금지, 렌더에 sort 필수"), `docs/BACKLOG.md` E22 착수 조건 문구는 유지. `PORTS.md`는 dodo에 장소 검색 리뷰순이 무의미(dodo는 네이버 미통합)라 미등록.
+- [x] **Step 3: push + Vercel 자동 배포**, iOS 실기기 두 구성 배포(`./ios/deploy-device.sh`, `CONFIGURATION=Experimental ./ios/deploy-device.sh`).
+- [x] **Step 4: 상태 보고** DONE / DONE_WITH_CONCERNS.
 
 ---
 
