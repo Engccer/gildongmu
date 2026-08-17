@@ -24,9 +24,11 @@
 ```
 sort=random   1.미도인  2.정희IFC  3.모담어반  4.유주키친  5.트라가
 sort=comment  1.진주집  2.블루보틀  3.노티드   4.콘타이   5.호우섬
-sort=bogus  → 200 {"errorCode":"SE04","errorMessage":"부적절한 sort값입니다."}
-sort=rating → 200 {"errorCode":"SE04", …}
+sort=bogus  → 400 {"errorCode":"SE04","errorMessage":"Invalid sort value (부적절한 sort값입니다.)"}
+sort=rating → 400 {"errorCode":"SE04", …}
 ```
+
+(HTTP 상태는 구현 게이트 실측 2026-08-17로 정정 — 200이 아니라 **400**이다. provider의 `res.ok` 가드가 먼저 잡고, 200 봉투 가드는 방어로 남긴다.)
 
 ⚠ **`comment`는 별점이 아니라 카페·블로그 리뷰 *개수*다.** 맛의 순위가 아니라 화제성의 순위이고, 사용자에게 그렇게 말해야 한다.
 
@@ -149,6 +151,17 @@ sort: "review" — 네이버 카페·블로그 리뷰 '개수'가 많은 순.
 | 웹↔Kit | 드리프트 테스트 | 매 커밋 |
 
 ⚠ 실호출 게이트의 판정 술어를 헐겁게 두지 않는다(→ [[real-call-gate-weak-predicate]]). "200이 왔다"가 아니라 **"두 정렬의 상위 5건 집합이 다르다" + "무효값이 SE04로 거절된다"**를 함께 본다. 앞의 것만 보면 네이버가 정렬을 무시하고 매번 다른 결과를 주는 경우와 구분되지 않는다.
+
+### 7.1 실호출 게이트 결과 (2026-08-17, `node scripts/verify-naver-review-sort.mjs`, 질의 "여의도 맛집")
+
+| 축 | 관측 | 판정 |
+|---|---|---|
+| 두 정렬 상위 5건 집합 상이 | random: 미도인 파이낸스여의도·정희 IFC몰점·마사비스 더현대서울 팝업·모담 어반·유주키친 / comment: 진주집·블루보틀 여의도 카페·63뷔페 파빌리온·노티드 여의도IFC몰·콘타이 IFC몰점 | PASS |
+| 무효 sort 거절 | `sort=bogus` → HTTP 400 `SE04` | PASS |
+| 5건 캡 | `display=10` → items 5 | PASS |
+| `start` 무시 | `start=6` 첫 항목 == `start=1` 첫 항목(진주집) | PASS |
+
+스크립트는 4축 중 하나라도 FAIL이면 exit 1 — 재실행이 곧 재검증이다.
 
 ## 8. 설계 리뷰 게이트 판정
 
