@@ -455,7 +455,7 @@ export function PlaceSearch({
    * runSearch(폼 제출)와 첫 마운트 자동검색이 같은 경로를 공유하도록 분리했다.
    */
   const performSearch = useCallback(
-    async (rawQuery: string): Promise<{ count: number; errored: boolean }> => {
+    async (rawQuery: string): Promise<{ count: number; errored: boolean; stale?: boolean }> => {
       const q = rawQuery.trim();
       if (!q) return { count: 0, errored: false };
       // 위치는 마운트 시 이미 요청했다. 좌표가 들어와 있으면 결과가 가까운 순으로
@@ -491,11 +491,11 @@ export function PlaceSearch({
         const result = (await res.json()) as PlaceSearchResult;
         // stale(더 새로운 검색이 진행 중)은 errored 취급 — 이 검색의 폴백 판정을
         // 막고 최신 검색이 자기 폴백을 책임지게 한다(웹 이중 발사·stale 폴백 방지).
-        if (reqIdRef.current !== myId) return { count: 0, errored: true };
+        if (reqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
         setStatus({ kind: "done", result });
         return { count: result.places.length, errored: false };
       } catch {
-        if (reqIdRef.current !== myId) return { count: 0, errored: true };
+        if (reqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
         setStatus({ kind: "error" });
         // 에러는 "0건"과 다른 신호(인프라 장애 ≠ 장소 도메인 밖) — 폴백 억제.
         return { count: 0, errored: true };
@@ -613,7 +613,17 @@ export function PlaceSearch({
     setSort(next);
     keepFocusOnSortRef.current = true;
     try {
-      await performSearch(q);
+      const r = await performSearch(q);
+      // 재조회가 실패하면(stale 제외 — 그건 더 새 검색이 상태를 소유한다) 라벨·URL을
+      // 되돌린다: 라벨이 곧 상태 신호인데 실패한 정렬이 적용된 것처럼 남으면 거짓이 된다.
+      if (r.errored && !r.stale) {
+        sortRef.current = sort;
+        setSort(sort);
+        const url = new URL(window.location.href);
+        if (sort === "review") url.searchParams.set("sort", "review");
+        else url.searchParams.delete("sort");
+        window.history.replaceState(window.history.state, "", url);
+      }
     } finally {
       sortInFlightRef.current = false;
     }

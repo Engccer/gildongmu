@@ -137,6 +137,12 @@ describe("executeFunction — 실데이터 + render + source", () => {
     expect(r.render).toEqual({ type: "places", places: expect.any(Array) });
   });
 
+  it("search_places: 비-ko 데이터 로케일에선 sort=review를 정확도순으로 흡수(네이버 한국어 전용)", async () => {
+    const r = await executeFunction("search_places", { query: "gildong", sort: "review" }, { ...ctxKo, dataLocale: "en" as const });
+    expect(vi.mocked(searchPlaces)).toHaveBeenLastCalledWith(expect.objectContaining({ sort: undefined }));
+    expect(r.render).toEqual({ type: "places", places: expect.any(Array) });
+  });
+
   it("search_places: 위치 없으면 좌표 없이 검색(현행 동작)", async () => {
     await executeFunction("search_places", { query: "맥도날드" }, ctxNoLoc);
     expect(vi.mocked(searchPlaces)).toHaveBeenCalledWith(

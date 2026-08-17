@@ -47,11 +47,19 @@ final class SearchModel {
         submit(landFocus: false)
     }
 
+    /// 정렬 재조회의 장소 트랙이 실패하면 라벨(=상태 신호)이 실패한 정렬을 가리키지 않게
+    /// 되돌린다(웹 toggleSort 롤백 미러). 취소(stale)는 새 검색이 상태를 소유하므로 제외.
+    private func rollbackSortIfFailed(_ result: SearchOutcome, requested: PlaceSort) {
+        guard requested == sort, result.places.isFailed else { return }
+        sort = requested == .review ? .accuracy : .review
+    }
+
     func submit(landFocus: Bool = true) {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         searchTask?.cancel()   // 진행 중 검색 폐기: stale 응답 차단
         lastSubmittedQuery = trimmed
+        let requestedSort = sort
         isSearching = true
         searchTask = Task {
             // 권한이 이미 허용된 세션이면 좌표를 취득해 싣는다(캐시 우선, 팝업 없음).
@@ -70,6 +78,7 @@ final class SearchModel {
             outcome = result
             failed = result.allFailed && totalCount == 0
             isSearching = false
+            if !landFocus { rollbackSortIfFailed(result, requested: requestedSort) }
             if let provider = result.placesProvider, provider == "merged" || provider == "naver-local" {
                 naverBackedSeen = true
             }
