@@ -273,17 +273,18 @@ final class DirectionsModel {
         // awaitEffectiveLocation 동형) — "현재 위치"의 앱 전역 의미가 수동 위치일
         // 때는 통일돼야 하기 때문(F-B 재측위도 같은 이유로 동일 함수를 쓴다).
         var current: (lat: Double, lng: Double)?
-        // 이 조회의 출발지가 수동 위치였는지(안내 시작 사전 고지 근거). 로컬로만
-        // 들고 있다가 성공 경로에서 `results`와 같은 순간에만 인스턴스 프로퍼티에
-        // 커밋한다 — 커버리지 밖 등 중간 return에서 값만 먼저 서고 `results`는
-        // 여전히 nil인 조합이 관찰 가능한 채로 남지 않도록.
+        // 이 조회의 **출발지**가 수동 위치였는지(안내 시작 고지 근거 — 도착지만 현재
+        // 위치인 조회는 대상이 아니다: 안내 출발지는 그때도 실좌표라 화면과 어긋나는
+        // 것이 없다). 로컬로만 들고 있다가 성공 경로에서 `results`와 같은 순간에만
+        // 인스턴스 프로퍼티에 커밋한다 — 커버리지 밖 등 중간 return에서 값만 먼저
+        // 서고 `results`는 여전히 nil인 조합이 관찰 가능한 채로 남지 않도록.
         var usedManualOrigin = false
         if from == .current || to == .current {
             phase = .locating
             // 호출 직전 스냅샷(effectiveCoordinate 내부의 분기 판정과 같은 turn) —
             // 측위 대기 중(await) 수동 위치가 새로 켜지는 레이스에서 실제로는 GPS로
             // 받아온 좌표를 수동 기원으로 오분류하지 않는다.
-            usedManualOrigin = ManualLocationStore.shared.current != nil
+            usedManualOrigin = from == .current && ManualLocationStore.shared.current != nil
             do {
                 current = try await ManualLocationJudge.effectiveCoordinate(force: false)
                 // 좌표 해석 시점 선분기 — 현재 위치가 서비스 지역 밖이면 조회 자체를
@@ -629,17 +630,6 @@ struct DirectionsTabView: View {
                         && (briefFallbackVisible || !beacon.statusText.isEmpty)),
                    let tracked = trackedDestination {
                     Section {
-                        // 시작 전 사전 고지(정정 1~3): 차단하지 않고, 다음 스와이프에
-                        // 만나도록 버튼 바로 앞에 정적 텍스트로 둔다. 이미 추적 중이면
-                        // 재조회는 끝난 일이라 고지 대상이 아니다. ⚠ 도보·자동차 중
-                        // 하나라도 시작 가능하면 그쪽(ForEach 앞 통합 고지)이 이미
-                        // 담당하므로 여기서는 내지 않는다(fix 라운드 1 Important 1 —
-                        // 이 섹션은 briefFallbackVisible 외에도 실패 상태 표시로
-                        // 뜰 수 있어, 그 조건만으론 두 자리 중복이 남는다).
-                        if !beacon.isTracking, !walkGuideStartable, !carGuideStartable,
-                           let notice = manualOriginNoticeText {
-                            Text(notice).foregroundStyle(.secondary)
-                        }
                         // 이 버튼은 두 얼굴이다: 추적 중엔 중지 이중 방어(항상 유효),
                         // 비추적이면 간략 단독 시작(실험판 전용 — 정식판의 간략 상태는
                         // 세션이 경로를 잃었을 때의 내부 강등뿐이다, spec 2026-08-15
@@ -652,6 +642,7 @@ struct DirectionsTabView: View {
                                 : appLocalized("beacon.briefGuideStart")
                             ) {
                                 lastGuideStart = .fallback
+                                announceGuideStartIfManualOrigin()
                                 beacon.toggle(
                                     dest: tracked.dest, label: tracked.label, kind: .walk,
                                     accessible: model.stepFreeEnabled
@@ -702,18 +693,6 @@ struct DirectionsTabView: View {
                     }
                 }
                 if let results = model.results {
-                    // 시작 전 사전 고지(정정 1~3, fix 라운드 1 Important 1): 도보·자동차
-                    // 버튼이 각자의 수단 섹션에 있어 둘 다 성립하는 흔한 조합(도보 카카오
-                    // 성공 + 자동차 tmap 성공)에서 문장이 두 번 뜨던 것을 화면당 1회로
-                    // 합쳤다. 결과 섹션 전체보다 앞(E11 동적 순서와 무관하게 첫 섹션보다
-                    // 위)에 둬 순방향 스와이프가 어떤 시작 버튼보다도 먼저 이 문장을
-                    // 지나가게 한다 — accessibilityHint는 버튼에 포커스해야만 들려
-                    // "지나칠 수 있는" 위치라 기각했다.
-                    if let notice = manualOriginNoticeText, walkGuideStartable || carGuideStartable {
-                        Section {
-                            Text(notice).foregroundStyle(.secondary)
-                        }
-                    }
                     // A11 승격 고지 — 목적지 이름이 바뀌는 것을 침묵으로 넘기지 않는다.
                     // 정적 텍스트인 이유는 iOS가 조회 완료 시 포커스를 옮기지 않아
                     // 순방향 스와이프가 이 문장을 지나가기 때문이다(별도 통지를 더하면
@@ -739,6 +718,7 @@ struct DirectionsTabView: View {
                                let tracked = trackedDestination {
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
+                                    announceGuideStartIfManualOrigin()
                                     beacon.toggle(
                                         dest: tracked.dest, label: tracked.label, kind: .car,
                                         accessible: false
@@ -1140,34 +1120,30 @@ struct DirectionsTabView: View {
         return !walkGuideStartable && !carGuideStartable && transitGuideStartable == nil
     }
 
-    /// 안내 시작 전 사전 고지(정정 1~3 — 브리프 원안은 "차단"처럼 읽혔으나, 안내는
-    /// 수동 출발지로 만든 경로를 재사용하지 않고 실좌표로 재조회하므로(BeaconModel이
-    /// LocationService만 쓴다) 안내 자체는 정확하다. 달라지는 것은 "화면에서 본
-    /// 출발지"와 "안내가 실제로 쓰는 출발지"뿐이라 차단이 아니라 고지가 맞다).
+    /// 안내 시작의 직접 응답: 이 결과가 수동 위치에서 계산됐다면(`resultsUsedManualOrigin`,
+    /// 웹 originSource 미러 — 조회 뒤 수동 위치를 껐다 켰다 해도 화면의 경로가 어디서
+    /// 계산됐는지는 바뀌지 않는다) "지정한 위치가 아니라 현재 위치에서 시작한다"를 그
+    /// 순간에만 말한다(spec 2026-08-09 §4 "안내 시작 통지"). BeaconModel은 여전히
+    /// 실좌표만 쓰므로(소스 가드) 차단이 아니라 고지다.
     ///
-    /// 판정 축은 "지금 수동 위치가 켜져 있는가"가 아니라 **이 조회의 출발지가
-    /// 수동 위치였는가**다(`resultsUsedManualOrigin`, 웹 originSource 미러) —
-    /// 조회 뒤 수동 위치를 껐다 켰다 해도 화면에 보이는 이 경로가 실제로 어디서
-    /// 계산됐는지는 바뀌지 않는다.
+    /// 결과 화면 상시 정적 텍스트였던 종전 자리를 폐기한 이유(위원장 판정 2026-08-17):
+    /// 그 정보로 갈리는 행동은 안내 시작뿐이라, 안내를 시작하지 않는 사용자(실내에서
+    /// 미리 경로만 듣는 수동 위치의 주 용도)에겐 매 조회마다 지나가야 하는 잡음이었다.
     ///
-    /// 전달 수단은 정적 텍스트다(웹과 달리 iOS는 조회 완료 시 포커스를 옮기지
-    /// 않으므로 — 위원장 판정 2026-08-02 — 순방향 스와이프가 이미 이 문장을
-    /// 지나간다. 별도 Announcement를 더하면 같은 문장이 텍스트·통지 양쪽에서
-    /// 이중 낭독된다).
+    /// `.high`인 이유: 시작 즉시 추적 시트가 떠 포커스가 그리로 옮겨가고, 기본 우선순위
+    /// 통지는 그 착지 낭독에 잠식돼 무발화된다(CLAUDE.md "iOS 통지 우선순위" 판별선 —
+    /// 이 문장은 착지 라벨로 대체될 수 없다). 대중교통→도보 핸드오프(`startWalkHandoff`)는
+    /// 대상이 아니다 — 사용자 활성화가 아니고 그 세션은 이미 실좌표 위에서 돌고 있었다.
     ///
-    /// ⚠ 봉인 플래그를 보지 않는다(도보 졸업, spec 2026-08-15 §3.2) — 정식판에서 도보
-    /// 안내를 시작할 수 있게 된 순간부터 이 고지는 정식판 사용자에게 필요한 문장이다.
-    /// `experimentalGuidanceEnabled`로 치환하면 그 사용자만 고지 없이 안내를 시작한다.
-    ///
-    /// **화면당 1회다** — 도보·자동차가 동시에 성공하는 흔한 조합에서 수단별로
-    /// 반복하면 같은 문장을 두 번 듣는다(fix 라운드 1 Important 1). 이 문자열
-    /// 자체는 어느 자리에서 낼지 모르므로, 호출부 둘(간략 폴백 섹션 / 결과
-    /// ForEach 앞)이 **정확히 상호 배타**가 되도록 각자 `walkGuideStartable`·
-    /// `carGuideStartable`을 반대로 검사한다 — 하나라도 시작 가능하면 ForEach
-    /// 앞 자리가 담당하고, 폴백 섹션은 그때 내지 않는다.
-    private var manualOriginNoticeText: String? {
-        guard model.resultsUsedManualOrigin else { return nil }
-        return appLocalized("manualLocation.guideNeedsRealLocation")
+    /// ⚠ `beacon.toggle`은 추적 중이면 **정지**다(간략 폴백 버튼은 두 얼굴 — 추적 중엔
+    /// 라벨이 "중지"). 정지하는데 "시작합니다"는 오낭독이라 시작 경로에서만 말한다
+    /// (리뷰 검출). 가드를 호출부가 아니라 여기 두는 이유: 호출부 넷이 각자 검사하면
+    /// 하나가 빠진다.
+    private func announceGuideStartIfManualOrigin() {
+        guard !beacon.isTracking, model.resultsUsedManualOrigin else { return }
+        var message = AttributedString(appLocalized("manualLocation.guideStartsFromCurrent"))
+        message.accessibilitySpeechAnnouncementPriority = .high
+        AccessibilityNotification.Announcement(message).post()
     }
 
     private func applyResolvedFocus(_ target: DirectionsFieldTarget) {
@@ -1344,6 +1320,7 @@ struct DirectionsTabView: View {
                 if walkGuideStartable, let tracked = trackedDestination {
                     Button(appLocalized("beacon.guideStartWalk")) {
                         lastGuideStart = .walk
+                        announceGuideStartIfManualOrigin()
                         beacon.toggle(
                             dest: tracked.dest, label: tracked.label, kind: .walk,
                             accessible: model.stepFreeEnabled,
@@ -1369,6 +1346,7 @@ struct DirectionsTabView: View {
                     if walkGuideStartable, let tracked = trackedDestination {
                         Button(appLocalized("beacon.guideStartWalkShortest")) {
                             lastGuideStart = .walkShortest
+                            announceGuideStartIfManualOrigin()
                             beacon.toggle(
                                 dest: tracked.dest, label: tracked.label, kind: .walk,
                                 accessible: model.stepFreeEnabled, variant: .shortest

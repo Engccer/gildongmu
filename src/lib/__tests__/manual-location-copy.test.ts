@@ -16,7 +16,7 @@ const LOCALES = { ko, en, es, fr, it: it_, ja } as Record<string, Record<string,
 // 테스트 이름에 개수를 박지 않는다: 키가 늘 때마다 이름과 배열이 따로 놀았다.
 const KEYS = [
   "gps", "gpsNear", "locating", "gpsFailed", "manual", "manualUnverifiable",
-  "useGps", "autoCleared", "guideNeedsRealLocation", "pickTitle",
+  "useGps", "autoCleared", "guideStartsFromCurrent", "pickTitle",
 ];
 
 describe("manualLocation 문구", () => {
@@ -129,6 +129,8 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "manualLocation.gps": "표시줄 자신의 GPS 라벨. `manualLabel ?? …` 폴백 뒤라 수동 상태에서 도달 불가 — 이 파일이 스캔 대상이 된 것이 D20②의 요지이고, 대상이 되고 보니 분기는 이미 있었다.",
   "manualLocation.gpsNear": "위와 같음(주소 병기형).",
   "manualLocation.locating": "측위 진행 문구(조회 기준 선언 아님).",
+  "manualLocation.guideStartsFromCurrent":
+    "수동 위치 기준 결과에서 안내를 시작하는 순간의 고지 — 수동 상태에서 **의도적으로** GPS를 명명한다('지정한 위치가 아니라 현재 위치에서'). 이 문장의 존재 이유가 곧 그 대비라, 수동 분기가 아니라 수동 조건이 발화 조건이다.",
   "whereAmI.ready": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
   "whereAmI.button": "위와 같음(수동이면 `manualButton`).",
   "ios.nearby.whereAmIAsOf": "위와 같음(수동이면 라벨 + `whereAmI.asOf`).",

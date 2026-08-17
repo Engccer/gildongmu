@@ -237,7 +237,7 @@ describe("1. 자동차·대중교통·간략 단독 진입의 봉인이 유지�
 describe("2. 도보 경로는 플래그를 졸업했다", () => {
   // 항상 참인 상수를 남기지 않는 것이 이 방식의 관리 포인트다(spec §3.1). 도보
   // 선언이 다시 플래그를 보게 되면 정식판에서 도보 안내가 조용히 사라진다.
-  it.each(["walkGuideStartable", "manualOriginNoticeText"])(
+  it.each(["walkGuideStartable", "announceGuideStartIfManualOrigin"])(
     "%s 구현 본문에 봉인 플래그가 없다",
     (name) => {
       expect(declarationBody(directions(), name)).not.toContain(
@@ -246,18 +246,27 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     },
   );
 
-  it("manualOriginNoticeText 소비 지점이 봉인 플래그 아래에 있지 않다(G4)", () => {
-    // 선언 본문만 보면 소비 지점을 `experimentalGuidanceEnabled`로 감싸는 회귀를 못
-    // 잡는다 — 그때 정식판 사용자만 고지 없이 안내를 시작한다(spec §3.2). 각 소비
-    // 지점을 감싸는 모든 블록 머리말과 그 문장 자체에 플래그가 없어야 한다.
-    const sites = enclosingHeaders(directions(), "manualOriginNoticeText").filter(
-      // 선언 자체(`var manualOriginNoticeText`)는 소비 지점이 아니다.
-      (headers) => !/var\s+manualOriginNoticeText/.test(headers[0]),
+  it("사용자 시작 버튼의 세션 시작 호출은 전부 수동 위치 고지를 앞세운다(G4)", () => {
+    // 고지는 안내 시작의 직접 응답이라 시작 버튼 핸들러 안에 있다. 정식판 진입점
+    // (도보 추천·최단)이 고지 없이 시작하는 회귀는 선언 본문 검사로는 못 잡는다 —
+    // 각 `beacon.toggle(` 직전 몇 줄에 호출이 있어야 한다. 예외는 대중교통→도보
+    // 핸드오프(사용자 활성화가 아니고 그 세션은 이미 실좌표 위에 있었다)와
+    // `restart()`(정밀 위치 허용 뒤 같은 세션 재시작 — 처음 시작 때 이미 말했다).
+    const src = directions();
+    const lines = src.split("\n");
+    const toggles = lines
+      .map((line, i) => (line.includes("beacon.toggle(") ? i : -1))
+      .filter((i) => i >= 0);
+    expect(toggles.length).toBe(5);
+    const announced = toggles.filter((i) =>
+      lines.slice(Math.max(0, i - 3), i).some((l) => l.includes("announceGuideStartIfManualOrigin()")),
     );
-    expect(sites.length).toBeGreaterThanOrEqual(2);
-    for (const headers of sites) {
-      expect(headers.join("\n")).not.toContain("experimentalGuidanceEnabled");
-    }
+    // 5곳 중 핸드오프 1곳만 예외 — 나머지 넷(간략 폴백·자동차·도보 추천·도보 최단).
+    expect(announced.length).toBe(4);
+    const handoff = toggles.filter((i) => !announced.includes(i));
+    expect(lines.slice(Math.max(0, handoff[0] - 8), handoff[0]).join("\n")).toContain(
+      "startWalkHandoff",
+    );
   });
 
   it("구 플래그 realtimeGuidanceEnabled가 남아 있지 않다", () => {

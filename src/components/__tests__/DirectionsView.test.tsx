@@ -24,6 +24,15 @@ vi.mock("../VoiceRecordButton", () => ({ VoiceRecordButton: () => null }));
 vi.mock("../TransitRouteBriefing", () => ({ TransitRouteResult: () => null }));
 vi.mock("../WalkRouteBriefing", () => ({ WalkRouteResult: () => null }));
 vi.mock("../CarRouteBriefing", () => ({ CarRouteResult: () => null }));
+// 안내 진입점은 트리거 버튼과 시작 콜백만 흉내 낸다 — 이 스위트는 뷰의 통지 계약을
+// 보지 세션(useRouteGuide, jsdom에 geolocation 없음)을 보지 않는다.
+vi.mock("../DistanceBeacon", () => ({
+  DistanceBeacon: ({ triggerLabel, onStart }: { triggerLabel?: string; onStart?: () => void }) => (
+    <button type="button" onClick={() => onStart?.()}>
+      {triggerLabel}
+    </button>
+  ),
+}));
 
 import { DirectionsView } from "../DirectionsView";
 
@@ -264,7 +273,7 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     );
   });
 
-  it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 조회 완료 시 단일 live region이 실좌표 필요 안내까지 함께 발화한다", async () => {
+  it("수동 위치 출발지로 조회하면 역지오코딩 없이 그 좌표로 조회하고, 조회 완료 통지에는 고지를 싣지 않으며, 안내 시작 순간에만 '현재 위치에서 시작' 고지를 발화한다", async () => {
     setManualLocation({
       label: "길동 카페",
       lat: 37.5384,
@@ -298,15 +307,26 @@ describe("DirectionsView 수동 위치(manual location)", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
 
-    // 이 뷰의 단일 live region(role="status")이 조회 완료 시 자동 포커스 이동
-    // (첫 성공 heading)과 무관하게 발화 큐에 남는 유일한 채널이다 — 별도 정적
-    // 텍스트로 두면 자동 포커스가 도는 바로 그 성공 경로에서 못 듣는다(리뷰
-    // 발견). 이 assertion은 "같은 status 요소 안에 있는가"를 확인하므로,
-    // 별도 <p>로 되돌리면 이 요소의 textContent에 더는 담기지 않아 red가 난다.
+    // 조회 완료 통지는 요약뿐이다 — 수동 위치 고지를 결과 화면 상시 문장으로 두지
+    // 않는다(안내를 시작하지 않는 사용자에겐 매 조회 잡음, 위원장 판정 2026-08-17).
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toBe(
-        "readySummary guideNeedsRealLocation",
-      );
+      expect(screen.getByRole("status").textContent).toBe("readySummary");
+    });
+    // 고지의 자리는 안내 시작의 직접 응답이다. 그 정보로 갈리는 행동이 안내 시작뿐이라
+    // 그 순간에만 말한다(자동차 tmap 성공 → 시작 버튼 노출, DistanceBeacon 모크가
+    // 시작 콜백만 흉내 낸다). 시작→중지→재시작에도 같은 문장이 다시 발화돼야 한다 —
+    // 같은 문자열 재대입은 DOM이 안 바뀌어 침묵하므로 텍스트 노드가 새로 삽입돼야
+    // 한다(노드 정체성으로 판정).
+    fireEvent.click(screen.getByRole("button", { name: "guideStartCar" }));
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("guideStartsFromCurrent");
+    });
+    const firstNode = screen.getByRole("status").firstChild;
+    fireEvent.click(screen.getByRole("button", { name: "guideStartCar" }));
+    await waitFor(() => {
+      const status = screen.getByRole("status");
+      expect(status.textContent).toBe("guideStartsFromCurrent");
+      expect(status.firstChild).not.toBe(firstNode);
     });
     // 수동 좌표로 조회했다(GPS 아님) — awaitGeolocation 모크는 항상 error라
     // 실좌표 경로를 탔다면 이 조회 자체가 geoError로 끝나 route fetch가 없다.
