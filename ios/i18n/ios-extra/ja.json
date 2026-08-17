@@ -45,6 +45,7 @@
       "suggestion2": "近くの地下鉄駅の到着情報を教えて",
       "suggestion3": "今のPM2.5はどう?",
       "suggestion4": "近くに子どもと行ける場所はある?",
+      "openPlace": "{name}の詳細を見る",
       "sending": "送信中",
       "emptyAnswer": "回答を用意できませんでした",
       "failed": "回答を取得できませんでした。",

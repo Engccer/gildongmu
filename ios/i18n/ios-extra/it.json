@@ -45,6 +45,7 @@
       "suggestion2": "Dimmi gli arrivi della stazione della metro più vicina",
       "suggestion3": "Com'è la qualità dell'aria adesso?",
       "suggestion4": "Ci sono posti nelle vicinanze dove andare con i bambini?",
+      "openPlace": "Vedi dettagli di {name}",
       "sending": "Invio in corso",
       "emptyAnswer": "Impossibile preparare una risposta",
       "failed": "Impossibile ottenere una risposta.",

@@ -9,6 +9,10 @@ struct PlaceDetailView<DomainSection: View>: View {
     /// 문맥에서만 숨긴다 — 이미 그곳으로 안내 중이라 무의미하고, 누르면 시트 뒤
     /// 길찾기 폼을 조작해 보이지 않는 상태 변화를 만든다(스펙 2026-08-12 §2).
     var showsDirectionsEntry: Bool = true
+    /// "이 장소에 관해 물어보기" 노출 여부(기본 표시). 채팅 안에서 연 상세(카드·산문
+    /// 액션)에서만 숨긴다 — 채팅 위에 새 채팅 시트를 쌓는 재진입 순환 방지(채팅 카드
+    /// `PlaceRow`가 `onAskAbout: nil`로 같은 순환을 막는 것과 한 계약).
+    var showsChatEntry: Bool = true
     @ViewBuilder var domainSection: () -> DomainSection
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
@@ -51,7 +55,9 @@ struct PlaceDetailView<DomainSection: View>: View {
                 if kakaoPlaceId == nil, let link = place.link, let linkURL = URL(string: link) {
                     Link(appLocalized("place.homepage"), destination: linkURL)
                 }
-                Button(appLocalized("placeChat.launch")) { isChatPresented = true }
+                if showsChatEntry {
+                    Button(appLocalized("placeChat.launch")) { isChatPresented = true }
+                }
             }
 
             Section(appLocalized("ios.route.section")) {
@@ -170,9 +176,9 @@ struct PlaceDetailView<DomainSection: View>: View {
 
 /// 기존 호출처(`PlaceDetailView(place:)`) 무변경 컴파일용 편의 init — 도메인 섹션 없음.
 extension PlaceDetailView where DomainSection == EmptyView {
-    init(place: Place, showsDirectionsEntry: Bool = true) {
+    init(place: Place, showsDirectionsEntry: Bool = true, showsChatEntry: Bool = true) {
         self.init(
             place: place, showsDirectionsEntry: showsDirectionsEntry,
-            domainSection: { EmptyView() })
+            showsChatEntry: showsChatEntry, domainSection: { EmptyView() })
     }
 }

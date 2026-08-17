@@ -11,6 +11,13 @@ public enum ChatMarkdownBlock: Equatable, Sendable {
     case listItem(String)
     /// 단락(빈 줄로 구분, 내부 줄바꿈 보존).
     case paragraph(String)
+
+    /// 블록의 표시 텍스트(인라인 강조 마커 포함). 장소 언급 대응(`chatPlaceMentions`)의 입력.
+    public var text: String {
+        switch self {
+        case .heading(let t), .listItem(let t), .paragraph(let t): return t
+        }
+    }
 }
 
 /// 블록 마크다운을 파싱한다. 인라인 강조(`**`)는 건드리지 않고 각 블록 텍스트에 남긴다

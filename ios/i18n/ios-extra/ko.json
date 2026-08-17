@@ -45,6 +45,7 @@
       "suggestion2": "가까운 지하철역 도착 정보 알려줘",
       "suggestion3": "지금 미세먼지 어때?",
       "suggestion4": "근처에 아이랑 갈 만한 곳 있어?",
+      "openPlace": "{name} 상세 보기",
       "sending": "전송 중",
       "emptyAnswer": "답변을 준비하지 못했습니다",
       "failed": "답변을 가져오지 못했습니다.",
