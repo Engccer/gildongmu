@@ -113,7 +113,10 @@ export async function executeFunction(
       const anchor = anchorOf(ctx);
       // LLM 오값("rating" 등)은 서버 throw로 번지지 않게 정확도순으로 흡수한다 — declaration
       // enum이 "review" 하나뿐이라 정상 경로에선 여기 오지 않는다.
-      const sort: PlaceSort | undefined = args.sort === "review" ? "review" : undefined;
+      // 네이버는 한국어 전용이라 비-ko 데이터 로케일에선 리뷰순 축이 死기능(웹 §4.3 동형) —
+      // 정확도순으로 흡수한다.
+      const sort: PlaceSort | undefined =
+        args.sort === "review" && ctx.dataLocale === "ko" ? "review" : undefined;
       const result = await searchPlaces({
         query,
         lang: ctx.dataLocale,

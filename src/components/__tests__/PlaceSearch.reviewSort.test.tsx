@@ -37,6 +37,7 @@ describe("PlaceSearch — 리뷰순 토글", () => {
   const fetchUrls: string[] = [];
   let pending: Array<() => void> = [];
   let holdFetch = false;
+  let failReview = false;
 
   beforeEach(() => {
     localStorage.clear();
@@ -45,6 +46,7 @@ describe("PlaceSearch — 리뷰순 토글", () => {
     fetchUrls.length = 0;
     pending = [];
     holdFetch = false;
+    failReview = false;
     window.history.replaceState(null, "", "/");
     vi.stubGlobal("navigator", {
       geolocation: {
@@ -61,7 +63,10 @@ describe("PlaceSearch — 리뷰순 토글", () => {
       const body = url.includes("sort=review")
         ? { provider: "naver-local", query: "q", places: [place("리뷰1"), place("리뷰2")] }
         : { provider: "kakao-local", query: "q", places: [place("정확1")] };
-      const respond = () => new Response(JSON.stringify(body), { status: 200 });
+      const respond = () =>
+        failReview && url.includes("sort=review")
+          ? new Response(JSON.stringify({ error: "실패" }), { status: 502 })
+          : new Response(JSON.stringify(body), { status: 200 });
       if (!holdFetch) return Promise.resolve(respond());
       return new Promise<Response>((resolve) => pending.push(() => resolve(respond())));
     });
@@ -123,6 +128,18 @@ describe("PlaceSearch — 리뷰순 토글", () => {
     expect(reviewCalls).toBe(1);
     pending.forEach((r) => r());
     await screen.findByRole("button", { name: "정확도순으로 보기" });
+  });
+
+  it("리뷰순 재조회가 실패하면 라벨과 URL이 정확도순으로 되돌아간다(라벨=상태 신호)", async () => {
+    renderHome();
+    await submitQuery("길동 맛집");
+    const toggle = await screen.findByRole("button", { name: "네이버 리뷰순으로 보기" });
+    await screen.findByText("정확1");
+    failReview = true;
+    fireEvent.click(toggle);
+    await waitFor(() => expect(fetchUrls.some((u) => u.includes("sort=review"))).toBe(true));
+    await screen.findByRole("button", { name: "네이버 리뷰순으로 보기" });
+    await waitFor(() => expect(new URL(window.location.href).searchParams.has("sort")).toBe(false));
   });
 
   it("?sort=review 진입은 리뷰순으로 자동검색한다", async () => {
