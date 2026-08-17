@@ -61,7 +61,7 @@ private func chatFixtureLines() throws -> [String] {
         return
     }
     #expect(renders.count == 4)
-    guard case .places(let places) = renders[0] else { Issue.record("places 아님"); return }
+    guard case .places(let places, _) = renders[0] else { Issue.record("places 아님"); return }
     #expect(places[0].name == "스타벅스")
     guard case .addresses(let addresses) = renders[1] else { Issue.record("addresses 아님"); return }
     #expect(addresses[0].zipNo == "05398")
@@ -142,8 +142,22 @@ private func chatFixtureLines() throws -> [String] {
         Issue.record("done 디코딩 실패")
         return
     }
-    guard case .places(let places) = renders[0] else { Issue.record("places 아님"); return }
+    guard case .places(let places, _) = renders[0] else { Issue.record("places 아님"); return }
     #expect(places[0].name == "길동소아과")
     guard case .unsupported = renders[1] else { Issue.record("places 없는 nearby는 unsupported"); return }
     guard case .unsupported = renders[2] else { Issue.record("빈 places는 unsupported"); return }
+}
+
+@Test func placesRenderDecodesReviewSortAndDefaultsToAccuracy() throws {
+    // spec 2026-08-17 §5.3: sort는 review일 때만 실린다. 없으면 accuracy(종전 페이로드).
+    let review = #"{"type":"places","places":[],"sort":"review"}"#.data(using: .utf8)!
+    guard case .places(_, let sort) = try JSONDecoder().decode(ChatRenderPayload.self, from: review) else {
+        Issue.record("places 아님"); return
+    }
+    #expect(sort == .review)
+    let plain = #"{"type":"places","places":[]}"#.data(using: .utf8)!
+    guard case .places(_, let sort2) = try JSONDecoder().decode(ChatRenderPayload.self, from: plain) else {
+        Issue.record("places 아님"); return
+    }
+    #expect(sort2 == .accuracy)
 }

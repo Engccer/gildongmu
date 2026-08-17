@@ -15,7 +15,10 @@ public struct ChatSource: Decodable, Sendable, Hashable {
 /// props-driven 3종(places·addresses·web-results)만 파싱하고, self-fetch 파라미터
 /// 카드류와 미지 타입은 전부 .unsupported로 강등한다(산문이 정본, 계획서 렌더 정책).
 public enum ChatRenderPayload: Sendable {
-    case places([Place])
+    /// sort는 리뷰순(네이버)일 때 .review — 카드 묶음 헤딩이 "네이버 리뷰순 N곳"으로 갈리는
+    /// 유일한 재료(낭독은 선형이라 헤딩이 곧 경계, spec 2026-08-17 §5.3). 서버가 sort를
+    /// 싣지 않으면 .accuracy(종전 페이로드).
+    case places([Place], sort: PlaceSort)
     case addresses([JusoAddress])
     case webResults([WebSearchResult])
     case unsupported
@@ -23,14 +26,15 @@ public enum ChatRenderPayload: Sendable {
 
 extension ChatRenderPayload: Decodable {
     private enum CodingKeys: String, CodingKey {
-        case type, places, results
+        case type, places, results, sort
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         switch try container.decode(String.self, forKey: .type) {
         case "places":
-            self = .places(try container.decode([Place].self, forKey: .places))
+            let sort = try container.decodeIfPresent(String.self, forKey: .sort) == "review" ? PlaceSort.review : .accuracy
+            self = .places(try container.decode([Place].self, forKey: .places), sort: sort)
         case "addresses":
             self = .addresses(try container.decode([JusoAddress].self, forKey: .results))
         case "web-results":
@@ -41,7 +45,7 @@ extension ChatRenderPayload: Decodable {
         // 없으면(옛 서버) 종전대로 미표시.
         case "clinics-nearby", "kids-nearby", "surroundings-nearby", "barrier-free-nearby":
             if let places = try container.decodeIfPresent([Place].self, forKey: .places), !places.isEmpty {
-                self = .places(places)
+                self = .places(places, sort: .accuracy)
             } else {
                 self = .unsupported
             }
