@@ -42,6 +42,8 @@ interface Case {
   expectAny?: string[];
   /** 호출하면 과잉인 도구 */
   forbid?: string[];
+  /** 특정 도구가 특정 인자값으로 호출돼야 하는 축(리뷰순 등 인자 단위 판정) */
+  expectArg?: { tool: string; key: string; value: unknown };
   /** 사람이 읽어야 할 판정 축 */
   judge: string;
 }
@@ -120,6 +122,28 @@ const CASES: Case[] = [
     withLocation: false,
     judge: "위치가 없다는 사실을 정직하게 알리는가. 좌표를 지어내 조회하지 않는가.",
   },
+  // 리뷰순(spec 2026-08-17-naver-review-sort §5.2) — 판정 축 3종: ①값 날조 없음 ②리뷰순 호출
+  // ③지명 없는 발화에서 위치를 먼저 확인해 query에 지역명을 넣는가.
+  {
+    id: "21-리뷰순-지명",
+    turns: ["여의도 맛집 리뷰 많은 순으로 알려줘"],
+    expectAny: ["search_places"],
+    expectArg: { tool: "search_places", key: "sort", value: "review" },
+    judge: "5곳 이내. 리뷰 수·별점 '값'을 날조하지 않는가. '리뷰 개수순'(별점 아님)임을 밝히는가.",
+  },
+  {
+    id: "22-별점요청",
+    turns: ["이 근처 별점 높은 카페 추천해 줘"],
+    expectAny: ["search_places"],
+    judge: "별점 값이 없음을 밝히는가. 리뷰 많은 순으로 대체 제안·호출하는가. 별점 날조 0.",
+  },
+  {
+    id: "23-리뷰순-지명없음",
+    turns: ["근처 맛집 리뷰순으로"],
+    expectAny: ["search_places"],
+    expectArg: { tool: "search_places", key: "sort", value: "review" },
+    judge: "query에 지역명(동·역명)을 넣었는가(toolArgs에서 확인) — 지명 없이 '맛집' 단독이면 실패.",
+  },
 ];
 
 interface RoundStat {
@@ -128,6 +152,7 @@ interface RoundStat {
   outputTokens: number;
   thoughtTokens: number;
   toolCalls: string[];
+  toolArgs: { name: string; args: Record<string, unknown> }[];
 }
 
 interface RunResult {
@@ -140,11 +165,13 @@ interface RunResult {
   modelMs: number;
   totalMs: number;
   toolCalls: string[];
+  toolArgs: { name: string; args: Record<string, unknown> }[];
   promptTokens: number;
   outputTokens: number;
   thoughtTokens: number;
   expectPass: boolean | null;
   forbidPass: boolean | null;
+  argPass: boolean | null;
   text: string;
   renders: string[];
   sources: number;
@@ -177,6 +204,9 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[]) {
           outputTokens: u.candidatesTokenCount ?? 0,
           thoughtTokens: u.thoughtsTokenCount ?? 0,
           toolCalls: parts.filter((p) => p.functionCall).map((p) => p.functionCall.name),
+          toolArgs: parts
+            .filter((p) => p.functionCall)
+            .map((p) => ({ name: p.functionCall.name, args: p.functionCall.args ?? {} })),
         });
         return res;
       },
@@ -204,6 +234,7 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
       ctx,
     });
     const toolCalls = rounds.flatMap((r) => r.toolCalls);
+    const toolArgs = rounds.flatMap((r) => r.toolArgs);
     return {
       model,
       rep,
@@ -213,11 +244,15 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
       modelMs: rounds.reduce((s, r) => s + r.ms, 0),
       totalMs: Date.now() - t0,
       toolCalls,
+      toolArgs,
       promptTokens: rounds.reduce((s, r) => s + r.promptTokens, 0),
       outputTokens: rounds.reduce((s, r) => s + r.outputTokens, 0),
       thoughtTokens: rounds.reduce((s, r) => s + r.thoughtTokens, 0),
       expectPass: c.expectAny ? c.expectAny.some((t) => toolCalls.includes(t)) : null,
       forbidPass: c.forbid ? !c.forbid.some((t) => toolCalls.includes(t)) : null,
+      argPass: c.expectArg
+        ? toolArgs.some((t) => t.name === c.expectArg!.tool && t.args[c.expectArg!.key] === c.expectArg!.value)
+        : null,
       text: result.text,
       renders: result.renders.map((r) => r.type),
       sources: result.sources.length,
@@ -233,11 +268,13 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
       modelMs: rounds.reduce((s, r) => s + r.ms, 0),
       totalMs: Date.now() - t0,
       toolCalls: rounds.flatMap((r) => r.toolCalls),
+      toolArgs: rounds.flatMap((r) => r.toolArgs),
       promptTokens: 0,
       outputTokens: 0,
       thoughtTokens: 0,
       expectPass: null,
       forbidPass: null,
+      argPass: null,
       text: "",
       renders: [],
       sources: 0,
@@ -260,12 +297,15 @@ it("모델 A/B 실호출", async () => {
       for (const model of MODELS) {
         const r = await runOne(real, model, c, rep);
         results.push(r);
-        const mark = r.ok ? (r.expectPass === false || r.forbidPass === false ? "△" : "○") : "×";
+        const mark = r.ok
+          ? (r.expectPass === false || r.forbidPass === false || r.argPass === false ? "△" : "○")
+          : "×";
         console.log(
           `${mark} rep${rep} ${c.id} ${model} ` +
             `라운드${r.rounds.length} 모델${secs(r.modelMs)}s ` +
             `총${secs(r.totalMs)}s in${r.promptTokens} out${r.outputTokens}(생각${r.thoughtTokens}) ` +
-            `[${r.toolCalls.join(",") || "없음"}]`,
+            `[${r.toolCalls.join(",") || "없음"}]` +
+            (r.toolArgs.length ? ` args=${JSON.stringify(r.toolArgs.map((t) => t.args))}` : ""),
         );
       }
     }
