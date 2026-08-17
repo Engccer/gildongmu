@@ -4,6 +4,12 @@
  * 출처(source)를 함께 반환한다. 도구 내부 실패는 호출자(agent-loop)가 흡수한다.
  */
 import type { ExecutionContext, ToolResult } from "./types";
+import {
+  barrierFreePlaceToPlace,
+  kidsPlaceToPlace,
+  nightClinicToPlace,
+  surroundingPlaceToPlace,
+} from "@/lib/nearby-place";
 import { searchPlaces } from "@/lib/providers/places";
 import { searchJusoAddresses } from "@/lib/providers/juso-address";
 import { findAirQualityNear } from "@/lib/providers/air-quality";
@@ -146,7 +152,10 @@ export async function executeFunction(
         anchor.lat,
         anchor.lng,
       );
-      const render = ctx.placeAnchor ? undefined : ({ type: "clinics-nearby" } as const);
+      // 렌더의 places는 LLM에 준 것과 같은 5건 — 산문에 나올 수 있는 장소만 근거로.
+      const render = ctx.placeAnchor
+        ? undefined
+        : ({ type: "clinics-nearby", places: clinics.slice(0, 5).map(nightClinicToPlace) } as const);
       return {
         data: { count: total, basis, supplementFailed, clinics: clinics.slice(0, 5) },
         render,
@@ -159,7 +168,9 @@ export async function executeFunction(
       const gated = coverageGate(anchor);
       if (gated) return gated;
       const places = await searchBarrierFreeNearby(anchor.lat, anchor.lng);
-      const render = ctx.placeAnchor ? undefined : ({ type: "barrier-free-nearby" } as const);
+      const render = ctx.placeAnchor
+        ? undefined
+        : ({ type: "barrier-free-nearby", places: places.slice(0, 8).map(barrierFreePlaceToPlace) } as const);
       return { data: { count: places.length, places: places.slice(0, 8) }, render, source: src };
     }
     case "get_kids_places": {
@@ -168,7 +179,9 @@ export async function executeFunction(
       const gated = coverageGate(anchor);
       if (gated) return gated;
       const kids = await findKidsPlacesNear(anchor.lat, anchor.lng);
-      const render = ctx.placeAnchor ? undefined : ({ type: "kids-nearby" } as const);
+      const render = ctx.placeAnchor
+        ? undefined
+        : ({ type: "kids-nearby", places: kids.slice(0, 8).map(kidsPlaceToPlace) } as const);
       return { data: { count: kids.length, places: kids.slice(0, 8) }, render, source: src };
     }
     case "get_nearby_events": {
@@ -201,7 +214,9 @@ export async function executeFunction(
       const gated = coverageGate(anchor);
       if (gated) return gated;
       const around = await findSurroundingsNear(anchor.lat, anchor.lng);
-      const render = ctx.placeAnchor ? undefined : ({ type: "surroundings-nearby" } as const);
+      const render = ctx.placeAnchor
+        ? undefined
+        : ({ type: "surroundings-nearby", places: around.slice(0, 12).map(surroundingPlaceToPlace) } as const);
       return { data: { count: around.length, places: around.slice(0, 12) }, render, source: src };
     }
     case "get_walk_infrastructure": {

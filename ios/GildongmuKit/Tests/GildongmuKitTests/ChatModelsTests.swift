@@ -127,3 +127,23 @@ private func chatFixtureLines() throws -> [String] {
     let input = "안녕하세요. # 중간 해시 유지\n*기울임*은 리스트 아님"
     #expect(parseChatMarkdownBlocks(input) == [.paragraph(input)])
 }
+
+// nearby류 self-fetch 렌더에 서버가 실은 `places`(nearby-place.ts 투영)는 장소 카드로
+// 취급한다(BACKLOG B9). 없거나 비면 종전대로 .unsupported(옛 서버 호환).
+@Test func nearbyRendersWithPlacesDecodeAsPlaces() throws {
+    let line = #"""
+    {"type":"done","text":"t","renders":[
+      {"type":"clinics-nearby","places":[{"id":"A1","name":"길동소아과","category":"의원","address":"","roadAddress":"서울 강동구 천호대로 1","lat":37.5,"lng":127.1}]},
+      {"type":"kids-nearby"},
+      {"type":"surroundings-nearby","places":[]}
+    ],"sources":[]}
+    """#.replacingOccurrences(of: "\n", with: "")
+    guard case .done(_, let renders, _) = try decodeChatEventLine(line) else {
+        Issue.record("done 디코딩 실패")
+        return
+    }
+    guard case .places(let places) = renders[0] else { Issue.record("places 아님"); return }
+    #expect(places[0].name == "길동소아과")
+    guard case .unsupported = renders[1] else { Issue.record("places 없는 nearby는 unsupported"); return }
+    guard case .unsupported = renders[2] else { Issue.record("빈 places는 unsupported"); return }
+}

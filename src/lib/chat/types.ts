@@ -42,10 +42,12 @@ export type RenderPayload =
   | { type: "web-results"; results: WebSearchResult[] }         // <WebResults results/>
   // self-fetch 컴포넌트 마운트 — 파라미터만 (컴포넌트가 직접 fetch):
   | { type: "subway-nearby" }                                   // <SubwayArrivalsNearby/>
-  | { type: "clinics-nearby" }                                  // <NightClinicsNearby/>
-  | { type: "barrier-free-nearby" }                             // <BarrierFreeNearby autoLoad/>
-  | { type: "kids-nearby" }                                     // <KidsPlacesNearby/>
-  | { type: "surroundings-nearby" }                             // <SurroundingsNearby/>
+  // ⚠ 아래 4종의 `places`는 웹 컴포넌트가 쓰지 않는다(self-fetch). iOS가 카드 대신
+  // 산문 장소 언급 → 상세 진입의 근거로 쓴다(`nearby-place.ts` 투영, BACKLOG B9).
+  | { type: "clinics-nearby"; places?: Place[] }                // <NightClinicsNearby/>
+  | { type: "barrier-free-nearby"; places?: Place[] }           // <BarrierFreeNearby autoLoad/>
+  | { type: "kids-nearby"; places?: Place[] }                   // <KidsPlacesNearby/>
+  | { type: "surroundings-nearby"; places?: Place[] }           // <SurroundingsNearby/>
   | { type: "bus"; mode: "current" }
   | { type: "bus"; mode: "place"; lat: number; lng: number }    // <BusArrivals mode.../>
   | { type: "bike"; mode: "current" }
