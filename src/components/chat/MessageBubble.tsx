@@ -113,13 +113,24 @@ function RenderBlock({
   render: RenderPayload;
   onOpenPlace?: (place: Place) => void;
 }) {
+  const tChat = useTranslations("chat");
   switch (render.type) {
     case "places":
       return (
-        <ResultList
-          places={render.places}
-          onOpen={onOpenPlace ?? requestOpenPlace}
-        />
+        <>
+          {/* 리뷰순 묶음 캡션 — 정확도순 묶음과 한 답변에 공존할 때 낭독의 유일한 경계
+              (iOS renderHeading "네이버 리뷰순 N곳" 미러, spec 2026-08-17 §5.3). 정확도순
+              묶음은 종전대로 무캡션. */}
+          {render.sort === "review" && (
+            <p className="mt-2 font-semibold">
+              {tChat("reviewPlacesHeading", { count: render.places.length })}
+            </p>
+          )}
+          <ResultList
+            places={render.places}
+            onOpen={onOpenPlace ?? requestOpenPlace}
+          />
+        </>
       );
     case "addresses":
       return <ChatAddressResults addresses={render.results} />;

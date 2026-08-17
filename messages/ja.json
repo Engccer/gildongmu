@@ -37,7 +37,9 @@
     "placeCount": "場所 {count}件",
     "webCount": "ウェブ {count}件",
     "addressCount": "住所 {count}件",
-    "askAi": "AIに質問"
+    "askAi": "AIに質問",
+    "sortByReview": "Naverレビュー順で見る",
+    "sortByAccuracy": "関連度順で見る"
   },
   "region": {
     "filterLabel": "地域で絞り込む",
@@ -533,7 +535,8 @@
     },
     "webResults": {
       "heading": "参考にしたウェブ結果"
-    }
+    },
+    "reviewPlacesHeading": "Naverレビュー順{count}件"
   },
   "placeChat": {
     "launch": "この場所について質問する",

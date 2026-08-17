@@ -37,7 +37,9 @@ export interface ExecutionContext {
  */
 export type RenderPayload =
   // props-driven 재사용 (데이터 그대로):
-  | { type: "places"; places: Place[] }
+  // sort는 리뷰순(네이버 sort=comment)일 때만 실린다 — iOS 카드 묶음 헤딩이 "네이버 리뷰순
+  // N곳"으로 갈리는 유일한 재료(낭독은 선형이라 헤딩이 곧 경계, spec 2026-08-17 §5.3).
+  | { type: "places"; places: Place[]; sort?: "review" }
   | { type: "addresses"; results: JusoAddress[] }
   | { type: "web-results"; results: WebSearchResult[] }         // <WebResults results/>
   // self-fetch 컴포넌트 마운트 — 파라미터만 (컴포넌트가 직접 fetch):

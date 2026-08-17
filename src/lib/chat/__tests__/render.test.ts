@@ -21,6 +21,11 @@ describe("render 헬퍼", () => {
     expect(dig(d, "count")).toBe(1);
     expect(dig(d, "places", "0")).toEqual({ name: "길동 카페", category: "카페", address: "강동대로 1" });
   });
+  it("placesToRender는 review일 때만 sort를 싣는다(그 외 페이로드 불변)", () => {
+    expect(placesToRender([place], "review")).toEqual({ type: "places", places: [place], sort: "review" });
+    expect(placesToRender([place], "accuracy")).toEqual({ type: "places", places: [place] });
+  });
+
   it("placesToRender는 places 페이로드", () => {
     expect(placesToRender([place])).toEqual({ type: "places", places: [place] });
   });

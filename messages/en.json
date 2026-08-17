@@ -37,7 +37,9 @@
     "placeCount": "{count} places",
     "webCount": "{count} web results",
     "addressCount": "{count} addresses",
-    "askAi": "Ask AI"
+    "askAi": "Ask AI",
+    "sortByReview": "Sort by Naver reviews",
+    "sortByAccuracy": "Sort by relevance"
   },
   "region": {
     "filterLabel": "Filter by region",
@@ -533,7 +535,8 @@
     },
     "webResults": {
       "heading": "Web results"
-    }
+    },
+    "reviewPlacesHeading": "Top {count} by Naver reviews"
   },
   "placeChat": {
     "launch": "Ask about this place",
