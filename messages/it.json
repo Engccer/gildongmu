@@ -587,6 +587,7 @@
     "chat": "Nella chat IA, le domande, la conversazione, il luogo visualizzato e la posizione attuale vengono inviati a Google Gemini per generare le risposte. Le domande che richiedono una ricerca web vengono inviate anche a Perplexity. Le risposte sono generate dall'IA e possono essere imprecise.",
     "search": "I termini di ricerca vengono inviati a fornitori come Kakao e Naver, e alla ricerca web Perplexity solo quando non ci sono risultati di luoghi o indirizzi.",
     "dictation": "La dettatura nell'app iOS viene elaborata sul dispositivo: l'audio non lo lascia mai. La dettatura sul web invia l'audio a Deepgram per la trascrizione e non lo conserva.",
+    "activity": "Nell'app iOS, i passi mostrati all'arrivo con la guida pedonale e il peso inserito nelle Impostazioni sono usati solo sul dispositivo: non vengono trasmessi né conservati.",
     "analytics": "Il traffico web è misurato in forma anonima con Vercel Analytics. Non utilizza cookie e non memorizza informazioni che permettano di identificarti.",
     "contactHeading": "Contatto",
     "contact": "Per domande sul servizio o su questa informativa, scrivere a engccer@gmail.com."

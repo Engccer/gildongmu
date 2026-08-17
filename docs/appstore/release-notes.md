@@ -14,22 +14,55 @@
 
 ## 1.8 (빌드 14)
 
-**미제출 초안.** 1.7(빌드 13, `READY_FOR_SALE` 2026-08-16) 이후 iOS 사용자에게 보이는 변경을 쌓는다. 제출 시 포함 판정·아카이브 커밋·산출물 확인을 여기에 적는다.
+제출 준비. 기준은 1.7 아카이브 커밋 `45f1412`(빌드 13)이며 그 이후 107커밋을 전수 판정했다.
 
-⚠ **걸음·칼로리 요약은 ko 노트에만 적는다.** 도착 종료 화면은 도보 안내(ko 게이트) 끝에만 나오므로 비한국어 사용자는 도달할 수 없다(1.7 도보 안내와 같은 근거). 설정의 체중 항목은 모든 언어에 보이지만 그 값이 쓰이는 화면이 ko 전용이라 en 노트에 따로 적지 않는다.
+포함 판정 — Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 채팅 답변의 장소 → 상세 진입 | `8dd612c`·`0cf7b57`·`77c59c3`·`df077cf` | ko·en |
+| 말풍선 구획 헤딩(카드 묶음·출처) | `77c59c3` | ko·en |
+| 검색 리뷰순 정렬 | `3fff847`·`a0d8a2f`·`1a447e1` | ko만 |
+| 걸음·칼로리 요약 + 설정 체중 | `24c5938`·`17732b4`·`dd06f5c`·`2a6cf84`·`b108837`·`6a89b90`·`70d54c1` | ko만 |
+| 안내 출발 좌표 정확도 판정 | `036ae50` | ko만 |
+| 대중교통 브리핑 도보 구간 문장 | `bef6a43` | ko·en |
+
+제외 근거:
+
+- **대중교통 승차 추적 계열**(`612e380` A16 탑승 역 재선택·`be9ab25` 잔여 정거장 중복·`2741fc2`·`17e303c` 2호선 방향·`98fdb82`): `transitGuideStartable`이 `AppConfig.experimentalGuidanceEnabled` 가드 안이라(`DirectionsTabView.swift:1081`) **정식판에 진입점이 없다**. 커밋 메시지만 보면 사용자 가시 개선으로 읽히는 묶음이라 게이트를 코드에서 확인해야 걸러진다.
+- **음향신호기 BLE 진단**(`75abeab`): `#if DEBUG || EXPERIMENTAL`.
+- **서버·웹 전용**(`541045a` 국경 폴리곤·`8cc8cb4` OSM seed·`99baa63` finalApproach 등): push가 곧 배포라 1.7 사용자에게 이미 반영됐다.
+- 안내 모드 이름 삭제(`1e9df26`)·수동 위치 고지 이동(`0fcbdc2`·`7310c4f`)·도착 화면 상태 줄(`9aac05a`): 도보 안내 안의 문구 정리라 개별 항목으로 펴지 않는다.
+
+⚠ **걸음·칼로리 요약과 리뷰순 정렬은 ko 노트에만 적는다.** 도착 종료 화면은 도보 안내(ko 게이트) 끝에만 나오고, 리뷰순 토글은 `AppLanguage.dataLocale == "ko" && naverBackedSeen`이라(`SearchModel.swift:32`) 비한국어 사용자에게는 둘 다 존재하지 않는다. 설정의 체중 항목은 모든 언어에 보이지만 그 값이 쓰이는 화면이 ko 전용이라 en 노트에 따로 적지 않는다.
+
+⚠ **채팅 장소 상세 진입은 언어 게이트가 없다**(`ChatModel`은 `AppLanguage.current`를 요청 로케일로 넘길 뿐 기능을 막지 않는다). 1.7의 en 노트가 관용 문구였던 것과 달리 이번엔 en 사용자에게 실제로 보이는 변경이 있다.
+
+⚠ **동작 및 피트니스 권한이 새로 들어간 첫 버전이다.** 걸음 수는 `CMPedometer` 구간 질의로 읽고 체중은 `@AppStorage`라 **둘 다 기기를 떠나지 않는다** — 영양 라벨·`PrivacyInfo.xcprivacy`는 수집 항목이 늘지 않아 그대로이고(오디오 미신고와 같은 논리), 개인정보 처리방침에는 그 사실을 밝히는 문단(`privacy.activity`)을 6로케일에 더했다. 심사 노트에는 `Motion & Fitness` 절을 새로 넣고 1.7에서 `new in this version`이던 백그라운드 오디오 절의 그 표현을 뗐다.
 
 ### ko
 
 ```
 새로운 기능
+- AI 채팅 답변에 나온 장소를 눌러 장소 상세를 바로 열 수 있습니다. 소아 진료, 아이 놀 곳, 둘러보기, 무장애 정보를 물었을 때 나오는 답변에서도 됩니다.
+- 검색 결과를 네이버 리뷰순으로 볼 수 있습니다.
 - 도보 안내로 목적지에 도착하면 이번 구간에서 걸은 걸음 수와 소모 칼로리(추정)를 도착 화면에서 알려 드립니다. 설정에서 체중을 넣으면 칼로리 추정이 더 정확해집니다.
+
+개선
+- 채팅 답변에서 장소 묶음과 출처 앞에 제목이 붙어 스크린 리더로 건너뛰기 쉬워졌습니다.
+- 도보 안내를 시작할 때 출발 지점을 더 정확한 위치로 잡습니다.
+- 대중교통 브리핑의 도보 구간 안내 문장을 다듬었습니다.
 ```
 
 ### en
 
 ```
+New
+- Tap a place mentioned in a chat answer to open its details, including answers about pediatric clinics, places for kids, what's around you, and barrier-free information.
+
 Improved
-- Various fixes and refinements.
+- Chat answers now place headings before place cards and sources, so you can skip between them with a screen reader.
+- Refined the walking-leg wording in transit briefings.
 ```
 
 ---

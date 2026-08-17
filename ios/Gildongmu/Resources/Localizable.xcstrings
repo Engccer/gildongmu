@@ -25361,6 +25361,46 @@
         }
       }
     },
+    "privacy.activity": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 앱의 도보 안내 도착 화면에 표시하는 걸음 수와 설정에 입력한 체중은 기기 안에서만 사용하며 전송하거나 저장하지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the iOS app, the step count shown when you arrive with walking guidance and the body weight you enter in Settings are used only on your device; they are never transmitted or stored."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En la app de iOS, los pasos que se muestran al llegar con la guía peatonal y el peso corporal que introduces en Ajustes solo se usan en el dispositivo: no se envían ni se guardan."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dans l'app iOS, le nombre de pas affiché à l'arrivée avec le guidage piéton et le poids saisi dans les Réglages sont utilisés uniquement sur l'appareil : ils ne sont ni transmis ni conservés."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nell'app iOS, i passi mostrati all'arrivo con la guida pedonale e il peso inserito nelle Impostazioni sono usati solo sul dispositivo: non vengono trasmessi né conservati."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOSアプリの徒歩案内で到着したときに表示する歩数と、設定で入力した体重は端末内でのみ使用し、送信も保存もしません。"
+          }
+        }
+      }
+    },
     "privacy.analytics": {
       "localizations": {
         "ko": {
