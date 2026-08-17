@@ -35,6 +35,16 @@ extension ChatRenderPayload: Decodable {
             self = .addresses(try container.decode([JusoAddress].self, forKey: .results))
         case "web-results":
             self = .webResults(try container.decode([WebSearchResult].self, forKey: .results))
+        // 웹은 self-fetch 카드(타입만)이고, 서버가 iOS를 위해 같은 렌더에 공통 Place 투영
+        // (`nearby-place.ts`)을 `places`로 싣는다(2026-08-17, BACKLOG B9). 있으면 장소
+        // 카드로 취급해 카드·산문 장소 언급 → 상세 진입이 다른 장소 답변과 같아진다.
+        // 없으면(옛 서버) 종전대로 미표시.
+        case "clinics-nearby", "kids-nearby", "surroundings-nearby", "barrier-free-nearby":
+            if let places = try container.decodeIfPresent([Place].self, forKey: .places), !places.isEmpty {
+                self = .places(places)
+            } else {
+                self = .unsupported
+            }
         default:
             self = .unsupported
         }
