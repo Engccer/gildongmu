@@ -85,6 +85,7 @@ export async function searchPlaces(
 ): Promise<PlaceSearchResult> {
   const result = await pickPlacesProvider(params);
   // 거리 "표기"는 서버 일원화 — 정렬 없이 주석만(정확도순 전환, 스펙 §1).
+  // 리뷰순 결과도 이 주석만 지난다 — 재정렬하면 축이 그 자리에서 파괴된다.
   if (params.lat != null && params.lng != null) {
     return {
       ...result,
@@ -103,6 +104,15 @@ async function pickPlacesProvider(
   if (forced === "naver") return searchPlacesNaverLocal(params);
   if (forced === "tour") return searchPlacesTourApi(params);
   if (forced === "mock") return searchPlacesMock(params);
+  // 리뷰순은 병합하지 않는다(spec 2026-08-17 §2): 카카오를 뒤에 붙이면 6번째부터 축이
+  // 아닌데 낭독은 선형이라 경계가 안 들린다. 키가 없으면 소비자가 부르지 말았어야 할
+  // 요청 — 정확도순으로 조용히 폴백하면 사용자가 믿는 정렬과 다른 결과가 되므로 throw(§2.1).
+  if (params.sort === "review") {
+    if (!hasNaverLocalKeys()) {
+      throw new Error("리뷰순 정렬은 네이버 지역검색 키가 필요합니다");
+    }
+    return searchPlacesNaverLocal(params);
+  }
   if (params.lang === "en" && hasTourApiKey() && hasKakaoKey()) {
     return searchPlacesMergedEn(params);
   }

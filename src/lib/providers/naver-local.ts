@@ -27,6 +27,12 @@ interface NaverLocalItem {
   mapy: string;
 }
 
+/** 무효 파라미터(예: sort=rating)는 HTTP 200 + 이 봉투로 온다(실측 2026-08-17: SE04). */
+interface NaverErrorEnvelope {
+  errorCode: string;
+  errorMessage?: string;
+}
+
 interface NaverLocalResponse {
   total: number;
   start: number;
@@ -74,7 +80,14 @@ export async function searchPlacesNaverLocal(
 ): Promise<PlaceSearchResult> {
   const url = new URL(ENDPOINT);
   url.searchParams.set("query", params.query);
-  url.searchParams.set("display", String(Math.min(params.limit ?? 5, 5)));
+  // 리뷰순(sort=comment)은 네이버가 5로 캡하므로 limit을 이중으로 두지 않는다(spec §3.2).
+  // 미지정이면 sort 파라미터를 붙이지 않는다(기존 요청과 바이트 동일).
+  if (params.sort === "review") {
+    url.searchParams.set("sort", "comment");
+    url.searchParams.set("display", "5");
+  } else {
+    url.searchParams.set("display", String(Math.min(params.limit ?? 5, 5)));
+  }
 
   const res = await fetch(url, {
     headers: {
@@ -89,7 +102,13 @@ export async function searchPlacesNaverLocal(
     throw new Error(`네이버 지역 검색 실패: HTTP ${res.status}`);
   }
 
-  const data = (await res.json()) as NaverLocalResponse;
+  const data = (await res.json()) as NaverLocalResponse | NaverErrorEnvelope;
+  // 오류 봉투를 먼저 본다 — items가 없어 조용한 TypeError로 원인이 가려지지 않게.
+  if ("errorCode" in data) {
+    throw new Error(
+      `네이버 지역 검색 오류: ${data.errorCode} ${data.errorMessage ?? ""}`.trim(),
+    );
+  }
   return {
     places: data.items.map(normalizeItem),
     provider: "naver-local",
