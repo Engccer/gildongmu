@@ -11,6 +11,7 @@ import type {
   JusoAddress,
   Place,
   PlaceSearchResult,
+  PlaceSort,
   WebSearchResult,
 } from "@/lib/types";
 import type { LivePart } from "@/lib/search-sections";
@@ -90,6 +91,7 @@ export function PlaceSearch({
   canSearchWeb = false,
   canShowChat = false,
   canShowWalk = false,
+  canSortByReview = false,
 }: {
   isMockMode: boolean;
   /** 카카오 키가 있어 자동차 경로 텍스트 브리핑을 제공할 수 있는지 */
@@ -124,6 +126,8 @@ export function PlaceSearch({
   canShowChat?: boolean;
   /** Tmap 키가 있어 길찾기 뷰에 도보 수단을 제공할 수 있는지(뷰 자체는 무관하게 성립) */
   canShowWalk?: boolean;
+  /** 네이버 지역검색 키가 있어 결과 정렬을 리뷰순으로 바꿀 수 있는지(ko 로케일에서만 노출) */
+  canSortByReview?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -141,6 +145,14 @@ export function PlaceSearch({
   const [bucket, setBucket] = useState<CategoryBucket | null>(null);
   const [region, setRegion] = useState<RegionCode | null>(null);
   const [selected, setSelected] = useState<Place | null>(null);
+  // 정렬 축(spec 2026-08-17): review = 네이버 리뷰순 단독. sortRef는 fetch가 최신값을
+  // 읽는 통로(콜백 의존성에 넣지 않아 runQuerySearch 정체성을 흔들지 않는다).
+  const [sort, setSort] = useState<PlaceSort>("accuracy");
+  const sortRef = useRef<PlaceSort>("accuracy");
+  const sortInFlightRef = useRef(false);
+  // 정렬 전환 재조회는 포커스를 토글에 남긴다(첫 결과 착지 계약 비적용, spec §4.2).
+  const keepFocusOnSortRef = useRef(false);
+  const lastQueryRef = useRef("");
   // 길찾기 뷰 상태(null이면 닫힘). 상세와 같은 "같은 페이지 뷰 전환" 패턴.
   const [directions, setDirections] = useState<{
     from?: DirEndpoint;
@@ -449,12 +461,16 @@ export function PlaceSearch({
       // 위치는 마운트 시 이미 요청했다. 좌표가 들어와 있으면 결과가 가까운 순으로
       // 재정렬된다(없으면 provider 순서 유지).
       const myId = ++reqIdRef.current;
+      lastQueryRef.current = q;
       setBucket(null);
       setRegion(null);
       setStatus({ kind: "loading" });
-      // URL ?q= 동기화(공유·새로고침 보존)
+      // URL ?q=·?sort= 동기화(공유·새로고침 보존). 정렬 전환은 화면 전환이 아니라
+      // replaceState(뒤로가기 엔트리 없음).
       const url = new URL(window.location.href);
       url.searchParams.set("q", q);
+      if (sortRef.current === "review") url.searchParams.set("sort", "review");
+      else url.searchParams.delete("sort");
       window.history.replaceState(window.history.state, "", url);
       // LanguageSwitcher가 ?q= 변경을 즉시 반영하도록 통지(popstate는 안 뜸).
       window.dispatchEvent(new Event("gildongmu:locationchange"));
@@ -466,8 +482,10 @@ export function PlaceSearch({
           userCoords && isInKorea(userCoords.lat, userCoords.lng)
             ? `&lat=${userCoords.lat}&lng=${userCoords.lng}`
             : "";
+        // 리뷰순에서 좌표는 순위에 쓰이지 않고 거리 표기에만 쓰인다(서버 계약 그대로).
+        const sortQuery = sortRef.current === "review" ? "&sort=review" : "";
         const res = await fetch(
-          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}`,
+          `/api/places?query=${encodeURIComponent(q)}&lang=${dataLocale(locale)}${coordQuery}${sortQuery}`,
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const result = (await res.json()) as PlaceSearchResult;
@@ -581,6 +599,26 @@ export function PlaceSearch({
     ],
   );
 
+  /**
+   * 정렬 토글(spec 2026-08-17 §4): 마지막 제출 질의로 장소 섹션만 재조회한다(주소·웹은
+   * 정렬 축이 없다). 재조회 중 disabled 금지 — aria-disabled + 이 가드 + in-flight ref.
+   */
+  async function toggleSort() {
+    if (sortInFlightRef.current || status.kind === "loading") return;
+    const q = lastQueryRef.current;
+    if (!q) return;
+    sortInFlightRef.current = true;
+    const next: PlaceSort = sortRef.current === "review" ? "accuracy" : "review";
+    sortRef.current = next;
+    setSort(next);
+    keepFocusOnSortRef.current = true;
+    try {
+      await performSearch(q);
+    } finally {
+      sortInFlightRef.current = false;
+    }
+  }
+
   function runSearch() {
     if (status.kind === "loading") return;
     // 타이핑 검색 경로 — stale spokenQuery 초기화(이전 음성 질의가 로딩 메시지에
@@ -679,6 +717,11 @@ export function PlaceSearch({
     if (didAutoSearch.current) return;
     didAutoSearch.current = true;
     const params = new URLSearchParams(window.location.search);
+    // ?sort=review 복원은 자동검색보다 먼저(sortRef를 fetch가 읽는다).
+    if (params.get("sort") === "review") {
+      sortRef.current = "review";
+      queueMicrotask(() => setSort("review"));
+    }
     const q = params.get("q");
     if (q)
       queueMicrotask(() => {
@@ -719,7 +762,10 @@ export function PlaceSearch({
     if (placeSettled && addrSettled && webSettled && anyStarted) {
       if (!focusedForSearchRef.current) {
         focusedForSearchRef.current = true;
-        requestAnimationFrame(() => resultsHeadingRef.current?.focus());
+        // 정렬 전환 재조회는 사용자가 토글에 커서를 둔 채 일으킨 것 — 헤딩으로 옮기지
+        // 않는다(라벨 전환 + 건수 통지가 결과 신호).
+        if (keepFocusOnSortRef.current) keepFocusOnSortRef.current = false;
+        else requestAnimationFrame(() => resultsHeadingRef.current?.focus());
       }
     } else if (status.kind === "loading" || addrStatus.kind === "loading") {
       // 새 검색이 시작되면 다음 settled에서 다시 포커스하도록 리셋.
@@ -1048,6 +1094,21 @@ export function PlaceSearch({
             {t("recent.clearAll")}
           </button>
         </section>
+      )}
+
+      {/* 리뷰순 토글(spec 2026-08-17 §4.1): ko + 네이버 키일 때만. 라벨 전환이 곧 상태
+          신호. 결과 컨테이너 밖에 두는 이유 — 컨테이너는 loading 중 언마운트되어
+          포커스를 쥔 토글이 사라진다(포커스 유지 계약). 칩 행에 넣지 않는다(칩은 클라
+          필터, 이건 서버 재조회). */}
+      {canSortByReview && dataLocale(locale) === "ko" && status.kind !== "idle" && (
+        <button
+          type="button"
+          onClick={() => void toggleSort()}
+          aria-disabled={status.kind === "loading" || undefined}
+          className="mt-4 min-h-11 text-sm underline"
+        >
+          {t(sort === "review" ? "search.sortByAccuracy" : "search.sortByReview")}
+        </button>
       )}
 
       {/* 웹은 장소·주소와 병렬인 보조 보완 섹션이라, 장소가 에러/로딩이고 주소가

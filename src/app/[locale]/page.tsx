@@ -16,6 +16,7 @@ import {
   hasGeminiKey,
   hasPerplexityKey,
   hasWalkRouteKey,
+  hasNaverLocalKeys,
 } from "@/lib/env";
 
 // 홈이 로케일의 대표 URL — canonical·hreflang을 여기서만 선언한다
@@ -68,6 +69,7 @@ export default async function HomePage({
         canSearchWeb={hasPerplexityKey()}
         canShowChat={hasGeminiKey()}
         canShowWalk={hasWalkRouteKey()}
+        canSortByReview={hasNaverLocalKeys()}
       />
       <p className="mt-8 flex justify-center gap-6">
         <Link href="/about" className="underline min-h-11 inline-flex items-center">
