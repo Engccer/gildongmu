@@ -587,6 +587,7 @@
     "chat": "In AI chat, your questions, the conversation, the place you are viewing, and your current location are sent to Google Gemini to generate answers. Questions that need a web search are also sent to Perplexity. Answers are AI-generated and may be inaccurate.",
     "search": "Search terms are sent to search providers such as Kakao and Naver, and to Perplexity web search only when there are no place or address results.",
     "dictation": "Dictation in the iOS app is processed on your device, so audio never leaves it. Dictation on the web sends audio to Deepgram for transcription and does not store it afterwards.",
+    "activity": "In the iOS app, the step count shown when you arrive with walking guidance and the body weight you enter in Settings are used only on your device; they are never transmitted or stored.",
     "analytics": "Web traffic is measured anonymously with Vercel Analytics. It uses no cookies and stores no information that identifies you.",
     "contactHeading": "Contact",
     "contact": "For questions about the service or this policy, email engccer@gmail.com."
