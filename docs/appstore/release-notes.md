@@ -12,7 +12,7 @@
 
 ---
 
-## 1.8 (빌드 14)
+## 1.8 (빌드 15)
 
 제출 준비. 기준은 1.7 아카이브 커밋 `45f1412`(빌드 13)이며 그 이후 107커밋을 전수 판정했다.
 
@@ -25,7 +25,7 @@
 | 검색 리뷰순 정렬 | `3fff847`·`a0d8a2f`·`1a447e1` | ko만 |
 | 걸음·칼로리 요약 + 설정 체중 | `24c5938`·`17732b4`·`dd06f5c`·`2a6cf84`·`b108837`·`6a89b90`·`70d54c1` | ko만 |
 | 안내 출발 좌표 정확도 판정 | `036ae50` | ko만 |
-| 대중교통 브리핑 도보 구간 문장 | `bef6a43` | ko·en |
+| "내 주변" 전락 통지가 잠식되지 않게(D24) | `bef6a43` | ko·en |
 
 제외 근거:
 
@@ -33,6 +33,7 @@
 - **음향신호기 BLE 진단**(`75abeab`): `#if DEBUG || EXPERIMENTAL`.
 - **서버·웹 전용**(`541045a` 국경 폴리곤·`8cc8cb4` OSM seed·`99baa63` finalApproach 등): push가 곧 배포라 1.7 사용자에게 이미 반영됐다.
 - 안내 모드 이름 삭제(`1e9df26`)·수동 위치 고지 이동(`0fcbdc2`·`7310c4f`)·도착 화면 상태 줄(`9aac05a`): 도보 안내 안의 문구 정리라 개별 항목으로 펴지 않는다.
+- **대중교통 브리핑 도보 구간 문장(`bef6a43` D8)**: Kit 이관(`TransitWalkLegText`)이라 낭독 문장이 바뀌지 않는다. 같은 커밋 안에서 D24만 가시다 — 묶음 커밋은 항목별로 갈라 판정해야 한다(초안에서 이 항목을 "문장을 다듬었다"로 적었다가 이관임을 확인하고 뺐다).
 
 ⚠ **걸음·칼로리 요약과 리뷰순 정렬은 ko 노트에만 적는다.** 도착 종료 화면은 도보 안내(ko 게이트) 끝에만 나오고, 리뷰순 토글은 `AppLanguage.dataLocale == "ko" && naverBackedSeen`이라(`SearchModel.swift:32`) 비한국어 사용자에게는 둘 다 존재하지 않는다. 설정의 체중 항목은 모든 언어에 보이지만 그 값이 쓰이는 화면이 ko 전용이라 en 노트에 따로 적지 않는다.
 
@@ -51,7 +52,7 @@
 개선
 - 채팅 답변에서 장소 묶음과 출처 앞에 제목이 붙어 스크린 리더로 건너뛰기 쉬워졌습니다.
 - 도보 안내를 시작할 때 출발 지점을 더 정확한 위치로 잡습니다.
-- 대중교통 브리핑의 도보 구간 안내 문장을 다듬었습니다.
+- "내 주변" 목록을 위치 권한이나 정밀도 때문에 불러오지 못할 때, 그 이유를 놓치지 않고 읽어 드립니다.
 ```
 
 ### en
@@ -62,7 +63,7 @@ New
 
 Improved
 - Chat answers now place headings before place cards and sources, so you can skip between them with a screen reader.
-- Refined the walking-leg wording in transit briefings.
+- When a nearby list cannot load because of location permission or accuracy, the reason is now announced without being cut off.
 ```
 
 ---
