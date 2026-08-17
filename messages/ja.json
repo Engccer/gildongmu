@@ -950,7 +950,7 @@
     "manualUnverifiable": "指定した位置、{label}(位置確認不可)",
     "useGps": "現在地に戻す",
     "autoCleared": "移動を検知したため、指定した位置を解除しました",
-    "guideStartsFromCurrent": "指定した位置ではなく、現在地から案内を開始します",
+    "guideStartsFromCurrent": "現在地から案内を開始します",
     "pickTitle": "位置を指定",
     "addrNoCoord": "選択した住所に登録された座標がありません。"
   },

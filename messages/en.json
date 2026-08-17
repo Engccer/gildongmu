@@ -950,7 +950,7 @@
     "manualUnverifiable": "Set location, {label} (cannot verify)",
     "useGps": "Back to current location",
     "autoCleared": "Movement detected. The set location was cleared.",
-    "guideStartsFromCurrent": "Guidance starts from your current location, not the set location.",
+    "guideStartsFromCurrent": "Guidance starts from your current location.",
     "pickTitle": "Set your location",
     "addrNoCoord": "No coordinates are registered for that address."
   },

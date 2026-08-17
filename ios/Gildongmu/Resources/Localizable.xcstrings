@@ -23686,37 +23686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지정한 위치가 아니라 현재 위치에서 안내를 시작합니다"
+            "value": "현재 위치에서 안내를 시작합니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidance starts from your current location, not the set location."
+            "value": "Guidance starts from your current location."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guía comienza desde tu ubicación actual, no desde la ubicación establecida."
+            "value": "La guía comienza desde tu ubicación actual."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le guidage démarre depuis votre position actuelle, et non depuis la position définie."
+            "value": "Le guidage démarre depuis votre position actuelle."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guida parte dalla tua posizione attuale, non dalla posizione impostata."
+            "value": "La guida parte dalla tua posizione attuale."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "指定した位置ではなく、現在地から案内を開始します"
+            "value": "現在地から案内を開始します"
           }
         }
       }
