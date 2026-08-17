@@ -108,6 +108,8 @@ static let experimentalGuidanceEnabled = false
 | `briefFallbackVisible` | `experimentalGuidanceEnabled` | 단독 진입점은 봉인 유지 |
 | `manualOriginNoticeText` | **플래그 검사 삭제** | 진입점이 아니라 고지다 |
 
+> 갱신 2026-08-17: `manualOriginNoticeText`(결과 화면 상시 정적 고지)는 폐기되고 `announceGuideStartIfManualOrigin()`(안내 시작 버튼 핸들러의 `.high` 통지)으로 대체됐다(spec `2026-08-09-manual-location-design.md` §4 갱신 참조). 아래 불변식은 이름만 바뀐 채 그대로다 — 가드도 "사용자 시작 버튼의 `beacon.toggle` 직전에 그 호출이 있는가"로 옮겨 갔다.
+
 ⚠ **`manualOriginNoticeText`를 `experimentalGuidanceEnabled`로 치환하면 조용한 결함이 된다.** 그 문구는 "실시간 안내는 화면에 보이는 수동 출발지가 아니라 실제 위치를 쓴다"는 사전 고지인데, 정식판에서 도보 안내를 시작할 수 있게 된 순간부터 **정식판 사용자에게 필요한 문장**이 된다. 플래그를 그대로 옮기면 그 사용자만 고지 없이 안내를 시작한다.
 
 ### 3.3 간략 안내는 별도 모드가 아니라 세션 내부 상태다

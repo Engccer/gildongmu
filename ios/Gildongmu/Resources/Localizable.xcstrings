@@ -23681,42 +23681,42 @@
         }
       }
     },
-    "manualLocation.guideNeedsRealLocation": {
+    "manualLocation.guideStartsFromCurrent": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실시간 안내는 실제 위치가 필요합니다"
+            "value": "지정한 위치가 아니라 현재 위치에서 안내를 시작합니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Live guidance needs your actual location."
+            "value": "Guidance starts from your current location, not the set location."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guía en tiempo real necesita tu ubicación real."
+            "value": "La guía comienza desde tu ubicación actual, no desde la ubicación establecida."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Le guidage en temps réel nécessite votre position réelle."
+            "value": "Le guidage démarre depuis votre position actuelle, et non depuis la position définie."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "La guida in tempo reale richiede la tua posizione reale."
+            "value": "La guida parte dalla tua posizione attuale, non dalla posizione impostata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リアルタイム案内には実際の位置情報が必要です"
+            "value": "指定した位置ではなく、現在地から案内を開始します"
           }
         }
       }

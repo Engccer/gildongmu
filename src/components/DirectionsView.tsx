@@ -548,8 +548,10 @@ export function DirectionsView({
       // **옛 자리에서 출발하는 그럴듯한 경로**가 오므로 실패가 보이지 않는다.
       // `?dir=` 복원 경로도 같은 재측위를 탄다.
       let cur: Coord | null = null;
-      // "from"이 "현재 위치"였을 때 그 좌표의 출처(gps·manual). 안내 시작 버튼이
-      // 실좌표로 다시 조회한다는 것을 알려야 할지 판단하는 근거(§ guideNeedsRealLocation).
+      // "from"이 "현재 위치"였을 때 그 좌표의 출처(gps·manual). 안내 시작 순간
+      // "지정한 위치가 아니라 현재 위치에서 시작한다"를 알려야 할지 판단하는 근거
+      // (`announceGuideStart`). 도착지만 현재 위치인 조회는 대상이 아니다 — 안내
+      // 출발지는 그때도 실좌표라 화면과 어긋나는 것이 없다.
       let originSource: "gps" | "manual" | null = null;
       if (from.kind === "current" || to.kind === "current") {
         setPhase({ kind: "locating" });
@@ -720,12 +722,6 @@ export function DirectionsView({
   // 클릭이 무시돼(runQuery 첫 줄 가드) 스크린 리더 사용자가 멈춤으로 오인한다.
   const busy =
     phase.kind === "locating" || phase.kind === "loading" || stepFreeBusy;
-  // settled 요약 뒤에 "실시간 안내는 실제 위치가 필요합니다"를 붙인다(originSource가
-  // manual일 때만) — 조회 완료 시 이 문장 하나가 발화되고 곧이어 첫 성공 heading으로
-  // 포커스가 강제 이동하므로(§ requestAnimationFrame), 별도 정적 텍스트로 두면 SR
-  // 사용자가 그 자동 포커스 점프를 만드는 바로 그 시나리오(수동 위치 + 최소 1수단
-  // 성공)에서 이 문장을 절대 못 듣는다(리뷰 발견). 이 뷰의 단일 polite 채널에
-  // 합쳐야 포커스가 어디로 튀든 발화 큐에 남는다.
   // 요약 수치는 저장하지 않고 results에서 파생한다(A8 + 독립 리뷰 2026-08-11) —
   // phase에 successCount를 들고 다니면 outcomes만 바꾸는 경로(계단 회피 토글)마다
   // 동기화가 필요하고, 편집 경로가 results를 리셋하는 15초 창에서 낡은 클로저로
@@ -743,27 +739,37 @@ export function DirectionsView({
       : "";
   // A11 승격 고지도 같은 단일 polite 채널에 합친다. 결과 앞 정적 텍스트로 두면
   // settled 직후 첫 성공 heading으로 포커스가 강제 이동하므로(위 requestAnimationFrame)
-  // SR 순방향 탐색이 이미 지나친 자리가 되어 **목적지 이름이 바뀐 사실을 못 듣는다**
-  // (guideNeedsRealLocation이 같은 이유로 여기 있다). iOS는 조회 후 포커스를 옮기지
-  // 않아 정적 텍스트가 맞다 — 같은 선례가 플랫폼마다 다른 구현으로 귀결되는 자리다.
+  // SR 순방향 탐색이 이미 지나친 자리가 되어 **목적지 이름이 바뀐 사실을 못 듣는다**.
+  // iOS는 조회 후 포커스를 옮기지 않아 정적 텍스트가 맞다 — 같은 선례가 플랫폼마다
+  // 다른 구현으로 귀결되는 자리다.
   const entranceNotice = results?.promotedEntranceName
     ? t("entrancePromoted", { name: results.promotedEntranceName })
     : "";
   const phaseMessage =
     phase.kind === "settled"
-      ? [
-          settledSummary,
-          entranceNotice,
-          results?.originSource === "manual" ? tManual("guideNeedsRealLocation") : "",
-        ]
-          .filter(Boolean)
-          .join(" ")
+      ? [settledSummary, entranceNotice].filter(Boolean).join(" ")
       : phase.kind === "idle"
         ? ""
         : phase.kind === "outOfCoverage"
           ? tCommon("outOfCoverage")
           : t(phase.kind);
   const liveMessage = notice || phaseMessage;
+
+  // 안내 시작의 직접 응답: 이 결과가 수동 위치에서 계산됐다면 "지정한 위치가 아니라
+  // 현재 위치에서 시작한다"를 그 순간에만 말한다(spec 2026-08-09 §4 "안내 시작 통지").
+  // 조회 결과 화면에 상시 고지로 두지 않는 이유 — 그 정보로 갈리는 행동은 안내
+  // 시작뿐이라, 안내를 시작하지 않는 사용자(실내에서 미리 경로만 듣는 수동 위치의
+  // 주 용도)에겐 매 조회마다 지나가야 하는 잡음이었다(위원장 판정 2026-08-17).
+  // BeaconModel/useRouteGuide는 여전히 실좌표만 쓰므로(소스 가드) 차단이 아니라 고지다.
+  // ⚠ 같은 문장 재대입은 DOM이 안 바뀌어 침묵한다(시작→중지→재시작). 빈 값을 거치면
+  // 그 틈에 phaseMessage 폴백이 잠깐 노출되므로, 대신 live region 안 텍스트 노드를
+  // key로 갈아 끼워 "추가"로 게시한다(같은 문장이라도 새 노드는 additions 통지).
+  const [noticeSeq, setNoticeSeq] = useState(0);
+  function announceGuideStart() {
+    if (results?.originSource !== "manual") return;
+    setNotice(tManual("guideStartsFromCurrent"));
+    setNoticeSeq((n) => n + 1);
+  }
 
   function modeHeading(mode: ModeKey): string {
     if (mode === "transit") return tRoute("public");
@@ -1007,13 +1013,12 @@ export function DirectionsView({
         {t("submit")}
       </button>
 
-      {/* 이 뷰의 유일한 live region. 수단별 개별 통지 금지, 합산 1문장 — 수동 위치
-          기준 조회는 이 문장 안에 "실시간 안내는 실제 위치가 필요합니다"까지 실려
-          발화된다(phaseMessage). 별도 정적 텍스트를 두지 않는다 — 그 시나리오가
-          곧 자동 포커스 이동(첫 성공 heading) 조건과 겹쳐 놓치고, 두 곳에 같은
-          문장을 두면 회전자에서 이중 낭독된다. */}
+      {/* 이 뷰의 유일한 live region. 수단별 개별 통지 금지, 합산 1문장(phaseMessage).
+          보조 통지(notice — 최근 경로 조작·안내 시작 고지)는 같은 채널을 잠시 우선
+          점유한다. 별도 정적 텍스트를 두지 않는다 — 두 곳에 같은 문장을 두면
+          회전자에서 이중 낭독된다. */}
       <p aria-live="polite" role="status" className="mt-2 min-h-5 text-sm">
-        {liveMessage}
+        <span key={noticeSeq}>{liveMessage}</span>
       </p>
 
       {/* 최근 경로(스펙 2026-08-10 §1.3): 결과 없는 화면에서만 — 결과 아래 20행은 탐색 방해.
@@ -1083,6 +1088,7 @@ export function DirectionsView({
           kind="walk"
           accessible={stepFreeEnabled}
           startOnOpen
+          onStart={announceGuideStart}
           triggerLabel={tBeacon("briefGuideStart")}
         />
       )}
@@ -1117,6 +1123,7 @@ export function DirectionsView({
                     kind="walk"
                     accessible={stepFreeEnabled}
                     startOnOpen
+                    onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartWalk")}
                   />
                 )}
@@ -1127,6 +1134,7 @@ export function DirectionsView({
                     kind="car"
                     accessible={false}
                     startOnOpen
+                    onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
                   />
                 )}

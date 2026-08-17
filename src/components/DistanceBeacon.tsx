@@ -40,6 +40,7 @@ export function DistanceBeacon({
   startOnOpen = false,
   focusTriggerOnMount = false,
   triggerLabel,
+  onStart,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -62,6 +63,12 @@ export function DistanceBeacon({
    */
   focusTriggerOnMount?: boolean;
   triggerLabel?: string;
+  /**
+   * 트리거로 세션을 시작한 직후 1회(startOnOpen 전용). 호출부가 자기 채널로 시작
+   * 고지를 내는 자리다(길찾기 뷰의 수동 위치 고지) — 이 컴포넌트의 live region은
+   * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
+   */
+  onStart?: () => void;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -110,6 +117,7 @@ export function DistanceBeacon({
       guide.stop();
     } else if (startOnOpen) {
       guide.start();
+      onStart?.();
     }
     setOpen(!open);
   };

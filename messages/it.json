@@ -950,7 +950,7 @@
     "manualUnverifiable": "Posizione impostata, {label} (impossibile verificare)",
     "useGps": "Torna alla posizione attuale",
     "autoCleared": "Movimento rilevato. La posizione impostata è stata cancellata.",
-    "guideNeedsRealLocation": "La guida in tempo reale richiede la tua posizione reale.",
+    "guideStartsFromCurrent": "La guida parte dalla tua posizione attuale, non dalla posizione impostata.",
     "pickTitle": "Imposta la tua posizione",
     "addrNoCoord": "Nessuna coordinata registrata per questo indirizzo."
   },
