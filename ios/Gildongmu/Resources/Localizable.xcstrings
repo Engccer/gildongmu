@@ -22681,6 +22681,46 @@
         }
       }
     },
+    "ios.voice.deniedRecognition": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정에서 음성 인식을 허용해 주세요"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow speech recognition in Settings."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite el reconocimiento de voz en Ajustes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autorisez la reconnaissance vocale dans Réglages."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti il riconoscimento vocale nelle Impostazioni."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定で音声認識を許可してください"
+          }
+        }
+      }
+    },
     "ios.voice.errorAudio": {
       "localizations": {
         "ko": {
@@ -22797,6 +22837,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "この言語は音声認識に対応していません"
+          }
+        }
+      }
+    },
+    "ios.voice.errorOnDevice": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기는 이 언어의 온디바이스 음성 인식을 지원하지 않습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This device does not support on-device speech recognition for this language."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este dispositivo no admite el reconocimiento de voz en el dispositivo para este idioma."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet appareil ne prend pas en charge la reconnaissance vocale sur l'appareil pour cette langue."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questo dispositivo non supporta il riconoscimento vocale sul dispositivo per questa lingua."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このデバイスはこの言語のオンデバイス音声認識に対応していません"
           }
         }
       }

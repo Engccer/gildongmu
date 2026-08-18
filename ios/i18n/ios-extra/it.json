@@ -77,6 +77,8 @@
       "errorLocale": "Il riconoscimento vocale non è disponibile per questa lingua.",
       "errorAudio": "Il microfono non è disponibile. Controlla se un'altra app lo sta usando.",
       "errorDownload": "Impossibile preparare il riconoscimento vocale. Connettiti alla rete e riprova.",
+      "errorOnDevice": "Questo dispositivo non supporta il riconoscimento vocale sul dispositivo per questa lingua.",
+      "deniedRecognition": "Consenti il riconoscimento vocale nelle Impostazioni.",
       "paused": "Dettatura bloccata"
     },
     "search": {

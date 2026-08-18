@@ -77,6 +77,8 @@
       "errorLocale": "Speech recognition isn't available for this language.",
       "errorAudio": "The microphone isn't available. Check whether another app is using it.",
       "errorDownload": "Couldn't prepare speech recognition. Connect to the network and try again.",
+      "errorOnDevice": "This device does not support on-device speech recognition for this language.",
+      "deniedRecognition": "Allow speech recognition in Settings.",
       "paused": "Dictation locked"
     },
     "search": {
