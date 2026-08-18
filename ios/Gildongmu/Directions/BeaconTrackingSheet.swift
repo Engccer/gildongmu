@@ -46,6 +46,13 @@ struct BeaconTrackingSheet: View {
     /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
     /// 중지 버튼으로 되돌리는 근거(사용자가 누른 결과로 사라지는 경로만 결정론 처리).
     @State private var reroutePressed = false
+    /// 도착 화면 "체중 입력하기" → 설정 시트(표준 중첩 시트). 루트의 `openSettings`
+    /// 환경값을 쓰지 않는 이유: 이 시트가 떠 있는 동안 루트가 또 시트를 올리면 표시되지 않는다.
+    @State private var showsSettings = false
+    /// 체중을 입력하고 돌아오면 "체중 입력하기" 버튼(트리거)이 사라져 표준 dismiss의
+    /// 포커스 복원이 착지할 곳을 잃는다 — 그때 갱신된 요약 문장으로 선점 이동한다
+    /// (헌장 §5 "포커스를 쥔 요소를 제거하는 전이"; 라벨 변화가 곧 상태 신호).
+    @AccessibilityFocusState private var healthSummaryFocused: Bool
 
     var body: some View {
         // "더 보기" 가시화용 proxy(WhereAmIView 동형 래핑 — List는 화면 밖 행을
@@ -171,6 +178,14 @@ struct BeaconTrackingSheet: View {
         .task { await landStopFocus() }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
         .sheet(isPresented: $showRouteList) { RouteOverviewSheet(model: model) }
+        .sheet(isPresented: $showsSettings, onDismiss: {
+            model.recomputeArrivalHealth()
+            if model.arrivalHealth?.usedDefaultWeight == false {
+                Task { await landHealthSummaryFocus() }
+            }
+        }) {
+            SettingsView(focusWeightOnAppear: true)
+        }
         // 목적지 검색(스펙 §3): 최근 목록 포함 기존 시트 재사용. 세션이 죽었으면
         // changeDestination이 false를 돌려 폼도 건드리지 않는다(§3.2 확정 가드).
         .sheet(isPresented: $changeDestPresented) {
@@ -238,18 +253,26 @@ struct BeaconTrackingSheet: View {
                 model.arrivalPresumed ? "guide.arrivedPresumed" : "guide.arrived"
             ))
                 .accessibilityFocused($arrivedFocused)
-            // 걸음·칼로리 요약(spec 2026-08-17). 값이 없으면 행이 없다 — 부재를 설명하지
-            // 않는다. 한 줄 = 한 접근성 객체(joinText). 도착 낭독 문장에는 넣지 않는다.
+            // 걸음·칼로리 요약(spec 2026-08-17, 문장형·음식 비유는 2026-08-18 개정). 값이
+            // 없으면 행이 없다 — 부재를 설명하지 않는다. 걸음·칼로리·비유는 한 문단이라
+            // 한 접근성 객체(joinText). 도착 낭독 문장에는 넣지 않는다.
             if let health = model.arrivalHealth {
-                Text(joinText(
+                // 완결 문장끼리라 공백으로 잇는다(joinText의 쉼표는 라벨·값 조각용 — 마침표
+                // 뒤에 쉼표가 붙는다).
+                Text([
                     appLocalized(
                         "ios.beacon.healthSummary",
                         Self.decimal.string(from: NSNumber(value: health.steps)) ?? "\(health.steps)",
                         "\(health.kcal)"),
-                    health.usedDefaultWeight
-                        ? appLocalized("ios.beacon.healthDefaultWeight", "\(Int(WalkHealth.defaultWeightKg))")
-                        : nil
-                ))
+                    Self.foodLine(kcal: health.kcal),
+                ].compactMap { $0 }.joined(separator: " "))
+                    .accessibilityFocused($healthSummaryFocused)
+                // 체중 미입력자에게만: 기준값 고지 + 설정으로 가는 버튼(입력한 사람에겐
+                // 이 두 줄이 없다 — 이미 아는 것을 다시 말하지 않는다).
+                if health.usedDefaultWeight {
+                    Text(appLocalized("ios.beacon.healthWeightNotice", "\(Int(WalkHealth.defaultWeightKg))"))
+                    Button(appLocalized("ios.beacon.healthEnterWeight")) { showsSettings = true }
+                }
             }
             SurroundingsSceneSection(
                 anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
@@ -266,6 +289,33 @@ struct BeaconTrackingSheet: View {
         }
     }
 
+    /// 칼로리 → 음식 비유 문장. 판정은 Kit `WalkHealth.foodComparison`(비율 최근접), 여기는
+    /// 키를 문자열 리터럴로만 잇는다(check-xcstrings-keys 린터 계약 — 동적 조립 금지).
+    /// 사다리에 항목을 더하면 이 switch도 함께 늘린다(누락은 default가 nil로 삼킨다).
+    static func foodLine(kcal: Int) -> String? {
+        guard let food = WalkHealth.foodComparison(kcal: kcal) else { return nil }
+        if food.count > 1 {
+            switch food.key {
+            case "ramyeon": return appLocalized("ios.beacon.food.ramyeonMany", "\(food.count)")
+            default: return nil
+            }
+        }
+        switch food.key {
+        case "cherryTomato": return appLocalized("ios.beacon.food.cherryTomato")
+        case "cucumberHalf": return appLocalized("ios.beacon.food.cucumberHalf")
+        case "kimchi": return appLocalized("ios.beacon.food.kimchi")
+        case "tangerine": return appLocalized("ios.beacon.food.tangerine")
+        case "boiledEgg": return appLocalized("ios.beacon.food.boiledEgg")
+        case "apple": return appLocalized("ios.beacon.food.apple")
+        case "banana": return appLocalized("ios.beacon.food.banana")
+        case "riceHalfBowl": return appLocalized("ios.beacon.food.riceHalfBowl")
+        case "hotteok": return appLocalized("ios.beacon.food.hotteok")
+        case "riceBowl": return appLocalized("ios.beacon.food.riceBowl")
+        case "ramyeon": return appLocalized("ios.beacon.food.ramyeon")
+        default: return nil
+        }
+    }
+
     /// 걸음 수 천 단위 구분. 문장이 `appLocalized`(앱 선택 언어)로 나가므로 구분자도
     /// 기기 로케일이 아니라 앱 언어를 따른다(`SpeechService` 선례). 언어 전환에 따라가도록 매 호출 생성.
     private static var decimal: NumberFormatter {
@@ -276,6 +326,15 @@ struct BeaconTrackingSheet: View {
     }
 
     /// 도착 문장 착지 — 지연·검증·1회 재시도(`landStopFocus` 동형).
+    /// 체중 입력 뒤 요약 문장 착지(지연·검증·1회 재시도 — `landArrivedFocus` 동형).
+    private func landHealthSummaryFocus() async {
+        try? await Task.sleep(for: .milliseconds(400))
+        healthSummaryFocused = true
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !healthSummaryFocused else { return }
+        healthSummaryFocused = true
+    }
+
     private func landArrivedFocus() async {
         try? await Task.sleep(for: .milliseconds(400))
         arrivedFocused = true

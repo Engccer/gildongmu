@@ -382,7 +382,7 @@ describe("DirectionsView 출입구 승격(A11)", () => {
     return calledUrls;
   }
 
-  it("승격되면 승격 좌표로 조회하고 고지가 단일 live region에 실린다", async () => {
+  it("승격되면 승격 좌표로 조회한다(별도 고지 문장은 없다)", async () => {
     const calledUrls = stubWithEntrance({
       name: "신명중학교 정문",
       lat: 37.5416844,
@@ -399,9 +399,7 @@ describe("DirectionsView 출입구 승격(A11)", () => {
     fireEvent.click(screen.getByRole("button", { name: "submit" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("status").textContent).toBe(
-        "readySummary entrancePromoted",
-      );
+      expect(screen.getByRole("status").textContent).toBe("readySummary");
     });
     // 경로 조회가 승격 좌표로 나갔다 — 표시만 바꾸고 본관으로 조회하면 이 단언이 red다.
     expect(

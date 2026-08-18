@@ -693,17 +693,6 @@ struct DirectionsTabView: View {
                     }
                 }
                 if let results = model.results {
-                    // A11 승격 고지 — 목적지 이름이 바뀌는 것을 침묵으로 넘기지 않는다.
-                    // 정적 텍스트인 이유는 iOS가 조회 완료 시 포커스를 옮기지 않아
-                    // 순방향 스와이프가 이 문장을 지나가기 때문이다(별도 통지를 더하면
-                    // 이중 낭독). ⚠ 웹은 반대로 포커스가 첫 성공 heading으로 뛰므로
-                    // 같은 문장을 합산 통지에 싣는다 — 구현을 복사하면 한쪽이 깨진다.
-                    if let promoted = model.promotedDestination {
-                        Section {
-                            Text(appLocalized("directions.entrancePromoted", promoted.label))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
                     ForEach(results.displayedModes, id: \.self) { mode in
                         Section {
                             // 수단별 안내 시작 버튼(B1 §3.1) — 수단 heading 착지 후
@@ -1159,7 +1148,8 @@ struct DirectionsTabView: View {
     /// ("현재 위치"가 목적지면 자기까지의 거리라 무의미).
     /// ⚠ **승격본(A11)이 있으면 그쪽이 목적지다.** 입력 필드는 사용자가 고른 원명을
     /// 유지하고(최근 경로·URL도 원명), 안내·경로 층만 승격본을 쓴다 — 그 비대칭이
-    /// 의도이며, 조회 완료 문장이 차이를 설명하는 유일한 자리다(spec §4·N1).
+    /// 의도이며, 결과 이름(승격본) 자체가 차이의 유일한 표시다(spec §4·N1. 별도 고지
+    /// 문장은 2026-08-18 폐기).
     private var trackedDestination: (label: String, dest: BeaconDest)? {
         if let promoted = model.promotedDestination {
             return (promoted.label, BeaconDest(lat: promoted.lat, lng: promoted.lng))

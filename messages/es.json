@@ -172,8 +172,7 @@
     "geoError": "No se pudo obtener tu ubicación. Busca un punto de partida.",
     "needEndpoints": "Elige primero un origen y un destino.",
     "readySummary": "Guía de ruta lista para {count} modos.",
-    "allFailed": "No se encontraron rutas.",
-    "entrancePromoted": "Guiándote hasta {name}, la entrada."
+    "allFailed": "No se encontraron rutas."
   },
   "detail": {
     "back": "Volver a los resultados"

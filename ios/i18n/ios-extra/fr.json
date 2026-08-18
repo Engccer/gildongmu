@@ -246,8 +246,23 @@
       "arrivedHeading": "Arrivée",
       "arrivedPresumedHeading": "Arrivée estimée",
       "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application.",
-      "healthSummary": "Ce trajet : {steps} pas, environ {kcal} kcal",
-      "healthDefaultWeight": "base {kg} kg"
+      "healthSummary": "Sur ce tronçon, vous avez fait {steps} pas et brûlé environ {kcal} kcal.",
+      "healthWeightNotice": "Le chiffre des calories repose sur la moyenne adulte de {kg} kg. Saisissez votre poids dans Réglages pour une estimation plus précise. Cette donnée ne quitte jamais votre appareil.",
+      "healthEnterWeight": "Saisir mon poids",
+      "food": {
+        "cherryTomato": "C'est l'équivalent d'une tomate cerise !",
+        "cucumberHalf": "C'est l'équivalent d'un demi-concombre !",
+        "kimchi": "C'est l'équivalent d'une assiette de kimchi !",
+        "tangerine": "C'est l'équivalent d'une mandarine !",
+        "boiledEgg": "C'est l'équivalent d'un œuf dur !",
+        "apple": "C'est l'équivalent d'une pomme !",
+        "banana": "C'est l'équivalent d'une banane !",
+        "riceHalfBowl": "C'est l'équivalent d'un demi-bol de riz (bap) !",
+        "hotteok": "C'est l'équivalent d'un hotteok (crêpe sucrée coréenne) !",
+        "riceBowl": "C'est l'équivalent d'un bol de riz (bap) !",
+        "ramyeon": "C'est l'équivalent d'un bol de ramyeon !",
+        "ramyeonMany": "C'est l'équivalent d'environ {n} bols de ramyeon !"
+      }
     },
     "unit": {
       "spokenMeters": "mètres"

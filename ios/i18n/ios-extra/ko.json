@@ -246,8 +246,23 @@
       "arrivedHeading": "도착",
       "arrivedPresumedHeading": "도착 추정",
       "soundBackgroundUnavailable": "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다.",
-      "healthSummary": "이번 구간 {steps}걸음, 약 {kcal}kcal",
-      "healthDefaultWeight": "기준 체중 {kg}kg"
+      "healthSummary": "이번 구간에서 {steps}걸음 걸으셨어요. 약 {kcal}kcal를 태우셨어요.",
+      "healthWeightNotice": "위 칼로리 수치는 성인 평균인 {kg}kg 기준이에요. 설정에서 체중을 입력하면 더 정확한 정보를 받으실 수 있어요. 입력한 정보는 서버에 저장되지 않아요.",
+      "healthEnterWeight": "체중 입력하기",
+      "food": {
+        "cherryTomato": "방울토마토 한 알 분량이에요!",
+        "cucumberHalf": "오이 반 개 분량이에요!",
+        "kimchi": "김치 한 접시 분량이에요!",
+        "tangerine": "귤 한 개 분량이에요!",
+        "boiledEgg": "삶은 달걀 한 개 분량이에요!",
+        "apple": "사과 한 개 분량이에요!",
+        "banana": "바나나 한 개 분량이에요!",
+        "riceHalfBowl": "밥 반 공기 분량이에요!",
+        "hotteok": "호떡 한 개 분량이에요!",
+        "riceBowl": "밥 한 공기 분량이에요!",
+        "ramyeon": "라면 한 그릇 분량이에요!",
+        "ramyeonMany": "라면 약 {n}그릇 분량이에요!"
+      }
     },
     "unit": {
       "spokenMeters": "미터"

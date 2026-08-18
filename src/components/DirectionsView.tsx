@@ -71,14 +71,6 @@ type QueryResults = {
   destLabel: string;
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
-  /**
-   * 출입구로 승격됐으면 그 이름(A11). null이면 승격 없음 — **조회 실패와 구분하지
-   * 않는다**(둘 다 대표 좌표로 안내하므로 사용자 행동이 같다).
-   *
-   * ⚠ 승격본은 `destCoord`·`destLabel`에 이미 반영돼 있다. 이 필드는 "승격이
-   * 일어났다"는 고지 문장의 근거일 뿐이고, 목적지의 정본은 위 둘이다.
-   */
-  promotedEntranceName: string | null;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
   /**
    * 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정.
@@ -590,7 +582,6 @@ export function DirectionsView({
       // (도보 경로 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다).
       // 승격본은 여기서 확정되어 전 수단 조회·안내 세션·계단 회피 재조회가 **같은
       // 목적지**를 쓰게 한다(§5.1 — 조회마다 다른 목적지를 갖지 않는다).
-      let promotedEntranceName: string | null = null;
       // ⚠ 승격 조회 **전에** loading으로 넘긴다. 이 왕복(최대 2초)도 이 조회의 일부라
       // 그 사이 화면이 직전 phase에 머물면 결과는 이미 비웠는데 상태 줄만 빈 채로
       // 남는다(장소→장소 조회에서 settled가 남아 있는 창).
@@ -601,7 +592,6 @@ export function DirectionsView({
         if (entrance) {
           dest = { lat: entrance.lat, lng: entrance.lng };
           destLabel = entrance.name;
-          promotedEntranceName = entrance.name;
         }
       }
       lastCoordsRef.current = { origin, dest };
@@ -642,7 +632,6 @@ export function DirectionsView({
       setResults({
         destLabel,
         destCoord: dest,
-        promotedEntranceName,
         outcomes,
         orderedModes,
         originSource,
@@ -737,17 +726,9 @@ export function DirectionsView({
         ? t("readySummary", { count: settledCount })
         : t("allFailed")
       : "";
-  // A11 승격 고지도 같은 단일 polite 채널에 합친다. 결과 앞 정적 텍스트로 두면
-  // settled 직후 첫 성공 heading으로 포커스가 강제 이동하므로(위 requestAnimationFrame)
-  // SR 순방향 탐색이 이미 지나친 자리가 되어 **목적지 이름이 바뀐 사실을 못 듣는다**.
-  // iOS는 조회 후 포커스를 옮기지 않아 정적 텍스트가 맞다 — 같은 선례가 플랫폼마다
-  // 다른 구현으로 귀결되는 자리다.
-  const entranceNotice = results?.promotedEntranceName
-    ? t("entrancePromoted", { name: results.promotedEntranceName })
-    : "";
   const phaseMessage =
     phase.kind === "settled"
-      ? [settledSummary, entranceNotice].filter(Boolean).join(" ")
+      ? settledSummary
       : phase.kind === "idle"
         ? ""
         : phase.kind === "outOfCoverage"
