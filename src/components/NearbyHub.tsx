@@ -204,7 +204,7 @@ export function NearbyHub({
           <SurroundingsNearby />
         </div>
       )}
-      {/* 게이트 없음(음향신호기=무인증 seed, OSM=무키 공개 인스턴스) — 항상 노출. */}
+      {/* 게이트 없음(음향신호기=무인증 seed, OSM=정적 seed) — 항상 노출. */}
       <div className="mt-4">
         <WalkInfraNearby />
       </div>

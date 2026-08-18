@@ -48,7 +48,7 @@
 - ⚠ **안전 관련 인자에 기본값을 두지 말 것**(`RouteService.walk`·`walkRouteUrl`·`DistanceBeacon` prop·`BeaconModel.toggle` 전부 required). 백로그 A4가 정확히 그 기제에서 나왔고, 기본값을 없애자 컴파일러·타입 검사가 누락 7곳을 즉시 잡았다.
 
 ### 캐시·쿼터
-IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
+IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **실시간 안내(기하 포함) 요청은 `noStore`로 캐시를 우회한다**(`kakao-walk.ts`) — 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님" 약관 판단과 모순(spec 2026-08-03 §7.2). 되돌리지 말 것. ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
 
 길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다. 계단 없는 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
 
@@ -190,7 +190,7 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 
 - **간략·상세가 같은 함수를 쓰고 차이는 입력 조립에만 둔다.** 모드별 계층 로직을 새로 만들면 부채가 형태만 바꿔 돌아온다.
 - 소리 9종이고 **`tick`은 정지**다(종전 하트비트 폐기 — 간략에서는 정체, 상세에서는 생존 신호라는 두 뜻이었다).
-- ⚠ 최소 재확인 간격 도입은 **폐기한 하트비트의 재등장**이라 기각됐다. `maxNormalSilenceS` 21초가 계약값이다.
+- ⚠ 최소 재확인 간격 도입은 **폐기한 하트비트의 재등장**이라 기각됐다. `maxNormalSilenceSeconds` 21초가 계약값이다.
 - **데드밴드는 축마다 다르고, 기각된 축소는 간략 쪽 이야기다.** 간략은 직선거리라 GPS 지터가 그대로 실려 `max(15, accuracy)`를 유지한다(축소하면 지터가 톤이 된다 — 이 기각은 유효하다). 상세는 구속 창 투영 + `max(state.d, proj.d)` 단조 전진을 거치고 `phase` 게이트·`projectionJumped`가 이탈·튐 fix를 앞서 버리므로 **뒤로 튀는 일이 구조적으로 없고**(실보행 5세션 6,047 스텝 역행 0건), 데드밴드에 남은 역할은 지터 방어가 아니라 빈도 노브다. 그래서 상세만 가른다(`detailDeadBand` ↔ `DETAIL_DEAD_BAND_M`, 감쇠 하한 5m): 15m(closer 간격 중위 17.5초, 위원장 체감과 충돌) → 10m(11.5초, 2026-08-11 로그 리플레이) → **6m(위원장 실보행 판정 2026-08-12 — 10m 간격도 성기게 느껴져 "6m 간격" 직접 지정)**. 자동차는 주행 속도(5.4km/h 이상)에서 `closerIntervalSeconds` 10초가 병목이라 영향이 없고, 그 아래 정체·신호 대기에서만 도보와 같은 기제로 잦아진다 — 정체 중 진행 신호가 잦은 것은 해롭지 않아 수단을 가르지 않는다. ⚠ 리플레이 수치는 **근사**다(스크립트 docstring의 재현 범위 참조) — 데드밴드 간 비교에는 쓰되 절대 초 수를 계약값으로 승격하지 말 것. ⚠ 감쇠 하한(5m)보다 커야 감쇠가 산다(deadband-drift 테스트가 강제).
 - 복귀 시 앵커 재기준화는 `needsRebase`가 **추세 축에 도달하는 첫 fix**에서 소비한다(복귀 fix에 상위 톤이 나면 그 fix는 추세 축에 닿지 못해 기회를 잃는다).
 - 축 전환(handoff·모드 전환)은 `rebaseBeaconState`로 **앵커와 `lastSpokenDistance`를 함께** 재설정한다. 앵커만 바꾸면 옛 축 값이 남아 전환 직후 거짓 closer 음성이 나간다.
@@ -210,7 +210,7 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 안내 세션 중 카테고리는 `.playback`(정식·실험 모두 — 1.7 도보 졸업으로 구성 게이트 없음). 판정은 Kit 순수 함수가 하고 **`didPromote`일 때만 원복한다** — 세션은 프로세스 전역 자원이고 소비자가 셋(안내 톤·TTS·받아쓰기)이라 무조건 원복하면 다른 소비자를 깬다.
 
 - suppression 해제·인터럽션 종료·route 변경이 **한 재조정 경로**로 모여 "받아쓰기 중 시작한 세션이 영구히 `.ambient`로 남는" 구멍을 닫는다.
-- 백그라운드에서는 **톤은 남기고 음성만 막는다**(`scenePhase` 게이트. `.inactive`는 화면을 보고 있는 중이라 허용). 상태 텍스트는 계속 갱신하고 복귀 발화는 누적이 아니라 현재 상태 하나다.
+- 백그라운드에서는 **톤은 남기고 음성만 막는다**(`scenePhase` 게이트. `.inactive`는 화면을 보고 있는 중이라 허용). ⚠ 예외 하나: **추정 도착 자동 종료의 도착 종은 전경에서만**(`BeaconModel` `if isForeground { playTone(.nearby) }`, 위원장 판정 2026-08-19) — 실시간 신호가 아니라 잠근 채 잊은 기기에서 한참 뒤 울리는 사후 정리라서다. 확정 도착 톤은 백그라운드에서도 울린다. 상태 텍스트는 계속 갱신하고 복귀 발화는 누적이 아니라 현재 상태 하나다.
 - `UIBackgroundModes: location`·`audio`는 **두 plist 모두**(`Support/Info.plist`·`Support/Info-Experimental.plist`)에 둔다 — 1.7 도보 졸업 때 승격했다. 실험 전용 키는 `NSBluetoothAlwaysUsageDescription` 하나뿐이다(`check-release-artifact.mjs`가 누출을 막는다).
 
 ## 이탈 판정 방위 축 (`course-derivation.ts`·`guide-course-axis.ts` ↔ `CourseDerivation.swift`·`GuideCourseAxis.swift`)
