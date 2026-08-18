@@ -289,7 +289,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
-    // 게이트 없음 - 음향신호기는 무인증 seed, OSM은 무키 공개 인스턴스(spec §4)
+    // 게이트 없음 - 음향신호기는 무인증 seed, OSM은 정적 seed(2026-08-16 전환)
     gate: () => true,
     declaration: {
       name: "get_walk_infrastructure",
