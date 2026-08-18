@@ -11,6 +11,12 @@
 
 ## 2026-08-19
 
+### App Store 1.10 심사 제출 (빌드 17)
+
+1.9 아카이브(`01447d4`) 이후 iOS 바이너리에 닿는 3커밋을 담아 제출했다(07:31 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `0013c52`, `git worktree` 격리 빌드. 산출물 `Info.plist`로 번들 ID·1.10.0(17)·**`MinimumOSVersion 18.0`**·`UIBackgroundModes`(location·audio)·실험 전용 BLE 키 부재를 확인했다. 최소 지원 하향은 설치 가능 기기가 늘어나는 변경이라 ko·en 두 노트 모두에 적었고(도보 안내 2건은 ko 게이트라 ko만), 심사 노트는 `Microphone` 절에 OS별 엔진 2종과 서버 폴백 부재를 명시하고 `Motion & Fitness`의 `(new in this version)` 꼬리를 뗐다. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md) §1.10.
+
+⚠ **`1.0-submission-draft.md` §9(심사 노트 "정본")가 ASC 실값보다 낡아 있었다** — 1.8이 더한 `Motion & Fitness` 절이 문서에 없어, 그 값을 `--review-notes`로 넘겼다면 그 절이 지워졌을 것이다. 넘기기 전에 ASC 실값을 읽어 대조하는 규칙을 §9에 등재했다.
+
 ### iOS 최소 지원 버전 26 → 18 하향, 26 미만은 SFSpeechRecognizer 온디바이스 받아쓰기
 
 사용자 피드백("요구 iOS 버전이 높아 설치하지 못했다")으로 `IPHONEOS_DEPLOYMENT_TARGET`·Kit 플랫폼을 18.0으로 내렸다. 코드 장벽은 받아쓰기 엔진 한 파일뿐이라 `SpeechService`를 `SpeechEngine` 계약 위로 올려 iOS 26+는 종전 SpeechAnalyzer(`AnalyzerSpeechEngine`), 그 아래는 `SFSpeechRecognizer` **온디바이스 강제**(`LegacySpeechEngine`)로 갈랐다 — 어느 엔진이든 오디오는 기기를 떠나지 않아 개인정보 3자 일치는 불변. 온디바이스 자산이 없는 언어·기기와 음성 인식 권한 거부는 새 문구(`errorOnDevice`·`deniedRecognition`)로 정직 실패. iOS 18 실기기 창구가 없어 26 미만 받아쓰기는 시뮬레이터 판정만으로 출시(위원장 결정). spec [`2026-08-19-ios-min-version-18-design.md`](docs/superpowers/specs/2026-08-19-ios-min-version-18-design.md).
