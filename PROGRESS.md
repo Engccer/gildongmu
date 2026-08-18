@@ -20,6 +20,7 @@
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
 | iOS | **1.9 `WAITING_FOR_REVIEW`**(빌드 16, 아카이브 커밋 `01447d4`, 제출 2026-08-18 19:55 KST) · 1.8까지 전부 `READY_FOR_SALE`(1.8 = 빌드 15, 2026-08-18 승인) |
+| iOS 최소 지원 | **18.0**(2026-08-19 하향, 다음 제출부터 적용 — 1.9까지는 26.0) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
@@ -87,7 +88,7 @@
 | 기능 | 비고 |
 |---|---|
 | 채팅 | Gemini function calling + Perplexity 웹 검색, 장소 앵커 |
-| 음성 받아쓰기 | 웹 Deepgram / iOS 온디바이스, 탭 토글·홀드 택1 |
+| 음성 받아쓰기 | 웹 Deepgram / iOS 온디바이스(26+ SpeechAnalyzer, 18~25 SFSpeechRecognizer 온디바이스 강제 — 26 미만은 ⏳ 실기기 미판정), 탭 토글·홀드 택1 |
 | 답변 듣기 | iOS 온디바이스 정본, Google TTS 폴백 |
 
 ### 실시간 길 안내

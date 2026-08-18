@@ -14,9 +14,12 @@ import UIKit
 /// (심사 기기처럼 재현이 안 되는 환경의 유일한 단서).
 private let speechLog = Logger(subsystem: "app.gildongmu", category: "speech")
 
-/// 온디바이스 음성 인식(iOS 26 SpeechAnalyzer + SpeechTranscriber, ko-KR 고정).
-/// 웹 STT의 iOS 판이되 서버 왕복 없음. 자동 언어 감지 금지(웹 detect_language 교훈과 동형).
-/// 시작·정지는 소리+햅틱 이중 채널로 통지(웹 효과음 계약의 iOS 문법).
+/// 온디바이스 음성 인식. 엔진은 OS 버전이 정한다(`makeSpeechEngine`): iOS 26+는
+/// `SpeechAnalyzer`+`SpeechTranscriber`(`AnalyzerSpeechEngine`), 그 아래는 `SFSpeechRecognizer`
+/// 온디바이스 강제(`LegacySpeechEngine`). **어느 엔진이든 오디오는 기기를 떠나지 않는다** —
+/// 개인정보 3자 일치(웹 privacy 카피·PrivacyInfo·ASC 라벨)가 이 한 줄에 걸려 있으므로
+/// 서버 전사 폴백을 만들지 말 것. 웹 STT의 iOS 판이되 서버 왕복 없음, 자동 언어 감지 금지
+/// (웹 detect_language 교훈과 동형). 시작·정지는 소리+햅틱 이중 채널로 통지.
 @Observable @MainActor
 final class SpeechService {
     enum Phase: Equatable {
@@ -36,6 +39,11 @@ final class SpeechService {
         case localeUnsupported  // 현재 앱 언어를 이 기기가 미지원
         case audioUnavailable   // 포맷·변환기 구성 실패
         case assetDownloadFailed  // 전사 모델 다운로드·설치 실패
+        /// (26 미만) 이 언어의 온디바이스 인식 자산이 이 기기에 없다. 서버 인식으로
+        /// 대신하지 않는다 — 정직한 미지원이 정답.
+        case onDeviceUnsupported
+        /// (26 미만) 음성 인식 권한 거부(마이크 권한과 별개의 두 번째 권한)
+        case recognitionDenied
     }
 
     private(set) var phase: Phase = .idle
@@ -55,18 +63,15 @@ final class SpeechService {
     }
 
     private let audioEngine = AVAudioEngine()
-    private var analyzer: SpeechAnalyzer?
-    private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
-    private var recognitionTask: Task<Void, Never>?
-    /// 최종 확정 텍스트 누적(volatile은 phase의 partial에만 반영)
-    private var finalizedText = ""
+    /// 이번 세션의 인식 엔진(세션마다 새로 만든다 — 엔진 내부 상태를 세션 밖으로 끌고 가지 않는다)
+    private var engine: (any SpeechEngine)?
     /// 취소 세대 토큰 — cancel()이 올릴 때마다 진행 중 start()가 무효화된다.
     /// start()는 권한·모델 다운로드 등 긴 await 지점을 지나므로, 그 사이 화면 이탈로
     /// cancel()이 다녀가면 뒤늦게 완주한 start()가 마이크를 재점화하는 레이스를 막는다
     /// (MainActor 직렬이라 비교·증가는 동기 구간에서 안전. webfortd 이식 리뷰 검출 백포트).
     private var generation = 0
     /// stop() 진행 중 상호 배제 — finalize 대기 동안 isListening이 true로 남아
-    /// cancel()이 같은 analyzer/recognitionTask에 중복 종료를 거는 경합을 차단.
+    /// cancel()이 같은 엔진에 중복 종료를 거는 경합을 차단.
     private var stopping = false
 
     /// 권한 요청 → 모델 에셋 확인 → 마이크 탭 + 스트리밍 인식 시작.
@@ -91,15 +96,13 @@ final class SpeechService {
 
         do {
             try await beginListening(gen: gen)
-            // 모델 다운로드·analyzer 기동 대기 중 cancel()이 다녀갔으면, 방금 만든
+            // 모델 다운로드·엔진 기동 대기 중 cancel()이 다녀갔으면, 방금 만든
             // 리소스를 cancel()과 같은 절차로 폐기하고 무음 종료(시작음·phase 갱신 없음).
             guard gen == generation else {
                 audioEngine.stop()
                 audioEngine.inputNode.removeTap(onBus: 0)
-                inputContinuation?.finish()
-                await analyzer?.cancelAndFinishNow()
-                recognitionTask?.cancel()
-                await teardown()
+                await engine?.cancel()
+                teardown()
                 return
             }
             phase = .listening(partial: "")
@@ -110,7 +113,7 @@ final class SpeechService {
             interruptVoiceOverSpeech()
             notify(soundID: 1113) // 녹음 시작음
         } catch {
-            await teardown()
+            teardown()
             // 취소된 세션의 뒤늦은 실패는 사용자에게 일어난 사건이 아니다 — 화면도
             // 로그도 건드리지 않는다(취소 자체가 던지는 CancellationError 소음 차단).
             guard gen == generation else { return }
@@ -131,13 +134,9 @@ final class SpeechService {
 
         audioEngine.stop()
         audioEngine.inputNode.removeTap(onBus: 0)
-        inputContinuation?.finish()
-        // 남은 volatile 결과를 최종으로 확정하고 스트림 종료
-        try? await analyzer?.finalizeAndFinishThroughEndOfInput()
-        await recognitionTask?.value
-
-        let text = finalizedText.trimmingCharacters(in: .whitespacesAndNewlines)
-        await teardown()
+        // 남은 입력을 최종으로 확정하고 스트림 종료까지 대기
+        let text = (await engine?.finish() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        teardown()
         phase = .idle
         // 발화가 담기지 않은 전사는 빈 전사와 같이 nil로 돌린다. 무음 구간에서 STT가
         // 문장부호만 내놓는 일이 있는데(무발화 릴리스에 "." 실측 2026-08-01), 그대로
@@ -153,15 +152,13 @@ final class SpeechService {
         generation += 1
         guard phase != .idle else { return }
         // stop()이 finalize 진행 중이면 그 경로가 teardown까지 책임진다 — 같은
-        // analyzer/recognitionTask에 중복 종료를 걸지 않는다(결과 텍스트는 이미
+        // 엔진에 중복 종료를 걸지 않는다(결과 텍스트는 이미
         // 이탈한 화면의 입력 필드에 붙을 뿐이라 무해).
         guard !stopping else { return }
         audioEngine.stop()
         if isListening { audioEngine.inputNode.removeTap(onBus: 0) }
-        inputContinuation?.finish()
-        await analyzer?.cancelAndFinishNow()
-        recognitionTask?.cancel()
-        await teardown()
+        await engine?.cancel()
+        teardown()
         phase = .idle
     }
 
@@ -173,27 +170,11 @@ final class SpeechService {
     /// `gen`은 호출 시점의 취소 세대. 상태를 화면에 내보내는 지점에서 이 세션이 아직
     /// 유효한지 확인하는 데 쓴다(취소된 세션이 죽은 뒤 UI를 되살리지 못하게).
     private func beginListening(gen: Int) async throws {
-        finalizedText = ""
-
         let locale = Locale(identifier: AppLanguage.speechLocaleIdentifier)
-        guard await SpeechTranscriber.supportedLocale(equivalentTo: locale) != nil else {
-            throw SpeechError.localeUnsupported
-        }
+        let engine = makeSpeechEngine()
+        self.engine = engine
 
-        // volatile 결과 보고로 partial 갱신, 최종 결과는 누적
-        let transcriber = SpeechTranscriber(
-            locale: locale,
-            transcriptionOptions: [],
-            reportingOptions: [.volatileResults],
-            attributeOptions: []
-        )
-
-        // 설치 여부를 먼저 판정한다: 무조건 설치 요청은 이미 설치된 기기에서도 불필요한
-        // 왕복이고, 미설치 기기에서는 아무 표시 없이 수십 초를 삼켰다. 미설치일 때만
-        // .preparing으로 대기를 화면에 노출하고 받는다.
-        let installed = await SpeechTranscriber.installedLocales
-        let target = locale.identifier(.bcp47)
-        if !installed.contains(where: { $0.identifier(.bcp47) == target }) {
+        try await engine.prepare(locale: locale) {
             // 취소된 세션은 여기서 끝낸다: cancel()이 phase를 .idle로 되돌린 뒤 이미
             // 죽은 이 호출이 .preparing을 재기입하면, 완료 시 세대 가드가 phase를
             // 건드리지 않으므로 아무도 내려 주지 않는 영구 고착이 된다(isStarting이
@@ -201,87 +182,33 @@ final class SpeechService {
             // MainActor 직렬이라 이 검사와 다음 줄 대입 사이엔 아무도 끼어들 수 없다.
             guard gen == generation else { throw CancellationError() }
             phase = .preparing
-            do {
-                if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                    try await request.downloadAndInstall()
-                }
-            } catch {
-                speechLog.error("전사 모델 설치 실패(\(target, privacy: .public)): \(String(describing: error), privacy: .public)")
-                throw SpeechError.assetDownloadFailed
-            }
         }
-        // 예약(시스템 회수 방지)은 실패해도 이번 세션 인식엔 영향이 없다 — 비치명으로
-        // 기록만 하고 진행한다. 언어 전환이 남긴 다른 로케일 예약은 먼저 회수한다:
-        // 예약 상한(maximumReservedLocales)을 잠식하면 새 로케일 예약이 거부된다.
-        do {
-            for stale in await AssetInventory.reservedLocales
-            where stale.identifier(.bcp47) != target {
-                await AssetInventory.release(reservedLocale: stale)
-            }
-            if try await AssetInventory.reserve(locale: locale) == false {
-                speechLog.error("로케일 예약 미확보(\(target, privacy: .public)) — 인식은 계속 진행")
-            }
-        } catch {
-            speechLog.error("로케일 예약 실패(\(target, privacy: .public)): \(String(describing: error), privacy: .public)")
-        }
-
-        let analyzer = SpeechAnalyzer(modules: [transcriber])
-        self.analyzer = analyzer
-
-        // 결과 소비: 이 Task는 MainActor를 상속하므로 phase 갱신이 안전
-        recognitionTask = Task { [weak self] in
-            do {
-                for try await result in transcriber.results {
-                    guard let self else { return }
-                    let text = String(result.text.characters)
-                    if result.isFinal {
-                        self.finalizedText += text
-                        if case .listening = self.phase {
-                            self.phase = .listening(partial: self.finalizedText)
-                        }
-                    } else if case .listening = self.phase {
-                        self.phase = .listening(partial: self.finalizedText + text)
-                    }
-                }
-            } catch {
-                // 스트림 실패 시 이미 확정된 finalizedText는 보존(teardown이 건드리지 않음).
-                // 청취 중이 아니면 정상 종료(취소·정지가 스트림을 끊은 것)이므로 무시하고,
-                // stop()이 진행 중이면 그 경로가 정리·전달을 책임진다(중복 종료 금지).
-                guard let self, !self.stopping, case .listening = self.phase else { return }
-                speechLog.error("인식 스트림 실패: \(String(describing: error), privacy: .public)")
-                // 인식이 죽은 채 마이크만 뜨거운 상태를 남기지 않는다.
-                self.audioEngine.inputNode.removeTap(onBus: 0)
-                await self.teardown()
-                self.phase = .failed
-            }
-        }
+        // prepare()의 긴 대기(모델 다운로드·인식 권한) 중 cancel()이 다녀갔으면 teardown이
+        // self.engine을 이미 비웠다 — 여기서 끝내야 아직 아무것도 시작하지 않은 채 조용히
+        // 정리된다(리뷰 검출 2026-08-19: 계속 진행하면 로컬 engine만 살아 attach·run을 완주하고
+        // start()의 청소 경로는 nil을 보게 돼 인식 세션이 고아가 된다).
+        guard gen == generation else { throw CancellationError() }
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.duckOthers, .defaultToSpeaker])
         try session.setActive(true, options: .notifyOthersOnDeactivation)
 
-        guard let analyzerFormat = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
-            throw SpeechError.audioUnavailable
-        }
-
-        let (stream, continuation) = AsyncStream<AnalyzerInput>.makeStream()
-        inputContinuation = continuation
-
-        let inputNode = audioEngine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-        guard let forwarder = MicBufferForwarder(
-            inputFormat: inputFormat,
-            analyzerFormat: analyzerFormat,
-            continuation: continuation
-        ) else {
-            throw SpeechError.audioUnavailable
-        }
-
-        // @Sendable 명시 필수: 미표기 시 클로저가 MainActor 격리를 상속해, AVFAudio가
-        // 오디오 실시간 큐에서 호출하는 순간 런타임 격리 검증(SIGTRAP)으로 크래시(실기기 실측).
-        inputNode.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { @Sendable buffer, _ in
-            forwarder.forward(buffer)
-        }
+        try await engine.attach(
+            to: audioEngine,
+            onPartial: { [weak self] text in
+                guard let self, case .listening = self.phase else { return }
+                self.phase = .listening(partial: text)
+            },
+            onFailure: { [weak self] in
+                // 청취 중이 아니면 정상 종료(취소·정지가 스트림을 끊은 것)이므로 무시하고,
+                // stop()이 진행 중이면 그 경로가 정리·전달을 책임진다(중복 종료 금지).
+                guard let self, !self.stopping, case .listening = self.phase else { return }
+                // 인식이 죽은 채 마이크만 뜨거운 상태를 남기지 않는다.
+                self.audioEngine.inputNode.removeTap(onBus: 0)
+                self.teardown()
+                self.phase = .failed
+            }
+        )
 
         // 마이크가 뜨거워지기(engine.start) "직전"에 진행 중 VO 낭독을 끊는다(헌장 §6:
         // 발화가 마이크 입력에 겹치면 안 됨). ⚠ 과거엔 start()가 beginListening 완료
@@ -292,14 +219,15 @@ final class SpeechService {
         interruptVoiceOverSpeech()
         audioEngine.prepare()
         try audioEngine.start()
-        try await analyzer.start(inputSequence: stream)
+        try await engine.run()
+        // attach·run의 짧은 await 사이에도 cancel()이 self.engine을 비울 수 있다. 청소 경로가
+        // 언제나 실제 세션을 가리키도록 완주 시점에 재동기화한다(start()의 세대 가드가 정리).
+        self.engine = engine
     }
 
-    private func teardown() async {
+    private func teardown() {
         audioEngine.stop()
-        inputContinuation = nil
-        recognitionTask = nil
-        analyzer = nil
+        engine = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -324,6 +252,8 @@ func speechAlertText(_ speech: SpeechService) -> String? {
         case .localeUnsupported: return appLocalized("ios.voice.errorLocale")
         case .audioUnavailable: return appLocalized("ios.voice.errorAudio")
         case .assetDownloadFailed: return appLocalized("ios.voice.errorDownload")
+        case .onDeviceUnsupported: return appLocalized("ios.voice.errorOnDevice")
+        case .recognitionDenied: return appLocalized("ios.voice.deniedRecognition")
         case nil: return appLocalized("ios.voice.failed")
         }
     default:
@@ -351,54 +281,4 @@ func interruptVoiceOverSpeech() {
     var silence = AttributedString("")
     silence.accessibilitySpeechAnnouncementPriority = .high
     AccessibilityNotification.Announcement(silence).post()
-}
-
-/// 마이크 탭 버퍼를 분석기 포맷으로 변환해 입력 스트림에 공급.
-/// 탭 콜백은 오디오 스레드에서 직렬 호출되므로 내부 상태 경합 없음(@unchecked Sendable 근거).
-private final class MicBufferForwarder: @unchecked Sendable {
-    private let converter: AVAudioConverter?
-    private let analyzerFormat: AVAudioFormat
-    private let continuation: AsyncStream<AnalyzerInput>.Continuation
-    /// 변환 대기 버퍼. convert()의 입력 블록은 forward() 안에서 동기 호출되므로 경합 없음.
-    private var pendingBuffer: AVAudioPCMBuffer?
-
-    init?(
-        inputFormat: AVAudioFormat,
-        analyzerFormat: AVAudioFormat,
-        continuation: AsyncStream<AnalyzerInput>.Continuation
-    ) {
-        self.analyzerFormat = analyzerFormat
-        self.continuation = continuation
-        if inputFormat == analyzerFormat {
-            self.converter = nil
-        } else {
-            guard let converter = AVAudioConverter(from: inputFormat, to: analyzerFormat) else { return nil }
-            self.converter = converter
-        }
-    }
-
-    func forward(_ buffer: AVAudioPCMBuffer) {
-        guard let converter else {
-            continuation.yield(AnalyzerInput(buffer: buffer))
-            return
-        }
-        let ratio = analyzerFormat.sampleRate / buffer.format.sampleRate
-        let capacity = AVAudioFrameCount((Double(buffer.frameLength) * ratio).rounded(.up)) + 16
-        guard let converted = AVAudioPCMBuffer(pcmFormat: analyzerFormat, frameCapacity: capacity) else { return }
-
-        pendingBuffer = buffer
-        var conversionError: NSError?
-        converter.convert(to: converted, error: &conversionError) { [self] _, outStatus in
-            guard let pending = pendingBuffer else {
-                outStatus.pointee = .noDataNow
-                return nil
-            }
-            pendingBuffer = nil
-            outStatus.pointee = .haveData
-            return pending
-        }
-        if conversionError == nil, converted.frameLength > 0 {
-            continuation.yield(AnalyzerInput(buffer: converted))
-        }
-    }
 }

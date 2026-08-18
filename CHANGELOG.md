@@ -11,6 +11,10 @@
 
 ## 2026-08-19
 
+### iOS 최소 지원 버전 26 → 18 하향, 26 미만은 SFSpeechRecognizer 온디바이스 받아쓰기
+
+사용자 피드백("요구 iOS 버전이 높아 설치하지 못했다")으로 `IPHONEOS_DEPLOYMENT_TARGET`·Kit 플랫폼을 18.0으로 내렸다. 코드 장벽은 받아쓰기 엔진 한 파일뿐이라 `SpeechService`를 `SpeechEngine` 계약 위로 올려 iOS 26+는 종전 SpeechAnalyzer(`AnalyzerSpeechEngine`), 그 아래는 `SFSpeechRecognizer` **온디바이스 강제**(`LegacySpeechEngine`)로 갈랐다 — 어느 엔진이든 오디오는 기기를 떠나지 않아 개인정보 3자 일치는 불변. 온디바이스 자산이 없는 언어·기기와 음성 인식 권한 거부는 새 문구(`errorOnDevice`·`deniedRecognition`)로 정직 실패. iOS 18 실기기 창구가 없어 26 미만 받아쓰기는 시뮬레이터 판정만으로 출시(위원장 결정). spec [`2026-08-19-ios-min-version-18-design.md`](docs/superpowers/specs/2026-08-19-ios-min-version-18-design.md).
+
 ### 추정 도착 자동 종료의 도착 종은 전경에서만 (iOS)
 
 백그라운드에서 발동하는 추정 도착(실내 진입 3분·정지 5분 뒤 사후 정리)의 도착 종을 껐다 — 잠근 채 잊은 휴대전화가 한참 뒤 갑자기 울리는 당황을 없앤다(위원장 판정). 확정 도착의 종(실시간 신호)과 전경 발동은 그대로. 복귀 시 도착 화면과 상환 낭독이 종료 사실을 알린다. spec [`2026-08-13-presumed-arrival-auto-end-design.md`](docs/superpowers/specs/2026-08-13-presumed-arrival-auto-end-design.md) §5-2 개정 노트.

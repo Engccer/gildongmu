@@ -77,6 +77,8 @@
       "errorLocale": "El reconocimiento de voz no está disponible para este idioma.",
       "errorAudio": "El micrófono no está disponible. Comprueba si otra app lo está usando.",
       "errorDownload": "No se pudo preparar el reconocimiento de voz. Conéctate a la red e inténtalo de nuevo.",
+      "errorOnDevice": "Este dispositivo no admite el reconocimiento de voz en el dispositivo para este idioma.",
+      "deniedRecognition": "Permite el reconocimiento de voz en Ajustes.",
       "paused": "Dictado bloqueado"
     },
     "search": {
