@@ -172,8 +172,7 @@
     "geoError": "Impossible d'obtenir votre position. Veuillez rechercher un point de départ.",
     "needEndpoints": "Choisissez d'abord un départ et une arrivée.",
     "readySummary": "Itinéraires prêts pour {count} modes.",
-    "allFailed": "Aucun itinéraire trouvé.",
-    "entrancePromoted": "Itinéraire jusqu'à {name}, l'entrée."
+    "allFailed": "Aucun itinéraire trouvé."
   },
   "detail": {
     "back": "Retour aux résultats"

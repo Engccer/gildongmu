@@ -380,6 +380,9 @@ final class BeaconModel {
     private var arrivalHealthTask: Task<Void, Never>?
     /// 도착 종료 화면의 건강 요약 행. nil이면 행이 없다(부재를 설명하지 않는다).
     private(set) var arrivalHealth: WalkHealthSummary?
+    /// 마지막으로 받은 만보계 표본. 도착 화면에서 체중을 입력하고 돌아오면 같은 표본으로
+    /// 다시 계산해야 "기준 체중" 안내가 사라진다(재조회 없이 — 만보계 왕복은 한 번뿐).
+    private var arrivalHealthSample: (steps: Int, distance: Double?)?
 
     init(pedometer: PedometerQuerying = PedometerService()) {
         self.pedometer = pedometer
@@ -406,6 +409,7 @@ final class BeaconModel {
         arrivalHealthTask?.cancel()
         arrivalHealthTask = nil
         arrivalHealth = nil
+        arrivalHealthSample = nil
         arrivalHealthLoad = .idle
     }
 
@@ -1726,10 +1730,9 @@ final class BeaconModel {
                   self.arrivalDest != nil else { return }
             switch result {
             case .sample(let steps, let distance):
-                let weight = WalkHealth.normalizedWeight(
-                    UserDefaults.standard.object(forKey: WalkHealth.weightStorageKey) as? Double)
+                self.arrivalHealthSample = (steps, distance)
                 self.arrivalHealth = WalkHealth.summary(
-                    steps: steps, distanceMeters: distance, weightKg: weight)
+                    steps: steps, distanceMeters: distance, weightKg: Self.storedWeight())
                 self.arrivalHealthLoad = .loaded
             case .unavailable:
                 self.arrivalHealthLoad = .unavailable
@@ -1739,6 +1742,19 @@ final class BeaconModel {
             let ms = Int((ProcessInfo.processInfo.systemUptime - requestedAt) * 1000)
             guideDiagLog("arrivalHealth load=\(self.arrivalHealthLoad) latencyMs=\(ms)")
         }
+    }
+
+    private static func storedWeight() -> Double? {
+        WalkHealth.normalizedWeight(
+            UserDefaults.standard.object(forKey: WalkHealth.weightStorageKey) as? Double)
+    }
+
+    /// 도착 화면에서 설정 시트를 닫고 돌아왔을 때: 저장된 체중으로 같은 표본을 다시 계산한다.
+    /// 표본이 없으면(미로드·실패) 아무것도 하지 않는다 — 없는 값을 만들어 내지 않는다.
+    func recomputeArrivalHealth() {
+        guard let sample = arrivalHealthSample else { return }
+        arrivalHealth = WalkHealth.summary(
+            steps: sample.steps, distanceMeters: sample.distance, weightKg: Self.storedWeight())
     }
 
     /// 실시간 상대 방향. 게이트를 통과하지 못하면 nil이고, 소비자는 방향 어절을

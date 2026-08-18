@@ -172,8 +172,7 @@
     "geoError": "Impossibile ottenere la tua posizione. Cerca un punto di partenza.",
     "needEndpoints": "Scegli prima una partenza e una destinazione.",
     "readySummary": "Indicazioni pronte per {count} modalità.",
-    "allFailed": "Nessun percorso trovato.",
-    "entrancePromoted": "Percorso fino a {name}, l'ingresso."
+    "allFailed": "Nessun percorso trovato."
   },
   "detail": {
     "back": "Torna ai risultati"

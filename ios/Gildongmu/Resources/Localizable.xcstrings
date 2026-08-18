@@ -8841,46 +8841,6 @@
         }
       }
     },
-    "directions.entrancePromoted": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "출입구를 찾아 %1$@까지 안내합니다."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guiding you to %1$@, the entrance."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Guiándote hasta %1$@, la entrada."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Itinéraire jusqu'à %1$@, l'entrée."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Percorso fino a %1$@, l'ingresso."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "出入口の%1$@まで案内します。"
-          }
-        }
-      }
-    },
     "directions.from": {
       "localizations": {
         "ko": {
@@ -13681,42 +13641,522 @@
         }
       }
     },
-    "ios.beacon.healthDefaultWeight": {
+    "ios.beacon.food.apple": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "기준 체중 %1$@kg"
+            "value": "사과 한 개 분량이에요!"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "based on %1$@ kg"
+            "value": "That's about one apple!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "según %1$@ kg"
+            "value": "¡Equivale a una manzana!"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "base %1$@ kg"
+            "value": "C'est l'équivalent d'une pomme !"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "in base a %1$@ kg"
+            "value": "Equivale a una mela!"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "基準体重%1$@kg"
+            "value": "りんご1個分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.banana": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "바나나 한 개 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one banana!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un plátano!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'une banane !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a una banana!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バナナ1本分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.boiledEgg": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "삶은 달걀 한 개 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one boiled egg!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un huevo cocido!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un œuf dur !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a un uovo sodo!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ゆで卵1個分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.cherryTomato": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "방울토마토 한 알 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one cherry tomato!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un tomate cherry!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'une tomate cerise !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a un pomodorino!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ミニトマト1個分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.cucumberHalf": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오이 반 개 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about half a cucumber!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a medio pepino!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un demi-concombre !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a mezzo cetriolo!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "きゅうり半分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.hotteok": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "호떡 한 개 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one hotteok (Korean sweet pancake)!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un hotteok (tortita dulce coreana)!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un hotteok (crêpe sucrée coréenne) !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a un hotteok (frittella dolce coreana)!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホットク1枚分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.kimchi": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "김치 한 접시 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one plate of kimchi!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un plato de kimchi!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'une assiette de kimchi !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a un piatto di kimchi!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キムチ一皿分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.ramyeon": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라면 한 그릇 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one bowl of ramyeon!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un cuenco de ramyeon!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un bol de ramyeon !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a una ciotola di ramyeon!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓国風ラーメン一杯分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.ramyeonMany": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라면 약 %1$@그릇 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about %1$@ bowls of ramyeon!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a unos %1$@ cuencos de ramyeon!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'environ %1$@ bols de ramyeon !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a circa %1$@ ciotole di ramyeon!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "韓国風ラーメン約%1$@杯分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.riceBowl": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "밥 한 공기 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one bowl of rice (bap)!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a un cuenco de arroz (bap)!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un bol de riz (bap) !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a una ciotola di riso (bap)!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ごはん一膳分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.riceHalfBowl": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "밥 반 공기 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about half a bowl of rice (bap)!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a medio cuenco de arroz (bap)!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'un demi-bol de riz (bap) !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a mezza ciotola di riso (bap)!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ごはん半膳分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.food.tangerine": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "귤 한 개 분량이에요!"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's about one tangerine!"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¡Equivale a una mandarina!"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C'est l'équivalent d'une mandarine !"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equivale a un mandarino!"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "みかん1個分です！"
+          }
+        }
+      }
+    },
+    "ios.beacon.healthEnterWeight": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "체중 입력하기"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter weight"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Introducir peso"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisir mon poids"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inserisci il peso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "体重を入力する"
           }
         }
       }
@@ -13726,37 +14166,77 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이번 구간 %1$@걸음, 약 %2$@kcal"
+            "value": "이번 구간에서 %1$@걸음 걸으셨어요. 약 %2$@kcal를 태우셨어요."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This leg: %1$@ steps, about %2$@ kcal"
+            "value": "You walked %1$@ steps on this leg and burned about %2$@ kcal."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Este tramo: %1$@ pasos, unas %2$@ kcal"
+            "value": "En este tramo caminaste %1$@ pasos y quemaste unas %2$@ kcal."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ce trajet : %1$@ pas, environ %2$@ kcal"
+            "value": "Sur ce tronçon, vous avez fait %1$@ pas et brûlé environ %2$@ kcal."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Questo tratto: %1$@ passi, circa %2$@ kcal"
+            "value": "In questo tratto hai fatto %1$@ passi e bruciato circa %2$@ kcal."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この区間 %1$@歩、約%2$@kcal"
+            "value": "この区間で%1$@歩歩き、約%2$@kcalを消費しました。"
+          }
+        }
+      }
+    },
+    "ios.beacon.healthWeightNotice": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "위 칼로리 수치는 성인 평균인 %1$@kg 기준이에요. 설정에서 체중을 입력하면 더 정확한 정보를 받으실 수 있어요. 입력한 정보는 서버에 저장되지 않아요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The calorie figure above uses the adult average of %1$@ kg. Enter your weight in Settings for a more accurate estimate. It never leaves your device."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La cifra de calorías usa el promedio adulto de %1$@ kg. Introduce tu peso en Ajustes para una estimación más precisa. El dato nunca sale de tu dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le chiffre des calories repose sur la moyenne adulte de %1$@ kg. Saisissez votre poids dans Réglages pour une estimation plus précise. Cette donnée ne quitte jamais votre appareil."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il valore delle calorie usa la media adulta di %1$@ kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上のカロリーは成人平均の%1$@kgを基準にしています。設定で体重を入力すると、より正確な値になります。入力した情報は端末の外に送られません。"
           }
         }
       }

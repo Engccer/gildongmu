@@ -246,8 +246,23 @@
       "arrivedHeading": "Arrivo",
       "arrivedPresumedHeading": "Arrivo stimato",
       "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app.",
-      "healthSummary": "Questo tratto: {steps} passi, circa {kcal} kcal",
-      "healthDefaultWeight": "in base a {kg} kg"
+      "healthSummary": "In questo tratto hai fatto {steps} passi e bruciato circa {kcal} kcal.",
+      "healthWeightNotice": "Il valore delle calorie usa la media adulta di {kg} kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo.",
+      "healthEnterWeight": "Inserisci il peso",
+      "food": {
+        "cherryTomato": "Equivale a un pomodorino!",
+        "cucumberHalf": "Equivale a mezzo cetriolo!",
+        "kimchi": "Equivale a un piatto di kimchi!",
+        "tangerine": "Equivale a un mandarino!",
+        "boiledEgg": "Equivale a un uovo sodo!",
+        "apple": "Equivale a una mela!",
+        "banana": "Equivale a una banana!",
+        "riceHalfBowl": "Equivale a mezza ciotola di riso (bap)!",
+        "hotteok": "Equivale a un hotteok (frittella dolce coreana)!",
+        "riceBowl": "Equivale a una ciotola di riso (bap)!",
+        "ramyeon": "Equivale a una ciotola di ramyeon!",
+        "ramyeonMany": "Equivale a circa {n} ciotole di ramyeon!"
+      }
     },
     "unit": {
       "spokenMeters": "metri"

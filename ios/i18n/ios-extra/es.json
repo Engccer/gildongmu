@@ -246,8 +246,23 @@
       "arrivedHeading": "Llegada",
       "arrivedPresumedHeading": "Llegada estimada",
       "soundBackgroundUnavailable": "Los sonidos de la guía no sonarán con la pantalla apagada o al usar otra aplicación.",
-      "healthSummary": "Este tramo: {steps} pasos, unas {kcal} kcal",
-      "healthDefaultWeight": "según {kg} kg"
+      "healthSummary": "En este tramo caminaste {steps} pasos y quemaste unas {kcal} kcal.",
+      "healthWeightNotice": "La cifra de calorías usa el promedio adulto de {kg} kg. Introduce tu peso en Ajustes para una estimación más precisa. El dato nunca sale de tu dispositivo.",
+      "healthEnterWeight": "Introducir peso",
+      "food": {
+        "cherryTomato": "¡Equivale a un tomate cherry!",
+        "cucumberHalf": "¡Equivale a medio pepino!",
+        "kimchi": "¡Equivale a un plato de kimchi!",
+        "tangerine": "¡Equivale a una mandarina!",
+        "boiledEgg": "¡Equivale a un huevo cocido!",
+        "apple": "¡Equivale a una manzana!",
+        "banana": "¡Equivale a un plátano!",
+        "riceHalfBowl": "¡Equivale a medio cuenco de arroz (bap)!",
+        "hotteok": "¡Equivale a un hotteok (tortita dulce coreana)!",
+        "riceBowl": "¡Equivale a un cuenco de arroz (bap)!",
+        "ramyeon": "¡Equivale a un cuenco de ramyeon!",
+        "ramyeonMany": "¡Equivale a unos {n} cuencos de ramyeon!"
+      }
     },
     "unit": {
       "spokenMeters": "metros"

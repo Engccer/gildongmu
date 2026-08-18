@@ -172,8 +172,7 @@
     "geoError": "現在地を確認できません。出発地を検索して指定してください。",
     "needEndpoints": "先に出発地と目的地を選択してください。",
     "readySummary": "{count}つの手段の経路案内の準備ができました。",
-    "allFailed": "経路が見つかりませんでした。",
-    "entrancePromoted": "出入口の{name}まで案内します。"
+    "allFailed": "経路が見つかりませんでした。"
   },
   "detail": {
     "back": "検索結果に戻る"

@@ -32,6 +32,13 @@ enum ThemePreference: String, CaseIterable {
 /// 이 시트 자체는 App 레벨에 있어 재생성 밖이라 열린 채로 새 언어로 다시 그려진다.
 /// 시트 등장 시 VoiceOver 포커스는 시스템이 이동시키므로 별도 처리 없음.
 struct SettingsView: View {
+    /// 도착 화면 "체중 입력하기"로 열렸을 때 true — 체중 필드에 VO 커서를 착지시킨다
+    /// (앞에 피커 행이 열 개쯤 있어 스와이프로 찾아가게 두면 버튼의 약속이 반쯤 거짓이다).
+    /// 착지 순서는 목록 포커스 정본(가시화 → 지연 → 대입) 그대로. 일반 진입은 시스템 기본.
+    var focusWeightOnAppear = false
+    @AccessibilityFocusState private var weightFieldFocused: Bool
+    private static let weightRowID = "weightRow"
+
     /// 각 언어는 자국어 표기(고유명사라 로컬라이즈 대상 아님, 웹 nav.* 동일 어휘).
     private static let languages: [(code: String, name: String)] = [
         ("ko", "한국어"),
@@ -94,6 +101,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             List {
                 Picker(appLocalized("ios.settings.theme"), selection: $themeRaw) {
                     ForEach(ThemePreference.allCases, id: \.rawValue) { theme in
@@ -129,6 +137,8 @@ struct SettingsView: View {
                 Section {
                     TextField(appLocalized("ios.settings.weightKg"), text: $weightText)
                         .keyboardType(.decimalPad)
+                        .id(Self.weightRowID)
+                        .accessibilityFocused($weightFieldFocused)
                         .onAppear { weightText = weightKg > 0 ? Self.formatWeight(weightKg) : "" }
                         .onChange(of: weightText) { _, _ in commitWeight() }
                 }
@@ -152,6 +162,19 @@ struct SettingsView: View {
                         ReleaseNotesView()
                     }
                 }
+            }
+            .task {
+                guard focusWeightOnAppear else { return }
+                proxy.scrollTo(Self.weightRowID)
+                try? await Task.sleep(for: .milliseconds(400))
+                weightFieldFocused = true
+                // 검증·1회 재시도(오프스크린 행 대입은 조용히 되돌아온다 — 목록 포커스 정본).
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !weightFieldFocused else { return }
+                proxy.scrollTo(Self.weightRowID)
+                try? await Task.sleep(for: .milliseconds(300))
+                weightFieldFocused = true
+            }
             }
             .navigationTitle(appLocalized("ios.settings.title"))
             .navigationBarTitleDisplayMode(.inline)

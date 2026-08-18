@@ -246,8 +246,23 @@
       "arrivedHeading": "Arrived",
       "arrivedPresumedHeading": "Presumed arrival",
       "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use.",
-      "healthSummary": "This leg: {steps} steps, about {kcal} kcal",
-      "healthDefaultWeight": "based on {kg} kg"
+      "healthSummary": "You walked {steps} steps on this leg and burned about {kcal} kcal.",
+      "healthWeightNotice": "The calorie figure above uses the adult average of {kg} kg. Enter your weight in Settings for a more accurate estimate. It never leaves your device.",
+      "healthEnterWeight": "Enter weight",
+      "food": {
+        "cherryTomato": "That's about one cherry tomato!",
+        "cucumberHalf": "That's about half a cucumber!",
+        "kimchi": "That's about one plate of kimchi!",
+        "tangerine": "That's about one tangerine!",
+        "boiledEgg": "That's about one boiled egg!",
+        "apple": "That's about one apple!",
+        "banana": "That's about one banana!",
+        "riceHalfBowl": "That's about half a bowl of rice (bap)!",
+        "hotteok": "That's about one hotteok (Korean sweet pancake)!",
+        "riceBowl": "That's about one bowl of rice (bap)!",
+        "ramyeon": "That's about one bowl of ramyeon!",
+        "ramyeonMany": "That's about {n} bowls of ramyeon!"
+      }
     },
     "unit": {
       "spokenMeters": "meters"

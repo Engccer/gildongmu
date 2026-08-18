@@ -43,4 +43,29 @@ import Testing
         #expect(WalkHealth.summary(steps: 10, distanceMeters: .infinity, weightKg: 65).kcal
                 == WalkHealth.summary(steps: 10, distanceMeters: nil, weightKg: 65).kcal)
     }
+
+    // 음식 비유(위원장 요청 2026-08-18): 비율 최근접, 상단 초과는 n단위, 하단 미달은 침묵.
+    @Test func foodComparisonPicksNearestByRatio() {
+        #expect(WalkHealth.foodComparison(kcal: 19) == .init(key: "kimchi", count: 1))
+        #expect(WalkHealth.foodComparison(kcal: 33) == .init(key: "tangerine", count: 1))
+        #expect(WalkHealth.foodComparison(kcal: 90) == .init(key: "apple", count: 1))
+        #expect(WalkHealth.foodComparison(kcal: 300) == .init(key: "riceBowl", count: 1))
+    }
+
+    @Test func foodComparisonAboveLadderCountsTopItem() {
+        #expect(WalkHealth.foodComparison(kcal: 1000) == .init(key: "ramyeon", count: 2))
+        #expect(WalkHealth.foodComparison(kcal: 700) == .init(key: "ramyeon", count: 1))
+    }
+
+    @Test func foodComparisonBelowHalfOfSmallestIsNil() {
+        #expect(WalkHealth.foodComparison(kcal: 0) == nil)
+        #expect(WalkHealth.foodComparison(kcal: 1) == nil)
+        #expect(WalkHealth.foodComparison(kcal: 2) == .init(key: "cherryTomato", count: 1))
+    }
+
+    @Test func foodLadderIsAscendingAndKeysUnique() {
+        let kcals = WalkHealth.foodLadder.map(\.kcal)
+        #expect(kcals == kcals.sorted())
+        #expect(Set(WalkHealth.foodLadder.map(\.key)).count == kcals.count)
+    }
 }

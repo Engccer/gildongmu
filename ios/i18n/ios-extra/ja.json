@@ -246,8 +246,23 @@
       "arrivedHeading": "到着",
       "arrivedPresumedHeading": "到着推定",
       "soundBackgroundUnavailable": "画面が消えている間や他のアプリの使用中は案内音が鳴りません。",
-      "healthSummary": "この区間 {steps}歩、約{kcal}kcal",
-      "healthDefaultWeight": "基準体重{kg}kg"
+      "healthSummary": "この区間で{steps}歩歩き、約{kcal}kcalを消費しました。",
+      "healthWeightNotice": "上のカロリーは成人平均の{kg}kgを基準にしています。設定で体重を入力すると、より正確な値になります。入力した情報は端末の外に送られません。",
+      "healthEnterWeight": "体重を入力する",
+      "food": {
+        "cherryTomato": "ミニトマト1個分です！",
+        "cucumberHalf": "きゅうり半分です！",
+        "kimchi": "キムチ一皿分です！",
+        "tangerine": "みかん1個分です！",
+        "boiledEgg": "ゆで卵1個分です！",
+        "apple": "りんご1個分です！",
+        "banana": "バナナ1本分です！",
+        "riceHalfBowl": "ごはん半膳分です！",
+        "hotteok": "ホットク1枚分です！",
+        "riceBowl": "ごはん一膳分です！",
+        "ramyeon": "韓国風ラーメン一杯分です！",
+        "ramyeonMany": "韓国風ラーメン約{n}杯分です！"
+      }
     },
     "unit": {
       "spokenMeters": "メートル"
