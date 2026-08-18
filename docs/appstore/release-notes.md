@@ -12,6 +12,47 @@
 
 ---
 
+## 1.10 (빌드 17)
+
+기준은 1.9 아카이브 커밋 `01447d4`(빌드 16)이며 그 이후 커밋 5건을 전수 판정했다. iOS 바이너리에 닿는 것은 3건이고 문서 2건(`16b1ab3`·`34d33a2`)과 웹 전용 변경(`NearbyHub.tsx`·`declarations.ts`)은 제외한다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 최소 지원 iOS 26 → 18 하향(26 미만은 `SFSpeechRecognizer` 온디바이스 받아쓰기) | `aac1c5c` | ko·en |
+| 도보 안내 걸음·칼로리 요약을 모든 정상 종료로 확장(중지·목적지 변경·권한 상실) | `e449fd9` | ko만 |
+| 추정 도착 자동 종료의 도착 종을 전경 한정으로 | `63e0be7` | ko만 |
+
+최소 버전 하향은 **설치 가능 기기가 늘어나는 변경**이라 두 로케일 모두에 적는다(1.9까지의 "도보 안내는 ko 게이트라 ko만"과 다른 축이다). 도보 안내 2건은 ko 게이트 안이라 ko만이고, en은 관용 문구(1.7·1.9 선례).
+
+심사 노트는 이번 버전에서 **갱신한다**(`--review-notes` 사용). 두 곳이 이번 변경으로 거짓이 된다: ①`Microphone` 절의 "iOS SpeechAnalyzer"가 iOS 18~25 기기에서는 사실이 아니다(그 구간은 `SFSpeechRecognizer` 온디바이스) ②`Motion & Fitness`의 `(new in this version)`은 1.8에서 붙은 꼬리라 1.10에서는 거짓이다(1.7 백그라운드 절이 1.8에서 같은 꼬리를 뗀 선례).
+
+⚠ ASC 실값(2,134자)이 `1.0-submission-draft.md` §9보다 최신이었다. §9에 `Motion & Fitness` 절이 없어, 문서를 그대로 `--review-notes`로 넘겼다면 그 절이 지워질 뻔했다. 이번에 §9를 ASC 실값 기준으로 동기화했다.
+
+### ko
+
+```
+새로운 기능
+- iOS 18부터 설치할 수 있습니다. 이전에는 iOS 26 이상이 필요했습니다. iOS 26보다 낮은 기기에서는 받아쓰기가 다른 엔진으로 동작하며, 음성이 기기 밖으로 나가지 않는 것은 같습니다.
+
+개선
+- 도보 안내를 중지하거나 목적지를 바꿔서 끝냈을 때에도 걸음 수와 소모 칼로리를 알려 드립니다. 50미터 넘게 걸었을 때 나옵니다.
+- 도착한 것으로 보고 안내가 저절로 끝날 때 울리던 도착 종은 이제 앱을 보고 있을 때에만 울립니다. 화면을 끈 채 둔 휴대전화가 한참 뒤에 소리를 내지 않습니다.
+```
+
+### en
+
+```
+New
+- The app now installs on iOS 18 and later; it previously required iOS 26. On devices below iOS 26, dictation runs on a different engine, and audio still never leaves the device.
+
+Improved
+- Various fixes and refinements.
+```
+
+---
+
 ## 1.9 (빌드 16)
 
 제출 2026-08-18 19:55 KST (`WAITING_FOR_REVIEW`). 아카이브 커밋 `01447d4`(`git worktree` 격리 빌드), 산출물 `Info.plist`로 번들 ID·1.9.0(16)·`UIBackgroundModes`·번들 `release-notes.json` 최신 1.9 확인. 프로모션 텍스트 자동 승계(ko 86자·en 142자), 심사 노트 무변경.
