@@ -245,6 +245,7 @@
       "stopped": "거리 추적을 종료했습니다.",
       "arrivedHeading": "도착",
       "arrivedPresumedHeading": "도착 추정",
+      "endedHeading": "안내 종료",
       "soundBackgroundUnavailable": "화면이 꺼지거나 다른 앱을 쓰는 동안에는 안내 소리가 나지 않습니다.",
       "healthSummary": "이번 구간에서 {steps}걸음 걸으셨어요. 약 {kcal}kcal를 태우셨어요.",
       "healthWeightNotice": "위 칼로리 수치는 성인 평균인 {kg}kg 기준이에요. 설정에서 체중을 입력하면 더 정확한 정보를 받으실 수 있어요. 입력한 정보는 서버에 저장되지 않아요.",

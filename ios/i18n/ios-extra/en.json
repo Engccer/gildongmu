@@ -245,6 +245,7 @@
       "stopped": "Distance tracking stopped.",
       "arrivedHeading": "Arrived",
       "arrivedPresumedHeading": "Presumed arrival",
+      "endedHeading": "Guidance ended",
       "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use.",
       "healthSummary": "You walked {steps} steps on this leg and burned about {kcal} kcal.",
       "healthWeightNotice": "The calorie figure above uses the adult average of {kg} kg. Enter your weight in Settings for a more accurate estimate. It never leaves your device.",

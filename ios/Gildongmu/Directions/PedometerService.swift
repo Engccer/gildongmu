@@ -16,6 +16,12 @@ protocol PedometerQuerying: Sendable {
     func requestAuthorizationIfNeeded()
     /// `[start, end]` 구간의 걸음·거리. 24시간 초과 창은 `.failed`.
     func summary(from start: Date, to end: Date) async -> PedometerResult
+    /// `start` 이후 누적 걸음·거리를 갱신될 때마다 메인 액터로 전달한다(2026-08-19). 종료
+    /// 순간에 "요약을 보여 줄 만큼 걸었는가"를 **동기**로 판정하기 위한 값이다 — 사후 질의만
+    /// 있으면 그 판정이 비동기가 되어 종료 화면을 띄운 뒤에야 지울 수 있다(깜빡임).
+    /// 권한 거부·미지원이면 아무 갱신도 오지 않는다(호출부는 값 부재를 "요약 없음"으로 본다).
+    func startLiveUpdates(from start: Date, onUpdate: @escaping @MainActor @Sendable (Int, Double?) -> Void)
+    func stopLiveUpdates()
 }
 
 /// `CMPedometer` 래퍼. 시스템이 걸음을 항상 기록하므로 라이브 구독 없이 도착 시점에
@@ -29,6 +35,22 @@ final class PedometerService: PedometerQuerying, @unchecked Sendable {  // CMPed
         else { return }
         let now = Date()
         pedometer.queryPedometerData(from: now.addingTimeInterval(-1), to: now) { _, _ in }
+    }
+
+    func startLiveUpdates(
+        from start: Date, onUpdate: @escaping @MainActor @Sendable (Int, Double?) -> Void
+    ) {
+        guard CMPedometer.isStepCountingAvailable() else { return }
+        pedometer.startUpdates(from: start) { data, error in
+            guard error == nil, let data else { return }
+            let steps = data.numberOfSteps.intValue
+            let distance = data.distance?.doubleValue
+            Task { @MainActor in onUpdate(steps, distance) }
+        }
+    }
+
+    func stopLiveUpdates() {
+        pedometer.stopUpdates()
     }
 
     func summary(from start: Date, to end: Date) async -> PedometerResult {

@@ -761,22 +761,24 @@ struct DirectionsTabView: View {
             .sheet(isPresented: Binding(
                 get: { beacon.isTracking || beacon.arrivalDest != nil },
                 // 스와이프·VoiceOver escape로 닫는 경로. 중지와 같은 처리를 해야
-                // "닫혔는데 추적은 살아 있는" 좀비 상태가 생기지 않는다.
+                // "닫혔는데 추적은 살아 있는" 좀비 상태가 생기지 않는다. 걸음·칼로리
+                // 종료 화면은 이 안에서 띄우지 않는다(방금 커밋된 dismiss와 같은 바인딩을
+                // 되돌리는 경합) — 아래 onDismiss가 띄운다.
                 set: { presented in
                     guard !presented else { return }
                     if beacon.isTracking {
-                        beacon.stop(playStopTone: true)
+                        beacon.stopByUser(endScreen: .afterDismiss)
                     } else {
                         beacon.clearArrival()
                     }
                 }
-            )) {
+            ), onDismiss: { beacon.presentPendingEndScreen() }) {
                 // 목적지 이름을 뷰의 `trackedDestination`이 아니라 **모델**에서 읽는다.
                 // 도착지가 "현재 위치"로 바뀌면 뷰 쪽 값은 nil이 되는데 같은 변화가
                 // 추적도 멈추므로, 뷰에서 파생하면 닫히는 길에 빈 시트가 한 프레임 스친다.
                 BeaconTrackingSheet(
                     model: beacon,
-                    onStop: { beacon.stop(playStopTone: true) },
+                    onStop: { beacon.stopByUser(endScreen: .immediate) },
                     onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
                 )
             }
@@ -831,8 +833,10 @@ struct DirectionsTabView: View {
             // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리). 도착 전이는
             // 시트가 도착 종료 화면으로 계속 떠 있으므로 제외 — 그 화면이 닫힐 때
             // (아래 arrivalDest 소거 onChange) 돌려보낸다(transit 핸드오프 동형).
+            // 스와이프 종료 뒤 요약 화면이 다시 뜰 예정이면(`hasPendingEndScreen`) 여기서도
+            // 돌려보내지 않는다 — 재-present의 착지와 겹친다. 그 화면이 닫힐 때 아래가 맡는다.
             .onChange(of: beacon.isTracking) { _, tracking in
-                guard !tracking, beacon.arrivalDest == nil else { return }
+                guard !tracking, beacon.arrivalDest == nil, !beacon.hasPendingEndScreen else { return }
                 landBeaconStartFocus()
             }
             .onChange(of: beacon.arrivalDest) { previous, arrival in

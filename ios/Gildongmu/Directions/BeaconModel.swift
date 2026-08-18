@@ -347,8 +347,13 @@ final class BeaconModel {
     private var progressAnchor: RoutePoint?
     private var lastProgressAt: Double?
     private var lastUsableDistanceToDest: Double?
-    /// 도착 종료 화면의 확정/추정 분기(3-state 정직성 — 시트가 소비).
-    private(set) var arrivalPresumed = false
+    /// 종료 화면의 종류(3-state 정직성 — 시트가 소비). `.stopped`는 도착이 아닌 종료
+    /// (사용자 중지·목적지 변경·권한 상실)로, 걸음·칼로리 요약을 보여 주기 위해서만
+    /// 화면을 남긴다(위원장 판정 2026-08-19) — 요약이 성립하지 않으면 곧 소거된다.
+    enum SessionEndKind { case arrived, presumed, stopped }
+    private(set) var endKind: SessionEndKind = .arrived
+    /// `.stopped` 종료 화면의 첫 문장(중지 사유). 도착 종류는 시트가 키를 직접 고른다.
+    private(set) var endText = ""
     /// 진입 배치 서술을 냈는가. 1회뿐이라 주기 통지와 별도로 센다.
     private var finalApproachIntroSpoken = false
     /// 발화되지 못한 진입 배치 서술(백그라운드 게이트에 걸린 것).
@@ -359,11 +364,13 @@ final class BeaconModel {
 
     var isTracking: Bool { status == .tracking }
 
-    /// 도착 종료 상태(위원장 판정 2026-08-11): 도착으로 세션이 끝나도 시트를 유지해
+    /// 종료 화면 상태(위원장 판정 2026-08-11): 도착으로 세션이 끝나도 시트를 유지해
     /// 목적지 주변 확인의 발판을 남긴다(대중교통 `pendingWalkHandoff` 동형). 값은
     /// 주변 확인 앵커(목적지) 좌표이고, 라벨은 `destinationLabel`이 이어 든다(stop()이
     /// 비우지 않는 값). 소거는 닫기(시트 바인딩)와 새 세션 시작뿐 — `stop()`은
     /// 건드리지 않는다(도착 직후의 stop()이 지우면 종료 화면이 성립하지 않는다).
+    /// 종류는 `endKind`가 가른다 — 도착이 아닌 종료(`.stopped`)도 도보 세션이면 같은
+    /// 화면을 걸음·칼로리 요약을 위해 남긴다(2026-08-19, `stopLeavingSummary`).
     private(set) var arrivalDest: BeaconDest?
 
     // MARK: - 도착 건강 요약(spec 2026-08-17)
@@ -375,7 +382,9 @@ final class BeaconModel {
     /// 세션 세대. 비동기 조회 결과는 이 토큰이 그대로일 때만 커밋한다(같은 목적지 재시작을
     /// 목적지 비교로는 못 가른다 — 설계 리뷰 BLOCKER 3).
     private var arrivalSessionToken = UUID()
-    private enum ArrivalHealthLoad { case idle, loading, loaded, unavailable, failed }
+    /// `.negligible` = 측정은 성공했지만 `WalkHealth.minMeaningfulDistanceMeters` 미만
+    /// (표시 안 함, 재조회 무의미).
+    private enum ArrivalHealthLoad { case idle, loading, loaded, negligible, unavailable, failed }
     private var arrivalHealthLoad: ArrivalHealthLoad = .idle
     private var arrivalHealthTask: Task<Void, Never>?
     /// 도착 종료 화면의 건강 요약 행. nil이면 행이 없다(부재를 설명하지 않는다).
@@ -383,6 +392,19 @@ final class BeaconModel {
     /// 마지막으로 받은 만보계 표본. 도착 화면에서 체중을 입력하고 돌아오면 같은 표본으로
     /// 다시 계산해야 "기준 체중" 안내가 사라진다(재조회 없이 — 만보계 왕복은 한 번뿐).
     private var arrivalHealthSample: (steps: Int, distance: Double?)?
+    /// 세션 시작 이후 만보계 라이브 누적(걸음·거리). 종료 순간 "요약을 보여 줄 만큼
+    /// 걸었는가"를 **동기**로 가르는 근거다(2026-08-19) — 사후 질의만으로는 그 판정이
+    /// 비동기라 종료 화면을 띄운 뒤에야 지울 수 있고, 그것이 깜빡임·포커스 경합이 된다.
+    /// 권한 거부·미지원이면 nil로 남는다(= 요약 없음). `stop()`은 갱신만 멈추고 값은
+    /// 남긴다(도착·중지 처리가 stop() 뒤에 읽는다 — `sessionStartedAt` 동형).
+    private var liveHealthSample: (steps: Int, distance: Double?)?
+    /// 스와이프·VO escape로 닫힌 시트가 완전히 내려간 뒤 띄울 종료 화면(아래
+    /// `stopByUser(endScreen: .afterDismiss)`). presentation 바인딩의 set 클로저 안에서
+    /// 같은 바인딩을 되돌리면 방금 커밋된 dismiss와 경합한다 — 그래서 `onDismiss`가 소비한다.
+    private var pendingEndScreen: (dest: BeaconDest, text: String, sample: (steps: Int, distance: Double?))?
+    /// 시트가 내려간 뒤 종료 화면이 다시 뜰 예정인가 — 길찾기 탭이 시작 버튼 복귀 포커스를
+    /// 예약하지 않게 하는 신호(예약하면 재-present의 착지와 겹친다).
+    var hasPendingEndScreen: Bool { pendingEndScreen != nil }
 
     init(pedometer: PedometerQuerying = PedometerService()) {
         self.pedometer = pedometer
@@ -398,11 +420,17 @@ final class BeaconModel {
     /// 않아 다음 세션까지 남는다(위원장 실사용 발견 2026-08-17: 도착 뒤 목적지를
     /// 바꿔 조회해도 첫 수단 섹션 위에 도착 문장이 남았다).
     func clearArrival() {
+        // ⚠ `.stopped`의 상태 줄은 이 화면의 것이 아니다 — 권한 상실 종료의 실패 문장
+        //   (`fail`)이 거기 있고, 화면을 닫은 뒤에도 인라인 상태 줄·복구 버튼의 근거로
+        //   남아야 한다. 도착 문장만 이 화면과 수명을 같이한다.
+        if endKind != .stopped {
+            statusText = ""
+            liveTopText = nil
+        }
         arrivalDest = nil
-        arrivalPresumed = false
+        endKind = .arrived
+        endText = ""
         resetArrivalHealth()
-        statusText = ""
-        liveTopText = nil
     }
 
     private func resetArrivalHealth() {
@@ -445,7 +473,7 @@ final class BeaconModel {
         variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
     ) {
         if isTracking {
-            stop(playStopTone: true)
+            stopByUser(endScreen: .immediate)
         } else {
             begin(StartRequest(
                 dest: dest, label: label, kind: kind, accessible: accessible,
@@ -529,13 +557,24 @@ final class BeaconModel {
         // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다.
         deferredAnnouncer.advanceGeneration()
         self.dest = dest
-        arrivalDest = nil  // 새 세션 시작 = 이전 도착 종료 화면 소거
-        arrivalPresumed = false
+        arrivalDest = nil  // 새 세션 시작 = 이전 종료 화면 소거
+        endKind = .arrived
+        endText = ""
         resetArrivalHealth()
         arrivalSessionToken = UUID()
-        sessionStartedAt = kind == .walk ? Date() : nil
+        pendingEndScreen = nil
+        liveHealthSample = nil
+        let sessionStart = kind == .walk ? Date() : nil
+        sessionStartedAt = sessionStart
         // 권한 팝업은 여기(사용자가 전경에서 시작을 누른 자리)에서만 — 도착 시 팝업 금지.
-        if kind == .walk { pedometer.requestAuthorizationIfNeeded() }
+        if let sessionStart {
+            pedometer.requestAuthorizationIfNeeded()
+            let token = arrivalSessionToken
+            pedometer.startLiveUpdates(from: sessionStart) { [weak self] steps, distance in
+                guard let self, self.arrivalSessionToken == token else { return }
+                self.liveHealthSample = (steps, distance)
+            }
+        }
         // 억제 잔류 차단(스펙 2026-08-12 §5.4, 마일스톤 리뷰 BLOCKER): 검색 시트가
         // 열린 채 세션이 죽으면 시트 onChange가 발화할 기회 없이 뷰가 소멸해 억제가
         // 고착된다 — 세션 경계가 무조건 해제한다(TransitGuideModel.stop() 동형).
@@ -948,6 +987,7 @@ final class BeaconModel {
         watchdog?.cancel()
         watchdog = nil
         LocationService.shared.stopBeaconUpdates()
+        pedometer.stopLiveUpdates()  // 값(liveHealthSample)은 남긴다 — 종료 처리가 뒤에 읽는다
         if playStopTone && status == .tracking { playTone(.stop) }
         // 원복은 정지 톤 **뒤에**. 먼저 원복하면 그 톤이 `.ambient`로 나가 잠금
         // 상태에서 들리지 않는다(세션 종료를 소리로 확인할 수 없게 된다).
@@ -1013,8 +1053,10 @@ final class BeaconModel {
     /// presentationDetents 도입 등으로 열리는 경로가 생기면 이 줄이 방어선이다).
     func teardown() {
         stop()
+        pendingEndScreen = nil
         arrivalDest = nil
-        arrivalPresumed = false
+        endKind = .arrived
+        endText = ""
         tones.shutdown()
     }
 
@@ -1022,8 +1064,80 @@ final class BeaconModel {
     /// 사용자가 비콘 컨트롤을 조작한 게 아니라 라벨 변화만으로는 신호가 안 되어 통지한다.
     func stopBecauseDestinationChanged() {
         guard isTracking else { return }
-        stop()
-        announce(appLocalized("ios.beacon.stopped"))
+        let text = appLocalized("ios.beacon.stopped")
+        stopLeavingSummary(playStopTone: false, text: text)
+        announce(text)
+    }
+
+    /// 종료 화면을 언제 띄우는가. 중지 버튼은 시트가 떠 있는 채로 내용만 바꾸므로 즉시(도착
+    /// 동형), 스와이프·VO escape는 시스템이 dismiss를 이미 커밋한 뒤라 그 안에서 바인딩을
+    /// 되돌리지 않고 `onDismiss` 뒤에 다시 띄운다.
+    enum EndScreenTiming { case immediate, afterDismiss }
+
+    /// 사용자 중지(중지 버튼·시트 스와이프·VO escape). 정지 톤을 내고, 도보 세션이고
+    /// 요약이 성립하면 종료 화면을 남긴다(아래 `stopLeavingSummary`). 종료 화면이 남는
+    /// 전이는 포커스를 쥔 컨트롤(중지 버튼)을 통째로 없애므로 착지 문장을 `.high`로도
+    /// 통지한다(도착 경로 동형 — 착지가 실패해도 화면의 존재를 알 수 있다). 요약이 없어
+    /// 그냥 닫히는 종전 경로는 정지 톤이 신호다(부재를 말하지 않는다).
+    func stopByUser(endScreen timing: EndScreenTiming) {
+        let text = appLocalized("ios.beacon.stopped")
+        if stopLeavingSummary(playStopTone: true, text: text, timing: timing), timing == .immediate {
+            announce(text, highPriority: true)
+        }
+    }
+
+    /// 도착이 아닌 종료(사용자 중지·목적지 변경·권한 상실). `stop()`으로 세션을 끝낸 뒤,
+    /// 도보 세션이었고 라이브 누적이 `WalkHealth.minMeaningfulDistanceMeters` 이상이면 도착과
+    /// 같은 모양으로 종료 화면을 남겨 걸음·칼로리 요약을 보여 준다(spec 2026-08-17 §2,
+    /// 2026-08-19 개정 — 종전엔 도착 두 경로만 요약이 나왔다). 반환 = 종료 화면을 남겼는가.
+    ///
+    /// 판정은 **동기**다(라이브 누적이 근거). 그래서 요약이 없는 종료는 종전 "중지 = 닫힘"과
+    /// 과정까지 같고(화면이 스치지 않는다), 요약이 있는 종료는 도착처럼 `stop()` 직후 같은
+    /// 턴에 `arrivalDest`를 대입해 시트 내용만 바뀐다. 만보계 권한이 없거나 미지원이면
+    /// 누적이 nil이라 요약 없음이다(3-state의 "부재"). ⚠ 다른 세션의 claim
+    /// (`GuideSessionCoordinator`)·`teardown`은 이 경로가 아니다 — 그 뒤엔 다른 시트나
+    /// 다른 화면이 오므로 종료 화면을 남기지 않는다.
+    @discardableResult
+    private func stopLeavingSummary(
+        playStopTone: Bool, text: String, timing: EndScreenTiming = .immediate
+    ) -> Bool {
+        // stop()이 dest·sessionKind를 되돌리므로 먼저 읽는다(도착 경로 동형).
+        let dest = self.dest
+        let wasWalkSession = isTracking && sessionKind == .walk && sessionStartedAt != nil
+        // ⚠ 첫 라이브 콜백 전에 중지하면 누적이 nil이라 요약 없음이 된다 — 의도된 수용이다.
+        //   50m를 걷는 데 30초 이상 걸리고 콜백은 걸음이 쌓이면 수 초 안에 오므로, 이 창에서
+        //   지는 요약은 임계값 미만이거나 만보계가 실제로 죽어 있는 세션이다. 여기서 사후
+        //   질의를 태우면 판정이 비동기가 되어 이 함수가 없앤 깜빡임이 되돌아온다.
+        let sample = liveHealthSample
+        stop(playStopTone: playStopTone)
+        guard wasWalkSession, let dest, let sample,
+              WalkHealth.isMeaningfulWalk(steps: sample.steps, distanceMeters: sample.distance)
+        else { return false }
+        switch timing {
+        case .immediate:
+            presentEndScreen(dest: dest, text: text, sample: sample)
+        case .afterDismiss:
+            pendingEndScreen = (dest, text, sample)
+        }
+        return true
+    }
+
+    private func presentEndScreen(
+        dest: BeaconDest, text: String, sample: (steps: Int, distance: Double?)
+    ) {
+        arrivalDest = dest
+        endKind = .stopped
+        endText = text
+        commitArrivalHealth(sample)
+    }
+
+    /// 시트 `onDismiss` — 스와이프·VO escape로 닫힌 뒤 보류된 종료 화면을 띄운다. 그 사이
+    /// 새 세션이 시작됐으면(`start()`가 비운다) 아무것도 하지 않는다.
+    func presentPendingEndScreen() {
+        guard let pending = pendingEndScreen, !isTracking else { return }
+        pendingEndScreen = nil
+        presentEndScreen(dest: pending.dest, text: pending.text, sample: pending.sample)
+        announce(pending.text, highPriority: true)
     }
 
     /// 목적지 전환(스펙 2026-08-12 §3.1) — 같은 세션의 경로 재획득. 세션(톤·위치
@@ -1647,6 +1761,7 @@ final class BeaconModel {
             // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
             // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
             arrivalDest = dest
+            endKind = .arrived
             loadArrivalHealth()
             statusText = text
             lastGuidance = text
@@ -1703,7 +1818,7 @@ final class BeaconModel {
         playTone(.nearby)
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
         arrivalDest = dest
-        arrivalPresumed = true
+        endKind = .presumed
         loadArrivalHealth()
         statusText = text
         lastGuidance = text
@@ -1712,15 +1827,22 @@ final class BeaconModel {
         return true
     }
 
-    /// 도착 종료 화면의 걸음·칼로리 요약을 비동기로 채운다(spec 2026-08-17 §3).
-    /// 확정·추정 도착 두 경로가 `arrivalDest` 대입 직후 부르고, 전경 복귀가 `.failed`일 때
-    /// 한 번 더 부른다. 커밋 조건은 세션 토큰 일치 AND 도착 화면이 아직 열려 있음.
-    /// 도착 낭독 문장에는 넣지 않고, 값은 로그에 남기지 않는다(지연만 계측).
+    /// 도착 종료 화면의 걸음·칼로리 요약을 채운다(spec 2026-08-17 §3). 확정·추정 도착이
+    /// `arrivalDest` 대입 직후 부르고, 전경 복귀가 `.failed`일 때 한 번 더 부른다. 라이브
+    /// 누적이 있으면 동기 커밋, 없으면 사후 질의(커밋 조건은 세션 토큰 일치 AND 도착
+    /// 화면이 아직 열려 있음). 도착 낭독 문장에는 넣지 않고, 값은 로그에 남기지 않는다.
+    /// `.stopped` 종료는 여기가 아니라 `stopLeavingSummary`가 라이브 누적으로 판정한다.
     private func loadArrivalHealth() {
         // ⚠ 실제 `.car` 배제선은 `sessionStartedAt`(car면 nil)이다 — 두 도착 경로 모두 stop()이
         // sessionKind를 walk로 되돌린 뒤 여기 오므로 아래 sessionKind 검사는 항상 참이다.
         guard sessionKind == .walk, let start = sessionStartedAt, arrivalDest != nil else { return }
         guard arrivalHealthLoad == .idle || arrivalHealthLoad == .failed else { return }
+        // 라이브 누적이 있으면 그것이 곧 답이다 — 동기 커밋이라 VO 착지 전에 행이 존재한다.
+        // 사후 질의는 누적이 없을 때(권한 응답이 늦은 세션 등)의 폴백으로만 남는다.
+        if let sample = liveHealthSample {
+            commitArrivalHealth(sample)
+            return
+        }
         arrivalHealthLoad = .loading
         let token = arrivalSessionToken
         let requestedAt = ProcessInfo.processInfo.systemUptime
@@ -1730,10 +1852,7 @@ final class BeaconModel {
                   self.arrivalDest != nil else { return }
             switch result {
             case .sample(let steps, let distance):
-                self.arrivalHealthSample = (steps, distance)
-                self.arrivalHealth = WalkHealth.summary(
-                    steps: steps, distanceMeters: distance, weightKg: Self.storedWeight())
-                self.arrivalHealthLoad = .loaded
+                self.commitArrivalHealth((steps, distance))
             case .unavailable:
                 self.arrivalHealthLoad = .unavailable
             case .failed:
@@ -1742,6 +1861,19 @@ final class BeaconModel {
             let ms = Int((ProcessInfo.processInfo.systemUptime - requestedAt) * 1000)
             guideDiagLog("arrivalHealth load=\(self.arrivalHealthLoad) latencyMs=\(ms)")
         }
+    }
+
+    /// 표본 → 요약 행. `minMeaningfulDistanceMeters` 미만이면 행이 없다(`.negligible`,
+    /// 도착·중지 공통 — 측정 성공·값 0은 3-state상 성공이지만 표시할 가치가 없다).
+    private func commitArrivalHealth(_ sample: (steps: Int, distance: Double?)) {
+        guard WalkHealth.isMeaningfulWalk(steps: sample.steps, distanceMeters: sample.distance) else {
+            arrivalHealthLoad = .negligible
+            return
+        }
+        arrivalHealthSample = sample
+        arrivalHealth = WalkHealth.summary(
+            steps: sample.steps, distanceMeters: sample.distance, weightKg: Self.storedWeight())
+        arrivalHealthLoad = .loaded
     }
 
     private static func storedWeight() -> Double? {
@@ -2359,8 +2491,7 @@ final class BeaconModel {
         guard isTracking else { return }
         switch code {
         case .denied:
-            stop()
-            fail(with: .unavailable, key: "beacon.weak")
+            stopAndFail(with: .unavailable, key: "beacon.weak")
         case .locationUnknown:
             // Apple이 무시를 권하는 일시 오류. 진짜 끊김은 워치독이 잡는다.
             break
@@ -2373,8 +2504,7 @@ final class BeaconModel {
         guard isTracking else { return }
         switch status {
         case .denied, .restricted:
-            stop()
-            fail(with: .denied, key: "beacon.denied", resolution: .settings)
+            stopAndFail(with: .denied, key: "beacon.denied", resolution: .settings)
         default:
             break
         }
@@ -2387,8 +2517,14 @@ final class BeaconModel {
     /// 컨트롤을 조작한 게 아니므로 라벨 변화가 신호가 되지 못해 통지가 필요하다.
     private func handle(accuracy: CLAccuracyAuthorization) {
         guard isTracking, accuracy == .reducedAccuracy else { return }
-        stop()
-        fail(with: .unavailable, key: "beacon.reduced", resolution: .precise)
+        stopAndFail(with: .unavailable, key: "beacon.reduced", resolution: .precise)
+    }
+
+    /// 세션 중 권한·정밀도 상실 종료. 종료 화면(요약)을 남기고 실패 상태·통지를 낸다 —
+    /// 화면의 첫 문장이 실패 사유라, 시트가 인라인 상태 줄을 덮는 동안에도 사유가 들린다.
+    private func stopAndFail(with status: Status, key: String, resolution: FailResolution = .none) {
+        stopLeavingSummary(playStopTone: false, text: appLocalized(key))
+        fail(with: status, key: key, resolution: resolution)
     }
 
     // MARK: - 무-fix 감시

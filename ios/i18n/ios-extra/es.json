@@ -245,6 +245,7 @@
       "stopped": "Seguimiento de distancia detenido.",
       "arrivedHeading": "Llegada",
       "arrivedPresumedHeading": "Llegada estimada",
+      "endedHeading": "Guía finalizada",
       "soundBackgroundUnavailable": "Los sonidos de la guía no sonarán con la pantalla apagada o al usar otra aplicación.",
       "healthSummary": "En este tramo caminaste {steps} pasos y quemaste unas {kcal} kcal.",
       "healthWeightNotice": "La cifra de calorías usa el promedio adulto de {kg} kg. Introduce tu peso en Ajustes para una estimación más precisa. El dato nunca sale de tu dispositivo.",

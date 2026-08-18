@@ -245,6 +245,7 @@
       "stopped": "Suivi de distance arrêté.",
       "arrivedHeading": "Arrivée",
       "arrivedPresumedHeading": "Arrivée estimée",
+      "endedHeading": "Guidage terminé",
       "soundBackgroundUnavailable": "Les sons du guidage ne seront pas audibles écran éteint ou dans une autre application.",
       "healthSummary": "Sur ce tronçon, vous avez fait {steps} pas et brûlé environ {kcal} kcal.",
       "healthWeightNotice": "Le chiffre des calories repose sur la moyenne adulte de {kg} kg. Saisissez votre poids dans Réglages pour une estimation plus précise. Cette donnée ne quitte jamais votre appareil.",
