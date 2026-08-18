@@ -26,6 +26,10 @@ public enum WalkHealth {
     /// UserDefaults 키(설정 "칼로리 추정용 체중"). 0 = 미입력.
     public static let weightStorageKey = "walkWeightKg"
     public static let weightRange: ClosedRange<Double> = 20...300
+    /// 요약을 보여 줄 최소 보행 거리(m). 이보다 짧으면 걸음·칼로리를 셈하는 것이 무의미하다
+    /// (위원장 판정 2026-08-19 — 시작 직후 중지, 목적지 코앞 시작 등). 65kg에서 50m는
+    /// 약 1.6kcal로 음식 사다리 최하단(방울토마토) 절반 근처다. 잠정값.
+    public static let minMeaningfulDistanceMeters: Double = 50
 
     /// 저장값 → 유효 체중. 범위 밖·nil·비유한값은 nil(=기본 체중 사용).
     public static func normalizedWeight(_ raw: Double?) -> Double? {
@@ -72,14 +76,21 @@ public enum WalkHealth {
         return FoodComparison(key: nearest.key, count: 1)
     }
 
+    /// 계산에 쓰는 거리: 만보계 거리가 유한한 양수면 그것, 아니면 걸음×보폭.
+    public static func effectiveDistanceMeters(steps: Int, distanceMeters: Double?) -> Double {
+        if let d = distanceMeters, d.isFinite, d > 0 { return d }
+        return Double(max(0, steps)) * fallbackStrideMeters
+    }
+
+    /// 요약을 보여 줄 만큼 걸었는가. 종료 화면(도착·중지 모두)이 이 판정으로 요약 행의
+    /// 유무를 가른다 — 3-state의 "측정 성공·값 0"은 여전히 성공이지만 표시할 가치가 없다.
+    public static func isMeaningfulWalk(steps: Int, distanceMeters: Double?) -> Bool {
+        effectiveDistanceMeters(steps: steps, distanceMeters: distanceMeters) >= minMeaningfulDistanceMeters
+    }
+
     public static func summary(steps: Int, distanceMeters: Double?, weightKg: Double?) -> WalkHealthSummary {
         let safeSteps = max(0, steps)
-        let meters: Double
-        if let d = distanceMeters, d.isFinite, d > 0 {
-            meters = d
-        } else {
-            meters = Double(safeSteps) * fallbackStrideMeters
-        }
+        let meters = effectiveDistanceMeters(steps: safeSteps, distanceMeters: distanceMeters)
         let weight = normalizedWeight(weightKg)
         let kcal = (meters / 1000) * (weight ?? defaultWeightKg) * netKcalPerKgKm
         return WalkHealthSummary(

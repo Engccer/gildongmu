@@ -242,16 +242,16 @@ struct BeaconTrackingSheet: View {
         }
     }
 
-    /// 도착 종료 화면(위원장 판정 2026-08-11). 헤딩이 무엇에 도착했는지를, 본문
-    /// 첫 행이 도착 사실을, 주변 확인이 다음 행동을 담는다. 닫기는 표준 dismiss —
-    /// presentation 바인딩이 `clearArrival()`로 소거한다(스와이프·VO escape 동일).
+    /// 종료 화면(위원장 판정 2026-08-11, 중지 종료 확장 2026-08-19). 헤딩이 어느 목적지의
+    /// 어떤 종료인지를, 본문 첫 행이 도착 사실(또는 중지 사유)을, 도착이면 주변 확인이
+    /// 다음 행동을 담는다. 닫기는 표준 dismiss — presentation 바인딩이 `clearArrival()`로
+    /// 소거한다(스와이프·VO escape 동일). 도착이 아닌 종료(`.stopped`)는 걸음·칼로리
+    /// 요약을 위해서만 남는 화면이라 주변 확인이 없고, 요약이 없으면 모델이 곧 소거한다.
     private func arrivalSection(dest: BeaconDest, proxy: ScrollViewProxy) -> some View {
         Section {
-            // 확정/추정 분기(3-state 정직성, spec 2026-08-13 §4-5): 추정 종료를
-            // 확정 도착과 뭉개지 않는다.
-            Text(appLocalized(
-                model.arrivalPresumed ? "guide.arrivedPresumed" : "guide.arrived"
-            ))
+            // 확정/추정/중지 분기(3-state 정직성, spec 2026-08-13 §4-5): 추정 종료를
+            // 확정 도착과, 중지를 도착과 뭉개지 않는다.
+            Text(endSentence)
                 .accessibilityFocused($arrivedFocused)
             // 걸음·칼로리 요약(spec 2026-08-17, 문장형·음식 비유는 2026-08-18 개정). 값이
             // 없으면 행이 없다 — 부재를 설명하지 않는다. 걸음·칼로리·비유는 한 문단이라
@@ -274,18 +274,31 @@ struct BeaconTrackingSheet: View {
                     Button(appLocalized("ios.beacon.healthEnterWeight")) { showsSettings = true }
                 }
             }
-            SurroundingsSceneSection(
-                anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
+            if model.endKind != .stopped {
+                SurroundingsSceneSection(
+                    anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
+            }
             Button(appLocalized("actions.close")) { dismiss() }
         } header: {
-            Text(joinText(
-                appLocalized(
-                    model.arrivalPresumed
-                        ? "ios.beacon.arrivedPresumedHeading" : "ios.beacon.arrivedHeading"
-                ),
-                model.destinationLabel
-            ))
-            .accessibilityAddTraits(.isHeader)
+            Text(joinText(endHeading, model.destinationLabel))
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private var endSentence: String {
+        switch model.endKind {
+        case .arrived: appLocalized("guide.arrived")
+        case .presumed: appLocalized("guide.arrivedPresumed")
+        case .stopped: model.endText
+        }
+    }
+
+    // 키는 리터럴로만 (check-xcstrings-keys 린터 계약).
+    private var endHeading: String {
+        switch model.endKind {
+        case .arrived: appLocalized("ios.beacon.arrivedHeading")
+        case .presumed: appLocalized("ios.beacon.arrivedPresumedHeading")
+        case .stopped: appLocalized("ios.beacon.endedHeading")
         }
     }
 

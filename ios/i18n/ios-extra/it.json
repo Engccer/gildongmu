@@ -245,6 +245,7 @@
       "stopped": "Tracciamento della distanza interrotto.",
       "arrivedHeading": "Arrivo",
       "arrivedPresumedHeading": "Arrivo stimato",
+      "endedHeading": "Guida terminata",
       "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app.",
       "healthSummary": "In questo tratto hai fatto {steps} passi e bruciato circa {kcal} kcal.",
       "healthWeightNotice": "Il valore delle calorie usa la media adulta di {kg} kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo.",

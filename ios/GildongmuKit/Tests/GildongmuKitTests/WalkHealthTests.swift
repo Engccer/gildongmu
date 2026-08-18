@@ -36,6 +36,18 @@ import Testing
         #expect(WalkHealth.normalizedWeight(0) == nil)
     }
 
+    @Test func meaningfulWalkThresholdUsesEffectiveDistance() {
+        // 만보계 거리 우선, 없으면 걸음×0.7m. 경계는 50m 이상.
+        #expect(WalkHealth.isMeaningfulWalk(steps: 0, distanceMeters: 50))
+        #expect(!WalkHealth.isMeaningfulWalk(steps: 0, distanceMeters: 49.9))
+        #expect(WalkHealth.isMeaningfulWalk(steps: 72, distanceMeters: nil))   // 50.4m
+        #expect(!WalkHealth.isMeaningfulWalk(steps: 71, distanceMeters: nil))  // 49.7m
+        #expect(!WalkHealth.isMeaningfulWalk(steps: 0, distanceMeters: 0))
+        #expect(!WalkHealth.isMeaningfulWalk(steps: -100, distanceMeters: .nan))
+        // 거리 0(미제공)이면 걸음이 판정한다 — 거리 0을 "0m 걸음"으로 읽지 않는다.
+        #expect(WalkHealth.isMeaningfulWalk(steps: 100, distanceMeters: 0))
+    }
+
     @Test func negativeOrNaNInputsClampToZero() {
         #expect(WalkHealth.summary(steps: -3, distanceMeters: -10, weightKg: 65).steps == 0)
         #expect(WalkHealth.summary(steps: 10, distanceMeters: .nan, weightKg: 65).kcal
