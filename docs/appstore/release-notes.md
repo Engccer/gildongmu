@@ -14,7 +14,7 @@
 
 ## 1.9 (빌드 16)
 
-제출 2026-08-18 19:57 KST (`WAITING_FOR_REVIEW`). 아카이브 커밋 `01447d4`(`git worktree` 격리 빌드), 산출물 `Info.plist`로 번들 ID·1.9.0(16)·`UIBackgroundModes`·번들 `release-notes.json` 최신 1.9 확인. 프로모션 텍스트 자동 승계(ko 86자·en 142자), 심사 노트 무변경.
+제출 2026-08-18 19:55 KST (`WAITING_FOR_REVIEW`). 아카이브 커밋 `01447d4`(`git worktree` 격리 빌드), 산출물 `Info.plist`로 번들 ID·1.9.0(16)·`UIBackgroundModes`·번들 `release-notes.json` 최신 1.9 확인. 프로모션 텍스트 자동 승계(ko 86자·en 142자), 심사 노트 무변경.
 
 기준은 1.8 아카이브 커밋 `1cad836`(빌드 15)이며 그 이후 커밋 4건 중 iOS 바이너리에 닿는 것은 `9cead1d`(도보 안내 실사용 피드백 3건) 하나다. 두 항목 모두 도보 안내(ko 게이트) 안의 변경이라 ko 노트에만 적고, en은 관용 문구(1.7 선례). 위원장 지시 2026-08-18 "현재 상태를 심사 요청".
 

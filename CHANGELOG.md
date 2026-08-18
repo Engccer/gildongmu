@@ -13,7 +13,7 @@
 
 ### iOS 1.9 심사 제출 (빌드 16)
 
-1.8은 같은 날 `READY_FOR_SALE`. 1.8 아카이브 `1cad836` 이후 iOS 가시 변경은 아래 피드백 커밋 하나라 ko 노트 2줄·en 관용 문구. worktree 격리 아카이브 → 업로드 → `asc-submit --apply --submit`(산출물 검사 통과) → 19:57 KST `WAITING_FOR_REVIEW`. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
+1.8은 같은 날 `READY_FOR_SALE`. 1.8 아카이브 `1cad836` 이후 iOS 가시 변경은 아래 피드백 커밋 하나라 ko 노트 2줄·en 관용 문구. worktree 격리 아카이브 → 업로드 → `asc-submit --apply --submit`(산출물 검사 통과) → 19:55 KST `WAITING_FOR_REVIEW`. 노트 정본 [`docs/appstore/release-notes.md`](docs/appstore/release-notes.md).
 
 ### 도보 안내 실사용 피드백 3건 (위원장 카카오톡 메모 → 접수·처리)
 
