@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.9 `WAITING_FOR_REVIEW`**(빌드 16, 아카이브 커밋 `01447d4`, 제출 2026-08-18 19:57 KST) · 1.8까지 전부 `READY_FOR_SALE`(1.8 = 빌드 15, 2026-08-18 승인) |
+| iOS | **1.9 `WAITING_FOR_REVIEW`**(빌드 16, 아카이브 커밋 `01447d4`, 제출 2026-08-18 19:55 KST) · 1.8까지 전부 `READY_FOR_SALE`(1.8 = 빌드 15, 2026-08-18 승인) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
