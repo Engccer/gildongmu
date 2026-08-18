@@ -1815,7 +1815,11 @@ final class BeaconModel {
                 + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-")"
         )
         let text = appLocalized("guide.arrivedPresumed")
-        playTone(.nearby)
+        // 도착 종은 **전경에서만**(위원장 판정 2026-08-19). 이 종료는 도착 3~5분 뒤에 오는
+        // 사후 정리라, 잠근 채 두고 잊은 휴대전화가 한참 뒤 갑자기 울리면 당황스럽다 —
+        // 확정 도착의 종(지금 도착 중이라는 실시간 신호)과 뜻이 다르다. 백그라운드 종료는
+        // 무음이고, 복귀 시 도착 화면과 상환 낭독이 종료 사실을 알린다.
+        if isForeground { playTone(.nearby) }
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
         arrivalDest = dest
         endKind = .presumed
