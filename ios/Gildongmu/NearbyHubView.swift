@@ -5,7 +5,7 @@ import SwiftUI
 struct NearbyHubView: View {
     #if DEBUG || EXPERIMENTAL
     /// 음향신호기 BLE 진단 모델(spec 2026-08-17, 2026-08-20 허브 최상단 이동 — 위원장 요청:
-    /// 하위 화면에 들어가지 않고 어디서든 바로 진단). 수명은 이 화면이 쥔다 — `shutdown()`은
+    /// 하위 화면에 들어가지 않고 어디서든 바로 진단, 목록 맨 아래). 수명은 이 화면이 쥔다 — `shutdown()`은
     /// NavigationStack 수준 onDisappear에만(Section에 걸면 lazy 렌더라 스크롤로, List에 걸면
     /// 하위 화면 push로 스캔이 죽는다).
     @State private var probe = AudioSignalProbeModel()
@@ -15,9 +15,6 @@ struct NearbyHubView: View {
         NavigationStack {
             List {
                 Section { LocationBarView() }
-                #if DEBUG || EXPERIMENTAL
-                AudioSignalProbeSection(model: probe)
-                #endif
                 NavigationLink(appLocalized("whereAmI.button")) { WhereAmIView() }
                 NavigationLink(appLocalized("ios.nearby.subway")) { SubwayNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.bus")) { BusNearbyView() }
@@ -29,6 +26,10 @@ struct NearbyHubView: View {
                 NavigationLink(appLocalized("ios.nearby.events")) { EventsNearbyView() }
                 NavigationLink(appLocalized("walkInfra.button")) { WalkInfraNearbyView() }
                 NavigationLink(appLocalized("ios.nearby.conditions")) { ConditionsView() }
+                #if DEBUG || EXPERIMENTAL
+                // 맨 아래 — 탭 바 바로 위라 "내 주변" 탭을 누른 손이 닿는 거리다(위원장 2026-08-20).
+                AudioSignalProbeSection(model: probe)
+                #endif
             }
             .navigationTitle(appLocalized("ios.tab.nearby"))
             .navigationBarTitleDisplayMode(.inline)
