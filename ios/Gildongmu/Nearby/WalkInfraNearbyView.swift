@@ -75,11 +75,6 @@ struct WalkInfraNearbyView: View {
     /// 착지 대상은 조회 시각 헤딩(이 화면의 첫 요소이자 유일한 헤딩).
     @AccessibilityFocusState private var focusedTop: String?
     @State private var lander = NearbyFocusLander()
-    #if DEBUG || EXPERIMENTAL
-    /// 음향신호기 BLE 진단 모델(spec 2026-08-17). 화면이 수명을 쥔다 — shutdown은 화면
-    /// 수준 onDisappear에서만(List 안 Section에 걸면 스크롤로 섹션이 나갈 때 스캔이 죽는다).
-    @State private var probe = AudioSignalProbeModel()
-    #endif
 
     /// nil→값 전이가 곧 "로드 완료"다(실패는 nil 유지, 이동 없음).
     private var topID: String? {
@@ -100,14 +95,6 @@ struct WalkInfraNearbyView: View {
                         .accessibilityFocused($focusedTop, equals: "walkinfra-top")
                 }
                 audioSection(payload.walk.audioSignals)
-                #if DEBUG || EXPERIMENTAL
-                // 음향신호기 BLE 진단(spec 2026-08-17) — 덧붙는 섹션이고 기존 렌더 경로에
-                // 분기를 넣지 않는다. Experimental은 DEBUG를 정의하지 않아 둘 다 명시.
-                AudioSignalProbeSection(model: probe, seed: {
-                    if case .ok(let data) = payload.walk.audioSignals { return data }
-                    return nil
-                }())
-                #endif
                 crossingSection(payload.walk.osm)
                 tactileSection(payload.walk.osm)
                 footnoteSection(payload.walk)
@@ -133,9 +120,6 @@ struct WalkInfraNearbyView: View {
         }
         .task { await model.load() }
         .nearbyRefreshable { await model.load(force: true) }
-        #if DEBUG || EXPERIMENTAL
-        .onDisappear { probe.shutdown() }
-        #endif
     }
 
     // MARK: - 그룹 섹션(웹 h4 3개 동형 — 상태와 무관하게 항상 렌더)

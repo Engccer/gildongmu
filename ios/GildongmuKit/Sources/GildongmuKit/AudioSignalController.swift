@@ -23,6 +23,19 @@ public struct AudioSignalDiscovery: Identifiable, Sendable, Equatable {
     /// 광고 패킷에 실린 서비스 UUID(`CBAdvertisementDataServiceUUIDsKey`) —
     /// 백그라운드 자동 작동 가능 여부가 이 값에 달렸다(research §2.6 추론의 실물 확정).
     public let advertisedServiceUUIDs: [String]
+    /// 광고 manufacturer specific data 원문(`CBAdvertisementDataManufacturerDataKey`).
+    /// 앞 2바이트(LE)가 Bluetooth SIG 회사 ID — 이름 없는 기기를 가르는 거의 유일한 단서다
+    /// (1차 실측 2026-08-19: 6m 지점 최강 기기가 무명·UUID 없음이라 정체 판별 불가였다).
+    public let manufacturerData: Data?
+    /// 광고 connectable 플래그(`CBAdvertisementDataIsConnectable`). nil이면 키 부재.
+    public let isConnectable: Bool?
+
+    /// manufacturer data 앞 2바이트(LE) = 회사 ID. Apple 0x004C·Samsung 0x0075 등.
+    public var manufacturerCompanyId: UInt16? {
+        guard let data = manufacturerData, data.count >= 2 else { return nil }
+        let bytes = [UInt8](data.prefix(2))
+        return UInt16(bytes[0]) | (UInt16(bytes[1]) << 8)
+    }
 
     /// 이름이 광고 실시간 값에서 잡혔는가(false면 캐시된 GAP 이름에서만).
     public var nameFromAdvertisement: Bool { AudioSignalName.parse(localName) != nil }
@@ -97,6 +110,10 @@ public final class AudioSignalController: NSObject {
     /// 세션 내 누적(재스캔에도 유지 — 연결된 기기는 광고를 멈춰 다시 채워지지 않는다).
     private var peripherals: [UUID: CBPeripheral] = [:]
     private var target: CBPeripheral?
+    /// 읽기 전용 연결(`connect(_:readOnly: true)`) — 서비스·특성 발견까지만 하고 notify 구독·
+    /// `serviceReady` 승격을 하지 않는다. 이름 무관 서비스 확인(진단 0단)이 쓰며, 그 연결로는
+    /// `send`가 구조적으로 막힌다(serviceReady가 영영 false).
+    private var targetReadOnly = false
     private var writeCharacteristic: CBCharacteristic?
     private var notifyCharacteristic: CBCharacteristic?
     private var connectedAt: Date?
@@ -148,7 +165,10 @@ public final class AudioSignalController: NSObject {
 
     // MARK: - 연결
 
-    public func connect(_ id: UUID) {
+    /// `readOnly`는 서비스 목록만 읽는 연결 — 규격 이름과 무관한 기기에 붙어 UART 서비스
+    /// 유무를 보는 용도. 이 연결에서는 notify 구독·`serviceReady` 승격을 건너뛰어 명령이
+    /// 미검증 기기로 나갈 길을 구조로 막는다.
+    public func connect(_ id: UUID, readOnly: Bool = false) {
         guard let central, central.state == .poweredOn else {
             onEvent?(.error("블루투스 상태 \(Self.describe(central?.state ?? .unknown)) — 연결 불가"))
             return
@@ -174,6 +194,7 @@ public final class AudioSignalController: NSObject {
         }
         disconnect()
         target = peripheral
+        targetReadOnly = readOnly
         peripheral.delegate = self
         writeCharacteristic = nil
         notifyCharacteristic = nil
@@ -235,6 +256,7 @@ public final class AudioSignalController: NSObject {
         connectTimeoutTask?.cancel()
         connectTimeoutTask = nil
         target = nil
+        targetReadOnly = false
         writeCharacteristic = nil
         notifyCharacteristic = nil
         connectedAt = nil
@@ -276,11 +298,14 @@ public final class AudioSignalController: NSObject {
         let peripheralName = peripheral.name
         let serviceUUIDs = (advertisement[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? [])
             .map(\.uuidString)
+        let manufacturerData = advertisement[CBAdvertisementDataManufacturerDataKey] as? Data
+        let isConnectable = (advertisement[CBAdvertisementDataIsConnectable] as? NSNumber)?.boolValue
         // 이름 판정 1순위 광고 실시간 값, 2순위 캐시된 GAP 이름(spec §3.2).
         let name = AudioSignalName.parse(localName) ?? AudioSignalName.parse(peripheralName)
         let entry = AudioSignalDiscovery(
             id: peripheral.identifier, name: name, localName: localName,
-            peripheralName: peripheralName, rssi: rssi, advertisedServiceUUIDs: serviceUUIDs)
+            peripheralName: peripheralName, rssi: rssi, advertisedServiceUUIDs: serviceUUIDs,
+            manufacturerData: manufacturerData, isConnectable: isConnectable)
         if let index = discoveries.firstIndex(where: { $0.id == entry.id }) {
             discoveries[index] = entry
         } else {
@@ -349,16 +374,22 @@ public final class AudioSignalController: NSObject {
                 writeFound: false, notifyFound: false))
             return
         }
-        writeCharacteristic = chars.first { $0.uuid == Self.writeUUID }
-        notifyCharacteristic = chars.first { $0.uuid == Self.notifyUUID }
+        let write = chars.first { $0.uuid == Self.writeUUID }
+        let notify = chars.first { $0.uuid == Self.notifyUUID }
+        if !targetReadOnly {
+            writeCharacteristic = write
+            notifyCharacteristic = notify
+        }
         onEvent?(.serviceFound(
             id: peripheral.identifier,
             services: (peripheral.services ?? []).map(\.uuid.uuidString),
             // properties 원값(CBCharacteristicProperties rawValue)을 함께 — write/
             // writeWithoutResponse/notify/indicate 중 무엇이 열렸는지가 방향 가정의 판정 근거.
             characteristics: chars.map { "\($0.uuid.uuidString):props=\($0.properties.rawValue)" },
-            writeFound: writeCharacteristic != nil,
-            notifyFound: notifyCharacteristic != nil))
+            writeFound: write != nil,
+            notifyFound: notify != nil))
+        // 읽기 전용 연결은 여기서 끝 — 구독도 승격도 없다.
+        guard !targetReadOnly else { return }
         if let notifyCharacteristic {
             peripheral.setNotifyValue(true, for: notifyCharacteristic)
         }

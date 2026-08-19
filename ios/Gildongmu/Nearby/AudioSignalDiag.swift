@@ -12,8 +12,11 @@ import Foundation
 private nonisolated(unsafe) let audioSignalDiagDateFormatter = ISO8601DateFormatter()
 
 /// 한 줄 = `ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs |
-/// 좌표 | seed최근접거리(m 정수) | 비고`(spec §7). 빈 칸은 `-`. 파이프 구분·한 이벤트 한 줄이라
-/// 필드 안의 `|`와 개행(여러 줄 localizedDescription)은 치환한다.
+/// 좌표 | seed최근접거리(m 정수) | 비고 | peripheralId앞8자 | manufacturer(회사ID:길이) |
+/// connectable`(spec §7, 뒤 3열은 2026-08-20 1차 실측 뒤 추가 — 무명 기기를 가를 식별자가
+/// 없어 "이름 없는 모듈" 가설을 로그로 못 갈랐다. 옛 로그는 10열이라 **뒤에 붙인다**).
+/// 빈 칸은 `-`. 파이프 구분·한 이벤트 한 줄이라 필드 안의 `|`와 개행(여러 줄
+/// localizedDescription)은 치환한다.
 struct AudioSignalDiagLine {
     var event: String
     var mac: String? = nil
@@ -24,6 +27,10 @@ struct AudioSignalDiagLine {
     var coordinate: (lat: Double, lng: Double)? = nil
     var seedNearestMeters: Int? = nil
     var note: String? = nil
+    var peripheralId: UUID? = nil
+    /// 회사 ID 16진 4자리 + 바이트 길이(예 `004C:25`). manufacturer data 부재는 `-`.
+    var manufacturer: String? = nil
+    var connectable: Bool? = nil
 
     var rendered: String {
         let fields: [String] = [
@@ -37,6 +44,9 @@ struct AudioSignalDiagLine {
             coordinate.map { String(format: "%.6f,%.6f", $0.lat, $0.lng) } ?? "-",
             seedNearestMeters.map(String.init) ?? "-",  // 미터 정수 원값(분석용, 단위 없음)
             note ?? "-",
+            peripheralId.map { String($0.uuidString.prefix(8)) } ?? "-",
+            manufacturer ?? "-",
+            connectable.map { $0 ? "conn" : "nonconn" } ?? "-",
         ]
         return fields
             .map { $0.replacingOccurrences(of: "|", with: "/").replacingOccurrences(of: "\n", with: " ") }
