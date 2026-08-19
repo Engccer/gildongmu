@@ -20,7 +20,11 @@
 
 ⚠ **0건도 결과다.** "안 잡힘"이 나오면 그것을 로그로 남기고 화면을 지우지 않는다. 다른 지점·다른 날 재시도의 대조군이 된다.
 
-## 2. 어디에 만드는가 — 보행 인프라 화면 (위원장 제안 채택)
+## 2. 어디에 만드는가 — 보행 인프라 화면 (위원장 제안 채택) → **2026-08-20 개정: "내 주변" 허브 최상단**
+
+> **개정(2026-08-20, 1차 실측 뒤 위원장 요청)**: 진단 섹션은 `NearbyHubView`(내 주변 허브)의 위치 표시줄 바로 아래로 옮겼다 — 하위 화면에 들어가지 않고 어디서든 탭 한 번에 진단한다. 아래 근거 ①~③ 중 ①(seed 대조)은 모델이 진단 시작 시 `/api/walk/nearby`를 1회 조회해 `seedNearestMeters`로 유지하고, ②·③은 제품 전환 때 다시 고른다(진단 섹션은 버려지는 층이라 자리는 편의가 우선). 모델 수명·`shutdown()` 규칙(화면 수준 onDisappear)은 허브에 그대로 적용.
+>
+> **동작도 개정됐다(§4 사다리 앞에 0단 추가)**: 버튼 하나("진단 시작") = 20초 스캔 → 규격 이름과 **무관하게** 가장 센 후보 3대(connectable·RSSI ≥ -80·Apple/Samsung/Microsoft/Google 회사 ID 제외)에 연결해 `discoverServices(nil)` 결과만 로그에 남기고 끊기 → 요약 통지("음향신호기 N대, 기타 M대, 연결 확인 k/3대, UART 서비스 u대"). 1차 실측이 "없다"와 "이름·프로토콜이 다르다"를 못 가른 이유가 연결 확인을 `AHG001` 파싱 성공 기기에만 걸어 둔 것이라(§11.1의 그 자리), 이름 무관 **읽기 전용** 서비스 확인이 그 판별을 맡는다. write·notify 구독은 하지 않으며, 소리 나는 명령은 여전히 규격 기기에 사람이 §4 순서로 보낸다. 로그는 §7 뒤 3열(peripheral id·manufacturer·connectable)을 얻었고 좌표는 진단 중 10초마다 갱신한다.
 
 `ios/Gildongmu/Nearby/WalkInfraNearbyView.swift`의 **음향신호기 섹션(`audioSection`) 아래**에 진단 섹션을 덧붙인다. 근거 셋:
 
@@ -158,8 +162,10 @@ BLE 스캔에는 `NSBluetoothAlwaysUsageDescription`이 필요하다. **`ios/Sup
 한 줄에 남길 것:
 
 ```
-ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs | 좌표 | seed최근접거리 | 비고
+ISO8601 | event | mac | rssi | localName | peripheralName | advServiceUUIDs | 좌표 | seed최근접거리 | 비고 | peripheralId앞8자 | manufacturer(회사ID:길이) | connectable
 ```
+
+뒤 3열은 2026-08-20 추가(기존 10열 뒤에 붙여 옛 로그와 호환). 1차 실측(research §11)에서 6m 지점 최강 기기가 무명·서비스 UUID 없음이라 정체를 못 가른 자리다. 좌표 열은 같은 개정으로 세션 시작 fix 고정에서 **진단 중 10초 갱신**으로 바뀌었다. 추가 event: `probeStart`(후보 목록) `probeSummary` `probeStop` `locationError`.
 
 `event`는 최소 이것들: `scanStart` `discovered` `connect` `serviceFound` `notifyOn` `write(cmd)` `reply(ack/nak/malformed, raw hex)` `disconnect(reason, 연결후 경과초)` `scanStop`.
 
