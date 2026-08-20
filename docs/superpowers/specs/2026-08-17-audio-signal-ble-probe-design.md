@@ -47,7 +47,7 @@
 | 계층 | 파일 | 운명 |
 |---|---|---|
 | **프로토콜(순수)** | `ios/GildongmuKit/Sources/GildongmuKit/AudioSignalProtocol.swift` | **100% 재사용.** 지금 테스트까지 끝낸다 |
-| **전송(CoreBluetooth)** | `ios/GildongmuKit/Sources/GildongmuKit/AudioSignalController.swift` | **재사용.** 제품이 같은 API로 부른다 |
+| **전송(CoreBluetooth)** | `ios/Gildongmu/Nearby/AudioSignalController.swift` (2026-08-20 Kit에서 이동, §5.1) | **재사용.** 제품이 같은 API로 부른다 — 승격 시 Kit 복귀 |
 | **진단 UI** | `ios/Gildongmu/Nearby/AudioSignalProbeSection.swift` | **버려진다** |
 | **진단 로그** | `ios/Gildongmu/Nearby/AudioSignalDiag.swift` | **버려진다** |
 
@@ -84,7 +84,7 @@ public enum AudioSignalReply: Sendable, Equatable {
 - 응답: `[0] == 0x32 && [1] == 0x00`이고 `[2]`의 **하위니블 0 = ACK, 1 = NAK**, 상위니블은 사양 정보.
 - ⚠ **길이가 3이 아니면 `.malformed`로 둔다.** 실기기가 규격과 다르게 답할 수 있고, 그 사실 자체가 관측 대상이다. 조용히 버리면 "응답이 없다"와 구분되지 않는다.
 
-### 3.2 전송 층 (`AudioSignalController.swift`)
+### 3.2 전송 층 (`AudioSignalController.swift` — 앱 타깃, `#if DEBUG || EXPERIMENTAL`)
 
 `CBCentralManagerDelegate`/`CBPeripheralDelegate`를 감싼 `@Observable @MainActor` 클래스.
 
@@ -123,7 +123,7 @@ public enum AudioSignalReply: Sendable, Equatable {
 ### 5.1 코드 게이트
 
 - 진단 섹션·컨트롤러 사용처 전부 `#if DEBUG || EXPERIMENTAL`.
-- **Kit의 두 파일은 게이트하지 않는다.** 아무도 부르지 않으면 죽은 코드일 뿐이고, 게이트를 Kit에 넣으면 제품 승격 때 지울 것이 늘어난다. 진입점만 막는다(`guidance-gate-drift.test.ts`가 "판정 축은 플래그 참조가 아니라 진입점 전수"라고 못 박은 것과 같은 정신).
+- ~~**Kit의 두 파일은 게이트하지 않는다.**~~ **2026-08-20 개정: 전송 층 `AudioSignalController`는 앱 타깃(`ios/Gildongmu/Nearby/`)으로 옮겨 파일 전체를 `#if DEBUG || EXPERIMENTAL`로 감싼다.** 순수 층 `AudioSignalProtocol`만 Kit에 남는다. 종전 논거("아무도 부르지 않으면 죽은 코드")는 Apple 업로드 검사 앞에서 거짓이었다 — 검사는 호출 여부가 아니라 **바이너리의 CoreBluetooth 심볼 참조**만 보고 `NSBluetoothAlwaysUsageDescription`을 요구한다(ITMS-90683, 1.8 빌드 14·15, 1.9 빌드 16, 1.10 빌드 17 네 번 연속 경고. 경고라 심사는 통과했다). SPM 패키지는 Experimental 구성을 모르므로 Kit 안에서는 게이트가 불가능하고, §5.2가 정식 plist를 잠근 이상 정식판에서 빠져야 할 것은 코드다. 제품 승격 시 Kit 복귀와 정식 plist 문구 추가는 **한 커밋**으로 한다.
 - ⚠ **Debug 구성에서는 섹션이 컴파일되지만 스캔은 열리지 않는다.** Debug는 정식 `Info.plist`를 쓰므로 §5.2의 권한 문구가 없고, 그 상태로 `CBCentralManager`를 만들면 iOS가 앱을 종료한다. 모델이 번들 plist에 키가 있는지 먼저 보고 없으면 스캔을 막고 그 사실을 화면에 적는다(구현 2026-08-17). 실측은 **Experimental로 설치한 것**으로만 한다.
 
 ### 5.2 권한 문구 — ⚠ 정식 plist를 건드리지 말 것
@@ -136,7 +136,7 @@ BLE 스캔에는 `NSBluetoothAlwaysUsageDescription`이 필요하다. **`ios/Sup
 
 ### 5.3 역방향 가드 (신규)
 
-`ios/scripts/check-release-artifact.mjs`에 검사를 추가한다: **릴리스 산출물의 `Info.plist`에 `NSBluetoothAlwaysUsageDescription`이 있으면 실패.**
+`ios/scripts/check-release-artifact.mjs`에 검사를 추가한다: **릴리스 산출물의 `Info.plist`에 `NSBluetoothAlwaysUsageDescription`이 있으면 실패.** 2026-08-20 추가: **정식 실행 파일의 `otool -L`에 CoreBluetooth가 있으면 실패**(§5.1 개정의 짝 — 문구만 빼고 코드가 남으면 같은 경고다). 변이 검증: 개정 전 코드의 Release 빌드에서 이 검사가 실패하고 개정 후 빌드에서 통과함을 확인했다.
 
 2026-08-15 교훈의 거울상이다. 그때는 실험판에만 있던 백그라운드 모드를 정식으로 **올리는 것을 잊어** 화면을 끄면 안내가 죽었고, 산출물 검사만이 그걸 잡았다. 이번엔 반대로 실험 전용 권한이 정식으로 **새는** 경우이고, 역시 소스 검사로는 안 잡힌다(어느 `INFOPLIST_FILE`이 병합됐는지가 산출물에만 있다).
 

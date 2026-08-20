@@ -1,14 +1,25 @@
 import Foundation
 import CoreBluetooth
 import Observation
+import GildongmuKit
 
 // 음향신호기 BLE 전송 층(spec 2026-08-17 §3.2). CoreBluetooth를 감싸 스캔·연결·write·
 // notify를 제공하고, 관측은 전부 `onEvent`로 흘린다(로그 포맷·화면은 소비자 몫).
 // 진단 UI가 버려져도 제품이 이 API를 그대로 부른다 — 여기에 진단 문구·로그 파일을
-// 넣지 말 것. Kit엔 게이트가 없다(아무도 안 부르면 죽은 코드, spec §5.1).
+// 넣지 말 것.
+//
+// ⚠ 이 파일은 Kit이 아니라 앱 타깃에 있고 통째로 `#if DEBUG || EXPERIMENTAL` 안이다
+// (2026-08-20 이전, spec §5.1 개정). Kit에 두면 SPM 패키지는 Experimental 구성을 모르므로
+// 정식 바이너리에도 CoreBluetooth가 링크되고, Apple의 업로드 검사는 **심볼 참조만으로**
+// 권한 문구를 요구한다(ITMS-90683, 1.8~1.10 세 버전 연속 경고). 권한 문구는 의도적으로
+// 실험판 plist에만 있으므로(§5.2) 정식판에서 빼야 할 것은 문구가 아니라 이 코드다.
+// 제품으로 승격할 때 Kit으로 되돌리고 그때 정식 plist에 문구를 넣는다(둘은 한 커밋이다).
+// 가드는 `check-release-artifact.mjs`가 정식 산출물의 링크 목록에서 CoreBluetooth를 본다.
 //
 // 유닛 테스트 없음이 의도다: 이 층에서 알고 싶은 것이 전부 "실물이 규격대로 답하는가"라
 // 목이 답할 수 없다(외부 통합은 실호출이 게이트, spec §8).
+
+#if DEBUG || EXPERIMENTAL
 
 /// 광고에서 본 BLE 기기 하나. `name`이 nil이면 규격 이름 형식이 아닌 주변 기기 —
 /// 그래도 목록에 남긴다(spec §11.1: "없다"와 "형식이 다르다"를 가르는 대조군).
@@ -480,3 +491,5 @@ extension AudioSignalController: @preconcurrency CBPeripheralDelegate {
         handleWriteResult(peripheral, error: error)
     }
 }
+
+#endif

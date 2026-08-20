@@ -9,6 +9,12 @@
 
 ---
 
+## 2026-08-20
+
+### ITMS-90683(블루투스 권한 문구 누락) 업로드 경고 해소 — BLE 전송 층을 정식 바이너리에서 제거 (iOS)
+
+1.8 빌드 14·15, 1.9 빌드 16, 1.10 빌드 17 업로드마다 App Store Connect가 `NSBluetoothAlwaysUsageDescription` 누락 경고(ITMS-90683)를 보냈다(경고라 심사는 전부 통과, 조치 없이는 다음 업로드에도 반복). 원인은 음향신호기 BLE 진단의 전송 층 `AudioSignalController`가 Kit(SPM)에 있어 `#if EXPERIMENTAL` 게이트가 닿지 않고 정식 바이너리에 CoreBluetooth가 링크된 것 — Apple 검사는 호출 여부가 아니라 심볼 참조만 본다. 권한 문구는 의도적으로 실험판 plist에만 있으므로(spec §5.2) 문구를 더하는 대신 파일을 앱 타깃 `ios/Gildongmu/Nearby/`로 옮겨 통째로 게이트했다. `check-release-artifact.mjs`에 정식 실행 파일의 `otool -L` CoreBluetooth 링크 검사를 추가했고, 개정 전 코드의 Release 빌드에서 실패·개정 후 통과를 변이로 확인했다. 다음 정식 업로드(1.11)부터 경고가 사라진다. spec [`2026-08-17-audio-signal-ble-probe-design.md`](docs/superpowers/specs/2026-08-17-audio-signal-ble-probe-design.md) §5.1·§5.3.
+
 ## 2026-08-19
 
 ### App Store 1.10 심사 제출 (빌드 17)
