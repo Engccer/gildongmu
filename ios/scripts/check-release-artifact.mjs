@@ -36,6 +36,10 @@
  *    실험판에만 있던 키를 정식으로 올리는 것을 잊었고, 이번엔 실험 전용 키가 정식으로
  *    새는 경우다. 둘 다 소스 검사로는 못 잡는다(어느 INFOPLIST_FILE이 병합됐는지는
  *    산출물에만 있다).
+ * 4. 정식 실행 파일이 CoreBluetooth를 링크하지 않는가 (spec 2026-08-17 §5.1, 2026-08-20
+ *    개정): Apple의 업로드 검사는 plist가 아니라 **바이너리의 심볼 참조**로 권한 문구를
+ *    요구한다(ITMS-90683, 1.8~1.10 연속 경고). 3번이 통과해도 코드가 새면 같은 경고다 —
+ *    3번과 4번은 한 쌍이고 둘 다 통과해야 "정식판은 블루투스를 모른다"가 성립한다.
  *
  * 실패는 첫 건에서 멈추지 않고 전부 모아 출력한다(한 번에 고칠 수 있게).
  */
@@ -52,6 +56,8 @@ const OTHER_LOCALES = ["en", "es", "fr", "it", "ja"];
 const LOCATION_KEY = "NSLocationWhenInUseUsageDescription";
 /** 실험판(Info-Experimental.plist)에만 있어야 하는 키. 정식 산출물에 보이면 새는 것이다. */
 const EXPERIMENTAL_ONLY_KEYS = ["NSBluetoothAlwaysUsageDescription"];
+/** 실험 게이트 안 코드만 쓰는 프레임워크. 정식 실행 파일의 링크 목록에 보이면 코드가 샌 것이다. */
+const EXPERIMENTAL_ONLY_FRAMEWORKS = ["CoreBluetooth"];
 const ARCHIVE_DIRS = [join(REPO, "ios", "build"), "/tmp/gildongmu-archive"];
 
 /** plutil을 거쳐 읽는다 — 컴파일된 InfoPlist.strings도 바이너리 plist라 같은 경로다. */
@@ -225,6 +231,27 @@ function main() {
     }
     for (const [locale, table] of Object.entries(strings)) {
       if (key in table) failures.push(`실험 전용 키 ${key}가 정식 산출물 ${locale}.lproj/InfoPlist.strings에 있다`);
+    }
+  }
+
+  // 4) 실험 전용 프레임워크 링크 (§5.1 개정) — 권한 문구 검사(3)의 짝. 문구를 뺐는데
+  //    코드가 남아 있으면 Apple이 심볼 참조를 보고 같은 경고를 낸다. `otool -L`이 정본이다.
+  //    실행 파일이 없거나 otool이 실패해도 throw하지 않는다 — 앞선 검사의 실패를 삼키지 않고
+  //    한 번에 모아 낸다는 이 파일의 계약을 지킨다.
+  const executable = info.CFBundleExecutable ? join(app, info.CFBundleExecutable) : null;
+  if (!executable || !existsSync(executable)) {
+    failures.push(`실행 파일을 찾을 수 없다 (CFBundleExecutable=${info.CFBundleExecutable ?? "(없음)"})`);
+  } else {
+    let linked = null;
+    try {
+      linked = execFileSync("otool", ["-L", executable], { encoding: "utf8" });
+    } catch (e) {
+      failures.push(`otool -L 실패: ${e.message}`);
+    }
+    for (const framework of linked ? EXPERIMENTAL_ONLY_FRAMEWORKS : []) {
+      if (linked.includes(`/${framework}.framework/`)) {
+        failures.push(`정식 실행 파일이 ${framework}를 링크한다 (실험 게이트 안 코드가 정식판에 컴파일됐다)`);
+      }
     }
   }
 

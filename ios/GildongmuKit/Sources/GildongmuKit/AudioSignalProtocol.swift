@@ -4,10 +4,12 @@ import Foundation
 // 규격서 「시각장애인용 음향신호기 규격서」(경찰청 2022.4.27) Ⅶ (다)의 이름·명령·응답을
 // 바이트 그대로 옮긴 것이고, 파싱본은 `docs/research/refs/police-audio-signal-spec-2022-04-27.md`.
 //
-// ⚠ 이 파일에 `import CoreBluetooth`를 넣지 말 것. Kit은 macOS도 플랫폼으로 선언하고
-// `swift test`가 거기서 돈다 — 전송 층(`AudioSignalController`)에 의존하는 순간 스캔
-// 권한 없는 CI/로컬에서 이 계약 테스트를 잃는다(toneLayerStep·WalkAction 등 순수 판정
-// + fixture 관례와 같은 분리). 진단 UI가 버려져도 이 층은 제품이 그대로 쓴다.
+// ⚠ 이 파일에 `import CoreBluetooth`를 넣지 말 것. 이유 둘: ①Kit은 macOS도 플랫폼으로
+// 선언하고 `swift test`가 거기서 돈다 — 전송 층에 의존하는 순간 스캔 권한 없는 CI/로컬에서
+// 이 계약 테스트를 잃는다(toneLayerStep·WalkAction 등 순수 판정 + fixture 관례와 같은
+// 분리). ②Kit은 정식판에도 통째로 링크되는데 Apple은 CoreBluetooth **심볼 참조만으로**
+// 권한 문구를 요구한다(ITMS-90683) — 그래서 전송 층(`AudioSignalController`)은 앱 타깃의
+// `#if DEBUG || EXPERIMENTAL` 안에 있다. 진단 UI가 버려져도 이 층은 제품이 그대로 쓴다.
 
 /// 규격서 Ⅶ (다) ① — DEVICE NAME 20 Bytes: `"AHG001" + "+" + MAC 12자리 + "+"`.
 public struct AudioSignalName: Sendable, Equatable {
