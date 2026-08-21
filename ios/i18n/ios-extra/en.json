@@ -207,7 +207,14 @@
       "unitEvent": "events",
       "subwayClosed": "Not running now. First train %@",
       "subwayNoRealtime": "Real-time arrivals are not available for this station",
-      "refreshReduced": "Couldn’t refresh because Precise Location is off"
+      "refreshReduced": "Couldn’t refresh because Precise Location is off",
+      "aroundHere": "Around your current location, near {place}",
+      "aroundHereNoPlace": "Around your current location",
+      "aroundHereManual": "Around the location you set, near {place}",
+      "aroundHereManualNoPlace": "Around the location you set",
+      "aroundLoaded": "Look-around is ready",
+      "aroundLoadedManual": "Surroundings of the set location are ready",
+      "aroundPlacesHeading": "Shops and facilities nearby"
     },
     "settings": {
       "title": "Settings",

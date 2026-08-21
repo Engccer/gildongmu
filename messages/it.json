@@ -875,6 +875,30 @@
       "culture": "struttura culturale",
       "realEstate": "agenzia immobiliare",
       "lodging": "alloggio"
+    },
+    "overview": {
+      "heading": "A colpo d'occhio",
+      "radius": "entro {distance}",
+      "failed": "Impossibile caricare il riepilogo",
+      "nearestLead": "più vicini: {items}",
+      "nearestItem": "{name}, a {distance} verso {direction}",
+      "transitLead": "Trasporti: {body}",
+      "transitStation": "stazione della metro {name}{line} a {distance} verso {direction}",
+      "transitLine": " ({line})",
+      "transitNoStation": "nessuna stazione della metro entro {distance}",
+      "transitBus": "{count} fermate dell'autobus, {nearest}",
+      "transitBusNone": "nessuna fermata dell'autobus",
+      "transitBusUncovered": "i dati delle fermate non sono disponibili in questa zona",
+      "transitBusFailed": "impossibile caricare le fermate",
+      "labelFood": "Ristoranti e caffè",
+      "labelKids": "Luoghi per bambini",
+      "labelEvents": "Eventi culturali",
+      "labelBarrierFree": "Attrazioni accessibili",
+      "ok": "{label}: {count}, {nearest}",
+      "okCapped": "{label}: {count} o più, {nearest}",
+      "none": "{label}: nessuno entro {distance}",
+      "unavailableSeoulOnly": "{label}: disponibile solo a Seul",
+      "failedItem": "{label}: caricamento non riuscito"
     }
   },
   "barrierFreeInfo": {

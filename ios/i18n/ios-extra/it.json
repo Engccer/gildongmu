@@ -207,7 +207,14 @@
       "unitEvent": "eventi",
       "subwayClosed": "Fuori servizio ora. Primo treno %@",
       "subwayNoRealtime": "Nessuna informazione in tempo reale per questa stazione",
-      "refreshReduced": "Aggiornamento non riuscito perché la posizione precisa è disattivata"
+      "refreshReduced": "Aggiornamento non riuscito perché la posizione precisa è disattivata",
+      "aroundHere": "Intorno alla tua posizione attuale, vicino a {place}",
+      "aroundHereNoPlace": "Intorno alla tua posizione attuale",
+      "aroundHereManual": "Intorno alla posizione impostata, vicino a {place}",
+      "aroundHereManualNoPlace": "Intorno alla posizione impostata",
+      "aroundLoaded": "Esplorazione pronta",
+      "aroundLoadedManual": "Dintorni della posizione impostata pronti",
+      "aroundPlacesHeading": "Negozi e servizi nelle vicinanze"
     },
     "settings": {
       "title": "Impostazioni",

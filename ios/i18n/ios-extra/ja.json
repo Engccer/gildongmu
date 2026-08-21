@@ -207,7 +207,14 @@
       "unitEvent": "件",
       "subwayClosed": "運行時間外です。始発 %@",
       "subwayNoRealtime": "この駅のリアルタイム到着情報は提供されていません",
-      "refreshReduced": "正確な位置情報がオフのため更新できませんでした"
+      "refreshReduced": "正確な位置情報がオフのため更新できませんでした",
+      "aroundHere": "現在地基準、{place}付近",
+      "aroundHereNoPlace": "現在地基準",
+      "aroundHereManual": "指定した位置基準、{place}付近",
+      "aroundHereManualNoPlace": "指定した位置基準",
+      "aroundLoaded": "周辺を確認しました",
+      "aroundLoadedManual": "指定した位置の周辺を確認しました",
+      "aroundPlacesHeading": "周辺の店舗と施設"
     },
     "settings": {
       "title": "設定",
