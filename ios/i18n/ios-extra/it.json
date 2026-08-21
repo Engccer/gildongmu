@@ -282,7 +282,11 @@
       "destMenuDetail": "Vedi dettagli del luogo",
       "destMenuChange": "Cambia destinazione",
       "destChanged": "Nuova destinazione: {name}.",
-      "destChangedFetching": "Ricerca di un nuovo percorso."
+      "destChangedFetching": "Ricerca di un nuovo percorso.",
+      "waypointChange": "{label}, cambia punto intermedio",
+      "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
+      "waypointKept": "Punto intermedio {label} invariato",
+      "waypointDropped": "Nessun percorso tramite il punto intermedio {label}; guida senza di esso"
     },
     "transitGuide": {
       "destChangeHeading": "Scegli un nuovo percorso, {name}",

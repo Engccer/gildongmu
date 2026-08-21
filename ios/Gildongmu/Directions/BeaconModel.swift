@@ -101,6 +101,13 @@ final class BeaconModel {
         guard mode == .detail else { return nil }
         return guideRoute?.steps.map(\.description)
     }
+    /// 조망 목록의 경유지 구획 행(N4): `stepIndex` 앞에 "경유지 {label} 도착". 스텝 번호는
+    /// 원본 인덱스라 행을 끼워도 밀리지 않는다(결과 화면 `WalkRouteRows` 동형).
+    var routeWaypointRow: (stepIndex: Int, text: String)? {
+        guard mode == .detail, let w = guideRoute?.waypointStepIndex, let label = routeWaypointLabel
+        else { return nil }
+        return (w, appLocalized("directions.viaArrived", label))
+    }
     /// 목록의 "지금 이 구간" 표식 위치. 이탈·불확실·최종 접근에선 nil —
     /// 근거 없는 표식은 거짓 정밀이다(관측이 없으면 표도 없다).
     var currentStepIndex: Int? {
@@ -212,6 +219,19 @@ final class BeaconModel {
     private var motionState = MotionJudgeState.initial
     /// 추적 시트가 부근 재구성 앵커로 읽는다(M1). 쓰기는 여전히 모델 내부만.
     private(set) var dest: BeaconDest?
+    /// 경유지(N4, spec 2026-08-22-waypoint-ios §4.1). 좌표와 라벨 한 벌.
+    struct Waypoint: Equatable {
+        let dest: BeaconDest
+        let label: String
+    }
+    /// **미도착** 경유지. 모든 경로 fetch가 이 값을 `via`로 싣고, 도착 통지 뒤 nil이 된다
+    /// (이후 재조회는 출발→도착만 간다). 시트 버튼 라벨("경유지 추가"↔"C, 경유지 변경")의
+    /// 근거이기도 하다.
+    private(set) var waypoint: Waypoint?
+    /// **현재 경로에 결박된** 경유지 라벨(설계 리뷰 #10 — `waypoint`와 분리). fetch 커밋
+    /// 시점에 기록되어 도착 뒤 `waypoint`가 nil이 돼도 조망의 "경유지 C 도착" 행이 남고,
+    /// 새 경유지 D를 더해 경로를 다시 받기 전까지 옛 경로에 D가 붙지 않는다.
+    private(set) var routeWaypointLabel: String?
     /// 목적지 전환이 보관한 유도기 버퍼(스펙 2026-08-12 §3.1 승계 조항) —
     /// 다음 fetchGuideRoute 성공이 1회 소비한다. stop()이 소거.
     private var carriedCourseDerivation: CourseDerivationState?
@@ -455,6 +475,9 @@ final class BeaconModel {
         let accessible: Bool
         let variant: WalkRouteVariant?
         let shortestAvailable: Bool
+        /// 경유지(N4). 기본값 없음 — 호출부가 nil을 적어야 한다(경유지가 있는 조회에서 시작
+        /// 버튼이 이 인자를 빠뜨리면 경유지 없는 안내가 조용히 시작된다, A13 동형).
+        let waypoint: Waypoint?
     }
 
     /// 직전에 시작한 세션의 인자. 시작 실패(정밀 위치 꺼짐 등) 뒤에도 남아 있어야
@@ -467,6 +490,7 @@ final class BeaconModel {
     /// `false`를 적고, 그 사실이 코드에 드러나는 것이 이 required의 목적이다.
     func toggle(
         dest: BeaconDest, label: String, kind: GuideSessionKind, accessible: Bool,
+        waypoint: Waypoint?,
         variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
     ) {
         if isTracking {
@@ -474,7 +498,7 @@ final class BeaconModel {
         } else {
             requestStart(StartRequest(
                 dest: dest, label: label, kind: kind, accessible: accessible,
-                variant: variant, shortestAvailable: shortestAvailable))
+                variant: variant, shortestAvailable: shortestAvailable, waypoint: waypoint))
         }
     }
 
@@ -511,6 +535,8 @@ final class BeaconModel {
         self.accessible = request.accessible
         sessionVariant = request.variant
         shortestVariantAvailable = request.variant == .shortest || request.shortestAvailable
+        waypoint = request.waypoint
+        routeWaypointLabel = nil
         lastStepFree = nil
         pendingStepFreeNotice = nil
         startTask = Task { [weak self] in
@@ -670,16 +696,22 @@ final class BeaconModel {
         finalApproach: FinalApproachPayload?, liveSteps: [LiveStepInput]
     )
 
+    /// `waypoint`는 **인자로 받는다**(가변 `self.waypoint`를 읽지 않는다 — 왕복 중 경유지가
+    /// 바뀌면 호출부 커밋 가드가 스냅샷 불일치로 응답을 폐기한다, 설계 리뷰 #8).
+    /// 경유지를 보냈는데 응답에 표지가 없으면 nil(상세 부적격) — 서버가 이미 throw하지만
+    /// 클라 가드로 한 번 더. "경유 안 한 경로"를 "경유한 경로"로 안내하는 것이 최악이다.
     private func fetchDetailData(
         origin: (lat: Double, lng: Double), dest: BeaconDest,
-        variant: WalkRouteVariant?
+        variant: WalkRouteVariant?, waypoint: Waypoint?
     ) async throws -> DetailFetchResult? {
+        let via = waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) }
         if sessionKind == .car {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
                 destLat: dest.lat, destLng: dest.lng,
-                includeGeometry: true, via: nil
+                includeGeometry: true, via: via
             )
+            if via != nil, briefing.waypoint == nil { return nil }
             guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
                 return nil
             }
@@ -693,13 +725,16 @@ final class BeaconModel {
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
             includeGeometry: true,
-            variant: variant, via: nil
+            variant: variant, via: via
         )
-        guard let briefing,
-              let route = buildGuideRoute(briefing.steps.map {
-                  GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
-              })
-        else { return nil }
+        guard let briefing else { return nil }
+        if via != nil, briefing.waypoint == nil { return nil }
+        guard let route = buildGuideRoute(
+            briefing.steps.map {
+                GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
+            },
+            waypointStepIndex: briefing.waypoint?.stepIndex
+        ) else { return nil }
         return (
             route, [], briefing.durationSeconds,
             briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice,
@@ -762,14 +797,20 @@ final class BeaconModel {
         // 없으면 stale task의 defer가 새 세션의 awaitingRoute를 조기 해제해 이중 발화
         // 방지(§4.1)가 깨진다(독립 리뷰 MEDIUM).
         defer { if token == routeFetchToken { awaitingRoute = false } }
+        let waypointAtFetch = waypoint
         do {
-            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: sessionVariant)
-            guard !Task.isCancelled, isTracking, self.dest == dest else { return }
+            let fetched = try await fetchDetailData(
+                origin: origin, dest: dest, variant: sessionVariant, waypoint: waypointAtFetch)
+            // 커밋 가드: 세대 토큰 + 목적지·경유지 스냅샷(왕복 중 경유지 추가·변경·도착이면
+            // 도착 응답 폐기 — 그 전이가 토큰을 올려 새 조회를 시작한다).
+            guard !Task.isCancelled, token == routeFetchToken, isTracking,
+                  self.dest == dest, self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
                 fallbackToBrief()
                 return
             }
             guideRoute = fetched.route
+            routeWaypointLabel = waypointAtFetch?.label
             guideRouteDurationSeconds = fetched.durationSeconds
             roadSpans = fetched.spans
             if sessionKind == .car {
@@ -857,7 +898,8 @@ final class BeaconModel {
             let origin = try await LocationService.shared.currentCoordinate()
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
-                destLat: dest.lat, destLng: dest.lng, via: nil
+                destLat: dest.lat, destLng: dest.lng,
+                via: waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) }
             )
             // 세대 일치 커밋(§4.6) — 중지·재조회·목적지 변경 후 도착 응답 폐기.
             guard token == routeFetchToken, isTracking, mode == .detail, self.dest == dest,
@@ -938,9 +980,31 @@ final class BeaconModel {
         // 사라졌으므로 버린다(간략 폴백엔 따라갈 경로 자체가 없다).
         lastStepFree = nil
         pendingStepFreeNotice = nil
-        let text = appLocalized(key)
+        var text = appLocalized(key)
+        // 경유지가 있는 세션의 간략 폴백은 경유지를 **조용히** 버리지 않는다(설계 리뷰 #7):
+        // 간략 안내는 기하를 몰라 목적지 직선 안내가 되고, 화면엔 경유지가 남아 거짓이
+        // 된다. 사실을 말하고 비운다 — 사용자가 다시 더할 수 있다(세션 보류보다 낫다).
+        // 그 문장은 `.high` — 안내 방식이 바뀐 사실은 착지 라벨로 대체될 수 없다.
+        var droppedWaypoint = false
+        if let dropped = waypoint {
+            waypoint = nil
+            routeWaypointLabel = nil
+            forgetWaypointInStartRequest()
+            droppedWaypoint = true
+            text += " " + appLocalized("ios.guide.waypointDropped", dropped.label)
+        }
         statusText = text
-        announce(text)
+        announce(text, highPriority: droppedWaypoint)
+    }
+
+    /// 재시작 요청에서 경유지를 지운다(설계 리뷰 #11) — 실패 뒤 `restart()`가 지난·버린
+    /// 경유지를 다시 더하지 않는다.
+    private func forgetWaypointInStartRequest() {
+        guard let request = lastStartRequest else { return }
+        lastStartRequest = StartRequest(
+            dest: request.dest, label: request.label, kind: request.kind,
+            accessible: request.accessible, variant: request.variant,
+            shortestAvailable: request.shortestAvailable, waypoint: nil)
     }
 
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
@@ -1061,6 +1125,8 @@ final class BeaconModel {
         isRerouting = false
         isSwitchingVariant = false
         carriedCourseDerivation = nil
+        waypoint = nil
+        routeWaypointLabel = nil
         rerouteToken += 1  // in-flight 재조회 응답 폐기(latest-wins)
         routeFetchToken += 1  // stale 경로 조회 defer 무효화
         // 세션 종료 = 제안·회차 카운터 전부 무효(E10ⓑ — 상한은 세션당이다).
@@ -1137,23 +1203,11 @@ final class BeaconModel {
         commitArrivalHealth(sample)
     }
 
-    /// 목적지 전환(스펙 2026-08-12 §3.1) — 같은 세션의 경로 재획득. 세션(톤·위치
-    /// 스트림·워치독)은 유지하고 경로·목적지 종속 상태만 내려놓은 뒤, 다음 수용
-    /// fix가 fetchGuideRoute를 트리거한다(start()와 같은 기계 — 조회 왕복 동안
-    /// 옛 경로의 회전·도착 신호가 나갈 창을 `awaitingRoute` 보류가 구조적으로 막는다).
-    /// 반환 false = 세션이 이미 죽어 선택을 폐기(§3.2 — 호출부는 폼도 건드리지 않는다).
-    @discardableResult
-    func changeDestination(dest newDest: BeaconDest, label: String) -> Bool {
-        guard isTracking else { return false }
-        if dest == newDest {
-            // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
-            destinationLabel = label
-            announceNow(appLocalized("ios.guide.destChanged", label),
-                        highPriority: true, bypassSuppression: true)
-            return true
-        }
-        dest = newDest
-        destinationLabel = label
+    /// 같은 세션의 경로 재획득 공통부(목적지 전환·경유지 추가/변경이 공유). 세션(톤·위치
+    /// 스트림·워치독)은 유지하고 경로·목적지 종속 상태만 내려놓는다 — 다음 수용 fix가
+    /// fetchGuideRoute를 트리거한다(start()와 같은 기계). 토큰 둘을 여기서 올리므로
+    /// 같은 값으로 되돌아온 A→B→A 경합도 값 비교가 아니라 세대가 가른다(설계 리뷰 #8).
+    private func reacquireRoute() {
         // — 경로 종속 상태 초기화(stop()의 부분집합, §3.1 목록) —
         routeFetchTask?.cancel(); routeFetchTask = nil
         fixWaitTask?.cancel(); fixWaitTask = nil
@@ -1194,6 +1248,51 @@ final class BeaconModel {
         beaconState = .initial
         gateState = .initial
         toneState = .initial
+    }
+
+    /// 경유지 추가·변경(N4 spec §4.2). 세션이 죽었으면 false(호출부는 폼도 건드리지 않는다).
+    /// 같은 좌표 재선택은 라벨만 갱신하고 "그대로" 통지 — 일어나지 않는 재조회를 예고하지
+    /// 않는다(설계 리뷰 #12). 그 외엔 목적지 전환과 같은 경로 재획득.
+    @discardableResult
+    func setWaypoint(dest newDest: BeaconDest, label: String) -> Bool {
+        guard isTracking else { return false }
+        if waypoint?.dest == newDest {
+            waypoint = Waypoint(dest: newDest, label: label)
+            announceNow(appLocalized("ios.guide.waypointKept", label),
+                        highPriority: true, bypassSuppression: true)
+            return true
+        }
+        waypoint = Waypoint(dest: newDest, label: label)
+        let fetching = AppLanguage.dataLocale == "ko"
+        if fetching {
+            reacquireRoute()
+        }
+        announceNow(appLocalized("ios.guide.waypointSet", label), highPriority: true, bypassSuppression: true)
+        if fetching {
+            awaitingRoute = true
+            startFixWaitWatch(token: routeFetchToken)
+        }
+        return true
+    }
+
+    /// 목적지 전환(스펙 2026-08-12 §3.1) — 같은 세션의 경로 재획득. 세션(톤·위치
+    /// 스트림·워치독)은 유지하고 경로·목적지 종속 상태만 내려놓은 뒤, 다음 수용
+    /// fix가 fetchGuideRoute를 트리거한다(start()와 같은 기계 — 조회 왕복 동안
+    /// 옛 경로의 회전·도착 신호가 나갈 창을 `awaitingRoute` 보류가 구조적으로 막는다).
+    /// 반환 false = 세션이 이미 죽어 선택을 폐기(§3.2 — 호출부는 폼도 건드리지 않는다).
+    @discardableResult
+    func changeDestination(dest newDest: BeaconDest, label: String) -> Bool {
+        guard isTracking else { return false }
+        if dest == newDest {
+            // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
+            destinationLabel = label
+            announceNow(appLocalized("ios.guide.destChanged", label),
+                        highPriority: true, bypassSuppression: true)
+            return true
+        }
+        dest = newDest
+        destinationLabel = label
+        reacquireRoute()
         // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
         let fetching = AppLanguage.dataLocale == "ko"
         let ack = fetching
@@ -1977,7 +2076,21 @@ final class BeaconModel {
             statusIsNextPreview = true
             announce(text)
         case .waypointReached:
-            break  // N4 Task 5가 채운다(통지 + 도착 종 + waypoint 소거)
+            // 경유지 도착(N4 spec §4.3): 도착 종 + 통지, 그리고 **계속**(경로·상태 불변).
+            // `waypoint`만 비워 이후 재조회가 출발→도착으로 가게 한다. 옛 경유지 기반
+            // 파생물(제안·프리뷰·왕복 중 재조회)은 폐기(설계 리뷰 #9) — 이탈 상태는 남아
+            // 버튼으로 다시 누를 수 있다. 재시작 요청에서도 지운다(#11).
+            guard let reached = waypoint else { break }
+            waypoint = nil
+            forgetWaypointInStartRequest()
+            clearProposal()
+            resetAlternativePreview()
+            rerouteToken += 1
+            playTone(.nearby)
+            let text = appLocalized("directions.viaArrived", reached.label)
+            statusText = text
+            // 지나간 사실이라 억제 해제 뒤에 갚아도 참이다(실행 안내와 같은 취급).
+            if outputSuppressed { pendingRecovery = text } else { announce(text) }
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
             // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는
@@ -2196,9 +2309,12 @@ final class BeaconModel {
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
-            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: fetchVariant)
-            // latest-wins: 왕복 중 중지·전환·목적지 변경이면 도착 응답 폐기(이탈 게이트 동형).
-            guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest else { return }
+            let waypointAtFetch = waypoint
+            let fetched = try await fetchDetailData(
+                origin: origin, dest: dest, variant: fetchVariant, waypoint: waypointAtFetch)
+            // latest-wins: 왕복 중 중지·전환·목적지 변경·경유지 변경/도착이면 도착 응답 폐기.
+            guard token == rerouteToken, isTracking, mode == .detail, self.dest == dest,
+                  self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
                 // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 폴백과 동형.
                 lastStepFree = nil
@@ -2257,6 +2373,9 @@ final class BeaconModel {
         // 경로 교체는 프리뷰 비교 기준(잔여·대안)도 무효화한다(spec 2026-08-14 §3).
         resetAlternativePreview()
         guideRoute = fetched.route
+        // 경로에 결박된 경유지 라벨: 이 경로가 경유지를 담았으면 그 라벨(fetch 스냅샷과
+        // 커밋 가드가 같은 값임을 보장한다), 아니면 nil.
+        routeWaypointLabel = fetched.route.waypointStepIndex == nil ? nil : waypoint?.label
         guideRouteDurationSeconds = fetched.durationSeconds
         roadSpans = fetched.spans
         if sessionKind == .car {
@@ -2321,11 +2440,13 @@ final class BeaconModel {
             let acquiredAt = uptimeNow
             guard token == proposalToken, offRoute, isTracking, mode == .detail,
                   self.dest == dest else { return }
-            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: sessionVariant)
+            let waypointAtFetch = waypoint
+            let fetched = try await fetchDetailData(
+                origin: origin, dest: dest, variant: sessionVariant, waypoint: waypointAtFetch)
             // 커밋 가드: 토큰 일치 ∧ 이탈 지속 중일 때만 보관(복귀 후 늦은 응답이
             // 폐기된 제안을 되살리는 경로 차단 — latest-wins, spec §6 리뷰 #1).
             guard token == proposalToken, offRoute, isTracking, mode == .detail,
-                  self.dest == dest else { return }
+                  self.dest == dest, self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
                 // 경로 없음도 그 회차 종결(통지 없음 — spec §6 명시적 트레이드오프).
                 if case .fetching(let t) = proposalState, t == token { proposalState = .none }
@@ -2439,10 +2560,12 @@ final class BeaconModel {
             let acquiredAt = uptimeNow
             guard token == alternativePreviewToken, isTracking, mode == .detail,
                   self.dest == dest else { return }
-            let fetched = try await fetchDetailData(origin: origin, dest: dest, variant: target)
+            let waypointAtFetch = waypoint
+            let fetched = try await fetchDetailData(
+                origin: origin, dest: dest, variant: target, waypoint: waypointAtFetch)
             // 커밋 가드: 닫힘·재열림·세션 변화 후 도착한 응답 폐기(latest-wins).
             guard token == alternativePreviewToken, isTracking, mode == .detail,
-                  self.dest == dest else { return }
+                  self.dest == dest, self.waypoint == waypointAtFetch else { return }
             guard let fetched else {
                 alternativePreviewState = .noRoute
                 announce(appLocalized("guide.altPreviewNone"))

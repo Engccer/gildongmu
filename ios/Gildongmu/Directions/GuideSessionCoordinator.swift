@@ -91,7 +91,8 @@ final class GuideSession {
             guard !Task.isCancelled, let self else { return }
             self.startBeacon(BeaconModel.StartRequest(
                 dest: dest, label: label, kind: .walk, accessible: accessible,
-                variant: nil, shortestAvailable: false))
+                variant: nil, shortestAvailable: false,
+                waypoint: nil))  // 대중교통 세션엔 경유지가 없다(ODsay 미지원)
         }
     }
 

@@ -282,7 +282,11 @@
       "destMenuDetail": "Ver detalles del lugar",
       "destMenuChange": "Cambiar destino",
       "destChanged": "Nuevo destino: {name}.",
-      "destChangedFetching": "Buscando una nueva ruta."
+      "destChangedFetching": "Buscando una nueva ruta.",
+      "waypointChange": "{label}, cambiar punto de paso",
+      "waypointSet": "Punto de paso {label}, consultando la ruta de nuevo",
+      "waypointKept": "Punto de paso {label} sin cambios",
+      "waypointDropped": "No se encontró ruta por el punto de paso {label}; se guía sin él"
     },
     "transitGuide": {
       "destChangeHeading": "Elige una nueva ruta, {name}",

@@ -282,7 +282,11 @@
       "destMenuDetail": "장소 상세 보기",
       "destMenuChange": "목적지 바꾸기",
       "destChanged": "새 목적지 {name}.",
-      "destChangedFetching": "경로를 조회하고 있습니다."
+      "destChangedFetching": "경로를 조회하고 있습니다.",
+      "waypointChange": "{label}, 경유지 변경",
+      "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",
+      "waypointKept": "경유지 {label} 그대로입니다",
+      "waypointDropped": "경유지 {label}를 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
     },
     "transitGuide": {
       "destChangeHeading": "새 경로 선택, {name}",
