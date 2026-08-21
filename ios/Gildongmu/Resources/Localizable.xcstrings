@@ -37161,6 +37161,86 @@
         }
       }
     },
+    "transitGuide.approachFrame": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에 %2$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "At %1$@: %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En %1$@: %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À %1$@ : %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A %1$@: %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@に%2$@。"
+          }
+        }
+      }
+    },
+    "transitGuide.approachingStarted": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 차량을 추적합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracking the selected vehicle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiendo el vehículo seleccionado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivi du véhicule sélectionné."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tracciamento del veicolo selezionato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した車両を追跡します。"
+          }
+        }
+      }
+    },
     "transitGuide.approxNote": {
       "localizations": {
         "ko": {
@@ -37277,6 +37357,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "降車地点に到着しました。降りたら「次の区間」を押してください。"
+          }
+        }
+      }
+    },
+    "transitGuide.arrivedAtBoardStop": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 도착. 탑승하세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ has arrived. Board now."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ha llegado. Suba ahora."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ est arrivé. Montez maintenant."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ è arrivato. Sali ora."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@が到着。乗車してください。"
           }
         }
       }
@@ -37406,117 +37526,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "탑승"
+            "value": "탑승했습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Board"
+            "value": "I boarded"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Subir"
+            "value": "Ya subí"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Monter"
+            "value": "Je suis monté"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sali"
+            "value": "Sono salito"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "乗車"
-          }
-        }
-      }
-    },
-    "transitGuide.boardBus": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, 이 버스에 탑승"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, board this bus"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, subir a este autobús"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, monter dans ce bus"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, sali su questo autobus"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@、このバスに乗車"
-          }
-        }
-      }
-    },
-    "transitGuide.boardTrain": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, 이 열차에 탑승"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, board this train"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, subir a este tren"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, monter dans ce train"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, sali su questo treno"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@、この列車に乗車"
+            "value": "乗車しました"
           }
         }
       }
@@ -37597,6 +37637,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@に乗車。降車: %2$@、%3$@駅。"
+          }
+        }
+      }
+    },
+    "transitGuide.boardingContext": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@에서 %2$@ 탑승 기다리는 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to board %2$@ at %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esperando para subir a %2$@ en %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En attente de monter dans %2$@ à %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In attesa di salire su %2$@ a %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で%2$@の乗車待ち。"
+          }
+        }
+      }
+    },
+    "transitGuide.boardingSignalLost": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 차량을 찾지 못하고 있습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected vehicle not found."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encuentra el vehículo seleccionado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Véhicule sélectionné introuvable."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veicolo selezionato non trovato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した車両が見つかりません。"
           }
         }
       }
@@ -37766,7 +37886,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "탑승을 다시 선택합니다."
+            "value": "차량을 다시 선택합니다."
           }
         },
         "en": {
@@ -37778,7 +37898,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Elige tu vehículo de nuevo."
+            "value": "Vuelva a elegir su vehículo."
           }
         },
         "fr": {
@@ -37790,13 +37910,53 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scegli di nuovo il tuo veicolo."
+            "value": "Scegli di nuovo il veicolo."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "乗車車両を選び直します。"
+            "value": "車両を選び直します。"
+          }
+        }
+      }
+    },
+    "transitGuide.confirmBoarded": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "탑승했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I boarded"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ya subí"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Je suis monté"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sono salito"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗車しました"
           }
         }
       }
@@ -38561,6 +38721,46 @@
         }
       }
     },
+    "transitGuide.reselectVehicle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다른 차량 선택"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose another vehicle"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir otro vehículo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir un autre véhicule"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli un altro veicolo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "別の車両を選ぶ"
+          }
+        }
+      }
+    },
     "transitGuide.resumed": {
       "localizations": {
         "ko": {
@@ -38597,6 +38797,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "案内を再開します。"
+          }
+        }
+      }
+    },
+    "transitGuide.selectBus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, 이 버스 선택"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, select this bus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, seleccionar este autobús"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, sélectionner ce bus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, seleziona questo autobus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、このバスを選択"
+          }
+        }
+      }
+    },
+    "transitGuide.selectTrain": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, 이 열차 선택"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, select this train"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, seleccionar este tren"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, sélectionner ce train"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, seleziona questo treno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、この列車を選択"
+          }
+        }
+      }
+    },
+    "transitGuide.selectedVehicle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 차량: %1$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected vehicle: %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vehículo seleccionado: %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Véhicule sélectionné : %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veicolo selezionato: %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した車両: %1$@。"
           }
         }
       }
@@ -38717,6 +39037,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "公共交通の案内を開始します。乗車区間%1$@件。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateApproaching": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "차량 접근 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vehicle approaching."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vehículo acercándose."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Véhicule en approche."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veicolo in avvicinamento."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "車両接近中。"
+          }
+        }
+      }
+    },
+    "transitGuide.stateBoardingNotYetVisible": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택 차량 확인 중."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locating selected vehicle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localizando el vehículo seleccionado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localisation du véhicule sélectionné."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Localizzazione del veicolo selezionato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択車両を確認中。"
           }
         }
       }
@@ -39197,6 +39597,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "リアルタイム信号が途切れました。"
+          }
+        }
+      }
+    },
+    "transitGuide.vehiclePassed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "선택한 차량이 %1$@을 지난 것으로 보입니다. 타셨으면 탑승했습니다, 아니면 다른 차량 선택을 눌러 주세요."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The selected vehicle seems to have passed %1$@. If you boarded, press I boarded; otherwise choose another vehicle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El vehículo seleccionado parece haber pasado %1$@. Si subió, pulse Ya subí; si no, elija otro vehículo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le véhicule sélectionné semble avoir dépassé %1$@. Si vous êtes monté, appuyez sur Je suis monté ; sinon choisissez un autre véhicule."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il veicolo selezionato sembra aver superato %1$@. Se sei salito, premi Sono salito; altrimenti scegli un altro veicolo."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選択した車両は%1$@を通過したようです。乗車した場合は「乗車しました」を、そうでなければ「別の車両を選ぶ」を押してください。"
+          }
+        }
+      }
+    },
+    "transitGuide.vehicleSelected": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 선택. %2$@ 도착을 기다립니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected %1$@. Waiting for it to arrive at %2$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ seleccionado. Esperando su llegada a %2$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ sélectionné. En attente de son arrivée à %2$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ selezionato. In attesa del suo arrivo a %2$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を選択。%2$@への到着を待ちます。"
           }
         }
       }
