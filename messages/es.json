@@ -676,6 +676,7 @@
     "imminent": {
       "left": "Gire a la izquierda en breve",
       "right": "Gire a la derecha en breve",
+      "back": "Dé la vuelta en breve",
       "crosswalk": "Cruce el paso de peatones en breve",
       "underpass": "Use el paso subterráneo en breve"
     },
@@ -685,6 +686,7 @@
     "liveAction": {
       "left": "gire a la izquierda",
       "right": "gire a la derecha",
+      "back": "dé la vuelta",
       "crosswalk": "cruce el paso de peatones",
       "underpass": "use el paso subterráneo"
     },

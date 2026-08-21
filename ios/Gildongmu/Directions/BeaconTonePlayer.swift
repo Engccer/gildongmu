@@ -61,9 +61,19 @@ final class BeaconTonePlayer {
     private static let gains: [BeaconTone: Float] = [
         .closer: 0.35, .farther: 0.35, .nearby: 1, .tick: 0.3,
         .start: 0.8, .stop: 0.8, .ahead: 0.8, .warning: 1, .unreliable: 0.45,
+        // 결정 지점 행동 톤 4종 — ahead 동급(같은 자리의 소리).
+        .crosswalk: 0.8, .left: 0.8, .right: 0.8, .back: 0.8,
     ]
 
-    private var players: [BeaconTone: AVAudioPlayer] = [:]
+    /// 좌우 구분 방식(실기기 선택 대기, 설정 실험 피커). 매 재생 시 읽어 전환이 즉시 듣는다.
+    private var leftRightScheme: LeftRightToneScheme {
+        LeftRightToneScheme(
+            rawValue: UserDefaults.standard.string(forKey: LeftRightToneScheme.storageKey) ?? ""
+        ) ?? .default
+    }
+
+    /// 리소스 이름 키 — 같은 톤이 scheme에 따라 다른 파일을 쓴다(left·right).
+    private var players: [String: AVAudioPlayer] = [:]
     private var observers: [NSObjectProtocol] = []
     /// 오디오 세션 소유권(판정은 Kit `guideAudioStep`, 여기는 적용만).
     private var audio = GuideAudioSessionState.initial
@@ -147,11 +157,12 @@ final class BeaconTonePlayer {
         // (종전 `guard ensureSession()`은 세션만 봤고 재생은 매번 다시 시도했다).
         guard appliedCategory != nil else { return }
         let player: AVAudioPlayer
-        if let cached = players[tone] {
+        let resource = tone.resourceName(leftRightScheme)
+        if let cached = players[resource] {
             player = cached
         } else {
             guard
-                let url = Bundle.main.url(forResource: tone.resourceName, withExtension: "mp3"),
+                let url = Bundle.main.url(forResource: resource, withExtension: "mp3"),
                 let loaded = try? AVAudioPlayer(contentsOf: url)
             else {
                 isSilenced = true  // 리소스 누락·디코드 실패도 무음이다. 조용히 넘기면 원인이 사라진다.
@@ -159,7 +170,7 @@ final class BeaconTonePlayer {
             }
             loaded.volume = Self.gains[tone] ?? 1
             loaded.prepareToPlay()
-            players[tone] = loaded
+            players[resource] = loaded
             player = loaded
         }
         // 선점: 겹치면 두 소리가 섞여 어느 쪽도 식별되지 않는다.
@@ -200,6 +211,42 @@ final class BeaconTonePlayer {
                 events: trill.map { transient(at: $0.0, intensity: $0.1, sharpness: 0.6) },
                 curves: [],
                 fallback: { self.impactHaptics.impactOccurred() }
+            )
+        case .crosswalk:
+            // 음향신호기식 비프 4연음 ×2 — 비프(60ms)·간격(60ms)·묶음 간격(250ms)은
+            // 생성 스크립트 상수(`build-guide-tones.py`)와 동일. 타격 8회에 탭 1:1.
+            var beats: [(Double, Float)] = []
+            for group in 0..<2 {
+                let base = Double(group) * (4 * 0.06 + 3 * 0.06 + 0.25)
+                for k in 0..<4 { beats.append((base + Double(k) * 0.12, 0.9)) }
+            }
+            playHaptic(
+                events: beats.map { transient(at: $0.0, intensity: $0.1, sharpness: 0.8) },
+                curves: [],
+                fallback: { self.impactHaptics.impactOccurred() }
+            )
+        case .left, .right:
+            // 상승 2음 모티프(0·0.22초) — 두 탭, 둘째가 세다(상승감).
+            playHaptic(
+                events: [
+                    transient(at: 0, intensity: 0.7, sharpness: 0.5),
+                    transient(at: 0.22, intensity: 1.0, sharpness: 0.6),
+                ],
+                curves: [],
+                fallback: { self.impactHaptics.impactOccurred() }
+            )
+        case .back:
+            // 하강 글라이드 2회(0.4초 + 0.1초 간격) — 감쇠 버즈 두 번.
+            playHaptic(
+                events: [
+                    continuous(from: 0, duration: 0.4, intensity: 0.9, sharpness: 0.3),
+                    continuous(from: 0.5, duration: 0.4, intensity: 0.9, sharpness: 0.3),
+                ],
+                curves: [
+                    decayCurve(from: 0, duration: 0.4, start: 0.9),
+                    decayCurve(from: 0.5, duration: 0.4, start: 0.9),
+                ],
+                fallback: { self.notifHaptics.notificationOccurred(.warning) }
             )
         case .warning:
             // 단일 저음 burst 후 0.35초 감쇠(실측: RMS 1.0 → 0.32@0.1s → 0.19@0.2s).

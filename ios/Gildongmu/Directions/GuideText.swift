@@ -271,6 +271,7 @@ enum GuideText {
         switch action {
         case .left: appLocalized("guide.liveAction.left")
         case .right: appLocalized("guide.liveAction.right")
+        case .back: appLocalized("guide.liveAction.back")
         case .crosswalk: appLocalized("guide.liveAction.crosswalk")
         case .underpass: appLocalized("guide.liveAction.underpass")
         }
@@ -281,6 +282,7 @@ enum GuideText {
         switch action {
         case .left: appLocalized("guide.imminent.left")
         case .right: appLocalized("guide.imminent.right")
+        case .back: appLocalized("guide.imminent.back")
         case .crosswalk: appLocalized("guide.imminent.crosswalk")
         case .underpass: appLocalized("guide.imminent.underpass")
         }

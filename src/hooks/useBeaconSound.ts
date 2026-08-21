@@ -31,8 +31,34 @@ type GuideSound =
   | "start"
   | "stop"
   | "ahead"
+  | "crosswalk"
+  | "left"
+  | "right"
+  | "back"
   | "warning"
   | "unreliable";
+
+/**
+ * 왼쪽·오른쪽 톤의 구분 방식 — 실기기 선택 대기 중인 두 후보(spec
+ * `2026-08-22-walk-tone-taxonomy-design.md` §3, iOS `LeftRightToneScheme` 미러).
+ * `pan`은 좌·우 채널 하드 패닝(스피커에서 무력), `pitch`는 낮은/높은 모티프(모노).
+ * 웹은 전환 UI 없이 iOS 기본값과 같은 값을 쓴다. 판정 뒤 패자 파일과 이 분기를 지운다.
+ */
+const LEFT_RIGHT_SCHEME: "pan" | "pitch" = "pitch";
+
+/** 재생 파일명(`/sounds/guide/<이름>.mp3`). 톤과 파일이 다른 것은 left·right뿐이다. */
+type GuideSoundFile =
+  | Exclude<GuideSound, "left" | "right">
+  | "left-pan"
+  | "right-pan"
+  | "left-pitch"
+  | "right-pitch";
+
+function fileOf(sound: GuideSound): GuideSoundFile {
+  if (sound === "left") return LEFT_RIGHT_SCHEME === "pan" ? "left-pan" : "left-pitch";
+  if (sound === "right") return LEFT_RIGHT_SCHEME === "pan" ? "right-pan" : "right-pitch";
+  return sound;
+}
 
 /**
  * ⚠ `unreliable`은 `tick`(0.3)보다 높다. 신뢰 불가는 상태 경고라 배경 미디어 위에서
@@ -46,6 +72,11 @@ const GAIN: Record<GuideSound, number> = {
   start: 0.8,
   stop: 0.8,
   ahead: 0.8,
+  // 결정 지점 행동 톤 4종 — ahead 동급(같은 자리의 소리).
+  crosswalk: 0.8,
+  left: 0.8,
+  right: 0.8,
+  back: 0.8,
   warning: 1,
   unreliable: 0.45,
 };
@@ -60,6 +91,13 @@ const VIBRATE: Partial<Record<GuideSound, number[]>> = {
   farther: [40, 40, 50],
   // 마지막 바퀴 종 타격(0·290·440·590·840·1100ms)에 1:1 펄스.
   nearby: [50, 240, 50, 100, 50, 100, 50, 200, 50, 210, 50],
+  // 음향신호기식 비프 4연음 ×2 — 생성 상수(비프 60·간격 60·묶음 간격 250ms) 1:1.
+  crosswalk: [60, 60, 60, 60, 60, 60, 60, 250, 60, 60, 60, 60, 60, 60, 60],
+  // 상승 2음 모티프(0·220ms) — 두 탭.
+  left: [40, 180, 60],
+  right: [40, 180, 60],
+  // 하강 글라이드 2회(400ms + 100ms 간격).
+  back: [400, 100, 400],
   // 단일 저음 burst 후 감쇠(실측 0.35초).
   warning: [220],
   // 1.3초 스웰(어택 0.455·릴리스 0.585)을 펄스 폭으로 근사.
@@ -79,8 +117,8 @@ function vibrate(sound: GuideSound) {
 
 export function useBeaconSound() {
   const ctxRef = useRef<AudioContext | null>(null);
-  const buffersRef = useRef(new Map<GuideSound, AudioBuffer>());
-  const loadingRef = useRef(new Set<GuideSound>());
+  const buffersRef = useRef(new Map<GuideSoundFile, AudioBuffer>());
+  const loadingRef = useRef(new Set<GuideSoundFile>());
 
   useEffect(() => {
     return () => {
@@ -122,12 +160,12 @@ export function useBeaconSound() {
 
   /** fetch → decode → 버퍼 캐시 저장. 실패는 null(가드만 해제해 다음 시도에서 재시도). */
   const loadBuffer = useCallback(
-    (ctx: AudioContext, sound: GuideSound): Promise<AudioBuffer | null> =>
-      fetch(`/sounds/guide/${sound}.mp3`)
+    (ctx: AudioContext, file: GuideSoundFile): Promise<AudioBuffer | null> =>
+      fetch(`/sounds/guide/${file}.mp3`)
         .then((res) => (res.ok ? res.arrayBuffer() : Promise.reject(res.status)))
         .then((data) => ctx.decodeAudioData(data))
         .then((buffer) => {
-          buffersRef.current.set(sound, buffer);
+          buffersRef.current.set(file, buffer);
           return buffer;
         })
         .catch(() => null),
@@ -163,16 +201,17 @@ export function useBeaconSound() {
       const ctx = getCtx();
       if (!ctx) return 0;
       if (ctx.state === "suspended") void ctx.resume();
-      const cached = buffersRef.current.get(sound);
+      const file = fileOf(sound);
+      const cached = buffersRef.current.get(file);
       if (cached) return startBuffer(ctx, sound, cached) ? cached.duration : 0;
       // 첫 재생은 로드로 대체(다음부터 즉시). 동시 중복 fetch는 가드.
-      if (loadingRef.current.has(sound)) return 0;
-      loadingRef.current.add(sound);
-      void loadBuffer(ctx, sound)
+      if (loadingRef.current.has(file)) return 0;
+      loadingRef.current.add(file);
+      void loadBuffer(ctx, file)
         .then((buffer) => {
           if (buffer) startBuffer(ctx, sound, buffer);
         })
-        .finally(() => loadingRef.current.delete(sound));
+        .finally(() => loadingRef.current.delete(file));
       return 0;
     },
     [getCtx, loadBuffer, startBuffer],
@@ -189,9 +228,10 @@ export function useBeaconSound() {
       const ctx = getCtx();
       if (!ctx) return;
       for (const sound of sounds) {
-        if (buffersRef.current.has(sound) || loadingRef.current.has(sound)) continue;
-        loadingRef.current.add(sound);
-        void loadBuffer(ctx, sound).finally(() => loadingRef.current.delete(sound));
+        const file = fileOf(sound);
+        if (buffersRef.current.has(file) || loadingRef.current.has(file)) continue;
+        loadingRef.current.add(file);
+        void loadBuffer(ctx, file).finally(() => loadingRef.current.delete(file));
       }
     },
     [getCtx, loadBuffer],

@@ -154,6 +154,15 @@ public func decayedDeadBand(
     return max(floor, base - (base - floor) * progress)
 }
 
+/// 행동 안내 톤 — 정숙 창(`quietAfterActionSeconds`)을 여는 집합. 결정 지점 임박 5종
+/// (`imminentTone`)과 이탈 경고. 웹 `isActionTone` 미러.
+public func isActionTone(_ tone: BeaconTone) -> Bool {
+    switch tone {
+    case .ahead, .crosswalk, .left, .right, .back, .warning: true
+    case .closer, .farther, .nearby, .tick, .start, .stop, .unreliable: false
+    }
+}
+
 public func toneLayerStep(
     state: ToneLayerState,
     input: ToneLayerInput,
@@ -182,7 +191,7 @@ public func toneLayerStep(
 
     // 2단계 — 우선 톤. 행동 안내는 정숙 구간을 연다.
     if let tone = input.priorityTone {
-        if tone == .ahead || tone == .warning {
+        if isActionTone(tone) {
             next.quietUntil = now + ToneLayerConstants.quietAfterActionSeconds
         }
         // 이탈 구간의 잔여 거리는 낡은 투영이라 앵커가 낡는다.

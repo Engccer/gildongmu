@@ -676,6 +676,7 @@
     "imminent": {
       "left": "Tournez à gauche dans un instant",
       "right": "Tournez à droite dans un instant",
+      "back": "Faites demi-tour dans un instant",
       "crosswalk": "Traversez le passage piéton dans un instant",
       "underpass": "Empruntez le passage souterrain dans un instant"
     },
@@ -685,6 +686,7 @@
     "liveAction": {
       "left": "tournez à gauche",
       "right": "tournez à droite",
+      "back": "faites demi-tour",
       "crosswalk": "traversez au passage piéton",
       "underpass": "empruntez le passage souterrain"
     },

@@ -112,13 +112,7 @@ private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     }
 }
 
-private func toneName(_ tone: GuideTone?) -> String? {
-    switch tone {
-    case .ahead: "ahead"
-    case .warning: "warning"
-    case nil: nil
-    }
-}
+private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
 
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {

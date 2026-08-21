@@ -676,6 +676,7 @@
     "imminent": {
       "left": "Turn left shortly",
       "right": "Turn right shortly",
+      "back": "Turn around shortly",
       "crosswalk": "Cross the crosswalk shortly",
       "underpass": "Use the underpass shortly"
     },
@@ -685,6 +686,7 @@
     "liveAction": {
       "left": "turn left",
       "right": "turn right",
+      "back": "turn around",
       "crosswalk": "cross the crosswalk",
       "underpass": "use the underpass"
     },

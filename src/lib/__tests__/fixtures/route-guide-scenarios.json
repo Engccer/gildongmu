@@ -1684,7 +1684,7 @@
           "indices": [
             1
           ],
-          "tone": "ahead"
+          "tone": "right"
         },
         {
           "afterFix": 13,
@@ -1845,7 +1845,7 @@
           "indices": [
             2
           ],
-          "tone": "ahead"
+          "tone": "left"
         }
       ]
     },
@@ -1956,7 +1956,7 @@
           "indices": [
             1
           ],
-          "tone": "ahead"
+          "tone": "crosswalk"
         }
       ]
     },
@@ -2153,7 +2153,7 @@
           "indices": [
             2
           ],
-          "tone": "ahead"
+          "tone": "left"
         }
       ]
     },

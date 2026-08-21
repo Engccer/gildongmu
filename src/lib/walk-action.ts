@@ -20,7 +20,31 @@
  * 결정 지점에서 사용자가 할 행동. **낭독 문구를 고르는 키**이므로 종류를 늘리면
  * i18n 키도 함께 는다 — 문구가 달라지지 않는 구분은 만들지 않는다.
  */
-export type WalkAction = "left" | "right" | "crosswalk" | "underpass";
+export type WalkAction = "left" | "right" | "back" | "crosswalk" | "underpass";
+
+/**
+ * 결정 지점 임박 큐의 **소리**. 행동별로 가른다(N2, 2026-08-22 위원장 판정: 횡단보도·
+ * 왼쪽·오른쪽·뒤로 돌기·그 외). 백그라운드·잠금에서는 문장이 나가지 않으므로 이 소리가
+ * 다음 행동을 알리는 유일한 채널이다. `underpass`는 "그 외"다 — 횡단보도 비프는
+ * 음향신호기의 인용이라 지하보도에 붙이면 거짓 인용이 된다.
+ * Kit `imminentTone` 미러. 소리 정본은 `scripts/build-guide-tones.py`.
+ */
+export type ImminentTone = "ahead" | "crosswalk" | "left" | "right" | "back";
+
+export function imminentTone(action: WalkAction): ImminentTone {
+  switch (action) {
+    case "crosswalk":
+      return "crosswalk";
+    case "left":
+      return "left";
+    case "right":
+      return "right";
+    case "back":
+      return "back";
+    case "underpass":
+      return "ahead";
+  }
+}
 
 /**
  * **회전 표지가 건널목 표지보다 먼저다.** 회전 표지는 행동을 서술하는 동사구라
@@ -39,6 +63,10 @@ const MARKERS: readonly (readonly [string, WalkAction])[] = [
   ["오른쪽으로 돌아", "right"],
   ["좌회전", "left"],
   ["우회전", "right"],
+  // 뒤로 돌기(Tmap turnType 14 "유턴" · 카카오 재작성 문형 추정). ⚠ 실호출 55문장에서
+  // 미관측 — 마커가 틀려도 결과는 침묵이고, 관측되면 fixture에 실문장을 더한다.
+  ["유턴", "back"],
+  ["뒤로 돌아", "back"],
   ["횡단보도", "crosswalk"],
   ["지하보도", "underpass"],
 ];
