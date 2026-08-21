@@ -14,8 +14,16 @@ public enum TransitTrackMode: String, Codable, Sendable {
     case seoulBus, tagoBus, subway
 }
 
+/// boarding(2026-08-22 N3): 차량을 골랐고 그 차량의 **승차 정류소 도착**을 기다린다.
+/// 폴링 대상은 waiting과 같다(승차 정류소). riding 승격은 도착 관측 또는 사용자
+/// 선언(confirmBoarded·restoreBoarding) 두 길뿐 — 미등장을 탑승으로 추론하지 않는다.
 public enum TransitPhase: String, Sendable {
-    case waiting, riding, arrived, done
+    case waiting, boarding, riding, arrived, done
+}
+
+/// riding 진입 경위 — observed=승차 정류소 도착 관측, declared=사용자 선언·근사 잠금.
+public enum TransitBoardedCause: String, Sendable {
+    case observed, declared
 }
 
 public enum TransitSignal: String, Sendable {
@@ -163,13 +171,23 @@ public func transitWaitingEmptyReason(
 public enum TransitGuideInput: Sendable {
     case poll(seq: Int, phaseGen: Int, poll: TransitTrackPoll)
     case board(TransitLock)
+    /// boarding → riding 사용자 선언("탑승했습니다").
+    case confirmBoarded
+    /// "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기).
+    case restoreBoarding
     case changeBoarding
     case advance
 }
 
 /// 구조화 안내 이벤트 — 문구 조립은 앱 몫(GuideText), 완성 문장은 원문 병치(§6.1).
 public enum TransitGuideEvent: Sendable, Equatable {
-    case boarded(legIndex: Int)
+    case boarded(legIndex: Int, cause: TransitBoardedCause)
+    /// 차량 선택(boarding 진입) — 활성화 응답은 앱이 .high로 낭독.
+    case vehicleSelected(legIndex: Int)
+    /// boarding: 선택 차량의 승차 정류소 접근(첫 관측 + 사다리 3·2·1).
+    case approaching(remaining: Int?, message: String)
+    /// boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청.
+    case vehiclePassed
     case trackingStarted(message: String, remaining: Int?)
     case countdown(remaining: Int, message: String, currentLocation: String?)
     case messageChanged(message: String)
@@ -194,6 +212,8 @@ public struct TransitGuideState: Sendable {
     public var lock: TransitLock?
     /// 탑승 변경으로 해제한 직전 잠금(§13.1) — "탑승 변경 취소"의 복귀 대상.
     public var previousLock: TransitLock?
+    /// previousLock이 해제되기 전의 국면(boarding·riding) — restoreBoarding의 복귀 목적지.
+    public var previousPhase: TransitPhase?
     public var remaining: Int?
     public var lastMessage: String?
     public var lastUpdatedAt: Double?
@@ -232,12 +252,16 @@ public let transitMissArriveCount = 2
 /// ⚠ 10분은 잠정값 — 실승차 판정 대상(BACKLOG A16).
 public let transitNeverSeenMs: Double = 600_000
 public let transitSessionPollCap = 240
+/// boarding 도착 관측의 신선도 상한(초) — 서버 STALE_FROZEN_SECONDS와 같은 값. 종착
+/// 코드(1·2)가 동결된 레코드는 선택 직후 폴에 "새 도착"으로 둔갑한다(설계 리뷰 C3).
+public let transitBoardStopFreshSeconds = 120
 
 /// 폴링 주기(ms, §7 적응형). 0 = 폴링 없음(done·untrackable).
 public func transitPollIntervalMs(_ state: TransitGuideState) -> Int {
     if state.phase == .done || state.signal == .untrackable { return 0 }
     if state.capAnnounced { return 60_000 }
-    if state.phase == .waiting { return 20_000 }
+    // boarding은 waiting과 같은 엔드포인트(승차 정류소)라 같은 주기.
+    if state.phase == .waiting || state.phase == .boarding { return 20_000 }
     // riding·arrived(재관측 감시): 미등장 60s / 추적 중 15s(§12 — 원거리 30s 폐지).
     return state.trackingAnnounced ? 15_000 : 60_000
 }
@@ -251,10 +275,18 @@ public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool,
     switch event {
     case let .countdown(remaining, _, _):
         return remaining <= 1 ? (true, .imminent) : (false, .ladder)
+    case let .approaching(remaining, _):
+        // 내 정류소에 거의 왔다 — 지금 움직여야 하는 신호(riding 사다리와 같은 축).
+        return (remaining ?? .max) <= 1 ? (true, .imminent) : (false, .ladder)
     case .arrived:
         return (true, .arrive)
-    case .boarded, .legAdvanced:
+    case let .boarded(_, cause):
+        // 도착 관측은 "지금 타라"라 interrupting, 선언은 사용자 행동의 응답이라 기본.
+        return (cause == .observed, .start)
+    case .legAdvanced:
         return (false, .start)
+    case .vehiclePassed:
+        return (false, .weak)
     case .trackingStarted:
         return (false, .ladder)
     case .signalLost, .neverSeen, .upstreamFailed:
@@ -454,6 +486,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         signal: route.legs.first?.trackMode != nil ? .notYetVisible : .untrackable,
         lock: nil,
         previousLock: nil,
+        previousPhase: nil,
         remaining: nil,
         lastMessage: nil,
         lastUpdatedAt: nil,
@@ -490,6 +523,10 @@ public func transitGuideStep(
     switch input {
     case let .board(lock):
         return handleBoard(state, lock: lock, now: now)
+    case .confirmBoarded:
+        return handleConfirmBoarded(state, now: now)
+    case .restoreBoarding:
+        return handleRestoreBoarding(state, now: now)
     case .changeBoarding:
         return handleChangeBoarding(state)
     case .advance:
@@ -499,17 +536,11 @@ public func transitGuideStep(
     }
 }
 
-private func handleBoard(
-    _ state: TransitGuideState, lock: TransitLock, now: Double
-) -> (state: TransitGuideState, event: TransitGuideEvent?) {
-    guard state.phase == .waiting, state.signal != .untrackable else { return (state, nil) }
+/// 잠금 추적 필드 초기화(국면 진입 공용). failCount/failSince도 함께 비운다 — 폴링
+/// 대상이 바뀌는 전이(boarding→riding)에서 이전 대상의 실패 이력을 이월하면 새 대상
+/// 첫 실패가 곧장 upstreamFailed가 된다(설계 리뷰 M6).
+private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState {
     var next = state
-    next.phase = .riding
-    // 미관측 상한의 기준점(A16 L2). 재탑승·leg 전진마다 새로 찍힌다.
-    next.ridingSince = now
-    next.phaseGen += 1
-    next.lock = lock
-    next.previousLock = nil
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
@@ -520,19 +551,81 @@ private func handleBoard(
     next.ladderAnnounced = nil
     next.trackingAnnounced = false
     next.missCount = 0
-    return (next, .boarded(legIndex: state.legIndex))
+    next.failCount = 0
+    next.failSince = nil
+    return next
+}
+
+/// riding 진입 — ridingSince(미관측 상한 기준점, A16 L2)를 새로 찍는다.
+private func enterRiding(
+    _ state: TransitGuideState, lock: TransitLock, cause: TransitBoardedCause, now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    var next = resetLockTracking(state)
+    next.phase = .riding
+    next.phaseGen += 1
+    next.signal = .notYetVisible
+    next.lock = lock
+    next.previousLock = nil
+    next.previousPhase = nil
+    next.ridingSince = now
+    return (next, .boarded(legIndex: state.legIndex, cause: cause))
+}
+
+/// boarding 진입 — 승차 정류소 폴링은 계속되므로 ridingSince는 없다.
+private func enterBoarding(
+    _ state: TransitGuideState, lock: TransitLock
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    var next = resetLockTracking(state)
+    next.phase = .boarding
+    next.phaseGen += 1
+    next.signal = .notYetVisible
+    next.lock = lock
+    next.previousLock = nil
+    next.previousPhase = nil
+    next.ridingSince = nil
+    return (next, .vehicleSelected(legIndex: state.legIndex))
+}
+
+/// "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탑승했습니다")만 종전대로 riding —
+/// 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
+private func handleBoard(
+    _ state: TransitGuideState, lock: TransitLock, now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    guard state.phase == .waiting, state.signal != .untrackable else { return (state, nil) }
+    return isApproxTransitLock(lock)
+        ? enterRiding(state, lock: lock, cause: .declared, now: now)
+        : enterBoarding(state, lock: lock)
+}
+
+private func handleConfirmBoarded(
+    _ state: TransitGuideState, now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    guard state.phase == .boarding, let lock = state.lock else { return (state, nil) }
+    return enterRiding(state, lock: lock, cause: .declared, now: now)
+}
+
+/// 탑승 변경 취소 — 해제 전 국면으로 복귀(boarding이면 다시 승차 정류소 대기).
+private func handleRestoreBoarding(
+    _ state: TransitGuideState, now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    guard state.phase == .waiting, let lock = state.previousLock else { return (state, nil) }
+    if state.previousPhase == .boarding { return enterBoarding(state, lock: lock) }
+    return enterRiding(state, lock: lock, cause: .declared, now: now)
 }
 
 private func handleChangeBoarding(
     _ state: TransitGuideState
 ) -> (state: TransitGuideState, event: TransitGuideEvent?) {
-    guard state.phase == .riding || state.phase == .arrived else { return (state, nil) }
+    guard state.phase == .boarding || state.phase == .riding || state.phase == .arrived else {
+        return (state, nil)
+    }
     var next = state
     next.phase = .waiting
     next.phaseGen += 1
     next.lock = nil
-    // 직전 잠금 보존(§13.1) — "탑승 변경 취소"가 board(previousLock)로 복귀한다.
+    // 직전 잠금·국면 보존(§13.1) — "탑승 변경 취소"(restoreBoarding)의 복귀 대상.
     next.previousLock = state.lock
+    next.previousPhase = state.phase == .boarding ? .boarding : .riding
     next.remaining = nil
     next.lastMessage = nil
     next.currentLocation = nil
@@ -572,6 +665,7 @@ private func handleAdvance(
     }
     next.lock = nil
     next.previousLock = nil
+    next.previousPhase = nil
     next.remaining = nil
     next.lastMessage = nil
     next.lastUpdatedAt = nil
@@ -638,6 +732,13 @@ private func handlePoll(
     let items: [TransitTrackItem] = if case let .ok(list) = poll { list } else { [] }
     let matched = state.lock.flatMap { findLockedItem(items, lock: $0) }
 
+    if state.phase == .boarding {
+        if let matched {
+            return commitBoardingMatched(next, base: state, item: matched, carriedEvent: event, now: now)
+        }
+        return boardingUnmatched(next, base: state, carriedEvent: event, now: now)
+    }
+
     if let matched {
         return commitMatched(next, base: state, item: matched, carriedEvent: event, now: now)
     }
@@ -681,6 +782,100 @@ private func handlePoll(
         return (next, .signalLost)
     }
     return (next, event)
+}
+
+/// boarding 매칭(승차 정류소 기준 도착 정보, N3 spec §3.3). riding의 commitMatched와
+/// 달리 ①동일 스냅숏도 missCount를 올리고(동결 레코드가 국면을 영구 고착시키는 것을
+/// 막는다 — 이 국면엔 neverSeen 시간축이 없다) ②도착 관측이 riding 승격이다.
+/// 웹 commitBoardingMatched 미러.
+private func commitBoardingMatched(
+    _ next: TransitGuideState,
+    base: TransitGuideState,
+    item: TransitTrackItem,
+    carriedEvent: TransitGuideEvent?,
+    now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    if let stamp = item.dataStamp, stamp == base.dataStamp, item.message == base.lastMessage {
+        var unchanged = next
+        unchanged.missCount = base.missCount + 1
+        unchanged.lastUpdatedAt = now
+        unchanged.dataAgeSeconds = item.dataAgeSeconds
+        return (unchanged, carriedEvent)
+    }
+    let prevRemaining = base.remaining
+    let wasTracking = base.trackingAnnounced
+    var out = next
+    out.signal = .tracking
+    out.missCount = 0
+    out.remaining = item.remainingStops
+    out.lastMessage = item.message
+    out.lastUpdatedAt = now
+    out.currentLocation = item.currentLocation
+    out.dataStamp = item.dataStamp
+    out.dataAgeSeconds = (item.dataStamp != nil && item.dataStamp == base.dataStamp)
+        ? nil : item.dataAgeSeconds
+    out.trackingAnnounced = true
+
+    // 도착 관측 = riding 승격. 서울버스 잔여 0("곧 도착"·구조 필드) / 지하철 진입 0·도착 1.
+    // 출발 2는 제외 — 이미 떠난 열차에 "탑승하세요"를 말하지 않는다. 동결 레코드
+    // (나이 > transitBoardStopFreshSeconds)는 도착으로 보지 않는다(설계 리뷰 C3·M1).
+    let fresh = (item.dataAgeSeconds ?? 0) <= transitBoardStopFreshSeconds
+    let arrivedAtBoardStop: Bool = switch base.lock?.mode {
+    case .subway: item.arrivalCode == "0" || item.arrivalCode == "1"
+    case .seoulBus: item.remainingStops == 0
+    default: false
+    }
+    if let lock = base.lock, fresh, arrivedAtBoardStop {
+        return enterRiding(out, lock: lock, cause: .observed, now: now)
+    }
+
+    // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).
+    if !wasTracking {
+        out.ladderAnnounced = item.remainingStops
+        return (out, .approaching(remaining: item.remainingStops, message: item.message))
+    }
+    guard let remaining = item.remainingStops else {
+        if let last = base.lastMessage, item.message != last {
+            return (out, .messageChanged(message: item.message))
+        }
+        return (out, carriedEvent)
+    }
+    let latch = out.ladderAnnounced
+    if remaining <= transitLadderMax, remaining >= 0,
+       latch == nil || remaining < latch!,
+       let prev = prevRemaining, remaining < prev {
+        out.ladderAnnounced = remaining
+        return (out, .approaching(remaining: remaining, message: item.message))
+    }
+    if base.signal == .signalLost, carriedEvent == nil {
+        return (out, .signalRecovered)
+    }
+    return (out, carriedEvent)
+}
+
+/// boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. 잔여 ≤1에서
+/// 사라지면 "지나갔을 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2). 어느
+/// 쪽이든 signalLost 상태로 떨어져 1회만 말하고, 탈출은 사용자 선택(탑승했습니다 /
+/// 다른 차량 선택)이다. 웹 boardingUnmatched 미러.
+private func boardingUnmatched(
+    _ next: TransitGuideState,
+    base: TransitGuideState,
+    carriedEvent: TransitGuideEvent?,
+    now: Double
+) -> (state: TransitGuideState, event: TransitGuideEvent?) {
+    var out = next
+    out.missCount = base.missCount + 1
+    out.lastUpdatedAt = now
+    if out.signal == .signalLost { return (out, carriedEvent) }
+    if let remaining = base.remaining, remaining <= 1, out.missCount >= transitMissArriveCount {
+        out.signal = .signalLost
+        return (out, .vehiclePassed)
+    }
+    if out.missCount >= transitMissLostCount {
+        out.signal = .signalLost
+        return (out, .signalLost)
+    }
+    return (out, carriedEvent)
 }
 
 private func findLockedItem(_ items: [TransitTrackItem], lock: TransitLock) -> TransitTrackItem? {
