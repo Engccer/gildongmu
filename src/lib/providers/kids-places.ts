@@ -128,12 +128,13 @@ async function fetchKakaoKeyword(
   query: string,
   lat: number,
   lng: number,
+  radiusMeters: number,
 ): Promise<KakaoDoc[]> {
   const url = new URL(ENDPOINT);
   url.searchParams.set("query", query);
   url.searchParams.set("x", String(lng));
   url.searchParams.set("y", String(lat));
-  url.searchParams.set("radius", String(RADIUS_METERS));
+  url.searchParams.set("radius", String(radiusMeters));
   url.searchParams.set("sort", "distance");
   url.searchParams.set("size", "15");
 
@@ -162,11 +163,14 @@ async function fetchKakaoKeyword(
 export async function findKidsPlacesNear(
   lat: number,
   lng: number,
+  opts: { radiusMeters?: number } = {},
 ): Promise<KidsPlace[]> {
   if (!env.KAKAO_REST_API_KEY) return [];
+  // 반경 옵션은 "한눈에 보기"(nearby-overview, 공통 1km)용. 미지정이면 현행 2km 유지.
+  const radius = opts.radiusMeters ?? RADIUS_METERS;
 
   const settled = await Promise.allSettled(
-    KEYWORDS.map((q) => fetchKakaoKeyword(q, lat, lng)),
+    KEYWORDS.map((q) => fetchKakaoKeyword(q, lat, lng, radius)),
   );
 
   const lists: KakaoDoc[][] = [];

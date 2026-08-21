@@ -15,7 +15,7 @@ const STATION_RADIUS = 1000;
  * "서울특별시 강동구 길동, 천중로44길 74"처럼 한 번만 읽히게 한다(시각장애 사용자
  * 중복 낭독 회피). region이 없거나 토큰이 2개 미만이거나 접두가 안 맞으면 원문 유지.
  */
-function stripRegionPrefix(region: string | null, road: string): string {
+export function stripRegionPrefix(region: string | null, road: string): string {
   if (!region) return road;
   const tokens = region.split(/\s+/);
   if (tokens.length < 2) return road;
