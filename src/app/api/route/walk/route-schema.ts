@@ -32,6 +32,10 @@ const querySchema = z
     alternatives: z
       .union([z.literal("1"), z.null()])
       .transform((v) => v === "1"),
+    // 경유지 1개(N4): 누락=없음, 형식은 origin·dest와 같다. 형식 오류는 400 —
+    // 조용히 버리면 "경유 안 한 경로"를 "경유한 경로"로 낭독하게 된다.
+    // variant·alternatives·accessible과 직교한다(금지 조합 없음).
+    via: coordSchema.nullable().transform((v) => v ?? undefined),
   })
   .superRefine((data, ctx) => {
     if (data.variant && data.alternatives) {
@@ -61,6 +65,7 @@ export function parseWalkQuery(raw: {
   includeGeometry: string | null;
   variant: string | null;
   alternatives: string | null;
+  via: string | null;
 }): ParseWalkQueryResult {
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) {

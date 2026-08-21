@@ -19,6 +19,8 @@ import { getTransitRoute } from "@/lib/providers/odsay";
 const querySchema = z.object({
   origin: coordSchema,
   dest: coordSchema,
+  // 경유지 1개(N4): 누락=없음. 형식 오류는 400(조용한 무시 금지, walk 동형).
+  via: coordSchema.nullable().transform((v) => v ?? undefined),
   // 경유 정류장 옵트인(B2 §7, walk includeGeometry 선례): "1"만 허용, 그 외 400.
   // 미지정 응답은 기존과 byte-호환(stops 키 자체 부재).
   includeStops: z.union([z.literal("1"), z.null()]),
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
+    via: request.nextUrl.searchParams.get("via"),
     includeStops: request.nextUrl.searchParams.get("includeStops"),
   });
   if (!parsed.success) {
