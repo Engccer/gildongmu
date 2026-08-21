@@ -45,14 +45,23 @@ export type GuideTone =
  * (`imminentTone`)과 이탈 경고. Kit `isActionTone` 미러.
  */
 export function isActionTone(tone: GuideTone): boolean {
-  return (
-    tone === "ahead" ||
-    tone === "crosswalk" ||
-    tone === "left" ||
-    tone === "right" ||
-    tone === "back" ||
-    tone === "warning"
-  );
+  switch (tone) {
+    case "ahead":
+    case "crosswalk":
+    case "left":
+    case "right":
+    case "back":
+    case "warning":
+      return true;
+    case "closer":
+    case "farther":
+    case "nearby":
+    case "tick":
+    case "start":
+    case "stop":
+    case "unreliable":
+      return false;
+  }
 }
 
 export interface TrendInput {
