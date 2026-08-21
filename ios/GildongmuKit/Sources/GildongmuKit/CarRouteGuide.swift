@@ -49,7 +49,8 @@ public func buildCarGuide(briefing: CarRouteBriefing) -> CarGuideData? {
     }
 
     guard let route = buildGuideRoute(
-        guides.map { GuideStepGeometry(description: $0.guidance, pathCoords: $0.pathCoords!) }
+        guides.map { GuideStepGeometry(description: $0.guidance, pathCoords: $0.pathCoords!) },
+        waypointStepIndex: briefing.waypoint?.stepIndex
     ) else { return nil }
 
     // 도로명 스팬: 링크 길이를 경로 진행거리 축에 누적한다.

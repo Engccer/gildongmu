@@ -26,7 +26,7 @@ const M = 1 / 111320;
 const LAT0 = 37.5;
 const LNG0 = 127.1;
 
-function routeFrom(steps: { len: number; desc: string }[]) {
+function routeFrom(steps: { len: number; desc: string }[], waypointStepIndex?: number) {
   let acc = 0;
   const route = buildGuideRoute(
     steps.map((s) => {
@@ -37,6 +37,7 @@ function routeFrom(steps: { len: number; desc: string }[]) {
       acc += s.len;
       return { description: s.desc, pathCoords };
     }),
+    { waypointStepIndex },
   );
   if (!route) throw new Error("fixture 경로 조립 실패");
   return route;
@@ -71,13 +72,15 @@ describe("route-guide 공유 시나리오(경계표)", () => {
       tuning?: "walk" | "car";
       /** 종점 오프셋 기하를 아는 세션인가(미지정=모름 → 옛 50m 인계). */
       geometry?: boolean;
+      /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
+      waypointStepIndex?: number;
       steps: { len: number; desc: string }[];
       fixes: { t: number; along: number; lateral: number; acc: number }[];
       expect: Expectation[];
     }[];
   }).scenarios) {
     it(sc.name, () => {
-      const route = routeFrom(sc.steps);
+      const route = routeFrom(sc.steps, sc.waypointStepIndex);
       const tuning = sc.tuning === "car" ? CAR_TUNING : WALK_TUNING;
       let { state } = initialGuideState(route, 0, {
         hasFinalApproachGeometry: sc.geometry === true,

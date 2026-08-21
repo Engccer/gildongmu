@@ -34,6 +34,11 @@ export interface GuideRoute {
   polyline: Polyline;
   steps: StepSpan[];
   totalMeters: number;
+  /**
+   * 경유지에서 시작하는 스텝의 index(N4, 서버 `waypoint.stepIndex`). 도착선은
+   * `steps[waypointStepIndex].startD`. 부재 = 경유지 없는 경로. Kit `GuideRoute` 미러.
+   */
+  waypointStepIndex?: number;
 }
 
 export interface Projection {
@@ -49,10 +54,23 @@ const finite = (c: Coord) => Number.isFinite(c.lat) && Number.isFinite(c.lng);
  * 스텝 기하를 하나의 연속 폴리라인 + 스텝 스팬으로 조립한다.
  * 검증 실패는 null — 소비자는 상세 부적격으로 간략 폴백한다(fail-closed, 조용한 오작동 금지).
  */
+/**
+ * `waypointStepIndex`(N4): 범위 `0 ..< steps.length` 밖이면 null — 경유지를 받은 세션이
+ * 경유지 위치를 모르면 상세 안내 자격이 없다(유령 스텝 가드와 같은 규율). 0은 유효하다
+ * (경유지에서 출발). Kit `buildGuideRoute(_:waypointStepIndex:)` 미러.
+ */
 export function buildGuideRoute(
   steps: { description: string; pathCoords?: Coord[] }[],
+  opts?: { waypointStepIndex?: number },
 ): GuideRoute | null {
   if (steps.length === 0) return null;
+  const waypointStepIndex = opts?.waypointStepIndex;
+  if (
+    waypointStepIndex !== undefined &&
+    !(Number.isInteger(waypointStepIndex) && waypointStepIndex >= 0 && waypointStepIndex < steps.length)
+  ) {
+    return null;
+  }
   const points: Coord[] = [];
   const cum: number[] = [];
   const spans: StepSpan[] = [];
@@ -89,7 +107,12 @@ export function buildGuideRoute(
     });
   }
   if (points.length < 2 || d <= 0) return null;
-  return { polyline: { points, cum }, steps: spans, totalMeters: d };
+  return {
+    polyline: { points, cum },
+    steps: spans,
+    totalMeters: d,
+    ...(waypointStepIndex === undefined ? {} : { waypointStepIndex }),
+  };
 }
 
 /** 위경도를 기준점(ref) 주변 로컬 평면(m)으로 변환. */

@@ -874,6 +874,10 @@ export function useRouteGuide(
           return t("uncertainRecovered");
         case "speedSuggest":
           return t("speedSuggest");
+        case "waypointReached":
+          // 웹 실시간 안내는 경유지를 모른다(서버 spec §3 — 경유지 조회엔 시작 버튼이 없다).
+          // 리듀서 미러를 위해 이벤트만 존재하고 도달하지 않는다. iOS 판정 뒤 같은 계약으로.
+          return "";
       }
     },
     [t, kindFixed],

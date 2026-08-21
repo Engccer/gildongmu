@@ -335,6 +335,13 @@ export interface GuideState {
    * 새 세션에서만 초기화한다(spec §2.9).
    */
   courseDerivation: CourseDerivationState;
+  /**
+   * 경유지 도착선 통과 확정 래치(N4). 신뢰 가능한 fix(`!isOff && !jumped`)가 경로 위 투영으로
+   * 도착선을 넘었을 때 한 번 선다. 같은 경로 세대 안에서는 `restateAt`이 승계한다.
+   */
+  waypointReached: boolean;
+  /** 확정됐으나 같은 fix의 임박 큐에 밀려 아직 발화하지 못한 도착. 다음 fix에서 새 임박보다 먼저 나간다. */
+  waypointPending: boolean;
 }
 
 export type GuideEvent =
@@ -347,6 +354,8 @@ export type GuideEvent =
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
+  /** 경유지 도착(N4). 톤 없음 — 도착 종은 오케스트레이터 몫. */
+  | { kind: "waypointReached" }
   | { kind: "finalApproachEnter" }
   | { kind: "offRoute" }
   | { kind: "backOnRoute" }
@@ -426,6 +435,8 @@ export function guideStateAt(
     autoHandoffArmed?: boolean;
     hasFinalApproachGeometry?: boolean;
     courseDerivation?: CourseDerivationState;
+    waypointReached?: boolean;
+    waypointPending?: boolean;
   },
 ): GuideState {
   const step = stepAt(route, d);
@@ -463,6 +474,8 @@ export function guideStateAt(
     offRouteAxes: { distance: false, course: false },
     courseVotes: [],
     courseDerivation: opts?.courseDerivation ?? INITIAL_DERIVATION_STATE,
+    waypointReached: opts?.waypointReached ?? false,
+    waypointPending: opts?.waypointPending ?? false,
   };
 }
 
@@ -486,6 +499,8 @@ function restateAt(
     autoHandoffArmed: prev.autoHandoffArmed,
     hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
     courseDerivation: prev.courseDerivation,
+    waypointReached: prev.waypointReached,
+    waypointPending: prev.waypointPending,
   });
 }
 
@@ -899,6 +914,25 @@ export function guideStep(
     resumePhase: cur.isLong ? "following" : "bundle",
   };
 
+  // W1) 경유지 도착선 통과 **감지**(N4, spec 2026-08-22-waypoint-ios §2.5). 발화와 분리한다 —
+  //     같은 fix에 임박 큐가 걸리면 큐가 이기고 도착은 pending으로 남는다.
+  //     ⚠ 신뢰 가능한 통과만: `!isOff` + `!jumped`. 경로가 경유지를 지나가도록 그려지므로
+  //       경로 위 투영이 도착선을 넘었다는 것 자체가 증거다(좌표 근접 2중 판정 없음).
+  if (
+    route.waypointStepIndex !== undefined &&
+    !next.waypointReached &&
+    !isOff &&
+    !jumped &&
+    d >= route.steps[route.waypointStepIndex].startD
+  ) {
+    next = { ...next, waypointReached: true, waypointPending: true };
+  }
+  // W2) 이전 fix에서 확정됐는데 임박 큐에 밀려 못 나간 도착은 새 임박보다 먼저 나간다.
+  if (state.waypointPending && next.waypointPending) {
+    next = { ...next, waypointPending: false, lastAnnouncedAt: now };
+    return emit(next, { kind: "waypointReached" }, null);
+  }
+
   // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
   //     "지금이다"를 알린다.
   //
@@ -962,6 +996,13 @@ export function guideStep(
     }
   }
 
+  // W3) 이번 fix에 확정된 도착은 임박이 나가지 않았으면 바로 나간다(6b 앞 — 최종 접근
+  //     래치가 먼저 서면 0a 가드가 이후 판정을 막아 도착이 영영 소실된다).
+  if (next.waypointPending) {
+    next = { ...next, waypointPending: false, lastAnnouncedAt: now };
+    return emit(next, { kind: "waypointReached" }, null);
+  }
+
   // 6b) 최종 접근 진입: 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
   //     (스펙 2026-08-03 §5.3 + 2026-08-08 §3.2, 리뷰 #2).
   //
@@ -987,9 +1028,12 @@ export function guideStep(
   //     이미 커밋된 뒤라 0a 가드에 갇혀 세션이 영구 정지했다. 여기서 미루면 진입과
   //     phase 전이가 원자적이고, d가 유계라 반복 점프는 자기 종결된다 — 조건이
   //     참이면 다음 fix(전진 0 = 점프 아님)에서 진입한다.
+  //     ⚠ **미도착 경유지가 있으면 진입하지 않는다**(N4 설계 리뷰 #1) — 경유지가 진입선
+  //       안에 있으면 6b가 먼저 래치돼 도착 이벤트가 영구 소실된다.
   if (
     !isOff &&
     !jumped &&
+    (route.waypointStepIndex === undefined || next.waypointReached) &&
     next.autoHandoffArmed &&
     next.announcedUpTo >= route.steps.length - 1 &&
     remainingTotal <= finalApproachEntryM(next, fix.accuracy, tuning)

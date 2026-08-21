@@ -41,6 +41,9 @@ public struct GuideRoute: Sendable, Equatable {
     public let polyline: GuidePolyline
     public let steps: [GuideStepSpan]
     public let totalMeters: Double
+    /// 경유지에서 시작하는 스텝의 index(N4, 서버 `waypoint.stepIndex`). 도착선은
+    /// `steps[waypointStepIndex].startD`. nil = 경유지 없는 경로.
+    public let waypointStepIndex: Int?
 }
 
 public struct GuideProjection: Sendable, Equatable {
@@ -63,7 +66,13 @@ public struct GuideStepGeometry: Sendable {
 
 /// 스텝 기하를 하나의 연속 폴리라인 + 스텝 스팬으로 조립한다.
 /// 검증 실패는 nil — 소비자는 상세 부적격으로 간략 폴백한다(fail-closed).
-public func buildGuideRoute(_ steps: [GuideStepGeometry]) -> GuideRoute? {
+/// `waypointStepIndex`(N4): 범위 `0 ..< steps.count` 밖이면 nil — 경유지를 받은 세션이
+/// 경유지 위치를 모르면 상세 안내 자격이 없다(유령 스텝 가드와 같은 규율). 0은 유효하다
+/// (경유지에서 출발 — leg 0이 비었거나 첫 Point가 경유지).
+public func buildGuideRoute(
+    _ steps: [GuideStepGeometry], waypointStepIndex: Int? = nil
+) -> GuideRoute? {
+    if let w = waypointStepIndex, !(0..<steps.count).contains(w) { return nil }
     guard !steps.isEmpty else { return nil }
     var points: [RoutePoint] = []
     var cum: [Double] = []
@@ -104,7 +113,8 @@ public func buildGuideRoute(_ steps: [GuideStepGeometry]) -> GuideRoute? {
     return GuideRoute(
         polyline: GuidePolyline(points: points, cum: cum),
         steps: spans,
-        totalMeters: d
+        totalMeters: d,
+        waypointStepIndex: waypointStepIndex
     )
 }
 
