@@ -207,7 +207,14 @@
       "unitEvent": "건",
       "subwayClosed": "운행 시간이 아닙니다. 첫차 %@",
       "subwayNoRealtime": "실시간 도착 정보가 제공되지 않습니다",
-      "refreshReduced": "정확한 위치가 꺼져 있어 새로고침하지 못했습니다"
+      "refreshReduced": "정확한 위치가 꺼져 있어 새로고침하지 못했습니다",
+      "aroundHere": "현재 위치 기준, {place} 근처",
+      "aroundHereNoPlace": "현재 위치 기준",
+      "aroundHereManual": "지정한 위치 기준, {place} 근처",
+      "aroundHereManualNoPlace": "지정한 위치 기준",
+      "aroundLoaded": "둘러보기를 확인했습니다",
+      "aroundLoadedManual": "지정한 위치 주변을 확인했습니다",
+      "aroundPlacesHeading": "주변 가게와 시설"
     },
     "settings": {
       "title": "설정",

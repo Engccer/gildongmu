@@ -875,6 +875,30 @@
       "culture": "文化施設",
       "realEstate": "不動産",
       "lodging": "宿泊施設"
+    },
+    "overview": {
+      "heading": "ひと目でわかる周辺",
+      "radius": "{distance}以内",
+      "failed": "周辺の概要を取得できませんでした",
+      "nearestLead": "最寄りは{items}",
+      "nearestItem": "{direction}{distance}の{name}",
+      "transitLead": "公共交通: {body}",
+      "transitStation": "地下鉄{name}{line}が{direction}{distance}",
+      "transitLine": "({line})",
+      "transitNoStation": "{distance}以内に地下鉄駅はなく",
+      "transitBus": "バス停{count}か所、{nearest}",
+      "transitBusNone": "バス停はありません",
+      "transitBusUncovered": "この地域ではバス停情報を提供していません",
+      "transitBusFailed": "バス停情報を取得できませんでした",
+      "labelFood": "飲食店とカフェ",
+      "labelKids": "子どもの遊び場",
+      "labelEvents": "文化イベント",
+      "labelBarrierFree": "バリアフリー観光地",
+      "ok": "{label}{count}か所、{nearest}",
+      "okCapped": "{label}{count}か所以上、{nearest}",
+      "none": "{label}は{distance}以内にありません",
+      "unavailableSeoulOnly": "{label}はソウルのみ案内します",
+      "failedItem": "{label}の情報を取得できませんでした"
     }
   },
   "barrierFreeInfo": {
