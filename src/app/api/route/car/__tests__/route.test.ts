@@ -135,4 +135,22 @@ describe("GET /api/route/car", () => {
     expect(res.status).toBe(429);
     expect(getCarRoute).not.toHaveBeenCalled();
   });
+
+  describe("via 경유지(N4)", () => {
+    it("경유지가 한국 밖이면 200 outOfCoverage(provider 미호출)", async () => {
+      const res = await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=37.7749,-122.4194"));
+      expect(await res.json()).toEqual({ outOfCoverage: true });
+      expect(getCarRoute).not.toHaveBeenCalled();
+    });
+
+    it("via는 서비스까지 전달된다", async () => {
+      await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=37.55,127.05"));
+      expect(vi.mocked(getCarRoute).mock.lastCall?.[0]).toMatchObject({ via: { lat: 37.55, lng: 127.05 } });
+    });
+
+    it("via 형식 오류는 400", async () => {
+      const res = await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=x"));
+      expect(res.status).toBe(400);
+    });
+  });
 });

@@ -115,4 +115,23 @@ describe("GET /api/route/transit", () => {
     expect(res.status).toBe(400);
     expect(getTransitRoute).not.toHaveBeenCalled();
   });
+
+  describe("via 경유지(N4) — ODsay에 경유지 없음", () => {
+    it("via가 있으면 upstream 미호출 + 200 {result:null, unsupported:'waypoint'}", async () => {
+      const res = await GET(new NextRequest("http://x/api/route/transit?origin=37.5,127.0&dest=37.6,127.1&via=37.55,127.05"));
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: null, unsupported: "waypoint" });
+      expect(getTransitRoute).not.toHaveBeenCalled();
+    });
+
+    it("경유지가 한국 밖이면 unsupported보다 outOfCoverage가 먼저다", async () => {
+      const res = await GET(new NextRequest("http://x/api/route/transit?origin=37.5,127.0&dest=37.6,127.1&via=37.7749,-122.4194"));
+      expect(await res.json()).toEqual({ outOfCoverage: true });
+    });
+
+    it("via 형식 오류는 400", async () => {
+      const res = await GET(new NextRequest("http://x/api/route/transit?origin=37.5,127.0&dest=37.6,127.1&via=x"));
+      expect(res.status).toBe(400);
+    });
+  });
 });

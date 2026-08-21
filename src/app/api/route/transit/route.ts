@@ -40,9 +40,19 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { origin, dest } = parsed.data;
-  if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
+  const { origin, dest, via } = parsed.data;
+  if (
+    !isInKorea(origin.lat, origin.lng) ||
+    !isInKorea(dest.lat, dest.lng) ||
+    (via && !isInKorea(via.lat, via.lng))
+  ) {
     return NextResponse.json({ outOfCoverage: true });
+  }
+
+  // ODsay에 경유지가 없다(N4). `result: null`만 주면 "경로 없음"으로 낭독돼 거짓이라
+  // 마커로 가른다(outOfCoverage·unavailableHere와 같은 층의 정직 상태). upstream 미호출.
+  if (via) {
+    return NextResponse.json({ result: null, unsupported: "waypoint" });
   }
 
   if (!hasOdsayKey()) {

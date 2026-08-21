@@ -59,8 +59,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { origin, dest } = parsed.data;
-  if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
+  const { origin, dest, via } = parsed.data;
+  if (
+    !isInKorea(origin.lat, origin.lng) ||
+    !isInKorea(dest.lat, dest.lng) ||
+    (via && !isInKorea(via.lat, via.lng))
+  ) {
     return NextResponse.json({ outOfCoverage: true });
   }
 
@@ -86,6 +90,7 @@ export async function GET(request: NextRequest) {
         origin,
         dest,
         accessible: parsed.data.accessible,
+        via,
       });
       return NextResponse.json({ result, ...("shortest" in rest ? { shortest: rest.shortest } : {}) });
     }
@@ -95,6 +100,7 @@ export async function GET(request: NextRequest) {
       accessible: parsed.data.accessible,
       includeGeometry: parsed.data.includeGeometry,
       variant: parsed.data.variant,
+      via,
     });
     return NextResponse.json({
       result: withFinalApproach(result, dest, parsed.data.includeGeometry),
