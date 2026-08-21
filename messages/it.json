@@ -172,7 +172,13 @@
     "geoError": "Impossibile ottenere la tua posizione. Cerca un punto di partenza.",
     "needEndpoints": "Scegli prima una partenza e una destinazione.",
     "readySummary": "Indicazioni pronte per {count} modalità.",
-    "allFailed": "Nessun percorso trovato."
+    "allFailed": "Nessun percorso trovato.",
+    "via": "Tappa intermedia",
+    "searchVia": "Cerca tappa intermedia",
+    "addVia": "Aggiungi tappa intermedia",
+    "removeVia": "Rimuovi tappa intermedia",
+    "viaArrived": "Tappa intermedia {label} raggiunta",
+    "unsupportedWaypoint": "I percorsi con i mezzi pubblici non supportano tappe intermedie."
   },
   "detail": {
     "back": "Torna ai risultati"
@@ -576,7 +582,8 @@
     "title": "Percorsi recenti",
     "item": "Percorso da {from} a {to}",
     "clearAll": "Cancella tutti i percorsi recenti",
-    "cleared": "Tutti i percorsi recenti sono stati cancellati"
+    "cleared": "Tutti i percorsi recenti sono stati cancellati",
+    "itemVia": "Percorso da {from} a {to} passando per {via}"
   },
   "privacy": {
     "title": "Informativa sulla privacy",

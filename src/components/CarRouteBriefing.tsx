@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
 import { durationToMinutes, formatDistance, joinText } from "@/lib/format";
+import { StepList } from "./WalkRouteBriefing";
 import { dataLocale } from "@/lib/data-locale";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
@@ -172,11 +173,15 @@ export function CarRouteResult({
   briefing,
   locale,
   t,
+  waypointLabel,
 }: {
   briefing: Briefing;
   locale: string;
   t: ReturnType<typeof useTranslations<"route.briefing">>;
+  /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
+  waypointLabel?: string | null;
 }) {
+  const tDir = useTranslations("directions");
   return (
     <>
       <p className="mt-1 text-sm">
@@ -194,19 +199,19 @@ export function CarRouteResult({
           </>
         )}
       </p>
-      <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
-        {briefing.guides.map((guide, i) => (
-          // 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
-          // (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본).
-          <li key={`${i}-${guide.guidance}`}>
-            {joinText(
-              guide.name,
-              guide.guidance,
-              guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
-            )}
-          </li>
-        ))}
-      </ol>
+      {/* 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
+          (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본). */}
+      <StepList
+        items={briefing.guides.map((guide) =>
+          joinText(
+            guide.name,
+            guide.guidance,
+            guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
+          ),
+        )}
+        waypointIndex={briefing.waypoint?.stepIndex}
+        waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
+      />
       <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
     </>
   );

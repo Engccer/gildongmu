@@ -172,7 +172,13 @@
     "geoError": "Couldn't get your location. Please search for a starting point.",
     "needEndpoints": "Please choose a starting point and destination first.",
     "readySummary": "Route guidance is ready for {count} modes.",
-    "allFailed": "No routes found."
+    "allFailed": "No routes found.",
+    "via": "Via",
+    "searchVia": "Search waypoint",
+    "addVia": "Add a waypoint",
+    "removeVia": "Remove waypoint",
+    "viaArrived": "Waypoint {label} reached",
+    "unsupportedWaypoint": "Waypoints are not supported for public transit routes."
   },
   "detail": {
     "back": "Back to results"
@@ -576,7 +582,8 @@
     "title": "Recent routes",
     "item": "Route from {from} to {to}",
     "clearAll": "Clear all recent routes",
-    "cleared": "All recent routes cleared"
+    "cleared": "All recent routes cleared",
+    "itemVia": "Route from {from} to {to} via {via}"
   },
   "privacy": {
     "title": "Privacy Policy",

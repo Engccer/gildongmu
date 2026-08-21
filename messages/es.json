@@ -172,7 +172,13 @@
     "geoError": "No se pudo obtener tu ubicación. Busca un punto de partida.",
     "needEndpoints": "Elige primero un origen y un destino.",
     "readySummary": "Guía de ruta lista para {count} modos.",
-    "allFailed": "No se encontraron rutas."
+    "allFailed": "No se encontraron rutas.",
+    "via": "Punto intermedio",
+    "searchVia": "Buscar punto intermedio",
+    "addVia": "Añadir punto intermedio",
+    "removeVia": "Quitar punto intermedio",
+    "viaArrived": "Punto intermedio {label} alcanzado",
+    "unsupportedWaypoint": "Las rutas de transporte público no admiten puntos intermedios."
   },
   "detail": {
     "back": "Volver a los resultados"
@@ -576,7 +582,8 @@
     "title": "Rutas recientes",
     "item": "Ruta de {from} a {to}",
     "clearAll": "Borrar todas las rutas recientes",
-    "cleared": "Se borraron todas las rutas recientes"
+    "cleared": "Se borraron todas las rutas recientes",
+    "itemVia": "Ruta de {from} a {to} pasando por {via}"
   },
   "privacy": {
     "title": "Política de privacidad",

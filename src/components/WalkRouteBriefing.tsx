@@ -18,10 +18,14 @@ import type { WalkRouteBriefing as Briefing } from "@/lib/types";
 export function WalkRouteResult({
   briefing,
   t,
+  waypointLabel,
 }: {
   briefing: Briefing;
   t: ReturnType<typeof useTranslations<"route.pedestrian">>;
+  /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
+  waypointLabel?: string | null;
 }) {
+  const tDir = useTranslations("directions");
   // 거리 표기는 `formatDistance` 정본에 맡긴다. 종전엔 여기서 소수 km를 직접
   // 조립해 같은 화면의 자동차 브리핑("3km 600m")과 표기가 갈렸다.
   const distance = formatDistance(briefing.distanceMeters);
@@ -30,9 +34,54 @@ export function WalkRouteResult({
   return (
     <>
       <p className="mt-1 text-sm">{t("summary", { distance, minutes })}</p>
-      <ol className="mt-2 list-decimal pl-6 text-sm leading-relaxed">
-        {briefing.steps.map((step, i) => (
-          <li key={i}>{step.description}</li>
+      <StepList
+        items={briefing.steps.map((s) => s.description)}
+        waypointIndex={briefing.waypoint?.stepIndex}
+        waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
+      />
+    </>
+  );
+}
+
+/**
+ * 번호 목록을 경유지 자리에서 둘로 가른다(N4). 한 `<ol>` 안에 번호 없는 항목을 끼우면
+ * 카운터가 그 항목도 세어 번호가 건너뛴다 — `start`로 이어 붙인 두 목록 사이에 평문
+ * 한 줄이 정본이다(스텝 문장은 서버 원문 그대로, 구획만 소비자가 그린다).
+ */
+export function StepList({
+  items,
+  waypointIndex,
+  waypointText,
+}: {
+  items: string[];
+  waypointIndex?: number;
+  waypointText: string | null;
+}) {
+  const cls = "mt-2 list-decimal pl-6 text-sm leading-relaxed";
+  const split =
+    waypointText !== null && waypointIndex !== undefined && waypointIndex > 0 && waypointIndex < items.length
+      ? waypointIndex
+      : null;
+  if (split === null) {
+    return (
+      <ol className={cls}>
+        {items.map((text, i) => (
+          <li key={`${i}-${text}`}>{text}</li>
+        ))}
+      </ol>
+    );
+  }
+  return (
+    <>
+      <ol className={cls}>
+        {items.slice(0, split).map((text, i) => (
+          <li key={`${i}-${text}`}>{text}</li>
+        ))}
+      </ol>
+      <p className="mt-2 text-sm font-medium">{waypointText}</p>
+      <ol className={cls} start={split + 1}>
+        {items.slice(split).map((text, i) => (
+          <li key={`${split + i}-${text}`}>{text}</li>
         ))}
       </ol>
     </>
