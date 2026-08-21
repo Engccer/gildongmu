@@ -358,7 +358,7 @@ export type GuideEvent =
 
 /**
  * 리듀서가 fix마다 내는 우선 톤. 행동 톤 5종(`imminentTone`)과 이탈 경고.
- * 톤 계층 `GuideTone`(재생 9+7종)의 부분집합이라 그대로 흘려보낸다.
+ * 톤 계층 `GuideTone`(재생 9+4종)의 부분집합이라 그대로 흘려보낸다.
  */
 export type GuideTone = ImminentTone | "warning";
 
