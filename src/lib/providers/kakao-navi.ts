@@ -1,5 +1,5 @@
 import { env } from "../env";
-import type { CarRouteBriefing, CarRouteGuide, Coord } from "../types";
+import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
 /**
  * 카카오모빌리티 자동차 길찾기(Directions) provider.
@@ -14,6 +14,8 @@ import type { CarRouteBriefing, CarRouteGuide, Coord } from "../types";
  * roads(폴리라인 좌표)는 요청 자체를 끈다(road_details=false) — 받지도 않는다.
  *
  * 주의: 좌표 파라미터는 "경도,위도"(x,y) 순서. 이 파일 밖은 lat/lng 도메인.
+ * 경유지는 `waypoints`(실호출 확정 2026-08-22): sections가 2개로 갈리고 경유지
+ * guide(`type 1000`)가 section 0 끝과 section 1 첫머리에 **중복** 등장한다.
  */
 
 const ENDPOINT = "https://apis-navi.kakaomobility.com/v1/directions";
@@ -24,6 +26,8 @@ interface KakaoNaviGuide {
   distance: number;
   duration: number;
   type: number;
+  x?: number;
+  y?: number;
 }
 
 interface KakaoNaviRoute {
@@ -41,21 +45,46 @@ interface KakaoNaviResponse {
   routes: KakaoNaviRoute[];
 }
 
-export function normalizeRoute(route: KakaoNaviRoute): CarRouteBriefing {
-  const guides: CarRouteGuide[] = route.sections.flatMap((section) =>
-    (section.guides ?? []).map((g) => ({
-      name: g.name,
-      guidance: g.guidance,
-      distanceMeters: g.distance,
-      durationSeconds: g.duration,
-    })),
-  );
+/** 경유지 guide type(카카오모빌리티 문서·실호출 2026-08-22). */
+const WAYPOINT_GUIDE_TYPE = 1000;
+
+export function normalizeRoute(
+  route: KakaoNaviRoute,
+  opts?: {
+    /** waypoints를 보냈다 — type 1000 guide가 없으면 파라미터 무시로 보고 throw(N4).
+     *  중복 guide(section 경계 양쪽)는 하나로 접는다. 미지정이면 현행 평탄화 그대로. */
+    expectWaypoint?: boolean;
+  },
+): CarRouteBriefing {
+  const guides: CarRouteGuide[] = [];
+  let waypoint: RouteWaypoint | undefined;
+  for (const section of route.sections) {
+    for (const g of section.guides ?? []) {
+      if (opts?.expectWaypoint && g.type === WAYPOINT_GUIDE_TYPE) {
+        if (waypoint) continue; // section 1 첫머리의 중복 경유지 guide
+        const coord =
+          typeof g.x === "number" && typeof g.y === "number" ? { lat: g.y, lng: g.x } : undefined;
+        if (!coord) throw new Error("카카오모빌리티 길찾기 실패: 경유지 guide에 좌표 없음");
+        waypoint = { stepIndex: guides.length, coord };
+      }
+      guides.push({
+        name: g.name,
+        guidance: g.guidance,
+        distanceMeters: g.distance,
+        durationSeconds: g.duration,
+      });
+    }
+  }
+  if (opts?.expectWaypoint && !waypoint) {
+    throw new Error("카카오모빌리티 길찾기 실패: 경유지 요청인데 경유지 guide 없음(파라미터 무시 의심)");
+  }
   return {
     distanceMeters: route.summary.distance,
     durationSeconds: route.summary.duration,
     taxiFare: route.summary.fare.taxi,
     tollFare: route.summary.fare.toll,
     guides,
+    ...(waypoint ? { waypoint } : {}),
   };
 }
 
@@ -66,10 +95,13 @@ export function normalizeRoute(route: KakaoNaviRoute): CarRouteBriefing {
 export async function getCarRouteBriefing(params: {
   origin: Coord;
   dest: Coord;
+  /** 경유지 1개(N4) — waypoints "lng,lat". */
+  via?: Coord;
 }): Promise<CarRouteBriefing> {
   const url = new URL(ENDPOINT);
   url.searchParams.set("origin", `${params.origin.lng},${params.origin.lat}`);
   url.searchParams.set("destination", `${params.dest.lng},${params.dest.lat}`);
+  if (params.via) url.searchParams.set("waypoints", `${params.via.lng},${params.via.lat}`);
   url.searchParams.set("summary", "false");
   url.searchParams.set("road_details", "false");
 
@@ -93,5 +125,5 @@ export async function getCarRouteBriefing(params: {
       `카카오모빌리티 경로 탐색 실패 (${route.result_code}): ${route.result_msg}`,
     );
   }
-  return normalizeRoute(route);
+  return normalizeRoute(route, { expectWaypoint: params.via !== undefined });
 }

@@ -1,6 +1,6 @@
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
-import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
+import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../types";
 
 /**
  * 카카오 도보 경로안내 provider.
@@ -23,7 +23,9 @@ import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
  * 경로 없음으로 뭉개지 않도록 throw한다(fail-closed).
  *
  * accessible=true 시 route_mode=ACCESSIBLE(무장애 경로, 실호출 확인) 파라미터를
- * 추가한다. en 미지원(안내문이 한국어 고정) — V1 ko 전용은 Tmap과 동일 스코프.
+ * 추가한다. 경유지는 `via_x`/`via_y`(실호출 확정 2026-08-22 — `route.legs`가 2개로
+ * 갈린다). ⚠ `waypoints`·`passlist`류 이름은 **무시되고 200 정상 응답**이 오므로
+ * 이름 오타는 테스트의 URL 문자열 단언과 legs 수 가드(`expectWaypoint`)만이 잡는다. en 미지원(안내문이 한국어 고정) — V1 ko 전용은 Tmap과 동일 스코프.
  *
  * 캐시: revalidate 3600(보행 경로는 준정적). 좌표는 4자리 반올림으로 캐시 키
  * 안정화(`roundCoord`, route_mode가 URL에 포함되어 모드별 캐시가 자연 분리).
@@ -57,6 +59,12 @@ export interface KakaoWalkResponse {
  */
 export function normalizeKakaoWalkRoute(
   data: KakaoWalkResponse,
+  opts?: {
+    /** via를 보냈다 — legs가 2개가 아니면 provider가 파라미터를 무시한 것이라 throw. */
+    expectWaypoint?: boolean;
+    /** leg 경계 좌표를 어느 스텝에서도 못 얻을 때의 최후 폴백(요청 원좌표). */
+    via?: Coord;
+  },
 ): WalkRouteBriefing | null {
   const status = data.status;
   if (status !== undefined && status !== "OK") {
@@ -74,7 +82,20 @@ export function normalizeKakaoWalkRoute(
     throw new Error("카카오 도보 경로 정규화 실패: 총 시간 값 이상");
   }
   const steps: WalkRouteStep[] = [];
-  for (const leg of route.legs ?? []) {
+  const legs = route.legs ?? [];
+  let waypoint: RouteWaypoint | undefined;
+  if (opts?.expectWaypoint) {
+    if (legs.length !== 2) {
+      throw new Error(`카카오 도보 경로 실패: 경유지 요청인데 legs ${legs.length}개(파라미터 무시 의심)`);
+    }
+  }
+  for (const [legIndex, leg] of legs.entries()) {
+    if (opts?.expectWaypoint && legIndex === 1) {
+      // leg 경계 = 경유지. 좌표는 leg 0 끝점 → leg 1 첫 점 → 요청 원좌표 순.
+      const coord = legEdgeCoord(legs[0], "last") ?? legEdgeCoord(leg, "first") ?? opts.via;
+      if (!coord) throw new Error("카카오 도보 경로 실패: 경유지 좌표를 확정할 수 없음");
+      waypoint = { stepIndex: steps.length, coord };
+    }
     for (const step of leg.steps ?? []) {
       const description = step.properties?.guidance;
       if (!description) continue;
@@ -103,7 +124,25 @@ export function normalizeKakaoWalkRoute(
     distanceMeters: Math.round(distanceMeters),
     durationSeconds: Math.round(durationSeconds),
     steps,
+    ...(waypoint ? { waypoint } : {}),
   };
+}
+
+/** leg의 첫/끝 유한 좌표(guidance 유무와 무관 — 경유점 스텝도 경계가 된다). */
+function legEdgeCoord(
+  leg: { steps?: KakaoWalkStep[] } | undefined,
+  edge: "first" | "last",
+): Coord | undefined {
+  const steps = leg?.steps ?? [];
+  const ordered = edge === "last" ? [...steps].reverse() : steps;
+  for (const step of ordered) {
+    const points = (step.path?.points ?? []).filter(
+      ([lng, lat]) => Number.isFinite(lat) && Number.isFinite(lng),
+    );
+    const pt = edge === "last" ? points[points.length - 1] : points[0];
+    if (pt) return { lat: pt[1], lng: pt[0] };
+  }
+  return undefined;
 }
 
 /**
@@ -115,6 +154,8 @@ export async function getKakaoWalkBriefing(params: {
   origin: Coord;
   dest: Coord;
   accessible?: boolean;
+  /** 경유지 1개(N4). */
+  via?: Coord;
   /**
    * 실시간 길 안내(기하 포함) 요청은 서버 캐시를 우회한다(스펙 2026-08-03 §7.2):
    * 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님"
@@ -122,13 +163,17 @@ export async function getKakaoWalkBriefing(params: {
    */
   noStore?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible, noStore } = params;
+  const { origin, dest, accessible, via, noStore } = params;
   const url = new URL(ENDPOINT);
   url.searchParams.set("start_x", String(roundCoord(origin.lng, 4)));
   url.searchParams.set("start_y", String(roundCoord(origin.lat, 4)));
   url.searchParams.set("end_x", String(roundCoord(dest.lng, 4)));
   url.searchParams.set("end_y", String(roundCoord(dest.lat, 4)));
   if (accessible) url.searchParams.set("route_mode", "ACCESSIBLE");
+  if (via) {
+    url.searchParams.set("via_x", String(roundCoord(via.lng, 4)));
+    url.searchParams.set("via_y", String(roundCoord(via.lat, 4)));
+  }
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY ?? ""}` },
     signal: AbortSignal.timeout(8_000),
@@ -139,5 +184,8 @@ export async function getKakaoWalkBriefing(params: {
     const body = await res.text().catch(() => "");
     throw new Error(`카카오 도보 경로 실패: HTTP ${res.status} ${body.slice(0, 200)}`);
   }
-  return normalizeKakaoWalkRoute((await res.json()) as KakaoWalkResponse);
+  return normalizeKakaoWalkRoute((await res.json()) as KakaoWalkResponse, {
+    expectWaypoint: via !== undefined,
+    via,
+  });
 }

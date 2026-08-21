@@ -1,5 +1,5 @@
 import { env } from "../env";
-import type { CarRouteBriefing, CarRouteGuide, Coord } from "../types";
+import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
 /**
  * Tmap(SK Open API) 자동차 경로 provider — ko 기본(2026-07-30 실호출 대조·위원장 판정).
@@ -27,7 +27,8 @@ interface TmapCarPointFeature {
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: {
     description?: string;
-    /** S=출발(첫 안내 문장 보유 — 스텝), E=도착(마커), N=일반 안내(실측 2026-08-03). */
+    /** S=출발(첫 안내 문장 보유 — 스텝), E=도착(마커), N=일반 안내(실측 2026-08-03),
+     *  B1=경유지(passList 1번째, 실측 2026-08-22 — 말미에 description 없는 B1이 하나 더 온다). */
     pointType?: string;
     totalDistance?: number;
     totalTime?: number;
@@ -68,7 +69,11 @@ function isPointFeature(f: TmapCarFeature): f is TmapCarPointFeature {
  */
 export function normalizeTmapCarRoute(
   data: TmapCarResponse,
-  opts: { includeGeometry?: boolean } = {},
+  opts: {
+    includeGeometry?: boolean;
+    /** passList를 보냈다 — description 있는 B1이 없으면 파라미터 무시로 보고 throw(N4). */
+    expectWaypoint?: boolean;
+  } = {},
 ): CarRouteBriefing {
   const points = data.features.filter(isPointFeature);
   const head = points.find((p) => p.properties.totalDistance != null);
@@ -88,11 +93,19 @@ export function normalizeTmapCarRoute(
 
   const guides: CarRouteGuide[] = [];
   let terminal: Coord | undefined;
+  let waypoint: RouteWaypoint | undefined;
+  // 경유지 표지: description 있는 첫 B1 Point(말미 무설명 B1은 guide가 아니라 제외).
+  const markWaypoint = (point: TmapCarPointFeature) => {
+    if (!opts.expectWaypoint || point.properties.pointType !== "B1" || waypoint) return;
+    const [lng, lat] = point.geometry.coordinates;
+    waypoint = { stepIndex: guides.length, coord: { lat, lng } };
+  };
   if (!opts.includeGeometry) {
     // 기존 브리핑 경로 그대로(byte-호환 계약 — 스키마 스냅숏이 강제).
     for (const point of points) {
       const description = point.properties.description;
       if (!description) continue;
+      markWaypoint(point);
       guides.push({ name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 });
     }
   } else {
@@ -128,6 +141,7 @@ export function normalizeTmapCarRoute(
           }
           continue;
         }
+        markWaypoint(f);
         current = { name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 };
         const [lng, lat] = f.geometry.coordinates;
         coords = [{ lat, lng }];
@@ -151,6 +165,9 @@ export function normalizeTmapCarRoute(
   if (guides.length === 0) {
     throw new Error("Tmap 자동차 경로 정규화 실패: 안내 단계 0개");
   }
+  if (opts.expectWaypoint && !waypoint) {
+    throw new Error("Tmap 자동차 경로 실패: 경유지 요청인데 B1 지점 없음(파라미터 무시 의심)");
+  }
 
   return {
     // iOS CarRouteBriefing이 엄격 Int 디코딩이라 전부 반올림
@@ -161,6 +178,7 @@ export function normalizeTmapCarRoute(
     guides,
     // 기하 옵트인에서만 종점 마커 노출(미지정 응답 byte-호환 유지).
     ...(terminal !== undefined ? { terminalCoord: terminal } : {}),
+    ...(waypoint !== undefined ? { waypoint } : {}),
   };
 }
 
@@ -169,8 +187,10 @@ export async function getTmapCarBriefing(params: {
   origin: Coord;
   dest: Coord;
   includeGeometry?: boolean;
+  /** 경유지 1개(N4) — passList "lng,lat". */
+  via?: Coord;
 }): Promise<CarRouteBriefing> {
-  const { origin, dest } = params;
+  const { origin, dest, via } = params;
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
@@ -184,6 +204,7 @@ export async function getTmapCarBriefing(params: {
       endY: String(dest.lat),
       reqCoordType: "WGS84GEO",
       resCoordType: "WGS84GEO",
+      ...(via ? { passList: `${via.lng},${via.lat}` } : {}),
     }),
     // 실시간 교통이 반영되는 응답이라 캐시하지 않는다
     cache: "no-store",
@@ -193,5 +214,8 @@ export async function getTmapCarBriefing(params: {
     throw new Error(`Tmap 자동차 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapCarResponse;
-  return normalizeTmapCarRoute(data, { includeGeometry: params.includeGeometry });
+  return normalizeTmapCarRoute(data, {
+    includeGeometry: params.includeGeometry,
+    expectWaypoint: via !== undefined,
+  });
 }

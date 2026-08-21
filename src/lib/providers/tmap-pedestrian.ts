@@ -1,6 +1,6 @@
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
-import type { Coord, WalkRouteBriefing, WalkRouteStep } from "../types";
+import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../types";
 
 /**
  * Tmap(SK Open API) 보행자 경로안내 provider.
@@ -37,6 +37,8 @@ interface TmapPointFeature {
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: {
     description?: string;
+    /** SP=출발, GP=안내, PP1=경유지(passList 1번째), EP=도착(실호출 2026-08-22). */
+    pointType?: string;
     totalDistance?: number;
     totalTime?: number;
     [key: string]: unknown;
@@ -91,9 +93,14 @@ const NO_ROUTE_ERROR_CODES = new Set(["3102"]);
  */
 export function normalizeTmapWalkRoute(
   data: TmapRouteResponse,
-  opts?: { includeLineGeometry?: boolean },
+  opts?: {
+    includeLineGeometry?: boolean;
+    /** passList를 보냈다 — PP1 Point가 없으면 파라미터가 무시된 것이라 throw(N4). */
+    expectWaypoint?: boolean;
+  },
 ): WalkRouteBriefing {
   const includeLineGeometry = opts?.includeLineGeometry === true;
+  let waypoint: RouteWaypoint | undefined;
   const points = data.features.filter(isPointFeature);
   const first = points[0];
   const distanceMeters = first?.properties.totalDistance ?? NaN;
@@ -120,6 +127,9 @@ export function normalizeTmapWalkRoute(
         Number.isFinite(lat) && Number.isFinite(lng)
           ? { description, coord: { lat, lng } }
           : { description };
+      if (opts?.expectWaypoint && feature.properties.pointType === "PP1" && !waypoint && step.coord) {
+        waypoint = { stepIndex: steps.length, coord: step.coord };
+      }
       steps.push(step);
       attachTarget = step;
     } else if (includeLineGeometry && attachTarget) {
@@ -147,8 +157,11 @@ export function normalizeTmapWalkRoute(
   if (steps.length === 0) {
     throw new Error("Tmap 보행자 경로 정규화 실패: 안내 단계 0개");
   }
+  if (opts?.expectWaypoint && !waypoint) {
+    throw new Error("Tmap 보행자 경로 실패: 경유지 요청인데 PP1 지점 없음(파라미터 무시 의심)");
+  }
 
-  return { distanceMeters, durationSeconds, steps };
+  return { distanceMeters, durationSeconds, steps, ...(waypoint ? { waypoint } : {}) };
 }
 
 /**
@@ -161,12 +174,14 @@ export async function getWalkRouteBriefing(params: {
   dest: Coord;
   /** Tmap 탐색 옵션. "10"=최단. 미지정이면 미전송(폴백 경로 동작 불변). */
   searchOption?: "10";
+  /** 경유지 1개(N4) — passList "lng,lat". */
+  via?: Coord;
   /** LineString 좌표를 스텝 pathCoords로 보존(실시간 안내용). */
   includeLineGeometry?: boolean;
   /** 안내 중 전환·제안 재조회처럼 현시점 조회가 필요한 소비자용(kakao-walk 관례 동형). */
   noStore?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, searchOption, includeLineGeometry, noStore } = params;
+  const { origin, dest, searchOption, via, includeLineGeometry, noStore } = params;
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
@@ -183,6 +198,7 @@ export async function getWalkRouteBriefing(params: {
       startName: "start",
       endName: "end",
       ...(searchOption ? { searchOption } : {}),
+      ...(via ? { passList: `${roundCoord(via.lng, 4)},${roundCoord(via.lat, 4)}` } : {}),
     }),
     // 보행 경로는 준정적이라 같은 좌표쌍 캐시로 일 1,000건 무료 쿼터를 보호
     // (단 POST fetch의 revalidate는 실효가 없어 사실상 비캐시 — 쿼터 방어의
@@ -202,5 +218,5 @@ export async function getWalkRouteBriefing(params: {
     throw new Error(`Tmap 보행자 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapRouteResponse;
-  return normalizeTmapWalkRoute(data, { includeLineGeometry });
+  return normalizeTmapWalkRoute(data, { includeLineGeometry, expectWaypoint: via !== undefined });
 }

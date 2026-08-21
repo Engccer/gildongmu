@@ -243,6 +243,17 @@ export interface SeoulMetroFacilities {
 }
 
 /** 자동차 경로 텍스트 브리핑 — 지도 없이 완결되는 경로 정보의 정본 */
+/**
+ * 경유지 도착 지점(N4, spec 2026-08-22 §2.2). `via`를 받은 요청에만 존재한다.
+ * `steps[stepIndex]`(자동차는 `guides[stepIndex]`)가 경유지에서 시작하는 첫 안내
+ * 단계이고, `coord`는 provider가 보행로·도로 위로 스냅한 경유 지점이다.
+ * 스텝 문장은 손대지 않는다 — 소비자가 이 인덱스 자리에 자기 라벨로 구획을 그린다.
+ */
+export interface RouteWaypoint {
+  stepIndex: number;
+  coord: Coord;
+}
+
 export interface CarRouteBriefing {
   distanceMeters: number;
   durationSeconds: number;
@@ -262,6 +273,8 @@ export interface CarRouteBriefing {
    * 어긋나면 경로가 조용히 짧게 조립된 것 — buildCarGuide가 fail-closed 검증한다.
    */
   terminalCoord?: Coord;
+  /** 경유지(`via` 요청 시에만, N4). */
+  waypoint?: RouteWaypoint;
 }
 
 /**
@@ -441,6 +454,8 @@ export interface WalkRouteBriefing {
    * `roundCoord(…,4)`(±5.5m)로 뭉친 셀이 값을 공유해 다른 목적지의 방향을 말한다.
    */
   finalApproach?: FinalApproachGeometry;
+  /** 경유지(`via` 요청 시에만, N4). */
+  waypoint?: RouteWaypoint;
 }
 
 /** 버스 정보 제공자 — 병합 후 정류소/노선이 어느 API 소속인지 구분(라우트 디스패치 키). */
