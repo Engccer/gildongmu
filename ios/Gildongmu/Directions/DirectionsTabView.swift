@@ -474,7 +474,7 @@ final class DirectionsModel {
                 // 던지고(.failure), 최단 실패만 shortest nil로 흡수된다(spec §3.1).
                 try await service.walkAlternatives(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
-                    accessible: accessible)
+                    accessible: accessible, via: nil)
             })
         } catch { return .failure(error) }
     }
@@ -484,7 +484,7 @@ final class DirectionsModel {
     ) async -> Result<CarRouteBriefing, any Error> {
         do {
             return .success(try await withQueryTimeout {
-                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang)
+                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang, via: nil)
             })
         } catch { return .failure(error) }
     }

@@ -14,7 +14,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
     }
 
@@ -26,7 +26,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" }) == false)
     }
 
@@ -40,7 +40,7 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: false, includeGeometry: true)
+            accessible: false, includeGeometry: true, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
     }
 
@@ -52,7 +52,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
     }
 
@@ -66,7 +66,7 @@ extension StubNetworkTests {
         }
         _ = try await RouteService(client: stubbedClient()).walk(
             originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1,
-            accessible: true, includeGeometry: true, variant: .shortest)
+            accessible: true, includeGeometry: true, variant: .shortest, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "variant" && $0.value == "shortest" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" && $0.value == "1" }) == true)
@@ -80,7 +80,7 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walk(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "variant" }) == false)
     }
 
@@ -92,10 +92,37 @@ extension StubNetworkTests {
             return (200, Data(#"{"result":null}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).walkAlternatives(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: true, via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "alternatives" && $0.value == "1" }) == true)
         #expect(capturedQuery?.contains(where: { $0.name == "accessible" && $0.value == "true" }) == true)
         // 조회 화면 전용 — 기하는 싣지 않는다(조합표: alternatives+includeGeometry는 400).
         #expect(capturedQuery?.contains(where: { $0.name == "includeGeometry" }) == false)
+    }
+}
+
+// 경유지(N4): `via`는 "위도,경도" 한 파라미터(서버 spec §2.1). nil이면 파라미터 자체를
+// 생략해 기존 요청과 byte-identical(옵트인 필드는 키 자체가 없다).
+extension StubNetworkTests {
+    @Test func walkViaSendsLatLngPair() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).walk(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false,
+            via: (lat: 37.55, lng: 127.05))
+        #expect(capturedQuery?.contains(where: { $0.name == "via" && $0.value == "37.55,127.05" }) == true)
+    }
+
+    @Test func carViaNilOmitsParam() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, via: nil)
+        #expect(capturedQuery?.contains(where: { $0.name == "via" }) == false)
     }
 }
