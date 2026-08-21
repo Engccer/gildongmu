@@ -20,6 +20,7 @@
 - `/api/route/walk`·`/api/route/car`: 선택 파라미터 **`via`** = `"위도,경도"`(origin·dest와 같은 `coordSchema`). 누락이면 현행과 byte-동일 응답(옵트인 필드는 키 자체가 없다).
 - 검증 순서는 횡단 함정 그대로: 파싱(400) → 커버리지(`via`도 `isInKorea`, 하나라도 밖이면 `outOfCoverage`) → 키 게이트 → 레이트리밋 → upstream.
 - `/api/route/transit`: `via`가 오면 파싱·커버리지까지 통과시킨 뒤 **upstream을 부르지 않고** 200 `{ "result": null, "unsupported": "waypoint" }`. ODsay에 경유지가 없어 *못 하는 것*이지 *경로가 없는 것*이 아니다 — `result: null`만 주면 "대중교통 경로를 찾을 수 없습니다"로 낭독돼 거짓이 된다(3-state). 마커 이름은 `unavailableHere`(지역 미제공)·`outOfCoverage`(국외)와 같은 층의 네 번째 정직 상태다.
+- 자동차 `lang=en`에 `via`가 오면 NCP(영문, 경유지 미검증)가 아니라 **ko 서비스로 보낸다** — 경유지를 조용히 버리는 것보다 한국어 문장이 낫다는 구현 판정(품질 리뷰 기록). 응답에 언어 플래그는 없고, 웹 자동차 섹션은 로케일 게이트가 없어 en 사용자가 이 조합에 도달할 수 있다. 영문 경유지 안내가 필요해지면 NCP `waypoints` 실호출 게이트가 선행이다(`docs/BACKLOG.md` N4 후속).
 - 도보 `variant`·`alternatives`·`accessible`은 `via`와 **직교**한다(최단도 Tmap passList를 그대로 받고, 계단 회피는 카카오 `route_mode`와 `via_x`가 함께 간다). 금지 조합을 새로 만들지 않는다.
 
 ### 2.2 응답

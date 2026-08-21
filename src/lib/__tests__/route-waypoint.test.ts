@@ -103,6 +103,10 @@ describe("Tmap 보행자 경유지", () => {
     expect(b.waypoint?.stepIndex).toBe(1);
     expect(b.steps).toHaveLength(2); // 도착 마커 떨굼(현행)
   });
+  it("기하 모드에서 PP1 뒤에 LineString이 없어 pop되면 throw(인덱스가 범위 밖을 가리키는 조용한 저하 금지)", () => {
+    const noTail = { ...TMAP_WALK, features: TMAP_WALK.features.filter((_, i) => i !== 3) };
+    expect(() => normalizeTmapWalkRoute(noTail, { expectWaypoint: true, includeLineGeometry: true })).toThrow(/경유지/);
+  });
   it("PP1 없이 expectWaypoint면 throw", () => {
     const noVia = { ...TMAP_WALK, features: TMAP_WALK.features.filter((f) => f.properties.pointType !== "PP1") };
     expect(() => normalizeTmapWalkRoute(noVia, { expectWaypoint: true })).toThrow(/경유지/);
