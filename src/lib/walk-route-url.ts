@@ -16,9 +16,12 @@ export function walkRouteUrl(params: {
   dest: Coord;
   accessible: boolean;
   includeGeometry: boolean;
+  /** 경유지(N4). null이면 부재 — 같은 이유로 required: 경유지를 빠뜨린 조회는 오류 없이 다른 경로를 준다. */
+  via: Coord | null;
 }): string {
-  const { origin, dest, accessible, includeGeometry } = params;
+  const { origin, dest, accessible, includeGeometry, via } = params;
   let url = `/api/route/walk?origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
+  if (via) url += `&via=${via.lat},${via.lng}`;
   if (accessible) url += "&accessible=true";
   if (includeGeometry) url += "&includeGeometry=1";
   return url;

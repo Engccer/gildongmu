@@ -301,4 +301,48 @@ describe("recent routes", () => {
     setRecentRoutePinned(loadRecentRoutes(s)[0], false, s);
     expect(clearRecentRoutes(s)).toEqual([]);
   });
+
+});
+
+describe("recent routes 경유지(N4)", () => {
+  const home = { label: "자택", lat: 37.535, lng: 127.145 };
+  const school = { label: "신명중학교", lat: 37.529, lng: 127.138 };
+  const mart = { label: "마트", lat: 37.532, lng: 127.14 };
+
+  it("via가 다르면 다른 경로다(같은 from·to라도 dedupe 안 됨)", () => {
+    const s = memStorage();
+    recordRecentRoute({ from: home, to: school }, s);
+    const list = recordRecentRoute({ from: home, to: school, via: mart }, s);
+    expect(list).toHaveLength(2);
+    expect(list[0].via?.label).toBe("마트");
+    expect(list[1].via).toBeUndefined();
+  });
+
+  it("같은 via는 같은 경로(끌어올림), 삭제도 via까지 본다", () => {
+    const s = memStorage();
+    recordRecentRoute({ from: home, to: school, via: mart }, s);
+    recordRecentRoute({ from: home, to: school }, s);
+    const list = recordRecentRoute({ from: home, to: school, via: { ...mart, label: "마트 본점" } }, s);
+    expect(list).toHaveLength(2);
+    expect(list[0].via?.label).toBe("마트 본점");
+    const after = removeRecentRoute({ from: home, to: school, via: mart }, s);
+    expect(after).toHaveLength(1);
+    expect(after[0].via).toBeUndefined();
+  });
+
+  it("저장된 via가 깨져 있으면 그 항목은 버린다(부분 복원 금지)", () => {
+    const s = memStorage();
+    s.setItem("gildongmu:recent-routes:v1", JSON.stringify([
+      { from: home, to: school, via: { label: "x" } },
+      { from: home, to: school },
+    ]));
+    expect(loadRecentRoutes(s)).toHaveLength(1);
+  });
+
+  it("경유지 최근 장소는 'via' 필드로 분리 저장된다", () => {
+    const s = memStorage();
+    recordRecentEndpoint("via", mart, s);
+    expect(loadRecentEndpoints("via", s).map((e) => e.label)).toEqual(["마트"]);
+    expect(loadRecentEndpoints("to", s)).toEqual([]);
+  });
 });

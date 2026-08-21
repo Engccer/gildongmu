@@ -1,7 +1,7 @@
 /**
  * 길찾기 `?dir=` 직렬화/파싱 (순수, React/Next 비의존).
  *
- * 형식: `<from>/<to>` (to 없으면 `<from>`만)
+ * 형식: `<from>/<to>[/<via>]` (to 없으면 `<from>`만, via는 to가 있을 때만 — N4 경유지)
  * - 현재 위치 토큰 `cur`: 좌표를 절대 싣지 않는다(프라이버시 계약: 공유·
  *   새로고침 URL에 사용자 위치가 남으면 안 되고, 복원 시 재측위가 정본).
  * - 장소 토큰 `encodeURIComponent(라벨)@lat,lng`: 구조 구분자 `@`·`/`·`,`는
@@ -24,9 +24,15 @@ function serializeEndpoint(ep: DirEndpoint): string {
   return `${encodeURIComponent(ep.label)}@${ep.coord.lat},${ep.coord.lng}`;
 }
 
-export function serializeDir(from: DirEndpoint, to: DirEndpoint | null): string {
+export function serializeDir(
+  from: DirEndpoint,
+  to: DirEndpoint | null,
+  via?: DirEndpoint | null,
+): string {
   const head = serializeEndpoint(from);
-  return to ? `${head}/${serializeEndpoint(to)}` : head;
+  if (!to) return head; // 경유지는 도착지 없이 의미가 없다
+  const pair = `${head}/${serializeEndpoint(to)}`;
+  return via ? `${pair}/${serializeEndpoint(via)}` : pair;
 }
 
 function parseEndpoint(token: string): DirEndpoint | null {
@@ -51,14 +57,18 @@ function parseEndpoint(token: string): DirEndpoint | null {
 
 export function parseDir(
   raw: string | null,
-): { from: DirEndpoint; to: DirEndpoint | null } | null {
+): { from: DirEndpoint; to: DirEndpoint | null; via: DirEndpoint | null } | null {
   if (!raw) return null;
   const parts = raw.split("/");
-  if (parts.length > 2) return null;
+  if (parts.length > 3) return null;
   const from = parseEndpoint(parts[0]);
   if (!from) return null;
-  if (parts.length === 1) return { from, to: null };
+  if (parts.length === 1) return { from, to: null, via: null };
   const to = parseEndpoint(parts[1]);
   if (!to) return null;
-  return { from, to };
+  if (parts.length === 2) return { from, to, via: null };
+  // 경유지는 장소 토큰만(현재 위치 불가 — 경유지가 "지금 여기"면 경유가 아니다).
+  const via = parseEndpoint(parts[2]);
+  if (!via || via.kind === "current") return null;
+  return { from, to, via };
 }

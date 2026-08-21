@@ -975,6 +975,9 @@ export function useRouteGuide(
           dest: { lat: target.lat, lng: target.lng },
           accessible: accessibleRef.current,
           includeGeometry: true,
+          // 웹 실시간 안내는 경유지를 아직 받지 않는다(N4 spec §3 — 경유지 조회에선
+          // 안내 시작 버튼 자체가 없다). 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
+          via: null,
         }),
       );
       if (!res.ok) return null;

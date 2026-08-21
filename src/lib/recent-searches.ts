@@ -14,7 +14,8 @@ export type RecentQuery = { text: string; pinned: boolean };
 export type RecentEndpoint = { label: string; lat: number; lng: number; pinned?: boolean };
 
 /** 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26). */
-export type RecentEndpointField = "from" | "to";
+/** "via"는 경유지 전용 목록(N4) — 도착지 목록과 섞이면 경유지가 목적지 최근 목록에 오른다. */
+export type RecentEndpointField = "from" | "to" | "via";
 
 export const RECENT_CAP = 20;
 const QUERIES_KEY_V1 = "gildongmu:recent-queries:v1";
@@ -259,6 +260,8 @@ export function setRecentEndpointPinned(
 export type RecentRoute = {
   from: RecentEndpoint | null;
   to: RecentEndpoint | null;
+  /** 경유지 1개(N4). 장소만(현재 위치 불가). 없으면 키 부재(기존 저장본 호환). */
+  via?: RecentEndpoint;
   pinned?: boolean;
 };
 
@@ -269,6 +272,7 @@ const isRouteSide = (v: unknown): v is RecentEndpoint | null => v === null || is
 const isRoute = (v: unknown): v is RecentRoute =>
   typeof v === "object" && v !== null &&
   isRouteSide((v as RecentRoute).from) && isRouteSide((v as RecentRoute).to) &&
+  ((v as RecentRoute).via === undefined || isEndpoint((v as RecentRoute).via)) &&
   isPinnedFlag((v as RecentRoute).pinned);
 
 function sameSide(a: RecentEndpoint | null, b: RecentEndpoint | null): boolean {
@@ -276,9 +280,11 @@ function sameSide(a: RecentEndpoint | null, b: RecentEndpoint | null): boolean {
   return sameEndpoint(a, b);
 }
 
-/** 쌍 단위 동일 판정: from 동일 ∧ to 동일(현재 위치끼리도 동일). pinned 무관. */
+/** 동일 판정: from·to·via 셋 전부(현재 위치끼리도 동일, via 부재끼리도 동일). pinned 무관. */
 function sameRoute(a: RecentRoute, b: RecentRoute): boolean {
-  return sameSide(a.from, b.from) && sameSide(a.to, b.to);
+  return (
+    sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via ?? null, b.via ?? null)
+  );
 }
 
 export function loadRecentRoutes(storage: Storage | null = defaultStorage()): RecentRoute[] {
