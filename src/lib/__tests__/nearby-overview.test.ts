@@ -35,7 +35,7 @@ function base(overrides: Partial<OverviewInput> = {}): OverviewInput {
 
 describe("composeOverview — 불릿별 3-state", () => {
   it("키 없는 조각(null)은 불릿 자체가 없고 순서는 고정이다", () => {
-    const o = composeOverview(base({ food: ok([]), barrierFree: ok([]) }));
+    const o = composeOverview(base({ food: ok({ places: [], capped: false }), barrierFree: ok([]) }));
     expect(o.radiusMeters).toBe(OVERVIEW_RADIUS_M);
     expect(o.bullets.map((b) => b.kind)).toEqual(["transit", "food", "barrierFree"]);
   });
@@ -56,13 +56,17 @@ describe("composeOverview — 불릿별 3-state", () => {
       place(`p${i}`, i === 0 ? 0.0005 : -0.001, 0, 500 - i),
     );
     const o = composeOverview(
-      base({ food: ok(thirty), kids: ok([place("k", 0.0005, 0, 50), ...thirty.slice(1, 3)]) }),
+      base({
+        // 한 종만 캡(15)에 걸려 합계가 18이어도 capped — 판정은 종별 raw 건수(fetchFoodAndCafes).
+        food: ok({ places: thirty.slice(0, 18), capped: true }),
+        kids: ok([place("k", 0.0005, 0, 50), ...thirty.slice(1, 3)]),
+      }),
     );
     const food = o.bullets.find((b) => b.kind === "food");
-    expect(food).toMatchObject({ state: "ok", count: 30, countCapped: true });
+    expect(food).toMatchObject({ state: "ok", count: 18, countCapped: true });
     if (food?.state !== "ok" || food.kind === "transit") throw new Error("type");
     expect(food.nearest).toHaveLength(OVERVIEW_NEAREST_CAP);
-    expect(food.nearest.map((n) => n.name)).toEqual(["p29", "p28"]);
+    expect(food.nearest.map((n) => n.name)).toEqual(["p17", "p16"]);
     expect(food.nearest[0].bearing).toBe("s");
     const kids = o.bullets.find((b) => b.kind === "kids");
     expect(kids).toMatchObject({ state: "ok", count: 3, countCapped: false });

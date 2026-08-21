@@ -13,11 +13,16 @@ struct AroundPayload: Sendable {
     let overviewFailed: Bool
     let scene: SurroundingsScene?
     let sceneFailed: Bool
-    /// nil = 조회 실패. 0건은 빈 배열.
+    /// nil = 조회 실패(placesFailed). 0건은 빈 배열.
     let places: [SurroundingPlace]?
+    let placesFailed: Bool
+    /// 커밋 식별자 — 자동 펼침 장면의 "더 보기" 창을 새 커밋마다 리셋하는 근거.
+    let commitID = UUID()
     /// 세 조각 전부 비었고 실패도 아닌 상태(전 키 부재) — 오버레이 empty 판정.
+    /// 실패는 각 조각 자리의 문장이 말하므로 여기서 empty로 뭉개지 않는다.
     var isAllAbsent: Bool {
-        overview == nil && !overviewFailed && scene == nil && !sceneFailed && places?.isEmpty ?? true
+        overview == nil && !overviewFailed && scene == nil && !sceneFailed
+            && !placesFailed && (places?.isEmpty ?? true)
     }
 }
 
@@ -49,7 +54,8 @@ final class AroundNearbyModel {
                     overviewFailed: overview.isFailure,
                     scene: (try? scene.get()) ?? nil,
                     sceneFailed: scene.isFailure,
-                    places: try? places.get())
+                    places: try? places.get(),
+                    placesFailed: places.isFailure)
             },
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
             onEvent: nearbyAnnouncer(loaded: { _ in
@@ -128,7 +134,7 @@ struct AroundNearbyView: View {
 
                     // 3. 주변 상황 — 자동 펼침(헤딩이 발견 경로, 포커스 이동 없음).
                     SurroundingsSceneAutoSection(
-                        scene: payload.scene, failed: payload.sceneFailed,
+                        scene: payload.scene, failed: payload.sceneFailed, commitID: payload.commitID,
                         proxy: proxy, focusedID: $focusedID)
 
                     // 4. 이 위치에 관해 물어보기.
