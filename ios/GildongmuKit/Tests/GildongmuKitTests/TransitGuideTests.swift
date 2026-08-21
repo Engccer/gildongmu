@@ -76,15 +76,17 @@ private struct FixtureEvent: Decodable {
     let remaining: Int?
     let certain: Bool?
     let final: Bool?
+    let cause: String?
     // currentLocation은 "명시 null"(병치 없음 기대)과 "미지정"을 구분한다.
     let currentLocation: String??
 
-    enum CodingKeys: String, CodingKey { case kind, legIndex, remaining, certain, final, currentLocation }
+    enum CodingKeys: String, CodingKey { case kind, legIndex, remaining, certain, final, cause, currentLocation }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         kind = try c.decode(String.self, forKey: .kind)
         legIndex = try c.decodeIfPresent(Int.self, forKey: .legIndex)
         remaining = try c.decodeIfPresent(Int.self, forKey: .remaining)
+        cause = try c.decodeIfPresent(String.self, forKey: .cause)
         certain = try c.decodeIfPresent(Bool.self, forKey: .certain)
         final = try c.decodeIfPresent(Bool.self, forKey: .final)
         currentLocation = c.contains(.currentLocation)
@@ -108,6 +110,10 @@ private func toInput(_ raw: FixtureInput, locks: [String: TransitLock]) throws -
             throw NSError(domain: "fixture", code: 1)
         }
         return .board(lock)
+    case "confirmBoarded":
+        return .confirmBoarded
+    case "restoreBoarding":
+        return .restoreBoarding
     case "changeBoarding":
         return .changeBoarding
     case "advance":
@@ -132,6 +138,9 @@ private func toInput(_ raw: FixtureInput, locks: [String: TransitLock]) throws -
 private func kindName(_ event: TransitGuideEvent?) -> String? {
     switch event {
     case .boarded: "boarded"
+    case .vehicleSelected: "vehicleSelected"
+    case .approaching: "approaching"
+    case .vehiclePassed: "vehiclePassed"
     case .trackingStarted: "trackingStarted"
     case .countdown: "countdown"
     case .messageChanged: "messageChanged"
@@ -185,8 +194,13 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
                 if let expectedEvent {
                     #expect(kindName(result.event) == expectedEvent.kind, "\(ctx) event.kind")
                     switch result.event {
-                    case let .boarded(legIndex):
+                    case let .boarded(legIndex, cause):
                         if let e = expectedEvent.legIndex { #expect(legIndex == e, "\(ctx) event.legIndex") }
+                        if let e = expectedEvent.cause { #expect(cause.rawValue == e, "\(ctx) event.cause") }
+                    case let .vehicleSelected(legIndex):
+                        if let e = expectedEvent.legIndex { #expect(legIndex == e, "\(ctx) event.legIndex") }
+                    case let .approaching(remaining, _):
+                        if case let .some(e) = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                     case let .countdown(remaining, _, currentLocation):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                         if case let .some(e) = expectedEvent.currentLocation {
@@ -219,12 +233,15 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     var state = initTransitGuide(route: route, now: 0)
     #expect(transitPollIntervalMs(state) == 20_000)
     state = transitGuideStep(state: state, input: .board(lock), route: route, now: 0).state
+    // boarding(차량 선택 뒤 승차 정류소 대기)은 waiting과 같은 엔드포인트라 같은 주기.
+    #expect(transitPollIntervalMs(state) == 20_000)
+    state = transitGuideStep(state: state, input: .confirmBoarded, route: route, now: 0).state
     #expect(transitPollIntervalMs(state) == 60_000)
     let far = TransitTrackItem(
         vehicleId: "5696", direction: "하행", message: "[9]번째 전역", remainingStops: 9,
         destinationName: "하남검단산", express: false, arrivalCode: "99")
     state = transitGuideStep(
-        state: state, input: .poll(seq: 1, phaseGen: 1, poll: .ok([far])), route: route, now: 1
+        state: state, input: .poll(seq: 1, phaseGen: 2, poll: .ok([far])), route: route, now: 1
     ).state
     // §12 개정: 추적 중이면 원거리도 15초(원거리 30초 폐지).
     #expect(transitPollIntervalMs(state) == 15_000)
@@ -232,7 +249,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         vehicleId: "5696", direction: "하행", message: "[3]번째 전역", remainingStops: 3,
         destinationName: "하남검단산", express: false, arrivalCode: "99")
     state = transitGuideStep(
-        state: state, input: .poll(seq: 2, phaseGen: 1, poll: .ok([near])), route: route, now: 2
+        state: state, input: .poll(seq: 2, phaseGen: 2, poll: .ok([near])), route: route, now: 2
     ).state
     #expect(transitPollIntervalMs(state) == 15_000)
     // advance는 arrived에서만 유효(리듀서 가드) — 도착 관측 후 전환.
@@ -240,7 +257,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
         vehicleId: "5696", direction: "하행", message: "여의도 도착", remainingStops: 0,
         destinationName: "하남검단산", express: false, arrivalCode: "1")
     state = transitGuideStep(
-        state: state, input: .poll(seq: 3, phaseGen: 1, poll: .ok([arrivedItem])), route: route, now: 3
+        state: state, input: .poll(seq: 3, phaseGen: 2, poll: .ok([arrivedItem])), route: route, now: 3
     ).state
     state = transitGuideStep(state: state, input: .advance, route: route, now: 4).state
     #expect(state.phase == .done)
@@ -255,10 +272,11 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     state = transitGuideStep(
         state: state, input: .board(fixture.locks["subway5696"]!), route: route, now: 0
     ).state
+    state = transitGuideStep(state: state, input: .confirmBoarded, route: route, now: 0).state
     var capEvents = 0
     for i in 1...(transitSessionPollCap + 5) {
         let r = transitGuideStep(
-            state: state, input: .poll(seq: i, phaseGen: 1, poll: .empty),
+            state: state, input: .poll(seq: i, phaseGen: 2, poll: .empty),
             route: route, now: Double(i) * 1000)
         state = r.state
         if case .capSlowed = r.event { capEvents += 1 }
