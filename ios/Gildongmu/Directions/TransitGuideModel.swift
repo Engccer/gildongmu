@@ -126,6 +126,7 @@ final class TransitGuideModel {
         refreshAnnounce = false
         pendingWalkHandoff = nil
         boardOverrideName = nil
+        selectedDescription = nil
         reboardPickerActive = false
         // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
         destChangeToken += 1
@@ -175,7 +176,11 @@ final class TransitGuideModel {
 
     // MARK: - 사용자 액션
 
-    func board(item: TransitTrackItem) {
+    /// "탑승" = 차량 선택(N3). 식별자 잠금은 boarding으로 들어가 승차 정류소 도착을
+    /// 기다린다 — riding 승격은 상태 머신이 관측으로 한다. `description`은 선택 차량의
+    /// 안정 설명(행선·방향 — 폴마다 바뀌는 완성 문장은 제외)으로 상시 표시·통지에 쓴다.
+    /// dispatch **전에** 동기로 보관해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
+    func board(item: TransitTrackItem, description: String) {
         guard let leg = currentLeg, let trackMode = leg.trackMode else { return }
         let lock = TransitLock(
             mode: trackMode,
@@ -183,7 +188,20 @@ final class TransitGuideModel {
             direction: item.direction,
             vehicleId: item.vehicleId ?? ""
         )
+        selectedDescription = description
         dispatch(.board(lock))
+        restartPollLoop(immediate: true)
+    }
+
+    /// 선택 차량 설명(boarding 상시 표시·통지). 탑승 변경으로 waiting에 돌아가도
+    /// 남긴다 — "탑승 변경 취소"(restoreBoarding)가 같은 차량으로 복귀하기 때문이다.
+    /// 소거는 새 선택·전진·세션 종료.
+    private(set) var selectedDescription: String?
+
+    /// "탑승했습니다"(boarding → riding 사용자 선언).
+    func confirmBoarded() {
+        guard state?.phase == .boarding else { return }
+        dispatch(.confirmBoarded)
         restartPollLoop(immediate: true)
     }
 
@@ -257,10 +275,12 @@ final class TransitGuideModel {
         restartPollLoop(immediate: true)
     }
 
-    /// 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유).
+    /// 탑승 변경 취소(§13.1) — 직전 잠금·국면으로 복귀(머신이 previousLock·previousPhase
+    /// 소유). ⚠ `board(previousLock)`으로 돌리면 식별자 잠금은 boarding으로 가서 이미
+    /// 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
     func cancelChangeBoarding() {
-        guard let lock = state?.previousLock else { return }
-        dispatch(.board(lock))
+        guard state?.previousLock != nil else { return }
+        dispatch(.restoreBoarding)
         restartPollLoop(immediate: true)
     }
 
@@ -395,17 +415,30 @@ final class TransitGuideModel {
     /// 단일 헬퍼. 종전엔 시트가 쉼표 조립(joinText)을 따로 해 "기준., " 이중
     /// 구두점과 stationCountAbout·lastUpdated 누락 드리프트가 났었다(피드백 #9).
     func statusLineText(state: TransitGuideState, leg: TransitGuideLeg) -> String {
-        var parts = [
-            state.phase == .waiting ? waitContextText(leg, isCurrentLeg: true) : contextText(leg),
-            signalStatusText(state.signal, phase: state.phase),
-        ]
-        if let remaining = state.remaining {
-            parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
-        } else if let count = leg.stationCount, state.phase == .riding {
-            parts.append(appLocalized("transitGuide.stationCountAbout", String(count)))
+        var parts: [String] = switch state.phase {
+        case .waiting: [waitContextText(leg, isCurrentLeg: true)]
+        case .boarding: [
+            boardingContextText(leg),
+            selectedDescription.map { appLocalized("transitGuide.selectedVehicle", $0) } ?? "",
+        ].filter { !$0.isEmpty }
+        default: [contextText(leg)]
         }
-        if let message = state.lastMessage, !message.isEmpty {
-            parts.append(frameText(leg, message))
+        parts.append(signalStatusText(state.signal, phase: state.phase))
+        if state.phase == .boarding {
+            // 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이 된다 —
+            // 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
+            if let message = state.lastMessage, !message.isEmpty {
+                parts.append(approachFrameText(leg, message))
+            }
+        } else {
+            if let remaining = state.remaining {
+                parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
+            } else if let count = leg.stationCount, state.phase == .riding {
+                parts.append(appLocalized("transitGuide.stationCountAbout", String(count)))
+            }
+            if let message = state.lastMessage, !message.isEmpty {
+                parts.append(frameText(leg, message))
+            }
         }
         // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
         // 대기 중에도 근사 예고로 유지).
@@ -493,7 +526,7 @@ final class TransitGuideModel {
         do {
             switch leg.trackMode {
             case .seoulBus:
-                if phase == .waiting {
+                if phase == .waiting || phase == .boarding {
                     guard let arsId = leg.boardStop?.arsId, let routeId = leg.routeId else {
                         return (.unsupported, nil)
                     }
@@ -520,7 +553,7 @@ final class TransitGuideModel {
             case .subway:
                 // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
                 // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
-                let station = phase == .waiting
+                let station = (phase == .waiting || phase == .boarding)
                     ? (boardOverrideName ?? leg.boardName)
                     : leg.alightName
                 guard !station.isEmpty else { return (.unsupported, nil) }
@@ -571,7 +604,7 @@ final class TransitGuideModel {
 
     /// 지방버스 정류소 해석(세션·leg당 1회, §5.2). 모호·부재는 unsupported 캐시.
     private func tagoCacheKey(_ legIndex: Int, phase: TransitPhase) -> String {
-        "\(legIndex):\(phase == .waiting ? "board" : "alight")"
+        "\(legIndex):\(phase == .waiting || phase == .boarding ? "board" : "alight")"
     }
 
     private func resolveTagoIfNeeded(
@@ -581,7 +614,7 @@ final class TransitGuideModel {
         let key = tagoCacheKey(legIndex, phase: phase)
         if tagoUnsupported.contains(key) { return nil }
         if let cached = tagoResolved[key] { return cached }
-        let target = phase == .waiting ? leg.boardStop : leg.alightStop
+        let target = (phase == .waiting || phase == .boarding) ? leg.boardStop : leg.alightStop
         guard let target else { return nil }
         do {
             let envelope = try await trackService.resolveTagoStop(lat: target.lat, lng: target.lng)
@@ -623,10 +656,14 @@ final class TransitGuideModel {
         // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
         // 흩뿌리지 않는 이유가 그것이다 — board 디스패치만 네 곳이라 하나만 빠져도
         // 조용히 틀린다.
+        // N3: boarding이 재선택 역을 계속 조회해야 하므로 `.board`가 아니라 **riding
+        // 진입**(선언·관측 어느 길이든)에서 지운다. 국면 기반이라 폴이 일으키는 승격도 잡는다.
+        let enteredRiding = result.state.phase == .riding && state.phase != .riding
         switch input {
-        case .board, .advance: boardOverrideName = nil
-        case .changeBoarding, .poll: break
+        case .advance: boardOverrideName = nil; selectedDescription = nil
+        case .board, .confirmBoarded, .restoreBoarding, .changeBoarding, .poll: break
         }
+        if enteredRiding { boardOverrideName = nil }
         // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
         // 남아, 다음 riding 진입에서 **묻지도 않은 역 선택 화면이 되살아나고** 포커스를
         // 강탈한다(독립 리뷰 MAJOR: 픽커를 연 채 폴이 도착 추정으로 전이 → advance →
@@ -642,8 +679,13 @@ final class TransitGuideModel {
                     + " signal=\(state.signal.rawValue)→\(result.state.signal.rawValue)"
                     + " event=\(result.event.map { String(describing: $0) } ?? "-")")
         }
+        // approaching 첫 관측 판별(직전 상태의 trackingAnnounced) — 이벤트는 첫 관측과
+        // 사다리를 구분하지 않으므로 문구 조립이 전이 전 상태를 본다.
+        firstObservationInStep = !state.trackingAnnounced && result.state.trackingAnnounced
         if let event = result.event { handle(event: event) }
     }
+
+    private var firstObservationInStep = false
 
     private func handle(event: TransitGuideEvent) {
         let profile = transitEventProfile(event)
@@ -663,8 +705,25 @@ final class TransitGuideModel {
         let leg = currentLeg
         var parts: [String] = []
         switch event {
-        case .boarded:
+        case let .vehicleSelected:
             if let leg {
+                parts.append(appLocalized(
+                    "transitGuide.vehicleSelected", selectedDescription ?? leg.lineName,
+                    boardOverrideName ?? leg.boardName))
+            }
+        case let .approaching(_, message):
+            // 첫 관측만 "추적합니다"를 앞세운다(래치 nil→값). 이후 사다리는 프레임만.
+            if firstObservationInStep { parts.append(appLocalized("transitGuide.approachingStarted")) }
+            if !message.isEmpty, let leg { parts.append(approachFrameText(leg, message)) }
+        case .vehiclePassed:
+            if let leg {
+                parts.append(appLocalized("transitGuide.vehiclePassed", boardOverrideName ?? leg.boardName))
+            }
+        case let .boarded(_, cause):
+            if let leg {
+                if cause == .observed {
+                    parts.append(appLocalized("transitGuide.arrivedAtBoardStop", leg.lineName))
+                }
                 if let count = leg.stationCount {
                     parts.append(appLocalized(
                         "transitGuide.boardedCount", leg.lineName, leg.alightName, String(count)))
@@ -693,7 +752,9 @@ final class TransitGuideModel {
                 parts.append(appLocalized("transitGuide.currentStation", currentLocation))
             }
         case let .messageChanged(message):
-            parts.append(leg.map { frameText($0, message) } ?? message)
+            parts.append(leg.map {
+                state?.phase == .boarding ? approachFrameText($0, message) : frameText($0, message)
+            } ?? message)
         case let .arrived(certain):
             parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
             if let state, let route {
@@ -713,7 +774,9 @@ final class TransitGuideModel {
         case .approxVehicleChanged:
             parts.append(appLocalized("transitGuide.approxVehicleChanged"))
         case .signalLost:
-            parts.append(appLocalized("transitGuide.signalLost"))
+            // boarding의 소실은 "아직 안 탔는데 차량이 안 보인다"라 riding 문구와 다르다.
+            parts.append(appLocalized(
+                state?.phase == .boarding ? "transitGuide.boardingSignalLost" : "transitGuide.signalLost"))
         case .neverSeen:
             // 기본 우선순위로 둔다(A16 §3.4): 자기 소멸 버튼이 없고 포커스 이동을
             // 유발하지 않아 잠식 패턴에 해당하지 않는다.
@@ -752,6 +815,16 @@ final class TransitGuideModel {
         appLocalized("transitGuide.messageFrame", leg.alightName, message)
     }
 
+    /// boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 있으면 그 역.
+    func boardingContextText(_ leg: TransitGuideLeg) -> String {
+        appLocalized("transitGuide.boardingContext", boardOverrideName ?? leg.boardName, leg.lineName)
+    }
+
+    /// boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}").
+    func approachFrameText(_ leg: TransitGuideLeg, _ message: String) -> String {
+        appLocalized("transitGuide.approachFrame", boardOverrideName ?? leg.boardName, message)
+    }
+
     /// 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.
     ///
     /// ⚠ **재선택한 기준 역이 있으면 그 역이 승차 지점이다**(A16 L3, 독립 리뷰 MAJOR).
@@ -779,11 +852,16 @@ final class TransitGuideModel {
     /// 대기 국면 어휘라 승차 중에 뜨면 "아직 못 탔다"로 뒤집혀 읽힌다(A16).
     func signalStatusText(_ signal: TransitSignal, phase: TransitPhase) -> String {
         switch signal {
-        case .tracking: appLocalized("transitGuide.stateTracking")
+        case .tracking:
+            phase == .boarding
+                ? appLocalized("transitGuide.stateApproaching")
+                : appLocalized("transitGuide.stateTracking")
         case .notYetVisible:
-            phase == .riding
-                ? appLocalized("transitGuide.stateRidingNotYetVisible")
-                : appLocalized("transitGuide.stateNotYetVisible")
+            switch phase {
+            case .riding: appLocalized("transitGuide.stateRidingNotYetVisible")
+            case .boarding: appLocalized("transitGuide.stateBoardingNotYetVisible")
+            default: appLocalized("transitGuide.stateNotYetVisible")
+            }
         case .neverSeen: appLocalized("transitGuide.stateNeverSeen")
         case .signalLost: appLocalized("transitGuide.stateSignalLost")
         case .upstreamFailed: appLocalized("transitGuide.stateUpstreamFailed")
