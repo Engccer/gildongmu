@@ -251,10 +251,12 @@ struct SurroundingsSceneGroupsView: View {
     let reveal: SceneRevealWindows
     let proxy: ScrollViewProxy
     var focusedID: AccessibilityFocusState<String?>.Binding
+    /// 버튼형만 true — 자동 펼침은 부모의 위치 문장이 같은 내용을 이미 말한다(중복 낭독 금지).
+    var showPlace = true
 
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
-        if let place = scene.place {
+        if showPlace, let place = scene.place {
             Text(place)
         }
         ForEach(scene.groups, id: \.bucket) { group in
@@ -313,7 +315,8 @@ struct SurroundingsSceneAutoSection: View {
         } else if let scene, scene.total == 0 {
             Text(appLocalized("surroundings.empty"))
         } else if let scene {
-            SurroundingsSceneGroupsView(scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID)
+            SurroundingsSceneGroupsView(
+                scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID, showPlace: false)
         }
     }
 }
