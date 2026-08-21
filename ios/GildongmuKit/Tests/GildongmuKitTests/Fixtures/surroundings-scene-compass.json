@@ -1,1 +1,555 @@
-{"data":{"place":"서울특별시 마포구 망원1동, 서울 마포구 망원동 414-8","frame":"compass","groups":[{"bucket":"n","items":[{"name":"고려왕족발","distanceMeters":9,"road":"포은로6길","category":"restaurant"},{"name":"망원장터국밥","distanceMeters":32,"road":"망원로8길","category":"restaurant"},{"name":"망원시장손칼국수","distanceMeters":32,"road":"망원로8길","category":"restaurant"},{"name":"즉석수제핫바","distanceMeters":33,"road":"망원로8길","category":"restaurant"},{"name":"망원튀맥집","distanceMeters":34,"road":"망원로8길","category":"restaurant"},{"name":"큐스닭강정","distanceMeters":46,"road":"망원로8길","category":"restaurant"},{"name":"정체","distanceMeters":52,"road":"포은로8길","category":"restaurant"},{"name":"레이지독케이크","distanceMeters":52,"road":"포은로8길","category":"cafe"},{"name":"예니코스","distanceMeters":74,"road":"포은로8길","category":"cafe"},{"name":"포트레이트 커피바","distanceMeters":75,"road":"포은로8길","category":"cafe"},{"name":"범골커피","distanceMeters":109,"road":"망원로8길","category":"cafe"}]},{"bucket":"ne","items":[{"name":"망원틈새전","distanceMeters":9,"road":"포은로6길","category":"restaurant"},{"name":"훈훈호떡","distanceMeters":13,"road":"포은로6길","category":"restaurant"},{"name":"오지개","distanceMeters":14,"road":"포은로6길","category":"restaurant"},{"name":"카페엠","distanceMeters":19,"road":"포은로6길","category":"cafe"},{"name":"성균관어린이집","distanceMeters":94,"road":"월드컵로23길","category":"kindergarten"}]},{"bucket":"w","items":[{"name":"혜성유통","distanceMeters":11,"road":"망원로8길","category":"restaurant"},{"name":"딥블루레이크","distanceMeters":52,"road":"포은로6길","category":"cafe"},{"name":"파사도 망원","distanceMeters":62,"road":"포은로6길","category":"cafe"},{"name":"카페무계획","distanceMeters":104,"road":"포은로","category":"cafe"},{"name":"GS25 망원포은로점","distanceMeters":106,"road":"포은로","category":"convenience"},{"name":"엘지부동산공인중개사사무소","distanceMeters":128,"road":"포은로","category":"realEstate"}]},{"bucket":"se","items":[{"name":"교동왕족발","distanceMeters":14,"road":"망원로8길","category":"restaurant"},{"name":"미앤아이의원 망원점","distanceMeters":14,"road":"망원로8길","category":"hospital"},{"name":"멀리보다","distanceMeters":14,"road":"망원로8길","category":"academy"},{"name":"행복한치과의원","distanceMeters":111,"road":"월드컵로13길","category":"hospital"},{"name":"스타공인중개사사무소","distanceMeters":145,"road":"월드컵로13길","category":"realEstate"}]},{"bucket":"sw","items":[{"name":"망원1-2공영주차장","distanceMeters":30,"road":"포은로6길","category":"parking"},{"name":"망원1동주민센터","distanceMeters":66,"road":"포은로6길","category":"public"},{"name":"닥터훈 소아청소년과의원","distanceMeters":107,"road":"월드컵로13길","category":"hospital"},{"name":"브라운프론트도어","distanceMeters":108,"road":"포은로","category":"cafe"},{"name":"딜리커피 망원","distanceMeters":111,"road":"포은로","category":"cafe"},{"name":"서울청춘치과의원","distanceMeters":123,"road":"포은로","category":"hospital"},{"name":"수공인중개사사무소","distanceMeters":143,"road":"포은로","category":"realEstate"}]},{"bucket":"nw","items":[{"name":"장충동한방족발","distanceMeters":37,"road":"망원로8길","category":"restaurant"},{"name":"맛있는집","distanceMeters":37,"road":"망원로8길","category":"restaurant"},{"name":"무침프로젝트 홍어무침 망원점","distanceMeters":52,"road":"망원로8길","category":"restaurant"},{"name":"명동공인중개사사무소","distanceMeters":136,"road":"포은로","category":"realEstate"}]},{"bucket":"s","items":[{"name":"포트캔커피 망원점","distanceMeters":67,"road":"월드컵로13길","category":"cafe"},{"name":"컴포즈커피 망원시장점","distanceMeters":92,"road":"망원로8길","category":"cafe"},{"name":"조은샘의원","distanceMeters":92,"road":"망원로8길","category":"hospital"},{"name":"망원우리약국","distanceMeters":100,"road":"망원로8길","category":"pharmacy"},{"name":"피크","distanceMeters":101,"road":"망원로8길","category":"cafe"},{"name":"영진약국","distanceMeters":117,"road":"월드컵로13길","category":"pharmacy"}]},{"bucket":"e","items":[{"name":"픽트 로스터리 망원점","distanceMeters":91,"road":"월드컵로23길","category":"cafe"},{"name":"인비트윈","distanceMeters":93,"road":"포은로6길","category":"cafe"}]}],"total":46}}
+{
+  "data": {
+    "place": "서울특별시 마포구 망원1동, 서울 마포구 망원동 414-8",
+    "frame": "compass",
+    "groups": [
+      {
+        "bucket": "n",
+        "items": [
+          {
+            "name": "고려왕족발",
+            "distanceMeters": 9,
+            "road": "포은로6길",
+            "category": "restaurant",
+            "id": "kakao-1",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "망원장터국밥",
+            "distanceMeters": 32,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-2",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "망원시장손칼국수",
+            "distanceMeters": 32,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-3",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "즉석수제핫바",
+            "distanceMeters": 33,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-4",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "망원튀맥집",
+            "distanceMeters": 34,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-5",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "큐스닭강정",
+            "distanceMeters": 46,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-6",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "정체",
+            "distanceMeters": 52,
+            "road": "포은로8길",
+            "category": "restaurant",
+            "id": "kakao-7",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "레이지독케이크",
+            "distanceMeters": 52,
+            "road": "포은로8길",
+            "category": "cafe",
+            "id": "kakao-8",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "예니코스",
+            "distanceMeters": 74,
+            "road": "포은로8길",
+            "category": "cafe",
+            "id": "kakao-9",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "포트레이트 커피바",
+            "distanceMeters": 75,
+            "road": "포은로8길",
+            "category": "cafe",
+            "id": "kakao-10",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "범골커피",
+            "distanceMeters": 109,
+            "road": "망원로8길",
+            "category": "cafe",
+            "id": "kakao-11",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "ne",
+        "items": [
+          {
+            "name": "망원틈새전",
+            "distanceMeters": 9,
+            "road": "포은로6길",
+            "category": "restaurant",
+            "id": "kakao-12",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "훈훈호떡",
+            "distanceMeters": 13,
+            "road": "포은로6길",
+            "category": "restaurant",
+            "id": "kakao-13",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "오지개",
+            "distanceMeters": 14,
+            "road": "포은로6길",
+            "category": "restaurant",
+            "id": "kakao-14",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "카페엠",
+            "distanceMeters": 19,
+            "road": "포은로6길",
+            "category": "cafe",
+            "id": "kakao-15",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "성균관어린이집",
+            "distanceMeters": 94,
+            "road": "월드컵로23길",
+            "category": "kindergarten",
+            "id": "kakao-16",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "kindergarten",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "w",
+        "items": [
+          {
+            "name": "혜성유통",
+            "distanceMeters": 11,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-17",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "딥블루레이크",
+            "distanceMeters": 52,
+            "road": "포은로6길",
+            "category": "cafe",
+            "id": "kakao-18",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "파사도 망원",
+            "distanceMeters": 62,
+            "road": "포은로6길",
+            "category": "cafe",
+            "id": "kakao-19",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "카페무계획",
+            "distanceMeters": 104,
+            "road": "포은로",
+            "category": "cafe",
+            "id": "kakao-20",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "GS25 망원포은로점",
+            "distanceMeters": 106,
+            "road": "포은로",
+            "category": "convenience",
+            "id": "kakao-21",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "convenience",
+            "roadAddress": null
+          },
+          {
+            "name": "엘지부동산공인중개사사무소",
+            "distanceMeters": 128,
+            "road": "포은로",
+            "category": "realEstate",
+            "id": "kakao-22",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "se",
+        "items": [
+          {
+            "name": "교동왕족발",
+            "distanceMeters": 14,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-23",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "미앤아이의원 망원점",
+            "distanceMeters": 14,
+            "road": "망원로8길",
+            "category": "hospital",
+            "id": "kakao-24",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "멀리보다",
+            "distanceMeters": 14,
+            "road": "망원로8길",
+            "category": "academy",
+            "id": "kakao-25",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "행복한치과의원",
+            "distanceMeters": 111,
+            "road": "월드컵로13길",
+            "category": "hospital",
+            "id": "kakao-26",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "스타공인중개사사무소",
+            "distanceMeters": 145,
+            "road": "월드컵로13길",
+            "category": "realEstate",
+            "id": "kakao-27",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "sw",
+        "items": [
+          {
+            "name": "망원1-2공영주차장",
+            "distanceMeters": 30,
+            "road": "포은로6길",
+            "category": "parking",
+            "id": "kakao-28",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "망원1동주민센터",
+            "distanceMeters": 66,
+            "road": "포은로6길",
+            "category": "public",
+            "id": "kakao-29",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "public",
+            "roadAddress": null
+          },
+          {
+            "name": "닥터훈 소아청소년과의원",
+            "distanceMeters": 107,
+            "road": "월드컵로13길",
+            "category": "hospital",
+            "id": "kakao-30",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "브라운프론트도어",
+            "distanceMeters": 108,
+            "road": "포은로",
+            "category": "cafe",
+            "id": "kakao-31",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "딜리커피 망원",
+            "distanceMeters": 111,
+            "road": "포은로",
+            "category": "cafe",
+            "id": "kakao-32",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "서울청춘치과의원",
+            "distanceMeters": 123,
+            "road": "포은로",
+            "category": "hospital",
+            "id": "kakao-33",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "수공인중개사사무소",
+            "distanceMeters": 143,
+            "road": "포은로",
+            "category": "realEstate",
+            "id": "kakao-34",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "nw",
+        "items": [
+          {
+            "name": "장충동한방족발",
+            "distanceMeters": 37,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-35",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "맛있는집",
+            "distanceMeters": 37,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-36",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "무침프로젝트 홍어무침 망원점",
+            "distanceMeters": 52,
+            "road": "망원로8길",
+            "category": "restaurant",
+            "id": "kakao-37",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "명동공인중개사사무소",
+            "distanceMeters": 136,
+            "road": "포은로",
+            "category": "realEstate",
+            "id": "kakao-38",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "s",
+        "items": [
+          {
+            "name": "포트캔커피 망원점",
+            "distanceMeters": 67,
+            "road": "월드컵로13길",
+            "category": "cafe",
+            "id": "kakao-39",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "컴포즈커피 망원시장점",
+            "distanceMeters": 92,
+            "road": "망원로8길",
+            "category": "cafe",
+            "id": "kakao-40",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "조은샘의원",
+            "distanceMeters": 92,
+            "road": "망원로8길",
+            "category": "hospital",
+            "id": "kakao-41",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "망원우리약국",
+            "distanceMeters": 100,
+            "road": "망원로8길",
+            "category": "pharmacy",
+            "id": "kakao-42",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "pharmacy",
+            "roadAddress": null
+          },
+          {
+            "name": "피크",
+            "distanceMeters": 101,
+            "road": "망원로8길",
+            "category": "cafe",
+            "id": "kakao-43",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "영진약국",
+            "distanceMeters": 117,
+            "road": "월드컵로13길",
+            "category": "pharmacy",
+            "id": "kakao-44",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "pharmacy",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "e",
+        "items": [
+          {
+            "name": "픽트 로스터리 망원점",
+            "distanceMeters": 91,
+            "road": "월드컵로23길",
+            "category": "cafe",
+            "id": "kakao-45",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "인비트윈",
+            "distanceMeters": 93,
+            "road": "포은로6길",
+            "category": "cafe",
+            "id": "kakao-46",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          }
+        ]
+      }
+    ],
+    "total": 46
+  }
+}

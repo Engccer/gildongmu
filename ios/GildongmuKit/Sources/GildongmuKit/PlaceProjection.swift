@@ -63,6 +63,22 @@ public func surroundingPlaceToPlace(_ p: SurroundingPlace) -> Place {
         distanceMeters: Double(p.distanceMeters))
 }
 
+/// 부근 상황(scene) 항목 → Place(M4 판정 ⑤). surroundingPlaceToPlace 동형 — 역 판별에 categoryRaw.
+public func sceneItemToPlace(_ item: SurroundingsSceneItem) -> Place {
+    Place(
+        id: item.id,
+        name: item.name,
+        category: item.categoryRaw,
+        address: "",
+        roadAddress: item.roadAddress ?? "",
+        englishAddress: nil,
+        lat: item.lat,
+        lng: item.lng,
+        phone: item.phone,
+        link: item.link,
+        distanceMeters: Double(item.distanceMeters))
+}
+
 public func barrierFreePlaceToPlace(_ b: BarrierFreePlace) -> Place {
     Place(
         id: b.contentId,
