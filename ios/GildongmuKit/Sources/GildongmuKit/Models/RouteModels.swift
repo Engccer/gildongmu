@@ -48,6 +48,20 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
     }
 }
 
+/// 경유지 투영(N4, 서버 spec `2026-08-22-waypoint-server-web-cli-design.md` §2.2).
+/// `via`를 보낸 요청에만 실린다. `stepIndex`는 경유지에서 시작하는 첫 안내 단계 —
+/// 소비자가 그 자리에 자기 라벨로 "경유지 C 도착" 구획을 그린다(서버는 라벨을 모른다).
+public struct RouteWaypoint: Codable, Sendable, Hashable {
+    public let stepIndex: Int
+    /// 경유지 도착 판정 좌표(provider가 보행로·도로 위로 스냅한 점).
+    public let coord: RoutePoint
+
+    public init(stepIndex: Int, coord: RoutePoint) {
+        self.stepIndex = stepIndex
+        self.coord = coord
+    }
+}
+
 /// 자동차 경로 브리핑. ⚠ /api/route/car 응답은 envelope 없이 이 타입 직접.
 public struct CarRouteBriefing: Codable, Sendable, Hashable {
     /// 총 거리(m)
@@ -65,10 +79,13 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     public let provider: String?
     /// 종점(E) 마커 좌표(기하 옵트인 전용, B1 §5 커버리지 검증 축).
     public let terminalCoord: RoutePoint?
+    /// 경유지(N4, `via` 요청에만). 선택 디코딩 — 없는 응답에서 브리핑이 깨지면 안 된다.
+    public let waypoint: RouteWaypoint?
 
     public init(
         distanceMeters: Int, durationSeconds: Int, taxiFare: Int, tollFare: Int,
-        guides: [CarRouteGuide], provider: String? = nil, terminalCoord: RoutePoint? = nil
+        guides: [CarRouteGuide], provider: String? = nil, terminalCoord: RoutePoint? = nil,
+        waypoint: RouteWaypoint? = nil
     ) {
         self.distanceMeters = distanceMeters
         self.durationSeconds = durationSeconds
@@ -77,6 +94,7 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
         self.guides = guides
         self.provider = provider
         self.terminalCoord = terminalCoord
+        self.waypoint = waypoint
     }
 }
 
@@ -309,6 +327,8 @@ public struct WalkRouteBriefing: Codable, Sendable, Hashable {
     /// 경로 종점 → 목적지 오프셋 기하(spec 2026-08-08 §3.1).
     /// ⚠ **선택 필드로 디코딩한다** — 필수로 두면 구버전 응답에서 브리핑 전체가 실패한다.
     public let finalApproach: FinalApproachPayload?
+    /// 경유지(N4, `via` 요청에만). 선택 디코딩 — 없는 응답에서 브리핑이 깨지면 안 된다.
+    public let waypoint: RouteWaypoint?
 
     /// 알려진 상태만 매핑하고 미지의 값은 nil("판정 없음")이다.
     public var stepFreeStatus: StepFreeStatus? {

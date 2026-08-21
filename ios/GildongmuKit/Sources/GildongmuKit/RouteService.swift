@@ -21,7 +21,8 @@ public struct RouteService: Sendable {
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         lang: String? = nil,
-        includeGeometry: Bool = false
+        includeGeometry: Bool = false,
+        via: (lat: Double, lng: Double)?
     ) async throws -> CarRouteBriefing {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
@@ -29,6 +30,7 @@ public struct RouteService: Sendable {
         ]
         if let lang { query.append(URLQueryItem(name: "lang", value: lang)) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
+        if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         return try await client.get("/api/route/car", query: query)
     }
 
@@ -64,12 +66,18 @@ public struct RouteService: Sendable {
     /// 사용자가 계단으로 안내받았다(spec 2026-08-08 §2.5).
     /// `variant`(M3): nil이면 파라미터 생략(현행 요청 byte-identical), `.shortest`면
     /// Tmap 최단 축 단일 조회(안내 시작·전환·제안 경로).
+    /// `via`(N4): 경유지 1개 "위도,경도"(서버 spec §2.1). nil이면 파라미터 생략.
+    /// ⚠ **기본값을 두지 않는다** — 경유지를 받은 세션의 재조회 경로 중 하나라도 `via`를
+    /// 빠뜨리면 "경유 안 한 경로"가 "경유한 경로"로 낭독된다. 서버가 표지 부재를 throw로
+    /// 막은 그 결함이 클라이언트에서는 *인자 생략*으로 일어나고, 기본값이 있으면 그 생략이
+    /// 조용히 컴파일된다(`accessible` 규율 동형).
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
         includeGeometry: Bool = false,
-        variant: WalkRouteVariant? = nil
+        variant: WalkRouteVariant? = nil,
+        via: (lat: Double, lng: Double)?
     ) async throws -> WalkRouteBriefing? {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
@@ -78,6 +86,7 @@ public struct RouteService: Sendable {
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let variant { query.append(URLQueryItem(name: "variant", value: variant.rawValue)) }
+        if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return envelope.result
     }
@@ -89,7 +98,8 @@ public struct RouteService: Sendable {
     public func walkAlternatives(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        accessible: Bool
+        accessible: Bool,
+        via: (lat: Double, lng: Double)?
     ) async throws -> (result: WalkRouteBriefing?, shortest: WalkRouteBriefing?) {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
@@ -97,6 +107,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "alternatives", value: "1"),
         ]
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
+        if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
         return (envelope.result, envelope.shortest)
     }

@@ -678,7 +678,7 @@ final class BeaconModel {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
                 destLat: dest.lat, destLng: dest.lng,
-                includeGeometry: true
+                includeGeometry: true, via: nil
             )
             guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
                 return nil
@@ -693,7 +693,7 @@ final class BeaconModel {
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
             includeGeometry: true,
-            variant: variant
+            variant: variant, via: nil
         )
         guard let briefing,
               let route = buildGuideRoute(briefing.steps.map {
@@ -857,7 +857,7 @@ final class BeaconModel {
             let origin = try await LocationService.shared.currentCoordinate()
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
-                destLat: dest.lat, destLng: dest.lng
+                destLat: dest.lat, destLng: dest.lng, via: nil
             )
             // 세대 일치 커밋(§4.6) — 중지·재조회·목적지 변경 후 도착 응답 폐기.
             guard token == routeFetchToken, isTracking, mode == .detail, self.dest == dest,

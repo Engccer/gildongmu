@@ -11,7 +11,7 @@ private func walkFixture() -> WalkRouteBriefing {
         steps: [WalkRouteStep(
             description: "천호대로를 따라 119m 이동", distanceMeters: nil, pathCoords: nil,
             live: nil)],
-        stepFree: nil, stepFreeNotice: nil, finalApproach: nil)
+        stepFree: nil, stepFreeNotice: nil, finalApproach: nil, waypoint: nil)
 }
 
 private func transitFixture() -> TransitRouteResult {

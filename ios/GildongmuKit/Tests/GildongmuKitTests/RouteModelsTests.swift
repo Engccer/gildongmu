@@ -163,14 +163,14 @@ extension StubNetworkTests {
         }
         let service = RouteService(client: stubbedClient())
         await #expect(throws: APIError.self) {
-            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, via: nil)
         }
     }
 
     @Test func routeServiceWalkNullResultReturnsNilNotThrow() async throws {
         StubURLProtocol.handler = { _ in (200, Data(#"{"result":null}"#.utf8)) }
         let service = RouteService(client: stubbedClient())
-        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false)
+        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, via: nil)
         #expect(result == nil)
     }
 }
@@ -292,5 +292,36 @@ struct WalkRouteBriefingFinalApproachTests {
         #expect(b.distanceMeters == 100)
         #expect(b.finalApproach?.unavailableReason == nil)
         #expect(b.finalApproach?.offsetMeters == 30)
+    }
+}
+
+// MARK: - 경유지 필드(2026-08-22 N4)
+// `via`를 보낸 요청에만 실리는 옵트인 필드 — 없는 응답에서 브리핑이 깨지면 안 된다.
+
+@Suite("경로 브리핑의 waypoint 필드")
+struct RouteBriefingWaypointTests {
+    @Test("도보: 있으면 stepIndex·coord를 읽고, 없으면 nil")
+    func walk() throws {
+        let with = try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(#"""
+        {"distanceMeters":100,"durationSeconds":60,"steps":[],
+         "waypoint":{"stepIndex":5,"coord":{"lat":37.5353,"lng":127.1323}}}
+        """#.utf8))
+        #expect(with.waypoint?.stepIndex == 5)
+        #expect(with.waypoint?.coord.lat == 37.5353)
+        let without = try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(
+            #"{"distanceMeters":100,"durationSeconds":60,"steps":[]}"#.utf8))
+        #expect(without.waypoint == nil)
+    }
+
+    @Test("자동차: 동형")
+    func car() throws {
+        let with = try JSONDecoder().decode(CarRouteBriefing.self, from: Data(#"""
+        {"distanceMeters":2066,"durationSeconds":300,"taxiFare":5000,"tollFare":0,"guides":[],
+         "provider":"tmap","waypoint":{"stepIndex":2,"coord":{"lat":37.5353,"lng":127.1323}}}
+        """#.utf8))
+        #expect(with.waypoint?.stepIndex == 2)
+        let without = try JSONDecoder().decode(CarRouteBriefing.self, from: Data(
+            #"{"distanceMeters":2066,"durationSeconds":300,"taxiFare":5000,"tollFare":0,"guides":[]}"#.utf8))
+        #expect(without.waypoint == nil)
     }
 }
