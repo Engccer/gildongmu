@@ -130,7 +130,8 @@ ko 예(상태별 전부 다른 문장 — 3-state 불변식):
 - 라우트: `coord-param-usage.test.ts`가 자동 포함. 라우트 테스트: 한국 밖 `outOfCoverage`, 전 키 부재여도 `data` 비null.
 - 계약 가드: scene 응답 스키마 테스트에 새 필드 존재·기존 필드 불변.
 - Kit: `SurroundingsSceneItem` 디코딩(새 필드), `sceneItemToPlace`; 조망 문장 조립 테스트(ko, 상태별 문장이 전부 다른지 — 3-state 변이).
-- **실호출 게이트** `scripts/verify-nearby-overview.mjs`: 서울 좌표 1곳·서울 밖 1곳·해외 1곳 — 불릿 5 존재, 서울 밖 events `unavailable`, 해외 `outOfCoverage`, scene 항목에 lat/lng 존재. 종료 코드로 머지 게이트.
+- **실호출 게이트** `scripts/verify-nearby-overview.mjs`: 서울 좌표 1곳·서울 밖 1곳·해외 1곳 — 불릿 5 존재, 서울 밖 events `unavailable`, 해외 `outOfCoverage`, scene 항목에 lat/lng 존재. 종료 코드로 머지 게이트. **결과(2026-08-22, dev 서버 실호출): 11/11 PASS** — 길동 5조각 전부 ok(buses ok), 전주 events unavailable·station null, 파리 outOfCoverage, scene 49건 전 항목 장소 재료.
+- **리뷰(2026-08-22)**: spec-compliance 판정 8항목 PASS·결함 D1~D4(D1 `data:null` 도달 불가 → 분기 제거·spec 정정, D2 CLI 문장 Kit 동형화, D3 `transitNoStationOnly`, D4 기록만) / code-quality MED 4·LOW 2(식당·카페 캡 판정을 종별 raw 건수로, `placesFailed` 분리, 자동 펼침 더 보기 창 커밋 리셋, 문화행사 선판정 1km) 전부 반영. 시뮬레이터(iPhone 17, dev 서버) 실측: 불릿 5개 각 1객체, 장면 행 버튼 → 장소 상세 열림.
 - CLI: `formatter-coverage`·`version-drift`·카탈로그 drift 자동.
 - i18n: `i18n-messages.test.ts` + `check-xcstrings-keys.mjs`.
 - 실기기: 위원장 VO — 착지가 위치 문장 1회인가, "한눈에 보기" 불릿이 객체 하나씩인가, 주변 상황 장소가 상세로 열리는가, 안내 시트 "주변 확인"이 종전과 같은가.
