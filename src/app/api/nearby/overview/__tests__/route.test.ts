@@ -31,9 +31,10 @@ describe("GET /api/nearby/overview", () => {
     expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data });
   });
 
-  it("불릿이 하나도 없고 place도 없으면 data null (전 키 부재)", async () => {
-    mockAssemble.mockResolvedValue({ place: null, radiusMeters: 1000, bullets: [] });
-    expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data: null });
+  it("전 키 부재여도 data는 null이 아니다 — 대중교통 불릿은 seed라 항상 있다", async () => {
+    const data = { place: null, radiusMeters: 1000, bullets: [{ kind: "transit", state: "ok", station: null, busStops: null }] };
+    mockAssemble.mockResolvedValue(data as never);
+    expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data });
   });
 
   it("조립 예외는 502", async () => {

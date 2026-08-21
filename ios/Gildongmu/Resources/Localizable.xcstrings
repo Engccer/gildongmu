@@ -45321,6 +45321,46 @@
         }
       }
     },
+    "whereAmI.overview.transitNoStationOnly": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 안에 지하철역이 없습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no subway station within %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sin estación de metro a menos de %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aucune station de métro à moins de %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nessuna stazione della metro entro %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@以内に地下鉄駅はありません"
+          }
+        }
+      }
+    },
     "whereAmI.overview.transitStation": {
       "localizations": {
         "ko": {

@@ -886,6 +886,7 @@
       "transitStation": "地下鉄{name}{line}が{direction}{distance}",
       "transitLine": "({line})",
       "transitNoStation": "{distance}以内に地下鉄駅はなく",
+      "transitNoStationOnly": "{distance}以内に地下鉄駅はありません",
       "transitBus": "バス停{count}か所、{nearest}",
       "transitBusNone": "バス停はありません",
       "transitBusUncovered": "この地域ではバス停情報を提供していません",
