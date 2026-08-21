@@ -8,6 +8,12 @@ struct GuideBandTests {
         #expect(s == .destChangePending(label: "학교"))
     }
 
+    @Test func 목적지_변경_실패는_대기와_구분된다() {
+        let s = guideBandSummary(phase: .riding, boardStop: nil, line: nil, remaining: nil,
+                                 hasWalkHandoff: false, destChangeLabel: "학교", destChangeFailed: true)
+        #expect(s == .destChangeFailed(label: "학교"))
+    }
+
     @Test func 핸드오프_제안은_state가_없어도_도착이다() {
         let s = guideBandSummary(phase: nil, boardStop: nil, line: nil, remaining: nil,
                                  hasWalkHandoff: true, destChangeLabel: nil)

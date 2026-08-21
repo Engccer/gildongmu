@@ -12,6 +12,9 @@ public enum GuideBandSummary: Equatable, Sendable {
     /// 장소 상세에서 목적지 변경을 준비해 후보 선택을 기다리는 중(설계 리뷰 M3 —
     /// 시트를 자동으로 올리지 않으므로 띠바가 유일한 진행 표시다).
     case destChangePending(label: String)
+    /// 목적지 변경 조회가 실패·0건으로 끝났다(코드 리뷰 i2 — 3-state: "대기"와 "실패"를
+    /// 뭉개면 띠바만 보는 사용자가 조회 중으로 오인한다).
+    case destChangeFailed(label: String)
 }
 
 /// 우선순위: 목적지 변경 대기 > 핸드오프 제안(도착) > 국면 > nil(화면 없음).
@@ -19,9 +22,11 @@ public enum GuideBandSummary: Equatable, Sendable {
 /// (설계 리뷰 C7).
 public func guideBandSummary(
     phase: TransitPhase?, boardStop: String?, line: String?, remaining: Int?,
-    hasWalkHandoff: Bool, destChangeLabel: String?
+    hasWalkHandoff: Bool, destChangeLabel: String?, destChangeFailed: Bool = false
 ) -> GuideBandSummary? {
-    if let destChangeLabel { return .destChangePending(label: destChangeLabel) }
+    if let destChangeLabel {
+        return destChangeFailed ? .destChangeFailed(label: destChangeLabel) : .destChangePending(label: destChangeLabel)
+    }
     if hasWalkHandoff { return .arrived }
     guard let phase else { return nil }
     switch phase {
