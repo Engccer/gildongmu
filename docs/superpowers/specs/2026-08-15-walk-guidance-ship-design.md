@@ -95,6 +95,8 @@ static let experimentalGuidanceEnabled = false
 | `964` 대중교통→도보 인계 | 도보 세션 | **차단** | 대중교통 세션 안에서만 호출되고 그 세션이 봉인된다 |
 | `transitGuideStartable`·`altTransitGuideStartable` | 대중교통 세션 | **차단** | `experimentalGuidanceEnabled` |
 
+> 갱신 2026-08-22(N1, spec `2026-08-22-guide-session-minimize-design.md`): 모델이 앱 수명 `GuideSession`으로 올라가 진입점의 **형태와 자리**가 바뀌었다(수는 6 유지). 도보 추천·최단·자동차 버튼은 `session.startBeacon(`(거부 게이트 단일 진입점), 간략 폴백 버튼만 `beacon.toggle(`(추적 중 "중지" 겸용), 대중교통→도보 인계는 `DirectionsTabView` 밖 `GuideSession.acceptWalkHandoff`의 `self.startBeacon(`이다. 가드 정규식은 `beacon.(toggle|restart)(`·`(session|self).startBeacon(` 넷을 센다. 정식판 도달 판정은 표와 같다(핸드오프는 여전히 봉인된 대중교통 세션 안에서만 일어난다).
+
 **외부 진입 경로는 없다**(리뷰 #3의 "확인 필요"에 대한 실측 답): `beacon.toggle`·`beacon.restart` 호출은 `DirectionsTabView` 밖에 없고, `AppShortcuts`·App Intent·딥링크에 안내 시작 경로가 없다. 세션 복원 기능도 없다(앱을 내리면 세션이 끝난다). 따라서 `964`의 안전성이 "대중교통 세션의 유일한 생성 경로가 UI 게이트"라는 가정에 의존한다는 지적은 맞지만, 그 가정은 실측으로 참이다. **신규 진입점을 만들 때 이 표를 갱신하는 것이 계약이다.**
 
 **플래그 참조 6곳의 처리**(위 축의 구현):

@@ -12,11 +12,15 @@ import { join } from "node:path";
  *
  * ⚠ 판정 축은 **플래그 참조 목록이 아니라 세션을 시작시키는 호출 전수**다(spec §3.2).
  * 플래그가 몇 군데 있는지만 세면 "진입점인데 플래그를 안 보는 자리"를 놓친다. 그래서
- * 아래 검사 3(세션 시작 호출 수 고정 — `beacon.toggle(`·`beacon.restart(`)이 이 파일의 중심이다.
+ * 아래 검사 3(세션 시작 호출 수 고정 — `beacon.toggle(`·`beacon.restart(`·`session.startBeacon(`·
+ * `self.startBeacon(`)이 이 파일의 중심이다. N1(2026-08-22)부터 경로 행 시작 버튼은
+ * `GuideSession.startBeacon`(거부 게이트 단일 진입점)을 지나고 핸드오프는 `GuideSession`
+ * 안에 산다 — 호출 형태가 늘어 정규식도 늘었다.
  */
 
 const ROOT = join(__dirname, "../../..");
 const DIRECTIONS = join(ROOT, "ios/Gildongmu/Directions/DirectionsTabView.swift");
+const GUIDE_SESSION = join(ROOT, "ios/Gildongmu/Directions/GuideSessionCoordinator.swift");
 const INFO_PLIST = join(ROOT, "ios/Support/Info.plist");
 const EXPERIMENTAL_SH = join(ROOT, "ios/scripts/experimental-infoplist.sh");
 const INFOPLIST_XCSTRINGS = join(ROOT, "ios/Gildongmu/Resources/InfoPlist.xcstrings");
@@ -249,24 +253,27 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
   it("사용자 시작 버튼의 세션 시작 호출은 전부 수동 위치 고지를 앞세운다(G4)", () => {
     // 고지는 안내 시작의 직접 응답이라 시작 버튼 핸들러 안에 있다. 정식판 진입점
     // (도보 추천·최단)이 고지 없이 시작하는 회귀는 선언 본문 검사로는 못 잡는다 —
-    // 각 `beacon.toggle(` 직전 몇 줄에 호출이 있어야 한다. 예외는 대중교통→도보
-    // 핸드오프(사용자 활성화가 아니고 그 세션은 이미 실좌표 위에 있었다)와
-    // `restart()`(정밀 위치 허용 뒤 같은 세션 재시작 — 처음 시작 때 이미 말했다).
+    // 각 시작 호출(`beacon.toggle(`·`session.startBeacon(`) 직전 몇 줄에 호출이 있어야
+    // 한다. 대중교통→도보 핸드오프(사용자 활성화가 아니고 그 세션은 이미 실좌표 위에
+    // 있었다)는 N1부터 `GuideSession.acceptWalkHandoff` 안에 살아 이 파일에 없고,
+    // `restart()`(정밀 위치 허용 뒤 같은 세션 재시작)는 처음 시작 때 이미 말했다.
     const src = directions();
     const lines = src.split("\n");
-    const toggles = lines
-      .map((line, i) => (line.includes("beacon.toggle(") ? i : -1))
+    const starts = lines
+      .map((line, i) =>
+        line.includes("beacon.toggle(") || line.includes("session.startBeacon(") ? i : -1,
+      )
       .filter((i) => i >= 0);
-    expect(toggles.length).toBe(5);
-    const announced = toggles.filter((i) =>
+    // 간략 폴백(toggle)·자동차·도보 추천·도보 최단.
+    expect(starts.length).toBe(4);
+    const announced = starts.filter((i) =>
       lines.slice(Math.max(0, i - 3), i).some((l) => l.includes("announceGuideStartIfManualOrigin()")),
     );
-    // 5곳 중 핸드오프 1곳만 예외 — 나머지 넷(간략 폴백·자동차·도보 추천·도보 최단).
     expect(announced.length).toBe(4);
-    const handoff = toggles.filter((i) => !announced.includes(i));
-    expect(lines.slice(Math.max(0, handoff[0] - 8), handoff[0]).join("\n")).toContain(
-      "startWalkHandoff",
-    );
+    // 핸드오프 진입점은 GuideSession 안에 정확히 하나다.
+    const session = readFileSync(GUIDE_SESSION, "utf8");
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(1);
+    expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
   });
 
   it("구 플래그 realtimeGuidanceEnabled가 남아 있지 않다", () => {
@@ -291,12 +298,13 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 갱신하며 그 자리가 정식판에 도달하는지 판정한 뒤 이 수를 올린다. 플래그 참조만
    * 세는 검사로는 "진입점인데 플래그를 안 보는 자리"를 영영 못 잡는다.
    *
-   * ⚠ 스캔은 앱 타깃이 아니라 **iOS 전체**다(독립 리뷰 관찰 2026-08-15). 지금은
-   * `beacon`이 `DirectionsTabView`의 `@State`라 밖에서 호출될 수 없지만, 모델이
-   * 서브뷰나 Kit으로 전달되는 리팩터링이 오면 앱 타깃만 세는 가드는 그 새 진입점을
-   * 놓친다. 스캔 범위를 좁힐 이유가 없으므로 넓은 쪽이 기본이다.
+   * ⚠ 스캔은 앱 타깃이 아니라 **iOS 전체**다(독립 리뷰 관찰 2026-08-15). N1(2026-08-22)
+   * 에서 그 우려가 실제가 됐다 — 모델이 앱 수명 `GuideSession`으로 올라가 핸드오프
+   * 진입점이 `DirectionsTabView` 밖(`GuideSession.acceptWalkHandoff`)으로 갔다. 경로 행
+   * 시작 버튼은 `session.startBeacon(`(거부 게이트 단일 진입점)으로 형태가 바뀌었다.
+   * `beacon.requestStart(`는 `startBeacon` 내부의 한 겹이라 진입점이 아니다.
    */
-  const ENTRY_CALL = /beacon\.(?:toggle|restart)\(/g;
+  const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
 
   it("안내 세션 진입점 호출이 정확히 6곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {

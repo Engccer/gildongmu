@@ -732,7 +732,24 @@
     "farNotice": "約{distance}先に次の案内があります。{step}",
     "carOffRoute": "経路から外れたため案内を一時停止しました。経路の再検索で再開できます",
     "carRoadNow": "{road}を走行中",
-    "etaStale": "所要時間は{minutes}分前の情報です"
+    "etaStale": "所要時間は{minutes}分前の情報です",
+    "alreadyActive": "すでに案内中です。先に進行中の案内を終了してください。",
+    "minimize": "案内を最小化",
+    "changeDestHere": "ここを目的地に変更",
+    "addWaypointHere": "ここを経由地に追加",
+    "transitDestChangePrepared": "交通機関の経路を検索しています。案内画面で経路を選択してください。",
+    "band": {
+      "return": "案内に戻る",
+      "remaining": "{dest}まで残り{distance}",
+      "starting": "{dest}へ案内中",
+      "arrived": "{dest}に到着",
+      "ended": "{dest}への案内終了",
+      "transitWaiting": "{stop}で{line}の乗車待ち",
+      "transitRiding": "{line}に乗車中、残り{count}駅",
+      "transitRidingNoCount": "{line}に乗車中",
+      "transitArrived": "{dest}に到着",
+      "transitDestChangePending": "目的地を{label}に変更中、経路を選択"
+    }
   },
   "offline": {
     "heading": "オフラインです",

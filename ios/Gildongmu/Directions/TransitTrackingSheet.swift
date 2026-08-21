@@ -19,8 +19,9 @@ struct TransitTrackingSheet: View {
     let detailDest: BeaconDest?
     /// 목적지 전환 확정 통보(스펙 §5) — 후보 선택으로 세션이 실제 교체됐을 때만.
     let onDestinationCommitted: (DirectionsEndpoint) -> Void
+    /// 최소화(N1) — 루트가 `isMinimized`를 올린다.
+    let onMinimize: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     /// 목적지 검색 시트(스펙 §4.1 1단) — 열린 동안 통지·톤 억제(받아쓰기 마이크).
     @State private var changeDestPresented = false
     /// 장소 상세 시트(스펙 §2) — 안내 신호 유지(억제 없음).
@@ -35,6 +36,8 @@ struct TransitTrackingSheet: View {
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
         case stop, advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
+        /// 최소화 버튼(N1) — 띠바에서 돌아온 시트의 첫 착지.
+        case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
     }
@@ -55,6 +58,8 @@ struct TransitTrackingSheet: View {
             List {
                 if model.state != nil {
                     Section {
+                        Button(appLocalized("guide.minimize"), action: onMinimize)
+                            .accessibilityFocused($focusedControl, equals: .minimize)
                         Button(appLocalized("beacon.stop"), action: onStop)
                             .accessibilityFocused($focusedControl, equals: .stop)
                         Button(appLocalized("guide.progressButton")) { model.announceProgress() }
@@ -75,7 +80,15 @@ struct TransitTrackingSheet: View {
                     walkHandoffSection(handoff)
                 }
             }
-            .task { landControlFocus(.stop, proxy: proxy) }
+            // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리, 설계 리뷰 m1).
+            .task {
+                if GuideSession.shared.returnedFromBand == .transit {
+                    GuideSession.shared.returnedFromBand = nil
+                    landControlFocus(.minimize, proxy: proxy)
+                } else {
+                    landControlFocus(.stop, proxy: proxy)
+                }
+            }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
             // 완료 전이(세션 소거 + 핸드오프 제안): 사라진 "다음 구간" 대신 다음
             // 행동(도보 안내 시작)으로 선점(헌장 §5, arrived 전이와 동형 패턴).
@@ -226,7 +239,8 @@ struct TransitTrackingSheet: View {
     }
 
     /// 완료 후 도보 핸드오프(§14.2, 피드백 #6) — A안 제안형. 자동 연결(B안)은
-    /// 지하 역사 GPS 공백으로 기각. 닫기는 presentation 바인딩이 제안을 소거한다.
+    /// 지하 역사 GPS 공백으로 기각. 닫기는 명시 `clearWalkHandoff()` — 스와이프·VO
+    /// escape는 N1부터 최소화라 이 버튼이 유일한 소거 경로다.
     private func walkHandoffSection(_ handoff: TransitWalkHandoff) -> some View {
         Section {
             Text(appLocalized("transitGuide.doneWalk", String(handoff.walkMinutes)))
@@ -235,7 +249,7 @@ struct TransitTrackingSheet: View {
                 Button(appLocalized("transitGuide.walkHandoffStart")) { onWalkHandoff() }
                     .accessibilityFocused($focusedControl, equals: .walkHandoff)
             }
-            Button(appLocalized("actions.close")) { dismiss() }
+            Button(appLocalized("actions.close")) { model.clearWalkHandoff() }
         } header: {
             Text(joinText(appLocalized("beacon.transitHeading"), handoff.destinationLabel))
                 .accessibilityAddTraits(.isHeader)
@@ -440,7 +454,7 @@ struct TransitTrackingSheet: View {
     private func controlExists(_ target: SheetControl) -> Bool {
         let phase = model.state?.phase
         switch target {
-        case .stop: return model.state != nil
+        case .stop, .minimize: return model.state != nil
         case .advance: return phase == .arrived
             || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false))
         case .changeBoarding: return phase == .riding && !model.reboardPickerActive

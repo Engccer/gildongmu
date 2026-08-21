@@ -26,12 +26,15 @@ import SwiftUI
 struct BeaconTrackingSheet: View {
     let model: BeaconModel
     let onStop: () -> Void
+    /// 최소화(N1) — 시트를 내리고 띠바로 세션을 대표시킨다. 루트가 `isMinimized`를 올린다.
+    let onMinimize: () -> Void
     /// 목적지 전환 확정 통보(스펙 2026-08-12 §5) — 탭이 폼 동기화(도착지 필드·무통지
     /// 재조회)를 맡는다. 세션에 반영되지 않은 선택(§3.2)은 통보하지 않는다.
     let onDestinationCommitted: (DirectionsEndpoint) -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @AccessibilityFocusState private var stopFocused: Bool
+    /// 최소화 버튼 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
+    @AccessibilityFocusState private var minimizeFocused: Bool
     /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
     /// 통째로 제거한다).
     @AccessibilityFocusState private var arrivedFocused: Bool
@@ -63,6 +66,9 @@ struct BeaconTrackingSheet: View {
                 arrivalSection(dest: arrival, proxy: proxy)
             } else {
             Section {
+                // 최소화가 종료 앞이다(자주 쓰는 컨트롤을 앞으로 — SR 읽기 순서 비용).
+                Button(appLocalized("guide.minimize"), action: onMinimize)
+                    .accessibilityFocused($minimizeFocused)
                 Button(appLocalized("beacon.stop"), action: onStop)
                     .accessibilityFocused($stopFocused)
                 // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
@@ -175,7 +181,16 @@ struct BeaconTrackingSheet: View {
             }
             }
         }
-        .task { await landStopFocus() }
+        // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리). 플래그는 같은 종류
+        // 시트만 1회 소비한다(설계 리뷰 m1).
+        .task {
+            if GuideSession.shared.returnedFromBand == .beacon {
+                GuideSession.shared.returnedFromBand = nil
+                await landMinimizeFocus()
+            } else {
+                await landStopFocus()
+            }
+        }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
         .sheet(isPresented: $showRouteList) { RouteOverviewSheet(model: model) }
         .sheet(isPresented: $showsSettings, onDismiss: {
@@ -244,8 +259,9 @@ struct BeaconTrackingSheet: View {
 
     /// 종료 화면(위원장 판정 2026-08-11, 중지 종료 확장 2026-08-19). 헤딩이 어느 목적지의
     /// 어떤 종료인지를, 본문 첫 행이 도착 사실(또는 중지 사유)을, 도착이면 주변 확인이
-    /// 다음 행동을 담는다. 닫기는 표준 dismiss — presentation 바인딩이 `clearArrival()`로
-    /// 소거한다(스와이프·VO escape 동일). 도착이 아닌 종료(`.stopped`)는 걸음·칼로리
+    /// 다음 행동을 담는다. 닫기는 명시 `clearArrival()` — 스와이프·VO escape는 N1부터
+    /// 소거가 아니라 최소화라(띠바에 "도착" 요약이 남는다) 이 버튼이 유일한 소거 경로다
+    /// (설계 리뷰 C3·C4: dismiss 콜백이 모델 상태로 뜻을 정하던 경합의 해소). 도착이 아닌 종료(`.stopped`)는 걸음·칼로리
     /// 요약을 위해서만 남는 화면이라 주변 확인이 없고, 요약이 없으면 모델이 곧 소거한다.
     private func arrivalSection(dest: BeaconDest, proxy: ScrollViewProxy) -> some View {
         Section {
@@ -278,7 +294,7 @@ struct BeaconTrackingSheet: View {
                 SurroundingsSceneSection(
                     anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
             }
-            Button(appLocalized("actions.close")) { dismiss() }
+            Button(appLocalized("actions.close")) { model.clearArrival() }
         } header: {
             Text(joinText(endHeading, model.destinationLabel))
                 .accessibilityAddTraits(.isHeader)
@@ -370,6 +386,14 @@ struct BeaconTrackingSheet: View {
         // 먹지 않았을 때만 1회 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
         guard !stopFocused else { return }
         stopFocused = true
+    }
+
+    private func landMinimizeFocus() async {
+        try? await Task.sleep(for: .milliseconds(400))
+        minimizeFocused = true
+        try? await Task.sleep(for: .milliseconds(600))
+        guard !minimizeFocused else { return }
+        minimizeFocused = true
     }
 
 }

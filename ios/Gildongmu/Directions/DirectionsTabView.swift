@@ -517,14 +517,16 @@ struct DirectionsTabView: View {
     @State private var walkExpandedOverride: Bool?
     /// 최단 도보 행 펼침(M3). 대중교통 대안 동형 — 기본 접힘, 새 조회에서 원복.
     @State private var walkShortestExpanded = false
-    @State private var beacon = BeaconModel()
-    @State private var transitGuide = TransitGuideModel()
+    /// 안내 세션은 앱 수명(N1, `GuideSession`) — 이 뷰는 소유하지 않고 빌려 쓴다.
+    /// 탭 전환·`.id` 재생성·시트 닫힘이 세션을 끝내지 않는다. 시트는 루트가 띄운다.
+    private let session = GuideSession.shared
+    private var beacon: BeaconModel { session.beacon }
+    private var transitGuide: TransitGuideModel { session.transit }
     /// 도보 안내 1회성 공지(spec 2026-08-15 §5). 저장은 확인 버튼만 — 시스템 닫기
     /// (드래그·VoiceOver 탈출)는 저장하지 않아 다음 탭 진입에 다시 뜬다.
     @State private var walkNoticePresented = false
     /// 필드 라벨의 수동 위치 분기(LocationBarView 동형 관찰 패턴).
     @State private var manualLocationStore = ManualLocationStore.shared
-    @Environment(\.scenePhase) private var scenePhase
     /// 시트에서 끝점을 확정한 뒤 포커스를 보낼 곳(웹 `focusAfterResolve` 대응).
     /// 실기기 확인(2026-08-02): 시트가 닫히면 VO 커서가 **화면 최상단으로 이탈**한다.
     /// 사용자는 방금 고른 다음 행동 지점(도착지 입력·조회 버튼)까지 다시 스와이프해
@@ -542,11 +544,6 @@ struct DirectionsTabView: View {
     @AccessibilityFocusState private var guideStartFocused: GuideStartButton?
     /// 시트가 닫힐 때 되돌아갈 시작 버튼(방금 떠나온 자리).
     @State private var lastGuideStart: GuideStartButton = .fallback
-    /// 핸드오프 수락 → 비콘 시작의 지연 Task(§14.2) — 화면 이탈 시 취소 대상.
-    @State private var walkHandoffTask: Task<Void, Never>?
-    /// 안내 주도 목적지 변경의 값 결합 1회 소비 플래그(스펙 2026-08-12 §5.2 —
-    /// Boolean 금지: 예상 값과 일치하는 변경 1회만 중지 가드를 통과시킨다).
-    @State private var guidanceInitiatedEndpoint: DirectionsEndpoint?
 
     /// I4 프리필 지점: 장소 상세 "여기까지 길찾기"가 도착지를 넘긴다(파라미터 하나).
     init(prefilledDestination: DirectionsEndpoint? = nil) {
@@ -708,10 +705,10 @@ struct DirectionsTabView: View {
                                 Button(appLocalized("beacon.guideStartCar")) {
                                     lastGuideStart = .car
                                     announceGuideStartIfManualOrigin()
-                                    beacon.toggle(
+                                    session.startBeacon(BeaconModel.StartRequest(
                                         dest: tracked.dest, label: tracked.label, kind: .car,
-                                        accessible: false
-                                    )
+                                        accessible: false, variant: nil, shortestAvailable: false
+                                    ))
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
                             }
@@ -750,62 +747,8 @@ struct DirectionsTabView: View {
                     focusAfterResolve = target
                 }
             }
-            // 추적 중 화면. 표시 여부를 `isTracking`에 직접 묶어 **중지 = 닫힘**을
-            // 1:1로 만든다. 권한 거부처럼 추적이 시작되지 않는 경로는 이 시트가 아예
-            // 뜨지 않고 위 인라인 상태 줄이 사유를 말한다. 도착 종료 화면이 남아 있는
-            // 동안은 세션 없이도 시트를 유지한다(닫기 = 도착 화면 소거 — 대중교통
-            // 핸드오프 제안 §14.2 동형, 위원장 판정 2026-08-11).
-            //
-            // 위 검색 시트와 동시에 뜰 수 없다: 추적 중에는 이 시트가 화면을 덮어
-            // 끝점 버튼에 닿을 수 없고, 시작하려면 검색 시트가 닫혀 있어야 한다.
-            .sheet(isPresented: Binding(
-                get: { beacon.isTracking || beacon.arrivalDest != nil },
-                // 스와이프·VoiceOver escape로 닫는 경로. 중지와 같은 처리를 해야
-                // "닫혔는데 추적은 살아 있는" 좀비 상태가 생기지 않는다. 걸음·칼로리
-                // 종료 화면은 이 안에서 띄우지 않는다(방금 커밋된 dismiss와 같은 바인딩을
-                // 되돌리는 경합) — 아래 onDismiss가 띄운다.
-                set: { presented in
-                    guard !presented else { return }
-                    if beacon.isTracking {
-                        beacon.stopByUser(endScreen: .afterDismiss)
-                    } else {
-                        beacon.clearArrival()
-                    }
-                }
-            ), onDismiss: { beacon.presentPendingEndScreen() }) {
-                // 목적지 이름을 뷰의 `trackedDestination`이 아니라 **모델**에서 읽는다.
-                // 도착지가 "현재 위치"로 바뀌면 뷰 쪽 값은 nil이 되는데 같은 변화가
-                // 추적도 멈추므로, 뷰에서 파생하면 닫히는 길에 빈 시트가 한 프레임 스친다.
-                BeaconTrackingSheet(
-                    model: beacon,
-                    onStop: { beacon.stopByUser(endScreen: .immediate) },
-                    onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
-                )
-            }
-            // 대중교통 안내 시트(B2 §3.2) — 표시=세션, 닫힘=중지(비콘 시트 1:1 동형).
-            // §14.2: 완료 후 도보 핸드오프 제안이 남아 있는 동안은 세션 없이도 시트를
-            // 유지한다(닫기 = 제안 소거).
-            .sheet(isPresented: Binding(
-                get: { transitGuide.isTracking || transitGuide.pendingWalkHandoff != nil },
-                set: { presented in
-                    guard !presented else { return }
-                    if transitGuide.isTracking {
-                        transitGuide.stop(playStopTone: true)
-                    } else {
-                        transitGuide.clearWalkHandoff()
-                    }
-                }
-            )) {
-                TransitTrackingSheet(
-                    model: transitGuide,
-                    onStop: { transitGuide.stop(playStopTone: true) },
-                    onWalkHandoff: trackedDestination.map { tracked in
-                        { startWalkHandoff(tracked: tracked) }
-                    },
-                    detailDest: trackedDestination?.dest,
-                    onDestinationCommitted: { syncFormAfterGuidanceChange($0) }
-                )
-            }
+            // 안내 시트(비콘·대중교통)는 여기 없다 — 세션이 앱 수명이라 루트
+            // `GildongmuApp`이 `.sheet(item:)` 하나로 띄운다(N1 spec §2.2).
             // 도보 안내 정식 출시 1회성 공지(spec §5). 다른 두 시트와 달리 세션 상태에
             // 묶이지 않는다 — 첫 진입에는 어느 시트도 떠 있지 않아 경합이 없다.
             // ⚠ `interactiveDismissDisabled`를 붙이지 않는다(§5.1) — 저장이 확인
@@ -816,31 +759,11 @@ struct DirectionsTabView: View {
                     walkNoticePresented = false
                 }
             }
-            .onChange(of: transitGuide.isTracking) { _, tracking in
-                // 핸드오프 제안이 시트를 이어받는 전이(§14.2)에선 배경 시작 버튼으로
-                // 포커스를 되돌리지 않는다 — 시트 쪽 onChange가 제안 버튼에 선점한다.
-                guard !tracking, transitGuide.pendingWalkHandoff == nil else { return }
-                landBeaconStartFocus()
-            }
-            // 핸드오프 제안 소거로 시트가 닫히는 경로(§14.2 닫기·스와이프)는 isTracking이
-            // 이미 false라 위 onChange가 재발화하지 않는다 — 이 전이가 유일한 포커스
-            // 복귀 트리거다(독립 리뷰 MAJOR). 수락 경로에서도 발화하지만 600ms 뒤
-            // 비콘 시트가 덮으므로 무해하다.
-            .onChange(of: transitGuide.pendingWalkHandoff) { previous, handoff in
-                guard previous != nil, handoff == nil else { return }
-                landBeaconStartFocus()
-            }
-            // 시트가 닫히면 시작 버튼으로 돌려보낸다(방금 떠나온 자리). 도착 전이는
-            // 시트가 도착 종료 화면으로 계속 떠 있으므로 제외 — 그 화면이 닫힐 때
-            // (아래 arrivalDest 소거 onChange) 돌려보낸다(transit 핸드오프 동형).
-            // 스와이프 종료 뒤 요약 화면이 다시 뜰 예정이면(`hasPendingEndScreen`) 여기서도
-            // 돌려보내지 않는다 — 재-present의 착지와 겹친다. 그 화면이 닫힐 때 아래가 맡는다.
-            .onChange(of: beacon.isTracking) { _, tracking in
-                guard !tracking, beacon.arrivalDest == nil, !beacon.hasPendingEndScreen else { return }
-                landBeaconStartFocus()
-            }
-            .onChange(of: beacon.arrivalDest) { previous, arrival in
-                guard previous != nil, arrival == nil else { return }
+            // 안내 화면이 사라지면(중지·잔여 화면 닫기) 시작 버튼으로 돌려보낸다(방금
+            // 떠나온 자리). 최소화(띠바)는 화면이 남아 있으므로 대상이 아니다 — 그때는
+            // 루트가 띠바에 착지시킨다. 이 탭이 보이지 않으면 대입은 no-op이다.
+            .onChange(of: session.hasScreen) { _, has in
+                guard !has else { return }
                 landBeaconStartFocus()
             }
             // 완료 시 첫 성공 수단 heading으로 1회 포커스(성공 0건이면 nil 대입 = 이동 없음).
@@ -862,38 +785,32 @@ struct DirectionsTabView: View {
             // 탭 전환·epoch 재생성 시 진행 조회 폐기(늦은 응답이 초기화 화면을 되채우는 경합 차단).
             // 전경 전용 계약의 구현부. ⚠ 행 수준이 아니라 **화면 수준**이어야 한다 —
             // List는 lazy라 행에 붙이면 도보 안내를 읽으려 스크롤하는 순간 추적이 죽는다.
+            // ⚠ 세션은 여기서 끝내지 않는다(N1) — 탭 전환은 안내 중 정상 행동이다.
+            // 검색 시트 억제는 시트가 열린 채 탭 트리가 재생성되면 영영 남으므로 해제
+            // (설계 리뷰 M4).
             .onDisappear {
                 model.cancel()
-                walkHandoffTask?.cancel() // 지연 창의 좀비 세션 시작 차단(§14.2)
-                walkHandoffTask = nil
-                beacon.teardown()
-                transitGuide.teardown()
+                beacon.outputSuppressed = false
+                transitGuide.outputSuppressed = false
             }
             // 검색 시트가 뜬 동안 톤과 통지를 모두 죽인다. 시트에 받아쓰기가 있고
             // 헌장 §6의 불변식은 "녹음 중 SR 발화 0"인데, polite 통지는 VoiceOver가
             // 실제로 말하는 음성이라 톤보다 전사 오염 위험이 크다. 추적은 유지한다.
+            // 두 모델 모두 억제한다(설계 리뷰 C9 — 최소화된 대중교통 안내도 이 탭의
+            // 음성 검색 중엔 조용해야 한다).
             .onChange(of: searchTarget) {
                 beacon.outputSuppressed = searchTarget != nil
+                transitGuide.outputSuppressed = searchTarget != nil
                 guard searchTarget == nil, let resolved = focusAfterResolve else { return }
                 focusAfterResolve = nil
                 landFocusAfterResolve(from: resolved)
             }
-            // 목적지가 바뀌면 옛 목적지를 추적하는 창이 생긴다. resultsRevision이 아니라
-            // 좌표 변화로 잡는 이유는 setEndpoint가 revision을 올리지 않기 때문이다.
-            // 안내 주도 변경(스펙 2026-08-12 §5.2)만 예외: 예상 값과 일치하는 1회만
-            // 중지를 생략하고 플래그를 소비한다(불일치·잔류는 종전대로 양쪽 중지).
-            .onChange(of: model.endpoint(for: .to)) { _, newValue in
-                if let expected = guidanceInitiatedEndpoint, expected == newValue {
-                    guidanceInitiatedEndpoint = nil
-                    return
-                }
-                guidanceInitiatedEndpoint = nil
-                beacon.stopBecauseDestinationChanged()
-                transitGuide.stopBecauseDestinationChanged()
-            }
-            .onChange(of: scenePhase) {
-                beacon.handleScenePhaseChange(to: scenePhase)
-                transitGuide.handleScenePhaseChange(to: scenePhase)
+            // 폼 도착지 변경은 세션을 멈추지 않는다(N1 — 경로 조회는 안내 중에도 허용).
+            // 세션이 자기 목적지를 들고 있어 폼이 바뀌어도 옛 목적지 추적 창은 없다.
+            // 안내 주도 목적지 변경은 루트 시트가 스토어로 보내고 여기서 폼에 반영한다.
+            .onChange(of: GuideFormSyncStore.shared.pending) { _, pending in
+                guard pending != nil else { return }
+                consumeGuideFormSync()
             }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task {
@@ -904,6 +821,7 @@ struct DirectionsTabView: View {
                 if !WalkGuideNotice.confirmed, AppLanguage.dataLocale == "ko" {
                     walkNoticePresented = true
                 }
+                consumeGuideFormSync()
                 await model.loadCurrentAddressIfAuthorized()
             }
         }
@@ -922,11 +840,11 @@ struct DirectionsTabView: View {
     /// 안내 주도 목적지 변경의 폼 동기화(스펙 2026-08-12 §5): 출발지=현재 위치(안내
     /// 세션이 실제로 그렇다 — 재조회 결과의 출발점 의미 일치, 리뷰 M1), 도착지=새
     /// 목적지(최근 목록 기록은 setEndpoint 기존 경로), 무통지 재조회. 같은 목적지
-    /// 재선택은 전부 생략한다(§3.2 — 플래그가 남을 경로 원천 차단).
-    private func syncFormAfterGuidanceChange(_ endpoint: DirectionsEndpoint) {
+    /// 재선택은 전부 생략한다. 탭이 안 보이는 동안 쌓인 값은 `.task`가 소비한다.
+    private func consumeGuideFormSync() {
+        guard let endpoint = GuideFormSyncStore.shared.take() else { return }
         guard endpoint != model.endpoint(for: .to) else { return }
         if model.endpoint(for: .from) != .current { model.setEndpoint(.current, for: .from) }
-        guidanceInitiatedEndpoint = endpoint
         model.setEndpoint(endpoint, for: .to)
         model.runQuery(silently: true)
     }
@@ -1011,25 +929,12 @@ struct DirectionsTabView: View {
     /// ⚠ 지연 발화는 실제 부수효과(GPS 추적 시작)라 no-op 대입류와 달리 취소가
     /// 필수다 — 지연 창에 화면을 떠나면 보이지 않는 곳에서 좀비 세션이 시작된다
     /// (독립 리뷰 MAJOR). onDisappear가 이 Task를 취소한다.
-    private func startWalkHandoff(tracked: (label: String, dest: BeaconDest)) {
-        transitGuide.clearWalkHandoff()
-        walkHandoffTask?.cancel()
-        walkHandoffTask = Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            beacon.toggle(
-                dest: tracked.dest, label: tracked.label, kind: .walk,
-                accessible: model.stepFreeEnabled
-            )
-        }
-    }
-
     /// 추적 시트가 닫힌 뒤 시작 버튼 착지. 지연·검증·1회 재시도는 위
     /// `landFocusAfterResolve`와 같은 패턴이다(시트 dismiss 애니메이션이 끝나며
     /// 시스템이 커서를 최상단으로 되돌리므로 그보다 늦게 대입해야 이긴다).
     ///
-    /// 화면을 떠나며 멈춘 경우(`onDisappear` → `teardown`)에도 불리지만, 사라진
-    /// 뷰에 대한 대입은 no-op이라 따로 가르지 않는다.
+    /// 다른 탭에서 세션이 끝나도 불리지만, 보이지 않는 뷰에 대한 대입은 no-op이라
+    /// 따로 가르지 않는다.
     private func landBeaconStartFocus() {
         // 도보 시작 버튼이 경로 행 disclosure 안으로 이동(M3)해, 접힌 행 안의 버튼은
         // AX 트리에 없어 대입이 조용히 되돌려진다(오프스크린 컬링과 같은 기제) —
@@ -1125,7 +1030,7 @@ struct DirectionsTabView: View {
     ///
     /// `.high`인 이유: 시작 즉시 추적 시트가 떠 포커스가 그리로 옮겨가고, 기본 우선순위
     /// 통지는 그 착지 낭독에 잠식돼 무발화된다(CLAUDE.md "iOS 통지 우선순위" 판별선 —
-    /// 이 문장은 착지 라벨로 대체될 수 없다). 대중교통→도보 핸드오프(`startWalkHandoff`)는
+    /// 이 문장은 착지 라벨로 대체될 수 없다). 대중교통→도보 핸드오프(`GuideSession.acceptWalkHandoff`)는
     /// 대상이 아니다 — 사용자 활성화가 아니고 그 세션은 이미 실좌표 위에서 돌고 있었다.
     ///
     /// ⚠ `beacon.toggle`은 추적 중이면 **정지**다(간략 폴백 버튼은 두 얼굴 — 추적 중엔
@@ -1280,8 +1185,9 @@ struct DirectionsTabView: View {
                     if altTransitGuideStartable(entry.route), let tracked = trackedDestination {
                         Button(appLocalized("beacon.guideStartTransitAlt", entry.name)) {
                             lastGuideStart = .transitAlt(entry.route.routeKey)
-                            transitGuide.start(
-                                transitRoute: entry.route, destinationLabel: tracked.label
+                            session.startTransit(
+                                route: entry.route, destinationLabel: tracked.label,
+                                dest: tracked.dest, accessible: model.stepFreeEnabled
                             )
                         }
                         .accessibilityFocused(
@@ -1315,11 +1221,11 @@ struct DirectionsTabView: View {
                     Button(appLocalized("beacon.guideStartWalk")) {
                         lastGuideStart = .walk
                         announceGuideStartIfManualOrigin()
-                        beacon.toggle(
+                        session.startBeacon(BeaconModel.StartRequest(
                             dest: tracked.dest, label: tracked.label, kind: .walk,
-                            accessible: model.stepFreeEnabled,
+                            accessible: model.stepFreeEnabled, variant: nil,
                             shortestAvailable: model.walkShortest != nil
-                        )
+                        ))
                     }
                     .accessibilityFocused($guideStartFocused, equals: .walk)
                 }
@@ -1341,10 +1247,11 @@ struct DirectionsTabView: View {
                         Button(appLocalized("beacon.guideStartWalkShortest")) {
                             lastGuideStart = .walkShortest
                             announceGuideStartIfManualOrigin()
-                            beacon.toggle(
+                            session.startBeacon(BeaconModel.StartRequest(
                                 dest: tracked.dest, label: tracked.label, kind: .walk,
-                                accessible: model.stepFreeEnabled, variant: .shortest
-                            )
+                                accessible: model.stepFreeEnabled, variant: .shortest,
+                                shortestAvailable: false
+                            ))
                         }
                         .accessibilityFocused($guideStartFocused, equals: .walkShortest)
                     }

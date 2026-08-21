@@ -26,6 +26,12 @@ final class TransitGuideModel {
     private(set) var state: TransitGuideState?
     private(set) var route: TransitGuideRoute?
     private(set) var destinationLabel = ""
+    /// 목적지 좌표(N1) — 세션이 탭과 분리되면서 도보 핸드오프·장소 상세가 탭 폼이
+    /// 아니라 여기서 읽는다. `stop()`이 비우지 않는다(핸드오프 제안이 세션 뒤에 읽는다).
+    private(set) var dest: BeaconDest?
+    /// 세션 시작 시점의 계단 회피 여부 — 도보 핸드오프가 승계한다(세션 내내 유효,
+    /// `BeaconModel.begin` 계약 동형). ⚠ 기본값 없음(안전 인자).
+    private(set) var accessible = false
     /// 대기 목록 스냅숏(§5.1): 현재 폴 항목 + 소실 항목(3분 유지, 관측 경과 분).
     private(set) var waitingLive: [TransitTrackItem] = []
     private(set) var waitingDeparted: [(item: TransitTrackItem, minutes: Int)] = []
@@ -82,12 +88,25 @@ final class TransitGuideModel {
 
     // MARK: - 세션 수명
 
-    func start(transitRoute: TransitRoute, destinationLabel: String) {
-        guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return }
+    /// 시작. 거부 판정(N1 §2.4)이 route 변환보다 먼저다(설계 리뷰 m2 — 변환 실패가
+    /// 먼저 조용히 반환하면 요구된 거부 통지조차 없다).
+    func start(transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Bool) {
+        guard !GuideSession.shared.isActive,
+              let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() })
+        else {
+            announce(appLocalized("guide.alreadyActive"), highPriority: true)
+            return
+        }
+        guard let guideRoute = buildTransitGuideRoute(transitRoute) else {
+            GuideSession.shared.coordinator.release(token)
+            return
+        }
         pendingWalkHandoff = nil
-        sessionToken = GuideSessionCoordinator.shared.claim { [weak self] in self?.stop() }
+        sessionToken = token
         self.route = guideRoute
         self.destinationLabel = destinationLabel
+        self.dest = dest
+        self.accessible = accessible
         seq = 0
         retained = [:]
         tagoResolved = [:]
@@ -108,7 +127,7 @@ final class TransitGuideModel {
     func stop(playStopTone: Bool = false) {
         if let token = sessionToken {
             sessionToken = nil
-            GuideSessionCoordinator.shared.release(token)
+            GuideSession.shared.coordinator.release(token)
         }
         pollTask?.cancel()
         pollTask = nil
@@ -137,14 +156,6 @@ final class TransitGuideModel {
     /// 핸드오프 제안 소거(§14.2) — 시트 닫기·수락 시 호출(세션은 이미 종료 상태).
     func clearWalkHandoff() {
         pendingWalkHandoff = nil
-    }
-
-    /// 목적지 변경으로 세션 채널이 무의미해지는 전이(§3.3 — 명시 중지 + 통지).
-    func stopBecauseDestinationChanged() {
-        pendingWalkHandoff = nil // 옛 목적지의 핸드오프 제안도 함께 무효(무통지 소거)
-        guard isTracking else { return }
-        stop()
-        announce(appLocalized("ios.beacon.stopped"))
     }
 
     func teardown() {
@@ -360,7 +371,7 @@ final class TransitGuideModel {
             Task { await fetchDestChangeCandidates(token: token) }
             return false
         }
-        guard changeRoute(transitRoute: route, destinationLabel: pending.label) else { return false }
+        guard changeRoute(transitRoute: route, destinationLabel: pending.label, dest: pending.dest) else { return false }
         pendingDestChange = nil
         return true
     }
@@ -375,13 +386,14 @@ final class TransitGuideModel {
     /// `Task.isCancelled`·`self.state` 재조회 가드가 옛 응답 커밋을 이미 막는다
     /// (별도 세대 카운터 불요, 스펙 "최소 보강"). `state`는 이 동기 함수 안에서만
     /// 갈아끼워 nil을 스치지 않는다(시트 presentation이 `state != nil`에 묶여 있다).
-    private func changeRoute(transitRoute: TransitRoute, destinationLabel: String) -> Bool {
+    private func changeRoute(transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest) -> Bool {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
         pollTask?.cancel()
         pollTask = nil
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
         self.route = guideRoute
         self.destinationLabel = destinationLabel
+        self.dest = dest
         seq = 0
         retained = [:]
         tagoResolved = [:]
