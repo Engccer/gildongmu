@@ -182,11 +182,7 @@
       "kidsEmpty": "周辺に子どもの遊び場がありません",
       "subwayEmpty": "周辺に地下鉄駅がありません",
       "subwayEmptyNearest": "周辺に地下鉄駅がありません。最寄りは%@、%@先です",
-      "whereAmIReady": "現在地を確認しました",
       "whereAmIChat": "現在地について質問する",
-      "whereAmIAsOf": "現在地 {time}時点",
-      "whereAmIFailed": "現在地の照会に失敗しました",
-      "whereAmIEmpty": "現在地の情報が見つかりませんでした",
       "conditionsReady": "天気と大気質の情報を取得しました",
       "conditionsPartial": "一部の情報を取得できませんでした",
       "skyLine": "空、{value}",
@@ -202,7 +198,6 @@
       "skyPartly": "晴れ時々くもり",
       "rainSnow": "雨または雪",
       "airStationLine": "{name}測定所、{distance}km",
-      "whereAmIServerFailed": "現在地の情報を取得できませんでした",
       "eventsEmpty": "近くで今日開催中の文化イベントはありません",
       "unitEvent": "件",
       "subwayClosed": "運行時間外です。始発 %@",
@@ -214,7 +209,8 @@
       "aroundHereManualNoPlace": "指定した位置基準",
       "aroundLoaded": "周辺を確認しました",
       "aroundLoadedManual": "指定した位置の周辺を確認しました",
-      "aroundPlacesHeading": "周辺の店舗と施設"
+      "aroundPlacesHeading": "周辺の店舗と施設",
+      "aroundPlacesFailed": "周辺の店舗と施設を取得できませんでした"
     },
     "settings": {
       "title": "設定",

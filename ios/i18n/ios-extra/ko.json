@@ -182,11 +182,7 @@
       "kidsEmpty": "주변에 아이 놀 곳이 없습니다",
       "subwayEmpty": "주변에 지하철역이 없습니다",
       "subwayEmptyNearest": "주변에 지하철역이 없습니다. 가장 가까운 역은 %@, %@ 거리입니다",
-      "whereAmIReady": "현재 위치를 확인했습니다",
       "whereAmIChat": "내 현재 위치에 관해 물어보기",
-      "whereAmIAsOf": "현재 위치 {time} 기준",
-      "whereAmIFailed": "현재 위치 조회에 실패했습니다",
-      "whereAmIEmpty": "현재 위치 정보를 찾지 못했습니다",
       "conditionsReady": "날씨와 공기질 정보를 불러왔습니다",
       "conditionsPartial": "일부 정보를 가져오지 못했습니다",
       "skyLine": "하늘, {value}",
@@ -202,7 +198,6 @@
       "skyPartly": "구름 조금",
       "rainSnow": "비 또는 눈",
       "airStationLine": "{name} 측정소, {distance}km",
-      "whereAmIServerFailed": "현재 위치 정보를 불러오지 못했습니다",
       "eventsEmpty": "주변에 오늘 진행 중인 문화행사가 없습니다",
       "unitEvent": "건",
       "subwayClosed": "운행 시간이 아닙니다. 첫차 %@",
@@ -214,7 +209,8 @@
       "aroundHereManualNoPlace": "지정한 위치 기준",
       "aroundLoaded": "둘러보기를 확인했습니다",
       "aroundLoadedManual": "지정한 위치 주변을 확인했습니다",
-      "aroundPlacesHeading": "주변 가게와 시설"
+      "aroundPlacesHeading": "주변 가게와 시설",
+      "aroundPlacesFailed": "주변 가게와 시설을 가져오지 못했습니다"
     },
     "settings": {
       "title": "설정",

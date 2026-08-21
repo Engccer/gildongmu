@@ -97,6 +97,23 @@ public func barrierFreePlaceToPlace(_ b: BarrierFreePlace) -> Place {
         distanceMeters: Double(b.distanceMeters))
 }
 
+/// 둘러보기(M4) "이 위치에 관해 물어보기" 앵커 — whereAmIToPlace 동형(좌표 앵커, 빈 category).
+/// name은 위치 문장 재료(행정동 + 도로명), 없으면 "현재 위치" 폴백.
+public func overviewAnchorPlace(_ overview: NearbyOverview, lat: Double, lng: Double, lang: String) -> Place {
+    Place(
+        id: "where-am-i-\(String(format: "%.5f", lat))-\(String(format: "%.5f", lng))",
+        name: firstNonEmpty(overview.place) ?? kitLocalized("whereAmI.ready", lang: lang),
+        category: "",
+        address: "",
+        roadAddress: "",
+        englishAddress: nil,
+        lat: lat,
+        lng: lng,
+        phone: nil,
+        link: nil,
+        distanceMeters: nil)
+}
+
 /// name은 좌표 앵커 식별 문자열 — 행정동 > 도로명 > 지번 > "현재 위치" 순 폴백
 /// (빈 문자열도 없는 값으로 취급, 웹 `||` 폴백 동형). lang은 폴백 라벨 언어.
 public func whereAmIToPlace(_ data: WhereAmIData, lat: Double, lng: Double, lang: String) -> Place {
