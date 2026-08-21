@@ -33,6 +33,14 @@ const walkArgs = {
   },
 };
 
+/** 경유지 1개(N4). transit에도 받는다 — 서버가 `unsupported: "waypoint"`로 정직하게 답한다(CLI가 먼저 막으면 그 문장이 사라진다). */
+const viaArgs = {
+  via: {
+    type: "string" as const,
+    description: "경유지 1개(장소명·주소 또는 '위도,경도'). 도보·자동차만 경유하고 대중교통은 미지원 안내",
+  },
+};
+
 function makeRoute(verb: "car" | "transit" | "walk") {
   return defineCommand({
     meta: { name: verb, description: ROUTE_DESCRIPTION[verb] },
@@ -40,6 +48,7 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       origin: { type: "positional", description: "출발지(장소명·주소 또는 '위도,경도')", required: true },
       dest: { type: "positional", description: "도착지(장소명·주소 또는 '위도,경도')", required: true },
       ...sharedArgs,
+      ...viaArgs,
       ...(verb === "walk" ? walkArgs : {}),
     },
     async run({ args }) {
@@ -49,9 +58,13 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       if (verb !== "walk" && accessible !== undefined) {
         fail(`--accessible은 route walk에서만 지원합니다(${verb} 미지원).`, ExitCode.Usage);
       }
-      let origin: string, dest: string;
+      let origin: string, dest: string, via: string | undefined;
       try {
-        [origin, dest] = await Promise.all([toCoordString(args.origin), toCoordString(args.dest)]);
+        [origin, dest, via] = await Promise.all([
+          toCoordString(args.origin),
+          toCoordString(args.dest),
+          args.via === undefined ? undefined : toCoordString(String(args.via)),
+        ]);
       } catch (err) {
         // ApiError(네트워크 7·서버 오류 1 등)는 고유 exit 코드 보존, 지오코딩 0건(일반 Error)만 Usage(2).
         if (err instanceof ApiError) fail(err.message, err.exitCode);
@@ -63,6 +76,7 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       // 값은 그대로 전달한다 — "true"/"false" 외는 라우트가 400으로 거절해야 하고,
       // CLI가 정규화하면 오타("yes")가 조용히 기본 모드(계단 포함)로 강등된다.
       if (verb === "walk" && accessible !== undefined) extra.accessible = String(accessible);
+      if (via !== undefined) extra.via = via;
       await runEndpoint(ROUTE_CATALOG_NAME[verb], { origin, dest, ...extra }, args.output);
     },
   });
