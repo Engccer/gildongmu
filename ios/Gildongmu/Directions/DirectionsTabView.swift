@@ -702,7 +702,7 @@ struct DirectionsTabView: View {
                                 announceGuideStartIfManualOrigin()
                                 beacon.toggle(
                                     dest: tracked.dest, label: tracked.label, kind: .walk,
-                                    accessible: model.stepFreeEnabled
+                                    accessible: model.stepFreeEnabled, waypoint: sessionWaypoint
                                 )
                             }
                             .accessibilityFocused($guideStartFocused, equals: .fallback)
@@ -767,7 +767,8 @@ struct DirectionsTabView: View {
                                     announceGuideStartIfManualOrigin()
                                     session.startBeacon(BeaconModel.StartRequest(
                                         dest: tracked.dest, label: tracked.label, kind: .car,
-                                        accessible: false, variant: nil, shortestAvailable: false
+                                        accessible: false, variant: nil, shortestAvailable: false,
+                                        waypoint: sessionWaypoint
                                     ))
                                 }
                                 .accessibilityFocused($guideStartFocused, equals: .car)
@@ -1140,6 +1141,14 @@ struct DirectionsTabView: View {
         return (label, BeaconDest(lat: lat, lng: lng))
     }
 
+    /// 안내 세션에 넘길 경유지(N4) — 폼의 경유지 그대로(경로 조회와 같은 좌표·라벨).
+    /// 안내 시작 버튼 4곳이 전부 이 값을 쓴다(한 곳이 빠지면 경유지 없는 안내가 조용히
+    /// 시작된다 — `StartRequest.waypoint`에 기본값이 없는 이유).
+    private var sessionWaypoint: BeaconModel.Waypoint? {
+        guard case .place(let label, let lat, let lng) = model.via else { return nil }
+        return BeaconModel.Waypoint(dest: BeaconDest(lat: lat, lng: lng), label: label)
+    }
+
     /// 마지막 도보 구간이 가리킬 목적지 이름(spec §4.3). "현재 위치"는 좌표이지
     /// 장소 이름이 아니라 nil이고, 그때 표시 계층이 "목적지까지"라는 구간 의미로
     /// 떨어진다(이름 부재와 구간 의미 부재는 다른 층이다).
@@ -1297,7 +1306,8 @@ struct DirectionsTabView: View {
                         session.startBeacon(BeaconModel.StartRequest(
                             dest: tracked.dest, label: tracked.label, kind: .walk,
                             accessible: model.stepFreeEnabled, variant: nil,
-                            shortestAvailable: model.walkShortest != nil
+                            shortestAvailable: model.walkShortest != nil,
+                            waypoint: sessionWaypoint
                         ))
                     }
                     .accessibilityFocused($guideStartFocused, equals: .walk)
@@ -1324,7 +1334,7 @@ struct DirectionsTabView: View {
                             session.startBeacon(BeaconModel.StartRequest(
                                 dest: tracked.dest, label: tracked.label, kind: .walk,
                                 accessible: model.stepFreeEnabled, variant: .shortest,
-                                shortestAvailable: false
+                                shortestAvailable: false, waypoint: sessionWaypoint
                             ))
                         }
                         .accessibilityFocused($guideStartFocused, equals: .walkShortest)

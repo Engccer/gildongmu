@@ -750,7 +750,8 @@
       "transitArrived": "Arrived at {dest}",
       "transitDestChangePending": "Changing destination to {label}, choose a route",
       "transitDestChangeFailed": "Destination change to {label} failed, check the guidance screen"
-    }
+    },
+    "changeWaypointHere": "Change waypoint to here"
   },
   "offline": {
     "heading": "You are offline",

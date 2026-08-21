@@ -427,6 +427,10 @@ private struct RouteOverviewSheet: View {
                     // 깬다. 말미 닫기는 유지(전 구간을 훑고 난 자리에서 되스크롤 방지).
                     Button(appLocalized("actions.close")) { dismiss() }
                     ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
+                        // 경유지 구획 행(N4): 번호 없는 평문, 스텝 번호는 원본 인덱스 유지.
+                        if let row = model.routeWaypointRow, row.stepIndex == i {
+                            Text(row.text)
+                        }
                         if i == model.currentStepIndex {
                             distanceText(appLocalized(
                                 "ios.guide.routeListCurrent", String(i + 1), desc

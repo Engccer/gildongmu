@@ -282,7 +282,11 @@
       "destMenuDetail": "場所の詳細を見る",
       "destMenuChange": "目的地を変更",
       "destChanged": "新しい目的地 {name}。",
-      "destChangedFetching": "新しいルートを検索しています。"
+      "destChangedFetching": "新しいルートを検索しています。",
+      "waypointChange": "{label}、経由地を変更",
+      "waypointSet": "経由地 {label}、経路を再検索します",
+      "waypointKept": "経由地 {label} はそのままです",
+      "waypointDropped": "経由地 {label} を通る経路が見つからないため、経由地なしで案内します"
     },
     "transitGuide": {
       "destChangeHeading": "新しいルートを選択、{name}",

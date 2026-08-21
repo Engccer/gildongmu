@@ -750,7 +750,8 @@
       "transitArrived": "Arrivato a {dest}",
       "transitDestChangePending": "Cambio destinazione verso {label}, scegli un percorso",
       "transitDestChangeFailed": "Cambio destinazione verso {label} non riuscito, controlla la guida"
-    }
+    },
+    "changeWaypointHere": "Cambia il punto intermedio in qui"
   },
   "offline": {
     "heading": "Sei offline",
