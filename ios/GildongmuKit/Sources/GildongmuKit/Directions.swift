@@ -56,9 +56,11 @@ public enum DirectionsOrder {
     }
 }
 
-/// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated·outOfCoverage를 더한 5-state:
-/// 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트(gated, 섹션 자체 미노출)
-/// ≠ 서비스 지역 밖(outOfCoverage, 개별 렌더 아니라 화면 전체를 전환하는 신호).
+/// 수단 하나의 조회 결과. 웹 ModeOutcome 3-state에 gated·outOfCoverage·unsupportedWaypoint를
+/// 더한 6-state: 성공 ≠ 경로 없음(empty) ≠ 조회 실패(error) ≠ 서버 게이트(gated, 섹션 자체
+/// 미노출) ≠ 서비스 지역 밖(outOfCoverage, 화면 전체를 전환하는 신호) ≠ 경유지 미지원
+/// (unsupportedWaypoint — 대중교통에 경유지가 있을 때, upstream 미호출. 섹션은 남아 사유를
+/// 말한다. `result:null`로 뭉개면 "경로 없음"으로 낭독돼 거짓, 서버 spec 2026-08-22 §2.1).
 /// 웹은 서버가 게이트 플래그를 주입해 미노출을 선결정하지만, iOS는 호출 후 상태 코드로 안다
 /// (게이트 코드는 수단마다 다르다, classifyFailure 참고).
 public enum DirectionsModeOutcome: Sendable {
@@ -69,11 +71,12 @@ public enum DirectionsModeOutcome: Sendable {
     case error
     case gated
     case outOfCoverage
+    case unsupportedWaypoint
 
     public var isSuccess: Bool {
         switch self {
         case .transit, .walk, .car: true
-        case .empty, .error, .gated, .outOfCoverage: false
+        case .empty, .error, .gated, .outOfCoverage, .unsupportedWaypoint: false
         }
     }
 

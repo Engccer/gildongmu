@@ -14,6 +14,8 @@ private func wonText(_ amount: Int) -> String {
 /// 자동차 결과 행들(요약 1행+턴바이턴). 수단 heading은 소비 화면(길찾기 탭)이 소유.
 struct CarRouteRows: View {
     let briefing: CarRouteBriefing
+    /// 경유지 라벨(N4) — `WalkRouteRows.waypointLabel` 동형.
+    var waypointLabel: String? = nil
 
     var body: some View {
         // 통행료 0원은 생략(잉여)
@@ -22,7 +24,10 @@ struct CarRouteRows: View {
             appLocalized("ios.route.durationMinutes", String(briefing.durationSeconds / 60)),
             appLocalized("ios.route.taxiFare", wonText(briefing.taxiFare)),
             briefing.tollFare > 0 ? appLocalized("ios.route.tollFare", wonText(briefing.tollFare)) : nil))
-        ForEach(Array(briefing.guides.enumerated()), id: \.offset) { _, guide in
+        ForEach(Array(briefing.guides.enumerated()), id: \.offset) { index, guide in
+            if let waypoint = briefing.waypoint, index == waypoint.stepIndex, let waypointLabel {
+                Text(appLocalized("directions.viaArrived", waypointLabel))
+            }
             // guidance(완성 안내문)가 정본, 비면 name 폴백, 둘 다 비면 행 생략
             let text = guide.guidance.isEmpty ? guide.name : guide.guidance
             if !text.isEmpty {
@@ -180,12 +185,19 @@ struct WalkRouteRows: View {
     /// 응답 스텝 0번에 삽입한 같은 문장을 본문에서 생략한다 — 라벨·본문 이중 낭독
     /// 방지(a11y 감사 2026-08-12). 번호는 원본 인덱스 유지(웹·CLI와 같은 값 계약).
     var omitNoticeStep = false
+    /// 경유지 라벨(N4). `briefing.waypoint.stepIndex` 앞에 "경유지 {label} 도착" 구획 행을
+    /// 그린다(웹 `StepList`·CLI와 같은 구획 문장, 번호 없는 평문 — 스텝 번호는 원본 인덱스).
+    /// 서버는 라벨을 모르므로 호출부(폼 상태)가 준다. nil이면 행을 그리지 않는다.
+    var waypointLabel: String? = nil
 
     var body: some View {
         if includeSummary {
             distanceText(walkSummaryText(briefing))
         }
         ForEach(Array(briefing.steps.enumerated()), id: \.offset) { index, step in
+            if let waypoint = briefing.waypoint, index == waypoint.stepIndex, let waypointLabel {
+                Text(appLocalized("directions.viaArrived", waypointLabel))
+            }
             if !step.description.isEmpty,
                !(omitNoticeStep && index == 0
                    && step.description == briefing.stepFreeNotice) {
