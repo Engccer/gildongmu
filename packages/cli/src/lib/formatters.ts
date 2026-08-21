@@ -352,6 +352,19 @@ interface WhereAmIItem {
   landmarks: SurroundingPlaceItem[];
 }
 
+/** `/api/nearby/overview` 응답(웹 `src/lib/nearby-overview.ts` 미러). */
+interface OverviewPlaceItem { name: string; distanceMeters: number; bearing: Bearing }
+type OverviewBusStopsItem =
+  | { state: "ok"; count: number; nearest: OverviewPlaceItem[] }
+  | { state: "none" } | { state: "uncovered" } | { state: "failed" };
+type OverviewBulletItem =
+  | { kind: "transit"; state: "ok"; station: { name: string; line?: string; bearing: Bearing; distanceMeters: number } | null; busStops: OverviewBusStopsItem | null }
+  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "ok"; count: number; countCapped: boolean; nearest: OverviewPlaceItem[] }
+  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "none" }
+  | { kind: "events"; state: "unavailable"; reason: "seoulOnly" }
+  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "failed" };
+interface NearbyOverviewItem { place: string | null; radiusMeters: number; bullets: OverviewBulletItem[] }
+
 interface WebSearchResultItem {
   title: string;
   url: string;
@@ -941,6 +954,49 @@ function formatWhereAmI(body: { data: WhereAmIItem | null }): string[] {
   return lines.length > 0 ? lines : ["현재 위치 정보를 확인할 수 없습니다."];
 }
 
+const OVERVIEW_LABEL_KO = { food: "식당과 카페", kids: "아이 놀 곳", events: "문화 행사", barrierFree: "무장애 관광지" } as const;
+
+function overviewNearest(items: OverviewPlaceItem[]): string {
+  return `가장 가까운 곳은 ${items.map((p) => `${COMPASS_KO[p.bearing]}쪽 ${dist(p.distanceMeters)} ${p.name}`).join(", ")}`;
+}
+
+/**
+ * 한눈에 보기 — 불릿당 한 줄, 상태별 문장이 전부 다르다(3-state 불변식: 0건 ≠ 정보 없음 ≠ 실패).
+ * Kit `buildOverviewLines`와 같은 구조(ko 고정).
+ */
+function formatNearbyOverview(body: { data: NearbyOverviewItem | null }): string[] {
+  const d = body.data;
+  if (!d) return ["주변 정보가 제공되지 않습니다."];
+  const lines: string[] = [];
+  if (d.place) lines.push(`현재 위치 기준, ${d.place} 근처`);
+  lines.push(`한눈에 보기 (${dist(d.radiusMeters)} 안)`);
+  for (const b of d.bullets) {
+    if (b.kind === "transit") {
+      const parts: string[] = [];
+      parts.push(
+        b.station
+          ? joinText(`지하철 ${b.station.name}`, b.station.line ? `(${b.station.line})` : undefined, `${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}`)
+          : `${dist(d.radiusMeters)} 안에 지하철역이 없고`,
+      );
+      const bus = b.busStops;
+      if (bus) {
+        if (bus.state === "ok") parts.push(`버스 정류소 ${bus.count}곳, ${overviewNearest(bus.nearest)}`);
+        else if (bus.state === "none") parts.push("버스 정류소가 없습니다");
+        else if (bus.state === "uncovered") parts.push("버스 정류소 정보는 이 지역에서 제공되지 않습니다");
+        else parts.push("버스 정류소 정보를 가져오지 못했습니다");
+      }
+      lines.push(`대중교통: ${parts.join(", ")}`);
+      continue;
+    }
+    const label = OVERVIEW_LABEL_KO[b.kind];
+    if (b.state === "ok") lines.push(`${label} ${b.count}곳${b.countCapped ? " 이상" : ""}, ${overviewNearest(b.nearest)}`);
+    else if (b.state === "none") lines.push(`${label}은 ${dist(d.radiusMeters)} 안에 없습니다`);
+    else if (b.state === "unavailable") lines.push(`${label}는 서울에서만 안내합니다`);
+    else lines.push(`${label} 정보를 가져오지 못했습니다`);
+  }
+  return lines;
+}
+
 function formatWebSearch(body: { web: WebSearchResultItem[] }): string[] {
   if (body.web.length === 0) return ["검색 결과가 없습니다."];
   const lines: string[] = [];
@@ -986,5 +1042,6 @@ export const FORMATTERS: Record<string, (data: never) => string[]> = {
   "weather": formatWeather,
   "air-quality": formatAirQuality,
   "where-am-i": formatWhereAmI,
+  "nearby-overview": formatNearbyOverview,
   "barrier-free-detail": formatBarrierFreeDetail,
 };
