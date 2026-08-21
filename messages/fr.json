@@ -172,7 +172,13 @@
     "geoError": "Impossible d'obtenir votre position. Veuillez rechercher un point de départ.",
     "needEndpoints": "Choisissez d'abord un départ et une arrivée.",
     "readySummary": "Itinéraires prêts pour {count} modes.",
-    "allFailed": "Aucun itinéraire trouvé."
+    "allFailed": "Aucun itinéraire trouvé.",
+    "via": "Étape",
+    "searchVia": "Rechercher une étape",
+    "addVia": "Ajouter une étape",
+    "removeVia": "Supprimer l'étape",
+    "viaArrived": "Étape {label} atteinte",
+    "unsupportedWaypoint": "Les itinéraires en transports en commun ne prennent pas en charge les étapes."
   },
   "detail": {
     "back": "Retour aux résultats"
@@ -576,7 +582,8 @@
     "title": "Itinéraires récents",
     "item": "Itinéraire de {from} à {to}",
     "clearAll": "Effacer tous les itinéraires récents",
-    "cleared": "Tous les itinéraires récents ont été effacés"
+    "cleared": "Tous les itinéraires récents ont été effacés",
+    "itemVia": "Itinéraire de {from} à {to} via {via}"
   },
   "privacy": {
     "title": "Politique de confidentialité",

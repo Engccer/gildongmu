@@ -656,3 +656,114 @@ describe("최근 경로 고정", () => {
     expect(JSON.parse(localStorage.getItem(ROUTES_KEY)!)).toHaveLength(1);
   });
 });
+
+describe("DirectionsView 경유지(N4)", () => {
+  afterEach(() => {
+    localStorage.clear();
+    __resetManualLocationForTest();
+    // 뷰가 `?dir=`에 경유지를 써 두므로(replaceState) 다음 테스트가 그것을 복원해 필드가
+    // 이미 열린 채 시작한다 — URL도 테스트 간 상태다.
+    window.history.replaceState(null, "", "/");
+  });
+  beforeEach(() => {
+    vi.mocked(awaitGeolocation).mockResolvedValue({
+      status: "ready",
+      coords: { lat: 37.5352, lng: 127.1441 },
+    });
+  });
+
+  function stubRoutes() {
+    const calledUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calledUrls.push(url);
+        if (url.startsWith("/api/places/entrance")) {
+          return { ok: true, json: async () => ({ entrance: null }) } as Response;
+        }
+        if (url.startsWith("/api/places")) {
+          return { ok: true, json: async () => ({ places: [gangnam], provider: "kakao-local", query: "q" }) } as Response;
+        }
+        if (url.startsWith("/api/address/search")) {
+          return { ok: true, json: async () => ({ addresses: [] }) } as Response;
+        }
+        if (url.startsWith("/api/route/car")) {
+          return { ok: true, json: async () => ({ provider: "tmap", durationSeconds: 600, guides: [] }) } as Response;
+        }
+        if (url.startsWith("/api/route/walk")) {
+          return {
+            ok: true,
+            json: async () => ({ result: { distanceMeters: 900, durationSeconds: 800, steps: [{ description: "a" }], waypoint: { stepIndex: 1, coord: { lat: 37.497, lng: 127.027 } } } }),
+          } as Response;
+        }
+        if (url.startsWith("/api/route/transit")) {
+          return { ok: true, json: async () => ({ result: null }) } as Response;
+        }
+        throw new Error(`unexpected fetch: ${url}`);
+      }),
+    );
+    return calledUrls;
+  }
+
+  const to: DirEndpoint = { kind: "place", label: "길동", coord: { lat: 37.5272, lng: 127.1268 } };
+
+  it("'경유지 추가'를 누르면 필드가 열리고 포커스가 그 입력으로 간다; 확정하면 조회 버튼으로 전진한다", async () => {
+    stubRoutes();
+    renderView({ initialTo: to });
+    fireEvent.click(screen.getByRole("button", { name: "addVia" }));
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByLabelText("via"));
+    });
+    fireEvent.change(screen.getByLabelText("via"), { target: { value: "강남" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchVia" }));
+    await waitFor(() => {
+      expect(document.activeElement?.textContent).toContain("강남역,");
+    });
+    fireEvent.click(document.activeElement as HTMLElement);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" }));
+  });
+
+  it("경유지 확정 후 조회: 도보·자동차엔 via가 붙고 대중교통은 호출하지 않으며 미지원 문장을 낸다; 안내 시작 버튼은 없다", async () => {
+    const calledUrls = stubRoutes();
+    renderView({ initialTo: to });
+    fireEvent.click(screen.getByRole("button", { name: "addVia" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("via")));
+    fireEvent.change(screen.getByLabelText("via"), { target: { value: "강남" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchVia" }));
+    await waitFor(() => expect(document.activeElement?.textContent).toContain("강남역,"));
+    fireEvent.click(document.activeElement as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("readySummary"));
+
+    expect(calledUrls.some((u) => u.startsWith("/api/route/walk") && u.includes("&via=37.497,127.027"))).toBe(true);
+    expect(calledUrls.some((u) => u.startsWith("/api/route/car") && u.includes("&via=37.497,127.027"))).toBe(true);
+    expect(calledUrls.some((u) => u.startsWith("/api/route/transit"))).toBe(false);
+    expect(screen.getByText("unsupportedWaypoint")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "guideStartWalk" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "guideStartCar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
+    // 최근 경로에 via가 기록된다(라벨은 itemVia 키).
+    expect(JSON.parse(localStorage.getItem("gildongmu:recent-routes:v1") ?? "[]")[0].via.label).toBe("강남역");
+  });
+
+  it("경유지 필드가 열린 채 미확정이면 조회하지 않고 needEndpoints를 통지한다", async () => {
+    const calledUrls = stubRoutes();
+    renderView({ initialTo: to });
+    fireEvent.click(screen.getByRole("button", { name: "addVia" }));
+    fireEvent.change(screen.getByLabelText("via"), { target: { value: "강남" } });
+    fireEvent.click(screen.getByRole("button", { name: "submit" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("needEndpoints"));
+    expect(calledUrls.some((u) => u.startsWith("/api/route/"))).toBe(false);
+  });
+
+  it("'경유지 삭제'는 필드를 닫고 포커스를 조회 버튼으로 보낸다", async () => {
+    stubRoutes();
+    renderView({ initialTo: to });
+    fireEvent.click(screen.getByRole("button", { name: "addVia" }));
+    fireEvent.click(screen.getByRole("button", { name: "removeVia" }));
+    expect(screen.queryByLabelText("via")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" }));
+    expect(screen.getByRole("button", { name: "addVia" })).toBeTruthy();
+  });
+});

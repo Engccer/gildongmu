@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, ArrowUpDown, MapPinPlus } from "lucide-react";
 import type {
   CarRouteBriefing,
   Coord,
@@ -13,7 +13,7 @@ import type {
   WalkRouteBriefing,
 } from "@/lib/types";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
-import { serializeDir, type DirEndpoint } from "@/lib/directions-state";
+import { parseDir, serializeDir, type DirEndpoint } from "@/lib/directions-state";
 import {
   DIRECTIONS_ORIGIN_MAX_AGE_SECONDS,
   getGeolocationSnapshot,
@@ -62,6 +62,8 @@ type ModeOutcome =
   | { kind: "empty" }
   | { kind: "error" }
   | { kind: "outOfCoverage" }
+  /** 경유지 조회의 대중교통(N4): ODsay에 경유지가 없어 호출하지 않는다 — 실패도 경로 없음도 아니다. */
+  | { kind: "unsupportedWaypoint" }
   | { kind: "done"; mode: "transit"; result: TransitData }
   | { kind: "done"; mode: "walk"; result: WalkRouteBriefing }
   | { kind: "done"; mode: "car"; result: CarRouteBriefing };
@@ -72,6 +74,8 @@ type QueryResults = {
   /** 조회 시점의 도착 좌표 스냅샷 — 실시간 안내 진입점의 목적지(렌더 중 ref 접근 금지). */
   destCoord: Coord;
   outcomes: Partial<Record<ModeKey, ModeOutcome>>;
+  /** 조회 시점의 경유지 라벨(결과 구획 "경유지 C 도착"용, N4). 없으면 null. */
+  viaLabel: string | null;
   /**
    * 표시 순서 스냅샷(spec 2026-08-12 §2) — settled 커밋 시 1회 확정.
    * 계단 회피 토글은 outcomes.walk만 교체하므로 순서는 자동 불변이다.
@@ -117,6 +121,17 @@ function endpointToField(ep: DirEndpoint, currentLabel: string): FieldState {
 function readWalkAccessibleFromUrl(): boolean {
   if (typeof window === "undefined") return false;
   return new URLSearchParams(window.location.search).get("walkAccessible") === "1";
+}
+
+/**
+ * `?dir=`의 세 번째 토막(경유지, N4)을 렌더 시점에 동기로 읽는다(`readWalkAccessibleFromUrl`
+ * 동형 — `dir` 동기화 effect가 같은 커밋에서 URL을 다시 쓰기 전에 읽어야 한다).
+ * `PlaceSearch`의 `initialFrom/To` 경로를 넓히지 않는 이유: 그 경로는 from·to만 나르고,
+ * 경유지는 이 뷰의 관심사라 여기서 닫는다.
+ */
+function readViaFromUrl(): DirEndpoint | null {
+  if (typeof window === "undefined") return null;
+  return parseDir(new URLSearchParams(window.location.search).get("dir"))?.via ?? null;
 }
 
 /**
@@ -192,10 +207,17 @@ async function fetchMode(
    * 인자에서 나왔다(spec §2.5). 도보가 아닌 수단은 `false`를 명시한다.
    */
   walkAccessible: boolean,
+  /**
+   * 경유지(N4). ⚠ 위와 같은 이유로 선택 인자가 아니다 — 빠뜨리면 오류 없이 경유하지
+   * 않는 경로가 온다. 대중교통은 경유지가 있으면 호출하지 않는다(ODsay에 경유지 없음).
+   */
+  via: Coord | null,
 ): Promise<ModeOutcome> {
   const qs = `origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
+  const viaQs = via ? `&via=${via.lat},${via.lng}` : "";
+  if (mode === "transit" && via) return { kind: "unsupportedWaypoint" };
   if (mode === "car") {
-    const res = await fetch(`/api/route/car?${qs}&lang=${lang}`, { signal });
+    const res = await fetch(`/api/route/car?${qs}${viaQs}&lang=${lang}`, { signal });
     if (!res.ok) return { kind: "error" };
     const body = await res.json();
     if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
@@ -205,7 +227,7 @@ async function fetchMode(
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
   const url =
     mode === "walk"
-      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via: null })
+      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via })
       : `/api/route/transit?${qs}&includeStops=1`;
   const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
@@ -279,6 +301,13 @@ export function DirectionsView({
       ? endpointToField(initialTo, currentLabel)
       : { text: "", resolved: null },
   );
+  // 경유지 필드(N4): null = 접힘("경유지 추가" 버튼만). ?dir= 세 번째 토막이 있으면 펼친 채 복원.
+  const [viaField, setViaField] = useState<FieldState | null>(() => {
+    const via = readViaFromUrl();
+    return via ? endpointToField(via, currentLabel) : null;
+  });
+  const viaInputRef = useRef<HTMLInputElement | null>(null);
+  const [recentVia, setRecentVia] = useState<RecentEndpoint[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [results, setResults] = useState<QueryResults | null>(null);
   // 대중교통 경로 disclosure(W3C APG)의 펼침 상태. 키는 배열 인덱스도 표시
@@ -329,7 +358,7 @@ export function DirectionsView({
     setStepFreeEnabledState(v);
   }
   // 마지막 전체 조회에 실제로 쓰인 좌표(토글 단독 재조회가 같은 좌표를 재사용).
-  const lastCoordsRef = useRef<{ origin: Coord; dest: Coord } | null>(null);
+  const lastCoordsRef = useRef<{ origin: Coord; dest: Coord; via: Coord | null } | null>(null);
   // 토글 단독 재조회 진행 신호(버튼 aria-busy 표시용, "조회" 버튼과 동일 패턴).
   const [stepFreeBusy, setStepFreeBusy] = useState(false);
 
@@ -361,6 +390,7 @@ export function DirectionsView({
     queueMicrotask(() => {
       setRecentFrom(loadRecentEndpoints("from"));
       setRecentTo(loadRecentEndpoints("to"));
+      setRecentVia(loadRecentEndpoints("via"));
       setRecentRoutes(loadRecentRoutes());
     });
   }, []);
@@ -434,14 +464,14 @@ export function DirectionsView({
     const from = fromField.resolved;
     if (!from) return;
     const url = new URL(window.location.href);
-    url.searchParams.set("dir", serializeDir(from, toField.resolved));
+    url.searchParams.set("dir", serializeDir(from, toField.resolved, viaField?.resolved));
     // 계단 회피 토큰은 켜짐일 때만(꺼짐=기본이라 URL에 남길 정보가 없다).
     if (stepFreeEnabled) url.searchParams.set("walkAccessible", "1");
     else url.searchParams.delete("walkAccessible");
     window.history.replaceState(window.history.state, "", url);
     // LanguageSwitcher가 쿼리 변경을 href에 반영하도록 통지(?q= 동기화와 동형).
     window.dispatchEvent(new Event("gildongmu:locationchange"));
-  }, [fromField.resolved, toField.resolved, stepFreeEnabled]);
+  }, [fromField.resolved, toField.resolved, viaField?.resolved, stepFreeEnabled]);
 
   // 현재 위치 필드의 표시 텍스트는 확정 시점 스냅샷이 아니라 파생 라벨을 쓴다
   // (주소 병기·새로고침이 라벨에 즉시 반영, 편집 시작 시엔 resolved가 풀려 원문 유지).
@@ -511,15 +541,26 @@ export function DirectionsView({
    * 확정할 endpoint를 직접 넘겨 그 경합을 우회한다. 조회 버튼 클릭은 인자 없이
    * 호출한다(기존 필드 상태 그대로).
    */
-  async function runQuery(fromOverride?: DirEndpoint, toOverride?: DirEndpoint) {
+  async function runQuery(
+    fromOverride?: DirEndpoint,
+    toOverride?: DirEndpoint,
+    viaOverride?: DirEndpoint | null,
+  ) {
     if (inFlight.current) return;
     const from = fromOverride ?? fromField.resolved;
     const to = toOverride ?? toField.resolved;
+    // 경유지 필드가 펼쳐져 있는데 미확정(텍스트만)이면 도착지 미확정과 같은 통지다 —
+    // 반쯤 적힌 경유지를 조용히 버리고 조회하지 않는다(N4 spec §3).
+    const viaEp = viaOverride === undefined ? viaField?.resolved ?? null : viaOverride;
+    const viaPending = viaOverride === undefined && viaField !== null && !viaField.resolved;
     setNotice("");
-    if (!from || !to) {
+    if (!from || !to || viaPending) {
       setPhase({ kind: "needEndpoints" });
       return;
     }
+    // 경유지는 장소만(현재 위치 불가 — parseDir·폼이 막지만 타입상 좁힌다).
+    const via: Coord | null = viaEp?.kind === "place" ? viaEp.coord : null;
+    const viaLabel = viaEp?.kind === "place" ? viaEp.label : null;
     inFlight.current = true;
     const myGen = ++genRef.current;
     try {
@@ -594,13 +635,13 @@ export function DirectionsView({
           destLabel = entrance.name;
         }
       }
-      lastCoordsRef.current = { origin, dest };
+      lastCoordsRef.current = { origin, dest, via };
 
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
       const settled = await Promise.allSettled(
         activeModes.map((m) =>
-          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, stepFreeRef.current),
+          fetchMode(m, origin, dest, dataLocale(locale), ctrl.signal, stepFreeRef.current, via),
         ),
       );
       clearTimeout(timer);
@@ -633,6 +674,7 @@ export function DirectionsView({
         destLabel,
         destCoord: dest,
         outcomes,
+        viaLabel,
         orderedModes,
         originSource,
       });
@@ -644,6 +686,9 @@ export function DirectionsView({
         recordRecentRoute({
           from: from.kind === "current" ? null : { label: from.label, lat: from.coord.lat, lng: from.coord.lng },
           to: to.kind === "current" ? null : { label: to.label, lat: to.coord.lat, lng: to.coord.lng },
+          ...(viaEp?.kind === "place"
+            ? { via: { label: viaEp.label, lat: viaEp.coord.lat, lng: viaEp.coord.lng } }
+            : {}),
         }),
       );
       // 첫 성공 수단 heading으로 1회 포커스. 성공 0건이면 이동 없음(통지만).
@@ -683,7 +728,7 @@ export function DirectionsView({
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
       const settled = await Promise.allSettled([
-        fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), ctrl.signal, next),
+        fetchMode("walk", coords.origin, coords.dest, dataLocale(locale), ctrl.signal, next, coords.via),
       ]);
       clearTimeout(timer);
       const s = settled[0];
@@ -765,13 +810,18 @@ export function DirectionsView({
   // 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태).
   const carOutcome = results?.outcomes.car;
   const transitOutcome = results?.outcomes.transit;
+  // 경유지 조회(N4 spec §3)에서는 어떤 안내도 시작하지 않는다 — 안내 훅이 출발지→도착지로
+  // 자기 조회를 다시 해 경유지가 조용히 빠진 경로를 안내하게 되고, 간략 폴백(직선거리)도
+  // 목적지만 본다. 버튼 부재가 정직하다. 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
+  const hasVia = results?.viaLabel != null;
   const walkGuideStartable =
-    results?.outcomes.walk?.kind === "done" && !prefersEnglish(locale);
+    results?.outcomes.walk?.kind === "done" && !prefersEnglish(locale) && !hasVia;
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
     carOutcome.result.provider === "tmap" &&
-    !prefersEnglish(locale);
+    !prefersEnglish(locale) &&
+    !hasVia;
   const transitGuideRoute =
     transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
       ? transitOutcome.result.recommended
@@ -794,6 +844,7 @@ export function DirectionsView({
   const briefFallback =
     phase.kind === "settled" &&
     guideDest !== null &&
+    !hasVia &&
     !walkGuideStartable &&
     !carGuideStartable &&
     !transitGuideStartable;
@@ -815,7 +866,9 @@ export function DirectionsView({
   }
   function routeItemLabel(r: RecentRoute): string {
     const side = (s: RecentEndpoint | null) => (s ? s.label : t("currentLocation"));
-    return tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
+    return r.via
+      ? tRecentRoutes("itemVia", { from: side(r.from), to: side(r.to), via: r.via.label })
+      : tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
   }
   /** 활성화 = 두 필드 원자 확정 + 즉시 조회(스펙 §1.4). 결과 도착 시 이 섹션이 통째로
    * 사라지므로 포커스를 먼저 조회 버튼으로 선점한다(헌장 §5). endpoint 최근 목록도
@@ -824,11 +877,14 @@ export function DirectionsView({
     submitRef.current?.focus();
     const fromEp = routeEndpoint(r.from);
     const toEp = routeEndpoint(r.to);
+    const viaEp: DirEndpoint | null = r.via ? routeEndpoint(r.via) : null;
     setFromField(endpointToField(fromEp, currentLabel));
     setToField(endpointToField(toEp, currentLabel));
+    setViaField(viaEp ? endpointToField(viaEp, currentLabel) : null);
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
-    void runQuery(fromEp, toEp);
+    if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
+    void runQuery(fromEp, toEp, viaEp);
   }
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);
@@ -982,6 +1038,92 @@ export function DirectionsView({
         tRecent={tRecent}
       />
 
+      {/* 경유지(N4, 선택 사항): 도착지와 조회 버튼 사이. 버튼을 누르면 그 자리가 필드로
+          바뀌므로 포커스를 새 입력으로 선점 이동한다(헌장 §5). 도착지 확정 뒤 포커스는
+          종전대로 조회 버튼이다 — 선택 사항이 기본 흐름을 늘리지 않는다. 현재 위치는
+          경유지가 될 수 없다(onUseCurrent 미제공). */}
+      {viaField === null ? (
+        <button
+          type="button"
+          onClick={() => {
+            setViaField({ text: "", resolved: null });
+            requestAnimationFrame(() => viaInputRef.current?.focus());
+          }}
+          className="mt-3 inline-flex min-h-11 items-center gap-1 text-sm font-medium text-blue-700 underline dark:text-blue-300"
+        >
+          <MapPinPlus aria-hidden="true" className="h-4 w-4" />
+          {t("addVia")}
+        </button>
+      ) : (
+        <>
+          <EndpointField
+            label={t("via")}
+            searchLabel={t("searchVia")}
+            field={viaField}
+            onTextChange={(text) => {
+              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              setViaField({ text, resolved: null });
+              setResults(null);
+              setToggledRoutes(new Set());
+              setActiveGuideAlt(null);
+              setWalkExpanded(null);
+            }}
+            onResolve={(ep) => {
+              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              if (ep.kind === "place") {
+                setRecentVia(
+                  recordRecentEndpoint("via", { label: ep.label, lat: ep.coord.lat, lng: ep.coord.lng }),
+                );
+              }
+              setViaField(endpointToField(ep, currentLabel));
+              setResults(null);
+              setToggledRoutes(new Set());
+              setActiveGuideAlt(null);
+              setWalkExpanded(null);
+            }}
+            registerInput={(el) => {
+              viaInputRef.current = el;
+            }}
+            focusAfterResolve={() => submitRef.current?.focus()}
+            announce={setNotice}
+            locale={locale}
+            t={t}
+            recentEndpoints={recentVia}
+            onDeleteRecent={(e) => {
+              const next = removeRecentEndpoint("via", e);
+              setRecentVia(next);
+              return next;
+            }}
+            onClearRecent={() => {
+              const kept = clearRecentEndpoints("via");
+              setRecentVia(kept);
+              return kept;
+            }}
+            onTogglePinRecent={(e, pinned) => {
+              setRecentEndpointPinned("via", e, pinned);
+              setRecentVia((prev) => prev.map((x) => (x === e ? { ...x, pinned } : x)));
+            }}
+            tRecent={tRecent}
+          />
+          {/* 삭제하면 이 버튼과 필드가 함께 사라진다 — 조회 버튼으로 선점 이동. */}
+          <button
+            type="button"
+            onClick={() => {
+              submitRef.current?.focus();
+              if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
+              setViaField(null);
+              setResults(null);
+              setToggledRoutes(new Set());
+              setActiveGuideAlt(null);
+              setWalkExpanded(null);
+            }}
+            className="mt-2 min-h-11 text-sm underline"
+          >
+            {t("removeVia")}
+          </button>
+        </>
+      )}
+
       {/* disabled 금지: aria-disabled + in-flight ref 가드로 포커스를 지킨다 */}
       <button
         type="button"
@@ -1013,7 +1155,7 @@ export function DirectionsView({
               const label = routeItemLabel(r);
               return (
                 <li
-                  key={`${r.from?.lat ?? "cur"},${r.from?.lng ?? ""}→${r.to?.lat ?? "cur"},${r.to?.lng ?? ""}`}
+                  key={`${r.from?.lat ?? "cur"},${r.from?.lng ?? ""}→${r.to?.lat ?? "cur"},${r.to?.lng ?? ""}${r.via ? `@${r.via.lat},${r.via.lng}` : ""}`}
                   className="flex items-center gap-2"
                 >
                   <button
@@ -1141,6 +1283,9 @@ export function DirectionsView({
                 {outcome.kind === "empty" && (
                   <p className="mt-1 text-sm">{modeNoRouteText(mode)}</p>
                 )}
+                {outcome.kind === "unsupportedWaypoint" && (
+                  <p className="mt-1 text-sm">{t("unsupportedWaypoint")}</p>
+                )}
                 {outcome.kind === "done" && outcome.mode === "transit" && (
                   <>
                     {/* 추천·대안을 한 목록으로 낸다(W3C APG disclosure를 쌓은
@@ -1242,7 +1387,9 @@ export function DirectionsView({
                 {outcome.kind === "done" && outcome.mode === "walk" && (() => {
                   const collapsible = shouldCollapseWalk(outcome.result.durationSeconds);
                   const expanded = walkExpanded ?? !collapsible;
-                  if (!collapsible) return <WalkRouteResult briefing={outcome.result} t={tPed} />;
+                  if (!collapsible) {
+                    return <WalkRouteResult briefing={outcome.result} t={tPed} waypointLabel={results.viaLabel} />;
+                  }
                   return (
                     <div className="mt-2">
                       <button
@@ -1258,7 +1405,9 @@ export function DirectionsView({
                       </button>
                       {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지).
                           접힘·펼침 통지도 두지 않는다(aria-expanded가 상태다). */}
-                      {expanded && <WalkRouteResult briefing={outcome.result} t={tPed} />}
+                      {expanded && (
+                        <WalkRouteResult briefing={outcome.result} t={tPed} waypointLabel={results.viaLabel} />
+                      )}
                     </div>
                   );
                 })()}
@@ -1267,6 +1416,7 @@ export function DirectionsView({
                     briefing={outcome.result}
                     locale={locale}
                     t={tCar}
+                    waypointLabel={results.viaLabel}
                   />
                 )}
               </div>
