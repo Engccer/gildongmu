@@ -110,11 +110,7 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
     "산문은 그 좌표를 설명한다 — 사용자가 '내가 여기 있다'고 말한 곳이라 spec §4.7이 내용 불변으로 정했다(헤더·트리거만 출처를 명명한다).",
   "ios.nearby.whereAmIChat":
     "채팅 진입 버튼. 열리는 대화의 앵커는 조회된 좌표(수동 반영)이고 호칭은 산문과 같은 층이다(위 §4.7).",
-  "ios.nearby.whereAmIEmpty":
-    "조회 부재·실패 문구. 수동 상태에서도 도달하므로 후속 카피 정리 대상 — 리뷰 I2는 헤더·트리거를 지목했다.",
-  "ios.nearby.whereAmIFailed": "위와 같음(부재·실패 문구, 후속 카피 정리 대상).",
-  "ios.nearby.whereAmIServerFailed": "위와 같음(부재·실패 문구, 후속 카피 정리 대상).",
-  "whereAmI.empty": "위와 같음(부재 문구, 후속 카피 정리 대상).",
+  "whereAmI.empty": "조회 부재 문구(웹 WhereAmI). 수동 상태에서도 도달하므로 후속 카피 정리 대상 — 리뷰 I2는 헤더·트리거를 지목했다.",
   "directions.useCurrentLocation":
     "출발지 선택 버튼. 누르면 `current` 토큰이 되고 그 해석이 수동 위치를 탄다 — 필드 라벨은 즉시 '지정한 위치'로 바뀐다. 버튼 이름 자체의 재작성은 이번 범위 밖(리뷰 미지적, 새 카피 6로케일).",
   "common.outOfCoverage": "기능 커버리지 설명(위 NearbyLoadState 근거와 같은 층).",
@@ -133,8 +129,9 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
     "수동 위치 기준 결과에서 안내를 시작하는 순간의 고지 — 수동 상태에서 **의도적으로** GPS를 명명한다('현재 위치에서'). 이 문장의 존재 이유가 곧 그 대비라, 수동 분기가 아니라 수동 조건이 발화 조건이다.",
   "whereAmI.ready": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
   "whereAmI.button": "위와 같음(수동이면 `manualButton`).",
-  "ios.nearby.whereAmIAsOf": "위와 같음(수동이면 라벨 + `whereAmI.asOf`).",
-  "ios.nearby.whereAmIReady": "위와 같음(수동이면 `manualReady`).",
+  // M4 둘러보기(2026-08-22): 위치 문장이 수동 분기를 갖는다(`aroundHereManual*`).
+  "ios.nearby.aroundHere": "수동 분기 뒤의 GPS 측 문장(수동이면 `aroundHereManual`).",
+  "ios.nearby.aroundHereNoPlace": "위와 같음(수동이면 `aroundHereManualNoPlace`).",
 };
 
 /**

@@ -13,13 +13,13 @@ const scene: Scene = {
     {
       bucket: "left",
       items: [
-        { name: "봉래면옥", distanceMeters: 62, road: "명일로", category: "restaurant" },
+        { name: "봉래면옥", id: "kakao-x", lat: 37.54, lng: 127.15, categoryRaw: "", roadAddress: null, distanceMeters: 62, road: "명일로", category: "restaurant" },
       ],
     },
     {
       bucket: "beyond",
       items: [
-        { name: "카페만월경", distanceMeters: 58, road: null, category: "cafe" },
+        { name: "카페만월경", id: "kakao-x", lat: 37.54, lng: 127.15, categoryRaw: "", roadAddress: null, distanceMeters: 58, road: null, category: "cafe" },
       ],
     },
   ],
@@ -68,6 +68,7 @@ describe("SurroundingsSceneView", () => {
           bucket: "right",
           items: Array.from({ length: 5 }, (_, i) => ({
             name: `가게${i}`,
+            id: `kakao-${i}`, lat: 37.54, lng: 127.15, categoryRaw: "", roadAddress: null,
             distanceMeters: 10 + i,
             road: null,
             category: "convenience",
