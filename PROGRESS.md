@@ -19,7 +19,7 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.10 `READY_FOR_SALE`**(빌드 17, 아카이브 커밋 `0013c52`, 2026-08-19 제출) · 1.7~1.9도 `READY_FOR_SALE`. 아카이브 뒤 iOS 변경은 `docs/BACKLOG.md` G5 |
+| iOS | **1.11 `WAITING_FOR_REVIEW`**(빌드 18, 아카이브 커밋 `f312a39`, 제출 2026-08-22 07:11 KST) · 스토어 최신은 1.10 `READY_FOR_SALE`(빌드 17) · 1.7~1.9도 `READY_FOR_SALE`. 아카이브 뒤 iOS 변경은 `docs/BACKLOG.md` G5 |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
 | npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
