@@ -11,6 +11,10 @@
 
 ## 2026-08-22
 
+### N3 대중교통 "탑승" 의미 재정의 — `boarding` 국면 신설 + 상태 문구 전수 + A19 (웹·Kit·iOS)
+
+실사용 피드백(2026-08-21 #4): "탑승" 버튼이 곧 `waiting→riding`이라 정류소에 서서 차량을 고른 순간 "탑승 중"이 됐다. 상태 머신에 **`boarding` 국면**을 두어 버튼은 **차량 선택**(`vehicleSelected`)이 되고, 승차 정류소 폴링을 계속하다 선택 차량의 도착(서울버스 잔여 0 / 지하철 진입·도착, 동결 레코드 제외)을 관측하면 앱이 `riding`으로 올린다(`boarded(cause: observed)`, "도착. 탑승하세요."). 미등장은 탑승으로 추론하지 않고 `vehiclePassed`·`signalLost`로 사용자 선택("탑승했습니다"·"다른 차량 선택")을 연다. "탑승 변경 취소"는 `restoreBoarding`이 해제 전 국면으로 되돌린다. 문구 신설 14·개정 2·삭제 2(6로케일), 공유 fixture는 종전 24 시나리오를 `confirmBoarded` 삽입으로 보존하고 8개를 더했다. **A19**: 시트의 `Bool` 포커스 바인딩 6개를 옵셔널 단일 바인딩 `SheetControl`로 합치고 착지 헬퍼 하나(경합 해제·대상 존재 재검증·재가시화)로 통일했다. codex 설계 리뷰가 잡은 9건(미등장→riding 추론 폐기, 지하철 출발 코드 제외, 실패 이력 이월, 포커스 Task 경합 등)은 spec §9. 실승차 판정 항목은 `docs/FIELD-TEST.md` §5-2. spec [`2026-08-22-transit-boarding-phase-design.md`](docs/superpowers/specs/2026-08-22-transit-boarding-phase-design.md).
+
 ### N4 경유지 1개 — 서버·웹·CLI/MCP (iOS는 웨이브 3)
 
 도보·자동차 경로가 경유지 1개(`via=위도,경도`)를 받는다(위원장 실사용 피드백 2026-08-21 ⑤). 실호출 게이트에서 4개 provider(카카오 도보 `via_x/via_y`·Tmap 보행자·자동차 `passList`·카카오 내비 `waypoints`) 전부 경유지를 수용해 기본·폴백 파이프라인은 불변이다. 응답엔 `waypoint{stepIndex,coord}`(경유지에서 시작하는 첫 단계·도착 판정 좌표)만 싣고 스텝 문장은 손대지 않는다 — 표지가 없으면 throw(카카오 도보는 이름이 틀린 파라미터를 200으로 무시한다). 대중교통은 ODsay에 경유지가 없어 upstream 없이 `unsupported:"waypoint"`(경로 없음과 다른 정직 상태). 웹 길찾기는 도착지와 조회 버튼 사이 "경유지 추가"(선택, 포커스 선점 이동·도착지 확정 뒤 포커스 불변), 결과 구획 "경유지 C 도착", `?dir=` 세 토막, 최근 경로 "A부터 B까지 C를 경유하는 경로 조회". 경유지 조회에서는 웹 안내 시작 버튼을 내지 않는다(안내 훅이 경유지를 모른다 — 버튼 부재가 정직). CLI `route walk|car|transit --via`, 텍스트 출력 `경유지 도착` 줄. spec [`2026-08-22-waypoint-server-web-cli-design.md`](docs/superpowers/specs/2026-08-22-waypoint-server-web-cli-design.md).
