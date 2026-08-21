@@ -1,1 +1,766 @@
-{"data":{"place":"서울특별시 강동구 성내1동, 서울특별시 강동구 성내로 25","frame":"entrance","groups":[{"bucket":"left","items":[{"name":"우리은행 ATM","distanceMeters":39,"road":null,"category":"bank"},{"name":"우리은행 ATM","distanceMeters":39,"road":null,"category":"bank"},{"name":"서경빌딩 주차장","distanceMeters":67,"road":null,"category":"parking"},{"name":"서울건치과의원","distanceMeters":70,"road":null,"category":"hospital"},{"name":"파리바게뜨 강동구청점","distanceMeters":71,"road":null,"category":"restaurant"},{"name":"강동탑정형외과의원","distanceMeters":74,"road":null,"category":"hospital"},{"name":"강동세브란스내과의원","distanceMeters":76,"road":null,"category":"hospital"},{"name":"하얀약국","distanceMeters":81,"road":null,"category":"pharmacy"},{"name":"강동빌딩 주차장","distanceMeters":98,"road":null,"category":"parking"},{"name":"성내1동주민센터","distanceMeters":120,"road":null,"category":"public"},{"name":"IBK기업은행 강동구청역","distanceMeters":122,"road":"성내로6길","category":"bank"},{"name":"참사랑교육","distanceMeters":127,"road":"성내로6길","category":"realEstate"},{"name":"화목한치과의원","distanceMeters":142,"road":null,"category":"hospital"}]},{"bucket":"right","items":[{"name":"아이갓에브리띵 강동구청","distanceMeters":10,"road":null,"category":"cafe"},{"name":"강동구청","distanceMeters":13,"road":null,"category":"public"},{"name":"강동구청 직장어린이집","distanceMeters":14,"road":null,"category":"kindergarten"},{"name":"강동구 사료관","distanceMeters":68,"road":null,"category":"culture"},{"name":"강동구청 주차장","distanceMeters":71,"road":null,"category":"parking"},{"name":"강동소방서","distanceMeters":141,"road":null,"category":"public"}]},{"bucket":"across","items":[{"name":"카페헤이샌디","distanceMeters":80,"road":null,"category":"cafe"},{"name":"제일치과의원","distanceMeters":85,"road":null,"category":"hospital"},{"name":"돗가비식당","distanceMeters":89,"road":null,"category":"restaurant"},{"name":"CU ATM 강동구청점","distanceMeters":89,"road":null,"category":"bank"},{"name":"돈카츠","distanceMeters":90,"road":null,"category":"restaurant"},{"name":"브레인아트 본사","distanceMeters":91,"road":null,"category":"academy"},{"name":"계명치과의원","distanceMeters":95,"road":null,"category":"hospital"},{"name":"공차 강동구청점","distanceMeters":97,"road":null,"category":"cafe"},{"name":"스타벅스 강동구청DT점","distanceMeters":99,"road":null,"category":"cafe"},{"name":"스타벅스 강동구청DT점 주차장","distanceMeters":101,"road":null,"category":"parking"},{"name":"라엘발레학원","distanceMeters":114,"road":null,"category":"academy"},{"name":"가람동물병원","distanceMeters":124,"road":null,"category":"hospital"},{"name":"JDX멀티스포츠 주차장","distanceMeters":131,"road":null,"category":"parking"},{"name":"강동보건약국","distanceMeters":146,"road":null,"category":"pharmacy"}]},{"bucket":"beyond","items":[{"name":"우리은행 강동구청지점","distanceMeters":43,"road":null,"category":"bank"},{"name":"강동구청옆 노상공영주차장","distanceMeters":47,"road":null,"category":"parking"},{"name":"박리김밥 강동구청점","distanceMeters":52,"road":"성내로5길","category":"restaurant"},{"name":"봉주아나","distanceMeters":55,"road":"성내로5길","category":"restaurant"},{"name":"클리영어도서관영어학원","distanceMeters":55,"road":"성내로5길","category":"academy"},{"name":"시골밥상","distanceMeters":58,"road":"성내로3가길","category":"restaurant"},{"name":"리틀채스우드","distanceMeters":59,"road":"성내로3가길","category":"cafe"},{"name":"카페마오","distanceMeters":61,"road":"성내로5길","category":"cafe"},{"name":"든든해장 강동구청점","distanceMeters":63,"road":"성내로5길","category":"restaurant"},{"name":"매머드익스프레스 강동구청점","distanceMeters":64,"road":"성내로3가길","category":"cafe"},{"name":"스윗티클스","distanceMeters":67,"road":"성내로3가길","category":"restaurant"},{"name":"차이젠","distanceMeters":67,"road":"성내로3길","category":"restaurant"},{"name":"세븐일레븐 뉴강동구청점","distanceMeters":75,"road":"성내로5길","category":"convenience"},{"name":"홍콩반점0410 강동구청점","distanceMeters":77,"road":"성내로5길","category":"restaurant"},{"name":"삼성영어 성내교실학원","distanceMeters":78,"road":"성내로5길","category":"academy"},{"name":"데쎄르룸 1호점","distanceMeters":83,"road":"성내로3길","category":"cafe"},{"name":"평온뒷고기","distanceMeters":86,"road":"성내로3길","category":"restaurant"},{"name":"평온 에프엔비 F&B","distanceMeters":86,"road":"성내로3길","category":"restaurant"},{"name":"디오디오","distanceMeters":86,"road":"성내로3길","category":"restaurant"},{"name":"토팡가 커피 로스터스","distanceMeters":86,"road":"성내로5길","category":"cafe"},{"name":"미소분식","distanceMeters":94,"road":"성내로3가길","category":"restaurant"},{"name":"통통김치찌개","distanceMeters":95,"road":"성내로5길","category":"restaurant"},{"name":"원두볶는사람들","distanceMeters":103,"road":"성내로9길","category":"cafe"},{"name":"커피인데프","distanceMeters":104,"road":"성내로9길","category":"cafe"},{"name":"비터","distanceMeters":110,"road":"성내로3길","category":"cafe"},{"name":"제일공인중개사사무소","distanceMeters":113,"road":"성내로3가길","category":"realEstate"},{"name":"뮤직트리음악학원","distanceMeters":115,"road":"성내로3길","category":"academy"},{"name":"리드인독서 성내센터","distanceMeters":117,"road":"성내로9길","category":"academy"},{"name":"포르마레","distanceMeters":129,"road":"성내로9길","category":"cafe"},{"name":"벌스커피","distanceMeters":131,"road":"성내로5길","category":"cafe"},{"name":"카페희희","distanceMeters":136,"road":"성내로9길","category":"cafe"},{"name":"래미안공인중개사사무소","distanceMeters":136,"road":"성내로9길","category":"realEstate"},{"name":"CU 강동나이스점","distanceMeters":142,"road":"성내로3가길","category":"convenience"},{"name":"그림숲아트","distanceMeters":143,"road":"성내로3길","category":"academy"}]}],"total":67}}
+{
+  "data": {
+    "place": "서울특별시 강동구 성내1동, 서울특별시 강동구 성내로 25",
+    "frame": "entrance",
+    "groups": [
+      {
+        "bucket": "left",
+        "items": [
+          {
+            "name": "우리은행 ATM",
+            "distanceMeters": 39,
+            "road": null,
+            "category": "bank",
+            "id": "kakao-1",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "bank",
+            "roadAddress": null
+          },
+          {
+            "name": "우리은행 ATM",
+            "distanceMeters": 39,
+            "road": null,
+            "category": "bank",
+            "id": "kakao-2",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "bank",
+            "roadAddress": null
+          },
+          {
+            "name": "서경빌딩 주차장",
+            "distanceMeters": 67,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-3",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "서울건치과의원",
+            "distanceMeters": 70,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-4",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "파리바게뜨 강동구청점",
+            "distanceMeters": 71,
+            "road": null,
+            "category": "restaurant",
+            "id": "kakao-5",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "강동탑정형외과의원",
+            "distanceMeters": 74,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-6",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "강동세브란스내과의원",
+            "distanceMeters": 76,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-7",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "하얀약국",
+            "distanceMeters": 81,
+            "road": null,
+            "category": "pharmacy",
+            "id": "kakao-8",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "pharmacy",
+            "roadAddress": null
+          },
+          {
+            "name": "강동빌딩 주차장",
+            "distanceMeters": 98,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-9",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "성내1동주민센터",
+            "distanceMeters": 120,
+            "road": null,
+            "category": "public",
+            "id": "kakao-10",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "public",
+            "roadAddress": null
+          },
+          {
+            "name": "IBK기업은행 강동구청역",
+            "distanceMeters": 122,
+            "road": "성내로6길",
+            "category": "bank",
+            "id": "kakao-11",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "bank",
+            "roadAddress": null
+          },
+          {
+            "name": "참사랑교육",
+            "distanceMeters": 127,
+            "road": "성내로6길",
+            "category": "realEstate",
+            "id": "kakao-12",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          },
+          {
+            "name": "화목한치과의원",
+            "distanceMeters": 142,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-13",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "right",
+        "items": [
+          {
+            "name": "아이갓에브리띵 강동구청",
+            "distanceMeters": 10,
+            "road": null,
+            "category": "cafe",
+            "id": "kakao-14",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "강동구청",
+            "distanceMeters": 13,
+            "road": null,
+            "category": "public",
+            "id": "kakao-15",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "public",
+            "roadAddress": null
+          },
+          {
+            "name": "강동구청 직장어린이집",
+            "distanceMeters": 14,
+            "road": null,
+            "category": "kindergarten",
+            "id": "kakao-16",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "kindergarten",
+            "roadAddress": null
+          },
+          {
+            "name": "강동구 사료관",
+            "distanceMeters": 68,
+            "road": null,
+            "category": "culture",
+            "id": "kakao-17",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "culture",
+            "roadAddress": null
+          },
+          {
+            "name": "강동구청 주차장",
+            "distanceMeters": 71,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-18",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "강동소방서",
+            "distanceMeters": 141,
+            "road": null,
+            "category": "public",
+            "id": "kakao-19",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "public",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "across",
+        "items": [
+          {
+            "name": "카페헤이샌디",
+            "distanceMeters": 80,
+            "road": null,
+            "category": "cafe",
+            "id": "kakao-20",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "제일치과의원",
+            "distanceMeters": 85,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-21",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "돗가비식당",
+            "distanceMeters": 89,
+            "road": null,
+            "category": "restaurant",
+            "id": "kakao-22",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "CU ATM 강동구청점",
+            "distanceMeters": 89,
+            "road": null,
+            "category": "bank",
+            "id": "kakao-23",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "bank",
+            "roadAddress": null
+          },
+          {
+            "name": "돈카츠",
+            "distanceMeters": 90,
+            "road": null,
+            "category": "restaurant",
+            "id": "kakao-24",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "브레인아트 본사",
+            "distanceMeters": 91,
+            "road": null,
+            "category": "academy",
+            "id": "kakao-25",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "계명치과의원",
+            "distanceMeters": 95,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-26",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "공차 강동구청점",
+            "distanceMeters": 97,
+            "road": null,
+            "category": "cafe",
+            "id": "kakao-27",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "스타벅스 강동구청DT점",
+            "distanceMeters": 99,
+            "road": null,
+            "category": "cafe",
+            "id": "kakao-28",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "스타벅스 강동구청DT점 주차장",
+            "distanceMeters": 101,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-29",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "라엘발레학원",
+            "distanceMeters": 114,
+            "road": null,
+            "category": "academy",
+            "id": "kakao-30",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "가람동물병원",
+            "distanceMeters": 124,
+            "road": null,
+            "category": "hospital",
+            "id": "kakao-31",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "hospital",
+            "roadAddress": null
+          },
+          {
+            "name": "JDX멀티스포츠 주차장",
+            "distanceMeters": 131,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-32",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "강동보건약국",
+            "distanceMeters": 146,
+            "road": null,
+            "category": "pharmacy",
+            "id": "kakao-33",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "pharmacy",
+            "roadAddress": null
+          }
+        ]
+      },
+      {
+        "bucket": "beyond",
+        "items": [
+          {
+            "name": "우리은행 강동구청지점",
+            "distanceMeters": 43,
+            "road": null,
+            "category": "bank",
+            "id": "kakao-34",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "bank",
+            "roadAddress": null
+          },
+          {
+            "name": "강동구청옆 노상공영주차장",
+            "distanceMeters": 47,
+            "road": null,
+            "category": "parking",
+            "id": "kakao-35",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "parking",
+            "roadAddress": null
+          },
+          {
+            "name": "박리김밥 강동구청점",
+            "distanceMeters": 52,
+            "road": "성내로5길",
+            "category": "restaurant",
+            "id": "kakao-36",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "봉주아나",
+            "distanceMeters": 55,
+            "road": "성내로5길",
+            "category": "restaurant",
+            "id": "kakao-37",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "클리영어도서관영어학원",
+            "distanceMeters": 55,
+            "road": "성내로5길",
+            "category": "academy",
+            "id": "kakao-38",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "시골밥상",
+            "distanceMeters": 58,
+            "road": "성내로3가길",
+            "category": "restaurant",
+            "id": "kakao-39",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "리틀채스우드",
+            "distanceMeters": 59,
+            "road": "성내로3가길",
+            "category": "cafe",
+            "id": "kakao-40",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "카페마오",
+            "distanceMeters": 61,
+            "road": "성내로5길",
+            "category": "cafe",
+            "id": "kakao-41",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "든든해장 강동구청점",
+            "distanceMeters": 63,
+            "road": "성내로5길",
+            "category": "restaurant",
+            "id": "kakao-42",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "매머드익스프레스 강동구청점",
+            "distanceMeters": 64,
+            "road": "성내로3가길",
+            "category": "cafe",
+            "id": "kakao-43",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "스윗티클스",
+            "distanceMeters": 67,
+            "road": "성내로3가길",
+            "category": "restaurant",
+            "id": "kakao-44",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "차이젠",
+            "distanceMeters": 67,
+            "road": "성내로3길",
+            "category": "restaurant",
+            "id": "kakao-45",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "세븐일레븐 뉴강동구청점",
+            "distanceMeters": 75,
+            "road": "성내로5길",
+            "category": "convenience",
+            "id": "kakao-46",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "convenience",
+            "roadAddress": null
+          },
+          {
+            "name": "홍콩반점0410 강동구청점",
+            "distanceMeters": 77,
+            "road": "성내로5길",
+            "category": "restaurant",
+            "id": "kakao-47",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "삼성영어 성내교실학원",
+            "distanceMeters": 78,
+            "road": "성내로5길",
+            "category": "academy",
+            "id": "kakao-48",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "데쎄르룸 1호점",
+            "distanceMeters": 83,
+            "road": "성내로3길",
+            "category": "cafe",
+            "id": "kakao-49",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "평온뒷고기",
+            "distanceMeters": 86,
+            "road": "성내로3길",
+            "category": "restaurant",
+            "id": "kakao-50",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "평온 에프엔비 F&B",
+            "distanceMeters": 86,
+            "road": "성내로3길",
+            "category": "restaurant",
+            "id": "kakao-51",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "디오디오",
+            "distanceMeters": 86,
+            "road": "성내로3길",
+            "category": "restaurant",
+            "id": "kakao-52",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "토팡가 커피 로스터스",
+            "distanceMeters": 86,
+            "road": "성내로5길",
+            "category": "cafe",
+            "id": "kakao-53",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "미소분식",
+            "distanceMeters": 94,
+            "road": "성내로3가길",
+            "category": "restaurant",
+            "id": "kakao-54",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "통통김치찌개",
+            "distanceMeters": 95,
+            "road": "성내로5길",
+            "category": "restaurant",
+            "id": "kakao-55",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "restaurant",
+            "roadAddress": null
+          },
+          {
+            "name": "원두볶는사람들",
+            "distanceMeters": 103,
+            "road": "성내로9길",
+            "category": "cafe",
+            "id": "kakao-56",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "커피인데프",
+            "distanceMeters": 104,
+            "road": "성내로9길",
+            "category": "cafe",
+            "id": "kakao-57",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "비터",
+            "distanceMeters": 110,
+            "road": "성내로3길",
+            "category": "cafe",
+            "id": "kakao-58",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "제일공인중개사사무소",
+            "distanceMeters": 113,
+            "road": "성내로3가길",
+            "category": "realEstate",
+            "id": "kakao-59",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          },
+          {
+            "name": "뮤직트리음악학원",
+            "distanceMeters": 115,
+            "road": "성내로3길",
+            "category": "academy",
+            "id": "kakao-60",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "리드인독서 성내센터",
+            "distanceMeters": 117,
+            "road": "성내로9길",
+            "category": "academy",
+            "id": "kakao-61",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          },
+          {
+            "name": "포르마레",
+            "distanceMeters": 129,
+            "road": "성내로9길",
+            "category": "cafe",
+            "id": "kakao-62",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "벌스커피",
+            "distanceMeters": 131,
+            "road": "성내로5길",
+            "category": "cafe",
+            "id": "kakao-63",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "카페희희",
+            "distanceMeters": 136,
+            "road": "성내로9길",
+            "category": "cafe",
+            "id": "kakao-64",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "cafe",
+            "roadAddress": null
+          },
+          {
+            "name": "래미안공인중개사사무소",
+            "distanceMeters": 136,
+            "road": "성내로9길",
+            "category": "realEstate",
+            "id": "kakao-65",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "realEstate",
+            "roadAddress": null
+          },
+          {
+            "name": "CU 강동나이스점",
+            "distanceMeters": 142,
+            "road": "성내로3가길",
+            "category": "convenience",
+            "id": "kakao-66",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "convenience",
+            "roadAddress": null
+          },
+          {
+            "name": "그림숲아트",
+            "distanceMeters": 143,
+            "road": "성내로3길",
+            "category": "academy",
+            "id": "kakao-67",
+            "lat": 37.5415,
+            "lng": 127.1495,
+            "categoryRaw": "academy",
+            "roadAddress": null
+          }
+        ]
+      }
+    ],
+    "total": 67
+  }
+}

@@ -297,3 +297,125 @@ public struct EventsNearbyResponse: Codable, Sendable {
     /// 반경 내 절단 전 전체 수
     public let total: Int
 }
+
+// MARK: - 한눈에 보기 (M4, /api/nearby/overview)
+
+// 웹 `src/lib/nearby-overview.ts` 미러. 서버는 구조화 데이터(개수·가까운 곳 2개·상태)만 내고
+// 문장은 `buildOverviewLines`(LocationNarrative.swift)가 결정론 템플릿으로 조립한다.
+// 불릿별 독립 3-state: 0건(none) ≠ 정보 없음(unavailable·uncovered) ≠ 실패(failed), 키 없음은 불릿 부재.
+
+public struct OverviewPlace: Codable, Sendable, Hashable {
+    public let name: String
+    public let distanceMeters: Int
+    /// 8방위 소문자(SurroundingPlace 동형)
+    public let bearing: String
+}
+
+public struct OverviewStation: Codable, Sendable, Hashable {
+    public let name: String
+    public let line: String?
+    public let bearing: String
+    public let distanceMeters: Int
+}
+
+public enum OverviewBusStops: Sendable, Hashable {
+    case ok(count: Int, nearest: [OverviewPlace])
+    /// 반경 내 0건(JSON "none"). Swift 이름이 `empty`인 이유: Optional 스위치에서 `.none`이 nil과 겹친다.
+    case empty
+    /// TAGO 미커버 지역 — "없음"과 다르다(다시 볼 여지까지 없애는 것이 더 나쁘다).
+    case uncovered
+    case failed
+}
+
+public enum OverviewPlaceKind: String, Sendable, Hashable {
+    case food, kids, events, barrierFree
+}
+
+public enum OverviewPlaceState: Sendable, Hashable {
+    /// countCapped = 상류 캡에 걸려 "N곳 이상"으로 말해야 하는 경우(식당·카페 30).
+    case ok(count: Int, countCapped: Bool, nearest: [OverviewPlace])
+    /// 반경 내 0건(JSON "none").
+    case empty
+    case unavailableSeoulOnly
+    case failed
+}
+
+public enum OverviewBullet: Sendable, Hashable {
+    /// busStops nil = 버스 조각 키 없음(조각 생략), station nil = 반경 내 역 없음.
+    case transit(station: OverviewStation?, busStops: OverviewBusStops?)
+    case place(OverviewPlaceKind, OverviewPlaceState)
+}
+
+public struct NearbyOverview: Sendable {
+    /// 위치 문장 재료(행정동 + 도로명). 못 얻으면 nil.
+    public let place: String?
+    public let radiusMeters: Int
+    /// 순서 고정(transit, food, kids, events, barrierFree). 모르는 kind·state는 버린다(화면이 죽지 않는다).
+    public let bullets: [OverviewBullet]
+
+    public init(place: String?, radiusMeters: Int, bullets: [OverviewBullet]) {
+        self.place = place
+        self.radiusMeters = radiusMeters
+        self.bullets = bullets
+    }
+}
+
+extension NearbyOverview: Decodable {
+    private enum Keys: String, CodingKey { case place, radiusMeters, bullets }
+    private enum BulletKeys: String, CodingKey {
+        case kind, state, station, busStops, count, countCapped, nearest, reason
+    }
+    private enum BusKeys: String, CodingKey { case state, count, nearest }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        place = try c.decodeIfPresent(String.self, forKey: .place)
+        radiusMeters = try c.decode(Int.self, forKey: .radiusMeters)
+        var list = try c.nestedUnkeyedContainer(forKey: .bullets)
+        var decoded: [OverviewBullet] = []
+        while !list.isAtEnd {
+            let b = try list.nestedContainer(keyedBy: BulletKeys.self)
+            let kind = try b.decode(String.self, forKey: .kind)
+            let state = try b.decode(String.self, forKey: .state)
+            if kind == "transit" {
+                let station = try b.decodeIfPresent(OverviewStation.self, forKey: .station)
+                var bus: OverviewBusStops? = nil
+                if b.contains(.busStops), !(try b.decodeNil(forKey: .busStops)) {
+                    let bc = try b.nestedContainer(keyedBy: BusKeys.self, forKey: .busStops)
+                    switch try bc.decode(String.self, forKey: .state) {
+                    case "ok":
+                        bus = .ok(count: try bc.decode(Int.self, forKey: .count),
+                                  nearest: try bc.decode([OverviewPlace].self, forKey: .nearest))
+                    case "none": bus = .empty
+                    case "uncovered": bus = .uncovered
+                    case "failed": bus = .failed
+                    default: bus = nil
+                    }
+                }
+                decoded.append(.transit(station: station, busStops: bus))
+                continue
+            }
+            guard let placeKind = OverviewPlaceKind(rawValue: kind) else { continue }
+            let placeState: OverviewPlaceState?
+            switch state {
+            case "ok":
+                placeState = .ok(
+                    count: try b.decode(Int.self, forKey: .count),
+                    countCapped: try b.decodeIfPresent(Bool.self, forKey: .countCapped) ?? false,
+                    nearest: try b.decodeIfPresent([OverviewPlace].self, forKey: .nearest) ?? [])
+            case "none": placeState = .empty
+            case "unavailable":
+                placeState = (try b.decodeIfPresent(String.self, forKey: .reason)) == "seoulOnly" ? .unavailableSeoulOnly : nil
+            case "failed": placeState = .failed
+            default: placeState = nil
+            }
+            if let placeState { decoded.append(.place(placeKind, placeState)) }
+        }
+        bullets = decoded
+    }
+}
+
+public struct NearbyOverviewResponse: Decodable, Sendable {
+    /// null = 전 불릿 키 부재 + 위치 문장 없음(구성 결함). 소비자는 실패와 다른 문구로.
+    public let data: NearbyOverview?
+}

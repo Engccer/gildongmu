@@ -10,7 +10,7 @@ import Foundation
 private let landmarkCap = 6
 
 /// 8방위 단어. 미지정 키는 원문 반환(웹 폴백 동형).
-private func directionWord(_ bearing: String, lang: String) -> String {
+func directionWord(_ bearing: String, lang: String) -> String {
     switch bearing {
     case "n": return kitLocalized("whereAmI.direction.n", lang: lang)
     case "ne": return kitLocalized("whereAmI.direction.ne", lang: lang)
@@ -102,4 +102,64 @@ public func buildLocationNarrative(_ data: WhereAmIData, lang: String) -> [Strin
     }
 
     return paragraphs
+}
+
+// MARK: - 한눈에 보기 문장 (M4)
+
+private func overviewLabel(_ kind: OverviewPlaceKind, lang: String) -> String {
+    switch kind {
+    case .food: return kitLocalized("whereAmI.overview.labelFood", lang: lang)
+    case .kids: return kitLocalized("whereAmI.overview.labelKids", lang: lang)
+    case .events: return kitLocalized("whereAmI.overview.labelEvents", lang: lang)
+    case .barrierFree: return kitLocalized("whereAmI.overview.labelBarrierFree", lang: lang)
+    }
+}
+
+private func overviewNearest(_ items: [OverviewPlace], lang: String) -> String {
+    let parts = items.map {
+        kitLocalized("whereAmI.overview.nearestItem", lang: lang,
+                     directionWord($0.bearing, lang: lang), formatDistance($0.distanceMeters), $0.name)
+    }
+    return kitLocalized("whereAmI.overview.nearestLead", lang: lang, parts.joined(separator: ", "))
+}
+
+/// 불릿당 한 문장. 상태별 문장이 전부 다르다(3-state 불변식) — 반경 문구는 불릿이 아니라
+/// 헤딩 부제(`whereAmI.overview.radius`)가 한 번만 말하고, none 문장만 반경을 품는다.
+/// 템플릿은 `messages/*.json` whereAmI.overview.*(6 로케일, LLM 아님).
+public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [String] {
+    let radius = formatDistance(overview.radiusMeters)
+    return overview.bullets.map { bullet in
+        switch bullet {
+        case .transit(let station, let bus):
+            var parts: [String] = []
+            if let station {
+                let line = station.line.map { kitLocalized("whereAmI.overview.transitLine", lang: lang, $0) } ?? ""
+                parts.append(kitLocalized("whereAmI.overview.transitStation", lang: lang,
+                                          station.name, line, directionWord(station.bearing, lang: lang),
+                                          formatDistance(station.distanceMeters)))
+            } else {
+                parts.append(kitLocalized("whereAmI.overview.transitNoStation", lang: lang, radius))
+            }
+            switch bus {
+            case .ok(let count, let nearest):
+                parts.append(kitLocalized("whereAmI.overview.transitBus", lang: lang,
+                                          String(count), overviewNearest(nearest, lang: lang)))
+            case .empty: parts.append(kitLocalized("whereAmI.overview.transitBusNone", lang: lang))
+            case .uncovered: parts.append(kitLocalized("whereAmI.overview.transitBusUncovered", lang: lang))
+            case .failed: parts.append(kitLocalized("whereAmI.overview.transitBusFailed", lang: lang))
+            case nil: break
+            }
+            return kitLocalized("whereAmI.overview.transitLead", lang: lang, parts.joined(separator: ", "))
+        case .place(let kind, let state):
+            let label = overviewLabel(kind, lang: lang)
+            switch state {
+            case .ok(let count, let capped, let nearest):
+                return kitLocalized(capped ? "whereAmI.overview.okCapped" : "whereAmI.overview.ok", lang: lang,
+                                    label, String(count), overviewNearest(nearest, lang: lang))
+            case .empty: return kitLocalized("whereAmI.overview.none", lang: lang, label, radius)
+            case .unavailableSeoulOnly: return kitLocalized("whereAmI.overview.unavailableSeoulOnly", lang: lang, label)
+            case .failed: return kitLocalized("whereAmI.overview.failedItem", lang: lang, label)
+            }
+        }
+    }
 }
