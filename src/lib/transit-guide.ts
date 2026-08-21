@@ -24,7 +24,12 @@ import type { QuickExit, TransitLeg, TransitLegStop, TransitRoute } from "./type
  */
 
 export type TransitTrackMode = "seoulBus" | "tagoBus" | "subway";
-export type TransitPhase = "waiting" | "riding" | "arrived" | "done";
+/**
+ * boarding(2026-08-22 N3): 차량을 골랐고 그 차량의 **승차 정류소 도착**을 기다린다.
+ * 폴링 대상은 waiting과 같다(승차 정류소). riding 승격은 도착 관측 또는 사용자
+ * 선언(confirmBoarded·restoreBoarding) 두 길뿐 — 미등장을 탑승으로 추론하지 않는다.
+ */
+export type TransitPhase = "waiting" | "boarding" | "riding" | "arrived" | "done";
 export type TransitSignal =
   | "tracking"
   | "notYetVisible"
@@ -126,15 +131,28 @@ export function waitingEmptyReason(
 export type TransitInput =
   | { kind: "poll"; seq: number; phaseGen: number; poll: TrackPoll }
   | { kind: "board"; lock: TransitLock }
+  /** boarding → riding 사용자 선언("탑승했습니다"). */
+  | { kind: "confirmBoarded" }
+  /** "탑승 변경 취소" — previousLock으로 previousPhase 복귀(종전 board(previousLock) 폐기). */
+  | { kind: "restoreBoarding" }
   | { kind: "changeBoarding" }
   | { kind: "advance" };
+
+/** riding 진입 경위 — observed=승차 정류소 도착 관측, declared=사용자 선언·근사 잠금. */
+export type TransitBoardedCause = "observed" | "declared";
 
 /**
  * 구조화 안내 이벤트 — 한 입력당 최대 1개(§4.2 원자 전이). 문구는 플랫폼이
  * 조립하되 완성 문장(message)은 원문 병치(문법 결합 금지, §6.1).
  */
 export type TransitGuideEvent =
-  | { kind: "boarded"; legIndex: number }
+  | { kind: "boarded"; legIndex: number; cause: TransitBoardedCause }
+  /** 차량 선택(boarding 진입) — 활성화 응답은 소비자가 .high로 낭독. */
+  | { kind: "vehicleSelected"; legIndex: number }
+  /** boarding: 선택 차량의 승차 정류소 접근(첫 관측 + 사다리 3·2·1). */
+  | { kind: "approaching"; remaining: number | null; message: string }
+  /** boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청. */
+  | { kind: "vehiclePassed" }
   | { kind: "trackingStarted"; message: string; remaining: number | null }
   | { kind: "countdown"; remaining: number; message: string; currentLocation: string | null }
   | { kind: "messageChanged"; message: string }
@@ -165,6 +183,8 @@ export interface TransitGuideState {
   lock: TransitLock | null;
   /** 탑승 변경으로 해제한 직전 잠금(§13.1) — "탑승 변경 취소"의 복귀 대상. */
   previousLock: TransitLock | null;
+  /** previousLock이 해제되기 전의 국면(boarding·riding) — restoreBoarding의 복귀 목적지. */
+  previousPhase: TransitPhase | null;
   remaining: number | null;
   lastMessage: string | null;
   lastUpdatedAt: number | null;
@@ -214,12 +234,18 @@ export const MISS_ARRIVE_COUNT = 2;
 export const NEVER_SEEN_MS = 600_000;
 /** 세션 폴링 캡 — 도달 시 주기 강등 + 1회 통지(조용한 사망 금지, §7). */
 export const SESSION_POLL_CAP = 240;
+/**
+ * boarding 도착 관측의 신선도 상한(초) — 서버 STALE_FROZEN_SECONDS와 같은 값. 종착
+ * 코드(1·2)가 동결된 레코드는 선택 직후 폴에 "새 도착"으로 둔갑한다(설계 리뷰 C3).
+ */
+export const BOARD_STOP_FRESH_SECONDS = 120;
 
 /** 폴링 주기(§7 적응형, M1 개정). 0 = 폴링 없음(done·untrackable). */
 export function pollIntervalMs(state: TransitGuideState): number {
   if (state.phase === "done" || state.signal === "untrackable") return 0;
   if (state.capAnnounced) return 60_000;
-  if (state.phase === "waiting") return 20_000;
+  // boarding은 waiting과 같은 엔드포인트(승차 정류소)라 같은 주기.
+  if (state.phase === "waiting" || state.phase === "boarding") return 20_000;
   // riding·arrived(재관측 감시): 미등장 60s / 추적 중 15s(§12 — 원거리 30s 폐지:
   // upstream이 이미 15~25초 낡아 폴 간격이 체감 지연의 가산 항이었다).
   return state.trackingAnnounced ? 15_000 : 60_000;
@@ -235,11 +261,20 @@ export function eventProfile(event: TransitGuideEvent): {
       return event.remaining <= 1
         ? { interrupt: true, tone: "imminent" }
         : { interrupt: false, tone: "ladder" };
+    case "approaching":
+      // 내 정류소에 거의 왔다 — 지금 움직여야 하는 신호(riding 사다리와 같은 축).
+      return event.remaining != null && event.remaining <= 1
+        ? { interrupt: true, tone: "imminent" }
+        : { interrupt: false, tone: "ladder" };
     case "arrived":
       return { interrupt: true, tone: "arrive" };
     case "boarded":
+      // 도착 관측은 "지금 타라"라 interrupting, 선언은 사용자 행동의 응답이라 기본.
+      return { interrupt: event.cause === "observed", tone: "start" };
     case "legAdvanced":
       return { interrupt: false, tone: "start" };
+    case "vehiclePassed":
+      return { interrupt: false, tone: "weak" };
     case "trackingStarted":
       return { interrupt: false, tone: "ladder" };
     case "signalLost":
@@ -491,6 +526,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     signal: route.legs[0]?.trackMode ? "notYetVisible" : "untrackable",
     lock: null,
     previousLock: null,
+    previousPhase: null,
     remaining: null,
     lastMessage: null,
     lastUpdatedAt: null,
@@ -525,6 +561,10 @@ export function transitGuideStep(
   switch (input.kind) {
     case "board":
       return handleBoard(state, input.lock, now);
+    case "confirmBoarded":
+      return handleConfirmBoarded(state, now);
+    case "restoreBoarding":
+      return handleRestoreBoarding(state, now);
     case "changeBoarding":
       return handleChangeBoarding(state);
     case "advance":
@@ -534,6 +574,72 @@ export function transitGuideStep(
   }
 }
 
+/**
+ * 잠금 추적 필드 초기화(국면 진입 공용). failCount/failSince도 함께 비운다 — 폴링
+ * 대상이 바뀌는 전이(boarding→riding)에서 이전 대상의 실패 이력을 이월하면 새 대상
+ * 첫 실패가 곧장 upstreamFailed가 된다(설계 리뷰 M6).
+ */
+function resetLockTracking(state: TransitGuideState): TransitGuideState {
+  return {
+    ...state,
+    remaining: null,
+    lastMessage: null,
+    lastUpdatedAt: null,
+    currentLocation: null,
+    dataStamp: null,
+    dataAgeSeconds: null,
+    arrivedCertain: false,
+    ladderAnnounced: null,
+    trackingAnnounced: false,
+    missCount: 0,
+    failCount: 0,
+    failSince: null,
+  };
+}
+
+/** riding 진입 — ridingSince(미관측 상한 기준점, A16 L2)를 새로 찍는다. */
+function enterRiding(
+  state: TransitGuideState,
+  lock: TransitLock,
+  cause: TransitBoardedCause,
+  now: number,
+): TransitStepResult {
+  return {
+    state: {
+      ...resetLockTracking(state),
+      phase: "riding",
+      phaseGen: state.phaseGen + 1,
+      signal: "notYetVisible",
+      lock,
+      previousLock: null,
+      previousPhase: null,
+      ridingSince: now,
+    },
+    event: { kind: "boarded", legIndex: state.legIndex, cause },
+  };
+}
+
+/** boarding 진입 — 승차 정류소 폴링은 계속되므로 ridingSince는 없다. */
+function enterBoarding(state: TransitGuideState, lock: TransitLock): TransitStepResult {
+  return {
+    state: {
+      ...resetLockTracking(state),
+      phase: "boarding",
+      phaseGen: state.phaseGen + 1,
+      signal: "notYetVisible",
+      lock,
+      previousLock: null,
+      previousPhase: null,
+      ridingSince: null,
+    },
+    event: { kind: "vehicleSelected", legIndex: state.legIndex },
+  };
+}
+
+/**
+ * "탑승" = 차량 선택(N3). 근사 잠금(tagoBus·"이미 탑승했습니다")만 종전대로 riding —
+ * 식별자가 없어 고를 차량도, 기다릴 도착도 없다.
+ */
 function handleBoard(
   state: TransitGuideState,
   lock: TransitLock,
@@ -542,32 +648,24 @@ function handleBoard(
   if (state.phase !== "waiting" || state.signal === "untrackable") {
     return { state, event: null };
   }
-  return {
-    state: {
-      ...state,
-      phase: "riding",
-      phaseGen: state.phaseGen + 1,
-      lock,
-      previousLock: null,
-      remaining: null,
-      lastMessage: null,
-      lastUpdatedAt: null,
-      currentLocation: null,
-      dataStamp: null,
-      dataAgeSeconds: null,
-      arrivedCertain: false,
-      ladderAnnounced: null,
-      trackingAnnounced: false,
-      // 미관측 상한의 기준점(A16 L2). 재탑승·leg 전진마다 새로 찍힌다.
-      ridingSince: now,
-      missCount: 0,
-    },
-    event: { kind: "boarded", legIndex: state.legIndex },
-  };
+  return isApproxTransitLock(lock) ? enterRiding(state, lock, "declared", now) : enterBoarding(state, lock);
+}
+
+function handleConfirmBoarded(state: TransitGuideState, now: number): TransitStepResult {
+  if (state.phase !== "boarding" || state.lock == null) return { state, event: null };
+  return enterRiding(state, state.lock, "declared", now);
+}
+
+/** 탑승 변경 취소 — 해제 전 국면으로 복귀(boarding이면 다시 승차 정류소 대기). */
+function handleRestoreBoarding(state: TransitGuideState, now: number): TransitStepResult {
+  if (state.phase !== "waiting" || state.previousLock == null) return { state, event: null };
+  const lock = state.previousLock;
+  if (state.previousPhase === "boarding") return enterBoarding(state, lock);
+  return enterRiding(state, lock, "declared", now);
 }
 
 function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
-  if (state.phase !== "riding" && state.phase !== "arrived") {
+  if (state.phase !== "boarding" && state.phase !== "riding" && state.phase !== "arrived") {
     return { state, event: null };
   }
   return {
@@ -576,8 +674,9 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       phase: "waiting",
       phaseGen: state.phaseGen + 1,
       lock: null,
-      // 직전 잠금 보존(§13.1) — "탑승 변경 취소"가 board(previousLock)로 복귀한다.
+      // 직전 잠금·국면 보존(§13.1) — "탑승 변경 취소"(restoreBoarding)의 복귀 대상.
       previousLock: state.lock,
+      previousPhase: state.phase === "boarding" ? "boarding" : "riding",
       remaining: null,
       lastMessage: null,
       currentLocation: null,
@@ -620,6 +719,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       signal: final ? state.signal : nextLeg?.trackMode ? "notYetVisible" : "untrackable",
       lock: null,
       previousLock: null,
+      previousPhase: null,
       remaining: null,
       lastMessage: null,
       lastUpdatedAt: null,
@@ -695,6 +795,12 @@ function handlePoll(
   const lock = state.lock;
   const matched = lock ? findLockedItem(items, lock) : null;
 
+  if (state.phase === "boarding") {
+    return matched
+      ? commitBoardingMatched(next, matched, event, now)
+      : boardingUnmatched(next, event, now);
+  }
+
   if (matched) {
     return commitMatched(next, matched, event, now);
   }
@@ -764,6 +870,114 @@ function handlePoll(
     return { state: next, event: { kind: "signalLost" } };
   }
   return { state: next, event };
+}
+
+/**
+ * boarding 매칭(승차 정류소 기준 도착 정보, N3 spec §3.3). riding의 commitMatched와
+ * 달리 ①동일 스냅숏도 missCount를 올리고(동결 레코드가 국면을 영구 고착시키는 것을
+ * 막는다 — 이 국면엔 neverSeen 시간축이 없다) ②도착 관측이 riding 승격이다.
+ */
+function commitBoardingMatched(
+  base: TransitGuideState,
+  item: TrackItem,
+  carriedEvent: TransitGuideEvent | null,
+  now: number,
+): TransitStepResult {
+  const stamp = item.dataStamp ?? null;
+  if (stamp != null && stamp === base.dataStamp && item.message === base.lastMessage) {
+    return {
+      state: {
+        ...base,
+        missCount: base.missCount + 1,
+        lastUpdatedAt: now,
+        dataAgeSeconds: item.dataAgeSeconds ?? null,
+      },
+      event: carriedEvent,
+    };
+  }
+  const prevRemaining = base.remaining;
+  const wasTracking = base.trackingAnnounced;
+  const next: TransitGuideState = {
+    ...base,
+    signal: "tracking",
+    missCount: 0,
+    remaining: item.remainingStops,
+    lastMessage: item.message,
+    lastUpdatedAt: now,
+    currentLocation: item.currentLocation ?? null,
+    dataStamp: stamp,
+    dataAgeSeconds: stamp != null && stamp === base.dataStamp ? null : (item.dataAgeSeconds ?? null),
+    trackingAnnounced: true,
+  };
+
+  // 도착 관측 = riding 승격. 서울버스 잔여 0("곧 도착"·구조 필드) / 지하철 진입 0·도착 1.
+  // 출발 2는 제외 — 이미 떠난 열차에 "탑승하세요"를 말하지 않는다. 동결 레코드
+  // (나이 > BOARD_STOP_FRESH_SECONDS)는 도착으로 보지 않는다(설계 리뷰 C3·M1).
+  const fresh = item.dataAgeSeconds == null || item.dataAgeSeconds <= BOARD_STOP_FRESH_SECONDS;
+  const arrivedAtBoardStop =
+    base.lock?.mode === "subway"
+      ? item.arrivalCode === "0" || item.arrivalCode === "1"
+      : base.lock?.mode === "seoulBus"
+        ? item.remainingStops === 0
+        : false;
+  if (base.lock != null && fresh && arrivedAtBoardStop) {
+    return enterRiding(next, base.lock, "observed", now);
+  }
+
+  // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).
+  if (!wasTracking) {
+    next.ladderAnnounced = item.remainingStops;
+    return {
+      state: next,
+      event: { kind: "approaching", remaining: item.remainingStops, message: item.message },
+    };
+  }
+  const remaining = item.remainingStops;
+  if (remaining == null) {
+    if (item.message !== base.lastMessage && base.lastMessage !== null) {
+      return { state: next, event: { kind: "messageChanged", message: item.message } };
+    }
+    return { state: next, event: carriedEvent };
+  }
+  const latch = next.ladderAnnounced;
+  if (
+    remaining <= LADDER_MAX &&
+    remaining >= 0 &&
+    (latch == null || remaining < latch) &&
+    prevRemaining != null &&
+    remaining < prevRemaining
+  ) {
+    next.ladderAnnounced = remaining;
+    return { state: next, event: { kind: "approaching", remaining, message: item.message } };
+  }
+  if (base.signal === "signalLost" && carriedEvent === null) {
+    return { state: next, event: { kind: "signalRecovered" } };
+  }
+  return { state: next, event: carriedEvent };
+}
+
+/**
+ * boarding 미등장 — 선택 시점에 목록에 있던 차량이라 첫 관측 전에도 센다. 잔여 ≤1에서
+ * 사라지면 "지나갔을 수 있다"(vehiclePassed)이지 탑승이 아니다(설계 리뷰 C2). 어느
+ * 쪽이든 signalLost 상태로 떨어져 1회만 말하고, 탈출은 사용자 선택(탑승했습니다 /
+ * 다른 차량 선택)이다.
+ */
+function boardingUnmatched(
+  base: TransitGuideState,
+  carriedEvent: TransitGuideEvent | null,
+  now: number,
+): TransitStepResult {
+  const next: TransitGuideState = { ...base, missCount: base.missCount + 1, lastUpdatedAt: now };
+  if (next.signal === "signalLost") return { state: next, event: carriedEvent };
+  if (base.remaining != null && base.remaining <= 1 && next.missCount >= MISS_ARRIVE_COUNT) {
+    next.signal = "signalLost";
+    return { state: next, event: { kind: "vehiclePassed" } };
+  }
+  if (next.missCount >= MISS_LOST_COUNT) {
+    next.signal = "signalLost";
+    return { state: next, event: { kind: "signalLost" } };
+  }
+  return { state: next, event: carriedEvent };
 }
 
 function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem | null {

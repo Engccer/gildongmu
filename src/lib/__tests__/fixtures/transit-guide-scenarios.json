@@ -205,11 +205,25 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
       "event": {
        "kind": "boarded",
-       "legIndex": 0
+       "legIndex": 0,
+       "cause": "declared"
       }
      }
     },
@@ -218,7 +232,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -234,7 +248,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -265,7 +279,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -291,7 +305,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -319,7 +333,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -347,7 +361,7 @@
      "input": {
       "kind": "poll",
       "seq": 6,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -377,7 +391,7 @@
      "input": {
       "kind": "poll",
       "seq": 7,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -428,7 +442,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -437,7 +463,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -464,7 +490,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -501,7 +527,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -510,7 +548,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -537,7 +575,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -565,7 +603,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -591,7 +629,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -616,7 +654,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -653,7 +691,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -662,7 +712,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -689,7 +739,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -704,7 +754,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -718,7 +768,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -735,7 +785,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -772,7 +822,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -781,7 +843,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -809,7 +871,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -824,7 +886,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -842,7 +904,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -870,7 +932,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -908,7 +970,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -917,7 +991,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -931,7 +1005,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -945,7 +1019,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -962,7 +1036,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -976,7 +1050,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -1002,7 +1076,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1011,7 +1097,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -1025,7 +1111,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -1051,7 +1137,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1060,7 +1158,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1088,7 +1186,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1114,7 +1212,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 0,
+      "phaseGen": 1,
       "poll": {
        "kind": "empty"
       }
@@ -1138,10 +1236,23 @@
       "lock": "seoulBusV1"
      },
      "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "event": {
        "kind": "boarded",
-       "legIndex": 0
+       "legIndex": 0,
+       "cause": "declared"
       }
      }
     },
@@ -1150,7 +1261,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1195,7 +1306,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 2,
+      "phaseGen": 3,
       "poll": {
        "kind": "ok",
        "items": []
@@ -1223,10 +1334,23 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "event": {
        "kind": "boarded",
-       "legIndex": 1
+       "legIndex": 1,
+       "cause": "declared"
       }
      }
     },
@@ -1246,7 +1370,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 3,
+      "phaseGen": 5,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1307,9 +1431,22 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 10000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1385,7 +1522,8 @@
      "expect": {
       "phase": "riding",
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1545,7 +1683,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1554,7 +1704,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1581,7 +1731,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1606,7 +1756,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1642,7 +1792,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1651,7 +1813,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1683,7 +1845,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1713,7 +1875,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1754,7 +1916,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1763,7 +1937,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1793,7 +1967,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1833,7 +2007,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1842,7 +2028,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1871,7 +2057,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -1885,7 +2071,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -1913,7 +2099,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -1927,7 +2113,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -1942,7 +2128,7 @@
      "input": {
       "kind": "poll",
       "seq": 6,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -1968,7 +2154,19 @@
      },
      "expect": {
       "event": {
-       "kind": "boarded"
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -1977,7 +2175,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2007,7 +2205,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2022,7 +2220,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2040,7 +2238,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2068,7 +2266,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2106,9 +2304,22 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -2129,7 +2340,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2164,10 +2375,23 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "previousLock": null,
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -2176,7 +2400,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2219,7 +2443,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 2,
+      "phaseGen": 3,
       "poll": {
        "kind": "empty"
       }
@@ -2233,14 +2457,14 @@
     {
      "at": 100000,
      "input": {
-      "kind": "board",
-      "lock": "subway5696"
+      "kind": "restoreBoarding"
      },
      "expect": {
       "phase": "riding",
       "previousLock": null,
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -2249,7 +2473,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 3,
+      "phaseGen": 4,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2289,7 +2513,8 @@
      "expect": {
       "phase": "riding",
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -2426,7 +2651,8 @@
      "expect": {
       "phase": "riding",
       "event": {
-       "kind": "boarded"
+       "kind": "boarded",
+       "cause": "declared"
       }
      }
     },
@@ -2521,11 +2747,25 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
       "event": {
        "kind": "boarded",
-       "legIndex": 0
+       "legIndex": 0,
+       "cause": "declared"
       }
      }
     },
@@ -2534,7 +2774,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2550,7 +2790,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2568,7 +2808,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2592,11 +2832,25 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
       "event": {
        "kind": "boarded",
-       "legIndex": 0
+       "legIndex": 0,
+       "cause": "declared"
       }
      }
     },
@@ -2605,7 +2859,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "ok",
        "items": [
@@ -2636,7 +2890,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2652,7 +2906,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2668,7 +2922,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2694,11 +2948,25 @@
       "lock": "subway5696"
      },
      "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
       "phase": "riding",
       "signal": "notYetVisible",
       "event": {
        "kind": "boarded",
-       "legIndex": 0
+       "legIndex": 0,
+       "cause": "declared"
       }
      }
     },
@@ -2707,7 +2975,7 @@
      "input": {
       "kind": "poll",
       "seq": 1,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -2722,7 +2990,7 @@
      "input": {
       "kind": "poll",
       "seq": 2,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -2737,7 +3005,7 @@
      "input": {
       "kind": "poll",
       "seq": 3,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -2754,7 +3022,7 @@
      "input": {
       "kind": "poll",
       "seq": 4,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "failed"
       }
@@ -2769,7 +3037,7 @@
      "input": {
       "kind": "poll",
       "seq": 5,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2786,7 +3054,7 @@
      "input": {
       "kind": "poll",
       "seq": 6,
-      "phaseGen": 1,
+      "phaseGen": 2,
       "poll": {
        "kind": "empty"
       }
@@ -2795,6 +3063,795 @@
       "signal": "neverSeen",
       "event": {
        "kind": "neverSeen"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 선택→접근 3·2·1→승차 정류소 도착 관측→riding(observed)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected",
+       "legIndex": 0
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[3]번째 전역",
+         "remainingStops": 3,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "remaining": 3,
+      "event": {
+       "kind": "approaching",
+       "remaining": 3
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 2
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "천호 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataAgeSeconds": 5
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "remaining": null,
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "observed"
+      }
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null
+     }
+    },
+    {
+     "at": 100000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 잔여 1 뒤 2회 미등장 → vehiclePassed(국면 유지) → confirmBoarded → riding",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "전역 출발",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "3"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 1
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "tracking",
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": {
+       "kind": "vehiclePassed"
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "signalLost",
+      "event": null
+     }
+    },
+    {
+     "at": 90000,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 첫 관측 전 3회 미등장 → signalLost → 재등장은 approaching(signalRecovered 아님)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "notYetVisible",
+      "event": null
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "signalLost",
+      "event": {
+       "kind": "signalLost"
+      }
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[4]번째 전역",
+         "remainingStops": 4,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "signal": "tracking",
+      "event": {
+       "kind": "approaching",
+       "remaining": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 탑승 변경 → waiting(previousPhase=boarding) → restoreBoarding → boarding 복귀",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 10000,
+     "input": {
+      "kind": "changeBoarding"
+     },
+     "expect": {
+      "phase": "waiting",
+      "previousLock": "subway5696",
+      "event": {
+       "kind": "boardingReset"
+      }
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "phase": "waiting",
+      "event": null
+     }
+    },
+    {
+     "at": 30000,
+     "input": {
+      "kind": "restoreBoarding"
+     },
+     "expect": {
+      "phase": "boarding",
+      "previousLock": null,
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "restoreBoarding"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    }
+   ]
+  },
+  {
+   "name": "riding: 탑승 변경 → restoreBoarding은 riding으로 복귀(승차 정류소 폴링으로 되돌아가지 않는다)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding"
+     }
+    },
+    {
+     "at": 10000,
+     "input": {
+      "kind": "changeBoarding"
+     },
+     "expect": {
+      "phase": "waiting",
+      "previousLock": "subway5696"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "restoreBoarding"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "cause": "declared"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 출발(2)·동결 레코드(age 300)는 도착 관측이 아니다, 신선한 진입(0)은 관측",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "천호 출발",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "2",
+         "dataAgeSeconds": 5
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "approaching",
+       "remaining": 0
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "천호 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1",
+         "dataStamp": "S1",
+         "dataAgeSeconds": 300
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "천호 진입",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "0",
+         "dataStamp": "S2",
+         "dataAgeSeconds": 3
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "observed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: advance 무시, 늦은 세대 폴 폐기, 서울버스 잔여 0은 도착 관측",
+   "route": "seoulBusSingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "seoulBusV1"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 5000,
+     "input": {
+      "kind": "advance"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 10000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 0,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": null
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "111033479",
+         "direction": "",
+         "message": "곧 도착",
+         "remainingStops": 0,
+         "destinationName": null,
+         "express": false,
+         "arrivalCode": null
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "cause": "observed"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "boarding: 동결 동일 스냅숏 3폴은 missCount를 올려 signalLost(국면 고착 방지)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding"
+     }
+    },
+    {
+     "at": 20000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99",
+         "dataStamp": "F"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": {
+       "kind": "approaching",
+       "remaining": 2
+      }
+     }
+    },
+    {
+     "at": 40000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99",
+         "dataStamp": "F"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99",
+         "dataStamp": "F"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "event": null
+     }
+    },
+    {
+     "at": 80000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "empty"
+      }
+     },
+     "expect": {
+      "signal": "signalLost",
+      "event": {
+       "kind": "signalLost"
       }
      }
     }

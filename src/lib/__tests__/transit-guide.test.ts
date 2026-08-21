@@ -121,15 +121,18 @@ describe("pollIntervalMs — 적응 주기(§7)", () => {
     let state = initTransitGuide(route, 0);
     expect(pollIntervalMs(state)).toBe(20_000);
     state = transitGuideStep(state, { kind: "board", lock: SUBWAY_LOCK() }, route, 0).state;
+    // boarding(차량 선택 뒤 승차 정류소 대기)은 waiting과 같은 엔드포인트라 같은 주기.
+    expect(pollIntervalMs(state)).toBe(20_000);
+    state = transitGuideStep(state, { kind: "confirmBoarded" }, route, 0).state;
     expect(pollIntervalMs(state)).toBe(60_000);
-    state = transitGuideStep(state, pollOk(1, 1, [item({ remainingStops: 9 })]), route, 1).state;
+    state = transitGuideStep(state, pollOk(1, 2, [item({ remainingStops: 9 })]), route, 1).state;
     expect(pollIntervalMs(state)).toBe(15_000);
-    state = transitGuideStep(state, pollOk(2, 1, [item({ remainingStops: 3, message: "x" })]), route, 2).state;
+    state = transitGuideStep(state, pollOk(2, 2, [item({ remainingStops: 3, message: "x" })]), route, 2).state;
     expect(pollIntervalMs(state)).toBe(15_000);
     // advance는 arrived에서만 유효(리듀서 가드) — 도착 관측 후 전환.
     state = transitGuideStep(
       state,
-      pollOk(3, 1, [item({ remainingStops: 0, message: "여의도 도착", arrivalCode: "1" })]),
+      pollOk(3, 2, [item({ remainingStops: 0, message: "여의도 도착", arrivalCode: "1" })]),
       route,
       3,
     ).state;
@@ -148,7 +151,7 @@ describe("세션 폴링 캡(§7) — 도달 시 1회 통지 + 60초 강등", () 
     for (let i = 1; i <= SESSION_POLL_CAP + 5; i++) {
       const r = transitGuideStep(
         state,
-        { kind: "poll", seq: i, phaseGen: 1, poll: { kind: "empty" } },
+        { kind: "poll", seq: i, phaseGen: 2, poll: { kind: "empty" } },
         route,
         i * 1000,
       );
@@ -161,7 +164,8 @@ describe("세션 폴링 캡(§7) — 도달 시 1회 통지 + 60초 강등", () 
 
   function initTransitGuideAtRiding(route: TransitGuideRoute): TransitGuideState {
     const s = initTransitGuide(route, 0);
-    return transitGuideStep(s, { kind: "board", lock: SUBWAY_LOCK() }, route, 0).state;
+    const boarding = transitGuideStep(s, { kind: "board", lock: SUBWAY_LOCK() }, route, 0).state;
+    return transitGuideStep(boarding, { kind: "confirmBoarded" }, route, 0).state;
   }
 });
 
@@ -176,7 +180,8 @@ describe("eventProfile — 통지 채널·톤(§6.1)", () => {
     expect(eventProfile({ kind: "arrived", certain: true }).interrupt).toBe(true);
     expect(eventProfile({ kind: "arrived", certain: false }).interrupt).toBe(true);
     expect(eventProfile({ kind: "signalLost" }).interrupt).toBe(false);
-    expect(eventProfile({ kind: "boarded", legIndex: 0 }).interrupt).toBe(false);
+    expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "declared" }).interrupt).toBe(false);
+    expect(eventProfile({ kind: "boarded", legIndex: 0, cause: "observed" }).interrupt).toBe(true);
   });
 });
 
