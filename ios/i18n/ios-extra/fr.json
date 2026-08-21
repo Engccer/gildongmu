@@ -182,11 +182,7 @@
       "kidsEmpty": "Aucun lieu pour enfants à proximité",
       "subwayEmpty": "Aucune station de métro à proximité",
       "subwayEmptyNearest": "Aucune station de métro à proximité. La plus proche est %@, à %@",
-      "whereAmIReady": "Position actuelle trouvée",
       "whereAmIChat": "Poser une question sur ma position actuelle",
-      "whereAmIAsOf": "Position actuelle à {time}",
-      "whereAmIFailed": "Impossible d'obtenir la position actuelle",
-      "whereAmIEmpty": "Informations de position introuvables",
       "conditionsReady": "Météo et qualité de l'air chargées",
       "conditionsPartial": "Certaines informations n'ont pas pu être chargées",
       "skyLine": "Ciel, {value}",
@@ -202,7 +198,6 @@
       "skyPartly": "Partiellement nuageux",
       "rainSnow": "Pluie ou neige",
       "airStationLine": "Station de mesure {name}, {distance}km",
-      "whereAmIServerFailed": "Impossible de charger les informations de la position actuelle",
       "eventsEmpty": "Aucun événement culturel n'a lieu près de vous aujourd'hui",
       "unitEvent": "événements",
       "subwayClosed": "Hors service actuellement. Premier train %@",
@@ -214,7 +209,8 @@
       "aroundHereManualNoPlace": "Autour de la position choisie",
       "aroundLoaded": "Exploration prête",
       "aroundLoadedManual": "Environs de la position choisie prêts",
-      "aroundPlacesHeading": "Commerces et services à proximité"
+      "aroundPlacesHeading": "Commerces et services à proximité",
+      "aroundPlacesFailed": "Impossible de charger les commerces et services à proximité"
     },
     "settings": {
       "title": "Réglages",

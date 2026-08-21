@@ -9,11 +9,31 @@ import GildongmuKit
 /// 채널(헌장 §5): 조회 중 = 트리거 라벨 교체, 성공 = 결과 헤딩 포커스, 빈 결과·실패 =
 /// 메시지 행 포커스. Announcement 게시 금지 — 감싸는 화면이 이미 단일 통지 채널을
 /// 소유한다(웹 DistanceBeacon 단일 live 계약 동형).
+/// 묶음별 "더 보기" 창(웹 useRevealMore per-group 미러). 버튼형·자동 펼침 두 모드가 공유한다.
+@Observable @MainActor
+final class SceneRevealWindows {
+    private var windows: [String: RevealWindow] = [:]
+
+    func reset() { windows = [:] }
+
+    func visibleCount(for bucket: String) -> Int {
+        windows[bucket]?.visibleCount ?? RevealWindow.initialVisible
+    }
+
+    /// "더 보기": 해당 묶음 공개 수를 늘리고 첫 새 항목 행 id를 반환(VO 포커스 대상).
+    func revealMore(scene: SurroundingsScene, bucket: String) -> String? {
+        guard let group = scene.groups.first(where: { $0.bucket == bucket }) else { return nil }
+        var window = windows[bucket] ?? RevealWindow()
+        guard let firstNewIndex = window.revealMore(totalCount: group.items.count) else { return nil }
+        windows[bucket] = window
+        return sceneItemRowID(bucket: bucket, index: firstNewIndex)
+    }
+}
+
 @Observable @MainActor
 final class SurroundingsSceneModel {
     private var core: NearbyLoadCore<SurroundingsScene>!   // 클로저가 self 캡처 — IUO 2단 초기화
-    /// 묶음별 "더 보기" 창(웹 useRevealMore per-group 미러). 커밋 시 전체 리셋.
-    private var windows: [String: RevealWindow] = [:]
+    let reveal = SceneRevealWindows()
     /// 진행 신호(트리거 라벨 교체 근거). core는 loaded 유지 재조회 중을 노출하지 않는다.
     private(set) var busy = false
     /// 재조회 실패 표식 — core 계약 #11이 직전 데이터를 유지하므로, 이 플래그가 없으면
@@ -39,7 +59,7 @@ final class SurroundingsSceneModel {
                 return scene.total == 0 ? nil : scene   // nil → 코어가 .empty로
             },
             willCommit: { [weak self] _ in
-                self?.windows = [:]
+                self?.reveal.reset()
                 self?.refreshFailed = false
             },
             onEvent: { [weak self] event in
@@ -59,18 +79,12 @@ final class SurroundingsSceneModel {
 
     func close() { closed = true }
 
-    func visibleCount(for bucket: String) -> Int {
-        windows[bucket]?.visibleCount ?? RevealWindow.initialVisible
-    }
+    func visibleCount(for bucket: String) -> Int { reveal.visibleCount(for: bucket) }
 
     /// "더 보기": 해당 묶음 공개 수를 늘리고 첫 새 항목 행 id를 반환(VO 포커스 대상).
     func revealMore(bucket: String) -> String? {
-        guard case .loaded(let scene) = phase,
-              let group = scene.groups.first(where: { $0.bucket == bucket }) else { return nil }
-        var window = windows[bucket] ?? RevealWindow()
-        guard let firstNewIndex = window.revealMore(totalCount: group.items.count) else { return nil }
-        windows[bucket] = window
-        return sceneItemRowID(bucket: bucket, index: firstNewIndex)
+        guard case .loaded(let scene) = phase else { return nil }
+        return reveal.revealMore(scene: scene, bucket: bucket)
     }
 }
 
@@ -157,75 +171,8 @@ struct SurroundingsSceneSection: View {
                 model.close()
                 Task { await land(on: "scene-trigger") }
             }
-            // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
-            if let place = scene.place {
-                Text(place)
-            }
-            ForEach(scene.groups, id: \.bucket) { group in
-                // 묶음 제목이 유일한 발견 경로(spec 판정 10 — 제목 점프로 통째 건너뛰기).
-                Text(bucketTitle(group))
-                    .font(.headline)
-                    .accessibilityAddTraits(.isHeader)
-                ForEach(
-                    Array(group.items.prefix(model.visibleCount(for: group.bucket)).enumerated()),
-                    id: \.offset
-                ) { index, item in
-                    // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
-                    distanceText(itemLine(item))
-                        .id(sceneItemRowID(bucket: group.bucket, index: index))
-                        .accessibilityFocused(
-                            $focusedID,
-                            equals: sceneItemRowID(bucket: group.bucket, index: index))
-                }
-                if group.items.count > model.visibleCount(for: group.bucket) {
-                    Button(appLocalized("actions.showMore")) {
-                        if let id = model.revealMore(bucket: group.bucket) {
-                            proxy.scrollTo(id, anchor: .top)   // 가시화 후 포커스(Clinic 정본)
-                            DispatchQueue.main.async { focusedID = id }
-                        }
-                    }
-                }
-            }
-            // 실재성 한계 고지(spec 판정 5 — 이름을 그대로 말하는 대신 출처로 헤지).
-            Text(appLocalized("surroundings.source"))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private func itemLine(_ item: SurroundingsSceneItem) -> String {
-        if let road = item.road {
-            return appLocalized(
-                "surroundings.itemWithRoad",
-                formatDistance(item.distanceMeters), item.name, road)
-        }
-        return appLocalized(
-            "surroundings.item", formatDistance(item.distanceMeters), item.name)
-    }
-
-    private func bucketTitle(_ group: SurroundingsSceneGroup) -> String {
-        let name = bucketName(group.bucket)
-        guard group.items.count > countInTitleThreshold else { return name }
-        return "\(name) \(appLocalized("surroundings.count", String(group.items.count)))"
-    }
-
-    /// bucket 값→키 매핑. 린터 계약(리터럴 키만)이라 switch에 12개를 나열한다.
-    /// 모르는 값은 원값 노출(키 문자열 노출보다 낫다 — 서버가 값을 늘려도 안 깨진다).
-    private func bucketName(_ bucket: String) -> String {
-        switch bucket {
-        case "left": appLocalized("surroundings.bucket.left")
-        case "right": appLocalized("surroundings.bucket.right")
-        case "across": appLocalized("surroundings.bucket.across")
-        case "beyond": appLocalized("surroundings.bucket.beyond")
-        case "n": appLocalized("surroundings.bucket.n")
-        case "ne": appLocalized("surroundings.bucket.ne")
-        case "e": appLocalized("surroundings.bucket.e")
-        case "se": appLocalized("surroundings.bucket.se")
-        case "s": appLocalized("surroundings.bucket.s")
-        case "sw": appLocalized("surroundings.bucket.sw")
-        case "w": appLocalized("surroundings.bucket.w")
-        case "nw": appLocalized("surroundings.bucket.nw")
-        default: bucket
+            SurroundingsSceneGroupsView(
+                scene: scene, reveal: model.reveal, proxy: proxy, focusedID: $focusedID)
         }
     }
 
@@ -253,5 +200,120 @@ struct SurroundingsSceneSection: View {
         focusedID = target
         try? await Task.sleep(for: .milliseconds(600))
         if focusedID != target { focusedID = target }
+    }
+}
+
+/// 묶음·항목 문구 조립(버튼형·자동 펼침 공유). 린터 계약(리터럴 키만)이라 switch 나열.
+private enum SceneText {
+    static func itemLine(_ item: SurroundingsSceneItem) -> String {
+        if let road = item.road {
+            return appLocalized(
+                "surroundings.itemWithRoad",
+                formatDistance(item.distanceMeters), item.name, road)
+        }
+        return appLocalized(
+            "surroundings.item", formatDistance(item.distanceMeters), item.name)
+    }
+
+    static func bucketTitle(_ group: SurroundingsSceneGroup) -> String {
+        let name = Self.bucketName(group.bucket)
+        guard group.items.count > countInTitleThreshold else { return name }
+        return "\(name) \(appLocalized("surroundings.count", String(group.items.count)))"
+    }
+
+    /// bucket 값→키 매핑. 린터 계약(리터럴 키만)이라 switch에 12개를 나열한다.
+    /// 모르는 값은 원값 노출(키 문자열 노출보다 낫다 — 서버가 값을 늘려도 안 깨진다).
+    static func bucketName(_ bucket: String) -> String {
+        switch bucket {
+        case "left": appLocalized("surroundings.bucket.left")
+        case "right": appLocalized("surroundings.bucket.right")
+        case "across": appLocalized("surroundings.bucket.across")
+        case "beyond": appLocalized("surroundings.bucket.beyond")
+        case "n": appLocalized("surroundings.bucket.n")
+        case "ne": appLocalized("surroundings.bucket.ne")
+        case "e": appLocalized("surroundings.bucket.e")
+        case "se": appLocalized("surroundings.bucket.se")
+        case "s": appLocalized("surroundings.bucket.s")
+        case "sw": appLocalized("surroundings.bucket.sw")
+        case "w": appLocalized("surroundings.bucket.w")
+        case "nw": appLocalized("surroundings.bucket.nw")
+        default: bucket
+        }
+    }
+
+}
+
+/// 장면 본문(묶음 헤딩 + 장소 행 + 더 보기 + 출처 각주). 버튼형(`SurroundingsSceneSection`)과
+/// 자동 펼침(`SurroundingsSceneAutoSection`)이 공유한다. 각 장소 행은 **장소 상세로 열리는
+/// NavigationLink**(M4 판정 ⑤ — 실재성 헤지는 출처 각주가 그대로 맡는다).
+struct SurroundingsSceneGroupsView: View {
+    let scene: SurroundingsScene
+    let reveal: SceneRevealWindows
+    let proxy: ScrollViewProxy
+    var focusedID: AccessibilityFocusState<String?>.Binding
+
+    var body: some View {
+        // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
+        if let place = scene.place {
+            Text(place)
+        }
+        ForEach(scene.groups, id: \.bucket) { group in
+            // 묶음 제목이 유일한 발견 경로(spec 판정 10 — 제목 점프로 통째 건너뛰기).
+            Text(SceneText.bucketTitle(group))
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+            ForEach(
+                Array(group.items.prefix(reveal.visibleCount(for: group.bucket)).enumerated()),
+                id: \.offset
+            ) { index, item in
+                // 한 줄 = 한 접근성 객체. 거리 낭독 정정은 distanceText가(m→로케일 단어).
+                NavigationLink {
+                    PlaceDetailView(place: sceneItemToPlace(item))
+                } label: {
+                    distanceText(SceneText.itemLine(item))
+                }
+                .id(sceneItemRowID(bucket: group.bucket, index: index))
+                .accessibilityFocused(
+                    focusedID,
+                    equals: sceneItemRowID(bucket: group.bucket, index: index))
+            }
+            if group.items.count > reveal.visibleCount(for: group.bucket) {
+                Button(appLocalized("actions.showMore")) {
+                    if let id = reveal.revealMore(scene: scene, bucket: group.bucket) {
+                        proxy.scrollTo(id, anchor: .top)   // 가시화 후 포커스(Clinic 정본)
+                        DispatchQueue.main.async { focusedID.wrappedValue = id }
+                    }
+                }
+            }
+        }
+        // 실재성 한계 고지(spec 판정 5 — 이름을 그대로 말하는 대신 출처로 헤지).
+        Text(appLocalized("surroundings.source"))
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+    }
+}
+
+/// M4 자동 펼침 — 데이터는 부모(둘러보기 화면)가 한 커밋으로 주입한다. 트리거·닫기·착지
+/// 없음: 조용히 나타나는 섹션이라 **헤딩이 유일한 발견 경로**이고(헌장 §3), 포커스는
+/// 부모의 위치 문장 1회 착지가 전부다(늦게 와도 움직이지 않는다 — 한 커밋이라 늦게 올 수도 없다).
+struct SurroundingsSceneAutoSection: View {
+    /// nil = 조회 실패(failed) 또는 data null. 0건은 total==0으로 온다.
+    let scene: SurroundingsScene?
+    let failed: Bool
+    let proxy: ScrollViewProxy
+    var focusedID: AccessibilityFocusState<String?>.Binding
+    @State private var reveal = SceneRevealWindows()
+
+    var body: some View {
+        Text(appLocalized("surroundings.ready"))
+            .font(.headline)
+            .accessibilityAddTraits(.isHeader)
+        if failed || scene == nil {
+            Text(appLocalized("surroundings.error"))
+        } else if let scene, scene.total == 0 {
+            Text(appLocalized("surroundings.empty"))
+        } else if let scene {
+            SurroundingsSceneGroupsView(scene: scene, reveal: reveal, proxy: proxy, focusedID: focusedID)
+        }
     }
 }

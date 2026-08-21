@@ -17401,6 +17401,46 @@
         }
       }
     },
+    "ios.nearby.aroundPlacesFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 가게와 시설을 가져오지 못했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not load nearby shops and facilities"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar las tiendas y servicios cercanos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les commerces et services à proximité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile caricare negozi e servizi nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺の店舗と施設を取得できませんでした"
+          }
+        }
+      }
+    },
     "ios.nearby.aroundPlacesHeading": {
       "localizations": {
         "ko": {
@@ -19721,46 +19761,6 @@
         }
       }
     },
-    "ios.nearby.whereAmIAsOf": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치 %1$@ 기준"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Current location as of %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ubicación actual a las %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Position actuelle à %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Posizione attuale alle %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地 %1$@時点"
-          }
-        }
-      }
-    },
     "ios.nearby.whereAmIChat": {
       "localizations": {
         "ko": {
@@ -19797,166 +19797,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在地について質問する"
-          }
-        }
-      }
-    },
-    "ios.nearby.whereAmIEmpty": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치 정보를 찾지 못했습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't find current location info"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se encontró información de la ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informations de position introuvables"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Informazioni sulla posizione non trovate"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地の情報が見つかりませんでした"
-          }
-        }
-      }
-    },
-    "ios.nearby.whereAmIFailed": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치 조회에 실패했습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Failed to get current location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo obtener la ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible d'obtenir la position actuelle"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossibile ottenere la posizione attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地の照会に失敗しました"
-          }
-        }
-      }
-    },
-    "ios.nearby.whereAmIReady": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치를 확인했습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Current location found"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ubicación actual encontrada"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Position actuelle trouvée"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Posizione attuale trovata"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地を確認しました"
-          }
-        }
-      }
-    },
-    "ios.nearby.whereAmIServerFailed": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치 정보를 불러오지 못했습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't load information for your location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se pudo cargar la información de la ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible de charger les informations de la position actuelle"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossibile caricare le informazioni sulla posizione attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地の情報を取得できませんでした"
           }
         }
       }

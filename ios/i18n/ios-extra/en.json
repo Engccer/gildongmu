@@ -182,11 +182,7 @@
       "kidsEmpty": "No kids places nearby",
       "subwayEmpty": "No subway stations nearby",
       "subwayEmptyNearest": "No subway stations nearby. The closest is %@, %@ away",
-      "whereAmIReady": "Current location found",
       "whereAmIChat": "Ask about my current location",
-      "whereAmIAsOf": "Current location as of {time}",
-      "whereAmIFailed": "Failed to get current location",
-      "whereAmIEmpty": "Couldn't find current location info",
       "conditionsReady": "Weather and air quality loaded",
       "conditionsPartial": "Some information couldn't be loaded",
       "skyLine": "Sky, {value}",
@@ -202,7 +198,6 @@
       "skyPartly": "Partly cloudy",
       "rainSnow": "Rain or snow",
       "airStationLine": "{name} monitoring station, {distance}km",
-      "whereAmIServerFailed": "Couldn't load information for your location",
       "eventsEmpty": "No cultural events are running near you today",
       "unitEvent": "events",
       "subwayClosed": "Not running now. First train %@",
@@ -214,7 +209,8 @@
       "aroundHereManualNoPlace": "Around the location you set",
       "aroundLoaded": "Look-around is ready",
       "aroundLoadedManual": "Surroundings of the set location are ready",
-      "aroundPlacesHeading": "Shops and facilities nearby"
+      "aroundPlacesHeading": "Shops and facilities nearby",
+      "aroundPlacesFailed": "Could not load nearby shops and facilities"
     },
     "settings": {
       "title": "Settings",
