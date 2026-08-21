@@ -676,6 +676,7 @@
     "imminent": {
       "left": "Gira a sinistra tra poco",
       "right": "Gira a destra tra poco",
+      "back": "Torna indietro tra poco",
       "crosswalk": "Attraversa le strisce pedonali tra poco",
       "underpass": "Prendi il sottopassaggio tra poco"
     },
@@ -685,6 +686,7 @@
     "liveAction": {
       "left": "gira a sinistra",
       "right": "gira a destra",
+      "back": "torna indietro",
       "crosswalk": "attraversa sulle strisce pedonali",
       "underpass": "usa il sottopassaggio"
     },

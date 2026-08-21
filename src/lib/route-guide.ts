@@ -27,7 +27,7 @@ import {
   type GuideRoute,
   type StepSpan,
 } from "./route-geometry";
-import { walkStepAction, type WalkAction } from "./walk-action";
+import { imminentTone, walkStepAction, type ImminentTone, type WalkAction } from "./walk-action";
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
 
@@ -356,7 +356,11 @@ export type GuideEvent =
   | { kind: "reacquired" }
   | { kind: "speedSuggest" };
 
-export type GuideTone = "ahead" | "warning";
+/**
+ * 리듀서가 fix마다 내는 우선 톤. 행동 톤 5종(`imminentTone`)과 이탈 경고.
+ * 톤 계층 `GuideTone`(재생 9+7종)의 부분집합이라 그대로 흘려보낸다.
+ */
+export type GuideTone = ImminentTone | "warning";
 
 export interface GuideOutput {
   state: GuideState;
@@ -953,7 +957,7 @@ export function guideStep(
       next = { ...next, imminentUpTo: target };
       if (action) {
         next = { ...next, lastAnnouncedAt: now };
-        return emit(next, { kind: "imminent", indices: [target], action }, "ahead");
+        return emit(next, { kind: "imminent", indices: [target], action }, imminentTone(action));
       }
     }
   }

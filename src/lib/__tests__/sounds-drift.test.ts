@@ -21,7 +21,19 @@ const SOUNDS = [
   "ahead",
   "warning",
   "unreliable",
+  // 결정 지점 행동 톤(N2, 2026-08-22). left·right는 구분 방식 후보 2종을 함께 싣는다
+  // (실기기 선택 뒤 패자를 지우고 `left`·`right`로 접는다).
+  "crosswalk",
+  "back",
+  "left-pan",
+  "right-pan",
+  "left-pitch",
+  "right-pitch",
 ] as const;
+
+/** iOS `BeaconTone` 케이스(파일이 아니라 톤 — left·right는 scheme이 파일을 고른다). */
+const TONE_CASES =
+  "closer, farther, nearby, tick, start, stop, ahead, crosswalk, left, right, back, warning, unreliable";
 
 const ROOT = path.resolve(__dirname, "../../..");
 
@@ -36,7 +48,7 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
     });
   }
 
-  it("웹 재생기가 9종 전부를 알고 있다(누락 시 조용한 폴백 금지)", () => {
+  it("웹 재생기가 파일 전부를 알고 있다(누락 시 조용한 폴백 금지)", () => {
     const hook = readFileSync(path.join(ROOT, "src/hooks/useBeaconSound.ts"), "utf8");
     for (const name of SOUNDS) expect(hook).toContain(`"${name}"`);
   });
@@ -46,6 +58,6 @@ describe("실시간 길 안내 사운드 파일 동조", () => {
       path.join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/BeaconTones.swift"),
       "utf8",
     );
-    expect(kit).toContain(`case ${SOUNDS.join(", ")}`);
+    expect(kit).toContain(`case ${TONE_CASES}`);
   });
 });

@@ -275,8 +275,10 @@ public enum GuideEvent: Sendable, Equatable {
     case speedSuggest
 }
 
-public enum GuideTone: Sendable, Equatable {
-    case ahead, warning
+/// 리듀서가 fix마다 내는 우선 톤. 행동 톤 5종(`imminentTone`)과 이탈 경고.
+/// ⚠ `BeaconTone`(재생 파일)과는 다른 층이다 — 변환은 `BeaconTone(guide:)` 한 곳.
+public enum GuideTone: String, Sendable, Equatable, CaseIterable {
+    case ahead, crosswalk, left, right, back, warning
 }
 
 public struct GuideOutput: Sendable, Equatable {
@@ -817,7 +819,7 @@ public func guideStep(
             next.imminentUpTo = target
             if let action {
                 next.lastAnnouncedAt = now
-                return emit(next, .imminent(indices: [target], action: action), .ahead)
+                return emit(next, .imminent(indices: [target], action: action), imminentTone(action))
             }
         }
     }

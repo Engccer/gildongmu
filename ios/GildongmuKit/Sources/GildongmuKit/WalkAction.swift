@@ -15,7 +15,22 @@ import Foundation
 /// ⚠ **정규식이 아니라 부분 문자열로 판정한다.** 두 언어의 정규식 엔진·이스케이프는
 /// 갈리지만 부분 문자열 포함은 같다. 문형이 단순해 정규식이 주는 것이 없다.
 public enum WalkAction: String, Sendable, Equatable, CaseIterable {
-    case left, right, crosswalk, underpass
+    case left, right, back, crosswalk, underpass
+}
+
+/// 결정 지점 임박 큐의 **소리**. 행동별로 가른다(N2, 2026-08-22 위원장 판정: 횡단보도·
+/// 왼쪽·오른쪽·뒤로 돌기·그 외). 백그라운드·잠금에서는 문장이 나가지 않으므로 이 소리가
+/// 다음 행동을 알리는 유일한 채널이다. `underpass`는 "그 외"다 — 횡단보도 비프는
+/// 음향신호기의 인용이라 지하보도에 붙이면 거짓 인용이 된다.
+/// 웹 `imminentTone` 미러. 소리 정본은 `scripts/build-guide-tones.py`.
+public func imminentTone(_ action: WalkAction) -> GuideTone {
+    switch action {
+    case .crosswalk: .crosswalk
+    case .left: .left
+    case .right: .right
+    case .back: .back
+    case .underpass: .ahead
+    }
 }
 
 /// **회전 표지가 건널목 표지보다 먼저다.** 회전 표지는 행동을 서술하는 동사구라 지명에
@@ -33,6 +48,10 @@ private let walkActionMarkers: [(String, WalkAction)] = [
     ("오른쪽으로 돌아", .right),
     ("좌회전", .left),
     ("우회전", .right),
+    // 뒤로 돌기(Tmap turnType 14 "유턴" · 카카오 재작성 문형 추정). ⚠ 실호출 55문장에서
+    // 미관측 — 마커가 틀려도 결과는 침묵이고, 관측되면 fixture에 실문장을 더한다.
+    ("유턴", .back),
+    ("뒤로 돌아", .back),
     ("횡단보도", .crosswalk),
     ("지하보도", .underpass),
 ]

@@ -54,6 +54,12 @@ struct SettingsView: View {
     @AppStorage(DictationStyle.key) private var dictationRaw = DictationStyle.tapToggle.rawValue
     // 채팅 응답 듣기 속도 배율. 규칙·키 정본은 Kit ListenSpeed, 소비는 TtsPlayer 재생 시점.
     @AppStorage(ListenSpeed.storageKey) private var listenSpeed = 1.0
+    #if DEBUG || EXPERIMENTAL
+    // 왼쪽·오른쪽 안내음 구분 방식 후보 2종(실기기 선택 대기, spec 2026-08-22 §3).
+    // 판정 뒤 이 피커와 Kit `LeftRightToneScheme`을 함께 지운다.
+    @AppStorage(LeftRightToneScheme.storageKey) private var leftRightToneRaw =
+        LeftRightToneScheme.default.rawValue
+    #endif
     /// 언어 선택 변경 시 이 뷰를 다시 그리게 하는 관찰 지점(값은 Binding에서 읽지 않는다 —
     /// 미선택 상태 ""를 픽커 태그로 쓸 수 없어 실효 언어를 주는 AppLanguage.current가 정본).
     @AppStorage(AppLanguage.selectionKey) private var languageRaw = ""
@@ -133,6 +139,16 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.inline)
+
+                #if DEBUG || EXPERIMENTAL
+                Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
+                    Text(appLocalized("ios.settings.leftRightTonePan"))
+                        .tag(LeftRightToneScheme.pan.rawValue)
+                    Text(appLocalized("ios.settings.leftRightTonePitch"))
+                        .tag(LeftRightToneScheme.pitch.rawValue)
+                }
+                .pickerStyle(.inline)
+                #endif
 
                 Section {
                     TextField(appLocalized("ios.settings.weightKg"), text: $weightText)

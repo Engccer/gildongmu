@@ -1572,7 +1572,7 @@ final class BeaconModel {
         routeTone(
             ToneLayerInput(
                 unreliable: phase == .uncertain || phase == .reacquiring,
-                priorityTone: out.tone.map { $0 == .ahead ? .ahead : .warning },
+                priorityTone: out.tone.map(BeaconTone.init(guide:)),
                 eventOwned: out.event != nil,
                 trend: trendable
                     ? TrendInput(
@@ -2028,6 +2028,7 @@ final class BeaconModel {
         switch action {
         case .left: appLocalized("guide.imminent.left")
         case .right: appLocalized("guide.imminent.right")
+        case .back: appLocalized("guide.imminent.back")
         case .crosswalk: appLocalized("guide.imminent.crosswalk")
         case .underpass: appLocalized("guide.imminent.underpass")
         }
