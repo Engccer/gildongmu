@@ -16,6 +16,7 @@ import {
   bearingToCompass8,
   type CompassDirection,
 } from "./geo/bearing";
+import type { SurroundingPlace } from "./types";
 
 /**
  * M1 도착지 부근 상황 재구성 — 앵커 좌표 하나를 받아 "입구를 마주 본" 기준의
@@ -43,6 +44,17 @@ export interface SceneItem {
   /** 앵커와 다른 도로일 때만 채운다(같으면 잉여). */
   road: string | null;
   category: string;
+  // ── 장소 상세 진입 재료(M4 판정 ⑤, 2026-08-22). 소비자가 `Place`로 투영한다
+  // (Kit `sceneItemToPlace` ↔ 웹 `surroundingPlaceToPlace` 동형). 실재성 헤지는
+  // 출처 각주가 그대로 맡는다 — 상세로 여는 것과 이름을 단정하는 것은 다른 층이다.
+  id: string;
+  lat: number;
+  lng: number;
+  /** 카카오 category_name 전체 계층(상세의 역 판별 등에 필요). */
+  categoryRaw: string;
+  roadAddress: string | null;
+  phone?: string;
+  link?: string;
 }
 
 export interface SceneGroup {
@@ -89,18 +101,20 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
       ? await resolveRoadAxis(jusoRegion, anchor.road, { lat, lng })
       : null;
 
-  const toItem = (p: {
-    name: string;
-    distanceMeters: number;
-    category: string;
-    roadAddress: string | null;
-  }): SceneItem => {
+  const toItem = (p: SurroundingPlace): SceneItem => {
     const parsed = p.roadAddress ? parseRoadAddress(p.roadAddress) : null;
     return {
       name: p.name,
       distanceMeters: Math.round(p.distanceMeters),
       road: parsed && parsed.road !== anchor?.road ? parsed.road : null,
       category: p.category,
+      id: p.id,
+      lat: p.lat,
+      lng: p.lng,
+      categoryRaw: p.categoryRaw,
+      roadAddress: p.roadAddress,
+      phone: p.phone,
+      link: p.link,
     };
   };
 
