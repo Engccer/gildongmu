@@ -8,6 +8,11 @@
 
 ---
 
+## [미출시]
+
+### 추가
+- `route-walk`·`route-car` 도구에 경유지 1개 **`via`**(`위도,경도`). 응답 `waypoint.stepIndex`가 경유지 도착 뒤 첫 단계다. `route-transit`에 `via`를 주면 대중교통은 경유지를 지원하지 않는다는 정직 응답(`unsupported: "waypoint"`).
+
 ## [0.8.0] - 2026-08-02
 
 ### 변경

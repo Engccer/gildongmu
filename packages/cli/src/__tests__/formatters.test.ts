@@ -729,4 +729,37 @@ describe("nearby-subway 0건 — 최근접 역 동봉", () => {
     const lines = FORMATTERS["nearby-subway"]({ stations: [] } as never);
     expect(lines).toEqual(["주변에 지하철역이 없습니다."]);
   });
+
+  it("경유지(N4): waypoint.stepIndex 앞에 '경유지 도착' 줄, 번호는 이어진다", () => {
+    const lines = FORMATTERS["route-car"]({
+      distanceMeters: 1000, durationSeconds: 60, taxiFare: 3000, tollFare: 0,
+      guides: [{ name: "", guidance: "a", distanceMeters: 0, durationSeconds: 0 }, { name: "", guidance: "b", distanceMeters: 0, durationSeconds: 0 }],
+      waypoint: { stepIndex: 1, coord: { lat: 0, lng: 0 } },
+    } as never);
+    expect(lines.slice(1)).toEqual(["1. a", "경유지 도착", "2. b"]);
+  });
+});
+
+describe("route-walk 경유지(N4)", () => {
+  it("waypoint가 있으면 그 자리에 '경유지 도착' 줄", () => {
+    const lines = FORMATTERS["route-walk"]({
+      result: { distanceMeters: 500, durationSeconds: 400, steps: [{ description: "a" }, { description: "b" }], waypoint: { stepIndex: 1, coord: { lat: 0, lng: 0 } } },
+    } as never);
+    expect(lines.slice(1)).toEqual(["1. a", "경유지 도착", "2. b"]);
+  });
+  it("waypoint 없으면 현행", () => {
+    const lines = FORMATTERS["route-walk"]({
+      result: { distanceMeters: 500, durationSeconds: 400, steps: [{ description: "a" }] },
+    } as never);
+    expect(lines.slice(1)).toEqual(["1. a"]);
+  });
+});
+
+describe("route-transit 경유지 미지원(N4)", () => {
+  it("unsupported:waypoint는 '경로 없음'과 다른 문장", () => {
+    expect(FORMATTERS["route-transit"]({ result: null, unsupported: "waypoint" } as never)).toEqual([
+      "경유지는 대중교통 경로에서 지원하지 않습니다.",
+    ]);
+    expect(FORMATTERS["route-transit"]({ result: null } as never)).toEqual(["대중교통 경로를 찾을 수 없습니다."]);
+  });
 });
