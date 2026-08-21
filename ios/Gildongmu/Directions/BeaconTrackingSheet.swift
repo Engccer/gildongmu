@@ -31,6 +31,8 @@ struct BeaconTrackingSheet: View {
     /// 목적지 전환 확정 통보(스펙 2026-08-12 §5) — 탭이 폼 동기화(도착지 필드·무통지
     /// 재조회)를 맡는다. 세션에 반영되지 않은 선택(§3.2)은 통보하지 않는다.
     let onDestinationCommitted: (DirectionsEndpoint) -> Void
+    /// 경유지 추가·변경 확정 통보(N4) — 목적지 전환과 같은 채널·같은 가드.
+    let onWaypointCommitted: (DirectionsEndpoint) -> Void
 
     @AccessibilityFocusState private var stopFocused: Bool
     /// 최소화 버튼 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
@@ -44,6 +46,8 @@ struct BeaconTrackingSheet: View {
     @State private var showRouteList = false
     /// 목적지 검색 시트(스펙 §3) — 열린 동안 톤·통지 전부 억제(받아쓰기 마이크).
     @State private var changeDestPresented = false
+    /// 경유지 검색 시트(N4) — 억제 계약은 목적지 검색 시트와 같다.
+    @State private var waypointPresented = false
     /// 장소 상세 시트(스펙 §2) — 안내 신호는 유지(억제 없음, 임박 큐는 안전 계층).
     @State private var showPlaceDetail = false
     /// 재조회 버튼을 눌렀다는 표식. 성공(offRoute 해제)으로 버튼이 사라질 때 커서를
@@ -69,6 +73,15 @@ struct BeaconTrackingSheet: View {
                 // 최소화가 종료 앞이다(자주 쓰는 컨트롤을 앞으로 — SR 읽기 순서 비용).
                 Button(appLocalized("guide.minimize"), action: onMinimize)
                     .accessibilityFocused($minimizeFocused)
+                // 경유지(N4, 위원장 판정: 목적지 팝업과 안내 종료 사이). 라벨이 곧 상태 —
+                // 미도착 경유지가 있으면 "C, 경유지 변경", 없으면(도착 뒤 포함) "경유지 추가".
+                // ko 전용 기능이라 상세 조회가 없는 로케일에는 두지 않는다(`waypointAvailable`).
+                if GuideSession.shared.waypointAvailable {
+                    Button(model.waypoint.map { appLocalized("ios.guide.waypointChange", $0.label) }
+                           ?? appLocalized("directions.addVia")) {
+                        waypointPresented = true
+                    }
+                }
                 Button(appLocalized("beacon.stop"), action: onStop)
                     .accessibilityFocused($stopFocused)
                 // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
@@ -213,10 +226,24 @@ struct BeaconTrackingSheet: View {
                 Task { await landStopFocus() }
             }
         }
+        // 경유지 검색(N4): 목적지 검색과 같은 시트·같은 억제·같은 착지 계약.
+        .sheet(isPresented: $waypointPresented) {
+            DirectionsEndpointSearchView(target: .via) { endpoint in
+                guard case .place(let label, let lat, let lng) = endpoint else { return }
+                if model.setWaypoint(dest: BeaconDest(lat: lat, lng: lng), label: label) {
+                    onWaypointCommitted(endpoint)
+                }
+                Task { await landStopFocus() }
+            }
+        }
         // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 톤·통지 전부 억제(스펙 §5.4,
-        // 메인 화면 검색 시트의 outputSuppressed 계약 동형).
+        // 메인 화면 검색 시트의 outputSuppressed 계약 동형). 두 시트 중 하나라도 열려
+        // 있으면 억제(경유지 시트 추가, N4).
         .onChange(of: changeDestPresented) { _, presented in
-            model.outputSuppressed = presented
+            model.outputSuppressed = presented || waypointPresented
+        }
+        .onChange(of: waypointPresented) { _, presented in
+            model.outputSuppressed = presented || changeDestPresented
         }
         // 장소 상세(스펙 §2): 표준 중첩 시트. 목적지는 이름+좌표뿐이라 최소 Place로
         // 열고, 길찾기 진입 버튼은 숨긴다(이미 그곳으로 안내 중).
