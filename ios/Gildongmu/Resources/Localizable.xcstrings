@@ -11121,6 +11121,46 @@
         }
       }
     },
+    "guide.band.transitDestChangeFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@로 목적지 변경 실패, 안내 화면에서 확인"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destination change to %1$@ failed, check the guidance screen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio de destino a %1$@ fallido, revisa la guía"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changement de destination vers %1$@ échoué, voir le guidage"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambio destinazione verso %1$@ non riuscito, controlla la guida"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@への目的地変更に失敗、案内画面で確認"
+          }
+        }
+      }
+    },
     "guide.band.transitDestChangePending": {
       "localizations": {
         "ko": {

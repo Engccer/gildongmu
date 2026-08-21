@@ -748,7 +748,8 @@
       "transitRiding": "En {line}, faltan {count} paradas",
       "transitRidingNoCount": "En {line}",
       "transitArrived": "Llegaste a {dest}",
-      "transitDestChangePending": "Cambiando destino a {label}, elige una ruta"
+      "transitDestChangePending": "Cambiando destino a {label}, elige una ruta",
+      "transitDestChangeFailed": "Cambio de destino a {label} fallido, revisa la guía"
     }
   },
   "offline": {

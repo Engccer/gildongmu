@@ -748,7 +748,8 @@
       "transitRiding": "On {line}, {count} stops left",
       "transitRidingNoCount": "On {line}",
       "transitArrived": "Arrived at {dest}",
-      "transitDestChangePending": "Changing destination to {label}, choose a route"
+      "transitDestChangePending": "Changing destination to {label}, choose a route",
+      "transitDestChangeFailed": "Destination change to {label} failed, check the guidance screen"
     }
   },
   "offline": {

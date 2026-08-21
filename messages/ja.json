@@ -748,7 +748,8 @@
       "transitRiding": "{line}に乗車中、残り{count}駅",
       "transitRidingNoCount": "{line}に乗車中",
       "transitArrived": "{dest}に到着",
-      "transitDestChangePending": "目的地を{label}に変更中、経路を選択"
+      "transitDestChangePending": "目的地を{label}に変更中、経路を選択",
+      "transitDestChangeFailed": "{label}への目的地変更に失敗、案内画面で確認"
     }
   },
   "offline": {

@@ -78,7 +78,8 @@ set(nil):   session.isMinimized = true   // 항상. 콜백 시점의 모델 상�
 | 비콘 간략(경로 없음·폴백) | 같은 키, 거리는 직선 거리 | |
 | 비콘 도착 종료 화면(`endKind == .arrived/.presumed`) | `guide.band.arrived` `{dest} 도착` | |
 | 비콘 중지 종료 화면(`endKind == .stopped`, 걸음 요약) | `guide.band.ended` `{dest} 안내 종료` | 리뷰 C8 |
-| 대중교통 목적지 변경 대기(`pendingDestChange != nil`) | `guide.band.transitDestChangePending` `{label}로 목적지 변경, 경로 선택 대기` | 리뷰 M3 |
+| 대중교통 목적지 변경 대기(`pendingDestChange != nil`, loading·loaded) | `guide.band.transitDestChangePending` `{label}로 목적지 변경, 경로 선택 대기` | 리뷰 M3 |
+| 대중교통 목적지 변경 실패(`failed`·`empty`) | `guide.band.transitDestChangeFailed` `{label}로 목적지 변경 실패, 안내 화면에서 확인` | 코드 리뷰 i2 |
 | 대중교통 waiting·boarding | `guide.band.transitWaiting` `{stop}에서 {line} 탑승 기다리는 중` | |
 | 대중교통 riding, 잔여 수 있음 | `guide.band.transitRiding` `{line} 탑승 중, 남은 정거장 {count}개` | |
 | 대중교통 riding, 잔여 수 없음 | `guide.band.transitRidingNoCount` `{line} 탑승 중` | |
@@ -176,3 +177,7 @@ func claim(stop: @escaping () -> Void) -> Int?   // nil = 거부
 
 - 검색·채팅 탭 받아쓰기 중 안내 톤·통지 억제(`outputSuppressed`를 `SpeechService` 시작·종료에 연결).
 - 띠바에 경유지 도착 상태(N4-iOS).
+
+## 8. 구현 리뷰 결과 (독립 서브에이전트, spec+diff, 2026-08-22)
+
+C 0·M 0. m1(transit 거부 통지가 `outputSuppressed`에 묻힘 — 비콘 창구 `announceNow(bypassSuppression:)`로 통일) 수용. i2(목적지 변경 실패 국면에서 띠바가 "대기"로 남음 — `destChangeFailed` 분기 추가) 수용. i1(`stopCurrent()` 미사용)은 보류 — teardown 방어선으로 남긴다.

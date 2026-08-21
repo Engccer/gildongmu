@@ -312,7 +312,13 @@ struct GuideBandView: View {
         switch guideBandSummary(
             phase: transit.state?.phase, boardStop: leg?.boardName, line: leg?.lineName,
             remaining: transit.state?.remaining, hasWalkHandoff: transit.pendingWalkHandoff != nil,
-            destChangeLabel: transit.pendingDestChange?.label
+            destChangeLabel: transit.pendingDestChange?.label,
+            destChangeFailed: {
+                switch transit.pendingDestChange?.phase {
+                case .failed, .empty: true
+                default: false
+                }
+            }()
         ) {
         case .waiting(let stop, let line):
             return appLocalized("guide.band.transitWaiting", stop, line)
@@ -324,6 +330,8 @@ struct GuideBandView: View {
             return appLocalized("guide.band.transitArrived", transit.destinationLabel)
         case .destChangePending(let label):
             return appLocalized("guide.band.transitDestChangePending", label)
+        case .destChangeFailed(let label):
+            return appLocalized("guide.band.transitDestChangeFailed", label)
         case nil:
             return ""
         }

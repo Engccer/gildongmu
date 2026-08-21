@@ -94,7 +94,10 @@ final class TransitGuideModel {
         guard !GuideSession.shared.isActive,
               let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() })
         else {
-            announce(appLocalized("guide.alreadyActive"), highPriority: true)
+            // 거부는 버튼 활성화의 직접 응답이라 받아쓰기 억제를 우회한다(비콘
+            // `requestStart` 동형 — 코드 리뷰 m1). 창구는 GuideSession의 단일 창구.
+            GuideSession.shared.beacon.announceNow(
+                appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
             return
         }
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else {

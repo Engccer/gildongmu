@@ -748,7 +748,8 @@
       "transitRiding": "{line} 탑승 중, 남은 정거장 {count}개",
       "transitRidingNoCount": "{line} 탑승 중",
       "transitArrived": "{dest} 도착",
-      "transitDestChangePending": "{label}로 목적지 변경, 경로 선택 대기"
+      "transitDestChangePending": "{label}로 목적지 변경, 경로 선택 대기",
+      "transitDestChangeFailed": "{label}로 목적지 변경 실패, 안내 화면에서 확인"
     }
   },
   "offline": {

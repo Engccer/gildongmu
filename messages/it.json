@@ -748,7 +748,8 @@
       "transitRiding": "A bordo di {line}, {count} fermate rimanenti",
       "transitRidingNoCount": "A bordo di {line}",
       "transitArrived": "Arrivato a {dest}",
-      "transitDestChangePending": "Cambio destinazione verso {label}, scegli un percorso"
+      "transitDestChangePending": "Cambio destinazione verso {label}, scegli un percorso",
+      "transitDestChangeFailed": "Cambio destinazione verso {label} non riuscito, controlla la guida"
     }
   },
   "offline": {
