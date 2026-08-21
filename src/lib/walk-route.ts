@@ -97,7 +97,14 @@ function withStepFree(
   const notice = noticeOverride ?? STEP_FREE_NOTICE[status];
   const withField = { ...briefing, stepFree: status, stepFreeNotice: notice };
   if (includeGeometry) return withField;
-  return { ...withField, steps: [{ description: notice }, ...briefing.steps] };
+  // 스텝 0 삽입은 경유지 인덱스(N4 `waypoint.stepIndex`)를 한 칸 민다 — 함께 보정.
+  return {
+    ...withField,
+    steps: [{ description: notice }, ...briefing.steps],
+    ...(briefing.waypoint
+      ? { waypoint: { ...briefing.waypoint, stepIndex: briefing.waypoint.stepIndex + 1 } }
+      : {}),
+  };
 }
 
 async function fetchPrimaryOrFallback(params: {
@@ -105,22 +112,24 @@ async function fetchPrimaryOrFallback(params: {
   dest: Coord;
   accessible: boolean;
   noStore: boolean;
+  /** 경유지 1개(N4) — 両 provider가 받는다(실호출 확정 2026-08-22). */
+  waypoint: Coord | undefined;
 }): Promise<{ briefing: WalkRouteBriefing | null; via: "kakao" | "tmap" } | null> {
-  const { origin, dest, accessible, noStore } = params;
+  const { origin, dest, accessible, noStore, waypoint } = params;
   if (hasKakaoKey()) {
     try {
       return {
-        briefing: await getKakaoWalkBriefing({ origin, dest, accessible, noStore }),
+        briefing: await getKakaoWalkBriefing({ origin, dest, accessible, via: waypoint, noStore }),
         via: "kakao",
       };
     } catch (e) {
       if (!hasTmapKey()) throw e;
       logRouteFallback("[walk-route] 카카오 실패, Tmap 폴백:", origin, dest, e);
-      return { briefing: await getWalkRouteBriefing({ origin, dest }), via: "tmap" };
+      return { briefing: await getWalkRouteBriefing({ origin, dest, via: waypoint }), via: "tmap" };
     }
   }
   if (hasTmapKey()) {
-    return { briefing: await getWalkRouteBriefing({ origin, dest }), via: "tmap" };
+    return { briefing: await getWalkRouteBriefing({ origin, dest, via: waypoint }), via: "tmap" };
   }
   return null; // 게이트(hasWalkRouteKey)가 먼저 막지만 이중 방어
 }
@@ -133,8 +142,10 @@ export async function getWalkRoute(params: {
   includeGeometry?: boolean;
   /** 경로 축(M3): 미지정=추천(현행 파이프라인), "shortest"=Tmap searchOption=10 단독. */
   variant?: "shortest";
+  /** 경유지 1개(N4). 응답 `waypoint`가 그 도착 지점을 가리킨다. */
+  via?: Coord;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible = false, includeGeometry = false, variant } = params;
+  const { origin, dest, accessible = false, includeGeometry = false, variant, via } = params;
   // 재작성 → 주석 순서가 계약이다. 주석은 재작성된 문장 뒤에 붙어야 하고
   // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
@@ -152,6 +163,7 @@ export async function getWalkRoute(params: {
       origin,
       dest,
       searchOption: "10",
+      via,
       includeLineGeometry: includeGeometry,
       noStore: includeGeometry,
     });
@@ -164,14 +176,14 @@ export async function getWalkRoute(params: {
 
   if (!accessible) {
     const r = await fetchPrimaryOrFallback({
-      origin, dest, accessible: false, noStore: includeGeometry,
+      origin, dest, accessible: false, noStore: includeGeometry, waypoint: via,
     });
     return r?.briefing ? annotate(r.briefing) : null;
   }
 
   // 계단 회피: 카카오 전용. Tmap 경유(폴백·단독)는 동등 모드가 없어 unavailable.
   const r = await fetchPrimaryOrFallback({
-    origin, dest, accessible: true, noStore: includeGeometry,
+    origin, dest, accessible: true, noStore: includeGeometry, waypoint: via,
   });
   if (!r) return null;
   if (r.via === "tmap") {
@@ -190,7 +202,7 @@ export async function getWalkRoute(params: {
   }
   // 무계단 경로 부재(ROUTE_RESULT_NOT_FOUND): 기본 모드 재호출(같은 fetch 캐시 공유).
   const base = await fetchPrimaryOrFallback({
-    origin, dest, accessible: false, noStore: includeGeometry,
+    origin, dest, accessible: false, noStore: includeGeometry, waypoint: via,
   });
   if (!base?.briefing) return null;
   return withStepFree(
@@ -211,14 +223,15 @@ export async function getWalkRouteAlternatives(params: {
   origin: Coord;
   dest: Coord;
   accessible?: boolean;
+  via?: Coord;
 }): Promise<{ result: WalkRouteBriefing | null; shortest?: WalkRouteBriefing | null }> {
-  const { origin, dest, accessible = false } = params;
+  const { origin, dest, accessible = false, via } = params;
   if (!hasTmapKey()) {
-    return { result: await getWalkRoute({ origin, dest, accessible }) };
+    return { result: await getWalkRoute({ origin, dest, accessible, via }) };
   }
   const [primary, shortest] = await Promise.allSettled([
-    getWalkRoute({ origin, dest, accessible }),
-    getWalkRoute({ origin, dest, accessible, variant: "shortest" }),
+    getWalkRoute({ origin, dest, accessible, via }),
+    getWalkRoute({ origin, dest, accessible, via, variant: "shortest" }),
   ]);
   if (primary.status === "rejected") throw primary.reason;
   return {

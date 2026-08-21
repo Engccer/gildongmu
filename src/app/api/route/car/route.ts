@@ -51,14 +51,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { origin, dest } = parsed.data;
-  if (!isInKorea(origin.lat, origin.lng) || !isInKorea(dest.lat, dest.lng)) {
+  const { origin, dest, via } = parsed.data;
+  if (
+    !isInKorea(origin.lat, origin.lng) ||
+    !isInKorea(dest.lat, dest.lng) ||
+    (via && !isInKorea(via.lat, via.lng))
+  ) {
     return NextResponse.json({ outOfCoverage: true });
   }
 
-  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 car-route 서비스(ko)로 폴백
+  // en + NCP 키가 있으면 영문 턴바이턴, 아니면 car-route 서비스(ko)로 폴백.
+  // 경유지(N4)는 NCP 경로 미검증이라 ko 서비스로 보낸다 — 조용히 버리는 것보다
+  // 한국어 문장이 낫다. 여기서 가르므로 아래 키 게이트도 ko 서비스 기준으로 돈다.
   const useNcp =
-    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys();
+    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys() && !via;
   if (!useNcp && !hasCarRouteKey()) {
     return NextResponse.json(
       { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
@@ -74,13 +80,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // en(NCP) 경로는 기하 미지원 — includeGeometry는 ko 서비스에만 전달된다.
+    // en(NCP) 경로는 기하·경유지 미지원 — ko 서비스에만 전달된다.
     const briefing = useNcp
       ? await getCarRouteBriefingEn({ origin, dest })
       : await getCarRoute({
           origin,
           dest,
           includeGeometry: parsed.data.includeGeometry,
+          via,
         });
     return NextResponse.json(briefing);
   } catch (e) {

@@ -136,4 +136,34 @@ describe("GET /api/route/walk", () => {
       expect(res.status).toBe(400);
     }
   });
+
+  describe("via 경유지(N4)", () => {
+    const req = (via: string) =>
+      new NextRequest(`http://x/api/route/walk?origin=37.5,127.0&dest=37.6,127.1&via=${via}`);
+
+    it("경유지가 한국 밖이면 200 outOfCoverage(provider 미호출)", async () => {
+      vi.mocked(getWalkRouteBriefing).mockClear();
+      const res = await GET(req("37.7749,-122.4194"));
+      expect(await res.json()).toEqual({ outOfCoverage: true });
+      expect(getWalkRouteBriefing).not.toHaveBeenCalled();
+    });
+
+    it("via는 provider까지 전달되고 waypoint가 응답에 실린다", async () => {
+      vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce({
+        distanceMeters: 500,
+        durationSeconds: 400,
+        steps: [{ description: "158m 이동" }, { description: "경유지 후 313m 이동" }],
+        waypoint: { stepIndex: 1, coord: { lat: 37.55, lng: 127.05 } },
+      });
+      const res = await GET(req("37.55,127.05"));
+      const body = await res.json();
+      expect(vi.mocked(getWalkRouteBriefing).mock.lastCall?.[0].via).toEqual({ lat: 37.55, lng: 127.05 });
+      expect(body.result.waypoint).toEqual({ stepIndex: 1, coord: { lat: 37.55, lng: 127.05 } });
+    });
+
+    it("via 없는 응답에는 waypoint 키가 없다(byte-호환)", async () => {
+      const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+      expect("waypoint" in (await res.json()).result).toBe(false);
+    });
+  });
 });

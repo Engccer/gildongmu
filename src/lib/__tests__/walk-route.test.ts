@@ -618,3 +618,55 @@ describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대�
     expect(r.shortest?.stepFreeNotice).toContain("최단 경로에는");
   });
 });
+
+describe("getWalkRoute 경유지(N4)", () => {
+  const O = { lat: 37.5386, lng: 127.1237 };
+  const D = { lat: 37.5272, lng: 127.1268 };
+  const VIA = { lat: 37.5353, lng: 127.1323 };
+  const withWaypoint = (): WalkRouteBriefing => ({
+    distanceMeters: 2497,
+    durationSeconds: 2310,
+    steps: [{ description: "천호역 6번 출구까지 역사 내 이동" }, { description: "43m 이동" }],
+    waypoint: { stepIndex: 1, coord: VIA },
+  });
+  beforeEach(() => {
+    vi.mocked(hasKakaoKey).mockReturnValue(true);
+    vi.mocked(hasTmapKey).mockReturnValue(true);
+    vi.mocked(getKakaoWalkBriefing).mockReset();
+    vi.mocked(getWalkRouteBriefing).mockReset();
+  });
+
+  it("via를 카카오·Tmap 폴백·최단 축 모두에 전달한다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(withWaypoint());
+    await getWalkRoute({ origin: O, dest: D, via: VIA });
+    expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].via).toEqual(VIA);
+
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("down"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
+    await getWalkRoute({ origin: O, dest: D, via: VIA });
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0].via).toEqual(VIA);
+
+    await getWalkRoute({ origin: O, dest: D, via: VIA, variant: "shortest" });
+    expect(vi.mocked(getWalkRouteBriefing).mock.calls[1][0]).toMatchObject({ via: VIA, searchOption: "10" });
+  });
+
+  it("waypoint는 재작성·주석을 지나 응답에 남는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue(withWaypoint());
+    const r = await getWalkRoute({ origin: O, dest: D, via: VIA });
+    expect(r?.waypoint).toEqual({ stepIndex: 1, coord: VIA });
+  });
+
+  it("계단 회피 안내 문장이 스텝 0에 끼어들면 stepIndex도 한 칸 민다(산문 소비자)", async () => {
+    vi.mocked(hasKakaoKey).mockReturnValue(false);
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
+    const r = await getWalkRoute({ origin: O, dest: D, via: VIA, accessible: true });
+    expect(r?.stepFree).toBe("unavailable");
+    expect(r?.steps[0].description).toMatch(/계단/);
+    expect(r?.waypoint?.stepIndex).toBe(2);
+    // 구조화 소비자(기하)는 유사 스텝을 받지 않으므로 인덱스 불변.
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
+    const g = await getWalkRoute({ origin: O, dest: D, via: VIA, accessible: true, includeGeometry: true });
+    expect(g?.waypoint?.stepIndex).toBe(1);
+  });
+});
+
