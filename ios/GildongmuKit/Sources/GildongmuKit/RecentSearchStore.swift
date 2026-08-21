@@ -43,26 +43,32 @@ public struct RecentEndpoint: Codable, Equatable, Hashable, Sendable {
 public struct RecentRoute: Codable, Equatable, Hashable, Sendable {
     public let from: RecentEndpoint?
     public let to: RecentEndpoint?
+    /// 경유지(N4). 웹 `RecentRoute.via` 미러 — 동일 판정·정체성에 포함된다(C를 경유하는
+    /// 경로와 안 하는 경로는 다른 경로다). 경유지는 장소뿐이라 nil = 경유지 없음.
+    public let via: RecentEndpoint?
     public let pinned: Bool
 
-    public init(from: RecentEndpoint?, to: RecentEndpoint?, pinned: Bool = false) {
+    public init(from: RecentEndpoint?, to: RecentEndpoint?, via: RecentEndpoint? = nil, pinned: Bool = false) {
         self.from = from
         self.to = to
+        self.via = via
         self.pinned = pinned
     }
 
-    /// pinned 부재(기존 v1 데이터)는 false — 저장 키를 올리지 않는 관용 디코딩.
+    /// pinned·via 부재(기존 데이터)는 false·nil — 저장 키를 올리지 않는 관용 디코딩.
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         from = try c.decodeIfPresent(RecentEndpoint.self, forKey: .from)
         to = try c.decodeIfPresent(RecentEndpoint.self, forKey: .to)
+        via = try c.decodeIfPresent(RecentEndpoint.self, forKey: .via)
         pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
     }
 }
 
 /// 길찾기 필드 스코프 — 출발지·도착지 기록은 분리 저장한다(위원장 지시 2026-07-26).
+/// `via`(N4)는 경유지 전용 목록 — 도착지 목록과 섞이면 경유지가 목적지 최근 목록에 오른다.
 public enum RecentEndpointScope: String, Sendable {
-    case from, to
+    case from, to, via
 }
 
 // MARK: 목록 정체성 (a11y 감사 2026-08-12)
@@ -84,9 +90,9 @@ extension RecentEndpoint: Identifiable {
 }
 
 extension RecentRoute: Identifiable {
-    /// 출발·도착 쌍 키 — sameRoute와 같은 축(nil = 현재 위치).
+    /// 출발·도착·경유 키 — sameRoute와 같은 축(nil = 현재 위치, 경유 nil = 없음).
     public var id: String {
-        "\(from?.id ?? "cur")>\(to?.id ?? "cur")"
+        "\(from?.id ?? "cur")>\(to?.id ?? "cur")>\(via?.id ?? "-")"
     }
 }
 
@@ -214,7 +220,7 @@ public struct RecentSearchStore {
             Self.appendKeepingPins(
                 route, to: routes(),
                 isSame: Self.sameRoute, isPinned: \.pinned,
-                withPinned: { RecentRoute(from: $0.from, to: $0.to, pinned: $1) }),
+                withPinned: { RecentRoute(from: $0.from, to: $0.to, via: $0.via, pinned: $1) }),
             forKey: Self.routesKey)
     }
 
@@ -235,12 +241,13 @@ public struct RecentSearchStore {
             Self.setPinnedIn(
                 route, in: routes(), pinned: pinned,
                 isSame: Self.sameRoute, isPinned: \.pinned,
-                withPinned: { RecentRoute(from: $0.from, to: $0.to, pinned: $1) }),
+                withPinned: { RecentRoute(from: $0.from, to: $0.to, via: $0.via, pinned: $1) }),
             forKey: Self.routesKey)
     }
 
+    /// 동일 판정: from·to·via 셋 전부(경유지 부재끼리도 동일). 웹 `sameRoute` 미러.
     static func sameRoute(_ a: RecentRoute, _ b: RecentRoute) -> Bool {
-        sameSide(a.from, b.from) && sameSide(a.to, b.to)
+        sameSide(a.from, b.from) && sameSide(a.to, b.to) && sameSide(a.via, b.via)
     }
 
     /// 한쪽 판정: 현재 위치(nil)끼리 동일, place끼리는 좌표 4자리 일치.

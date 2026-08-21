@@ -286,3 +286,33 @@ private func freshDefaults(_ name: String) -> UserDefaults {
         #expect(store.clearRoutes() == [])
     }
 }
+
+
+// MARK: - 경유지(N4)
+
+@Suite struct RecentRouteViaTests {
+    @Test func viaDistinguishesIdentityAndSurvivesPin() {
+        let store = RecentSearchStore(defaults: freshDefaults("via"))
+        let a = RecentEndpoint(label: "A", lat: 37.5, lng: 127.1)
+        let b = RecentEndpoint(label: "B", lat: 37.6, lng: 127.2)
+        let c = RecentEndpoint(label: "C", lat: 37.55, lng: 127.15)
+        store.recordRoute(RecentRoute(from: a, to: b))
+        let list = store.recordRoute(RecentRoute(from: a, to: b, via: c))
+        #expect(list.count == 2)
+        #expect(list.first?.via?.label == "C")
+        #expect(RecentRoute(from: a, to: b).id != RecentRoute(from: a, to: b, via: c).id)
+        let pinned = store.setRoutePinned(RecentRoute(from: a, to: b, via: c), pinned: true)
+        #expect(pinned.first?.via?.label == "C" && pinned.first?.pinned == true)
+        // 같은 경로 재기록은 경유지를 보존한 채 제자리(고정 블록)에 남는다.
+        let again = store.recordRoute(RecentRoute(from: a, to: b, via: c))
+        #expect(again.count == 2 && again.first?.via?.label == "C" && again.first?.pinned == true)
+        let removed = store.removeRoute(RecentRoute(from: a, to: b, via: c))
+        #expect(removed.count == 1 && removed.first?.via == nil)
+    }
+
+    @Test func legacyRouteWithoutViaDecodes() throws {
+        let json = #"{"from":null,"to":{"label":"B","lat":37.6,"lng":127.2}}"#
+        let r = try JSONDecoder().decode(RecentRoute.self, from: Data(json.utf8))
+        #expect(r.via == nil && r.pinned == false && r.to?.label == "B")
+    }
+}
