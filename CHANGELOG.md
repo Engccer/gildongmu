@@ -11,6 +11,10 @@
 
 ## 2026-08-22
 
+### N1 안내 세션 앱 승격 + 안내 시트 최소화 + 탭 바 위 띠바 (iOS)
+
+안내 중 다른 탭을 쓸 수 없던 것(위원장 실사용 피드백 2026-08-21 ②)을 고쳤다. `BeaconModel`·`TransitGuideModel`이 길찾기 탭 `@State`에서 앱 수명 `GuideSession`으로 올라가 탭 전환·탭 재생성·시트 닫힘이 세션을 끝내지 않는다. 시트는 루트 `.sheet(item:)` 하나로 띄우고, 내리는 제스처(스와이프·VO escape)는 중지가 아니라 **최소화**다 — 탭 바 바로 위 띠바(버튼 하나, "신명중학교까지 남은 거리 850m, 안내로 돌아가기", 대중교통은 탑승 대기·남은 정거장)가 모든 탭에서 복귀 경로다. 안내 중 새 안내 시작은 거부+통지(`GuideSessionCoordinator.claim` 정책 반전, 경로 조회는 허용 — 폼 도착지 변경의 자동 중지 삭제). 장소 상세 길찾기 섹션에 안내 중 "여기로 목적지 변경"(경유지 버튼은 자리만, N4-iOS가 채운다). 설계 리뷰 24건 반영(C 9 수용). spec `docs/superpowers/specs/2026-08-22-guide-session-minimize-design.md`.
+
 ### N3 대중교통 "탑승" 의미 재정의 — `boarding` 국면 신설 + 상태 문구 전수 + A19 (웹·Kit·iOS)
 
 실사용 피드백(2026-08-21 #4): "탑승" 버튼이 곧 `waiting→riding`이라 정류소에 서서 차량을 고른 순간 "탑승 중"이 됐다. 상태 머신에 **`boarding` 국면**을 두어 버튼은 **차량 선택**(`vehicleSelected`)이 되고, 승차 정류소 폴링을 계속하다 선택 차량의 도착(서울버스 잔여 0 / 지하철 진입·도착, 동결 레코드 제외)을 관측하면 앱이 `riding`으로 올린다(`boarded(cause: observed)`, "도착. 탑승하세요."). 미등장은 탑승으로 추론하지 않고 `vehiclePassed`·`signalLost`로 사용자 선택("탑승했습니다"·"다른 차량 선택")을 연다. "탑승 변경 취소"는 `restoreBoarding`이 해제 전 국면으로 되돌린다. 문구 신설 14·개정 2·삭제 2(6로케일), 공유 fixture는 종전 24 시나리오를 `confirmBoarded` 삽입으로 보존하고 8개를 더했다. **A19**: 시트의 `Bool` 포커스 바인딩 6개를 옵셔널 단일 바인딩 `SheetControl`로 합치고 착지 헬퍼 하나(경합 해제·대상 존재 재검증·재가시화)로 통일했다. codex 설계 리뷰가 잡은 9건(미등장→riding 추론 폐기, 지하철 출발 코드 제외, 실패 이력 이월, 포커스 Task 경합 등)은 spec §9. 실승차 판정 항목은 `docs/FIELD-TEST.md` §5-2. spec [`2026-08-22-transit-boarding-phase-design.md`](docs/superpowers/specs/2026-08-22-transit-boarding-phase-design.md).
