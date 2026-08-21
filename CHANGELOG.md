@@ -22,6 +22,9 @@
 ### N2 도보 안내 톤 5종 세분화 — 횡단보도·왼쪽·오른쪽·뒤로 돌기·그 외 (웹·iOS)
 
 결정 지점 임박 큐(경계 20m 앞)가 행동과 무관하게 `ahead` 트릴 하나를 내던 것을 행동별 소리로 갈랐다(위원장 실사용 피드백 2026-08-21 ③). 횡단보도=음향신호기식 비프 4연음×2, 왼쪽·오른쪽=상승 2음 모티프, 뒤로 돌기(`WalkAction.back` 신설, 마커 "유턴"·"뒤로 돌아")=하강 글라이드 2회, 지하보도 등 그 외=기존 `ahead`. 소리 정본은 `scripts/build-guide-tones.py`(합성·결정론 재생성)이고 웹↔iOS 바이트 동일 가드에 편입했다. 좌우 구분은 **패닝/음높이 두 후보**를 함께 실었고(기본 음높이, 실험판 설정 피커로 전환) 위원장 실기기 선택이 남았다. 공유 fixture(`walk-action-cases`·`route-guide-scenarios`)가 행동별 톤을 못 박는다. spec [`2026-08-22-walk-tone-taxonomy-design.md`](docs/superpowers/specs/2026-08-22-walk-tone-taxonomy-design.md).
+### iOS "내 주변" 탭 재편 — 둘러보기 통합 + "한눈에 보기" (M4)
+
+"현재 위치 확인"과 "둘러보기"를 "둘러보기" 하나로 합쳐 허브 맨 위에 뒀다. 화면은 위에서 위치 문장(GPS·수동 위치 선언, VO 착지 1회) → "한눈에 보기"(대중교통·식당과 카페·아이 놀 곳·문화 행사·무장애 관광지 5불릿, 항목당 한 문장, 가장 가까운 곳 2개 명명) → "주변 상황"(150m 입구 기준 묶음이 버튼 없이 바로 펼쳐지고 각 장소가 상세로 열린다) → 물어보기 → 주변 가게 목록. 집계는 새 라우트 `/api/nearby/overview`(`assembleWhereAmI` 동형 allSettled, 불릿별 0건·정보 없음·실패·키 없음을 가르고 키 없는 불릿은 부재)이고 문장은 Kit·CLI의 결정론 템플릿(6로케일). **공통 반경 1km**는 서울 주거·상권·업무·전주·강릉·양평 6좌표 × 7단계 실호출로 정했다(500m는 아이 놀 곳·무장애가 서울에서도 상시 0, 1.5km는 도보 20분 초과). `/api/surroundings/scene` 항목에 장소 상세 재료(`id`·좌표·카테고리 원문·주소)를 실었고, 안내 시트의 버튼형 "주변 확인"도 같은 본문을 써 장소가 상세로 열린다. CLI/MCP `nearby-overview`(`gildongmu nearby overview`) 추가. 실호출 게이트 `scripts/verify-nearby-overview.mjs` 11/11. 보행 인프라 화면·BLE 진단 섹션은 유지(E20 배제와 별개). 웹은 후속 이식(백로그 B9). spec [`2026-08-22-nearby-tab-restructure-design.md`](docs/superpowers/specs/2026-08-22-nearby-tab-restructure-design.md).
 
 ## 2026-08-20
 
