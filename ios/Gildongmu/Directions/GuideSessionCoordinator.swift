@@ -31,9 +31,10 @@ final class GuideSession {
     /// 띠바로 돌아온 시트가 첫 착지를 최소화 버튼에 두게 하는 1회 플래그. 같은 종류의
     /// 시트만 소비한다(설계 리뷰 m1).
     var returnedFromBand: GuideScreenKind?
-    /// 장소 상세 "여기를 경유지로 추가" 노출 조건. N4-iOS가 비콘 세션의 경유지 지원으로
-    /// 바꾼다 — 그때까지 버튼은 자리·라벨만 있고 보이지 않는다.
-    var waypointAvailable: Bool { false }
+    /// 경유지 지원 조건(N4): 비콘(도보·자동차) 세션 추적 중 ∧ ko 데이터 로케일(상세 경로
+    /// 조회 자체가 ko 전용이라 그 밖에선 경유지가 의미 없다). 대중교통 세션은 제외(ODsay
+    /// 미지원). 장소 상세 버튼과 안내 시트 버튼이 같은 게이트를 본다.
+    var waypointAvailable: Bool { beacon.isTracking && AppLanguage.dataLocale == "ko" }
 
     private var walkHandoffTask: Task<Void, Never>?
 
@@ -109,6 +110,10 @@ final class GuideSession {
 final class GuideFormSyncStore {
     static let shared = GuideFormSyncStore()
     private(set) var pending: DirectionsEndpoint?
+    /// 안내 주도 경유지 추가·변경(N4) — 도착지 채널과 분리(둘이 한 값이면 "도착지 없이
+    /// 경유지만 바뀜"을 표현할 수 없다). 경유지 **도착**은 폼에 보내지 않는다(폼은 사용자
+    /// 질의이지 세션 상태가 아니다, spec §4.3).
+    private(set) var pendingWaypoint: DirectionsEndpoint?
     private init() {}
 
     func post(_ endpoint: DirectionsEndpoint) { pending = endpoint }
@@ -116,5 +121,12 @@ final class GuideFormSyncStore {
     func take() -> DirectionsEndpoint? {
         defer { pending = nil }
         return pending
+    }
+
+    func postWaypoint(_ endpoint: DirectionsEndpoint) { pendingWaypoint = endpoint }
+
+    func takeWaypoint() -> DirectionsEndpoint? {
+        defer { pendingWaypoint = nil }
+        return pendingWaypoint
     }
 }

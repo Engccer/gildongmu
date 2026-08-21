@@ -873,6 +873,10 @@ struct DirectionsTabView: View {
                 guard pending != nil else { return }
                 consumeGuideFormSync()
             }
+            .onChange(of: GuideFormSyncStore.shared.pendingWaypoint) { _, pending in
+                guard pending != nil else { return }
+                consumeGuideFormSync()
+            }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task {
                 // 도보 안내 공지(spec §5.2 — 미확인 ∧ 한국어). 조회를 기다리지 않고
@@ -909,10 +913,19 @@ struct DirectionsTabView: View {
     /// 목적지(최근 목록 기록은 setEndpoint 기존 경로), 무통지 재조회. 같은 목적지
     /// 재선택은 전부 생략한다. 탭이 안 보이는 동안 쌓인 값은 `.task`가 소비한다.
     private func consumeGuideFormSync() {
-        guard let endpoint = GuideFormSyncStore.shared.take() else { return }
-        guard endpoint != model.endpoint(for: .to) else { return }
-        if model.endpoint(for: .from) != .current { model.setEndpoint(.current, for: .from) }
-        model.setEndpoint(endpoint, for: .to)
+        let store = GuideFormSyncStore.shared
+        var changed = false
+        if let endpoint = store.take(), endpoint != model.endpoint(for: .to) {
+            if model.endpoint(for: .from) != .current { model.setEndpoint(.current, for: .from) }
+            model.setEndpoint(endpoint, for: .to)
+            changed = true
+        }
+        // 안내 주도 경유지 추가·변경(N4)도 같은 줄 — 폼의 경유지를 세션과 맞추고 무통지 재조회.
+        if let via = store.takeWaypoint(), via != model.via {
+            model.setVia(via)
+            changed = true
+        }
+        guard changed else { return }
         model.runQuery(silently: true)
     }
 

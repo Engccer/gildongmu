@@ -89,10 +89,20 @@ struct PlaceDetailView<DomainSection: View>: View {
                                 highPriority: true, bypassSuppression: true)
                         }
                     }
-                    // 경유지(N4-iOS가 동작을 채운다). 그때까지 `waypointAvailable`이 false라
-                    // 보이지 않는다 — 미구현 버튼을 노출하지 않는다.
+                    // 경유지 추가·변경(N4 spec §4.5): 동작이 교체라 기존 경유지가 있으면 라벨이
+                    // 그것을 말한다. 시트는 올리지 않는다(목적지 변경과 같은 이유) — 통지가
+                    // 응답이고, 폼 동기화는 루트 스토어 경유.
                     if guideSession.waypointAvailable {
-                        Button(appLocalized("guide.addWaypointHere")) {}
+                        Button(appLocalized(
+                            guideSession.beacon.waypoint == nil ? "guide.addWaypointHere" : "guide.changeWaypointHere"
+                        )) {
+                            if guideSession.beacon.setWaypoint(
+                                dest: BeaconDest(lat: place.lat, lng: place.lng), label: place.name
+                            ) {
+                                GuideFormSyncStore.shared.postWaypoint(
+                                    .place(label: place.name, lat: place.lat, lng: place.lng))
+                            }
+                        }
                     }
                 }
                 Button(appLocalized("ios.route.naver")) { openNaverRoute() }
