@@ -11,6 +11,10 @@
 
 ## 2026-08-22
 
+### N4 경유지 1개 — 서버·웹·CLI/MCP (iOS는 웨이브 3)
+
+도보·자동차 경로가 경유지 1개(`via=위도,경도`)를 받는다(위원장 실사용 피드백 2026-08-21 ⑤). 실호출 게이트에서 4개 provider(카카오 도보 `via_x/via_y`·Tmap 보행자·자동차 `passList`·카카오 내비 `waypoints`) 전부 경유지를 수용해 기본·폴백 파이프라인은 불변이다. 응답엔 `waypoint{stepIndex,coord}`(경유지에서 시작하는 첫 단계·도착 판정 좌표)만 싣고 스텝 문장은 손대지 않는다 — 표지가 없으면 throw(카카오 도보는 이름이 틀린 파라미터를 200으로 무시한다). 대중교통은 ODsay에 경유지가 없어 upstream 없이 `unsupported:"waypoint"`(경로 없음과 다른 정직 상태). 웹 길찾기는 도착지와 조회 버튼 사이 "경유지 추가"(선택, 포커스 선점 이동·도착지 확정 뒤 포커스 불변), 결과 구획 "경유지 C 도착", `?dir=` 세 토막, 최근 경로 "A부터 B까지 C를 경유하는 경로 조회". 경유지 조회에서는 웹 안내 시작 버튼을 내지 않는다(안내 훅이 경유지를 모른다 — 버튼 부재가 정직). CLI `route walk|car|transit --via`, 텍스트 출력 `경유지 도착` 줄. spec [`2026-08-22-waypoint-server-web-cli-design.md`](docs/superpowers/specs/2026-08-22-waypoint-server-web-cli-design.md).
+
 ### N2 도보 안내 톤 5종 세분화 — 횡단보도·왼쪽·오른쪽·뒤로 돌기·그 외 (웹·iOS)
 
 결정 지점 임박 큐(경계 20m 앞)가 행동과 무관하게 `ahead` 트릴 하나를 내던 것을 행동별 소리로 갈랐다(위원장 실사용 피드백 2026-08-21 ③). 횡단보도=음향신호기식 비프 4연음×2, 왼쪽·오른쪽=상승 2음 모티프, 뒤로 돌기(`WalkAction.back` 신설, 마커 "유턴"·"뒤로 돌아")=하강 글라이드 2회, 지하보도 등 그 외=기존 `ahead`. 소리 정본은 `scripts/build-guide-tones.py`(합성·결정론 재생성)이고 웹↔iOS 바이트 동일 가드에 편입했다. 좌우 구분은 **패닝/음높이 두 후보**를 함께 실었고(기본 음높이, 실험판 설정 피커로 전환) 위원장 실기기 선택이 남았다. 공유 fixture(`walk-action-cases`·`route-guide-scenarios`)가 행동별 톤을 못 박는다. spec [`2026-08-22-walk-tone-taxonomy-design.md`](docs/superpowers/specs/2026-08-22-walk-tone-taxonomy-design.md).
