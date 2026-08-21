@@ -152,5 +152,11 @@ describe("GET /api/route/car", () => {
       const res = await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=x"));
       expect(res.status).toBe(400);
     });
+
+    it("lang=en + via는 NCP가 아니라 ko 서비스로 간다(경유지를 조용히 버리지 않는다)", async () => {
+      vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
+      await GET(new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=37.55,127.05&lang=en"));
+      expect(vi.mocked(getCarRoute).mock.lastCall?.[0]).toMatchObject({ via: { lat: 37.55, lng: 127.05 } });
+    });
   });
 });
