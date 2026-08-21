@@ -763,3 +763,34 @@ describe("route-transit 경유지 미지원(N4)", () => {
     expect(FORMATTERS["route-transit"]({ result: null } as never)).toEqual(["대중교통 경로를 찾을 수 없습니다."]);
   });
 });
+
+describe("nearby-overview", () => {
+  it("data null은 부재 문장", () => {
+    expect(FORMATTERS["nearby-overview"]({ data: null } as never)).toEqual(["주변 정보가 제공되지 않습니다."]);
+  });
+
+  it("상태별 문장이 전부 다르다 — 0건·정보 없음·실패·키 없음을 뭉개지 않는다", () => {
+    const lines = FORMATTERS["nearby-overview"]({
+      data: {
+        place: "서울특별시 강동구 길동, 천중로44길 74",
+        radiusMeters: 1000,
+        bullets: [
+          { kind: "transit", state: "ok", station: { name: "길동", line: "5호선", bearing: "ne", distanceMeters: 262 }, busStops: { state: "uncovered" } },
+          { kind: "food", state: "ok", count: 30, countCapped: true, nearest: [{ name: "스타벅스", distanceMeters: 40, bearing: "s" }, { name: "김밥천국", distanceMeters: 60, bearing: "e" }] },
+          { kind: "kids", state: "none" },
+          { kind: "events", state: "unavailable", reason: "seoulOnly" },
+          { kind: "barrierFree", state: "failed" },
+        ],
+      },
+    } as never);
+    expect(lines).toEqual([
+      "현재 위치 기준, 서울특별시 강동구 길동, 천중로44길 74 근처",
+      "한눈에 보기 (1km 안)",
+      "대중교통: 지하철 길동, (5호선), 북동쪽 262m, 버스 정류소 정보는 이 지역에서 제공되지 않습니다",
+      "식당과 카페 30곳 이상, 가장 가까운 곳은 남쪽 40m 스타벅스, 동쪽 60m 김밥천국",
+      "아이 놀 곳은 1km 안에 없습니다",
+      "문화 행사는 서울에서만 안내합니다",
+      "무장애 관광지 정보를 가져오지 못했습니다",
+    ]);
+  });
+});

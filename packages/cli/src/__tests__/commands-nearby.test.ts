@@ -77,11 +77,11 @@ async function runNearby(verb: string, args: Record<string, unknown>): Promise<v
 }
 
 const EXPECTED_VERBS = [
-  "subway", "bus", "bike", "clinic", "kids", "around", "events", "barrier-free", "walk", "congestion",
+  "overview", "subway", "bus", "bike", "clinic", "kids", "around", "events", "barrier-free", "walk", "congestion",
 ];
 
 describe("nearby 명령", () => {
-  it("10개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
+  it("11개 서브커맨드가 NEARBY 카탈로그 키와 일치한다", async () => {
     const { nearbyCommand } = await import("../commands/nearby.js");
     expect(Object.keys(nearbyCommand.subCommands ?? {}).sort()).toEqual([...EXPECTED_VERBS].sort());
   });

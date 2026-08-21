@@ -6,6 +6,7 @@ import { ExitCode } from "../lib/exit-codes.js";
 import { runEndpoint, sharedArgs } from "./shared.js";
 
 const NEARBY: Record<string, { catalog: string; description: string }> = {
+  overview: { catalog: "nearby-overview", description: "한눈에 보기(1km 안 대중교통·식당과 카페·아이 놀 곳·문화 행사·무장애 관광지)" },
   subway: { catalog: "nearby-subway", description: "주변 지하철역 실시간 도착" },
   bus: { catalog: "nearby-bus", description: "주변 버스 정류소 실시간 도착" },
   bike: { catalog: "nearby-bike", description: "주변 따릉이 대여소(서울)" },
