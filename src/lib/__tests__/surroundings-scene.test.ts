@@ -45,11 +45,15 @@ beforeEach(() => {
   });
   findSurroundingsNear.mockResolvedValue([
     {
+      id: "kakao-1",
       name: "서울신명초등학교",
       lat: 37.5415,
       lng: east(75),
       distanceMeters: 75,
       category: "school",
+      categoryRaw: "교육,학문 > 학교 > 초등학교",
+      phone: "02-000-0000",
+      link: "https://place.map.kakao.com/1",
       roadAddress: "서울특별시 강동구 명일로24길 33",
     },
     {
@@ -132,5 +136,26 @@ describe("assembleScene", () => {
     const scene = await assembleScene(37.5415, 127.1495);
     const across = scene.groups.find((g) => g.bucket === "across");
     expect(across?.items[0]?.name).toBe("계명치과");
+  });
+
+  it("항목은 장소 상세 진입 재료(id·좌표·카테고리 원문·주소·전화·링크)를 싣는다 — M4 판정 ⑤", async () => {
+    const scene = await assembleScene(37.5415, 127.1495);
+    const item = scene.groups.flatMap((g) => g.items).find((i) => i.name === "서울신명초등학교");
+    expect(item).toMatchObject({
+      id: "kakao-1",
+      lat: 37.5415,
+      lng: east(75),
+      categoryRaw: "교육,학문 > 학교 > 초등학교",
+      roadAddress: "서울특별시 강동구 명일로24길 33",
+      phone: "02-000-0000",
+      link: "https://place.map.kakao.com/1",
+      // 기존 필드 불변(웹 SurroundingsScene.tsx 소비)
+      distanceMeters: 75,
+      road: null, // 앵커와 같은 도로라 잉여(기존 규칙 불변)
+      category: "school",
+    });
+    // 없는 값은 지어내지 않는다 — 봉래면옥은 id·전화가 없다.
+    const other = scene.groups.flatMap((g) => g.items).find((i) => i.name === "봉래면옥");
+    expect(other?.phone).toBeUndefined();
   });
 });
