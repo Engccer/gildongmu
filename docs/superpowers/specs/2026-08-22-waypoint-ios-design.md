@@ -200,3 +200,8 @@ func setWaypoint(dest: BeaconDest, label: String) -> Bool
 | 10 | MAJOR | 라벨 저장소가 `waypoint` 하나 | 수용 — `routeWaypointLabel` 분리. "도착" 문구 교체는 기각(3플랫폼 동일 구획 문장) |
 | 11 | MAJOR | 재시작 요청·폼이 지난 경유지를 되살림 | 재시작: 수용(`lastStartRequest` 갱신). 폼: 기각(질의·이력 보존) |
 | 12 | MAJOR | 같은 좌표 재선택 문구가 거짓 | 수용 — `waypointKept` 분리 |
+
+## 9. 구현 리뷰 결과 (서브에이전트 2종, 2026-08-22)
+
+- **spec-compliance**: 결함 0건(6축 전부 준수, Kit 586·웹 2892 테스트·빌드 재실행으로 확인).
+- **code-quality**: 결함 1건(WARNING) 수용 — `setWaypoint`·`changeDestination`이 `lastStartRequest`를 갱신하지 않아 정밀 위치 꺼짐 → "허용" → `restart()` 경로에서 세션 시작 시점의 목적지·경유지로 조용히 되돌아갔다(A13 패턴의 새 진입점, 목적지 전환은 N1 이전부터 같은 결함). `syncStartRequestWithSession()` 한 헬퍼가 목적지 전환·경유지 추가/변경·도착·폴백 소거 모두에서 재시작 요청을 세션 현재값으로 맞춘다. 나머지(커밋 가드·토큰·리듀서 국면 상호작용·포커스 바인딩·구획 행·i18n·조사 폴백)는 clean, fixture 변이 주입 재확인.

@@ -989,7 +989,7 @@ final class BeaconModel {
         if let dropped = waypoint {
             waypoint = nil
             routeWaypointLabel = nil
-            forgetWaypointInStartRequest()
+            syncStartRequestWithSession()
             droppedWaypoint = true
             text += " " + appLocalized("ios.guide.waypointDropped", dropped.label)
         }
@@ -997,14 +997,17 @@ final class BeaconModel {
         announce(text, highPriority: droppedWaypoint)
     }
 
-    /// 재시작 요청에서 경유지를 지운다(설계 리뷰 #11) — 실패 뒤 `restart()`가 지난·버린
-    /// 경유지를 다시 더하지 않는다.
-    private func forgetWaypointInStartRequest() {
-        guard let request = lastStartRequest else { return }
+    /// 재시작 요청을 **세션의 현재 목적지·라벨·경유지**로 다시 맞춘다. 세션 중 목적지
+    /// 전환·경유지 추가/변경·경유지 도착·폴백 소거가 일어나면 시작 시점 스냅샷은 낡는데,
+    /// 실패(정밀 위치 꺼짐 등) 뒤 `restart()`가 그 낡은 값으로 시작하면 사용자가 마지막에
+    /// 정한 목적지·경유지가 **조용히** 되돌아간다 — A13이 경계한 바로 그 패턴의 다른
+    /// 진입점(code-quality 리뷰 2026-08-22). 수단·계단 회피·variant는 세션 불변이라 승계.
+    private func syncStartRequestWithSession() {
+        guard let request = lastStartRequest, let dest else { return }
         lastStartRequest = StartRequest(
-            dest: request.dest, label: request.label, kind: request.kind,
+            dest: dest, label: destinationLabel, kind: request.kind,
             accessible: request.accessible, variant: request.variant,
-            shortestAvailable: request.shortestAvailable, waypoint: nil)
+            shortestAvailable: request.shortestAvailable, waypoint: waypoint)
     }
 
     /// 경로 기준 잔여 거리·예상 시간 갱신(웹 `progressOf` 미러). walk는 provider
@@ -1258,11 +1261,13 @@ final class BeaconModel {
         guard isTracking else { return false }
         if waypoint?.dest == newDest {
             waypoint = Waypoint(dest: newDest, label: label)
+            syncStartRequestWithSession()
             announceNow(appLocalized("ios.guide.waypointKept", label),
                         highPriority: true, bypassSuppression: true)
             return true
         }
         waypoint = Waypoint(dest: newDest, label: label)
+        syncStartRequestWithSession()
         let fetching = AppLanguage.dataLocale == "ko"
         if fetching {
             reacquireRoute()
@@ -1286,12 +1291,14 @@ final class BeaconModel {
         if dest == newDest {
             // 같은 좌표 재선택(§3.2): 재조회 없이 확인 통지만. 라벨은 최신본으로.
             destinationLabel = label
+            syncStartRequestWithSession()
             announceNow(appLocalized("ios.guide.destChanged", label),
                         highPriority: true, bypassSuppression: true)
             return true
         }
         dest = newDest
         destinationLabel = label
+        syncStartRequestWithSession()
         reacquireRoute()
         // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
         let fetching = AppLanguage.dataLocale == "ko"
@@ -2082,7 +2089,7 @@ final class BeaconModel {
             // 버튼으로 다시 누를 수 있다. 재시작 요청에서도 지운다(#11).
             guard let reached = waypoint else { break }
             waypoint = nil
-            forgetWaypointInStartRequest()
+            syncStartRequestWithSession()
             clearProposal()
             resetAlternativePreview()
             rerouteToken += 1

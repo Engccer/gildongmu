@@ -16,7 +16,7 @@
 
 - `RouteService.walk/walkAlternatives/car`의 `via`는 **기본값 없는 필수 인자**(spec §2.2).
 - `BeaconModel.StartRequest.waypoint`는 **필수 필드**(spec §4.1).
-- 리듀서 블록 순서: 6a 임박 → **6a′ 경유지 도착** → 6b 최종 접근 → 6c 전문(spec §2.5). 웹·Kit 동형, 공유 fixture가 고정.
+- 리듀서 블록 순서: W1 감지 → W2 pending 우선 발화 → 6a 임박 → W3 발화 → 6b 최종 접근(미도착 경유지면 금지) → 6c 전문(spec §2.5, 설계 리뷰 반영본). 웹·Kit 동형, 공유 fixture가 고정.
 - 경유지 도착 = 통지 + `.nearby` 톤 + `waypoint = nil`, 경로·상태 불변(정지 없음).
 - 세션 시작 진입점 수 불변(`guidance-gate-drift.test.ts` 6).
 - i18n 신규 키 3개(`ios.guide.waypointChange`·`ios.guide.waypointSet`·`guide.changeWaypointHere`) 6개 로케일 동시, xcstrings는 `node ios/scripts/messages-to-xcstrings.mjs` 재생성 후 `node ios/scripts/check-xcstrings-keys.mjs`.
