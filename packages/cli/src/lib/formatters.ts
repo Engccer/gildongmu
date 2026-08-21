@@ -248,12 +248,19 @@ interface CarRouteGuideItem {
   distanceMeters: number;
 }
 
+/** 경유지 도착 지점(N4) — `via` 요청 응답에만. steps[stepIndex]가 경유지에서 시작하는 첫 단계. */
+interface RouteWaypointItem {
+  stepIndex: number;
+  coord: { lat: number; lng: number };
+}
+
 interface CarRouteBriefingItem {
   distanceMeters: number;
   durationSeconds: number;
   taxiFare: number;
   tollFare: number;
   guides: CarRouteGuideItem[];
+  waypoint?: RouteWaypointItem;
 }
 
 interface TransitLegItem {
@@ -305,6 +312,7 @@ interface WalkRouteBriefingItem {
   distanceMeters: number;
   durationSeconds: number;
   steps: WalkRouteStepItem[];
+  waypoint?: RouteWaypointItem;
 }
 
 type SkyLabelItem = "clear" | "partlyCloudy" | "cloudy" | "unknown";
@@ -759,10 +767,14 @@ function formatRouteCar(body: CarRouteBriefingItem): string[] {
     ),
   ];
   body.guides.forEach((g, i) => {
+    if (body.waypoint?.stepIndex === i) lines.push(WAYPOINT_LINE);
     lines.push(joinText(`${i + 1}. ${g.guidance}`, g.distanceMeters > 0 ? m(g.distanceMeters) : undefined));
   });
   return lines;
 }
+
+/** 경유지 구획 한 줄(N4). CLI는 경유지 이름을 모르므로(좌표로 조회) 이름 없이. 번호 흐름은 깨지 않는다. */
+const WAYPOINT_LINE = "경유지 도착";
 
 function transitSummaryLine(r: TransitRouteItem): string {
   return joinText(
@@ -839,7 +851,12 @@ function transitLegLine(leg: TransitLegItem): string {
   );
 }
 
-function formatRouteTransit(body: { result: TransitRouteResultItem | null }): string[] {
+function formatRouteTransit(body: {
+  result: TransitRouteResultItem | null;
+  /** 경유지 요청(N4): ODsay에 경유지가 없어 서버가 upstream 없이 마커로 답한다 — "경로 없음"과 다른 문장. */
+  unsupported?: "waypoint";
+}): string[] {
+  if (body.unsupported === "waypoint") return ["경유지는 대중교통 경로에서 지원하지 않습니다."];
   const result = body.result;
   if (!result) return ["대중교통 경로를 찾을 수 없습니다."];
   const lines: string[] = [];
@@ -869,6 +886,7 @@ function formatRouteWalk(body: { result: WalkRouteBriefingItem | null }): string
     joinText(dist(r.distanceMeters), `약 ${Math.round(r.durationSeconds / 60)}분`),
   ];
   r.steps.forEach((s, i) => {
+    if (r.waypoint?.stepIndex === i) lines.push(WAYPOINT_LINE);
     lines.push(`${i + 1}. ${s.description}`);
   });
   return lines;
