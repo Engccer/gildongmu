@@ -12,6 +12,61 @@
 
 ---
 
+## 1.11 (빌드 18)
+
+기준은 1.10 아카이브 커밋 `0013c52`(빌드 17)이며 그 이후 커밋 57건을 전수 판정했다. `ios/` 아래를 건드린 것은 24건이고, 그중 Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 아래에 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 안내 세션 앱 승격 + 탭 바 위 띠바 + 안내 중 장소 상세 목적지 변경(N1) | `857bd33`·`5e2c845` | ko만 |
+| 경유지 1개 — 길찾기 폼 추가·삭제, 안내 세션 경유지, 최근 경로 경유 문장(N4) | `3768d84`·`43b23b8`·`b4615ab`·`5bfc0df`·`045ea7a`·`3417786`·`39e2931` | ko·en |
+| 도보 안내 임박 큐 톤 5종 세분화(N2) | `f2cedfa` | ko만 |
+| "내 주변" 둘러보기 통합 화면 + 한눈에 보기, "현재 위치 확인" 화면 삭제(M4) | `ec993df`·`3c42e09`·`d2d96d7`·`5d2c01f`·`1788adc`·`9d168d1` | ko·en |
+
+제외 근거:
+
+- **대중교통 boarding 국면 계열**(`648e648`·`c873583`·`8b27e83`·`19eb69c` N3): `transitGuideStartable`이 `AppConfig.experimentalGuidanceEnabled` 가드 안이라(`DirectionsTabView.swift:1078`) **정식판에 진입점이 없다**. 1.8에서 같은 이유로 제외한 대중교통 승차 추적 계열과 같은 자리다. 커밋 메시지가 "탑승했습니다·다른 차량 선택" 같은 사용자 문구를 들고 있어 게이트를 코드에서 확인해야 걸러진다.
+- **음향신호기 BLE 진단**(`c51e031`·`6c32bc8`): `#if DEBUG || EXPERIMENTAL`.
+- **ITMS-90683 해소**(`57d21f8`): BLE 전송 층을 앱 타깃 실험 구성으로 옮겨 정식 바이너리의 CoreBluetooth 링크를 없앤 변경이다. 업로드 경고가 사라지는 것이지 화면이 바뀌지 않는다.
+- **좌우 안내음 방식 피커**(`f2cedfa`의 `SettingsView` 분): `#if DEBUG || EXPERIMENTAL`이라 정식판 설정에 없다. 정식판은 기본값 `LeftRightToneScheme.pitch`로 고정이고, **소리가 행동별로 갈리는 것 자체는 정식판에 도달**하므로 톤 5종은 포함이다.
+- **서버·웹·CLI 전용**(경유지 provider·라우트·웹 폼·CLI `--via`, `/api/nearby/overview`, 웹 boarding 패널): push가 곧 배포라 1.10 사용자에게 이미 반영됐다.
+- 문서·테스트·생성물 재생성 커밋 전량.
+
+⚠ **N1·N2는 ko 노트에만 적는다.** 띠바와 목적지 변경 버튼은 안내 세션이 살아 있을 때만 존재하는데, 정식판에서 시작할 수 있는 안내는 도보뿐이고 `walkGuideStartable`이 `AppLanguage.dataLocale == "ko"` 가드 안이다. 톤 세분화도 같은 세션 안의 소리다. 1.7·1.9·1.10과 같은 근거다.
+
+⚠ **경유지는 ko·en 둘 다에 적는다.** 폼의 "경유지 추가"는 언어 게이트가 없고(`DirectionsTabView.swift:611` 부근, 조건은 `viaLabel` 유무뿐), `lang=en + via` 요청도 ko 서비스로 돌아가 경로가 나온다(`65a790d`). 다만 **iOS 도보 조회는 `includeWalk = AppLanguage.current == "ko"`**(같은 파일 388줄)라 비한국어 사용자에게 경유지가 실제로 붙는 것은 자동차 경로다 — en 노트에 "walking"을 적으면 없는 기능이 된다.
+
+⚠ **둘러보기 통합은 화면이 하나 사라지는 변경이라 en에도 적는다.** "현재 위치 확인"(`WhereAmIView`)을 지우고 "둘러보기"가 그 문장을 흡수했으므로, 그 화면을 쓰던 사용자는 노트가 없으면 기능이 없어진 것으로 읽는다.
+
+심사 노트는 이번 버전에서 갱신하지 않는다. 권한·데이터 수집 항목이 늘지 않았고(경유지·둘러보기는 기존 위치·네트워크 범위), 1.10에서 ASC 실값 기준으로 동기화한 뒤 거짓이 된 문장이 없다.
+
+### ko
+
+```
+새로운 기능
+- 안내를 켠 채로 검색, 내 주변, AI 채팅 같은 다른 화면을 쓸 수 있습니다. 안내 화면을 내리면 탭 바 위에 남은 거리를 알려 주는 줄이 남고, 그 줄의 "안내로 돌아가기"를 누르면 안내 화면으로 돌아옵니다.
+- 길찾기에 경유지 한 곳을 넣을 수 있습니다. 도착지 아래 "경유지 추가"로 거쳐 갈 곳을 정하면 그곳을 지나는 도보, 자동차 경로를 알려 드리고, 안내 중에는 경유지에 도착할 때 알려 드립니다. 대중교통은 아직 경유지를 지원하지 않습니다.
+- 도보 안내 중에 장소 상세를 열면 그 장소로 목적지를 바꾸거나 경유지로 넣는 버튼이 있습니다.
+
+개선
+- 도보 안내에서 방향을 바꿀 지점이 가까워질 때 나는 소리를 할 일에 따라 나눴습니다. 횡단보도, 왼쪽, 오른쪽, 뒤로 돌기, 그 밖이 서로 다른 소리로 납니다.
+- "내 주변"의 "현재 위치 확인"을 맨 위 "둘러보기" 한 화면으로 합쳤습니다. 지금 있는 곳, 한눈에 보기(대중교통, 식당과 카페, 아이 놀 곳, 문화 행사, 무장애 관광지), 길 좌우 상황, 주변 가게를 이어서 읽을 수 있습니다.
+```
+
+### en
+
+```
+New
+- Directions can now include one waypoint. Tap "Add a waypoint" below the destination to pick a place to pass through, and the driving route is calculated through it. Transit routes do not support waypoints yet.
+
+Improved
+- "Where am I" has been folded into "Look around" at the top of the Nearby tab. One screen now reads where you are, an at-a-glance summary of transit, restaurants and cafes, places for kids, cultural events and barrier-free attractions, then what is on each side of the street and the shops nearby.
+```
+
+---
+
 ## 1.10 (빌드 17)
 
 기준은 1.9 아카이브 커밋 `01447d4`(빌드 16)이며 그 이후 커밋 5건을 전수 판정했다. iOS 바이너리에 닿는 것은 3건이고 문서 2건(`16b1ab3`·`34d33a2`)과 웹 전용 변경(`NearbyHub.tsx`·`declarations.ts`)은 제외한다.
