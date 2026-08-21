@@ -67,14 +67,17 @@ const REANNOUNCE_DELAY_MS = 120;
 
 function trackTargetUrl(
   leg: TransitGuideLeg,
-  phase: "waiting" | "riding" | "arrived",
+  phase: "waiting" | "boarding" | "riding" | "arrived",
   resolvedTago: { nodeId: string; cityCode: string } | null,
   boardOverride: string | null,
 ): string | null {
   const mode = leg.trackMode;
   if (!mode) return null;
+  // boarding(N3)은 차량을 고른 뒤 그 차량의 승차 정류소 도착을 기다리는 국면이라
+  // 조회 대상이 waiting과 같다(riding부터 하차 정류소).
+  const atBoardStop = phase === "waiting" || phase === "boarding";
   if (mode === "seoulBus") {
-    if (phase === "waiting") {
+    if (atBoardStop) {
       if (!leg.boardStop?.arsId || !leg.routeId) return null;
       return `/api/transit/track?mode=seoulBus&phase=wait&arsId=${encodeURIComponent(leg.boardStop.arsId)}&routeId=${encodeURIComponent(leg.routeId)}`;
     }
@@ -87,7 +90,7 @@ function trackTargetUrl(
   }
   // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
   // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
-  const station = phase === "waiting" ? (boardOverride ?? leg.boardName) : leg.alightName;
+  const station = atBoardStop ? (boardOverride ?? leg.boardName) : leg.alightName;
   if (!station) return null;
   return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}`;
 }
@@ -110,6 +113,17 @@ export function useTransitGuide(route: TransitRoute | null) {
   const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number } | null>(null);
   /** 역 재선택 단계 표시 여부(A16 L3, 지하철 전용). */
   const [reboardPickerActive, setReboardPickerActive] = useState(false);
+  /**
+   * 선택 차량 설명(boarding 상시 표시·통지, N3). 탑승 변경으로 waiting에 돌아가도
+   * 남긴다 — "탑승 변경 취소"(restoreBoarding)가 같은 차량으로 복귀한다. 소거는
+   * 새 선택·전진·세션 종료. ref인 이유는 통지가 dispatch 직후 동기로 읽기 때문.
+   */
+  const selectedDescriptionRef = useRef<string | null>(null);
+  const [selectedDescription, setSelectedDescriptionState] = useState<string | null>(null);
+  const setSelectedDescription = useCallback((desc: string | null) => {
+    selectedDescriptionRef.current = desc;
+    setSelectedDescriptionState(desc);
+  }, []);
   /**
    * 사용자가 고른 기준 역(A16 L3). nil이면 leg 원래 승차역.
    *
@@ -220,6 +234,20 @@ export function useTransitGuide(route: TransitRoute | null) {
     [t],
   );
 
+  /** boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 이긴다. */
+  const boardingContextText = useCallback(
+    (leg: TransitGuideLeg): string =>
+      t("boardingContext", { stop: boardOverride ?? leg.boardName, line: leg.lineName }),
+    [boardOverride, t],
+  );
+
+  /** boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}"). */
+  const approachFrameText = useCallback(
+    (leg: TransitGuideLeg, message: string): string =>
+      t("approachFrame", { stop: boardOverride ?? leg.boardName, message }),
+    [boardOverride, t],
+  );
+
   /** 0건 사유 문구(§13.3 3-state) — 목록 자리·새로고침 응답 공용. */
   const reasonText = useCallback(
     (reason: WaitingEmptyReason): string =>
@@ -238,9 +266,13 @@ export function useTransitGuide(route: TransitRoute | null) {
   const signalText = useCallback(
     (signal: TransitGuideState["signal"], phase: TransitGuideState["phase"]): string =>
       ({
-        tracking: t("stateTracking"),
+        tracking: phase === "boarding" ? t("stateApproaching") : t("stateTracking"),
         notYetVisible:
-          phase === "riding" ? t("stateRidingNotYetVisible") : t("stateNotYetVisible"),
+          phase === "riding"
+            ? t("stateRidingNotYetVisible")
+            : phase === "boarding"
+              ? t("stateBoardingNotYetVisible")
+              : t("stateNotYetVisible"),
         neverSeen: t("stateNeverSeen"),
         signalLost: t("stateSignalLost"),
         upstreamFailed: t("stateUpstreamFailed"),
@@ -255,15 +287,23 @@ export function useTransitGuide(route: TransitRoute | null) {
    */
   const buildStatusText = useCallback(
     (s: TransitGuideState, leg: TransitGuideLeg): string => {
+      const boarding = s.phase === "boarding";
       const parts = [
-        s.phase === "waiting" ? waitContextText(leg, true) : contextText(leg),
+        s.phase === "waiting"
+          ? waitContextText(leg, true)
+          : boarding
+            ? boardingContextText(leg)
+            : contextText(leg),
+        boarding && selectedDescription ? t("selectedVehicle", { desc: selectedDescription }) : "",
         signalText(s.signal, s.phase),
-        s.remaining != null
+        // boarding은 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이
+        // 된다 — 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
+        !boarding && s.remaining != null
           ? t("remainingCount", { count: s.remaining })
-          : leg.stationCount != null && s.phase === "riding"
+          : !boarding && leg.stationCount != null && s.phase === "riding"
             ? t("stationCountAbout", { count: leg.stationCount })
             : "",
-        s.lastMessage ? frameText(leg, s.lastMessage) : "",
+        s.lastMessage ? (boarding ? approachFrameText(leg, s.lastMessage) : frameText(leg, s.lastMessage)) : "",
         // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
         // 대기 중에도 근사 예고로 유지).
         leg.trackMode === "tagoBus" || (s.lock != null && isApproxTransitLock(s.lock))
@@ -286,8 +326,11 @@ export function useTransitGuide(route: TransitRoute | null) {
       ];
       return parts.filter(Boolean).join(" ");
     },
-    [contextText, frameText, signalText, t, waitContextText],
+    [approachFrameText, boardingContextText, contextText, frameText, selectedDescription, signalText, t, waitContextText],
   );
+
+  /** approaching 첫 관측 판별(전이 전 trackingAnnounced) — dispatch가 기록, announceEvent가 읽는다. */
+  const firstObservationRef = useRef(false);
 
   /** 이벤트 → 통지 문구(완성 문장은 원문 병치). */
   const announceEvent = useCallback(
@@ -296,8 +339,28 @@ export function useTransitGuide(route: TransitRoute | null) {
       const r = routeRef.current;
       const parts: string[] = [];
       switch (event.kind) {
+        case "vehicleSelected":
+          if (leg) {
+            parts.push(
+              t("vehicleSelected", {
+                desc: selectedDescriptionRef.current ?? leg.lineName,
+                stop: boardOverrideRef.current ?? leg.boardName,
+              }),
+            );
+          }
+          break;
+        case "approaching":
+          // 첫 관측만 "추적합니다"를 앞세운다. 이벤트는 첫 관측과 사다리를 구분하지
+          // 않으므로 전이 전 상태(dispatch가 남긴 플래그)를 본다.
+          if (firstObservationRef.current) parts.push(t("approachingStarted"));
+          if (event.message && leg) parts.push(approachFrameText(leg, event.message));
+          break;
+        case "vehiclePassed":
+          if (leg) parts.push(t("vehiclePassed", { stop: boardOverrideRef.current ?? leg.boardName }));
+          break;
         case "boarded": {
           if (!leg) break;
+          if (event.cause === "observed") parts.push(t("arrivedAtBoardStop", { line: leg.lineName }));
           parts.push(
             leg.stationCount != null
               ? t("boardedCount", { line: leg.lineName, stop: leg.alightName, count: leg.stationCount })
@@ -326,7 +389,13 @@ export function useTransitGuide(route: TransitRoute | null) {
           }
           break;
         case "messageChanged":
-          parts.push(leg ? frameText(leg, event.message) : event.message);
+          parts.push(
+            leg
+              ? stateRef.current?.phase === "boarding"
+                ? approachFrameText(leg, event.message)
+                : frameText(leg, event.message)
+              : event.message,
+          );
           break;
         case "arrived": {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
@@ -346,7 +415,8 @@ export function useTransitGuide(route: TransitRoute | null) {
           parts.push(t("approxVehicleChanged"));
           break;
         case "signalLost":
-          parts.push(t("signalLost"));
+          // boarding의 소실은 "아직 안 탔는데 차량이 안 보인다"라 riding 문구와 다르다.
+          parts.push(t(stateRef.current?.phase === "boarding" ? "boardingSignalLost" : "signalLost"));
           break;
         case "neverSeen":
           parts.push(t("neverSeen"));
@@ -382,7 +452,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       }
       if (parts.length > 0) announce(parts.join(" "));
     },
-    [announce, contextText, currentLeg, frameText, t, waitContextText],
+    [announce, approachFrameText, contextText, currentLeg, frameText, t, waitContextText],
   );
 
   const dispatch = useCallback(
@@ -394,9 +464,14 @@ export function useTransitGuide(route: TransitRoute | null) {
       // 사용자가 고른 기준 역(A16 L3)의 수명은 딱 한 번의 재선택이다. 재잠금·전진
       // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
       // 흩뿌리지 않는 이유가 그것이다(iOS dispatch 동형).
-      if (input.kind === "board" || input.kind === "advance") {
+      // N3: boarding이 재선택 역을 계속 조회해야 하므로 `board`가 아니라 **riding
+      // 진입**(선언·관측 어느 길이든)에서 지운다. 국면 기반이라 폴이 일으키는 승격도 잡는다.
+      if (input.kind === "advance") {
         setBoardOverride(null);
+        setSelectedDescription(null);
       }
+      if (next.phase === "riding" && s.phase !== "riding") setBoardOverride(null);
+      firstObservationRef.current = !s.trackingAnnounced && next.trackingAnnounced;
       // 픽커는 riding 국면 전용 UI다. 국면이 바뀌면 화면에서는 사라지지만 플래그가
       // 남아, 다음 riding 진입에서 묻지도 않은 역 선택 화면이 되살아난다(독립 리뷰
       // MAJOR). ⚠ 국면 기반인 이유: board·advance만 열거하면 폴이 일으키는 arrived
@@ -405,7 +480,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       commit(next);
       if (event) announceEvent(event);
     },
-    [announceEvent, commit, setBoardOverride],
+    [announceEvent, commit, setBoardOverride, setSelectedDescription],
   );
 
   const clearTimer = useCallback(() => {
@@ -422,11 +497,12 @@ export function useTransitGuide(route: TransitRoute | null) {
     const s = stateRef.current;
     const leg = currentLeg();
     if (!s || !leg || leg.trackMode !== "tagoBus") return null;
-    const cacheKey = `${s.legIndex}:${s.phase === "waiting" ? "board" : "alight"}`;
+    const atBoardStop = s.phase === "waiting" || s.phase === "boarding";
+    const cacheKey = `${s.legIndex}:${atBoardStop ? "board" : "alight"}`;
     const cached = tagoResolvedRef.current.get(cacheKey);
     if (cached === "unsupported") return null;
     if (cached) return cached;
-    const target = s.phase === "waiting" ? leg.boardStop : leg.alightStop;
+    const target = atBoardStop ? leg.boardStop : leg.alightStop;
     if (!target) return null;
     try {
       const res = await fetch(
@@ -492,7 +568,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       let resolvedTago: { nodeId: string; cityCode: string } | null = null;
       if (leg.trackMode === "tagoBus") {
         resolvedTago = await resolveTagoIfNeeded();
-        const cacheKey = `${s.legIndex}:${s.phase === "waiting" ? "board" : "alight"}`;
+        const cacheKey = `${s.legIndex}:${s.phase === "waiting" || s.phase === "boarding" ? "board" : "alight"}`;
         if (!resolvedTago && tagoResolvedRef.current.get(cacheKey) === "unsupported") {
           finishEarlyUnsupported();
           return;
@@ -501,7 +577,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       // done·untrackable은 함수 상단에서 걸렀으므로 여기의 phase는 세 국면뿐.
       const url = trackTargetUrl(
         leg,
-        s.phase as "waiting" | "riding" | "arrived",
+        s.phase as "waiting" | "boarding" | "riding" | "arrived",
         resolvedTago,
         boardOverrideRef.current,
       );
@@ -598,12 +674,13 @@ export function useTransitGuide(route: TransitRoute | null) {
     tagoResolvedRef.current.clear();
     refreshAnnounceRef.current = false;
     setBoardOverride(null);
+    setSelectedDescription(null);
     setReboardPickerActive(false);
     setState(null);
     setWaiting(EMPTY_WAITING);
-    // ⚠ setBoardOverride는 useCallback([])이라 안정 정체성이다 — 아래 주석의
-    // "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
-  }, [clearTimer, setBoardOverride]);
+    // ⚠ setBoardOverride·setSelectedDescription은 useCallback([])이라 안정 정체성이다 —
+    // 아래 주석의 "참조 동일성이 세션 스토어의 소유 판정 키"라는 전제를 깨지 않는다.
+  }, [clearTimer, setBoardOverride, setSelectedDescription]);
   // stopSession·pollOnce는 상태 의존이 없어 안정 정체성이다(참조 동일성이
   // 세션 스토어의 소유 판정 키 — 별도 ref 고정 불필요).
 
@@ -642,10 +719,15 @@ export function useTransitGuide(route: TransitRoute | null) {
     [clearTimer, dispatch, pollOnce],
   );
 
+  /**
+   * "탑승" = 차량 선택(N3). 설명은 선택 차량의 안정 조각(행선·방향)만 — 폴마다 바뀌는
+   * 완성 문장은 제외. dispatch **전에** 기록해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
+   */
   const boardCandidate = useCallback(
-    (candidate: BoardingCandidate) => {
+    (candidate: BoardingCandidate, description: string) => {
       const leg = currentLeg();
       if (!leg?.trackMode) return;
+      setSelectedDescription(description);
       board({
         mode: leg.trackMode,
         routeId: leg.routeId ?? subwayIdForOdsayLine(leg.lineName) ?? "",
@@ -653,8 +735,16 @@ export function useTransitGuide(route: TransitRoute | null) {
         vehicleId: candidate.item.vehicleId ?? "",
       });
     },
-    [board, currentLeg],
+    [board, currentLeg, setSelectedDescription],
   );
+
+  /** "탑승했습니다"(boarding → riding 사용자 선언, N3). */
+  const confirmBoarded = useCallback(() => {
+    if (stateRef.current?.phase !== "boarding") return;
+    dispatch({ kind: "confirmBoarded" });
+    clearTimer();
+    void pollOnce();
+  }, [clearTimer, dispatch, pollOnce]);
 
   const boardApprox = useCallback(() => {
     const leg = currentLeg();
@@ -719,11 +809,17 @@ export function useTransitGuide(route: TransitRoute | null) {
     [changeBoarding, setBoardOverride],
   );
 
-  /** 탑승 변경 취소(§13.1) — 직전 잠금으로 재탑승(머신이 previousLock을 소유). */
+  /**
+   * 탑승 변경 취소(§13.1) — 직전 잠금·국면으로 복귀(머신이 previousLock·previousPhase
+   * 소유). ⚠ `board(previousLock)`으로 돌리면 식별자 잠금은 boarding으로 가서 이미
+   * 탄 사용자가 승차 정류소 폴링으로 되돌아간다(설계 리뷰 M5) — 전용 입력이 정본.
+   */
   const cancelChangeBoarding = useCallback(() => {
-    const lock = stateRef.current?.previousLock;
-    if (lock) board(lock);
-  }, [board]);
+    if (!stateRef.current?.previousLock) return;
+    dispatch({ kind: "restoreBoarding" });
+    clearTimer();
+    void pollOnce();
+  }, [clearTimer, dispatch, pollOnce]);
 
   /** "이미 탑승했습니다"(§13.2) — 식별자 없는 근사 잠금(tagoBus 계약 동형). */
   const boardAlready = useCallback(() => {
@@ -841,8 +937,11 @@ export function useTransitGuide(route: TransitRoute | null) {
     start,
     stop,
     boardCandidate,
+    confirmBoarded,
     boardApprox,
     boardAlready,
+    /** boarding 국면의 선택 차량 설명(상시 표시용). */
+    selectedDescription,
     advance,
     changeBoarding,
     beginReboard,
