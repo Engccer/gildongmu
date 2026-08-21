@@ -160,6 +160,11 @@ export function normalizeTmapWalkRoute(
   if (opts?.expectWaypoint && !waypoint) {
     throw new Error("Tmap 보행자 경로 실패: 경유지 요청인데 PP1 지점 없음(파라미터 무시 의심)");
   }
+  // 기하 모드의 후행 pop이 PP1 스텝까지 떨굴 수 있다(경유지→도착 구간에 LineString이
+  // 없는 경우). 인덱스만 남기면 소비자 가드가 구획 문장을 조용히 지우므로 throw(품질 리뷰).
+  if (waypoint && waypoint.stepIndex >= steps.length) {
+    throw new Error("Tmap 보행자 경로 실패: 경유지 스텝이 기하 없이 떨어져 나감");
+  }
 
   return { distanceMeters, durationSeconds, steps, ...(waypoint ? { waypoint } : {}) };
 }
