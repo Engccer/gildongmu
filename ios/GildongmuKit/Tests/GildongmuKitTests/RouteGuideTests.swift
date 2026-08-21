@@ -18,6 +18,8 @@ private struct Scenario: Decodable {
     let tuning: String?
     /// 종점 오프셋 기하를 아는 세션인가(미지정=모름 → 옛 50m 인계).
     let geometry: Bool?
+    /// 경유지 스텝 index(N4). 미지정=경유지 없음.
+    let waypointStepIndex: Int?
     let steps: [Step]
     let fixes: [Fix]
     let expect: [Expectation]
@@ -58,7 +60,7 @@ private func loadScenarios() throws -> [Scenario] {
     return try JSONDecoder().decode(ScenarioFile.self, from: data).scenarios
 }
 
-private func routeFrom(_ steps: [Scenario.Step]) -> GuideRoute {
+private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) -> GuideRoute {
     var acc = 0.0
     let inputs = steps.map { s in
         let g = GuideStepGeometry(
@@ -71,7 +73,7 @@ private func routeFrom(_ steps: [Scenario.Step]) -> GuideRoute {
         acc += s.len
         return g
     }
-    return buildGuideRoute(inputs)!
+    return buildGuideRoute(inputs, waypointStepIndex: waypointStepIndex)!
 }
 
 private func fixCoord(along: Double, lateral: Double, acc: Double) -> GuideFix {
@@ -90,6 +92,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
     case .farNotice: "farNotice"
     case .periodic: "periodic"
     case .bundleReread: "bundleReread"
+    case .waypointReached: "waypointReached"
     case .finalApproachEnter: "finalApproachEnter"
     case .offRoute: "offRoute"
     case .backOnRoute: "backOnRoute"
@@ -116,7 +119,7 @@ private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
 
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {
-        let route = routeFrom(sc.steps)
+        let route = routeFrom(sc.steps, waypointStepIndex: sc.waypointStepIndex)
         let tuning: GuideTuning = sc.tuning == "car" ? .car : .walk
         var state = initialGuideState(
             route: route, now: 0, hasFinalApproachGeometry: sc.geometry == true
@@ -905,4 +908,29 @@ private func phaseName(_ p: GuidePhase) -> String {
 func presumedArrivalGateIsWalkOnly() {
     #expect(GuideTuning.walk.presumedArrivalEnabled)
     #expect(!GuideTuning.car.presumedArrivalEnabled)
+}
+
+
+// MARK: - 경유지(N4)
+
+@Test func waypointIndexOutOfRangeRejectsRoute() {
+    let steps = [
+        GuideStepGeometry(description: "A", pathCoords: [RoutePoint(lat: 37.5, lng: 127.1), RoutePoint(lat: 37.501, lng: 127.1)]),
+        GuideStepGeometry(description: "B", pathCoords: [RoutePoint(lat: 37.501, lng: 127.1), RoutePoint(lat: 37.502, lng: 127.1)]),
+    ]
+    #expect(buildGuideRoute(steps, waypointStepIndex: 2) == nil)
+    #expect(buildGuideRoute(steps, waypointStepIndex: -1) == nil)
+    #expect(buildGuideRoute(steps, waypointStepIndex: 0)?.waypointStepIndex == 0)
+    #expect(buildGuideRoute(steps, waypointStepIndex: 1)?.waypointStepIndex == 1)
+    #expect(buildGuideRoute(steps)?.waypointStepIndex == nil)
+}
+
+/// 재획득·복귀 재구성(`restateAt`)은 도착 래치를 승계한다 — 지우면 같은 경유지를 다시 알린다.
+@Test func restateCarriesWaypointLatch() {
+    let route = routeFrom([.init(len: 100, desc: "A"), .init(len: 100, desc: "B")], waypointStepIndex: 1)
+    var prev = initialGuideState(route: route, now: 0).state
+    prev.waypointReached = true
+    prev.waypointPending = true
+    let re = restateAt(route: route, d: 150, now: 10, prev: prev)
+    #expect(re.waypointReached && re.waypointPending)
 }

@@ -2613,6 +2613,366 @@
           "event": "finalApproachEnter"
         }
       ]
+    },
+    {
+      "name": "경유지 도착선 통과 1회 — 통지 뒤 계속(래치, 톤 없음, 2026-08-22 N4)",
+      "waypointStepIndex": 1,
+      "geometry": true,
+      "steps": [
+        {
+          "len": 100,
+          "desc": "직진A"
+        },
+        {
+          "len": 100,
+          "desc": "직진B"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 12,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 24,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 30,
+          "along": 36,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 50,
+          "along": 64,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 60,
+          "along": 90,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 70,
+          "along": 105,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 120,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 90,
+          "along": 135,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 6,
+          "eventNot": "waypointReached"
+        },
+        {
+          "afterFix": 7,
+          "event": "waypointReached",
+          "toneNull": true
+        },
+        {
+          "afterFix": 8,
+          "eventNot": "waypointReached"
+        },
+        {
+          "afterFix": 9,
+          "eventNot": "waypointReached"
+        }
+      ]
+    },
+    {
+      "name": "같은 fix에 임박 큐와 경유지 도착이 걸리면 임박이 먼저, 도착은 다음 fix에(새 임박 후보보다 우선, N4)",
+      "waypointStepIndex": 1,
+      "geometry": true,
+      "steps": [
+        {
+          "len": 100,
+          "desc": "직진A"
+        },
+        {
+          "len": 30,
+          "desc": "우회전B"
+        },
+        {
+          "len": 30,
+          "desc": "좌회전C"
+        },
+        {
+          "len": 25,
+          "desc": "우회전D"
+        },
+        {
+          "len": 100,
+          "desc": "직진E"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 12,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 24,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 30,
+          "along": 36,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 50,
+          "along": 60,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 58,
+          "along": 70,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 66,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 74,
+          "along": 90,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 82,
+          "along": 97,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 90,
+          "along": 112,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 99,
+          "along": 141,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 108,
+          "along": 150,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 10,
+          "event": "imminent"
+        },
+        {
+          "afterFix": 11,
+          "event": "waypointReached",
+          "toneNull": true
+        },
+        {
+          "afterFix": 12,
+          "event": "imminent"
+        }
+      ]
+    },
+    {
+      "name": "경유지가 종점 진입선 안에 있으면 도착 이벤트가 나간 뒤에만 최종 접근에 진입한다(N4 리뷰 #1)",
+      "waypointStepIndex": 1,
+      "geometry": true,
+      "steps": [
+        {
+          "len": 100,
+          "desc": "직진A"
+        },
+        {
+          "len": 8,
+          "desc": "직진B"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 12,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 24,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 30,
+          "along": 36,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 40,
+          "along": 48,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 50,
+          "along": 60,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 60,
+          "along": 72,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 70,
+          "along": 84,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 80,
+          "along": 96,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 90,
+          "along": 99,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 100,
+          "along": 101,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 110,
+          "along": 104,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 9,
+          "eventNot": "finalApproachEnter"
+        },
+        {
+          "afterFix": 10,
+          "event": "waypointReached"
+        },
+        {
+          "afterFix": 11,
+          "event": "finalApproachEnter"
+        }
+      ]
+    },
+    {
+      "name": "경유지에서 출발(stepIndex 0)은 첫 신뢰 fix에서 도착이 나간다(N4 리뷰 #6)",
+      "waypointStepIndex": 0,
+      "geometry": true,
+      "steps": [
+        {
+          "len": 100,
+          "desc": "직진A"
+        },
+        {
+          "len": 100,
+          "desc": "직진B"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 10,
+          "along": 12,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 0,
+          "event": "waypointReached"
+        },
+        {
+          "afterFix": 1,
+          "eventNot": "waypointReached"
+        }
+      ]
     }
   ]
 }

@@ -245,6 +245,14 @@ public struct GuideState: Sendable, Equatable {
     /// 함수가 아니므로 경로 교체·재구성(§2.8)에서 비우지 않고(age 30s로 자체 소멸),
     /// 새 세션에서만 초기화한다(spec §2.9).
     public var courseDerivation: CourseDerivationState
+    /// 경유지 도착선 통과 확정 래치(N4). 신뢰 가능한 fix(`!isOff && !jumped`)가 경로 위
+    /// 투영으로 도착선을 넘었을 때 한 번 선다. 같은 경로 세대 안에서는 `restateAt`이
+    /// 승계한다(지우면 복귀 직후 같은 경유지를 다시 알리고, d로 재계산하면 통지 없이
+    /// 사건을 소비한다).
+    public var waypointReached: Bool
+    /// 확정됐으나 아직 발화하지 못한 도착(같은 fix의 임박 큐에 밀렸다). 다음 fix에서
+    /// 새 임박보다 먼저 나간다 — 조밀한 결정 지점에서 도착이 무한히 밀리지 않는다.
+    public var waypointPending: Bool
 }
 
 public struct OffRouteAxes: Sendable, Equatable {
@@ -265,6 +273,8 @@ public enum GuideEvent: Sendable, Equatable {
     case farNotice(indices: [Int], remainingMeters: Int)
     case periodic(stepIndex: Int, remainingMeters: Int, accuracy: Double)
     case bundleReread([Int])
+    /// 경유지 도착(N4). 톤 없음 — 도착 종은 오케스트레이터가 `.nearby`로 낸다.
+    case waypointReached
     case finalApproachEnter
     case offRoute
     case backOnRoute
@@ -343,7 +353,8 @@ private func stepAt(route: GuideRoute, d: Double) -> GuideStepSpan {
 public func guideStateAt(
     route: GuideRoute, d: Double, now: Double, autoHandoffArmed: Bool = true,
     hasFinalApproachGeometry: Bool = false,
-    courseDerivation: CourseDerivationState = initialDerivationState
+    courseDerivation: CourseDerivationState = initialDerivationState,
+    waypointReached: Bool = false, waypointPending: Bool = false
 ) -> GuideState {
     let step = stepAt(route: route, d: d)
     let unit = unitAt(route: route, index: step.index)
@@ -377,7 +388,9 @@ public func guideStateAt(
         reacquiringFromOffRoute: false,
         offRouteAxes: OffRouteAxes(),
         courseVotes: [],
-        courseDerivation: courseDerivation
+        courseDerivation: courseDerivation,
+        waypointReached: waypointReached,
+        waypointPending: waypointPending
     )
 }
 
@@ -411,7 +424,9 @@ func restateAt(
         route: route, d: d, now: now,
         autoHandoffArmed: prev.autoHandoffArmed,
         hasFinalApproachGeometry: prev.hasFinalApproachGeometry,
-        courseDerivation: prev.courseDerivation
+        courseDerivation: prev.courseDerivation,
+        waypointReached: prev.waypointReached,
+        waypointPending: prev.waypointPending
     )
 }
 
@@ -765,6 +780,26 @@ public func guideStep(
     next.phase = cur.isLong ? .following : .bundle
     next.resumePhase = cur.isLong ? .following : .bundle
 
+    // W1) 경유지 도착선 통과 **감지**(N4, spec 2026-08-22 §2.5). 발화와 분리한다 —
+    //     같은 fix에 임박 큐가 걸리면 큐가 이기고(시점이 박힌 명령문, `rem >= 0` 하한
+    //     때문에 한 fix 지연이 곧 소실) 도착은 pending으로 남는다.
+    //     ⚠ 신뢰 가능한 통과만: `!isOff`(이탈 의심 중 투영 불신, 6a·6b 동형) + `!jumped`
+    //       (투영 점프로 전진한 d는 증거가 아니다 — A10 동형). 경로가 경유지를 지나가도록
+    //       그려지므로 경로 위 투영이 도착선을 넘었다는 것 자체가 증거다 — 좌표 근접
+    //       2중 판정은 두지 않는다(어긋날 때 어느 쪽이 정본인지 정의해야 한다).
+    if let w = route.waypointStepIndex, !next.waypointReached, !isOff, !jumped,
+       d >= route.steps[w].startD {
+        next.waypointReached = true
+        next.waypointPending = true
+    }
+    // W2) 이전 fix에서 확정됐는데 임박 큐에 밀려 못 나간 도착은 **새 임박보다 먼저** 나간다
+    //     — 조밀한 결정 지점에서 도착이 무한히 밀리지 않는다(설계 리뷰 #2).
+    if state.waypointPending, next.waypointPending {
+        next.waypointPending = false
+        next.lastAnnouncedAt = now
+        return emit(next, .waypointReached, nil)
+    }
+
     // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
     //     "지금이다"를 알린다.
     //
@@ -824,6 +859,14 @@ public func guideStep(
         }
     }
 
+    // W3) 이번 fix에 확정된 도착은 임박이 나가지 않았으면 바로 나간다(6b 앞 — 최종 접근
+    //     래치가 먼저 서면 0a 가드가 이후 판정을 막아 도착이 영영 소실된다).
+    if next.waypointPending {
+        next.waypointPending = false
+        next.lastAnnouncedAt = now
+        return emit(next, .waypointReached, nil)
+    }
+
     // 6b) 최종 접근 진입: 전 스텝 낭독 완료 AND 진입선 도달 AND 재무장
     //     (스펙 2026-08-03 §5.3 + 2026-08-08 §3.2) — 웹 route-guide.ts 미러.
     //
@@ -843,8 +886,12 @@ public func guideStep(
     //     이미 커밋된 뒤라 0a 가드에 갇혀 세션이 영구 정지했다. 여기서 미루면 진입과
     //     phase 전이가 원자적이고, d가 유계라 반복 점프는 자기 종결된다 — 조건이
     //     참이면 다음 fix(전진 0 = 점프 아님)에서 진입한다.
+    //     ⚠ **미도착 경유지가 있으면 진입하지 않는다**(N4 설계 리뷰 #1): 경유지가 진입선
+    //       안에 있으면 6b가 먼저 래치돼 도착 이벤트가 영구 소실된다. 이탈 판정 창이
+    //       연장되는 대가는 그 드문 기하에만 든다.
     if !isOff,
        !jumped,
+       route.waypointStepIndex == nil || next.waypointReached,
        next.autoHandoffArmed,
        next.announcedUpTo >= route.steps.count - 1,
        remainingTotal <= finalApproachEntryMeters(
