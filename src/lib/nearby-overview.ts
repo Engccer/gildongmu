@@ -2,7 +2,8 @@ import { coordToAddress, coordToRegion } from "./providers/kakao-address";
 import { findSurroundingsNear } from "./providers/surroundings";
 import { findKidsPlacesNear } from "./providers/kids-places";
 import { searchBarrierFreeNearby } from "./providers/tour-barrier-free";
-import { findEventsNear, isEventServiceArea } from "./culture-events";
+import { findEventsNear } from "./culture-events";
+import { metersOutsideSeoul } from "./coverage";
 import { fetchNearbyBusStops, isUncoveredBusRegion } from "./bus";
 import { findStationsNear } from "./subway-stations";
 import { stripRegionPrefix } from "./where-am-i";
@@ -27,8 +28,9 @@ import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/
 export const OVERVIEW_RADIUS_M = 1000;
 /** 불릿당 이름을 부르는 "가장 가까운 곳" 수(위원장 판정 2026-08-22). */
 export const OVERVIEW_NEAREST_CAP = 2;
-/** 식당·카페 조각의 상류 캡(카카오 카테고리 2종 × size 15). 이 값이면 "N곳 이상"으로 말한다. */
-const FOOD_UPSTREAM_CAP = 30;
+/** 카카오 카테고리 검색 1종의 상류 캡(size 15). 한 종이라도 이 값에 닿으면 "N곳 이상"으로 말한다(리뷰 검출: 합산 30 판정은 한쪽만 캡인 경우를 놓친다). */
+const KAKAO_CATEGORY_PAGE_CAP = 15;
+const FOOD_GROUPS = ["FD6", "CE7"];
 
 export type OverviewKind = "transit" | "food" | "kids" | "events" | "barrierFree";
 type PlaceKind = Exclude<OverviewKind, "transit">;
@@ -91,7 +93,8 @@ export interface OverviewInput {
   bus: PromiseSettledResult<Located[]> | null;
   /** bus가 0건일 때만 의미 있다(`isUncoveredBusRegion`). */
   busUncovered: boolean;
-  food: PromiseSettledResult<Located[]> | null;
+  /** 식당·카페. 카테고리별 raw 건수(dedupe 전)로 캡을 판정하므로 `capped`를 함께 받는다. */
+  food: PromiseSettledResult<{ places: Located[]; capped: boolean }> | null;
   kids: PromiseSettledResult<Located[]> | null;
   /** total은 캡 전 수(`NearbyEventsResult.total`). */
   events: PromiseSettledResult<{ events: Located[]; total: number }> | "unavailable" | null;
@@ -157,8 +160,13 @@ export function composeOverview(input: OverviewInput): NearbyOverview {
   const bullets: OverviewBullet[] = [{ kind: "transit", state: "ok", station, busStops }];
 
   if (input.food) {
-    const n = input.food.status === "fulfilled" ? input.food.value.length : 0;
-    bullets.push(placeBullet("food", origin, input.food, n, n >= FOOD_UPSTREAM_CAP));
+    const settled: PromiseSettledResult<Located[]> =
+      input.food.status === "fulfilled"
+        ? { status: "fulfilled", value: input.food.value.places }
+        : input.food;
+    const n = input.food.status === "fulfilled" ? input.food.value.places.length : 0;
+    const capped = input.food.status === "fulfilled" && input.food.value.capped;
+    bullets.push(placeBullet("food", origin, settled, n, capped));
   }
   if (input.kids) {
     const n = input.kids.status === "fulfilled" ? input.kids.value.length : 0;
@@ -182,6 +190,26 @@ export function composeOverview(input: OverviewInput): NearbyOverview {
   return { place, radiusMeters: OVERVIEW_RADIUS_M, bullets };
 }
 
+/**
+ * 식당·카페: 카테고리 2종을 **따로** 받아 종별 raw 건수로 캡을 판정한 뒤 id로 합친다.
+ * 합쳐 받으면 한 종만 캡(15)에 걸리고 다른 종이 적을 때 합계가 30 미만이라 "18곳"이라는
+ * 틀린 확정 수가 낭독된다.
+ */
+async function fetchFoodAndCafes(
+  lat: number,
+  lng: number,
+): Promise<{ places: Located[]; capped: boolean }> {
+  const lists = await Promise.all(
+    FOOD_GROUPS.map((g) =>
+      findSurroundingsNear(lat, lng, { groups: [g], radiusMeters: OVERVIEW_RADIUS_M, cap: 50 }),
+    ),
+  );
+  const capped = lists.some((l) => l.length >= KAKAO_CATEGORY_PAGE_CAP);
+  const byId = new Map<string, Located>();
+  for (const l of lists) for (const p of l) byId.set(p.id, p);
+  return { places: [...byId.values()], capped };
+}
+
 async function settle<T>(p: Promise<T>): Promise<PromiseSettledResult<T>> {
   return (await Promise.allSettled([p]))[0];
 }
@@ -200,13 +228,13 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
     kakao ? coordToAddress({ lat, lng }).catch(() => null) : Promise.resolve(null),
     kakao ? coordToRegion({ lat, lng }).catch(() => null) : Promise.resolve(null),
     dataGoKr ? settle(fetchNearbyBusStops(lat, lng)) : Promise.resolve(null),
-    kakao
-      ? settle(findSurroundingsNear(lat, lng, { groups: ["FD6", "CE7"], ...radius, cap: 50 }))
-      : Promise.resolve(null),
+    kakao ? settle(fetchFoodAndCafes(lat, lng)) : Promise.resolve(null),
     kakao ? settle(findKidsPlacesNear(lat, lng, radius)) : Promise.resolve(null),
+    // 국내 미제공 판정선은 이 조각의 조회 반경(1km)이다 — 문화행사 라우트의 3km와 다르다
+    // (CLAUDE.md "판정선은 그 도메인의 조회 반경을 그대로 쓴다").
     !seoul
       ? Promise.resolve(null)
-      : !isEventServiceArea(lat, lng)
+      : metersOutsideSeoul(lat, lng) > OVERVIEW_RADIUS_M
         ? Promise.resolve("unavailable" as const)
         : settle(
             findEventsNear(lat, lng, radius).then((r) => ({

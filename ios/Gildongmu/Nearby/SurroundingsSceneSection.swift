@@ -302,6 +302,8 @@ struct SurroundingsSceneAutoSection: View {
     /// nil = 조회 실패(failed) 또는 data null. 0건은 total==0으로 온다.
     let scene: SurroundingsScene?
     let failed: Bool
+    /// 부모 커밋 식별자 — 바뀌면 "더 보기" 창을 리셋한다(다른 reveal 창이 willCommit에서 리셋되는 관례 동형).
+    let commitID: UUID
     let proxy: ScrollViewProxy
     var focusedID: AccessibilityFocusState<String?>.Binding
     @State private var reveal = SceneRevealWindows()
@@ -310,6 +312,7 @@ struct SurroundingsSceneAutoSection: View {
         Text(appLocalized("surroundings.ready"))
             .font(.headline)
             .accessibilityAddTraits(.isHeader)
+            .onChange(of: commitID) { reveal.reset() }
         if failed || scene == nil {
             Text(appLocalized("surroundings.error"))
         } else if let scene, scene.total == 0 {
