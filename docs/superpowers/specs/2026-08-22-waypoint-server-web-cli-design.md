@@ -82,3 +82,18 @@ waypoint?: {
 ## 6. 리뷰 판정
 
 설계 단계 codex adversarial-review **생략**. 근거: 외부 계약 가정은 spec보다 **먼저 실호출로 확정**했고(§1), 새 불변식·상태 머신 없음(옵트인 필드 1개·마커 1개 추가), 비가역 변경 없음, 안전 축(실보행 안내)은 이번 범위에서 **버튼 부재로 봉인**했다. 구현 단계 spec-compliance·code-quality 리뷰 + 실호출 게이트가 잔여 리스크를 덮는다.
+
+## 7. 실호출 결과 (2026-08-22, 서버 구현 뒤)
+
+dev 서버 경유, 같은 좌표(천호역→강동역 경유→길동).
+
+| 요청 | 결과 |
+|---|---|
+| walk(카카오 기본) | 2,497m·13스텝, `waypoint.stepIndex 5`(leg 1 첫 스텝 "늘푸른정신과까지 … 43m 이동"), coord 37.53529,127.13234 |
+| walk `variant=shortest`(Tmap) | 2,060m·16스텝, `stepIndex 5` = "경유지 후 313m 이동"(Tmap 원문, 재작성 통과) |
+| car(Tmap) | 2,066m·8 guide, `stepIndex 2` = "도착지 건너편 후 천호대로168길을 따라 315m 이동" — Tmap이 경유지를 "도착지"라 부르는 원문. 소비자가 앞에 "경유지 도착" 구획을 그리므로 문맥이 선다(재작성 패턴 추가 안 함) |
+| transit | `{"result":null,"unsupported":"waypoint"}`, upstream 미호출 |
+| walk `via` 없음 | 응답에 `waypoint` 문자열 0회(byte-호환) |
+| `includeGeometry=1` walk(카카오)·walk shortest(Tmap)·car(Tmap) | `buildGuideRoute`·`buildCarGuide` 모두 non-null(`src/__realcall__/waypoint-geometry.test.ts`, `REALCALL=1`로 수동 실행) |
+
+카카오 내비 폴백은 서버 경유 실호출이 아니라 API 직접 프로브(§1)와 그 응답 fixture의 단위 테스트로 확인했다(Tmap 키가 있어 서비스 경유로는 도달하지 않는다).
