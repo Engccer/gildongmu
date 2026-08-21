@@ -232,7 +232,7 @@ final class BeaconModel {
     private var startedAt: Double?
     private var lastStaleNoticeAt: Double?
     /// 시작 재진입 가드. 클로저 가드만으론 await를 넘는 더블탭을 못 막는다(repo 관례).
-    private var starting = false
+    private(set) var starting = false
     /// 백그라운드 복귀 리셋 직후의 첫 안내를 삼킨다. 앵커를 버리면 다음 fix가 first-fix
     /// 경로를 타서 절대거리가 재발화되는데, 사용자가 유발한 사건이 아니다.
     private var suppressNextNotice = false
@@ -398,13 +398,10 @@ final class BeaconModel {
     /// 권한 거부·미지원이면 nil로 남는다(= 요약 없음). `stop()`은 갱신만 멈추고 값은
     /// 남긴다(도착·중지 처리가 stop() 뒤에 읽는다 — `sessionStartedAt` 동형).
     private var liveHealthSample: (steps: Int, distance: Double?)?
-    /// 스와이프·VO escape로 닫힌 시트가 완전히 내려간 뒤 띄울 종료 화면(아래
-    /// `stopByUser(endScreen: .afterDismiss)`). presentation 바인딩의 set 클로저 안에서
-    /// 같은 바인딩을 되돌리면 방금 커밋된 dismiss와 경합한다 — 그래서 `onDismiss`가 소비한다.
-    private var pendingEndScreen: (dest: BeaconDest, text: String, sample: (steps: Int, distance: Double?))?
-    /// 시트가 내려간 뒤 종료 화면이 다시 뜰 예정인가 — 길찾기 탭이 시작 버튼 복귀 포커스를
-    /// 예약하지 않게 하는 신호(예약하면 재-present의 착지와 겹친다).
-    var hasPendingEndScreen: Bool { pendingEndScreen != nil }
+    /// 띠바(N1)용 잔여 거리. 상세 모드는 경로 기준 잔여, 간략은 마지막 fix 직선 거리.
+    /// **10m 이상 변했을 때만 갱신**한다 — 커서가 띠바에 있으면 VoiceOver가 라벨 변경을
+    /// 매번 낭독하므로 매 fix 갱신은 발화 과밀이다(설계 리뷰 M7). 시작·목적지 변경·종료에서 nil.
+    private(set) var bandDistanceMeters: Int?
 
     init(pedometer: PedometerQuerying = PedometerService()) {
         self.pedometer = pedometer
@@ -451,7 +448,7 @@ final class BeaconModel {
     /// 자동차 세션은 도보가 됐다. 증상이 조용하다(재시작은 성공하고 안내도 정상이라
     /// 사용자는 자기가 고른 경로가 아니라는 것을 한참 듣고서야 안다). 인자를 하나 더
     /// 넘기는 수정은 다음 인자가 늘 때 같은 자리에서 재발한다.
-    private struct StartRequest {
+    struct StartRequest {
         let dest: BeaconDest
         let label: String
         let kind: GuideSessionKind
@@ -473,12 +470,26 @@ final class BeaconModel {
         variant: WalkRouteVariant? = nil, shortestAvailable: Bool = false
     ) {
         if isTracking {
-            stopByUser(endScreen: .immediate)
+            stopByUser()
         } else {
-            begin(StartRequest(
+            requestStart(StartRequest(
                 dest: dest, label: label, kind: kind, accessible: accessible,
                 variant: variant, shortestAvailable: shortestAvailable))
         }
+    }
+
+    /// 시작 요청의 거부 게이트(N1 §2.4). 다른 안내(대중교통 포함, 시작 대기 포함)가 살아
+    /// 있으면 **시작하지 않고** 통지만 한다 — 종전 "새 시작 = 기존 중지"의 반전.
+    /// ⚠ `lastStartRequest`는 게이트를 통과한 뒤에만 기록한다(설계 리뷰 m3 — 거부된
+    /// 요청이 `restart()`의 대상으로 남으면 사용자가 고르지 않은 안내가 시작된다).
+    /// 통지는 `.high`: 버튼 활성화의 직접 응답이라 착지 낭독에 잠식되면 "버튼이 동작하지
+    /// 않는다"가 된다(헌장 §6).
+    func requestStart(_ request: StartRequest) {
+        guard !GuideSession.shared.isActive else {
+            announceNow(appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
+            return
+        }
+        begin(request)
     }
 
     /// 같은 세션을 다시 시작한다(정밀 위치 허용 후 복구 경로).
@@ -548,10 +559,14 @@ final class BeaconModel {
         // 계속 나는 좀비 추적이 되고, 그 화면의 onDisappear는 이미 지나갔다.
         guard !Task.isCancelled else { return }
 
-        // 세션 단일성(B2 §3.2): 다른 안내(대중교통 포함)가 돌고 있으면 먼저 멈춘다.
-        sessionToken = GuideSessionCoordinator.shared.claim { [weak self] in
-            self?.stop()
+        // 세션 단일성(B2 §3.2, N1 반전): 다른 안내가 돌고 있으면 **거부**. `requestStart`의
+        // 선판정이 권한 대기 동안 뒤집힌 경합의 최종 게이트다.
+        guard let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() }) else {
+            announceNow(appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
+            return
         }
+        sessionToken = token
+        bandDistanceMeters = nil
 
         // 보류 발화 폐기 + 세대 증가(spec 2026-08-14 §4-2): 이전 세션이 남긴 지연
         // 문장(도착 통지 등)이 새 세션 안에서 발화하지 않게 한다.
@@ -562,7 +577,6 @@ final class BeaconModel {
         endText = ""
         resetArrivalHealth()
         arrivalSessionToken = UUID()
-        pendingEndScreen = nil
         liveHealthSample = nil
         let sessionStart = kind == .walk ? Date() : nil
         sessionStartedAt = sessionStart
@@ -933,12 +947,21 @@ final class BeaconModel {
     /// 총 소요시간의 잔여 비례 축소, car는 재조회 ETA의 경과 차감 카운트다운(§4.6 —
     /// 비례 축소는 정체 국소성에 취약해 폐기). 근거 없으면 시간 생략(날조 금지).
     private func updateRemaining(route: GuideRoute, state: GuideState) {
+        let remainingMeters = Int(max(0, route.totalMeters - state.d).rounded())
+        updateBandDistance(remainingMeters)
         let distancePart = appLocalized(
-            "guide.remainingDistance", formatDistance(Int(max(0, route.totalMeters - state.d).rounded()))
+            "guide.remainingDistance", formatDistance(remainingMeters)
         )
         let timePart = etaMinutesNow(route: route, state: state)
             .map { appLocalized("guide.remainingTime", String($0)) }
         remainingText = joinText(distancePart, timePart)
+    }
+
+    /// 띠바 거리 양자화(10m). 같은 구간이면 라벨을 건드리지 않는다(설계 리뷰 M7).
+    private func updateBandDistance(_ meters: Int) {
+        let clamped = max(0, meters)
+        if let current = bandDistanceMeters, abs(current - clamped) < 10 { return }
+        bandDistanceMeters = clamped
     }
 
     /// 잔여 시간(분) — 상시 표시와 진행 상황 조망이 같은 산식을 쓴다(사본 금지).
@@ -978,7 +1001,7 @@ final class BeaconModel {
         resetFinalApproach(geometry: nil)
         if let token = sessionToken {
             sessionToken = nil
-            GuideSessionCoordinator.shared.release(token)
+            GuideSession.shared.coordinator.release(token)
         }
         startTask?.cancel()
         startTask = nil
@@ -1019,6 +1042,7 @@ final class BeaconModel {
         guideState = nil
         lastGuidance = nil
         remainingText = nil
+        bandDistanceMeters = nil
         currentGuidanceText = nil
         clearLiveRows()
         displayUnits = []
@@ -1053,35 +1077,24 @@ final class BeaconModel {
     /// presentationDetents 도입 등으로 열리는 경로가 생기면 이 줄이 방어선이다).
     func teardown() {
         stop()
-        pendingEndScreen = nil
         arrivalDest = nil
         endKind = .arrived
         endText = ""
         tones.shutdown()
     }
 
-    /// 목적지가 바뀌면 옛 목적지를 추적하는 창이 생기므로 즉시 멈춘다.
-    /// 사용자가 비콘 컨트롤을 조작한 게 아니라 라벨 변화만으로는 신호가 안 되어 통지한다.
-    func stopBecauseDestinationChanged() {
-        guard isTracking else { return }
-        let text = appLocalized("ios.beacon.stopped")
-        stopLeavingSummary(playStopTone: false, text: text)
-        announce(text)
-    }
 
     /// 종료 화면을 언제 띄우는가. 중지 버튼은 시트가 떠 있는 채로 내용만 바꾸므로 즉시(도착
     /// 동형), 스와이프·VO escape는 시스템이 dismiss를 이미 커밋한 뒤라 그 안에서 바인딩을
     /// 되돌리지 않고 `onDismiss` 뒤에 다시 띄운다.
-    enum EndScreenTiming { case immediate, afterDismiss }
-
-    /// 사용자 중지(중지 버튼·시트 스와이프·VO escape). 정지 톤을 내고, 도보 세션이고
-    /// 요약이 성립하면 종료 화면을 남긴다(아래 `stopLeavingSummary`). 종료 화면이 남는
-    /// 전이는 포커스를 쥔 컨트롤(중지 버튼)을 통째로 없애므로 착지 문장을 `.high`로도
-    /// 통지한다(도착 경로 동형 — 착지가 실패해도 화면의 존재를 알 수 있다). 요약이 없어
-    /// 그냥 닫히는 종전 경로는 정지 톤이 신호다(부재를 말하지 않는다).
-    func stopByUser(endScreen timing: EndScreenTiming) {
+    /// 사용자 중지(시트·탭 인라인 "중지" 버튼 — N1부터 시트 스와이프·VO escape는 중지가
+    /// 아니라 최소화다). 정지 톤을 내고, 도보 세션이고 요약이 성립하면 종료 화면을 남긴다
+    /// (아래 `stopLeavingSummary`). 종료 화면이 남는 전이는 포커스를 쥔 컨트롤(중지 버튼)을
+    /// 통째로 없애므로 착지 문장을 `.high`로도 통지한다(도착 경로 동형 — 착지가 실패해도
+    /// 화면의 존재를 알 수 있다). 요약이 없어 그냥 닫히는 경로는 정지 톤이 신호다.
+    func stopByUser() {
         let text = appLocalized("ios.beacon.stopped")
-        if stopLeavingSummary(playStopTone: true, text: text, timing: timing), timing == .immediate {
+        if stopLeavingSummary(playStopTone: true, text: text) {
             announce(text, highPriority: true)
         }
     }
@@ -1098,9 +1111,7 @@ final class BeaconModel {
     /// (`GuideSessionCoordinator`)·`teardown`은 이 경로가 아니다 — 그 뒤엔 다른 시트나
     /// 다른 화면이 오므로 종료 화면을 남기지 않는다.
     @discardableResult
-    private func stopLeavingSummary(
-        playStopTone: Bool, text: String, timing: EndScreenTiming = .immediate
-    ) -> Bool {
+    private func stopLeavingSummary(playStopTone: Bool, text: String) -> Bool {
         // stop()이 dest·sessionKind를 되돌리므로 먼저 읽는다(도착 경로 동형).
         let dest = self.dest
         let wasWalkSession = isTracking && sessionKind == .walk && sessionStartedAt != nil
@@ -1113,12 +1124,7 @@ final class BeaconModel {
         guard wasWalkSession, let dest, let sample,
               WalkHealth.isMeaningfulWalk(steps: sample.steps, distanceMeters: sample.distance)
         else { return false }
-        switch timing {
-        case .immediate:
-            presentEndScreen(dest: dest, text: text, sample: sample)
-        case .afterDismiss:
-            pendingEndScreen = (dest, text, sample)
-        }
+        presentEndScreen(dest: dest, text: text, sample: sample)
         return true
     }
 
@@ -1129,15 +1135,6 @@ final class BeaconModel {
         endKind = .stopped
         endText = text
         commitArrivalHealth(sample)
-    }
-
-    /// 시트 `onDismiss` — 스와이프·VO escape로 닫힌 뒤 보류된 종료 화면을 띄운다. 그 사이
-    /// 새 세션이 시작됐으면(`start()`가 비운다) 아무것도 하지 않는다.
-    func presentPendingEndScreen() {
-        guard let pending = pendingEndScreen, !isTracking else { return }
-        pendingEndScreen = nil
-        presentEndScreen(dest: pending.dest, text: pending.text, sample: pending.sample)
-        announce(pending.text, highPriority: true)
     }
 
     /// 목적지 전환(스펙 2026-08-12 §3.1) — 같은 세션의 경로 재획득. 세션(톤·위치
@@ -1177,6 +1174,7 @@ final class BeaconModel {
         guideState = nil
         lastGuidance = nil
         remainingText = nil
+        bandDistanceMeters = nil
         currentGuidanceText = nil
         clearLiveRows()
         displayUnits = []
@@ -1405,6 +1403,8 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
+        // 간략 모드 띠바 거리 = 직선 거리(경로가 없다).
+        updateBandDistance(Int(haversineMeters(lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng).rounded()))
 
         let stepped = beaconStep(
             state: beaconState,
@@ -1705,6 +1705,7 @@ final class BeaconModel {
         // 도착 추정 입력 갱신(spec 2026-08-13 §4): 거리 캡은 마지막 usable fix 기준,
         // 진행은 앵커 기준 누적 변위(직전 fix 비교 금지 — 저속 연속 보행 오판).
         lastUsableDistanceToDest = distance
+        updateBandDistance(Int(distance.rounded()))
         let anchorStep = advanceProgressAnchor(
             anchor: progressAnchor, fix: RoutePoint(lat: fix.lat, lng: fix.lng)
         )
@@ -2639,7 +2640,7 @@ final class BeaconModel {
     /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(목적지 전환 확인 — §4-6).
     /// 즉시성이 문장의 본질이라 톤과 겹치더라도 미루지 않는다. 슬롯 무효화(§4-1)는
     /// `DeferredAnnouncer.announceNow`가 소유한다(수명 테스트가 그쪽에서 강제).
-    private func announceNow(
+    func announceNow(
         _ message: String, highPriority: Bool = false, bypassSuppression: Bool = false
     ) {
         deferredAnnouncer.announceNow(

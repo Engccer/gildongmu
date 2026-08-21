@@ -732,7 +732,24 @@
     "farNotice": "Next instruction in about {distance}. {step}",
     "carOffRoute": "You are off the route; guidance is paused. Refresh the route to resume",
     "carRoadNow": "Driving on {road}",
-    "etaStale": "ETA is from {minutes} min ago"
+    "etaStale": "ETA is from {minutes} min ago",
+    "alreadyActive": "Guidance is already running. End the current guidance first.",
+    "minimize": "Minimize guidance",
+    "changeDestHere": "Change destination to here",
+    "addWaypointHere": "Add here as a waypoint",
+    "transitDestChangePrepared": "Finding transit routes. Choose a route on the guidance screen.",
+    "band": {
+      "return": "Return to guidance",
+      "remaining": "{distance} left to {dest}",
+      "starting": "Guiding to {dest}",
+      "arrived": "Arrived at {dest}",
+      "ended": "Guidance to {dest} ended",
+      "transitWaiting": "Waiting to board {line} at {stop}",
+      "transitRiding": "On {line}, {count} stops left",
+      "transitRidingNoCount": "On {line}",
+      "transitArrived": "Arrived at {dest}",
+      "transitDestChangePending": "Changing destination to {label}, choose a route"
+    }
   },
   "offline": {
     "heading": "You are offline",

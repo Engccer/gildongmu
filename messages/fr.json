@@ -732,7 +732,24 @@
     "farNotice": "Prochaine instruction dans environ {distance}. {step}",
     "carOffRoute": "Hors itinéraire ; guidage en pause. Relancez la recherche d'itinéraire pour reprendre",
     "carRoadNow": "Sur {road}",
-    "etaStale": "Durée estimée datant de {minutes} min"
+    "etaStale": "Durée estimée datant de {minutes} min",
+    "alreadyActive": "Un guidage est déjà en cours. Terminez d'abord le guidage actuel.",
+    "minimize": "Réduire le guidage",
+    "changeDestHere": "Changer la destination pour ici",
+    "addWaypointHere": "Ajouter ici comme étape",
+    "transitDestChangePrepared": "Recherche d'itinéraires en transports. Choisissez un itinéraire sur l'écran de guidage.",
+    "band": {
+      "return": "Revenir au guidage",
+      "remaining": "{distance} restants jusqu'à {dest}",
+      "starting": "Guidage vers {dest}",
+      "arrived": "Arrivé à {dest}",
+      "ended": "Guidage vers {dest} terminé",
+      "transitWaiting": "En attente de {line} à {stop}",
+      "transitRiding": "À bord de {line}, {count} arrêts restants",
+      "transitRidingNoCount": "À bord de {line}",
+      "transitArrived": "Arrivé à {dest}",
+      "transitDestChangePending": "Changement de destination vers {label}, choisissez un itinéraire"
+    }
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

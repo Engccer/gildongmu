@@ -45,6 +45,13 @@ struct GildongmuApp: App {
     /// 갱신되어야 DirectionsTabView 재생성 시점에 반영된다. SwiftUI는 `.id` 불변이면
     /// init 인자가 바뀌어도 기존 `@State`를 그대로 유지하므로, 값만 바꾸면 무시된다.
     @State private var directionsPrefill: DirectionsEndpoint?
+    /// 실시간 안내 세션(N1) — 앱 수명. 시트·띠바도 여기서 띄운다(`.id` 바깥이라
+    /// 언어 전환·세션 리셋에도 유지).
+    private let guideSession = GuideSession.shared
+    /// 띠바 버튼 착지(최소화 직후). 시트 dismiss가 VO 커서를 최상단으로 떨어뜨리는 것이
+    /// 실기기 확정이라 지연·대입·검증·1회 재시도로 이긴다.
+    @AccessibilityFocusState private var bandFocused: Bool
+    @State private var bandFocusTask: Task<Void, Never>?
 
     var body: some Scene {
         WindowGroup {
@@ -56,6 +63,66 @@ struct GildongmuApp: App {
                 Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
             }
             .id("\(sessionEpoch)#\(languageRaw)")
+            // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통.
+            // 접근성 객체 하나(버튼). live region이 아니다 — 안내 통지는 모델 창구가 낸다.
+            .safeAreaInset(edge: .bottom) {
+                if guideSession.hasScreen, guideSession.isMinimized {
+                    GuideBandView(session: guideSession) {
+                        guideSession.returnedFromBand = guideSession.screen
+                        guideSession.isMinimized = false
+                    }
+                    .accessibilityFocused($bandFocused)
+                }
+            }
+            // 안내 시트(N1 §2.2). item 하나로 두 시트를 직렬화한다(설계 리뷰 M2). 내리는
+            // 제스처는 전부 최소화다 — 콜백 시점의 모델 상태로 뜻을 정하지 않는다(C3·C4).
+            .sheet(item: Binding(
+                get: { guideSession.presentedScreen },
+                set: { screen in
+                    if screen == nil, guideSession.hasScreen { guideSession.isMinimized = true }
+                }
+            )) { screen in
+                switch screen {
+                case .beacon:
+                    BeaconTrackingSheet(
+                        model: guideSession.beacon,
+                        onStop: { guideSession.beacon.stopByUser() },
+                        onMinimize: { guideSession.isMinimized = true },
+                        onDestinationCommitted: { GuideFormSyncStore.shared.post($0) }
+                    )
+                case .transit:
+                    TransitTrackingSheet(
+                        model: guideSession.transit,
+                        onStop: { guideSession.transit.stop(playStopTone: true) },
+                        onWalkHandoff: guideSession.transit.dest == nil
+                            ? nil : { guideSession.acceptWalkHandoff() },
+                        detailDest: guideSession.transit.dest,
+                        onDestinationCommitted: { GuideFormSyncStore.shared.post($0) },
+                        onMinimize: { guideSession.isMinimized = true }
+                    )
+                }
+            }
+            // 화면이 사라지면 최소화·복귀 플래그·띠바 포커스를 되돌린다(설계 리뷰 M1·M9).
+            .onChange(of: guideSession.hasScreen) { _, has in
+                guard !has else { return }
+                guideSession.isMinimized = false
+                guideSession.returnedFromBand = nil
+                bandFocusTask?.cancel()
+                bandFocusTask = nil
+                bandFocused = false
+            }
+            .onChange(of: guideSession.isMinimized) { _, minimized in
+                bandFocusTask?.cancel()
+                guard minimized else { bandFocusTask = nil; return }
+                bandFocusTask = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(450))
+                    guard !Task.isCancelled else { return }
+                    bandFocused = true
+                    try? await Task.sleep(for: .milliseconds(600))
+                    guard !Task.isCancelled, !bandFocused else { return }
+                    bandFocused = true
+                }
+            }
             .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme)
             .environment(\.refreshTab, refreshCurrentTab)
             .environment(\.openSettings, { showsSettings = true })
@@ -102,7 +169,7 @@ struct GildongmuApp: App {
                     // 11-가): 리셋의 TabView 재생성이 진행 중인 안내를 소멸시킨다 —
                     // 안내 중 복귀는 "유휴"가 아니다. 웹 IdleReset 동일 예외.
                     if IdleReset.shouldReset(backgroundedAt: backgroundedAt, now: .now),
-                       !GuideSessionCoordinator.shared.isActive {
+                       !guideSession.isActive {
                         resetSession()
                     }
                     backgroundedAt = nil
@@ -112,6 +179,8 @@ struct GildongmuApp: App {
                 default:
                     break
                 }
+                // 세션이 탭 밖에 살므로 전경·배경 전환도 여기서 전달한다(N1).
+                guideSession.handleScenePhaseChange(to: phase)
             }
         }
     }
@@ -194,6 +263,69 @@ struct GildongmuApp: App {
         if case .place(let label, let lat, let lng) = endpoint {
             // 프리필은 도착지 필드 확정이므로 도착지 스코프에 기록(분리 저장).
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: .to)
+        }
+    }
+}
+
+/// 띠바(N1) — 최소화된 안내를 탭 바 위 한 줄로 대표한다. 버튼 하나 = 접근성 객체 하나.
+/// 라벨 = 수단별 요약 + "안내로 돌아가기". 거리 낭독은 `spokenDistanceUnits`(VO가 `850m`을
+/// minutes로 읽는다 — 설계 리뷰 M6), 시각은 `formatDistance` 원문.
+struct GuideBandView: View {
+    let session: GuideSession
+    let onReturn: () -> Void
+
+    var body: some View {
+        Button(action: onReturn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(summaryText)
+                    .font(.subheadline)
+                Text(appLocalized("guide.band.return"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .background(.bar)
+        .accessibilityLabel(joinText(spokenUnits(summaryText), appLocalized("guide.band.return")))
+    }
+
+    /// 수단별 요약(spec §2.3 표). 비콘이 우선(핸드오프 600ms 창에서 `screen`과 같은 순서).
+    private var summaryText: String {
+        let beacon = session.beacon
+        if beacon.isTracking {
+            if let meters = beacon.bandDistanceMeters {
+                return appLocalized("guide.band.remaining", beacon.destinationLabel, formatDistance(meters))
+            }
+            return appLocalized("guide.band.starting", beacon.destinationLabel)
+        }
+        if beacon.arrivalDest != nil {
+            return appLocalized(
+                beacon.endKind == .stopped ? "guide.band.ended" : "guide.band.arrived",
+                beacon.destinationLabel)
+        }
+        let transit = session.transit
+        let leg = transit.currentLeg
+        switch guideBandSummary(
+            phase: transit.state?.phase, boardStop: leg?.boardName, line: leg?.lineName,
+            remaining: transit.state?.remaining, hasWalkHandoff: transit.pendingWalkHandoff != nil,
+            destChangeLabel: transit.pendingDestChange?.label
+        ) {
+        case .waiting(let stop, let line):
+            return appLocalized("guide.band.transitWaiting", stop, line)
+        case .riding(let line, let remaining?):
+            return appLocalized("guide.band.transitRiding", line, String(remaining))
+        case .riding(let line, nil):
+            return appLocalized("guide.band.transitRidingNoCount", line)
+        case .arrived:
+            return appLocalized("guide.band.transitArrived", transit.destinationLabel)
+        case .destChangePending(let label):
+            return appLocalized("guide.band.transitDestChangePending", label)
+        case nil:
+            return ""
         }
     }
 }

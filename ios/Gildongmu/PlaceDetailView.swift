@@ -17,6 +17,7 @@ struct PlaceDetailView<DomainSection: View>: View {
     @Environment(\.openURL) private var openURL
     /// 역 자동 섹션 4종 모델. 로드는 아래 .task에서 킥오프(역일 때만)
     @State private var stationSections = StationSectionsModel()
+    private let guideSession = GuideSession.shared
     /// 무장애 편의시설 자동 섹션 모델. 역 여부와 무관하게 모든 장소에서 로드
     @State private var barrierFreeInfo = BarrierFreeInfoModel()
     /// 장소 채팅 sheet(M5). 표시마다 새 ChatView = 장소마다 새 대화(웹 계약)
@@ -67,6 +68,31 @@ struct PlaceDetailView<DomainSection: View>: View {
                 if showsDirectionsEntry {
                     Button(appLocalized("directions.toHere")) {
                         DirectionsPrefillStore.shared.pending = .place(label: place.name, lat: place.lat, lng: place.lng)
+                    }
+                }
+                // 안내 중에만(N1 spec §2.5): 진행 중인 세션의 목적지를 이 장소로 바꾼다.
+                // 비콘은 같은 세션의 경로 재획득, 대중교통은 2단(후보 선택)이라 준비만
+                // 하고 통지한다 — 시트를 자동으로 올리지 않는다(장소 상세가 이미 시트인
+                // 경로에서 루트 시트 presentation이 거부된다, 설계 리뷰 M3). 띠바가
+                // "경로 선택 대기"를 보여 주고 돌아가면 후보가 있다.
+                if showsDirectionsEntry, guideSession.beacon.isTracking || guideSession.transit.isTracking {
+                    Button(appLocalized("guide.changeDestHere")) {
+                        let dest = BeaconDest(lat: place.lat, lng: place.lng)
+                        if guideSession.beacon.isTracking {
+                            if guideSession.beacon.changeDestination(dest: dest, label: place.name) {
+                                GuideFormSyncStore.shared.post(.place(label: place.name, lat: place.lat, lng: place.lng))
+                            }
+                        } else {
+                            guideSession.transit.prepareDestinationChange(dest: dest, label: place.name)
+                            guideSession.beacon.announceNow(
+                                appLocalized("guide.transitDestChangePrepared"),
+                                highPriority: true, bypassSuppression: true)
+                        }
+                    }
+                    // 경유지(N4-iOS가 동작을 채운다). 그때까지 `waypointAvailable`이 false라
+                    // 보이지 않는다 — 미구현 버튼을 노출하지 않는다.
+                    if guideSession.waypointAvailable {
+                        Button(appLocalized("guide.addWaypointHere")) {}
                     }
                 }
                 Button(appLocalized("ios.route.naver")) { openNaverRoute() }

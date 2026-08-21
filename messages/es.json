@@ -732,7 +732,24 @@
     "farNotice": "Próxima indicación en unos {distance}. {step}",
     "carOffRoute": "Fuera de la ruta; guía en pausa. Vuelve a consultar la ruta para reanudar",
     "carRoadNow": "Circulando por {road}",
-    "etaStale": "Tiempo estimado de hace {minutes} min"
+    "etaStale": "Tiempo estimado de hace {minutes} min",
+    "alreadyActive": "Ya hay una guía en curso. Finaliza primero la guía actual.",
+    "minimize": "Minimizar guía",
+    "changeDestHere": "Cambiar destino a aquí",
+    "addWaypointHere": "Añadir aquí como parada",
+    "transitDestChangePrepared": "Buscando rutas de transporte. Elige una ruta en la pantalla de guía.",
+    "band": {
+      "return": "Volver a la guía",
+      "remaining": "Faltan {distance} hasta {dest}",
+      "starting": "Guiando hacia {dest}",
+      "arrived": "Llegaste a {dest}",
+      "ended": "Guía hacia {dest} finalizada",
+      "transitWaiting": "Esperando {line} en {stop}",
+      "transitRiding": "En {line}, faltan {count} paradas",
+      "transitRidingNoCount": "En {line}",
+      "transitArrived": "Llegaste a {dest}",
+      "transitDestChangePending": "Cambiando destino a {label}, elige una ruta"
+    }
   },
   "offline": {
     "heading": "Estás sin conexión",
