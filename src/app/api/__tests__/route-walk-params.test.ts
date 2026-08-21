@@ -8,6 +8,7 @@ const base = {
   includeGeometry: null,
   variant: null,
   alternatives: null,
+  via: null,
 };
 
 describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
@@ -58,5 +59,30 @@ describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
 
   it("좌표 오형식은 거부(기존 계약 유지)", () => {
     expect(parseWalkQuery({ ...base, origin: "" }).ok).toBe(false);
+  });
+
+  describe("via 경유지(N4 spec §2.1)", () => {
+    it("누락이면 undefined(옵트인 키 부재)", () => {
+      const r = parseWalkQuery(base);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.data.via).toBeUndefined();
+    });
+
+    it("'위도,경도'를 좌표로 파싱한다", () => {
+      const r = parseWalkQuery({ ...base, via: "37.5353,127.1323" });
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.data.via).toEqual({ lat: 37.5353, lng: 127.1323 });
+    });
+
+    it("형식 오류는 거부(조용한 무시 금지 — 경유 안 한 경로를 경유한 경로로 낭독하게 된다)", () => {
+      expect(parseWalkQuery({ ...base, via: "강동역" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, via: "" }).ok).toBe(false);
+    });
+
+    it("variant·alternatives·accessible과 직교한다", () => {
+      expect(parseWalkQuery({ ...base, via: "37.5,127.1", variant: "shortest" }).ok).toBe(true);
+      expect(parseWalkQuery({ ...base, via: "37.5,127.1", alternatives: "1" }).ok).toBe(true);
+      expect(parseWalkQuery({ ...base, via: "37.5,127.1", accessible: "true" }).ok).toBe(true);
+    });
   });
 });

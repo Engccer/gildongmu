@@ -28,6 +28,8 @@ import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
 const querySchema = z.object({
   origin: coordSchema,
   dest: coordSchema,
+  // 경유지 1개(N4): 누락=없음. 형식 오류는 400(조용한 무시 금지, walk 동형).
+  via: coordSchema.nullable().transform((v) => v ?? undefined),
   // 폴리라인 옵트인(B1 실시간 자동차 안내). 누락 또는 정확히 "1"만 — 그 외 값은
   // 400으로 거절해 옵트인을 조용히 무시하지 않는다(walk 라우트 동형).
   includeGeometry: z
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     origin: request.nextUrl.searchParams.get("origin") ?? "",
     dest: request.nextUrl.searchParams.get("dest") ?? "",
+    via: request.nextUrl.searchParams.get("via"),
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
   });
   if (!parsed.success) {

@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
     variant: request.nextUrl.searchParams.get("variant"),
     alternatives: request.nextUrl.searchParams.get("alternatives"),
+    via: request.nextUrl.searchParams.get("via"),
   });
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
