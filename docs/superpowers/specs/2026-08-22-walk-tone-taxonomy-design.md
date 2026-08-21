@@ -48,9 +48,9 @@ walkStepAction(desc) ─action─▶ routeGuide 6a ─tone─▶ toneLayerStep(p
 ```
 
 1. **분류**(`walk-action.ts` ↔ `WalkAction.swift`): `back` 케이스·마커 2개. fixture `walk-action-cases.json`에 back 케이스 + 순서 케이스("횡단보도에서 유턴" → back).
-2. **톤 선택**(`route-guide.ts` ↔ `RouteGuide.swift`): 순수 함수 `imminentTone(action)`(walk-action 모듈, 표 §2) — 6a 방출부가 `"ahead"` 상수 대신 이것을 쓴다. `GuideTone`(route-guide 층)은 `"ahead" | "crosswalk" | "left" | "right" | "back" | "warning"`. car 40m 방출은 `ahead` 유지. fixture `route-guide-scenarios.json`의 imminent 톤 기대값을 행동별로 갱신(러너 `toneName` 확장).
+2. **톤 선택**(`route-guide.ts` ↔ `RouteGuide.swift`): 순수 함수 `imminentTone(action)`(walk-action 모듈, 표 §2) — 6a 방출부가 `"ahead"` 상수 대신 이것을 쓴다. `GuideTone`(route-guide 층)은 `"ahead" | "crosswalk" | "left" | "right" | "back" | "warning"`. car 40m 방출은 `ahead` 유지. fixture `route-guide-scenarios.json`의 imminent 톤 기대값을 행동별로 갱신(러너 `toneName` 확장) + `back` 시나리오 1개 신설(신설 매핑이 fixture 없이 남지 않도록).
 3. **톤 계층**(`guide-tone-layer.ts` ↔ `GuideToneLayer.swift`): 정숙 창 조건 `tone === "ahead" || "warning"` → `isActionTone(tone)`(5종 + warning). 분기 순서·상수 불변.
-4. **재생기**(`useBeaconSound.ts` ↔ `BeaconTonePlayer.swift`): 파일 7개 등록(crosswalk·back·left/right ×2 scheme), 게인 0.8(ahead 동급), 햅틱 패턴(크리티컬 "지금이다" 신호라 전부 병행 — 비프 8타·모티프 2타·글라이드 감쇠 2회).
+4. **재생기**(`useBeaconSound.ts` ↔ `BeaconTonePlayer.swift`): 파일 6개 등록(crosswalk·back·left/right ×2 scheme), 게인 0.8(ahead 동급), 햅틱 패턴(크리티컬 "지금이다" 신호라 전부 병행 — 비프 8타·모티프 2타·글라이드 감쇠 2회).
 5. **iOS 소비자** `BeaconModel`: `out.tone.map { $0 == .ahead ? .ahead : .warning }` → Kit `BeaconTone(guide:)` 변환 한 곳.
 6. **가드**: `sounds-drift.test.ts` SOUNDS 16종, `BeaconTone` 케이스 대조, 웹 훅 문자열 대조.
 
@@ -58,7 +58,7 @@ walkStepAction(desc) ─action─▶ routeGuide 6a ─tone─▶ toneLayerStep(p
 
 - `messages/*.json` `guide.imminent.back`·`guide.liveAction.back`(N1 네임스페이스) → 키 2개.
 - `ios/Gildongmu/SettingsView.swift`(미배정) → 실험 피커 1절.
-- `Localizable.xcstrings`는 손대지 않고 통합 절차대로 재생성.
+- `Localizable.xcstrings` 2벌은 손으로 고치지 않고 `messages-to-xcstrings.mjs`로 재생성한 결과만 커밋한다(통합 rebase 뒤 다시 재생성).
 
 ## 6. 검증
 
