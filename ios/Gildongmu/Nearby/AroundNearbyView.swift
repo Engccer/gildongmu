@@ -166,9 +166,7 @@ struct AroundNearbyView: View {
     private func overviewSection(_ payload: AroundPayload) -> some View {
         if let overview = payload.overview {
             // 헤딩 + 반경 부제 한 줄(반경은 여기서 한 번만 — 불릿 안에 반복하지 않는다).
-            Text(joinText(
-                appLocalized("whereAmI.overview.heading"),
-                appLocalized("whereAmI.overview.radius", formatDistance(overview.radiusMeters))))
+            Text("\(appLocalized("whereAmI.overview.heading")) \(appLocalized("whereAmI.overview.radius", formatDistance(overview.radiusMeters)))")
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
             ForEach(Array(buildOverviewLines(overview, lang: AppLanguage.current).enumerated()), id: \.offset) { _, line in

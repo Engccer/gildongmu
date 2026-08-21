@@ -137,6 +137,9 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
                 parts.append(kitLocalized("whereAmI.overview.transitStation", lang: lang,
                                           station.name, line, directionWord(station.bearing, lang: lang),
                                           formatDistance(station.distanceMeters)))
+            } else if bus == nil {
+                // 버스 조각이 없으면 연결어미("없고") 문장을 단독으로 두지 않는다(리뷰 D3).
+                parts.append(kitLocalized("whereAmI.overview.transitNoStationOnly", lang: lang, radius))
             } else {
                 parts.append(kitLocalized("whereAmI.overview.transitNoStation", lang: lang, radius))
             }

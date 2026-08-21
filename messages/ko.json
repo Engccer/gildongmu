@@ -886,6 +886,7 @@
       "transitStation": "지하철 {name}{line} {direction}쪽 {distance}",
       "transitLine": "({line})",
       "transitNoStation": "{distance} 안에 지하철역이 없고",
+      "transitNoStationOnly": "{distance} 안에 지하철역이 없습니다",
       "transitBus": "버스 정류소 {count}곳, {nearest}",
       "transitBusNone": "버스 정류소가 없습니다",
       "transitBusUncovered": "버스 정류소 정보는 이 지역에서 제공되지 않습니다",

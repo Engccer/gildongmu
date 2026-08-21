@@ -7,9 +7,9 @@ import { assembleNearbyOverview } from "@/lib/nearby-overview";
 /**
  * GET /api/nearby/overview?lat=..&lng=..
  * "한눈에 보기"(M4) — 현재 위치 주변 5종을 공통 반경 1km로 한 번에 집계한다.
- * 키 게이트는 불릿 단위라 조립 안에 있다(키 없는 불릿 = 부재). 전 불릿 부재 + 위치
- * 문장도 없으면 `data: null`(전 키 부재), 조립 자체의 예외만 502(조각 실패는 불릿
- * `failed`로 200 안에 실린다 — 3-state).
+ * 키 게이트는 불릿 단위라 조립 안에 있다(키 없는 불릿 = 부재). 대중교통 불릿은 seed라
+ * 키와 무관하게 항상 있으므로 `data: null` 상태는 없다(응답은 항상 data). 조립 자체의
+ * 예외만 502(조각 실패는 불릿 `failed`로 200 안에 실린다 — 3-state).
  */
 export const dynamic = "force-dynamic";
 
@@ -31,9 +31,6 @@ export async function GET(request: NextRequest) {
   }
   try {
     const data = await assembleNearbyOverview(parsed.data.lat, parsed.data.lng);
-    if (data.bullets.length === 0 && data.place === null) {
-      return NextResponse.json({ data: null });
-    }
     return NextResponse.json({ data });
   } catch (e) {
     console.error("[nearby/overview] 조립 실패:", e);

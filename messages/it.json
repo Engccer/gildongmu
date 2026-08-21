@@ -886,6 +886,7 @@
       "transitStation": "stazione della metro {name}{line} a {distance} verso {direction}",
       "transitLine": " ({line})",
       "transitNoStation": "nessuna stazione della metro entro {distance}",
+      "transitNoStationOnly": "nessuna stazione della metro entro {distance}",
       "transitBus": "{count} fermate dell'autobus, {nearest}",
       "transitBusNone": "nessuna fermata dell'autobus",
       "transitBusUncovered": "i dati delle fermate non sono disponibili in questa zona",

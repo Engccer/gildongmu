@@ -973,12 +973,15 @@ function formatNearbyOverview(body: { data: NearbyOverviewItem | null }): string
   for (const b of d.bullets) {
     if (b.kind === "transit") {
       const parts: string[] = [];
+      const bus = b.busStops;
+      // Kit 템플릿과 같은 융합 문장("지하철 길동(5호선) 북동쪽 262m") — 쉼표 분절 금지(리뷰 D2).
       parts.push(
         b.station
-          ? joinText(`지하철 ${b.station.name}`, b.station.line ? `(${b.station.line})` : undefined, `${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}`)
-          : `${dist(d.radiusMeters)} 안에 지하철역이 없고`,
+          ? `지하철 ${b.station.name}${b.station.line ? `(${b.station.line})` : ""} ${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}`
+          : bus
+            ? `${dist(d.radiusMeters)} 안에 지하철역이 없고`
+            : `${dist(d.radiusMeters)} 안에 지하철역이 없습니다`,
       );
-      const bus = b.busStops;
       if (bus) {
         if (bus.state === "ok") parts.push(`버스 정류소 ${bus.count}곳, ${overviewNearest(bus.nearest)}`);
         else if (bus.state === "none") parts.push("버스 정류소가 없습니다");

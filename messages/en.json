@@ -886,6 +886,7 @@
       "transitStation": "{name}{line} subway station {distance} to the {direction}",
       "transitLine": " ({line})",
       "transitNoStation": "no subway station within {distance}",
+      "transitNoStationOnly": "no subway station within {distance}",
       "transitBus": "{count} bus stops, {nearest}",
       "transitBusNone": "no bus stops",
       "transitBusUncovered": "bus stop data is not available in this area",

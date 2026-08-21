@@ -81,6 +81,8 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
         == "대중교통: 1km 안에 지하철역이 없고, 버스 정류소 정보는 이 지역에서 제공되지 않습니다")
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":{"state":"failed"}}"#)
         == "대중교통: 지하철 용문 서쪽 910m, 버스 정류소 정보를 가져오지 못했습니다")
+    #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":null}"#)
+        == "대중교통: 1km 안에 지하철역이 없습니다")
     // 버스 조각 자체가 없으면(키 없음) 역 문장만.
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":null}"#)
         == "대중교통: 지하철 용문 서쪽 910m")

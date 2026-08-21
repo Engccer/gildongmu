@@ -39,7 +39,7 @@
 
 ### 3.1 `GET /api/nearby/overview?lat&lng` (신규)
 
-순서: 파싱(`latParam`/`lngParam`) → `isInKorea` 아니면 `{outOfCoverage:true}` → 조립. 키 게이트는 **불릿 단위**(키 없는 불릿은 응답에서 제외, 화면에 0 노출). 전 불릿이 제외되고 place도 null이면 `{data:null}`. 조립 예외는 조각별로 흡수하므로 라우트 502는 조립 함수 자체의 예외뿐. `force-dynamic`, 응답 `no-store`(조각별 revalidate는 provider fetch 층이 가짐).
+순서: 파싱(`latParam`/`lngParam`) → `isInKorea` 아니면 `{outOfCoverage:true}` → 조립. 키 게이트는 **불릿 단위**(키 없는 불릿은 응답에서 제외, 화면에 0 노출). 대중교통 불릿은 seed라 키와 무관하게 항상 있으므로 `{data:null}` 상태는 **없다**(응답은 항상 `data`, 리뷰 D1로 정정 2026-08-22). 조립 예외는 조각별로 흡수하므로 라우트 502는 조립 함수 자체의 예외뿐. `force-dynamic`, 응답 `no-store`(조각별 revalidate는 provider fetch 층이 가짐).
 
 ```ts
 interface NearbyOverview {
@@ -83,6 +83,7 @@ ko 예(상태별 전부 다른 문장 — 3-state 불변식):
 |---|---|
 | transit ok(둘 다) | "대중교통: 지하철 길동역(5호선) 북동쪽 260m, 버스 정류소 5곳, 가장 가까운 곳은 길동사거리 80m, 길동역 120m" |
 | transit 역 없음·버스 있음 | "대중교통: 1km 안에 지하철역이 없고, 버스 정류소 5곳, 가장 가까운 곳은 …" |
+| transit 역 없음·버스 조각 없음(키 부재) | "대중교통: 1km 안에 지하철역이 없습니다"(`transitNoStationOnly` — 연결어미 문장을 단독으로 두지 않는다, 리뷰 D3) |
 | transit 버스 uncovered | "…, 버스 정류소 정보는 이 지역에서 제공되지 않습니다" |
 | transit 버스 failed | "…, 버스 정류소 정보를 가져오지 못했습니다" |
 | food ok | "식당과 카페 30곳 이상, 가장 가까운 곳은 남쪽 40m 스타벅스, 동쪽 60m 김밥천국" (`countCapped` 아니면 "12곳") |
@@ -126,7 +127,7 @@ ko 예(상태별 전부 다른 문장 — 3-state 불변식):
 ## 8. 테스트·게이트
 
 - 순수: `nearby-overview.test.ts` — 조각별 fulfilled/rejected 조합 → 불릿 상태 매핑(변이: rejected를 none으로 뭉개면 실패), `countCapped`, nearest ≤ 2·거리순, 키 게이트로 불릿 제외, events seoulOnly 선판정(upstream 미호출).
-- 라우트: `coord-param-usage.test.ts`가 자동 포함. 라우트 테스트: 한국 밖 `outOfCoverage`, 전 불릿 키 없음 `data:null`.
+- 라우트: `coord-param-usage.test.ts`가 자동 포함. 라우트 테스트: 한국 밖 `outOfCoverage`, 전 키 부재여도 `data` 비null.
 - 계약 가드: scene 응답 스키마 테스트에 새 필드 존재·기존 필드 불변.
 - Kit: `SurroundingsSceneItem` 디코딩(새 필드), `sceneItemToPlace`; 조망 문장 조립 테스트(ko, 상태별 문장이 전부 다른지 — 3-state 변이).
 - **실호출 게이트** `scripts/verify-nearby-overview.mjs`: 서울 좌표 1곳·서울 밖 1곳·해외 1곳 — 불릿 5 존재, 서울 밖 events `unavailable`, 해외 `outOfCoverage`, scene 항목에 lat/lng 존재. 종료 코드로 머지 게이트.
