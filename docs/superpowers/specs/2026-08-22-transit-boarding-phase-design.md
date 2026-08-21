@@ -87,7 +87,7 @@ vehiclePassed                                    (false, weak)
 ## 4. 앱(iOS) 변경
 
 ### 4.1 `TransitGuideModel`
-- `board(item:)`: 종전 그대로 dispatch. 선택 항목의 설명을 `selectedDescription`(후보 행 라벨과 같은 조립)으로 보관 — `vehicleSelected` 통지에 쓴다. riding 진입·changeBoarding·advance에서 nil.
+- `board(item:)`: 종전 그대로 dispatch. 선택 항목의 설명을 `selectedDescription`(후보 행 라벨과 같은 조립)으로 보관 — `vehicleSelected` 통지에 쓴다. 소거는 `advance`·세션 종료(새 선택이 덮어쓴다). changeBoarding에서는 **유지** — `restoreBoarding`이 같은 차량으로 boarding에 복귀할 때 그 설명이 필요하다.
 - `confirmBoarded()`: `dispatch(.confirmBoarded)` + 즉폴. `cancelChangeBoarding()`은 `dispatch(.restoreBoarding)`.
 - `fetchPoll(phase:)`·`tagoCacheKey`·`resolveTagoIfNeeded`: `phase == .waiting || phase == .boarding` → 승차 정류소 갈래.
 - `pollOnce`의 대기 스냅숏 갱신은 `waiting`만(boarding은 목록을 보여주지 않는다).
@@ -102,7 +102,7 @@ vehiclePassed                                    (false, weak)
 - 후보 버튼 라벨 `boardTrain/boardBus` → `selectTrain/selectBus`("{desc}, 이 열차 선택"). tago `boardApprox` → "탑승했습니다".
 - **포커스 단일 바인딩(A19 정본)**: 시트 컨트롤용 `Bool` 바인딩 6개(`stop·advance·changeBoarding·walkHandoff·waitingLabel·reboardPrompt`)를 **하나의 옵셔널 정체성 바인딩** `@AccessibilityFocusState var focusedControl: SheetControl?`로 합친다(`equals:`). 근거: 사라진 버튼의 `Bool`이 `true`로 남은 채 새 대상에 `true`를 대입하면 경합한다 — `SearchView.applyRowFocus`의 "경합하는 포커스 바인딩을 먼저 놓아야 대입이 먹는다"가 이 repo의 확정 교훈이고, 옵셔널 단일 바인딩은 그 해제를 구조로 만든다. 후보 목록·목적지 후보의 `String?` 바인딩은 유지.
 - 착지 시퀀스는 정본 전문을 **헬퍼 하나**(`landControlFocus(_:proxy:)`)로: 직전 착지 Task 취소 → **`focusedCandidate = nil`·`focusedDestChangeRoute = nil`**(다른 바인딩 해제, 리뷰 M7) → `scrollTo` → 400ms → **대상 컨트롤이 현재 국면에 아직 존재하는지 재검증**(없으면 중단, 리뷰 M8) → 대입 → 600ms 검증 → `scrollTo` 재실행 → 300ms → 재대입(종전 `landReboardPromptFocus`는 재시도에서 가시화를 다시 하지 않았다) → 로그 `landed=`(+ 실착지 바인딩 값). 국면 전이 `onChange`는 먼저 진행 중 착지 Task를 취소한다.
-- 전이 착지: waiting→boarding = `confirmBoarded` 버튼(누른 후보 행이 사라진다), boarding→riding·waiting→riding = 종전(`changeBoarding`/근사는 `advance`), arrived = `advance`(종전).
+- 전이 착지: waiting→boarding = `confirmBoarded` 버튼(누른 후보 행이 사라진다), boarding→riding·waiting→riding = 종전(`changeBoarding`/근사는 `advance`), arrived = `advance`(종전), **→waiting(탑승 변경·다른 차량 선택) = `waitingLabel`**(구현 리뷰가 잡은 종전 갭).
 
 ## 5. 웹 변경 (`src/hooks/useTransitGuide.ts`·`TransitGuidePanel.tsx`)
 4와 동형: `fetchPoll` 갈래, `boardOverride` 소거 시점, 상태 문구 조립, `confirmBoarded`, boarding 섹션(상태 문장 + 버튼 2), 전이 포커스(waiting→boarding = 탑승했습니다 버튼). 웹 실승차는 미검증이라(B2) 포커스 계약은 iOS와 같은 지점에만 둔다.

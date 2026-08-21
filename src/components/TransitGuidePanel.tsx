@@ -108,6 +108,11 @@ export function TransitGuidePanel({
     if (phase === "arrived" && prevPhaseRef.current !== "arrived") {
       advanceRef.current?.focus();
     }
+    // 탑승 변경·다른 차량 선택(→waiting): 누른 버튼이 섹션째 사라진다 — 대기 목록
+    // 라벨로 선점(독립 리뷰 WARNING — 종전부터 비어 있던 전이).
+    if (phase === "waiting" && prevPhaseRef.current !== null && prevPhaseRef.current !== "waiting") {
+      waitingLabelRef.current?.focus();
+    }
     // 차량 선택(waiting→boarding, N3): 누른 후보 행이 사라진다 — 다음 행동인
     // "탑승했습니다"로 선점.
     if (phase === "boarding" && prevPhaseRef.current === "waiting") {
