@@ -397,9 +397,13 @@ E12 리뷰가 walk seed에서 잡은 기제가 **다른 좌표 라우트에도 �
 
 로그상 "탑승" 버튼이 곧 `waiting→riding`이라 선택만 해도 "탑승 중"이 된다. 판정: 버튼은 **차량 고르기**, 탑승은 **앱이 판정**(선택 차량이 승차 정류소·역에 도착하면 `riding`), 그 전은 "탑승 기다리는 중". `transitGuide` 네임스페이스 문구 전수 재점검(B2 ② 흡수). A19를 함께 닫는다. 브리프 `docs/superpowers/plans/2026-08-22-feedback-260821-parallel-plan.md`.
 
-### N4. 경유지 (🆕 피드백 5, 판정 완료)
+### N4. 경유지 (피드백 5 — 서버·웹·CLI 종결 2026-08-22, iOS 웨이브 3 대기)
 
-**1개, 도보·자동차만**(ODsay에 경유지 없음 → 그 수단은 "경유지 미지원" 정직 표시). 폼 버튼(도착지 검색과 경로 조회 사이, 선택 사항, 포커스 계약 불변)·최근 경로 문장·안내 시트 버튼("경유지 추가"↔"C, 경유지 변경")·장소 상세 버튼(N1 자리)·**도착 시 알리고 계속**. 서버·웹·CLI 먼저, iOS는 N1 뒤. Tmap passList·카카오 내비 waypoints **실호출 게이트**. 브리프 `docs/superpowers/plans/2026-08-22-feedback-260821-parallel-plan.md`.
+**1개, 도보·자동차만**(ODsay에 경유지 없음 → `unsupported:"waypoint"` 정직 표시). 서버·웹·CLI/MCP는 끝났다(CHANGELOG 2026-08-22, spec `2026-08-22-waypoint-server-web-cli-design.md` — 4 provider 실호출 게이트 전부 수용). 남은 것:
+- **iOS(웨이브 3 `n4-waypoint-ios`, N1 뒤)**: 폼 버튼·최근 경로 문장·안내 시트 버튼("경유지 추가"↔"C, 경유지 변경")·장소 상세 버튼(N1 자리)·**도착 시 알리고 계속**(서버 `waypoint.stepIndex/coord`를 Kit `RouteGuide`가 소비). 브리프 `docs/superpowers/plans/2026-08-22-feedback-260821-parallel-plan.md`.
+- **웹 실시간 안내의 경유지**: 지금은 경유지 조회에서 안내 시작 버튼을 내지 않는다(`useRouteGuide`가 출발→도착으로 재조회). iOS 실보행 판정 뒤 같은 계약으로 얹는다(웹 실보행 미검증 축과 같은 줄).
+- **딥링크 경유지**: `nmap://`의 `v1lat/v1lng` 미적용(현행 출발→도착). `kakaomap://`는 경유 인자 없음.
+- **en 자동차 + 경유지**: NCP `waypoints` 미검증이라 ko 서비스로 보낸다(한국어 문장). 영문이 필요해지면 NCP 실호출 게이트 선행.
 
 ### E22. 둘러보기 항목 행에 "동네 리뷰 상위" 표기 — 🆕 신규(2026-08-17), 실사용 판정 대기
 

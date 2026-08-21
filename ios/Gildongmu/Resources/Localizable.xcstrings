@@ -8521,6 +8521,46 @@
         }
       }
     },
+    "directions.addVia": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 추가"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add a waypoint"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir punto intermedio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une étape"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi tappa intermedia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地を追加"
+          }
+        }
+      }
+    },
     "directions.allFailed": {
       "localizations": {
         "ko": {
@@ -9121,6 +9161,46 @@
         }
       }
     },
+    "directions.removeVia": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 삭제"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove waypoint"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar punto intermedio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer l'étape"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rimuovi tappa intermedia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地を削除"
+          }
+        }
+      }
+    },
     "directions.searchFrom": {
       "localizations": {
         "ko": {
@@ -9197,6 +9277,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "目的地を検索"
+          }
+        }
+      }
+    },
+    "directions.searchVia": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 검색"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search waypoint"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar punto intermedio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher une étape"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerca tappa intermedia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地を検索"
           }
         }
       }
@@ -9401,6 +9521,46 @@
         }
       }
     },
+    "directions.unsupportedWaypoint": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지는 대중교통 경로에서 지원하지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waypoints are not supported for public transit routes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las rutas de transporte público no admiten puntos intermedios."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les itinéraires en transports en commun ne prennent pas en charge les étapes."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I percorsi con i mezzi pubblici non supportano tappe intermedie."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通機関の経路では経由地に対応していません。"
+          }
+        }
+      }
+    },
     "directions.useCurrentLocation": {
       "localizations": {
         "ko": {
@@ -9437,6 +9597,86 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在地を使う"
+          }
+        }
+      }
+    },
+    "directions.via": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Via"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punto intermedio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tappa intermedia"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地"
+          }
+        }
+      }
+    },
+    "directions.viaArrived": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "경유지 %1$@ 도착"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waypoint %1$@ reached"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Punto intermedio %1$@ alcanzado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape %1$@ atteinte"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tappa intermedia %1$@ raggiunta"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "経由地 %1$@ に到着"
           }
         }
       }
@@ -27357,6 +27597,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@から%2$@までの経路検索"
+          }
+        }
+      }
+    },
+    "recentRoutes.itemVia": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@부터 %2$@까지 %3$@를 경유하는 경로 조회"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Route from %1$@ to %2$@ via %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta de %1$@ a %2$@ pasando por %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itinéraire de %1$@ à %2$@ via %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Percorso da %1$@ a %2$@ passando per %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@から%3$@を経由して%2$@までの経路検索"
           }
         }
       }
