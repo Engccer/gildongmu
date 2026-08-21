@@ -50,23 +50,23 @@ describe("parseDir", () => {
   it("왕복: 직렬화한 문자열을 그대로 복원한다", () => {
     const from = place("서울역", 37.5547, 126.9707);
     const to = place("이상한 @가게/이름,진짜~!", 35.1796, 129.0756);
-    expect(parseDir(serializeDir(from, to))).toEqual({ from, to });
+    expect(parseDir(serializeDir(from, to))).toEqual({ from, to , via: null });
   });
 
   it("현재 위치 왕복: cur 토큰이 {kind:'current'}로 복원된다", () => {
-    expect(parseDir(serializeDir(CUR, null))).toEqual({ from: CUR, to: null });
+    expect(parseDir(serializeDir(CUR, null))).toEqual({ from: CUR, to: null , via: null });
     const dest = place("강동구청", 37.5301, 127.1238);
-    expect(parseDir(serializeDir(CUR, dest))).toEqual({ from: CUR, to: dest });
+    expect(parseDir(serializeDir(CUR, dest))).toEqual({ from: CUR, to: dest , via: null });
   });
 
   it("부분 상태(to 없음)를 허용한다", () => {
     const from = place("길동역", 37.5384, 127.1436);
-    expect(parseDir(serializeDir(from, null))).toEqual({ from, to: null });
+    expect(parseDir(serializeDir(from, null))).toEqual({ from, to: null , via: null });
   });
 
   it("음수 좌표도 왕복된다", () => {
     const from = place("남반구 테스트", -33.8688, 151.2093);
-    expect(parseDir(serializeDir(from, null))).toEqual({ from, to: null });
+    expect(parseDir(serializeDir(from, null))).toEqual({ from, to: null , via: null });
   });
 
   it("불량 입력은 null: 빈 값·쓰레기·좌표 형식 오류·조각 과다", () => {
@@ -79,5 +79,33 @@ describe("parseDir", () => {
     expect(parseDir("cur/cur/cur")).toBeNull(); // 토큰 3개
     expect(parseDir("@37.5,127.0")).toBeNull(); // 빈 라벨
     expect(parseDir("%E0%A4%A@37.5,127.0")).toBeNull(); // 깨진 퍼센트 인코딩
+  });
+
+  describe("via 경유지(N4): from/to/via 세 토막", () => {
+    const from = place("천호역", 37.5386, 127.1237);
+    const to = place("길동", 37.5272, 127.1268);
+    const via = place("강동역 5호선", 37.5353, 127.1323);
+
+    it("via가 있으면 세 번째 토막으로 직렬화하고 왕복한다", () => {
+      const s = serializeDir(from, to, via);
+      expect(s.split("/")).toHaveLength(3);
+      expect(parseDir(s)).toEqual({ from, to, via });
+    });
+
+    it("via 없으면 두 토막(현행 불변), 파싱은 via:null", () => {
+      expect(serializeDir(from, to).split("/")).toHaveLength(2);
+      expect(parseDir(serializeDir(from, to))).toEqual({ from, to, via: null });
+      expect(parseDir(serializeDir(from, null))).toEqual({ from, to: null, via: null });
+    });
+
+    it("to 없이 via만은 직렬화하지 않는다(경유지는 도착지 없이 의미가 없다)", () => {
+      expect(serializeDir(from, null, via).split("/")).toHaveLength(1);
+    });
+
+    it("via 토막이 cur·불량이면 전체 null", () => {
+      expect(parseDir(`${serializeDir(from, to)}/cur`)).toBeNull();
+      expect(parseDir(`${serializeDir(from, to)}/bad`)).toBeNull();
+      expect(parseDir("a/b/c/d")).toBeNull();
+    });
   });
 });

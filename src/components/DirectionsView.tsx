@@ -205,7 +205,7 @@ async function fetchMode(
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
   const url =
     mode === "walk"
-      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false })
+      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via: null })
       : `/api/route/transit?${qs}&includeStops=1`;
   const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
