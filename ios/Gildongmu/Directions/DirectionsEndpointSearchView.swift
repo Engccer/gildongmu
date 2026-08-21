@@ -103,7 +103,13 @@ struct DirectionsEndpointSearchView: View {
     private let recentStore = RecentSearchStore()
     // manualLocation은 전용 스코프가 없다 — "도착지" 최근 목록을 재사용한다(자주 가는
     // 곳이 지금 서 있는 곳의 후보이기도 하다는 취지, 무해한 재사용이지 오류가 아니다).
-    private var recentScope: RecentEndpointScope { target == .from ? .from : .to }
+    private var recentScope: RecentEndpointScope {
+        switch target {
+        case .from: .from
+        case .via: .via  // 경유지 전용 목록(N4) — 도착지 목록과 섞지 않는다
+        case .to, .manualLocation: .to
+        }
+    }
     @State private var recentEndpoints: [RecentEndpoint] = []
     @AccessibilityFocusState private var focusedRecent: RecentEndpoint?
     /// 목록 소멸 시 포커스 착지점 — 항상 존재하는 마이크 행(스펙 §5, SearchView 동형).
@@ -334,6 +340,7 @@ struct DirectionsEndpointSearchView: View {
         switch target {
         case .from: appLocalized("directions.searchFrom")
         case .to: appLocalized("directions.searchTo")
+        case .via: appLocalized("directions.searchVia")
         case .manualLocation: appLocalized("manualLocation.pickTitle")
         }
     }

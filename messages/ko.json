@@ -583,7 +583,7 @@
     "item": "{from}부터 {to}까지 경로 조회",
     "clearAll": "최근 경로 모두 지우기",
     "cleared": "최근 경로를 모두 지웠습니다",
-    "itemVia": "{from}부터 {to}까지 {via}를 경유하는 경로 조회"
+    "itemVia": "{from}부터 {to}까지 {via} 경유하는 경로 조회"
   },
   "privacy": {
     "title": "개인정보 처리방침",

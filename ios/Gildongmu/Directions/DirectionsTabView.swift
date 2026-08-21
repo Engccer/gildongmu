@@ -21,7 +21,7 @@ final class DirectionsPrefillStore {
 /// (`manualLocation`은 `LocationBarView`가 `DirectionsEndpointSearchView`를 재사용하는
 /// 별도 진입로다 — 길찾기 탭의 from/to 상태 머신(`DirectionsModel`)과는 무관하다).
 enum DirectionsFieldTarget: String, Identifiable {
-    case from, to, manualLocation
+    case from, to, via, manualLocation
     var id: String { rawValue }
 }
 
@@ -54,6 +54,9 @@ final class DirectionsModel {
 
     private(set) var from: DirectionsEndpoint?
     private(set) var to: DirectionsEndpoint?
+    /// 경유지(N4, 선택 사항, 1개). `.place`만 — 검색 시트 `.via` 타깃은 "현재 위치 사용"
+    /// 버튼을 내지 않아 `.current`가 구조적으로 들어오지 않는다. 도착지와 같은 원자 확정.
+    private(set) var via: DirectionsEndpoint?
     private(set) var phase: Phase = .idle
     private(set) var results: DirectionsResults?
     /// 최단 도보 경로(M3, `alternatives=1`의 `shortest`). **`results`의 도보 결과와
@@ -117,7 +120,7 @@ final class DirectionsModel {
     /// 연타만 막고 "조회"와의 교차 레이스는 못 막는다.
     private var isInFlight = false
     /// 직전 조회에 쓴 해석 좌표(웹 lastCoordsRef 미러). 토글 재조회가 재측위 없이 재사용.
-    private var lastCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double))?
+    private var lastCoords: (origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), via: (lat: Double, lng: Double)?)?
 
     init(prefilledDestination: DirectionsEndpoint? = nil) {
         from = .current
@@ -128,14 +131,41 @@ final class DirectionsModel {
     var isBusy: Bool { phase == .locating || phase == .loading || stepFreeBusy }
 
     func endpoint(for target: DirectionsFieldTarget) -> DirectionsEndpoint? {
-        target == .from ? from : to
+        switch target {
+        case .from: from
+        case .to, .manualLocation: to
+        case .via: via
+        }
     }
 
     /// 필드 확정은 항상 엔드포인트 전체 교체(원자). 이전 결과는 새 질의와 무관해져 폐기.
     func setEndpoint(_ endpoint: DirectionsEndpoint, for target: DirectionsFieldTarget) {
+        if target == .via { setVia(endpoint); return }
         if target == .from { from = endpoint } else { to = endpoint }
         recordRecent(endpoint, scope: target == .from ? .from : .to)
         clearResults()
+    }
+
+    /// 경유지 확정(N4) — 도착지와 같은 원자 교체 + 경유지 전용 최근 목록 기록. 장소만
+    /// 받는다(현재 위치는 경유지가 될 수 없다 — 서버 spec §3).
+    func setVia(_ endpoint: DirectionsEndpoint) {
+        guard case .place = endpoint else { return }
+        via = endpoint
+        recordRecent(endpoint, scope: .via)
+        clearResults()
+    }
+
+    /// 경유지 삭제 — 필드가 바뀌는 것이라 결과도 폐기한다(setEndpoint 동형).
+    func clearVia() {
+        guard via != nil else { return }
+        via = nil
+        clearResults()
+    }
+
+    /// 경유지 라벨(결과 행 "경유지 {label} 도착"·시작 요청용). 서버는 라벨을 모른다.
+    var viaLabel: String? {
+        if case .place(let label, _, _) = via { return label }
+        return nil
     }
 
     /// 출발↔도착 원자 교환(웹 swapFields 동형, 미확정 nil도 그대로 교환). 기록 없음
@@ -159,9 +189,9 @@ final class DirectionsModel {
 
     /// 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소는
     /// 여기 도달하지 않는다. current는 nil 투영 — 측위된 실좌표를 굳히지 않는다.
-    private func recordRecentRoute(from: DirectionsEndpoint, to: DirectionsEndpoint) {
+    private func recordRecentRoute(from: DirectionsEndpoint, to: DirectionsEndpoint, via: DirectionsEndpoint?) {
         recentRoutes = recentStore.recordRoute(
-            RecentRoute(from: Self.recentSide(from), to: Self.recentSide(to)))
+            RecentRoute(from: Self.recentSide(from), to: Self.recentSide(to), via: via.flatMap(Self.recentSide)))
     }
 
     private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
@@ -186,7 +216,7 @@ final class DirectionsModel {
     func setRoutePinned(_ route: RecentRoute, pinned: Bool) {
         guard let index = recentRoutes.firstIndex(of: route) else { return }
         recentStore.setRoutePinned(route, pinned: pinned)
-        recentRoutes[index] = RecentRoute(from: route.from, to: route.to, pinned: pinned)
+        recentRoutes[index] = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
     }
 
     /// 필드가 바뀌면 이전 결과·상태 문구를 폐기하고 진행 중이던 조회를 취소한다(웹
@@ -324,6 +354,14 @@ final class DirectionsModel {
         guard !Task.isCancelled,
               let origin = coordinate(of: from, current: current),
               let queried = coordinate(of: to, current: current) else { return }
+        // 경유지 좌표(N4). 장소만이라 current 불필요. 한국 밖이면 서버도 outOfCoverage를
+        // 주지만 여기서 먼저 막아 upstream 호출을 0으로(출발·도착 선분기 동형).
+        let viaCoord = via.flatMap { coordinate(of: $0, current: nil) }
+        if let viaCoord, !isInKorea(lat: viaCoord.lat, lng: viaCoord.lng) {
+            phase = .outOfCoverage
+            announce(appLocalized("ios.common.outOfCoverage"))
+            return
+        }
 
         // A11 출입구 승격 — 이름 있는 장소 목적지에만, ko 데이터 로케일에서만(도보 경로
         // 자체가 ko 전용이고 카카오 출입구 이름은 한국어 고유명사다). 승격본은 여기서
@@ -344,21 +382,23 @@ final class DirectionsModel {
         // Swift 동시성이 data race로 거부한다(빌드 실패로 드러났다).
         let promoted = entrance.map { (label: $0.name, lat: $0.lat, lng: $0.lng) }
         let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
-        lastCoords = (origin: origin, dest: dest)
+        lastCoords = (origin: origin, dest: dest, via: viaCoord)
 
         // 3수단 병렬. 도보는 앱 언어 ko 전용(웹 prefersEnglish 분기 동형, 조회 자체 생략).
         let includeWalk = AppLanguage.current == "ko"
         let lang = AppLanguage.dataLocale
         let service = self.service
         let accessible = stepFreeEnabled
-        async let transitSettled = Self.settleTransit(service, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: includeWalk, origin: origin, dest: dest, accessible: accessible)
-        async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang)
+        // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원 — 서버 spec §2.1).
+        // "경로 없음"이 아니라 "미지원"이라 별도 상태로 섹션에 사유를 남긴다.
+        async let transitSettled = Self.settleTransit(service, include: viaCoord == nil, origin: origin, dest: dest)
+        async let walkSettled = Self.settleWalk(service, include: includeWalk, origin: origin, dest: dest, accessible: accessible, via: viaCoord)
+        async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang, via: viaCoord)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }
 
         var outcomes: [DirectionsMode: DirectionsModeOutcome] = [
-            .transit: DirectionsOutcomeClassifier.classify(transit: transit),
+            .transit: transit.map { DirectionsOutcomeClassifier.classify(transit: $0) } ?? .unsupportedWaypoint,
             .car: DirectionsOutcomeClassifier.classify(car: car),
         ]
         // 추천은 현행 분류 그대로, 최단은 같은 응답에서만 커밋(spec §4 — 커버리지
@@ -384,7 +424,7 @@ final class DirectionsModel {
         promotedDestination = promoted
         phase = .settled(successCount: built.successCount)
         hasQueriedOnce = true
-        recordRecentRoute(from: from, to: to)
+        recordRecentRoute(from: from, to: to, via: via)
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         announce(built.successCount > 0
@@ -403,17 +443,19 @@ final class DirectionsModel {
         isInFlight = true
         stepFreeBusy = true
         queryTask = Task {
-            await refetchWalk(origin: coords.origin, dest: coords.dest)
+            await refetchWalk(origin: coords.origin, dest: coords.dest, via: coords.via)
             guard !Task.isCancelled else { return }
             isInFlight = false
             stepFreeBusy = false
         }
     }
 
-    private func refetchWalk(origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)) async {
+    private func refetchWalk(
+        origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), via: (lat: Double, lng: Double)?
+    ) async {
         let service = self.service
         let accessible = stepFreeEnabled
-        let settled = await Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible)
+        let settled = await Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, via: via)
         guard !Task.isCancelled, let settled, let current = results else { return }
         // lastCoords는 이미 커버리지 검증을 통과한 좌표라 재조회에서 서버 마커가 다시
         // 뜰 일은 사실상 없다 — 그래도 도달 시 화면 전체 전환 대신 도보 오류로 안내한다
@@ -448,9 +490,11 @@ final class DirectionsModel {
 
     // 수단별 settle 래퍼: 실패를 throw 대신 Result로 뭉쳐 병렬 소비를 단순화(웹 fetchMode 동형).
 
+    /// `include=false`(경유지 조회)면 호출 자체를 생략하고 nil — 호출부가 `.unsupportedWaypoint`로.
     nonisolated private static func settleTransit(
-        _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)
-    ) async -> Result<TransitRouteResult?, any Error> {
+        _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double)
+    ) async -> Result<TransitRouteResult?, any Error>? {
+        guard include else { return nil }
         do {
             return .success(try await withQueryTimeout {
                 // includeStops: 실시간 안내의 승차·하차 정류소 데이터원(B2 §7) —
@@ -465,7 +509,7 @@ final class DirectionsModel {
 
     nonisolated private static func settleWalk(
         _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
-        accessible: Bool
+        accessible: Bool, via: (lat: Double, lng: Double)?
     ) async -> Result<(result: WalkRouteBriefing?, shortest: WalkRouteBriefing?), any Error>? {
         guard include else { return nil }
         do {
@@ -474,17 +518,18 @@ final class DirectionsModel {
                 // 던지고(.failure), 최단 실패만 shortest nil로 흡수된다(spec §3.1).
                 try await service.walkAlternatives(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
-                    accessible: accessible, via: nil)
+                    accessible: accessible, via: via)
             })
         } catch { return .failure(error) }
     }
 
     nonisolated private static func settleCar(
-        _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), lang: String
+        _ service: RouteService, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double), lang: String,
+        via: (lat: Double, lng: Double)?
     ) async -> Result<CarRouteBriefing, any Error> {
         do {
             return .success(try await withQueryTimeout {
-                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang, via: nil)
+                try await service.car(originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng, lang: lang, via: via)
             })
         } catch { return .failure(error) }
     }
@@ -559,6 +604,21 @@ struct DirectionsTabView: View {
                     Button(appLocalized("directions.swap")) { model.swap() }
                     Button(fieldText(.to)) { searchTarget = .to }
                         .accessibilityFocused($focusedEndpointField, equals: .to)
+                    // 경유지(N4, 선택 사항) — 도착지와 경로 조회 사이. 확정되면 필드 버튼
+                    // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
+                    // 조회 버튼을 선점한다(헌장 §5). 도착지 확정 후 포커스는 종전대로 조회
+                    // 버튼이다(선택 사항이 기본 흐름을 늘리면 안 된다 — 위원장 판정).
+                    if let viaLabel = model.viaLabel {
+                        Button("\(appLocalized("directions.via")), \(viaLabel)") { searchTarget = .via }
+                            .accessibilityFocused($focusedEndpointField, equals: .via)
+                        Button(appLocalized("directions.removeVia")) {
+                            submitFocused = true
+                            model.clearVia()
+                        }
+                    } else {
+                        Button(appLocalized("directions.addVia")) { searchTarget = .via }
+                            .accessibilityFocused($focusedEndpointField, equals: .via)
+                    }
                     Button(submitText) { model.runQuery() }
                         .accessibilityFocused($submitFocused)
                     // 시각 상태 표시(통지는 모델의 단일 Announcement가 담당, live 복제 아님)
@@ -740,7 +800,7 @@ struct DirectionsTabView: View {
             .gildongmuTitleMenu()
             .sheet(item: $searchTarget) { target in
                 DirectionsEndpointSearchView(target: target) { endpoint in
-                    model.setEndpoint(endpoint, for: target)
+                    model.setEndpoint(endpoint, for: target)  // .via는 setVia로 라우팅
                     // "현재 위치 사용" 선택은 강제 재측위 + 주소 새로고침 트리거(F-B).
                     if endpoint == .current { model.refreshCurrentLocation() }
                     // 확정으로 닫힐 때만 착지점을 예약한다(취소는 콜백이 없다).
@@ -830,6 +890,12 @@ struct DirectionsTabView: View {
     private func recentRouteLabel(_ route: RecentRoute) -> String {
         let from = route.from?.label ?? appLocalized("directions.currentLocation")
         let to = route.to?.label ?? appLocalized("directions.currentLocation")
+        if let via = route.via?.label {
+            // ko 목적격 조사는 라벨 받침에 따라 갈려 문자열 자원에 박을 수 없다 — 호출부가
+            // 붙이고 한글이 아닌 이름은 조사 없이 물러난다(웹 routeItemLabel 동형).
+            let viaText = AppLanguage.current == "ko" ? via + (KoreanParticle.object(via) ?? "") : via
+            return appLocalized("recentRoutes.itemVia", from, to, viaText)
+        }
         return appLocalized("recentRoutes.item", from, to)
     }
 
@@ -856,6 +922,13 @@ struct DirectionsTabView: View {
         submitFocused = true
         model.setEndpoint(directionsEndpoint(route.from), for: .from)
         model.setEndpoint(directionsEndpoint(route.to), for: .to)
+        // 경유지도 원자 확정의 일부(N4): 있으면 세우고 없으면 지운다 — 이전 질의의
+        // 경유지가 최근 경로 활성화에 딸려 가지 않는다.
+        if let via = route.via {
+            model.setVia(.place(label: via.label, lat: via.lat, lng: via.lng))
+        } else {
+            model.clearVia()
+        }
         model.runQuery()
     }
 
@@ -883,7 +956,7 @@ struct DirectionsTabView: View {
     private func togglePinRecentRoute(_ route: RecentRoute) {
         let pinned = !route.pinned
         model.setRoutePinned(route, pinned: pinned)
-        focusedRecentRoute = RecentRoute(from: route.from, to: route.to, pinned: pinned)
+        focusedRecentRoute = RecentRoute(from: route.from, to: route.to, via: route.via, pinned: pinned)
     }
 
     /// 전체 지우기(고정 보존 — 스펙 2026-08-12 §3). **우선순위는 분기로 가른다**
@@ -904,7 +977,7 @@ struct DirectionsTabView: View {
     }
 
     /// 웹 `focusAfterResolve` 계약의 iOS 판: 출발지를 고르면 도착지 입력으로,
-    /// 도착지를 고르면 조회 버튼으로 보낸다(둘 다 "다음에 할 일"이다).
+    /// 도착지·경유지를 고르면 조회 버튼으로 보낸다(셋 다 "다음에 할 일"이다).
     ///
     /// 지연·재시도는 채팅(`ChatConversationView`)의 검증된 패턴을 따른다. 시트 dismiss
     /// 애니메이션이 끝나며 시스템이 포커스를 되돌리므로, 그보다 늦게 대입해야 이긴다.
@@ -1079,7 +1152,7 @@ struct DirectionsTabView: View {
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
     /// 미확정 필드는 검색 유도 라벨이 곧 버튼 이름.
     private func fieldText(_ target: DirectionsFieldTarget) -> String {
-        let label = target == .from ? appLocalized("directions.from") : appLocalized("directions.to")
+        let label = target == .from ? appLocalized("directions.from") : appLocalized("directions.to")  // via는 위 폼 인라인
         switch model.endpoint(for: target) {
         case .current:
             return "\(label), \(currentLocationText)"
@@ -1229,7 +1302,8 @@ struct DirectionsTabView: View {
                     }
                     .accessibilityFocused($guideStartFocused, equals: .walk)
                 }
-                WalkRouteRows(briefing: briefing, includeSummary: false, omitNoticeStep: true)
+                WalkRouteRows(briefing: briefing, includeSummary: false, omitNoticeStep: true,
+                              waypointLabel: model.viaLabel)
             } label: {
                 // stepFreeNotice는 両행 라벨에 병기한다(a11y 감사 — 안전 문장이 접힘
                 // 뒤에 갇히면 안 되고, 접힘 상태에선 라벨이 유일한 전달 채널이다).
@@ -1255,7 +1329,8 @@ struct DirectionsTabView: View {
                         }
                         .accessibilityFocused($guideStartFocused, equals: .walkShortest)
                     }
-                    WalkRouteRows(briefing: shortest, includeSummary: false, omitNoticeStep: true)
+                    WalkRouteRows(briefing: shortest, includeSummary: false, omitNoticeStep: true,
+                                  waypointLabel: model.viaLabel)
                 } label: {
                     distanceText(joinText(
                         appLocalized("ios.directions.walkShortest"),
@@ -1263,9 +1338,11 @@ struct DirectionsTabView: View {
                         shortest.stepFreeNotice))
                 }
             }
-        case .car(let briefing): CarRouteRows(briefing: briefing)
+        case .car(let briefing): CarRouteRows(briefing: briefing, waypointLabel: model.viaLabel)
         case .empty: Text(noRouteText(mode))
         case .error: Text(errorText(mode))
+        // 경유지 미지원(N4, 대중교통) — 실패도 경로 없음도 아닌 정직 상태 한 문장.
+        case .unsupportedWaypoint: Text(appLocalized("directions.unsupportedWaypoint"))
         case .gated, .outOfCoverage, nil: EmptyView()  // displayedModes가 걸러 도달하지 않는다
         }
     }

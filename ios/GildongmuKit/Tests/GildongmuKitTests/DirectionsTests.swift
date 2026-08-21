@@ -201,3 +201,16 @@ struct DirectionsOrderTests {
         #expect(results.firstSuccess == .walk)
     }
 }
+
+/// 경유지(N4): 대중교통은 호출하지 않고 `.unsupportedWaypoint` — 성공이 아니지만 섹션은
+/// 남아 사유를 말한다(3-state: "경로 없음"·"조회 실패"와 다른 정직 상태).
+@Test func unsupportedWaypointIsDisplayedButNotSuccess() {
+    let results = DirectionsResults(outcomes: [
+        .transit: .unsupportedWaypoint,
+        .car: .car(carFixture()),
+    ])
+    #expect(results.displayedModes == [.car, .transit])
+    #expect(results.successCount == 1)
+    #expect(DirectionsModeOutcome.unsupportedWaypoint.isSuccess == false)
+    #expect(DirectionsModeOutcome.unsupportedWaypoint.isGated == false)
+}

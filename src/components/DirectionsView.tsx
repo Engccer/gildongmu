@@ -24,6 +24,7 @@ import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
+import { objectParticle } from "@/lib/korean-particle";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
 import { orderDirectionsModes, type DirectionsModeKey } from "@/lib/directions-order";
@@ -866,8 +867,12 @@ export function DirectionsView({
   }
   function routeItemLabel(r: RecentRoute): string {
     const side = (s: RecentEndpoint | null) => (s ? s.label : t("currentLocation"));
+    // ko 목적격 조사는 라벨 받침에 따라 갈려 문자열 자원에 박을 수 없다("강동역을"/
+    // "경복궁을"·"학교를"). 호출부가 붙이고, 한글이 아닌 이름은 조사 없이 물러난다.
+    const viaLabel =
+      r.via && locale === "ko" ? r.via.label + (objectParticle(r.via.label) ?? "") : r.via?.label;
     return r.via
-      ? tRecentRoutes("itemVia", { from: side(r.from), to: side(r.to), via: r.via.label })
+      ? tRecentRoutes("itemVia", { from: side(r.from), to: side(r.to), via: viaLabel ?? "" })
       : tRecentRoutes("item", { from: side(r.from), to: side(r.to) });
   }
   /** 활성화 = 두 필드 원자 확정 + 즉시 조회(스펙 §1.4). 결과 도착 시 이 섹션이 통째로

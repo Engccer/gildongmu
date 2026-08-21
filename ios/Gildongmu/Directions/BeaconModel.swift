@@ -1976,6 +1976,8 @@ final class BeaconModel {
             statusText = text
             statusIsNextPreview = true
             announce(text)
+        case .waypointReached:
+            break  // N4 Task 5가 채운다(통지 + 도착 종 + waypoint 소거)
         case .finalApproachEnter:
             // 여기서는 처리하지 않는다. 진입은 **fix를 쥔 `handleDetail`이** 톤 조립 앞에서
             // 가른다 — 소유권 전환과 같은 fix의 첫 발화가 한 묶음이어야 하고, 이 함수는
