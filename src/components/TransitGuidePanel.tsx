@@ -58,6 +58,7 @@ export function TransitGuidePanel({
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
+  const confirmBoardedRef = useRef<HTMLButtonElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
   const listHadFocusRef = useRef(false);
@@ -107,10 +108,18 @@ export function TransitGuidePanel({
     if (phase === "arrived" && prevPhaseRef.current !== "arrived") {
       advanceRef.current?.focus();
     }
-    // 탑승 계열 전이(waiting→riding)는 포커스를 쥔 대기 컨트롤(탑승·이미 탑승·
-    // 취소 버튼)을 통째로 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
+    // 차량 선택(waiting→boarding, N3): 누른 후보 행이 사라진다 — 다음 행동인
+    // "탑승했습니다"로 선점.
+    if (phase === "boarding" && prevPhaseRef.current === "waiting") {
+      confirmBoardedRef.current?.focus();
+    }
+    // 탑승 계열 전이(waiting·boarding→riding)는 포커스를 쥔 컨트롤(선택·이미 탑승·
+    // 탑승했습니다 버튼)을 통째로 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2).
     // arrived→riding 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
-    if (phase === "riding" && prevPhaseRef.current === "waiting") {
+    if (
+      phase === "riding" &&
+      (prevPhaseRef.current === "waiting" || prevPhaseRef.current === "boarding")
+    ) {
       (advanceRef.current ?? changeBoardingRef.current)?.focus();
     }
     if (phase === null && prevPhaseRef.current !== null) {
@@ -310,14 +319,22 @@ export function TransitGuidePanel({
                             // 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
                             onClick={() => {
                               if (!item.vehicleId) return;
-                              guide.boardCandidate(option.candidate);
+                              // 설명은 안정 조각(행선·방향)만 — 완성 문장은 폴마다 바뀐다.
+                              guide.boardCandidate(
+                                option.candidate,
+                                joinText(
+                                  item.destinationName ? t("bound", { dest: item.destinationName }) : "",
+                                  item.direction,
+                                ),
+                              );
                             }}
                             aria-disabled={!item.vehicleId}
                             className="min-h-11 w-full rounded-md border border-gray-400 px-3 text-left text-sm aria-disabled:opacity-50"
                           >
+                            {/* 라벨은 "선택"이다(N3) — 탑승 여부는 앱이 승차 정류소 도착으로 판정한다. */}
                             {leg.mode === "subway"
-                              ? t("boardTrain", { desc })
-                              : t("boardBus", { desc })}
+                              ? t("selectTrain", { desc })
+                              : t("selectBus", { desc })}
                           </button>
                         </li>
                       );
@@ -351,6 +368,30 @@ export function TransitGuidePanel({
                   </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/*
+            boarding(N3): 차량을 골랐고 승차 정류소 도착을 기다린다. 탈출은 사용자
+            선언("탑승했습니다")과 재선택("다른 차량 선택") 둘 — 목록은 보이지 않는다.
+          */}
+          {state.phase === "boarding" && (
+            <div className="mt-1 flex flex-wrap gap-2">
+              <button
+                type="button"
+                ref={confirmBoardedRef}
+                onClick={guide.confirmBoarded}
+                className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+              >
+                {t("confirmBoarded")}
+              </button>
+              <button
+                type="button"
+                onClick={guide.changeBoarding}
+                className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+              >
+                {t("reselectVehicle")}
+              </button>
             </div>
           )}
 
