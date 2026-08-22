@@ -33,6 +33,8 @@ struct BeaconTrackingSheet: View {
     let onDestinationCommitted: (DirectionsEndpoint) -> Void
     /// 경유지 추가·변경 확정 통보(N4) — 목적지 전환과 같은 채널·같은 가드.
     let onWaypointCommitted: (DirectionsEndpoint) -> Void
+    /// 자동차 도착 종료 화면의 도보 인계(K2 §6.4, 위원장 판정 ④). nil이면 버튼이 없다.
+    let onCarWalkHandoff: (() -> Void)?
 
     @AccessibilityFocusState private var stopFocused: Bool
     /// 접기 버튼(toolbar) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
@@ -99,6 +101,13 @@ struct BeaconTrackingSheet: View {
                            ?? appLocalized("directions.addVia")) {
                         waypointPresented = true
                     }
+                    // 경유지 삭제(N4 잔여, K2 §6.5): 미도착 경유지가 있을 때만. 누르면 자신이
+                    // 사라지므로 항상 존재하는 중지 버튼으로 포커스를 선점한다(재조회 버튼 선례).
+                    if model.waypoint != nil {
+                        Button(appLocalized("ios.guide.waypointRemove")) {
+                            if model.removeWaypoint() { Task { await landStopFocus() } }
+                        }
+                    }
                 }
                 Button(appLocalized("beacon.stop"), action: onStop)
                     .accessibilityFocused($stopFocused)
@@ -162,13 +171,19 @@ struct BeaconTrackingSheet: View {
                 // 가리지 않는다 — 리듀서가 윗줄(이탈 문장)·아랫줄(비움)을 소유한다(F2).
                 // 낭독은 distanceText(spokenDistanceUnits) 경유, live region 없음 —
                 // 능동 통지는 모델의 단일 Announcement 채널이 담당한다(이중 낭독 금지).
-                if model.sessionKind == .walk, model.mode == .detail {
+                if model.mode == .detail {
+                    // walk·car 상세(K2 §4로 car 확장). car는 도로명 포함 전문을 "현재 안내" 행으로
+                    // 함께 둔다(주행 중 "지금 어느 도로"가 정보다).
+                    if model.sessionKind == .car, !model.offRoute,
+                       let current = model.currentGuidanceText {
+                        distanceText(current)
+                    }
                     if let top = model.liveTopText { distanceText(top) }
                     if let next = model.liveNextText {
                         distanceText(next).foregroundStyle(.secondary)
                     }
                 } else {
-                    // car·간략 세션은 종전 행 유지(spec §7 비범위). walk 상세의 statusText
+                    // 간략 세션은 종전 행 유지. walk 상세의 statusText
                     // 중 fail·handoff는 모드가 brief/idle로 바뀌어 이 분기가 받고, 복귀·
                     // 재획득 해소·속도 제안 같은 1회 확인 문장은 **의도적으로 화면에 남지
                     // 않는다**(spec §2-1 상태 행 폐지 — 시각 신호는 윗줄이 상태 문장에서
@@ -335,6 +350,10 @@ struct BeaconTrackingSheet: View {
                     Text(appLocalized("ios.beacon.healthWeightNotice", "\(Int(WalkHealth.defaultWeightKg))"))
                     Button(appLocalized("ios.beacon.healthEnterWeight")) { showsSettings = true }
                 }
+            }
+            // 자동차 도착 → 도보 인계(K2 §6.4): 대중교통 하차 인계 틀, 걸음 요약 없음.
+            if model.arrivalSessionKind == .car, let onCarWalkHandoff {
+                Button(appLocalized("ios.beacon.carWalkHandoffStart"), action: onCarWalkHandoff)
             }
             if model.endKind != .stopped {
                 SurroundingsSceneSection(

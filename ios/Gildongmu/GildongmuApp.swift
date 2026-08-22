@@ -107,7 +107,8 @@ struct GildongmuApp: App {
                         onStop: { guideSession.beacon.stopByUser() },
                         onMinimize: { guideSession.isMinimized = true },
                         onDestinationCommitted: { GuideFormSyncStore.shared.post($0) },
-                        onWaypointCommitted: { GuideFormSyncStore.shared.postWaypoint($0) }
+                        onWaypointCommitted: { GuideFormSyncStore.shared.postWaypoint($0) },
+                        onCarWalkHandoff: { guideSession.acceptCarWalkHandoff() }
                     )
                 case .transit:
                     TransitTrackingSheet(
