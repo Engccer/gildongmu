@@ -132,6 +132,12 @@ struct TransitTrackingSheet: View {
             // 행동(도보 안내 시작)으로 선점(헌장 §5, arrived 전이와 동형 패턴).
             .onChange(of: model.pendingWalkHandoff) { _, handoff in
                 guard handoff != nil, onWalkHandoff != nil else { return }
+                // 조망이 열려 있으면 같은 지연 규칙(닫힌 뒤 착지, spec §4.3).
+                if overviewAdapter != nil {
+                    pendingFollowUp = .land(.walkHandoff)
+                    overviewAdapter = nil
+                    return
+                }
                 landControlFocus(.walkHandoff, proxy: proxy)
             }
             .onChange(of: model.state?.phase) { previous, phase in
@@ -139,6 +145,9 @@ struct TransitTrackingSheet: View {
                 controlFocusTask?.cancel()
                 let target = phaseTransitionLanding(previous: previous, phase: phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
+                // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
+                // 전이 착지(대기 라벨)가 정본이고, 전이 착지가 없을 때만 중지 버튼
+                // (메뉴 경유 목적지 전환도 같은 덮임 — spec §7).
                 if overviewAdapter != nil {
                     if let target { pendingFollowUp = .land(target) }
                     overviewAdapter = nil
@@ -267,6 +276,9 @@ struct TransitTrackingSheet: View {
 
     /// 조망 `onDismiss` — 닫힌 뒤 행동 계약의 실행 지점(한 곳).
     private func runPendingFollowUp(proxy: ScrollViewProxy) {
+        // 하위 시트가 열린 채 조망이 통째로 닫힌 경우 그 조회를 폐기(spec §5.2 — 늦은
+        // 응답이 모델에 남지 않게).
+        if let token = model.pendingAltRoutes?.token { model.cancelAltRoutes(token: token) }
         guard let followUp = pendingFollowUp else { return }
         pendingFollowUp = nil
         switch followUp {

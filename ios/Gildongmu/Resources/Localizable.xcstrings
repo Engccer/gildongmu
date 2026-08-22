@@ -25601,6 +25601,46 @@
         }
       }
     },
+    "ios.transitGuide.altNone": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서 가는 다른 대중교통 경로가 없습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No other transit routes from here."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay otras rutas de transporte desde aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun autre itinéraire en transports depuis ici."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun altro percorso con i mezzi da qui."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここからのほかの公共交通経路はありません。"
+          }
+        }
+      }
+    },
     "ios.transitGuide.destChangeCancel": {
       "localizations": {
         "ko": {

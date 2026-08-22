@@ -180,7 +180,7 @@ ODsay 대안은 **출발 시점의 출발지** 기준이다. 실승차 중 대�
 
 ### 5.2 기계는 목적지 전환의 것을 **슬롯만 분리해** 쓴다
 
-조회·stale·커밋 기계(`fetchDestChangeCandidates` → `commitDestinationChange` → `changeRoute`)를 공용 내부 함수로 뽑고, **pending 슬롯을 둘로 나눈다**: 기존 `pendingDestChange`(메뉴 목적지 전환, 동작 불변)와 신규 `pendingAltRoutes`(조망 "다른 경로"). 한 슬롯을 `source` 플래그로 나눠 쓰면 메뉴에서 고른 새 목적지 후보가 조망 요청에 덮이고(리뷰 A3), 한쪽의 지연된 dismiss가 다른 쪽의 새 요청을 취소한다(리뷰 A4). 슬롯이 다르면 둘 다 구조적으로 불가능하다. 각 슬롯은 자기 토큰을 가지며 `cancelAltRoutes(token:)`은 **캡처한 토큰과 현재 슬롯 토큰이 같을 때만** 폐기한다. 부모 시트의 `destChangeSection`은 종전대로 `pendingDestChange`만, 조망 하위 시트는 `pendingAltRoutes`만 그린다. 조망 닫힘·하위 시트 닫힘은 자기 토큰으로 `cancelAltRoutes`.
+조회·stale·커밋 기계(`fetchDestChangeCandidates` → `commitDestinationChange` → `changeRoute`)를 공용 내부 함수로 뽑고, **pending 슬롯을 둘로 나눈다**: 기존 `pendingDestChange`(메뉴 목적지 전환, 동작 불변)와 신규 `pendingAltRoutes`(조망 "다른 경로"). 한 슬롯을 `source` 플래그로 나눠 쓰면 메뉴에서 고른 새 목적지 후보가 조망 요청에 덮이고(리뷰 A3), 한쪽의 지연된 dismiss가 다른 쪽의 새 요청을 취소한다(리뷰 A4). 슬롯이 다르면 둘 다 구조적으로 불가능하다. 각 슬롯은 자기 토큰을 가지며 `cancelAltRoutes(token:)`은 **캡처한 토큰과 현재 슬롯 토큰이 같을 때만** 폐기한다. 부모 시트의 `destChangeSection`은 종전대로 `pendingDestChange`만, 조망 하위 시트는 `pendingAltRoutes`만 그린다. 조망 닫힘·하위 시트 닫힘은 자기 토큰으로 `cancelAltRoutes`(하위 시트가 열린 채 조망이 통째로 닫히는 경로는 부모 `onDismiss`가 폐기). **전환 커밋은 반대 슬롯(메뉴 목적지 후보)을 무효화한다** — 출발점이 바뀌어 그 후보는 낡았다(슬롯 독립은 "서로 덮지 않는다"이지 "커밋 뒤에도 살린다"가 아니다).
 
 ### 5.3 출발점 — 근거가 있는 곳에서만
 
@@ -225,7 +225,7 @@ ODsay 대안은 **출발 시점의 출발지** 기준이다. 실승차 중 대�
 | 탈출구 "탑승 변경" | 조망 닫힘 → `onDismiss`에서 `beginReboard()` → 지하철 `reboardPrompt`·버스 `waitingLabel` 착지(기존) | 없음 |
 | 하위 시트 열림 | 헤더 착지 | 없음 |
 | 후보 로드 완료 | 첫 후보 라벨 착지 | 없음 |
-| 전환 성공 | 두 시트 닫힘 → `onDismiss`에서 부모 중지 버튼 | `.high` `routeSwitched` + 시작 문장 |
+| 전환 성공 | 두 시트 닫힘 → `onDismiss`에서 **새 세션의 전이 착지**(riding·boarding→waiting이면 대기 라벨 — 다음 행동이 차량 선택이다), 전이 착지가 없으면(waiting→waiting) 중지 버튼. 메뉴 경유 목적지 전환과 같은 규칙(구현 리뷰 MAJOR-1로 정정) | `.high` `routeSwitched` + 시작 문장 |
 | 전환 근거 변화·stale 재조회 | 조회 중 상태 행 | 기존 `destChangeRefetched` `.high` |
 | 전환 후보 무효(`.invalidCandidate`) | 그 자리 실패 문구 행 | 없음(행 교체가 응답) |
 | 신호 회복(조망 열린 채) | 이동 없음(행 래치) | 없음(문구만 갱신) |

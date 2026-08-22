@@ -307,7 +307,8 @@
       "altFromBoardStop": "Buscar desde {station}",
       "altInvalid": "No se puede iniciar la guía en esta ruta.",
       "adoptRoute": "Cambiar a esta ruta",
-      "routeSwitched": "Ruta cambiada."
+      "routeSwitched": "Ruta cambiada.",
+      "altNone": "No hay otras rutas de transporte desde aquí."
     }
   },
   "beacon": {
