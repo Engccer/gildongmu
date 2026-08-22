@@ -906,7 +906,11 @@ export function guideStep(
   // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
   // 그것은 이탈 증거이지 창 기아가 아니다(두 판정이 경합하면 이탈이 영영 확정되지 않는다).
   const offThreshold = Math.max(tuning.offRouteBaseM, 2 * fix.accuracy);
-  const edgeHit = proj.d >= state.d + ahead - 1 && proj.perpMeters <= offThreshold;
+  // silentCatchUp: 점프 fix는 창 기아 그 자체다 — 기어가는 동안 perp는 실위치까지의 거리라
+  // 임계를 한참 넘어 `perp ≤ offThreshold` 조건이 기아를 못 센다(품질 리뷰 M1). 점프 3회면
+  // 재획득(전역 재투영)으로 간다.
+  const crawling = tuning.silentCatchUp && jumped;
+  const edgeHit = crawling || (proj.d >= state.d + ahead - 1 && proj.perpMeters <= offThreshold);
   const windowEdgeHits = edgeHit ? state.windowEdgeHits + 1 : 0;
 
   // 4) 속도 창(10초 중앙값, 리뷰 #17) — uncertain·reacquiring 밖에서만 표본 수집.
@@ -1009,7 +1013,8 @@ export function guideStep(
     return emit(next, null, null);
   }
   const courseVerdict = courseAxisVerdict(courseVotes);
-  const isOff = proj.perpMeters > offThreshold;
+  // 기어가는 fix의 perp는 이탈 증거가 아니다(같은 M1 — 넣으면 홀드 10초 뒤 경로 위에서 거짓 경고).
+  const isOff = proj.perpMeters > offThreshold && !crawling;
   if (isOff) {
     let since = state.offRouteSince ?? now;
     let peak = Math.max(state.offRoutePeakPerp ?? 0, proj.perpMeters);
@@ -1083,7 +1088,7 @@ export function guideStep(
   //    기아 카운트)는 커밋되므로 3회 뒤 재획득이 전역 재투영으로 바로잡는다.
   if (tuning.silentCatchUp && jumped) return emit(next, null, null);
 
-  // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
+  // 6a) 결정 지점 임박 큐(walk 20m = 10 + lag / car max(15m, v×6초), K2 2026-08-23): 소리·진동과 짧은 명령형 한 문장으로
   //     "지금이다"를 알린다.
   //
   //     ⚠ **래치가 스텝 단위인 것이 계약이다 — 유닛 단위로 뛰면 안 된다.** 전문 낭독(6c)이
@@ -1094,7 +1099,9 @@ export function guideStep(
   //     경복궁 경로는 33·36·28m 간격 3연속 회전 중 첫 회전만 울렸다).
   //     "무엇을"은 유닛 단위, "지금이다"는 결정 지점 단위 — 같은 수열일 이유가 없다.
   //
-  //     ⚠ **불변식: 전문이 나간 스텝만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
+  //     ⚠ **불변식(walk): 전문이 나간 스텝만 큐를 받는다**(`imminentUpTo < announcedUpTo`). car는
+  //     명령이 자기 완결이라 이 선행을 요구하지 않는다(`imminentNeedsAnnounce=false`, K2 §3.2) —
+  //     그래서 car에서는 `imminentUpTo`가 `announcedUpTo`를 앞지를 수 있다(6b''가 후퇴시키지 않는다).
   //     "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
   //     남는다. 두 래치가 같으면 그 스텝은 아직 전문 전이므로 6c에 자리를 내준다.
   //
@@ -1127,8 +1134,9 @@ export function guideStep(
   //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
   //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2, `announceAhead` 동형). walk는
   //     시간 계수 0이라 20m 고정이고, car는 `max(15, v×6)` — 20m/s에서 120m, 정지·표본
-  //     부재에서 15m. 행동은 **스텝의 `action`(서버 turnType 투영)이 있으면 그것**, 없으면
-  //     문장 분류다 — 자동차 문장은 "오른쪽 방향"이 회전이 아니라 문장을 보지 않는다.
+  //     부재에서 15m. 행동 출처는 프로파일이 정한다(`actionSource`: car는 서버 turnType 투영
+  //     `action`만 — 없으면 침묵, walk는 문장 분류). 자동차 문장은 "오른쪽 방향"이 회전이 아니라
+  //     문장으로 되돌아가지 않는다. car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce`).
   if (tuning.imminentAheadM !== null && !isOff) {
     const imminentAhead = imminentAheadMeters(state, tuning); // vPrev와 같은 표본(직전 fix까지)
     // 전문 선행 상한: walk는 낭독된 스텝까지, car는 마지막 스텝까지(명령이 자기 완결, B3).
@@ -1219,7 +1227,8 @@ export function guideStep(
       next = {
         ...next,
         announcedUpTo: unitEnd,
-        imminentUpTo: unitEnd,
+        // car는 임박 래치가 전문 래치를 앞지를 수 있어(전문 선행 비요구) 후퇴시키지 않는다.
+        imminentUpTo: Math.max(next.imminentUpTo, unitEnd),
         farNoticedUpTo: Math.max(next.farNoticedUpTo, unitEnd),
       };
     }
@@ -1237,7 +1246,11 @@ export function guideStep(
       const unit = unitAt(route, next.announcedUpTo + 1);
       // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다 — "지난 회전 전문"을
       // 묶음 단위로 되읽는 구멍(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
-      const remaining = tuning.silentCatchUp ? unit.filter((i) => route.steps[i].endD >= d) : unit;
+      // `i > announcedUpTo`: 임박 명령이 전문을 대신해 래치를 스텝 단위로 올린 뒤(6a) 그 스텝이
+      // 묶음 안에 있으면 유닛이 다시 잡힌다 — 명령 뒤 같은 회전 전문 재낭독 차단(품질 리뷰 M3).
+      const remaining = tuning.silentCatchUp
+        ? unit.filter((i) => i > next.announcedUpTo && route.steps[i].endD >= d)
+        : unit;
       const indices = remaining.length > 0 ? remaining : [unit[unit.length - 1]];
       next = {
         ...next,

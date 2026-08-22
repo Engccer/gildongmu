@@ -5332,6 +5332,170 @@
           "eventNot": "imminent"
         }
       ]
+    },
+    {
+      "name": "car: 재획득 직후 임박 명령이 전문보다 먼저 나가면 그 스텝은 묶음 전문에서 빠진다(명령 뒤 같은 회전 재낭독 금지, 품질 리뷰 M3)",
+      "tuning": "car",
+      "steps": [
+        {
+          "len": 500,
+          "desc": "직진A"
+        },
+        {
+          "len": 30,
+          "desc": "교차로에서 우회전 후 30m 이동",
+          "action": "right"
+        },
+        {
+          "len": 30,
+          "desc": "30m 이동"
+        },
+        {
+          "len": 30,
+          "desc": "교차로에서 좌회전 후 30m 이동",
+          "action": "left"
+        },
+        {
+          "len": 500,
+          "desc": "직진E"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 1,
+          "along": 20,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 2,
+          "along": 40,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 3,
+          "along": 60,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 4,
+          "along": 80,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 100,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 455,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 21,
+          "along": 460,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 22,
+          "along": 465,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 23,
+          "along": 470,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 475,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 25,
+          "along": 480,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 26,
+          "along": 485,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 27,
+          "along": 490,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 6,
+          "event": "reacquiring"
+        },
+        {
+          "afterFixAny": [
+            7,
+            8,
+            9
+          ],
+          "event": "reacquired"
+        },
+        {
+          "afterFixAny": [
+            9,
+            10
+          ],
+          "event": "imminent",
+          "indices": [
+            1
+          ],
+          "tone": "right"
+        },
+        {
+          "afterFixAny": [
+            11,
+            12,
+            13
+          ],
+          "event": "announceSteps",
+          "indices": [
+            2,
+            3
+          ]
+        },
+        {
+          "afterFixAny": [
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "eventNot": "offRoute"
+        }
+      ]
     }
   ]
 }

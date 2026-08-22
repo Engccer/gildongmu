@@ -127,11 +127,12 @@ final class BeaconTonePlayer {
     /// `holdSeconds`: 톤 뒤에 이어질 **발화**의 길이(초). 운전자 모드(K2 §6.4)는 도착 문장이 VO가
     /// 아니라 이 세션 위의 AVSpeech로 나가므로, 톤 잔여만큼만 미루면 원복이 발화를 자른다.
     func endSession(holdSeconds: Double = 0) {
-        guard let playbackRemaining = remainingPlaybackSeconds ?? (holdSeconds > 0 ? 0 : nil) else {
+        let playbackRemaining = remainingPlaybackSeconds ?? 0
+        guard playbackRemaining > 0 || holdSeconds > 0 else {
             dispatch(.sessionEnded)
             return
         }
-        // 남은 재생 시간 + 여유. 톤은 전부 3초 미만이라 상한이 필요 없다.
+        // 남은 재생 시간 + 여유 + 발화 유예. 톤은 전부 3초 미만이라 상한이 필요 없다.
         let remaining = playbackRemaining + 0.15 + holdSeconds
         cancelPendingRevert()
         revertTask = Task { [weak self] in

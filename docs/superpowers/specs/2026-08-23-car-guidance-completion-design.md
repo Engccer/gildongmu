@@ -211,5 +211,26 @@ BLOCKER 10·MAJOR 8·MINOR 3. 처리(지엽 패치가 아니라 계층 대조 �
 | m2 | fixture 기대값 세 가지 | **채택** |
 | m3 | `M=null, S>0` 무효 조합 | **채택(테스트)** — 드리프트 테스트가 `imminentAheadM===null ⇒ imminentAheadS===0`을 단언 |
 
+### 10.1 구현 리뷰 (spec-compliance · code-quality 서브에이전트, 2026-08-23)
+
+| # | 지적 | 판정 |
+|---|---|---|
+| S-B1 | car 조회 경로 `liveSteps` 빈 배열 → 하단 2행 死, Kit `liveStepsFrom` action 누락 | **채택** |
+| S-B2 | `uncertainExit`에서 공백 전 `stepIndex` 전문 | **채택** — `reacquired`에만 |
+| S-M3 / Q-M1(a) | 복귀 공백을 `lastFixAt`으로 재면 촘촘한 불량 fix에서 무력 | **채택** — `uncertainSince` 상태(§3.4 ②) |
+| Q-M1(b) | 기어가는 fix의 perp가 이탈로 누적 / "기아 3회" 미성립 | **채택** — 점프 fix는 `isOff` 제외 + 창 기아 카운트(`crawling`) |
+| Q-M2 | 운전자 단문이 지난 회전을 "0m 앞 {명령}"으로 | **채택** — `driverNotice(fromD:)`가 `startD ≥ d`인 첫 결정 지점만 |
+| Q-M3 | 명령 선행 뒤 묶음 전문이 같은 회전 재낭독 | **채택** — 6c `remaining`에 `i > announcedUpTo`, fixture "재획득 직후 임박" |
+| Q-M4 | `arrivalSessionKind`가 새 세션·teardown에서 잔류 | **채택** |
+| S-M4·M7·M8 / Q-M5(b) | 현재 안내 행 유지·표본 한 fix 어긋남·4초 고정·등호 fixture | **수용·기록**(§4·§6.4) — 등호는 `afterFixAny`로 양쪽 허용 유지(부동소수 등호 의존 회피) |
+| Q-m6 | 6b'' `imminentUpTo` 후퇴 | **채택** — `max` |
+| Q-m8·m9 | `endSession` 표현·`generation` 중복 | **채택** |
+| Q-m10 | 운전자 채널이 VO 활성화 응답(`announceNow`)까지 가져간다 / `driverChannel` 대입이 권한 가드 뒤 | **후자 채택**(가드 앞으로). 전자는 spec 판정 유지 — 운전자 모드의 기기는 운전자 스피커라 VO 스트림 분리는 B1 ⑤ 판정 뒤(기록) |
+| Q-m11 | `removeWaypoint` 중복 호출·폼 `via` 미동기 | **채택**(중복 제거). 폼 `via`는 사용자 질의라 건드리지 않는다 — 도착과 같은 판정(§6.5) |
+| Q-m13 | 재획득 `reacquireV: 0` 타이브레이크 고정 | **기각(기존 경로 동일)** — 관찰 |
+| Q-m14 | `CarRouteGuide.action: CarAction` ⊂ `GuideAction` | 문서 수준, 유지 |
+
 ## 11. 검증 기록
-(구현 뒤 채운다 — fixture 수·실호출 action 열·실험판 배포 SHA.)
+- 게이트: 웹 `npm run test:run` 3,003 통과(route-guide 공유 시나리오 84 — car 12건 신설·1건 교체, live-rows car 2건, car-action 55건, car-arrival 7건), Kit `swift test` 587 통과, 실험 구성 시뮬 빌드·실행(설정 피커 확인). 웹 `tsc`·lint 클린.
+- 리뷰: codex 적대적 설계 리뷰(§10) + spec-compliance·code-quality 서브에이전트(§10.1).
+- 실호출 `action` 열·실험판 배포 SHA는 통합 뒤 §11 말미에 추가.

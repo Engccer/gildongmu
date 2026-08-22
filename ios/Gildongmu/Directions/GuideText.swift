@@ -353,11 +353,15 @@ enum GuideText {
         return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
     }
 
-    /// 운전자 모드 예고 단문(K2 §6.2 M5): 전문 대신 "{distance} 앞 {command}". 행동 없는 유닛은 nil(무발화).
-    static func driverNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String? {
-        guard let first = indices.first, route.steps.indices.contains(first),
-              let action = route.steps[first].action else { return nil }
-        return appLocalized("guide.carPeriodic", formatDistance(remainingMeters), carCommand(action))
+    /// 운전자 모드 예고 단문(K2 §6.2 M5): 전문 대신 "{distance} 앞 {command}". **아직 앞에 있는**
+    /// 첫 결정 지점(스텝 시작 ≥ 현재 d)만 본다 — 따라잡기 뒤 유닛의 첫 스텝이 지금 서 있는 스텝이면
+    /// 그 시작의 행동은 이미 지났다(품질 리뷰 M2, "0m 앞 우회전" 차단). 없으면 nil(무발화).
+    static func driverNotice(route: GuideRoute, indices: [Int], fromD d: Double) -> String? {
+        guard let target = indices.first(where: {
+            route.steps.indices.contains($0) && route.steps[$0].startD >= d && route.steps[$0].action != nil
+        }), let action = route.steps[target].action else { return nil }
+        let remaining = Int(max(0, route.steps[target].startD - d).rounded())
+        return appLocalized("guide.carPeriodic", formatDistance(remaining), carCommand(action))
     }
 
     /// 하단 2행 윗줄 렌더. 매핑 규칙은 공유 fixture 러너(GuideLiveRowsTests·웹

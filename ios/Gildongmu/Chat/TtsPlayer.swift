@@ -59,10 +59,9 @@ final class TtsPlayer {
     /// `BeaconTonePlayer`가 소유한다(`.playback`, `didPromote` 원복 규칙). 여기서 `.duckOthers`로
     /// 다시 세팅하면 `GuideAudioSession` 판정 밖에서 카테고리가 바뀐다.
     func speakGuidance(_ text: String) {
-        stop()
+        stop()  // 세대 증가 포함 — 직전 재생의 늦은 콜백을 무효화한다
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        generation += 1
         let utterance = AVSpeechUtterance(string: trimmed)
         utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
         utterance.rate = ListenSpeed.speechRate(forMultiplier: listenSpeed)
