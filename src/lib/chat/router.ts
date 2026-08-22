@@ -266,8 +266,6 @@ export async function executeFunction(
       if (!anchor) return { data: explicit ? placeNotFound(explicit) : NO_LOCATION };
       const gated = coverageGate(anchor);
       if (gated) return gated;
-      // 명시 지명·장소 앵커 → 기기 위치 self-fetch 카드는 산문과 좌표가 어긋나므로 생략(산문이 정본).
-      const placeMode = !!explicit || !!ctx.placeAnchor;
       // 서울 전용 데이터 — 서울 밖은 0건이 아니라 "정보 미보유"다(라우트와 같은 판정).
       if (!isEventServiceArea(anchor.lat, anchor.lng)) return { data: SEOUL_ONLY, source: src };
       // 카드 없이 산문이 정본 — 목록을 두 벌로 만들지 않는다(get_weather 동형).
@@ -280,8 +278,6 @@ export async function executeFunction(
       if (!anchor) return { data: explicit ? placeNotFound(explicit) : NO_LOCATION };
       const gated = coverageGate(anchor);
       if (gated) return gated;
-      // 명시 지명·장소 앵커 → 기기 위치 self-fetch 카드는 산문과 좌표가 어긋나므로 생략(산문이 정본).
-      const placeMode = !!explicit || !!ctx.placeAnchor;
       // area:null은 오류가 아니라 "서울시가 혼잡도를 재는 121곳 밖"이다 —
       // 그대로 넘겨 LLM이 "여기는 측정 지역이 아니다"로 답하게 한다(3-state).
       // 라우트는 예보를 응답에서 빼지만(UI 미표기) 채팅은 서비스를 직접 불러
@@ -310,8 +306,6 @@ export async function executeFunction(
       if (!anchor) return { data: explicit ? placeNotFound(explicit) : NO_LOCATION };
       const gated = coverageGate(anchor);
       if (gated) return gated;
-      // 명시 지명·장소 앵커 → 기기 위치 self-fetch 카드는 산문과 좌표가 어긋나므로 생략(산문이 정본).
-      const placeMode = !!explicit || !!ctx.placeAnchor;
       const walk = await getWalkInfrastructure(anchor.lat, anchor.lng);
       // 출처는 실제로 데이터를 보여준 소스만 인용한다(성공한 소스만, 실패·미제공
       // 소스는 인용하지 않는다).
