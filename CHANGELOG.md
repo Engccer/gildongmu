@@ -11,6 +11,10 @@
 
 ## 2026-08-22
 
+### B9 웹 "둘러보기" 이식 — 현재 위치 확인 + 둘러보기 패널 통합
+
+iOS M4 화면을 웹 `NearbyHub`에 옮겼다(spec `docs/superpowers/specs/2026-08-22-nearby-tab-restructure-design.md` §9 후속). 새 `AroundNearby.tsx` 패널 하나가 허브 맨 위에서 세 요청(`/api/nearby/overview`·`/api/surroundings/scene`·`/api/places/around`)을 한 커밋으로 받아 위치 문장(h3, 착지) → "한눈에 보기" 6불릿(`src/lib/overview-lines.ts`, Kit·CLI 동형) → 자동 펼침 "주변 상황" → "주변 가게와 시설"을 낸다. 장면·목록의 장소 행은 버튼으로 상세에 연결(`sceneItemToPlace` 신설). 채팅 `surroundings-nearby` 카드도 이 패널을 마운트한다. 죽은 코드 판정으로 웹 `WhereAmI`·`SurroundingsNearby`·`buildLocationNarrative`(웹·Kit)와 `whereAmI.narrative/category`·패널 상태 i18n 키를 삭제했고, `WalkInfraNearby`는 유지. iOS의 "이 위치에 관해 물어보기" 버튼은 **의도적으로 이식하지 않았다**(홈 옴니박스 [AI에게 질문]과 장소 상세의 앵커 채팅이 이미 있어 잉여 — 리뷰 W1 판정). 테스트: `overview-lines.test.ts`(실제 ko/en 템플릿으로 3-state 문장 상이)·`AroundNearby.test.tsx`(세 요청 한 커밋·조각 실패 잔존·수동 위치 헤딩·상세 진입). dev 서버 실호출로 길동 좌표 렌더·상세 진입 확인. 실기기 VO 관찰 3건은 `docs/BACKLOG.md` §2 관찰 항목.
+
 ### 한눈에 보기 — 식당·카페 분리(6불릿) + 불릿 문장형
 
 위원장 실사용 피드백(2026-08-22 1.11 제출 뒤): "한눈에 보기"의 식당·카페 불릿을 둘로 나누고 각 불릿을 완성 문장으로("아이 놀 곳이 9곳 있습니다. 가장 가까운 곳은 ○○으로 남서쪽 3.2km입니다."). 서버 `nearby-overview.ts`가 카카오 FD6·CE7을 합치던 단계를 없애 `cafe` 불릿을 냈고(순서 transit·food·cafe·kids·events·barrierFree, 종별 캡 판정 유지), 6로케일 `whereAmI.overview.*` 템플릿을 문장형으로 바꿨다(`transitNoStationOnly`는 문장이 독립돼 제거). 라벨의 이/가·은/는과 장소명의 (으)로는 `KoreanParticle` 정본을 확장해 코드가 고른다(Kit ↔ 웹 ↔ CLI 미러, 드리프트 가드 5열 — 비한글 장소명은 쉼표 폴백). 가까운 곳 2곳 유지(위원장). 실호출(길동)로 식당·카페 각 15곳 이상 분리 확인. 리뷰 1건(CLI 타입 유니온 `cafe` 누락) 반영. 웹 소비자는 아직 없다(B9가 이식). spec `docs/superpowers/specs/2026-08-22-nearby-tab-restructure-design.md` §4.

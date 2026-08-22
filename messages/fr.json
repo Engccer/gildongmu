@@ -758,14 +758,6 @@
     "body": "La recherche ne fonctionne qu'en ligne."
   },
   "surroundingsNearby": {
-    "button": "Explorer les environs",
-    "refresh": "Actualiser",
-    "locating": "Localisation en cours…",
-    "loading": "Recherche de lieux à proximité…",
-    "empty": "Aucun lieu à signaler à proximité.",
-    "error": "Impossible de charger les lieux proches.",
-    "ready": "Lieux près de vous.",
-    "asOf": "à {time}",
     "item": "{category}, {direction}, environ {distance}",
     "category": {
       "convenience": "supérette",
@@ -797,11 +789,7 @@
       "w": "ouest",
       "nw": "nord-ouest"
     },
-    "call": "Appeler",
-    "mapLink": "Voir sur Kakao Map",
-    "geoDenied": "L'autorisation de localisation est requise. Veuillez l'autoriser dans votre navigateur.",
-    "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "source": "Source : recherche de lieux Kakao Map. La direction est un cap (depuis le nord)."
+    "call": "Appeler"
   },
   "walkInfra": {
     "button": "Infrastructures piétonnes à proximité",
@@ -844,27 +832,28 @@
     "sourceOsm": "© Contributeurs d'OpenStreetMap",
     "sourceAudio": "Feux sonores : fourni par la ville de Séoul (à la date du {baseDate})"
   },
-  "whereAmI": {
-    "button": "Où suis-je",
-    "manualButton": "Vérifier la position définie",
-    "refresh": "Actualiser la position",
+  "around": {
+    "button": "Explorer les environs",
+    "refresh": "Actualiser",
     "locating": "Vérification de votre position…",
-    "loading": "Recherche de votre environnement…",
-    "empty": "Impossible de déterminer votre position actuelle.",
-    "error": "Échec de la localisation.",
-    "ready": "Position actuelle",
-    "manualReady": "Position définie trouvée",
-    "asOf": "à {time}",
+    "loading": "Chargement de l'exploration…",
+    "empty": "Aucun lieu à afficher à proximité",
+    "error": "Impossible de charger l'exploration.",
     "geoDenied": "L'autorisation de localisation est requise. Autorisez l'accès à la position dans votre navigateur.",
     "geoUnsupported": "Ce navigateur ne prend pas en charge la localisation.",
-    "narrative": {
-      "here": "Vous êtes à <place></place>.",
-      "station": "La station de métro la plus proche est <name></name><line></line>, à environ {distance} {direction}.",
-      "landmarksLead": "À proximité, vous trouverez ",
-      "landmarkItem": "<name></name> ({category}) à environ {distance} {direction}",
-      "landmarksTail": ", et plus encore."
-    },
-    "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord.",
+    "ready": "Exploration prête",
+    "readyManual": "Environs de la position choisie prêts",
+    "here": "Autour de votre position actuelle, près de {place}",
+    "hereNoPlace": "Autour de votre position actuelle",
+    "hereManual": "Autour de la position choisie, près de {place}",
+    "hereManualNoPlace": "Autour de la position choisie",
+    "sceneHeading": "Environs",
+    "placesHeading": "Commerces et services à proximité",
+    "placesFailed": "Impossible de charger les commerces et services à proximité",
+    "source": "Source : Kakao Map. Les directions sont des relèvements depuis le nord."
+  },
+  "whereAmI": {
+    "ready": "Position actuelle",
     "direction": {
       "n": "au nord",
       "ne": "au nord-est",
@@ -874,26 +863,6 @@
       "sw": "au sud-ouest",
       "w": "à l'ouest",
       "nw": "au nord-ouest"
-    },
-    "category": {
-      "convenience": "supérette",
-      "subway": "station de métro",
-      "restaurant": "restaurant",
-      "cafe": "café",
-      "bank": "banque",
-      "pharmacy": "pharmacie",
-      "hospital": "hôpital",
-      "mart": "supermarché",
-      "public": "bureau public",
-      "attraction": "attraction",
-      "kindergarten": "crèche ou école maternelle",
-      "school": "école",
-      "academy": "institut privé",
-      "parking": "parking",
-      "gasStation": "station-service",
-      "culture": "établissement culturel",
-      "realEstate": "agence immobilière",
-      "lodging": "hébergement"
     },
     "overview": {
       "heading": "En un coup d'œil",

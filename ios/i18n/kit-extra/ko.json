@@ -1,9 +1,1 @@
-{
-  "whereAmI": {
-    "narrative": {
-      "here": "현재 위치는 {place}입니다.",
-      "station": "가장 가까운 지하철역은 {name}{line}, {direction}쪽 약 {distance}입니다.",
-      "landmarkItem": "{direction}쪽 약 {distance}에 {name} {category}"
-    }
-  }
-}
+{}

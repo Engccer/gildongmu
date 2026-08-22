@@ -15,7 +15,7 @@ import { AddressResultList } from "@/components/AddressResultList";
 import { SubwayArrivalsNearby } from "@/components/SubwayArrivalsNearby";
 import { NightClinicsNearby } from "@/components/NightClinicsNearby";
 import { KidsPlacesNearby } from "@/components/KidsPlacesNearby";
-import { SurroundingsNearby } from "@/components/SurroundingsNearby";
+import { AroundNearby } from "@/components/AroundNearby";
 import { BusArrivals } from "@/components/BusArrivals";
 import { BikeStations } from "@/components/BikeStations";
 import { AirQuality } from "@/components/AirQuality";
@@ -145,7 +145,7 @@ function RenderBlock({
     case "kids-nearby":
       return <KidsPlacesNearby />;
     case "surroundings-nearby":
-      return <SurroundingsNearby />;
+      return <AroundNearby />;
     case "bus":
       return render.mode === "current"
         ? <BusArrivals mode="current" />

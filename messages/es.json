@@ -758,14 +758,6 @@
     "body": "La búsqueda solo funciona en línea."
   },
   "surroundingsNearby": {
-    "button": "Explorar alrededores",
-    "refresh": "Actualizar",
-    "locating": "Obteniendo tu ubicación…",
-    "loading": "Buscando lugares cercanos…",
-    "empty": "No hay lugares que anunciar cerca.",
-    "error": "No se pudieron cargar los lugares cercanos.",
-    "ready": "Lugares cerca de ti.",
-    "asOf": "a las {time}",
     "item": "{category}, {direction}, unos {distance}",
     "category": {
       "convenience": "tienda de conveniencia",
@@ -797,11 +789,7 @@
       "w": "oeste",
       "nw": "noroeste"
     },
-    "call": "Llamar",
-    "mapLink": "Ver en Kakao Map",
-    "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
-    "geoUnsupported": "Este navegador no admite la ubicación.",
-    "source": "Fuente: búsqueda de lugares de Kakao Map. La dirección es un rumbo (desde el norte)."
+    "call": "Llamar"
   },
   "walkInfra": {
     "button": "Infraestructura peatonal cercana",
@@ -844,27 +832,28 @@
     "sourceOsm": "© Colaboradores de OpenStreetMap",
     "sourceAudio": "Semáforos con aviso sonoro: proporcionado por Seúl (a fecha de {baseDate})"
   },
-  "whereAmI": {
-    "button": "Dónde estoy",
-    "manualButton": "Comprobar la ubicación establecida",
-    "refresh": "Actualizar ubicación",
+  "around": {
+    "button": "Explorar alrededores",
+    "refresh": "Actualizar",
     "locating": "Comprobando tu ubicación…",
-    "loading": "Consultando tu entorno…",
-    "empty": "No se pudo determinar tu ubicación actual.",
-    "error": "No se pudo consultar tu ubicación.",
-    "ready": "Ubicación actual",
-    "manualReady": "Ubicación establecida encontrada",
-    "asOf": "a las {time}",
+    "loading": "Cargando exploración…",
+    "empty": "No hay lugares que mostrar cerca",
+    "error": "No se pudo cargar la exploración.",
     "geoDenied": "Se requiere permiso de ubicación. Permite el acceso a la ubicación en tu navegador.",
     "geoUnsupported": "Este navegador no admite la ubicación.",
-    "narrative": {
-      "here": "Estás en <place></place>.",
-      "station": "La estación de metro más cercana es <name></name><line></line>, a unos {distance} al {direction}.",
-      "landmarksLead": "Cerca encontrarás ",
-      "landmarkItem": "<name></name> ({category}) a unos {distance} al {direction}",
-      "landmarksTail": ", y más."
-    },
-    "source": "Fuente: Kakao Map. Las direcciones son rumbos desde el norte.",
+    "ready": "Exploración lista",
+    "readyManual": "Alrededores de la ubicación indicada listos",
+    "here": "Alrededor de tu ubicación actual, cerca de {place}",
+    "hereNoPlace": "Alrededor de tu ubicación actual",
+    "hereManual": "Alrededor de la ubicación indicada, cerca de {place}",
+    "hereManualNoPlace": "Alrededor de la ubicación indicada",
+    "sceneHeading": "Alrededores",
+    "placesHeading": "Tiendas y servicios cercanos",
+    "placesFailed": "No se pudieron cargar las tiendas y servicios cercanos",
+    "source": "Fuente: Kakao Map. Las direcciones son rumbos desde el norte."
+  },
+  "whereAmI": {
+    "ready": "Ubicación actual",
     "direction": {
       "n": "norte",
       "ne": "noreste",
@@ -874,26 +863,6 @@
       "sw": "suroeste",
       "w": "oeste",
       "nw": "noroeste"
-    },
-    "category": {
-      "convenience": "tienda de conveniencia",
-      "subway": "estación de metro",
-      "restaurant": "restaurante",
-      "cafe": "cafetería",
-      "bank": "banco",
-      "pharmacy": "farmacia",
-      "hospital": "hospital",
-      "mart": "supermercado",
-      "public": "oficina pública",
-      "attraction": "atracción",
-      "kindergarten": "guardería o jardín de infancia",
-      "school": "escuela",
-      "academy": "academia",
-      "parking": "aparcamiento",
-      "gasStation": "gasolinera",
-      "culture": "centro cultural",
-      "realEstate": "inmobiliaria",
-      "lodging": "alojamiento"
     },
     "overview": {
       "heading": "De un vistazo",

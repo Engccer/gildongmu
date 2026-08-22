@@ -8,7 +8,7 @@ import { assembleWhereAmI } from "@/lib/where-am-i";
 /**
  * GET /api/where-am-i?lat=..&lng=..
  * "현재 위치" 정위 카드 — 주소·행정동·근접역·주변 기준점을 병렬 조립.
- * 키 없음 → { data: null }(canShowWhereAmI 게이트와 이중 방어).
+ * 키 없음 → { data: null }(CLI·채팅 소비자가 부재로 읽는다 — 웹 둘러보기는 `/api/nearby/overview`를 쓴다).
  * 네 조각 전부 비면 502(조회 실패 ≠ 정보 없음), 그 외 200.
  */
 

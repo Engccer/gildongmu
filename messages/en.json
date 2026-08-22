@@ -758,14 +758,6 @@
     "body": "Search works only online."
   },
   "surroundingsNearby": {
-    "button": "Explore nearby",
-    "refresh": "Refresh",
-    "locating": "Getting your location…",
-    "loading": "Finding places nearby…",
-    "empty": "No places to announce nearby.",
-    "error": "Could not load nearby places.",
-    "ready": "Places near you.",
-    "asOf": "as of {time}",
     "item": "{category}, {direction}, about {distance}",
     "category": {
       "convenience": "convenience store",
@@ -797,11 +789,7 @@
       "w": "west",
       "nw": "northwest"
     },
-    "call": "Call",
-    "mapLink": "View on Kakao Map",
-    "geoDenied": "Location permission is required. Please allow location access in your browser.",
-    "geoUnsupported": "This browser does not support location.",
-    "source": "Source: Kakao Map place search. Direction is a compass bearing (from North)."
+    "call": "Call"
   },
   "walkInfra": {
     "button": "Nearby walking infrastructure",
@@ -844,27 +832,28 @@
     "sourceOsm": "© OpenStreetMap contributors",
     "sourceAudio": "Audio traffic signals: provided by Seoul (as of {baseDate})"
   },
-  "whereAmI": {
-    "button": "Where am I",
-    "manualButton": "Check set location",
-    "refresh": "Refresh location",
+  "around": {
+    "button": "Look around",
+    "refresh": "Refresh",
     "locating": "Checking your location…",
-    "loading": "Looking up your surroundings…",
-    "empty": "Could not determine your current location.",
-    "error": "Failed to look up your location.",
-    "ready": "Current location",
-    "manualReady": "Set location found",
-    "asOf": "as of {time}",
+    "loading": "Loading look-around…",
+    "empty": "No places to show nearby",
+    "error": "Could not load look-around.",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
-    "narrative": {
-      "here": "You are at <place></place>.",
-      "station": "The nearest subway station is <name></name><line></line>, about {distance} to the {direction}.",
-      "landmarksLead": "Nearby you'll find ",
-      "landmarkItem": "<name></name> ({category}) about {distance} to the {direction}",
-      "landmarksTail": ", and more."
-    },
-    "source": "Source: Kakao Map. Directions are compass bearings from north.",
+    "ready": "Look-around is ready",
+    "readyManual": "Surroundings of the set location are ready",
+    "here": "Around your current location, near {place}",
+    "hereNoPlace": "Around your current location",
+    "hereManual": "Around the location you set, near {place}",
+    "hereManualNoPlace": "Around the location you set",
+    "sceneHeading": "Surroundings",
+    "placesHeading": "Shops and facilities nearby",
+    "placesFailed": "Could not load nearby shops and facilities",
+    "source": "Source: Kakao Map. Directions are compass bearings from north."
+  },
+  "whereAmI": {
+    "ready": "Current location",
     "direction": {
       "n": "north",
       "ne": "northeast",
@@ -874,26 +863,6 @@
       "sw": "southwest",
       "w": "west",
       "nw": "northwest"
-    },
-    "category": {
-      "convenience": "convenience store",
-      "subway": "subway station",
-      "restaurant": "restaurant",
-      "cafe": "café",
-      "bank": "bank",
-      "pharmacy": "pharmacy",
-      "hospital": "hospital",
-      "mart": "mart",
-      "public": "public office",
-      "attraction": "attraction",
-      "kindergarten": "daycare or kindergarten",
-      "school": "school",
-      "academy": "private academy",
-      "parking": "parking lot",
-      "gasStation": "gas station",
-      "culture": "cultural facility",
-      "realEstate": "real estate agency",
-      "lodging": "lodging"
     },
     "overview": {
       "heading": "At a glance",

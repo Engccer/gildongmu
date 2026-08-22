@@ -106,11 +106,8 @@ const NO_MANUAL_BRANCH_OK: Record<string, string> = {
  * 위 파일 단위 예외와 달리 **그 파일은 수동 분기를 갖고 있고** 개별 키만 남았다.
  */
 const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
-  "whereAmI.narrative.here":
-    "산문은 그 좌표를 설명한다 — 사용자가 '내가 여기 있다'고 말한 곳이라 spec §4.7이 내용 불변으로 정했다(헤더·트리거만 출처를 명명한다).",
   "ios.nearby.whereAmIChat":
     "채팅 진입 버튼. 열리는 대화의 앵커는 조회된 좌표(수동 반영)이고 호칭은 산문과 같은 층이다(위 §4.7).",
-  "whereAmI.empty": "조회 부재 문구(웹 WhereAmI). 수동 상태에서도 도달하므로 후속 카피 정리 대상 — 리뷰 I2는 헤더·트리거를 지목했다.",
   "directions.useCurrentLocation":
     "출발지 선택 버튼. 누르면 `current` 토큰이 되고 그 해석이 수동 위치를 탄다 — 필드 라벨은 즉시 '지정한 위치'로 바뀐다. 버튼 이름 자체의 재작성은 이번 범위 밖(리뷰 미지적, 새 카피 6로케일).",
   "common.outOfCoverage": "기능 커버리지 설명(위 NearbyLoadState 근거와 같은 층).",
@@ -127,11 +124,14 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
   "manualLocation.locating": "측위 진행 문구(조회 기준 선언 아님).",
   "manualLocation.guideStartsFromCurrent":
     "수동 위치 기준 결과에서 안내를 시작하는 순간의 고지 — 수동 상태에서 **의도적으로** GPS를 명명한다('현재 위치에서'). 이 문장의 존재 이유가 곧 그 대비라, 수동 분기가 아니라 수동 조건이 발화 조건이다.",
-  "whereAmI.ready": "수동 분기 뒤의 폴백이라 수동 상태에서 도달 불가.",
-  "whereAmI.button": "위와 같음(수동이면 `manualButton`).",
   // M4 둘러보기(2026-08-22): 위치 문장이 수동 분기를 갖는다(`aroundHereManual*`).
   "ios.nearby.aroundHere": "수동 분기 뒤의 GPS 측 문장(수동이면 `aroundHereManual`).",
   "ios.nearby.aroundHereNoPlace": "위와 같음(수동이면 `aroundHereManualNoPlace`).",
+  "whereAmI.ready":
+    "Kit `overviewAnchorPlace`·`whereAmIToPlace`의 채팅 앵커 이름 폴백(행정동·도로명·지번이 전부 빈 좌표 앵커). 앵커 좌표는 수동 위치를 타지만 이름은 위치 문장 재료의 폴백이라 조회 기준 선언이 아니다.",
+  // B9 웹 둘러보기(2026-08-22): 같은 분기의 웹 키.
+  "around.here": "수동 분기 뒤의 GPS 측 문장(수동이면 `hereManual`, 근거는 `status.origin` 기록).",
+  "around.hereNoPlace": "위와 같음(수동이면 `hereManualNoPlace`).",
 };
 
 /**
@@ -145,6 +145,7 @@ const KNOWN_UNBRANCHED_KEYS: Record<string, string> = {
  * 자동 확장으로 두면 모든 신규 도메인이 조용히 면제된다.
  */
 const NEARBY_LIVE_NAMESPACES = [
+  "around",
   "bike",
   "bus",
   "clinicNearby",
@@ -153,7 +154,6 @@ const NEARBY_LIVE_NAMESPACES = [
   "subwayNearby",
   "surroundingsNearby",
   "walkInfra",
-  "whereAmI",
 ];
 const NEARBY_LIVE_UNBRANCHED_SUFFIXES = ["locating", "error", "geoDenied", "geoUnsupported"];
 const NEARBY_LIVE_UNBRANCHED_REASON =
@@ -293,10 +293,10 @@ describe("유효 위치 소비 화면의 GPS 문구 가드", () => {
 });
 
 describe("수동 상태 전용 문구", () => {
-  it.each(Object.keys(LOCALES))("%s의 where-am-i 수동 문구가 GPS 문구를 되풀이하지 않는다", (locale) => {
-    const w = LOCALES[locale].whereAmI as Record<string, string>;
+  it.each(Object.keys(LOCALES))("%s의 둘러보기 수동 문구가 GPS 문구를 되풀이하지 않는다", (locale) => {
+    const w = LOCALES[locale].around as Record<string, string>;
     const gps = (LOCALES[locale].manualLocation as Record<string, string>).gps;
-    for (const key of ["manualButton", "manualReady"]) {
+    for (const key of ["hereManual", "hereManualNoPlace", "readyManual"]) {
       expect(typeof w[key]).toBe("string");
       expect(w[key]).not.toContain(gps);
     }

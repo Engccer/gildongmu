@@ -758,14 +758,6 @@
     "body": "La ricerca funziona solo online."
   },
   "surroundingsNearby": {
-    "button": "Esplora dintorni",
-    "refresh": "Aggiorna",
-    "locating": "Rilevamento posizione…",
-    "loading": "Ricerca luoghi nelle vicinanze…",
-    "empty": "Nessun luogo da segnalare nelle vicinanze.",
-    "error": "Impossibile caricare i luoghi vicini.",
-    "ready": "Luoghi vicino a te.",
-    "asOf": "alle {time}",
     "item": "{category}, {direction}, circa {distance}",
     "category": {
       "convenience": "minimarket",
@@ -797,11 +789,7 @@
       "w": "ovest",
       "nw": "nord-ovest"
     },
-    "call": "Chiama",
-    "mapLink": "Vedi su Kakao Map",
-    "geoDenied": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso nel browser.",
-    "geoUnsupported": "Questo browser non supporta la geolocalizzazione.",
-    "source": "Fonte: ricerca luoghi Kakao Map. La direzione è un rilevamento (dal nord)."
+    "call": "Chiama"
   },
   "walkInfra": {
     "button": "Infrastrutture pedonali nelle vicinanze",
@@ -844,27 +832,28 @@
     "sourceOsm": "© Contributori di OpenStreetMap",
     "sourceAudio": "Semafori acustici: fornito da Seul (aggiornato al {baseDate})"
   },
-  "whereAmI": {
-    "button": "Dove mi trovo",
-    "manualButton": "Verifica la posizione impostata",
-    "refresh": "Aggiorna posizione",
+  "around": {
+    "button": "Esplora i dintorni",
+    "refresh": "Aggiorna",
     "locating": "Controllo della tua posizione…",
-    "loading": "Ricerca dei dintorni…",
-    "empty": "Impossibile determinare la tua posizione attuale.",
-    "error": "Impossibile localizzarti.",
-    "ready": "Posizione attuale",
-    "manualReady": "Posizione impostata trovata",
-    "asOf": "alle {time}",
+    "loading": "Caricamento esplorazione…",
+    "empty": "Nessun luogo da mostrare nelle vicinanze",
+    "error": "Impossibile caricare l'esplorazione.",
     "geoDenied": "È richiesta l'autorizzazione alla posizione. Consenti l'accesso alla posizione nel browser.",
     "geoUnsupported": "Questo browser non supporta la posizione.",
-    "narrative": {
-      "here": "Ti trovi a <place></place>.",
-      "station": "La stazione della metropolitana più vicina è <name></name><line></line>, a circa {distance} a {direction}.",
-      "landmarksLead": "Nelle vicinanze troverai ",
-      "landmarkItem": "<name></name> ({category}) a circa {distance} a {direction}",
-      "landmarksTail": ", e altro ancora."
-    },
-    "source": "Fonte: Kakao Map. Le direzioni sono rilevamenti dal nord.",
+    "ready": "Esplorazione pronta",
+    "readyManual": "Dintorni della posizione impostata pronti",
+    "here": "Intorno alla tua posizione attuale, vicino a {place}",
+    "hereNoPlace": "Intorno alla tua posizione attuale",
+    "hereManual": "Intorno alla posizione impostata, vicino a {place}",
+    "hereManualNoPlace": "Intorno alla posizione impostata",
+    "sceneHeading": "Dintorni",
+    "placesHeading": "Negozi e servizi nelle vicinanze",
+    "placesFailed": "Impossibile caricare negozi e servizi nelle vicinanze",
+    "source": "Fonte: Kakao Map. Le direzioni sono rilevamenti dal nord."
+  },
+  "whereAmI": {
+    "ready": "Posizione attuale",
     "direction": {
       "n": "nord",
       "ne": "nord-est",
@@ -874,26 +863,6 @@
       "sw": "sud-ovest",
       "w": "ovest",
       "nw": "nord-ovest"
-    },
-    "category": {
-      "convenience": "minimarket",
-      "subway": "stazione della metropolitana",
-      "restaurant": "ristorante",
-      "cafe": "caffè",
-      "bank": "banca",
-      "pharmacy": "farmacia",
-      "hospital": "ospedale",
-      "mart": "supermercato",
-      "public": "ufficio pubblico",
-      "attraction": "attrazione",
-      "kindergarten": "asilo o scuola materna",
-      "school": "scuola",
-      "academy": "accademia privata",
-      "parking": "parcheggio",
-      "gasStation": "stazione di servizio",
-      "culture": "struttura culturale",
-      "realEstate": "agenzia immobiliare",
-      "lodging": "alloggio"
     },
     "overview": {
       "heading": "A colpo d'occhio",

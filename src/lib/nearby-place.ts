@@ -18,6 +18,7 @@ import type {
   Place,
   SurroundingPlace,
 } from "@/lib/types";
+import type { SceneItem } from "@/lib/surroundings-scene";
 
 export function nightClinicToPlace(c: NightClinic): Place {
   return {
@@ -60,6 +61,22 @@ export function surroundingPlaceToPlace(p: SurroundingPlace): Place {
     phone: p.phone,
     link: p.link,
     distanceMeters: p.distanceMeters,
+  };
+}
+
+/** 주변 상황 장면 항목 → `Place`(Kit `sceneItemToPlace` 동형, `surroundingPlaceToPlace`와 같은 규칙). */
+export function sceneItemToPlace(it: SceneItem): Place {
+  return {
+    id: it.id,
+    name: it.name,
+    category: it.categoryRaw,
+    address: "",
+    roadAddress: it.roadAddress ?? "",
+    lat: it.lat,
+    lng: it.lng,
+    phone: it.phone,
+    link: it.link,
+    distanceMeters: it.distanceMeters,
   };
 }
 

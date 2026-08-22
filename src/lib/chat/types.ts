@@ -49,7 +49,7 @@ export type RenderPayload =
   | { type: "clinics-nearby"; places?: Place[] }                // <NightClinicsNearby/>
   | { type: "barrier-free-nearby"; places?: Place[] }           // <BarrierFreeNearby autoLoad/>
   | { type: "kids-nearby"; places?: Place[] }                   // <KidsPlacesNearby/>
-  | { type: "surroundings-nearby"; places?: Place[] }           // <SurroundingsNearby/>
+  | { type: "surroundings-nearby"; places?: Place[] }           // <AroundNearby/> (둘러보기 패널, 2026-08-22 B9)
   | { type: "bus"; mode: "current" }
   | { type: "bus"; mode: "place"; lat: number; lng: number }    // <BusArrivals mode.../>
   | { type: "bike"; mode: "current" }
