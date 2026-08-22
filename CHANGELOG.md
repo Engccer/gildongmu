@@ -11,6 +11,10 @@
 
 ## 2026-08-23
 
+### E15-1 대중교통 실시간 안내 "진행 상황 조망" — 능력 프로토콜 첫 발견 (iOS·Kit·웹 순수 계층)
+
+백로그 E15의 첫 능력(spec `docs/superpowers/specs/2026-08-23-transit-progress-overview-design.md`, codex 설계 리뷰 §12 반영). 대중교통 시트의 "진행 상황"이 도보와 같은 조망 모달을 연다 — 헤더가 "{count}구간 중 {n}번째 구간. " + 상태 문장, 행은 도보·구간(완료/지금 이 구간/예정)·현재 구간 정차역("현재 위치"는 **신선한 추적 관측·지하철·유일 매칭일 때만**), 침묵 상태(notYetVisible·neverSeen·signalLost·upstreamFailed)면 설명 행 바로 뒤에 "탑승 변경" 탈출구(A16 L2의 침묵을 같은 화면에서 해소). "다른 경로 보기"는 **현재 위치 기준 재조회**(GPS → 현재역 앵커 → 실패, 승차 전엔 "{승차역} 기준으로 조회" 선언 버튼)로 후보를 펼쳐 보고 "이 경로로 전환"한다(커밋 가드는 시간이 아니라 근거 변화). 조망 안 행동·국면 전이 착지는 전부 **조망이 닫힌 뒤** 부모 `onDismiss`가 실행한다. 셸 `GuideOverviewSheet`(조망 전용으로 봉인된 `GuideOverviewCapability`)을 신설하고 도보 조망·대안 프리뷰 시트를 `BeaconTrackingSheet`에서 그 파일로 이동했다(어댑터 경유, 동작 변경 0). 판정 계층은 Kit `TransitProgressOverview` ↔ 웹 `transit-progress-overview.ts` 미러 + 공유 fixture 16건(변이 4건 검출). 웹 조망 UI는 후속(`docs/BACKLOG.md` E15). 실승차 판정 대본은 `docs/FIELD-TEST.md` §5-4.
+
 ### K1 안내 시트 접기·띠바 탭 바 위·탭 순서·받아쓰기 억제 (iOS)
 
 위원장 실사용 피드백(2026-08-22 ①④, plan `docs/superpowers/plans/2026-08-23-feedback-260822-parallel-plan.md` §1 K1). 탭 순서 검색 - 길찾기 - 내 주변 - 채팅·기본 탭 검색은 **실험판에서만**(`AppConfig.experimentalTabOrderEnabled`로 `AppTab.order`를 가른다, 정식판은 종전 유지 — 위원장 추가 지시). 띠바를 탭 바 **바로 위**로 옮겼다 — iOS 26.1+ `tabViewBottomAccessory(isEnabled:)`, 26.0은 내용 비우기, 18~25는 각 탭 콘텐츠 `safeAreaInset` 폴백(종전 TabView 자체 inset이 탭 바를 시각·VO 모두에서 덮었다). "안내 최소화" 행 버튼을 두 시트의 toolbar 상단 우측 아이콘 버튼으로 바꾸고 라벨 "안내 시트 접기"·띠바 "안내 시트 펼치기"(6로케일). `SpeechService` 시작·모든 종료 경로에 `GuideSession.setDictationActive`를 연결해 검색·채팅 탭 받아쓰기 중에도 두 모델의 톤·통지가 억제된다(종료는 이전 값 ∧ 현재 값 — 시트 억제와 공존). 시뮬 18.6·26 양쪽에서 탭 바 가시·AX 순서 콘텐츠 → 띠바 → 탭 바 확인. spec `2026-08-22-guide-session-minimize-design.md` §2.2·2.3·2.6·9 개정, 실기기 관찰은 `docs/FIELD-TEST.md` N1③·K1④.
