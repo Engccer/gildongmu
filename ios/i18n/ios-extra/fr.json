@@ -308,7 +308,8 @@
       "altInvalid": "Le guidage ne peut pas démarrer sur cet itinéraire.",
       "adoptRoute": "Passer à cet itinéraire",
       "routeSwitched": "Itinéraire modifié.",
-      "altNone": "Aucun autre itinéraire en transports depuis ici."
+      "altNone": "Aucun autre itinéraire en transports depuis ici.",
+      "altRefetching": "Les conditions ont changé ; nouvelle recherche d’itinéraires."
     }
   },
   "beacon": {

@@ -308,7 +308,8 @@
       "altInvalid": "Guidance can't start on this route.",
       "adoptRoute": "Switch to this route",
       "routeSwitched": "Route changed.",
-      "altNone": "No other transit routes from here."
+      "altNone": "No other transit routes from here.",
+      "altRefetching": "Conditions changed; looking up other routes again."
     }
   },
   "beacon": {

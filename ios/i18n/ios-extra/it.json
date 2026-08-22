@@ -308,7 +308,8 @@
       "altInvalid": "Impossibile avviare la guida su questo percorso.",
       "adoptRoute": "Passa a questo percorso",
       "routeSwitched": "Percorso cambiato.",
-      "altNone": "Nessun altro percorso con i mezzi da qui."
+      "altNone": "Nessun altro percorso con i mezzi da qui.",
+      "altRefetching": "Le condizioni sono cambiate; nuova ricerca dei percorsi."
     }
   },
   "beacon": {
