@@ -97,6 +97,17 @@ final class GuideSession {
         }
     }
 
+    /// 자동차 도착 뒤 도보 인계(K2 §6.4) — 같은 모델이라 대중교통 인계의 600ms 지연이 없다:
+    /// 종료 화면 소거 → 같은 목적지로 도보 시작(경유지 없음, 계단 회피 없음).
+    func acceptCarWalkHandoff() {
+        guard let dest = beacon.arrivalDest else { return }
+        let label = beacon.destinationLabel
+        beacon.clearArrival()
+        self.startBeacon(BeaconModel.StartRequest(
+            dest: dest, label: label, kind: .walk, accessible: false,
+            variant: nil, shortestAvailable: false, waypoint: nil))
+    }
+
     func handleScenePhaseChange(to phase: ScenePhase) {
         beacon.handleScenePhaseChange(to: phase)
         transit.handleScenePhaseChange(to: phase)
