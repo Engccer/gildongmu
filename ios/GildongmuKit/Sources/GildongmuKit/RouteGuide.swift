@@ -313,6 +313,9 @@ public struct GuideState: Sendable, Equatable {
     /// 확정됐으나 아직 발화하지 못한 도착(같은 fix의 임박 큐에 밀렸다). 다음 fix에서
     /// 새 임박보다 먼저 나간다 — 조밀한 결정 지점에서 도착이 무한히 밀리지 않는다.
     public var waypointPending: Bool
+    /// uncertain 진입 시점의 **마지막 신뢰 fix 시각**(silentCatchUp ②, 웹 `uncertainSince` 미러).
+    /// 불량 fix마다 갱신되는 `lastFixAt`으로 복귀 공백을 재면 촘촘한 불량 fix에서 절대 걸리지 않는다.
+    public var uncertainSince: Double?
 }
 
 public struct OffRouteAxes: Sendable, Equatable {
@@ -450,7 +453,8 @@ public func guideStateAt(
         courseVotes: [],
         courseDerivation: courseDerivation,
         waypointReached: waypointReached,
-        waypointPending: waypointPending
+        waypointPending: waypointPending,
+        uncertainSince: nil
     )
 }
 
@@ -573,7 +577,7 @@ public func guideStep(
         }
         // 복귀 fix의 공백이 재획득 공백을 넘으면 복귀가 아니라 재획득(silentCatchUp ②) —
         // uncertain 분기가 lastFixAt을 갱신해 아래 gap 검사가 이 공백을 못 본다.
-        if tuning.silentCatchUp, let last = state.lastFixAt, now - last > reacquireGapSeconds {
+        if tuning.silentCatchUp, let since = state.uncertainSince, now - since > reacquireGapSeconds {
             var s = state
             s.phase = .reacquiring
             s.windowEdgeHits = 0
@@ -583,13 +587,15 @@ public func guideStep(
             s.reacquiringFromOffRoute = state.resumePhase == .offRoute
             s.reacquirePrevD = state.d
             s.reacquireV = 0
-            s.reacquireSince = last
+            s.reacquireSince = since
+            s.uncertainSince = nil
             return GuideOutput(state: s, event: .reacquiring, tone: nil)
         }
         var s = state
         s.phase = state.resumePhase
         s.lastFixAt = now
         s.lastAnnouncedAt = now
+        s.uncertainSince = nil
         return GuideOutput(state: s, event: .uncertainExit, tone: nil)
     }
     if accBad {
@@ -597,6 +603,7 @@ public func guideStep(
         s.phase = .uncertain
         // 이탈 중 진입이면 복귀도 이탈로(이탈 상태 소실 방지 — 리뷰 HIGH의 대칭 경로).
         s.resumePhase = state.phase == .offRoute ? .offRoute : state.resumePhase
+        s.uncertainSince = state.lastFixAt ?? now  // 마지막 신뢰 fix 시각(복귀 공백 기준)
         s.lastFixAt = now
         s.speedSamples = []
         // ⚠ 창은 비우고 latch(offRouteAxes)는 보존한다. 투영을 못 믿는 기간의 표는
@@ -877,7 +884,7 @@ public func guideStep(
         return emit(next, .waypointReached, nil)
     }
 
-    // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
+    // 6a) 결정 지점 임박 큐(walk 20m = 10 + lag / car max(15m, v×6초), K2 2026-08-23): 소리·진동과 짧은 명령형 한 문장으로
     //     "지금이다"를 알린다.
     //
     //     ⚠ **래치가 스텝 단위인 것이 계약이다 — 유닛 단위로 뛰면 안 된다.** 전문 낭독(6c)이
@@ -888,7 +895,8 @@ public func guideStep(
     //     경복궁 경로는 33·36·28m 간격 3연속 회전 중 첫 회전만 울렸다).
     //     "무엇을"은 유닛 단위, "지금이다"는 결정 지점 단위 — 같은 수열일 이유가 없다.
     //
-    //     ⚠ **불변식: 전문이 나간 스텝만 큐를 받는다**(`imminentUpTo < announcedUpTo`).
+    //     ⚠ **불변식(walk): 전문이 나간 스텝만 큐를 받는다**(`imminentUpTo < announcedUpTo`). car는
+    //     명령이 자기 완결이라 이 선행을 요구하지 않는다(`imminentNeedsAnnounce=false`, K2 §3.2).
     //     "잠시 후 왼쪽으로 도세요"를 무엇을 향한 회전인지 말하기 전에 내보내면 명령만
     //     남는다. 두 래치가 같으면 그 스텝은 아직 전문 전이므로 6c에 자리를 내준다.
     //
@@ -1013,7 +1021,7 @@ public func guideStep(
         let announceAhead = max(tuning.announceAheadM, vPrev * tuning.announceAheadSpeedS)
         if announcedEnd - d <= announceAhead {
             let unit = unitAt(route: route, index: next.announcedUpTo + 1)
-            // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6).
+            // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
             let remaining = tuning.silentCatchUp ? unit.filter { route.steps[$0].endD >= d } : unit
             let indices = remaining.isEmpty ? [unit[unit.count - 1]] : remaining
             next.announcedUpTo = unit[unit.count - 1]

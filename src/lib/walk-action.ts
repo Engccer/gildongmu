@@ -32,7 +32,8 @@ export type WalkAction =
 /**
  * 수단 중립 별칭(K2, spec `2026-08-23-car-guidance-completion-design.md` §3.1). `keepLeft`·
  * `keepRight`는 자동차 갈래 선택이라 `walkStepAction`은 내지 않는다 — 자동차 스텝은 서버
- * `turnType` 투영(`CarAction`)으로 행동을 싣고, 리듀서는 `step.action ?? walkStepAction(desc)`로 고른다.
+ * `turnType` 투영(`CarAction`)으로 행동을 싣고, 리듀서는 프로파일(`actionSource`)에 따라 둘 중 **하나만**
+ * 본다(car는 `action`뿐, 없으면 침묵 — 문장 폴백 없음).
  */
 export type GuideAction = WalkAction;
 

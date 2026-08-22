@@ -640,7 +640,7 @@ final class BeaconModel {
             ?? .default
         driverChannel = kind == .car && listener == .driver
         // 로그 수단 표식(K2 §6.6): 2026-08-22 실주행 로그에 표식이 없어 속도로만 도보·자동차를 갈랐다.
-        guideDiagLog("session kind=\(kind) listener=\(listener.rawValue) dest=\(label)")
+        guideDiagLog("session kind=\(kind) listener=\(listener.rawValue)")
         beaconState = .initial
         gateState = .initial
         toneState = .initial
@@ -735,10 +735,10 @@ final class BeaconModel {
             guard briefing.provider == "tmap", let car = buildCarGuide(briefing: briefing) else {
                 return nil
             }
-            // 자동차에는 계단 회피 개념이 없다 — 타입이 그 사실을 말한다.
-            // 자동차에는 최종 접근 개념이 없다(딥링크 위임이 정본) — 타입이 그 사실을 말한다.
-            // 하단 2행도 walk 전용(spec 2026-08-11 §7)이라 표시 입력이 없다.
-            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil, [])
+            // 자동차에는 계단 회피·최종 접근 기하가 없다 — 타입이 그 사실을 말한다.
+            // 하단 2행 입력(K2 §4): live 조각(target·anchor)은 없고 행동은 스텝의 서버 투영.
+            return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil,
+                    liveStepsFrom(route: car.route, live: []))
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -2210,9 +2210,11 @@ final class BeaconModel {
         case .uncertainExit, .reacquired:
             statusText = appLocalized("guide.uncertainRecovered")
             if driverChannel { break }
-            // car는 복귀 뒤 "지금 구간" 전문을 함께 읽는다 — 재획득 재구성이 현재 유닛을 낭독
-            // 완료로 두므로(restateAt) 이대로면 터널을 나온 뒤 다음 경계까지 안내가 없다(K2 §3.4).
-            if sessionKind == .car, let gs = guideState {
+            // car는 **재획득** 뒤 "지금 구간" 전문을 함께 읽는다 — 전역 재투영 뒤라 stepIndex가
+            // 현재이고, restateAt이 그 유닛을 낭독 완료로 두어 이대로면 다음 경계까지 안내가 없다
+            // (K2 §3.4). ⚠ uncertainExit에는 붙이지 않는다 — 복귀 fix는 d를 갱신하지 않아
+            // stepIndex가 공백 전 스텝이고, 따라잡기 뒤 6c가 현재 유닛을 어차피 읽는다(spec 리뷰 B2).
+            if case .reacquired = event, sessionKind == .car, let gs = guideState {
                 let current = GuideText.unit(route: route, indices: unitAt(route: route, index: gs.stepIndex))
                 announce("\(statusText) \(current)")
             } else {
@@ -2868,7 +2870,8 @@ final class BeaconModel {
         // 있다. 우선순위(VO 전용)는 무의미. `driverChannel`은 stop()이 지우지 않아 도착
         // 문장도 이 채널로 나간다(B10).
         if driverChannel {
-            TtsPlayer.shared.speakGuidance(message)
+            // 낭독 채널이라 거리 단위 정정(`spokenUnits`)은 같이 지난다(CLAUDE.md 거리 표기 계약).
+            TtsPlayer.shared.speakGuidance(spokenUnits(message))
             return true
         }
         // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가

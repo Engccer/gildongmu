@@ -4,83 +4,391 @@
     {
       "name": "실경로 8스텝 근사 — 전 국면 전이(직진→회전 접근→바닥 강등→짧은 유닛→횡단→병합→상태 대체·복귀→이탈→최종 유닛)",
       "steps": [
-        { "len": 24, "desc": "자택 앞에서 진입로를 따라 24m 이동", "anchor": "자택" },
-        { "len": 10, "desc": "오른쪽으로 돌아 10m 이동" },
-        { "len": 58, "desc": "왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동", "target": "파리바게뜨" },
-        { "len": 21, "desc": "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음" },
-        { "len": 40, "desc": "천중로를 따라 40m 이동" },
-        { "len": 30, "desc": "30m 이동" },
-        { "len": 35, "desc": "약국 앞에서 오른쪽으로 돌아 주택 A까지 35m 이동", "target": "주택 A", "anchor": "약국" },
-        { "len": 12, "desc": "왼쪽으로 돌아 목적지까지 12m 이동", "target": "목적지" }
+        {
+          "len": 24,
+          "desc": "자택 앞에서 진입로를 따라 24m 이동",
+          "anchor": "자택"
+        },
+        {
+          "len": 10,
+          "desc": "오른쪽으로 돌아 10m 이동"
+        },
+        {
+          "len": 58,
+          "desc": "왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동",
+          "target": "파리바게뜨"
+        },
+        {
+          "len": 21,
+          "desc": "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음"
+        },
+        {
+          "len": 40,
+          "desc": "천중로를 따라 40m 이동"
+        },
+        {
+          "len": 30,
+          "desc": "30m 이동"
+        },
+        {
+          "len": 35,
+          "desc": "약국 앞에서 오른쪽으로 돌아 주택 A까지 35m 이동",
+          "target": "주택 A",
+          "anchor": "약국"
+        },
+        {
+          "len": 12,
+          "desc": "왼쪽으로 돌아 목적지까지 12m 이동",
+          "target": "목적지"
+        }
       ],
       "baselineD": 0,
       "inputs": [
-        { "d": 0, "phase": "following" },
-        { "d": 5, "phase": "following" },
-        { "d": 10, "phase": "following" },
-        { "d": 13.2, "phase": "following" },
-        { "d": 21, "phase": "following" },
-        { "d": 30, "phase": "following" },
-        { "d": 30, "phase": "uncertain" },
-        { "d": 30, "phase": "reacquiring" },
-        { "d": 30, "phase": "following" },
-        { "d": 75, "phase": "following" },
-        { "d": 85, "phase": "following" },
-        { "d": 110, "phase": "following" },
-        { "d": 110, "phase": "offRoute" },
-        { "d": 168, "phase": "following" },
-        { "d": 205, "phase": "following" },
-        { "d": 215, "phase": "following" },
-        { "d": 230, "phase": "following" }
+        {
+          "d": 0,
+          "phase": "following"
+        },
+        {
+          "d": 5,
+          "phase": "following"
+        },
+        {
+          "d": 10,
+          "phase": "following"
+        },
+        {
+          "d": 13.2,
+          "phase": "following"
+        },
+        {
+          "d": 21,
+          "phase": "following"
+        },
+        {
+          "d": 30,
+          "phase": "following"
+        },
+        {
+          "d": 30,
+          "phase": "uncertain"
+        },
+        {
+          "d": 30,
+          "phase": "reacquiring"
+        },
+        {
+          "d": 30,
+          "phase": "following"
+        },
+        {
+          "d": 75,
+          "phase": "following"
+        },
+        {
+          "d": 85,
+          "phase": "following"
+        },
+        {
+          "d": 110,
+          "phase": "following"
+        },
+        {
+          "d": 110,
+          "phase": "offRoute"
+        },
+        {
+          "d": 168,
+          "phase": "following"
+        },
+        {
+          "d": 205,
+          "phase": "following"
+        },
+        {
+          "d": 215,
+          "phase": "following"
+        },
+        {
+          "d": 230,
+          "phase": "following"
+        }
       ],
       "expect": [
-        { "afterInput": 0, "top": "24m 직진하세요", "next": "다음 안내, 오른쪽으로 도세요" },
-        { "afterInput": 1, "top": "14m 직진하세요", "next": "다음 안내, 오른쪽으로 도세요" },
-        { "afterInput": 2, "top": "4m 후 오른쪽으로 도세요", "next": "다음 안내, 왼쪽으로 도세요" },
-        { "afterInput": 3, "top": "잠시 후 오른쪽으로 도세요", "next": "다음 안내, 왼쪽으로 도세요" },
-        { "afterInput": 4, "top": "3m 후 왼쪽으로 도세요", "next": "다음 안내, 파리바게뜨까지 58m 직진" },
-        { "afterInput": 5, "top": "파리바게뜨까지 52m 직진하세요", "next": "다음 안내, 횡단보도를 건너세요" },
-        { "afterInput": 6, "top": "위치 확신이 낮습니다", "next": "다음 안내, 횡단보도를 건너세요" },
-        { "afterInput": 7, "top": "현재 위치를 다시 파악하는 중입니다", "next": "다음 안내, 횡단보도를 건너세요" },
-        { "afterInput": 8, "top": "파리바게뜨까지 52m 직진하세요", "next": "다음 안내, 횡단보도를 건너세요" },
-        { "afterInput": 9, "top": "7m 후 횡단보도를 건너세요", "next": "다음 안내, 횡단보도를 건너세요" },
-        { "afterInput": 10, "top": "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음", "next": "다음 안내, 70m 직진" },
-        { "afterInput": 11, "top": "63m 직진하세요", "next": "다음 안내, 약국 앞에서 오른쪽으로 도세요" },
-        { "afterInput": 12, "top": "경로에서 벗어난 것 같습니다", "next": "" },
-        { "afterInput": 13, "top": "5m 후 오른쪽으로 도세요", "next": "다음 안내, 주택 A까지 35m 직진" },
-        { "afterInput": 14, "top": "3m 후 왼쪽으로 도세요", "next": "다음 안내, 목적지까지 12m 직진" },
-        { "afterInput": 15, "top": "목적지까지 5m 직진하세요", "next": "" },
-        { "afterInput": 16, "top": "목적지까지 0m 직진하세요", "next": "" }
+        {
+          "afterInput": 0,
+          "top": "24m 직진하세요",
+          "next": "다음 안내, 오른쪽으로 도세요"
+        },
+        {
+          "afterInput": 1,
+          "top": "14m 직진하세요",
+          "next": "다음 안내, 오른쪽으로 도세요"
+        },
+        {
+          "afterInput": 2,
+          "top": "4m 후 오른쪽으로 도세요",
+          "next": "다음 안내, 왼쪽으로 도세요"
+        },
+        {
+          "afterInput": 3,
+          "top": "잠시 후 오른쪽으로 도세요",
+          "next": "다음 안내, 왼쪽으로 도세요"
+        },
+        {
+          "afterInput": 4,
+          "top": "3m 후 왼쪽으로 도세요",
+          "next": "다음 안내, 파리바게뜨까지 58m 직진"
+        },
+        {
+          "afterInput": 5,
+          "top": "파리바게뜨까지 52m 직진하세요",
+          "next": "다음 안내, 횡단보도를 건너세요"
+        },
+        {
+          "afterInput": 6,
+          "top": "위치 확신이 낮습니다",
+          "next": "다음 안내, 횡단보도를 건너세요"
+        },
+        {
+          "afterInput": 7,
+          "top": "현재 위치를 다시 파악하는 중입니다",
+          "next": "다음 안내, 횡단보도를 건너세요"
+        },
+        {
+          "afterInput": 8,
+          "top": "파리바게뜨까지 52m 직진하세요",
+          "next": "다음 안내, 횡단보도를 건너세요"
+        },
+        {
+          "afterInput": 9,
+          "top": "7m 후 횡단보도를 건너세요",
+          "next": "다음 안내, 횡단보도를 건너세요"
+        },
+        {
+          "afterInput": 10,
+          "top": "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음",
+          "next": "다음 안내, 70m 직진"
+        },
+        {
+          "afterInput": 11,
+          "top": "63m 직진하세요",
+          "next": "다음 안내, 약국 앞에서 오른쪽으로 도세요"
+        },
+        {
+          "afterInput": 12,
+          "top": "경로에서 벗어난 것 같습니다",
+          "next": ""
+        },
+        {
+          "afterInput": 13,
+          "top": "5m 후 오른쪽으로 도세요",
+          "next": "다음 안내, 주택 A까지 35m 직진"
+        },
+        {
+          "afterInput": 14,
+          "top": "3m 후 왼쪽으로 도세요",
+          "next": "다음 안내, 목적지까지 12m 직진"
+        },
+        {
+          "afterInput": 15,
+          "top": "목적지까지 5m 직진하세요",
+          "next": ""
+        },
+        {
+          "afterInput": 16,
+          "top": "목적지까지 0m 직진하세요",
+          "next": ""
+        }
       ]
     },
     {
       "name": "단조 클램프 — 주입 역행은 직전 표시값 유지(실전 d는 단조라 방어층, F4)",
       "steps": [
-        { "len": 100, "desc": "목적지까지 100m 이동", "target": "목적지" }
+        {
+          "len": 100,
+          "desc": "목적지까지 100m 이동",
+          "target": "목적지"
+        }
       ],
       "baselineD": 0,
       "inputs": [
-        { "d": 30, "phase": "following" },
-        { "d": 28, "phase": "following" }
+        {
+          "d": 30,
+          "phase": "following"
+        },
+        {
+          "d": 28,
+          "phase": "following"
+        }
       ],
       "expect": [
-        { "afterInput": 0, "top": "목적지까지 60m 직진하세요", "next": "" },
-        { "afterInput": 1, "top": "목적지까지 60m 직진하세요", "next": "" }
+        {
+          "afterInput": 0,
+          "top": "목적지까지 60m 직진하세요",
+          "next": ""
+        },
+        {
+          "afterInput": 1,
+          "top": "목적지까지 60m 직진하세요",
+          "next": ""
+        }
       ]
     },
     {
       "name": "재조회 리셋 — 램프인 재시작으로 값이 커지는 것이 정당(F7)",
       "steps": [
-        { "len": 100, "desc": "목적지까지 100m 이동", "target": "목적지" }
+        {
+          "len": 100,
+          "desc": "목적지까지 100m 이동",
+          "target": "목적지"
+        }
       ],
       "baselineD": 0,
       "inputs": [
-        { "d": 50, "phase": "following" },
-        { "d": 50, "phase": "following", "reset": true, "baselineD": 50 }
+        {
+          "d": 50,
+          "phase": "following"
+        },
+        {
+          "d": 50,
+          "phase": "following",
+          "reset": true,
+          "baselineD": 50
+        }
       ],
       "expect": [
-        { "afterInput": 0, "top": "목적지까지 40m 직진하세요", "next": "" },
-        { "afterInput": 1, "top": "목적지까지 50m 직진하세요", "next": "" }
+        {
+          "afterInput": 0,
+          "top": "목적지까지 40m 직진하세요",
+          "next": ""
+        },
+        {
+          "afterInput": 1,
+          "top": "목적지까지 50m 직진하세요",
+          "next": ""
+        }
+      ]
+    },
+    {
+      "name": "car: 회전 접근 전환이 인자 turnApproachM(110)에서 일어난다 — 도보 10m가 아니라(K2 §4)",
+      "kind": "car",
+      "turnApproachM": 110,
+      "steps": [
+        {
+          "len": 600,
+          "desc": "올림픽로를 따라 600m 이동"
+        },
+        {
+          "len": 200,
+          "desc": "교차로에서 우회전 후 천호대로를 따라 200m 이동",
+          "action": "right"
+        },
+        {
+          "len": 300,
+          "desc": "직진C"
+        }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        {
+          "d": 0,
+          "phase": "following"
+        },
+        {
+          "d": 470,
+          "phase": "following"
+        },
+        {
+          "d": 480,
+          "phase": "following"
+        },
+        {
+          "d": 589.5,
+          "phase": "following"
+        },
+        {
+          "d": 650,
+          "phase": "following"
+        }
+      ],
+      "expect": [
+        {
+          "afterInput": 0,
+          "top": "600m 직진하세요",
+          "next": "다음 안내, 우회전하세요"
+        },
+        {
+          "afterInput": 1,
+          "top": "120m 직진하세요",
+          "next": "다음 안내, 우회전하세요"
+        },
+        {
+          "afterInput": 2,
+          "top": "110m 후 우회전하세요",
+          "next": "다음 안내, 500m 직진"
+        },
+        {
+          "afterInput": 3,
+          "top": "잠시 후 우회전하세요",
+          "next": "다음 안내, 500m 직진"
+        },
+        {
+          "afterInput": 4,
+          "top": "440m 직진하세요",
+          "next": ""
+        }
+      ]
+    },
+    {
+      "name": "car: 행동 없는 경계(터널·직진 갈래)는 앞 유닛에 흡수되고, 다음 회전 예고만 남는다(K2 §4)",
+      "kind": "car",
+      "turnApproachM": 50,
+      "steps": [
+        {
+          "len": 300,
+          "desc": "직진A"
+        },
+        {
+          "len": 100,
+          "desc": "남산1호터널을 지나 100m 이동"
+        },
+        {
+          "len": 100,
+          "desc": "교차로에서 좌회전 후 100m 이동",
+          "action": "left"
+        }
+      ],
+      "baselineD": 0,
+      "inputs": [
+        {
+          "d": 0,
+          "phase": "following"
+        },
+        {
+          "d": 320,
+          "phase": "following"
+        },
+        {
+          "d": 360,
+          "phase": "following"
+        }
+      ],
+      "expect": [
+        {
+          "afterInput": 0,
+          "top": "400m 직진하세요",
+          "next": "다음 안내, 좌회전하세요"
+        },
+        {
+          "afterInput": 1,
+          "top": "70m 직진하세요",
+          "next": "다음 안내, 좌회전하세요"
+        },
+        {
+          "afterInput": 2,
+          "top": "30m 후 좌회전하세요",
+          "next": "다음 안내, 100m 직진"
+        }
       ]
     }
   ]

@@ -121,7 +121,8 @@ public func liveStepsFrom(
         let fragments = span.index < live.count ? live[span.index] : nil
         return LiveStepInput(
             description: span.description, startD: span.startD, endD: span.endD,
-            target: fragments?.target, anchor: fragments?.anchor
+            target: fragments?.target, anchor: fragments?.anchor,
+            action: span.action  // 자동차 서버 투영(K2 §4) — 웹 liveStepsFrom 미러
         )
     }
 }

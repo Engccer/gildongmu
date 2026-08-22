@@ -92,7 +92,7 @@ imminentAhead = max(tuning.imminentAheadM, vPrev × tuning.imminentAheadS)
 - car `imminentAheadM`이 null이 아니게 되므로 `GuideTuning` 주석의 "보행 전용" 경고는 지우고 이 spec을 가리킨다.
 - **속도 표본이 2개 미만이면 `imminentUnknownSpeedM`**(car 60m ≈ 10m/s×6초, walk 20=바닥)을 쓴다(설계 리뷰 B4 — 터널 복귀·시작 직후 표본이 비면 바닥 15m만 남아 30m 앞 교차로가 침묵한다).
 - **속도 표본 정확도 상한은 프로파일 값**(`speedSampleMaxAccM`: walk 20, car 50=uncertain 게이트). 차량은 임계가 `v×T`라 정확도 21~50m 구간에서 표본이 끊기면 시간 축이 죽는다.
-- **car는 전문 선행을 요구하지 않는다**(`imminentNeedsAnnounce: false`, 설계 리뷰 B3): 명령 "우회전"은 자기 완결이고, 재획득·시작 직후 경계가 임계 안이면 전문을 기다리는 한 fix(20m/s에서 20m)에 경계를 지나 큐가 영영 사라진다. 명령이 전문보다 먼저 나가면 `announcedUpTo`도 함께 올려 6c가 지난 행동의 전문을 회전 뒤에 읽지 않는다(도로 정보는 주기 통지 몫). walk는 종전대로 선행 요구.
+- **car는 전문 선행을 요구하지 않는다**(`imminentNeedsAnnounce: false`, 설계 리뷰 B3): 명령 "우회전"은 자기 완결이고, 재획득·시작 직후 경계가 임계 안이면 전문을 기다리는 한 fix(20m/s에서 20m)에 경계를 지나 큐가 영영 사라진다. 명령이 전문보다 먼저 나가면 `announcedUpTo`·`farNoticedUpTo`를 함께 올려 6c가 지난 행동의 전문을, 6b'가 뒤늦은 원거리 예고를 내지 않는다(도로 정보는 주기 통지 몫). walk는 종전대로 선행 요구.
 
 ### 3.3 운전자 프로파일의 정의
 운전자 모드는 리듀서에서 **`imminentAheadS` 하나만** 다르다. "낮은 빈도"는 리듀서가 아니라 **오케스트레이터가 이벤트를 거르는 것**으로 구현한다(§6.2) — 리듀서에 발화 정책을 넣으면 웹·Kit 미러와 fixture가 청취자 축까지 곱해진다. 리듀서는 같은 이벤트를 내고 iOS가 운전자 모드에서 `periodic`·`uncertain*`·`reacquir*`를 **발화하지 않는다**(상태 행은 갱신).
@@ -117,15 +117,19 @@ walk는 전부 종전 동작이다(fixture "walk: 촘촘한 uncertain" — 순�
 | car: `action` 없는 스텝 경계(터널)는 큐 없이 래치 전진, 다음 회전 정상 | 침묵 계약 |
 | car: 운전자 프로파일은 같은 fix열에서 임박이 더 앞(9초) | `CAR_DRIVER_TUNING` |
 | car: 전문 낭독은 무톤, 임박이 톤을 든다(도보 동형) | 종전 "car 전문 ahead 톤" 시나리오 **교체** |
-| car: 촘촘한 uncertain 뒤 창 따라잡기 — 점프 fix 무발화, 따라잡은 뒤 현재 유닛 전문만 | `silentCatchUp` ①③ |
-| car: uncertain 복귀 공백 >10초는 재획득 | `silentCatchUp` ② |
+| car: 짧은 uncertain(9초) 뒤 창 따라잡기 — 점프 fix 이벤트 없음, 공백 중 지난 회전 침묵 | `silentCatchUp` ① |
+| car: 촘촘한 불량 fix의 uncertain 30초 — `uncertainSince` 기준 재획득 | `silentCatchUp` ② |
+| car: uncertain 복귀 공백 >10초(fix 자체 끊김)는 재획득 | `silentCatchUp` ② |
+| live-rows: car 회전 접근 전환이 `turnApproachM` 인자(110)에서 / 행동 없는 경계 흡수 | §4 |
 | walk: 같은 점프에서 종전대로 순차 발화 | 도보 불변 |
 
-fixture 스텝 선언에 `action` 선택 필드 추가(러너가 `buildGuideRoute`에 전달). `walk-action-cases.json`에 `imminentTone(keepLeft)=left`·`(keepRight)=right` 2건.
+fixture 스텝 선언에 `action` 선택 필드 추가(러너가 `buildGuideRoute`에 전달). `imminentTone(keepLeft)=left`·`(keepRight)=right`는 양쪽 테스트 파일에 직접 단언한다(2값이라 fixture를 늘리지 않는다).
 
 ## 4. 하단 2행 car 확장 (`guideLiveRows`)
-- `LiveStepInput.action?: GuideAction` 추가. `buildDisplayUnits`는 `step.action ?? walkStepAction(description)`으로 행동을 고른다(§3.1 동형). car는 `live` 조각이 없어 `target`·`anchor`는 null → 윗줄 "{n}m 직진"(`straight` target null), 아랫줄 `action` anchor null("{action}" 단독 틀은 이미 `nextAction` anchor 생략 경로가 있는지 확인해 없으면 `guide.nextActionNoAnchor` 추가).
+- `LiveStepInput.action?: GuideAction` 추가. `buildDisplayUnits(steps, source)`는 §3.1의 `stepActionFor`로 행동을 고른다(car는 `action`만 — 폴백 없음). car 조회 경로는 `liveStepsFrom(route, [])`로 표시 입력을 만든다(live 조각 없이 `action`만 실린다 — 빈 배열을 주면 하단 2행이 통째로 죽는다, 리뷰 B1). car는 `live` 조각이 없어 `target`·`anchor`는 null → 윗줄 "{n}m 직진"(`straight` target null), 아랫줄 `action` anchor null("{action}" 단독 틀은 이미 `nextAction` anchor 생략 경로가 있는지 확인해 없으면 `guide.nextActionNoAnchor` 추가).
 - 회전 접근 전환 잔여 `TURN_APPROACH_M`(10m)는 도보 상수다. 차량은 임박 큐 시점과 맞추기 위해 `guideLiveRows(prev, units, d, baselineD, phase, turnApproachM)`에 인자를 추가한다 — walk는 `TURN_APPROACH_M`, car는 오케스트레이터가 **리듀서와 같은 식**(`max(15, vPrev×S)`에서 표시 lag 10m를 뺀 값, 하한 0)을 넘긴다. 기본값 없음(안전 인자 계약 [[no-default-for-safety-parameters]]).
+- `turnApproachM`은 오케스트레이터가 **이번 fix를 넣은 뒤** 표본으로 계산한다(`out.state.speedSamples`)라 리듀서 6a(직전 fix까지 표본)와 표본 하나만큼 어긋날 수 있다 — 표시 전환이 한 fix 갈리는 정도라 수용(spec 리뷰 M7).
+- "현재 안내" 행(`currentGuidanceText`)은 **car에서 유지**하고 liveRows와 병존한다(초안의 "liveRows가 대체" 철회, 리뷰 M4) — 도로명 포함 전문은 주행 중 "지금 어느 도로"의 정보라 두 줄로 대체되지 않는다. 시트는 car 상세에서 현재 안내 → 윗줄 → 아랫줄 순.
 - `displayEffectiveD`의 `PROJECTION_LAG_M`(10m)은 그대로 쓴다. 차량 관측 지연(1초×v)을 표시에도 보정하려면 lag가 속도 함수가 되어야 하는데, 표시 행은 숫자 일관성이 순간 정확성보다 중요하다([[live-display-coordinate-consistency]]). B1 판정 뒤 재검토.
 - 틀 키는 도보 것을 재사용하고(`guide.nextAction`·`nextStraightNoName`·`liveTurnIn`·`progressNext`), 행동 구는 수단별이다: walk `guide.liveAction.*`(기존 5키, keep*는 도보 문형에 없어 추가하지 않는다) / car `guide.carLiveAction.*`(left·right·back·keepLeft·keepRight — "좌회전하세요"·"왼쪽 길로 가세요"). `GuideText.liveActionPhrase`와 웹 렌더가 `sessionKind`를 받는다. 러너(fixture)는 디스크립터 수준에서 비교하므로 문구 분기는 러너 밖이다.
 - fixture `guide-live-rows-scenarios.json`에 car 시나리오 2건(회전 접근 전환이 인자 값에서 일어남, action 없는 경계 흡수).
@@ -140,7 +144,7 @@ fixture 스텝 선언에 `action` 선택 필드 추가(러너가 `buildGuideRout
 Kit `CarListener: String, CaseIterable { passenger, driver }`, `storageKey = "carListener"`, 기본 `.passenger`. `SettingsView`에 `Picker(ios.settings.carListener)`를 `#if DEBUG || EXPERIMENTAL` 안 `leftRightTone` 피커 옆에 둔다(자동차 안내가 봉인 안이라 정식판엔 뜻이 없는 설정이다 — 졸업 때 `#if`를 함께 지운다). 세션 시작 시 읽어 `listener`로 고정한다(세션 중 설정 변경은 다음 세션부터 — 발화 채널이 중간에 바뀌면 진행 중 통지 슬롯이 갈린다). `tuning`은 `sessionKind == .car ? (listener == .driver ? .carDriver : .car) : .walk`.
 
 ### 6.2 운전자 음성 채널
-- `post()`가 `sessionKind == .car && listener == .driver`면 `AccessibilityNotification` 대신 `TtsPlayer.shared.speakGuidance(text)`를 부른다. **전경 가드를 지나지 않는다** — 운전자 채널은 스피커 재생이고 백그라운드 오디오 모드가 있으며, 잠금 중 발화가 목적 그 자체다(`guideAudioStep`의 "백그라운드는 톤만" 규칙은 VO 통지에 관한 것이다. 이 채널은 톤과 같은 취급). `outputSuppressed`(받아쓰기 중) 가드는 유지(마이크 오염).
+- `post()`가 `driverChannel`(세션 시작에 `sessionKind == .car && listener == .driver`로 고정, `stop()`이 지우지 않는 Bool — 초안의 `outputProfile`)이면 `AccessibilityNotification` 대신 `TtsPlayer.shared.speakGuidance(spokenUnits(text))`를 부른다(거리 단위 정정 `spokenUnits`는 낭독 채널 공통 — AVSpeech가 "120m"를 어떻게 읽는지는 B1 실주행 ⑤ 판정). **전경 가드를 지나지 않는다** — 운전자 채널은 스피커 재생이고 백그라운드 오디오 모드가 있으며, 잠금 중 발화가 목적 그 자체다(`guideAudioStep`의 "백그라운드는 톤만" 규칙은 VO 통지에 관한 것이다. 이 채널은 톤과 같은 취급). `outputSuppressed`(받아쓰기 중) 가드는 유지(마이크 오염).
 - `TtsPlayer.speakGuidance(_:)`(신규): 기존 `synthesizer`로 즉시 발화, **직전 안내 발화를 끊는다**(latest-wins — 임박 명령이 전문 뒤에 줄 서면 시점을 놓친다). `activatePlaybackSession()`을 **부르지 않는다** — 안내 세션의 오디오 카테고리는 `BeaconTonePlayer`가 소유하고(`.playback`, `didPromote` 원복 규칙) TtsPlayer가 `.duckOthers`로 다시 세팅하면 `GuideAudioSession` 판정 밖에서 카테고리가 바뀐다. 채팅 재생 중이면 `stop()`으로 끊는다(generation 증가).
 - `DeferredAnnouncer` 지연(톤 뒤 발화)은 그대로 지난다 — 채널이 바뀌어도 "소리와 음성은 같은 청각 채널"은 참이다.
 - 운전자 모드에서 **거르는 이벤트**: `periodic`·`bundleReread`·`uncertainEnter/Exit`·`reacquiring/reacquired`·`speedSuggest`(이미 무시). 내는 것: `announceSteps`·`farNotice`(둘 다 **짧게** — `{distance} 앞 {command}`, 행동 없는 스텝은 무발화. 설계 리뷰 M5: 재작성 전문·복합 유닛을 AVSpeech로 읽으면 임박 명령과 경쟁한다)·`imminent`(명령)·`offRoute`/`backOnRoute`·`waypointReached`·최종 접근 진입·도착·시작·재조회. 동승자 모드는 종전 도보와 같다(전부 VO 통지). 리뷰 B8("걸러진 이벤트가 판정 슬롯을 소비한다")은 기각 — 걸러지는 이벤트는 전부 판정 사슬의 끝(`periodic`·`bundleReread`)이거나 어떤 임박도 평가되지 않는 조기 반환(`uncertain*`·`reacquir*`)이라 같은 fix에서 잃는 하위 판정이 없다.
@@ -159,16 +163,17 @@ Kit `CarListener: String, CaseIterable { passenger, driver }`, `storageKey = "ca
 - `handleFinalApproach`의 `arrived` 판정을 `sessionKind == .car ? carArrivalStep(...) : distance <= finalApproachArriveMeters`로 가른다. 도착 뒤 경로는 종전과 같다(종 `.nearby` → `stop()` → `arrivalDest` → `announce("guide.arrived", .high)`).
 - ⚠ **신호 대기 오판 위험은 잠정 수용**: 목적지 40m 안 적신호 정차가 도착으로 잡힐 수 있다. B1 실주행 판정 축에 적고(§9), 오판이 실측되면 "정지 지속 N초"를 더한다(지금은 넣지 않는다 — 적신호도 N초를 넘기므로 지속 시간은 답이 아닐 가능성이 높고, 그때는 거리 축을 좁히는 쪽이 맞다).
 - 종료 화면: `BeaconTrackingSheet.arrivalSection`은 이미 수단 무관이다. 자동차 세션의 종료 화면에 **"여기서 도보 안내 시작"** 버튼을 더한다(`ios.beacon.carWalkHandoffStart`, 대중교통 `transitGuide.walkHandoffStart` 틀). 걸음 요약 없음(`sessionStartedAt`이 car에서 nil이라 이미 나오지 않는다).
-- `stop()`이 `sessionKind`를 `.walk`로 되돌리므로 시트가 car 세션이었음을 알 수 없다 → `BeaconModel.arrivalSessionKind: GuideSessionKind?`를 **`stop()` 앞에서** 기록하고 `clearArrival()`이 비운다(설계 리뷰 B10 — 초안의 "`arrivalDest` 대입 직전"은 `stop()` 뒤라 항상 walk가 적힌다). 시트는 `arrivalSessionKind == .car`일 때만 인계 버튼을 보인다. 발화 채널 판정도 `sessionKind`가 아니라 `stop()`이 지우지 않는 `outputProfile`(세션 시작에 고정, 다음 시작에 교체)을 본다 — 도착 문장이 운전자 채널로 나가야 한다. 운전자 도착 발화가 백그라운드에서 잘리지 않도록 `BeaconTonePlayer.endSession`의 카테고리 원복 유예에 발화 길이를 더한다(B9).
+- `stop()`이 `sessionKind`를 `.walk`로 되돌리므로 시트가 car 세션이었음을 알 수 없다 → `BeaconModel.arrivalSessionKind: GuideSessionKind?`를 **`stop()` 앞에서** 기록하고 `clearArrival()`이 비운다(설계 리뷰 B10 — 초안의 "`arrivalDest` 대입 직전"은 `stop()` 뒤라 항상 walk가 적힌다). 시트는 `arrivalSessionKind == .car`일 때만 인계 버튼을 보인다. 발화 채널 판정도 `sessionKind`가 아니라 `stop()`이 지우지 않는 `driverChannel`(세션 시작에 고정, 다음 시작에 교체)을 본다 — 도착 문장이 운전자 채널로 나가야 한다. 운전자 도착 발화가 백그라운드에서 잘리지 않도록 `BeaconTonePlayer.endSession(holdSeconds:)`의 카테고리 원복 유예에 **4초 고정**을 더한다(B9 — "목적지에 도착했습니다"는 1배속 2초 안팎이고 utterance 길이를 재려면 delegate 왕복이 필요해 잠정 고정값. 수동 중지에도 붙지만 원복이 4초 늦을 뿐 해롭지 않다).
+- **car 재획득(`reacquired`) 뒤 동승자에게 "지금 구간" 전문을 덧붙여 읽는다**(`restateAt`이 현재 유닛을 낭독 완료로 두어 다음 경계까지 안내가 없다). ⚠ `uncertainExit`에는 붙이지 않는다 — 복귀 fix는 d를 갱신하지 않아 `stepIndex`가 공백 전 스텝이다(spec 리뷰 B2).
 - 인계: `GuideSession.acceptCarWalkHandoff()` — `beacon.arrivalDest`에서 dest·label을 읽고 `beacon.clearArrival()` 뒤 `startBeacon(StartRequest(kind: .walk, accessible: false, variant: nil, shortestAvailable: false, waypoint: nil))`. 대중교통 인계의 600ms 지연은 transit→beacon 모델 전환 경합 때문이었고 여기서는 같은 모델이라 **지연 없음**. `startBeacon(` 호출이 하나 늘어 `guidance-gate-drift` 기대값 6→7, spec 표(`2026-08-04-…` §3.2 표가 정본이면 그 표, 없으면 이 spec §9 표)를 갱신한다. 도보 인계는 실험판 봉인 안에서만 도달 가능한 버튼이지만 **도보 세션 자체는 졸업한 기능**이라 게이트를 추가로 걸지 않는다.
 - 포커스: 종료 화면 착지는 종전 `landArrivedFocus`(도착 문장). 인계 버튼은 그 다음 행.
 
 ### 6.5 안내 중 경유지 삭제(N4 잔여)
-- 시트 경유지 행 옆에 `waypoint != nil`일 때만 **"경유지 삭제"** 버튼(`ios.guide.waypointRemove`). 누르면 `model.removeWaypoint()`: `waypoint = nil`, `syncStartRequestWithSession()`, 제안·프리뷰 소거, `performReroute(intent: .waypointRemoved)`(기존 `setWaypoint` 재조회 경로 동형)로 출발→도착 재조회, 통지 `ios.guide.waypointRemoved = 경유지 {label} 삭제, 경로를 다시 조회합니다`(`.high` — 버튼이 사라지며 포커스가 옮겨간다, 헌장 판별선). 버튼이 사라지므로 포커스는 **중지 버튼**으로 선점(`stopFocused`, 재조회 버튼 선례).
+- 시트 경유지 행 옆에 `waypoint != nil`일 때만 **"경유지 삭제"** 버튼(`ios.guide.waypointRemove`). 누르면 `model.removeWaypoint()`: `waypoint = nil`, `syncStartRequestWithSession()`, 제안·프리뷰 소거, `reacquireRoute()`(기존 `setWaypoint` 재조회 경로 그대로)로 출발→도착 재조회, 통지 `ios.guide.waypointRemoved = 경유지 {label} 삭제, 경로를 다시 조회합니다`(`.high` — 버튼이 사라지며 포커스가 옮겨간다, 헌장 판별선). 버튼이 사라지므로 포커스는 **중지 버튼**으로 선점(`stopFocused`, 재조회 버튼 선례).
 - `routeWaypointLabel`은 재조회 커밋이 nil로 갱신한다(기존 계약).
 
 ### 6.6 로그 표식
-`start()`가 첫 fix 전에 `guideDiagLog("session kind=\(kind) listener=\(listener) mode=\(mode) variant=…")` 한 줄을 남긴다. 로그 색인 `docs/superpowers/specs/logs/README.md`에 "2026-08-23 이후 로그는 `session kind=`로 수단을 가른다"를 적는다.
+`start()`가 첫 fix 전에 `guideDiagLog("session kind=\(kind) listener=\(listener)")` 한 줄을 남긴다(mode·variant는 그 시점에 미정 — 조회 커밋 뒤 `routeOrigin` 줄이 잇는다). 로그 색인 `docs/superpowers/specs/logs/README.md`에 "2026-08-23 이후 로그는 `session kind=`로 수단을 가른다"를 적는다.
 
 ## 7. 웹 (`useRouteGuide`)
 미러 의무는 순수 함수·fixture까지이고 UI 배선은 최소로 한다: `eventText`의 car 임박 문구(§6.3)·car 주기 단문(`carPeriodicLine`)·`liveStepsFrom`이 car 스텝의 `action`을 실어 하단 2행이 car에서도 도는 것(§4, `turnApproachM` 인자는 웹 훅이 같은 식으로 계산). 운전자 모드·도착 정차 판정·인계 버튼은 웹 비범위(웹 실시간 안내는 실보행 미검증 상태이고 자동차는 더 그렇다 — BACKLOG E4 웹 축). 웹 car 최종 접근은 종전 15m 도착 유지.
