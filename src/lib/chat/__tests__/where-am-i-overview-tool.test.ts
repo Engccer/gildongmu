@@ -109,6 +109,15 @@ describe("get_nearby_overview (채팅 도구, K3 ④)", () => {
     expect(r.source).toEqual([{ label: "source.kric" }]);
   });
 
+  it("버스 조각이 failed·none이면 TAGO를 인용하지 않는다(조각 상태는 불릿 상태와 별개)", async () => {
+    for (const state of ["failed", "none", "uncovered"]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockOverview.mockResolvedValue({ ...OVERVIEW, bullets: [{ kind: "transit", state: "ok", station: null, busStops: { state } }] } as any);
+      const r = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL }));
+      expect(r.source).toEqual([{ label: "source.kric" }]);
+    }
+  });
+
   it("장소 앵커가 있으면 앵커 기준", async () => {
     const anchor = { lat: 37.4988, lng: 127.0276, name: "강남역" };
     await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL, placeAnchor: anchor }));
