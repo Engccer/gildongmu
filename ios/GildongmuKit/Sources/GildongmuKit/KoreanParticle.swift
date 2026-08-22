@@ -16,24 +16,50 @@ public enum KoreanParticle {
     private static let hangulLast: UInt32 = 0xD7A3
     private static let jongseongCount: UInt32 = 28
 
-    /// 마지막 글자에 받침이 있는가. 한글 음절이 아니면 `nil`.
+    /// ㄹ 받침의 종성 인덱스 — "(으)로"만 이 받침을 받침 없음과 같이 다룬다(서울로·길동으로).
+    private static let jongseongRieul: UInt32 = 8
+
+    /// 마지막 글자의 종성 인덱스(0 = 받침 없음). 한글 음절이 아니면 `nil`.
     ///
     /// 한글 음절은 `0xAC00 + (초성 × 21 + 중성) × 28 + 종성`으로 배열되므로
     /// 종성 인덱스는 `(scalar - 0xAC00) % 28`이고 0이면 받침이 없다.
     ///
     /// ⚠ `last`가 아니라 **마지막 유니코드 스칼라**를 본다 — Swift의 Character는
     /// 자모 결합·이모지 변형 선택자를 한 글자로 묶으므로 스칼라 단위가 정본이다.
-    public static func hasFinalConsonant(_ word: String) -> Bool? {
+    private static func jongseongIndex(_ word: String) -> UInt32? {
         guard let scalar = word.unicodeScalars.last else { return nil }
         let value = scalar.value
         guard value >= hangulFirst, value <= hangulLast else { return nil }
-        return (value - hangulFirst) % jongseongCount != 0
+        return (value - hangulFirst) % jongseongCount
+    }
+
+    /// 마지막 글자에 받침이 있는가. 한글 음절이 아니면 `nil`.
+    public static func hasFinalConsonant(_ word: String) -> Bool? {
+        jongseongIndex(word).map { $0 != 0 }
     }
 
     /// 목적격 조사 `을`/`를`. 판정 불가면 `nil`.
     public static func object(_ word: String) -> String? {
         guard let final = hasFinalConsonant(word) else { return nil }
         return final ? "을" : "를"
+    }
+
+    /// 주격 조사 `이`/`가`. 판정 불가면 `nil`.
+    public static func subject(_ word: String) -> String? {
+        guard let final = hasFinalConsonant(word) else { return nil }
+        return final ? "이" : "가"
+    }
+
+    /// 보조사 `은`/`는`. 판정 불가면 `nil`.
+    public static func topic(_ word: String) -> String? {
+        guard let final = hasFinalConsonant(word) else { return nil }
+        return final ? "은" : "는"
+    }
+
+    /// 방향·자격 조사 `으로`/`로`. ㄹ 받침은 `로`(서울로). 판정 불가면 `nil`.
+    public static func direction(_ word: String) -> String? {
+        guard let index = jongseongIndex(word) else { return nil }
+        return (index == 0 || index == jongseongRieul) ? "로" : "으로"
     }
 
 }

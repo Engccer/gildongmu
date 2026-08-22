@@ -223,7 +223,7 @@ iOS 안내 시트의 제목 메뉴(장소 상세 보기·끊김 없는 목적지
 
 ### B9. 웹 "내 주변" 둘러보기 재편 미이식 (iOS 선행 2026-08-22)
 
-iOS는 "현재 위치 확인"과 "둘러보기"를 하나로 합치고 맨 위에 위치 문장 + "한눈에 보기" 5불릿(`/api/nearby/overview`) + 자동 펼침 "주변 상황"(장소 행이 상세로 열림)을 뒀다(M4). 웹 `NearbyHub`는 종전 구조(두 패널 + 버튼형 `SurroundingsScene`)다. **서버 집계라 웹은 렌더만 갈아 끼우면 된다** — 불릿 문장 템플릿은 `messages/*.json` `whereAmI.overview.*`가 이미 6로케일로 있고, scene 응답의 장소 필드(`id`·`lat`·`lng`·`categoryRaw`)도 이미 온다. 이식 시 함께 판정할 것: 웹 `WhereAmI.tsx`·`buildLocationNarrative`(Kit 포함) 죽은 코드 여부, 웹 `WalkInfraNearby` 유지. spec `2026-08-22-nearby-tab-restructure-design.md` §9.
+iOS는 "현재 위치 확인"과 "둘러보기"를 하나로 합치고 맨 위에 위치 문장 + "한눈에 보기" 6불릿(`/api/nearby/overview`) + 자동 펼침 "주변 상황"(장소 행이 상세로 열림)을 뒀다(M4). 웹 `NearbyHub`는 종전 구조(두 패널 + 버튼형 `SurroundingsScene`)다. **서버 집계라 웹은 렌더만 갈아 끼우면 된다** — 불릿 문장 템플릿은 `messages/*.json` `whereAmI.overview.*`가 이미 6로케일로 있고, scene 응답의 장소 필드(`id`·`lat`·`lng`·`categoryRaw`)도 이미 온다. 이식 시 함께 판정할 것: 웹 `WhereAmI.tsx`·`buildLocationNarrative`(Kit 포함) 죽은 코드 여부, 웹 `WalkInfraNearby` 유지. spec `2026-08-22-nearby-tab-restructure-design.md` §9.
 
 ### B8. 웹 채팅 산문 안 장소 → 상세 연결 없음 (iOS 선행 2026-08-17)
 

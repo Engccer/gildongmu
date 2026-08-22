@@ -13,19 +13,30 @@ import { PARTICLE_CASES } from "./korean-particle.test";
 
 const SWIFT_TEST = "ios/GildongmuKit/Tests/GildongmuKitTests/KoreanParticleTests.swift";
 
-/** Swift 테스트의 `particleCases` 표에서 `(단어, 목적격)`을 뽑는다. */
-function swiftCases(source: string): [string, string][] {
-  const block = /let particleCases: \[\(String, String\)\] = \[([\s\S]*?)\n\]/.exec(
-    source,
-  );
+type Row = [string, string, string, string, string];
+
+/** Swift 테스트의 `particleCases` 표에서 `(단어, 목적격, 주격, 보조사, 방향)`을 뽑는다. */
+function swiftCases(source: string): Row[] {
+  const block =
+    /let particleCases: \[\(String, String, String, String, String\)\] = \[([\s\S]*?)\n\]/.exec(
+      source,
+    );
   if (!block) {
     throw new Error(`${SWIFT_TEST}에서 particleCases 표를 찾지 못했다`);
   }
-  return [...block[1].matchAll(/\("([^"]*)",\s*"([^"]+)"\)/g)].map((m) => [m[1], m[2]]);
+  return [
+    ...block[1].matchAll(/\("([^"]*)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)"\)/g),
+  ].map((m) => [m[1], m[2], m[3], m[4], m[5]]);
 }
 
 /** 웹 정본을 Swift 표기(판정 불가 = `"-"`)로 옮긴다. */
-const webCases: [string, string][] = PARTICLE_CASES.map((c) => [c.word, c.object ?? "-"]);
+const webCases: Row[] = PARTICLE_CASES.map((c) => [
+  c.word,
+  c.object ?? "-",
+  c.subject ?? "-",
+  c.topic ?? "-",
+  c.direction ?? "-",
+]);
 
 describe("조사 판정 웹-iOS 드리프트", () => {
   it("Swift 테스트의 표가 웹 정본과 같다", () => {

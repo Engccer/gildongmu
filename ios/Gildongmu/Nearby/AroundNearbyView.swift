@@ -129,7 +129,7 @@ struct AroundNearbyView: View {
                         .id(topRowID)
                         .accessibilityFocused($focusedID, equals: topRowID)
 
-                    // 2. 한눈에 보기 — 불릿 5개, 항목당 한 문장(각 단일 Text = 한 접근성 객체).
+                    // 2. 한눈에 보기 — 불릿 6개, 항목당 문장 묶음(각 단일 Text = 한 접근성 객체).
                     overviewSection(payload)
 
                     // 3. 주변 상황 — 자동 펼침(헤딩이 발견 경로, 포커스 이동 없음).

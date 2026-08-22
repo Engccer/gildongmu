@@ -109,23 +109,43 @@ public func buildLocationNarrative(_ data: WhereAmIData, lang: String) -> [Strin
 private func overviewLabel(_ kind: OverviewPlaceKind, lang: String) -> String {
     switch kind {
     case .food: return kitLocalized("whereAmI.overview.labelFood", lang: lang)
+    case .cafe: return kitLocalized("whereAmI.overview.labelCafe", lang: lang)
     case .kids: return kitLocalized("whereAmI.overview.labelKids", lang: lang)
     case .events: return kitLocalized("whereAmI.overview.labelEvents", lang: lang)
     case .barrierFree: return kitLocalized("whereAmI.overview.labelBarrierFree", lang: lang)
     }
 }
 
+/// ko 라벨에 주격·보조사를 붙인다(라벨은 전부 한글이라 판정 불가가 없다). 다른 언어는 그대로.
+private func withSubject(_ label: String, lang: String) -> String {
+    lang == "ko" ? label + (KoreanParticle.subject(label) ?? "") : label
+}
+
+private func withTopic(_ label: String, lang: String) -> String {
+    lang == "ko" ? label + (KoreanParticle.topic(label) ?? "") : label
+}
+
+/// "가장 가까운 곳은 {name}(으)로 {direction}쪽 {distance}"의 장소명 자리. 장소명은 동적이라
+/// 조사를 템플릿에 박을 수 없다. 한글이 아니라 판정 불가면 조사 대신 쉼표로 물러난다
+/// ("GS25, 남쪽 40m" — `KoreanParticle` 계약: 조사를 못 정하는 것이 낭독 불능이 되면 안 된다).
+private func nameAsDestination(_ name: String, lang: String) -> String {
+    guard lang == "ko" else { return name }
+    return KoreanParticle.direction(name).map { name + $0 } ?? name + ","
+}
+
 private func overviewNearest(_ items: [OverviewPlace], lang: String) -> String {
     let parts = items.map {
         kitLocalized("whereAmI.overview.nearestItem", lang: lang,
-                     directionWord($0.bearing, lang: lang), formatDistance($0.distanceMeters), $0.name)
+                     nameAsDestination($0.name, lang: lang), directionWord($0.bearing, lang: lang),
+                     formatDistance($0.distanceMeters))
     }
     return kitLocalized("whereAmI.overview.nearestLead", lang: lang, parts.joined(separator: ", "))
 }
 
-/// 불릿당 한 문장. 상태별 문장이 전부 다르다(3-state 불변식) — 반경 문구는 불릿이 아니라
+/// 불릿당 문장 묶음(한 접근성 객체). 상태별 문장이 전부 다르다(3-state 불변식) — 반경 문구는
 /// 헤딩 부제(`whereAmI.overview.radius`)가 한 번만 말하고, none 문장만 반경을 품는다.
-/// 템플릿은 `messages/*.json` whereAmI.overview.*(6 로케일, LLM 아님).
+/// 템플릿은 `messages/*.json` whereAmI.overview.*(6 로케일, LLM 아님). 문장형은 위원장
+/// 판정 2026-08-22("아이 놀 곳이 9곳 있습니다. 가장 가까운 곳은 …입니다.").
 public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [String] {
     let radius = formatDistance(overview.radiusMeters)
     return overview.bullets.map { bullet in
@@ -135,11 +155,9 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
             if let station {
                 let line = station.line.map { kitLocalized("whereAmI.overview.transitLine", lang: lang, $0) } ?? ""
                 parts.append(kitLocalized("whereAmI.overview.transitStation", lang: lang,
-                                          station.name, line, directionWord(station.bearing, lang: lang),
+                                          line, nameAsDestination(station.name, lang: lang),
+                                          directionWord(station.bearing, lang: lang),
                                           formatDistance(station.distanceMeters)))
-            } else if bus == nil {
-                // 버스 조각이 없으면 연결어미("없고") 문장을 단독으로 두지 않는다(리뷰 D3).
-                parts.append(kitLocalized("whereAmI.overview.transitNoStationOnly", lang: lang, radius))
             } else {
                 parts.append(kitLocalized("whereAmI.overview.transitNoStation", lang: lang, radius))
             }
@@ -152,15 +170,18 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
             case .failed: parts.append(kitLocalized("whereAmI.overview.transitBusFailed", lang: lang))
             case nil: break
             }
-            return kitLocalized("whereAmI.overview.transitLead", lang: lang, parts.joined(separator: ", "))
+            return kitLocalized("whereAmI.overview.transitLead", lang: lang, parts.joined(separator: " "))
         case .place(let kind, let state):
             let label = overviewLabel(kind, lang: lang)
             switch state {
             case .ok(let count, let capped, let nearest):
                 return kitLocalized(capped ? "whereAmI.overview.okCapped" : "whereAmI.overview.ok", lang: lang,
-                                    label, String(count), overviewNearest(nearest, lang: lang))
-            case .empty: return kitLocalized("whereAmI.overview.none", lang: lang, label, radius)
-            case .unavailableSeoulOnly: return kitLocalized("whereAmI.overview.unavailableSeoulOnly", lang: lang, label)
+                                    withSubject(label, lang: lang), String(count),
+                                    overviewNearest(nearest, lang: lang))
+            case .empty:
+                return kitLocalized("whereAmI.overview.none", lang: lang, withTopic(label, lang: lang), radius)
+            case .unavailableSeoulOnly:
+                return kitLocalized("whereAmI.overview.unavailableSeoulOnly", lang: lang, withTopic(label, lang: lang))
             case .failed: return kitLocalized("whereAmI.overview.failedItem", lang: lang, label)
             }
         }

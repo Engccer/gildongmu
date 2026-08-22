@@ -45406,37 +45406,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 정보를 가져오지 못했습니다"
+            "value": "%1$@ 정보를 가져오지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: could not load"
+            "value": "%1$@: could not load."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: no se pudo cargar"
+            "value": "%1$@: no se pudo cargar."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ : chargement impossible"
+            "value": "%1$@ : chargement impossible."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: caricamento non riuscito"
+            "value": "%1$@: caricamento non riuscito."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@の情報を取得できませんでした"
+            "value": "%1$@の情報を取得できませんでした。"
           }
         }
       }
@@ -45521,6 +45521,46 @@
         }
       }
     },
+    "whereAmI.overview.labelCafe": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "카페"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cafes"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cafés"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cafés"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caffè"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カフェ"
+          }
+        }
+      }
+    },
     "whereAmI.overview.labelEvents": {
       "localizations": {
         "ko": {
@@ -45566,37 +45606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "식당과 카페"
+            "value": "식당"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurants and cafes"
+            "value": "Restaurants"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurantes y cafés"
+            "value": "Restaurantes"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Restaurants et cafés"
+            "value": "Restaurants"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ristoranti e caffè"
+            "value": "Ristoranti"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "飲食店とカフェ"
+            "value": "飲食店"
           }
         }
       }
@@ -45646,37 +45686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@쪽 %2$@ %3$@"
+            "value": "%1$@ %2$@쪽 %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%3$@, %2$@ to the %1$@"
+            "value": "%1$@, %3$@ to the %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%3$@, a %2$@ al %1$@"
+            "value": "%1$@, a %3$@ al %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%3$@, à %2$@ vers le %1$@"
+            "value": "%1$@, à %3$@ vers le %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%3$@, a %2$@ verso %1$@"
+            "value": "%1$@, a %3$@ verso %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@%2$@の%3$@"
+            "value": "%2$@%3$@の%1$@"
           }
         }
       }
@@ -45686,37 +45726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "가장 가까운 곳은 %1$@"
+            "value": "가장 가까운 곳은 %1$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "nearest: %1$@"
+            "value": "The nearest are %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "más cercanos: %1$@"
+            "value": "Los más cercanos son %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "les plus proches : %1$@"
+            "value": "Les plus proches sont %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "più vicini: %1$@"
+            "value": "I più vicini sono %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最寄りは%1$@"
+            "value": "最寄りは%1$@です。"
           }
         }
       }
@@ -45726,37 +45766,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은 %2$@ 안에 없습니다"
+            "value": "%1$@ %2$@ 안에 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: none within %2$@"
+            "value": "%1$@: none within %2$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: ninguno a menos de %2$@"
+            "value": "%1$@: ninguno a menos de %2$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ : aucun à moins de %2$@"
+            "value": "%1$@ : aucun à moins de %2$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: nessuno entro %2$@"
+            "value": "%1$@: nessuno entro %2$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@は%2$@以内にありません"
+            "value": "%1$@は%2$@以内にありません。"
           }
         }
       }
@@ -45766,37 +45806,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ %2$@곳, %3$@"
+            "value": "%1$@ %2$@곳 있습니다. %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@, %3$@"
+            "value": "%1$@: %2$@. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@, %3$@"
+            "value": "%1$@: %2$@. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ : %2$@, %3$@"
+            "value": "%1$@ : %2$@. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@, %3$@"
+            "value": "%1$@: %2$@. %3$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@%2$@か所、%3$@"
+            "value": "%1$@が%2$@か所あります。%3$@"
           }
         }
       }
@@ -45806,37 +45846,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ %2$@곳 이상, %3$@"
+            "value": "%1$@ %2$@곳 이상 있습니다. %3$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@ or more, %3$@"
+            "value": "%1$@: %2$@ or more. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@ o más, %3$@"
+            "value": "%1$@: %2$@ o más. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ : %2$@ ou plus, %3$@"
+            "value": "%1$@ : %2$@ ou plus. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: %2$@ o più, %3$@"
+            "value": "%1$@: %2$@ o più. %3$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@%2$@か所以上、%3$@"
+            "value": "%1$@が%2$@か所以上あります。%3$@"
           }
         }
       }
@@ -45886,37 +45926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버스 정류소 %1$@곳, %2$@"
+            "value": "버스 정류소가 %1$@곳 있습니다. %2$@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bus stops, %2$@"
+            "value": "There are %1$@ bus stops. %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ paradas de autobús, %2$@"
+            "value": "Hay %1$@ paradas de autobús. %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ arrêts de bus, %2$@"
+            "value": "Il y a %1$@ arrêts de bus. %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fermate dell'autobus, %2$@"
+            "value": "Ci sono %1$@ fermate dell'autobus. %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バス停%1$@か所、%2$@"
+            "value": "バス停が%1$@か所あります。%2$@"
           }
         }
       }
@@ -45926,37 +45966,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버스 정류소 정보를 가져오지 못했습니다"
+            "value": "버스 정류소 정보를 가져오지 못했습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "could not load bus stops"
+            "value": "Could not load bus stops."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "no se pudieron cargar las paradas"
+            "value": "No se pudieron cargar las paradas."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "impossible de charger les arrêts"
+            "value": "Impossible de charger les arrêts."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "impossibile caricare le fermate"
+            "value": "Impossibile caricare le fermate."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バス停情報を取得できませんでした"
+            "value": "バス停情報を取得できませんでした。"
           }
         }
       }
@@ -45966,37 +46006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버스 정류소가 없습니다"
+            "value": "버스 정류소가 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "no bus stops"
+            "value": "There are no bus stops."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "sin paradas de autobús"
+            "value": "No hay paradas de autobús."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "aucun arrêt de bus"
+            "value": "Il n'y a pas d'arrêt de bus."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "nessuna fermata dell'autobus"
+            "value": "Non ci sono fermate dell'autobus."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バス停はありません"
+            "value": "バス停はありません。"
           }
         }
       }
@@ -46006,37 +46046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "버스 정류소 정보는 이 지역에서 제공되지 않습니다"
+            "value": "버스 정류소 정보는 이 지역에서 제공되지 않습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "bus stop data is not available in this area"
+            "value": "Bus stop data is not available in this area."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "los datos de paradas no están disponibles en esta zona"
+            "value": "Los datos de paradas no están disponibles en esta zona."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "les données des arrêts ne sont pas disponibles dans cette zone"
+            "value": "Les données des arrêts ne sont pas disponibles dans cette zone."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "i dati delle fermate non sono disponibili in questa zona"
+            "value": "I dati delle fermate non sono disponibili in questa zona."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この地域ではバス停情報を提供していません"
+            "value": "この地域ではバス停情報を提供していません。"
           }
         }
       }
@@ -46046,7 +46086,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대중교통: %1$@"
+            "value": "%1$@"
           }
         },
         "en": {
@@ -46076,7 +46116,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "公共交通: %1$@"
+            "value": "%1$@"
           }
         }
       }
@@ -46086,7 +46126,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "(%1$@)"
+            "value": "%1$@ "
           }
         },
         "en": {
@@ -46116,7 +46156,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "(%1$@)"
+            "value": "（%1$@）"
           }
         }
       }
@@ -46126,77 +46166,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 안에 지하철역이 없고"
+            "value": "%1$@ 안에 지하철역이 없습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "no subway station within %1$@"
+            "value": "No subway station within %1$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "sin estación de metro a menos de %1$@"
+            "value": "No hay estación de metro a menos de %1$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "aucune station de métro à moins de %1$@"
+            "value": "Aucune station de métro à moins de %1$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "nessuna stazione della metro entro %1$@"
+            "value": "Nessuna stazione della metropolitana entro %1$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@以内に地下鉄駅はなく"
-          }
-        }
-      }
-    },
-    "whereAmI.overview.transitNoStationOnly": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ 안에 지하철역이 없습니다"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "no subway station within %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "sin estación de metro a menos de %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "aucune station de métro à moins de %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "nessuna stazione della metro entro %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@以内に地下鉄駅はありません"
+            "value": "%1$@以内に地下鉄駅はありません。"
           }
         }
       }
@@ -46206,37 +46206,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지하철 %1$@%2$@ %3$@쪽 %4$@"
+            "value": "가장 가까운 지하철역은 %1$@%2$@ %3$@쪽 %4$@입니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@%2$@ subway station %4$@ to the %3$@"
+            "value": "The nearest subway station is %2$@%1$@, %4$@ to the %3$@."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "estación de metro %1$@%2$@ a %4$@ al %3$@"
+            "value": "La estación de metro más cercana es %2$@%1$@, a %4$@ al %3$@."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "station de métro %1$@%2$@ à %4$@ vers le %3$@"
+            "value": "La station de métro la plus proche est %2$@%1$@, à %4$@ vers le %3$@."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "stazione della metro %1$@%2$@ a %4$@ verso %3$@"
+            "value": "La stazione della metropolitana più vicina è %2$@%1$@, a %4$@ verso %3$@."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "地下鉄%1$@%2$@が%3$@%4$@"
+            "value": "最寄りの地下鉄駅は%3$@%4$@の%2$@%1$@です。"
           }
         }
       }
@@ -46246,37 +46246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@는 서울에서만 안내합니다"
+            "value": "%1$@ 서울에서만 안내합니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: available in Seoul only"
+            "value": "%1$@: available in Seoul only."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: solo disponible en Seúl"
+            "value": "%1$@: solo disponible en Seúl."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ : disponible à Séoul uniquement"
+            "value": "%1$@ : disponible à Séoul uniquement."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@: disponibile solo a Seul"
+            "value": "%1$@: disponibile solo a Seul."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@はソウルのみ案内します"
+            "value": "%1$@はソウルのみ案内します。"
           }
         }
       }

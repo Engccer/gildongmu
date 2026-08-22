@@ -328,7 +328,7 @@ public enum OverviewBusStops: Sendable, Hashable {
 }
 
 public enum OverviewPlaceKind: String, Sendable, Hashable {
-    case food, kids, events, barrierFree
+    case food, cafe, kids, events, barrierFree
 }
 
 public enum OverviewPlaceState: Sendable, Hashable {

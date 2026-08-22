@@ -1,4 +1,5 @@
 import { joinText } from "./output.js";
+import { directionParticle, subjectParticle, topicParticle } from "./korean-particle.js";
 
 /**
  * 도메인 산문 포매터 — 라우트 응답 body(envelope 포함) → 항목당 한 줄 산문.
@@ -359,10 +360,10 @@ type OverviewBusStopsItem =
   | { state: "none" } | { state: "uncovered" } | { state: "failed" };
 type OverviewBulletItem =
   | { kind: "transit"; state: "ok"; station: { name: string; line?: string; bearing: Bearing; distanceMeters: number } | null; busStops: OverviewBusStopsItem | null }
-  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "ok"; count: number; countCapped: boolean; nearest: OverviewPlaceItem[] }
-  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "none" }
+  | { kind: "food" | "cafe" | "kids" | "events" | "barrierFree"; state: "ok"; count: number; countCapped: boolean; nearest: OverviewPlaceItem[] }
+  | { kind: "food" | "cafe" | "kids" | "events" | "barrierFree"; state: "none" }
   | { kind: "events"; state: "unavailable"; reason: "seoulOnly" }
-  | { kind: "food" | "kids" | "events" | "barrierFree"; state: "failed" };
+  | { kind: "food" | "cafe" | "kids" | "events" | "barrierFree"; state: "failed" };
 interface NearbyOverviewItem { place: string | null; radiusMeters: number; bullets: OverviewBulletItem[] }
 
 interface WebSearchResultItem {
@@ -954,15 +955,21 @@ function formatWhereAmI(body: { data: WhereAmIItem | null }): string[] {
   return lines.length > 0 ? lines : ["현재 위치 정보를 확인할 수 없습니다."];
 }
 
-const OVERVIEW_LABEL_KO = { food: "식당과 카페", kids: "아이 놀 곳", events: "문화 행사", barrierFree: "무장애 관광지" } as const;
+const OVERVIEW_LABEL_KO = { food: "식당", cafe: "카페", kids: "아이 놀 곳", events: "문화 행사", barrierFree: "무장애 관광지" } as const;
+
+/** 장소명 + (으)로. 비한글 장소명은 조사 판정 불가라 쉼표로 물러난다("GS25, 남쪽 40m"). */
+function asDestination(name: string): string {
+  const particle = directionParticle(name);
+  return particle === null ? `${name},` : `${name}${particle}`;
+}
 
 function overviewNearest(items: OverviewPlaceItem[]): string {
-  return `가장 가까운 곳은 ${items.map((p) => `${COMPASS_KO[p.bearing]}쪽 ${dist(p.distanceMeters)} ${p.name}`).join(", ")}`;
+  return `가장 가까운 곳은 ${items.map((p) => `${asDestination(p.name)} ${COMPASS_KO[p.bearing]}쪽 ${dist(p.distanceMeters)}`).join(", ")}입니다.`;
 }
 
 /**
- * 한눈에 보기 — 불릿당 한 줄, 상태별 문장이 전부 다르다(3-state 불변식: 0건 ≠ 정보 없음 ≠ 실패).
- * Kit `buildOverviewLines`와 같은 구조(ko 고정).
+ * 한눈에 보기 — 불릿당 문장 묶음, 상태별 문장이 전부 다르다(3-state 불변식: 0건 ≠ 정보 없음 ≠ 실패).
+ * Kit `buildOverviewLines`와 같은 구조(ko 고정, 문장형은 위원장 판정 2026-08-22).
  */
 function formatNearbyOverview(body: { data: NearbyOverviewItem | null }): string[] {
   const d = body.data;
@@ -974,28 +981,25 @@ function formatNearbyOverview(body: { data: NearbyOverviewItem | null }): string
     if (b.kind === "transit") {
       const parts: string[] = [];
       const bus = b.busStops;
-      // Kit 템플릿과 같은 융합 문장("지하철 길동(5호선) 북동쪽 262m") — 쉼표 분절 금지(리뷰 D2).
       parts.push(
         b.station
-          ? `지하철 ${b.station.name}${b.station.line ? `(${b.station.line})` : ""} ${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}`
-          : bus
-            ? `${dist(d.radiusMeters)} 안에 지하철역이 없고`
-            : `${dist(d.radiusMeters)} 안에 지하철역이 없습니다`,
+          ? `가장 가까운 지하철역은 ${b.station.line ? `${b.station.line} ` : ""}${asDestination(b.station.name)} ${COMPASS_KO[b.station.bearing]}쪽 ${dist(b.station.distanceMeters)}입니다.`
+          : `${dist(d.radiusMeters)} 안에 지하철역이 없습니다.`,
       );
       if (bus) {
-        if (bus.state === "ok") parts.push(`버스 정류소 ${bus.count}곳, ${overviewNearest(bus.nearest)}`);
-        else if (bus.state === "none") parts.push("버스 정류소가 없습니다");
-        else if (bus.state === "uncovered") parts.push("버스 정류소 정보는 이 지역에서 제공되지 않습니다");
-        else parts.push("버스 정류소 정보를 가져오지 못했습니다");
+        if (bus.state === "ok") parts.push(`버스 정류소가 ${bus.count}곳 있습니다. ${overviewNearest(bus.nearest)}`);
+        else if (bus.state === "none") parts.push("버스 정류소가 없습니다.");
+        else if (bus.state === "uncovered") parts.push("버스 정류소 정보는 이 지역에서 제공되지 않습니다.");
+        else parts.push("버스 정류소 정보를 가져오지 못했습니다.");
       }
-      lines.push(`대중교통: ${parts.join(", ")}`);
+      lines.push(parts.join(" "));
       continue;
     }
     const label = OVERVIEW_LABEL_KO[b.kind];
-    if (b.state === "ok") lines.push(`${label} ${b.count}곳${b.countCapped ? " 이상" : ""}, ${overviewNearest(b.nearest)}`);
-    else if (b.state === "none") lines.push(`${label}은 ${dist(d.radiusMeters)} 안에 없습니다`);
-    else if (b.state === "unavailable") lines.push(`${label}는 서울에서만 안내합니다`);
-    else lines.push(`${label} 정보를 가져오지 못했습니다`);
+    if (b.state === "ok") lines.push(`${label}${subjectParticle(label)} ${b.count}곳${b.countCapped ? " 이상" : ""} 있습니다. ${overviewNearest(b.nearest)}`);
+    else if (b.state === "none") lines.push(`${label}${topicParticle(label)} ${dist(d.radiusMeters)} 안에 없습니다.`);
+    else if (b.state === "unavailable") lines.push(`${label}${topicParticle(label)} 서울에서만 안내합니다.`);
+    else lines.push(`${label} 정보를 가져오지 못했습니다.`);
   }
   return lines;
 }

@@ -26,6 +26,7 @@ function base(overrides: Partial<OverviewInput> = {}): OverviewInput {
     bus: null,
     busUncovered: false,
     food: null,
+    cafe: null,
     kids: null,
     events: null,
     barrierFree: null,
@@ -35,9 +36,26 @@ function base(overrides: Partial<OverviewInput> = {}): OverviewInput {
 
 describe("composeOverview — 불릿별 3-state", () => {
   it("키 없는 조각(null)은 불릿 자체가 없고 순서는 고정이다", () => {
-    const o = composeOverview(base({ food: ok({ places: [], capped: false }), barrierFree: ok([]) }));
+    const o = composeOverview(base({ cafe: ok({ places: [], capped: false }), barrierFree: ok([]) }));
     expect(o.radiusMeters).toBe(OVERVIEW_RADIUS_M);
-    expect(o.bullets.map((b) => b.kind)).toEqual(["transit", "food", "barrierFree"]);
+    expect(o.bullets.map((b) => b.kind)).toEqual(["transit", "cafe", "barrierFree"]);
+    const all = composeOverview(
+      base({
+        food: ok({ places: [], capped: false }),
+        cafe: ok({ places: [], capped: false }),
+        kids: ok([]),
+        events: ok({ events: [], total: 0 }),
+        barrierFree: ok([]),
+      }),
+    );
+    expect(all.bullets.map((b) => b.kind)).toEqual([
+      "transit",
+      "food",
+      "cafe",
+      "kids",
+      "events",
+      "barrierFree",
+    ]);
   });
 
   it("rejected는 failed이지 none이 아니다", () => {
@@ -57,8 +75,9 @@ describe("composeOverview — 불릿별 3-state", () => {
     );
     const o = composeOverview(
       base({
-        // 한 종만 캡(15)에 걸려 합계가 18이어도 capped — 판정은 종별 raw 건수(fetchFoodAndCafes).
+        // 상류 캡(15)에 닿은 종은 확정 수가 아니라 "이상"(fetchCategory).
         food: ok({ places: thirty.slice(0, 18), capped: true }),
+        cafe: ok({ places: thirty.slice(0, 3), capped: false }),
         kids: ok([place("k", 0.0005, 0, 50), ...thirty.slice(1, 3)]),
       }),
     );
@@ -68,6 +87,11 @@ describe("composeOverview — 불릿별 3-state", () => {
     expect(food.nearest).toHaveLength(OVERVIEW_NEAREST_CAP);
     expect(food.nearest.map((n) => n.name)).toEqual(["p17", "p16"]);
     expect(food.nearest[0].bearing).toBe("s");
+    expect(o.bullets.find((b) => b.kind === "cafe")).toMatchObject({
+      state: "ok",
+      count: 3,
+      countCapped: false,
+    });
     const kids = o.bullets.find((b) => b.kind === "kids");
     expect(kids).toMatchObject({ state: "ok", count: 3, countCapped: false });
     if (kids?.state !== "ok" || kids.kind === "transit") throw new Error("type");

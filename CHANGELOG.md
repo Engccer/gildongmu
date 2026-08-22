@@ -11,6 +11,10 @@
 
 ## 2026-08-22
 
+### 한눈에 보기 — 식당·카페 분리(6불릿) + 불릿 문장형
+
+위원장 실사용 피드백(2026-08-22 1.11 제출 뒤): "한눈에 보기"의 식당·카페 불릿을 둘로 나누고 각 불릿을 완성 문장으로("아이 놀 곳이 9곳 있습니다. 가장 가까운 곳은 ○○으로 남서쪽 3.2km입니다."). 서버 `nearby-overview.ts`가 카카오 FD6·CE7을 합치던 단계를 없애 `cafe` 불릿을 냈고(순서 transit·food·cafe·kids·events·barrierFree, 종별 캡 판정 유지), 6로케일 `whereAmI.overview.*` 템플릿을 문장형으로 바꿨다(`transitNoStationOnly`는 문장이 독립돼 제거). 라벨의 이/가·은/는과 장소명의 (으)로는 `KoreanParticle` 정본을 확장해 코드가 고른다(Kit ↔ 웹 ↔ CLI 미러, 드리프트 가드 5열 — 비한글 장소명은 쉼표 폴백). 가까운 곳 2곳 유지(위원장). 실호출(길동)로 식당·카페 각 15곳 이상 분리 확인. 리뷰 1건(CLI 타입 유니온 `cafe` 누락) 반영. 웹 소비자는 아직 없다(B9가 이식). spec `docs/superpowers/specs/2026-08-22-nearby-tab-restructure-design.md` §4.
+
 ### App Store 1.11 심사 제출 (빌드 18)
 
 1.10 아카이브(`0013c52`) 이후 iOS에 닿는 24커밋(M4·N1·N2·N4-iOS, BLE 정식 바이너리 제거)을 담아 제출했다(07:11 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `f312a39`, `git worktree` 격리 빌드, 산출물 `Info.plist`·`otool -L`로 번들 ID·1.11.0(18)·`UIBackgroundModes`·**CoreBluetooth 미링크**(ITMS-90683 해소 실증)를 확인했다. N3 boarding과 N2 좌우 피커는 정식판 게이트 밖이라 노트에서 제외했고, 심사 노트는 새 권한·데이터가 없어 승계했다. 노트 정본은 `docs/appstore/release-notes.md` §1.11. 준비는 Opus 서브에이전트, push·제출은 컨트롤러.
