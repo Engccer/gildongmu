@@ -13,7 +13,9 @@ vi.mock("@/lib/providers/odsay", () => ({ getTransitRoute: vi.fn() }));
 vi.mock("@/lib/env", async (orig) => ({
   ...(await orig<typeof import("@/lib/env")>()),
   hasWalkRouteKey: () => true,
+  hasNcpMapsKeys: () => true,
 }));
+vi.mock("@/lib/providers/ncp-directions", () => ({ getCarRouteBriefingEn: vi.fn(async () => ({ guides: [] })) }));
 
 import { executeFunction } from "../router";
 import { searchPlaces } from "@/lib/providers/places";
@@ -63,6 +65,17 @@ describe("get_walk_route via", () => {
     expect((r.data as { via?: unknown }).via).toBeUndefined();
   });
 
+  it("경유지 도착 스텝은 20개 절단 밖에 두지 않는다 — stepIndex가 받은 배열을 벗어나면 날조 유도", async () => {
+    const steps = Array.from({ length: 30 }, (_, i) => ({ description: `s${i}` }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockWalk.mockResolvedValue({ ...WALK, steps, waypoint: { stepIndex: 25, coord: CHEONHO } } as any);
+    const r = await executeFunction("get_walk_route", { destination: "여의도역", via: "천호역" }, ctx);
+    const d = r.data as { steps: unknown[]; via: { stepIndex: number }; truncated?: boolean };
+    expect(d.steps).toHaveLength(26);
+    expect(d.via.stepIndex).toBe(25);
+    expect(d.truncated).toBe(true);
+  });
+
   it("경유지 해석 실패는 error — 경유 없는 경로로 대체하지 않는다", async () => {
     const r = await executeFunction("get_walk_route", { destination: "여의도역", via: "없는곳" }, ctx);
     expect(mockWalk).not.toHaveBeenCalled();
@@ -76,6 +89,13 @@ describe("get_car_route via", () => {
     expect(mockCar).toHaveBeenCalledWith(expect.objectContaining({ via: expect.objectContaining(CHEONHO) }));
     expect(r.render).toBeUndefined();
     expect((r.data as { via: unknown }).via).toEqual({ name: "천호역", stepIndex: 3 });
+  });
+
+  it("en(NCP) + 경유지는 한국어 안내로 내리지 않고 unsupported 마커 — upstream 미호출", async () => {
+    const r = await executeFunction("get_car_route", { destination: "여의도역", via: "천호역" }, { ...ctx, dataLocale: "en" });
+    expect(mockCar).not.toHaveBeenCalled();
+    expect((r.data as { unsupported?: string }).unsupported).toBe("waypoint");
+    expect(r.render).toBeUndefined();
   });
 
   it("경유지 없으면 카드를 낸다(기존 동작 불변)", async () => {
