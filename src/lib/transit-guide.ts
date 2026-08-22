@@ -475,7 +475,7 @@ export function classifyBoardingCandidates(
 }
 
 /** 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용. */
-function normalizeStopName(s: string): string {
+export function normalizeStopName(s: string): string {
   return s.replace(/\s*\([^)]*\)/g, "").replace(/역$/, "").trim();
 }
 

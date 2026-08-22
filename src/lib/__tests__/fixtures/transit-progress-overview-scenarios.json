@@ -1,0 +1,1459 @@
+{
+ "_doc": "E15-1 진행 상황 조망 순수 계층 공유 fixture(spec 2026-08-23 §3). 웹 transit-progress-overview.test.ts ↔ Kit TransitProgressOverviewTests가 같은 파일로 디스크립터 동일을 강제한다. state는 TransitGuideState 부분집합(나머지 필드는 initTransitGuide 기본값).",
+ "scenarios": [
+  {
+   "name": "single-leg-waiting",
+   "state": {
+    "legIndex": 0,
+    "phase": "waiting",
+    "signal": "notYetVisible",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "transfer-riding-here-middle",
+   "state": {
+    "legIndex": 1,
+    "phase": "riding",
+    "signal": "tracking",
+    "currentLocation": "어린이대공원",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     },
+     {
+      "mode": "subway",
+      "lineName": "7호선",
+      "trackMode": "subway",
+      "boardName": "군자역",
+      "alightName": "뚝섬유원지역",
+      "viaStops": [
+       "군자역",
+       "어린이대공원역",
+       "건대입구역",
+       "뚝섬유원지역"
+      ],
+      "stationCount": 3,
+      "walkBeforeMinutes": null
+     }
+    ],
+    "walkAfterMinutes": 7
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 2,
+     "count": 2
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "done",
+      "stationCount": 4
+     },
+     {
+      "kind": "leg",
+      "legIndex": 1,
+      "mode": "subway",
+      "lineName": "7호선",
+      "boardName": "군자역",
+      "alightName": "뚝섬유원지역",
+      "status": "current",
+      "stationCount": 3
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "군자역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "어린이대공원역",
+      "role": "via",
+      "here": true
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "건대입구역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "뚝섬유원지역",
+      "role": "alight",
+      "here": false
+     },
+     {
+      "kind": "walk",
+      "minutes": 7
+     }
+    ],
+    "here": {
+     "kind": "station",
+     "stopIndex": 1
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "riding-not-yet-visible",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "notYetVisible",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "riding-never-seen",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "neverSeen",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "neverSeen"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "riding-never-seen-stale-location",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "neverSeen",
+    "currentLocation": "천호역",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "neverSeen"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "riding-signal-lost-stale-location",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "signalLost",
+    "currentLocation": "천호",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "signalLost"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "signalLost"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "riding-upstream-failed",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "upstreamFailed",
+    "currentLocation": "천호",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "upstreamFailed"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "upstreamFailed"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "bus-riding-tracking-with-location",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "tracking",
+    "currentLocation": "둔촌동역",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "bus",
+      "lineName": "3412",
+      "trackMode": "seoulBus",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "viaStops": [
+       "길동사거리",
+       "둔촌동역",
+       "올림픽공원",
+       "방이동"
+      ],
+      "stationCount": 3,
+      "walkBeforeMinutes": 2
+     }
+    ],
+    "walkAfterMinutes": 4
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 2
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "3412",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "status": "current",
+      "stationCount": 3
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "둔촌동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "올림픽공원",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "방이동",
+      "role": "alight",
+      "here": false
+     },
+     {
+      "kind": "walk",
+      "minutes": 4
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "bus-riding-signal-lost",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "signalLost",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "bus",
+      "lineName": "3412",
+      "trackMode": "seoulBus",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "viaStops": [
+       "길동사거리",
+       "둔촌동역",
+       "올림픽공원",
+       "방이동"
+      ],
+      "stationCount": 3,
+      "walkBeforeMinutes": 2
+     }
+    ],
+    "walkAfterMinutes": 4
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 2
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "3412",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "status": "current",
+      "stationCount": 3
+     },
+     {
+      "kind": "silence",
+      "signal": "signalLost"
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "둔촌동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "올림픽공원",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "방이동",
+      "role": "alight",
+      "here": false
+     },
+     {
+      "kind": "walk",
+      "minutes": 4
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "bus"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "ambiguous-duplicate-station",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "tracking",
+    "currentLocation": "성수",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "2호선",
+      "trackMode": "subway",
+      "boardName": "성수역",
+      "alightName": "성수역",
+      "viaStops": [
+       "성수역",
+       "건대입구역",
+       "성수역"
+      ],
+      "stationCount": 2,
+      "walkBeforeMinutes": null
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "2호선",
+      "boardName": "성수역",
+      "alightName": "성수역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "성수역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "건대입구역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "성수역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "ambiguous"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "arrived-uncertain",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "signal": "tracking",
+    "currentLocation": "아차산역",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "arrivedUncertain"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "arrived-certain",
+   "state": {
+    "legIndex": 0,
+    "phase": "arrived",
+    "signal": "tracking",
+    "currentLocation": "군자역",
+    "arrivedCertain": true
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "강동역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "천호역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "광나루역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "아차산역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 4,
+      "name": "군자역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "done",
+   "state": {
+    "legIndex": 1,
+    "phase": "done",
+    "signal": "tracking",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [
+       "강동역",
+       "천호역",
+       "광나루역",
+       "아차산역",
+       "군자역"
+      ],
+      "stationCount": 4,
+      "walkBeforeMinutes": 5
+     },
+     {
+      "mode": "subway",
+      "lineName": "7호선",
+      "trackMode": "subway",
+      "boardName": "군자역",
+      "alightName": "뚝섬유원지역",
+      "viaStops": [
+       "군자역",
+       "어린이대공원역",
+       "건대입구역",
+       "뚝섬유원지역"
+      ],
+      "stationCount": 3,
+      "walkBeforeMinutes": null
+     }
+    ],
+    "walkAfterMinutes": 7
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 2,
+     "count": 2
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 5
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "done",
+      "stationCount": 4
+     },
+     {
+      "kind": "leg",
+      "legIndex": 1,
+      "mode": "subway",
+      "lineName": "7호선",
+      "boardName": "군자역",
+      "alightName": "뚝섬유원지역",
+      "status": "done",
+      "stationCount": 3
+     },
+     {
+      "kind": "walk",
+      "minutes": 7
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": false
+   }
+  },
+  {
+   "name": "current-leg-stops-unavailable",
+   "state": {
+    "legIndex": 0,
+    "phase": "riding",
+    "signal": "notYetVisible",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "5호선",
+      "trackMode": "subway",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "viaStops": [],
+      "stationCount": 4,
+      "walkBeforeMinutes": null
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "5호선",
+      "boardName": "강동역",
+      "alightName": "군자역",
+      "status": "current",
+      "stationCount": 4
+     },
+     {
+      "kind": "silence",
+      "signal": "notYetVisible"
+     },
+     {
+      "kind": "stopsUnavailable"
+     }
+    ],
+    "here": {
+     "kind": "unknown",
+     "reason": "noObservation"
+    },
+    "reboardOffered": true,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "untrackable-leg",
+   "state": {
+    "legIndex": 0,
+    "phase": "waiting",
+    "signal": "untrackable",
+    "currentLocation": null,
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "subway",
+      "lineName": "부산1호선",
+      "trackMode": null,
+      "boardName": "서면역",
+      "alightName": "부산역",
+      "viaStops": [
+       "서면역",
+       "범내골역",
+       "부산역"
+      ],
+      "stationCount": 2,
+      "walkBeforeMinutes": null
+     }
+    ],
+    "walkAfterMinutes": null
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "subway",
+      "lineName": "부산1호선",
+      "boardName": "서면역",
+      "alightName": "부산역",
+      "status": "current",
+      "stationCount": 2
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "서면역",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "범내골역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "부산역",
+      "role": "alight",
+      "here": false
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  },
+  {
+   "name": "boarding-tago-approx-no-location",
+   "state": {
+    "legIndex": 0,
+    "phase": "boarding",
+    "signal": "tracking",
+    "currentLocation": "둔촌동역",
+    "arrivedCertain": false
+   },
+   "route": {
+    "legs": [
+     {
+      "mode": "bus",
+      "lineName": "3412",
+      "trackMode": "seoulBus",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "viaStops": [
+       "길동사거리",
+       "둔촌동역",
+       "올림픽공원",
+       "방이동"
+      ],
+      "stationCount": 3,
+      "walkBeforeMinutes": 2
+     }
+    ],
+    "walkAfterMinutes": 4
+   },
+   "expected": {
+    "legOrdinal": {
+     "n": 1,
+     "count": 1
+    },
+    "rows": [
+     {
+      "kind": "walk",
+      "minutes": 2
+     },
+     {
+      "kind": "leg",
+      "legIndex": 0,
+      "mode": "bus",
+      "lineName": "3412",
+      "boardName": "길동사거리",
+      "alightName": "방이동",
+      "status": "current",
+      "stationCount": 3
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 0,
+      "name": "길동사거리",
+      "role": "board",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 1,
+      "name": "둔촌동역",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 2,
+      "name": "올림픽공원",
+      "role": "via",
+      "here": false
+     },
+     {
+      "kind": "stop",
+      "stopIndex": 3,
+      "name": "방이동",
+      "role": "alight",
+      "here": false
+     },
+     {
+      "kind": "walk",
+      "minutes": 4
+     }
+    ],
+    "here": {
+     "kind": "notApplicable",
+     "reason": "phase"
+    },
+    "reboardOffered": false,
+    "alternativesOffered": true
+   }
+  }
+ ]
+}
