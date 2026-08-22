@@ -233,4 +233,5 @@ BLOCKER 10·MAJOR 8·MINOR 3. 처리(지엽 패치가 아니라 계층 대조 �
 ## 11. 검증 기록
 - 게이트: 웹 `npm run test:run` 3,003 통과(route-guide 공유 시나리오 84 — car 12건 신설·1건 교체, live-rows car 2건, car-action 55건, car-arrival 7건), Kit `swift test` 587 통과, 실험 구성 시뮬 빌드·실행(설정 피커 확인). 웹 `tsc`·lint 클린.
 - 리뷰: codex 적대적 설계 리뷰(§10) + spec-compliance·code-quality 서브에이전트(§10.1).
-- 실호출 `action` 열·실험판 배포 SHA는 통합 뒤 §11 말미에 추가.
+- 실호출(2026-08-23, Tmap 기하 모드, 강동 → 서울시청 16스텝): 우회전→right, U턴→back, "오른쪽 도시고속도로 입구"·"오른쪽 방향"→keepRight, "왼쪽 방향"×3→keepLeft, 졸음쉼터·고가도로×2·터널·출발→없음, 좌회전·"10시 방향 좌회전"→left, 우회전→right. 문장과 action 16/16 일치.
+- 실험판 배포 SHA는 통합 뒤 추가.
