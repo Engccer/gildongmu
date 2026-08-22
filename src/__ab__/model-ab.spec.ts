@@ -144,6 +144,63 @@ const CASES: Case[] = [
     expectArg: { tool: "search_places", key: "sort", value: "review" },
     judge: "query에 지역명(동·역명)을 넣었는가(toolArgs에서 확인) — 지명 없이 '맛집' 단독이면 실패.",
   },
+  // K3 채팅 도구 확장(spec 2026-08-23-chat-tools-expansion) — 신규 도구·인자 선택 축.
+  {
+    id: "31-첫차막차",
+    turns: ["강동역 막차 몇 시야?"],
+    expectAny: ["get_station_timetable"],
+    forbid: ["search_web", "get_subway_arrivals"],
+    judge: "노선·방향별 막차 시각을 도구 값대로. dailyType(기준일)을 밝히는가. nextDay를 '다음 날 00:06'으로 읽는가.",
+  },
+  {
+    id: "32-역명도착",
+    turns: ["천호역 지금 열차 언제 와?"],
+    expectAny: ["get_subway_arrivals"],
+    expectArg: { tool: "get_subway_arrivals", key: "stationName", value: "천호" },
+    forbid: ["search_web"],
+    judge: "현재 위치 근접 조회가 아니라 역명(stationName) 조회인가. 도착 메시지 완성 문장 그대로인가.",
+  },
+  {
+    id: "33-정위",
+    turns: ["나 지금 어디야? 주소 알려줘"],
+    expectAny: ["get_where_am_i"],
+    forbid: ["get_surroundings", "search_web"],
+    judge: "주소·행정동·가까운 역(방위·거리)을 한 호흡으로. 기준점을 장황하게 나열하지 않는가.",
+  },
+  {
+    id: "34-한눈에",
+    turns: ["이 근처에 뭐가 있어?"],
+    expectAny: ["get_nearby_overview"],
+    forbid: ["search_web"],
+    judge: "6종을 개수+가장 가까운 곳으로 요약하는가. failed/none/unavailable을 구분하는가. 전용 도구를 중복 호출하지 않는가.",
+  },
+  {
+    id: "35-경유지-도보",
+    turns: ["길동역 들렀다가 강동역까지 걸어가는 길 알려줘"],
+    expectAny: ["get_walk_route"],
+    expectArg: { tool: "get_walk_route", key: "via", value: "길동역" },
+    judge: "via 인자에 경유지가 들어갔는가. 경유지 도착 구획을 stepIndex 자리에 말하는가.",
+  },
+  {
+    id: "36-경유지-대중교통",
+    turns: ["천호역 거쳐서 잠실역까지 대중교통으로"],
+    expectAny: ["get_transit_route"],
+    judge: "unsupported:waypoint를 '경로 없음'이 아니라 '경유지 미지원'으로 전하는가. 두 구간 분할 같은 앱 안 대안을 주는가.",
+  },
+  {
+    id: "37-지명-place",
+    turns: ["여의도에 지금 문 연 소아과 있어?"],
+    expectAny: ["get_night_clinics"],
+    expectArg: { tool: "get_night_clinics", key: "place", value: "여의도" },
+    forbid: ["search_places"],
+    judge: "현재 위치가 아니라 place 인자로 여의도를 조회하는가. resolvedPlace를 보고 어긋나면 밝히는가.",
+  },
+  {
+    id: "38-무장애-연쇄",
+    turns: ["근처 무장애 관광지 중에 휠체어 화장실 있는 곳 알려줘"],
+    expectAny: ["get_barrier_free_detail"],
+    judge: "get_nearby_barrier_free → contentId → get_barrier_free_detail 연쇄가 같은 턴에 이뤄지는가. 시설 값을 도구 문장대로.",
+  },
 ];
 
 interface RoundStat {

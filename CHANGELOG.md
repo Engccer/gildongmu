@@ -9,6 +9,12 @@
 
 ---
 
+## 2026-08-23
+
+### K3 채팅 function-calling 도구 확장 — 신규 4 + 인자 확장 12 (20 → 24도구)
+
+위원장 실사용 피드백(2026-08-22 ③) 판정대로 7종을 더했다(spec `docs/superpowers/specs/2026-08-23-chat-tools-expansion-design.md`). 신규 도구 `get_station_timetable`(역 첫차·막차, TAGO)·`get_barrier_free_detail`(무장애 편의시설 상세, `get_nearby_barrier_free`의 `contentId` 연쇄)·`get_where_am_i`(정위)·`get_nearby_overview`(한눈에 보기 6불릿). 인자 확장: `get_subway_arrivals`에 `stationName`(역명 조회, 이름 기반이라 커버리지 게이트 없음), 앵커 고정 8도구에 `place`(지명 > 장소 앵커 > 현재 위치, 해석된 장소를 `resolvedPlace`로 되돌림 — 카카오 키워드 1위가 지명과 어긋난 실측 "후쿠오카"→대구 동명 가게), 길찾기 3도구에 `via`(도보·자동차는 `waypoint.stepIndex`, 대중교통은 ODsay 미호출 `unsupported:"waypoint"`). 전부 산문 정본·신규 카드 없음이고, 지명·앵커 조회에선 기기 위치 self-fetch 카드를 내지 않는다. systemInstruction 불변. 버스 노선 경유 정류소는 제외(재론 금지). 도구별 실호출 게이트와 `npm run test:ab` 전후 비교는 spec §6·§7. 테스트 5파일 47건.
+
 ## 2026-08-22
 
 ### B9 웹 "둘러보기" 이식 — 현재 위치 확인 + 둘러보기 패널 통합
