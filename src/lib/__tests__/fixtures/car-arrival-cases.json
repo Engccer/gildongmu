@@ -1,0 +1,12 @@
+{
+  "comment": "carArrivalStep 경계표(K2 spec §6.4). 웹 car-arrival.test.ts ↔ Kit CarArrivalTests 공용.",
+  "cases": [
+    { "distance": 35, "accuracy": 8, "motion": "stopped", "expect": true, "note": "부근 정차" },
+    { "distance": 40, "accuracy": 30, "motion": "stopped", "expect": true, "note": "등호 경계" },
+    { "distance": 41, "accuracy": 8, "motion": "stopped", "expect": false, "note": "40m 밖" },
+    { "distance": 12, "accuracy": 8, "motion": "moving", "expect": false, "note": "옆 차로 통과 — 15m 무조건 분기 없음(M4)" },
+    { "distance": 20, "accuracy": 8, "motion": "speedUnknown", "expect": false, "note": "속도 미상은 정지가 아니다" },
+    { "distance": 20, "accuracy": 31, "motion": "stopped", "expect": false, "note": "정확도 상한(M3)" },
+    { "distance": 0, "accuracy": 8, "motion": "stopped", "expect": true, "note": "목적지 위" }
+  ]
+}
