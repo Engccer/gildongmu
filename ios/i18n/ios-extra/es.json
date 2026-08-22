@@ -308,7 +308,8 @@
       "altInvalid": "No se puede iniciar la guía en esta ruta.",
       "adoptRoute": "Cambiar a esta ruta",
       "routeSwitched": "Ruta cambiada.",
-      "altNone": "No hay otras rutas de transporte desde aquí."
+      "altNone": "No hay otras rutas de transporte desde aquí.",
+      "altRefetching": "Las condiciones cambiaron; buscando otras rutas de nuevo."
     }
   },
   "beacon": {

@@ -308,7 +308,8 @@
       "altInvalid": "이 경로는 안내를 시작할 수 없습니다.",
       "adoptRoute": "이 경로로 전환",
       "routeSwitched": "경로를 바꿨습니다.",
-      "altNone": "여기서 가는 다른 대중교통 경로가 없습니다."
+      "altNone": "여기서 가는 다른 대중교통 경로가 없습니다.",
+      "altRefetching": "조건이 바뀌어 다른 경로를 다시 조회합니다."
     }
   },
   "beacon": {

@@ -25641,6 +25641,46 @@
         }
       }
     },
+    "ios.transitGuide.altRefetching": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "조건이 바뀌어 다른 경로를 다시 조회합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conditions changed; looking up other routes again."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las condiciones cambiaron; buscando otras rutas de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les conditions ont changé ; nouvelle recherche d’itinéraires."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le condizioni sono cambiate; nuova ricerca dei percorsi."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "条件が変わったため、ほかの経路を再検索します。"
+          }
+        }
+      }
+    },
     "ios.transitGuide.destChangeCancel": {
       "localizations": {
         "ko": {

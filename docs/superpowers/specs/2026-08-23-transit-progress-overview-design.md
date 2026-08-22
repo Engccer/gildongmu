@@ -193,7 +193,7 @@ ODsay 대안은 **출발 시점의 출발지** 기준이다. 실승차 중 대�
 
 ### 5.4 커밋 가드 — 시간이 아니라 근거의 변화
 
-120초 stale 가드(시간)는 **보조**다. 주 가드는 근거 변화(리뷰 A2): `pendingAltRoutes`는 조회 시점의 `phaseGen`·`legIndex`·`originEvidence`·(station이면) `stopIndex`를 함께 저장하고, 커밋 시 현재 값과 대조해 **하나라도 다르면 재조회**(`.refetching` — 기존 `destChangeRefetched` `.high` 통지 재사용, 로딩 행 착지). 이동 중인 사용자가 역 A에서 본 후보를 역 C에서 확정하는 경로를 닫는다. 시간 가드는 근거가 같아도 120초가 지나면 재조회(정류소에 오래 서 있다가 확정하는 경우 — 도착 예정 열차가 바뀌었을 수 있다).
+120초 stale 가드(시간)는 **보조**다. 주 가드는 근거 변화(리뷰 A2): `pendingAltRoutes`는 조회 시점의 `phaseGen`·`legIndex`·`originEvidence`·(station이면) `stopIndex`를 함께 저장하고, 커밋 시 현재 값과 대조해 **하나라도 다르면 재조회**(`.refetching` — `ios.transitGuide.altRefetching` `.high` 통지(사유 중립 — 감사 판정), 로딩 행 착지). 이동 중인 사용자가 역 A에서 본 후보를 역 C에서 확정하는 경로를 닫는다. 시간 가드는 근거가 같아도 120초가 지나면 재조회(정류소에 오래 서 있다가 확정하는 경우 — 도착 예정 열차가 바뀌었을 수 있다).
 
 커밋 결과는 enum `AltRouteCommit = .committed | .refetching | .invalidCandidate | .sessionEnded`(리뷰 A5 — Bool이면 route 변환 실패가 죽은 버튼이 된다). `.invalidCandidate`는 그 후보의 전환 버튼을 실패 문구 행(`ios.transitGuide.altInvalid` "이 경로는 안내를 시작할 수 없습니다.")으로 바꾼다(활성화의 직접 응답). `.sessionEnded`는 조망이 이미 닫히는 중이다.
 

@@ -483,7 +483,8 @@ final class TransitGuideModel {
         if pending.phaseGen != state.phaseGen || pending.legIndex != state.legIndex || evidenceChanged || stale {
             let declared = pending.origin == .boardStopDeclared
             // 재조회 사유는 이 통지가 유일한 전달 경로(활성화한 버튼이 사라진다, 헌장 §6).
-            announce(appLocalized("ios.transitGuide.destChangeRefetched"), highPriority: true)
+            // 사유가 넷(근거 변화·국면·구간·시간)이라 "위치가 바뀌어"가 거짓일 수 있다 — 중립 문구(감사 M1).
+            announce(appLocalized("ios.transitGuide.altRefetching"), highPriority: true)
             altRoutesToken += 1
             let next = altRoutesToken
             pendingAltRoutes = PendingAltRoutes(
