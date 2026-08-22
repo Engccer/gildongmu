@@ -239,7 +239,11 @@ struct BeaconTrackingSheet: View {
             }
         }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
-        .sheet(isPresented: $showRouteList) { RouteOverviewSheet(model: model) }
+        // 셸·프리뷰는 GuideOverviewSheet.swift로 이동(E15-1 능력 공유) — 도보 행·행동은
+        // BeaconOverviewAdapter가 종전 그대로 투영한다(동작 변경 0).
+        .sheet(isPresented: $showRouteList) {
+            GuideOverviewSheet(capability: BeaconOverviewAdapter(model: model)) { _ in }
+        }
         .sheet(isPresented: $showsSettings, onDismiss: {
             model.recomputeArrivalHealth()
             if model.arrivalHealth?.usedDefaultWeight == false {
@@ -461,111 +465,4 @@ struct BeaconTrackingSheet: View {
         minimizeFocused = true
     }
 
-}
-
-/// 전 구간 조망 모달(위원장 판정 개정 2026-08-10 — 인라인 펼침에서 전환).
-///
-/// 조망 문장(서수+잔여+현재+다음)은 **섹션 헤더가 전달한다**: 시트 표시와
-/// Announcement는 경합하므로(착지 낭독이 통지를 잠식) 발화 채널 대신, 시스템이
-/// 섹션 헤딩에 착지하는 실기기 선례(BeaconTrackingSheet 열림)를 그대로 쓴다.
-/// 헤더는 fix 갱신에 따라 조용히 최신화된다(live region 아님 — 조회형 정보).
-///
-/// 행은 "{n}. {스텝}" 단일 텍스트(한 줄 = 한 객체), 현재 구간 행만 "지금 이 구간"
-/// 표식. 닫기는 스와이프·VO escape·말미 닫기 버튼 — 닫으면 시스템이 트리거
-/// 버튼(진행 상황)으로 포커스를 복원한다(표준 dismiss, 실기기 확인은 BACKLOG ⑤).
-private struct RouteOverviewSheet: View {
-    let model: BeaconModel
-    @Environment(\.dismiss) private var dismiss
-    /// 대안 경로 프리뷰(spec 2026-08-14 §3) — 시트 위 시트(조망과 같은 문법).
-    @State private var showAltPreview = false
-
-    var body: some View {
-        List {
-            Section {
-                // 자동 인계 등으로 모달이 열린 채 상세가 풀리면 목록만 비고 헤더가
-                // 그 시점의 정직한 진행 상황(직선거리)을 계속 전달한다(3-state).
-                if let steps = model.routeStepDescriptions {
-                    // 상단 닫기(위원장 판정 2026-08-10): 행 수가 많으면 말미 닫기까지
-                    // 스크롤 압박 — 헤더 착지(조망 낭독) 다음 한 스와이프에 출구를 둔다.
-                    // 나브바 toolbar 닫기(ChatView 관례)를 쓰지 않는 이유: 나브바 요소는
-                    // 섹션 헤더보다 먼저 착지 후보가 되어 "모달 착지 = 조망 낭독" 계약을
-                    // 깬다. 말미 닫기는 유지(전 구간을 훑고 난 자리에서 되스크롤 방지).
-                    Button(appLocalized("actions.close")) { dismiss() }
-                    ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
-                        // 경유지 구획 행(N4): 번호 없는 평문, 스텝 번호는 원본 인덱스 유지.
-                        if let row = model.routeWaypointRow, row.stepIndex == i {
-                            Text(row.text)
-                        }
-                        if i == model.currentStepIndex {
-                            distanceText(appLocalized(
-                                "ios.guide.routeListCurrent", String(i + 1), desc
-                            ))
-                        } else {
-                            distanceText(appLocalized(
-                                "ios.guide.routeListRow", String(i + 1), desc
-                            ))
-                        }
-                    }
-                }
-                // 대안 경로 보기(spec 2026-08-14 §2): 스텝 목록 뒤·말미 닫기 앞 —
-                // 조망의 주 목적(진행 확인)을 밀지 않으면서 "조망하다 대안 탐색"
-                // 흐름과 읽기 순서가 일치한다. 노출은 반대 축 성립 세션만(죽은 버튼 금지).
-                if model.alternativePreviewAvailable {
-                    Button(appLocalized("guide.viewAlternative")) {
-                        model.openAlternativePreview()
-                        showAltPreview = true
-                    }
-                }
-                Button(appLocalized("actions.close")) { dismiss() }
-            } header: {
-                distanceText(model.progressText())
-                    .accessibilityAddTraits(.isHeader)
-            }
-        }
-        .sheet(isPresented: $showAltPreview) { AlternativeRoutePreviewSheet(model: model) }
-        // 닫힘(스와이프·VO escape 포함) 시 진행 중 조회 폐기 — 늦은 응답이 닫힌
-        // 화면 상태를 되살리지 않는다(spec 2026-08-14 §3 latest-wins). 도착 전이는
-        // 부모(showRouteList=false)가 이 시트까지 연쇄 소거한다.
-        .onChange(of: showAltPreview) { _, presented in
-            if !presented { model.closeAlternativePreview() }
-        }
-    }
-}
-
-/// 대안 경로 미리 보기(spec 2026-08-14 §3·§4). 헤더(요약·비교) → 전환 버튼 →
-/// 스텝 행 → 말미 닫기. 시스템 헤더 착지가 요약을 낭독하고(조망 선례), 결과 도착은
-/// 모델의 polite 통지 1회가 알린다(헤더는 조용 갱신 — 조회형 정보). 전환 버튼이
-/// 헤더 다음 한 스와이프인 이유: 이 화면의 결정 행동이고, 사용자가 능동적으로 연
-/// 화면이라 압박 문제가 없다(spec §0-1의 압박은 "걷는 내내 상시 노출"이었다).
-private struct AlternativeRoutePreviewSheet: View {
-    let model: BeaconModel
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        List {
-            Section {
-                // 전환은 ready에서만(조회 중·실패에 죽은 버튼 금지). 낡음 폴백
-                // 재조회 중엔 라벨 병기(한 줄 = 한 객체, 쉼표).
-                if case .ready = model.alternativePreviewState {
-                    Button(model.isSwitchingVariant
-                        ? joinText(appLocalized("guide.adoptAlternative"),
-                                   appLocalized("ios.directions.searching"))
-                        : appLocalized("guide.adoptAlternative")
-                    ) {
-                        model.adoptAlternativePreview()
-                    }
-                }
-                if let steps = model.alternativePreviewSteps {
-                    // "지금 이 구간" 표식 없음 — 대안 경로 위에 현재 위치가 없다.
-                    ForEach(Array(steps.enumerated()), id: \.offset) { i, desc in
-                        distanceText(appLocalized("ios.guide.routeListRow", String(i + 1), desc))
-                    }
-                }
-                Button(appLocalized("actions.close")) { dismiss() }
-            } header: {
-                distanceText(model.alternativePreviewHeaderText())
-                    .accessibilityAddTraits(.isHeader)
-            }
-        }
-    }
 }
