@@ -308,6 +308,10 @@ const DECLARATIONS: GatedDeclaration[] = [
             type: "string",
             description: "목적지 지명 또는 주소",
           },
+          via: {
+            type: "string",
+            description: "경유지 지명(한 곳). '~를 거쳐서', '~에 들렀다가' 같은 요청일 때만 넣는다.",
+          },
         },
         required: ["destination"],
       },
@@ -352,6 +356,10 @@ const DECLARATIONS: GatedDeclaration[] = [
             type: "string",
             description: "목적지 지명 또는 주소",
           },
+          via: {
+            type: "string",
+            description: "경유지 지명. 대중교통은 경유지를 지원하지 않아 unsupported가 돌아온다 — 사용자가 경유를 요청했을 때만 넣어 그 사실을 전한다.",
+          },
         },
         required: ["destination"],
       },
@@ -380,6 +388,10 @@ const DECLARATIONS: GatedDeclaration[] = [
           destination: {
             type: "string",
             description: "목적지 지명 또는 주소",
+          },
+          via: {
+            type: "string",
+            description: "경유지 지명(한 곳). '~를 거쳐서', '~에 들렀다가' 같은 요청일 때만 넣는다.",
           },
           accessible: {
             type: "boolean",

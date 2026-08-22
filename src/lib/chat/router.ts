@@ -89,6 +89,26 @@ async function resolveCoord(
   return anchorOf(ctx);
 }
 
+/**
+ * 길찾기 경유지(K3 ⑤): 지명 → 좌표. 미지정이면 undefined, 해석 실패는 null(호출부가 error로 돌린다 —
+ * 경유 없는 경로로 조용히 대체하면 "경유한 경로"가 거짓이 된다).
+ */
+async function resolveVia(
+  args: Record<string, unknown>,
+  ctx: ExecutionContext,
+): Promise<{ name: string; lat: number; lng: number } | null | undefined> {
+  const via = args.via ? String(args.via) : undefined;
+  if (!via) return undefined;
+  const r = await searchPlaces({ query: via, lang: ctx.dataLocale });
+  const p = r.places[0];
+  return p ? { name: p.name, lat: p.lat, lng: p.lng } : null;
+}
+
+const TRANSIT_WAYPOINT_UNSUPPORTED = {
+  unsupported: "waypoint",
+  notice: "대중교통 길찾기는 경유지를 지원하지 않습니다. 경유지 없이 조회하거나 두 구간으로 나눠 물을 수 있습니다.",
+};
+
 /** 지명 조회 결과에 해석된 장소를 싣는 조각(지명 없는 조회엔 빈 객체). */
 function placeNote(c: ResolvedCoord): { resolvedPlace?: string } {
   return c.resolvedPlace ? { resolvedPlace: c.resolvedPlace } : {};
@@ -424,14 +444,28 @@ export async function executeFunction(
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       const dest = { lat: p.lat, lng: p.lng, name: p.name };
-      const render = { type: "car-route" as const, dest };
+      const via = await resolveVia(args, ctx);
+      if (via === null) return { data: placeNotFound(String(args.via)) };
+      // 카드는 경유 없는 경로를 self-fetch하므로 경유지가 있으면 내지 않는다(산문이 정본).
+      const render = via ? undefined : { type: "car-route" as const, dest };
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
       const gated = coverageGate(ctx.userLocation);
       if (gated) return gated;
-      const briefing = ctx.dataLocale === "en" && hasNcpMapsKeys()
+      const viaGated = via && coverageGate(via);
+      if (viaGated) return viaGated;
+      // en(NCP)은 경유지 계약이 없다 — ko 서비스(Tmap·카카오)로 내려 경유지를 지킨다.
+      const briefing = ctx.dataLocale === "en" && hasNcpMapsKeys() && !via
         ? await getCarRouteBriefingEn({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } })
-        : await getCarRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng } });
-      return { data: { destination: p.name, briefing }, render, source: src };
+        : await getCarRoute({ origin: ctx.userLocation, dest: { lat: p.lat, lng: p.lng }, via });
+      return {
+        data: {
+          destination: p.name,
+          ...(via ? { via: { name: via.name, stepIndex: briefing.waypoint?.stepIndex ?? null } } : {}),
+          briefing,
+        },
+        render,
+        source: src,
+      };
     }
     case "get_transit_route": {
       const destination = String(args.destination ?? "");
@@ -440,6 +474,9 @@ export async function executeFunction(
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
       const dest = { lat: p.lat, lng: p.lng, name: p.name };
+      // ODsay에 경유지가 없다(N4) — route:null만 주면 "경로 없음"으로 낭독돼 거짓이라 마커로 가른다.
+      // upstream·지명 해석 모두 미호출(라우트 동형).
+      if (args.via) return { data: { destination: p.name, route: null, ...TRANSIT_WAYPOINT_UNSUPPORTED }, source: src };
       const render = { type: "transit-route" as const, dest };
       if (!ctx.userLocation) return { data: NO_LOCATION, render, source: src };
       const gated = coverageGate(ctx.userLocation);
@@ -458,14 +495,19 @@ export async function executeFunction(
       const r = await searchPlaces({ query: destination, lang: ctx.dataLocale });
       const p = r.places[0];
       if (!p) return { data: { error: `'${destination}' 위치를 찾지 못했습니다.` } };
+      const via = await resolveVia(args, ctx);
+      if (via === null) return { data: placeNotFound(String(args.via)) };
       if (!ctx.userLocation) return { data: NO_LOCATION, source: src };
       const gated = coverageGate(ctx.userLocation);
       if (gated) return gated;
+      const viaGated = via && coverageGate(via);
+      if (viaGated) return viaGated;
       const accessible = args.accessible === true;
       const briefing = await getWalkRoute({
         origin: ctx.userLocation,
         dest: { lat: p.lat, lng: p.lng },
         accessible,
+        via,
       });
       // 경로 없음(예: 도보 불가 구간)은 get_transit_route와 동형으로 route:null을
       // 그대로 data에 실어 LLM이 "경로를 찾지 못했다"로 해석하게 한다.
@@ -479,6 +521,8 @@ export async function executeFunction(
           durationSeconds: briefing.durationSeconds,
           steps,
           ...(truncated ? { truncated } : {}),
+          // 경유지 도착 지점은 steps[stepIndex](스텝 0 삽입 보정 완료본) — 구획 문장은 LLM이 그린다(서버 불변).
+          ...(via ? { via: { name: via.name, stepIndex: briefing.waypoint?.stepIndex ?? null } } : {}),
           // 안전 문장은 steps[0]에 이미 삽입돼 있어 LLM 재량과 무관하게 전달된다 —
           // stepFree 상태값도 함께 실어 LLM이 명시적으로 언급할 수 있게 한다.
           ...(briefing.stepFree ? { stepFree: briefing.stepFree } : {}),
