@@ -171,7 +171,7 @@ ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `d
 
 - **낭독 문장은 서버 `rewriteCarGuidance`(`src/lib/car-guidance.ts`)가 다듬는다**(2026-08-10 위원장 판정, 도보 `rewriteWalkGuidance` 동형). Tmap 문형은 `{지점}에서 {방면}으로 {행동} 후 {도로}를 따라 {거리} 이동` 하나뿐이고(전국 12경로 212문장 전수), `{행동}` 자리의 상태·위치 명사(오른쪽 방향·터널·고가도로옆 등 53% = 112/212)가 「후」와 결합이 깨져 동사구로 푼다("오른쪽 길로 들어선 뒤"·"터널을 지나"). 적용 지점은 `getCarRoute` 진입점 한 곳(웹·iOS·CLI·채팅·실시간 안내 동조), 미매칭·회전 계열·카카오 폴백 문장은 원문 통과(fail-safe). 코퍼스 fixture는 `src/lib/__tests__/fixtures/tmap-car-corpus.json`.
   - ⚠ **"오른쪽/왼쪽 방향"(turnType 117/118)을 회전 어휘로 바꾸지 말 것**: 코퍼스 실측으로 48%/69%가 같은 도로로 이어진다(올림픽대로→올림픽대로) — 교차로 회전이 아니라 자동차전용도로의 갈래 선택 지시라, "우회전"으로 바꾸면 문장은 자연스러워지고 의미가 틀린다.
-  - 자동차는 문장 부분 문자열 판정 계층이 없어(walk와 달리 `walkStepAction` 미호출 — car 프로파일 `imminentAheadM: null`) 재작성이 깨뜨릴 하위 판정이 없다. 임박 층을 자동차에 도입하게 되면 이 전제를 재검토할 것.
+  - 자동차에도 임박 층이 있지만(2026-08-23 K2) **문장을 보지 않는다** — 행동은 Tmap `turnType`을 서버가 `action`(`carActionFromTurnType`, 공식 코드표)으로 투영한 별도 필드이고 리듀서는 car 프로파일(`actionSource: "step"`)에서 그것만 읽는다. 그래서 재작성이 깨뜨릴 하위 판정은 여전히 없다. ⚠ `action`이 없으면 침묵이다 — 문장 분류로 폴백하지 말 것("오른쪽 방향"이 회전으로 분류된다). 182·183은 "도착안내 왼쪽/오른쪽"(목적지 위치)이지 비보호 회전이 아니다.
 - guide별 `distanceMeters`/`durationSeconds`는 0이 **미제공 의미론**이다. 소비자(웹·iOS·CLI)는 >0일 때만 수치를 병기한다(0m 중복 낭독 차단).
 - 폴백은 Tmap throw 시에만 카카오모빌리티(관측된 "경로 없음"류 graceful 코드가 없어 현재는 전량 throw).
 - 게이트 `hasCarRouteKey`(=tmap∥kakao, 라우트·채팅 declaration 공용). 캐시 `no-store`(실시간 교통, 両 provider 동일) + IP 레이트리밋 60초 10회(Tmap 일 1,000건 쿼터를 도보 폴백과 공유하므로 walk 동형 비용 방어).
@@ -194,6 +194,11 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 - **데드밴드는 축마다 다르고, 기각된 축소는 간략 쪽 이야기다.** 간략은 직선거리라 GPS 지터가 그대로 실려 `max(15, accuracy)`를 유지한다(축소하면 지터가 톤이 된다 — 이 기각은 유효하다). 상세는 구속 창 투영 + `max(state.d, proj.d)` 단조 전진을 거치고 `phase` 게이트·`projectionJumped`가 이탈·튐 fix를 앞서 버리므로 **뒤로 튀는 일이 구조적으로 없고**(실보행 5세션 6,047 스텝 역행 0건), 데드밴드에 남은 역할은 지터 방어가 아니라 빈도 노브다. 그래서 상세만 가른다(`detailDeadBand` ↔ `DETAIL_DEAD_BAND_M`, 감쇠 하한 5m): 15m(closer 간격 중위 17.5초, 위원장 체감과 충돌) → 10m(11.5초, 2026-08-11 로그 리플레이) → **6m(위원장 실보행 판정 2026-08-12 — 10m 간격도 성기게 느껴져 "6m 간격" 직접 지정)**. 자동차는 주행 속도(5.4km/h 이상)에서 `closerIntervalSeconds` 10초가 병목이라 영향이 없고, 그 아래 정체·신호 대기에서만 도보와 같은 기제로 잦아진다 — 정체 중 진행 신호가 잦은 것은 해롭지 않아 수단을 가르지 않는다. ⚠ 리플레이 수치는 **근사**다(스크립트 docstring의 재현 범위 참조) — 데드밴드 간 비교에는 쓰되 절대 초 수를 계약값으로 승격하지 말 것. ⚠ 감쇠 하한(5m)보다 커야 감쇠가 산다(deadband-drift 테스트가 강제).
 - 복귀 시 앵커 재기준화는 `needsRebase`가 **추세 축에 도달하는 첫 fix**에서 소비한다(복귀 fix에 상위 톤이 나면 그 fix는 추세 축에 닿지 못해 기회를 잃는다).
 - 축 전환(handoff·모드 전환)은 `rebaseBeaconState`로 **앵커와 `lastSpokenDistance`를 함께** 재설정한다. 앵커만 바꾸면 옛 축 값이 남아 전환 직후 거짓 closer 음성이 나간다.
+
+### 자동차 임박·따라잡기 (`GuideTuning.car`·`carDriver`, 2026-08-23 K2)
+spec `2026-08-23-car-guidance-completion-design.md` §3. 임박 임계는 `max(imminentAheadM, v×imminentAheadS)`(walk 20m·0초, car 15m·6초=5+fix 지연 1, 운전자 9초). 속도 표본이 2개 미만이면 `imminentUnknownSpeedM`(car 60) — 바닥만 남기면 터널 복귀 직후 30m 앞 교차로가 침묵한다. 표본 정확도 상한은 프로파일 값(walk 20·car 50). car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce: false` — 명령이 자기 완결, 먼저 나가면 전문 래치도 올린다).
+
+`silentCatchUp`(car)은 2026-08-22 실주행의 "터널 뒤 지난 교차로 3개 전문 연속 발화"를 막는 세 가지다: ①점프 fix(`jumped`)는 표본 제외 + 6a 이후 무발화(창이 기어가는 중이라 d가 실위치가 아니다 — 표본에 넣으면 창이 부풀어 재획득이 안 걸린다) ②uncertain 복귀 fix의 공백 >10초는 복귀 대신 재획득 ③유닛 끝이 d 앞이면 전문 없이 래치 3종 전진(`!isOff`), 묶음 안 끝난 스텝은 전문에서 제외. 도보는 전부 종전 동작(실보행 판정이 종전 전제). iOS는 car 재획득 뒤 "지금 구간" 전문을 함께 읽는다(`restateAt`이 현재 유닛을 낭독 완료로 두기 때문).
 
 ### 정지 판정 (`motionStep`)
 도플러 3-state: `stopped`/`moving`/`speedUnknown`. 도플러가 경로·목적지 양쪽에 독립이라 두 모드가 공유할 수 있는 유일한 축이다(직선거리 미분은 "목적지 접근 속도"라 옆으로 지나쳐 걸으면 정지로 보인다).
