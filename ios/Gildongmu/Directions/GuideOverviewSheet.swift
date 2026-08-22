@@ -23,6 +23,8 @@ protocol GuideOverviewCapability: AnyObject, Observable {
     /// 국면이 바뀌었으면 `.stale`(셸은 아무것도 덧붙이지 않는다 — 그 전이가 이미 통지·
     /// 착지를 했다). 조망을 떠나야 하는 행동은 `.dismissThen`으로 부모에 위임한다.
     func perform(_ actionId: String) -> GuideOverviewActionResult
+    /// 하위 시트를 띄우기 직전 — 조회 시작(도보 프리뷰는 여는 즉시 반대 축을 조회한다).
+    func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet)
     /// 하위 시트가 닫혔다 — 진행 중 조회 폐기(latest-wins).
     func subsheetDismissed(_ subsheet: GuideOverviewSubsheet)
 }
@@ -104,6 +106,7 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                 ForEach(capability.overviewActions) { action in
                     Button(action.label) {
                         if let presents = action.presents {
+                            capability.subsheetWillPresent(presents)
                             subsheet = presents
                         } else {
                             run(action.id)
@@ -191,6 +194,10 @@ final class BeaconOverviewAdapter: GuideOverviewCapability {
     }
 
     func perform(_ actionId: String) -> GuideOverviewActionResult { .stale }
+
+    func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet) {
+        if subsheet == .walkAlternativePreview { model.openAlternativePreview() }
+    }
 
     func subsheetDismissed(_ subsheet: GuideOverviewSubsheet) {
         if subsheet == .walkAlternativePreview { model.closeAlternativePreview() }
@@ -346,6 +353,8 @@ final class TransitOverviewAdapter: GuideOverviewCapability {
             return .stale
         }
     }
+
+    func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet) {}  // 조회는 하위 시트의 .task가 연다
 
     func subsheetDismissed(_ subsheet: GuideOverviewSubsheet) {
         if subsheet == .transitAltRoutes, let token = model.pendingAltRoutes?.token {
