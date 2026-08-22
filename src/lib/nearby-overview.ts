@@ -11,8 +11,8 @@ import { hasDataGoKrKey, hasKakaoKey, hasSeoulOpenDataKey } from "./env";
 import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/bearing";
 
 /**
- * M4 "한눈에 보기" — 현재 위치 주변 5종(대중교통·식당과 카페·아이 놀 곳·문화 행사·
- * 무장애 관광지)을 **공통 반경 1km**로 한 번에 집계한다. 설계 정본
+ * M4 "한눈에 보기" — 현재 위치 주변 6종(대중교통·식당·카페·아이 놀 곳·문화 행사·
+ * 무장애 관광지)을 **공통 반경 1km**로 한 번에 집계한다(식당·카페 분리는 위원장 2026-08-22). 설계 정본
  * `docs/superpowers/specs/2026-08-22-nearby-tab-restructure-design.md` §3·§5·§6.
  *
  * 서버는 구조화 데이터(개수·가까운 곳 2개·상태)만 내고 문장은 소비자(Kit·CLI)의
@@ -28,11 +28,12 @@ import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/
 export const OVERVIEW_RADIUS_M = 1000;
 /** 불릿당 이름을 부르는 "가장 가까운 곳" 수(위원장 판정 2026-08-22). */
 export const OVERVIEW_NEAREST_CAP = 2;
-/** 카카오 카테고리 검색 1종의 상류 캡(size 15). 한 종이라도 이 값에 닿으면 "N곳 이상"으로 말한다(리뷰 검출: 합산 30 판정은 한쪽만 캡인 경우를 놓친다). */
+/** 카카오 카테고리 검색 1종의 상류 캡(size 15). 이 값에 닿으면 "N곳 이상"으로 말한다. */
 const KAKAO_CATEGORY_PAGE_CAP = 15;
-const FOOD_GROUPS = ["FD6", "CE7"];
+const FOOD_GROUP = "FD6";
+const CAFE_GROUP = "CE7";
 
-export type OverviewKind = "transit" | "food" | "kids" | "events" | "barrierFree";
+export type OverviewKind = "transit" | "food" | "cafe" | "kids" | "events" | "barrierFree";
 type PlaceKind = Exclude<OverviewKind, "transit">;
 
 export interface OverviewPlace {
@@ -71,7 +72,7 @@ export interface NearbyOverview {
   /** 위치 문장 재료(행정동 + 도로명, 접두 중복 제거). 못 얻으면 null. */
   place: string | null;
   radiusMeters: number;
-  /** 순서 고정: transit, food, kids, events, barrierFree. 키 없는 불릿은 없다. */
+  /** 순서 고정: transit, food, cafe, kids, events, barrierFree. 키 없는 불릿은 없다. */
   bullets: OverviewBullet[];
 }
 
@@ -93,8 +94,10 @@ export interface OverviewInput {
   bus: PromiseSettledResult<Located[]> | null;
   /** bus가 0건일 때만 의미 있다(`isUncoveredBusRegion`). */
   busUncovered: boolean;
-  /** 식당·카페. 카테고리별 raw 건수(dedupe 전)로 캡을 판정하므로 `capped`를 함께 받는다. */
+  /** 식당(FD6). 상류 캡(15)에 닿으면 `capped` — 확정 수가 아니라 "N곳 이상"이다. */
   food: PromiseSettledResult<{ places: Located[]; capped: boolean }> | null;
+  /** 카페(CE7). food와 같은 모양, 별도 불릿(식당·카페를 한 불릿으로 합치면 수가 합산돼 종별 질문에 답하지 못한다). */
+  cafe: PromiseSettledResult<{ places: Located[]; capped: boolean }> | null;
   kids: PromiseSettledResult<Located[]> | null;
   /** total은 캡 전 수(`NearbyEventsResult.total`). */
   events: PromiseSettledResult<{ events: Located[]; total: number }> | "unavailable" | null;
@@ -159,14 +162,13 @@ export function composeOverview(input: OverviewInput): NearbyOverview {
 
   const bullets: OverviewBullet[] = [{ kind: "transit", state: "ok", station, busStops }];
 
-  if (input.food) {
+  for (const [kind, slice] of [["food", input.food], ["cafe", input.cafe]] as const) {
+    if (!slice) continue;
     const settled: PromiseSettledResult<Located[]> =
-      input.food.status === "fulfilled"
-        ? { status: "fulfilled", value: input.food.value.places }
-        : input.food;
-    const n = input.food.status === "fulfilled" ? input.food.value.places.length : 0;
-    const capped = input.food.status === "fulfilled" && input.food.value.capped;
-    bullets.push(placeBullet("food", origin, settled, n, capped));
+      slice.status === "fulfilled" ? { status: "fulfilled", value: slice.value.places } : slice;
+    const n = slice.status === "fulfilled" ? slice.value.places.length : 0;
+    const capped = slice.status === "fulfilled" && slice.value.capped;
+    bullets.push(placeBullet(kind, origin, settled, n, capped));
   }
   if (input.kids) {
     const n = input.kids.status === "fulfilled" ? input.kids.value.length : 0;
@@ -190,24 +192,18 @@ export function composeOverview(input: OverviewInput): NearbyOverview {
   return { place, radiusMeters: OVERVIEW_RADIUS_M, bullets };
 }
 
-/**
- * 식당·카페: 카테고리 2종을 **따로** 받아 종별 raw 건수로 캡을 판정한 뒤 id로 합친다.
- * 합쳐 받으면 한 종만 캡(15)에 걸리고 다른 종이 적을 때 합계가 30 미만이라 "18곳"이라는
- * 틀린 확정 수가 낭독된다.
- */
-async function fetchFoodAndCafes(
+/** 카카오 카테고리 1종 조회. 상류 페이지 캡(15)에 닿으면 확정 수가 아니라 "N곳 이상"이다. */
+async function fetchCategory(
   lat: number,
   lng: number,
+  group: string,
 ): Promise<{ places: Located[]; capped: boolean }> {
-  const lists = await Promise.all(
-    FOOD_GROUPS.map((g) =>
-      findSurroundingsNear(lat, lng, { groups: [g], radiusMeters: OVERVIEW_RADIUS_M, cap: 50 }),
-    ),
-  );
-  const capped = lists.some((l) => l.length >= KAKAO_CATEGORY_PAGE_CAP);
-  const byId = new Map<string, Located>();
-  for (const l of lists) for (const p of l) byId.set(p.id, p);
-  return { places: [...byId.values()], capped };
+  const places = await findSurroundingsNear(lat, lng, {
+    groups: [group],
+    radiusMeters: OVERVIEW_RADIUS_M,
+    cap: 50,
+  });
+  return { places, capped: places.length >= KAKAO_CATEGORY_PAGE_CAP };
 }
 
 async function settle<T>(p: Promise<T>): Promise<PromiseSettledResult<T>> {
@@ -224,11 +220,12 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
   const seoul = hasSeoulOpenDataKey();
   const radius = { radiusMeters: OVERVIEW_RADIUS_M };
 
-  const [addr, region, bus, food, kids, events, barrierFree] = await Promise.all([
+  const [addr, region, bus, food, cafe, kids, events, barrierFree] = await Promise.all([
     kakao ? coordToAddress({ lat, lng }).catch(() => null) : Promise.resolve(null),
     kakao ? coordToRegion({ lat, lng }).catch(() => null) : Promise.resolve(null),
     dataGoKr ? settle(fetchNearbyBusStops(lat, lng)) : Promise.resolve(null),
-    kakao ? settle(fetchFoodAndCafes(lat, lng)) : Promise.resolve(null),
+    kakao ? settle(fetchCategory(lat, lng, FOOD_GROUP)) : Promise.resolve(null),
+    kakao ? settle(fetchCategory(lat, lng, CAFE_GROUP)) : Promise.resolve(null),
     kakao ? settle(findKidsPlacesNear(lat, lng, radius)) : Promise.resolve(null),
     // 국내 미제공 판정선은 이 조각의 조회 반경(1km)이다 — 문화행사 라우트의 3km와 다르다
     // (CLAUDE.md "판정선은 그 도메인의 조회 반경을 그대로 쓴다").
@@ -268,6 +265,7 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
     bus,
     busUncovered,
     food,
+    cafe,
     kids,
     events,
     barrierFree,

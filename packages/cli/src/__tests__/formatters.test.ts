@@ -776,7 +776,8 @@ describe("nearby-overview", () => {
         radiusMeters: 1000,
         bullets: [
           { kind: "transit", state: "ok", station: { name: "길동", line: "5호선", bearing: "ne", distanceMeters: 262 }, busStops: { state: "uncovered" } },
-          { kind: "food", state: "ok", count: 30, countCapped: true, nearest: [{ name: "스타벅스", distanceMeters: 40, bearing: "s" }, { name: "김밥천국", distanceMeters: 60, bearing: "e" }] },
+          { kind: "food", state: "ok", count: 15, countCapped: true, nearest: [{ name: "봉래면옥", distanceMeters: 40, bearing: "s" }, { name: "김밥천국", distanceMeters: 60, bearing: "e" }] },
+          { kind: "cafe", state: "ok", count: 1, countCapped: false, nearest: [{ name: "GS25", distanceMeters: 90, bearing: "w" }] },
           { kind: "kids", state: "none" },
           { kind: "events", state: "unavailable", reason: "seoulOnly" },
           { kind: "barrierFree", state: "failed" },
@@ -786,11 +787,13 @@ describe("nearby-overview", () => {
     expect(lines).toEqual([
       "현재 위치 기준, 서울특별시 강동구 길동, 천중로44길 74 근처",
       "한눈에 보기 (1km 안)",
-      "대중교통: 지하철 길동(5호선) 북동쪽 262m, 버스 정류소 정보는 이 지역에서 제공되지 않습니다",
-      "식당과 카페 30곳 이상, 가장 가까운 곳은 남쪽 40m 스타벅스, 동쪽 60m 김밥천국",
-      "아이 놀 곳은 1km 안에 없습니다",
-      "문화 행사는 서울에서만 안내합니다",
-      "무장애 관광지 정보를 가져오지 못했습니다",
+      "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소 정보는 이 지역에서 제공되지 않습니다.",
+      "식당이 15곳 이상 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m, 김밥천국으로 동쪽 60m입니다.",
+      // 비한글 장소명은 조사 판정 불가 → 쉼표(KoreanParticle 계약).
+      "카페가 1곳 있습니다. 가장 가까운 곳은 GS25, 서쪽 90m입니다.",
+      "아이 놀 곳은 1km 안에 없습니다.",
+      "문화 행사는 서울에서만 안내합니다.",
+      "무장애 관광지 정보를 가져오지 못했습니다.",
     ]);
   });
 });

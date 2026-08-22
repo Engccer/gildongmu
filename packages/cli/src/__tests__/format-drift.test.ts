@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { dist, transitQuickExitLine } from "../lib/formatters.js";
 import { formatDistance } from "../../../../src/lib/format.js";
+import { directionParticle, subjectParticle, topicParticle } from "../lib/korean-particle.js";
+import * as webParticle from "../../../../src/lib/korean-particle.js";
 import { quickExitText } from "../../../../src/lib/quick-exit-text.js";
 import ko from "../../../../messages/ko.json" with { type: "json" };
 
@@ -53,5 +55,15 @@ describe("빠른하차 문장 CLI-웹 드리프트", () => {
     const leg = { mode: "subway" as const, minutes: 24, toName: "여의도" };
     expect(transitQuickExitLine(leg)).toBeNull();
     expect(quickExitText(t, "여의도", undefined)).toBeNull();
+  });
+});
+
+/** 조사 판정도 같은 이유의 미러다(한눈에 보기 문장의 장소명·라벨 조사). */
+describe("조사 판정 CLI-웹 드리프트", () => {
+  const words = ["성내로", "명일로24길", "강동구청", "봉래면옥", "카페", "식당", "아이 놀 곳", "GS25", "스타벅스 R", ""];
+  it.each(words)("%j에서 웹 정본과 같은 조사", (word) => {
+    expect(subjectParticle(word)).toBe(webParticle.subjectParticle(word));
+    expect(topicParticle(word)).toBe(webParticle.topicParticle(word));
+    expect(directionParticle(word)).toBe(webParticle.directionParticle(word));
   });
 });

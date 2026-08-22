@@ -17,17 +17,26 @@ const HANGUL_FIRST = 0xac00;
 const HANGUL_LAST = 0xd7a3;
 const JONGSEONG_COUNT = 28;
 
+/** ㄹ 받침의 종성 인덱스 — "(으)로"만 이 받침을 받침 없음과 같이 다룬다(서울로·길동으로). */
+const JONGSEONG_RIEUL = 8;
+
 /**
- * 마지막 글자에 받침이 있는가. 한글 음절이 아니면 `null`.
+ * 마지막 글자의 종성 인덱스(0 = 받침 없음). 한글 음절이 아니면 `null`.
  *
  * 한글 음절은 `0xAC00 + (초성 × 21 + 중성) × 28 + 종성`으로 배열되므로
  * 종성 인덱스는 `(code - 0xAC00) % 28`이고 0이면 받침이 없다.
  */
-export function hasFinalConsonant(word: string): boolean | null {
+function jongseongIndex(word: string): number | null {
   if (!word) return null;
   const code = word.charCodeAt(word.length - 1);
   if (Number.isNaN(code) || code < HANGUL_FIRST || code > HANGUL_LAST) return null;
-  return (code - HANGUL_FIRST) % JONGSEONG_COUNT !== 0;
+  return (code - HANGUL_FIRST) % JONGSEONG_COUNT;
+}
+
+/** 마지막 글자에 받침이 있는가. 한글 음절이 아니면 `null`. */
+export function hasFinalConsonant(word: string): boolean | null {
+  const index = jongseongIndex(word);
+  return index === null ? null : index !== 0;
 }
 
 /** 목적격 조사 `을`/`를`. 판정 불가면 `null`. */
@@ -35,5 +44,26 @@ export function objectParticle(word: string): string | null {
   const final = hasFinalConsonant(word);
   if (final === null) return null;
   return final ? "을" : "를";
+}
+
+/** 주격 조사 `이`/`가`. 판정 불가면 `null`. */
+export function subjectParticle(word: string): string | null {
+  const final = hasFinalConsonant(word);
+  if (final === null) return null;
+  return final ? "이" : "가";
+}
+
+/** 보조사 `은`/`는`. 판정 불가면 `null`. */
+export function topicParticle(word: string): string | null {
+  const final = hasFinalConsonant(word);
+  if (final === null) return null;
+  return final ? "은" : "는";
+}
+
+/** 방향·자격 조사 `으로`/`로`. ㄹ 받침은 `로`(서울로). 판정 불가면 `null`. */
+export function directionParticle(word: string): string | null {
+  const index = jongseongIndex(word);
+  if (index === null) return null;
+  return index === 0 || index === JONGSEONG_RIEUL ? "로" : "으로";
 }
 

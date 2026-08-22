@@ -110,7 +110,7 @@ export const ENDPOINT_CATALOG: EndpointSpec[] = [
     params: LATLNG, envelope: "air", locationParam: true, mcp: true },
   { name: "where-am-i", description: "현재 위치 정위(주소·행정동·가까운 역·기준점)", path: "/api/where-am-i", method: "GET",
     params: LATLNG, envelope: "data", locationParam: true, mcp: true },
-  { name: "nearby-overview", description: "내 주변 한눈에 보기(1km 안 대중교통·식당과 카페·아이 놀 곳·문화 행사·무장애 관광지, 가까운 곳 2개씩)", path: "/api/nearby/overview", method: "GET",
+  { name: "nearby-overview", description: "내 주변 한눈에 보기(1km 안 대중교통·식당·카페·아이 놀 곳·문화 행사·무장애 관광지, 가까운 곳 2개씩)", path: "/api/nearby/overview", method: "GET",
     params: LATLNG, envelope: "data", locationParam: true, mcp: true },
   { name: "barrier-free-detail", description: "무장애 관광지 편의시설 상세", path: "/api/places/barrier-free/detail", method: "GET",
     params: [{ key: "contentId", type: "string", required: true, description: "nearby-barrier-free 결과의 contentId" }],

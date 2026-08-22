@@ -57,7 +57,7 @@ public struct NearbyService: Sendable {
         return response.events
     }
 
-    /// M4 한눈에 보기 — 공통 반경 1km 5종 집계. nil = data:null(전 키 부재, 구성 결함).
+    /// M4 한눈에 보기 — 공통 반경 1km 6종 집계. nil = data:null(전 키 부재, 구성 결함).
     public func nearbyOverview(lat: Double, lng: Double) async throws -> NearbyOverview? {
         let response: NearbyOverviewResponse = try await client.get(
             "/api/nearby/overview", query: coordQuery(lat: lat, lng: lng))

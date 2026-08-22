@@ -10,7 +10,8 @@ private let fixture = """
 {"data":{"place":"서울특별시 강동구 길동, 천중로44길 74","radiusMeters":1000,"bullets":[
  {"kind":"transit","state":"ok","station":{"name":"길동","line":"5호선","bearing":"ne","distanceMeters":262},
   "busStops":{"state":"ok","count":5,"nearest":[{"name":"길동사거리","distanceMeters":80,"bearing":"e"},{"name":"길동역","distanceMeters":120,"bearing":"n"}]}},
- {"kind":"food","state":"ok","count":30,"countCapped":true,"nearest":[{"name":"스타벅스","distanceMeters":40,"bearing":"s"},{"name":"김밥천국","distanceMeters":60,"bearing":"e"}]},
+ {"kind":"food","state":"ok","count":15,"countCapped":true,"nearest":[{"name":"봉래면옥","distanceMeters":40,"bearing":"s"},{"name":"김밥천국","distanceMeters":60,"bearing":"e"}]},
+ {"kind":"cafe","state":"ok","count":3,"countCapped":false,"nearest":[{"name":"스타벅스","distanceMeters":90,"bearing":"w"},{"name":"카페 1971","distanceMeters":200,"bearing":"n"}]},
  {"kind":"kids","state":"none"},
  {"kind":"events","state":"unavailable","reason":"seoulOnly"},
  {"kind":"barrierFree","state":"failed"}
@@ -25,7 +26,7 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     let data = try #require(try decode(fixture).data)
     #expect(data.place == "서울특별시 강동구 길동, 천중로44길 74")
     #expect(data.radiusMeters == 1000)
-    #expect(data.bullets.count == 5)
+    #expect(data.bullets.count == 6)
     guard case .transit(let station, let bus) = data.bullets[0] else { Issue.record("transit"); return }
     #expect(station?.name == "길동")
     #expect(station?.line == "5호선")
@@ -33,10 +34,12 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     #expect(count == 5)
     #expect(nearest.map(\.name) == ["길동사거리", "길동역"])
     guard case .place(.food, .ok(let fc, let capped, let fn)) = data.bullets[1] else { Issue.record("food"); return }
-    #expect(fc == 30 && capped && fn.count == 2)
-    guard case .place(.kids, .empty) = data.bullets[2] else { Issue.record("kids"); return }
-    guard case .place(.events, .unavailableSeoulOnly) = data.bullets[3] else { Issue.record("events"); return }
-    guard case .place(.barrierFree, .failed) = data.bullets[4] else { Issue.record("bf"); return }
+    #expect(fc == 15 && capped && fn.count == 2)
+    guard case .place(.cafe, .ok(let cc, let cCapped, _)) = data.bullets[2] else { Issue.record("cafe"); return }
+    #expect(cc == 3 && !cCapped)
+    guard case .place(.kids, .empty) = data.bullets[3] else { Issue.record("kids"); return }
+    guard case .place(.events, .unavailableSeoulOnly) = data.bullets[4] else { Issue.record("events"); return }
+    guard case .place(.barrierFree, .failed) = data.bullets[5] else { Issue.record("bf"); return }
 }
 
 @Test func overviewBulletsWithUnknownKindOrStateAreDroppedNotFatal() throws {
@@ -61,12 +64,14 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
 @Test func overviewLinesKoAreOnePerBulletAndDistinctPerState() throws {
     let data = try #require(try decode(fixture).data)
     let lines = buildOverviewLines(data, lang: "ko")
+    // 문장형 + 받침에 따른 조사(이/가·은/는·(으)로)는 코드가 고른다(koParticle).
     #expect(lines == [
-        "대중교통: 지하철 길동(5호선) 북동쪽 262m, 버스 정류소 5곳, 가장 가까운 곳은 동쪽 80m 길동사거리, 북쪽 120m 길동역",
-        "식당과 카페 30곳 이상, 가장 가까운 곳은 남쪽 40m 스타벅스, 동쪽 60m 김밥천국",
-        "아이 놀 곳은 1km 안에 없습니다",
-        "문화 행사는 서울에서만 안내합니다",
-        "무장애 관광지 정보를 가져오지 못했습니다",
+        "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 길동사거리로 동쪽 80m, 길동역으로 북쪽 120m입니다.",
+        "식당이 15곳 이상 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m, 김밥천국으로 동쪽 60m입니다.",
+        "카페가 3곳 있습니다. 가장 가까운 곳은 스타벅스로 서쪽 90m, 카페 1971, 북쪽 200m입니다.",
+        "아이 놀 곳은 1km 안에 없습니다.",
+        "문화 행사는 서울에서만 안내합니다.",
+        "무장애 관광지 정보를 가져오지 못했습니다.",
     ])
 }
 
@@ -76,23 +81,35 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
         return buildOverviewLines(data, lang: "ko")[0]
     }
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":{"state":"none"}}"#)
-        == "대중교통: 1km 안에 지하철역이 없고, 버스 정류소가 없습니다")
+        == "1km 안에 지하철역이 없습니다. 버스 정류소가 없습니다.")
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":{"state":"uncovered"}}"#)
-        == "대중교통: 1km 안에 지하철역이 없고, 버스 정류소 정보는 이 지역에서 제공되지 않습니다")
+        == "1km 안에 지하철역이 없습니다. 버스 정류소 정보는 이 지역에서 제공되지 않습니다.")
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":{"state":"failed"}}"#)
-        == "대중교통: 지하철 용문 서쪽 910m, 버스 정류소 정보를 가져오지 못했습니다")
+        == "가장 가까운 지하철역은 용문으로 서쪽 910m입니다. 버스 정류소 정보를 가져오지 못했습니다.")
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":null}"#)
-        == "대중교통: 1km 안에 지하철역이 없습니다")
+        == "1km 안에 지하철역이 없습니다.")
     // 버스 조각 자체가 없으면(키 없음) 역 문장만.
     #expect(try line(#"{"kind":"transit","state":"ok","station":{"name":"용문","line":null,"bearing":"w","distanceMeters":910},"busStops":null}"#)
-        == "대중교통: 지하철 용문 서쪽 910m")
+        == "가장 가까운 지하철역은 용문으로 서쪽 910m입니다.")
 }
 
 @Test func overviewLinesEnUseLocaleOrder() throws {
     let data = try #require(try decode(fixture).data)
     let lines = buildOverviewLines(data, lang: "en")
-    #expect(lines[1] == "Restaurants and cafes: 30 or more, nearest: 스타벅스, 40m to the south, 김밥천국, 60m to the east")
-    #expect(lines[2] == "Places for kids: none within 1km")
+    #expect(lines[1] == "Restaurants: 15 or more. The nearest are 봉래면옥, 40m to the south, 김밥천국, 60m to the east.")
+    #expect(lines[2] == "Cafes: 3. The nearest are 스타벅스, 90m to the west, 카페 1971, 200m to the north.")
+    #expect(lines[3] == "Places for kids: none within 1km.")
+    // 조사는 ko에서만 붙는다.
+    #expect(lines[0].hasPrefix("Transit: The nearest subway station is 길동 (5호선), 262m to the northeast."))
+}
+
+@Test func overviewNearestFallsBackToCommaWhenParticleUndecidable() throws {
+    // 비한글 장소명은 조사 판정 불가 → "(으)로" 대신 쉼표(KoreanParticle 계약).
+    let json = """
+    {"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"cafe","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"GS25","distanceMeters":40,"bearing":"s"}]}]}}
+    """
+    let data = try #require(try decode(json).data)
+    #expect(buildOverviewLines(data, lang: "ko") == ["카페가 1곳 있습니다. 가장 가까운 곳은 GS25, 남쪽 40m입니다."])
 }
 
 @Test func sceneItemToPlaceCarriesCoordinatesAndRawCategory() {

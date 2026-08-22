@@ -77,22 +77,23 @@ interface NearestStation { name: string; line?: string; bearing: CompassDirectio
 
 서버는 구조화 데이터만 내고 문장은 소비자가 `messages/*.json` `around.overview.*` 템플릿으로 조립한다(`whereAmI.narrative` 관례, 6 로케일, LLM 없음). 규율: **불릿 5개 · 항목당 한 문장 · 가까운 곳 최대 2개 명명 · 반경 문구는 불릿 안에 쓰지 않고 "한눈에 보기" 헤딩 한 줄 뒤 부제 "1km 안"으로 한 번만**.
 
-ko 예(상태별 전부 다른 문장 — 3-state 불변식):
+ko 예(상태별 전부 다른 문장 — 3-state 불변식). **문장형 개정 2026-08-22(위원장 판정: 불릿마다 완성 문장, 식당·카페 분리 → 6불릿)**:
 
 | 상태 | 문장 |
 |---|---|
-| transit ok(둘 다) | "대중교통: 지하철 길동역(5호선) 북동쪽 260m, 버스 정류소 5곳, 가장 가까운 곳은 길동사거리 80m, 길동역 120m" |
-| transit 역 없음·버스 있음 | "대중교통: 1km 안에 지하철역이 없고, 버스 정류소 5곳, 가장 가까운 곳은 …" |
-| transit 역 없음·버스 조각 없음(키 부재) | "대중교통: 1km 안에 지하철역이 없습니다"(`transitNoStationOnly` — 연결어미 문장을 단독으로 두지 않는다, 리뷰 D3) |
-| transit 버스 uncovered | "…, 버스 정류소 정보는 이 지역에서 제공되지 않습니다" |
-| transit 버스 failed | "…, 버스 정류소 정보를 가져오지 못했습니다" |
-| food ok | "식당과 카페 30곳 이상, 가장 가까운 곳은 남쪽 40m 스타벅스, 동쪽 60m 김밥천국" (`countCapped` 아니면 "12곳") |
-| kids none | "아이 놀 곳은 1km 안에 없습니다" |
-| events unavailable | "문화 행사는 서울에서만 안내합니다" |
-| barrierFree failed | "무장애 관광지 정보를 가져오지 못했습니다" |
+| transit ok(둘 다) | "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 길동사거리로 동쪽 80m, 길동역으로 북쪽 120m입니다." |
+| transit 역 없음·버스 있음 | "1km 안에 지하철역이 없습니다. 버스 정류소가 5곳 있습니다. …" |
+| transit 역 없음·버스 조각 없음(키 부재) | "1km 안에 지하철역이 없습니다."(문장이 독립이라 종전 `transitNoStationOnly` 분기는 사라졌다) |
+| transit 버스 uncovered | "… 버스 정류소 정보는 이 지역에서 제공되지 않습니다." |
+| transit 버스 failed | "… 버스 정류소 정보를 가져오지 못했습니다." |
+| food ok | "식당이 15곳 이상 있습니다. 가장 가까운 곳은 봉래면옥으로 남쪽 40m, 김밥천국으로 동쪽 60m입니다." (`countCapped` 아니면 "12곳") |
+| cafe ok | "카페가 3곳 있습니다. 가장 가까운 곳은 …입니다." (식당 FD6·카페 CE7을 **따로** 받아 종별 캡 판정, 합치지 않는다) |
+| kids none | "아이 놀 곳은 1km 안에 없습니다." |
+| events unavailable | "문화 행사는 서울에서만 안내합니다." |
+| barrierFree failed | "무장애 관광지 정보를 가져오지 못했습니다." |
 | 키 없음 | (불릿 없음) |
 
-`nearest` 항목은 `"{direction}쪽 {distance} {name}"` 조각을 쉼표로 이어 붙인다(`joinText`). 거리는 `formatDistance` → iOS `distanceText`가 m만 낭독 정정. 부제·문장 어디에도 가운뎃점 없음.
+**조사는 코드가 고른다.** 라벨의 이/가·은/는과 장소명의 (으)로는 받침에 따라 갈리고 장소명은 동적이라 템플릿에 박을 수 없다 — `KoreanParticle`(Kit ↔ 웹 `korean-particle.ts` ↔ CLI 미러, 드리프트 가드)이 ko에서만 붙인다. **비한글 장소명은 판정 불가라 조사 대신 쉼표로 물러난다**("GS25, 남쪽 40m" — 조사를 못 정하는 것이 낭독 불능이 되면 안 된다). `nearest` 조각은 `"{name}(으)로 {direction}쪽 {distance}"`를 쉼표로 잇고 "가장 가까운 곳은 …입니다."로 감싼다. 거리는 `formatDistance` → iOS `distanceText`가 m만 낭독 정정. 부제·문장 어디에도 가운뎃점 없음. 다른 5개 로케일도 같은 문장형(조사 없음).
 
 ## 5. 공통 반경 1,000m — 실호출 근거 (2026-08-22)
 
