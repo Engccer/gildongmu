@@ -12,6 +12,51 @@
 
 ---
 
+## 1.12 (빌드 19)
+
+> **초안**(2026-08-23, 미제출). 위원장 판정 뒤 제출한다. 빌드 19는 다음 번호를 미리 박은 것이고(파서가 `(빌드 N)` 형식을 요구한다), 아카이브 전에 노트를 고치면 번들 재생성만으로 충분하다.
+
+기준은 1.11 아카이브 커밋 `f312a39`(빌드 18)이며 그 이후 `ios/` 커밋 20건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 띠바를 탭 바 위로(1.11은 띠바가 탭 바를 덮어 탭 바가 화면·VoiceOver에서 사라졌다) + 안내 시트 접기 버튼(K1) | `a44b834`·`43c0a72` | ko만 |
+| 받아쓰기 중 안내 음성 억제(K1 ④) | `a44b834`·`43c0a72` | ko만 |
+| 한눈에 보기 식당·카페 분리 6불릿 + 불릿 문장형 | `9acfe16` | ko·en |
+| AI 채팅 도구 확장 — 역 첫차·막차, 무장애 편의시설 상세, 현재 위치 정위, 한눈에 보기, 지명 기준 주변 조회, 경유지 길찾기(K3) | `38cbab4`·`47b249f`·`c9adb75`·`5e31a64` | ko·en (서버 변경이라 1.11에도 이미 도달 — 위원장 판정 대상) |
+
+제외 근거:
+
+- **자동차 실시간 안내 완성**(K2 `48f2586`·`fc9fb94` 등): `AppConfig.experimentalGuidanceEnabled` 봉인 안. B1 실주행 판정 뒤 졸업.
+- **대중교통 진행 상황 조망·다른 경로**(E15-1 `6d58e1e`·`b737a70` 등): 대중교통 세션 자체가 봉인 안. 도보 조망 이관(`6b47d07`)은 동작 변경 0.
+- **탭 순서·기본 탭 변경**(K1): `AppConfig.experimentalTabOrderEnabled`로 실험판만. 정식판은 종전 순서·채팅 첫 탭.
+- **웹 둘러보기 이식**(B9 `487e02a`): iOS 쪽 변경은 죽은 키 삭제뿐.
+- 문서·테스트·생성물 커밋 전량.
+
+⚠ **K1 항목은 ko 노트에만 적는다.** 띠바·접기 버튼·받아쓰기 억제는 안내 세션이 살아 있을 때만 존재하고 정식판 안내는 도보(`walkGuideStartable`, `dataLocale == "ko"`)뿐이다(1.11과 같은 근거).
+
+### ko
+
+```
+개선
+- 안내 화면을 내렸을 때 남는 줄이 탭 바를 가리던 문제를 고쳤습니다. 이제 줄은 탭 바 바로 위에 놓이고, 화면 오른쪽 위 "안내 시트 접기" 버튼으로도 안내 화면을 내릴 수 있습니다.
+- 안내 중에 받아쓰기를 켜면 받아쓰는 동안 안내 음성이 나오지 않습니다.
+- "내 주변" 둘러보기의 한눈에 보기에서 식당과 카페를 따로 읽고, 각 항목을 문장으로 알려 드립니다.
+- AI 채팅이 더 많은 것을 답합니다. 역 첫차·막차 시각, 무장애 관광지의 편의시설 상세, 지금 있는 곳 설명과 한눈에 보기를 물어볼 수 있고, "강남역 주변 소아과"처럼 지명을 기준으로 주변을 묻거나 경유지를 넣은 길찾기를 부탁할 수 있습니다.
+```
+
+### en
+
+```
+Improved
+- In "Look around", the at-a-glance summary now lists restaurants and cafes separately and reads each item as a sentence.
+- AI chat answers more: first and last train times at a station, accessibility facility details for barrier-free attractions, a description of where you are with an at-a-glance summary, nearby searches around a named place, and directions with a waypoint.
+```
+
+---
+
 ## 1.11 (빌드 18)
 
 기준은 1.10 아카이브 커밋 `0013c52`(빌드 17)이며 그 이후 커밋 57건을 전수 판정했다. `ios/` 아래를 건드린 것은 24건이고, 그중 Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 아래에 담는다.
