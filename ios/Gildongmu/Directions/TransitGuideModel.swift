@@ -51,6 +51,40 @@ final class TransitGuideModel {
     }
     private(set) var pendingDestChange: PendingDestChange?
 
+    /// 조망 "다른 경로"(E15-1 spec §5) — 목적지 전환과 **별도 슬롯**. 한 슬롯을 source
+    /// 플래그로 나눠 쓰면 메뉴에서 고른 새 목적지 후보가 조망 요청에 덮이고, 한쪽의
+    /// 지연된 dismiss가 다른 쪽의 새 요청을 취소한다(설계 리뷰 A3·A4). 슬롯이 다르면
+    /// 둘 다 구조적으로 불가능하다.
+    struct PendingAltRoutes {
+        /// 출발점의 근거 — 커밋 가드가 이 값의 변화를 본다(§5.4 "시간이 아니라 근거").
+        enum OriginEvidence: Equatable {
+            case gps
+            /// 신선한 추적 관측의 현재역(조망 here == station).
+            case station(stopIndex: Int)
+            /// 사용자가 "{승차역} 기준으로 조회"를 눌러 선언했다(앱이 추정하지 않는다).
+            case boardStopDeclared
+        }
+        enum FailReason: Equatable { case noLocation, fetch }
+        enum Phase: Equatable { case loading, loaded(TransitRouteResult), empty, failed(FailReason) }
+        let token: Int
+        /// 조회 시작 시점의 국면 세대·구간 — 커밋 시 현재와 다르면 재조회.
+        let phaseGen: Int
+        let legIndex: Int
+        var origin: OriginEvidence?
+        var phase: Phase
+        var fetchedAt: Date?
+    }
+    private(set) var pendingAltRoutes: PendingAltRoutes?
+    private var altRoutesToken = 0
+
+    /// 조망 디스크립터(Kit 순수 계층) — 세션이 없으면 nil.
+    var overview: TransitOverview? {
+        guard let state, let route else { return nil }
+        return transitProgressOverview(state: state, route: route)
+    }
+
+    enum AltRouteCommit { case committed, refetching, invalidCandidate, sessionEnded }
+
     var isTracking: Bool { state != nil }
     var currentLeg: TransitGuideLeg? {
         guard let state, let route else { return nil }
@@ -153,6 +187,8 @@ final class TransitGuideModel {
         // 목적지 전환 준비·억제도 세션과 함께 소거(스펙 §5.4 — 잔류 억제 금지).
         destChangeToken += 1
         pendingDestChange = nil
+        altRoutesToken += 1
+        pendingAltRoutes = nil
         outputSuppressed = false
     }
 
@@ -337,11 +373,7 @@ final class TransitGuideModel {
         do {
             let origin = try await LocationService.shared.currentCoordinate()
             guard token == destChangeToken, isTracking else { return }
-            // includeStops: 안내용 승차·하차 정류소 데이터원(§4.1 — 브리핑 조회 동형).
-            let result = try await routeService.transit(
-                originLat: origin.lat, originLng: origin.lng,
-                destLat: pending.dest.lat, destLng: pending.dest.lng,
-                includeStops: true)
+            let result = try await fetchTransitCandidates(origin: origin, dest: pending.dest)
             guard token == destChangeToken, isTracking else { return }
             if let result {
                 pendingDestChange?.phase = .loaded(result)
@@ -353,6 +385,115 @@ final class TransitGuideModel {
             guard token == destChangeToken, isTracking else { return }
             pendingDestChange?.phase = .failed
         }
+    }
+
+    /// 후보 조회 공용(목적지 전환·조망 대안). includeStops: 안내용 승차·하차 정류소
+    /// 데이터원(§4.1 — 브리핑 조회 동형).
+    private func fetchTransitCandidates(
+        origin: (lat: Double, lng: Double), dest: BeaconDest
+    ) async throws -> TransitRouteResult? {
+        try await routeService.transit(
+            originLat: origin.lat, originLng: origin.lng,
+            destLat: dest.lat, destLng: dest.lng,
+            includeStops: true)
+    }
+
+    // MARK: 조망 "다른 경로" (E15-1 spec §5)
+
+    /// 조망에서 "다른 경로 보기"(또는 실패 행의 "{승차역} 기준으로 조회"). 반환 토큰은
+    /// 호출부(하위 시트)가 취소·커밋에 되돌려준다 — 자기 요청만 건드리게.
+    @discardableResult
+    func prepareAltRoutes(declaredBoardStop: Bool) -> Int? {
+        guard let state, isTracking else { return nil }
+        altRoutesToken += 1
+        let token = altRoutesToken
+        pendingAltRoutes = PendingAltRoutes(
+            token: token, phaseGen: state.phaseGen, legIndex: state.legIndex,
+            origin: nil, phase: .loading, fetchedAt: nil)
+        Task { await fetchAltRoutes(token: token, declaredBoardStop: declaredBoardStop) }
+        return token
+    }
+
+    /// 출발점 정책(§5.3): GPS → 신선한 추적 관측의 현재역 좌표 → 실패(.noLocation).
+    /// 승차역은 앱이 추정하지 않고 사용자 선언(`declaredBoardStop`)일 때만 쓴다 —
+    /// 승차 전은 도보 중일 수 있어 "지금 여기"를 찍지 않는 §3 규칙 3의 조회판.
+    private func resolveAltOrigin(declaredBoardStop: Bool) async -> (origin: (lat: Double, lng: Double), evidence: PendingAltRoutes.OriginEvidence)? {
+        guard let leg = currentLeg else { return nil }
+        if declaredBoardStop, let stop = leg.boardStop,
+           let phase = state?.phase, phase == .waiting || phase == .boarding {
+            return ((stop.lat, stop.lng), .boardStopDeclared)
+        }
+        if let fix = try? await LocationService.shared.currentCoordinate() {
+            return ((fix.lat, fix.lng), .gps)
+        }
+        if let here = overview?.here, case let .station(idx) = here, leg.viaStops.indices.contains(idx) {
+            let stop = leg.viaStops[idx]
+            return ((stop.lat, stop.lng), .station(stopIndex: idx))
+        }
+        return nil
+    }
+
+    private func fetchAltRoutes(token: Int, declaredBoardStop: Bool) async {
+        guard let dest else { return }
+        guard let resolved = await resolveAltOrigin(declaredBoardStop: declaredBoardStop) else {
+            guard token == altRoutesToken, isTracking else { return }
+            pendingAltRoutes?.phase = .failed(.noLocation)
+            return
+        }
+        guard token == altRoutesToken, isTracking else { return }
+        pendingAltRoutes?.origin = resolved.evidence
+        do {
+            let result = try await fetchTransitCandidates(origin: resolved.origin, dest: dest)
+            guard token == altRoutesToken, isTracking else { return }
+            if let result {
+                pendingAltRoutes?.phase = .loaded(result)
+                pendingAltRoutes?.fetchedAt = Date()
+            } else {
+                pendingAltRoutes?.phase = .empty
+            }
+        } catch {
+            guard token == altRoutesToken, isTracking else { return }
+            pendingAltRoutes?.phase = .failed(.fetch)
+        }
+    }
+
+    /// 캡처한 토큰이 현재 슬롯과 같을 때만 폐기 — 지연된 dismiss가 새 요청을 지우지 않게.
+    func cancelAltRoutes(token: Int) {
+        guard pendingAltRoutes?.token == token else { return }
+        altRoutesToken += 1
+        pendingAltRoutes = nil
+    }
+
+    /// 전환(§5.4). 주 가드는 **근거 변화**(국면 세대·구간·앵커역), 시간(120초)은 보조.
+    /// 둘 중 하나라도 걸리면 같은 근거 정책으로 재조회(`.refetching`).
+    func commitAltRoute(_ route: TransitRoute, token: Int) -> AltRouteCommit {
+        guard isTracking, let state else { return .sessionEnded }
+        guard let pending = pendingAltRoutes, pending.token == token,
+              case .loaded = pending.phase else { return .sessionEnded }
+        let hereNow: Int? = if let here = overview?.here, case let .station(idx) = here { idx } else { nil }
+        let evidenceChanged: Bool = switch pending.origin {
+        case .station(let idx): hereNow != idx
+        case .gps, .boardStopDeclared, nil: false
+        }
+        let stale = pending.fetchedAt.map { Date().timeIntervalSince($0) > Self.destChangeStaleSeconds } ?? true
+        if pending.phaseGen != state.phaseGen || pending.legIndex != state.legIndex || evidenceChanged || stale {
+            let declared = pending.origin == .boardStopDeclared
+            // 재조회 사유는 이 통지가 유일한 전달 경로(활성화한 버튼이 사라진다, 헌장 §6).
+            announce(appLocalized("ios.transitGuide.destChangeRefetched"), highPriority: true)
+            altRoutesToken += 1
+            let next = altRoutesToken
+            pendingAltRoutes = PendingAltRoutes(
+                token: next, phaseGen: state.phaseGen, legIndex: state.legIndex,
+                origin: nil, phase: .loading, fetchedAt: nil)
+            Task { await fetchAltRoutes(token: next, declaredBoardStop: declared) }
+            return .refetching
+        }
+        guard let dest else { return .sessionEnded }
+        guard changeRoute(transitRoute: route, destinationLabel: destinationLabel, dest: dest,
+                          announcement: .routeSwitched) else { return .invalidCandidate }
+        altRoutesToken += 1
+        pendingAltRoutes = nil
+        return .committed
     }
 
     /// 2단(후보 선택) = 확정(§4.1·§4.3). false = 확정 불발(세션 사망·stale 재조회) —
@@ -374,7 +515,8 @@ final class TransitGuideModel {
             Task { await fetchDestChangeCandidates(token: token) }
             return false
         }
-        guard changeRoute(transitRoute: route, destinationLabel: pending.label, dest: pending.dest) else { return false }
+        guard changeRoute(transitRoute: route, destinationLabel: pending.label, dest: pending.dest,
+                          announcement: .destinationChanged) else { return false }
         pendingDestChange = nil
         return true
     }
@@ -389,11 +531,21 @@ final class TransitGuideModel {
     /// `Task.isCancelled`·`self.state` 재조회 가드가 옛 응답 커밋을 이미 막는다
     /// (별도 세대 카운터 불요, 스펙 "최소 보강"). `state`는 이 동기 함수 안에서만
     /// 갈아끼워 nil을 스치지 않는다(시트 presentation이 `state != nil`에 묶여 있다).
-    private func changeRoute(transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest) -> Bool {
+    /// 전환 통지의 종류 — 커밋 검증을 통과한 시점에 값으로 넘긴다(전역 pending을
+    /// 되읽지 않는다, 설계 리뷰 A7).
+    enum RouteChangeAnnouncement { case destinationChanged, routeSwitched }
+
+    private func changeRoute(
+        transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest,
+        announcement: RouteChangeAnnouncement
+    ) -> Bool {
         guard let guideRoute = buildTransitGuideRoute(transitRoute) else { return false }
         pollTask?.cancel()
         pollTask = nil
         pendingWalkHandoff = nil  // 옛 목적지의 핸드오프 제안 무효
+        // 같은 목적지의 경로 전환이면 메뉴 쪽 목적지 후보는 낡았다(출발점이 바뀌었다).
+        destChangeToken += 1
+        pendingDestChange = nil
         self.route = guideRoute
         self.destinationLabel = destinationLabel
         self.dest = dest
@@ -407,8 +559,13 @@ final class TransitGuideModel {
         refreshAnnounce = false
         state = initTransitGuide(route: guideRoute, now: nowMs())
         let first = guideRoute.legs[0]
+        // 목적지가 같은 경로 전환에 "목적지가 바뀌었다"를 말하면 거짓이다 — 종류별 첫 문장.
+        let lead = switch announcement {
+        case .destinationChanged: appLocalized("ios.guide.destChanged", destinationLabel)
+        case .routeSwitched: appLocalized("ios.transitGuide.routeSwitched")
+        }
         var parts = [
-            appLocalized("ios.guide.destChanged", destinationLabel),
+            lead,
             appLocalized("transitGuide.started", String(guideRoute.legs.count)),
             waitContextText(first, isCurrentLeg: true),
         ]
