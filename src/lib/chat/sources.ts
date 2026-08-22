@@ -54,6 +54,8 @@ export function sourceFor(
       return [KAKAO];
     case "get_station_meta":
       return [KRIC];
+    case "get_where_am_i":
+      return [KAKAO, KRIC];
     case "get_station_facilities":
       return [KORAIL, SEOUL_METRO];
     case "get_car_route":
@@ -71,6 +73,34 @@ export function sourceFor(
     default:
       return [];
   }
+}
+
+/** 한눈에 보기 출처 — 데이터를 실제로 보여준 불릿(state ok)의 제공처만(키 없음·미제공·실패는 인용하지 않는다). */
+export function overviewSources(
+  bullets: { kind: string; state: string; busStops?: unknown }[],
+): SourceAttribution[] {
+  const out: SourceAttribution[] = [];
+  for (const b of bullets) {
+    if (b.state !== "ok") continue;
+    switch (b.kind) {
+      case "transit":
+        out.push(KRIC);
+        if (b.busStops !== null && b.busStops !== undefined) out.push(TAGO);
+        break;
+      case "food":
+      case "cafe":
+      case "kids":
+        out.push(KAKAO);
+        break;
+      case "events":
+        out.push(SEOUL_OPEN);
+        break;
+      case "barrierFree":
+        out.push(TOURAPI);
+        break;
+    }
+  }
+  return dedupeSources(out);
 }
 
 export function dedupeSources(list: SourceAttribution[]): SourceAttribution[] {
