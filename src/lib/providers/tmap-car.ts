@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { carActionFromTurnType } from "../car-action";
 import type { CarRouteBriefing, CarRouteGuide, Coord, RouteWaypoint } from "../types";
 
 /**
@@ -27,6 +28,8 @@ interface TmapCarPointFeature {
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: {
     description?: string;
+    /** 회전 유형 코드 — 기하 모드에서 `action`으로 투영(`carActionFromTurnType`). */
+    turnType?: number;
     /** S=출발(첫 안내 문장 보유 — 스텝), E=도착(마커), N=일반 안내(실측 2026-08-03),
      *  B1=경유지(passList 1번째, 실측 2026-08-22 — 말미에 description 없는 B1이 하나 더 온다). */
     pointType?: string;
@@ -143,6 +146,13 @@ export function normalizeTmapCarRoute(
         }
         markWaypoint(f);
         current = { name: "", guidance: description, distanceMeters: 0, durationSeconds: 0 };
+        // 결정 행동(K2 spec §2.3): 기하 모드에서만 싣고, 행동 없는 코드는 키를 두지 않는다
+        // (임박 큐 침묵). 문장은 손대지 않는다 — 행동은 문장이 아니라 별도 필드다.
+        const action =
+          typeof f.properties.turnType === "number"
+            ? carActionFromTurnType(f.properties.turnType)
+            : null;
+        if (action) current.action = action;
         const [lng, lat] = f.geometry.coordinates;
         coords = [{ lat, lng }];
       } else if (current) {

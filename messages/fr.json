@@ -751,7 +751,29 @@
       "transitDestChangePending": "Changement de destination vers {label}, choisissez un itinéraire",
       "transitDestChangeFailed": "Changement de destination vers {label} échoué, voir le guidage"
     },
-    "changeWaypointHere": "Changer le point de passage pour ici"
+    "changeWaypointHere": "Changer le point de passage pour ici",
+    "carImminent": {
+      "left": "Tournez à gauche bientôt",
+      "right": "Tournez à droite bientôt",
+      "back": "Faites demi-tour bientôt",
+      "keepLeft": "Restez à gauche bientôt",
+      "keepRight": "Restez à droite bientôt"
+    },
+    "carCommand": {
+      "left": "Tournez à gauche",
+      "right": "Tournez à droite",
+      "back": "Demi-tour",
+      "keepLeft": "Restez à gauche",
+      "keepRight": "Restez à droite"
+    },
+    "carLiveAction": {
+      "left": "tournez à gauche",
+      "right": "tournez à droite",
+      "back": "faites demi-tour",
+      "keepLeft": "restez à gauche",
+      "keepRight": "restez à droite"
+    },
+    "carPeriodic": "{command} dans {distance}"
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

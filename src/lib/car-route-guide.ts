@@ -55,7 +55,12 @@ export function buildCarGuide(briefing: CarRouteBriefing): CarGuideData | null {
   }
 
   const route = buildGuideRoute(
-    guides.map((g) => ({ description: g.guidance, pathCoords: g.pathCoords! })),
+    guides.map((g) => ({
+      description: g.guidance,
+      pathCoords: g.pathCoords!,
+      // 결정 행동(K2 spec §2.3) — 임박 큐·하단 2행이 문장 대신 읽는다.
+      ...(g.action === undefined ? {} : { action: g.action }),
+    })),
   );
   if (!route) return null;
 

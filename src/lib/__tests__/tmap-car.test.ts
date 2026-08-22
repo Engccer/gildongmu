@@ -112,6 +112,7 @@ function geometryFixture(): TmapCarResponse {
         geometry: { type: "Point", coordinates: [127.1, 37.502] },
         properties: {
           pointType: "N",
+          turnType: 13,
           description: "교차로에서 우회전 후 천호대로를 따라 800m 이동",
         },
       },
@@ -152,6 +153,7 @@ describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
     for (const g of out.guides) {
       expect("pathCoords" in g).toBe(false);
       expect("roadLinks" in g).toBe(false);
+      expect("action" in g).toBe(false);
     }
     expect("terminalCoord" in out).toBe(false);
   });
@@ -178,6 +180,9 @@ describe("normalizeTmapCarRoute includeGeometry(B1 §5)", () => {
     // 표시 수치 계약 불변(문장 내장 정본)
     expect(first.distanceMeters).toBe(0);
     expect(first.durationSeconds).toBe(0);
+    // 결정 행동(K2 spec §2.3): turnType 13 → right, S(200 — turnType 없음)는 키 없음
+    expect("action" in first).toBe(false);
+    expect(second.action).toBe("right");
     // 종점 마커 좌표 보존(§5 전 구간 커버리지 검증 축 — 독립 리뷰 반영)
     expect(out.terminalCoord).toEqual({ lat: 37.502, lng: 127.108 });
   });

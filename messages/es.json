@@ -751,7 +751,29 @@
       "transitDestChangePending": "Cambiando destino a {label}, elige una ruta",
       "transitDestChangeFailed": "Cambio de destino a {label} fallido, revisa la guía"
     },
-    "changeWaypointHere": "Cambiar el punto de paso a aquí"
+    "changeWaypointHere": "Cambiar el punto de paso a aquí",
+    "carImminent": {
+      "left": "Gire a la izquierda en breve",
+      "right": "Gire a la derecha en breve",
+      "back": "Cambie de sentido en breve",
+      "keepLeft": "Manténgase a la izquierda en breve",
+      "keepRight": "Manténgase a la derecha en breve"
+    },
+    "carCommand": {
+      "left": "Gire a la izquierda",
+      "right": "Gire a la derecha",
+      "back": "Cambio de sentido",
+      "keepLeft": "Manténgase a la izquierda",
+      "keepRight": "Manténgase a la derecha"
+    },
+    "carLiveAction": {
+      "left": "gire a la izquierda",
+      "right": "gire a la derecha",
+      "back": "cambie de sentido",
+      "keepLeft": "manténgase a la izquierda",
+      "keepRight": "manténgase a la derecha"
+    },
+    "carPeriodic": "{command} en {distance}"
   },
   "offline": {
     "heading": "Estás sin conexión",

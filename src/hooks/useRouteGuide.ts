@@ -36,6 +36,7 @@ import {
   initialGuideState,
   unitAt,
   RESOLVE_TIMEOUT_S,
+  turnApproachMeters,
   WALK_TUNING,
   type GuideEvent,
   type GuideFix,
@@ -684,11 +685,12 @@ export function useRouteGuide(
         state.d,
         liveBaselineDRef.current,
         state.phase,
+        turnApproachMeters(state, tuning),
       );
       liveRowsStateRef.current = out.state;
       setLiveRowsIfChanged(renderLiveRows(out));
     },
-    [kindFixed, renderLiveRows, setLiveRowsIfChanged],
+    [kindFixed, renderLiveRows, setLiveRowsIfChanged, tuning],
   );
 
   /**
@@ -1641,7 +1643,7 @@ export function useRouteGuide(
       roadSpansRef.current = fetched.roadSpans;
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
       displayUnitsRef.current =
-        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
+        fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
       liveStepsRef.current = fetched.liveSteps;
       if (kindFixed === "car") {
         // 시작 조회가 ETA 1회차(§4.6 — 캡은 시작·주기·수동 재조회 전부 포함).
@@ -1676,6 +1678,7 @@ export function useRouteGuide(
     })();
   }, [
     announce,
+    tuning,
     clearEtaTimer,
     commitDetail,
     consumeStepFreeNotice,
@@ -1875,7 +1878,7 @@ export function useRouteGuide(
         roadSpansRef.current = fetched.roadSpans;
         // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
         displayUnitsRef.current =
-          fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps) : [];
+          fetched.liveSteps.length > 0 ? buildDisplayUnits(fetched.liveSteps, tuning.actionSource) : [];
         liveStepsRef.current = fetched.liveSteps;
         if (kindFixed === "car") {
           // 수동 재조회도 ETA 호출 캡에 포함(§4.6). 새 경로 기준으로 원자 교체.
@@ -1922,6 +1925,7 @@ export function useRouteGuide(
     })();
   }, [
     announce,
+    tuning,
     commitDetail,
     consumeStepFreeNotice,
     fetchGuideRoute,

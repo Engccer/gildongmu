@@ -10,6 +10,7 @@
  */
 import { haversineMeters } from "./geo";
 import type { Coord } from "./types";
+import type { GuideAction } from "./walk-action";
 
 /** 40m 미만 스텝은 GPS 자동 판정 대상이 아니다: 25m 미만 구간 21%·도심 오차 7~13m(조사 §2). */
 export const LONG_STEP_MIN_M = 40;
@@ -28,6 +29,11 @@ export interface StepSpan {
   startD: number;
   endD: number;
   isLong: boolean;
+  /**
+   * 서버가 투영한 결정 행동(자동차 `turnType` → `CarAction`, K2 spec §2.3). 있으면 리듀서·
+   * 표시 계층이 문장 대신 이것을 쓴다. 도보 스텝엔 없다(문장 분류 `walkStepAction`).
+   */
+  action?: GuideAction;
 }
 
 export interface GuideRoute {
@@ -60,7 +66,7 @@ const finite = (c: Coord) => Number.isFinite(c.lat) && Number.isFinite(c.lng);
  * (경유지에서 출발). Kit `buildGuideRoute(_:waypointStepIndex:)` 미러.
  */
 export function buildGuideRoute(
-  steps: { description: string; pathCoords?: Coord[] }[],
+  steps: { description: string; pathCoords?: Coord[]; action?: GuideAction }[],
   opts?: { waypointStepIndex?: number },
 ): GuideRoute | null {
   if (steps.length === 0) return null;
@@ -104,6 +110,7 @@ export function buildGuideRoute(
       startD,
       endD: d,
       isLong: d - startD >= LONG_STEP_MIN_M,
+      ...(steps[i].action === undefined ? {} : { action: steps[i].action }),
     });
   }
   if (points.length < 2 || d <= 0) return null;

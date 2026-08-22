@@ -751,7 +751,29 @@
       "transitDestChangePending": "目的地を{label}に変更中、経路を選択",
       "transitDestChangeFailed": "{label}への目的地変更に失敗、案内画面で確認"
     },
-    "changeWaypointHere": "ここを経由地に変更"
+    "changeWaypointHere": "ここを経由地に変更",
+    "carImminent": {
+      "left": "まもなく左折です",
+      "right": "まもなく右折です",
+      "back": "まもなくUターンです",
+      "keepLeft": "まもなく左方向です",
+      "keepRight": "まもなく右方向です"
+    },
+    "carCommand": {
+      "left": "左折",
+      "right": "右折",
+      "back": "Uターン",
+      "keepLeft": "左方向",
+      "keepRight": "右方向"
+    },
+    "carLiveAction": {
+      "left": "左折してください",
+      "right": "右折してください",
+      "back": "Uターンしてください",
+      "keepLeft": "左方向へ進んでください",
+      "keepRight": "右方向へ進んでください"
+    },
+    "carPeriodic": "{distance}先、{command}"
   },
   "offline": {
     "heading": "オフラインです",

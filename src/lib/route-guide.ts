@@ -27,7 +27,7 @@ import {
   type GuideRoute,
   type StepSpan,
 } from "./route-geometry";
-import { imminentTone, walkStepAction, type ImminentTone, type WalkAction } from "./walk-action";
+import { imminentTone, walkStepAction, type GuideAction, type ImminentTone } from "./walk-action";
 
 export { buildGuideRoute, LONG_STEP_MIN_M, type GuideRoute } from "./route-geometry";
 
@@ -115,13 +115,54 @@ export interface GuideTuning {
   announceAheadM: number;
   announceAheadSpeedS: number;
   /**
-   * 결정 지점 임박 큐 경계(m). null=미사용.
+   * 결정 지점 임박 큐의 **거리 바닥**(m). null=큐 미사용. 실제 임계는
+   * `max(imminentAheadM, v×imminentAheadS)`(`announceAheadM` 구조 동형).
    *
-   * ⚠ **보행 전용이다.** 20m는 보행 ~15초이지만 15m/s 주행에서는 2초 미만이라 소리를
-   * 듣고 반응할 시간이 없고, 애초에 자동차 안내는 실주행을 네이티브 앱에 위임한다.
-   * 값도 문구도(`walkStepAction`이 도보 문형만 안다) 차량에서 재본 적이 없다.
+   * walk는 20m(10 + lag)·시간 계수 0이라 종전과 같다. car는 2026-08-23 K2로 시간 축이
+   * 생겼다(spec `2026-08-23-car-guidance-completion-design.md` §3.2): 15m 바닥은 속도 표본이
+   * 없거나(세션 시작·정확도 20m 초과) 정지 중일 때 `v×T=0`이 `rem ≥ 0` 하한과 만나
+   * 큐가 구조적으로 안 나가는 것을 막는다(실주행 p10 2.1m/s × 5초 = 10m).
    */
   imminentAheadM: number | null;
+  /** 임박 큐의 시간 축(초). 임계 = max(imminentAheadM, v×이 값). walk 0. */
+  imminentAheadS: number;
+  /**
+   * 속도 표본이 2개 미만(세션 시작·재획득 직후·정확도 배제)일 때의 임박 임계(m). walk는
+   * `imminentAheadM`과 같아 종전 동일. car는 60(≈10m/s×6초) — 바닥 15m로 떨어뜨리면 터널
+   * 복귀 직후 30m 앞 교차로가 침묵한다(설계 리뷰 B4).
+   */
+  imminentUnknownSpeedM: number;
+  /**
+   * 행동의 출처. `text`=문장 분류(`walkStepAction`), `step`=서버 투영 `action`만(없으면 침묵).
+   * ⚠ car는 `step`이다 — 문장으로 되돌아가면 "왼쪽 옆길"·"오른쪽 방향"(갈래·시설 문장)이
+   * 회전으로 분류돼 코드 판정 층을 신설한 목적이 무효가 된다(설계 리뷰 B1).
+   */
+  actionSource: "text" | "step";
+  /**
+   * 임박 큐가 전문 선행(`imminentUpTo < announcedUpTo`)을 요구하는가. walk true — "잠시 후
+   * 왼쪽으로 도세요"는 무엇을 향한 회전인지 전문이 먼저 말해야 한다. car false — 명령
+   * "우회전"은 자기 완결이고, 재획득·시작 직후 경계가 임계 안이면 전문을 기다리는 한 fix
+   * (20m/s에서 20m)에 경계를 지나 큐가 영영 사라진다(설계 리뷰 B3). 이때 전문 래치도
+   * 함께 전진한다(명령이 전문을 대신한다 — 도로 정보는 주기 통지 몫).
+   */
+  imminentNeedsAnnounce: boolean;
+  /**
+   * 공백 뒤 따라잡기 안전(K2 spec §3.4). 실주행 2026-08-22: 터널 5분 공백 뒤 구속 창이
+   * fix마다 150m씩 기어가며(점프 표본이 속도 추정을 150m/s로 부풀려 창이 커진 탓에
+   * 재획득도 안 걸렸다) **이미 지난 교차로 3개의 "우회전" 전문이 1초 간격으로** 나갔다.
+   * 자동차에서는 위험 오안내다. 켜면 세 가지가 바뀐다: ①투영 점프(`jumped`) fix는 속도
+   * 표본에 넣지 않고 6a 이후 발화를 전부 건너뛴다(창 기아가 3회 쌓여 재획득으로 넘어가
+   * 전역 재투영 + 래치 재구성) ②uncertain 복귀 fix의 공백이 `REACQUIRE_GAP_S`를 넘으면
+   * 복귀 대신 재획득으로 간다 ③유닛 끝이 이미 d 뒤에 있는 유닛은 전문 없이 래치만 전진.
+   * 도보는 종전 동작 유지(실보행 판정이 종전을 전제 — 도보 적용은 별도 판정, `docs/BACKLOG.md`).
+   */
+  silentCatchUp: boolean;
+  /**
+   * 속도 표본 정확도 상한(m). walk 20(`SPEED_SAMPLE_MAX_ACC_M` — 계단 노이즈), car 50
+   * (= uncertain 게이트. 차량은 임박 임계가 `v×T`라 표본이 끊기면 바닥 15m로 떨어져
+   * 20m/s에서 0.75초가 된다 — 정확도 21~50m 구간에서 시간 축이 죽는 것이 더 위험하다).
+   */
+  speedSampleMaxAccM: number;
   /** 원거리 예고 경계(m). null=미사용(walk) */
   farNoticeM: number | null;
   windowAheadMinM: number;
@@ -175,6 +216,12 @@ export const WALK_TUNING: GuideTuning = {
   announceAheadM: ANNOUNCE_AHEAD_M,
   announceAheadSpeedS: 0,
   imminentAheadM: IMMINENT_AHEAD_M,
+  imminentAheadS: 0,
+  imminentUnknownSpeedM: IMMINENT_AHEAD_M,
+  actionSource: "text",
+  imminentNeedsAnnounce: true,
+  silentCatchUp: false,
+  speedSampleMaxAccM: SPEED_SAMPLE_MAX_ACC_M,
   farNoticeM: null,
   windowAheadMinM: WINDOW_AHEAD_MIN_M,
   windowAheadSpeedS: 0,
@@ -192,12 +239,29 @@ export const WALK_TUNING: GuideTuning = {
   maxSpeedMps: MAX_WALK_SPEED_MPS,
 };
 
-/** 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정. */
+/**
+ * 자동차 임박 큐 거리 바닥(m)·관측 지연(초). 시간 축 5초(위원장 판정 2026-08-23, 잠정)에
+ * fix 간격 p50 1.0초(실주행 로그)를 더한다 — 도보의 `10 + PROJECTION_LAG_M` 동형.
+ * ⚠ B1 실주행 판정 대상. 운전자 모드는 8초(스피커로 듣는 운전자의 반응 여유).
+ */
+export const CAR_IMMINENT_FLOOR_M = 15;
+export const CAR_FIX_LAG_S = 1;
+export const CAR_IMMINENT_AHEAD_S = 5 + CAR_FIX_LAG_S;
+export const CAR_DRIVER_IMMINENT_AHEAD_S = 8 + CAR_FIX_LAG_S;
+/** 속도 표본이 없을 때의 자동차 임박 임계(m) ≈ 10m/s × 6초(설계 리뷰 B4). */
+export const CAR_IMMINENT_UNKNOWN_SPEED_M = 60;
+
+/** 자동차(동승자) 초기값(스펙 §4.3 표 + K2 §3.2) — 실주행 판정까지 잠정. */
 export const CAR_TUNING: GuideTuning = {
   announceAheadM: 120,
   announceAheadSpeedS: 15,
-  // ⚠ 보행 궤적으로만 쟀다(위 필드 주석). 켜려면 먼저 재라.
-  imminentAheadM: null,
+  imminentAheadM: CAR_IMMINENT_FLOOR_M,
+  imminentAheadS: CAR_IMMINENT_AHEAD_S,
+  imminentUnknownSpeedM: CAR_IMMINENT_UNKNOWN_SPEED_M,
+  actionSource: "step",
+  imminentNeedsAnnounce: false,
+  silentCatchUp: true,
+  speedSampleMaxAccM: UNCERTAIN_ACCURACY_M,
   farNoticeM: 1500,
   windowAheadMinM: 150,
   windowAheadSpeedS: 5,
@@ -215,6 +279,16 @@ export const CAR_TUNING: GuideTuning = {
   // ⚠ 정체 5분 정지가 일상이라 도보 상수로는 주행 중 종료가 된다(설계 리뷰 C5).
   presumedArrivalEnabled: false,
   maxSpeedMps: MAX_CAR_SPEED_MPS,
+};
+
+/**
+ * 운전자 모드(K2 §3.3): 리듀서에서는 임박 시간 축 하나만 다르다. "낮은 빈도"는
+ * 오케스트레이터가 이벤트를 거르는 것으로 구현한다 — 여기 발화 정책을 넣으면 미러·fixture가
+ * 청취자 축까지 곱해진다.
+ */
+export const CAR_DRIVER_TUNING: GuideTuning = {
+  ...CAR_TUNING,
+  imminentAheadS: CAR_DRIVER_IMMINENT_AHEAD_S,
 };
 
 /**
@@ -350,7 +424,7 @@ export type GuideEvent =
    * 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
    * 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
    */
-  | { kind: "imminent"; indices: number[]; action: WalkAction }
+  | { kind: "imminent"; indices: number[]; action: GuideAction }
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
@@ -411,6 +485,17 @@ export function unitAt(route: GuideRoute, index: number): number[] {
   while (a > 0 && !route.steps[a - 1].isLong) a--;
   while (b < route.steps.length - 1 && !route.steps[b + 1].isLong) b++;
   return route.steps.slice(a, b + 1).map((x) => x.index);
+}
+
+/**
+ * 결정 지점 행동. 출처는 프로파일이 정한다(`actionSource`) — car는 서버 투영만 보고 문장으로
+ * 되돌아가지 않는다(없으면 침묵). 공용 `stepActionFor`는 표시 계층(`guide-live-rows`)도 쓴다.
+ */
+export function stepActionFor(
+  step: { description: string; action?: GuideAction },
+  source: GuideTuning["actionSource"],
+): GuideAction | null {
+  return source === "step" ? (step.action ?? null) : walkStepAction(step.description);
 }
 
 function stepAt(route: GuideRoute, d: number): StepSpan {
@@ -552,6 +637,28 @@ export function finalApproachEntryM(
   return Math.max(ARRIVAL_TOLERANCE_MIN_M, accuracy);
 }
 
+/**
+ * 이 상태에서의 임박 큐 임계(m) — 6a와 같은 식. 표시 계층(`guideLiveRows`의 `turnApproachM`)이
+ * 리듀서와 같은 시점에 "잠시 후"로 넘어가도록 **한 함수**에서 낸다(K2 §4). walk는 20 고정.
+ */
+export function imminentAheadMeters(
+  state: Pick<GuideState, "speedSamples">,
+  tuning: GuideTuning,
+): number {
+  if (tuning.imminentAheadM === null) return 0;
+  // 표본 2개 미만이면 속도를 모른다 — 0으로 두면 바닥만 남아 고속 진입에서 침묵한다.
+  if (state.speedSamples.length < 2) return tuning.imminentUnknownSpeedM;
+  return Math.max(tuning.imminentAheadM, estimateSpeedMps(state.speedSamples) * tuning.imminentAheadS);
+}
+
+/** 표시 좌표계의 회전 접근 전환 잔여(m) = 임박 임계 − 표시 lag(하한 0). walk는 10(`TURN_APPROACH_M`). */
+export function turnApproachMeters(
+  state: Pick<GuideState, "speedSamples">,
+  tuning: GuideTuning,
+): number {
+  return Math.max(0, imminentAheadMeters(state, tuning) - PROJECTION_LAG_M);
+}
+
 function periodicIntervalS(remaining: number): number {
   if (remaining > 500) return 60;
   if (remaining >= 150) return 30;
@@ -606,6 +713,31 @@ export function guideStep(
   const accBad = !(fix.accuracy > 0) || fix.accuracy > UNCERTAIN_ACCURACY_M;
   if (state.phase === "uncertain") {
     if (accBad) return { state: { ...state, lastFixAt: now }, event: null, tone: null };
+    // 복귀 fix의 공백이 재획득 공백을 넘으면 복귀가 아니라 재획득이다(silentCatchUp ②).
+    // uncertain 분기는 lastFixAt을 갱신하므로 아래 gap 검사가 이 공백을 보지 못한다 —
+    // 터널 5분 뒤 resumePhase로 돌아가면 구속 창이 옛 d에서 기어가며 지난 스텝을 읽는다.
+    if (
+      tuning.silentCatchUp &&
+      state.lastFixAt !== null &&
+      now - state.lastFixAt > REACQUIRE_GAP_S
+    ) {
+      return {
+        state: {
+          ...state,
+          phase: "reacquiring",
+          windowEdgeHits: 0,
+          speedSamples: [],
+          courseVotes: [],
+          lastFixAt: now,
+          reacquiringFromOffRoute: state.resumePhase === "offRoute",
+          reacquirePrevD: state.d,
+          reacquireV: 0,
+          reacquireSince: state.lastFixAt,
+        },
+        event: { kind: "reacquiring" },
+        tone: null,
+      };
+    }
     const s: GuideState = {
       ...state,
       phase: state.resumePhase,
@@ -770,8 +902,10 @@ export function guideStep(
   //    정확도 나쁜 fix(>20m)는 표본에서 배제한다(투영·전진은 유지 — 위치 축과 속도
   //    축의 품질 요구가 다르다). 배제가 이어지면 창이 짧아져 가드 판정 자체가
   //    멈추므로, 나쁜 fix만으로는 가드가 새로 켜지지 않는다.
+  //    점프 fix의 표본은 창 기아 따라잡기 속도(150m/s)라 버린다(silentCatchUp ① — 넣으면
+  //    창이 부풀어 재획득이 영영 안 걸린다).
   const samples = (
-    fix.accuracy > SPEED_SAMPLE_MAX_ACC_M
+    fix.accuracy > tuning.speedSampleMaxAccM || (tuning.silentCatchUp && jumped)
       ? state.speedSamples
       : [...state.speedSamples, { at: now, d }]
   ).filter((s) => now - s.at <= SPEED_WINDOW_S);
@@ -933,6 +1067,11 @@ export function guideStep(
     return emit(next, { kind: "waypointReached" }, null);
   }
 
+  // J) 투영 점프 fix는 발화하지 않는다(silentCatchUp ①). 창이 기아 상태로 기어가는 중이라
+  //    d가 실위치가 아니다 — 이 d로 전문·임박·주기를 내면 지난 지점을 읽는다. 상태(d·창
+  //    기아 카운트)는 커밋되므로 3회 뒤 재획득이 전역 재투영으로 바로잡는다.
+  if (tuning.silentCatchUp && jumped) return emit(next, null, null);
+
   // 6a) 결정 지점 임박 큐(20m = 10 + lag, walk 전용): 소리·진동과 짧은 명령형 한 문장으로
   //     "지금이다"를 알린다.
   //
@@ -975,21 +1114,34 @@ export function guideStep(
   //
   //     ⚠ `!isOff`는 6b와 같은 이유다(아래 주석) — 이 fix가 이탈로 판정됐지만 확정
   //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
+  //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2, `announceAhead` 동형). walk는
+  //     시간 계수 0이라 20m 고정이고, car는 `max(15, v×6)` — 20m/s에서 120m, 정지·표본
+  //     부재에서 15m. 행동은 **스텝의 `action`(서버 turnType 투영)이 있으면 그것**, 없으면
+  //     문장 분류다 — 자동차 문장은 "오른쪽 방향"이 회전이 아니라 문장을 보지 않는다.
   if (tuning.imminentAheadM !== null && !isOff) {
-    while (
-      next.imminentUpTo < next.announcedUpTo &&
-      route.steps[next.imminentUpTo].endD < d
-    ) {
+    const imminentAhead = imminentAheadMeters(state, tuning); // vPrev와 같은 표본(직전 fix까지)
+    // 전문 선행 상한: walk는 낭독된 스텝까지, car는 마지막 스텝까지(명령이 자기 완결, B3).
+    const imminentCap = tuning.imminentNeedsAnnounce ? next.announcedUpTo : route.steps.length - 1;
+    while (next.imminentUpTo < imminentCap && route.steps[next.imminentUpTo].endD < d) {
       next = { ...next, imminentUpTo: next.imminentUpTo + 1 };
     }
     if (
-      next.imminentUpTo < next.announcedUpTo &&
-      route.steps[next.imminentUpTo].endD - d <= tuning.imminentAheadM
+      next.imminentUpTo < imminentCap &&
+      route.steps[next.imminentUpTo].endD - d <= imminentAhead
     ) {
       const target = next.imminentUpTo + 1;
-      const action = walkStepAction(route.steps[target].description);
+      const action = stepActionFor(route.steps[target], tuning.actionSource);
       next = { ...next, imminentUpTo: target };
       if (action) {
+        // 전문보다 먼저 나간 명령은 전문을 대신한다 — 래치를 같이 올려 6c가 지난 행동의
+        // 전문("교차로에서 우회전 후…")을 회전 뒤에 읽지 않게 한다(car 전용 경로).
+        if (next.announcedUpTo < target) {
+          next = {
+            ...next,
+            announcedUpTo: target,
+            farNoticedUpTo: Math.max(next.farNoticedUpTo, target),
+          };
+        }
         next = { ...next, lastAnnouncedAt: now };
         return emit(next, { kind: "imminent", indices: [target], action }, imminentTone(action));
       }
@@ -1042,6 +1194,26 @@ export function guideStep(
     return emit(next, { kind: "finalApproachEnter" }, null);
   }
 
+  // 6b'') 지난 유닛 무발화 따라잡기(car, K2 §3.4): 유닛 **끝**이 이미 d 뒤에 있으면 그 유닛의
+  //      결정 지점은 전부 지났다 — 전문을 내지 않고 래치 3종을 유닛 끝으로 옮긴다. 끝이 앞에
+  //      있는 유닛은 6c가 정상 발화한다("지금 구간" 전문은 나간다).
+  //      ⚠ 6b(최종 접근) **뒤**다. 앞에 두면 마지막 유닛을 지나쳐 착지한 fix가 전문 없이
+  //        최종 접근에 든다. 뒤에 두면 그 fix는 6c가 마지막 유닛을 내고 다음 fix에서 6b에 든다.
+  //      ⚠ `!isOff`: 확정 유예 중인 이탈 fix의 d로 래치를 비가역 전진시키지 않는다(설계 리뷰 B5).
+  if (tuning.silentCatchUp && !isOff) {
+    while (next.announcedUpTo < route.steps.length - 1) {
+      const unit = unitAt(route, next.announcedUpTo + 1);
+      const unitEnd = unit[unit.length - 1];
+      if (route.steps[unitEnd].endD >= d) break;
+      next = {
+        ...next,
+        announcedUpTo: unitEnd,
+        imminentUpTo: unitEnd,
+        farNoticedUpTo: Math.max(next.farNoticedUpTo, unitEnd),
+      };
+    }
+  }
+
   // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문(리뷰 #4).
   //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
   if (next.announcedUpTo < route.steps.length - 1) {
@@ -1051,20 +1223,23 @@ export function guideStep(
       vPrev * tuning.announceAheadSpeedS,
     );
     if (announcedEnd - d <= announceAhead) {
-      const indices = unitAt(route, next.announcedUpTo + 1);
+      const unit = unitAt(route, next.announcedUpTo + 1);
+      // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다 — "지난 회전 전문"을
+      // 묶음 단위로 되읽는 구멍(설계 리뷰 B6). 남는 것이 없으면 첫 스텝 하나(지금 구간).
+      const remaining = tuning.silentCatchUp ? unit.filter((i) => route.steps[i].endD >= d) : unit;
+      const indices = remaining.length > 0 ? remaining : [unit[unit.length - 1]];
       next = {
         ...next,
-        announcedUpTo: indices[indices.length - 1],
+        announcedUpTo: unit[unit.length - 1],
         // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).
-        farNoticedUpTo: Math.max(next.farNoticedUpTo, indices[indices.length - 1]),
+        farNoticedUpTo: Math.max(next.farNoticedUpTo, unit[unit.length - 1]),
         lastAnnouncedAt: now,
       };
       // ⚠ **톤은 임박 층이 있는 프로파일에서만 뗀다.** walk는 `ahead`가 6a로 옮겨
       //   갔으므로 여기서 또 울리면 소리가 "곧 뭔가 있다"와 "지금이다" 둘 다를 뜻하게
-      //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). 반대로 car는 임박 층이
-      //   없으므로 여기가 **그 자리의 유일한 소리**다 — 무조건 떼면 자동차 세션은
-      //   이탈 경고를 빼고 우선 톤이 0이 되고, `ahead`가 열던 3초 정숙 구간
-      //   (`QUIET_AFTER_ACTION_S`)까지 함께 사라진다(리뷰 검출 회귀).
+      //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). car도 2026-08-23 K2로 임박
+      //   층이 생겨 같은 규칙이다 — 임박 층이 없는 프로파일이 생기면 여기가 **그 자리의
+      //   유일한 소리**라 `ahead`를 들고, `QUIET_AFTER_ACTION_S` 정숙 창도 여기서 연다.
       //   ⚠ walk에서 그 정숙 구간이 40m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
       //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
       //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).

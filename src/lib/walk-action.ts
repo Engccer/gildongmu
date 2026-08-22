@@ -20,7 +20,21 @@
  * 결정 지점에서 사용자가 할 행동. **낭독 문구를 고르는 키**이므로 종류를 늘리면
  * i18n 키도 함께 는다 — 문구가 달라지지 않는 구분은 만들지 않는다.
  */
-export type WalkAction = "left" | "right" | "back" | "crosswalk" | "underpass";
+export type WalkAction =
+  | "left"
+  | "right"
+  | "back"
+  | "crosswalk"
+  | "underpass"
+  | "keepLeft"
+  | "keepRight";
+
+/**
+ * 수단 중립 별칭(K2, spec `2026-08-23-car-guidance-completion-design.md` §3.1). `keepLeft`·
+ * `keepRight`는 자동차 갈래 선택이라 `walkStepAction`은 내지 않는다 — 자동차 스텝은 서버
+ * `turnType` 투영(`CarAction`)으로 행동을 싣고, 리듀서는 `step.action ?? walkStepAction(desc)`로 고른다.
+ */
+export type GuideAction = WalkAction;
 
 /**
  * 결정 지점 임박 큐의 **소리**. 행동별로 가른다(N2, 2026-08-22 위원장 판정: 횡단보도·
@@ -43,6 +57,11 @@ export function imminentTone(action: WalkAction): ImminentTone {
       return "back";
     case "underpass":
       return "ahead";
+    // 갈래 선택은 회전과 같은 소리다(소리 5종을 늘리지 않는다 — N2 판정 유지).
+    case "keepLeft":
+      return "left";
+    case "keepRight":
+      return "right";
   }
 }
 

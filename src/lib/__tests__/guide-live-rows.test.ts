@@ -4,6 +4,7 @@ import scenarios from "./fixtures/guide-live-rows-scenarios.json";
 import {
   buildDisplayUnits,
   guideLiveRows,
+  TURN_APPROACH_M,
   type LiveNextRow,
   type LiveRowsState,
   type LiveStepInput,
@@ -23,11 +24,20 @@ function fmt(tpl: string, args: Record<string, string | number>): string {
   return tpl.replace(/\{(\w+)\}/g, (_, k: string) => String(args[k]));
 }
 
-function actionPhrase(action: keyof typeof g.liveAction): string {
-  return g.liveAction[action];
+type Kind = "walk" | "car";
+const phrases = (kind: Kind) =>
+  (kind === "car" ? g.carLiveAction : g.liveAction) as Record<string, string>;
+const imminents = (kind: Kind) =>
+  (kind === "car" ? g.carImminent : g.imminent) as Record<string, string>;
+
+/** 행동 구는 수단별이다(K2 §4) — 디스크립터는 같고 렌더 키만 갈린다(iOS GuideText 동형). */
+function actionPhrase(kind: Kind, action: string): string {
+  const phrase = phrases(kind)[action];
+  if (!phrase) throw new Error(`문구 없음: ${kind} ${action}`);
+  return phrase;
 }
 
-function renderTop(top: LiveTopRow | null): string {
+function renderTop(kind: Kind, top: LiveTopRow | null): string {
   if (top === null) return "";
   switch (top.kind) {
     case "offRoute":
@@ -38,10 +48,13 @@ function renderTop(top: LiveTopRow | null): string {
       return g.reacquiring;
     case "crossing":
       return top.text;
-    case "turnSoon":
-      return g.imminent[top.action];
+    case "turnSoon": {
+      const phrase = imminents(kind)[top.action];
+      if (!phrase) throw new Error(`문구 없음: ${kind} ${top.action}`);
+      return phrase;
+    }
     case "turnIn":
-      return fmt(g.liveTurnIn, { n: top.meters, action: actionPhrase(top.action) });
+      return fmt(g.liveTurnIn, { n: top.meters, action: actionPhrase(kind, top.action) });
     case "straight":
       return top.target
         ? fmt(g.liveStraight, { target: top.target, n: top.meters })
@@ -49,14 +62,14 @@ function renderTop(top: LiveTopRow | null): string {
   }
 }
 
-function renderNext(next: LiveNextRow | null): string {
+function renderNext(kind: Kind, next: LiveNextRow | null): string {
   if (next === null) return "";
   let step: string;
   switch (next.kind) {
     case "action":
       step = next.anchor
-        ? fmt(g.nextAction, { anchor: next.anchor, action: actionPhrase(next.action) })
-        : actionPhrase(next.action);
+        ? fmt(g.nextAction, { anchor: next.anchor, action: actionPhrase(kind, next.action) })
+        : actionPhrase(kind, next.action);
       break;
     case "straight":
       step = next.target
@@ -65,7 +78,7 @@ function renderNext(next: LiveNextRow | null): string {
       break;
     case "crossing":
     case "turn":
-      step = actionPhrase(next.action);
+      step = actionPhrase(kind, next.action);
       break;
   }
   return fmt(g.progressNext, { step });
@@ -83,7 +96,11 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
     scenarios as {
       scenarios: {
         name: string;
-        steps: { len: number; desc: string; target?: string; anchor?: string }[];
+        /** 수단(문구 키 선택). 미지정 walk. */
+        kind?: Kind;
+        /** 회전 접근 전환 잔여(m). 미지정 `TURN_APPROACH_M`(walk). car 시나리오는 명시. */
+        turnApproachM?: number;
+        steps: { len: number; desc: string; target?: string; anchor?: string; action?: string }[];
         baselineD: number;
         inputs: ScenarioInput[];
         expect: { afterInput: number; top: string; next: string }[];
@@ -97,11 +114,15 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           s.target || s.anchor
             ? { ...(s.target && { target: s.target }), ...(s.anchor && { anchor: s.anchor }) }
             : undefined;
-        const input = { description: s.desc, startD: acc, endD: acc + s.len, ...(live ? { live } : {}) };
+        const input: LiveStepInput = {
+          description: s.desc, startD: acc, endD: acc + s.len,
+          ...(live ? { live } : {}),
+          ...(s.action ? { action: s.action as LiveStepInput["action"] } : {}),
+        };
         acc += s.len;
         return input;
       });
-      const units = buildDisplayUnits(steps);
+      const units = buildDisplayUnits(steps, sc.kind === "car" ? "step" : "text");
       let state: LiveRowsState | null = null;
       let baselineD = sc.baselineD;
       const results: { top: string; next: string }[] = [];
@@ -110,9 +131,12 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           state = null;
           if (input.baselineD !== undefined) baselineD = input.baselineD;
         }
-        const out = guideLiveRows(state, units, input.d, baselineD, input.phase as GuidePhase);
+        const out = guideLiveRows(
+          state, units, input.d, baselineD, input.phase as GuidePhase,
+          sc.turnApproachM ?? TURN_APPROACH_M,
+        );
         state = out.state;
-        results.push({ top: renderTop(out.top), next: renderNext(out.next) });
+        results.push({ top: renderTop(sc.kind ?? "walk", out.top), next: renderNext(sc.kind ?? "walk", out.next) });
       }
       for (const ex of sc.expect) {
         expect(results[ex.afterInput].top, `#${ex.afterInput} top`).toBe(ex.top);
