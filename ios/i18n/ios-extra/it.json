@@ -236,7 +236,10 @@
       "releaseNotes": "Note di rilascio",
       "releaseNotesVersion": "Versione {version}",
       "releaseNotesError": "Impossibile caricare le note di rilascio",
-      "weightKg": "Peso per la stima delle calorie (kg)"
+      "weightKg": "Peso per la stima delle calorie (kg)",
+      "carListener": "Chi ascolta la guida in auto (sperimentale)",
+      "carListenerPassenger": "Passeggero (auricolari, screen reader)",
+      "carListenerDriver": "Conducente (altoparlante, comandi brevi)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "Equivale a una ciotola di riso (bap)!",
         "ramyeon": "Equivale a una ciotola di ramyeon!",
         "ramyeonMany": "Equivale a circa {n} ciotole di ramyeon!"
-      }
+      },
+      "carWalkHandoffStart": "Avvia la guida a piedi da qui"
     },
     "unit": {
       "spokenMeters": "metri"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}, cambia punto intermedio",
       "waypointSet": "Punto intermedio {label}, ricerca del percorso in corso",
       "waypointKept": "Punto intermedio {label} invariato",
-      "waypointDropped": "Nessun percorso tramite il punto intermedio {label}; guida senza di esso"
+      "waypointDropped": "Nessun percorso tramite il punto intermedio {label}; guida senza di esso",
+      "waypointRemove": "Rimuovi tappa",
+      "waypointRemoved": "Tappa {label} rimossa, nuova ricerca del percorso"
     },
     "transitGuide": {
       "destChangeHeading": "Scegli un nuovo percorso, {name}",

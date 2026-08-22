@@ -236,7 +236,10 @@
       "releaseNotes": "업데이트 이력",
       "releaseNotesVersion": "버전 {version}",
       "releaseNotesError": "업데이트 이력을 불러올 수 없습니다",
-      "weightKg": "칼로리 추정용 체중(kg)"
+      "weightKg": "칼로리 추정용 체중(kg)",
+      "carListener": "자동차 안내 듣는 사람 (실험)",
+      "carListenerPassenger": "동승자 (이어폰, 화면 낭독)",
+      "carListenerDriver": "운전자 (스피커, 짧은 명령)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "밥 한 공기 분량이에요!",
         "ramyeon": "라면 한 그릇 분량이에요!",
         "ramyeonMany": "라면 약 {n}그릇 분량이에요!"
-      }
+      },
+      "carWalkHandoffStart": "여기서 도보 안내 시작"
     },
     "unit": {
       "spokenMeters": "미터"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}, 경유지 변경",
       "waypointSet": "경유지 {label}, 경로를 다시 조회합니다",
       "waypointKept": "경유지 {label} 그대로입니다",
-      "waypointDropped": "경유지 {label}를 포함한 경로를 찾지 못해 경유지 없이 안내합니다"
+      "waypointDropped": "경유지 {label}를 포함한 경로를 찾지 못해 경유지 없이 안내합니다",
+      "waypointRemove": "경유지 삭제",
+      "waypointRemoved": "경유지 {label} 삭제, 경로를 다시 조회합니다"
     },
     "transitGuide": {
       "destChangeHeading": "새 경로 선택, {name}",

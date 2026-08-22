@@ -236,7 +236,10 @@
       "releaseNotes": "Release notes",
       "releaseNotesVersion": "Version {version}",
       "releaseNotesError": "Could not load release notes",
-      "weightKg": "Weight for calorie estimate (kg)"
+      "weightKg": "Weight for calorie estimate (kg)",
+      "carListener": "Car guidance listener (experimental)",
+      "carListenerPassenger": "Passenger (earphones, screen reader)",
+      "carListenerDriver": "Driver (speaker, short commands)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "That's about one bowl of rice (bap)!",
         "ramyeon": "That's about one bowl of ramyeon!",
         "ramyeonMany": "That's about {n} bowls of ramyeon!"
-      }
+      },
+      "carWalkHandoffStart": "Start walking guidance from here"
     },
     "unit": {
       "spokenMeters": "meters"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}, change waypoint",
       "waypointSet": "Waypoint {label}, fetching the route again",
       "waypointKept": "Waypoint {label} unchanged",
-      "waypointDropped": "No route found through waypoint {label}; guiding without it"
+      "waypointDropped": "No route found through waypoint {label}; guiding without it",
+      "waypointRemove": "Remove waypoint",
+      "waypointRemoved": "Waypoint {label} removed, re-fetching the route"
     },
     "transitGuide": {
       "destChangeHeading": "Choose a new route, {name}",

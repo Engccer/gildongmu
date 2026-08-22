@@ -53,6 +53,22 @@ final class TtsPlayer {
         playingMessageID == messageID
     }
 
+    /// 안내 발화 채널(K2 §6.2 운전자 모드). 즉시 발화하고 **직전 안내를 끊는다**(latest-wins —
+    /// 임박 명령이 전문 뒤에 줄 서면 시점을 놓친다). 채팅 재생이 있으면 함께 끊는다.
+    /// ⚠ `activatePlaybackSession()`을 부르지 않는다 — 안내 세션의 오디오 카테고리는
+    /// `BeaconTonePlayer`가 소유한다(`.playback`, `didPromote` 원복 규칙). 여기서 `.duckOthers`로
+    /// 다시 세팅하면 `GuideAudioSession` 판정 밖에서 카테고리가 바뀐다.
+    func speakGuidance(_ text: String) {
+        stop()
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        generation += 1
+        let utterance = AVSpeechUtterance(string: trimmed)
+        utterance.voice = AVSpeechSynthesisVoice(language: AppLanguage.speechLocaleIdentifier)
+        utterance.rate = ListenSpeed.speechRate(forMultiplier: listenSpeed)
+        synthesizer.speak(utterance)
+    }
+
     func stop() {
         generation += 1
         audioPlayer?.stop()

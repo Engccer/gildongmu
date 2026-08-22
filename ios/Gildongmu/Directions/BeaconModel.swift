@@ -94,7 +94,21 @@ final class BeaconModel {
 
     private(set) var mode: GuideMode = .brief
     private(set) var sessionKind: GuideSessionKind = .walk
-    private var tuning: GuideTuning { sessionKind == .car ? .car : .walk }
+    /// 자동차 청취자(K2 §6.1). 세션 시작에 읽어 고정한다 — 중간 변경은 다음 세션부터
+    /// (발화 채널이 도중에 바뀌면 진행 중 통지 슬롯이 갈린다).
+    private(set) var listener: CarListener = .default
+    /// 발화 채널 프로파일 — `stop()`이 지우지 않는다(다음 시작에 교체). 도착 문장은 stop()
+    /// 뒤에 나가는데 `sessionKind`는 그때 이미 walk라, 채널 판정을 여기서 읽는다(설계 리뷰 B10).
+    private var driverChannel = false
+    private var tuning: GuideTuning {
+        switch sessionKind {
+        case .car: listener == .driver ? .carDriver : .car
+        case .walk: .walk
+        }
+    }
+    /// 종료 화면이 어느 수단의 세션이었나 — `stop()` **앞**에서 기록(B10). 자동차면 시트가
+    /// "여기서 도보 안내 시작" 인계 버튼을 보인다. `clearArrival()`이 비운다.
+    private(set) var arrivalSessionKind: GuideSessionKind?
     /// 전 구간 목록(시트 조망, 위원장 판정 2026-08-10 — 시트가 길찾기 목록을 덮어
     /// 추적 중 경로 전체를 볼 수단이 없던 공백의 해소). 상세 모드에서만.
     var routeStepDescriptions: [String]? {
@@ -445,6 +459,7 @@ final class BeaconModel {
             liveTopText = nil
         }
         arrivalDest = nil
+        arrivalSessionKind = nil
         endKind = .arrived
         endText = ""
         resetArrivalHealth()
@@ -621,6 +636,11 @@ final class BeaconModel {
         outputSuppressed = false
         destinationLabel = label
         sessionKind = kind
+        listener = CarListener(rawValue: UserDefaults.standard.string(forKey: CarListener.storageKey) ?? "")
+            ?? .default
+        driverChannel = kind == .car && listener == .driver
+        // 로그 수단 표식(K2 §6.6): 2026-08-22 실주행 로그에 표식이 없어 속도로만 도보·자동차를 갈랐다.
+        guideDiagLog("session kind=\(kind) listener=\(listener.rawValue) dest=\(label)")
         beaconState = .initial
         gateState = .initial
         toneState = .initial
@@ -838,13 +858,14 @@ final class BeaconModel {
             mode = .detail
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
+            // 하단 2행: 표시 유닛은 경로와 수명이 같다(spec 2026-08-11, car 확장 K2 §4).
+            displayUnits = buildDisplayUnits(fetched.liveSteps, source: tuning.actionSource)
+            liveSteps = fetched.liveSteps
+            resetLiveRowsBaseline(state: initial.state)
             if sessionKind == .walk {
-                // 하단 2행: 표시 유닛은 경로와 수명이 같다(spec 2026-08-11).
-                displayUnits = buildDisplayUnits(fetched.liveSteps)
-                liveSteps = fetched.liveSteps
-                resetLiveRowsBaseline(state: initial.state)
                 currentGuidanceText = nil // walk의 "현재 안내" 행은 liveRows가 대체
             } else {
+                // car는 도로명 포함 전문이 정보라 "현재 안내" 행을 liveRows와 함께 둔다.
                 refreshCurrentGuidance(route: fetched.route, state: initial.state)
             }
             // 시작 요약 + 첫 안내를 한 문장으로(원자 발화 — 두 통지의 경합 제거).
@@ -940,14 +961,16 @@ final class BeaconModel {
     /// 상태 국면(uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
     /// 렌더 규칙은 공유 fixture 러너와 동일해야 한다(GuideText.liveTop/liveNext).
     private func refreshLiveRows(state: GuideState) {
-        guard sessionKind == .walk else { return }
         let out = guideLiveRows(
             prev: liveRowsState, units: displayUnits,
-            d: state.d, baselineD: liveBaselineD, phase: state.phase
+            d: state.d, baselineD: liveBaselineD, phase: state.phase,
+            // car는 임박 임계(속도 함수)와 같은 시점에 "잠시 후"로 넘어간다(K2 §4).
+            turnApproachM: turnApproachMeters(speedSamples: state.speedSamples, tuning: tuning)
         )
         liveRowsState = out.state
-        let top = out.top.map(GuideText.liveTop)
-        let next = out.next.map(GuideText.liveNext)
+        let kind = sessionKind
+        let top = out.top.map { GuideText.liveTop($0, kind: kind) }
+        let next = out.next.map { GuideText.liveNext($0, kind: kind) }
         // 매 fix 호출이라 동일 값 재대입을 걸러 관찰 무효화(재렌더)를 막는다.
         if liveTopText != top { liveTopText = top }
         if liveNextText != next { liveNextText = next }
@@ -1081,7 +1104,8 @@ final class BeaconModel {
         if playStopTone && status == .tracking { playTone(.stop) }
         // 원복은 정지 톤 **뒤에**. 먼저 원복하면 그 톤이 `.ambient`로 나가 잠금
         // 상태에서 들리지 않는다(세션 종료를 소리로 확인할 수 없게 된다).
-        tones.endSession()
+        // 운전자 채널은 도착 문장이 이 오디오 세션 위의 발화라 원복을 발화 길이만큼 더 미룬다(B9).
+        tones.endSession(holdSeconds: driverChannel ? 4 : 0)
         if status == .tracking { status = .idle }
         statusText = ""
         failResolution = .none
@@ -1273,6 +1297,26 @@ final class BeaconModel {
             reacquireRoute()
         }
         announceNow(appLocalized("ios.guide.waypointSet", label), highPriority: true, bypassSuppression: true)
+        if fetching {
+            awaitingRoute = true
+            startFixWaitWatch(token: routeFetchToken)
+        }
+        return true
+    }
+
+    /// 안내 중 경유지 삭제(N4 잔여, K2 §6.5). `setWaypoint`의 재획득 경로 동형 — 경유지만
+    /// 비우고 출발→도착으로 다시 조회한다. 통지는 `.high`(버튼이 사라지며 포커스가 옮겨간다).
+    @discardableResult
+    func removeWaypoint() -> Bool {
+        guard isTracking, let removed = waypoint else { return false }
+        waypoint = nil
+        syncStartRequestWithSession()
+        clearProposal()
+        resetAlternativePreview()
+        let fetching = AppLanguage.dataLocale == "ko"
+        if fetching { reacquireRoute() }
+        announceNow(appLocalized("ios.guide.waypointRemoved", removed.label),
+                    highPriority: true, bypassSuppression: true)
         if fetching {
             awaitingRoute = true
             startFixWaitWatch(token: routeFetchToken)
@@ -1590,20 +1634,19 @@ final class BeaconModel {
             tuning: tuning
         )
         guideState = out.state
-        if sessionKind == .walk {
-            // 하단 2행(spec 2026-08-11): 이탈 복귀·재획득은 리듀서가 d를 재구성한
-            // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
-            switch out.event {
-            case .backOnRoute, .reacquired:
-                liveBaselineD = out.state.d
-                liveRowsState = nil
-            default:
-                break
-            }
-            // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
-            refreshLiveRows(state: out.state)
-        } else if out.state.phase == .following || out.state.phase == .bundle {
-            // car 화면은 spec 비범위 — 종전 "현재 안내" 행(현재 구간 직접 유도) 유지.
+        // 하단 2행(spec 2026-08-11, car 확장 K2 §4): 이탈 복귀·재획득은 리듀서가 d를 재구성한
+        // 지점이다 — 투영이 새 기준에 정렬됐으므로 램프인 기준점·클램프를 리셋한다.
+        switch out.event {
+        case .backOnRoute, .reacquired:
+            liveBaselineD = out.state.d
+            liveRowsState = nil
+        default:
+            break
+        }
+        // 매 fix 갱신 — 상태 국면(uncertain·offRoute)도 리듀서가 행을 소유한다.
+        refreshLiveRows(state: out.state)
+        if sessionKind == .car, out.state.phase == .following || out.state.phase == .bundle {
+            // car는 도로명 포함 전문을 "현재 안내" 행에 함께 둔다(현재 구간 직접 유도).
             refreshCurrentGuidance(route: route, state: out.state)
         }
 
@@ -1817,7 +1860,10 @@ final class BeaconModel {
         )
         progressAnchor = anchorStep.anchor
         if anchorStep.progressed { lastProgressAt = now }
-        let arrived = distance <= finalApproachArriveMeters
+        // 자동차는 "부근 정차"가 도착이다(K2 §6.4, 위원장 판정 ④ — 40m·정지·정확도≤30, 15m 무조건 분기 없음).
+        let arrived = sessionKind == .car
+            ? carArrivalStep(distance: distance, accuracy: fix.accuracy, motion: motion)
+            : distance <= finalApproachArriveMeters
         // 도착 종·진동이 안 난다는 실사용 보고(2026-08-09)의 판정 근거. 원인 후보가
         // 둘인데(도착 판정 자체가 안 옴 vs 판정은 왔는데 소리가 잘림) 증상이 같아
         // 로그 없이는 갈리지 않는다 — 이 줄이 그 갈림을 남긴다.
@@ -1862,6 +1908,8 @@ final class BeaconModel {
 
         if arrived {
             let text = appLocalized("guide.arrived")
+            // 수단은 stop() **앞**에서 기록한다 — stop()이 sessionKind를 walk로 되돌린다(설계 리뷰 B10).
+            arrivalSessionKind = sessionKind
             playTone(.nearby)
             stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
             // stop() **뒤에** 대입 — 이 값이 시트를 도착 종료 화면으로 유지한다
@@ -2023,6 +2071,20 @@ final class BeaconModel {
     private func consume(event: GuideEvent, route: GuideRoute) {
         switch event {
         case let .announceSteps(indices), let .bundleReread(indices):
+            if driverChannel {
+                // 운전자 모드(K2 §6.2): 재통독은 내지 않고, 전문 대신 "{거리} 앞 {명령}" 단문.
+                // 행동 없는 유닛(터널·직진 갈래)은 무발화 — 명령이 없는데 문장만 길다.
+                if case .bundleReread = event { break }
+                guard let first = indices.first, let gs = guideState,
+                      let text = GuideText.driverNotice(
+                          route: route, indices: indices,
+                          remainingMeters: Int(max(0, route.steps[first].startD - gs.d).rounded()))
+                else { break }
+                lastGuidance = text
+                statusText = text
+                announce(text)
+                break
+            }
             let text = GuideText.unit(route: route, indices: indices)
             lastGuidance = text
             // 실행 안내는 "현재 안내" 행이 전담한다(역할 분리 확정 2026-08-10).
@@ -2047,12 +2109,25 @@ final class BeaconModel {
             //
             // ⚠ 억제 중이어도 보관(`pendingRecovery`)하지 않는다. 이 문장은 그 임박
             //   구간에서만 참이라 나중에 갚으면 이미 지난 모퉁이를 돌라고 말한다.
-            let text = Self.imminentText(action)
+            // 수단·청취자별 문구(K2 §6.3): walk "잠시 후 왼쪽으로 도세요" / car 동승자 "잠시 후
+            // 우회전하세요" / car 운전자 명령 단어 "우회전".
+            let text = sessionKind == .car
+                ? (driverChannel ? GuideText.carCommand(action) : GuideText.carImminentText(action))
+                : GuideText.imminentText(action)
             statusText = text
             if !outputSuppressed { announce(text) }
         case let .farNotice(indices, remainingMeters):
             // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
-            // 실행 안내와 같은 취급(억제 복구 대상).
+            // 실행 안내와 같은 취급(억제 복구 대상). 운전자 모드는 단문(행동 없으면 무발화).
+            if driverChannel {
+                guard let text = GuideText.driverNotice(
+                    route: route, indices: indices, remainingMeters: remainingMeters)
+                else { break }
+                lastGuidance = text
+                statusText = text
+                announce(text)
+                break
+            }
             let text = GuideText.farNotice(
                 route: route, indices: indices, remainingMeters: remainingMeters
             )
@@ -2062,7 +2137,9 @@ final class BeaconModel {
         case let .periodic(stepIndex, remainingMeters, accuracy):
             // walk 직진 구간 반복 통지는 단문이다(위원장 실보행 피드백 2026-08-12) —
             // 조망은 40m 선행 전문 1회로 충분하고, 반복은 "{target}까지 … 직진하세요"만.
-            // car는 임박 층이 없어 주기 통지가 다음 행동의 유일한 반복 채널이라 종전 유지.
+            // car도 단문이다(K2 §6.3 — "{거리} 앞 우회전"). 운전자 모드는 주기 통지를 내지 않는다
+            // (낮은 빈도 — 전문·예고·임박·이탈·도착만, §6.2).
+            if driverChannel { break }
             let text = sessionKind == .walk
                 ? GuideText.periodicWalk(
                     route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
@@ -2070,7 +2147,7 @@ final class BeaconModel {
                     target: liveSteps.indices.contains(stepIndex)
                         ? liveSteps[stepIndex].target : nil
                 )
-                : GuideText.periodic(
+                : GuideText.periodicCar(
                     route: route, stepIndex: stepIndex, remainingMeters: remainingMeters,
                     accuracy: accuracy, destinationLabel: destinationLabel
                 )
@@ -2129,13 +2206,21 @@ final class BeaconModel {
             announce(text)
         case .uncertainEnter:
             statusText = appLocalized("guide.uncertain")
-            announce(statusText)
+            if !driverChannel { announce(statusText) }  // 운전자 모드: GPS 상태는 말하지 않는다(§6.2)
         case .uncertainExit, .reacquired:
             statusText = appLocalized("guide.uncertainRecovered")
-            announce(statusText)
+            if driverChannel { break }
+            // car는 복귀 뒤 "지금 구간" 전문을 함께 읽는다 — 재획득 재구성이 현재 유닛을 낭독
+            // 완료로 두므로(restateAt) 이대로면 터널을 나온 뒤 다음 경계까지 안내가 없다(K2 §3.4).
+            if sessionKind == .car, let gs = guideState {
+                let current = GuideText.unit(route: route, indices: unitAt(route: route, index: gs.stepIndex))
+                announce("\(statusText) \(current)")
+            } else {
+                announce(statusText)
+            }
         case .reacquiring:
             statusText = appLocalized("guide.reacquiring")
-            announce(statusText)
+            if !driverChannel { announce(statusText) }
         case .speedSuggest:
             // 전환 버튼 폐지(위원장 판정 2026-08-11)로 실행 가능한 조언이 아니다 —
             // 무시한다. 자동 전환도 하지 않는다(스펙 §2 모드 결정 원칙). 이벤트
@@ -2144,18 +2229,6 @@ final class BeaconModel {
         }
     }
 
-    /// 임박 명령 문구. 키는 리터럴이어야 한다(check-xcstrings-keys 린터 계약 —
-    /// 동적 조립은 카탈로그 대조에서 빠져 키 누락이 무증상 결함이 된다). switch가
-    /// exhaustive라 WalkAction 케이스가 늘면 컴파일이 키 추가를 강제한다.
-    private static func imminentText(_ action: WalkAction) -> String {
-        switch action {
-        case .left: appLocalized("guide.imminent.left")
-        case .right: appLocalized("guide.imminent.right")
-        case .back: appLocalized("guide.imminent.back")
-        case .crosswalk: appLocalized("guide.imminent.crosswalk")
-        case .underpass: appLocalized("guide.imminent.underpass")
-        }
-    }
 
     /// 거리 축이 바뀔 때(상세 경로 거리 ⇄ 간략 직선거리)의 재기준화.
     ///
@@ -2407,12 +2480,11 @@ final class BeaconModel {
         guideState = initial.state
         offRoute = false
         updateRemaining(route: fetched.route, state: initial.state)
-        if sessionKind == .walk {
-            // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7).
-            displayUnits = buildDisplayUnits(fetched.liveSteps)
-            liveSteps = fetched.liveSteps
-            resetLiveRowsBaseline(state: initial.state)
-        } else {
+        // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7, car 확장 K2 §4).
+        displayUnits = buildDisplayUnits(fetched.liveSteps, source: tuning.actionSource)
+        liveSteps = fetched.liveSteps
+        resetLiveRowsBaseline(state: initial.state)
+        if sessionKind == .car {
             refreshCurrentGuidance(route: fetched.route, state: initial.state)
         }
         lastGuidance = GuideText.unit(route: fetched.route, indices: initial.firstIndices)
@@ -2425,7 +2497,8 @@ final class BeaconModel {
     /// 활성 조건: walk 상세 세션 ∧ 최종 접근 전 ∧ 세션 상한 미달(spec §6 리뷰 #14 —
     /// 이탈 표결이 최종 접근보다 앞이라는 기존 불변식 순서에 제안도 그대로 걸린다).
     private func maybeFetchProposal() {
-        guard sessionKind == .walk, isTracking, mode == .detail, !inFinalApproach,
+        // car도 제안한다(K2 §5) — fetchDetailData가 수단별 provider·via를 고른다.
+        guard isTracking, mode == .detail, !inFinalApproach,
               RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount)
         else { return }
         proposalToken += 1
@@ -2790,6 +2863,14 @@ final class BeaconModel {
         // 검색 시트 dismiss와 억제 해제의 경합에서 사용자 활성화의 직접 응답이
         // 버려지는 창을 막는다(마이크는 select 시점에 이미 닫혀 전사 오염 없음).
         guard bypassSuppression || !outputSuppressed else { return false }
+        // 운전자 채널(K2 §6.2): VO 통지가 아니라 스피커 발화. 전경 가드를 지나지 않는다 —
+        // 잠금 중 발화가 목적 그 자체이고, 오디오 세션(.playback)은 BeaconTonePlayer가 쥐고
+        // 있다. 우선순위(VO 전용)는 무의미. `driverChannel`은 stop()이 지우지 않아 도착
+        // 문장도 이 채널로 나간다(B10).
+        if driverChannel {
+            TtsPlayer.shared.speakGuidance(message)
+            return true
+        }
         // 백그라운드에서는 **발화만** 막는다. `statusText`·`lastGuidance`는 호출부가
         // 이미 갱신했으므로 복귀 시 화면이 최신이다(상태 갱신과 발화의 분리).
         guard isForeground else {

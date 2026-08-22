@@ -236,7 +236,10 @@
       "releaseNotes": "アップデート履歴",
       "releaseNotesVersion": "バージョン {version}",
       "releaseNotesError": "アップデート履歴を読み込めませんでした",
-      "weightKg": "カロリー推定用の体重(kg)"
+      "weightKg": "カロリー推定用の体重(kg)",
+      "carListener": "車の案内を聞く人（実験）",
+      "carListenerPassenger": "同乗者（イヤホン、画面読み上げ）",
+      "carListenerDriver": "運転者（スピーカー、短い指示）"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "ごはん一膳分です！",
         "ramyeon": "韓国風ラーメン一杯分です！",
         "ramyeonMany": "韓国風ラーメン約{n}杯分です！"
-      }
+      },
+      "carWalkHandoffStart": "ここから徒歩案内を開始"
     },
     "unit": {
       "spokenMeters": "メートル"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}、経由地を変更",
       "waypointSet": "経由地 {label}、経路を再検索します",
       "waypointKept": "経由地 {label} はそのままです",
-      "waypointDropped": "経由地 {label} を通る経路が見つからないため、経由地なしで案内します"
+      "waypointDropped": "経由地 {label} を通る経路が見つからないため、経由地なしで案内します",
+      "waypointRemove": "経由地を削除",
+      "waypointRemoved": "経由地 {label} を削除し、経路を再検索します"
     },
     "transitGuide": {
       "destChangeHeading": "新しいルートを選択、{name}",

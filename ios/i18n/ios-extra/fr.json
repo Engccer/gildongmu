@@ -236,7 +236,10 @@
       "releaseNotes": "Notes de version",
       "releaseNotesVersion": "Version {version}",
       "releaseNotesError": "Impossible de charger les notes de version",
-      "weightKg": "Poids pour l'estimation des calories (kg)"
+      "weightKg": "Poids pour l'estimation des calories (kg)",
+      "carListener": "Qui écoute le guidage en voiture (expérimental)",
+      "carListenerPassenger": "Passager (écouteurs, lecteur d’écran)",
+      "carListenerDriver": "Conducteur (haut-parleur, ordres brefs)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "C'est l'équivalent d'un bol de riz (bap) !",
         "ramyeon": "C'est l'équivalent d'un bol de ramyeon !",
         "ramyeonMany": "C'est l'équivalent d'environ {n} bols de ramyeon !"
-      }
+      },
+      "carWalkHandoffStart": "Démarrer le guidage à pied ici"
     },
     "unit": {
       "spokenMeters": "mètres"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}, changer le point de passage",
       "waypointSet": "Point de passage {label}, nouvelle recherche d’itinéraire",
       "waypointKept": "Point de passage {label} inchangé",
-      "waypointDropped": "Aucun itinéraire par le point de passage {label} ; guidage sans lui"
+      "waypointDropped": "Aucun itinéraire par le point de passage {label} ; guidage sans lui",
+      "waypointRemove": "Supprimer l’étape",
+      "waypointRemoved": "Étape {label} supprimée, nouvelle recherche d’itinéraire"
     },
     "transitGuide": {
       "destChangeHeading": "Choisissez un nouvel itinéraire, {name}",
