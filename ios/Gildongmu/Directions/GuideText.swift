@@ -267,38 +267,110 @@ enum GuideText {
 
     /// 행동구("왼쪽으로 도세요") — 디스크립터 렌더의 공통 조각.
     /// 보간 키는 키 린터(check-xcstrings-keys)가 못 좇는다 — 명시 switch가 관례.
-    static func liveActionPhrase(_ action: WalkAction) -> String {
+    /// 행동구 — 수단별이다(K2 §4). walk "왼쪽으로 도세요" / car "좌회전하세요"·"왼쪽 길로 가세요".
+    /// keep*는 자동차 갈래라 walk 키가 없다 — walk에 오면 car 문구로 폴백(문장 판정이 keep*를 내지
+    /// 않으므로 도달하지 않는 가지이지만 exhaustive switch가 키를 강제한다).
+    static func liveActionPhrase(_ action: WalkAction, kind: BeaconModel.GuideSessionKind) -> String {
+        if kind == .car {
+            switch action {
+            case .left: return appLocalized("guide.carLiveAction.left")
+            case .right: return appLocalized("guide.carLiveAction.right")
+            case .back: return appLocalized("guide.carLiveAction.back")
+            case .keepLeft: return appLocalized("guide.carLiveAction.keepLeft")
+            case .keepRight: return appLocalized("guide.carLiveAction.keepRight")
+            case .crosswalk: return appLocalized("guide.liveAction.crosswalk")
+            case .underpass: return appLocalized("guide.liveAction.underpass")
+            }
+        }
         switch action {
-        case .left: appLocalized("guide.liveAction.left")
-        case .right: appLocalized("guide.liveAction.right")
-        case .back: appLocalized("guide.liveAction.back")
-        case .crosswalk: appLocalized("guide.liveAction.crosswalk")
-        case .underpass: appLocalized("guide.liveAction.underpass")
+        case .left: return appLocalized("guide.liveAction.left")
+        case .right: return appLocalized("guide.liveAction.right")
+        case .back: return appLocalized("guide.liveAction.back")
+        case .crosswalk: return appLocalized("guide.liveAction.crosswalk")
+        case .underpass: return appLocalized("guide.liveAction.underpass")
+        case .keepLeft: return appLocalized("guide.carLiveAction.keepLeft")
+        case .keepRight: return appLocalized("guide.carLiveAction.keepRight")
         }
     }
 
-    /// "잠시 후 {행동구}"(표시 잔여 0) — 기존 임박 큐 문구 재사용(spec §4.2 행 7).
-    static func liveTurnSoon(_ action: WalkAction) -> String {
+    /// "잠시 후 {행동구}"(표시 잔여 0) — 임박 큐 문구 재사용(spec §4.2 행 7). 수단별.
+    static func liveTurnSoon(_ action: WalkAction, kind: BeaconModel.GuideSessionKind) -> String {
+        kind == .car ? carImminentText(action) : imminentText(action)
+    }
+
+    /// 도보 임박 명령(20m). 키는 리터럴(check-xcstrings-keys 린터 계약).
+    static func imminentText(_ action: WalkAction) -> String {
         switch action {
         case .left: appLocalized("guide.imminent.left")
         case .right: appLocalized("guide.imminent.right")
         case .back: appLocalized("guide.imminent.back")
         case .crosswalk: appLocalized("guide.imminent.crosswalk")
         case .underpass: appLocalized("guide.imminent.underpass")
+        case .keepLeft: appLocalized("guide.carImminent.keepLeft")
+        case .keepRight: appLocalized("guide.carImminent.keepRight")
         }
+    }
+
+    /// 자동차 동승자 임박 문구(K2 §6.3) — "잠시 후 우회전하세요".
+    static func carImminentText(_ action: WalkAction) -> String {
+        switch action {
+        case .left: appLocalized("guide.carImminent.left")
+        case .right: appLocalized("guide.carImminent.right")
+        case .back: appLocalized("guide.carImminent.back")
+        case .keepLeft: appLocalized("guide.carImminent.keepLeft")
+        case .keepRight: appLocalized("guide.carImminent.keepRight")
+        case .crosswalk: appLocalized("guide.imminent.crosswalk")
+        case .underpass: appLocalized("guide.imminent.underpass")
+        }
+    }
+
+    /// 자동차 운전자 명령 단어(K2 §6.2) — "우회전"·"왼쪽 길". 주기·예고 단문의 `{command}`에도 쓴다.
+    static func carCommand(_ action: WalkAction) -> String {
+        switch action {
+        case .left: appLocalized("guide.carCommand.left")
+        case .right: appLocalized("guide.carCommand.right")
+        case .back: appLocalized("guide.carCommand.back")
+        case .keepLeft: appLocalized("guide.carCommand.keepLeft")
+        case .keepRight: appLocalized("guide.carCommand.keepRight")
+        case .crosswalk: appLocalized("guide.liveAction.crosswalk")
+        case .underpass: appLocalized("guide.liveAction.underpass")
+        }
+    }
+
+    /// car 주기 통지 단문(K2 §6.3, 웹 `carPeriodicLine` 미러): 다음 스텝에 투영 행동이 있으면
+    /// "{distance} 앞 {command}", 없으면(터널·톨게이트·직진 갈래) 종전 전문 틀, 마지막은 목적지 틀.
+    static func periodicCar(
+        route: GuideRoute, stepIndex: Int, remainingMeters: Int,
+        accuracy: Double, destinationLabel: String
+    ) -> String {
+        let distance = confidenceDistance(Double(remainingMeters), accuracy: accuracy)
+        guard route.steps.indices.contains(stepIndex + 1) else {
+            return appLocalized("guide.nextDestination", destinationLabel, distance)
+        }
+        if let action = route.steps[stepIndex + 1].action {
+            return appLocalized("guide.carPeriodic", distance, carCommand(action))
+        }
+        return appLocalized("guide.next", distance, route.steps[stepIndex + 1].description)
+    }
+
+    /// 운전자 모드 예고 단문(K2 §6.2 M5): 전문 대신 "{distance} 앞 {command}". 행동 없는 유닛은 nil(무발화).
+    static func driverNotice(route: GuideRoute, indices: [Int], remainingMeters: Int) -> String? {
+        guard let first = indices.first, route.steps.indices.contains(first),
+              let action = route.steps[first].action else { return nil }
+        return appLocalized("guide.carPeriodic", formatDistance(remainingMeters), carCommand(action))
     }
 
     /// 하단 2행 윗줄 렌더. 매핑 규칙은 공유 fixture 러너(GuideLiveRowsTests·웹
     /// guide-live-rows.test.ts)와 동일해야 한다 — 규칙 변경은 반드시 러너와 함께 간다.
-    static func liveTop(_ row: LiveTopRow) -> String {
+    static func liveTop(_ row: LiveTopRow, kind: BeaconModel.GuideSessionKind) -> String {
         switch row {
         case .offRoute: appLocalized("guide.offRoute")
         case .uncertain: appLocalized("guide.uncertain")
         case .reacquiring: appLocalized("guide.reacquiring")
         case let .crossing(text): text
-        case let .turnSoon(action): liveTurnSoon(action)
+        case let .turnSoon(action): liveTurnSoon(action, kind: kind)
         case let .turnIn(meters, action):
-            appLocalized("guide.liveTurnIn", String(meters), liveActionPhrase(action))
+            appLocalized("guide.liveTurnIn", String(meters), liveActionPhrase(action, kind: kind))
         case let .straight(meters, target):
             target.map { appLocalized("guide.liveStraight", $0, String(meters)) }
                 ?? appLocalized("guide.liveStraightNoName", String(meters))
@@ -306,17 +378,17 @@ enum GuideText {
     }
 
     /// 하단 2행 아랫줄 렌더 — "다음 안내," 라벨(progressNext)까지 포함한 완성 문자열.
-    static func liveNext(_ row: LiveNextRow) -> String {
+    static func liveNext(_ row: LiveNextRow, kind: BeaconModel.GuideSessionKind) -> String {
         let step: String
         switch row {
         case let .action(action, anchor):
-            let phrase = liveActionPhrase(action)
+            let phrase = liveActionPhrase(action, kind: kind)
             step = anchor.map { appLocalized("guide.nextAction", $0, phrase) } ?? phrase
         case let .straight(meters, target):
             step = target.map { appLocalized("guide.nextStraight", $0, String(meters)) }
                 ?? appLocalized("guide.nextStraightNoName", String(meters))
         case let .crossing(action), let .turn(action):
-            step = liveActionPhrase(action)
+            step = liveActionPhrase(action, kind: kind)
         }
         return appLocalized("guide.progressNext", step)
     }

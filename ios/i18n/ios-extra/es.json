@@ -236,7 +236,10 @@
       "releaseNotes": "Notas de la versión",
       "releaseNotesVersion": "Versión {version}",
       "releaseNotesError": "No se pudieron cargar las notas de la versión",
-      "weightKg": "Peso para estimar calorías (kg)"
+      "weightKg": "Peso para estimar calorías (kg)",
+      "carListener": "Quién escucha la guía en coche (experimental)",
+      "carListenerPassenger": "Acompañante (auriculares, lector de pantalla)",
+      "carListenerDriver": "Conductor (altavoz, órdenes breves)"
     },
     "shortcut": {
       "voiceSearch": {
@@ -271,7 +274,8 @@
         "riceBowl": "¡Equivale a un cuenco de arroz (bap)!",
         "ramyeon": "¡Equivale a un cuenco de ramyeon!",
         "ramyeonMany": "¡Equivale a unos {n} cuencos de ramyeon!"
-      }
+      },
+      "carWalkHandoffStart": "Iniciar guía a pie desde aquí"
     },
     "unit": {
       "spokenMeters": "metros"
@@ -286,7 +290,9 @@
       "waypointChange": "{label}, cambiar punto de paso",
       "waypointSet": "Punto de paso {label}, consultando la ruta de nuevo",
       "waypointKept": "Punto de paso {label} sin cambios",
-      "waypointDropped": "No se encontró ruta por el punto de paso {label}; se guía sin él"
+      "waypointDropped": "No se encontró ruta por el punto de paso {label}; se guía sin él",
+      "waypointRemove": "Quitar punto intermedio",
+      "waypointRemoved": "Punto intermedio {label} quitado, consultando la ruta de nuevo"
     },
     "transitGuide": {
       "destChangeHeading": "Elige una nueva ruta, {name}",

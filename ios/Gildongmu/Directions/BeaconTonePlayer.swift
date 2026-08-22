@@ -124,13 +124,15 @@ final class BeaconTonePlayer {
     /// "도착할 때 종소리가 안 난다"). 정지 톤(1.3초)도 같은 경로였다.
     ///
     /// 전경에서는 증상이 없다 — 그래서 이 결함은 손에 들고 시험할 때 보이지 않는다.
-    func endSession() {
-        guard let playbackRemaining = remainingPlaybackSeconds else {
+    /// `holdSeconds`: 톤 뒤에 이어질 **발화**의 길이(초). 운전자 모드(K2 §6.4)는 도착 문장이 VO가
+    /// 아니라 이 세션 위의 AVSpeech로 나가므로, 톤 잔여만큼만 미루면 원복이 발화를 자른다.
+    func endSession(holdSeconds: Double = 0) {
+        guard let playbackRemaining = remainingPlaybackSeconds ?? (holdSeconds > 0 ? 0 : nil) else {
             dispatch(.sessionEnded)
             return
         }
         // 남은 재생 시간 + 여유. 톤은 전부 3초 미만이라 상한이 필요 없다.
-        let remaining = playbackRemaining + 0.15
+        let remaining = playbackRemaining + 0.15 + holdSeconds
         cancelPendingRevert()
         revertTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))

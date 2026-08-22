@@ -57,6 +57,8 @@ struct SettingsView: View {
     #if DEBUG || EXPERIMENTAL
     // 왼쪽·오른쪽 안내음 구분 방식 후보 2종(실기기 선택 대기, spec 2026-08-22 §3).
     // 판정 뒤 이 피커와 Kit `LeftRightToneScheme`을 함께 지운다.
+    // 자동차 안내 청취자(K2 §6.1) — 자동차 안내가 봉인 안이라 실험 구성에서만 보인다(졸업 때 #if 삭제).
+    @AppStorage(CarListener.storageKey) private var carListenerRaw = CarListener.default.rawValue
     @AppStorage(LeftRightToneScheme.storageKey) private var leftRightToneRaw =
         LeftRightToneScheme.default.rawValue
     #endif
@@ -141,6 +143,14 @@ struct SettingsView: View {
                 .pickerStyle(.inline)
 
                 #if DEBUG || EXPERIMENTAL
+                Picker(appLocalized("ios.settings.carListener"), selection: $carListenerRaw) {
+                    Text(appLocalized("ios.settings.carListenerPassenger"))
+                        .tag(CarListener.passenger.rawValue)
+                    Text(appLocalized("ios.settings.carListenerDriver"))
+                        .tag(CarListener.driver.rawValue)
+                }
+                .pickerStyle(.inline)
+
                 Picker(appLocalized("ios.settings.leftRightTone"), selection: $leftRightToneRaw) {
                     Text(appLocalized("ios.settings.leftRightTonePan"))
                         .tag(LeftRightToneScheme.pan.rawValue)
