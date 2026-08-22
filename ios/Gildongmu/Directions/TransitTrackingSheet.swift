@@ -143,6 +143,7 @@ struct TransitTrackingSheet: View {
             .onChange(of: model.state?.phase) { previous, phase in
                 // 국면이 바뀌면 진행 중 착지는 낡은 대상을 좇는다 — 먼저 끊는다.
                 controlFocusTask?.cancel()
+                // 세션 종료(state nil)도 여기로 온다(.some → nil 변화) — 조망을 닫는다.
                 let target = phaseTransitionLanding(previous: previous, phase: phase)
                 // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
                 // 경로 전환이 만든 전이(→waiting)도 여기로 온다: 전환 뒤 착지는 새 세션의
@@ -164,10 +165,7 @@ struct TransitTrackingSheet: View {
                     }
                 }
             }
-            // 세션 종료·핸드오프 전이도 조망을 닫는다(국면 onChange는 state nil에 안 걸린다).
-            .onChange(of: model.state == nil) { _, ended in
-                if ended { overviewAdapter = nil }
-            }
+
             // 목적지 검색(스펙 §4.1 1단): 선택은 아직 아무것도 확정하지 않는다 —
             // 사이드 채널 후보 조회만 시작한다(취소 시 전체 무효).
             .sheet(isPresented: $changeDestPresented) {

@@ -44,8 +44,8 @@ enum GuideOverviewRow: Identifiable, Equatable {
 struct GuideOverviewAction: Identifiable {
     let id: String
     let label: String
-    /// 눌렀을 때 셸이 띄울 하위 화면. nil이면 perform만.
-    let presents: GuideOverviewSubsheet?
+    /// 눌렀을 때 셸이 띄울 하위 화면.
+    let presents: GuideOverviewSubsheet
 }
 
 /// 하위 화면 둘 — 도보 대안 프리뷰(2026-08-14 §3)·대중교통 대안 목록(2026-08-23 §5).
@@ -64,9 +64,15 @@ enum GuideOverviewFollowUp: Equatable {
 }
 
 enum GuideOverviewActionResult {
-    case performed
+    /// 만든 시점과 누른 시점 사이에 국면이 바뀌었다 — 셸은 아무것도 덧붙이지 않는다.
     case stale
     case dismissThen(GuideOverviewFollowUp)
+}
+
+extension GuideOverviewCapability {
+    /// 행동 행이 없는 능력(도보)의 기본 구현.
+    func perform(_ actionId: String) -> GuideOverviewActionResult { .stale }
+    func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet) {}
 }
 
 // MARK: - 공유 셸
@@ -92,7 +98,11 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
     var body: some View {
         List {
             Section {
-                Button(appLocalized("actions.close")) { dismiss() }
+                // 상단 닫기는 행이 있을 때만(행이 없으면 말미 닫기 하나로 족하다 — 도보
+                // 종전 동작과 같다).
+                if !capability.overviewRows.isEmpty {
+                    Button(appLocalized("actions.close")) { dismiss() }
+                }
                 ForEach(capability.overviewRows) { row in
                     switch row {
                     case let .text(_, text):
@@ -105,12 +115,8 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
                 // 않으면서 "조망하다 대안 탐색" 흐름과 읽기 순서가 일치한다(2026-08-14 §2).
                 ForEach(capability.overviewActions) { action in
                     Button(action.label) {
-                        if let presents = action.presents {
-                            capability.subsheetWillPresent(presents)
-                            subsheet = presents
-                        } else {
-                            run(action.id)
-                        }
+                        capability.subsheetWillPresent(action.presents)
+                        subsheet = action.presents
                     }
                 }
                 Button(appLocalized("actions.close")) { dismiss() }
@@ -131,7 +137,7 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
 
     private func run(_ id: String) {
         switch capability.perform(id) {
-        case .performed, .stale:
+        case .stale:
             break
         case let .dismissThen(followUp):
             onFollowUp(followUp)
@@ -192,8 +198,6 @@ final class BeaconOverviewAdapter: GuideOverviewCapability {
             id: "viewAlternative", label: appLocalized("guide.viewAlternative"),
             presents: .walkAlternativePreview)]
     }
-
-    func perform(_ actionId: String) -> GuideOverviewActionResult { .stale }
 
     func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet) {
         if subsheet == .walkAlternativePreview { model.openAlternativePreview() }
@@ -356,8 +360,6 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
             return .stale
         }
     }
-
-    func subsheetWillPresent(_ subsheet: GuideOverviewSubsheet) {}  // 조회는 하위 시트의 .task가 연다
 
     func subsheetDismissed(_ subsheet: GuideOverviewSubsheet) {
         if subsheet == .transitAltRoutes, let token = model.pendingAltRoutes?.token {

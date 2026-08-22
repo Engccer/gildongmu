@@ -434,7 +434,11 @@ final class TransitGuideModel {
     }
 
     private func fetchAltRoutes(token: Int, declaredBoardStop: Bool) async {
-        guard let dest else { return }
+        guard let dest else {
+            // 세션 불변식(비옵셔널 시작 인자)이라 도달하지 않지만, 조용한 loading 방치 금지.
+            if token == altRoutesToken { pendingAltRoutes?.phase = .failed(.fetch) }
+            return
+        }
         guard let resolved = await resolveAltOrigin(declaredBoardStop: declaredBoardStop) else {
             guard token == altRoutesToken, isTracking else { return }
             pendingAltRoutes?.phase = .failed(.noLocation)
