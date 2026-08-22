@@ -45,7 +45,10 @@ export function sourceFor(
     case "get_night_clinics":
       return [NMC];
     case "get_nearby_barrier_free":
+    case "get_barrier_free_detail":
       return [TOURAPI];
+    case "get_station_timetable":
+      return [TAGO];
     case "get_kids_places":
     case "get_surroundings":
       return [KAKAO];

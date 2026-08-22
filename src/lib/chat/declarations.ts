@@ -243,6 +243,25 @@ const DECLARATIONS: GatedDeclaration[] = [
     },
   },
   {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_station_timetable",
+      description:
+        "지하철역의 오늘 첫차·막차 시각을 노선·방향별로 보여준다(전국 도시철도). " +
+        "timetable이 null이면 그 역의 시간표가 제공되지 않는 것이고, partial이 true면 일부 노선 조회가 실패해 불완전한 결과다 — 운행이 없다는 뜻으로 답하지 마라. dailyType은 조회 기준일(평일·토요일·일요일)이다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          stationName: {
+            type: "string",
+            description: "역 이름 (예: 강남, 서울역)",
+          },
+        },
+        required: ["stationName"],
+      },
+    },
+  },
+  {
     gate: hasCarRouteKey,
     declaration: {
       name: "get_car_route",
@@ -267,6 +286,22 @@ const DECLARATIONS: GatedDeclaration[] = [
       description:
         "현재 위치(또는 보고 있는 장소) 주변의 무장애 관광지(휠체어·점자블록·음성안내 등 장애인 편의시설을 갖춘 곳)를 보여준다.",
       parametersJsonSchema: { type: "object", properties: {} },
+    },
+  },
+  {
+    gate: hasDataGoKrKey,
+    declaration: {
+      name: "get_barrier_free_detail",
+      description:
+        "무장애 관광지 한 곳의 장애인 편의시설 상세(주차·출입구·화장실·휠체어 대여·점자·음성안내 등)를 보여준다. " +
+        "contentId는 get_nearby_barrier_free 결과의 contentId를 넣는다. detail이 null이면 항목이 없는 것이고, facilities가 비어 있으면 등록된 편의시설 정보가 없는 것이다.",
+      parametersJsonSchema: {
+        type: "object",
+        properties: {
+          contentId: { type: "string", description: "get_nearby_barrier_free가 준 contentId" },
+        },
+        required: ["contentId"],
+      },
     },
   },
   {

@@ -22,7 +22,8 @@ import {
 import { fetchNearbyBusStops, isUncoveredBusRegion } from "@/lib/bus";
 import { fetchNearbyBikeStations, isBikeServiceArea } from "@/lib/providers/seoul-bike";
 import { findNightClinicsNow } from "@/lib/clinics";
-import { searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
+import { getBarrierFreeDetail, searchBarrierFreeNearby } from "@/lib/providers/tour-barrier-free";
+import { fetchStationTimetable } from "@/lib/providers/tago-subway";
 import { findKidsPlacesNear } from "@/lib/providers/kids-places";
 import { findSurroundingsNear } from "@/lib/providers/surroundings";
 import { findEventsNear, isEventServiceArea } from "@/lib/culture-events";
@@ -307,6 +308,25 @@ export async function executeFunction(
         fetchSeoulMetroFacilities(stationName),
       ]);
       return { data: { korail, metro }, render: { type: "station-facilities", stationName }, source: src };
+    }
+    case "get_station_timetable": {
+      const stationName = String(args.stationName ?? "");
+      if (!stationName) return { data: { error: "역 이름이 필요합니다." } };
+      // null=TAGO 미커버 역, partial=일부 노선 실패 — 서비스 판정을 그대로 싣는다(무운행 위장 금지).
+      // 카드 없음 — 산문이 정본(시각 정본은 장소 상세 "역 정보").
+      const timetable = await fetchStationTimetable(stationName);
+      return { data: { timetable }, source: src };
+    }
+    case "get_barrier_free_detail": {
+      const contentId = String(args.contentId ?? "");
+      if (!contentId) return { data: { error: "contentId가 필요합니다." } };
+      // null=항목 없음, facilities:[]=등록 시설 없음 — 두 상태를 뭉개지 않는다. 카드 없음.
+      // detailWithTour2는 title을 주지 않아 name이 빈 문자열로 온다(실호출 2026-08-23) —
+      // 이름은 LLM이 연쇄 원본(get_nearby_barrier_free)에서 이미 알고 있으므로 빈 값은 싣지 않는다.
+      const detail = await getBarrierFreeDetail(contentId);
+      if (!detail) return { data: { detail: null }, source: src };
+      const { name, ...rest } = detail;
+      return { data: { detail: name ? detail : rest }, source: src };
     }
     case "get_car_route": {
       const destination = String(args.destination ?? "");
