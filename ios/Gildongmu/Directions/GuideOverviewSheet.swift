@@ -279,10 +279,11 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
         let silenceNow: TransitOverviewSilenceSignal? = overview.rows.lazy.compactMap {
             if case let .silence(signal) = $0 { signal } else { nil }
         }.first
-        for row in overview.rows {
+        for (sourceIndex, row) in overview.rows.enumerated() {
             switch row {
             case let .walk(minutes):
-                rows.append(.text(id: "walk-\(rows.count)",
+                // id는 원본 행 인덱스 — 래치로 silence·탈출구가 늦게 끼어도 움직이지 않는다.
+                rows.append(.text(id: "walk-\(sourceIndex)",
                                   appLocalized("transitGuide.overviewWalk", String(minutes))))
             case let .leg(legIndex, _, lineName, boardName, alightName, status, stationCount):
                 let statusText = switch status {
@@ -379,7 +380,9 @@ struct TransitAltRoutesSheet: View {
     @AccessibilityFocusState private var focusedRoute: String?
     @AccessibilityFocusState private var statusFocused: Bool
     /// 전환 불발 후보(`.invalidCandidate`) — 그 자리 문구 행으로 교체(활성화의 직접 응답).
+    /// 사라진 버튼 대신 그 문구 행에 선점(항목 정체성 = routeKey).
     @State private var invalidRouteKeys: Set<String> = []
+    @AccessibilityFocusState private var focusedInvalid: String?
 
     private var model: TransitGuideModel { adapter.model }
 
@@ -394,7 +397,7 @@ struct TransitAltRoutesSheet: View {
                                 .accessibilityFocused($statusFocused)
                                 .id("status")
                         case .empty:
-                            Text(appLocalized("ios.transitGuide.destChangeNone"))
+                            Text(appLocalized("ios.transitGuide.altNone"))
                                 .accessibilityFocused($statusFocused)
                                 .id("status")
                         case let .failed(reason):
@@ -426,7 +429,7 @@ struct TransitAltRoutesSheet: View {
             .task {
                 token = model.prepareAltRoutes(declaredBoardStop: false)
             }
-            .onChange(of: model.pendingAltRoutes?.phase) { _, phase in
+            .onChange(of: model.pendingAltRoutes?.phase) { previous, phase in
                 guard let phase, model.pendingAltRoutes?.token == token else { return }
                 switch phase {
                 case let .loaded(result):
@@ -434,7 +437,9 @@ struct TransitAltRoutesSheet: View {
                 case .empty, .failed:
                     landStatus(proxy: proxy)
                 case .loading:
-                    break
+                    // 실패 행의 "{승차역} 기준으로 조회"가 자기를 지운 전이 — 조회 중 행에
+                    // 선점(헌장 §5). 첫 조회(시트 열림)는 헤더 착지가 정본이라 제외.
+                    if case .failed = previous { landStatus(proxy: proxy) }
                 }
             }
         }
@@ -462,6 +467,7 @@ struct TransitAltRoutesSheet: View {
                              destinationName: model.destinationLabel)
             if invalidRouteKeys.contains(key) {
                 Text(appLocalized("ios.transitGuide.altInvalid")).foregroundStyle(.secondary)
+                    .accessibilityFocused($focusedInvalid, equals: key)
             } else {
                 Button(appLocalized("ios.transitGuide.adoptRoute")) {
                     guard let token else { return }
@@ -476,6 +482,10 @@ struct TransitAltRoutesSheet: View {
                         landStatus(proxy: proxy)
                     case .invalidCandidate:
                         invalidRouteKeys.insert(key)
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            focusedInvalid = key
+                        }
                     case .sessionEnded:
                         dismiss()
                     }

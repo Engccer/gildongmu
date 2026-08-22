@@ -307,7 +307,8 @@
       "altFromBoardStop": "{station}から検索",
       "altInvalid": "この経路では案内を開始できません。",
       "adoptRoute": "この経路に切り替える",
-      "routeSwitched": "経路を変更しました。"
+      "routeSwitched": "経路を変更しました。",
+      "altNone": "ここからのほかの公共交通経路はありません。"
     }
   },
   "beacon": {

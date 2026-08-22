@@ -307,7 +307,8 @@
       "altFromBoardStop": "Chercher depuis {station}",
       "altInvalid": "Le guidage ne peut pas démarrer sur cet itinéraire.",
       "adoptRoute": "Passer à cet itinéraire",
-      "routeSwitched": "Itinéraire modifié."
+      "routeSwitched": "Itinéraire modifié.",
+      "altNone": "Aucun autre itinéraire en transports depuis ici."
     }
   },
   "beacon": {
