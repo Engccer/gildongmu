@@ -39,7 +39,9 @@ import { getWalkInfrastructure } from "@/lib/walk-infra";
 import { searchWebPerplexity } from "./perplexity-search";
 import { hasNcpMapsKeys, hasWalkRouteKey } from "@/lib/env";
 import { placesToRender, placesToData, addressesToRender, addressesToData } from "./render";
-import { sourceFor } from "./sources";
+import { overviewSources, sourceFor } from "./sources";
+import { assembleWhereAmI } from "@/lib/where-am-i";
+import { assembleNearbyOverview } from "@/lib/nearby-overview";
 import { isInKorea } from "@/lib/coverage";
 
 /** 좌표 도구의 기준 좌표 — 장소 앵커 우선, 없으면 현재 위치. */
@@ -99,6 +101,9 @@ const NO_LOCATION = { error: "현재 위치를 알 수 없습니다." };
 /** get_walk_route가 LLM에 넘기는 steps 상한 — Tmap 도보 경로는 교차로마다
  * 안내 지점이 생겨 자동차·대중교통보다 단계 수가 훨씬 많다(토큰 방어). */
 const WALK_STEPS_CAP = 20;
+
+/** get_where_am_i가 LLM에 넘기는 주변 기준점 상한 — 정위 답엔 두세 곳이면 충분하다(토큰 방어). */
+const WHERE_AM_I_LANDMARKS_CAP = 8;
 
 export async function executeFunction(
   name: string,
@@ -244,6 +249,32 @@ export async function executeFunction(
         data: { audioSignals: walk.audioSignals, osm: walk.osm },
         source: walkSource.length > 0 ? walkSource : undefined,
       };
+    }
+    case "get_where_am_i": {
+      const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
+      if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
+      // 네 조각 allSettled 조립(조각 실패는 null·빈 배열). 전부 비면 "정보 없음"이 아니라 조회 실패다
+      // (라우트의 502 판정 동형) — LLM이 "주소가 없는 곳"으로 답하지 않게 error로 가른다. 카드 없음.
+      const w = await assembleWhereAmI(coord.lat, coord.lng);
+      if (!w.address && !w.region && !w.nearestStation && w.landmarks.length === 0) {
+        return { data: { error: "위치 정보를 찾지 못했습니다." }, source: src };
+      }
+      // 기준점은 정위에 필요한 축만(이름·분류·거리·방위) — id·링크·좌표는 산문에 쓰이지 않는다.
+      const landmarks = w.landmarks
+        .slice(0, WHERE_AM_I_LANDMARKS_CAP)
+        .map((l) => ({ name: l.name, category: l.categoryRaw, distanceMeters: l.distanceMeters, bearing: l.bearing }));
+      return { data: { ...w, landmarks }, source: src };
+    }
+    case "get_nearby_overview": {
+      const coord = await resolveCoord(args.place ? String(args.place) : undefined, ctx);
+      if (!coord) return { data: NO_LOCATION };
+      const gated = coverageGate(coord);
+      if (gated) return gated;
+      // 불릿별 3-state(ok/none/unavailable/failed)는 조립이 판정한다 — 그대로 싣는다. 카드 없음.
+      const overview = await assembleNearbyOverview(coord.lat, coord.lng);
+      return { data: { ...overview }, source: overviewSources(overview.bullets) };
     }
     case "get_bus_arrivals": {
       const explicit = args.place ? String(args.place) : undefined;

@@ -298,7 +298,7 @@ describe("availableDeclarations", () => {
   });
 
   // 도구 총수 — 새 도구를 더하면 이 숫자도 함께 올린다(누락 시 실패로 알린다).
-  it("모든 키가 있으면 22개 도구가 노출된다", async () => {
+  it("모든 키가 있으면 24개 도구가 노출된다", async () => {
     for (const k of [
       "KAKAO_REST_API_KEY",
       "JUSO_CONFM_KEY",
@@ -312,6 +312,6 @@ describe("availableDeclarations", () => {
       vi.stubEnv(k, "x");
     }
     const { availableDeclarations } = await import("../declarations");
-    expect(availableDeclarations()).toHaveLength(22);
+    expect(availableDeclarations()).toHaveLength(24);
   });
 });

@@ -48,6 +48,14 @@ function buildSearchPlacesDeclaration(): FunctionDeclaration {
   };
 }
 
+/** 좌표 도구 공통 `place` 인자 — 지명을 주면 그 지명 기준, 없으면 보고 있는 장소 또는 현재 위치. */
+const PLACE_ARG = {
+  place: {
+    type: "string",
+    description: "지명(없으면 현재 위치 또는 보고 있는 장소 기준)",
+  },
+} as const;
+
 const DECLARATIONS: GatedDeclaration[] = [
   { gate: hasKakaoKey, declaration: buildSearchPlacesDeclaration },
   {
@@ -123,6 +131,28 @@ const DECLARATIONS: GatedDeclaration[] = [
         type: "object",
         properties: {},
       },
+    },
+  },
+  {
+    gate: hasKakaoKey,
+    declaration: {
+      name: "get_where_am_i",
+      description:
+        "현재 위치(또는 지명)가 어디인지 정위한다 — 도로명·지번 주소, 행정동, 1km 안 가장 가까운 지하철역(방위·거리), 주변 기준점. " +
+        "사용자가 '여기가 어디야', '지금 내 위치', '주소 알려줘'처럼 자기 위치를 물을 때 호출한다.",
+      parametersJsonSchema: { type: "object", properties: PLACE_ARG },
+    },
+  },
+  {
+    // 게이트 없음 — 대중교통 불릿은 정적 seed라 항상 있고, 나머지 불릿은 키 유무로 조립 안에서 가려진다.
+    gate: () => true,
+    declaration: {
+      name: "get_nearby_overview",
+      description:
+        "현재 위치(또는 지명) 주변 1km를 한눈에 요약한다 — 대중교통(가까운 역·정류소), 식당, 카페, 아이 놀 곳, 오늘 문화행사, 무장애 관광지의 개수와 가장 가까운 곳 2개씩. " +
+        "사용자가 '이 근처에 뭐가 있어', '주변 어때'처럼 특정 종류를 정하지 않고 전반을 물을 때 호출한다. 종류가 정해진 질문은 그 전용 도구를 쓴다. " +
+        "불릿의 state가 failed면 조회 실패, none이면 1km 안에 없음, unavailable이면 그 지역엔 데이터가 없음이다 — 셋을 구분해 답하라.",
+      parametersJsonSchema: { type: "object", properties: PLACE_ARG },
     },
   },
   {
