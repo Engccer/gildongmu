@@ -77,7 +77,7 @@ export function sourceFor(
 
 /** 한눈에 보기 출처 — 데이터를 실제로 보여준 불릿(state ok)의 제공처만(키 없음·미제공·실패는 인용하지 않는다). */
 export function overviewSources(
-  bullets: { kind: string; state: string; busStops?: unknown }[],
+  bullets: { kind: string; state: string; busStops?: { state: string } | null }[],
 ): SourceAttribution[] {
   const out: SourceAttribution[] = [];
   for (const b of bullets) {
@@ -85,7 +85,8 @@ export function overviewSources(
     switch (b.kind) {
       case "transit":
         out.push(KRIC);
-        if (b.busStops !== null && b.busStops !== undefined) out.push(TAGO);
+        // 버스 조각은 자기 상태를 따로 가진다(키 없음 null · none · uncovered · failed) — ok만 인용.
+        if (b.busStops?.state === "ok") out.push(TAGO);
         break;
       case "food":
       case "cafe":
