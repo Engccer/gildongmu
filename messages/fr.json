@@ -995,7 +995,15 @@
     "confirmBoarded": "Je suis monté",
     "reselectVehicle": "Choisir un autre véhicule",
     "selectTrain": "{desc}, sélectionner ce train",
-    "selectBus": "{desc}, sélectionner ce bus"
+    "selectBus": "{desc}, sélectionner ce bus",
+    "overviewOrdinal": "Étape {n} sur {count}.",
+    "overviewWalk": "Marche d’environ {minutes} min",
+    "overviewLeg": "{n}. {line}, de {board} à {alight}",
+    "overviewLegDone": "terminée",
+    "overviewLegCurrent": "étape en cours",
+    "overviewLegUpcoming": "à venir",
+    "overviewStopsUnavailable": "Liste des arrêts indisponible.",
+    "viewAlternatives": "Voir d’autres itinéraires"
   },
   "manualLocation": {
     "gps": "Position actuelle",

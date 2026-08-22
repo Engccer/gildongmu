@@ -300,7 +300,14 @@
       "destChangeNone": "No transit route to the new destination.",
       "destChangeError": "Route lookup failed.",
       "destChangeRefetched": "Routes refreshed for your current location.",
-      "destChangeCancel": "Cancel destination change"
+      "destChangeCancel": "Cancel destination change",
+      "altHeading": "Other routes from here",
+      "altHeadingFrom": "Other routes from {station}",
+      "altNoLocation": "Couldn't look up other routes because your location is unavailable.",
+      "altFromBoardStop": "Search from {station}",
+      "altInvalid": "Guidance can't start on this route.",
+      "adoptRoute": "Switch to this route",
+      "routeSwitched": "Route changed."
     }
   },
   "beacon": {

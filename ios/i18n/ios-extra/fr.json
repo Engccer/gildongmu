@@ -300,7 +300,14 @@
       "destChangeNone": "Aucun itinéraire en transports en commun vers la nouvelle destination.",
       "destChangeError": "Échec de la recherche d'itinéraire.",
       "destChangeRefetched": "Itinéraires actualisés selon votre position actuelle.",
-      "destChangeCancel": "Annuler le changement de destination"
+      "destChangeCancel": "Annuler le changement de destination",
+      "altHeading": "Autres itinéraires depuis ici",
+      "altHeadingFrom": "Autres itinéraires depuis {station}",
+      "altNoLocation": "Impossible de chercher d’autres itinéraires : votre position est indisponible.",
+      "altFromBoardStop": "Chercher depuis {station}",
+      "altInvalid": "Le guidage ne peut pas démarrer sur cet itinéraire.",
+      "adoptRoute": "Passer à cet itinéraire",
+      "routeSwitched": "Itinéraire modifié."
     }
   },
   "beacon": {

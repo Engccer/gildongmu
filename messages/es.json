@@ -995,7 +995,15 @@
     "confirmBoarded": "Ya subí",
     "reselectVehicle": "Elegir otro vehículo",
     "selectTrain": "{desc}, seleccionar este tren",
-    "selectBus": "{desc}, seleccionar este autobús"
+    "selectBus": "{desc}, seleccionar este autobús",
+    "overviewOrdinal": "Tramo {n} de {count}.",
+    "overviewWalk": "Caminar unos {minutes} min",
+    "overviewLeg": "{n}. {line}, de {board} a {alight}",
+    "overviewLegDone": "completado",
+    "overviewLegCurrent": "tramo actual",
+    "overviewLegUpcoming": "pendiente",
+    "overviewStopsUnavailable": "Lista de paradas no disponible.",
+    "viewAlternatives": "Ver otras rutas"
   },
   "manualLocation": {
     "gps": "Ubicación actual",
