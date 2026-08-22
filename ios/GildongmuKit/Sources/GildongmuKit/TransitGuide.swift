@@ -446,7 +446,7 @@ public func classifyTransitBoardingCandidates(
 }
 
 /// 역명 표기 차이 흡수(부역명 괄호·"역" 접미) — 종착 검사·현재 위치 매칭 공용.
-private func normalizeStopName(_ s: String) -> String {
+func normalizeStopName(_ s: String) -> String {
     var out = s.replacingOccurrences(of: "\\s*\\([^)]*\\)", with: "", options: .regularExpression)
     if out.hasSuffix("역") { out = String(out.dropLast()) }
     return out.trimmingCharacters(in: .whitespaces)
