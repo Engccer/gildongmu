@@ -35,6 +35,16 @@ enum AppConfig {
     static let experimentalGuidanceEnabled = false
     #endif
 
+    /// 탭 순서 검색 - 길찾기 - 내 주변 - 채팅 + 기본 탭 검색(K1 ①, 위원장 판정 2026-08-23).
+    /// 당분간 **실험판에서만** — 정식판은 종전 채팅 - 검색 - 길찾기 - 내 주변, 기본 채팅.
+    /// 판정이 끝나 정식판으로 가면 이 검사를 삭제하고 `AppTab` 케이스 순서를 실험판 것으로
+    /// 고정한다(플래그 졸업 — 항상 참인 상수를 남기지 않는다).
+    #if EXPERIMENTAL
+    static let experimentalTabOrderEnabled = true
+    #else
+    static let experimentalTabOrderEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")
