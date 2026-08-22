@@ -106,6 +106,9 @@ final class GuideSession {
 
     /// 받아쓰기 시작 직전 두 모델의 억제 값. nil이면 받아쓰기가 억제를 쥐고 있지 않다.
     private var dictationPrior: (beacon: Bool, transit: Bool)?
+    /// 억제를 쥔 받아쓰기 소유자들. `SpeechService`는 화면마다 인스턴스가 따로라(검색·도착지
+    /// 검색·채팅) 두 세션이 겹칠 수 있다 — 마지막 소유자가 떠날 때만 푼다(리뷰 2026-08-23).
+    private var dictationOwners = Set<ObjectIdentifier>()
 
     /// 받아쓰기(`SpeechService`)가 도는 동안 두 모델의 톤·통지를 억제한다 — 헌장 §6
     /// "녹음 중 SR 발화 0"은 검색·채팅 탭에서도 성립해야 하는데, 종전엔 길찾기 탭의
@@ -115,14 +118,17 @@ final class GuideSession {
     /// 되돌리면 열린 시트의 억제를 깨고, 무조건 이전 값으로 되돌리면 그 사이 닫힌 시트의
     /// 해제를 되살린다(영구 억제 = 안내 침묵). 그래서 종료는 `이전 값 ∧ 현재 값`이다:
     /// 받아쓰기 중 누군가 false로 내렸으면 false, 시작 전부터 true였고 아직 true면 유지.
-    func setDictationActive(_ active: Bool) {
+    func setDictationActive(_ active: Bool, owner: ObjectIdentifier) {
         if active {
-            guard dictationPrior == nil else { return }
+            let wasEmpty = dictationOwners.isEmpty
+            dictationOwners.insert(owner)
+            guard wasEmpty else { return }
             dictationPrior = (beacon.outputSuppressed, transit.outputSuppressed)
             beacon.outputSuppressed = true
             transit.outputSuppressed = true
         } else {
-            guard let prior = dictationPrior else { return }
+            dictationOwners.remove(owner)
+            guard dictationOwners.isEmpty, let prior = dictationPrior else { return }
             dictationPrior = nil
             beacon.outputSuppressed = prior.beacon && beacon.outputSuppressed
             transit.outputSuppressed = prior.transit && transit.outputSuppressed

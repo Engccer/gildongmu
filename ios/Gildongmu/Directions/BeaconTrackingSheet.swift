@@ -217,7 +217,8 @@ struct BeaconTrackingSheet: View {
         .task {
             if GuideSession.shared.returnedFromBand == .beacon {
                 GuideSession.shared.returnedFromBand = nil
-                await landMinimizeFocus()
+                // 최소화 중 도착했으면 접기 버튼이 없다(도착 화면) — 도착 문장으로.
+                if model.arrivalDest != nil { await landArrivedFocus() } else { await landMinimizeFocus() }
             } else {
                 await landStopFocus()
             }

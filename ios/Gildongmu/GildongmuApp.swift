@@ -2,20 +2,27 @@ import SwiftUI
 import GildongmuKit
 
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
-/// 세션 리셋 시 `.id` 재생성만으론 첫 탭(검색) 복귀가 안 된다 — 명시 복귀 필요.
-/// 케이스 순서 = 탭 바 순서(검색 - 길찾기 - 내 주변 - 채팅, 위원장 판정 2026-08-23 K1),
-/// 첫 케이스가 기본 탭이다(`AppTab.initial`).
+/// 세션 리셋 시 `.id` 재생성만으론 기본 탭 복귀가 안 된다 — 명시 복귀 필요.
+/// 탭 바 순서·기본 탭은 `AppTab.order`·`AppTab.initial`이 정한다(실험판 검색 - 길찾기 -
+/// 내 주변 - 채팅 / 정식판 채팅 - 검색 - 길찾기 - 내 주변, `experimentalTabOrderEnabled`).
 /// `String` rawValue = 안정 식별자(스펙 10-A §8). 정수 인덱스였다면 탭 삽입 시
 /// 순서가 밀려 저장된 값이 다른 탭을 가리키는 마이그레이션 결함이 생기지만,
 /// 이름 기반 rawValue는 케이스를 어디에 끼워 넣어도 기존 값이 계속 같은 탭을 가리킨다.
-enum AppTab: String, CaseIterable {
+enum AppTab: String {
+    case chat
     case search
     case directions
     case nearby
-    case chat
+
+    /// 탭 바 순서(K1 ①, 위원장 판정 2026-08-23 — 실험판 판정 대기라 플래그로 가른다).
+    static var order: [AppTab] {
+        AppConfig.experimentalTabOrderEnabled
+            ? [.search, .directions, .nearby, .chat]
+            : [.chat, .search, .directions, .nearby]
+    }
 
     /// 기본 탭 = 탭 바 첫 탭. 세션 리셋·콜드 런치 복귀 지점.
-    static let initial: AppTab = .search
+    static var initial: AppTab { order[0] }
 }
 
 @main
@@ -55,26 +62,36 @@ struct GildongmuApp: App {
     private let guideSession = GuideSession.shared
     /// 띠바 버튼 착지(최소화 직후). 시트 dismiss가 VO 커서를 최상단으로 떨어뜨리는 것이
     /// 실기기 확정이라 지연·대입·검증·1회 재시도로 이긴다.
-    @AccessibilityFocusState private var bandFocused: Bool
+    /// 값 = 띠바를 든 탭(항목 정체성 옵셔널 바인딩). 18~25 폴백은 탭마다 띠바가 하나씩이라
+    /// `Bool`이면 여러 뷰가 같은 참을 들어 탭 전환마다 커서를 끌어간다(리뷰 2026-08-23).
+    @AccessibilityFocusState private var bandFocusedTab: AppTab?
     @State private var bandFocusTask: Task<Void, Never>?
 
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
-            // 탭 순서 = `AppTab` 케이스 순서. 18~25 폴백 띠바는 각 탭 콘텐츠에 붙는다
+            // 탭 순서 = `AppTab.order`. 18~25 폴백 띠바는 각 탭 콘텐츠에 붙는다
             // (`withGuideBand`) — TabView 자체에 `safeAreaInset`을 걸면 inset이 탭 바
             // 자리에 그려져 탭 바를 시각·VoiceOver 모두에서 덮었다(실기기 2026-08-22).
             TabView(selection: $selectedTab) {
-                Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(SearchView().id(searchEpoch)) }
-                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch)) }
-                Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { withGuideBand(NearbyHubView().id(nearbyEpoch)) }
-                Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { withGuideBand(ChatTabView(model: chatModel).id(chatEpoch)) }
+                ForEach(AppTab.order, id: \.self) { tab in
+                    switch tab {
+                    case .search:
+                        Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(.search, SearchView().id(searchEpoch)) }
+                    case .directions:
+                        Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(.directions, DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch)) }
+                    case .nearby:
+                        Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { withGuideBand(.nearby, NearbyHubView().id(nearbyEpoch)) }
+                    case .chat:
+                        Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { withGuideBand(.chat, ChatTabView(model: chatModel).id(chatEpoch)) }
+                    }
+                }
             }
             .id("\(sessionEpoch)#\(languageRaw)")
             // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통. iOS 26은
             // 탭 바 액세서리가 그 자리(콘텐츠 → 띠바 → 탭 바)를 시스템이 보장한다.
             // 접근성 객체 하나(버튼). live region이 아니다 — 안내 통지는 모델 창구가 낸다.
-            .modifier(GuideBandAccessory(isShown: showsGuideBand) { guideBand })
+            .modifier(GuideBandAccessory(isShown: showsGuideBand) { guideBand(tab: selectedTab) })
             // 안내 시트(N1 §2.2). item 하나로 두 시트를 직렬화한다(설계 리뷰 M2). 내리는
             // 제스처는 전부 최소화다 — 콜백 시점의 모델 상태로 뜻을 정하지 않는다(C3·C4).
             .sheet(item: Binding(
@@ -111,18 +128,21 @@ struct GildongmuApp: App {
                 guideSession.returnedFromBand = nil
                 bandFocusTask?.cancel()
                 bandFocusTask = nil
-                bandFocused = false
+                bandFocusedTab = nil
             }
             .onChange(of: guideSession.isMinimized) { _, minimized in
                 bandFocusTask?.cancel()
-                guard minimized else { bandFocusTask = nil; return }
+                // 펼치면 바인딩을 비운다 — 안 비우면 다음 최소화의 대입이 같은 값이라
+                // 포커스 전이가 걸리지 않는다(리뷰 2026-08-23).
+                guard minimized else { bandFocusTask = nil; bandFocusedTab = nil; return }
+                let target = selectedTab
                 bandFocusTask = Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(450))
                     guard !Task.isCancelled else { return }
-                    bandFocused = true
+                    bandFocusedTab = target
                     try? await Task.sleep(for: .milliseconds(600))
-                    guard !Task.isCancelled, !bandFocused else { return }
-                    bandFocused = true
+                    guard !Task.isCancelled, bandFocusedTab != target else { return }
+                    bandFocusedTab = target
                 }
             }
             .preferredColorScheme(ThemePreference(rawValue: themeRaw)?.colorScheme)
@@ -189,25 +209,28 @@ struct GildongmuApp: App {
 
     private var showsGuideBand: Bool { guideSession.hasScreen && guideSession.isMinimized }
 
-    /// 띠바 본체 — 26 액세서리와 18~25 폴백이 같은 뷰를 쓴다(착지 바인딩 포함).
-    @ViewBuilder private var guideBand: some View {
+    /// 띠바 본체 — 26 액세서리와 18~25 폴백이 같은 뷰를 쓴다. 착지 바인딩은 항목 정체성
+    /// 옵셔널(`bandFocusedTab == tab`)이라 18~25에서 탭마다 인스턴스가 있어도 최소화 시점의
+    /// 선택 탭 것만 반응한다(CLAUDE.md "Bool 바인딩을 여러 행에 붙이지 말 것"). 26 액세서리는
+    /// 인스턴스 하나라 현재 선택 탭을 정체성으로 쓴다.
+    @ViewBuilder private func guideBand(tab: AppTab) -> some View {
         if showsGuideBand {
             GuideBandView(session: guideSession) {
                 guideSession.returnedFromBand = guideSession.screen
                 guideSession.isMinimized = false
             }
-            .accessibilityFocused($bandFocused)
+            .accessibilityFocused($bandFocusedTab, equals: tab)
         }
     }
 
     /// 18~25 폴백: 탭 **콘텐츠**의 하단 safe area에 띠바를 얹는다. 콘텐츠 safe area는
     /// 탭 바를 제외하므로 탭 바 바로 위에 놓이고, 콘텐츠 트리 안이라 VoiceOver 순서도
     /// 콘텐츠 → 띠바 → 탭 바다. 26은 액세서리가 맡으므로 여기선 아무것도 하지 않는다.
-    @ViewBuilder private func withGuideBand(_ content: some View) -> some View {
+    @ViewBuilder private func withGuideBand(_ tab: AppTab, _ content: some View) -> some View {
         if #available(iOS 26, *) {
             content
         } else {
-            content.safeAreaInset(edge: .bottom) { guideBand }
+            content.safeAreaInset(edge: .bottom) { guideBand(tab: tab) }
         }
     }
 
@@ -315,7 +338,7 @@ private struct GuideBandAccessory<Band: View>: ViewModifier {
 }
 
 /// 띠바(N1) — 최소화된 안내를 탭 바 위 한 줄로 대표한다. 버튼 하나 = 접근성 객체 하나.
-/// 라벨 = 수단별 요약 + "안내로 돌아가기". 거리 낭독은 `spokenDistanceUnits`(VO가 `850m`을
+/// 라벨 = 수단별 요약 + "안내 시트 펼치기". 거리 낭독은 `spokenDistanceUnits`(VO가 `850m`을
 /// minutes로 읽는다 — 설계 리뷰 M6), 시각은 `formatDistance` 원문.
 struct GuideBandView: View {
     let session: GuideSession
@@ -336,7 +359,10 @@ struct GuideBandView: View {
             .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
-        .background(.bar)
+        // ⚠ `ignoresSafeAreaEdges: []` 필수. 기본값(.all)은 배경을 아래 safe area까지 늘리는데
+        // 탭 콘텐츠 inset 안에서 그 아래는 **탭 바**라, 버튼의 AX 프레임이 탭 바를 덮었다
+        // (AXe 실측 2026-08-23: 높이 133pt, 자동화 탭이 탭 바에 떨어짐).
+        .background(.bar, ignoresSafeAreaEdges: [])
         .accessibilityLabel(joinText(spokenUnits(summaryText), appLocalized("guide.band.return")))
     }
 

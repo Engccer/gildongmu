@@ -81,7 +81,7 @@ final class SpeechService {
     private func setGuideSuppressed(_ on: Bool) {
         guard suppressingGuide != on else { return }
         suppressingGuide = on
-        GuideSession.shared.setDictationActive(on)
+        GuideSession.shared.setDictationActive(on, owner: ObjectIdentifier(self))
     }
 
     /// 권한 요청 → 모델 에셋 확인 → 마이크 탭 + 스트리밍 인식 시작.
@@ -100,12 +100,14 @@ final class SpeechService {
         setGuideSuppressed(true)
 
         guard await AVAudioApplication.requestRecordPermission() else {
-            if gen == generation { phase = .denied }
-            setGuideSuppressed(false)
+            if gen == generation { phase = .denied; setGuideSuppressed(false) }
             return
         }
         // 권한 대기 중 cancel()이 다녀갔으면 여기서 중단(아직 아무것도 시작 안 됨).
-        guard gen == generation else { setGuideSuppressed(false); return }
+        // ⚠ 세대가 어긋난 경로는 억제를 풀지 않는다 — cancel()이 이미 풀었고, 그 뒤
+        // 시작된 새 세션이 억제를 쥐고 있을 수 있다(옛 세션의 뒤늦은 해제가 녹음 중인
+        // 새 세션을 억제 없이 돌린다 — 리뷰 검출 2026-08-23).
+        guard gen == generation else { return }
 
         do {
             try await beginListening(gen: gen)
@@ -116,8 +118,7 @@ final class SpeechService {
                 audioEngine.inputNode.removeTap(onBus: 0)
                 await engine?.cancel()
                 teardown()
-                setGuideSuppressed(false)
-                return
+                return  // 세대 불일치 — 억제 해제는 cancel()의 몫(위 주석)
             }
             phase = .listening(partial: "")
             // 상태 전이가 만든 라벨 변경(준비 중 → 받아쓰기)을 VoiceOver가 읽기 시작하면
@@ -128,10 +129,10 @@ final class SpeechService {
             notify(soundID: 1113) // 녹음 시작음
         } catch {
             teardown()
-            setGuideSuppressed(false)
             // 취소된 세션의 뒤늦은 실패는 사용자에게 일어난 사건이 아니다 — 화면도
             // 로그도 건드리지 않는다(취소 자체가 던지는 CancellationError 소음 차단).
             guard gen == generation else { return }
+            setGuideSuppressed(false)
             // 오류를 버리지 않는다: 로그에 원인, 화면에 종별 문구(3-state 정신 —
             // "권한 거부"·"로케일 미지원"·"모델 준비 실패"·"오디오 사용 불가"는 다른 사건).
             speechLog.error("받아쓰기 시작 실패: \(String(describing: error), privacy: .public)")

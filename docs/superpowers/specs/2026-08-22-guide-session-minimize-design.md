@@ -63,16 +63,16 @@ set(nil):   session.isMinimized = true   // 항상. 콜백 시점의 모델 상�
   - `onDestinationCommitted(endpoint)` → `GuideFormSyncStore.shared.pending = endpoint`. `DirectionsTabView`가 `onChange`+`task`(탭이 안 보였을 때 쌓인 값 소비)로 받아 종전 `syncFormAfterGuidanceChange`를 수행한다. 탭이 그 사이 재생성됐어도 `task`가 소비하므로 유실 없음.
   - `onWalkHandoff` → `GuideSession.startWalkHandoff()`. 필요한 값은 목적지 좌표·라벨(`TransitGuideModel`이 `start`에서 `dest: BeaconDest`를 함께 보관 — 새 인자)과 계단 회피 여부(`transit.start`에 `accessible: Bool` 인자로 함께 넘긴다 — 종전엔 핸드오프 시점에 탭 폼의 `stepFreeEnabled`를 읽었는데, 세션이 탭과 분리되면 그 값은 세션 시작 시점에 고정돼야 한다. `BeaconModel.begin`의 "세션 시작 시점 값이 세션 내내 유효" 계약과 같다). `detailDest`도 `transit.dest`에서 읽는다.
 - 종전 `.onChange(of: model.endpoint(for: .to))`의 **자동 중지 삭제**(`stopBecauseDestinationChanged` 호출 2곳·`guidanceInitiatedEndpoint` 플래그 삭제). 판정 "경로 조회는 허용"이 정확히 이 자리다 — 세션이 자기 목적지(`dest`·`destinationLabel`)를 들고 있어 폼이 바뀌어도 옛 목적지를 추적하는 창은 생기지 않는다(그 함수가 막던 위험의 전제가 사라졌다). `stopBecauseDestinationChanged` 자체는 다른 호출자가 없으면 함께 지운다.
-- 검색 시트 받아쓰기 중 억제(`outputSuppressed`)는 탭의 `searchTarget` onChange에 두되 **두 모델 모두**에 건다(리뷰 C9 — 최소화된 대중교통 안내 중 목적지 음성 검색이 통지에 오염된다). 탭 `onDisappear`에서 둘 다 `false`로 되돌린다(리뷰 M4 — 시트가 열린 채 탭 트리가 재생성되면 억제가 영영 남는다). ~~⚠ 다른 탭의 받아쓰기(검색 탭 마이크·채팅)는 이 억제를 받지 않는다 — N1 뒤 열린 항목(§7).~~ **K1 ④(2026-08-23)로 닫혔다**: `SpeechService`가 시작(`phase = .requesting` 직후, 마이크가 뜨거워지기 전)에 `GuideSession.setDictationActive(true)`를 걸고 모든 종료 경로(권한 거부·취소·실패·정지·엔진 실패 콜백)에서 푼다. 억제 플래그는 시트도 쓰는 공유 Bool이라 종료는 `이전 값 ∧ 현재 값`이다 — 무조건 false면 열린 검색 시트의 억제를 깨고, 무조건 이전 값이면 그 사이 닫힌 시트의 해제를 되살려 안내가 영구 침묵한다.
+- 검색 시트 받아쓰기 중 억제(`outputSuppressed`)는 탭의 `searchTarget` onChange에 두되 **두 모델 모두**에 건다(리뷰 C9 — 최소화된 대중교통 안내 중 목적지 음성 검색이 통지에 오염된다). 탭 `onDisappear`에서 둘 다 `false`로 되돌린다(리뷰 M4 — 시트가 열린 채 탭 트리가 재생성되면 억제가 영영 남는다). ~~⚠ 다른 탭의 받아쓰기(검색 탭 마이크·채팅)는 이 억제를 받지 않는다 — N1 뒤 열린 항목(§7).~~ **K1 ④(2026-08-23)로 닫혔다**: `SpeechService`가 시작(`phase = .requesting` 직후, 마이크가 뜨거워지기 전)에 `GuideSession.setDictationActive(true, owner:)`를 걸고(소유자 = 인스턴스 `ObjectIdentifier` 집합 — 검색·도착지 검색·채팅 세션이 겹쳐도 마지막 소유자가 떠날 때만 해제, 세대가 어긋난 취소 경로는 해제하지 않는다) 모든 종료 경로(권한 거부·취소·실패·정지·엔진 실패 콜백)에서 푼다. 억제 플래그는 시트도 쓰는 공유 Bool이라 종료는 `이전 값 ∧ 현재 값`이다 — 무조건 false면 열린 검색 시트의 억제를 깨고, 무조건 이전 값이면 그 사이 닫힌 시트의 해제를 되살려 안내가 영구 침묵한다.
 
 ### 2.3 띠바(`GuideBandView`)
 
-- **위치(K1 ②, 2026-08-23 개정)**: 탭 바 **바로 위**. 종전 구현은 `.safeAreaInset(edge:.bottom)`을 TabView 자체에 걸어 inset이 탭 바 자리에 그려졌고, 탭 바가 시각·VoiceOver 모두에서 사라졌다(실기기 2026-08-22 — 띠바가 화면 첫 객체). 지금은 iOS 26.1+ `tabViewBottomAccessory(isEnabled:)`(26.0은 내용 비우기), 18~25는 각 `Tab` **콘텐츠**의 `safeAreaInset`(`withGuideBand`) — 콘텐츠 safe area가 탭 바를 제외하므로 탭 바 위에 놓이고 VO 순서가 콘텐츠 → 띠바 → 탭 바다. 액세서리 모디파이어는 조건부로 붙였다 떼지 않는다(TabView 정체성 변경 = 탭 상태 소멸). 시뮬 18.6·26 둘 다 탭 바 가시·AX 순서 확인(2026-08-23).
-- 문구(K1 ③): `guide.band.return` = "안내 시트 펼치기"(종전 "안내로 돌아가기").
+- **위치(K1 ②, 2026-08-23 개정)**: 탭 바 **바로 위**. 종전 구현은 `.safeAreaInset(edge:.bottom)`을 TabView 자체에 걸어 inset이 탭 바 자리에 그려졌고, 탭 바가 시각·VoiceOver 모두에서 사라졌다(실기기 2026-08-22 — 띠바가 화면 첫 객체). 지금은 iOS 26.1+ `tabViewBottomAccessory(isEnabled:)`(26.0은 내용 비우기), 18~25는 각 `Tab` **콘텐츠**의 `safeAreaInset`(`withGuideBand`) — 콘텐츠 safe area가 탭 바를 제외하므로 탭 바 위에 놓이고 VO 순서가 콘텐츠 → 띠바 → 탭 바다. 액세서리 모디파이어는 조건부로 붙였다 떼지 않는다(TabView 정체성 변경 = 탭 상태 소멸). 시뮬 18.6·26 둘 다 탭 바 가시·AX 순서·띠바 탭 복귀 확인(2026-08-23). 띠바 배경은 `ignoresSafeAreaEdges: []`(기본값은 배경을 탭 바까지 늘려 AX 프레임 133pt — AXe 실측).
+- 문구(K1 ③): `guide.band.return` = "안내 시트 펼치기"(종전 "안내로 돌아가기"). 18~25 폴백은 탭마다 띠바 인스턴스가 생기므로 착지 바인딩은 항목 정체성 옵셔널 `bandFocusedTab: AppTab?`(`equals: tab`)이다 — Bool 하나를 여러 인스턴스가 들면 탭 전환마다 커서를 끌어가고, 펼칠 때 nil로 비워야 다음 최소화의 대입이 전이를 만든다. 받아쓰기 억제 소유자는 `SpeechService` 인스턴스별(`ObjectIdentifier`) 집합이라 두 화면의 세션이 겹쳐도 마지막 소유자가 떠날 때만 푼다.
 
-`GildongmuApp`의 `TabView`에 `.safeAreaInset(edge: .bottom)`으로 붙인다 → 탭 바 바로 위, 모든 탭 공통. 표시 조건 `session.hasScreen && session.isMinimized`.
+~~`GildongmuApp`의 `TabView`에 `.safeAreaInset(edge: .bottom)`으로 붙인다~~(K1 개정, 위 불릿) → 탭 바 바로 위, 모든 탭 공통. 표시 조건 `session.hasScreen && session.isMinimized`.
 
-- **접근성 객체 하나 = 버튼 하나**. 라벨 = 요약 문장 + "안내로 돌아가기"(`guide.band.return`). 시각은 두 줄(요약 / 돌아가기)이어도 `.accessibilityElement(children: .combine)`이 아니라 버튼 라벨로 직접 합친다. 최소 높이 44pt.
+- **접근성 객체 하나 = 버튼 하나**. 라벨 = 요약 문장 + "안내 시트 펼치기"(`guide.band.return`, K1 개정). 시각은 두 줄(요약 / 펼치기)이어도 `.accessibilityElement(children: .combine)`이 아니라 버튼 라벨로 직접 합친다. 최소 높이 44pt.
 - 요약 문장(수단별, 위원장 판정):
 
 | 상태 | 문장 키 | 예 |
@@ -188,5 +188,5 @@ C 0·M 0. m1(transit 거부 통지가 `outputSuppressed`에 묻힘 — 비콘 �
 
 ## 9. K1 개정 (2026-08-23, 실사용 피드백 2026-08-22 ①④)
 
-탭 순서 검색 - 길찾기 - 내 주변 - 채팅, 기본 탭 검색(`AppTab` 케이스 순서 = 탭 바 순서, `AppTab.initial`). 띠바 위치(§2.3)·접기 toolbar 버튼(§2.6)·문구 2종·받아쓰기 억제(§2.2)는 해당 절에 반영. 설계 리뷰는 생략 — 검증된 계약의 재배치(새 불변식·외부 통합·비가역 변경 없음)이고 실기기 VO 순서가 게이트. 실기기 관찰 항목은 `docs/FIELD-TEST.md` N1③.
+탭 순서 검색 - 길찾기 - 내 주변 - 채팅, 기본 탭 검색은 **실험판에서만**(위원장 2026-08-23 추가 지시 — `AppConfig.experimentalTabOrderEnabled`, `AppTab.order`·`initial`이 그것으로 갈린다; 정식판은 채팅 - 검색 - 길찾기 - 내 주변, 기본 채팅 유지. 판정 뒤 졸업은 검사 삭제). 시뮬 Debug·Experimental 양쪽 순서 확인. 띠바 위치(§2.3)·접기 toolbar 버튼(§2.6)·문구 2종·받아쓰기 억제(§2.2)는 해당 절에 반영. 설계 리뷰는 생략 — 검증된 계약의 재배치(새 불변식·외부 통합·비가역 변경 없음)이고 실기기 VO 순서가 게이트. 실기기 관찰 항목은 `docs/FIELD-TEST.md` N1③.
 
