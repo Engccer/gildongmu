@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import scenarios from "./fixtures/route-guide-scenarios.json";
 import courseAxisScenarios from "./fixtures/course-axis-scenarios.json";
 import type { CourseVoteSample } from "../guide-course-axis";
+import type { GuideAction } from "../walk-action";
 import {
   buildGuideRoute,
+  CAR_DRIVER_TUNING,
   CAR_TUNING,
   displayEffectiveD,
   entryProjection,
@@ -26,7 +28,10 @@ const M = 1 / 111320;
 const LAT0 = 37.5;
 const LNG0 = 127.1;
 
-function routeFrom(steps: { len: number; desc: string }[], waypointStepIndex?: number) {
+function routeFrom(
+  steps: { len: number; desc: string; action?: string }[],
+  waypointStepIndex?: number,
+) {
   let acc = 0;
   const route = buildGuideRoute(
     steps.map((s) => {
@@ -35,7 +40,11 @@ function routeFrom(steps: { len: number; desc: string }[], waypointStepIndex?: n
         { lat: LAT0 + (acc + s.len) * M, lng: LNG0 },
       ];
       acc += s.len;
-      return { description: s.desc, pathCoords };
+      return {
+        description: s.desc,
+        pathCoords,
+        ...(s.action ? { action: s.action as GuideAction } : {}),
+      };
     }),
     { waypointStepIndex },
   );
@@ -69,19 +78,20 @@ describe("route-guide 공유 시나리오(경계표)", () => {
   for (const sc of (scenarios as {
     scenarios: {
       name: string;
-      tuning?: "walk" | "car";
+      tuning?: "walk" | "car" | "carDriver";
       /** 종점 오프셋 기하를 아는 세션인가(미지정=모름 → 옛 50m 인계). */
       geometry?: boolean;
       /** 경유지 스텝 index(N4). 미지정=경유지 없음. */
       waypointStepIndex?: number;
-      steps: { len: number; desc: string }[];
+      steps: { len: number; desc: string; action?: string }[];
       fixes: { t: number; along: number; lateral: number; acc: number }[];
       expect: Expectation[];
     }[];
   }).scenarios) {
     it(sc.name, () => {
       const route = routeFrom(sc.steps, sc.waypointStepIndex);
-      const tuning = sc.tuning === "car" ? CAR_TUNING : WALK_TUNING;
+      const tuning =
+        sc.tuning === "car" ? CAR_TUNING : sc.tuning === "carDriver" ? CAR_DRIVER_TUNING : WALK_TUNING;
       let { state } = initialGuideState(route, 0, {
         hasFinalApproachGeometry: sc.geometry === true,
       });
@@ -737,5 +747,19 @@ describe("도착 추정 게이트", () => {
   it("도착 추정은 walk 전용이다 (spec 2026-08-13 §4)", () => {
     expect(WALK_TUNING.presumedArrivalEnabled).toBe(true);
     expect(CAR_TUNING.presumedArrivalEnabled).toBe(false);
+  });
+});
+
+describe("GuideTuning 조합 불변식(K2 설계 리뷰 m3)", () => {
+  it("임박 큐를 끈 프로파일(imminentAheadM null)은 시간 축도 0이어야 한다 — M=null·S>0은 웹·Kit이 다르게 읽는 무효 조합", () => {
+    for (const t of [WALK_TUNING, CAR_TUNING, CAR_DRIVER_TUNING]) {
+      if (t.imminentAheadM === null) expect(t.imminentAheadS).toBe(0);
+      if (t.imminentAheadM !== null) expect(t.imminentUnknownSpeedM).toBeGreaterThanOrEqual(t.imminentAheadM);
+    }
+  });
+  it("car 프로파일은 문장이 아니라 서버 투영으로 행동을 고른다(B1)", () => {
+    expect(CAR_TUNING.actionSource).toBe("step");
+    expect(CAR_DRIVER_TUNING.actionSource).toBe("step");
+    expect(WALK_TUNING.actionSource).toBe("text");
   });
 });

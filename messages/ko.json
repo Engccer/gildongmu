@@ -751,7 +751,29 @@
       "transitDestChangePending": "{label}로 목적지 변경, 경로 선택 대기",
       "transitDestChangeFailed": "{label}로 목적지 변경 실패, 안내 화면에서 확인"
     },
-    "changeWaypointHere": "여기로 경유지 변경"
+    "changeWaypointHere": "여기로 경유지 변경",
+    "carImminent": {
+      "left": "잠시 후 좌회전하세요",
+      "right": "잠시 후 우회전하세요",
+      "back": "잠시 후 유턴하세요",
+      "keepLeft": "잠시 후 왼쪽 길로 가세요",
+      "keepRight": "잠시 후 오른쪽 길로 가세요"
+    },
+    "carCommand": {
+      "left": "좌회전",
+      "right": "우회전",
+      "back": "유턴",
+      "keepLeft": "왼쪽 길",
+      "keepRight": "오른쪽 길"
+    },
+    "carLiveAction": {
+      "left": "좌회전하세요",
+      "right": "우회전하세요",
+      "back": "유턴하세요",
+      "keepLeft": "왼쪽 길로 가세요",
+      "keepRight": "오른쪽 길로 가세요"
+    },
+    "carPeriodic": "{distance} 앞 {command}"
   },
   "offline": {
     "heading": "오프라인 상태입니다",

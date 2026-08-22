@@ -1,0 +1,227 @@
+{
+  "comment": "carActionFromTurnType 코드 표(spec 2026-08-23 §2.2). 웹 car-action.test.ts ↔ Kit CarActionTests 공용. 관측 코드(tmap-car-corpus.json)는 전부 포함하고, 대칭 미관측 코드도 적는다. action null = 침묵.",
+  "cases": [
+    {
+      "turnType": 11,
+      "action": null,
+      "note": "직진"
+    },
+    {
+      "turnType": 12,
+      "action": "left"
+    },
+    {
+      "turnType": 13,
+      "action": "right"
+    },
+    {
+      "turnType": 14,
+      "action": "back",
+      "note": "U턴"
+    },
+    {
+      "turnType": 16,
+      "action": "left",
+      "note": "8시 방향 좌회전"
+    },
+    {
+      "turnType": 17,
+      "action": "left",
+      "note": "10시 방향 좌회전"
+    },
+    {
+      "turnType": 18,
+      "action": "right",
+      "note": "2시 방향 우회전"
+    },
+    {
+      "turnType": 19,
+      "action": "right",
+      "note": "4시 방향 우회전"
+    },
+    {
+      "turnType": 101,
+      "action": "keepRight",
+      "note": "오른쪽 고속도로 입구"
+    },
+    {
+      "turnType": 102,
+      "action": "keepLeft",
+      "note": "왼쪽 고속도로 입구(미관측 대칭)"
+    },
+    {
+      "turnType": 103,
+      "action": null,
+      "note": "전방 고속도로 입구"
+    },
+    {
+      "turnType": 104,
+      "action": "keepRight",
+      "note": "오른쪽 고속도로 출구"
+    },
+    {
+      "turnType": 105,
+      "action": "keepLeft",
+      "note": "왼쪽 고속도로 출구(미관측 대칭)"
+    },
+    {
+      "turnType": 106,
+      "action": null,
+      "note": "전방 고속도로 출구"
+    },
+    {
+      "turnType": 111,
+      "action": "keepRight",
+      "note": "오른쪽 도시고속도로 입구"
+    },
+    {
+      "turnType": 112,
+      "action": "keepLeft",
+      "note": "미관측 대칭"
+    },
+    {
+      "turnType": 113,
+      "action": null,
+      "note": "전방 도시고속도로 입구"
+    },
+    {
+      "turnType": 114,
+      "action": "keepRight",
+      "note": "오른쪽 도시고속도로 출구"
+    },
+    {
+      "turnType": 115,
+      "action": "keepLeft",
+      "note": "미관측 대칭"
+    },
+    {
+      "turnType": 116,
+      "action": null
+    },
+    {
+      "turnType": 117,
+      "action": "keepRight",
+      "note": "오른쪽 방향 — 회전 아님(갈래)"
+    },
+    {
+      "turnType": 118,
+      "action": "keepLeft",
+      "note": "왼쪽 방향 — 회전 아님(갈래)"
+    },
+    {
+      "turnType": 119,
+      "action": null,
+      "note": "지하차도"
+    },
+    {
+      "turnType": 120,
+      "action": null,
+      "note": "고가도로"
+    },
+    {
+      "turnType": 121,
+      "action": null,
+      "note": "터널"
+    },
+    {
+      "turnType": 123,
+      "action": null,
+      "note": "지하차도옆"
+    },
+    {
+      "turnType": 124,
+      "action": null,
+      "note": "고가도로옆"
+    },
+    {
+      "turnType": 130,
+      "action": null,
+      "note": "토끼굴 진입(공식 표 — 톨게이트 아님)"
+    },
+    {
+      "turnType": 131,
+      "action": "keepRight",
+      "note": "1시 방향"
+    },
+    {
+      "turnType": 135,
+      "action": "keepRight",
+      "note": "5시 방향"
+    },
+    {
+      "turnType": 136,
+      "action": "back",
+      "note": "6시 방향"
+    },
+    {
+      "turnType": 137,
+      "action": "keepLeft",
+      "note": "7시 방향"
+    },
+    {
+      "turnType": 138,
+      "action": "keepLeft",
+      "note": "8시 방향(코퍼스 관측)"
+    },
+    {
+      "turnType": 141,
+      "action": "keepLeft",
+      "note": "11시 방향"
+    },
+    {
+      "turnType": 142,
+      "action": null,
+      "note": "12시 방향"
+    },
+    {
+      "turnType": 150,
+      "action": null,
+      "note": "졸음쉼터"
+    },
+    {
+      "turnType": 151,
+      "action": null,
+      "note": "휴게소"
+    },
+    {
+      "turnType": 182,
+      "action": null,
+      "note": "도착안내 왼쪽/오른쪽 — 목적지 위치이지 회전 아님(공식 표)"
+    },
+    {
+      "turnType": 183,
+      "action": null,
+      "note": "도착안내 왼쪽/오른쪽 — 목적지 위치이지 회전 아님(공식 표)"
+    },
+    {
+      "turnType": 184,
+      "action": null,
+      "note": "경유지"
+    },
+    {
+      "turnType": 200,
+      "action": null,
+      "note": "출발"
+    },
+    {
+      "turnType": 201,
+      "action": null,
+      "note": "도착"
+    },
+    {
+      "turnType": 999,
+      "action": null,
+      "note": "미지 코드"
+    },
+    {
+      "turnType": 43,
+      "action": null,
+      "note": "차선 오른쪽(공식 표 43~63 차선 정보 — 행동 아님)"
+    },
+    {
+      "turnType": 203,
+      "action": null,
+      "note": "목적지 건너편"
+    }
+  ]
+}

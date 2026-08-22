@@ -11,11 +11,15 @@
  * 우선순위 1·2(도착·최종 접근)는 이 계층 밖이다 — 그 국면의 발화·표시 소유자는
  * 오케스트레이터의 최종 접근 층이고, 여기는 finalApproach에서 빈 행을 낸다.
  */
-import { displayEffectiveD, type GuidePhase } from "./route-guide";
+import { displayEffectiveD, stepActionFor, type GuidePhase, type GuideTuning } from "./route-guide";
 import type { GuideRoute } from "./route-geometry";
-import { walkStepAction, type WalkAction } from "./walk-action";
+import type { WalkAction } from "./walk-action";
 
-/** 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 20 = 임박 큐 시점(spec §2-4, lag 10). */
+/**
+ * 도보 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 20 = 임박 큐 시점(spec §2-4, lag 10).
+ * 자동차는 임박 큐가 속도 함수(`max(15, v×6)`)라 오케스트레이터가 같은 식에서 표시 lag를
+ * 뺀 값을 `guideLiveRows`의 `turnApproachM`으로 넘긴다(K2 spec §4).
+ */
 export const TURN_APPROACH_M = 10;
 /** 예고에서 "연속 회전"으로 접는 유닛 길이(m) — 직진 창이 사실상 없는 유닛. */
 export const SHORT_UNIT_PREVIEW_M = 10;
@@ -26,7 +30,11 @@ export interface LiveStepInput {
   endD: number;
   /** 서버 구조화 조각(spec §5). 추출 실패는 부재 — 재파싱으로 채우지 않는다. */
   live?: { target?: string; anchor?: string };
+  /** 서버 투영 행동(자동차 `turnType`, K2 §2.3). 있으면 문장 분류 대신 쓴다. */
+  action?: WalkAction;
 }
+
+
 
 /** 행동 경계 기준으로 병합한 표시 유닛(spec §4.1) — "직진 구간 + (있다면) 끝 행동". */
 export interface DisplayUnit {
@@ -57,10 +65,15 @@ export function isCrossingStep(action: WalkAction | null, description: string): 
   return (action === "crosswalk" || action === "underpass") && description.includes("건너");
 }
 
-export function buildDisplayUnits(steps: LiveStepInput[]): DisplayUnit[] {
+/** `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — walk `text`, car `step`). 기본값 없음. */
+export function buildDisplayUnits(
+  steps: LiveStepInput[],
+  source: GuideTuning["actionSource"],
+): DisplayUnit[] {
+  const actionOf = (step: LiveStepInput) => stepActionFor(step, source);
   const groups: { indices: number[]; crossing: boolean; action: WalkAction | null }[] = [];
   for (let i = 0; i < steps.length; i++) {
-    const action = walkStepAction(steps[i].description);
+    const action = actionOf(steps[i]);
     const crossing = isCrossingStep(action, steps[i].description);
     const prev = groups[groups.length - 1];
     // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
@@ -84,7 +97,7 @@ export function buildDisplayUnits(steps: LiveStepInput[]): DisplayUnit[] {
       crossingText: g.crossing ? first.description : null,
       crossingAction: g.crossing ? g.action : null,
       // 끝 행동 = 다음 유닛 첫 스텝이 알리는 행동(횡단 유닛 진입 포함). 최종 유닛 null.
-      endAction: nextFirst ? walkStepAction(nextFirst.description) : null,
+      endAction: nextFirst ? actionOf(nextFirst) : null,
       endAnchor: nextFirst?.live?.anchor ?? null,
       target: last.live?.target ?? null,
     };
@@ -101,6 +114,7 @@ export function liveStepsFrom(
     startD: s.startD,
     endD: s.endD,
     ...(steps[s.index]?.live ? { live: steps[s.index].live } : {}),
+    ...(s.action === undefined ? {} : { action: s.action }),
   }));
 }
 
@@ -150,12 +164,18 @@ function previewOf(unit: DisplayUnit): LiveNextRow {
  * 전이 외의 리셋 지점(재조회·이탈 복귀·모드 전환)에서 prev=null + 새 baselineD를
  * 넘긴다 — 클램프·램프인이 함께 새 기준으로 시작한다.
  */
+/**
+ * `turnApproachM`: 회전 접근 전환 표시 잔여(m). walk는 `TURN_APPROACH_M`, car는 임박 큐와
+ * 같은 식(`max(15, v×6) − 표시 lag`). 기본값 없음 — 빠뜨리면 차량 윗줄이 "잠시 후"로
+ * 바뀌는 시점이 임박 큐와 어긋난다([[no-default-for-safety-parameters]]).
+ */
 export function guideLiveRows(
   prev: LiveRowsState | null,
   units: DisplayUnit[],
   d: number,
   baselineD: number,
   phase: GuidePhase,
+  turnApproachM: number,
 ): LiveRowsOutput {
   if (units.length === 0) return { state: null, top: null, next: null };
   // 이탈: 両행을 비운다(F2 — 낡은 예고는 따라가게 된다). 문장은 렌더 계층의 기존 키.
@@ -176,7 +196,7 @@ export function guideLiveRows(
 
   // 밑국면(상태 대체와 무관한 유닛 기준 국면) — 아랫줄이 이것을 따른다(상태 중 유지).
   const isLast = unitIndex === units.length - 1;
-  const turnApproach = !unit.crossing && clamped <= TURN_APPROACH_M && unit.endAction !== null;
+  const turnApproach = !unit.crossing && clamped <= turnApproachM && unit.endAction !== null;
   const next: LiveNextRow | null = isLast
     ? null // 최종 유닛은 비운다(§4.3)
     : unit.crossing || turnApproach

@@ -751,7 +751,29 @@
       "transitDestChangePending": "Changing destination to {label}, choose a route",
       "transitDestChangeFailed": "Destination change to {label} failed, check the guidance screen"
     },
-    "changeWaypointHere": "Change waypoint to here"
+    "changeWaypointHere": "Change waypoint to here",
+    "carImminent": {
+      "left": "Turn left shortly",
+      "right": "Turn right shortly",
+      "back": "Make a U-turn shortly",
+      "keepLeft": "Keep left shortly",
+      "keepRight": "Keep right shortly"
+    },
+    "carCommand": {
+      "left": "Turn left",
+      "right": "Turn right",
+      "back": "U-turn",
+      "keepLeft": "Keep left",
+      "keepRight": "Keep right"
+    },
+    "carLiveAction": {
+      "left": "turn left",
+      "right": "turn right",
+      "back": "make a U-turn",
+      "keepLeft": "keep left",
+      "keepRight": "keep right"
+    },
+    "carPeriodic": "{command} in {distance}"
   },
   "offline": {
     "heading": "You are offline",

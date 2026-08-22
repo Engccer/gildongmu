@@ -751,7 +751,29 @@
       "transitDestChangePending": "Cambio destinazione verso {label}, scegli un percorso",
       "transitDestChangeFailed": "Cambio destinazione verso {label} non riuscito, controlla la guida"
     },
-    "changeWaypointHere": "Cambia il punto intermedio in qui"
+    "changeWaypointHere": "Cambia il punto intermedio in qui",
+    "carImminent": {
+      "left": "Tra poco svolta a sinistra",
+      "right": "Tra poco svolta a destra",
+      "back": "Tra poco fai inversione",
+      "keepLeft": "Tra poco tieni la sinistra",
+      "keepRight": "Tra poco tieni la destra"
+    },
+    "carCommand": {
+      "left": "Svolta a sinistra",
+      "right": "Svolta a destra",
+      "back": "Inversione",
+      "keepLeft": "Tieni la sinistra",
+      "keepRight": "Tieni la destra"
+    },
+    "carLiveAction": {
+      "left": "svolta a sinistra",
+      "right": "svolta a destra",
+      "back": "fai inversione",
+      "keepLeft": "tieni la sinistra",
+      "keepRight": "tieni la destra"
+    },
+    "carPeriodic": "{command} tra {distance}"
   },
   "offline": {
     "heading": "Sei offline",

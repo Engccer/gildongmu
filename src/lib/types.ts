@@ -6,6 +6,7 @@
  * provider 계층에서 변환을 마친 뒤에만 이 타입으로 흘러나온다.
  */
 
+import type { CarAction } from "./car-action";
 import type { CompassDirection } from "./geo/bearing";
 import type { FinalApproachGeometry } from "./final-approach";
 
@@ -153,6 +154,12 @@ export interface CarRouteGuide {
   pathCoords?: Coord[];
   /** 구간을 구성하는 링크별 도로명·길이(무명 링크는 name null — "일반도로" 가짜 정밀 금지). */
   roadLinks?: { name: string | null; distanceMeters: number }[];
+  /**
+   * 이 지점의 결정 행동(Tmap `turnType` 투영, `carActionFromTurnType`). 기하 옵트인 전용이고
+   * 행동 없는 지점(직진·터널·톨게이트…)은 키 자체가 없다 — 임박 큐는 침묵. 카카오 폴백엔 없다.
+   * spec `2026-08-23-car-guidance-completion-design.md` §2.
+   */
+  action?: CarAction;
 }
 
 /**
