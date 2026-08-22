@@ -6,6 +6,8 @@ import type { Scene, SceneGroup } from "@/lib/surroundings-scene";
 import { formatDistance } from "@/lib/format";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
 import { useRevealMore } from "@/hooks/useRevealMore";
+import { requestOpenPlace } from "@/lib/place-open-request";
+import { sceneItemToPlace } from "@/lib/nearby-place";
 
 /**
  * M1 도착지 부근 상황 재구성 — "여기가 맞나" 확인용 요청형 섹션.
@@ -14,7 +16,8 @@ import { useRevealMore } from "@/hooks/useRevealMore";
  * 건물 너머 묶음을 렌더한다. 축이 안 서면 서버가 절대 방위 묶음으로 물러난
  * 장면을 주므로 렌더 구조는 동일하다(bucket 키만 다르다).
  *
- * ⚠ 진입점 2곳(WhereAmI 패널·DistanceBeacon 시트)이 모두 **다른 패널 안**이라
+ * ⚠ 진입점 2곳(AroundNearby 패널 = 자동 펼침 `SurroundingsSceneView`·DistanceBeacon 시트 =
+ * 버튼형 `SurroundingsScene`)이 모두 **다른 패널 안**이라
  * NearbyPanelShell을 중첩하지 않고 **live region도 만들지 않는다** — 감싸는
  * 패널이 이미 단일 polite 채널을 소유한다(DistanceBeacon은 이를 테스트로 강제).
  * 통지는 전부 포커스·라벨 채널이다(헌장 §5 "라벨이 곧 상태 신호"):
@@ -40,7 +43,7 @@ function GroupSection({
   const t = useTranslations("surroundings");
   const tActions = useTranslations("actions");
   const { visibleCount, reveal, itemHeadingRefs } =
-    useRevealMore<HTMLLIElement>(resetKey);
+    useRevealMore<HTMLButtonElement>(resetKey);
   const title =
     group.items.length > COUNT_IN_TITLE_THRESHOLD
       ? `${t(`bucket.${group.bucket}`)} ${t("count", { count: group.items.length })}`
@@ -53,27 +56,34 @@ function GroupSection({
       <ul className="mt-1 space-y-1">
         {group.items.slice(0, visibleCount).map((it, i) => (
           <li
-            key={`${it.name}-${it.distanceMeters}`}
+            key={`${it.id}-${it.distanceMeters}`}
             className="text-sm"
             // 장소명·도로명은 전 로케일에서 한국어 원문이다 — lang 미지정 시 비한국어
             // 로케일 SR이 엉뚱한 엔진으로 발화한다(NightClinics 한 줄 lang 선례).
             lang="ko"
-            tabIndex={-1}
-            ref={(el) => {
-              itemHeadingRefs.current[i] = el;
-            }}
           >
-            {/* 한 줄 = 한 접근성 객체 — 거리·이름·길 단서를 단일 텍스트로(헌장 §4). */}
-            {it.road
-              ? t("itemWithRoad", {
-                  distance: formatDistance(it.distanceMeters),
-                  name: it.name,
-                  road: it.road,
-                })
-              : t("item", {
-                  distance: formatDistance(it.distanceMeters),
-                  name: it.name,
-                })}
+            {/* 한 줄 = 한 접근성 객체 — 거리·이름·길 단서를 단일 텍스트로(헌장 §4).
+                행 전체가 장소 상세 진입 버튼이고 "더 보기" 착지도 이 버튼이다(M4 판정 ⑤,
+                iOS `NavigationLink` 동형 — 컨테이너 착지는 이중 낭독). */}
+            <button
+              type="button"
+              ref={(el) => {
+                itemHeadingRefs.current[i] = el;
+              }}
+              onClick={() => requestOpenPlace(sceneItemToPlace(it))}
+              className="min-h-11 text-left underline"
+            >
+              {it.road
+                ? t("itemWithRoad", {
+                    distance: formatDistance(it.distanceMeters),
+                    name: it.name,
+                    road: it.road,
+                  })
+                : t("item", {
+                    distance: formatDistance(it.distanceMeters),
+                    name: it.name,
+                  })}
+            </button>
           </li>
         ))}
       </ul>
@@ -90,19 +100,25 @@ function GroupSection({
   );
 }
 
-/** 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 묶음 제목 헤딩). */
+/**
+ * 장면 본문 — 위치 확인 문장 먼저, 그다음 묶음들(발견 경로는 묶음 제목 헤딩).
+ * `showPlace=false`는 자동 펼침 임베드(AroundNearby)용 — 패널 헤딩이 이미 같은 위치 문장을
+ * 말하므로 반복하면 SR에 두 번 낭독된다.
+ */
 export function SurroundingsSceneView({
   scene,
   resetKey = 0,
   headingLevel = 4,
+  showPlace = true,
 }: {
   scene: Scene;
   resetKey?: number;
   headingLevel?: SceneHeadingLevel;
+  showPlace?: boolean;
 }) {
   return (
     <>
-      {scene.place && (
+      {showPlace && scene.place && (
         <p className="mt-2 text-sm" lang="ko">
           {scene.place}
         </p>
@@ -228,7 +244,7 @@ function SceneHeading({
  * 앵커가 없으면 아무것도 렌더하지 않는다(진입점이 좌표를 확보한 뒤에만 노출).
  * 앵커가 바뀌면 key로 재마운트해 이전 장면·상태를 버린다.
  * `headingLevel`은 임베드 컨테이너의 직전 헤딩 + 1 — 계층 스킵 금지(헌장 §3):
- * WhereAmI(패널 h3 아래)=4, DistanceBeacon(장소 상세 h2 아래)=3.
+ * AroundNearby(패널 h3 아래)=4, DistanceBeacon(장소 상세 h2 아래)=3.
  */
 export function SurroundingsScene({
   anchor,

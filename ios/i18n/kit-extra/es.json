@@ -1,9 +1,1 @@
-{
-  "whereAmI": {
-    "narrative": {
-      "here": "Estás en {place}.",
-      "station": "La estación de metro más cercana es {name}{line}, a unos {distance} al {direction}.",
-      "landmarkItem": "{name} ({category}) a unos {distance} al {direction}"
-    }
-  }
-}
+{}

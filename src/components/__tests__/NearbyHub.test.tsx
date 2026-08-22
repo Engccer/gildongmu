@@ -30,7 +30,7 @@ function renderHub(locationNotice = "") {
   const tree = (notice: string) => (
     <NextIntlClientProvider locale="ko" messages={messages}>
       <NearbyHub
-        canShowWhereAmI={false}
+        canShowAround={false}
         canShowSubway={false}
         canShowBus={false}
         canShowBike={false}
@@ -38,7 +38,6 @@ function renderHub(locationNotice = "") {
         canShowBarrierFree={false}
         canShowKids={false}
         canShowEvents={false}
-        canShowSurroundings={false}
         canShowAir={false}
         locationNotice={notice}
         onBack={onBack}

@@ -976,15 +976,6 @@ export interface WhereAmI {
   landmarks: SurroundingPlace[];
 }
 
-/** 산문 렌더용 구조화 데이터 — 순수 buildLocationNarrative 산출(컴포넌트가 지원 언어 전체로 렌더). */
-export interface LocationNarrative {
-  /** 단락1 위치 문자열(행정동 + 도로명 조합). 둘 다 없으면 null → 위치 문장 생략. */
-  place: string | null;
-  /** 단락1 역 문장 데이터. 없으면 null → 역 문장 생략. */
-  station: WhereAmI["nearestStation"];
-  /** 단락2 기준점(상위 6). 빈 배열이면 단락2 생략. */
-  landmarks: SurroundingPlace[];
-}
 
 /**
  * 웹 검색 결과 1건 — Perplexity Search API 정규화.

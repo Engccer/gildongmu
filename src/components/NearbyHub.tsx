@@ -13,7 +13,7 @@ import {
 } from "@/lib/nearby-panel-store";
 import { LocationBar } from "./LocationBar";
 import { ManualLocationPicker } from "./ManualLocationPicker";
-import { WhereAmI } from "./WhereAmI";
+import { AroundNearby } from "./AroundNearby";
 import { SubwayArrivalsNearby } from "./SubwayArrivalsNearby";
 import { BusArrivals } from "./BusArrivals";
 import { BikeStations } from "./BikeStations";
@@ -21,7 +21,6 @@ import { NightClinicsNearby } from "./NightClinicsNearby";
 import { BarrierFreeNearby } from "./BarrierFreeNearby";
 import { KidsPlacesNearby } from "./KidsPlacesNearby";
 import { CultureEventsNearby } from "./CultureEventsNearby";
-import { SurroundingsNearby } from "./SurroundingsNearby";
 import { WalkInfraNearby } from "./WalkInfraNearby";
 import { LocalConditions } from "./LocalConditions";
 
@@ -34,7 +33,7 @@ import { LocalConditions } from "./LocalConditions";
  * 우선이므로 허브 Esc는 비활성(스택된 전역 Esc 경합 규칙과 동형).
  */
 export function NearbyHub({
-  canShowWhereAmI,
+  canShowAround,
   canShowSubway,
   canShowBus,
   canShowBike,
@@ -42,12 +41,11 @@ export function NearbyHub({
   canShowBarrierFree,
   canShowKids,
   canShowEvents,
-  canShowSurroundings,
   canShowAir,
   locationNotice,
   onBack,
 }: {
-  canShowWhereAmI: boolean;
+  canShowAround: boolean;
   canShowSubway: boolean;
   canShowBus: boolean;
   canShowBike: boolean;
@@ -55,7 +53,6 @@ export function NearbyHub({
   canShowBarrierFree: boolean;
   canShowKids: boolean;
   canShowEvents: boolean;
-  canShowSurroundings: boolean;
   canShowAir: boolean;
   /** 수동 위치 자동 해제 통지(PlaceSearch가 소유·등록 — 이 컴포넌트는 화면 전환에
    * 따라 마운트·언마운트되므로 채널을 자체 등록하지 않는다, `PlaceSearch.tsx` 주석 참조). */
@@ -153,15 +150,16 @@ export function NearbyHub({
         {heldNotice.shown}
       </p>
 
+      {/* 둘러보기 — 맨 위(M4 spec §2): 위치 문장 + 한눈에 보기 + 주변 상황 + 주변 가게. */}
+      {canShowAround && (
+        <div className="mt-4">
+          <AroundNearby />
+        </div>
+      )}
       {/* 날씨·공기질 — 홈에서 이동. 좌표 준비 시 자동 등장 region(계약 유지). */}
       {canShowAir && userCoords && (
         <div className="mt-4">
           <LocalConditions lat={userCoords.lat} lng={userCoords.lng} />
-        </div>
-      )}
-      {canShowWhereAmI && (
-        <div className="mt-4">
-          <WhereAmI />
         </div>
       )}
       {canShowSubway && (
@@ -197,11 +195,6 @@ export function NearbyHub({
       {canShowEvents && (
         <div className="mt-4">
           <CultureEventsNearby />
-        </div>
-      )}
-      {canShowSurroundings && (
-        <div className="mt-4">
-          <SurroundingsNearby />
         </div>
       )}
       {/* 게이트 없음(음향신호기=무인증 seed, OSM=정적 seed) — 항상 노출. */}

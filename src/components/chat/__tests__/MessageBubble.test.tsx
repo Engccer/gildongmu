@@ -27,8 +27,8 @@ vi.mock("@/components/NightClinicsNearby", () => ({
 vi.mock("@/components/KidsPlacesNearby", () => ({
   KidsPlacesNearby: () => <div data-testid="kids-nearby" />,
 }));
-vi.mock("@/components/SurroundingsNearby", () => ({
-  SurroundingsNearby: () => <div data-testid="surroundings-nearby" />,
+vi.mock("@/components/AroundNearby", () => ({
+  AroundNearby: () => <div data-testid="surroundings-nearby" />,
 }));
 // 좌표 도구 컴포넌트 mock
 vi.mock("@/components/BusArrivals", () => ({
@@ -236,7 +236,7 @@ describe("MessageBubble", () => {
     expect(screen.getByTestId("kids-nearby")).toBeTruthy();
   });
 
-  it("surroundings-nearby renders면 SurroundingsNearby 마운트", () => {
+  it("surroundings-nearby renders면 AroundNearby(둘러보기 패널) 마운트", () => {
     render(
       <MessageBubble
         message={{ id: "8", role: "assistant", text: "", renders: [{ type: "surroundings-nearby" }] }}

@@ -758,14 +758,6 @@
     "body": "검색은 온라인에서만 동작합니다."
   },
   "surroundingsNearby": {
-    "button": "내 주변 둘러보기",
-    "refresh": "새로고침",
-    "locating": "현재 위치 확인 중…",
-    "loading": "내 주변 시설 조회 중…",
-    "empty": "주변에 안내할 시설이 없습니다.",
-    "error": "주변 조회에 실패했습니다.",
-    "ready": "내 주변 시설입니다.",
-    "asOf": "{time} 기준",
     "item": "{category}, {direction}쪽, 약 {distance}",
     "category": {
       "convenience": "편의점",
@@ -797,11 +789,7 @@
       "w": "서",
       "nw": "북서"
     },
-    "call": "전화하기",
-    "mapLink": "카카오맵에서 보기",
-    "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
-    "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
-    "source": "출처: 카카오맵 장소 검색. 방향은 북 기준 방위입니다."
+    "call": "전화하기"
   },
   "walkInfra": {
     "button": "주변 보행 인프라",
@@ -844,27 +832,28 @@
     "sourceOsm": "© OpenStreetMap 기여자",
     "sourceAudio": "음향신호기: 서울특별시 제공({baseDate} 기준)"
   },
-  "whereAmI": {
-    "button": "현재 위치 확인",
-    "manualButton": "지정한 위치 확인",
-    "refresh": "위치 새로고침",
+  "around": {
+    "button": "둘러보기",
+    "refresh": "새로고침",
     "locating": "현재 위치 확인 중…",
-    "loading": "주변 정보 조회 중…",
-    "empty": "현재 위치 정보를 찾지 못했습니다.",
-    "error": "현재 위치 조회에 실패했습니다.",
-    "ready": "현재 위치",
-    "manualReady": "지정한 위치를 확인했습니다",
-    "asOf": "{time} 기준",
+    "loading": "둘러보기 조회 중…",
+    "empty": "주변에 표시할 장소가 없습니다",
+    "error": "둘러보기 조회에 실패했습니다.",
     "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
-    "narrative": {
-      "here": "현재 위치는 <place></place>입니다.",
-      "station": "가장 가까운 지하철역은 <name></name><line></line>, {direction}쪽 약 {distance}입니다.",
-      "landmarksLead": "주변에는 ",
-      "landmarkItem": "{direction}쪽 약 {distance}에 <name></name> {category}",
-      "landmarksTail": " 등이 있습니다."
-    },
-    "source": "출처: 카카오맵. 방향은 북 기준 방위입니다.",
+    "ready": "둘러보기를 확인했습니다",
+    "readyManual": "지정한 위치 주변을 확인했습니다",
+    "here": "현재 위치 기준, {place} 근처",
+    "hereNoPlace": "현재 위치 기준",
+    "hereManual": "지정한 위치 기준, {place} 근처",
+    "hereManualNoPlace": "지정한 위치 기준",
+    "sceneHeading": "주변 상황",
+    "placesHeading": "주변 가게와 시설",
+    "placesFailed": "주변 가게와 시설을 가져오지 못했습니다",
+    "source": "출처: 카카오맵. 방향은 북 기준 방위입니다."
+  },
+  "whereAmI": {
+    "ready": "현재 위치",
     "direction": {
       "n": "북",
       "ne": "북동",
@@ -874,26 +863,6 @@
       "sw": "남서",
       "w": "서",
       "nw": "북서"
-    },
-    "category": {
-      "convenience": "편의점",
-      "subway": "지하철역",
-      "restaurant": "음식점",
-      "cafe": "카페",
-      "bank": "은행",
-      "pharmacy": "약국",
-      "hospital": "병원",
-      "mart": "마트",
-      "public": "공공기관",
-      "attraction": "관광명소",
-      "kindergarten": "어린이집·유치원",
-      "school": "학교",
-      "academy": "학원",
-      "parking": "주차장",
-      "gasStation": "주유소",
-      "culture": "문화시설",
-      "realEstate": "부동산",
-      "lodging": "숙박"
     },
     "overview": {
       "heading": "한눈에 보기",

@@ -758,14 +758,6 @@
     "body": "インターネット接続を確認してからもう一度お試しください。検索はオンラインでのみ動作します。"
   },
   "surroundingsNearby": {
-    "button": "周辺を探索",
-    "refresh": "更新",
-    "locating": "現在地を確認中…",
-    "loading": "周辺の施設を照会中…",
-    "empty": "周辺に案内できる施設がありません。",
-    "error": "周辺の照会に失敗しました。",
-    "ready": "周辺の施設です。",
-    "asOf": "{time}時点",
     "item": "{category}、{direction}側、約{distance}",
     "category": {
       "convenience": "コンビニ",
@@ -797,11 +789,7 @@
       "w": "西",
       "nw": "北西"
     },
-    "call": "電話する",
-    "mapLink": "カカオマップで見る",
-    "geoDenied": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。",
-    "geoUnsupported": "このブラウザは現在地に対応していません。",
-    "source": "出典: カカオマップの場所検索。方角は北基準の方位です。"
+    "call": "電話する"
   },
   "walkInfra": {
     "button": "周辺の歩行インフラ",
@@ -844,27 +832,28 @@
     "sourceOsm": "© OpenStreetMap貢献者",
     "sourceAudio": "音響信号機: ソウル特別市提供({baseDate}時点)"
   },
-  "whereAmI": {
-    "button": "現在地を確認",
-    "manualButton": "指定した位置を確認",
-    "refresh": "位置を更新",
+  "around": {
+    "button": "周辺を探索",
+    "refresh": "更新",
     "locating": "現在地を確認中…",
-    "loading": "周辺情報を照会中…",
-    "empty": "現在地の情報が見つかりませんでした。",
-    "error": "現在地の照会に失敗しました。",
-    "ready": "現在地",
-    "manualReady": "指定した位置を確認しました",
-    "asOf": "{time}時点",
+    "loading": "周辺を読み込み中…",
+    "empty": "周辺に表示できる場所がありません",
+    "error": "周辺情報を取得できませんでした。",
     "geoDenied": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。",
     "geoUnsupported": "このブラウザは現在地に対応していません。",
-    "narrative": {
-      "here": "現在地は<place></place>です。",
-      "station": "最寄りの地下鉄駅は<name></name><line></line>、{direction}側へ約{distance}です。",
-      "landmarksLead": "周辺には",
-      "landmarkItem": "{direction}側約{distance}に<name></name>({category})",
-      "landmarksTail": "などがあります。"
-    },
-    "source": "出典: カカオマップ。方角は北基準の方位です。",
+    "ready": "周辺を確認しました",
+    "readyManual": "指定した位置の周辺を確認しました",
+    "here": "現在地基準、{place}付近",
+    "hereNoPlace": "現在地基準",
+    "hereManual": "指定した位置基準、{place}付近",
+    "hereManualNoPlace": "指定した位置基準",
+    "sceneHeading": "周辺の状況",
+    "placesHeading": "周辺の店舗と施設",
+    "placesFailed": "周辺の店舗と施設を取得できませんでした",
+    "source": "出典: カカオマップ。方角は北基準の方位です。"
+  },
+  "whereAmI": {
+    "ready": "現在地",
     "direction": {
       "n": "北",
       "ne": "北東",
@@ -874,26 +863,6 @@
       "sw": "南西",
       "w": "西",
       "nw": "北西"
-    },
-    "category": {
-      "convenience": "コンビニ",
-      "subway": "地下鉄駅",
-      "restaurant": "飲食店",
-      "cafe": "カフェ",
-      "bank": "銀行",
-      "pharmacy": "薬局",
-      "hospital": "病院",
-      "mart": "スーパー",
-      "public": "公共機関",
-      "attraction": "観光名所",
-      "kindergarten": "保育園・幼稚園",
-      "school": "学校",
-      "academy": "塾",
-      "parking": "駐車場",
-      "gasStation": "ガソリンスタンド",
-      "culture": "文化施設",
-      "realEstate": "不動産",
-      "lodging": "宿泊施設"
     },
     "overview": {
       "heading": "ひと目でわかる周辺",

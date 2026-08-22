@@ -22,7 +22,7 @@ public struct WhereAmIData: Codable, Sendable {
     public let address: WhereAmIAddress?
     public let region: String?
     public let nearestStation: WhereAmIStation?
-    /// 주변 기준점(거리순). cap은 라우트가 아니라 buildLocationNarrativeKo가 적용.
+    /// 주변 기준점(거리순). 라우트가 자르지 않는다(종전 산문 빌더의 cap 6은 2026-08-22 빌더 삭제와 함께 사라졌다 — CLI 포매터는 전량 출력).
     public let landmarks: [SurroundingPlace]
 }
 
