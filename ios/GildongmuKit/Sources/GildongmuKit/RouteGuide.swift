@@ -726,7 +726,10 @@ public func guideStep(
     // 창 경계 적중은 "경로 위인데 창이 못 따라간" 신호일 때만 센다. 수직거리가 크면
     // 그것은 이탈 증거이지 창 기아가 아니다.
     let offThreshold = max(tuning.offRouteBaseM, 2 * fix.accuracy)
-    let edgeHit = proj.d >= state.d + ahead - 1 && proj.perpMeters <= offThreshold
+    // silentCatchUp: 점프 fix는 창 기아 그 자체(perp가 실위치까지의 거리라 아래 조건이 못 센다) —
+    // 점프 3회면 재획득. 이탈 증거로도 쓰지 않는다(품질 리뷰 M1, 웹 미러).
+    let crawling = tuning.silentCatchUp && jumped
+    let edgeHit = crawling || (proj.d >= state.d + ahead - 1 && proj.perpMeters <= offThreshold)
     let windowEdgeHits = edgeHit ? state.windowEdgeHits + 1 : 0
 
     // 4) 속도 창(10초 중앙값) — uncertain·reacquiring 밖에서만 표본 수집.
@@ -822,7 +825,7 @@ public func guideStep(
         return emit(next, nil, nil)
     }
     let courseVerdict = courseAxisVerdict(courseVotes)
-    let isOff = proj.perpMeters > offThreshold
+    let isOff = proj.perpMeters > offThreshold && !crawling  // 기어가는 fix의 perp는 이탈 증거가 아니다(M1)
     if isOff {
         var since = state.offRouteSince ?? now
         var peak = max(state.offRoutePeakPerp ?? 0, proj.perpMeters)
@@ -884,6 +887,10 @@ public func guideStep(
         return emit(next, .waypointReached, nil)
     }
 
+    // J) 투영 점프 fix는 발화하지 않는다(silentCatchUp ①) — 창이 기아로 기어가는 중이라 d가
+    //    실위치가 아니다. 상태는 커밋되므로 따라잡거나 기아 3회 뒤 재획득이 바로잡는다.
+    if tuning.silentCatchUp, jumped { return emit(next, nil, nil) }
+
     // 6a) 결정 지점 임박 큐(walk 20m = 10 + lag / car max(15m, v×6초), K2 2026-08-23): 소리·진동과 짧은 명령형 한 문장으로
     //     "지금이다"를 알린다.
     //
@@ -927,10 +934,6 @@ public func guideStep(
     //
     //     ⚠ `!isOff`는 6b와 같은 이유다(아래 주석) — 이 fix가 이탈로 판정됐지만 확정
     //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
-    // J) 투영 점프 fix는 발화하지 않는다(silentCatchUp ①) — 창이 기아로 기어가는 중이라 d가
-    //    실위치가 아니다. 상태는 커밋되므로 따라잡거나 기아 3회 뒤 재획득이 바로잡는다.
-    if tuning.silentCatchUp, jumped { return emit(next, nil, nil) }
-
     //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2). 행동은 프로파일 출처를 따른다
     //     (car는 서버 `action`만 — 문장을 보지 않는다). car는 전문 선행을 요구하지 않고
     //     명령이 먼저 나가면 전문 래치도 함께 올린다(B3).
@@ -1009,7 +1012,7 @@ public func guideStep(
             let unitEnd = unit[unit.count - 1]
             if route.steps[unitEnd].endD >= d { break }
             next.announcedUpTo = unitEnd
-            next.imminentUpTo = unitEnd
+            next.imminentUpTo = max(next.imminentUpTo, unitEnd)
             next.farNoticedUpTo = max(next.farNoticedUpTo, unitEnd)
         }
     }
@@ -1022,7 +1025,9 @@ public func guideStep(
         if announcedEnd - d <= announceAhead {
             let unit = unitAt(route: route, index: next.announcedUpTo + 1)
             // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
-            let remaining = tuning.silentCatchUp ? unit.filter { route.steps[$0].endD >= d } : unit
+            let remaining = tuning.silentCatchUp
+                ? unit.filter { $0 > next.announcedUpTo && route.steps[$0].endD >= d }
+                : unit
             let indices = remaining.isEmpty ? [unit[unit.count - 1]] : remaining
             next.announcedUpTo = unit[unit.count - 1]
             // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).

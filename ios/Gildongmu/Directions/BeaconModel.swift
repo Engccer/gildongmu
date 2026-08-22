@@ -562,6 +562,11 @@ final class BeaconModel {
 
     private func start(dest: BeaconDest, label: String, kind: GuideSessionKind = .walk) async {
         guard !isTracking else { return }
+        // 채널은 권한 가드보다 **앞**에서 정한다 — 가드 실패 통지(`fail`)가 이전 세션 채널로 나가지
+        // 않게(품질 리뷰 m10).
+        listener = CarListener(rawValue: UserDefaults.standard.string(forKey: CarListener.storageKey) ?? "")
+            ?? .default
+        driverChannel = kind == .car && listener == .driver
 
         // 권한 게이트는 `authorizationSnapshot`을 직접 본다. `currentCoordinate()`는
         // 캐시 우선이라 권한을 보지 않고 반환하는 경로가 있고, 그러면 권한 회수 후에도
@@ -614,6 +619,7 @@ final class BeaconModel {
         deferredAnnouncer.advanceGeneration()
         self.dest = dest
         arrivalDest = nil  // 새 세션 시작 = 이전 종료 화면 소거
+        arrivalSessionKind = nil
         endKind = .arrived
         endText = ""
         resetArrivalHealth()
@@ -636,9 +642,6 @@ final class BeaconModel {
         outputSuppressed = false
         destinationLabel = label
         sessionKind = kind
-        listener = CarListener(rawValue: UserDefaults.standard.string(forKey: CarListener.storageKey) ?? "")
-            ?? .default
-        driverChannel = kind == .car && listener == .driver
         // 로그 수단 표식(K2 §6.6): 2026-08-22 실주행 로그에 표식이 없어 속도로만 도보·자동차를 갈랐다.
         guideDiagLog("session kind=\(kind) listener=\(listener.rawValue)")
         beaconState = .initial
@@ -1171,6 +1174,7 @@ final class BeaconModel {
     func teardown() {
         stop()
         arrivalDest = nil
+        arrivalSessionKind = nil
         endKind = .arrived
         endText = ""
         tones.shutdown()
@@ -1311,8 +1315,8 @@ final class BeaconModel {
         guard isTracking, let removed = waypoint else { return false }
         waypoint = nil
         syncStartRequestWithSession()
-        clearProposal()
-        resetAlternativePreview()
+        // 제안·프리뷰 소거는 reacquireRoute()가 한다(setWaypoint 동형). 폼의 `via`는 사용자 질의라
+        // 도착과 같은 이유로 건드리지 않는다 — 다음 조회 전에 폼에서 지우는 것은 사용자 몫(spec §6.5).
         let fetching = AppLanguage.dataLocale == "ko"
         if fetching { reacquireRoute() }
         announceNow(appLocalized("ios.guide.waypointRemoved", removed.label),
@@ -2075,10 +2079,8 @@ final class BeaconModel {
                 // 운전자 모드(K2 §6.2): 재통독은 내지 않고, 전문 대신 "{거리} 앞 {명령}" 단문.
                 // 행동 없는 유닛(터널·직진 갈래)은 무발화 — 명령이 없는데 문장만 길다.
                 if case .bundleReread = event { break }
-                guard let first = indices.first, let gs = guideState,
-                      let text = GuideText.driverNotice(
-                          route: route, indices: indices,
-                          remainingMeters: Int(max(0, route.steps[first].startD - gs.d).rounded()))
+                guard let gs = guideState,
+                      let text = GuideText.driverNotice(route: route, indices: indices, fromD: gs.d)
                 else { break }
                 lastGuidance = text
                 statusText = text
@@ -2120,8 +2122,9 @@ final class BeaconModel {
             // 원거리 예고(B1 §4.7) — 크로싱 시점 실측 잔여를 낭독(상수 금지, 리뷰 반영).
             // 실행 안내와 같은 취급(억제 복구 대상). 운전자 모드는 단문(행동 없으면 무발화).
             if driverChannel {
-                guard let text = GuideText.driverNotice(
-                    route: route, indices: indices, remainingMeters: remainingMeters)
+                // 원거리 예고는 크로싱 시점이라 첫 스텝이 아직 앞이다 — 같은 필터가 통과시킨다.
+                guard let gs = guideState,
+                      let text = GuideText.driverNotice(route: route, indices: indices, fromD: gs.d)
                 else { break }
                 lastGuidance = text
                 statusText = text
