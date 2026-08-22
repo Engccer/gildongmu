@@ -3,6 +3,7 @@
  * label은 i18n 키(messages의 chat.<label>). dataLocale로 ko/en 분기(경로·장소).
  */
 import type { SourceAttribution } from "./types";
+import type { OverviewBullet } from "@/lib/nearby-overview";
 
 const KAKAO: SourceAttribution = { label: "source.kakao" };
 const TOURAPI: SourceAttribution = { label: "source.tourapi" };
@@ -76,9 +77,7 @@ export function sourceFor(
 }
 
 /** 한눈에 보기 출처 — 데이터를 실제로 보여준 불릿(state ok)의 제공처만(키 없음·미제공·실패는 인용하지 않는다). */
-export function overviewSources(
-  bullets: { kind: string; state: string; busStops?: { state: string } | null }[],
-): SourceAttribution[] {
+export function overviewSources(bullets: OverviewBullet[]): SourceAttribution[] {
   const out: SourceAttribution[] = [];
   for (const b of bullets) {
     if (b.state !== "ok") continue;
@@ -99,6 +98,10 @@ export function overviewSources(
       case "barrierFree":
         out.push(TOURAPI);
         break;
+      default: {
+        const exhaustive: never = b;
+        return exhaustive;
+      }
     }
   }
   return dedupeSources(out);
