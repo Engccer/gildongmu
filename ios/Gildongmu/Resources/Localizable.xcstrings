@@ -11726,37 +11726,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "안내로 돌아가기"
+            "value": "안내 시트 펼치기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Return to guidance"
+            "value": "Expand guidance sheet"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Volver a la guía"
+            "value": "Desplegar la hoja de guía"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Revenir au guidage"
+            "value": "Déplier la feuille de guidage"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Torna alla guida"
+            "value": "Espandi la scheda guida"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "案内に戻る"
+            "value": "案内シートを開く"
           }
         }
       }
@@ -13686,37 +13686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "안내 최소화"
+            "value": "안내 시트 접기"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Minimize guidance"
+            "value": "Collapse guidance sheet"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Minimizar guía"
+            "value": "Plegar la hoja de guía"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Réduire le guidage"
+            "value": "Replier la feuille de guidage"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Riduci guida"
+            "value": "Comprimi la scheda guida"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "案内を最小化"
+            "value": "案内シートを閉じる"
           }
         }
       }

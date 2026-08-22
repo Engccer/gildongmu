@@ -101,6 +101,33 @@ final class GuideSession {
         beacon.handleScenePhaseChange(to: phase)
         transit.handleScenePhaseChange(to: phase)
     }
+
+    // MARK: - 받아쓰기 중 출력 억제 (K1 ④, N1 후속)
+
+    /// 받아쓰기 시작 직전 두 모델의 억제 값. nil이면 받아쓰기가 억제를 쥐고 있지 않다.
+    private var dictationPrior: (beacon: Bool, transit: Bool)?
+
+    /// 받아쓰기(`SpeechService`)가 도는 동안 두 모델의 톤·통지를 억제한다 — 헌장 §6
+    /// "녹음 중 SR 발화 0"은 검색·채팅 탭에서도 성립해야 하는데, 종전엔 길찾기 탭의
+    /// 검색 시트만 억제를 걸어 다른 탭 마이크엔 안내 통지가 전사에 섞였다.
+    ///
+    /// 억제 플래그는 시트(목적지 검색 등)도 쓰는 **공유 Bool**이라 끝날 때 무조건 false로
+    /// 되돌리면 열린 시트의 억제를 깨고, 무조건 이전 값으로 되돌리면 그 사이 닫힌 시트의
+    /// 해제를 되살린다(영구 억제 = 안내 침묵). 그래서 종료는 `이전 값 ∧ 현재 값`이다:
+    /// 받아쓰기 중 누군가 false로 내렸으면 false, 시작 전부터 true였고 아직 true면 유지.
+    func setDictationActive(_ active: Bool) {
+        if active {
+            guard dictationPrior == nil else { return }
+            dictationPrior = (beacon.outputSuppressed, transit.outputSuppressed)
+            beacon.outputSuppressed = true
+            transit.outputSuppressed = true
+        } else {
+            guard let prior = dictationPrior else { return }
+            dictationPrior = nil
+            beacon.outputSuppressed = prior.beacon && beacon.outputSuppressed
+            transit.outputSuppressed = prior.transit && transit.outputSuppressed
+        }
+    }
 }
 
 /// 안내 주도 목적지 변경을 길찾기 탭 폼에 동기화하는 채널(N1). 시트가 루트에 살아

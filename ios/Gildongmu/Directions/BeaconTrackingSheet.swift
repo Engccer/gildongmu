@@ -35,7 +35,7 @@ struct BeaconTrackingSheet: View {
     let onWaypointCommitted: (DirectionsEndpoint) -> Void
 
     @AccessibilityFocusState private var stopFocused: Bool
-    /// 최소화 버튼 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
+    /// 접기 버튼(toolbar) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
     @AccessibilityFocusState private var minimizeFocused: Bool
     /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
     /// 통째로 제거한다).
@@ -62,6 +62,27 @@ struct BeaconTrackingSheet: View {
     @AccessibilityFocusState private var healthSummaryFocused: Bool
 
     var body: some View {
+        // 접기 버튼은 행이 아니라 상단 우측 toolbar 아이콘이다(위원장 판정 2026-08-23 K1 —
+        // 한 행을 차지하면 매 진입마다 스와이프 비용). 시각 텍스트가 없는 아이콘이라
+        // `accessibilityLabel`이 정당하다. NavigationStack은 이 toolbar를 위해서만 있다.
+        NavigationStack {
+            sheetBody
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if model.arrivalDest == nil {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(action: onMinimize) {
+                                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                            }
+                            .accessibilityLabel(appLocalized("guide.minimize"))
+                            .accessibilityFocused($minimizeFocused)
+                        }
+                    }
+                }
+        }
+    }
+
+    private var sheetBody: some View {
         // "더 보기" 가시화용 proxy(WhereAmIView 동형 래핑 — List는 화면 밖 행을
         // AX 트리에서 컬링하므로 scrollTo 선행이 필요하다).
         ScrollViewReader { proxy in
@@ -70,9 +91,6 @@ struct BeaconTrackingSheet: View {
                 arrivalSection(dest: arrival, proxy: proxy)
             } else {
             Section {
-                // 최소화가 종료 앞이다(자주 쓰는 컨트롤을 앞으로 — SR 읽기 순서 비용).
-                Button(appLocalized("guide.minimize"), action: onMinimize)
-                    .accessibilityFocused($minimizeFocused)
                 // 경유지(N4, 위원장 판정: 목적지 팝업과 안내 종료 사이). 라벨이 곧 상태 —
                 // 미도착 경유지가 있으면 "C, 경유지 변경", 없으면(도착 뒤 포함) "경유지 추가".
                 // ko 전용 기능이라 상세 조회가 없는 로케일에는 두지 않는다(`waypointAvailable`).

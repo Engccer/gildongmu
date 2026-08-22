@@ -2,15 +2,20 @@ import SwiftUI
 import GildongmuKit
 
 /// 탭 정체성. selection이 TabView 밖(App 상태)에 살므로
-/// 세션 리셋 시 `.id` 재생성만으론 첫 탭(채팅) 복귀가 안 된다 — 명시 복귀 필요.
+/// 세션 리셋 시 `.id` 재생성만으론 첫 탭(검색) 복귀가 안 된다 — 명시 복귀 필요.
+/// 케이스 순서 = 탭 바 순서(검색 - 길찾기 - 내 주변 - 채팅, 위원장 판정 2026-08-23 K1),
+/// 첫 케이스가 기본 탭이다(`AppTab.initial`).
 /// `String` rawValue = 안정 식별자(스펙 10-A §8). 정수 인덱스였다면 탭 삽입 시
 /// 순서가 밀려 저장된 값이 다른 탭을 가리키는 마이그레이션 결함이 생기지만,
 /// 이름 기반 rawValue는 케이스를 어디에 끼워 넣어도 기존 값이 계속 같은 탭을 가리킨다.
-enum AppTab: String {
-    case chat
+enum AppTab: String, CaseIterable {
     case search
     case directions
     case nearby
+    case chat
+
+    /// 기본 탭 = 탭 바 첫 탭. 세션 리셋·콜드 런치 복귀 지점.
+    static let initial: AppTab = .search
 }
 
 @main
@@ -25,7 +30,7 @@ struct GildongmuApp: App {
     @State private var directionsEpoch = 0
     @State private var nearbyEpoch = 0
     @State private var backgroundedAt: Date?
-    @State private var selectedTab: AppTab = .chat
+    @State private var selectedTab: AppTab = .initial
     /// 채팅 탭 대화 모델은 App 소유 — 리셋 경로에서 스트림을 요청째 폐기하기 위함
     /// (idle-reset 불변식: `.id` 재생성만으론 진행 중 Task가 취소되지 않는다).
     @State private var chatModel = ChatModel()
@@ -56,24 +61,20 @@ struct GildongmuApp: App {
     var body: some Scene {
         WindowGroup {
             // 아이콘은 SFSymbol(장식) — 시스템이 탭 라벨을 낭독한다
+            // 탭 순서 = `AppTab` 케이스 순서. 18~25 폴백 띠바는 각 탭 콘텐츠에 붙는다
+            // (`withGuideBand`) — TabView 자체에 `safeAreaInset`을 걸면 inset이 탭 바
+            // 자리에 그려져 탭 바를 시각·VoiceOver 모두에서 덮었다(실기기 2026-08-22).
             TabView(selection: $selectedTab) {
-                Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { ChatTabView(model: chatModel).id(chatEpoch) }
-                Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { SearchView().id(searchEpoch) }
-                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch) }
-                Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { NearbyHubView().id(nearbyEpoch) }
+                Tab(appLocalized("ios.tab.search"), systemImage: "magnifyingglass", value: AppTab.search) { withGuideBand(SearchView().id(searchEpoch)) }
+                Tab(appLocalized("ios.tab.directions"), systemImage: "signpost.right.and.left", value: AppTab.directions) { withGuideBand(DirectionsTabView(prefilledDestination: directionsPrefill).id(directionsEpoch)) }
+                Tab(appLocalized("ios.tab.nearby"), systemImage: "location", value: AppTab.nearby) { withGuideBand(NearbyHubView().id(nearbyEpoch)) }
+                Tab(appLocalized("ios.tab.chat"), systemImage: "message", value: AppTab.chat) { withGuideBand(ChatTabView(model: chatModel).id(chatEpoch)) }
             }
             .id("\(sessionEpoch)#\(languageRaw)")
-            // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통.
+            // 최소화된 안내의 띠바(N1 spec §2.3) — 탭 바 바로 위, 모든 탭 공통. iOS 26은
+            // 탭 바 액세서리가 그 자리(콘텐츠 → 띠바 → 탭 바)를 시스템이 보장한다.
             // 접근성 객체 하나(버튼). live region이 아니다 — 안내 통지는 모델 창구가 낸다.
-            .safeAreaInset(edge: .bottom) {
-                if guideSession.hasScreen, guideSession.isMinimized {
-                    GuideBandView(session: guideSession) {
-                        guideSession.returnedFromBand = guideSession.screen
-                        guideSession.isMinimized = false
-                    }
-                    .accessibilityFocused($bandFocused)
-                }
-            }
+            .modifier(GuideBandAccessory(isShown: showsGuideBand) { guideBand })
             // 안내 시트(N1 §2.2). item 하나로 두 시트를 직렬화한다(설계 리뷰 M2). 내리는
             // 제스처는 전부 최소화다 — 콜백 시점의 모델 상태로 뜻을 정하지 않는다(C3·C4).
             .sheet(item: Binding(
@@ -186,12 +187,36 @@ struct GildongmuApp: App {
         }
     }
 
-    /// 초기 화면 복귀(유휴 복귀·단축어 공용): 뷰 전체 재생성 + 채팅 탭 복귀.
+    private var showsGuideBand: Bool { guideSession.hasScreen && guideSession.isMinimized }
+
+    /// 띠바 본체 — 26 액세서리와 18~25 폴백이 같은 뷰를 쓴다(착지 바인딩 포함).
+    @ViewBuilder private var guideBand: some View {
+        if showsGuideBand {
+            GuideBandView(session: guideSession) {
+                guideSession.returnedFromBand = guideSession.screen
+                guideSession.isMinimized = false
+            }
+            .accessibilityFocused($bandFocused)
+        }
+    }
+
+    /// 18~25 폴백: 탭 **콘텐츠**의 하단 safe area에 띠바를 얹는다. 콘텐츠 safe area는
+    /// 탭 바를 제외하므로 탭 바 바로 위에 놓이고, 콘텐츠 트리 안이라 VoiceOver 순서도
+    /// 콘텐츠 → 띠바 → 탭 바다. 26은 액세서리가 맡으므로 여기선 아무것도 하지 않는다.
+    @ViewBuilder private func withGuideBand(_ content: some View) -> some View {
+        if #available(iOS 26, *) {
+            content
+        } else {
+            content.safeAreaInset(edge: .bottom) { guideBand }
+        }
+    }
+
+    /// 초기 화면 복귀(유휴 복귀·단축어 공용): 뷰 전체 재생성 + 기본 탭 복귀.
     /// directionsPrefill도 함께 비운다(Task I4). 안 비우면 지난 "길찾기" 진입의
     /// 도착지가 리셋 후에도 살아남아 다음 길찾기 탭 진입에 유령으로 재적용된다.
     private func resetSession() {
         sessionEpoch += 1
-        selectedTab = .chat
+        selectedTab = .initial
         resetChatModel()
         directionsPrefill = nil
     }
@@ -264,6 +289,27 @@ struct GildongmuApp: App {
         if case .place(let label, let lat, let lng) = endpoint {
             // 프리필은 도착지 필드 확정이므로 도착지 스코프에 기록(분리 저장).
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: .to)
+        }
+    }
+}
+
+/// iOS 26 탭 바 액세서리(`tabViewBottomAccessory`)로 띠바를 탭 바 바로 위에 둔다.
+/// 모디파이어를 조건부로 붙였다 뗐다 하지 않는다(TabView 정체성이 바뀌어 탭 상태가
+/// 소멸) — 항상 붙이고 내용을 조건으로 비운다. 26 미만은 no-op(폴백은 `withGuideBand`).
+private struct GuideBandAccessory<Band: View>: ViewModifier {
+    let isShown: Bool
+    @ViewBuilder let band: () -> Band
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            // `isEnabled`가 꺼지면 액세서리 자리 자체가 사라진다(빈 캡슐 없음).
+            content.tabViewBottomAccessory(isEnabled: isShown) { band() }
+        } else if #available(iOS 26, *) {
+            // 26.0엔 `isEnabled` 오버로드가 없다 — 내용을 비우는 것이 최선(`band`가
+            // 조건으로 비어 있다).
+            content.tabViewBottomAccessory { band() }
+        } else {
+            content
         }
     }
 }
