@@ -35,6 +35,17 @@ public struct GuideStepSpan: Sendable, Equatable {
     public let startD: Double
     public let endD: Double
     public let isLong: Bool
+    /// 서버 투영 결정 행동(자동차 `turnType` → `CarAction`, K2 spec §2.3). 도보 스텝엔 없다.
+    public let action: WalkAction?
+
+    public init(index: Int, description: String, startD: Double, endD: Double, isLong: Bool, action: WalkAction? = nil) {
+        self.index = index
+        self.description = description
+        self.startD = startD
+        self.endD = endD
+        self.isLong = isLong
+        self.action = action
+    }
 }
 
 public struct GuideRoute: Sendable, Equatable {
@@ -57,10 +68,13 @@ public struct GuideProjection: Sendable, Equatable {
 public struct GuideStepGeometry: Sendable {
     public let description: String
     public let pathCoords: [RoutePoint]?
+    /// 서버 투영 결정 행동(자동차 전용, K2 §2.3). 도보는 nil.
+    public let action: WalkAction?
 
-    public init(description: String, pathCoords: [RoutePoint]?) {
+    public init(description: String, pathCoords: [RoutePoint]?, action: WalkAction? = nil) {
         self.description = description
         self.pathCoords = pathCoords
+        self.action = action
     }
 }
 
@@ -106,7 +120,8 @@ public func buildGuideRoute(
             description: step.description,
             startD: startD,
             endD: d,
-            isLong: d - startD >= longStepMinMeters
+            isLong: d - startD >= longStepMinMeters,
+            action: step.action
         ))
     }
     guard points.count >= 2, d > 0 else { return nil }

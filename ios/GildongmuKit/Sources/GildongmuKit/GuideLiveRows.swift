@@ -13,7 +13,9 @@ import Foundation
 /// 오케스트레이터의 최종 접근 층이고, 여기는 finalApproach에서 빈 행을 낸다.
 
 /// 회전 접근 전환 표시 잔여(m). 표시 10 = 원시 20 = 임박 큐 시점(spec §2-4, lag 10).
-public let turnApproachMeters = 10.0
+/// 도보 회전 접근 전환 잔여(m). 자동차는 임박 큐가 속도 함수라 `turnApproachMeters(speedSamples:tuning:)`
+/// (RouteGuide)가 같은 식에서 표시 lag를 뺀 값을 `guideLiveRows`의 `turnApproachM`으로 넘긴다(K2 §4).
+public let walkTurnApproachMeters = 10.0
 /// 예고에서 "연속 회전"으로 접는 유닛 길이(m) — 직진 창이 사실상 없는 유닛.
 public let shortUnitPreviewMeters = 10.0
 
@@ -24,16 +26,19 @@ public struct LiveStepInput: Sendable, Equatable {
     /// 서버 구조화 조각(spec §5). 추출 실패는 nil — 재파싱으로 채우지 않는다.
     public let target: String?
     public let anchor: String?
+    /// 서버 투영 행동(자동차, K2 §2.3). `.step` 출처에서만 읽힌다.
+    public let action: WalkAction?
 
     public init(
         description: String, startD: Double, endD: Double,
-        target: String? = nil, anchor: String? = nil
+        target: String? = nil, anchor: String? = nil, action: WalkAction? = nil
     ) {
         self.description = description
         self.startD = startD
         self.endD = endD
         self.target = target
         self.anchor = anchor
+        self.action = action
     }
 }
 
@@ -64,7 +69,13 @@ public func isCrossingStep(_ action: WalkAction?, _ description: String) -> Bool
     (action == .crosswalk || action == .underpass) && description.contains("건너")
 }
 
-public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
+/// `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — walk `.text`, car `.step`). 기본값 없음.
+public func buildDisplayUnits(
+    _ steps: [LiveStepInput], source: GuideActionSource
+) -> [DisplayUnit] {
+    func actionOf(_ step: LiveStepInput) -> WalkAction? {
+        stepActionFor(description: step.description, action: step.action, source: source)
+    }
     struct Group {
         var indices: [Int]
         let crossing: Bool
@@ -72,7 +83,7 @@ public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
     }
     var groups: [Group] = []
     for i in steps.indices {
-        let action = walkStepAction(steps[i].description)
+        let action = actionOf(steps[i])
         let crossing = isCrossingStep(action, steps[i].description)
         // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
         // 국면이 유닛 단위라 꼬리를 붙이면 다 건넌 뒤에도 "건너세요"가 남는다.
@@ -95,7 +106,7 @@ public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
             crossingText: g.crossing ? first.description : nil,
             crossingAction: g.crossing ? g.action : nil,
             // 끝 행동 = 다음 유닛 첫 스텝이 알리는 행동(횡단 유닛 진입 포함). 최종 유닛 nil.
-            endAction: nextFirst.flatMap { walkStepAction($0.description) },
+            endAction: nextFirst.flatMap { actionOf($0) },
             endAnchor: nextFirst?.anchor,
             target: last.target
         )
@@ -166,7 +177,9 @@ public func guideLiveRows(
     units: [DisplayUnit],
     d: Double,
     baselineD: Double,
-    phase: GuidePhase
+    phase: GuidePhase,
+    /// 회전 접근 전환 표시 잔여(m). walk `walkTurnApproachMeters`, car는 임박 임계 − lag. 기본값 없음.
+    turnApproachM: Double
 ) -> LiveRowsOutput {
     if units.isEmpty { return LiveRowsOutput(state: nil, top: nil, next: nil) }
     // 이탈: 両행을 비운다(F2 — 낡은 예고는 따라가게 된다). 문장은 렌더 계층의 기존 키.
@@ -186,7 +199,7 @@ public func guideLiveRows(
     // 밑국면(상태 대체와 무관한 유닛 기준 국면) — 아랫줄이 이것을 따른다(상태 중 유지).
     let isLast = unitIndex == units.count - 1
     let turnApproach =
-        !unit.crossing && Double(clamped) <= turnApproachMeters && unit.endAction != nil
+        !unit.crossing && Double(clamped) <= turnApproachM && unit.endAction != nil
     let next: LiveNextRow? = isLast
         ? nil // 최종 유닛은 비운다(§4.3)
         : (unit.crossing || turnApproach)

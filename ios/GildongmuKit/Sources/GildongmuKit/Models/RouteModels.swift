@@ -34,10 +34,14 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
     public let pathCoords: [RoutePoint]?
     /// 링크별 도로명·길이(기하 옵트인 전용)
     public let roadLinks: [CarRoadLink]?
+    /// 결정 행동(서버 `turnType` 투영, 기하 옵트인 전용, K2 §2.3). 행동 없는 지점은 키 자체가 없다.
+    /// ⚠ **미지 값은 nil로 떨어뜨린다** — 서버가 코드를 더했을 때 구버전 앱이 디코딩 실패로
+    /// 상세 전체를 잃지 않게(`init(from:)`가 문자열을 읽어 케이스 없으면 nil).
+    public let action: CarAction?
 
     public init(
         name: String, guidance: String, distanceMeters: Int, durationSeconds: Int,
-        pathCoords: [RoutePoint]? = nil, roadLinks: [CarRoadLink]? = nil
+        pathCoords: [RoutePoint]? = nil, roadLinks: [CarRoadLink]? = nil, action: CarAction? = nil
     ) {
         self.name = name
         self.guidance = guidance
@@ -45,6 +49,33 @@ public struct CarRouteGuide: Codable, Sendable, Hashable {
         self.durationSeconds = durationSeconds
         self.pathCoords = pathCoords
         self.roadLinks = roadLinks
+        self.action = action
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name, guidance, distanceMeters, durationSeconds, pathCoords, roadLinks, action
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        guidance = try c.decode(String.self, forKey: .guidance)
+        distanceMeters = try c.decode(Int.self, forKey: .distanceMeters)
+        durationSeconds = try c.decode(Int.self, forKey: .durationSeconds)
+        pathCoords = try c.decodeIfPresent([RoutePoint].self, forKey: .pathCoords)
+        roadLinks = try c.decodeIfPresent([CarRoadLink].self, forKey: .roadLinks)
+        action = (try c.decodeIfPresent(String.self, forKey: .action)).flatMap(CarAction.init(rawValue:))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encode(guidance, forKey: .guidance)
+        try c.encode(distanceMeters, forKey: .distanceMeters)
+        try c.encode(durationSeconds, forKey: .durationSeconds)
+        try c.encodeIfPresent(pathCoords, forKey: .pathCoords)
+        try c.encodeIfPresent(roadLinks, forKey: .roadLinks)
+        try c.encodeIfPresent(action, forKey: .action)
     }
 }
 

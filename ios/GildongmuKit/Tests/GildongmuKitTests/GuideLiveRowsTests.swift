@@ -15,6 +15,10 @@ private struct LiveScenarioFile: Decodable {
 
 private struct LiveScenario: Decodable {
     let name: String
+    /// 수단(문구 키 선택). 미지정 walk.
+    let kind: String?
+    /// 회전 접근 전환 잔여(m). 미지정 walkTurnApproachMeters.
+    let turnApproachM: Double?
     let steps: [Step]
     let baselineD: Double
     let inputs: [Input]
@@ -25,6 +29,7 @@ private struct LiveScenario: Decodable {
         let desc: String
         let target: String?
         let anchor: String?
+        let action: String?
     }
 
     struct Input: Decodable {
@@ -50,6 +55,8 @@ private struct KoMessages: Decodable {
         let uncertain: String
         let reacquiring: String
         let imminent: [String: String]
+        let carImminent: [String: String]
+        let carLiveAction: [String: String]
         let liveStraight: String
         let liveStraightNoName: String
         let liveTurnIn: String
@@ -88,34 +95,38 @@ private func phaseFrom(_ raw: String) -> GuidePhase {
     }
 }
 
-private func renderTop(_ top: LiveTopRow?, _ g: KoMessages.Guide) -> String {
+/// 행동 구는 수단별이다(K2 §4) — 디스크립터는 같고 렌더 키만 갈린다(GuideText 동형).
+private func renderTop(_ top: LiveTopRow?, _ g: KoMessages.Guide, car: Bool) -> String {
     guard let top else { return "" }
+    let phrases = car ? g.carLiveAction : g.liveAction
+    let imminents = car ? g.carImminent : g.imminent
     switch top {
     case .offRoute: return g.offRoute
     case .uncertain: return g.uncertain
     case .reacquiring: return g.reacquiring
     case let .crossing(text): return text
-    case let .turnSoon(action): return g.imminent[action.rawValue] ?? ""
+    case let .turnSoon(action): return imminents[action.rawValue] ?? ""
     case let .turnIn(meters, action):
-        return fmt(g.liveTurnIn, ["n": String(meters), "action": g.liveAction[action.rawValue] ?? ""])
+        return fmt(g.liveTurnIn, ["n": String(meters), "action": phrases[action.rawValue] ?? ""])
     case let .straight(meters, target):
         guard let target else { return fmt(g.liveStraightNoName, ["n": String(meters)]) }
         return fmt(g.liveStraight, ["target": target, "n": String(meters)])
     }
 }
 
-private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide) -> String {
+private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) -> String {
     guard let next else { return "" }
+    let phrases = car ? g.carLiveAction : g.liveAction
     let step: String
     switch next {
     case let .action(action, anchor):
-        let phrase = g.liveAction[action.rawValue] ?? ""
+        let phrase = phrases[action.rawValue] ?? ""
         step = anchor.map { fmt(g.nextAction, ["anchor": $0, "action": phrase]) } ?? phrase
     case let .straight(meters, target):
         step = target.map { fmt(g.nextStraight, ["target": $0, "n": String(meters)]) }
             ?? fmt(g.nextStraightNoName, ["n": String(meters)])
     case let .crossing(action), let .turn(action):
-        step = g.liveAction[action.rawValue] ?? ""
+        step = phrases[action.rawValue] ?? ""
     }
     return fmt(g.progressNext, ["step": step])
 }
@@ -133,12 +144,14 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide) -> String {
         let steps: [LiveStepInput] = sc.steps.map { s in
             let input = LiveStepInput(
                 description: s.desc, startD: acc, endD: acc + s.len,
-                target: s.target, anchor: s.anchor
+                target: s.target, anchor: s.anchor,
+                action: s.action.flatMap(WalkAction.init(rawValue:))
             )
             acc += s.len
             return input
         }
-        let units = buildDisplayUnits(steps)
+        let car = sc.kind == "car"
+        let units = buildDisplayUnits(steps, source: car ? .step : .text)
         var state: LiveRowsState?
         var baselineD = sc.baselineD
         var results: [(top: String, next: String)] = []
@@ -149,10 +162,11 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide) -> String {
             }
             let out = guideLiveRows(
                 prev: state, units: units, d: input.d,
-                baselineD: baselineD, phase: phaseFrom(input.phase)
+                baselineD: baselineD, phase: phaseFrom(input.phase),
+                turnApproachM: sc.turnApproachM ?? walkTurnApproachMeters
             )
             state = out.state
-            results.append((renderTop(out.top, ko.guide), renderNext(out.next, ko.guide)))
+            results.append((renderTop(out.top, ko.guide, car: car), renderNext(out.next, ko.guide, car: car)))
         }
         for ex in sc.expect {
             #expect(results[ex.afterInput].top == ex.top, "\(sc.name) #\(ex.afterInput) top")
