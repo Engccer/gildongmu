@@ -995,7 +995,15 @@
     "confirmBoarded": "탑승했습니다",
     "reselectVehicle": "다른 차량 선택",
     "selectTrain": "{desc}, 이 열차 선택",
-    "selectBus": "{desc}, 이 버스 선택"
+    "selectBus": "{desc}, 이 버스 선택",
+    "overviewOrdinal": "{count}구간 중 {n}번째 구간.",
+    "overviewWalk": "도보 약 {minutes}분",
+    "overviewLeg": "{n}. {line}, {board}에서 {alight}까지",
+    "overviewLegDone": "완료",
+    "overviewLegCurrent": "지금 이 구간",
+    "overviewLegUpcoming": "예정",
+    "overviewStopsUnavailable": "정차역 정보가 없습니다.",
+    "viewAlternatives": "다른 경로 보기"
   },
   "manualLocation": {
     "gps": "현재 위치",

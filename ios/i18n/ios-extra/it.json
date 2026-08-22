@@ -300,7 +300,14 @@
       "destChangeNone": "Nessun percorso con i mezzi pubblici verso la nuova destinazione.",
       "destChangeError": "Ricerca del percorso non riuscita.",
       "destChangeRefetched": "Percorsi aggiornati in base alla tua posizione attuale.",
-      "destChangeCancel": "Annulla il cambio di destinazione"
+      "destChangeCancel": "Annulla il cambio di destinazione",
+      "altHeading": "Altri percorsi da qui",
+      "altHeadingFrom": "Altri percorsi da {station}",
+      "altNoLocation": "Impossibile cercare altri percorsi: posizione non disponibile.",
+      "altFromBoardStop": "Cerca da {station}",
+      "altInvalid": "Impossibile avviare la guida su questo percorso.",
+      "adoptRoute": "Passa a questo percorso",
+      "routeSwitched": "Percorso cambiato."
     }
   },
   "beacon": {

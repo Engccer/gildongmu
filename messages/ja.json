@@ -995,7 +995,15 @@
     "confirmBoarded": "乗車しました",
     "reselectVehicle": "別の車両を選ぶ",
     "selectTrain": "{desc}、この列車を選択",
-    "selectBus": "{desc}、このバスを選択"
+    "selectBus": "{desc}、このバスを選択",
+    "overviewOrdinal": "{count}区間中{n}番目の区間。",
+    "overviewWalk": "徒歩約{minutes}分",
+    "overviewLeg": "{n}. {line}、{board}から{alight}まで",
+    "overviewLegDone": "完了",
+    "overviewLegCurrent": "現在の区間",
+    "overviewLegUpcoming": "予定",
+    "overviewStopsUnavailable": "停車駅の情報がありません。",
+    "viewAlternatives": "ほかの経路を見る"
   },
   "manualLocation": {
     "gps": "現在地",

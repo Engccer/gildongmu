@@ -995,7 +995,15 @@
     "confirmBoarded": "I boarded",
     "reselectVehicle": "Choose another vehicle",
     "selectTrain": "{desc}, select this train",
-    "selectBus": "{desc}, select this bus"
+    "selectBus": "{desc}, select this bus",
+    "overviewOrdinal": "Leg {n} of {count}.",
+    "overviewWalk": "Walk about {minutes} min",
+    "overviewLeg": "{n}. {line}, {board} to {alight}",
+    "overviewLegDone": "done",
+    "overviewLegCurrent": "current leg",
+    "overviewLegUpcoming": "upcoming",
+    "overviewStopsUnavailable": "Stop list unavailable.",
+    "viewAlternatives": "View other routes"
   },
   "manualLocation": {
     "gps": "Current location",

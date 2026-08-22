@@ -300,7 +300,14 @@
       "destChangeNone": "新しい目的地への公共交通ルートがありません。",
       "destChangeError": "ルート検索に失敗しました。",
       "destChangeRefetched": "現在地に合わせてルートを再検索しました。",
-      "destChangeCancel": "目的地の変更をキャンセル"
+      "destChangeCancel": "目的地の変更をキャンセル",
+      "altHeading": "現在地からのほかの経路",
+      "altHeadingFrom": "{station}からのほかの経路",
+      "altNoLocation": "現在地を確認できないため、ほかの経路を検索できませんでした。",
+      "altFromBoardStop": "{station}から検索",
+      "altInvalid": "この経路では案内を開始できません。",
+      "adoptRoute": "この経路に切り替える",
+      "routeSwitched": "経路を変更しました。"
     }
   },
   "beacon": {

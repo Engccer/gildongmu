@@ -300,7 +300,14 @@
       "destChangeNone": "No hay ruta de transporte público al nuevo destino.",
       "destChangeError": "No se pudo buscar la ruta.",
       "destChangeRefetched": "Rutas actualizadas según tu ubicación actual.",
-      "destChangeCancel": "Cancelar el cambio de destino"
+      "destChangeCancel": "Cancelar el cambio de destino",
+      "altHeading": "Otras rutas desde aquí",
+      "altHeadingFrom": "Otras rutas desde {station}",
+      "altNoLocation": "No se pudieron buscar otras rutas porque tu ubicación no está disponible.",
+      "altFromBoardStop": "Buscar desde {station}",
+      "altInvalid": "No se puede iniciar la guía en esta ruta.",
+      "adoptRoute": "Cambiar a esta ruta",
+      "routeSwitched": "Ruta cambiada."
     }
   },
   "beacon": {
