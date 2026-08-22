@@ -144,7 +144,7 @@ struct GuideOverviewSheet<Capability: GuideOverviewCapability>: View {
         switch which {
         case .walkAlternativePreview:
             if let beacon = capability as? BeaconOverviewAdapter {
-                AlternativeRoutePreviewSheet(model: beacon.model)
+                WalkAlternativePreviewSheet(model: beacon.model)
             }
         case .transitAltRoutes:
             if let transit = capability as? TransitOverviewAdapter {
@@ -209,7 +209,7 @@ final class BeaconOverviewAdapter: GuideOverviewCapability {
 /// 모델의 polite 통지 1회가 알린다(헤더는 조용 갱신 — 조회형 정보). 전환 버튼이
 /// 헤더 다음 한 스와이프인 이유: 이 화면의 결정 행동이고, 사용자가 능동적으로 연
 /// 화면이라 압박 문제가 없다(spec §0-1의 압박은 "걷는 내내 상시 노출"이었다).
-struct AlternativeRoutePreviewSheet: View {
+struct WalkAlternativePreviewSheet: View {
     let model: BeaconModel
     @Environment(\.dismiss) private var dismiss
 
@@ -245,8 +245,10 @@ struct AlternativeRoutePreviewSheet: View {
 // MARK: - 대중교통 어댑터 (E15-1 spec §4.2)
 
 @Observable @MainActor
-final class TransitOverviewAdapter: GuideOverviewCapability {
+final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
     let model: TransitGuideModel
+    /// `.sheet(item:)` 정체성 — 열 때마다 새 인스턴스라 표시 1회 = 어댑터 1개.
+    nonisolated var id: ObjectIdentifier { ObjectIdentifier(self) }
     /// 조망 수명 동안 래치된 침묵 신호(spec §4.1): 한 번 렌더된 silence·탈출구 행은
     /// 추적이 회복돼도 사라지지 않는다 — 포커스가 얹힌 행이 폴 한 번에 사라지는 경로를
     /// 구조로 막는다. 회복되면 문구만 바뀐다.

@@ -49,6 +49,21 @@ struct TransitTrackingSheet: View {
     @State private var controlFocusTask: Task<Void, Never>?
     /// 경유역 목록 펼침(§14.1) — leg가 바뀌면 접는다(다음 구간의 목록은 다른 목록).
     @State private var viaExpanded = false
+    /// 진행 상황 조망(E15-1 spec §4.3). 어댑터는 열 때마다 새로 만든다 — 침묵 행 래치가
+    /// 조망 수명이라서(§4.1).
+    @State private var overviewAdapter: TransitOverviewAdapter?
+    /// "닫힌 뒤 행동" 계약(§4.3): 조망이 열린 채 국면이 바뀌거나 조망 안 행동이 조망을
+    /// 떠나야 할 때, 행동·착지는 여기 적어 두었다가 조망 `onDismiss`에서 한 곳이 실행한다.
+    /// 단일 슬롯 latest-wins — 전이가 겹치면 마지막 전이의 착지가 맞다. ⚠ 모달 뒤의
+    /// 컨트롤에 착지하면 조용히 되돌아가고(`showOverview = false`는 dismiss 완료가
+    /// 아니다), 조망이 열린 채 `beginReboard()`를 부르면 부모 waiting 착지와 프롬프트
+    /// 착지가 경쟁한다(설계 리뷰 F2·F4).
+    enum OverviewFollowUp: Equatable {
+        case land(SheetControl)
+        case beginReboard
+        case routeSwitched
+    }
+    @State private var pendingFollowUp: OverviewFollowUp?
 
     private static let waitingLabelId = "transit-waiting-label"
     private static let reboardPromptId = "transit-reboard-prompt"
@@ -80,7 +95,12 @@ struct TransitTrackingSheet: View {
                     Section {
                         Button(appLocalized("beacon.stop"), action: onStop)
                             .accessibilityFocused($focusedControl, equals: .stop)
-                        Button(appLocalized("guide.progressButton")) { model.announceProgress() }
+                        // 조망 모달이 응답이다(도보 동형). `announceProgress()`를 부르지 않는다 —
+                        // 헤더 착지가 같은 문장을 낭독하므로 통지를 먼저 내면 둘이 잠식한다(§4.3).
+                        Button(appLocalized("guide.progressButton")) {
+                            overviewAdapter = TransitOverviewAdapter(model: model)
+                            transitGuideLog("overview open adapter=\(overviewAdapter != nil)")
+                        }
                         statusRows
                         viaStopsRows
                         phaseControls(proxy: proxy)
@@ -117,34 +137,27 @@ struct TransitTrackingSheet: View {
             .onChange(of: model.state?.phase) { previous, phase in
                 // 국면이 바뀌면 진행 중 착지는 낡은 대상을 좇는다 — 먼저 끊는다.
                 controlFocusTask?.cancel()
-                // arrived 진입 시 "다음 구간"으로 선점(사라진 컨트롤 대신 다음 행동,
-                // 헌장 §5).
-                if phase == .arrived {
-                    landControlFocus(.advance, proxy: proxy)
+                let target = phaseTransitionLanding(previous: previous, phase: phase)
+                // 조망이 열려 있으면 그 행·행동은 낡았다 — 닫고, 착지는 onDismiss로 미룬다(§4.3).
+                if overviewAdapter != nil {
+                    if let target { pendingFollowUp = .land(target) }
+                    overviewAdapter = nil
                     return
                 }
-                // 탑승 변경·다른 차량 선택(→waiting): 누른 버튼이 섹션째 사라진다 —
-                // 대기 목록 라벨로 선점(독립 리뷰 WARNING — 종전부터 비어 있던 전이).
-                if phase == .waiting, previous != nil, previous != .waiting {
-                    landControlFocus(.waitingLabel, proxy: proxy)
-                    return
-                }
-                // 차량 선택(waiting→boarding): 누른 후보 행이 사라진다 — 다음 행동인
-                // "탑승했습니다"로 선점(N3).
-                if phase == .boarding, previous == .waiting {
-                    landControlFocus(.confirmBoarded, proxy: proxy)
-                    return
-                }
-                // 탑승 계열 전이(waiting·boarding→riding)는 포커스를 쥔 컨트롤을 통째로
-                // 제거한다 — riding 컨트롤로 선점(헌장 §5, 감사 M2). arrived→riding
-                // 자동 복귀(backOnTrack)는 사용자 행동이 아니라 제외.
-                if phase == .riding, previous == .waiting || previous == .boarding {
-                    if model.state?.lock.map(isApproxTransitLock) == true {
-                        landControlFocus(.advance, proxy: proxy)
-                    } else {
-                        landControlFocus(.changeBoarding, proxy: proxy)
+                if let target { landControlFocus(target, proxy: proxy) }
+            }
+            // 진행 상황 조망(E15-1). 닫힌 뒤 한 곳에서 행동·착지(닫힌 뒤 행동 계약).
+            .sheet(item: $overviewAdapter, onDismiss: { runPendingFollowUp(proxy: proxy) }) { adapter in
+                GuideOverviewSheet(capability: adapter) { followUp in
+                    pendingFollowUp = switch followUp {
+                    case .beginReboard: .beginReboard
+                    case .routeSwitched: .routeSwitched
                     }
                 }
+            }
+            // 세션 종료·핸드오프 전이도 조망을 닫는다(국면 onChange는 state nil에 안 걸린다).
+            .onChange(of: model.state == nil) { _, ended in
+                if ended { overviewAdapter = nil }
             }
             // 목적지 검색(스펙 §4.1 1단): 선택은 아직 아무것도 확정하지 않는다 —
             // 사이드 채널 후보 조회만 시작한다(취소 시 전체 무효).
@@ -235,6 +248,35 @@ struct TransitTrackingSheet: View {
                 Text(appLocalized("ios.transitGuide.destChangeHeading", pending.label))
                     .accessibilityAddTraits(.isHeader)
             }
+        }
+    }
+
+    /// 국면 전이의 착지 대상(기존 분기 그대로): arrived→"다음 구간"(사라진 컨트롤 대신
+    /// 다음 행동, 헌장 §5) / 탑승 변경·다른 차량 선택(→waiting)→대기 목록 라벨 / 차량
+    /// 선택(waiting→boarding)→"탑승했습니다"(N3) / 탑승 계열(waiting·boarding→riding)→
+    /// riding 컨트롤(감사 M2; arrived→riding 자동 복귀는 사용자 행동이 아니라 제외).
+    private func phaseTransitionLanding(previous: TransitPhase?, phase: TransitPhase?) -> SheetControl? {
+        if phase == .arrived { return .advance }
+        if phase == .waiting, previous != nil, previous != .waiting { return .waitingLabel }
+        if phase == .boarding, previous == .waiting { return .confirmBoarded }
+        if phase == .riding, previous == .waiting || previous == .boarding {
+            return model.state?.lock.map(isApproxTransitLock) == true ? .advance : .changeBoarding
+        }
+        return nil
+    }
+
+    /// 조망 `onDismiss` — 닫힌 뒤 행동 계약의 실행 지점(한 곳).
+    private func runPendingFollowUp(proxy: ScrollViewProxy) {
+        guard let followUp = pendingFollowUp else { return }
+        pendingFollowUp = nil
+        switch followUp {
+        case let .land(target):
+            landControlFocus(target, proxy: proxy)
+        case .beginReboard:
+            // 지하철은 역 선택 프롬프트의 .task가, 버스는 waiting 전이의 waitingLabel 착지가 맡는다.
+            model.beginReboard()
+        case .routeSwitched:
+            landControlFocus(.stop, proxy: proxy)
         }
     }
 
