@@ -416,6 +416,12 @@ export interface GuideState {
   waypointReached: boolean;
   /** 확정됐으나 같은 fix의 임박 큐에 밀려 아직 발화하지 못한 도착. 다음 fix에서 새 임박보다 먼저 나간다. */
   waypointPending: boolean;
+  /**
+   * uncertain 진입 시점의 **마지막 신뢰 fix 시각**(silentCatchUp ②). uncertain 분기는 불량 fix마다
+   * `lastFixAt`을 갱신하므로 복귀 공백을 `lastFixAt`으로 재면 촘촘한 불량 fix(터널 acc 300m가
+   * 1Hz로 오는 실측)에서 공백이 늘 ~1초라 절대 걸리지 않는다(spec 리뷰 M3). null=uncertain 아님.
+   */
+  uncertainSince: number | null;
 }
 
 export type GuideEvent =
@@ -561,6 +567,7 @@ export function guideStateAt(
     courseDerivation: opts?.courseDerivation ?? INITIAL_DERIVATION_STATE,
     waypointReached: opts?.waypointReached ?? false,
     waypointPending: opts?.waypointPending ?? false,
+    uncertainSince: null,
   };
 }
 
@@ -718,8 +725,8 @@ export function guideStep(
     // 터널 5분 뒤 resumePhase로 돌아가면 구속 창이 옛 d에서 기어가며 지난 스텝을 읽는다.
     if (
       tuning.silentCatchUp &&
-      state.lastFixAt !== null &&
-      now - state.lastFixAt > REACQUIRE_GAP_S
+      state.uncertainSince !== null &&
+      now - state.uncertainSince > REACQUIRE_GAP_S
     ) {
       return {
         state: {
@@ -732,7 +739,8 @@ export function guideStep(
           reacquiringFromOffRoute: state.resumePhase === "offRoute",
           reacquirePrevD: state.d,
           reacquireV: 0,
-          reacquireSince: state.lastFixAt,
+          reacquireSince: state.uncertainSince,
+          uncertainSince: null,
         },
         event: { kind: "reacquiring" },
         tone: null,
@@ -743,6 +751,7 @@ export function guideStep(
       phase: state.resumePhase,
       lastFixAt: now,
       lastAnnouncedAt: now,
+      uncertainSince: null,
     };
     return { state: s, event: { kind: "uncertainExit" }, tone: null };
   }
@@ -753,6 +762,8 @@ export function guideStep(
         phase: "uncertain",
         // 이탈 중 진입이면 복귀도 이탈로(이탈 상태 소실 방지).
         resumePhase: state.phase === "offRoute" ? "offRoute" : state.resumePhase,
+        // 마지막 신뢰 fix 시각을 보관한다(복귀 공백의 기준 — 불량 fix마다 갱신되는 lastFixAt 대신).
+        uncertainSince: state.lastFixAt ?? now,
         lastFixAt: now,
         speedSamples: [],
         // ⚠ 창은 비우고 latch(offRouteAxes)는 스프레드로 보존한다. 투영을 못 믿는
@@ -1225,7 +1236,7 @@ export function guideStep(
     if (announcedEnd - d <= announceAhead) {
       const unit = unitAt(route, next.announcedUpTo + 1);
       // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다 — "지난 회전 전문"을
-      // 묶음 단위로 되읽는 구멍(설계 리뷰 B6). 남는 것이 없으면 첫 스텝 하나(지금 구간).
+      // 묶음 단위로 되읽는 구멍(설계 리뷰 B6). 남는 것이 없으면 마지막 스텝 하나.
       const remaining = tuning.silentCatchUp ? unit.filter((i) => route.steps[i].endD >= d) : unit;
       const indices = remaining.length > 0 ? remaining : [unit[unit.length - 1]];
       next = {

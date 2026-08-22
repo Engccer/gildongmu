@@ -4355,7 +4355,7 @@
       ]
     },
     {
-      "name": "car: 촘촘한 uncertain 뒤 창 따라잡기 — 점프 fix는 무발화·표본 제외, 따라잡은 뒤 현재 유닛 전문만(지난 교차로 전문 없음, K2 §3.4)",
+      "name": "car: 촘촘한 불량 fix의 uncertain 30초 — 복귀 공백은 lastFixAt이 아니라 uncertainSince로 재어 재획득(지난 교차로 전문 없음, K2 §3.4 ②)",
       "tuning": "car",
       "steps": [
         {
@@ -4662,7 +4662,21 @@
         },
         {
           "afterFix": 36,
-          "event": "uncertainExit"
+          "event": "reacquiring"
+        },
+        {
+          "afterFix": 36,
+          "eventNot": "uncertainExit"
+        },
+        {
+          "afterFixAny": [
+            37,
+            38,
+            39,
+            40,
+            41
+          ],
+          "event": "reacquired"
         },
         {
           "afterFixAny": [
@@ -4671,7 +4685,11 @@
             38,
             39,
             40,
-            41
+            41,
+            42,
+            43,
+            44,
+            45
           ],
           "eventNot": "announceSteps"
         },
@@ -4689,16 +4707,6 @@
             45
           ],
           "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            42,
-            43
-          ],
-          "event": "announceSteps",
-          "indices": [
-            3
-          ]
         }
       ]
     },
@@ -5061,6 +5069,267 @@
           "indices": [
             1
           ]
+        }
+      ]
+    },
+    {
+      "name": "car: 짧은 uncertain(9초, 26m/s) 뒤 창 따라잡기 — 점프 fix는 이벤트 없음, 공백 중 지난 좌회전(350m)은 큐·전문 모두 침묵(K2 §3.4 ①)",
+      "tuning": "car",
+      "steps": [
+        {
+          "len": 200,
+          "desc": "직진A"
+        },
+        {
+          "len": 150,
+          "desc": "교차로에서 우회전 후 150m 이동",
+          "action": "right"
+        },
+        {
+          "len": 150,
+          "desc": "교차로에서 좌회전 후 150m 이동",
+          "action": "left"
+        },
+        {
+          "len": 1000,
+          "desc": "직진D"
+        }
+      ],
+      "fixes": [
+        {
+          "t": 0,
+          "along": 0,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 1,
+          "along": 26,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 2,
+          "along": 52,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 3,
+          "along": 78,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 4,
+          "along": 104,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 5,
+          "along": 130,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 6,
+          "along": 156,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 7,
+          "along": 182,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 8,
+          "along": 208,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 9,
+          "along": 234,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 10,
+          "along": 260,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 11,
+          "along": 286,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 12,
+          "along": 312,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 13,
+          "along": 338,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 14,
+          "along": 364,
+          "lateral": 0,
+          "acc": 200
+        },
+        {
+          "t": 15,
+          "along": 390,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 16,
+          "along": 416,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 17,
+          "along": 442,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 18,
+          "along": 468,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 19,
+          "along": 494,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 20,
+          "along": 520,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 21,
+          "along": 546,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 22,
+          "along": 572,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 23,
+          "along": 598,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 24,
+          "along": 624,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 25,
+          "along": 650,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 26,
+          "along": 676,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 27,
+          "along": 702,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 28,
+          "along": 728,
+          "lateral": 0,
+          "acc": 10
+        },
+        {
+          "t": 29,
+          "along": 754,
+          "lateral": 0,
+          "acc": 10
+        }
+      ],
+      "expect": [
+        {
+          "afterFix": 6,
+          "event": "uncertainEnter"
+        },
+        {
+          "afterFix": 15,
+          "event": "uncertainExit"
+        },
+        {
+          "afterFixAny": [
+            16,
+            17
+          ],
+          "eventNull": true
+        },
+        {
+          "afterFixAny": [
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "eventNot": "announceSteps"
+        },
+        {
+          "afterFixAny": [
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29
+          ],
+          "eventNot": "imminent"
         }
       ]
     }

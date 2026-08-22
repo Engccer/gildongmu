@@ -246,8 +246,7 @@ export function nextLine(
  * 실은 종전 틀(`nextLine`)은 한 문장에 행동 세 개(현재 이동·회전·다음 이동)가 실려
  * 과잉이었고, 조망은 40m 선행 전문 1회가 담당한다. target은 서버 live 조각(재파싱
  * 금지, 부재는 이름 생략). 마지막 스텝은 목적지 틀 유지(값이 명사라 종전에도
- * 단문이었다). car는 임박 층이 없어 주기 통지가 다음 행동의 유일한 반복 채널이라
- * `nextLine`을 유지한다.
+ * 단문이었다). car는 `carPeriodicLine`(다음 행동 명령 단문, K2 §6.3).
  */
 /**
  * car 주기 통지 단문(K2 §6.3, iOS `GuideText.periodicCar` 미러): 다음 스텝에 서버 투영
@@ -999,7 +998,8 @@ export function useRouteGuide(
           stepFree: null,
           stepFreeNotice: null,
           finalApproach: null,
-          liveSteps: [],
+          // 하단 2행 입력(K2 §4): live 조각 없음, 행동은 스텝의 서버 투영(liveStepsFrom이 싣는다).
+          liveSteps: liveStepsFrom(carGuide.route, []),
         };
       }
       const res = await fetch(

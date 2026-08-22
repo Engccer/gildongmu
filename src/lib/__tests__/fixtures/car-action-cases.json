@@ -20,6 +20,11 @@
       "note": "U턴"
     },
     {
+      "turnType": 15,
+      "action": null,
+      "note": "P턴"
+    },
+    {
       "turnType": 16,
       "action": "left",
       "note": "8시 방향 좌회전"
@@ -38,6 +43,26 @@
       "turnType": 19,
       "action": "right",
       "note": "4시 방향 우회전"
+    },
+    {
+      "turnType": 43,
+      "action": null,
+      "note": "차선 오른쪽(공식 표 43~63 차선 정보 — 행동 아님)"
+    },
+    {
+      "turnType": 44,
+      "action": null,
+      "note": "차선 왼쪽"
+    },
+    {
+      "turnType": 71,
+      "action": null,
+      "note": "출구·갈림길(번호별 의미 불명 — 침묵)"
+    },
+    {
+      "turnType": 76,
+      "action": null,
+      "note": "출구·갈림길"
     },
     {
       "turnType": 101,
@@ -124,6 +149,11 @@
       "note": "터널"
     },
     {
+      "turnType": 122,
+      "action": null,
+      "note": "교량"
+    },
+    {
       "turnType": 123,
       "action": null,
       "note": "지하차도옆"
@@ -199,6 +229,26 @@
       "note": "경유지"
     },
     {
+      "turnType": 185,
+      "action": null,
+      "note": "첫째 경유지"
+    },
+    {
+      "turnType": 189,
+      "action": null,
+      "note": "다섯째 경유지"
+    },
+    {
+      "turnType": 191,
+      "action": null,
+      "note": "제한속도"
+    },
+    {
+      "turnType": 194,
+      "action": null,
+      "note": "낙석주의"
+    },
+    {
       "turnType": 200,
       "action": null,
       "note": "출발"
@@ -209,19 +259,14 @@
       "note": "도착"
     },
     {
-      "turnType": 999,
-      "action": null,
-      "note": "미지 코드"
-    },
-    {
-      "turnType": 43,
-      "action": null,
-      "note": "차선 오른쪽(공식 표 43~63 차선 정보 — 행동 아님)"
-    },
-    {
       "turnType": 203,
       "action": null,
       "note": "목적지 건너편"
+    },
+    {
+      "turnType": 999,
+      "action": null,
+      "note": "미지 코드"
     }
   ]
 }
