@@ -249,6 +249,24 @@ export function nextLine(
  * 단문이었다). car는 임박 층이 없어 주기 통지가 다음 행동의 유일한 반복 채널이라
  * `nextLine`을 유지한다.
  */
+/**
+ * car 주기 통지 단문(K2 §6.3, iOS `GuideText.periodicCar` 미러): 다음 스텝에 서버 투영
+ * 행동이 있으면 "{distance} 앞 {command}"(명령 단어 — "약 1.2km 앞 우회전"), 없으면(터널·
+ * 톨게이트·직진 갈래) 종전 전문 틀 `nextLine`, 마지막 스텝은 목적지 틀.
+ */
+export function carPeriodicLine(
+  route: GuideRoute,
+  stepIndex: number,
+  destName: string,
+  distance: string,
+  t: GuideT,
+): string {
+  const next = route.steps[stepIndex + 1];
+  if (!next) return t("nextDestination", { dest: destName, distance });
+  if (next.action) return t("carPeriodic", { distance, command: t(`carCommand.${next.action}`) });
+  return nextLine(route, stepIndex, destName, distance, t);
+}
+
 export function walkPeriodicLine(
   route: GuideRoute,
   stepIndex: number,
@@ -618,7 +636,12 @@ export function useRouteGuide(
   );
 
   /** 행동구("왼쪽으로 도세요") — 디스크립터 렌더의 공통 조각. */
-  const actionPhrase = useCallback((a: WalkAction): string => t(`liveAction.${a}`), [t]);
+  // 행동 구는 수단별(K2 §4): walk "왼쪽으로 도세요" / car "좌회전하세요".
+  const actionPhrase = useCallback(
+    (a: WalkAction): string =>
+      kindFixed === "car" ? t(`carLiveAction.${a}`) : t(`liveAction.${a}`),
+    [kindFixed, t],
+  );
 
   /**
    * 하단 2행 디스크립터 → 문자열(spec §4.2·§4.3·§6). fixture 러너
@@ -640,7 +663,9 @@ export function useRouteGuide(
                 : top.kind === "crossing"
                   ? top.text
                   : top.kind === "turnSoon"
-                    ? t(`imminent.${top.action}`)
+                    ? kindFixed === "car"
+                      ? t(`carImminent.${top.action}`)
+                      : t(`imminent.${top.action}`)
                     : top.kind === "turnIn"
                       ? t("liveTurnIn", { n: top.meters, action: actionPhrase(top.action) })
                       : top.target
@@ -661,7 +686,7 @@ export function useRouteGuide(
               : actionPhrase(nx.action); // crossing·turn
       return { top: topText, next: step ? t("progressNext", { step }) : null };
     },
-    [actionPhrase, t],
+    [actionPhrase, kindFixed, t],
   );
 
   /** 값이 같으면 이전 객체를 돌려 재렌더를 막는다(매 fix 호출 — 객체 identity 베일아웃). */
@@ -673,12 +698,11 @@ export function useRouteGuide(
   );
 
   /**
-   * 하단 2행 갱신(walk 상세 전용). 매 fix·커밋 지점에서 부른다 — 상태 국면
-   * (uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
+   * 하단 2행 갱신(상세 세션 — walk·car, K2 §4로 car 확장). 매 fix·커밋 지점에서 부른다 —
+   * 상태 국면(uncertain·offRoute 포함)도 리듀서가 행을 소유하므로 국면 가드가 없다.
    */
   const refreshLiveRows = useCallback(
     (state: GuideState) => {
-      if (kindFixed !== "walk") return;
       const out = guideLiveRows(
         liveRowsStateRef.current,
         displayUnitsRef.current,
@@ -690,7 +714,7 @@ export function useRouteGuide(
       liveRowsStateRef.current = out.state;
       setLiveRowsIfChanged(renderLiveRows(out));
     },
-    [kindFixed, renderLiveRows, setLiveRowsIfChanged, tuning],
+    [renderLiveRows, setLiveRowsIfChanged, tuning],
   );
 
   /**
@@ -834,7 +858,10 @@ export function useRouteGuide(
         case "imminent":
           // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
-          return t(`imminent.${event.action}`);
+          // car는 수단별 문구(K2 §6.3) — "잠시 후 우회전하세요". 웹엔 운전자 모드가 없다.
+          return kindFixed === "car"
+            ? t(`carImminent.${event.action}`)
+            : t(`imminent.${event.action}`);
         case "farNotice":
           // 원거리 예고(§4.7): 크로싱 시점의 **실측 잔여**(리듀서가 기하에서 계산해
           // 실어 줌 — 상수 낭독 금지, 독립 리뷰 반영) + 원문을 독립 문장으로 결합.
@@ -844,7 +871,7 @@ export function useRouteGuide(
           });
         case "periodic": {
           const distance = confidenceDistance(event.remainingMeters, event.accuracy, t);
-          // walk는 단문, car는 종전 틀 — 근거는 walkPeriodicLine 주석.
+          // 둘 다 단문 — walk는 직진 목표, car는 다음 행동 명령(K2 §6.3).
           return kindFixed === "walk"
             ? walkPeriodicLine(
                 route,
@@ -854,7 +881,7 @@ export function useRouteGuide(
                 liveStepsRef.current[event.stepIndex]?.live?.target,
                 t,
               )
-            : nextLine(route, event.stepIndex, destRef.current.name, distance, t);
+            : carPeriodicLine(route, event.stepIndex, destRef.current.name, distance, t);
         }
         case "finalApproachEnter":
           // 이 이벤트의 문장은 `stepFinalApproach`가 소유한다 — 진입 서술은 fix 기준
