@@ -1,5 +1,10 @@
 [
   {
+    "version": "1.12",
+    "ko": "개선\n- 안내 화면을 내렸을 때 남는 줄이 탭 바를 가리던 문제를 고쳤습니다. 이제 줄은 탭 바 바로 위에 놓이고, 화면 오른쪽 위 \"안내 시트 접기\" 버튼으로도 안내 화면을 내릴 수 있습니다.\n- 안내 중에 받아쓰기를 켜면 받아쓰는 동안 안내 음성이 나오지 않습니다.\n- \"내 주변\" 둘러보기의 한눈에 보기에서 식당과 카페를 따로 읽고, 각 항목을 문장으로 알려 드립니다.\n- AI 채팅이 더 많은 것을 답합니다. 역 첫차·막차 시각, 무장애 관광지의 편의시설 상세, 지금 있는 곳 설명과 한눈에 보기를 물어볼 수 있고, \"강남역 주변 소아과\"처럼 지명을 기준으로 주변을 묻거나 경유지를 넣은 길찾기를 부탁할 수 있습니다.",
+    "en": "Improved\n- In \"Look around\", the at-a-glance summary now lists restaurants and cafes separately and reads each item as a sentence.\n- AI chat answers more: first and last train times at a station, accessibility facility details for barrier-free attractions, a description of where you are with an at-a-glance summary, nearby searches around a named place, and directions with a waypoint."
+  },
+  {
     "version": "1.11",
     "ko": "새로운 기능\n- 안내를 켠 채로 검색, 내 주변, AI 채팅 같은 다른 화면을 쓸 수 있습니다. 안내 화면을 내리면 탭 바 위에 남은 거리를 알려 주는 줄이 남고, 그 줄의 \"안내로 돌아가기\"를 누르면 안내 화면으로 돌아옵니다.\n- 길찾기에 경유지 한 곳을 넣을 수 있습니다. 도착지 아래 \"경유지 추가\"로 거쳐 갈 곳을 정하면 그곳을 지나는 도보, 자동차 경로를 알려 드리고, 안내 중에는 경유지에 도착할 때 알려 드립니다. 대중교통은 아직 경유지를 지원하지 않습니다.\n- 도보 안내 중에 장소 상세를 열면 그 장소로 목적지를 바꾸거나 경유지로 넣는 버튼이 있습니다.\n\n개선\n- 도보 안내에서 방향을 바꿀 지점이 가까워질 때 나는 소리를 할 일에 따라 나눴습니다. 횡단보도, 왼쪽, 오른쪽, 뒤로 돌기, 그 밖이 서로 다른 소리로 납니다.\n- \"내 주변\"의 \"현재 위치 확인\"을 맨 위 \"둘러보기\" 한 화면으로 합쳤습니다. 지금 있는 곳, 한눈에 보기(대중교통, 식당과 카페, 아이 놀 곳, 문화 행사, 무장애 관광지), 길 좌우 상황, 주변 가게를 이어서 읽을 수 있습니다.",
     "en": "New\n- Directions can now include one waypoint. Tap \"Add a waypoint\" below the destination to pick a place to pass through, and the driving route is calculated through it. Transit routes do not support waypoints yet.\n\nImproved\n- \"Where am I\" has been folded into \"Look around\" at the top of the Nearby tab. One screen now reads where you are, an at-a-glance summary of transit, restaurants and cafes, places for kids, cultural events and barrier-free attractions, then what is on each side of the street and the shops nearby."
