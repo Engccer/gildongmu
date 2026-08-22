@@ -73,6 +73,16 @@ final class SpeechService {
     /// stop() 진행 중 상호 배제 — finalize 대기 동안 isListening이 true로 남아
     /// cancel()이 같은 엔진에 중복 종료를 거는 경합을 차단.
     private var stopping = false
+    /// 이 서비스가 안내 출력 억제를 쥐고 있는가(`GuideSession.setDictationActive`).
+    /// 시작에서 걸고 **모든** 종료 경로(거부·취소·실패·정지)에서 푼다 — 한 경로라도
+    /// 빠지면 안내가 영구 침묵한다.
+    private var suppressingGuide = false
+
+    private func setGuideSuppressed(_ on: Bool) {
+        guard suppressingGuide != on else { return }
+        suppressingGuide = on
+        GuideSession.shared.setDictationActive(on)
+    }
 
     /// 권한 요청 → 모델 에셋 확인 → 마이크 탭 + 스트리밍 인식 시작.
     /// 재진입은 phase 가드로 차단(MainActor 직렬이라 동기 구간에서 확정).
@@ -86,13 +96,16 @@ final class SpeechService {
         phase = .requesting
         lastError = nil
         let gen = generation
+        // 마이크가 뜨거워지기 전부터 억제한다(권한·모델 준비 중 통지도 곧 녹음에 겹친다).
+        setGuideSuppressed(true)
 
         guard await AVAudioApplication.requestRecordPermission() else {
             if gen == generation { phase = .denied }
+            setGuideSuppressed(false)
             return
         }
         // 권한 대기 중 cancel()이 다녀갔으면 여기서 중단(아직 아무것도 시작 안 됨).
-        guard gen == generation else { return }
+        guard gen == generation else { setGuideSuppressed(false); return }
 
         do {
             try await beginListening(gen: gen)
@@ -103,6 +116,7 @@ final class SpeechService {
                 audioEngine.inputNode.removeTap(onBus: 0)
                 await engine?.cancel()
                 teardown()
+                setGuideSuppressed(false)
                 return
             }
             phase = .listening(partial: "")
@@ -114,6 +128,7 @@ final class SpeechService {
             notify(soundID: 1113) // 녹음 시작음
         } catch {
             teardown()
+            setGuideSuppressed(false)
             // 취소된 세션의 뒤늦은 실패는 사용자에게 일어난 사건이 아니다 — 화면도
             // 로그도 건드리지 않는다(취소 자체가 던지는 CancellationError 소음 차단).
             guard gen == generation else { return }
@@ -138,6 +153,7 @@ final class SpeechService {
         let text = (await engine?.finish() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         teardown()
         phase = .idle
+        setGuideSuppressed(false)
         // 발화가 담기지 않은 전사는 빈 전사와 같이 nil로 돌린다. 무음 구간에서 STT가
         // 문장부호만 내놓는 일이 있는데(무발화 릴리스에 "." 실측 2026-08-01), 그대로
         // 소비하면 채팅은 "."을 전송해 답변을 받아오고 검색은 "."으로 조회한다 —
@@ -160,6 +176,7 @@ final class SpeechService {
         await engine?.cancel()
         teardown()
         phase = .idle
+        setGuideSuppressed(false)
     }
 
     /// denied·failed 안내 확인 후 idle 복귀(재시도 가능 상태로).
@@ -207,6 +224,7 @@ final class SpeechService {
                 self.audioEngine.inputNode.removeTap(onBus: 0)
                 self.teardown()
                 self.phase = .failed
+                self.setGuideSuppressed(false)
             }
         )
 

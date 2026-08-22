@@ -36,7 +36,7 @@ struct TransitTrackingSheet: View {
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
         case stop, advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
-        /// 최소화 버튼(N1) — 띠바에서 돌아온 시트의 첫 착지.
+        /// 접기 버튼(N1, toolbar 아이콘) — 띠바에서 돌아온 시트의 첫 착지.
         case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
@@ -54,12 +54,30 @@ struct TransitTrackingSheet: View {
     private static let reboardPromptId = "transit-reboard-prompt"
 
     var body: some View {
+        // 접기 버튼은 상단 우측 toolbar 아이콘(BeaconTrackingSheet 동형, 위원장 판정
+        // 2026-08-23 K1). NavigationStack은 이 toolbar를 위해서만 있다.
+        NavigationStack {
+            sheetBody
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if model.state != nil {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button(action: onMinimize) {
+                                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                            }
+                            .accessibilityLabel(appLocalized("guide.minimize"))
+                            .accessibilityFocused($focusedControl, equals: .minimize)
+                        }
+                    }
+                }
+        }
+    }
+
+    private var sheetBody: some View {
         ScrollViewReader { proxy in
             List {
                 if model.state != nil {
                     Section {
-                        Button(appLocalized("guide.minimize"), action: onMinimize)
-                            .accessibilityFocused($focusedControl, equals: .minimize)
                         Button(appLocalized("beacon.stop"), action: onStop)
                             .accessibilityFocused($focusedControl, equals: .stop)
                         Button(appLocalized("guide.progressButton")) { model.announceProgress() }
