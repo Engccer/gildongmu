@@ -49,7 +49,11 @@ public func buildCarGuide(briefing: CarRouteBriefing) -> CarGuideData? {
     }
 
     guard let route = buildGuideRoute(
-        guides.map { GuideStepGeometry(description: $0.guidance, pathCoords: $0.pathCoords!) },
+        // 결정 행동(K2 §2.3) — 임박 큐·하단 2행이 문장 대신 읽는다.
+        guides.map {
+            GuideStepGeometry(
+                description: $0.guidance, pathCoords: $0.pathCoords!, action: $0.action?.guideAction)
+        },
         waypointStepIndex: briefing.waypoint?.stepIndex
     ) else { return nil }
 

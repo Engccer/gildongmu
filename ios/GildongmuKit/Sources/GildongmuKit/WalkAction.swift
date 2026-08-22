@@ -16,7 +16,13 @@ import Foundation
 /// 갈리지만 부분 문자열 포함은 같다. 문형이 단순해 정규식이 주는 것이 없다.
 public enum WalkAction: String, Sendable, Equatable, CaseIterable {
     case left, right, back, crosswalk, underpass
+    /// 자동차 갈래 선택(K2 spec §3.1) — `walkStepAction`은 내지 않는다(도보 문형에 없다).
+    /// 서버 `turnType` 투영(`CarAction`)으로만 들어온다.
+    case keepLeft, keepRight
 }
+
+/// 수단 중립 별칭(웹 `GuideAction` 미러).
+public typealias GuideAction = WalkAction
 
 /// 결정 지점 임박 큐의 **소리**. 행동별로 가른다(N2, 2026-08-22 위원장 판정: 횡단보도·
 /// 왼쪽·오른쪽·뒤로 돌기·그 외). 백그라운드·잠금에서는 문장이 나가지 않으므로 이 소리가
@@ -30,6 +36,9 @@ public func imminentTone(_ action: WalkAction) -> GuideTone {
     case .right: .right
     case .back: .back
     case .underpass: .ahead
+    // 갈래 선택은 회전과 같은 소리(소리 5종 유지 — N2 판정).
+    case .keepLeft: .left
+    case .keepRight: .right
     }
 }
 

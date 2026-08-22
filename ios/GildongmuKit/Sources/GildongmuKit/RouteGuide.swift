@@ -72,12 +72,25 @@ public struct GuideTuning: Sendable, Equatable {
     /// 임박(선행) 낭독: 잔여 ≤ max(announceAheadM, v×announceAheadSpeedS)
     public var announceAheadM: Double
     public var announceAheadSpeedS: Double
-    /// 결정 지점 임박 큐 경계(m). nil=미사용.
-    ///
-    /// ⚠ **보행 전용이다.** 20m는 보행 ~15초이지만 15m/s 주행에서는 2초 미만이라 소리를 듣고
-    /// 반응할 시간이 없고, 애초에 자동차 안내는 실주행을 네이티브 앱에 위임한다.
-    /// 값도 문구도(`walkStepAction`이 도보 문형만 안다) 차량에서 재본 적이 없다.
+    /// 결정 지점 임박 큐의 **거리 바닥**(m). nil=큐 미사용. 실제 임계는
+    /// `max(imminentAheadM, v×imminentAheadS)`(웹 `imminentAheadMeters` 미러, K2 spec §3.2).
+    /// walk 20·시간 계수 0 = 종전. car 15 바닥 + 6초(5 + fix 지연 1).
     public var imminentAheadM: Double?
+    /// 임박 큐의 시간 축(초). walk 0.
+    public var imminentAheadS: Double
+    /// 속도 표본 2개 미만일 때의 임계(m). walk 20(=바닥), car 60(설계 리뷰 B4).
+    public var imminentUnknownSpeedM: Double
+    /// 행동 출처 — `.text`=문장 분류(`walkStepAction`), `.step`=서버 투영 `action`만(없으면 침묵).
+    /// ⚠ car는 `.step`이다(설계 리뷰 B1 — 문장으로 되돌아가면 갈래·시설 문장이 회전이 된다).
+    public var actionSource: GuideActionSource
+    /// 임박 큐가 전문 선행(`imminentUpTo < announcedUpTo`)을 요구하는가. walk true, car false
+    /// (명령이 자기 완결 — 재획득 직후 한 fix를 기다리면 20m/s에서 경계를 지난다, B3).
+    public var imminentNeedsAnnounce: Bool
+    /// 공백 뒤 따라잡기 안전(K2 spec §3.4, car 전용): 점프 fix 무발화·표본 제외, uncertain 복귀
+    /// 공백은 재획득, 지난 유닛 래치 전진, 묶음 안 끝난 스텝 제외. 웹 `silentCatchUp` 미러.
+    public var silentCatchUp: Bool
+    /// 속도 표본 정확도 상한(m). walk 20, car 50(=uncertain 게이트).
+    public var speedSampleMaxAccM: Double
     /// 원거리 예고 경계(m). nil=미사용(walk)
     public var farNoticeM: Double?
     public var windowAheadMinM: Double
@@ -118,7 +131,11 @@ public struct GuideTuning: Sendable, Equatable {
 
     public static let walk = GuideTuning(
         announceAheadM: announceAheadMeters, announceAheadSpeedS: 0,
-        imminentAheadM: imminentAheadMeters, farNoticeM: nil,
+        imminentAheadM: imminentAheadMeters, imminentAheadS: 0,
+        imminentUnknownSpeedM: imminentAheadMeters,
+        actionSource: .text, imminentNeedsAnnounce: true,
+        silentCatchUp: false, speedSampleMaxAccM: speedSampleMaxAccuracyMeters,
+        farNoticeM: nil,
         windowAheadMinM: windowAheadMinMeters, windowAheadSpeedS: 0,
         offRouteBaseM: offRouteBaseMeters, offRouteHoldS: offRouteHoldSeconds,
         offRouteTrend: false,
@@ -130,11 +147,14 @@ public struct GuideTuning: Sendable, Equatable {
         maxSpeedMps: MotionConstants.maxWalkSpeedMps
     )
 
-    /// 자동차 초기값(스펙 §4.3 표) — 최초 실주행 판정까지 고정.
+    /// 자동차(동승자) 초기값(스펙 §4.3 표 + K2 §3.2) — 실주행 판정까지 잠정.
     public static let car = GuideTuning(
         announceAheadM: 120, announceAheadSpeedS: 15,
-        // ⚠ 보행 궤적으로만 쟀다(위 필드 주석). 켜려면 먼저 재라.
-        imminentAheadM: nil, farNoticeM: 1500,
+        imminentAheadM: carImminentFloorMeters, imminentAheadS: carImminentAheadSeconds,
+        imminentUnknownSpeedM: carImminentUnknownSpeedMeters,
+        actionSource: .step, imminentNeedsAnnounce: false,
+        silentCatchUp: true, speedSampleMaxAccM: uncertainAccuracyMeters,
+        farNoticeM: 1500,
         windowAheadMinM: 150, windowAheadSpeedS: 5,
         offRouteBaseM: 50, offRouteHoldS: 10,
         offRouteTrend: true,
@@ -147,6 +167,46 @@ public struct GuideTuning: Sendable, Equatable {
         presumedArrivalEnabled: false,
         maxSpeedMps: MotionConstants.maxCarSpeedMps
     )
+
+    /// 운전자 모드(K2 §3.3): 리듀서에서는 임박 시간 축 하나만 다르다. "낮은 빈도"는
+    /// 오케스트레이터가 이벤트를 거른다(웹 `CAR_DRIVER_TUNING` 미러).
+    public static let carDriver: GuideTuning = {
+        var t = GuideTuning.car
+        t.imminentAheadS = carDriverImminentAheadSeconds
+        return t
+    }()
+}
+
+/// 행동 출처(웹 `GuideTuning.actionSource` 미러).
+public enum GuideActionSource: Sendable, Equatable {
+    case text, step
+}
+
+/// 자동차 임박 큐 상수(웹 `CAR_IMMINENT_*` 미러, K2 spec §3.2 — B1 실주행 판정 대상).
+public let carImminentFloorMeters = 15.0
+public let carFixLagSeconds = 1.0
+public let carImminentAheadSeconds = 5.0 + carFixLagSeconds
+public let carDriverImminentAheadSeconds = 8.0 + carFixLagSeconds
+public let carImminentUnknownSpeedMeters = 60.0
+
+/// 결정 지점 행동 — 출처는 프로파일이 정한다(웹 `stepActionFor` 미러). car는 서버 투영만.
+public func stepActionFor(
+    description: String, action: WalkAction?, source: GuideActionSource
+) -> WalkAction? {
+    source == .step ? action : walkStepAction(description)
+}
+
+/// 이 상태의 임박 임계(m) — 6a와 같은 식. 표시 계층(`guideLiveRows`의 `turnApproachM`)이
+/// 같은 시점에 전환하도록 한 함수에서 낸다(웹 `imminentAheadMeters` 미러).
+public func imminentAheadMeters(speedSamples: [GuideSpeedSample], tuning: GuideTuning) -> Double {
+    guard let floor = tuning.imminentAheadM else { return 0 }
+    if speedSamples.count < 2 { return tuning.imminentUnknownSpeedM }
+    return max(floor, estimateSpeedMps(speedSamples) * tuning.imminentAheadS)
+}
+
+/// 표시 좌표계의 회전 접근 전환 잔여(m) = 임박 임계 − 표시 lag(하한 0). walk 10.
+public func turnApproachMeters(speedSamples: [GuideSpeedSample], tuning: GuideTuning) -> Double {
+    max(0, imminentAheadMeters(speedSamples: speedSamples, tuning: tuning) - projectionLagMeters)
 }
 
 /// 속도 추정 v(§4.3): max(직전 구간 속도, 중앙값). 표본은 직전 fix까지의 창 —
@@ -511,6 +571,21 @@ public func guideStep(
             s.lastFixAt = now
             return GuideOutput(state: s, event: nil, tone: nil)
         }
+        // 복귀 fix의 공백이 재획득 공백을 넘으면 복귀가 아니라 재획득(silentCatchUp ②) —
+        // uncertain 분기가 lastFixAt을 갱신해 아래 gap 검사가 이 공백을 못 본다.
+        if tuning.silentCatchUp, let last = state.lastFixAt, now - last > reacquireGapSeconds {
+            var s = state
+            s.phase = .reacquiring
+            s.windowEdgeHits = 0
+            s.speedSamples = []
+            s.courseVotes = []
+            s.lastFixAt = now
+            s.reacquiringFromOffRoute = state.resumePhase == .offRoute
+            s.reacquirePrevD = state.d
+            s.reacquireV = 0
+            s.reacquireSince = last
+            return GuideOutput(state: s, event: .reacquiring, tone: nil)
+        }
         var s = state
         s.phase = state.resumePhase
         s.lastFixAt = now
@@ -650,8 +725,10 @@ public func guideStep(
     // 4) 속도 창(10초 중앙값) — uncertain·reacquiring 밖에서만 표본 수집.
     //    정확도 나쁜 fix(>20m)는 표본에서 배제한다(투영·전진은 유지 — 위치 축과 속도
     //    축의 품질 요구가 다르다). 배제가 이어지면 창이 짧아져 가드 판정이 멈춘다.
+    //    점프 fix의 표본은 창 기아 따라잡기 속도라 버린다(silentCatchUp ① — 넣으면 창이
+    //    부풀어 재획득이 영영 안 걸린다).
     var samples = state.speedSamples
-    if fix.accuracy <= speedSampleMaxAccuracyMeters {
+    if fix.accuracy <= tuning.speedSampleMaxAccM, !(tuning.silentCatchUp && jumped) {
         samples.append(GuideSpeedSample(at: now, d: d))
     }
     samples.removeAll { now - $0.at > speedWindowSeconds }
@@ -842,17 +919,32 @@ public func guideStep(
     //
     //     ⚠ `!isOff`는 6b와 같은 이유다(아래 주석) — 이 fix가 이탈로 판정됐지만 확정
     //     유예를 못 채운 중간 상태에서, 의심 중인 투영을 근거로 명령을 내지 않는다.
-    if let imminentAheadM = tuning.imminentAheadM, !isOff {
-        while next.imminentUpTo < next.announcedUpTo,
+    // J) 투영 점프 fix는 발화하지 않는다(silentCatchUp ①) — 창이 기아로 기어가는 중이라 d가
+    //    실위치가 아니다. 상태는 커밋되므로 따라잡거나 기아 3회 뒤 재획득이 바로잡는다.
+    if tuning.silentCatchUp, jumped { return emit(next, nil, nil) }
+
+    //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2). 행동은 프로파일 출처를 따른다
+    //     (car는 서버 `action`만 — 문장을 보지 않는다). car는 전문 선행을 요구하지 않고
+    //     명령이 먼저 나가면 전문 래치도 함께 올린다(B3).
+    if tuning.imminentAheadM != nil, !isOff {
+        let imminentAhead = imminentAheadMeters(speedSamples: state.speedSamples, tuning: tuning)
+        let imminentCap = tuning.imminentNeedsAnnounce ? next.announcedUpTo : route.steps.count - 1
+        while next.imminentUpTo < imminentCap,
               route.steps[next.imminentUpTo].endD < d {
             next.imminentUpTo += 1
         }
-        if next.imminentUpTo < next.announcedUpTo,
-           route.steps[next.imminentUpTo].endD - d <= imminentAheadM {
+        if next.imminentUpTo < imminentCap,
+           route.steps[next.imminentUpTo].endD - d <= imminentAhead {
             let target = next.imminentUpTo + 1
-            let action = walkStepAction(route.steps[target].description)
+            let step = route.steps[target]
+            let action = stepActionFor(
+                description: step.description, action: step.action, source: tuning.actionSource)
             next.imminentUpTo = target
             if let action {
+                if next.announcedUpTo < target {
+                    next.announcedUpTo = target
+                    next.farNoticedUpTo = max(next.farNoticedUpTo, target)
+                }
                 next.lastAnnouncedAt = now
                 return emit(next, .imminent(indices: [target], action: action), imminentTone(action))
             }
@@ -901,23 +993,38 @@ public func guideStep(
         return emit(next, .finalApproachEnter, nil)
     }
 
+    // 6b'') 지난 유닛 무발화 따라잡기(silentCatchUp ③, 6b 뒤·6c 앞·`!isOff`): 유닛 끝이 d 앞에
+    //      있으면 전문 없이 래치 3종을 유닛 끝으로 옮긴다(웹 미러).
+    if tuning.silentCatchUp, !isOff {
+        while next.announcedUpTo < route.steps.count - 1 {
+            let unit = unitAt(route: route, index: next.announcedUpTo + 1)
+            let unitEnd = unit[unit.count - 1]
+            if route.steps[unitEnd].endD >= d { break }
+            next.announcedUpTo = unitEnd
+            next.imminentUpTo = unitEnd
+            next.farNoticedUpTo = max(next.farNoticedUpTo, unitEnd)
+        }
+    }
+
     // 6c) 선행 낭독: 낭독 완료 유닛의 끝까지 잔여 ≤ 임박선이면 다음 유닛 전문.
     //     임박선은 max(거리 하한, v×시간 계수) — walk는 시간 계수 0이라 40m 고정 동일.
     if next.announcedUpTo < route.steps.count - 1 {
         let announcedEnd = route.steps[next.announcedUpTo].endD
         let announceAhead = max(tuning.announceAheadM, vPrev * tuning.announceAheadSpeedS)
         if announcedEnd - d <= announceAhead {
-            let indices = unitAt(route: route, index: next.announcedUpTo + 1)
-            next.announcedUpTo = indices[indices.count - 1]
+            let unit = unitAt(route: route, index: next.announcedUpTo + 1)
+            // car(silentCatchUp): 묶음 안에서 이미 끝난 스텝은 빼고 읽는다(설계 리뷰 B6).
+            let remaining = tuning.silentCatchUp ? unit.filter { route.steps[$0].endD >= d } : unit
+            let indices = remaining.isEmpty ? [unit[unit.count - 1]] : remaining
+            next.announcedUpTo = unit[unit.count - 1]
             // 임박이 나가면 그 유닛의 원거리 예고는 소비된다(뒤늦은 원거리 예고 금지).
-            next.farNoticedUpTo = max(next.farNoticedUpTo, indices[indices.count - 1])
+            next.farNoticedUpTo = max(next.farNoticedUpTo, unit[unit.count - 1])
             next.lastAnnouncedAt = now
             // ⚠ **톤은 임박 층이 있는 프로파일에서만 뗀다.** walk는 `ahead`가 6a로 옮겨
             //   갔으므로 여기서 또 울리면 소리가 "곧 뭔가 있다"와 "지금이다" 둘 다를 뜻하게
-            //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). 반대로 car는 임박 층이
-            //   없으므로 여기가 **그 자리의 유일한 소리**다 — 무조건 떼면 자동차 세션은
-            //   이탈 경고를 빼고 우선 톤이 0이 되고, `ahead`가 열던 3초 정숙 구간까지
-            //   함께 사라진다(리뷰 검출 회귀).
+            //   되어 신호가 흐려진다(실보행 피드백 2026-08-09). car도 2026-08-23 K2로 임박
+            //   층이 생겨 같은 규칙이다 — 임박 층이 없는 프로파일이 생기면 여기가 그 자리의
+            //   유일한 소리라 `ahead`를 들고 3초 정숙 구간도 여기서 연다.
             //   ⚠ walk에서 그 정숙 구간이 40m 시점에 사라지는 것은 **아는 대가**다. 이 fix의
             //   추세음은 `eventOwned`가 막지만 다음 fix부터는 막지 않으므로, 낭독 첫 3초
             //   보호가 없어진다. 실보행 판정 대상이다(`docs/BACKLOG.md`).

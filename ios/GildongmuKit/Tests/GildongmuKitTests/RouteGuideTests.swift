@@ -27,6 +27,14 @@ private struct Scenario: Decodable {
     struct Step: Decodable {
         let len: Double
         let desc: String
+        /// 서버 투영 행동(자동차 시나리오, K2 §2.3).
+        let action: String?
+
+        init(len: Double, desc: String, action: String? = nil) {
+            self.len = len
+            self.desc = desc
+            self.action = action
+        }
     }
 
     struct Fix: Decodable {
@@ -68,7 +76,8 @@ private func routeFrom(_ steps: [Scenario.Step], waypointStepIndex: Int? = nil) 
             pathCoords: [
                 RoutePoint(lat: lat0 + acc * meterLat, lng: lng0),
                 RoutePoint(lat: lat0 + (acc + s.len) * meterLat, lng: lng0),
-            ]
+            ],
+            action: s.action.flatMap(WalkAction.init(rawValue:))
         )
         acc += s.len
         return g
@@ -120,7 +129,8 @@ private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {
         let route = routeFrom(sc.steps, waypointStepIndex: sc.waypointStepIndex)
-        let tuning: GuideTuning = sc.tuning == "car" ? .car : .walk
+        let tuning: GuideTuning =
+            sc.tuning == "car" ? .car : sc.tuning == "carDriver" ? .carDriver : .walk
         var state = initialGuideState(
             route: route, now: 0, hasFinalApproachGeometry: sc.geometry == true
         ).state
