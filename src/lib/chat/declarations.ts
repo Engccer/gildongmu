@@ -78,10 +78,14 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_subway_arrivals",
       description:
-        "현재 위치 주변 지하철역의 실시간 도착 정보를 보여준다.",
+        "지하철 실시간 도착 정보를 보여준다. 역 이름을 말하면 stationName으로 그 역을, 지명이면 place 주변 역을, 둘 다 없으면 현재 위치 주변 역을 조회한다. " +
+        "stationName 조회에서 arrivals가 null이면 그 역은 실시간 정보가 제공되지 않는 역이다(서울 도시철도 외) — 열차가 없다는 뜻이 아니다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          stationName: { type: "string", description: "역 이름 (예: 천호, 강남)" },
+          ...PLACE_ARG,
+        },
       },
     },
   },
@@ -90,10 +94,10 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_night_clinics",
       description:
-        "현재 위치 주변 소아 야간·휴일 진료 병원(달빛어린이병원)을 보여준다.",
+        "현재 위치(또는 지명) 주변 소아 야간·휴일 진료 병원(달빛어린이병원)을 보여준다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: PLACE_ARG,
       },
     },
   },
@@ -102,10 +106,10 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_kids_places",
       description:
-        "현재 위치 주변 아이 놀 곳(키즈카페·놀이터·어린이공원)을 보여준다.",
+        "현재 위치(또는 지명) 주변 아이 놀 곳(키즈카페·놀이터·어린이공원)을 보여준다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: PLACE_ARG,
       },
     },
   },
@@ -114,10 +118,10 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_nearby_events",
       description:
-        "주변에서 오늘 진행 중인 문화행사(전시·공연·체험 프로그램)를 거리순으로 보여준다. 서울 지역만 제공된다.",
+        "현재 위치(또는 지명) 주변에서 오늘 진행 중인 문화행사(전시·공연·체험 프로그램)를 거리순으로 보여준다. 서울 지역만 제공된다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: PLACE_ARG,
       },
     },
   },
@@ -126,10 +130,10 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_surroundings",
       description:
-        "현재 위치 주변 편의점·음식점·약국 등 주변 장소를 방위·거리와 함께 보여준다.",
+        "현재 위치(또는 지명) 주변 편의점·음식점·약국 등 주변 장소를 방위·거리와 함께 보여준다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: PLACE_ARG,
       },
     },
   },
@@ -228,10 +232,10 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_congestion",
       description:
-        "현재 위치(또는 보고 있는 장소)의 실시간 인구 혼잡도와 12시간 예보를 보여준다. 서울 주요 지역만 제공된다. 사용자가 붐비는 정도·사람이 많은지를 직접 묻거나 언제 가면 한산한지 물을 때만 호출한다.",
+        "현재 위치(또는 지명·보고 있는 장소)의 실시간 인구 혼잡도와 12시간 예보를 보여준다. 서울 주요 지역만 제공된다. 사용자가 붐비는 정도·사람이 많은지를 직접 묻거나 언제 가면 한산한지 물을 때만 호출한다.",
       parametersJsonSchema: {
         type: "object",
-        properties: {},
+        properties: PLACE_ARG,
       },
     },
   },
@@ -314,8 +318,8 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_nearby_barrier_free",
       description:
-        "현재 위치(또는 보고 있는 장소) 주변의 무장애 관광지(휠체어·점자블록·음성안내 등 장애인 편의시설을 갖춘 곳)를 보여준다.",
-      parametersJsonSchema: { type: "object", properties: {} },
+        "현재 위치(또는 지명·보고 있는 장소) 주변의 무장애 관광지(휠체어·점자블록·음성안내 등 장애인 편의시설을 갖춘 곳)를 보여준다. 각 항목의 contentId로 get_barrier_free_detail을 호출하면 편의시설 상세를 알 수 있다.",
+      parametersJsonSchema: { type: "object", properties: PLACE_ARG },
     },
   },
   {
@@ -359,9 +363,9 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_walk_infrastructure",
       description:
-        "현재 위치(또는 보고 있는 장소) 주변 음향신호기·횡단보도·점자블록을 보여준다. " +
+        "현재 위치(또는 지명·보고 있는 장소) 주변 음향신호기·횡단보도·점자블록을 보여준다. " +
         "서울시·OpenStreetMap 등록 자료 기준이며, 실제 시설 유무나 작동 상태와 다를 수 있다.",
-      parametersJsonSchema: { type: "object", properties: {} },
+      parametersJsonSchema: { type: "object", properties: PLACE_ARG },
     },
   },
   {
