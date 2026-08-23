@@ -11,6 +11,9 @@
 
 ## 2026-08-23
 
+### B9 ① — 웹 길찾기 도보 추천·최단 2행 disclosure
+
+웹 `DirectionsView`가 도보 조회에 `alternatives=1`을 붙여 추천·최단 쌍을 받고, `shortest`가 있을 때만 추천·최단 2행 disclosure(`aria-expanded`, 최단 기본 접힘, 추천은 종전 30분 문턱)로 낸다(iOS 도보 섹션·대중교통 대안 동형). `stepFreeNotice`는 両행 라벨에 쉼표 병기(단일 경로 장거리 disclosure에도 — 종전엔 접힌 본문 스텝 0에만 있었다), 펼침 본문은 요약·notice 스텝을 뺀다(`WalkRouteResult` `includeSummary`·`omitNoticeStep`, 경유지 인덱스 역보정). 안내 시작 버튼은 섹션 상단에 남아 추천 경로만(B9 ②까지). 실호출 게이트(prod) 통과. spec `docs/superpowers/specs/2026-08-23-web-walk-alternatives-disclosure-design.md`. **N4 "nmap 경유지 인자"는 취소**: 웹 nmap 길찾기 빌더는 2026-07-30에 참조 0으로 제거됐고 남은 iOS Kit 빌더의 호출처(장소 상세)는 경유지를 모른다(코디네이터 판정).
 ### E15-2 대중교통 실시간 안내 "주변 확인" — 앵커 배선 (iOS·Kit)
 
 백로그 E15 다음 능력 ①(spec `docs/superpowers/specs/2026-08-23-transit-surroundings-anchor-design.md`, 설계 리뷰 생략 판정 기록). 도보 시트의 `SurroundingsSceneSection`(시그니처 불변)을 `TransitTrackingSheet` 본 Section 뒤 별도 Section으로 배선했다. 앵커는 Kit 순수 함수 `transitSurroundingsAnchor`가 정한다 — 조망의 `transitOverviewHere`가 `.station`으로 **확정**한 승차 중 현재역, 그 밖은 하차역, 하차역 좌표가 없으면 섹션 미노출(테스트 6건). 섹션 헤더가 기준 역을 말한다("내릴 곳 {역} 주변"/"현재역 {역} 주변", 6로케일) — 앵커가 둘 중 하나로 바뀌므로 어느 역인지가 곧 정보다. `GuideOverviewCapability`는 넓히지 않았다(프로토콜 없이 배선으로 충분, spec §3). 실험판 시뮬 AX 순서 확정(`이미 탑승했습니다` → 헤딩 → `주변 확인` → 장면 → `안내 종료`). ⏳ 실승차 판정 `docs/FIELD-TEST.md` §5-4 E15-2 행.
