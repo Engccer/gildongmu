@@ -35,7 +35,10 @@ struct TransitTrackingSheet: View {
     /// 2/2). 옵셔널 단일 바인딩은 "다른 바인딩을 먼저 놓는다"를 구조로 만든다
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
-        case stop, advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
+        case advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
+        /// 제목 행(제목 메뉴) — 시트 진입 기본 착지이자 사라지는 컨트롤의 복귀 앵커(항상
+        /// 존재). 종전 앵커였던 중지는 최하단 고정으로 내려갔다(위원장 판정 2026-08-23).
+        case title
         /// 접기 버튼(N1, 헤더 행 우측 아이콘) — 띠바에서 돌아온 시트의 첫 착지.
         case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
@@ -79,8 +82,6 @@ struct TransitTrackingSheet: View {
             List {
                 if model.state != nil {
                     Section {
-                        Button(appLocalized("beacon.stop"), action: onStop)
-                            .accessibilityFocused($focusedControl, equals: .stop)
                         // 조망 모달이 응답이다(도보 동형). `announceProgress()`를 부르지 않는다 —
                         // 헤더 착지가 같은 문장을 낭독하므로 통지를 먼저 내면 둘이 잠식한다(§4.3).
                         Button(appLocalized("guide.progressButton")) {
@@ -93,12 +94,14 @@ struct TransitTrackingSheet: View {
                     } header: {
                         // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1). 핸드오프 화면
                         // 헤더는 불변 — 세션이 끝나 목적지 바꾸기가 성립하지 않는다.
-                        GuideTitleMenu(
-                            heading: appLocalized("beacon.transitHeading"),
-                            label: model.destinationLabel,
-                            onShowDetail: { showPlaceDetail = true },
-                            onChangeDestination: { changeDestPresented = true }
-                        ) {
+                        GuideTitleRow {
+                            GuideTitleMenu(
+                                heading: appLocalized("beacon.transitHeading"),
+                                label: model.destinationLabel,
+                                onShowDetail: { showPlaceDetail = true },
+                                onChangeDestination: { changeDestPresented = true })
+                            .accessibilityFocused($focusedControl, equals: .title)
+                        } trailing: {
                             GuideMinimizeButton(action: onMinimize)
                                 .accessibilityFocused($focusedControl, equals: .minimize)
                         }
@@ -108,13 +111,19 @@ struct TransitTrackingSheet: View {
                     walkHandoffSection(handoff)
                 }
             }
+            // 안내 종료는 목록 밖 최하단 고정(GuideStopButton 주석). 핸드오프 화면엔 없다.
+            .safeAreaInset(edge: .bottom) {
+                if model.state != nil {
+                    GuideStopButton(action: onStop)
+                }
+            }
             // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리, 설계 리뷰 m1).
             .task {
                 if GuideSession.shared.returnedFromBand == .transit {
                     GuideSession.shared.returnedFromBand = nil
                     landControlFocus(.minimize, proxy: proxy)
                 } else {
-                    landControlFocus(.stop, proxy: proxy)
+                    landControlFocus(.title, proxy: proxy)
                 }
             }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
@@ -227,7 +236,7 @@ struct TransitTrackingSheet: View {
                                 onDestinationCommitted(.place(
                                     label: pending.label,
                                     lat: pending.dest.lat, lng: pending.dest.lng))
-                                landControlFocus(.stop, proxy: proxy)
+                                landControlFocus(.title, proxy: proxy)
                             } else {
                                 // stale 재조회(§4.2) — 선택 행들이 사라지고 조회 중
                                 // 상태 행으로 돌아간다(헌장 §5 선점).
@@ -239,7 +248,7 @@ struct TransitTrackingSheet: View {
                 }
                 Button(appLocalized("ios.transitGuide.destChangeCancel")) {
                     model.cancelDestinationChange()
-                    landControlFocus(.stop, proxy: proxy)
+                    landControlFocus(.title, proxy: proxy)
                 }
             } header: {
                 Text(appLocalized("ios.transitGuide.destChangeHeading", pending.label))
@@ -276,7 +285,7 @@ struct TransitTrackingSheet: View {
             // 지하철은 역 선택 프롬프트의 .task가, 버스는 waiting 전이의 waitingLabel 착지가 맡는다.
             model.beginReboard()
         case .routeSwitched:
-            landControlFocus(.stop, proxy: proxy)
+            landControlFocus(.title, proxy: proxy)
         }
     }
 
@@ -514,7 +523,7 @@ struct TransitTrackingSheet: View {
     private func controlExists(_ target: SheetControl) -> Bool {
         let phase = model.state?.phase
         switch target {
-        case .stop, .minimize: return model.state != nil
+        case .title, .minimize: return model.state != nil
         case .advance: return phase == .arrived
             || (phase == .riding && (model.state?.lock.map(isApproxTransitLock) ?? false))
         case .changeBoarding: return phase == .riding && !model.reboardPickerActive
