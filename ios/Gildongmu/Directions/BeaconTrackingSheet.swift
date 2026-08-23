@@ -7,7 +7,8 @@ import SwiftUI
 /// 인라인 섹션에서 분리한 이유는 걷는 중의 탐색 비용이다. 길찾기 결과 화면에는 수단
 /// 섹션이 이어지고 도보는 인라인 전개라 수백 행이 될 수 있어(천호역 실측), 추적을
 /// 멈추려면 그 목록 안에서 버튼을 찾아야 했다. 시트는 VoiceOver 스코프를 이 화면으로
-/// 가두므로 스와이프 몇 번이면 상태와 중지 버튼에 닿는다(위원장 실보행 피드백 2026-08-02).
+/// 가두므로 스와이프 몇 번이면 상태에 닿고, 종료는 최하단 고정 버튼이라 네 손가락 아래쪽
+/// 탭 한 번이다(위원장 실보행 피드백 2026-08-02, 종료 하단 고정 2026-08-23).
 ///
 /// 컨트롤 집합: 중지·진행 상황·주변 확인·재조회(이탈 시). "다음으로 건너뛰기"는 두지
 /// 않는다(선례 부재 + 사용자가 진행을 주장하게 만드는 실패 모드, 조사 §5.4). 상세⇄간략
@@ -36,7 +37,11 @@ struct BeaconTrackingSheet: View {
     /// 자동차 도착 종료 화면의 도보 인계(K2 §6.4, 위원장 판정 ④). nil이면 버튼이 없다.
     let onCarWalkHandoff: (() -> Void)?
 
-    @AccessibilityFocusState private var stopFocused: Bool
+    /// 제목 행(제목 메뉴) 착지 — 시트 진입의 기본 착지이자, 포커스를 쥔 요소가 사라지는
+    /// 전이의 복귀 앵커(항상 존재한다). 종전엔 목록 2번째 행의 중지 버튼이 그 앵커였는데
+    /// 중지가 최하단 고정으로 내려가면서(위원장 판정 2026-08-23) 제목이 그 역할을 받았다 —
+    /// 제목에서 오른쪽 스와이프가 내용을 순서대로 읽고, 종료는 네 손가락 아래쪽 탭이 지름길.
+    @AccessibilityFocusState private var titleFocused: Bool
     /// 접기 버튼(헤더 행 우측 아이콘) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
     @AccessibilityFocusState private var minimizeFocused: Bool
     /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
@@ -88,15 +93,13 @@ struct BeaconTrackingSheet: View {
                         waypointPresented = true
                     }
                     // 경유지 삭제(N4 잔여, K2 §6.5): 미도착 경유지가 있을 때만. 누르면 자신이
-                    // 사라지므로 항상 존재하는 중지 버튼으로 포커스를 선점한다(재조회 버튼 선례).
+                    // 사라지므로 항상 존재하는 제목 행으로 포커스를 선점한다(재조회 버튼 선례).
                     if model.waypoint != nil {
                         Button(appLocalized("ios.guide.waypointRemove")) {
-                            if model.removeWaypoint() { Task { await landStopFocus() } }
+                            if model.removeWaypoint() { Task { await landTitleFocus() } }
                         }
                     }
                 }
-                Button(appLocalized("beacon.stop"), action: onStop)
-                    .accessibilityFocused($stopFocused)
                 // 반복 버튼은 위원장 실사용 판정으로 제거 확정(2026-08-03 묶음 A).
                 // 진행 상황: 자동 통지를 기다리지 않는 임의 시점 조회(Soundscape Where Am I).
                 // 경로 보유(상세) 세션은 조망 모달이 응답이다 — 모달 표시와 Announcement가
@@ -122,7 +125,7 @@ struct BeaconTrackingSheet: View {
                 // 재조회: 이탈 확정 시에만 노출. 자동 재조회 금지(스펙 §5.6)의 수동 출구.
                 // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
                 // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 항상
-                // 존재하는 중지 버튼으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
+                // 존재하는 제목 행으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
                 if model.offRoute {
                     // 제안이 준비되면 같은 버튼의 라벨만 바뀐다(E10ⓑ — 별도 버튼
                     // 추가 금지: SR 읽기 순서 비용. 라벨이 지속 신호의 정본이다).
@@ -203,18 +206,26 @@ struct BeaconTrackingSheet: View {
                 // 무엇을 추적 중인지가 화면에 있어야 한다. 시트로 분리되면서 주변 맥락이
                 // 통째로 사라졌으므로 여기서만 알 수 있다. 수단 라벨(B1 §3.3)이 heading.
                 // 제목이 곧 목적지 메뉴다(스펙 2026-08-12 §1 — 장소 상세·목적지 바꾸기).
-                GuideTitleMenu(
-                    heading: appLocalized(
-                        model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
-                    ),
-                    label: model.destinationLabel,
-                    onShowDetail: { showPlaceDetail = true },
-                    onChangeDestination: { changeDestPresented = true }
-                ) {
+                GuideTitleRow {
+                    GuideTitleMenu(
+                        heading: appLocalized(
+                            model.sessionKind == .car ? "beacon.carHeading" : "beacon.walkHeading"
+                        ),
+                        label: model.destinationLabel,
+                        onShowDetail: { showPlaceDetail = true },
+                        onChangeDestination: { changeDestPresented = true })
+                    .accessibilityFocused($titleFocused)
+                } trailing: {
                     GuideMinimizeButton(action: onMinimize)
                         .accessibilityFocused($minimizeFocused)
                 }
             }
+            }
+        }
+        // 안내 종료는 목록 밖 최하단 고정(GuideStopButton 주석). 도착 화면엔 없다(닫기가 그 자리).
+        .safeAreaInset(edge: .bottom) {
+            if model.arrivalDest == nil {
+                GuideStopButton(action: onStop)
             }
         }
         // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리). 플래그는 같은 종류
@@ -225,7 +236,7 @@ struct BeaconTrackingSheet: View {
                 // 최소화 중 도착했으면 접기 버튼이 없다(도착 화면) — 도착 문장으로.
                 if model.arrivalDest != nil { await landArrivedFocus() } else { await landMinimizeFocus() }
             } else {
-                await landStopFocus()
+                await landTitleFocus()
             }
         }
         // 전 구간 조망 모달(판정 개정 2026-08-10). 시트 위 시트는 표준 중첩 표시.
@@ -250,8 +261,8 @@ struct BeaconTrackingSheet: View {
                 if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onDestinationCommitted(endpoint)
                 }
-                // 검색 시트가 닫히면 중지 버튼 착지(§3.3 — dismiss 후 지연·검증·재시도 정본).
-                Task { await landStopFocus() }
+                // 검색 시트가 닫히면 제목 행 착지(§3.3 — dismiss 후 지연·검증·재시도 정본).
+                Task { await landTitleFocus() }
             }
         }
         // 경유지 검색(N4): 목적지 검색과 같은 시트·같은 억제·같은 착지 계약.
@@ -261,7 +272,7 @@ struct BeaconTrackingSheet: View {
                 if model.setWaypoint(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onWaypointCommitted(endpoint)
                 }
-                Task { await landStopFocus() }
+                Task { await landTitleFocus() }
             }
         }
         // 검색 시트에 받아쓰기 마이크가 있다 — 열린 동안 톤·통지 전부 억제(스펙 §5.4,
@@ -284,17 +295,17 @@ struct BeaconTrackingSheet: View {
                 }
             }
         }
-        // 재조회 성공으로 버튼이 사라진 순간 커서를 중지 버튼으로(헌장 §5 이탈 방지).
+        // 재조회 성공으로 버튼이 사라진 순간 커서를 제목 행으로(헌장 §5 이탈 방지).
         .onChange(of: model.offRoute) { _, isOff in
             guard !isOff, reroutePressed else { return }
             reroutePressed = false
-            Task { await landStopFocus() }
+            Task { await landTitleFocus() }
         }
-        // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고 중지 버튼으로 복귀(spec
+        // 프리뷰 채택 성공: 조망(과 그 위 프리뷰)을 닫고 제목 행으로 복귀(spec
         // 2026-08-14 §4 — 포커스를 쥔 시트가 통째로 사라지는 전이, 재조회 성공 동형).
         .onChange(of: model.variantAdoptedSeq) {
             showRouteList = false
-            Task { await landStopFocus() }
+            Task { await landTitleFocus() }
         }
         // 도착 전이: 포커스를 쥔 컨트롤(중지 등)이 통째로 사라진다 — 도착 문장으로
         // 선점한다(헌장 §5, 대중교통 arrived 전이 동형). 착지 낭독이 `.high` 도착
@@ -413,7 +424,7 @@ struct BeaconTrackingSheet: View {
         return f
     }
 
-    /// 도착 문장 착지 — 지연·검증·1회 재시도(`landStopFocus` 동형).
+    /// 도착 문장 착지 — 지연·검증·1회 재시도(`landTitleFocus` 동형).
     /// 체중 입력 뒤 요약 문장 착지(지연·검증·1회 재시도 — `landArrivedFocus` 동형).
     private func landHealthSummaryFocus() async {
         try? await Task.sleep(for: .milliseconds(400))
@@ -438,13 +449,13 @@ struct BeaconTrackingSheet: View {
     /// 지연·검증·1회 재시도는 이 저장소의 검증된 착지 패턴을 따른다(`ChatConversationView`·
     /// `landFocusAfterResolve`). 시트 표시 애니메이션이 끝나며 시스템이 포커스를 옮기므로
     /// 그보다 늦게 대입해야 이긴다.
-    private func landStopFocus() async {
+    private func landTitleFocus() async {
         try? await Task.sleep(for: .milliseconds(400))
-        stopFocused = true
+        titleFocused = true
         try? await Task.sleep(for: .milliseconds(600))
         // 먹지 않았을 때만 1회 재시도(무한 재대입은 커서를 붙잡아 되레 방해가 된다).
-        guard !stopFocused else { return }
-        stopFocused = true
+        guard !titleFocused else { return }
+        titleFocused = true
     }
 
     private func landMinimizeFocus() async {
