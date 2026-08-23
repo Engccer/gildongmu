@@ -11,6 +11,10 @@
 
 ## 2026-08-23
 
+### E15-2 대중교통 실시간 안내 "주변 확인" — 앵커 배선 (iOS·Kit)
+
+백로그 E15 다음 능력 ①(spec `docs/superpowers/specs/2026-08-23-transit-surroundings-anchor-design.md`, 설계 리뷰 생략 판정 기록). 도보 시트의 `SurroundingsSceneSection`(시그니처 불변)을 `TransitTrackingSheet` 본 Section 뒤 별도 Section으로 배선했다. 앵커는 Kit 순수 함수 `transitSurroundingsAnchor`가 정한다 — 조망의 `transitOverviewHere`가 `.station`으로 **확정**한 승차 중 현재역, 그 밖은 하차역, 하차역 좌표가 없으면 섹션 미노출(테스트 6건). 섹션 헤더가 기준 역을 말한다("내릴 곳 {역} 주변"/"현재역 {역} 주변", 6로케일) — 앵커가 둘 중 하나로 바뀌므로 어느 역인지가 곧 정보다. `GuideOverviewCapability`는 넓히지 않았다(프로토콜 없이 배선으로 충분, spec §3). 실험판 시뮬 AX 순서 확정(`이미 탑승했습니다` → 헤딩 → `주변 확인` → 장면 → `안내 종료`). ⏳ 실승차 판정 `docs/FIELD-TEST.md` §5-4 E15-2 행.
+
 ### 이식 원장 소비 — 계단 회피 좌표 정밀도·토글 라벨·xcstrings 린터 하한
 
 `PORTS.md` → gildongmu 앞 6행을 전수 판정했다(절차 정본 `cross-port` 스킬).
