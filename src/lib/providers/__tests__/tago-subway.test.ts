@@ -8,6 +8,7 @@ vi.mock("../../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
 import {
   displayLineName,
   computeServiceDailyType, deriveFirstLast, fetchStationTimetable,
+  classifyDirection, combineLineCoverage,
 } from "../tago-subway";
 
 describe("displayLineName", () => {
@@ -50,6 +51,30 @@ describe("deriveFirstLast", () => {
   });
   it("유효 행 0이면 null", () => {
     expect(deriveFirstLast([row("000210", SELF, "강동")], SELF)).toBeNull();
+  });
+});
+
+describe("classifyDirection / combineLineCoverage — 방향 4분류·노선 결합(스펙 §2)", () => {
+  it("원시 0행 → unknown(업스트림은 0행에 어떤 의미도 싣지 않는다)", () => {
+    expect(classifyDirection([], SELF)).toEqual({ outcome: "unknown", fl: null });
+  });
+  it("파싱 불가 행만 → unknown(파서 실패를 참인 0과 뭉개지 않는다)", () => {
+    expect(classifyDirection([row("abc"), row("")], SELF).outcome).toBe("unknown");
+  });
+  it("읽을 수 있는 행이 전부 당역 종착 → noTrains(참인 0)", () => {
+    expect(classifyDirection([row("000210", SELF, "강동")], SELF)).toEqual({ outcome: "noTrains", fl: null });
+  });
+  it("편성 ≥1 → ok + 첫차·막차", () => {
+    const r = classifyDirection([row("051310"), row("235150")], SELF);
+    expect(r.outcome).toBe("ok");
+    expect(r.fl?.first.time).toBe("05:13");
+    expect(r.fl?.last.time).toBe("23:51");
+  });
+  it("결합 순서는 ok > unavailable > unknown > noTrains — unknown이 참인 0을 이긴다", () => {
+    expect(combineLineCoverage(["noTrains", "ok"])).toBe("ok");
+    expect(combineLineCoverage(["unknown", "unavailable"])).toBe("unavailable");
+    expect(combineLineCoverage(["noTrains", "unknown"])).toBe("unknown");
+    expect(combineLineCoverage(["noTrains", "noTrains"])).toBe("noTrains");
   });
 });
 
@@ -109,6 +134,7 @@ describe("fetchStationTimetable — 판정 표(스펙 §2-A)", () => {
     expect(result!.partial).toBeUndefined();
     expect(result!.lines.length).toBe(1);
     expect(result!.lines[0].lineName).toBe("5호선");
+    expect(result!.lines[0].coverage).toBe("ok");
     expect(result!.lines[0].directions.length).toBe(2);
   });
 
@@ -132,6 +158,8 @@ describe("fetchStationTimetable — 판정 표(스펙 §2-A)", () => {
     const result = await fetchStationTimetable("강동역 5호선");
     expect(result).not.toBeNull();
     expect(result!.partial).toBe(true);
+    // 한 방향이라도 ok면 ok — partial은 독립 축(스펙 §2)
+    expect(result!.lines[0].coverage).toBe("ok");
     expect(result!.lines[0].directions.length).toBe(1);
     expect(result!.lines[0].directions[0].direction).toBe("up");
   });
@@ -149,22 +177,70 @@ describe("fetchStationTimetable — 판정 표(스펙 §2-A)", () => {
     await expect(fetchStationTimetable("강동역 5호선")).rejects.toThrow();
   });
 
-  it("시나리오 D: 両방향 성공·유효 행 0(전부 당역종착) → lines:[]", async () => {
-    const terminusRow = { endSubwayStationId: LINE5_ID, endSubwayStationNm: "강동", depTime: "051310" };
+  // 스케줄 응답을 노선·방향별로 고정하는 fetch 스텁. 값이 Error면 그 호출은 rejected.
+  function stubSchedules(
+    keywords: unknown[],
+    schedule: (stationId: string, dir: string) => unknown[] | Error,
+  ) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) => {
         const op = opFromUrl(input);
         if (op === "getRestDeInfo") return NO_HOLIDAY;
-        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope([line5Keyword]));
-        if (op === "GetSubwaySttnAcctoSchdulList") return ok(envelope([terminusRow]));
+        if (op === "GetKwrdFndSubwaySttnList") return ok(envelope(keywords));
+        if (op === "GetSubwaySttnAcctoSchdulList") {
+          const url = new URL(String(input));
+          const r = schedule(url.searchParams.get("subwayStationId") ?? "", url.searchParams.get("upDownTypeCode") ?? "");
+          if (r instanceof Error) throw r;
+          return ok(envelope(r));
+        }
         throw new Error(`예상 밖 오퍼레이션: ${op}`);
       }),
     );
+  }
+
+  it("시나리오 D-1: 両방향 성공·전부 당역종착 → 노선은 남고 coverage noTrains, directions []", async () => {
+    const terminusRow = { endSubwayStationId: LINE5_ID, endSubwayStationNm: "강동", depTime: "051310" };
+    stubSchedules([line5Keyword], () => [terminusRow]);
     const result = await fetchStationTimetable("강동역 5호선");
-    expect(result).not.toBeNull();
     expect(result!.partial).toBeUndefined();
-    expect(result!.lines).toEqual([]);
+    expect(result!.lines).toEqual([{ lineName: "5호선", coverage: "noTrains", directions: [] }]);
+  });
+
+  it("시나리오 D-2: 両방향 성공·원시 0행(홍대입구 2호선 실측) → 노선은 남고 coverage unknown", async () => {
+    stubSchedules([line5Keyword], () => []);
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result!.partial).toBeUndefined();
+    expect(result!.lines).toEqual([{ lineName: "5호선", coverage: "unknown", directions: [] }]);
+  });
+
+  const LINE2_ID = "MTRS150001";
+  const line2Keyword = { subwayStationId: LINE2_ID, subwayStationName: "강동", subwayRouteName: "2호선" };
+  const okRow = { endSubwayStationId: "MTRS152501", endSubwayStationNm: "방화", depTime: "051310" };
+
+  it("시나리오 D-3: 2노선 중 하나만 0행 → 둘 다 lines에 실리고 partial 없음(탈락 0)", async () => {
+    stubSchedules([line5Keyword, line2Keyword], (id) => (id === LINE5_ID ? [okRow] : []));
+    const result = await fetchStationTimetable("강동역");
+    expect(result!.partial).toBeUndefined();
+    expect(result!.lines.map((l) => [l.lineName, l.coverage, l.directions.length])).toEqual([
+      ["5호선", "ok", 2],
+      ["2호선", "unknown", 0],
+    ]);
+  });
+
+  it("방향 비대칭: 상행 unknown·하행 noTrains → unknown(확정 진술 금지)", async () => {
+    const terminusRow = { endSubwayStationId: LINE5_ID, endSubwayStationNm: "강동", depTime: "051310" };
+    stubSchedules([line5Keyword], (_id, dir) => (dir === "U" ? [] : [terminusRow]));
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result!.lines[0].coverage).toBe("unknown");
+  });
+
+  it("방향 비대칭: 상행 실패·하행 0행 → unavailable + partial", async () => {
+    stubSchedules([line5Keyword], (_id, dir) => (dir === "U" ? new Error("network down") : []));
+    const result = await fetchStationTimetable("강동역 5호선");
+    expect(result!.partial).toBe(true);
+    expect(result!.lines[0].coverage).toBe("unavailable");
+    expect(result!.lines[0].directions).toEqual([]);
   });
 
   it("시나리오 E: 키워드 정확매칭 0건(다른 역만) → null, 시간표 호출 없음", async () => {
@@ -310,8 +386,8 @@ describe("fetchScheduleRows 폴백 — 토요일 다이어 부재(실호출 2026
     // 03으로 재조회하지 않는다 — 이 역은 토요일 다이어를 갖는 역이다.
     expect(asked.every((c) => c === "02")).toBe(true);
     expect(result!.dailyType).toBe("saturday"); // 남은 노선에 대해 참
-    // 토요일에 답하지 못한 노선은 휴일 값으로 메우지 않고 정직하게 빠진다.
-    expect(result!.lines.map((l) => l.lineName)).toEqual(["3호선"]);
+    // 토요일에 답하지 못한 노선은 휴일 값으로 메우지 않고, 빠지지도 않는다 — unknown으로 남는다(A19).
+    expect(result!.lines.map((l) => [l.lineName, l.coverage])).toEqual([["3호선", "ok"], ["부산김해경전철선", "unknown"]]);
   });
 
 });

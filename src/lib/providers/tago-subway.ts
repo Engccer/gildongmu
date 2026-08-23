@@ -3,7 +3,7 @@ import { parseStationQuery, lineHintMatches, normalizeStationName } from "../sta
 import { findStationsByName } from "../subway-stations";
 import { fetchIsHoliday } from "./holiday";
 import { fetchDataGoKrJson, readItems, readResultCode, readTotalCount } from "./datagokr-envelope";
-import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrain } from "../types";
+import type { StationTimetable, TimetableLine, TimetableLineCoverage, TimetableDirection, TimetableTrain } from "../types";
 
 /**
  * 국토교통부 TAGO(국가대중교통정보센터) 지하철 노선정보(B-3) provider.
@@ -24,7 +24,8 @@ import type { StationTimetable, TimetableLine, TimetableDirection, TimetableTrai
  * fetchStationTimetable 결과 판정(3-state 붕괴 방지, 스펙 §2-A 표):
  * 키워드 정확매칭 0건 → null(미커버, 섹션 미노출). 노선·방향 호출 전부
  * 실패 → throw(라우트 502, 무운행으로 위장 금지). 일부만 실패 → 성공분
- * 결과 + partial:true. 전부 성공했는데 유효 행 0 → { lines: [] }.
+ * 결과 + partial:true. **매칭된 노선은 편성이 0이어도 lines에서 빼지 않는다** —
+ * `coverage`가 그 이유를 들고 실린다(스펙 `2026-08-23-tago-timetable-coverage-design.md`).
  */
 
 // ⚠ https 필수: http는 연결만 되고 응답이 오지 않는다(read ETIMEDOUT hang,
@@ -69,16 +70,29 @@ export function computeServiceDailyType(nowUtcMs: number): { date: string; type:
 
 interface ScheduleRow { subwayStationId?: unknown; endSubwayStationId?: unknown; endSubwayStationNm?: unknown; depTime?: unknown; }
 
-/** 첫차·막차 산출(스펙 §1-A 계약). 서비스데이 정렬·당역종착 제외·행 유효성 가드·익일 판정. */
-export function deriveFirstLast(
+type FirstLast = { first: { time: string; nextDay?: true; terminus: string }; last: { time: string; nextDay?: true; terminus: string } };
+
+/**
+ * 한 방향의 스케줄 행을 4분류한다(스펙 §2 방향 4분류). 호출 rejected(unavailable)는
+ * 호출부가 가른다.
+ * - 원시 0행 → unknown: 업스트림은 존재하지 않는 파라미터 값에도 `00`+0행을 주므로
+ *   0행은 무정보다(dodo 실측 2026-08-23). "운행 없음"으로 읽을 근거가 없다.
+ * - 파싱 가능 행 0 → unknown: 우리 파서가 못 읽은 것이지 열차가 없는 것이 아니다.
+ *   (같은 TAGO 계열 버스 API가 선행 0 없는 시각을 JSON 숫자로 보낸 전력이 있다.)
+ * - 파싱 가능 ≥1 + 편성 0(전부 당역 종착) → noTrains: 탑승 불가가 참이다.
+ * - 편성 ≥1 → ok + 첫차·막차.
+ */
+export function classifyDirection(
   rows: unknown[],
   stationId: string,
-): { first: { time: string; nextDay?: true; terminus: string }; last: { time: string; nextDay?: true; terminus: string } } | null {
+): { outcome: TimetableLineCoverage; fl: FirstLast | null } {
+  let parsable = 0;
   const candidates = rows.flatMap((r) => {
     const o = r as ScheduleRow;
     const dep = o.depTime == null ? "" : String(o.depTime);
-    if (!/^\d{6}$/.test(dep)) return []; // 오염 행 가드
-    if (String(o.endSubwayStationId ?? "") === stationId) return []; // 당역 종착(탑승 불가)
+    if (!/^\d{6}$/.test(dep)) return []; // 파서가 못 읽은 행 — parsable에 세지 않는다
+    parsable += 1;
+    if (String(o.endSubwayStationId ?? "") === stationId) return []; // 당역 종착(탑승 불가, 읽기는 성공)
     const raw = Number(dep);
     const adjusted = raw < SERVICE_DAY_BOUNDARY ? raw + 240000 : raw;
     const train = {
@@ -88,9 +102,34 @@ export function deriveFirstLast(
     };
     return [{ adjusted, train }];
   });
-  if (candidates.length === 0) return null;
+  if (candidates.length === 0) return { outcome: parsable === 0 ? "unknown" : "noTrains", fl: null };
   candidates.sort((a, b) => a.adjusted - b.adjusted);
-  return { first: candidates[0].train, last: candidates[candidates.length - 1].train };
+  return { outcome: "ok", fl: { first: candidates[0].train, last: candidates[candidates.length - 1].train } };
+}
+
+/**
+ * 첫차·막차 산출(스펙 §1-A 계약). 서비스데이 정렬·당역종착 제외·행 유효성 가드·익일 판정.
+ * 편성이 없으면 null — 그 null이 unknown인지 noTrains인지는 `classifyDirection`이 가른다
+ * (`subway-service-hours`는 부재를 Map miss → unknown으로 읽으므로 이 시그니처로 충분하다).
+ */
+export function deriveFirstLast(rows: unknown[], stationId: string): FirstLast | null {
+  return classifyDirection(rows, stationId).fl;
+}
+
+/**
+ * 방향별 판정들을 노선 하나의 coverage로 결합한다(스펙 §2). 첫 매칭 우선순위이며
+ * **행 순서 자체가 불변식**이다: ok > unavailable > unknown > noTrains.
+ * 1은 사용자에게 유리한 쪽(한 방향이라도 타면 실제 시간표가 도달한다), 2·3이 4보다
+ * 먼저인 것은 단정 회피다 — noTrains는 "안 다닙니다"라는 확정 진술을 만들고
+ * unknown·unavailable은 만들지 않는다. 모르는 방향이 섞였는데 확정 쪽으로 결합하면
+ * 그 노선이 실제로 다닐 때 거짓이고, `judgeStationService`가 noTrains를 판정에
+ * 참여시키므로 "운행 종료, 첫차 X"까지 따라 나간다.
+ */
+export function combineLineCoverage(outcomes: readonly TimetableLineCoverage[]): TimetableLineCoverage {
+  if (outcomes.includes("ok")) return "ok";
+  if (outcomes.includes("unavailable")) return "unavailable";
+  if (outcomes.includes("unknown")) return "unknown";
+  return "noTrains";
 }
 
 /**
@@ -215,21 +254,21 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
     throw new Error("TAGO 시간표 전 호출 실패");
   }
 
-  const lines: TimetableLine[] = [];
-  matched.forEach((st, i) => {
+  // 매칭된 노선은 **전부** 실린다(키워드가 확인한 존재를 스케줄 0행이 부재로 뒤집지 않는다).
+  const lines: TimetableLine[] = matched.map((st, i) => {
     const directions: TimetableDirection[] = [];
+    const outcomes: TimetableLineCoverage[] = [];
     (["up", "down"] as const).forEach((direction, d) => {
       const r = settled[i * 2 + d];
-      if (r.status !== "fulfilled") return;
-      const fl = deriveFirstLast(r.value, st.id);
-      if (!fl) return; // 그 방향 유효 행 0 — 생략
-      directions.push({
-        direction,
-        first: withTerminusEn(fl.first),
-        last: withTerminusEn(fl.last),
-      });
+      if (r.status !== "fulfilled") {
+        outcomes.push("unavailable");
+        return;
+      }
+      const { outcome, fl } = classifyDirection(r.value, st.id);
+      outcomes.push(outcome);
+      if (fl) directions.push({ direction, first: withTerminusEn(fl.first), last: withTerminusEn(fl.last) });
     });
-    if (directions.length > 0) lines.push({ lineName: displayLineName(st.routeName), directions });
+    return { lineName: displayLineName(st.routeName), coverage: combineLineCoverage(outcomes), directions };
   });
 
   // 답한 다이어를 그대로 표기한다. 토요일 요청에 휴일 다이어로 답했는데
