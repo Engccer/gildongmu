@@ -81,6 +81,21 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 
 **URI(도메인) 식별**: 서버 fetch가 `Referer: https://gildongmu.vercel.app/`를 명시한다(IP 무관 — Vercel 가변 IP 해소). ⚠ ODsay 키는 발급 시점 플랫폼에 묶여 Server 키에 URI를 추가해도 referer 식별이 안 되므로 URI 전용 앱 키여야 한다.
 
+### 노선명 표기와 실시간 매핑 (`subwayLineCore` → `subwayIdForOdsayLine`)
+
+ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를 쓴다: 완행 `"수도권 9호선"`, 급행 `"수도권 9호선(급행)"`(실호출 2026-08-23). 그 이름은 두 곳으로 간다 — 화면 표시와, 서울 실시간 API의 `subwayId`를 찾는 매핑표(`ODSAY_SUBWAY_LINES`)다. `subwayLineCore`가 후자를 위해 `"수도권"` 접두와 구분자를 벗기는데, **여기에 `(급행)` 한 토큰 제거가 함께 있다.**
+
+양쪽으로 틀릴 수 있고 **두 실패가 사용자에게 같은 문장으로 도달한다**:
+
+- **안 벗기면**: 매핑 미스 → `subwayIdForOdsayLine`이 `null` → `classifyTrackMode`가 `null` → **급행 경로만 실시간 안내가 통째로 열리지 않는다**(2026-08-23까지의 실제 동작이자 A16 L1의 지배적 경로였다). 화면은 "추적할 수 없습니다"라고만 말해 정직한 미커버와 구분되지 않는다.
+- **넓게 벗기면**(`\(.*\)`): 공항철도 `"(직통)"`처럼 **실시간 도착 피드에 축이 아예 없는 등급**까지 매핑된다. 그러면 정직한 "미커버"가 **영원한 "미등장"**으로 바뀌는데, 그 침묵이 정확히 A16이 고치려는 증상이다.
+
+그래서 벗기는 것은 **실호출로 확인한 토큰 하나**여야 하고 앵커(`$`)로 **끝에 붙은 것만** 집는다. 웹 정본 ↔ Kit `TransitGuide.swift` 미러이고 양쪽 테스트가 ①`(급행)` 매핑 ②`(직통)` 비매핑 ③앵커 계약(`"수도권 (급행)9호선"` → null)을 못 박는다. **표시명은 급행 표기를 그대로 둔다** — 정규화는 매핑 축에만 건다.
+
+⚠ 이 계약이 조용히 무력화되는 유일한 경로는 **ODsay가 표기를 바꾸는 것**이라 실호출 게이트 `scripts/verify-odsay-express-lane.mjs`가 상설 관측한다.
+
+⚠ **급행 leg의 `passStopList`는 이미 급행 정차역만 담는다**(급행 13역 vs 완행 29역, `stationID`도 완행 일련번호를 건너뛴다). 경유역 목록·조망은 그대로 쓰면 되고, 별도 급행 정차역 데이터가 필요한 것은 **계획 leg와 다른 등급을 잠갔을 때**뿐이다(`docs/BACKLOG.md` A16 L1).
+
 ### 출발 시각 미반영 보정
 ⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존).
 
