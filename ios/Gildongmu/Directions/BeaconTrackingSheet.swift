@@ -37,7 +37,7 @@ struct BeaconTrackingSheet: View {
     let onCarWalkHandoff: (() -> Void)?
 
     @AccessibilityFocusState private var stopFocused: Bool
-    /// 접기 버튼(toolbar) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
+    /// 접기 버튼(헤더 행 우측 아이콘) 착지 — 띠바에서 돌아온 시트의 첫 착지(떠난 자리가 이 버튼이다).
     @AccessibilityFocusState private var minimizeFocused: Bool
     /// 도착 종료 화면의 도착 문장 착지(헌장 §5 — 도착 전이가 포커스를 쥔 컨트롤을
     /// 통째로 제거한다).
@@ -64,24 +64,10 @@ struct BeaconTrackingSheet: View {
     @AccessibilityFocusState private var healthSummaryFocused: Bool
 
     var body: some View {
-        // 접기 버튼은 행이 아니라 상단 우측 toolbar 아이콘이다(위원장 판정 2026-08-23 K1 —
-        // 한 행을 차지하면 매 진입마다 스와이프 비용). 시각 텍스트가 없는 아이콘이라
-        // `accessibilityLabel`이 정당하다. NavigationStack은 이 toolbar를 위해서만 있다.
-        NavigationStack {
-            sheetBody
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    if model.arrivalDest == nil {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button(action: onMinimize) {
-                                Image(systemName: "arrow.down.right.and.arrow.up.left")
-                            }
-                            .accessibilityLabel(appLocalized("guide.minimize"))
-                            .accessibilityFocused($minimizeFocused)
-                        }
-                    }
-                }
-        }
+        // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측의 작은 아이콘이다(위원장 판정 2026-08-23 —
+        // 한 행을 차지하지 않고, 빈 내비게이션 바도 두지 않는다). GuideTitleMenu가 배치·라벨·
+        // 착지 바인딩을 들고, 도착 화면에서는 헤더에 붙이지 않는다.
+        sheetBody
     }
 
     private var sheetBody: some View {
@@ -223,7 +209,11 @@ struct BeaconTrackingSheet: View {
                     ),
                     label: model.destinationLabel,
                     onShowDetail: { showPlaceDetail = true },
-                    onChangeDestination: { changeDestPresented = true })
+                    onChangeDestination: { changeDestPresented = true }
+                ) {
+                    GuideMinimizeButton(action: onMinimize)
+                        .accessibilityFocused($minimizeFocused)
+                }
             }
             }
         }
