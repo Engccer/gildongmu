@@ -99,10 +99,12 @@ struct StationSectionsView: View {
                 Text(joinText(
                     dailyTypeLabel(timetable.dailyType),
                     timetable.partial == true ? appLocalized("timetable.partial") : nil))
-                if timetable.lines.isEmpty {
-                    Text(appLocalized("timetable.empty"))
-                } else {
-                    ForEach(timetable.lines, id: \.lineName) { line in
+                // 매칭된 노선은 전부 온다(A19). ok만 방향 행이고 나머지는 왜 없는지를 노선명과 함께
+                // 한 줄로 — "확인 불가"·"편성 없음"·"조회 실패"가 같은 문장이면 SR 사용자가 못 가른다.
+                ForEach(timetable.lines, id: \.lineName) { line in
+                    if let text = coverageText(line) {
+                        Text(text)
+                    } else {
                         ForEach(line.directions, id: \.direction) { direction in
                             // 한 줄=한 객체: 노선·방향·첫차·막차를 단일 텍스트로(웹 StationTimetable.tsx 미러)
                             Text(joinText(
@@ -210,6 +212,19 @@ struct StationSectionsView: View {
 
     /// 첫차·막차 한 편성의 표시 텍스트("00:42 왕십리행"·익일 접두·en 종착지 폴백).
     /// 웹 StationTimetable.tsx의 train() 함수를 그대로 미러.
+    /// 방향 행 대신 낼 coverage 문구. nil이면 방향 행을 그린다(coverage "ok").
+    /// 구서버(coverage 없음)는 directions 빈 노선을 보내지 않지만, 혹시 그 조합이 오면
+    /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
+    private func coverageText(_ line: TimetableLine) -> String? {
+        let coverage = line.coverage ?? (line.directions.isEmpty ? "unknown" : "ok")
+        switch coverage {
+        case "ok": return nil
+        case "noTrains": return appLocalized("timetable.coverage.noTrains", line.lineName)
+        case "unavailable": return appLocalized("timetable.coverage.unavailable", line.lineName)
+        default: return appLocalized("timetable.coverage.unknown", line.lineName)
+        }
+    }
+
     private func trainText(_ train: TimetableTrain) -> String {
         let time = train.nextDay == true
             ? "\(appLocalized("timetable.nextDay")) \(train.time)"

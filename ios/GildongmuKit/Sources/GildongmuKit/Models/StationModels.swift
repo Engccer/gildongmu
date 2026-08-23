@@ -126,10 +126,13 @@ public struct TimetableDirection: Codable, Sendable, Hashable {
     public let last: TimetableTrain
 }
 
-/// 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다).
+/// 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다). 매칭된 노선은 coverage와 무관하게 전부 실린다(A19).
 public struct TimetableLine: Codable, Sendable, Hashable {
     /// 노선 표시명(예 "5호선"·"수인분당선")
     public let lineName: String
+    /// "ok"/"noTrains"/"unknown"/"unavailable" — ok만 directions가 비지 않는다(웹 TimetableLineCoverage 미러).
+    /// 옵셔널인 이유: 웹 배포가 앱보다 먼저라 구서버 응답엔 이 필드가 없다(그때 directions 빈 노선은 오지 않는다).
+    public let coverage: String?
     public let directions: [TimetableDirection]
 }
 
