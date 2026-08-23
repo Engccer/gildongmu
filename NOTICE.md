@@ -16,6 +16,7 @@
 | `src/lib/providers/data/congestion-areas.json` | 서울 실시간 도시데이터 영역의 구성 지점 좌표 | 서울특별시, 서울 열린데이터광장 실시간 도시데이터(OA-21285) | 공공누리 제1유형(출처표시) | `scripts/build-congestion-areas.mjs` |
 | `src/lib/data/subway-stations.json` | 전국 도시철도역 좌표·노선 | 국가철도공단, 공공데이터포털 전국도시철도역사정보표준데이터 [15013205](https://www.data.go.kr/data/15013205/standard.do)(제공 형태가 "기관 자체 다운로드"라 파일 자체는 레일포털 data.kric.go.kr `detail.do?id=32`에서 받는다. 두 페이지는 같은 데이터셋이며 공공데이터포털이 등록 정본) | 이용허락범위 제한 없음·무료(공공데이터포털 표기, 2026-08-17 확인). ⚠ 레일포털 자체 이용약관에는 데이터셋별 라이선스 표기가 없고 "포털 사전 승낙 없는 영리행위 금지"(제15조②) 조항이 있으나 이는 포털 회원 서비스 조항이고, 데이터의 이용조건은 공공데이터포털 등록 조건(제한 없음)이 정본이다 | `scripts/build-subway-stations.py` |
 | `src/lib/data/subway-quick-exit.json` | 서울 지하철 1~8호선 빠른하차 칸·문 | 서울교통공사, 공공데이터포털 [15143840](https://www.data.go.kr/data/15143840/openapi.do) | 이용허락범위 제한 없음 | `scripts/build-subway-quick-exit.mjs` |
+| `src/lib/data/crosswalks.json` | 전국 횡단보도 위치·차로 수·연장 | 지방자치단체(소관 국토교통부·경찰청), 공공데이터포털 전국횡단보도표준데이터 [15028201](https://www.data.go.kr/data/15028201/standard.do) | 이용허락범위 제한 없음·무료(공공데이터포털 파일데이터 탭 표기, 2026-08-23 확인) | `scripts/build-crosswalk-seed.mjs` |
 | `src/lib/providers/data/tago-cities.json` | TAGO 버스 도시코드 목록 | 국토교통부, 공공데이터포털 [15098534](https://www.data.go.kr/data/15098534/openapi.do) | 이용허락범위 제한 없음 | `scripts/build-tago-cities.mjs` |
 
 ⚠ **OSM 파생 파일을 공공데이터 파일과 한 파일로 병합하지 말 것.** 병합본은 ODbL상 파생 데이터베이스가 되어 공공데이터 쪽 조건과 충돌한다. 두 계열은 런타임에서만 합친다.
