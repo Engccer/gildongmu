@@ -14,9 +14,15 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
 
+// 하한 가드: 경로·규약이 바뀌어 스캔이 통째로 빗나가면 참조 0건·누락 0건으로
+// exit 0이 되어 **무력화된 게이트가 통과와 구분되지 않는다**. 현 실측치의 절반
+// 수준으로 잡아 정상적인 증감에는 걸리지 않게 한다(측정 2026-08-23: app 953참조·
+// 1170키, kit 57참조·109키). dodo `LocalizedKeyDriftTests`의 동형 가드 역이식.
 const CHECKS = [
   {
     name: 'app',
+    minReferenced: 450,
+    minCatalogKeys: 550,
     sourceDirs: [path.join(REPO_ROOT, 'ios', 'Gildongmu')],
     catalog: path.join(REPO_ROOT, 'ios', 'Gildongmu', 'Resources', 'Localizable.xcstrings'),
     patterns: [
@@ -26,6 +32,8 @@ const CHECKS = [
   },
   {
     name: 'kit',
+    minReferenced: 25,
+    minCatalogKeys: 50,
     sourceDirs: [path.join(REPO_ROOT, 'ios', 'GildongmuKit', 'Sources')],
     catalog: path.join(
       REPO_ROOT, 'ios', 'GildongmuKit', 'Sources', 'GildongmuKit', 'Resources', 'Localizable.xcstrings'
@@ -70,6 +78,18 @@ for (const check of CHECKS) {
   }
 
   console.log(`[${check.name}] 참조 ${referenced}건, 카탈로그 ${catalogKeys.size}키`);
+  if (referenced < check.minReferenced) {
+    failed = true;
+    console.error(
+      `[${check.name}] 참조 ${referenced}건 < 하한 ${check.minReferenced}건 — 스캔이 빗나갔다(경로·호출 규약 변경 의심). 대조가 성립하지 않으므로 통과로 치지 않는다.`
+    );
+  }
+  if (catalogKeys.size < check.minCatalogKeys) {
+    failed = true;
+    console.error(
+      `[${check.name}] 카탈로그 ${catalogKeys.size}키 < 하한 ${check.minCatalogKeys}키 — 카탈로그를 잘못 읽었다(경로·구조 변경 의심).`
+    );
+  }
   if (missing.length > 0) {
     failed = true;
     console.error(`[${check.name}] 카탈로그에 없는 키 ${missing.length}건:`);

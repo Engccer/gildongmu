@@ -29,6 +29,14 @@ import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../
  *
  * 캐시: revalidate 3600(보행 경로는 준정적). 좌표는 4자리 반올림으로 캐시 키
  * 안정화(`roundCoord`, route_mode가 URL에 포함되어 모드별 캐시가 자연 분리).
+ *
+ * ⚠ **accessible 요청만은 반올림하지 않는다**(dodo 역이식 2026-08-23, codex 적대적
+ * 리뷰 ②): 반올림은 캐시 키만 바꾸는 것이 아니라 **upstream에 보내는 좌표 자체**를
+ * 바꾼다. 4자리 격자는 약 11m인데 지하철 출입구 두 개가 같은 셀에 들어가고, 그
+ * 단위가 곧 계단 유무가 갈리는 단위다 — 계단 회피를 켠 사용자에게 다른 출입구
+ * 경로를 주면 토글이 무의미해진다. `roundCoord`가 스스로 정한 적용 기준("반올림
+ * 오차가 결과를 못 바꾸는 곳에만")을 이 분기만 만족하지 못한다. 카카오 도보는
+ * 무과금이라 히트율 하락 비용이 사실상 0이다.
  */
 
 const ENDPOINT = "https://dapi.kakao.com/v2/routing/walk";
@@ -165,14 +173,16 @@ export async function getKakaoWalkBriefing(params: {
 }): Promise<WalkRouteBriefing | null> {
   const { origin, dest, accessible, via, noStore } = params;
   const url = new URL(ENDPOINT);
-  url.searchParams.set("start_x", String(roundCoord(origin.lng, 4)));
-  url.searchParams.set("start_y", String(roundCoord(origin.lat, 4)));
-  url.searchParams.set("end_x", String(roundCoord(dest.lng, 4)));
-  url.searchParams.set("end_y", String(roundCoord(dest.lat, 4)));
+  // 계단 회피는 정확도가 안전과 직결하므로 원좌표 그대로(위 헤더 주석).
+  const c = (v: number) => (accessible ? String(v) : roundCoord(v, 4));
+  url.searchParams.set("start_x", c(origin.lng));
+  url.searchParams.set("start_y", c(origin.lat));
+  url.searchParams.set("end_x", c(dest.lng));
+  url.searchParams.set("end_y", c(dest.lat));
   if (accessible) url.searchParams.set("route_mode", "ACCESSIBLE");
   if (via) {
-    url.searchParams.set("via_x", String(roundCoord(via.lng, 4)));
-    url.searchParams.set("via_y", String(roundCoord(via.lat, 4)));
+    url.searchParams.set("via_x", c(via.lng));
+    url.searchParams.set("via_y", c(via.lat));
   }
   const res = await fetch(url, {
     headers: { Authorization: `KakaoAK ${env.KAKAO_REST_API_KEY ?? ""}` },
