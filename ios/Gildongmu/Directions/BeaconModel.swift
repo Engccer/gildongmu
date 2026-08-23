@@ -747,6 +747,8 @@ final class BeaconModel {
             originLat: origin.lat, originLng: origin.lng,
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
+            // 안내 문장 언어(E16 축3) — 기본값 없는 인자라 새 조회 경로가 빠뜨리면 컴파일이 막는다.
+            lang: AppLanguage.dataLocale == "ko" ? "ko" : "en",
             includeGeometry: true,
             variant: variant, via: via
         )

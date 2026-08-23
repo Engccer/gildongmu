@@ -384,15 +384,14 @@ final class DirectionsModel {
         let dest = promoted.map { (lat: $0.lat, lng: $0.lng) } ?? queried
         lastCoords = (origin: origin, dest: dest, via: viaCoord)
 
-        // 3수단 병렬. 도보는 앱 언어 ko 전용(웹 prefersEnglish 분기 동형, 조회 자체 생략).
-        let includeWalk = AppLanguage.current == "ko"
+        // 3수단 병렬. 도보의 ko 전용 게이트는 E16 축3으로 사라졌다 — 서버가 en 문장을 만든다.
         let lang = AppLanguage.dataLocale
         let service = self.service
         let accessible = stepFreeEnabled
         // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원 — 서버 spec §2.1).
         // "경로 없음"이 아니라 "미지원"이라 별도 상태로 섹션에 사유를 남긴다.
         async let transitSettled = Self.settleTransit(service, include: viaCoord == nil, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: includeWalk, origin: origin, dest: dest, accessible: accessible, via: viaCoord)
+        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: lang, via: viaCoord)
         async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang, via: viaCoord)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }
@@ -455,7 +454,9 @@ final class DirectionsModel {
     ) async {
         let service = self.service
         let accessible = stepFreeEnabled
-        let settled = await Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, via: via)
+        let settled = await Self.settleWalk(
+            service, include: true, origin: origin, dest: dest, accessible: accessible,
+            lang: AppLanguage.dataLocale, via: via)
         guard !Task.isCancelled, let settled, let current = results else { return }
         // lastCoords는 이미 커버리지 검증을 통과한 좌표라 재조회에서 서버 마커가 다시
         // 뜰 일은 사실상 없다 — 그래도 도달 시 화면 전체 전환 대신 도보 오류로 안내한다
@@ -509,7 +510,7 @@ final class DirectionsModel {
 
     nonisolated private static func settleWalk(
         _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
-        accessible: Bool, via: (lat: Double, lng: Double)?
+        accessible: Bool, lang: String, via: (lat: Double, lng: Double)?
     ) async -> Result<(result: WalkRouteBriefing?, shortest: WalkRouteBriefing?), any Error>? {
         guard include else { return nil }
         do {
@@ -518,7 +519,7 @@ final class DirectionsModel {
                 // 던지고(.failure), 최단 실패만 shortest nil로 흡수된다(spec §3.1).
                 try await service.walkAlternatives(
                     originLat: origin.lat, originLng: origin.lng, destLat: dest.lat, destLng: dest.lng,
-                    accessible: accessible, via: via)
+                    accessible: accessible, lang: lang, via: via)
             })
         } catch { return .failure(error) }
     }
@@ -781,7 +782,11 @@ struct DirectionsTabView: View {
                             // 무관하게 섹션이 보이면 노출). 켬/끔 낭독이 상태 신호이고,
                             // 재조회 중엔 라벨에 "조회 중"을 병기한다(웹 aria-busy 대응 —
                             // 방금 조작한 요소가 스스로 진행을 확인시키는 라벨 전환 관례).
-                            if mode == .walk {
+                            // ⚠ 계단 회피는 카카오 전용 축이라 en(Tmap 단독)에서는 항상
+                            // unavailable이다 — 적용될 수 없는 옵션을 켜게 두고 조회 뒤에야
+                            // 못 했다고 말하면 SR 사용자는 그 사이 적용됐다고 믿는다
+                            // (spec 2026-08-23-non-ko-walk-guidance-design.md §4.7).
+                            if mode == .walk, AppLanguage.dataLocale == "ko" {
                                 Toggle(stepFreeToggleText, isOn: Binding(
                                     get: { model.stepFreeEnabled },
                                     set: { _ in model.toggleStepFree() }
@@ -879,11 +884,11 @@ struct DirectionsTabView: View {
             }
             // 이미 허용된 세션이면 진입 시 조용히 현재 위치 주소를 병기(권한 팝업 없음).
             .task {
-                // 도보 안내 공지(spec §5.2 — 미확인 ∧ 한국어). 조회를 기다리지 않고
-                // 탭 진입 즉시 판정한다. 한국어 전용인 이유는 도보 안내 자체가
-                // `walkGuideStartable`의 ko 게이트 안에만 존재하기 때문이다 — 다른
-                // 언어 사용자에게 띄우면 없는 기능을 설명하는 공지가 된다.
-                if !WalkGuideNotice.confirmed, AppLanguage.dataLocale == "ko" {
+                // 도보 안내 공지(spec §5.2 — 미확인). 조회를 기다리지 않고 탭 진입 즉시
+                // 판정한다. 종전의 ko 조건은 도보 안내가 ko 전용이던 시절의 것이라
+                // E16 축3과 함께 사라졌다 — 이제 전 로케일에서 시작할 수 있으므로
+                // 공지도 전 로케일에서 필요하다.
+                if !WalkGuideNotice.confirmed {
                     walkNoticePresented = true
                 }
                 consumeGuideFormSync()
@@ -1053,11 +1058,11 @@ struct DirectionsTabView: View {
         }
     }
 
-    /// 수단별 안내 시작 게이트(B1 §3.1). 도보 = 경로 성공 ∧ ko, 자동차 = 경로 성공
-    /// ∧ ko ∧ provider tmap(카카오 폴백은 기하 미지원 — 누르자마자 강등되는 죽은
-    /// 버튼을 판별자가 사전 차단). 대중교통 버튼은 B2 전까지 만들지 않는다.
+    /// 수단별 안내 시작 게이트(B1 §3.1). 도보 = 경로 성공(E16 축3으로 ko 조건이 사라졌다 —
+    /// 서버가 Tmap 구조화 필드에서 en 문장을 만든다), 자동차 = 경로 성공 ∧ ko ∧ provider tmap
+    /// (카카오 폴백은 기하 미지원 — 누르자마자 강등되는 죽은 버튼을 판별자가 사전 차단).
     private var walkGuideStartable: Bool {
-        guard AppLanguage.dataLocale == "ko", let results = model.results,
+        guard let results = model.results,
               case .walk = results.outcomes[.walk] else { return false }
         return true
     }
