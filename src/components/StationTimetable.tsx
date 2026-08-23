@@ -54,6 +54,8 @@ export function StationTimetable({ stationName }: { stationName: string }) {
   if (status.kind === "hidden") return null;
 
   const isEn = prefersEnglish(locale);
+  // 계약 밖 값(미래 추가·서버 선행)은 가장 덜 단정적인 "확인 불가"로(iOS coverageText 동형).
+  const coverageKey = (c: string) => (c === "unavailable" || c === "noTrains" ? c : "unknown");
   const train = (v: TimetableTrain) => {
     const time = v.nextDay ? `${t("nextDay")} ${v.time}` : v.time;
     const terminus = isEn && v.terminusEn ? v.terminusEn : v.terminus;
@@ -92,7 +94,7 @@ export function StationTimetable({ stationName }: { stationName: string }) {
                   </p>
                 ))
               ) : (
-                <p key={line.lineName}>{t(`coverage.${line.coverage}`, { line: line.lineName })}</p>
+                <p key={line.lineName}>{t(`coverage.${coverageKey(line.coverage)}`, { line: line.lineName })}</p>
               ),
             )}
           </div>

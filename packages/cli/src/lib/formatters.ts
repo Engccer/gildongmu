@@ -751,7 +751,8 @@ function formatStationTimetable(body: { timetable: StationTimetableItem | null }
   ];
   for (const line of tt.lines) {
     if (line.coverage !== "ok") {
-      lines.push(COVERAGE_KO[line.coverage](line.lineName));
+      // 계약 밖 값(서버가 CLI 발행본보다 앞설 때)은 "확인 불가"로(웹·iOS 동형)
+      lines.push((COVERAGE_KO[line.coverage] ?? COVERAGE_KO.unknown)(line.lineName));
       continue;
     }
     for (const d of line.directions) {
