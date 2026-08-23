@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "étape en cours",
     "overviewLegUpcoming": "à venir",
     "overviewStopsUnavailable": "Liste des arrêts indisponible.",
-    "viewAlternatives": "Voir d’autres itinéraires"
+    "viewAlternatives": "Voir d’autres itinéraires",
+    "surroundingsAnchorAlight": "Autour de votre arrêt, {name}",
+    "surroundingsAnchorCurrent": "Autour de la station actuelle, {name}"
   },
   "manualLocation": {
     "gps": "Position actuelle",

@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "tratta attuale",
     "overviewLegUpcoming": "successiva",
     "overviewStopsUnavailable": "Elenco fermate non disponibile.",
-    "viewAlternatives": "Vedi altri percorsi"
+    "viewAlternatives": "Vedi altri percorsi",
+    "surroundingsAnchorAlight": "Intorno alla tua fermata, {name}",
+    "surroundingsAnchorCurrent": "Intorno alla stazione attuale, {name}"
   },
   "manualLocation": {
     "gps": "Posizione attuale",

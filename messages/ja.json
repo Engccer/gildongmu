@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "現在の区間",
     "overviewLegUpcoming": "予定",
     "overviewStopsUnavailable": "停車駅の情報がありません。",
-    "viewAlternatives": "ほかの経路を見る"
+    "viewAlternatives": "ほかの経路を見る",
+    "surroundingsAnchorAlight": "降車駅 {name} の周辺",
+    "surroundingsAnchorCurrent": "現在駅 {name} の周辺"
   },
   "manualLocation": {
     "gps": "現在地",
