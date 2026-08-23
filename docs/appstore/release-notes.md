@@ -12,36 +12,53 @@
 
 ---
 
-## 1.12 (빌드 19)
+## 1.12 (빌드 20)
 
-기준은 1.11 아카이브 커밋 `f312a39`(빌드 18)이며 그 이후 `ios/` 커밋 22건을 판정했다(초안 2026-08-23 오전 20건 + 같은 날 접기 아이콘 행 이동·안내 종료 하단 고정 2건). Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+기준은 1.11 아카이브 커밋 `f312a39`(빌드 18)이며 그 이후 `ios/` 커밋 39건을 판정했다(빌드 19 초안 시점 22건 + 빌드 19가 1.11 심사 중 409로 제출되지 못한 사이 들어온 17건). 빌드 19는 제출되지 않은 채 폐기하고 빌드 20으로 다시 올린다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
 
 포함 판정:
 
 | 기능 | 커밋 | 노트 |
 |---|---|---|
-| 띠바를 탭 바 위로(1.11은 띠바가 탭 바를 덮어 탭 바가 화면·VoiceOver에서 사라졌다) + 안내 시트 접기 버튼(K1, 제목 행 우측 아이콘) + 안내 종료 최하단 고정 | `a44b834`·`43c0a72`·`e3a556d`·`13b6b31` | ko만 |
-| 받아쓰기 중 안내 음성 억제(K1 ④) | `a44b834`·`43c0a72` | ko만 |
+| **도보 상세 경로·실시간 도보 안내가 비한국어 로케일에 개방**(E16 축3 — `includeWalk`·`walkGuideStartable`·도보 안내 공지의 `dataLocale == "ko"` 가드 삭제, 서버가 Tmap 구조화 필드에서 en 문장 생성) | `823e9df`·`9b2e0f4`·`0f2b283` | **en만**(ko는 무변화). 1.11 en 노트가 "driving route"로 한정했던 경유지도 도보에 적용된다 |
+| 띠바를 탭 바 위로 + 안내 시트 접기 버튼 + 안내 종료 최하단 고정(K1) | `a44b834`·`43c0a72`·`e3a556d`·`13b6b31` | ko·**en**(도보 안내가 en에 열려 이 화면도 en 사용자가 처음 본다 — 1.11까지의 "ko만" 근거가 E16으로 사라졌다) |
+| 받아쓰기 중 안내 음성 억제(K1 ④) | `a44b834`·`43c0a72` | ko·en(같은 근거) |
+| 도보 안내 강등 사유 3-state — 위치 확인 불가·제공 지역 밖·경로 조회 실패를 가려 통지(E16 축2) | `559e08a`·`dd83501` | ko·en |
+| 역 첫차·막차 노선별 coverage 문구 — 편성 없음·확인 불가·조회 실패 분리, 0행 노선 탈락 없음(A19) | `ced5a98` | ko·en |
+| 계단 회피 토글 라벨 "계단 없는 경로" → "계단 회피 경로" + 원좌표 조회 | `eb16b35`·`606d5c7` | **ko만**(비-ko는 토글 자체를 노출하지 않는다 — `DirectionsTabView.swift:793`) |
+| AI 채팅 follow-up 질문 칩(K4) | `99461f8` | ko·en |
 | 한눈에 보기 식당·카페 분리 6불릿 + 불릿 문장형 | `9acfe16` | ko·en |
-| AI 채팅 도구 확장 — 역 첫차·막차, 무장애 편의시설 상세, 현재 위치 정위, 한눈에 보기, 지명 기준 주변 조회, 경유지 길찾기(K3) | `38cbab4`·`47b249f`·`c9adb75`·`5e31a64` | ko·en (서버 변경이라 1.11에도 이미 도달했지만 앱 채팅 화면에서 처음 보이는 능력이라 포함 — "서버 판정과 앱 UI가 짝인 기능" 규칙) |
+| AI 채팅 도구 확장 — 역 첫차·막차, 무장애 편의시설 상세, 현재 위치 정위, 한눈에 보기, 지명 기준 주변 조회, 경유지 길찾기(K3) | `38cbab4`·`47b249f`·`c9adb75`·`5e31a64` | ko·en("서버 판정과 앱 UI가 짝인 기능" 규칙) |
 
 제외 근거:
 
 - **자동차 실시간 안내 완성**(K2 `48f2586`·`fc9fb94` 등): `AppConfig.experimentalGuidanceEnabled` 봉인 안. B1 실주행 판정 뒤 졸업.
-- **대중교통 진행 상황 조망·다른 경로**(E15-1 `6d58e1e`·`b737a70` 등): 대중교통 세션 자체가 봉인 안. 도보 조망 이관(`6b47d07`)은 동작 변경 0.
+- **대중교통 진행 상황 조망·다른 경로·주변 확인·급행 노선 매핑**(E15-1 `6d58e1e`·`b737a70`, E15-2 `95ec44c`, A16 `caaa1f3`): 대중교통 세션 자체가 봉인 안. 도보 조망 이관(`6b47d07`)은 동작 변경 0.
 - **탭 순서·기본 탭 변경**(K1): `AppConfig.experimentalTabOrderEnabled`로 실험판만. 정식판은 종전 순서·채팅 첫 탭.
+- **Kit `isInKorea` 국경 폴리곤 승격**(E19 `1f13f75`·`2b0a80b`·`ab79205`): 한국 밖 국경 인접 좌표(후쿠오카·대마도)에서 거짓 "0건"이 정직한 "제공 지역 밖"이 되는 교정이다. 그 좌표에 있는 사용자에게만 보이고 기능이 늘지 않아 노트에는 적지 않는다.
+- **한눈에 보기 장소 카드 복원·계단식 캡**(K4 `99461f8`의 서버 분): 서버 변경이라 1.11 사용자에게 이미 반영됐다. iOS 쪽은 칩뿐.
 - **웹 둘러보기 이식**(B9 `487e02a`): iOS 쪽 변경은 죽은 키 삭제뿐.
-- 문서·테스트·생성물 커밋 전량.
+- 문서·테스트·생성물·린터 커밋 전량.
 
-⚠ **K1 항목은 ko 노트에만 적는다.** 띠바·접기 버튼·받아쓰기 억제는 안내 세션이 살아 있을 때만 존재하고 정식판 안내는 도보(`walkGuideStartable`, `dataLocale == "ko"`)뿐이다(1.11과 같은 근거).
+⚠ **계단 회피 라벨은 ko 노트에만 적는다.** 비-ko에는 Tmap 단독이라 회피 축이 없어 토글을 노출하지 않는다.
+
+⚠ **en 노트는 도보 안내를 "새로운 기능"으로 적는다.** en 사용자에게는 1.11까지 도보 경로 조회 자체가 없었으므로(`includeWalk = AppLanguage.current == "ko"`), 1.7~1.11 ko 노트에 나눠 실린 안내 기능(백그라운드·임박 큐·띠바·접기·경유지 도착)을 하나의 새 기능으로 묶는다. 단 en 도보 낭독의 실사용 판정은 미완이다(`docs/BACKLOG.md` E16 축3 항목) — 노트는 동작 서술에 그친다.
+
+심사 노트는 이번 버전에서 **갱신한다**(`--review-notes`). 백그라운드 절의 "Walking guidance is available in Korean only"가 E16 축3으로 거짓이 됐다(`1.0-submission-draft.md` §9).
 
 ### ko
 
 ```
+새로운 기능
+- AI 채팅 답변 아래에 이어서 물어볼 만한 질문을 제안합니다. 누르면 그 질문이 바로 전송됩니다.
+
 개선
 - 안내 화면을 내렸을 때 남는 줄이 탭 바를 가리던 문제를 고쳤습니다. 이제 줄은 탭 바 바로 위에 놓이고, 목적지 제목 오른쪽의 "안내 시트 접기" 버튼으로도 안내 화면을 내릴 수 있습니다.
 - 안내 화면의 "안내 종료" 버튼을 화면 맨 아래로 옮겼습니다. VoiceOver에서는 네 손가락으로 화면 아래쪽을 한 번 탭하면 바로 닿습니다.
 - 안내 중에 받아쓰기를 켜면 받아쓰는 동안 안내 음성이 나오지 않습니다.
+- 도보 안내가 상세 경로 없이 목적지 방향과 거리만으로 안내할 때 그 이유를 알려 드립니다. 현재 위치를 확인하지 못했는지, 제공 지역 밖인지, 경로를 불러오지 못했는지를 구분합니다.
+- 도보 길찾기의 "계단 없는 경로" 옵션 이름을 "계단 회피 경로"로 바꿨습니다. 계단을 피하는 경로를 우선 찾되 계단이 전혀 없다고 보장할 수는 없기 때문입니다. 이 옵션을 켠 조회는 더 정밀한 좌표로 보내, 출입구가 가까이 붙은 지하철역에서 계단 유무가 뒤바뀌지 않게 했습니다.
+- 역 정보의 첫차·막차에서 노선마다 상황을 구분해 알려 드립니다. "오늘 탑승할 수 있는 편성이 없습니다", "오늘 시간표를 확인할 수 없습니다", "시간표를 불러오지 못했습니다"가 서로 다른 문장으로 나오고, 노선이 목록에서 빠지지 않습니다.
 - "내 주변" 둘러보기의 한눈에 보기에서 식당과 카페를 따로 읽고, 각 항목을 문장으로 알려 드립니다.
 - AI 채팅이 더 많은 것을 답합니다. 역 첫차·막차 시각, 무장애 관광지의 편의시설 상세, 지금 있는 곳 설명과 한눈에 보기를 물어볼 수 있고, "강남역 주변 소아과"처럼 지명을 기준으로 주변을 묻거나 경유지를 넣은 길찾기를 부탁할 수 있습니다.
 ```
@@ -49,7 +66,13 @@
 ### en
 
 ```
+New
+- Walking directions and real-time walking guidance are now available in English; until now they were Korean only. Look up a route in the Directions tab to read the step-by-step briefing, then start guidance from the walking section. Upcoming turns and crossings are spoken and signaled with distinct sounds, the session keeps running with the screen locked, and if you added a waypoint you are told when you reach it. Lower the guidance screen to keep using other tabs: a strip above the tab bar shows the remaining distance, and its "Expand guidance sheet" button brings the screen back. Dictation pauses guidance speech while you speak.
+- AI chat suggests follow-up questions under each answer. Tap one to send it.
+
 Improved
+- When walking guidance has to fall back to direction and distance only, it tells you why: your location could not be determined, you are outside the service area, or the route could not be loaded.
+- Station first and last train times now distinguish each line's situation: "no boardable trains today", "today's timetable couldn't be confirmed", and "timetable couldn't be loaded" are separate messages, and no line is dropped from the list.
 - In "Look around", the at-a-glance summary now lists restaurants and cafes separately and reads each item as a sentence.
 - AI chat answers more: first and last train times at a station, accessibility facility details for barrier-free attractions, a description of where you are with an at-a-glance summary, nearby searches around a named place, and directions with a waypoint.
 ```
