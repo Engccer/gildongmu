@@ -7,6 +7,7 @@
  */
 
 import type { CarAction } from "./car-action";
+import type { GuideAction } from "./walk-action";
 import type { CompassDirection } from "./geo/bearing";
 import type { FinalApproachGeometry } from "./final-approach";
 
@@ -435,6 +436,18 @@ export interface WalkRouteStep {
    * 한국어 문장을 재파싱해 얻지 않는다(재조합 금지 계약의 연장).
    */
   live?: { target?: string; anchor?: string };
+  /**
+   * 결정 지점 행동(**서버 투영**, E16 축3 spec `2026-08-23-non-ko-walk-guidance-design.md` §4.2.1).
+   * `attachStepActions`가 전량 채운다: Tmap 스텝은 `turnType` 표에서, 카카오 스텝은 주석까지
+   * 끝난 최종 문장을 `walkStepAction`에 태워서. 리듀서는 이 필드만 본다(`actionSource: "step"`)
+   * — 클라이언트 문자열 폴백을 두면 구조화의 "의도된 행동 없음"과 미투영을 구별하지 못한다.
+   * `live`와 같은 게이트로 `includeGeometry=1` 응답에만 실린다.
+   */
+  action?: GuideAction;
+  /** Tmap 회전 유형 코드. en 문장 조립용 **내부 전달** — `attachStepActions`가 응답 전 제거한다. */
+  turnType?: number;
+  /** 첫 LineString의 도로명(ko). en 로마자 조회 키 — 응답 전 제거된다. */
+  roadNameKo?: string;
 }
 
 /** 계단 회피(accessible) 요청 결과 상태 — accessible 요청 시에만 존재. */
