@@ -140,6 +140,7 @@ spec `2026-08-07-directions-view-restructure-design.md`·`2026-08-01-odsay-servi
 **역은 어떤 상태에서도 목록에서 빼지 않고 4-state로 가른다**: `ok` / `unavailable`(조회 실패) / `closed`(그 역 시간표로 운행 밖 확정, `firstTime` 동반) / `unknown`(판정 불가 — 미제공 역이거나 시간표 결측).
 
 - 판정은 `judgeStationService`(순수)가 `fetchStationTimetable`+`judgeServiceStatus`로 하고 **실시간이 빈 역에만** 조인한다(평시 0콜, 시간표는 revalidate 86400).
+- **`closed` 단정은 시간표 `lines[].coverage`가 `ok`·`noTrains`인 노선만 참여하는 allowlist다**(A19, 2026-08-23): `unknown`(업스트림 0행)·`unavailable`·미지 값이 하나라도 섞이면 판정 불가(`closed:false`). 대가 — 0행 노선이 있는 역(홍대입구·강남·서울역)은 심야 "운행 종료, 첫차 X"가 나가지 않는다. 거짓 확정보다 침묵이 덜 해로워 택한 교환이지 회귀가 아니다.
 - ⚠ **시각 근사(01~05시)로 가르지 말 것** — 같은 04:47에 천호 `closed`·강동 `ok`(첫차 대기 열차)가 공존한 실측이 있다.
 
 ### 순환선(2호선)은 방향·종착 두 필드가 모두 다르게 동작한다

@@ -139,7 +139,8 @@ try {
   check("provider 번들 로드", false, String(e).slice(0, 160));
 }
 
-if (fetchStationTimetable) {
+try {
+  if (fetchStationTimetable) {
   for (const station of ["강남역", "홍대입구역", "서울역"]) {
     let tt;
     try {
@@ -175,6 +176,11 @@ if (fetchStationTimetable) {
       tt.lines.map((l) => `${l.lineName}=${l.coverage ?? "(없음)"}`).join(", "),
     );
     check(
+      `${station}: lineName이 유일하다(iOS ForEach id·표시 경계 — 전 매칭 노선이 실리므로)`,
+      new Set(tt.lines.map((l) => l.lineName)).size === tt.lines.length,
+      tt.lines.map((l) => l.lineName).join(", "),
+    );
+    check(
       `${station}: directions가 비지 않는 것은 coverage="ok"인 노선뿐`,
       tt.lines.every((l) => (l.directions.length > 0) === (l.coverage === "ok")),
       tt.lines.map((l) => `${l.lineName}:${l.coverage}/${l.directions.length}`).join(", "),
@@ -189,8 +195,10 @@ if (fetchStationTimetable) {
       console.log(`    - ${l.lineName}: coverage=${l.coverage} — ${detail}`);
     }
   }
+  }
+} finally {
+  rmSync(workDir, { recursive: true, force: true });
 }
-rmSync(workDir, { recursive: true, force: true });
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n${results.length - failed.length}/${results.length} PASS`);
