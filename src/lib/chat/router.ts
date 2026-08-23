@@ -416,7 +416,8 @@ export async function executeFunction(
     case "get_station_timetable": {
       const stationName = String(args.stationName ?? "");
       if (!stationName) return { data: { error: "역 이름이 필요합니다." } };
-      // null=TAGO 미커버 역, partial=일부 노선 실패 — 서비스 판정을 그대로 싣는다(무운행 위장 금지).
+      // null=TAGO 미커버 역, partial=일부 노선 실패, lines[].coverage=노선별 확인 불가·편성 없음·실패 —
+      // 서비스 판정을 그대로 싣는다(무운행 위장 금지, 문구 뜻은 declaration이 LLM에 가르친다).
       // 카드 없음 — 산문이 정본(시각 정본은 장소 상세 "역 정보").
       const timetable = await fetchStationTimetable(stationName);
       return { data: { timetable }, source: src };

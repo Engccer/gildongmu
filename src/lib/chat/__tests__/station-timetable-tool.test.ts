@@ -12,7 +12,7 @@ const ctx: ExecutionContext = { locale: "ko", dataLocale: "ko" };
 const TIMETABLE = {
   stationName: "강동",
   dailyType: "weekday" as const,
-  lines: [{ lineName: "5호선", directions: [] }],
+  lines: [{ lineName: "5호선", coverage: "unknown" as const, directions: [] }],
 };
 
 describe("get_station_timetable (채팅 도구, K3 ①)", () => {

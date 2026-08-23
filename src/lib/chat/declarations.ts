@@ -282,7 +282,8 @@ const DECLARATIONS: GatedDeclaration[] = [
       name: "get_station_timetable",
       description:
         "지하철역의 오늘 첫차·막차 시각을 노선·방향별로 보여준다(전국 도시철도). " +
-        "timetable이 null이면 그 역의 시간표가 제공되지 않는 것이고, partial이 true면 일부 노선 조회가 실패해 불완전한 결과다 — 운행이 없다는 뜻으로 답하지 마라. dailyType은 조회 기준일(평일·토요일·일요일)이다.",
+        "timetable이 null이면 그 역의 시간표가 제공되지 않는 것이고, partial이 true면 일부 노선 조회가 실패해 불완전한 결과다 — 운행이 없다는 뜻으로 답하지 마라. dailyType은 조회 기준일(평일·토요일·일요일)이다. " +
+        "lines[].coverage: ok=첫차·막차 있음 / unknown=그 노선의 오늘 시간표를 확인할 수 없음(운행이 없다는 뜻이 아니다) / unavailable=그 노선 조회 실패 / noTrains=오늘 탑승 가능한 편성 없음. 어떤 값이든 노선을 생략하지 말고 노선명과 함께 말하라.",
       parametersJsonSchema: {
         type: "object",
         properties: {

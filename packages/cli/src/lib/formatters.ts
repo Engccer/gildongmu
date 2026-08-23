@@ -204,6 +204,8 @@ interface TimetableDirectionItem {
 
 interface TimetableLineItem {
   lineName: string;
+  /** ok | noTrains | unknown | unavailable — ok만 directions가 비지 않는다(웹 TimetableLineCoverage 미러) */
+  coverage: "ok" | "noTrains" | "unknown" | "unavailable";
   directions: TimetableDirectionItem[];
 }
 
@@ -423,6 +425,13 @@ const AIR_GRADE_KO: Record<Exclude<AirGradeItem, "unknown">, string> = {
 // 웹 messages/ko.json timetable.* 카피와 동일 유지(CLI 산문 미러).
 const DAILY_TYPE_KO: Record<StationTimetableItem["dailyType"], string> = {
   weekday: "평일 기준", saturday: "토요일 기준", sunday: "일요일·공휴일 기준",
+};
+// 웹 timetable.coverage.* 미러. "확인 불가"≠"편성 없음"≠"조회 실패" — 세 문장이 같으면
+// 0행 노선을 남긴 의미(A19)가 없다.
+const COVERAGE_KO: Record<Exclude<TimetableLineItem["coverage"], "ok">, (line: string) => string> = {
+  unknown: (line) => `${line} 오늘 시간표를 확인할 수 없습니다.`,
+  unavailable: (line) => `${line} 시간표를 불러오지 못했습니다.`,
+  noTrains: (line) => `${line} 오늘 탑승할 수 있는 편성이 없습니다.`,
 };
 
 /** 카카오 category_name 계층("여행 > 관광,명소")의 마지막 조각. */
@@ -740,11 +749,11 @@ function formatStationTimetable(body: { timetable: StationTimetableItem | null }
   const lines: string[] = [
     joinText(DAILY_TYPE_KO[tt.dailyType], tt.partial && "일부 노선 정보를 불러오지 못했습니다."),
   ];
-  if (tt.lines.length === 0) {
-    lines.push("오늘 시간표 정보가 없습니다.");
-    return lines;
-  }
   for (const line of tt.lines) {
+    if (line.coverage !== "ok") {
+      lines.push(COVERAGE_KO[line.coverage](line.lineName));
+      continue;
+    }
     for (const d of line.directions) {
       lines.push(joinText(
         `${line.lineName} ${d.direction === "up" ? "상행" : "하행"}`,
