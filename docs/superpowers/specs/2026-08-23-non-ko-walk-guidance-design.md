@@ -361,3 +361,61 @@ en: Tmap        → buildEnBriefing     → annotateAudioSignals → (차로 수
 | 10 | "ko byte-identical" 과장 | **수용** | 축별 범위표로 축소(§4.6.1) |
 | 11 | `lang` 기본값 | **수용** | required 인자(§4.5) |
 | 12 | 적용 불가한 en 계단 회피 노출 | **수용** | 비-ko 컨트롤 미노출(§4.7) |
+
+---
+
+# 부록: E16 축 2 — 웹 단독 진입점 제거와 강등 사유 3-state
+
+> 축 3이 실호출로 성립한 뒤에만 착수한다는 순서 계약을 지켜, 게이트 7축 PASS(§5) 뒤 같은
+> 마일스톤에서 이어 한다. 축 2는 별도 spec을 만들지 않고 여기 부록으로 둔다 — 같은 결정 계열
+> (간략 안내를 개념째 지운다)이고 축 3의 결과가 이 축의 전제이기 때문이다.
+
+## A1. 지우는 것 — 개념으로 훑는다
+
+⚠ **낱말로 훑으면 샌다.** 축 1이 "8건"으로 세었던 것이 실제로는 12건이었고 누락된
+`guide.detailStart`에는 "간략"이라는 글자가 없었다. 지울 대상은 낱말이 아니라 **대비 구조**다.
+
+| 자리 | 무엇 | 근거 |
+|---|---|---|
+| `PlaceDetail.tsx` `<DistanceBeacon>` | 장소 상세의 **단독 직선거리 진입점** | iOS엔 없다(의도된 설계). 웹이 iOS를 따라간다 |
+| `DirectionsView.tsx` `briefFallback` 블록 | 시작 가능한 수단 0개일 때의 선두 진입점 | 사용자가 고르는 모드가 아니게 된다 |
+| `useRouteGuide.toggleMode` + `canOfferDetail` | 상세⇄직선 전환 버튼과 그 게이트 | 고를 수 있는 모드가 없어야 한다 |
+| `useRouteGuide.resolvePending`(**콜백**) + `pendingResolveRef` + `RESOLVE_TIMEOUT_S` | 수동 전환의 보류 해소 기계 | ⚠ `toggleMode`가 유일한 설정자다 — 버튼이 사라지면 `pendingResolveRef`는 영영 null이라 콜백이 죽는다. **i18n 키만 지우고 콜백을 남기면 죽은 기계가 남는다** |
+| i18n `guide.toBriefButton`·`toDetailButton`·`toBriefDone`·`toDetailDone`·`resolvePending`·`resolveFailed` | 전환 어휘 6종 | 짝 낱말을 함께 지워야 대비 구조가 새지 않는다 |
+| `beacon.straightLineNote` | 추적 중 상시 표시 "직선거리 기준입니다." | 강등 상태에 **모드 이름을 주지 않는다**([[degraded-guidance-gets-no-mode-name]]) — 아래 A2가 그 자리를 대신한다 |
+| 웹 `speedSuggest` 발화 | 이벤트 → 문장 매핑 | ⚠ **Kit 이벤트·리듀서 방출은 남긴다**(공유 계약, iOS는 이미 무시한다) — 웹 `eventText`의 분기만 빈 문자열로 |
+
+**남기는 것**: `GuideMode`·`stepBrief`·`mode` 상태·비콘 리듀서 전부. 직선거리는 사라지지 않고
+**이름 없는 내부 강등**으로 계속 쓰인다(최종 접근·경로 상실이 이미 그 자리다).
+
+## A2. 강등 사유 3-state — 재시도로 풀리는가
+
+`fetchGuideRoute`가 실패 원인을 전부 `null` 하나로 접어 소비자가 두 문장만 낸다. 이름을 지우면
+그 문장이 유일한 단서가 되므로 **사용자가 취할 행동이 갈리는 만큼만** 가른다.
+
+```ts
+type GuideRouteFailure = "locating" | "retryable" | "unavailable";
+fetchGuideRoute(force: boolean): Promise<GuideRouteFetch | { failure: GuideRouteFailure }>
+```
+
+| 상태 | 원인(코드 자리) | 직선거리 | 문장(ko) |
+|---|---|---|---|
+| `locating` | `awaitRealFix` 실패 | **불가** | 현재 위치를 확인하는 중입니다. |
+| `retryable` | `!res.ok`(502·429·오프라인) · `catch`(파싱·네트워크) | 가능 | 경로를 불러오지 못했습니다. 지금은 목적지 방향과 거리만 안내합니다. |
+| `unavailable` | `outOfCoverage` · `result` 부재(`TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`) · `buildGuideRoute` null · car provider≠tmap · `buildCarGuide` null | 가능 | 이 목적지까지의 경로를 찾지 못했습니다. 목적지 방향과 거리로 안내합니다. |
+
+- ⚠ **모드 이름을 쓰지 않는다.** "직선거리 안내"가 아니라 **"목적지 방향과 거리"**라는 *동작
+  서술*이다. 이름을 주면 고를 수 있는 모드로 읽힌다.
+- ⚠ **잘게 쪼개지 않는다.** 백로그 표의 6갈래 중 `범위 밖`·`경로 부재`·`안내 불가`·`수단 조건`은
+  사용자가 취할 행동이 같아(다른 수단을 보거나 목적지를 바꾼다) 한 문장이다.
+- `locating`만 직선거리조차 불가하고, 그때 필요한 것은 직선거리가 아니라 **"위치를 찾는 중"이라는
+  정직한 상태**다(백로그 판정 그대로).
+- 문장은 **시작 통지 1회**로 나가고 패널에도 같은 문장이 상시 표시된다 — 세션 도중 화면에
+  들어온 SR 사용자에게는 그 줄이 유일한 신호다(종전 `straightLineNote`의 자리를 이어받는다).
+
+## A3. 범위 밖
+
+- iOS: 도착 종료 화면·간략 폴백 봉인은 **현행 유지**(축 2는 웹 단독 진입점이 대상이다).
+- 한국 밖·자동차 세션의 직선거리 동작 범위(백로그 2026-08-16 판정 — 축 1·2가 지우는 것은
+  명칭과 진입점이지 동작 범위가 아니다).
+- 재시도 버튼 신설(현재 트리거가 곧 재시작이라 새 컨트롤이 행동을 바꾸지 않는다).
