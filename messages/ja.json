@@ -282,7 +282,11 @@
     "last": "終電",
     "nextDay": "翌日",
     "toTerminus": "{terminus}行き",
-    "empty": "今日の時刻表情報がありません。",
+    "coverage": {
+      "unknown": "{line} 今日の時刻表を確認できません。",
+      "unavailable": "{line} 時刻表を読み込めませんでした。",
+      "noTrains": "{line} 今日乗車できる列車がありません。"
+    },
     "error": "始発・終電の情報を取得できませんでした。",
     "partial": "一部の路線情報を取得できませんでした。",
     "source": "国土交通部TAGO提供"

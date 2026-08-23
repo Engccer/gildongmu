@@ -282,7 +282,11 @@
     "last": "Dernier train",
     "nextDay": "lendemain",
     "toTerminus": "vers {terminus}",
-    "empty": "Aucune information d'horaires pour aujourd'hui.",
+    "coverage": {
+      "unknown": "{line} : l'horaire d'aujourd'hui n'a pas pu être confirmé.",
+      "unavailable": "{line} : l'horaire n'a pas pu être chargé.",
+      "noTrains": "{line} : aucun train à prendre aujourd'hui."
+    },
     "error": "Impossible de charger les horaires du premier/dernier train.",
     "partial": "Les horaires de certaines lignes n'ont pas pu être chargés.",
     "source": "Source : MOLIT TAGO"

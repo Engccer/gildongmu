@@ -282,7 +282,11 @@
     "last": "막차",
     "nextDay": "익일",
     "toTerminus": "{terminus}행",
-    "empty": "오늘 시간표 정보가 없습니다.",
+    "coverage": {
+      "unknown": "{line} 오늘 시간표를 확인할 수 없습니다.",
+      "unavailable": "{line} 시간표를 불러오지 못했습니다.",
+      "noTrains": "{line} 오늘 탑승할 수 있는 편성이 없습니다."
+    },
     "error": "첫차·막차 정보를 불러오지 못했습니다.",
     "partial": "일부 노선 정보를 불러오지 못했습니다.",
     "source": "국토교통부 TAGO 제공"

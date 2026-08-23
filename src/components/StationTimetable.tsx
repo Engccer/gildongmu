@@ -76,11 +76,12 @@ export function StationTimetable({ stationName }: { stationName: string }) {
               status.timetable.partial && t("partial"),
             )}
           </p>
-          {status.timetable.lines.length === 0 ? (
-            <p className="mt-1 text-sm">{t("empty")}</p>
-          ) : (
-            <div className="mt-1 text-sm leading-relaxed">
-              {status.timetable.lines.map((line) =>
+          <div className="mt-1 text-sm leading-relaxed">
+            {status.timetable.lines.map((line) =>
+              // 매칭된 노선은 전부 온다(A19). ok만 방향 행이고, 나머지는 왜 시간표가
+              // 없는지를 노선명과 함께 한 줄로 — "확인 불가"와 "탑승 편성 없음"과
+              // "조회 실패"는 다른 문장이어야 SR 사용자가 가를 수 있다.
+              line.coverage === "ok" ? (
                 line.directions.map((d) => (
                   <p key={`${line.lineName}-${d.direction}`}>
                     {joinText(
@@ -89,10 +90,12 @@ export function StationTimetable({ stationName }: { stationName: string }) {
                       `${t("last")} ${train(d.last)}`,
                     )}
                   </p>
-                )),
-              )}
-            </div>
-          )}
+                ))
+              ) : (
+                <p key={line.lineName}>{t(`coverage.${line.coverage}`, { line: line.lineName })}</p>
+              ),
+            )}
+          </div>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </>
       )}
