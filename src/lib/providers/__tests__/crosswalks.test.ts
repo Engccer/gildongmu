@@ -86,6 +86,11 @@ describe("matchCrosswalkIn — 3중 게이트", () => {
     expect(matchCrosswalkIn([], [tuple(lat, lng, 4, 16)])).toBeNull();
   });
 
+  it("NaN 좌표는 명시 거부(비교가 전부 false가 되어 게이트가 열리는 것을 막는다)", () => {
+    const [lat, lng] = east(10);
+    expect(matchCrosswalkIn([{ lat: NaN, lng: 126.95 }, B], [tuple(lat, lng, 4, 16)])).toBeNull();
+  });
+
   it("중점은 양 끝점 기준(중간점이 많아도)", () => {
     const [lat, lng] = east(10);
     const detour = { lat: 37.5, lng: 126.9503 }; // 중간에 26m 동쪽으로 휜 점

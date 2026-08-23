@@ -37,6 +37,8 @@ export function matchCrosswalkIn(path: Coord[], seedTuples: CrosswalkTuple[]): C
   if (path.length < 2) return null;
   const a = path[0];
   const b = path[path.length - 1];
+  // NaN 좌표는 모든 `>` 비교가 false가 되어 게이트가 전부 열린다 — 명시 거부(fail-closed).
+  if (![a.lat, a.lng, b.lat, b.lng].every(Number.isFinite)) return null;
   const segment = haversineMeters(a.lat, a.lng, b.lat, b.lng);
   const mid = { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
   const latDelta = CROSSWALK_MATCH_RADIUS_M / 111_320;

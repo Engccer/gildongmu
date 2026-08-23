@@ -17,7 +17,7 @@
 ## 2. 데이터 전달 — 정적 seed
 
 - 이용허락: 공공데이터포털 15028201 파일데이터 탭 표기 **"이용허락범위 제한 없음 · 무료"**(2026-08-23 확인, `subway-stations.json`과 동일 조건). 국외 반출 제한 없음 → 정적 seed가 가능하고, OSM seed와는 **별도 파일**(`NOTICE.md` ODbL 분리 규칙).
-- 파일: `src/lib/data/crosswalks.json`. 형태 `{ meta: { source, fetchedAt, total, kept }, crosswalks: Array<[lat, lng, lanes, lengthM]> }`. lat/lng 5자리(≈1m), lengthM 1자리.
+- 파일: `src/lib/data/crosswalks.json`. 형태 `{ meta: { source, fetchedAt, counts: { total, unparsed, lengthOutOfRange, duplicates, kept } }, crosswalks: Array<[lat, lng, lanes, lengthM]> }`. lat/lng 5자리(≈1m), lengthM 1자리.
 - 생성: `scripts/build-crosswalk-seed.mjs`(API `https://api.data.go.kr/openapi/tn_pubr_public_crosswalk_api`, 1,000건 × 59페이지, `DATA_GO_KR_API_KEY`). 반기 갱신이므로 **연 1~2회 수동 재생성**.
 - 봉투: `response` 래퍼 없는 `{header:{resultCode,resultMsg}, body:{items:{item:[]}, totalCount, …}}` 최상위 — 공용 `readItems` 밖이라 스크립트가 직접 읽고, **빈 값은 공백 한 칸**이라 전 필드 `trim()`. 범위 밖 페이지는 `resultCode "03" NODATA_ERROR`·`body null`(끝 신호).
 - 빌드 가드(전부 throw): 총건수 ≥ 50,000 · 좌표 한국 상자 안 100% · `cartrkCo`·`et` 수치 파싱률 ≥ 99% · 시도 ≥ 15종(2026-08-23 실측 58,831건·15시도·좌표 100%·차로·연장 100% 채움). 연장 1~60m 밖은 탈락(실측 >60m 22건, 최대 302m — 오기). 동일 `(lat,lng,lanes,lengthM)` 완전 중복 행은 1건으로.
@@ -51,7 +51,7 @@
 2. **길이 타당성**: 후보 중 `|lengthM − L| ≤ max(5m, 0.4·L)`만 남긴다(실측 정답 비 0.6~1.1, 교차로 타 횡단보도는 이 띠 밖).
 3. **합의**: 남은 후보가 1건 이상이고 **전부 같은 차로 수 ∧ 연장 차 ≤ 2m**이면 최근접 1건 채택. 아니면 침묵.
 
-표본 22건 결과: 주석 8 · 침묵 14(후보 없음 9 + 불일치 5). 오탐 0(채택 8건은 도로명과 차로 수가 맞는다 — 노량진로 6~7차로·보라매로 4차로·서달로 3차로·만양로 2차로·여의대방로62길 1차로). Tmap 스텝(`coord` 1점)은 L을 구할 수 없어 **침묵**(폴백 경로라 손실 감수).
+표본 22건 결과: 주석 8 · 침묵 14(후보 없음 9 + 불일치 5). 오탐 0(채택 8건은 도로명과 차로 수가 맞는다 — 노량진로 6~7차로·보라매로 4차로·서달로 3차로·만양로 2차로·여의대방로62길 1차로). Tmap 스텝은 **provider 게이트로 침묵**(`annotateCrosswalkInfo`의 `provider` 인자, 기본값 없음): 비기하 요청은 `coord` 1점이라 L이 없고, 기하 요청은 Point 스텝에 다음 결정 지점까지의 LineString이 붙어 2점 이상이 되지만 그 길이는 횡단 길이가 아니다(리뷰 검출). 폴백 경로라 손실 감수.
 
 상수는 `src/lib/providers/crosswalks.ts`에 두고 위 표본으로 잠정 확정. 재측정 경로는 `scripts/verify-crosswalk-annotation.mjs`.
 
@@ -68,7 +68,7 @@
 | `scripts/build-crosswalk-seed.mjs` (+ `.test.ts`) | API 전량 수집 → 가드 → `crosswalks.json` |
 | `src/lib/data/crosswalks.json` | seed |
 | `src/lib/providers/crosswalks.ts` (+ 테스트) | `matchCrosswalk(pathCoords) → {lanes, lengthM} \| null`(§3.3 순수 판정, 도(°) 상자 프리필터 + haversine) |
-| `src/lib/walk-route.ts` | `annotateCrosswalkInfo(briefing, keepGeometry)` — `annotateAudioSignals` 뒤에 같은 자리. **기하 제거는 마지막 주석 단계 한 곳에서만** |
+| `src/lib/walk-route.ts` | `annotateCrosswalkInfo(briefing, keepGeometry, provider)` — `annotateAudioSignals` 뒤에 같은 자리. **기하 제거는 마지막 주석 단계 한 곳에서만** |
 | `scripts/verify-crosswalk-annotation.mjs` | 실호출 게이트: 동작구 경로에 "차로" 주석 ≥ 1, 길동 경로 0, 주석이 붙은 스텝은 전부 "횡단보도" 포함 ∧ 병합 아님 |
 | `NOTICE.md` · `docs/INTEGRATIONS.md` §도보 경로 · `CLAUDE.md` 카탈로그 행 | 계약 |
 

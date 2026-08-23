@@ -91,16 +91,25 @@ export function annotateAudioSignals(
  *
  * 파이프라인의 **마지막** 주석 단계라 기하 제거·통일(종전 annotateAudioSignals 계약)을
  * 여기서 맡는다 — 앞 단계는 keepGeometry=true로 불러 pathCoords를 넘긴다.
+ *
+ * ⚠ `provider`가 카카오일 때만 판정한다(기본값 없음 — 안전 인자). 매칭 규칙의
+ * 길이 축은 "카카오 횡단보도 스텝 = 보도에서 보도까지의 직선"을 전제로 실측했는데,
+ * Tmap 기하 요청(`includeLineGeometry`)의 횡단보도 Point 스텝은 **다음 결정 지점까지
+ * 이어지는 LineString**을 pathCoords로 달아 2점 이상이 된다 — 그 구간 길이는 횡단
+ * 길이가 아니라 길이 축이 우연히 통과할 수 있다(리뷰 검출 2026-08-23).
  */
 export function annotateCrosswalkInfo(
   briefing: WalkRouteBriefing,
   keepGeometry: boolean,
+  provider: "kakao" | "tmap",
 ): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
     const { coord, pathCoords, ...rest } = step;
     const candidates = pathCoords ?? (coord ? [coord] : []);
     const info =
-      rest.description.includes("횡단보도") && !MERGED_CROSSWALK.test(rest.description)
+      provider === "kakao" &&
+      rest.description.includes("횡단보도") &&
+      !MERGED_CROSSWALK.test(rest.description)
         ? matchCrosswalk(candidates)
         : null;
     const annotated = info
@@ -188,10 +197,11 @@ export async function getWalkRoute(params: {
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
   // 음향신호기 단계는 기하를 보존해 넘기고(keepGeometry=true), 마지막 차로 수 단계가
   // 종전 계약대로 기하를 제거·통일한다. 순서: 음향신호기(안전) → 차로 수(수식).
-  const annotate = (b: WalkRouteBriefing) =>
+  const annotate = (b: WalkRouteBriefing, provider: "kakao" | "tmap") =>
     annotateCrosswalkInfo(
       annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), true),
       includeGeometry,
+      provider,
     );
 
   if (variant === "shortest") {
@@ -210,7 +220,7 @@ export async function getWalkRoute(params: {
       noStore: includeGeometry,
     });
     if (!briefing) return null;
-    const annotated = annotate(briefing);
+    const annotated = annotate(briefing, "tmap");
     return accessible
       ? withStepFree(annotated, "unavailable", includeGeometry, SHORTEST_STEPFREE_NOTICE)
       : annotated;
@@ -220,7 +230,7 @@ export async function getWalkRoute(params: {
     const r = await fetchPrimaryOrFallback({
       origin, dest, accessible: false, noStore: includeGeometry, waypoint: via,
     });
-    return r?.briefing ? annotate(r.briefing) : null;
+    return r?.briefing ? annotate(r.briefing, r.via) : null;
   }
 
   // 계단 회피: 카카오 전용. Tmap 경유(폴백·단독)는 동등 모드가 없어 unavailable.
@@ -230,14 +240,14 @@ export async function getWalkRoute(params: {
   if (!r) return null;
   if (r.via === "tmap") {
     return r.briefing
-      ? withStepFree(annotate(r.briefing), "unavailable", includeGeometry)
+      ? withStepFree(annotate(r.briefing, "tmap"), "unavailable", includeGeometry)
       : null;
   }
   if (r.briefing) {
     // applied fail-closed: ACCESSIBLE 응답에 계단 문구가 남아 있으면 안전 선언 금지.
     const hasStairs = r.briefing.steps.some((s) => s.description.includes("계단"));
     return withStepFree(
-      annotate(r.briefing),
+      annotate(r.briefing, "kakao"),
       hasStairs ? "no_stepfree_route" : "applied",
       includeGeometry,
     );
@@ -248,7 +258,7 @@ export async function getWalkRoute(params: {
   });
   if (!base?.briefing) return null;
   return withStepFree(
-    annotate(base.briefing),
+    annotate(base.briefing, base.via),
     base.via === "tmap" ? "unavailable" : "no_stepfree_route",
     includeGeometry,
   );
