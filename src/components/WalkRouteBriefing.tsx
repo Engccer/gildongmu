@@ -19,24 +19,45 @@ export function WalkRouteResult({
   briefing,
   t,
   waypointLabel,
+  includeSummary = true,
+  omitNoticeStep = false,
 }: {
   briefing: Briefing;
   t: ReturnType<typeof useTranslations<"route.pedestrian">>;
   /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
   waypointLabel?: string | null;
+  /** disclosure 펼침 본문처럼 라벨이 이미 요약이면 false(인접 중복 금지). iOS `WalkRouteRows` 미러. */
+  includeSummary?: boolean;
+  /**
+   * 서버 `withStepFree`가 스텝 0으로 삽입한 `stepFreeNotice` 문장을 뗀다(라벨에 병기된
+   * 경우). 경유지 인덱스는 서버가 한 칸 민 것의 역연산으로 되돌린다 — 안 되돌리면
+   * "경유지 도착" 구획이 한 스텝 뒤에 붙는다.
+   */
+  omitNoticeStep?: boolean;
 }) {
   const tDir = useTranslations("directions");
   // 거리 표기는 `formatDistance` 정본에 맡긴다. 종전엔 여기서 소수 km를 직접
   // 조립해 같은 화면의 자동차 브리핑("3km 600m")과 표기가 갈렸다.
   const distance = formatDistance(briefing.distanceMeters);
   const minutes = Math.round(briefing.durationSeconds / 60);
+  const dropNotice =
+    omitNoticeStep &&
+    briefing.stepFreeNotice !== undefined &&
+    briefing.steps[0]?.description === briefing.stepFreeNotice;
+  const steps = dropNotice ? briefing.steps.slice(1) : briefing.steps;
+  const waypointIndex =
+    briefing.waypoint === undefined
+      ? undefined
+      : briefing.waypoint.stepIndex - (dropNotice ? 1 : 0);
 
   return (
     <>
-      <p className="mt-1 text-sm">{t("summary", { distance, minutes })}</p>
+      {includeSummary && (
+        <p className="mt-1 text-sm">{t("summary", { distance, minutes })}</p>
+      )}
       <StepList
-        items={briefing.steps.map((s) => s.description)}
-        waypointIndex={briefing.waypoint?.stepIndex}
+        items={steps.map((s) => s.description)}
+        waypointIndex={waypointIndex}
         waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
       />
     </>

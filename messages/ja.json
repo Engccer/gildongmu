@@ -178,7 +178,9 @@
     "addVia": "経由地を追加",
     "removeVia": "経由地を削除",
     "viaArrived": "経由地 {label} に到着",
-    "unsupportedWaypoint": "公共交通機関の経路では経由地に対応していません。"
+    "unsupportedWaypoint": "公共交通機関の経路では経由地に対応していません。",
+    "walkRecommended": "おすすめルート",
+    "walkShortest": "最短ルート"
   },
   "detail": {
     "back": "検索結果に戻る"

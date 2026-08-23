@@ -37,3 +37,38 @@ describe("StepList 경유지 구획(N4)", () => {
     expect(screen.getByText("viaArrived:강동역")).toBeTruthy();
   });
 });
+
+describe("WalkRouteResult 펼침 본문 중복 제거(B9 ①)", () => {
+  const t = ((k: string) => k) as never;
+  const NOTICE = "계단 없는 경로를 찾지 못해 일반 경로로 안내합니다.";
+  const briefing = {
+    distanceMeters: 500,
+    durationSeconds: 300,
+    steps: [{ description: NOTICE }, { description: "a" }, { description: "b" }],
+    stepFree: "unavailable" as const,
+    stepFreeNotice: NOTICE,
+    waypoint: { stepIndex: 2, coord: { lat: 0, lng: 0 } },
+  };
+  it("includeSummary=false면 요약 문단을 내지 않는다", () => {
+    render(<WalkRouteResult briefing={briefing} t={t} includeSummary={false} />);
+    expect(screen.queryByText("summary")).toBeNull();
+  });
+  it("omitNoticeStep은 notice 스텝 0을 떼고 경유지 인덱스를 한 칸 되돌린다", () => {
+    render(<WalkRouteResult briefing={briefing} t={t} omitNoticeStep waypointLabel="X" />);
+    expect(screen.queryByText(NOTICE)).toBeNull();
+    const lists = screen.getAllByRole("list");
+    expect(lists).toHaveLength(2);
+    expect(lists[0].textContent).toBe("a"); // 구획이 a 뒤, b 앞 — 서버가 민 인덱스의 역연산
+    expect(lists[1].textContent).toBe("b");
+  });
+  it("스텝 0이 notice가 아니면 떼지 않는다", () => {
+    render(
+      <WalkRouteResult
+        briefing={{ ...briefing, steps: [{ description: "a" }, { description: "b" }], stepFreeNotice: NOTICE }}
+        t={t}
+        omitNoticeStep
+      />,
+    );
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+});

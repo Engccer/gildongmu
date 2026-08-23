@@ -66,7 +66,12 @@ type ModeOutcome =
   /** 경유지 조회의 대중교통(N4): ODsay에 경유지가 없어 호출하지 않는다 — 실패도 경로 없음도 아니다. */
   | { kind: "unsupportedWaypoint" }
   | { kind: "done"; mode: "transit"; result: TransitData }
-  | { kind: "done"; mode: "walk"; result: WalkRouteBriefing }
+  /**
+   * 도보는 `alternatives=1`의 `{ result, shortest }` 쌍(B9 ①). `shortest`는 최단 실패
+   * 흡수·Tmap 키 부재(필드 부재)·null 전부 null — 행동이 같다(최단 행을 그리지 않는다).
+   * ⚠ 생략 불가 필드: 추천·최단은 **같은 응답에서 온 쌍만** 그린다(스냅샷 교체).
+   */
+  | { kind: "done"; mode: "walk"; result: WalkRouteBriefing; shortest: WalkRouteBriefing | null }
   | { kind: "done"; mode: "car"; result: CarRouteBriefing };
 
 type QueryResults = {
@@ -226,18 +231,26 @@ async function fetchMode(
   }
   // 대중교통은 경유 정류장 옵트인(B2 §7) — 실시간 안내(승차·하차 정류소 ID·좌표)의
   // 유일한 데이터원이고, 시작 시 재조회 없이 브리핑과 같은 경로를 안내한다(§2).
+  // 도보는 추천·최단 쌍을 한 조회로 받는다(`alternatives=1`, B9 ①). `walkRouteUrl`의
+  // 인자(안전 인자 전부 required)에 올리지 않고 여기서 덧붙인다 — 브리핑 화면만 쓰는
+  // 옵트인이고, 실시간 안내(`includeGeometry=1`)와 조합하면 서버 400이다.
   const url =
     mode === "walk"
-      ? walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via })
+      ? `${walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via })}&alternatives=1`
       : `/api/route/transit?${qs}&includeStops=1`;
   const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
-  const body = (await res.json()) as { result: unknown };
+  const body = (await res.json()) as { result: unknown; shortest?: unknown };
   if (isOutOfCoverageBody(body)) return { kind: "outOfCoverage" };
   if (!body.result) return { kind: "empty" };
   return mode === "transit"
     ? { kind: "done", mode, result: body.result as TransitData }
-    : { kind: "done", mode, result: body.result as WalkRouteBriefing };
+    : {
+        kind: "done",
+        mode,
+        result: body.result as WalkRouteBriefing,
+        shortest: (body.shortest as WalkRouteBriefing | null | undefined) ?? null,
+      };
 }
 
 /**
@@ -343,6 +356,14 @@ export function DirectionsView({
    * 넘나들 때 펼쳐 둔 것이 닫히면 조작이 배신당한다.
    */
   const [walkExpanded, setWalkExpanded] = useState<boolean | null>(null);
+  // 최단 행 펼침(B9 ①). 기본 접힘이라 null 3-state가 필요 없고, 리셋은 walkExpanded와
+  // 같은 자리(resetWalkExpansion)에서 함께 — 스냅샷 교체 시 이전 세대의 펼침이 남지 않게.
+  const [walkShortestExpanded, setWalkShortestExpanded] = useState(false);
+  /** 결과 폐기·새 조회 시 도보 両행 펼침을 함께 되돌린다(한쪽만 되돌리면 다음 세대 최단 행이 펼쳐진 채 나온다). */
+  function resetWalkExpansion() {
+    setWalkExpanded(null);
+    setWalkShortestExpanded(false);
+  }
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
 
@@ -532,7 +553,7 @@ export function DirectionsView({
     setResults(null);
     setToggledRoutes(new Set());
     setActiveGuideAlt(null);
-    setWalkExpanded(null);
+    resetWalkExpansion();
     setNotice(stopped ? tBeacon("stopped") : "");
   }
 
@@ -574,7 +595,7 @@ export function DirectionsView({
       setActiveGuideAlt(null);
       // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
       // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
-      setWalkExpanded(null);
+      resetWalkExpansion();
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(권한 팝업 세션 1회).
       // 캐시를 재사용하되 **나이 상한**을 건다(A7) — 이 스토어에는 TTL이 없어서 앱을
       // 켜고 처음 잰 좌표가 세션 내내 출발지가 되고, 그 좌표는 경로 origin이자 네이티브
@@ -952,7 +973,7 @@ export function DirectionsView({
           setResults(null);
           setToggledRoutes(new Set());
           setActiveGuideAlt(null);
-          setWalkExpanded(null);
+          resetWalkExpansion();
         }}
         onResolve={(ep) => {
           recordResolved("from", ep);
@@ -1002,7 +1023,7 @@ export function DirectionsView({
           setResults(null);
           setToggledRoutes(new Set());
           setActiveGuideAlt(null);
-          setWalkExpanded(null);
+          resetWalkExpansion();
         }}
         onResolve={(ep) => {
           // 목적지 확정도 텍스트 변경과 같은 무효화 축(리뷰 MAJOR): "최근 장소"
@@ -1015,7 +1036,7 @@ export function DirectionsView({
           setResults(null);
           setToggledRoutes(new Set());
           setActiveGuideAlt(null);
-          setWalkExpanded(null);
+          resetWalkExpansion();
         }}
         registerInput={(el) => {
           toInputRef.current = el;
@@ -1071,7 +1092,7 @@ export function DirectionsView({
               setResults(null);
               setToggledRoutes(new Set());
               setActiveGuideAlt(null);
-              setWalkExpanded(null);
+              resetWalkExpansion();
             }}
             onResolve={(ep) => {
               if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
@@ -1084,7 +1105,7 @@ export function DirectionsView({
               setResults(null);
               setToggledRoutes(new Set());
               setActiveGuideAlt(null);
-              setWalkExpanded(null);
+              resetWalkExpansion();
             }}
             registerInput={(el) => {
               viaInputRef.current = el;
@@ -1120,7 +1141,7 @@ export function DirectionsView({
               setResults(null);
               setToggledRoutes(new Set());
               setActiveGuideAlt(null);
-              setWalkExpanded(null);
+              resetWalkExpansion();
             }}
             className="mt-2 min-h-11 text-sm underline"
           >
@@ -1392,6 +1413,44 @@ export function DirectionsView({
                 {outcome.kind === "done" && outcome.mode === "walk" && (() => {
                   const collapsible = shouldCollapseWalk(outcome.result.durationSeconds);
                   const expanded = walkExpanded ?? !collapsible;
+                  const summaryOf = (b: WalkRouteBriefing) =>
+                    tPed("summary", {
+                      distance: formatDistance(b.distanceMeters),
+                      minutes: Math.round(b.durationSeconds / 60),
+                    });
+                  // 추천·최단 2행 disclosure(B9 ①, spec 2026-08-23 §2 — 대중교통 대안·iOS
+                  // 도보 섹션 동형). "추천"이라는 이름은 대안과 대비될 때만 정보라 최단이
+                  // 없으면 아래 단일 경로 화면(현행)을 그대로 쓴다. 라벨은 한 줄 = 한 객체
+                  // (joinText), stepFreeNotice는 両행 라벨에 병기 — 접힘 상태에선 라벨이 안전
+                  // 문장의 유일한 전달 채널이다. 펼침 본문은 요약·notice 스텝을 뺀다(인접 중복
+                  // 금지). 안내 시작 버튼은 섹션 상단에 남아 추천 경로를 안내한다(B9 ②까지).
+                  if (outcome.shortest) {
+                    const rows = [
+                      { key: "recommended", name: t("walkRecommended"), briefing: outcome.result, expanded, toggle: () => setWalkExpanded(!expanded) },
+                      { key: "shortest", name: t("walkShortest"), briefing: outcome.shortest, expanded: walkShortestExpanded, toggle: () => setWalkShortestExpanded(!walkShortestExpanded) },
+                    ];
+                    return rows.map((row) => (
+                      <div key={row.key} className="mt-2">
+                        <button
+                          type="button"
+                          aria-expanded={row.expanded}
+                          onClick={row.toggle}
+                          className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
+                        >
+                          {joinText(row.name, summaryOf(row.briefing), row.briefing.stepFreeNotice)}
+                        </button>
+                        {row.expanded && (
+                          <WalkRouteResult
+                            briefing={row.briefing}
+                            t={tPed}
+                            waypointLabel={results.viaLabel}
+                            includeSummary={false}
+                            omitNoticeStep
+                          />
+                        )}
+                      </div>
+                    ));
+                  }
                   if (!collapsible) {
                     return <WalkRouteResult briefing={outcome.result} t={tPed} waypointLabel={results.viaLabel} />;
                   }
@@ -1403,15 +1462,18 @@ export function DirectionsView({
                         onClick={() => setWalkExpanded(!expanded)}
                         className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                       >
-                        {tPed("summary", {
-                          distance: formatDistance(outcome.result.distanceMeters),
-                          minutes: Math.round(outcome.result.durationSeconds / 60),
-                        })}
+                        {joinText(summaryOf(outcome.result), outcome.result.stepFreeNotice)}
                       </button>
                       {/* 버튼이 발견 경로라 본문은 div(region·heading 부여 금지).
                           접힘·펼침 통지도 두지 않는다(aria-expanded가 상태다). */}
                       {expanded && (
-                        <WalkRouteResult briefing={outcome.result} t={tPed} waypointLabel={results.viaLabel} />
+                        <WalkRouteResult
+                          briefing={outcome.result}
+                          t={tPed}
+                          waypointLabel={results.viaLabel}
+                          includeSummary={false}
+                          omitNoticeStep
+                        />
                       )}
                     </div>
                   );

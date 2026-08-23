@@ -178,7 +178,9 @@
     "addVia": "Aggiungi tappa intermedia",
     "removeVia": "Rimuovi tappa intermedia",
     "viaArrived": "Tappa intermedia {label} raggiunta",
-    "unsupportedWaypoint": "I percorsi con i mezzi pubblici non supportano tappe intermedie."
+    "unsupportedWaypoint": "I percorsi con i mezzi pubblici non supportano tappe intermedie.",
+    "walkRecommended": "Percorso consigliato",
+    "walkShortest": "Percorso più breve"
   },
   "detail": {
     "back": "Torna ai risultati"
