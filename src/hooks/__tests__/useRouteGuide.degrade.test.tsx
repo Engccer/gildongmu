@@ -201,6 +201,20 @@ describe("강등 사유 3-state", () => {
     await waitFor(() => expect(note()).toBe(ko.guide.degradedNoteRetryable));
   });
 
+  it("재조회 실패는 자기 문장을 내고 사유 표시만 갱신한다", async () => {
+    // ⚠ 재조회 실패는 **사용자 활성화의 직접 응답**이라 그 버튼이 무엇을 못 했는지가 답이다
+    // (사유 문구가 아니라 rerouteFailed). 다만 세션은 계속 그 상태에 있으므로 표시는 갱신한다.
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: async () => ({ result: null }) });
+    renderGuide();
+    await start();
+    expect(note()).toBe(ko.guide.degradedNoteUnavailable);
+
+    fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
+    fireEvent.click(screen.getByText("reroute"));
+    await waitFor(() => expect(live()).toBe(ko.guide.rerouteFailed));
+    expect(note()).toBe(ko.guide.degradedNoteRetryable);
+  });
+
   it("강등 문구에 모드 이름을 쓰지 않는다", async () => {
     // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
     // 축 1이 "간략"을 지웠고 축 2가 그 짝 낱말("직선거리 안내")까지 지운다.

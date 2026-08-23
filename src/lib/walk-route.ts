@@ -391,6 +391,10 @@ export async function getWalkRouteAlternatives(params: {
   if (!hasTmapKey()) {
     return { result: await getWalkRoute({ origin, dest, lang, accessible, via }) };
   }
+  // ⚠ en에서 추천·최단이 각각 `roadNamesEn`을 돈다(도로명 캐시 미스가 겹칠 수 있다).
+  // 합치지 않는 이유: 두 조회가 **병렬**이라 벽시계는 한 벌과 같고(1.5초 상한도 각자),
+  // 도로명은 30일 캐시라 두 번째 호출부터는 미스 자체가 없다. 합치려면 두 브리핑을 먼저
+  // 받아야 해서 병렬성이 깨진다 — 지연을 줄이려다 늘리는 교환이다.
   const [primary, shortest] = await Promise.allSettled([
     getWalkRoute({ origin, dest, lang, accessible, via }),
     getWalkRoute({ origin, dest, lang, accessible, via, variant: "shortest" }),
