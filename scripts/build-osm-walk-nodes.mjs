@@ -16,17 +16,29 @@
  * 한다(docs/research/RESEARCH-2026-08-16-odbl-compliance.md).
  *
  * 실행: node scripts/build-osm-walk-nodes.mjs
- * 산출: src/lib/data/osm-walk-nodes.json (약 2.7MB)
+ * 산출: src/lib/data/osm-walk-nodes.json (약 2.7MB) + 국경 폴리곤 사본 2벌(아래 BOUNDARY_OUTS).
+ *       **두 산출물은 한 실행이 함께 쓴다** — 링과 노드가 같은 시점의 같은 국경 정의여야
+ *       G11(노드 전수가 링 안)이 뜻을 갖는다. 국경만 따로 갱신하지 말 것.
  * 갱신: 연 1회(횡단보도·점자블록은 신설이 드물다). 실보행에서 "새로 생긴 횡단보도가
  *       안 나온다"가 실제로 나오면 그때 주기를 당긴다.
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { basename, dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
 const OUT = join(ROOT, "src/lib/data/osm-walk-nodes.json");
+
+/**
+ * 국경 폴리곤 산출 경로. 웹 정본과 Kit 리소스는 **바이트 동일 사본**이고
+ * src/lib/__tests__/korea-boundary-drift.test.ts가 그것을 강제한다(E19).
+ * seed(2.7MB) 안에 두면 클라이언트 번들이 통째로 무너지므로 파일이 갈렸다.
+ */
+const BOUNDARY_OUTS = [
+  join(ROOT, "src/lib/data/korea-boundary.json"),
+  join(ROOT, "ios/GildongmuKit/Sources/GildongmuKit/Resources/korea-boundary.json"),
+];
 
 const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
 const USER_AGENT = "gildongmu-seed-build/1.0 (+https://gildongmu.dodoplanet.space)";
@@ -137,22 +149,13 @@ export const GOLDEN_PRESENT = [
  * G9~G11 국경 판정 golden. 사각형 bbox로는 이 표를 통과할 수 없다는 것이 폴리곤을
  * 쓰는 이유다 — 앞의 넷은 한국 bbox **안**이고, 뒤의 넷 중 셋은 별개 링에 있다.
  */
-export const BOUNDARY_GOLDEN = [
-  { name: "후쿠오카", lat: 33.5902, lng: 130.4017, inside: false },
-  { name: "기타큐슈", lat: 33.8835, lng: 130.8752, inside: false },
-  { name: "대마도", lat: 34.2, lng: 129.29, inside: false },
-  { name: "시모노세키", lat: 33.9578, lng: 130.9414, inside: false },
-  { name: "개성", lat: 37.97, lng: 126.5544, inside: false },
-  { name: "해주", lat: 38.04, lng: 125.715, inside: false },
-  { name: "파주 문산", lat: 37.8556, lng: 126.7869, inside: true },
-  { name: "강원 고성", lat: 38.3806, lng: 128.4678, inside: true },
-  { name: "정선읍", lat: 37.3806, lng: 128.6608, inside: true },
-  { name: "마라도", lat: 33.1128, lng: 126.2683, inside: true },
-  { name: "울릉도", lat: 37.4844, lng: 130.9057, inside: true },
-  { name: "독도", lat: 37.2429, lng: 131.8664, inside: true },
-  { name: "백령도", lat: 37.9658, lng: 124.71, inside: true },
-  { name: "가덕도", lat: 34.98, lng: 128.82, inside: true },
-];
+/**
+ * 국경 판정 golden. **표의 정본은 공유 fixture 한 벌**이고 웹 vitest(coverage.test.ts)·
+ * Kit CoverageTests.swift·이 스크립트 G10이 같은 파일을 읽는다(E19).
+ */
+export const BOUNDARY_GOLDEN = JSON.parse(
+  readFileSync(join(ROOT, "src/lib/__tests__/fixtures/korea-boundary-cases.json"), "utf8"),
+).cases;
 
 /** G7 도심 밀도 golden. 태그 매핑이 무너지면 crossing 플래그가 통째로 꺼진다. */
 export const GOLDEN_DENSE = { name: "강남역", lat: 37.4979, lng: 127.0276, radiusMeters: 300, minCrossing: 5 };
@@ -429,13 +432,25 @@ async function main() {
       fetchedAt: new Date().toISOString(),
       counts: { total: stats.total, crossing: stats.crossing, tactile: stats.tactile },
     },
-    // 제공 지역 판정용 국경 링(본토+제주·서해5도·울릉·독도). 사각형으로는 후쿠오카와
-    // 개성을 동시에 가를 수 없다 — BOUNDARY_QUERY 주석 참조.
-    boundary: rings,
     nodes,
   };
 
   writeFileSync(OUT, `${JSON.stringify(seed)}\n`);
+
+  // 제공 지역 판정용 국경 링(본토+제주·서해5도·울릉·독도). 사각형으로는 후쿠오카와
+  // 개성을 동시에 가를 수 없다 — BOUNDARY_QUERY 주석 참조.
+  const boundaryJson = `${JSON.stringify({
+    meta: {
+      source: seed.meta.source,
+      license: seed.meta.license,
+      licenseUrl: seed.meta.licenseUrl,
+      attribution: seed.meta.attribution,
+      osmTimestamp,
+      points: stats.boundaryPoints,
+    },
+    rings,
+  })}\n`;
+  for (const path of BOUNDARY_OUTS) writeFileSync(path, boundaryJson);
   console.log(
     `완료: 노드 ${stats.total} · 횡단보도 ${stats.crossing} · 점자블록 ${stats.tactile} · 강남역 300m ${stats.dense} · 국경 좌표점 ${stats.boundaryPoints}`,
   );

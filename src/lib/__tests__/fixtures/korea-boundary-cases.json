@@ -1,0 +1,20 @@
+{
+  "_comment": "국경 폴리곤 판정 golden — 웹 coverage.test.ts · Kit CoverageTests.swift · scripts/build-osm-walk-nodes.mjs G10이 공유하는 한 벌(E19). 앞의 여섯은 현 사각형(31.43~44.35/122.37~132.0) 안이라 사각형으로는 통과할 수 없고, 개성은 파주와 위경도가 겹쳐 어떤 사각형 뺄셈으로도 갈리지 않는다.",
+  "cases": [
+    { "name": "후쿠오카", "lat": 33.5902, "lng": 130.4017, "inside": false },
+    { "name": "기타큐슈", "lat": 33.8835, "lng": 130.8752, "inside": false },
+    { "name": "대마도", "lat": 34.2, "lng": 129.29, "inside": false },
+    { "name": "시모노세키", "lat": 33.9578, "lng": 130.9414, "inside": false },
+    { "name": "개성", "lat": 37.97, "lng": 126.5544, "inside": false },
+    { "name": "해주", "lat": 38.04, "lng": 125.715, "inside": false },
+    { "name": "파주 문산", "lat": 37.8556, "lng": 126.7869, "inside": true },
+    { "name": "강원 고성", "lat": 38.3806, "lng": 128.4678, "inside": true },
+    { "name": "정선읍", "lat": 37.3806, "lng": 128.6608, "inside": true },
+    { "name": "마라도", "lat": 33.1128, "lng": 126.2683, "inside": true },
+    { "name": "서귀포", "lat": 33.2541, "lng": 126.56, "inside": true },
+    { "name": "울릉도", "lat": 37.4844, "lng": 130.9057, "inside": true },
+    { "name": "독도", "lat": 37.2429, "lng": 131.8664, "inside": true },
+    { "name": "백령도", "lat": 37.9658, "lng": 124.71, "inside": true },
+    { "name": "가덕도", "lat": 34.98, "lng": 128.82, "inside": true }
+  ]
+}
