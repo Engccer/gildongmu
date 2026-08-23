@@ -7,6 +7,30 @@ import Foundation
     #expect(!isInKorea(lat: 37.7749, lng: -122.4194))
 }
 
+/// 웹 `coverage.test.ts`와 같은 공유 fixture(`korea-boundary-cases.json`) — 국경 판정 드리프트 가드.
+private struct BoundaryCaseFile: Decodable {
+    let cases: [Case]
+
+    struct Case: Decodable {
+        let name: String
+        let lat: Double
+        let lng: Double
+        let inside: Bool
+    }
+}
+
+@Test func 국경_공유_golden_전수() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/korea-boundary-cases.json")
+    let cases = try JSONDecoder().decode(BoundaryCaseFile.self, from: Data(contentsOf: url)).cases
+    #expect(cases.count >= 15)
+    // inside: true 케이스가 아홉이라, 리소스를 못 읽어 링이 비면(전 좌표 "밖") 여기서 즉시 실패한다.
+    for c in cases {
+        #expect(isInKorea(lat: c.lat, lng: c.lng) == c.inside, "\(c.name)")
+    }
+}
+
 // StubURLProtocol.handler 공유 상태를 쓰므로 StubNetworkTests 직렬 스위트에 편입.
 extension StubNetworkTests {
     @Test func 마커_응답은_outOfCoverage_오류로_던진다() async {
