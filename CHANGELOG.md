@@ -25,7 +25,7 @@ ODsay는 급행 운행 구간을 별도 lane으로 주고 이름 끝에 `(급행
 
 ### E14 / A16 L1 급행 정차역 데이터원 판정 — 위치 추적안 기각
 
-조사 `docs/research/RESEARCH-2026-08-23-express-stop-data.md`(실호출 4후보), 판정서 `docs/superpowers/specs/2026-08-23-express-stop-data-verdict-design.md`. **"데이터원 부재"는 틀렸다**: 급행 정차역 집합은 ODsay `passStopList`가 이미 주고(급행 13역 vs 완행 29역), 잠금 열차 현재역은 서울 실시간 `realtimePosition`이 주며 그 `trainNo`는 도착 API `btrainNo`와 동일 식별자다(14/14 교차 대조). TAGO 시간표엔 급행 구분·열차번호가 없고, KRIC 「열차별 운행시각표(급행)」은 정본감이나 계정 승인 대기다. 그 위에 세운 **위치 기반 폴백 추적 설계는 적대적 리뷰가 BLOCKER 5건으로 기각**했다(지나침 판정이 죽은 분기·폴백 발동 조건이 정상 상태와 구분 불가·`arrived` 도달 불가·L3 탈출구 소거·잔여 수 거짓 조합) — 코드는 넣지 않았다. E14 ① 전제와 A16 미확정 ①(9호선 열차번호 체계 상이 가설)을 함께 정정했다.
+조사 `docs/research/RESEARCH-2026-08-23-express-stop-data.md`(실호출 4후보), 판정서 `docs/superpowers/specs/2026-08-23-express-stop-data-verdict-design.md`. **"데이터원 부재"는 틀렸다**: 급행 정차역 집합은 ODsay `passStopList`가 이미 주고(급행 13역 vs 완행 29역), 잠금 열차 현재역은 서울 실시간 `realtimePosition`이 주며 그 `trainNo`는 도착 API `btrainNo`와 동일 식별자다(14/14 교차 대조). TAGO 시간표엔 급행 구분·열차번호가 없고, KRIC 「열차별 운행시각표(급행)」은 정본감이나 계정 승인 대기다. 그 위에 세운 **위치 기반 폴백 추적 설계는 독립 적대적 리뷰 2회가 BLOCKER 11건으로 기각**했다(지나침 판정이 죽은 분기·트리거 카운터가 그 시나리오에서 구조적으로 안 오름·폴백 발동 조건이 정상 상태와 구분 불가·래치 리셋 부재·`arrived` 도달 불가·L3 탈출구 소거·잔여 수 거짓 조합 등) — 코드는 넣지 않았다. E14 ① 전제와 A16 미확정 ①(9호선 열차번호 체계 상이 가설)을 함께 정정했다.
 
 
 ### 횡단보도 차로 수·도로 폭 낭독 (E8)
