@@ -15,15 +15,20 @@ import boundary from "./data/korea-boundary.json";
  * ⚠ **클라이언트에서도 같은 술어를 쓴다.** 대가는 번들 +53,814 bytes(gzip 약 15KB,
  * 2026-08-23 실측 chunks 합계 1.3MB의 4%)이고, 느슨한 클라 전용 술어를 이름 있는
  * API로 남기지 않기 위해 수용한 값이다 — 서버 왕복이 없는 소비자(deeplink.ts)에서는
- * 사각형이 최종 판정이 되어 후쿠오카에 네이버 지도 링크가 나간다.
+ * 그 술어가 최종 판정이므로, 클라만 사각형으로 두었다면 후쿠오카 좌표에 네이버 지도
+ * 링크가 나갔을 것이다.
  */
 const KOREA_RINGS = (boundary as unknown as { rings: Array<Array<[number, number]>> }).rings;
 
 /**
- * 링을 감싸는 사각형. **판정이 아니라 프리필터다** — 먼 좌표를 먼저 떨어뜨린다.
- * 값은 네이버 지도 URL scheme 유효 범위(구 deeplink.ts) 승격.
+ * 네이버 지도 URL scheme의 좌표 유효 범위(구 `deeplink.ts` 승격). **판정에도 프리필터에도
+ * 쓰지 않는다** — `scripts/build-crosswalk-seed.mjs`가 seed 생성 필터로 같은 값을 자체
+ * 복제하고 있어 그 근거로 남는다.
  *
- * ⚠ `scripts/build-crosswalk-seed.mjs`가 seed 생성 필터로 같은 값을 자체 복제한다.
+ * ⚠ **이 값을 프리필터로 되돌리지 말 것**(2026-08-23 리뷰 검출): 독도 영해 링이 동경
+ * 132.12까지 뻗어 이 사각형(≤132.0)이 링을 다 감싸지 못한다. 사각형이 폴리곤의
+ * 상위집합이 아니면 프리필터가 **거짓 "밖"**을 내고, 그 구간(독도 동쪽 해상)은 조용히
+ * 잘려 나간다.
  */
 export const KOREA_COVERAGE_BBOX = {
   latMin: 31.43,
@@ -32,9 +37,27 @@ export const KOREA_COVERAGE_BBOX = {
   lngMax: 132.0,
 } as const;
 
+/**
+ * 프리필터 사각형은 **링에서 유도한다** — 상수로 두면 "사각형이 폴리곤을 감싼다"는
+ * 전제가 링 갱신 때마다 조용히 깨질 수 있다. 유도하면 그 전제가 구조적으로 참이다.
+ * 비용은 모듈 로드 시 2,580점 1회 순회.
+ */
+const PREFILTER = KOREA_RINGS.reduce(
+  (box, ring) => {
+    for (const [lat, lng] of ring) {
+      if (lat < box.latMin) box.latMin = lat;
+      if (lat > box.latMax) box.latMax = lat;
+      if (lng < box.lngMin) box.lngMin = lng;
+      if (lng > box.lngMax) box.lngMax = lng;
+    }
+    return box;
+  },
+  { latMin: Infinity, latMax: -Infinity, lngMin: Infinity, lngMax: -Infinity },
+);
+
 export function isInKorea(lat: number, lng: number): boolean {
-  if (lat < KOREA_COVERAGE_BBOX.latMin || lat > KOREA_COVERAGE_BBOX.latMax) return false;
-  if (lng < KOREA_COVERAGE_BBOX.lngMin || lng > KOREA_COVERAGE_BBOX.lngMax) return false;
+  if (lat < PREFILTER.latMin || lat > PREFILTER.latMax) return false;
+  if (lng < PREFILTER.lngMin || lng > PREFILTER.lngMax) return false;
 
   for (const ring of KOREA_RINGS) {
     let inside = false;

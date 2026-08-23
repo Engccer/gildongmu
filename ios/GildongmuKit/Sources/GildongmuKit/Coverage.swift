@@ -9,7 +9,6 @@ import Foundation
 ///
 /// ⚠ 이 술어의 뜻은 **"한국 안인가"**이지 "이 upstream이 답하는 범위인가"가 아니다.
 /// upstream 범위는 `unavailableHere`(국내 지역별 미제공)와 0건 축이 따로 든다.
-private let koreaBBox = (latMin: 31.43, latMax: 44.35, lngMin: 122.37, lngMax: 132.0)
 
 /// 국경 링(본토+제주·서해5도·울릉·독도). 리소스 `korea-boundary.json`은 웹 정본의
 /// **바이트 동일 사본**이고 `korea-boundary-drift.test.ts`가 그 동일성을 강제한다.
@@ -27,9 +26,26 @@ private let koreaRings: [[(lat: Double, lng: Double)]] = {
     }
 }()
 
+/// 프리필터 사각형은 **링에서 유도한다** — 상수로 두면 "사각형이 폴리곤을 감싼다"는
+/// 전제가 링 갱신 때마다 조용히 깨질 수 있다(웹 미러: 종전 상수 ≤132.0은 동경 132.12까지
+/// 뻗는 독도 영해 링을 잘라내 거짓 "밖"을 냈다). 유도하면 그 전제가 구조적으로 참이다.
+private let koreaPrefilter: (latMin: Double, latMax: Double, lngMin: Double, lngMax: Double) = {
+    var box = (latMin: Double.infinity, latMax: -Double.infinity,
+               lngMin: Double.infinity, lngMax: -Double.infinity)
+    for ring in koreaRings {
+        for point in ring {
+            box.latMin = min(box.latMin, point.lat)
+            box.latMax = max(box.latMax, point.lat)
+            box.lngMin = min(box.lngMin, point.lng)
+            box.lngMax = max(box.lngMax, point.lng)
+        }
+    }
+    return box
+}()
+
 public func isInKorea(lat: Double, lng: Double) -> Bool {
-    guard (koreaBBox.latMin...koreaBBox.latMax).contains(lat),
-          (koreaBBox.lngMin...koreaBBox.lngMax).contains(lng)
+    guard lat >= koreaPrefilter.latMin, lat <= koreaPrefilter.latMax,
+          lng >= koreaPrefilter.lngMin, lng <= koreaPrefilter.lngMax
     else { return false }
 
     for ring in koreaRings {
