@@ -6,6 +6,8 @@ import { isInKorea } from "./coverage";
  * 공식 문서: https://guide.ncloud-docs.com/docs/maps-url-scheme
  * - appname 파라미터는 모든 URL에 필수
  * - 좌표 유효 범위: 위도 31.43~44.35, 경도 122.37~132.00 (한반도 권역)
+ *   ⚠ 재수출하는 `isInKorea`는 이보다 좁다(국경 폴리곤, 2026-08-23) — 이 범위 안이지만
+ *   한국 밖인 좌표(후쿠오카·개성)에는 딥링크를 만들지 않는다.
  *
  * NCP Directions API가 자동차 경로만 제공하므로, 도보/대중교통/자전거
  * 내비게이션은 이 딥링크로 네이버 지도 앱에 위임하는 것이 공식 경로다.

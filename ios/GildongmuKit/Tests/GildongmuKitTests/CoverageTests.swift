@@ -7,6 +7,12 @@ import Foundation
     #expect(!isInKorea(lat: 37.7749, lng: -122.4194))
 }
 
+/// 프리필터를 상수(≤132.0)로 두었을 때 잘려 나가던 구간 — 독도 영해 링은 동경 132.12까지 뻗는다.
+@Test func 프리필터가_링을_잘라내지_않는다() {
+    #expect(isInKorea(lat: 37.24, lng: 132.05))
+    #expect(!isInKorea(lat: 37.24, lng: 132.2))
+}
+
 /// 웹 `coverage.test.ts`와 같은 공유 fixture(`korea-boundary-cases.json`) — 국경 판정 드리프트 가드.
 private struct BoundaryCaseFile: Decodable {
     let cases: [Case]

@@ -37,12 +37,24 @@ describe("isInKorea — 국경 폴리곤 판정 (E19)", () => {
     expect(isInKorea(0, 0)).toBe(false);
   });
 
+  it("프리필터가 링을 잘라내지 않는다 (독도 동쪽 영해)", () => {
+    // 프리필터를 `KOREA_COVERAGE_BBOX`(≤132.0)로 두었을 때 실제로 잘려 나가던 구간이다
+    // — 독도 영해 링은 동경 132.12까지 뻗는다. 사각형이 폴리곤의 상위집합이 아니면
+    // 프리필터가 거짓 "밖"을 내는데, 그 33개 링 좌표는 상수 값 단언으로는 보이지 않는다.
+    expect(isInKorea(37.24, 132.05)).toBe(true);
+    expect(132.05).toBeGreaterThan(KOREA_COVERAGE_BBOX.lngMax);
+    // 링 밖 공해는 그대로 밖이다(프리필터를 넓힌 것이 판정을 느슨하게 만들지 않았다).
+    expect(isInKorea(37.24, 132.2)).toBe(false);
+  });
+
   it("OSM seed 노드 전수가 폴리곤 안이다", () => {
-    // 빌드 스크립트의 insideRings와 coverage.ts의 ray casting은 서로 다른 코드다.
-    // 이 단언이 두 구현의 합의를 8만 점으로 확인한다(spec §3 방어 2) — 링이 잘못
-    // 실렸거나 두 구현이 어긋나면 "국내인데 제공 지역 밖"이라는 조용한 결함이 되는데,
-    // 그 방향은 종전 사각형에는 없던 새 실패 모드다. 변이 주입 실측으로 이 단언이
-    // golden 15점보다 약 4배 민감하다(균일 이동 6km vs 22km에서 반응).
+    // 링 데이터가 열화되면(수축·이동·소실) "국내인데 제공 지역 밖"이라는 조용한
+    // 결함이 되는데, 그 방향은 종전 사각형에는 없던 새 실패 모드다(spec §3 방어 2).
+    // ⚠ 이 단언은 **알고리즘의 정확성을 검증하지 않는다** — 빌드 스크립트의
+    // insideRings와 여기 ray casting은 같은 코드의 사본이라 공유 결함은 원리상 못
+    // 잡는다(리뷰 검출 2026-08-23). 잡는 것은 **데이터 열화**이고, 그 축에서는
+    // golden 15점보다 민감하다(2% 수축을 golden은 놓치고 이 단언은 잡는다).
+    // 반대로 링 하나가 통째로 사라지면 golden이 잡고 이 단언은 놓친다 — 상보적이다.
     const nodes = (seed as unknown as { nodes: Array<[number, number, number, number]> }).nodes;
     expect(nodes.length).toBeGreaterThan(70_000);
     const stray = nodes.find((n) => !isInKorea(n[1], n[2]));

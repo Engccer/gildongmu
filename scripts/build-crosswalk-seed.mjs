@@ -20,7 +20,8 @@ const MIN_PARSE_RATIO = 0.99;
 /** 연장(et) 타당 범위. 실측 최대 302m(오기) — 1차로 7m ~ 9차로 30m가 중위. */
 export const LENGTH_MIN_M = 1;
 export const LENGTH_MAX_M = 60;
-// 한국 상자(coverage.ts isInKorea와 같은 값 — 스크립트는 src를 import하지 않는다)
+// 한국 상자(seed 생성 필터. 값의 출처는 coverage.ts의 KOREA_COVERAGE_BBOX이지만
+// isInKorea는 2026-08-23부터 국경 폴리곤으로 판정한다 — 같은 값이라는 뜻이 아니다)
 const KOREA = { latMin: 31.43, latMax: 44.35, lngMin: 122.37, lngMax: 132.0 };
 
 /** 한 페이지 봉투를 읽는다. 끝 신호(03 NODATA)는 빈 배열, 그 외 오류는 throw. */
