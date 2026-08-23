@@ -659,7 +659,6 @@
     "transitHeading": "대중교통 안내"
   },
   "guide": {
-    "briefStarted": "직선거리 안내 시작",
     "detailStart": "도보 안내 시작. 안내 {count}개, 총 {distance}. {first}",
     "next": "{distance} 앞 {step}",
     "nextDestination": "{dest}까지 {distance}",
@@ -709,11 +708,6 @@
     "uncertain": "위치 확신이 낮습니다",
     "uncertainRecovered": "현재 위치를 다시 파악했습니다",
     "reacquiring": "현재 위치를 다시 파악하는 중입니다",
-    "speedSuggest": "위치 신호가 불안정하거나 이동 속도가 빨라 직선거리 안내가 적합할 수 있습니다",
-    "toDetailDone": "경로 안내로 전환했습니다",
-    "toBriefDone": "직선거리 안내로 전환했습니다",
-    "resolvePending": "현재 위치를 파악하는 중입니다",
-    "resolveFailed": "현재 위치를 경로 위에서 확인하지 못해 직선거리 안내를 유지합니다",
     "detailUnavailable": "경로 정보를 가져오지 못했습니다. 목적지까지 직선거리로 안내합니다.",
     "detailNoLocation": "현재 위치를 확인하지 못했습니다. 위치가 잡히면 직선거리로 안내합니다.",
     "progressButton": "진행 상황",
@@ -722,8 +716,6 @@
     "progressNext": "다음 안내, {step}",
     "remainingDistance": "남은 거리 {distance}",
     "remainingTime": "약 {minutes}분",
-    "toDetailButton": "경로 안내로 전환",
-    "toBriefButton": "직선거리 안내로 전환",
     "rerouteButton": "경로 다시 조회",
     "rerouteFailed": "경로 조회에 실패했습니다. 기존 경로를 유지합니다",
     "rerouteDone": "현재 위치에서 경로를 다시 찾았습니다. 안내 {count}개, 총 {distance}. {first}",
@@ -779,7 +771,11 @@
       "keepLeft": "왼쪽 길로 가세요",
       "keepRight": "오른쪽 길로 가세요"
     },
-    "carPeriodic": "{distance} 앞 {command}"
+    "carPeriodic": "{distance} 앞 {command}",
+    "degradedNoLocation": "현재 위치를 확인하지 못했습니다. 위치 권한과 신호를 확인해 주세요.",
+    "degradedRetryable": "경로를 불러오지 못했습니다. 지금은 목적지 방향과 거리만 안내합니다.",
+    "degradedUnavailable": "이 목적지까지의 경로를 찾지 못했습니다. 목적지 방향과 거리로 안내합니다.",
+    "degradedNote": "목적지 방향과 거리로 안내 중입니다."
   },
   "offline": {
     "heading": "오프라인 상태입니다",

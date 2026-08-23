@@ -832,7 +832,6 @@ export function DirectionsView({
   // 사전 차단), 대중교통은 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1(도보 전용 경로 제외 —
   // 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태).
   const carOutcome = results?.outcomes.car;
-  const transitOutcome = results?.outcomes.transit;
   // 경유지 조회(N4 spec §3)에서는 어떤 안내도 시작하지 않는다 — 안내 훅이 출발지→도착지로
   // 자기 조회를 다시 해 경유지가 조용히 빠진 경로를 안내하게 되고, 간략 폴백(직선거리)도
   // 목적지만 본다. 버튼 부재가 정직하다. 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
@@ -845,17 +844,6 @@ export function DirectionsView({
     carOutcome.result.provider === "tmap" &&
     !prefersEnglish(locale) &&
     !hasVia;
-  const transitGuideRoute =
-    transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
-      ? transitOutcome.result.recommended
-      : null;
-  const transitGuideStartable =
-    transitGuideRoute !== null &&
-    buildTransitGuideRoute(transitGuideRoute) !== null &&
-    !prefersEnglish(locale);
-  // 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled ∧ 목적지 확정.
-  // "모든 수단 실패"가 아니라 "시작 가능 0개"다 — en 로케일·카카오 폴백만 성공한
-  // 조합에서 막다른 화면을 만들지 않는다(§3.1).
   const guideDest = results
     ? {
         lat: results.destCoord.lat,
@@ -864,13 +852,6 @@ export function DirectionsView({
       }
     : null;
   const guideDestKey = guideDest ? `${guideDest.lat},${guideDest.lng}` : "";
-  const briefFallback =
-    phase.kind === "settled" &&
-    guideDest !== null &&
-    !hasVia &&
-    !walkGuideStartable &&
-    !carGuideStartable &&
-    !transitGuideStartable;
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -1227,20 +1208,6 @@ export function DirectionsView({
             {tRecentRoutes("clearAll")}
           </button>
         </section>
-      )}
-
-      {/* 간략 폴백(§3.1): 시작 가능한 수단 안내가 하나도 없을 때만 선두 노출 —
-          경로를 못 찾은 상황일수록 방향 감각이 더 필요하다(기존 근거 승계). */}
-      {results && briefFallback && guideDest && (
-        <DistanceBeacon
-          key={`brief-${guideDestKey}`}
-          dest={guideDest}
-          kind="walk"
-          accessible={stepFreeEnabled}
-          startOnOpen
-          onStart={announceGuideStart}
-          triggerLabel={tBeacon("briefGuideStart")}
-        />
       )}
 
       {results && (

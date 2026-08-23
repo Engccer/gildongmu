@@ -18,11 +18,10 @@ const guideApi: RouteGuideApi = {
   progress: null,
   currentText: null,
   liveRows: { top: null, next: null },
-  canOfferDetail: false,
+  degradeText: null,
   rerouting: false,
   start: () => {},
   stop: () => {},
-  toggleMode: () => {},
   announceProgress: () => {},
   requestReroute: () => {},
 };

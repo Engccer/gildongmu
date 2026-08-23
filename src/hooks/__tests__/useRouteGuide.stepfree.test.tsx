@@ -238,7 +238,7 @@ describe("계단 회피 열화 통지", () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ result: null }) });
     renderGuide(true);
     click("start");
-    await waitFor(() => expect(live()).toBe(ko.guide.detailUnavailable));
+    await waitFor(() => expect(live()).toBe(ko.guide.degradedUnavailable));
     expect(live()).not.toContain(NOTICE);
 
     // 복구된 상세 경로가 열화면 다시 통지된다(새 경로에 대한 새 판정).

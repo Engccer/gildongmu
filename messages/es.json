@@ -659,7 +659,6 @@
     "transitHeading": "Guía de transporte"
   },
   "guide": {
-    "briefStarted": "Guía en línea recta iniciada",
     "detailStart": "Guía a pie iniciada. {count} indicaciones, {distance} en total. {first}",
     "next": "En {distance}, {step}",
     "nextDestination": "{distance} hasta {dest}",
@@ -709,11 +708,6 @@
     "uncertain": "La confianza en la ubicación es baja",
     "uncertainRecovered": "Se recuperó la confianza en la ubicación",
     "reacquiring": "Buscando de nuevo tu posición en la ruta",
-    "speedSuggest": "La señal de ubicación puede ser inestable o te mueves rápido; la guía en línea recta puede ser más adecuada",
-    "toDetailDone": "Cambiado a guía de ruta",
-    "toBriefDone": "Cambiado a guía en línea recta",
-    "resolvePending": "Determinando tu posición en la ruta",
-    "resolveFailed": "No se pudo determinar tu posición en la ruta; se mantiene la guía en línea recta",
     "detailUnavailable": "No hay detalles de la ruta. Se guiará por distancia en línea recta hasta el destino.",
     "detailNoLocation": "No se pudo obtener tu ubicación. Cuando se obtenga, se guiará por distancia en línea recta.",
     "progressButton": "Progreso",
@@ -722,8 +716,6 @@
     "progressNext": "Siguiente indicación, {step}",
     "remainingDistance": "Distancia restante {distance}",
     "remainingTime": "unos {minutes} min",
-    "toDetailButton": "Cambiar a guía de ruta",
-    "toBriefButton": "Cambiar a guía en línea recta",
     "rerouteButton": "Volver a consultar la ruta",
     "rerouteFailed": "Falló la consulta de la ruta. Se mantiene la ruta actual",
     "rerouteDone": "Ruta recalculada desde tu ubicación actual. {count} indicaciones, {distance} en total. {first}",
@@ -779,7 +771,11 @@
       "keepLeft": "manténgase a la izquierda",
       "keepRight": "manténgase a la derecha"
     },
-    "carPeriodic": "{command} en {distance}"
+    "carPeriodic": "{command} en {distance}",
+    "degradedNoLocation": "No se pudo determinar tu ubicación actual. Comprueba el permiso de ubicación y la señal.",
+    "degradedRetryable": "No se pudo cargar la ruta. Por ahora solo se anuncian la dirección y la distancia al destino.",
+    "degradedUnavailable": "No se encontró ninguna ruta hasta este destino. La guía usa la dirección y la distancia al destino.",
+    "degradedNote": "La guía usa la dirección y la distancia al destino."
   },
   "offline": {
     "heading": "Estás sin conexión",

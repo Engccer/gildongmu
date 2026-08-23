@@ -144,10 +144,11 @@ export function DistanceBeacon({
 
       {open && (
         <div className="mt-2">
-          {/* 직선거리 주석은 간략 안내로 추적 중일 때만 — 시작 전엔 상세로 열릴 수
-              있어 거짓 예고가 된다(iOS 시트 조건과 동조, 위원장 판정 2026-08-03). */}
-          {tracking && guide.mode === "brief" && (
-            <p className="text-xs text-muted">{t("straightLineNote")}</p>
+          {/* 강등 사유 상시 표시(E16 축2 §A2). ⚠ 종전 "직선거리 기준입니다."를 대체한다 —
+              강등 상태에 **모드 이름을 주지 않는다**(이름을 주면 고를 수 있는 모드로 읽힌다).
+              시작 통지는 1회뿐이라 세션 도중 들어온 SR 사용자에게는 이 줄이 유일한 신호다. */}
+          {tracking && guide.degradeText && (
+            <p className="text-xs text-muted">{guide.degradeText}</p>
           )}
           {!hintDismissed && (
             <>
@@ -194,17 +195,6 @@ export function DistanceBeacon({
                 >
                   {tGuide("progressButton")}
                 </button>
-                {guide.canOfferDetail && (
-                  <button
-                    type="button"
-                    onClick={guide.toggleMode}
-                    className={controlClass}
-                  >
-                    {guide.mode === "detail"
-                      ? tGuide("toBriefButton")
-                      : tGuide("toDetailButton")}
-                  </button>
-                )}
                 {guide.offRoute && (
                   <button
                     type="button"

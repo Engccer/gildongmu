@@ -659,7 +659,6 @@
     "transitHeading": "Guida mezzi pubblici"
   },
   "guide": {
-    "briefStarted": "Guida in linea d'aria avviata",
     "detailStart": "Guida a piedi avviata. {count} indicazioni, {distance} in totale. {first}",
     "next": "Tra {distance}, {step}",
     "nextDestination": "{distance} fino a {dest}",
@@ -709,11 +708,6 @@
     "uncertain": "L'affidabilità della posizione è bassa",
     "uncertainRecovered": "Affidabilità della posizione ripristinata",
     "reacquiring": "Ricerca della tua posizione sul percorso",
-    "speedSuggest": "Il segnale di posizione potrebbe essere instabile o ti stai muovendo velocemente, la guida in linea d'aria potrebbe essere più adatta",
-    "toDetailDone": "Passato alla guida del percorso",
-    "toBriefDone": "Passato alla guida in linea d'aria",
-    "resolvePending": "Determinazione della tua posizione sul percorso",
-    "resolveFailed": "Impossibile determinare la tua posizione sul percorso, la guida in linea d'aria resta attiva",
     "detailUnavailable": "Dettagli del percorso non disponibili. Guida in linea d'aria fino alla destinazione.",
     "detailNoLocation": "Posizione non disponibile. La guida userà la linea d'aria appena la posizione sarà disponibile.",
     "progressButton": "Avanzamento",
@@ -722,8 +716,6 @@
     "progressNext": "Prossima indicazione, {step}",
     "remainingDistance": "Distanza rimanente {distance}",
     "remainingTime": "circa {minutes} min",
-    "toDetailButton": "Passa alla guida del percorso",
-    "toBriefButton": "Passa alla guida in linea d'aria",
     "rerouteButton": "Cerca di nuovo il percorso",
     "rerouteFailed": "Ricerca del percorso non riuscita. Il percorso attuale resta attivo",
     "rerouteDone": "Percorso ricalcolato dalla tua posizione attuale. {count} indicazioni, {distance} in totale. {first}",
@@ -779,7 +771,11 @@
       "keepLeft": "tieni la sinistra",
       "keepRight": "tieni la destra"
     },
-    "carPeriodic": "{command} tra {distance}"
+    "carPeriodic": "{command} tra {distance}",
+    "degradedNoLocation": "Non è stato possibile determinare la tua posizione attuale. Controlla l’autorizzazione alla posizione e il segnale.",
+    "degradedRetryable": "Non è stato possibile caricare il percorso. Per ora vengono annunciate solo la direzione e la distanza dalla destinazione.",
+    "degradedUnavailable": "Nessun percorso verso questa destinazione è stato trovato. La guida usa la direzione e la distanza dalla destinazione.",
+    "degradedNote": "La guida usa la direzione e la distanza dalla destinazione."
   },
   "offline": {
     "heading": "Sei offline",

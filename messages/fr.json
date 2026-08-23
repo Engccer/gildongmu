@@ -659,7 +659,6 @@
     "transitHeading": "Guidage transports"
   },
   "guide": {
-    "briefStarted": "Guidage à vol d'oiseau démarré",
     "detailStart": "Guidage à pied démarré. {count} instructions, {distance} au total. {first}",
     "next": "Dans {distance}, {step}",
     "nextDestination": "{distance} jusqu'à {dest}",
@@ -709,11 +708,6 @@
     "uncertain": "La confiance dans la position est faible",
     "uncertainRecovered": "La confiance dans la position est rétablie",
     "reacquiring": "Recherche de votre position sur l'itinéraire",
-    "speedSuggest": "Le signal de position est peut-être instable ou vous vous déplacez vite, le guidage à vol d'oiseau peut mieux convenir",
-    "toDetailDone": "Passé au guidage d'itinéraire",
-    "toBriefDone": "Passé au guidage à vol d'oiseau",
-    "resolvePending": "Détermination de votre position sur l'itinéraire",
-    "resolveFailed": "Impossible de déterminer votre position sur l'itinéraire, le guidage à vol d'oiseau est maintenu",
     "detailUnavailable": "Détails de l'itinéraire indisponibles. Guidage à vol d'oiseau jusqu'à la destination.",
     "detailNoLocation": "Position introuvable. Le guidage se fera à vol d'oiseau dès que votre position sera trouvée.",
     "progressButton": "Progression",
@@ -722,8 +716,6 @@
     "progressNext": "Instruction suivante, {step}",
     "remainingDistance": "Distance restante {distance}",
     "remainingTime": "environ {minutes} min",
-    "toDetailButton": "Passer au guidage d'itinéraire",
-    "toBriefButton": "Passer au guidage à vol d'oiseau",
     "rerouteButton": "Relancer la recherche d'itinéraire",
     "rerouteFailed": "Échec de la recherche d'itinéraire. L'itinéraire actuel est conservé",
     "rerouteDone": "Itinéraire recalculé depuis votre position actuelle. {count} instructions, {distance} au total. {first}",
@@ -779,7 +771,11 @@
       "keepLeft": "restez à gauche",
       "keepRight": "restez à droite"
     },
-    "carPeriodic": "{command} dans {distance}"
+    "carPeriodic": "{command} dans {distance}",
+    "degradedNoLocation": "Votre position actuelle n’a pas pu être déterminée. Vérifiez l’autorisation de localisation et le signal.",
+    "degradedRetryable": "L’itinéraire n’a pas pu être chargé. Pour l’instant, seules la direction et la distance jusqu’à la destination sont annoncées.",
+    "degradedUnavailable": "Aucun itinéraire vers cette destination n’a été trouvé. Le guidage utilise la direction et la distance jusqu’à la destination.",
+    "degradedNote": "Le guidage utilise la direction et la distance jusqu’à la destination."
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

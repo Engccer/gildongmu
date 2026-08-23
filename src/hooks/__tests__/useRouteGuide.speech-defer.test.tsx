@@ -81,7 +81,7 @@ function renderHarness() {
 
 const live = () => screen.getByTestId("live").textContent;
 
-/** 시작 조회 실패(fetch가 빈 JSON) → detailUnavailable 통지가 start 톤에 걸린다. */
+/** 시작 조회 실패(fetch가 빈 JSON) → 강등 사유 통지가 start 톤에 걸린다. */
 async function startSession() {
   await act(async () => {
     fireEvent.click(screen.getByText("start"));
@@ -107,7 +107,7 @@ beforeEach(() => {
       getCurrentPosition: vi.fn(),
     },
   });
-  // 상세 경로 조회는 실패 경로로 태운다(간략 폴백 → detailUnavailable 통지).
+  // 상세 경로 조회는 실패 경로로 태운다(강등 → 사유 통지).
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
 });
 
@@ -118,7 +118,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const DETAIL_UNAVAILABLE = ko.guide.detailUnavailable;
+const DETAIL_UNAVAILABLE = ko.guide.degradedUnavailable;
 const START_DEFER_MS = (1.332 + SPEECH_DEFER_GAP_S) * 1000; // start 톤 뒤 발화 지연
 
 describe("발화 지연 게이트 훅 배선", () => {
@@ -151,7 +151,7 @@ describe("발화 지연 게이트 훅 배선", () => {
     await startSession();
     expect(live()).toBe("");
     // 지연 창 안(0.8초)에서 첫 fix 통지가 도착 — 이 시점 톤 잔여는 0.53초라 임계
-    // 미만이므로 새 문장은 즉시 게시되고, 옛 detailUnavailable 예약은 폐기돼야 한다.
+    // 미만이므로 새 문장은 즉시 게시되고, 옛 강등 사유 예약은 폐기돼야 한다.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(800);
     });
@@ -195,7 +195,7 @@ describe("발화 지연 게이트 훅 배선", () => {
       sound === "start" ? 5 : (TONE_LENGTHS[sound] ?? 0),
     );
     renderHarness();
-    await startSession(); // start 톤 5초 기록(detailUnavailable은 3초 clamp 예약)
+    await startSession(); // start 톤 5초 기록(강등 사유는 3초 clamp 예약)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100);
     });

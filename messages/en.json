@@ -659,7 +659,6 @@
     "transitHeading": "Transit guidance"
   },
   "guide": {
-    "briefStarted": "Straight-line guidance started",
     "detailStart": "Walking guidance started. {count} instructions, {distance} total. {first}",
     "next": "In {distance}, {step}",
     "nextDestination": "{distance} to {dest}",
@@ -709,11 +708,6 @@
     "uncertain": "Location confidence is low",
     "uncertainRecovered": "Location confidence recovered",
     "reacquiring": "Re-locating you on the route",
-    "speedSuggest": "Your location signal may be unstable or you may be moving fast; straight-line guidance may fit better",
-    "toDetailDone": "Switched to route guidance",
-    "toBriefDone": "Switched to straight-line guidance",
-    "resolvePending": "Finding your position on the route",
-    "resolveFailed": "Could not fix your position on the route; keeping straight-line guidance",
     "detailUnavailable": "Route details unavailable. Guiding by straight-line distance to the destination.",
     "detailNoLocation": "Location unavailable. Guidance will use straight-line distance once your position is found.",
     "progressButton": "Progress",
@@ -722,8 +716,6 @@
     "progressNext": "Next instruction, {step}",
     "remainingDistance": "Distance left {distance}",
     "remainingTime": "about {minutes} min",
-    "toDetailButton": "Switch to route guidance",
-    "toBriefButton": "Switch to straight-line guidance",
     "rerouteButton": "Re-query route",
     "rerouteFailed": "Route query failed. Keeping the current route",
     "rerouteDone": "Route recalculated from your current location. {count} instructions, {distance} total. {first}",
@@ -779,7 +771,11 @@
       "keepLeft": "keep left",
       "keepRight": "keep right"
     },
-    "carPeriodic": "{command} in {distance}"
+    "carPeriodic": "{command} in {distance}",
+    "degradedNoLocation": "Your current location could not be determined. Check location permission and signal.",
+    "degradedRetryable": "The route could not be loaded. For now, only the direction and distance to the destination are announced.",
+    "degradedUnavailable": "No route to this destination was found. Guidance uses the direction and distance to the destination.",
+    "degradedNote": "Guidance is using the direction and distance to the destination."
   },
   "offline": {
     "heading": "You are offline",
