@@ -1,7 +1,29 @@
+import boundary from "./data/korea-boundary.json";
+
 /**
- * 대한민국 서비스 커버리지 정본 술어.
- * 값은 네이버 지도 URL scheme 유효 범위(구 deeplink.ts) 승격. iOS Kit Coverage.swift 미러(값 변경 시 동조).
- * 제약의 근원은 upstream API의 데이터 커버리지이며, 이 술어는 그 현실을 앞당긴 방어막이다(spec 설계 원칙 1).
+ * 대한민국 서비스 커버리지 정본 술어. iOS Kit Coverage.swift 미러(값·알고리즘 동조).
+ *
+ * **판정은 국경 폴리곤이고 사각형은 프리필터다**(E19, 2026-08-23). 사각형만으로는
+ * 후쿠오카·기타큐슈·대마도·시모노세키가 "한국 안"으로 통과하고, 개성·해주는 파주와
+ * 위경도가 겹쳐 어떤 사각형 뺄셈으로도 갈리지 않는다. 링은 E12가 walk seed용으로
+ * 받아 둔 OSM `admin_level=2` 경계이며, 그것은 해안선이 아니라 **영해 경계선**이라
+ * 좌표점이 2,580개뿐이다(연안·항만이 넉넉히 안쪽이고 판정 비용이 사실상 0).
+ *
+ * ⚠ 이 술어의 뜻은 **"한국 안인가"**이지 "이 upstream이 답하는 범위인가"가 아니다.
+ * upstream 범위는 `unavailableHere`(국내 지역별 미제공)와 0건 축이 따로 든다.
+ *
+ * ⚠ **클라이언트에서도 같은 술어를 쓴다.** 대가는 번들 +53,814 bytes(gzip 약 15KB,
+ * 2026-08-23 실측 chunks 합계 1.3MB의 4%)이고, 느슨한 클라 전용 술어를 이름 있는
+ * API로 남기지 않기 위해 수용한 값이다 — 서버 왕복이 없는 소비자(deeplink.ts)에서는
+ * 사각형이 최종 판정이 되어 후쿠오카에 네이버 지도 링크가 나간다.
+ */
+const KOREA_RINGS = (boundary as { rings: Array<Array<[number, number]>> }).rings;
+
+/**
+ * 링을 감싸는 사각형. **판정이 아니라 프리필터다** — 먼 좌표를 먼저 떨어뜨린다.
+ * 값은 네이버 지도 URL scheme 유효 범위(구 deeplink.ts) 승격.
+ *
+ * ⚠ `scripts/build-crosswalk-seed.mjs`가 seed 생성 필터로 같은 값을 자체 복제한다.
  */
 export const KOREA_COVERAGE_BBOX = {
   latMin: 31.43,
@@ -11,12 +33,22 @@ export const KOREA_COVERAGE_BBOX = {
 } as const;
 
 export function isInKorea(lat: number, lng: number): boolean {
-  return (
-    lat >= KOREA_COVERAGE_BBOX.latMin &&
-    lat <= KOREA_COVERAGE_BBOX.latMax &&
-    lng >= KOREA_COVERAGE_BBOX.lngMin &&
-    lng <= KOREA_COVERAGE_BBOX.lngMax
-  );
+  if (lat < KOREA_COVERAGE_BBOX.latMin || lat > KOREA_COVERAGE_BBOX.latMax) return false;
+  if (lng < KOREA_COVERAGE_BBOX.lngMin || lng > KOREA_COVERAGE_BBOX.lngMax) return false;
+
+  for (const ring of KOREA_RINGS) {
+    let inside = false;
+    for (let i = 0; i < ring.length - 1; i += 1) {
+      const [y1, x1] = ring[i];
+      const [y2, x2] = ring[i + 1];
+      if (y1 > lat !== y2 > lat) {
+        const xAt = x1 + ((lat - y1) * (x2 - x1)) / (y2 - y1);
+        if (lng < xAt) inside = !inside;
+      }
+    }
+    if (inside) return true;
+  }
+  return false;
 }
 
 /**
