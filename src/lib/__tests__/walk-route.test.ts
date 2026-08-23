@@ -250,6 +250,7 @@ describe("annotateCrosswalkInfo (E8 차로 수·도로 폭)", () => {
     const out = annotateCrosswalkInfo(
       briefing([{ description: "횡단보도를 건너세요, 횡단보도 길이 21m", pathCoords: SEODAL_PATH }]),
       false,
+      "kakao",
     );
     expect(out.steps[0].description).toBe("횡단보도를 건너세요, 횡단보도 길이 21m, 3차로, 도로 폭 14m");
   });
@@ -258,13 +259,14 @@ describe("annotateCrosswalkInfo (E8 차로 수·도로 폭)", () => {
     const out = annotateCrosswalkInfo(
       briefing([{ description: "횡단보도를 건너세요, 횡단보도 길이 11m", pathCoords: GILDONG_PATH }]),
       false,
+      "kakao",
     );
     expect(out.steps[0].description).toBe("횡단보도를 건너세요, 횡단보도 길이 11m");
   });
 
   it("병합 스텝(원문형·재작성형)은 seed가 매칭돼도 침묵", () => {
     for (const d of ["2개의 횡단보도 이용", "횡단보도 2개를 건너세요, 횡단보도 길이 58m"]) {
-      const out = annotateCrosswalkInfo(briefing([{ description: d, pathCoords: SEODAL_PATH }]), false);
+      const out = annotateCrosswalkInfo(briefing([{ description: d, pathCoords: SEODAL_PATH }]), false, "kakao");
       expect(out.steps[0].description).toBe(d);
     }
   });
@@ -273,16 +275,33 @@ describe("annotateCrosswalkInfo (E8 차로 수·도로 폭)", () => {
     const out = annotateCrosswalkInfo(
       briefing([{ description: "서달로를 따라 21m 이동", pathCoords: SEODAL_PATH }]),
       false,
+      "kakao",
     );
     expect(out.steps[0].description).toBe("서달로를 따라 21m 이동");
   });
 
-  it("Tmap 단일 coord 스텝은 구간 길이를 잴 수 없어 침묵", () => {
-    const out = annotateCrosswalkInfo(
+  it("Tmap은 provider 게이트로 침묵 — 단일 coord도, 기하 요청의 2점 LineString도", () => {
+    const single = annotateCrosswalkInfo(
       briefing([{ description: "우측 횡단보도 후 11m 이동", coord: SEODAL_PATH[0] }]),
       false,
+      "tmap",
     );
-    expect(out.steps[0].description).toBe("우측 횡단보도 후 11m 이동");
+    expect(single.steps[0].description).toBe("우측 횡단보도 후 11m 이동");
+    // 같은 폴리라인이 카카오면 붙는다 — 게이트가 provider 축임을 확정.
+    const line = briefing([{ description: "우측 횡단보도 진입", pathCoords: SEODAL_PATH }]);
+    expect(annotateCrosswalkInfo(line, false, "tmap").steps[0].description).toBe("우측 횡단보도 진입");
+    expect(annotateCrosswalkInfo(line, false, "kakao").steps[0].description).toMatch(/, 3차로, 도로 폭 14m$/);
+  });
+
+  it("음향신호기 주석 뒤에 붙는다(안전 정보 → 수식 순서)", () => {
+    const out = annotateCrosswalkInfo(
+      briefing([{ description: "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음", pathCoords: SEODAL_PATH }]),
+      false,
+      "kakao",
+    );
+    expect(out.steps[0].description).toBe(
+      "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음, 3차로, 도로 폭 14m",
+    );
   });
 
   it("기본 경로는 coord·pathCoords를 제거하고, keepGeometry면 pathCoords로 통일한다", () => {
@@ -290,12 +309,12 @@ describe("annotateCrosswalkInfo (E8 차로 수·도로 폭)", () => {
       { description: "횡단보도를 건너세요", pathCoords: SEODAL_PATH },
       { description: "직진", coord: SEODAL_PATH[0] },
     ]);
-    const stripped = annotateCrosswalkInfo(base, false);
+    const stripped = annotateCrosswalkInfo(base, false, "kakao");
     for (const s of stripped.steps) {
       expect("coord" in s).toBe(false);
       expect("pathCoords" in s).toBe(false);
     }
-    const kept = annotateCrosswalkInfo(base, true);
+    const kept = annotateCrosswalkInfo(base, true, "kakao");
     expect(kept.steps[0].pathCoords).toEqual(SEODAL_PATH);
     expect(kept.steps[1].pathCoords).toEqual([SEODAL_PATH[0]]);
     expect("coord" in kept.steps[1]).toBe(false);
@@ -329,6 +348,17 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
     });
     const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
     expect(walkStepAction(r!.steps[0].description)).toBe("crosswalk");
+  });
+
+  it("Tmap 폴백 경로(카카오 throw)는 같은 폴리라인이어도 침묵", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
+    vi.mocked(getWalkRouteBriefing).mockResolvedValue({
+      distanceMeters: 300,
+      durationSeconds: 280,
+      steps: [{ description: "우측 횡단보도 진입", distanceMeters: 21, pathCoords: SEODAL_PATH }],
+    });
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    expect(r?.steps[0].description).not.toMatch(/차로/);
   });
 
   it("기하 옵트인 응답은 주석이 붙고 pathCoords가 남는다", async () => {

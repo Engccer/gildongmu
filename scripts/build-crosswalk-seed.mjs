@@ -13,6 +13,7 @@ import { basename } from "node:path";
 
 export const ENDPOINT = "https://api.data.go.kr/openapi/tn_pubr_public_crosswalk_api";
 const PAGE_SIZE = 1000;
+const MAX_PAGES = 200; // 실측 59페이지 — 무한 페이지(프록시·캐시 오류) 방어
 const MIN_TOTAL = 50_000;
 const MIN_SIDO = 15;
 const MIN_PARSE_RATIO = 0.99;
@@ -94,6 +95,7 @@ export function buildSeed(rows, { now }) {
 export async function fetchAll(key, fetchImpl = fetch) {
   const rows = [];
   for (let page = 1; ; page++) {
+    if (page > MAX_PAGES) throw new Error(`페이지 ${MAX_PAGES} 초과 — upstream 페이지네이션 이상`);
     const url = `${ENDPOINT}?serviceKey=${key}&pageNo=${page}&numOfRows=${PAGE_SIZE}&type=json`;
     const res = await fetchImpl(url);
     const text = await res.text();

@@ -11,6 +11,12 @@
 
 ## 2026-08-23
 
+### 횡단보도 차로 수·도로 폭 낭독 (E8)
+
+도보 안내의 단일 횡단보도 문장 끝에 전국횡단보도표준데이터(15028201) 값으로 `, N차로, 도로 폭 Mm`를 덧붙인다(서버 `getWalkRoute` 주석 단계, 웹·iOS·CLI 무변경). 있는 곳만 말하고 없는 곳은 침묵. spec `docs/superpowers/specs/2026-08-23-crosswalk-lanes-length-design.md`.
+
+- 이용허락 "제한 없음"이라 정적 seed(54,186건, `NOTICE.md` 등재). 실측에서 교차로 횡단보도 여럿이 한 점에 겹쳐 등록된 것(3,425곳 값 불일치)을 발견해 최근접 대신 **3중 게이트**(중점 30m·연장≈구간 길이·후보 합의)로 fail-closed — 표본 22건 주석 8·침묵 14·오탐 0. 실호출 게이트 `scripts/verify-crosswalk-annotation.mjs` 7/7.
+- 라벨은 "도로 폭": 재작성 문장이 이미 "횡단보도 길이 21m"(스텝 거리)를 달고 있어 맨몸 수치를 덧붙이면 길이가 둘로 들린다. 라벨 낭독 판정은 BACKLOG E8 잔여.
 ### A19 TAGO 시간표 (역·노선) 0행을 coverage 3-state로 — 노선 탈락 0 (웹·CLI·채팅·iOS)
 
 업스트림이 인증 정상인데 스케줄 0행을 주는 (역·노선)(홍대입구 2호선·강남 신분당·서울역 공항)을 `lines[]`에서 빼던 것을 멈추고 `TimetableLine.coverage`(`ok`/`noTrains`/`unknown`/`unavailable`)로 가른다. 소비자 4곳이 노선명과 함께 "확인할 수 없습니다"·"불러오지 못했습니다"·"탑승할 수 있는 편성이 없습니다"를 따로 낭독하고(`timetable.coverage.*`, `timetable.empty` 삭제), `subway-nearby` 심야 "운행 종료" 단정은 `ok`·`noTrains` 노선만 참여하는 allowlist(fail-closed)로 바뀌었다. iOS는 `coverage` 옵셔널(웹 선배포). 실호출 게이트 `scripts/verify-korea-subway-timetable.mjs` 신설(15/15 PASS). spec `docs/superpowers/specs/2026-08-23-tago-timetable-coverage-design.md`, dodo 계약 역이식.
