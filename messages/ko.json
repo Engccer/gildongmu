@@ -178,7 +178,9 @@
     "addVia": "경유지 추가",
     "removeVia": "경유지 삭제",
     "viaArrived": "경유지 {label} 도착",
-    "unsupportedWaypoint": "경유지는 대중교통 경로에서 지원하지 않습니다."
+    "unsupportedWaypoint": "경유지는 대중교통 경로에서 지원하지 않습니다.",
+    "walkRecommended": "추천 경로",
+    "walkShortest": "최단 경로"
   },
   "detail": {
     "back": "검색 결과로 돌아가기"

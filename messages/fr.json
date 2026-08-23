@@ -178,7 +178,9 @@
     "addVia": "Ajouter une étape",
     "removeVia": "Supprimer l'étape",
     "viaArrived": "Étape {label} atteinte",
-    "unsupportedWaypoint": "Les itinéraires en transports en commun ne prennent pas en charge les étapes."
+    "unsupportedWaypoint": "Les itinéraires en transports en commun ne prennent pas en charge les étapes.",
+    "walkRecommended": "Itinéraire recommandé",
+    "walkShortest": "Itinéraire le plus court"
   },
   "detail": {
     "back": "Retour aux résultats"

@@ -178,7 +178,9 @@
     "addVia": "Añadir punto intermedio",
     "removeVia": "Quitar punto intermedio",
     "viaArrived": "Punto intermedio {label} alcanzado",
-    "unsupportedWaypoint": "Las rutas de transporte público no admiten puntos intermedios."
+    "unsupportedWaypoint": "Las rutas de transporte público no admiten puntos intermedios.",
+    "walkRecommended": "Ruta recomendada",
+    "walkShortest": "Ruta más corta"
   },
   "detail": {
     "back": "Volver a los resultados"

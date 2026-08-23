@@ -178,7 +178,9 @@
     "addVia": "Add a waypoint",
     "removeVia": "Remove waypoint",
     "viaArrived": "Waypoint {label} reached",
-    "unsupportedWaypoint": "Waypoints are not supported for public transit routes."
+    "unsupportedWaypoint": "Waypoints are not supported for public transit routes.",
+    "walkRecommended": "Recommended route",
+    "walkShortest": "Shortest route"
   },
   "detail": {
     "back": "Back to results"
