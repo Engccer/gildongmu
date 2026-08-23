@@ -73,14 +73,16 @@ check("급행 subPath가 존재한다", express.length > 0, `${express.length}�
 // 핵심 단언 — 우리가 벗기는 토큰과 실제 표기가 같은가.
 check(
   '급행 표기가 "(급행)" 접미 형태다',
-  express.every((s) => /\(급행\)\s*$/.test(s.lane[0].name)),
+  express.length > 0 && express.every((s) => /\(급행\)\s*$/.test(s.lane[0].name)),
   express.map((s) => s.lane[0].name).join(", "),
 );
 
 // 접미를 벗기면 완행 표기와 같아져야 매핑표에 닿는다.
 check(
   "접미를 벗기면 완행과 같은 노선명이 된다",
-  express.every((s) => s.lane[0].name.replace(/\(급행\)\s*$/, "").trim() === "수도권 9호선"),
+  // ⚠ length 가드 필수 — 빈 배열의 every()는 무조건 true라 검증하지 않은 것을
+  //   검증한 것처럼 PASS 줄에 남긴다(파일 아래 경유역 비교와 같은 관용구).
+  express.length > 0 && express.every((s) => s.lane[0].name.replace(/\(급행\)\s*$/, "").trim() === "수도권 9호선"),
 );
 
 // 경유역이 급행 기준으로 좁혀져 오는가(E14 ① 근거 — 이게 깨지면 경유역 목록이

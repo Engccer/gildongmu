@@ -302,6 +302,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(subwayIdForOdsayLine("수도권 1호선(급행)") == "1001")
     // 그 밖의 괄호 등급은 삼키지 않는다(직통은 실시간 도착 축이 없다).
     #expect(subwayIdForOdsayLine("수도권 공항철도(직통)") == nil)
+    // 앵커 계약(웹 미러): 끝에 붙은 한 토큰만 벗긴다.
+    #expect(subwayIdForOdsayLine("수도권 (급행)9호선") == nil)
 }
 
 @Test func buildGuideRouteFoldsWalkContext() {
