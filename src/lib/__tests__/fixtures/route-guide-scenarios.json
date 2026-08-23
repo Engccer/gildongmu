@@ -1,5501 +1,5516 @@
 {
-  "comment": "실시간 길 안내 리듀서 경계표. 웹 route-guide.test.ts와 Kit RouteGuideTests가 함께 소비한다(드리프트 가드). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). 스텝은 len(m) 순서대로 남→북 직선 배치. expect의 afterFix는 0-기반 fix 인덱스. 스텝 `action`(서버 turnType 투영 — 자동차)은 문장 대신 행동을 정한다. tuning: walk(기본)·car·carDriver.",
-  "scenarios": [
+ "comment": "실시간 길 안내 리듀서 경계표. 웹 route-guide.test.ts와 Kit RouteGuideTests가 함께 소비한다(드리프트 가드). 좌표 규약: lat = 37.5 + along/111320, lng = 127.1 + lateral/(111320·cos 37.5°). 스텝은 len(m) 순서대로 남→북 직선 배치. expect의 afterFix는 0-기반 fix 인덱스. 스텝 `action`은 **서버 투영**이고 도보·자동차 모두 그것만 본다(E16 축3부터 도보도 `actionSource: step`). 도보 fixture의 action은 서버가 최종 문장에 `walkStepAction`을 태워 싣는 값과 같다 — 클라이언트는 문장을 분류하지 않는다. tuning: walk(기본)·car·carDriver.",
+ "scenarios": [
+  {
+   "name": "긴 구간 선행 낭독과 전진 분리",
+   "steps": [
     {
-      "name": "긴 구간 선행 낭독과 전진 분리",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "우회전B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 9,
-          "eventNot": "announceSteps"
-        },
-        {
-          "afterFix": 10,
-          "event": "announceSteps",
-          "indices": [
-            1
-          ],
-          "toneNull": true
-        },
-        {
-          "afterFix": 11,
-          "eventNot": "announceSteps"
-        }
-      ]
+     "len": 200,
+     "desc": "직진A"
     },
     {
-      "name": "묶음 통독은 선행·재통독은 주기 (묶음 잔여 85m라 다음 선행 낭독 미발동 구간)",
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진"
-        },
-        {
-          "len": 30,
-          "desc": "횡단보도"
-        },
-        {
-          "len": 30,
-          "desc": "이동"
-        },
-        {
-          "len": 30,
-          "desc": "좌회전"
-        },
-        {
-          "len": 100,
-          "desc": "직진2"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 4,
-          "event": "announceSteps",
-          "indices": [
-            1,
-            2,
-            3
-          ]
-        },
-        {
-          "afterFix": 6,
-          "eventNull": true
-        },
-        {
-          "afterFix": 7,
-          "event": "bundleReread",
-          "indices": [
-            1,
-            2,
-            3
-          ]
-        }
-      ]
-    },
-    {
-      "name": "인계는 전 스텝 낭독 완료 AND 잔여 50m (구속 창을 넘지 않는 점진 접근)",
-      "steps": [
-        {
-          "len": 120,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 3,
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 4,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "uncertain 진입·회복과 낭독 정지",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 100,
-          "lateral": 0,
-          "acc": 80
-        },
-        {
-          "t": 20,
-          "along": 150,
-          "lateral": 0,
-          "acc": 80
-        },
-        {
-          "t": 30,
-          "along": 200,
-          "lateral": 0,
-          "acc": 15
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 1,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 2,
-          "eventNull": true
-        },
-        {
-          "afterFix": 3,
-          "event": "uncertainExit"
-        }
-      ]
-    },
-    {
-      "name": "이탈 20초 지속 후 통지·전역 복귀 감지",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 150,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 2,
-          "eventNot": "offRoute"
-        },
-        {
-          "afterFixAny": [
-            3,
-            4
-          ],
-          "event": "offRoute",
-          "tone": "warning"
-        },
-        {
-          "afterFix": 5,
-          "event": "backOnRoute"
-        }
-      ]
-    },
-    {
-      "name": "차량 속도: speedSuggest 1회, 이후 재발화 없음",
-      "steps": [
-        {
-          "len": 2000,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 90,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 140,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 190,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 2,
-          "event": "speedSuggest"
-        },
-        {
-          "afterFix": 3,
-          "eventNot": "speedSuggest"
-        },
-        {
-          "afterFix": 4,
-          "eventNot": "speedSuggest"
-        }
-      ]
-    },
-    {
-      "name": "계단 GPS 노이즈: 정확도 나쁜 fix(>20m)는 속도 표본 배제 — speedSuggest 미발동",
-      "steps": [
-        {
-          "len": 2000,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 10,
-          "along": 90,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 15,
-          "along": 140,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 20,
-          "along": 190,
-          "lateral": 0,
-          "acc": 30
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 2,
-          "eventNot": "speedSuggest"
-        },
-        {
-          "afterFix": 3,
-          "eventNot": "speedSuggest"
-        },
-        {
-          "afterFix": 4,
-          "eventNot": "speedSuggest"
-        }
-      ]
-    },
-    {
-      "name": "fix 공백 10초 초과 후 reacquiring",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 200,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 1,
-          "event": "reacquiring"
-        }
-      ]
-    },
-    {
-      "name": "다중 구간 통과는 최신만(낭독 병합 — 중간 안내 개별 낭독 없음)",
-      "steps": [
-        {
-          "len": 100,
-          "desc": "A"
-        },
-        {
-          "len": 100,
-          "desc": "B"
-        },
-        {
-          "len": 100,
-          "desc": "C"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 0,
-          "acc": 5
-        },
-        {
-          "t": 6,
-          "along": 230,
-          "lateral": 0,
-          "acc": 5
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 2,
-          "eventOneOf": [
-            "announceSteps",
-            "reacquiring"
-          ]
-        }
-      ]
-    },
-    {
-      "name": "이탈 확정이 GPS 공백(reacquiring)을 경유해도 복귀는 backOnRoute (리뷰 HIGH)",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 45,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 150,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            3,
-            4
-          ],
-          "event": "offRoute"
-        },
-        {
-          "afterFix": 5,
-          "event": "reacquiring"
-        },
-        {
-          "afterFix": 6,
-          "event": "backOnRoute"
-        },
-        {
-          "afterFix": 6,
-          "eventNot": "reacquired"
-        }
-      ]
-    },
-    {
-      "name": "이탈 확정이 uncertain(정확도 악화)을 경유해도 이탈 상태 유지·복귀는 backOnRoute",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 100,
-          "lateral": 80,
-          "acc": 80
-        },
-        {
-          "t": 45,
-          "along": 100,
-          "lateral": 80,
-          "acc": 10
-        },
-        {
-          "t": 53,
-          "along": 150,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            3,
-            4
-          ],
-          "event": "offRoute"
-        },
-        {
-          "afterFix": 5,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 6,
-          "event": "uncertainExit"
-        },
-        {
-          "afterFix": 7,
-          "event": "backOnRoute"
-        }
-      ]
-    },
-    {
-      "name": "경계: 선행 낭독 임박선 40m(±1m — 부동소수 등호 회피)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "우회전B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 120,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 159,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 160.5,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 4,
-          "eventNot": "announceSteps"
-        },
-        {
-          "afterFix": 5,
-          "event": "announceSteps",
-          "indices": [
-            1
-          ]
-        }
-      ]
-    },
-    {
-      "name": "경계: 이탈 임계 30m(29m 비이탈 / 31m 홀드 후 확정)",
-      "steps": [
-        {
-          "len": 400,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 29,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 80,
-          "lateral": 29,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 120,
-          "lateral": 29,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 160,
-          "lateral": 29,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 200,
-          "lateral": 29,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 220,
-          "lateral": 31,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 240,
-          "lateral": 31,
-          "acc": 10
-        },
-        {
-          "t": 42,
-          "along": 260,
-          "lateral": 31,
-          "acc": 10
-        },
-        {
-          "t": 47,
-          "along": 280,
-          "lateral": 31,
-          "acc": 10
-        },
-        {
-          "t": 53,
-          "along": 300,
-          "lateral": 31,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
-          "eventNot": "offRoute"
-        },
-        {
-          "afterFixAny": [
-            9,
-            10
-          ],
-          "event": "offRoute"
-        }
-      ]
-    },
-    {
-      "name": "경계: 기하 없는 세션은 옛 50m 인계 유지(51m 미진입 / 49.5m 진입)",
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 49,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 50.5,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 1,
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 2,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "최종 접근: 기하를 알면 잔여 50m에서 진입하지 않고 경로 종점까지 간다",
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 25,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 49.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 70,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 92,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            1,
-            2,
-            3
-          ],
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 4,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "최종 접근: 정확도가 나쁘면 진입선이 넓어진다(잔여 40m 미진입 / 28m 진입, acc 30)",
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 10,
-          "along": 25,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 20,
-          "along": 48,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 30,
-          "along": 60,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 40,
-          "along": 72,
-          "lateral": 0,
-          "acc": 30
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            1,
-            2,
-            3
-          ],
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 4,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "최종 접근: 단방향 래치 — 진입 후 정확도가 좋아져도 리듀서가 판정을 재개하지 않는다",
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 10,
-          "along": 25,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 20,
-          "along": 48,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 30,
-          "along": 72,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 40,
-          "along": 75,
-          "lateral": 0,
-          "acc": 5
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 3,
-          "event": "finalApproachEnter"
-        },
-        {
-          "afterFix": 4,
-          "eventNull": true
-        }
-      ]
-    },
-    {
-      "name": "최종 접근 중에는 이탈을 주장하지 않는다(경로에서 60m 벗어나도 무이벤트)",
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 25,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 49.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 70,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 92,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 95,
-          "lateral": 60,
-          "acc": 10
-        },
-        {
-          "t": 60,
-          "along": 98,
-          "lateral": 60,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 4,
-          "event": "finalApproachEnter"
-        },
-        {
-          "afterFix": 5,
-          "eventNull": true
-        },
-        {
-          "afterFix": 6,
-          "eventNull": true
-        }
-      ]
-    },
-    {
-      "name": "경계: 재획득 공백 10초(10초 유지 / 11초 재획득 진입)",
-      "steps": [
-        {
-          "len": 400,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 14,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 28,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 1,
-          "eventNot": "reacquiring"
-        },
-        {
-          "afterFix": 2,
-          "event": "reacquiring"
-        }
-      ]
-    },
-    {
-      "name": "car: 고속 5초 공백에도 거짓 재확보 없음(150m 창)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 2000,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 22,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 44,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 66,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 88,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 198,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 308,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 418,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            5,
-            6,
-            7
-          ],
-          "eventNull": true
-        }
-      ]
-    },
-    {
-      "name": "car: 이탈 50m 초과 10초 지속 확정(첫 확정은 경고 톤)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 600,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 52,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 80,
-          "lateral": 52,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 120,
-          "lateral": 52,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            1,
-            2
-          ],
-          "eventNot": "offRoute"
-        },
-        {
-          "afterFix": 3,
-          "event": "offRoute",
-          "tone": "warning"
-        }
-      ]
-    },
-    {
-      "name": "car: 복귀 추세(수직거리 감소)는 이탈 확정을 유예한다",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 600,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 40,
-          "lateral": 70,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 80,
-          "lateral": 70,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 120,
-          "lateral": 55,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 160,
-          "lateral": 55,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 200,
-          "lateral": 55,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            3,
-            4
-          ],
-          "eventNot": "offRoute"
-        },
-        {
-          "afterFix": 5,
-          "event": "offRoute"
-        }
-      ]
-    },
-    {
-      "name": "car: 원거리 예고 경계 하향 통과 1회 + 임박 별도 발화",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 1600,
-          "desc": "직진A"
-        },
-        {
-          "len": 200,
-          "desc": "우회전B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 105,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 205,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 305,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 405,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 505,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 605,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 35,
-          "along": 705,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 805,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 45,
-          "along": 905,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 1005,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 55,
-          "along": 1105,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 60,
-          "along": 1205,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 65,
-          "along": 1307,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 1,
-          "event": "farNotice",
-          "indices": [
-            1
-          ]
-        },
-        {
-          "afterFixAny": [
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12
-          ],
-          "eventNot": "farNotice"
-        },
-        {
-          "afterFix": 13,
-          "event": "announceSteps",
-          "indices": [
-            1
-          ]
-        }
-      ]
-    },
-    {
-      "name": "car: 재획득으로 경계 크로싱을 놓치면 뒤늦은 원거리 예고 없음",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 1700,
-          "desc": "직진A"
-        },
-        {
-          "len": 300,
-          "desc": "우회전B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 300,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 350,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 400,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 2,
-          "event": "reacquiring"
-        },
-        {
-          "afterFix": 3,
-          "event": "reacquired"
-        },
-        {
-          "afterFixAny": [
-            4,
-            5
-          ],
-          "eventNot": "farNotice"
-        }
-      ]
-    },
-    {
-      "name": "결정 지점 20m 앞 임박 큐 — 40m 전문은 무톤, 20m 큐가 행동별 톤(오른쪽)을 든다",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "장미공원에서 오른쪽으로 돌아 천호대로를 따라 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 192,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 104,
-          "along": 198,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 10,
-          "event": "announceSteps",
-          "indices": [
-            1
-          ],
-          "toneNull": true
-        },
-        {
-          "afterFix": 11,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 12,
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "right"
-        },
-        {
-          "afterFix": 13,
-          "eventNot": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "뒤로 돌기(back) 결정 지점 — 20m 큐가 back 톤을 든다(imminentTone 매핑 가드, 2026-08-22 N2)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "장미공원에서 유턴 후 천호대로를 따라 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 192,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 104,
-          "along": 198,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 10,
-          "event": "announceSteps",
-          "indices": [
-            1
-          ],
-          "toneNull": true
-        },
-        {
-          "afterFix": 11,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 12,
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "back"
-        },
-        {
-          "afterFix": 13,
-          "eventNot": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "행동 없는 경계는 큐를 건너뛰되 래치는 전진한다(다음 회전에서 정상 발화)",
-      "steps": [
-        {
-          "len": 150,
-          "desc": "직진A"
-        },
-        {
-          "len": 150,
-          "desc": "직진B"
-        },
-        {
-          "len": 100,
-          "desc": "사거리에서 왼쪽으로 돌아 양재대로를 따라 100m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 192,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 104,
-          "along": 208,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 112,
-          "along": 224,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 120,
-          "along": 240,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 128,
-          "along": 256,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 136,
-          "along": 272,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 144,
-          "along": 288,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 152,
-          "along": 296,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 8,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 17,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 18,
-          "event": "imminent",
-          "indices": [
-            2
-          ],
-          "tone": "left"
-        }
-      ]
-    },
-    {
-      "name": "횡단보도 유닛은 회전 표지가 없어도 큐가 나간다(전문 낭독보다 앞)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 30,
-          "desc": "길동사거리까지 24m 이동, 횡단보도 이용"
-        },
-        {
-          "len": 120,
-          "desc": "직진B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 192,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 11,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 12,
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "crosswalk"
-        }
-      ]
-    },
-    {
-      "name": "묶음 유닛 안쪽 결정 지점도 큐를 받는다(래치가 스텝 단위)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 32,
-          "desc": "한빛안경랜드 앞에서 해인한의원까지 명일로를 따라 32m 이동"
-        },
-        {
-          "len": 30,
-          "desc": "해인한의원 앞에서 왼쪽으로 돌아 30m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 192,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 104,
-          "along": 208,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 112,
-          "along": 224,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 12,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 13,
-          "eventNot": "imminent"
-        },
-        {
-          "afterFix": 14,
-          "event": "imminent",
-          "indices": [
-            2
-          ],
-          "tone": "left"
-        }
-      ]
-    },
-    {
-      "name": "마지막 유닛이 짧으면 최종 접근이 큐를 선점한다 (알려진 한계 — 되돌린 이유는 6a 주석)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 15,
-          "desc": "정문까지 14m 이동, 횡단보도 이용"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 168,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 96,
-          "along": 176,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 11,
-          "event": "finalApproachEnter"
-        },
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12
-          ],
-          "eventNot": "imminent"
-        }
-      ],
-      "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. 임박 20m(2026-08-12 lag 하향 연동) 기준: 큐 자격선(경계-20m)이 진입선보다 앞이면 큐가 살아남고, 이 기하(마지막 유닛 15m, 무기하 진입선 50m → 진입 165 < 큐 180)처럼 진입선이 앞일 때만 선점된다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 imminent가 나지만 A6 헛경고율이 2배가 됐다(a6-probe 상한 초과) — 교환을 다시 하려면 두 테스트를 함께 볼 것."
-    },
-    {
-      "name": "이미 지난 경계에는 명령형 큐를 내지 않는다(정확도 악화 후 창이 경계를 넘겨 착지)",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 200,
-          "desc": "사거리에서 왼쪽으로 돌아 200m 이동"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 16,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 32,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 64,
-          "along": 128,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 72,
-          "along": 144,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 88,
-          "along": 161,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 94,
-          "along": 180,
-          "lateral": 0,
-          "acc": 120
-        },
-        {
-          "t": 100,
-          "along": 214,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 106,
-          "along": 216,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 12,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 13,
-          "event": "uncertainExit"
-        },
-        {
-          "afterFixAny": [
-            13,
-            14
-          ],
-          "eventNot": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "최종 접근: 진입 fix의 투영 점프는 진입을 한 fix 미룬다(A10 — 2026-08-11 하교 로그 동역학)",
-      "geometry": true,
-      "steps": [
-        {
-          "len": 505.2,
-          "desc": "직진"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 8,
-          "along": 58,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 16,
-          "along": 116,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 24,
-          "along": 174,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 32,
-          "along": 232,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 40,
-          "along": 290,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 48,
-          "along": 348,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 56,
-          "along": 407.6,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 57,
-          "along": 458.3,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 58,
-          "along": 501.2,
-          "lateral": 0,
-          "acc": 22
-        },
-        {
-          "t": 59,
-          "along": 501.2,
-          "lateral": 0,
-          "acc": 22
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 8,
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 9,
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 10,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "경유지 도착선 통과 1회 — 통지 뒤 계속(래치, 톤 없음, 2026-08-22 N4)",
-      "waypointStepIndex": 1,
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "직진B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 12,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 24,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 36,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 64,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 60,
-          "along": 90,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 70,
-          "along": 105,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 120,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 90,
-          "along": 135,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 6,
-          "eventNot": "waypointReached"
-        },
-        {
-          "afterFix": 7,
-          "event": "waypointReached",
-          "toneNull": true
-        },
-        {
-          "afterFix": 8,
-          "eventNot": "waypointReached"
-        },
-        {
-          "afterFix": 9,
-          "eventNot": "waypointReached"
-        }
-      ]
-    },
-    {
-      "name": "같은 fix에 임박 큐와 경유지 도착이 걸리면 임박이 먼저, 도착은 다음 fix에(새 임박 후보보다 우선, N4)",
-      "waypointStepIndex": 1,
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 30,
-          "desc": "우회전B"
-        },
-        {
-          "len": 30,
-          "desc": "좌회전C"
-        },
-        {
-          "len": 25,
-          "desc": "우회전D"
-        },
-        {
-          "len": 100,
-          "desc": "직진E"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 12,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 24,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 36,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 58,
-          "along": 70,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 66,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 74,
-          "along": 90,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 82,
-          "along": 97,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 90,
-          "along": 112,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 99,
-          "along": 141,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 108,
-          "along": 150,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 10,
-          "event": "imminent"
-        },
-        {
-          "afterFix": 11,
-          "event": "waypointReached",
-          "toneNull": true
-        },
-        {
-          "afterFix": 12,
-          "event": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "경유지가 종점 진입선 안에 있으면 도착 이벤트가 나간 뒤에만 최종 접근에 진입한다(N4 리뷰 #1)",
-      "waypointStepIndex": 1,
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 8,
-          "desc": "직진B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 12,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 24,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 36,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 48,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 60,
-          "along": 72,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 70,
-          "along": 84,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 80,
-          "along": 96,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 90,
-          "along": 99,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 100,
-          "along": 101,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 110,
-          "along": 104,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 9,
-          "eventNot": "finalApproachEnter"
-        },
-        {
-          "afterFix": 10,
-          "event": "waypointReached"
-        },
-        {
-          "afterFix": 11,
-          "event": "finalApproachEnter"
-        }
-      ]
-    },
-    {
-      "name": "경유지에서 출발(stepIndex 0)은 첫 신뢰 fix에서 도착이 나간다(N4 리뷰 #6)",
-      "waypointStepIndex": 0,
-      "geometry": true,
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "직진B"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 12,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 0,
-          "event": "waypointReached"
-        },
-        {
-          "afterFix": 1,
-          "eventNot": "waypointReached"
-        }
-      ]
-    },
-    {
-      "name": "car: 임박 시간 축 — 20m/s에서 경계 120m(=v×6초) 안에서만 큐, 140m 앞은 무발화(K2 §3.2)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 600,
-          "desc": "직진A"
-        },
-        {
-          "len": 200,
-          "desc": "교차로에서 우회전 후 천호대로를 따라 200m 이동",
-          "action": "right"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 120,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 7,
-          "along": 140,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 180,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 200,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 11,
-          "along": 220,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 12,
-          "along": 240,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 260,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 280,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 300,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 320,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 340,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 18,
-          "along": 360,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 380,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 400,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 420,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 440,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 460,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 480,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 500,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 520,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23
-          ],
-          "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            24,
-            25
-          ],
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "right"
-        },
-        {
-          "afterFixAny": [
-            15,
-            16
-          ],
-          "event": "announceSteps",
-          "toneNull": true
-        }
-      ]
-    },
-    {
-      "name": "car: 서행(1.5m/s)은 시간 축 9m보다 바닥 15m가 이긴다 — 17.5m 앞 무발화, 14.5m 앞 발화(총거리는 최종 접근선 150m 밖)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 50,
-          "desc": "교차로에서 좌회전 후 50m 이동",
-          "action": "left"
-        },
-        {
-          "len": 200,
-          "desc": "직진C"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 1.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 3.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 4.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 6.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 7.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 9.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 7,
-          "along": 10.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 12.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 13.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 15.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 11,
-          "along": 16.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 12,
-          "along": 18.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 19.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 21.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 22.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 24.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 25.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 18,
-          "along": 27.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 28.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 30.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 31.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 33.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 34.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 36.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 37.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 39.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 40.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 28,
-          "along": 42.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 43.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 45.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 31,
-          "along": 46.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 48.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 33,
-          "along": 49.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 34,
-          "along": 51.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 35,
-          "along": 52.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 36,
-          "along": 54.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 55.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 38,
-          "along": 57.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 39,
-          "along": 58.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 60.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 41,
-          "along": 61.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 42,
-          "along": 63.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 43,
-          "along": 64.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 44,
-          "along": 66.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 45,
-          "along": 67.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 46,
-          "along": 69.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 47,
-          "along": 70.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 48,
-          "along": 72.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 49,
-          "along": 73.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 50,
-          "along": 75.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 51,
-          "along": 76.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 52,
-          "along": 78.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 53,
-          "along": 79.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 54,
-          "along": 81.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 55,
-          "along": 82.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 56,
-          "along": 84.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 57,
-          "along": 85.5,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 58,
-          "along": 87.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 59,
-          "along": 88.5,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-            29,
-            30,
-            31,
-            32,
-            33,
-            34,
-            35,
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            45,
-            46,
-            47,
-            48,
-            49,
-            50,
-            51,
-            52,
-            53,
-            54,
-            55
-          ],
-          "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            57,
-            58
-          ],
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "left"
-        }
-      ]
-    },
-    {
-      "name": "car: 정확도 30m fix도 속도 표본이다(상한 50) — 시간 축이 살아 경계 120m 안에서 큐",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 600,
-          "desc": "직진A"
-        },
-        {
-          "len": 200,
-          "desc": "교차로에서 우회전 후 200m 이동",
-          "action": "right"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 6,
-          "along": 120,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 7,
-          "along": 140,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 8,
-          "along": 160,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 9,
-          "along": 180,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 10,
-          "along": 200,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 11,
-          "along": 220,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 12,
-          "along": 240,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 13,
-          "along": 260,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 14,
-          "along": 280,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 15,
-          "along": 300,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 16,
-          "along": 320,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 17,
-          "along": 340,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 18,
-          "along": 360,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 19,
-          "along": 380,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 20,
-          "along": 400,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 21,
-          "along": 420,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 22,
-          "along": 440,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 23,
-          "along": 460,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 24,
-          "along": 480,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 25,
-          "along": 500,
-          "lateral": 0,
-          "acc": 30
-        },
-        {
-          "t": 26,
-          "along": 520,
-          "lateral": 0,
-          "acc": 30
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23
-          ],
-          "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            24,
-            25
-          ],
-          "event": "imminent",
-          "tone": "right"
-        }
-      ]
-    },
-    {
-      "name": "car: 행동 없는 경계(터널)는 큐 없이 래치 전진, 다음 우회전은 v×6=60m 안에서 큐",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 300,
-          "desc": "직진A"
-        },
-        {
-          "len": 100,
-          "desc": "남산1호터널을 지나 100m 이동"
-        },
-        {
-          "len": 100,
-          "desc": "교차로에서 우회전 후 100m 이동",
-          "action": "right"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 10,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 30,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 50,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 7,
-          "along": 70,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 90,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 11,
-          "along": 110,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 12,
-          "along": 120,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 130,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 140,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 150,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 170,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 18,
-          "along": 180,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 190,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 200,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 210,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 220,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 230,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 240,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 250,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 260,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 270,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 28,
-          "along": 280,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 290,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 30,
-          "along": 300,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 31,
-          "along": 310,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 320,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 33,
-          "along": 330,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 34,
-          "along": 340,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 35,
-          "along": 350,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 36,
-          "along": 360,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 370,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 38,
-          "along": 380,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 39,
-          "along": 390,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 400,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 41,
-          "along": 410,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-            29,
-            30,
-            31,
-            32,
-            33
-          ],
-          "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            34,
-            35
-          ],
-          "event": "imminent",
-          "indices": [
-            2
-          ],
-          "tone": "right"
-        },
-        {
-          "afterFixAny": [
-            15,
-            16,
-            25,
-            26
-          ],
-          "toneNull": true
-        }
-      ]
-    },
-    {
-      "name": "car 운전자 프로파일: 같은 fix열에서 임박이 9초(180m) 앞 — 동승자(120m)보다 먼저",
-      "tuning": "carDriver",
-      "steps": [
-        {
-          "len": 600,
-          "desc": "직진A"
-        },
-        {
-          "len": 200,
-          "desc": "교차로에서 우회전 후 200m 이동",
-          "action": "right"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 120,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 7,
-          "along": 140,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 160,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 180,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 200,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 11,
-          "along": 220,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 12,
-          "along": 240,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 13,
-          "along": 260,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 14,
-          "along": 280,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 15,
-          "along": 300,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 320,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 340,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 18,
-          "along": 360,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 380,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 400,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 420,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 440,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 460,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 480,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 500,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 520,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFixAny": [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19
-          ],
-          "eventNot": "imminent"
-        },
-        {
-          "afterFixAny": [
-            21,
-            22
-          ],
-          "event": "imminent",
-          "tone": "right"
-        }
-      ]
-    },
-    {
-      "name": "car: 촘촘한 불량 fix의 uncertain 30초 — 복귀 공백은 lastFixAt이 아니라 uncertainSince로 재어 재획득(지난 교차로 전문 없음, K2 §3.4 ②)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 150,
-          "desc": "교차로에서 우회전 후 150m 이동",
-          "action": "right"
-        },
-        {
-          "len": 150,
-          "desc": "교차로에서 좌회전 후 150m 이동",
-          "action": "left"
-        },
-        {
-          "len": 1000,
-          "desc": "직진D"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 120,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 7,
-          "along": 140,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 8,
-          "along": 160,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 9,
-          "along": 180,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 10,
-          "along": 200,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 11,
-          "along": 220,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 12,
-          "along": 240,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 13,
-          "along": 260,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 14,
-          "along": 280,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 15,
-          "along": 300,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 16,
-          "along": 320,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 17,
-          "along": 340,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 18,
-          "along": 360,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 19,
-          "along": 380,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 20,
-          "along": 400,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 21,
-          "along": 420,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 22,
-          "along": 440,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 23,
-          "along": 460,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 24,
-          "along": 480,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 25,
-          "along": 500,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 26,
-          "along": 520,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 27,
-          "along": 540,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 28,
-          "along": 560,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 29,
-          "along": 580,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 30,
-          "along": 600,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 31,
-          "along": 620,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 32,
-          "along": 640,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 33,
-          "along": 660,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 34,
-          "along": 680,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 35,
-          "along": 700,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 36,
-          "along": 720,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 37,
-          "along": 740,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 38,
-          "along": 760,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 39,
-          "along": 780,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 40,
-          "along": 800,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 41,
-          "along": 820,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 42,
-          "along": 840,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 43,
-          "along": 860,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 44,
-          "along": 880,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 45,
-          "along": 900,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 6,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 36,
-          "event": "reacquiring"
-        },
-        {
-          "afterFix": 36,
-          "eventNot": "uncertainExit"
-        },
-        {
-          "afterFixAny": [
-            37,
-            38,
-            39,
-            40,
-            41
-          ],
-          "event": "reacquired"
-        },
-        {
-          "afterFixAny": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            45
-          ],
-          "eventNot": "announceSteps"
-        },
-        {
-          "afterFixAny": [
-            36,
-            37,
-            38,
-            39,
-            40,
-            41,
-            42,
-            43,
-            44,
-            45
-          ],
-          "eventNot": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "car: uncertain 복귀 fix의 공백이 10초를 넘으면 복귀가 아니라 재획득(터널 공백, K2 §3.4)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 150,
-          "desc": "교차로에서 우회전 후 150m 이동",
-          "action": "right"
-        },
-        {
-          "len": 300,
-          "desc": "직진C"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 200,
-          "lateral": 0,
-          "acc": 300
-        },
-        {
-          "t": 60,
-          "along": 1200,
-          "lateral": 0,
-          "acc": 300
-        },
-        {
-          "t": 120,
-          "along": 400,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 121,
-          "along": 420,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 6,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 8,
-          "event": "reacquiring"
-        },
-        {
-          "afterFix": 8,
-          "eventNot": "uncertainExit"
-        },
-        {
-          "afterFix": 9,
-          "event": "reacquired"
-        },
-        {
-          "afterFixAny": [
-            8,
-            9
-          ],
-          "eventNot": "announceSteps"
-        }
-      ]
-    },
-    {
-      "name": "walk: 촘촘한 uncertain 뒤 창 따라잡기는 종전대로 순차 발화(도보 동결 — 적용은 별도 판정)",
-      "steps": [
-        {
-          "len": 100,
-          "desc": "직진A"
-        },
-        {
-          "len": 60,
-          "desc": "장미공원에서 오른쪽으로 돌아 60m 이동"
-        },
-        {
-          "len": 200,
-          "desc": "직진C"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 1.2,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 2.4,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 3.5999999999999996,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 4.8,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 6.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 7.199999999999999,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 7,
-          "along": 8.4,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 8,
-          "along": 9.6,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 9,
-          "along": 10.799999999999999,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 10,
-          "along": 12.0,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 11,
-          "along": 13.2,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 12,
-          "along": 14.399999999999999,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 13,
-          "along": 15.6,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 14,
-          "along": 16.8,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 15,
-          "along": 18.0,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 16,
-          "along": 19.2,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 17,
-          "along": 20.4,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 18,
-          "along": 21.599999999999998,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 19,
-          "along": 22.8,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 20,
-          "along": 24.0,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 21,
-          "along": 25.2,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 22,
-          "along": 26.4,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 23,
-          "along": 27.599999999999998,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 24,
-          "along": 28.799999999999997,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 25,
-          "along": 30.0,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 26,
-          "along": 31.2,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 27,
-          "along": 32.4,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 28,
-          "along": 33.6,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 29,
-          "along": 34.8,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 30,
-          "along": 136.0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 31,
-          "along": 137.2,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 32,
-          "along": 138.4,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 33,
-          "along": 139.6,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 34,
-          "along": 140.8,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 35,
-          "along": 142.0,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 10,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 30,
-          "event": "uncertainExit"
-        },
-        {
-          "afterFixAny": [
-            31,
-            32,
-            33
-          ],
-          "event": "announceSteps",
-          "indices": [
-            1
-          ]
-        }
-      ]
-    },
-    {
-      "name": "car: 짧은 uncertain(9초, 26m/s) 뒤 창 따라잡기 — 점프 fix는 이벤트 없음, 공백 중 지난 좌회전(350m)은 큐·전문 모두 침묵(K2 §3.4 ①)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 200,
-          "desc": "직진A"
-        },
-        {
-          "len": 150,
-          "desc": "교차로에서 우회전 후 150m 이동",
-          "action": "right"
-        },
-        {
-          "len": 150,
-          "desc": "교차로에서 좌회전 후 150m 이동",
-          "action": "left"
-        },
-        {
-          "len": 1000,
-          "desc": "직진D"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 26,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 52,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 78,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 104,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 130,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 6,
-          "along": 156,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 7,
-          "along": 182,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 8,
-          "along": 208,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 9,
-          "along": 234,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 10,
-          "along": 260,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 11,
-          "along": 286,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 12,
-          "along": 312,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 13,
-          "along": 338,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 14,
-          "along": 364,
-          "lateral": 0,
-          "acc": 200
-        },
-        {
-          "t": 15,
-          "along": 390,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 16,
-          "along": 416,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 17,
-          "along": 442,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 18,
-          "along": 468,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 19,
-          "along": 494,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 520,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 546,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 572,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 598,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 624,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 650,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 676,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 702,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 28,
-          "along": 728,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 29,
-          "along": 754,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 6,
-          "event": "uncertainEnter"
-        },
-        {
-          "afterFix": 15,
-          "event": "uncertainExit"
-        },
-        {
-          "afterFixAny": [
-            16,
-            17
-          ],
-          "eventNull": true
-        },
-        {
-          "afterFixAny": [
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "eventNot": "announceSteps"
-        },
-        {
-          "afterFixAny": [
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23,
-            24,
-            25,
-            26,
-            27,
-            28,
-            29
-          ],
-          "eventNot": "imminent"
-        }
-      ]
-    },
-    {
-      "name": "car: 재획득 직후 임박 명령이 전문보다 먼저 나가면 그 스텝은 묶음 전문에서 빠진다(명령 뒤 같은 회전 재낭독 금지, 품질 리뷰 M3)",
-      "tuning": "car",
-      "steps": [
-        {
-          "len": 500,
-          "desc": "직진A"
-        },
-        {
-          "len": 30,
-          "desc": "교차로에서 우회전 후 30m 이동",
-          "action": "right"
-        },
-        {
-          "len": 30,
-          "desc": "30m 이동"
-        },
-        {
-          "len": 30,
-          "desc": "교차로에서 좌회전 후 30m 이동",
-          "action": "left"
-        },
-        {
-          "len": 500,
-          "desc": "직진E"
-        }
-      ],
-      "fixes": [
-        {
-          "t": 0,
-          "along": 0,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 1,
-          "along": 20,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 2,
-          "along": 40,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 3,
-          "along": 60,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 4,
-          "along": 80,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 5,
-          "along": 100,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 20,
-          "along": 455,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 21,
-          "along": 460,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 22,
-          "along": 465,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 23,
-          "along": 470,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 24,
-          "along": 475,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 25,
-          "along": 480,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 26,
-          "along": 485,
-          "lateral": 0,
-          "acc": 10
-        },
-        {
-          "t": 27,
-          "along": 490,
-          "lateral": 0,
-          "acc": 10
-        }
-      ],
-      "expect": [
-        {
-          "afterFix": 6,
-          "event": "reacquiring"
-        },
-        {
-          "afterFixAny": [
-            7,
-            8,
-            9
-          ],
-          "event": "reacquired"
-        },
-        {
-          "afterFixAny": [
-            9,
-            10
-          ],
-          "event": "imminent",
-          "indices": [
-            1
-          ],
-          "tone": "right"
-        },
-        {
-          "afterFixAny": [
-            11,
-            12,
-            13
-          ],
-          "event": "announceSteps",
-          "indices": [
-            2,
-            3
-          ]
-        },
-        {
-          "afterFixAny": [
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13
-          ],
-          "eventNot": "offRoute"
-        }
-      ]
+     "len": 100,
+     "desc": "우회전B",
+     "action": "right"
     }
-  ]
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 9,
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFix": 10,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ],
+     "toneNull": true
+    },
+    {
+     "afterFix": 11,
+     "eventNot": "announceSteps"
+    }
+   ]
+  },
+  {
+   "name": "묶음 통독은 선행·재통독은 주기 (묶음 잔여 85m라 다음 선행 낭독 미발동 구간)",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진"
+    },
+    {
+     "len": 30,
+     "desc": "횡단보도",
+     "action": "crosswalk"
+    },
+    {
+     "len": 30,
+     "desc": "이동"
+    },
+    {
+     "len": 30,
+     "desc": "좌회전",
+     "action": "left"
+    },
+    {
+     "len": 100,
+     "desc": "직진2"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 4,
+     "event": "announceSteps",
+     "indices": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "afterFix": 6,
+     "eventNull": true
+    },
+    {
+     "afterFix": 7,
+     "event": "bundleReread",
+     "indices": [
+      1,
+      2,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "name": "인계는 전 스텝 낭독 완료 AND 잔여 50m (구속 창을 넘지 않는 점진 접근)",
+   "steps": [
+    {
+     "len": 120,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 3,
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 4,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "uncertain 진입·회복과 낭독 정지",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 0,
+     "acc": 80
+    },
+    {
+     "t": 20,
+     "along": 150,
+     "lateral": 0,
+     "acc": 80
+    },
+    {
+     "t": 30,
+     "along": 200,
+     "lateral": 0,
+     "acc": 15
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 1,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 2,
+     "eventNull": true
+    },
+    {
+     "afterFix": 3,
+     "event": "uncertainExit"
+    }
+   ]
+  },
+  {
+   "name": "이탈 20초 지속 후 통지·전역 복귀 감지",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 150,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "eventNot": "offRoute"
+    },
+    {
+     "afterFixAny": [
+      3,
+      4
+     ],
+     "event": "offRoute",
+     "tone": "warning"
+    },
+    {
+     "afterFix": 5,
+     "event": "backOnRoute"
+    }
+   ]
+  },
+  {
+   "name": "차량 속도: speedSuggest 1회, 이후 재발화 없음",
+   "steps": [
+    {
+     "len": 2000,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 90,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 140,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 190,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "event": "speedSuggest"
+    },
+    {
+     "afterFix": 3,
+     "eventNot": "speedSuggest"
+    },
+    {
+     "afterFix": 4,
+     "eventNot": "speedSuggest"
+    }
+   ]
+  },
+  {
+   "name": "계단 GPS 노이즈: 정확도 나쁜 fix(>20m)는 속도 표본 배제 — speedSuggest 미발동",
+   "steps": [
+    {
+     "len": 2000,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 10,
+     "along": 90,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 15,
+     "along": 140,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 20,
+     "along": 190,
+     "lateral": 0,
+     "acc": 30
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "eventNot": "speedSuggest"
+    },
+    {
+     "afterFix": 3,
+     "eventNot": "speedSuggest"
+    },
+    {
+     "afterFix": 4,
+     "eventNot": "speedSuggest"
+    }
+   ]
+  },
+  {
+   "name": "fix 공백 10초 초과 후 reacquiring",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 1,
+     "event": "reacquiring"
+    }
+   ]
+  },
+  {
+   "name": "다중 구간 통과는 최신만(낭독 병합 — 중간 안내 개별 낭독 없음)",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "A"
+    },
+    {
+     "len": 100,
+     "desc": "B"
+    },
+    {
+     "len": 100,
+     "desc": "C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 0,
+     "acc": 5
+    },
+    {
+     "t": 6,
+     "along": 230,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "eventOneOf": [
+      "announceSteps",
+      "reacquiring"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "이탈 확정이 GPS 공백(reacquiring)을 경유해도 복귀는 backOnRoute (리뷰 HIGH)",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 150,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      3,
+      4
+     ],
+     "event": "offRoute"
+    },
+    {
+     "afterFix": 5,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 6,
+     "event": "backOnRoute"
+    },
+    {
+     "afterFix": 6,
+     "eventNot": "reacquired"
+    }
+   ]
+  },
+  {
+   "name": "이탈 확정이 uncertain(정확도 악화)을 경유해도 이탈 상태 유지·복귀는 backOnRoute",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 100,
+     "lateral": 80,
+     "acc": 80
+    },
+    {
+     "t": 45,
+     "along": 100,
+     "lateral": 80,
+     "acc": 10
+    },
+    {
+     "t": 53,
+     "along": 150,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      3,
+      4
+     ],
+     "event": "offRoute"
+    },
+    {
+     "afterFix": 5,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 6,
+     "event": "uncertainExit"
+    },
+    {
+     "afterFix": 7,
+     "event": "backOnRoute"
+    }
+   ]
+  },
+  {
+   "name": "경계: 선행 낭독 임박선 40m(±1m — 부동소수 등호 회피)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "우회전B",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 159,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 160.5,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 4,
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFix": 5,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "경계: 이탈 임계 30m(29m 비이탈 / 31m 홀드 후 확정)",
+   "steps": [
+    {
+     "len": 400,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 29,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 80,
+     "lateral": 29,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 120,
+     "lateral": 29,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 160,
+     "lateral": 29,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 200,
+     "lateral": 29,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 220,
+     "lateral": 31,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 240,
+     "lateral": 31,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 260,
+     "lateral": 31,
+     "acc": 10
+    },
+    {
+     "t": 47,
+     "along": 280,
+     "lateral": 31,
+     "acc": 10
+    },
+    {
+     "t": 53,
+     "along": 300,
+     "lateral": 31,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "eventNot": "offRoute"
+    },
+    {
+     "afterFixAny": [
+      9,
+      10
+     ],
+     "event": "offRoute"
+    }
+   ]
+  },
+  {
+   "name": "경계: 기하 없는 세션은 옛 50m 인계 유지(51m 미진입 / 49.5m 진입)",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진 100m 이동"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 49,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 50.5,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 1,
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 2,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "최종 접근: 기하를 알면 잔여 50m에서 진입하지 않고 경로 종점까지 간다",
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진 100m 이동"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 49.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 70,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 92,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      1,
+      2,
+      3
+     ],
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 4,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "최종 접근: 정확도가 나쁘면 진입선이 넓어진다(잔여 40m 미진입 / 28m 진입, acc 30)",
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진 100m 이동"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 10,
+     "along": 25,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 20,
+     "along": 48,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 30,
+     "along": 60,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 40,
+     "along": 72,
+     "lateral": 0,
+     "acc": 30
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      1,
+      2,
+      3
+     ],
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 4,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "최종 접근: 단방향 래치 — 진입 후 정확도가 좋아져도 리듀서가 판정을 재개하지 않는다",
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진 100m 이동"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 10,
+     "along": 25,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 20,
+     "along": 48,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 30,
+     "along": 72,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 40,
+     "along": 75,
+     "lateral": 0,
+     "acc": 5
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 3,
+     "event": "finalApproachEnter"
+    },
+    {
+     "afterFix": 4,
+     "eventNull": true
+    }
+   ]
+  },
+  {
+   "name": "최종 접근 중에는 이탈을 주장하지 않는다(경로에서 60m 벗어나도 무이벤트)",
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진 100m 이동"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 25,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 49.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 70,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 92,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 95,
+     "lateral": 60,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 98,
+     "lateral": 60,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 4,
+     "event": "finalApproachEnter"
+    },
+    {
+     "afterFix": 5,
+     "eventNull": true
+    },
+    {
+     "afterFix": 6,
+     "eventNull": true
+    }
+   ]
+  },
+  {
+   "name": "경계: 재획득 공백 10초(10초 유지 / 11초 재획득 진입)",
+   "steps": [
+    {
+     "len": 400,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 14,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 28,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 1,
+     "eventNot": "reacquiring"
+    },
+    {
+     "afterFix": 2,
+     "event": "reacquiring"
+    }
+   ]
+  },
+  {
+   "name": "car: 고속 5초 공백에도 거짓 재확보 없음(150m 창)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 2000,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 22,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 44,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 66,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 88,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 198,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 308,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 418,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      5,
+      6,
+      7
+     ],
+     "eventNull": true
+    }
+   ]
+  },
+  {
+   "name": "car: 이탈 50m 초과 10초 지속 확정(첫 확정은 경고 톤)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 52,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 80,
+     "lateral": 52,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 120,
+     "lateral": 52,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      1,
+      2
+     ],
+     "eventNot": "offRoute"
+    },
+    {
+     "afterFix": 3,
+     "event": "offRoute",
+     "tone": "warning"
+    }
+   ]
+  },
+  {
+   "name": "car: 복귀 추세(수직거리 감소)는 이탈 확정을 유예한다",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 40,
+     "lateral": 70,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 80,
+     "lateral": 70,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 120,
+     "lateral": 55,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 160,
+     "lateral": 55,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 200,
+     "lateral": 55,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      3,
+      4
+     ],
+     "eventNot": "offRoute"
+    },
+    {
+     "afterFix": 5,
+     "event": "offRoute"
+    }
+   ]
+  },
+  {
+   "name": "car: 원거리 예고 경계 하향 통과 1회 + 임박 별도 발화",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 1600,
+     "desc": "직진A"
+    },
+    {
+     "len": 200,
+     "desc": "우회전B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 305,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 405,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 505,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 605,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 705,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 805,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 905,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 1005,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 1105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 1205,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 65,
+     "along": 1307,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 1,
+     "event": "farNotice",
+     "indices": [
+      1
+     ]
+    },
+    {
+     "afterFixAny": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "eventNot": "farNotice"
+    },
+    {
+     "afterFix": 13,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "car: 재획득으로 경계 크로싱을 놓치면 뒤늦은 원거리 예고 없음",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 1700,
+     "desc": "직진A"
+    },
+    {
+     "len": 300,
+     "desc": "우회전B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 300,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 350,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 400,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 2,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 3,
+     "event": "reacquired"
+    },
+    {
+     "afterFixAny": [
+      4,
+      5
+     ],
+     "eventNot": "farNotice"
+    }
+   ]
+  },
+  {
+   "name": "결정 지점 20m 앞 임박 큐 — 40m 전문은 무톤, 20m 큐가 행동별 톤(오른쪽)을 든다",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "장미공원에서 오른쪽으로 돌아 천호대로를 따라 100m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 198,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ],
+     "toneNull": true
+    },
+    {
+     "afterFix": 11,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right"
+    },
+    {
+     "afterFix": 13,
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "뒤로 돌기(back) 결정 지점 — 20m 큐가 back 톤을 든다(imminentTone 매핑 가드, 2026-08-22 N2)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "장미공원에서 유턴 후 천호대로를 따라 100m 이동",
+     "action": "back"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 198,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "announceSteps",
+     "indices": [
+      1
+     ],
+     "toneNull": true
+    },
+    {
+     "afterFix": 11,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "back"
+    },
+    {
+     "afterFix": 13,
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "행동 없는 경계는 큐를 건너뛰되 래치는 전진한다(다음 회전에서 정상 발화)",
+   "steps": [
+    {
+     "len": 150,
+     "desc": "직진A"
+    },
+    {
+     "len": 150,
+     "desc": "직진B"
+    },
+    {
+     "len": 100,
+     "desc": "사거리에서 왼쪽으로 돌아 양재대로를 따라 100m 이동",
+     "action": "left"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 208,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 224,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 240,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 256,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 272,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 144,
+     "along": 288,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 152,
+     "along": 296,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 8,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 17,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 18,
+     "event": "imminent",
+     "indices": [
+      2
+     ],
+     "tone": "left"
+    }
+   ]
+  },
+  {
+   "name": "횡단보도 유닛은 회전 표지가 없어도 큐가 나간다(전문 낭독보다 앞)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 30,
+     "desc": "길동사거리까지 24m 이동, 횡단보도 이용",
+     "action": "crosswalk"
+    },
+    {
+     "len": 120,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 11,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "crosswalk"
+    }
+   ]
+  },
+  {
+   "name": "묶음 유닛 안쪽 결정 지점도 큐를 받는다(래치가 스텝 단위)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 32,
+     "desc": "한빛안경랜드 앞에서 해인한의원까지 명일로를 따라 32m 이동"
+    },
+    {
+     "len": 30,
+     "desc": "해인한의원 앞에서 왼쪽으로 돌아 30m 이동",
+     "action": "left"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 208,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 224,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 12,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 13,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 14,
+     "event": "imminent",
+     "indices": [
+      2
+     ],
+     "tone": "left"
+    }
+   ]
+  },
+  {
+   "name": "마지막 유닛이 짧으면 최종 접근이 큐를 선점한다 (알려진 한계 — 되돌린 이유는 6a 주석)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 15,
+     "desc": "정문까지 14m 이동, 횡단보도 이용",
+     "action": "crosswalk"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 168,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 11,
+     "event": "finalApproachEnter"
+    },
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "eventNot": "imminent"
+    }
+   ],
+   "comment": "⚠ 이것은 '옳은 동작'이 아니라 **의도적으로 수용한 한계**를 잠근 케이스다. 임박 20m(2026-08-12 lag 하향 연동) 기준: 큐 자격선(경계-20m)이 진입선보다 앞이면 큐가 살아남고, 이 기하(마지막 유닛 15m, 무기하 진입선 50m → 진입 165 < 큐 180)처럼 진입선이 앞일 때만 선점된다. '결정 지점이 남았으면 최종 접근을 미룬다'를 구현하면 imminent가 나지만 A6 헛경고율이 2배가 됐다(a6-probe 상한 초과) — 교환을 다시 하려면 두 테스트를 함께 볼 것."
+  },
+  {
+   "name": "이미 지난 경계에는 명령형 큐를 내지 않는다(정확도 악화 후 창이 경계를 넘겨 착지)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 200,
+     "desc": "사거리에서 왼쪽으로 돌아 200m 이동",
+     "action": "left"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 161,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 94,
+     "along": 180,
+     "lateral": 0,
+     "acc": 120
+    },
+    {
+     "t": 100,
+     "along": 214,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 106,
+     "along": 216,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 12,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 13,
+     "event": "uncertainExit"
+    },
+    {
+     "afterFixAny": [
+      13,
+      14
+     ],
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "최종 접근: 진입 fix의 투영 점프는 진입을 한 fix 미룬다(A10 — 2026-08-11 하교 로그 동역학)",
+   "geometry": true,
+   "steps": [
+    {
+     "len": 505.2,
+     "desc": "직진"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 8,
+     "along": 58,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 16,
+     "along": 116,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 24,
+     "along": 174,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 32,
+     "along": 232,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 40,
+     "along": 290,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 48,
+     "along": 348,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 56,
+     "along": 407.6,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 57,
+     "along": 458.3,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 58,
+     "along": 501.2,
+     "lateral": 0,
+     "acc": 22
+    },
+    {
+     "t": 59,
+     "along": 501.2,
+     "lateral": 0,
+     "acc": 22
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 8,
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 9,
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 10,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "경유지 도착선 통과 1회 — 통지 뒤 계속(래치, 톤 없음, 2026-08-22 N4)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 90,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 135,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 6,
+     "eventNot": "waypointReached"
+    },
+    {
+     "afterFix": 7,
+     "event": "waypointReached",
+     "toneNull": true
+    },
+    {
+     "afterFix": 8,
+     "eventNot": "waypointReached"
+    },
+    {
+     "afterFix": 9,
+     "eventNot": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "같은 fix에 임박 큐와 경유지 도착이 걸리면 임박이 먼저, 도착은 다음 fix에(새 임박 후보보다 우선, N4)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 30,
+     "desc": "우회전B",
+     "action": "right"
+    },
+    {
+     "len": 30,
+     "desc": "좌회전C",
+     "action": "left"
+    },
+    {
+     "len": 25,
+     "desc": "우회전D",
+     "action": "right"
+    },
+    {
+     "len": 100,
+     "desc": "직진E"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 70,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 66,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 74,
+     "along": 90,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 82,
+     "along": 97,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 99,
+     "along": 141,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 108,
+     "along": 150,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "imminent"
+    },
+    {
+     "afterFix": 11,
+     "event": "waypointReached",
+     "toneNull": true
+    },
+    {
+     "afterFix": 12,
+     "event": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "경유지가 종점 진입선 안에 있으면 도착 이벤트가 나간 뒤에만 최종 접근에 진입한다(N4 리뷰 #1)",
+   "waypointStepIndex": 1,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 8,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 24,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 36,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 60,
+     "along": 72,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 70,
+     "along": 84,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 90,
+     "along": 99,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 100,
+     "along": 101,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 110,
+     "along": 104,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 9,
+     "eventNot": "finalApproachEnter"
+    },
+    {
+     "afterFix": 10,
+     "event": "waypointReached"
+    },
+    {
+     "afterFix": 11,
+     "event": "finalApproachEnter"
+    }
+   ]
+  },
+  {
+   "name": "경유지에서 출발(stepIndex 0)은 첫 신뢰 fix에서 도착이 나간다(N4 리뷰 #6)",
+   "waypointStepIndex": 0,
+   "geometry": true,
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 0,
+     "event": "waypointReached"
+    },
+    {
+     "afterFix": 1,
+     "eventNot": "waypointReached"
+    }
+   ]
+  },
+  {
+   "name": "car: 임박 시간 축 — 20m/s에서 경계 120m(=v×6초) 안에서만 큐, 140m 앞은 무발화(K2 §3.2)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진A"
+    },
+    {
+     "len": 200,
+     "desc": "교차로에서 우회전 후 천호대로를 따라 200m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 140,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 180,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 220,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 240,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 260,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 280,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 300,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 320,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 340,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 360,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 380,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 400,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 420,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 440,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 460,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 480,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 500,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 520,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFixAny": [
+      24,
+      25
+     ],
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right"
+    },
+    {
+     "afterFixAny": [
+      15,
+      16
+     ],
+     "event": "announceSteps",
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "car: 서행(1.5m/s)은 시간 축 9m보다 바닥 15m가 이긴다 — 17.5m 앞 무발화, 14.5m 앞 발화(총거리는 최종 접근선 150m 밖)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 50,
+     "desc": "교차로에서 좌회전 후 50m 이동",
+     "action": "left"
+    },
+    {
+     "len": 200,
+     "desc": "직진C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 1.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 3.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 4.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 7.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 9.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 10.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 13.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 15.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 16.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 19.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 21.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 22.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 25.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 27.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 28.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 31.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 33.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 34.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 36.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 37.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 39.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 40.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 42.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 43.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 45.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 31,
+     "along": 46.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 48.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 33,
+     "along": 49.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 51.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 52.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 54.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 55.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 57.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 39,
+     "along": 58.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 60.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 41,
+     "along": 61.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 63.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 43,
+     "along": 64.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 66.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 67.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 46,
+     "along": 69.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 47,
+     "along": 70.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 72.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 49,
+     "along": 73.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 50,
+     "along": 75.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 51,
+     "along": 76.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 52,
+     "along": 78.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 53,
+     "along": 79.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 54,
+     "along": 81.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 55,
+     "along": 82.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 84.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 57,
+     "along": 85.5,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 58,
+     "along": 87.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 59,
+     "along": 88.5,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFixAny": [
+      57,
+      58
+     ],
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "left"
+    }
+   ]
+  },
+  {
+   "name": "car: 정확도 30m fix도 속도 표본이다(상한 50) — 시간 축이 살아 경계 120m 안에서 큐",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진A"
+    },
+    {
+     "len": 200,
+     "desc": "교차로에서 우회전 후 200m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 6,
+     "along": 120,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 7,
+     "along": 140,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 8,
+     "along": 160,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 9,
+     "along": 180,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 10,
+     "along": 200,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 11,
+     "along": 220,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 12,
+     "along": 240,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 13,
+     "along": 260,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 14,
+     "along": 280,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 15,
+     "along": 300,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 16,
+     "along": 320,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 17,
+     "along": 340,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 18,
+     "along": 360,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 19,
+     "along": 380,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 20,
+     "along": 400,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 21,
+     "along": 420,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 22,
+     "along": 440,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 23,
+     "along": 460,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 24,
+     "along": 480,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 25,
+     "along": 500,
+     "lateral": 0,
+     "acc": 30
+    },
+    {
+     "t": 26,
+     "along": 520,
+     "lateral": 0,
+     "acc": 30
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFixAny": [
+      24,
+      25
+     ],
+     "event": "imminent",
+     "tone": "right"
+    }
+   ]
+  },
+  {
+   "name": "car: 행동 없는 경계(터널)는 큐 없이 래치 전진, 다음 우회전은 v×6=60m 안에서 큐",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 300,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "남산1호터널을 지나 100m 이동"
+    },
+    {
+     "len": 100,
+     "desc": "교차로에서 우회전 후 100m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 10,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 30,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 50,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 70,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 90,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 110,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 130,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 140,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 150,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 170,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 180,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 190,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 210,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 220,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 230,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 240,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 250,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 260,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 270,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 280,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 290,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 30,
+     "along": 300,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 31,
+     "along": 310,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 320,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 33,
+     "along": 330,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 340,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 350,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 36,
+     "along": 360,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 370,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 380,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 39,
+     "along": 390,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 400,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 41,
+     "along": 410,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFixAny": [
+      34,
+      35
+     ],
+     "event": "imminent",
+     "indices": [
+      2
+     ],
+     "tone": "right"
+    },
+    {
+     "afterFixAny": [
+      15,
+      16,
+      25,
+      26
+     ],
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "car 운전자 프로파일: 같은 fix열에서 임박이 9초(180m) 앞 — 동승자(120m)보다 먼저",
+   "tuning": "carDriver",
+   "steps": [
+    {
+     "len": 600,
+     "desc": "직진A"
+    },
+    {
+     "len": 200,
+     "desc": "교차로에서 우회전 후 200m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 120,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 140,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 180,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 200,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 11,
+     "along": 220,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 12,
+     "along": 240,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 13,
+     "along": 260,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 14,
+     "along": 280,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 15,
+     "along": 300,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 320,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 340,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 360,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 380,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 400,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 420,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 440,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 460,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 480,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 500,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 520,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFixAny": [
+      21,
+      22
+     ],
+     "event": "imminent",
+     "tone": "right"
+    }
+   ]
+  },
+  {
+   "name": "car: 촘촘한 불량 fix의 uncertain 30초 — 복귀 공백은 lastFixAt이 아니라 uncertainSince로 재어 재획득(지난 교차로 전문 없음, K2 §3.4 ②)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 150,
+     "desc": "교차로에서 우회전 후 150m 이동",
+     "action": "right"
+    },
+    {
+     "len": 150,
+     "desc": "교차로에서 좌회전 후 150m 이동",
+     "action": "left"
+    },
+    {
+     "len": 1000,
+     "desc": "직진D"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 120,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 7,
+     "along": 140,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 8,
+     "along": 160,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 9,
+     "along": 180,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 10,
+     "along": 200,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 11,
+     "along": 220,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 12,
+     "along": 240,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 13,
+     "along": 260,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 14,
+     "along": 280,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 15,
+     "along": 300,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 16,
+     "along": 320,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 17,
+     "along": 340,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 18,
+     "along": 360,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 19,
+     "along": 380,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 20,
+     "along": 400,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 21,
+     "along": 420,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 22,
+     "along": 440,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 23,
+     "along": 460,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 24,
+     "along": 480,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 25,
+     "along": 500,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 26,
+     "along": 520,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 27,
+     "along": 540,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 28,
+     "along": 560,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 29,
+     "along": 580,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 30,
+     "along": 600,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 31,
+     "along": 620,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 32,
+     "along": 640,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 33,
+     "along": 660,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 34,
+     "along": 680,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 35,
+     "along": 700,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 36,
+     "along": 720,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 37,
+     "along": 740,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 38,
+     "along": 760,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 39,
+     "along": 780,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 800,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 41,
+     "along": 820,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 42,
+     "along": 840,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 43,
+     "along": 860,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 44,
+     "along": 880,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 45,
+     "along": 900,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 6,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 36,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 36,
+     "eventNot": "uncertainExit"
+    },
+    {
+     "afterFixAny": [
+      37,
+      38,
+      39,
+      40,
+      41
+     ],
+     "event": "reacquired"
+    },
+    {
+     "afterFixAny": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+     ],
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFixAny": [
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45
+     ],
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "car: uncertain 복귀 fix의 공백이 10초를 넘으면 복귀가 아니라 재획득(터널 공백, K2 §3.4)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 150,
+     "desc": "교차로에서 우회전 후 150m 이동",
+     "action": "right"
+    },
+    {
+     "len": 300,
+     "desc": "직진C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 200,
+     "lateral": 0,
+     "acc": 300
+    },
+    {
+     "t": 60,
+     "along": 1200,
+     "lateral": 0,
+     "acc": 300
+    },
+    {
+     "t": 120,
+     "along": 400,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 121,
+     "along": 420,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 6,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 8,
+     "event": "reacquiring"
+    },
+    {
+     "afterFix": 8,
+     "eventNot": "uncertainExit"
+    },
+    {
+     "afterFix": 9,
+     "event": "reacquired"
+    },
+    {
+     "afterFixAny": [
+      8,
+      9
+     ],
+     "eventNot": "announceSteps"
+    }
+   ]
+  },
+  {
+   "name": "walk: 촘촘한 uncertain 뒤 창 따라잡기는 종전대로 순차 발화(도보 동결 — 적용은 별도 판정)",
+   "steps": [
+    {
+     "len": 100,
+     "desc": "직진A"
+    },
+    {
+     "len": 60,
+     "desc": "장미공원에서 오른쪽으로 돌아 60m 이동",
+     "action": "right"
+    },
+    {
+     "len": 200,
+     "desc": "직진C"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 1.2,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 2.4,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 3.5999999999999996,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 4.8,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 6.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 7.199999999999999,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 7,
+     "along": 8.4,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 9.6,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 9,
+     "along": 10.799999999999999,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 10,
+     "along": 12.0,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 11,
+     "along": 13.2,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 12,
+     "along": 14.399999999999999,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 13,
+     "along": 15.6,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 14,
+     "along": 16.8,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 15,
+     "along": 18.0,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 16,
+     "along": 19.2,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 17,
+     "along": 20.4,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 18,
+     "along": 21.599999999999998,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 19,
+     "along": 22.8,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 20,
+     "along": 24.0,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 21,
+     "along": 25.2,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 22,
+     "along": 26.4,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 23,
+     "along": 27.599999999999998,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 24,
+     "along": 28.799999999999997,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 25,
+     "along": 30.0,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 26,
+     "along": 31.2,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 27,
+     "along": 32.4,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 28,
+     "along": 33.6,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 29,
+     "along": 34.8,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 30,
+     "along": 136.0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 31,
+     "along": 137.2,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 138.4,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 33,
+     "along": 139.6,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 34,
+     "along": 140.8,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 35,
+     "along": 142.0,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 10,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 30,
+     "event": "uncertainExit"
+    },
+    {
+     "afterFixAny": [
+      31,
+      32,
+      33
+     ],
+     "event": "announceSteps",
+     "indices": [
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "car: 짧은 uncertain(9초, 26m/s) 뒤 창 따라잡기 — 점프 fix는 이벤트 없음, 공백 중 지난 좌회전(350m)은 큐·전문 모두 침묵(K2 §3.4 ①)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 150,
+     "desc": "교차로에서 우회전 후 150m 이동",
+     "action": "right"
+    },
+    {
+     "len": 150,
+     "desc": "교차로에서 좌회전 후 150m 이동",
+     "action": "left"
+    },
+    {
+     "len": 1000,
+     "desc": "직진D"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 26,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 52,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 78,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 104,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 130,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 6,
+     "along": 156,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 7,
+     "along": 182,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 8,
+     "along": 208,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 9,
+     "along": 234,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 10,
+     "along": 260,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 11,
+     "along": 286,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 12,
+     "along": 312,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 13,
+     "along": 338,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 14,
+     "along": 364,
+     "lateral": 0,
+     "acc": 200
+    },
+    {
+     "t": 15,
+     "along": 390,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 416,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 17,
+     "along": 442,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 18,
+     "along": 468,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 19,
+     "along": 494,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 520,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 546,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 572,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 598,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 624,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 650,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 676,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 702,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 28,
+     "along": 728,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 29,
+     "along": 754,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 6,
+     "event": "uncertainEnter"
+    },
+    {
+     "afterFix": 15,
+     "event": "uncertainExit"
+    },
+    {
+     "afterFixAny": [
+      16,
+      17
+     ],
+     "eventNull": true
+    },
+    {
+     "afterFixAny": [
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+     ],
+     "eventNot": "announceSteps"
+    },
+    {
+     "afterFixAny": [
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29
+     ],
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "car: 재획득 직후 임박 명령이 전문보다 먼저 나가면 그 스텝은 묶음 전문에서 빠진다(명령 뒤 같은 회전 재낭독 금지, 품질 리뷰 M3)",
+   "tuning": "car",
+   "steps": [
+    {
+     "len": 500,
+     "desc": "직진A"
+    },
+    {
+     "len": 30,
+     "desc": "교차로에서 우회전 후 30m 이동",
+     "action": "right"
+    },
+    {
+     "len": 30,
+     "desc": "30m 이동"
+    },
+    {
+     "len": 30,
+     "desc": "교차로에서 좌회전 후 30m 이동",
+     "action": "left"
+    },
+    {
+     "len": 500,
+     "desc": "직진E"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 1,
+     "along": 20,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 2,
+     "along": 40,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 3,
+     "along": 60,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 4,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 5,
+     "along": 100,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 20,
+     "along": 455,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 21,
+     "along": 460,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 22,
+     "along": 465,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 23,
+     "along": 470,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 475,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 25,
+     "along": 480,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 26,
+     "along": 485,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 27,
+     "along": 490,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 6,
+     "event": "reacquiring"
+    },
+    {
+     "afterFixAny": [
+      7,
+      8,
+      9
+     ],
+     "event": "reacquired"
+    },
+    {
+     "afterFixAny": [
+      9,
+      10
+     ],
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right"
+    },
+    {
+     "afterFixAny": [
+      11,
+      12,
+      13
+     ],
+     "event": "announceSteps",
+     "indices": [
+      2,
+      3
+     ]
+    },
+    {
+     "afterFixAny": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+     ],
+     "eventNot": "offRoute"
+    }
+   ]
+  }
+ ]
 }

@@ -1,5 +1,10 @@
 import Foundation
 
+/// ⚠ **2026-08-23(E16 축3)부터 리듀서는 이 함수를 부르지 않는다.** 도보 행동은 서버가 전량
+/// 투영하고 walk 프로파일도 `actionSource: .step`이다. 웹 정본(`src/lib/walk-action.ts`)은 서버에서
+/// 계속 쓰이지만 Kit의 이 사본과 `GuideActionSource.text` 분기는 **호출자가 없다** — 정리 항목은
+/// `docs/BACKLOG.md`에 있다(함께 지우면 `GuideActionSource`가 사라져 car 영역까지 닿는다).
+///
 /// 도보 스텝 문장에서 **결정 지점의 행동**을 뽑아내는 순수 분류기(ko 전용) —
 /// 웹 정본 `src/lib/walk-action.ts`의 1:1 미러. 공유 fixture(walk-action-cases.json)가
 /// 동조를 강제한다.

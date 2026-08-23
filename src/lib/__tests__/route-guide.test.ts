@@ -16,6 +16,7 @@ import {
   IMMINENT_AHEAD_M,
   initialGuideState,
   PROJECTION_LAG_M,
+  stepActionFor,
   unitAt,
   WALK_TUNING,
   type GuideEvent,
@@ -757,9 +758,22 @@ describe("GuideTuning 조합 불변식(K2 설계 리뷰 m3)", () => {
       if (t.imminentAheadM !== null) expect(t.imminentUnknownSpeedM).toBeGreaterThanOrEqual(t.imminentAheadM);
     }
   });
-  it("car 프로파일은 문장이 아니라 서버 투영으로 행동을 고른다(B1)", () => {
+  it("전 프로파일이 문장이 아니라 서버 투영으로 행동을 고른다(car B1 · walk E16 축3)", () => {
+    // walk도 2026-08-23부터 서버 투영이다 — 카카오 스텝은 서버가 최종 문장을 분류해 싣고
+    // Tmap 스텝은 turnType 표에서 온다. 클라이언트 문자열 폴백을 두면 구조화의 "의도된
+    // 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못한다.
     expect(CAR_TUNING.actionSource).toBe("step");
     expect(CAR_DRIVER_TUNING.actionSource).toBe("step");
-    expect(WALK_TUNING.actionSource).toBe("text");
+    expect(WALK_TUNING.actionSource).toBe("step");
+  });
+
+  it("walk 임박 큐는 서버 투영 action만 본다 — 문장이 영어여도 큐가 나가고, action이 없으면 침묵", () => {
+    expect(
+      stepActionFor({ description: "Turn right, then walk 294m", action: "right" }, WALK_TUNING.actionSource),
+    ).toBe("right");
+    // ⚠ 문장으로 되돌아가지 않는다(폴백 부활 가드).
+    expect(
+      stepActionFor({ description: "메가커피 앞에서 왼쪽으로 돌아 40m 이동" }, WALK_TUNING.actionSource),
+    ).toBeNull();
   });
 });
