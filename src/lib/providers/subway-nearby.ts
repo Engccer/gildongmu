@@ -59,6 +59,13 @@ export interface StationServiceWindow {
  *   다니는데 실시간만 없는 경우다.
  * - 판정 가능한 창이 있고 **전부 outside** → closed. 환승역은 노선마다 첫차가
  *   다르므로 가장 이른 값을 쓴다(사용자에게 유리한 쪽).
+ * - **노선 coverage allowlist(A19)**: `ok`·`noTrains`인 노선만 판정에 참여한다. 그 외
+ *   값(unknown·unavailable·미지 값)이 하나라도 있으면 판정 불가. 업스트림이 (역·노선)별로
+ *   0행을 주는 일이 상시라(홍대입구 2호선·강남 신분당·서울역 공항) 그 노선이 다니는데
+ *   "운행 종료, 첫차 X"를 단정할 수 있다. denylist가 아닌 이유: fixture 누락·미래 값이
+ *   `undefined`로 게이트를 통과해 단정 쪽으로 fail-open 된다. **대가**: 0행 노선이 있는
+ *   역은 심야 "운행 종료" 안내가 나가지 않는다 — 거짓 확정보다 침묵이 덜 해롭다(교환이지
+ *   회귀가 아니다. 화면으로 반증 못 하는 사용자는 거짓 "첫차 05:20"을 믿고 기다린다).
  *
  * ⚠ 막차가 자정을 넘기는 경우(00:03)의 비교는 `judgeServiceStatus`가 이미
  * 처리한다(last < first면 자정 넘김 구간). 여기서 다시 보정하지 않는다.
@@ -68,6 +75,9 @@ export function judgeStationService(
   nowMinutes: number,
 ): StationServiceWindow {
   if (!timetable || timetable.partial) return { closed: false };
+  if (timetable.lines.some((l) => l.coverage !== "ok" && l.coverage !== "noTrains")) {
+    return { closed: false }; // 확인되지 않은 노선이 있다 — 단정하지 않는다
+  }
   const judged = timetable.lines.flatMap((line) =>
     line.directions.flatMap((d) => {
       const first = parseServiceTime(d.first.time.replace(":", ""));
