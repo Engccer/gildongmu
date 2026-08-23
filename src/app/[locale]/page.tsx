@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { PlaceSearch } from "@/components/PlaceSearch";
 import { Link } from "@/i18n/navigation";
+import { dataLocale } from "@/lib/data-locale";
 import { routing } from "@/i18n/routing";
 import { activeProviderName } from "@/lib/providers/places";
 import { softwareApplicationJsonLd, serializeJsonLd } from "@/lib/structured-data";
@@ -15,7 +16,7 @@ import {
   hasJusoKey,
   hasGeminiKey,
   hasPerplexityKey,
-  hasWalkRouteKey,
+  hasWalkRouteKeyFor,
   hasNaverLocalKeys,
 } from "@/lib/env";
 
@@ -67,7 +68,7 @@ export default async function HomePage({
         canSearchAddress={hasJusoKey()}
         canSearchWeb={hasPerplexityKey()}
         canShowChat={hasGeminiKey()}
-        canShowWalk={hasWalkRouteKey()}
+        canShowWalk={hasWalkRouteKeyFor(dataLocale(locale) === "ko" ? "ko" : "en")}
         canSortByReview={hasNaverLocalKeys()}
       />
       <p className="mt-8 flex justify-center gap-6">

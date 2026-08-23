@@ -124,14 +124,17 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     expect(screen.queryByRole("button", { name: ko.guide.toDetailButton })).toBeNull();
   });
 
-  it("en에서는 전환 버튼도 경로 조회도 없다(상세는 ko 전용)", async () => {
+  // E16 축3: en도 상세 조회로 시작한다(서버가 en 문장을 만든다). 종전에는 여기서
+  // 조회 없이 `briefStarted`(직선거리)로 흘렀다.
+  it("en도 상세 경로를 조회하고 전환 버튼을 낸다", async () => {
     renderPanel("en");
     openAndStart("en");
 
-    await waitFor(() => expect(screen.getByText(en.guide.briefStarted)).toBeTruthy());
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(screen.queryByRole("button", { name: en.guide.toBriefButton })).toBeNull();
-    expect(screen.queryByRole("button", { name: en.guide.toDetailButton })).toBeNull();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("lang=en");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: en.guide.toBriefButton })).toBeTruthy(),
+    );
   });
 
   it("재조회 버튼은 이탈 상태에서만 나온다", async () => {

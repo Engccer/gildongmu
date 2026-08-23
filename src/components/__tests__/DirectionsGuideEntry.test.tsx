@@ -238,9 +238,19 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
   });
 
-  it("en + 자동차(tmap) 성공: 수단 안내는 ko 전용이라 간략 폴백으로 흐른다", async () => {
+  // E16 축3: 도보 상세는 전 로케일에 열렸고(서버가 en 문장을 만든다) 자동차·대중교통은
+  // 아직 ko 전용이다. 그래서 en에서 도보만 시작 가능하고 간략 폴백은 뜨지 않는다.
+  it("en + 도보·자동차(tmap) 성공: 도보만 시작 가능, 간략 폴백 없음", async () => {
     mockLocale = "en";
     stubFetch({ walk: "ok", car: "tmap" });
+    await queryRoutes();
+    expect(guideStartButtons()).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
+  });
+
+  it("en + 도보 실패·자동차(tmap) 성공: 자동차는 여전히 ko 전용이라 간략 폴백", async () => {
+    mockLocale = "en";
+    stubFetch({ walk: "fail", car: "tmap" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
     expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
