@@ -160,7 +160,7 @@ pedestrianStepFor(turnType: number): PedestrianStep | null;   // null = 미지 �
 | 214·215·216·217 | `crosswalk` | `Cross the crosswalk at 8 / 10 / 2 / 4 o'clock` | 공식 표 |
 | 218 | `null` | `Take the elevator` | 공식 표 |
 | 0 · 1~7 · 11 · 184~189 · 200 · 233 | `null` | `null`(행동절 없음) | 0·11·200 ✅ |
-| 201 | `null` | `Arrive at your destination.` | ✅ 10 |
+| 201 | `null` | `Arrive at your destination` | ✅ 10 |
 | 그 외 | — | — | **`null` → throw**(§4.3) |
 
 - ⚠ **시계 방위는 보존한다**(설계 리뷰 #8 수용). 종전 초안은 16~19를 `Bear left`·`Turn sharply left`로
@@ -202,7 +202,7 @@ pedestrianStepFor(turnType: number): PedestrianStep | null;   // null = 미지 �
 | `…에서 우회전 후 진황도로를 따라 294m 이동` | `Turn right, then walk 294m along Jinhwangdo-ro.` |
 | `좌측 횡단보도 후 보행자도로를 따라 14m 이동` | `Cross the crosswalk on your left, then walk 14m.` |
 | `서울역 2번출구에서 지하보도 진입 후 72m 이동` | `Take the underpass, then walk 72m.` |
-| `도착` | `Arrive at your destination.` |
+| `도착` | `Arrive at your destination` |
 
 ⚠ 설계 리뷰 #9(시설 통과 거리의 의미)에 대한 판정: **원문이 이미 "진입 후 72m 이동"이라고 말한다.**
 거리의 의미는 우리가 정하는 것이 아니라 공급자가 정한 것이고, ko 사용자는 오늘 그 문장을 그대로
@@ -240,7 +240,8 @@ en 문장의 출처는 구조화 필드지만, 응답에는 한국어 `descripti
 roadNameEn(ko: string): Promise<string | null>   // null = 도로명이 아님(0건·불일치). 조회 실패는 throw.
 ```
 - juso `addrLinkApi` `keyword=<도로명>`, `countPerPage=5`. **`rn === ko` 정확 일치**만 채택.
-- `engAddr.split(",")[0]`에서 선행 건물번호 토큰(`/^[\d-]+\s+/`)을 벗겨 반환.
+- `engAddr.split(",")[0]`에서 **숫자를 포함한 첫 토큰**을 벗겨 반환. ⚠ `/^[\d-]+\s+/`로는
+  §2.3의 실측 `B102 Bongeunsa-ro`를 벗기지 못한다(숫자로 시작하지 않는다).
 - `unstable_cache` 도로명 키, revalidate 30일. **실패는 throw라 캐시에 들어가지 않는다**(설계 리뷰 #7 수용 —
   종전 초안은 실패를 `null`로 접어 "도로명 없음"으로 30일 캐시할 수 있었다).
 - 호출부는 `Promise.allSettled` + 총 1.5초 `AbortSignal.timeout`. rejected는 도로명 없이 진행
@@ -309,7 +310,10 @@ en: Tmap        → buildEnBriefing     → annotateAudioSignals → (차로 수
 | iOS `DirectionsTabView.swift:388` | `includeWalk` 상수화(인자 삭제) |
 | iOS `:886` | 도보 안내 공지 ko 게이트 제거 |
 | iOS `:1060/1067/1079` | 도보 대안 ko 게이트 제거 |
-| iOS `:1090` | **계단 회피 ko 유지** |
+| iOS `:1090`·`:393`·`:460` | **계단 회피 ko 유지** — 컨트롤 은닉과 **같은 조건으로 값도 무력화**한다(앱 언어를 바꾸면 모델 상태가 남아 끌 수단 없이 매 조회에 실린다) |
+| iOS `BeaconModel:680` | **상세 조회 트리거의 ko 게이트 삭제** — `awaitingRoute`가 상세 조회의 **유일한 트리거**라, 여기만 ko로 남기면 시작 버튼은 열려 있는데 세션이 조용히 직선거리로 돈다(리뷰 검출: spec §4.7 표의 누락이었다) |
+| iOS `BeaconModel:1305·1326·1358` | 경유지 설정·삭제·목적지 전환의 재조회 게이트 삭제 — 남기면 목적지를 바꿔도 경로가 갱신되지 않은 채 새 목적지를 안내한다 |
+| Kit `WalkRouteStep`·`BeaconModel:759` | **`action` 선택 디코딩 + `GuideStepGeometry` 전달**. ⚠ 이것이 빠지면 walk 프로파일(`.step`)에서 임박 큐가 전면 침묵한다 — **정식판 ko 도보 안내의 회귀**이고 웹 테스트·타입 검사·Kit fixture가 전부 통과시킨다 |
 
 ⚠ 설계 리뷰 #12 수용: **계단 회피 컨트롤은 비-ko에 노출하지 않는다.** en은 Tmap 단독이고 Tmap에는
 검증된 계단 회피 축이 없어(M3에서 기각) 요청해도 항상 `unavailable`이다. 적용될 수 없는 옵션을
@@ -394,15 +398,22 @@ en: Tmap        → buildEnBriefing     → annotateAudioSignals → (차로 수
 그 문장이 유일한 단서가 되므로 **사용자가 취할 행동이 갈리는 만큼만** 가른다.
 
 ```ts
-type GuideRouteFailure = "locating" | "retryable" | "unavailable";
-fetchGuideRoute(force: boolean): Promise<GuideRouteFetch | { failure: GuideRouteFailure }>
+type GuideRouteFailure = "noLocation" | "retryable" | "unavailable" | "outOfCoverage";
+fetchGuideRoute(force: boolean): Promise<
+  ({ ok: true } & GuideRouteFetch) | { ok: false; failure: GuideRouteFailure }
+>
 ```
+
+⚠ **4갈래다**(구현에서 정정). 커버리지는 repo 전역 계층이 문구를 소유하고("위치 기반 기능만
+제한" 톤) `unavailable`과 뜻이 다르므로 접지 않는다. `{ ok }` 태그는 종전 `null` 검사 호출부가
+실패 객체를 성공으로 읽는 것을 타입이 막는다(설계 리뷰 #8).
 
 | 상태 | 원인(코드 자리) | 직선거리 | 문장(ko) |
 |---|---|---|---|
-| `locating` | `awaitRealFix` 실패 | **불가** | 현재 위치를 확인하는 중입니다. |
-| `retryable` | `!res.ok`(502·429·오프라인) · `catch`(파싱·네트워크) | 가능 | 경로를 불러오지 못했습니다. 지금은 목적지 방향과 거리만 안내합니다. |
-| `unavailable` | `outOfCoverage` · `result` 부재(`TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`) · `buildGuideRoute` null · car provider≠tmap · `buildCarGuide` null | 가능 | 이 목적지까지의 경로를 찾지 못했습니다. 목적지 방향과 거리로 안내합니다. |
+| `noLocation` | `awaitRealFix` 실패 | **불가** | 현재 위치를 확인하지 못했습니다. 위치 권한과 신호를 확인해 주세요. |
+| `retryable` | 5xx·408·429 · `catch`(파싱·네트워크) | 가능 | 경로를 불러오지 못했습니다. 지금은 목적지 방향과 거리만 안내합니다. |
+| `unavailable` | 그 밖의 비-200(400·404 — **재시도로 풀리지 않는다**) · `result` 부재(`TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`) · `buildGuideRoute` null · car provider≠tmap · `buildCarGuide` null | 가능 | 이 목적지까지의 경로를 찾지 못했습니다. 목적지 방향과 거리로 안내합니다. |
+| `outOfCoverage` | `isOutOfCoverageBody` | 가능 | (repo 전역 `common.outOfCoverage`) |
 
 - ⚠ **모드 이름을 쓰지 않는다.** "직선거리 안내"가 아니라 **"목적지 방향과 거리"**라는 *동작
   서술*이다. 이름을 주면 고를 수 있는 모드로 읽힌다.
@@ -410,8 +421,15 @@ fetchGuideRoute(force: boolean): Promise<GuideRouteFetch | { failure: GuideRoute
   사용자가 취할 행동이 같아(다른 수단을 보거나 목적지를 바꾼다) 한 문장이다.
 - `locating`만 직선거리조차 불가하고, 그때 필요한 것은 직선거리가 아니라 **"위치를 찾는 중"이라는
   정직한 상태**다(백로그 판정 그대로).
-- 문장은 **시작 통지 1회**로 나가고 패널에도 같은 문장이 상시 표시된다 — 세션 도중 화면에
-  들어온 SR 사용자에게는 그 줄이 유일한 신호다(종전 `straightLineNote`의 자리를 이어받는다).
+- 사유 문장은 **시작 통지 1회**(사유가 바뀔 때만)로 나가고, 패널에는 **다른 문자열의 상시
+  표시**가 선다 — 같은 문장을 live region과 DOM에 함께 두면 회전자에서 이중 낭독된다(종전
+  `straightLineNote`가 정확히 그 자리였다). ⚠ 그렇다고 사유를 버리지 않는다: 3-state를 만든
+  유일한 수혜자가 **세션 도중 들어온 사용자**인데 한 문장으로 뭉개면 그 사용자에게 "재시도로
+  풀리는가"가 도달하지 않는다(리뷰 검출) → 상시 표시도 사유별 4벌(`degradedNote*`)이다.
+  `noLocation`만 예외로 사유가 곧 표시다("방향과 거리로 안내 중"이 거짓이므로).
+- **자동 강등(도착 인계)에도 표시를 세운다** — 시작 실패에만 달면 인계 세션은 표시가 빈다.
+- **위치를 되찾으면 `noLocation` 표시를 내린다** — `watchPosition`은 살아 있어 다음 fix부터
+  거리를 안내하는데 화면이 "위치를 모른다"고 주장하면 그 모순은 SR 사용자에게 반증 불가다.
 
 ## A3. 범위 밖
 
@@ -419,3 +437,18 @@ fetchGuideRoute(force: boolean): Promise<GuideRouteFetch | { failure: GuideRoute
 - 한국 밖·자동차 세션의 직선거리 동작 범위(백로그 2026-08-16 판정 — 축 1·2가 지우는 것은
   명칭과 진입점이지 동작 범위가 아니다).
 - 재시도 버튼 신설(현재 트리거가 곧 재시작이라 새 컨트롤이 행동을 바꾸지 않는다).
+
+## A4. 축 2 설계 리뷰 판정 (codex adversarial, 2026-08-23)
+
+8건 중 6건 수용. 축 3 §7과 같은 형식으로 기각 근거를 남긴다.
+
+| # | 지적 | 판정 | 반영·근거 |
+|---|---|---|---|
+| 1 | `briefFallback` 제거로 시작 가능 수단 0개일 때 진입점이 사라진다 | **기각** | 그것이 목표 상태다 — iOS 정식판이 이미 그렇고(그쪽은 그 버튼이 봉인 안), 위원장이 "웹이 iOS를 따라간다"고 명시했다. 축 3으로 도보 성공률이 올라 그 조합 자체가 줄었다 |
+| 2 | `awaitRealFix` 실패를 "확인하는 중"으로 낭독 | **수용** | 완료된 실패 + 조치 가능한 원인으로("위치 권한과 신호를 확인해 주세요") |
+| 3 | 모든 비-200을 재시도 가능으로 접음 | **수용** | `failureOfStatus` — 5xx·408·429만 재시도 가능 |
+| 4 | `unavailable`이 4원인을 뭉갬 | **부분 수용** | 커버리지만 분리(전역 문구 계약). 나머지 넷은 사용자 행동이 같아 한 문장 |
+| 5 | 자동 강등(인계·경로 상실)에 상태가 없다 | **수용** | 인계 진입에도 `setDegrade` |
+| 6 | 수명주기(복구·사유 변경) 미정의 | **수용** | 사유 변경 시에만 통지, 상세 확정·세션 경계에서 `clearDegrade`, `noLocation` 복구 전이 |
+| 7 | `speedSuggest` 빈 문자열이 live region을 지운다 | **기각** | 호출부가 `if (!text) return`으로 이미 거른다(`finalApproachEnter`가 같은 관례) |
+| 8 | 반환형에 `{ ok }` 태그 필요 | **수용** | 타입이 실제로 누락 소비자 2곳을 잡았다 |
