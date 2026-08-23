@@ -55,7 +55,7 @@ import {
   type LiveRowsState,
 } from "@/lib/guide-live-rows";
 import { walkStepAction, type WalkAction } from "@/lib/walk-action";
-import { prefersEnglish } from "@/lib/data-locale";
+import { dataLocale } from "@/lib/data-locale";
 import { formatDistance, joinText } from "@/lib/format";
 import { haversineMeters } from "@/lib/geo";
 import {
@@ -1011,6 +1011,7 @@ export function useRouteGuide(
           // 웹 실시간 안내는 경유지를 아직 받지 않는다(N4 spec §3 — 경유지 조회에선
           // 안내 시작 버튼 자체가 없다). 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
           via: null,
+          lang: dataLocale(locale) === "ko" ? "ko" : "en",
         }),
       );
       if (!res.ok) return null;
@@ -1035,7 +1036,7 @@ export function useRouteGuide(
     } catch {
       return null;
     }
-  }, [kindFixed]);
+  }, [kindFixed, locale]);
 
   /**
    * car ETA 갱신(§4.6): 현 위치→목적지 재조회의 totalTime을 그대로 잔여 ETA로
@@ -1642,11 +1643,6 @@ export function useRouteGuide(
       WATCH_OPTS,
     );
 
-    // 상세 안내는 ko 데이터 로케일 전용(도보 API가 ko 전용) — 그 외는 간략으로 시작.
-    if (prefersEnglish(locale)) {
-      announce(t("briefStarted"));
-      return;
-    }
     // 조회를 기다리는 동안 간략 발화를 보류한다(위 `awaitingRouteRef`).
     awaitingRouteRef.current = true;
     void (async () => {
@@ -1711,7 +1707,6 @@ export function useRouteGuide(
     consumeStepFreeNotice,
     kindFixed,
     fetchGuideRoute,
-    locale,
     playTone,
     preload,
     refreshCarEta,
@@ -2061,7 +2056,8 @@ export function useRouteGuide(
     currentText,
     liveRows,
     // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐.
-    canOfferDetail: kindFixed === "walk" && !prefersEnglish(locale) && hasRoute,
+    // 로케일 조건은 E16 축3으로 사라졌다(전 로케일이 상세를 받는다).
+    canOfferDetail: kindFixed === "walk" && hasRoute,
     rerouting,
     start,
     stop,

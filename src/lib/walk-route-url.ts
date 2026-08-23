@@ -18,11 +18,18 @@ export function walkRouteUrl(params: {
   includeGeometry: boolean;
   /** 경유지(N4). null이면 부재 — 같은 이유로 required: 경유지를 빠뜨린 조회는 오류 없이 다른 경로를 준다. */
   via: Coord | null;
+  /**
+   * 안내 문장 언어(E16 축3). 같은 이유로 required — 빠뜨린 조회는 오류 없이 **한국어 안내**를
+   * 주고, 그 사실은 비-ko 사용자에게 낭독으로만 드러난다.
+   */
+  lang: "ko" | "en";
 }): string {
-  const { origin, dest, accessible, includeGeometry, via } = params;
+  const { origin, dest, accessible, includeGeometry, via, lang } = params;
   let url = `/api/route/walk?origin=${origin.lat},${origin.lng}&dest=${dest.lat},${dest.lng}`;
   if (via) url += `&via=${via.lat},${via.lng}`;
   if (accessible) url += "&accessible=true";
   if (includeGeometry) url += "&includeGeometry=1";
+  // ko는 파라미터를 붙이지 않는다 — 기존 캐시 키·기존 테스트 단언 유지(옵트인 관례).
+  if (lang !== "ko") url += `&lang=${lang}`;
   return url;
 }

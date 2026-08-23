@@ -236,7 +236,7 @@ async function fetchMode(
   // 옵트인이고, 실시간 안내(`includeGeometry=1`)와 조합하면 서버 400이다.
   const url =
     mode === "walk"
-      ? `${walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via })}&alternatives=1`
+      ? `${walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via, lang })}&alternatives=1`
       : `/api/route/transit?${qs}&includeStops=1`;
   const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
@@ -471,12 +471,13 @@ export function DirectionsView({
 
   // 게이트 통과 수단만 — **조회 대상 결정 전용**(E11부터 표시 순서는
   // results.orderedModes가 정본이고, 이 배열 순서는 각 군 안의 타이브레이커로만
-  // 쓰인다). 도보는 V1 ko 전용: 비한국어 로케일은 조회·표시 모두 제외
-  // (prefersEnglish, useLocale 원시값 비교 금지).
+  // 쓰인다). 도보의 ko 전용 게이트는 E16 축3으로 사라졌다 — 서버가 Tmap 구조화
+  // 필드에서 en 문장을 만든다. 로케일별 키 게이트는 `canShowWalk`가 이미 든다
+  // (`hasWalkRouteKeyFor` — en은 Tmap 단독).
   const activeModes: ModeKey[] = [
     ...(canShowTransit ? (["transit"] as const) : []),
     ...(canBriefCarRoute ? (["car"] as const) : []),
-    ...(canShowWalk && !prefersEnglish(locale) ? (["walk"] as const) : []),
+    ...(canShowWalk ? (["walk"] as const) : []),
   ];
 
   // `?dir=` 동기화: 확정(resolved) 필드만 직렬화한다. 편집 중(coord 무효) 상태는
@@ -836,8 +837,8 @@ export function DirectionsView({
   // 자기 조회를 다시 해 경유지가 조용히 빠진 경로를 안내하게 되고, 간략 폴백(직선거리)도
   // 목적지만 본다. 버튼 부재가 정직하다. 경유지 안내는 iOS 실보행 판정 뒤 웹에 얹는다.
   const hasVia = results?.viaLabel != null;
-  const walkGuideStartable =
-    results?.outcomes.walk?.kind === "done" && !prefersEnglish(locale) && !hasVia;
+  // 도보 상세 안내는 전 로케일에서 시작할 수 있다(E16 축3) — 문장을 서버가 만든다.
+  const walkGuideStartable = results?.outcomes.walk?.kind === "done" && !hasVia;
   const carGuideStartable =
     carOutcome?.kind === "done" &&
     carOutcome.mode === "car" &&
@@ -1291,7 +1292,10 @@ export function DirectionsView({
                     경로에 귀속되어야 하고(어느 경로의 안내인지 라벨로 드러난다),
                     아래 목록의 각 disclosure 안에 하나씩 있다. 도보·자동차는
                     경로가 하나라 비교 대상이 없어 섹션 상단이 맞다. */}
-                {mode === "walk" && (
+                {/* ⚠ 계단 회피는 카카오 전용 축이라 en(Tmap 단독)에서는 항상 unavailable이다.
+                    적용될 수 없는 옵션을 켜게 두고 조회 뒤에야 못 했다고 말하면, 스크린 리더
+                    사용자는 그 사이 적용됐다고 믿는다(spec 2026-08-23-non-ko-walk-guidance §4.7). */}
+                {mode === "walk" && !prefersEnglish(locale) && (
                   <button
                     type="button"
                     aria-pressed={stepFreeEnabled}
