@@ -408,6 +408,7 @@ describe("station-timetable", () => {
         lines: [
           {
             lineName: "5호선",
+            coverage: "ok",
             directions: [
               { direction: "up", first: { time: "05:31", terminus: "방화" }, last: { time: "00:31", nextDay: true, terminus: "마천" } },
               { direction: "down", first: { time: "05:40", terminus: "하남검단산" }, last: { time: "23:50", terminus: "하남검단산" } },
@@ -427,6 +428,7 @@ describe("station-timetable", () => {
         lines: [
           {
             lineName: "서해선",
+            coverage: "ok",
             directions: [
               { direction: "down", first: { time: "05:21", terminus: "" }, last: { time: "23:27", terminus: "" } },
             ],
@@ -436,12 +438,28 @@ describe("station-timetable", () => {
     } as never);
     expect(lines[1]).toBe("서해선 하행, 첫차 05:21, 막차 23:27");
   });
-  it("partial이면 기준 라벨 줄에 불완전 안내를 병기한다", () => {
+  it("partial이면 기준 라벨 줄에 불완전 안내를 병기하고, 실패 노선은 노선명과 함께 한 줄", () => {
     const lines = FORMATTERS["station-timetable"]({
-      timetable: { dailyType: "sunday", partial: true, lines: [] },
+      timetable: { dailyType: "sunday", partial: true, lines: [{ lineName: "1호선", coverage: "unavailable", directions: [] }] },
     } as never);
     expect(lines[0]).toBe("일요일·공휴일 기준, 일부 노선 정보를 불러오지 못했습니다.");
-    expect(lines[1]).toBe("오늘 시간표 정보가 없습니다.");
+    expect(lines[1]).toBe("1호선 시간표를 불러오지 못했습니다.");
+  });
+  it("coverage unknown·noTrains는 운행 종료·0건과 다른 문장으로 가른다(A19, 노선 탈락 0)", () => {
+    const lines = FORMATTERS["station-timetable"]({
+      timetable: {
+        dailyType: "weekday",
+        lines: [
+          { lineName: "2호선", coverage: "unknown", directions: [] },
+          { lineName: "경의중앙선", coverage: "noTrains", directions: [] },
+        ],
+      },
+    } as never);
+    expect(lines).toEqual([
+      "평일 기준",
+      "2호선 오늘 시간표를 확인할 수 없습니다.",
+      "경의중앙선 오늘 탑승할 수 있는 편성이 없습니다.",
+    ]);
   });
   it("null(미커버 역·키 없음)은 미제공 문장(3-state)", () => {
     expect(FORMATTERS["station-timetable"]({ timetable: null } as never)).toEqual([
