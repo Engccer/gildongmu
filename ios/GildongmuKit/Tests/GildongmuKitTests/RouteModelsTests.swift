@@ -204,6 +204,57 @@ extension StubNetworkTests {
 // 기하 응답에는 안내 문장이 유사 스텝으로 오지 않으므로 필드가 유일한 채널이다.
 // 두 필드 모두 옵셔널 — 구버전 서버 응답에서 브리핑이 통째로 깨지면 안 된다.
 
+/// 도보 스텝의 서버 투영 행동(E16 축3 §4.2.1). 도보 리듀서가 `actionSource: .step`이라
+/// **이 디코딩이 없으면 임박 큐가 전면 침묵한다** — 웹 테스트도 타입 검사도 Kit fixture
+/// 테스트도 통과시키는 자리라(fixture는 action을 직접 싣는다) 여기가 유일한 가드다.
+@Suite("도보 스텝의 서버 투영 행동")
+struct WalkRouteStepActionTests {
+    private func steps(_ json: String) throws -> [WalkRouteStep] {
+        try JSONDecoder().decode(WalkRouteBriefing.self, from: Data(json.utf8)).steps
+    }
+
+    @Test("서버가 실은 action을 디코딩한다")
+    func decodesAction() throws {
+        let s = try steps(#"""
+        {"distanceMeters":1,"durationSeconds":1,
+         "steps":[{"description":"우회전 후 10m 이동","action":"right"},
+                  {"description":"횡단보도","action":"crosswalk"}]}
+        """#)
+        #expect(s[0].action == .right)
+        #expect(s[1].action == .crosswalk)
+    }
+
+    @Test("필드가 없으면 nil이다(구버전 서버 응답에서 브리핑이 깨지지 않는다)")
+    func absentAction() throws {
+        let s = try steps(#"{"distanceMeters":1,"durationSeconds":1,"steps":[{"description":"직진"}]}"#)
+        #expect(s[0].action == nil)
+        #expect(s[0].description == "직진")
+    }
+
+    @Test("모르는 행동 문자열은 nil로 떨어진다(전방 호환 — 브리핑을 실패시키지 않는다)")
+    func unknownAction() throws {
+        let s = try steps(#"""
+        {"distanceMeters":1,"durationSeconds":1,
+         "steps":[{"description":"무언가","action":"teleport"}]}
+        """#)
+        #expect(s[0].action == nil)
+    }
+
+    @Test("다른 필드와 함께 와도 전부 디코딩된다")
+    func withOtherFields() throws {
+        let s = try steps(#"""
+        {"distanceMeters":1,"durationSeconds":1,
+         "steps":[{"description":"좌회전 후 20m 이동","distanceMeters":20,
+                   "pathCoords":[{"lat":37.5,"lng":127.1}],
+                   "live":{"target":"파리바게뜨"},"action":"left"}]}
+        """#)
+        #expect(s[0].action == .left)
+        #expect(s[0].distanceMeters == 20)
+        #expect(s[0].pathCoords?.count == 1)
+        #expect(s[0].live?.target == "파리바게뜨")
+    }
+}
+
 @Suite("도보 브리핑의 계단 회피 필드")
 struct WalkRouteBriefingStepFreeTests {
     private func decode(_ json: String) throws -> WalkRouteBriefing {

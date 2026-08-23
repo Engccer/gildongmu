@@ -775,7 +775,10 @@
     "degradedNoLocation": "Your current location could not be determined. Check location permission and signal.",
     "degradedRetryable": "The route could not be loaded. For now, only the direction and distance to the destination are announced.",
     "degradedUnavailable": "No route to this destination was found. Guidance uses the direction and distance to the destination.",
-    "degradedNote": "Guidance is using the direction and distance to the destination."
+    "degradedNoteRetryable": "The route could not be loaded, so guidance is using the direction and distance to the destination.",
+    "degradedNoteUnavailable": "No route was found, so guidance is using the direction and distance to the destination.",
+    "degradedNoteCoverage": "This is outside the service area, so guidance is using the direction and distance to the destination.",
+    "degradedNoteHandoff": "The route has ended, so guidance is using the direction and distance to the destination."
   },
   "offline": {
     "heading": "You are offline",

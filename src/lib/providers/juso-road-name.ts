@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { env } from "../env";
+import { env, hasJusoKey } from "../env";
 
 /**
  * 도로명(ko) → 로마자 표기. 행안부 juso `addrLinkApi`의 `engAddr`에서 뽑는다
@@ -30,6 +30,10 @@ interface JusoRow {
   engAddr?: string;
 }
 
+interface JusoEnvelope {
+  results?: { common?: { errorCode?: string; errorMessage?: string }; juso?: JusoRow[] | null };
+}
+
 /**
  * `engAddr` 첫 쉼표 앞 조각에서 **선행 번호 토큰 하나만** 벗긴다.
  * ⚠ 첫 토큰만이다 — `11 Seongnae-ro 6-gil`의 `6-gil`은 이름의 일부다.
@@ -54,7 +58,15 @@ async function fetchRoadNameEn(ko: string): Promise<string | null> {
   url.searchParams.set("resultType", "json");
   const res = await fetch(url, { signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) });
   if (!res.ok) throw new Error(`juso 도로명 조회 실패: HTTP ${res.status}`);
-  const json = (await res.json()) as { results?: { juso?: JusoRow[] | null } };
+  const json = (await res.json()) as JusoEnvelope;
+  // ⚠ **juso는 키 만료·미승인·게이트웨이 오류에서도 HTTP 200을 준다**(`fetchDataGoKrJson`·
+  // `readSeoulOpenJson`과 같은 계열 함정). `res.ok`만 보면 그 실패가 rows=[] → null →
+  // "도로명 없음"으로 **30일 캐시에 눌러앉는다**. errorCode를 봐야 "실패는 throw,
+  // 도로명 아님만 null"이라는 이 모듈의 계약이 실제로 성립한다.
+  const code = json.results?.common?.errorCode;
+  if (code !== undefined && code !== "0") {
+    throw new Error(`juso 도로명 조회 실패: ${code} ${json.results?.common?.errorMessage ?? ""}`);
+  }
   const rows = json.results?.juso ?? [];
   // 부분 일치가 다른 도로를 물어오는 것을 막는다 — 정확 일치만 채택.
   for (const row of rows) {
@@ -68,6 +80,9 @@ async function fetchRoadNameEn(ko: string): Promise<string | null> {
 const cached = unstable_cache(fetchRoadNameEn, ["juso-road-name"], { revalidate: CACHE_SECONDS });
 
 export function roadNameEn(ko: string): Promise<string | null> {
+  // 키가 없으면 upstream을 부르지 않는다 — 부르면 200+errorCode로 돌아와 throw가 되고,
+  // 그 throw가 매 스텝마다 반복된다(게이트가 먼저 막는 것이 repo 관례).
+  if (!hasJusoKey()) return Promise.resolve(null);
   return cached(ko);
 }
 

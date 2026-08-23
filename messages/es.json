@@ -775,7 +775,10 @@
     "degradedNoLocation": "No se pudo determinar tu ubicación actual. Comprueba el permiso de ubicación y la señal.",
     "degradedRetryable": "No se pudo cargar la ruta. Por ahora solo se anuncian la dirección y la distancia al destino.",
     "degradedUnavailable": "No se encontró ninguna ruta hasta este destino. La guía usa la dirección y la distancia al destino.",
-    "degradedNote": "La guía usa la dirección y la distancia al destino."
+    "degradedNoteRetryable": "No se pudo cargar la ruta, así que la guía usa la dirección y la distancia al destino.",
+    "degradedNoteUnavailable": "No se encontró ninguna ruta, así que la guía usa la dirección y la distancia al destino.",
+    "degradedNoteCoverage": "Estás fuera del área de servicio, así que la guía usa la dirección y la distancia al destino.",
+    "degradedNoteHandoff": "La ruta ha terminado, así que la guía usa la dirección y la distancia al destino."
   },
   "offline": {
     "heading": "Estás sin conexión",

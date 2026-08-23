@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import ko from "../../../messages/ko.json";
 import type { GuideRoute } from "@/lib/route-guide";
+import type { GuideAction } from "@/lib/walk-action";
 import {
   nextLine,
   progressFrameLine,
@@ -35,9 +36,18 @@ const t = createTranslator({
 }) as unknown as GuideT;
 
 /** 조립 함수는 steps[i].description만 읽는다 — 기하 필드는 계약 밖. */
-function routeOf(...descriptions: string[]): GuideRoute {
+/**
+ * `"설명"` 또는 `["설명", action]`. 서버가 도보 스텝의 `action`을 전량 투영하므로(E16 축3)
+ * 실제 경로 객체는 행동을 들고 온다 — 이 fixture도 그 모양을 따른다.
+ */
+type StepSpec = string | [string, GuideAction];
+
+function routeOf(...specs: StepSpec[]): GuideRoute {
   return {
-    steps: descriptions.map((description, index) => ({ index, description })),
+    steps: specs.map((spec, index) => {
+      const [description, action] = Array.isArray(spec) ? spec : [spec, undefined];
+      return { index, description, ...(action ? { action } : {}) };
+    }),
   } as unknown as GuideRoute;
 }
 
@@ -106,12 +116,28 @@ describe("walk 주기 통지 단문 (위원장 실보행 피드백 2026-08-12)",
 
   it("횡단 스텝에는 '직진하세요' 대신 정본 문장을 재낭독한다(오지시 금지)", () => {
     const CROSS_STEP = "길동사거리까지 횡단보도를 건너세요, 횡단보도 길이 45m";
+    // ⚠ 판정은 **서버 투영 행동**만 본다(E16 축3) — 종전 `"건너"` 부분 문자열 축은 en 문장에서
+    // 실패해 횡단 중에 "Walk straight"를 냈다. 그래서 fixture도 서버가 싣는 행동을 든다.
     const line = walkPeriodicLine(
-      routeOf(CROSS_STEP, NEXT_STEP), 0, "오아시스마켓", "약 20m", "길동사거리", t,
+      routeOf([CROSS_STEP, "crosswalk"], NEXT_STEP), 0, "오아시스마켓", "약 20m", "길동사거리", t,
     );
 
     expect(line).toBe(CROSS_STEP);
     expect(line).not.toContain("직진");
+  });
+
+  it("en 문장의 횡단 스텝도 같은 판정이다(언어 의존 축 제거 확인)", () => {
+    const EN_CROSS = "Cross the crosswalk on your left, then walk 14m";
+    expect(
+      walkPeriodicLine(routeOf([EN_CROSS, "crosswalk"], NEXT_STEP), 0, "Oasis", "20m", undefined, t),
+    ).toBe(EN_CROSS);
+  });
+
+  it("행동이 없으면 종전대로 단문 직진이다(횡단보도가 지명에 섞인 스텝)", () => {
+    // "천호역 횡단보도 앞에서 …"처럼 문장에 낱말만 있고 건너지 않는 스텝.
+    expect(
+      walkPeriodicLine(routeOf("천호역 횡단보도 앞까지 40m 이동", NEXT_STEP), 0, "오아시스마켓", "약 20m", "천호역", t),
+    ).toBe("천호역까지 약 20m 직진하세요");
   });
 });
 

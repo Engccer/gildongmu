@@ -104,7 +104,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     openAndStart("ko");
 
     await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
-    expect(screen.queryByText(ko.guide.degradedNote)).toBeNull();
+    expect(screen.queryByText(ko.guide.degradedNoteUnavailable)).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("includeGeometry=1"),
     );
@@ -121,7 +121,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     );
     // 상시 표시는 사유가 아니라 **동작 서술**이다 — 같은 문장을 live region과 DOM에
     // 동시에 두면 회전자에서 이중 낭독된다(종전 straightLineNote가 그 자리였다).
-    expect(screen.getByText(ko.guide.degradedNote)).toBeTruthy();
+    expect(screen.getByText(ko.guide.degradedNoteUnavailable)).toBeTruthy();
     // 경로가 없으므로 경로 기준 잔여 표시도 없다(3-state 정직).
     expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
@@ -135,7 +135,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("lang=en");
     await waitFor(() => expect(screen.getByText(/Distance left/i)).toBeTruthy());
-    expect(screen.queryByText(en.guide.degradedNote)).toBeNull();
+    expect(screen.queryByText(en.guide.degradedNoteUnavailable)).toBeNull();
   });
 
   it("재조회 버튼은 이탈 상태에서만 나온다", async () => {
@@ -203,7 +203,8 @@ describe("DistanceBeacon 컨트롤 노출", () => {
 
     expect(screen.getByText(ko.guide.handoff)).toBeTruthy();
     // 인계도 자동 강등이라 상시 표시가 선다(설계 리뷰 #5 — 시작 실패에만 달면 이 세션은 빈다).
-    expect(screen.getByText(ko.guide.degradedNote)).toBeTruthy();
+    // ⚠ 사유별로 문장이 다르다 — 인계는 "경로가 끝나…"이지 "경로가 없어…"가 아니다.
+    expect(screen.getByText(ko.guide.degradedNoteHandoff)).toBeTruthy();
     expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
 

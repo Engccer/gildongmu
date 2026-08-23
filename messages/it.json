@@ -775,7 +775,10 @@
     "degradedNoLocation": "Non è stato possibile determinare la tua posizione attuale. Controlla l’autorizzazione alla posizione e il segnale.",
     "degradedRetryable": "Non è stato possibile caricare il percorso. Per ora vengono annunciate solo la direzione e la distanza dalla destinazione.",
     "degradedUnavailable": "Nessun percorso verso questa destinazione è stato trovato. La guida usa la direzione e la distanza dalla destinazione.",
-    "degradedNote": "La guida usa la direzione e la distanza dalla destinazione."
+    "degradedNoteRetryable": "Non è stato possibile caricare il percorso, quindi la guida usa la direzione e la distanza dalla destinazione.",
+    "degradedNoteUnavailable": "Nessun percorso trovato, quindi la guida usa la direzione e la distanza dalla destinazione.",
+    "degradedNoteCoverage": "Sei fuori dall’area coperta, quindi la guida usa la direzione e la distanza dalla destinazione.",
+    "degradedNoteHandoff": "Il percorso è terminato, quindi la guida usa la direzione e la distanza dalla destinazione."
   },
   "offline": {
     "heading": "Sei offline",

@@ -130,6 +130,10 @@ export function normalizeTmapWalkRoute(
   const steps: WalkRouteStep[] = [];
   // 직후 LineString을 귀속할 스텝(마지막으로 push된 안내 스텝).
   let attachTarget: WalkRouteStep | undefined;
+  // ⚠ **"첫 구간을 이미 썼는가"를 별도 플래그로 든다.** `distanceMeters === undefined`로 판정하면
+  // 첫 구간에 `name`만 있고 `distance`가 없을 때 다음 구간이 같은 블록에 다시 들어와
+  // `roadNameKo`를 덮어쓴다 — 귀속 가정이 코드에 박히지 않는다(리뷰 검출).
+  let attached = false;
   for (const feature of data.features) {
     if (isPointFeature(feature)) {
       const description = feature.properties.description;
@@ -159,19 +163,26 @@ export function normalizeTmapWalkRoute(
       }
       steps.push(step);
       attachTarget = step;
+      attached = false;
     } else if (attachTarget) {
       // ⚠ 문장의 거리·도로명은 **첫 LineString**이지 합이 아니다(30경로 435스텝 실측).
       // 한 Point 뒤에 짧은 연결 구간이 더 붙는 경우가 흔한데, 문장은 첫 구간만 말한다
       // ("…봉은사로를 따라 306m 이동" + 논현로 8m → 306). 합으로 읽으면 48/435가 어긋난다.
       // pathCoords는 아래에서 종전대로 **전부** 귀속한다 — 기하는 실경로를 따라야 한다.
-      if (attachTarget.distanceMeters === undefined) {
+      // ⚠ **문장 축 부착은 `guard`(=en)에서만 한다.** ko+Tmap 스텝은 종전에 `distanceMeters`가
+      // 없어 `rewriteWalkGuidanceWithLive`의 meters-게이트 규칙 3종(CROSS·BRIDGE·"…이동" 폴백)이
+      // 한 번도 발화하지 않았다. 무조건 붙이면 그 셋이 ko 폴백 문장에 새로 걸리고, 특히 CROSS는
+      // "횡단보도 길이 {값}"을 붙이는데 그 값은 **횡단 길이가 아니라 그 스텝의 첫 구간**이라
+      // 낭독되는 수치가 무엇의 값인지 틀린다(품질 리뷰 검출). ko는 종전 동작 그대로 둔다.
+      if (opts?.guard && !attached) {
+        attached = true;
         const d = feature.properties.distance;
-        if (typeof d === "number" && Number.isFinite(d)) attachTarget.distanceMeters = d;
+        // ⚠ 반올림은 iOS 계약이다 — Swift `Int?`는 부재·null만 흡수하고 타입 불일치는 throw라,
+        // 소수 하나가 그 스텝이 아니라 **브리핑 전체**의 디코드를 죽인다(kakao-walk 동형).
+        if (typeof d === "number" && Number.isFinite(d)) attachTarget.distanceMeters = Math.round(d);
         const name = feature.properties.name;
         if (name) attachTarget.roadNameKo = name;
-        if (opts?.guard) {
-          assertDistanceMatchesKorean(attachTarget.description, attachTarget.distanceMeters);
-        }
+        assertDistanceMatchesKorean(attachTarget.description, attachTarget.distanceMeters);
       }
       if (includeLineGeometry) {
         for (const [lng, lat] of feature.geometry.coordinates) {
