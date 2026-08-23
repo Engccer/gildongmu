@@ -297,6 +297,11 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(subwayIdForOdsayLine("수도권 수인.분당선") == "1075")
     #expect(subwayIdForOdsayLine("신분당선") == "1077")
     #expect(subwayIdForOdsayLine("대전 1호선") == nil)
+    // 급행 lane 접미(웹 미러) — 벗기지 않으면 급행 leg가 통째로 추적 불가.
+    #expect(subwayIdForOdsayLine("수도권 9호선(급행)") == "1009")
+    #expect(subwayIdForOdsayLine("수도권 1호선(급행)") == "1001")
+    // 그 밖의 괄호 등급은 삼키지 않는다(직통은 실시간 도착 축이 없다).
+    #expect(subwayIdForOdsayLine("수도권 공항철도(직통)") == nil)
 }
 
 @Test func buildGuideRouteFoldsWalkContext() {

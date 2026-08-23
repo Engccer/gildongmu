@@ -309,6 +309,9 @@ private let odsaySubwayLines: [String: String] = [
 private func subwayLineCore(_ name: String) -> String {
     var s = name
     if s.hasPrefix("수도권") { s = String(s.dropFirst(3)) }
+    // ODsay 급행 lane은 이름 끝에 "(급행)"을 붙인다(웹 subwayLineCore 미러 —
+    // 근거 주석은 그쪽 정본). 괄호 일반이 아니라 이 한 토큰만 벗긴다.
+    s = s.replacingOccurrences(of: "\\(급행\\)\\s*$", with: "", options: .regularExpression)
     return s.replacingOccurrences(of: "[.·\\s]", with: "", options: .regularExpression)
         .trimmingCharacters(in: .whitespaces)
 }
