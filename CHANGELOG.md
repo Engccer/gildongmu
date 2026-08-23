@@ -11,6 +11,10 @@
 
 ## 2026-08-24
 
+### App Store 1.12 빌드 20 제출
+
+1.11 아카이브(`f312a39`) 이후 `ios/` 39커밋을 재판정해 What's New를 다시 썼다(정본 `docs/appstore/release-notes.md` §1.12). 빌드 19(`c56752c`)는 1.11 심사 중 409로 제출하지 못한 채 17커밋이 더 들어와 폐기하고, `37b99db`를 worktree 격리로 아카이브·업로드했다(산출물 검사 통과). en 노트는 E16 축3으로 열린 도보 상세 경로·실시간 도보 안내를 "새로운 기능"으로 묶었고, 심사 노트의 "Walking guidance is available in Korean only"를 전 언어 제공으로 고쳤다(`--review-notes`, ASC 실값 대조 차이 0). `asc-submit --apply`가 프로모션 텍스트 승계까지 처리해 별도 복사 단계가 필요 없었다. 1.12 `WAITING_FOR_REVIEW`(02:30 KST). BACKLOG G5 종결.
+
 ### K4 — 채팅 한눈에 보기 장소 카드 복원 + 계단식 캡 + follow-up 칩 (웹·iOS)
 
 유라 님 리포트(센스 채팅방 2026-08-23): K3의 `get_nearby_overview`가 카드·장소 투영 없이 산문만 내서 "주변에 뭐 있어" 답변에서 iOS 장소 카드·"장소 N곳" 헤딩·산문 블록 버튼이 함께 사라졌다. spec `docs/superpowers/specs/2026-08-24-chat-overview-cards-followup-chips-design.md`.
