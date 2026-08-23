@@ -282,7 +282,11 @@
     "last": "Last train",
     "nextDay": "next day",
     "toTerminus": "to {terminus}",
-    "empty": "No timetable information for today.",
+    "coverage": {
+      "unknown": "{line}: today's timetable couldn't be confirmed.",
+      "unavailable": "{line}: timetable couldn't be loaded.",
+      "noTrains": "{line}: no boardable trains today."
+    },
     "error": "Couldn't load first/last train info.",
     "partial": "Some line info couldn't be loaded.",
     "source": "Source: MOLIT TAGO"
