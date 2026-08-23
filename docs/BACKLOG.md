@@ -101,7 +101,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 **반증된 것**(원장 행의 gildongmu 파급 주장 중 절반): `subway-service-hours.ts`의 경로 운행시간 축은 **이미 3-state가 맞다** — `fetchOne`이 null을 돌려주면 Map miss가 되고 `annotateServiceStatus`가 `unknown`(SERVICE_RANK 1)을 붙인다. 확인된 running보다 뒤, 운행 종료보다 앞이라 정직한 순서다. 이 축은 손대지 않는다.
 
-**처방(설계 판정 필요)**: 0행 노선을 `lines`에 남기되 방향 없는 `unknown` 표기로 가른다. 소비자 4곳이 함께 움직인다 — 웹 `StationTimetable.tsx`, CLI `formatters.ts`, 채팅 `get_station_timetable`, iOS. **정적 리뷰가 못 잡는 축이라 실호출 관측을 게이트에 상설로 둔다**(dodo 정본 `scripts/verify-korea-subway-timetable.mjs`의 커버리지 관측 절).
+**처방(설계 판정 필요)**: 0행 노선을 `lines`에 남기되 방향 없는 `unknown` 표기로 가른다. 소비자 4곳이 함께 움직인다 — 웹 `StationTimetable.tsx`, CLI `formatters.ts`, 채팅 `get_station_timetable`, iOS. **정적 리뷰가 못 잡는 축이라 실호출 관측을 게이트에 상설로 둔다**(dodo 정본 `~/Mac-Projects/dodo-planet/scripts/verify-korea-subway-timetable.mjs`의 커버리지 관측 절 — gildongmu판은 같은 이름으로 신설). 🚧 2026-08-23 착수(`docs/superpowers/plans/2026-08-23-backlog-sweep-parallel-plan.md` 웨이브 1).
 
 ### A16. 잠금 열차가 하차역에 서지 않으면 안내가 영원히 침묵한다
 
@@ -226,7 +226,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 1.11(아카이브 `f312a39`, 2026-08-22 제출·심사 중)이 2026-08-22 묶음(M4·N1·N2·N3·N4-iOS·BLE 정식 제거)을 전부 담았다. 그 뒤 iOS 변경의 정본은 `git log f312a39..HEAD -- ios/`이고 여기 수를 박지 않는다.
 
-2026-08-23 병렬 묶음(K1·K2·K3·E15-1) 뒤 상태: **정식판에 도달하는 것**은 K1(띠바 탭 바 위·시트 접기 버튼·받아쓰기 중 안내 억제)과 한눈에 보기 6불릿뿐이고, K3 채팅 도구는 서버라 1.11 사용자에게 이미 닿는다. K2 자동차·E15-1 대중교통 조망·K1 탭 순서는 실험판 봉인이라 1.12에 싣지 않는다. **1.12 What's New 초안은 `docs/appstore/release-notes.md`에 있다**(빌드 19 가정, 미제출) — 위원장 판정(채팅 도구 항목 포함 여부·1.11 심사 결과) 뒤 제출한다. 1.11이 탭 바를 가리는 띠바를 들고 나갔으므로 1.11 승인 즉시 1.12가 필요하다.
+2026-08-23 병렬 묶음(K1·K2·K3·E15-1) 뒤 상태: **정식판에 도달하는 것**은 K1(띠바 탭 바 위·시트 접기 버튼·받아쓰기 중 안내 억제)과 한눈에 보기 6불릿뿐이고, K3 채팅 도구는 서버라 1.11 사용자에게 이미 닿는다. K2 자동차·E15-1 대중교통 조망·K1 탭 순서는 실험판 봉인이라 1.12에 싣지 않는다. **1.12 What's New 초안은 `docs/appstore/release-notes.md`에 있다**(빌드 19 가정, 미제출) — **1.11은 2026-08-23 READY_FOR_SALE**(승인). 위원장 판정 2026-08-23: **1.12 제출 보류.** 제출할 때는 빌드 19 뒤에 들어온 iOS 커밋(`606d5c7`·`eb16b35` 계단 회피 라벨·원좌표)이 있으므로 **빌드 20 재아카이브**가 필요하고, 2026-08-23 백로그 묶음(`2026-08-23-backlog-sweep-parallel-plan.md`)의 iOS 변경(A19·E15-2)도 그때 함께 판정한다. 1.11이 탭 바를 가리는 띠바를 들고 나갔으므로 제출이 늦을수록 그 결함이 사용자에게 남는다.
 
 ---
 
