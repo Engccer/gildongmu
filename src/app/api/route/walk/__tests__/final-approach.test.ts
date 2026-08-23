@@ -10,7 +10,7 @@ import { NextRequest } from "next/server";
  * 여기서는 서비스(`getWalkRoute`)를 mock한다. provider 계층 동작은 형제
  * `route.test.ts`가 덮고, 이 파일은 "핸들러가 어느 좌표를 쓰는가"만 본다.
  */
-vi.mock("@/lib/env", () => ({ hasWalkRouteKey: vi.fn(() => true) }));
+vi.mock("@/lib/env", () => ({ hasWalkRouteKeyFor: vi.fn(() => true) }));
 vi.mock("@/lib/rate-limit", () => ({
   checkWalkRateLimit: vi.fn(() => true),
   clientIpFromHeaders: vi.fn(() => "1.2.3.4"),

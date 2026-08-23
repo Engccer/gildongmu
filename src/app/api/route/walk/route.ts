@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasWalkRouteKey } from "@/lib/env";
+import { hasWalkRouteKeyFor } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { checkWalkRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getWalkRoute, getWalkRouteAlternatives } from "@/lib/walk-route";
@@ -55,12 +55,13 @@ export async function GET(request: NextRequest) {
     variant: request.nextUrl.searchParams.get("variant"),
     alternatives: request.nextUrl.searchParams.get("alternatives"),
     via: request.nextUrl.searchParams.get("via"),
+    lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { origin, dest, via } = parsed.data;
+  const { origin, dest, via, lang } = parsed.data;
   if (
     !isInKorea(origin.lat, origin.lng) ||
     !isInKorea(dest.lat, dest.lng) ||
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ outOfCoverage: true });
   }
 
-  if (!hasWalkRouteKey()) {
+  if (!hasWalkRouteKeyFor(lang)) {
     return NextResponse.json(
       { error: "도보 길찾기는 API 키 등록 후 사용할 수 있습니다." },
       { status: 404 },
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
       const { result, ...rest } = await getWalkRouteAlternatives({
         origin,
         dest,
+        lang,
         accessible: parsed.data.accessible,
         via,
       });
@@ -98,6 +100,7 @@ export async function GET(request: NextRequest) {
     const result = await getWalkRoute({
       origin,
       dest,
+      lang,
       accessible: parsed.data.accessible,
       includeGeometry: parsed.data.includeGeometry,
       variant: parsed.data.variant,

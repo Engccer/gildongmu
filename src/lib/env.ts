@@ -149,6 +149,15 @@ export function hasWalkRouteKey(): boolean {
   return hasKakaoKey() || hasTmapKey();
 }
 
+/**
+ * 로케일별 도보 길찾기 게이트(E16 축3). **비-ko는 Tmap 단독**이다 — 비-ko 안내 문장은 Tmap의
+ * 구조화 `turnType`에서만 만들 수 있고 카카오는 완성 한국어 문장만 준다.
+ * ⚠ 페이지·라우트가 같은 함수를 써야 한다 — split-brain이면 수단 목록엔 있는데 조회는 502다.
+ */
+export function hasWalkRouteKeyFor(lang: "ko" | "en"): boolean {
+  return lang === "ko" ? hasWalkRouteKey() : hasTmapKey();
+}
+
 /** 자동차 경로 브리핑(ko) 사용 가능 여부 — 기본 Tmap, 폴백 카카오모빌리티. 어느 한쪽 키만 있어도 동작. */
 export function hasCarRouteKey(): boolean {
   return hasTmapKey() || hasKakaoKey();

@@ -36,9 +36,14 @@ function phraseOf(step: WalkRouteStep): string | null {
   return entry.phrase;
 }
 
+/**
+ * ⚠ **문장 끝에 마침표를 두지 않는다.** 파이프라인 뒤 단계가 주석을 쉼표로 덧붙이기 때문이다
+ * ("…, audible pedestrian signal") — 마침표가 있으면 "…14m., audible …"이 된다. ko 재작성
+ * 문장도 같은 이유로 종결 부호가 없다(같은 규칙을 두 언어가 공유한다).
+ */
 function sentenceOf(step: WalkRouteStep, roadNames: Map<string, string>): string {
   const phrase = phraseOf(step);
-  if (step.turnType === ARRIVAL_TURN_TYPE) return `${phrase}.`;
+  if (step.turnType === ARRIVAL_TURN_TYPE) return phrase ?? "Arrive";
 
   const meters = step.distanceMeters;
   const distance = meters !== undefined && meters > 0 ? formatDistance(meters) : null;
@@ -46,9 +51,9 @@ function sentenceOf(step: WalkRouteStep, roadNames: Map<string, string>): string
   const road = roadKo ? (roadNames.get(roadKo) ?? null) : null;
   const along = road ? ` along ${road}` : "";
 
-  if (!distance) return phrase ? `${phrase}.` : "Continue.";
-  if (!phrase) return `Walk ${distance}${along}.`;
-  return `${phrase}, then walk ${distance}${along}.`;
+  if (!distance) return phrase ?? "Continue";
+  if (!phrase) return `Walk ${distance}${along}`;
+  return `${phrase}, then walk ${distance}${along}`;
 }
 
 /** 로마자 조회가 필요한 도로명 키(중복 제거). */
