@@ -11,6 +11,17 @@
 
 ## 2026-08-23
 
+### E16 축3·축2 — 비-ko 도보 상세 안내와 간략 단독 진입점 제거
+
+비-ko 5개 로케일에서 **조회 자체가 없던** 도보 상세 안내를 열었다. ko 전용이던 이유는 게이트가 아니라 provider 계약(낭독 산문이 한국어)이라, Tmap 보행자 `turnType`·도로명·거리 구조화 필드에서 서버가 en 문장을 새로 만든다. 그 뒤 웹의 직선거리 단독 진입점 3종을 지우고 강등 사유 3-state를 넣었다. spec `docs/superpowers/specs/2026-08-23-non-ko-walk-guidance-design.md`(본문 축3 + 부록 축2), plan `docs/superpowers/plans/2026-08-23-non-ko-walk-guidance-plan.md`.
+
+- **축3**: `pedestrian-action.ts` 한 표가 임박 큐 행동과 영어 문구를 함께 낸다(두 표로 나누면 좌우 불일치가 커버리지 테스트를 통과한 채 성립한다). 도로명 로마자는 juso `engAddr`(코퍼스 40개 중 39개, 실패 1건은 일반명사 "보행자도로" = 정답). 도보 스텝의 `action`은 이제 **서버가 전량 투영**하고 리듀서 walk 프로파일이 `actionSource: "step"`으로 바뀌었다(웹·Kit 한 줄씩, 공유 fixture에 action 15건 추가).
+- **관측이 공식 표를 반증했다**: Tmap 공식 코드표는 경유지를 184~189로 적었지만 실호출 PP1 지점의 `turnType`은 **0**이다. 표만 보고 박았으면 경유지가 있는 모든 en 경로가 죽었다. 문장의 거리·도로명 귀속도 "LineString 합"이 아니라 **첫 구간**이다(합으로 읽으면 435스텝 중 48건이 어긋난다 — 이 어긋남을 설계 단계의 대조 가드가 잡았다).
+- 부수 수정: `fetchPrimaryOrFallback`이 Tmap 폴백에 `includeLineGeometry`를 넘기지 않아 카카오 장애 시 상세 안내가 조용히 간략으로 강등되던 기존 결함을 고쳤다.
+- **축2**: 장소 상세 `DistanceBeacon`·길찾기 `briefFallback`·상세⇄간략 전환 버튼과 전환 어휘 6키·웹 `speedSuggest` 발화 제거. `resolvePending`은 i18n 키이자 콜백인데 `toggleMode`가 유일한 설정자라 둘 다 죽었다. Kit `speedSuggest` 이벤트와 iOS가 쓰는 `beacon.briefGuideStart`·`beacon.straightLineNote`·`guide.detailUnavailable`·`guide.detailNoLocation`은 남겼다(소비자 기준으로 자른다).
+- **강등 사유 3-state**: `fetchGuideRoute`가 `{ ok }` 태그로 `noLocation`·`retryable`·`unavailable`·`outOfCoverage`를 가른다. 400·404는 재시도 가능으로 접지 않고, 통지(사유)와 상시 표시(동작 서술)를 다른 문자열로 갈라 회전자 이중 낭독을 막았다. 변이 주입 4/4 검출.
+- 설계 리뷰 2회(codex adversarial): 축3 12건 중 8건 수용, 축2 8건 중 6건 수용(기각 근거는 spec §7·부록).
+- 실호출 게이트 `scripts/verify-non-ko-walk-guidance.mjs` 신설 — 30경로 405스텝에서 7축 전부 PASS(한글 0·오류 0·로마자 106·action 318).
 ### E19 커버리지 사각형 → 국경 폴리곤 승격 (웹·iOS Kit)
 
 `isInKorea`가 사각형(31.43~44.35/122.37~132.0) 대신 국경 폴리곤으로 판정한다 — 사각형은 그 안의 프리필터로 남는다. 종전에는 후쿠오카·기타큐슈·대마도·시모노세키가 "한국 안"으로 통과했고 개성·해주는 파주와 위경도가 겹쳐 사각형 뺄셈으로 갈리지 않았다. 링은 E12가 walk seed용으로 받아 둔 OSM `admin_level=2` 경계(영해 경계 2,580점)라 **새 데이터가 필요 없었다**. spec `docs/superpowers/specs/2026-08-23-coverage-boundary-polygon-design.md`.

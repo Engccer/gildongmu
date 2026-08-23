@@ -16,7 +16,9 @@
 - envelope는 top-level `route` **단수** + `status`. 경로 불가는 `TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`만 null이고 **미관측 status·스키마 위반은 throw**(fail-closed).
 - **폴백은 카카오 throw 시에만 Tmap**이다. null은 폴백 없이 null이 정본. 폴백 시 좌표 포함 `console.warn`(Vercel 로그로 폴백률 관측).
 - 게이트는 `hasWalkRouteKey()`(=kakao∥tmap). 라우트·page·채팅 declaration 3곳 + router 이중 방어가 공용으로 쓴다 — **`hasTmapKey` 단독 게이트 금지**.
-- 거리·시간은 provider에서 `Math.round`(iOS 엄격 Int 디코딩 방어). **V1 ko 전용**(카카오도 en 미지원 종결).
+- 거리·시간은 provider에서 `Math.round`(iOS 엄격 Int 디코딩 방어).
+- **언어가 provider 선택을 정한다**(E16 축3, 2026-08-23): `lang="ko"`는 카카오 기본 + Tmap 폴백, `lang="en"`은 **Tmap 단독·폴백 없음**. en에서 카카오로 내려가면 "가용성 폴백"이 아니라 한국어 문장이 나오기 때문이다. en 파이프라인은 `rewriteWalkBriefing`(ko 재작성)을 타지 않고 `buildEnBriefing`(구조화 필드 → 영어 문장)을 탄다. 계단 회피는 카카오 전용 축이라 en은 항상 `unavailable`이고, 그래서 웹·iOS 모두 비-ko에 그 컨트롤을 노출하지 않는다.
+- **Tmap 응답 귀속 규칙**: 한 Point 뒤에 LineString이 둘 이상 붙을 수 있고, 문장이 말하는 거리·도로명은 **첫 구간**의 것이다(30경로 435스텝 실측 — 합으로 읽으면 48건이 어긋난다). `pathCoords`는 종전대로 전부 귀속한다. 이 가정은 `pedestrian-guard.ts`의 거리 대조가 런타임에 증명한다(en 전용 옵트인, `guard` 플래그).
 
 ### 낭독 문장 재작성 (`rewriteWalkGuidance`)
 **서버가 만든 문장이 정본이고 소비자는 재조합하지 않는다.** 2026-08-07 위원장 판정으로 종전 "provider 원문이 정본" 계약을 뒤집었다(판정 기준은 가독성·일관성. 원문이 거리를 39% 침묵했고, 괄호 도로명은 SR 구두점 설정에서 사라지며, "왼쪽길로"가 명사처럼 읽혔다).
