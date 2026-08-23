@@ -71,6 +71,23 @@
 
 외부 API 계약 변경이 아니므로(정적 데이터 + 순수 판정) 실호출은 upstream이 아니라 **우리 라우트**를 향한다.
 
+**실호출 결과(로컬 dev, 2026-08-23)** — 전부 예상대로:
+
+| 라우트 | 좌표 | 응답 |
+|---|---|---|
+| `places/around` | 후쿠오카 | `200 {"outOfCoverage":true}` |
+| `places/around` | 파주 문산 | `200` 정상(카카오 장소 목록) |
+| `bus/nearby` | 후쿠오카 | `200 {"outOfCoverage":true}` |
+| `bus/nearby` | 파주 문산 | `200` 정상(TAGO 정류소) |
+| `weather/nearby` | 대마도 | `200 {"outOfCoverage":true}` |
+| `clinic/nearby` | 시모노세키 | `200 {"outOfCoverage":true}` |
+| `clinic/nearby` | 서귀포 | `200` 정상(진료 기관 목록) |
+| `walk/nearby` | 개성·후쿠오카 | `osm.status=unsupported/outsideKorea`(종전 동작 유지) |
+| `walk/nearby` | 울릉도 | `osm.status=ok`, 0건(제공 지역 안의 빈 결과) |
+| `station/subway-arrival/nearby` | 울릉도 | `200 stations:[] + nearest`(연속량 도메인 계약 유지) |
+
+**번들 실측**: 폴리곤이 실린 클라이언트 청크 632KB → 699KB(raw), `chunks` 합계 1.3MB → 1.4MB. 전송 기준 증가분은 gzip 약 15KB다.
+
 ## 5. 범위 밖 (BACKLOG E19에 기록만)
 
 커버리지를 통과한 뒤 upstream이 국내 전용이라 0건을 내는 라우트별 문장 갈림("그 근처에 없다" vs "그 지역은 제공 안 된다")을 표로 남기고 **수정하지 않는다**. 그 축은 `unavailableHere`(지역별 미제공)와 0건의 층이지 커버리지 마커의 층이 아니다.

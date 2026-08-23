@@ -115,6 +115,7 @@
 | CLI · MCP | REST 카탈로그 중계 씬 클라이언트 |
 | 다국어 | ko·en·es·fr·it·ja 6개 |
 | 커스텀 도메인 · GEO 대응 | 소개·FAQ + JSON-LD + llms.txt |
+| 서비스 커버리지 | 좌표 라우트 18종·웹 클라·iOS Kit·채팅 게이트가 국경 폴리곤 `isInKorea` 한 술어(사각형은 프리필터). 링 정본 `src/lib/data/korea-boundary.json`, Kit 리소스는 바이트 동일 사본 |
 
 ---
 

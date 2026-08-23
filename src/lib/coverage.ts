@@ -17,7 +17,7 @@ import boundary from "./data/korea-boundary.json";
  * API로 남기지 않기 위해 수용한 값이다 — 서버 왕복이 없는 소비자(deeplink.ts)에서는
  * 사각형이 최종 판정이 되어 후쿠오카에 네이버 지도 링크가 나간다.
  */
-const KOREA_RINGS = (boundary as { rings: Array<Array<[number, number]>> }).rings;
+const KOREA_RINGS = (boundary as unknown as { rings: Array<Array<[number, number]>> }).rings;
 
 /**
  * 링을 감싸는 사각형. **판정이 아니라 프리필터다** — 먼 좌표를 먼저 떨어뜨린다.
