@@ -11,6 +11,9 @@
 
 ## 2026-08-23
 
+### A19 TAGO 시간표 (역·노선) 0행을 coverage 3-state로 — 노선 탈락 0 (웹·CLI·채팅·iOS)
+
+업스트림이 인증 정상인데 스케줄 0행을 주는 (역·노선)(홍대입구 2호선·강남 신분당·서울역 공항)을 `lines[]`에서 빼던 것을 멈추고 `TimetableLine.coverage`(`ok`/`noTrains`/`unknown`/`unavailable`)로 가른다. 소비자 4곳이 노선명과 함께 "확인할 수 없습니다"·"불러오지 못했습니다"·"탑승할 수 있는 편성이 없습니다"를 따로 낭독하고(`timetable.coverage.*`, `timetable.empty` 삭제), `subway-nearby` 심야 "운행 종료" 단정은 `ok`·`noTrains` 노선만 참여하는 allowlist(fail-closed)로 바뀌었다. iOS는 `coverage` 옵셔널(웹 선배포). 실호출 게이트 `scripts/verify-korea-subway-timetable.mjs` 신설(15/15 PASS). spec `docs/superpowers/specs/2026-08-23-tago-timetable-coverage-design.md`, dodo 계약 역이식.
 ### B9 ① — 웹 길찾기 도보 추천·최단 2행 disclosure
 
 웹 `DirectionsView`가 도보 조회에 `alternatives=1`을 붙여 추천·최단 쌍을 받고, `shortest`가 있을 때만 추천·최단 2행 disclosure(`aria-expanded`, 최단 기본 접힘, 추천은 종전 30분 문턱)로 낸다(iOS 도보 섹션·대중교통 대안 동형). `stepFreeNotice`는 両행 라벨에 쉼표 병기(단일 경로 장거리 disclosure에도 — 종전엔 접힌 본문 스텝 0에만 있었다), 펼침 본문은 요약·notice 스텝을 뺀다(`WalkRouteResult` `includeSummary`·`omitNoticeStep`, 경유지 인덱스 역보정). 안내 시작 버튼은 섹션 상단에 남아 추천 경로만(B9 ②까지). 실호출 게이트(prod) 통과. spec `docs/superpowers/specs/2026-08-23-web-walk-alternatives-disclosure-design.md`. **N4 "nmap 경유지 인자"는 취소**: 웹 nmap 길찾기 빌더는 2026-07-30에 참조 0으로 제거됐고 남은 iOS Kit 빌더의 호출처(장소 상세)는 경유지를 모른다(코디네이터 판정).
