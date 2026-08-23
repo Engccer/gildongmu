@@ -94,6 +94,18 @@ struct ChatConversationView<EmptyContent: View>: View {
                                 }
                             )
                             .id(message.id)
+                            // follow-up 질문 칩(spec 2026-08-24 §3.3): 마지막 assistant 말풍선
+                            // 아래(응답 액션 행 다음), 진행 표시 위. 하나의 그룹으로 묶어 VO가
+                            // "다음 질문 제안" 컨테이너로 발견한다. 탭은 일반 전송 경로이고,
+                            // 칩 소실 시 포커스 이탈은 questionRevision의 보내기 버튼 선점이
+                            // 덮는다(추천 질문 버튼과 같은 경로) — 새 포커스·통지 코드 없음.
+                            if message.role == .assistant,
+                               message.id == model.messages.last?.id,
+                               !model.followUps.isEmpty {
+                                SuggestionButtonList(suggestions: model.followUps) { model.send($0) }
+                                    .accessibilityElement(children: .contain)
+                                    .accessibilityLabel(appLocalized("ios.chat.followUps"))
+                            }
                         }
                         if let progress = model.progress {
                             // 진행 상태는 여기 한 곳(통지는 모델의 Announcement가 담당)

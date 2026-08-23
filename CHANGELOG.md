@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-08-24
+
+### K4 — 채팅 한눈에 보기 장소 카드 복원 + 계단식 캡 + follow-up 칩 (웹·iOS)
+
+유라 님 리포트(센스 채팅방 2026-08-23): K3의 `get_nearby_overview`가 카드·장소 투영 없이 산문만 내서 "주변에 뭐 있어" 답변에서 iOS 장소 카드·"장소 N곳" 헤딩·산문 블록 버튼이 함께 사라졌다. spec `docs/superpowers/specs/2026-08-24-chat-overview-cards-followup-chips-design.md`.
+
+- **카드 복원(A안)**: `composeOverview`가 `{ overview, places }`를 내고(불릿 순서 → 거리순, id dedupe, wire엔 미탑재) 채팅 라우터가 `{type:"places"}` 카드로 싣는다. iOS·웹 카드 기계는 무변경. 실호출 자택 좌표 13곳.
+- **계단식 캡** `overviewNearestCap(count)`(<5: 2 · 5~9: 3 · ≥10: 4): 식당 45곳과 아이 놀 곳 3곳을 같은 2곳으로 부르던 비례성 결함. 웹·iOS 둘러보기·채팅이 한 조립을 쓰므로 셋이 함께 바뀌고 소비자 3벌은 무변경. 구간값은 실사용 판정 항목.
+- **follow-up 칩**(dodo 이식, question만): `POST /api/chat/suggestions`(별도 리밋 60초 20회, `ThinkingLevel.LOW` — 3.6-flash는 `thinkingBudget: 0` 거부), 2개 자연 연속 + 1개 뜻밖, 앱 범위 제한. 웹 `FollowUpChips`+`useFollowUpSuggestions`(aria-disabled, 탭 시 보내기 버튼 선점 — 빈 상태 예시 버튼의 같은 이탈도 함께 수정), iOS `ChatSuggestionsService`+`ChatModel.followUps`+`SuggestionButtonList` 재사용. i18n `chat.followUpGroupLabel`·`ios.chat.followUps` 6로케일.
+
 ## 2026-08-23
 
 ### E16 축3·축2 — 비-ko 도보 상세 안내와 간략 단독 진입점 제거

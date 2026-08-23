@@ -343,9 +343,16 @@ export async function executeFunction(
       if (!coord) return { data: explicit ? placeNotFound(explicit) : NO_LOCATION };
       const gated = coverageGate(coord);
       if (gated) return gated;
-      // 불릿별 3-state(ok/none/unavailable/failed)는 조립이 판정한다 — 그대로 싣는다. 카드 없음.
-      const overview = await assembleNearbyOverview(coord.lat, coord.lng);
-      return { data: { ...placeNote(coord), ...overview }, source: overviewSources(overview.bullets) };
+      // 불릿별 3-state(ok/none/unavailable/failed)는 조립이 판정한다 — 그대로 싣는다.
+      // 카드는 `places`(props-driven, 산문이 이름을 부르는 장소와 같은 순서·같은 좌표)라 지명·앵커
+      // 조회에도 낸다 — self-fetch 카드 금지(placeMode)는 좌표가 어긋나는 카드에만 걸린다.
+      // 이 카드가 iOS "장소 N곳" 헤딩·산문 블록 버튼(chatPlaceMentions)의 유일한 근거다(spec 2026-08-24 §2.2).
+      const { overview, places } = await assembleNearbyOverview(coord.lat, coord.lng);
+      return {
+        data: { ...placeNote(coord), ...overview },
+        render: places.length > 0 ? ({ type: "places", places } as const) : undefined,
+        source: overviewSources(overview.bullets),
+      };
     }
     case "get_bus_arrivals": {
       const explicit = args.place ? String(args.place) : undefined;

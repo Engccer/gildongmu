@@ -151,3 +151,13 @@ export function clientIpFromHeaders(headers: Headers): string {
   if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
   return headers.get("x-real-ip") ?? "unknown";
 }
+
+// follow-up 칩은 답변당 1회 경량 호출(thinking low·도구 없음)이라 채팅보다 싸지만, 채팅 리밋을
+// 나눠 쓰면 답변당 칩 호출 1회가 채팅 예산을 절반으로 깎는다 — 별도 store, 60초 20회.
+const SUGGESTIONS_LIMIT = 20;
+const suggestionsStore = new Map<string, RateLimitEntry>();
+
+/** /api/chat/suggestions 전용 레이트 리밋(60초 20회). 허용이면 true. */
+export function checkSuggestionsRateLimit(ip: string, now: number): boolean {
+  return evaluateRateLimit(suggestionsStore, ip, now, SUGGESTIONS_LIMIT, WINDOW_MS).allowed;
+}

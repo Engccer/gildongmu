@@ -547,7 +547,8 @@
     "webResults": {
       "heading": "参考にしたウェブ結果"
     },
-    "reviewPlacesHeading": "Naverレビュー順{count}件"
+    "reviewPlacesHeading": "Naverレビュー順{count}件",
+    "followUpGroupLabel": "追加の質問"
   },
   "placeChat": {
     "launch": "この場所について質問する",

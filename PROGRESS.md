@@ -88,7 +88,7 @@
 ### 대화·음성
 | 기능 | 비고 |
 |---|---|
-| 채팅 | Gemini function calling 24도구(2026-08-23 K3: 첫차·막차·정위·한눈에 보기·무장애 상세 + `stationName`·`place`·`via` 인자) + Perplexity 웹 검색, 장소 앵커 |
+| 채팅 | Gemini function calling 24도구(2026-08-23 K3: 첫차·막차·정위·한눈에 보기·무장애 상세 + `stationName`·`place`·`via` 인자) + Perplexity 웹 검색, 장소 앵커. 한눈에 보기 답변은 장소 카드 동반(계단식 캡 2~4곳, K4 2026-08-24), 답변 뒤 follow-up 칩 3개(웹·iOS, `/api/chat/suggestions`) |
 | 음성 받아쓰기 | 웹 Deepgram / iOS 온디바이스(26+ SpeechAnalyzer, 18~25 SFSpeechRecognizer 온디바이스 강제 — 26 미만은 ⏳ 실기기 미판정), 탭 토글·홀드 택1 |
 | 답변 듣기 | iOS 온디바이스 정본, Google TTS 폴백 |
 

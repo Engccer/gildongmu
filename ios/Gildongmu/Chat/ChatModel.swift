@@ -31,8 +31,14 @@ final class ChatModel {
     /// 두 전송 진입점(입력바·추천 질문 버튼)을 모두 덮는 유일한 지점이라 모델에 둔다.
     private(set) var questionRevision = 0
     private var streamTask: Task<Void, Never>?
+    /// 마지막 성공 답변 뒤에 붙는 follow-up 질문 칩(spec 2026-08-24 §3.3). 실패 답변엔
+    /// 이어갈 맥락이 없어 빈 배열. 전송·취소 시 소거되며 도착 통지는 없다(목록 끝에
+    /// 조용히 생기는 보조 컨트롤 — 헤딩 아래 스와이프로 발견).
+    private(set) var followUps: [String] = []
+    private var followUpTask: Task<Void, Never>?
 
     private let service = ChatService()
+    private let suggestionsService = ChatSuggestionsService()
     /// 전송·완료 효과음. 두 전송 진입점(입력바·추천 질문)과 두 채팅 화면(탭·장소 sheet)을
     /// 모두 덮는 유일한 지점이 이 모델이라 여기서 재생한다(웹은 ChatInterface가 담당).
     private let soundPlayer = SoundPlayer()
@@ -47,6 +53,7 @@ final class ChatModel {
         // 동의 가드(스펙 §1 이중 방어): UI 게이트가 뚫려도 미동의 전송은 구조적으로 불가.
         guard AIChatConsent.granted, !trimmed.isEmpty, !isStreaming else { return }
 
+        clearFollowUps()
         messages.append(ChatMessage(role: .user, text: trimmed))
         soundPlayer.play(.chatSend)
         questionRevision += 1
@@ -105,8 +112,34 @@ final class ChatModel {
     func cancel() {
         streamTask?.cancel()
         streamTask = nil
+        clearFollowUps()
         progress = nil
         isStreaming = false
+    }
+
+    /// 진행 중 제안 조회를 버리고 칩을 지운다. 취소된 태스크의 늦은 결과는 커밋되지 않는다.
+    private func clearFollowUps() {
+        followUpTask?.cancel()
+        followUpTask = nil
+        followUps = []
+    }
+
+    /// 성공 답변 뒤 follow-up 제안 조회. 직전 질문·답변 한 쌍만 보낸다(서버 계약).
+    private func loadFollowUps(answer: String) {
+        guard let question = messages.last(where: { $0.role == .user })?.text else { return }
+        let locale = AppLanguage.current
+        let placeName = place?.name
+        followUpTask = Task {
+            let suggestions = await suggestionsService.fetchFollowUps(
+                lastUserMessage: question,
+                lastAssistantMessage: answer,
+                locale: locale,
+                placeName: placeName,
+                baseURL: AppConfig.apiBaseURL
+            )
+            guard !Task.isCancelled else { return }
+            followUps = suggestions
+        }
     }
 
     /// 답변(성공·실패 공통)을 붙이고 완료 신호: 효과음 + 햅틱 + 포커스 이동 세대 증가.
@@ -117,6 +150,7 @@ final class ChatModel {
         soundPlayer.play(.chatReceive)
         answerRevision += 1
         UINotificationFeedbackGenerator().notificationOccurred(success ? .success : .error)
+        if success { loadFollowUps(answer: message.text) }
     }
 
     /// status 이벤트당 1회 진행 통지(웹 polite live region의 iOS 문법).

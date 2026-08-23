@@ -261,6 +261,10 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 위원장 판정 2026-08-23: **"실주행은 딥링크 위임" 방침 폐기**, 자동차도 자체 안내로 완성. 청취자 **동승자/운전자 설정 전환**(운전자 모드는 짧은 명령형·낮은 빈도·TTS 음성 채널), 임박 신호 **시간 축 5초 전**(잠정), 종료는 **도착 종 + 종료 화면 + 도보 인계 버튼**. 행동별 임박 톤·햅틱·하단 2행·이탈 시 자동 대안 제안을 car로 확장(Tmap `turnType`으로 분류). 범위 밖: 방위 축·도착 추정 자동 종료·최종 접근(배제 근거가 별도 실측 요구). + N4 잔여(안내 중 경유지 삭제)·로그 `session kind=` 표식 흡수. 코드가 끝나도 **G3 봉인은 B1 실주행 뒤에 푼다**. 2026-08-22 실주행 로그는 회수됨(`~/gildongmu-private/field-logs/2026-08-23/`). 설계 리뷰·구현·리뷰 반영 전부 종결(spec `docs/superpowers/specs/2026-08-23-car-guidance-completion-design.md`, CHANGELOG 2026-08-23). 남은 것은 §2 **B1 실주행 판정**(실험판, 대본 `docs/FIELD-TEST.md` §6)뿐이다. 브리프 위 plan §1.
 
+### K4. 채팅 한눈에 보기 카드 복원 + follow-up 칩 (✅ 2026-08-24 코드 종결, ⏳ 실기기·실사용 판정)
+
+유라 님 리포트(2026-08-23)·위원장 지시(2026-08-24). 코드 종결(CHANGELOG 2026-08-24, spec `docs/superpowers/specs/2026-08-24-chat-overview-cards-followup-chips-design.md`). 남은 판정: ①**계단식 캡 구간값**(5·10 / 2·3·4)이 실사용 브리핑에서 적절한가 — 둘러보기 한눈에 보기·채팅 둘 다에서 들어 보고 정한다(상수 하나 `overviewNearestCap`) ②iOS 채팅 "이 근처에 뭐가 있어?"에서 "장소 N곳" 헤딩·카드·산문 블록 버튼이 VO로 돌아왔는가(시뮬 스냅샷 통과, 실기기 정본) ③칩 3개 중 "뜻밖 1개"가 실제로 흥미를 끄는가·앱이 못 답하는 칩이 나오는가(실호출 3건 중 "개방 화장실" 1건이 경계 사례 — 잦으면 프롬프트 범위 문구 조정) ④칩 탭 뒤 포커스가 보내기 버튼에 머무는가(웹·iOS).
+
 ### ~~K3. 채팅 function-calling 도구 확장~~ — ✅ 2026-08-23 종결
 
 7종 전부 구현·실호출·A/B 완료(CHANGELOG 2026-08-23, spec `docs/superpowers/specs/2026-08-23-chat-tools-expansion-design.md`). 남은 것은 **실사용 판정**(§2 관찰 항목 "채팅 심야 지하철 4-state"에 첫차·막차 도구가 생겼으니 같은 자리에서 본다): ①"강동역 막차"가 `get_station_timetable`로 가는가(근접 도착 도구로 새지 않는가) ②지명 조회에서 `resolvedPlace`가 지명과 어긋날 때 LLM이 그 사실을 말하는가 ③`get_nearby_overview`와 전용 도구의 중복 호출이 잦으면 declaration 트리거 문구를 좁힌다([[prompt-edits-minimalism-first]]). 버스 노선 경유 정류소는 제외 확정(재론 금지).
