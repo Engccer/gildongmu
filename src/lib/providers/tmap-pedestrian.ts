@@ -1,5 +1,7 @@
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
+import { pedestrianStepFor } from "../pedestrian-action";
+import { assertDistanceMatchesKorean, assertTurnTypeMatchesKorean } from "../pedestrian-guard";
 import type { Coord, RouteWaypoint, WalkRouteBriefing, WalkRouteStep } from "../types";
 
 /**
@@ -39,6 +41,8 @@ interface TmapPointFeature {
     description?: string;
     /** SP=출발, GP=안내, PP1=경유지(passList 1번째), EP=도착(실호출 2026-08-22). */
     pointType?: string;
+    /** 회전 유형 코드 — `pedestrianStepFor`로 행동·영어 문구를 낸다(E16 축3). */
+    turnType?: number;
     totalDistance?: number;
     totalTime?: number;
     [key: string]: unknown;
@@ -50,6 +54,10 @@ interface TmapLineStringFeature {
   type: "Feature";
   geometry: { type: "LineString"; coordinates: [number, number][] };
   properties: {
+    /** 구간 길이(m). 문장이 말하는 거리는 스텝의 **첫** 구간 값이다. */
+    distance?: number;
+    /** 도로명(ko). 빈 문자열이면 이름 없는 보행로 — 문장에도 도로 절이 없다. */
+    name?: string;
     [key: string]: unknown;
   };
 }
@@ -97,6 +105,12 @@ export function normalizeTmapWalkRoute(
     includeLineGeometry?: boolean;
     /** passList를 보냈다 — PP1 Point가 없으면 파라미터가 무시된 것이라 throw(N4). */
     expectWaypoint?: boolean;
+    /**
+     * 한국어 원문 대조 가드를 켠다(E16 축3, en 전용). ko 폴백 경로는 기본 false로 종전 동작을
+     * 유지한다 — 가드는 en 문장이 구조화 필드에서 나올 때만 필요하고, 새 실패 모드를 ko에
+     * 들이지 않는다.
+     */
+    guard?: boolean;
   },
 ): WalkRouteBriefing {
   const includeLineGeometry = opts?.includeLineGeometry === true;
@@ -130,15 +144,43 @@ export function normalizeTmapWalkRoute(
       if (opts?.expectWaypoint && feature.properties.pointType === "PP1" && !waypoint && step.coord) {
         waypoint = { stepIndex: steps.length, coord: step.coord };
       }
+      // 구조화 투영(E16 축3): 행동 코드는 여기서 한 번만 분류한다(`pedestrian-action` 표 하나).
+      const turnType = feature.properties.turnType;
+      if (typeof turnType === "number") {
+        const entry = pedestrianStepFor(turnType);
+        if (opts?.guard) {
+          if (!entry) {
+            throw new Error(`[tmap-pedestrian] 미지 turnType ${turnType}: ${description}`);
+          }
+          assertTurnTypeMatchesKorean(turnType, description);
+        }
+        step.turnType = turnType;
+        if (entry?.action) step.action = entry.action;
+      }
       steps.push(step);
       attachTarget = step;
-    } else if (includeLineGeometry && attachTarget) {
-      for (const [lng, lat] of feature.geometry.coordinates) {
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-        const acc = (attachTarget.pathCoords ??= []);
-        const prev = acc[acc.length - 1];
-        if (prev && prev.lat === lat && prev.lng === lng) continue; // 접점 중복 제거
-        acc.push({ lat, lng });
+    } else if (attachTarget) {
+      // ⚠ 문장의 거리·도로명은 **첫 LineString**이지 합이 아니다(30경로 435스텝 실측).
+      // 한 Point 뒤에 짧은 연결 구간이 더 붙는 경우가 흔한데, 문장은 첫 구간만 말한다
+      // ("…봉은사로를 따라 306m 이동" + 논현로 8m → 306). 합으로 읽으면 48/435가 어긋난다.
+      // pathCoords는 아래에서 종전대로 **전부** 귀속한다 — 기하는 실경로를 따라야 한다.
+      if (attachTarget.distanceMeters === undefined) {
+        const d = feature.properties.distance;
+        if (typeof d === "number" && Number.isFinite(d)) attachTarget.distanceMeters = d;
+        const name = feature.properties.name;
+        if (name) attachTarget.roadNameKo = name;
+        if (opts?.guard) {
+          assertDistanceMatchesKorean(attachTarget.description, attachTarget.distanceMeters);
+        }
+      }
+      if (includeLineGeometry) {
+        for (const [lng, lat] of feature.geometry.coordinates) {
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+          const acc = (attachTarget.pathCoords ??= []);
+          const prev = acc[acc.length - 1];
+          if (prev && prev.lat === lat && prev.lng === lng) continue; // 접점 중복 제거
+          acc.push({ lat, lng });
+        }
       }
     }
   }
@@ -185,8 +227,10 @@ export async function getWalkRouteBriefing(params: {
   includeLineGeometry?: boolean;
   /** 안내 중 전환·제안 재조회처럼 현시점 조회가 필요한 소비자용(kakao-walk 관례 동형). */
   noStore?: boolean;
+  /** 한국어 원문 대조 가드(en 전용). */
+  guard?: boolean;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, searchOption, via, includeLineGeometry, noStore } = params;
+  const { origin, dest, searchOption, via, includeLineGeometry, noStore, guard } = params;
   const res = await fetch(ENDPOINT, {
     method: "POST",
     headers: {
@@ -223,5 +267,9 @@ export async function getWalkRouteBriefing(params: {
     throw new Error(`Tmap 보행자 경로 실패: HTTP ${res.status} ${body}`);
   }
   const data = (await res.json()) as TmapRouteResponse;
-  return normalizeTmapWalkRoute(data, { includeLineGeometry, expectWaypoint: via !== undefined });
+  return normalizeTmapWalkRoute(data, {
+    includeLineGeometry,
+    expectWaypoint: via !== undefined,
+    guard,
+  });
 }
