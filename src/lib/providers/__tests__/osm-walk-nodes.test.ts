@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { findWalkFeaturesNear, osmWalkSeedMeta, isInWalkSeedCoverage } from "../osm-walk-nodes";
+import { findWalkFeaturesNear, osmWalkSeedMeta } from "../osm-walk-nodes";
+import { isInKorea } from "../../coverage";
 
 /**
  * 실 seed(`src/lib/data/osm-walk-nodes.json`)를 그대로 두고 조회 계약을 검증한다.
@@ -55,7 +56,7 @@ describe("findWalkFeaturesNear", () => {
       ["백령도", 37.9658, 124.71],
       ["마라도", 33.1128, 126.2683],
     ] as const) {
-      expect(isInWalkSeedCoverage(lat, lng), name).toBe(true);
+      expect(isInKorea(lat, lng), name).toBe(true);
       // 그 섬에 노드가 없을 수는 있다 — 그때도 null이 아니라 빈 배열이어야 한다.
       expect(findWalkFeaturesNear(lat, lng, 300), name).not.toBeNull();
     }

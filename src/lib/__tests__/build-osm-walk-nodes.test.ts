@@ -12,6 +12,7 @@ import {
   SEED_BBOX,
 } from "../../../scripts/build-osm-walk-nodes.mjs";
 import seed from "../data/osm-walk-nodes.json";
+import boundary from "../data/korea-boundary.json";
 
 /**
  * OSM 보행 노드 seed 빌드 스크립트 가드.
@@ -214,8 +215,8 @@ describe("buildRings: outer way → 닫힌 링", () => {
   });
 });
 
-describe("국경 폴리곤 가드 (실 seed의 boundary로)", () => {
-  const rings = (seed as unknown as { boundary: Array<Array<[number, number]>> }).boundary;
+describe("국경 폴리곤 가드 (실 korea-boundary.json의 rings로)", () => {
+  const rings = (boundary as { rings: Array<Array<[number, number]>> }).rings;
 
   it("실 seed의 경계는 링 넷이고 전부 닫혀 있다", () => {
     expect(rings.length).toBeGreaterThanOrEqual(4);
