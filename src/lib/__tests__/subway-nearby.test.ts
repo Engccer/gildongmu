@@ -51,7 +51,7 @@ function rejected(name = "역삼역"): NearbyArrivalInput {
 /** 한 노선의 방향별 첫차·막차만 갖춘 최소 시간표. */
 function timetable(
   windows: Array<{ first: string; last: string }>,
-  opts: { partial?: true } = {},
+  opts: { partial?: true; extraLines?: StationTimetable["lines"] } = {},
 ): StationTimetable {
   return {
     stationName: "강남",
@@ -60,12 +60,14 @@ function timetable(
     lines: [
       {
         lineName: "2호선",
+        coverage: "ok",
         directions: windows.map((w, i) => ({
           direction: i === 0 ? ("up" as const) : ("down" as const),
           first: { time: w.first, terminus: "종착" },
           last: { time: w.last, terminus: "종착" },
         })),
       },
+      ...(opts.extraLines ?? []),
     ],
   };
 }
@@ -114,6 +116,31 @@ describe("judgeStationService — '운행이 끝났다'는 단정의 조건(순�
   it("시각 형식이 깨진 창만 있으면 판정 불가", () => {
     expect(judgeStationService(timetable([{ first: "??:??", last: "!!:!!" }]), 4 * 60).closed)
       .toBe(false);
+  });
+
+  // A19 — 노선 coverage allowlist(스펙 2026-08-23-tago-timetable-coverage-design.md)
+  it("unknown 노선이 섞이면 판정 불가 — 그 노선이 다닐 수 있는데 '운행 종료'를 말하지 않는다", () => {
+    const tt = timetable([{ first: "05:32", last: "00:03" }], {
+      extraLines: [{ lineName: "신분당선", coverage: "unknown", directions: [] }],
+    });
+    expect(judgeStationService(tt, 4 * 60).closed).toBe(false);
+  });
+  it("unavailable 노선이 섞이면 판정 불가(partial이 빠져도 자기 축으로 막는다)", () => {
+    const tt = timetable([{ first: "05:32", last: "00:03" }], {
+      extraLines: [{ lineName: "신분당선", coverage: "unavailable", directions: [] }],
+    });
+    expect(judgeStationService(tt, 4 * 60).closed).toBe(false);
+  });
+  it("noTrains 노선은 판정에 참여한다(참인 0) — 다른 노선이 운행 밖이면 closed", () => {
+    const tt = timetable([{ first: "05:32", last: "00:03" }], {
+      extraLines: [{ lineName: "신분당선", coverage: "noTrains", directions: [] }],
+    });
+    expect(judgeStationService(tt, 4 * 60)).toEqual({ closed: true, firstTime: "05:32" });
+  });
+  it("존재하지 않는 coverage 값 → 판정 불가(allowlist, fail-closed)", () => {
+    const tt = timetable([{ first: "05:32", last: "00:03" }]);
+    tt.lines[0] = { ...tt.lines[0], coverage: "bogus" as never };
+    expect(judgeStationService(tt, 4 * 60).closed).toBe(false);
   });
 });
 
