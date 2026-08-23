@@ -146,7 +146,7 @@
       "summary": "Total {distance}, aprox. {minutes} min",
       "noRoute": "No se encontró ninguna ruta a pie.",
       "error": "No se pudo cargar la ruta a pie.",
-      "stepFreeToggle": "Ruta sin escalones"
+      "stepFreeToggle": "Evitar escaleras"
     }
   },
   "directions": {
@@ -603,7 +603,7 @@
     "summary": "Gildongmu es un servicio de navegación e información de lugares para Corea del Sur. Está diseñado para que quienes usan lectores de pantalla completen todo el proceso, desde la búsqueda hasta las indicaciones, en texto, y admite seis idiomas: coreano, inglés, español, francés, italiano y japonés. Tanto la web como la app de iOS son gratuitas y no requieren cuenta.",
     "featuresHeading": "Funciones",
     "feature1": "Búsqueda de lugares y direcciones: encuentra lugares de toda Corea por nombre, dirección o código postal.",
-    "feature2": "Vista previa de rutas: recibe un resumen en texto de las rutas en coche, transporte público y a pie antes de salir. Las rutas a pie ofrecen una opción sin escaleras.",
+    "feature2": "Vista previa de rutas: recibe un resumen en texto de las rutas en coche, transporte público y a pie antes de salir. Las rutas a pie ofrecen una opción que evita las escaleras.",
     "feature3": "Información cercana: llegadas de metro en tiempo real, autobuses, clínicas pediátricas nocturnas, sitios turísticos accesibles e infraestructura peatonal como señales sonoras, según tu ubicación actual. Algunos datos, como bicicletas compartidas, eventos culturales y niveles de afluencia, cubren Seúl.",
     "feature4": "Información de estaciones: instalaciones, horarios del primer y último tren y ubicación de ascensores de las estaciones de metro de todo el país.",
     "feature5": "Chat con IA: pregunta sobre un lugar y recibe respuestas basadas en datos en tiempo real.",

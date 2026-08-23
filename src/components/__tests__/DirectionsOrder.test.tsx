@@ -166,10 +166,10 @@ describe("길찾기 섹션 동적 순서(E11 spec §2)", () => {
     await queryRoutes();
     expect(modeHeadings()).toEqual(["대중교통", "도보"]);
 
-    fireEvent.click(screen.getByRole("button", { name: "계단 없는 경로" }));
+    fireEvent.click(screen.getByRole("button", { name: "계단 회피 경로" }));
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "계단 없는 경로" }).getAttribute("aria-busy"),
+        screen.getByRole("button", { name: "계단 회피 경로" }).getAttribute("aria-busy"),
       ).toBe("false");
     });
     // 도보가 성공(20분)이 됐지만 순서는 settled 스냅샷 그대로다(spec §2 규칙 3).
