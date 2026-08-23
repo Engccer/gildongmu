@@ -9,10 +9,12 @@ import { getWalkRouteBriefing } from "../providers/tmap-pedestrian";
 import { hasKakaoKey, hasTmapKey } from "../env";
 import {
   annotateAudioSignals,
+  annotateCrosswalkInfo,
   getWalkRoute,
   getWalkRouteAlternatives,
 } from "../walk-route";
 import { rewriteWalkBriefing } from "../walk-guidance";
+import { walkStepAction } from "../walk-action";
 import seed from "../data/audio-signals.json";
 import type { WalkRouteBriefing } from "../types";
 
@@ -229,6 +231,117 @@ describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
     expect(r?.steps[0].description).toBe(
       "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
     );
+  });
+});
+
+/** 동작구 서달로 횡단보도 실호출 폴리라인(2026-08-23) — seed 매칭 3차로 13.5m. */
+const SEODAL_PATH = [
+  { lat: 37.50756321, lng: 126.96171111 },
+  { lat: 37.50739593, lng: 126.96159665 },
+];
+/** 길동(seed 없음) 구간. */
+const GILDONG_PATH = [
+  { lat: 37.5385, lng: 127.143 },
+  { lat: 37.5387, lng: 127.143 },
+];
+
+describe("annotateCrosswalkInfo (E8 차로 수·도로 폭)", () => {
+  it("단일 횡단보도 스텝 + seed 매칭 → 문장 끝에 ', N차로, 도로 폭 Mm'", () => {
+    const out = annotateCrosswalkInfo(
+      briefing([{ description: "횡단보도를 건너세요, 횡단보도 길이 21m", pathCoords: SEODAL_PATH }]),
+      false,
+    );
+    expect(out.steps[0].description).toBe("횡단보도를 건너세요, 횡단보도 길이 21m, 3차로, 도로 폭 14m");
+  });
+
+  it("seed가 없는 곳(길동)은 침묵 — '정보 없음'도 말하지 않는다", () => {
+    const out = annotateCrosswalkInfo(
+      briefing([{ description: "횡단보도를 건너세요, 횡단보도 길이 11m", pathCoords: GILDONG_PATH }]),
+      false,
+    );
+    expect(out.steps[0].description).toBe("횡단보도를 건너세요, 횡단보도 길이 11m");
+  });
+
+  it("병합 스텝(원문형·재작성형)은 seed가 매칭돼도 침묵", () => {
+    for (const d of ["2개의 횡단보도 이용", "횡단보도 2개를 건너세요, 횡단보도 길이 58m"]) {
+      const out = annotateCrosswalkInfo(briefing([{ description: d, pathCoords: SEODAL_PATH }]), false);
+      expect(out.steps[0].description).toBe(d);
+    }
+  });
+
+  it("비횡단보도 스텝은 seed 인접이어도 침묵", () => {
+    const out = annotateCrosswalkInfo(
+      briefing([{ description: "서달로를 따라 21m 이동", pathCoords: SEODAL_PATH }]),
+      false,
+    );
+    expect(out.steps[0].description).toBe("서달로를 따라 21m 이동");
+  });
+
+  it("Tmap 단일 coord 스텝은 구간 길이를 잴 수 없어 침묵", () => {
+    const out = annotateCrosswalkInfo(
+      briefing([{ description: "우측 횡단보도 후 11m 이동", coord: SEODAL_PATH[0] }]),
+      false,
+    );
+    expect(out.steps[0].description).toBe("우측 횡단보도 후 11m 이동");
+  });
+
+  it("기본 경로는 coord·pathCoords를 제거하고, keepGeometry면 pathCoords로 통일한다", () => {
+    const base = briefing([
+      { description: "횡단보도를 건너세요", pathCoords: SEODAL_PATH },
+      { description: "직진", coord: SEODAL_PATH[0] },
+    ]);
+    const stripped = annotateCrosswalkInfo(base, false);
+    for (const s of stripped.steps) {
+      expect("coord" in s).toBe(false);
+      expect("pathCoords" in s).toBe(false);
+    }
+    const kept = annotateCrosswalkInfo(base, true);
+    expect(kept.steps[0].pathCoords).toEqual(SEODAL_PATH);
+    expect(kept.steps[1].pathCoords).toEqual([SEODAL_PATH[0]]);
+    expect("coord" in kept.steps[1]).toBe(false);
+  });
+});
+
+describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 수)", () => {
+  it("재작성된 횡단보도 문장 끝에 차로 수·도로 폭이 붙는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 300,
+      durationSeconds: 280,
+      steps: [
+        { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
+      ],
+    });
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    // 순서가 뒤집히면 ", 3차로…"가 먼저 붙어 CROSS 정규식의 `$` 앵커가 깨지고 원문이 남는다.
+    expect(r?.steps[0].description).toMatch(
+      /^소망 메디컬약국 앞에서 횡단보도를 건너세요, 횡단보도 길이 21m(, 음향신호기 있음)?, 3차로, 도로 폭 14m$/,
+    );
+    expect("pathCoords" in r!.steps[0]).toBe(false);
+  });
+
+  it("차로 수 주석은 walkStepAction의 횡단보도 마커를 바꾸지 않는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 300,
+      durationSeconds: 280,
+      steps: [
+        { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
+      ],
+    });
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    expect(walkStepAction(r!.steps[0].description)).toBe("crosswalk");
+  });
+
+  it("기하 옵트인 응답은 주석이 붙고 pathCoords가 남는다", async () => {
+    vi.mocked(getKakaoWalkBriefing).mockResolvedValue({
+      distanceMeters: 300,
+      durationSeconds: 280,
+      steps: [
+        { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
+      ],
+    });
+    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    expect(r?.steps[0].description).toMatch(/, 3차로, 도로 폭 14m$/);
+    expect(r?.steps[0].pathCoords).toEqual(SEODAL_PATH);
   });
 });
 

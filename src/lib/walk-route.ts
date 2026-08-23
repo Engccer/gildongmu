@@ -1,6 +1,8 @@
 import { getKakaoWalkBriefing } from "./providers/kakao-walk";
 import { getWalkRouteBriefing } from "./providers/tmap-pedestrian";
 import { hasAudioSignalNear } from "./providers/audio-signals";
+import { matchCrosswalk } from "./providers/crosswalks";
+import { formatDistance } from "./format";
 import { hasKakaoKey, hasTmapKey } from "./env";
 import { logRouteFallback } from "./route-fallback-log";
 import { rewriteWalkBriefing } from "./walk-guidance";
@@ -80,6 +82,41 @@ export function annotateAudioSignals(
 }
 
 /**
+ * 횡단보도 차로 수·도로 폭 주석(E8, spec 2026-08-23-crosswalk-lanes-length-design.md).
+ * 단일 횡단보도 스텝(병합 아님)의 폴리라인으로 전국횡단보도표준데이터 seed를
+ * 3중 게이트(위치·길이 타당성·합의)로 판정해 ", N차로, 도로 폭 Mm"를 붙인다.
+ * **있는 곳만 말하고 없는 곳은 침묵**(위원장 2026-08-16) — 수식이라 3-state 대상이
+ * 아니다. "도로 폭"이라는 이름을 다는 이유: 재작성 문장이 이미 "횡단보도 길이 21m"
+ * (보도 간 스텝 거리)를 달고 있어 맨몸 수치를 덧붙이면 길이가 둘로 들린다.
+ *
+ * 파이프라인의 **마지막** 주석 단계라 기하 제거·통일(종전 annotateAudioSignals 계약)을
+ * 여기서 맡는다 — 앞 단계는 keepGeometry=true로 불러 pathCoords를 넘긴다.
+ */
+export function annotateCrosswalkInfo(
+  briefing: WalkRouteBriefing,
+  keepGeometry: boolean,
+): WalkRouteBriefing {
+  const steps = briefing.steps.map((step) => {
+    const { coord, pathCoords, ...rest } = step;
+    const candidates = pathCoords ?? (coord ? [coord] : []);
+    const info =
+      rest.description.includes("횡단보도") && !MERGED_CROSSWALK.test(rest.description)
+        ? matchCrosswalk(candidates)
+        : null;
+    const annotated = info
+      ? {
+          ...rest,
+          description: `${rest.description}, ${info.lanes}차로, 도로 폭 ${formatDistance(Math.round(info.lengthM))}`,
+        }
+      : rest;
+    return keepGeometry && candidates.length > 0
+      ? { ...annotated, pathCoords: candidates }
+      : annotated;
+  });
+  return { ...briefing, steps };
+}
+
+/**
  * 안전 문장을 전달한다. 산문 소비자에겐 스텝 0번 삽입(기존 문장 개변 금지 — 별도
  * 스텝), 구조화 소비자(`includeGeometry`)에겐 필드로만.
  *
@@ -149,8 +186,13 @@ export async function getWalkRoute(params: {
   // 재작성 → 주석 순서가 계약이다. 주석은 재작성된 문장 뒤에 붙어야 하고
   // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
+  // 음향신호기 단계는 기하를 보존해 넘기고(keepGeometry=true), 마지막 차로 수 단계가
+  // 종전 계약대로 기하를 제거·통일한다. 순서: 음향신호기(안전) → 차로 수(수식).
   const annotate = (b: WalkRouteBriefing) =>
-    annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), includeGeometry);
+    annotateCrosswalkInfo(
+      annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), true),
+      includeGeometry,
+    );
 
   if (variant === "shortest") {
     // 최단은 Tmap 전용 축(카카오에 동등 옵션 없음) — 폴백 없음, 실패는 throw(502).
