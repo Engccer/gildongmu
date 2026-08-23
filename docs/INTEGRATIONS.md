@@ -45,7 +45,7 @@
 - **판정은 `matchCrosswalk`(`providers/crosswalks.ts`) 3중 게이트 전부 통과일 때만**: ①스텝 폴리라인 양 끝 중점에서 30m 안 ②seed 연장과 구간 길이 차 ≤ max(5m, 0.4·구간) ③남은 후보의 차로 수 동일·연장 차 ≤ 2m(최근접 채택). 근거: 이 데이터는 **교차로의 횡단보도 여럿이 한 점에 겹쳐 등록**돼 있어(좌표 4,833곳 중복, 3,425곳 값 불일치) 최근접 1건은 어느 횡단보도인지 모르고, 틀린 차로 수는 침묵보다 나쁘다. 길이 축이 겹친 후보를 가른다(실측 22건: 주석 8·침묵 14, 오탐 0). 상수를 풀면 교차로 옆 횡단보도의 값이 붙는다.
 - ⚠ **Tmap 경로는 provider 게이트로 침묵**(`annotateCrosswalkInfo(…, provider)`, 기본값 없음): 비기하는 `coord` 1점이라 구간 길이가 없고, 기하 요청은 Point 스텝에 다음 결정 지점까지 LineString이 붙어 2점이 되지만 그 길이는 횡단 길이가 아니라 길이 축이 우연히 열린다. 병합 스텝(`MERGED_CROSSWALK`)도 침묵.
 - ⚠ **"도로 폭"이라는 이름은 벌거벗은 수치 금지 판정의 적용이다** — 재작성 문장이 이미 "횡단보도 길이 21m"(보도 간 스텝 거리)를 달고 있어 맨몸 "15m"를 덧붙이면 한 문장에 길이가 둘로 들린다. 연장은 차도 폭이라 다른 값이다.
-- **파이프라인: 재작성 → 음향신호기(`keepGeometry=true`) → 차로 수(마지막, 기하 제거·통일 담당).** 음향신호기 단계에 기하 제거를 되돌리면 차로 수 단계가 전량 침묵한다. 순서를 뒤집으면 재작성 `$` 앵커가 깨진다(변이 주입으로 검출 확인).
+- **파이프라인: 재작성 → 음향신호기(`keepGeometry=true`) → 차로 수(기하 제거·통일 담당) → 행동 투영(`attachStepActions`, E16 축3).** 음향신호기 단계에 기하 제거를 되돌리면 차로 수 단계가 전량 침묵한다. 순서를 뒤집으면 재작성 `$` 앵커가 깨진다(변이 주입으로 검출 확인).
 - 커버리지는 63개 시군구·서울은 동작구뿐이라 서울 대부분에서 구조적으로 침묵한다. 실호출 게이트 `scripts/verify-crosswalk-annotation.mjs`(동작구 "붙는다" + 길동 "침묵").
 - seed 갱신은 반기 데이터라 연 1~2회 수동. 빌드 가드는 전부 throw(총건수·한국 상자·파싱률·시도 수·연장 1~60m).
 
@@ -62,7 +62,7 @@
 ### 캐시·쿼터
 IP 레이트리밋 60초 10회 + fetch 단위 `revalidate 3600`(GET이라 Authorization 헤더 무관 캐시 유효·200만 캐시라 장애 미고착. Tmap POST revalidate는 실효). ⚠ **실시간 안내(기하 포함) 요청은 `noStore`로 캐시를 우회한다**(`kakao-walk.ts`) — 세션 전용 실시간 데이터를 revalidate에 태우면 "세션 한정 메모리 보유, 저장 아님" 약관 판단과 모순(spec 2026-08-03 §7.2). 되돌리지 말 것. ⚠ **카카오 앱 유료 전환 미신청 유지** — 초과=오류=폴백이라 비용 상한이 구조적으로 0원이다(신청은 하드 스톱).
 
-길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다(2026-08-22 N4부터 `via` 토큰이 함께 실린다 — `serializeDir(from, to, via)`). **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이며, provider가 경유지 표지를 못 찾으면 throw한다**(카카오 도보는 파라미터 이름이 틀려도 200 정상 응답이라 URL 단언 `route-waypoint.test.ts`가 유일한 가드). 계약 전문은 `CLAUDE.md` §횡단 함정 경유지 항목과 spec `2026-08-22-waypoint-server-web-cli-design.md`. 계단 없는 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
+길찾기 뷰(`DirectionsView`)는 `?dir=` 동기화에서 현재 위치를 `cur` 토큰으로만 쓰고 좌표를 직렬화하지 않는다(2026-08-22 N4부터 `via` 토큰이 함께 실린다 — `serializeDir(from, to, via)`). **경유지(`via`)는 응답 `waypoint{stepIndex,coord}` 하나로만 드러나고 스텝 문장은 불변이며, provider가 경유지 표지를 못 찾으면 throw한다**(카카오 도보는 파라미터 이름이 틀려도 200 정상 응답이라 URL 단언 `route-waypoint.test.ts`가 유일한 가드). 계약 전문은 `CLAUDE.md` §횡단 함정 경유지 항목과 spec `2026-08-22-waypoint-server-web-cli-design.md`. 계단 회피 경로 토글은 `walkAccessible=1` 토큰·`aria-pressed`이고 busy 상태를 조회와 공유한다.
 
 ---
 
