@@ -21,7 +21,15 @@ describe("buildEnBriefing", () => {
       ]),
       new Map([["진황도로", "Jinhwangdo-ro"]]),
     );
-    expect(out.steps[0].description).toBe("Turn right, then walk 294m along Jinhwangdo-ro.");
+    expect(out.steps[0].description).toBe("Turn right, then walk 294m along Jinhwangdo-ro");
+  });
+
+  it("문장 끝에 마침표를 두지 않는다(주석이 쉼표로 덧붙는다)", () => {
+    const out = buildEnBriefing(
+      brief([{ description: "직진 후 10m 이동", turnType: 11, distanceMeters: 10 }]),
+      new Map(),
+    );
+    expect(out.steps[0].description.endsWith(".")).toBe(false);
   });
 
   it("행동절이 없으면 Walk로 시작한다", () => {
@@ -29,7 +37,7 @@ describe("buildEnBriefing", () => {
       brief([{ description: "직진 후 169m 이동", turnType: 11, distanceMeters: 169 }]),
       new Map(),
     );
-    expect(out.steps[0].description).toBe("Walk 169m.");
+    expect(out.steps[0].description).toBe("Walk 169m");
   });
 
   it("도로명 로마자가 없으면 도로 절을 뺀다(비블로킹 열화)", () => {
@@ -44,7 +52,7 @@ describe("buildEnBriefing", () => {
       ]),
       new Map(),
     );
-    expect(out.steps[0].description).toBe("Cross the crosswalk on your left, then walk 14m.");
+    expect(out.steps[0].description).toBe("Cross the crosswalk on your left, then walk 14m");
   });
 
   it("시설 문장도 원문 구조를 그대로 옮긴다", () => {
@@ -54,17 +62,17 @@ describe("buildEnBriefing", () => {
       ]),
       new Map(),
     );
-    expect(out.steps[0].description).toBe("Take the underpass, then walk 72m.");
+    expect(out.steps[0].description).toBe("Take the underpass, then walk 72m");
   });
 
   it("도착 스텝은 거리·도로명을 달지 않는다", () => {
     const out = buildEnBriefing(brief([{ description: "도착", turnType: 201 }]), new Map());
-    expect(out.steps[0].description).toBe("Arrive at your destination.");
+    expect(out.steps[0].description).toBe("Arrive at your destination");
   });
 
   it("거리가 없으면 거리 절을 뺀다", () => {
     const out = buildEnBriefing(brief([{ description: "좌회전", turnType: 12 }]), new Map());
-    expect(out.steps[0].description).toBe("Turn left.");
+    expect(out.steps[0].description).toBe("Turn left");
   });
 
   it("1km 이상은 formatDistance 표기를 쓴다", () => {
@@ -72,7 +80,7 @@ describe("buildEnBriefing", () => {
       brief([{ description: "직진 후 1.1km 이동", turnType: 11, distanceMeters: 1100 }]),
       new Map(),
     );
-    expect(out.steps[0].description).toBe("Walk 1.1km.");
+    expect(out.steps[0].description).toBe("Walk 1.1km");
   });
 
   it("미지 turnType은 throw — 행동절 없는 문장은 조용히 틀린 직진 지시다", () => {

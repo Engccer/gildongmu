@@ -6,6 +6,9 @@ import { formatDistance } from "./format";
 import { hasKakaoKey, hasTmapKey } from "./env";
 import { logRouteFallback } from "./route-fallback-log";
 import { rewriteWalkBriefing } from "./walk-guidance";
+import { buildEnBriefing, roadNameKeysOf } from "./walk-guidance-en";
+import { roadNamesEn } from "./providers/juso-road-name";
+import { walkStepAction } from "./walk-action";
 import type { Coord, StepFreeStatus, WalkRouteBriefing } from "./types";
 
 /**
@@ -24,7 +27,14 @@ import type { Coord, StepFreeStatus, WalkRouteBriefing } from "./types";
  * API 응답 스키마를 기존과 동일하게 유지한다.
  */
 
-const ANNOTATION = "음향신호기 있음"; // 도보 경로는 V1 ko 전용 — i18n 키 불필요
+/**
+ * 음향신호기 주석 문구. 도보 경로가 ko 전용이던 시절의 상수를 로케일로 갈랐다(E16 축3).
+ * 서버가 만드는 데이터 문장이라 i18n 키가 아니라 여기가 정본이다(ko 재작성 문장과 같은 층).
+ */
+const ANNOTATION: Record<WalkLang, string> = {
+  ko: "음향신호기 있음",
+  en: "audible pedestrian signal",
+};
 const MATCH_RADIUS_METERS = 40;
 /**
  * 병합 스텝 — 어느 횡단보도인지 특정 불가라 주석 생략.
@@ -40,37 +50,64 @@ const MERGED_CROSSWALK = /\d+개의|횡단보도 \d+개/;
  * Tmap searchOption=30("최단+계단제외")이 실측상 추천과 동일해 "최단이면서
  * 계단을 피하는 경로"는 어느 API도 제공하지 못한다 — 숨기지 않고 경고 병기.
  */
-const SHORTEST_STEPFREE_NOTICE =
-  "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.";
+const SHORTEST_STEPFREE_NOTICE: Record<WalkLang, string> = {
+  ko: "최단 경로에는 계단 회피가 적용되지 않습니다. 계단이 포함될 수 있습니다.",
+  en: "Step-free routing does not apply to the shortest route. It may include stairs.",
+};
+
+/**
+ * 도보 안내 문장의 언어. `dataLocale` 계약대로 비-ko는 en 한 벌이다(장소·주소 데이터와 동형).
+ * ⚠ **기본값을 두지 않는다** — 생략이 한국어로 조용히 복구되면 새 비-ko 호출부 하나가 타입
+ * 오류 없이 한국어 안내를 낸다([[no-default-for-safety-parameters]]).
+ */
+export type WalkLang = "ko" | "en";
 
 /** 계단 회피 미적용 시 전달하는 안전 문장(모든 소비자 결정론 전달). */
-const STEP_FREE_NOTICE: Record<Exclude<StepFreeStatus, "applied">, string> = {
-  // ⚠ 이 상태는 두 분기가 공유한다: ACCESSIBLE 응답의 계단 문구 잔존(fail-closed —
-  // 반환은 ACCESSIBLE 경로)과 무계단 경로 부재 후 기본 모드 재호출(반환은 일반 경로).
-  // 그래서 어느 경로를 반환하는지 단정하지 않는다 — 문장의 역할은 경로 설명이
-  // 아니라 계단 경고다(spec §2.6, 종전 "일반 경로를 안내합니다"는 앞 분기에서 거짓).
-  no_stepfree_route:
-    "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
-  // 이 분기는 실제로 일반 경로를 반환하므로 종전 문장이 참이다.
-  unavailable:
-    "계단 회피 경로를 조회하지 못했습니다. 일반 경로를 안내하며 계단이 포함될 수 있습니다.",
+const STEP_FREE_NOTICE: Record<WalkLang, Record<Exclude<StepFreeStatus, "applied">, string>> = {
+  ko: {
+    // ⚠ 이 상태는 두 분기가 공유한다: ACCESSIBLE 응답의 계단 문구 잔존(fail-closed —
+    // 반환은 ACCESSIBLE 경로)과 무계단 경로 부재 후 기본 모드 재호출(반환은 일반 경로).
+    // 그래서 어느 경로를 반환하는지 단정하지 않는다 — 문장의 역할은 경로 설명이
+    // 아니라 계단 경고다(spec §2.6, 종전 "일반 경로를 안내합니다"는 앞 분기에서 거짓).
+    no_stepfree_route:
+      "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
+    // 이 분기는 실제로 일반 경로를 반환하므로 종전 문장이 참이다.
+    unavailable:
+      "계단 회피 경로를 조회하지 못했습니다. 일반 경로를 안내하며 계단이 포함될 수 있습니다.",
+  },
+  // ⚠ en은 Tmap 단독이라 계단 회피가 항상 unavailable이다. 소비자 UI는 컨트롤 자체를 노출하지
+  // 않지만(spec §4.7) 직접 API 소비자에게는 정직한 문장이 필요하다.
+  en: {
+    no_stepfree_route:
+      "A step-free route could not be confirmed. The route may include stairs.",
+    unavailable:
+      "Step-free routing is unavailable. A standard route is provided and it may include stairs.",
+  },
 };
 
 export function annotateAudioSignals(
   briefing: WalkRouteBriefing,
-  keepGeometry = false,
+  keepGeometry: boolean,
+  lang: WalkLang,
 ): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
     const { coord, pathCoords, ...rest } = step;
     // 판정 후보점: 카카오 폴리라인 전체(재캘리브레이션 2026-07-29 — 첫 점만으로는
     // 진입 전 시작점이 신호기와 멀어 미탐) 또는 Tmap 단일 Point.
     const candidates = pathCoords ?? (coord ? [coord] : []);
+    // 건널목 판정: **구조화 행동이 있으면 그것을**, 없으면 종전 한국어 문자열을 본다(E16 축3).
+    // Tmap 스텝은 normalize 시점에 이미 action을 달고 오므로 en 문장에서도 판정이 성립한다.
+    // ko+Tmap에서 211·212·213은 종전 문자열 판정과 같은 결론이라 회귀가 없고, 카카오 스텝은
+    // action이 없어 종전 경로 그대로다(병합 표현 게이트 포함).
+    const isCrosswalk =
+      rest.action !== undefined
+        ? rest.action === "crosswalk"
+        : rest.description.includes("횡단보도") && !MERGED_CROSSWALK.test(rest.description);
     const annotated =
       candidates.length > 0 &&
-      rest.description.includes("횡단보도") &&
-      !MERGED_CROSSWALK.test(rest.description) &&
+      isCrosswalk &&
       candidates.some((c) => hasAudioSignalNear(c.lat, c.lng, MATCH_RADIUS_METERS))
-        ? { ...rest, description: `${rest.description}, ${ANNOTATION}` }
+        ? { ...rest, description: `${rest.description}, ${ANNOTATION[lang]}` }
         : rest;
     // 기하 보존(실시간 길 안내 옵트인): 좌표를 pathCoords 한 형태로 통일해
     // 소비자가 카카오·Tmap 두 모양을 다루지 않게 한다. 기본 경로는 종전대로 전량 제거.
@@ -126,6 +163,34 @@ export function annotateCrosswalkInfo(
 }
 
 /**
+ * 도보 스텝의 결정 지점 행동을 **서버가 전량 투영**한다(E16 축3 spec §4.2.1).
+ * Tmap 스텝은 provider가 `turnType` 표에서 이미 달았고, 카카오 스텝은 **주석까지 끝난 최종
+ * 문장**을 종전 클라이언트와 같은 함수(`walkStepAction`)에 태운다 — 같은 입력·같은 함수라
+ * 결론이 같다(그래서 리듀서를 `actionSource: "step"`으로 바꿔도 ko 발화가 불변이다).
+ *
+ * ⚠ 클라이언트 폴백(`step.action ?? walkStepAction(...)`)을 두지 않는 이유: 구조화 판정의
+ * **의도된 "행동 없음"**(육교·계단·엘리베이터)과 **미투영**을 구별하지 못한다.
+ *
+ * ⚠ `includeGeometry`가 아니면 내부 전달 필드를 전부 뗀다 — 브리핑 응답이 byte-identical
+ * 이어야 CLI·채팅·MCP가 무변경이다(`live` 조각과 같은 게이트).
+ */
+export function attachStepActions(
+  briefing: WalkRouteBriefing,
+  includeGeometry: boolean,
+): WalkRouteBriefing {
+  const steps = briefing.steps.map((step) => {
+    const { turnType: _turnType, roadNameKo: _roadNameKo, ...rest } = step;
+    if (!includeGeometry) {
+      const { action: _action, ...plain } = rest;
+      return plain;
+    }
+    const action = rest.action ?? walkStepAction(rest.description) ?? undefined;
+    return action ? { ...rest, action } : rest;
+  });
+  return { ...briefing, steps };
+}
+
+/**
  * 안전 문장을 전달한다. 산문 소비자에겐 스텝 0번 삽입(기존 문장 개변 금지 — 별도
  * 스텝), 구조화 소비자(`includeGeometry`)에겐 필드로만.
  *
@@ -137,10 +202,11 @@ function withStepFree(
   briefing: WalkRouteBriefing,
   status: StepFreeStatus,
   includeGeometry: boolean,
+  lang: WalkLang,
   noticeOverride?: string,
 ): WalkRouteBriefing {
   if (status === "applied") return { ...briefing, stepFree: status };
-  const notice = noticeOverride ?? STEP_FREE_NOTICE[status];
+  const notice = noticeOverride ?? STEP_FREE_NOTICE[lang][status];
   const withField = { ...briefing, stepFree: status, stepFreeNotice: notice };
   if (includeGeometry) return withField;
   // 스텝 0 삽입은 경유지 인덱스(N4 `waypoint.stepIndex`)를 한 칸 민다 — 함께 보정.
@@ -160,8 +226,26 @@ async function fetchPrimaryOrFallback(params: {
   noStore: boolean;
   /** 경유지 1개(N4) — 両 provider가 받는다(실호출 확정 2026-08-22). */
   waypoint: Coord | undefined;
+  lang: WalkLang;
+  /** ⚠ 종전엔 Tmap 폴백에 이 값을 넘기지 않아 기하가 유실됐다(spec §4.6). */
+  includeGeometry: boolean;
 }): Promise<{ briefing: WalkRouteBriefing | null; via: "kakao" | "tmap" } | null> {
-  const { origin, dest, accessible, noStore, waypoint } = params;
+  const { origin, dest, accessible, noStore, waypoint, lang, includeGeometry } = params;
+  const tmapCall = () =>
+    getWalkRouteBriefing({
+      origin,
+      dest,
+      via: waypoint,
+      noStore,
+      includeLineGeometry: includeGeometry,
+      guard: lang === "en",
+    });
+  // ⚠ en은 폴백이 없다 — 카카오로 내려가면 "가용성 폴백"이 아니라 한국어 문장이 나온다.
+  // 회전 코드를 주는 provider가 Tmap뿐이라 언어 자체가 provider 선택을 정한다.
+  if (lang === "en") {
+    if (!hasTmapKey()) return null; // 게이트(hasWalkRouteKeyFor)가 먼저 막지만 이중 방어
+    return { briefing: await tmapCall(), via: "tmap" };
+  }
   if (hasKakaoKey()) {
     try {
       return {
@@ -171,11 +255,11 @@ async function fetchPrimaryOrFallback(params: {
     } catch (e) {
       if (!hasTmapKey()) throw e;
       logRouteFallback("[walk-route] 카카오 실패, Tmap 폴백:", origin, dest, e);
-      return { briefing: await getWalkRouteBriefing({ origin, dest, via: waypoint }), via: "tmap" };
+      return { briefing: await tmapCall(), via: "tmap" };
     }
   }
   if (hasTmapKey()) {
-    return { briefing: await getWalkRouteBriefing({ origin, dest, via: waypoint }), via: "tmap" };
+    return { briefing: await tmapCall(), via: "tmap" };
   }
   return null; // 게이트(hasWalkRouteKey)가 먼저 막지만 이중 방어
 }
@@ -183,6 +267,11 @@ async function fetchPrimaryOrFallback(params: {
 export async function getWalkRoute(params: {
   origin: Coord;
   dest: Coord;
+  /**
+   * 안내 문장의 언어. **기본값 없는 필수 인자**다 — 생략이 한국어로 조용히 복구되면
+   * 새 비-ko 호출부 하나가 타입 오류 없이 한국어 안내를 낸다.
+   */
+  lang: WalkLang;
   accessible?: boolean;
   /** 스텝 폴리라인 보존(실시간 길 안내 옵트인, 스펙 2026-08-03 §7.2). upstream fetch도 no-store. */
   includeGeometry?: boolean;
@@ -191,18 +280,23 @@ export async function getWalkRoute(params: {
   /** 경유지 1개(N4). 응답 `waypoint`가 그 도착 지점을 가리킨다. */
   via?: Coord;
 }): Promise<WalkRouteBriefing | null> {
-  const { origin, dest, accessible = false, includeGeometry = false, variant, via } = params;
+  const { origin, dest, lang, accessible = false, includeGeometry = false, variant, via } = params;
   // 재작성 → 주석 순서가 계약이다. 주석은 재작성된 문장 뒤에 붙어야 하고
   // (", 음향신호기 있음"이 먼저 붙으면 재작성 정규식의 `$` 앵커가 전부 깨진다),
   // 병합 판정도 재작성본을 봐야 한다(MERGED_CROSSWALK 주석 참조).
   // 음향신호기 단계는 기하를 보존해 넘기고(keepGeometry=true), 마지막 차로 수 단계가
-  // 종전 계약대로 기하를 제거·통일한다. 순서: 음향신호기(안전) → 차로 수(수식).
-  const annotate = (b: WalkRouteBriefing, provider: "kakao" | "tmap") =>
-    annotateCrosswalkInfo(
-      annotateAudioSignals(rewriteWalkBriefing(b, includeGeometry), true),
+  // 종전 계약대로 기하를 제거·통일한다. 순서: 음향신호기(안전) → 차로 수(수식) → 행동 투영.
+  // ⚠ en은 ko 재작성 파이프라인을 타지 않는다 — 구조화 필드에서 문장을 **새로 만든다**.
+  const annotate = async (b: WalkRouteBriefing, provider: "kakao" | "tmap") => {
+    const base =
+      lang === "en"
+        ? buildEnBriefing(b, await roadNamesEn(roadNameKeysOf(b)))
+        : rewriteWalkBriefing(b, includeGeometry);
+    return attachStepActions(
+      annotateCrosswalkInfo(annotateAudioSignals(base, true, lang), includeGeometry, provider),
       includeGeometry,
-      provider,
     );
+  };
 
   if (variant === "shortest") {
     // 최단은 Tmap 전용 축(카카오에 동등 옵션 없음) — 폴백 없음, 실패는 throw(502).
@@ -218,49 +312,53 @@ export async function getWalkRoute(params: {
       via,
       includeLineGeometry: includeGeometry,
       noStore: includeGeometry,
+      guard: lang === "en",
     });
     if (!briefing) return null;
-    const annotated = annotate(briefing, "tmap");
+    const annotated = await annotate(briefing, "tmap");
     return accessible
-      ? withStepFree(annotated, "unavailable", includeGeometry, SHORTEST_STEPFREE_NOTICE)
+      ? withStepFree(annotated, "unavailable", includeGeometry, lang, SHORTEST_STEPFREE_NOTICE[lang])
       : annotated;
   }
 
   if (!accessible) {
     const r = await fetchPrimaryOrFallback({
-      origin, dest, accessible: false, noStore: includeGeometry, waypoint: via,
+      origin, dest, accessible: false, noStore: includeGeometry, waypoint: via, lang, includeGeometry,
     });
-    return r?.briefing ? annotate(r.briefing, r.via) : null;
+    return r?.briefing ? await annotate(r.briefing, r.via) : null;
   }
 
-  // 계단 회피: 카카오 전용. Tmap 경유(폴백·단독)는 동등 모드가 없어 unavailable.
+  // 계단 회피: 카카오 전용. Tmap 경유(폴백·단독·en)는 동등 모드가 없어 unavailable.
   const r = await fetchPrimaryOrFallback({
-    origin, dest, accessible: true, noStore: includeGeometry, waypoint: via,
+    origin, dest, accessible: true, noStore: includeGeometry, waypoint: via, lang, includeGeometry,
   });
   if (!r) return null;
   if (r.via === "tmap") {
     return r.briefing
-      ? withStepFree(annotate(r.briefing, "tmap"), "unavailable", includeGeometry)
+      ? withStepFree(await annotate(r.briefing, "tmap"), "unavailable", includeGeometry, lang)
       : null;
   }
   if (r.briefing) {
     // applied fail-closed: ACCESSIBLE 응답에 계단 문구가 남아 있으면 안전 선언 금지.
+    // ⚠ 이 판정은 카카오 원문(ko)에만 성립한다 — en은 위 tmap 분기에서 이미 갈렸다.
     const hasStairs = r.briefing.steps.some((s) => s.description.includes("계단"));
     return withStepFree(
-      annotate(r.briefing, "kakao"),
+      await annotate(r.briefing, "kakao"),
       hasStairs ? "no_stepfree_route" : "applied",
       includeGeometry,
+      lang,
     );
   }
   // 무계단 경로 부재(ROUTE_RESULT_NOT_FOUND): 기본 모드 재호출(같은 fetch 캐시 공유).
   const base = await fetchPrimaryOrFallback({
-    origin, dest, accessible: false, noStore: includeGeometry, waypoint: via,
+    origin, dest, accessible: false, noStore: includeGeometry, waypoint: via, lang, includeGeometry,
   });
   if (!base?.briefing) return null;
   return withStepFree(
-    annotate(base.briefing, base.via),
+    await annotate(base.briefing, base.via),
     base.via === "tmap" ? "unavailable" : "no_stepfree_route",
     includeGeometry,
+    lang,
   );
 }
 
@@ -274,16 +372,17 @@ export async function getWalkRoute(params: {
 export async function getWalkRouteAlternatives(params: {
   origin: Coord;
   dest: Coord;
+  lang: WalkLang;
   accessible?: boolean;
   via?: Coord;
 }): Promise<{ result: WalkRouteBriefing | null; shortest?: WalkRouteBriefing | null }> {
-  const { origin, dest, accessible = false, via } = params;
+  const { origin, dest, lang, accessible = false, via } = params;
   if (!hasTmapKey()) {
-    return { result: await getWalkRoute({ origin, dest, accessible, via }) };
+    return { result: await getWalkRoute({ origin, dest, lang, accessible, via }) };
   }
   const [primary, shortest] = await Promise.allSettled([
-    getWalkRoute({ origin, dest, accessible, via }),
-    getWalkRoute({ origin, dest, accessible, via, variant: "shortest" }),
+    getWalkRoute({ origin, dest, lang, accessible, via }),
+    getWalkRoute({ origin, dest, lang, accessible, via, variant: "shortest" }),
   ]);
   if (primary.status === "rejected") throw primary.reason;
   return {

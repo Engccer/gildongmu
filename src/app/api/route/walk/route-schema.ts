@@ -36,6 +36,11 @@ const querySchema = z
     // 조용히 버리면 "경유 안 한 경로"를 "경유한 경로"로 낭독하게 된다.
     // variant·alternatives·accessible과 직교한다(금지 조합 없음).
     via: coordSchema.nullable().transform((v) => v ?? undefined),
+    // 안내 문장 언어(E16 축3): 누락="ko", 그 외는 정확히 "ko"/"en"만 — 알 수 없는 값을
+    // 조용히 ko로 강등하면 en 소비자가 한국어 안내를 받고도 그 사실을 알 수 없다.
+    lang: z
+      .union([z.literal("ko"), z.literal("en"), z.null()])
+      .transform((v) => v ?? "ko"),
   })
   .superRefine((data, ctx) => {
     if (data.variant && data.alternatives) {
@@ -66,6 +71,7 @@ export function parseWalkQuery(raw: {
   variant: string | null;
   alternatives: string | null;
   via: string | null;
+  lang: string | null;
 }): ParseWalkQueryResult {
   const parsed = querySchema.safeParse(raw);
   if (!parsed.success) {

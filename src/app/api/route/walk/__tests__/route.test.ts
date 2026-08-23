@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/env", () => ({
-  hasWalkRouteKey: vi.fn(() => true),
+  hasWalkRouteKeyFor: vi.fn(() => true),
   // walk-route 서비스 내부 provider 선택용(라우트 자체 게이트와 별개) — 이 라우트
   // 테스트는 Tmap 단독 경로를 검증하므로 카카오는 항상 false(카카오 provider는
   // 별도 mock 없음), Tmap은 true 고정.
@@ -22,7 +22,7 @@ vi.mock("@/lib/providers/tmap-pedestrian", () => ({
 }));
 
 import { GET } from "../route";
-import { hasWalkRouteKey } from "@/lib/env";
+import { hasWalkRouteKeyFor } from "@/lib/env";
 import { checkWalkRateLimit } from "@/lib/rate-limit";
 import { getWalkRouteBriefing } from "@/lib/providers/tmap-pedestrian";
 
@@ -34,7 +34,7 @@ function makeRequest(origin: string, dest: string, accessible?: string) {
 
 describe("GET /api/route/walk", () => {
   beforeEach(() => {
-    vi.mocked(hasWalkRouteKey).mockReturnValue(true);
+    vi.mocked(hasWalkRouteKeyFor).mockReturnValue(true);
     vi.mocked(checkWalkRateLimit).mockReturnValue(true);
   });
 
@@ -62,8 +62,8 @@ describe("GET /api/route/walk", () => {
     expect(res.status).toBe(400);
   });
 
-  it("키 없음(hasWalkRouteKey false)은 404 유지", async () => {
-    vi.mocked(hasWalkRouteKey).mockReturnValue(false);
+  it("키 없음(hasWalkRouteKeyFor false)은 404 유지", async () => {
+    vi.mocked(hasWalkRouteKeyFor).mockReturnValue(false);
     const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
     expect(res.status).toBe(404);
   });

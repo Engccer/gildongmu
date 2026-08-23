@@ -31,6 +31,8 @@ describe("annotateAudioSignals", () => {
   it("횡단보도 단계 + 40m 내 seed → 문장 끝 쉼표 주석", () => {
     const out = annotateAudioSignals(
       briefing([{ description: "우측 횡단보도 후 11m 이동", coord: { lat: sigLat, lng: sigLng } }]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("우측 횡단보도 후 11m 이동, 음향신호기 있음");
   });
@@ -38,6 +40,8 @@ describe("annotateAudioSignals", () => {
   it("횡단보도 단계지만 40m 밖 → 무주석(positive-only)", () => {
     const out = annotateAudioSignals(
       briefing([{ description: "횡단보도 후 20m 이동", coord: FAR }]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("횡단보도 후 20m 이동");
   });
@@ -45,12 +49,14 @@ describe("annotateAudioSignals", () => {
   it("비횡단보도 단계는 seed 인접이어도 무주석(실측 오탐 클래스)", () => {
     const out = annotateAudioSignals(
       briefing([{ description: "직진 후 양재대로를 따라 2m 이동", coord: { lat: sigLat, lng: sigLng } }]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("직진 후 양재대로를 따라 2m 이동");
   });
 
   it("coord 없는 단계는 무주석", () => {
-    const out = annotateAudioSignals(briefing([{ description: "횡단보도 후 이동" }]));
+    const out = annotateAudioSignals(briefing([{ description: "횡단보도 후 이동" }]), false, "ko");
     expect(out.steps[0].description).toBe("횡단보도 후 이동");
   });
 
@@ -60,12 +66,14 @@ describe("annotateAudioSignals", () => {
         { description: "횡단보도 후 이동", coord: { lat: sigLat, lng: sigLng } },
         { description: "직진", coord: FAR },
       ]),
+      false,
+      "ko",
     );
     for (const s of out.steps) expect("coord" in s).toBe(false);
   });
 
   it("총 거리·시간은 그대로 통과한다", () => {
-    const out = annotateAudioSignals(briefing([{ description: "직진" }]));
+    const out = annotateAudioSignals(briefing([{ description: "직진" }]), false, "ko");
     expect(out.distanceMeters).toBe(800);
     expect(out.durationSeconds).toBe(700);
   });
@@ -80,6 +88,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
           pathCoords: [FAR, { lat: sigLat, lng: sigLng }],
         },
       ]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("횡단보도 후 좌회전, 음향신호기 있음");
   });
@@ -92,6 +102,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
           pathCoords: [{ lat: sigLat, lng: sigLng }],
         },
       ]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("2개의 횡단보도 이용");
   });
@@ -111,6 +123,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
         ]),
         false,
       ),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("길동사거리에서 횡단보도 2개를 건너세요, 횡단보도 길이 58m");
   });
@@ -127,6 +141,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
         ]),
         false,
       ),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe(
       "길동사거리앞교차로에서 횡단보도를 건너세요, 횡단보도 길이 13m, 음향신호기 있음",
@@ -136,6 +152,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
   it("Tmap 단일 coord 스텝 기존 동작 회귀 0(coord 1원소 취급)", () => {
     const out = annotateAudioSignals(
       briefing([{ description: "우측 횡단보도 후 11m 이동", coord: { lat: sigLat, lng: sigLng } }]),
+      false,
+      "ko",
     );
     expect(out.steps[0].description).toBe("우측 횡단보도 후 11m 이동, 음향신호기 있음");
   });
@@ -145,6 +163,8 @@ describe("annotateAudioSignals 카카오 스텝(pathCoords)", () => {
       briefing([
         { description: "횡단보도 후 이동", pathCoords: [{ lat: sigLat, lng: sigLng }] },
       ]),
+      false,
+      "ko",
     );
     expect("coord" in out.steps[0]).toBe(false);
     expect("pathCoords" in out.steps[0]).toBe(false);
@@ -215,7 +235,7 @@ describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
         },
       ],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     // 순서가 뒤집히면 주석이 먼저 붙어 재작성 정규식의 `$` 앵커가 깨지고,
     // 그 스텝만 조용히 원문("…에서 횡단보도 이용, 음향신호기 있음")으로 남는다.
     expect(r?.steps[0].description).toBe(
@@ -227,7 +247,7 @@ describe("getWalkRoute 파이프라인 순서(재작성 → 주석)", () => {
     // 무계단 경로 부재 → 기본 모드 재호출 경로. 안전 문장은 annotate 뒤에
     // 삽입되므로 재작성 대상이 아니고, 설령 통과해도 어미가 달라 원문 보존된다.
     vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(null);
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.steps[0].description).toBe(
       "계단 없는 경로를 확정하지 못했습니다. 안내 경로에 계단이 포함될 수 있습니다.",
     );
@@ -330,7 +350,7 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
         { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
       ],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     // 순서가 뒤집히면 ", 3차로…"가 먼저 붙어 CROSS 정규식의 `$` 앵커가 깨지고 원문이 남는다.
     expect(r?.steps[0].description).toMatch(
       /^소망 메디컬약국 앞에서 횡단보도를 건너세요, 횡단보도 길이 21m(, 음향신호기 있음)?, 3차로, 도로 폭 14m$/,
@@ -346,7 +366,7 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
         { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
       ],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(walkStepAction(r!.steps[0].description)).toBe("crosswalk");
   });
 
@@ -357,7 +377,7 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
       durationSeconds: 280,
       steps: [{ description: "우측 횡단보도 진입", distanceMeters: 21, pathCoords: SEODAL_PATH }],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true });
     expect(r?.steps[0].description).not.toMatch(/차로/);
   });
 
@@ -369,7 +389,7 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
         { description: "소망 메디컬약국 앞에서 횡단보도 이용", distanceMeters: 21, pathCoords: SEODAL_PATH },
       ],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true });
     expect(r?.steps[0].description).toMatch(/, 3차로, 도로 폭 14m$/);
     expect(r?.steps[0].pathCoords).toEqual(SEODAL_PATH);
   });
@@ -377,26 +397,26 @@ describe("getWalkRoute 파이프라인(재작성 → 음향신호기 → 차로 
 
 describe("getWalkRoute provider 선택·폴백", () => {
   it("카카오 키가 있으면 카카오가 기본이다", async () => {
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r?.steps[0].description).toContain("역사 내 이동");
     expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("카카오 throw 시에만 Tmap 폴백한다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("HTTP 500"));
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r?.steps[0].description).toContain("보행자도로");
   });
 
   it("카카오가 정상 판정한 경로 없음(null)은 폴백 없이 null", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(null);
-    expect(await getWalkRoute({ origin: ORIGIN, dest: DEST })).toBeNull();
+    expect(await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST })).toBeNull();
     expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("카카오 키 없으면 Tmap 단독(현행 동작)", async () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r?.steps[0].description).toContain("보행자도로");
     expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
   });
@@ -404,19 +424,19 @@ describe("getWalkRoute provider 선택·폴백", () => {
   it("둘 다 throw면 throw(502 전파)", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
-    await expect(getWalkRoute({ origin: ORIGIN, dest: DEST })).rejects.toThrow();
+    await expect(getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
   });
 
   it("카카오 throw + Tmap 키 없음이면 throw", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
     vi.mocked(hasTmapKey).mockReturnValue(false);
-    await expect(getWalkRoute({ origin: ORIGIN, dest: DEST })).rejects.toThrow();
+    await expect(getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST })).rejects.toThrow();
   });
 });
 
 describe("getWalkRoute 계단 회피(stepFree)", () => {
   it("ACCESSIBLE 성공(계단 문구 없음)은 applied — accessible 플래그가 provider에 전달된다", async () => {
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].accessible).toBe(true);
     expect(r?.stepFree).toBe("applied");
     expect(r?.steps[0].description).toContain("역사 내 이동"); // 안내 문장 미삽입
@@ -427,7 +447,7 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
       ...KAKAO_BRIEFING,
       steps: [{ description: "호텔마누 앞에서 계단이용" }],
     });
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("no_stepfree_route");
     expect(r?.steps[0].description).toContain("계단 없는 경로를 확정하지 못했습니다");
   });
@@ -436,7 +456,7 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
     vi.mocked(getKakaoWalkBriefing)
       .mockResolvedValueOnce(null) // ACCESSIBLE 호출
       .mockResolvedValueOnce(KAKAO_BRIEFING); // 기본 재호출
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("no_stepfree_route");
     expect(r?.steps[0].description).toContain("계단 없는 경로를 확정하지 못했습니다");
     expect(r?.steps[1].description).toContain("역사 내 이동");
@@ -444,24 +464,24 @@ describe("getWalkRoute 계단 회피(stepFree)", () => {
 
   it("카카오 throw면 Tmap 폴백 + unavailable + 안내 문장", async () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("down"));
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("unavailable");
     expect(r?.steps[0].description).toContain("계단 회피 경로를 조회하지 못했습니다");
   });
 
   it("Tmap 단독 배포에 accessible 요청이면 unavailable", async () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
     expect(r?.stepFree).toBe("unavailable");
   });
 
   it("기본 모드마저 경로 없음이면 null", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(null);
-    expect(await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true })).toBeNull();
+    expect(await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true })).toBeNull();
   });
 
   it("accessible 미요청이면 stepFree 필드 자체가 없다(기존 응답 byte-호환)", async () => {
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r && "stepFree" in r).toBe(false);
   });
 });
@@ -473,7 +493,7 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(briefingWithGeometry(2));
 
-    const r = await getWalkRoute({
+    const r = await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       accessible: true,
@@ -511,7 +531,7 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
         ],
       });
 
-    const r = await getWalkRoute({
+    const r = await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       accessible: true,
@@ -527,7 +547,7 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(briefingWithGeometry(2));
 
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
 
     expect(r!.steps).toHaveLength(3);
     expect(r!.steps[0].description).toBe(r!.stepFreeNotice);
@@ -537,7 +557,7 @@ describe("계단 회피 안내 문장의 전달 채널", () => {
   it("applied면 문장 필드가 없다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
 
-    const r = await getWalkRoute({
+    const r = await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       accessible: true,
@@ -556,7 +576,7 @@ describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
     // ACCESSIBLE 응답에 계단 문구 잔존 → fail-closed 강등. 반환은 ACCESSIBLE 경로다.
     vi.mocked(getKakaoWalkBriefing).mockResolvedValueOnce(briefingWithStairs());
 
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
 
     expect(r?.stepFree).toBe("no_stepfree_route");
     expect(r?.stepFreeNotice).toBe(
@@ -568,7 +588,7 @@ describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
     vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
 
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
 
     expect(r?.stepFree).toBe("unavailable");
     expect(r?.stepFreeNotice).toBe(
@@ -582,7 +602,7 @@ describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
     vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithStairs());
 
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
 
     expect(r?.stepFree).toBe("unavailable");
   });
@@ -595,7 +615,7 @@ describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
     vi.mocked(getWalkRouteBriefing).mockRejectedValueOnce(new Error("Tmap도 실패"));
 
     await expect(
-      getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true }),
+      getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true }),
     ).rejects.toThrow();
   });
 
@@ -603,7 +623,7 @@ describe("계단 회피 안내 문장의 정확성과 분기 곱", () => {
     vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("카카오 장애"));
     vi.mocked(getWalkRouteBriefing).mockResolvedValueOnce(briefingWithGeometry(2));
 
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, accessible: true });
 
     expect(r?.stepFree).toBe("unavailable");
   });
@@ -622,7 +642,7 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
   ]);
 
   it("기본은 coord·pathCoords 전량 제거(기존 byte-호환)", () => {
-    const out = annotateAudioSignals(geomBriefing, false);
+    const out = annotateAudioSignals(geomBriefing, false, "ko");
     for (const s of out.steps) {
       expect("coord" in s).toBe(false);
       expect("pathCoords" in s).toBe(false);
@@ -630,7 +650,7 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
   });
 
   it("보존 모드는 pathCoords로 통일 노출(coord 1점은 승격, coord 키는 제거)", () => {
-    const out = annotateAudioSignals(geomBriefing, true);
+    const out = annotateAudioSignals(geomBriefing, true, "ko");
     expect(out.steps[0].pathCoords).toHaveLength(2);
     expect(out.steps[1].pathCoords).toEqual([{ lat: 37.5001, lng: 127.1 }]);
     expect("coord" in out.steps[1]).toBe(false);
@@ -640,6 +660,7 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
     const out = annotateAudioSignals(
       briefing([{ description: "우측 횡단보도 후 11m 이동", pathCoords: [{ lat: sigLat, lng: sigLng }] }]),
       true,
+      "ko",
     );
     expect(out.steps[0].description).toContain("음향신호기 있음");
     expect(out.steps[0].pathCoords).toHaveLength(1);
@@ -647,21 +668,21 @@ describe("includeGeometry (실시간 길 안내, 2026-08-03 스펙 §7.2)", () =
 
   it("getWalkRoute가 includeGeometry를 provider noStore로 전파하고 기하를 보존한다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(geomBriefing);
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, includeGeometry: true });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, includeGeometry: true });
     expect(r?.steps[0].pathCoords).toHaveLength(2);
     expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: true });
   });
 
   it("includeGeometry 미지정이면 provider 호출에 noStore가 없다(기존 캐시 계약 불변)", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(geomBriefing);
-    await getWalkRoute({ origin: ORIGIN, dest: DEST });
+    await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0]).toMatchObject({ noStore: false });
   });
 });
 
 describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
   it("tmap이 searchOption '10'으로 호출되고 카카오는 미호출", async () => {
-    const r = await getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" });
+    const r = await getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" });
     expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
       searchOption: "10",
@@ -670,7 +691,7 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
   });
 
   it("accessible과의 곱은 unavailable + 최단 전용 경고 문장(비기하는 스텝 0번 삽입)", async () => {
-    const r = await getWalkRoute({
+    const r = await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       variant: "shortest",
@@ -686,7 +707,7 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
   });
 
   it("includeGeometry면 tmap에 기하 보존·noStore를 전파한다", async () => {
-    await getWalkRoute({
+    await getWalkRoute({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       variant: "shortest",
@@ -702,7 +723,7 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
   it("Tmap throw면 카카오 폴백 없이 throw(502 전파)", async () => {
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
     await expect(
-      getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" }),
+      getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" }),
     ).rejects.toThrow();
     expect(getKakaoWalkBriefing).not.toHaveBeenCalled();
   });
@@ -710,14 +731,14 @@ describe("variant=shortest (M3, Tmap searchOption=10 단독)", () => {
   it("Tmap 키 부재면 throw(최단 축 자체가 성립 안 함 — null로 위장 금지)", async () => {
     vi.mocked(hasTmapKey).mockReturnValue(false);
     await expect(
-      getWalkRoute({ origin: ORIGIN, dest: DEST, variant: "shortest" }),
+      getWalkRoute({ lang: "ko", origin: ORIGIN, dest: DEST, variant: "shortest" }),
     ).rejects.toThrow();
   });
 });
 
 describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대칭)", () => {
   it("両성공이면 { result, shortest } — 최단은 searchOption '10'", async () => {
-    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r.result?.steps[0].description).toContain("역사 내 이동");
     expect(r.shortest?.steps[0].description).toContain("보행자도로");
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0]).toMatchObject({
@@ -727,7 +748,7 @@ describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대�
 
   it("기본 성공 + 최단 throw → shortest: null (최단 실패 흡수)", async () => {
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
-    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r.result?.steps[0].description).toContain("역사 내 이동");
     expect(r.shortest).toBeNull();
     expect("shortest" in r).toBe(true);
@@ -737,20 +758,20 @@ describe("getWalkRouteAlternatives (추천+최단 병렬, 부분 성공 비대�
     vi.mocked(getKakaoWalkBriefing).mockRejectedValue(new Error("kakao down"));
     vi.mocked(getWalkRouteBriefing).mockRejectedValue(new Error("tmap down"));
     await expect(
-      getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST }),
+      getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST }),
     ).rejects.toThrow();
   });
 
   it("Tmap 키 부재면 shortest 키 자체 생략 + 최단 조회 미발생", async () => {
     vi.mocked(hasTmapKey).mockReturnValue(false);
-    const r = await getWalkRouteAlternatives({ origin: ORIGIN, dest: DEST });
+    const r = await getWalkRouteAlternatives({ lang: "ko", origin: ORIGIN, dest: DEST });
     expect(r.result?.steps[0].description).toContain("역사 내 이동");
     expect("shortest" in r).toBe(false);
     expect(getWalkRouteBriefing).not.toHaveBeenCalled();
   });
 
   it("accessible은 両경로에 전달된다(추천 applied·최단 경고)", async () => {
-    const r = await getWalkRouteAlternatives({
+    const r = await getWalkRouteAlternatives({ lang: "ko",
       origin: ORIGIN,
       dest: DEST,
       accessible: true,
@@ -781,34 +802,34 @@ describe("getWalkRoute 경유지(N4)", () => {
 
   it("via를 카카오·Tmap 폴백·최단 축 모두에 전달한다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(withWaypoint());
-    await getWalkRoute({ origin: O, dest: D, via: VIA });
+    await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA });
     expect(vi.mocked(getKakaoWalkBriefing).mock.calls[0][0].via).toEqual(VIA);
 
     vi.mocked(getKakaoWalkBriefing).mockRejectedValueOnce(new Error("down"));
     vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
-    await getWalkRoute({ origin: O, dest: D, via: VIA });
+    await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA });
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[0][0].via).toEqual(VIA);
 
-    await getWalkRoute({ origin: O, dest: D, via: VIA, variant: "shortest" });
+    await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA, variant: "shortest" });
     expect(vi.mocked(getWalkRouteBriefing).mock.calls[1][0]).toMatchObject({ via: VIA, searchOption: "10" });
   });
 
   it("waypoint는 재작성·주석을 지나 응답에 남는다", async () => {
     vi.mocked(getKakaoWalkBriefing).mockResolvedValue(withWaypoint());
-    const r = await getWalkRoute({ origin: O, dest: D, via: VIA });
+    const r = await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA });
     expect(r?.waypoint).toEqual({ stepIndex: 1, coord: VIA });
   });
 
   it("계단 회피 안내 문장이 스텝 0에 끼어들면 stepIndex도 한 칸 민다(산문 소비자)", async () => {
     vi.mocked(hasKakaoKey).mockReturnValue(false);
     vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
-    const r = await getWalkRoute({ origin: O, dest: D, via: VIA, accessible: true });
+    const r = await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA, accessible: true });
     expect(r?.stepFree).toBe("unavailable");
     expect(r?.steps[0].description).toMatch(/계단/);
     expect(r?.waypoint?.stepIndex).toBe(2);
     // 구조화 소비자(기하)는 유사 스텝을 받지 않으므로 인덱스 불변.
     vi.mocked(getWalkRouteBriefing).mockResolvedValue(withWaypoint());
-    const g = await getWalkRoute({ origin: O, dest: D, via: VIA, accessible: true, includeGeometry: true });
+    const g = await getWalkRoute({ lang: "ko", origin: O, dest: D, via: VIA, accessible: true, includeGeometry: true });
     expect(g?.waypoint?.stepIndex).toBe(1);
   });
 });

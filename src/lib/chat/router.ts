@@ -507,6 +507,8 @@ export async function executeFunction(
       const briefing = await getWalkRoute({
         origin: ctx.userLocation,
         dest: { lat: p.lat, lng: p.lng },
+        // 채팅 도구는 ko 고정이다 — 이 도구는 ko 트리거 문구로만 노출된다(E16 축3 범위 밖).
+        lang: "ko",
         accessible,
         via,
       });

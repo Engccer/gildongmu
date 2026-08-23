@@ -9,9 +9,31 @@ const base = {
   variant: null,
   alternatives: null,
   via: null,
+  lang: null,
 };
 
 describe("walk 파라미터 조합표 (M3 spec §3.1)", () => {
+  describe("lang (E16 축3)", () => {
+    it("누락이면 ko(기존 소비자 동작 불변)", () => {
+      const r = parseWalkQuery(base);
+      expect(r.ok).toBe(true);
+      if (r.ok) expect(r.data.lang).toBe("ko");
+    });
+
+    it("ko·en만 받는다", () => {
+      for (const lang of ["ko", "en"]) {
+        const r = parseWalkQuery({ ...base, lang });
+        expect(r.ok).toBe(true);
+        if (r.ok) expect(r.data.lang).toBe(lang);
+      }
+    });
+
+    it("알 수 없는 값은 400 — 조용히 ko로 강등하지 않는다", () => {
+      expect(parseWalkQuery({ ...base, lang: "ja" }).ok).toBe(false);
+      expect(parseWalkQuery({ ...base, lang: "EN" }).ok).toBe(false);
+    });
+  });
+
   it("기본(옵트인 전무)은 허용", () => {
     const r = parseWalkQuery(base);
     expect(r.ok).toBe(true);
