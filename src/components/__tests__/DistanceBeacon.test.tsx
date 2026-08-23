@@ -97,52 +97,51 @@ function pushFix(atSeconds: number, along: number, lateral: number) {
 }
 
 describe("DistanceBeacon 컨트롤 노출", () => {
-  it("ko에서 상세 경로를 확보하면 전환 버튼이 나온다", async () => {
+  // E16 축2: 전환 버튼이 사라졌으므로 "상세가 섰다"의 신호는 **경로 기준 잔여 표시**다
+  // (간략에는 경로가 없어 그 줄이 없다). 강등 문구가 없다는 것도 함께 본다.
+  it("ko에서 상세 경로를 확보하면 경로 잔여가 표시되고 강등 문구가 없다", async () => {
     renderPanel("ko");
     openAndStart("ko");
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: ko.guide.toBriefButton }),
-      ).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
+    expect(screen.queryByText(ko.guide.degradedNote)).toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("includeGeometry=1"),
     );
   });
 
-  it("상세 경로가 없으면 전환 버튼을 내지 않는다", async () => {
+  it("상세 경로가 없으면 사유를 통지하고 동작 서술만 상시 표시한다(모드 이름 없음)", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ result: null }) });
     renderPanel("ko");
     openAndStart("ko");
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     await waitFor(() =>
-      expect(screen.getByText(ko.guide.detailUnavailable)).toBeTruthy(),
+      expect(screen.getByText(ko.guide.degradedUnavailable)).toBeTruthy(),
     );
-    expect(screen.queryByRole("button", { name: ko.guide.toBriefButton })).toBeNull();
-    expect(screen.queryByRole("button", { name: ko.guide.toDetailButton })).toBeNull();
+    // 상시 표시는 사유가 아니라 **동작 서술**이다 — 같은 문장을 live region과 DOM에
+    // 동시에 두면 회전자에서 이중 낭독된다(종전 straightLineNote가 그 자리였다).
+    expect(screen.getByText(ko.guide.degradedNote)).toBeTruthy();
+    // 경로가 없으므로 경로 기준 잔여 표시도 없다(3-state 정직).
+    expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
 
   // E16 축3: en도 상세 조회로 시작한다(서버가 en 문장을 만든다). 종전에는 여기서
   // 조회 없이 `briefStarted`(직선거리)로 흘렀다.
-  it("en도 상세 경로를 조회하고 전환 버튼을 낸다", async () => {
+  it("en도 상세 경로를 조회하고 경로 잔여를 표시한다", async () => {
     renderPanel("en");
     openAndStart("en");
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain("lang=en");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: en.guide.toBriefButton })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/Distance left/i)).toBeTruthy());
+    expect(screen.queryByText(en.guide.degradedNote)).toBeNull();
   });
 
   it("재조회 버튼은 이탈 상태에서만 나온다", async () => {
     renderPanel("ko");
     openAndStart("ko");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.toBriefButton })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
 
     expect(screen.queryByRole("button", { name: ko.guide.rerouteButton })).toBeNull();
 
@@ -174,9 +173,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
   it("상세 모드는 경로 기준 잔여 거리·예상 시간을 상시 표시한다", async () => {
     renderPanel("ko");
     openAndStart("ko");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.toBriefButton })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
 
     // 경로 ≈500m·400초 → 시작 시점 잔여 ≈500m, 약 7분(비례 추정. 위도 근사로
     // haversine이 499m를 낼 수 있어 정확 수치는 단정하지 않는다).
@@ -185,7 +182,7 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     expect(line.closest("[aria-live]")).toBeNull();
   });
 
-  it("도착 인계되면 간략으로 넘어간다(전환 버튼 라벨이 상태 신호)", async () => {
+  it("도착 인계되면 간략으로 넘어간다(통지는 인계 문장, 상시 표시는 동작 서술)", async () => {
     // 100m 단일 구간 — 잔여 50m 이하가 되면 인계 조건(전 스텝 낭독 완료)이 성립한다.
     fetchMock.mockResolvedValue({
       ok: true,
@@ -199,23 +196,21 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     });
     renderPanel("ko");
     openAndStart("ko");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.toBriefButton })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
 
     pushFix(0, 45, 0);
     pushFix(5, 90, 0);
 
     expect(screen.getByText(ko.guide.handoff)).toBeTruthy();
-    expect(screen.getByRole("button", { name: ko.guide.toDetailButton })).toBeTruthy();
+    // 인계도 자동 강등이라 상시 표시가 선다(설계 리뷰 #5 — 시작 실패에만 달면 이 세션은 빈다).
+    expect(screen.getByText(ko.guide.degradedNote)).toBeTruthy();
+    expect(screen.queryByText(/남은 거리/)).toBeNull();
   });
 
   it("통지 채널은 단일 live region 하나뿐이다", async () => {
     const { container } = renderPanel("ko");
     openAndStart("ko");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: ko.guide.toBriefButton })).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/남은 거리/)).toBeTruthy());
     pushFix(0, 100, 0);
 
     expect(

@@ -107,7 +107,7 @@ describe("useRouteGuide car kind", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("live-a").textContent).toBe(
-        ko.guide.detailUnavailable,
+        ko.guide.degradedUnavailable,
       ),
     );
   });

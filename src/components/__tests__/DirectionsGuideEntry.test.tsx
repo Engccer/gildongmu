@@ -224,18 +224,20 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
-  it("ko + 자동차 kakao 폴백(도보 실패): 자동차 버튼 없음 + 간략 폴백 노출", async () => {
+  // E16 축2: 간략 단독 진입점이 사라졌다 — 시작 가능한 수단이 0개면 안내 버튼도 0개다.
+  // 웹이 iOS 정식판을 따라간다(그쪽은 이 버튼이 `experimentalGuidanceEnabled` 봉인 안이다).
+  it("ko + 자동차 kakao 폴백(도보 실패): 안내 버튼이 하나도 없다", async () => {
     stubFetch({ walk: "fail", car: "kakao" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
-  it("ko + 전 수단 실패: 목적지 확정이면 간략 폴백만 노출", async () => {
+  it("ko + 전 수단 실패: 간략 단독 진입점도 없다", async () => {
     stubFetch({ walk: "fail", car: "fail" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
   // E16 축3: 도보 상세는 전 로케일에 열렸고(서버가 en 문장을 만든다) 자동차·대중교통은
@@ -248,12 +250,12 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
-  it("en + 도보 실패·자동차(tmap) 성공: 자동차는 여전히 ko 전용이라 간략 폴백", async () => {
+  it("en + 도보 실패·자동차(tmap) 성공: 자동차는 여전히 ko 전용이라 안내 버튼 0개", async () => {
     mockLocale = "en";
     stubFetch({ walk: "fail", car: "tmap" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
   // B2 §3.1: 대중교통 게이트 = 경로 성공 ∧ ko ∧ 탑승 leg ≥ 1
@@ -271,11 +273,11 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     expect(guideStartButtons()).toHaveLength(3);
   });
 
-  it("도보 전용 대중교통 경로는 시작 불가(탑승 leg 0) — 간략 폴백으로", async () => {
+  it("도보 전용 대중교통 경로는 시작 불가(탑승 leg 0) — 안내 버튼 0개", async () => {
     stubFetch({ walk: "fail", car: "fail", transit: "walkOnly" });
     await queryRoutes();
     expect(guideStartButtons()).toHaveLength(0);
-    expect(screen.getByRole("button", { name: "briefGuideStart" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
   it("en + 대중교통 성공: ko 전용이라 버튼 없음", async () => {

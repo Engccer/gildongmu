@@ -30,12 +30,9 @@ import {
 import {
   buildGuideRoute,
   CAR_TUNING,
-  entryProjection,
-  guideStateAt,
   guideStep,
   initialGuideState,
   unitAt,
-  RESOLVE_TIMEOUT_S,
   turnApproachMeters,
   WALK_TUNING,
   type GuideEvent,
@@ -147,6 +144,34 @@ const DEFER_LATE_DISCARD_S = 1;
 const PROGRESS_FIX_MAX_AGE_S = 15;
 
 export type GuideMode = "brief" | "detail";
+
+/**
+ * 경로 조회 실패 사유(E16 축2, spec 부록 §A2). **사용자가 취할 행동이 갈리는 만큼만** 가른다.
+ *
+ * ⚠ 모드 이름을 지운 대가로 이 사유 문장이 유일한 단서가 됐다 — 종전에는 모든 실패가 `null`
+ * 하나로 접혀 소비자가 두 문장만 냈고, 그 "그 외"에 재시도로 풀리는 것과 아닌 것이 섞여 있었다.
+ *
+ * ⚠ **`{ ok }` 태그를 둔다**(설계 리뷰 #8): 종전 `null` 검사 호출부가 실패 객체를 성공으로
+ * 읽는 것을 타입이 막는다.
+ */
+export type GuideRouteFailure =
+  /** 위치를 얻지 못했다 — **직선거리조차 불가**한 유일한 상태. */
+  | "noLocation"
+  /** 상류 일시 장애(5xx·408·429·네트워크·파싱) — 다시 시작하면 풀릴 수 있다. */
+  | "retryable"
+  /** 경로가 없거나 안내를 만들 수 없다(경로 부재·기하 실패·수단 조건·요청 오류) — 재시도해도 같다. */
+  | "unavailable"
+  /** 서비스 제공 지역 밖 — repo 전역 커버리지 계층의 문구를 그대로 쓴다. */
+  | "outOfCoverage";
+
+/**
+ * HTTP 상태 → 실패 사유(설계 리뷰 #3). ⚠ **모든 비-200을 재시도 가능으로 접지 않는다** —
+ * 400(요청 오류)·404(키 없음)는 다시 시작해도 같은 실패라, 재시도 가능으로 위장하면
+ * 사용자가 효과 없는 재시작을 반복하고 배포 결함이 강등 뒤에 숨는다.
+ */
+function failureOfStatus(status: number): GuideRouteFailure {
+  return status >= 500 || status === 408 || status === 429 ? "retryable" : "unavailable";
+}
 
 /**
  * 안내 수단(B1 스펙 §4.1). kind 하나가 리듀서 튜닝·경로 소스·낭독 문구를 봉인
@@ -397,12 +422,15 @@ export interface RouteGuideApi {
    * 담당한다(이중 낭독 금지). 빈 값은 null(요소 제거 — 빈 텍스트 낭독 금지).
    */
   liveRows: { top: string | null; next: string | null };
-  /** 전환 버튼 노출 조건 — ko 데이터 로케일이면서 유효 상세 경로를 쥔 세션만. */
-  canOfferDetail: boolean;
+  /**
+   * 강등 상태의 **상시 표시 문장**(E16 축2 §A2). null이면 강등 아님.
+   * ⚠ 세션 도중 화면에 들어온 SR 사용자에게는 이 줄이 유일한 신호다 — 시작 통지 1회만으로는
+   * 그 사용자에게 아무것도 남지 않는다.
+   */
+  degradeText: string | null;
   rerouting: boolean;
   start: () => void;
   stop: () => void;
-  toggleMode: () => void;
   announceProgress: () => void;
   requestReroute: () => void;
 }
@@ -421,6 +449,8 @@ export function useRouteGuide(
   const locale = useLocale();
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
+  // 커버리지 문구는 repo 전역 계층이 소유한다(§A2 — 강등 사유에서 새로 쓰지 않는다).
+  const tCommon = useTranslations("common");
   // kind는 세션 봉인 구성의 키 — 첫 렌더 값으로 고정한다(중도 변경 미지원.
   // ref가 아니라 state 초기값 고정: 렌더 중 ref 읽기 금지 규칙과의 정합).
   const [kindFixed] = useState(kind);
@@ -430,6 +460,9 @@ export function useRouteGuide(
 
   const [status, setStatus] = useState<BeaconStatus>("idle");
   const [mode, setMode] = useState<GuideMode>("brief");
+  /** 강등 사유 표시(§A2). 상세가 서면 지운다. */
+  const [degradeText, setDegradeText] = useState<string | null>(null);
+  const degradeRef = useRef<GuideRouteFailure | "handoff" | null>(null);
   const [liveText, setLiveText] = useState("");
   const [offRoute, setOffRoute] = useState(false);
   const [progress, setProgress] = useState<GuideProgress | null>(null);
@@ -438,7 +471,6 @@ export function useRouteGuide(
     top: null,
     next: null,
   });
-  const [hasRoute, setHasRoute] = useState(false);
   const [rerouting, setRerouting] = useState(false);
 
   const destRef = useRef(dest);
@@ -492,7 +524,6 @@ export function useRouteGuide(
   const lastFixAtRef = useRef<number | null>(null);
   const lastGuidanceRef = useRef<string | null>(null);
   /** 간략→상세 전환 보류 시작 시각(단조 초). null이면 보류 없음. */
-  const pendingResolveRef = useRef<number | null>(null);
   /**
    * 시작 경로 조회를 기다리는 중인가(iOS `awaitingRoute` 미러). 이 창 동안 들어오는
    * fix를 간략 리듀서에 태우면 "목적지까지 216m" 뒤에 곧바로 상세 시작 요약이 붙어
@@ -596,6 +627,55 @@ export function useRouteGuide(
     },
     [commit],
   );
+
+  /**
+   * 강등 사유 문장. **모드 이름을 쓰지 않는다** — "직선거리 안내"가 아니라
+   * "목적지 방향과 거리"라는 *동작 서술*이다(E16 축2 §A2).
+   */
+  const degradeMessage = useCallback(
+    (reason: GuideRouteFailure | "handoff"): string => {
+      switch (reason) {
+        case "noLocation":
+          return t("degradedNoLocation");
+        case "retryable":
+          return t("degradedRetryable");
+        case "unavailable":
+          return t("degradedUnavailable");
+        case "outOfCoverage":
+          // 커버리지는 repo 전역 계층이 문구를 소유한다 — 여기서 새로 쓰지 않는다.
+          return tCommon("outOfCoverage");
+        case "handoff":
+          return t("handoff");
+      }
+    },
+    [t, tCommon],
+  );
+
+  /**
+   * 강등 진입. 사유가 **바뀔 때만** 통지한다(설계 리뷰 #6) — 같은 사유의 반복 진입은
+   * 새 정보가 아니다. `announce: false`는 호출부가 자기 문장을 따로 낼 때(재조회 실패).
+   *
+   * ⚠ **통지와 상시 표시는 다른 문자열이다.** 같은 문장을 live region과 DOM에 동시에 두면
+   * 회전자에서 이중 낭독된다(repo 금지 패턴 — 채팅 산문 sr-only 복제 회귀). 통지는 *사유*,
+   * 상시 표시는 *동작 서술*(`degradedNote`)이고, 종전 `straightLineNote`가 정확히 그 자리였다.
+   * 예외는 `noLocation` 하나 — 직선거리조차 불가해 "방향과 거리로 안내 중"이 거짓이라
+   * 그 상태만 사유가 곧 표시다.
+   */
+  const setDegrade = useCallback(
+    (reason: GuideRouteFailure | "handoff", opts?: { announce?: boolean }) => {
+      const changed = degradeRef.current !== reason;
+      degradeRef.current = reason;
+      setDegradeText(reason === "noLocation" ? t("degradedNoLocation") : t("degradedNote"));
+      if (changed && opts?.announce !== false) announce(degradeMessage(reason));
+    },
+    [announce, degradeMessage, t],
+  );
+
+  /** 상세 확정·세션 경계에서 강등 표시를 지운다. */
+  const clearDegrade = useCallback(() => {
+    degradeRef.current = null;
+    setDegradeText(null);
+  }, []);
 
   /**
    * 톤 재생 + 종료 시각 기록(발화 지연 판정 입력). 길이 0(버퍼 미준비·재생 실패)은
@@ -901,7 +981,11 @@ export function useRouteGuide(
           // 재획득 성공은 "확신 회복"과 같은 의미의 회복 통지다(전용 키 없음).
           return t("uncertainRecovered");
         case "speedSuggest":
-          return t("speedSuggest");
+          // ⚠ **웹은 발화하지 않는다**(E16 축2 §A1): 이 이벤트는 "직선거리 안내가 적합할 수
+          // 있다"는 **모드 권유**였는데 고를 수 있는 모드가 사라졌다. 리듀서 방출과 Kit
+          // 이벤트는 공유 계약이라 남기고(iOS도 이미 무시한다) 여기 매핑만 끊는다.
+          // 빈 문자열은 호출부 `if (!text) return`이 걸러 낸다(무발화 — live region 미갱신).
+          return "";
         case "waypointReached":
           // 웹 실시간 안내는 경유지를 모른다(서버 spec §3 — 경유지 조회엔 시작 버튼이 없다).
           // 리듀서 미러를 위해 이벤트만 존재하고 도달하지 않는다. iOS 판정 뒤 같은 계약으로.
@@ -967,11 +1051,12 @@ export function useRouteGuide(
     finalApproach: FinalApproachGeometry | null;
     /** 하단 2행 표시 입력(walk 전용 — 스팬 + 서버 live 조각, spec 2026-08-11). car는 []. */
     liveSteps: ReturnType<typeof liveStepsFrom>;
-  } | null> => {
+    ok: true;
+  } | { ok: false; failure: GuideRouteFailure }> => {
     // fail-closed: 실좌표가 없으면 안내를 시작하지 않는다. 수동 위치로 만든
     // 기존 경로 기하를 재사용하면 첫 실제 fix에서 즉시 이탈 판정이 난다.
     const fix = await awaitRealFix({ force });
-    if (!fix) return null;
+    if (!fix) return { ok: false, failure: "noLocation" };
     const target = destRef.current;
     try {
       if (kindFixed === "car") {
@@ -979,15 +1064,16 @@ export function useRouteGuide(
           `/api/route/car?origin=${fix.lat},${fix.lng}` +
             `&dest=${target.lat},${target.lng}&includeGeometry=1`,
         );
-        if (!res.ok) return null;
+        if (!res.ok) return { ok: false, failure: failureOfStatus(res.status) };
         const body: unknown = await res.json();
-        if (isOutOfCoverageBody(body)) return null;
+        if (isOutOfCoverageBody(body)) return { ok: false, failure: "outOfCoverage" };
         const briefing = body as CarRouteBriefing;
         // 카카오 폴백은 기하 미지원(§5) — 시작 폴백으로 정직 강등.
-        if (briefing.provider !== "tmap") return null;
+        if (briefing.provider !== "tmap") return { ok: false, failure: "unavailable" };
         const carGuide = buildCarGuide(briefing);
-        if (!carGuide) return null;
+        if (!carGuide) return { ok: false, failure: "unavailable" };
         return {
+          ok: true,
           route: carGuide.route,
           durationSeconds:
             Number.isFinite(briefing.durationSeconds) && briefing.durationSeconds > 0
@@ -1014,14 +1100,16 @@ export function useRouteGuide(
           lang: dataLocale(locale) === "ko" ? "ko" : "en",
         }),
       );
-      if (!res.ok) return null;
+      if (!res.ok) return { ok: false, failure: failureOfStatus(res.status) };
       const body: unknown = await res.json();
-      if (isOutOfCoverageBody(body)) return null;
+      if (isOutOfCoverageBody(body)) return { ok: false, failure: "outOfCoverage" };
       const result = (body as { result?: WalkRouteBriefing | null }).result;
-      if (!result) return null;
+      // 서버가 null을 주는 것은 TOO_FAR_AWAY·ROUTE_RESULT_NOT_FOUND — 재시도해도 같다.
+      if (!result) return { ok: false, failure: "unavailable" };
       const route = buildGuideRoute(result.steps);
-      if (!route) return null;
+      if (!route) return { ok: false, failure: "unavailable" };
       return {
+        ok: true,
         route,
         durationSeconds:
           Number.isFinite(result.durationSeconds) && result.durationSeconds > 0
@@ -1034,7 +1122,8 @@ export function useRouteGuide(
         liveSteps: liveStepsFrom(route, result.steps),
       };
     } catch {
-      return null;
+      // 네트워크 예외·JSON 파싱 실패 — 잘린 응답과 구분되지 않으므로 재시도 가능으로 본다.
+      return { ok: false, failure: "retryable" };
     }
   }, [kindFixed, locale]);
 
@@ -1094,13 +1183,6 @@ export function useRouteGuide(
   const resetFinalApproach = useCallback((geometry: FinalApproachGeometry | null) => {
     inFinalApproachRef.current = false;
     finalApproachGeoRef.current = geometry;
-    finalIntroSpokenRef.current = false;
-    lastFinalTickAtRef.current = null;
-  }, []);
-
-  /** 기하는 두고 소유권만 놓는다(수동 모드 전환 — §4). */
-  const releaseFinalApproach = useCallback(() => {
-    inFinalApproachRef.current = false;
     finalIntroSpokenRef.current = false;
     lastFinalTickAtRef.current = null;
   }, []);
@@ -1380,7 +1462,9 @@ export function useRouteGuide(
           setMode("brief");
           prevKindRef.current = null;
           setOffRoute(false);
-          announce(t("handoff"));
+          // ⚠ 자동 강등에도 상시 표시가 필요하다(설계 리뷰 #5): 종전 `straightLineNote`가
+          // 이 자리를 덮고 있었고, 사유 문장만 시작 실패에 달면 인계 세션은 표시가 빈다.
+          setDegrade("handoff");
           return;
         }
         inFinalApproachRef.current = true;
@@ -1428,6 +1512,7 @@ export function useRouteGuide(
       clearEtaTimer,
       closerIntervalSeconds,
       currentDisplay,
+      setDegrade,
       emitTone,
       eventText,
       kindFixed,
@@ -1440,43 +1525,6 @@ export function useRouteGuide(
       rememberGuidance,
       tuning,
     ],
-  );
-
-  /**
-   * 간략→상세 전환 보류 해소(스펙 §6). 후보가 복수인 동안은 간략을 유지한 채 후속
-   * fix로 재평가하고, 타임아웃이면 보류를 접는다. 이 fix를 소비했으면 true.
-   */
-  const resolvePending = useCallback(
-    (fix: GuideFix, now: number): boolean => {
-      const startedAt = pendingResolveRef.current;
-      const route = routeRef.current;
-      if (startedAt === null) return false;
-      if (!route) {
-        pendingResolveRef.current = null;
-        return false;
-      }
-      const entry = entryProjection(route, fix, tuning);
-      if (entry.status === "ok") {
-        pendingResolveRef.current = null;
-        commitDetail(
-          route,
-          guideStateAt(route, entry.d, now, {
-            autoHandoffArmed: false,
-            // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
-            courseDerivation: guideRef.current?.courseDerivation,
-          }),
-        );
-        announce(t("toDetailDone"));
-        return true;
-      }
-      if (now - startedAt >= RESOLVE_TIMEOUT_S) {
-        pendingResolveRef.current = null;
-        announce(t("resolveFailed"));
-        return true;
-      }
-      return false;
-    },
-    [announce, commitDetail, t, tuning],
   );
 
   const handleFix = useCallback(
@@ -1492,7 +1540,6 @@ export function useRouteGuide(
       const now = lastFixAtRef.current;
       // 모든 fix에서 갱신한다(거리 미분 폴백이 직전 표본을 쓴다).
       const motion = judgeMotion(pos, now);
-      if (resolvePending(fix, now)) return;
       // 최종 접근은 모드보다 앞이다 — 이 국면의 발화 소유자는 이 층 하나뿐이라
       // 경로 리듀서도 비콘 리듀서도 이 fix를 보지 않는다(§3.0 소유권 계약).
       if (inFinalApproachRef.current) {
@@ -1512,7 +1559,7 @@ export function useRouteGuide(
       if (awaitingRouteRef.current) return;
       stepBrief(fix, motion, now);
     },
-    [judgeMotion, resolvePending, stepBrief, stepDetail, stepFinalApproach],
+    [judgeMotion, stepBrief, stepDetail, stepFinalApproach],
   );
 
   const clearWatch = useCallback(() => {
@@ -1576,7 +1623,6 @@ export function useRouteGuide(
     lastFixRef.current = null;
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
-    pendingResolveRef.current = null;
     awaitingRouteRef.current = false;
     displayUnitsRef.current = [];
     liveStepsRef.current = [];
@@ -1586,16 +1632,16 @@ export function useRouteGuide(
       setStatus("idle");
       setMode("brief");
       modeRef.current = "brief";
-      setHasRoute(false);
       setOffRoute(false);
       setProgress(null);
       setCurrentText(null);
       setLiveRows({ top: null, next: null });
       setRerouting(false);
+      clearDegrade();
       announce("");
     }
     playTone("stop", performance.now() / 1000);
-  }, [announce, clearEtaTimer, clearWatch, playTone, resetFinalApproach, wakeLock]);
+  }, [announce, clearDegrade, clearEtaTimer, clearWatch, playTone, resetFinalApproach, wakeLock]);
 
   const start = useCallback(() => {
     if (!supported) {
@@ -1622,15 +1668,14 @@ export function useRouteGuide(
     lastFixAtRef.current = null;
     lastGuidanceRef.current = null;
     lastStepFreeRef.current = null;
-    pendingResolveRef.current = null;
     prevKindRef.current = null;
     trackingRef.current = true;
     modeRef.current = "brief";
     setMode("brief");
-    setHasRoute(false);
     setOffRoute(false);
     setProgress(null);
     setStatus("tracking");
+    clearDegrade();
     announce("");
     playTone("start", performance.now() / 1000);
     // 긴 톤 3종 사전 디코드(spec 2026-08-14 §6): 웹은 첫 재생이 fetch 왕복이라
@@ -1653,15 +1698,18 @@ export function useRouteGuide(
       if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
       // 이 세션이 맞다 — 성공·실패 어느 쪽이든 여기서 보류를 끝낸다(무한 억제 차단).
       awaitingRouteRef.current = false;
-      if (!fetched) {
+      if (!fetched.ok) {
         // 경로가 없으면 경로 기반 계단 판정도 없다(3-state). 복구된 상세가 열화면
         // 그때 다시 통지된다 — 새 경로에 대한 새 판정이므로 반복이 아니다.
         lastStepFreeRef.current = null;
-        // 조용한 강등 금지 — 시작 통지가 어느 모드인지 말한다(스펙 §4.1·§4.5).
-        announce(t("detailUnavailable"));
+        // 조용한 강등 금지. ⚠ 모드 이름이 아니라 **사유와 동작**을 말한다(E16 축2 §A2) —
+        // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
+        setDegrade(fetched.failure);
         return;
       }
       const { route } = fetched;
+      // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이가 정의돼야 패널이 낡지 않는다).
+      clearDegrade();
       routeDurationRef.current = fetched.durationSeconds;
       roadSpansRef.current = fetched.roadSpans;
       // 하단 2행 표시 유닛은 경로와 수명이 같다 — commitDetail(refreshLiveRows)보다 앞.
@@ -1686,7 +1734,6 @@ export function useRouteGuide(
         hasFinalApproachGeometry: fetched.finalApproach !== null,
       });
       commitDetail(route, init.state);
-      setHasRoute(true);
       const first = unitText(route, init.firstIndices, t);
       rememberGuidance(first);
       const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
@@ -1701,6 +1748,8 @@ export function useRouteGuide(
     })();
   }, [
     announce,
+    clearDegrade,
+    setDegrade,
     tuning,
     clearEtaTimer,
     commitDetail,
@@ -1716,67 +1765,6 @@ export function useRouteGuide(
     t,
     wakeLock,
   ]);
-
-  const toggleMode = useCallback(() => {
-    // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐(§4.5).
-    if (kindFixed !== "walk") return;
-    const route = routeRef.current;
-    if (!trackingRef.current || !route) return;
-    // 진행 중 재조회 응답은 모드 전환으로 무효가 된다(스펙 §5.6 폐기 조건).
-    genRef.current += 1;
-    const now = performance.now() / 1000;
-    if (modeRef.current === "detail") {
-      modeRef.current = "brief";
-      setMode("brief");
-      guideRef.current = null;
-      // 사용자가 직선 안내를 명시 선택했다 — 최종 접근이 쥔 발화 소유권을 놓는다
-      // (§4 "수동 detail → brief"). 기하는 세션 것이라 유지한다.
-      releaseFinalApproach();
-      // 경로 거리 → 직선거리(handoff와 같은 규칙). 방향만 승계하고 두 기준을 새 축
-      // 현재값으로 재설정한다.
-      rebaseForAxisChange();
-      prevKindRef.current = null;
-      pendingResolveRef.current = null;
-      setOffRoute(false);
-      setProgress(null);
-      // 하단 2행은 상세 전용 — 간략 복귀 시 비운다(유닛은 세션 것이라 유지).
-      liveRowsStateRef.current = null;
-      setLiveRows({ top: null, next: null });
-      announce(t("toBriefDone"));
-      return;
-    }
-    const fix = lastFixRef.current;
-    if (!fix) {
-      pendingResolveRef.current = now;
-      announce(t("resolvePending"));
-      return;
-    }
-    const entry = entryProjection(route, fix, tuning);
-    if (entry.status === "ok") {
-      pendingResolveRef.current = null;
-      // 경로 스텝 안내 중간에 "약 20미터"가 끼어드는 것을 막는다(§4 "수동 brief → detail").
-      releaseFinalApproach();
-      commitDetail(
-        route,
-        guideStateAt(route, entry.d, now, {
-          autoHandoffArmed: false,
-          hasFinalApproachGeometry: finalApproachGeoRef.current !== null,
-          // 같은 세션의 모드 전환 — 유도기 버퍼를 잇는다(spec §2.9).
-          courseDerivation: guideRef.current?.courseDerivation,
-        }),
-      );
-      announce(t("toDetailDone"));
-      return;
-    }
-    if (entry.status === "ambiguous") {
-      // 후보가 복수면 확정하지 않는다 — 잘못 고른 후보도 폴리라인 위라 이탈 판정이
-      // 영영 못 잡는다. 간략을 유지한 채 후속 fix로 재평가(스펙 §6).
-      pendingResolveRef.current = now;
-      announce(t("resolvePending"));
-      return;
-    }
-    announce(t("resolveFailed"));
-  }, [announce, commitDetail, kindFixed, rebaseForAxisChange, releaseFinalApproach, t, tuning]);
 
   const announceProgress = useCallback(() => {
     const route = routeRef.current;
@@ -1889,13 +1877,19 @@ export function useRouteGuide(
         const fetched = await fetchGuideRoute(true);
         // 도착 응답 폐기: 세대 불일치·중지·언마운트(채팅 이탈 게이트 동형).
         if (gen !== genRef.current || !trackingRef.current || !mountedRef.current) return;
-        if (!fetched) {
+        if (!fetched.ok) {
           // 경로가 없으면 경로 기반 계단 판정도 없다(3-state) — 시작 폴백과 동형.
           lastStepFreeRef.current = null;
+          // ⚠ 재조회 실패는 **사용자 활성화의 직접 응답**이라 사유 문구가 아니라 종전
+          // 재조회 실패 문장을 낸다(그 버튼이 무엇을 못 했는지가 답이다). 다만 강등 사유
+          // 표시는 갱신한다 — 세션은 계속 그 상태에 있다.
+          setDegrade(fetched.failure, { announce: false });
           announce(t("rerouteFailed"));
           return;
         }
         const { route } = fetched;
+        // 상세가 섰다 — 강등 문구를 지운다(설계 리뷰 #6: 복구 전이 정의).
+        clearDegrade();
         routeDurationRef.current = fetched.durationSeconds;
         roadSpansRef.current = fetched.roadSpans;
         // 새 경로 = 새 표시 유닛(commitDetail의 rows 리셋·재계산보다 앞).
@@ -1925,8 +1919,6 @@ export function useRouteGuide(
           courseDerivation: guideRef.current?.courseDerivation,
         });
         commitDetail(route, init.state);
-        setHasRoute(true);
-        pendingResolveRef.current = null;
         const first = unitText(route, init.firstIndices, t);
         rememberGuidance(first);
         const notice = consumeStepFreeNotice(fetched.stepFree, fetched.stepFreeNotice);
@@ -1947,6 +1939,8 @@ export function useRouteGuide(
     })();
   }, [
     announce,
+    clearDegrade,
+    setDegrade,
     tuning,
     commitDetail,
     consumeStepFreeNotice,
@@ -2055,13 +2049,10 @@ export function useRouteGuide(
     progress,
     currentText,
     liveRows,
-    // 전환 버튼은 도보 전용(§3.3) — car의 brief 복귀는 세션 재시작뿐.
-    // 로케일 조건은 E16 축3으로 사라졌다(전 로케일이 상세를 받는다).
-    canOfferDetail: kindFixed === "walk" && hasRoute,
+    degradeText,
     rerouting,
     start,
     stop,
-    toggleMode,
     announceProgress,
     requestReroute,
   };

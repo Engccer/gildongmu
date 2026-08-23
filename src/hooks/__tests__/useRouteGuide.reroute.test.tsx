@@ -216,7 +216,7 @@ describe("시작 조회를 기다리는 동안 간략 안내가 끼어들지 않
 
     renderGuide();
     click("start");
-    await waitFor(() => expect(live()).toContain("직선거리로 안내합니다"));
+    await waitFor(() => expect(live()).toContain("목적지 방향과 거리로 안내합니다"));
     const fallbackText = live();
 
     // 폴백 이후의 fix는 정상적으로 간략 발화를 만든다(무한 억제 차단).
