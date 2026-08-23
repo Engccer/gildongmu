@@ -299,6 +299,7 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(subwayIdForOdsayLine("대전 1호선") == nil)
     // 급행 lane 접미(웹 미러) — 벗기지 않으면 급행 leg가 통째로 추적 불가.
     #expect(subwayIdForOdsayLine("수도권 9호선(급행)") == "1009")
+    // ⚠ 1호선 형태는 우리 함수의 동작 단언이지 ODsay 관측이 아니다(웹 미러).
     #expect(subwayIdForOdsayLine("수도권 1호선(급행)") == "1001")
     // 그 밖의 괄호 등급은 삼키지 않는다(직통은 실시간 도착 축이 없다).
     #expect(subwayIdForOdsayLine("수도권 공항철도(직통)") == nil)
@@ -342,6 +343,34 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
             firstServiceTime: nil, lastServiceTime: nil)],
         routeKey: "p0")
     #expect(buildTransitGuideRoute(walkOnly) == nil)
+}
+
+@Test func buildGuideRouteKeepsExpressLegTrackable() {
+    // 웹 "급행 leg도 추적 대상이고 경유역은 급행 정차역 그대로다" 미러.
+    // 종전에는 lineName의 "(급행)" 접미 때문에 trackMode가 nil이라 급행 경로의
+    // 실시간 안내가 통째로 열리지 않았다(A16 선행 결함).
+    let stops = ["김포공항", "마곡나루", "가양", "염창", "당산", "여의도", "노량진", "동작", "고속터미널"]
+        .enumerated()
+        .map { TransitLegStop(name: $0.element, stationId: String(900 + $0.offset), lat: 37.5, lng: 126.9) }
+    let route = TransitRoute(
+        summary: TransitRouteSummary(
+            totalMinutes: 40, fare: 1950, transfers: 0, walkMinutes: 4,
+            departName: "김포공항", arriveName: "고속터미널"),
+        legs: [
+            TransitRouteLeg(
+                mode: "subway", lineName: "수도권 9호선(급행)",
+                fromName: "김포공항", toName: "고속터미널",
+                stationCount: 8, minutes: 27, serviceStatus: nil,
+                firstServiceTime: nil, lastServiceTime: nil,
+                serviceWayCode: 1, stops: stops),
+        ],
+        routeKey: "p-exp")
+    let guide = buildTransitGuideRoute(route)
+    #expect(guide?.legs.first?.trackMode == .subway)
+    // 표시명은 급행 표기를 유지한다(정규화는 매핑 축에만 걸린다).
+    #expect(guide?.legs.first?.lineName == "수도권 9호선(급행)")
+    #expect(guide?.legs.first?.viaStops.count == 9)
+    #expect(guide?.legs.first?.viaStops.contains { $0.name == "샛강" } == false)
 }
 
 @Test func boardingCandidateClassification() {

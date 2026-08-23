@@ -9,7 +9,14 @@
 //
 // ⚠ ODsay는 일 1,000회이고 길찾기와 공유한다. 이 게이트는 **호출 1회**만 쓴다.
 //
+// ⚠ **이 게이트가 보는 것은 업스트림 표기뿐이다.** "우리 정규화가 그 표기에
+//   닿는가"는 여기서 재구현한 정규식이 아니라 단위 테스트가 지킨다
+//   (`transit-guide.test.ts`·`TransitGuideTests.swift`가 `"수도권 9호선(급행)"`
+//   문자열 그대로를 `subwayIdForOdsayLine`에 넣어 단언한다). 둘이 합쳐야 축이
+//   덮인다 — 이 게이트만으로는 `subwayLineCore`가 바뀌어도 통과한다.
+//
 // 사용법: node scripts/verify-odsay-express-lane.mjs
+//   exit 0 = 통과 / 1 = 계약 위반 또는 호출 불가 / 2 = ODsay 일일 쿼터 소진
 import { readFileSync } from "node:fs";
 
 try {
@@ -51,10 +58,13 @@ try {
   process.exit(1);
 }
 if (json.error) {
-  // 쿼터 소진(429)은 계약 위반이 아니라 이 게이트를 돌릴 수 없는 상태다 —
-  // 통과로 위장하지 않고 별도 코드로 끝낸다.
+  // ⚠ 봉투가 2형(객체·배열)이라 배열 첫 원소도 본다(odsay-envelope와 같은 함정).
+  const err = Array.isArray(json.error) ? json.error[0] : json.error;
+  const code = String(err?.code ?? "");
   console.error(`ODsay error: ${JSON.stringify(json.error)}`);
-  process.exit(2);
+  // **쿼터 소진만** "지금은 돌릴 수 없는 상태"(exit 2)다. 키 만료·Referer 등록
+  // 해제도 같은 코드로 끝내면 그 사망이 "쿼터 탓"으로 영구 위장된다 — 3-state.
+  process.exit(code === "429" ? 2 : 1);
 }
 
 const subways = (json.result?.path ?? []).flatMap((p) =>
@@ -87,12 +97,21 @@ check(
 
 // 경유역이 급행 기준으로 좁혀져 오는가(E14 ① 근거 — 이게 깨지면 경유역 목록이
 // 급행 승객에게 거짓이 된다).
-const expStops = express[0]?.passStopList?.stations?.length ?? 0;
-const locStops = local[0]?.passStopList?.stations?.length ?? 0;
+// ⚠ **같은 구간끼리만 비교한다.** subPath는 모든 path에서 평평하게 모이므로,
+//   환승 경로 안의 짧은 9호선 구간이 완행 대표로 잡히면 역 수 비교가 정차역
+//   축약과 무관하게 성립하거나 깨진다.
+const expLeg = express[0];
+const locLeg = local.find(
+  (s) => s.startName === expLeg?.startName && s.endName === expLeg?.endName,
+);
+const expStops = expLeg?.passStopList?.stations?.length ?? 0;
+const locStops = locLeg?.passStopList?.stations?.length ?? 0;
 check(
-  "급행 경유역이 완행보다 적다(정차역 축약이 살아 있다)",
+  "급행 경유역이 같은 구간의 완행보다 적다(정차역 축약이 살아 있다)",
   expStops > 0 && locStops > 0 && expStops < locStops,
-  `급행 ${expStops}역 / 완행 ${locStops}역`,
+  locLeg
+    ? `${expLeg.startName}→${expLeg.endName}: 급행 ${expStops}역 / 완행 ${locStops}역`
+    : "같은 구간의 완행 subPath를 찾지 못했다(비교 불가)",
 );
 
 const failed = results.filter((r) => !r.pass);
