@@ -94,6 +94,21 @@ import Foundation
     #expect(train.nextDay == nil)
 }
 
+@Test func stationTimetableLineCoverageDecodesOptionally() throws {
+    // A19: 신서버는 coverage를 싣고 0행 노선도 lines에 남긴다. 구서버(필드 없음)도 디코딩돼야 한다.
+    let json = #"""
+    {"timetable":{"stationName":"홍대입구","dailyType":"weekday",
+      "lines":[{"lineName":"2호선","coverage":"unknown","directions":[]},
+               {"lineName":"공항철도","directions":[
+        {"direction":"up","first":{"time":"05:10","terminus":"인천공항2터미널"},"last":{"time":"23:40","terminus":"인천공항2터미널"}}]}]}}
+    """#
+    let tt = try #require(try JSONDecoder().decode(StationTimetableResponse.self, from: Data(json.utf8)).timetable)
+    #expect(tt.lines[0].coverage == "unknown")
+    #expect(tt.lines[0].directions.isEmpty)
+    #expect(tt.lines[1].coverage == nil)
+    #expect(tt.lines[1].directions.count == 1)
+}
+
 @Test func stationTimetableEmptyLinesAndNullEnvelopeDecode() throws {
     // 전 호출 성공·유효 행 0(§2-A 표): lines 빈 배열, null과 구분되는 상태
     let empty = try JSONDecoder().decode(
