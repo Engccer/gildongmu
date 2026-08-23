@@ -238,7 +238,7 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
   // 실측(2026-08-01): 대저역은 부산3호선이 토요일 150행인데 부산김해경전철은
   // 0행이라 구간 단위로 폴백하면 "토요일 기준" 라벨 아래 휴일 값이 섞인다.
   // 한 노선이라도 토요일에 답하면 그 역은 토요일 다이어를 갖는 역이므로
-  // 폴백하지 않고, 답하지 못한 노선은 미노출로 정직하게 빠진다.
+  // 폴백하지 않고, 답하지 못한 노선은 `coverage: "unknown"`으로 남는다(lines에서 빼지 않는다, A19).
   let settled = await Promise.allSettled(
     jobs.map(({ st, dir }) => fetchScheduleOnce(st.id, dailyTypeCode, dir)),
   );
