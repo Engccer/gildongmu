@@ -230,10 +230,13 @@ enum GuideText {
         accuracy: Double, destinationLabel: String, target: String?
     ) -> String {
         // 횡단 스텝(병합 횡단보도는 40m를 넘어 following으로 온다)에 "직진하세요"는
-        // 오지시다 — 정본 문장(…건너세요)을 재낭독한다(웹 walkPeriodicLine 미러).
+        // 오지시다 — 정본 문장(…건너세요 / Cross the crosswalk…)을 재낭독한다(웹 미러).
+        // ⚠ 판정은 **서버 투영 행동**만 본다(E16 축3). 종전엔 `walkStepAction` + `"건너"`
+        // 부분 문자열이라 en 문장에서 둘 다 실패해 횡단 중에 직진 지시가 나갔다.
+        // ⚠ 오탐이 미탐보다 싸다 — 오탐은 문장을 한 번 더 읽을 뿐이고 미탐은 오지시다.
         if route.steps.indices.contains(stepIndex) {
-            let cur = route.steps[stepIndex].description
-            if isCrossingStep(walkStepAction(cur), cur) { return cur }
+            let step = route.steps[stepIndex]
+            if step.action == .crosswalk || step.action == .underpass { return step.description }
         }
         let distance = confidenceDistance(Double(remainingMeters), accuracy: accuracy)
         guard route.steps.indices.contains(stepIndex + 1) else {

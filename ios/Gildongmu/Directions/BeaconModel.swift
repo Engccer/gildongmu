@@ -673,15 +673,15 @@ final class BeaconModel {
         )
         startWatchdog()
 
-        // 상세 적격 시도(스펙 §4.1): ko 데이터 로케일에서만 경로를 조회한다(도보 API
-        // V1 ko 전용). 조회 트리거는 첫 수용 fix(handle(fix:))다 — 여기서 바로 띄우면
-        // origin 취득이 첫 fix 전이라 항상 실패해 간략 폴백이 고정된다(8번).
+        // 상세 적격 시도(스펙 §4.1). 조회 트리거는 첫 수용 fix(handle(fix:))다 — 여기서 바로
+        // 띄우면 origin 취득이 첫 fix 전이라 항상 실패해 간략 폴백이 고정된다(8번).
         // 대기·조회 중엔 비콘 발화를 보류하고, 실패는 간략으로 정직 폴백.
-        if AppLanguage.dataLocale == "ko" {
-            awaitingRoute = true
-            routeFetchToken += 1
-            startFixWaitWatch(token: routeFetchToken)
-        }
+        // ⚠ **로케일 게이트는 E16 축3으로 사라졌다**(서버가 en 문장을 만든다). 이 플래그가
+        // 상세 조회의 **유일한 트리거**라, 여기만 ko로 남기면 시작 버튼은 열려 있는데
+        // 세션이 조용히 직선거리로 도는 상태가 된다(리뷰 검출).
+        awaitingRoute = true
+        routeFetchToken += 1
+        startFixWaitWatch(token: routeFetchToken)
     }
 
     /// 수용 fix가 상한(noFixTimeout) 내에 오지 않으면 그때까지의 최선 fix로 조회하고,
@@ -748,7 +748,8 @@ final class BeaconModel {
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
             // 안내 문장 언어(E16 축3) — 기본값 없는 인자라 새 조회 경로가 빠뜨리면 컴파일이 막는다.
-            lang: AppLanguage.dataLocale == "ko" ? "ko" : "en",
+            // `dataLocale`은 이미 "ko"|"en"만 낸다 — 삼항으로 다시 좁히면 두 형태가 갈린다.
+            lang: AppLanguage.dataLocale,
             includeGeometry: true,
             variant: variant, via: via
         )
@@ -756,7 +757,11 @@ final class BeaconModel {
         if via != nil, briefing.waypoint == nil { return nil }
         guard let route = buildGuideRoute(
             briefing.steps.map {
-                GuideStepGeometry(description: $0.description, pathCoords: $0.pathCoords)
+                // ⚠ `action`을 빠뜨리면 walk 프로파일(`actionSource: .step`)에서 임박 큐가
+                // 전면 침묵한다 — 웹 테스트·타입 검사·Kit fixture가 전부 통과시키는 자리다
+                // (fixture는 action을 직접 싣는다). E16 축3 §4.2.1.
+                GuideStepGeometry(
+                    description: $0.description, pathCoords: $0.pathCoords, action: $0.action)
             },
             waypointStepIndex: briefing.waypoint?.stepIndex
         ) else { return nil }
@@ -1298,15 +1303,13 @@ final class BeaconModel {
         }
         waypoint = Waypoint(dest: newDest, label: label)
         syncStartRequestWithSession()
-        let fetching = AppLanguage.dataLocale == "ko"
-        if fetching {
-            reacquireRoute()
-        }
+        // ⚠ 재조회는 전 로케일이다(E16 축3으로 ko 게이트 삭제 — 남기면 목적지·경유지를
+        // 바꿔도 경로가 갱신되지 않은 채 새 목적지를 안내한다). 항상 참인 상수를 남기지
+        // 않는 것이 이 repo의 플래그 졸업 방식이라 조건 자체를 지웠다.
+        reacquireRoute()
         announceNow(appLocalized("ios.guide.waypointSet", label), highPriority: true, bypassSuppression: true)
-        if fetching {
-            awaitingRoute = true
-            startFixWaitWatch(token: routeFetchToken)
-        }
+        awaitingRoute = true
+        startFixWaitWatch(token: routeFetchToken)
         return true
     }
 
@@ -1319,14 +1322,11 @@ final class BeaconModel {
         syncStartRequestWithSession()
         // 제안·프리뷰 소거는 reacquireRoute()가 한다(setWaypoint 동형). 폼의 `via`는 사용자 질의라
         // 도착과 같은 이유로 건드리지 않는다 — 다음 조회 전에 폼에서 지우는 것은 사용자 몫(spec §6.5).
-        let fetching = AppLanguage.dataLocale == "ko"
-        if fetching { reacquireRoute() }
+        reacquireRoute()
         announceNow(appLocalized("ios.guide.waypointRemoved", removed.label),
                     highPriority: true, bypassSuppression: true)
-        if fetching {
-            awaitingRoute = true
-            startFixWaitWatch(token: routeFetchToken)
-        }
+        awaitingRoute = true
+        startFixWaitWatch(token: routeFetchToken)
         return true
     }
 
@@ -1351,16 +1351,11 @@ final class BeaconModel {
         syncStartRequestWithSession()
         reacquireRoute()
         // 즉시 확인 통지(§3.1: 조회 완료에 결박하지 않는 활성화 응답, 억제 우회).
-        let fetching = AppLanguage.dataLocale == "ko"
-        let ack = fetching
-            ? appLocalized("ios.guide.destChanged", label) + " "
-                + appLocalized("ios.guide.destChangedFetching")
-            : appLocalized("ios.guide.destChanged", label)
+        let ack = appLocalized("ios.guide.destChanged", label) + " "
+            + appLocalized("ios.guide.destChangedFetching")
         announceNow(ack, highPriority: true, bypassSuppression: true)
-        if fetching {
-            awaitingRoute = true
-            startFixWaitWatch(token: routeFetchToken)
-        }
+        awaitingRoute = true
+        startFixWaitWatch(token: routeFetchToken)
         return true
     }
 

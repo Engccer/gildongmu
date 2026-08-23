@@ -775,7 +775,10 @@
     "degradedNoLocation": "Votre position actuelle n’a pas pu être déterminée. Vérifiez l’autorisation de localisation et le signal.",
     "degradedRetryable": "L’itinéraire n’a pas pu être chargé. Pour l’instant, seules la direction et la distance jusqu’à la destination sont annoncées.",
     "degradedUnavailable": "Aucun itinéraire vers cette destination n’a été trouvé. Le guidage utilise la direction et la distance jusqu’à la destination.",
-    "degradedNote": "Le guidage utilise la direction et la distance jusqu’à la destination."
+    "degradedNoteRetryable": "L’itinéraire n’a pas pu être chargé ; le guidage utilise la direction et la distance jusqu’à la destination.",
+    "degradedNoteUnavailable": "Aucun itinéraire n’a été trouvé ; le guidage utilise la direction et la distance jusqu’à la destination.",
+    "degradedNoteCoverage": "Vous êtes hors de la zone couverte ; le guidage utilise la direction et la distance jusqu’à la destination.",
+    "degradedNoteHandoff": "L’itinéraire est terminé ; le guidage utilise la direction et la distance jusqu’à la destination."
   },
   "offline": {
     "heading": "Vous êtes hors ligne",

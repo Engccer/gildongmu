@@ -300,9 +300,15 @@ export function walkPeriodicLine(
   t: GuideT,
 ): string {
   // 횡단 스텝(병합 횡단보도는 40m를 넘어 following으로 온다)에 "직진하세요"는
-  // 오지시다 — 정본 문장(…건너세요)을 재낭독한다(리뷰 검출 2026-08-12).
-  const cur = route.steps[stepIndex]?.description ?? "";
-  if (isCrossingStep(walkStepAction(cur), cur)) return cur;
+  // 오지시다 — 정본 문장(…건너세요 / Cross the crosswalk…)을 재낭독한다(리뷰 검출 2026-08-12).
+  // ⚠ 판정은 **서버 투영 행동**만 본다(E16 축3). 종전엔 `walkStepAction` + `"건너"` 부분
+  // 문자열이라 en 문장에서 둘 다 실패해 **횡단 중에 "Walk straight"가 나갔다**(리뷰 검출).
+  // ⚠ 여기서는 오탐이 미탐보다 싸다 — 오탐은 provider 문장을 한 번 더 읽는 것뿐이고,
+  // 미탐은 건너는 중에 직진을 지시한다. 그래서 `isCrossingStep`의 description 축을 쓰지 않는다
+  // (그 축은 표시 유닛 묶음이 계속 쓴다 — 그쪽은 ko 계약이라 건드리지 않는다).
+  const step = route.steps[stepIndex];
+  const cur = step?.description ?? "";
+  if (step?.action === "crosswalk" || step?.action === "underpass") return cur;
   if (!route.steps[stepIndex + 1]) {
     return t("nextDestination", { dest: destName, distance });
   }
@@ -652,6 +658,32 @@ export function useRouteGuide(
   );
 
   /**
+   * 강등 **상시 표시** 문장. 통지(사유)와 **다른 문자열**이어야 한다 — 같은 문장을 live
+   * region과 DOM에 함께 두면 회전자에서 이중 낭독된다(종전 `straightLineNote`의 자리).
+   * ⚠ 그렇다고 사유를 버리지는 않는다: 3-state를 만든 유일한 수혜자가 **세션 도중 화면에
+   * 들어온 사용자**인데, 한 문장으로 뭉개면 그 사용자에게 "재시도로 풀리는가"가 도달하지
+   * 않는다(리뷰 검출). 사유별로 다른 표현의 상시 문장을 둔다.
+   * `noLocation`만 예외 — 직선거리조차 불가해 "방향과 거리로 안내 중"이 거짓이라 사유가 곧 표시다.
+   */
+  const degradeNote = useCallback(
+    (reason: GuideRouteFailure | "handoff"): string => {
+      switch (reason) {
+        case "noLocation":
+          return t("degradedNoLocation");
+        case "retryable":
+          return t("degradedNoteRetryable");
+        case "unavailable":
+          return t("degradedNoteUnavailable");
+        case "outOfCoverage":
+          return t("degradedNoteCoverage");
+        case "handoff":
+          return t("degradedNoteHandoff");
+      }
+    },
+    [t],
+  );
+
+  /**
    * 강등 진입. 사유가 **바뀔 때만** 통지한다(설계 리뷰 #6) — 같은 사유의 반복 진입은
    * 새 정보가 아니다. `announce: false`는 호출부가 자기 문장을 따로 낼 때(재조회 실패).
    *
@@ -665,10 +697,10 @@ export function useRouteGuide(
     (reason: GuideRouteFailure | "handoff", opts?: { announce?: boolean }) => {
       const changed = degradeRef.current !== reason;
       degradeRef.current = reason;
-      setDegradeText(reason === "noLocation" ? t("degradedNoLocation") : t("degradedNote"));
+      setDegradeText(degradeNote(reason));
       if (changed && opts?.announce !== false) announce(degradeMessage(reason));
     },
-    [announce, degradeMessage, t],
+    [announce, degradeMessage, degradeNote],
   );
 
   /** 상세 확정·세션 경계에서 강등 표시를 지운다. */
@@ -1557,9 +1589,15 @@ export function useRouteGuide(
       // 도플러 표본은 끊기지 않고, 비콘 앵커는 상세 확정 시 어차피 재기준화된다.
       // 조회가 실패하면 이 플래그가 풀리며 다음 fix부터 간략 안내가 정상 동작한다.
       if (awaitingRouteRef.current) return;
+      // ⚠ 위치를 되찾으면 `noLocation` 표시를 내린다(리뷰 검출). `watchPosition`은 시작 조회
+      // 실패 뒤에도 살아 있어 다음 fix부터 거리를 또박또박 안내하는데, 패널은 "현재 위치를
+      // 확인하지 못했습니다"를 계속 들고 있었다 — 상시 표시가 유일한 신호인 사용자에게
+      // 그 모순은 반증 불가다. 경로는 여전히 없으므로 사유는 `retryable`로 내려간다
+      // (다시 시작하면 조회가 다시 돈다). 새 정보가 아니므로 통지는 하지 않는다.
+      if (degradeRef.current === "noLocation") setDegrade("retryable", { announce: false });
       stepBrief(fix, motion, now);
     },
-    [judgeMotion, stepBrief, stepDetail, stepFinalApproach],
+    [judgeMotion, setDegrade, stepBrief, stepDetail, stepFinalApproach],
   );
 
   const clearWatch = useCallback(() => {

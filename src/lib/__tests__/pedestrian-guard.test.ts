@@ -38,8 +38,12 @@ describe("assertDistanceMatchesKorean", () => {
     expect(() => assertDistanceMatchesKorean("좌회전 후 306m 이동", 314)).toThrow(/거리/);
   });
 
-  it("원문에 거리가 없거나 구간이 없으면 판정하지 않는다", () => {
+  it("원문에 거리가 없으면 판정하지 않는다", () => {
     expect(() => assertDistanceMatchesKorean("도착", 0)).not.toThrow();
-    expect(() => assertDistanceMatchesKorean("좌회전 후 286m 이동", undefined)).not.toThrow();
+  });
+
+  it("원문은 거리를 말하는데 구간이 없으면 throw — 그것도 귀속 파손이다", () => {
+    // 조용히 통과시키면 en 문장에서 거리 절만 사라져("Turn right") 가정이 깨진 줄 모른다.
+    expect(() => assertDistanceMatchesKorean("좌회전 후 286m 이동", undefined)).toThrow(/구간/);
   });
 });

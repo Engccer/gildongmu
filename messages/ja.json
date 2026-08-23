@@ -775,7 +775,10 @@
     "degradedNoLocation": "現在地を確認できませんでした。位置情報の許可と電波状況を確認してください。",
     "degradedRetryable": "経路を読み込めませんでした。今は目的地の方向と距離だけをお知らせします。",
     "degradedUnavailable": "この目的地までの経路が見つかりませんでした。目的地の方向と距離で案内します。",
-    "degradedNote": "目的地の方向と距離で案内しています。"
+    "degradedNoteRetryable": "経路を読み込めなかったため、目的地の方向と距離で案内しています。",
+    "degradedNoteUnavailable": "経路が見つからないため、目的地の方向と距離で案内しています。",
+    "degradedNoteCoverage": "提供地域外のため、目的地の方向と距離で案内しています。",
+    "degradedNoteHandoff": "経路が終わったため、目的地の方向と距離で案内しています。"
   },
   "offline": {
     "heading": "オフラインです",

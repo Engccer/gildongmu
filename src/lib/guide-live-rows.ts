@@ -65,7 +65,7 @@ export function isCrossingStep(action: WalkAction | null, description: string): 
   return (action === "crosswalk" || action === "underpass") && description.includes("건너");
 }
 
-/** `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — walk `text`, car `step`). 기본값 없음. */
+/** `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — 2026-08-23부터 walk·car 모두 `step`). 기본값 없음. */
 export function buildDisplayUnits(
   steps: LiveStepInput[],
   source: GuideTuning["actionSource"],

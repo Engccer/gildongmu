@@ -8,8 +8,12 @@
 //
 // 보는 것:
 //  ① 전 스텝 description에 한글 0 (영어 음성이 읽지 못하는 조각이 남지 않았는가)
-//  ② 로마자 도로명(" along X")이 최소 1건 (juso 축이 실제로 붙는가)
-//  ③ includeGeometry=1에서 pathCoords와 action이 온다 (실시간 안내 성립 조건)
+//  ② 로마자 도로명이 **경로 전반에** 붙는다 — 스텝 대비 15% 이상(코퍼스 실측 106/405 ≈ 26%)
+//     이고 서로 다른 도로명 25개 이상. ⚠ "1건 이상"은 자명하게 통과한다(첫 키만 조회해도 PASS).
+//  ③ includeGeometry=1에서 pathCoords가 오고, **문장의 행동절과 `action`이 일치한다**.
+//     ⚠ 존재 검사(`action >= 1`)면 표가 통째로 뒤바뀌어도 PASS다 — 좌회전 지점에서 우회전
+//     톤이 나는 자리라 문장↔행동 대조가 필요하다. 응답에 `turnType`은 없으므로(내부 전달
+//     필드는 제거된다) en 문장 자체를 표의 반대 방향 증인으로 쓴다.
 //  ④ 코퍼스 규모가 설계 근거에 미치는가(스텝 400 이상)
 //  ⑤ 502가 0건 (미지 turnType·가드 오탐이 없다 — 하나라도 있으면 그 경로는 죽는다)
 //  ⑥ ko 조회는 종전대로 한국어다 (회귀 가드)
@@ -69,9 +73,27 @@ async function walk(route, lang) {
 let steps = 0;
 let withRoad = 0;
 let withAction = 0;
+/** 영어 행동절 → 기대 `action`(`pedestrian-action.ts` 표의 반대 방향). null = 행동 없음. */
+const PHRASE_ACTION = [
+  ["Cross the crosswalk", "crosswalk"],
+  ["Take the underpass", "underpass"],
+  ["Take the pedestrian overpass", null],
+  ["Take the stairs", null],
+  ["Take the ramp", null],
+  ["Take the elevator", null],
+  ["Make a U-turn", "back"],
+  ["Turn to your 8 o'clock", "left"],
+  ["Turn to your 10 o'clock", "left"],
+  ["Turn to your 2 o'clock", "right"],
+  ["Turn to your 4 o'clock", "right"],
+  ["Turn left", "left"],
+  ["Turn right", "right"],
+];
 const hangulSteps = [];
 const missingGeometry = [];
 const failures = [];
+const actionMismatch = [];
+const roadNames = new Set();
 
 for (const route of ROUTES) {
   const { status, body } = await walk(route, "en");
@@ -84,8 +106,18 @@ for (const route of ROUTES) {
   for (const s of result.steps ?? []) {
     steps++;
     if (HANGUL.test(s.description)) hangulSteps.push(s.description);
-    if (/ along /.test(s.description)) withRoad++;
+    const along = / along (.+)$/.exec(s.description.replace(/[.]$/, ""));
+    if (along) {
+      withRoad++;
+      roadNames.add(along[1]);
+    }
     if (s.action) withAction++;
+    // 문장 ↔ 행동 대조: 첫 매칭 행동절이 기대하는 action과 실제가 같아야 한다.
+    const hit = PHRASE_ACTION.find(([phrase]) => s.description.startsWith(phrase));
+    const expectedAction = hit ? hit[1] : null;
+    if ((s.action ?? null) !== expectedAction) {
+      actionMismatch.push(`${s.description} → action=${s.action ?? "none"} (기대 ${expectedAction ?? "none"})`);
+    }
     if (!Array.isArray(s.pathCoords) || s.pathCoords.length === 0) {
       missingGeometry.push(s.description);
     }
@@ -95,9 +127,17 @@ for (const route of ROUTES) {
 check("⑤ 502·오류 응답 0건(미지 turnType·가드 오탐 없음)", failures.length === 0, failures.slice(0, 3).join(" | "));
 check("④ 코퍼스 스텝 400 이상", steps >= 400, `steps=${steps}`);
 check("① 전 스텝 한글 0", hangulSteps.length === 0, hangulSteps.slice(0, 3).join(" | "));
-check("② 로마자 도로명 1건 이상", withRoad >= 1, `withRoad=${withRoad}`);
+check(
+  "② 로마자 도로명이 경로 전반에 붙는다(스텝 대비 15% 이상 · 고유 25개 이상)",
+  steps > 0 && withRoad / steps >= 0.15 && roadNames.size >= 25,
+  `withRoad=${withRoad}/${steps} distinct=${roadNames.size}`,
+);
 check("③ 기하(pathCoords) 전 스텝 보유", missingGeometry.length === 0, missingGeometry.slice(0, 3).join(" | "));
-check("③ 행동(action) 1건 이상", withAction >= 1, `withAction=${withAction}`);
+check(
+  "③ 문장의 행동절과 action이 전건 일치(표 뒤바뀜 검출)",
+  actionMismatch.length === 0,
+  actionMismatch.slice(0, 3).join(" | "),
+);
 
 // ⑥ ko 회귀 — 같은 좌표로 ko를 부르면 한국어가 나와야 한다.
 const koSample = await walk(ROUTES[0], "ko");
@@ -109,5 +149,8 @@ check(
 );
 
 const failed = results.filter((r) => !r.ok);
-console.log(`\n총 ${results.length}축 중 ${failed.length}건 실패 (steps=${steps}, road=${withRoad}, action=${withAction})`);
+console.log(
+  `\n총 ${results.length}축 중 ${failed.length}건 실패 ` +
+    `(steps=${steps}, road=${withRoad}/${roadNames.size}, action=${withAction})`,
+);
 process.exit(failed.length ? 1 : 0);

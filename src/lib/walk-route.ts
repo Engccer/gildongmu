@@ -99,10 +99,12 @@ export function annotateAudioSignals(
     // Tmap 스텝은 normalize 시점에 이미 action을 달고 오므로 en 문장에서도 판정이 성립한다.
     // ko+Tmap에서 211·212·213은 종전 문자열 판정과 같은 결론이라 회귀가 없고, 카카오 스텝은
     // action이 없어 종전 경로 그대로다(병합 표현 게이트 포함).
+    // ⚠ **병합 게이트는 두 경로 공통이다**(리뷰 검출): 구조화 분기에서 빼면 여러 횡단보도를
+    // 묶은 스텝에 seed 1개 매칭으로 주석이 붙어 "침묵보다 나쁜 거짓 안전 정보"가 된다.
     const isCrosswalk =
-      rest.action !== undefined
+      (rest.action !== undefined
         ? rest.action === "crosswalk"
-        : rest.description.includes("횡단보도") && !MERGED_CROSSWALK.test(rest.description);
+        : rest.description.includes("횡단보도")) && !MERGED_CROSSWALK.test(rest.description);
     const annotated =
       candidates.length > 0 &&
       isCrosswalk &&
@@ -179,12 +181,21 @@ export function attachStepActions(
   includeGeometry: boolean,
 ): WalkRouteBriefing {
   const steps = briefing.steps.map((step) => {
-    const { turnType: _turnType, roadNameKo: _roadNameKo, ...rest } = step;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { turnType, roadNameKo: _roadNameKo, ...rest } = step;
     if (!includeGeometry) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { action: _action, ...plain } = rest;
       return plain;
     }
-    const action = rest.action ?? walkStepAction(rest.description) ?? undefined;
+    // ⚠ **`turnType`을 가진 스텝(=Tmap 유래)은 문장 폴백을 타지 않는다.** 그 스텝은 이미 표로
+    // 분류가 끝났고, `action`이 없다는 것은 "미투영"이 아니라 **의도된 행동 없음**(직진·출발·
+    // 육교·계단·엘리베이터)이다. 폴백을 태우면 ko+Tmap의 직진 스텝 교차로명에 "횡단보도"가
+    // 섞였을 때 직진 지점에서 crosswalk 톤이 난다(리뷰 검출, `pedestrian-guard`가 문서화한
+    // precedence 함정의 반대 방향). 문장 분류는 카카오 스텝(turnType 부재)에만 남는다.
+    const action =
+      rest.action ??
+      (turnType === undefined ? (walkStepAction(rest.description) ?? undefined) : undefined);
     return action ? { ...rest, action } : rest;
   });
   return { ...briefing, steps };

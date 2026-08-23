@@ -17,7 +17,7 @@ const line = (distance: number, name: string, coords: [number, number][]) => ({
 });
 
 describe("normalizeTmapWalkRoute 구조화 투영", () => {
-  it("turnType·첫 LineString의 도로명·거리를 스텝에 싣는다", () => {
+  it("turnType·첫 LineString의 도로명·거리를 스텝에 싣는다(en 전용)", () => {
     const b = normalizeTmapWalkRoute({
       type: "FeatureCollection",
       features: [
@@ -36,7 +36,7 @@ describe("normalizeTmapWalkRoute 구조화 투영", () => {
           [127.105, 37.5],
         ]),
       ],
-    });
+    }, { guard: true });
     expect(b.steps[0]).toMatchObject({ turnType: 200, distanceMeters: 30 });
     expect(b.steps[0].roadNameKo).toBeUndefined();
     expect(b.steps[1]).toMatchObject({
@@ -61,9 +61,42 @@ describe("normalizeTmapWalkRoute 구조화 투영", () => {
           [127.1031, 37.5],
         ]),
       ],
-    });
+    }, { guard: true });
     expect(b.steps[0].distanceMeters).toBe(306);
     expect(b.steps[0].roadNameKo).toBe("봉은사로");
+  });
+
+  // ⚠ ko(기본)에서는 문장 축을 붙이지 않는다 — 붙이면 `rewriteWalkGuidance`의 meters-게이트
+  // 규칙 3종이 ko 폴백 문장에 새로 걸리고, CROSS는 첫 구간 거리를 "횡단보도 길이"라고
+  // 이름 붙여 낭독되는 수치가 무엇의 값인지 틀린다(품질 리뷰 검출).
+  it("ko(guard=false)에서는 거리·도로명을 붙이지 않는다 — 종전 문장 불변", () => {
+    const b = normalizeTmapWalkRoute({
+      type: "FeatureCollection",
+      features: [
+        point(200, "306m 이동"),
+        line(306, "봉은사로", [
+          [127.1, 37.5],
+          [127.103, 37.5],
+        ]),
+      ],
+    });
+    expect(b.steps[0].distanceMeters).toBeUndefined();
+    expect(b.steps[0].roadNameKo).toBeUndefined();
+    expect(b.steps[0].turnType).toBe(200); // 행동 축은 ko에서도 붙는다
+  });
+
+  it("소수 거리는 반올림한다(iOS 엄격 Int 디코딩 — 하나가 브리핑 전체를 죽인다)", () => {
+    const b = normalizeTmapWalkRoute({
+      type: "FeatureCollection",
+      features: [
+        point(200, "31m 이동"),
+        line(30.6, "", [
+          [127.1, 37.5],
+          [127.103, 37.5],
+        ]),
+      ],
+    }, { guard: true });
+    expect(b.steps[0].distanceMeters).toBe(31);
   });
 
   const contradicting = {

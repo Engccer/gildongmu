@@ -368,8 +368,12 @@ export function DirectionsView({
   const [notice, setNotice] = useState("");
 
   // 계단 회피(도보 전용) 토글. 초기값은 `?walkAccessible=1`(위 lazy 초기화 참고).
+  // ⚠ **비-ko에서는 무조건 꺼진 상태로 시작한다**(리뷰 검출): 토글은 숨겨 두는데
+  // `?walkAccessible=1`이 실린 URL을 en으로 열면 상태만 살아남아 매 조회에 실리고,
+  // 서버가 "Step-free routing is unavailable…"을 스텝 0으로 삽입한다 — 끌 수단이 화면에 없다.
+  const stepFreeSupported = !prefersEnglish(locale);
   const [stepFreeEnabled, setStepFreeEnabledState] = useState(
-    readWalkAccessibleFromUrl,
+    () => stepFreeSupported && readWalkAccessibleFromUrl(),
   );
   // ref는 비동기 콜백에서 "최신" 상태를 동기로 읽기 위함(state는 렌더 시점 클로저라
   // async 함수 안에서 못 씀). 초기값은 위 state와 같은 렌더에서 이미 확정됐으니
@@ -1262,7 +1266,7 @@ export function DirectionsView({
                 {/* ⚠ 계단 회피는 카카오 전용 축이라 en(Tmap 단독)에서는 항상 unavailable이다.
                     적용될 수 없는 옵션을 켜게 두고 조회 뒤에야 못 했다고 말하면, 스크린 리더
                     사용자는 그 사이 적용됐다고 믿는다(spec 2026-08-23-non-ko-walk-guidance §4.7). */}
-                {mode === "walk" && !prefersEnglish(locale) && (
+                {mode === "walk" && stepFreeSupported && (
                   <button
                     type="button"
                     aria-pressed={stepFreeEnabled}

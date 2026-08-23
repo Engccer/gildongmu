@@ -63,7 +63,6 @@ public let speedWindowSeconds = 10.0
 /// 속도 표본 수집의 정확도 상한. uncertain 게이트(50m)보다 좁다 — 계단·실내 진입의
 /// 30~50m fix가 진행거리 점프를 만들어 "속도 빠름" 오판을 낳는다(피드백 라운드1 #7).
 public let speedSampleMaxAccuracyMeters = 20.0
-public let resolveTimeoutSeconds = 30.0
 public let bundleRereadSeconds = 15.0
 
 /// 수단별 튜닝 프로파일(B1 스펙 §4.3) — 웹 `GuideTuning` 미러. walk는 현행 상수의

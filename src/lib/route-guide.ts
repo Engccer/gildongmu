@@ -102,7 +102,6 @@ export const SPEED_WINDOW_S = 10;
  * 노이즈의 앞쪽 성분만 누적해 "속도 빠름" 오판을 낳는다(피드백 라운드1 #7).
  */
 export const SPEED_SAMPLE_MAX_ACC_M = 20;
-export const RESOLVE_TIMEOUT_S = 30;
 export const BUNDLE_REREAD_S = 15;
 
 /**

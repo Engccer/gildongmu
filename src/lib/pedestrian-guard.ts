@@ -53,9 +53,13 @@ export function assertDistanceMatchesKorean(
   description: string,
   segmentMeters: number | undefined,
 ): void {
-  if (segmentMeters === undefined) return;
   const m = DISTANCE.exec(description);
   if (!m) return;
+  // ⚠ 원문이 거리를 말하는데 귀속된 구간이 없으면 **그것도 귀속 파손이다**(리뷰 검출).
+  // 조용히 통과시키면 en 문장에서 거리 절만 사라져("Turn right") 가정이 깨진 줄 모른다.
+  if (segmentMeters === undefined) {
+    throw new Error(`[pedestrian] 원문은 거리를 말하는데 귀속된 구간이 없다: ${description}`);
+  }
   const spoken = m[2] === "km" ? Number(m[1]) * 1000 : Number(m[1]);
   if (Math.abs(spoken - segmentMeters) <= 1) return;
   throw new Error(

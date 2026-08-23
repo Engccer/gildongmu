@@ -324,6 +324,47 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     /// 실시간 표시 계층용 구조화 조각(spec 2026-08-11 §5). `includeGeometry=1` 응답에만
     /// 온다. ⚠ 선택 디코딩 — 필수로 두면 구버전 응답에서 브리핑 전체가 실패한다.
     public let live: WalkLiveFragments?
+    /// **서버가 투영한 결정 지점 행동**(E16 축3 §4.2.1). 도보 리듀서는 `actionSource: .step`이라
+    /// 이 필드만 본다 — 여기서 디코딩하지 않으면 임박 큐(명령형 문장·행동별 톤·햅틱)가
+    /// 통째로 침묵한다. ⚠ 선택 디코딩(구버전 서버 호환, `live`와 같은 이유).
+    public let action: WalkAction?
+
+    public init(
+        description: String, distanceMeters: Int? = nil, pathCoords: [RoutePoint]? = nil,
+        live: WalkLiveFragments? = nil, action: WalkAction? = nil
+    ) {
+        self.description = description
+        self.distanceMeters = distanceMeters
+        self.pathCoords = pathCoords
+        self.live = live
+        self.action = action
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case description, distanceMeters, pathCoords, live, action
+    }
+
+    /// `WalkAction`이 `Codable`이 아니라 파생 구현을 쓸 수 없다(자동차 스텝과 같은 형태).
+    /// ⚠ `flatMap(init(rawValue:))`는 **모르는 행동 문자열을 nil로 떨군다** — 서버가 행동
+    /// 종류를 늘려도 구버전 앱이 브리핑 전체를 실패시키지 않는다(전방 호환).
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        description = try c.decode(String.self, forKey: .description)
+        distanceMeters = try c.decodeIfPresent(Int.self, forKey: .distanceMeters)
+        pathCoords = try c.decodeIfPresent([RoutePoint].self, forKey: .pathCoords)
+        live = try c.decodeIfPresent(WalkLiveFragments.self, forKey: .live)
+        action = (try c.decodeIfPresent(String.self, forKey: .action))
+            .flatMap(WalkAction.init(rawValue:))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(description, forKey: .description)
+        try c.encodeIfPresent(distanceMeters, forKey: .distanceMeters)
+        try c.encodeIfPresent(pathCoords, forKey: .pathCoords)
+        try c.encodeIfPresent(live, forKey: .live)
+        try c.encodeIfPresent(action?.rawValue, forKey: .action)
+    }
 }
 
 /// 서버 재작성 정규식이 분해한 이름 조각(웹 `WalkLiveFragments` 미러).

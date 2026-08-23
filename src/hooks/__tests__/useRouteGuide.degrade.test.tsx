@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import ko from "../../../messages/ko.json";
 
@@ -127,11 +127,27 @@ describe("강등 사유 3-state", () => {
     expect(live()).toBe(ko.guide.degradedRetryable);
   });
 
-  it("상시 표시는 사유와 다른 문자열이다 — 같은 문장을 live region과 DOM에 함께 두지 않는다", async () => {
+  it("상시 표시도 사유별로 갈린다 — 세션 도중 들어온 사용자에게 그 줄이 유일한 신호다", async () => {
+    // 한 문장으로 뭉개면 3-state를 만든 유일한 수혜자에게 "재시도로 풀리는가"가 도달하지 않는다.
+    const cases: Array<[unknown, string]> = [
+      [{ ok: false, status: 502, json: async () => ({}) }, ko.guide.degradedNoteRetryable],
+      [{ ok: true, status: 200, json: async () => ({ result: null }) }, ko.guide.degradedNoteUnavailable],
+      [{ ok: true, status: 200, json: async () => ({ outOfCoverage: true }) }, ko.guide.degradedNoteCoverage],
+    ];
+    for (const [res, expected] of cases) {
+      fetchMock.mockResolvedValue(res);
+      renderGuide();
+      await start();
+      expect(note()).toBe(expected);
+      cleanup();
+    }
+  });
+
+  it("상시 표시는 사유 통지와 다른 문자열이다 — 같은 문장을 live region과 DOM에 함께 두지 않는다", async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
     renderGuide();
     await start();
-    expect(note()).toBe(ko.guide.degradedNote);
+    expect(note()).toBe(ko.guide.degradedNoteRetryable);
     expect(note()).not.toBe(live());
   });
 
@@ -141,7 +157,7 @@ describe("강등 사유 3-state", () => {
     fetchMock.mockResolvedValue({ ok: false, status: 502, json: async () => ({}) });
     renderGuide();
     await start();
-    expect(note()).toBe(ko.guide.degradedNote);
+    expect(note()).toBe(ko.guide.degradedNoteRetryable);
 
     fetchMock.mockResolvedValue({
       ok: true,
@@ -158,6 +174,33 @@ describe("강등 사유 3-state", () => {
     await waitFor(() => expect(note()).toBe(""));
   });
 
+  it("위치를 되찾으면 noLocation 표시가 내려간다 — 거리를 안내하면서 위치를 모른다고 하지 않는다", async () => {
+    awaitGeolocation.mockResolvedValue({ status: "error" });
+    let watchCb: ((p: GeolocationPosition) => void) | undefined;
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        watchPosition: vi.fn((cb: (p: GeolocationPosition) => void) => {
+          watchCb = cb;
+          return 1;
+        }),
+        clearWatch: vi.fn(),
+        getCurrentPosition: vi.fn(),
+      },
+    });
+    renderGuide();
+    await start();
+    expect(note()).toBe(ko.guide.degradedNoLocation);
+
+    await act(async () => {
+      watchCb?.({
+        coords: { latitude: 37.5, longitude: 127.1, accuracy: 10 },
+        timestamp: Date.now(),
+      } as GeolocationPosition);
+    });
+    await waitFor(() => expect(note()).toBe(ko.guide.degradedNoteRetryable));
+  });
+
   it("강등 문구에 모드 이름을 쓰지 않는다", async () => {
     // 이름을 주면 고를 수 있는 모드로 읽힌다([[degraded-guidance-gets-no-mode-name]]).
     // 축 1이 "간략"을 지웠고 축 2가 그 짝 낱말("직선거리 안내")까지 지운다.
@@ -165,7 +208,10 @@ describe("강등 사유 3-state", () => {
       ko.guide.degradedNoLocation,
       ko.guide.degradedRetryable,
       ko.guide.degradedUnavailable,
-      ko.guide.degradedNote,
+      ko.guide.degradedNoteRetryable,
+      ko.guide.degradedNoteUnavailable,
+      ko.guide.degradedNoteCoverage,
+      ko.guide.degradedNoteHandoff,
     ]) {
       expect(text).not.toContain("간략");
       expect(text).not.toContain("직선거리 안내");

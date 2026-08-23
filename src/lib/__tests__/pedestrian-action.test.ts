@@ -51,4 +51,22 @@ describe("pedestrianStepFor", () => {
       if (s.action === "right") expect(p).toMatch(/right|2 o'clock|4 o'clock/);
     }
   });
+
+  it("횡단보도 방향이 코드와 일치한다 — 어느 쪽 횡단보도인가는 안전 정보다", () => {
+    // ⚠ 이 축은 다른 어떤 게이트도 못 잡는다(변이 주입으로 실측): 위 좌우 가드는
+    // `action`이 `crosswalk`라 건너뛰고, 한국어 대조 가드는 "좌측"·"우측"을 의도적으로
+    // 마커에서 뺐으며(회전이 아니므로), 실호출 게이트는 한글 유무만 본다.
+    const expected: Record<number, RegExp> = {
+      211: /^Cross the crosswalk$/,
+      212: /on your left$/,
+      213: /on your right$/,
+      214: /at 8 o'clock$/,
+      215: /at 10 o'clock$/,
+      216: /at 2 o'clock$/,
+      217: /at 4 o'clock$/,
+    };
+    for (const [tt, re] of Object.entries(expected)) {
+      expect(pedestrianStepFor(Number(tt))?.phrase).toMatch(re);
+    }
+  });
 });
