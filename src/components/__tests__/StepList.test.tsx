@@ -61,6 +61,20 @@ describe("WalkRouteResult 펼침 본문 중복 제거(B9 ①)", () => {
     expect(lists[0].textContent).toBe("a"); // 구획이 a 뒤, b 앞 — 서버가 민 인덱스의 역연산
     expect(lists[1].textContent).toBe("b");
   });
+  it("경유지가 첫 실스텝 앞이면(역보정 0) 문장을 삼키지 않고 목록 앞에 낸다", () => {
+    render(
+      <WalkRouteResult
+        briefing={{ ...briefing, waypoint: { stepIndex: 1, coord: { lat: 0, lng: 0 } } }}
+        t={t}
+        omitNoticeStep
+        waypointLabel="X"
+      />,
+    );
+    expect(screen.getByText("viaArrived:X")).toBeTruthy();
+    const lists = screen.getAllByRole("list");
+    expect(lists).toHaveLength(1); // 빈 앞 목록을 그리지 않는다
+    expect(lists[0].getAttribute("start")).toBe("1");
+  });
   it("스텝 0이 notice가 아니면 떼지 않는다", () => {
     render(
       <WalkRouteResult

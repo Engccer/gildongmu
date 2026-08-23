@@ -79,8 +79,11 @@ export function StepList({
   waypointText: string | null;
 }) {
   const cls = "mt-2 list-decimal pl-6 text-sm leading-relaxed";
+  // 0도 유효하다: "첫 스텝 앞에서 경유지 도착". `omitNoticeStep`이 서버 +1을 되돌리면
+  // 0이 나올 수 있고, 그때 >0 가드로 떨구면 경유지 문장이 오류 없이 사라진다(리뷰 검출).
+  // 앞 목록이 비면 빈 <ol>을 그리지 않고 문장부터 낸다.
   const split =
-    waypointText !== null && waypointIndex !== undefined && waypointIndex > 0 && waypointIndex < items.length
+    waypointText !== null && waypointIndex !== undefined && waypointIndex >= 0 && waypointIndex < items.length
       ? waypointIndex
       : null;
   if (split === null) {
@@ -94,11 +97,13 @@ export function StepList({
   }
   return (
     <>
-      <ol className={cls}>
-        {items.slice(0, split).map((text, i) => (
-          <li key={`${i}-${text}`}>{text}</li>
-        ))}
-      </ol>
+      {split > 0 && (
+        <ol className={cls}>
+          {items.slice(0, split).map((text, i) => (
+            <li key={`${i}-${text}`}>{text}</li>
+          ))}
+        </ol>
+      )}
       <p className="mt-2 text-sm font-medium">{waypointText}</p>
       <ol className={cls} start={split + 1}>
         {items.slice(split).map((text, i) => (
