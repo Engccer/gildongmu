@@ -11,6 +11,15 @@
 
 ## 2026-08-23
 
+### E19 커버리지 사각형 → 국경 폴리곤 승격 (웹·iOS Kit)
+
+`isInKorea`가 사각형(31.43~44.35/122.37~132.0) 대신 국경 폴리곤으로 판정한다 — 사각형은 그 안의 프리필터로 남는다. 종전에는 후쿠오카·기타큐슈·대마도·시모노세키가 "한국 안"으로 통과했고 개성·해주는 파주와 위경도가 겹쳐 사각형 뺄셈으로 갈리지 않았다. 링은 E12가 walk seed용으로 받아 둔 OSM `admin_level=2` 경계(영해 경계 2,580점)라 **새 데이터가 필요 없었다**. spec `docs/superpowers/specs/2026-08-23-coverage-boundary-polygon-design.md`.
+
+- **링은 한 벌**: seed(2.7MB)를 클라이언트가 import할 수 없어 `src/lib/data/korea-boundary.json`으로 분리했고, walk provider의 자체 폴리곤(`isInWalkSeedCoverage`·`SEED_BBOX`)은 삭제했다. Kit 리소스는 바이트 동일 사본(`korea-boundary-drift.test.ts`), 판정 표는 공유 fixture 15점을 웹·Kit·빌드 스크립트 G10이 함께 읽는다.
+- **클라이언트도 같은 술어**(번들 gzip +15KB 실측 수용): 서버 왕복이 없는 `deeplink.ts`에서는 사각형이 최종 판정이 되고, 느슨한 클라 전용 술어를 남기면 다음 기능이 그것을 집는다.
+- 새 실패 방향(국내인데 폴리곤 밖)은 seed 노드 79,575점 전수를 `isInKorea`로 재판정하는 계약 테스트가 덮는다. 실호출(로컬 dev) 10건 전수 통과 — 후쿠오카·대마도·시모노세키 `outOfCoverage`, 파주·서귀포·울릉도 정상.
+- 라우트별 "0건" 문장 갈림(같은 서울 전용 사실이 패널과 한눈에 보기에서 다른 문장, `route/car`가 웹 소비자마다 다른 문장)은 **조사만** 하고 `docs/BACKLOG.md` E19에 표로 남겼다.
+
 ### 횡단보도 차로 수·도로 폭 낭독 (E8)
 
 도보 안내의 단일 횡단보도 문장 끝에 전국횡단보도표준데이터(15028201) 값으로 `, N차로, 도로 폭 Mm`를 덧붙인다(서버 `getWalkRoute` 주석 단계, 웹·iOS·CLI 무변경). 있는 곳만 말하고 없는 곳은 침묵. spec `docs/superpowers/specs/2026-08-23-crosswalk-lanes-length-design.md`.
