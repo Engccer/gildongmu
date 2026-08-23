@@ -547,7 +547,8 @@
     "webResults": {
       "heading": "Resultados web"
     },
-    "reviewPlacesHeading": "{count} lugares por reseñas de Naver"
+    "reviewPlacesHeading": "{count} lugares por reseñas de Naver",
+    "followUpGroupLabel": "Preguntas de seguimiento"
   },
   "placeChat": {
     "launch": "Preguntar sobre este lugar",

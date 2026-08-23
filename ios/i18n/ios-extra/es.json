@@ -62,7 +62,8 @@
       "consentData": "Sus preguntas, la conversación, el lugar que está viendo y su ubicación actual se envían a Google Gemini para generar respuestas. Las preguntas que requieren búsqueda web también se envían a Perplexity.",
       "consentAiNotice": "Las respuestas son generadas por IA y pueden ser inexactas.",
       "consentAlt": "Puede seguir usando las pestañas Buscar y Cerca sin aceptar.",
-      "consentAgree": "Aceptar y empezar"
+      "consentAgree": "Aceptar y empezar",
+      "followUps": "Preguntas de seguimiento"
     },
     "voice": {
       "hold": "Dictar",

@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ outOfCoverage: true });
   }
   try {
-    const data = await assembleNearbyOverview(parsed.data.lat, parsed.data.lng);
+    // wire는 overview만 — 장소 투영(places)은 채팅 카드 전용이라 싣지 않는다(CLI·MCP 출력 팽창 금지).
+    const { overview: data } = await assembleNearbyOverview(parsed.data.lat, parsed.data.lng);
     return NextResponse.json({ data });
   } catch (e) {
     console.error("[nearby/overview] 조립 실패:", e);

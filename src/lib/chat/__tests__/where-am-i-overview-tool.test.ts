@@ -86,13 +86,14 @@ describe("get_nearby_overview (채팅 도구, K3 ④)", () => {
   beforeEach(() => {
     mockOverview.mockReset();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockOverview.mockResolvedValue(OVERVIEW as any);
+    mockOverview.mockResolvedValue({ overview: OVERVIEW, places: [] } as any);
   });
 
   it("조립 결과를 그대로 싣고 출처는 실린 불릿의 제공처만", async () => {
     const r = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL }));
     expect(mockOverview).toHaveBeenCalledWith(SEOUL.lat, SEOUL.lng);
     expect(r.data).toEqual(OVERVIEW);
+    // 투영이 비면 카드 없음(빈 묶음에 헤딩 금지).
     expect(r.render).toBeUndefined();
     // events는 unavailable이라 인용하지 않는다(데이터를 보여준 불릿만).
     expect(r.source).toEqual([
@@ -102,9 +103,21 @@ describe("get_nearby_overview (채팅 도구, K3 ④)", () => {
     ]);
   });
 
+  it("장소 투영이 있으면 places 카드 — data엔 싣지 않고, 지명·앵커 조회에도 낸다(props-driven)", async () => {
+    const place = { id: "k1", name: "길동식당", category: "음식점", address: "", roadAddress: "", lat: 37.53, lng: 127.14 };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockOverview.mockResolvedValue({ overview: OVERVIEW, places: [place] } as any);
+    const r = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL }));
+    expect(r.render).toEqual({ type: "places", places: [place] });
+    expect(r.data).toEqual(OVERVIEW);
+
+    const anchored = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL, placeAnchor: { lat: 37.54, lng: 127.15, name: "앵커" } }));
+    expect(anchored.render).toEqual({ type: "places", places: [place] });
+  });
+
   it("버스 키 없음(busStops:null)이면 TAGO를 인용하지 않는다", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockOverview.mockResolvedValue({ ...OVERVIEW, bullets: [{ kind: "transit", state: "ok", station: null, busStops: null }] } as any);
+    mockOverview.mockResolvedValue({ overview: { ...OVERVIEW, bullets: [{ kind: "transit", state: "ok", station: null, busStops: null }] }, places: [] } as any);
     const r = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL }));
     expect(r.source).toEqual([{ label: "source.kric" }]);
   });
@@ -112,7 +125,7 @@ describe("get_nearby_overview (채팅 도구, K3 ④)", () => {
   it("버스 조각이 failed·none이면 TAGO를 인용하지 않는다(조각 상태는 불릿 상태와 별개)", async () => {
     for (const state of ["failed", "none", "uncovered"]) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockOverview.mockResolvedValue({ ...OVERVIEW, bullets: [{ kind: "transit", state: "ok", station: null, busStops: { state } }] } as any);
+      mockOverview.mockResolvedValue({ overview: { ...OVERVIEW, bullets: [{ kind: "transit", state: "ok", station: null, busStops: { state } }] }, places: [] } as any);
       const r = await executeFunction("get_nearby_overview", {}, ctx({ userLocation: SEOUL }));
       expect(r.source).toEqual([{ label: "source.kric" }]);
     }

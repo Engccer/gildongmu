@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  composeOverview,
-  OVERVIEW_NEAREST_CAP,
+  composeOverview as composeOverviewRaw,
+  overviewNearestCap,
   OVERVIEW_RADIUS_M,
   type OverviewInput,
 } from "../nearby-overview";
@@ -16,6 +16,9 @@ const fail = <T>(): PromiseSettledResult<T> => ({ status: "rejected", reason: ne
 function place(name: string, dLat: number, dLng: number, distanceMeters: number) {
   return { name, lat: ORIGIN.lat + dLat, lng: ORIGIN.lng + dLng, distanceMeters };
 }
+
+/** 기존 단언은 overview 모양만 본다 — 투영은 아래 전용 describe. */
+const composeOverview = (input: OverviewInput) => composeOverviewRaw(input).overview;
 
 function base(overrides: Partial<OverviewInput> = {}): OverviewInput {
   return {
@@ -69,7 +72,7 @@ describe("composeOverview — 불릿별 3-state", () => {
     expect(o.bullets.find((b) => b.kind === "kids")?.state).toBe("none");
   });
 
-  it("ok: count·countCapped·nearest(거리순 상위 2, 8방위)", () => {
+  it("ok: count·countCapped·nearest(거리순, 계단식 캡, 8방위)", () => {
     const thirty = Array.from({ length: 30 }, (_, i) =>
       place(`p${i}`, i === 0 ? 0.0005 : -0.001, 0, 500 - i),
     );
@@ -84,8 +87,9 @@ describe("composeOverview — 불릿별 3-state", () => {
     const food = o.bullets.find((b) => b.kind === "food");
     expect(food).toMatchObject({ state: "ok", count: 18, countCapped: true });
     if (food?.state !== "ok" || food.kind === "transit") throw new Error("type");
-    expect(food.nearest).toHaveLength(OVERVIEW_NEAREST_CAP);
-    expect(food.nearest.map((n) => n.name)).toEqual(["p17", "p16"]);
+    // 18곳 → 캡 4
+    expect(food.nearest).toHaveLength(overviewNearestCap(18));
+    expect(food.nearest.map((n) => n.name)).toEqual(["p17", "p16", "p15", "p14"]);
     expect(food.nearest[0].bearing).toBe("s");
     expect(o.bullets.find((b) => b.kind === "cafe")).toMatchObject({
       state: "ok",
@@ -152,5 +156,53 @@ describe("composeOverview — 불릿별 3-state", () => {
     );
     expect(o.place).toBe("서울특별시 강동구 길동, 천중로44길 74");
     expect(composeOverview(base()).place).toBeNull();
+  });
+});
+
+describe("overviewNearestCap — 개수에 비례하는 명명 수(spec 2026-08-24 §2.1)", () => {
+  it("1~4곳 2, 5~9곳 3, 10곳 이상 4", () => {
+    expect([1, 2, 4, 5, 9, 10, 45].map(overviewNearestCap)).toEqual([2, 2, 2, 3, 3, 4, 4]);
+  });
+  it("3곳이면 2곳만 부른다(종전 고정 2와 같다)", () => {
+    const o = composeOverview(base({ cafe: ok({ places: [place("a", 0, 0, 1), place("b", 0, 0, 2), place("c", 0, 0, 3)], capped: false }) }));
+    const cafe = o.bullets.find((b) => b.kind === "cafe");
+    if (cafe?.state !== "ok" || cafe.kind === "transit") throw new Error("type");
+    expect(cafe.nearest.map((n) => n.name)).toEqual(["a", "b"]);
+  });
+  it("행사는 total이 캡의 근거다(받은 배열 길이가 아니라)", () => {
+    const evs = Array.from({ length: 6 }, (_, i) => place(`e${i}`, 0, 0, i));
+    const o = composeOverview(base({ events: ok({ events: evs, total: 12 }) }));
+    const ev = o.bullets.find((b) => b.kind === "events");
+    if (ev?.state !== "ok" || ev.kind === "transit") throw new Error("type");
+    expect(ev.nearest).toHaveLength(4);
+  });
+});
+
+describe("composeOverview — 장소 투영(places)", () => {
+  const P = (id: string, name: string, d: number) => ({
+    ...place(name, 0, 0, d),
+    projected: { id, name, category: "c", address: "", roadAddress: "", lat: ORIGIN.lat, lng: ORIGIN.lng },
+  });
+  it("불릿 순서 → 거리순, 캡 안 항목만, 투영 없는 조각(행사)은 제외", () => {
+    const { places } = composeOverviewRaw(
+      base({
+        cafe: ok({ places: [P("c2", "카페2", 20), P("c1", "카페1", 10), P("c3", "카페3", 30)], capped: false }),
+        food: ok({ places: [P("f1", "식당1", 5)], capped: false }),
+        events: ok({ events: [place("행사", 0, 0, 1)], total: 1 }),
+      }),
+    );
+    expect(places.map((p) => p.id)).toEqual(["f1", "c1", "c2"]);
+  });
+  it("식당·카페 교집합은 id로 dedupe(첫 등장 유지)", () => {
+    const { places } = composeOverviewRaw(
+      base({
+        food: ok({ places: [P("x", "겸업", 5)], capped: false }),
+        cafe: ok({ places: [P("x", "겸업", 5), P("c", "카페", 9)], capped: false }),
+      }),
+    );
+    expect(places.map((p) => p.id)).toEqual(["x", "c"]);
+  });
+  it("투영이 하나도 없으면 빈 배열", () => {
+    expect(composeOverviewRaw(base()).places).toEqual([]);
   });
 });

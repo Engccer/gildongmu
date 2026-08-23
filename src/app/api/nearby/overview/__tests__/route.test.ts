@@ -27,13 +27,13 @@ describe("GET /api/nearby/overview", () => {
 
   it("정상은 { data }", async () => {
     const data = { place: "x", radiusMeters: 1000, bullets: [{ kind: "transit", state: "ok", station: null, busStops: null }] };
-    mockAssemble.mockResolvedValue(data as never);
+    mockAssemble.mockResolvedValue({ overview: data, places: [] } as never);
     expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data });
   });
 
   it("전 키 부재여도 data는 null이 아니다 — 대중교통 불릿은 seed라 항상 있다", async () => {
     const data = { place: null, radiusMeters: 1000, bullets: [{ kind: "transit", state: "ok", station: null, busStops: null }] };
-    mockAssemble.mockResolvedValue(data as never);
+    mockAssemble.mockResolvedValue({ overview: data, places: [] } as never);
     expect(await (await GET(req("?lat=37.5385&lng=127.143"))).json()).toEqual({ data });
   });
 

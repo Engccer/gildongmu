@@ -547,7 +547,8 @@
     "webResults": {
       "heading": "Web results"
     },
-    "reviewPlacesHeading": "Top {count} by Naver reviews"
+    "reviewPlacesHeading": "Top {count} by Naver reviews",
+    "followUpGroupLabel": "Follow-up questions"
   },
   "placeChat": {
     "launch": "Ask about this place",

@@ -62,7 +62,8 @@
       "consentData": "質問と会話の内容、一緒に見ている場所の情報、現在地が回答生成のためにGoogle Geminiに送信されます。ウェブ検索が必要な質問はPerplexityにも送信されます。",
       "consentAiNotice": "回答はAIが生成するため、不正確な場合があります。",
       "consentAlt": "同意しなくても、検索と周辺タブはそのまま利用できます。",
-      "consentAgree": "同意して開始"
+      "consentAgree": "同意して開始",
+      "followUps": "追加の質問"
     },
     "voice": {
       "hold": "音声入力",

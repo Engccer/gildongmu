@@ -547,7 +547,8 @@
     "webResults": {
       "heading": "참고한 웹 결과"
     },
-    "reviewPlacesHeading": "네이버 리뷰순 {count}곳"
+    "reviewPlacesHeading": "네이버 리뷰순 {count}곳",
+    "followUpGroupLabel": "추가 질문"
   },
   "placeChat": {
     "launch": "이 장소에 관해 물어보기",

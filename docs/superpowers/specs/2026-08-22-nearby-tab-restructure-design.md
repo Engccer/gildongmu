@@ -1,6 +1,7 @@
 # M4 iOS "내 주변" 탭 재편 — 설계 (2026-08-22)
 
 > 판정 정본: `docs/superpowers/plans/2026-08-22-feedback-260821-parallel-plan.md` §1 M4 행(위원장 2026-08-22) + 이 세션 추가 판정 2건(대표 장소 = 가장 가까운 곳 2개, 통합 화면 이름 = "둘러보기"). 코드 분석 근거는 `docs/research/RESEARCH-2026-08-12-nearby-tab-restructure.md`. 백로그 `docs/BACKLOG.md` M4.
+> ⚠ 2026-08-24 개정: "가장 가까운 곳 2개" 고정 캡은 개수 비례 계단식(`overviewNearestCap`, <5: 2 · 5~9: 3 · ≥10: 4)으로 바뀌었고 채팅은 장소 카드를 함께 낸다 — `2026-08-24-chat-overview-cards-followup-chips-design.md`가 정본. 아래 "2개"는 그 시점 기록이다.
 > 적용 순서: **iOS 먼저, 웹은 후속 이식**(§9 phase 경계).
 
 **설계 리뷰 게이트 판정**: 이 spec은 새 판정 계층(불릿별 3-state 집계, §4)과 새 응답 계약(`/api/nearby/overview`, `SceneItem` 확장, §3)을 신설하므로 글로벌 규칙상 적대적 설계 리뷰 **대상**이다. 단 구성 요소가 전부 검증된 기존 계약의 재조합(`assembleWhereAmI` 동형 allSettled, 5종 provider의 기존 `radiusMeters` 옵션, `NearbyLoadCore`, `nearbyFocusOnLoad`)이고 파급이 iOS 화면 1개·신규 라우트 1개로 국소·가역이라, 구현 단계 subagent 리뷰(spec-compliance + code-quality) + 실호출 게이트로 잔여 리스크를 덮는다 — **설계 단계 codex 리뷰는 생략**.

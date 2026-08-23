@@ -153,7 +153,7 @@ const DECLARATIONS: GatedDeclaration[] = [
     declaration: {
       name: "get_nearby_overview",
       description:
-        "현재 위치(또는 지명) 주변 1km를 한눈에 요약한다 — 대중교통(가까운 역·정류소), 식당, 카페, 아이 놀 곳, 오늘 문화행사, 무장애 관광지의 개수와 가장 가까운 곳 2개씩. " +
+        "현재 위치(또는 지명) 주변 1km를 한눈에 요약한다 — 대중교통(가까운 역·정류소), 식당, 카페, 아이 놀 곳, 오늘 문화행사, 무장애 관광지의 개수와 가장 가까운 곳 2~4곳씩(많을수록 더). " +
         "사용자가 '이 근처에 뭐가 있어', '주변 어때'처럼 특정 종류를 정하지 않고 전반을 물을 때 호출한다. 종류가 정해진 질문은 그 전용 도구를 쓴다. " +
         "불릿의 state가 failed면 조회 실패, none이면 1km 안에 없음, unavailable이면 그 지역엔 데이터가 없음이다 — 셋을 구분해 답하라.",
       parametersJsonSchema: { type: "object", properties: PLACE_ARG },

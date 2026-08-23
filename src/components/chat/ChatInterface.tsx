@@ -1,10 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, type Ref } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useChat, type PlaceContext } from "@/hooks/useChat";
 import { useChatSound } from "@/hooks/useChatSound";
+import { useFollowUpSuggestions } from "@/hooks/useFollowUpSuggestions";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput } from "./ChatInput";
+import { FollowUpChips } from "./FollowUpChips";
 
 /**
  * 채팅 컨테이너 — useChat + MessageBubble + ChatInput을 결합.
@@ -19,6 +21,9 @@ import { ChatInput } from "./ChatInput";
  * - error는 role="alert"(assertive 없이 네이티브 role 사용).
  * - inputRef: 부모(PlaceSearch)가 전달해 Shift+Esc 포커스를 채팅 입력창에 건다.
  * - initialMessage: 옴니박스 등 place 없는 범용 진입점이 첫 질문을 마운트 1회 자동 전송한다.
+ * - follow-up 칩: 응답 완료 뒤 비동기로 붙고(통지 없음), 칩·예시 버튼 전송은 그 버튼이
+ *   사라지기 전에 보내기 버튼으로 포커스를 선점한다 — 포커스를 쥔 요소가 언마운트되면
+ *   스크린 리더 커서가 body로 이탈한다(헌장 §6 "전송 시엔 보내기 버튼에 머문다").
  */
 export function ChatInterface({
   inputRef,
@@ -36,6 +41,11 @@ export function ChatInterface({
   const tp = useTranslations("placeChat");
   const { messages, isLoading, error, progressCategories, sendMessage } = useChat({ placeContext });
   const { playSend, playReceive } = useChatSound();
+  const locale = useLocale();
+  const followUps = useFollowUpSuggestions(locale);
+  const { fetch: fetchFollowUps, clear: clearFollowUps } = followUps;
+  // 보내기 버튼 참조 — 칩·예시 버튼 전송 직전 포커스 선점 앵커.
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
   // 범용 채팅(옴니박스 [AI에게 질문])의 첫 질문 자동 전송 — 마운트 1회만.
   // playSend는 생략: effect는 사용자 제스처 콜스택 밖이라 AudioContext unlock이
   // 안 되며, 무음 재생 시도는 노이즈다(완료음은 이후 제스처 시점부터 정상).
@@ -55,10 +65,20 @@ export function ChatInterface({
   // 이후 응답 완료음(비제스처)도 재생 가능하게 한다.
   const handleSend = useCallback(
     (text: string) => {
+      clearFollowUps();
       playSend();
       void sendMessage(text);
     },
-    [playSend, sendMessage],
+    [clearFollowUps, playSend, sendMessage],
+  );
+
+  // 전송으로 사라지는 버튼(칩·예시)에서 온 전송 — 언마운트 전에 보내기 버튼으로 포커스 선점.
+  const handleSendFromVanishing = useCallback(
+    (text: string) => {
+      sendButtonRef.current?.focus();
+      handleSend(text);
+    },
+    [handleSend],
   );
 
   // 응답 완료(isLoading true→false + 마지막이 assistant) 감지:
@@ -70,10 +90,18 @@ export function ChatInterface({
     if (!justFinished) return;
     if (messages[messages.length - 1]?.role !== "assistant") return;
     playReceive();
+    // follow-up 칩 조회 — 마지막 질문·답변 텍스트 기준, 장소 앵커면 장소명 동반.
+    // 실패 턴은 useChat이 assistant 메시지를 붙이지 않아 위 조기 반환에 걸린다(실패엔 칩 없음, iOS 동형).
+    // 칩은 질문 헤딩 착지 뒤 비동기로 붙는다.
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const lastAssistant = messages[messages.length - 1];
+    if (lastUser?.text && lastAssistant.text) {
+      void fetchFollowUps(lastUser.text, lastAssistant.text, placeContext?.name);
+    }
     // 새 서브트리가 레이아웃된 뒤 포커스 이동(앱 표준 rAF 패턴, PlaceSearch와 동형).
     const raf = requestAnimationFrame(() => lastQueryRef.current?.focus());
     return () => cancelAnimationFrame(raf);
-  }, [isLoading, messages, playReceive]);
+  }, [isLoading, messages, playReceive, fetchFollowUps, placeContext?.name]);
 
   // 가장 최근 사용자 질문 id — MessageBubble에 isLastQuery를 부여하는 기준.
   const lastUserId = [...messages].reverse().find((m) => m.role === "user")?.id;
@@ -111,7 +139,7 @@ export function ChatInterface({
             <button
               key={prompt}
               type="button"
-              onClick={() => handleSend(prompt)}
+              onClick={() => handleSendFromVanishing(prompt)}
               className="min-h-11 rounded-md border border-border bg-background px-4 py-2 text-left text-sm hover:bg-accent/10"
             >
               {prompt}
@@ -119,10 +147,11 @@ export function ChatInterface({
           ))}
         </div>
       )}
+      <FollowUpChips chips={followUps.chips} onSelect={handleSendFromVanishing} disabled={isLoading} />
       {/* 진행 통지 polite live region — 답변 산문은 MessageBubble에만(중복 낭독 방지) */}
       <div ref={progressRef} aria-live="polite" className="sr-only" />
       {error && <p role="alert">{t(`error.${error}`)}</p>}
-      <ChatInput onSend={handleSend} disabled={isLoading} inputRef={inputRef} />
+      <ChatInput onSend={handleSend} disabled={isLoading} inputRef={inputRef} sendButtonRef={sendButtonRef} />
     </div>
   );
 }

@@ -8,6 +8,8 @@ interface Props {
   onSend: (text: string) => void;
   disabled: boolean;
   inputRef?: Ref<HTMLInputElement>;
+  /** 제출 버튼 참조 — 부모가 칩·예시 버튼 전송 직전 포커스를 여기로 선점한다(헌장 §6). */
+  sendButtonRef?: Ref<HTMLButtonElement>;
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * - aria-disabled: 비활성 버튼도 포커스 유지(스크린 리더 맥락 보존)
  * - 받아쓰기 전사 결과는 즉시 전송(위원장 선호)
  */
-export function ChatInput({ onSend, disabled, inputRef }: Props) {
+export function ChatInput({ onSend, disabled, inputRef, sendButtonRef }: Props) {
   const t = useTranslations("chat");
   const [value, setValue] = useState("");
 
@@ -39,6 +41,7 @@ export function ChatInput({ onSend, disabled, inputRef }: Props) {
       />
       <VoiceRecordButton onTranscribed={(text: string) => onSend(text)} />
       <button
+        ref={sendButtonRef}
         type="submit"
         aria-disabled={disabled || !value.trim()}
         className="min-h-11 min-w-11 rounded border border-border px-3 text-sm text-accent aria-disabled:opacity-50"
