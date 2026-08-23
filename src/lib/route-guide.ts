@@ -218,7 +218,11 @@ export const WALK_TUNING: GuideTuning = {
   imminentAheadM: IMMINENT_AHEAD_M,
   imminentAheadS: 0,
   imminentUnknownSpeedM: IMMINENT_AHEAD_M,
-  actionSource: "text",
+  // 도보 행동도 **서버가 전량 투영**한다(E16 축3 spec §4.2.1): 카카오 스텝은 서버가 최종
+  // 문장을 분류해 싣고 Tmap 스텝은 turnType 표에서 온다. 클라이언트 문자열 폴백을 두면
+  // 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못하고,
+  // en 문장에서는 한국어 부분 문자열 분류가 아예 성립하지 않는다.
+  actionSource: "step",
   imminentNeedsAnnounce: true,
   silentCatchUp: false,
   speedSampleMaxAccM: SPEED_SAMPLE_MAX_ACC_M,
