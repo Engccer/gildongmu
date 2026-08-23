@@ -20,7 +20,7 @@ CLI·MCP는 계정도 토큰도 필요 없다. 공개 REST API를 그대로 중�
 
 ```bash
 gil nearby subway --near "강동역"     # 주변 지하철역 실시간 도착
-gil route walk "길동역" "강남역" --accessible true   # 계단 없는 도보 경로
+gil route walk "길동역" "강남역" --accessible true   # 계단 회피 도보 경로
 ```
 
 ## 핵심 설계
