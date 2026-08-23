@@ -319,6 +319,13 @@ const ODSAY_SUBWAY_LINES: Record<string, string> = {
 function subwayLineCore(name: string): string {
   return name
     .replace(/^수도권\s*/, "")
+    // ODsay는 급행 운행 구간을 별도 lane으로 주고 이름 끝에 "(급행)"을 붙인다
+    // (실호출 2026-08-23: 급행 `수도권 9호선(급행)` / 완행 `수도권 9호선`).
+    // 벗기지 않으면 매핑표가 미스라 급행 leg의 trackMode가 통째로 null이 되어
+    // 급행을 탄 사용자에게만 실시간 안내가 사라진다.
+    // ⚠ 괄호 일반이 아니라 이 한 토큰만 벗긴다 — 공항철도 "(직통)"처럼 실시간
+    // 도착 피드에 축이 없는 다른 등급까지 매핑하면 영원한 미등장이 된다.
+    .replace(/\(급행\)\s*$/, "")
     .replace(/[.·\s]/g, "")
     .trim();
 }

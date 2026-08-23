@@ -193,6 +193,22 @@ describe("subwayIdForOdsayLine — 노선 매핑표(§5.1)", () => {
     expect(subwayIdForOdsayLine("대전 1호선")).toBeNull();
     expect(subwayIdForOdsayLine("부산 도시철도 2호선")).toBeNull();
   });
+
+  // ODsay는 급행 운행 구간을 별도 lane으로 주고 이름에 "(급행)"을 붙인다(실호출
+  // 2026-08-23: `수도권 9호선(급행)`, 완행은 `수도권 9호선`). 그 접미를 안 벗기면
+  // 매핑표가 미스라 급행 leg 전체가 추적 불가로 떨어진다 — 급행을 탄 사용자에게만
+  // 안내가 통째로 없어지는데 증상은 "이 경로는 추적할 수 없습니다" 한 줄뿐이다.
+  it('"(급행)" 접미를 벗겨 같은 노선으로 매핑한다', () => {
+    expect(subwayIdForOdsayLine("수도권 9호선(급행)")).toBe("1009");
+    expect(subwayIdForOdsayLine("수도권 1호선(급행)")).toBe("1001");
+  });
+
+  // ⚠ 괄호 일반이 아니라 **"(급행)" 한 토큰만** 벗긴다. 공항철도 직통열차는 별도
+  // 열차 등급이라 실시간 도착 피드에 그 축이 없다 — 매핑해 버리면 영원한 미등장이
+  // 되고, 그 침묵은 A16이 고치려는 바로 그 증상이다. 못 여는 것이 정직하다.
+  it("그 밖의 괄호 표기는 벗기지 않는다(직통 등 다른 등급을 삼키지 않는다)", () => {
+    expect(subwayIdForOdsayLine("수도권 공항철도(직통)")).toBeNull();
+  });
 });
 
 describe("classifyTrackMode·buildTransitGuideRoute(§4.1·§5.2)", () => {
@@ -220,6 +236,37 @@ describe("classifyTrackMode·buildTransitGuideRoute(§4.1·§5.2)", () => {
     ).toBe("tagoBus");
     // 하차 좌표조차 없으면 추적 불가
     expect(classifyTrackMode(leg, null, null)).toBeNull();
+  });
+
+  // A16 L1의 앞 단계: 급행 경로를 고르면 안내 자체가 열려야 한다. 종전에는
+  // trackMode가 null이라 급행 leg의 실시간 안내가 통째로 없었다(실호출 확인 —
+  // 프로덕션 `/api/route/transit` 대안 경로의 lineName이 `수도권 9호선(급행)`이고
+  // 그 leg의 경유역은 급행 정차역 13개다).
+  it("급행 leg도 추적 대상이고 경유역은 급행 정차역 그대로다", () => {
+    const route: TransitRoute = {
+      summary: { totalMinutes: 40, fare: 1950, transfers: 0, walkMinutes: 4 },
+      routeKey: "p-exp",
+      legs: [
+        {
+          mode: "subway",
+          lineName: "수도권 9호선(급행)",
+          fromName: "김포공항",
+          toName: "고속터미널",
+          stationCount: 8,
+          minutes: 27,
+          serviceWayCode: 1,
+          stops: ["김포공항", "마곡나루", "가양", "염창", "당산", "여의도", "노량진", "동작", "고속터미널"].map(
+            (name, i) => ({ name, stationId: String(900 + i), lat: 37.5, lng: 126.9 }),
+          ),
+        },
+      ],
+    };
+    const guide = buildTransitGuideRoute(route)!;
+    expect(guide.legs[0].trackMode).toBe("subway");
+    // 표시명은 급행 표기를 유지한다(정규화는 매핑 축에만 걸린다).
+    expect(guide.legs[0].lineName).toBe("수도권 9호선(급행)");
+    expect(guide.legs[0].viaStops.map((s) => s.name)).not.toContain("샛강");
+    expect(guide.legs[0].viaStops).toHaveLength(9);
   });
 
   it("경로 조립: 도보는 대기 문맥으로 흡수, 말미 도보는 walkAfter, 탑승 0개는 null", () => {
