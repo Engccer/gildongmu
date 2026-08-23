@@ -146,7 +146,7 @@
       "summary": "Total {distance}, about {minutes} min",
       "noRoute": "No walking route found.",
       "error": "Couldn't load the walking route.",
-      "stepFreeToggle": "Step-free route"
+      "stepFreeToggle": "Avoid stairs"
     }
   },
   "directions": {
@@ -603,7 +603,7 @@
     "summary": "Gildongmu is a navigation and place information service for South Korea. It is designed so screen reader users can complete the entire flow from search to directions in text, and it supports six languages: Korean, English, Spanish, French, Italian, and Japanese. Both the web and iOS apps are free, with no account required.",
     "featuresHeading": "Features",
     "feature1": "Place and address search: find places across Korea by name, street address, or postal code.",
-    "feature2": "Route preview: get a text briefing of car, transit, and walking routes before you leave. Walking routes offer a stair-free option.",
+    "feature2": "Route preview: get a text briefing of car, transit, and walking routes before you leave. Walking routes offer an option that avoids stairs.",
     "feature3": "Nearby information: real-time subway arrivals, buses, late-night pediatric clinics, barrier-free tourist sites, and pedestrian infrastructure such as audible signals, based on your current location. Some data, including bike share, cultural events, and crowd levels, covers Seoul.",
     "feature4": "Station information: facilities, first and last train times, and elevator locations for subway stations nationwide.",
     "feature5": "AI chat: ask about a place and get answers grounded in live data.",

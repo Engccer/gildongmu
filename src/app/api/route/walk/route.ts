@@ -23,7 +23,8 @@ import type { Coord, WalkRouteBriefing } from "@/lib/types";
  * ⚠ provider 응답에 넣지 않는 이유: provider URL이 `roundCoord(…,4)`(±5.5m)로 반올림한
  * 목적지를 쓰므로 같은 셀의 다른 목적지가 캐시 엔트리를 공유한다. 거기에 방향을 실으면
  * 옆 건물 기준 방향이 그대로 낭독된다. 지금은 `includeGeometry`가 upstream fetch를
- * `no-store`로 만들지만, 그 사실에 의존하지 않는다 — 캐시 정책이 바뀌어도 이 계층은 옳다.
+ * `no-store`로 만들고 `accessible` 요청은 반올림 자체를 건너뛰지만, 그 사실들에
+ * 의존하지 않는다 — 세 조건 중 무엇이 바뀌어도 이 계층은 옳다(원좌표가 정본).
  *
  * 마지막 스텝 설명에서 도로명을 뽑지 않는다(파싱 규칙이 provider 문장에 종속된다).
  * `roadName`은 별도 계층이 정하며, 없으면 문장에서 기준절을 뺀다 — 지어내지 않는다.

@@ -486,31 +486,31 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "길찾기 미리 듣기: 자동차, 대중교통, 도보 경로를 출발 전에 텍스트 브리핑으로 확인합니다. 도보는 계단 없는 경로 옵션이 있습니다."
+            "value": "길찾기 미리 듣기: 자동차, 대중교통, 도보 경로를 출발 전에 텍스트 브리핑으로 확인합니다. 도보는 계단 회피 경로 옵션이 있습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route preview: get a text briefing of car, transit, and walking routes before you leave. Walking routes offer a stair-free option."
+            "value": "Route preview: get a text briefing of car, transit, and walking routes before you leave. Walking routes offer an option that avoids stairs."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vista previa de rutas: recibe un resumen en texto de las rutas en coche, transporte público y a pie antes de salir. Las rutas a pie ofrecen una opción sin escaleras."
+            "value": "Vista previa de rutas: recibe un resumen en texto de las rutas en coche, transporte público y a pie antes de salir. Las rutas a pie ofrecen una opción que evita las escaleras."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aperçu d'itinéraire : recevez un résumé textuel des trajets en voiture, en transports en commun et à pied avant de partir. Les trajets à pied proposent une option sans escaliers."
+            "value": "Aperçu d'itinéraire : recevez un résumé textuel des trajets en voiture, en transports en commun et à pied avant de partir. Les trajets à pied proposent une option qui évite les escaliers."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anteprima del percorso: ricevi un riepilogo testuale dei percorsi in auto, con i mezzi pubblici e a piedi prima di partire. I percorsi a piedi offrono un'opzione senza scale."
+            "value": "Anteprima del percorso: ricevi un riepilogo testuale dei percorsi in auto, con i mezzi pubblici e a piedi prima di partire. I percorsi a piedi offrono un'opzione che evita le scale."
           }
         },
         "ja": {
@@ -31926,37 +31926,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계단 없는 경로"
+            "value": "계단 회피 경로"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Step-free route"
+            "value": "Avoid stairs"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta sin escalones"
+            "value": "Evitar escaleras"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire sans escaliers"
+            "value": "Éviter les escaliers"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Percorso senza scale"
+            "value": "Evita le scale"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "階段なしのルート"
+            "value": "階段を避ける経路"
           }
         }
       }

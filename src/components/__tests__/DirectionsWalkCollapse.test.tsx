@@ -257,7 +257,7 @@ describe("도보 섹션 조건부 접힘(spec §4.4)", () => {
     await queryRoutes("walk");
     // 접힌 상태에서도 둘 다 도달 가능해야 한다(접힘 안에 넣으면 영영 못 누른다).
     expect(walkDetail()).toBeNull();
-    expect(screen.getByRole("button", { name: "계단 없는 경로" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "계단 회피 경로" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "도보 안내 시작" })).toBeTruthy();
   });
 
@@ -267,10 +267,10 @@ describe("도보 섹션 조건부 접힘(spec §4.4)", () => {
     fireEvent.click(walkDisclosure()!);
     expect(walkDetail()).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "계단 없는 경로" }));
+    fireEvent.click(screen.getByRole("button", { name: "계단 회피 경로" }));
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: "계단 없는 경로" }).getAttribute("aria-busy"),
+        screen.getByRole("button", { name: "계단 회피 경로" }).getAttribute("aria-busy"),
       ).toBe("false");
     });
     // 사용자 조작이 자동 판정을 이긴다. 재조회로 닫히면 조작이 배신당한다.

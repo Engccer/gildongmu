@@ -146,7 +146,7 @@
       "summary": "Total {distance}, environ {minutes} min",
       "noRoute": "Aucun itinéraire à pied trouvé.",
       "error": "Impossible de charger l'itinéraire à pied.",
-      "stepFreeToggle": "Itinéraire sans escaliers"
+      "stepFreeToggle": "Éviter les escaliers"
     }
   },
   "directions": {
@@ -603,7 +603,7 @@
     "summary": "Gildongmu est un service d'itinéraires et d'informations sur les lieux en Corée du Sud. Il est conçu pour que les personnes utilisant un lecteur d'écran puissent accomplir tout le parcours, de la recherche à l'itinéraire, en texte, et il prend en charge six langues : coréen, anglais, espagnol, français, italien et japonais. Le site web et l'application iOS sont gratuits, sans compte.",
     "featuresHeading": "Fonctionnalités",
     "feature1": "Recherche de lieux et d'adresses : trouvez des lieux dans toute la Corée par nom, adresse ou code postal.",
-    "feature2": "Aperçu d'itinéraire : recevez un résumé textuel des trajets en voiture, en transports en commun et à pied avant de partir. Les trajets à pied proposent une option sans escaliers.",
+    "feature2": "Aperçu d'itinéraire : recevez un résumé textuel des trajets en voiture, en transports en commun et à pied avant de partir. Les trajets à pied proposent une option qui évite les escaliers.",
     "feature3": "Informations à proximité : arrivées de métro en temps réel, bus, cliniques pédiatriques de nuit, sites touristiques accessibles et infrastructures piétonnes comme les signaux sonores, selon votre position actuelle. Certaines données, comme les vélos en libre-service, les événements culturels et l'affluence, couvrent Séoul.",
     "feature4": "Informations sur les stations : équipements, horaires des premiers et derniers trains et emplacement des ascenseurs des stations de métro de tout le pays.",
     "feature5": "Chat IA : posez une question sur un lieu et obtenez des réponses fondées sur des données en temps réel.",

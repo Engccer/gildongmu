@@ -1686,37 +1686,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "계단 없는 경로"
+            "value": "계단 회피 경로"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Step-free route"
+            "value": "Avoid stairs"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta sin escalones"
+            "value": "Evitar escaleras"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire sans escaliers"
+            "value": "Éviter les escaliers"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Percorso senza scale"
+            "value": "Evita le scale"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "階段なしのルート"
+            "value": "階段を避ける経路"
           }
         }
       }
