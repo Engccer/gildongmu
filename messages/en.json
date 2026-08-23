@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "current leg",
     "overviewLegUpcoming": "upcoming",
     "overviewStopsUnavailable": "Stop list unavailable.",
-    "viewAlternatives": "View other routes"
+    "viewAlternatives": "View other routes",
+    "surroundingsAnchorAlight": "Around your stop, {name}",
+    "surroundingsAnchorCurrent": "Around current station, {name}"
   },
   "manualLocation": {
     "gps": "Current location",

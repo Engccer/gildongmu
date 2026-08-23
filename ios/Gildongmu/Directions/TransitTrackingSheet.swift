@@ -106,6 +106,7 @@ struct TransitTrackingSheet: View {
                                 .accessibilityFocused($focusedControl, equals: .minimize)
                         }
                     }
+                    surroundingsSection(proxy: proxy)
                     destChangeSection(proxy: proxy)
                 } else if let handoff = model.pendingWalkHandoff {
                     walkHandoffSection(handoff)
@@ -205,6 +206,33 @@ struct TransitTrackingSheet: View {
                     }
                 }
             }
+        }
+    }
+
+    /// 주변 확인(E15-2, spec 2026-08-23-transit-surroundings-anchor §4). 앵커는 Kit 판정
+    /// (`transitSurroundingsAnchor`) — 조망 `here`가 역으로 확정됐을 때만 현재역, 그 밖은
+    /// 하차역. 도보 시트와 달리 앵커가 둘 중 하나로 바뀌므로 **어느 역 주변인지가 곧
+    /// 정보**라 헤더가 그 역을 말한다. 본 Section 뒤에 두는 이유: 대기 후보·탑승 변경
+    /// 같은 자주 쓰는 컨트롤 앞에 끼우면 SR 읽기 순서 비용이 커진다. 하차역 좌표가
+    /// 없으면(정차역 목록 미보유) 섹션 자체를 내지 않는다. 앵커가 바뀌면
+    /// `SurroundingsSceneSection`의 `onChange(of: anchorKey)`가 지난 역 장면을 버린다.
+    @ViewBuilder private func surroundingsSection(proxy: ScrollViewProxy) -> some View {
+        if let state = model.state, let leg = model.currentLeg,
+           let anchor = transitSurroundingsAnchor(state: state, leg: leg) {
+            Section {
+                SurroundingsSceneSection(
+                    anchor: (lat: anchor.stop.lat, lng: anchor.stop.lng), proxy: proxy)
+            } header: {
+                Text(surroundingsHeading(anchor))
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+
+    private func surroundingsHeading(_ anchor: TransitSurroundingsAnchor) -> String {
+        switch anchor {
+        case let .currentStation(s): appLocalized("transitGuide.surroundingsAnchorCurrent", s.name)
+        case let .alightStop(s): appLocalized("transitGuide.surroundingsAnchorAlight", s.name)
         }
     }
 

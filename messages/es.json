@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "tramo actual",
     "overviewLegUpcoming": "pendiente",
     "overviewStopsUnavailable": "Lista de paradas no disponible.",
-    "viewAlternatives": "Ver otras rutas"
+    "viewAlternatives": "Ver otras rutas",
+    "surroundingsAnchorAlight": "Cerca de tu parada, {name}",
+    "surroundingsAnchorCurrent": "Cerca de la estación actual, {name}"
   },
   "manualLocation": {
     "gps": "Ubicación actual",

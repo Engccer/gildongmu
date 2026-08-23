@@ -1003,7 +1003,9 @@
     "overviewLegCurrent": "지금 이 구간",
     "overviewLegUpcoming": "예정",
     "overviewStopsUnavailable": "정차역 정보가 없습니다.",
-    "viewAlternatives": "다른 경로 보기"
+    "viewAlternatives": "다른 경로 보기",
+    "surroundingsAnchorAlight": "내릴 곳 {name} 주변",
+    "surroundingsAnchorCurrent": "현재역 {name} 주변"
   },
   "manualLocation": {
     "gps": "현재 위치",
