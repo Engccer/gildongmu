@@ -273,6 +273,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 |---|---|
 | **말미 주변 확인 배치** | 웹 안내 패널 ↔ iOS 시트 형태 차이(옛 B5). **간략 개념이 아니라 이식 작업**이라 축2 브리프 범위 밖이었다 |
 | **도착 즉시 종료** | 웹은 도착에 세션을 끝내고 iOS는 도착 종료 화면(건강 요약 포함)을 유지한다. 착수하려면 그 화면의 웹 대응을 먼저 판정해야 한다 |
+| **Kit `RouteService.walk(lang:)`를 enum으로** | 품질 리뷰 지적(2026-08-23) 중 **기록 없이 미룬 한 건**이다. 지금은 열린 `String`이라 오타가 서버 400 → `unavailable` 강등으로 조용히 흡수되고, 낭독은 "경로를 찾지 못했습니다"가 된다(원인이 안 보인다). 호출 형태는 `AppLanguage.dataLocale` 직접 전달로 통일해 **현재 오타가 들어갈 자리는 없으므로** 실결함이 아니라 미래 방어다 — `WalkRouteVariant`가 enum인 것과 대칭을 맞추는 정리 |
 | **Kit `walkStepAction` 정리** | 축3으로 도보 행동이 서버 투영 일원화되어 Kit의 `walkStepAction`과 `GuideActionSource.text` 분기에 **호출자가 없다**(소스 주석에 표기됨). 함께 지우면 `GuideActionSource` 자체가 사라져 car 영역(K2)까지 닿으므로 별도 묶음으로. ⚠ **웹 정본 `src/lib/walk-action.ts`는 삭제 대상이 아니다** — 서버가 카카오 스텝 분류에 계속 쓴다 |
 
 ### E15. 안내 UI 공통화 — 도보에서 도달한 UI/UX를 대중교통·자동차로
