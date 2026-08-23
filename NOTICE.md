@@ -11,6 +11,7 @@
 | 파일 | 내용 | 원출처 | 이용 조건 | 재생성 |
 |---|---|---|---|---|
 | `src/lib/data/osm-walk-nodes.json` | 전국 횡단보도·점자블록 노드 | © [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 | **ODbL 1.0**. 이 파일은 OSM에서 파생한 데이터베이스(Derivative Database)이며 같은 ODbL 1.0으로 제공한다 | `scripts/build-osm-walk-nodes.mjs` |
+| `src/lib/data/korea-boundary.json` (+ 바이트 동일 사본 `ios/GildongmuKit/Sources/GildongmuKit/Resources/korea-boundary.json`) | 대한민국 국경(영해 경계) 링 — 서비스 커버리지 판정용 | © [OpenStreetMap](https://www.openstreetmap.org/copyright) 기여자 | **ODbL 1.0**. OSM에서 파생한 데이터베이스(Derivative Database)이며 같은 ODbL 1.0으로 제공한다 | `scripts/build-osm-walk-nodes.mjs` |
 | `src/lib/data/audio-signals.json` | 서울 시각장애인용 음향신호기 위치 | 서울특별시, 서울 열린데이터광장 OA-15543 | 공공누리 제1유형(출처표시) | `scripts/build-audio-signals.mjs` |
 | `src/lib/data/voice-guides.json` | 서울 지하철역 음성유도기 위치 | 서울교통공사, 서울 열린데이터광장 OA-22526 | 공공누리 제1유형(출처표시) | `scripts/build-voice-guides.py` |
 | `src/lib/providers/data/congestion-areas.json` | 서울 실시간 도시데이터 영역의 구성 지점 좌표 | 서울특별시, 서울 열린데이터광장 실시간 도시데이터(OA-21285) | 공공누리 제1유형(출처표시) | `scripts/build-congestion-areas.mjs` |
