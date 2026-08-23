@@ -601,10 +601,23 @@ export interface TimetableDirection {
   last: TimetableTrain;
 }
 
-/** 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다). */
+/**
+ * 한 노선의 시간표 커버리지 — 업스트림이 인증 정상인데 (역·노선)별로 스케줄 0행을
+ * 주는 일이 상시라(홍대입구 2호선·강남 신분당·서울역 공항, 실측 2026-08-23)
+ * "없음"을 한 상태로 접을 수 없다. 지하철 도착 4-state(`arrivalStatus`)와 같은 낱말.
+ * - ok: 첫차·막차 편성을 산출했다(directions가 비지 않는 유일한 값)
+ * - noTrains: 읽을 수 있는 행은 있으나 탑승 가능 편성이 없다(전부 당역 종착, 참인 0)
+ * - unknown: 업스트림이 준 것으로 운행 여부를 확인할 수 없다(0행·파싱 불가). "운행 없음"이 아니다
+ * - unavailable: 조회 자체가 실패했다(partial도 함께 true)
+ */
+export type TimetableLineCoverage = "ok" | "noTrains" | "unknown" | "unavailable";
+
+/** 한 노선의 시간표(환승역은 노선별로 여러 개가 배열에 담긴다). 매칭된 노선은 coverage와 무관하게 전부 실린다. */
 export interface TimetableLine {
   /** 노선 표시명(예 "5호선","수인분당선". displayLineName로 정규화한 값) */
   lineName: string;
+  coverage: TimetableLineCoverage;
+  /** coverage === "ok"일 때만 비지 않는다 */
   directions: TimetableDirection[];
 }
 
