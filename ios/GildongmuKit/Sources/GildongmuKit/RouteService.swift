@@ -71,10 +71,14 @@ public struct RouteService: Sendable {
     /// 빠뜨리면 "경유 안 한 경로"가 "경유한 경로"로 낭독된다. 서버가 표지 부재를 throw로
     /// 막은 그 결함이 클라이언트에서는 *인자 생략*으로 일어나고, 기본값이 있으면 그 생략이
     /// 조용히 컴파일된다(`accessible` 규율 동형).
+    /// `lang`(E16 축3): 안내 문장 언어. ⚠ **같은 이유로 기본값을 두지 않는다** — 빠뜨린 조회는
+    /// 오류 없이 **한국어 안내**를 주고, 그 사실은 비-ko 사용자에게 낭독으로만 드러난다.
+    /// "ko"는 파라미터를 생략해 기존 요청과 byte-identical.
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
+        lang: String,
         includeGeometry: Bool = false,
         variant: WalkRouteVariant? = nil,
         via: (lat: Double, lng: Double)?
@@ -83,6 +87,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let variant { query.append(URLQueryItem(name: "variant", value: variant.rawValue)) }
@@ -99,6 +104,7 @@ public struct RouteService: Sendable {
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
+        lang: String,
         via: (lat: Double, lng: Double)?
     ) async throws -> (result: WalkRouteBriefing?, shortest: WalkRouteBriefing?) {
         var query = [
@@ -106,6 +112,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
             URLQueryItem(name: "alternatives", value: "1"),
         ]
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
