@@ -36,7 +36,7 @@ struct TransitTrackingSheet: View {
     /// (`SearchView.applyRowFocus`의 교훈). 후보·경로 목록은 정체성 바인딩을 따로 둔다.
     enum SheetControl: Hashable {
         case stop, advance, changeBoarding, confirmBoarded, walkHandoff, waitingLabel, reboardPrompt
-        /// 접기 버튼(N1, toolbar 아이콘) — 띠바에서 돌아온 시트의 첫 착지.
+        /// 접기 버튼(N1, 헤더 행 우측 아이콘) — 띠바에서 돌아온 시트의 첫 착지.
         case minimize
         /// 목적지 전환 후보 상태 행(조회 중·0건·오류, 스펙 §4.4).
         case destChangeStatus
@@ -69,23 +69,9 @@ struct TransitTrackingSheet: View {
     private static let reboardPromptId = "transit-reboard-prompt"
 
     var body: some View {
-        // 접기 버튼은 상단 우측 toolbar 아이콘(BeaconTrackingSheet 동형, 위원장 판정
-        // 2026-08-23 K1). NavigationStack은 이 toolbar를 위해서만 있다.
-        NavigationStack {
-            sheetBody
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    if model.state != nil {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button(action: onMinimize) {
-                                Image(systemName: "arrow.down.right.and.arrow.up.left")
-                            }
-                            .accessibilityLabel(appLocalized("guide.minimize"))
-                            .accessibilityFocused($focusedControl, equals: .minimize)
-                        }
-                    }
-                }
-        }
+        // 접기 버튼은 섹션 헤더(제목 메뉴) 행 우측 아이콘(BeaconTrackingSheet 동형,
+        // 위원장 판정 2026-08-23). 핸드오프 화면은 세션이 끝나 접기가 없다.
+        sheetBody
     }
 
     private var sheetBody: some View {
@@ -111,7 +97,11 @@ struct TransitTrackingSheet: View {
                             heading: appLocalized("beacon.transitHeading"),
                             label: model.destinationLabel,
                             onShowDetail: { showPlaceDetail = true },
-                            onChangeDestination: { changeDestPresented = true })
+                            onChangeDestination: { changeDestPresented = true }
+                        ) {
+                            GuideMinimizeButton(action: onMinimize)
+                                .accessibilityFocused($focusedControl, equals: .minimize)
+                        }
                     }
                     destChangeSection(proxy: proxy)
                 } else if let handoff = model.pendingWalkHandoff {
