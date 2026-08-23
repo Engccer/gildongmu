@@ -58,4 +58,5 @@ dodo판을 경로만 바꿔 가져온다(`src/lib/providers/tago-subway`·`src/l
 
 ## 6. 검증 기록
 
-(구현 뒤 채운다: 실호출 게이트 출력 요약·리뷰 판정.)
+- **실호출 게이트 2026-08-23(일요일 다이어 `03`)**: `node scripts/verify-korea-subway-timetable.mjs` **15/15 PASS**. 관측 — 강남: 신분당선 `unknown`·2호선 ok / 홍대입구: 공항선 ok·경의중앙선 ok·2호선 `unknown` / 서울역: 공항선 `unknown`·GTX-A ok(하행만)·경의중앙 ok(상행만)·1호선 ok·4호선 ok. 탈락 0, `directions` 비지 않음 ⇔ `ok` 성립. 로컬 dev 서버 경유 `/api/station/timetable` 응답도 동일.
+- **시뮬레이터 라벨 확인**: Debug 앱이 http 로컬 서버에 ATS로 못 붙어(plist 예외 없음, 소유 밖) 통합 push 뒤 prod(Vercel 자동 배포)를 대상으로 확인한다 — 웹이 앱보다 먼저라는 배포 순서와 같다.

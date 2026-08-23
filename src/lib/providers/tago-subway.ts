@@ -36,7 +36,7 @@ const BASE = "https://apis.data.go.kr/1613000/SubwayInfo";
 const PAGE_SIZE = 500;
 // 키워드 매칭 노선 수 상한 — 환승역 등에서 노선별 상·하행 조회가 무한 증폭되지
 // 않도록 방어(스펙 §2-A). 실서비스 환승역도 이 상한을 넘지 않는다.
-const MAX_LINES = 8;
+export const MAX_LINES = 8;
 const SERVICE_DAY_BOUNDARY = 30000; // HHMMSS 수치 03:00:00(위 헤더의 서비스데이 경계 휴리스틱)
 
 export function parseKeywordStations(raw: unknown): Array<{ id: string; name: string; routeName: string }> {
