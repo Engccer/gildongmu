@@ -10,6 +10,13 @@
  * ②속성 서술("활기찬 분위기")은 엔티티가 아니라 못 잡는다 — 그래서 `forbidLexicon`이
  * **강등 전용**으로 붙는다(있으면 실패, 없다고 통과 보장 아님). 고유명사 추출은 시설
  * 접미사가 있는 토큰으로 좁혀 오탐을 억제한다(넓히면 잡음이 판정을 잠식한다).
+ * ③수치는 "도구 출력 어딘가의 같은 숫자"로 접지된다 — `fields:"*"`면 좌표·id·total 같은 숫자도
+ * 근거가 되어 "2층"이 `total:2`로 통과한다(미탐). 정밀하게 재려면 `fields`를 좁힌다.
+ * ④"오후 5시"처럼 분이 없는 시각은 시각 엔티티로 뽑지 않는다("1시간"과 갈리지 않는다).
+ *
+ * 어휘 강등의 면제: 같은 문장에 부정 술어("제공되지 않"·"확인할 수 없" 등)가 있으면 그 낱말은
+ * 정직한 한계 고지("화장실 위치 정보는 제공되지 않습니다")이지 단정이 아니다 — 2026-08-25 스모크와
+ * 리뷰가 잡은 오탐 기제라 문장 단위로 면제한다.
  */
 
 export type EntityKind = "name" | "phone" | "time" | "number" | "address";
@@ -100,7 +107,8 @@ const NAME_RE =
   /[가-힣A-Za-z0-9]{2,}(역|점|병원|의원|소아과|내과|치과|한의원|약국|공원|정류장|정류소|대여소|센터|시장|학교)(?=[은는이가을를에도의와과로]?(?![가-힣]))/g;
 /** 접미사만으로 이뤄진 일반 명사는 후보가 아니다. */
 const GENERIC_NAMES = new Set(["지하철역", "기차역", "버스정류장", "정류장", "정류소", "대여소", "병원", "약국", "공원", "학교", "시장", "센터"]);
-const ADDRESS_RE = /[가-힣]+(?:로|길)\s?\d+(?:-\d+)?/g;
+// 도로명은 2자 이상 + 뒤에 단위가 오면 조사 "로"("버스로 10분"·"도보로 5분")라 제외한다.
+const ADDRESS_RE = /[가-힣]{2,}(?:대로|로|길)\s?\d+(?:-\d+)?(?!\d)(?!\s*(?:분|초|m|km|정거장|대|개|곳|호선|번))/g;
 
 function pad2(n: string): string {
   return n.padStart(2, "0");
@@ -141,13 +149,20 @@ export function extractEntities(text: string, kinds: readonly EntityKind[]): Ent
   return out;
 }
 
-const KM_TOLERANCE = 0.05;
+/** 답변이 적은 자릿수만큼만 일치를 요구한다 — 1,123m를 "약 1km"로 반올림한 것은 날조가 아니다. */
+function matchesRounded(n: number, v: number, decimals: number): boolean {
+  return Math.abs(n - v) <= 0.5 * 10 ** -decimals + 1e-9;
+}
+
+/** 부정 술어 — 같은 문장 안의 강등 어휘를 면제한다(한계 고지이지 단정이 아니다). */
+const NEGATION_RE = /제공되지 않|제공하지 않|제공되지 않|확인할 수 없|확인하기 어렵|어렵습니다|없습니다|않습니다|지 않아|불가능|알 수 없/;
 
 function grounded(e: Entity, corpus: string, corpusNumbers: number[]): boolean {
   if (corpus.includes(e.norm)) return true;
   if (e.kind === "time") {
+    // 값 경계(`|`)를 살려 좌표 127.1325가 13:25를 접지하지 않게 한다.
     const compact = e.norm.replace(":", "");
-    return corpus.includes(compact) || corpus.includes(`${compact}00`);
+    return new RegExp(`(^|\\|)${compact}(00)?($|\\|)`).test(corpus);
   }
   if (e.kind === "number") {
     const m = /^([\d.]+)(.*)$/.exec(e.norm);
@@ -155,8 +170,9 @@ function grounded(e: Entity, corpus: string, corpusNumbers: number[]): boolean {
     const v = Number(m[1]);
     const unit = m[2];
     if (corpusNumbers.some((n) => n === v)) return true;
-    if (unit === "km") return corpusNumbers.some((n) => Math.abs(n / 1000 - v) <= KM_TOLERANCE);
-    if (unit === "분") return corpusNumbers.some((n) => Math.round(n / 60) === v);
+    const decimals = (m[1].split(".")[1] ?? "").length;
+    if (unit === "km") return corpusNumbers.some((n) => matchesRounded(n / 1000, v, decimals));
+    if (unit === "분") return corpusNumbers.some((n) => matchesRounded(n / 60, v, decimals));
     return false;
   }
   return false;
@@ -183,9 +199,10 @@ export function scoreGrounding(
     seen.add(key);
     if (!grounded(e, corpus, corpusNumbers)) leaked.push(key);
   }
-  const lower = text.toLowerCase();
+  const sentences = text.split(/(?<=[.!?。])\s+|\n+/).filter((x) => !NEGATION_RE.test(x));
+  const assertive = sentences.join("\n").toLowerCase();
   const hits = (spec.forbidLexicon ?? [])
-    .map((term) => ({ term, at: lower.indexOf(term.toLowerCase()) }))
+    .map((term) => ({ term, at: assertive.indexOf(term.toLowerCase()) }))
     .filter((h) => h.at >= 0)
     .sort((a, b) => a.at - b.at);
   leaked.push(...hits.map((h) => `어휘:${h.term}`));
