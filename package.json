@@ -12,7 +12,9 @@
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ab": "vitest run --config vitest.ab.config.ts"
+    "test:ab": "vitest run --config vitest.ab.config.ts",
+    "eval:ab": "vitest run --config vitest.ab.config.ts",
+    "eval:ab:report": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON src/__ab__/report-cli.mts"
   },
   "dependencies": {
     "@google/genai": "^2.15.0",
