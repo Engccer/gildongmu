@@ -21,7 +21,7 @@
   "search": {
     "label": "場所を検索",
     "placeholder": "例: 景福宮、ソウル駅",
-    "button": "検索",
+    "button": "検索 (Enter)",
     "clear": "検索語を消去",
     "searching": "検索中…",
     "searchingFor": "「{query}」を検索中…",
@@ -37,7 +37,7 @@
     "placeCount": "場所 {count}件",
     "webCount": "ウェブ {count}件",
     "addressCount": "住所 {count}件",
-    "askAi": "AIに質問",
+    "askAi": "AIに質問 (Ctrl+Enter)",
     "sortByReview": "Naverレビュー順で見る",
     "sortByAccuracy": "関連度順で見る"
   },

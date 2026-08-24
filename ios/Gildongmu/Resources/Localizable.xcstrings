@@ -33606,37 +33606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "AI에게 질문"
+            "value": "AI에게 질문 (Ctrl+Enter)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ask AI"
+            "value": "Ask AI (Ctrl+Enter)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Preguntar a la IA"
+            "value": "Preguntar a la IA (Ctrl+Enter)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Demander à l'IA"
+            "value": "Demander à l'IA (Ctrl+Enter)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chiedi all'IA"
+            "value": "Chiedi all'IA (Ctrl+Enter)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "AIに質問"
+            "value": "AIに質問 (Ctrl+Enter)"
           }
         }
       }
@@ -33646,37 +33646,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "검색"
+            "value": "검색 (Enter)"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search"
+            "value": "Search (Enter)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Buscar"
+            "value": "Buscar (Enter)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rechercher"
+            "value": "Rechercher (Enter)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cerca"
+            "value": "Cerca (Enter)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "検索"
+            "value": "検索 (Enter)"
           }
         }
       }

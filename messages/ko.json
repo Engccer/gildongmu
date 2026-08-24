@@ -21,7 +21,7 @@
   "search": {
     "label": "장소 검색",
     "placeholder": "예: 경복궁, 서울역",
-    "button": "검색",
+    "button": "검색 (Enter)",
     "clear": "검색어 지우기",
     "searching": "검색 중…",
     "searchingFor": "’{query}’ 검색 중…",
@@ -37,7 +37,7 @@
     "placeCount": "장소 {count}건",
     "webCount": "웹 {count}건",
     "addressCount": "주소 {count}건",
-    "askAi": "AI에게 질문",
+    "askAi": "AI에게 질문 (Ctrl+Enter)",
     "sortByReview": "네이버 리뷰순으로 보기",
     "sortByAccuracy": "정확도순으로 보기"
   },
