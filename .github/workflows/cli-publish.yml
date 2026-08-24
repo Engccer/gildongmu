@@ -52,6 +52,6 @@ jobs:
       # Trusted Publishing OIDC는 npm CLI 11.5.1+ 필요. node 22 동봉 npm은 10.x이고
       # `npm install -g npm@latest`는 self-upgrade race가 있어(dodo 실측) npx로 회피.
       - name: Publish gildongmu (Trusted Publishing)
-        run: npx -y npm@latest publish -w gildongmu --access public
+        run: npx -y npm@latest publish -w gildongmu --access public --provenance
       - name: Publish gildongmu-mcp (Trusted Publishing)
-        run: npx -y npm@latest publish -w gildongmu-mcp --access public
+        run: npx -y npm@latest publish -w gildongmu-mcp --access public --provenance
