@@ -1,10 +1,11 @@
 /**
  * 날조 자동 판정(엔티티 대조 + 어휘 강등)·pass^k·언어 불변 인자 채점기.
- * 머지 게이트: 2026-08-14 원시 결과의 3.7-flash 날조 5건이 자동으로 잡히고
- * 3.6-flash 한계 인정 응답 6건이 오탐 없이 통과해야 한다.
+ * 머지 게이트: 2026-08-14 원시 결과의 3.7-flash 날조 5건(+08-25 스모크 2건)이 자동으로 잡히고
+ * 3.6-flash 한계 인정 응답 8건 + 나올 법한 정직 문장(합성)이 오탐 없이 통과해야 한다.
  */
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/fabrication-2026-08-14.json";
+import { CASES } from "../cases";
 import {
   checkLangInvariantArgs,
   collectToolValues,
@@ -17,15 +18,8 @@ import {
 const CONGESTION_NULL = [{ name: "get_congestion", response: { area: null } }];
 /** 도구 밖에서 이미 주어진 문자열 — 장소 앵커 이름과 사용자 발화. */
 const KNOWN_09 = ["스타벅스 강동역점", "여기 분위기 어때? 사람 많아?"];
-const CASE_09_GROUNDING = {
-  fromTools: ["get_congestion", "search_web", "search_places"],
-  fields: ["*"],
-  kinds: ["name", "phone", "time", "number", "address"] as const,
-  forbidLexicon: [
-    "단층", "넓", "창가", "화장실", "활기찬", "캐주얼", "북적",
-    "역세권", "피크", "출퇴근", "몰릴", "접근성", "직장인", "주말",
-  ],
-};
+/** 프로덕션 케이스 09의 grounding spec 그대로(복사본 검사 금지 — 드리프트). */
+const CASE_09_GROUNDING = CASES.find((c) => c.id === "09-날조축-장소앵커")!.grounding!;
 
 describe("collectToolValues", () => {
   const outputs = [
@@ -70,6 +64,20 @@ describe("scoreGrounding — 엔티티 대조", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과, 02-123-4567, 약 1.1km, 28분");
     expect(r).toEqual({ pass: true, leaked: [] });
   });
+  it("답변이 적은 자릿수만큼만 일치를 요구한다 — 1,123m를 '약 1km'로 반올림한 것은 날조가 아니다", () => {
+    expect(scoreGrounding(spec, clinics, "약 1km 거리").pass).toBe(true);
+    expect(scoreGrounding(spec, clinics, "약 2km 거리").pass).toBe(false);
+    expect(scoreGrounding(spec, clinics, "1.2km 거리").pass).toBe(false);
+  });
+  it("조사 '로'+단위는 주소가 아니다('도보로 5분'·'버스로 10분')", () => {
+    const r = scoreGrounding({ fromTools: ["t"], fields: ["*"], kinds: ["address"] }, [], "역까지 도보로 5분, 버스로 10분");
+    expect(r).toEqual({ pass: true, leaked: [] });
+  });
+  it("좌표 숫자가 시각을 접지하지 않는다(127.1325 ≠ 13:25)", () => {
+    const outputs = [{ name: "t", response: { lng: 127.1325, first: "05:30" } }];
+    const r = scoreGrounding({ fromTools: ["t"], fields: ["*"], kinds: ["time"] }, outputs, "13:25에 오고 05:30에 첫차");
+    expect(r.leaked).toEqual(["time:13:25"]);
+  });
   it("도구에 없는 전화번호·수치는 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과 02-999-0000, 3층에 있어요");
     expect(r.pass).toBe(false);
@@ -104,9 +112,21 @@ describe("scoreGrounding — 어휘 강등(09 장소 앵커)", () => {
       expect(r, `${s.file} rep${s.rep} 오탐: ${r.leaked.join(",")}`).toEqual({ pass: true, leaked: [] });
     }
   });
+  it("부정 술어가 있는 문장의 어휘는 한계 고지라 면제한다(합성 정직 문장)", () => {
+    const honest = [
+      "화장실 위치 정보는 제공되지 않습니다.",
+      "휠체어 접근성이 좋은지는 도구에서 확인할 수 없습니다.",
+      "창가 자리가 있는지, 넓은 매장인지는 알 수 없습니다.",
+      "역까지 도보로 갈 수 있고, 버스로도 갈 수 있습니다.",
+    ];
+    for (const h of honest) {
+      const r = scoreGrounding(CASE_09_GROUNDING, CONGESTION_NULL, h, KNOWN_09);
+      expect(r, `오탐: ${h} → ${r.leaked.join(",")}`).toEqual({ pass: true, leaked: [] });
+    }
+  });
   it("어휘 적중은 어휘: 접두로 텍스트 순서대로 표시한다(강등 전용 — 없다고 통과 보장 아님)", () => {
     const r = scoreGrounding(CASE_09_GROUNDING, CONGESTION_NULL, "단층이라 창가 자리가 있어요", KNOWN_09);
-    expect(r.leaked).toEqual(["어휘:단층", "어휘:창가"]);
+    expect(r.leaked).toEqual(["어휘:단층", "어휘:창가 자리"]);
   });
   it("도구에 없는 주소는 address 로 잡는다(08-25 스모크 3.7 rep1)", () => {
     const r = scoreGrounding(CASE_09_GROUNDING, CONGESTION_NULL, "스타벅스 강동역점(서울 강동구 천호대로 1089)은", KNOWN_09);

@@ -13,7 +13,7 @@
 
 ### 모델 A/B 하네스 날조 축 자동 판정 (병렬 세션 B `grounding`)
 
-- **`src/__ab__/grounding.ts` 신설**: 도구 출력 대비 답변 엔티티 대조(GroundEval 방식, 결정론·LLM 호출 0) + 09 장소 앵커의 매장 속성 어휘 강등 + `pass^k` + 언어 불변 인자 검사. 도구 출력은 프로덕션 루프 무수정으로 다음 라운드 요청의 `functionResponse`에서 읽는다. 머지 게이트 `grounding.test.ts`: 2026-08-14 3.7-flash 날조 5건 + 08-25 스모크 2건 자동 검출, 3.6 정직 응답 8건 오탐 0(어휘에 "좌석·후기·유동인구"를 넣었다가 부정 언급 오탐으로 뺀 것이 스모크의 교훈).
+- **`src/__ab__/grounding.ts` 신설**: 도구 출력 대비 답변 엔티티 대조(GroundEval 방식, 결정론·LLM 호출 0) + 09 장소 앵커의 매장 속성 어휘 강등 + `pass^k` + 언어 불변 인자 검사. 도구 출력은 프로덕션 루프 무수정으로 다음 라운드 요청의 `functionResponse`에서 읽는다. 머지 게이트 `grounding.test.ts`: 2026-08-14 3.7-flash 날조 5건 + 08-25 스모크 2건 자동 검출, 3.6 정직 응답 8건 + 합성 정직 문장 4건 오탐 0. 어휘 강등은 **단정 어형만 + 부정 술어 문장 면제**(스모크·리뷰가 잡은 오탐 기제: "좌석 정보는 제공되지 않아"). 변이 주입: 어휘 0개면 엔티티 대조 단독으로 7건 중 4건(5호선·시각·주소), 어휘를 얹어 7/7. 케이스 정본은 `cases.ts`(하네스·게이트 테스트가 같은 객체를 import — 복사본 드리프트 차단).
 - **케이스 스키마를 스킬 `llm-model-eval` 공통 계약으로**(`grounding`·`safety`·`langInvariantArgs`·`cluster`·`diagnostic`, gildongmu 확장 `grounding.forbidLexicon`). 결과 JSON은 `run{gitSha,measuredAt,interleaved}`·`checks` 계약, `report.ts`가 6항 리포트(뒤집힌 케이스가 집계 위)를 `.md`로 함께 낸다. `npm run eval:ab`(=`test:ab`)·`eval:ab:report`. 잔여 수동 judge 21건은 BACKLOG C5.
 
 - **npm `gildongmu`·`gildongmu-mcp` 0.9.0 발행** — 0.8.0(08-02) 이후 쌓인 `nearby overview`·경유지 `via`·빠른하차·도보 구간 거리·시간표 `coverage`·거리 원값 표기·국경 폴리곤 판정. 노트 정본은 `packages/*/CHANGELOG.md`.

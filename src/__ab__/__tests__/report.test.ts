@@ -63,6 +63,10 @@ describe("pricesAt — 단가는 날짜의 함수", () => {
   it("2027-01-01부터 정가", () => {
     expect(pricesAt("2027-01-01T00:00:00Z")).toMatchObject({ inPerToken: 1.5 / 1e6, outPerToken: 7.5 / 1e6 });
   });
+  it("단가는 모델별이고 미등록 모델은 라벨에 가정을 밝힌다(침묵 금지)", () => {
+    expect(pricesAt("2026-08-25T00:00:00Z", "gemini-3.7-flash").label).not.toContain("미등록");
+    expect(pricesAt("2026-08-25T00:00:00Z", "gemini-4.0-pro").label).toContain("gemini-4.0-pro 단가 미등록");
+  });
 });
 
 describe("caseVerdict", () => {
@@ -102,6 +106,10 @@ describe("buildReport", () => {
   });
   it("unstubbed 세션 수와 도구 이름", () => {
     expect(out).toMatch(/unstubbed[^\n]*2[^\n]*get_bus_route/);
+  });
+  it("한쪽 모델에 결과가 없는 케이스는 뒤집힘이 아니라 미실행이다", () => {
+    const partial: ResultFile = { ...FILE, results: FILE.results.filter((x) => !(x.model === B && x.caseId === "01-절제")) };
+    expect(buildReport(partial)).not.toMatch(/01-절제.*0\/0/);
   });
   it("gitSha·measuredAt 을 머리에 적는다", () => {
     expect(out).toContain("abc1234");

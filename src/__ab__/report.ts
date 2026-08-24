@@ -6,7 +6,7 @@
  * ($1.50/$7.50)로 복귀하므로 단가를 상수로 박지 않고 `run.measuredAt`으로 고른다.
  * thinking 토큰은 출력 단가로 과금된다(`candidatesTokenCount`와 분리돼 오므로 더해야 한다).
  */
-import type { EntityKind } from "./grounding";
+import { passK, type EntityKind } from "./grounding";
 
 export interface EvalCase {
   id: string;
@@ -60,11 +60,21 @@ export interface ResultFile {
 
 const PROMO_END = "2026-12-31T23:59:59.999Z";
 
-export function pricesAt(measuredAt: string): { inPerToken: number; outPerToken: number; label: string } {
+/** 모델별 단가표(USD per 1M 토큰). 두 모델이 같은 값인 것은 실측 사실이지 가정이 아니다 — 새 모델은 여기 등록한다. */
+const PRICE_TABLE: Record<string, { promo: [number, number]; list: [number, number] }> = {
+  "gemini-3.6-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
+  "gemini-3.7-flash": { promo: [0.75, 3.75], list: [1.5, 7.5] },
+};
+const FALLBACK_MODEL = "gemini-3.6-flash";
+
+export function pricesAt(measuredAt: string, model = FALLBACK_MODEL): { inPerToken: number; outPerToken: number; label: string } {
+  const known = PRICE_TABLE[model];
+  const row = known ?? PRICE_TABLE[FALLBACK_MODEL];
+  const unknown = known ? "" : ` ⚠ ${model} 단가 미등록 — ${FALLBACK_MODEL} 기준 가정`;
   if (new Date(measuredAt).getTime() <= new Date(PROMO_END).getTime()) {
-    return { inPerToken: 0.75 / 1e6, outPerToken: 3.75 / 1e6, label: "프로모 $0.75/$3.75 per 1M, 2026-12-31까지" };
+    return { inPerToken: row.promo[0] / 1e6, outPerToken: row.promo[1] / 1e6, label: `프로모 $${row.promo[0]}/$${row.promo[1]} per 1M, 2026-12-31까지${unknown}` };
   }
-  return { inPerToken: 1.5 / 1e6, outPerToken: 7.5 / 1e6, label: "정가 $1.50/$7.50 per 1M (프로모 종료 후)" };
+  return { inPerToken: row.list[0] / 1e6, outPerToken: row.list[1] / 1e6, label: `정가 $${row.list[0]}/$${row.list[1]} per 1M (프로모 종료 후)${unknown}` };
 }
 
 const AXES = ["expect", "forbid", "arg", "langInvariant", "grounding"] as const;
@@ -107,9 +117,10 @@ export function buildReport(file: ResultFile): string {
   const passCount = (rs: RunResult[]) => rs.filter(caseVerdict).length;
   // 케이스 판정: 그 모델의 반복 전부 통과(엄격). safety가 아니어도 뒤집힘 판정엔 같은 기준을 쓴다 —
   // 느슨하게 하면 "가끔 실패"가 양쪽 통과로 뭉개진다.
-  const verdict = (caseId: string, model: string) => {
+  // 결과가 0건인 (케이스, 모델)은 실패가 아니라 미실행(null) — 뒤집힘·regression 표본에서 뺀다.
+  const verdict = (caseId: string, model: string): boolean | null => {
     const rs = byCaseModel(caseId, model);
-    return rs.length > 0 && passCount(rs) === rs.length;
+    return passK(rs.map(caseVerdict));
   };
   const caseIds = [...new Set(results.map((r) => r.caseId))].sort();
   const caseOf = (id: string) => cases.find((c) => c.id === id);
@@ -123,7 +134,7 @@ export function buildReport(file: ResultFile): string {
   lines.push("## 뒤집힌 케이스");
   const flipped = caseIds.filter((id) => {
     const vs = models.map((m) => verdict(id, m));
-    return vs.some(Boolean) && !vs.every(Boolean);
+    return !vs.includes(null) && vs.some(Boolean) && !vs.every(Boolean);
   });
   if (flipped.length === 0) lines.push("뒤집힌 케이스 없음");
   else {
@@ -143,11 +154,12 @@ export function buildReport(file: ResultFile): string {
   const k = run.repeats;
   lines.push(`## safety pass^${k}`);
   const safetyIds = caseIds.filter((id) => caseOf(id)?.safety);
+  if (safetyIds.length === 0) lines.push("- safety 케이스 없음");
   for (const m of models) {
-    const fails = safetyIds.filter((id) => !verdict(id, m));
+    if (safetyIds.length === 0) break;
+    const fails = safetyIds.filter((id) => verdict(id, m) !== true);
     lines.push(`- pass^${k} ${m}: ${safetyIds.length - fails.length}/${safetyIds.length}${fails.length ? ` (미달: ${fails.join(", ")})` : ""}`);
   }
-  if (safetyIds.length === 0) lines.push("- safety 케이스 없음");
   lines.push("");
 
   // ③ regression / capability — 기준은 models[0](현행)
@@ -158,28 +170,32 @@ export function buildReport(file: ResultFile): string {
   const decidable = (id: string) => results.some((r) => r.caseId === id && AXES.some((a) => axisPass(r.checks, a) !== undefined));
   const unitOf = (id: string) => caseOf(id)?.cluster ?? id;
   const units = [...new Set(caseIds.filter(decidable).map(unitOf))];
-  const unitVerdict = (u: string, m: string) => caseIds.filter((id) => unitOf(id) === u).every((id) => verdict(id, m));
+  const unitVerdict = (u: string, m: string): boolean | null => {
+    const vs = caseIds.filter((id) => unitOf(id) === u).map((id) => verdict(id, m));
+    return vs.includes(null) ? null : vs.every(Boolean);
+  };
   for (const m of models.slice(1)) {
-    const basePass = units.filter((u) => unitVerdict(u, base));
+    const ran = units.filter((u) => unitVerdict(u, base) !== null && unitVerdict(u, m) !== null);
+    const basePass = ran.filter((u) => unitVerdict(u, base));
     const kept = basePass.filter((u) => unitVerdict(u, m));
-    const gained = units.filter((u) => !unitVerdict(u, base) && unitVerdict(u, m));
+    const gained = ran.filter((u) => unitVerdict(u, base) === false && unitVerdict(u, m));
     lines.push(`- regression ${m}: ${kept.length}/${basePass.length} 유지${basePass.length !== kept.length ? ` (깨짐: ${basePass.filter((u) => !kept.includes(u)).join(", ")})` : ""}`);
     lines.push(`- capability ${m}: ${gained.length}건 새로 통과${gained.length ? ` (${gained.join(", ")})` : ""}`);
   }
   lines.push("");
 
   // ④ 비용
-  const price = pricesAt(run.measuredAt);
-  lines.push(`## 비용 (단가: ${price.label}, 측정 ${run.measuredAt.slice(0, 10)} 기준)`);
+  lines.push(`## 비용 (측정 ${run.measuredAt.slice(0, 10)} 기준 단가 — 요금은 날짜의 함수)`);
   const isDiag = (r: RunResult) => !!caseOf(r.caseId)?.diagnostic;
   for (const m of models) {
+    const price = pricesAt(run.measuredAt, m);
     const rs = results.filter((r) => r.model === m);
     const core = rs.filter((r) => !isDiag(r));
     const cost = (xs: RunResult[]) =>
       xs.reduce((a, r) => a + r.promptTokens * price.inPerToken + (r.outputTokens + r.thoughtTokens) * price.outPerToken, 0);
     const sum = (xs: RunResult[], f: (r: RunResult) => number) => xs.reduce((a, r) => a + f(r), 0);
     lines.push(
-      `- ${m}: ${usd(cost(core))} (diagnostic 제외 ${core.length}건 · in ${sum(core, (r) => r.promptTokens)} / out ${sum(core, (r) => r.outputTokens)} / thinking ${sum(core, (r) => r.thoughtTokens)}) · 포함 합계 ${usd(cost(rs))}`,
+      `- ${m} [${price.label}]: ${usd(cost(core))} (diagnostic 제외 ${core.length}건 · in ${sum(core, (r) => r.promptTokens)} / out ${sum(core, (r) => r.outputTokens)} / thinking ${sum(core, (r) => r.thoughtTokens)}) · 포함 합계 ${usd(cost(rs))}`,
     );
   }
   lines.push("");
@@ -207,6 +223,10 @@ export function buildReport(file: ResultFile): string {
   const manual = cases.filter((c) => c.judge);
   lines.push(`## 잔여 수동 judge: ${manual.length}건`);
   for (const c of manual) lines.push(`- ${c.id}: ${c.judge}`);
+  lines.push("");
+  // 마지막 두 줄은 사람이 채운다(스킬 report-format.md) — 빈 틀을 두어 잊지 않게 한다.
+  lines.push("판정: (모델 유지/전환). 근거: (뒤집힌 케이스·pass^k 수치).");
+  lines.push("재평가: (조건 — systemInstruction 보강 후 재시도 / 현행 모델 은퇴 공지 / 차기 모델 출시).");
 
   return lines.join("\n");
 }
