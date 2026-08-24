@@ -9,6 +9,7 @@ import { env, hasGeminiKey } from "@/lib/env";
 // 비용·지연은 동률인데 "도구가 주지 않은 장소 특징을 말하지 마라" 축에서 5/5 회귀했다
 // (search_web으로 우회해 매장 분위기·좌석·화장실 위치를 서술 — 시각장애 사용자가
 // 검증할 수 없는 정보다). 재평가 트리거·수치는 docs/BACKLOG.md C5, 하네스는 src/__ab__.
+// (2026-08-25부터 그 날조 축은 사람이 읽는 judge가 아니라 `src/__ab__/grounding.ts` 엔티티 대조가 자동 판정한다.)
 export const GEMINI_MODEL = "gemini-3.6-flash";
 
 /** lazy 캐시 — 동일 프로세스에서 클라이언트 인스턴스를 재사용한다 */

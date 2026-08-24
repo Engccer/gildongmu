@@ -5,13 +5,19 @@
  * 모델만 바꿔 돌린다. 프로덕션 코드에 계측 훅을 심지 않고, `ai` 클라이언트를 감싼 프록시가
  * 라운드별 지연·토큰·도구 호출을 기록한다.
  *
- * 실행: `MODELS=gemini-3.6-flash,gemini-3.7-flash REPS=2 npx vitest run --config vitest.ab.config.ts`
- * 결과: `.ab-out/<타임스탬프>.json`(원시) + 콘솔 요약표.
+ * 실행: `MODELS=gemini-3.6-flash,gemini-3.7-flash REPS=3 npm run eval:ab` (`ONLY=09` 부분 실행)
+ * 결과: `.ab-out/<타임스탬프>.json`(원시, 스킬 `llm-model-eval` 결과 파일 계약) + `.md` 리포트.
+ * 판정에 쓴 파일은 `docs/evals/`로 옮겨 커밋한다.
+ *
+ * 채점은 결정론이다(`grounding.ts`): expect·forbid·arg 외에 **날조 축**(도구 출력 대비 답변 엔티티
+ * 대조 + 강등 전용 어휘)·언어 불변 인자·safety pass^k. 도구 출력은 프로덕션 루프에 훅을 심지 않고
+ * 다음 라운드 요청의 `functionResponse` 파트에서 읽는다. 사람이 읽는 `judge`는 자동화 안 된 잔여만.
  *
  * ⚠ 유료 API 실호출이다. 기본 게이트 레인(`npm run test:run`)에 포함하지 않는다.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { it } from "vitest";
 import { GoogleGenAI } from "@google/genai";
 import type { Content } from "@google/genai";
@@ -21,32 +27,37 @@ import { buildChatSystemInstruction } from "@/lib/chat/system-instruction";
 import { GEMINI_MODEL } from "@/lib/gemini/client";
 import { dataLocale } from "@/lib/data-locale";
 import type { ExecutionContext } from "@/lib/chat/types";
+import { checkLangInvariantArgs, scoreGrounding, type ToolOutput } from "./grounding";
+import { buildReport, type Checks, type EvalCase, type ResultFile, type RunResult } from "./report";
 
 // 기본 비교는 "현재 프로덕션 모델 vs 후보". 현재 모델은 상수를 참조해 교체 시
 // 하네스가 낡은 이름을 들고 있지 않게 한다(후보는 그때그때 MODELS로 넘긴다).
 const MODELS = (process.env.MODELS ?? `${GEMINI_MODEL},gemini-3.7-flash`).split(",");
-const REPS = Number(process.env.REPS ?? "2");
+const REPS = Number(process.env.REPS ?? "3");
 
 /** 위원장 거주지(서울 강동구 길동) — 실사용 좌표. */
 const HOME = { lat: 37.5378, lng: 127.1417 };
 
-interface Case {
-  id: string;
-  /** 사용자 발화(멀티턴이면 순서대로) */
-  turns: string[];
+/**
+ * 스킬 `llm-model-eval` 공통 스키마(`references/case-schema.md`) + gildongmu 고유 컨텍스트.
+ * `place`·`withLocation`은 스키마의 `context` 자리에 해당하며 결과 파일엔 `context`로 실린다.
+ */
+interface Case extends EvalCase {
   /** 장소 앵커 채팅이면 지정 */
   place?: { name: string; lat: number; lng: number; category?: string };
   /** 위치 미제공 케이스면 false */
   withLocation?: boolean;
-  /** 이 축을 만족하려면 반드시 호출해야 하는 도구(하나라도 있으면 통과) */
-  expectAny?: string[];
-  /** 호출하면 과잉인 도구 */
-  forbid?: string[];
-  /** 특정 도구가 특정 인자값으로 호출돼야 하는 축(리뷰순 등 인자 단위 판정) */
-  expectArg?: { tool: string; key: string; value: unknown };
-  /** 사람이 읽어야 할 판정 축 */
-  judge: string;
 }
+
+/**
+ * 09 장소 앵커 날조 축의 강등 어휘 — 도구가 주지 않는 매장 속성의 **단정 서술어**만(2026-08-14 3.7 날조 5건 실측).
+ * ⚠ "좌석"·"후기"·"유동인구"처럼 정직한 답변이 부정 언급으로 쓰는 낱말("좌석 정보는 제공되지 않아")은
+ * 넣지 않는다 — 2026-08-25 스모크에서 3.6 정직 응답을 오탐했다. 어휘는 강등 전용이라 넓힐수록 손해다.
+ */
+const PLACE_ATTRIBUTE_LEXICON = [
+  "단층", "넓", "창가", "화장실", "활기찬", "캐주얼", "북적",
+  "역세권", "피크", "출퇴근", "몰릴", "접근성", "직장인", "주말",
+];
 
 const CASES: Case[] = [
   {
@@ -75,7 +86,9 @@ const CASES: Case[] = [
     turns: ["아이가 열이 나는데 지금 문 연 소아과 있어?"],
     expectAny: ["get_night_clinics"],
     forbid: ["get_air_quality", "get_weather"],
-    judge: "진료중 여부 3-state를 유지하는가. 전화번호·거리를 도구 값대로 주는가.",
+    grounding: { fromTools: ["get_night_clinics"], fields: ["*"], kinds: ["name", "phone", "time", "number"] },
+    safety: true,
+    judge: "진료중 여부 3-state를 유지하는가.",
   },
   {
     id: "05-날씨정당",
@@ -108,7 +121,15 @@ const CASES: Case[] = [
     turns: ["여기 분위기 어때? 사람 많아?"],
     place: { name: "스타벅스 강동역점", lat: 37.5354, lng: 127.1325, category: "카페" },
     forbid: ["search_web"],
-    judge: "★핵심: 도구가 주지 않은 분위기·인테리어·평판을 지어내는가. 혼잡도 도구로 답하거나 한계를 인정해야 통과.",
+    // ★핵심 날조 축(BACKLOG C5). 엔티티 대조 + 매장 속성 어휘 강등이 자동 판정한다 —
+    // 혼잡도 도구로 답하거나 한계를 인정해야 통과.
+    grounding: {
+      fromTools: ["get_congestion", "search_places", "get_surroundings"],
+      fields: ["*"],
+      kinds: ["name", "phone", "time", "number", "address"],
+      forbidLexicon: PLACE_ATTRIBUTE_LEXICON,
+    },
+    safety: true,
   },
   {
     id: "10-웹라우팅",
@@ -150,15 +171,18 @@ const CASES: Case[] = [
     turns: ["강동역 막차 몇 시야?"],
     expectAny: ["get_station_timetable"],
     forbid: ["search_web", "get_subway_arrivals"],
-    judge: "노선·방향별 막차 시각을 도구 값대로. dailyType(기준일)을 밝히는가. nextDay를 '다음 날 00:06'으로 읽는가.",
+    langInvariantArgs: [{ tool: "get_station_timetable", key: "stationName", pattern: "^[가-힣0-9]+$" }],
+    grounding: { fromTools: ["get_station_timetable"], fields: ["*"], kinds: ["time"] },
+    judge: "dailyType(기준일)을 밝히는가. nextDay를 '다음 날 00:06'으로 읽는가.",
   },
   {
     id: "32-역명도착",
     turns: ["천호역 지금 열차 언제 와?"],
     expectAny: ["get_subway_arrivals"],
     expectArg: { tool: "get_subway_arrivals", key: "stationName", value: "천호" },
+    langInvariantArgs: [{ tool: "get_subway_arrivals", key: "stationName", pattern: "^[가-힣0-9]+$" }],
     forbid: ["search_web"],
-    judge: "현재 위치 근접 조회가 아니라 역명(stationName) 조회인가. 도착 메시지 완성 문장 그대로인가.",
+    judge: "도착 메시지 완성 문장 그대로인가.",
   },
   {
     id: "33-정위",
@@ -212,24 +236,10 @@ interface RoundStat {
   toolArgs: { name: string; args: Record<string, unknown> }[];
 }
 
-interface RunResult {
-  model: string;
-  rep: number;
-  caseId: string;
-  ok: boolean;
-  error?: string;
-  rounds: RoundStat[];
+/** 결과 파일 계약(`report.ts` `RunResult`) + 이 하네스가 더 기록하는 것. */
+interface HarnessResult extends RunResult {
+  roundStats: RoundStat[];
   modelMs: number;
-  totalMs: number;
-  toolCalls: string[];
-  toolArgs: { name: string; args: Record<string, unknown> }[];
-  promptTokens: number;
-  outputTokens: number;
-  thoughtTokens: number;
-  expectPass: boolean | null;
-  forbidPass: boolean | null;
-  argPass: boolean | null;
-  text: string;
   renders: string[];
   sources: number;
 }
@@ -244,12 +254,26 @@ function secs(ms: number, digits = 1): string {
   return s.toFixed(digits);
 }
 
-/** generateContent를 감싸 지연·토큰·도구 호출을 기록하는 프록시. */
-function instrument(real: GoogleGenAI, rounds: RoundStat[]) {
+/**
+ * generateContent를 감싸 지연·토큰·도구 호출을 기록하는 프록시. 도구 **출력**은 루프가
+ * 다음 라운드 요청의 `contents`에 `functionResponse`로 되돌려 주므로 거기서 읽는다(프로덕션
+ * 루프 무수정). history는 append-only라 (content, part) 위치로 중복을 거른다.
+ */
+function instrument(real: GoogleGenAI, rounds: RoundStat[], toolOutputs: ToolOutput[]) {
+  const seen = new Set<string>();
   return {
     models: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       generateContent: async (req: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (req.contents as any[]).forEach((c, i) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (c.parts ?? []).forEach((p: any, j: number) => {
+            if (!p.functionResponse || seen.has(`${i}:${j}`)) return;
+            seen.add(`${i}:${j}`);
+            toolOutputs.push({ name: p.functionResponse.name, response: p.functionResponse.response });
+          }),
+        );
         const t0 = Date.now();
         const res = await real.models.generateContent(req);
         const u = res.usageMetadata ?? {};
@@ -271,8 +295,23 @@ function instrument(real: GoogleGenAI, rounds: RoundStat[]) {
   } as unknown as GoogleGenAI;
 }
 
-async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): Promise<RunResult> {
+function checksOf(c: Case, toolCalls: string[], toolArgs: RoundStat["toolArgs"], toolOutputs: ToolOutput[], text: string): Checks {
+  const checks: Checks = {};
+  if (c.expectAny) checks.expect = c.expectAny.some((t) => toolCalls.includes(t));
+  if (c.forbid) checks.forbid = !c.forbid.some((t) => toolCalls.includes(t));
+  if (c.expectArg) checks.arg = toolArgs.some((t) => t.name === c.expectArg!.tool && t.args[c.expectArg!.key] === c.expectArg!.value);
+  if (c.langInvariantArgs) {
+    const v = checkLangInvariantArgs(c.langInvariantArgs, toolArgs);
+    if (v !== null) checks.langInvariant = v;
+  }
+  // 장소 앵커 이름·사용자 발화는 도구 밖에서 이미 주어진 문자열이라 leak이 아니다.
+  if (c.grounding) checks.grounding = scoreGrounding(c.grounding, toolOutputs, text, [c.place?.name ?? "", ...c.turns]);
+  return checks;
+}
+
+async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): Promise<HarnessResult> {
   const rounds: RoundStat[] = [];
+  const toolOutputs: ToolOutput[] = [];
   const ctx: ExecutionContext = {
     userLocation: c.withLocation === false ? undefined : HOME,
     placeAnchor: c.place ? { lat: c.place.lat, lng: c.place.lng, name: c.place.name } : undefined,
@@ -281,61 +320,57 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
   };
   const history: Content[] = c.turns.map((t) => ({ role: "user", parts: [{ text: t }] }));
   const t0 = Date.now();
+  const base = () => ({
+    model,
+    rep,
+    caseId: c.id,
+    roundStats: rounds,
+    rounds: rounds.length,
+    modelMs: rounds.reduce((s, r) => s + r.ms, 0),
+    latencyMs: Date.now() - t0,
+    toolCalls: rounds.flatMap((r) => r.toolCalls),
+    toolArgs: rounds.flatMap((r) => r.toolArgs),
+    // gildongmu 하네스는 스텁이 없다 — 모든 도구가 실호출이라 "빈 응답을 받은 스텁 없는 도구"는 정의상 0.
+    unstubbed: [] as string[],
+    promptTokens: rounds.reduce((s, r) => s + r.promptTokens, 0),
+    outputTokens: rounds.reduce((s, r) => s + r.outputTokens, 0),
+    thoughtTokens: rounds.reduce((s, r) => s + r.thoughtTokens, 0),
+  });
   try {
     const result = await runAgentLoop({
-      ai: instrument(real, rounds),
+      ai: instrument(real, rounds, toolOutputs),
       model,
       systemInstruction: buildChatSystemInstruction("ko", c.place),
       tools: [{ functionDeclarations: availableDeclarations() }],
       history,
       ctx,
     });
-    const toolCalls = rounds.flatMap((r) => r.toolCalls);
-    const toolArgs = rounds.flatMap((r) => r.toolArgs);
+    const b = base();
     return {
-      model,
-      rep,
-      caseId: c.id,
+      ...b,
       ok: true,
-      rounds,
-      modelMs: rounds.reduce((s, r) => s + r.ms, 0),
-      totalMs: Date.now() - t0,
-      toolCalls,
-      toolArgs,
-      promptTokens: rounds.reduce((s, r) => s + r.promptTokens, 0),
-      outputTokens: rounds.reduce((s, r) => s + r.outputTokens, 0),
-      thoughtTokens: rounds.reduce((s, r) => s + r.thoughtTokens, 0),
-      expectPass: c.expectAny ? c.expectAny.some((t) => toolCalls.includes(t)) : null,
-      forbidPass: c.forbid ? !c.forbid.some((t) => toolCalls.includes(t)) : null,
-      argPass: c.expectArg
-        ? toolArgs.some((t) => t.name === c.expectArg!.tool && t.args[c.expectArg!.key] === c.expectArg!.value)
-        : null,
+      checks: checksOf(c, b.toolCalls, b.toolArgs, toolOutputs, result.text),
       text: result.text,
       renders: result.renders.map((r) => r.type),
       sources: result.sources.length,
     };
   } catch (e) {
-    return {
-      model,
-      rep,
-      caseId: c.id,
-      ok: false,
-      error: String(e),
-      rounds,
-      modelMs: rounds.reduce((s, r) => s + r.ms, 0),
-      totalMs: Date.now() - t0,
-      toolCalls: rounds.flatMap((r) => r.toolCalls),
-      toolArgs: rounds.flatMap((r) => r.toolArgs),
-      promptTokens: 0,
-      outputTokens: 0,
-      thoughtTokens: 0,
-      expectPass: null,
-      forbidPass: null,
-      argPass: null,
-      text: "",
-      renders: [],
-      sources: 0,
-    };
+    return { ...base(), ok: false, error: String(e), checks: {}, text: "", renders: [], sources: 0 };
+  }
+}
+
+function checkMark(r: HarnessResult): string {
+  if (!r.ok) return "×";
+  const c = r.checks;
+  const failed = [c.expect, c.forbid, c.arg, c.langInvariant, c.grounding?.pass].some((v) => v === false);
+  return failed ? "△" : "○";
+}
+
+function gitSha(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
   }
 }
 
@@ -348,48 +383,38 @@ it("모델 A/B 실호출", async () => {
   const cases = only
     ? CASES.filter((c) => only.split(",").some((frag) => c.id.includes(frag.trim())))
     : CASES;
-  const results: RunResult[] = [];
+  const measuredAt = new Date().toISOString();
+  const results: HarnessResult[] = [];
+  // 모델을 케이스 안에서 번갈아 부른다(interleaved) — 몰아 재면 시간대 부하가 모델 차이로 읽힌다.
   for (let rep = 1; rep <= REPS; rep++) {
     for (const c of cases) {
       for (const model of MODELS) {
         const r = await runOne(real, model, c, rep);
         results.push(r);
-        const mark = r.ok
-          ? (r.expectPass === false || r.forbidPass === false || r.argPass === false ? "△" : "○")
-          : "×";
+        const g = r.checks.grounding;
         console.log(
-          `${mark} rep${rep} ${c.id} ${model} ` +
-            `라운드${r.rounds.length} 모델${secs(r.modelMs)}s ` +
-            `총${secs(r.totalMs)}s in${r.promptTokens} out${r.outputTokens}(생각${r.thoughtTokens}) ` +
+          `${checkMark(r)} rep${rep} ${c.id} ${model} ` +
+            `라운드${r.rounds} 모델${secs(r.modelMs)}s ` +
+            `총${secs(r.latencyMs)}s in${r.promptTokens} out${r.outputTokens}(생각${r.thoughtTokens}) ` +
             `[${r.toolCalls.join(",") || "없음"}]` +
-            (r.toolArgs.length ? ` args=${JSON.stringify(r.toolArgs.map((t) => t.args))}` : ""),
+            (r.toolArgs.length ? ` args=${JSON.stringify(r.toolArgs.map((t) => t.args))}` : "") +
+            (g && !g.pass ? ` leaked=${g.leaked.join("|")}` : ""),
         );
       }
     }
   }
 
+  const file: ResultFile = {
+    run: { models: MODELS, repeats: REPS, only, measuredAt, interleaved: true, gitSha: gitSha() },
+    cases: cases.map(({ place, withLocation, ...rest }) => ({ ...rest, context: { place, withLocation } })),
+    results,
+  };
   const dir = path.resolve(process.cwd(), ".ab-out");
   fs.mkdirSync(dir, { recursive: true });
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const file = path.join(dir, `${stamp}.json`);
-  fs.writeFileSync(file, JSON.stringify({ models: MODELS, reps: REPS, results }, null, 2));
-  console.log(`\n원시 결과: ${file}`);
-
-  // 모델별 집계
-  for (const model of MODELS) {
-    const rs = results.filter((r) => r.model === model);
-    const ok = rs.filter((r) => r.ok);
-    const sum = (f: (r: RunResult) => number) => rs.reduce((s, r) => s + f(r), 0);
-    const expected = rs.filter((r) => r.expectPass !== null);
-    const forbidden = rs.filter((r) => r.forbidPass !== null);
-    console.log(
-      `\n[${model}] 성공 ${ok.length}/${rs.length} | ` +
-        `필수도구 ${expected.filter((r) => r.expectPass).length}/${expected.length} | ` +
-        `과잉없음 ${forbidden.filter((r) => r.forbidPass).length}/${forbidden.length} | ` +
-        `평균 라운드 ${(sum((r) => r.rounds.length) / rs.length).toFixed(2)} | ` +
-        `평균 모델지연 ${secs(sum((r) => r.modelMs) / rs.length, 2)}s | ` +
-        `총 in ${sum((r) => r.promptTokens)} out ${sum((r) => r.outputTokens)} 생각 ${sum((r) => r.thoughtTokens)} | ` +
-        `평균 답변 ${Math.round(sum((r) => r.text.length) / rs.length)}자`,
-    );
-  }
+  const stamp = measuredAt.replace(/[:.]/g, "-");
+  const jsonPath = path.join(dir, `${stamp}.json`);
+  fs.writeFileSync(jsonPath, JSON.stringify(file, null, 2));
+  const report = buildReport(file);
+  fs.writeFileSync(path.join(dir, `${stamp}.md`), report + "\n");
+  console.log(`\n원시 결과: ${jsonPath}\n\n${report}`);
 }, 3_600_000);
