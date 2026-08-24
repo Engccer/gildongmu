@@ -21,7 +21,7 @@
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
 | iOS | **1.12 `WAITING_FOR_REVIEW`**(빌드 20, 아카이브 커밋 `37b99db`, 제출 2026-08-24 02:30 KST, 빌드 19는 미제출 폐기) · 스토어 최신은 1.11 `READY_FOR_SALE`(빌드 18) |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
-| npm | `gildongmu` · `gildongmu-mcp` **v0.8.0** |
+| npm | `gildongmu` · `gildongmu-mcp` **v0.9.0**(2026-08-25, provenance 증명 포함) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`

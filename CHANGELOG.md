@@ -9,6 +9,11 @@
 
 ---
 
+## 2026-08-25
+
+- **npm `gildongmu`·`gildongmu-mcp` 0.9.0 발행** — 0.8.0(08-02) 이후 쌓인 `nearby overview`·경유지 `via`·빠른하차·도보 구간 거리·시간표 `coverage`·거리 원값 표기·국경 폴리곤 판정. 노트 정본은 `packages/*/CHANGELOG.md`.
+- **BACKLOG D26 종결**: `cli-publish.yml`에 `--provenance` 복원, 실발행에서 両패키지에 SLSA v1 증명 부착 확인(공개 repo + Trusted Publishing). CLAUDE.md의 금지 문구를 조건부로 정정.
+
 ## 2026-08-24
 
 ### App Store 1.12 빌드 20 제출
