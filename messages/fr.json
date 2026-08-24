@@ -21,7 +21,7 @@
   "search": {
     "label": "Rechercher des lieux",
     "placeholder": "ex. Gyeongbokgung, Seoul Station",
-    "button": "Rechercher",
+    "button": "Rechercher (Enter)",
     "clear": "Effacer la recherche",
     "searching": "Recherche en cours…",
     "searchingFor": "Recherche de « {query} »…",
@@ -37,7 +37,7 @@
     "placeCount": "{count} lieux",
     "webCount": "{count} résultats web",
     "addressCount": "{count} adresses",
-    "askAi": "Demander à l'IA",
+    "askAi": "Demander à l'IA (Ctrl+Enter)",
     "sortByReview": "Trier par avis Naver",
     "sortByAccuracy": "Trier par pertinence"
   },
