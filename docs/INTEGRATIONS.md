@@ -101,12 +101,12 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 ⚠ **급행 leg의 `passStopList`는 이미 급행 정차역만 담는다**(급행 13역 vs 완행 29역, `stationID`도 완행 일련번호를 건너뛴다). 경유역 목록·조망은 그대로 쓰면 되고, 별도 급행 정차역 데이터가 필요한 것은 **계획 leg와 다른 등급을 잠갔을 때**뿐이다(`docs/BACKLOG.md` A16 L1).
 
 ### 출발 시각 미반영 보정
-⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존).
+⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존). **정렬 키는 `outside` 유무 하나**(A21, 2026-08-25) — `unknown`은 정렬에 참여하지 않는다. 종전 3단 서열(`SERVICE_RANK`)은 선정 5개 절단과 결합해 "강등 = 제외"가 됐다(TAGO 4호선 0행). 술어는 `odsay-select.ts` `isOutside`를 강등·축 제외가 공유한다.
 
 - 조인 키는 ODsay `lane[0].busLocalBlID`. **분기는 도시 코드가 아니라 TOPIS 보유 여부**다(TOPIS가 수도권 광역 노선도 가진다 — 하남 30-3 실측), 미보유만 TAGO 번호 검색 후 `endsWith` 대조(지역별 접두사 상이: 부산 `BSB`+숫자, 대구는 접두사 포함 동일 값).
 - 판정은 순수 함수 `src/lib/service-hours.ts`(시각 주입이라 심야 재현 불요). **조회 실패는 throw 금지**(unknown으로 두고 경로 응답 유지). 낭독은 `outside`만 표기(정상·정보없음 침묵).
 - ⚠ 첫차·막차는 **차고지 출발 기준**이라 막차 직후 중간 정류장 승차 가능 구간이 outside로 나올 수 있다(강등일 뿐 제외 아님).
-- **지하철은 범위 밖**(판정 수단 미확정, 버스 leg 없는 경로는 rank 0으로 원순서 보존).
+- 지하철은 (역명·노선·`wayCode`)로 TAGO 시간표를 조인한다(`subway-service-hours.ts`, spec `2026-08-01-subway-service-hours-design.md`). 조인 실패·0행은 `unknown`이고 정렬·표기 어디서도 결함으로 읽히지 않는다.
 
 ### 도보 leg
 `distanceMeters` + `toName`(뒤 첫 탑승 구간의 `fromName`, **환승 통로 필터 뒤** 배열에서 유도 — 필터 전이면 첫 도보가 환승역을 가리킨다)을 싣는다. 마지막 도보는 `toName` 부재가 정상이다(소비자가 "목적지까지"로 채운다).
@@ -139,6 +139,7 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 - `includeStops`와 무관하게 **항상 계산한다**(그 플래그는 방출만 통제 — 옵트인으로 두면 CLI·MCP·iOS가 조용히 침묵한다).
 - 문장은 소비자가 만든다(provider가 문장을 주지 않는다): 웹 `quick-exit-text.ts` ↔ Kit `QuickExitText.swift` ↔ CLI `transitQuickExitLine` 3벌 미러, 동조는 `format-drift.test.ts`가 웹 정본 실행 대조로 강제. **3분기 × 2형태로 키를 나눈다**(변수만 비우면 로케일별 절 순서가 깨지고, `"3-2,3-3 사이"`를 문 번호 자리에 넣으면 문장이 깨진다).
 - 노출은 경로 브리핑 + 안내 세션 **대기 국면**(포커스 착지점 뒤·열차 목록 앞), 통지는 만들지 않는다.
+- **환승 leg는 seed가 아니라 ODsay `subPath.door`가 정본이다**(A20, spec `2026-08-25-subway-transfer-door-design.md`): `quickExit.transfer` 단독("사당 하차, 빠른 환승 5-2 문"), seed 엘베·계단은 최종 하차 leg에만. 하차 종류 판정(`alightKindAt`)은 환승 통로 필터 **전** 원본 subPath 인덱스에서 — 0m 도보가 역내 환승의 단서다. 역내 환승인데 `door`가 없으면 필드 부재(거짓보다 침묵). `door`의 부재 표기는 문자열 `"null"`이라 긍정 정규식 매칭만 통과시킨다. 소비자 3벌은 `transfer`를 먼저 보고 있으면 그 문장만 낸다(배타).
 
 ---
 

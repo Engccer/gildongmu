@@ -3,7 +3,6 @@ import {
   judgeServiceStatus,
   parseServiceTime,
   kstNowMinutes,
-  SERVICE_RANK,
 } from "../service-hours";
 
 describe("parseServiceTime", () => {
@@ -65,9 +64,3 @@ describe("kstNowMinutes", () => {
   });
 });
 
-describe("SERVICE_RANK", () => {
-  it("running < unknown < outside 순이다(정보 없음을 결함으로 단정하지 않는다)", () => {
-    expect(SERVICE_RANK.running).toBeLessThan(SERVICE_RANK.unknown);
-    expect(SERVICE_RANK.unknown).toBeLessThan(SERVICE_RANK.outside);
-  });
-});

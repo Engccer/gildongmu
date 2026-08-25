@@ -141,6 +141,8 @@ if (leg.mode !== "bus" || !leg.serviceRouteId) return leg;   // serviceStatus �
 
 ### 3-4-1. rank 의미 변화 (의도적)
 
+> ⚠ 2026-08-25 A21로 **부분 철회**: `unknown`은 더 이상 정렬에 참여하지 않는다(정렬 키는 `outside` 유무 하나). 아래 "unknown이 running 뒤" 수용 근거 ②는 2026-08-07 선정 5개 절단 도입으로 깨졌다(`2026-08-25-transit-unknown-not-demoted-design.md`).
+
 현행 주석: "버스 leg가 없는 경로(지하철·도보 전용)는 판정 대상이 아니라 rank 0을 준다." 이 규칙은 지하철이 판정 대상이 아니던 시절의 것이므로 갱신한다.
 
 - 지하철 구간이 `outside`면 그 경로는 rank 2로 강등된다. **이것이 이 마일스톤의 목적이다.**

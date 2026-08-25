@@ -11,8 +11,13 @@ import type { TransitHighlight, TransitRoute, TransitRouteResult } from "../type
 /** 추천 1 + 대안 4. 접힘 버튼이 화면을 채우지 않는 선(위원장 판정) */
 export const MAX_TRANSIT_ROUTES = 5;
 
-/** 그 경로에 운행 종료가 확정된 탑승 구간이 있는가 */
-function isOutside(route: TransitRoute): boolean {
+/**
+ * 그 경로에 운행 종료가 확정된 탑승 구간이 있는가.
+ * 강등 정렬(`annotateServiceStatus`)과 축 제외가 **이 술어 하나**를 쓴다(A21) — `unknown`은
+ * 어느 쪽에도 참여하지 않는다(조회 실패를 결함으로 단정하면 멀쩡한 경로가 강등되고, 선정 5개
+ * 절단과 결합하면 강등이 곧 제외다: TAGO가 노선째 0행인 4호선이 하루 종일 그랬다).
+ */
+export function isOutside(route: TransitRoute): boolean {
   return route.legs.some((l) => l.serviceStatus === "outside");
 }
 

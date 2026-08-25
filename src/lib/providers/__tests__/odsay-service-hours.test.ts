@@ -68,7 +68,7 @@ describe("annotateServiceStatus — 버스", () => {
       route([leg("342", "A")]),
     ] as unknown as TransitRoute[];
     const out = annotateServiceStatus(input, HOURS, NO_SUBWAY, NIGHT);
-    // unknown(1) < outside(2)이므로 원래 1순위가 유지된다
+    // unknown은 정렬 키가 아니다 — 원래 1순위가 유지된다
     expect(out[0].legs[0].lineName).toBe("999");
     expect(out[0].legs[0].serviceStatus).toBe("unknown");
   });
@@ -129,26 +129,37 @@ describe("annotateServiceStatus — 지하철", () => {
     expect(out[0].legs[0].firstServiceTime).toBeUndefined();
   });
 
-  it("조인 축이 결측이어도 상태를 반드시 갖는다 (선재 결함 회귀 가드)", () => {
-    // 방향이 없으면 조회할 수 없지만, 상태를 안 붙이면 rank 산출이 이 경로를
-    // "판정 대상 없음"으로 보고 rank 0을 줘 running 경로와 나란히 최상단에 남는다.
+  it("조인 축이 결측이어도 상태를 반드시 갖는다 (3-state 표기 가드)", () => {
+    // 방향이 없으면 조회할 수 없다. 상태를 안 붙이면 표기 3-state가 무너진다.
     const input = [
       route([subwayLeg("수도권 5호선", "길동", undefined)]),
       route([leg("N30", "B")]), // running
     ] as unknown as TransitRoute[];
     const out = annotateServiceStatus(input, HOURS, SUBWAY_HOURS, NIGHT);
-    expect(out[0].legs[0].lineName).toBe("N30"); // running이 앞
-    expect(out[1].legs[0].serviceStatus).toBe("unknown");
+    expect(out[0].legs[0].serviceStatus).toBe("unknown");
+    expect(out[1].legs[0].serviceStatus).toBe("running");
   });
 
-  it("조인 키 없는 버스도 상태를 갖는다 (같은 선재 결함의 버스 판)", () => {
+  it("unknown 지하철은 running 버스 뒤로 밀리지 않는다 — ODsay 추천순 보존 (A21)", () => {
+    // TAGO가 노선째 0행인 4호선: 종전엔 rank 1로 밀려 선정 5개 절단에 걸려 사라졌다.
+    const input = [
+      route([subwayLeg("수도권 4호선", "노원", 2)]), // 시간표 없음 → unknown
+      route([leg("N30", "B")]), // running
+      route([leg("342", "A")]), // outside
+    ] as unknown as TransitRoute[];
+    const out = annotateServiceStatus(input, HOURS, SUBWAY_HOURS, NIGHT);
+    expect(out.map((r) => r.legs[0].lineName)).toEqual(["수도권 4호선", "N30", "342"]);
+    expect(out[0].legs[0].serviceStatus).toBe("unknown");
+  });
+
+  it("조인 키 없는 버스도 상태를 갖는다 (같은 3-state 가드의 버스 판)", () => {
     const input = [
       route([leg("342", undefined)]),
       route([leg("N30", "B")]), // running
     ] as unknown as TransitRoute[];
     const out = annotateServiceStatus(input, HOURS, NO_SUBWAY, NIGHT);
-    expect(out[0].legs[0].lineName).toBe("N30");
-    expect(out[1].legs[0].serviceStatus).toBe("unknown");
+    expect(out[0].legs[0].lineName).toBe("342"); // 원순서 보존
+    expect(out[0].legs[0].serviceStatus).toBe("unknown");
   });
 
   it("버스·지하철 혼합 경로는 가장 나쁜 구간을 따른다", () => {

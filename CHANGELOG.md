@@ -11,6 +11,11 @@
 
 ## 2026-08-25
 
+### A20·A21 — 환승역 빠른하차 정본화 + 대중교통 정렬에서 `unknown` 제외 (김찬홍 선생님 리포트 착수)
+
+- **A20** spec `docs/superpowers/specs/2026-08-25-subway-transfer-door-design.md`: 환승 leg는 ODsay `subPath.door`를 `quickExit.transfer`로 싣고("사당 하차, 빠른 환승 5-2 문"), 서교공 seed 엘리베이터·계단은 최종 하차 leg에만 남긴다. 역내 환승인데 `door`가 없으면 침묵, `"null"` 문자열은 긍정 정규식 매칭으로 차단. 웹·Kit·CLI 3벌 문장 + `route.transit.quickExitTransfer` 6로케일. 실호출 게이트 `scripts/verify-odsay-transfer-door.mjs`(사당 `5-2`·구로디지털단지 seed `7-4`/`8-3`·`"null"` 0건). E5 spec §6의 "환승 구간 별도 처리 불요" 철회.
+- **A21** spec `docs/superpowers/specs/2026-08-25-transit-unknown-not-demoted-design.md`: 강등 정렬 키를 `outside` 유무 하나로(`SERVICE_RANK` 삭제, `isOutside` 술어를 강등·축 제외가 공유). TAGO가 노선째 0행인 4호선 경로가 `running` 버스 뒤로 밀려 선정 5개 절단에서 사라지던 결함. 표기 정책(outside만) 불변. `verify-korea-subway-timetable.mjs`에 노원역 관측(4호선 unknown·7호선 ok) 추가. ⚠ 심야 게이트 PASS는 판별력이 없어 주간 재관측이 BACKLOG A22에 남았다.
+
 ### 실사용 피드백 접수 — 지하철 환승 빠른하차 (김찬홍 선생님)
 
 - 노원→구로디지털훈련센터 리포트를 실호출로 판정해 BACKLOG에 등록: **A20**(환승역 빠른하차가 환승 통로가 아닌 계단을 고름 — 사당 `1-1` vs 정답 `5-2`, ODsay `subPath.door` 미사용) · **A21**(4호선 TAGO 시간표 0행 → `unknown` 정렬 강등 × 5개 절단 = ODsay 1순위 경로 제외) · **E25**(ODsay 출구 번호·지하철 최단시간 경로 보강 후보). 코드 변경 없음, 착수는 별도 세션.

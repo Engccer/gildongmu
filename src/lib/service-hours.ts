@@ -8,12 +8,8 @@
 
 export type ServiceStatus = "running" | "outside" | "unknown";
 
-/** 운행중 > 정보없음 > 운행밖. 조회 실패를 결함으로 단정하면 멀쩡한 경로가 강등된다. */
-export const SERVICE_RANK: Record<ServiceStatus, number> = {
-  running: 0,
-  unknown: 1,
-  outside: 2,
-};
+// 정렬 서열표는 두지 않는다(A21): 강등 축은 `outside` 유무 하나이고 그 술어는
+// `odsay-select.ts`의 `isOutside`다. `unknown`은 표기·정렬 어디서도 결함으로 읽히지 않는다.
 
 /**
  * 운행 시각 문자열 → 0시부터의 분.

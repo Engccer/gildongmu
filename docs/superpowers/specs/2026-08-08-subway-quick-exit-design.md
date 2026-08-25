@@ -227,6 +227,8 @@ quickExit?: { elevator?: QuickExitDoor; stairs?: QuickExitDoor };
 
 **통지는 만들지 않는다.** 정적 정보라 상태 변화가 없고 live region은 변화를 알리는 채널이다(상위 스펙 §5.1 "대기 중 자동 낭독은 선택 후에만"과도 정합).
 
+> ⚠ 아래 단락은 2026-08-25 A20으로 **철회**됐다 — 환승 leg는 ODsay `door`가 정본이고 seed는 최종 하차 leg에만 남는다(`2026-08-25-subway-transfer-door-design.md`).
+
 **환승 구간에서 자연히 여러 번 나온다** — 지하철 leg마다 자기 하차역 기준으로 계산되므로 환승역에서도 "어느 칸에 타야 환승이 빠른가"가 답해진다. 별도 처리가 필요 없다. 과한지는 실사용 판정(§8-8).
 
 ## 7. 3-state
