@@ -251,11 +251,15 @@ public struct QuickExitDoor: Codable, Sendable, Hashable {
 }
 
 /// 한쪽 시설만 있으면 그쪽만 온다 — 없는 시설을 "없음"으로 표현하지 않는다(3-state).
+/// `transfer`(환승 leg의 빠른환승 문, A20)와 `elevator|stairs`(최종 하차 leg의 seed)는 공존하지 않는다.
+/// ⚠ `transfer`를 여기 선언하지 않으면 서버가 실어도 앱만 침묵한다(additive 디코딩 계약).
 public struct QuickExit: Codable, Sendable, Hashable {
+    public let transfer: QuickExitDoor?
     public let elevator: QuickExitDoor?
     public let stairs: QuickExitDoor?
 
-    public init(elevator: QuickExitDoor? = nil, stairs: QuickExitDoor? = nil) {
+    public init(transfer: QuickExitDoor? = nil, elevator: QuickExitDoor? = nil, stairs: QuickExitDoor? = nil) {
+        self.transfer = transfer
         self.elevator = elevator
         self.stairs = stairs
     }

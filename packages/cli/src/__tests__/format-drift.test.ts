@@ -44,6 +44,8 @@ describe("빠른하차 문장 CLI-웹 드리프트", () => {
     { stairs: { kind: "door" as const, doors: ["3-1"] } },
     { elevator: { kind: "between" as const, doors: ["3-2", "3-3"] } },
     { elevator: { kind: "between" as const, doors: ["3-2", "3-3"] }, stairs: { kind: "door" as const, doors: ["5-4"] } },
+    { transfer: { kind: "door" as const, doors: ["5-2"] } },
+    { transfer: { kind: "door" as const, doors: ["5-2"] }, elevator: { kind: "door" as const, doors: ["2-3"] } },
   ];
 
   it.each(cases)("%o에서 웹 정본과 같은 문자열", (quickExit) => {

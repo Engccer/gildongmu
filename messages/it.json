@@ -139,7 +139,8 @@
       "quickExitBetween": "tra le porte {first} e {second}",
       "quickExitBoth": "Discesa a {station}, ascensore {elevator}, scale {stairs}",
       "quickExitElevator": "Discesa a {station}, ascensore {elevator}",
-      "quickExitStairs": "Discesa a {station}, scale {stairs}"
+      "quickExitStairs": "Discesa a {station}, scale {stairs}",
+      "quickExitTransfer": "Discesa a {station}, cambio rapido {transfer}"
     },
     "pedestrian": {
       "heading": "A piedi",

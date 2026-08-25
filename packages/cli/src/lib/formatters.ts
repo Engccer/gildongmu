@@ -289,6 +289,8 @@ interface QuickExitDoorItem {
 }
 
 interface QuickExitItem {
+  /** 환승 leg의 빠른환승 문(A20). 있으면 elevator·stairs 대신 이 문장만 낸다. */
+  transfer?: QuickExitDoorItem;
   elevator?: QuickExitDoorItem;
   stairs?: QuickExitDoorItem;
 }
@@ -850,6 +852,8 @@ function quickExitDoorPhrase(door: QuickExitDoorItem): string | null {
 
 export function transitQuickExitLine(leg: TransitLegItem): string | null {
   if (!leg.quickExit || !leg.toName) return null;
+  const transfer = leg.quickExit.transfer ? quickExitDoorPhrase(leg.quickExit.transfer) : null;
+  if (transfer) return `${leg.toName} 하차, 빠른 환승 ${transfer}`;
   const elevator = leg.quickExit.elevator ? quickExitDoorPhrase(leg.quickExit.elevator) : null;
   const stairs = leg.quickExit.stairs ? quickExitDoorPhrase(leg.quickExit.stairs) : null;
   if (elevator && stairs) {

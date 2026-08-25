@@ -59,6 +59,11 @@ interface OdsaySubPath {
   startName?: string;
   endName?: string;
   wayCode?: number; // 지하철 방향 1=상행·2=하행 — 실호출 양방향 확정(2026-08-01)
+  /**
+   * 빠른환승 문("5-2"). ⚠ **환승 leg에만** 값이 있고 하차 leg는 문자열 `"null"`이다
+   * (실호출 2026-08-25 사당→구로디지털단지 `"null"`, 노원→서울역 `"10-4"`). 카카오지하철 표기와 일치.
+   */
+  door?: string;
   lane?: OdsayLane[];
   passStopList?: { stations?: OdsayPassStop[] };
 }
@@ -134,7 +139,50 @@ function previousStopName(sp: OdsaySubPath): string | null {
   return previous || null;
 }
 
-function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
+/** ODsay `door` → 문. `"null"` 문자열·빈 값·미지 표기는 전부 부재(긍정 매칭만 통과, A20). */
+function transferDoor(raw: unknown): string | null {
+  return typeof raw === "string" && /^\d+-\d+$/.test(raw) ? raw : null;
+}
+
+/**
+ * 탑승 leg의 하차 종류(A20). 빠른하차 값의 **소스가 종류마다 다르다**.
+ * - `transfer`: ODsay가 빠른환승 문을 줬다 → 그 문 하나가 정본.
+ * - `inStationTransfer`: 문은 없는데 다음 탑승이 지하철이고 그 사이 도보가 전부 역내(0m)다
+ *   → seed 계단은 출구용일 수 있어 **아무것도 싣지 않는다**(거짓보다 침묵).
+ * - `final`: 그 외(마지막 탑승·버스로 환승·역 밖 도보) → seed 엘리베이터·계단.
+ */
+type AlightKind = "transfer" | "inStationTransfer" | "final";
+
+function alightKindAt(subPath: OdsaySubPath[], index: number): AlightKind {
+  if (transferDoor(subPath[index]?.door)) return "transfer";
+  for (let j = index + 1; j < subPath.length; j++) {
+    const next = subPath[j];
+    if (next.trafficType === 3) {
+      if ((next.distance ?? 0) === 0) continue;
+      return "final";
+    }
+    return next.trafficType === 1 ? "inStationTransfer" : "final";
+  }
+  return "final";
+}
+
+function quickExitFor(sp: OdsaySubPath, kind: AlightKind) {
+  if (kind === "transfer") {
+    const door = transferDoor(sp.door)!;
+    return { transfer: { kind: "door" as const, doors: [door] } };
+  }
+  if (kind === "inStationTransfer") return null;
+  const lane = sp.lane?.[0];
+  return lane?.name && sp.endName
+    ? findQuickExit({
+        stationName: sp.endName,
+        lineName: lane.name,
+        previousStopName: previousStopName(sp),
+      })
+    : null;
+}
+
+function toLeg(sp: OdsaySubPath, includeStops: boolean, alightKind: AlightKind): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
     const distanceMeters = walkDistance(sp.distance);
@@ -144,14 +192,7 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean): TransitLeg {
   const mode = sp.trafficType === 1 ? "subway" : "bus";
   const lane = sp.lane?.[0];
   const stops = includeStops ? toLegStops(sp) : [];
-  const quickExit =
-    mode === "subway" && lane?.name && sp.endName
-      ? findQuickExit({
-          stationName: sp.endName,
-          lineName: lane.name,
-          previousStopName: previousStopName(sp),
-        })
-      : null;
+  const quickExit = mode === "subway" ? quickExitFor(sp, alightKind) : null;
   return {
     mode,
     lineName: mode === "subway" ? lane?.name : lane?.busNo,
@@ -180,9 +221,11 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string
   // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
   // 리스트에서는 제외해 낭독을 간결히 한다. 단 walkMinutes(총 도보 시간)는
   // 환승 통로 시간도 실제 걷는 시간이라 필터 전 전체 도보 합으로 정직하게 센다.
+  // ⚠ 하차 종류는 필터 **전** 원본 인덱스로 판정한다 — 역내 환승 통로(0m 도보)가 판정의 단서다.
   const legs = path.subPath
-    .filter((sp) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
-    .map((sp) => toLeg(sp, includeStops));
+    .map((sp, i) => ({ sp, kind: alightKindAt(path.subPath, i) }))
+    .filter(({ sp }) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
+    .map(({ sp, kind }) => toLeg(sp, includeStops, kind));
 
   // 도보 구간의 행선지 유도: 그 뒤 첫 탑승 구간의 fromName.
   // ⚠ 환승 통로 필터 **뒤**의 배열에서 돈다. 필터 전에 돌면 0m 통로가 사이에 끼어

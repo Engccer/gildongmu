@@ -21,6 +21,10 @@ private func doorPhrase(_ door: QuickExitDoor, lang: String) -> String? {
 /// 값이 없거나 시설이 하나도 없으면 nil — "빠른하차 정보 없음" 문구를 만들지 않는다(3-state).
 public func quickExitText(_ quickExit: QuickExit?, station: String, lang: String) -> String? {
     guard let quickExit, !station.isEmpty else { return nil }
+    // 환승 leg는 빠른환승 문 하나가 정본이다(A20) — seed 계단은 환승 통로가 아닐 수 있다.
+    if let transfer = quickExit.transfer.flatMap({ doorPhrase($0, lang: lang) }) {
+        return kitLocalized("route.transit.quickExitTransfer", lang: lang, station, transfer)
+    }
     let elevator = quickExit.elevator.flatMap { doorPhrase($0, lang: lang) }
     let stairs = quickExit.stairs.flatMap { doorPhrase($0, lang: lang) }
     switch (elevator, stairs) {

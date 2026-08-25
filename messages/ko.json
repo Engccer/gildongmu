@@ -139,7 +139,8 @@
       "quickExitBetween": "{first} 문과 {second} 문 사이",
       "quickExitBoth": "{station} 하차, 엘리베이터 {elevator}, 계단 {stairs}",
       "quickExitElevator": "{station} 하차, 엘리베이터 {elevator}",
-      "quickExitStairs": "{station} 하차, 계단 {stairs}"
+      "quickExitStairs": "{station} 하차, 계단 {stairs}",
+      "quickExitTransfer": "{station} 하차, 빠른 환승 {transfer}"
     },
     "pedestrian": {
       "heading": "도보",
