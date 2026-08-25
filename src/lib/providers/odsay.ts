@@ -1,16 +1,11 @@
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
-import {
-  judgeServiceStatus,
-  kstNowMinutes,
-  SERVICE_RANK,
-  type ServiceStatus,
-} from "../service-hours";
+import { judgeServiceStatus, kstNowMinutes, type ServiceStatus } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import { isNoRouteError, readOdsayError } from "./odsay-envelope";
 import { findQuickExit } from "../quick-exit";
 import { normalizeStationName } from "../station-match";
-import { annotateHighlights, selectTransitRoutes } from "./odsay-select";
+import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
   Coord,
@@ -293,12 +288,13 @@ function formatHHMM(minutes: number): string {
 /**
  * 운행시간 판정을 leg에 싣고 경로를 강등 정렬한다(순수).
  *
- * 경로 상태 = 그 경로 탑승 leg 중 SERVICE_RANK 최대값.
+ * 정렬 키는 **`outside` 유무 하나**다(A21). `unknown`은 정렬에 참여하지 않는다 — 조회 실패·
+ * 미커버를 결함으로 단정하면 멀쩡한 경로가 강등되고, 선정 5개 절단과 결합하면 강등이 곧
+ * 제외가 된다(TAGO 4호선 0행으로 ODsay 1순위가 사라진 실사고). 안정 정렬이라 그 밖에는
+ * ODsay 추천순이 보존된다.
  *
  * ⚠ 버스·지하철 leg는 조인 키가 없어도 반드시 상태를 갖는다(조회 불가는 unknown).
- *   상태를 안 붙이면 아래 rank 산출이 그 leg를 "판정 대상 아님"으로 세지 않고,
- *   그런 leg만으로 이루어진 경로가 rank 0을 받아 확인된 running 경로와 나란히
- *   최상단에 남는다. rank 0은 **도보 전용 경로**의 몫이다.
+ *   정렬엔 안 쓰지만 `unknown` 표기 3-state는 상태가 있어야 성립한다.
  */
 export function annotateServiceStatus(
   routes: TransitRoute[],
@@ -337,12 +333,7 @@ export function annotateServiceStatus(
     }),
   });
 
-  const routeRank = (route: TransitRoute): number => {
-    const ranks = route.legs
-      .filter((l) => l.serviceStatus != null)
-      .map((l) => SERVICE_RANK[l.serviceStatus!]);
-    return ranks.length === 0 ? 0 : Math.max(...ranks);
-  };
+  const routeRank = (route: TransitRoute): number => (isOutside(route) ? 1 : 0);
 
   const all = routes.map(annotateRoute);
   // 안정 정렬이라 같은 rank 안에서는 ODsay 추천순이 보존된다

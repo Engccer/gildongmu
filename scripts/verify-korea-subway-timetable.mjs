@@ -141,7 +141,8 @@ try {
 
 try {
   if (fetchStationTimetable) {
-  for (const station of ["강남역", "홍대입구역", "서울역"]) {
+  // 노원역: 4호선이 **노선째** 0행(unknown)이고 7호선은 정상인 역(A21, 2026-08-25). 관측용.
+  for (const station of ["강남역", "홍대입구역", "서울역", "노원역"]) {
     let tt;
     try {
       tt = await fetchStationTimetable(station);

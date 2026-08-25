@@ -67,6 +67,25 @@ try {
     JSON.stringify(guro?.quickExit ?? null),
   );
   check('응답 직렬화에 "null" 문자열 값이 없다', !JSON.stringify(result).includes('"null"'));
+  // A21: 4호선은 TAGO 시간표가 노선째 0행(unknown)이라 종전엔 running 버스 뒤로 밀려 5개
+  // 절단에서 사라졌다. unknown이 정렬 키에서 빠졌으면 ODsay 1순위가 추천으로 돌아온다.
+  // ⚠ 심야(01~05시)엔 2호선도 outside라 근거가 달라지므로 그 시간대엔 단언하지 않는다.
+  const kstHour = (new Date().getUTCHours() + 9) % 24;
+  const rec = result?.recommended;
+  // 시나리오 유효성: 4호선 leg가 여전히 unknown이어야 이 단언이 A21을 검증한다. TAGO가 4호선을
+  // 채우면 이 검사가 먼저 FAIL해 "게이트가 다른 것을 재고 있다"를 드러낸다(조용한 초록 방지).
+  const line4 = routes.flatMap((r) => r.legs).find((l) => l.mode === "subway" && /4호선/.test(l.lineName ?? ""));
+  check("A21 시나리오 유효: 4호선 leg serviceStatus=unknown(TAGO 0행)", line4?.serviceStatus === "unknown",
+    `${line4?.lineName ?? "(4호선 없음)"}[${line4?.serviceStatus}]`);
+  const recIsLine4Sadang =
+    rec?.legs.some((l) => l.mode === "subway" && /4호선/.test(l.lineName ?? "") && l.toName === "사당") &&
+    rec?.legs.some((l) => l.mode === "subway" && /2호선/.test(l.lineName ?? ""));
+  if (kstHour >= 1 && kstHour < 5) {
+    console.log("  (심야라 A21 추천 단언 생략)");
+  } else {
+    check("A21: 추천이 ODsay 1순위 '4호선 노원→사당→2호선'(4호선 unknown인 채로)", recIsLine4Sadang,
+      rec?.legs.filter((l) => l.mode !== "walk").map((l) => `${l.lineName}[${l.serviceStatus}]`).join(" | "));
+  }
   for (const r of routes) {
     console.log(
       `  ${r.summary.totalMinutes}분 ${r.highlight?.join("/") ?? ""}: ` +
