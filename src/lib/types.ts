@@ -366,8 +366,16 @@ export interface QuickExitDoor {
   doors: string[];
 }
 
-/** 한쪽 시설만 있으면 있는 것만 싣는다 — 없는 시설을 "없음"으로 명시하지 않는다. */
+/**
+ * 한쪽 시설만 있으면 있는 것만 싣는다 — 없는 시설을 "없음"으로 명시하지 않는다.
+ *
+ * **`transfer`와 `elevator|stairs`는 공존하지 않는다**(A20). 환승 leg는 ODsay 빠른환승 문
+ * 하나만, 최종 하차 leg는 서교공 seed의 엘리베이터·계단만 든다 — 환승역에서 필요한 것은
+ * 출구로 가는 계단이 아니라 환승 통로인데 seed에는 그 구분이 없다.
+ */
 export interface QuickExit {
+  /** 환승 leg의 빠른환승 문(ODsay `subPath.door`). 있으면 이 문장만 낸다. */
+  transfer?: QuickExitDoor;
   elevator?: QuickExitDoor;
   stairs?: QuickExitDoor;
 }

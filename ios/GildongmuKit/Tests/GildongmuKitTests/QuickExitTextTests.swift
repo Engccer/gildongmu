@@ -14,6 +14,22 @@ struct QuickExitTextTests {
         #expect(text == "여의도 하차, 엘리베이터 6-4 문, 계단 5-4 문")
     }
 
+    @Test func 환승_leg는_빠른환승_문_하나만() {
+        let transfer = QuickExitDoor(kind: "door", doors: ["5-2"])
+        #expect(quickExitText(QuickExit(transfer: transfer), station: "사당", lang: "ko") == "사당 하차, 빠른 환승 5-2 문")
+        #expect(quickExitText(QuickExit(transfer: transfer), station: "Sadang", lang: "en") == "Get off at Sadang, quick transfer at door 5-2")
+        // 배타 계약의 소비자 측: 섞여 와도 환승 문장만.
+        #expect(quickExitText(QuickExit(transfer: transfer, elevator: elevator, stairs: stairs), station: "사당", lang: "ko") == "사당 하차, 빠른 환승 5-2 문")
+    }
+
+    @Test func transfer_디코딩_계약() throws {
+        // 서버가 실은 값이 선언 누락으로 조용히 떨어지지 않는지 — 디코딩부터 문장까지.
+        let json = Data(#"{"transfer":{"kind":"door","doors":["5-2"]}}"#.utf8)
+        let decoded = try JSONDecoder().decode(QuickExit.self, from: json)
+        #expect(decoded.transfer?.doors == ["5-2"])
+        #expect(quickExitText(decoded, station: "사당", lang: "ko") == "사당 하차, 빠른 환승 5-2 문")
+    }
+
     @Test func 엘리베이터만() {
         let text = quickExitText(QuickExit(elevator: elevator), station: "연신내", lang: "ko")
         #expect(text == "연신내 하차, 엘리베이터 6-4 문")

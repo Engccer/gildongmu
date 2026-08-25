@@ -104,6 +104,91 @@ describe("odsay quickExit 부착", () => {
     expect("quickExit" in legOf(uncovered)).toBe(false);
   });
 
+  /** 사당 4호선(노원발, 하행) → 2호선 환승. seed 하행은 엘베 2-3·계단 1-1/5-2다(A20 리포트 자리). */
+  const SADANG = {
+    ...SUBWAY.subPath[1],
+    startName: "노원",
+    endName: "사당",
+    lane: [{ name: "수도권 4호선" }],
+    wayCode: 2,
+    passStopList: stops("노원", "총신대입구", "사당"),
+  };
+  const LINE2 = {
+    ...SUBWAY.subPath[1],
+    startName: "사당",
+    endName: "구로디지털단지",
+    lane: [{ name: "수도권 2호선" }],
+    passStopList: stops("사당", "신대방", "구로디지털단지"),
+  };
+  const legsOf = (subPath: unknown[]) =>
+    normalizeOdsayRoutes(wrap([{ ...SUBWAY, subPath }]))![0].legs.filter((l) => l.mode === "subway");
+
+  it("환승 leg는 ODsay door 하나만 싣고 seed 엘베·계단은 싣지 않는다(A20 배타)", () => {
+    const [first, last] = legsOf([
+      SUBWAY.subPath[0],
+      { ...SADANG, door: "5-2" },
+      { trafficType: 3, distance: 0, sectionTime: 3 },
+      { ...LINE2, door: "null" },
+      SUBWAY.subPath[2],
+    ]);
+    expect(first.quickExit).toEqual({ transfer: { kind: "door", doors: ["5-2"] } });
+    // 최종 하차 leg는 종전대로 seed(구로디지털단지 2호선 하행).
+    expect(last.quickExit?.transfer).toBeUndefined();
+    expect(last.quickExit?.elevator ?? last.quickExit?.stairs).toBeDefined();
+  });
+
+  it('door "null" 문자열은 부재다 — 낭독 어디에도 "null"이 새지 않는다', () => {
+    const legs = legsOf([SUBWAY.subPath[0], { ...SUBWAY.subPath[1], door: "null" }, SUBWAY.subPath[2]]);
+    expect(JSON.stringify(legs)).not.toContain('"null"');
+    expect(legs[0].quickExit?.transfer).toBeUndefined();
+    expect(legs[0].quickExit?.elevator).toBeDefined();
+  });
+
+  it("2자리 칸 번호도 문이다(노원→서울역 환승 10-4 실관측)", () => {
+    const legs = legsOf([SUBWAY.subPath[0], { ...SADANG, endName: "서울역", door: "10-4" }, SUBWAY.subPath[2]]);
+    expect(legs[0].quickExit).toEqual({ transfer: { kind: "door", doors: ["10-4"] } });
+  });
+
+  it.each(["", "-", "5", "null", "5-2-1"])("door %j는 긍정 매칭 실패라 환승 문이 아니다", (door) => {
+    const legs = legsOf([SUBWAY.subPath[0], { ...SUBWAY.subPath[1], door }, SUBWAY.subPath[2]]);
+    expect(legs[0].quickExit?.transfer).toBeUndefined();
+  });
+
+  it("역내 환승(0m 도보 뒤 지하철)인데 door가 없으면 아무것도 싣지 않는다(거짓보다 침묵)", () => {
+    const [first, last] = legsOf([
+      SUBWAY.subPath[0],
+      { ...SADANG, door: "null" },
+      { trafficType: 3, distance: 0, sectionTime: 3 },
+      { ...LINE2, door: "null" },
+      SUBWAY.subPath[2],
+    ]);
+    expect("quickExit" in first).toBe(false);
+    expect(last.quickExit).toBeDefined();
+  });
+
+  it("다음 탑승이 버스면 역을 나가므로 seed를 싣는다", () => {
+    const [first] = legsOf([
+      SUBWAY.subPath[0],
+      { ...SADANG, door: "null" },
+      { trafficType: 3, distance: 150, sectionTime: 2 },
+      { ...SUBWAY.subPath[1], trafficType: 2, lane: [{ busNo: "5536" }] },
+      SUBWAY.subPath[2],
+    ]);
+    expect(first.quickExit?.transfer).toBeUndefined();
+    expect(first.quickExit?.elevator ?? first.quickExit?.stairs).toBeDefined();
+  });
+
+  it("역 밖 도보(0m 아님)를 끼고 다른 지하철로 가면 최종 하차로 본다", () => {
+    const [first] = legsOf([
+      SUBWAY.subPath[0],
+      { ...SADANG, door: "null" },
+      { trafficType: 3, distance: 300, sectionTime: 4 },
+      { ...LINE2, door: "null" },
+      SUBWAY.subPath[2],
+    ]);
+    expect(first.quickExit?.elevator ?? first.quickExit?.stairs).toBeDefined();
+  });
+
   it("경유역이 없어도 다른 필드는 그대로다", () => {
     const noStops = {
       ...SUBWAY,

@@ -139,7 +139,8 @@
       "quickExitBetween": "between doors {first} and {second}",
       "quickExitBoth": "Get off at {station}, elevator {elevator}, stairs {stairs}",
       "quickExitElevator": "Get off at {station}, elevator {elevator}",
-      "quickExitStairs": "Get off at {station}, stairs {stairs}"
+      "quickExitStairs": "Get off at {station}, stairs {stairs}",
+      "quickExitTransfer": "Get off at {station}, quick transfer {transfer}"
     },
     "pedestrian": {
       "heading": "Walk",

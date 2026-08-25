@@ -30,6 +30,20 @@ describe("quickExitText", () => {
     );
   });
 
+  it("환승 leg는 빠른환승 문 하나만 말한다(A20)", () => {
+    expect(quickExitText(t, "사당", { transfer: door("5-2") })).toBe("사당 하차, 빠른 환승 5-2 문");
+    expect(quickExitText(tEn, "Sadang", { transfer: door("5-2") })).toBe(
+      "Get off at Sadang, quick transfer at door 5-2",
+    );
+    expect(quickExitText(tJa, "舎堂", { transfer: door("5-2") })).toBe("舎堂で下車、乗り換えは5-2のドア");
+  });
+
+  it("transfer가 있으면 elevator·stairs가 섞여 와도 환승 문장만(배타 계약의 소비자 측)", () => {
+    expect(
+      quickExitText(t, "사당", { transfer: door("5-2"), elevator: door("2-3"), stairs: door("1-1") }),
+    ).toBe("사당 하차, 빠른 환승 5-2 문");
+  });
+
   it("엘리베이터만", () => {
     expect(quickExitText(t, "연신내", { elevator: door("6-2") })).toBe(
       "연신내 하차, 엘리베이터 6-2 문",
@@ -77,14 +91,19 @@ describe("quickExitText", () => {
   });
 
   it("남는 플레이스홀더가 없다(6로케일 전수)", () => {
-    const value: QuickExit = { elevator: door("6-4"), stairs: between("5-3", "5-4") };
+    const values: QuickExit[] = [
+      { elevator: door("6-4"), stairs: between("5-3", "5-4") },
+      { transfer: door("5-2") },
+    ];
     for (const messages of [ko, en, es, fr, itMessages, ja]) {
-      const text = quickExitText(
-        translator(messages.route.transit as Record<string, string>),
-        "역",
-        value,
-      );
-      expect(text).not.toMatch(/[{}]/);
+      for (const value of values) {
+        const text = quickExitText(
+          translator(messages.route.transit as Record<string, string>),
+          "역",
+          value,
+        );
+        expect(text).not.toMatch(/[{}]/);
+      }
     }
   });
 });

@@ -33241,6 +33241,46 @@
         }
       }
     },
+    "route.transit.quickExitTransfer": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 하차, 빠른 환승 %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get off at %1$@, quick transfer %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajada en %1$@, transbordo rápido %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descente à %1$@, correspondance rapide %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discesa a %1$@, cambio rapido %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@で下車、乗り換えは%2$@"
+          }
+        }
+      }
+    },
     "route.transit.ready": {
       "localizations": {
         "ko": {

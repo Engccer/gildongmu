@@ -30,6 +30,9 @@ export function quickExitText(
   quickExit: QuickExit | undefined,
 ): string | null {
   if (!quickExit || !station) return null;
+  // 환승 leg는 빠른환승 문 하나가 정본이다(A20) — seed 계단은 환승 통로가 아닐 수 있다.
+  const transfer = quickExit.transfer ? doorPhrase(t, quickExit.transfer) : null;
+  if (transfer) return t("quickExitTransfer", { station, transfer });
   const elevator = quickExit.elevator ? doorPhrase(t, quickExit.elevator) : null;
   const stairs = quickExit.stairs ? doorPhrase(t, quickExit.stairs) : null;
   if (elevator && stairs) return t("quickExitBoth", { station, elevator, stairs });

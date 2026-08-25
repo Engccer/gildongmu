@@ -139,7 +139,8 @@
       "quickExitBetween": "{first}と{second}のドアの間",
       "quickExitBoth": "{station}で下車、エレベーターは{elevator}、階段は{stairs}",
       "quickExitElevator": "{station}で下車、エレベーターは{elevator}",
-      "quickExitStairs": "{station}で下車、階段は{stairs}"
+      "quickExitStairs": "{station}で下車、階段は{stairs}",
+      "quickExitTransfer": "{station}で下車、乗り換えは{transfer}"
     },
     "pedestrian": {
       "heading": "徒歩",
