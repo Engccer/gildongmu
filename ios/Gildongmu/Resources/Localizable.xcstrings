@@ -13761,6 +13761,46 @@
         }
       }
     },
+    "guide.endedIdle": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "한동안 위치 신호나 이동이 없어 안내를 종료했습니다"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidance has ended because there was no location signal or movement for a while"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guía ha finalizado porque no hubo señal de ubicación ni movimiento durante un tiempo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage est terminé car il n'y a eu ni signal de position ni déplacement pendant un moment"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida è terminata perché per un po' non ci sono stati segnale di posizione né movimento"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "しばらく位置信号や移動がなかったため、案内を終了しました"
+          }
+        }
+      }
+    },
     "guide.etaStale": {
       "localizations": {
         "ko": {

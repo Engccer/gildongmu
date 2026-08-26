@@ -970,6 +970,8 @@ export function useRouteGuide(
           // 임박 큐(20m, §6a): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미
           // 나갔고, 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
           // car는 수단별 문구(K2 §6.3) — "잠시 후 우회전하세요". 웹엔 운전자 모드가 없다.
+          // 반복 단계(15·10m, 2026-08-26)는 소리·진동만 — 문장을 셋 다 내면 4초 안에 겹친다.
+          if (event.stage > 0) return "";
           return kindFixed === "car"
             ? t(`carImminent.${event.action}`)
             : t(`imminent.${event.action}`);

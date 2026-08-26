@@ -677,6 +677,7 @@
     "finalApproachNearDir": "目的地の近くです。{direction}です。",
     "arrived": "目的地に到着しました",
     "arrivedPresumed": "目的地付近に到着したと判断し、案内を終了しました",
+    "endedIdle": "しばらく位置信号や移動がなかったため、案内を終了しました",
     "dirAhead": "正面",
     "dirLeft": "左",
     "dirRight": "右",

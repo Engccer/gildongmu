@@ -29,6 +29,11 @@ public let announceAheadMeters = 40.0
 /// effectiveD 유도는 route-guide.ts ↔ 이 파일 한 쌍에만 존재한다).
 public let projectionLagMeters = 10.0
 public let imminentAheadMeters = 10.0 + projectionLagMeters // = 20 (유도식 — lag 재판정 연동)
+/// 임박 큐의 **반복 단계**(m, 투영 좌표) — 웹 `IMMINENT_REPEAT_M` 미러. 위원장 실사용 피드백
+/// 2026-08-26: "10m 전만이 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 같은 유도식
+/// (실위치 여유 + lag)이라 0m 단계도 투영 좌표에서는 경계 10m 앞이다. 강한 내림차순이고
+/// 마지막이 `projectionLagMeters` 이상. 소리·햅틱은 매 단계, 문장은 첫 단계만(소비자 계약).
+public let imminentRepeatMeters: [Double] = [5.0 + projectionLagMeters, 0.0 + projectionLagMeters] // = [15, 10]
 
 /// 표시 좌표계 유효 진행거리(spec 2026-08-11 §3) — 웹 `displayEffectiveD` 미러.
 /// 표시 계층(GuideLiveRows)의 구간 선택·국면·잔여가 전부 이 좌표를 쓴다.
@@ -79,6 +84,8 @@ public struct GuideTuning: Sendable, Equatable {
     public var imminentAheadS: Double
     /// 속도 표본 2개 미만일 때의 임계(m). walk 20(=바닥), car 60(설계 리뷰 B4).
     public var imminentUnknownSpeedM: Double
+    /// 첫 임박 큐 뒤 같은 경계를 향해 되풀이하는 단계(m). 빈 배열 = 1회(car). 웹 `imminentRepeatM` 미러.
+    public var imminentRepeatM: [Double]
     /// 행동 출처 — `.text`=문장 분류(`walkStepAction`), `.step`=서버 투영 `action`만(없으면 침묵).
     /// ⚠ car는 `.step`이다(설계 리뷰 B1 — 문장으로 되돌아가면 갈래·시설 문장이 회전이 된다).
     public var actionSource: GuideActionSource
@@ -132,6 +139,7 @@ public struct GuideTuning: Sendable, Equatable {
         announceAheadM: announceAheadMeters, announceAheadSpeedS: 0,
         imminentAheadM: imminentAheadMeters, imminentAheadS: 0,
         imminentUnknownSpeedM: imminentAheadMeters,
+        imminentRepeatM: imminentRepeatMeters,
         // 도보 행동도 **서버가 전량 투영**한다(E16 축3, spec 2026-08-23-non-ko-walk-guidance-design §4.2.1):
         // 카카오 스텝은 서버가 최종 문장을 분류해 싣고 Tmap 스텝은 turnType 표에서 온다.
         // 클라이언트 문자열 폴백을 두면 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과
@@ -155,6 +163,7 @@ public struct GuideTuning: Sendable, Equatable {
         announceAheadM: 120, announceAheadSpeedS: 15,
         imminentAheadM: carImminentFloorMeters, imminentAheadS: carImminentAheadSeconds,
         imminentUnknownSpeedM: carImminentUnknownSpeedMeters,
+        imminentRepeatM: [],
         actionSource: .step, imminentNeedsAnnounce: false,
         silentCatchUp: true, speedSampleMaxAccM: uncertainAccuracyMeters,
         farNoticeM: 1500,
@@ -268,6 +277,9 @@ public struct GuideState: Sendable, Equatable {
     /// ⚠ 행동이 없는 경계(단순 직진 연결)에서도 **전진한다**. 전진하지 않으면 그 경계에
     /// 영원히 걸려 다음 회전의 큐가 영영 나가지 않는다.
     public var imminentUpTo: Int
+    /// 후보 경계(`imminentUpTo+1`)를 향해 이미 낸 임박 큐 수(0=아직 없음) — 웹 `imminentStage` 미러.
+    /// 경계를 넘기거나 마지막 단계를 내면 0. 건너뛴 단계는 소급하지 않는다(fix당 이벤트 1개).
+    public var imminentStage: Int
     /// 어떤 발화든 갱신 — 주기 통지의 기준.
     public var lastAnnouncedAt: Double
     public var lastFixAt: Double?
@@ -335,7 +347,8 @@ public enum GuideEvent: Sendable, Equatable {
     case announceSteps([Int])
     /// 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
     /// 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
-    case imminent(indices: [Int], action: WalkAction)
+    /// `stage`는 0부터의 단계 index(walk 20·15·10m) — 소비자는 소리·햅틱은 매 단계, 문장은 0만.
+    case imminent(indices: [Int], action: WalkAction, stage: Int)
     case farNotice(indices: [Int], remainingMeters: Int)
     case periodic(stepIndex: Int, remainingMeters: Int, accuracy: Double)
     case bundleReread([Int])
@@ -434,6 +447,7 @@ public func guideStateAt(
         // 결정뿐이고, 같은 유닛의 뒤쪽 스텝들은 아직 앞에 있다 — 유닛 끝으로 두면
         // 묶음 안의 회전이 통째로 사라진다.
         imminentUpTo: step.index,
+        imminentStage: 0,
         lastAnnouncedAt: now,
         lastFixAt: nil,
         windowEdgeHits: 0,
@@ -940,27 +954,49 @@ public func guideStep(
     //     ⚠ **임계는 거리 바닥과 시간 축의 max다**(K2 §3.2). 행동은 프로파일 출처를 따른다
     //     (car는 서버 `action`만 — 문장을 보지 않는다). car는 전문 선행을 요구하지 않고
     //     명령이 먼저 나가면 전문 래치도 함께 올린다(B3).
+    //     ⚠ **단계는 셋이고 래치는 마지막 단계에서만 전진한다**(2026-08-26 위원장 피드백). 단계
+    //     목록 `[imminentAheadMeters, ...imminentRepeatM]`(walk 20·15·10, car 첫 단계뿐),
+    //     `imminentStage`가 다음 단계 index. 한 fix에 두 단계가 함께 걸리면 안쪽 하나만(소급 없음).
+    //     행동 없는 경계는 단계를 세지 않고 곧바로 래치를 넘긴다. 웹 6a 미러.
     if tuning.imminentAheadM != nil, !isOff {
         let imminentAhead = imminentAheadMeters(speedSamples: state.speedSamples, tuning: tuning)
+        let stages = [imminentAhead] + tuning.imminentRepeatM
         let imminentCap = tuning.imminentNeedsAnnounce ? next.announcedUpTo : route.steps.count - 1
         while next.imminentUpTo < imminentCap,
               route.steps[next.imminentUpTo].endD < d {
             next.imminentUpTo += 1
+            next.imminentStage = 0
         }
-        if next.imminentUpTo < imminentCap,
-           route.steps[next.imminentUpTo].endD - d <= imminentAhead {
-            let target = next.imminentUpTo + 1
-            let step = route.steps[target]
-            let action = stepActionFor(
-                description: step.description, action: step.action, source: tuning.actionSource)
-            next.imminentUpTo = target
-            if let action {
-                if next.announcedUpTo < target {
-                    next.announcedUpTo = target
-                    next.farNoticedUpTo = max(next.farNoticedUpTo, target)
+        if next.imminentUpTo < imminentCap {
+            let rem = route.steps[next.imminentUpTo].endD - d
+            var stage = -1
+            var i = stages.count - 1
+            while i >= next.imminentStage {
+                if rem <= stages[i] { stage = i; break }
+                i -= 1
+            }
+            if stage >= 0 {
+                let target = next.imminentUpTo + 1
+                let step = route.steps[target]
+                let action = stepActionFor(
+                    description: step.description, action: step.action, source: tuning.actionSource)
+                if action == nil || stage == stages.count - 1 {
+                    next.imminentUpTo = target
+                    next.imminentStage = 0
+                } else {
+                    next.imminentStage = stage + 1
                 }
-                next.lastAnnouncedAt = now
-                return emit(next, .imminent(indices: [target], action: action), imminentTone(action))
+                if let action {
+                    if next.announcedUpTo < target {
+                        next.announcedUpTo = target
+                        next.farNoticedUpTo = max(next.farNoticedUpTo, target)
+                    }
+                    // 반복 단계는 소리뿐이라 발화 시각을 갱신하지 않는다(주기·재통독 리듬은 문장 기준).
+                    if stage == 0 { next.lastAnnouncedAt = now }
+                    return emit(
+                        next, .imminent(indices: [target], action: action, stage: stage),
+                        imminentTone(action))
+                }
             }
         }
     }
@@ -1016,6 +1052,7 @@ public func guideStep(
             if route.steps[unitEnd].endD >= d { break }
             next.announcedUpTo = unitEnd
             next.imminentUpTo = max(next.imminentUpTo, unitEnd)
+            next.imminentStage = 0
             next.farNoticedUpTo = max(next.farNoticedUpTo, unitEnd)
         }
     }

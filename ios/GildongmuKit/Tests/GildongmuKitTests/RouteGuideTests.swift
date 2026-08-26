@@ -57,6 +57,8 @@ private struct Scenario: Decodable {
         /// 10m 임박 큐로 옮겨 간 계약이 이 축으로만 잠긴다 — `tone` 단언만으로는
         /// "울리지 않아야 한다"를 표현할 수 없다.
         let toneNull: Bool?
+        /// 임박 단계 index(0=20m, 1=15m, 2=10m). `imminent` 이벤트가 그 단계여야 한다.
+        let stage: Int?
     }
 }
 
@@ -117,7 +119,7 @@ private func kindName(_ event: GuideEvent?) -> String? {
 private func indicesOf(_ event: GuideEvent?) -> [Int]? {
     switch event {
     case let .announceSteps(i): i
-    case let .imminent(i, _): i
+    case let .imminent(i, _, _): i
     case let .farNotice(i, _): i
     case let .bundleReread(i): i
     default: nil
@@ -125,6 +127,11 @@ private func indicesOf(_ event: GuideEvent?) -> [Int]? {
 }
 
 private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
+
+private func stageOf(_ event: GuideEvent?) -> Int? {
+    if case let .imminent(_, _, stage) = event { return stage }
+    return nil
+}
 
 @Test func sharedScenarioTable() throws {
     for sc in try loadScenarios() {
@@ -175,6 +182,9 @@ private func toneName(_ tone: GuideTone?) -> String? { tone?.rawValue }
             }
             if let tone = ex.tone {
                 #expect(rs.contains { toneName($0.tone) == tone }, "\(sc.name): tone \(tone)")
+            }
+            if let stage = ex.stage {
+                #expect(rs.contains { stageOf($0.event) == stage }, "\(sc.name): stage \(stage)")
             }
             if ex.toneNull == true {
                 for r in rs { #expect(r.tone == nil, "\(sc.name): toneNull") }
@@ -907,6 +917,14 @@ private func phaseName(_ p: GuidePhase) -> String {
 @Test func displayCoordinate() {
     #expect(projectionLagMeters == 10)
     #expect(imminentAheadMeters == 20) // 10 + lag 유도식(lag 하향은 실보행 재판정 2026-08-12)
+    #expect(imminentRepeatMeters == [15, 10]) // 5m·0m 단계 + lag(위원장 피드백 2026-08-26)
+    // 조합 불변식(웹 route-guide.test.ts 미러): 단계는 강한 내림차순, 마지막은 lag 이상.
+    for t in [GuideTuning.walk, .car, .carDriver] {
+        let stages = [t.imminentAheadM ?? 0] + t.imminentRepeatM
+        for (a, b) in zip(stages, stages.dropFirst()) { #expect(a > b) }
+        if let last = t.imminentRepeatM.last { #expect(last >= projectionLagMeters) }
+        if t.imminentAheadM == nil { #expect(t.imminentRepeatM.isEmpty) }
+    }
     #expect(displayEffectiveD(d: 0, baselineD: 0) == 0)
     #expect(displayEffectiveD(d: 5, baselineD: 0) == 10) // 램프인: lag 5
     #expect(displayEffectiveD(d: 20, baselineD: 0) == 30) // lag 10 포화

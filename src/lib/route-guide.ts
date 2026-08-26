@@ -59,6 +59,16 @@ export const ANNOUNCE_AHEAD_M = 40;
  */
 export const PROJECTION_LAG_M = 10;
 export const IMMINENT_AHEAD_M = 10 + PROJECTION_LAG_M; // = 20 (유도식 — lag 재판정 연동)
+/**
+ * 임박 큐의 **반복 단계**(m, 투영 좌표). 위원장 실사용 피드백 2026-08-26: "10m 전만이
+ * 아니라 5m 전과 0m 지점에서도 같은 소리를 — 세 번". 첫 단계는 `IMMINENT_AHEAD_M`이고
+ * 이 배열이 그 뒤를 잇는다. 같은 유도식(실위치 여유 + lag)을 쓰므로 0m 단계도 투영
+ * 좌표에서는 경계 10m 앞이라 "지난 경계 폐기" 하한과 충돌하지 않는다.
+ * ⚠ **강한 내림차순**이고 마지막이 `PROJECTION_LAG_M` 이상이어야 한다(조합 불변식 테스트).
+ * 소리·햅틱은 세 단계 모두, 문장은 첫 단계만이다(소비자 계약 — 4.2초 안에 문장 셋이
+ * 겹치면 정작 행동 시점을 놓친다).
+ */
+export const IMMINENT_REPEAT_M: readonly number[] = [5 + PROJECTION_LAG_M, 0 + PROJECTION_LAG_M]; // = [15, 10]
 
 /**
  * 표시 좌표계 유효 진행거리(spec 2026-08-11 §3). 표시 계층(guide-live-rows)의
@@ -131,6 +141,11 @@ export interface GuideTuning {
    * 복귀 직후 30m 앞 교차로가 침묵한다(설계 리뷰 B4).
    */
   imminentUnknownSpeedM: number;
+  /**
+   * 첫 임박 큐 뒤에 같은 경계를 향해 되풀이하는 단계(m). 빈 배열 = 1회(종전, car).
+   * walk `IMMINENT_REPEAT_M`. 첫 단계(`imminentAheadMeters`)와 합쳐 강한 내림차순이어야 한다.
+   */
+  imminentRepeatM: readonly number[];
   /**
    * 행동의 출처. `text`=문장 분류(`walkStepAction`), `step`=서버 투영 `action`만(없으면 침묵).
    * ⚠ car는 `step`이다 — 문장으로 되돌아가면 "왼쪽 옆길"·"오른쪽 방향"(갈래·시설 문장)이
@@ -217,6 +232,7 @@ export const WALK_TUNING: GuideTuning = {
   imminentAheadM: IMMINENT_AHEAD_M,
   imminentAheadS: 0,
   imminentUnknownSpeedM: IMMINENT_AHEAD_M,
+  imminentRepeatM: IMMINENT_REPEAT_M,
   // 도보 행동도 **서버가 전량 투영**한다(E16 축3 spec §4.2.1): 카카오 스텝은 서버가 최종
   // 문장을 분류해 싣고 Tmap 스텝은 turnType 표에서 온다. 클라이언트 문자열 폴백을 두면
   // 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못하고,
@@ -261,6 +277,7 @@ export const CAR_TUNING: GuideTuning = {
   imminentAheadM: CAR_IMMINENT_FLOOR_M,
   imminentAheadS: CAR_IMMINENT_AHEAD_S,
   imminentUnknownSpeedM: CAR_IMMINENT_UNKNOWN_SPEED_M,
+  imminentRepeatM: [],
   actionSource: "step",
   imminentNeedsAnnounce: false,
   silentCatchUp: true,
@@ -357,6 +374,13 @@ export interface GuideState {
    * 경계에 영원히 걸려 다음 회전의 큐가 영영 나가지 않는다.
    */
   imminentUpTo: number;
+  /**
+   * 후보 경계(`imminentUpTo+1`)를 향해 이미 낸 임박 큐 수(0=아직 없음). 단계 목록
+   * `[imminentAheadMeters, ...imminentRepeatM]`의 다음 index다. 경계를 넘기거나(래치 전진)
+   * 마지막 단계를 내면 0으로 되돌린다. 건너뛴 단계는 소급하지 않는다(한 fix에 20m·15m가
+   * 함께 걸리면 안쪽 15m 하나만) — fix당 이벤트 1개 계약.
+   */
+  imminentStage: number;
   /** 어떤 발화든 갱신 — 주기 통지의 기준(리뷰 #25). */
   lastAnnouncedAt: number;
   lastFixAt: number | null;
@@ -430,10 +454,11 @@ export interface GuideState {
 export type GuideEvent =
   | { kind: "announceSteps"; indices: number[] }
   /**
-   * 결정 지점 임박(20m) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는 **그 행동을
-   * 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다).
+   * 결정 지점 임박(walk 20·15·10m 세 단계) 앞. `action`은 낭독 문구를 고르는 키이고 `indices`는
+   * **그 행동을 담은 스텝 하나**다(유닛이 아니다 — 결정 지점은 유닛 안에도 있다). `stage`는
+   * 0부터의 단계 index — 소비자는 소리·햅틱은 매 단계, 문장은 0에서만 낸다.
    */
-  | { kind: "imminent"; indices: number[]; action: GuideAction }
+  | { kind: "imminent"; indices: number[]; action: GuideAction; stage: number }
   | { kind: "farNotice"; indices: number[]; remainingMeters: number }
   | { kind: "periodic"; stepIndex: number; remainingMeters: number; accuracy: number }
   | { kind: "bundleReread"; indices: number[] }
@@ -546,6 +571,7 @@ export function guideStateAt(
     // 묶음 안의 회전이 통째로 사라진다. 그 스텝들의 전문은 이미 나갔으므로
     // (`announcedUpTo`가 유닛 끝) `imminentUpTo < announcedUpTo` 조건도 성립한다.
     imminentUpTo: step.index,
+    imminentStage: 0,
     lastAnnouncedAt: now,
     lastFixAt: null,
     windowEdgeHits: 0,
@@ -1140,32 +1166,55 @@ export function guideStep(
   //     부재에서 15m. 행동 출처는 프로파일이 정한다(`actionSource`: car는 서버 turnType 투영
   //     `action`만 — 없으면 침묵, walk는 문장 분류). 자동차 문장은 "오른쪽 방향"이 회전이 아니라
   //     문장으로 되돌아가지 않는다. car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce`).
+  //     ⚠ **단계는 셋이고 래치는 마지막 단계에서만 전진한다**(2026-08-26 위원장 피드백 —
+  //     "10m 전만이 아니라 5m 전·0m에서도 같은 소리를"). 단계 목록은
+  //     `[imminentAheadMeters, ...imminentRepeatM]`(walk 20·15·10, car는 첫 단계뿐)이고
+  //     `imminentStage`가 다음 단계 index를 든다. 한 fix에 두 단계가 함께 걸리면 **안쪽
+  //     하나만** 내고 건너뛴 단계는 소급하지 않는다(fix당 이벤트 1개). 행동 없는 경계는
+  //     단계를 세지 않고 곧바로 래치를 넘긴다.
   if (tuning.imminentAheadM !== null && !isOff) {
     const imminentAhead = imminentAheadMeters(state, tuning); // vPrev와 같은 표본(직전 fix까지)
+    const stages = [imminentAhead, ...tuning.imminentRepeatM];
     // 전문 선행 상한: walk는 낭독된 스텝까지, car는 마지막 스텝까지(명령이 자기 완결, B3).
     const imminentCap = tuning.imminentNeedsAnnounce ? next.announcedUpTo : route.steps.length - 1;
     while (next.imminentUpTo < imminentCap && route.steps[next.imminentUpTo].endD < d) {
-      next = { ...next, imminentUpTo: next.imminentUpTo + 1 };
+      next = { ...next, imminentUpTo: next.imminentUpTo + 1, imminentStage: 0 };
     }
-    if (
-      next.imminentUpTo < imminentCap &&
-      route.steps[next.imminentUpTo].endD - d <= imminentAhead
-    ) {
-      const target = next.imminentUpTo + 1;
-      const action = stepActionFor(route.steps[target], tuning.actionSource);
-      next = { ...next, imminentUpTo: target };
-      if (action) {
-        // 전문보다 먼저 나간 명령은 전문을 대신한다 — 래치를 같이 올려 6c가 지난 행동의
-        // 전문("교차로에서 우회전 후…")을 회전 뒤에 읽지 않게 한다(car 전용 경로).
-        if (next.announcedUpTo < target) {
-          next = {
-            ...next,
-            announcedUpTo: target,
-            farNoticedUpTo: Math.max(next.farNoticedUpTo, target),
-          };
+    if (next.imminentUpTo < imminentCap) {
+      const rem = route.steps[next.imminentUpTo].endD - d;
+      let stage = -1;
+      for (let i = stages.length - 1; i >= next.imminentStage; i -= 1) {
+        if (rem <= stages[i]) {
+          stage = i;
+          break;
         }
-        next = { ...next, lastAnnouncedAt: now };
-        return emit(next, { kind: "imminent", indices: [target], action }, imminentTone(action));
+      }
+      if (stage >= 0) {
+        const target = next.imminentUpTo + 1;
+        const action = stepActionFor(route.steps[target], tuning.actionSource);
+        if (!action || stage === stages.length - 1) {
+          next = { ...next, imminentUpTo: target, imminentStage: 0 };
+        } else {
+          next = { ...next, imminentStage: stage + 1 };
+        }
+        if (action) {
+          // 전문보다 먼저 나간 명령은 전문을 대신한다 — 래치를 같이 올려 6c가 지난 행동의
+          // 전문("교차로에서 우회전 후…")을 회전 뒤에 읽지 않게 한다(car 전용 경로).
+          if (next.announcedUpTo < target) {
+            next = {
+              ...next,
+              announcedUpTo: target,
+              farNoticedUpTo: Math.max(next.farNoticedUpTo, target),
+            };
+          }
+          // 반복 단계는 소리뿐이라 발화 시각을 갱신하지 않는다(주기·재통독 리듬은 문장 기준).
+          if (stage === 0) next = { ...next, lastAnnouncedAt: now };
+          return emit(
+            next,
+            { kind: "imminent", indices: [target], action, stage },
+            imminentTone(action),
+          );
+        }
       }
     }
   }
@@ -1232,6 +1281,7 @@ export function guideStep(
         announcedUpTo: unitEnd,
         // car는 임박 래치가 전문 래치를 앞지를 수 있어(전문 선행 비요구) 후퇴시키지 않는다.
         imminentUpTo: Math.max(next.imminentUpTo, unitEnd),
+        imminentStage: 0,
         farNoticedUpTo: Math.max(next.farNoticedUpTo, unitEnd),
       };
     }

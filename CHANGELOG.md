@@ -9,6 +9,15 @@
 
 ---
 
+## 2026-08-26
+
+### 실사용 피드백 2건 — 임박 큐 3단계 + 잊힌 도보 세션 안전망 (카카오톡 260826)
+
+- spec `docs/superpowers/specs/2026-08-26-imminent-triple-cue-and-session-idle-design.md`.
+- **임박 큐 3단계**: 결정 지점 20m 큐 뒤 15m·10m(투영 좌표 = 실위치 5m·0m + lag)에서 같은 톤·햅틱을 두 번 더 낸다. `IMMINENT_REPEAT_M`·`GuideTuning.imminentRepeatM`(car는 빈 배열로 종전 동일)·상태 `imminentStage`·이벤트 `stage`. 문장은 첫 단계만(소비자 `stage > 0` 침묵), 반복 단계는 `lastAnnouncedAt` 미갱신. 공유 fixture +4, 하네스 `stage` 축, 조합 불변식(강한 내림차순·마지막 ≥ lag).
+- **잊힌 세션 안전망**: 도착 추정이 최종 접근 국면 밖 세션(GPS 두절·이탈·간략 강등·150m 밖 실내 진입)을 못 끝내던 공백. 국면 무관 `sessionIdleStep`(Kit `SessionIdle.swift` ↔ 웹 `session-idle.ts`, fixture 공유): usable fix 두절 10분 또는 앵커 25m 이동 없음 20분이면 도보 세션을 사용자 중지 모양으로 종료(`guide.endedIdle` 6로케일, 정지 톤 전경만, `.high` 통지). 배선은 `BeaconModel` 워치독. 자동차·대중교통 제외.
+- doc-audit: `docs/INTEGRATIONS.md`의 삭제된 `SERVICE_RANK` 백틱 참조를 평문으로.
+
 ## 2026-08-25
 
 ### A20·A21 — 환승역 빠른하차 정본화 + 대중교통 정렬에서 `unknown` 제외 (김찬홍 선생님 리포트 착수)

@@ -677,6 +677,7 @@
     "finalApproachNearDir": "Sei vicino alla destinazione. È {direction}.",
     "arrived": "Sei arrivato a destinazione",
     "arrivedPresumed": "Sembra che tu sia arrivato vicino alla destinazione, quindi la guida è terminata",
+    "endedIdle": "La guida è terminata perché per un po' non ci sono stati segnale di posizione né movimento",
     "dirAhead": "davanti",
     "dirLeft": "a sinistra",
     "dirRight": "a destra",
