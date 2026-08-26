@@ -20,6 +20,12 @@
 - spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md` 신설(설계 근거의 정본). 채팅 도구 24개 중 1:1 이전은 1개(보행 인프라)뿐, 재편·신설로 **길찾기 뷰 9개 + 홈 진입 1개 = 10개**를 전부 정적 등록으로 노출. 출력 상한 1,500자는 항목 단위 생략으로만 지키고(문자열 절단 금지), 분할 손잡이는 세대 토큰 `planId` + `routeKey`. 안내 세션 도구의 소유자는 기존 `guide-session-store`. `usewebmcp` 미도입(프로브가 증명한 직접 등록 + 자체 훅).
 - codex 적대적 설계 리뷰 실시(마일스톤 게이트 조건 ②). 지적·기각 기록은 spec §9.
 
+### W1 게이트 0 통과: 인앱 브라우저에서 WebMCP 포커스와 VoiceOver 연동 확인
+
+- 임시 프로브 `4a3ee44`: 지원 상태 3-state, readOnly 상태 도구, 번호별 포커스 도구, 포커스 대상 5개, 단일 polite live region을 6로케일 경로에 추가했다.
+- localhost 페이지 200과 도구 2개 발견을 확인했고, 포커스 도구 실행 직후 DOM `<h4>` 포커스와 live region 결과가 일치했다.
+- 김헌용 위원장이 인앱 브라우저에서 VoiceOver로 웹 콘텐츠 탐색·헤딩·폼 컨트롤 이동, 상단 문구, 포커스 대상 5개의 커서 이동과 낭독을 실사용 확인했다. 축 A의 전제가 성립했으며 다음은 Tmap 별도 키 발급이다.
+
 ### BACKLOG W1 신설 — WebMCP 도구층 (최우선, 2026-09-04 외부 시한)
 
 - 웹앱 기능을 브라우저 에이전트에게 도구로 선언하는 축(`document.modelContext.registerTool`)을 착수 항목으로 등재. 상세·게이트 순서는 `docs/BACKLOG.md` W1이 정본이다.
