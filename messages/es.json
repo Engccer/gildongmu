@@ -787,6 +787,32 @@
     "heading": "Estás sin conexión",
     "body": "La búsqueda solo funciona en línea."
   },
+  "webmcpProbe": {
+    "title": "Sonda de puerta 0 de WebMCP",
+    "intro": "Esta página mide la ejecución de herramientas WebMCP y el seguimiento del foco de VoiceOver.",
+    "supportLabel": "Estado de compatibilidad con WebMCP",
+    "support": {
+      "checking": "Comprobando",
+      "supported": "Compatible",
+      "unsupported": "No compatible"
+    },
+    "targetsHeading": "Destinos del foco",
+    "headingTarget": "Destino del foco {index}, encabezado",
+    "buttonTarget": "Destino del foco {index}, botón",
+    "manualActivation": "Se activó directamente el botón {index}.",
+    "readStateResult": "WebMCP {support}. Foco actual: {focus}. Último resultado: {lastResult}.",
+    "focusMoved": "Se movió el foco DOM a {label}.",
+    "focusFailed": "No se pudo mover el foco DOM al elemento {index}.",
+    "invalidIndex": "El número de elemento debe ser un entero del 1 al 5.",
+    "noFocus": "Ninguno",
+    "noResult": "Ninguno",
+    "registrationFailed": "Falló el registro de las herramientas WebMCP.",
+    "tool": {
+      "readDescription": "Devuelve el estado de compatibilidad, el foco y el último resultado de la página de sonda.",
+      "focusDescription": "Mueve el foco DOM al elemento de sonda indicado.",
+      "indexDescription": "Número del elemento de sonda, del 1 al 5."
+    }
+  },
   "surroundingsNearby": {
     "item": "{category}, {direction}, unos {distance}",
     "category": {

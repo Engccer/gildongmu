@@ -787,6 +787,32 @@
     "heading": "オフラインです",
     "body": "インターネット接続を確認してからもう一度お試しください。検索はオンラインでのみ動作します。"
   },
+  "webmcpProbe": {
+    "title": "WebMCP ゲート0プローブ",
+    "intro": "このページでは、WebMCPツールの実行とVoiceOverのフォーカス追従を実測します。",
+    "supportLabel": "WebMCP対応状況",
+    "support": {
+      "checking": "確認中",
+      "supported": "対応",
+      "unsupported": "未対応"
+    },
+    "targetsHeading": "フォーカス対象",
+    "headingTarget": "フォーカス対象{index}、見出し",
+    "buttonTarget": "フォーカス対象{index}、ボタン",
+    "manualActivation": "ボタン{index}を直接実行しました。",
+    "readStateResult": "WebMCP {support}。現在のフォーカス：{focus}。最新の結果：{lastResult}。",
+    "focusMoved": "DOMフォーカスを{label}へ移動しました。",
+    "focusFailed": "DOMフォーカスを項目{index}へ移動できませんでした。",
+    "invalidIndex": "項目番号は1から5までの整数である必要があります。",
+    "noFocus": "なし",
+    "noResult": "なし",
+    "registrationFailed": "WebMCPツールの登録に失敗しました。",
+    "tool": {
+      "readDescription": "プローブページの対応状況、フォーカス、最新の結果を返します。",
+      "focusDescription": "指定した番号のプローブ項目へDOMフォーカスを移動します。",
+      "indexDescription": "1から5までのプローブ項目番号です。"
+    }
+  },
   "surroundingsNearby": {
     "item": "{category}、{direction}側、約{distance}",
     "category": {
