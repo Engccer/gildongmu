@@ -60,7 +60,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 - **A21 판별력 재관측**: 23:50 게이트 PASS는 5536이 `outside`·타 후보 2호선도 `unknown`이라 변경 전과 같은 순위였다. 주간(5536 `running`)에 `node scripts/verify-odsay-transfer-door.mjs`를 한 번 더 돌려 추천이 "4호선 노원→사당→2호선"인지 적는다(접수 세션 19:30엔 5개 밖이었다). 아침 09:22 리포트에서 사당 경로가 추천으로 보인 이유는 미확인.
 - **사당발 2호선 leg가 `unknown`**: 같은 응답에서 2호선 구로디지털단지행 leg가 시간표 조인에 실패한다(순환선 wayCode·역명 조인 미스 가능성, A19 계열). 표기엔 침묵이라 사용자 영향은 정렬뿐인데, A21로 그 방향이 **강등 대상 → `running` 동순위**로 바뀌었다(심야엔 끊긴 지하철이 확인된 심야버스 앞에 남을 수 있다 — spec §2 수용 트레이드오프). 조인 미스를 줄이는 것이 그 창을 닫는 길이라 원인 확인이 곧 처방이다.
-- **E25 ODsay 필드명 표기**: `docs/BACKLOG.md` E25의 `startExitNo`·`endExitNo`·`subwayPath`·`searchStation`은 업스트림 필드명이라 doc-audit "코드에 없는 심볼"에 매번 걸린다. E25 착수 시 실제 심볼로 바뀌므로 그때까지 잡음.
+- **E25 ODsay 필드명 표기**: `docs/BACKLOG.md` E25의 `startExitNo`·`endExitNo`·`subwayPath`·`searchStation`은 업스트림 필드명이라 코드에 없다. doc-audit 마커 ignore에 등록했다(2026-08-27). E25 착수 시 실제 심볼로 바뀌면 그 문장을 코드 심볼로 고친다.
 
 ### A18. 경로 출발점이 세션에서 가장 나쁜 fix로 정해진다 — ✅ 1·3선 종결(2026-08-17), 상수·2선은 실보행 판정 대기
 
