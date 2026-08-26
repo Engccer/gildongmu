@@ -267,8 +267,8 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 0. **ChatGPT 데스크톱 앱 내장 브라우저 × VoiceOver 실측**(위원장, §8 성격). 내장 브라우저에서 VO가 도는가, **도구가 옮긴 포커스를 VO가 따라오는가**. 아래 축 A 전체가 이 가정 위에 있다. 깨지면 A를 폐기하고 B·C로 간다. **다른 어떤 착수보다 먼저.**
 1. ~~**Tmap 별도 키 발급**~~ — ✅ **2026-08-27 완료.** SK open API에 앱 `Dodoplanet`(pjtSeq 1000055509) 신설 + TMAP Free 신청(상태 `사용중`, IPS `Any IP allowed`). **방향은 당초 계획의 반대다**: 기존 앱 이름이 이미 `gildongmu`였으므로 신규 키를 dodo-planet에 주고 **길동무는 종전 키를 그대로 쓴다** — 심사 기간 중 길동무 프로덕션 env를 건드리지 않는 것이 이 선택의 핵심 이득이다. 남은 것은 dodo-planet 쪽 교체(로컬 `.env.local` 74행 + Vercel env)이고 **길동무 작업을 막지 않는다**(이 게이트는 심사 트래픽 방어용이지 구현 선행조건이 아니다). 신규 키는 dodo-planet `.env.local` 말미에 주석으로 보관. ⚠ SK 안내 "사용 중인 동일 API상품이 있을 때: 신규 앱을 생성 후 상품 구매"가 이 절차가 정상임을 명시한다(약관의 "동일한 서비스를 위한 다수 프로젝트" 부정사용 조항은 *한 서비스*를 쪼개는 경우이고, 우리는 *두 서비스*가 각자 앱을 갖는 경우다).
-2. **spec + 설계 리뷰**. 노출 도구 엄선(24개 전부 금지 — 겹치면 에이전트가 잘못 고른다), 출력 분할 계약, 등록·해제 수명. **설계 단계 적대적 리뷰: 실시**(CLAUDE.md §마일스톤 게이트 조건 ② "새 외부 통합의 계약 가정 첫 정의" — 도구 계약을 여기서 처음 못박는다).
-3. **구현**. `usewebmcp`(v5.0.1, React 19 지원)로 `DirectionsView`에서 등록 — 상태(`results`·`activeGuideAlt`·`fromField`·`toField`)가 한 컴포넌트에 있어 전역 브리지가 필요 없고, 훅 수명이 곧 "쓸 수 있을 때만 등록"을 지킨다.
+2. ~~**spec + 설계 리뷰**~~ — ✅ **2026-08-27 종결.** spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md`(`e0b4258`, 판정 반영 `4240abb`). **도구 10개, 전부 정적 등록**: `open_directions`(홈) / 길찾기 뷰 `read_current_view`·`focus_item`·`plan_directions`·`get_transit_route_detail`·`get_route_steps`·`start_guidance`·`guidance_status`·`stop_guidance`·`get_walk_infrastructure_nearby`. 채팅 24개 중 1:1 이전은 보행 인프라 하나뿐이다(판정표 spec §1.1) — **도구층은 채팅 도구의 재노출이 아니라 화면 조작 계약이다.** codex 적대적 리뷰 36건 "이대로는 불안전" → 구조 결정 2건(전부 정적 등록 · 안내 세션 소유자를 `guide-session-store`로 전역화)으로 절반을 함께 닫고 32건 반영, 4건 부분 기각(spec §9). ⚠ 2차 리뷰 미실시.
+3. **구현**(Codex, `feat/webmcp`). **spec이 정본이고 재설계 금지.** 요지: **`usewebmcp` 미도입**(자체 훅 — spec §8.1) · 소유는 `src/lib/webmcp/**`, 등록 주체는 `DirectionsView`+`PlaceSearch` · 안내 도구는 **`guide-session-store` 확장**이 소유한다 · `planId` 세대 토큰 필수 · **1,500자는 항목 단위 생략이지 문자열 절단이 아니다** · 좌표는 allowlist 직렬화로 구조적 배제 · 후보 여럿이면 `needsDisambiguation`. ⚠ **"상태가 한 컴포넌트에 있어 전역 브리지가 불필요하다"는 종전 서술은 결과·필드 축에만 참이다** — 안내 상태는 자식 훅이 들고 있어 그대로는 안 된다(spec §5.2가 정본. 이 정정은 spec 세션이 코드 대조로 잡았다). **위원장 판정 2건(2026-08-27 확정)**: ①에이전트의 안내 시작·중지는 **페이지 단계 확인 없이 바로 실행** ②`/{locale}/privacy`에 **"브라우저 에이전트를 켜면 길찾기 내용이 그 제공자에게 간다" 한 절 추가**(6로케일, 문안은 TextEdit 왕복 확정 — 구현 범위에 포함).
 
 **노출 축 3갈래**
 - **A. 에이전트가 답 대신 커서를 옮긴다.** `read_current_view`(readOnly)로 화면 상태를 주고, `focus_step`으로 **스크린 리더 커서를 그 지점으로 이동**시킨다. 서버 MCP로는 원리적으로 불가능하다(탭이 없다). ⚠ 게이트 0 통과가 전제.
@@ -282,6 +282,8 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 - ② **Tmap 쿼터** — 단일 키를 dodo-planet과 공유(양 앱 합산 일 1,000건)인데 **`lang="en"`은 Tmap 단독·폴백 없음**(`docs/INTEGRATIONS.md:20`). 비한국어 사용자의 도보 조회가 전량 Tmap을 태운다. **✅ 2026-08-27 해소 완료**: dodo-planet이 전용 앱 `Dodoplanet`으로 교체를 마쳤다(dodo `ab1e15a5`, Vercel 프로덕션 env 교체 07:52 KST + 재배포 + 프로덕션 실호출 200 확인. 코디네이터가 커밋·문서 갱신·키 미노출을 독립 검증). **경로안내 일 1,000건은 이제 길동무 단독이다.** 심사위원의 영어 도보 조회가 전량 Tmap을 태워도 도도와 나눠 쓰지 않는다. ⚠ 카카오 유료 전환 신청은 하드 스톱이며 이 기간에도 하지 않는다(초과=오류=폴백이라 비용 상한이 구조적으로 0원, `docs/INTEGRATIONS.md:63`).
 
 **환경**: Chrome 149+ `chrome://flags/#enable-webmcp-testing` 또는 ChatGPT 데스크톱 앱 내장 브라우저(GPT-5.6 Sol·Terra, Luna 비활성). 디버깅은 Model Context Tool Inspector 확장. 이 머신 실측 Chrome 151·ChatGPT.app 설치됨.
+
+**다음 웨이브 후보(spec §8.5, 이번 범위 밖)**: "내 주변" 허브 뷰 도구층(+`get_walk_infrastructure_nearby` 이관) · 역 시설 도구(동명이역 `ambiguousStation` 계약 + 장소 상세 뷰 도구층과 함께) · 장소 상세 `focus_item` · `plan_directions` 수단 선택 인자(화면 핸들러 선행) · Declarative API(같은 기능이 두 표면에 서면 겹치므로 imperative만).
 
 **부수 효과(위원장 2026-08-27)**: 한동안 웹은 iOS 기능 이식 수준에 머물렀다. 도구를 노출하려면 "이 앱이 할 수 있는 일"을 하나씩 이름 붙이고 스키마로 못박아야 하므로, 그 작업 자체가 웹앱 기능 경계를 정리한다.
 
