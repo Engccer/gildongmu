@@ -12,6 +12,46 @@
 
 ---
 
+## 1.13 (빌드 21)
+
+기준은 1.12 아카이브 커밋 `37b99db`(빌드 20)이며 그 이후 `ios/` 커밋 4건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| 도보 안내 결정 지점 임박 신호 3단계 — 20m 뒤 15m·10m에서 같은 소리·진동을 두 번 더(문장은 첫 번만) | `9148249` | ko·en(도보 안내는 전 언어) |
+| 잊힌 도보 세션 안전망(A23) — 위치 신호 10분 두절 또는 20분 무이동이면 안내를 스스로 종료하고 이유를 알린다(`guide.endedIdle`) | `9148249`·`55fc560` | ko·en |
+| 지하철 환승역 빠른하차 — 환승 구간은 환승 통로에 가까운 문을 안내(A20, `quickExit.transfer` 디코딩 + `route.transit.quickExitTransfer` 문장) | `91856a2` | ko·en("서버 판정과 앱 UI가 짝인 기능" — 새 필드를 이 버전부터 읽는다) |
+
+제외 근거:
+
+- **옴니박스 버튼 라벨 단축키 병기**(`83cdb67`): iOS 변경은 xcstrings 재생성뿐이고 바뀐 두 키(`search.askAi`·`search.button`)는 Swift 미참조다. 웹 전용.
+- `55fc560`은 A23 안전망의 관측 보정이라 별도 항목이 아니다.
+- 문서·테스트·생성물 커밋 전량.
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 새 권한·새 데이터 유형이 없고 §9 문장 중 거짓이 된 것이 없다.
+
+### ko
+
+```
+개선
+- 도보 안내에서 횡단보도나 회전 지점이 가까워지면 알림 소리와 진동을 20m, 15m, 10m 지점에서 세 번 냅니다. 안내 문장은 처음 한 번만 나옵니다.
+- 도보 안내를 켠 채 잊어버려도 안내가 계속 켜져 있지 않습니다. 위치 신호가 10분 동안 끊기거나 20분 동안 이동이 없으면 안내를 종료하고 그 이유를 알려 드립니다.
+- 지하철 환승역의 빠른하차 안내가 환승 통로에 가까운 칸과 문을 알려 드립니다. 계단·엘리베이터 기준 안내는 마지막에 내리는 역에서만 나옵니다.
+```
+
+### en
+
+```
+Improved
+- In walking guidance, the sound and vibration for an upcoming crossing or turn now play three times, at 20 m, 15 m, and 10 m. The spoken instruction is given only the first time.
+- Walking guidance no longer stays on if you forget about it. When there is no location signal for 10 minutes or no movement for 20 minutes, guidance ends and tells you why.
+- Subway quick-exit guidance at transfer stations now points to the car and door closest to the transfer passage. Stair and elevator based guidance is given only at the station where you finally get off.
+```
+
+---
+
 ## 1.12 (빌드 20)
 
 기준은 1.11 아카이브 커밋 `f312a39`(빌드 18)이며 그 이후 `ios/` 커밋 39건을 판정했다(빌드 19 초안 시점 22건 + 빌드 19가 1.11 심사 중 409로 제출되지 못한 사이 들어온 17건). 빌드 19는 제출되지 않은 채 폐기하고 빌드 20으로 다시 올린다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
