@@ -1,5 +1,12 @@
 # 2026-08-27 WebMCP 웨이브 — 병렬 세션 계획
 
+> **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 최종 `origin/main` = `e414709`.
+> · G1 `tmap-key-swap` DONE (dodo `ab1e15a5`·`ba9f5ff8`, Vercel 프로덕션 교체 07:52 KST + 실호출 확인)
+> · G2 `spec-webmcp` DONE (`e0b4258`→판정 반영 `4240abb`, worktree·브랜치 정리 완료)
+> · 코디네이터 분배 `e414709` (BACKLOG W1 · PROGRESS · FIELD-TEST §8)
+> · **남은 것은 G3 구현뿐.** 착수점은 `docs/BACKLOG.md` W1이며 그 항목 하나로 자족한다.
+> · 후속: 이 웨이브가 문서를 여러 주체에 분배했으므로 **G3 통합 후 `doc-audit`를 돌린다.**
+
 > 코디네이터: `mac-projects-b3`. 작업 세션: `gildongmu-bc`(spec), `dodo-planet-53`(Tmap 키 교체), Codex(`feat/webmcp` 구현).
 > 상위 항목은 `docs/BACKLOG.md` **W1**. 외부 시한 2026-09-04 05:00 KST.
 
@@ -24,7 +31,7 @@
 
 | 주체 | 브랜치 / 작업 위치 | 소유 (여기만 쓴다) |
 |---|---|---|
-| Codex | `feat/webmcp` @ `.worktrees/webmcp` | `src/app/[locale]/webmcp-probe/**`, `src/lib/webmcp/**`(신설), `messages/*.json`의 `webmcp*` 키 |
+| **Codex ↔ Claude 교대** | `feat/webmcp` @ `.worktrees/webmcp` | `src/app/[locale]/**`(webmcp 관련), `src/lib/webmcp/**`, `messages/*.json`의 `webmcp*` 키, `/{locale}/privacy` 카피 |
 | `gildongmu-bc` | `feat/webmcp-spec` @ `.worktrees/spec` | `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md` (**신규 파일 1개**) |
 | `dodo-planet-53` | dodo-planet `main` | `.env.local`(로컬), Vercel env, `CLAUDE.md`의 TMAP 행, `CHANGELOG.md` |
 | 코디네이터 | gildongmu `main` (메인 체크아웃) | `docs/BACKLOG.md`, 이 계획 문서 |
@@ -33,6 +40,18 @@
 
 - **작업 세션은 `docs/BACKLOG.md`·`PROGRESS.md`를 건드리지 않는다.** 완료 보고에 적어 보내면 코디네이터가 한 번에 반영한다.
 - `CHANGELOG.md`는 **자기 항목만 추가**하고, rebase 후 `comm -23 <(git show origin/main:CHANGELOG.md | sort) <(sort CHANGELOG.md)`로 남의 줄 소실을 전수 대조한다. 출력된 줄은 전부 자기가 의도적으로 지운 것이어야 한다.
+
+### §2-1 교대 규약 (2026-08-27 개정 — Codex 전담 철회)
+
+사용 한도 때문에 **Codex와 Claude가 `feat/webmcp` 하나를 교대로** 쓴다. 워크트리도 브랜치도 하나다.
+
+⚠ **동시에 쓰지 않는다.** 같은 디렉터리는 git index를 공유하므로 한쪽이 stage한 파일이 다른 쪽 커밋에 흡수된다(자율성 헌장 §병렬 세션 git 안전의 실사고). 교대는 시간 분할이지 병렬이 아니다.
+
+**넘기는 쪽**: ①pathspec 커밋(`git commit -- <경로들>`, `git add -A` 금지) ②`git show HEAD --stat`로 의도 파일만 들었는지 검증 ③`git push origin feat/webmcp`. **미커밋 상태로 넘기지 않는다** — 받는 쪽이 그 변경을 자기 것으로 오인한다.
+
+**받는 쪽**: ①`git pull --ff-only` ②`git log --oneline -5`로 상대가 어디까지 했는지 확인 ③작업 시작. 상대의 미완 변경이 워킹트리에 남아 있으면 **자기 것으로 커밋하지 말고 상황을 보고**한다.
+
+⚠ **`feat/webmcp`의 base가 낡았다**: `7d65693`은 `cd13576` 기반이고 그 뒤 main이 `e414709`까지 갔다(spec·계획·CLAUDE.md·FIELD-TEST). **다음 세션이 첫 순서로 `git fetch && git rebase origin/main && npm install`을 한다.**
 
 ## §3 git 격리 절차
 
