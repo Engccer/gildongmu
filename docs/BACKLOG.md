@@ -279,7 +279,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **위험 2건**
 - ① **VoiceOver 전제 미검증** — 게이트 0. 미해소 상태로 축 A를 구현하지 말 것.
-- ② **Tmap 쿼터** — 단일 키를 dodo-planet과 공유(양 앱 합산 일 1,000건)인데 **`lang="en"`은 Tmap 단독·폴백 없음**(`docs/INTEGRATIONS.md:20`). 비한국어 사용자의 도보 조회가 전량 Tmap을 태운다. **✅ 2026-08-27 해소(게이트 1)**: dodo-planet이 자기 앱 키로 옮겨가면 길동무가 일 1,000건을 단독으로 쓴다. 교체 완료 전까지는 종전대로 공유 상태다. ⚠ 카카오 유료 전환 신청은 하드 스톱이며 이 기간에도 하지 않는다(초과=오류=폴백이라 비용 상한이 구조적으로 0원, `docs/INTEGRATIONS.md:63`).
+- ② **Tmap 쿼터** — 단일 키를 dodo-planet과 공유(양 앱 합산 일 1,000건)인데 **`lang="en"`은 Tmap 단독·폴백 없음**(`docs/INTEGRATIONS.md:20`). 비한국어 사용자의 도보 조회가 전량 Tmap을 태운다. **✅ 2026-08-27 해소 완료**: dodo-planet이 전용 앱 `Dodoplanet`으로 교체를 마쳤다(dodo `ab1e15a5`, Vercel 프로덕션 env 교체 07:52 KST + 재배포 + 프로덕션 실호출 200 확인. 코디네이터가 커밋·문서 갱신·키 미노출을 독립 검증). **경로안내 일 1,000건은 이제 길동무 단독이다.** 심사위원의 영어 도보 조회가 전량 Tmap을 태워도 도도와 나눠 쓰지 않는다. ⚠ 카카오 유료 전환 신청은 하드 스톱이며 이 기간에도 하지 않는다(초과=오류=폴백이라 비용 상한이 구조적으로 0원, `docs/INTEGRATIONS.md:63`).
 
 **환경**: Chrome 149+ `chrome://flags/#enable-webmcp-testing` 또는 ChatGPT 데스크톱 앱 내장 브라우저(GPT-5.6 Sol·Terra, Luna 비활성). 디버깅은 Model Context Tool Inspector 확장. 이 머신 실측 Chrome 151·ChatGPT.app 설치됨.
 
