@@ -25,6 +25,7 @@
 | `RESEARCH-2026-08-16-map-app-deeplinks.md` | 2026-08-16 | 지도 앱 딥링크 |
 | `RESEARCH-2026-08-16-odbl-compliance.md` | 2026-08-16 | OSM ODbL 준수 조건(E12의 근거) |
 | `RESEARCH-2026-08-16-audio-signal-ble-control.md` | 2026-08-16 | 음향신호기 앱 조작 — 경찰청 규격서 BLE 공용 프로토콜·보급률 실측·선행 앱(E20의 근거) |
+| `RESEARCH-2026-08-23-express-stop-data.md` | 2026-08-23 | 급행 정차역 데이터원(E14·A16 L1의 선행 판정) |
 
 ## `refs/` — 1차 사료 사본
 
