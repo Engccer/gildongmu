@@ -266,7 +266,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 **게이트 순서** — 앞 단계가 뒤 단계의 존폐를 정한다.
 
 0. **ChatGPT 데스크톱 앱 내장 브라우저 × VoiceOver 실측**(위원장, §8 성격). 내장 브라우저에서 VO가 도는가, **도구가 옮긴 포커스를 VO가 따라오는가**. 아래 축 A 전체가 이 가정 위에 있다. 깨지면 A를 폐기하고 B·C로 간다. **다른 어떤 착수보다 먼저.**
-1. **Tmap 별도 키 발급**(위원장, §8 성격). 아래 위험 ② 참조.
+1. ~~**Tmap 별도 키 발급**~~ — ✅ **2026-08-27 완료.** SK open API에 앱 `Dodoplanet`(pjtSeq 1000055509) 신설 + TMAP Free 신청(상태 `사용중`, IPS `Any IP allowed`). **방향은 당초 계획의 반대다**: 기존 앱 이름이 이미 `gildongmu`였으므로 신규 키를 dodo-planet에 주고 **길동무는 종전 키를 그대로 쓴다** — 심사 기간 중 길동무 프로덕션 env를 건드리지 않는 것이 이 선택의 핵심 이득이다. 남은 것은 dodo-planet 쪽 교체(로컬 `.env.local` 74행 + Vercel env)이고 **길동무 작업을 막지 않는다**(이 게이트는 심사 트래픽 방어용이지 구현 선행조건이 아니다). 신규 키는 dodo-planet `.env.local` 말미에 주석으로 보관. ⚠ SK 안내 "사용 중인 동일 API상품이 있을 때: 신규 앱을 생성 후 상품 구매"가 이 절차가 정상임을 명시한다(약관의 "동일한 서비스를 위한 다수 프로젝트" 부정사용 조항은 *한 서비스*를 쪼개는 경우이고, 우리는 *두 서비스*가 각자 앱을 갖는 경우다).
 2. **spec + 설계 리뷰**. 노출 도구 엄선(24개 전부 금지 — 겹치면 에이전트가 잘못 고른다), 출력 분할 계약, 등록·해제 수명. **설계 단계 적대적 리뷰: 실시**(CLAUDE.md §마일스톤 게이트 조건 ② "새 외부 통합의 계약 가정 첫 정의" — 도구 계약을 여기서 처음 못박는다).
 3. **구현**. `usewebmcp`(v5.0.1, React 19 지원)로 `DirectionsView`에서 등록 — 상태(`results`·`activeGuideAlt`·`fromField`·`toField`)가 한 컴포넌트에 있어 전역 브리지가 필요 없고, 훅 수명이 곧 "쓸 수 있을 때만 등록"을 지킨다.
 
@@ -279,7 +279,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **위험 2건**
 - ① **VoiceOver 전제 미검증** — 게이트 0. 미해소 상태로 축 A를 구현하지 말 것.
-- ② **Tmap 쿼터** — 단일 키를 dodo-planet과 공유(양 앱 합산 일 1,000건)인데 **`lang="en"`은 Tmap 단독·폴백 없음**(`docs/INTEGRATIONS.md:20`). 비한국어 사용자의 도보 조회가 전량 Tmap을 태운다. 별도 키 발급이 가장 깔끔하고, 차선은 시연 시나리오를 대중교통(ODsay) 중심으로 짜는 것. ⚠ 카카오 유료 전환 신청은 하드 스톱이며 이 기간에도 하지 않는다(초과=오류=폴백이라 비용 상한이 구조적으로 0원, `docs/INTEGRATIONS.md:63`).
+- ② **Tmap 쿼터** — 단일 키를 dodo-planet과 공유(양 앱 합산 일 1,000건)인데 **`lang="en"`은 Tmap 단독·폴백 없음**(`docs/INTEGRATIONS.md:20`). 비한국어 사용자의 도보 조회가 전량 Tmap을 태운다. **✅ 2026-08-27 해소(게이트 1)**: dodo-planet이 자기 앱 키로 옮겨가면 길동무가 일 1,000건을 단독으로 쓴다. 교체 완료 전까지는 종전대로 공유 상태다. ⚠ 카카오 유료 전환 신청은 하드 스톱이며 이 기간에도 하지 않는다(초과=오류=폴백이라 비용 상한이 구조적으로 0원, `docs/INTEGRATIONS.md:63`).
 
 **환경**: Chrome 149+ `chrome://flags/#enable-webmcp-testing` 또는 ChatGPT 데스크톱 앱 내장 브라우저(GPT-5.6 Sol·Terra, Luna 비활성). 디버깅은 Model Context Tool Inspector 확장. 이 머신 실측 Chrome 151·ChatGPT.app 설치됨.
 
