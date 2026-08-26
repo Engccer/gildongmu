@@ -1512,6 +1512,9 @@ final class BeaconModel {
         // 2026-08-16 실보행 115m). 미달 fix는 최선값으로 보관하고 대기 상한에 쓴다.
         if awaitingRoute {
             lastFixAt = now
+            // 세션 안전망의 진행 관측은 조회 대기 중에도 센다 — 대기가 길어지는 동안 걷고
+            // 있는 사용자를 "정지"로 읽지 않게(리뷰 INFO 2026-08-26).
+            noteSessionProgress(lat: fix.lat, lng: fix.lng, now: now)
             if routeFetchTask == nil {
                 let candidate = RouteOriginFix(
                     lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, ageSeconds: age
