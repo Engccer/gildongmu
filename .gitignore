@@ -56,3 +56,8 @@ __pycache__/
 # 실기기 계측 로그 원본(초 단위 위경도 = 개발자 이동 경로). repo 밖 보관, 색인만 logs/README.md에.
 docs/superpowers/specs/logs/*.log
 docs/superpowers/specs/logs/*.log.gz
+
+# 착수 판정용 내부 조사 메모(후보 대조·타 repo 사정 등 제품과 무관한 심의 기록).
+# repo 밖 ~/gildongmu-private/research/ 보관. 코드를 구속하는 결론만 BACKLOG·CLAUDE.md로 옮긴다.
+docs/research/RESEARCH-*-webmcp-challenge.md
+docs/research/_internal/

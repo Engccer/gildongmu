@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-08-27
+
+### BACKLOG W1 신설 — WebMCP 도구층 (최우선, 2026-09-04 외부 시한)
+
+- 웹앱 기능을 브라우저 에이전트에게 도구로 선언하는 축(`document.modelContext.registerTool`)을 착수 항목으로 등재. 상세·게이트 순서는 `docs/BACKLOG.md` W1이 정본이다.
+- 실측 기록(프로덕션 실호출 2026-08-27, 도구 출력 권장 상한 1.5K자 대비): `/api/route/transit` 3,706자(`recommended`만이면 551자, `alternatives` 4건이 3,475자) · `/api/nearby/overview` 1,641자 · `/api/station/subway-arrival/nearby` 703자 · `/api/walk/nearby` 496자. 경로 도구는 응답에 이미 있는 `routeKey`를 손잡이로 분할한다.
+- 위험 2건 등재: ChatGPT 내장 브라우저 × VoiceOver 미검증(착수 게이트 0) · Tmap 단일 키를 dodo-planet과 공유하는데 `lang="en"`이 Tmap 단독이라 비한국어 도보 조회가 전량 소모.
+- `.gitignore`: 착수 판정용 내부 조사 메모를 repo 밖(`~/gildongmu-private/research/`) 보관으로 분리. 실기기 계측 로그와 같은 취급이다.
+- `docs/research/README.md` 목록에 누락돼 있던 `RESEARCH-2026-08-23-express-stop-data.md` 행 보충.
+
+---
+
 ## 2026-08-26
 
 ### 실사용 피드백 2건 — 임박 큐 3단계 + 잊힌 도보 세션 안전망 (카카오톡 260826)
