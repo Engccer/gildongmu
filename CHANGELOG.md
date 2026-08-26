@@ -15,6 +15,11 @@
 
 1.12 아카이브(`37b99db`) 이후 `ios/` 4커밋 중 3건(임박 큐 3단계·잊힌 세션 안전망 A23·환승역 빠른하차 문 A20)을 담아 제출했다(05:41 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `df229f0`, worktree 격리 빌드, 산출물 검사 통과, 심사 노트 승계. 마지막 제출 PATCH가 ASC 500으로 한 번 죽어 재실행했다(1.5와 같은 결함, 상태 `READY_FOR_REVIEW`가 "초안 완성·미제출"이라는 뜻). 이번 제출은 새 스킬 `ios-release-submit`(`~/Mac-Projects/ios-release-submit`)을 서브에이전트가 처음 밟은 실사용이었고, 준비 단계 피드백 11건을 스킬 1.1.0에 반영했다. 노트 정본은 `docs/appstore/release-notes.md` §1.13.
 
+### W1 게이트 2 — WebMCP 도구층 spec + 설계 리뷰
+
+- spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md` 신설(설계 근거의 정본). 채팅 도구 24개 중 1:1 이전은 1개(보행 인프라)뿐, 재편·신설로 **길찾기 뷰 9개 + 홈 진입 1개 = 10개**를 전부 정적 등록으로 노출. 출력 상한 1,500자는 항목 단위 생략으로만 지키고(문자열 절단 금지), 분할 손잡이는 세대 토큰 `planId` + `routeKey`. 안내 세션 도구의 소유자는 기존 `guide-session-store`. `usewebmcp` 미도입(프로브가 증명한 직접 등록 + 자체 훅).
+- codex 적대적 설계 리뷰 실시(마일스톤 게이트 조건 ②). 지적·기각 기록은 spec §9.
+
 ### BACKLOG W1 신설 — WebMCP 도구층 (최우선, 2026-09-04 외부 시한)
 
 - 웹앱 기능을 브라우저 에이전트에게 도구로 선언하는 축(`document.modelContext.registerTool`)을 착수 항목으로 등재. 상세·게이트 순서는 `docs/BACKLOG.md` W1이 정본이다.
