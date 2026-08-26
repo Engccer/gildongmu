@@ -787,6 +787,32 @@
     "heading": "오프라인 상태입니다",
     "body": "검색은 온라인에서만 동작합니다."
   },
+  "webmcpProbe": {
+    "title": "WebMCP 게이트 0 프로브",
+    "intro": "이 페이지는 WebMCP 도구 실행과 VoiceOver 포커스 추적을 실측합니다.",
+    "supportLabel": "WebMCP 지원 상태",
+    "support": {
+      "checking": "확인 중",
+      "supported": "지원",
+      "unsupported": "미지원"
+    },
+    "targetsHeading": "포커스 대상",
+    "headingTarget": "{index}번 포커스 대상, 헤딩",
+    "buttonTarget": "{index}번 포커스 대상, 버튼",
+    "manualActivation": "{index}번 버튼을 직접 실행했습니다.",
+    "readStateResult": "WebMCP {support}. 현재 포커스 {focus}. 최근 결과 {lastResult}.",
+    "focusMoved": "{label} 항목으로 DOM 포커스를 옮겼습니다.",
+    "focusFailed": "{index}번 항목으로 DOM 포커스를 옮기지 못했습니다.",
+    "invalidIndex": "항목 번호는 1부터 5까지의 정수여야 합니다.",
+    "noFocus": "없음",
+    "noResult": "없음",
+    "registrationFailed": "WebMCP 도구 등록에 실패했습니다.",
+    "tool": {
+      "readDescription": "현재 프로브 페이지의 지원 상태, 포커스, 최근 결과를 반환합니다.",
+      "focusDescription": "번호로 지정한 프로브 항목으로 DOM 포커스를 옮깁니다.",
+      "indexDescription": "1부터 5까지의 프로브 항목 번호입니다."
+    }
+  },
   "surroundingsNearby": {
     "item": "{category}, {direction}쪽, 약 {distance}",
     "category": {
