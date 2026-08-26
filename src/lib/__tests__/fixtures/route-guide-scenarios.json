@@ -201,7 +201,12 @@
     },
     {
      "afterFix": 6,
-     "eventNull": true
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "stage": 2,
+     "comment": "fix5(잔여 20m) stage 0 뒤 fix6은 잔여 4m — 15m 단계를 건너뛰고 10m 단계 하나만(소급 없음, 2026-08-26)"
     },
     {
      "afterFix": 7,
@@ -5509,6 +5514,577 @@
       13
      ],
      "eventNot": "offRoute"
+    }
+   ]
+  },
+  {
+   "name": "임박 3단계(2026-08-26) — 한 결정 지점에서 20·15·10m 세 번, 같은 행동·같은 톤, stage 0·1·2",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "장미공원에서 오른쪽으로 돌아 천호대로를 따라 100m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 182,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 187,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 192,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 197,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 11,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right",
+     "stage": 0
+    },
+    {
+     "afterFix": 13,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right",
+     "stage": 1
+    },
+    {
+     "afterFix": 14,
+     "event": "imminent",
+     "indices": [
+      1
+     ],
+     "tone": "right",
+     "stage": 2
+    },
+    {
+     "afterFix": 15,
+     "eventNot": "imminent",
+     "toneNull": true
+    }
+   ]
+  },
+  {
+   "name": "임박 3단계 — 20m와 15m가 한 fix에 걸리면 안쪽(15m) 하나만 나가고 건너뛴 단계는 소급하지 않는다",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "장미공원에서 오른쪽으로 돌아 천호대로를 따라 100m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 186,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 191,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 197,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "stage": 1
+    },
+    {
+     "afterFix": 13,
+     "event": "imminent",
+     "stage": 2
+    },
+    {
+     "afterFix": 14,
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "임박 3단계 — 경계를 넘긴 fix에서는 남은 단계도 나가지 않는다(지난 경계 폐기 하한 유지)",
+   "steps": [
+    {
+     "len": 200,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "장미공원에서 오른쪽으로 돌아 천호대로를 따라 100m 이동",
+     "action": "right"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 112,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 128,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 144,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 160,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 176,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 182,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 187,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 203,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 210,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFix": 12,
+     "event": "imminent",
+     "stage": 0
+    },
+    {
+     "afterFix": 13,
+     "event": "imminent",
+     "stage": 1
+    },
+    {
+     "afterFix": 14,
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 15,
+     "eventNot": "imminent"
+    }
+   ]
+  },
+  {
+   "name": "임박 3단계 — 행동 없는 경계는 단계를 세지 않고 래치만 넘기고, 다음 회전은 세 단계를 다 받는다",
+   "steps": [
+    {
+     "len": 120,
+     "desc": "직진A"
+    },
+    {
+     "len": 100,
+     "desc": "직진B"
+    },
+    {
+     "len": 100,
+     "desc": "횡단보도를 건너 100m 이동",
+     "action": "crosswalk"
+    }
+   ],
+   "fixes": [
+    {
+     "t": 0,
+     "along": 0,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 8,
+     "along": 16,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 16,
+     "along": 32,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 24,
+     "along": 48,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 32,
+     "along": 64,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 40,
+     "along": 80,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 48,
+     "along": 96,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 56,
+     "along": 105,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 64,
+     "along": 110,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 72,
+     "along": 115,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 80,
+     "along": 130,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 88,
+     "along": 146,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 96,
+     "along": 162,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 104,
+     "along": 178,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 112,
+     "along": 194,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 120,
+     "along": 202,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 128,
+     "along": 207,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 136,
+     "along": 212,
+     "lateral": 0,
+     "acc": 10
+    },
+    {
+     "t": 144,
+     "along": 218,
+     "lateral": 0,
+     "acc": 10
+    }
+   ],
+   "expect": [
+    {
+     "afterFixAny": [
+      7,
+      8,
+      9
+     ],
+     "eventNot": "imminent"
+    },
+    {
+     "afterFix": 15,
+     "event": "imminent",
+     "indices": [
+      2
+     ],
+     "tone": "crosswalk",
+     "stage": 0
+    },
+    {
+     "afterFix": 16,
+     "event": "imminent",
+     "stage": 1
+    },
+    {
+     "afterFix": 17,
+     "event": "imminent",
+     "stage": 2
+    },
+    {
+     "afterFix": 18,
+     "eventNot": "imminent"
     }
    ]
   }

@@ -14,6 +14,7 @@ import {
   guideStep,
   HANDOFF_DIST_M,
   IMMINENT_AHEAD_M,
+  IMMINENT_REPEAT_M,
   initialGuideState,
   PROJECTION_LAG_M,
   stepActionFor,
@@ -73,6 +74,8 @@ interface Expectation {
    * 않아야 한다"를 표현할 수 없다.
    */
   toneNull?: boolean;
+  /** 임박 단계 index(0=20m, 1=15m, 2=10m). `imminent` 이벤트가 그 단계여야 한다. */
+  stage?: number;
 }
 
 describe("route-guide 공유 시나리오(경계표)", () => {
@@ -126,6 +129,12 @@ describe("route-guide 공유 시나리오(경계표)", () => {
         }
         if (ex.tone) expect(rs.some((r) => r.tone === ex.tone)).toBe(true);
         if (ex.toneNull) rs.forEach((r) => expect(r.tone).toBeNull());
+        if (ex.stage !== undefined) {
+          expect(
+            rs.some((r) => r.event?.kind === "imminent" && r.event.stage === ex.stage),
+            `stage ${ex.stage}`,
+          ).toBe(true);
+        }
       }
     });
   }
@@ -730,6 +739,7 @@ describe("표시 좌표계 (spec 2026-08-11 §3)", () => {
   it("IMMINENT_AHEAD_M은 10 + lag 유도식이다(lag 하향은 실보행 재판정 2026-08-12)", () => {
     expect(PROJECTION_LAG_M).toBe(10);
     expect(IMMINENT_AHEAD_M).toBe(20);
+    expect(IMMINENT_REPEAT_M).toEqual([15, 10]); // 5m·0m 단계 + lag(위원장 피드백 2026-08-26)
   });
 
   it("램프인: 기준점 직후엔 걸은 만큼만 지연을 더한다(F7)", () => {
@@ -756,6 +766,15 @@ describe("GuideTuning 조합 불변식(K2 설계 리뷰 m3)", () => {
     for (const t of [WALK_TUNING, CAR_TUNING, CAR_DRIVER_TUNING]) {
       if (t.imminentAheadM === null) expect(t.imminentAheadS).toBe(0);
       if (t.imminentAheadM !== null) expect(t.imminentUnknownSpeedM).toBeGreaterThanOrEqual(t.imminentAheadM);
+      if (t.imminentAheadM === null) expect(t.imminentRepeatM).toEqual([]);
+    }
+  });
+
+  it("임박 단계는 강한 내림차순이고 마지막은 투영 lag 이상이다(0m 단계가 지난 경계 폐기와 충돌하지 않는 조건)", () => {
+    for (const t of [WALK_TUNING, CAR_TUNING, CAR_DRIVER_TUNING]) {
+      const stages = [t.imminentAheadM ?? 0, ...t.imminentRepeatM];
+      for (let i = 1; i < stages.length; i += 1) expect(stages[i]).toBeLessThan(stages[i - 1]);
+      if (t.imminentRepeatM.length) expect(t.imminentRepeatM[t.imminentRepeatM.length - 1]).toBeGreaterThanOrEqual(PROJECTION_LAG_M);
     }
   });
   it("전 프로파일이 문장이 아니라 서버 투영으로 행동을 고른다(car B1 · walk E16 축3)", () => {

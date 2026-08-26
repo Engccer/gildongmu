@@ -381,6 +381,10 @@ final class BeaconModel {
     private var progressAnchor: RoutePoint?
     private var lastProgressAt: Double?
     private var lastUsableDistanceToDest: Double?
+    // 국면 무관 세션 안전망(Kit `sessionIdleStep`, 2026-08-26). 도착 추정과 달리 세션 전체가
+    // 에피소드다 — start()가 기준을 세우고 매 usable fix가 앵커를 전진시킨다.
+    private var sessionProgressAnchor: RoutePoint?
+    private var sessionLastProgressAt: Double?
     /// 종료 화면의 종류(3-state 정직성 — 시트가 소비). `.stopped`는 도착이 아닌 종료
     /// (사용자 중지·목적지 변경·권한 상실)로, 걸음·칼로리 요약을 보여 주기 위해서만
     /// 화면을 남긴다(위원장 판정 2026-08-19) — 요약이 성립하지 않으면 곧 소거된다.
@@ -652,6 +656,8 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         suppressNextNotice = false
         startedAt = ProcessInfo.processInfo.systemUptime
+        sessionProgressAnchor = nil
+        sessionLastProgressAt = nil
         status = .tracking
         statusText = ""
         failResolution = .none
@@ -1554,6 +1560,7 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
+        noteSessionProgress(lat: fix.lat, lng: fix.lng, now: now)
         // 간략 모드 띠바 거리 = 직선 거리(경로가 없다).
         updateBandDistance(Int(haversineMeters(lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng).rounded()))
 
@@ -1621,6 +1628,7 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
+        noteSessionProgress(lat: fix.lat, lng: fix.lng, now: now)
         // 제안 만료는 능동 전이다(매 수용 fix 검사 — spec §6 리뷰 #12).
         expireProposalIfStale(current: (fix.lat, fix.lng))
 
@@ -1848,6 +1856,7 @@ final class BeaconModel {
         lastStaleNoticeAt = nil
         lastFixCoord = (fix.lat, fix.lng)
         lastFixCoordAt = now
+        noteSessionProgress(lat: fix.lat, lng: fix.lng, now: now)
 
         let distance = haversineMeters(
             lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng
@@ -1947,6 +1956,43 @@ final class BeaconModel {
     }
 
     /// 도착 추정 자동 종료(spec 2026-08-13 §4) — 자동 종료의 유일한 추가 경로.
+    /// 세션 안전망의 진행 관측(매 usable fix, 국면 무관). 앵커 기준 누적 변위 25m —
+    /// 도착 추정의 10m 앵커와 별도인 이유는 실내 wifi 지터가 그 축을 20분 내내 "이동"으로
+    /// 읽으면 안전망이 영영 안 열리기 때문이다.
+    private func noteSessionProgress(lat: Double, lng: Double, now: Double) {
+        let step = advanceProgressAnchor(
+            anchor: sessionProgressAnchor, fix: RoutePoint(lat: lat, lng: lng),
+            epsilonMeters: sessionProgressEpsilonMeters
+        )
+        sessionProgressAnchor = step.anchor
+        if step.progressed { sessionLastProgressAt = now }
+    }
+
+    /// 국면 무관 세션 안전망(2026-08-26 위원장 실사용 — 출근 도보 안내를 끄지 않아 몇 시간이고
+    /// 켜져 있었다). 도착 추정은 최종 접근 국면에 들어간 세션만 정리하므로 그 문을 못 지난
+    /// 세션(GPS 두절·이탈 상태로 종점 접근·간략 강등·150m 밖 실내 진입)은 이 축만이 끝낸다.
+    /// 도보 세션 전용(자동차 정체 정차는 정상이라 도착 추정과 같은 이유로 제외).
+    /// 워치독이 유일한 도달 경로다(noFix는 fix가 안 와서 fix 경로에 걸 수 없다). true = 끝냈다.
+    @discardableResult
+    private func maybeEndIdleSession(now: Double) -> Bool {
+        guard isTracking, sessionKind == .walk, let startedAt else { return false }
+        let fixRef = max(startedAt, lastFixAt ?? startedAt)
+        let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
+        guard let reason = sessionIdleStep(
+            secondsSinceUsableFix: now - fixRef, secondsSinceProgress: now - progressRef
+        ) else { return false }
+        guideDiagLog("sessionIdleEnd reason=\(reason.rawValue)")
+        let text = appLocalized("guide.endedIdle")
+        // 종료 화면(요약)은 사용자 중지와 같은 모양으로 남긴다. 정지 톤은 전경에서만 —
+        // 잠근 채 잊은 휴대전화가 한참 뒤 울리면 당황스럽다(도착 추정 동형).
+        stopLeavingSummary(playStopTone: isForeground, text: text)
+        statusText = text
+        lastGuidance = text
+        liveTopText = text
+        announce(text, highPriority: true)
+        return true
+    }
+
     /// 판정은 순수 함수가, 실행은 확정 도착(handleFinalApproach의 arrived)과 같은
     /// 모양이 맡는다(문구만 분리). true = 세션을 끝냈다.
     ///
@@ -2098,9 +2144,13 @@ final class BeaconModel {
             statusText = ""
             // 실행 안내는 억제 중이면 최신 1개를 보관해 해제 시 복구한다(스펙 §4.3).
             if outputSuppressed { pendingRecovery = text } else { announce(text) }
-        case let .imminent(_, action):
+        case let .imminent(_, action, stage):
             // 임박 큐(20m): 전문이 아니라 짧은 명령형이다. 전문은 40m에서 이미 나갔고,
             // 여기서 다시 읽으면 8초 안에 두 문장이 겹쳐 정작 행동 시점을 놓친다.
+            //
+            // 반복 단계(15·10m, 위원장 피드백 2026-08-26)는 소리·햅틱만이다 — 톤은 `out.tone`이
+            // 이미 `routeTone`으로 흘렀고, 문장을 셋 다 내면 4초 안에 겹친다.
+            if stage > 0 { break }
             //
             // ⚠ `lastGuidance`를 덮지 않는다. 이 값은 신호 불량 구간에서 "마지막으로
             //   들은 안내"로 되읽히는데, 그 자리에 "잠시 후 왼쪽으로 도세요"가 남으면
@@ -2778,6 +2828,7 @@ final class BeaconModel {
         // 유일한 도달 경로다(spec 2026-08-13 §4). 발동하면 세션이 끝났으므로 약신호
         // 통지도 없다.
         if maybePresumeArrival(now: now) { return }
+        if maybeEndIdleSession(now: now) { return }
         // 음성 통지는 별도 축이다(15초 임계·30초 재통지·원인 구분). 톤은 추가 채널이지
         // 대체가 아니다.
         noticeStaleIfNeeded(force: false)

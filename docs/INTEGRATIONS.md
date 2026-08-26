@@ -101,7 +101,7 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 ⚠ **급행 leg의 `passStopList`는 이미 급행 정차역만 담는다**(급행 13역 vs 완행 29역, `stationID`도 완행 일련번호를 건너뛴다). 경유역 목록·조망은 그대로 쓰면 되고, 별도 급행 정차역 데이터가 필요한 것은 **계획 leg와 다른 등급을 잠갔을 때**뿐이다(`docs/BACKLOG.md` A16 L1).
 
 ### 출발 시각 미반영 보정
-⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존). **정렬 키는 `outside` 유무 하나**(A21, 2026-08-25) — `unknown`은 정렬에 참여하지 않는다. 종전 3단 서열(`SERVICE_RANK`)은 선정 5개 절단과 결합해 "강등 = 제외"가 됐다(TAGO 4호선 0행). 술어는 `odsay-select.ts` `isOutside`를 강등·축 제외가 공유한다.
+⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존). **정렬 키는 `outside` 유무 하나**(A21, 2026-08-25) — `unknown`은 정렬에 참여하지 않는다. 종전 3단 서열(running·unknown·outside 순, 삭제된 SERVICE_RANK 상수)은 선정 5개 절단과 결합해 "강등 = 제외"가 됐다(TAGO 4호선 0행). 술어는 `odsay-select.ts` `isOutside`를 강등·축 제외가 공유한다.
 
 - 조인 키는 ODsay `lane[0].busLocalBlID`. **분기는 도시 코드가 아니라 TOPIS 보유 여부**다(TOPIS가 수도권 광역 노선도 가진다 — 하남 30-3 실측), 미보유만 TAGO 번호 검색 후 `endsWith` 대조(지역별 접두사 상이: 부산 `BSB`+숫자, 대구는 접두사 포함 동일 값).
 - 판정은 순수 함수 `src/lib/service-hours.ts`(시각 주입이라 심야 재현 불요). **조회 실패는 throw 금지**(unknown으로 두고 경로 응답 유지). 낭독은 `outside`만 표기(정상·정보없음 침묵).

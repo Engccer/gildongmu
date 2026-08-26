@@ -677,6 +677,7 @@
     "finalApproachNearDir": "목적지 근처입니다. {direction}입니다.",
     "arrived": "목적지에 도착했습니다",
     "arrivedPresumed": "목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다",
+    "endedIdle": "한동안 위치 신호나 이동이 없어 안내를 종료했습니다",
     "dirAhead": "정면",
     "dirLeft": "왼쪽",
     "dirRight": "오른쪽",
