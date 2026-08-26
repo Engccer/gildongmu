@@ -195,7 +195,7 @@
 | `GEMINI_API_KEY` | `hasGeminiKey` | 채팅 FC 엔진(모델은 env가 아니라 코드 상수 `GEMINI_MODEL`=`gemini-3.6-flash`, `src/lib/gemini/client.ts`, 2026-07-31 교체). **길동무 전용 GCP 프로젝트 `gildongmu-prod`**(2026-07-31 신설, 결제 연결·`generativelanguage.googleapis.com`만 허용하는 API 제한 키). ⚠ **dodo와 공유하지 않는다** — 종전 공유 프로젝트는 Converters의 TTS·이미지와 dodo가 섞여 사용량·비용 귀속이 불가능했고, dodo도 같은 모델을 써서 model 라벨 분리조차 성립하지 않았다. 키 교체 시 로컬·Vercel prod·리포트 상수 3곳 동조 |
 | `PERPLEXITY_API_KEY` | `hasPerplexityKey` | 검색창 웹섹션 + 채팅 `search_web`. 유료($5/1,000req). dodo 공유 |
 | `NAVER_LOCAL_CLIENT_ID/SECRET` | `hasNaverLocalKeys` | 네이버 지역검색(ko 장소 병합 보강). 2026-07-18 발급(수동 — Claude in Chrome이 naver 도메인 차단). 일 25,000회, 결과 최대 5건. ⚠ 2027-06-30 NAVER API Hub(NCP 키) 이관 데드라인(PROGRESS) |
-| `TMAP_APP_KEY` | `hasTmapKey`(도보 노출 게이트는 `hasWalkRouteKey`, 자동차 노출 게이트는 `hasCarRouteKey`) | SK open API 앱 `gildongmu`(2026-07-21 발급, T아이디). **보행자 폴백 + 자동차 기본**(2026-07-29 도보 카카오 기본 전환·2026-07-30 자동차 ko 기본 Tmap 전환)으로 확장, POI도 동일 키 커버. 일 1,000건 무료를 도보 폴백·자동차 기본이 공유, IPS "Any IP allowed" 유지(IP 제한 금지 — Vercel 가변 egress) |
+| `TMAP_APP_KEY` | `hasTmapKey`(도보 노출 게이트는 `hasWalkRouteKey`, 자동차 노출 게이트는 `hasCarRouteKey`) | SK open API 앱 `gildongmu`(2026-07-21 발급, T아이디). **보행자 폴백 + 자동차 기본**(2026-07-29 도보 카카오 기본 전환·2026-07-30 자동차 ko 기본 Tmap 전환)으로 확장, POI도 동일 키 커버. 일 1,000건 무료(경로안내 그룹)를 도보 폴백·자동차 기본이 공유, IPS "Any IP allowed" 유지(IP 제한 금지 — Vercel 가변 egress). ⚠ **2026-08-27부로 dodo-planet과 공유하지 않는다** — dodo가 전용 앱 `Dodoplanet`(pjtSeq 1000055509)으로 분리했다(dodo `d08d5b63`·`ab1e15a5`, 프로덕션 실호출 확인). 이 1,000건은 이제 길동무 단독이다 |
 
 상세 키 발급 경로·실호출 검증 이력은 `PROGRESS.md`, API 생태계 조사는 `docs/research/RESEARCH-2026-06-*.md`.
 
