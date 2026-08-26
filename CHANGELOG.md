@@ -11,6 +11,10 @@
 
 ## 2026-08-27
 
+### App Store 1.13 심사 제출 (빌드 21)
+
+1.12 아카이브(`37b99db`) 이후 `ios/` 4커밋 중 3건(임박 큐 3단계·잊힌 세션 안전망 A23·환승역 빠른하차 문 A20)을 담아 제출했다(05:41 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `df229f0`, worktree 격리 빌드, 산출물 검사 통과, 심사 노트 승계. 마지막 제출 PATCH가 ASC 500으로 한 번 죽어 재실행했다(1.5와 같은 결함, 상태 `READY_FOR_REVIEW`가 "초안 완성·미제출"이라는 뜻). 이번 제출은 새 스킬 `ios-release-submit`(`~/Mac-Projects/ios-release-submit`)을 서브에이전트가 처음 밟은 실사용이었고, 준비 단계 피드백 11건을 스킬 1.1.0에 반영했다. 노트 정본은 `docs/appstore/release-notes.md` §1.13.
+
 ### BACKLOG W1 신설 — WebMCP 도구층 (최우선, 2026-09-04 외부 시한)
 
 - 웹앱 기능을 브라우저 에이전트에게 도구로 선언하는 축(`document.modelContext.registerTool`)을 착수 항목으로 등재. 상세·게이트 순서는 `docs/BACKLOG.md` W1이 정본이다.
