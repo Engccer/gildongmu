@@ -176,15 +176,12 @@ export function CarRouteResult({
   locale,
   t,
   waypointLabel,
-  focusTargetPrefix,
 }: {
   briefing: Briefing;
   locale: string;
   t: ReturnType<typeof useTranslations<"route.briefing">>;
   /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
   waypointLabel?: string | null;
-  /** WebMCP 착지 대상 `car:step:{n}`(길찾기 뷰에서만). */
-  focusTargetPrefix?: "car";
 }) {
   const tDir = useTranslations("directions");
   return (
@@ -208,7 +205,6 @@ export function CarRouteResult({
         items={carStepItems(briefing)}
         waypointIndex={briefing.waypoint?.stepIndex}
         waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
-        focusTargetPrefix={focusTargetPrefix}
       />
       <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
     </>

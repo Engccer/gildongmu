@@ -13,6 +13,7 @@ vi.mock("@/lib/geolocation", () => ({
 }));
 
 import { DistanceBeacon } from "../DistanceBeacon";
+import { __resetGuideSessionStoreForTest, hasActiveGuideSession } from "@/lib/guide-session-store";
 
 /**
  * 실시간 길 안내 패널의 렌더 계약(스펙 §4.2·§9). 판정 로직은 순수 리듀서
@@ -217,5 +218,24 @@ describe("DistanceBeacon 컨트롤 노출", () => {
     expect(
       container.querySelectorAll('[aria-live], [role="status"], [role="alert"]'),
     ).toHaveLength(1);
+  });
+});
+
+/**
+ * 사용자 시작·중지 버튼의 세션 점유(W2 spec 2026-08-29 §8.4 — 삭제 승인 조건).
+ * W1 안내 도구 3종이 지워져도 `claimGuideSession`/`releaseGuideSession`은
+ * 사용자 버튼의 경합 원자성이라 그대로여야 한다.
+ */
+describe("DistanceBeacon 사용자 시작·중지 → 세션 점유", () => {
+  beforeEach(() => __resetGuideSessionStoreForTest());
+
+  it("시작 버튼이 세션을 점유하고 중지 버튼이 푼다", async () => {
+    renderPanel("ko");
+    expect(hasActiveGuideSession()).toBe(false);
+    openAndStart("ko");
+    await waitFor(() => expect(hasActiveGuideSession()).toBe(true));
+    pushFix(0, 0, 0);
+    fireEvent.click(screen.getByRole("button", { name: ko.beacon.stop }));
+    await waitFor(() => expect(hasActiveGuideSession()).toBe(false));
   });
 });

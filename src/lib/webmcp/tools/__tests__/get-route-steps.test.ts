@@ -22,8 +22,6 @@ const plan = (withShortest = true): ToolPlan => ({
 const bridge = (p: ToolPlan): DirectionsBridge => ({
   read: () => ({ fields: { from: "", to: "", via: null, avoidStairs: false }, phase: "settled", plan: p, lang: "ko" }),
   runQuery: async () => ({ kind: "busy" }),
-  ensureVisible: () => {},
-  expandRoute: () => {},
 });
 
 describe("get_route_steps variant(W1-R #1)", () => {

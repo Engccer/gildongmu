@@ -17,14 +17,13 @@ export const SHAPE = withFailure({
       stationCount: true,
       distanceMeters: true,
       quickExit: true,
-      targetId: true,
     },
   ],
 });
 
 /**
- * #5 `get_transit_route_detail`(spec §3.5, readOnly). 정거장 전체 목록은 싣지 않는다 —
- * 3,706자의 대부분이 그것이고, 정거장을 하나하나 듣는 것은 `focus_item`으로 화면을 읽는 길이다.
+ * `get_transit_route_detail`(W2 spec §3.5, readOnly). 정거장 전체 목록은 싣지 않는다 —
+ * 3,706자의 대부분이 그것이고, 정거장을 하나하나 듣는 것은 화면을 읽는 길이다.
  */
 export function getTransitRouteDetailTool(bridge: DirectionsBridge): WebMcpTool {
   return {

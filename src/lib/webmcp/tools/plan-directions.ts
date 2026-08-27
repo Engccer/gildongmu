@@ -1,13 +1,11 @@
 import type { DirEndpoint } from "@/lib/directions-state";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import type { JusoAddress, PlaceSearchResult } from "@/lib/types";
-import { listHighLevelTargets, makeCooldown } from "../dom";
+import { checkBudget, consumeBudget } from "../tool-budget";
 import { finish, withFailure } from "../output";
 import { failure, type ToolFailure, type WebMcpTool } from "../types";
 import type { DirectionsBridge, ToolPlan } from "./context";
 
-/** 쿨다운(spec §3.4·§7) — 시작 시각 기준, 성공·실패 무관. */
-const COOLDOWN_MS = 3_000;
 /** `needsDisambiguation` 후보 토큰 보관(§3.4 — `execute` 클로저 안 단기 토큰). */
 const CANDIDATE_TTL_MS = 60_000;
 const MAX_CANDIDATES = 5;
@@ -52,7 +50,6 @@ export const SHAPE = withFailure({
     shortest: { distanceMeters: true, durationSeconds: true, stepCount: true },
   },
   car: { outcome: true, distanceMeters: true, durationSeconds: true, guideCount: true },
-  targets: [{ id: true, label: true }],
 });
 
 /** 정확 일치 판정용 정규화 — 공백·구두점을 걷어 내고 소문자·NFC. */
@@ -73,7 +70,6 @@ function notFound(field: Field, extra?: Record<string, unknown>): ToolFailure {
  * 화면 필드가 쓰는 두 라우트를 같은 계약으로 부른다).
  */
 export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
-  const cooldown = makeCooldown(COOLDOWN_MS);
   const candidateStore = new Map<string, Candidate>();
 
   async function searchCandidates(
@@ -215,9 +211,10 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
       const now = Date.now();
       // 만료 토큰 정리는 매 호출(자동 채택만 타는 세션에서도 Map이 쌓이지 않게 — 품질 리뷰).
       for (const [key, c] of candidateStore) if (c.expiresAt <= now) candidateStore.delete(key);
-      const wait = cooldown.remaining(now);
-      if (wait > 0) return finish(failure("cooldown", { retryAfterMs: wait }), SHAPE);
-      cooldown.mark(now);
+      // 쿨다운·세션 예산(W2 spec §5.5) — 시작 시각 기준, 성공·실패 무관.
+      const budget = checkBudget("plan", now);
+      if (!budget.ok) return finish(failure("cooldown", { retryAfterMs: budget.retryAfterMs }), SHAPE);
+      consumeBudget("plan", now);
       const signal = context?.signal;
       const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
       const toText = str(input.to);
@@ -251,7 +248,7 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
         case "busy":
           return finish(failure("busy"), SHAPE);
         case "sessionActive":
-          // 에이전트 한 마디로 걷는 중인 안내를 끊지 않는다 — 먼저 stop_guidance를 부르게 한다.
+          // 에이전트 한 마디로 걷는 중인 안내를 끊지 않는다 — 중지는 사용자 버튼뿐이다.
           return finish(failure("sessionActive"), SHAPE);
         case "superseded":
           return finish(failure("superseded"), SHAPE);
@@ -278,11 +275,10 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
       const plan = bridge.read().plan;
       if (!plan || plan.planId !== outcome.planId) return finish(failure("superseded"), SHAPE);
       return finish(
-        summarizePlan(plan, listHighLevelTargets()),
+        summarizePlan(plan),
         SHAPE,
         {
           arrays: [
-            { path: "targets", mode: "count" },
             { path: "transit.alternatives", mode: "count" },
             { path: "transit.recommended.legLines", mode: "count" },
           ],
@@ -293,10 +289,7 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
 }
 
 /** 화면 상태 → 요약 출력(spec §3.4, 순수). 수단 키 부재 = 그 수단을 제공하지 않는 화면. */
-export function summarizePlan(
-  plan: ToolPlan,
-  targets: Array<{ id: string; label: string }>,
-): Record<string, unknown> {
+export function summarizePlan(plan: ToolPlan): Record<string, unknown> {
   const transit = plan.transit
     ? {
         outcome: plan.transit.outcome,
@@ -350,6 +343,5 @@ export function summarizePlan(
     transit,
     walk,
     car,
-    targets,
   };
 }

@@ -29,18 +29,9 @@ function makeTools(n: number, seen: Array<AbortSignal | undefined> = []): WebMcp
   }));
 }
 
-function Harness({
-  tools,
-  enabled = true,
-  onAbort,
-}: {
-  tools: WebMcpTool[];
-  enabled?: boolean;
-  onAbort?: (fn: () => void) => void;
-}) {
+function Harness({ tools, enabled = true }: { tools: WebMcpTool[]; enabled?: boolean }) {
   const [count, setCount] = useState(0);
-  const { abortNow } = useWebMcpTools(() => tools, { enabled });
-  onAbort?.(abortNow);
+  useWebMcpTools(() => tools, { enabled });
   return (
     <button type="button" onClick={() => setCount((c) => c + 1)}>
       {count}
@@ -103,15 +94,14 @@ describe("useWebMcpTools(spec §5.1)", () => {
     expect(seen[1]?.aborted).toBe(true);
   });
 
-  it("enabled가 false→true로 바뀌면 그때 등록하고, abortNow는 즉시 해제한다", async () => {
+  it("enabled가 false→true로 바뀌면 그때 등록하고, true→false는 해제한다", async () => {
     const { registerTool, registered } = installModelContext();
-    let abortNow: (() => void) | null = null;
-    const view = render(<Harness tools={makeTools(1)} enabled={false} onAbort={(fn) => (abortNow = fn)} />);
+    const view = render(<Harness tools={makeTools(1)} enabled={false} />);
     await new Promise((r) => setTimeout(r, 10));
     expect(registerTool).not.toHaveBeenCalled();
-    view.rerender(<Harness tools={makeTools(1)} enabled onAbort={(fn) => (abortNow = fn)} />);
+    view.rerender(<Harness tools={makeTools(1)} enabled />);
     await waitFor(() => expect(registerTool).toHaveBeenCalledTimes(1));
-    abortNow!();
+    view.rerender(<Harness tools={makeTools(1)} enabled={false} />);
     expect(registered[0].signal?.aborted).toBe(true);
   });
 
