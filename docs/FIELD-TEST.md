@@ -360,7 +360,7 @@
 
 ## 8. WebMCP 도구층 (ChatGPT 내장 브라우저 + VoiceOver, 실기 전용)
 
-> spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md` §8.4. **리뷰로 대체할 수 없는 4항**이다. 자동화 테스트가 전부 green이어도 이 넷은 실기에서만 갈린다.
+> spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md` §8.4. **리뷰로 대체할 수 없는 항목**이다. 자동화 테스트가 전부 green이어도 이 넷은 실기에서만 갈린다.
 > 준비: ChatGPT 데스크톱 앱 내장 브라우저(GPT-5.6 Sol 또는 Terra. Luna는 WebMCP가 꺼져 있다) + VoiceOver. 배포본 또는 `npm run dev -- -p 3100`.
 
 **① `focus_item` 착지 낭독** (spec §6.4)
@@ -380,5 +380,11 @@
 
 **⑥ 대중교통 구간 한 줄의 `lang` 분절** (구현 리뷰 이월)
 `transit:leg:…`에 착지했을 때 노선·정류장에 씌운 `lang="ko"` 조각이 별도 객체로 쪼개져 낭독이 첫 조각에서 끊기는가(쪼개지면 평문화).
+
+**⑦ 도구에 없는 기능을 부탁했을 때의 에이전트 행동** (조사 2026-08-28 — 문서상 폴백은 명문화됐지만 실측 리포트가 없다)
+길찾기 뷰가 열린 상태(도구 9개 등록)에서 도구가 없는 기능을 부탁한다: "이 앱의 AI 채팅에 ○○ 물어봐 줘", "근처 소아과 찾아 줘"(W2 전이면 허브 도구 없음). 판정 세 갈래를 기록한다: ⓐ 화면으로 넘어가 직접 클릭·읽기로 해낸다(ChatGPT 문서 "If no suitable tool is available, the agent may still be able to use its regular browser capabilities") ⓑ "이 앱에선 못 한다"고 답한다(도구 목록만 보고 좁게 답하는 위원장 우려의 실증) ⓒ 엉뚱한 도구를 부른다(겹침·오선택). ⓑ·ⓒ면 `describe_app`(W2)의 설명문에 그 기능의 화면 경로를 적는 근거가 된다. W2 배포 뒤에도 같은 항목을 "AI 채팅"으로 한 번 더 본다(채팅은 의도적으로 도구가 없다).
+
+**⑧~⑪ W2 도구층** (spec `2026-08-28-webmcp-wave2-design.md` §8.3, W2 배포 뒤)
+⑧ 홈에서 "내 주변 소아과 알려 줘": 에이전트가 `describe_app` 또는 설명문만으로 `open_nearby → get_nearby_night_clinics`를 스스로 잇는가, 아니면 화면 클릭으로 가는가. ⑨ 조회 도구가 패널을 펼치는 순간 VoiceOver 커서가 제자리에 남는가(능동 이동 0이 계약). ⑩ "강동역 찾아서 승강기 있는지": `search_places → open_place → get_station_facilities` 3연쇄에서 화면 전환마다 도구 집합이 바뀌는 것을 에이전트가 따라오는가, 전환 뒤 옛 도구를 부르면 호스트가 무엇을 보이는가. ⑪ 허브에서 `get_nearby_bus_arrivals`를 부른 뒤 장소 상세에서 같은 이름을 다시 부를 때 앵커가 그 장소로 바뀐 것을 에이전트가 답에 반영하는가(`origin` 필드). ⑦은 W2 뒤 "AI 채팅"으로 재관측.
 
 ⚠ **①이 실패하면 축 A(에이전트가 답 대신 스크린 리더 커서를 옮긴다)의 전제가 깨진다.** 게이트 0에서 프로브로 통과했으나 실제 도구층에서 재확인이 필요하다.

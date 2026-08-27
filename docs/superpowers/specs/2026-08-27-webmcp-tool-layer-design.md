@@ -12,10 +12,12 @@
 
 ## 1. 노출 원칙 (무엇을 넣고 무엇을 빼는가)
 
+> **2026-08-28 개정(위원장 판정, 조사 `docs/research/RESEARCH-2026-08-28-webmcp-tool-scope.md`)**: 아래 원칙 1의 종전 문안 "탭이 없으면 못 하는 것만 넣는다 — 서버 MCP가 답할 수 있는 조회는 제외"는 **폐기**한다. 근거가 틀렸다: ChatGPT 내장 브라우저는 로컬 stdio MCP를 쓰지 않으므로(learn.chatgpt.com "A plugin with an MCP server can provide an integration that works independently of an open page" — 별도 플러그인 경로) "서버 MCP가 답한다"는 같은 에이전트 세션 안에서 성립하지 않는다. 주 사용자 모델은 **데이터 반환형**(에이전트가 이 앱의 정보를 도구로 받아 대화창에서 답한다)이고, 축 A(커서 이동)는 정체성 서사·보조 편의로 유지한다. 이 마일스톤(W1)의 도구 10개는 그대로이며, 확장은 W2 spec `2026-08-28-webmcp-wave2-design.md`가 정본이다. §1.1 판정표의 ✗ 근거 "서버 MCP가 준다"·"허브 뷰"는 W2에서 뒤집힌다(표는 W1 기록으로 남긴다).
+
 Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능", "겹치는 도구는 에이전트를 혼란시킨다", "도구 하나하나가 컨텍스트 창과 완료 시간을 잡아먹는다", "정적 등록이 기본". 여기에 이 프로젝트의 기준 둘을 더한다.
 
-1. **탭이 없으면 못 하는 것만 넣는다.** 서버 MCP(`packages/mcp`, npm `gildongmu-mcp`)가 똑같이 답할 수 있는 조회는 WebMCP의 존재 이유가 아니다. 넣는 것은 **①화면 상태를 바꾸거나 읽는 것 ②브라우저 안의 것(사용자 현재 위치·진행 중 안내 세션)에 의존하는 것 ③커서를 옮기는 것**이다. ②의 유일한 순수 조회 도구가 `get_walk_infrastructure_nearby`이고, 이 도구만 대응 화면 섹션이 없다(§3.9에 그 예외를 명시한다).
-2. **채팅 도구와 1:1로 옮기지 않는다.** `declarations.ts`의 24개는 Gemini가 산문을 쓰기 위한 재료이고 `place` 인자·`resolvedPlace`·카드는 채팅 UI의 계약이다.
+1. **이 앱이 답할 수 있는 정보와 할 수 있는 행동을 에이전트가 정확히 받는다.** 화면이 보여 주는 것은 도구로도 나간다(데이터 반환형이 주). 제외는 "다른 제품이 답한다"가 아니라 **겹침**(같은 일을 두 도구가 한다)과 **이중 에이전트**(AI 채팅 — 채팅이 답하는 것은 전부 개별 도구로 나가므로 겹치고, Gemini 산문을 ChatGPT가 받으면 날조 위험이 두 겹이다)뿐이다. 도구는 화면을 같은 상태로 바꾸면서 답을 돌려준다(투명성 — Chrome "Tools execute on your webpage visibly, so users gain trust"). 여기에 W1이 세운 축 셋이 그대로 얹힌다: **①화면 상태를 바꾸거나 읽는 것 ②브라우저 안의 것(사용자 현재 위치·진행 중 안내 세션)에 의존하는 것 ③커서를 옮기는 것**.
+2. **채팅 도구와 1:1로 옮기지 않는다.** `declarations.ts`의 24개는 Gemini가 산문을 쓰기 위한 재료이고 `place` 인자·`resolvedPlace`·카드는 채팅 UI의 계약이다. 이름·설명은 화면(뷰) 기준으로 새로 쓴다.
 
 ### 1.1 채팅 도구 24개 판정표
 
@@ -342,13 +344,10 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 - `guide-session-store.test.ts`: `starting` claim 원자성(동시 두 claim 중 하나만), 스냅샷 게시·`done` 유지·`null` 소거, `stop`이 `starting`을 취소.
 - **실기기 게이트(리뷰로 대체 불가, ChatGPT 내장 브라우저 + VoiceOver)**: ①`focus_item` 착지 낭독(§6.4) ②`start_guidance`가 사용자 제스처 없이 위치 권한·오디오까지 통과하는가 — 실패하면 `confirmationRequired` 폴백이 동작하는가(§3.7) ③호스트 발화와 페이지 완료 통지의 겹침이 중요한 통지를 삼키는가(§6.3) ④호스트가 `readOnlyHint:false` 도구에 확인 UI를 띄우는가(§3.7 위원장 판정의 재료). 대본은 `docs/FIELD-TEST.md`에 코디네이터가 추가.
 
-### 8.5 범위 밖(다음 웨이브 후보 — BACKLOG 반영은 코디네이터)
+### 8.5 범위 밖(다음 웨이브 — 2026-08-28 W2 spec으로 이관)
 
-- "내 주변" 허브 뷰 도구층(§1.1 ✗ 허브 항목 + `get_walk_infrastructure_nearby` 이관).
-- 역 시설 도구(동명이역 `ambiguousStation` 계약과 화면 섹션이 함께 있어야 한다 — 장소 상세 뷰 도구층의 일).
-- 장소 상세 뷰 `focus_item`.
-- `plan_directions`의 수단 선택 인자(화면 핸들러 지원 선행).
-- Declarative API(폼 속성) — 같은 기능이 두 표면에 서면 겹치므로 imperative만.
+- 2026-08-28 위원장 판정으로 아래 항목은 전부 `2026-08-28-webmcp-wave2-design.md`(홈 검색·"내 주변" 허브·장소 상세 3화면 도구층 + `describe_app`)가 정본이다. 여기 남기던 후보 목록은 그 spec §1로 옮겼다.
+- W2에도 들어가지 않는 것: AI 채팅 도구(위 §1 원칙 1), Declarative API(같은 기능이 두 표면에 서면 겹치므로 imperative만), `plan_directions`의 수단 선택 인자(화면 핸들러 지원 선행).
 
 ## 9. 설계 리뷰 기록
 
