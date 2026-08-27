@@ -73,6 +73,8 @@ export interface ToolPlan {
     /** 화면 `StepList` 항목과 같은 배열(번호 = 인덱스 + 1). */
     steps: string[];
     startable: boolean;
+    /** 최단 대안(B9 ①, W1-R #1) — 화면의 "가장 짧은 경로" 행과 같은 배열. 없으면 필드 부재. */
+    shortest?: { distanceMeters: number; durationSeconds: number; steps: string[] };
   } | null;
   car: {
     outcome: ModeOutcomeKind;

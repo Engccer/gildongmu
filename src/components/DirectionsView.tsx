@@ -56,8 +56,7 @@ import {
   stopActiveGuideSession,
 } from "@/lib/guide-session-store";
 import { quickExitText } from "@/lib/quick-exit-text";
-import { useWebMcpTools } from "@/hooks/useWebMcpTools";
-import { buildDirectionsTools } from "@/lib/webmcp/tools";
+import { publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import { guideTriggerValue } from "@/lib/webmcp/tools/start-guidance";
 import type {
   DirectionsBridge,
@@ -1094,6 +1093,14 @@ export function DirectionsView({
                 Boolean(walkOutcome.shortest) || shouldCollapseWalk(walkOutcome.result.durationSeconds),
               ).items,
               startable: walkGuideStartable,
+              // 최단 행의 본문은 항상 요약·notice 스텝을 뺀다(화면 `omitNoticeStep`과 동일).
+              shortest: walkOutcome.shortest
+                ? {
+                    distanceMeters: walkOutcome.shortest.distanceMeters,
+                    durationSeconds: walkOutcome.shortest.durationSeconds,
+                    steps: walkStepItems(walkOutcome.shortest, true).items,
+                  }
+                : undefined,
             }
           : { outcome: kindOf(walkOutcome), steps: [], startable: false };
     const car =
@@ -1213,16 +1220,18 @@ export function DirectionsView({
     pendingOutcomeRef.current = null;
     settleWaiter(pending.gen, pending.outcome);
   });
-  useWebMcpTools(
-    () =>
-      buildDirectionsTools({
-        read: () => bridgeRef.current.read(),
-        runQuery: (request, signal) => bridgeRef.current.runQuery(request, signal),
-        ensureVisible: (target) => bridgeRef.current.ensureVisible(target),
-        expandRoute: (routeRef) => bridgeRef.current.expandRoute(routeRef),
-      }),
-    { enabled: true },
-  );
+  // W2(spec §5.2): 도구를 등록하지 않고 브릿지를 뷰 레지스트리에 게시한다 — 도구는 루트가 상시
+  // 등록하고 실행 시점에 이 브릿지를 읽는다. 게시 객체는 마운트 1회 고정이고 내용은 ref로 최신이다.
+  useEffect(() => {
+    const bridge: DirectionsBridge = {
+      read: () => bridgeRef.current.read(),
+      runQuery: (request, signal) => bridgeRef.current.runQuery(request, signal),
+      ensureVisible: (target) => bridgeRef.current.ensureVisible(target),
+      expandRoute: (routeRef) => bridgeRef.current.expandRoute(routeRef),
+    };
+    publishView("directions", bridge);
+    return () => withdrawView("directions", bridge);
+  }, []);
 
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");

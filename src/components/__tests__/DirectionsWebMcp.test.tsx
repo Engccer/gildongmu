@@ -14,6 +14,9 @@ import {
   readGuideSnapshot,
 } from "@/lib/guide-session-store";
 import type { WebMcpTool } from "@/lib/webmcp/types";
+import { __resetViewRegistryForTest, bridgeOf } from "@/lib/webmcp/view-registry";
+import { buildDirectionsTools } from "@/lib/webmcp/tools";
+import type { DirectionsBridge } from "@/lib/webmcp/tools/context";
 
 vi.mock("next-intl", () => {
   const t = (key: string) => key;
@@ -164,20 +167,20 @@ function stubFetch(opts: {
   return calls;
 }
 
+/**
+ * W2: 길찾기 뷰는 도구를 등록하지 않고 브릿지를 게시한다. 이 스위트는 게시된 브릿지로 W1 도구를
+ * 조립해 같은 계약(조회·세대·페이지)을 검증한다. `registerTool` 목은 "등록 0"을 단언하는 데만 쓴다.
+ */
 function installModelContext() {
   const tools = new Map<string, WebMcpTool>();
-  const signals: AbortSignal[] = [];
-  const registerTool = vi.fn(async (tool: WebMcpTool, options?: { signal?: AbortSignal }) => {
-    tools.set(tool.name, tool);
-    if (options?.signal) signals.push(options.signal);
-  });
+  const registerTool = vi.fn(async () => {});
   Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool } });
   const call = async (name: string, input: Record<string, unknown> = {}, signal?: AbortSignal) => {
     const tool = tools.get(name);
-    if (!tool) throw new Error(`tool not registered: ${name}`);
+    if (!tool) throw new Error(`tool not built: ${name}`);
     return JSON.parse(await tool.execute(input, { signal })) as Record<string, unknown> & { ok: boolean };
   };
-  return { registerTool, tools, signals, call };
+  return { registerTool, tools, call };
 }
 
 function renderView() {
@@ -185,7 +188,9 @@ function renderView() {
 }
 
 async function ready(ctx: ReturnType<typeof installModelContext>) {
-  await waitFor(() => expect(ctx.registerTool).toHaveBeenCalledTimes(9));
+  await waitFor(() => expect(bridgeOf("directions")).not.toBeNull());
+  const bridge = bridgeOf<DirectionsBridge>("directions")!.bridge;
+  for (const tool of buildDirectionsTools(bridge)) ctx.tools.set(tool.name, tool);
 }
 
 /** 쿨다운(3초)을 지나기 위해 시계만 앞당긴다(타이머는 실시간 — waitFor·MutationObserver 유지). */
@@ -195,6 +200,7 @@ function advanceClock(ms: number) {
 
 beforeEach(() => {
   __resetGuideSessionStoreForTest();
+  __resetViewRegistryForTest();
   vi.useFakeTimers({ toFake: ["Date"] });
 });
 afterEach(() => {
@@ -204,30 +210,18 @@ afterEach(() => {
   Reflect.deleteProperty(document, "modelContext");
 });
 
-describe("등록 수명(spec §5.1)", () => {
-  it("마운트에 9개 등록, 타이핑 뒤 추가 등록 0, 언마운트에 abort", async () => {
+describe("게시 수명(W2 spec §5.2)", () => {
+  it("마운트에 브릿지를 게시하고 도구는 등록하지 않으며, 언마운트에 철회한다", async () => {
     stubFetch();
     const ctx = installModelContext();
     const view = renderView();
     await ready(ctx);
-    expect([...ctx.tools.keys()].sort()).toEqual(
-      [
-        "read_current_view",
-        "focus_item",
-        "plan_directions",
-        "get_transit_route_detail",
-        "get_route_steps",
-        "start_guidance",
-        "guidance_status",
-        "stop_guidance",
-        "get_walk_infrastructure_nearby",
-      ].sort(),
-    );
+    expect(bridgeOf("directions")).not.toBeNull();
     fireEvent.change(screen.getByLabelText("to"), { target: { value: "강남" } });
     await new Promise((r) => setTimeout(r, 10));
-    expect(ctx.registerTool).toHaveBeenCalledTimes(9);
+    expect(ctx.registerTool).toHaveBeenCalledTimes(0);
     view.unmount();
-    expect(ctx.signals.every((s) => s.aborted)).toBe(true);
+    expect(bridgeOf("directions")).toBeNull();
   });
 });
 
@@ -373,7 +367,7 @@ describe("planId 세대·페이지 도구", () => {
     await ready(ctx);
     const planId = await planned(ctx);
     const steps = await ctx.call("get_route_steps", { planId, mode: "walk" });
-    expect(steps).toEqual({ ok: true, planId, mode: "walk", outcome: "empty" });
+    expect(steps).toEqual({ ok: true, planId, mode: "walk", outcome: "empty", variant: "recommended" });
     expect((await ctx.call("plan_directions", { to: "x" })).reason).toBe("cooldown");
   });
 
