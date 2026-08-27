@@ -258,6 +258,27 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **실호출로 확인한 것과 문서로만 아는 것을 섞지 않는다.** "데이터 실재" 축은 **문서가 아니라 실호출로 판정한다** — 실시간 혼잡도는 이 축의 오판으로 보류돼 있다가 실호출 한 번에 사유가 사라지고 그날 출시됐다.
 
+### W2. WebMCP 도구층 2차 — 홈 검색·"내 주변"·장소 상세 (신규 2026-08-28)
+
+spec `docs/superpowers/specs/2026-08-28-webmcp-wave2-design.md`. 조사 `docs/research/RESEARCH-2026-08-28-webmcp-tool-scope.md`로 W1 §1 "탭이 없으면 못 하는 것만" 원칙을 폐기했다(ChatGPT 내장 브라우저는 서버 MCP를 못 쓰므로 그 근거가 같은 세션에서 성립하지 않는다). 위원장 판정: 주 모델은 **데이터 반환형**, 축 A 유지, 섹션별 도구 10개, AI 채팅은 도구로 내지 않음, 범위는 세 화면 전부. 화면별 배타 등록 홈 7·길찾기 10·내 주변 14·장소 상세 11.
+
+- **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-28 codex adversarial 14건(high 10) 전부 반영(spec §9) → ②구현(plan `docs/superpowers/plans/2026-08-28-webmcp-wave2.md`) → ③실기기 §8 ⑧~⑪ + ⑦ 재관측 → ④G4 제출물에 반영.
+- **후속(이 마일스톤 밖)**: 서버 측 upstream 일일 예산·single-flight(리뷰 #14 — 도구 유발 fetch는 세션 버킷으로 막지만 사용자 UI 반복 조회도 같은 노출이라 서버 층이 정답).
+- **새 기반**: 허브 패널 안정 키(`useId` → `NearbyPanelKey`), 섹션 브릿지·정착 대기자, `placeRef` 세대 표, 줄 조립 `src/lib/nearby-lines/` 추출(컴포넌트·도구 공용).
+- **불변식**: 같은 이름의 도구는 어느 화면에서든 같은 입력·출력 계약(앵커만 화면이 정한다). `get_walk_infrastructure_nearby` W1 판 SHAPE를 공통 모양으로 맞춘다.
+
+### W1-R. 길찾기 뷰 도구층의 데이터 반환형 재작업 (신규 2026-08-28, W2 원칙 개정의 파급)
+
+W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 재점검한 결과. 축·계약은 그대로이고 **빈틈 3건**만 남는다 — W2 plan에 태스크로 편입한다.
+
+| # | 빈틈 | 근거 | 처방 |
+|---|---|---|---|
+| 1 | **도보 최단 대안이 도구에 없다.** 화면은 `alternatives=1`로 추천·최단 2행 disclosure를 그리는데(`DirectionsView` walk outcome `{result, shortest}`), `ToolPlan.walk`·`plan_directions`·`get_route_steps`는 추천 하나만 싣는다 | 코드 대조 2026-08-28(`shortest` 참조 0건 in `src/lib/webmcp`) | `plan_directions.walk.shortest?: {distanceMeters, durationSeconds, stepCount}` + `get_route_steps`에 `variant?: "recommended"\|"shortest"`(기본 recommended). 화면과 같은 배열(`walkStepItems`)이어야 하고 착지 ID는 `walk:shortest:step:{n}` 추가 |
+| 2 | `read_current_view` 설명문 "Call this before planning"이 **불필요한 왕복을 유도**한다. 데이터 반환형에선 `plan_directions`를 바로 부르는 것이 정답이고, 이 도구는 `stalePlan`·`focus_item` 전 확인용 | 설명문 대조 | "Call this when a tool returned stalePlan, or before focus_item"으로 축소(Chrome "positive language") |
+| 3 | `get_walk_infrastructure_nearby`가 허브 판과 **출력 모양이 갈릴 위험** | W2 spec §3.5 | W2 공통 SHAPE로 통일(W2 태스크) |
+
+점검해서 **문제없음**으로 닫은 것: `focus_item` 설명("Use only when the user asked to be taken to something")은 축 A 보조 위상과 정합 · 대중교통은 추천 전문 + 대안 한 줄 + 상세 도구로 데이터 반환 완결 · 자동차는 요약 + `get_route_steps(car)` · 계단 회피는 `avoidStairs` 인자 · 경유지는 `via` · 3초 쿨다운·세 수단 병렬 비용은 W1 판정 유지.
+
 ### W1. WebMCP 도구층 — 웹앱 기능을 에이전트에게 선언한다 (신규 2026-08-27, 마감 2026-09-04 05:00 KST)
 
 **WebMCP**(W3C 웹머신러닝 CG 표준 제안, Chrome origin trial)는 웹페이지가 `document.modelContext.registerTool({name, description, inputSchema, execute})`로 자기 기능을 브라우저 에이전트에게 도구로 선언하는 API다. 에이전트가 DOM을 추측해 조작하는 대신 선언된 도구를 호출한다. **OpenAI WebMCP Challenge 제출**(마감 2026-09-04 05:00 KST)을 계기로 착수하되, 산출물은 챌린지와 무관하게 남는 웹앱 기능이다.
