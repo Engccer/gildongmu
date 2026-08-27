@@ -8,7 +8,8 @@
  * - **세대 결박**: 명령 시점의 `gen`에 결박해 정착을 기다린다. 소스의 `read()`는 React 커밋 뒤에야
  *   새 세대를 보이므로 `gen < 기대`는 "아직 커밋 전"(대기), `gen > 기대`는 사용자가 그 축을 다시
  *   건드린 것(`superseded`), 같을 때만 status를 판정한다.
- * - **정착 판정은 커밋 뒤**: `notifyCommit()`을 부모가 매 커밋 effect에서 부른다. 언마운트는
+ * - **정착 판정은 커밋 뒤**: 소스를 가진 자식이 자기 status 커밋 effect에서 `notifyCommit()`을 부른다
+ *   (부모 effect는 자식 setState에 돌지 않는다). 언마운트는
  *   `teardown()`으로 대기자 전부를 `aborted`로 끝낸다.
  */
 import type { Op } from "./tool-lock";
@@ -16,6 +17,8 @@ import type { AxisEntry, AxisKey, AxisOutcome, AxisSnapshot, AxisSource } from "
 
 export interface AxisRegistrar {
   attach(axis: AxisKey, source: AxisSource): () => void;
+  /** 소스 상태 커밋 뒤 통지 — 대기자가 `read()`를 다시 본다(`useAxisBridge`가 부른다). */
+  notifyCommit(): void;
 }
 
 export interface AxisEntryOptions {
@@ -47,7 +50,14 @@ export function createAxisRegistry(): AxisRegistry {
   const waiters = new Set<() => void>();
   let torn = false;
 
+  function notifyCommit() {
+    const pending = [...waiters];
+    waiters.clear();
+    for (const w of pending) w();
+  }
+
   const registrar: AxisRegistrar = {
+    notifyCommit,
     attach(axis, source) {
       sources.set(axis, source);
       for (const l of [...attachListeners]) l();
@@ -137,11 +147,7 @@ export function createAxisRegistry(): AxisRegistry {
   return {
     registrar,
     makeEntry,
-    notifyCommit() {
-      const pending = [...waiters];
-      waiters.clear();
-      for (const w of pending) w();
-    },
+    notifyCommit,
     teardown() {
       torn = true;
       for (const l of [...tearListeners]) l();

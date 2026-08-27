@@ -112,7 +112,7 @@ export function BarrierFreeInfo({
     }),
     [load, t],
   );
-  useAxisBridge("barrierFree", axisSource);
+  useAxisBridge("barrierFree", axisSource, status);
 
   if (status.kind !== "done") return null;
   const detail = status.detail;

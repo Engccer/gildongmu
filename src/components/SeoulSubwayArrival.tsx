@@ -99,7 +99,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
     }),
     [load, t],
   );
-  useAxisBridge("arrivals", axisSource);
+  useAxisBridge("arrivals", axisSource, status);
 
   const busy = status.kind === "loading";
   const live =

@@ -97,7 +97,7 @@ export function StationFacilities({ stationName }: { stationName: string }) {
     }),
     [load, t],
   );
-  useAxisBridge("facilities", axisSource);
+  useAxisBridge("facilities", axisSource, status);
 
   const busy = status.kind === "loading";
   const live =

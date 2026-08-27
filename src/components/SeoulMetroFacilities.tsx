@@ -93,7 +93,7 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
     }),
     [load, t],
   );
-  useAxisBridge("facilitiesMetro", axisSource);
+  useAxisBridge("facilitiesMetro", axisSource, status);
 
   const busy = status.kind === "loading";
   const live =
