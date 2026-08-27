@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail } from "@/lib/types";
 import { barrierFreeLines } from "@/lib/place-lines/barrier-free";
-import { useAxisBridge } from "@/hooks/useAxisBridge";
-import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+import { useAxisSource } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
 /**
  * 화면은 `done`만 그리지만 도구층엔 3-state를 구조로 준다(매칭 실패·0건은 `empty`, 조회 실패는
@@ -33,14 +33,11 @@ export function BarrierFreeInfo({
   name: string;
 }) {
   const t = useTranslations("barrierFreeInfo");
-  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 0 });
+  // ⚠ 초기 loading의 세대는 마운트 로드의 세대(1)와 같아야 한다(StationMeta 주석 참조).
+  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 1 });
   const headingId = useId();
   const genRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
 
   // 장소(props) 변경 시 렌더 단계에서 이전 데이터 즉시 폐기 — A(시설 표시 중)→B
   // 전환 때 B의 fetch 완료 전까지 A의 무장애 정보가 화면에 남아 낭독되는 false
@@ -62,8 +59,11 @@ export function BarrierFreeInfo({
       const controller = new AbortController();
       controllerRef.current = controller;
       const gen = ++genRef.current;
-      const previous = force && statusRef.current.kind === "done" ? statusRef.current.detail : undefined;
-      setStatus({ kind: "loading", gen, previous });
+      setStatus((prev) => ({
+        kind: "loading",
+        gen,
+        previous: force && prev.kind === "done" ? prev.detail : undefined,
+      }));
       try {
         const res = await fetch(
           `/api/places/barrier-free/match?lat=${lat}&lng=${lng}&name=${encodeURIComponent(name)}`,
@@ -78,7 +78,11 @@ export function BarrierFreeInfo({
         setStatus(d && d.facilities.length > 0 ? { kind: "done", gen, detail: d } : { kind: "empty", gen });
       } catch {
         if (controller.signal.aborted) return;
-        setStatus(previous ? { kind: "done", gen, detail: previous, refreshError: true } : { kind: "error", gen });
+        setStatus((prev) =>
+          prev.kind === "loading" && prev.gen === gen && prev.previous
+            ? { kind: "done", gen, detail: prev.previous, refreshError: true }
+            : { kind: "error", gen },
+        );
       }
     },
     [lat, lng, name],
@@ -87,32 +91,29 @@ export function BarrierFreeInfo({
     void load(false, "user");
     return () => controllerRef.current?.abort();
   }, [load]);
-  const axisSource = useMemo<AxisSource>(
-    () => ({
-      read: (): AxisSnapshot => {
-        const s = statusRef.current;
-        const detail = s.kind === "done" ? s.detail : s.kind === "loading" ? s.previous : undefined;
-        return {
-          status: s.kind,
-          gen: s.gen,
-          data:
-            s.kind === "empty"
-              ? { match: { kind: "unmatched" }, facilities: [], source: t("source") }
-              : detail
-                ? {
-                    match: { kind: "matched", facilityCount: detail.facilities.length },
-                    facilities: barrierFreeLines(detail).map(({ label, value }) => ({ label, value })),
-                    source: t("source"),
-                  }
-                : undefined,
-          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
-        };
-      },
-      load: (force, source) => void load(force, source),
-    }),
-    [load, t],
+  const toSnapshot = useCallback(
+    (s: Status): AxisSnapshot => {
+      const detail = s.kind === "done" ? s.detail : s.kind === "loading" ? s.previous : undefined;
+      return {
+        status: s.kind,
+        gen: s.gen,
+        data:
+          s.kind === "empty"
+            ? { match: { kind: "unmatched" }, facilities: [], source: t("source") }
+            : detail
+              ? {
+                  match: { kind: "matched", facilityCount: detail.facilities.length },
+                  facilities: barrierFreeLines(detail).map(({ label, value }) => ({ label, value })),
+                  source: t("source"),
+                }
+              : undefined,
+        refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+      };
+    },
+    [t],
   );
-  useAxisBridge("barrierFree", axisSource, status);
+  const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
+  useAxisSource("barrierFree", status, toSnapshot, loadForTool);
 
   if (status.kind !== "done") return null;
   const detail = status.detail;

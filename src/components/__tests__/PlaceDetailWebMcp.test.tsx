@@ -5,6 +5,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import { PlaceDetail } from "../PlaceDetail";
 import { __resetViewRegistryForTest, bridgeOf } from "@/lib/webmcp/view-registry";
 import { __resetToolLockForTest, acquireOp, releaseOp, type Op } from "@/lib/webmcp/tool-lock";
@@ -180,6 +181,33 @@ describe("PlaceDetail × PlaceBridge(spec §5.4)", () => {
     const p2 = axes.timetable.refresh(o);
     await act(async () => d2.resolve({ ok: false, json: async () => ({}) }));
     expect(await p2).toMatchObject({ kind: "settled", snapshot: { status: "done", refreshError: true, data: { lines: [{ line: "2호선" }] } } });
+  });
+
+  it("StrictMode 이중 effect 뒤에도 브릿지가 살아 있다(teardown 재무장, 리뷰 HIGH 2)", async () => {
+    const d = deferred();
+    stubFetch({ "/api/station/facilities": d.promise });
+    render(
+      <StrictMode>
+        <PlaceDetail place={station} onBack={() => {}} canShowBus={false} canShowBike={false} canShowAir={false} canShowSubway={false} canShowBarrierFree={false} />
+      </StrictMode>,
+    );
+    const entry = bridgeOf<PlaceBridge>("place")!.bridge.axes.facilities;
+    const p = entry.ensureLoaded(op());
+    await act(async () => d.resolve(okJson(facilitiesBody)));
+    expect(await p).toMatchObject({ kind: "settled", snapshot: { status: "done" } });
+  });
+
+  it("마운트 축의 초기 loading 세대는 마운트 로드 세대와 같다(게시 직후 결박이 superseded가 되지 않게, 리뷰 HIGH 1)", async () => {
+    const d = deferred();
+    stubFetch({ "/api/station/timetable": d.promise });
+    renderDetail(station);
+    const entry = bridgeOf<PlaceBridge>("place")!.bridge.axes.timetable;
+    // 응답 전 스냅샷(loading)의 세대에 결박해 기다린다 — 도구가 게시 직후 읽는 것과 같은 값.
+    const before = entry.read();
+    expect(before.status).toBe("loading");
+    const p = entry.ensureLoaded(op());
+    await act(async () => d.resolve(okJson({ timetable: { stationName: "강남", dailyType: "weekday", lines: [] } })));
+    expect(await p).toMatchObject({ kind: "settled", snapshot: { status: "done", gen: before.gen } });
   });
 
   it("언마운트는 대기자를 aborted로 끝낸다", async () => {

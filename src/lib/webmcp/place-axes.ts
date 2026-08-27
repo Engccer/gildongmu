@@ -38,6 +38,8 @@ export interface AxisRegistry {
   makeEntry(axis: AxisKey, options: AxisEntryOptions): AxisEntry;
   /** 매 React 커밋 뒤 — 대기자가 소스를 다시 읽는다. */
   notifyCommit(): void;
+  /** 마운트 effect — `teardown` 뒤 재무장(StrictMode 이중 effect에서 레지스트리가 영구 죽지 않게). */
+  arm(): void;
   /** 언마운트 — 대기자 전부 `aborted`. */
   teardown(): void;
 }
@@ -148,6 +150,9 @@ export function createAxisRegistry(): AxisRegistry {
     registrar,
     makeEntry,
     notifyCommit,
+    arm() {
+      torn = false;
+    },
     teardown() {
       torn = true;
       for (const l of [...tearListeners]) l();

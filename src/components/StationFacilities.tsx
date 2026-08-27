@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { StationFacilities as Facilities } from "@/lib/types";
 import { korailFacilityLines } from "@/lib/place-lines/station-facilities";
-import { useAxisBridge } from "@/hooks/useAxisBridge";
-import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+import { useAxisSource } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
 /** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). `previous`는 refresh 중 유지하는 직전 데이터. */
 type Status =
@@ -41,11 +41,6 @@ export function StationFacilities({ stationName }: { stationName: string }) {
   // 동기 가드한다.
   const inFlightRef = useRef(false);
 
-  // 도구층 소스가 커밋 뒤 상태를 읽는 통로(렌더 중 ref 접근 금지 — effect에서 갱신).
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
   /**
    * 조회. `force`는 done이어도 재조회(직전 데이터 유지, 실패 시 refreshError). `source:"tool"`은
    * 헤딩 착지만 건너뛴다 — 도구 호출의 착지는 최종 화면 하나뿐이다(spec §6).
@@ -55,8 +50,12 @@ export function StationFacilities({ stationName }: { stationName: string }) {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       const gen = ++genRef.current;
-      const previous = force && statusRef.current.kind === "done" ? statusRef.current.facilities : undefined;
-      setStatus({ kind: "loading", gen, previous });
+      // 직전 데이터는 상태 안에 든다(refresh 실패 시 되돌릴 근거) — 최신 상태는 함수형 갱신으로 읽는다.
+      setStatus((prev) => ({
+        kind: "loading",
+        gen,
+        previous: force && prev.kind === "done" ? prev.facilities : undefined,
+      }));
       try {
         const res = await fetch(
           `/api/station/facilities?station=${encodeURIComponent(stationName)}`,
@@ -71,8 +70,10 @@ export function StationFacilities({ stationName }: { stationName: string }) {
         setStatus({ kind: "done", gen, facilities: body.facilities as Facilities });
         if (source === "user") requestAnimationFrame(() => headingRef.current?.focus());
       } catch {
-        setStatus(
-          previous ? { kind: "done", gen, facilities: previous, refreshError: true } : { kind: "error", gen },
+        setStatus((prev) =>
+          prev.kind === "loading" && prev.gen === gen && prev.previous
+            ? { kind: "done", gen, facilities: prev.previous, refreshError: true }
+            : { kind: "error", gen },
         );
       } finally {
         inFlightRef.current = false;
@@ -81,23 +82,20 @@ export function StationFacilities({ stationName }: { stationName: string }) {
     [stationName],
   );
   // 도구층 소스: 상태는 ref로 읽고(커밋 뒤 값), 줄은 화면과 같은 함수로 조립한다.
-  const axisSource = useMemo<AxisSource>(
-    () => ({
-      read: (): AxisSnapshot => {
-        const s = statusRef.current;
-        const facilities = s.kind === "done" ? s.facilities : s.kind === "loading" ? s.previous : undefined;
-        return {
-          status: s.kind,
-          gen: s.gen,
-          data: facilities ? { lines: korailFacilityLines(facilities, t) } : undefined,
-          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
-        };
-      },
-      load: (force, source) => void load(force, source),
-    }),
-    [load, t],
+  const toSnapshot = useCallback(
+    (s: Status): AxisSnapshot => {
+      const facilities = s.kind === "done" ? s.facilities : s.kind === "loading" ? s.previous : undefined;
+      return {
+        status: s.kind,
+        gen: s.gen,
+        data: facilities ? { lines: korailFacilityLines(facilities, t) } : undefined,
+        refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+      };
+    },
+    [t],
   );
-  useAxisBridge("facilities", axisSource, status);
+  const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
+  useAxisSource("facilities", status, toSnapshot, loadForTool);
 
   const busy = status.kind === "loading";
   const live =

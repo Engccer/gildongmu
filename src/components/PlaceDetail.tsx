@@ -153,7 +153,11 @@ export function PlaceDetail({
     canShowSubway,
     canShowBarrierFree,
   ]);
-  useEffect(() => () => axisRegistry.teardown(), [axisRegistry]);
+  useEffect(() => {
+    // StrictMode 이중 effect(마운트→cleanup→마운트)에서 useMemo 레지스트리는 같은 객체라 재무장이 필요하다.
+    axisRegistry.arm();
+    return () => axisRegistry.teardown();
+  }, [axisRegistry]);
   useEffect(() => {
     return () => {
       if (copyAnnouncementTimerRef.current) {

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
 import { joinText } from "@/lib/format";
 import { metroFacilityGroups } from "@/lib/place-lines/station-metro";
-import { useAxisBridge } from "@/hooks/useAxisBridge";
-import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+import { useAxisSource } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
 /** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). `previous`는 refresh 중 유지하는 직전 데이터. */
 type Status =
@@ -39,19 +39,17 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
-  // 도구층 소스가 커밋 뒤 상태를 읽는 통로(렌더 중 ref 접근 금지 — effect에서 갱신).
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
   /** 조회 — StationFacilities와 같은 계약(`force` 재조회·직전 데이터 유지, `source:"tool"`은 헤딩 착지 생략). */
   const load = useCallback(
     async (force: boolean, source: "user" | "tool") => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       const gen = ++genRef.current;
-      const previous = force && statusRef.current.kind === "done" ? statusRef.current.facilities : undefined;
-      setStatus({ kind: "loading", gen, previous });
+      setStatus((prev) => ({
+        kind: "loading",
+        gen,
+        previous: force && prev.kind === "done" ? prev.facilities : undefined,
+      }));
       try {
         const res = await fetch(
           `/api/station/metro-facilities?station=${encodeURIComponent(stationName)}`,
@@ -66,8 +64,10 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
         setStatus({ kind: "done", gen, facilities: body.facilities as Facilities });
         if (source === "user") requestAnimationFrame(() => headingRef.current?.focus());
       } catch {
-        setStatus(
-          previous ? { kind: "done", gen, facilities: previous, refreshError: true } : { kind: "error", gen },
+        setStatus((prev) =>
+          prev.kind === "loading" && prev.gen === gen && prev.previous
+            ? { kind: "done", gen, facilities: prev.previous, refreshError: true }
+            : { kind: "error", gen },
         );
       } finally {
         inFlightRef.current = false;
@@ -75,25 +75,22 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
     },
     [stationName],
   );
-  const axisSource = useMemo<AxisSource>(
-    () => ({
-      read: (): AxisSnapshot => {
-        const s = statusRef.current;
-        const facilities = s.kind === "done" ? s.facilities : s.kind === "loading" ? s.previous : undefined;
-        return {
-          status: s.kind,
-          gen: s.gen,
-          data: facilities
-            ? { groups: metroFacilityGroups(facilities, t), supplementFailed: facilities.supplementFailed || undefined }
-            : undefined,
-          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
-        };
-      },
-      load: (force, source) => void load(force, source),
-    }),
-    [load, t],
+  const toSnapshot = useCallback(
+    (s: Status): AxisSnapshot => {
+      const facilities = s.kind === "done" ? s.facilities : s.kind === "loading" ? s.previous : undefined;
+      return {
+        status: s.kind,
+        gen: s.gen,
+        data: facilities
+          ? { groups: metroFacilityGroups(facilities, t), supplementFailed: facilities.supplementFailed || undefined }
+          : undefined,
+        refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+      };
+    },
+    [t],
   );
-  useAxisBridge("facilitiesMetro", axisSource, status);
+  const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
+  useAxisSource("facilitiesMetro", status, toSnapshot, loadForTool);
 
   const busy = status.kind === "loading";
   const live =
