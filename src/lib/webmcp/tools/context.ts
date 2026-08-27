@@ -6,7 +6,11 @@
  * (스텝·대안 라벨·leg 한 줄)은 화면이 같은 `t`로 조립해 스냅샷에 실어 준다(§4.3).
  */
 import type { DirEndpoint } from "@/lib/directions-state";
+import type { ArrivalItem } from "@/lib/place-lines/station-arrivals";
+import type { MetroGroupItem } from "@/lib/place-lines/station-metro";
+import type { TimetableLineItem } from "@/lib/place-lines/station-timetable";
 import type { ModeKey, ParsedTarget, RouteRefTable } from "../targets";
+import type { Op } from "../tool-lock";
 
 export type PhaseKind =
   | "idle"
@@ -124,4 +128,89 @@ export interface HomeBridge {
   isDirectionsOpen: () => boolean;
   /** `to`는 필드 텍스트로만 채운다 — 해석·조회는 `plan_directions`의 몫. */
   openDirections: (toText: string | null) => void;
+}
+
+/* ───────────── 장소 상세 브릿지(W2 spec §5.4) ───────────── */
+
+/**
+ * `get_place_info`의 축. `facilities`는 출처가 둘(코레일·서울)이라 소스 키가 둘이고 도구가
+ * 하나의 축으로 합친다(`facilitiesMetro`는 도구 입력의 축 이름이 아니다).
+ */
+export type AxisKey = "basic" | "timetable" | "facilities" | "facilitiesMetro" | "arrivals" | "barrierFree";
+
+export type AxisStatus =
+  | "idle"
+  | "loading"
+  | "done"
+  | "empty"
+  | "unknown"
+  | "error"
+  | "notConfigured"
+  | "notApplicable"
+  | "partial";
+
+/** 축별 `data` — 화면이 place-lines로 조립한 줄(도구는 i18n을 모른다). */
+export interface StationMetaAxisData { lines: string[] }
+export interface TimetableAxisData { basis: string; lines: TimetableLineItem[] }
+export interface KorailFacilitiesAxisData { lines: string[] }
+export interface MetroFacilitiesAxisData { groups: MetroGroupItem[]; supplementFailed?: boolean }
+export interface ArrivalsAxisData { items: ArrivalItem[] }
+export interface BarrierFreeAxisData {
+  match: { kind: "matched"; facilityCount: number } | { kind: "unmatched" };
+  facilities: Array<{ label: string; value: string }>;
+  /** 출처 라벨(URL이 아니다 — spec §7). */
+  source: string;
+}
+export type AxisData =
+  | StationMetaAxisData
+  | TimetableAxisData
+  | KorailFacilitiesAxisData
+  | MetroFacilitiesAxisData
+  | ArrivalsAxisData
+  | BarrierFreeAxisData;
+
+export interface AxisSnapshot {
+  status: AxisStatus;
+  /** 요청 세대 — load마다 증가. 도구 대기자는 명령 시점 세대에 결박된다. */
+  gen: number;
+  data?: AxisData;
+  /** `refresh` 실패 — `data`는 직전 성공분이다. */
+  refreshError?: true;
+}
+
+/** 역 섹션 컴포넌트가 `useAxisBridge`로 채워 넣는 상태 소스 + 화면 핸들러. */
+export interface AxisSource {
+  read(): AxisSnapshot;
+  /** 화면 버튼과 같은 핸들러. `source:"tool"`은 헤딩 착지만 건너뛴다(spec §6). */
+  load(force: boolean, source: "user" | "tool"): void;
+}
+
+export type AxisOutcome =
+  | { kind: "settled"; snapshot: AxisSnapshot }
+  | { kind: "superseded" }
+  | { kind: "aborted" }
+  | { kind: "notConfigured" }
+  | { kind: "notApplicable" };
+
+/** `PlaceDetail`이 만드는 축 엔트리 — `present`는 부모 props에서 게시 시점에 확정된다. */
+export interface AxisEntry {
+  axis: AxisKey;
+  present: boolean;
+  kind: "mount" | "trigger";
+  read(): AxisSnapshot;
+  ensureLoaded(op: Op): Promise<AxisOutcome>;
+  refresh(op: Op): Promise<AxisOutcome>;
+}
+
+export interface PlaceBridge {
+  placeId: string;
+  read(): {
+    name: string;
+    category: string;
+    isStation: boolean;
+    addressLines: { english?: string; road?: string; jibun?: string };
+    phone?: string;
+    chatOpen: boolean;
+  };
+  axes: Record<AxisKey, AxisEntry>;
 }

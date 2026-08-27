@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { StationFacilities as Facilities } from "@/lib/types";
 import { korailFacilityLines } from "@/lib/place-lines/station-facilities";
+import { useAxisBridge } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
 
+/** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). `previous`는 refresh 중 유지하는 직전 데이터. */
 type Status =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "empty" }
-  | { kind: "error" }
-  | { kind: "done"; facilities: Facilities };
+  | { kind: "idle"; gen: number }
+  | { kind: "loading"; gen: number; previous?: Facilities }
+  | { kind: "empty"; gen: number }
+  | { kind: "error"; gen: number }
+  | { kind: "done"; gen: number; facilities: Facilities; refreshError?: true };
 
 /**
  * 역 교통약자 편의시설 — "지도 없이 완결되는 접근성 정보" 실험.
@@ -22,13 +25,15 @@ type Status =
 export function StationFacilities({ stationName }: { stationName: string }) {
   const t = useTranslations("station");
   const tActions = useTranslations("actions");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [status, setStatus] = useState<Status>({ kind: "idle", gen: 0 });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const genRef = useRef(0);
 
   // 펼친 결과를 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거 버튼으로 복원.
+  // 세대를 올려 도구 대기자를 `superseded`로 끝낸다(사용자 조작 우선).
   const close = useCallback(() => {
-    setStatus({ kind: "idle" });
+    setStatus({ kind: "idle", gen: ++genRef.current });
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
   // in-flight 가드 — 클로저의 status.kind만으로는 같은 렌더에서 빠른
@@ -36,31 +41,63 @@ export function StationFacilities({ stationName }: { stationName: string }) {
   // 동기 가드한다.
   const inFlightRef = useRef(false);
 
-  async function load() {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setStatus({ kind: "loading" });
-    try {
-      const res = await fetch(
-        `/api/station/facilities?station=${encodeURIComponent(stationName)}`,
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setStatus({ kind: "error" });
-        return;
+  // 도구층 소스가 커밋 뒤 상태를 읽는 통로(렌더 중 ref 접근 금지 — effect에서 갱신).
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+  /**
+   * 조회. `force`는 done이어도 재조회(직전 데이터 유지, 실패 시 refreshError). `source:"tool"`은
+   * 헤딩 착지만 건너뛴다 — 도구 호출의 착지는 최종 화면 하나뿐이다(spec §6).
+   */
+  const load = useCallback(
+    async (force: boolean, source: "user" | "tool") => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      const gen = ++genRef.current;
+      const previous = force && statusRef.current.kind === "done" ? statusRef.current.facilities : undefined;
+      setStatus({ kind: "loading", gen, previous });
+      try {
+        const res = await fetch(
+          `/api/station/facilities?station=${encodeURIComponent(stationName)}`,
+          force ? { cache: "no-store" } : undefined,
+        );
+        const body = await res.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!body.facilities) {
+          setStatus({ kind: "empty", gen });
+          return;
+        }
+        setStatus({ kind: "done", gen, facilities: body.facilities as Facilities });
+        if (source === "user") requestAnimationFrame(() => headingRef.current?.focus());
+      } catch {
+        setStatus(
+          previous ? { kind: "done", gen, facilities: previous, refreshError: true } : { kind: "error", gen },
+        );
+      } finally {
+        inFlightRef.current = false;
       }
-      if (!body.facilities) {
-        setStatus({ kind: "empty" });
-        return;
-      }
-      setStatus({ kind: "done", facilities: body.facilities as Facilities });
-      requestAnimationFrame(() => headingRef.current?.focus());
-    } catch {
-      setStatus({ kind: "error" });
-    } finally {
-      inFlightRef.current = false;
-    }
-  }
+    },
+    [stationName],
+  );
+  // 도구층 소스: 상태는 ref로 읽고(커밋 뒤 값), 줄은 화면과 같은 함수로 조립한다.
+  const axisSource = useMemo<AxisSource>(
+    () => ({
+      read: (): AxisSnapshot => {
+        const s = statusRef.current;
+        const facilities = s.kind === "done" ? s.facilities : s.kind === "loading" ? s.previous : undefined;
+        return {
+          status: s.kind,
+          gen: s.gen,
+          data: facilities ? { lines: korailFacilityLines(facilities, t) } : undefined,
+          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+        };
+      },
+      load: (force, source) => void load(force, source),
+    }),
+    [load, t],
+  );
+  useAxisBridge("facilities", axisSource);
 
   const busy = status.kind === "loading";
   const live =
@@ -80,7 +117,7 @@ export function StationFacilities({ stationName }: { stationName: string }) {
       <button
         ref={triggerRef}
         type="button"
-        onClick={load}
+        onClick={() => void load(false, "user")}
         aria-disabled={busy}
         aria-busy={busy}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"
