@@ -3,16 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useWebMcpTools } from "@/hooks/useWebMcpTools";
-import { activeElementLabel } from "@/lib/webmcp/accessible-name";
 import { modelContext, type WebMcpTool } from "@/lib/webmcp/types";
 
 type SupportState = "checking" | "supported" | "unsupported";
 
 /**
  * 게이트 0 프로브(2026-08-27 통과 — 위원장 실사용: 인앱 브라우저에서 DOM 포커스를 옮기면
- * VoiceOver가 따라온다). 도구층 헬퍼(`useWebMcpTools`·`modelContext`·`activeElementLabel`)의
- * 실사용 표면으로 유지한다. 지원 여부를 화면에 내는 유일한 페이지다(제품 화면은 침묵).
+ * VoiceOver가 따라온다). 도구층 헬퍼(`useWebMcpTools`·`modelContext`)의 실사용 표면으로
+ * 유지한다. 지원 여부를 화면에 내는 유일한 페이지다(제품 화면은 침묵).
  */
+
+/** 프로브 표적(헤딩·버튼)의 접근 가능한 이름 — 이 페이지의 요소만 다루는 최소판. */
+function activeElementLabel(): string | null {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el || el === document.body) return null;
+  const label = (el.getAttribute("aria-label") ?? el.textContent ?? "").trim();
+  return label || null;
+}
 export function WebMcpProbe() {
   const t = useTranslations("webmcpProbe");
   const [support, setSupport] = useState<SupportState>("checking");

@@ -127,7 +127,33 @@ export function markChanging(op: Op | null): void {
   changing = op;
 }
 
+/* ── 착지 억제·모달 표식(T9 리뷰 반영) ── */
+let unwinding = false;
+const modals = new Set<string>();
+
+/**
+ * 도구 언와인드(홈으로 되돌아가기) 진행 중 — 자식 뷰의 **마운트 착지**(상세 제목·길찾기 제목)가 이것을
+ * 보고 건너뛴다. `PlaceSearch` 안 억제 ref만으로는 재마운트되는 자식의 자체 effect를 막지 못한다(spec §6.1).
+ * 이동 표시(`markChanging`)와 다른 축이다 — 상세·길찾기로 **가는** 이동의 마운트 착지는 최종 착지라 해야 한다.
+ */
+export function markUnwinding(on: boolean): void {
+  unwinding = on;
+}
+export function isUnwinding(): boolean {
+  return unwinding;
+}
+/** 화면 어디서든 열린 모달(현재 위치 지정 등)을 키로 표식한다 — `isModalOpen`이 OR한다. */
+export function markModal(key: string, open: boolean): void {
+  if (open) modals.add(key);
+  else modals.delete(key);
+}
+export function anyModalOpen(): boolean {
+  return modals.size > 0;
+}
+
 export function __resetViewRegistryForTest(): void {
+  unwinding = false;
+  modals.clear();
   entries.clear();
   listeners.clear();
   seq = 0;

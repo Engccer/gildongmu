@@ -161,6 +161,11 @@ export const FAILURE_SHAPE: { [key: string]: Shape } = {
   userActionRequired: true,
   detail: true,
   retryAfterMs: true,
+  /** `busy{running}` — 실행 중인 도구 이름(W2 §3.0). */
+  running: true,
+  /** `staleResult{recovery, query}` — 복구 절차(W2 §3.6). */
+  recovery: true,
+  query: true,
   field: true,
   candidates: [{ candidateId: true, label: true, address: true }],
   truncated: true,

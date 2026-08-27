@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useManualLocation } from "@/hooks/useManualLocation";
 import { useHeldValue } from "@/hooks/useHeldValue";
+import { markModal } from "@/lib/webmcp/view-registry";
 import {
   getActiveNearbyPanel,
   getServerActiveNearbyPanel,
@@ -79,6 +80,11 @@ export function NearbyHub({
   // "현재 위치 지정" 모달 — 홈과 별개로 이 화면 전용 열림 상태(LocationBar·
   // ManualLocationPicker는 두 화면이 공유하는 정본, 열림 여부만 화면별 로컬).
   const [manualPickerOpen, setManualPickerOpen] = useState(false);
+  // WebMCP 도구는 모달 위에서 화면을 옮기지 않는다(spec §3.0) — 허브의 로컬 모달도 레지스트리에 알린다.
+  useEffect(() => {
+    markModal("nearbyManualPicker", manualPickerOpen);
+    return () => markModal("nearbyManualPicker", false);
+  }, [manualPickerOpen]);
   const manualPickerTriggerRef = useRef<HTMLElement | null>(null);
   // 모달이 화면을 점유하는 동안 갱신을 멈춘다(아래 live region 주석이 근거).
   const heldNotice = useHeldValue(locationNotice);
