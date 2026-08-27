@@ -11,6 +11,11 @@
 
 ## 2026-08-27
 
+### W1 게이트 3 — WebMCP 도구층 구현 (`feat/webmcp`)
+
+- spec `docs/superpowers/specs/2026-08-27-webmcp-tool-layer-design.md`대로 길찾기 뷰 9개 + 홈 1개를 정적 등록하는 계층을 구현했다: `src/lib/webmcp/**`(사유 표·allowlist 직렬화·항목 단위 1,500자 상한·착지 ID 체계·DOM 대기·도구 10개), `useWebMcpTools`(마운트 1회 등록·abort 해제·실행 signal 합성), `guide-session-store` 확장(starting부터 점유·`sessionId`·소유자 전용 스냅샷·done/failed 유지), `DirectionsView`의 `runQuery(request)` 트랜잭션 + 세대 결박 대기자 + `planId`, `PlaceSearch`의 `open_directions`.
+- 프로브는 lib 헬퍼로 재작성, privacy에 브라우저 에이전트 절(6로케일, 문안은 위원장 TextEdit 확정 대기), geolocation `denied`에 사유 부가. 테스트 5종 신설(output·targets·store·훅·`DirectionsWebMcp` 계약 스위트 16건). 남은 것은 실기기 게이트 4항(`docs/FIELD-TEST.md` §8)과 G4(영문 설명문·영상·제출, 위원장).
+
 ### App Store 1.13 심사 제출 (빌드 21)
 
 1.12 아카이브(`37b99db`) 이후 `ios/` 4커밋 중 3건(임박 큐 3단계·잊힌 세션 안전망 A23·환승역 빠른하차 문 A20)을 담아 제출했다(05:41 KST, `WAITING_FOR_REVIEW`). 아카이브 커밋 `df229f0`, worktree 격리 빌드, 산출물 검사 통과, 심사 노트 승계. 마지막 제출 PATCH가 ASC 500으로 한 번 죽어 재실행했다(1.5와 같은 결함, 상태 `READY_FOR_REVIEW`가 "초안 완성·미제출"이라는 뜻). 이번 제출은 새 스킬 `ios-release-submit`(`~/Mac-Projects/ios-release-submit`)을 서브에이전트가 처음 밟은 실사용이었고, 준비 단계 피드백 11건을 스킬 1.1.0에 반영했다. 노트 정본은 `docs/appstore/release-notes.md` §1.13.
