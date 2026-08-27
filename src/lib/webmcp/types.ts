@@ -70,7 +70,19 @@ export type ToolReason =
   /** 후보 검색 두 라우트가 모두 실패했다(후보 0건과 다른 상황). */
   | "searchFailed"
   /** 자체 API 응답이 5xx·네트워크 실패였다. */
-  | "upstreamError";
+  | "upstreamError"
+  /** 손잡이(`ref`)가 가리키던 검색 세대가 지나 스냅샷이 폐기됐다(W2). */
+  | "staleResult"
+  /** 그 도구가 기대는 키·통합이 이 배포에 없다(W2). */
+  | "notConfigured"
+  /** 현재 화면·대상에는 그 도구가 뜻이 없다(W2). */
+  | "notApplicable"
+  /** 도구가 화면 이동 중이라 잠시 뒤 다시 부르면 된다(W2). */
+  | "viewChanging"
+  /** 주소·지명의 좌표 해석이 실패했다(W2). */
+  | "geocodeFailed"
+  /** 모달(채팅·현재 위치 지정)이 열려 있어 도구가 닫지 않고 거절한다(W2). */
+  | "modalOpen";
 
 /** 사유별 `retryable`·`userActionRequired`(spec §3.0 표의 두 열). */
 const REASON_FLAGS: Record<ToolReason, { retryable: boolean; userActionRequired: boolean }> = {
@@ -99,6 +111,12 @@ const REASON_FLAGS: Record<ToolReason, { retryable: boolean; userActionRequired:
   unsupported: { retryable: false, userActionRequired: false },
   searchFailed: { retryable: true, userActionRequired: false },
   upstreamError: { retryable: true, userActionRequired: false },
+  staleResult: { retryable: true, userActionRequired: false },
+  notConfigured: { retryable: false, userActionRequired: false },
+  notApplicable: { retryable: false, userActionRequired: false },
+  viewChanging: { retryable: true, userActionRequired: false },
+  geocodeFailed: { retryable: true, userActionRequired: false },
+  modalOpen: { retryable: false, userActionRequired: true },
 };
 
 export interface ToolFailure {

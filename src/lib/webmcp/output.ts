@@ -173,3 +173,22 @@ export const FAILURE_SHAPE: { [key: string]: Shape } = {
 export function withFailure(shape: { [key: string]: Shape }): { [key: string]: Shape } {
   return { ...FAILURE_SHAPE, ...shape };
 }
+
+const COORD_QUERY_RE = /[?&](lat|lng|lon|x|y)=/i;
+const COORD_PAIR_RE = /-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}/;
+const COORD_ARRAY_RE = /\[\s*-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}\s*\]/;
+/** URL 경로 안의 좌표쌍(`/place/37.52,127.12`)은 소수 2자리부터 잡는다 — 지도 URL이 그 정밀도로 좌표를 싣는다. */
+const COORD_PATH_RE = /\/-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}/;
+
+/**
+ * 직렬화된 도구 출력에 좌표가 섞였는지(테스트·개발 가드). 위반이면 설명, 아니면 null.
+ * allowlist가 키 이름을 막는다면 이 함수는 **값 안**에 스민 좌표(URL·문장·숫자 배열)를 잡는다.
+ * 소수 3자리 미만의 바탕 쌍·`[1,2]` 같은 순번 배열은 통과한다.
+ */
+export function assertNoCoordinates(serialized: string): string | null {
+  if (COORD_QUERY_RE.test(serialized)) return "coordinate query parameter";
+  if (COORD_PAIR_RE.test(serialized)) return "decimal coordinate pair";
+  if (COORD_ARRAY_RE.test(serialized)) return "coordinate array";
+  if (COORD_PATH_RE.test(serialized)) return "coordinate pair in URL path";
+  return null;
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { capOutput, finish, measure, OUTPUT_LIMIT, serialize, withFailure } from "../output";
+import { assertNoCoordinates, capOutput, finish, measure, OUTPUT_LIMIT, serialize, withFailure } from "../output";
+import { failure } from "../types";
 import { SHAPE as PLAN_SHAPE, summarizePlan } from "../tools/plan-directions";
 import { SHAPE as DETAIL_SHAPE } from "../tools/get-transit-route-detail";
 import { SHAPE as STEPS_SHAPE } from "../tools/get-route-steps";
@@ -211,5 +212,23 @@ describe("도구 10개의 출력 표", () => {
     for (const [name, shape] of Object.entries(shapes)) {
       for (const k of failureKeys) expect(Object.keys(shape), `${name}.${k}`).toContain(k);
     }
+  });
+});
+
+describe("W2 사유 코드·좌표 스캔", () => {
+  it("새 사유 6종의 플래그", () => {
+    expect(failure("staleResult")).toMatchObject({ retryable: true, userActionRequired: false });
+    expect(failure("notConfigured")).toMatchObject({ retryable: false, userActionRequired: false });
+    expect(failure("notApplicable")).toMatchObject({ retryable: false, userActionRequired: false });
+    expect(failure("viewChanging")).toMatchObject({ retryable: true, userActionRequired: false });
+    expect(failure("geocodeFailed")).toMatchObject({ retryable: true, userActionRequired: false });
+    expect(failure("modalOpen")).toMatchObject({ retryable: false, userActionRequired: true });
+  });
+  it("직렬화 결과에서 좌표 쿼리 이름·십진 좌표쌍·숫자 2원소 배열을 잡는다", () => {
+    expect(assertNoCoordinates('{"url":"https://a.b/p?lat=37.5"}')).not.toBeNull();
+    expect(assertNoCoordinates('{"line":"37.5231,127.1234"}')).not.toBeNull();
+    expect(assertNoCoordinates('{"p":[37.5231,127.1234]}')).not.toBeNull();
+    expect(assertNoCoordinates('{"url":"https://a.b/place/37.52,127.12"}')).not.toBeNull();
+    expect(assertNoCoordinates('{"line":"5호선 상행 첫차 05:30, 막차 00:12","n":[1,2]}')).toBeNull();
   });
 });
