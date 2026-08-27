@@ -26,9 +26,21 @@ describe("manifest(spec §5.1)", () => {
   it("available은 게이트를 반영하고, 불가한 도구는 등록되되 실행 시 notConfigured", async () => {
     const none = { ...gates, hasWalk: false, hasTransit: false, hasCar: false };
     const defs = manifest();
-    expect(defs.find((d) => d.name === "plan_directions")!.available(none)).toBe(false);
-    expect(defs.find((d) => d.name === "get_transit_route_detail")!.available({ ...gates, hasTransit: false })).toBe(false);
-    expect(defs.find((d) => d.name === "search_places")!.available(none)).toBe(true);
+    const av = (name: string, g: typeof gates) => defs.find((d) => d.name === name)!.available(g);
+    const table: Array<[string, typeof gates, boolean]> = [
+      ["describe_app", none, true],
+      ["search_places", none, true],
+      ["get_place_info", none, true],
+      ["read_current_view", none, true],
+      ["plan_directions", none, false],
+      ["plan_directions", { ...none, hasCar: true }, true],
+      ["get_transit_route_detail", { ...gates, hasTransit: false }, false],
+      ["get_transit_route_detail", { ...none, hasTransit: true }, true],
+      ["get_route_steps", { ...none, hasTransit: true }, false],
+      ["get_route_steps", { ...none, hasWalk: true }, true],
+      ["get_route_steps", { ...none, hasCar: true }, true],
+    ];
+    for (const [name, g, expected] of table) expect(av(name, g), name).toBe(expected);
     const tools = buildAppTools(none);
     expect(tools).toHaveLength(7);
     expect(JSON.parse(await tools.find((t) => t.name === "plan_directions")!.execute({ to: "x" }))).toMatchObject({ ok: false, reason: "notConfigured" });

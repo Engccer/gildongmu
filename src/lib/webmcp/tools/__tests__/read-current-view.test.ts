@@ -34,7 +34,7 @@ describe("read_current_view(spec §3.6)", () => {
     markNearby(true);
     expect(await call()).toMatchObject({ ok: true, view: "nearby", note: "no tools on this screen" });
     markNearby(false);
-    const entry = (present: boolean, status: string) => ({ axis: "x", present, kind: "mount", read: () => ({ status, gen: 0 }), ensureLoaded: async () => ({ kind: "aborted" }), refresh: async () => ({ kind: "aborted" }) });
+    const entry = (present: boolean, status: string) => ({ axis: "x", present, kind: "mount", read: () => ({ status: present ? status : "notConfigured", gen: 0 }), ensureLoaded: async () => ({ kind: "aborted" }), refresh: async () => ({ kind: "aborted" }) });
     publishView("place", {
       placeId: "p",
       read: () => ({ name: "강동역", category: "c", isStation: true, addressLines: {}, chatOpen: true }),
@@ -44,6 +44,18 @@ describe("read_current_view(spec §3.6)", () => {
     expect(place).toMatchObject({ view: "place", name: "강동역", isStation: true, chatOpen: true });
     expect(place.axes).toContainEqual({ axis: "arrivals", status: "notConfigured" });
     expect(place.axes).toContainEqual({ axis: "timetable", status: "loading" });
+    expect(place.axes).toContainEqual({ axis: "facilities", status: "idle" });
+    expect(place.axes).toHaveLength(5);
+    // 비역: 역 축은 notApplicable(엔트리 read()가 부재 사유를 status로 낸다) — describe_app의 available과 모순되지 않는다.
+    const na = (k: string) => ({ axis: k, present: false, kind: "mount", read: () => ({ status: "notApplicable", gen: 0 }), ensureLoaded: async () => ({ kind: "notApplicable" }), refresh: async () => ({ kind: "notApplicable" }) });
+    publishView("place", {
+      placeId: "c",
+      read: () => ({ name: "카페", category: "c", isStation: false, addressLines: {}, chatOpen: false }),
+      axes: { basic: entry(true, "notApplicable"), timetable: na("timetable"), facilities: na("facilities"), facilitiesMetro: na("facilitiesMetro"), arrivals: na("arrivals"), barrierFree: entry(true, "empty") },
+    }, "c");
+    const cafe = await call();
+    expect(cafe.axes).toContainEqual({ axis: "timetable", status: "notApplicable" });
+    expect(cafe.axes).toContainEqual({ axis: "facilities", status: "notApplicable" });
     publishView("directions", { read: () => ({ fields: { from: "a", to: "b", via: null, avoidStairs: false }, phase: "idle", plan: null, lang: "ko" }), runQuery: async () => ({ kind: "busy" }) });
     expect(await call()).toMatchObject({ view: "directions", phase: "idle", plan: null, guidanceActive: false });
   });

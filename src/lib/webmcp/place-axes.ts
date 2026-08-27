@@ -140,7 +140,12 @@ export function createAxisRegistry(): AxisRegistry {
       axis,
       present,
       kind,
-      read: () => sources.get(axis)?.read() ?? settleWithoutSource ?? { status: "idle", gen: 0 },
+      // 부재 축은 `read()`도 그 사유(notConfigured/notApplicable)를 status로 낸다 — read_current_view가
+      // describe_app과 모순되지 않게(비역 상세의 시간표는 "이 배포에 없다"가 아니라 "대상 아님"이다).
+      read: () =>
+        present
+          ? (sources.get(axis)?.read() ?? settleWithoutSource ?? { status: "idle", gen: 0 })
+          : { status: absentOutcome, gen: 0 },
       ensureLoaded: (op) => run(op, false),
       refresh: (op) => run(op, true),
     };

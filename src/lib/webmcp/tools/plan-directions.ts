@@ -226,11 +226,12 @@ export function planDirectionsTool(): WebMcpTool {
       // 쿨다운·세션 예산(W2 spec §5.5) — 시작 시각 기준, 성공·실패 무관.
       const budget = checkBudget("plan", now);
       if (!budget.ok) return finish(failure("cooldown", { retryAfterMs: budget.retryAfterMs }), SHAPE);
-      consumeBudget("plan", now);
       const signal = op.signal;
       // 화면 이동(spec §3.4): 길찾기 뷰가 아니면 `toDirections` 뒤 이동 시작 이후 게시만 일치.
       const bridge = await ensureDirections(op);
       if (isFailure(bridge)) return finish(bridge, SHAPE);
+      // 예산은 이동이 성립한 뒤(후보 검색·조회 fetch 앞)에 소비한다 — search_places와 같은 순서.
+      consumeBudget("plan", now);
       const lang = bridge.read().lang;
 
       // `toRef`는 상세의 "여기까지 길찾기"와 같은 좌표 endpoint — 텍스트 재해석 없음(spec §3.4).
@@ -321,6 +322,8 @@ async function resolveToRef(
   }
   const label = r.address.roadAddrPart1 || r.address.roadAddr;
   const g = await resolveAddressCoord(label, signal);
+  // `resolveAddressCoord`는 abort도 failed로 접는다 — 끊긴 op를 retryable geocodeFailed로 위장하지 않는다.
+  if (signal.aborted) return { ok: false, failure: failure("aborted", { detail: "signal" }) };
   if (g.kind !== "resolved") return { ok: false, failure: failure("geocodeFailed", { field: "to" }) };
   return { ok: true, endpoint: { kind: "place", label, coord: { lat: g.lat, lng: g.lng } } };
 }

@@ -77,7 +77,12 @@ export function readCurrentViewTool(): WebMcpTool {
       if (view === "place") {
         const b = bridgeOf<PlaceBridge>("place")!.bridge;
         const info = b.read();
-        const keys = ["basic", "timetable", "facilities", "facilitiesMetro", "arrivals", "barrierFree"] as const;
+        // 도구 축 이름은 5개(`facilities`는 코레일·서울 두 소스를 합친 것 — get_place_info와 같은 결합).
+        const status = (k: "basic" | "timetable" | "arrivals" | "barrierFree") => b.axes[k].read().status;
+        const korail = b.axes.facilities.read().status;
+        const metro = b.axes.facilitiesMetro.read().status;
+        const facilities =
+          korail === metro ? korail : korail === "done" || metro === "done" ? "partial" : korail;
         return finish(
           {
             ok: true,
@@ -86,7 +91,13 @@ export function readCurrentViewTool(): WebMcpTool {
             name: info.name,
             isStation: info.isStation,
             chatOpen: info.chatOpen,
-            axes: keys.map((k) => ({ axis: k, status: b.axes[k].present ? b.axes[k].read().status : "notConfigured" })),
+            axes: [
+              { axis: "basic", status: status("basic") },
+              { axis: "timetable", status: status("timetable") },
+              { axis: "facilities", status: facilities },
+              { axis: "arrivals", status: status("arrivals") },
+              { axis: "barrierFree", status: status("barrierFree") },
+            ],
           },
           SHAPE,
           { arrays: [{ path: "axes", mode: "count" }] },
