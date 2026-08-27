@@ -36,6 +36,7 @@ describe("place-axes(spec §5.4)", () => {
     const a = r.makeEntry("arrivals", { present: false, kind: "trigger", absentOutcome: "notConfigured" });
     const o = op();
     expect(await a.ensureLoaded(o)).toEqual({ kind: "notConfigured" });
+    expect(a.read()).toEqual({ status: "notConfigured", gen: 0 });
     const b = r.makeEntry("basic", {
       present: true,
       kind: "mount",

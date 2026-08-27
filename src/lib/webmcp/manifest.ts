@@ -6,7 +6,7 @@
  * 출력 필드 출처(spec §7): 사용자 입력(검색어·길찾기 필드), 화면 문장(장소·역·경로 문장 — place-lines·
  * route-step-items와 같은 함수), 외부 URL(`search_places.web[].url`뿐, origin+path). 좌표는 어느 표에도 없다.
  */
-import type { WebMcpTool } from "./types";
+import { failure, type WebMcpTool } from "./types";
 import { describeAppTool } from "./tools/describe-app";
 import { getPlaceInfoTool } from "./tools/get-place-info";
 import { getRouteStepsTool } from "./tools/get-route-steps";
@@ -83,10 +83,6 @@ export function buildAppTools(gates: ToolGates): WebMcpTool[] {
     const tool = d.build(gates);
     if (tool.name !== d.name) throw new Error(`manifest name mismatch: ${d.name} != ${tool.name}`);
     if (d.available(gates)) return tool;
-    return {
-      ...tool,
-      execute: async () =>
-        JSON.stringify({ ok: false, reason: "notConfigured", retryable: false, userActionRequired: false }),
-    };
+    return { ...tool, execute: async () => JSON.stringify(failure("notConfigured")) };
   });
 }
