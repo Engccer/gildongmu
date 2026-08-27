@@ -9,6 +9,8 @@ import type {
   JusoAddress,
   Place,
   PlaceSearchResult,
+  TransitLeg,
+  TransitRoute,
   TransitRouteResult as TransitData,
   WalkRouteBriefing,
 } from "@/lib/types";
@@ -23,7 +25,7 @@ import { useManualLocation, useManualLocationLabel } from "@/hooks/useManualLoca
 import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { dataLocale, prefersEnglish } from "@/lib/data-locale";
-import { formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
+import { durationToMinutes, formatDistance, joinText, normalizeVoiceQuery } from "@/lib/format";
 import { objectParticle } from "@/lib/korean-particle";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { shouldCollapseWalk } from "@/lib/walk-collapse";
@@ -47,7 +49,27 @@ import {
 import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
-import { stopActiveGuideSession } from "@/lib/guide-session-store";
+import { carStepItems, walkStepItems } from "@/lib/route-step-items";
+import { clearRetainedGuideSnapshot, stopActiveGuideSession } from "@/lib/guide-session-store";
+import { quickExitText } from "@/lib/quick-exit-text";
+import { useWebMcpTools } from "@/hooks/useWebMcpTools";
+import { buildDirectionsTools } from "@/lib/webmcp/tools";
+import { guideTriggerValue } from "@/lib/webmcp/tools/start-guidance";
+import type {
+  DirectionsBridge,
+  DirectionsSnapshot,
+  ModeOutcomeKind,
+  PlanRequest,
+  PlanTransitRoute,
+  QueryOutcome,
+  ToolPlan,
+} from "@/lib/webmcp/tools/context";
+import {
+  buildRouteRefTable,
+  FOCUS_TARGET_ATTR,
+  targetId,
+  type ParsedTarget,
+} from "@/lib/webmcp/targets";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
@@ -94,6 +116,16 @@ type QueryResults = {
    * 다시 조회한다 — 두 출발지가 달라질 수 있음을 안내 시작 버튼 근처에서 말한다.
    */
   originSource: "gps" | "manual" | null;
+  /**
+   * 세대 토큰(WebMCP spec §3.4) — settled 커밋마다 `p{gen}`. 계단 회피 토글 재조회도 새
+   * 값이다(결과 객체가 바뀐다). 도구는 이 값으로 옛 결과 참조를 `stalePlan`으로 거른다.
+   */
+  planId: string;
+  /** 조회 시점의 출발·도착 입력 라벨(도구 `resolved` — 승격본이 아니라 원명). */
+  fromLabel: string;
+  toLabel: string;
+  /** 조회 시점의 계단 회피 설정. */
+  avoidStairs: boolean;
 };
 
 /** 필드 원자 상태: 라벨 텍스트를 편집하면 resolved(좌표 포함)가 즉시 무효화된다. */
@@ -271,6 +303,7 @@ export function DirectionsView({
   canBriefCarRoute,
   initialFrom,
   initialTo = null,
+  initialToText = null,
   onBack,
 }: {
   canShowWalk: boolean;
@@ -278,6 +311,11 @@ export function DirectionsView({
   canBriefCarRoute: boolean;
   initialFrom?: DirEndpoint;
   initialTo?: DirEndpoint | null;
+  /**
+   * 도착지 **텍스트만** 미리 채운다(WebMCP `open_directions` — 해석·조회는 `plan_directions`의
+   * 몫). `initialTo`가 있으면 그쪽이 이긴다.
+   */
+  initialToText?: string | null;
   onBack: () => void;
 }) {
   const t = useTranslations("directions");
@@ -313,7 +351,7 @@ export function DirectionsView({
   const [toField, setToField] = useState<FieldState>(() =>
     initialTo
       ? endpointToField(initialTo, currentLabel)
-      : { text: "", resolved: null },
+      : { text: initialToText ?? "", resolved: null },
   );
   // 경유지 필드(N4): null = 접힘("경유지 추가" 버튼만). ?dir= 세 번째 토막이 있으면 펼친 채 복원.
   const [viaField, setViaField] = useState<FieldState | null>(() => {
@@ -363,6 +401,18 @@ export function DirectionsView({
   function resetWalkExpansion() {
     setWalkExpanded(null);
     setWalkShortestExpanded(false);
+  }
+  /**
+   * 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). 끝난 안내 세션이 남긴 `done`·`failed`
+   * 스냅샷도 여기서 지운다 — 화면이 그 상태를 지우는 시점이 곧 도구가 그것을 잊는 시점이다
+   * (WebMCP spec §5.2).
+   */
+  function discardResults() {
+    setResults(null);
+    setToggledRoutes(new Set());
+    setActiveGuideAlt(null);
+    resetWalkExpansion();
+    clearRetainedGuideSnapshot();
   }
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
@@ -459,6 +509,43 @@ export function DirectionsView({
   const submitRef = useRef<HTMLButtonElement>(null);
   const inFlight = useRef(false);
   const genRef = useRef(0);
+  /**
+   * WebMCP 세대 결박 대기자(spec §3.4·§8.3) — 단일 슬롯. 도구가 시작한 조회의 세대에 결박되고
+   * 그 세대의 종단 phase 전이에서만 resolve된다. 다른 세대의 조회 시작은 `superseded`,
+   * 언마운트·실행 signal은 `aborted`.
+   */
+  const queryWaiterRef = useRef<{ gen: number; resolve: (o: QueryOutcome) => void } | null>(null);
+  function settleWaiter(gen: number, outcome: QueryOutcome) {
+    const w = queryWaiterRef.current;
+    if (!w || w.gen !== gen) return;
+    queryWaiterRef.current = null;
+    w.resolve(outcome);
+  }
+  /**
+   * 종단 phase(settled·geoError·outOfCoverage)는 **커밋 뒤에** resolve한다(spec §3.4 "useEffect가
+   * 슬롯을 본다"): 동기로 풀면 도구가 아직 렌더되지 않은 옛 화면(`results` null)을 읽어 `superseded`로
+   * 오판한다. 슬롯에 적어 두고 아래 effect(브리지 갱신 effect **뒤**에 선언)가 푼다.
+   */
+  const pendingOutcomeRef = useRef<{ gen: number; outcome: QueryOutcome } | null>(null);
+  function settleAfterCommit(gen: number, outcome: QueryOutcome) {
+    if (queryWaiterRef.current?.gen !== gen) return;
+    pendingOutcomeRef.current = { gen, outcome };
+  }
+  /** 새 세대가 시작될 때 앞 세대에 결박된 대기자를 `superseded`로 끝낸다(사용자를 막지 않는다). */
+  function supersedeWaiter(newGen: number) {
+    const w = queryWaiterRef.current;
+    if (!w || w.gen === newGen) return;
+    queryWaiterRef.current = null;
+    w.resolve({ kind: "superseded" });
+  }
+  useEffect(() => {
+    return () => {
+      const w = queryWaiterRef.current;
+      queryWaiterRef.current = null;
+      w?.resolve({ kind: "aborted" });
+      clearRetainedGuideSnapshot();
+    };
+  }, []);
   const transitHeadingRef = useRef<HTMLHeadingElement>(null);
   const walkHeadingRef = useRef<HTMLHeadingElement>(null);
   const carHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -555,31 +642,25 @@ export function DirectionsView({
     const stopped = stopActiveGuideSession();
     setFromField(toField);
     setToField(fromField);
-    setResults(null);
-    setToggledRoutes(new Set());
-    setActiveGuideAlt(null);
-    resetWalkExpansion();
+    discardResults();
     setNotice(stopped ? tBeacon("stopped") : "");
   }
 
   /**
-   * override 인자는 최근 경로 활성화 전용(스펙 §1.4) — setFromField/setToField의
-   * setState는 비동기라 같은 틱에 이어지는 조회가 옛 fromField.resolved를 읽으므로,
-   * 확정할 endpoint를 직접 넘겨 그 경합을 우회한다. 조회 버튼 클릭은 인자 없이
-   * 호출한다(기존 필드 상태 그대로).
+   * 조회 트랜잭션(WebMCP spec §3.4 "runQuery(request)"). `request`는 **완전한 요청 스냅샷**
+   * (출발·도착·경유지)이고, 최근 경로 활성화·도구 호출이 쓴다 — setFromField/setToField의
+   * setState는 비동기라 같은 틱에 이어지는 조회가 옛 `fromField.resolved`를 읽으므로,
+   * 확정할 endpoint를 직접 넘겨 그 경합을 우회한다. 조회 버튼 클릭은 인자 없이 호출한다
+   * (기존 필드 상태 그대로). 필드 상태 갱신과 조회 시작은 호출자가 같은 틱에 한다.
    */
-  async function runQuery(
-    fromOverride?: DirEndpoint,
-    toOverride?: DirEndpoint,
-    viaOverride?: DirEndpoint | null,
-  ) {
+  async function runQuery(request?: { from: DirEndpoint; to: DirEndpoint; via: DirEndpoint | null }) {
     if (inFlight.current) return;
-    const from = fromOverride ?? fromField.resolved;
-    const to = toOverride ?? toField.resolved;
+    const from = request ? request.from : fromField.resolved;
+    const to = request ? request.to : toField.resolved;
     // 경유지 필드가 펼쳐져 있는데 미확정(텍스트만)이면 도착지 미확정과 같은 통지다 —
     // 반쯤 적힌 경유지를 조용히 버리고 조회하지 않는다(N4 spec §3).
-    const viaEp = viaOverride === undefined ? viaField?.resolved ?? null : viaOverride;
-    const viaPending = viaOverride === undefined && viaField !== null && !viaField.resolved;
+    const viaEp = request ? request.via : viaField?.resolved ?? null;
+    const viaPending = !request && viaField !== null && !viaField.resolved;
     setNotice("");
     if (!from || !to || viaPending) {
       setPhase({ kind: "needEndpoints" });
@@ -590,17 +671,15 @@ export function DirectionsView({
     const viaLabel = viaEp?.kind === "place" ? viaEp.label : null;
     inFlight.current = true;
     const myGen = ++genRef.current;
+    supersedeWaiter(myGen);
     try {
       // 재조회는 패널을 언마운트시키므로 활성 세션을 먼저 명시 중지·통지한다
       // (a11y 감사 HIGH). 이후 종단 phase 통지 시점에 notice를 비워 경합을 푼다.
       const stoppedGuide = stopActiveGuideSession();
       if (stoppedGuide) setNotice(tBeacon("stopped"));
-      setResults(null);
-      setToggledRoutes(new Set());
-      setActiveGuideAlt(null);
       // 새 조회는 도보 접힘을 자동 판정으로 되돌린다(전이표 §4.4). 사용자가
       // 펼쳐 둔 것은 그 경로에 대한 조작이지 다음 경로에 대한 조작이 아니다.
-      resetWalkExpansion();
+      discardResults();
       // 현재 위치 endpoint는 조회 시점마다 공유 스토어로 측위한다(권한 팝업 세션 1회).
       // 캐시를 재사용하되 **나이 상한**을 건다(A7) — 이 스토어에는 TTL이 없어서 앱을
       // 켜고 처음 잰 좌표가 세션 내내 출발지가 되고, 그 좌표는 경로 origin이자 네이티브
@@ -623,6 +702,12 @@ export function DirectionsView({
         if (!effective) {
           setNotice(""); // 중지 통지가 종단 phase 통지를 가리지 않게
           setPhase({ kind: "geoError" });
+          // 도구 대기자에게는 사유를 세분해 준다(스토어가 `denied`에 남긴 부가 필드).
+          const geo = getGeolocationSnapshot();
+          settleAfterCommit(myGen, {
+            kind: "geoError",
+            reason: geo.status === "denied" ? (geo.reason ?? "unavailable") : "unavailable",
+          });
           return;
         }
         // cur 토큰 해석 시점 선분기 — 현재 위치가 한국 밖이면 조회 자체를 중단한다
@@ -631,6 +716,7 @@ export function DirectionsView({
         if (!isInKorea(effective.lat, effective.lng)) {
           setNotice("");
           setPhase({ kind: "outOfCoverage" });
+          settleAfterCommit(myGen, { kind: "outOfCoverage" });
           return;
         }
         cur = { lat: effective.lat, lng: effective.lng };
@@ -685,6 +771,7 @@ export function DirectionsView({
       if (activeModes.some((m) => outcomes[m]?.kind === "outOfCoverage")) {
         setNotice("");
         setPhase({ kind: "outOfCoverage" });
+        settleAfterCommit(myGen, { kind: "outOfCoverage" });
         return;
       }
       const walkOutcome = outcomes.walk;
@@ -697,6 +784,7 @@ export function DirectionsView({
           ? walkOutcome.result.durationSeconds
           : null,
       );
+      const planId = `p${myGen}`;
       setResults({
         destLabel,
         destCoord: dest,
@@ -704,9 +792,14 @@ export function DirectionsView({
         viaLabel,
         orderedModes,
         originSource,
+        planId,
+        fromLabel: from.kind === "current" ? currentLabel : from.label,
+        toLabel: to.kind === "current" ? currentLabel : to.label,
+        avoidStairs: stepFreeRef.current,
       });
       setNotice(""); // 중지 통지 해제 — settled 합산 통지가 이 커밋에서 발화된다
       setPhase({ kind: "settled" });
+      settleAfterCommit(myGen, { kind: "settled", planId });
       // 최근 경로 기록(스펙 §1.2): settled 도달 시 1곳. 실패 phase·outOfCoverage·취소 경로는
       // 여기 도달하지 않아 자연 배제된다. current는 null 투영(실좌표를 굳히지 않는다).
       setRecentRoutes(
@@ -726,6 +819,9 @@ export function DirectionsView({
       }
     } finally {
       if (myGen === genRef.current) inFlight.current = false;
+      // 예외·세대 폐기 등 위의 종단점을 지나지 않은 경로 — 대기자를 매달아 두지 않는다
+      // (커밋 뒤 resolve가 예약돼 있으면 그쪽이 답이다).
+      if (pendingOutcomeRef.current?.gen !== myGen) settleWaiter(myGen, { kind: "aborted" });
     }
   }
 
@@ -751,6 +847,7 @@ export function DirectionsView({
     inFlight.current = true;
     setStepFreeBusy(true);
     const myGen = ++genRef.current;
+    supersedeWaiter(myGen);
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 15_000);
@@ -768,8 +865,11 @@ export function DirectionsView({
             ? { kind: "error" }
             : s.value
           : { kind: "error" };
+      // 결과 객체가 바뀌므로 새 세대 토큰이다(WebMCP spec §3.4).
       setResults((prev) =>
-        prev ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome } } : prev,
+        prev
+          ? { ...prev, outcomes: { ...prev.outcomes, walk: outcome }, planId: `p${myGen}`, avoidStairs: next }
+          : prev,
       );
       walkHeadingRef.current?.focus();
     } finally {
@@ -856,6 +956,248 @@ export function DirectionsView({
       }
     : null;
   const guideDestKey = guideDest ? `${guideDest.lat},${guideDest.lng}` : "";
+
+  /** 대중교통 disclosure 라벨(이름 + 요약) — 화면과 도구 `oneLine`이 같은 함수를 쓴다(WebMCP spec §4.3). */
+  function transitRouteLabel(route: TransitRoute, name: string): string {
+    return joinText(
+      name,
+      tTransit("summary", {
+        minutes: route.summary.totalMinutes,
+        fare: route.summary.fare.toLocaleString(locale),
+        transfers: route.summary.transfers,
+      }),
+      route.summary.walkMinutes > 0
+        ? tTransit("walkSummary", { minutes: route.summary.walkMinutes })
+        : null,
+    );
+  }
+  /** 추천·대안을 한 목록으로(이름 산출은 채팅 카드와 공유 — `alternativeNameKey`). */
+  function transitEntries(result: TransitData): Array<{ route: TransitRoute; name: string; defaultExpanded: boolean }> {
+    return [
+      // 1순위는 축 라벨을 갖지 않는다(annotateHighlights: "자기보다 나은 자기는 없다") — 고정 이름.
+      { route: result.recommended, name: tTransit("recommended"), defaultExpanded: true },
+      ...result.alternatives.map((alt) => {
+        const named = alternativeNameKey(alt);
+        return { route: alt, name: tTransit(named.key, named.values), defaultExpanded: false };
+      }),
+    ];
+  }
+  /**
+   * WebMCP 도구 계획(spec §3.4·§8.3) — 화면 상태(`results`)에서 **같은 i18n 키**로 조립한 투영.
+   * leg 한 줄은 화면 leg 문장의 평문판(`t.markup`), 스텝은 화면 `StepList`와 같은 배열이다.
+   * 렌더마다 다시 만들지만 `planId`가 세대를 대표하므로 객체 정체성은 계약이 아니다.
+   */
+  const kindOf = (o: ModeOutcome): ModeOutcomeKind => (o.kind === "outOfCoverage" ? "error" : o.kind);
+  function transitLegLine(leg: TransitLeg, boardSeen: number, destName: string): string {
+    if (leg.mode === "walk") {
+      const name = leg.toName ?? destName;
+      const distance = leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
+      const key = name
+        ? distance
+          ? "legWalkTo"
+          : "legWalkToNoDistance"
+        : distance
+          ? "legWalkToDest"
+          : "legWalkToDestNoDistance";
+      return tTransit(key, {
+        minutes: leg.minutes,
+        ...(name ? { name } : {}),
+        ...(distance ? { distance } : {}),
+      });
+    }
+    const lineLabel =
+      leg.mode === "bus" && leg.lineName ? tTransit("busNo", { route: leg.lineName }) : (leg.lineName ?? "");
+    return tTransit.markup(boardSeen === 0 ? "legBoard" : "legTransfer", {
+      line: () => lineLabel,
+      from: () => leg.fromName ?? "",
+      count: leg.stationCount ?? 0,
+    });
+  }
+  // 경로 순번 표(착지·트리거 속성용)는 렌더에서, 문장 조립은 도구 호출 시점(`read()`)에 한다 —
+  // 문장은 도구가 부를 때만 필요하고, 렌더마다 수십 문장을 만드는 비용을 치를 이유가 없다.
+  const transitOutcomeNow = results?.outcomes.transit;
+  const routeRefs = buildRouteRefTable(
+    transitOutcomeNow?.kind === "done" && transitOutcomeNow.mode === "transit"
+      ? [
+          transitOutcomeNow.result.recommended.routeKey,
+          ...transitOutcomeNow.result.alternatives.map((a) => a.routeKey),
+        ]
+      : [],
+  );
+  function buildToolPlan(): ToolPlan | null {
+    if (!results) return null;
+    const transitOutcome = results.outcomes.transit;
+    const entries =
+      transitOutcome?.kind === "done" && transitOutcome.mode === "transit"
+        ? transitEntries(transitOutcome.result)
+        : [];
+    const routes: PlanTransitRoute[] = entries.map(({ route, name }) => {
+      const ref = routeRefs.refOf(route.routeKey) ?? "0";
+      let boardSeen = 0;
+      const legLines = route.legs.map((leg) => {
+        const line = transitLegLine(leg, boardSeen, results.destLabel);
+        if (leg.mode !== "walk") boardSeen += 1;
+        return line;
+      });
+      return {
+        routeKey: route.routeKey,
+        routeRef: ref,
+        name,
+        oneLine: transitRouteLabel(route, name),
+        highlight: route.highlight,
+        startable: buildTransitGuideRoute(route) !== null && !prefersEnglish(locale),
+        summary: {
+          totalMinutes: route.summary.totalMinutes,
+          transfers: route.summary.transfers,
+          fare: route.summary.fare,
+          walkMinutes: route.summary.walkMinutes,
+        },
+        legLines,
+        legs: route.legs.map((leg, i) => ({
+          n: i + 1,
+          mode: leg.mode,
+          lineName: leg.lineName,
+          fromName: leg.fromName,
+          toName: leg.toName,
+          stationCount: leg.stationCount,
+          distanceMeters: leg.distanceMeters,
+          quickExit:
+            leg.mode !== "walk" ? (quickExitText(tTransit, leg.toName ?? "", leg.quickExit) ?? undefined) : undefined,
+          targetId: targetId.transitLeg(ref, i + 1),
+        })),
+      };
+    });
+    const walkOutcome = results.outcomes.walk;
+    const walk =
+      walkOutcome === undefined
+        ? null
+        : walkOutcome.kind === "done" && walkOutcome.mode === "walk"
+          ? {
+              outcome: "done" as const,
+              summary: tPed("summary", {
+                distance: formatDistance(walkOutcome.result.distanceMeters),
+                minutes: Math.round(walkOutcome.result.durationSeconds / 60),
+              }),
+              distanceMeters: walkOutcome.result.distanceMeters,
+              durationSeconds: walkOutcome.result.durationSeconds,
+              stepFree: walkOutcome.result.stepFree ?? undefined,
+              stepFreeNotice: walkOutcome.result.stepFreeNotice ?? undefined,
+              // 화면 규칙과 같은 판정(아래 JSX): 최단 행이 있거나 접히는 길이면 고지 스텝을 뗀다.
+              steps: walkStepItems(
+                walkOutcome.result,
+                Boolean(walkOutcome.shortest) || shouldCollapseWalk(walkOutcome.result.durationSeconds),
+              ).items,
+              startable: walkGuideStartable,
+            }
+          : { outcome: kindOf(walkOutcome), steps: [], startable: false };
+    const car =
+      carOutcome === undefined
+        ? null
+        : carOutcome.kind === "done" && carOutcome.mode === "car"
+          ? {
+              outcome: "done" as const,
+              summary: tCar("summary", {
+                distance: formatDistance(carOutcome.result.distanceMeters),
+                minutes: durationToMinutes(carOutcome.result.durationSeconds),
+                taxi: carOutcome.result.taxiFare.toLocaleString(locale),
+              }),
+              distanceMeters: carOutcome.result.distanceMeters,
+              durationSeconds: carOutcome.result.durationSeconds,
+              steps: carStepItems(carOutcome.result),
+              startable: carGuideStartable,
+            }
+          : { outcome: kindOf(carOutcome), steps: [], startable: false };
+    return {
+      planId: results.planId,
+      destination: results.destLabel,
+      resolved: {
+        from: results.fromLabel,
+        to: results.toLabel,
+        via: results.viaLabel,
+        avoidStairs: results.avoidStairs,
+      },
+      routeRefs,
+      transit: transitOutcome === undefined ? null : { outcome: kindOf(transitOutcome), routes },
+      walk,
+      car,
+      modes: results.orderedModes,
+    };
+  }
+
+  /**
+   * 도구 `plan_directions`의 조회(spec §3.4): **완전 교체** — 생략된 출발지는 현재 위치,
+   * 경유지는 없음, 계단 회피는 요청값으로 한 번에 설정하고, 그 요청 스냅샷으로 정본 조회를
+   * 돌린다. 완료는 세대 결박 대기자가 알린다. 조회 중이면 `busy`(reject-while-busy).
+   */
+  function runQueryForTool(request: PlanRequest, signal: AbortSignal): Promise<QueryOutcome> {
+    if (inFlight.current) return Promise.resolve({ kind: "busy" });
+    setFromField(endpointToField(request.from, currentLabel));
+    setToField(endpointToField(request.to, currentLabel));
+    setViaField(request.via ? endpointToField(request.via, currentLabel) : null);
+    setStepFreeEnabled(stepFreeSupported && request.avoidStairs);
+    const gen = genRef.current + 1;
+    const onAbort = () => settleWaiter(gen, { kind: "aborted" });
+    const promise = new Promise<QueryOutcome>((resolve) => {
+      queryWaiterRef.current = { gen, resolve };
+    });
+    signal.addEventListener("abort", onAbort, { once: true });
+    void runQuery({ from: request.from, to: request.to, via: request.via });
+    return promise.finally(() => signal.removeEventListener("abort", onAbort));
+  }
+  /** `focus_item`·`start_guidance`가 접힌 대안·도보 상세를 화면 핸들러로 펼치는 길(spec §3.3 ③). */
+  function ensureVisible(target: ParsedTarget) {
+    if (target.scope !== "plan") return;
+    if (target.kind === "transitRoute" || target.kind === "transitLeg") {
+      const key = routeRefs.keyOf(target.routeRef);
+      const transit = results?.outcomes.transit;
+      if (!key || transit?.kind !== "done" || transit.mode !== "transit") return;
+      const defaultExpanded = transit.result.recommended.routeKey === key;
+      setToggledRoutes((prev) => {
+        const flipped = prev.has(key);
+        if ((flipped ? !defaultExpanded : defaultExpanded)) return prev;
+        const nextSet = new Set(prev);
+        if (flipped) nextSet.delete(key);
+        else nextSet.add(key);
+        return nextSet;
+      });
+      return;
+    }
+    if (target.kind === "step" && target.mode === "walk") setWalkExpanded(true);
+  }
+  const readSnapshot = (): DirectionsSnapshot => ({
+    fields: {
+      from: displayField(fromField).text,
+      to: toField.text,
+      via: viaField ? viaField.text : null,
+      avoidStairs: stepFreeEnabled,
+    },
+    phase: phase.kind,
+    plan: buildToolPlan(),
+    lang: dataLocale(locale) === "ko" ? "ko" : "en",
+  });
+  // 도구 `execute`는 ref로 최신 화면을 읽는다(등록은 마운트 1회, 재등록 0 — spec §5.1).
+  // ⚠ ref 갱신은 렌더가 아니라 effect에서(useRouteGuide 미러 관례 동형).
+  const bridgeRef = useRef<DirectionsBridge>({ read: readSnapshot, runQuery: runQueryForTool, ensureVisible });
+  useEffect(() => {
+    bridgeRef.current = { read: readSnapshot, runQuery: runQueryForTool, ensureVisible };
+  });
+  // 종단 phase의 대기자 resolve — 브리지 갱신 effect 뒤에 두어야 도구가 커밋된 화면을 읽는다.
+  useEffect(() => {
+    const pending = pendingOutcomeRef.current;
+    if (!pending) return;
+    pendingOutcomeRef.current = null;
+    settleWaiter(pending.gen, pending.outcome);
+  });
+  useWebMcpTools(
+    () =>
+      buildDirectionsTools({
+        read: () => bridgeRef.current.read(),
+        runQuery: (request, signal) => bridgeRef.current.runQuery(request, signal),
+        ensureVisible: (target) => bridgeRef.current.ensureVisible(target),
+      }),
+    { enabled: true },
+  );
+
   function modeErrorText(mode: ModeKey): string {
     if (mode === "transit") return tTransit("error");
     if (mode === "walk") return tPed("error");
@@ -896,7 +1238,7 @@ export function DirectionsView({
     if (r.from) setRecentFrom(recordRecentEndpoint("from", r.from));
     if (r.to) setRecentTo(recordRecentEndpoint("to", r.to));
     if (r.via) setRecentVia(recordRecentEndpoint("via", r.via));
-    void runQuery(fromEp, toEp, viaEp);
+    void runQuery({ from: fromEp, to: toEp, via: viaEp });
   }
   function deleteRecentRoute(r: RecentRoute, index: number) {
     const next = removeRecentRoute(r);
@@ -952,14 +1294,12 @@ export function DirectionsView({
       <EndpointField
         label={t("from")}
         searchLabel={t("searchFrom")}
+        focusTargetId={targetId.field("from")}
         field={displayField(fromField)}
         onTextChange={(text) => {
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setFromField({ text, resolved: null });
-          setResults(null);
-          setToggledRoutes(new Set());
-          setActiveGuideAlt(null);
-          resetWalkExpansion();
+          discardResults();
         }}
         onResolve={(ep) => {
           recordResolved("from", ep);
@@ -1002,14 +1342,12 @@ export function DirectionsView({
       <EndpointField
         label={t("to")}
         searchLabel={t("searchTo")}
+        focusTargetId={targetId.field("to")}
         field={displayField(toField)}
         onTextChange={(text) => {
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           setToField({ text, resolved: null });
-          setResults(null);
-          setToggledRoutes(new Set());
-          setActiveGuideAlt(null);
-          resetWalkExpansion();
+          discardResults();
         }}
         onResolve={(ep) => {
           // 목적지 확정도 텍스트 변경과 같은 무효화 축(리뷰 MAJOR): "최근 장소"
@@ -1019,10 +1357,7 @@ export function DirectionsView({
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
           recordResolved("to", ep);
           setToField(endpointToField(ep, currentLabel));
-          setResults(null);
-          setToggledRoutes(new Set());
-          setActiveGuideAlt(null);
-          resetWalkExpansion();
+          discardResults();
         }}
         registerInput={(el) => {
           toInputRef.current = el;
@@ -1071,14 +1406,12 @@ export function DirectionsView({
           <EndpointField
             label={t("via")}
             searchLabel={t("searchVia")}
+            focusTargetId={targetId.field("via")}
             field={viaField}
             onTextChange={(text) => {
               if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
               setViaField({ text, resolved: null });
-              setResults(null);
-              setToggledRoutes(new Set());
-              setActiveGuideAlt(null);
-              resetWalkExpansion();
+              discardResults();
             }}
             onResolve={(ep) => {
               if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
@@ -1088,10 +1421,7 @@ export function DirectionsView({
                 );
               }
               setViaField(endpointToField(ep, currentLabel));
-              setResults(null);
-              setToggledRoutes(new Set());
-              setActiveGuideAlt(null);
-              resetWalkExpansion();
+              discardResults();
             }}
             registerInput={(el) => {
               viaInputRef.current = el;
@@ -1124,10 +1454,7 @@ export function DirectionsView({
               submitRef.current?.focus();
               if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
               setViaField(null);
-              setResults(null);
-              setToggledRoutes(new Set());
-              setActiveGuideAlt(null);
-              resetWalkExpansion();
+              discardResults();
             }}
             className="mt-2 min-h-11 text-sm underline"
           >
@@ -1141,6 +1468,7 @@ export function DirectionsView({
         type="button"
         ref={submitRef}
         onClick={() => runQuery()}
+        {...{ [FOCUS_TARGET_ATTR]: targetId.submit() }}
         aria-disabled={busy}
         aria-busy={busy}
         className="mt-4 min-h-11 rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
@@ -1227,6 +1555,7 @@ export function DirectionsView({
                 <h3
                   ref={headingRefs[mode]}
                   tabIndex={-1}
+                  {...{ [FOCUS_TARGET_ATTR]: targetId.mode(mode) }}
                   className="text-base font-semibold"
                 >
                   {modeHeading(mode)}
@@ -1246,6 +1575,7 @@ export function DirectionsView({
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartWalk")}
+                    triggerTarget="walk"
                   />
                 )}
                 {mode === "car" && carGuideStartable && guideDest && (
@@ -1257,6 +1587,7 @@ export function DirectionsView({
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
+                    triggerTarget="car"
                   />
                 )}
                 {/* 대중교통은 안내 시작 버튼이 여기 없다 — 경로가 복수라 버튼이
@@ -1296,25 +1627,7 @@ export function DirectionsView({
                         서로 다른 컨트롤로 보였다(위원장 지적 2026-08-07). 버튼이
                         발견 경로라 펼침 본문은 <div>(헌장 §3), 라벨이 이미 요약이라
                         본문 요약은 생략한다(includeSummary=false, 인접 중복 금지). */}
-                    {[
-                      {
-                        route: outcome.result.recommended,
-                        // 1순위는 축 라벨을 갖지 않는다(annotateHighlights: "자기보다
-                        // 나은 자기는 없다") — 고정 이름이 정답이다.
-                        name: tTransit("recommended"),
-                        defaultExpanded: true,
-                      },
-                      ...outcome.result.alternatives.map((alt) => {
-                        // 이름 산출은 채팅 카드와 공유한다(갈리면 같은 경로가 두
-                        // 화면에서 다른 이름으로 불린다).
-                        const named = alternativeNameKey(alt);
-                        return {
-                          route: alt,
-                          name: tTransit(named.key, named.values),
-                          defaultExpanded: false,
-                        };
-                      }),
-                    ].map(({ route, name, defaultExpanded }) => {
+                    {transitEntries(outcome.result).map(({ route, name, defaultExpanded }) => {
                       // 안내 세션이 살아 있는 경로는 강제 펼침(접힘 unmount가
                       // 세션을 조용히 죽이는 경로 차단).
                       const expanded =
@@ -1322,27 +1635,20 @@ export function DirectionsView({
                         activeGuideAlt === route.routeKey;
                       const guideStartable =
                         buildTransitGuideRoute(route) !== null && !prefersEnglish(locale);
+                      // WebMCP 착지·트리거는 내부 순번 토큰으로(경로 키를 DOM에 싣지 않는다).
+                      const routeRef = routeRefs.refOf(route.routeKey) ?? undefined;
                       return (
                         <div key={route.routeKey} className="mt-2">
                           <button
                             type="button"
                             aria-expanded={expanded}
                             onClick={() => toggleRoute(route.routeKey)}
+                            {...(routeRef !== undefined
+                              ? { [FOCUS_TARGET_ATTR]: targetId.transitRoute(routeRef) }
+                              : {})}
                             className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                           >
-                            {joinText(
-                              name,
-                              tTransit("summary", {
-                                minutes: route.summary.totalMinutes,
-                                fare: route.summary.fare.toLocaleString(locale),
-                                transfers: route.summary.transfers,
-                              }),
-                              route.summary.walkMinutes > 0
-                                ? tTransit("walkSummary", {
-                                    minutes: route.summary.walkMinutes,
-                                  })
-                                : null,
-                            )}
+                            {transitRouteLabel(route, name)}
                           </button>
                           {expanded && (
                             <>
@@ -1356,6 +1662,9 @@ export function DirectionsView({
                                   triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
                                   walkAccessible={stepFreeEnabled}
+                                  triggerTarget={
+                                    routeRef !== undefined ? guideTriggerValue("transit", routeRef) : undefined
+                                  }
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active
@@ -1373,6 +1682,7 @@ export function DirectionsView({
                                 locale={locale}
                                 dest={results.destLabel}
                                 includeSummary={false}
+                                focusTargetRouteRef={routeRef}
                               />
                             </>
                           )}
@@ -1421,13 +1731,21 @@ export function DirectionsView({
                             waypointLabel={results.viaLabel}
                             includeSummary={false}
                             omitNoticeStep
+                            focusTargetPrefix={row.key === "recommended" ? "walk" : undefined}
                           />
                         )}
                       </div>
                     ));
                   }
                   if (!collapsible) {
-                    return <WalkRouteResult briefing={outcome.result} t={tPed} waypointLabel={results.viaLabel} />;
+                    return (
+                      <WalkRouteResult
+                        briefing={outcome.result}
+                        t={tPed}
+                        waypointLabel={results.viaLabel}
+                        focusTargetPrefix="walk"
+                      />
+                    );
                   }
                   return (
                     <div className="mt-2">
@@ -1448,6 +1766,7 @@ export function DirectionsView({
                           waypointLabel={results.viaLabel}
                           includeSummary={false}
                           omitNoticeStep
+                          focusTargetPrefix="walk"
                         />
                       )}
                     </div>
@@ -1459,6 +1778,7 @@ export function DirectionsView({
                     locale={locale}
                     t={tCar}
                     waypointLabel={results.viaLabel}
+                    focusTargetPrefix="car"
                   />
                 )}
               </div>
@@ -1484,6 +1804,7 @@ export function DirectionsView({
 function EndpointField({
   label,
   searchLabel,
+  focusTargetId,
   field,
   onTextChange,
   onResolve,
@@ -1502,6 +1823,8 @@ function EndpointField({
 }: {
   label: string;
   searchLabel: string;
+  /** WebMCP 착지 대상(`field:from` 등) — 입력 요소에 붙는다. */
+  focusTargetId?: string;
   field: FieldState;
   onTextChange: (text: string) => void;
   onResolve: (ep: DirEndpoint) => void;
@@ -1695,6 +2018,7 @@ function EndpointField({
           }}
           type="text"
           value={field.text}
+          {...(focusTargetId ? { [FOCUS_TARGET_ATTR]: focusTargetId } : {})}
           onChange={(e) => {
             onTextChange(e.target.value);
             // 옛 질의의 후보가 남지 않게 편집 즉시 비운다(포커스는 입력에 있어 안전).

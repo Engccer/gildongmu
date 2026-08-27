@@ -2,162 +2,95 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useWebMcpTools } from "@/hooks/useWebMcpTools";
+import { activeElementLabel } from "@/lib/webmcp/accessible-name";
+import { modelContext, type WebMcpTool } from "@/lib/webmcp/types";
 
 type SupportState = "checking" | "supported" | "unsupported";
 
-type ProbeTool = {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>;
-  annotations: {
-    readOnlyHint: boolean;
-    untrustedContentHint: boolean;
-  };
-  execute: (input: Record<string, unknown>) => Promise<string> | string;
-};
-
-type ModelContext = {
-  registerTool: (
-    tool: ProbeTool,
-    options?: { signal?: AbortSignal },
-  ) => Promise<void> | void;
-};
-
-function modelContext(): ModelContext | null {
-  const candidate = (document as Document & { modelContext?: unknown }).modelContext;
-  if (
-    !candidate ||
-    typeof (candidate as { registerTool?: unknown }).registerTool !== "function"
-  ) {
-    return null;
-  }
-  return candidate as ModelContext;
-}
-
-function activeElementLabel(fallback: string): string {
-  if (
-    document.activeElement === document.body ||
-    document.activeElement === document.documentElement
-  ) {
-    return fallback;
-  }
-  const text = document.activeElement?.textContent?.trim();
-  return text || fallback;
-}
-
+/**
+ * 게이트 0 프로브(2026-08-27 통과 — 위원장 실사용: 인앱 브라우저에서 DOM 포커스를 옮기면
+ * VoiceOver가 따라온다). 도구층 헬퍼(`useWebMcpTools`·`modelContext`·`activeElementLabel`)의
+ * 실사용 표면으로 유지한다. 지원 여부를 화면에 내는 유일한 페이지다(제품 화면은 침묵).
+ */
 export function WebMcpProbe() {
   const t = useTranslations("webmcpProbe");
   const [support, setSupport] = useState<SupportState>("checking");
   const [announcement, setAnnouncement] = useState("");
   const lastActionResultRef = useRef("");
+  const mountedRef = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
-    const context = modelContext();
-    if (!context) {
-      queueMicrotask(() => {
-        if (mounted) setSupport("unsupported");
-      });
-      return () => {
-        mounted = false;
-      };
-    }
-
+    mountedRef.current = true;
+    const supported = modelContext() !== null;
     queueMicrotask(() => {
-      if (mounted) setSupport("supported");
+      if (mountedRef.current) setSupport(supported ? "supported" : "unsupported");
     });
-    const controller = new AbortController();
-    const announce = (message: string, remember = true) => {
-      if (remember) lastActionResultRef.current = message;
-      if (mounted) setAnnouncement(message);
-      return message;
-    };
-
-    const readState: ProbeTool = {
-      name: "read_current_probe_state",
-      description: t("tool.readDescription"),
-      inputSchema: {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-      annotations: {
-        readOnlyHint: true,
-        untrustedContentHint: false,
-      },
-      execute: async () => {
-        const result = t("readStateResult", {
-          support: t("support.supported"),
-          focus: activeElementLabel(t("noFocus")),
-          lastResult: lastActionResultRef.current || t("noResult"),
-        });
-        return announce(result, false);
-      },
-    };
-
-    const focusItem: ProbeTool = {
-      name: "focus_probe_item",
-      description: t("tool.focusDescription"),
-      inputSchema: {
-        type: "object",
-        properties: {
-          index: {
-            type: "integer",
-            minimum: 1,
-            maximum: 5,
-            description: t("tool.indexDescription"),
-          },
-        },
-        required: ["index"],
-        additionalProperties: false,
-      },
-      annotations: {
-        readOnlyHint: false,
-        untrustedContentHint: false,
-      },
-      execute: async (input) => {
-        const index = input.index;
-        if (!Number.isInteger(index) || Number(index) < 1 || Number(index) > 5) {
-          return announce(t("invalidIndex"));
-        }
-
-        const numericIndex = Number(index);
-        const target = document.querySelector<HTMLElement>(
-          `[data-webmcp-probe-index="${numericIndex}"]`,
-        );
-        if (!target) return announce(t("focusFailed", { index: numericIndex }));
-
-        target.focus();
-        if (document.activeElement !== target) {
-          return announce(t("focusFailed", { index: numericIndex }));
-        }
-
-        return announce(
-          t("focusMoved", {
-            label: activeElementLabel(t("noFocus")),
-          }),
-        );
-      },
-    };
-
-    const register = async () => {
-      try {
-        await context.registerTool(readState, { signal: controller.signal });
-        await context.registerTool(focusItem, { signal: controller.signal });
-      } catch {
-        if (!controller.signal.aborted) {
-          announce(t("registrationFailed"));
-          controller.abort();
-        }
-      }
-    };
-    void register();
-
     return () => {
-      mounted = false;
-      controller.abort();
+      mountedRef.current = false;
     };
-  }, [t]);
+  }, []);
+
+  const announce = (message: string, remember = true) => {
+    if (remember) lastActionResultRef.current = message;
+    if (mountedRef.current) setAnnouncement(message);
+    return message;
+  };
+
+  useWebMcpTools(
+    (): WebMcpTool[] => [
+      {
+        name: "read_current_probe_state",
+        description: t("tool.readDescription"),
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        annotations: { readOnlyHint: true, untrustedContentHint: false },
+        execute: async () =>
+          announce(
+            t("readStateResult", {
+              support: t("support.supported"),
+              focus: activeElementLabel() ?? t("noFocus"),
+              lastResult: lastActionResultRef.current || t("noResult"),
+            }),
+            false,
+          ),
+      },
+      {
+        name: "focus_probe_item",
+        description: t("tool.focusDescription"),
+        inputSchema: {
+          type: "object",
+          properties: {
+            index: {
+              type: "integer",
+              minimum: 1,
+              maximum: 5,
+              description: t("tool.indexDescription"),
+            },
+          },
+          required: ["index"],
+          additionalProperties: false,
+        },
+        annotations: { readOnlyHint: false, untrustedContentHint: false },
+        execute: async (input) => {
+          const index = input.index;
+          if (!Number.isInteger(index) || Number(index) < 1 || Number(index) > 5) {
+            return announce(t("invalidIndex"));
+          }
+          const numericIndex = Number(index);
+          const target = document.querySelector<HTMLElement>(
+            `[data-webmcp-probe-index="${numericIndex}"]`,
+          );
+          if (!target) return announce(t("focusFailed", { index: numericIndex }));
+          target.focus();
+          if (document.activeElement !== target) {
+            return announce(t("focusFailed", { index: numericIndex }));
+          }
+          return announce(t("focusMoved", { label: activeElementLabel() ?? t("noFocus") }));
+        },
+      },
+    ],
+    { enabled: true, onRegisterError: () => announce(t("registrationFailed")) },
+  );
 
   const activateButton = (index: number) => {
     const message = t("manualActivation", { index });
