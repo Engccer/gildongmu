@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { PlaceSearch } from "../PlaceSearch";
-import { __resetViewRegistryForTest, bridgeOf, currentView, navigator, publishView, withdrawView } from "@/lib/webmcp/view-registry";
+import { __resetViewRegistryForTest, bridgeOf, currentView, markModal, navigator, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import { __resetToolLockForTest, acquireOp, releaseOp, type Op } from "@/lib/webmcp/tool-lock";
 import { __resetOpenPlaceForTest } from "@/lib/place-open-request";
 import type { HomeBridge } from "@/lib/webmcp/tools/context";
@@ -51,10 +51,16 @@ vi.mock("../DirectionsView", async () => {
   };
 });
 vi.mock("../PlaceDetail", async () => {
-  const { useEffect } = await import("react");
+  const { useEffect, useRef } = await import("react");
   const reg = await import("@/lib/webmcp/view-registry");
   return {
     PlaceDetail: ({ place, onBack }: { place: Place; onBack: () => void }) => {
+      const h = useRef<HTMLHeadingElement>(null);
+      // 실제 PlaceDetail처럼 마운트 착지(언와인드 억제 검출용).
+      useEffect(() => {
+        if (reg.isUnwinding()) return;
+        h.current?.focus();
+      }, [place.id]);
       useEffect(() => {
         const bridge = { placeId: place.id, read: () => ({ chatOpen: false }) };
         reg.publishView("place", bridge, place.id);
@@ -62,7 +68,7 @@ vi.mock("../PlaceDetail", async () => {
       }, [place.id]);
       return (
         <div>
-          <h2 tabIndex={-1}>{place.name}</h2>
+          <h2 ref={h} tabIndex={-1}>{place.name}</h2>
           <button type="button" onClick={onBack}>
             place-back
           </button>
@@ -237,15 +243,45 @@ describe("PlaceSearch × HomeBridge(spec §3.2·§5.2)", () => {
     }
   });
 
-  it("isModalOpen: 범용 채팅·현재 위치 지정·상세 채팅", () => {
+  it("isModalOpen: 범용 채팅·현재 위치 지정·상세 채팅·허브 모달 표식", () => {
     stubFetch({});
     render(<PlaceSearch isMockMode={false} />);
     expect(navigator()!.isModalOpen()).toBe(false);
+    markModal("nearbyManualPicker", true);
+    expect(navigator()!.isModalOpen()).toBe(true);
+    markModal("nearbyManualPicker", false);
     const fake = { placeId: "x", read: () => ({ chatOpen: true }) };
     publishView("place", fake, "x");
     expect(navigator()!.isModalOpen()).toBe(true);
     withdrawView("place", fake);
     expect(navigator()!.isModalOpen()).toBe(false);
+  });
+
+  it("op가 끊기면 runSearch·toHome은 aborted, 끊긴 뒤 주소 실패는 coordError를 낭독하지 않는다", async () => {
+    const d = deferred();
+    // geocode는 signal abort에 reject하는 실제 fetch 동작을 흉내 낸다.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string, init?: { signal?: AbortSignal }) => {
+        if (input.startsWith("/api/geocode")) {
+          return new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
+        }
+        return input.startsWith("/api/places") ? d.promise : Promise.resolve(okJson({ addresses: [] }));
+      }),
+    );
+    render(<PlaceSearch isMockMode={false} canShowTransit />);
+    const host = new AbortController();
+    const o = acquireOp("t", host.signal) as Op;
+    const p = home().runSearch({ query: "강남역", sort: "accuracy" }, o);
+    host.abort();
+    expect(await p).toEqual({ kind: "aborted" });
+    __resetToolLockForTest();
+    const host2 = new AbortController();
+    const o2 = acquireOp("t", host2.signal) as Op;
+    const addr = home().openAddress(juso, o2);
+    host2.abort();
+    expect(await addr).toEqual({ ok: false, reason: "aborted" });
+    expect(screen.queryByText("search.addressCoordFailed")).toBeNull();
   });
 
   it("openAddress는 주소 카드 탭과 같은 경로로 상세를 열고, 좌표 실패는 geocodeFailed", async () => {

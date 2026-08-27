@@ -40,8 +40,10 @@ import type { HomeBranches, HomeBridge, SearchOutcome, SearchRequest } from "@/l
 import type { SearchSnapshot } from "@/lib/webmcp/place-refs";
 import type { Op } from "@/lib/webmcp/tool-lock";
 import {
+  anyModalOpen,
   bridgeOf,
   markNearby,
+  markUnwinding,
   publishView,
   setNavigator,
   withdrawView,
@@ -281,13 +283,15 @@ export function PlaceSearch({
     addrStatusRef.current = addrStatus;
   }, [addrStatus]);
   const webResultsRef = useRef(webResults);
+  const webPendingRef = useRef(webPending);
   const generalChatRef = useRef(generalChat);
   const manualPickerOpenRef = useRef(manualPickerOpen);
   useEffect(() => {
     webResultsRef.current = webResults;
+    webPendingRef.current = webPending;
     generalChatRef.current = generalChat;
     manualPickerOpenRef.current = manualPickerOpen;
-  }, [webResults, generalChat, manualPickerOpen]);
+  }, [webResults, webPending, generalChat, manualPickerOpen]);
 
   // ── WebMCP 검색 트랜잭션(spec §3.2) ──
   // 검색마다 세대(`attempt`)를 발급하고 세 분기(장소·주소·웹)의 상태를 든다. 도구 대기자는 세대에
@@ -703,9 +707,18 @@ export function PlaceSearch({
       attempt,
       state: {
         places: "pending",
+        // 진행 중(loading·웹 폴백 대기)은 pending으로 승계한다 — 정착 effect가 그 커밋을 기다린다.
         addresses:
-          a.kind === "done" ? (a.addresses.length > 0 ? "done" : "empty") : a.kind === "error" ? "error" : "skipped",
-        web: w === null ? "skipped" : w.length > 0 ? "done" : "empty",
+          a.kind === "done"
+            ? a.addresses.length > 0
+              ? "done"
+              : "empty"
+            : a.kind === "error"
+              ? "error"
+              : a.kind === "loading"
+                ? "pending"
+                : "skipped",
+        web: webPendingRef.current ? "pending" : w === null ? "skipped" : w.length > 0 ? "done" : "empty",
       },
     };
     try {
@@ -792,18 +805,20 @@ export function PlaceSearch({
     addr: JusoAddress,
     signal: AbortSignal | undefined,
     open: (place: Place) => void,
-  ): Promise<boolean> {
-    if (addrResolveRef.current) return false;
+  ): Promise<"opened" | "geocodeFailed" | "aborted" | "busy"> {
+    if (addrResolveRef.current) return "busy";
     addrResolveRef.current = true;
     try {
       const target = addr.roadAddrPart1 || addr.roadAddr;
       const r = await resolveAddressCoord(target, signal);
+      // 도구가 포기한(op 끊김) 호출의 실패는 사용자 채널에 낭독하지 않는다.
+      if (signal?.aborted) return "aborted";
       if (r.kind !== "resolved") {
         setAddrStatus({ kind: "coordError" });
-        return false;
+        return "geocodeFailed";
       }
       open(jusoAddressToPlace(addr, { lat: r.lat, lng: r.lng }, dataLocale(locale)));
-      return true;
+      return "opened";
     } finally {
       addrResolveRef.current = false;
     }
@@ -893,6 +908,8 @@ export function PlaceSearch({
       return Promise.resolve({ kind: "busy" });
     }
     const q = request.query.trim();
+    // 빈 질의는 세대가 발급되지 않아 대기자가 op 상한까지 매달린다 — 즉시 닫는다(도구층도 먼저 거른다).
+    if (!q) return Promise.resolve({ kind: "aborted" });
     if (sortRef.current !== request.sort) {
       sortRef.current = request.sort;
       setSort(request.sort);
@@ -931,18 +948,23 @@ export function PlaceSearch({
    */
   async function toHomeForTool(op: Op): Promise<void> {
     if (currentViewState() === "home") return;
+    // 두 억제 신호: 이 컴포넌트의 복귀 착지(suppressFocusRef)와 재마운트되는 자식 뷰의 마운트 착지
+    // (레지스트리 markUnwinding — PlaceDetail·DirectionsView가 본다).
     suppressFocusRef.current = true;
+    markUnwinding(true);
     try {
       for (let i = 0; i < 3; i++) {
         const v = currentViewState();
         if (v === "home") return;
+        const listener = new AbortController();
         const popped = new Promise<void>((resolve) =>
-          window.addEventListener("popstate", () => resolve(), { once: true }),
+          window.addEventListener("popstate", () => resolve(), { once: true, signal: listener.signal }),
         );
         if (v === "directions") backFromDirections();
         else if (v === "nearby") backFromNearbyHub();
         else backToResults();
         await Promise.race([popped, sleep(1_000, op.signal)]);
+        listener.abort(); // race에서 진 리스너를 남기지 않는다.
         // popstate 뒤 React 커밋(ref 미러 갱신)을 한 틱 기다린다.
         await sleep(0, op.signal);
         if (!op.isLive()) throw new Error("aborted");
@@ -950,6 +972,7 @@ export function PlaceSearch({
       if (currentViewState() !== "home") throw new Error("viewChanging");
     } finally {
       suppressFocusRef.current = false;
+      markUnwinding(false);
     }
   }
 
@@ -979,8 +1002,8 @@ export function PlaceSearch({
       runSearch: runSearchForTool,
       snapshotFor: (attempt) => frozenRef.current.get(attempt) ?? null,
       openAddress: async (address, op) => {
-        const ok = await resolveAndOpenAddress(address, op.signal, requestOpenPlace);
-        return ok ? { ok: true } : { ok: false, reason: "geocodeFailed" };
+        const r = await resolveAndOpenAddress(address, op.signal, requestOpenPlace);
+        return r === "opened" ? { ok: true } : { ok: false, reason: r };
       },
     };
   });
@@ -1008,6 +1031,7 @@ export function PlaceSearch({
       toPlace: (place) => requestOpenPlace(place),
       isModalOpen: () =>
         manualPickerOpenRef.current ||
+        anyModalOpen() ||
         generalChatRef.current !== null ||
         (bridgeOf<PlaceBridge>("place")?.bridge.read().chatOpen ?? false),
     };

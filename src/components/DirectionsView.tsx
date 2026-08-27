@@ -52,7 +52,7 @@ import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
 import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
 import { quickExitText } from "@/lib/quick-exit-text";
-import { publishView, withdrawView } from "@/lib/webmcp/view-registry";
+import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type {
   DirectionsBridge,
   DirectionsSnapshot,
@@ -540,6 +540,8 @@ export function DirectionsView({
 
   // 뷰 진입 시 제목으로 포커스(장소 상세와 동형), 새 화면 맥락 통지.
   useEffect(() => {
+    // 도구 언와인드 중의 재마운트(앞으로가기 복원 등)는 착지하지 않는다(spec §6.1).
+    if (isUnwinding()) return;
     titleRef.current?.focus();
   }, []);
 
