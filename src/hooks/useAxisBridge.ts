@@ -1,7 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect } from "react";
-import type { AxisKey, AxisSource } from "@/lib/webmcp/tools/context";
+import { createContext, useContext, useEffect, useMemo, useRef } from "react";
+import type { AxisKey, AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
 
 export interface PlaceBridgeRegistrar {
   attach(axis: AxisKey, source: AxisSource): () => void;
@@ -29,4 +29,26 @@ export function useAxisBridge(axis: AxisKey, source: AxisSource | null, revision
   useEffect(() => {
     registrar?.notifyCommit();
   }, [registrar, revision]);
+}
+
+/**
+ * 역 섹션 공용: 컴포넌트 `status`를 커밋 뒤 ref로 읽는 소스를 만들어 붙인다. `toSnapshot`은 status →
+ * 축 스냅샷 투영(줄 조립은 place-lines), `load`는 화면 버튼과 같은 핸들러. 둘 다 정체성이 안정해야
+ * 매 렌더 재attach가 없다(`useCallback`).
+ */
+export function useAxisSource<S extends { kind: string; gen: number }>(
+  axis: AxisKey,
+  status: S,
+  toSnapshot: (status: S) => AxisSnapshot,
+  load: AxisSource["load"],
+): void {
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+  const source = useMemo<AxisSource>(
+    () => ({ read: () => toSnapshot(statusRef.current), load }),
+    [toSnapshot, load],
+  );
+  useAxisBridge(axis, source, status);
 }

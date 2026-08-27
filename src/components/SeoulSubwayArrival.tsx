@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SubwayStationArrivals } from "@/lib/types";
 import { arrivalItems } from "@/lib/place-lines/station-arrivals";
-import { useAxisBridge } from "@/hooks/useAxisBridge";
-import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+import { useAxisSource } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 import { SubwayArrivalList } from "./SubwayArrivalList";
 
 /** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). `previous`는 refresh 중 유지하는 직전 데이터. */
@@ -41,22 +41,17 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
-  // 도구층 소스가 커밋 뒤 상태를 읽는 통로(렌더 중 ref 접근 금지 — effect에서 갱신).
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
   /** 조회(실시간이라 항상 no-store). `source:"tool"`은 헤딩 착지 생략, `force` 실패는 직전 데이터 + refreshError. */
   const load = useCallback(
     async (force: boolean, source: "user" | "tool") => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
       const gen = ++genRef.current;
-      const previous =
-        force && statusRef.current.kind === "done"
-          ? { data: statusRef.current.data, at: statusRef.current.at }
-          : undefined;
-      setStatus({ kind: "loading", gen, previous });
+      setStatus((prev) => ({
+        kind: "loading",
+        gen,
+        previous: force && prev.kind === "done" ? { data: prev.data, at: prev.at } : undefined,
+      }));
       try {
         const res = await fetch(
           `/api/station/subway-arrival?station=${encodeURIComponent(stationName)}`,
@@ -76,30 +71,31 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
         setStatus({ kind: "done", gen, data, at });
         if (source === "user") requestAnimationFrame(() => headingRef.current?.focus());
       } catch {
-        setStatus(previous ? { kind: "done", gen, ...previous, refreshError: true } : { kind: "error", gen });
+        setStatus((prev) =>
+          prev.kind === "loading" && prev.gen === gen && prev.previous
+            ? { kind: "done", gen, ...prev.previous, refreshError: true }
+            : { kind: "error", gen },
+        );
       } finally {
         inFlightRef.current = false;
       }
     },
     [stationName],
   );
-  const axisSource = useMemo<AxisSource>(
-    () => ({
-      read: (): AxisSnapshot => {
-        const s = statusRef.current;
-        const done = s.kind === "done" ? s : s.kind === "loading" ? s.previous : undefined;
-        return {
-          status: s.kind,
-          gen: s.gen,
-          data: done ? { items: arrivalItems(done.data.arrivals, t) } : undefined,
-          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
-        };
-      },
-      load: (force, source) => void load(force, source),
-    }),
-    [load, t],
+  const toSnapshot = useCallback(
+    (s: Status): AxisSnapshot => {
+      const done = s.kind === "done" ? s : s.kind === "loading" ? s.previous : undefined;
+      return {
+        status: s.kind,
+        gen: s.gen,
+        data: done ? { items: arrivalItems(done.data.arrivals, t) } : undefined,
+        refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+      };
+    },
+    [t],
   );
-  useAxisBridge("arrivals", axisSource, status);
+  const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
+  useAxisSource("arrivals", status, toSnapshot, loadForTool);
 
   const busy = status.kind === "loading";
   const live =

@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
 import { stationMetaLines } from "@/lib/place-lines/station-meta";
-import { useAxisBridge } from "@/hooks/useAxisBridge";
-import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+import { useAxisSource } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
 /**
  * 화면은 `done`만 그리고 나머지는 조용히 숨기지만(보조 정보), 도구층엔 3-state를 구조로 준다.
@@ -30,18 +30,16 @@ type Status =
 export function StationMeta({ stationName }: { stationName: string }) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
-  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 0 });
+  // ⚠ 초기 loading의 세대는 마운트 로드의 세대(1)와 같아야 한다 — 도구가 게시 직후(첫 커밋 전)
+  // 읽은 세대에 결박해 기다리므로, 다르면 마운트 로드가 곧 "사용자가 건드렸다"(superseded)로 오판된다.
+  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 1 });
   const headingId = useId();
   const genRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
-  const statusRef = useRef(status);
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
 
   /**
-   * 조회. 결과를 항상 갱신(미커버는 empty) — PlaceDetail은 역 전환 시 리마운트되지 않으므로 이전
-   * 역 메타 잔상을 새 응답으로 덮는다. 앞선 요청은 abort한다(늦은 응답이 새 세대를 덮지 않게).
+   * 조회. 결과를 항상 갱신(미커버는 empty). 앞선 요청은 abort한다(늦은 응답이 새 세대를 덮지 않게).
+   * 역 전환은 `PlaceDetail`의 `key` 리마운트가 정본이라 같은 인스턴스의 `stationName` 변경은 사실상 없다.
    * `force`는 캐시 무시 재조회(직전 데이터 유지, 실패 시 refreshError). 마운트 축이라 착지가 없어
    * `source`는 계약 일치용이다.
    */
@@ -51,8 +49,11 @@ export function StationMeta({ stationName }: { stationName: string }) {
       const controller = new AbortController();
       controllerRef.current = controller;
       const gen = ++genRef.current;
-      const previous = force && statusRef.current.kind === "done" ? statusRef.current.meta : undefined;
-      setStatus({ kind: "loading", gen, previous });
+      setStatus((prev) => ({
+        kind: "loading",
+        gen,
+        previous: force && prev.kind === "done" ? prev.meta : undefined,
+      }));
       try {
         const res = await fetch(
           `/api/station/meta?station=${encodeURIComponent(stationName)}`,
@@ -67,7 +68,11 @@ export function StationMeta({ stationName }: { stationName: string }) {
       } catch {
         // 보조 정보 — 실패는 조용히 숨긴다(취소는 무시).
         if (controller.signal.aborted) return;
-        setStatus(previous ? { kind: "done", gen, meta: previous, refreshError: true } : { kind: "error", gen });
+        setStatus((prev) =>
+          prev.kind === "loading" && prev.gen === gen && prev.previous
+            ? { kind: "done", gen, meta: prev.previous, refreshError: true }
+            : { kind: "error", gen },
+        );
       }
     },
     [stationName],
@@ -76,23 +81,20 @@ export function StationMeta({ stationName }: { stationName: string }) {
     void load(false, "user");
     return () => controllerRef.current?.abort();
   }, [load]);
-  const axisSource = useMemo<AxisSource>(
-    () => ({
-      read: (): AxisSnapshot => {
-        const s = statusRef.current;
-        const meta = s.kind === "done" ? s.meta : s.kind === "loading" ? s.previous : undefined;
-        return {
-          status: s.kind,
-          gen: s.gen,
-          data: meta ? { lines: stationMetaLines(meta, t) } : undefined,
-          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
-        };
-      },
-      load: (force, source) => void load(force, source),
-    }),
-    [load, t],
+  const toSnapshot = useCallback(
+    (s: Status): AxisSnapshot => {
+      const meta = s.kind === "done" ? s.meta : s.kind === "loading" ? s.previous : undefined;
+      return {
+        status: s.kind,
+        gen: s.gen,
+        data: meta ? { lines: stationMetaLines(meta, t) } : undefined,
+        refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+      };
+    },
+    [t],
   );
-  useAxisBridge("basic", axisSource, status);
+  const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
+  useAxisSource("basic", status, toSnapshot, loadForTool);
 
   if (status.kind !== "done") return null;
   const meta = status.meta;

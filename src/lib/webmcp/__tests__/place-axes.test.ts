@@ -127,6 +127,16 @@ describe("place-axes(spec §5.4)", () => {
     expect(await p).toEqual({ kind: "aborted" });
   });
 
+  it("arm은 teardown을 되돌린다(StrictMode 이중 effect)", async () => {
+    const r = createAxisRegistry();
+    r.teardown();
+    r.arm();
+    const f = fakeSource({ status: "done", gen: 1 });
+    r.registrar.attach("basic", f.source);
+    const e = r.makeEntry("basic", { present: true, kind: "mount", absentOutcome: "notApplicable" });
+    expect(await e.ensureLoaded(op())).toMatchObject({ kind: "settled" });
+  });
+
   it("detach는 같은 소스일 때만 지운다(리마운트 옛 cleanup 가드)", () => {
     const r = createAxisRegistry();
     const a = fakeSource(), b = fakeSource({ status: "done", gen: 1 });
