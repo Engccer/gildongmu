@@ -258,24 +258,15 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **실호출로 확인한 것과 문서로만 아는 것을 섞지 않는다.** "데이터 실재" 축은 **문서가 아니라 실호출로 판정한다** — 실시간 혼잡도는 이 축의 오판으로 보류돼 있다가 실호출 한 번에 사유가 사라지고 그날 출시됐다.
 
-### W2. WebMCP 도구층 2차 (신규 2026-08-28) — ⚠ 같은 날 저녁 재판정으로 **범위·등록 구조가 바뀜, spec·plan 재작성 대기**
+### W2. WebMCP 도구층 2차 — 이동 계획 보조 상시 집합 7개 (신규 2026-08-28, spec 확정 2026-08-29)
 
-**2026-08-28 저녁 재판정(위원장, 사용 사례 관점)**: 앱의 사용 사례는 ①이동 계획 보조(컴퓨터 앞) ②주변 확인(실외 정위) ③실시간 안내 셋이고, WebMCP 효용은 ①에 집중된다 — ②③은 모바일 에이전트 브라우저가 전제인데 ChatGPT 사이트 도구는 데스크톱 앱 내장 브라우저만 지원하고(learn.chatgpt.com), Chrome Android 지원 근거도 없다. 또 화면별 배타 등록(고유 도구 31개)은 조사 사례(브랜드 1~10개, 전 페이지 상시 등록) 중 가장 실험적이고 "에이전트가 화면 전환마다 도구를 다시 읽는다"는 미검증 기대에 기댄다. 결정 3건:
-1. **W2 범위를 사례 ①로 한정** — 검색 → 장소·역 정보 → 길찾기 브리핑 한 줄기. "내 주변" 허브 도구층은 모바일 에이전트 브라우저가 생기는 날의 후속(아래 §5 후보로 이관).
-2. **등록은 앱 전체 상시 집합 한 벌**(10개 안팎, 루트 등록, 도구가 필요한 화면으로 스스로 이동 — 쇼피파이 `navigate` 동형). W1의 홈↔길찾기 전환 등록도 이 방식으로 바꾼다.
-3. **장소·역 정보는 `get_place_info` 하나**(주소·전화·무장애 + 역이면 첫차막차·시설·실시간 도착을 축 단위로, 못 받은 축은 그 축만 표시).
+spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전판 `2026-08-28-webmcp-wave2-design.md`(화면별 배타 4집합·31개)는 같은 날 저녁 재판정으로 폐기(머리에 표기). 조사 `docs/research/RESEARCH-2026-08-28-webmcp-tool-scope.md` 유효.
 
-**아직 안 물은 결정(새 세션 첫머리에 순차 단문 질문)**: ④축 A(`focus_item`·`read_current_view`)를 상시 집합에 남길지 ⑤W1 안내 세션 도구 3개(`start/stop/guidance_status`)를 남길지(사례 ③이라 원칙상 제외 후보이나 데스크톱 시연 가치) ⑥`get_walk_infrastructure_nearby`(현재 위치 의존)를 뺄지 ⑦AI 채팅 제외·데이터 반환형 우선·`describe_app` 유지는 오전 판정 그대로 둘지 확인.
+**판정(위원장)**: ①범위는 사용 사례 ①(이동 계획 보조, 컴퓨터 앞) — 검색 → 장소·역 정보 → 길찾기 브리핑. 사례 ②(실외 정위)·③(실시간 안내)는 모바일 에이전트 브라우저가 생기는 날의 후속(아래 §5 후보) ②등록은 앱 루트 상시 집합 한 벌, 도구가 필요한 화면으로 스스로 이동(진입 `open_*` 도구 없음) ③장소·역 정보는 `get_place_info` 하나(축 단위, 단일 축 `offset` 페이징) ④`read_current_view`만 유지, `focus_item` 삭제 ⑤안내 세션 도구 3개 삭제 ⑥`get_walk_infrastructure_nearby` 삭제 ⑦AI 채팅 제외·데이터 반환형 우선·`describe_app` 유지. 최종 7개: `describe_app`·`search_places`·`get_place_info`·`plan_directions`·`get_transit_route_detail`·`get_route_steps`·`read_current_view`.
 
-**재작성 대상**: spec `2026-08-28-webmcp-wave2-design.md`(오전판 — 화면별 배타 4집합. 기반 설계인 manifest·`ref` 토큰·예산 버킷·구조 상태·codex 리뷰 반영분은 그대로 재사용), plan `2026-08-28-webmcp-wave2.md`(20태스크 — 기반 T1~T6·W1-R T18·스캔 T19는 재사용, 허브·상세 배선 태스크는 폐기). 조사 기록 `RESEARCH-2026-08-28-webmcp-tool-scope.md`는 유효. ⚠ doc-audit 신호 `NearbyPanelKey`·`placeRef`는 이 spec·plan의 설계 심볼이라 코드에 아직 없다 — 재작성 뒤 실제 심볼로 바뀌면 고친다.
-
-
-spec `docs/superpowers/specs/2026-08-28-webmcp-wave2-design.md`. 조사 `docs/research/RESEARCH-2026-08-28-webmcp-tool-scope.md`로 W1 §1 "탭이 없으면 못 하는 것만" 원칙을 폐기했다(ChatGPT 내장 브라우저는 서버 MCP를 못 쓰므로 그 근거가 같은 세션에서 성립하지 않는다). 위원장 판정: 주 모델은 **데이터 반환형**, 축 A 유지, 섹션별 도구 10개, AI 채팅은 도구로 내지 않음, 범위는 세 화면 전부. 화면별 배타 등록 홈 7·길찾기 10·내 주변 14·장소 상세 11.
-
-- **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-28 codex adversarial 14건(high 10) 전부 반영(spec §9) → ②구현(plan `docs/superpowers/plans/2026-08-28-webmcp-wave2.md`) → ③실기기 §8 ⑧~⑪ + ⑦ 재관측 → ④G4 제출물에 반영.
-- **후속(이 마일스톤 밖)**: 서버 측 upstream 일일 예산·single-flight(리뷰 #14 — 도구 유발 fetch는 세션 버킷으로 막지만 사용자 UI 반복 조회도 같은 노출이라 서버 층이 정답).
-- **새 기반**: 허브 패널 안정 키(`useId` → `NearbyPanelKey`), 섹션 브릿지·정착 대기자, `placeRef` 세대 표, 줄 조립 `src/lib/nearby-lines/` 추출(컴포넌트·도구 공용).
-- **불변식**: 같은 이름의 도구는 어느 화면에서든 같은 입력·출력 계약(앵커만 화면이 정한다). `get_walk_infrastructure_nearby` W1 판 SHAPE를 공통 모양으로 맞춘다.
+- **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-29 codex adversarial 17건(high 11) — 반영 12·부분 3·기각 2, spec §9 → ②구현(plan `docs/superpowers/plans/2026-08-29-webmcp-wave2.md`, 별도 세션) → ③실기기 §8 ⑧~⑪(배포 차단 판정) + ⑦ 재관측 → ④G4 제출물에 반영.
+- **새 불변식**: 도구층 단일 실행 잠금 + `op` 토큰(30초 상한, 만료 완료 무시) · 뷰 레지스트리 정체성 결박 대기(`placeId`·`publishedAfter`) · 문서 nonce가 든 불투명 `ref`와 정착 시 동결 스냅샷 해석 · 사용자 우선(도구는 `superseded`) · 모달 중 `modalOpen` 거절 · 호출당 착지 최대 1(`source:"tool"` 억제).
+- **후속(이 마일스톤 밖)**: 서버 측 upstream 일일 예산·single-flight(오전판 리뷰 #14) · 순수 화면 이동 단일 도구(목적 화면 enum, 2026-08-29 리뷰 #17 기각 — 사례 ①이 데이터 반환형이라 범위 밖, 실기기 ⑦에서 "화면만 열어 줘" 요청이 실제로 나오면 재판정) · "내 주변" 허브 도구층·보행 인프라·안내 세션 도구(사례 ②③, 모바일 에이전트 브라우저 전제).
 
 ### W1-R. 길찾기 뷰 도구층의 데이터 반환형 재작업 (신규 2026-08-28, W2 원칙 개정의 파급)
 
@@ -285,7 +276,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 |---|---|---|---|
 | 1 | **도보 최단 대안이 도구에 없다.** 화면은 `alternatives=1`로 추천·최단 2행 disclosure를 그리는데(`DirectionsView` walk outcome `{result, shortest}`), `ToolPlan.walk`·`plan_directions`·`get_route_steps`는 추천 하나만 싣는다 | 코드 대조 2026-08-28(`shortest` 참조 0건 in `src/lib/webmcp`) | `plan_directions.walk.shortest?: {distanceMeters, durationSeconds, stepCount}` + `get_route_steps`에 `variant?: "recommended"\|"shortest"`(기본 recommended). 화면과 같은 배열(`walkStepItems`)이어야 하고 착지 ID는 `walk:shortest:step:{n}` 추가 |
 | 2 | `read_current_view` 설명문 "Call this before planning"이 **불필요한 왕복을 유도**한다. 데이터 반환형에선 `plan_directions`를 바로 부르는 것이 정답이고, 이 도구는 `stalePlan`·`focus_item` 전 확인용 | 설명문 대조 | "Call this when a tool returned stalePlan, or before focus_item"으로 축소(Chrome "positive language") |
-| 3 | `get_walk_infrastructure_nearby`가 허브 판과 **출력 모양이 갈릴 위험** | W2 spec §3.5 | W2 공통 SHAPE로 통일(W2 태스크) |
+| 3 | ~~`get_walk_infrastructure_nearby` 출력 모양~~ | — | 2026-08-29 판정 ⑥으로 도구 자체가 삭제돼 소멸 |
 
 점검해서 **문제없음**으로 닫은 것: `focus_item` 설명("Use only when the user asked to be taken to something")은 축 A 보조 위상과 정합 · 대중교통은 추천 전문 + 대안 한 줄 + 상세 도구로 데이터 반환 완결 · 자동차는 요약 + `get_route_steps(car)` · 계단 회피는 `avoidStairs` 인자 · 경유지는 `via` · 3초 쿨다운·세 수단 병렬 비용은 W1 판정 유지.
 
