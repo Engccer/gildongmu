@@ -229,6 +229,7 @@ describe("W2 사유 코드·좌표 스캔", () => {
     expect(assertNoCoordinates('{"line":"37.5231,127.1234"}')).not.toBeNull();
     expect(assertNoCoordinates('{"p":[37.5231,127.1234]}')).not.toBeNull();
     expect(assertNoCoordinates('{"url":"https://a.b/place/37.52,127.12"}')).not.toBeNull();
+    expect(assertNoCoordinates('{"pos":{"lat":37.5,"lng":127.1}}')).toBe("coordinate key");
     expect(assertNoCoordinates('{"line":"5호선 상행 첫차 05:30, 막차 00:12","n":[1,2]}')).toBeNull();
   });
 });

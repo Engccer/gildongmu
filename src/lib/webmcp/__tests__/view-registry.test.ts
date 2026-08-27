@@ -39,6 +39,15 @@ describe("view-registry(spec §5.2)", () => {
     const q = waitForView("directions", { publishedAfter: seqBefore }, o, 50);
     publishView("directions", { tag: "D" });
     await expect(q).resolves.toEqual({ tag: "D" });
+    // 순번 축: 이미 게시된 브릿지는 publishedAfter 뒤가 아니면 일치가 아니다 — 재게시만 푼다.
+    let settled = false;
+    const r = waitForView<{ tag: string }>("directions", { publishedAfter: currentSeq() }, o, 50).then(
+      (v) => { settled = true; return v; },
+    );
+    await new Promise((res) => setTimeout(res, 5));
+    expect(settled).toBe(false);
+    publishView("directions", { tag: "D2" });
+    await expect(r).resolves.toEqual({ tag: "D2" });
   });
 
   it("이미 일치 게시면 즉시, 상한 초과는 viewChanging", async () => {
@@ -49,6 +58,13 @@ describe("view-registry(spec §5.2)", () => {
     releaseOp(o1);
     __resetViewRegistryForTest();
     await expect(waitForView("place", { placeId: "x" }, op(), 10)).rejects.toThrow("viewChanging");
+  });
+
+  it("이미 끊긴 op의 waitForView는 즉시 aborted다(리뷰 반영)", async () => {
+    const host = new AbortController();
+    const o = acquireOp("t", host.signal) as Op;
+    host.abort();
+    await expect(waitForView("place", { placeId: "x" }, o, 500)).rejects.toThrow("aborted");
   });
 
   it("markChanging 중엔 currentView가 changing이다", () => {

@@ -36,11 +36,13 @@ export function checkBudget(
   const list = (stamps.get(bucket) ?? []).filter((t) => now - t < HOUR_MS);
   stamps.set(bucket, list);
   const last = list[list.length - 1];
-  if (last !== undefined && now - last < COOLDOWN_MS[bucket]) {
-    return { ok: false, retryAfterMs: COOLDOWN_MS[bucket] - (now - last) };
-  }
-  // 창이 찼으면 가장 오래된 소비가 창 밖으로 나가는 순간까지 기다린다.
-  if (list.length >= PER_HOUR) return { ok: false, retryAfterMs: list[0] + HOUR_MS - now };
+  const cooldownWait =
+    last !== undefined && now - last < COOLDOWN_MS[bucket] ? COOLDOWN_MS[bucket] - (now - last) : 0;
+  // 창이 찼으면 가장 오래된 소비가 창 밖으로 나가는 순간까지 기다린다. 쿨다운과 동시에 걸리면
+  // 큰 쪽이 정직한 값이다(작은 쪽을 주면 에이전트가 2초 뒤 또 cooldown을 받는 왕복이 생긴다).
+  const windowWait = list.length >= PER_HOUR ? list[0] + HOUR_MS - now : 0;
+  const wait = Math.max(cooldownWait, windowWait);
+  if (wait > 0) return { ok: false, retryAfterMs: wait };
   return { ok: true };
 }
 
