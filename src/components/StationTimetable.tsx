@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import type { StationTimetable as Timetable, TimetableTrain } from "@/lib/types";
+import type { StationTimetable as Timetable } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
-import { joinText } from "@/lib/format";
+import { timetableHeaderLine, timetableLineItems } from "@/lib/place-lines/station-timetable";
 
 type Status =
   | { kind: "hidden" } // 미커버(null)·로딩 전 — 섹션 미노출
@@ -54,13 +54,6 @@ export function StationTimetable({ stationName }: { stationName: string }) {
   if (status.kind === "hidden") return null;
 
   const isEn = prefersEnglish(locale);
-  // 계약 밖 값(미래 추가·서버 선행)은 가장 덜 단정적인 "확인 불가"로(iOS coverageText 동형).
-  const coverageKey = (c: string) => (c === "unavailable" || c === "noTrains" ? c : "unknown");
-  const train = (v: TimetableTrain) => {
-    const time = v.nextDay ? `${t("nextDay")} ${v.time}` : v.time;
-    const terminus = isEn && v.terminusEn ? v.terminusEn : v.terminus;
-    return terminus ? `${time} ${t("toTerminus", { terminus })}` : time;
-  };
 
   return (
     // 자동 등장 보조 섹션 — region 랜드마크가 유일한 발견 경로(CLAUDE.md 규칙).
@@ -72,31 +65,13 @@ export function StationTimetable({ stationName }: { stationName: string }) {
         <p className="mt-1 text-sm">{t("error")}</p>
       ) : (
         <>
-          <p className="mt-1 text-sm">
-            {joinText(
-              t(`dailyType.${status.timetable.dailyType}`),
-              status.timetable.partial && t("partial"),
-            )}
-          </p>
+          <p className="mt-1 text-sm">{timetableHeaderLine(status.timetable, t)}</p>
           <div className="mt-1 text-sm leading-relaxed">
-            {status.timetable.lines.map((line) =>
-              // 매칭된 노선은 전부 온다(A19). ok만 방향 행이고, 나머지는 왜 시간표가
-              // 없는지를 노선명과 함께 한 줄로 — "확인 불가"와 "탑승 편성 없음"과
-              // "조회 실패"는 다른 문장이어야 SR 사용자가 가를 수 있다.
-              line.coverage === "ok" ? (
-                line.directions.map((d) => (
-                  <p key={`${line.lineName}-${d.direction}`}>
-                    {joinText(
-                      `${line.lineName} ${t(`direction.${d.direction}`)}`,
-                      `${t("first")} ${train(d.first)}`,
-                      `${t("last")} ${train(d.last)}`,
-                    )}
-                  </p>
-                ))
-              ) : (
-                <p key={line.lineName}>{t(`coverage.${coverageKey(line.coverage)}`, { line: line.lineName })}</p>
-              ),
-            )}
+            {/* 문장 정본은 place-lines(도구층과 공용). 매칭된 노선은 전부 온다(A19) —
+                ok만 방향 행이고 나머지는 사유 문장 한 줄. */}
+            {timetableLineItems(status.timetable, t, isEn).map((item) => (
+              <p key={`${item.line}-${item.direction ?? item.coverage}`}>{item.text}</p>
+            ))}
           </div>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </>

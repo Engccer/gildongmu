@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { StationFacilities as Facilities } from "@/lib/types";
+import { korailFacilityLines } from "@/lib/place-lines/station-facilities";
 
 type Status =
   | { kind: "idle" }
@@ -111,22 +112,11 @@ export function StationFacilities({ stationName }: { stationName: string }) {
           >
             {tActions("close")}
           </button>
+          {/* 문장 정본은 place-lines(도구층과 공용) */}
           <ul className="mt-1 text-sm leading-relaxed">
-            <li>
-              {t("accessibleToilet")}:{" "}
-              {status.facilities.accessibleToilet ? t("yes") : t("no")}
-            </li>
-            <li>
-              {t("accessibleSlope")}:{" "}
-              {status.facilities.accessibleSlope ? t("yes") : t("no")}
-            </li>
-            <li>
-              {t("wheelchairLifts")}:{" "}
-              {status.facilities.wheelchairLifts ?? t("unknown")}
-            </li>
-            <li>
-              {t("elevators")}: {status.facilities.elevators ?? t("unknown")}
-            </li>
+            {korailFacilityLines(status.facilities, t).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
           </ul>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>
         </div>

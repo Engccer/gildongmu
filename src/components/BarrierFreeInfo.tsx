@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail } from "@/lib/types";
+import { barrierFreeLines } from "@/lib/place-lines/barrier-free";
 
 /**
  * 장소 상세 무장애 편의시설(자동 등장 region) — StationMeta 동형.
@@ -70,9 +71,9 @@ export function BarrierFreeInfo({
         {t("heading")}
       </h3>
       <div className="mt-1 space-y-1 text-sm leading-relaxed">
-        {detail.facilities.map((f) => (
-          // 라벨+값 단일 텍스트 — span 분절 제거(SR 한 객체 낭독)
-          <p key={f.key} lang="ko">{`${f.label} ${f.value}`}</p>
+        {/* 라벨+값 단일 텍스트(span 분절 제거) — 문장 정본은 place-lines(도구층과 공용) */}
+        {barrierFreeLines(detail).map((line, i) => (
+          <p key={detail.facilities[i].key} lang="ko">{line.text}</p>
         ))}
       </div>
       <p className="mt-2 text-xs opacity-70">{t("source")}</p>
