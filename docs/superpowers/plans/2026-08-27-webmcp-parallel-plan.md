@@ -1,6 +1,6 @@
 # 2026-08-27 WebMCP 웨이브 — 병렬 세션 계획
 
-> **G3 구현까지 종결·통합 2026-08-27**(`fd7b44c` 구현 → `907cf67` 리뷰 3건 반영 → `881a07c` 분배, `feat/webmcp`·worktree 삭제). 남은 것은 게이트 4(실기기 6항, `docs/FIELD-TEST.md` §8)·게이트 5(G4 제출물)·privacy 문안 TextEdit 왕복 — 정본은 `docs/BACKLOG.md` W1. 아래는 웨이브 시점 기록이다.
+> **G3 구현까지 종결·통합 2026-08-27**(`fd7b44c` 구현 → `907cf67` 리뷰 3건 반영 → `881a07c` 분배, `feat/webmcp`·worktree 삭제). 남은 것은 게이트 4(실기기 6항, `docs/FIELD-TEST.md` §8)·게이트 5(G4 제출물) — 정본은 `docs/BACKLOG.md` W1. 아래는 웨이브 시점 기록이다.
 > **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 웨이브 종료 시점 `origin/main` = `e414709`(G3 통합 후 `60f9040`).
 > · G1 `tmap-key-swap` DONE (dodo `ab1e15a5`·`ba9f5ff8`, Vercel 프로덕션 교체 07:52 KST + 실호출 확인)
 > · G2 `spec-webmcp` DONE (`e0b4258`→판정 반영 `4240abb`, worktree·브랜치 정리 완료)
