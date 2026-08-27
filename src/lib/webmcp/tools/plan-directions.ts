@@ -59,7 +59,7 @@ function normalizeName(text: string): string {
   return text
     .normalize("NFC")
     .toLowerCase()
-    .replace(/[\s··,.'"()\-_/]/g, "");
+    .replace(/[\s·,.'"()\-_/]/g, "");
 }
 
 function notFound(field: Field, extra?: Record<string, unknown>): ToolFailure {
@@ -157,7 +157,7 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
       // 만료·미지 토큰은 재검색으로 떨어진다(아래) — 조용히 다른 것을 고르지 않는다.
     }
     const { candidates, allFailed } = await searchCandidates(field, text, lang, signal, now);
-    if (allFailed) return { ok: false, failure: notFound(field, { detail: "searchFailed", retryable: true }) };
+    if (allFailed) return { ok: false, failure: failure("searchFailed", { field }) };
     if (candidates.length === 0) return { ok: false, failure: notFound(field) };
     // 자동 채택은 후보 1건 또는 정규화 이름 정확 일치 1건뿐(§3.4 — "후쿠오카"→대구 가게 재발 방지).
     const wanted = normalizeName(text);
@@ -165,7 +165,6 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
     const auto = candidates.length === 1 ? candidates[0] : exact.length === 1 ? exact[0] : null;
     if (auto) return adopt(auto, signal);
     for (const c of candidates) candidateStore.set(c.candidateId, c);
-    for (const [key, c] of candidateStore) if (c.expiresAt <= now) candidateStore.delete(key);
     return {
       ok: false,
       failure: failure("needsDisambiguation", {
@@ -213,6 +212,8 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     execute: async (input, context) => {
       const now = Date.now();
+      // 만료 토큰 정리는 매 호출(자동 채택만 타는 세션에서도 Map이 쌓이지 않게 — 품질 리뷰).
+      for (const [key, c] of candidateStore) if (c.expiresAt <= now) candidateStore.delete(key);
       const wait = cooldown.remaining(now);
       if (wait > 0) return finish(failure("cooldown", { retryAfterMs: wait }), SHAPE);
       cooldown.mark(now);
@@ -248,6 +249,9 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
       switch (outcome.kind) {
         case "busy":
           return finish(failure("busy"), SHAPE);
+        case "sessionActive":
+          // 에이전트 한 마디로 걷는 중인 안내를 끊지 않는다 — 먼저 stop_guidance를 부르게 한다.
+          return finish(failure("sessionActive"), SHAPE);
         case "superseded":
           return finish(failure("superseded"), SHAPE);
         case "aborted":

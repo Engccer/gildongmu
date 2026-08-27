@@ -42,7 +42,12 @@ vi.mock("../DistanceBeacon", () => ({
               return;
             }
             claimGuideSession(stop);
-            publishGuideSnapshot(stop, { status: "tracking", mode: kind, now: "100m 직진" });
+            if (kind === "car") {
+              // 시작 실패 경로(권한 거부)를 흉내 낸다 — 패널은 열린 채 남는다(실제 컴포넌트와 같다).
+              publishGuideSnapshot(stop, { status: "failed", failure: "geoDenied", mode: kind }, { retain: true });
+            } else {
+              publishGuideSnapshot(stop, { status: "tracking", mode: kind, now: "100m 직진" });
+            }
             setOpen(true);
           }}
         >
@@ -473,7 +478,7 @@ describe("안내 도구(축 B)", () => {
     expect(restarted).toMatchObject({ ok: true, status: "tracking" });
   });
 
-  it("새 조회는 활성 세션을 끝내고 남은 done 스냅샷도 지운다", async () => {
+  it("안내 중 plan_directions는 세션을 끊지 않고 sessionActive, 중지 뒤 새 조회는 남은 스냅샷도 지운다", async () => {
     stubFetch();
     const ctx = installModelContext();
     renderView();
@@ -482,7 +487,39 @@ describe("안내 도구(축 B)", () => {
     await ctx.call("start_guidance", { planId, mode: "walk" });
     expect(readGuideSnapshot().status).toBe("tracking");
     advanceClock(4_000);
-    await ctx.call("plan_directions", { to: "강남역" });
+    expect(await ctx.call("plan_directions", { to: "강남역" })).toMatchObject({ ok: false, reason: "sessionActive", userActionRequired: true });
+    expect(readGuideSnapshot().status).toBe("tracking");
+    await ctx.call("stop_guidance");
+    advanceClock(4_000);
+    expect((await ctx.call("plan_directions", { to: "강남역" })).ok).toBe(true);
     expect(readGuideSnapshot()).toEqual({ status: "idle" });
+  });
+
+  it("시작이 권한 거부로 실패하면 열린 패널을 닫고 시작 버튼에 포커스를 둔 채 confirmationRequired", async () => {
+    stubFetch();
+    const ctx = installModelContext();
+    renderView();
+    await ready(ctx);
+    const planId = (await ctx.call("plan_directions", { to: "강남역" })).planId as string;
+    const out = await ctx.call("start_guidance", { planId, mode: "car" });
+    expect(out).toMatchObject({ ok: false, reason: "confirmationRequired", detail: "geoDenied", userActionRequired: true });
+    const trigger = document.querySelector<HTMLElement>('[data-guide-trigger="car"]');
+    expect(document.activeElement).toBe(trigger);
+    await waitFor(() => expect(trigger?.getAttribute("aria-expanded")).toBe("false"));
+  });
+
+  it("도구 조회는 결과 안에 있던 커서를 조회 버튼으로 먼저 옮긴다", async () => {
+    stubFetch();
+    const ctx = installModelContext();
+    renderView();
+    await ready(ctx);
+    const planId = (await ctx.call("plan_directions", { to: "강남역" })).planId as string;
+    await ctx.call("focus_item", { targetId: "walk:step:1", planId });
+    await waitFor(() => expect(document.activeElement?.textContent).toBe("첫째 안내"));
+    advanceClock(4_000);
+    const pending = ctx.call("plan_directions", { to: "강남역" });
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "submit" })));
+    const out = await pending;
+    expect(out, JSON.stringify(out)).toMatchObject({ ok: true });
   });
 });

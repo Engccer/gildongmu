@@ -1637,7 +1637,7 @@ export function useRouteGuide(
         // 시작 실패는 `failed`로 남긴다(도구 `start_guidance`의 `confirmationRequired` 판정 재료).
         publishGuideSnapshot(
           sessionStopRef.current,
-          { status: "failed", mode: kindFixed, degraded: tBeacon("denied") },
+          { status: "failed", failure: "geoDenied", mode: kindFixed, degraded: tBeacon("denied") },
           { retain: true },
         );
         announce(tBeacon("denied"));

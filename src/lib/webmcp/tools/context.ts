@@ -99,6 +99,8 @@ export interface PlanRequest {
 export type QueryOutcome =
   | { kind: "settled"; planId: string }
   | { kind: "busy" }
+  /** 안내 세션이 살아 있다 — 새 조회는 그 세션을 끊으므로 도구 경로에서는 거절한다. */
+  | { kind: "sessionActive" }
   | { kind: "superseded" }
   | { kind: "aborted" }
   | { kind: "geoError"; reason: "denied" | "unavailable" | "timeout" }
@@ -114,6 +116,8 @@ export interface DirectionsBridge {
    * 호출자가 기다린다). 펼칠 것이 없으면 아무것도 하지 않는다.
    */
   ensureVisible: (target: ParsedTarget) => void;
+  /** 대중교통 경로 disclosure를 펼친다(`start_guidance` 전용 — 트리거가 펼침 안에 있다). */
+  expandRoute: (routeRef: string) => void;
 }
 
 export interface HomeBridge {

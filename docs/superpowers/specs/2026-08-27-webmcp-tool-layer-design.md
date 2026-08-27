@@ -90,6 +90,8 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
   | `cooldown` | 최소 간격 미달(`retryAfterMs` 동반) | true | false |
   | `aborted` | 뷰 언마운트·실행 signal 취소 | false | false |
   | `unsupported` | 그 기능이 이 환경에 없다(`outsideKorea` 등 세부는 `detail`) | false | false |
+  | `searchFailed` | 후보 검색 두 라우트가 모두 실패(후보 0건과 다른 상황, 구현 리뷰로 추가) | true | false |
+  | `upstreamError` | 자체 API 5xx·네트워크 실패(구현 리뷰로 추가) | true | false |
 
 - **실행 signal**: `execute(input, { signal })`의 `signal`을 모든 fetch·`awaitGeolocation`·phase 대기에 전파한다. 뷰 언마운트 cleanup은 등록 abort와 **별도로** 진행 중 대기자를 `aborted`로 끝낸다(리뷰 #28). ⚠ 호스트가 `signal`을 주지 않는 구현도 있으므로 도구 헬퍼가 자체 `AbortController`를 하나 더 만들어 둘을 합친다(`AbortSignal.any`).
 - **출력 직렬화는 도구별 allowlist**(§4.5). 표에 없는 키는 나가지 않는다.
@@ -157,6 +159,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 - **호출은 완전 교체다**(리뷰 #24): 생략된 `from`은 현재 위치, `via`는 없음, `avoidStairs`는 false로 **한 번에** 설정한다. 화면에 남아 있던 옛 경유지·출발지가 섞여 들어가지 않는다.
 - **후보 해석**(리뷰 #11): 각 문자열은 화면의 후보 검색(`/api/places` + `/api/address/search`, `DirectionsEndpointSearch`가 쓰는 것)으로 푼다. 자동 채택은 **후보가 1건**이거나 **정규화 이름이 질의와 정확히 일치하는 후보가 정확히 1건**일 때만. 그 외(후보 0건 → `toNotFound`, 여럿이고 정확 일치 없음 → `needsDisambiguation`)는 **조회를 실행하지 않고** `{ ok:false, reason:"needsDisambiguation", field:"to", candidates:[ { candidateId, label, address } ≤5 ] }`를 돌려준다. `candidateId`는 그 호출의 후보 목록에 대한 단기 토큰(후보 검색 결과를 `execute` 클로저의 `Map`에 60초 보관)이고 다음 호출에 `toCandidateId`로 되돌린다. 채택한 후보 이름은 출력 `resolved`에 되돌린다("후쿠오카"→대구 가게 실측 재발 방지는 자동 채택 조건이 맡고, `resolved`는 사후 확인용).
 - **조회 실행은 트랜잭션**(리뷰 #5): 화면의 정본 핸들러를 `runQuery(request: { from, to, via, avoidStairs })` 형태로 정의해 **완전한 요청 스냅샷**을 받게 하고, 필드 상태 갱신과 조회 시작을 같은 세대(`genRef` 증가)에서 커밋한다. 도구는 그 함수를 부른다. **새 fetch 경로를 만들지 않는다** — 화면이 그리는 `results`와 도구가 돌려주는 결과는 같은 객체다.
+- **안내 세션이 살아 있으면 `sessionActive`다**(구현 a11y 리뷰 HIGH, 2026-08-27): 화면의 새 조회는 활성 세션을 끝내는데, 에이전트 한 마디로 걷는 중인 안내가 끊기면 안 된다 — 먼저 `stop_guidance`를 부르게 한다. 같은 이유로 **조회 시작 시 결과 영역 안에 있던 키보드 포커스는 조회 버튼으로 선점 이동**한다(`focus_item`이 착지시킨 스텝·heading이 그 서브트리째 사라지므로, 헌장 §5). §6.1의 "완료 후 무이동"은 완료 시점 얘기다.
 - **경합 정책은 reject-while-busy 하나다**(리뷰 #4): 조회 진행 중(`inFlight`) 도구 호출은 `busy`. 도구 호출이 대기 중일 때 **사용자가** 화면에서 새 조회를 시작하면 대기자는 `superseded`(사용자를 막지 않는다). 대기자는 호출 시점 세대에 결박되고 `phase` 전이가 그 세대일 때만 resolve된다(`useEffect`가 `{gen, resolve}` 슬롯을 본다).
 - `planId`: `settled` 커밋마다 새로 발급되는 불투명 토큰(`gen` 기반, `p{gen}`). 재조회·계단 회피 토글 재조회도 새 `planId`다(결과 객체가 바뀌므로).
 - 출력(1,500자 안):
@@ -196,8 +199,8 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 
 - description: `Start live turn-by-turn guidance for the current plan: walking, driving, or one transit route. Same as the user pressing the guidance start button; uses the browser's location and speaks through the screen reader. Requires planId, and routeKey for transit. Returns immediately; if the browser needs a user gesture, focus is placed on the start button and confirmationRequired is returned.`
 - inputSchema: `{ planId: string, mode: "walk"|"car"|"transit", routeKey?: string }` — **transit이면 `routeKey` 필수**(생략에 의한 추천 자동 선택 금지, 리뷰 #12).
-- 동작: `stalePlan`·`noResult`·`notStartable` 검사 → 세션 소유자(`guide-session-store`, §5.2)에 **원자적 `claim("starting")`** — 이미 `starting`·`tracking`이면 `sessionActive`(기존 세션을 대신 끊지 않는다) → 화면의 같은 버튼 핸들러를 부른다(`DistanceBeacon` 트리거·해당 `routeKey`의 `TransitGuidePanel` 트리거) → 세션이 `tracking`으로 전이하거나 실패하면 그 결과를 돌려준다(최대 20초 대기, 그 뒤엔 `starting` 상태 그대로 `{ ok:true, status:"starting" }`).
-- **사용자 제스처 폴백**(리뷰 #10): 도구 실행이 브라우저의 사용자 활성화로 인정되는지는 미검증이다(위치 권한 프롬프트·오디오 컨텍스트 재개가 걸릴 수 있다). 구현은 시작 핸들러 안의 활성화 의존 단계가 거부되면(권한 프롬프트 차단·`AudioContext` `suspended` 지속) 세션을 `failed`로 되돌리고 **시작 버튼에 포커스를 둔 뒤** `confirmationRequired`를 돌려준다 — 사용자가 그 버튼을 직접 누르면 된다(축 A의 방식으로 해결하는 폴백). 이 경로가 실제로 필요한지는 §8.4 실기기 게이트가 정한다.
+- 동작: `stalePlan`·`noResult`·`notStartable` 검사 → **스냅샷이 `starting`·`tracking`이면 `sessionActive`**(기존 세션을 대신 끊지 않는다. 원자성은 검사와 트리거 클릭 사이에 await가 없는 한 JS 턴으로 보장한다 — 동시에 온 둘째 호출은 첫째가 만든 `starting`을 본다. 사용자 버튼은 종전대로 선점형이다, 구현 판정 2026-08-27) → 화면의 같은 버튼 핸들러를 부른다(`DistanceBeacon` 트리거·해당 `routeKey`의 `TransitGuidePanel` 트리거) → 세션이 `tracking`으로 전이하거나 실패하면 그 결과를 돌려준다(최대 20초 대기, 그 뒤엔 `starting` 상태 그대로 `{ ok:true, status:"starting" }`).
+- **사용자 제스처 폴백**(리뷰 #10): 도구 실행이 브라우저의 사용자 활성화로 인정되는지는 미검증이다(위치 권한 프롬프트·오디오 컨텍스트 재개가 걸릴 수 있다). 구현은 시작 핸들러 안의 활성화 의존 단계가 거부되면(권한 프롬프트 차단·`AudioContext` `suspended` 지속) 세션을 `failed`로 되돌리고 **열린 채 남은 패널을 닫은 뒤 시작 버튼에 포커스를 두고** `confirmationRequired`를 돌려준다(스냅샷 `failure`가 `geoDenied`일 때만 — 사용자 제스처로 풀릴 수 있는 실패. 그 외 `failed`는 `notStartable`+`detail`, 구현 spec 리뷰 MAJOR 2) — 사용자가 그 버튼을 직접 누르면 된다(축 A의 방식으로 해결하는 폴백). 이 경로가 실제로 필요한지는 §8.4 실기기 게이트가 정한다.
 - **별도 사용자 확인 토큰은 두지 않는다**(리뷰 #9 부분 기각, §9). `readOnlyHint:false`가 호스트에 주는 신호이고, 호스트 측 확인 UI의 유무는 §8.4 실기기에서 본다. 위험 완화는 ①`needsDisambiguation`으로 오해석 목적지 조회 자체를 막고 ②`sessionActive`로 진행 중 세션을 못 끊게 하며 ③`stop_guidance`는 화면 중지 버튼과 같은 통지·포커스 복귀를 남긴다는 세 겹이다. **위원장 판정(2026-08-27)**: 페이지 단계 확인을 두지 않는다 — 확인 없이 바로 실행. 위험 완화는 위 세 겹으로 충분하고, 호스트 확인 UI 유무는 §8.4 ④로 실측만 한다.
 - 출력: `{ ok:true, status:"tracking"|"starting", mode, routeKey?, targets:[ { id:"guidance:panel", label } ] }`.
 - 포커스·통지: 화면 버튼이 하는 것을 그대로(도보 `onStart={announceGuideStart}`, 패널 트리거). 도구층이 더하거나 빼지 않는다(§6.1).
@@ -206,7 +209,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 
 - description: `Read the live guidance session: status, what to do now, what comes next, distance or stops remaining, off-route or signal-lost flags. Always available; returns status idle when no session is running. Read-only; it never speaks.`
 - inputSchema: 빈 객체.
-- 출력: `{ ok:true, status:"idle"|"starting"|"tracking"|"done"|"failed", mode?, routeKey?, now?, next?, remainingMeters?, etaSeconds?, remainingStops?, offRoute?, signal?, degraded?, lastMessage? }`
+- 출력: `{ ok:true, status:"idle"|"starting"|"tracking"|"done"|"failed", sessionId?, failure?, mode?, routeKey?, now?, next?, remainingMeters?, etaSeconds?, remainingStops?, offRoute?, signal?, degraded?, lastMessage?, dataAgeSeconds? }`
   - 도보·자동차 필드는 `RouteGuideApi`가 화면에 이미 내는 문자열(`liveRows.top`/`currentText` → `now`, `liveRows.next` → `next`, `progress` → `remainingMeters`·`etaSeconds`, `offRoute`, `degradeText` → `degraded`)이다. **리듀서 내부(`GuideState.phase`·`stepIndex`)는 노출하지 않는다** — 화면이 말하지 않는 것을 도구가 말하면 낭독과 어긋난다.
   - 대중교통은 `TransitGuideState`의 표시 필드(`phase`→`now`에 문장화된 화면 상태줄, `legIndex`·`lineName`, `remaining`→`remainingStops`, `lastMessage`, `signal`, `dataAgeSeconds`).
   - `done`·`failed`는 **종료 화면·실패 표시가 화면에 남아 있는 동안** 유지된다(리뷰 #8 — 자동 종료 직후 상태를 읽을 수 있어야 한다). 화면이 그것을 지울 때(사용자 닫기·새 조회) `idle`로.
@@ -222,7 +225,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 
 - description: `Pedestrian infrastructure within about 150 m of the user's current location: audible traffic signals, crosswalks and tactile paving, each with direction and distance. The location never leaves the browser except to this site's own API. Registry data (Seoul, OpenStreetMap) that may differ from the street. Not shown on this screen.`
 - inputSchema: 빈 객체(좌표 인자 금지 — 받으면 에이전트가 임의 좌표를 "현재 위치"라 부르는 경로가 생긴다).
-- 동작: `awaitGeolocation({ force:true, signal })` → `/api/walk/nearby?lat&lng`(자체 API). 응답의 discriminated union(`ok`/`unsupported: outsideKorea`/`error`)을 그대로 `ok`·`unsupported`·`error`로. 출력에 좌표 없음(방위·거리·종류·이름만). 쿨다운 10초.
+- 동작: `awaitGeolocation({ force:true })`(측위 스토어는 signal을 받지 않는다 — abort는 측위 뒤 검사) → `/api/walk/nearby?lat&lng`(자체 API). 응답의 discriminated union(`ok`/`unsupported: outsideKorea`/`error`)을 그대로 `ok`·`unsupported`·`error`로(클라이언트 사전 커버리지 판정 없음 — API가 정본). 5xx·네트워크 실패는 `upstreamError`. 출력에 좌표 없음(방위·거리·종류·이름만). 쿨다운 10초.
 - **이 도구는 §1 원칙 ①의 명시적 예외다**: 길찾기 뷰에 대응 섹션이 없어 사용자가 화면에서 확인하거나 `focus_item`으로 찾을 수 없다(리뷰 #15). 그래도 두는 이유는 브라우저 위치 없이는 답할 수 없는 조회라 서버 MCP가 대체하지 못하고, 출력이 짧아(실측 496자) 전부 에이전트 발화로 전달되며, 허브 뷰의 보행 인프라 패널이 같은 API의 화면판이라 사용자가 확인하려면 그 화면으로 가면 되기 때문이다. description 끝 문장이 그 사실을 에이전트에게 알린다. 다음 웨이브에서 허브 뷰 도구층이 생기면 그쪽으로 옮기고 여기서 뺀다.
 
 ## 4. 출력 분할 계약
@@ -287,7 +290,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 3. **페이지의 음성 채널은 하나이고, 도구는 거기에 쓰지 않는다.** 조회 완료·안내 통지는 화면 live region이 종전대로 낸다. 에이전트 호스트가 도구 출력을 어떻게 발화하는지는 페이지가 통제할 수 없다. 두 발화가 겹칠 가능성(리뷰 #18)은 **실기기 게이트 항목**이다(§8.4): 겹침이 실제로 중요한 통지를 삼키면 `runQuery(request, { source:"webmcp" })`로 **완료 통지만** 억제하는 선택지를 연다(오류·안전 통지는 억제 대상이 아니다). 실측 전에는 페이지 통지를 유지한다 — 페이지가 신뢰 채널이고, 호스트 발화가 VO에 도달하지 않는 환경에서 페이지 통지가 유일한 신호다.
 4. **착지 뒤 낭독은 요소 자신이다.** `focus_item`은 통지하지 않는다. 착지 대상은 "한 줄 = 한 접근성 객체"를 지키는 요소(스텝 `<li>`·수단 heading·경로 disclosure 버튼)라 착지 낭독이 곧 그 항목 전체다. 새 착지 대상(`guidance:panel`)도 같은 규칙.
 5. **탭 순서 불변.** `tabIndex={-1}`은 프로그래밍 포커스만.
-6. **안내 패널 착지는 live region이 아니라 그 앞의 정적 헤딩**이다(live region에 포커스를 두면 매 갱신이 착지 낭독을 끊는다).
+6. **안내 패널 착지는 live region이 아니라 세션 내내 존재하는 정적 요소**다(live region에 포커스를 두면 매 갱신이 착지 낭독을 끊는다): 대중교통은 상태 문장, 도보·자동차 패널은 헤딩이 없고 상시 표시 문장은 이탈·값 소실 전이에서 사라지므로 **트리거 버튼(추적 중 "안내 중지")**이 받는다(구현 a11y 리뷰 MEDIUM — 조건부 렌더 요소에 착지하면 포커스가 body로 떨어진다). 상태 문장은 `guidance_status`가 준다.
 7. **`keyboardFocus`는 VO 커서가 아니다.** 게이트 0은 "DOM 포커스 → VO 추종"만 증명했다. VO가 탐색으로 옮긴 커서 위치를 `activeElement`가 반영한다는 증거는 없고, 페이지는 그것을 알 방법이 없다. 그래서 `read_current_view`는 `keyboardFocus`라 부르고 SR 커서라고 주장하지 않으며, `focus_item`은 `label`을 돌려줘 포커스 추종이 안 되는 호스트에서도 최소한의 대안(호스트가 라벨을 읽어 줌)이 남게 한다.
 
 ## 7. 개인정보·쿼터
@@ -335,7 +338,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 - `output.test.ts`: 3,706자 실측 fixture → 항목 단위 절단·1,500 이하·문자열 무손상(모든 문자열이 원본의 부분이 아니라 **동일**)·`truncated`/카운트·좌표 패턴 부재·`itemTooLarge` 실패.
 - `targets.test.ts`: ID 생성·파싱 왕복, 허용 문자, `routeRef` 표.
 - `useWebMcpTools.test.tsx`(jsdom): 등록 수 = 도구 수, 상태 변경 후 재등록 0, 언마운트 abort, 런타임 부재 시 등록·경고 0, 실행 signal 합성.
-- `DirectionsView.test.tsx` 확장(결정론적 deferred Promise로 경합 재현, 리뷰 #36): `focus_item` 착지(`waitFor` — [[jsdom-sync-focus-assertion-flake]])·`editingInProgress`·접힌 경로 펼침 후 착지 / `plan_directions` 중 `busy` / 도구 대기 중 사용자 조회 → `superseded` / 재조회 뒤 옛 `planId` → `stalePlan` / `needsDisambiguation` 왕복 / 언마운트 중 대기자 `aborted` / 세 수단 outcome 3-state 보존.
+- `DirectionsWebMcp.test.tsx`(결정론적 deferred Promise로 경합 재현, 리뷰 #36): `focus_item` 착지(`waitFor` — [[jsdom-sync-focus-assertion-flake]])·`editingInProgress`·접힌 경로 펼침 후 착지 / `plan_directions` 중 `busy` / 재조회 뒤 옛 `planId` → `stalePlan` / `needsDisambiguation` 왕복 / 언마운트 중 대기자 `aborted` / 세 수단 outcome 3-state 보존 / 안내 중 `plan_directions` → `sessionActive` / 시작 실패 → `confirmationRequired` 폴백 / 조회 시작 시 결과 안 커서의 선점 이동. "도구 대기 중 사용자 조회 → `superseded`"는 뺐다 — 대기자는 `inFlight` 중에만 있고 사용자 조회·계단 토글이 그 가드에서 조기 반환하므로 UI로는 구조적으로 도달 불가(`supersedeWaiter`는 방어 코드로만 남긴다).
 - `guide-session-store.test.ts`: `starting` claim 원자성(동시 두 claim 중 하나만), 스냅샷 게시·`done` 유지·`null` 소거, `stop`이 `starting`을 취소.
 - **실기기 게이트(리뷰로 대체 불가, ChatGPT 내장 브라우저 + VoiceOver)**: ①`focus_item` 착지 낭독(§6.4) ②`start_guidance`가 사용자 제스처 없이 위치 권한·오디오까지 통과하는가 — 실패하면 `confirmationRequired` 폴백이 동작하는가(§3.7) ③호스트 발화와 페이지 완료 통지의 겹침이 중요한 통지를 삼키는가(§6.3) ④호스트가 `readOnlyHint:false` 도구에 확인 UI를 띄우는가(§3.7 위원장 판정의 재료). 대본은 `docs/FIELD-TEST.md`에 코디네이터가 추가.
 
@@ -360,5 +363,7 @@ Chrome 모범 사례 네 줄이 선택 기준이다: "한 도구는 한 기능",
 - **#13의 "안내 세션 중 기본 거절"**: 기각. 안내 중 스텝으로 커서를 옮기는 것이 축 A의 핵심 시나리오다. 편집 중 필드 보호만 채택.
 
 **리뷰가 잡지 못한 것(자체 발견)**: 1차 초안 §0·§2·§5의 도구 수 불일치(10/8+2/11)는 리뷰 #29가 함께 잡았다. 그 외 자체 수정: 게이트 1 종결로 Tmap 쿼터 전제 갱신(코디네이터 전파 2026-08-27 07:52).
+
+**구현 리뷰(2026-08-27, 커밋 `feat(webmcp)` 뒤 서브에이전트 3건 — spec 준수·코드 품질·접근성, 세션 이력 없이 spec+diff만)**: 반영 — a11y HIGH(도구 조회가 안내 세션을 끊고 결과 안 커서를 떨어뜨림 → `sessionActive` + 조회 버튼 선점 이동) / spec MAJOR 1(claim 원자성 → 검사·클릭 동일 턴) / spec MAJOR 2(`failed` 사유 분기 → 스냅샷 `failure`, `geoDenied`만 `confirmationRequired`) / a11y MEDIUM(시작 실패 폴백 전 패널 닫기, 패널 착지를 트리거 버튼으로 고정) / MINOR(사전 커버리지 판정 제거·사유 2종 등록·`focus_item`의 `transitRoute` 미펼침·focus 직전 편집 재검사·privacy 가운뎃점) / 구현 중 실측 함정 2건(종단 resolve는 커밋 뒤 effect, 그 effect는 커밋 상태 일치 가드 필요 — 동시 렌더의 옛 커밋에서 먼저 돈다). 실기기 판정으로 넘긴 것: `tabIndex=-1` `<li>`의 낭독·마커·`:focus-visible`, leg 안 `lang` span 분절(§8.4).
 
 **2차 리뷰**: 돌리지 않는다. 반영이 구조 변경 2건(정적 등록·세션 소유자)과 계약 명시이고, 두 변경 모두 codex가 제시한 방향 그대로라 같은 리뷰어의 재검토는 자기 처방 확인이 된다. 잔여 리스크는 구현 단계 spec-compliance 리뷰와 §8.4 게이트가 덮는다.
