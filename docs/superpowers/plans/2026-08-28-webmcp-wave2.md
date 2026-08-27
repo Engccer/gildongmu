@@ -1,5 +1,7 @@
 # WebMCP 도구층 W2 구현 플랜
 
+> **폐기(2026-08-29)**: 같은 날 저녁 위원장 재판정(사례 ① 한정·상시 집합 한 벌·`get_place_info` 하나)으로 이 플랜(화면별 배타 4집합, 20태스크)은 폐기됐다. 후속 정본은 spec `../specs/2026-08-29-webmcp-wave2-design.md`와 plan `2026-08-29-webmcp-wave2.md`. 본문은 기록으로 불변.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 홈 검색·"내 주변" 허브·장소 상세 세 화면에 WebMCP 도구층을 얹고(홈 7·허브 14·상세 11, 길찾기는 `describe_app` +1), W1 도구 3건을 데이터 반환형 기준으로 재작업한다.
