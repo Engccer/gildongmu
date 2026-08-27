@@ -17,7 +17,11 @@ export type GeoState =
   | { status: "idle" }
   | { status: "locating" }
   | { status: "ready"; coords: Coord }
-  | { status: "denied" } // 권한 거부·위치불가·타임아웃을 합친 "좌표 못 받음"
+  /**
+   * 권한 거부·위치불가·타임아웃을 합친 "좌표 못 받음". `reason`은 WebMCP 도구층의
+   * 사유 세분용(`geoDenied`·`geoUnavailable`·`geoTimeout`) — 화면 소비자는 읽지 않는다.
+   */
+  | { status: "denied"; reason?: "denied" | "unavailable" | "timeout" }
   | { status: "unsupported" };
 
 // 서버 스냅샷 + 초기값으로 쓰는 stable 참조(useSyncExternalStore 동일성 요구).
@@ -185,14 +189,17 @@ export function requestLocation(opts?: LocateOptions): void {
         },
       });
     },
-    () => {
+    (err) => {
       // 거부·위치불가·타임아웃 모두 denied로 합친다(소비 컴포넌트의 geoerror denied
-      // 단일 문구와 정합 — 기존 동작 보존).
+      // 단일 문구와 정합 — 기존 동작 보존). 사유는 부가 필드로만 남긴다.
       inflight = false;
+      // 표준 코드(1 거부·2 위치불가·3 타임아웃) — 상수 프로퍼티 대신 숫자로 본다(일부 구현·
+      // 테스트 더블은 `PERMISSION_DENIED` 상수를 싣지 않는다).
+      const reason = err.code === 1 ? "denied" : err.code === 3 ? "timeout" : "unavailable";
       // 조용한 갱신의 실패는 **직전 좌표를 유지**한다(재조회 실패가 데이터 포기는
       // 아니다 — "내 주변" 새로고침의 복원 계약과 같은 방향). 실패 사실은 판정
       // 결과(`undecidable` 라벨)가 전달하므로 여기서 화면을 비울 이유가 없다.
-      setState(silent ? previous : { status: "denied" });
+      setState(silent ? previous : { status: "denied", reason });
     },
     refetch ? PRECISE_OPTS : FAST_OPTS,
   );

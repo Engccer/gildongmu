@@ -61,7 +61,8 @@ describe("geolocation 공유 스토어", () => {
 
   it("권한 거부·위치불가는 denied로 정착한다", async () => {
     stubGeo((_ok, err) => err({ code: 1 }));
-    expect(await awaitGeolocation()).toEqual({ status: "denied" });
+    // `reason`은 WebMCP 도구층의 사유 세분용 부가 필드다(화면 소비자는 읽지 않는다).
+    expect(await awaitGeolocation()).toEqual({ status: "denied", reason: "denied" });
   });
 
   it("geolocation 미지원이면 unsupported", async () => {
@@ -170,7 +171,7 @@ describe("조용한 갱신 (silent)", () => {
   it("아직 좌표가 없으면 silent여도 평소대로 실패를 말한다", async () => {
     // 숨길 상태가 없다 — 여기서 조용하면 "확인 중"에 영영 머문다.
     stubGeo((_ok, err) => err({ code: 1 }));
-    expect(await awaitGeolocation({ silent: true })).toEqual({ status: "denied" });
+    expect(await awaitGeolocation({ silent: true })).toEqual({ status: "denied", reason: "denied" });
   });
 });
 

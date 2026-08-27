@@ -3,6 +3,9 @@
 import { useTranslations } from "next-intl";
 import { formatDistance } from "@/lib/format";
 import type { WalkRouteBriefing as Briefing } from "@/lib/types";
+import { walkStepItems } from "@/lib/route-step-items";
+import { FOCUS_TARGET_ATTR, targetId } from "@/lib/webmcp/targets";
+
 
 /**
  * 도보 경로 결과 렌더 전용(폼·fetch 없음), CarRouteResult/TransitRouteResult와
@@ -21,9 +24,12 @@ export function WalkRouteResult({
   waypointLabel,
   includeSummary = true,
   omitNoticeStep = false,
+  focusTargetPrefix,
 }: {
   briefing: Briefing;
   t: ReturnType<typeof useTranslations<"route.pedestrian">>;
+  /** WebMCP 착지 대상 `walk:step:{n}`을 항목에 붙인다(추천 경로 목록에만). */
+  focusTargetPrefix?: "walk";
   /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
   waypointLabel?: string | null;
   /** disclosure 펼침 본문처럼 라벨이 이미 요약이면 false(인접 중복 금지). iOS `WalkRouteRows` 미러. */
@@ -40,15 +46,7 @@ export function WalkRouteResult({
   // 조립해 같은 화면의 자동차 브리핑("3km 600m")과 표기가 갈렸다.
   const distance = formatDistance(briefing.distanceMeters);
   const minutes = Math.round(briefing.durationSeconds / 60);
-  const dropNotice =
-    omitNoticeStep &&
-    briefing.stepFreeNotice !== undefined &&
-    briefing.steps[0]?.description === briefing.stepFreeNotice;
-  const steps = dropNotice ? briefing.steps.slice(1) : briefing.steps;
-  const waypointIndex =
-    briefing.waypoint === undefined
-      ? undefined
-      : briefing.waypoint.stepIndex - (dropNotice ? 1 : 0);
+  const { items, waypointIndex } = walkStepItems(briefing, omitNoticeStep);
 
   return (
     <>
@@ -56,9 +54,10 @@ export function WalkRouteResult({
         <p className="mt-1 text-sm">{t("summary", { distance, minutes })}</p>
       )}
       <StepList
-        items={steps.map((s) => s.description)}
+        items={items}
         waypointIndex={waypointIndex}
         waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
+        focusTargetPrefix={focusTargetPrefix}
       />
     </>
   );
@@ -73,12 +72,22 @@ export function StepList({
   items,
   waypointIndex,
   waypointText,
+  focusTargetPrefix,
 }: {
   items: string[];
   waypointIndex?: number;
   waypointText: string | null;
+  /**
+   * WebMCP `focus_item` 착지(`{prefix}:step:{n}`, n은 화면 번호). 비인터랙티브 `<li>`라
+   * `tabIndex={-1}`(프로그래밍 포커스만 — Tab 순서 불변, spec §6.5). 미지정이면 속성 없음.
+   */
+  focusTargetPrefix?: "walk" | "car";
 }) {
   const cls = "mt-2 list-decimal pl-6 text-sm leading-relaxed";
+  const targetProps = (n: number) =>
+    focusTargetPrefix
+      ? { [FOCUS_TARGET_ATTR]: targetId.step(focusTargetPrefix, n), tabIndex: -1 }
+      : {};
   // 0도 유효하다: "첫 스텝 앞에서 경유지 도착". `omitNoticeStep`이 서버 +1을 되돌리면
   // 0이 나올 수 있고, 그때 >0 가드로 떨구면 경유지 문장이 오류 없이 사라진다(리뷰 검출).
   // 앞 목록이 비면 빈 <ol>을 그리지 않고 문장부터 낸다.
@@ -90,7 +99,9 @@ export function StepList({
     return (
       <ol className={cls}>
         {items.map((text, i) => (
-          <li key={`${i}-${text}`}>{text}</li>
+          <li key={`${i}-${text}`} {...targetProps(i + 1)}>
+            {text}
+          </li>
         ))}
       </ol>
     );
@@ -100,14 +111,18 @@ export function StepList({
       {split > 0 && (
         <ol className={cls}>
           {items.slice(0, split).map((text, i) => (
-            <li key={`${i}-${text}`}>{text}</li>
+            <li key={`${i}-${text}`} {...targetProps(i + 1)}>
+              {text}
+            </li>
           ))}
         </ol>
       )}
       <p className="mt-2 text-sm font-medium">{waypointText}</p>
       <ol className={cls} start={split + 1}>
         {items.slice(split).map((text, i) => (
-          <li key={`${split + i}-${text}`}>{text}</li>
+          <li key={`${split + i}-${text}`} {...targetProps(split + i + 1)}>
+            {text}
+          </li>
         ))}
       </ol>
     </>

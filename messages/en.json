@@ -602,6 +602,7 @@
     "search": "Search terms are sent to search providers such as Kakao and Naver, and to Perplexity web search only when there are no place or address results.",
     "dictation": "Dictation in the iOS app is processed on your device, so audio never leaves it. Dictation on the web sends audio to Deepgram for transcription and does not store it afterwards.",
     "activity": "In the iOS app, the step count shown when you arrive with walking guidance and the body weight you enter in Settings are used only on your device; they are never transmitted or stored.",
+    "agent": "If you enable a browser agent (WebMCP) and use Gildongmu's directions tools, the tool output (origin, destination and via-point names, route summaries and guidance sentences, guidance status, nearby pedestrian infrastructure) is sent to that agent's provider. Coordinates are never sent, but this information can still reveal your location and movement, so the feature only works when you turn it on in the agent.",
     "analytics": "Web traffic is measured anonymously with Vercel Analytics. It uses no cookies and stores no information that identifies you.",
     "contactHeading": "Contact",
     "contact": "For questions about the service or this policy, email engccer@gmail.com."

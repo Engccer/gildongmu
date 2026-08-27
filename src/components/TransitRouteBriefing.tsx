@@ -9,6 +9,7 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { formatDistance, joinText } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { quickExitText } from "@/lib/quick-exit-text";
+import { FOCUS_TARGET_ATTR, targetId } from "@/lib/webmcp/targets";
 
 type Status =
   | { kind: "idle" }
@@ -253,14 +254,21 @@ export function TransitRouteResult({
   locale,
   dest,
   includeSummary = true,
+  focusTargetRouteRef,
 }: {
   route: TransitRoute;
   t: ReturnType<typeof useTranslations<"route.transit">>;
   locale: string;
   dest: string;
   includeSummary?: boolean;
+  /** WebMCP 착지 대상 `transit:leg:{ref}:{n}`(길찾기 뷰에서만 — 내부 순번 토큰, 경로 키 아님). */
+  focusTargetRouteRef?: string;
 }) {
   let boardSeen = 0;
+  const legProps = (n: number) =>
+    focusTargetRouteRef !== undefined
+      ? { [FOCUS_TARGET_ATTR]: targetId.transitLeg(focusTargetRouteRef, n), tabIndex: -1 }
+      : {};
   return (
     <>
       {includeSummary && (
@@ -293,7 +301,7 @@ export function TransitRouteResult({
                 ? "legWalkToDest"
                 : "legWalkToDestNoDistance";
             return (
-              <li key={i}>
+              <li key={i} {...legProps(i + 1)}>
                 {t(key, {
                   minutes: leg.minutes,
                   ...(name ? { name } : {}),
@@ -306,7 +314,7 @@ export function TransitRouteResult({
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
           const quickExit = quickExitText(t, leg.toName ?? "", leg.quickExit);
           return (
-            <li key={i}>
+            <li key={i} {...legProps(i + 1)}>
               {t.rich(messageKey, {
                 // 버스 번호는 그대로면 "370"이라 무엇인지 알 수 없다(지하철은
                 // "수도권 5호선"이라 수단이 드러난다). ⚠ 이 자리는 번역문이라

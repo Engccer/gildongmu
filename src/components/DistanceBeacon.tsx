@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
 import { SurroundingsScene } from "@/components/SurroundingsScene";
+import { FOCUS_TARGET_ATTR, GUIDE_TRIGGER_ATTR, targetId } from "@/lib/webmcp/targets";
 
 /** 화면 켜기 힌트 영구 해제(피드백 라운드1 13번, iOS UserDefaults 미러). */
 const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
@@ -41,6 +42,7 @@ export function DistanceBeacon({
   focusTriggerOnMount = false,
   triggerLabel,
   onStart,
+  triggerTarget,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -69,6 +71,11 @@ export function DistanceBeacon({
    * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
    */
   onStart?: () => void;
+  /**
+   * WebMCP `start_guidance`가 이 트리거를 찾는 값(`data-guide-trigger`, 길찾기 뷰에서만).
+   * 세션 중엔 패널의 첫 상시 표시 문장에 `guidance:panel` 착지도 붙는다(spec §3.2·§6.6).
+   */
+  triggerTarget?: "walk" | "car";
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -112,6 +119,29 @@ export function DistanceBeacon({
 
   const tracking = guide.status === "tracking";
 
+  // WebMCP 착지 `guidance:panel`(spec §6.6 — live region이 아니라 정적 문장): 세션 중 렌더되는
+  // 첫 상시 표시 문장이 받는다. 정적 문장이 하나도 없으면(간략 안내 직후) 트리거 버튼이 받는다.
+  // 어느 행이 받을지는 렌더 전에 한 번 정한다(렌더 중 변수 재대입 금지 — React 컴파일러 규칙).
+  const detail = tracking && guide.mode === "detail";
+  const anchorRow: "degrade" | "progress" | "top" | "next" | "current" | "trigger" | null =
+    !(triggerTarget && tracking)
+      ? null
+      : guide.degradeText !== null
+        ? "degrade"
+        : detail && !guide.offRoute && guide.progress !== null
+          ? "progress"
+          : detail && guide.liveRows.top !== null
+            ? "top"
+            : detail && guide.liveRows.next !== null
+              ? "next"
+              : detail && !guide.offRoute && guide.currentText !== null
+                ? "current"
+                : "trigger";
+  const anchor = (row: typeof anchorRow) =>
+    anchorRow === row ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel(), tabIndex: -1 } : {};
+  const triggerAnchorProps =
+    anchorRow === "trigger" ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel() } : {};
+
   const togglePanel = () => {
     if (open) {
       guide.stop();
@@ -135,6 +165,8 @@ export function DistanceBeacon({
         type="button"
         onClick={togglePanel}
         aria-expanded={open}
+        {...(triggerTarget ? { [GUIDE_TRIGGER_ATTR]: triggerTarget } : {})}
+        {...triggerAnchorProps}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
       >
         {/* startOnOpen 트리거는 시작/중지를 겸하므로 추적 중엔 라벨이 곧 상태 신호다
@@ -148,7 +180,9 @@ export function DistanceBeacon({
               강등 상태에 **모드 이름을 주지 않는다**(이름을 주면 고를 수 있는 모드로 읽힌다).
               시작 통지는 1회뿐이라 세션 도중 들어온 SR 사용자에게는 이 줄이 유일한 신호다. */}
           {tracking && guide.degradeText && (
-            <p className="text-xs text-muted">{guide.degradeText}</p>
+            <p {...anchor("degrade")} className="text-xs text-muted">
+              {guide.degradeText}
+            </p>
           )}
           {!hintDismissed && (
             <>
@@ -223,7 +257,7 @@ export function DistanceBeacon({
               값이라 live region 밖 일반 텍스트로만 둔다(polite에 태우면 통지 스팸).
               이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직). */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.progress && (
-            <p className="mt-2 text-sm">
+            <p {...anchor("progress")} className="mt-2 text-sm">
               {joinText(
                 tGuide("remainingDistance", {
                   distance: formatDistance(guide.progress.remainingMeters),
@@ -241,15 +275,21 @@ export function DistanceBeacon({
               가리지 않는다 — 리듀서가 윗줄(이탈 문장)·아랫줄(비움)을 소유한다(F2).
               빈 값은 요소 제거(빈 텍스트 낭독 금지). */}
           {tracking && guide.mode === "detail" && guide.liveRows.top && (
-            <p className="mt-1 text-sm">{guide.liveRows.top}</p>
+            <p {...anchor("top")} className="mt-1 text-sm">
+              {guide.liveRows.top}
+            </p>
           )}
           {tracking && guide.mode === "detail" && guide.liveRows.next && (
-            <p className="mt-1 text-sm text-muted">{guide.liveRows.next}</p>
+            <p {...anchor("next")} className="mt-1 text-sm text-muted">
+              {guide.liveRows.next}
+            </p>
           )}
           {/* car 세션의 종전 "현재 안내" 행(spec §7 비범위 — walk에선 currentText가
               항상 null이라 이 행은 자동 부재). 이탈 중엔 낡은 투영이라 숨긴다. */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
-            <p className="mt-1 text-sm">{guide.currentText}</p>
+            <p {...anchor("current")} className="mt-1 text-sm">
+              {guide.currentText}
+            </p>
           )}
 
           {/* M1 부근 재구성 — 앵커는 **목적지** 좌표다(실시간 안내는 실좌표를 쓰지만

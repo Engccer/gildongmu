@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { CarRouteBriefing as Briefing } from "@/lib/types";
-import { durationToMinutes, formatDistance, joinText } from "@/lib/format";
+import { durationToMinutes, formatDistance } from "@/lib/format";
 import { StepList } from "./WalkRouteBriefing";
+import { carStepItems } from "@/lib/route-step-items";
 import { dataLocale } from "@/lib/data-locale";
 import { awaitGeolocation } from "@/lib/geolocation";
 import { isInKorea } from "@/lib/coverage";
@@ -168,18 +169,22 @@ export function CarRouteBriefing({
   );
 }
 
+
 /** 경로 1개의 요약 + 턴바이턴 안내 리스트. */
 export function CarRouteResult({
   briefing,
   locale,
   t,
   waypointLabel,
+  focusTargetPrefix,
 }: {
   briefing: Briefing;
   locale: string;
   t: ReturnType<typeof useTranslations<"route.briefing">>;
   /** 경유지 라벨(N4). `briefing.waypoint`와 함께 있을 때만 구획 문장을 그린다. */
   waypointLabel?: string | null;
+  /** WebMCP 착지 대상 `car:step:{n}`(길찾기 뷰에서만). */
+  focusTargetPrefix?: "car";
 }) {
   const tDir = useTranslations("directions");
   return (
@@ -199,18 +204,11 @@ export function CarRouteResult({
           </>
         )}
       </p>
-      {/* 한 줄 = 한 객체: 지점명·안내·거리를 joinText로 단일 텍스트에 합친다
-          (과거 em dash·괄호 분절을 제거 — 쉼표 구분이 SR 낭독 정본). */}
       <StepList
-        items={briefing.guides.map((guide) =>
-          joinText(
-            guide.name,
-            guide.guidance,
-            guide.distanceMeters > 0 && formatDistance(guide.distanceMeters),
-          ),
-        )}
+        items={carStepItems(briefing)}
         waypointIndex={briefing.waypoint?.stepIndex}
         waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
+        focusTargetPrefix={focusTargetPrefix}
       />
       <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
     </>
