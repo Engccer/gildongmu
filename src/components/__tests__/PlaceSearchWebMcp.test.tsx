@@ -120,6 +120,43 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
+describe("PlaceSearch 상시 등록(spec §5.6)", () => {
+  it("마운트에 registerTool 7회, 상세·길찾기 전환 뒤 추가 등록 0, 언마운트에 abort", async () => {
+    const tools = new Map<string, { execute: (i: Record<string, unknown>) => Promise<string> }>();
+    const signals: AbortSignal[] = [];
+    const registerTool = vi.fn(async (tool: { name: string; execute: (i: Record<string, unknown>) => Promise<string> }, opts?: { signal?: AbortSignal }) => {
+      tools.set(tool.name, tool);
+      if (opts?.signal) signals.push(opts.signal);
+    });
+    Object.defineProperty(document, "modelContext", { configurable: true, value: { registerTool } });
+    try {
+      stubFetch({ "/api/places": () => Promise.resolve(okJson({ places: [p1], total: 1 })) });
+      const view = render(<PlaceSearch isMockMode={false} canShowTransit />);
+      await waitFor(() => expect(registerTool).toHaveBeenCalledTimes(7));
+      expect([...tools.keys()].sort()).toEqual(
+        ["describe_app", "search_places", "get_place_info", "plan_directions", "get_transit_route_detail", "get_route_steps", "read_current_view"].sort(),
+      );
+      const o = op();
+      act(() => navigator()!.toPlace(p1, o));
+      await waitFor(() => expect(bridgeOf("place")).not.toBeNull());
+      act(() => navigator()!.toDirections(o));
+      await waitFor(() => expect(bridgeOf("directions")).not.toBeNull());
+      expect(registerTool).toHaveBeenCalledTimes(7);
+      // 연쇄: 등록된 도구 객체로 search_places → 홈으로 언와인드해 검색한다.
+      releaseOp(o);
+      const out = JSON.parse(await tools.get("search_places")!.execute({ query: "강남역" }));
+      expect(out).toMatchObject({ ok: true, view: "home", places: [{ name: "강남역" }] });
+      expect(bridgeOf("directions")).toBeNull();
+      const cv = JSON.parse(await tools.get("read_current_view")!.execute({}));
+      expect(cv).toMatchObject({ ok: true, view: "home", query: "강남역", counts: { places: 1 } });
+      view.unmount();
+      expect(signals.every((s) => s.aborted)).toBe(true);
+    } finally {
+      Reflect.deleteProperty(document, "modelContext");
+    }
+  });
+});
+
 describe("PlaceSearch × HomeBridge(spec §3.2·§5.2)", () => {
   it("홈 브릿지는 항상 게시되고 navigator가 있다", () => {
     stubFetch({});

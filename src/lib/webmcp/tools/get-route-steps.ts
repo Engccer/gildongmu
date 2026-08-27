@@ -1,5 +1,6 @@
 import { finish, withFailure } from "../output";
 import { failure, type WebMcpTool } from "../types";
+import { bridgeOf } from "../view-registry";
 import type { DirectionsBridge } from "./context";
 
 export const SHAPE = withFailure({
@@ -19,7 +20,7 @@ const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 20;
 
 /** #6 `get_route_steps`(spec §3.6, readOnly) — 도보·자동차 스텝 페이지. 문장은 화면과 동일. */
-export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
+export function getRouteStepsTool(): WebMcpTool {
   return {
     name: "get_route_steps",
     description:
@@ -49,6 +50,9 @@ export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
     execute: async (input) => {
       const mode = input.mode === "walk" || input.mode === "car" ? input.mode : null;
       if (!mode) return finish(failure("unsupported", { detail: "mode" }), SHAPE);
+      // 길찾기 뷰가 아니면 이동하지 않는다 — 계획이 없는 뷰로 가 봐야 답이 없다(spec §3.5).
+      const bridge = bridgeOf<DirectionsBridge>("directions")?.bridge;
+      if (!bridge) return finish(failure("noResult", { detail: "noDirectionsView" }), SHAPE);
       const s = bridge.read();
       if (!s.plan) return finish(failure("noResult"), SHAPE);
       if (input.planId !== s.plan.planId) return finish(failure("stalePlan"), SHAPE);
