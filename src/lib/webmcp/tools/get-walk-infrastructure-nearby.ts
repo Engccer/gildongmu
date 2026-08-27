@@ -1,4 +1,3 @@
-import { isInKorea } from "@/lib/coverage";
 import { awaitGeolocation } from "@/lib/geolocation";
 import type { WalkInfrastructure } from "@/lib/walk-infra";
 import { makeCooldown } from "../dom";
@@ -70,18 +69,21 @@ export function getWalkInfrastructureNearbyTool(): WebMcpTool {
           SHAPE,
         );
       }
+      // 커버리지 판정은 자체 API(`unsupported: outsideKorea`)가 한다 — union을 그대로 돌려준다(§3.10).
       const { lat, lng } = geo.coords;
-      if (!isInKorea(lat, lng)) return finish(failure("outOfCoverage"), SHAPE);
       let walk: WalkInfrastructure;
       try {
         const res = await fetch(`/api/walk/nearby?lat=${lat}&lng=${lng}`, { signal });
         if (!res.ok) {
-          return finish(failure("unsupported", { detail: `http${res.status}`, retryable: res.status >= 500 }), SHAPE);
+          return finish(
+            failure(res.status >= 500 ? "upstreamError" : "unsupported", { detail: `http${res.status}` }),
+            SHAPE,
+          );
         }
         walk = ((await res.json()) as { walk: WalkInfrastructure }).walk;
       } catch {
         if (signal?.aborted) return finish(failure("aborted"), SHAPE);
-        return finish(failure("unsupported", { detail: "fetchFailed", retryable: true }), SHAPE);
+        return finish(failure("upstreamError", { detail: "fetchFailed" }), SHAPE);
       }
       const audioSignals =
         walk.audioSignals.status === "ok"

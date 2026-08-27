@@ -66,7 +66,11 @@ export type ToolReason =
   | "editingInProgress"
   | "cooldown"
   | "aborted"
-  | "unsupported";
+  | "unsupported"
+  /** 후보 검색 두 라우트가 모두 실패했다(후보 0건과 다른 상황). */
+  | "searchFailed"
+  /** 자체 API 응답이 5xx·네트워크 실패였다. */
+  | "upstreamError";
 
 /** 사유별 `retryable`·`userActionRequired`(spec §3.0 표의 두 열). */
 const REASON_FLAGS: Record<ToolReason, { retryable: boolean; userActionRequired: boolean }> = {
@@ -93,6 +97,8 @@ const REASON_FLAGS: Record<ToolReason, { retryable: boolean; userActionRequired:
   cooldown: { retryable: true, userActionRequired: false },
   aborted: { retryable: false, userActionRequired: false },
   unsupported: { retryable: false, userActionRequired: false },
+  searchFailed: { retryable: true, userActionRequired: false },
+  upstreamError: { retryable: true, userActionRequired: false },
 };
 
 export interface ToolFailure {

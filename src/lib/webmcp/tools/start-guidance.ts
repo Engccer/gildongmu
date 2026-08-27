@@ -69,18 +69,12 @@ export function startGuidanceTool(bridge: DirectionsBridge): WebMcpTool {
         if (!route.startable) return finish(failure("notStartable"), SHAPE);
         routeKey = route.routeKey;
         triggerValue = guideTriggerValue("transit", route.routeRef);
-        bridge.ensureVisible({ scope: "plan", kind: "transitRoute", routeRef: route.routeRef });
+        bridge.expandRoute(route.routeRef);
       } else {
         const m = s.plan[mode];
         if (!m || !m.startable) return finish(failure("notStartable"), SHAPE);
         triggerValue = guideTriggerValue(mode);
       }
-      // 기존 세션을 대신 끊지 않는다 — 진행 중이면 거절(위험 완화 세 겹 중 하나, §3.7).
-      const before = readGuideSnapshot();
-      if (before.status === "starting" || before.status === "tracking") {
-        return finish(failure("sessionActive"), SHAPE);
-      }
-
       const selector = guideTriggerSelector(triggerValue);
       if (!selector) return finish(failure("notStartable"), SHAPE);
       const stale = () => bridge.read().plan?.planId !== planId;
@@ -92,6 +86,12 @@ export function startGuidanceTool(bridge: DirectionsBridge): WebMcpTool {
       if (trigger === "aborted") return finish(failure("aborted"), SHAPE);
       if (trigger === "superseded") return finish(failure("superseded"), SHAPE);
       if (!trigger) return finish(failure("notStartable"), SHAPE);
+      const active = () => {
+        const g = readGuideSnapshot();
+        return g.status === "starting" || g.status === "tracking";
+      };
+      // 활성 세션이면 트리거를 건드리지 않는다(토글이라 누르면 그 세션이 끝난다).
+      if (active()) return finish(failure("sessionActive"), SHAPE);
       // 도보·자동차 트리거는 열림/닫힘 토글이다 — 실패로 열린 채 남은 패널은 한 번 닫고 다시 연다.
       if (trigger.getAttribute("aria-expanded") === "true") {
         trigger.click();
@@ -100,6 +100,10 @@ export function startGuidanceTool(bridge: DirectionsBridge): WebMcpTool {
         if (trigger === "superseded") return finish(failure("superseded"), SHAPE);
         if (!trigger) return finish(failure("notStartable"), SHAPE);
       }
+      // 기존 세션을 대신 끊지 않는다(§3.7 `sessionActive`). 검사와 클릭 사이에 await가 없어 한
+      // JS 턴 안에서 원자적이다 — 동시에 온 두 호출 중 둘째는 첫째가 만든 `starting`을 본다.
+      // 사용자 버튼은 종전대로 선점형(다른 패널 세션을 끝내고 시작)이라 그 계약은 건드리지 않는다.
+      if (active()) return finish(failure("sessionActive"), SHAPE);
       trigger.click();
 
       const deadline = Date.now() + TRACKING_WAIT_MS;
@@ -111,9 +115,19 @@ export function startGuidanceTool(bridge: DirectionsBridge): WebMcpTool {
           return finish({ ok: true, status: "tracking", mode, routeKey, targets: [target] }, SHAPE);
         }
         if (g.status === "failed") {
-          // 사용자 제스처 폴백(리뷰 #10): 시작 버튼에 포커스를 두고 사용자가 직접 누르게 한다.
+          // 실패로 열린 채 남은 패널은 닫아 둔다 — 열린 채 두면 트리거 라벨은 "시작"인데 누르면
+          // 닫히는 라벨 거짓말이 된다(a11y 리뷰). 닫힘을 확인한 뒤 포커스를 둔다.
+          await sleep(0, context?.signal); // 클릭의 열림 커밋을 기다린 뒤 판정
+          if (trigger.getAttribute("aria-expanded") === "true") {
+            trigger.click();
+            await sleep(0, context?.signal);
+          }
           trigger.focus();
-          return finish(failure("confirmationRequired", { status: "failed" }), SHAPE);
+          // 권한 프롬프트(사용자 제스처)로 풀릴 수 있는 실패만 폴백이다(리뷰 #10). 그 외는 시작 불가.
+          if (g.failure === "geoDenied") {
+            return finish(failure("confirmationRequired", { detail: "geoDenied" }), SHAPE);
+          }
+          return finish(failure("notStartable", { detail: g.failure ?? "failed" }), SHAPE);
         }
         if (g.status === "idle" || g.status === "done") {
           // 눌렀는데 세션이 서지 않았다(게이트·키 부재) — 시작 조건 미충족.

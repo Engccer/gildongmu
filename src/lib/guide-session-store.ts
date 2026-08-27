@@ -22,6 +22,8 @@ export type GuideSnapshotStatus = "idle" | "starting" | "tracking" | "done" | "f
  */
 export interface GuideSnapshot {
   status: GuideSnapshotStatus;
+  /** `failed`의 사유. `geoDenied`만 사용자 제스처로 풀릴 수 있다(권한 프롬프트). */
+  failure?: "geoDenied" | "unsupported";
   /** claim마다 증가. `stop_guidance`의 `previousStatus`와 같은 스냅샷에서 나온다. */
   sessionId?: number;
   mode?: "walk" | "car" | "transit";

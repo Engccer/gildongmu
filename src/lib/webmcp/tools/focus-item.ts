@@ -48,13 +48,14 @@ export function focusItemTool(bridge: DirectionsBridge): WebMcpTool {
       // ① 계획 범위 대상은 현재 세대여야 한다.
       if (stale()) return finish(failure("stalePlan"), SHAPE);
       // ② 타이핑 중인 필드에서 커서를 빼앗지 않는다(대상이 그 필드 자신이 아닐 때).
-      const active = document.activeElement;
-      if (
-        (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) &&
-        active.getAttribute(FOCUS_TARGET_ATTR) !== id
-      ) {
-        return finish(failure("editingInProgress"), SHAPE);
-      }
+      const editing = () => {
+        const active = document.activeElement;
+        return (
+          (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) &&
+          active.getAttribute(FOCUS_TARGET_ATTR) !== id
+        );
+      };
+      if (editing()) return finish(failure("editingInProgress"), SHAPE);
       // ③ 접힌 대안·상세 안이면 화면 핸들러로 펼치고 등장을 기다린다.
       bridge.ensureVisible(parsed);
       const selector = focusTargetSelector(id);
@@ -68,6 +69,8 @@ export function focusItemTool(bridge: DirectionsBridge): WebMcpTool {
       if (el === "superseded") return finish(failure("superseded"), SHAPE);
       if (!el) return finish(failure("notFound"), SHAPE);
       // ④ 착지. 비인터랙티브 대상은 `tabIndex={-1}`(프로그래밍 포커스만)이어야 한다.
+      //    대기(최대 500ms) 사이에 사용자가 필드에 들어왔으면 그때도 빼앗지 않는다.
+      if (editing()) return finish(failure("editingInProgress"), SHAPE);
       el.focus();
       if (document.activeElement !== el) return finish(failure("focusRejected"), SHAPE);
       return finish({ ok: true, label: accessibleName(el) ?? "" }, SHAPE);

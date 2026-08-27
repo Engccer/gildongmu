@@ -54,7 +54,7 @@ export function measure(value: unknown): number {
 }
 
 /**
- * 상한 계획: 줄일 배열 필드를 **순서대로**(앞 항목부터 비운다). `path`는 루트 기준 점 경로.
+ * 상한 계획: 줄일 배열 필드를 **순서대로**(각 배열은 뒤 항목부터 뺀다). `path`는 루트 기준 점 경로.
  * - `count`: 잘리면 부모 객체에 `<key>ReturnedCount`·`<key>TotalCount`를 싣는다.
  * - `page`: 페이지형(최상위 `offset`이 있는 출력) — `returnedCount`·`nextOffset`을 갱신한다.
  */

@@ -119,28 +119,11 @@ export function DistanceBeacon({
 
   const tracking = guide.status === "tracking";
 
-  // WebMCP 착지 `guidance:panel`(spec §6.6 — live region이 아니라 정적 문장): 세션 중 렌더되는
-  // 첫 상시 표시 문장이 받는다. 정적 문장이 하나도 없으면(간략 안내 직후) 트리거 버튼이 받는다.
-  // 어느 행이 받을지는 렌더 전에 한 번 정한다(렌더 중 변수 재대입 금지 — React 컴파일러 규칙).
-  const detail = tracking && guide.mode === "detail";
-  const anchorRow: "degrade" | "progress" | "top" | "next" | "current" | "trigger" | null =
-    !(triggerTarget && tracking)
-      ? null
-      : guide.degradeText !== null
-        ? "degrade"
-        : detail && !guide.offRoute && guide.progress !== null
-          ? "progress"
-          : detail && guide.liveRows.top !== null
-            ? "top"
-            : detail && guide.liveRows.next !== null
-              ? "next"
-              : detail && !guide.offRoute && guide.currentText !== null
-                ? "current"
-                : "trigger";
-  const anchor = (row: typeof anchorRow) =>
-    anchorRow === row ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel(), tabIndex: -1 } : {};
+  // WebMCP 착지 `guidance:panel`: 세션 내내 **반드시 존재하는** 요소는 트리거 버튼(추적 중 라벨
+  // "안내 중지")뿐이다 — 상시 표시 문장들은 이탈·값 소실 전이에서 사라져 착지 뒤 포커스가 body로
+  // 떨어진다(a11y 리뷰). 상태 문장은 도구 `guidance_status`가 따로 준다.
   const triggerAnchorProps =
-    anchorRow === "trigger" ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel() } : {};
+    triggerTarget && tracking ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel() } : {};
 
   const togglePanel = () => {
     if (open) {
@@ -180,7 +163,7 @@ export function DistanceBeacon({
               강등 상태에 **모드 이름을 주지 않는다**(이름을 주면 고를 수 있는 모드로 읽힌다).
               시작 통지는 1회뿐이라 세션 도중 들어온 SR 사용자에게는 이 줄이 유일한 신호다. */}
           {tracking && guide.degradeText && (
-            <p {...anchor("degrade")} className="text-xs text-muted">
+            <p className="text-xs text-muted">
               {guide.degradeText}
             </p>
           )}
@@ -257,7 +240,7 @@ export function DistanceBeacon({
               값이라 live region 밖 일반 텍스트로만 둔다(polite에 태우면 통지 스팸).
               이탈 중엔 경로 잔여가 거짓이므로 숨긴다(3-state 정직). */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.progress && (
-            <p {...anchor("progress")} className="mt-2 text-sm">
+            <p className="mt-2 text-sm">
               {joinText(
                 tGuide("remainingDistance", {
                   distance: formatDistance(guide.progress.remainingMeters),
@@ -275,19 +258,19 @@ export function DistanceBeacon({
               가리지 않는다 — 리듀서가 윗줄(이탈 문장)·아랫줄(비움)을 소유한다(F2).
               빈 값은 요소 제거(빈 텍스트 낭독 금지). */}
           {tracking && guide.mode === "detail" && guide.liveRows.top && (
-            <p {...anchor("top")} className="mt-1 text-sm">
+            <p className="mt-1 text-sm">
               {guide.liveRows.top}
             </p>
           )}
           {tracking && guide.mode === "detail" && guide.liveRows.next && (
-            <p {...anchor("next")} className="mt-1 text-sm text-muted">
+            <p className="mt-1 text-sm text-muted">
               {guide.liveRows.next}
             </p>
           )}
           {/* car 세션의 종전 "현재 안내" 행(spec §7 비범위 — walk에선 currentText가
               항상 null이라 이 행은 자동 부재). 이탈 중엔 낡은 투영이라 숨긴다. */}
           {tracking && guide.mode === "detail" && !guide.offRoute && guide.currentText && (
-            <p {...anchor("current")} className="mt-1 text-sm">
+            <p className="mt-1 text-sm">
               {guide.currentText}
             </p>
           )}

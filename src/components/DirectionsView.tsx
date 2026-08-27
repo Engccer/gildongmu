@@ -50,7 +50,11 @@ import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
-import { clearRetainedGuideSnapshot, stopActiveGuideSession } from "@/lib/guide-session-store";
+import {
+  clearRetainedGuideSnapshot,
+  hasActiveGuideSession,
+  stopActiveGuideSession,
+} from "@/lib/guide-session-store";
 import { quickExitText } from "@/lib/quick-exit-text";
 import { useWebMcpTools } from "@/hooks/useWebMcpTools";
 import { buildDirectionsTools } from "@/lib/webmcp/tools";
@@ -507,6 +511,8 @@ export function DirectionsView({
   // 사용 흐름 전진 포커스: 출발지 확정 → 도착지 입력, 도착지 확정 → 조회 버튼.
   const toInputRef = useRef<HTMLInputElement | null>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
+  /** 결과 영역(수단 섹션 전부) — 도구 조회가 폐기하기 전 포커스 선점 판정용. */
+  const resultsRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
   const genRef = useRef(0);
   /**
@@ -1131,6 +1137,12 @@ export function DirectionsView({
    */
   function runQueryForTool(request: PlanRequest, signal: AbortSignal): Promise<QueryOutcome> {
     if (inFlight.current) return Promise.resolve({ kind: "busy" });
+    // 사용자 버튼은 새 조회로 세션을 끝내지만, 에이전트 한 마디로 걷는 중인 안내가 끊기면 안 된다 —
+    // 먼저 `stop_guidance`를 부르게 한다(a11y 리뷰 HIGH).
+    if (hasActiveGuideSession()) return Promise.resolve({ kind: "sessionActive" });
+    // 결과 영역 안에 커서가 있으면(도구가 착지시킨 스텝·heading) 그 서브트리가 통째로 사라진다 —
+    // 항상 존재하는 조회 버튼으로 선점 이동한다(헌장 §5). 사용자 클릭 경로는 커서가 이미 그 버튼이다.
+    if (resultsRef.current?.contains(document.activeElement)) submitRef.current?.focus();
     setFromField(endpointToField(request.from, currentLabel));
     setToField(endpointToField(request.to, currentLabel));
     setViaField(request.via ? endpointToField(request.via, currentLabel) : null);
@@ -1147,22 +1159,23 @@ export function DirectionsView({
   /** `focus_item`·`start_guidance`가 접힌 대안·도보 상세를 화면 핸들러로 펼치는 길(spec §3.3 ③). */
   function ensureVisible(target: ParsedTarget) {
     if (target.scope !== "plan") return;
-    if (target.kind === "transitRoute" || target.kind === "transitLeg") {
-      const key = routeRefs.keyOf(target.routeRef);
-      const transit = results?.outcomes.transit;
-      if (!key || transit?.kind !== "done" || transit.mode !== "transit") return;
-      const defaultExpanded = transit.result.recommended.routeKey === key;
-      setToggledRoutes((prev) => {
-        const flipped = prev.has(key);
-        if ((flipped ? !defaultExpanded : defaultExpanded)) return prev;
-        const nextSet = new Set(prev);
-        if (flipped) nextSet.delete(key);
-        else nextSet.add(key);
-        return nextSet;
-      });
-      return;
-    }
+    // disclosure 버튼 자신(`transitRoute`)은 접힌 채로도 보인다 — 펼치지 않는다(요청받지 않은 상태 변경 금지).
+    if (target.kind === "transitLeg") expandRoute(target.routeRef);
     if (target.kind === "step" && target.mode === "walk") setWalkExpanded(true);
+  }
+  function expandRoute(routeRef: string) {
+    const key = routeRefs.keyOf(routeRef);
+    const transit = results?.outcomes.transit;
+    if (!key || transit?.kind !== "done" || transit.mode !== "transit") return;
+    const defaultExpanded = transit.result.recommended.routeKey === key;
+    setToggledRoutes((prev) => {
+      const flipped = prev.has(key);
+      if (flipped ? !defaultExpanded : defaultExpanded) return prev;
+      const nextSet = new Set(prev);
+      if (flipped) nextSet.delete(key);
+      else nextSet.add(key);
+      return nextSet;
+    });
   }
   const readSnapshot = (): DirectionsSnapshot => ({
     fields: {
@@ -1177,14 +1190,26 @@ export function DirectionsView({
   });
   // 도구 `execute`는 ref로 최신 화면을 읽는다(등록은 마운트 1회, 재등록 0 — spec §5.1).
   // ⚠ ref 갱신은 렌더가 아니라 effect에서(useRouteGuide 미러 관례 동형).
-  const bridgeRef = useRef<DirectionsBridge>({ read: readSnapshot, runQuery: runQueryForTool, ensureVisible });
+  const bridgeRef = useRef<DirectionsBridge>({ read: readSnapshot, runQuery: runQueryForTool, ensureVisible, expandRoute });
   useEffect(() => {
-    bridgeRef.current = { read: readSnapshot, runQuery: runQueryForTool, ensureVisible };
+    bridgeRef.current = { read: readSnapshot, runQuery: runQueryForTool, ensureVisible, expandRoute };
   });
   // 종단 phase의 대기자 resolve — 브리지 갱신 effect 뒤에 두어야 도구가 커밋된 화면을 읽는다.
   useEffect(() => {
     const pending = pendingOutcomeRef.current;
     if (!pending) return;
+    // ⚠ 동시 렌더: 슬롯이 채워지기 전에 시작된 렌더가 먼저 커밋되면 이 effect는 **옛 화면**에서
+    // 돈다(실측 — 앞 세대 `planId`가 읽혔다). 커밋된 상태가 그 결과와 일치할 때만 푼다.
+    const o = pending.outcome;
+    const committed =
+      o.kind === "settled"
+        ? results?.planId === o.planId && phase.kind === "settled"
+        : o.kind === "geoError"
+          ? phase.kind === "geoError"
+          : o.kind === "outOfCoverage"
+            ? phase.kind === "outOfCoverage"
+            : true;
+    if (!committed) return;
     pendingOutcomeRef.current = null;
     settleWaiter(pending.gen, pending.outcome);
   });
@@ -1194,6 +1219,7 @@ export function DirectionsView({
         read: () => bridgeRef.current.read(),
         runQuery: (request, signal) => bridgeRef.current.runQuery(request, signal),
         ensureVisible: (target) => bridgeRef.current.ensureVisible(target),
+        expandRoute: (routeRef) => bridgeRef.current.expandRoute(routeRef),
       }),
     { enabled: true },
   );
@@ -1543,7 +1569,7 @@ export function DirectionsView({
       )}
 
       {results && (
-        <div className="mt-2">
+        <div ref={resultsRef} className="mt-2">
           {results.orderedModes.map((mode) => {
             const outcome = results.outcomes[mode];
             if (!outcome) return null;
