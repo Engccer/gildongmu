@@ -12,6 +12,7 @@ export const SHAPE = withFailure({
   offset: true,
   returnedCount: true,
   nextOffset: true,
+  variant: true,
   steps: [{ n: true, text: true, targetId: true }],
 });
 
@@ -23,12 +24,17 @@ export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
   return {
     name: "get_route_steps",
     description:
-      "Return walking or driving directions from the current plan as a numbered page of step sentences, exactly as shown on screen, with a focus target id per step. Page with offset and limit. Requires planId.",
+      "Return walking or driving directions from the current plan as a numbered page of step sentences, exactly as shown on screen. Page with offset and limit. For walking, variant 'shortest' returns the shortest-route alternative when the plan has one. Requires planId.",
     inputSchema: {
       type: "object",
       properties: {
         planId: { type: "string", description: "planId from plan_directions." },
         mode: { type: "string", enum: ["walk", "car"], description: "Which directions to page." },
+        variant: {
+          type: "string",
+          enum: ["recommended", "shortest"],
+          description: "walk only: recommended (default) or the shortest alternative.",
+        },
         offset: { type: "integer", minimum: 0, description: "0-based start index. Default 0." },
         limit: {
           type: "integer",
@@ -49,14 +55,24 @@ export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
       if (input.planId !== s.plan.planId) return finish(failure("stalePlan"), SHAPE);
       const m = s.plan[mode];
       if (!m) return finish(failure("unsupported", { detail: "modeUnavailable" }), SHAPE);
+      const variant = input.variant === "shortest" ? "shortest" : "recommended";
+      if (variant === "shortest" && mode !== "walk") {
+        return finish(failure("unsupported", { detail: "variantWalkOnly" }), SHAPE);
+      }
       // 수단 결과의 3-state를 최상위에 둔다(리뷰 #2) — steps 없음이 "0단계"가 아니다.
       if (m.outcome !== "done") {
-        return finish({ ok: true, planId: s.plan.planId, mode, outcome: m.outcome }, SHAPE);
+        return finish({ ok: true, planId: s.plan.planId, mode, outcome: m.outcome, variant }, SHAPE);
       }
+      // 최단 대안은 계획에 있을 때만(W1-R #1) — 없으면 "없다"를 사유로 말한다(빈 페이지로 위장 금지).
+      const shortest = mode === "walk" ? (m as typeof s.plan.walk & object).shortest : undefined;
+      if (variant === "shortest" && !shortest) {
+        return finish(failure("unsupported", { detail: "noShortest" }), SHAPE);
+      }
+      const steps = variant === "shortest" && shortest ? shortest.steps : m.steps;
       const offset = clampInt(input.offset, 0, Number.MAX_SAFE_INTEGER, 0);
       const limit = clampInt(input.limit, 1, MAX_LIMIT, DEFAULT_LIMIT);
-      const total = m.steps.length;
-      const page = m.steps.slice(offset, offset + limit).map((text, i) => ({
+      const total = steps.length;
+      const page = steps.slice(offset, offset + limit).map((text, i) => ({
         n: offset + i + 1,
         text,
         targetId: targetId.step(mode, offset + i + 1),
@@ -68,6 +84,7 @@ export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
           planId: s.plan.planId,
           mode,
           outcome: "done",
+          variant,
           total,
           offset,
           returnedCount: page.length,

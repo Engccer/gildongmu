@@ -49,6 +49,7 @@ export const SHAPE = withFailure({
     stepCount: true,
     stepFree: true,
     stepFreeNotice: true,
+    shortest: { distanceMeters: true, durationSeconds: true, stepCount: true },
   },
   car: { outcome: true, distanceMeters: true, durationSeconds: true, guideCount: true },
   targets: [{ id: true, label: true }],
@@ -325,6 +326,13 @@ export function summarizePlan(
         stepCount: plan.walk.outcome === "done" ? plan.walk.steps.length : undefined,
         stepFree: plan.walk.stepFree,
         stepFreeNotice: plan.walk.stepFreeNotice,
+        shortest: plan.walk.shortest
+          ? {
+              distanceMeters: plan.walk.shortest.distanceMeters,
+              durationSeconds: plan.walk.shortest.durationSeconds,
+              stepCount: plan.walk.shortest.steps.length,
+            }
+          : undefined,
       }
     : undefined;
   const car = plan.car
