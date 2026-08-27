@@ -9,6 +9,14 @@
 
 ---
 
+## 2026-08-29
+
+### W2 — WebMCP 도구층 2차: 이동 계획 보조 상시 집합 7개
+
+- spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`·plan `docs/superpowers/plans/2026-08-29-webmcp-wave2.md`대로 재편했다. 앱 루트가 `describe_app`·`search_places`·`get_place_info`·`plan_directions`·`get_transit_route_detail`·`get_route_steps`·`read_current_view` 7개를 상시 등록하고, 도구가 필요한 화면(홈·상세·길찾기)으로 스스로 이동해 화면이 그린 문장을 돌려준다. W1의 화면별 등록과 `focus_item`·안내 도구 3종·`get_walk_infrastructure_nearby`·`open_directions`는 삭제(회귀 테스트 3건 선고정, `webmcp-removal.test.ts` 재발 가드).
+- 기반: 단일 실행 잠금 + `op` 토큰(`tool-lock`), 뷰 레지스트리 정체성 결박 대기(`view-registry`), 불투명 `ref`·동결 스냅샷(`place-refs`), 쿨다운·세션 예산(`tool-budget`), 축 엔트리 기계(`place-axes`+`useAxisSource`), 역·무장애 줄 조립 추출(`src/lib/place-lines/*`), 홈 검색 트랜잭션·`navigator`(`PlaceSearch`), 도보 최단 대안(W1-R #1). 서브에이전트 리뷰 5회(기반·줄 조립·브릿지·홈·도구)로 HIGH 2건(마운트 축 첫 조회 거짓 superseded·StrictMode 레지스트리 영구 사망)·MED 12건을 반영했다.
+- 남은 것은 실기기 게이트 ⑧~⑪(`docs/FIELD-TEST.md` §8, 배포 차단 판정)과 privacy `agent` 문안 확정(위원장 TextEdit 왕복).
+
 ## 2026-08-27
 
 ### W1 게이트 3 — WebMCP 도구층 구현 (`feat/webmcp`)
