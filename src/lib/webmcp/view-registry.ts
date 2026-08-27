@@ -93,6 +93,9 @@ export function waitForView<B>(
 ): Promise<B> {
   const now = entries.get(view);
   if (matches(now, match)) return Promise.resolve(now!.bridge as B);
+  // 이미 끊긴 op는 즉시 aborted — 끊긴 signal엔 abort 이벤트가 다시 오지 않아 상한까지 기다린 뒤
+  // 거짓 viewChanging(retryable)을 돌려주게 된다(리뷰 검출).
+  if (op.signal.aborted) return Promise.reject(new Error("aborted"));
   return new Promise<B>((resolve, reject) => {
     const done = (fn: () => void) => {
       listeners.delete(check);

@@ -48,3 +48,15 @@ describe("tool-lock(spec §3.0)", () => {
     expect(op.isLive()).toBe(false);
   });
 });
+
+describe("tool-lock 끊긴 호스트 signal(리뷰 반영)", () => {
+  it("이미 abort된 hostSignal로는 잠금을 잡지 않고 끊긴 op를 돌려준다", () => {
+    const host = new AbortController();
+    host.abort();
+    const op = acquireOp("x", host.signal);
+    expect("busy" in op).toBe(false);
+    expect((op as Op).isLive()).toBe(false);
+    expect(runningToolName()).toBeNull();
+    expect("busy" in acquireOp("y", undefined)).toBe(false);
+  });
+});

@@ -175,6 +175,8 @@ export function withFailure(shape: { [key: string]: Shape }): { [key: string]: S
 }
 
 const COORD_QUERY_RE = /[?&](lat|lng|lon|x|y)=/i;
+/** JSON 키 모양(`"lat":37.5`) — allowlist를 우회한 중첩 객체가 가장 흔히 이 모양으로 샌다. */
+const COORD_KEY_RE = /"(lat|lng|lon|latitude|longitude)"\s*:\s*-?\d/i;
 const COORD_PAIR_RE = /-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}/;
 const COORD_ARRAY_RE = /\[\s*-?\d{1,3}\.\d{3,}\s*,\s*-?\d{1,3}\.\d{3,}\s*\]/;
 /** URL 경로 안의 좌표쌍(`/place/37.52,127.12`)은 소수 2자리부터 잡는다 — 지도 URL이 그 정밀도로 좌표를 싣는다. */
@@ -187,8 +189,10 @@ const COORD_PATH_RE = /\/-?\d{1,3}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}/;
  */
 export function assertNoCoordinates(serialized: string): string | null {
   if (COORD_QUERY_RE.test(serialized)) return "coordinate query parameter";
-  if (COORD_PAIR_RE.test(serialized)) return "decimal coordinate pair";
+  if (COORD_KEY_RE.test(serialized)) return "coordinate key";
+  // 배열 모양은 바탕 쌍의 부분집합이라 먼저 검사해야 사유가 살아 있다.
   if (COORD_ARRAY_RE.test(serialized)) return "coordinate array";
+  if (COORD_PAIR_RE.test(serialized)) return "decimal coordinate pair";
   if (COORD_PATH_RE.test(serialized)) return "coordinate pair in URL path";
   return null;
 }

@@ -22,6 +22,8 @@ let current: {
   op: Op;
   controller: AbortController;
   timer: ReturnType<typeof setTimeout>;
+  hostSignal?: AbortSignal;
+  onHostAbort: () => void;
 } | null = null;
 let seq = 0;
 
@@ -33,6 +35,9 @@ export function acquireOp(
 ): Op | { busy: string } {
   if (current) return { busy: current.op.name };
   const controller = new AbortController();
+  // 이미 끊긴 호스트 signal로는 잠금을 잡지 않는다 — abort 이벤트가 다시 오지 않아 30초 동안
+  // 도구 전부를 봉쇄한다(리뷰 검출). 끊긴 op를 돌려주고 호출자의 `isLive()`가 false를 본다.
+  if (hostSignal?.aborted) controller.abort(hostSignal.reason);
   const id = ++seq;
   const op: Op = {
     id,
@@ -48,8 +53,13 @@ export function acquireOp(
     releaseOp(op);
   }, OP_TIMEOUT_MS);
   // 호스트가 끊으면 잠금도 함께 푼다(끊긴 op가 잠금을 영영 쥐지 않도록).
-  hostSignal?.addEventListener("abort", () => releaseOp(op), { once: true });
-  current = { op, controller, timer };
+  const onHostAbort = () => releaseOp(op);
+  if (controller.signal.aborted) {
+    clearTimeout(timer);
+    return op;
+  }
+  hostSignal?.addEventListener("abort", onHostAbort, { once: true });
+  current = { op, controller, timer, hostSignal, onHostAbort };
   return op;
 }
 
@@ -57,6 +67,8 @@ export function acquireOp(
 export function releaseOp(op: Op): void {
   if (current?.op.id !== op.id) return;
   clearTimeout(current.timer);
+  // 장수 호스트 signal에 리스너가 호출 수만큼 쌓이지 않게 정상 해제에서도 뗀다.
+  current.hostSignal?.removeEventListener("abort", current.onHostAbort);
   current = null;
 }
 

@@ -63,9 +63,12 @@ describe("place-lines == 화면 문장", () => {
     // 헤딩·출처를 제외한 본문 <p> 3줄
     const ps = Array.from(container.querySelectorAll("section p")).slice(0, 3);
     expect(ps.map((p) => p.textContent)).toEqual(stationMetaLines(meta, tFor("stationMeta")));
-    expect(stationMetaLines(meta, tFor("stationMeta"))[1]).toBe(
+    // 리터럴 기대값 — 컴포넌트가 같은 함수를 부르므로 렌더 대조만으론 문장 변이를 못 잡는다.
+    expect(stationMetaLines(meta, tFor("stationMeta"))).toEqual([
+      "Gangdong",
       "stationMeta.lines 5호선, 8호선, stationMeta.transfer",
-    );
+      "stationMeta.operator 서울교통공사",
+    ]);
   });
 
   it("시간표 헤더 + 노선 항목(ok는 방향별, 비-ok는 사유 한 줄)", async () => {
@@ -95,6 +98,7 @@ describe("place-lines == 화면 문장", () => {
     const t = tFor("timetable");
     const [header, ...rest] = Array.from(container.querySelectorAll("section p"));
     expect(header.textContent).toBe(timetableHeaderLine(tt, t));
+    expect(timetableHeaderLine(tt, t)).toBe("timetable.dailyType.weekday, timetable.partial");
     const items = timetableLineItems(tt, t, false);
     // 마지막 <p>는 출처 각주
     expect(rest.slice(0, -1).map((p) => p.textContent)).toEqual(items.map((i) => i.text));
@@ -105,6 +109,7 @@ describe("place-lines == 화면 문장", () => {
       direction: "up",
       first: 'timetable.nextDay 05:31 timetable.toTerminus{"terminus":"서울역"}'.replace("timetable.nextDay ", ""),
       last: 'timetable.nextDay 00:31 timetable.toTerminus{"terminus":"김포공항"}',
+      text: '공항철도 timetable.direction.up, timetable.first 05:31 timetable.toTerminus{"terminus":"서울역"}, timetable.last timetable.nextDay 00:31 timetable.toTerminus{"terminus":"김포공항"}',
     });
     expect(items[1]).toEqual({ line: "2호선", coverage: "unknown", text: 'timetable.coverage.unknown{"line":"2호선"}' });
     expect(items[2].coverage).toBe("noTrains");
@@ -126,8 +131,12 @@ describe("place-lines == 화면 문장", () => {
     const items = await screen.findAllByRole("listitem");
     const lines = korailFacilityLines(f, tFor("station"));
     expect(items.map((li) => li.textContent)).toEqual(lines);
-    expect(lines[2]).toBe("station.wheelchairLifts: station.unknown");
-    expect(lines[3]).toBe("station.elevators: 3");
+    expect(lines).toEqual([
+      "station.accessibleToilet: station.yes",
+      "station.accessibleSlope: station.no",
+      "station.wheelchairLifts: station.unknown",
+      "station.elevators: 3",
+    ]);
   });
 
   it("서울 지하철 시설 그룹 헤딩 + 시설 줄", async () => {
@@ -156,7 +165,11 @@ describe("place-lines == 화면 문장", () => {
     expect(uls.map((ul) => Array.from(ul.querySelectorAll("li")).map((li) => li.textContent))).toEqual(
       groups.map((g) => g.lines),
     );
-    expect(groups[0].lines[0]).toBe("엘리베이터 1호기, 1번 출구, 지하1층~지상, subway.operatingNormal");
+    expect(groups[0].name).toBe('subway.kind.elevator subway.count{"count":2}');
+    expect(groups[0].lines).toEqual([
+      "엘리베이터 1호기, 1번 출구, 지하1층~지상, subway.operatingNormal",
+      "엘리베이터 2호기, 휠체어 가능, subway.operatingStopped",
+    ]);
   });
 
   it("도착 항목의 line·message 두 줄", () => {

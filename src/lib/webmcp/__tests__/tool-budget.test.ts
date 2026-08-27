@@ -22,3 +22,10 @@ describe("tool-budget(spec §5.5)", () => {
     expect(checkBudget("barrierFree", 1)).toEqual({ ok: true });
   });
 });
+
+describe("tool-budget 쿨다운·창 포화 동시(리뷰 반영)", () => {
+  it("둘 다 걸리면 큰 대기값을 돌려준다", () => {
+    for (let i = 0; i < 30; i++) consumeBudget("plan", i * 1_000);
+    expect(checkBudget("plan", 30_000)).toEqual({ ok: false, retryAfterMs: 3_600_000 - 30_000 });
+  });
+});
