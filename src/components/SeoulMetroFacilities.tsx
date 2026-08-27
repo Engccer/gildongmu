@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
 import { joinText } from "@/lib/format";
+import { metroFacilityGroups } from "@/lib/place-lines/station-metro";
 
 type Status =
   | { kind: "idle" }
@@ -113,25 +114,15 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
             {tActions("close")}
           </button>
 
+          {/* 문장 정본은 place-lines(도구층과 공용) — 그룹 헤딩·시설 줄 모두 */}
           <div className="mt-2 space-y-3">
-            {status.facilities.groups.map((g) => (
-              <div key={g.kind}>
-                <h4 className="text-sm font-semibold">
-                  {`${t(`kind.${g.kind}`)} ${t("count", { count: g.facilities.length })}`}
-                </h4>
+            {metroFacilityGroups(status.facilities, t).map((g, gi) => (
+              <div key={status.facilities.groups[gi].kind}>
+                <h4 className="text-sm font-semibold">{g.name}</h4>
                 <ul className="mt-1 space-y-1 text-sm leading-relaxed">
-                  {g.facilities.map((f, i) => (
-                    <li key={`${g.kind}-${i}`} lang="ko">
-                      {joinText(
-                        f.name,
-                        f.location,
-                        f.floors,
-                        f.detail,
-                        f.operatingStatus &&
-                          (f.operatingStatus === "normal"
-                            ? t("operatingNormal")
-                            : t("operatingStopped")),
-                      )}
+                  {g.lines.map((line, i) => (
+                    <li key={`${status.facilities.groups[gi].kind}-${i}`} lang="ko">
+                      {line}
                     </li>
                   ))}
                 </ul>

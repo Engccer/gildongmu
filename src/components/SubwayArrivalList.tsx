@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { SubwayArrival } from "@/lib/types";
-import { joinText } from "@/lib/format";
+import { arrivalItems } from "@/lib/place-lines/station-arrivals";
 
 /**
  * 한 역의 실시간 도착 열차 목록 — 상세(SeoulSubwayArrival)·홈 근접
@@ -24,24 +24,15 @@ export function SubwayArrivalList({ arrivals }: { arrivals: SubwayArrival[] }) {
     return <p className="mt-2 text-sm opacity-70">{t("noArrivals")}</p>;
   }
 
+  // 문장 정본은 place-lines(도구층과 공용) — 편성/메시지 두 줄을 그대로 그린다.
+  const items = arrivalItems(arrivals, t);
+
   return (
     <ul className="mt-2 space-y-2 text-sm leading-relaxed">
-      {arrivals.map((a, i) => (
-        <li key={`${a.line ?? ""}-${a.trainLineNm}-${i}`} lang="ko">
-          <div className="font-medium">
-            {joinText(
-              `${a.line ? `${a.line} ` : ""}${a.direction}`,
-              a.trainLineNm,
-              a.express && t("express"),
-            )}
-          </div>
-          <div>
-            {joinText(
-              a.message,
-              a.currentLocation &&
-                t("currentLocation", { location: a.currentLocation }),
-            )}
-          </div>
+      {items.map((item, i) => (
+        <li key={`${arrivals[i].line ?? ""}-${arrivals[i].trainLineNm}-${i}`} lang="ko">
+          <div className="font-medium">{item.line}</div>
+          <div>{item.message}</div>
         </li>
       ))}
     </ul>
