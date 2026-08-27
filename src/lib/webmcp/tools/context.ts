@@ -9,6 +9,8 @@ import type { DirEndpoint } from "@/lib/directions-state";
 import type { ArrivalItem } from "@/lib/place-lines/station-arrivals";
 import type { MetroGroupItem } from "@/lib/place-lines/station-metro";
 import type { TimetableLineItem } from "@/lib/place-lines/station-timetable";
+import type { JusoAddress } from "@/lib/types";
+import type { SearchSnapshot } from "../place-refs";
 import type { ModeKey, ParsedTarget, RouteRefTable } from "../targets";
 import type { Op } from "../tool-lock";
 
@@ -124,10 +126,49 @@ export interface DirectionsBridge {
   expandRoute: (routeRef: string) => void;
 }
 
-export interface HomeBridge {
+/** W1 `open_directions` 진입 브릿지 — W2 Task 11에서 도구와 함께 삭제된다. */
+export interface HomeEntryBridge {
   isDirectionsOpen: () => boolean;
   /** `to`는 필드 텍스트로만 채운다 — 해석·조회는 `plan_directions`의 몫. */
   openDirections: (toText: string | null) => void;
+}
+
+/* ───────────── 홈(검색) 브릿지(W2 spec §3.2·§5.2) ───────────── */
+
+export interface SearchRequest {
+  query: string;
+  sort: "accuracy" | "review";
+}
+/** 세 분기(장소·주소·웹) 각각의 상태. `skipped`는 게이트·폴백 조건 미충족으로 발사하지 않은 것. */
+export type BranchState = "pending" | "done" | "empty" | "error" | "skipped";
+export interface HomeBranches {
+  places: BranchState;
+  addresses: BranchState;
+  web: BranchState;
+}
+export type SearchOutcome =
+  | { kind: "settled"; attempt: number; branches: HomeBranches }
+  | { kind: "busy" }
+  | { kind: "superseded" }
+  | { kind: "aborted" };
+
+export interface HomeBridge {
+  read(): {
+    /** 마지막으로 제출한 검색어(`staleResult` 복구용). */
+    query: string;
+    sort: "accuracy" | "review";
+    attempt: number | null;
+    branches: HomeBranches | null;
+    counts: { places: number; addresses: number; web: number };
+    chatOpen: boolean;
+    webResults: Array<{ title: string; url: string; snippet: string }>;
+  };
+  /** 화면 정본 검색을 원자 호출로 실행하고 세 분기 정착을 기다린다(정착 시 스냅샷 동결). */
+  runSearch(request: SearchRequest, op: Op): Promise<SearchOutcome>;
+  /** 정착 시 동결한 결과 스냅샷 — `ref` 해석 표. 모르는 세대는 null. */
+  snapshotFor(attempt: number): SearchSnapshot | null;
+  /** 주소 카드 탭과 같은 경로(`/api/geocode` → Place 합성 → 상세). */
+  openAddress(address: JusoAddress, op: Op): Promise<{ ok: true } | { ok: false; reason: "geocodeFailed" }>;
 }
 
 /* ───────────── 장소 상세 브릿지(W2 spec §5.4) ───────────── */

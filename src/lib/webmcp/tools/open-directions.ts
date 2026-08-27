@@ -1,11 +1,11 @@
 import { finish, withFailure } from "../output";
 import type { WebMcpTool } from "../types";
-import type { HomeBridge } from "./context";
+import type { HomeEntryBridge } from "./context";
 
 export const SHAPE = withFailure({ ok: true, alreadyOpen: true });
 
 /** #1 `open_directions`(spec §3.1) — 홈(검색 뷰)이 등록하는 진입 도구. */
-export function openDirectionsTool(bridge: HomeBridge): WebMcpTool {
+export function openDirectionsTool(bridge: HomeEntryBridge): WebMcpTool {
   return {
     name: "open_directions",
     description:

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Compass, Route } from "lucide-react";
 import type { CategoryBucket } from "@/lib/category";
@@ -17,7 +17,7 @@ import type {
 import type { LivePart } from "@/lib/search-sections";
 import { jusoAddressToPlace } from "@/lib/address-to-place";
 import { resolveAddressCoord } from "@/lib/resolve-address-coord";
-import { subscribeOpenPlace } from "@/lib/place-open-request";
+import { requestOpenPlace, subscribeOpenPlace } from "@/lib/place-open-request";
 import { parseDir, type DirEndpoint } from "@/lib/directions-state";
 import { dataLocale } from "@/lib/data-locale";
 import { joinText, normalizeVoiceQuery } from "@/lib/format";
@@ -38,6 +38,18 @@ import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
 import { useHeldValue } from "@/hooks/useHeldValue";
 import { useWebMcpTools } from "@/hooks/useWebMcpTools";
 import { buildHomeTools } from "@/lib/webmcp/tools";
+import type { HomeBranches, HomeBridge, SearchOutcome, SearchRequest } from "@/lib/webmcp/tools/context";
+import type { SearchSnapshot } from "@/lib/webmcp/place-refs";
+import type { Op } from "@/lib/webmcp/tool-lock";
+import {
+  bridgeOf,
+  markNearby,
+  publishView,
+  setNavigator,
+  withdrawView,
+  type Navigator as ViewNavigator,
+} from "@/lib/webmcp/view-registry";
+import type { PlaceBridge } from "@/lib/webmcp/tools/context";
 import {
   orderResultSections,
   combinedLiveMessage,
@@ -272,12 +284,49 @@ export function PlaceSearch({
   useEffect(() => {
     addrStatusRef.current = addrStatus;
   }, [addrStatus]);
+  const webResultsRef = useRef(webResults);
+  const generalChatRef = useRef(generalChat);
+  const manualPickerOpenRef = useRef(manualPickerOpen);
+  useEffect(() => {
+    webResultsRef.current = webResults;
+    generalChatRef.current = generalChat;
+    manualPickerOpenRef.current = manualPickerOpen;
+  }, [webResults, generalChat, manualPickerOpen]);
+
+  // ── WebMCP 검색 트랜잭션(spec §3.2) ──
+  // 검색마다 세대(`attempt`)를 발급하고 세 분기(장소·주소·웹)의 상태를 든다. 도구 대기자는 세대에
+  // 결박되고, 정착(세 분기 비-pending)은 **커밋 뒤 effect**가 판정해 결과 스냅샷을 그 세대에
+  // 동결한다(`ref` 해석 표 — 이후 사용자가 새 검색을 해도 이미 해석한 Place로 진행한다).
+  const searchAttemptRef = useRef(0);
+  const branchesRef = useRef<{ attempt: number; state: HomeBranches } | null>(null);
+  const frozenRef = useRef(new Map<number, SearchSnapshot>());
+  const searchWaiterRef = useRef<{ attempt: number; resolve: (o: SearchOutcome) => void } | null>(null);
+  // 분기 상태는 ref라 커밋을 일으키지 않는다 — 갱신 뒤 이 틱을 올려 정착 effect를 돌린다.
+  const [, bumpSettle] = useReducer((x: number) => x + 1, 0);
+  /** 새 세대가 시작될 때 앞 세대 대기자를 `superseded`로 끝낸다(사용자를 막지 않는다). */
+  function supersedeSearchWaiter(newAttempt: number) {
+    const w = searchWaiterRef.current;
+    if (!w || w.attempt === newAttempt) return;
+    searchWaiterRef.current = null;
+    w.resolve({ kind: "superseded" });
+  }
+  /** 도구 언와인드 중 중간 착지 억제(spec §6 — 한 호출에 착지는 최종 화면 하나). */
+  const suppressFocusRef = useRef(false);
+  // 언마운트는 검색 대기자를 aborted로 끝낸다(도구가 영영 기다리지 않게).
+  useEffect(() => {
+    return () => {
+      const w = searchWaiterRef.current;
+      searchWaiterRef.current = null;
+      w?.resolve({ kind: "aborted" });
+    };
+  }, []);
 
   // 상세/길찾기 → 홈 복귀 시 포커스 이동(접근성 1급). 뷰 언마운트로 포커스가
   // document.body로 유실되므로, 결과 헤딩(done 상태)으로 옮기고, 결과가 없으면
   // (검색 전 홈에서 길찾기만 열었다 닫은 경우) 길찾기 진입 버튼으로 복귀한다.
   // ref가 아직 없을 수 있으니 옵셔널 체이닝으로 가드한다.
   function focusResultsHeadingIfDone() {
+    if (suppressFocusRef.current) return;
     const hasResults =
       statusRef.current.kind === "done" || addrStatusRef.current.kind === "done";
     requestAnimationFrame(() => {
@@ -322,6 +371,7 @@ export function PlaceSearch({
       const wasNearby = nearbyOpenRef.current;
       setSelected(null);
       setNearbyOpen(false);
+      if (suppressFocusRef.current) return;
       if (wasNearby) {
         requestAnimationFrame(() => nearbyEntryRef.current?.focus());
       } else {
@@ -462,6 +512,7 @@ export function PlaceSearch({
       // 이라 통상 nearbyEntryRef로 복귀하지만, ref가 아직 없는 극단적 타이밍 등을
       // 대비해 결과 헤딩/길찾기 버튼 복귀로 폴백한다(포커스가 body로 유실되는 것
       // 방지 — 접근성 1급).
+      if (suppressFocusRef.current) return;
       requestAnimationFrame(() => {
         if (nearbyEntryRef.current) nearbyEntryRef.current.focus();
         else focusResultsHeadingIfDone();
@@ -538,23 +589,23 @@ export function PlaceSearch({
    * 소유하므로 주소 검색은 별도 동기화하지 않는다(장소·주소가 같은 q를 공유).
    */
   const performAddressSearch = useCallback(
-    async (raw: string): Promise<number> => {
+    async (raw: string): Promise<{ count: number; errored: boolean; stale?: boolean }> => {
       const q = raw.trim();
-      if (!q) return 0;
+      if (!q) return { count: 0, errored: false };
       const myId = ++addrReqIdRef.current;
       setAddrStatus({ kind: "loading" });
       try {
         const res = await fetch(`/api/address/search?query=${encodeURIComponent(q)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = (await res.json()) as { addresses: JusoAddress[] };
-        if (addrReqIdRef.current !== myId) return 0;
+        if (addrReqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
         setAddrStatus({ kind: "done", addresses: data.addresses });
-        return data.addresses.length;
+        return { count: data.addresses.length, errored: false };
       } catch {
-        // 주소 에러·stale은 0건 취급(보조 — 폴백 억제는 장소 errored가 담당).
-        if (addrReqIdRef.current !== myId) return 0;
+        // 주소 에러·stale은 폴백 판정에서 0건 취급(보조 — 폴백 억제는 장소 errored가 담당).
+        if (addrReqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
         setAddrStatus({ kind: "error" });
-        return 0;
+        return { count: 0, errored: true };
       }
     },
     [],
@@ -564,24 +615,32 @@ export function PlaceSearch({
    * 웹 검색 실행 — /api/search/web(Perplexity) 호출. 장소·주소와 병렬 발사되는
    * 보조 섹션이라 실패/빈 결과는 빈 배열로 graceful(섹션 미렌더). place reqId 동형.
    */
-  const performWebSearch = useCallback(async (raw: string) => {
-    const q = raw.trim();
-    if (!q) return;
-    const myId = ++webReqIdRef.current;
-    setWebResults(null); // 새 검색 — 이전 웹 결과 잔류 방지.
-    try {
-      const res = await fetch(`/api/search/web?query=${encodeURIComponent(q)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { web: WebSearchResult[] };
-      if (webReqIdRef.current !== myId) return;
-      setWebResults(data.web);
-      setWebPending(false); // 폴백 완료 — 포커스 effect가 결과 헤딩으로 이동.
-    } catch {
-      if (webReqIdRef.current !== myId) return;
-      setWebResults([]); // 보조 섹션 — 무음 degrade.
-      setWebPending(false);
-    }
-  }, []);
+  const performWebSearch = useCallback(
+    async (raw: string): Promise<{ count: number; errored: boolean; stale?: boolean }> => {
+      const q = raw.trim();
+      if (!q) return { count: 0, errored: false };
+      const myId = ++webReqIdRef.current;
+      setWebResults(null); // 새 검색 — 이전 웹 결과 잔류 방지.
+      try {
+        const res = await fetch(`/api/search/web?query=${encodeURIComponent(q)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { web: WebSearchResult[] };
+        if (webReqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
+        setWebResults(data.web);
+        setWebPending(false); // 폴백 완료 — 포커스 effect가 결과 헤딩으로 이동.
+        return { count: data.web.length, errored: false };
+      } catch {
+        if (webReqIdRef.current !== myId) return { count: 0, errored: true, stale: true };
+        setWebResults([]); // 보조 섹션 — 무음 degrade.
+        setWebPending(false);
+        return { count: 0, errored: true };
+      }
+    },
+    [],
+  );
+  /** 분기 결과 → 상태 낱말. stale은 호출자가 먼저 걸러 여기 오지 않는다. */
+  const branchState = (r: { count: number; errored: boolean }): "done" | "empty" | "error" =>
+    r.errored ? "error" : r.count > 0 ? "done" : "empty";
 
   /**
    * 검색 진입점 단일화 — 장소(performSearch)와, juso 키가 있으면 주소
@@ -594,6 +653,17 @@ export function PlaceSearch({
   const runQuerySearch = useCallback(
     async (raw: string) => {
       if (!raw.trim()) return;
+      // 검색 세대 발급 — 앞 세대의 도구 대기자는 superseded(사용자 우선).
+      const attempt = ++searchAttemptRef.current;
+      supersedeSearchWaiter(attempt);
+      branchesRef.current = {
+        attempt,
+        state: {
+          places: "pending",
+          addresses: canSearchAddress ? "pending" : "skipped",
+          web: canSearchWeb ? "pending" : "skipped",
+        },
+      };
       // 검색 제출 = 기록 시점(0건이어도 기록 — 재시도 가치). 이전 삭제 통지는 리셋.
       setRecentNotice("");
       // 자동 해제 통지는 1회성 — 새 검색이 일어나면 그 결과 통지가 우선한다.
@@ -604,18 +674,31 @@ export function PlaceSearch({
       setWebResults(null);
       // 장소·주소는 병렬 발사·병렬 대기(직렬 await 금지 — 속도 보존). 웹은 그 뒤
       // 0건 폴백 조건일 때만 2단계로 발사한다(카카오·juso가 찾으면 웹 노이즈 회피).
-      const [place, addrCount] = await Promise.all([
+      const [place, addr] = await Promise.all([
         performSearch(raw),
-        canSearchAddress ? performAddressSearch(raw) : Promise.resolve(0),
+        canSearchAddress
+          ? performAddressSearch(raw)
+          : Promise.resolve({ count: 0, errored: false, stale: false }),
       ]);
-      if (
-        canSearchWeb &&
-        !place.errored &&
-        shouldFallbackToWeb(place.count, addrCount)
-      ) {
+      // 더 새로운 검색이 세대를 가져갔으면 이 세대의 분기 표는 이미 없다 — 건드리지 않는다.
+      const mine = branchesRef.current?.attempt === attempt ? branchesRef.current : null;
+      if (mine && !place.stale) mine.state.places = branchState(place);
+      if (mine && canSearchAddress && !addr.stale) mine.state.addresses = branchState(addr);
+      const fallback =
+        canSearchWeb && !place.errored && shouldFallbackToWeb(place.count, addr.count);
+      if (fallback) {
         setWebPending(true);
-        void performWebSearch(raw);
+        void performWebSearch(raw).then((web) => {
+          const still = branchesRef.current?.attempt === attempt ? branchesRef.current : null;
+          if (still && !web.stale) {
+            still.state.web = branchState(web);
+            bumpSettle();
+          }
+        });
+      } else if (mine) {
+        mine.state.web = "skipped";
       }
+      if (mine) bumpSettle();
     },
     [
       performSearch,
@@ -640,8 +723,27 @@ export function PlaceSearch({
     sortRef.current = next;
     setSort(next);
     keepFocusOnSortRef.current = true;
+    // 정렬 전환도 새 세대다(장소 분기만 다시 뜨고 주소·웹은 현재 상태를 승계).
+    const attempt = ++searchAttemptRef.current;
+    supersedeSearchWaiter(attempt);
+    const a = addrStatusRef.current;
+    const w = webResultsRef.current;
+    branchesRef.current = {
+      attempt,
+      state: {
+        places: "pending",
+        addresses:
+          a.kind === "done" ? (a.addresses.length > 0 ? "done" : "empty") : a.kind === "error" ? "error" : "skipped",
+        web: w === null ? "skipped" : w.length > 0 ? "done" : "empty",
+      },
+    };
     try {
       const r = await performSearch(q);
+      const mine = branchesRef.current?.attempt === attempt ? branchesRef.current : null;
+      if (mine && !r.stale) {
+        mine.state.places = branchState(r);
+        bumpSettle();
+      }
       // 재조회가 실패하면(stale 제외 — 그건 더 새 검색이 상태를 소유한다) 라벨·URL을
       // 되돌린다: 라벨이 곧 상태 신호인데 실패한 정렬이 적용된 것처럼 남으면 거짓이 된다.
       if (r.errored && !r.stale) {
@@ -709,22 +811,28 @@ export function PlaceSearch({
    * coordError로 통지하고 상세를 열지 않는다(graceful). in-flight ref로 중복 방지.
    */
   async function onSelectAddress(addr: JusoAddress) {
-    if (addrResolveRef.current) return;
+    await resolveAndOpenAddress(addr, undefined, openDetail);
+  }
+  /**
+   * 주소 → 좌표 → Place → 상세. 화면 탭(openDetail)과 도구(`HomeBridge.openAddress`,
+   * `requestOpenPlace`로 어느 화면에서든 정규화)가 같은 경로를 지난다. 실패 통지(coordError)도 같다.
+   */
+  async function resolveAndOpenAddress(
+    addr: JusoAddress,
+    signal: AbortSignal | undefined,
+    open: (place: Place) => void,
+  ): Promise<boolean> {
+    if (addrResolveRef.current) return false;
     addrResolveRef.current = true;
     try {
       const target = addr.roadAddrPart1 || addr.roadAddr;
-      const r = await resolveAddressCoord(target);
+      const r = await resolveAddressCoord(target, signal);
       if (r.kind !== "resolved") {
         setAddrStatus({ kind: "coordError" });
-        return;
+        return false;
       }
-      openDetail(
-        jusoAddressToPlace(
-          addr,
-          { lat: r.lat, lng: r.lng },
-          dataLocale(locale),
-        ),
-      );
+      open(jusoAddressToPlace(addr, { lat: r.lat, lng: r.lng }, dataLocale(locale)));
+      return true;
     } finally {
       addrResolveRef.current = false;
     }
@@ -776,6 +884,172 @@ export function PlaceSearch({
     if (params.get("panel") === "nearby")
       queueMicrotask(() => setNearbyOpen(true));
   }, [runQuerySearch]);
+
+  // 검색 정착 판정(커밋 뒤, [[effect-resolver-must-guard-committed-state]]): 분기 표가 전부
+  // 비-pending이고 커밋된 상태가 그 표와 일치할 때 스냅샷을 동결하고 대기자를 푼다.
+  useEffect(() => {
+    const b = branchesRef.current;
+    if (!b) return;
+    if (Object.values(b.state).some((st) => st === "pending")) return;
+    // 표가 done이라는데 상태가 아직 loading이면 앞 커밋이다 — 다음 커밋을 기다린다.
+    if (status.kind === "loading" || addrStatus.kind === "loading") return;
+    if (!frozenRef.current.has(b.attempt)) {
+      frozenRef.current.set(b.attempt, {
+        attempt: b.attempt,
+        query: lastQueryRef.current,
+        sort: sortRef.current,
+        places: status.kind === "done" ? status.result.places : [],
+        addresses: addrStatus.kind === "done" ? addrStatus.addresses : [],
+      });
+      // 최근 2세대만 보관(옛 세대의 ref는 staleResult가 정답).
+      for (const key of [...frozenRef.current.keys()].sort((x, y) => x - y).slice(0, -2)) {
+        frozenRef.current.delete(key);
+      }
+    }
+    const w = searchWaiterRef.current;
+    if (w && w.attempt === b.attempt) {
+      searchWaiterRef.current = null;
+      w.resolve({ kind: "settled", attempt: b.attempt, branches: { ...b.state } });
+    }
+  });
+
+  /** 도구의 검색(spec §3.2 원자 호출) — 사용자 검색과 같은 `runQuerySearch`를 세대 대기자와 함께 부른다. */
+  function runSearchForTool(request: SearchRequest, op: Op): Promise<SearchOutcome> {
+    // busy 판정은 커밋 뒤에 갱신되는 statusRef가 아니라 **동기**로 갱신되는 분기 표로 한다 —
+    // 연속 호출에서 statusRef는 아직 idle이라 둘째 호출이 첫 호출을 superseded로 밀어낸다.
+    const inFlight = branchesRef.current;
+    if (inFlight && Object.values(inFlight.state).some((st) => st === "pending")) {
+      return Promise.resolve({ kind: "busy" });
+    }
+    const q = request.query.trim();
+    if (sortRef.current !== request.sort) {
+      sortRef.current = request.sort;
+      setSort(request.sort);
+    }
+    setSpokenQuery(null);
+    setQuery(q);
+    const attempt = searchAttemptRef.current + 1;
+    supersedeSearchWaiter(attempt);
+    const promise = new Promise<SearchOutcome>((resolve) => {
+      searchWaiterRef.current = { attempt, resolve };
+    });
+    const onAbort = () => {
+      const w = searchWaiterRef.current;
+      if (w?.attempt === attempt) {
+        searchWaiterRef.current = null;
+        w.resolve({ kind: "aborted" });
+      }
+    };
+    op.signal.addEventListener("abort", onAbort, { once: true });
+    void runQuerySearch(q);
+    return promise.finally(() => op.signal.removeEventListener("abort", onAbort));
+  }
+
+  /** ref 미러로 현재 뷰를 판정(길찾기 > 내 주변 > 상세 > 홈). */
+  function currentViewState(): "directions" | "nearby" | "place" | "home" {
+    if (directionsOpenRef.current) return "directions";
+    if (nearbyOpenRef.current) return "nearby";
+    if (selectedRef.current) return "place";
+    return "home";
+  }
+  /**
+   * 홈으로 언와인드(spec §3.2): 맨 위 뷰의 뒤로가기 핸들러 → 다음 popstate 또는 1초 → 재판정,
+   * 최대 3회. popstate를 누구 것이라 귀속시키지 않는다(사용자 동시 뒤로가기도 상태 재판정이
+   * 진전을 보장한다). 상태 직접 대입으로 홈을 만들지 않는다(유령 히스토리 엔트리).
+   * 중간 착지는 억제하고 홈 도착 뒤 `search_places`의 결과 헤딩 착지가 그 호출의 유일한 착지다.
+   */
+  async function toHomeForTool(op: Op): Promise<void> {
+    if (currentViewState() === "home") return;
+    suppressFocusRef.current = true;
+    try {
+      for (let i = 0; i < 3; i++) {
+        const v = currentViewState();
+        if (v === "home") return;
+        const popped = new Promise<void>((resolve) =>
+          window.addEventListener("popstate", () => resolve(), { once: true }),
+        );
+        if (v === "directions") backFromDirections();
+        else if (v === "nearby") backFromNearbyHub();
+        else backToResults();
+        await Promise.race([popped, sleep(1_000, op.signal)]);
+        // popstate 뒤 React 커밋(ref 미러 갱신)을 한 틱 기다린다.
+        await sleep(0, op.signal);
+        if (!op.isLive()) throw new Error("aborted");
+      }
+      if (currentViewState() !== "home") throw new Error("viewChanging");
+    } finally {
+      suppressFocusRef.current = false;
+    }
+  }
+
+  // 홈 브릿지 게시(항상 — 결과 표의 소유자는 이 컴포넌트이고 `currentView()`가 우선순위로 가른다).
+  // read·runSearch는 ref로 최신 클로저를 읽는다.
+  const homeBridgeImplRef = useRef<HomeBridge | null>(null);
+  useEffect(() => {
+    homeBridgeImplRef.current = {
+      read: () => {
+        const st = statusRef.current;
+        const a = addrStatusRef.current;
+        const w = webResultsRef.current;
+        return {
+          query: lastQueryRef.current,
+          sort: sortRef.current,
+          attempt: branchesRef.current?.attempt ?? null,
+          branches: branchesRef.current ? { ...branchesRef.current.state } : null,
+          counts: {
+            places: st.kind === "done" ? st.result.places.length : 0,
+            addresses: a.kind === "done" ? a.addresses.length : 0,
+            web: w ? w.length : 0,
+          },
+          chatOpen: generalChatRef.current !== null,
+          webResults: (w ?? []).map(({ title, url, snippet }) => ({ title, url, snippet })),
+        };
+      },
+      runSearch: runSearchForTool,
+      snapshotFor: (attempt) => frozenRef.current.get(attempt) ?? null,
+      openAddress: async (address, op) => {
+        const ok = await resolveAndOpenAddress(address, op.signal, requestOpenPlace);
+        return ok ? { ok: true } : { ok: false, reason: "geocodeFailed" };
+      },
+    };
+  });
+  useEffect(() => {
+    const bridge: HomeBridge = {
+      read: () => homeBridgeImplRef.current!.read(),
+      runSearch: (request, op) => homeBridgeImplRef.current!.runSearch(request, op),
+      snapshotFor: (attempt) => homeBridgeImplRef.current!.snapshotFor(attempt),
+      openAddress: (address, op) => homeBridgeImplRef.current!.openAddress(address, op),
+    };
+    publishView("home", bridge);
+    return () => withdrawView("home", bridge);
+  }, []);
+  useEffect(() => {
+    markNearby(nearbyOpen);
+  }, [nearbyOpen]);
+  // navigator(spec §5.2): 도구가 화면을 옮기는 유일한 길 — 전부 화면이 원래 쓰는 핸들러를 지난다.
+  const navImplRef = useRef<ViewNavigator | null>(null);
+  useEffect(() => {
+    navImplRef.current = {
+      toHome: toHomeForTool,
+      toDirections: () => {
+        if (!directionsOpenRef.current) openDirections(null);
+      },
+      toPlace: (place) => requestOpenPlace(place),
+      isModalOpen: () =>
+        manualPickerOpenRef.current ||
+        generalChatRef.current !== null ||
+        (bridgeOf<PlaceBridge>("place")?.bridge.read().chatOpen ?? false),
+    };
+  });
+  useEffect(() => {
+    setNavigator({
+      toHome: (op) => navImplRef.current!.toHome(op),
+      toDirections: (op) => navImplRef.current!.toDirections(op),
+      toPlace: (place, op) => navImplRef.current!.toPlace(place, op),
+      isModalOpen: () => navImplRef.current!.isModalOpen(),
+    });
+    return () => setNavigator(null);
+  }, []);
 
   // 장소·주소가 모두 정착(neither loading)한 뒤 결과 헤딩으로 1회 포커스 이동.
   // juso 키 없으면 주소 검색을 안 하므로 장소 settled만으로 판정한다. 검색이 한 번도
@@ -1210,4 +1484,20 @@ export function PlaceSearch({
       )}
     </>
   );
+}
+
+/** `signal`이 끊기면 즉시 깨어난다(도구 언와인드 대기용). */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
