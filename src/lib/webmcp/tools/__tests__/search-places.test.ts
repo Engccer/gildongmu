@@ -54,12 +54,16 @@ describe("search_places(spec §3.2)", () => {
     nav(true);
     expect(JSON.parse(await searchPlacesTool().execute({ query: "x" }))).toMatchObject({ ok: false, reason: "modalOpen", userActionRequired: true });
   });
-  it("빈 질의는 unsupported emptyQuery, 연속 호출은 cooldown, 잠금 중엔 busy", async () => {
+  it("빈 질의는 unsupported emptyQuery, 연속 호출은 cooldown(화면 이동 전에 거절), 잠금 중엔 busy", async () => {
     publishView("home", home());
-    nav();
+    const toHome = vi.fn(async () => {});
+    setNavigator({ toHome, toDirections: () => {}, toPlace: () => {}, isModalOpen: () => false });
     expect(JSON.parse(await searchPlacesTool().execute({ query: "  " }))).toMatchObject({ ok: false, reason: "unsupported", detail: "emptyQuery" });
     expect(JSON.parse(await searchPlacesTool().execute({ query: "a" })).ok).toBe(true);
+    publishView("directions", { tag: "d" }); // 홈이 아닌 상태에서 쿨다운 안 재호출
     expect(JSON.parse(await searchPlacesTool().execute({ query: "a" }))).toMatchObject({ ok: false, reason: "cooldown", retryable: true });
+    expect(toHome).not.toHaveBeenCalled();
+    __resetViewRegistryForTest();
     let release!: () => void;
     const slow = home({ runSearch: () => new Promise((r) => (release = () => r({ kind: "settled", attempt: 1, branches: { places: "done", addresses: "done", web: "skipped" } }))) });
     __resetToolBudgetForTest();
@@ -75,10 +79,12 @@ describe("search_places(spec §3.2)", () => {
     publishView("home", home({}, [
       { title: "a", url: "https://a.b/x?lat=1&lng=2", snippet: "s" },
       { title: "b", url: "https://a.b/place/37.52,127.12", snippet: "s" },
+      { title: "c", url: "https://map.kakao.com/link/map/%EA%B0%95%EB%82%A8%EC%97%AD,37.49,127.02", snippet: "s" },
+      { title: "d", url: "https://www.google.com/maps/@37.4979,127.0276,17z", snippet: "s" },
     ]));
     nav();
     const out = JSON.parse(await searchPlacesTool().execute({ query: "q" }));
-    expect(out.web).toEqual([{ title: "a", url: "https://a.b/x", snippet: "s" }, { title: "b", snippet: "s" }]);
+    expect(out.web).toEqual([{ title: "a", url: "https://a.b/x", snippet: "s" }, { title: "b", snippet: "s" }, { title: "c", snippet: "s" }, { title: "d", snippet: "s" }]);
     __resetToolBudgetForTest();
     __resetViewRegistryForTest();
     publishView("home", home({ runSearch: async () => ({ kind: "settled", attempt: 1, branches: { places: "error", addresses: "error", web: "skipped" } }) }));

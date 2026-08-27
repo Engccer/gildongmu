@@ -32,11 +32,13 @@ export const SHAPE = withFailure({
 });
 
 /** 화면 링크 href의 origin+path만. path에 십진 좌표쌍이 있으면 키를 뺀다(spec §7). */
+/** 경로 세그먼트 안 좌표쌍 — `/`·`,`·`@` 뒤 소수 2자리 이상(카카오맵 `/link/map/이름,37.49,127.02`·구글 `/@37.4979,127.0276`). */
+const PATH_COORD_RE = /(^|[/,@])-?\d{1,3}\.\d{2,},-?\d{1,3}\.\d{2,}/;
 export function safeUrl(raw: string): string | undefined {
   try {
     const u = new URL(raw);
     const out = `${u.origin}${u.pathname}`;
-    return assertNoCoordinates(out) ? undefined : out;
+    return assertNoCoordinates(out) || PATH_COORD_RE.test(decodeURIComponent(u.pathname)) ? undefined : out;
   } catch {
     return undefined;
   }
@@ -71,10 +73,11 @@ export function searchPlacesTool(): WebMcpTool {
           const query = typeof input.query === "string" ? input.query.trim() : "";
           if (!query) return finish(failure("unsupported", { detail: "emptyQuery" }), SHAPE);
           const sort = input.sort === "review" ? "review" : "accuracy";
-          const home = await ensureHome(op);
-          if (isFailure(home)) return finish(home, SHAPE);
+          // 쿨다운은 화면을 옮기기 **전에** 본다(무부작용) — 거절할 호출이 사용자를 홈에 떨궈 두지 않게.
           const budget = checkBudget("search");
           if (!budget.ok) return finish(failure("cooldown", { retryAfterMs: budget.retryAfterMs }), SHAPE);
+          const home = await ensureHome(op);
+          if (isFailure(home)) return finish(home, SHAPE);
           consumeBudget("search");
           const outcome = await home.runSearch({ query, sort }, op);
           if (outcome.kind !== "settled") {

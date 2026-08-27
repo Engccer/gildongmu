@@ -264,11 +264,13 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 **판정(위원장)**: ①범위는 사용 사례 ①(이동 계획 보조, 컴퓨터 앞) — 검색 → 장소·역 정보 → 길찾기 브리핑. 사례 ②(실외 정위)·③(실시간 안내)는 모바일 에이전트 브라우저가 생기는 날의 후속(아래 §5 후보) ②등록은 앱 루트 상시 집합 한 벌, 도구가 필요한 화면으로 스스로 이동(진입 `open_*` 도구 없음) ③장소·역 정보는 `get_place_info` 하나(축 단위, 단일 축 `offset` 페이징) ④`read_current_view`만 유지, `focus_item` 삭제 ⑤안내 세션 도구 3개 삭제 ⑥`get_walk_infrastructure_nearby` 삭제 ⑦AI 채팅 제외·데이터 반환형 우선·`describe_app` 유지. 최종 7개: `describe_app`·`search_places`·`get_place_info`·`plan_directions`·`get_transit_route_detail`·`get_route_steps`·`read_current_view`.
 
-- **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-29 codex adversarial 17건(high 11) — 반영 12·부분 3·기각 2, spec §9 → ②구현(plan `docs/superpowers/plans/2026-08-29-webmcp-wave2.md`, 별도 세션) → ③실기기 §8 ⑧~⑪(배포 차단 판정) + ⑦ 재관측 → ④G4 제출물에 반영.
+- **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-29 codex adversarial 17건(high 11) — 반영 12·부분 3·기각 2, spec §9 → ②~~구현~~ ✅ 2026-08-29(plan `docs/superpowers/plans/2026-08-29-webmcp-wave2.md` 17태스크, main 통합, CHANGELOG 2026-08-29) → ③**실기기 §8 ⑧~⑪(배포 차단 판정) + ⑦ 재관측** — 위원장(ChatGPT 데스크톱 + VoiceOver) → ④G4 제출물에 반영. privacy `agent` 문안은 TextEdit 왕복 확정 뒤 6로케일 반영(구현 세션에서 초안 제시).
 - **새 불변식**: 도구층 단일 실행 잠금 + `op` 토큰(30초 상한, 만료 완료 무시) · 뷰 레지스트리 정체성 결박 대기(`placeId`·`publishedAfter`) · 문서 nonce가 든 불투명 `ref`와 정착 시 동결 스냅샷 해석 · 사용자 우선(도구는 `superseded`) · 모달 중 `modalOpen` 거절 · 호출당 착지 최대 1(`source:"tool"` 억제).
 - **후속(이 마일스톤 밖)**: 서버 측 upstream 일일 예산·single-flight(오전판 리뷰 #14) · 순수 화면 이동 단일 도구(목적 화면 enum, 2026-08-29 리뷰 #17 기각 — 사례 ①이 데이터 반환형이라 범위 밖, 실기기 ⑦에서 "화면만 열어 줘" 요청이 실제로 나오면 재판정) · "내 주변" 허브 도구층·보행 인프라·안내 세션 도구(사례 ②③, 모바일 에이전트 브라우저 전제).
 
 ### W1-R. 길찾기 뷰 도구층의 데이터 반환형 재작업 (신규 2026-08-28, W2 원칙 개정의 파급)
+
+**종결(2026-08-29, W2 구현에 편입)**: #1 도보 최단 대안 → `plan_directions.walk.shortest`·`get_route_steps.variant`(착지 ID는 `focus_item` 삭제로 소멸), #2 `read_current_view` 설명문 축소, #3 도구 삭제로 소멸. 아래 표는 기록.
 
 W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 재점검한 결과. 축·계약은 그대로이고 **빈틈 3건**만 남는다 — W2 plan에 태스크로 편입한다.
 
