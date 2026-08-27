@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationTimetable as Timetable } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
 import { timetableHeaderLine, timetableLineItems } from "@/lib/place-lines/station-timetable";
+import { useAxisBridge } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
 
+/** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). 화면은 loading·empty를 숨기고 error는 문장으로 낸다. */
 type Status =
-  | { kind: "hidden" } // 미커버(null)·로딩 전 — 섹션 미노출
-  | { kind: "error" } // 조회 실패 — 숨기지 않고 문장 노출(3-state)
-  | { kind: "done"; timetable: Timetable };
+  | { kind: "loading"; gen: number; previous?: Timetable }
+  | { kind: "empty"; gen: number } // 미커버(null) — 섹션 미노출
+  | { kind: "error"; gen: number } // 조회 실패 — 숨기지 않고 문장 노출(3-state)
+  | { kind: "done"; gen: number; timetable: Timetable; refreshError?: true };
 
 /**
  * 역 첫차·막차 자동 섹션 — StationMeta 동형(진입 시 fetch, region 랜드마크).
@@ -19,41 +23,69 @@ type Status =
 export function StationTimetable({ stationName }: { stationName: string }) {
   const t = useTranslations("timetable");
   const locale = useLocale();
-  const [status, setStatus] = useState<Status>({ kind: "hidden" });
+  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 0 });
   const headingId = useId();
-
+  const genRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const statusRef = useRef(status);
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    (async () => {
+    statusRef.current = status;
+  }, [status]);
+  const isEn = prefersEnglish(locale);
+
+  /** 조회. `force`는 캐시 무시 재조회(직전 데이터 유지, 실패 시 refreshError). 마운트 축이라 착지 없음. */
+  const load = useCallback(
+    async (force: boolean, _source: "user" | "tool") => {
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const gen = ++genRef.current;
+      const previous = force && statusRef.current.kind === "done" ? statusRef.current.timetable : undefined;
+      setStatus({ kind: "loading", gen, previous });
       try {
         const res = await fetch(
           `/api/station/timetable?station=${encodeURIComponent(stationName)}`,
-          { signal: controller.signal },
+          { signal: controller.signal, ...(force ? { cache: "no-store" as const } : {}) },
         );
-        if (!active) return;
-        if (!res.ok) {
-          setStatus({ kind: "error" });
-          return;
-        }
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = await res.json();
+        if (controller.signal.aborted) return;
         const timetable = (body.timetable as Timetable) ?? null;
-        setStatus(timetable ? { kind: "done", timetable } : { kind: "hidden" });
+        setStatus(timetable ? { kind: "done", gen, timetable } : { kind: "empty", gen });
       } catch {
-        // cleanup의 abort는 active=false라 여기서 걸러진다. active=true로 도달하면
-        // 진짜 네트워크·파싱 실패이므로 실패 문장을 노출한다(미커버 위장 금지, 3-state).
-        if (active) setStatus({ kind: "error" });
+        // 취소는 무시. 도달하면 진짜 네트워크·파싱 실패이므로 실패 문장을 노출한다(미커버 위장 금지, 3-state).
+        if (controller.signal.aborted) return;
+        setStatus(
+          previous ? { kind: "done", gen, timetable: previous, refreshError: true } : { kind: "error", gen },
+        );
       }
-    })();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [stationName]);
+    },
+    [stationName],
+  );
+  useEffect(() => {
+    void load(false, "user");
+    return () => controllerRef.current?.abort();
+  }, [load]);
+  const axisSource = useMemo<AxisSource>(
+    () => ({
+      read: (): AxisSnapshot => {
+        const s = statusRef.current;
+        const tt = s.kind === "done" ? s.timetable : s.kind === "loading" ? s.previous : undefined;
+        return {
+          status: s.kind,
+          gen: s.gen,
+          data: tt ? { basis: timetableHeaderLine(tt, t), lines: timetableLineItems(tt, t, isEn) } : undefined,
+          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+        };
+      },
+      load: (force, source) => void load(force, source),
+    }),
+    [load, t, isEn],
+  );
+  useAxisBridge("timetable", axisSource);
 
-  if (status.kind === "hidden") return null;
-
-  const isEn = prefersEnglish(locale);
+  if (status.kind === "loading" || status.kind === "empty") return null;
 
   return (
     // 자동 등장 보조 섹션 — region 랜드마크가 유일한 발견 경로(CLAUDE.md 규칙).

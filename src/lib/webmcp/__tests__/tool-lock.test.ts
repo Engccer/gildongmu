@@ -5,6 +5,7 @@ import {
   acquireOp,
   releaseOp,
   runningToolName,
+  type Op,
 } from "../tool-lock";
 
 type LiveOp = Exclude<ReturnType<typeof acquireOp>, { busy: string }>;

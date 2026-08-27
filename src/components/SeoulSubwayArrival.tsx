@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SubwayStationArrivals } from "@/lib/types";
+import { arrivalItems } from "@/lib/place-lines/station-arrivals";
+import { useAxisBridge } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
 import { SubwayArrivalList } from "./SubwayArrivalList";
 
+/** `gen`은 요청 세대(WebMCP 축 결박, spec §5.4). `previous`는 refresh 중 유지하는 직전 데이터. */
+type Done = { data: SubwayStationArrivals; at: string };
 type Status =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "empty" }
-  | { kind: "error" }
-  | { kind: "done"; data: SubwayStationArrivals; at: string };
+  | { kind: "idle"; gen: number }
+  | { kind: "loading"; gen: number; previous?: Done }
+  | { kind: "empty"; gen: number }
+  | { kind: "error"; gen: number }
+  | ({ kind: "done"; gen: number; refreshError?: true } & Done);
 
 /**
  * 서울 지하철 실시간 도착 — 다음 열차 메시지를 텍스트로 낭독.
@@ -23,48 +28,78 @@ type Status =
 export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
   const t = useTranslations("subwayArrival");
   const tActions = useTranslations("actions");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [status, setStatus] = useState<Status>({ kind: "idle", gen: 0 });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const inFlightRef = useRef(false);
+  const genRef = useRef(0);
 
   // 펼친 결과를 다시 감춘다(idle 복귀). 닫은 뒤 포커스를 트리거 버튼으로 복원.
+  // 세대를 올려 도구 대기자를 `superseded`로 끝낸다(사용자 조작 우선).
   const close = useCallback(() => {
-    setStatus({ kind: "idle" });
+    setStatus({ kind: "idle", gen: ++genRef.current });
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
-  async function load() {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setStatus({ kind: "loading" });
-    try {
-      const res = await fetch(
-        `/api/station/subway-arrival?station=${encodeURIComponent(stationName)}`,
-        { cache: "no-store" },
-      );
-      const body = await res.json();
-      if (!res.ok) {
-        setStatus({ kind: "error" });
-        return;
+  // 도구층 소스가 커밋 뒤 상태를 읽는 통로(렌더 중 ref 접근 금지 — effect에서 갱신).
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+  /** 조회(실시간이라 항상 no-store). `source:"tool"`은 헤딩 착지 생략, `force` 실패는 직전 데이터 + refreshError. */
+  const load = useCallback(
+    async (force: boolean, source: "user" | "tool") => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      const gen = ++genRef.current;
+      const previous =
+        force && statusRef.current.kind === "done"
+          ? { data: statusRef.current.data, at: statusRef.current.at }
+          : undefined;
+      setStatus({ kind: "loading", gen, previous });
+      try {
+        const res = await fetch(
+          `/api/station/subway-arrival?station=${encodeURIComponent(stationName)}`,
+          { cache: "no-store" },
+        );
+        const body = await res.json();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = body.arrivals as SubwayStationArrivals | null;
+        if (!data) {
+          setStatus({ kind: "empty", gen });
+          return;
+        }
+        const at = new Date().toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        setStatus({ kind: "done", gen, data, at });
+        if (source === "user") requestAnimationFrame(() => headingRef.current?.focus());
+      } catch {
+        setStatus(previous ? { kind: "done", gen, ...previous, refreshError: true } : { kind: "error", gen });
+      } finally {
+        inFlightRef.current = false;
       }
-      const data = body.arrivals as SubwayStationArrivals | null;
-      if (!data) {
-        setStatus({ kind: "empty" });
-        return;
-      }
-      const at = new Date().toLocaleTimeString(undefined, {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      setStatus({ kind: "done", data, at });
-      requestAnimationFrame(() => headingRef.current?.focus());
-    } catch {
-      setStatus({ kind: "error" });
-    } finally {
-      inFlightRef.current = false;
-    }
-  }
+    },
+    [stationName],
+  );
+  const axisSource = useMemo<AxisSource>(
+    () => ({
+      read: (): AxisSnapshot => {
+        const s = statusRef.current;
+        const done = s.kind === "done" ? s : s.kind === "loading" ? s.previous : undefined;
+        return {
+          status: s.kind,
+          gen: s.gen,
+          data: done ? { items: arrivalItems(done.data.arrivals, t) } : undefined,
+          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+        };
+      },
+      load: (force, source) => void load(force, source),
+    }),
+    [load, t],
+  );
+  useAxisBridge("arrivals", axisSource);
 
   const busy = status.kind === "loading";
   const live =
@@ -83,7 +118,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
       <button
         ref={triggerRef}
         type="button"
-        onClick={load}
+        onClick={() => void load(false, "user")}
         aria-disabled={busy}
         aria-busy={busy}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent aria-disabled:opacity-50"

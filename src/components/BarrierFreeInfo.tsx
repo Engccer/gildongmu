@@ -1,9 +1,21 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail } from "@/lib/types";
 import { barrierFreeLines } from "@/lib/place-lines/barrier-free";
+import { useAxisBridge } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+
+/**
+ * 화면은 `done`만 그리지만 도구층엔 3-state를 구조로 준다(매칭 실패·0건은 `empty`, 조회 실패는
+ * `error`). `gen`은 요청 세대(WebMCP 축 결박, spec §5.4).
+ */
+type Status =
+  | { kind: "loading"; gen: number; previous?: BarrierFreeDetail }
+  | { kind: "empty"; gen: number }
+  | { kind: "error"; gen: number }
+  | { kind: "done"; gen: number; detail: BarrierFreeDetail; refreshError?: true };
 
 /**
  * 장소 상세 무장애 편의시설(자동 등장 region) — StationMeta 동형.
@@ -21,8 +33,14 @@ export function BarrierFreeInfo({
   name: string;
 }) {
   const t = useTranslations("barrierFreeInfo");
-  const [detail, setDetail] = useState<BarrierFreeDetail | null>(null);
+  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 0 });
   const headingId = useId();
+  const genRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   // 장소(props) 변경 시 렌더 단계에서 이전 데이터 즉시 폐기 — A(시설 표시 중)→B
   // 전환 때 B의 fetch 완료 전까지 A의 무장애 정보가 화면에 남아 낭독되는 false
@@ -33,35 +51,71 @@ export function BarrierFreeInfo({
   const [prevKey, setPrevKey] = useState(placeKey);
   if (placeKey !== prevKey) {
     setPrevKey(placeKey);
-    setDetail(null);
+    // 세대는 렌더에서 올리지 않는다(ref 접근 금지) — 뒤따르는 load effect가 새 세대를 낸다.
+    setStatus({ kind: "loading", gen: status.gen });
   }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    (async () => {
+  /** 조회. `force`는 캐시 무시 재조회(직전 데이터 유지, 실패 시 refreshError). 마운트 축이라 착지 없음. */
+  const load = useCallback(
+    async (force: boolean, _source: "user" | "tool") => {
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const gen = ++genRef.current;
+      const previous = force && statusRef.current.kind === "done" ? statusRef.current.detail : undefined;
+      setStatus({ kind: "loading", gen, previous });
       try {
         const res = await fetch(
           `/api/places/barrier-free/match?lat=${lat}&lng=${lng}&name=${encodeURIComponent(name)}`,
-          { signal: controller.signal },
+          { signal: controller.signal, ...(force ? { cache: "no-store" as const } : {}) },
         );
-        if (!active) return;
-        if (!res.ok) return setDetail(null);
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = await res.json();
+        if (controller.signal.aborted) return;
         // 시설 0건도 숨김 — 무장애 관광지로 매칭됐어도 표시할 항목이 없으면 노이즈.
         const d = body.detail as BarrierFreeDetail | null;
-        setDetail(d && d.facilities.length > 0 ? d : null);
+        setStatus(d && d.facilities.length > 0 ? { kind: "done", gen, detail: d } : { kind: "empty", gen });
       } catch {
-        if (active) setDetail(null);
+        if (controller.signal.aborted) return;
+        setStatus(previous ? { kind: "done", gen, detail: previous, refreshError: true } : { kind: "error", gen });
       }
-    })();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [lat, lng, name]);
+    },
+    [lat, lng, name],
+  );
+  useEffect(() => {
+    void load(false, "user");
+    return () => controllerRef.current?.abort();
+  }, [load]);
+  const axisSource = useMemo<AxisSource>(
+    () => ({
+      read: (): AxisSnapshot => {
+        const s = statusRef.current;
+        const detail = s.kind === "done" ? s.detail : s.kind === "loading" ? s.previous : undefined;
+        return {
+          status: s.kind,
+          gen: s.gen,
+          data:
+            s.kind === "empty"
+              ? { match: { kind: "unmatched" }, facilities: [], source: t("source") }
+              : detail
+                ? {
+                    match: { kind: "matched", facilityCount: detail.facilities.length },
+                    facilities: barrierFreeLines(detail).map(({ label, value }) => ({ label, value })),
+                    source: t("source"),
+                  }
+                : undefined,
+          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+        };
+      },
+      load: (force, source) => void load(force, source),
+    }),
+    [load, t],
+  );
+  useAxisBridge("barrierFree", axisSource);
 
-  if (!detail) return null;
+  if (status.kind !== "done") return null;
+  const detail = status.detail;
 
   return (
     // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나

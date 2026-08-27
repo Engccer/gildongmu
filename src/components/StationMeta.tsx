@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
 import { prefersEnglish } from "@/lib/data-locale";
 import { stationMetaLines } from "@/lib/place-lines/station-meta";
+import { useAxisBridge } from "@/hooks/useAxisBridge";
+import type { AxisSnapshot, AxisSource } from "@/lib/webmcp/tools/context";
+
+/**
+ * 화면은 `done`만 그리고 나머지는 조용히 숨기지만(보조 정보), 도구층엔 3-state를 구조로 준다.
+ * `gen`은 요청 세대(WebMCP 축 결박, spec §5.4).
+ */
+type Status =
+  | { kind: "loading"; gen: number; previous?: Meta }
+  | { kind: "empty"; gen: number }
+  | { kind: "error"; gen: number }
+  | { kind: "done"; gen: number; meta: Meta; refreshError?: true };
 
 /**
  * 도시철도역 메타(A3) — 영문역명·노선·환승을 장소 상세에 표시.
@@ -18,39 +30,72 @@ import { stationMetaLines } from "@/lib/place-lines/station-meta";
 export function StationMeta({ stationName }: { stationName: string }) {
   const t = useTranslations("stationMeta");
   const locale = useLocale();
-  const [meta, setMeta] = useState<Meta | null>(null);
+  const [status, setStatus] = useState<Status>({ kind: "loading", gen: 0 });
   const headingId = useId();
-
+  const genRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const statusRef = useRef(status);
   useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-    // 결과를 항상 setMeta로 갱신(미커버는 null) — PlaceDetail은 역 전환 시
-    // 리마운트되지 않으므로 이전 역 메타 잔상을 새 응답으로 덮는다.
-    (async () => {
+    statusRef.current = status;
+  }, [status]);
+
+  /**
+   * 조회. 결과를 항상 갱신(미커버는 empty) — PlaceDetail은 역 전환 시 리마운트되지 않으므로 이전
+   * 역 메타 잔상을 새 응답으로 덮는다. 앞선 요청은 abort한다(늦은 응답이 새 세대를 덮지 않게).
+   * `force`는 캐시 무시 재조회(직전 데이터 유지, 실패 시 refreshError). 마운트 축이라 착지가 없어
+   * `source`는 계약 일치용이다.
+   */
+  const load = useCallback(
+    async (force: boolean, _source: "user" | "tool") => {
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const gen = ++genRef.current;
+      const previous = force && statusRef.current.kind === "done" ? statusRef.current.meta : undefined;
+      setStatus({ kind: "loading", gen, previous });
       try {
         const res = await fetch(
           `/api/station/meta?station=${encodeURIComponent(stationName)}`,
-          { signal: controller.signal },
+          { signal: controller.signal, ...(force ? { cache: "no-store" as const } : {}) },
         );
-        if (!active) return;
-        if (!res.ok) {
-          setMeta(null);
-          return;
-        }
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const body = await res.json();
-        if (active) setMeta((body.meta as Meta) ?? null);
+        if (controller.signal.aborted) return;
+        const meta = (body.meta as Meta) ?? null;
+        setStatus(meta ? { kind: "done", gen, meta } : { kind: "empty", gen });
       } catch {
-        // 보조 정보 — 실패/취소는 조용히 숨김(활성 시에만 비움).
-        if (active) setMeta(null);
+        // 보조 정보 — 실패는 조용히 숨긴다(취소는 무시).
+        if (controller.signal.aborted) return;
+        setStatus(previous ? { kind: "done", gen, meta: previous, refreshError: true } : { kind: "error", gen });
       }
-    })();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [stationName]);
+    },
+    [stationName],
+  );
+  useEffect(() => {
+    void load(false, "user");
+    return () => controllerRef.current?.abort();
+  }, [load]);
+  const axisSource = useMemo<AxisSource>(
+    () => ({
+      read: (): AxisSnapshot => {
+        const s = statusRef.current;
+        const meta = s.kind === "done" ? s.meta : s.kind === "loading" ? s.previous : undefined;
+        return {
+          status: s.kind,
+          gen: s.gen,
+          data: meta ? { lines: stationMetaLines(meta, t) } : undefined,
+          refreshError: s.kind === "done" && s.refreshError ? true : undefined,
+        };
+      },
+      load: (force, source) => void load(force, source),
+    }),
+    [load, t],
+  );
+  useAxisBridge("basic", axisSource);
 
-  if (!meta) return null;
+  if (status.kind !== "done") return null;
+  const meta = status.meta;
 
   const isEn = prefersEnglish(locale);
   // 문장 정본은 place-lines(도구층과 공용) — 여기서는 렌더만 한다.
