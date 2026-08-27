@@ -3,7 +3,7 @@
  * 이 두 함수 밖에서 `registerTool`에 넘길 도구를 만들지 않는다.
  */
 import type { WebMcpTool } from "../types";
-import type { DirectionsBridge, HomeBridge } from "./context";
+import type { DirectionsBridge, HomeEntryBridge } from "./context";
 import { focusItemTool } from "./focus-item";
 import { getRouteStepsTool } from "./get-route-steps";
 import { getTransitRouteDetailTool } from "./get-transit-route-detail";
@@ -31,7 +31,7 @@ export function buildDirectionsTools(bridge: DirectionsBridge): WebMcpTool[] {
 }
 
 /** 홈(검색 뷰)이 보일 때 등록하는 진입 도구(#1). */
-export function buildHomeTools(bridge: HomeBridge): WebMcpTool[] {
+export function buildHomeTools(bridge: HomeEntryBridge): WebMcpTool[] {
   return [openDirectionsTool(bridge)];
 }
 
