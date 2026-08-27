@@ -7,7 +7,7 @@ import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { PlaceBridgeContext } from "@/hooks/useAxisBridge";
 import { createAxisRegistry } from "@/lib/webmcp/place-axes";
-import { publishView, withdrawView } from "@/lib/webmcp/view-registry";
+import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type { PlaceBridge } from "@/lib/webmcp/tools/context";
 import { RouteLinks } from "./RouteLinks";
 import { StationMeta } from "./StationMeta";
@@ -72,6 +72,8 @@ export function PlaceDetail({
     null,
   );
   useEffect(() => {
+    // 도구 언와인드(홈으로 되돌아가기) 중의 재마운트는 중간 화면이다 — 착지하지 않는다(spec §6.1).
+    if (isUnwinding()) return;
     headingRef.current?.focus();
   }, [place.id]);
 
