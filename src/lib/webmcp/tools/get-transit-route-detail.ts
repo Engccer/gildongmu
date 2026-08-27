@@ -1,5 +1,6 @@
 import { finish, withFailure } from "../output";
 import { failure, type WebMcpTool } from "../types";
+import { bridgeOf } from "../view-registry";
 import type { DirectionsBridge } from "./context";
 
 export const SHAPE = withFailure({
@@ -25,7 +26,7 @@ export const SHAPE = withFailure({
  * `get_transit_route_detail`(W2 spec §3.5, readOnly). 정거장 전체 목록은 싣지 않는다 —
  * 3,706자의 대부분이 그것이고, 정거장을 하나하나 듣는 것은 화면을 읽는 길이다.
  */
-export function getTransitRouteDetailTool(bridge: DirectionsBridge): WebMcpTool {
+export function getTransitRouteDetailTool(): WebMcpTool {
   return {
     name: "get_transit_route_detail",
     description:
@@ -41,6 +42,8 @@ export function getTransitRouteDetailTool(bridge: DirectionsBridge): WebMcpTool 
     },
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     execute: async (input) => {
+      const bridge = bridgeOf<DirectionsBridge>("directions")?.bridge;
+      if (!bridge) return finish(failure("noResult", { detail: "noDirectionsView" }), SHAPE);
       const s = bridge.read();
       if (!s.plan) return finish(failure("noResult"), SHAPE);
       if (input.planId !== s.plan.planId) return finish(failure("stalePlan"), SHAPE);

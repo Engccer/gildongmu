@@ -16,8 +16,8 @@ import {
 import type { WebMcpTool } from "@/lib/webmcp/types";
 import { __resetViewRegistryForTest, bridgeOf } from "@/lib/webmcp/view-registry";
 import { __resetToolBudgetForTest } from "@/lib/webmcp/tool-budget";
-import { buildDirectionsTools } from "@/lib/webmcp/tools";
-import type { DirectionsBridge } from "@/lib/webmcp/tools/context";
+import { buildAppTools } from "@/lib/webmcp/tools";
+import { __resetToolLockForTest } from "@/lib/webmcp/tool-lock";
 
 vi.mock("next-intl", () => {
   const t = (key: string) => key;
@@ -176,8 +176,8 @@ function renderView() {
 
 async function ready(ctx: ReturnType<typeof installModelContext>) {
   await waitFor(() => expect(bridgeOf("directions")).not.toBeNull());
-  const bridge = bridgeOf<DirectionsBridge>("directions")!.bridge;
-  for (const tool of buildDirectionsTools(bridge)) ctx.tools.set(tool.name, tool);
+  // 길찾기 뷰가 이미 게시돼 있으므로 도구는 이동 없이 그 브릿지를 읽는다.
+  for (const tool of buildAppTools({ hasWalk: true, hasTransit: true, hasCar: true, canShowSubway: true, canShowBarrierFree: true })) ctx.tools.set(tool.name, tool);
 }
 
 /** 쿨다운(3초)을 지나기 위해 시계만 앞당긴다(타이머는 실시간 — waitFor·MutationObserver 유지). */
@@ -188,6 +188,7 @@ function advanceClock(ms: number) {
 beforeEach(() => {
   __resetGuideSessionStoreForTest();
   __resetViewRegistryForTest();
+  __resetToolLockForTest();
   __resetToolBudgetForTest();
   vi.useFakeTimers({ toFake: ["Date"] });
 });
@@ -222,9 +223,11 @@ describe("read_current_view", () => {
     const out = await ctx.call("read_current_view");
     expect(out).toEqual({
       ok: true,
+      view: "directions",
       phase: "idle",
       plan: null,
       fields: { from: "currentLocation", to: "", via: null, avoidStairs: false },
+      guidanceActive: false,
     });
   });
 });

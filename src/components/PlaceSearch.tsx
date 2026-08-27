@@ -36,6 +36,8 @@ import { useManualLocation } from "@/hooks/useManualLocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
 import { useHeldValue } from "@/hooks/useHeldValue";
+import { useWebMcpTools } from "@/hooks/useWebMcpTools";
+import { buildAppTools, type ToolGates } from "@/lib/webmcp/tools";
 import type { HomeBranches, HomeBridge, SearchOutcome, SearchRequest } from "@/lib/webmcp/tools/context";
 import type { SearchSnapshot } from "@/lib/webmcp/place-refs";
 import type { Op } from "@/lib/webmcp/tool-lock";
@@ -292,6 +294,20 @@ export function PlaceSearch({
     generalChatRef.current = generalChat;
     manualPickerOpenRef.current = manualPickerOpen;
   }, [webResults, webPending, generalChat, manualPickerOpen]);
+
+  // ── WebMCP 상시 등록(spec §5.6): 루트 마운트 1회, 도구 7개, 뷰 전환에도 재등록 0. ──
+  // 게이트는 props(배포별 키 유무)에서 고정값으로 — `describe_app`의 available과 실행 시 notConfigured가 여기서 나온다.
+  const gates = useMemo<ToolGates>(
+    () => ({
+      hasWalk: canShowWalk,
+      hasTransit: canShowTransit,
+      hasCar: canBriefCarRoute,
+      canShowSubway,
+      canShowBarrierFree,
+    }),
+    [canShowWalk, canShowTransit, canBriefCarRoute, canShowSubway, canShowBarrierFree],
+  );
+  useWebMcpTools(() => buildAppTools(gates), { enabled: true });
 
   // ── WebMCP 검색 트랜잭션(spec §3.2) ──
   // 검색마다 세대(`attempt`)를 발급하고 세 분기(장소·주소·웹)의 상태를 든다. 도구 대기자는 세대에

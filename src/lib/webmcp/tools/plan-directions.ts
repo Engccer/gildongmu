@@ -3,8 +3,11 @@ import { resolveAddressCoord } from "@/lib/resolve-address-coord";
 import type { JusoAddress, PlaceSearchResult } from "@/lib/types";
 import { checkBudget, consumeBudget } from "../tool-budget";
 import { finish, withFailure } from "../output";
+import { resolveRef } from "../place-refs";
 import { failure, type ToolFailure, type WebMcpTool } from "../types";
-import type { DirectionsBridge, ToolPlan } from "./context";
+import { bridgeOf } from "../view-registry";
+import type { HomeBridge, ToolPlan } from "./context";
+import { ensureDirections, isFailure, withOp } from "./ensure-view";
 
 /** `needsDisambiguation` 후보 토큰 보관(§3.4 — `execute` 클로저 안 단기 토큰). */
 const CANDIDATE_TTL_MS = 60_000;
@@ -25,6 +28,7 @@ interface Candidate {
 
 export const SHAPE = withFailure({
   ok: true,
+  view: true,
   planId: true,
   resolved: { from: true, to: true, via: true, avoidStairs: true },
   transit: {
@@ -69,7 +73,7 @@ function notFound(field: Field, extra?: Record<string, unknown>): ToolFailure {
  * 세대 결박 대기 → 화면 상태에서 요약 조립. 새 fetch 경로를 만들지 않는다(후보 검색만
  * 화면 필드가 쓰는 두 라우트를 같은 계약으로 부른다).
  */
-export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
+export function planDirectionsTool(): WebMcpTool {
   const candidateStore = new Map<string, Candidate>();
 
   async function searchCandidates(
@@ -176,13 +180,17 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
   return {
     name: "plan_directions",
     description:
-      "Plan a trip in the Gildongmu directions view: resolve the destination (and optional origin, one via point, stair-avoiding walk), run the search for transit, walking and driving as the user would, and return a compact summary per mode with a planId and route keys. Origin defaults to the user's current location, which stays in the browser. If a name is ambiguous, returns candidates instead of guessing.",
+      "Plan a trip: resolve the destination (to, or toRef from search_places), optional origin, one via point and stair-avoiding walk, run the search for transit, walking and driving as the user would, and return a summary per mode with a planId and route keys. Origin defaults to the user's current location, which stays in the browser. Ambiguous names return candidates. The app moves to the directions screen.",
     inputSchema: {
       type: "object",
       properties: {
         to: {
           type: "string",
-          description: "Destination: a place name or address, e.g. 'Seoul Station' or '세종대로 110'.",
+          description: "Destination: a place name or address, e.g. 'Seoul Station' or '세종대로 110'. Exclusive with toRef.",
+        },
+        toRef: {
+          type: "string",
+          description: "Destination as a ref from search_places (no text lookup). Exclusive with to.",
         },
         toCandidateId: {
           type: "string",
@@ -203,25 +211,32 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
           description: "Prefer a stair-free walking route. Default false.",
         },
       },
-      required: ["to"],
       additionalProperties: false,
     },
     annotations: { readOnlyHint: false, untrustedContentHint: true },
-    execute: async (input, context) => {
+    execute: (input, context) => withOp("plan_directions", context?.signal, async (op) => {
       const now = Date.now();
       // 만료 토큰 정리는 매 호출(자동 채택만 타는 세션에서도 Map이 쌓이지 않게 — 품질 리뷰).
       for (const [key, c] of candidateStore) if (c.expiresAt <= now) candidateStore.delete(key);
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      const toText = str(input.to);
+      const toRef = str(input.toRef);
+      if (toText && toRef) return finish(failure("unsupported", { detail: "toAndToRef" }), SHAPE);
+      if (!toText && !toRef) return finish(notFound("to"), SHAPE);
       // 쿨다운·세션 예산(W2 spec §5.5) — 시작 시각 기준, 성공·실패 무관.
       const budget = checkBudget("plan", now);
       if (!budget.ok) return finish(failure("cooldown", { retryAfterMs: budget.retryAfterMs }), SHAPE);
       consumeBudget("plan", now);
-      const signal = context?.signal;
-      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
-      const toText = str(input.to);
-      if (!toText) return finish(notFound("to"), SHAPE);
+      const signal = op.signal;
+      // 화면 이동(spec §3.4): 길찾기 뷰가 아니면 `toDirections` 뒤 이동 시작 이후 게시만 일치.
+      const bridge = await ensureDirections(op);
+      if (isFailure(bridge)) return finish(bridge, SHAPE);
       const lang = bridge.read().lang;
 
-      const to = await resolveEndpoint("to", toText, str(input.toCandidateId) || undefined, lang, signal, now);
+      // `toRef`는 상세의 "여기까지 길찾기"와 같은 좌표 endpoint — 텍스트 재해석 없음(spec §3.4).
+      const to = toRef
+        ? await resolveToRef(toRef, signal)
+        : await resolveEndpoint("to", toText, str(input.toCandidateId) || undefined, lang, signal, now);
       if (!to.ok) return finish(to.failure, SHAPE);
       const fromText = str(input.from);
       let from: DirEndpoint = { kind: "current" };
@@ -284,8 +299,30 @@ export function planDirectionsTool(bridge: DirectionsBridge): WebMcpTool {
           ],
         },
       );
-    },
+    }, (running) => finish(failure("busy", { running }), SHAPE)),
   };
+}
+
+/** 검색 `ref` → 좌표 endpoint. 장소는 스냅샷의 좌표 그대로, 주소는 화면 주소 탭과 같은 지오코딩. */
+async function resolveToRef(
+  ref: string,
+  signal: AbortSignal,
+): Promise<{ ok: true; endpoint: DirEndpoint } | { ok: false; failure: ToolFailure }> {
+  const home = bridgeOf<HomeBridge>("home")?.bridge;
+  if (!home) return { ok: false, failure: failure("unsupported", { detail: "noHomeView" }) };
+  const read = home.read();
+  const r = resolveRef(ref, read.attempt === null ? null : home.snapshotFor(read.attempt));
+  if (r.kind === "staleResult") {
+    return { ok: false, failure: failure("staleResult", { recovery: "search_places", query: read.query }) };
+  }
+  if (r.kind === "notFound") return { ok: false, failure: failure("notFound", { field: "to" }) };
+  if (r.kind === "place") {
+    return { ok: true, endpoint: { kind: "place", label: r.place.name, coord: { lat: r.place.lat, lng: r.place.lng } } };
+  }
+  const label = r.address.roadAddrPart1 || r.address.roadAddr;
+  const g = await resolveAddressCoord(label, signal);
+  if (g.kind !== "resolved") return { ok: false, failure: failure("geocodeFailed", { field: "to" }) };
+  return { ok: true, endpoint: { kind: "place", label, coord: { lat: g.lat, lng: g.lng } } };
 }
 
 /** 화면 상태 → 요약 출력(spec §3.4, 순수). 수단 키 부재 = 그 수단을 제공하지 않는 화면. */
@@ -338,6 +375,7 @@ export function summarizePlan(plan: ToolPlan): Record<string, unknown> {
     : undefined;
   return {
     ok: true,
+    view: "directions",
     planId: plan.planId,
     resolved: plan.resolved,
     transit,
