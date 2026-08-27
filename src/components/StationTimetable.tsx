@@ -83,7 +83,7 @@ export function StationTimetable({ stationName }: { stationName: string }) {
     }),
     [load, t, isEn],
   );
-  useAxisBridge("timetable", axisSource);
+  useAxisBridge("timetable", axisSource, status);
 
   if (status.kind === "loading" || status.kind === "empty") return null;
 

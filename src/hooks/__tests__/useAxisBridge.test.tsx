@@ -5,7 +5,7 @@ import { PlaceBridgeContext, useAxisBridge, type PlaceBridgeRegistrar } from "..
 import type { AxisSource } from "@/lib/webmcp/tools/context";
 
 function Child({ source }: { source: AxisSource }) {
-  useAxisBridge("timetable", source);
+  useAxisBridge("timetable", source, 0);
   return null;
 }
 
@@ -14,6 +14,7 @@ describe("useAxisBridge", () => {
     const attached: string[] = [];
     let detached = 0;
     const registrar: PlaceBridgeRegistrar = {
+      notifyCommit: () => {},
       attach: (axis) => {
         attached.push(axis);
         return () => {

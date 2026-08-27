@@ -92,7 +92,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
     }),
     [load, t],
   );
-  useAxisBridge("basic", axisSource);
+  useAxisBridge("basic", axisSource, status);
 
   if (status.kind !== "done") return null;
   const meta = status.meta;
