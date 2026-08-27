@@ -36,8 +36,6 @@ import { useManualLocation } from "@/hooks/useManualLocation";
 import { useManualLocationJudgment } from "@/hooks/useManualLocationJudgment";
 import { useManualLocationNotice } from "@/hooks/useManualLocationNotice";
 import { useHeldValue } from "@/hooks/useHeldValue";
-import { useWebMcpTools } from "@/hooks/useWebMcpTools";
-import { buildHomeTools } from "@/lib/webmcp/tools";
 import type { HomeBranches, HomeBridge, SearchOutcome, SearchRequest } from "@/lib/webmcp/tools/context";
 import type { SearchSnapshot } from "@/lib/webmcp/place-refs";
 import type { Op } from "@/lib/webmcp/tool-lock";
@@ -168,8 +166,6 @@ export function PlaceSearch({
   const [directions, setDirections] = useState<{
     from?: DirEndpoint;
     to: DirEndpoint | null;
-    /** 도착지 텍스트만 미리 채움(WebMCP `open_directions`). `to`가 있으면 그쪽이 이긴다. */
-    toText?: string | null;
   } | null>(null);
   // "내 주변" 허브 뷰(스펙 2026-07-30). 열림/닫힘은 URL(?panel=nearby)이 정본,
   // History 스택은 directions와 동형 규율(직접 진입 시 스택 합성 없음 — 닫기가
@@ -435,40 +431,15 @@ export function PlaceSearch({
     }
   }
 
-  // WebMCP 홈 진입 도구(spec §3.1) — 검색 뷰가 보일 때만 등록한다. 길찾기 뷰 전환 커밋
-  // **직전**에 `abortNow()`로 해제해, 길찾기 뷰의 9개가 등록되기 전에 이 1개가 사라진다
-  // (둘이 겹치는 창만 막는다 — 반대 방향의 빈 창은 수용, spec §3.1).
-  const homeVisible = directions === null && selected === null && !nearbyOpen;
-  const { abortNow: abortHomeTools } = useWebMcpTools(
-    () =>
-      buildHomeTools({
-        isDirectionsOpen: () => directionsOpenRef.current,
-        openDirections: (toText) => openDirectionsWithText(toText),
-      }),
-    { enabled: homeVisible },
-  );
-
   // 길찾기 뷰 진입: 홈(도착지 없음) 또는 장소 상세(도착지 프리필). 기존 state
   // (상세의 place)를 보존해 뒤로가기가 상세로 정확히 복귀하게 한다. ?dir= URL
   // 동기화는 DirectionsView가 replaceState로 소유한다(?q= 패턴과 동형).
   function openDirections(to: DirEndpoint | null) {
-    abortHomeTools();
     window.history.pushState(
       { ...(window.history.state ?? {}), directions: true },
       "",
     );
     setDirections({ to });
-  }
-  /** 도구 진입 — 도착지는 텍스트로만(해석·조회는 `plan_directions`). 같은 히스토리 규율. */
-  function openDirectionsWithText(toText: string | null) {
-    if (directionsOpenRef.current) return;
-    abortHomeTools();
-    window.history.pushState(
-      { ...(window.history.state ?? {}), directions: true },
-      "",
-    );
-    directionsOpenRef.current = true;
-    setDirections({ to: null, toText });
   }
   function backFromDirections() {
     if (window.history.state?.directions) {
@@ -1127,7 +1098,6 @@ export function PlaceSearch({
         canBriefCarRoute={canBriefCarRoute}
         initialFrom={directions.from}
         initialTo={directions.to}
-        initialToText={directions.toText ?? null}
         onBack={backFromDirections}
       />
     );

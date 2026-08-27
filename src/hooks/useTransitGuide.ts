@@ -21,11 +21,7 @@ import {
   type TransitGuideState,
   type TransitLock,
 } from "@/lib/transit-guide";
-import {
-  claimGuideSession,
-  publishGuideSnapshot,
-  releaseGuideSession,
-} from "@/lib/guide-session-store";
+import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -764,17 +760,6 @@ export function useTransitGuide(route: TransitRoute | null) {
       // 패널은 트리거로 복귀한다(done 상태를 화면에 유지하지 않는다).
       // 말미 도보가 있으면 핸드오프 제안을 남긴다(§14.2 — stopSession 전에 건짐).
       const walkMinutes = routeRef.current?.walkAfterMinutes ?? null;
-      // 완료 직후 상태를 도구가 읽을 수 있게 `done`을 남긴다(WebMCP spec §5.2).
-      publishGuideSnapshot(
-        stopSession,
-        {
-          status: "done",
-          mode: "transit",
-          routeKey: route?.routeKey,
-          now: walkMinutes != null ? t("doneWalk", { minutes: walkMinutes }) : t("done"),
-        },
-        { retain: true },
-      );
       releaseGuideSession(stopSession);
       clearTimer();
       stopSession();
@@ -785,7 +770,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       clearTimer();
       void pollOnce();
     }
-  }, [clearTimer, dispatch, pollOnce, route?.routeKey, stopSession, t]);
+  }, [clearTimer, dispatch, pollOnce, stopSession]);
 
   const changeBoarding = useCallback(() => {
     dispatch({ kind: "changeBoarding" });
@@ -934,21 +919,6 @@ export function useTransitGuide(route: TransitRoute | null) {
     const leg = state && guideRoute ? guideRoute.legs[state.legIndex] : null;
     return state && leg ? buildStatusText(state, leg) : "";
   }, [buildStatusText, guideRoute, state]);
-
-  // WebMCP 도구층 스냅샷(spec §3.8): 상태줄·신호·잔여 정거장 — 화면 상시 표시와 같은 값.
-  useEffect(() => {
-    if (!state || state.phase === "done") return;
-    publishGuideSnapshot(stopSession, {
-      status: "tracking",
-      mode: "transit",
-      routeKey: route?.routeKey,
-      now: statusText,
-      remainingStops: state.remaining ?? undefined,
-      signal: state.signal,
-      lastMessage: state.lastMessage ?? undefined,
-      dataAgeSeconds: state.dataAgeSeconds ?? undefined,
-    });
-  }, [route?.routeKey, state, statusText, stopSession]);
 
   return {
     startable: guideRoute !== null,

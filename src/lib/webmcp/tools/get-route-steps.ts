@@ -1,5 +1,4 @@
 import { finish, withFailure } from "../output";
-import { targetId } from "../targets";
 import { failure, type WebMcpTool } from "../types";
 import type { DirectionsBridge } from "./context";
 
@@ -13,7 +12,7 @@ export const SHAPE = withFailure({
   returnedCount: true,
   nextOffset: true,
   variant: true,
-  steps: [{ n: true, text: true, targetId: true }],
+  steps: [{ n: true, text: true }],
 });
 
 const DEFAULT_LIMIT = 10;
@@ -72,11 +71,7 @@ export function getRouteStepsTool(bridge: DirectionsBridge): WebMcpTool {
       const offset = clampInt(input.offset, 0, Number.MAX_SAFE_INTEGER, 0);
       const limit = clampInt(input.limit, 1, MAX_LIMIT, DEFAULT_LIMIT);
       const total = steps.length;
-      const page = steps.slice(offset, offset + limit).map((text, i) => ({
-        n: offset + i + 1,
-        text,
-        targetId: targetId.step(mode, offset + i + 1),
-      }));
+      const page = steps.slice(offset, offset + limit).map((text, i) => ({ n: offset + i + 1, text }));
       const end = offset + page.length;
       return finish(
         {

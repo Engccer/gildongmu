@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { useRouteGuide, type GuideKind } from "@/hooks/useRouteGuide";
 import { formatDistance, joinText } from "@/lib/format";
 import { SurroundingsScene } from "@/components/SurroundingsScene";
-import { FOCUS_TARGET_ATTR, GUIDE_TRIGGER_ATTR, targetId } from "@/lib/webmcp/targets";
 
 /** 화면 켜기 힌트 영구 해제(피드백 라운드1 13번, iOS UserDefaults 미러). */
 const SCREEN_HINT_DISMISSED_KEY = "gildongmu:screen-hint-dismissed";
@@ -42,7 +41,6 @@ export function DistanceBeacon({
   focusTriggerOnMount = false,
   triggerLabel,
   onStart,
-  triggerTarget,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -71,11 +69,6 @@ export function DistanceBeacon({
    * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
    */
   onStart?: () => void;
-  /**
-   * WebMCP `start_guidance`가 이 트리거를 찾는 값(`data-guide-trigger`, 길찾기 뷰에서만).
-   * 세션 중엔 이 트리거 버튼에 `guidance:panel` 착지가 붙는다(spec §6.6 — 세션 내내 존재하는 유일한 요소).
-   */
-  triggerTarget?: "walk" | "car";
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -119,12 +112,6 @@ export function DistanceBeacon({
 
   const tracking = guide.status === "tracking";
 
-  // WebMCP 착지 `guidance:panel`: 세션 내내 **반드시 존재하는** 요소는 트리거 버튼(추적 중 라벨
-  // "안내 중지")뿐이다 — 상시 표시 문장들은 이탈·값 소실 전이에서 사라져 착지 뒤 포커스가 body로
-  // 떨어진다(a11y 리뷰). 상태 문장은 도구 `guidance_status`가 따로 준다.
-  const triggerAnchorProps =
-    triggerTarget && tracking ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel() } : {};
-
   const togglePanel = () => {
     if (open) {
       guide.stop();
@@ -148,8 +135,6 @@ export function DistanceBeacon({
         type="button"
         onClick={togglePanel}
         aria-expanded={open}
-        {...(triggerTarget ? { [GUIDE_TRIGGER_ATTR]: triggerTarget } : {})}
-        {...triggerAnchorProps}
         className="min-h-11 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent"
       >
         {/* startOnOpen 트리거는 시작/중지를 겸하므로 추적 중엔 라벨이 곧 상태 신호다

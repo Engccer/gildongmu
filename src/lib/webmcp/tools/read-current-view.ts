@@ -1,10 +1,7 @@
-import { readGuideSnapshot } from "@/lib/guide-session-store";
-import { activeElementLabel } from "../accessible-name";
-import { activeTargetId, listHighLevelTargets } from "../dom";
 import { finish, withFailure } from "../output";
 import type { WebMcpTool } from "../types";
 import type { DirectionsBridge, ToolPlan } from "./context";
-import type { ModeKey } from "../targets";
+import type { ModeKey } from "../route-refs";
 
 const EMPTY_SCHEMA = { type: "object", properties: {}, additionalProperties: false } as const;
 
@@ -17,9 +14,6 @@ export const SHAPE = withFailure({
     destination: true,
     modes: [{ mode: true, outcome: true, summary: true, routeKey: true }],
   },
-  guidance: { status: true, mode: true, routeKey: true },
-  keyboardFocus: { label: true, targetId: true },
-  targets: [{ id: true, label: true }],
 });
 
 function modeSummary(plan: ToolPlan, mode: ModeKey) {
@@ -36,17 +30,16 @@ function modeSummary(plan: ToolPlan, mode: ModeKey) {
   return { mode, outcome: m?.outcome ?? "error", summary: m?.summary };
 }
 
-/** #2 `read_current_view`(spec §3.2, readOnly). */
+/** `read_current_view`의 길찾기 뷰 부분(readOnly). W2 Task 12가 뷰 공통 도구로 재작성한다. */
 export function readCurrentViewTool(bridge: DirectionsBridge): WebMcpTool {
   return {
     name: "read_current_view",
     description:
-      "Read the state of the Gildongmu directions view: from/to/via fields, whether a plan is loaded (and its planId), a short summary per travel mode with route keys, the guidance session state, which element has keyboard focus, and the high-level focus targets for focus_item. Call this before planning, focusing, or when a tool returned stalePlan.",
+      "Read the state of the Gildongmu directions view: from/to/via fields, whether a plan is loaded (and its planId), and a short summary per travel mode with route keys. Call this before planning or when a tool returned stalePlan.",
     inputSchema: EMPTY_SCHEMA,
     annotations: { readOnlyHint: true, untrustedContentHint: true },
     execute: async () => {
       const s = bridge.read();
-      const g = readGuideSnapshot();
       const plan = s.plan
         ? {
             planId: s.plan.planId,
@@ -55,18 +48,9 @@ export function readCurrentViewTool(bridge: DirectionsBridge): WebMcpTool {
           }
         : null;
       return finish(
-        {
-          ok: true,
-          fields: s.fields,
-          phase: s.phase,
-          plan,
-          guidance: { status: g.status, mode: g.mode, routeKey: g.routeKey },
-          // ⚠ 키보드 포커스다 — VoiceOver 탐색 커서가 아니다(spec §6.7).
-          keyboardFocus: { label: activeElementLabel(), targetId: activeTargetId() },
-          targets: listHighLevelTargets(),
-        },
+        { ok: true, fields: s.fields, phase: s.phase, plan },
         SHAPE,
-        { arrays: [{ path: "targets", mode: "count" }, { path: "plan.modes", mode: "count" }] },
+        { arrays: [{ path: "plan.modes", mode: "count" }] },
       );
     },
   };

@@ -9,7 +9,6 @@ import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
 import { quickExitText } from "@/lib/quick-exit-text";
 import { DistanceBeacon } from "./DistanceBeacon";
-import { FOCUS_TARGET_ATTR, GUIDE_TRIGGER_ATTR, targetId } from "@/lib/webmcp/targets";
 
 /**
  * 대중교통 실시간 안내 패널(B2 §3.2·§5) — DistanceBeacon과 같은 disclosure
@@ -31,7 +30,6 @@ export function TransitGuidePanel({
   dest,
   walkAccessible,
   onActiveChange,
-  triggerTarget,
 }: {
   route: TransitRoute;
   triggerLabel: string;
@@ -46,8 +44,6 @@ export function TransitGuidePanel({
   /** 세션 활성 전이 통지. 대안 disclosure 안에 마운트된 패널이 접힘으로
       unmount되면 세션이 조용히 죽으므로, 부모가 이 신호로 강제 펼침을 유지한다. */
   onActiveChange?: (active: boolean) => void;
-  /** WebMCP `start_guidance`가 이 트리거를 찾는 값(`transit:{routeRef}`, 길찾기 뷰에서만). */
-  triggerTarget?: string;
 }) {
   const t = useTranslations("transitGuide");
   const tBeacon = useTranslations("beacon");
@@ -171,7 +167,6 @@ export function TransitGuidePanel({
           type="button"
           ref={triggerRef}
           onClick={guide.start}
-          {...(triggerTarget ? { [GUIDE_TRIGGER_ATTR]: triggerTarget } : {})}
           className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
         >
           {triggerLabel}
@@ -190,13 +185,7 @@ export function TransitGuidePanel({
           {/* 상시 표시(live region 밖, 묶음 A 계약) — 통지와 같은 조립기를
               공유한다(§12.3: 완성 문장 공백 연결, 쉼표 조립(joinText) 폐기 —
               문장 키와 쉼표 조립이 섞이며 "기준., " 이중 구두점이 났었다). */}
-          {/* WebMCP `guidance:panel` 착지(spec §6.6) — 세션 내내 존재하는 상태 문장. */}
-          <p
-            ref={statusRef}
-            tabIndex={-1}
-            {...(triggerTarget ? { [FOCUS_TARGET_ATTR]: targetId.guidancePanel() } : {})}
-            className="text-sm"
-          >
+          <p ref={statusRef} tabIndex={-1} className="text-sm">
             {guide.statusText}
           </p>
 

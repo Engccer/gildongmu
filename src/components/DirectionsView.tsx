@@ -50,14 +50,9 @@ import { TransitRouteResult } from "./TransitRouteBriefing";
 import { WalkRouteResult } from "./WalkRouteBriefing";
 import { CarRouteResult } from "./CarRouteBriefing";
 import { carStepItems, walkStepItems } from "@/lib/route-step-items";
-import {
-  clearRetainedGuideSnapshot,
-  hasActiveGuideSession,
-  stopActiveGuideSession,
-} from "@/lib/guide-session-store";
+import { hasActiveGuideSession, stopActiveGuideSession } from "@/lib/guide-session-store";
 import { quickExitText } from "@/lib/quick-exit-text";
 import { publishView, withdrawView } from "@/lib/webmcp/view-registry";
-import { guideTriggerValue } from "@/lib/webmcp/tools/start-guidance";
 import type {
   DirectionsBridge,
   DirectionsSnapshot,
@@ -67,12 +62,7 @@ import type {
   QueryOutcome,
   ToolPlan,
 } from "@/lib/webmcp/tools/context";
-import {
-  buildRouteRefTable,
-  FOCUS_TARGET_ATTR,
-  targetId,
-  type ParsedTarget,
-} from "@/lib/webmcp/targets";
+import { buildRouteRefTable } from "@/lib/webmcp/route-refs";
 import { DistanceBeacon } from "./DistanceBeacon";
 import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
@@ -306,7 +296,6 @@ export function DirectionsView({
   canBriefCarRoute,
   initialFrom,
   initialTo = null,
-  initialToText = null,
   onBack,
 }: {
   canShowWalk: boolean;
@@ -314,11 +303,6 @@ export function DirectionsView({
   canBriefCarRoute: boolean;
   initialFrom?: DirEndpoint;
   initialTo?: DirEndpoint | null;
-  /**
-   * 도착지 **텍스트만** 미리 채운다(WebMCP `open_directions` — 해석·조회는 `plan_directions`의
-   * 몫). `initialTo`가 있으면 그쪽이 이긴다.
-   */
-  initialToText?: string | null;
   onBack: () => void;
 }) {
   const t = useTranslations("directions");
@@ -354,7 +338,7 @@ export function DirectionsView({
   const [toField, setToField] = useState<FieldState>(() =>
     initialTo
       ? endpointToField(initialTo, currentLabel)
-      : { text: initialToText ?? "", resolved: null },
+      : { text: "", resolved: null },
   );
   // 경유지 필드(N4): null = 접힘("경유지 추가" 버튼만). ?dir= 세 번째 토막이 있으면 펼친 채 복원.
   const [viaField, setViaField] = useState<FieldState | null>(() => {
@@ -405,17 +389,12 @@ export function DirectionsView({
     setWalkExpanded(null);
     setWalkShortestExpanded(false);
   }
-  /**
-   * 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). 끝난 안내 세션이 남긴 `done`·`failed`
-   * 스냅샷도 여기서 지운다 — 화면이 그 상태를 지우는 시점이 곧 도구가 그것을 잊는 시점이다
-   * (WebMCP spec §5.2).
-   */
+  /** 결과 폐기 한 곳(편집·스왑·경유지 조작·새 조회 공용). */
   function discardResults() {
     setResults(null);
     setToggledRoutes(new Set());
     setActiveGuideAlt(null);
     resetWalkExpansion();
-    clearRetainedGuideSnapshot();
   }
   // 후보 검색 등 폼 보조 통지: phase 파생 문구보다 우선하는 최근 1건.
   const [notice, setNotice] = useState("");
@@ -548,7 +527,6 @@ export function DirectionsView({
       const w = queryWaiterRef.current;
       queryWaiterRef.current = null;
       w?.resolve({ kind: "aborted" });
-      clearRetainedGuideSnapshot();
     };
   }, []);
   const transitHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -1068,7 +1046,6 @@ export function DirectionsView({
           distanceMeters: leg.distanceMeters,
           quickExit:
             leg.mode !== "walk" ? (quickExitText(tTransit, leg.toName ?? "", leg.quickExit) ?? undefined) : undefined,
-          targetId: targetId.transitLeg(ref, i + 1),
         })),
       };
     });
@@ -1145,7 +1122,7 @@ export function DirectionsView({
   function runQueryForTool(request: PlanRequest, signal: AbortSignal): Promise<QueryOutcome> {
     if (inFlight.current) return Promise.resolve({ kind: "busy" });
     // 사용자 버튼은 새 조회로 세션을 끝내지만, 에이전트 한 마디로 걷는 중인 안내가 끊기면 안 된다 —
-    // 먼저 `stop_guidance`를 부르게 한다(a11y 리뷰 HIGH).
+    // 중지는 사용자 버튼뿐이다(a11y 리뷰 HIGH).
     if (hasActiveGuideSession()) return Promise.resolve({ kind: "sessionActive" });
     // 결과 영역 안에 커서가 있으면(도구가 착지시킨 스텝·heading) 그 서브트리가 통째로 사라진다 —
     // 항상 존재하는 조회 버튼으로 선점 이동한다(헌장 §5). 사용자 클릭 경로는 커서가 이미 그 버튼이다.
@@ -1163,27 +1140,6 @@ export function DirectionsView({
     void runQuery({ from: request.from, to: request.to, via: request.via });
     return promise.finally(() => signal.removeEventListener("abort", onAbort));
   }
-  /** `focus_item`·`start_guidance`가 접힌 대안·도보 상세를 화면 핸들러로 펼치는 길(spec §3.3 ③). */
-  function ensureVisible(target: ParsedTarget) {
-    if (target.scope !== "plan") return;
-    // disclosure 버튼 자신(`transitRoute`)은 접힌 채로도 보인다 — 펼치지 않는다(요청받지 않은 상태 변경 금지).
-    if (target.kind === "transitLeg") expandRoute(target.routeRef);
-    if (target.kind === "step" && target.mode === "walk") setWalkExpanded(true);
-  }
-  function expandRoute(routeRef: string) {
-    const key = routeRefs.keyOf(routeRef);
-    const transit = results?.outcomes.transit;
-    if (!key || transit?.kind !== "done" || transit.mode !== "transit") return;
-    const defaultExpanded = transit.result.recommended.routeKey === key;
-    setToggledRoutes((prev) => {
-      const flipped = prev.has(key);
-      if (flipped ? !defaultExpanded : defaultExpanded) return prev;
-      const nextSet = new Set(prev);
-      if (flipped) nextSet.delete(key);
-      else nextSet.add(key);
-      return nextSet;
-    });
-  }
   const readSnapshot = (): DirectionsSnapshot => ({
     fields: {
       from: displayField(fromField).text,
@@ -1197,9 +1153,9 @@ export function DirectionsView({
   });
   // 도구 `execute`는 ref로 최신 화면을 읽는다(등록은 마운트 1회, 재등록 0 — spec §5.1).
   // ⚠ ref 갱신은 렌더가 아니라 effect에서(useRouteGuide 미러 관례 동형).
-  const bridgeRef = useRef<DirectionsBridge>({ read: readSnapshot, runQuery: runQueryForTool, ensureVisible, expandRoute });
+  const bridgeRef = useRef<DirectionsBridge>({ read: readSnapshot, runQuery: runQueryForTool });
   useEffect(() => {
-    bridgeRef.current = { read: readSnapshot, runQuery: runQueryForTool, ensureVisible, expandRoute };
+    bridgeRef.current = { read: readSnapshot, runQuery: runQueryForTool };
   });
   // 종단 phase의 대기자 resolve — 브리지 갱신 effect 뒤에 두어야 도구가 커밋된 화면을 읽는다.
   useEffect(() => {
@@ -1226,8 +1182,6 @@ export function DirectionsView({
     const bridge: DirectionsBridge = {
       read: () => bridgeRef.current.read(),
       runQuery: (request, signal) => bridgeRef.current.runQuery(request, signal),
-      ensureVisible: (target) => bridgeRef.current.ensureVisible(target),
-      expandRoute: (routeRef) => bridgeRef.current.expandRoute(routeRef),
     };
     publishView("directions", bridge);
     return () => withdrawView("directions", bridge);
@@ -1329,7 +1283,6 @@ export function DirectionsView({
       <EndpointField
         label={t("from")}
         searchLabel={t("searchFrom")}
-        focusTargetId={targetId.field("from")}
         field={displayField(fromField)}
         onTextChange={(text) => {
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
@@ -1377,7 +1330,6 @@ export function DirectionsView({
       <EndpointField
         label={t("to")}
         searchLabel={t("searchTo")}
-        focusTargetId={targetId.field("to")}
         field={displayField(toField)}
         onTextChange={(text) => {
           if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
@@ -1441,7 +1393,6 @@ export function DirectionsView({
           <EndpointField
             label={t("via")}
             searchLabel={t("searchVia")}
-            focusTargetId={targetId.field("via")}
             field={viaField}
             onTextChange={(text) => {
               if (stopActiveGuideSession()) setNotice(tBeacon("stopped"));
@@ -1503,7 +1454,6 @@ export function DirectionsView({
         type="button"
         ref={submitRef}
         onClick={() => runQuery()}
-        {...{ [FOCUS_TARGET_ATTR]: targetId.submit() }}
         aria-disabled={busy}
         aria-busy={busy}
         className="mt-4 min-h-11 rounded-md border border-blue-700 px-4 py-2 text-sm font-medium text-blue-700 aria-disabled:opacity-50 dark:text-blue-300"
@@ -1590,7 +1540,6 @@ export function DirectionsView({
                 <h3
                   ref={headingRefs[mode]}
                   tabIndex={-1}
-                  {...{ [FOCUS_TARGET_ATTR]: targetId.mode(mode) }}
                   className="text-base font-semibold"
                 >
                   {modeHeading(mode)}
@@ -1610,7 +1559,6 @@ export function DirectionsView({
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartWalk")}
-                    triggerTarget="walk"
                   />
                 )}
                 {mode === "car" && carGuideStartable && guideDest && (
@@ -1622,7 +1570,6 @@ export function DirectionsView({
                     startOnOpen
                     onStart={announceGuideStart}
                     triggerLabel={tBeacon("guideStartCar")}
-                    triggerTarget="car"
                   />
                 )}
                 {/* 대중교통은 안내 시작 버튼이 여기 없다 — 경로가 복수라 버튼이
@@ -1670,17 +1617,12 @@ export function DirectionsView({
                         activeGuideAlt === route.routeKey;
                       const guideStartable =
                         buildTransitGuideRoute(route) !== null && !prefersEnglish(locale);
-                      // WebMCP 착지·트리거는 내부 순번 토큰으로(경로 키를 DOM에 싣지 않는다).
-                      const routeRef = routeRefs.refOf(route.routeKey) ?? undefined;
                       return (
                         <div key={route.routeKey} className="mt-2">
                           <button
                             type="button"
                             aria-expanded={expanded}
                             onClick={() => toggleRoute(route.routeKey)}
-                            {...(routeRef !== undefined
-                              ? { [FOCUS_TARGET_ATTR]: targetId.transitRoute(routeRef) }
-                              : {})}
                             className="min-h-11 text-left text-sm text-blue-700 underline dark:text-blue-300"
                           >
                             {transitRouteLabel(route, name)}
@@ -1697,9 +1639,6 @@ export function DirectionsView({
                                   triggerLabel={tBeacon("guideStartTransitAlt", { name })}
                                   dest={guideDest ?? undefined}
                                   walkAccessible={stepFreeEnabled}
-                                  triggerTarget={
-                                    routeRef !== undefined ? guideTriggerValue("transit", routeRef) : undefined
-                                  }
                                   onActiveChange={(active) =>
                                     setActiveGuideAlt((prev) =>
                                       active
@@ -1717,7 +1656,6 @@ export function DirectionsView({
                                 locale={locale}
                                 dest={results.destLabel}
                                 includeSummary={false}
-                                focusTargetRouteRef={routeRef}
                               />
                             </>
                           )}
@@ -1766,7 +1704,6 @@ export function DirectionsView({
                             waypointLabel={results.viaLabel}
                             includeSummary={false}
                             omitNoticeStep
-                            focusTargetPrefix={row.key === "recommended" ? "walk" : undefined}
                           />
                         )}
                       </div>
@@ -1778,7 +1715,6 @@ export function DirectionsView({
                         briefing={outcome.result}
                         t={tPed}
                         waypointLabel={results.viaLabel}
-                        focusTargetPrefix="walk"
                       />
                     );
                   }
@@ -1801,7 +1737,6 @@ export function DirectionsView({
                           waypointLabel={results.viaLabel}
                           includeSummary={false}
                           omitNoticeStep
-                          focusTargetPrefix="walk"
                         />
                       )}
                     </div>
@@ -1813,7 +1748,6 @@ export function DirectionsView({
                     locale={locale}
                     t={tCar}
                     waypointLabel={results.viaLabel}
-                    focusTargetPrefix="car"
                   />
                 )}
               </div>
@@ -1839,7 +1773,6 @@ export function DirectionsView({
 function EndpointField({
   label,
   searchLabel,
-  focusTargetId,
   field,
   onTextChange,
   onResolve,
@@ -1858,8 +1791,6 @@ function EndpointField({
 }: {
   label: string;
   searchLabel: string;
-  /** WebMCP 착지 대상(`field:from` 등) — 입력 요소에 붙는다. */
-  focusTargetId?: string;
   field: FieldState;
   onTextChange: (text: string) => void;
   onResolve: (ep: DirEndpoint) => void;
@@ -2053,7 +1984,6 @@ function EndpointField({
           }}
           type="text"
           value={field.text}
-          {...(focusTargetId ? { [FOCUS_TARGET_ATTR]: focusTargetId } : {})}
           onChange={(e) => {
             onTextChange(e.target.value);
             // 옛 질의의 후보가 남지 않게 편집 즉시 비운다(포커스는 입력에 있어 안전).

@@ -63,11 +63,7 @@ import {
 } from "@/lib/final-approach";
 import { UNCERTAIN_ACCURACY_M } from "@/lib/route-guide";
 import { awaitRealFix } from "@/lib/effective-location";
-import {
-  claimGuideSession,
-  publishGuideSnapshot,
-  releaseGuideSession,
-} from "@/lib/guide-session-store";
+import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import type { CarRouteBriefing, WalkRouteBriefing } from "@/lib/types";
 import { walkRouteUrl } from "@/lib/walk-route-url";
@@ -1365,13 +1361,6 @@ export function useRouteGuide(
       if (arrived) {
         const text = t("arrived");
         rememberGuidance(text);
-        // 자동 종료 직후에도 상태를 읽을 수 있게 `done`을 남긴다(WebMCP spec §5.2 — 웹엔 종료
-        // 화면이 없어 이 스냅샷이 유일한 흔적이다. 새 조회·새 세션이 지운다).
-        publishGuideSnapshot(
-          sessionStopRef.current,
-          { status: "done", mode: kindFixed, now: text },
-          { retain: true },
-        );
         // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
         // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
         // (react-hooks/immutability). `sessionStopRef`는 생성 후 읽기만 한다.
@@ -1400,7 +1389,6 @@ export function useRouteGuide(
       approachTick,
       closerIntervalSeconds,
       emitTone,
-      kindFixed,
       rememberGuidance,
       setLiveRowsIfChanged,
       t,
@@ -1634,12 +1622,6 @@ export function useRouteGuide(
         prevKindRef.current = null;
         void wakeLock.release();
         setStatus("denied");
-        // 시작 실패는 `failed`로 남긴다(도구 `start_guidance`의 `confirmationRequired` 판정 재료).
-        publishGuideSnapshot(
-          sessionStopRef.current,
-          { status: "failed", failure: "geoDenied", mode: kindFixed, degraded: tBeacon("denied") },
-          { retain: true },
-        );
         announce(tBeacon("denied"));
         return;
       }
@@ -1648,7 +1630,7 @@ export function useRouteGuide(
       prevKindRef.current = "weak";
       announce(tBeacon("weak"));
     },
-    [announce, clearWatch, kindFixed, tBeacon, wakeLock],
+    [announce, clearWatch, tBeacon, wakeLock],
   );
 
   // 콜백을 ref로 우회 등록한다 — watchPosition에 넘긴 함수는 등록 시점 클로저에
@@ -2068,23 +2050,6 @@ export function useRouteGuide(
     }, WATCHDOG_INTERVAL_MS);
     return () => window.clearInterval(id);
   }, [announce, emitTone, status, tBeacon]);
-
-  // WebMCP 도구층 스냅샷(spec §3.8·§5.2): 화면이 이미 내는 문자열만 싣는다 — `liveRows`·
-  // `progress`·`degradeText`. 리듀서 내부(`phase`·`stepIndex`)는 싣지 않는다(화면이 말하지
-  // 않는 것을 도구가 말하면 낭독과 어긋난다). 소유자가 아닌 인스턴스의 게시는 스토어가 버린다.
-  useEffect(() => {
-    if (status !== "tracking") return;
-    publishGuideSnapshot(sessionStopRef.current, {
-      status: "tracking",
-      mode: kindFixed,
-      now: liveRows.top ?? currentText ?? undefined,
-      next: liveRows.next ?? undefined,
-      remainingMeters: progress ? Math.round(progress.remainingMeters) : undefined,
-      etaSeconds: progress?.etaSeconds != null ? Math.round(progress.etaSeconds) : undefined,
-      offRoute,
-      degraded: degradeText ?? undefined,
-    });
-  }, [status, kindFixed, liveRows, currentText, progress, offRoute, degradeText]);
 
   // 언마운트 정리 — watch·Wake Lock·재통지 타이머.
   useEffect(() => {

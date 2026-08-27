@@ -11,7 +11,7 @@ import type { MetroGroupItem } from "@/lib/place-lines/station-metro";
 import type { TimetableLineItem } from "@/lib/place-lines/station-timetable";
 import type { JusoAddress } from "@/lib/types";
 import type { SearchSnapshot } from "../place-refs";
-import type { ModeKey, ParsedTarget, RouteRefTable } from "../targets";
+import type { ModeKey, RouteRefTable } from "../route-refs";
 import type { Op } from "../tool-lock";
 
 export type PhaseKind =
@@ -37,7 +37,6 @@ export interface PlanTransitLeg {
   distanceMeters?: number;
   /** 빠른하차 문장(화면과 같은 `quickExitText`). 없으면 필드 부재. */
   quickExit?: string;
-  targetId: string;
 }
 
 export interface PlanTransitRoute {
@@ -119,20 +118,6 @@ export interface DirectionsBridge {
   read: () => DirectionsSnapshot;
   /** 화면 정본 조회를 완전한 요청 스냅샷으로 실행하고 세대 결박 대기자로 완료를 기다린다. */
   runQuery: (request: PlanRequest, signal: AbortSignal) => Promise<QueryOutcome>;
-  /**
-   * 착지 대상이 접힌 disclosure 안이면 화면 핸들러로 펼친다(대상이 DOM에 나타나는 것은
-   * 호출자가 기다린다). 펼칠 것이 없으면 아무것도 하지 않는다.
-   */
-  ensureVisible: (target: ParsedTarget) => void;
-  /** 대중교통 경로 disclosure를 펼친다(`start_guidance` 전용 — 트리거가 펼침 안에 있다). */
-  expandRoute: (routeRef: string) => void;
-}
-
-/** W1 `open_directions` 진입 브릿지 — W2 Task 11에서 도구와 함께 삭제된다. */
-export interface HomeEntryBridge {
-  isDirectionsOpen: () => boolean;
-  /** `to`는 필드 텍스트로만 채운다 — 해석·조회는 `plan_directions`의 몫. */
-  openDirections: (toText: string | null) => void;
 }
 
 /* ───────────── 홈(검색) 브릿지(W2 spec §3.2·§5.2) ───────────── */
@@ -170,7 +155,10 @@ export interface HomeBridge {
   /** 정착 시 동결한 결과 스냅샷 — `ref` 해석 표. 모르는 세대는 null. */
   snapshotFor(attempt: number): SearchSnapshot | null;
   /** 주소 카드 탭과 같은 경로(`/api/geocode` → Place 합성 → 상세). */
-  openAddress(address: JusoAddress, op: Op): Promise<{ ok: true } | { ok: false; reason: "geocodeFailed" }>;
+  openAddress(
+    address: JusoAddress,
+    op: Op,
+  ): Promise<{ ok: true } | { ok: false; reason: "geocodeFailed" | "aborted" | "busy" }>;
 }
 
 /* ───────────── 장소 상세 브릿지(W2 spec §5.4) ───────────── */
