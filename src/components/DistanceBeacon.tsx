@@ -73,7 +73,7 @@ export function DistanceBeacon({
   onStart?: () => void;
   /**
    * WebMCP `start_guidance`가 이 트리거를 찾는 값(`data-guide-trigger`, 길찾기 뷰에서만).
-   * 세션 중엔 패널의 첫 상시 표시 문장에 `guidance:panel` 착지도 붙는다(spec §3.2·§6.6).
+   * 세션 중엔 이 트리거 버튼에 `guidance:panel` 착지가 붙는다(spec §6.6 — 세션 내내 존재하는 유일한 요소).
    */
   triggerTarget?: "walk" | "car";
 }) {

@@ -1,12 +1,14 @@
 # 2026-08-27 WebMCP 웨이브 — 병렬 세션 계획
 
-> **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 최종 `origin/main` = `e414709`.
+> **G3 구현까지 종결·통합 2026-08-27**(`fd7b44c` 구현 → `907cf67` 리뷰 3건 반영 → `881a07c` 분배, `feat/webmcp`·worktree 삭제). 남은 것은 게이트 4(실기기 6항, `docs/FIELD-TEST.md` §8)·게이트 5(G4 제출물)·privacy 문안 TextEdit 왕복 — 정본은 `docs/BACKLOG.md` W1. 아래는 웨이브 시점 기록이다.
+> **웨이브 종료 2026-08-27.** G0·G1·G2 전부 종결, 접수 세션 마감. 웨이브 종료 시점 `origin/main` = `e414709`(G3 통합 후 `60f9040`).
 > · G1 `tmap-key-swap` DONE (dodo `ab1e15a5`·`ba9f5ff8`, Vercel 프로덕션 교체 07:52 KST + 실호출 확인)
 > · G2 `spec-webmcp` DONE (`e0b4258`→판정 반영 `4240abb`, worktree·브랜치 정리 완료)
 > · 코디네이터 분배 `e414709` (BACKLOG W1 · PROGRESS · FIELD-TEST §8)
-> · **남은 것은 G3 구현뿐.** 착수점은 `docs/BACKLOG.md` W1이며 그 항목 하나로 자족한다.
+> · ~~남은 것은 G3 구현뿐.~~ G3 종결(위 머리).
 > · 후속: 이 웨이브가 문서를 여러 주체에 분배했으므로 **G3 통합 후 `doc-audit`를 돌린다.**
 
+> ⚠ 이 문서의 `G0`~`G4`는 W1 내부 게이트 번호다 — `docs/BACKLOG.md`의 식별자 `G3`(자동차·대중교통 봉인)·`G5`(1.12 제출)와 무관하다.
 > 코디네이터: `mac-projects-b3`. 작업 세션: `gildongmu-bc`(spec), `dodo-planet-53`(Tmap 키 교체), Codex(`feat/webmcp` 구현).
 > 상위 항목은 `docs/BACKLOG.md` **W1**. 외부 시한 2026-09-04 05:00 KST.
 
@@ -15,9 +17,9 @@
 | # | 마일스톤 | 담당 | 상태 |
 |---|---|---|---|
 | G0 | 인앱 브라우저 × VoiceOver × 포커스 추종 실측 | 위원장 | ✅ 2026-08-27 통과(프로브 `4a3ee44`) |
-| G1 | Tmap 키 분리 | 코디네이터 → dodo 세션 | ✅ 앱 `Dodoplanet` 발급 완료, **교체만 남음** |
-| **G2** | **spec + 설계 리뷰** | **`gildongmu-bc`** | 착수 |
-| G3 | 구현 | Codex(`feat/webmcp`) | G2 대기 |
+| G1 | Tmap 키 분리 | 코디네이터 → dodo 세션 | ✅ 2026-08-27 07:52 교체·실호출 확인 |
+| **G2** | **spec + 설계 리뷰** | **`gildongmu-bc`** | ✅ `e0b4258`·`4240abb` |
+| G3 | 구현 | Codex↔Claude 교대(`feat/webmcp`) | ✅ `fd7b44c`·`907cf67`, main 통합 |
 | G4 | 영문 설명문 + 3분 영상 + Devpost 제출 | 위원장 | 미착수 |
 
 **확정 판정(코디네이터가 정함, 재논의 불필요)**
@@ -41,7 +43,7 @@
 - **작업 세션은 `docs/BACKLOG.md`·`PROGRESS.md`를 건드리지 않는다.** 완료 보고에 적어 보내면 코디네이터가 한 번에 반영한다.
 - `CHANGELOG.md`는 **자기 항목만 추가**하고, rebase 후 `comm -23 <(git show origin/main:CHANGELOG.md | sort) <(sort CHANGELOG.md)`로 남의 줄 소실을 전수 대조한다. 출력된 줄은 전부 자기가 의도적으로 지운 것이어야 한다.
 
-### §2-1 교대 규약 (2026-08-27 개정 — Codex 전담 철회)
+### §2-1 교대 규약 (2026-08-27 개정 — Codex 전담 철회) — 종결(브랜치 삭제 2026-08-27)
 
 사용 한도 때문에 **Codex와 Claude가 `feat/webmcp` 하나를 교대로** 쓴다. 워크트리도 브랜치도 하나다.
 
@@ -73,7 +75,7 @@ git -C ~/Mac-Projects/gildongmu worktree remove .worktrees/spec
 - ⚠ **메인 체크아웃 `~/Mac-Projects/gildongmu`는 코디네이터 것이다.** 작업 세션이 거기서 커밋하면 index를 공유해 서로의 파일을 흡수한다.
 - **리뷰가 도는 동안 rebase하지 않는다.** 리뷰 대상과 통합 대상이 갈리면 "리뷰 통과"가 아무것도 보증하지 못한다.
 
-## §4 웨이브
+## §4 웨이브 — 전부 종결(2026-08-27)
 
 - **웨이브 1(지금)**: `gildongmu-bc` G2 + `dodo-planet-53` G1 교체. 두 repo가 달라 파일 겹침 0.
 - **웨이브 2**: G2 통합(ff push) 후 Codex가 `feat/webmcp`를 `origin/main`에 rebase하고 spec대로 구현.
