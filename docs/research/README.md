@@ -26,6 +26,8 @@
 | `RESEARCH-2026-08-16-odbl-compliance.md` | 2026-08-16 | OSM ODbL 준수 조건(E12의 근거) |
 | `RESEARCH-2026-08-16-audio-signal-ble-control.md` | 2026-08-16 | 음향신호기 앱 조작 — 경찰청 규격서 BLE 공용 프로토콜·보급률 실측·선행 앱(E20의 근거) |
 | `RESEARCH-2026-08-23-express-stop-data.md` | 2026-08-23 | 급행 정차역 데이터원(E14·A16 L1의 선행 판정) |
+| `RESEARCH-2026-08-28-webmcp-tool-scope.md` | 2026-08-28 | WebMCP 도구 범위와 실배포 선례 조사(W2 범위 판정의 근거) |
+| `RESEARCH-2026-08-29-webmcp-deployed-validation.md` | 2026-08-29 | W2 배포본 7개 도구 연쇄·출력 상한·시설 페이지네이션 실측과 내부 쿨다운 결함 |
 
 ## `refs/` — 1차 사료 사본
 
