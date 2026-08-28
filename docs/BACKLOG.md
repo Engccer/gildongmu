@@ -266,6 +266,8 @@ spec `docs/superpowers/specs/2026-08-29-webmcp-wave2-design.md`(정본). 오전�
 
 - **게이트**: ①~~설계 리뷰~~ ✅ 2026-08-29 codex adversarial 17건(high 11) — 반영 12·부분 3·기각 2, spec §9 → ②~~구현~~ ✅ 2026-08-29(plan `docs/superpowers/plans/2026-08-29-webmcp-wave2.md` 17태스크, main 통합, CHANGELOG 2026-08-29) → ③**실기기 §8 ⑧~⑪(배포 차단 판정) + ⑦ 재관측** — 위원장(ChatGPT 데스크톱 + VoiceOver) → ④G4 제출물에 반영. privacy `agent` 문안은 TextEdit 왕복 확정 뒤 6로케일 반영(구현 세션에서 초안 제시).
 - **새 불변식**: 도구층 단일 실행 잠금 + `op` 토큰(30초 상한, 만료 완료 무시) · 뷰 레지스트리 정체성 결박 대기(`placeId`·`publishedAfter`) · 문서 nonce가 든 불투명 `ref`와 정착 시 동결 스냅샷 해석 · 사용자 우선(도구는 `superseded`) · 모달 중 `modalOpen` 거절 · 호출당 착지 최대 1(`source:"tool"` 억제).
+- **배포 실측(2026-08-29, 상세 `docs/research/RESEARCH-2026-08-29-webmcp-deployed-validation.md`)**: Chrome에서 7개 상시 등록, `search_places → get_place_info`, `search_places → plan_directions → route detail/steps`, `toRef` 목적지 일치, 좌표 비노출, 서울역 시설 `offset` 2페이지 전량 회수를 확인했다. 관련 자동 테스트 19파일 108개 통과. VoiceOver 착지·호스트 발화 경합·도구 없는 기능의 DOM 폴백은 미확인이라 게이트 ③은 열린 채다.
+- **열린 결함 W2-B1, 시설 복합 축 내부 쿨다운 충돌(배포 차단)**: 새 문서 3/3에서 `get_place_info({axes:["facilities"]})` 첫 호출이 Korail `done` 뒤 도시철도 `cooldown`(약 59.4~59.9초), 결합 `partial`이 됐다. `facilities`와 `facilitiesMetro`가 같은 `stationFacilities` 60초 버킷을 순차 확인·소비하여 둘째를 외부 fetch 전에 막는다. 자정 이후 API 중단이 아니며 60초 뒤 같은 `ref` 재호출은 `done`. **완료 조건**: 복합 축 한 호출이 버킷을 한 번만 소비하고 두 소스를 모두 실행, 두 소스가 동시에 `idle`인 회귀 테스트 추가, 배포본 서울역 첫 호출 `done`과 `offset` 전량 회수 재확인.
 - **후속(이 마일스톤 밖)**: 서버 측 upstream 일일 예산·single-flight(오전판 리뷰 #14) · 순수 화면 이동 단일 도구(목적 화면 enum, 2026-08-29 리뷰 #17 기각 — 사례 ①이 데이터 반환형이라 범위 밖, 실기기 ⑦에서 "화면만 열어 줘" 요청이 실제로 나오면 재판정) · "내 주변" 허브 도구층·보행 인프라·안내 세션 도구(사례 ②③, 모바일 에이전트 브라우저 전제).
 
 ### W1-R. 길찾기 뷰 도구층의 데이터 반환형 재작업 (신규 2026-08-28, W2 원칙 개정의 파급)
