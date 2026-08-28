@@ -506,7 +506,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 **착수 조건**: 검색·채팅의 리뷰순이 실사용 판정(§2 도보 표 아래 "E22 선행" 행)을 통과할 것(위원장 결정 2026-08-17 — 리뷰순 자체가 아직 쓸 만한지 미판정인 축이라, 그 판정 전에 둘러보기까지 퍼뜨리지 않는다).
 
-### E24. 장소의 "지금 영업 중" 표기 — 게이트 실행 완료(2026-08-28), 위험 방향 9.1% 감수 여부 판정 대기
+### E24. 장소의 "지금 영업 중" 표기 — ⛔ 약관 위반으로 폐기 권고(2026-08-28), 위원장 확정 대기
 
 위원장 조사 요청(2026-08-24): 식당·카페의 **영업 중 여부를 파라미터로 거는 API**가 있는가.
 
@@ -533,6 +533,16 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 - **HERE Geocoding & Search v7**(`openingHours`: `text`·`isOpen`·`structured`) / **Mapbox Places API Details**(OSM 문법 `opening_hours`) — **미판정.** 필드는 확실히 있으나 한국 POI 채움률을 문서로 알 수 없고, HERE는 TomTom과 유사한 한국 데이터 이용 제한이 걸리는지 약관 확인이 선행이다.
 
 **실호출 게이트 결과(2026-08-28, 위원장 지시로 실행)** — 키는 `gildongmu-prod`에 gcloud로 발급했고(`gildongmu-places-eval`, `places.googleapis.com` 제한) Enterprise 무료 1,000회 중 약 460회를 썼다. ⚠ 이 절은 같은 날 세 번 정정됐다. **틀린 결론이 나온 원인은 전부 표본이었지 데이터가 아니었다** — 아래 "측정 함정" 항목이 그 기록이다.
+
+**⛔ 약관 층에서 막힌다(2026-08-28, 1차 소스 확인). 정확도·비용 논쟁보다 앞선다.** Google Maps Platform Terms 원문을 직접 받아 확인했다.
+
+1. **TTS 금지 — §3.2.3(a) No Scraping (iv)**: *"use Google Maps Content with **text-to-speech** services."* 같은 조항 (c)(vi)은 *"convert text-based driving times into **synthesized speech** results"*를 따로 금지한다. **길동무는 낭독이 존재 이유인 앱**이고, iOS는 `TtsPlayer`가 AVSpeechSynthesizer·**Google Cloud TTS**로 안내를 직접 합성해 낸다(자동차 운전자 모드). 좁게 읽으면 "Maps 콘텐츠를 외부 TTS 서비스로 내보내는 것"만 금지이고 화면 텍스트를 사용자의 VoiceOver가 읽는 것은 보조기술이라 다르다고 볼 여지가 있으나, **그 해석에 이 앱의 1급 기능을 걸 수는 없다**. 조문 자체가 "접근성 앱이 구글 장소 데이터를 음성으로 전달하는 것"을 평문상 금지한다.
+2. **캐싱 금지 — §3.2.3(b) No Caching**: *"Customer will not cache Google Maps Content except as expressly permitted under the Maps Service Specific Terms."* 그 예외를 실제로 확인하니 **Google ID(=`place_id`)만** 일반 허용이고(MST §3), 30일 캐싱 표는 **Address Validation API 전용**(MST §1.3.2)이다. **영업시간에 대한 캐싱 예외는 없다.** ⚠ 따라서 이 항목이 앞서 세운 비용 모델("시간표를 주 단위로 캐시 → 재열람 0콜 → 월 1,000회 = 월 신규 장소 1,000곳")은 **약관상 성립하지 않는다**. 캐시 없이는 같은 장소를 두 번 열면 2콜이라 월 1,000회는 "월 조회 1,000회"이고, 우리 호출량은 실측조차 못 한 상태다.
+3. **출처 표기는 의무 — §3.2.2(b) Attribution**: *"Customer will display all attribution that (i) Google provides through the Services …; or (ii) is specified in the Maps Service Specific Terms. Customer will not modify, obscure, or delete such attribution."* 정책 문서는 **지도 없이 Places 데이터만 표시할 때 Google 로고·"Google Maps" 표기**를 요구한다. 위원장이 제안한 "…, 구글 기준" 표기는 **선택이 아니라 의무에 가깝고**, 다만 그 자체로는 1·2를 해소하지 못한다.
+
+**판정 권고: 폐기.** 1은 이 앱의 정체성과 정면 충돌하고(낭독이 곧 제품이다), 2는 감당 가능한 비용 모델을 없애며, 3은 1·2를 해결하지 못한다. 커버리지 90%·정확도 86%라는 좋은 숫자는 **쓸 수 있을 때만 의미가 있다**. 되살리려면 Google과 별도 서면 합의가 선행이며, 그 전까지 E24는 닫는다.
+
+⚠ 아래 실측 기록은 **폐기 근거가 아니라 자산**이다 — 다른 영업시간 소스를 다시 검토할 때 이 측정 방법(모집단 설계·밴드 술어·카카오맵 대조)과 함정 기록을 그대로 쓴다.
 
 **커버리지: 도달률은 하나의 수가 아니라 (모집단 × 업종)의 함수다.** 5개 지역(강동·강남·종로·대전·부산) 동일 구성으로 재측정한 값이 정본이다.
 
