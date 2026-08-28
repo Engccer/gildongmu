@@ -517,16 +517,26 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 - **Google Places (New) `openNow`** (Text/Nearby Search). ⚠ **과금 등급은 요청 파라미터가 아니라 `FieldMask`가 정한다**(공식 문서 확인) — 필터만 쓰고 `currentOpeningHours`(Enterprise SKU, 월 1,000회 무료·이후 $35/1,000)를 안 받으면 낮은 등급에 머문다. 대신 **"지금 열림"만 알고 "21시에 닫힘"은 모른다**. 20:50에 도착할 사용자에게는 그 차이가 안내의 전부라, 이 절약은 비용 최적화가 아니라 **품질 축소**다.
 - **Foursquare `open_now`**. ⚠ **그대로 쓰면 3-state 위반이다** — 문서 원문이 "Places that do not have opening hours will not be returned"라 *정보 없음*이 *닫힘*으로 위장되고, 목록에서 사라진 가게를 SR 사용자는 반증할 채널이 없다. 쓴다면 필터가 아니라 `hours` 필드로 받아 우리가 가른다. 2026-06부터 Pro 월 500회 무료.
 
-**무료 소스 2종은 실측으로 탈락**(2026-08-24 실호출·Overpass 직접 카운트):
+**무료 소스 3종은 실측으로 탈락**(2026-08-24 실호출·Overpass 직접 카운트 + 2026-08-28 스키마 확인):
 
 - **TourAPI `detailIntro2` `opentimefood`** — 채움률은 서울 표본 **40/40(100%)**로 좋고 `restdatefood`(휴무일)도 함께 온다. 그런데 **전국 등록이 음식점 13,498건·카페 1,989건뿐**이고(일반음식점 인허가 60만 건대 대비 2%대), 값이 `- 11:20~21:30<br>- 준비시간 15:00~17:00`처럼 브레이크타임·라스트오더가 섞인 자연어라 결정론 판정이 불가능하다. 사람이 읽으라고 쓴 문장이지 파싱하라고 만든 필드가 아니다.
 - **OSM `opening_hours`** — 한국 `amenity=restaurant|cafe` **91,248곳 중 3,024곳 = 3.3%**. 보행 노드 seed(E12)가 성립한 것과 달리 이 축은 데이터가 없다.
+- **Overture Maps places** — **스키마에 영업시간 필드가 아예 없다**(2026-08-28). `operating_status`가 있으나 문서가 명시적으로 "not an indication of opening hours or that the place is open/closed at the current time-of-day"라 배제하고, 자체 경고도 "low property completeness"다. OSM을 포함하지 않는 소스 구성(Meta·Microsoft·Foursquare 등)이라 위 OSM 축의 대안도 못 된다.
 
 ⚠ **§9의 "Google Maps provider 교체" 폐기에 걸리지 않는다** — 그쪽은 도보·자동차 경로와 ko 지오코딩을 카카오와 겨뤄 탈락한 축이고, 이건 **국내 어디에도 없는 필드 하나를 보조로 얹는** 다른 접근이다(E16 축3이 "en 도보 경로" 폐기에 걸리지 않는 것과 같은 구분).
+
+**2026-08-28 추가 판정 4종**(당시 훑지 않은 해외 provider):
+
+- **TomTom Search API**(`openingHours` 필터 보유) — **탈락 확정.** 지역별 조건 문서가 한국에 대해 "한국 데이터를 한국 밖에서 다운로드·저장·캐시·호스팅할 수 없다(브라우저 캐시 제외)", "**한국 내 어떤 장소의 좌표도 표시할 수 없다**"고 못 박는다. 좌표 표시 금지는 거리 계산·중복 매칭을 통째로 무효화하고, 해외 리전 캐시 금지는 Vercel 배포와 정면 충돌한다.
+- **Yelp Fusion**(`open_now` 보유) — 사실상 탈락. 아시아 전역 미서비스라 한국 커버리지 근거가 없다.
+- **TripAdvisor Content API** — 사실상 탈락. 파트너 티어 전용·월 수천 달러대.
+- **HERE Geocoding & Search v7**(`openingHours`: `text`·`isOpen`·`structured`) / **Mapbox Places API Details**(OSM 문법 `opening_hours`) — **미판정.** 필드는 확실히 있으나 한국 POI 채움률을 문서로 알 수 없고, HERE는 TomTom과 유사한 한국 데이터 이용 제한이 걸리는지 약관 확인이 선행이다.
 
 **착수 조건(실호출 게이트)**: Google Places 한국 영업시간의 **정확도는 문서로 판정할 수 없다**. 키 발급 후 강동구 표본 30곳을 실제 영업시간과 대조해 오차를 재고, 나쁘면 여기서 닫는다. 비용 축도 같이 본다 — 검색 1회에 1콜이라 무료 한도(Essentials 10,000·Pro 5,000/월)를 검색 트래픽이 바로 넘긴다.
 
 ⚠ **제품 판단이 실측보다 앞설 수 있다**: "영업 중"을 절반만 맞히는 안내는 문 닫힌 가게 앞에 선 것조차 확인할 수단이 없는 사용자에게 **정보 없음보다 나쁘다**. 정확도가 애매하게 나오면 채택이 아니라 폐기가 기본값이다.
+
+조사 전문은 GitHub 이슈 [#2](https://github.com/Engccer/gildongmu/issues/2).
 
 ### E18. juso 내비게이션용DB 활용 판단 (보류, 실측 완료)
 
