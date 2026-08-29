@@ -100,6 +100,21 @@ describe("get_place_info(spec §3.3)", () => {
     expect(out.timetable).toBeUndefined();
   });
 
+  it("역 facilities 첫 호출: korail·metro 둘 다 idle이면 두 소스를 모두 fetch해 done(W2-B1 회귀)", async () => {
+    __setNonceForTest("n");
+    publishView("home", home());
+    const bridge = placeBridge(station, {}); // 전 축 idle — 종전 테스트는 done·empty를 미리 게시해 이 경로를 안 밟았다
+    publishView("place", bridge, station.id);
+    nav();
+    const out = await call({ ref: encodeRef(2, "p", 0), axes: ["facilities"] });
+    expect(bridge.axes.facilities.ensureLoaded).toHaveBeenCalledTimes(1);
+    expect(bridge.axes.facilitiesMetro.ensureLoaded).toHaveBeenCalledTimes(1);
+    expect(out.facilities).toMatchObject({ status: "done", korail: { status: "done" }, metro: { status: "done" } });
+    // 두 upstream이 각자 쿨다운에 들어간다(한 버킷이었다면 둘째가 fetch 전에 막혔다)
+    expect(checkBudget("stationFacilities").ok).toBe(false);
+    expect(checkBudget("stationFacilitiesMetro").ok).toBe(false);
+  });
+
   it("staleResult에 recovery·query, 순번 밖은 notFound", async () => {
     __setNonceForTest("n");
     publishView("home", home());

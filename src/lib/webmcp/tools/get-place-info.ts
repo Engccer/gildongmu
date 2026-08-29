@@ -98,8 +98,9 @@ function bucketOf(key: AxisKey): BudgetBucket | null {
     case "timetable":
       return "stationTimetable";
     case "facilities":
-    case "facilitiesMetro":
       return "stationFacilities";
+    case "facilitiesMetro":
+      return "stationFacilitiesMetro"; // 코레일과 다른 upstream — 한 버킷에 두면 첫 호출이 항상 partial(tool-budget.ts 주석)
     case "arrivals":
       return "stationArrivals";
     case "barrierFree":

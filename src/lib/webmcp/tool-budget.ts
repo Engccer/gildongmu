@@ -4,6 +4,12 @@
  * 버킷은 upstream 키 단위다. `checkBudget`은 확인만 하고 소비하지 않으므로
  * (재직렬화·캐시 히트는 무과금), 실제 fetch를 일으키는 자리에서만 `consumeBudget`을 부른다.
  * 모듈 싱글턴이라 한 페이지 세션 안에서 도구 인스턴스가 여럿이어도 예산은 한 벌이다.
+ *
+ * ⚠ 버킷은 "도구 입력의 축"이 아니라 **실제 upstream** 단위다. 시설 축 하나가 코레일 시설과
+ * 서울 도시철도 시설 두 upstream을 부르므로 버킷도 둘(`stationFacilities`·`stationFacilitiesMetro`)이다.
+ * 둘을 한 버킷에 두면 첫 호출이 코레일을 소비한 직후 도시철도가 60초 쿨다운에 걸려 항상 `partial`이
+ * 됐다(배포본 실측 2026-08-29, W2-B1). 대안이던 "축 단위 1회 소비"는 30회 상한 아래 실호출이 60회가
+ * 되어 예산이 거짓이 되므로 기각했다.
  */
 export type BudgetBucket =
   | "search"
@@ -11,6 +17,7 @@ export type BudgetBucket =
   | "stationArrivals"
   | "stationTimetable"
   | "stationFacilities"
+  | "stationFacilitiesMetro"
   | "barrierFree";
 
 /** 마지막 소비 뒤 다음 소비까지 기다려야 하는 시간. */
@@ -20,6 +27,7 @@ const COOLDOWN_MS: Record<BudgetBucket, number> = {
   stationArrivals: 10_000,
   stationTimetable: 60_000,
   stationFacilities: 60_000,
+  stationFacilitiesMetro: 60_000,
   barrierFree: 60_000,
 };
 const HOUR_MS = 3_600_000;
