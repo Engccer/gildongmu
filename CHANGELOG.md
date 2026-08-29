@@ -9,6 +9,11 @@
 
 ---
 
+## 2026-08-30
+
+- **WebMCP 시설 축 예산 버킷 분리(W2-B1)**: `get_place_info` `facilities`의 코레일·도시철도 두 소스가 한 60초 버킷을 순차 소비해 첫 호출이 항상 `partial`이던 결함. upstream별 버킷으로 나눴다(`stationFacilitiesMetro`). 배포본 재검증으로 첫 호출 `done`, `truncated`+`offset` 전량 회수, 거절 경로 `busy`·`staleResult`·`modalOpen` 통과 — `docs/research/RESEARCH-2026-08-29-webmcp-deployed-validation.md` §11.
+- **도시철도 시설 빈 줄 제거**: 필드가 전부 빈 시설 항목(교통약자 도우미)이 화면·도구에 빈 줄을 만들던 것을 `metroFacilityGroups`에서 떨어뜨린다(헤딩의 수는 유지).
+
 ## 2026-08-29
 
 ### W2 — WebMCP 도구층 2차: 이동 계획 보조 상시 집합 7개
