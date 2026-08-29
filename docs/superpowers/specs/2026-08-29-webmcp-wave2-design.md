@@ -127,7 +127,7 @@ Declarative API·`plan_directions` 수단 인자는 W1 §8.5대로 범위 밖. W
 
 ### 5.5 쿨다운·세션 예산 (오전판 §5.5 승계)
 
-`tool-budget.ts` 모듈 싱글턴, upstream 키 버킷 `search`(3초)·`plan`(3초)·`stationArrivals`(10초)·`stationTimetable`·`stationFacilities`·`barrierFree`(60초). 세션 예산 버킷당 시간당 도구 유발 fetch 30회, 초과는 `cooldown{retryAfterMs}`(결정적). **버킷은 실제 fetch를 일으킬 때만 소비**한다(정착 데이터 재직렬화·페이징은 무료). 서버 측 일일 예산·single-flight는 마일스톤 밖(`docs/BACKLOG.md` W2 후속).
+`tool-budget.ts` 모듈 싱글턴, upstream 키 버킷 `search`(3초)·`plan`(3초)·`stationArrivals`(10초)·`stationTimetable`·`stationFacilities`(코레일)·`stationFacilitiesMetro`(서울 도시철도 — 다른 upstream이라 버킷도 다르다, W2-B1)·`barrierFree`(60초). 세션 예산 버킷당 시간당 도구 유발 fetch 30회, 초과는 `cooldown{retryAfterMs}`(결정적). **버킷은 실제 fetch를 일으킬 때만 소비**한다(정착 데이터 재직렬화·페이징은 무료). 서버 측 일일 예산·single-flight는 마일스톤 밖(`docs/BACKLOG.md` W2 후속).
 
 ### 5.6 등록 수명
 
