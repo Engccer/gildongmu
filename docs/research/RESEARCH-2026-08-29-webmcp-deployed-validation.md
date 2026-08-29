@@ -307,3 +307,21 @@ src/components/__tests__/PlaceSearchWebMcp.test.tsx
 W2의 주 사용 사례인 검색, 장소와 역 정보, 세 수단 길찾기 브리핑은 Chrome WebMCP 환경에서 실제로 이어졌다. 출력 상한과 페이지네이션 기계, 좌표 비노출도 배포본에서 확인했다. 그러나 시설 복합 축은 첫 호출마다 내부 쿨다운으로 부분 응답이 되므로, W2 배포 게이트를 완전히 닫을 수 없다.
 
 남은 순서는 셋이다. ①`docs/BACKLOG.md` W2-B1의 열린 결함을 고치고 시설 첫 호출을 재검증한다(예산 버킷을 어떻게 셀지는 §5.4의 ⓐ·ⓑ 판정이 선행한다). ②같은 재검증에서 §8.2의 다섯 축(게이트 ⑩ 자율 회수와 거절 경로 4종)을 함께 밟는다. ③VoiceOver와 호스트 음성 게이트(⑧·⑨)는 위원장이 실기기에서 별도로 판정한다. **이번 보고서로 닫히는 게이트는 없다.**
+
+
+## 11. 재검증 (2026-08-30 05:00~05:20 KST, 배포 `15ecb19` 이후)
+
+W2-B1 수정(시설 예산 버킷을 코레일·도시철도 upstream별로 분리, ⓑ 채택)을 배포한 뒤 같은 Chrome DevTools MCP 표면으로 §0의 실패·미확인 축을 다시 밟았다. 새 문서, 첫 호출 조건이다.
+
+| 축 | 판정 | 관측 |
+|---|---|---|
+| 시설 축 첫 호출 완결 | **통과** | 서울역 `get_place_info({axes:["facilities"]})` 첫 호출이 `korail done`·`metro done`, 결합 `done`. `cooldown` 없음 |
+| 게이트 ⑩ `truncated` 관측 + 자율 회수 | **통과(에이전트=Claude)** | 첫 호출에 `truncated:true`(`groupsReturnedCount 3 / groupsTotalCount 7`). 도구 설명("If truncated, call again with one axis and offset")만 보고 `offset:3`(→`nextOffset:6`), `offset:6`으로 7개 그룹 전량 회수, 마지막 페이지에 `truncated` 없음. 재직렬화 페이지는 즉시 반환(예산 미소비). ⚠ ChatGPT 호스트가 같은 회수를 하는가는 위원장 실기기 항목으로 남는다 |
+| `busy` | **통과** | 페이지 안에서 `navigator.modelContext.executeTool` 두 개를 동시 실행: `plan_directions`가 돌고 `search_places`가 `busy{running:"plan_directions"}` |
+| `staleResult` 복구 | **통과** | 검색 세대 2 발급 뒤 세대 1 `ref`(`sg6c2.1.p.0`)로 `get_place_info` → `staleResult{retryable:true, recovery:"search_places", query:"강동역"}` |
+| `modalOpen` | **통과** | "AI에게 질문" 오버레이를 연 채 `get_place_info` → `modalOpen{retryable:false, userActionRequired:true}`, 모달은 닫히지 않음(`read_current_view.chatOpen:true`, 잠금 없이 응답) |
+| `superseded` | **UI 경로로 도달 불가(결함 아님)** | 도구 검색이 진행 중일 때 사용자가 검색창 Enter·조회 버튼·계단 회피 토글로 새 조회를 일으키려 하면 **화면의 in-flight 가드**(`runSearch`의 `status.kind === "loading"` 조기 반환, `DirectionsView`의 `aria-disabled={busy}`)가 그 조작을 떨어뜨린다 — 사용자 자신의 더블 제출을 막는 것과 같은 가드다. 최근 검색어 목록은 로딩 중엔 렌더되지 않고, 검색은 `replaceState`라 뒤로가기도 새 세대를 만들지 않는다(`history.back()` 실측: 앱 밖 `about:blank`로 이탈). 따라서 `superseded`는 음성 전사·`?q=` 복원처럼 가드 없는 경로에서만 성립하며 단위 테스트(`search-places.test.ts`·`PlaceSearchWebMcp.test.tsx`)로만 검증된 상태다. 사용자가 막히는 창은 도구 조회의 in-flight 몇 초뿐이라 "사용자 조작이 도구를 이긴다"와 충돌하지 않는다 |
+
+부수 발견: 서울역 도시철도 시설의 "교통약자 도우미 2곳" 그룹이 빈 문자열 줄 두 개를 실었다(upstream이 수만 주고 `fcltNm`이 빈다). 화면도 같은 함수(`metroFacilityGroups`)라 빈 `<li>`가 있었다 — 빈 줄을 떨어뜨리도록 고쳤다(헤딩의 수는 유지). 같은 날 배포.
+
+남는 것은 실기기 전용 §8.1 네 축(⑦·⑧·⑨·호스트 확인 UI)뿐이다.

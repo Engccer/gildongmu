@@ -172,6 +172,23 @@ describe("place-lines == 화면 문장", () => {
     ]);
   });
 
+  it("필드가 전부 빈 시설 항목은 줄을 만들지 않는다(빈 li = 이름 없는 항목, 헤딩의 수는 유지)", () => {
+    const f: Metro = {
+      groups: [
+        {
+          kind: "helper",
+          facilities: [
+            { name: "", location: undefined, floors: undefined, detail: undefined, operatingStatus: undefined },
+            { name: "", location: undefined, floors: undefined, detail: undefined, operatingStatus: undefined },
+          ],
+        },
+      ],
+    } as Metro;
+    const groups = metroFacilityGroups(f, tFor("subway"));
+    expect(groups[0].name).toBe('subway.kind.helper subway.count{"count":2}');
+    expect(groups[0].lines).toEqual([]);
+  });
+
   it("도착 항목의 line·message 두 줄", () => {
     const arrivals: SubwayArrival[] = [
       {
