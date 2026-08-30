@@ -50,8 +50,9 @@ export function timetableLineItems(
   // 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 자기 언어로 단다(A26). 노선명 자체는 원문.
   const lineKoOf = (line: TimetableLine) =>
     line.lineCore ? t("lineSuffixed", { name: line.lineCore }) : line.lineName;
-  const lineEnOf = (line: TimetableLine): string | undefined =>
-    line.lineNameEn ?? (line.lineCore ? t("lineSuffixed", { name: line.lineCore }) : undefined);
+  // 영문은 서버 표 값(`lineNameEn`)뿐이다 — `lineCore` 접미 조립("수인분당 Line")은 한국어 코어가 섞인 혼합이라
+  // 영어 줄로 치지 않는다(code-quality 리뷰). 표 미스는 줄 전체 한국어(접미는 자기 언어).
+  const lineEnOf = (line: TimetableLine): string | undefined => line.lineNameEn;
 
   return tt.lines.flatMap((line): TimetableLineItem[] => {
     const lineEn = isEn ? lineEnOf(line) : undefined;

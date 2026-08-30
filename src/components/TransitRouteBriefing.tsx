@@ -311,9 +311,10 @@ export function TransitRouteResult({
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
-          // 구간 문장의 영문은 노선·승차 정류장이 **둘 다** 있을 때만(줄 단위 원자성) — 하나만
-          // 영문이면 한 문장 안에 두 언어가 선다.
-          const legEn = isEn && Boolean(leg.lineNameEn) && Boolean(leg.fromNameEn);
+          // 구간 문장의 영문은 노선·승차·하차 정류장이 **다** 있을 때만(줄 단위 원자성, iOS `transitLegLine`과
+          // 같은 조건) — 하나만 영문이면 한 문장(또는 아래 빠른하차 줄) 안에 두 언어가 선다.
+          const legEn =
+            isEn && Boolean(leg.lineNameEn) && Boolean(leg.fromNameEn) && (leg.toName == null || Boolean(leg.toNameEn));
           const quickExit = quickExitText(t, (legEn && leg.toNameEn) || leg.toName || "", leg.quickExit);
           return (
             <li key={i}>

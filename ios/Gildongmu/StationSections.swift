@@ -58,14 +58,10 @@ struct StationSectionsView: View {
     var body: some View {
         if let meta = model.meta {
             Section {
-                // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로.
-                // en 계열은 노선을 서버 영문(`linesEn`, E27)으로 — 없으면 한국어 원문(줄 단위 원자성).
-                Text(joinText(
-                    appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn,
-                    TransitDisplay.pickLine(
-                        isEn: AppLanguage.dataLocale == "en", ko: meta.lines.joined(separator: ", "),
-                        enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] },
-                    meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName))
+                // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로. en 계열은 역명을 병기
+                // `Gangnam (강남)`(낭독은 영문만 — a11y 감사 #3, 웹 `StationMeta` 동형)하고 노선은 서버 영문
+                // (`linesEn`, E27)으로 — 없으면 한국어 원문(줄 단위 원자성).
+                metaLine(meta)
             } header: {
                 Text(appLocalized("stationMeta.heading")).accessibilityAddTraits(.isHeader)
             }
@@ -224,6 +220,20 @@ struct StationSectionsView: View {
     /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
     /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26, 웹 `timetableLineItems` 미러).
     /// 노선명 자체는 원문 — 영문화는 E27 소관.
+    /// 역 메타 한 줄 — 시각·낭독이 갈리는 것은 병기뿐(ko는 둘이 같다).
+    private func metaLine(_ meta: StationMeta) -> some View {
+        let isEn = AppLanguage.dataLocale == "en"
+        let lines = TransitDisplay.pickLine(
+            isEn: isEn, ko: meta.lines.joined(separator: ", "),
+            enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] }
+        let tail = joinText(lines, meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName)
+        guard isEn else {
+            return Text(joinText(appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn, tail))
+        }
+        let b = bilingualName(lang: AppLanguage.current, ko: meta.name, en: meta.nameEn, roman: nil)
+        return Text(joinText(b.display, tail)).accessibilityLabel(Text(joinText(b.primary, tail)))
+    }
+
     /// coverage 사유 줄의 노선명 — en 계열은 서버 영문(`lineNameEn`, E27)이 우선, 없으면 접미 조립·원문.
     private func lineDisplayName(_ line: TimetableLine) -> String {
         if AppLanguage.dataLocale == "en", let en = line.lineNameEn { return en }

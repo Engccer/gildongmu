@@ -61,8 +61,26 @@ describe("SubwayArrivalList — en 로케일", () => {
     const divs = container.querySelectorAll("li div");
     expect(divs[0].textContent).toBe("2호선 외선, 성수행 - 역삼방면");
     expect(divs[0].getAttribute("lang")).toBe("ko");
-    // 현재역 영문이 없으면 메시지 줄도 한국어 원문 — 현재역 문장 틀은 UI 로케일(혼합 줄이라 태그 없음, A26 선례)
+    // 현재역 영문이 없으면 메시지 줄도 한국어 원문 — 값이 한국어인 줄은 라벨이 섞여도 통째로 lang=ko(A26 선례)
     expect(divs[1].textContent).toBe("2분 30초 후, Now at 선릉");
+    expect(divs[1].getAttribute("lang")).toBe("ko");
+  });
+
+  it("현재역·노선이 애초에 없는 도착은 그 자리를 요구하지 않는다 — 영문이 있으면 영어 줄(a11y 감사 #1)", () => {
+    const noExtras: SubwayArrival = {
+      ...ARRIVAL_EN,
+      line: undefined,
+      lineEn: undefined,
+      currentLocation: undefined,
+      currentLocationEn: undefined,
+      message: "전역 도착",
+      messageEn: "Arrived at previous station",
+    };
+    const { container } = wrap("en", <SubwayArrivalList arrivals={[noExtras]} />);
+    const divs = container.querySelectorAll("li div");
+    expect(divs[0].textContent).toBe("Outer Circle, To Seongsu via Yeoksam");
+    expect(divs[0].getAttribute("lang")).toBeNull();
+    expect(divs[1].textContent).toBe("Arrived at previous station");
     expect(divs[1].getAttribute("lang")).toBeNull();
   });
 
@@ -176,8 +194,9 @@ describe("pickLine", () => {
     expect(pickLine("ja", "강남", ["Gangnam"], ([e]) => e)).toEqual({ text: "Gangnam", lang: "en" });
     expect(pickLine("ja", "강남 2호선", ["Gangnam", "Line 2"], (p) => p.join(" "), { pure: false })).toEqual({ text: "Gangnam Line 2" });
   });
-  it("조각 하나라도 비면 한국어 + lang=ko(pure), 혼합 줄은 태그 없이 한국어", () => {
+  it("결측(undefined)은 한국어 + lang=ko(혼합 줄도), 빈 문자열은 자리 표시라 영어 줄이 된다", () => {
     expect(pickLine("en", "강남 2호선", ["Gangnam", undefined], (p) => p.join(" "))).toEqual({ text: "강남 2호선", lang: "ko" });
-    expect(pickLine("en", "강남 2호선", ["Gangnam", ""], (p) => p.join(" "), { pure: false })).toEqual({ text: "강남 2호선" });
+    expect(pickLine("en", "강남 2호선", ["Gangnam", null], (p) => p.join(" "), { pure: false })).toEqual({ text: "강남 2호선", lang: "ko" });
+    expect(pickLine("en", "강남", ["Gangnam", ""], (p) => p.filter(Boolean).join(" "))).toEqual({ text: "Gangnam" });
   });
 });

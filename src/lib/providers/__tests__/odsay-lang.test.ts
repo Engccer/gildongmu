@@ -176,3 +176,25 @@ describe("getTransitRoute — lang 배선·fail-closed(§3.1)", () => {
     warn.mockRestore();
   });
 });
+
+describe("assertKorComplete — 한글 없는 정당값(code-quality 리뷰)", () => {
+  it("`GTX-A` 노선명·라틴 정류소명(원본과 같은 표기)은 결측이 아니다", () => {
+    const data = mutated((d) => {
+      d.result!.path![0].subPath[1].lane![0].nameKor = "GTX-A";
+      d.result!.path![0].subPath[1].lane![0].name = "GTX-A";
+      d.result!.path![0].subPath[1].passStopList!.stations![0].stationName = "KBS";
+      d.result!.path![0].subPath[1].passStopList!.stations![0].stationNameKor = "KBS";
+    });
+    expect(assertKorComplete(data)).toBeNull();
+  });
+  it("표에 없는 라틴 노선명·원본과 다른 라틴 정류소명은 여전히 결측", () => {
+    const a = mutated((d) => {
+      d.result!.path![0].subPath[1].lane![0].nameKor = "Line X";
+    });
+    expect(assertKorComplete(a)).toBe("path[0].subPath[1].lane[0].nameKor");
+    const b = mutated((d) => {
+      d.result!.path![0].subPath[1].startNameKor = "Gildong Station";
+    });
+    expect(assertKorComplete(b)).toBe("path[0].subPath[1].startNameKor");
+  });
+});

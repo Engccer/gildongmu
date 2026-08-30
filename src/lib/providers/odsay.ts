@@ -91,8 +91,20 @@ interface OdsayPath {
 /** 응답 언어 — `en`이면 `*Kor`가 한국어 정본이고 원래 필드가 영문이다. */
 type OdsayLang = "ko" | "en";
 
-function hasHangul(v: unknown): v is string {
+function hasHangul(v: unknown): boolean {
   return typeof v === "string" && /[가-힣]/.test(v);
+}
+
+/** 한국어 자리 값의 자격: 비어 있지 않고, 한글이 있거나 영문 원본과 같은 라틴 표기(`GTX-A`·`KBS`)여야 한다. */
+function isKorName(kor: unknown, en: unknown): boolean {
+  if (typeof kor !== "string" || !kor.trim()) return false;
+  return hasHangul(kor) || kor.trim() === String(en ?? "").trim();
+}
+
+/** 지하철 노선 한글 자리: 한글이 있거나 노선 표에 있는 라틴 표기(`GTX-A`)여야 한다. */
+function isKorLine(kor: unknown): boolean {
+  if (typeof kor !== "string" || !kor.trim()) return false;
+  return hasHangul(kor) || subwayLineNameEn(kor) !== null;
 }
 
 /**
@@ -104,15 +116,16 @@ export function assertKorComplete(data: OdsayResponse): string | null {
   const paths = data.result?.path;
   if (!Array.isArray(paths)) return null; // 봉투 판정은 normalizeOdsayRoutes의 몫
   for (const [pi, p] of paths.entries()) {
-    if (p.info.firstStartStation && !hasHangul(p.info.firstStartStationKor)) return `path[${pi}].info.firstStartStationKor`;
-    if (p.info.lastEndStation && !hasHangul(p.info.lastEndStationKor)) return `path[${pi}].info.lastEndStationKor`;
+    if (p.info.firstStartStation && !isKorName(p.info.firstStartStationKor, p.info.firstStartStation)) return `path[${pi}].info.firstStartStationKor`;
+    if (p.info.lastEndStation && !isKorName(p.info.lastEndStationKor, p.info.lastEndStation)) return `path[${pi}].info.lastEndStationKor`;
     for (const [si, sp] of p.subPath.entries()) {
       if (sp.trafficType === 3) continue;
       const at = `path[${pi}].subPath[${si}]`;
-      if (!hasHangul(sp.startNameKor)) return `${at}.startNameKor`;
-      if (!hasHangul(sp.endNameKor)) return `${at}.endNameKor`;
+      if (!isKorName(sp.startNameKor, sp.startName)) return `${at}.startNameKor`;
+      if (!isKorName(sp.endNameKor, sp.endName)) return `${at}.endNameKor`;
       const lane = sp.lane?.[0];
-      if (sp.trafficType === 1 && !hasHangul(lane?.nameKor)) return `${at}.lane[0].nameKor`;
+      // ⚠ 한글 술어만 쓰면 `GTX-A`처럼 한글 없는 정당 노선명이 결측으로 판정돼 영문을 통째로 버린다(리뷰 검출).
+      if (sp.trafficType === 1 && !isKorLine(lane?.nameKor)) return `${at}.lane[0].nameKor`;
       // 버스 번호는 숫자만인 것이 정상("341")이라 한글 검사 대신 존재만 본다.
       if (sp.trafficType === 2 && !(typeof lane?.busNoKor === "string" && lane.busNoKor.trim())) {
         return `${at}.lane[0].busNoKor`;
@@ -120,7 +133,7 @@ export function assertKorComplete(data: OdsayResponse): string | null {
       const stations = sp.passStopList?.stations;
       if (Array.isArray(stations)) {
         for (const [ki, st] of stations.entries()) {
-          if (st.stationName && !hasHangul(st.stationNameKor)) return `${at}.passStopList.stations[${ki}].stationNameKor`;
+          if (st.stationName && !isKorName(st.stationNameKor, st.stationName)) return `${at}.passStopList.stations[${ki}].stationNameKor`;
         }
       }
     }
