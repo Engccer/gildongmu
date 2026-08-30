@@ -262,7 +262,7 @@ async function fetchMode(
   const url =
     mode === "walk"
       ? `${walkRouteUrl({ origin, dest, accessible: walkAccessible, includeGeometry: false, via, lang })}&alternatives=1`
-      : `/api/route/transit?${qs}&includeStops=1`;
+      : `/api/route/transit?${qs}&includeStops=1&lang=${lang}`;
   const res = await fetch(url, { signal });
   if (!res.ok) return { kind: "error" };
   const body = (await res.json()) as { result: unknown; shortest?: unknown };

@@ -93,3 +93,34 @@ describe("좌표 파라미터 누락 (D3)", () => {
     expect((await GET(makeRequest("?lat=&lng="))).status).toBe(400);
   });
 });
+
+// E27: `lang=en`은 provider에 "en"으로 전달되고, 0건 최근접 역엔 `linesEn`이 붙는다(실 seed). ko는 종전과 같다.
+describe("GET /api/station/subway-arrival/nearby — lang(E27)", () => {
+  beforeEach(() => {
+    mockHasKey.mockReset();
+    mockHasKey.mockReturnValue(true);
+    mockFetch.mockReset();
+  });
+  it("en은 provider lang 'en', 0건이면 nearest.linesEn(영문 표)이 실린다", async () => {
+    mockFetch.mockResolvedValue([]);
+    // 강릉 부근(반경 1km 안 역 없음) — 최근접 역이 seed에서 나온다
+    const res = await GET(makeRequest("?lat=37.7519&lng=128.8761&lang=en"));
+    expect(res.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "en");
+    const body = await res.json();
+    expect(body.stations).toEqual([]);
+    expect(body.nearest.lines.length).toBeGreaterThan(0);
+    expect(body.nearest.linesEn).toHaveLength(body.nearest.lines.length);
+    expect(JSON.stringify(body.nearest.linesEn)).not.toMatch(/[가-힣]/);
+  });
+  it("미지정은 provider lang 'ko'이고 nearest에 linesEn이 없다", async () => {
+    mockFetch.mockResolvedValue([]);
+    const res = await GET(makeRequest("?lat=37.7519&lng=128.8761"));
+    expect(mockFetch).toHaveBeenCalledWith(37.7519, 128.8761, "ko");
+    const body = await res.json();
+    expect(body.nearest.linesEn).toBeUndefined();
+  });
+  it("미지 lang은 400", async () => {
+    expect((await GET(makeRequest("?lat=37.5&lng=127.0&lang=jp"))).status).toBe(400);
+  });
+});
