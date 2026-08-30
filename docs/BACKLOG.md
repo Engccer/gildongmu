@@ -62,6 +62,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 
 **남은 판정(종결 시점 기록)**:
 - **`lang="ko"`를 건너뛴 자리(E28 재료)** — 영어 산문 템플릿 안에 한국어 데이터가 삽입되는 줄이라 속성을 주려면 줄 중간 분절이 필요해 헌장 위반: `AroundNearby` 패널 헤딩(`here {place}`)·한눈에 보기 불릿(`buildOverviewLines`)·항목 헤딩(`joinText(p.name, item 템플릿)`)·`SurroundingsScene` 장면 문장, `LocationBar`(`gpsNear {address}`, 역지오코딩 주소가 ko), `LocalConditions` 혼잡도 요약(`summary {area}`)·`AirQuality` 측정소 줄(`station {name}`), `TransitGuidePanel` 상태 문장·경유 정류소 줄(`stop.name + viaBoard`), `SeoulMetroFacilities` 헤딩(`heading {name}` + line). **노선명이 들어가는 줄**(`StationTimetable` 항목·`StationMeta` 노선 줄·`TransitRouteBriefing` 구간 — 후자는 이미 `<line>` 태그 핸들러로 부분 처리)은 E27(노선명 영문 표)이 풀리면 자연 해소라 보류. 판정 축: 병기 형식이 정해지면 그 줄들은 "ko 블록 + en 블록" 두 객체로 재구성될 수 있다.
+- **혼합 줄의 판정 축**: 값이 한국어인 줄(`PlaceCard` 분류 "음식점 > 한식, about 120m", 무장애 "Wheelchair rental 안내소에서 대여 가능")은 영어 조각이 섞여도 줄 전체 `lang="ko"`로 뒀다 — 영어 엔진은 한글을 못 읽고 한국어 엔진은 영어 낱말을 읽으므로. E28 병기 정책이 정해지면 "ko 블록 + en 블록" 구조로 함께 재검토.
 - **iOS 자동차 브리핑의 `guidanceLang`**: Kit 모델에 디코딩만 넣었고 `CarRouteRows`에 언어 표기(`AttributedString.accessibilitySpeechLanguage`)는 붙이지 않았다 — VoiceOver가 그 속성을 SwiftUI `Text`에서 존중하는지 실기기 미확인(E28 iOS 언어 태깅 판정과 같은 축).
 - **`호선` 접미의 en "Line {n}"**(음성유도기 환승역·`subway.lineNumber`)은 서버 합성 접미를 로컬라이즈한 것이라 여기서 처리했다 — E27 노선명 표가 생기면 그 표로 통일한다.
 - **ko 표시 1건 변화**: 서울 지하철 장애인 화장실 보조 설명이 " · " 결합에서 쉼표 결합(`joinText`)으로 바뀌었다(가운뎃점 구분자 금지 헌장 정합, CLI/MCP `detail` 문자열은 불변).
