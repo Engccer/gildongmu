@@ -1,5 +1,7 @@
 # 자동차 세션 종료 보강 (K2-a) — 병렬 세션 계획
 
+> **종료 상태(2026-08-31)**: car-end 세션 완료 — main `4a1c2bf`·`3db1ad8`·`15cb297`, Experimental 실기기 배포 완료(`3db1ad8`), worktree 제거. 남은 위원장 판정: B1 실주행(`docs/FIELD-TEST.md` §6-1 K2-a 행 5개, BACKLOG K2-a⑤ 무이동 축 미탐).
+
 > 코디네이터: 2026-08-31 접수 세션. 근거: `docs/BACKLOG.md` K2-a(실사고 2026-08-29 실주행, 로그 `~/gildongmu-private/field-logs/guide-diag-2026-08-29.log.gz` — 18:46 시작, 19:28:50 `finalApproachEnter`가 마지막 줄, 이후 새벽까지 세션 생존·로그 0줄). 단일 마일스톤이지만 위원장 지시로 병렬 세션 절차를 따른다(세션 1개).
 
 ## §1 마일스톤·확정 판정 (위원장 2026-08-31)
