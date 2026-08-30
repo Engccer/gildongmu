@@ -135,3 +135,31 @@ describe("GET /api/route/transit", () => {
     });
   });
 });
+
+// E27: `lang` — 미지정·ko는 provider에 "ko"로, en은 "en"으로, 미지 값은 400(조용한 강등 금지).
+describe("GET /api/route/transit — lang(E27)", () => {
+  beforeEach(() => {
+    vi.mocked(hasOdsayKey).mockReturnValue(true);
+    vi.mocked(getTransitRoute).mockClear();
+  });
+  const req = (lang?: string) => {
+    const params = new URLSearchParams({ origin: "37.5,127.0", dest: "37.6,127.1" });
+    if (lang !== undefined) params.set("lang", lang);
+    return new NextRequest(`http://x/api/route/transit?${params.toString()}`);
+  };
+  it("미지정과 ko는 둘 다 lang:'ko'로 전달된다(byte-identical 계약)", async () => {
+    await GET(req());
+    await GET(req("ko"));
+    expect(vi.mocked(getTransitRoute).mock.calls[0][0]).toMatchObject({ lang: "ko" });
+    expect(vi.mocked(getTransitRoute).mock.calls[1][0]).toMatchObject({ lang: "ko" });
+  });
+  it("en은 lang:'en'으로 전달된다", async () => {
+    await GET(req("en"));
+    expect(vi.mocked(getTransitRoute).mock.calls[0][0]).toMatchObject({ lang: "en" });
+  });
+  it("미지 값은 400(provider 미호출)", async () => {
+    const res = await GET(req("jp"));
+    expect(res.status).toBe(400);
+    expect(getTransitRoute).not.toHaveBeenCalled();
+  });
+});

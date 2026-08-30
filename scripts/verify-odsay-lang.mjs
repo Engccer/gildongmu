@@ -49,7 +49,14 @@ try {
     { stdio: "pipe" },
   );
   const mod = await import(bundlePath);
-  const { getTransitRoute, fetchSubwayArrivals, withArrivalsEn } = mod;
+  const { getTransitRoute, normalizeOdsayRoutes, fetchSubwayArrivals, withArrivalsEn } = mod;
+  /** provider 캐시 밖 raw 호출 — 급행 전수 검사용(선정 5개에 가려지지 않게). */
+  async function fetchOdsayRaw(origin, dest) {
+    const q = new URLSearchParams({ SX: String(origin.lng), SY: String(origin.lat), EX: String(dest.lng), EY: String(dest.lat), OPT: "0", lang: "1" });
+    const res = await fetch(`https://api.odsay.com/v1/api/searchPubTransPathT?${q}&apiKey=${process.env.ODSAY_API_KEY ?? ""}`, { headers: { Referer: "https://gildongmu.vercel.app/" } });
+    if (!res.ok) throw new Error(`ODsay raw HTTP ${res.status}`);
+    return res.json();
+  }
 
   const ROUTES = [
     { name: "길동→강남", origin: { lat: 37.5384, lng: 127.1408 }, dest: { lat: 37.4979, lng: 127.0276 } },
@@ -107,17 +114,21 @@ try {
         mismatched.push(signature(route));
       }
     }
-    check(`${r.name}: en·ko 한국어 필드 전수 일치(짝 ${paired}/${1 + en.alternatives.length})`, paired > 0 && mismatched.length === 0, mismatched.join("; "));
+    const total = 1 + en.alternatives.length;
+    check(`${r.name}: en·ko 한국어 필드 전수 일치(짝 ${paired}/${total})`, paired === total && mismatched.length === 0, paired < total ? `짝 못 맺음 ${total - paired}(호출 시점 차로 경로 집합이 달라짐)` : mismatched.join("; "));
 
     // 6. ko 응답에 *En 키 0
     check(`${r.name}: ko 응답에 *En 키 없음`, !/"(lineNameEn|fromNameEn|toNameEn|nameEn|departNameEn|arriveNameEn)"/.test(JSON.stringify(ko)));
 
     // 3. 급행 표본
     if (r.expressRequired) {
-      const express = boardLegs.find(({ leg }) => leg.lineName?.includes("(급행)"));
-      check(`${r.name}: 급행 leg 존재(필수 표본)`, Boolean(express), express ? express.leg.lineName : "선정 5개 안에 급행 없음");
-      if (express) {
-        check(`${r.name}: 급행 lineName 보존 + lineNameEn "Line 9 Express"`, express.leg.lineName === "수도권 9호선(급행)" && express.leg.lineNameEn === "Line 9 Express", `${express.leg.lineName} → ${express.leg.lineNameEn}`);
+      // 선정 5개 밖이어도 정규화 전체 배열에서 본다(spec §3.8 3항) — raw lang=1 응답을 직접 받아 정규화.
+      const raw = await fetchOdsayRaw(r.origin, r.dest);
+      const all = normalizeOdsayRoutes(raw, { includeStops: true, lang: "en" }) ?? [];
+      const expressLeg = all.flatMap((route) => route.legs).find((leg) => leg.lineName?.includes("(급행)"));
+      check(`${r.name}: 급행 leg 존재(필수 표본, 전체 ${all.length}경로)`, Boolean(expressLeg), expressLeg ? expressLeg.lineName : "전체 후보에 급행 없음");
+      if (expressLeg) {
+        check(`${r.name}: 급행 lineName 보존 + lineNameEn "Line 9 Express"`, expressLeg.lineName === "수도권 9호선(급행)" && expressLeg.lineNameEn === "Line 9 Express", `${expressLeg.lineName} → ${expressLeg.lineNameEn}`);
       }
     }
     console.log(`  표본: ${boardLegs.slice(0, 3).map(({ leg }) => `${leg.lineNameEn} ${leg.fromNameEn}→${leg.toNameEn}`).join(" / ")}`);

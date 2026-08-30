@@ -24,23 +24,29 @@ func subwayStationLine(
     return (joinText(b.display, linesText), joinText(b.primary, linesText))
 }
 
-/// 도착 한 건의 두 줄을 한 텍스트로(편성 + 메시지). en 계열은 서버 영문(E27)이 다 있을 때만 영어 — 편성(노선·방향·
-/// 행선)과 메시지(문장·현재역)를 각각 원자적으로 고른다(웹 `arrivalItems` 미러). ko는 완성 문장 정본 그대로.
+/// 도착 한 건 = `Text` 하나 = 접근성 객체 하나. iOS는 웹(두 `div`)과 달리 편성·메시지가 한 객체라 원자 단위도
+/// 한 건 전체다 — 서버 영문(E27) 다섯 조각(노선·방향·행선·문장·현재역)이 **전부** 있을 때만 영어이고, 하나라도
+/// 없으면 한 건 전체가 한국어 완성 문장(spec 리뷰 검출: 부분 영문이 한 객체 안에 두 언어를 세웠다).
 func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
     let express = arrival.express ? appLocalized("subwayArrival.express") : nil
-    let lineKo = joinText(arrival.line, express, arrival.trainLineNm)
-    let lineText = TransitDisplay.pickLine(
-        isEn: isEn, ko: lineKo,
-        enParts: [arrival.line == nil ? "" : arrival.lineEn, arrival.directionEn, arrival.trainLineNmEn]
-    ) { p in joinText("\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2]) }
-    let messageKo = joinText(
-        arrival.message,
+    let ko = joinText(
+        arrival.line, express, arrival.trainLineNm, arrival.message,
         arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) })
-    let messageText = TransitDisplay.pickLine(
-        isEn: isEn, ko: messageKo,
-        enParts: [arrival.messageEn, arrival.currentLocation == nil ? "" : arrival.currentLocationEn]
-    ) { p in joinText(p[0], p[1].isEmpty ? nil : appLocalized("subwayArrival.currentLocation", p[1])) }
-    return joinText(lineText, messageText)
+    // 노선 미매핑(`line` nil)·현재역 부재는 ko도 그 조각이 없으므로 영문 요구 대상이 아니다("" 자리 표시).
+    return TransitDisplay.pickLine(
+        isEn: isEn, ko: ko,
+        enParts: [
+            arrival.line == nil ? "" : arrival.lineEn,
+            arrival.directionEn,
+            arrival.trainLineNmEn,
+            arrival.messageEn,
+            arrival.currentLocation == nil ? "" : arrival.currentLocationEn,
+        ]
+    ) { p in
+        joinText(
+            "\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2], p[3],
+            p[4].isEmpty ? nil : appLocalized("subwayArrival.currentLocation", p[4]))
+    }
 }
 
 /// 내 주변 지하철 도착 — NearbyLoadCore 껍데기(규범 원형). 상태 머신·전이표는 Kit 정본.

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationTimetable as Timetable } from "@/lib/types";
-import { prefersEnglish } from "@/lib/data-locale";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
 import { timetableHeaderLine, timetableLineItems } from "@/lib/place-lines/station-timetable";
 import { useAxisSource } from "@/hooks/useAxisBridge";
 import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
@@ -44,7 +44,8 @@ export function StationTimetable({ stationName }: { stationName: string }) {
       }));
       try {
         const res = await fetch(
-          `/api/station/timetable?station=${encodeURIComponent(stationName)}`,
+          // `lang=en`은 노선 영문(`lineNameEn`, E27)을 additive로 받는다. ko는 종전 URL과 같다.
+          `/api/station/timetable?station=${encodeURIComponent(stationName)}&lang=${dataLocale(locale)}`,
           { signal: controller.signal, ...(force ? { cache: "no-store" as const } : {}) },
         );
         if (controller.signal.aborted) return;
@@ -63,7 +64,7 @@ export function StationTimetable({ stationName }: { stationName: string }) {
         );
       }
     },
-    [stationName],
+    [stationName, locale],
   );
   useEffect(() => {
     void load(false, "user");
@@ -101,7 +102,9 @@ export function StationTimetable({ stationName }: { stationName: string }) {
             {/* 문장 정본은 place-lines(도구층과 공용). 매칭된 노선은 전부 온다(A19) —
                 ok만 방향 행이고 나머지는 사유 문장 한 줄. */}
             {timetableLineItems(status.timetable, t, isEn).map((item) => (
-              <p key={`${item.line}-${item.direction ?? item.coverage}`}>{item.text}</p>
+              <p key={`${item.line}-${item.direction ?? item.coverage}`} lang={item.lang}>
+                {item.text}
+              </p>
             ))}
           </div>
           <p className="mt-2 text-xs opacity-70">{t("source")}</p>

@@ -47,7 +47,7 @@
 
 - 쿼리 `lang`: walk `route-schema.ts` 동형(`z.union([ko, en, null])`, 미지 값은 400 — 조용한 ko 강등 금지). 라우트 로컬 스키마에 추가.
 - `getTransitRoute({ origin, dest, includeStops, lang })`: `lang === "en"`이면 URL에 `&lang=1`.
-- **`*Kor` 완전성 검증(fail-closed, 리뷰 #1·#8·#12)**: `lang=1` 응답을 정규화하기 전에 `assertKorComplete(data)`가 전 path의 `firstStartStationKor`·`lastEndStationKor`, 전 탑승 subPath의 `startNameKor`·`endNameKor`·lane `nameKor`(지하철)/`busNoKor`(버스), 전 `passStopList.stations[].stationNameKor`가 **비어 있지 않고 한글을 포함**하는지 본다. 하나라도 어긋나면 **영문 응답을 버리고 ko 모드(`lang` 없는 URL)로 재조회**해 그 결과를 `*En` 없이 돌려준다(캐시가 있어 대부분 무비용, 최악 +1콜). `console.warn`으로 결측 필드 경로를 남긴다(개인정보 없음). 영문 값이 한국어 필드에 들어가는 경로는 **존재하지 않는다** — 그래서 원칙 1이 구조로 성립한다.
+- **`*Kor` 완전성 검증(fail-closed, 리뷰 #1·#8·#12)**: `lang=1` 응답을 정규화하기 전에 `assertKorComplete(data)`가 전 path의 `firstStartStationKor`·`lastEndStationKor`, 전 탑승 subPath의 `startNameKor`·`endNameKor`·lane `nameKor`(지하철), 전 `passStopList.stations[].stationNameKor`가 **비어 있지 않고 한글을 포함**하는지, 버스 `busNoKor`는 **존재**하는지(번호 `"3413"`엔 한글이 없다) 본다. 하나라도 어긋나면 **영문 응답을 버리고 ko 모드(`lang` 없는 URL)로 재조회**해 그 결과를 `*En` 없이 돌려준다(캐시가 있어 대부분 무비용, 최악 +1콜). `console.warn`으로 결측 필드 경로를 남긴다(개인정보 없음). 영문 값이 한국어 필드에 들어가는 경로는 **존재하지 않는다** — 그래서 원칙 1이 구조로 성립한다.
 - 정규화(`normalizeOdsayRoutes(data, { includeStops, lang })`): 검증을 통과한 en 응답에서만 **한글(`*Kor`)을 기존 필드에, 영문을 `*En`에** 싣는다. `*Kor` 부재(ko 모드)면 종전과 같은 객체.
 - `*En` 값 자격: `normalizeTransitNameEn` 결과가 비어 있지 않고 **한글을 포함하지 않아야** 싣는다(리뷰 #12 — 필드 존재 ≠ 영문). 자격 미달은 그 필드 부재.
 - 필드 대응(전부 optional, en 응답에만):
@@ -120,7 +120,7 @@
 
 | 자리 | 변경 |
 |---|---|
-| 웹 `TransitRouteBriefing` | fetch URL에 `lang=${dataLocale(locale)}`(종전 주석 "ODsay 무료 티어 국문 전용"은 실측으로 폐기). `TransitRouteResult`: 탑승 leg 줄은 `pickLine`(노선·승차명이 둘 다 영문일 때만 en), `arrive`·도보 `toName`은 병기, `lang="ko"` span은 한국어 폴백에만 |
+| 웹 `TransitRouteBriefing` | fetch URL에 `lang=${dataLocale(locale)}`(종전 주석 "ODsay 무료 티어 국문 전용"은 실측으로 폐기). `TransitRouteResult`: 탑승 leg 줄은 노선·승차명이 둘 다 영문일 때만 en(승차명 병기), `arrive`는 병기. **도보 `toName`은 병기 없이 영문만** — `{name}` 문자열 자리라 괄호 span을 넣을 수 없고, 문장 안 이름은 위원장 판정 4의 "단독으로 서는 자리"가 아니다(iOS `transitLegLine` walk 동형). `lang="ko"` span은 한국어 폴백에만 |
 | 웹 `DirectionsView` (소유 밖, 1줄 — 자진 신고) | 대중교통 fetch URL `&lang=${dataLocale(locale)}`; 본문은 `TransitRouteResult`를 쓰므로 자동. `transitRouteLabel`은 요약(분·원·환승)뿐이라 무변경 |
 | 웹 `SubwayArrivalList`·`place-lines/station-arrivals.ts` | `arrivalItems(arrivals, t, isEn)` → 항목 줄마다 `{text, lang}`. 편성 줄 = `lineEn directionEn, trainLineNmEn, Express`, 메시지 줄 = `messageEn(, Now at {currentLocationEn})`(현재역이 있는데 영문이 없으면 그 줄은 한국어) |
 | 웹 `SubwayArrivalsNearby` | fetch URL `lang`; 헤딩 `pickLine`(병기 역명 + `linesEn` + 거리 — 노선 영문이 없으면 헤딩 전체 한국어 역명·노선); `emptyNearest`도 같은 규칙 |
@@ -130,7 +130,7 @@
 | iOS Kit `RouteService.transit(…, lang:)` | **기본값 없는 필수 인자**(walk·car 규율). 호출 2곳(`DirectionsTabView:507` — 소유 밖 1줄 자진 신고, `TransitGuideModel:427`) |
 | iOS Kit `StationService.meta/arrivals/timetable`·`NearbyService.subwayArrivals` | `lang` 인자 추가(같은 규율: 기본값 없음). 호출부는 `AppLanguage.dataLocale` |
 | iOS `RouteBriefing.transitLegText` | `pickLine` + 병기. `accessibilityLabel`은 영문 줄 |
-| iOS `SubwayNearbyView`·`StationSections` | 헤딩·도착 줄·메타 줄·시간표 노선명에 위 규칙 |
+| iOS `SubwayNearbyView`·`StationSections` | 헤딩·도착 줄·메타 줄·시간표 노선명에 위 규칙. ⚠ iOS 도착 항목은 `Text` 하나(편성+메시지)가 한 객체라 **원자 단위도 한 건 전체**다 — 다섯 조각이 다 있을 때만 영어(웹은 두 `div`라 줄마다) |
 
 ### 3.7 안내 상태 머신 — 이 마일스톤 밖 (리뷰 #15 반영)
 
