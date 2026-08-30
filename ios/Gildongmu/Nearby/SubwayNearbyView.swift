@@ -18,9 +18,10 @@ func subwayStationLine(
     let ko = joinText(stationName, lines.isEmpty ? nil : lines.joined(separator: ", "))
     let linesReady: [String]? = lines.isEmpty ? [] : linesEn
     guard isEn, let nameEn, !nameEn.isEmpty, let linesReady else { return (ko, ko) }
-    let b = TransitDisplay.bilingual(en: nameEn, ko: stationName)
+    // 병기 정본은 E28 `bilingualName`(시각 `display`, 낭독 `primary`) — roman은 seed 영문이 있어 nil.
+    let b = bilingualName(lang: AppLanguage.current, ko: stationName, en: nameEn, roman: nil)
     let linesText = linesReady.isEmpty ? nil : linesReady.joined(separator: ", ")
-    return (joinText(b.visual, linesText), joinText(b.spoken, linesText))
+    return (joinText(b.display, linesText), joinText(b.primary, linesText))
 }
 
 /// 도착 한 건의 두 줄을 한 텍스트로(편성 + 메시지). en 계열은 서버 영문(E27)이 다 있을 때만 영어 — 편성(노선·방향·

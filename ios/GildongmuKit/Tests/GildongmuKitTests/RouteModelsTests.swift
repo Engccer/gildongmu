@@ -423,7 +423,4 @@ struct RouteBriefingWaypointTests {
     #expect(TransitDisplay.pickLine(isEn: true, ko: "강남, 2호선", enParts: ["Gangnam", "Line 2"]) { $0.joined(separator: ", ") } == "Gangnam, Line 2")
     #expect(TransitDisplay.pickLine(isEn: true, ko: "강남, 2호선", enParts: ["Gangnam", nil]) { $0.joined(separator: ", ") } == "강남, 2호선")
     #expect(TransitDisplay.pickLine(isEn: false, ko: "강남, 2호선", enParts: ["Gangnam", "Line 2"]) { $0.joined(separator: ", ") } == "강남, 2호선")
-    let b = TransitDisplay.bilingual(en: "Gangnam", ko: "강남")
-    #expect(b.visual == "Gangnam (강남)" && b.spoken == "Gangnam")
-    #expect(TransitDisplay.bilingual(en: "Gangnam", ko: nil).visual == "Gangnam")
 }

@@ -41,11 +41,24 @@ export function stationNameEn(
   const lineHint = parenHint ?? parseStationQuery(trimmed).lineHint;
   const all = ctx.findStations(trimmed, lineHint);
   if (all.length === 0) return null;
-  const sameLine = lineKo ? all.filter((s) => lineHintMatches(s.lineName, lineKo)) : [];
+  // 같은 노선 판정은 두 겹: 영문 표 동치(`공항철도` ↔ seed `인천국제공항선`이 둘 다 AREX — 실호출 서울역
+  // 게이트 검출 2026-08-31) → 코어 접두 일치(`lineHintMatches`).
+  const lineEn = lineKo ? subwayLineNameEn(lineKo) : null;
+  const sameLine = lineKo
+    ? all.filter(
+        (s) =>
+          (lineEn != null && subwayLineNameEn(s.lineName) === lineEn) || lineHintMatches(s.lineName, lineKo),
+      )
+    : [];
   const pool = sameLine.length > 0 ? sameLine : all;
-  const names = new Set(pool.map((s) => s.nameEn.trim()).filter(Boolean));
-  if (names.size !== 1) return null;
-  return [...names][0];
+  // 표기 차이(`Seoul Station`/`Seoul station`)는 같은 이름 — 대소문자 무시로 모은다.
+  const byKey = new Map<string, string>();
+  for (const s of pool) {
+    const en = s.nameEn.trim();
+    if (en) byKey.set(en.toLowerCase(), byKey.get(en.toLowerCase()) ?? en);
+  }
+  if (byKey.size !== 1) return null;
+  return [...byKey.values()][0];
 }
 
 const TRAIN_LINE_RE = /^(.+?)행 - (.+?)방면(?: \(급행\))?$/;

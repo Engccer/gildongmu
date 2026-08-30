@@ -139,7 +139,8 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil, name
         case .korean: return ko
         case .english(let bilingual):
             guard let en else { return ko }
-            return bilingual ? TransitDisplay.bilingual(en: en, ko: ko).visual : en
+            // 병기 정본은 E28 `bilingualName`(한 줄 괄호, 낭독은 primary만) — roman은 ODsay 영문이 있어 nil.
+            return bilingual ? bilingualName(lang: AppLanguage.current, ko: ko ?? en, en: en, roman: nil).display : en
         }
     }
     let fromName = pick(leg.fromName, leg.fromNameEn)
