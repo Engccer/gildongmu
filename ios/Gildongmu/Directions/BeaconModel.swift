@@ -428,6 +428,9 @@ final class BeaconModel {
     var onSessionEnd: ((EndReason) -> Void)?
     /// `stop()`이 소비할 사유. `stop()` 직전에 대입하고 `stop()`·`begin()`이 `.ended`로 되돌린다.
     private var pendingEndReason: EndReason = .ended
+    /// 시작 Task 세대. `Task.cancel()`은 플래그라 취소된 옛 시작 Task가 말미까지 달릴 수 있는데,
+    /// 그때 새 세션의 `onSessionEnd`를 `.startFailed`로 소비하지 않게 세대가 다르면 건드리지 않는다.
+    private var startGeneration = 0
 
     // MARK: - 도착 건강 요약(spec 2026-08-17)
 
@@ -603,9 +606,11 @@ final class BeaconModel {
         lastStepFree = nil
         pendingStepFreeNotice = nil
         pendingEndReason = .ended
+        startGeneration += 1
+        let generation = startGeneration
         startTask = Task { [weak self] in
             await self?.start(dest: request.dest, label: request.label, kind: request.kind)
-            guard let self else { return }
+            guard let self, self.startGeneration == generation else { return }
             self.starting = false
             // 시작 실패 한 판정(권한 거부·정밀 위치·서비스 꺼짐·claim 거부·취소 전부): 세션이
             // 시작되지 않았으면 `stop()`이 돌지 않으므로 여기서 콜백을 소비한다.
