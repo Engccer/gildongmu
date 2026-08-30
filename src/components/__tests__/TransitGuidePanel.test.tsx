@@ -18,11 +18,11 @@ vi.mock("next-intl", () => ({
 
 import { TransitGuidePanel } from "../TransitGuidePanel";
 
+/** 승차 전 도보 없는 경로 — 종전 여정 테스트의 기본(A25 이후 선행 도보는 도보 안내를 먼저 돈다). */
 const ROUTE: TransitRoute = {
   summary: { totalMinutes: 30, fare: 1550, transfers: 0, walkMinutes: 6 },
   routeKey: "p0",
   legs: [
-    { mode: "walk", minutes: 3 },
     {
       mode: "subway",
       lineName: "수도권 5호선",
@@ -39,6 +39,8 @@ const ROUTE: TransitRoute = {
     },
   ],
 };
+
+const SUBWAY_LEG = ROUTE.legs[0];
 
 /**
  * 종전 "탑승" 한 번 = 지금의 "선택 → 탑승했습니다" 두 번(N3: 탑승은 차량 선택이고
@@ -129,9 +131,8 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     const transferRoute: TransitRoute = {
       ...ROUTE,
       legs: [
-        ROUTE.legs[0],
         {
-          ...ROUTE.legs[1],
+          ...SUBWAY_LEG,
           toName: "왕십리(성동구청)",
           stops: [
             { name: "천호", stationId: "547", lat: 37.5385, lng: 127.1235 },
@@ -140,7 +141,7 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
           ],
         },
         {
-          ...ROUTE.legs[1],
+          ...SUBWAY_LEG,
           lineName: "수도권 2호선",
           fromName: "왕십리(성동구청)",
           toName: "강남",
@@ -243,9 +244,8 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     const twoLegs: TransitRoute = {
       ...ROUTE,
       legs: [
-        ROUTE.legs[0],
-        { ...ROUTE.legs[1], toName: "왕십리(성동구청)" },
-        { ...ROUTE.legs[1], lineName: "수도권 2호선", fromName: "왕십리(성동구청)", toName: "강남" },
+        { ...SUBWAY_LEG, toName: "왕십리(성동구청)" },
+        { ...SUBWAY_LEG, lineName: "수도권 2호선", fromName: "왕십리(성동구청)", toName: "강남" },
       ],
     };
     vi.stubGlobal(
@@ -685,9 +685,8 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
   const withQuickExit: TransitRoute = {
     ...ROUTE,
     legs: [
-      ROUTE.legs[0],
       {
-        ...ROUTE.legs[1],
+        ...SUBWAY_LEG,
         quickExit: {
           elevator: { kind: "door", doors: ["6-4"] },
           stairs: { kind: "door", doors: ["5-4"] },
@@ -733,5 +732,74 @@ describe("빠른하차 — 대기 국면 발견 경로", () => {
       expect(screen.getByRole("button", { name: /selectTrain/ })).toBeTruthy();
     });
     expect(screen.queryByText(/quickExit/)).toBeNull();
+  });
+});
+
+describe("승차 전 도보 핸드오프(A25, spec 2026-08-30 §6)", () => {
+  const ROUTE_WALK: TransitRoute = { ...ROUTE, legs: [{ mode: "walk", minutes: 3 }, ...ROUTE.legs] };
+  function stubGeo() {
+    Object.defineProperty(navigator, "geolocation", {
+      value: { getCurrentPosition: vi.fn(), watchPosition: vi.fn(() => 1), clearWatch: vi.fn() },
+      configurable: true,
+    });
+  }
+  function stubTrack() {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ mode: "subway", status: "ok", rawCount: 1, items: [trackItem({})] }),
+      }) as unknown as Response),
+    );
+  }
+
+  it("선행 도보가 있으면 시작은 세션이 아니라 승차역 도보 안내를 연다", async () => {
+    stubGeo();
+    stubTrack();
+    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    // 도보 안내 트리거(DistanceBeacon)와 선언 버튼이 뜨고, 열차 목록은 없다.
+    expect(screen.getByRole("button", { name: "transitGuide.prewalkArrivedButton:천호" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /selectTrain/ })).toBeNull();
+    expect(screen.getByRole("status").textContent).toContain("transitGuide.prewalkStart:천호,3");
+    expect(screen.queryByRole("button", { name: "시작" })).toBeNull();
+  });
+
+  it("승차역 도착 선언 → 세션 시작, 대기 문맥에 도보가 없다", async () => {
+    stubGeo();
+    stubTrack();
+    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    fireEvent.click(screen.getByRole("button", { name: "transitGuide.prewalkArrivedButton:천호" }));
+    await screen.findByRole("button", { name: /selectTrain/ });
+    const status = screen.getByRole("status").textContent ?? "";
+    expect(status).toContain("transitGuide.prewalkArrived:천호");
+    expect(status).toContain("transitGuide.started:1");
+    expect(status).not.toContain("waitContextWalk");
+    expect(screen.queryByRole("button", { name: /prewalkArrivedButton/ })).toBeNull();
+  });
+
+  it("도보 안내를 사용자가 중지하면 전체 종료 — 세션은 시작되지 않고 취소 문장", async () => {
+    stubGeo();
+    stubTrack();
+    render(<TransitGuidePanel route={ROUTE_WALK} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    // DistanceBeacon 트리거(startOnOpen)로 도보 세션 시작 → 같은 버튼이 중지로 바뀐다.
+    fireEvent.click(screen.getByRole("button", { name: "beacon.walkHeading" }));
+    fireEvent.click(await screen.findByRole("button", { name: "beacon.stop" }));
+    await waitFor(() =>
+      expect(screen.getByRole("status").textContent).toContain("transitGuide.prewalkCancelled"),
+    );
+    expect(screen.queryByRole("button", { name: /selectTrain/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /prewalkArrivedButton/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "시작" })).toBeTruthy();
+  });
+
+  it("선행 도보가 없으면 종전대로 곧바로 세션이 시작된다", async () => {
+    stubTrack();
+    render(<TransitGuidePanel route={ROUTE} triggerLabel="시작" walkAccessible={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "시작" }));
+    await screen.findByRole("button", { name: /selectTrain/ });
+    expect(screen.queryByRole("button", { name: /prewalkArrivedButton/ })).toBeNull();
   });
 });
