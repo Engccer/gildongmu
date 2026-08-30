@@ -7,7 +7,8 @@ import type {
 import { hasSeoulSubwayRealtimeKey } from "../env";
 import { findStationsNear, findStationMetaNear } from "../subway-stations";
 import { judgeServiceStatus, kstNowMinutes, parseServiceTime } from "../service-hours";
-import { cleanName, fetchSubwayArrivals } from "./seoul-subway-arrival";
+import { cleanName, fetchSubwayArrivals, withArrivalsEn } from "./seoul-subway-arrival";
+import { subwayLineNamesEn } from "../subway-line-names";
 import { fetchStationTimetable } from "./tago-subway";
 
 /**
@@ -102,6 +103,8 @@ export interface NearbyArrivalInput {
   nameEn?: string;
   /** 노선들(seed 메타 집계) */
   lines: string[];
+  /** 노선 영문(`lang=en`에만, 전부 매핑될 때만 — 호출부가 채운다) */
+  linesEn?: string[];
   /** 현재 위치로부터 거리(m) */
   distanceMeters: number;
   /** 역별 실시간 도착 조회의 settled 결과(null=실시간 데이터 없음) */
@@ -138,6 +141,7 @@ export function buildNearbyArrivals(
       stationName: cleanName(it.name),
       nameEn: it.nameEn,
       lines: it.lines,
+      ...(it.linesEn ? { linesEn: it.linesEn } : {}),
       distanceMeters: Math.round(it.distanceMeters),
     };
     if (it.result.status === "fulfilled") {
@@ -188,17 +192,21 @@ export function buildNearbyArrivals(
 export function findNearestStationInfo(
   lat: number,
   lng: number,
+  lang: "ko" | "en" = "ko",
 ): NearestSubwayStation | null {
   const [nearest] = findStationsNear(lat, lng, { limit: 1, dedupeByName: true });
   if (!nearest) return null;
   // 이름 집계 금지(A9): 앵커는 매칭된 레코드 좌표 — 전국 동명이역 노선 혼입 차단.
   const meta = findStationMetaNear(nearest.name, nearest.lat, nearest.lng);
+  const lines = meta?.lines ?? [nearest.lineName];
+  const linesEn = lang === "en" ? subwayLineNamesEn(lines) : undefined;
   return {
     // `NearbySubwayStation.stationName`과 같은 계약(접미사 제거) — 목록과 nearest가
     // 다른 모양이면 소비자가 "역"을 붙일지 말지 판단할 수 없다(CLI에서 "남춘천역역").
     stationName: cleanName(nearest.name),
     nameEn: meta?.nameEn,
-    lines: meta?.lines ?? [nearest.lineName],
+    lines,
+    ...(linesEn ? { linesEn } : {}),
     distanceMeters: Math.round(nearest.distanceMeters),
   };
 }
@@ -219,6 +227,8 @@ export function findNearestStationInfo(
 export async function fetchNearbySubwayArrivals(
   lat: number,
   lng: number,
+  /** `en`이면 노선 영문(`linesEn`)·도착 영문 필드를 additive로 싣는다(E27). 한국어 필드 불변. */
+  lang: "ko" | "en" = "ko",
 ): Promise<NearbySubwayStation[]> {
   if (!hasSeoulSubwayRealtimeKey()) return [];
   const near = findStationsNear(lat, lng, {
@@ -228,7 +238,10 @@ export async function fetchNearbySubwayArrivals(
   });
   if (near.length === 0) return [];
   const settled = await Promise.allSettled(
-    near.map((s) => fetchSubwayArrivals(s.name)),
+    near.map(async (s) => {
+      const r = await fetchSubwayArrivals(s.name);
+      return lang === "en" ? withArrivalsEn(r) : r;
+    }),
   );
   // 실시간이 빈 역만 시간표를 조인해 "운행 시간 밖"인지 가른다(나머지는 미조회).
   const nowMinutes = kstNowMinutes(new Date());
@@ -245,10 +258,13 @@ export async function fetchNearbySubwayArrivals(
   const inputs: NearbyArrivalInput[] = near.map((s, i) => {
     // 이름 집계 금지(A9): 앵커는 매칭된 레코드 좌표 — 전국 동명이역 노선 혼입 차단.
     const meta = findStationMetaNear(s.name, s.lat, s.lng);
+    const lines = meta?.lines ?? [s.lineName];
+    const linesEn = lang === "en" ? subwayLineNamesEn(lines) : undefined;
     return {
       name: s.name,
       nameEn: meta?.nameEn,
-      lines: meta?.lines ?? [s.lineName],
+      lines,
+      ...(linesEn ? { linesEn } : {}),
       distanceMeters: s.distanceMeters,
       result: settled[i],
       service: services[i],

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
+import { langParam } from "@/lib/lang-param";
 import { hasSeoulSubwayRealtimeKey } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import {
@@ -25,12 +26,15 @@ export const dynamic = "force-dynamic";
 const querySchema = z.object({
   lat: latParam(),
   lng: lngParam(),
+  // `lang=en`은 노선·도착 영문 필드를 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
+  lang: langParam(),
 });
 
 export async function GET(request: NextRequest) {
   const parsed = querySchema.safeParse({
     lat: request.nextUrl.searchParams.get("lat") ?? "",
     lng: request.nextUrl.searchParams.get("lng") ?? "",
+    lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -45,11 +49,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ stations: [] });
   }
   try {
-    const stations = await fetchNearbySubwayArrivals(parsed.data.lat, parsed.data.lng);
+    const stations = await fetchNearbySubwayArrivals(parsed.data.lat, parsed.data.lng, parsed.data.lang);
     // 0건이면 최근접 역을 동봉 — "1km 안에 없다"와 "이 지역엔 도시철도가 없다"를
     // 사용자가 거리로 구분한다(seed 조회라 추가 네트워크 0).
     if (stations.length === 0) {
-      const nearest = findNearestStationInfo(parsed.data.lat, parsed.data.lng);
+      const nearest = findNearestStationInfo(parsed.data.lat, parsed.data.lng, parsed.data.lang);
       if (nearest) return NextResponse.json({ stations, nearest });
     }
     return NextResponse.json({ stations });

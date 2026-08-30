@@ -113,8 +113,36 @@ describe("place-lines == 화면 문장", () => {
     });
     expect(items[1]).toEqual({ line: "2호선", coverage: "unknown", text: 'timetable.coverage.unknown{"line":"2호선"}' });
     expect(items[2].coverage).toBe("noTrains");
-    // en은 terminusEn을 쓴다
-    expect(timetableLineItems(tt, t, true)[0].last).toContain('"terminus":"Gimpo"');
+    // en(E27 줄 단위 원자성): 노선 영문(lineNameEn)과 종착 영문이 다 있을 때만 영어 줄이고,
+    // 하나라도 없으면 그 줄 전체가 한국어 원문 + lang "ko"(종전 "노선은 한국어 + 종착만 영어" 혼합 폐기)
+    const partial = timetableLineItems(tt, t, true);
+    expect(partial[0].last).toContain('"terminus":"김포공항"');
+    expect(partial[0].lang).toBe("ko");
+    expect(partial[1]).toMatchObject({ line: "2호선", lang: "ko" });
+    const enTt: Timetable = {
+      ...tt,
+      lines: [
+        {
+          ...tt.lines[0],
+          lineNameEn: "AREX",
+          directions: [
+            {
+              direction: "up",
+              first: { time: "05:31", terminus: "서울역", terminusEn: "Seoul Station" },
+              last: { time: "00:31", nextDay: true, terminus: "김포공항", terminusEn: "Gimpo" },
+            },
+          ],
+        },
+        { ...tt.lines[1], lineNameEn: "Line 2" },
+      ],
+    };
+    const en = timetableLineItems(enTt, t, true);
+    expect(en[0].lang).toBeUndefined();
+    expect(en[0]).toMatchObject({
+      line: "AREX",
+      text: 'AREX timetable.direction.up, timetable.first 05:31 timetable.toTerminus{"terminus":"Seoul Station"}, timetable.last timetable.nextDay 00:31 timetable.toTerminus{"terminus":"Gimpo"}',
+    });
+    expect(en[1]).toEqual({ line: "Line 2", coverage: "unknown", text: 'timetable.coverage.unknown{"line":"Line 2"}' });
   });
 
   it("코레일 시설 4줄", async () => {

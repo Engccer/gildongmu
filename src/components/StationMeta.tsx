@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { StationMeta as Meta } from "@/lib/types";
-import { prefersEnglish } from "@/lib/data-locale";
-import { stationMetaLines } from "@/lib/place-lines/station-meta";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
+import { stationMetaLines, stationMetaLocalizedLines } from "@/lib/place-lines/station-meta";
+import { TransitBilingualName } from "./TransitBilingualName";
 import { useAxisSource } from "@/hooks/useAxisBridge";
 import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
@@ -56,7 +57,8 @@ export function StationMeta({ stationName }: { stationName: string }) {
       }));
       try {
         const res = await fetch(
-          `/api/station/meta?station=${encodeURIComponent(stationName)}`,
+          // `lang=en`은 노선 영문(`linesEn`, E27)을 additive로 받는다. ko는 종전 URL과 같다.
+          `/api/station/meta?station=${encodeURIComponent(stationName)}&lang=${dataLocale(locale)}`,
           { signal: controller.signal, ...(force ? { cache: "no-store" as const } : {}) },
         );
         if (controller.signal.aborted) return;
@@ -75,7 +77,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
         );
       }
     },
-    [stationName],
+    [stationName, locale],
   );
   useEffect(() => {
     void load(false, "user");
@@ -87,11 +89,11 @@ export function StationMeta({ stationName }: { stationName: string }) {
       return {
         status: s.kind,
         gen: s.gen,
-        data: meta ? { lines: stationMetaLines(meta, t) } : undefined,
+        data: meta ? { lines: stationMetaLines(meta, t, locale) } : undefined,
         refreshError: s.kind === "done" && s.refreshError ? true : undefined,
       };
     },
-    [t],
+    [t, locale],
   );
   const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
   useAxisSource("basic", status, toSnapshot, loadForTool);
@@ -101,7 +103,7 @@ export function StationMeta({ stationName }: { stationName: string }) {
 
   const isEn = prefersEnglish(locale);
   // 문장 정본은 place-lines(도구층과 공용) — 여기서는 렌더만 한다.
-  const [nameLine, linesLine, operatorLine] = stationMetaLines(meta, t);
+  const [nameLine, linesLine, operatorLine] = stationMetaLocalizedLines(meta, t, locale);
 
   return (
     // 자동 등장 보조 섹션은 region 랜드마크 유지 — 버튼 없이 조용히 나타나
@@ -118,18 +120,23 @@ export function StationMeta({ stationName }: { stationName: string }) {
           en에서 한글 보조명은 드롭(블라인드 영어 사용자에겐 한글 낭독이 노이즈,
           한 줄 한 객체 원칙). 단일 언어라 분절 없음. */}
       {isEn ? (
-        <p className="mt-1 text-lg font-semibold">{nameLine}</p>
+        // 한 줄 괄호 병기(E27 §3.6): 시각 `Gangnam (강남)`, 접근 가능한 이름은 영문뿐. 순수 데이터 영어 줄이라
+        // 비-en 로케일(ja·fr…)에서는 `lang="en"`(일본어 음성이 영문을 읽지 않게).
+        <p className="mt-1 text-lg font-semibold" lang={locale.startsWith("en") ? undefined : "en"}>
+          <TransitBilingualName en={nameLine.text} ko={meta.name} />
+        </p>
       ) : (
         <p className="mt-1 text-sm opacity-80" lang="en">
-          {nameLine}
+          {nameLine.text}
         </p>
       )}
 
       {/* 정의 리스트 대신 평문 한 줄 = 한 객체 — 라벨+값+환승 배지를 단일
           텍스트로 합친다(볼드 라벨·배지 분절 제거, 환승은 의미 정보라 텍스트 흡수). */}
+      {/* 노선 줄은 en에서 `linesEn`이 있을 때만 영문이고 없으면 한국어 원문 + lang="ko"(줄 단위 원자성, E27). */}
       <div className="mt-1 text-sm leading-relaxed">
-        <p>{linesLine}</p>
-        <p>{operatorLine}</p>
+        <p lang={linesLine.lang}>{linesLine.text}</p>
+        <p>{operatorLine.text}</p>
       </div>
 
       {/* source는 로케일 메시지(en/ko) — 페이지 기본 lang을 따르므로 lang 미지정. */}

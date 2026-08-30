@@ -11,9 +11,12 @@ public struct NearbyService: Sendable {
 
     public init(client: APIClient) { self.client = client }
 
-    public func subwayArrivals(lat: Double, lng: Double) async throws -> SubwayNearbyResult {
+    /// `lang`(E27) — en이면 노선·도착 영문 필드를 additive로 받는다(비-ko만 파라미터, 기본값 없음).
+    public func subwayArrivals(lat: Double, lng: Double, lang: String) async throws -> SubwayNearbyResult {
+        var query = coordQuery(lat: lat, lng: lng)
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         let response: SubwayNearbyResponse = try await client.get(
-            "/api/station/subway-arrival/nearby", query: coordQuery(lat: lat, lng: lng))
+            "/api/station/subway-arrival/nearby", query: query)
         return SubwayNearbyResult(stations: response.stations, nearest: response.nearest)
     }
 

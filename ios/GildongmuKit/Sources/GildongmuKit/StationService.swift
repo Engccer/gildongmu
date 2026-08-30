@@ -12,9 +12,17 @@ public struct StationService: Sendable {
         [URLQueryItem(name: "station", value: station)]
     }
 
-    public func meta(station: String) async throws -> StationMeta? {
+    /// `lang`(E27) — en이면 영문 필드(`linesEn`·도착 `*En`·`lineNameEn`)를 additive로 받는다. 비-ko만
+    /// 파라미터를 실어 ko 요청은 종전과 같다. ⚠ 기본값 없음(RouteService.walk 규율).
+    private func stationQuery(_ station: String, lang: String) -> [URLQueryItem] {
+        var q = stationQuery(station)
+        if lang != "ko" { q.append(URLQueryItem(name: "lang", value: lang)) }
+        return q
+    }
+
+    public func meta(station: String, lang: String) async throws -> StationMeta? {
         let response: StationMetaResponse = try await client.get(
-            "/api/station/meta", query: stationQuery(station))
+            "/api/station/meta", query: stationQuery(station, lang: lang))
         return response.meta
     }
 
@@ -30,17 +38,17 @@ public struct StationService: Sendable {
         return response.facilities
     }
 
-    public func arrivals(station: String) async throws -> StationArrivals? {
+    public func arrivals(station: String, lang: String) async throws -> StationArrivals? {
         let response: StationArrivalResponse = try await client.get(
-            "/api/station/subway-arrival", query: stationQuery(station))
+            "/api/station/subway-arrival", query: stationQuery(station, lang: lang))
         return response.arrivals
     }
 
     /// 첫차·막차 시간표. 미커버 역은 nil(graceful), 조회 실패는 throw
     /// (시간표는 의사결정 정보라 실패를 미커버로 위장하지 않는다, 스펙 §2-A).
-    public func timetable(station: String) async throws -> StationTimetable? {
+    public func timetable(station: String, lang: String) async throws -> StationTimetable? {
         let response: StationTimetableResponse = try await client.get(
-            "/api/station/timetable", query: stationQuery(station))
+            "/api/station/timetable", query: stationQuery(station, lang: lang))
         return response.timetable
     }
 }

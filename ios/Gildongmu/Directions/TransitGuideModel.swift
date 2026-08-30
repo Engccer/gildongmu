@@ -427,7 +427,7 @@ final class TransitGuideModel {
         try await routeService.transit(
             originLat: origin.lat, originLng: origin.lng,
             destLat: dest.lat, destLng: dest.lng,
-            includeStops: true)
+            includeStops: true, lang: AppLanguage.dataLocale)
     }
 
     // MARK: 조망 "다른 경로" (E15-1 spec §5)
@@ -645,8 +645,9 @@ final class TransitGuideModel {
             } else if let count = leg.stationCount, state.phase == .riding {
                 parts.append(appLocalized("transitGuide.stationCountAbout", String(count)))
             }
-            if let message = state.lastMessage, !message.isEmpty {
-                parts.append(frameText(leg, message))
+            if let message = state.lastMessage, !message.isEmpty,
+               let framed = frameText(leg, message, arrivalCode: state.lastArrivalCode) {
+                parts.append(framed)
             }
         }
         // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
@@ -940,30 +941,30 @@ final class TransitGuideModel {
                     parts.append(appLocalized("transitGuide.boarded", leg.lineName, leg.alightName))
                 }
             }
-        case let .trackingStarted(message, remaining):
+        case let .trackingStarted(message, remaining, arrivalCode):
             if let leg { parts.append(contextText(leg)) }
             parts.append(appLocalized("transitGuide.trackingStarted"))
-            if !message.isEmpty {
-                parts.append(leg.map { frameText($0, message) } ?? message)
+            let framed = message.isEmpty ? nil : (leg.map { frameText($0, message, arrivalCode: arrivalCode) } ?? message)
+            if let framed {
+                parts.append(framed)
             } else if let remaining {
                 parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
             }
-        case let .countdown(remaining, message, currentLocation):
+        case let .countdown(remaining, message, currentLocation, arrivalCode):
             // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
-            if !message.isEmpty {
-                parts.append(leg.map { frameText($0, message) } ?? message)
-            } else {
-                parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
-            }
+            // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
+            let framed = message.isEmpty ? nil : (leg.map { frameText($0, message, arrivalCode: arrivalCode) } ?? message)
+            parts.append(framed ?? appLocalized("transitGuide.remainingCount", String(remaining)))
             // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
             // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
             if remaining <= 1, let currentLocation, !currentLocation.isEmpty {
                 parts.append(appLocalized("transitGuide.currentStation", currentLocation))
             }
-        case let .messageChanged(message):
-            parts.append(leg.map {
-                state?.phase == .boarding ? approachFrameText($0, message) : frameText($0, message)
-            } ?? message)
+        case let .messageChanged(message, arrivalCode):
+            let framed: String? = leg.map {
+                state?.phase == .boarding ? approachFrameText($0, message) : frameText($0, message, arrivalCode: arrivalCode)
+            } ?? message
+            if let framed { parts.append(framed) }
         case let .arrived(certain):
             parts.append(appLocalized(certain ? "transitGuide.arrived" : "transitGuide.arrivedGuess"))
             if let state, let route {
@@ -977,9 +978,12 @@ final class TransitGuideModel {
                         "transitGuide.nextLeg", appLocalized("transitGuide.doneWalk", String(walk))))
                 }
             }
-        case let .backOnTrack(message):
+        case let .backOnTrack(message, arrivalCode):
             parts.append(appLocalized("transitGuide.backOnTrack"))
-            if !message.isEmpty { parts.append(leg.map { frameText($0, message) } ?? message) }
+            if !message.isEmpty,
+               let framed = leg.map({ frameText($0, message, arrivalCode: arrivalCode) }) ?? message {
+                parts.append(framed)
+            }
         case .approxVehicleChanged:
             parts.append(appLocalized("transitGuide.approxVehicleChanged"))
         case .signalLost:
@@ -1019,9 +1023,29 @@ final class TransitGuideModel {
         appLocalized("transitGuide.context", leg.lineName, leg.alightName)
     }
 
-    /// upstream 완성 문장의 라벨 프레임(§12.3) — 원문 무변형, 하차역 라벨 전치.
-    func frameText(_ leg: TransitGuideLeg, _ message: String) -> String {
-        appLocalized("transitGuide.messageFrame", leg.alightName, message)
+    /// 승차 국면 상태 문장(§12.3). 버스는 upstream 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
+    /// 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
+    /// ("충정로까지 전역 도착", A27 실승차 피드백) — `subwayRidingMessage`(코드 → 탑승자 시점 문장)로 고르고,
+    /// 99(운행중)는 nil(잔여 수가 말한다), 미지 코드는 원문을 틀 없이 그대로. 웹 `frameText` 미러.
+    func frameText(_ leg: TransitGuideLeg, _ message: String, arrivalCode: String?) -> String? {
+        guard leg.mode == "subway" else {
+            return appLocalized("transitGuide.messageFrame", leg.alightName, message)
+        }
+        switch subwayRidingMessage(arrivalCode) {
+        case .key(let key):
+            switch key {
+            case "subwayNextStop": return appLocalized("transitGuide.subwayNextStop", leg.alightName)
+            case "subwayArriving": return appLocalized("transitGuide.subwayArriving", leg.alightName)
+            case "subwayAtStop": return appLocalized("transitGuide.subwayAtStop", leg.alightName)
+            case "subwayDeparted": return appLocalized("transitGuide.subwayDeparted", leg.alightName)
+            default:
+                // Kit이 키를 늘렸는데 여기 case가 빠진 것 — 키 린터가 리터럴만 세므로 문자열 switch(TransitWalkLegText 동형).
+                assertionFailure("subwayRidingMessage 키 미매핑: \(key)")
+                return message
+            }
+        case .omit: return nil
+        case .raw: return message
+        }
     }
 
     /// boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 있으면 그 역.

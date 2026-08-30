@@ -40,7 +40,8 @@ describeNearbyContract({
   renderComponent: () => <SubwayArrivalsNearby />,
   triggerName: "subwayNearby.button",
   expectedUrl: (lat, lng) =>
-    `/api/station/subway-arrival/nearby?lat=${lat}&lng=${lng}`,
+    // ko 로케일은 `lang=ko`(E27 — en은 영문 필드를 additive로 받는다)
+    `/api/station/subway-arrival/nearby?lat=${lat}&lng=${lng}&lang=ko`,
   successBody: { stations: [station] },
   successProbe: "굽은다리",
   emptyBody: { stations: [] },

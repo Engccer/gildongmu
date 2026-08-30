@@ -1,0 +1,25 @@
+{
+  "comment": "E27 §3.2 정규화 fixture. input은 ODsay lang=1 실관측(2026-08-31)이거나 경계 케이스, expected는 표시 문자열. 멱등: expected를 다시 넣어도 expected.",
+  "cases": [
+    { "input": "Gil-dong Sageori. Gangdong District Tax Office", "expected": "Gil-dong Sageori, Gangdong District Tax Office" },
+    { "input": "Dangsan Stn. & Samsung Raemian Apt.", "expected": "Dangsan Station & Samsung Raemian Apt." },
+    { "input": "Centum City Station, BEXCO", "expected": "Centum City Station, BEXCO" },
+    { "input": "Kyungsung Univ.ㆍPukyong Nat'l Univ.", "expected": "Kyungsung Univ., Pukyong Nat'l Univ." },
+    { "input": "Gwanghwamun Stn.", "expected": "Gwanghwamun Station" },
+    { "input": "Gangnam Stn. Exit 7", "expected": "Gangnam Station Exit 7" },
+    { "input": "Jamsil Parkrio Apt. Shopping Area. Olympic Hall", "expected": "Jamsil Parkrio Apt. Shopping Area, Olympic Hall" },
+    { "input": "Hanyang Apt.. Apgujeong Rodeo Station", "expected": "Hanyang Apt. Apgujeong Rodeo Station", "note": "알려진 한계 — 약어 뒤 실제 구분자는 사라진다(원문 자체가 모호)" },
+    { "input": "Daechi Woosung Apt. II. Daechi Full Gospel Church", "expected": "Daechi Woosung Apt. II. Daechi Full Gospel Church", "note": "II도 약어류라 원문 보존" },
+    { "input": "Magok Sumyeongsan Park Complex 3. 4", "expected": "Magok Sumyeongsan Park Complex 3. 4", "note": "숫자 뒤는 원문 보존" },
+    { "input": "U.S. Army Garrison. Yongsan", "expected": "U.S. Army Garrison, Yongsan", "note": "이니셜 `U.S.`는 안 갈리고 `Garrison. `만 구분자" },
+    { "input": "Bldg. No. 1. Main Gate", "expected": "Bldg. No. 1. Main Gate", "note": "약어·숫자 연쇄 전부 보존" },
+    { "input": "Busanjin Stn. (Ministry of Oceans and Fisheries & Dong-gu Office)", "expected": "Busanjin Station (Ministry of Oceans and Fisheries & Dong-gu Office)" },
+    { "input": "Cheonho (Pungnaptoseong)", "expected": "Cheonho (Pungnaptoseong)" },
+    { "input": "Seoul Nat‘l Univ. (Gwanak-gu Office)", "expected": "Seoul Nat‘l Univ. (Gwanak-gu Office)", "note": "굽은 따옴표 약어는 목록 밖이지만 뒤가 괄호라 `. (`는 `. `+비공백 규칙에 걸린다 — 앞 토큰 `Univ.`가 약어라 보존" },
+    { "input": "  Gildong  ", "expected": "Gildong" },
+    { "input": "Hills Park Prugio. Techno Valley U1 Center. Oncheon Village", "expected": "Hills Park Prugio, Techno Valley U1 Center, Oncheon Village" },
+    { "input": "Pungsan Chamareum Apt.. Joint Market", "expected": "Pungsan Chamareum Apt. Joint Market", "note": "알려진 한계 동형" },
+    { "input": "Seoul Stn. Bus Transfer Center (Platform 5)", "expected": "Seoul Station Bus Transfer Center (Platform 5)" },
+    { "input": "Line. Hansol Sol Park Apt.", "expected": "Line, Hansol Sol Park Apt." }
+  ]
+}

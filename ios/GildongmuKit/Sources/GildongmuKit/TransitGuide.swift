@@ -188,11 +188,11 @@ public enum TransitGuideEvent: Sendable, Equatable {
     case approaching(remaining: Int?, message: String)
     /// boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청.
     case vehiclePassed
-    case trackingStarted(message: String, remaining: Int?)
-    case countdown(remaining: Int, message: String, currentLocation: String?)
-    case messageChanged(message: String)
+    case trackingStarted(message: String, remaining: Int?, arrivalCode: String?)
+    case countdown(remaining: Int, message: String, currentLocation: String?, arrivalCode: String?)
+    case messageChanged(message: String, arrivalCode: String?)
     case arrived(certain: Bool)
-    case backOnTrack(message: String)
+    case backOnTrack(message: String, arrivalCode: String?)
     case approxVehicleChanged(message: String)
     case signalLost
     case neverSeen
@@ -216,6 +216,8 @@ public struct TransitGuideState: Sendable {
     public var previousPhase: TransitPhase?
     public var remaining: Int?
     public var lastMessage: String?
+    /// 잠금 항목의 도착 코드(지하철 arvlCd, A27) — 승차 국면 상태줄이 탑승자 시점 문장을 고르는 축.
+    public var lastArrivalCode: String?
     public var lastUpdatedAt: Double?
     /// 잠금 항목의 현재 위치 역명(arvlMsg3, §12.2) — countdown 병치·M3 탑승 위치 축.
     public var currentLocation: String?
@@ -273,7 +275,7 @@ public enum TransitGuideTone: String, Sendable {
 /// 이벤트 → 통지 채널·톤 매핑(§6.1). 잔여 1·도착만 interrupting.
 public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool, tone: TransitGuideTone?) {
     switch event {
-    case let .countdown(remaining, _, _):
+    case let .countdown(remaining, _, _, _):
         return remaining <= 1 ? (true, .imminent) : (false, .ladder)
     case let .approaching(remaining, _):
         // 내 정류소에 거의 왔다 — 지금 움직여야 하는 신호(riding 사다리와 같은 축).
@@ -535,6 +537,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         previousPhase: nil,
         remaining: nil,
         lastMessage: nil,
+        lastArrivalCode: nil,
         lastUpdatedAt: nil,
         currentLocation: nil,
         dataStamp: nil,
@@ -589,6 +592,7 @@ private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState 
     var next = state
     next.remaining = nil
     next.lastMessage = nil
+    next.lastArrivalCode = nil
     next.lastUpdatedAt = nil
     next.currentLocation = nil
     next.dataStamp = nil
@@ -674,6 +678,7 @@ private func handleChangeBoarding(
     next.previousPhase = state.phase == .boarding ? .boarding : .riding
     next.remaining = nil
     next.lastMessage = nil
+    next.lastArrivalCode = nil
     next.currentLocation = nil
     next.dataStamp = nil
     next.dataAgeSeconds = nil
@@ -714,6 +719,7 @@ private func handleAdvance(
     next.previousPhase = nil
     next.remaining = nil
     next.lastMessage = nil
+    next.lastArrivalCode = nil
     next.lastUpdatedAt = nil
     next.currentLocation = nil
     next.dataStamp = nil
@@ -855,6 +861,7 @@ private func commitBoardingMatched(
     out.missCount = 0
     out.remaining = item.remainingStops
     out.lastMessage = item.message
+    out.lastArrivalCode = item.arrivalCode
     out.lastUpdatedAt = now
     out.currentLocation = item.currentLocation
     out.dataStamp = item.dataStamp
@@ -882,7 +889,7 @@ private func commitBoardingMatched(
     }
     guard let remaining = item.remainingStops else {
         if let last = base.lastMessage, item.message != last {
-            return (out, .messageChanged(message: item.message))
+            return (out, .messageChanged(message: item.message, arrivalCode: item.arrivalCode))
         }
         return (out, carriedEvent)
     }
@@ -968,6 +975,7 @@ private func commitMatched(
     out.missCount = 0
     out.remaining = item.remainingStops
     out.lastMessage = item.message
+    out.lastArrivalCode = item.arrivalCode
     out.lastUpdatedAt = now
     out.currentLocation = item.currentLocation
     out.dataStamp = item.dataStamp
@@ -980,7 +988,7 @@ private func commitMatched(
     // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
     if base.phase == .arrived, !base.arrivedCertain {
         out.phase = .riding
-        return (out, .backOnTrack(message: item.message))
+        return (out, .backOnTrack(message: item.message, arrivalCode: item.arrivalCode))
     }
     if base.phase != .riding {
         return (out, carriedEvent)
@@ -1003,13 +1011,13 @@ private func commitMatched(
 
     if !wasTracking {
         out.ladderAnnounced = item.remainingStops
-        return (out, .trackingStarted(message: item.message, remaining: item.remainingStops))
+        return (out, .trackingStarted(message: item.message, remaining: item.remainingStops, arrivalCode: item.arrivalCode))
     }
 
     guard let remaining = item.remainingStops else {
         // 잔여 추출 실패(§6.2) — 완성 문장 변화 통지로 폴백.
         if let last = base.lastMessage, item.message != last {
-            return (out, .messageChanged(message: item.message))
+            return (out, .messageChanged(message: item.message, arrivalCode: item.arrivalCode))
         }
         return (out, carriedEvent)
     }
@@ -1027,11 +1035,36 @@ private func commitMatched(
        let prev = prevRemaining, remaining < prev {
         out.ladderAnnounced = remaining
         return (out, .countdown(
-            remaining: remaining, message: item.message, currentLocation: item.currentLocation))
+            remaining: remaining, message: item.message, currentLocation: item.currentLocation,
+            arrivalCode: item.arrivalCode))
     }
     // 소실 후 재관측 회복(§4.2) — 상위 이벤트가 없을 때만.
     if base.signal == .signalLost, carriedEvent == nil {
         return (out, .signalRecovered)
     }
     return (out, carriedEvent)
+}
+
+
+// MARK: - 승차 국면 지하철 상태줄 (A27) — 웹 `subwayRidingMessage` 미러
+
+/// 지하철 `arvlMsg2`는 조회역(=하차역) 기준 열차 위치 서술이라 `messageFrame`("{stop}까지 {message}")에
+/// 넣으면 뜻이 뒤집힌다("충정로까지 전역 도착", 위원장 실승차 2026-08-29). 승차 국면은 코드로 탑승자
+/// 시점 문장을 고른다. 99(운행중)는 잔여 수가 이미 말하므로 생략, 미지·결측은 원문을 틀 없이 그대로.
+/// ⚠ 대기 국면 후보 목록·내 주변 도착 목록은 완성 문장 정본 불변 — riding 상태줄뿐.
+public enum SubwayRidingMessage: Equatable, Sendable {
+    case key(String)
+    case omit
+    case raw
+}
+
+public func subwayRidingMessage(_ arrivalCode: String?) -> SubwayRidingMessage {
+    switch arrivalCode {
+    case "0": return .key("subwayArriving")
+    case "1": return .key("subwayAtStop")
+    case "2": return .key("subwayDeparted")
+    case "3", "4", "5": return .key("subwayNextStop")
+    case "99": return .omit
+    default: return .raw
+    }
 }

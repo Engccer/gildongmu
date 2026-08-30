@@ -236,3 +236,44 @@ import Foundation
     #expect(tt.lines[0].lineCore == "수인분당")
     #expect(tt.lines[1].lineCore == nil)
 }
+
+// E27: 영문 additive 필드 디코딩 — ⚠ 선언하지 않으면 서버가 실어도 값이 오지 않는다(additive 계약).
+@Test func stationMetaLinesEnDecodesOptionally() throws {
+    let json = #"""
+    {"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선","신분당선"],"linesEn":["Line 2","Shinbundang Line"],"isTransfer":true,"operator":"서울교통공사"}}
+    """#
+    let meta = try #require(try JSONDecoder().decode(StationMetaResponse.self, from: Data(json.utf8)).meta)
+    #expect(meta.linesEn == ["Line 2", "Shinbundang Line"])
+    let koJson = #"""
+    {"meta":{"name":"강남","nameEn":"Gangnam","lines":["2호선"],"isTransfer":false,"operator":"서울교통공사"}}
+    """#
+    let ko = try #require(try JSONDecoder().decode(StationMetaResponse.self, from: Data(koJson.utf8)).meta)
+    #expect(ko.linesEn == nil)
+}
+
+@Test func stationTimetableLineNameEnDecodesOptionally() throws {
+    let json = #"""
+    {"timetable":{"stationName":"서울숲","dailyType":"weekday","lines":[
+      {"lineName":"수인분당선","lineCore":"수인분당","lineNameEn":"Suin-Bundang Line","coverage":"unknown","directions":[]},
+      {"lineName":"화성선","coverage":"unknown","directions":[]}]}}
+    """#
+    let tt = try #require(try JSONDecoder().decode(StationTimetableResponse.self, from: Data(json.utf8)).timetable)
+    #expect(tt.lines[0].lineNameEn == "Suin-Bundang Line")
+    #expect(tt.lines[1].lineNameEn == nil)
+}
+
+@Test func stationArrivalEnFieldsDecodeOptionally() throws {
+    let json = #"""
+    {"arrivals":{"stationName":"강남","arrivals":[
+      {"line":"2호선","lineEn":"Line 2","direction":"외선","directionEn":"Outer Circle","trainLineNm":"성수행 - 역삼방면","trainLineNmEn":"To Seongsu via Yeoksam","destination":"성수","message":"강남 도착","messageEn":"Arrived at Gangnam","currentLocation":"강남","currentLocationEn":"Gangnam","arrivalSeconds":0,"express":false},
+      {"line":"2호선","direction":"외선","trainLineNm":"성수행 - 역삼방면","destination":"성수","message":"7분 후","arrivalSeconds":420,"express":false}]}}
+    """#
+    let a = try #require(try JSONDecoder().decode(StationArrivalResponse.self, from: Data(json.utf8)).arrivals)
+    #expect(a.arrivals[0].messageEn == "Arrived at Gangnam")
+    #expect(a.arrivals[0].lineEn == "Line 2")
+    #expect(a.arrivals[0].directionEn == "Outer Circle")
+    #expect(a.arrivals[0].trainLineNmEn == "To Seongsu via Yeoksam")
+    #expect(a.arrivals[0].currentLocationEn == "Gangnam")
+    #expect(a.arrivals[0].message == "강남 도착")
+    #expect(a.arrivals[1].messageEn == nil)
+}

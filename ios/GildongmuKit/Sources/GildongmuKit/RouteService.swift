@@ -42,16 +42,21 @@ public struct RouteService: Sendable {
     /// 여느 라우트와 동형으로 throw.
     /// includeStops=true는 경유 정류장 옵트인(웹 `?includeStops=1` 계약, B2 실시간
     /// 안내의 승차·하차 정류소 ID·좌표 데이터원). false면 파라미터 생략(byte-호환).
+    /// `lang`(E27): 응답 언어. en이면 서버가 ODsay `lang=1` 영문을 `*En`에 additive로 싣는다(한국어 필드
+    /// 불변). ⚠ **walk·car와 같은 이유로 기본값을 두지 않는다** — 빠뜨린 조회는 컴파일이 잡는다.
+    /// 비-ko만 파라미터를 실어 ko 요청은 종전과 byte-identical.
     public func transit(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        includeStops: Bool = false
+        includeStops: Bool = false,
+        lang: String
     ) async throws -> TransitRouteResult? {
         var query = [
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
         if includeStops { query.append(URLQueryItem(name: "includeStops", value: "1")) }
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         let envelope: TransitRouteEnvelope = try await client.get("/api/route/transit", query: query)
         return envelope.result
     }

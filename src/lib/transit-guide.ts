@@ -153,11 +153,17 @@ export type TransitGuideEvent =
   | { kind: "approaching"; remaining: number | null; message: string }
   /** boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청. */
   | { kind: "vehiclePassed" }
-  | { kind: "trackingStarted"; message: string; remaining: number | null }
-  | { kind: "countdown"; remaining: number; message: string; currentLocation: string | null }
-  | { kind: "messageChanged"; message: string }
+  | { kind: "trackingStarted"; message: string; remaining: number | null; arrivalCode: string | null }
+  | {
+      kind: "countdown";
+      remaining: number;
+      message: string;
+      currentLocation: string | null;
+      arrivalCode: string | null;
+    }
+  | { kind: "messageChanged"; message: string; arrivalCode: string | null }
   | { kind: "arrived"; certain: boolean }
-  | { kind: "backOnTrack"; message: string }
+  | { kind: "backOnTrack"; message: string; arrivalCode: string | null }
   | { kind: "approxVehicleChanged"; message: string }
   | { kind: "signalLost" }
   | { kind: "neverSeen" }
@@ -187,6 +193,11 @@ export interface TransitGuideState {
   previousPhase: TransitPhase | null;
   remaining: number | null;
   lastMessage: string | null;
+  /**
+   * 잠금 항목의 도착 코드(지하철 arvlCd, A27) — 승차 국면 상태줄이 `lastMessage`(조회역 기준 열차 위치
+   * 서술) 대신 탑승자 시점 문장을 고르는 축. 버스·미제공은 null.
+   */
+  lastArrivalCode: string | null;
   lastUpdatedAt: number | null;
   /** 잠금 항목의 현재 위치 역명(arvlMsg3, §12.2) — countdown 병치·M3 탑승 위치 축. */
   currentLocation: string | null;
@@ -572,6 +583,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     previousPhase: null,
     remaining: null,
     lastMessage: null,
+    lastArrivalCode: null,
     lastUpdatedAt: null,
     currentLocation: null,
     dataStamp: null,
@@ -627,6 +639,7 @@ function resetLockTracking(state: TransitGuideState): TransitGuideState {
     ...state,
     remaining: null,
     lastMessage: null,
+    lastArrivalCode: null,
     lastUpdatedAt: null,
     currentLocation: null,
     dataStamp: null,
@@ -722,6 +735,7 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       previousPhase: state.phase === "boarding" ? "boarding" : "riding",
       remaining: null,
       lastMessage: null,
+    lastArrivalCode: null,
       currentLocation: null,
       dataStamp: null,
       dataAgeSeconds: null,
@@ -765,6 +779,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       previousPhase: null,
       remaining: null,
       lastMessage: null,
+    lastArrivalCode: null,
       lastUpdatedAt: null,
       currentLocation: null,
       dataStamp: null,
@@ -946,6 +961,7 @@ function commitBoardingMatched(
     missCount: 0,
     remaining: item.remainingStops,
     lastMessage: item.message,
+    lastArrivalCode: item.arrivalCode,
     lastUpdatedAt: now,
     currentLocation: item.currentLocation ?? null,
     dataStamp: stamp,
@@ -978,7 +994,7 @@ function commitBoardingMatched(
   const remaining = item.remainingStops;
   if (remaining == null) {
     if (item.message !== base.lastMessage && base.lastMessage !== null) {
-      return { state: next, event: { kind: "messageChanged", message: item.message } };
+      return { state: next, event: { kind: "messageChanged", message: item.message, arrivalCode: item.arrivalCode } };
     }
     return { state: next, event: carriedEvent };
   }
@@ -1070,6 +1086,7 @@ function commitMatched(
     missCount: 0,
     remaining: item.remainingStops,
     lastMessage: item.message,
+    lastArrivalCode: item.arrivalCode,
     lastUpdatedAt: now,
     currentLocation: item.currentLocation ?? null,
     dataStamp: stamp,
@@ -1082,7 +1099,7 @@ function commitMatched(
   // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
   if (base.phase === "arrived" && !base.arrivedCertain) {
     next.phase = "riding";
-    return { state: next, event: { kind: "backOnTrack", message: item.message } };
+    return { state: next, event: { kind: "backOnTrack", message: item.message, arrivalCode: item.arrivalCode } };
   }
   if (base.phase !== "riding") {
     return { state: next, event: carriedEvent };
@@ -1110,7 +1127,12 @@ function commitMatched(
     next.ladderAnnounced = item.remainingStops;
     return {
       state: next,
-      event: { kind: "trackingStarted", message: item.message, remaining: item.remainingStops },
+      event: {
+        kind: "trackingStarted",
+        message: item.message,
+        remaining: item.remainingStops,
+        arrivalCode: item.arrivalCode,
+      },
     };
   }
 
@@ -1118,7 +1140,7 @@ function commitMatched(
   if (remaining == null) {
     // 잔여 추출 실패(§6.2) — 사다리만 비활성, 완성 문장 변화 통지로 폴백.
     if (item.message !== base.lastMessage && base.lastMessage !== null) {
-      return { state: next, event: { kind: "messageChanged", message: item.message } };
+      return { state: next, event: { kind: "messageChanged", message: item.message, arrivalCode: item.arrivalCode } };
     }
     return { state: next, event: carriedEvent };
   }
@@ -1146,6 +1168,7 @@ function commitMatched(
         remaining,
         message: item.message,
         currentLocation: item.currentLocation ?? null,
+        arrivalCode: item.arrivalCode,
       },
     };
   }
@@ -1155,4 +1178,42 @@ function commitMatched(
     return { state: next, event: { kind: "signalRecovered" } };
   }
   return { state: next, event: carriedEvent };
+}
+
+
+// === 승차 국면 지하철 상태줄 (A27, 위원장 실승차 피드백 2026-08-29) — 순수, Kit 미러 ===
+
+/**
+ * 지하철 `arvlMsg2`는 조회역(=하차역) 기준 **열차 위치 서술**("전역 도착"·"[3]번째 전역")이라 버스 완성
+ * 문장("2분 남음")을 전제한 `messageFrame`("{stop}까지 {message}")에 넣으면 뜻이 뒤집힌다
+ * ("충정로까지 전역 도착"). 승차 국면은 코드로 탑승자 시점 문장을 고른다:
+ * - 3·4·5(전역 출발·진입·도착) → `subwayNextStop`("다음 역 {stop}.")
+ * - 0(진입) → `subwayArriving` · 1(도착) → `subwayAtStop` · 2(출발) → `subwayDeparted`(하차역을 지나친
+ *   신호 — 상태 머신의 도착 판정은 1만 보므로 충돌 없음)
+ * - 99(운행중) → `omit`(잔여 수는 `remainingCount`가 이미 말한다)
+ * - 미지·결측 → `raw`(원문을 **까지 틀 없이** 그대로, 3-state 폴백)
+ * ⚠ 대기 국면 후보 목록·내 주변 도착 목록은 완성 문장 정본 불변(CLAUDE.md) — 여기는 riding 상태줄뿐.
+ */
+export type SubwayRidingMessage =
+  | { kind: "key"; key: "subwayNextStop" | "subwayArriving" | "subwayAtStop" | "subwayDeparted" }
+  | { kind: "omit" }
+  | { kind: "raw" };
+
+export function subwayRidingMessage(arrivalCode: string | null | undefined): SubwayRidingMessage {
+  switch (arrivalCode) {
+    case "0":
+      return { kind: "key", key: "subwayArriving" };
+    case "1":
+      return { kind: "key", key: "subwayAtStop" };
+    case "2":
+      return { kind: "key", key: "subwayDeparted" };
+    case "3":
+    case "4":
+    case "5":
+      return { kind: "key", key: "subwayNextStop" };
+    case "99":
+      return { kind: "omit" };
+    default:
+      return { kind: "raw" };
+  }
 }

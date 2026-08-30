@@ -6,9 +6,40 @@ import GildongmuKit
 /// 모델 init의 통지 클로저와 뷰 오버레이가 **같은 문구**를 써야 해서 파일 레벨에 둔다
 /// (한쪽만 고치면 들은 것과 보이는 것이 갈린다).
 private func nearestLabel(_ station: NearestSubwayStation) -> String {
-    let nameEn = station.nameEn ?? ""
-    let name = AppLanguage.dataLocale == "en" && !nameEn.isEmpty ? nameEn : station.stationName
-    return joinText(name, station.lines.joined(separator: ", "))
+    // 역명·노선이 **둘 다** 영문일 때만 영어(한 줄 안 언어 혼합 금지, E27) — 통지라 병기 없이 낭독 문자열.
+    subwayStationLine(isEn: AppLanguage.dataLocale == "en", stationName: station.stationName, nameEn: station.nameEn,
+                      lines: station.lines, linesEn: station.linesEn).spoken
+}
+
+/// 역 헤딩 조각 — 시각(`Gangnam (강남), Line 2`)과 낭독(`Gangnam, Line 2`). 영문이 모자라면 둘 다 한국어.
+func subwayStationLine(
+    isEn: Bool, stationName: String, nameEn: String?, lines: [String], linesEn: [String]?
+) -> (visual: String, spoken: String) {
+    let ko = joinText(stationName, lines.isEmpty ? nil : lines.joined(separator: ", "))
+    let linesReady: [String]? = lines.isEmpty ? [] : linesEn
+    guard isEn, let nameEn, !nameEn.isEmpty, let linesReady else { return (ko, ko) }
+    let b = TransitDisplay.bilingual(en: nameEn, ko: stationName)
+    let linesText = linesReady.isEmpty ? nil : linesReady.joined(separator: ", ")
+    return (joinText(b.visual, linesText), joinText(b.spoken, linesText))
+}
+
+/// 도착 한 건의 두 줄을 한 텍스트로(편성 + 메시지). en 계열은 서버 영문(E27)이 다 있을 때만 영어 — 편성(노선·방향·
+/// 행선)과 메시지(문장·현재역)를 각각 원자적으로 고른다(웹 `arrivalItems` 미러). ko는 완성 문장 정본 그대로.
+func subwayArrivalLine(_ arrival: SubwayArrival, isEn: Bool) -> String {
+    let express = arrival.express ? appLocalized("subwayArrival.express") : nil
+    let lineKo = joinText(arrival.line, express, arrival.trainLineNm)
+    let lineText = TransitDisplay.pickLine(
+        isEn: isEn, ko: lineKo,
+        enParts: [arrival.line == nil ? "" : arrival.lineEn, arrival.directionEn, arrival.trainLineNmEn]
+    ) { p in joinText("\(p[0].isEmpty ? "" : "\(p[0]) ")\(p[1])", express, p[2]) }
+    let messageKo = joinText(
+        arrival.message,
+        arrival.currentLocation.map { appLocalized("subwayArrival.currentLocation", $0) })
+    let messageText = TransitDisplay.pickLine(
+        isEn: isEn, ko: messageKo,
+        enParts: [arrival.messageEn, arrival.currentLocation == nil ? "" : arrival.currentLocationEn]
+    ) { p in joinText(p[0], p[1].isEmpty ? nil : appLocalized("subwayArrival.currentLocation", p[1])) }
+    return joinText(lineText, messageText)
 }
 
 /// 내 주변 지하철 도착 — NearbyLoadCore 껍데기(규범 원형). 상태 머신·전이표는 Kit 정본.
@@ -25,7 +56,7 @@ final class SubwayNearbyModel {
             coverage: .korea,
             fetch: { coord, _ in
                 guard let coord else { preconditionFailure("current·fixed 소스는 좌표 보장") }
-                return try await service.subwayArrivals(lat: coord.lat, lng: coord.lng)
+                return try await service.subwayArrivals(lat: coord.lat, lng: coord.lng, lang: AppLanguage.dataLocale)
             },
             onEvent: nearbyAnnouncer(loaded: { result in
                 // 0건이면 최근접 역 거리를 통지에 실어 "1km 안에 없다"와 "이 지역엔
@@ -70,7 +101,7 @@ struct SubwayNearbyView: View {
                             // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
                             // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
                             // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
-                            distanceText(joinText(displayStationName(station), station.lines.joined(separator: ", "), formatDistance(station.distanceMeters)))
+                            stationHeading(station)
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성과 같은 값이어야 한다.
                                 .accessibilityFocused($focusedStation, equals: station.stationName)
@@ -87,8 +118,8 @@ struct SubwayNearbyView: View {
                                 Text(appLocalized("ios.station.noArrivals"))
                             } else {
                                 ForEach(Array(station.arrivals.enumerated()), id: \.offset) { _, arrival in
-                                    // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수.
-                                    Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+                                    // ko는 완성 문장 정본 message 그대로(급행은 텍스트로 흡수), en은 서버 영문(E27).
+                                    Text(subwayArrivalLine(arrival, isEn: AppLanguage.dataLocale == "en"))
                                 }
                             }
                         }
@@ -128,11 +159,13 @@ struct SubwayNearbyView: View {
                             nearestLabel(nearest), formatDistance(nearest.distanceMeters))
     }
 
-    /// 표시 역명 — en 계열 로케일은 seed 영문명, 없으면 한국어 원명으로 폴백.
-    private func displayStationName(_ station: NearbySubwayStation) -> String {
-        guard AppLanguage.dataLocale == "en", let nameEn = station.nameEn, !nameEn.isEmpty else {
-            return station.stationName
-        }
-        return nameEn
+    /// 역 헤딩 — 역명·노선(현재 언어, 한 줄 한 객체)에 거리. en은 시각 `Gangnam (강남)` 병기, 낭독은 영문만(E27).
+    private func stationHeading(_ station: NearbySubwayStation) -> some View {
+        let line = subwayStationLine(
+            isEn: AppLanguage.dataLocale == "en", stationName: station.stationName, nameEn: station.nameEn,
+            lines: station.lines, linesEn: station.linesEn)
+        let distance = formatDistance(station.distanceMeters)
+        return Text(joinText(line.visual, distance))
+            .accessibilityLabel(Text(spokenUnits(joinText(line.spoken, distance))))
     }
 }

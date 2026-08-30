@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { fetchSubwayArrivals } from "@/lib/providers/seoul-subway-arrival";
+import { fetchSubwayArrivals, withArrivalsEn } from "@/lib/providers/seoul-subway-arrival";
+import { langParam } from "@/lib/lang-param";
 
 /**
  * 서울 지하철 실시간 도착정보 프록시 (서울 열린데이터광장 OA-12764).
@@ -14,17 +15,20 @@ import { fetchSubwayArrivals } from "@/lib/providers/seoul-subway-arrival";
 
 export const dynamic = "force-dynamic";
 
-const schema = z.object({ station: z.string().trim().min(1).max(50) });
+// `lang=en`은 도착 영문 필드(`*En`)를 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
+const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
 
 export async function GET(request: NextRequest) {
   const parsed = schema.safeParse({
     station: request.nextUrl.searchParams.get("station") ?? "",
+    lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.success) {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
   }
   try {
-    const arrivals = await fetchSubwayArrivals(parsed.data.station);
+    const fetched = await fetchSubwayArrivals(parsed.data.station);
+    const arrivals = parsed.data.lang === "en" ? withArrivalsEn(fetched) : fetched;
     return NextResponse.json({ arrivals }); // null이면 미커버 역
   } catch (e) {
     console.error("[api/station/subway-arrival] 조회 실패:", e);

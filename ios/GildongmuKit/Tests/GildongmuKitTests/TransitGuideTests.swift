@@ -203,12 +203,12 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
                         if let e = expectedEvent.legIndex { #expect(legIndex == e, "\(ctx) event.legIndex") }
                     case let .approaching(remaining, _):
                         if case let .some(e) = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
-                    case let .countdown(remaining, _, currentLocation):
+                    case let .countdown(remaining, _, currentLocation, _):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                         if case let .some(e) = expectedEvent.currentLocation {
                             #expect(currentLocation == e, "\(ctx) event.currentLocation")
                         }
-                    case let .trackingStarted(_, remaining):
+                    case let .trackingStarted(_, remaining, _):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                     case let .arrived(certain):
                         if let e = expectedEvent.certain { #expect(certain == e, "\(ctx) event.certain") }
@@ -288,8 +288,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
 }
 
 @Test func eventProfileChannels() {
-    #expect(transitEventProfile(.countdown(remaining: 1, message: "", currentLocation: nil)).interrupt == true)
-    #expect(transitEventProfile(.countdown(remaining: 2, message: "", currentLocation: nil)).interrupt == false)
+    #expect(transitEventProfile(.countdown(remaining: 1, message: "", currentLocation: nil, arrivalCode: nil)).interrupt == true)
+    #expect(transitEventProfile(.countdown(remaining: 2, message: "", currentLocation: nil, arrivalCode: nil)).interrupt == false)
     #expect(transitEventProfile(.arrived(certain: true)).interrupt == true)
     #expect(transitEventProfile(.signalLost).interrupt == false)
 }
@@ -544,4 +544,30 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(out.walkAfterMinutes == base.walkAfterMinutes)
     #expect(base.legs[0].walkBeforeMinutes == 2)  // 원본 불변
     #expect(out.legs[0].boardName == base.legs[0].boardName)
+}
+
+
+// MARK: - A27 승차 국면 지하철 상태줄 — 웹과 같은 공유 fixture(`subway-riding-message-cases.json`)
+
+private struct RidingCase: Decodable {
+    let arrivalCode: String?
+    let expect: Expect
+    struct Expect: Decodable { let kind: String; let key: String? }
+}
+
+@Test func subwayRidingMessageMatchesSharedFixture() throws {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/subway-riding-message-cases.json")
+    struct File: Decodable { let cases: [RidingCase] }
+    let file = try JSONDecoder().decode(File.self, from: Data(contentsOf: url))
+    #expect(file.cases.count >= 10)
+    for c in file.cases {
+        let got = subwayRidingMessage(c.arrivalCode)
+        switch c.expect.kind {
+        case "key": #expect(got == .key(c.expect.key ?? ""), "code \(String(describing: c.arrivalCode))")
+        case "omit": #expect(got == .omit, "code \(String(describing: c.arrivalCode))")
+        default: #expect(got == .raw, "code \(String(describing: c.arrivalCode))")
+        }
+    }
 }
