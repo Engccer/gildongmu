@@ -211,7 +211,8 @@
       "aroundLoaded": "Exploración lista",
       "aroundLoadedManual": "Alrededores de la ubicación indicada listos",
       "aroundPlacesHeading": "Tiendas y servicios cercanos",
-      "aroundPlacesFailed": "No se pudieron cargar las tiendas y servicios cercanos"
+      "aroundPlacesFailed": "No se pudieron cargar las tiendas y servicios cercanos",
+      "stopsBefore": "a {count} paradas"
     },
     "settings": {
       "title": "Ajustes",

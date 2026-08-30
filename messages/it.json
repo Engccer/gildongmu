@@ -106,7 +106,10 @@
       "heading": "Percorso in auto per {name}",
       "summary": "Totale {distance}, circa {minutes} min. Tariffa taxi stimata {taxi} KRW.",
       "toll": "Pedaggio {toll} KRW non incluso.",
-      "disclaimer": "Stime basate sul traffico in tempo reale."
+      "disclaimer": "Stime basate sul traffico in tempo reale.",
+      "noRoute": "Nessun percorso trovato. Controlla partenza e destinazione.",
+      "rateLimited": "Troppe richieste.",
+      "notConfigured": "Le indicazioni in auto non sono disponibili."
     },
     "transit": {
       "button": "Mezzi pubblici fin qui",
@@ -140,7 +143,8 @@
       "quickExitBoth": "Discesa a {station}, ascensore {elevator}, scale {stairs}",
       "quickExitElevator": "Discesa a {station}, ascensore {elevator}",
       "quickExitStairs": "Discesa a {station}, scale {stairs}",
-      "quickExitTransfer": "Discesa a {station}, cambio rapido {transfer}"
+      "quickExitTransfer": "Discesa a {station}, cambio rapido {transfer}",
+      "notConfigured": "Le indicazioni con i mezzi pubblici non sono disponibili."
     },
     "pedestrian": {
       "heading": "A piedi",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "Impossibile caricare alcune informazioni sulle strutture.",
     "voiceGuideSource": "Segnalatori acustici di guida: dati forniti da Seoul Metro (aggiornati a 2025-08)",
-    "source": "Fonte: dati sulle strutture di accessibilità di Seoul Metro (linee 1–8 di Seoul)."
+    "source": "Fonte: dati sulle strutture di accessibilità di Seoul Metro (linee 1–8 di Seoul).",
+    "direction": {
+      "n": "nord",
+      "ne": "nord-est",
+      "e": "est",
+      "se": "sud-est",
+      "s": "sud",
+      "sw": "sud-ovest",
+      "w": "ovest",
+      "nw": "nord-ovest"
+    },
+    "elevatorAt": "A circa {distance} a {direction} dal centro della stazione",
+    "lineNumber": "Linea {line}",
+    "wheelchairAccessible": "Accessibile in sedia a rotelle"
   },
   "subwayArrival": {
     "button": "Vedi gli arrivi della metro in tempo reale",
@@ -290,7 +307,8 @@
     },
     "error": "Impossibile caricare le informazioni sul primo/ultimo treno.",
     "partial": "Impossibile caricare le informazioni di alcune linee.",
-    "source": "Fonte: MOLIT TAGO"
+    "source": "Fonte: MOLIT TAGO",
+    "lineSuffixed": "Linea {name}"
   },
   "bus": {
     "currentButton": "Arrivi degli autobus vicino a me",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "Strutture accessibili",
-    "source": "Fonte: Korea Tourism Organization, informazioni per viaggi senza barriere"
+    "source": "Fonte: Korea Tourism Organization, informazioni per viaggi senza barriere",
+    "facility": {
+      "wheelchair": "Noleggio sedie a rotelle",
+      "restroom": "Bagno accessibile",
+      "elevator": "Ascensore",
+      "parking": "Parcheggio accessibile",
+      "route": "Percorso di accesso",
+      "exit": "Ingresso principale",
+      "publictransport": "Accesso con mezzi pubblici",
+      "ticketoffice": "Accessibilità della biglietteria",
+      "auditorium": "Posti accessibili",
+      "room": "Camere accessibili",
+      "handicapetc": "Altre strutture per la mobilità",
+      "braileblock": "Percorsi tattili",
+      "audioguide": "Audioguida",
+      "brailepromotion": "Materiale in braille",
+      "guidehuman": "Personale di assistenza",
+      "helpdog": "Cani da assistenza ammessi",
+      "bigprint": "Materiale a caratteri grandi",
+      "guidesystem": "Segnalatori acustici di guida",
+      "blindhandicapetc": "Altre strutture per visitatori ipovedenti",
+      "signguide": "Guida in lingua dei segni",
+      "videoguide": "Videoguida con sottotitoli",
+      "hearingroom": "Dispositivi di ausilio uditivo",
+      "hearinghandicapetc": "Altre strutture per visitatori con disabilità uditiva",
+      "lactationroom": "Sala allattamento",
+      "stroller": "Noleggio passeggini",
+      "babysparechair": "Seggioloni",
+      "infantsfamilyetc": "Altre strutture per famiglie"
+    }
   },
   "nearby": {
     "hubTitle": "Nelle vicinanze",

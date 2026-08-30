@@ -240,6 +240,17 @@ struct WalkRouteStepActionTests {
         #expect(s[0].action == nil)
     }
 
+    @Test("횡단 구간 플래그(A26)를 디코딩하고, 없으면 nil이다")
+    func decodesCrossing() throws {
+        let s = try steps(#"""
+        {"distanceMeters":1,"durationSeconds":1,
+         "steps":[{"description":"Cross the crosswalk, then walk 30m","action":"crosswalk","crossing":true},
+                  {"description":"천호역 횡단보도까지 100m 이동","action":"crosswalk"}]}
+        """#)
+        #expect(s[0].crossing == true)
+        #expect(s[1].crossing == nil)
+    }
+
     @Test("다른 필드와 함께 와도 전부 디코딩된다")
     func withOtherFields() throws {
         let s = try steps(#"""

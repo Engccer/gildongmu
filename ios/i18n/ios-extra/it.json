@@ -211,7 +211,8 @@
       "aroundLoaded": "Esplorazione pronta",
       "aroundLoadedManual": "Dintorni della posizione impostata pronti",
       "aroundPlacesHeading": "Negozi e servizi nelle vicinanze",
-      "aroundPlacesFailed": "Impossibile caricare negozi e servizi nelle vicinanze"
+      "aroundPlacesFailed": "Impossibile caricare negozi e servizi nelle vicinanze",
+      "stopsBefore": "a {count} fermate"
     },
     "settings": {
       "title": "Impostazioni",

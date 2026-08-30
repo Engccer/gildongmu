@@ -4,6 +4,7 @@ import {
   durationToMinutes,
   joinText,
   normalizeVoiceQuery,
+  hasHangul,
 } from "../format";
 
 /**
@@ -82,6 +83,19 @@ describe("joinText (스크린 리더 한 줄 합치기)", () => {
   });
   it("가운뎃점을 구분자로 쓰지 않는다(쉼표만)", () => {
     expect(joinText("a", "b")).not.toContain("·");
+  });
+});
+
+describe("hasHangul (en 페이지의 한국어 데이터에 lang=\"ko\"를 달 판정)", () => {
+  it("한글 음절·자모가 하나라도 있으면 참", () => {
+    expect(hasHangul("경복궁")).toBe(true);
+    expect(hasHangul("음식점 > 카페")).toBe(true);
+    expect(hasHangul("ㄱ")).toBe(true);
+  });
+  it("영문·숫자·기호만이면 거짓", () => {
+    expect(hasHangul("Gyeongbokgung Palace")).toBe(false);
+    expect(hasHangul("Line 5, 120m")).toBe(false);
+    expect(hasHangul("")).toBe(false);
   });
 });
 

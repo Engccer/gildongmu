@@ -106,7 +106,10 @@
       "heading": "Itinéraire en voiture vers {name}",
       "summary": "Total {distance}, environ {minutes} min. Tarif estimé du taxi {taxi} KRW.",
       "toll": "Péage {toll} KRW non inclus.",
-      "disclaimer": "Estimations basées sur le trafic en temps réel."
+      "disclaimer": "Estimations basées sur le trafic en temps réel.",
+      "noRoute": "Aucun itinéraire trouvé. Vérifiez le départ et la destination.",
+      "rateLimited": "Trop de requêtes.",
+      "notConfigured": "L'itinéraire en voiture n'est pas disponible."
     },
     "transit": {
       "button": "Transports en commun jusqu'ici",
@@ -140,7 +143,8 @@
       "quickExitBoth": "Descente à {station}, ascenseur {elevator}, escaliers {stairs}",
       "quickExitElevator": "Descente à {station}, ascenseur {elevator}",
       "quickExitStairs": "Descente à {station}, escaliers {stairs}",
-      "quickExitTransfer": "Descente à {station}, correspondance rapide {transfer}"
+      "quickExitTransfer": "Descente à {station}, correspondance rapide {transfer}",
+      "notConfigured": "L'itinéraire en transports en commun n'est pas disponible."
     },
     "pedestrian": {
       "heading": "À pied",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "Certaines informations sur les équipements n'ont pas pu être chargées.",
     "voiceGuideSource": "Balises de guidage sonore : données de Seoul Metro (en date de 2025-08)",
-    "source": "Source : données d'équipements d'accessibilité de Seoul Metro (lignes 1 à 8 de Seoul)."
+    "source": "Source : données d'équipements d'accessibilité de Seoul Metro (lignes 1 à 8 de Seoul).",
+    "direction": {
+      "n": "nord",
+      "ne": "nord-est",
+      "e": "est",
+      "se": "sud-est",
+      "s": "sud",
+      "sw": "sud-ouest",
+      "w": "ouest",
+      "nw": "nord-ouest"
+    },
+    "elevatorAt": "À environ {distance} au {direction} du centre de la station",
+    "lineNumber": "Ligne {line}",
+    "wheelchairAccessible": "Accessible en fauteuil roulant"
   },
   "subwayArrival": {
     "button": "Voir les arrivées de métro en temps réel",
@@ -290,7 +307,8 @@
     },
     "error": "Impossible de charger les horaires du premier/dernier train.",
     "partial": "Les horaires de certaines lignes n'ont pas pu être chargés.",
-    "source": "Source : MOLIT TAGO"
+    "source": "Source : MOLIT TAGO",
+    "lineSuffixed": "Ligne {name}"
   },
   "bus": {
     "currentButton": "Arrivées de bus à proximité",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "Équipements accessibles",
-    "source": "Source : Korea Tourism Organization, informations de voyage sans barrières"
+    "source": "Source : Korea Tourism Organization, informations de voyage sans barrières",
+    "facility": {
+      "wheelchair": "Prêt de fauteuils roulants",
+      "restroom": "Toilettes accessibles",
+      "elevator": "Ascenseur",
+      "parking": "Stationnement accessible",
+      "route": "Chemin d'accès",
+      "exit": "Entrée principale",
+      "publictransport": "Accès en transports en commun",
+      "ticketoffice": "Accessibilité de la billetterie",
+      "auditorium": "Places accessibles",
+      "room": "Chambres accessibles",
+      "handicapetc": "Autres équipements de mobilité",
+      "braileblock": "Dalles podotactiles",
+      "audioguide": "Audioguide",
+      "brailepromotion": "Documents en braille",
+      "guidehuman": "Personnel d'accueil",
+      "helpdog": "Chiens d'assistance acceptés",
+      "bigprint": "Documents en gros caractères",
+      "guidesystem": "Balises de guidage sonore",
+      "blindhandicapetc": "Autres équipements pour visiteurs malvoyants",
+      "signguide": "Guide en langue des signes",
+      "videoguide": "Vidéo guide sous-titrée",
+      "hearingroom": "Équipements d'aide auditive",
+      "hearinghandicapetc": "Autres équipements pour visiteurs malentendants",
+      "lactationroom": "Espace allaitement",
+      "stroller": "Prêt de poussettes",
+      "babysparechair": "Chaises hautes",
+      "infantsfamilyetc": "Autres équipements familiaux"
+    }
   },
   "nearby": {
     "hubTitle": "À proximité",

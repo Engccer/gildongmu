@@ -56,9 +56,15 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A26. 비-ko 로케일 한국어 잔존 결함 묶음 (🆕 2026-08-31, 전수 조사 — 병렬 세션 en-fix 착수)
+### A26. 비-ko 로케일 한국어 잔존 결함 묶음 — ✅ 6항 종결(2026-08-31, 병렬 세션 en-fix, CHANGELOG 같은 날)
 
 en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노출·오작동하는 6항. ①iOS `isCrossingStep`의 `"건너"` 문자열 요구 → en 도보 안내에서 횡단 유닛 판정 불능(안전) ②iOS `RouteService.car` `lang` 선택 인자 + `BeaconModel` 미배선 ③웹 car 라우트 en→ko 폴백의 언어 마커 부재 ④웹 경로 카드 2종이 서버 한국어 error를 live region에 그대로 낭독 ⑤서버 합성 한국어(무장애 라벨 27종·엘리베이터 위치 문장·"휠체어 접근 가능"·`호선`/`선` 접미·iOS "N정류장 전") ⑥웹 `lang="ko"` 마크업 누락. 정본: `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
+
+**남은 판정(종결 시점 기록)**:
+- **`lang="ko"`를 건너뛴 자리(E28 재료)** — 영어 산문 템플릿 안에 한국어 데이터가 삽입되는 줄이라 속성을 주려면 줄 중간 분절이 필요해 헌장 위반: `AroundNearby` 패널 헤딩(`here {place}`)·한눈에 보기 불릿(`buildOverviewLines`)·항목 헤딩(`joinText(p.name, item 템플릿)`)·`SurroundingsScene` 장면 문장, `LocationBar`(`gpsNear {address}`, 역지오코딩 주소가 ko), `LocalConditions` 혼잡도 요약(`summary {area}`)·`AirQuality` 측정소 줄(`station {name}`), `TransitGuidePanel` 상태 문장·경유 정류소 줄(`stop.name + viaBoard`), `SeoulMetroFacilities` 헤딩(`heading {name}` + line). **노선명이 들어가는 줄**(`StationTimetable` 항목·`StationMeta` 노선 줄·`TransitRouteBriefing` 구간 — 후자는 이미 `<line>` 태그 핸들러로 부분 처리)은 E27(노선명 영문 표)이 풀리면 자연 해소라 보류. 판정 축: 병기 형식이 정해지면 그 줄들은 "ko 블록 + en 블록" 두 객체로 재구성될 수 있다.
+- **iOS 자동차 브리핑의 `guidanceLang`**: Kit 모델에 디코딩만 넣었고 `CarRouteRows`에 언어 표기(`AttributedString.accessibilitySpeechLanguage`)는 붙이지 않았다 — VoiceOver가 그 속성을 SwiftUI `Text`에서 존중하는지 실기기 미확인(E28 iOS 언어 태깅 판정과 같은 축).
+- **`호선` 접미의 en "Line {n}"**(음성유도기 환승역·`subway.lineNumber`)은 서버 합성 접미를 로컬라이즈한 것이라 여기서 처리했다 — E27 노선명 표가 생기면 그 표로 통일한다.
+- **ko 표시 1건 변화**: 서울 지하철 장애인 화장실 보조 설명이 " · " 결합에서 쉼표 결합(`joinText`)으로 바뀌었다(가운뎃점 구분자 금지 헌장 정합, CLI/MCP `detail` 문자열은 불변).
 
 ### A25. 대중교통 안내가 승차역까지의 도보 구간을 건너뛴다 — ✅ 구현 종결(2026-08-30), 실승차 판정 대기
 

@@ -108,7 +108,7 @@ struct BusNearbyView: View {
             return joinText(appLocalized("ios.nearby.routeNo", arrival.routeNo), arrival.routeType, lowFloor, message)
         }
         return joinText(appLocalized("ios.nearby.routeNo", arrival.routeNo), arrival.routeType, lowFloor,
-                        "\(arrival.prevStationCount)정류장 전",
+                        appLocalized("ios.nearby.stopsBefore", String(arrival.prevStationCount)),
                         appLocalized("ios.nearby.minutesAway", String(max(1, arrival.arrivalSeconds / 60))))
     }
 }

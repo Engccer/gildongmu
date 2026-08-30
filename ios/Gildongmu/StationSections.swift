@@ -108,7 +108,7 @@ struct StationSectionsView: View {
                         ForEach(line.directions, id: \.direction) { direction in
                             // 한 줄=한 객체: 노선·방향·첫차·막차를 단일 텍스트로(웹 StationTimetable.tsx 미러)
                             Text(joinText(
-                                "\(line.lineName) \(directionLabel(direction.direction))",
+                                "\(lineDisplayName(line)) \(directionLabel(direction.direction))",
                                 "\(appLocalized("timetable.first")) \(trainText(direction.first))",
                                 "\(appLocalized("timetable.last")) \(trainText(direction.last))"))
                         }
@@ -138,8 +138,8 @@ struct StationSectionsView: View {
                     Text(appLocalized("ios.station.kindCount", metroKindLabel(group.kind), String(group.facilities.count)))
                     ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
                         Text(joinText(
-                            facility.name, facility.location, facility.floors,
-                            operatingStatusText(facility.operatingStatus), facility.detail))
+                            facilityName(facility), facility.location, facility.floors,
+                            operatingStatusText(facility.operatingStatus), facilityDetail(facility)))
                     }
                 }
                 // 보강 소스(OA-21212) 실패는 은폐하지 않고 문장으로 병기(스펙 §2-C)
@@ -215,13 +215,56 @@ struct StationSectionsView: View {
     /// 방향 행 대신 낼 coverage 문구. nil이면 방향 행을 그린다(coverage "ok").
     /// 구서버(coverage 없음)는 directions 빈 노선을 보내지 않지만, 혹시 그 조합이 오면
     /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
+    /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26, 웹 `timetableLineItems` 미러).
+    /// 노선명 자체는 원문 — 영문화는 E27 소관.
+    private func lineDisplayName(_ line: TimetableLine) -> String {
+        line.lineCore.map { appLocalized("timetable.lineSuffixed", $0) } ?? line.lineName
+    }
+
+    /// 서버 합성 한국어(`name`) 대신 구조화 조각(`parts`, A26)이 있으면 앱 언어로 조립한다
+    /// (웹 `metroFacilityGroups.nameOf` 미러). 부재면 문자열 그대로.
+    private func facilityName(_ f: SeoulMetroFacility) -> String {
+        if let p = f.parts, let compass = p.compass, let meters = p.meters {
+            return joinText(
+                appLocalized("subway.elevatorAt", compassLabel(compass), formatDistance(meters)),
+                p.dong)
+        }
+        if let p = f.parts, let location = p.location {
+            return joinText(location, p.line.map { appLocalized("subway.lineNumber", $0) })
+        }
+        return f.name
+    }
+
+    private func facilityDetail(_ f: SeoulMetroFacility) -> String? {
+        if let p = f.parts, p.restroomType != nil || p.wheelchairAccessible == true {
+            return joinText(
+                p.restroomType,
+                p.wheelchairAccessible == true ? appLocalized("subway.wheelchairAccessible") : nil)
+        }
+        return f.detail
+    }
+
+    /// 8방위 코드 → 앱 언어 낱말. 키 린터가 리터럴만 스캔하므로 switch로 되받는다.
+    private func compassLabel(_ code: String) -> String {
+        switch code {
+        case "n": return appLocalized("subway.direction.n")
+        case "ne": return appLocalized("subway.direction.ne")
+        case "e": return appLocalized("subway.direction.e")
+        case "se": return appLocalized("subway.direction.se")
+        case "s": return appLocalized("subway.direction.s")
+        case "sw": return appLocalized("subway.direction.sw")
+        case "w": return appLocalized("subway.direction.w")
+        default: return appLocalized("subway.direction.nw")
+        }
+    }
+
     private func coverageText(_ line: TimetableLine) -> String? {
         let coverage = line.coverage ?? (line.directions.isEmpty ? "unknown" : "ok")
         switch coverage {
         case "ok": return nil
-        case "noTrains": return appLocalized("timetable.coverage.noTrains", line.lineName)
-        case "unavailable": return appLocalized("timetable.coverage.unavailable", line.lineName)
-        default: return appLocalized("timetable.coverage.unknown", line.lineName)
+        case "noTrains": return appLocalized("timetable.coverage.noTrains", lineDisplayName(line))
+        case "unavailable": return appLocalized("timetable.coverage.unavailable", lineDisplayName(line))
+        default: return appLocalized("timetable.coverage.unknown", lineDisplayName(line))
         }
     }
 

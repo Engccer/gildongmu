@@ -108,16 +108,23 @@ function toFacility(kind: SeoulMetroFacilityKind, item: RawItem): SeoulMetroFaci
         floors: str(item.stnFlr) || undefined,
         detail: str(item.cnnctrSe) || undefined, // 커넥터 종류
       };
-    case "restroom":
+    case "restroom": {
+      const restroomType = str(item.rstrmInfo);
+      const wheelchairAccessible = str(item.whlchrAcsPsbltyYn) === "Y";
       return {
         ...base,
         location: str(item.dtlPstn) || undefined,
         floors: str(item.stnFlr) || undefined,
         detail:
-          [str(item.rstrmInfo), str(item.whlchrAcsPsbltyYn) === "Y" ? "휠체어 접근 가능" : ""]
-            .filter(Boolean)
-            .join(" · ") || undefined,
+          [restroomType, wheelchairAccessible ? "휠체어 접근 가능" : ""].filter(Boolean).join(" · ") ||
+          undefined,
+        // 구조화 원재료(A26): "휠체어 접근 가능"은 서버 합성 한국어라 클라이언트가 자기 언어로 조립한다.
+        parts: {
+          ...(restroomType ? { restroomType } : {}),
+          ...(wheelchairAccessible ? { wheelchairAccessible: true as const } : {}),
+        },
       };
+    }
     case "safetyPlatform":
       // dtlPstn 없음 — 시설명만.
       return base;
@@ -260,6 +267,8 @@ export async function fetchSeoulMetroFacilities(
         floors: undefined,
         operatingStatus: undefined,
         detail: undefined,
+        // 구조화 원재료(A26): "호선" 접미는 서버 합성이라 클라이언트가 자기 언어로 단다.
+        parts: { location: g.location, ...(multiLine && g.line ? { line: g.line } : {}) },
       })),
     });
   }

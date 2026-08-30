@@ -305,6 +305,8 @@ describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유�
     const voiceGroup = r!.groups.find((g) => g.kind === "voiceGuide");
     expect(voiceGroup).toBeDefined();
     expect(voiceGroup!.facilities.length).toBeGreaterThan(10);
+    // 구조화 원재료(A26): 위치는 항상, 노선 번호는 환승역(복수 노선)에서만.
+    for (const f of voiceGroup!.facilities) expect(f.parts?.location).toBeTruthy();
     expect(r!.supplementFailed).toBeUndefined();
   });
 
@@ -400,5 +402,28 @@ describe("fetchSeoulMetroFacilities — 시설 패널 병합(Task 7: 음성유�
     } finally {
       env.SEOUL_OPEN_DATA_KEY = undefined;
     }
+  });
+});
+
+describe("구조화 조각 parts(A26) — 서버 합성 한국어의 원재료를 함께 싣는다", () => {
+  it("restroom: 화장실 종류 + 휠체어 접근 가능 여부", () => {
+    const raw = {
+      response: {
+        header: { resultCode: "00" },
+        body: {
+          items: {
+            item: [
+              { stnNm: "테스트역", lineNm: "5호선", fcltNm: "장애인화장실", rstrmInfo: "남녀구분", whlchrAcsPsbltyYn: "Y" },
+              { stnNm: "테스트역", lineNm: "5호선", fcltNm: "장애인화장실2", rstrmInfo: "", whlchrAcsPsbltyYn: "N" },
+            ],
+          },
+        },
+      },
+    };
+    const g = parseFacilityGroup("restroom", raw, "테스트");
+    expect(g!.facilities[0].detail).toBe("남녀구분 · 휠체어 접근 가능");
+    expect(g!.facilities[0].parts).toEqual({ restroomType: "남녀구분", wheelchairAccessible: true });
+    expect(g!.facilities[1].detail).toBeUndefined();
+    expect(g!.facilities[1].parts).toEqual({});
   });
 });

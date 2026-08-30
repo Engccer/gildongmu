@@ -3,7 +3,7 @@
 import { ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import type { Place } from "@/lib/types";
-import { formatDistance, joinText } from "@/lib/format";
+import { formatDistance, hasHangul, joinText } from "@/lib/format";
 
 export function PlaceCard({
   place,
@@ -21,8 +21,15 @@ export function PlaceCard({
         className="flex w-full items-center justify-between gap-3 p-4 text-left"
       >
         <span>
-          <span className="block text-lg font-bold">{place.name}</span>
-          <span className="mt-0.5 block text-sm text-muted">
+          {/* 카카오 장소명·분류는 en 페이지에서도 한국어다 — 블록마다 lang="ko"(A26). 이미 별도
+              블록이라 새 분절은 없다. TourAPI en 데이터처럼 한글이 없으면 페이지 언어를 따른다. */}
+          <span className="block text-lg font-bold" lang={hasHangul(place.name) ? "ko" : undefined}>
+            {place.name}
+          </span>
+          <span
+            className="mt-0.5 block text-sm text-muted"
+            lang={hasHangul(place.category) ? "ko" : undefined}
+          >
             {joinText(
               place.category,
               place.distanceMeters != null &&

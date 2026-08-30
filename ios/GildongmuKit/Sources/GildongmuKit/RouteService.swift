@@ -17,10 +17,14 @@ public struct RouteService: Sendable {
         "\(lat),\(lng)"
     }
 
+    /// `lang`: 안내 문장 언어. ⚠ **walk와 같은 이유로 기본값을 두지 않는다**(A26) — 빠뜨린 조회는
+    /// 오류 없이 한국어 안내를 주고 그 사실은 비-ko 사용자에게 낭독으로만 드러난다. "ko"는
+    /// 파라미터를 생략해 기존 요청과 byte-identical(walk 동형). 서버는 en이어도 NCP 키 부재·
+    /// 경유지면 ko로 폴백하고 그 결과를 `guidanceLang`으로 알린다.
     public func car(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
-        lang: String? = nil,
+        lang: String,
         includeGeometry: Bool = false,
         via: (lat: Double, lng: Double)?
     ) async throws -> CarRouteBriefing {
@@ -28,7 +32,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
-        if let lang { query.append(URLQueryItem(name: "lang", value: lang)) }
+        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         return try await client.get("/api/route/car", query: query)

@@ -72,9 +72,11 @@ export function TransitRouteBriefing({
         return;
       }
       if (!res.ok) {
+        // 서버의 한국어 `error` 문자열은 낭독하지 않는다 — status로 자기 언어 문장을 고른다
+        // (`useVoiceRecorder` 선례, A26).
         setStatus({
           kind: "error",
-          message: typeof body.error === "string" ? body.error : t("error"),
+          message: res.status === 503 ? t("notConfigured") : t("error"),
         });
         return;
       }

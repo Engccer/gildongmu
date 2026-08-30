@@ -84,7 +84,38 @@ describe("GET /api/route/car", () => {
       distanceMeters: 1000,
       durationSeconds: 300,
       steps: [{ description: "직진 후 우회전" }],
+      guidanceLang: "ko",
     });
+  });
+
+  describe("안내문 언어 마커 guidanceLang(A26 — ko 폴백은 N4의 의도된 결정, 마커로 정직화)", () => {
+    it("lang=en + NCP 키 → en(NCP 영문 턴바이턴)", async () => {
+      vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
+      const body = await (await GET(makeRequest("37.5,127.0", "37.6,127.1", "en"))).json();
+      expect(body.guidanceLang).toBe("en");
+      expect(getCarRoute).not.toHaveBeenCalled();
+    });
+
+    it("lang=en인데 NCP 키가 없으면 ko 서비스 폴백 + guidanceLang=ko", async () => {
+      const body = await (await GET(makeRequest("37.5,127.0", "37.6,127.1", "en"))).json();
+      expect(body.guidanceLang).toBe("ko");
+      expect(getCarRoute).toHaveBeenCalledTimes(1);
+    });
+
+    it("lang=en + via(경유지)는 NCP 미검증이라 ko 서비스 + guidanceLang=ko", async () => {
+      vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
+      const res = await GET(
+        new NextRequest("http://x/api/route/car?origin=37.5,127.0&dest=37.6,127.1&via=37.55,127.05&lang=en"),
+      );
+      expect((await res.json()).guidanceLang).toBe("ko");
+    });
+  });
+
+  it("경로 탐색 실패(provider 메시지)는 502 + code=noRoute — 소비자는 code로 문장을 고른다", async () => {
+    vi.mocked(getCarRoute).mockRejectedValueOnce(new Error("경로 탐색 실패: result_code 104"));
+    const res = await GET(makeRequest("37.5,127.0", "37.6,127.1"));
+    expect(res.status).toBe(502);
+    expect((await res.json()).code).toBe("noRoute");
   });
 
   it("includeGeometry=1은 서비스에 옵트인으로 전달된다", async () => {

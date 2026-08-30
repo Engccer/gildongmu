@@ -1,0 +1,45 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
+import { PlaceCard } from "../PlaceCard";
+import en from "../../../messages/en.json";
+
+/**
+ * en 페이지의 한국어 장소 데이터(카카오 이름·분류)는 블록마다 `lang="ko"`(A26). 이름·분류는
+ * 이미 별도 블록이라 속성만 단다 — 새 분절은 없다(접근성 헌장 "한 줄 = 한 객체").
+ */
+afterEach(cleanup);
+
+const base = {
+  id: "p1",
+  address: "서울 종로구 관훈동 198-42",
+  roadAddress: "서울 종로구 인사동5길 38",
+  englishAddress: "38 Insadong 5-gil, Jongno-gu, Seoul",
+  lat: 37.57,
+  lng: 126.98,
+};
+
+function renderCard(place: Parameters<typeof PlaceCard>[0]["place"]) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <ul>
+        <PlaceCard place={place} onOpen={() => {}} />
+      </ul>
+    </NextIntlClientProvider>,
+  );
+}
+
+describe("PlaceCard 언어 표기", () => {
+  it("한국어 이름·분류 블록에 lang=\"ko\"", () => {
+    renderCard({ ...base, name: "경복궁 관훈점", category: "음식점 > 한식", distanceMeters: 120 });
+    expect(screen.getByText("경복궁 관훈점").getAttribute("lang")).toBe("ko");
+    expect(screen.getByText(/음식점 > 한식/).getAttribute("lang")).toBe("ko");
+  });
+
+  it("영문 이름·분류(TourAPI en)는 lang을 달지 않는다", () => {
+    renderCard({ ...base, name: "Gyeongbokgung Palace", category: "Tourist Attractions" });
+    expect(screen.getByText("Gyeongbokgung Palace").hasAttribute("lang")).toBe(false);
+    expect(screen.getByText(/Tourist Attractions/).hasAttribute("lang")).toBe(false);
+  });
+});

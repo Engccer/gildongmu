@@ -57,6 +57,15 @@ export function displayLineName(routeName: string): string {
   return /선$/.test(t) ? t : `${t}선`;
 }
 
+/**
+ * `displayLineName`이 "선"을 덧붙인 경우에만 그 원형(A26 `TimetableLine.lineCore`). 원문이 이미
+ * "…선"이면 undefined — 클라이언트는 부재를 "lineName 그대로"로 읽는다.
+ */
+export function lineCoreOf(routeName: string): string | undefined {
+  const t = routeName.trim();
+  return /선$/.test(t) ? undefined : t;
+}
+
 /** KST-3h 경계의 서비스데이 날짜·요일 타입. 서버 타임존 비의존(UTC 산술 고정). */
 export function computeServiceDailyType(nowUtcMs: number): { date: string; type: "weekday" | "saturday" | "sunday" } {
   const kstMinus3h = new Date(nowUtcMs + 9 * 3600_000 - 3 * 3600_000);
@@ -268,7 +277,13 @@ export async function fetchStationTimetable(stationName: string): Promise<Statio
       outcomes.push(outcome);
       if (fl) directions.push({ direction, first: withTerminusEn(fl.first), last: withTerminusEn(fl.last) });
     });
-    return { lineName: displayLineName(st.routeName), coverage: combineLineCoverage(outcomes), directions };
+    const lineCore = lineCoreOf(st.routeName);
+    return {
+      lineName: displayLineName(st.routeName),
+      ...(lineCore ? { lineCore } : {}),
+      coverage: combineLineCoverage(outcomes),
+      directions,
+    };
   });
 
   // 답한 다이어를 그대로 표기한다. 토요일 요청에 휴일 다이어로 답했는데

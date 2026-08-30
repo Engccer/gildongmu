@@ -45,7 +45,6 @@ import { buildCarGuide, roadNameAt, type CarRoadSpan } from "@/lib/car-route-gui
 import {
   buildDisplayUnits,
   guideLiveRows,
-  isCrossingStep,
   liveStepsFrom,
   type DisplayUnit,
   type LiveRowsOutput,
@@ -304,8 +303,9 @@ export function walkPeriodicLine(
   // ⚠ 판정은 **서버 투영 행동**만 본다(E16 축3). 종전엔 `walkStepAction` + `"건너"` 부분
   // 문자열이라 en 문장에서 둘 다 실패해 **횡단 중에 "Walk straight"가 나갔다**(리뷰 검출).
   // ⚠ 여기서는 오탐이 미탐보다 싸다 — 오탐은 provider 문장을 한 번 더 읽는 것뿐이고,
-  // 미탐은 건너는 중에 직진을 지시한다. 그래서 `isCrossingStep`의 description 축을 쓰지 않는다
-  // (그 축은 표시 유닛 묶음이 계속 쓴다 — 그쪽은 ko 계약이라 건드리지 않는다).
+  // 미탐은 건너는 중에 직진을 지시한다. 표시 유닛 묶음(`isCrossingStep`)은 행동 + 서버 횡단 구간
+  // 플래그(`crossing`, A26)로 더 좁게 판정한다 — 그쪽은 지명 "횡단보도" 이동 스텝을 횡단 유닛으로
+  // 세우면 안 되기 때문이고, 여기서는 그 오탐이 싸다.
   const step = route.steps[stepIndex];
   const cur = step?.description ?? "";
   if (step?.action === "crosswalk" || step?.action === "underpass") return cur;

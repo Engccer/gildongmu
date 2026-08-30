@@ -140,3 +140,17 @@ describe("PlaceDetail 주소 복사", () => {
     });
   });
 });
+
+describe("PlaceDetail 분류 줄의 언어 표기(A26)", () => {
+  it("한국어 분류는 lang=\"ko\"(en 페이지에서 한국어 엔진으로 읽힌다)", () => {
+    renderDetail();
+    const line = screen.getByText(/음식점 > 한식/);
+    expect(line.getAttribute("lang")).toBe("ko");
+  });
+
+  it("영문 분류(TourAPI en)는 lang을 달지 않는다", () => {
+    renderDetail({ category: "Tourist Attractions" });
+    const line = screen.getByText(/Tourist Attractions/);
+    expect(line.hasAttribute("lang")).toBe(false);
+  });
+});

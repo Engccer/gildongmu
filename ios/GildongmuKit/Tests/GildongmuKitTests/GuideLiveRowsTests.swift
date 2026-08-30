@@ -30,6 +30,8 @@ private struct LiveScenario: Decodable {
         let target: String?
         let anchor: String?
         let action: String?
+        /// 서버 횡단 구간 플래그(A26) — 웹 러너와 같은 fixture 필드.
+        let crossing: Bool?
     }
 
     struct Input: Decodable {
@@ -145,7 +147,8 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
             let input = LiveStepInput(
                 description: s.desc, startD: acc, endD: acc + s.len,
                 target: s.target, anchor: s.anchor,
-                action: s.action.flatMap(WalkAction.init(rawValue:))
+                action: s.action.flatMap(WalkAction.init(rawValue:)),
+                crossing: s.crossing ?? false
             )
             acc += s.len
             return input
@@ -172,5 +175,61 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
             #expect(results[ex.afterInput].top == ex.top, "\(sc.name) #\(ex.afterInput) top")
             #expect(results[ex.afterInput].next == ex.next, "\(sc.name) #\(ex.afterInput) next")
         }
+    }
+}
+
+/// 횡단 유닛 판정은 서버 플래그로(A26) — ko "건너" 부분 문자열에 의존하지 않는다.
+@Suite("횡단 유닛 판정(언어 무관)")
+struct CrossingStepTests {
+    @Test("행동이 crosswalk/underpass이고 서버가 crossing을 표시했을 때만 참")
+    func flagDecides() {
+        #expect(isCrossingStep(.crosswalk, crossing: true))
+        #expect(isCrossingStep(.underpass, crossing: true))
+        #expect(!isCrossingStep(.left, crossing: true))
+        #expect(!isCrossingStep(.crosswalk, crossing: false))
+        #expect(!isCrossingStep(nil, crossing: true))
+    }
+
+    @Test("en 문장(Tmap)도 플래그만 있으면 횡단 유닛이 된다")
+    func englishCrossingUnit() {
+        let steps = [
+            LiveStepInput(description: "Walk 50m", startD: 0, endD: 50),
+            LiveStepInput(
+                description: "Cross the crosswalk, then walk 30m", startD: 50, endD: 80,
+                action: .crosswalk, crossing: true),
+            LiveStepInput(description: "Turn left, then walk 40m", startD: 80, endD: 120, action: .left),
+        ]
+        let units = buildDisplayUnits(steps, source: .step)
+        #expect(units.map(\.crossing) == [false, true, false])
+        #expect(units[1].crossingText == "Cross the crosswalk, then walk 30m")
+        #expect(units[0].endAction == .crosswalk)
+    }
+
+    @Test("플래그 없는 crosswalk 행동(지명 '횡단보도' 이동 스텝)은 횡단 유닛이 아니다")
+    func placeNameIsNotCrossing() {
+        let steps = [
+            LiveStepInput(description: "천호역 횡단보도까지 100m 이동", startD: 0, endD: 100, action: .crosswalk)
+        ]
+        #expect(buildDisplayUnits(steps, source: .step)[0].crossing == false)
+    }
+
+    @Test("liveStepsFrom은 응답 스텝의 crossing을 표시 입력으로 옮긴다")
+    func liveStepsCarryCrossing() throws {
+        let route = try #require(buildGuideRoute([
+            GuideStepGeometry(
+                description: "a",
+                pathCoords: [RoutePoint(lat: 37.5, lng: 127.1), RoutePoint(lat: 37.5001, lng: 127.1)]),
+            GuideStepGeometry(
+                description: "b",
+                pathCoords: [RoutePoint(lat: 37.5001, lng: 127.1), RoutePoint(lat: 37.5002, lng: 127.1)],
+                action: .crosswalk),
+        ]))
+        let out = liveStepsFrom(route: route, steps: [
+            (target: nil, anchor: nil, crossing: false),
+            (target: nil, anchor: nil, crossing: true),
+        ])
+        #expect(out[0].crossing == false)
+        #expect(out[1].crossing == true)
+        #expect(out[1].action == .crosswalk)
     }
 }

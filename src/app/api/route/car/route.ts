@@ -89,14 +89,20 @@ export async function GET(request: NextRequest) {
           includeGeometry: parsed.data.includeGeometry,
           via,
         });
-    return NextResponse.json(briefing);
+    // 안내문 언어 마커(A26): ko 폴백은 위 판정 그대로 두고, 그 결과만 응답에 싣는다 —
+    // en 화면이 한국어 문장을 받았을 때 `lang="ko"`로 정직하게 표기할 유일한 근거.
+    return NextResponse.json({ ...briefing, guidanceLang: useNcp ? "en" : "ko" });
   } catch (e) {
     console.error("[api/route/car] 경로 브리핑 실패:", e);
-    // 경로 탐색 실패(result_code != 0)는 사용자 입력에 가까운 문제라 메시지를 전달
-    const message =
-      e instanceof Error && e.message.includes("경로 탐색 실패")
-        ? "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요."
-        : "경로 브리핑에 실패했습니다.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    // 경로 탐색 실패(result_code != 0)는 사용자 입력에 가까운 문제라 메시지를 전달.
+    // `code`는 로케일 소비자(웹 카드)가 자기 언어 문장을 고르는 키 — `error`는 CLI/MCP 계약 유지.
+    const noRoute = e instanceof Error && e.message.includes("경로 탐색 실패");
+    const message = noRoute
+      ? "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요."
+      : "경로 브리핑에 실패했습니다.";
+    return NextResponse.json(
+      { error: message, ...(noRoute ? { code: "noRoute" } : {}) },
+      { status: 502 },
+    );
   }
 }

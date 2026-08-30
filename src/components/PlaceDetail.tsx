@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
+import { hasHangul } from "@/lib/format";
 import { PlaceBridgeContext } from "@/hooks/useAxisBridge";
 import { createAxisRegistry } from "@/lib/webmcp/place-axes";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
@@ -240,7 +241,10 @@ export function PlaceDetail({
           역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
         <div className="mt-2 text-sm leading-relaxed">
-          <p>{`${t("place.category")} ${place.category}`}</p>
+          {/* 카카오 분류는 en 페이지에서도 한국어 — 줄 전체에 lang="ko"(주소 줄과 같은 판정, A26). */}
+          <p lang={hasHangul(place.category) ? "ko" : undefined}>
+            {`${t("place.category")} ${place.category}`}
+          </p>
           {/* 주소는 종류마다 한 줄 + 그 줄 전용 복사 버튼. 도로명과 지번은 쓰임이
             달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 복사 대상은 반드시
             화면에 보이는 줄과 일치한다. 라벨+주소는 단일 텍스트로 합쳐 한 객체로

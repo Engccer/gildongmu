@@ -53,6 +53,16 @@ export function joinText(
 }
 
 /**
+ * 한글(음절·호환 자모)이 하나라도 있는가 — 비-ko 페이지(`<html lang="en">`)에 놓이는 한국어
+ * 데이터 블록(장소명·분류)에 `lang="ko"`를 달 판정(A26). 영어 엔진은 한글을 읽지 못하고(철자
+ * 낭독·침묵), 한국어 엔진은 영어 낱말을 그런대로 읽으므로 판정은 "한글이 있는가" 한 축이다.
+ * ⚠ 이미 별도 블록·줄인 곳에만 쓴다 — 속성을 주려고 줄 중간을 span으로 쪼개지 말 것.
+ */
+export function hasHangul(text: string): boolean {
+  return /[\u3131-\u318E\uAC00-\uD7A3]/.test(text);
+}
+
+/**
  * 음성 전사를 검색어로 쓰기 전 후행 문장부호를 제거한다(iOS `VoiceQuery.swift` 미러).
  *
  * STT는 발화를 문장으로 보고 끝에 마침표를 붙이는데, 검색 API는 그 마침표를

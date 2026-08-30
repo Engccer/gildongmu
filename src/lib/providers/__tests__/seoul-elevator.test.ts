@@ -38,6 +38,13 @@ describe("composeElevatorItems — 방위·거리 ko 합성", () => {
     const items = composeElevatorItems(parseElevatorRows(raw), seedRows);
     expect(items).toHaveLength(2);
     expect(items[0].name).toMatch(/^역 중심 기준 (북|북동|동|남동|남|남서|서|북서)쪽 약 \d+m, 성내동$/);
+    // 구조화 조각(A26): 비-ko 클라이언트가 자기 언어로 조립하는 원재료. 문자열 name은 불변(CLI/MCP).
+    expect(items[0].parts).toEqual({
+      compass: expect.stringMatching(/^(n|ne|e|se|s|sw|w|nw)$/),
+      meters: expect.any(Number),
+      dong: "성내동",
+    });
+    expect(items[0].name).toBe(`역 중심 기준 ${{ n: "북", ne: "북동", e: "동", se: "남동", s: "남", sw: "남서", w: "서", nw: "북서" }[items[0].parts!.compass!]}쪽 약 ${items[0].parts!.meters}m, 성내동`);
   });
   it("seed 좌표가 없으면 빈 배열(방위 없는 나열은 무가치)", () => {
     expect(composeElevatorItems(parseElevatorRows(raw), [])).toEqual([]);

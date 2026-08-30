@@ -83,9 +83,18 @@ export function CarRouteBriefing({
           return;
         }
         if (!res.ok) {
+          // 서버의 한국어 `error` 문자열은 낭독하지 않는다 — status·`code`로 자기 언어 문장을
+          // 고른다(`useVoiceRecorder` 선례, A26). 400·404류는 재시도로 풀리지 않아 일반 오류.
           setStatus({
             kind: "error",
-            message: typeof body.error === "string" ? body.error : t("error"),
+            message:
+              res.status === 503
+                ? t("notConfigured")
+                : res.status === 429
+                  ? t("rateLimited")
+                  : body?.code === "noRoute"
+                    ? t("noRoute")
+                    : t("error"),
           });
           return;
         }
@@ -205,6 +214,8 @@ export function CarRouteResult({
         items={carStepItems(briefing)}
         waypointIndex={briefing.waypoint?.stepIndex}
         waypointText={waypointLabel ? tDir("viaArrived", { label: waypointLabel }) : null}
+        // 서버가 ko로 폴백한 안내문(A26 `guidanceLang`)은 스텝 줄마다 한국어 엔진으로 읽힌다.
+        lang={briefing.guidanceLang === "ko" ? "ko" : undefined}
       />
       <p className="mt-2 text-xs opacity-70">{t("disclaimer")}</p>
     </>

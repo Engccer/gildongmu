@@ -103,7 +103,7 @@ export function BarrierFreeInfo({
             : detail
               ? {
                   match: { kind: "matched", facilityCount: detail.facilities.length },
-                  facilities: barrierFreeLines(detail).map(({ label, value }) => ({ label, value })),
+                  facilities: barrierFreeLines(detail, t).map(({ label, value }) => ({ label, value })),
                   source: t("source"),
                 }
               : undefined,
@@ -127,7 +127,7 @@ export function BarrierFreeInfo({
       </h3>
       <div className="mt-1 space-y-1 text-sm leading-relaxed">
         {/* 라벨+값 단일 텍스트(span 분절 제거) — 문장 정본은 place-lines(도구층과 공용) */}
-        {barrierFreeLines(detail).map((line, i) => (
+        {barrierFreeLines(detail, t).map((line, i) => (
           <p key={detail.facilities[i].key} lang="ko">{line.text}</p>
         ))}
       </div>

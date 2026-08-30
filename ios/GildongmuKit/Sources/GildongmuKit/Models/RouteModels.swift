@@ -112,11 +112,14 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
     public let terminalCoord: RoutePoint?
     /// 경유지(N4, `via` 요청에만). 선택 디코딩 — 없는 응답에서 브리핑이 깨지면 안 된다.
     public let waypoint: RouteWaypoint?
+    /// 안내문 언어 "ko"/"en"(A26, 웹 `guidanceLang` 미러). en 요청도 NCP 키 부재·경유지면 서버가
+    /// ko로 폴백하고 그 사실을 이 필드로 알린다. 구버전 서버·구버전 응답은 nil.
+    public let guidanceLang: String?
 
     public init(
         distanceMeters: Int, durationSeconds: Int, taxiFare: Int, tollFare: Int,
         guides: [CarRouteGuide], provider: String? = nil, terminalCoord: RoutePoint? = nil,
-        waypoint: RouteWaypoint? = nil
+        waypoint: RouteWaypoint? = nil, guidanceLang: String? = nil
     ) {
         self.distanceMeters = distanceMeters
         self.durationSeconds = durationSeconds
@@ -126,6 +129,7 @@ public struct CarRouteBriefing: Codable, Sendable, Hashable {
         self.provider = provider
         self.terminalCoord = terminalCoord
         self.waypoint = waypoint
+        self.guidanceLang = guidanceLang
     }
 }
 
@@ -332,20 +336,26 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     /// 이 필드만 본다 — 여기서 디코딩하지 않으면 임박 큐(명령형 문장·행동별 톤·햅틱)가
     /// 통째로 침묵한다. ⚠ 선택 디코딩(구버전 서버 호환, `live`와 같은 이유).
     public let action: WalkAction?
+    /// **이 스텝의 구간 전체가 횡단이다**(A26, 웹 `WalkRouteStep.crossing` 미러). 표시 계층의
+    /// 횡단 유닛 판정(`isCrossingStep`)이 읽는 유일한 근거 — 종전 "건너" 부분 문자열 판정은
+    /// en 안내에서 횡단 유닛을 한 번도 세우지 못했다. `action`과 같은 게이트(`includeGeometry=1`)로만
+    /// 오고, 선택 디코딩(구버전 서버 응답 호환).
+    public let crossing: Bool?
 
     public init(
         description: String, distanceMeters: Int? = nil, pathCoords: [RoutePoint]? = nil,
-        live: WalkLiveFragments? = nil, action: WalkAction? = nil
+        live: WalkLiveFragments? = nil, action: WalkAction? = nil, crossing: Bool? = nil
     ) {
         self.description = description
         self.distanceMeters = distanceMeters
         self.pathCoords = pathCoords
         self.live = live
         self.action = action
+        self.crossing = crossing
     }
 
     private enum CodingKeys: String, CodingKey {
-        case description, distanceMeters, pathCoords, live, action
+        case description, distanceMeters, pathCoords, live, action, crossing
     }
 
     /// `WalkAction`이 `Codable`이 아니라 파생 구현을 쓸 수 없다(자동차 스텝과 같은 형태).
@@ -359,6 +369,7 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
         live = try c.decodeIfPresent(WalkLiveFragments.self, forKey: .live)
         action = (try c.decodeIfPresent(String.self, forKey: .action))
             .flatMap(WalkAction.init(rawValue:))
+        crossing = try c.decodeIfPresent(Bool.self, forKey: .crossing)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -368,6 +379,7 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
         try c.encodeIfPresent(pathCoords, forKey: .pathCoords)
         try c.encodeIfPresent(live, forKey: .live)
         try c.encodeIfPresent(action?.rawValue, forKey: .action)
+        try c.encodeIfPresent(crossing, forKey: .crossing)
     }
 }
 

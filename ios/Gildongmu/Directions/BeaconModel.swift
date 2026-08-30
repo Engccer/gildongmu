@@ -796,6 +796,8 @@ final class BeaconModel {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
                 destLat: dest.lat, destLng: dest.lng,
+                // 안내 문장 언어(A26) — walk와 같은 규율, 기본값 없는 인자라 생략은 컴파일이 막는다.
+                lang: AppLanguage.dataLocale,
                 includeGeometry: true, via: via
             )
             if via != nil, briefing.waypoint == nil { return nil }
@@ -805,7 +807,7 @@ final class BeaconModel {
             // 자동차에는 계단 회피·최종 접근 기하가 없다 — 타입이 그 사실을 말한다.
             // 하단 2행 입력(K2 §4): live 조각(target·anchor)은 없고 행동은 스텝의 서버 투영.
             return (car.route, car.roadSpans, briefing.durationSeconds, nil, nil, nil, nil,
-                    liveStepsFrom(route: car.route, live: []))
+                    liveStepsFrom(route: car.route, steps: []))
         }
         let briefing = try await routeService.walk(
             originLat: origin.lat, originLng: origin.lng,
@@ -833,9 +835,9 @@ final class BeaconModel {
             route, [], briefing.durationSeconds,
             briefing.stepFree, briefing.stepFreeStatus, briefing.stepFreeNotice,
             briefing.finalApproach,
-            // 스팬과 응답 스텝(live 조각)을 index로 짝지어 표시 입력을 만든다(spec §5).
-            liveStepsFrom(route: route, live: briefing.steps.map {
-                $0.live.map { (target: $0.target, anchor: $0.anchor) }
+            // 스팬과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다(spec §5, A26).
+            liveStepsFrom(route: route, steps: briefing.steps.map {
+                (target: $0.live?.target, anchor: $0.live?.anchor, crossing: $0.crossing ?? false)
             })
         )
     }
@@ -994,6 +996,7 @@ final class BeaconModel {
             let briefing = try await routeService.car(
                 originLat: origin.lat, originLng: origin.lng,
                 destLat: dest.lat, destLng: dest.lng,
+                lang: AppLanguage.dataLocale,
                 via: waypoint.map { (lat: $0.dest.lat, lng: $0.dest.lng) }
             )
             // 세대 일치 커밋(§4.6) — 중지·재조회·목적지 변경 후 도착 응답 폐기.

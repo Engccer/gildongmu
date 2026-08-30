@@ -3,11 +3,19 @@ import { buildDisplayUnits, guideLiveRows, type LiveStepInput } from "../guide-l
 import { TURN_APPROACH_M } from "../guide-live-rows";
 
 function steps(
-  ...defs: [number, string, { target?: string; anchor?: string }?][]
+  ...defs: [number, string, { target?: string; anchor?: string; crossing?: true }?][]
 ): LiveStepInput[] {
   let d = 0;
-  return defs.map(([len, description, live]) => {
-    const s = { description, startD: d, endD: d + len, ...(live ? { live } : {}) };
+  return defs.map(([len, description, extra]) => {
+    const { crossing, ...live } = extra ?? {};
+    const s: LiveStepInput = {
+      description,
+      startD: d,
+      endD: d + len,
+      ...(live.target || live.anchor ? { live } : {}),
+      // 횡단 구간은 서버 플래그가 근거다(A26) — 문장의 "건너"로 판정하지 않는다.
+      ...(crossing ? { crossing } : {}),
+    };
     d += len;
     return s;
   });
@@ -31,7 +39,7 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     const u = buildDisplayUnits(
       steps(
         [58, "파리바게뜨까지 58m 이동", { target: "파리바게뜨" }],
-        [21, "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음"],
+        [21, "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음", { crossing: true }],
         [40, "40m 이동"],
       ), "text");
     expect(u.map((x) => x.stepIndices)).toEqual([[0], [1], [2]]);
