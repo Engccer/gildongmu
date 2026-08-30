@@ -11,6 +11,8 @@
 
 ## 2026-08-30
 
+- **대중교통 안내 승차 전 도보 핸드오프(A25)**: 첫 탑승 leg 앞 도보(`walkBeforeMinutes ≥ 1`, 승차 정류소 좌표 보유)가 있으면 대중교통 시작 버튼이 승차역까지의 도보 실시간 안내를 먼저 돌리고, 도착(확정·추정·"{역} 도착" 선언)하면 도보 문맥을 지운 경로로 대기 국면에 자동 연결한다. 도보 중 사용자 중지·권한 상실은 전체 종료(취소 문장), 도보 시작 실패는 종전처럼 바로 대기 국면(불가 문장). 판정 순수 함수 `transitPrewalkTarget`·`withoutPrewalk` 웹·Kit 미러(공유 fixture `prewalk` 키). iOS `BeaconModel.onSessionEnd`(stop() 정리 뒤 다음 턴 전달)·`GuideSession` 연결(컨텍스트 id·600ms), 웹 `TransitGuidePanel` prewalk 단계 + `DistanceBeacon.onSessionEnd`. 진입점 게이트 7→8. 실승차 판정 대기(`docs/FIELD-TEST.md` §5-4). spec `docs/superpowers/specs/2026-08-30-transit-prewalk-handoff-design.md`(codex 적대적 리뷰 43건 반영 기록 §9).
+
 - **장소 상세 영업시간 한 줄(E24) — iOS 실험판 착수**: Google Places(New)로 카카오 장소를 `place_id`에 매칭(B1' 도로명 키 포함)한 뒤 오늘(KST) 구간을 "오늘 영업시간 06:00~23:00 (Google Maps)"로 낸다. 정보 없음·매칭 실패·쿼터 소진은 줄 없음(침묵), 단정형 표기 없음. 서버 `/api/places/hours` + Kit `PlaceHoursService` + `PlaceHoursLine`(`AppConfig.experimentalPlaceHoursEnabled`). 예산은 GCP 일일 쿼터(33·160)로 무료분 안에 고정, 영업시간 무캐시·`place_id`만 캐시(약관). TTS 격리 드리프트 가드 `place-hours-tts-drift.test.ts`. 실호출 게이트 5케이스 통과. spec `docs/superpowers/specs/2026-08-30-place-hours-google-design.md`. 조사·판정 이력(도달률·정확도·약관·예산, 2026-08-24~29)은 GitHub 이슈 #2와 spec이 정본이고 정식판 승격은 위원장 실사용 판정(`docs/BACKLOG.md` E24).
 
 - **WebMCP 시설 축 예산 버킷 분리(W2-B1)**: `get_place_info` `facilities`의 코레일·도시철도 두 소스가 한 60초 버킷을 순차 소비해 첫 호출이 항상 `partial`이던 결함. upstream별 버킷으로 나눴다(`stationFacilitiesMetro`). 배포본 재검증으로 첫 호출 `done`, `truncated`+`offset` 전량 회수, 거절 경로 `busy`·`staleResult`·`modalOpen` 통과 — `docs/research/RESEARCH-2026-08-29-webmcp-deployed-validation.md` §11.
