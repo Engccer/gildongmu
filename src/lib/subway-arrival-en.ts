@@ -80,7 +80,7 @@ const SHAPE_KEYWORDS = new Set(["진입", "도착", "출발", "전역", "후", "
 function shapeOf(message: string): string {
   return message
     .replace(/\d+/g, "N")
-    .replace(/[가-힣]+/g, (w) => (SHAPE_KEYWORDS.has(w) ? w : "S"));
+    .replace(/[가-힣]+|[A-Za-z][A-Za-z'’.-]*/g, (w) => (SHAPE_KEYWORDS.has(w) ? w : "S"));
 }
 
 interface MessageEn {
@@ -107,7 +107,8 @@ export function arrivalMessageEn(
     case "2": {
       const m = STATION_EVENT_RE.exec(msg);
       const verb = code === "0" ? "진입" : code === "1" ? "도착" : "출발";
-      if (!m || m[2] !== verb) {
+      // "전역 도착"이 코드 1로 오면 역명 자리가 "전역"이라 seed 미매칭으로 흡수돼 계측이 비었다 — 불일치로 잡는다.
+      if (!m || m[2] !== verb || m[1] === "전역") {
         warnShape(code, shapeOf(msg));
         return {};
       }

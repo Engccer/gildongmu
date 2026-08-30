@@ -35,8 +35,3 @@ export function pickLine(
   const tagEn = pure && !locale.toLowerCase().startsWith("en");
   return { text, ...(tagEn ? { lang: "en" as const } : {}) };
 }
-
-/** 이름 하나(역·정류소)의 표시 — 영문이 있으면 영문, 없으면 한국어(순수 데이터 한 조각). */
-export function pickName(locale: string, ko: string, en: string | undefined | null): LocalizedLine {
-  return pickLine(locale, ko, [en], ([e]) => e);
-}

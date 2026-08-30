@@ -62,6 +62,8 @@ try {
     { name: "길동→강남", origin: { lat: 37.5384, lng: 127.1408 }, dest: { lat: 37.4979, lng: 127.0276 } },
     { name: "김포공항→신논현(9호선 급행)", origin: { lat: 37.5623, lng: 126.8012 }, dest: { lat: 37.5045, lng: 127.0249 }, expressRequired: true },
     { name: "길동→하남(버스)", origin: { lat: 37.5384, lng: 127.1408 }, dest: { lat: 37.5395, lng: 127.214 } },
+    // GTX-A: 한글 없는 정당 노선명이 `*Kor` 술어에 걸려 영문이 통째로 버려지지 않는지(code-quality 리뷰 #5)
+    { name: "서울역→동탄(GTX-A)", origin: { lat: 37.5547, lng: 126.9707 }, dest: { lat: 37.2036, lng: 127.0996 } },
   ];
 
   const legsOf = (r) => [r.recommended, ...r.alternatives].flatMap((route) => route.legs.map((leg) => ({ route, leg })));

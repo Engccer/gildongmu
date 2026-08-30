@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchStationTimetable } from "@/lib/providers/tago-subway";
-import { subwayLineNameEn } from "@/lib/subway-line-names";
+import { withTimetableLinesEn } from "@/lib/subway-line-names";
 import { langParam } from "@/lib/lang-param";
-import type { StationTimetable } from "@/lib/types";
 import { checkTimetableRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
@@ -13,18 +12,6 @@ import { checkTimetableRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
  */
 // `lang=en`은 노선마다 `lineNameEn`(노선명 영문 표)을 additive로 싣는다(E27). 미지정·ko는 byte-identical.
 const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
-
-/** TAGO 원형(`lineCore`)이 있으면 그것을, 없으면 표시명을 표에 통과시킨다. 표 미스는 부재(한국어 폴백). */
-export function withTimetableLinesEn(tt: StationTimetable | null): StationTimetable | null {
-  if (!tt) return null;
-  return {
-    ...tt,
-    lines: tt.lines.map((line) => {
-      const en = subwayLineNameEn(line.lineCore ?? line.lineName);
-      return en ? { ...line, lineNameEn: en } : line;
-    }),
-  };
-}
 
 export async function GET(request: NextRequest) {
   if (!checkTimetableRateLimit(clientIpFromHeaders(request.headers), Date.now())) {

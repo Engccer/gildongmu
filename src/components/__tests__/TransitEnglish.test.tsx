@@ -200,3 +200,32 @@ describe("pickLine", () => {
     expect(pickLine("en", "강남", ["Gangnam", ""], (p) => p.filter(Boolean).join(" "))).toEqual({ text: "Gangnam" });
   });
 });
+
+describe("StationMeta·SubwayArrivalsNearby — en 렌더(병기·noise-free 접근명)", () => {
+  it("StationMeta en: 이름 줄은 병기(괄호 aria-hidden lang=ko)이고 노선 줄은 linesEn, ko 폴백은 lang=ko", async () => {
+    const { StationMeta } = await import("../StationMeta");
+    const meta = { name: "강남", nameEn: "Gangnam", lines: ["2호선", "신분당선"], linesEn: ["Line 2", "Shinbundang Line"], isTransfer: true, operator: "서울교통공사" };
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => ({ meta }) } as Response);
+    const { container, findByText } = wrap("en", <StationMeta stationName="강남역" />);
+    await findByText(/Gangnam/);
+    expect(String(fetchSpy.mock.calls[0][0])).toContain("&lang=en");
+    const name = container.querySelector("p.text-lg")!;
+    expect(name.textContent).toBe("Gangnam (강남)");
+    expect(name.querySelector('[aria-hidden="true"]')?.getAttribute("lang")).toBe("ko");
+    const lines = container.querySelectorAll("section > div p")[0];
+    expect(lines.textContent).toBe("Lines Line 2, Shinbundang Line, Transfer station");
+    expect(lines.getAttribute("lang")).toBeNull();
+    fetchSpy.mockRestore();
+  });
+  it("StationMeta en: linesEn이 없으면 노선 줄은 한국어 + lang=ko", async () => {
+    const { StationMeta } = await import("../StationMeta");
+    const meta = { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" };
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: async () => ({ meta }) } as Response);
+    const { container, findByText } = wrap("en", <StationMeta stationName="강남역" />);
+    await findByText(/Gangnam/);
+    const lines = container.querySelectorAll("section > div p")[0];
+    expect(lines.textContent).toBe("Lines 2호선");
+    expect(lines.getAttribute("lang")).toBe("ko");
+    fetchSpy.mockRestore();
+  });
+});

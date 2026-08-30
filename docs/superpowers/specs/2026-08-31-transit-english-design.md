@@ -70,7 +70,7 @@
 5. ` & `·`, ` 유지.
 6. 연속 공백·양끝 공백 정리, `, ,`·`,,` 중복 정리.
 
-알려진 한계(수용): `Hanyang Apt.. Apgujeong` → `Hanyang Apt. Apgujeong Rodeo Station`(약어 뒤 실제 구분자는 사라진다). 한글 괄호 병기는 **시각 사용자에게만** 반증 채널이다(리뷰 #14 — SR 사용자에겐 숨겨진다). fixture `transit-name-en-cases.json`(§2.1 관측 표본 + 경계·멱등·이니셜·숫자 케이스)로 단위 테스트. 서버 투영 시 한 번만 적용한다.
+알려진 한계(수용): `Hanyang Apt.. Apgujeong` → `Hanyang Apt. Apgujeong Rodeo Station`(약어 뒤 실제 구분자는 사라진다). `Stn. X`도 같다 — 관측 636건에서 `Stn.` 뒤는 전부 `Exit N`·`&`·`(`·끝이라(`강남역7번출구`처럼 한 단위) 구분자로 읽으면 오히려 틀리고, 가상의 `Gwanghwamun Stn. Gyeongbokgung`(`광화문역.경복궁`)은 `Station Gyeongbokgung`으로 붙는다(code-quality 리뷰 #9, 데이터상 구분 불가). 한글 괄호 병기는 **시각 사용자에게만** 반증 채널이다(리뷰 #14 — SR 사용자에겐 숨겨진다). fixture `transit-name-en-cases.json`(§2.1 관측 표본 + 경계·멱등·이니셜·숫자 케이스)로 단위 테스트. 서버 투영 시 한 번만 적용한다.
 
 ### 3.3 노선명 영문 표 `subwayLineNameEn` (`src/lib/subway-line-names.ts`, 순수)
 
@@ -199,7 +199,8 @@
 - 급행 필수 표본: `수도권 9호선(급행)` 보존 + `lineNameEn = "Line 9 Express"`(ODsay 영문은 `Line 9`).
 - 정류소 표본: `30-3 Gil-dong Community Service Center, Dunchon 2-dong Community Service Center → Hanam City Hall` · `Line 5 Gildong → Hanam City Hall(Deokpung, Sinjang)`(원문 `(덕풍·신장)`의 가운뎃점이 쉼표로).
 - 실시간 도착 en: 강남 8/8 · 서울역 20/20(`messageEn`·`trainLineNmEn` 생성률 100%), 한국어 원문 불변. **1차 검출**: 서울역에서 공항철도 열차의 `서울 출발`·`서울행 - 서울방면`이 부재였다 — seed에 서울역이 4행(`Seoul Station`×2·`Seoul`(인천국제공항선)·`Seoul station`(경의중앙선))이고 도착 노선 `공항철도`와 seed `인천국제공항선`이 `lineHintMatches`로 안 묶여 후보 셋의 영문이 갈렸다. 수정: 같은 노선 판정에 **영문 표 동치**(둘 다 AREX)를 먼저 보고, 표기 차이(`Seoul station`)는 대소문자 무시로 모은다(§3.4 갱신). fixture에 그 케이스 3건 추가.
-- ODsay 호출 수: 경로 3종 × 2언어 = 6콜(캐시 없는 상태) + 실시간 2콜.
+- ODsay 호출 수: 경로 3종 × 2언어 + 급행 raw 1 = 7콜(캐시 없는 상태) + 실시간 2콜.
+- ⚠ 리뷰 반영(code-quality #5)으로 **GTX-A 경로(서울역→동탄)**를 게이트에 더했으나, 같은 날 ODsay 일일 쿼터가 소진돼(`429 Daily quota exceeded` — 이 세션의 게이트 3회 + 실호출 조사 5콜 ≈ 25콜은 원인의 일부일 뿐, 병렬 세션·프로덕션 소비 합산) 그 경로는 **미실측**이다. 술어 자체는 단위 테스트(`GTX-A`·라틴 정류소명 정당값)가 잠갔고, 다음 게이트 실행이 실데이터를 확정한다(`docs/BACKLOG.md` E27 잔여).
 
 ## 9. 설계 리뷰 (codex adversarial-review, 2026-08-31)
 
