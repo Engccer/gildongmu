@@ -22601,6 +22601,166 @@
         }
       }
     },
+    "ios.placeHours.allDay": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24시간"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 hours"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 horas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 h/24"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 ore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24時間"
+          }
+        }
+      }
+    },
+    "ios.placeHours.closed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 휴무 (Google Maps)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Closed today (Google Maps)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrado hoy (Google Maps)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermé aujourd'hui (Google Maps)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiuso oggi (Google Maps)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本日休業 (Google Maps)"
+          }
+        }
+      }
+    },
+    "ios.placeHours.line": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 영업시간 %1$@ (Google Maps)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's hours %1$@ (Google Maps)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horario de hoy %1$@ (Google Maps)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horaires du jour %1$@ (Google Maps)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orari di oggi %1$@ (Google Maps)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本日の営業時間 %1$@ (Google Maps)"
+          }
+        }
+      }
+    },
+    "ios.placeHours.nextDay": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 날 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "next day %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "día siguiente %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lendemain %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giorno dopo %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翌日 %1$@"
+          }
+        }
+      }
+    },
     "ios.route.alight": {
       "localizations": {
         "ko": {
@@ -29521,6 +29681,46 @@
         }
       }
     },
+    "privacy.agent": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP를 지원하는 AI 에이전트 브라우저로 길동무의 도구를 쓰면, 도구 출력이 그 에이전트 제공자에게 전달됩니다. 전달되는 것은 검색어와 검색 결과(장소 이름, 주소, 전화번호), 장소 정보(역의 첫차와 막차, 편의시설, 실시간 도착, 무장애 시설), 길찾기의 출발지, 도착지, 경유지 이름, 경로 요약과 안내 문장입니다. 좌표는 전달하지 않지만 위치와 이동을 유추할 수 있는 정보입니다. 이 기능은 WebMCP를 지원하는 AI 에이전트 브라우저로 길동무를 열었을 때만 동작합니다. 일반 브라우저에서는 동작하지 않으며, 길동무 안에 따로 켜는 설정은 없습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you use Gildongmu's tools through an AI agent browser that supports WebMCP, the tool output is sent to that agent's provider. What is sent: your search query and results (place names, addresses, phone numbers), place information (a station's first and last trains, facilities, real-time arrivals, barrier-free facilities), and for directions the origin, destination and via names, the route summary and guidance sentences. Coordinates are never sent, but this information can reveal your location and movements. This works only when Gildongmu is opened in an AI agent browser that supports WebMCP. It does nothing in a regular browser, and there is no separate setting inside Gildongmu."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si usas las herramientas de Gildongmu a través de un navegador con agente de IA compatible con WebMCP, la salida de las herramientas se envía al proveedor de ese agente. Se envía: tu búsqueda y sus resultados (nombres de lugares, direcciones, teléfonos), la información del lugar (primer y último tren de una estación, instalaciones, llegadas en tiempo real, instalaciones sin barreras) y, en las rutas, los nombres de origen, destino y punto intermedio, el resumen de la ruta y las frases de guía. Nunca se envían coordenadas, pero esta información puede revelar tu ubicación y tus desplazamientos. Solo funciona cuando abres Gildongmu en un navegador con agente de IA compatible con WebMCP. En un navegador normal no hace nada y no hay ningún ajuste aparte dentro de Gildongmu."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si vous utilisez les outils de Gildongmu via un navigateur à agent IA compatible WebMCP, la sortie des outils est transmise au fournisseur de cet agent. Sont transmis : votre recherche et ses résultats (noms de lieux, adresses, numéros de téléphone), les informations sur le lieu (premier et dernier train d'une gare, équipements, arrivées en temps réel, équipements accessibles) et, pour les itinéraires, les noms du départ, de la destination et du point de passage, le résumé de l'itinéraire et les phrases de guidage. Les coordonnées ne sont jamais transmises, mais ces informations peuvent révéler votre position et vos déplacements. Cela ne fonctionne que si Gildongmu est ouvert dans un navigateur à agent IA compatible WebMCP. Dans un navigateur ordinaire, rien ne se passe, et il n'y a aucun réglage séparé dans Gildongmu."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se usi gli strumenti di Gildongmu tramite un browser con agente IA compatibile con WebMCP, l'output degli strumenti viene inviato al fornitore di quell'agente. Vengono inviati: la tua ricerca e i risultati (nomi dei luoghi, indirizzi, numeri di telefono), le informazioni sul luogo (primo e ultimo treno di una stazione, servizi, arrivi in tempo reale, servizi senza barriere) e, per i percorsi, i nomi di partenza, destinazione e tappa intermedia, il riepilogo del percorso e le frasi di guida. Le coordinate non vengono mai inviate, ma queste informazioni possono rivelare la tua posizione e i tuoi spostamenti. Funziona solo quando Gildongmu è aperto in un browser con agente IA compatibile con WebMCP. In un browser normale non fa nulla e non esiste un'impostazione separata dentro Gildongmu."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCPに対応したAIエージェントブラウザでギルドンムのツールを使うと、ツールの出力がそのエージェントの提供者に送られます。送られるのは、検索語と検索結果（場所の名前、住所、電話番号）、場所の情報（駅の始発と終電、設備、リアルタイムの到着、バリアフリー設備）、経路案内の出発地・目的地・経由地の名前、経路の要約と案内文です。座標は送りませんが、位置や移動を推測できる情報です。この機能はWebMCPに対応したAIエージェントブラウザでギルドンムを開いたときだけ動作します。通常のブラウザでは動作せず、ギルドンム内に別途オンにする設定はありません。"
+          }
+        }
+      }
+    },
     "privacy.analytics": {
       "localizations": {
         "ko": {
@@ -29797,6 +29997,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在地は周辺の場所・交通・経路情報をリアルタイムで照会するためだけに使用し、保存しません。リクエスト処理の過程でサーバーインフラのログに一時的に残ることがあります。"
+          }
+        }
+      }
+    },
+    "privacy.placeHours": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 실험판의 장소 상세에 표시하는 영업시간은 장소 이름, 좌표, 도로명 주소를 Google Places에 보내 조회합니다. 사용자의 현재 위치는 보내지 않습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Business hours shown in the iOS experimental build's place details are looked up by sending the place name, coordinates, and road address to Google Places. Your current location is not sent."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El horario comercial que muestra la versión experimental de iOS en los detalles del lugar se consulta enviando el nombre, las coordenadas y la dirección del lugar a Google Places. No se envía tu ubicación actual."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les horaires affichés dans la fiche d'un lieu de la version expérimentale iOS sont obtenus en envoyant le nom, les coordonnées et l'adresse du lieu à Google Places. Votre position actuelle n'est pas envoyée."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gli orari di apertura mostrati nei dettagli del luogo della versione sperimentale iOS vengono ottenuti inviando nome, coordinate e indirizzo del luogo a Google Places. La tua posizione attuale non viene inviata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS 実験版の場所詳細に表示する営業時間は、場所の名前・座標・道路名住所を Google Places に送信して取得します。現在地は送信しません。"
           }
         }
       }
@@ -45877,6 +46117,806 @@
           "stringUnit": {
             "state": "translated",
             "value": "情報なし"
+          }
+        }
+      }
+    },
+    "webmcpProbe.buttonTarget": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 포커스 대상, 버튼"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus target %1$@, button"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino del foco %1$@, botón"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible du focus %1$@, bouton"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinazione del focus %1$@, pulsante"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォーカス対象%1$@、ボタン"
+          }
+        }
+      }
+    },
+    "webmcpProbe.focusFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 항목으로 DOM 포커스를 옮기지 못했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not move DOM focus to item %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo mover el foco DOM al elemento %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de placer le focus DOM sur l’élément %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile spostare il focus DOM sull’elemento %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOMフォーカスを項目%1$@へ移動できませんでした。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.focusMoved": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 항목으로 DOM 포커스를 옮겼습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved DOM focus to %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se movió el foco DOM a %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le focus DOM a été placé sur %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il focus DOM è stato spostato su %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DOMフォーカスを%1$@へ移動しました。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.headingTarget": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 포커스 대상, 헤딩"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus target %1$@, heading"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destino del foco %1$@, encabezado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cible du focus %1$@, titre"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinazione del focus %1$@, intestazione"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォーカス対象%1$@、見出し"
+          }
+        }
+      }
+    },
+    "webmcpProbe.intro": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 페이지는 WebMCP 도구 실행과 VoiceOver 포커스 추적을 실측합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This page measures WebMCP tool execution and VoiceOver focus tracking."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta página mide la ejecución de herramientas WebMCP y el seguimiento del foco de VoiceOver."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette page mesure l’exécution des outils WebMCP et le suivi du focus par VoiceOver."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa pagina misura l’esecuzione degli strumenti WebMCP e il tracciamento del focus di VoiceOver."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このページでは、WebMCPツールの実行とVoiceOverのフォーカス追従を実測します。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.invalidIndex": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "항목 번호는 1부터 5까지의 정수여야 합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The item number must be an integer from 1 through 5."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El número de elemento debe ser un entero del 1 al 5."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le numéro d’élément doit être un entier compris entre 1 et 5."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il numero dell’elemento deve essere un intero da 1 a 5."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "項目番号は1から5までの整数である必要があります。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.manualActivation": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@번 버튼을 직접 실행했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activated button %1$@ directly."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se activó directamente el botón %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le bouton %1$@ a été activé directement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il pulsante %1$@ è stato attivato direttamente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ボタン%1$@を直接実行しました。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.noFocus": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "없음"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "webmcpProbe.noResult": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "없음"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguno"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuno"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なし"
+          }
+        }
+      }
+    },
+    "webmcpProbe.readStateResult": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@. 현재 포커스 %2$@. 최근 결과 %3$@."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@. Current focus: %2$@. Latest result: %3$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@. Foco actual: %2$@. Último resultado: %3$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@. Focus actuel : %2$@. Dernier résultat : %3$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@. Focus attuale: %2$@. Ultimo risultato: %3$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP %1$@。現在のフォーカス：%2$@。最新の結果：%3$@。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.registrationFailed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP 도구 등록에 실패했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP tool registration failed."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falló el registro de las herramientas WebMCP."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’enregistrement des outils WebMCP a échoué."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrazione degli strumenti WebMCP non riuscita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCPツールの登録に失敗しました。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.support.checking": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인 중"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification en cours"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica in corso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "確認中"
+          }
+        }
+      }
+    },
+    "webmcpProbe.support.supported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지원"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supported"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compatible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pris en charge"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supportato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "対応"
+          }
+        }
+      }
+    },
+    "webmcpProbe.support.unsupported": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "미지원"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No compatible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non pris en charge"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non supportato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未対応"
+          }
+        }
+      }
+    },
+    "webmcpProbe.supportLabel": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP 지원 상태"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP support status"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estado de compatibilidad con WebMCP"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "État de prise en charge de WebMCP"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stato del supporto WebMCP"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP対応状況"
+          }
+        }
+      }
+    },
+    "webmcpProbe.targetsHeading": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "포커스 대상"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Focus targets"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinos del foco"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cibles du focus"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destinazioni del focus"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォーカス対象"
+          }
+        }
+      }
+    },
+    "webmcpProbe.title": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP 게이트 0 프로브"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP gate 0 probe"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonda de puerta 0 de WebMCP"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonde de la porte 0 WebMCP"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonda del gate 0 WebMCP"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WebMCP ゲート0プローブ"
+          }
+        }
+      }
+    },
+    "webmcpProbe.tool.focusDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번호로 지정한 프로브 항목으로 DOM 포커스를 옮깁니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move DOM focus to the numbered probe item."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mueve el foco DOM al elemento de sonda indicado."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place le focus DOM sur l’élément de sonde indiqué."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta il focus DOM sull’elemento di sonda indicato."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "指定した番号のプローブ項目へDOMフォーカスを移動します。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.tool.indexDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1부터 5까지의 프로브 항목 번호입니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probe item number from 1 through 5."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Número del elemento de sonda, del 1 al 5."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numéro de l’élément de sonde, de 1 à 5."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Numero dell’elemento di sonda, da 1 a 5."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1から5までのプローブ項目番号です。"
+          }
+        }
+      }
+    },
+    "webmcpProbe.tool.readDescription": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "현재 프로브 페이지의 지원 상태, 포커스, 최근 결과를 반환합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Return the current probe page support status, focus, and latest result."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devuelve el estado de compatibilidad, el foco y el último resultado de la página de sonda."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Renvoie l’état de prise en charge, le focus et le dernier résultat de la page de sonde."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restituisce lo stato del supporto, il focus e l’ultimo risultato della pagina di sonda."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "プローブページの対応状況、フォーカス、最新の結果を返します。"
           }
         }
       }

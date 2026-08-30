@@ -11,6 +11,8 @@
 
 ## 2026-08-30
 
+- **장소 상세 영업시간 한 줄(E24) — iOS 실험판 착수**: Google Places(New)로 카카오 장소를 `place_id`에 매칭(B1' 도로명 키 포함)한 뒤 오늘(KST) 구간을 "오늘 영업시간 06:00~23:00 (Google Maps)"로 낸다. 정보 없음·매칭 실패·쿼터 소진은 줄 없음(침묵), 단정형 표기 없음. 서버 `/api/places/hours` + Kit `PlaceHoursService` + `PlaceHoursLine`(`AppConfig.experimentalPlaceHoursEnabled`). 예산은 GCP 일일 쿼터(33·160)로 무료분 안에 고정, 영업시간 무캐시·`place_id`만 캐시(약관). TTS 격리 드리프트 가드 `place-hours-tts-drift.test.ts`. 실호출 게이트 5케이스 통과. spec `docs/superpowers/specs/2026-08-30-place-hours-google-design.md`. 조사·판정 이력(도달률·정확도·약관·예산, 2026-08-24~29)은 GitHub 이슈 #2와 spec이 정본이고 정식판 승격은 위원장 실사용 판정(`docs/BACKLOG.md` E24).
+
 - **WebMCP 시설 축 예산 버킷 분리(W2-B1)**: `get_place_info` `facilities`의 코레일·도시철도 두 소스가 한 60초 버킷을 순차 소비해 첫 호출이 항상 `partial`이던 결함. upstream별 버킷으로 나눴다(`stationFacilitiesMetro`). 배포본 재검증으로 첫 호출 `done`, `truncated`+`offset` 전량 회수, 거절 경로 `busy`·`staleResult`·`modalOpen` 통과 — `docs/research/RESEARCH-2026-08-29-webmcp-deployed-validation.md` §11.
 - **도시철도 시설 빈 줄 제거**: 필드가 전부 빈 시설 항목(교통약자 도우미)이 화면·도구에 빈 줄을 만들던 것을 `metroFacilityGroups`에서 떨어뜨린다(헤딩의 수는 유지).
 

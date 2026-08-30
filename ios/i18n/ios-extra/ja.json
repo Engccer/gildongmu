@@ -311,6 +311,12 @@
       "routeSwitched": "経路を変更しました。",
       "altNone": "ここからのほかの公共交通経路はありません。",
       "altRefetching": "条件が変わったため、ほかの経路を再検索します。"
+    },
+    "placeHours": {
+      "line": "本日の営業時間 {ranges} (Google Maps)",
+      "closed": "本日休業 (Google Maps)",
+      "allDay": "24時間",
+      "nextDay": "翌日 {time}"
     }
   },
   "beacon": {

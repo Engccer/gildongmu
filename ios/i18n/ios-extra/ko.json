@@ -311,6 +311,12 @@
       "routeSwitched": "경로를 바꿨습니다.",
       "altNone": "여기서 가는 다른 대중교통 경로가 없습니다.",
       "altRefetching": "조건이 바뀌어 다른 경로를 다시 조회합니다."
+    },
+    "placeHours": {
+      "line": "오늘 영업시간 {ranges} (Google Maps)",
+      "closed": "오늘 휴무 (Google Maps)",
+      "allDay": "24시간",
+      "nextDay": "다음 날 {time}"
     }
   },
   "beacon": {

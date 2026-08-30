@@ -20,6 +20,7 @@ export default async function PrivacyPage({
       <p className="mt-2">{t("search")}</p>
       <p className="mt-2">{t("dictation")}</p>
       <p className="mt-2">{t("activity")}</p>
+      <p className="mt-2">{t("placeHours")}</p>
       <p className="mt-2">{t("agent")}</p>
       <p className="mt-2">{t("analytics")}</p>
       <h3 className="mt-6 text-lg font-semibold">{t("contactHeading")}</h3>

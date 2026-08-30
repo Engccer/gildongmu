@@ -121,13 +121,13 @@
 
 ## 프로덕션 env 등록 현황
 
-**실측 2026-08-16 (`vercel env ls production`) — 16개 등록, 변동 없음**:
+**실측 2026-08-30 (`vercel env ls production`) — 17개 등록**(2026-08-30 `GOOGLE_PLACES_API_KEY` 추가):
 
-`KAKAO_REST_API_KEY` · `TOUR_API_KEY`(유일하게 Preview·Development 포함) · `DATA_GO_KR_API_KEY`(TOUR_API_KEY와 동일값) · `NCP_MAPS_CLIENT_ID` · `NCP_MAPS_CLIENT_SECRET` · `SEOUL_OPEN_DATA_KEY` · `SEOUL_SUBWAY_REALTIME_KEY` · `JUSO_CONFM_KEY` · `DEEPGRAM_API_KEY` · `PERPLEXITY_API_KEY` · `ODSAY_API_KEY` · `NAVER_LOCAL_CLIENT_ID` · `NAVER_LOCAL_CLIENT_SECRET` · `TMAP_APP_KEY` · `GEMINI_API_KEY` · `GOOGLE_CLOUD_TTS_API_KEY`
+`KAKAO_REST_API_KEY` · `TOUR_API_KEY`(유일하게 Preview·Development 포함) · `DATA_GO_KR_API_KEY`(TOUR_API_KEY와 동일값) · `NCP_MAPS_CLIENT_ID` · `NCP_MAPS_CLIENT_SECRET` · `SEOUL_OPEN_DATA_KEY` · `SEOUL_SUBWAY_REALTIME_KEY` · `JUSO_CONFM_KEY` · `DEEPGRAM_API_KEY` · `PERPLEXITY_API_KEY` · `ODSAY_API_KEY` · `NAVER_LOCAL_CLIENT_ID` · `NAVER_LOCAL_CLIENT_SECRET` · `TMAP_APP_KEY` · `GEMINI_API_KEY` · `GOOGLE_CLOUD_TTS_API_KEY` · `GOOGLE_PLACES_API_KEY`(E24 영업시간, iOS 실험판 전용 소비)
 
 ⚠ 이 목록은 **명령으로 재확인한다**. 재편 직전까지 `TMAP_APP_KEY`(18일 전 등록)와 `GOOGLE_CLOUD_TTS_API_KEY`가 이 문서에서 빠져 있었다 — 파일이 273KB로 불어 있는 동안 정작 현재 상태인 이 목록이 낡았다.
 
-⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 16개 밖의 것(`BASE_URL`·`GILDONGMU_*`·`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER`·A/B 하네스 `MODELS`·`ONLY`·`REPS`·실호출 게이트 `REALCALL`·`REALCALL_BASE`)은 전부 기본값이 있거나 로컬 전용이라 prod 등록이 불필요하다(2026-08-16 대조).
+⚠ **누락 점검의 술어는 `process\.env\.[A-Z_]+` 스캔이다**(문자열 검색이 아니라). 코드가 읽는 변수 중 위 17개 밖의 것(`BASE_URL`·`GILDONGMU_*`·`PLACES_PROVIDER`·`NEXT_PUBLIC_APP_IDENTIFIER`·A/B 하네스 `MODELS`·`ONLY`·`REPS`·실호출 게이트 `REALCALL`·`REALCALL_BASE`)은 전부 기본값이 있거나 로컬 전용이라 prod 등록이 불필요하다(2026-08-16 대조).
 
 ⚠ **env 변경 후 반드시 재배포** — 키는 배포 시점에 함수로 주입된다(`vercel deploy --prod --yes` 또는 push). 키만 추가하고 재배포하지 않으면 기존 함수는 옛 env를 본다.
 
