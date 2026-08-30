@@ -5,7 +5,10 @@ import {
   computeFinalApproach,
   presumedArrivalStep,
   relativeDirection,
+  PRESUMED_ARRIVAL_CAR,
+  PRESUMED_ARRIVAL_WALK,
   type PresumedArrivalInput,
+  type PresumedArrivalThresholds,
 } from "../final-approach";
 import fixtures from "./fixtures/final-approach-scenarios.json";
 import presumedFixture from "./fixtures/presumed-arrival-scenarios.json";
@@ -162,12 +165,25 @@ describe("relativeDirection 경계 소유권", () => {
 // ── 도착 추정(잊힌 세션 정리, spec 2026-08-13) ──────────────────────────────
 // 좌표는 위 공유 fixture 하니스의 toCoord(미터 오프셋 → 위경도)를 재사용한다.
 
+const PROFILES: Record<string, PresumedArrivalThresholds> = {
+  walk: PRESUMED_ARRIVAL_WALK,
+  car: PRESUMED_ARRIVAL_CAR,
+};
+
 describe("presumedArrivalStep (공유 fixture)", () => {
   for (const s of presumedFixture.stepScenarios) {
     it(s.name, () => {
-      expect(presumedArrivalStep(s.input as PresumedArrivalInput)).toBe(s.expect);
+      const thresholds = PROFILES[s.profile];
+      expect(thresholds, `미지 프로파일 ${s.profile}`).toBeDefined();
+      expect(presumedArrivalStep(s.input as PresumedArrivalInput, thresholds)).toBe(s.expect);
     });
   }
+
+  it("프로파일: car는 두절이 더 짧고 나머지는 같다(spec 2026-08-31 §3.2)", () => {
+    expect(PRESUMED_ARRIVAL_CAR.noFixSeconds).toBeLessThan(PRESUMED_ARRIVAL_WALK.noFixSeconds);
+    expect(PRESUMED_ARRIVAL_CAR.stationarySeconds).toBe(PRESUMED_ARRIVAL_WALK.stationarySeconds);
+    expect(PRESUMED_ARRIVAL_CAR.maxDistanceMeters).toBe(PRESUMED_ARRIVAL_WALK.maxDistanceMeters);
+  });
 
   it("무효 입력(음수·NaN·무한)은 null", () => {
     const base: PresumedArrivalInput = {
@@ -176,14 +192,14 @@ describe("presumedArrivalStep (공유 fixture)", () => {
       secondsSinceProgress: 0,
       lastKnownDistanceToDestMeters: 20,
     };
-    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: -1 })).toBeNull();
-    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: NaN })).toBeNull();
-    expect(presumedArrivalStep({ ...base, secondsSinceProgress: Infinity })).toBeNull();
+    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: -1 }, PRESUMED_ARRIVAL_WALK)).toBeNull();
+    expect(presumedArrivalStep({ ...base, secondsSinceUsableFix: NaN }, PRESUMED_ARRIVAL_WALK)).toBeNull();
+    expect(presumedArrivalStep({ ...base, secondsSinceProgress: Infinity }, PRESUMED_ARRIVAL_WALK)).toBeNull();
     expect(
-      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: NaN }),
+      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: NaN }, PRESUMED_ARRIVAL_WALK),
     ).toBeNull();
     expect(
-      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: -5 }),
+      presumedArrivalStep({ ...base, lastKnownDistanceToDestMeters: -5 }, PRESUMED_ARRIVAL_WALK),
     ).toBeNull();
   });
 });

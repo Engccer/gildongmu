@@ -932,10 +932,17 @@ private func phaseName(_ p: GuidePhase) -> String {
     #expect(displayEffectiveD(d: 40, baselineD: 50) == 40) // 기준점 이전(방어)
 }
 
-@Test("도착 추정은 walk 전용이다 (spec 2026-08-13 §4)")
-func presumedArrivalGateIsWalkOnly() {
-    #expect(GuideTuning.walk.presumedArrivalEnabled)
-    #expect(!GuideTuning.car.presumedArrivalEnabled)
+@Test("세션 종료 튜닝 (spec 2026-08-31): 도착 추정 프로파일·기하 없는 진입·안전망 무이동 축")
+func sessionEndTuning() {
+    #expect(GuideTuning.walk.presumedArrival == .walk)
+    #expect(GuideTuning.car.presumedArrival == .car)
+    #expect(GuideTuning.carDriver.presumedArrival == .car)
+    #expect(!GuideTuning.walk.entersFinalApproachWithoutGeometry)
+    #expect(GuideTuning.car.entersFinalApproachWithoutGeometry)
+    #expect(GuideTuning.carDriver.entersFinalApproachWithoutGeometry)
+    #expect(GuideTuning.walk.sessionIdleStationaryAxis)
+    #expect(!GuideTuning.car.sessionIdleStationaryAxis)
+    #expect(!GuideTuning.carDriver.sessionIdleStationaryAxis)
 }
 
 

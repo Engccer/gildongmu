@@ -121,9 +121,17 @@ public struct GuideTuning: Sendable, Equatable {
     /// 않는다 — 15m/s면 그 대역을 1.3초에 통과하고 fix 하나당 진행거리가 15m씩 뛴다.
     /// 차량에서의 헛경고율은 **측정된 적이 없다.**
     public var courseAxisEnabled: Bool
-    /// 도착 추정 자동 종료(spec 2026-08-13). **보행 전용** — 자동차는 정체 5분 정지·
-    /// 지하차도가 일상이라 도보 상수를 공유하면 주행 중 안내가 끊긴다(설계 리뷰 C5).
-    public var presumedArrivalEnabled: Bool
+    /// 도착 추정 자동 종료의 임계 프로파일(spec 2026-08-13, 수단별 분리는 2026-08-31 §3).
+    /// nil = 끔. 자동차는 도보 상수를 공유하지 않는다 — 정체 5분 정지·지하차도가 일상이라
+    /// 두절 축은 지하 주차장 모양(120초)으로 따로 잰다(K2 설계 리뷰 C5의 근거는 프로파일 분리로 해소).
+    public var presumedArrival: PresumedArrivalThresholds?
+    /// `finalApproach` 기하가 없어도 경로 종점 150m에서 최종 접근 국면에 들어가는가(spec 2026-08-31 §2).
+    /// 자동차 라우트는 기하를 싣지 않으므로 true — 아니면 `carArrivalStep`이 도달 불가다(K2-a 실사고).
+    /// 도보는 false: 기하 없는 응답(구버전)은 간략 인계로 남긴다.
+    public var entersFinalApproachWithoutGeometry: Bool
+    /// 국면 무관 세션 안전망(`SessionIdle.swift`)의 무이동 축을 켜는가. 자동차는 false —
+    /// 정체·휴게소 정차와 구분할 수 없다. 두절 축(600초)은 両수단 공통(spec 2026-08-31 §4).
+    public var sessionIdleStationaryAxis: Bool
     /// 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준(웹 `maxSpeedMps` 미러).
     /// 직전 fix 대비 진행거리 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다.
     ///
@@ -154,7 +162,9 @@ public struct GuideTuning: Sendable, Equatable {
         handoffDistM: handoffDistMeters, handoffRearmM: handoffRearmMeters,
         reacquireTieBreak: false, speedSuggest: true,
         courseAxisEnabled: true,
-        presumedArrivalEnabled: true,
+        presumedArrival: .walk,
+        entersFinalApproachWithoutGeometry: false,
+        sessionIdleStationaryAxis: true,
         maxSpeedMps: MotionConstants.maxWalkSpeedMps
     )
 
@@ -175,8 +185,9 @@ public struct GuideTuning: Sendable, Equatable {
         reacquireTieBreak: true, speedSuggest: false,
         // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
         courseAxisEnabled: false,
-        // ⚠ 정체 5분 정지가 일상이라 도보 상수로는 주행 중 종료가 된다(설계 리뷰 C5).
-        presumedArrivalEnabled: false,
+        presumedArrival: .car,
+        entersFinalApproachWithoutGeometry: true,
+        sessionIdleStationaryAxis: false,
         maxSpeedMps: MotionConstants.maxCarSpeedMps
     )
 

@@ -1619,10 +1619,21 @@ final class BeaconModel {
             handleDetail(fix: fix, route: route, motion: motion, age: age, now: now)
             return
         }
+        // 간략 경로 계측(spec 2026-08-31 §5): 거부되는 fix까지 fix당 1줄. 종전엔 이 경로가 무계측이라
+        // 08-29 자동차 세션이 진입 뒤 몇 시간을 산 채로도 로그 0줄이었다. `nearby`는 이 fix 처리 전 값.
+        let usable = isUsableFix(accuracy: fix.accuracy, ageSeconds: age)
+        guideDiagLog(
+            "brief t=\(String(format: "%.1f", now)) "
+                + "lat=\(String(format: "%.6f", fix.lat)) lng=\(String(format: "%.6f", fix.lng)) "
+                + "acc=\(String(format: "%.1f", fix.accuracy)) motion=\(motion) "
+                + "age=\(String(format: "%.1f", age)) usable=\(usable) "
+                + "dist=\(String(format: "%.1f", haversineMeters(lat1: fix.lat, lng1: fix.lng, lat2: dest.lat, lng2: dest.lng))) "
+                + "nearby=\(beaconState.nearby)"
+        )
         // 캐시 위치와 무효 좌표는 앵커에서 배제한다(판정은 Kit 순수 함수). ⚠ 종전에는
         // 여기서 조용히 버렸는데, 그 침묵도 커버리지 대상이다 — 워치독(8초)이 잡기
         // 전까지의 공백을 신뢰 불가 톤이 메운다.
-        guard isUsableFix(accuracy: fix.accuracy, ageSeconds: age) else {
+        guard usable else {
             routeTone(
                 ToneLayerInput(unreliable: true, arrived: arrivedNow), now: now
             )
@@ -1878,11 +1889,15 @@ final class BeaconModel {
         // ⚠ 오프셋이 하한 미만이면(`tooClose`) 종점 도달이 곧 목적지 도착이라 최종
         //   접근을 건너뛴다(§3.2). 말할 배치가 없는데 진입 서술을 내면 "약 8미터"
         //   다음에 곧바로 도착이 붙어 잉여다.
-        guard let geometry = finalApproachGeometry,
-              geometry.unavailableReason != .tooClose
-        else {
-            // 기하가 없으면(구버전 응답) 말할 배치 정보가 없다. 종전 인계 그대로
-            // 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
+        // 기하가 없거나 너무 가까우면(도보 구버전 응답·tooClose) 말할 배치 정보가 없다.
+        // 도보는 종전 인계 그대로 간략(비콘)으로 넘겨 거리 추적만 남긴다 — 침묵보다 낫다.
+        // 자동차는 기하 없이도 국면에 들어간다(`GuideTuning.entersFinalApproachWithoutGeometry`,
+        // spec 2026-08-31 §2): 자동차 라우트는 기하를 싣지 않아 이 분기가 곧 `carArrivalStep`
+        // 도달 불가였다(K2-a 실사고 — 세션이 새벽까지 살아 있었다). 진입 서술은 기하가 있어야
+        // 성립하므로 아래 handleFinalApproach의 서술 분기가 nil 기하에서 스스로 건너뛴다.
+        let usableGeometry = finalApproachGeometry.flatMap { $0.unavailableReason == .tooClose ? nil : $0 }
+        guard usableGeometry != nil || tuning.entersFinalApproachWithoutGeometry else {
+            guideDiagLog("briefHandoff reason=noGeometry")
             mode = .brief
             let text = appLocalized("guide.handoff")
             statusText = text
@@ -1903,7 +1918,7 @@ final class BeaconModel {
                 lat1: c.lat, lng1: c.lng, lat2: dest.lat, lng2: dest.lng
             )
         }
-        guideDiagLog("finalEnter offset=\(String(format: "%.1f", geometry.offsetMeters))")
+        guideDiagLog("finalEnter offset=\(usableGeometry.map { String(format: "%.1f", $0.offsetMeters) } ?? "-")")
     }
 
     /// 최종 접근 fix 처리(§3.4). **거리는 항상 현재 fix → 목적지 직선거리**다 —
@@ -2022,10 +2037,10 @@ final class BeaconModel {
         // 뒤에만 본다(spec 2026-08-13 §4).
         if maybePresumeArrival(now: now) { return }
 
-        guard let last = lastFinalTickAt, now - last >= finalApproachIntervalSeconds else {
-            if lastFinalTickAt == nil { lastFinalTickAt = now }
-            return
-        }
+        // 진입 서술이 있으면 그것이 `lastFinalTickAt`을 세우고 위에서 돌아갔으므로 여기는 서술
+        // 15초 뒤부터다(도보 동작 불변). 서술이 없는 진입(자동차, 기하 없음)은 nil이라 진입 fix에서
+        // 곧바로 첫 통지가 난다 — 15초 침묵은 시속 36km면 150m, 국면 전체가 무음이 된다(spec 2026-08-31 §2).
+        if let last = lastFinalTickAt, now - last < finalApproachIntervalSeconds { return }
         lastFinalTickAt = now
         let text = GuideText.finalApproachTick(
             distance: distance,
@@ -2054,17 +2069,19 @@ final class BeaconModel {
     /// 국면 무관 세션 안전망(2026-08-26 위원장 실사용 — 출근 도보 안내를 끄지 않아 몇 시간이고
     /// 켜져 있었다). 도착 추정은 최종 접근 국면에 들어간 세션만 정리하므로 그 문을 못 지난
     /// 세션(GPS 두절·이탈 상태로 종점 접근·간략 강등·150m 밖 실내 진입)은 이 축만이 끝낸다.
-    /// 도보 세션 전용(자동차 정체 정차는 정상이라 도착 추정과 같은 이유로 제외).
-    /// 워치독이 유일한 도달 경로다(noFix는 fix가 안 와서 fix 경로에 걸 수 없다). true = 끝냈다.
+    /// 자동차는 두절 축만이다(`GuideTuning.sessionIdleStationaryAxis`, spec 2026-08-31 §4) — 무이동은
+    /// 정체·휴게소 정차와 구분할 수 없다. 워치독이 유일한 도달 경로다(noFix는 fix가 안 와서 fix 경로에
+    /// 걸 수 없다). true = 끝냈다.
     @discardableResult
     private func maybeEndIdleSession(now: Double) -> Bool {
         // 승차 전 도보(prewalk)는 제외 — fix 두절 10분은 대개 지하 역사 진입이고, 그때 끝내면 바로
         // 그 경우를 위한 "승차역 도착" 선언 버튼까지 사라진다(A25 spec §2).
-        guard isTracking, sessionKind == .walk, prewalkTarget == nil, let startedAt else { return false }
+        guard isTracking, prewalkTarget == nil, let startedAt else { return false }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
         guard let reason = sessionIdleStep(
-            secondsSinceUsableFix: now - fixRef, secondsSinceProgress: now - progressRef
+            secondsSinceUsableFix: now - fixRef,
+            secondsSinceProgress: tuning.sessionIdleStationaryAxis ? now - progressRef : nil
         ) else { return false }
         guideDiagLog("sessionIdleEnd reason=\(reason.rawValue)")
         let text = appLocalized("guide.endedIdle")
@@ -2086,7 +2103,7 @@ final class BeaconModel {
     /// 꼬리로 갚아진다 — statusText 대입이 stop() 뒤인 것이 그 전제다(설계 리뷰 M7).
     @discardableResult
     private func maybePresumeArrival(now: Double) -> Bool {
-        guard isTracking, inFinalApproach, tuning.presumedArrivalEnabled,
+        guard isTracking, inFinalApproach, let thresholds = tuning.presumedArrival,
               let dest, let enteredAt = finalApproachEnteredAt
         else { return false }
         let fixRef = max(enteredAt, lastFixAt ?? enteredAt)
@@ -2095,7 +2112,8 @@ final class BeaconModel {
             inFinalApproach: true,
             secondsSinceUsableFix: now - fixRef,
             secondsSinceProgress: now - progressRef,
-            lastKnownDistanceToDestMeters: lastUsableDistanceToDest
+            lastKnownDistanceToDestMeters: lastUsableDistanceToDest,
+            thresholds: thresholds
         ) else { return false }
         guideDiagLog(
             "presumedArrival reason=\(reason.rawValue) "
@@ -2109,6 +2127,10 @@ final class BeaconModel {
         // 확정 도착의 종(지금 도착 중이라는 실시간 신호)과 뜻이 다르다. 백그라운드 종료는
         // 무음이고, 복귀 시 도착 화면과 상환 낭독이 종료 사실을 알린다.
         if isForeground { playTone(.nearby) }
+        // 자동차 추정 도착은 확정 도착과 같은 모양(종료 화면 + 도보 인계 버튼, spec 2026-08-31 §3.4)이라
+        // 수단을 stop() **앞**에서 기록한다(B10 동형). 도보 경로는 대입을 지나지 않는다 — 종료 후
+        // 상태가 종전과 같아야 한다(도보 동결).
+        if sessionKind == .car { arrivalSessionKind = .car }
         pendingEndReason = .arrived
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
         if prewalk == nil {

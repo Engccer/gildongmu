@@ -22,6 +22,11 @@ import {
 } from "./course-derivation";
 import { MAX_CAR_SPEED_MPS, MAX_WALK_SPEED_MPS } from "./guide-motion";
 import {
+  PRESUMED_ARRIVAL_CAR,
+  PRESUMED_ARRIVAL_WALK,
+  type PresumedArrivalThresholds,
+} from "./final-approach";
+import {
   globalCandidates,
   projectOnPolyline,
   type GuideRoute,
@@ -207,10 +212,22 @@ export interface GuideTuning {
    */
   courseAxisEnabled: boolean;
   /**
-   * 도착 추정 자동 종료(spec 2026-08-13). **보행 전용** — 자동차는 정체 5분 정지·
-   * 지하차도가 일상이라 도보 상수를 공유하면 주행 중 안내가 끊긴다(설계 리뷰 C5).
+   * 도착 추정 자동 종료의 임계 프로파일(spec 2026-08-13, 수단별 분리는 2026-08-31 §3).
+   * null = 끔. 자동차는 도보 상수를 공유하지 않는다 — 정체 5분 정지·지하차도가 일상이라
+   * 두절 축은 지하 주차장 모양(120초)으로 따로 잰다(K2 설계 리뷰 C5의 근거는 프로파일 분리로 해소).
    */
-  presumedArrivalEnabled: boolean;
+  presumedArrival: PresumedArrivalThresholds | null;
+  /**
+   * `finalApproach` 기하가 없어도 경로 종점 150m에서 최종 접근 국면에 들어가는가(spec 2026-08-31 §2).
+   * 자동차 라우트는 기하를 싣지 않으므로 true — 아니면 `carArrivalStep`이 도달 불가다(K2-a 실사고).
+   * 도보는 false: 기하 없는 응답(구버전)은 간략 인계로 남긴다.
+   */
+  entersFinalApproachWithoutGeometry: boolean;
+  /**
+   * 국면 무관 세션 안전망(`session-idle.ts`)의 무이동 축을 켜는가. 자동차는 false —
+   * 정체·휴게소 정차와 구분할 수 없다. 두절 축(600초)은 両수단 공통(spec 2026-08-31 §4).
+   */
+  sessionIdleStationaryAxis: boolean;
   /**
    * 수단별 물리 속도 상한(m/s) — 투영 점프 판정의 기준. 직전 fix 대비 진행거리
    * 증가가 `maxSpeedMps × dt × 1.5`를 넘으면 투영이 튄 것이다(여유 계수 1.5 —
@@ -254,7 +271,9 @@ export const WALK_TUNING: GuideTuning = {
   reacquireTieBreak: false,
   speedSuggest: true,
   courseAxisEnabled: true,
-  presumedArrivalEnabled: true,
+  presumedArrival: PRESUMED_ARRIVAL_WALK,
+  entersFinalApproachWithoutGeometry: false,
+  sessionIdleStationaryAxis: true,
   maxSpeedMps: MAX_WALK_SPEED_MPS,
 };
 
@@ -296,8 +315,9 @@ export const CAR_TUNING: GuideTuning = {
   speedSuggest: false,
   // ⚠ 차량 궤적으로 측정된 적이 없다. 켜려면 먼저 재라(위 필드 주석).
   courseAxisEnabled: false,
-  // ⚠ 정체 5분 정지가 일상이라 도보 상수로는 주행 중 종료가 된다(설계 리뷰 C5).
-  presumedArrivalEnabled: false,
+  presumedArrival: PRESUMED_ARRIVAL_CAR,
+  entersFinalApproachWithoutGeometry: true,
+  sessionIdleStationaryAxis: false,
   maxSpeedMps: MAX_CAR_SPEED_MPS,
 };
 

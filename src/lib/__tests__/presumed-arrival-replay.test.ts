@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import sessionFixture from "./fixtures/guide-diag-2026-08-13-final-approach.json";
-import { presumedArrivalStep } from "../final-approach";
+import { PRESUMED_ARRIVAL_WALK, presumedArrivalStep } from "../final-approach";
 
 /**
  * 실사고 리플레이 게이트(spec 2026-08-13 §6). 17:03 KST 귀가 세션 —
@@ -40,7 +40,7 @@ describe("도착 추정 리플레이 (2026-08-13 실사고)", () => {
           secondsSinceUsableFix: 0,
           secondsSinceProgress: 0,
           lastKnownDistanceToDestMeters: ENTRY_PERP_M,
-        }),
+        }, PRESUMED_ARRIVAL_WALK),
       ).toBeNull();
     }
   });
@@ -54,7 +54,7 @@ describe("도착 추정 리플레이 (2026-08-13 실사고)", () => {
           secondsSinceUsableFix: tick - lastT,
           secondsSinceProgress: tick - lastT,
           lastKnownDistanceToDestMeters: ENTRY_PERP_M,
-        }),
+        }, PRESUMED_ARRIVAL_WALK),
       ).toBeNull();
     }
     expect(
@@ -63,7 +63,7 @@ describe("도착 추정 리플레이 (2026-08-13 실사고)", () => {
         secondsSinceUsableFix: 180,
         secondsSinceProgress: 180,
         lastKnownDistanceToDestMeters: ENTRY_PERP_M,
-      }),
+      }, PRESUMED_ARRIVAL_WALK),
     ).toBe("noFix");
   });
 });
