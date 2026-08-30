@@ -124,6 +124,7 @@ final class GuideSession {
             }
         case .startFailed:
             // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
+            beacon.clearPrewalk()  // 동기 거부 분기는 begin() Task를 지나지 않아 표식이 남는다
             transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"))
             transit.startAfterPrewalk(
                 transitRoute: context.route, destinationLabel: context.destinationLabel,

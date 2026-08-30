@@ -89,11 +89,17 @@ function tick(ms: number) {
   });
 }
 
+/** A25 세션 종료 통지 스파이. */
+const endSpy = vi.fn<(reason: "arrived" | "ended") => void>();
+
 function Harness() {
-  const g = useRouteGuide(DEST, "walk", false);
+  const g = useRouteGuide(DEST, "walk", false, {
+    onSessionEnd: endSpy,
+  });
   return (
     <div>
       <button onClick={g.start}>start</button>
+      <button onClick={g.stop}>stop</button>
       <p data-testid="status">{g.status}</p>
       <p data-testid="live">{g.liveText}</p>
     </div>
@@ -223,6 +229,7 @@ describe("최종 접근 배선", () => {
   });
 
   it("도착 반경 안에 들어오면 1회 통지하고 세션이 끝난다", async () => {
+    endSpy.mockClear();
     await walkToEndpoint();
     emitFix(198, 0);
     tick(16000);
@@ -230,6 +237,20 @@ describe("최종 접근 배선", () => {
 
     expect(live()).toBe(ko.guide.arrived);
     expect(status()).not.toBe("tracking");
+    // A25: 종료 통지는 "arrived" 1회(같은 이벤트 안에서 도착 문장 커밋 뒤 호출 — 렌더 전이라
+    // 콜백 시점의 state로는 순서를 관찰할 수 없고, 도착 문장이 남아 있는 것이 그 증거다).
+    expect(endSpy).toHaveBeenCalledTimes(1);
+    expect(endSpy).toHaveBeenCalledWith("arrived");
+  });
+
+  it("사용자 중지는 종료 통지 \"ended\" 1회(A25)", async () => {
+    endSpy.mockClear();
+    await walkToEndpoint();
+    act(() => {
+      screen.getByText("stop").click();
+    });
+    expect(endSpy).toHaveBeenCalledTimes(1);
+    expect(endSpy).toHaveBeenCalledWith("ended");
   });
 
   it("신뢰 불가 fix에서는 거리·방향을 말하지 않는다(도착도 선언하지 않는다)", async () => {
