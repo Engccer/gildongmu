@@ -101,7 +101,7 @@ function liveOf(target?: string, anchor?: string): WalkLiveFragments | undefined
 export function rewriteWalkGuidanceWithLive(
   description: string,
   meters?: number,
-): { text: string; live?: WalkLiveFragments } {
+): { text: string; live?: WalkLiveFragments; crossing?: true } {
   const move = MOVE.exec(description);
   if (move) {
     const [, head = "", turn, dist, road] = move;
@@ -163,6 +163,9 @@ export function rewriteWalkGuidanceWithLive(
     return {
       text: `${join(from, to, action)}, ${kind} 길이 ${dist}`,
       live: liveOf(targetFrom(to), anchorFrom(from)),
+      // 구간 전체가 횡단인 스텝은 이 분기뿐이다(A26). 표시 계층은 이 플래그로 횡단 유닛을
+      // 세운다 — 문장의 "건너"를 다시 찾지 않는다(언어 무관).
+      crossing: true,
     };
   }
 
@@ -199,8 +202,16 @@ export function rewriteWalkBriefing(
   includeLive: boolean,
 ): WalkRouteBriefing {
   const steps: WalkRouteStep[] = briefing.steps.map((step) => {
-    const { text, live } = rewriteWalkGuidanceWithLive(step.description, step.distanceMeters);
-    return { ...step, description: text, ...(includeLive && live ? { live } : {}) };
+    const { text, live, crossing } = rewriteWalkGuidanceWithLive(
+      step.description,
+      step.distanceMeters,
+    );
+    return {
+      ...step,
+      description: text,
+      ...(includeLive && live ? { live } : {}),
+      ...(includeLive && crossing ? { crossing } : {}),
+    };
   });
   return { ...briefing, steps };
 }

@@ -7,6 +7,7 @@ vi.mock("../../env", () => ({ env: { DATA_GO_KR_API_KEY: "test-key" } }));
 
 import {
   displayLineName,
+  lineCoreOf,
   computeServiceDailyType, deriveFirstLast, fetchStationTimetable,
   classifyDirection, combineLineCoverage,
 } from "../tago-subway";
@@ -16,6 +17,12 @@ describe("displayLineName", () => {
     expect(displayLineName("5호선")).toBe("5호선");
     expect(displayLineName("수인분당")).toBe("수인분당선");
     expect(displayLineName("GTX-A")).toBe("GTX-A선");
+  });
+  it("lineCoreOf: 서버가 '선'을 덧붙인 경우에만 원형을 돌려준다(A26 — 클라이언트 접미 조립 근거)", () => {
+    expect(lineCoreOf("5호선")).toBeUndefined();
+    expect(lineCoreOf("경의중앙선")).toBeUndefined();
+    expect(lineCoreOf("수인분당")).toBe("수인분당");
+    expect(lineCoreOf(" GTX-A ")).toBe("GTX-A");
   });
 });
 

@@ -128,11 +128,47 @@ describe("attachStepActions", () => {
       {
         distanceMeters: 1,
         durationSeconds: 1,
-        steps: [{ description: "x", action: "left", turnType: 12, roadNameKo: "천호대로" }],
+        steps: [
+          { description: "x", action: "left", turnType: 12, roadNameKo: "천호대로", crossing: true },
+        ],
       },
       false,
     );
     expect(out.steps[0]).toEqual({ description: "x" });
+  });
+
+  it("Tmap 횡단 행동 스텝(turnType 보유)은 기하 응답에서 crossing=true를 얻는다(A26)", () => {
+    const out = attachStepActions(
+      {
+        distanceMeters: 1,
+        durationSeconds: 1,
+        steps: [
+          { description: "Cross the crosswalk, then walk 30m", action: "crosswalk", turnType: 211 },
+          { description: "Take the underpass, then walk 20m", action: "underpass", turnType: 126 },
+          { description: "Turn left, then walk 40m", action: "left", turnType: 12 },
+        ],
+      },
+      true,
+    );
+    expect(out.steps.map((s) => s.crossing)).toEqual([true, true, undefined]);
+  });
+
+  it("카카오 스텝은 문장 분류가 crosswalk여도 crossing을 만들지 않는다 — 지명 '횡단보도'는 횡단이 아니다", () => {
+    const out = attachStepActions(
+      {
+        distanceMeters: 1,
+        durationSeconds: 1,
+        steps: [
+          { description: "천호역 횡단보도까지 100m 이동" },
+          // 재작성 단계가 이미 표시한 진짜 횡단 구간은 그대로 지난다.
+          { description: "횡단보도를 건너세요, 횡단보도 길이 21m", crossing: true },
+        ],
+      },
+      true,
+    );
+    expect(out.steps[0].action).toBe("crosswalk");
+    expect("crossing" in out.steps[0]).toBe(false);
+    expect(out.steps[1]).toMatchObject({ action: "crosswalk", crossing: true });
   });
 
   it("서버 투영 행동이 문장 분류보다 우선한다", () => {

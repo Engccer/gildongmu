@@ -32,6 +32,8 @@ export interface LiveStepInput {
   live?: { target?: string; anchor?: string };
   /** 서버 투영 행동(자동차 `turnType`, K2 §2.3). 있으면 문장 분류 대신 쓴다. */
   action?: WalkAction;
+  /** 서버 횡단 구간 플래그(A26, `WalkRouteStep.crossing`). 부재는 "횡단 구간 아님". */
+  crossing?: boolean;
 }
 
 
@@ -55,14 +57,15 @@ export interface DisplayUnit {
 }
 
 /**
- * 횡단 유닛 판정. walkStepAction만으로는 부족하다 — "횡단보도"는 지명으로도
- * 등장하므로(회전 우선순위가 회전 문장은 걸러 주지만, 회전 없는 "천호역 횡단보도까지
- * 100m 이동"이 남는다) 재작성 행동문("…건너세요")까지 요구한다.
- * export는 walk 주기 통지(`walkPeriodicLine`)의 "횡단 중 직진 오지시 금지" 분기 몫 —
- * 판정을 복제하지 않는다(Kit `isCrossingStep` 미러).
+ * 횡단 유닛 판정 — 행동 + **서버 횡단 구간 플래그**(`WalkRouteStep.crossing`, A26).
+ * 행동만으로는 부족하다: "횡단보도"는 지명으로도 등장하므로(회전 우선순위가 회전 문장은
+ * 걸러 주지만, 회전 없는 "천호역 횡단보도까지 100m 이동"이 남는다) 구간 전체가 횡단인지는
+ * 서버가 구조로 판정해 실어 준다. ⚠ 종전의 재작성 행동문("…건너세요") 부분 문자열 판정은
+ * ko 전용이라 en 안내(Tmap 영어 문장)에서 횡단 유닛이 한 번도 서지 않았다 — 되돌리지 말 것.
+ * Kit `isCrossingStep` 미러, 공유 fixture의 `crossing`이 ko 동작 불변을 잠근다.
  */
-export function isCrossingStep(action: WalkAction | null, description: string): boolean {
-  return (action === "crosswalk" || action === "underpass") && description.includes("건너");
+export function isCrossingStep(action: WalkAction | null, crossing: boolean | undefined): boolean {
+  return (action === "crosswalk" || action === "underpass") && crossing === true;
 }
 
 /** `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — 2026-08-23부터 walk·car 모두 `step`). 기본값 없음. */
@@ -74,7 +77,7 @@ export function buildDisplayUnits(
   const groups: { indices: number[]; crossing: boolean; action: WalkAction | null }[] = [];
   for (let i = 0; i < steps.length; i++) {
     const action = actionOf(steps[i]);
-    const crossing = isCrossingStep(action, steps[i].description);
+    const crossing = isCrossingStep(action, steps[i].crossing);
     const prev = groups[groups.length - 1];
     // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
     // 국면이 유닛 단위라 꼬리를 붙이면 다 건넌 뒤에도 "건너세요"가 남는다.
@@ -107,7 +110,7 @@ export function buildDisplayUnits(
 /** 리듀서 스팬(StepSpan)과 응답 스텝(live)을 index로 짝지어 표시 입력을 만든다. */
 export function liveStepsFrom(
   route: GuideRoute,
-  steps: { live?: { target?: string; anchor?: string } }[],
+  steps: { live?: { target?: string; anchor?: string }; crossing?: boolean }[],
 ): LiveStepInput[] {
   return route.steps.map((s) => ({
     description: s.description,
@@ -115,6 +118,7 @@ export function liveStepsFrom(
     endD: s.endD,
     ...(steps[s.index]?.live ? { live: steps[s.index].live } : {}),
     ...(s.action === undefined ? {} : { action: s.action }),
+    ...(steps[s.index]?.crossing ? { crossing: true } : {}),
   }));
 }
 

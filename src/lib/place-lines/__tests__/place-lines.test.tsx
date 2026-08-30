@@ -237,10 +237,85 @@ describe("place-lines == 화면 문장", () => {
     };
     stubFetch({ detail: d });
     const { container } = render(<BarrierFreeInfo lat={37.5} lng={127} name="경복궁" />);
-    await screen.findByText(/휠체어 대여/);
-    const lines = barrierFreeLines(d);
+    await screen.findByText(/안내소에서 대여 가능/);
+    const lines = barrierFreeLines(d, tFor("barrierFreeInfo"));
     const ps = Array.from(container.querySelectorAll('p[lang="ko"]')).map((p) => p.textContent);
     expect(ps).toEqual(lines.map((l) => l.text));
-    expect(lines[0]).toEqual({ label: "휠체어 대여", value: "안내소에서 대여 가능", text: "휠체어 대여 안내소에서 대여 가능" });
+    // 라벨은 서버 한글이 아니라 key→t() 매핑(A26). 값은 서버 원문.
+    expect(lines[0]).toEqual({
+      label: "barrierFreeInfo.facility.wheelchair",
+      value: "안내소에서 대여 가능",
+      text: "barrierFreeInfo.facility.wheelchair 안내소에서 대여 가능",
+    });
+  });
+
+  it("무장애 미지 key는 서버 라벨로 폴백한다(신규 필드가 빈 라벨로 떨어지지 않게)", () => {
+    const lines = barrierFreeLines(
+      { contentId: "1", name: "x", facilities: [{ key: "newfield", label: "새 편의", value: "있음" }] },
+      tFor("barrierFreeInfo"),
+    );
+    expect(lines[0]).toEqual({ label: "새 편의", value: "있음", text: "새 편의 있음" });
+  });
+
+  it("서울 지하철 시설 — 서버 구조화 조각(parts)이 있으면 클라이언트가 자기 언어로 조립한다(A26)", () => {
+    const f: Metro = {
+      stationName: "강동",
+      groups: [
+        {
+          kind: "elevatorLocation",
+          facilities: [
+            {
+              name: "역 중심 기준 북동쪽 약 120m, 성내동",
+              location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined,
+              parts: { compass: "ne", meters: 120, dong: "성내동" },
+            },
+          ],
+        },
+        {
+          kind: "voiceGuide",
+          facilities: [
+            {
+              name: "3번 출구 5호선", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined,
+              parts: { location: "3번 출구", line: "5" },
+            },
+            {
+              name: "4번 출구", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined,
+              parts: { location: "4번 출구" },
+            },
+          ],
+        },
+        {
+          kind: "restroom",
+          facilities: [
+            {
+              name: "장애인화장실", location: "대합실", floors: "지하1층", operatingStatus: undefined,
+              detail: "남녀구분 · 휠체어 접근 가능",
+              parts: { restroomType: "남녀구분", wheelchairAccessible: true },
+            },
+          ],
+        },
+      ],
+    } as Metro;
+    const groups = metroFacilityGroups(f, tFor("subway"));
+    expect(groups[0].lines).toEqual([
+      'subway.elevatorAt{"direction":"subway.direction.ne","distance":"120m"}, 성내동',
+    ]);
+    expect(groups[1].lines).toEqual(['3번 출구, subway.lineNumber{"line":"5"}', "4번 출구"]);
+    expect(groups[2].lines).toEqual(["장애인화장실, 대합실, 지하1층, 남녀구분, subway.wheelchairAccessible"]);
+  });
+
+  it("시간표 — 서버가 '선'을 덧붙인 노선(lineCore)은 클라이언트가 접미를 자기 언어로 단다(A26)", () => {
+    const tt: Timetable = {
+      stationName: "왕십리",
+      dailyType: "weekday",
+      lines: [
+        { lineName: "수인분당선", lineCore: "수인분당", coverage: "unknown", directions: [] },
+        { lineName: "2호선", coverage: "unknown", directions: [] },
+      ],
+    };
+    const items = timetableLineItems(tt, tFor("timetable"), false);
+    expect(items[0].line).toBe('timetable.lineSuffixed{"name":"수인분당"}');
+    expect(items[0].text).toBe('timetable.coverage.unknown{"line":"timetable.lineSuffixed{\\"name\\":\\"수인분당\\"}"}');
+    expect(items[1].line).toBe("2호선");
   });
 });

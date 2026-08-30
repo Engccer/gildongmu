@@ -29,13 +29,50 @@ struct BarrierFreeInfoSection: View {
         if let detail = model.detail {
             Section {
                 ForEach(detail.facilities, id: \.key) { facility in
-                    // 한 줄=한 객체: 라벨+값 단일 텍스트(웹 미러, span 분절 금지)
-                    Text("\(facility.label) \(facility.value)")
+                    // 한 줄=한 객체: 라벨+값 단일 텍스트(웹 미러, span 분절 금지).
+                    // 라벨은 key→앱 언어(A26), 값은 서버 한국어 서술 원문.
+                    Text("\(barrierFreeFacilityLabel(facility)) \(facility.value)")
                 }
                 Text(appLocalized("barrierFreeInfo.source"))
             } header: {
                 Text(appLocalized("barrierFreeInfo.heading")).accessibilityAddTraits(.isHeader)
             }
         }
+    }
+}
+
+/// 무장애 편의시설 라벨 — 응답 `key`를 `barrierFreeInfo.facility.*`로(A26, 웹 `barrierFreeLines` 미러).
+/// 모르는 key는 서버 한글 라벨 폴백(빈 라벨보다 낫다). 키 린터(`check-xcstrings-keys.mjs`)가 리터럴만
+/// 스캔하므로 `appLocalized(변수)`가 아니라 switch로 27종을 되받는다(`transitAlternativeName` 선례).
+func barrierFreeFacilityLabel(_ facility: BarrierFreeFacility) -> String {
+    switch facility.key {
+    case "wheelchair": return appLocalized("barrierFreeInfo.facility.wheelchair")
+    case "restroom": return appLocalized("barrierFreeInfo.facility.restroom")
+    case "elevator": return appLocalized("barrierFreeInfo.facility.elevator")
+    case "parking": return appLocalized("barrierFreeInfo.facility.parking")
+    case "route": return appLocalized("barrierFreeInfo.facility.route")
+    case "exit": return appLocalized("barrierFreeInfo.facility.exit")
+    case "publictransport": return appLocalized("barrierFreeInfo.facility.publictransport")
+    case "ticketoffice": return appLocalized("barrierFreeInfo.facility.ticketoffice")
+    case "auditorium": return appLocalized("barrierFreeInfo.facility.auditorium")
+    case "room": return appLocalized("barrierFreeInfo.facility.room")
+    case "handicapetc": return appLocalized("barrierFreeInfo.facility.handicapetc")
+    case "braileblock": return appLocalized("barrierFreeInfo.facility.braileblock")
+    case "audioguide": return appLocalized("barrierFreeInfo.facility.audioguide")
+    case "brailepromotion": return appLocalized("barrierFreeInfo.facility.brailepromotion")
+    case "guidehuman": return appLocalized("barrierFreeInfo.facility.guidehuman")
+    case "helpdog": return appLocalized("barrierFreeInfo.facility.helpdog")
+    case "bigprint": return appLocalized("barrierFreeInfo.facility.bigprint")
+    case "guidesystem": return appLocalized("barrierFreeInfo.facility.guidesystem")
+    case "blindhandicapetc": return appLocalized("barrierFreeInfo.facility.blindhandicapetc")
+    case "signguide": return appLocalized("barrierFreeInfo.facility.signguide")
+    case "videoguide": return appLocalized("barrierFreeInfo.facility.videoguide")
+    case "hearingroom": return appLocalized("barrierFreeInfo.facility.hearingroom")
+    case "hearinghandicapetc": return appLocalized("barrierFreeInfo.facility.hearinghandicapetc")
+    case "lactationroom": return appLocalized("barrierFreeInfo.facility.lactationroom")
+    case "stroller": return appLocalized("barrierFreeInfo.facility.stroller")
+    case "babysparechair": return appLocalized("barrierFreeInfo.facility.babysparechair")
+    case "infantsfamilyetc": return appLocalized("barrierFreeInfo.facility.infantsfamilyetc")
+    default: return facility.label
     }
 }

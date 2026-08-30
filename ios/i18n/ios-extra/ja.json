@@ -211,7 +211,8 @@
       "aroundLoaded": "周辺を確認しました",
       "aroundLoadedManual": "指定した位置の周辺を確認しました",
       "aroundPlacesHeading": "周辺の店舗と施設",
-      "aroundPlacesFailed": "周辺の店舗と施設を取得できませんでした"
+      "aroundPlacesFailed": "周辺の店舗と施設を取得できませんでした",
+      "stopsBefore": "{count}つ前のバス停"
     },
     "settings": {
       "title": "設定",

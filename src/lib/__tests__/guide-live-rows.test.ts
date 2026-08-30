@@ -4,6 +4,8 @@ import scenarios from "./fixtures/guide-live-rows-scenarios.json";
 import {
   buildDisplayUnits,
   guideLiveRows,
+  isCrossingStep,
+  liveStepsFrom,
   TURN_APPROACH_M,
   type LiveNextRow,
   type LiveRowsState,
@@ -91,6 +93,53 @@ interface ScenarioInput {
   baselineD?: number;
 }
 
+describe("isCrossingStep — 횡단 유닛은 서버 플래그로 판정한다(A26, 언어 무관)", () => {
+  it("행동이 crosswalk/underpass이고 서버가 crossing을 표시했을 때만 참", () => {
+    expect(isCrossingStep("crosswalk", true)).toBe(true);
+    expect(isCrossingStep("underpass", true)).toBe(true);
+    expect(isCrossingStep("left", true)).toBe(false);
+    expect(isCrossingStep("crosswalk", undefined)).toBe(false);
+    expect(isCrossingStep(null, true)).toBe(false);
+  });
+
+  it("en 문장(Tmap)도 플래그만 있으면 횡단 유닛이 된다 — 문자열 '건너'에 의존하지 않는다", () => {
+    const steps: LiveStepInput[] = [
+      { description: "Walk 50m", startD: 0, endD: 50 },
+      {
+        description: "Cross the crosswalk, then walk 30m",
+        startD: 50,
+        endD: 80,
+        action: "crosswalk",
+        crossing: true,
+      },
+      { description: "Turn left, then walk 40m", startD: 80, endD: 120, action: "left" },
+    ];
+    const units = buildDisplayUnits(steps, "step");
+    expect(units.map((u) => u.crossing)).toEqual([false, true, false]);
+    expect(units[1].crossingText).toBe("Cross the crosswalk, then walk 30m");
+    expect(units[0].endAction).toBe("crosswalk");
+  });
+
+  it("플래그 없는 crosswalk 행동(지명 '횡단보도' 이동 스텝)은 횡단 유닛이 아니다 — ko 동작 불변", () => {
+    const steps: LiveStepInput[] = [
+      { description: "천호역 횡단보도까지 100m 이동", startD: 0, endD: 100, action: "crosswalk" },
+    ];
+    expect(buildDisplayUnits(steps, "step")[0].crossing).toBe(false);
+  });
+
+  it("liveStepsFrom은 응답 스텝의 crossing을 표시 입력으로 옮긴다", () => {
+    const route = {
+      steps: [
+        { index: 0, description: "a", startD: 0, endD: 10, isLong: true },
+        { index: 1, description: "b", startD: 10, endD: 20, isLong: true, action: "crosswalk" },
+      ],
+    } as unknown as Parameters<typeof liveStepsFrom>[0];
+    const out = liveStepsFrom(route, [{}, { crossing: true }]);
+    expect("crossing" in out[0]).toBe(false);
+    expect(out[1]).toMatchObject({ action: "crosswalk", crossing: true });
+  });
+});
+
 describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
   for (const sc of (
     scenarios as {
@@ -100,7 +149,14 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
         kind?: Kind;
         /** 회전 접근 전환 잔여(m). 미지정 `TURN_APPROACH_M`(walk). car 시나리오는 명시. */
         turnApproachM?: number;
-        steps: { len: number; desc: string; target?: string; anchor?: string; action?: string }[];
+        steps: {
+          len: number;
+          desc: string;
+          target?: string;
+          anchor?: string;
+          action?: string;
+          crossing?: boolean;
+        }[];
         baselineD: number;
         inputs: ScenarioInput[];
         expect: { afterInput: number; top: string; next: string }[];
@@ -118,6 +174,7 @@ describe("guide-live-rows 공유 시나리오(기대 문자열)", () => {
           description: s.desc, startD: acc, endD: acc + s.len,
           ...(live ? { live } : {}),
           ...(s.action ? { action: s.action as LiveStepInput["action"] } : {}),
+          ...(s.crossing ? { crossing: true } : {}),
         };
         acc += s.len;
         return input;

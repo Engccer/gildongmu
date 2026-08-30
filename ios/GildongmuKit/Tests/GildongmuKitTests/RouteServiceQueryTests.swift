@@ -141,7 +141,24 @@ extension StubNetworkTests {
             return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}"#.utf8))
         }
         _ = try await RouteService(client: stubbedClient()).car(
-            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, via: nil)
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil)
         #expect(capturedQuery?.contains(where: { $0.name == "via" }) == false)
+    }
+
+    /// A26: 자동차도 walk와 같은 규율 — `lang`은 기본값 없는 필수 인자이고, ko는 파라미터를
+    /// 생략해 기존 요청과 byte-identical, 비-ko만 실어 서버가 en 문장(NCP)을 고르게 한다.
+    @Test func carSendsLangOnlyForNonKorean() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "en", via: nil)
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+
+        _ = try await RouteService(client: stubbedClient()).car(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko", via: nil)
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
     }
 }

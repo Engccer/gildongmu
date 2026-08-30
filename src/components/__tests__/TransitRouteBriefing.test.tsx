@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider, useTranslations } from "next-intl";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import type { TransitLeg, TransitRoute } from "@/lib/types";
@@ -263,5 +263,34 @@ describe("빠른하차 문장", () => {
     renderRoute([{ ...BOARD, quickExit: { stairs: { kind: "door", doors: ["3-1"] } } }]);
     const line = screen.getAllByRole("listitem")[0].querySelector("p")!;
     expect(line.textContent).toBe("서울역 하차, 계단 3-1 문");
+  });
+});
+
+describe("오류 낭독은 서버 문자열이 아니라 t() 문장(A26)", () => {
+  async function requestWith(status: number, body: Record<string, unknown>) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: status < 400, status, json: async () => body })),
+    );
+    render(
+      <NextIntlClientProvider locale="ko" messages={messages}>
+        <TransitRouteBriefing dest={{ lat: 37.555, lng: 126.972, name: "서울역" }} />
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "여기까지 대중교통 길찾기" }));
+    await waitFor(() => expect(screen.getByRole("status").textContent).not.toBe(""));
+    const text = screen.getByRole("status").textContent;
+    vi.unstubAllGlobals();
+    return text;
+  }
+
+  it("503(키 없음)은 서버 한국어 문장 대신 notConfigured", async () => {
+    const text = await requestWith(503, { error: "대중교통 길찾기는 API 키 등록 후 사용할 수 있습니다." });
+    expect(text).toBe(messages.route.transit.notConfigured);
+  });
+
+  it("502는 일반 오류 문장(서버 문자열 무시)", async () => {
+    const text = await requestWith(502, { error: "서버가 보낸 임의의 한국어 문장" });
+    expect(text).toBe(messages.route.transit.error);
   });
 });

@@ -106,7 +106,10 @@
       "heading": "{name}까지 자동차 경로",
       "summary": "총 거리 {distance}, 약 {minutes}분 소요. 예상 택시 요금 {taxi}원.",
       "toll": "통행료 {toll}원 별도.",
-      "disclaimer": "실시간 교통 기준 예상치입니다."
+      "disclaimer": "실시간 교통 기준 예상치입니다.",
+      "noRoute": "경로를 찾지 못했습니다. 출발지와 목적지를 확인해 주세요.",
+      "rateLimited": "요청이 너무 많습니다.",
+      "notConfigured": "자동차 경로 안내를 사용할 수 없습니다."
     },
     "transit": {
       "button": "여기까지 대중교통 길찾기",
@@ -140,7 +143,8 @@
       "quickExitBoth": "{station} 하차, 엘리베이터 {elevator}, 계단 {stairs}",
       "quickExitElevator": "{station} 하차, 엘리베이터 {elevator}",
       "quickExitStairs": "{station} 하차, 계단 {stairs}",
-      "quickExitTransfer": "{station} 하차, 빠른 환승 {transfer}"
+      "quickExitTransfer": "{station} 하차, 빠른 환승 {transfer}",
+      "notConfigured": "대중교통 길찾기를 사용할 수 없습니다."
     },
     "pedestrian": {
       "heading": "도보",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "일부 시설 정보를 불러오지 못했습니다.",
     "voiceGuideSource": "음성유도기: 서울교통공사 제공(2025-08 기준)",
-    "source": "출처: 서울교통공사 교통약자이용정보(서울 1~8호선)."
+    "source": "출처: 서울교통공사 교통약자이용정보(서울 1~8호선).",
+    "direction": {
+      "n": "북",
+      "ne": "북동",
+      "e": "동",
+      "se": "남동",
+      "s": "남",
+      "sw": "남서",
+      "w": "서",
+      "nw": "북서"
+    },
+    "elevatorAt": "역 중심 기준 {direction}쪽 약 {distance}",
+    "lineNumber": "{line}호선",
+    "wheelchairAccessible": "휠체어 접근 가능"
   },
   "subwayArrival": {
     "button": "실시간 지하철 도착 정보 보기",
@@ -290,7 +307,8 @@
     },
     "error": "첫차·막차 정보를 불러오지 못했습니다.",
     "partial": "일부 노선 정보를 불러오지 못했습니다.",
-    "source": "국토교통부 TAGO 제공"
+    "source": "국토교통부 TAGO 제공",
+    "lineSuffixed": "{name}선"
   },
   "bus": {
     "currentButton": "내 주변 버스 도착 정보",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "무장애 편의시설",
-    "source": "출처: 한국관광공사 무장애 여행 정보"
+    "source": "출처: 한국관광공사 무장애 여행 정보",
+    "facility": {
+      "wheelchair": "휠체어 대여",
+      "restroom": "장애인 화장실",
+      "elevator": "엘리베이터",
+      "parking": "장애인 주차장",
+      "route": "접근로",
+      "exit": "주출입구",
+      "publictransport": "대중교통·접근",
+      "ticketoffice": "매표소 장애인 편의",
+      "auditorium": "공연장·객석 장애인석",
+      "room": "객실 장애인 편의",
+      "handicapetc": "장애인 편의(기타)",
+      "braileblock": "점자블록",
+      "audioguide": "음성안내",
+      "brailepromotion": "점자 안내물",
+      "guidehuman": "안내요원",
+      "helpdog": "보조견 동반",
+      "bigprint": "큰글씨 자료",
+      "guidesystem": "음성유도기",
+      "blindhandicapetc": "시각장애 편의(기타)",
+      "signguide": "수어 안내",
+      "videoguide": "자막·영상 안내",
+      "hearingroom": "청각 보조 설비",
+      "hearinghandicapetc": "청각장애 편의(기타)",
+      "lactationroom": "수유실",
+      "stroller": "유모차 대여",
+      "babysparechair": "유아용 의자",
+      "infantsfamilyetc": "영유아·가족 편의(기타)"
+    }
   },
   "nearby": {
     "hubTitle": "내 주변",

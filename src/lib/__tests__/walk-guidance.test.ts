@@ -258,3 +258,21 @@ describe("rewriteWalkBriefing — live 부착은 옵트인", () => {
     expect("live" in rewriteWalkBriefing(briefing, false).steps[0]).toBe(false);
   });
 });
+
+describe("rewriteWalkBriefing — 횡단 구간 플래그(A26, 언어 무관 횡단 유닛 판정)", () => {
+  const crossingStep = { description: "천호역 앞에서 횡단보도 이용", distanceMeters: 21 };
+  // "횡단보도"가 지명으로만 등장하는 이동 스텝 — 행동 분류는 crosswalk지만 횡단 구간이 아니다.
+  const placeNameStep = { description: "천호역 횡단보도까지 100m 이동", distanceMeters: 100 };
+  const briefing = { distanceMeters: 121, durationSeconds: 120, steps: [crossingStep, placeNameStep] };
+
+  it("includeLive=true면 재작성이 횡단 행동문을 만든 스텝에만 crossing=true", () => {
+    const steps = rewriteWalkBriefing(briefing, true).steps;
+    expect(steps[0].description).toContain("건너세요");
+    expect(steps[0].crossing).toBe(true);
+    expect("crossing" in steps[1]).toBe(false);
+  });
+
+  it("includeLive=false면 필드 자체 부재(기존 응답 byte-호환)", () => {
+    expect("crossing" in rewriteWalkBriefing(briefing, false).steps[0]).toBe(false);
+  });
+});

@@ -211,7 +211,8 @@
       "aroundLoaded": "Exploration prête",
       "aroundLoadedManual": "Environs de la position choisie prêts",
       "aroundPlacesHeading": "Commerces et services à proximité",
-      "aroundPlacesFailed": "Impossible de charger les commerces et services à proximité"
+      "aroundPlacesFailed": "Impossible de charger les commerces et services à proximité",
+      "stopsBefore": "à {count} arrêts"
     },
     "settings": {
       "title": "Réglages",

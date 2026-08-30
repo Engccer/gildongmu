@@ -39,19 +39,23 @@ export function timetableLineItems(
     const terminus = isEn && v.terminusEn ? v.terminusEn : v.terminus;
     return terminus ? `${time} ${t("toTerminus", { terminus })}` : time;
   };
-  return tt.lines.flatMap((line): TimetableLineItem[] =>
-    line.coverage === "ok"
+  // 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 자기 언어로 단다(A26). 노선명 자체는 원문.
+  const lineOf = (line: { lineName: string; lineCore?: string }) =>
+    line.lineCore ? t("lineSuffixed", { name: line.lineCore }) : line.lineName;
+  return tt.lines.flatMap((line): TimetableLineItem[] => {
+    const lineName = lineOf(line);
+    return line.coverage === "ok"
       ? line.directions.map((d) => {
           const first = train(d.first);
           const last = train(d.last);
           return {
-            line: line.lineName,
+            line: lineName,
             coverage: line.coverage,
             direction: d.direction,
             first,
             last,
             text: joinText(
-              `${line.lineName} ${t(`direction.${d.direction}`)}`,
+              `${lineName} ${t(`direction.${d.direction}`)}`,
               `${t("first")} ${first}`,
               `${t("last")} ${last}`,
             ),
@@ -59,10 +63,10 @@ export function timetableLineItems(
         })
       : [
           {
-            line: line.lineName,
+            line: lineName,
             coverage: line.coverage,
-            text: t(`coverage.${coverageKey(line.coverage)}`, { line: line.lineName }),
+            text: t(`coverage.${coverageKey(line.coverage)}`, { line: lineName }),
           },
-        ],
-  );
+        ];
+  });
 }

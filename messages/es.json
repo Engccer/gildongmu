@@ -106,7 +106,10 @@
       "heading": "Ruta en coche a {name}",
       "summary": "Total {distance}, aprox. {minutes} min. Tarifa de taxi estimada {taxi} KRW.",
       "toll": "Peaje de {toll} KRW no incluido.",
-      "disclaimer": "Estimaciones basadas en el tráfico en tiempo real."
+      "disclaimer": "Estimaciones basadas en el tráfico en tiempo real.",
+      "noRoute": "No se encontró ninguna ruta. Comprueba el origen y el destino.",
+      "rateLimited": "Demasiadas solicitudes.",
+      "notConfigured": "Las indicaciones en coche no están disponibles."
     },
     "transit": {
       "button": "Transporte público hasta aquí",
@@ -140,7 +143,8 @@
       "quickExitBoth": "Bajada en {station}, ascensor {elevator}, escaleras {stairs}",
       "quickExitElevator": "Bajada en {station}, ascensor {elevator}",
       "quickExitStairs": "Bajada en {station}, escaleras {stairs}",
-      "quickExitTransfer": "Bajada en {station}, transbordo rápido {transfer}"
+      "quickExitTransfer": "Bajada en {station}, transbordo rápido {transfer}",
+      "notConfigured": "Las indicaciones de transporte público no están disponibles."
     },
     "pedestrian": {
       "heading": "A pie",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "No se pudo cargar parte de la información de las instalaciones.",
     "voiceGuideSource": "Balizas de guía sonora: datos de Seoul Metro (a partir de 2025-08)",
-    "source": "Fuente: datos de instalaciones de accesibilidad de Seoul Metro (líneas 1–8 de Seoul)."
+    "source": "Fuente: datos de instalaciones de accesibilidad de Seoul Metro (líneas 1–8 de Seoul).",
+    "direction": {
+      "n": "norte",
+      "ne": "noreste",
+      "e": "este",
+      "se": "sureste",
+      "s": "sur",
+      "sw": "suroeste",
+      "w": "oeste",
+      "nw": "noroeste"
+    },
+    "elevatorAt": "A unos {distance} al {direction} del centro de la estación",
+    "lineNumber": "Línea {line}",
+    "wheelchairAccessible": "Accesible en silla de ruedas"
   },
   "subwayArrival": {
     "button": "Ver llegadas de metro en tiempo real",
@@ -290,7 +307,8 @@
     },
     "error": "No se pudo cargar la información del primer/último tren.",
     "partial": "No se pudo cargar la información de algunas líneas.",
-    "source": "Fuente: MOLIT TAGO"
+    "source": "Fuente: MOLIT TAGO",
+    "lineSuffixed": "Línea {name}"
   },
   "bus": {
     "currentButton": "Llegadas de autobús cerca de mí",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "Instalaciones accesibles",
-    "source": "Fuente: Korea Tourism Organization, información de viajes sin barreras"
+    "source": "Fuente: Korea Tourism Organization, información de viajes sin barreras",
+    "facility": {
+      "wheelchair": "Préstamo de sillas de ruedas",
+      "restroom": "Baño accesible",
+      "elevator": "Ascensor",
+      "parking": "Aparcamiento accesible",
+      "route": "Ruta de acceso",
+      "exit": "Entrada principal",
+      "publictransport": "Acceso en transporte público",
+      "ticketoffice": "Accesibilidad en taquilla",
+      "auditorium": "Asientos accesibles",
+      "room": "Habitaciones accesibles",
+      "handicapetc": "Otras instalaciones de movilidad",
+      "braileblock": "Pavimento táctil",
+      "audioguide": "Audioguía",
+      "brailepromotion": "Material en braille",
+      "guidehuman": "Personal de guía",
+      "helpdog": "Perros de asistencia bienvenidos",
+      "bigprint": "Material en letra grande",
+      "guidesystem": "Balizas de guía sonora",
+      "blindhandicapetc": "Otras instalaciones para personas con discapacidad visual",
+      "signguide": "Guía en lengua de signos",
+      "videoguide": "Vídeo guía con subtítulos",
+      "hearingroom": "Equipos de ayuda auditiva",
+      "hearinghandicapetc": "Otras instalaciones para personas con discapacidad auditiva",
+      "lactationroom": "Sala de lactancia",
+      "stroller": "Préstamo de cochecitos",
+      "babysparechair": "Tronas",
+      "infantsfamilyetc": "Otras instalaciones familiares"
+    }
   },
   "nearby": {
     "hubTitle": "Cerca de mí",

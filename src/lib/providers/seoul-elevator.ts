@@ -94,7 +94,8 @@ export function composeElevatorItems(
         : best,
     );
     const meters = Math.round(haversineMeters(anchor.lat, anchor.lng, e.lat, e.lng) / 10) * 10;
-    const compass = COMPASS_KO[bearingToCompass8(bearingDegrees(anchor.lat, anchor.lng, e.lat, e.lng))];
+    const direction = bearingToCompass8(bearingDegrees(anchor.lat, anchor.lng, e.lat, e.lng));
+    const compass = COMPASS_KO[direction];
     const name = e.dong
       ? `역 중심 기준 ${compass}쪽 약 ${meters}m, ${e.dong}`
       : `역 중심 기준 ${compass}쪽 약 ${meters}m`;
@@ -104,6 +105,8 @@ export function composeElevatorItems(
       floors: undefined,
       operatingStatus: undefined,
       detail: undefined,
+      // 구조화 원재료(A26) — 비-ko 클라이언트가 자기 언어로 같은 문장을 조립한다. `name`은 불변.
+      parts: { compass: direction, meters, ...(e.dong ? { dong: e.dong } : {}) },
     };
   });
 }

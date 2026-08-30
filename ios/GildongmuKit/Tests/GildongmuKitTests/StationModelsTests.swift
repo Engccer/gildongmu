@@ -201,3 +201,38 @@ import Foundation
     #expect(try JSONDecoder().decode(SeoulMetroFacilitiesResponse.self, from: Data(#"{"facilities":null}"#.utf8)).facilities == nil)
     #expect(try JSONDecoder().decode(StationArrivalResponse.self, from: Data(#"{"arrivals":null}"#.utf8)).arrivals == nil)
 }
+
+/// 서버 합성 한국어의 구조화 원재료(A26). 선택 디코딩 — 구버전 응답엔 없다.
+@Test func stationMetroFacilityPartsDecodeOptionally() throws {
+    let json = #"""
+    {"facilities":{"stationName":"강동","groups":[
+      {"kind":"elevatorLocation","facilities":[
+        {"name":"역 중심 기준 북동쪽 약 120m, 성내동","parts":{"compass":"ne","meters":120,"dong":"성내동"}}]},
+      {"kind":"voiceGuide","facilities":[
+        {"name":"3번 출구 5호선","parts":{"location":"3번 출구","line":"5"}},
+        {"name":"4번 출구"}]},
+      {"kind":"restroom","facilities":[
+        {"name":"장애인화장실","detail":"남녀구분 · 휠체어 접근 가능","parts":{"restroomType":"남녀구분","wheelchairAccessible":true}}]}
+    ]}}
+    """#
+    let f = try #require(try JSONDecoder().decode(SeoulMetroFacilitiesResponse.self, from: Data(json.utf8)).facilities)
+    #expect(f.groups[0].facilities[0].parts?.compass == "ne")
+    #expect(f.groups[0].facilities[0].parts?.meters == 120)
+    #expect(f.groups[0].facilities[0].parts?.dong == "성내동")
+    #expect(f.groups[1].facilities[0].parts?.line == "5")
+    #expect(f.groups[1].facilities[1].parts == nil)
+    #expect(f.groups[2].facilities[0].parts?.wheelchairAccessible == true)
+    #expect(f.groups[2].facilities[0].parts?.restroomType == "남녀구분")
+}
+
+/// 서버가 "선"을 덧붙인 노선만 lineCore가 온다(A26). 없으면 lineName 그대로 쓴다.
+@Test func stationTimetableLineCoreDecodesOptionally() throws {
+    let json = #"""
+    {"timetable":{"stationName":"왕십리","dailyType":"weekday","lines":[
+      {"lineName":"수인분당선","lineCore":"수인분당","coverage":"unknown","directions":[]},
+      {"lineName":"2호선","coverage":"unknown","directions":[]}]}}
+    """#
+    let tt = try #require(try JSONDecoder().decode(StationTimetableResponse.self, from: Data(json.utf8)).timetable)
+    #expect(tt.lines[0].lineCore == "수인분당")
+    #expect(tt.lines[1].lineCore == nil)
+}

@@ -66,10 +66,16 @@ export function StepList({
   items,
   waypointIndex,
   waypointText,
+  lang,
 }: {
   items: string[];
   waypointIndex?: number;
   waypointText: string | null;
+  /**
+   * 스텝 문장의 언어가 페이지와 다를 때(자동차 ko 폴백, `guidanceLang`) 각 `<li>`에 단다 —
+   * 스텝은 이미 별도 줄이라 분절이 생기지 않는다(접근성 헌장 "한 줄 = 한 객체").
+   */
+  lang?: "ko";
 }) {
   const cls = "mt-2 list-decimal pl-6 text-sm leading-relaxed";
   // 0도 유효하다: "첫 스텝 앞에서 경유지 도착". `omitNoticeStep`이 서버 +1을 되돌리면
@@ -83,7 +89,9 @@ export function StepList({
     return (
       <ol className={cls}>
         {items.map((text, i) => (
-          <li key={`${i}-${text}`}>{text}</li>
+          <li key={`${i}-${text}`} lang={lang}>
+            {text}
+          </li>
         ))}
       </ol>
     );
@@ -93,14 +101,18 @@ export function StepList({
       {split > 0 && (
         <ol className={cls}>
           {items.slice(0, split).map((text, i) => (
-            <li key={`${i}-${text}`}>{text}</li>
+            <li key={`${i}-${text}`} lang={lang}>
+              {text}
+            </li>
           ))}
         </ol>
       )}
       <p className="mt-2 text-sm font-medium">{waypointText}</p>
       <ol className={cls} start={split + 1}>
         {items.slice(split).map((text, i) => (
-          <li key={`${split + i}-${text}`}>{text}</li>
+          <li key={`${split + i}-${text}`} lang={lang}>
+            {text}
+          </li>
         ))}
       </ol>
     </>

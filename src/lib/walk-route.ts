@@ -185,7 +185,7 @@ export function attachStepActions(
     const { turnType, roadNameKo: _roadNameKo, ...rest } = step;
     if (!includeGeometry) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { action: _action, ...plain } = rest;
+      const { action: _action, crossing: _crossing, ...plain } = rest;
       return plain;
     }
     // ⚠ **`turnType`을 가진 스텝(=Tmap 유래)은 문장 폴백을 타지 않는다.** 그 스텝은 이미 표로
@@ -196,7 +196,19 @@ export function attachStepActions(
     const action =
       rest.action ??
       (turnType === undefined ? (walkStepAction(rest.description) ?? undefined) : undefined);
-    return action ? { ...rest, action } : rest;
+    // 횡단 구간 플래그(A26): Tmap 스텝은 `turnType` 표의 행동이 곧 구조화 판정이라 여기서
+    // 표시한다(카카오 스텝은 재작성 단계가 이미 표시했고 문장 분류로는 만들지 않는다 —
+    // 지명 "횡단보도"가 crosswalk로 분류되는 그 함정이 이 플래그가 존재하는 이유다).
+    const crossing =
+      rest.crossing ??
+      (turnType !== undefined && (action === "crosswalk" || action === "underpass")
+        ? (true as const)
+        : undefined);
+    return {
+      ...rest,
+      ...(action ? { action } : {}),
+      ...(crossing ? { crossing } : {}),
+    };
   });
   return { ...briefing, steps };
 }

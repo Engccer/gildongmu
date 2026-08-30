@@ -112,7 +112,9 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     // 역 선택 단계: 경유역 전체가 후보이고 프롬프트가 착지점이다(버튼이 사라지는 전이).
     expect(screen.getByRole("heading", { name: "transitGuide.reboardStationPrompt" })).toBeTruthy();
     expect(document.activeElement?.textContent).toBe("transitGuide.reboardStationPrompt");
-    expect(screen.getByRole("button", { name: "왕십리(성동구청)" })).toBeTruthy();
+    const candidate = screen.getByRole("button", { name: "왕십리(성동구청)" });
+    // 역명은 한국어 원문 — en 페이지에서도 한국어 엔진으로 읽히게 lang="ko"(A26).
+    expect(candidate.getAttribute("lang")).toBe("ko");
 
     // 중간역을 고르면 그 역이 조회 기준이 된다 — 종전에는 원래 승차역(천호)만 봤다.
     calls.length = 0;

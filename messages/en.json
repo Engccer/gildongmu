@@ -106,7 +106,10 @@
       "heading": "Car route to {name}",
       "summary": "Total {distance}, about {minutes} min. Estimated taxi fare {taxi} KRW.",
       "toll": "Toll {toll} KRW not included.",
-      "disclaimer": "Estimates based on live traffic."
+      "disclaimer": "Estimates based on live traffic.",
+      "noRoute": "No route found. Check the start and destination.",
+      "rateLimited": "Too many requests.",
+      "notConfigured": "Driving directions are unavailable."
     },
     "transit": {
       "button": "Public transit to here",
@@ -140,7 +143,8 @@
       "quickExitBoth": "Get off at {station}, elevator {elevator}, stairs {stairs}",
       "quickExitElevator": "Get off at {station}, elevator {elevator}",
       "quickExitStairs": "Get off at {station}, stairs {stairs}",
-      "quickExitTransfer": "Get off at {station}, quick transfer {transfer}"
+      "quickExitTransfer": "Get off at {station}, quick transfer {transfer}",
+      "notConfigured": "Transit directions are unavailable."
     },
     "pedestrian": {
       "heading": "Walk",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "Some facility info couldn't be loaded.",
     "voiceGuideSource": "Audio guidance beacons: provided by Seoul Metro (as of 2025-08)",
-    "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8)."
+    "source": "Source: Seoul Metro accessibility facility data (Seoul lines 1–8).",
+    "direction": {
+      "n": "north",
+      "ne": "northeast",
+      "e": "east",
+      "se": "southeast",
+      "s": "south",
+      "sw": "southwest",
+      "w": "west",
+      "nw": "northwest"
+    },
+    "elevatorAt": "About {distance} {direction} of the station center",
+    "lineNumber": "Line {line}",
+    "wheelchairAccessible": "Wheelchair accessible"
   },
   "subwayArrival": {
     "button": "View live subway arrivals",
@@ -290,7 +307,8 @@
     },
     "error": "Couldn't load first/last train info.",
     "partial": "Some line info couldn't be loaded.",
-    "source": "Source: MOLIT TAGO"
+    "source": "Source: MOLIT TAGO",
+    "lineSuffixed": "{name} Line"
   },
   "bus": {
     "currentButton": "Bus arrivals near me",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "Accessibility facilities",
-    "source": "Source: Korea Tourism Organization barrier-free travel data"
+    "source": "Source: Korea Tourism Organization barrier-free travel data",
+    "facility": {
+      "wheelchair": "Wheelchair rental",
+      "restroom": "Accessible restroom",
+      "elevator": "Elevator",
+      "parking": "Accessible parking",
+      "route": "Access path",
+      "exit": "Main entrance",
+      "publictransport": "Public transport access",
+      "ticketoffice": "Ticket office accessibility",
+      "auditorium": "Accessible seating",
+      "room": "Accessible guest rooms",
+      "handicapetc": "Other mobility facilities",
+      "braileblock": "Tactile paving",
+      "audioguide": "Audio guide",
+      "brailepromotion": "Braille materials",
+      "guidehuman": "Guide staff",
+      "helpdog": "Assistance dogs welcome",
+      "bigprint": "Large-print materials",
+      "guidesystem": "Audio guidance beacons",
+      "blindhandicapetc": "Other facilities for visually impaired visitors",
+      "signguide": "Sign language guide",
+      "videoguide": "Captioned video guide",
+      "hearingroom": "Hearing assistance equipment",
+      "hearinghandicapetc": "Other facilities for hearing-impaired visitors",
+      "lactationroom": "Nursing room",
+      "stroller": "Stroller rental",
+      "babysparechair": "High chairs",
+      "infantsfamilyetc": "Other family facilities"
+    }
   },
   "nearby": {
     "hubTitle": "Nearby",

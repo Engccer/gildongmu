@@ -222,6 +222,32 @@ export interface SeoulMetroFacility {
   operatingStatus: "normal" | "stopped" | undefined;
   /** 시설별 보조 설명(화장실 종류·휠체어 접근 등). 없으면 undefined. */
   detail: string | undefined;
+  /**
+   * 서버가 합성한 한국어(`name`·`detail`)의 **구조화 원재료**(A26, 2026-08-31). 비-ko 클라이언트가
+   * 자기 언어로 조립한다(웹 `metroFacilityGroups` ↔ iOS `StationSections`). 문자열 필드는 불변
+   * (CLI/MCP 계약). 어느 필드가 오는지는 그룹 종류가 정한다 — voiceGuide: `location`(+환승역만
+   * `line`), restroom: `restroomType`·`wheelchairAccessible`, elevatorLocation: `compass`·`meters`·`dong`.
+   * 구버전 응답엔 없다(부재면 문자열 필드 그대로).
+   */
+  parts?: SeoulMetroFacilityParts;
+}
+
+/** `SeoulMetroFacility.parts` — 그룹 종류별로 쓰는 필드가 다르다(위 주석). */
+export interface SeoulMetroFacilityParts {
+  /** voiceGuide: 위치 원문(서울교통공사 표기). */
+  location?: string;
+  /** voiceGuide: 환승역에서만 오는 노선 번호(예 "5" — "호선"은 클라이언트가 단다). */
+  line?: string;
+  /** restroom: 화장실 종류 원문(rstrmInfo). */
+  restroomType?: string;
+  /** restroom: 휠체어 접근 가능(whlchrAcsPsbltyYn === "Y")일 때만. */
+  wheelchairAccessible?: true;
+  /** elevatorLocation: 역 중심 기준 8방위. */
+  compass?: "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
+  /** elevatorLocation: 역 중심 기준 거리(m, 10m 반올림). */
+  meters?: number;
+  /** elevatorLocation: 법정동명(있을 때만). */
+  dong?: string;
 }
 
 /** 한 시설 종류의 묶음 — 데이터가 있는 종류만 포함된다. */
@@ -276,6 +302,13 @@ export interface CarRouteBriefing {
    * en(NCP) 경로는 미설정.
    */
   provider?: "tmap" | "kakao";
+  /**
+   * 안내문(`guides[].guidance`)의 언어(A26, 2026-08-31). `lang=en` 요청도 NCP 키 부재·경유지
+   * (`via`)면 ko 서비스로 폴백하는데(N4의 의도된 결정 — 조용히 버리는 것보다 한국어 문장이
+   * 낫다), 그 사실을 응답이 말하지 않으면 en 화면이 한국어 문장을 영어 엔진으로 읽는다.
+   * 소비자는 `"ko"`면 그 텍스트 블록에 `lang="ko"`를 단다. 구버전 서버 응답엔 없다.
+   */
+  guidanceLang?: "ko" | "en";
   /**
    * 종점(E) 마커 좌표(기하 옵트인 전용, B1 §5). 마지막 스텝의 끝이 이 좌표와
    * 어긋나면 경로가 조용히 짧게 조립된 것 — buildCarGuide가 fail-closed 검증한다.
@@ -452,6 +485,16 @@ export interface WalkRouteStep {
    * `live`와 같은 게이트로 `includeGeometry=1` 응답에만 실린다.
    */
   action?: GuideAction;
+  /**
+   * **이 스텝의 구간 전체가 횡단(횡단보도·지하보도)이다**(A26, 2026-08-31). 표시 계층의 횡단
+   * 유닛 판정(`isCrossingStep`, 웹 ↔ Kit)이 읽는 유일한 근거 — 종전엔 클라이언트가 ko 문장의
+   * "건너" 부분 문자열로 판정해 en 안내(Tmap 영어 문장)에서 횡단 유닛이 한 번도 서지 않았다.
+   * `action`만으로는 부족한 이유: 카카오 스텝의 행동은 문장 분류라 "천호역 횡단보도까지
+   * 100m 이동"(지명)도 crosswalk가 된다. 서버는 횡단 여부를 구조로 안다 — 카카오는 재작성이
+   * 횡단 행동문을 만든 스텝(`rewriteWalkBriefing`), Tmap은 `turnType`이 횡단인 스텝
+   * (`attachStepActions`). `live`·`action`과 같은 게이트로 `includeGeometry=1` 응답에만 실린다.
+   */
+  crossing?: true;
   /** Tmap 회전 유형 코드. en 문장 조립용 **내부 전달** — `attachStepActions`가 응답 전 제거한다. */
   turnType?: number;
   /** 첫 LineString의 도로명(ko). en 로마자 조회 키 — 응답 전 제거된다. */
@@ -637,6 +680,12 @@ export type TimetableLineCoverage = "ok" | "noTrains" | "unknown" | "unavailable
 export interface TimetableLine {
   /** 노선 표시명(예 "5호선","수인분당선". displayLineName로 정규화한 값) */
   lineName: string;
+  /**
+   * `lineName`이 TAGO 축약명에 서버가 "선"을 덧붙인 것일 때만 그 원형(예 "수인분당", A26).
+   * 클라이언트는 이것으로 접미를 자기 언어로 단다(`timetable.lineSuffixed`); 부재면 `lineName`
+   * 그대로(원문이 이미 "…선"). ⚠ 노선명 자체의 영문화는 E27 소관 — 여기서는 우리가 덧붙인 접미뿐.
+   */
+  lineCore?: string;
   coverage: TimetableLineCoverage;
   /** coverage === "ok"일 때만 비지 않는다 */
   directions: TimetableDirection[];

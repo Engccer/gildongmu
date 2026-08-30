@@ -28,10 +28,13 @@ public struct LiveStepInput: Sendable, Equatable {
     public let anchor: String?
     /// 서버 투영 행동(자동차, K2 §2.3). `.step` 출처에서만 읽힌다.
     public let action: WalkAction?
+    /// 서버 횡단 구간 플래그(A26, `WalkRouteStep.crossing`). false는 "횡단 구간 아님".
+    public let crossing: Bool
 
     public init(
         description: String, startD: Double, endD: Double,
-        target: String? = nil, anchor: String? = nil, action: WalkAction? = nil
+        target: String? = nil, anchor: String? = nil, action: WalkAction? = nil,
+        crossing: Bool = false
     ) {
         self.description = description
         self.startD = startD
@@ -39,6 +42,7 @@ public struct LiveStepInput: Sendable, Equatable {
         self.target = target
         self.anchor = anchor
         self.action = action
+        self.crossing = crossing
     }
 }
 
@@ -60,13 +64,14 @@ public struct DisplayUnit: Sendable, Equatable {
     public let target: String?
 }
 
-/// 횡단 유닛 판정. walkStepAction만으로는 부족하다 — "횡단보도"는 지명으로도
-/// 등장하므로(회전 우선순위가 회전 문장은 걸러 주지만, 회전 없는 "천호역 횡단보도까지
-/// 100m 이동"이 남는다) 재작성 행동문("…건너세요")까지 요구한다.
-// public은 walk 주기 통지(`GuideText.periodicWalk`)의 "횡단 중 직진 오지시 금지" 분기
-// 몫 — 판정을 복제하지 않는다(웹 `isCrossingStep` 미러).
-public func isCrossingStep(_ action: WalkAction?, _ description: String) -> Bool {
-    (action == .crosswalk || action == .underpass) && description.contains("건너")
+/// 횡단 유닛 판정 — 행동 + **서버 횡단 구간 플래그**(`WalkRouteStep.crossing`, A26).
+/// 행동만으로는 부족하다: "횡단보도"는 지명으로도 등장하므로(회전 우선순위가 회전 문장은
+/// 걸러 주지만, 회전 없는 "천호역 횡단보도까지 100m 이동"이 남는다) 구간 전체가 횡단인지는
+/// 서버가 구조로 판정해 실어 준다. ⚠ 종전의 재작성 행동문("…건너세요") 부분 문자열 판정은
+/// ko 전용이라 en 안내(Tmap 영어 문장)에서 횡단 유닛이 한 번도 서지 않았다 — 되돌리지 말 것.
+/// 웹 `isCrossingStep` 미러, 공유 fixture의 `crossing`이 ko 동작 불변을 잠근다.
+public func isCrossingStep(_ action: WalkAction?, crossing: Bool) -> Bool {
+    (action == .crosswalk || action == .underpass) && crossing
 }
 
 /// `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — walk `.text`, car `.step`). 기본값 없음.
@@ -84,7 +89,7 @@ public func buildDisplayUnits(
     var groups: [Group] = []
     for i in steps.indices {
         let action = actionOf(steps[i])
-        let crossing = isCrossingStep(action, steps[i].description)
+        let crossing = isCrossingStep(action, crossing: steps[i].crossing)
         // 행동 없는 경계(지도 분할 직진)는 흡수한다(F5). 횡단 유닛은 흡수하지 않는다 —
         // 국면이 유닛 단위라 꼬리를 붙이면 다 건넌 뒤에도 "건너세요"가 남는다.
         if i > 0, action == nil, let last = groups.indices.last, !groups[last].crossing {
@@ -113,16 +118,18 @@ public func buildDisplayUnits(
     }
 }
 
-/// 리듀서 스팬(StepSpan)과 응답 스텝(live)을 index로 짝지어 표시 입력을 만든다.
+/// 리듀서 스팬(StepSpan)과 응답 스텝(live 조각·횡단 플래그)을 index로 짝지어 표시 입력을 만든다.
+/// `steps`는 응답 스텝 순서 그대로(빈 배열 = 조각 없음, 자동차).
 public func liveStepsFrom(
-    route: GuideRoute, live: [(target: String?, anchor: String?)?]
+    route: GuideRoute, steps: [(target: String?, anchor: String?, crossing: Bool)]
 ) -> [LiveStepInput] {
     route.steps.map { span in
-        let fragments = span.index < live.count ? live[span.index] : nil
+        let fields = span.index < steps.count ? steps[span.index] : nil
         return LiveStepInput(
             description: span.description, startD: span.startD, endD: span.endD,
-            target: fragments?.target, anchor: fragments?.anchor,
-            action: span.action  // 자동차 서버 투영(K2 §4) — 웹 liveStepsFrom 미러
+            target: fields?.target, anchor: fields?.anchor,
+            action: span.action,  // 자동차 서버 투영(K2 §4) — 웹 liveStepsFrom 미러
+            crossing: fields?.crossing ?? false
         )
     }
 }

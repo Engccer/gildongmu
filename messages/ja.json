@@ -106,7 +106,10 @@
       "heading": "{name}までの車の経路",
       "summary": "総距離{distance}、約{minutes}分。タクシー料金の目安{taxi}ウォン。",
       "toll": "通行料{toll}ウォンが別途かかります。",
-      "disclaimer": "リアルタイム交通に基づく推定です。実際の走行案内は地図アプリの経路検索をご利用ください。"
+      "disclaimer": "リアルタイム交通に基づく推定です。実際の走行案内は地図アプリの経路検索をご利用ください。",
+      "noRoute": "経路が見つかりませんでした。出発地と目的地を確認してください。",
+      "rateLimited": "リクエストが多すぎます。",
+      "notConfigured": "自動車経路案内は利用できません。"
     },
     "transit": {
       "button": "ここまで公共交通で経路検索",
@@ -140,7 +143,8 @@
       "quickExitBoth": "{station}で下車、エレベーターは{elevator}、階段は{stairs}",
       "quickExitElevator": "{station}で下車、エレベーターは{elevator}",
       "quickExitStairs": "{station}で下車、階段は{stairs}",
-      "quickExitTransfer": "{station}で下車、乗り換えは{transfer}"
+      "quickExitTransfer": "{station}で下車、乗り換えは{transfer}",
+      "notConfigured": "公共交通機関の経路案内は利用できません。"
     },
     "pedestrian": {
       "heading": "徒歩",
@@ -227,7 +231,20 @@
     },
     "supplementFailed": "一部の設備情報を取得できませんでした。",
     "voiceGuideSource": "音声誘導装置: ソウル交通公社提供(2025年8月時点)",
-    "source": "出典: ソウル交通公社バリアフリー利用情報(ソウル1〜8号線)。"
+    "source": "出典: ソウル交通公社バリアフリー利用情報(ソウル1〜8号線)。",
+    "direction": {
+      "n": "北",
+      "ne": "北東",
+      "e": "東",
+      "se": "南東",
+      "s": "南",
+      "sw": "南西",
+      "w": "西",
+      "nw": "北西"
+    },
+    "elevatorAt": "駅中心から{direction}へ約{distance}",
+    "lineNumber": "{line}号線",
+    "wheelchairAccessible": "車いす利用可"
   },
   "subwayArrival": {
     "button": "地下鉄のリアルタイム到着情報を見る",
@@ -290,7 +307,8 @@
     },
     "error": "始発・終電の情報を取得できませんでした。",
     "partial": "一部の路線情報を取得できませんでした。",
-    "source": "国土交通部TAGO提供"
+    "source": "国土交通部TAGO提供",
+    "lineSuffixed": "{name}線"
   },
   "bus": {
     "currentButton": "近くのバス到着情報",
@@ -950,7 +968,36 @@
   },
   "barrierFreeInfo": {
     "heading": "バリアフリー設備",
-    "source": "出典: 韓国観光公社のバリアフリー旅行情報"
+    "source": "出典: 韓国観光公社のバリアフリー旅行情報",
+    "facility": {
+      "wheelchair": "車いす貸出",
+      "restroom": "多目的トイレ",
+      "elevator": "エレベーター",
+      "parking": "障害者用駐車場",
+      "route": "アクセス通路",
+      "exit": "主出入口",
+      "publictransport": "公共交通アクセス",
+      "ticketoffice": "窓口のバリアフリー",
+      "auditorium": "車いす席",
+      "room": "バリアフリー客室",
+      "handicapetc": "その他の移動支援設備",
+      "braileblock": "点字ブロック",
+      "audioguide": "音声案内",
+      "brailepromotion": "点字資料",
+      "guidehuman": "案内スタッフ",
+      "helpdog": "補助犬同伴可",
+      "bigprint": "大活字資料",
+      "guidesystem": "音声誘導装置",
+      "blindhandicapetc": "視覚障害者向けその他設備",
+      "signguide": "手話案内",
+      "videoguide": "字幕付き映像案内",
+      "hearingroom": "聴覚補助設備",
+      "hearinghandicapetc": "聴覚障害者向けその他設備",
+      "lactationroom": "授乳室",
+      "stroller": "ベビーカー貸出",
+      "babysparechair": "子ども用いす",
+      "infantsfamilyetc": "乳幼児・家族向けその他設備"
+    }
   },
   "nearby": {
     "hubTitle": "近く",

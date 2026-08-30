@@ -211,7 +211,8 @@
       "aroundLoaded": "Look-around is ready",
       "aroundLoadedManual": "Surroundings of the set location are ready",
       "aroundPlacesHeading": "Shops and facilities nearby",
-      "aroundPlacesFailed": "Could not load nearby shops and facilities"
+      "aroundPlacesFailed": "Could not load nearby shops and facilities",
+      "stopsBefore": "{count} stops away"
     },
     "settings": {
       "title": "Settings",

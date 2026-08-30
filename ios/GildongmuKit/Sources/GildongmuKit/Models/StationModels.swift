@@ -67,6 +67,23 @@ public struct SeoulMetroFacility: Codable, Sendable, Hashable {
     public let operatingStatus: String?
     /// 시설별 보조 설명(화장실 종류·상행/하행 등, 없으면 nil)
     public let detail: String?
+    /// 서버 합성 한국어(`name`·`detail`)의 구조화 원재료(A26, 웹 `SeoulMetroFacilityParts` 미러).
+    /// 앱이 자기 언어로 조립한다(`StationSections`). 구버전 응답엔 없다 — 그때는 문자열 그대로.
+    public let parts: SeoulMetroFacilityParts?
+}
+
+/// `SeoulMetroFacility.parts` — 그룹 종류별로 쓰는 필드가 다르다: voiceGuide `location`(+환승역만
+/// `line`), restroom `restroomType`·`wheelchairAccessible`, elevatorLocation `compass`·`meters`·`dong`.
+public struct SeoulMetroFacilityParts: Codable, Sendable, Hashable {
+    public let location: String?
+    /// 노선 번호(예 "5") — "호선"은 앱이 단다.
+    public let line: String?
+    public let restroomType: String?
+    public let wheelchairAccessible: Bool?
+    /// 8방위 코드 n·ne·e·se·s·sw·w·nw
+    public let compass: String?
+    public let meters: Int?
+    public let dong: String?
 }
 
 /// 한 시설 종류의 묶음. 데이터가 있는 종류만 포함.
@@ -134,6 +151,9 @@ public struct TimetableLine: Codable, Sendable, Hashable {
     /// 옵셔널인 이유: 웹 배포가 앱보다 먼저라 구서버 응답엔 이 필드가 없다(그때 directions 빈 노선은 오지 않는다).
     public let coverage: String?
     public let directions: [TimetableDirection]
+    /// `lineName`이 TAGO 축약명에 서버가 "선"을 덧붙인 것일 때만 그 원형(예 "수인분당", A26).
+    /// 앱은 이것으로 접미를 자기 언어로 단다(`timetable.lineSuffixed`); nil이면 `lineName` 그대로.
+    public let lineCore: String?
 }
 
 /// 역 첫차·막차 시간표 전체(웹 StationTimetable 미러).
