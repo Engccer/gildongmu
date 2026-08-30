@@ -3,6 +3,7 @@
 import { useLocale } from "next-intl";
 import type { ReactNode } from "react";
 import { bilingualName } from "@/lib/bilingual-name";
+import { hasHangul } from "@/lib/format";
 
 /**
  * 영문 이름 + 한글 괄호 병기(위원장 판정 4, E27 §3.6): 시각은 `Gangnam (강남)`, 접근 가능한 이름은
@@ -15,7 +16,8 @@ import { bilingualName } from "@/lib/bilingual-name";
 export function TransitBilingualName({ en, ko }: { en: string; ko?: string | null }): ReactNode {
   const locale = useLocale();
   const b = bilingualName(locale, ko ?? en, { en });
-  if (b.secondary === null) return b.primary;
+  // 후보에 한글이 섞여 정본이 한글 원문으로 되돌린 경우(§3.8 게이트가 막는 이론 경로) — 태그 없이 두면 영어 음성이 한글을 읽는다.
+  if (b.secondary === null) return hasHangul(b.primary) ? <span lang="ko">{b.primary}</span> : b.primary;
   return (
     <>
       {b.primary}

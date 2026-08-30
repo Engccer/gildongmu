@@ -10,6 +10,8 @@
  * 재정규화하지 않는다.
  */
 
+import { hasHangul } from "./format";
+
 /** `. `를 구분자로 읽지 않는 앞 토큰(약어). 마침표 없이 비교한다. */
 const ABBREVIATIONS = new Set([
   "apt", "univ", "nat'l", "edu", "st", "mt", "jr", "sr", "dr", "co", "dept", "elem", "bldg",
@@ -43,7 +45,7 @@ export function normalizeTransitNameEn(raw: string): string {
 
 /** 표시 가능한 영문인가 — 비어 있지 않고 한글이 없어야 `*En` 자격이 있다(설계 리뷰 #12). */
 export function isDisplayableEnglish(value: string | undefined | null): value is string {
-  return typeof value === "string" && value.trim().length > 0 && !/[가-힣]/.test(value);
+  return typeof value === "string" && value.trim().length > 0 && !hasHangul(value);
 }
 
 /** 정규화 + 자격 검사 — 자격 미달은 undefined(필드 부재). */

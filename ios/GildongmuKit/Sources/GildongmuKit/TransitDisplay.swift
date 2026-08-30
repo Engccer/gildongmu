@@ -18,9 +18,4 @@ public enum TransitDisplay {
         guard parts.count == enParts.count else { return ko }
         return build(parts)
     }
-
-    /// 이름 하나 — 영문이 있으면 영문, 없으면 한국어.
-    public static func pickName(isEn: Bool, ko: String, en: String?) -> String {
-        pickLine(isEn: isEn, ko: ko, enParts: [en]) { $0[0] }
-    }
 }

@@ -7,6 +7,7 @@ import { findQuickExit } from "../quick-exit";
 import { normalizeStationName } from "../station-match";
 import { subwayLineNameEn } from "../subway-line-names";
 import { toDisplayEnglish } from "../transit-name-en";
+import { hasHangul } from "../format";
 import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
@@ -91,20 +92,16 @@ interface OdsayPath {
 /** 응답 언어 — `en`이면 `*Kor`가 한국어 정본이고 원래 필드가 영문이다. */
 type OdsayLang = "ko" | "en";
 
-function hasHangul(v: unknown): boolean {
-  return typeof v === "string" && /[가-힣]/.test(v);
-}
-
 /** 한국어 자리 값의 자격: 비어 있지 않고, 한글이 있거나 영문 원본과 같은 라틴 표기(`GTX-A`·`KBS`)여야 한다. */
 function isKorName(kor: unknown, en: unknown): boolean {
   if (typeof kor !== "string" || !kor.trim()) return false;
-  return hasHangul(kor) || kor.trim() === String(en ?? "").trim();
+  return (typeof kor === "string" && hasHangul(kor)) || kor.trim() === String(en ?? "").trim();
 }
 
 /** 지하철 노선 한글 자리: 한글이 있거나 노선 표에 있는 라틴 표기(`GTX-A`)여야 한다. */
 function isKorLine(kor: unknown): boolean {
   if (typeof kor !== "string" || !kor.trim()) return false;
-  return hasHangul(kor) || subwayLineNameEn(kor) !== null;
+  return (typeof kor === "string" && hasHangul(kor)) || subwayLineNameEn(kor) !== null;
 }
 
 /**
@@ -339,6 +336,8 @@ function toTransitRoute(
     }
   }
 
+  const departNameEn = lang === "en" ? toDisplayEnglish(path.info.firstStartStation) : undefined;
+  const arriveNameEn = lang === "en" ? toDisplayEnglish(path.info.lastEndStation) : undefined;
   const boardCount = legs.filter((l) => l.mode !== "walk").length;
   const walkMinutes = path.subPath
     .filter((sp) => sp.trafficType === 3)
@@ -351,12 +350,8 @@ function toTransitRoute(
       walkMinutes,
       departName: lang === "en" ? path.info.firstStartStationKor : path.info.firstStartStation,
       arriveName: lang === "en" ? path.info.lastEndStationKor : path.info.lastEndStation,
-      ...(lang === "en" && toDisplayEnglish(path.info.firstStartStation)
-        ? { departNameEn: toDisplayEnglish(path.info.firstStartStation) }
-        : {}),
-      ...(lang === "en" && toDisplayEnglish(path.info.lastEndStation)
-        ? { arriveNameEn: toDisplayEnglish(path.info.lastEndStation) }
-        : {}),
+      ...(departNameEn ? { departNameEn } : {}),
+      ...(arriveNameEn ? { arriveNameEn } : {}),
     },
     legs,
     routeKey,

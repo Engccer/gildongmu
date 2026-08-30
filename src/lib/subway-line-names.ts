@@ -14,6 +14,8 @@
  * ⚠ 표에 노선을 더할 때 `subway-line-names-drift.test.ts`가 생산자 5축 전수를 다시 판정한다.
  */
 
+import type { StationTimetable } from "./types";
+
 const LINE_EN: Record<string, string> = {
   // 수도권 도시철도(서울교통공사·서울시메트로9호선)
   "1호선": "Line 1",
@@ -133,6 +135,21 @@ export function subwayLineNameEn(ko: string | undefined | null): string | null {
     return null;
   }
   return express ? `${en} Express` : en;
+}
+
+/**
+ * 시간표 노선에 `lineNameEn`(E27) — TAGO 원형(`lineCore`)이 있으면 그것을, 없으면 표시명을 표에 통과시킨다.
+ * 표 미스는 부재(한국어 폴백). 라우트가 `lang=en`일 때만 부른다.
+ */
+export function withTimetableLinesEn(tt: StationTimetable | null): StationTimetable | null {
+  if (!tt) return null;
+  return {
+    ...tt,
+    lines: tt.lines.map((line) => {
+      const en = subwayLineNameEn(line.lineCore ?? line.lineName);
+      return en ? { ...line, lineNameEn: en } : line;
+    }),
+  };
 }
 
 /** 배열형 투영 — 하나라도 미지면 **전체 부재**(한 줄 안 언어 혼합 금지, §3.3). */

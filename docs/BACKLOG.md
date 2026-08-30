@@ -292,6 +292,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 - **iOS 줄 단위 언어 태깅**(한국어 폴백 줄·비-en 로케일 영어 줄) — E28 실기기 판정 항목과 같은 축(SwiftUI `accessibilitySpeechLanguage`).
 - **병기 `Gangnam (강남)`이 한 접근성 객체로 읽히는가** — 웹 `<h4>`·`<li>` 안 `aria-hidden` span(a11y-auditor 정적 판정 결과는 spec §9 아래), iOS `accessibilityLabel` — 실기기 VoiceOver 판정(E28 병기와 함께).
 - 내 주변 **버스 정류소명** 영문(ODsay 밖, E28 로마자) · 채팅 산문의 영문 노선명(채팅은 ko 산문 정본).
+- **GTX-A 경로 실호출**(`scripts/verify-odsay-lang.mjs` 4번째 경로 서울역→동탄) — 2026-08-31 ODsay 일일 쿼터 소진(429)으로 미실측. 한글 없는 노선명이 `*Kor` 술어(`isKorLine`)를 통과하는지 다음 실행에서 확정.
 
 아래는 접수 시점 기록이다. ODsay `searchPubTransPathT`가 `lang=1`로 역명(`Gangnam`)·노선명(`Line 2`)·버스 정류소명(`Gil-dong Station Exit 1`)을 영문으로 준다(실호출 확정 2026-08-31, 한글은 `*Kor` 필드 병기). 전국 지하철 노선명은 닫힌 집합이라 정적 영문 표가 정답. 판정 확정(2026-08-31): ODsay 영문 채택(정류소명 구분자·약어만 정규화, 조인은 `*Kor`), 도착 문장은 en에서 `arvlCd` 기반 영어 단문 생성(실패는 ko 폴백). 범위 밖으로 남는 판정: 실시간 대중교통 안내 en 게이트 해제(실험판 봉인 별도), CLI/MCP `route transit` `lang`(E26 동형). 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
 
