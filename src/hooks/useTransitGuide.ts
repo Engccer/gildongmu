@@ -682,6 +682,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     clearTimer();
     stateRef.current = null;
     routeRef.current = null;
+    setSessionRoute(null);
     retainedRef.current.clear();
     tagoResolvedRef.current.clear();
     refreshAnnounceRef.current = false;
