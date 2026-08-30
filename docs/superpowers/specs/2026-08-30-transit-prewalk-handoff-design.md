@@ -157,3 +157,7 @@ cancelPrewalk(): prewalk = nil; prewalkTask?.cancel(); beacon.onSessionEnd = nil
 - 버스 정류소 상·하행 구분(MAJOR): `boardStop`은 ODsay가 고른 특정 정류소(arsId·좌표)라 이미 구분된다.
 - 선언 버튼 되돌리기(MAJOR): 대기 국면의 "안내 종료" + 재시작이 그 경로다(§4.3). 라벨에 역명을 넣는 것은 반영.
 - Kit fixture 디코더 대칭화(MAJOR): 이미 §7이 두 플랫폼이 같은 `prewalk` 키를 읽어 같은 기대값과 대조한다고 정한다 — 지적의 전제가 spec과 다르다.
+
+**구현 단계 리뷰(2026-08-30, 서브에이전트 spec-compliance + code-quality)**
+- spec-compliance: §2~§6 전부 PASS, §7 PARTIAL(웹 `arrived` 콜백 직접 테스트 부재) → `TransitGuidePanel.prewalk-arrived.test.tsx`·`useRouteGuide` 종료 스파이 추가. 관찰 2건(`sessionRoute` 종료 뒤 잔류·동기 거부 분기의 `prewalkTarget` 잔류) 반영.
+- code-quality: 결함 0. MINOR ① 취소된 옛 시작 Task가 말미까지 달려 새 세션의 콜백을 `.startFailed`로 소비할 구조적 여지(현 호출 그래프에선 도달 불가) → `startGeneration` 세대 비교로 차단. MINOR ② 웹 prewalk 완료 시점의 `route` prop이 진입 시점과 다를 여지 → **수용**: `DirectionsView`가 패널을 `routeKey`로 키잉해 다른 경로는 리마운트되고, 같은 키의 내용 갱신 경로는 확인되지 않았다(재현 경로가 생기면 훅의 `sessionRoute` 스냅숏을 진입 시점으로 앞당긴다).
