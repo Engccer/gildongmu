@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { dataLocale } from "@/lib/data-locale";
 import type { SubwayStationArrivals } from "@/lib/types";
 import { arrivalItems } from "@/lib/place-lines/station-arrivals";
 import { useAxisSource } from "@/hooks/useAxisBridge";
@@ -27,6 +28,7 @@ type Status =
  */
 export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
   const t = useTranslations("subwayArrival");
+  const locale = useLocale();
   const tActions = useTranslations("actions");
   const [status, setStatus] = useState<Status>({ kind: "idle", gen: 0 });
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -54,7 +56,8 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
       }));
       try {
         const res = await fetch(
-          `/api/station/subway-arrival?station=${encodeURIComponent(stationName)}`,
+          // `lang=en`은 도착 영문 필드(E27)를 additive로 받는다. ko는 종전 URL과 같다.
+          `/api/station/subway-arrival?station=${encodeURIComponent(stationName)}&lang=${dataLocale(locale)}`,
           { cache: "no-store" },
         );
         const body = await res.json();
@@ -80,7 +83,7 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
         inFlightRef.current = false;
       }
     },
-    [stationName],
+    [stationName, locale],
   );
   const toSnapshot = useCallback(
     (s: Status): AxisSnapshot => {
@@ -88,11 +91,11 @@ export function SeoulSubwayArrival({ stationName }: { stationName: string }) {
       return {
         status: s.kind,
         gen: s.gen,
-        data: done ? { items: arrivalItems(done.data.arrivals, t) } : undefined,
+        data: done ? { items: arrivalItems(done.data.arrivals, t, locale) } : undefined,
         refreshError: s.kind === "done" && s.refreshError ? true : undefined,
       };
     },
-    [t],
+    [t, locale],
   );
   const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
   useAxisSource("arrivals", status, toSnapshot, loadForTool);

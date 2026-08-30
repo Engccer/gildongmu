@@ -26,10 +26,10 @@ final class StationSectionsModel {
     func load(stationName: String) async {
         // 한 조각의 실패가 다른 조각을 안 죽인다. 기존 4종은 실패=null과 동일 처리(섹션 미노출),
         // 시간표만 실패를 error로 구분해 보존한다(무운행 위장 금지).
-        async let metaTask: StationMeta? = (try? service.meta(station: stationName)) ?? nil
+        async let metaTask: StationMeta? = (try? service.meta(station: stationName, lang: AppLanguage.dataLocale)) ?? nil
         async let korailTask: StationFacilities? = (try? service.korailFacilities(station: stationName)) ?? nil
         async let metroTask: SeoulMetroFacilities? = (try? service.metroFacilities(station: stationName)) ?? nil
-        async let arrivalsTask: StationArrivals? = (try? service.arrivals(station: stationName)) ?? nil
+        async let arrivalsTask: StationArrivals? = (try? service.arrivals(station: stationName, lang: AppLanguage.dataLocale)) ?? nil
         async let timetableTask: TimetableState = loadTimetable(stationName: stationName)
         meta = await metaTask
         korailFacilities = await korailTask
@@ -40,7 +40,7 @@ final class StationSectionsModel {
 
     private func loadTimetable(stationName: String) async -> TimetableState {
         do {
-            let result = try await service.timetable(station: stationName)
+            let result = try await service.timetable(station: stationName, lang: AppLanguage.dataLocale)
             return result.map(TimetableState.done) ?? .hidden
         } catch {
             return .error
@@ -58,9 +58,13 @@ struct StationSectionsView: View {
     var body: some View {
         if let meta = model.meta {
             Section {
-                // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로
+                // 한 줄=한 객체: 역명·영문명·노선·환승·운영기관을 단일 텍스트로.
+                // en 계열은 노선을 서버 영문(`linesEn`, E27)으로 — 없으면 한국어 원문(줄 단위 원자성).
                 Text(joinText(
-                    appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn, meta.lines.joined(separator: ", "),
+                    appLocalized("ios.station.nameSuffixed", meta.name), meta.nameEn,
+                    TransitDisplay.pickLine(
+                        isEn: AppLanguage.dataLocale == "en", ko: meta.lines.joined(separator: ", "),
+                        enParts: [meta.linesEn?.joined(separator: ", ")]) { $0[0] },
                     meta.isTransfer ? appLocalized("stationMeta.transfer") : nil, meta.operatorName))
             } header: {
                 Text(appLocalized("stationMeta.heading")).accessibilityAddTraits(.isHeader)
@@ -74,8 +78,8 @@ struct StationSectionsView: View {
                     Text(appLocalized("ios.station.noArrivals"))
                 } else {
                     ForEach(Array(arrivals.arrivals.enumerated()), id: \.offset) { _, arrival in
-                        // 완성 문장 정본 message 그대로. 급행은 텍스트로 흡수(M2와 동일)
-                        Text(joinText(arrival.line, arrival.express ? appLocalized("subwayArrival.express") : nil, arrival.trainLineNm, arrival.message))
+                        // ko는 완성 문장 정본 message 그대로(급행은 텍스트로 흡수, M2와 동일), en은 서버 영문(E27).
+                        Text(subwayArrivalLine(arrival, isEn: AppLanguage.dataLocale == "en"))
                     }
                 }
             } header: {
@@ -106,11 +110,14 @@ struct StationSectionsView: View {
                         Text(text)
                     } else {
                         ForEach(line.directions, id: \.direction) { direction in
-                            // 한 줄=한 객체: 노선·방향·첫차·막차를 단일 텍스트로(웹 StationTimetable.tsx 미러)
+                            // 한 줄=한 객체: 노선·방향·첫차·막차를 단일 텍스트로(웹 StationTimetable.tsx 미러).
+                            // en은 노선 영문·종착 영문이 다 있을 때만 영어 줄(줄 단위 원자성, E27) — 아니면 한국어.
+                            let en = AppLanguage.dataLocale == "en" && line.lineNameEn != nil
+                                && terminusReady(direction.first) && terminusReady(direction.last)
                             Text(joinText(
-                                "\(lineDisplayName(line)) \(directionLabel(direction.direction))",
-                                "\(appLocalized("timetable.first")) \(trainText(direction.first))",
-                                "\(appLocalized("timetable.last")) \(trainText(direction.last))"))
+                                "\(en ? line.lineNameEn! : lineKoName(line)) \(directionLabel(direction.direction))",
+                                "\(appLocalized("timetable.first")) \(trainText(direction.first, en: en))",
+                                "\(appLocalized("timetable.last")) \(trainText(direction.last, en: en))"))
                         }
                     }
                 }
@@ -217,8 +224,20 @@ struct StationSectionsView: View {
     /// 가장 덜 단정적인 "확인 불가"로 떨어뜨린다(운행 없음으로 읽히지 않게). 미지의 값도 같다.
     /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26, 웹 `timetableLineItems` 미러).
     /// 노선명 자체는 원문 — 영문화는 E27 소관.
+    /// coverage 사유 줄의 노선명 — en 계열은 서버 영문(`lineNameEn`, E27)이 우선, 없으면 접미 조립·원문.
     private func lineDisplayName(_ line: TimetableLine) -> String {
+        if AppLanguage.dataLocale == "en", let en = line.lineNameEn { return en }
+        return lineKoName(line)
+    }
+
+    /// 서버가 "선"을 덧붙인 노선(lineCore)은 접미를 앱 언어로 단다(A26). 노선명 자체는 원문.
+    private func lineKoName(_ line: TimetableLine) -> String {
         line.lineCore.map { appLocalized("timetable.lineSuffixed", $0) } ?? line.lineName
+    }
+
+    /// 종착이 없으면 영문이 필요 없고, 있으면 영문 종착이 있어야 영어 줄이 된다.
+    private func terminusReady(_ train: TimetableTrain) -> Bool {
+        train.terminus.isEmpty || train.terminusEn != nil
     }
 
     /// 서버 합성 한국어(`name`) 대신 구조화 조각(`parts`, A26)이 있으면 앱 언어로 조립한다
@@ -270,12 +289,12 @@ struct StationSectionsView: View {
         }
     }
 
-    private func trainText(_ train: TimetableTrain) -> String {
+    private func trainText(_ train: TimetableTrain, en: Bool) -> String {
         let time = train.nextDay == true
             ? "\(appLocalized("timetable.nextDay")) \(train.time)"
             : train.time
-        let isEn = AppLanguage.current != "ko"
-        let terminus = (isEn && train.terminusEn != nil) ? train.terminusEn! : train.terminus
+        let terminus = en ? (train.terminusEn ?? train.terminus) : train.terminus
+        if terminus.isEmpty { return time }
         return "\(time) \(appLocalized("timetable.toTerminus", terminus))"
     }
 }

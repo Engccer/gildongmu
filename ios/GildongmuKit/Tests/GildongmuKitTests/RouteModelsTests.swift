@@ -399,3 +399,31 @@ struct RouteBriefingWaypointTests {
         #expect(without.waypoint == nil)
     }
 }
+
+// E27: 대중교통 leg의 영문 additive 필드 — 한국어 필드는 그대로 오고 `*En`만 더해진다.
+@Test func transitLegEnFieldsDecodeOptionally() throws {
+    let json = #"""
+    {"result":{"recommended":{"summary":{"totalMinutes":31,"fare":1650,"transfers":2,"walkMinutes":3,"departName":"길동","arriveName":"강남","departNameEn":"Gildong","arriveNameEn":"Gangnam"},
+      "legs":[{"mode":"subway","lineName":"수도권 9호선(급행)","lineNameEn":"Line 9 Express","fromName":"길동","fromNameEn":"Gildong","toName":"천호","toNameEn":"Cheonho (Pungnaptoseong)","stationCount":1,"minutes":3,
+               "stops":[{"name":"길동","nameEn":"Gildong","lat":37.5,"lng":127.1}]}],
+      "routeKey":"p0"},"alternatives":[],"totalCandidates":1}}
+    """#
+    let r = try #require(try JSONDecoder().decode(TransitRouteEnvelope.self, from: Data(json.utf8)).result)
+    let leg = r.recommended.legs[0]
+    #expect(leg.lineName == "수도권 9호선(급행)")
+    #expect(leg.lineNameEn == "Line 9 Express")
+    #expect(leg.fromNameEn == "Gildong")
+    #expect(leg.toNameEn == "Cheonho (Pungnaptoseong)")
+    #expect(leg.stops?[0].nameEn == "Gildong")
+    #expect(r.recommended.summary.departNameEn == "Gildong")
+    #expect(r.recommended.summary.arriveNameEn == "Gangnam")
+}
+
+@Test func transitDisplayPickLineIsAtomic() {
+    #expect(TransitDisplay.pickLine(isEn: true, ko: "강남, 2호선", enParts: ["Gangnam", "Line 2"]) { $0.joined(separator: ", ") } == "Gangnam, Line 2")
+    #expect(TransitDisplay.pickLine(isEn: true, ko: "강남, 2호선", enParts: ["Gangnam", nil]) { $0.joined(separator: ", ") } == "강남, 2호선")
+    #expect(TransitDisplay.pickLine(isEn: false, ko: "강남, 2호선", enParts: ["Gangnam", "Line 2"]) { $0.joined(separator: ", ") } == "강남, 2호선")
+    let b = TransitDisplay.bilingual(en: "Gangnam", ko: "강남")
+    #expect(b.visual == "Gangnam (강남)" && b.spoken == "Gangnam")
+    #expect(TransitDisplay.bilingual(en: "Gangnam", ko: nil).visual == "Gangnam")
+}

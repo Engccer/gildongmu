@@ -17,13 +17,15 @@ public struct StationMeta: Codable, Sendable, Hashable {
     public let nameHanja: String?
     /// 이 역명을 지나는 노선들(환승역은 여럿)
     public let lines: [String]
+    /// `lines`의 영문(`lang=en`에만, E27 표 — 하나라도 미지면 배열 전체 nil)
+    public let linesEn: [String]?
     /// 환승역 여부
     public let isTransfer: Bool
     /// 운영기관명. JSON 키 "operator"는 Swift 예약어라 이름만 변경
     public let operatorName: String
 
     enum CodingKeys: String, CodingKey {
-        case name, nameEn, nameHanja, lines, isTransfer
+        case name, nameEn, nameHanja, lines, linesEn, isTransfer
         case operatorName = "operator"
     }
 }
@@ -154,6 +156,8 @@ public struct TimetableLine: Codable, Sendable, Hashable {
     /// `lineName`이 TAGO 축약명에 서버가 "선"을 덧붙인 것일 때만 그 원형(예 "수인분당", A26).
     /// 앱은 이것으로 접미를 자기 언어로 단다(`timetable.lineSuffixed`); nil이면 `lineName` 그대로.
     public let lineCore: String?
+    /// 영문 노선명(`lang=en`에만, E27 표 — `lineCore` 접미 조립보다 우선). 표 미스면 nil
+    public let lineNameEn: String?
 }
 
 /// 역 첫차·막차 시간표 전체(웹 StationTimetable 미러).

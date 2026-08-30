@@ -9,6 +9,8 @@ import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { formatDistance, joinText } from "@/lib/format";
 import { alternativeNameKey } from "@/lib/transit-alternative-name";
 import { quickExitText } from "@/lib/quick-exit-text";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
+import { TransitBilingualName } from "./TransitBilingualName";
 
 type Status =
   | { kind: "idle" }
@@ -58,11 +60,10 @@ export function TransitRouteBriefing({
     const myReq = ++reqId.current;
     setStatus({ kind: "loading" });
     try {
-      // 자동차 경로와 달리 lang 파라미터를 보내지 않는다 — ODsay 무료 티어는
-      // 국문 응답 전용이라 라우트가 lang을 쓰지 않고, 보내면 캐시만 로케일로
-      // 무의미하게 분절된다. en은 컴포넌트에서 구조만 영역화(고유명은 한국어 원문).
+      // `lang=en`은 ODsay `lang=1` 영문을 `*En`에 additive로 받는다(E27 — 종전 "무료 티어 국문 전용"
+      // 주석은 2026-08-31 실호출로 폐기). 한국어 필드는 그대로라 ko는 종전 URL과 같다.
       const res = await fetch(
-        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}`,
+        `/api/route/transit?origin=${originLat},${originLng}&dest=${dest.lat},${dest.lng}&lang=${dataLocale(locale)}`,
       );
       const body = await res.json();
       if (myReq !== reqId.current) return; // stale 응답 폐기
@@ -246,7 +247,9 @@ export function TransitRouteBriefing({
   );
 }
 
-/** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 lang="ko".
+/** 경로 1개의 요약 + 구간 리스트. 고유명(노선·정류장)은 한국어면 lang="ko", en 계열 로케일에서
+    서버 영문(`*En`, E27)이 **노선·정류장 둘 다** 있는 구간만 영문(역명은 `Gangnam (강남)` 병기 —
+    괄호 한글은 시각 전용). 한 구간 문장 안에서 언어를 섞지 않는다(줄 단위 원자성).
     includeSummary=false는 대안 펼침 전용 — 펼침 버튼 라벨이 이미 요약이라
     본문에서 재낭독하지 않는다(인접 중복 금지). */
 export function TransitRouteResult({
@@ -263,6 +266,7 @@ export function TransitRouteResult({
   includeSummary?: boolean;
 }) {
   let boardSeen = 0;
+  const isEn = prefersEnglish(locale);
   return (
     <>
       {includeSummary && (
@@ -283,7 +287,8 @@ export function TransitRouteResult({
             // 마지막 도보는 provider가 이름을 모른다(뒤에 탑승 구간이 없다).
             // 소비자가 목적지 이름을 알면 그것을, 모르면 "목적지까지"라는 구간
             // 의미를 쓴다(이름 부재와 구간 의미 부재는 다른 층이다).
-            const name = leg.toName ?? dest;
+            // en은 서버 영문 행선지(뒤 탑승 승차역의 영문). 문장 틀 `{name}`이 문자열 자리라 괄호 병기는 없다.
+            const name = (isEn && leg.toNameEn) || leg.toName || dest;
             // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다
             const distance =
               leg.distanceMeters != null ? formatDistance(leg.distanceMeters) : null;
@@ -306,7 +311,10 @@ export function TransitRouteResult({
           }
           // 고유명(노선·정류장)은 <line>/<from> 태그 핸들러로 lang="ko" 주입
           const messageKey = boardSeen++ === 0 ? "legBoard" : "legTransfer";
-          const quickExit = quickExitText(t, leg.toName ?? "", leg.quickExit);
+          // 구간 문장의 영문은 노선·승차 정류장이 **둘 다** 있을 때만(줄 단위 원자성) — 하나만
+          // 영문이면 한 문장 안에 두 언어가 선다.
+          const legEn = isEn && Boolean(leg.lineNameEn) && Boolean(leg.fromNameEn);
+          const quickExit = quickExitText(t, (legEn && leg.toNameEn) || leg.toName || "", leg.quickExit);
           return (
             <li key={i}>
               {t.rich(messageKey, {
@@ -316,11 +324,18 @@ export function TransitRouteResult({
                 // 음성으로 낭독된다. 감싸도 되는 건 ODsay 원문뿐이다.
                 line: (chunks) =>
                   leg.mode === "bus" && leg.lineName ? (
-                    t("busNo", { route: leg.lineName })
+                    t("busNo", { route: legEn ? leg.lineNameEn! : leg.lineName })
+                  ) : legEn ? (
+                    leg.lineNameEn
                   ) : (
                     <span lang="ko">{leg.lineName ?? chunks}</span>
                   ),
-                from: (chunks) => <span lang="ko">{leg.fromName ?? chunks}</span>,
+                from: (chunks) =>
+                  legEn ? (
+                    <TransitBilingualName en={leg.fromNameEn!} ko={leg.fromName} />
+                  ) : (
+                    <span lang="ko">{leg.fromName ?? chunks}</span>
+                  ),
                 count: leg.stationCount ?? 0,
               })}
               {/* 배차간격은 같은 li 텍스트에 쉼표로 이어붙인다(한 줄=한 객체) */}
@@ -353,9 +368,12 @@ export function TransitRouteResult({
       {route.legs[route.legs.length - 1]?.mode !== "walk" && (
         <p className="mt-1 text-sm">
           {t.rich("arrive", {
-            name: () => (
-              <span lang="ko">{route.summary.arriveName ?? dest}</span>
-            ),
+            name: () =>
+              isEn && route.summary.arriveNameEn ? (
+                <TransitBilingualName en={route.summary.arriveNameEn} ko={route.summary.arriveName} />
+              ) : (
+                <span lang="ko">{route.summary.arriveName ?? dest}</span>
+              ),
           })}
         </p>
       )}

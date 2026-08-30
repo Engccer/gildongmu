@@ -162,3 +162,39 @@ extension StubNetworkTests {
         #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
     }
 }
+
+// E27: 대중교통 `lang` — 비-ko만 파라미터를 실어 ko 요청은 종전과 byte-identical(walk 동형).
+extension StubNetworkTests {
+    @Test func transitLangEnRequestsLangParam() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"result":null}"#.utf8))
+        }
+        _ = try await RouteService(client: stubbedClient()).transit(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, includeStops: true, lang: "en")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+        #expect(capturedQuery?.contains(where: { $0.name == "includeStops" && $0.value == "1" }) == true)
+        _ = try await RouteService(client: stubbedClient()).transit(
+            originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
+        #expect(capturedQuery?.contains(where: { $0.name == "includeStops" }) == false)
+    }
+
+    @Test func stationAndNearbyLangEnRequestsLangParam() async throws {
+        var capturedQuery: [URLQueryItem]?
+        StubURLProtocol.handler = { request in
+            capturedQuery = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems
+            return (200, Data(#"{"meta":null,"arrivals":null,"timetable":null,"stations":[]}"#.utf8))
+        }
+        let station = StationService(client: stubbedClient())
+        _ = try await station.meta(station: "강남", lang: "en")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+        _ = try await station.arrivals(station: "강남", lang: "ko")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" }) == false)
+        _ = try await station.timetable(station: "강남", lang: "en")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+        _ = try await NearbyService(client: stubbedClient()).subwayArrivals(lat: 37.5, lng: 127.0, lang: "en")
+        #expect(capturedQuery?.contains(where: { $0.name == "lang" && $0.value == "en" }) == true)
+    }
+}

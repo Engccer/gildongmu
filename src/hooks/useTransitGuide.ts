@@ -22,6 +22,7 @@ import {
   type TransitLock,
   transitPrewalkTarget,
   withoutPrewalk,
+  subwayRidingMessage,
 } from "@/lib/transit-guide";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import type { TransitRoute } from "@/lib/types";
@@ -239,10 +240,22 @@ export function useTransitGuide(route: TransitRoute | null) {
     [t],
   );
 
-  /** upstream 완성 문장의 라벨 프레임(§12.3) — 원문 무변형, 하차역 라벨 전치. */
+  /**
+   * 승차 국면 상태 문장(§12.3). 버스는 upstream 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
+   * 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
+   * ("충정로까지 전역 도착", A27 실승차 피드백) — `subwayRidingMessage`(코드 → 탑승자 시점 문장)로 고르고,
+   * 99(운행중)는 빈 문자열(잔여 수가 말한다), 미지 코드는 원문을 틀 없이 그대로.
+   */
   const frameText = useCallback(
-    (leg: TransitGuideLeg, message: string): string =>
-      t("messageFrame", { stop: leg.alightName, message }),
+    (leg: TransitGuideLeg, message: string, arrivalCode: string | null): string => {
+      if (leg.mode === "subway") {
+        const r = subwayRidingMessage(arrivalCode);
+        if (r.kind === "key") return t(r.key, { stop: leg.alightName });
+        if (r.kind === "omit") return "";
+        return message;
+      }
+      return t("messageFrame", { stop: leg.alightName, message });
+    },
     [t],
   );
 
@@ -315,7 +328,11 @@ export function useTransitGuide(route: TransitRoute | null) {
           : !boarding && leg.stationCount != null && s.phase === "riding"
             ? t("stationCountAbout", { count: leg.stationCount })
             : "",
-        s.lastMessage ? (boarding ? approachFrameText(leg, s.lastMessage) : frameText(leg, s.lastMessage)) : "",
+        s.lastMessage
+          ? boarding
+            ? approachFrameText(leg, s.lastMessage)
+            : frameText(leg, s.lastMessage, s.lastArrivalCode)
+          : "",
         // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
         // 대기 중에도 근사 예고로 유지).
         leg.trackMode === "tagoBus" || (s.lock != null && isApproxTransitLock(s.lock))
@@ -382,18 +399,19 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
         case "trackingStarted":
           if (leg) parts.push(contextText(leg), t("trackingStarted"));
-          if (event.message) parts.push(leg ? frameText(leg, event.message) : event.message);
-          else if (event.remaining != null) parts.push(t("remainingCount", { count: event.remaining }));
+          {
+            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
+            if (framed) parts.push(framed);
+            else if (event.remaining != null) parts.push(t("remainingCount", { count: event.remaining }));
+          }
           break;
         case "countdown":
           // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
-          parts.push(
-            event.message
-              ? leg
-                ? frameText(leg, event.message)
-                : event.message
-              : t("remainingCount", { count: event.remaining }),
-          );
+          {
+            // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
+            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
+            parts.push(framed || t("remainingCount", { count: event.remaining }));
+          }
           // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
           // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
           if (event.remaining <= 1 && event.currentLocation) {
@@ -401,13 +419,14 @@ export function useTransitGuide(route: TransitRoute | null) {
           }
           break;
         case "messageChanged":
-          parts.push(
-            leg
+          {
+            const framed = leg
               ? stateRef.current?.phase === "boarding"
                 ? approachFrameText(leg, event.message)
-                : frameText(leg, event.message)
-              : event.message,
-          );
+                : frameText(leg, event.message, event.arrivalCode)
+              : event.message;
+            if (framed) parts.push(framed);
+          }
           break;
         case "arrived": {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
@@ -421,7 +440,10 @@ export function useTransitGuide(route: TransitRoute | null) {
         }
         case "backOnTrack":
           parts.push(t("backOnTrack"));
-          if (event.message) parts.push(leg ? frameText(leg, event.message) : event.message);
+          {
+            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
+            if (framed) parts.push(framed);
+          }
           break;
         case "approxVehicleChanged":
           parts.push(t("approxVehicleChanged"));

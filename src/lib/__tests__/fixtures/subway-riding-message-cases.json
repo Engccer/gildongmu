@@ -1,0 +1,15 @@
+{
+  "comment": "A27 승차 국면 지하철 상태줄 — arvlCd → 문장 종류. 웹 transit-guide.ts ↔ Kit TransitGuide.swift 공유.",
+  "cases": [
+    { "arrivalCode": "0", "expect": { "kind": "key", "key": "subwayArriving" } },
+    { "arrivalCode": "1", "expect": { "kind": "key", "key": "subwayAtStop" } },
+    { "arrivalCode": "2", "expect": { "kind": "key", "key": "subwayDeparted" } },
+    { "arrivalCode": "3", "expect": { "kind": "key", "key": "subwayNextStop" } },
+    { "arrivalCode": "4", "expect": { "kind": "key", "key": "subwayNextStop" } },
+    { "arrivalCode": "5", "expect": { "kind": "key", "key": "subwayNextStop" } },
+    { "arrivalCode": "99", "expect": { "kind": "omit" } },
+    { "arrivalCode": "7", "expect": { "kind": "raw" } },
+    { "arrivalCode": "", "expect": { "kind": "raw" } },
+    { "arrivalCode": null, "expect": { "kind": "raw" } }
+  ]
+}

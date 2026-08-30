@@ -56,7 +56,9 @@ struct TransitRouteRows: View {
         ForEach(Array(route.legs.enumerated()), id: \.offset) { _, leg in
             // 도보 구간이 거리를 싣게 되면서 이 행에도 "178m"가 들어온다.
             // VoiceOver가 숫자 뒤 m을 minutes로 오독하므로 낭독만 풀어 쓴다.
-            distanceText(transitLegText(leg, destinationName: destinationName))
+            // en 계열은 서버 영문(`*En`, E27)으로 — 시각은 `Gangnam (강남)` 병기, 낭독은 영문만(한 줄 한 객체).
+            // 영문이 모자란 구간은 통째로 한국어(줄 단위 원자성).
+            transitLegRow(leg, destinationName: destinationName)
             // 빠른하차(E5)는 별도 문장이라 같은 Text에 합치지 않는다 — 합치면 한 줄이
             // 길어지고, 나누면 스와이프 한 번에 "무슨 열차"와 "몇 번 문"이 갈린다.
             // 값이 없으면 행 자체가 없다(3-state: 문구를 만들지 않는다).
@@ -97,13 +99,60 @@ func transitSummaryText(_ summary: TransitRouteSummary) -> String {
         summary.walkMinutes > 0 ? appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)) : nil)
 }
 
+/// 구간 행 — 시각 문자열과 낭독 문자열이 갈릴 수 있어(병기) `distanceText` 대신 직접 라벨을 단다.
+@MainActor
+func transitLegRow(_ leg: TransitRouteLeg, destinationName: String?) -> some View {
+    let line = transitLegLine(leg, destinationName: destinationName)
+    return Text(line.visual).accessibilityLabel(Text(spokenUnits(line.spoken)))
+}
+
+/// 구간 문장 (시각, 낭독). ko·영문 부재는 둘이 같다. en은 노선·승차·하차(도보는 행선지)가 **다** 영문일 때만
+/// 영어 문장이고 역명은 괄호 병기(시각 전용) — 하나라도 없으면 한국어 문장(`transitLegText`).
+func transitLegLine(_ leg: TransitRouteLeg, destinationName: String? = nil) -> (visual: String, spoken: String) {
+    let ko = transitLegText(leg, destinationName: destinationName)
+    guard AppLanguage.dataLocale == "en" else { return (ko, ko) }
+    if leg.mode == "walk" {
+        // 마지막 도보(행선지 없음)는 목적지 문구라 영문 조각이 필요 없다. 행선지가 있으면 영문 행선지 필수.
+        guard leg.toName == nil || leg.toNameEn != nil else { return (ko, ko) }
+        let en = transitLegText(leg, destinationName: destinationName, names: .english(bilingual: false))
+        return (en, en)
+    }
+    guard leg.lineNameEn != nil, leg.fromName == nil || leg.fromNameEn != nil,
+          leg.toName == nil || leg.toNameEn != nil else { return (ko, ko) }
+    return (
+        transitLegText(leg, destinationName: destinationName, names: .english(bilingual: true)),
+        transitLegText(leg, destinationName: destinationName, names: .english(bilingual: false))
+    )
+}
+
+/// 구간 문장에 쓸 이름 선택 — `.korean`은 종전 문장 그대로, `.english`는 `*En`(병기 여부는 시각/낭독).
+enum TransitLegNames {
+    case korean
+    case english(bilingual: Bool)
+}
+
 /// 구간 한 줄 = 한 접근성 객체. 도보 구간은 행선지·거리 유무로 문구가 갈린다(spec §4.3).
-func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> String {
+func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil, names: TransitLegNames = .korean) -> String {
+    /// 이름 하나 — 영문 모드면 `*En`(호출부가 존재를 보장), 병기면 `English (한글)`.
+    func pick(_ ko: String?, _ en: String?) -> String? {
+        switch names {
+        case .korean: return ko
+        case .english(let bilingual):
+            guard let en else { return ko }
+            return bilingual ? TransitDisplay.bilingual(en: en, ko: ko).visual : en
+        }
+    }
+    let fromName = pick(leg.fromName, leg.fromNameEn)
+    let toName = pick(leg.toName, leg.toNameEn)
+    let lineNameRaw: String? = {
+        if case .english = names, let en = leg.lineNameEn { return en }
+        return leg.lineName
+    }()
     if leg.mode == "walk" {
         // 마지막 도보에는 행선지가 없다(provider가 목적지 이름을 모른다). 소비자가
         // 목적지 이름을 알면 그것을 쓰고, 몰라도 "목적지까지"라는 구간 의미는 남긴다
         // (이름 부재와 구간 의미 부재는 다른 층이다).
-        let name = [leg.toName, destinationName].compactMap { $0 }.first { !$0.isEmpty }
+        let name = [toName, destinationName].compactMap { $0 }.first { !$0.isEmpty }
         // 거리는 3-state: 필드가 없으면 "0m"가 아니라 거리 없는 문구로 떨어진다.
         // 조립은 formatDistance 정본을 지난다(소수 km 직접 조립 금지).
         // 키·인자 순서 판정은 Kit `TransitWalkLegText`(테스트가 잠근다, D8). 아래
@@ -142,14 +191,14 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil) -> S
     // 수단이 드러난다). 웹 키를 공유한다 — iOS 전용 사본은 카탈로그 재생성 때 소멸한다.
     // ⚠ 빈 문자열을 없음으로 접는다: 웹은 falsy 검사가 이미 걸러내는데 Swift `.map`은
     // ""도 값으로 통과시켜 **iOS만 "번 버스"**를 낸다(ODsay busNo 결측 시 계약 이탈).
-    let lineName = leg.lineName?.trimmingCharacters(in: .whitespaces)
+    let lineName = lineNameRaw?.trimmingCharacters(in: .whitespaces)
     let lineText = (lineName?.isEmpty == false ? lineName : nil).map {
         leg.mode == "bus" ? appLocalized("route.transit.busNo", $0) : $0
     }
     return joinText(
         lineText,
-        leg.fromName.map { appLocalized("ios.route.board", $0) },
-        leg.toName.map { appLocalized("ios.route.alight", $0) },
+        fromName.map { appLocalized("ios.route.board", $0) },
+        toName.map { appLocalized("ios.route.alight", $0) },
         leg.stationCount.map { String(format: countKey, String($0)) },
         appLocalized("ios.route.legMinutes", String(leg.minutes)),
         serviceOutside)

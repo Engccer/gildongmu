@@ -1,0 +1,69 @@
+{
+  "comment": "ODsay lang=1 실관측 지하철 lane(nameKor, name) 2026-08-31 — 노선명 표 drift 테스트 입력 축 ④",
+  "lanes": [
+    {
+      "nameKor": "부산 1호선",
+      "name": "Busan 1 Line"
+    },
+    {
+      "nameKor": "부산 2호선",
+      "name": "Busan 2 Line"
+    },
+    {
+      "nameKor": "부산 3호선",
+      "name": "Busan 3 Line"
+    },
+    {
+      "nameKor": "수도권 2호선",
+      "name": "Line 2"
+    },
+    {
+      "nameKor": "수도권 3호선",
+      "name": "Line 3"
+    },
+    {
+      "nameKor": "수도권 5호선",
+      "name": "Line 5"
+    },
+    {
+      "nameKor": "수도권 6호선",
+      "name": "Line 6"
+    },
+    {
+      "nameKor": "수도권 7호선",
+      "name": "Line 7"
+    },
+    {
+      "nameKor": "수도권 8호선",
+      "name": "Line 8"
+    },
+    {
+      "nameKor": "수도권 9호선",
+      "name": "Line 9"
+    },
+    {
+      "nameKor": "수도권 9호선(급행)",
+      "name": "Line 9"
+    },
+    {
+      "nameKor": "수도권 경강선",
+      "name": "Gyeonggang Line"
+    },
+    {
+      "nameKor": "수도권 공항철도",
+      "name": "Airport Railroad"
+    },
+    {
+      "nameKor": "수도권 김포골드라인",
+      "name": "Gimpo Goldline"
+    },
+    {
+      "nameKor": "수도권 수인.분당선",
+      "name": "Suin·Bundang Line"
+    },
+    {
+      "nameKor": "수도권 신분당선",
+      "name": "Shinbundang Line"
+    }
+  ]
+}

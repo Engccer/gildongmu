@@ -507,7 +507,7 @@ final class DirectionsModel {
                 try await service.transit(
                     originLat: origin.lat, originLng: origin.lng,
                     destLat: dest.lat, destLng: dest.lng,
-                    includeStops: true)
+                    includeStops: true, lang: AppLanguage.dataLocale)
             })
         } catch { return .failure(error) }
     }

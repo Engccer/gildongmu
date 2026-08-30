@@ -1,0 +1,569 @@
+{
+ "result": {
+  "path": [
+   {
+    "pathType": 1,
+    "info": {
+     "trafficDistance": 11700.0,
+     "totalWalk": 104,
+     "totalTime": 31,
+     "payment": 1650,
+     "busTransitCount": 0,
+     "subwayTransitCount": 3,
+     "mapObj": "16:2:549:547@8:2:811:814@2:2:216:222",
+     "firstStartStation": "Gildong",
+     "firstStartStationKor": "길동",
+     "lastEndStation": "Gangnam",
+     "lastEndStationKor": "강남",
+     "totalStationCount": 11,
+     "busStationCount": 0,
+     "subwayStationCount": 11,
+     "totalDistance": 11804.0,
+     "totalWalkTime": -1,
+     "checkIntervalTime": 100,
+     "checkIntervalTimeOverYn": "N",
+     "totalIntervalTime": 20,
+     "transitIntervalTime": 0
+    },
+    "subPath": [
+     {
+      "trafficType": 3,
+      "distance": 98,
+      "sectionTime": 1
+     },
+     {
+      "trafficType": 1,
+      "distance": 1700,
+      "sectionTime": 4,
+      "stationCount": 2,
+      "lane": [
+       {
+        "name": "Line 5",
+        "nameKor": "수도권 5호선",
+        "subwayCode": 5,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 10,
+      "startName": "Gildong",
+      "startNameKor": "길동",
+      "startX": 127.139995,
+      "startY": 37.537781,
+      "endName": "Cheonho (Pungnaptoseong)",
+      "endNameKor": "천호",
+      "endX": 127.123908,
+      "endY": 37.538483,
+      "way": "Cheonho (Pungnaptoseong)",
+      "wayCode": 1,
+      "door": "1-2",
+      "startID": 549,
+      "endID": 547,
+      "startExitNo": "2",
+      "startExitX": 127.14025701336104,
+      "startExitY": 37.5380869960164,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 549,
+         "stationName": "Gildong",
+         "stationNameKor": "길동",
+         "x": "127.14",
+         "y": "37.537778"
+        },
+        {
+         "index": 1,
+         "stationID": 548,
+         "stationName": "Gangdong",
+         "stationNameKor": "강동",
+         "x": "127.132307",
+         "y": "37.535911"
+        },
+        {
+         "index": 2,
+         "stationID": 547,
+         "stationName": "Cheonho (Pungnaptoseong)",
+         "stationNameKor": "천호",
+         "x": "127.123905",
+         "y": "37.538486"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 0,
+      "sectionTime": 1
+     },
+     {
+      "trafficType": 1,
+      "distance": 3300,
+      "sectionTime": 6,
+      "stationCount": 3,
+      "lane": [
+       {
+        "name": "Line 8",
+        "nameKor": "수도권 8호선",
+        "subwayCode": 8,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 5,
+      "startName": "Cheonho (Pungnaptoseong)",
+      "startNameKor": "천호",
+      "startX": 127.123257,
+      "startY": 37.538019,
+      "endName": "Jamsil (Songpa-gu Office)",
+      "endNameKor": "잠실",
+      "endX": 127.10466,
+      "endY": 37.514777,
+      "way": "Jamsil (Songpa-gu Office)",
+      "wayCode": 2,
+      "door": "1-1",
+      "startID": 811,
+      "endID": 814,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 811,
+         "stationName": "Cheonho (Pungnaptoseong)",
+         "stationNameKor": "천호",
+         "x": "127.123252",
+         "y": "37.538016"
+        },
+        {
+         "index": 2,
+         "stationID": 813,
+         "stationName": "Mongchontoseong (World Peace Gate)",
+         "stationNameKor": "몽촌토성",
+         "x": "127.112775",
+         "y": "37.517663"
+        },
+        {
+         "index": 3,
+         "stationID": 814,
+         "stationName": "Jamsil (Songpa-gu Office)",
+         "stationNameKor": "잠실",
+         "x": "127.104666",
+         "y": "37.514774"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 0,
+      "sectionTime": 3
+     },
+     {
+      "trafficType": 1,
+      "distance": 6700,
+      "sectionTime": 11,
+      "stationCount": 6,
+      "lane": [
+       {
+        "name": "Line 2",
+        "nameKor": "수도권 2호선",
+        "subwayCode": 2,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 5,
+      "startName": "Jamsil (Songpa-gu Office)",
+      "startNameKor": "잠실",
+      "startX": 127.100175,
+      "startY": 37.513346,
+      "endName": "Gangnam",
+      "endNameKor": "강남",
+      "endX": 127.027618,
+      "endY": 37.497949,
+      "way": "Gangnam",
+      "wayCode": 2,
+      "door": "null",
+      "startID": 216,
+      "endID": 222,
+      "endExitNo": "8",
+      "endExitX": 127.02718636224867,
+      "endExitY": 37.497534149126984,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 216,
+         "stationName": "Jamsil (Songpa-gu Office)",
+         "stationNameKor": "잠실",
+         "x": "127.100171",
+         "y": "37.51335"
+        },
+        {
+         "index": 3,
+         "stationID": 219,
+         "stationName": "Samseong",
+         "stationNameKor": "삼성",
+         "x": "127.063186",
+         "y": "37.508872"
+        },
+        {
+         "index": 6,
+         "stationID": 222,
+         "stationName": "Gangnam",
+         "stationNameKor": "강남",
+         "x": "127.027619",
+         "y": "37.497952"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 6,
+      "sectionTime": 1
+     }
+    ]
+   },
+   {
+    "pathType": 1,
+    "info": {
+     "trafficDistance": 13300.0,
+     "totalWalk": 1577,
+     "totalTime": 49,
+     "payment": 1650,
+     "busTransitCount": 0,
+     "subwayTransitCount": 2,
+     "mapObj": "17:2:548:570@204:2:936:925",
+     "firstStartStation": "Gangdong",
+     "firstStartStationKor": "강동",
+     "lastEndStation": "Sinnonhyeon",
+     "lastEndStationKor": "신논현",
+     "totalStationCount": 7,
+     "busStationCount": 0,
+     "subwayStationCount": 7,
+     "totalDistance": 14877.0,
+     "totalWalkTime": -1,
+     "checkIntervalTime": 100,
+     "checkIntervalTimeOverYn": "N",
+     "totalIntervalTime": 16,
+     "transitIntervalTime": 0
+    },
+    "subPath": [
+     {
+      "trafficType": 3,
+      "distance": 799,
+      "sectionTime": 12
+     },
+     {
+      "trafficType": 1,
+      "distance": 2600,
+      "sectionTime": 5,
+      "stationCount": 2,
+      "lane": [
+       {
+        "name": "Line 5",
+        "nameKor": "수도권 5호선",
+        "subwayCode": 5,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 10,
+      "startName": "Gangdong",
+      "startNameKor": "강동",
+      "startX": 127.132311,
+      "startY": 37.535914,
+      "endName": "Olympic Park",
+      "endNameKor": "올림픽공원",
+      "endX": 127.130846,
+      "endY": 37.515882,
+      "way": "Olympic Park",
+      "wayCode": 2,
+      "door": "4-4",
+      "startID": 548,
+      "endID": 570,
+      "startExitNo": "2",
+      "startExitX": 127.13339813234799,
+      "startExitY": 37.53583618410771,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 548,
+         "stationName": "Gangdong",
+         "stationNameKor": "강동",
+         "x": "127.132307",
+         "y": "37.535911"
+        },
+        {
+         "index": 1,
+         "stationID": 569,
+         "stationName": "Dunchondong",
+         "stationNameKor": "둔촌동",
+         "x": "127.136247",
+         "y": "37.527692"
+        },
+        {
+         "index": 2,
+         "stationID": 570,
+         "stationName": "Olympic Park",
+         "stationNameKor": "올림픽공원",
+         "x": "127.130847",
+         "y": "37.515883"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 0,
+      "sectionTime": 2
+     },
+     {
+      "trafficType": 1,
+      "distance": 10700,
+      "sectionTime": 17,
+      "stationCount": 5,
+      "lane": [
+       {
+        "name": "Line 9",
+        "nameKor": "수도권 9호선(급행)",
+        "subwayCode": 9,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 6,
+      "startName": "Olympic Park",
+      "startNameKor": "올림픽공원",
+      "startX": 127.130344,
+      "startY": 37.516239,
+      "endName": "Sinnonhyeon",
+      "endNameKor": "신논현",
+      "endX": 127.024525,
+      "endY": 37.504466,
+      "way": "Sinnonhyeon",
+      "wayCode": 2,
+      "door": "null",
+      "startID": 936,
+      "endID": 925,
+      "endExitNo": "6",
+      "endExitX": 127.02534507225991,
+      "endExitY": 37.50329805352071,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 936,
+         "stationName": "Olympic Park",
+         "stationNameKor": "올림픽공원",
+         "x": "127.130344",
+         "y": "37.516243"
+        },
+        {
+         "index": 3,
+         "stationID": 929,
+         "stationName": "Bongeunsa",
+         "stationNameKor": "봉은사",
+         "x": "127.06023",
+         "y": "37.51425"
+        },
+        {
+         "index": 5,
+         "stationID": 925,
+         "stationName": "Sinnonhyeon",
+         "stationNameKor": "신논현",
+         "x": "127.024504",
+         "y": "37.504454"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 778,
+      "sectionTime": 12
+     }
+    ]
+   },
+   {
+    "pathType": 3,
+    "info": {
+     "trafficDistance": 11990.0,
+     "totalWalk": 482,
+     "totalTime": 40,
+     "payment": 1650,
+     "busTransitCount": 1,
+     "subwayTransitCount": 1,
+     "mapObj": "1029:1:22:34@2:2:216:222",
+     "firstStartStation": "Gil-dong Station Exit 1",
+     "firstStartStationKor": "길동역1번출구",
+     "lastEndStation": "Gangnam",
+     "lastEndStationKor": "강남",
+     "totalStationCount": 18,
+     "busStationCount": 12,
+     "subwayStationCount": 6,
+     "totalDistance": 12472.0,
+     "totalWalkTime": -1,
+     "checkIntervalTime": 100,
+     "checkIntervalTimeOverYn": "N",
+     "totalIntervalTime": 14,
+     "transitIntervalTime": 0
+    },
+    "subPath": [
+     {
+      "trafficType": 3,
+      "distance": 85,
+      "sectionTime": 1
+     },
+     {
+      "trafficType": 2,
+      "distance": 5290,
+      "sectionTime": 21,
+      "stationCount": 12,
+      "lane": [
+       {
+        "busNo": "3413",
+        "busNoKor": "3413",
+        "type": 12,
+        "busID": 1029,
+        "busLocalBlID": "100100225",
+        "busCityCode": 1000,
+        "busProviderCode": 4
+       }
+      ],
+      "intervalTime": 9,
+      "startName": "Gil-dong Station Exit 1",
+      "startNameKor": "길동역1번출구",
+      "startX": 127.139947,
+      "startY": 37.538042,
+      "endName": "Jamsil Station Exit 9",
+      "endNameKor": "잠실역9번출구",
+      "endX": 127.104161,
+      "endY": 37.514881,
+      "startID": 109665,
+      "startStationCityCode": 1000,
+      "startStationProviderCode": 4,
+      "startLocalStationID": "124000129",
+      "startArsID": "25240",
+      "endID": 109025,
+      "endStationCityCode": 1000,
+      "endStationProviderCode": 4,
+      "endLocalStationID": "123000046",
+      "endArsID": "24135",
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 109665,
+         "stationName": "Gil-dong Station Exit 1",
+         "stationNameKor": "길동역1번출구",
+         "stationCityCode": 1000,
+         "stationProviderCode": 4,
+         "localStationID": "124000129",
+         "arsID": "25240",
+         "x": "127.139947",
+         "y": "37.538042",
+         "isNonStop": "N"
+        },
+        {
+         "index": 6,
+         "stationID": 109575,
+         "stationName": "Olympic Park Station",
+         "stationNameKor": "올림픽공원역",
+         "stationCityCode": 1000,
+         "stationProviderCode": 4,
+         "localStationID": "123000154",
+         "arsID": "24244",
+         "x": "127.130961",
+         "y": "37.516712",
+         "isNonStop": "N"
+        },
+        {
+         "index": 12,
+         "stationID": 109025,
+         "stationName": "Jamsil Station Exit 9",
+         "stationNameKor": "잠실역9번출구",
+         "stationCityCode": 1000,
+         "stationProviderCode": 4,
+         "localStationID": "123000046",
+         "arsID": "24135",
+         "x": "127.104161",
+         "y": "37.514881",
+         "isNonStop": "N"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 391,
+      "sectionTime": 6
+     },
+     {
+      "trafficType": 1,
+      "distance": 6700,
+      "sectionTime": 11,
+      "stationCount": 6,
+      "lane": [
+       {
+        "name": "Line 2",
+        "nameKor": "수도권 2호선",
+        "subwayCode": 2,
+        "subwayCityCode": 1000
+       }
+      ],
+      "intervalTime": 5,
+      "startName": "Jamsil (Songpa-gu Office)",
+      "startNameKor": "잠실",
+      "startX": 127.100175,
+      "startY": 37.513346,
+      "endName": "Gangnam",
+      "endNameKor": "강남",
+      "endX": 127.027618,
+      "endY": 37.497949,
+      "way": "Gangnam",
+      "wayCode": 2,
+      "door": "null",
+      "startID": 216,
+      "endID": 222,
+      "startExitX": 127.10435997629716,
+      "startExitY": 37.514930148975324,
+      "endExitNo": "8",
+      "endExitX": 127.02718636224867,
+      "endExitY": 37.497534149126984,
+      "passStopList": {
+       "stations": [
+        {
+         "index": 0,
+         "stationID": 216,
+         "stationName": "Jamsil (Songpa-gu Office)",
+         "stationNameKor": "잠실",
+         "x": "127.100171",
+         "y": "37.51335"
+        },
+        {
+         "index": 3,
+         "stationID": 219,
+         "stationName": "Samseong",
+         "stationNameKor": "삼성",
+         "x": "127.063186",
+         "y": "37.508872"
+        },
+        {
+         "index": 6,
+         "stationID": 222,
+         "stationName": "Gangnam",
+         "stationNameKor": "강남",
+         "x": "127.027619",
+         "y": "37.497952"
+        }
+       ]
+      }
+     },
+     {
+      "trafficType": 3,
+      "distance": 6,
+      "sectionTime": 1
+     }
+    ]
+   }
+  ]
+ }
+}

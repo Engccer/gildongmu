@@ -149,6 +149,24 @@ public struct TransitRouteSummary: Codable, Sendable, Hashable {
     public let departName: String?
     /// 도착 정류장·역명(없으면 nil)
     public let arriveName: String?
+    /// 영문 출발·도착 정류장(`lang=en` 응답에만, E27). 한국어 필드는 어느 응답에서도 그대로다.
+    public let departNameEn: String?
+    public let arriveNameEn: String?
+
+    public init(
+        totalMinutes: Int, fare: Int, transfers: Int, walkMinutes: Int,
+        departName: String?, arriveName: String?,
+        departNameEn: String? = nil, arriveNameEn: String? = nil
+    ) {
+        self.totalMinutes = totalMinutes
+        self.fare = fare
+        self.transfers = transfers
+        self.walkMinutes = walkMinutes
+        self.departName = departName
+        self.arriveName = arriveName
+        self.departNameEn = departNameEn
+        self.arriveNameEn = arriveNameEn
+    }
 }
 
 /// 경유 정류장·역 하나(웹 `TransitLegStop` 미러) — `includeStops=1` 옵트인 시에만 온다(B2 §7).
@@ -162,18 +180,22 @@ public struct TransitLegStop: Codable, Sendable, Hashable {
     public let arsId: String?
     /// ODsay 정류소 도시 코드 원문(서울=1000) — TOPIS 추적 가능 판정 축
     public let cityCode: String?
+    /// 영문 정류장·역명(`lang=en` 응답에만, E27). `name`은 어느 응답에서도 한국어(조인 키).
+    public let nameEn: String?
     public let lat: Double
     public let lng: Double
 
     public init(
         name: String, stationId: String? = nil, localId: String? = nil,
-        arsId: String? = nil, cityCode: String? = nil, lat: Double, lng: Double
+        arsId: String? = nil, cityCode: String? = nil, lat: Double, lng: Double,
+        nameEn: String? = nil
     ) {
         self.name = name
         self.stationId = stationId
         self.localId = localId
         self.arsId = arsId
         self.cityCode = cityCode
+        self.nameEn = nameEn
         self.lat = lat
         self.lng = lng
     }
@@ -182,15 +204,23 @@ public struct TransitLegStop: Codable, Sendable, Hashable {
 /// 경로 구간 하나. mode "walk"/"bus"/"subway".
 /// walk leg는 lineName·fromName·stationCount가 전부 nil이고, toName·distanceMeters만
 /// 가질 수 있다(도보 구간의 행선지·거리, spec §3.2).
+/// ⚠ `lang=en` 응답에서도 `lineName`·`fromName`·`toName`은 **한국어**다(E27 원칙 1 — 운행시간·빠른하차·
+///   실시간 추적·역명 매칭의 조인 키). 영문은 `*En`(additive, en에만) — 표시 전용.
 public struct TransitRouteLeg: Codable, Sendable, Hashable {
     public let mode: String
     /// 노선명(예 "수도권 5호선"·"342"), walk는 nil
     public let lineName: String?
+    /// 영문 노선(지하철은 표 값 `Line 9 Express`, 버스는 영문 번호). 표 미스·ko 응답은 nil
+    public let lineNameEn: String?
     /// 승차 지점명
     public let fromName: String?
+    /// 영문 승차 지점명(`lang=en`에만)
+    public let fromNameEn: String?
     /// 하차 지점명. 도보 구간에서는 "걸어서 도착할 곳"(뒤 첫 탑승 구간의 승차역).
     /// ⚠ 마지막 도보에는 없다. provider가 목적지 이름을 모른다(뒤에 탑승이 없다).
     public let toName: String?
+    /// 영문 하차 지점명·도보 행선지(`lang=en`에만)
+    public let toNameEn: String?
     /// 경유 역·정류장 수
     public let stationCount: Int?
     /// 도보 구간 거리(미터, ODsay 원값이 정수). 탑승 구간에는 오지 않는다.
@@ -222,12 +252,16 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         firstServiceTime: String?, lastServiceTime: String?,
         serviceRouteId: String? = nil, serviceWayCode: Int? = nil,
         stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil,
-        quickExit: QuickExit? = nil
+        quickExit: QuickExit? = nil,
+        lineNameEn: String? = nil, fromNameEn: String? = nil, toNameEn: String? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
+        self.lineNameEn = lineNameEn
         self.fromName = fromName
+        self.fromNameEn = fromNameEn
         self.toName = toName
+        self.toNameEn = toNameEn
         self.stationCount = stationCount
         self.distanceMeters = distanceMeters
         self.minutes = minutes

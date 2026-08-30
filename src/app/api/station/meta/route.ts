@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { findStationMeta } from "@/lib/subway-stations";
+import { subwayLineNamesEn } from "@/lib/subway-line-names";
+import { langParam } from "@/lib/lang-param";
 
 /**
  * 도시철도역 메타 조회 (A3, 전국도시철도역사정보 표준데이터 정적 seed).
@@ -11,17 +13,21 @@ import { findStationMeta } from "@/lib/subway-stations";
  * 연 1회 갱신(차기 2026-12)이라 응답을 하루 캐시한다.
  */
 
-const schema = z.object({ station: z.string().trim().min(1).max(50) });
+// `lang=en`은 `linesEn`(노선명 영문 표)을 additive로 싣는다(E27). 미지정·ko는 종전과 byte-identical.
+const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
 
 export const revalidate = 86_400; // 하루 — seed는 연 1회 갱신
 
 export async function GET(request: NextRequest) {
   const parsed = schema.safeParse({
     station: request.nextUrl.searchParams.get("station") ?? "",
+    lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.success) {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
   }
-  const meta = findStationMeta(parsed.data.station); // 미커버 역이면 null
+  const found = findStationMeta(parsed.data.station); // 미커버 역이면 null
+  const linesEn = found && parsed.data.lang === "en" ? subwayLineNamesEn(found.lines) : undefined;
+  const meta = found && linesEn ? { ...found, linesEn } : found;
   return NextResponse.json({ meta });
 }

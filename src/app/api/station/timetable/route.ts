@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { fetchStationTimetable } from "@/lib/providers/tago-subway";
+import { subwayLineNameEn } from "@/lib/subway-line-names";
+import { langParam } from "@/lib/lang-param";
+import type { StationTimetable } from "@/lib/types";
 import { checkTimetableRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
@@ -8,18 +11,35 @@ import { checkTimetableRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
  * upstream 장애는 502(스펙 §2-A 판정 표 — 컴포넌트가 실패 문장을 노출한다).
  * 임의 역명 폭주로 인한 쿼터 소진 방어(60초 10회 — 키워드 1+노선×2 증폭 고려).
  */
-const schema = z.object({ station: z.string().trim().min(1).max(50) });
+// `lang=en`은 노선마다 `lineNameEn`(노선명 영문 표)을 additive로 싣는다(E27). 미지정·ko는 byte-identical.
+const schema = z.object({ station: z.string().trim().min(1).max(50), lang: langParam() });
+
+/** TAGO 원형(`lineCore`)이 있으면 그것을, 없으면 표시명을 표에 통과시킨다. 표 미스는 부재(한국어 폴백). */
+export function withTimetableLinesEn(tt: StationTimetable | null): StationTimetable | null {
+  if (!tt) return null;
+  return {
+    ...tt,
+    lines: tt.lines.map((line) => {
+      const en = subwayLineNameEn(line.lineCore ?? line.lineName);
+      return en ? { ...line, lineNameEn: en } : line;
+    }),
+  };
+}
 
 export async function GET(request: NextRequest) {
   if (!checkTimetableRateLimit(clientIpFromHeaders(request.headers), Date.now())) {
     return NextResponse.json({ error: "요청이 너무 잦습니다" }, { status: 429 });
   }
-  const parsed = schema.safeParse({ station: request.nextUrl.searchParams.get("station") ?? "" });
+  const parsed = schema.safeParse({
+    station: request.nextUrl.searchParams.get("station") ?? "",
+    lang: request.nextUrl.searchParams.get("lang"),
+  });
   if (!parsed.success) {
     return NextResponse.json({ error: "잘못된 요청" }, { status: 400 });
   }
   try {
-    const timetable = await fetchStationTimetable(parsed.data.station);
+    const fetched = await fetchStationTimetable(parsed.data.station);
+    const timetable = parsed.data.lang === "en" ? withTimetableLinesEn(fetched) : fetched;
     return NextResponse.json({ timetable });
   } catch (e) {
     console.error("[api/station/timetable] 조회 실패:", e);

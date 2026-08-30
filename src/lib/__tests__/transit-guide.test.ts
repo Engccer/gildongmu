@@ -173,10 +173,10 @@ describe("세션 폴링 캡(§7) — 도달 시 1회 통지 + 60초 강등", () 
 describe("eventProfile — 통지 채널·톤(§6.1)", () => {
   it("잔여 1·도착만 interrupting, 나머지는 polite", () => {
     expect(
-      eventProfile({ kind: "countdown", remaining: 1, message: "", currentLocation: null }).interrupt,
+      eventProfile({ kind: "countdown", remaining: 1, message: "", currentLocation: null, arrivalCode: null }).interrupt,
     ).toBe(true);
     expect(
-      eventProfile({ kind: "countdown", remaining: 2, message: "", currentLocation: null }).interrupt,
+      eventProfile({ kind: "countdown", remaining: 2, message: "", currentLocation: null, arrivalCode: null }).interrupt,
     ).toBe(false);
     expect(eventProfile({ kind: "arrived", certain: true }).interrupt).toBe(true);
     expect(eventProfile({ kind: "arrived", certain: false }).interrupt).toBe(true);
@@ -510,5 +510,26 @@ describe("승차 전 도보 판정 transitPrewalkTarget (A25)", () => {
     expect(out.walkAfterMinutes).toBe(route.walkAfterMinutes);
     expect(route).toEqual(snapshot);
     expect(withoutPrewalk({ legs: [], walkAfterMinutes: 2 })).toEqual({ legs: [], walkAfterMinutes: 2 });
+  });
+});
+
+// === A27 승차 국면 지하철 상태줄 — 공유 fixture(Kit TransitGuideTests 동조) ===
+import ridingCases from "./fixtures/subway-riding-message-cases.json";
+import { subwayRidingMessage } from "../transit-guide";
+
+describe("subwayRidingMessage — arvlCd → 탑승자 시점 문장 종류(A27)", () => {
+  for (const c of ridingCases.cases) {
+    it(`code ${JSON.stringify(c.arrivalCode)} → ${JSON.stringify(c.expect)}`, () => {
+      expect(subwayRidingMessage(c.arrivalCode)).toEqual(c.expect);
+    });
+  }
+  it("riding 폴링은 이벤트와 상태에 arrivalCode를 싣는다(상태줄·통지가 코드를 읽는 축)", () => {
+    const route = SUBWAY_ROUTE();
+    let state = initTransitGuide(route, 0);
+    state = transitGuideStep(state, { kind: "board", lock: SUBWAY_LOCK() }, route, 0).state;
+    state = transitGuideStep(state, { kind: "confirmBoarded" }, route, 0).state;
+    const r = transitGuideStep(state, pollOk(1, state.phaseGen, [item({ arrivalCode: "5", message: "전역 도착", remainingStops: 1 })]), route, 1000);
+    expect(r.state.lastArrivalCode).toBe("5");
+    expect(r.event).toMatchObject({ kind: "trackingStarted", arrivalCode: "5" });
   });
 });

@@ -5,6 +5,7 @@ import {
   stripStationSuffixKeepParens,
 } from "../station-match";
 import { findStationsByName } from "../subway-stations";
+import { enrichArrivalEn } from "../subway-arrival-en";
 import type { SubwayArrival, SubwayStationArrivals } from "../types";
 
 /**
@@ -133,6 +134,18 @@ export function parseSubwayArrivals(
   return {
     stationName: cleanName(stationName),
     arrivals: items.map(toArrival),
+  };
+}
+
+/**
+ * `lang=en` 응답의 영문 투영(E27 §3.4) — 순수 함수 `enrichArrivalEn`에 seed 바인딩을 주입한다.
+ * 한국어 필드는 불변이고 영문은 additive라 ko 소비자는 부르지 않는다.
+ */
+export function withArrivalsEn(result: SubwayStationArrivals | null): SubwayStationArrivals | null {
+  if (!result) return null;
+  return {
+    ...result,
+    arrivals: result.arrivals.map((a) => enrichArrivalEn(a, { findStations: findStationsByName })),
   };
 }
 

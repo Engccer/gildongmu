@@ -11,16 +11,26 @@ import Foundation
 public struct SubwayArrival: Codable, Sendable, Hashable {
     /// 호선명(subwayId 코드 매핑, 미매핑 코드면 nil)
     public let line: String?
+    /// 영문 호선명(`lang=en`에만, E27 표). 표 미스면 nil
+    public let lineEn: String?
     /// 상/하행 또는 내/외선
     public let direction: String
+    /// 영문 방향(Up·Down·Inner Circle·Outer Circle, `lang=en`에만)
+    public let directionEn: String?
     /// 행선 안내 완성 문구("{종착역}행 - {주요경유}방면") — 종착 낭독 정본
     public let trainLineNm: String
+    /// 영문 행선("To Seongsu via Yeoksam", `lang=en`에만)
+    public let trainLineNmEn: String?
     /// 종착역명(trainLineNm에 포함되나 정합·필터용 보조)
     public let destination: String
     /// 도착 메시지(완성 문장, 낭독 정본. 예 "곧 도착"·"전역 출발")
     public let message: String
+    /// 영문 도착 문장(`lang=en`에만, 코드×문장 행렬 밖이면 nil — 그 줄은 한국어 원문으로)
+    public let messageEn: String?
     /// 현재 위치(arvlMsg3, 없을 수 있음)
     public let currentLocation: String?
+    /// 영문 현재 위치(`lang=en`에만)
+    public let currentLocationEn: String?
     /// 도착 예정(초). 0이면 진입/도착
     public let arrivalSeconds: Int
     /// 급행 여부 — 텍스트로 흡수해 표시
@@ -35,6 +45,8 @@ public struct NearbySubwayStation: Codable, Sendable, Hashable {
     public let nameEn: String?
     /// 이 역을 지나는 노선들(환승역은 여럿)
     public let lines: [String]
+    /// `lines`의 영문(`lang=en`에만, 하나라도 미지면 배열 전체 nil — 한 줄 안 언어 혼합 금지)
+    public let linesEn: [String]?
     public let distanceMeters: Int
     /// 넷을 뭉개지 않는다 — "ok"(arrivals 정본, 0건=정상적 열차 없음) /
     /// "unavailable"(조회 실패) / "closed"(운행 시간 밖 확정, firstTime 동반) /
@@ -52,6 +64,8 @@ public struct NearestSubwayStation: Codable, Sendable, Hashable {
     public let stationName: String
     public let nameEn: String?
     public let lines: [String]
+    /// `lines`의 영문(`lang=en`에만)
+    public let linesEn: [String]?
     public let distanceMeters: Int
 }
 

@@ -5,6 +5,8 @@ import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
 import { isNoRouteError, readOdsayError } from "./odsay-envelope";
 import { findQuickExit } from "../quick-exit";
 import { normalizeStationName } from "../station-match";
+import { subwayLineNameEn } from "../subway-line-names";
+import { toDisplayEnglish } from "../transit-name-en";
 import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
 import type {
@@ -28,9 +30,16 @@ import type {
 
 const ENDPOINT = "https://api.odsay.com/v1/api/searchPubTransPathT";
 
+/**
+ * `lang=1`(영문) 응답은 이름 필드마다 `*Kor` 한글 병기가 붙는다(실호출 2026-08-31, 636개 이름 결측 0).
+ * ⚠ 이 코드는 한글을 `*Kor`에서만 얻고, 그것이 하나라도 없으면 영문 응답을 통째로 버린다
+ *   (`assertKorComplete` → ko 재조회). 영문이 한국어 자리에 들어가는 경로는 없다(E27 §3.1).
+ */
 interface OdsayLane {
-  name?: string; // 지하철 노선명
-  busNo?: string; // 버스 번호
+  name?: string; // 지하철 노선명(lang=1이면 영문 — 급행 표지가 사라진다: "Line 9")
+  nameKor?: string; // lang=1 한글 병기("수도권 9호선(급행)")
+  busNo?: string; // 버스 번호(lang=1이면 영문 표기 "Seocho03")
+  busNoKor?: string; // lang=1 한글 병기("서초03")
   busLocalBlID?: string; // 지역 사업자 노선 ID(서울은 TOPIS busRouteId와 동일 값)
   busCityCode?: number; // ODsay 도시 코드(서울=1000)
 }
@@ -39,6 +48,7 @@ interface OdsayLane {
 interface OdsayPassStop {
   stationID?: number | string;
   stationName?: string;
+  stationNameKor?: string; // lang=1 한글 병기
   stationCityCode?: number | string;
   localStationID?: string;
   arsID?: string;
@@ -53,6 +63,8 @@ interface OdsaySubPath {
   intervalTime?: number; // 평균 배차간격(분) — 실호출 확정(2026-07-21 길동→강남, 지하철 5·8·2호선 10/5/5)
   startName?: string;
   endName?: string;
+  startNameKor?: string; // lang=1 한글 병기
+  endNameKor?: string; // lang=1 한글 병기
   wayCode?: number; // 지하철 방향 1=상행·2=하행 — 실호출 양방향 확정(2026-08-01)
   /**
    * 빠른환승 문("5-2"). ⚠ **환승 leg에만** 값이 있고 하차 leg는 문자열 `"null"`이다
@@ -70,8 +82,50 @@ interface OdsayPath {
     totalWalk?: number;
     firstStartStation?: string;
     lastEndStation?: string;
+    firstStartStationKor?: string; // lang=1 한글 병기
+    lastEndStationKor?: string; // lang=1 한글 병기
   };
   subPath: OdsaySubPath[];
+}
+
+/** 응답 언어 — `en`이면 `*Kor`가 한국어 정본이고 원래 필드가 영문이다. */
+type OdsayLang = "ko" | "en";
+
+function hasHangul(v: unknown): v is string {
+  return typeof v === "string" && /[가-힣]/.test(v);
+}
+
+/**
+ * `lang=1` 응답의 `*Kor` 완전성 검증(E27 §3.1, 설계 리뷰 #1·#8·#12). 조인 키가 되는 자리 전부
+ * (경로 요약 양 끝·탑승 구간 양 끝·노선/번호·경유 정류장)에 **한글이 든** `*Kor`가 있어야 한다.
+ * 어긋난 첫 자리를 돌려주고(로그용), 없으면 null.
+ */
+export function assertKorComplete(data: OdsayResponse): string | null {
+  const paths = data.result?.path;
+  if (!Array.isArray(paths)) return null; // 봉투 판정은 normalizeOdsayRoutes의 몫
+  for (const [pi, p] of paths.entries()) {
+    if (p.info.firstStartStation && !hasHangul(p.info.firstStartStationKor)) return `path[${pi}].info.firstStartStationKor`;
+    if (p.info.lastEndStation && !hasHangul(p.info.lastEndStationKor)) return `path[${pi}].info.lastEndStationKor`;
+    for (const [si, sp] of p.subPath.entries()) {
+      if (sp.trafficType === 3) continue;
+      const at = `path[${pi}].subPath[${si}]`;
+      if (!hasHangul(sp.startNameKor)) return `${at}.startNameKor`;
+      if (!hasHangul(sp.endNameKor)) return `${at}.endNameKor`;
+      const lane = sp.lane?.[0];
+      if (sp.trafficType === 1 && !hasHangul(lane?.nameKor)) return `${at}.lane[0].nameKor`;
+      // 버스 번호는 숫자만인 것이 정상("341")이라 한글 검사 대신 존재만 본다.
+      if (sp.trafficType === 2 && !(typeof lane?.busNoKor === "string" && lane.busNoKor.trim())) {
+        return `${at}.lane[0].busNoKor`;
+      }
+      const stations = sp.passStopList?.stations;
+      if (Array.isArray(stations)) {
+        for (const [ki, st] of stations.entries()) {
+          if (st.stationName && !hasHangul(st.stationNameKor)) return `${at}.passStopList.stations[${ki}].stationNameKor`;
+        }
+      }
+    }
+  }
+  return null;
 }
 export interface OdsayResponse {
   result?: { path?: OdsayPath[] };
@@ -87,11 +141,13 @@ function coordNum(v: unknown): number {
 }
 
 /** passStopList → TransitLegStop[] (좌표·이름 유효 항목만, 양 끝 포함 순서 보존). */
-function toLegStops(sp: OdsaySubPath): TransitLegStop[] {
+function toLegStops(sp: OdsaySubPath, lang: OdsayLang): TransitLegStop[] {
   const stations = sp.passStopList?.stations;
   if (!Array.isArray(stations)) return [];
   return stations.flatMap((st): TransitLegStop[] => {
-    const name = String(st.stationName ?? "").trim();
+    // en 응답의 한국어 정본은 `*Kor`다(완전성은 assertKorComplete가 앞서 보장했다).
+    const name = String((lang === "en" ? st.stationNameKor : st.stationName) ?? "").trim();
+    const nameEn = lang === "en" ? toDisplayEnglish(st.stationName) : undefined;
     const lat = coordNum(st.y);
     const lng = coordNum(st.x);
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return [];
@@ -100,6 +156,7 @@ function toLegStops(sp: OdsaySubPath): TransitLegStop[] {
     return [
       {
         name,
+        ...(nameEn ? { nameEn } : {}),
         ...(stationId ? { stationId } : {}),
         ...(st.localStationID ? { localId: String(st.localStationID) } : {}),
         ...(st.arsID ? { arsId: String(st.arsID) } : {}),
@@ -124,13 +181,15 @@ function walkDistance(v: unknown): number | undefined {
  * ⚠ 목록 마지막이 하차역인지 **확인하고** 쓴다: 순서가 뒤집혔거나 부분 목록이면
  *   "끝에서 두 번째"가 직전역이 아니고, 그때 나오는 값은 반대편 승강장 안내가 된다.
  */
-function previousStopName(sp: OdsaySubPath): string | null {
+function previousStopName(sp: OdsaySubPath, lang: OdsayLang): string | null {
   const stations = sp.passStopList?.stations;
   if (!Array.isArray(stations) || stations.length < 2) return null;
-  const last = String(stations[stations.length - 1]?.stationName ?? "").trim();
-  const end = String(sp.endName ?? "").trim();
+  const pick = (st: OdsayPassStop | undefined) =>
+    String((lang === "en" ? st?.stationNameKor : st?.stationName) ?? "").trim();
+  const last = pick(stations[stations.length - 1]);
+  const end = String((lang === "en" ? sp.endNameKor : sp.endName) ?? "").trim();
   if (!last || !end || normalizeStationName(last) !== normalizeStationName(end)) return null;
-  const previous = String(stations[stations.length - 2]?.stationName ?? "").trim();
+  const previous = pick(stations[stations.length - 2]);
   return previous || null;
 }
 
@@ -161,23 +220,31 @@ function alightKindAt(subPath: OdsaySubPath[], index: number): AlightKind {
   return "final";
 }
 
-function quickExitFor(sp: OdsaySubPath, kind: AlightKind) {
+function quickExitFor(sp: OdsaySubPath, kind: AlightKind, lang: OdsayLang) {
   if (kind === "transfer") {
     const door = transferDoor(sp.door)!;
     return { transfer: { kind: "door" as const, doors: [door] } };
   }
   if (kind === "inStationTransfer") return null;
   const lane = sp.lane?.[0];
-  return lane?.name && sp.endName
+  // 조인 키는 한국어(en 응답은 `*Kor`) — seed·매핑표가 전부 한국어다(E27 §3.0 원칙 1).
+  const lineName = lang === "en" ? lane?.nameKor : lane?.name;
+  const endName = lang === "en" ? sp.endNameKor : sp.endName;
+  return lineName && endName
     ? findQuickExit({
-        stationName: sp.endName,
-        lineName: lane.name,
-        previousStopName: previousStopName(sp),
+        stationName: endName,
+        lineName,
+        previousStopName: previousStopName(sp, lang),
       })
     : null;
 }
 
-function toLeg(sp: OdsaySubPath, includeStops: boolean, alightKind: AlightKind): TransitLeg {
+function toLeg(
+  sp: OdsaySubPath,
+  includeStops: boolean,
+  alightKind: AlightKind,
+  lang: OdsayLang,
+): TransitLeg {
   const minutes = sp.sectionTime ?? 0;
   if (sp.trafficType === 3) {
     const distanceMeters = walkDistance(sp.distance);
@@ -186,13 +253,29 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean, alightKind: AlightKind):
   }
   const mode = sp.trafficType === 1 ? "subway" : "bus";
   const lane = sp.lane?.[0];
-  const stops = includeStops ? toLegStops(sp) : [];
-  const quickExit = mode === "subway" ? quickExitFor(sp, alightKind) : null;
+  const stops = includeStops ? toLegStops(sp, lang) : [];
+  const quickExit = mode === "subway" ? quickExitFor(sp, alightKind, lang) : null;
+  const en = lang === "en";
+  // 한국어 정본: ko 응답은 원래 필드, en 응답은 `*Kor`(원래 필드가 영문이다).
+  const lineName = mode === "subway" ? (en ? lane?.nameKor : lane?.name) : en ? lane?.busNoKor : lane?.busNo;
+  const fromName = en ? sp.startNameKor : sp.startName;
+  const toName = en ? sp.endNameKor : sp.endName;
+  // 영문(additive, en에만): 지하철은 표(급행 보존, 미지면 부재 — ODsay 영문 폴백 없음), 버스는 영문 번호 그대로.
+  const lineNameEn = !en
+    ? undefined
+    : mode === "subway"
+      ? (subwayLineNameEn(lane?.nameKor) ?? undefined)
+      : toDisplayEnglish(lane?.busNo);
+  const fromNameEn = en ? toDisplayEnglish(sp.startName) : undefined;
+  const toNameEn = en ? toDisplayEnglish(sp.endName) : undefined;
   return {
     mode,
-    lineName: mode === "subway" ? lane?.name : lane?.busNo,
-    fromName: sp.startName,
-    toName: sp.endName,
+    lineName,
+    ...(lineNameEn ? { lineNameEn } : {}),
+    fromName,
+    ...(fromNameEn ? { fromNameEn } : {}),
+    toName,
+    ...(toNameEn ? { toNameEn } : {}),
     stationCount: sp.stationCount,
     // 0은 "정보 없음"으로 취급해 생략(3-state: 배차 0분은 존재하지 않는 값)
     intervalMinutes: sp.intervalTime || undefined,
@@ -211,7 +294,12 @@ function toLeg(sp: OdsaySubPath, includeStops: boolean, alightKind: AlightKind):
   };
 }
 
-function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string): TransitRoute {
+function toTransitRoute(
+  path: OdsayPath,
+  includeStops: boolean,
+  routeKey: string,
+  lang: OdsayLang,
+): TransitRoute {
   // 거리 0 도보는 역내 환승 통로다(실호출 검증: {trafficType:3, distance:0,
   // sectionTime:1~3}). 환승은 노선 전환·transfers로 이미 표현되므로 leg
   // 리스트에서는 제외해 낭독을 간결히 한다. 단 walkMinutes(총 도보 시간)는
@@ -220,7 +308,7 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string
   const legs = path.subPath
     .map((sp, i) => ({ sp, kind: alightKindAt(path.subPath, i) }))
     .filter(({ sp }) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
-    .map(({ sp, kind }) => toLeg(sp, includeStops, kind));
+    .map(({ sp, kind }) => toLeg(sp, includeStops, kind, lang));
 
   // 도보 구간의 행선지 유도: 그 뒤 첫 탑승 구간의 fromName.
   // ⚠ 환승 통로 필터 **뒤**의 배열에서 돈다. 필터 전에 돌면 0m 통로가 사이에 끼어
@@ -229,7 +317,13 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string
   for (let i = 0; i < legs.length; i++) {
     if (legs[i].mode !== "walk") continue;
     const next = legs.slice(i + 1).find((l) => l.mode !== "walk");
-    if (next?.fromName) legs[i] = { ...legs[i], toName: next.fromName };
+    if (next?.fromName) {
+      legs[i] = {
+        ...legs[i],
+        toName: next.fromName,
+        ...(next.fromNameEn ? { toNameEn: next.fromNameEn } : {}),
+      };
+    }
   }
 
   const boardCount = legs.filter((l) => l.mode !== "walk").length;
@@ -242,8 +336,14 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string
       fare: path.info.payment,
       transfers: Math.max(0, boardCount - 1),
       walkMinutes,
-      departName: path.info.firstStartStation,
-      arriveName: path.info.lastEndStation,
+      departName: lang === "en" ? path.info.firstStartStationKor : path.info.firstStartStation,
+      arriveName: lang === "en" ? path.info.lastEndStationKor : path.info.lastEndStation,
+      ...(lang === "en" && toDisplayEnglish(path.info.firstStartStation)
+        ? { departNameEn: toDisplayEnglish(path.info.firstStartStation) }
+        : {}),
+      ...(lang === "en" && toDisplayEnglish(path.info.lastEndStation)
+        ? { arriveNameEn: toDisplayEnglish(path.info.lastEndStation) }
+        : {}),
     },
     legs,
     routeKey,
@@ -262,7 +362,7 @@ function toTransitRoute(path: OdsayPath, includeStops: boolean, routeKey: string
  */
 export function normalizeOdsayRoutes(
   data: OdsayResponse,
-  opts?: { includeStops?: boolean },
+  opts?: { includeStops?: boolean; lang?: OdsayLang },
 ): TransitRoute[] | null {
   const err = readOdsayError(data.error);
   if (err) {
@@ -276,7 +376,9 @@ export function normalizeOdsayRoutes(
     throw new Error("ODsay 응답 스키마 위반: result.path가 배열이 아닙니다");
   }
   if (paths.length === 0) return null;
-  return paths.map((p, i) => toTransitRoute(p, opts?.includeStops === true, `p${i}`));
+  return paths.map((p, i) =>
+    toTransitRoute(p, opts?.includeStops === true, `p${i}`, opts?.lang ?? "ko"),
+  );
 }
 
 function formatHHMM(minutes: number): string {
@@ -347,13 +449,7 @@ export function annotateServiceStatus(
  *   URLSearchParams로 인코딩하지 말고 raw로 쿼리에 붙인다.
  * ODsay 좌표 파라미터는 SX/EX=경도(lng), SY/EY=위도(lat).
  */
-export async function getTransitRoute(params: {
-  origin: Coord;
-  dest: Coord;
-  /** 경유 정류장 옵트인(B2 §7) — 응답 팽창 방지 위해 웹·iOS 클라이언트만 요청. */
-  includeStops?: boolean;
-}): Promise<TransitRouteResult | null> {
-  const { origin, dest } = params;
+async function fetchOdsay(origin: Coord, dest: Coord, lang: OdsayLang): Promise<OdsayResponse> {
   const q = new URLSearchParams({
     SX: roundCoord(origin.lng, 4),
     SY: roundCoord(origin.lat, 4),
@@ -361,6 +457,8 @@ export async function getTransitRoute(params: {
     EY: roundCoord(dest.lat, 4),
     OPT: "0",
   });
+  // en은 `lang=1`(영문 + `*Kor` 병기). ko는 파라미터 자체가 없어 종전 URL·캐시 키와 같다(E27 §3.0 원칙 3).
+  if (lang === "en") q.set("lang", "1");
   // apiKey는 인코딩하지 않고 raw로 덧붙인다(이중 인코딩 방지)
   const url = `${ENDPOINT}?${q.toString()}&apiKey=${env.ODSAY_API_KEY ?? ""}`;
 
@@ -377,9 +475,34 @@ export async function getTransitRoute(params: {
     const body = await res.text().catch(() => "");
     throw new Error(`ODsay 길찾기 실패: HTTP ${res.status} ${body}`);
   }
-  const data = (await res.json()) as OdsayResponse;
+  return (await res.json()) as OdsayResponse;
+}
+
+export async function getTransitRoute(params: {
+  origin: Coord;
+  dest: Coord;
+  /** 경유 정류장 옵트인(B2 §7) — 응답 팽창 방지 위해 웹·iOS 클라이언트만 요청. */
+  includeStops?: boolean;
+  /**
+   * 응답 언어(E27). `en`이면 ODsay `lang=1`로 영문을 받아 `*En`에 싣는다 — 한국어 필드는 그대로다.
+   * ⚠ `*Kor`가 하나라도 빠진 영문 응답은 통째로 버리고 ko로 재조회한다(fail-closed): 영문이
+   *   한국어 자리에 들어가면 조인 경로가 조용히 죽는다(설계 리뷰 #1). 부재·`ko`는 종전 경로.
+   */
+  lang?: OdsayLang;
+}): Promise<TransitRouteResult | null> {
+  const { origin, dest } = params;
+  let lang: OdsayLang = params.lang ?? "ko";
+  let data = await fetchOdsay(origin, dest, lang);
+  if (lang === "en") {
+    const missing = assertKorComplete(data);
+    if (missing) {
+      console.warn(`[odsay] lang=1 응답 *Kor 결측(${missing}) — ko로 재조회, 영문 없이 응답`);
+      lang = "ko";
+      data = await fetchOdsay(origin, dest, "ko");
+    }
+  }
   // 0단계 정규화(전체). 봉투 3-state는 normalizeOdsayRoutes가 담당한다.
-  const routes = normalizeOdsayRoutes(data, { includeStops: params.includeStops });
+  const routes = normalizeOdsayRoutes(data, { includeStops: params.includeStops, lang });
   if (!routes) return null;
 
   // 1단계 강등(전체). ⚠ 선정보다 **먼저** 돈다: 선정 밖의 유일한 운행 중 경로를

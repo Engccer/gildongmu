@@ -339,19 +339,31 @@ export interface TransitLegStop {
    * 판정 축 — arsID·localStationID는 지방 BIS도 채울 수 있어 단독 판별 불가.
    */
   cityCode?: string;
+  /** 영문 정류장·역명(`lang=en` 응답에만, ODsay `lang=1` 정규화본 — E27). `name`은 어느 응답에서도 한국어다. */
+  nameEn?: string;
   lat: number;
   lng: number;
 }
 
-/** 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로. */
+/**
+ * 대중교통 경로 한 구간(도보/버스/지하철). 고유명은 ODsay 한국어 원문 그대로.
+ * ⚠ `lang=en` 응답에서도 `lineName`·`fromName`·`toName`은 **한국어**다(E27 §3.0 원칙 1) — 운행시간·
+ * 빠른하차·실시간 추적·역명 매칭의 조인 키라 언어를 바꾸지 않는다. 영문은 `*En`(additive, en에만).
+ */
 export interface TransitLeg {
   mode: "walk" | "bus" | "subway";
   /** "수도권 5호선" / "341" 등 ODsay 한국어 원문 (도보는 없음) */
   lineName?: string;
+  /** 영문 노선(지하철은 `subway-line-names` 표 값 — `Line 9 Express`, 버스는 영문 번호). 표 미스·ko 응답은 부재 */
+  lineNameEn?: string;
   /** 승차 정류장 (도보는 없음) */
   fromName?: string;
+  /** 영문 승차 정류장(`lang=en`에만) */
+  fromNameEn?: string;
   /** 하차 정류장. 도보 구간에서는 "걸어서 도착할 곳"(뒤 첫 탑승 구간의 fromName) */
   toName?: string;
+  /** 영문 하차 정류장·도보 행선지(`lang=en`에만) */
+  toNameEn?: string;
   /**
    * 도보 구간 거리(미터). ODsay subPath.distance.
    * ⚠ 3-state: 값이 없거나 유한한 0 이상 수가 아니면 **필드 자체를 싣지 않는다**.
@@ -430,6 +442,9 @@ export interface TransitRoute {
     departName?: string;
     /** 막 하차 정류장 (한국어 원문) */
     arriveName?: string;
+    /** 영문 첫 승차·막 하차 정류장(`lang=en`에만, E27) */
+    departNameEn?: string;
+    arriveNameEn?: string;
   };
   legs: TransitLeg[];
   /**
@@ -639,6 +654,8 @@ export interface StationMeta {
   nameHanja?: string;
   /** 이 역명을 지나는 노선들(중복 제거, 원문 순서 보존) */
   lines: string[];
+  /** `lines`의 영문(`lang=en`에만, E27 노선명 표). 하나라도 미지면 배열 전체 부재 */
+  linesEn?: string[];
   /** 환승역 여부 */
   isTransfer: boolean;
   /** 운영기관명(대표, 첫 행 기준) */
@@ -686,6 +703,8 @@ export interface TimetableLine {
    * 그대로(원문이 이미 "…선"). ⚠ 노선명 자체의 영문화는 E27 소관 — 여기서는 우리가 덧붙인 접미뿐.
    */
   lineCore?: string;
+  /** 영문 노선명(`lang=en`에만, E27 노선명 표 — `lineCore` 접미 조립보다 우선). 표 미스면 부재 */
+  lineNameEn?: string;
   coverage: TimetableLineCoverage;
   /** coverage === "ok"일 때만 비지 않는다 */
   directions: TimetableDirection[];
@@ -792,20 +811,33 @@ export interface NightClinic {
 export interface SubwayArrival {
   /** 호선명(subwayId 코드 매핑, 예 "2호선","신분당선"). 미매핑 코드면 undefined. */
   line?: string;
+  /** 영문 호선명(`lang=en`에만, E27 §3.4). 표 미스면 부재 */
+  lineEn?: string;
   /** 상/하행 또는 내/외선(updnLine) */
   direction: string;
+  /** 영문 방향(Up·Down·Inner Circle·Outer Circle, `lang=en`에만). 미지 값이면 부재 */
+  directionEn?: string;
   /**
    * 행선 안내(trainLineNm) — 서울 지하철 표준상 "{종착역}행 - {주요경유}방면"
    * 완성 문구라 **종착역명을 포함**한다(예 "성수행 - 역삼방면"·"신사행 - 신논현방면").
    * 컴포넌트의 종착 정보 낭독 정본 — destination을 따로 표시하지 않아도 종착이 읽힌다.
    */
   trainLineNm: string;
+  /** 영문 행선("To Seongsu via Yeoksam", `lang=en`에만 — 종착·방면 둘 다 seed 영문이 있을 때만) */
+  trainLineNmEn?: string;
   /** 종착역명(bstatnNm) — trainLineNm에 이미 포함되나 데이터 정합·필터용 보조 필드. */
   destination: string;
   /** 도착 메시지(arvlMsg2 — "강남 도착","3분 후(2번째 전)" — 낭독 정본) */
   message: string;
+  /**
+   * 영문 도착 문장(`lang=en`에만, E27 §3.4 — `arvlCd`×문장 정확 행렬로 생성, 어긋나면 부재).
+   * 괄호 현재역은 여기 담지 않는다(`currentLocationEn` 단일 채널).
+   */
+  messageEn?: string;
   /** 현재 위치(arvlMsg3, 예 "방배") */
   currentLocation?: string;
+  /** 영문 현재 위치(`lang=en`에만 — arvlMsg3 또는 99 문장의 괄호 역명, 둘이 모순이면 부재) */
+  currentLocationEn?: string;
   /** 도착 예정(초, barvlDt). 0이면 진입/도착. */
   arrivalSeconds: number;
   /** 급행 여부(btrainSttus에 "급행" 포함) — 일반 열차와 구분 */
@@ -858,6 +890,8 @@ export interface NearbySubwayStation {
   nameEn?: string;
   /** 이 역을 지나는 노선들(seed 메타 집계 — 환승역은 여럿) */
   lines: string[];
+  /** `lines`의 영문(`lang=en`에만). 하나라도 미지면 배열 전체 부재 */
+  linesEn?: string[];
   /** 현재 위치로부터 Haversine 거리(m, 반올림) — 가까운 순 정렬 보존 */
   distanceMeters: number;
   /**
@@ -889,6 +923,8 @@ export interface NearestSubwayStation {
   stationName: string;
   nameEn?: string;
   lines: string[];
+  /** `lines`의 영문(`lang=en`에만) */
+  linesEn?: string[];
   distanceMeters: number;
 }
 
