@@ -1897,13 +1897,16 @@ final class BeaconModel {
         // 성립하므로 아래 handleFinalApproach의 서술 분기가 nil 기하에서 스스로 건너뛴다.
         let usableGeometry = finalApproachGeometry.flatMap { $0.unavailableReason == .tooClose ? nil : $0 }
         guard usableGeometry != nil || tuning.entersFinalApproachWithoutGeometry else {
-            guideDiagLog("briefHandoff reason=noGeometry")
+            guideDiagLog("briefHandoff reason=\(finalApproachGeometry == nil ? "noGeometry" : "tooClose")")
             mode = .brief
             let text = appLocalized("guide.handoff")
             statusText = text
             announce(text)
             return
         }
+        // tooClose 기하는 "없음"으로 정규화한다 — 진입 서술 분기가 `let geometry`로 읽으므로
+        // 남겨 두면 말할 배치가 없는 기하로 서술이 나간다(spec-compliance 리뷰 #3).
+        finalApproachGeometry = usableGeometry
         inFinalApproach = true
         finalApproachIntroSpoken = false
         lastFinalTickAt = nil

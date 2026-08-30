@@ -1,77 +1,14 @@
 {
   "comment": "sessionIdleStep 웹·Kit 동조 fixture (국면 무관 세션 안전망, 2026-08-26). 무효 입력(NaN 등)은 각 플랫폼 단위 테스트가 커버. secondsSinceProgress null = 무이동 축 없음(car, spec 2026-08-31 §4).",
   "scenarios": [
-    {
-      "name": "둘 다 임계 미만은 none",
-      "input": {
-        "secondsSinceUsableFix": 599.9,
-        "secondsSinceProgress": 1199.9
-      },
-      "expect": null
-    },
-    {
-      "name": "noFix 600s 발동",
-      "input": {
-        "secondsSinceUsableFix": 600,
-        "secondsSinceProgress": 0
-      },
-      "expect": "noFix"
-    },
-    {
-      "name": "stationary 1200s 발동(fix는 계속 온다)",
-      "input": {
-        "secondsSinceUsableFix": 1,
-        "secondsSinceProgress": 1200
-      },
-      "expect": "stationary"
-    },
-    {
-      "name": "둘 다 성립하면 noFix가 앞선다",
-      "input": {
-        "secondsSinceUsableFix": 9999,
-        "secondsSinceProgress": 9999
-      },
-      "expect": "noFix"
-    },
-    {
-      "name": "세션 시작 직후(0·0)는 none",
-      "input": {
-        "secondsSinceUsableFix": 0,
-        "secondsSinceProgress": 0
-      },
-      "expect": null
-    },
-    {
-      "name": "도착 추정 상수(180·300)로는 발동하지 않는다 — 이 축은 훨씬 길다",
-      "input": {
-        "secondsSinceUsableFix": 180,
-        "secondsSinceProgress": 300
-      },
-      "expect": null
-    },
-    {
-      "name": "car(무이동 축 없음): noFix 600s 발동",
-      "input": {
-        "secondsSinceUsableFix": 600,
-        "secondsSinceProgress": null
-      },
-      "expect": "noFix"
-    },
-    {
-      "name": "car(무이동 축 없음): 무이동 9999라도 none — 정체·휴게소 정차와 구분 불가",
-      "input": {
-        "secondsSinceUsableFix": 1,
-        "secondsSinceProgress": null
-      },
-      "expect": null
-    },
-    {
-      "name": "car(무이동 축 없음): noFix 임계 직전은 none",
-      "input": {
-        "secondsSinceUsableFix": 599.9,
-        "secondsSinceProgress": null
-      },
-      "expect": null
-    }
+    { "name": "둘 다 임계 미만은 none", "input": { "secondsSinceUsableFix": 599.9, "secondsSinceProgress": 1199.9 }, "expect": null },
+    { "name": "noFix 600s 발동", "input": { "secondsSinceUsableFix": 600, "secondsSinceProgress": 0 }, "expect": "noFix" },
+    { "name": "stationary 1200s 발동(fix는 계속 온다)", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": 1200 }, "expect": "stationary" },
+    { "name": "둘 다 성립하면 noFix가 앞선다", "input": { "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999 }, "expect": "noFix" },
+    { "name": "세션 시작 직후(0·0)는 none", "input": { "secondsSinceUsableFix": 0, "secondsSinceProgress": 0 }, "expect": null },
+    { "name": "도착 추정 상수(180·300)로는 발동하지 않는다 — 이 축은 훨씬 길다", "input": { "secondsSinceUsableFix": 180, "secondsSinceProgress": 300 }, "expect": null },
+    { "name": "car(무이동 축 없음): noFix 600s 발동", "input": { "secondsSinceUsableFix": 600, "secondsSinceProgress": null }, "expect": "noFix" },
+    { "name": "car(무이동 축 없음): 무이동 축이 null이면 fix가 살아 있는 한 none — 정체·휴게소 정차와 구분 불가", "input": { "secondsSinceUsableFix": 1, "secondsSinceProgress": null }, "expect": null },
+    { "name": "car(무이동 축 없음): noFix 임계 직전은 none", "input": { "secondsSinceUsableFix": 599.9, "secondsSinceProgress": null }, "expect": null }
   ]
 }
