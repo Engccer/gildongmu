@@ -15,7 +15,7 @@
 ### 봉투·폴백
 - envelope는 top-level `route` **단수** + `status`. 경로 불가는 `TOO_FAR_AWAY`·`ROUTE_RESULT_NOT_FOUND`만 null이고 **미관측 status·스키마 위반은 throw**(fail-closed).
 - **폴백은 카카오 throw 시에만 Tmap**이다. null은 폴백 없이 null이 정본. 폴백 시 좌표 포함 `console.warn`(Vercel 로그로 폴백률 관측).
-- 게이트는 `hasWalkRouteKey()`(=kakao∥tmap). 라우트·page·채팅 declaration 3곳 + router 이중 방어가 공용으로 쓴다 — **`hasTmapKey` 단독 게이트 금지**.
+- 게이트는 `hasWalkRouteKeyFor(lang)`(ko=kakao∥tmap, en=tmap 단독 — E16 축3 2026-08-23). 라우트·page가 이것을, 채팅 declaration + router 이중 방어는 ko 산문 정본이라 `hasWalkRouteKey()`를 쓴다 — **ko 경로에 `hasTmapKey` 단독 게이트 금지**(카카오 키만 있는 배포에서 도보가 죽는다).
 - 거리·시간은 provider에서 `Math.round`(iOS 엄격 Int 디코딩 방어).
 - **언어가 provider 선택을 정한다**(E16 축3, 2026-08-23): `lang="ko"`는 카카오 기본 + Tmap 폴백, `lang="en"`은 **Tmap 단독·폴백 없음**. en에서 카카오로 내려가면 "가용성 폴백"이 아니라 한국어 문장이 나오기 때문이다. en 파이프라인은 `rewriteWalkBriefing`(ko 재작성)을 타지 않고 `buildEnBriefing`(구조화 필드 → 영어 문장)을 탄다. 계단 회피는 카카오 전용 축이라 en은 항상 `unavailable`이고, 그래서 웹·iOS 모두 비-ko에 그 컨트롤을 노출하지 않는다.
 - **Tmap 응답 귀속 규칙**: 한 Point 뒤에 LineString이 둘 이상 붙을 수 있고, 문장이 말하는 거리·도로명은 **첫 구간**의 것이다(30경로 435스텝 실측 — 합으로 읽으면 48건이 어긋난다). `pathCoords`는 종전대로 전부 귀속한다. 이 가정은 `pedestrian-guard.ts`의 거리 대조가 런타임에 증명한다(en 전용 옵트인, `guard` 플래그).
@@ -45,7 +45,7 @@
 - **판정은 `matchCrosswalk`(`providers/crosswalks.ts`) 3중 게이트 전부 통과일 때만**: ①스텝 폴리라인 양 끝 중점에서 30m 안 ②seed 연장과 구간 길이 차 ≤ max(5m, 0.4·구간) ③남은 후보의 차로 수 동일·연장 차 ≤ 2m(최근접 채택). 근거: 이 데이터는 **교차로의 횡단보도 여럿이 한 점에 겹쳐 등록**돼 있어(좌표 4,833곳 중복, 3,425곳 값 불일치) 최근접 1건은 어느 횡단보도인지 모르고, 틀린 차로 수는 침묵보다 나쁘다. 길이 축이 겹친 후보를 가른다(실측 22건: 주석 8·침묵 14, 오탐 0). 상수를 풀면 교차로 옆 횡단보도의 값이 붙는다.
 - ⚠ **Tmap 경로는 provider 게이트로 침묵**(`annotateCrosswalkInfo(…, provider)`, 기본값 없음): 비기하는 `coord` 1점이라 구간 길이가 없고, 기하 요청은 Point 스텝에 다음 결정 지점까지 LineString이 붙어 2점이 되지만 그 길이는 횡단 길이가 아니라 길이 축이 우연히 열린다. 병합 스텝(`MERGED_CROSSWALK`)도 침묵.
 - ⚠ **"도로 폭"이라는 이름은 벌거벗은 수치 금지 판정의 적용이다** — 재작성 문장이 이미 "횡단보도 길이 21m"(보도 간 스텝 거리)를 달고 있어 맨몸 "15m"를 덧붙이면 한 문장에 길이가 둘로 들린다. 연장은 차도 폭이라 다른 값이다.
-- **파이프라인: 재작성 → 음향신호기(`keepGeometry=true`) → 차로 수(기하 제거·통일 담당) → 행동 투영(`attachStepActions`, E16 축3).** 음향신호기 단계에 기하 제거를 되돌리면 차로 수 단계가 전량 침묵한다. 순서를 뒤집으면 재작성 `$` 앵커가 깨진다(변이 주입으로 검출 확인).
+- **파이프라인: 재작성 → 음향신호기(`keepGeometry=true`) → 차로 수(기하 제거·통일 담당) → 행동·횡단 투영(`attachStepActions` — `action`+`crossing`, E16 축3·A26. 둘 다 `includeGeometry` 응답에만 실린다).** 음향신호기 단계에 기하 제거를 되돌리면 차로 수 단계가 전량 침묵한다. 순서를 뒤집으면 재작성 `$` 앵커가 깨진다(변이 주입으로 검출 확인).
 - 커버리지는 63개 시군구·서울은 동작구뿐이라 서울 대부분에서 구조적으로 침묵한다. 실호출 게이트 `scripts/verify-crosswalk-annotation.mjs`(동작구 "붙는다" + 길동 "침묵").
 - seed 갱신은 반기 데이터라 연 1~2회 수동. 빌드 가드는 전부 throw(총건수·한국 상자·파싱률·시도 수·연장 1~60m).
 
@@ -217,7 +217,7 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 
 ## 자동차 경로 (`tmap-car` 기본 + `kakao-navi` 폴백 → `car-route.ts`)
 
-ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `description`이 도로명 포함 완성 문장인 반면 카카오 `guidance`는 도로명 없는 조각이다. en은 `ncp-directions`(무변경).
+ko 기본 Tmap(2026-07-30 위원장 판정). 도보와 반대 구도로, Tmap `description`이 도로명 포함 완성 문장인 반면 카카오 `guidance`는 도로명 없는 조각이다. en은 `ncp-directions`이되 **ko 폴백 사유 셋**(NCP 키 부재·경유지·**기하 요청**)이 있고 전부 응답 `guidanceLang: "ko"`로 드러난다(A26 2026-08-31) — 기하 요청을 NCP로 보내면 `provider`·기하가 없어 실시간 안내가 조용히 간략 강등된다.
 
 - **낭독 문장은 서버 `rewriteCarGuidance`(`src/lib/car-guidance.ts`)가 다듬는다**(2026-08-10 위원장 판정, 도보 `rewriteWalkGuidance` 동형). Tmap 문형은 `{지점}에서 {방면}으로 {행동} 후 {도로}를 따라 {거리} 이동` 하나뿐이고(전국 12경로 212문장 전수), `{행동}` 자리의 상태·위치 명사(오른쪽 방향·터널·고가도로옆 등 53% = 112/212)가 「후」와 결합이 깨져 동사구로 푼다("오른쪽 길로 들어선 뒤"·"터널을 지나"). 적용 지점은 `getCarRoute` 진입점 한 곳(웹·iOS·CLI·채팅·실시간 안내 동조), 미매칭·회전 계열·카카오 폴백 문장은 원문 통과(fail-safe). 코퍼스 fixture는 `src/lib/__tests__/fixtures/tmap-car-corpus.json`.
   - ⚠ **"오른쪽/왼쪽 방향"(turnType 117/118)을 회전 어휘로 바꾸지 말 것**: 코퍼스 실측으로 48%/69%가 같은 도로로 이어진다(올림픽대로→올림픽대로) — 교차로 회전이 아니라 자동차전용도로의 갈래 선택 지시라, "우회전"으로 바꾸면 문장은 자연스러워지고 의미가 틀린다.
@@ -249,6 +249,8 @@ Kit `GuideToneLayer.swift` ↔ `src/lib/guide-tone-layer.ts`, fixture `tone-laye
 spec `2026-08-23-car-guidance-completion-design.md` §3. 임박 임계는 `max(imminentAheadM, v×imminentAheadS)`(walk 20m·0초, car 15m·6초=5+fix 지연 1, 운전자 9초). 속도 표본이 2개 미만이면 `imminentUnknownSpeedM`(car 60) — 바닥만 남기면 터널 복귀 직후 30m 앞 교차로가 침묵한다. 표본 정확도 상한은 프로파일 값(walk 20·car 50). car는 전문 선행을 요구하지 않는다(`imminentNeedsAnnounce: false` — 명령이 자기 완결, 먼저 나가면 전문 래치도 올린다).
 
 `silentCatchUp`(car)은 2026-08-22 실주행의 "터널 뒤 지난 교차로 3개 전문 연속 발화"를 막는 세 가지다: ①점프 fix(`jumped`)는 표본 제외 + 6a 이후 무발화(창이 기어가는 중이라 d가 실위치가 아니다 — 표본에 넣으면 창이 부풀어 재획득이 안 걸린다) ②uncertain 복귀 fix의 공백 >10초는 복귀 대신 재획득 ③유닛 끝이 d 앞이면 전문 없이 래치 3종 전진(`!isOff`), 묶음 안 끝난 스텝은 전문에서 제외. 도보는 전부 종전 동작(실보행 판정이 종전 전제). iOS는 car 재획득 뒤 "지금 구간" 전문을 함께 읽는다(`restateAt`이 현재 유닛을 낭독 완료로 두기 때문).
+
+K2-a(2026-08-31, spec `2026-08-31-car-session-end-design.md`)가 같은 `GuideTuning`에 세션 종료 갈림 셋을 더했다: `entersFinalApproachWithoutGeometry`(car true — 기하 없이 종점 150m에서 최종 접근 진입, 종전엔 간략 인계로 빠져 `carArrivalStep`이 도달 불가) · `presumedArrival`(`PresumedArrivalThresholds`, car 두절 120·무이동 300·캡 150) · `sessionIdleStationaryAxis`(car false — 무이동은 정체와 구분 불가). 계약 전문은 CLAUDE.md §횡단 함정 "잊힌 도보 세션은 국면 무관 안전망이 끝낸다" 항목.
 
 ### 정지 판정 (`motionStep`)
 도플러 3-state: `stopped`/`moving`/`speedUnknown`. 도플러가 경로·목적지 양쪽에 독립이라 두 모드가 공유할 수 있는 유일한 축이다(직선거리 미분은 "목적지 접근 속도"라 옆으로 지나쳐 걸으면 정지로 보인다).
