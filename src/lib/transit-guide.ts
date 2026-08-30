@@ -397,6 +397,42 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
   return { legs, walkAfterMinutes: pendingWalk };
 }
 
+// === 승차 전 도보 핸드오프 판정 (A25, spec 2026-08-30 §3) — 순수, Kit 미러 ===
+
+/** 첫 탑승 leg 앞 도보를 도보 실시간 안내로 돌릴 대상. null = 종전 경로(도보 없음·정보 결손). */
+export interface TransitPrewalkTarget {
+  name: string;
+  lat: number;
+  lng: number;
+  minutes: number;
+}
+
+/**
+ * 하한은 `walkBeforeMinutes ≥ 1`(0분은 역 안 이동), 좌표는 유한·(0,0) 아님. 거리 축을
+ * 따로 두지 않는다(같은 정보의 두 임계는 drift). 두 번째 leg 이후의 도보는 대상이 아니다.
+ */
+export function transitPrewalkTarget(route: TransitGuideRoute): TransitPrewalkTarget | null {
+  const leg = route.legs[0];
+  if (!leg) return null;
+  const minutes = leg.walkBeforeMinutes;
+  if (minutes == null || minutes < 1) return null;
+  const stop = leg.boardStop;
+  if (!stop) return null;
+  if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lng)) return null;
+  if (stop.lat === 0 && stop.lng === 0) return null;
+  return { name: leg.boardName, lat: stop.lat, lng: stop.lng, minutes };
+}
+
+/**
+ * 도보를 안내로 소비한 뒤의 경로 — legs[0].walkBeforeMinutes만 null. 값 복사(원본 불변).
+ * 대기 문맥·조망·legAdvanced가 같은 필드를 읽으므로 한 곳에서 지운다(문장마다 분기 금지).
+ */
+export function withoutPrewalk(route: TransitGuideRoute): TransitGuideRoute {
+  if (route.legs.length === 0) return { ...route, legs: [] };
+  const [first, ...rest] = route.legs;
+  return { ...route, legs: [{ ...first, walkBeforeMinutes: null }, ...rest] };
+}
+
 // === 열차 선택 목록 필터 (§5.1) — 순수 판정, UI가 소비 ===
 
 export interface BoardingCandidate {

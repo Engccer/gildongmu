@@ -7,6 +7,8 @@ import Testing
 
 private struct FixtureFile: Decodable {
     let routes: [String: TransitGuideRoute]
+    /// A25 승차 전 도보 판정 기대값(routes 이름 → 대상 | null). 웹과 같은 키를 읽는다.
+    let prewalk: [String: TransitPrewalkTarget?]
     let locks: [String: TransitLock]
     let scenarios: [FixtureScenario]
 }
@@ -502,4 +504,44 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
     #expect(viaStopCurrentIndex(leg: leg, currentLocation: nil) == nil)
     #expect(viaStopCurrentIndex(leg: leg, currentLocation: "") == nil)
     #expect(viaStopCurrentIndex(leg: empty, currentLocation: "강동") == nil)
+}
+
+// MARK: - 승차 전 도보 판정 (A25, spec 2026-08-30 §3) — 웹 transit-guide.test.ts 미러
+
+@Test func prewalkTargetMatchesSharedFixture() throws {
+    let fixture = try loadFixture()
+    #expect(Set(fixture.prewalk.keys) == Set(fixture.routes.keys))
+    for (name, route) in fixture.routes {
+        #expect(transitPrewalkTarget(route) == fixture.prewalk[name] ?? nil, "\(name)")
+    }
+}
+
+@Test func prewalkTargetRejectsZeroMinutesMissingStopAndNullIsland() throws {
+    let base = try #require(loadFixture().routes["subwaySingle"])
+    let first = base.legs[0]
+    func patched(minutes: Int?, stop: TransitLegStop?) -> TransitGuideRoute {
+        TransitGuideRoute(legs: [TransitGuideLeg(
+            mode: first.mode, lineName: first.lineName, trackMode: first.trackMode,
+            boardName: first.boardName, alightName: first.alightName,
+            boardStop: stop, alightStop: first.alightStop, viaStops: first.viaStops,
+            stationCount: first.stationCount, routeId: first.routeId, wayCode: first.wayCode,
+            walkBeforeMinutes: minutes, quickExit: first.quickExit)], walkAfterMinutes: nil)
+    }
+    #expect(transitPrewalkTarget(patched(minutes: 0, stop: first.boardStop)) == nil)
+    #expect(transitPrewalkTarget(patched(minutes: nil, stop: first.boardStop)) == nil)
+    #expect(transitPrewalkTarget(patched(minutes: 3, stop: nil)) == nil)
+    #expect(transitPrewalkTarget(patched(minutes: 3, stop: TransitLegStop(name: "x", lat: 0, lng: 0))) == nil)
+    #expect(transitPrewalkTarget(patched(minutes: 3, stop: TransitLegStop(name: "x", lat: .nan, lng: 127))) == nil)
+    #expect(transitPrewalkTarget(TransitGuideRoute(legs: [], walkAfterMinutes: nil)) == nil)
+}
+
+@Test func withoutPrewalkClearsOnlyFirstLegAndKeepsOriginal() throws {
+    let base = try #require(loadFixture().routes["twoLegs"])
+    let out = withoutPrewalk(base)
+    #expect(out.legs[0].walkBeforeMinutes == nil)
+    #expect(out.legs.count == base.legs.count)
+    #expect(out.legs[1].walkBeforeMinutes == base.legs[1].walkBeforeMinutes)
+    #expect(out.walkAfterMinutes == base.walkAfterMinutes)
+    #expect(base.legs[0].walkBeforeMinutes == 2)  // 원본 불변
+    #expect(out.legs[0].boardName == base.legs[0].boardName)
 }
