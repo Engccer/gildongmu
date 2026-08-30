@@ -33,6 +33,21 @@ public func hasHangul(_ text: String) -> Bool {
     }
 }
 
+/// 원천이 이미 `Latin (한글)` 병기 형태(TourAPI en `title`)면 라틴 선두가 primary, 괄호 안이 secondary다 —
+/// 웹 `EMBEDDED_BILINGUAL`·서버 `romanNameOf` 게이트와 같은 정규식.
+private let embeddedBilingual = try! NSRegularExpression(
+    pattern: "^([^가-힣()]*[A-Za-z][^가-힣()]*?)\\s*\\(([^()]*[가-힣][^()]*)\\)\\s*$")
+
+func parseEmbeddedBilingual(_ name: String) -> BilingualName? {
+    let nfc = name.precomposedStringWithCanonicalMapping
+    let range = NSRange(nfc.startIndex..., in: nfc)
+    guard let m = embeddedBilingual.firstMatch(in: nfc, range: range),
+          let r1 = Range(m.range(at: 1), in: nfc), let r2 = Range(m.range(at: 2), in: nfc) else { return nil }
+    let primary = nfc[r1].trimmingCharacters(in: .whitespaces)
+    guard !primary.isEmpty else { return nil }
+    return BilingualName(primary: primary, secondary: nfc[r2].trimmingCharacters(in: .whitespaces))
+}
+
 /// 한글이 섞인 후보는 후보가 아니다 — 접근 가능한 이름에 한글이 새는 유일한 경로를 막는다.
 private func latinCandidate(_ value: String?) -> String? {
     guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty,
@@ -50,11 +65,13 @@ private func latinCandidate(_ value: String?) -> String? {
 /// `lang`은 `AppLanguage.current`(ko 외 전부 영문 데이터, 웹 `prefersEnglish` 동형).
 public func bilingualName(lang: String, ko: String, en: String?, roman: String?) -> BilingualName {
     if lang == "ko" { return BilingualName(primary: ko, secondary: nil) }
+    if let embedded = parseEmbeddedBilingual(ko) { return embedded }
     guard let candidate = latinCandidate(en) ?? latinCandidate(roman) else {
         return BilingualName(primary: ko, secondary: nil)
     }
     if !hasHangul(ko) { return BilingualName(primary: candidate, secondary: nil) }
-    if candidate.precomposedStringWithCanonicalMapping == ko.precomposedStringWithCanonicalMapping {
+    let koKey = ko.trimmingCharacters(in: .whitespacesAndNewlines).precomposedStringWithCanonicalMapping
+    if candidate.precomposedStringWithCanonicalMapping == koKey {
         return BilingualName(primary: ko, secondary: nil)
     }
     return BilingualName(primary: candidate, secondary: ko)

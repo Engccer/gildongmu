@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
@@ -58,6 +59,7 @@ export function PlaceDetail({
   onBack: () => void;
 }) {
   const t = useTranslations();
+  const bilingualTitle = useBilingualName()(place.name, { roman: place.nameRoman });
   const headingRef = useRef<HTMLHeadingElement>(null);
   // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
   const [chatOpen, setChatOpen] = useState(false);
@@ -233,8 +235,14 @@ export function PlaceDetail({
           {t("detail.back")}
         </button>
 
-        <h2 ref={headingRef} tabIndex={-1} className="mt-2 text-2xl font-bold">
-          {place.name}
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          className="mt-2 text-2xl font-bold"
+          lang={langFor(bilingualTitle.primary)}
+        >
+          {bilingualTitle.primary}
+          <KoTail secondary={bilingualTitle.secondary} />
         </h2>
 
         {/* 정의 리스트(dl/dt/dd) 대신 평문 단락 — 스크린 리더가 항목마다 "용어/정의"

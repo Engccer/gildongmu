@@ -10,6 +10,7 @@ import { stripRegionPrefix } from "./where-am-i";
 import { hasDataGoKrKey, hasKakaoKey, hasSeoulOpenDataKey } from "./env";
 import { bearingDegrees, bearingToCompass8, type CompassDirection } from "./geo/bearing";
 import type { Place } from "./types";
+import { romanAddressOf } from "./romanize";
 import { barrierFreePlaceToPlace, kidsPlaceToPlace, surroundingPlaceToPlace } from "./nearby-place";
 
 /**
@@ -48,12 +49,16 @@ type PlaceKind = Exclude<OverviewKind, "transit">;
 
 export interface OverviewPlace {
   name: string;
+  /** 이름 로마자(E28, additive) — 비-ko 불릿이 `name` 대신 넣는다. */
+  nameRoman?: string;
   distanceMeters: number;
   bearing: CompassDirection;
 }
 
 export interface OverviewStation {
   name: string;
+  /** seed 영문 역명(원천 영문 — 로마자를 만들지 않는다). */
+  nameEn?: string;
   line?: string;
   bearing: CompassDirection;
   distanceMeters: number;
@@ -88,6 +93,8 @@ export interface ComposedOverview {
 export interface NearbyOverview {
   /** 위치 문장 재료(행정동 + 도로명, 접두 중복 제거). 못 얻으면 null. */
   place: string | null;
+  /** `place`의 로마자(주소 규칙, E28). place가 null이거나 한글이 없으면 없다. */
+  placeRoman?: string;
   radiusMeters: number;
   /** 순서 고정: transit, food, cafe, kids, events, barrierFree. 키 없는 불릿은 없다. */
   bullets: OverviewBullet[];
@@ -96,6 +103,7 @@ export interface NearbyOverview {
 /** 조각이 공통으로 갖는 최소 모양 — 도메인 타입(SurroundingPlace·KidsPlace·BusStop…)이 구조적으로 만족한다. */
 export interface Located {
   name: string;
+  nameRoman?: string;
   lat: number;
   lng: number;
   distanceMeters: number;
@@ -110,7 +118,7 @@ export interface OverviewInput {
   lng: number;
   address: { road: string | null; jibun: string | null } | null;
   region: string | null;
-  station: (Located & { lineName: string }) | null;
+  station: (Located & { lineName: string; nameEn?: string }) | null;
   bus: PromiseSettledResult<Located[]> | null;
   /** bus가 0건일 때만 의미 있다(`isUncoveredBusRegion`). */
   busUncovered: boolean;
@@ -134,6 +142,7 @@ function nearestItems(items: Located[], count: number): Located[] {
 function toNearest(origin: { lat: number; lng: number }, items: Located[]): OverviewPlace[] {
   return items.map((p) => ({
     name: p.name,
+    ...(p.nameRoman ? { nameRoman: p.nameRoman } : {}),
     distanceMeters: Math.round(p.distanceMeters),
     bearing: bearingToCompass8(bearingDegrees(origin.lat, origin.lng, p.lat, p.lng)),
   }));
@@ -167,6 +176,7 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
   const station: OverviewStation | null = input.station
     ? {
         name: input.station.name,
+        ...(input.station.nameEn ? { nameEn: input.station.nameEn } : {}),
         line: input.station.lineName || undefined,
         bearing: bearingToCompass8(
           bearingDegrees(origin.lat, origin.lng, input.station.lat, input.station.lng),
@@ -220,7 +230,11 @@ export function composeOverview(input: OverviewInput): ComposedOverview {
   // 식당·카페 교집합(카카오 category_group이 둘 다인 가게) 대비 id dedupe — 첫 등장(불릿 순서) 유지.
   const seen = new Set<string>();
   const dedupedPlaces = places.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
-  return { overview: { place, radiusMeters: OVERVIEW_RADIUS_M, bullets }, places: dedupedPlaces };
+  const placeRoman = romanAddressOf(place);
+  return {
+    overview: { place, ...(placeRoman ? { placeRoman } : {}), radiusMeters: OVERVIEW_RADIUS_M, bullets },
+    places: dedupedPlaces,
+  };
 }
 
 /** 카카오 카테고리 1종 조회. 상류 페이지 캡(15)에 닿으면 확정 수가 아니라 "N곳 이상"이다. */
@@ -269,7 +283,7 @@ export async function assembleNearbyOverview(lat: number, lng: number): Promise<
         ? Promise.resolve("unavailable" as const)
         : settle(
             findEventsNear(lat, lng, radius).then((r) => ({
-              events: r.events.map((e) => ({ ...e, name: e.title })),
+              events: r.events.map((e) => ({ ...e, name: e.title, nameRoman: e.titleRoman })),
               total: r.total,
             })),
           ),

@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useTranslations } from "next-intl";
 import type { BikeStation } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
@@ -25,6 +26,7 @@ export function BikeStations(
   props: { mode: "current" } | { mode: "place"; lat: number; lng: number },
 ) {
   const t = useTranslations("bike");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const { status, load, close, busy, headingRef, triggerRef } =
@@ -66,15 +68,19 @@ export function BikeStations(
     >
       {status.kind === "done" && (
         <ul className="mt-2 space-y-3">
-          {status.data.stations.map((s) => (
+          {status.data.stations.map((s) => {
+            const name = bilingual(s.name, { roman: s.nameRoman });
+            const line = joinText(
+              name.primary,
+              t("stationDistance", {
+                distance: formatDistance(s.distanceMeters),
+              }),
+            );
+            return (
             <li key={s.stationId}>
-              <h4 className="font-medium" lang="ko">
-                {joinText(
-                  s.name,
-                  t("stationDistance", {
-                    distance: formatDistance(s.distanceMeters),
-                  }),
-                )}
+              <h4 className="font-medium" lang={langFor(line)}>
+                {line}
+                <KoTail secondary={name.secondary} />
               </h4>
               <p className="text-sm">
                 {t("availability", {
@@ -83,7 +89,8 @@ export function BikeStations(
                 })}
               </p>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </NearbyPanelShell>

@@ -2,6 +2,7 @@ import type { BarrierFreePlace, BarrierFreeDetail, BarrierFreeFacility } from ".
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 import { fetchDataGoKrJson, readItems, readResultCode } from "./datagokr-envelope";
+import { romanNameOf } from "../romanize";
 
 /**
  * 한국관광공사 무장애 여행 정보 provider — B551011/KorWithService2.
@@ -105,6 +106,7 @@ function normalizePlace(item: Record<string, unknown>, originLat: number, origin
   return {
     contentId: str(item.contentid),
     name,
+    nameRoman: romanNameOf(name),
     category: "", // contenttypeid 라벨은 Task 1 비범위(빈 문자열) — 필요 시 후속
     address: [str(item.addr1), str(item.addr2)].filter(Boolean).join(" "),
     lat,
@@ -161,6 +163,7 @@ export async function getBarrierFreeDetail(contentId: string): Promise<BarrierFr
   return {
     contentId,
     name: str(item.title),
+    nameRoman: romanNameOf(str(item.title)),
     facilities: labelFacilities(item),
   };
 }

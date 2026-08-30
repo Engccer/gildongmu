@@ -2,6 +2,7 @@ import { env } from "../env";
 import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
 import { haversineMeters } from "../geo";
 import type { SurroundingCategory, SurroundingPlace } from "../types";
+import { romanNameOf } from "../romanize";
 
 /**
  * 내 주변 둘러보기(기능 A) provider — 카카오 로컬 **카테고리 검색** 좌표 근접.
@@ -91,6 +92,7 @@ export function normalizeSurroundingDoc(
   return {
     id: `kakao-${doc.id}`,
     name: doc.place_name,
+    nameRoman: romanNameOf(doc.place_name),
     category,
     categoryRaw: doc.category_name ?? "",
     distanceMeters,

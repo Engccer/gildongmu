@@ -1,5 +1,6 @@
 import { env } from "../env";
 import type { IndoorOutdoor, KidsPlace, KidsPlaceKind } from "../types";
+import { romanNameOf } from "../romanize";
 
 /**
  * 근처 아이 놀 곳(B3) provider — 카카오 로컬 키워드 검색 좌표 근접.
@@ -90,6 +91,7 @@ export function normalizeKidsDoc(doc: KakaoDoc): KidsPlace | null {
   return {
     id: `kakao-${doc.id}`,
     name: doc.place_name,
+    nameRoman: romanNameOf(doc.place_name),
     category: doc.category_name,
     kind: c.kind,
     indoorOutdoor: c.indoorOutdoor,

@@ -42,6 +42,13 @@ struct BusNearbyView: View {
         _model = State(initialValue: BusNearbyModel(anchor: anchor))
     }
 
+    /// 정류소명 병기(E28) — 도착 목록은 E27(대중교통 영문화) 소관이라 손대지 않는다.
+    private func busStopHeading(_ stop: BusStop) -> some View {
+        let name = bilingual(stop.name, roman: stop.nameRoman)
+        let rest = joinText(stop.stopNo, formatDistance(stop.distanceMeters))
+        return bilingualLine(visible: joinText(name.display, rest), accessible: joinText(name.primary, rest))
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             List {
@@ -50,7 +57,7 @@ struct BusNearbyView: View {
                     ForEach(stops, id: \.nodeId) { stop in
                         Section {
                             // 정류소명만 heading(웹 h4 규칙). 표지판 번호·거리는 같은 줄에 흡수.
-                            distanceText(joinText(stop.name, stop.stopNo, formatDistance(stop.distanceMeters)))
+                            busStopHeading(stop)
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성(nodeId)과 같은 값.
                                 .accessibilityFocused($focusedStop, equals: stop.nodeId)

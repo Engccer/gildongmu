@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BarrierFreeDetail, BarrierFreePlace } from "@/lib/types";
@@ -38,6 +39,7 @@ type DetailEntry = "loading" | BarrierFreeDetail | null;
  */
 export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) {
   const t = useTranslations("barrierFreeNearby");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   /** contentId → 상세 캐시 (한 번 가져온 항목은 재요청 안 함) */
@@ -133,23 +135,27 @@ export function BarrierFreeNearby({ autoLoad = false }: { autoLoad?: boolean }) 
             {status.data.places.slice(0, visibleCount).map((p, i) => {
               const isOpen = openIds.has(p.contentId);
               const cached = detailCache[p.contentId];
+              const name = bilingual(p.name, { roman: p.nameRoman });
+              const line = joinText(
+                name.primary,
+                p.category,
+                t("distance", {
+                  distance: formatDistance(p.distanceMeters),
+                }),
+              );
               return (
                 <li key={p.contentId}>
+                  {/* 비-ko는 이름이 로마자, 한글은 줄 끝 괄호(E28 R1). */}
                   <h4
                     className="font-medium"
-                    lang="ko"
+                    lang={langFor(line)}
                     tabIndex={-1}
                     ref={(el) => {
                       itemHeadingRefs.current[i] = el;
                     }}
                   >
-                    {joinText(
-                      p.name,
-                      p.category,
-                      t("distance", {
-                        distance: formatDistance(p.distanceMeters),
-                      }),
-                    )}
+                    {line}
+                    <KoTail secondary={name.secondary} />
                   </h4>
 
                   <p className="mt-1 text-sm" lang="ko">

@@ -9,6 +9,8 @@ public struct BarrierFreePlace: Codable, Sendable, Identifiable, Hashable {
 
     public let contentId: String
     public let name: String
+    /// 이름 로마자(E28)
+    public var nameRoman: String? = nil
     /// contenttypeid 라벨(빈 문자열 허용 — Task 1 비범위)
     public let category: String
     public let address: String
@@ -34,6 +36,7 @@ public struct BarrierFreeFacility: Codable, Sendable, Hashable {
 public struct BarrierFreeDetail: Codable, Sendable, Hashable {
     public let contentId: String
     public let name: String
+    public var nameRoman: String? = nil
     public let facilities: [BarrierFreeFacility]
 }
 

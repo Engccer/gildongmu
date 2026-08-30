@@ -3,6 +3,7 @@ import type { AirGrade, AirPollutant, AirQuality } from "../types";
 import { env } from "../env";
 import { roundCoord } from "../coord-round";
 import { fetchDataGoKrJson, readItems, readResultCode } from "./datagokr-envelope";
+import { romanNameOf } from "../romanize";
 
 /**
  * 이 지역 공기질(B2) provider — 에어코리아 15073877·15073861.
@@ -109,6 +110,7 @@ export function parseAirMeasure(
   const m = items[0];
   return {
     stationName: station.stationName,
+    stationNameRoman: romanNameOf(station.stationName),
     distanceKm: station.distanceKm,
     addr: station.addr,
     dataTime: str(m.dataTime),

@@ -63,7 +63,7 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
 
 @Test func overviewLinesKoAreOnePerBulletAndDistinctPerState() throws {
     let data = try #require(try decode(fixture).data)
-    let lines = buildOverviewLines(data, lang: "ko")
+    let lines = buildOverviewLines(data, lang: "ko").map(\.text)
     // 문장형 + 받침에 따른 조사(이/가·은/는·(으)로)는 코드가 고른다(koParticle).
     #expect(lines == [
         "가장 가까운 지하철역은 5호선 길동으로 북동쪽 262m입니다. 버스 정류소가 5곳 있습니다. 가장 가까운 곳은 길동사거리로 동쪽 80m, 길동역으로 북쪽 120m입니다.",
@@ -78,7 +78,7 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
 @Test func overviewTransitVariantsKo() throws {
     func line(_ bullets: String) throws -> String {
         let data = try #require(try decode("{\"data\":{\"place\":null,\"radiusMeters\":1000,\"bullets\":[\(bullets)]}}").data)
-        return buildOverviewLines(data, lang: "ko")[0]
+        return buildOverviewLines(data, lang: "ko")[0].text
     }
     #expect(try line(#"{"kind":"transit","state":"ok","station":null,"busStops":{"state":"none"}}"#)
         == "1km 안에 지하철역이 없습니다. 버스 정류소가 없습니다.")
@@ -95,7 +95,7 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
 
 @Test func overviewLinesEnUseLocaleOrder() throws {
     let data = try #require(try decode(fixture).data)
-    let lines = buildOverviewLines(data, lang: "en")
+    let lines = buildOverviewLines(data, lang: "en").map(\.text)
     #expect(lines[1] == "Restaurants: 15 or more. The nearest are 봉래면옥, 40m to the south, 김밥천국, 60m to the east.")
     #expect(lines[2] == "Cafes: 3. The nearest are 스타벅스, 90m to the west, 카페 1971, 200m to the north.")
     #expect(lines[3] == "Places for kids: none within 1km.")
@@ -109,7 +109,7 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     {"data":{"place":null,"radiusMeters":1000,"bullets":[{"kind":"cafe","state":"ok","count":1,"countCapped":false,"nearest":[{"name":"GS25","distanceMeters":40,"bearing":"s"}]}]}}
     """
     let data = try #require(try decode(json).data)
-    #expect(buildOverviewLines(data, lang: "ko") == ["카페가 1곳 있습니다. 가장 가까운 곳은 GS25, 남쪽 40m입니다."])
+    #expect(buildOverviewLines(data, lang: "ko").map(\.text) == ["카페가 1곳 있습니다. 가장 가까운 곳은 GS25, 남쪽 40m입니다."])
 }
 
 @Test func sceneItemToPlaceCarriesCoordinatesAndRawCategory() {
@@ -135,4 +135,23 @@ private func decode(_ json: String) throws -> NearbyOverviewResponse {
     #expect(item.id == "kakao-2")
     #expect(item.roadAddress == nil)
     #expect(item.phone == nil)
+}
+
+@Test func overviewLinesEnUseRomanAndCollectKoreanSecondary() throws {
+    // 비-ko: 역은 seed 영문(nameEn) 우선, 장소는 nameRoman, 한글 없는 이름(GS25)은 병기하지 않는다(E28).
+    let json = """
+    {"data":{"place":null,"radiusMeters":1000,"bullets":[
+      {"kind":"transit","state":"ok","station":{"name":"길동역","nameEn":"Gil-dong","line":"5호선","bearing":"n","distanceMeters":200},"busStops":null},
+      {"kind":"kids","state":"ok","count":2,"countCapped":false,"nearest":[
+        {"name":"길동어린이공원","nameRoman":"Gildongeorinigongwon","distanceMeters":300,"bearing":"w"},
+        {"name":"GS25","nameRoman":"GS25","distanceMeters":400,"bearing":"e"}]}]}}
+    """
+    let data = try #require(try decode(json).data)
+    let lines = buildOverviewLines(data, lang: "en")
+    #expect(lines[0].text.contains("Gil-dong"))
+    #expect(!lines[0].text.contains("길동역"))
+    #expect(lines[0].secondary == "길동역")
+    #expect(lines[1].text.contains("Gildongeorinigongwon, 300m to the west"))
+    #expect(lines[1].secondary == "길동어린이공원")
+    #expect(lines[1].display.hasSuffix(" (길동어린이공원)"))
 }

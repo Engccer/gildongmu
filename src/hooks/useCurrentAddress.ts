@@ -3,6 +3,8 @@
 import { useEffect, useSyncExternalStore } from "react";
 import type { Coord } from "@/lib/types";
 import {
+  type AddressLang,
+  type CurrentAddress,
   coordAddressKey,
   ensureCurrentAddress,
   getCurrentAddressServerSnapshot,
@@ -22,7 +24,7 @@ import {
  * 반환값은 **인자로 준 좌표의 주소일 때만** 비어 있지 않다. 스토어가 다른 좌표의
  * 주소를 들고 있는 순간(새로고침 직후)에 그것을 흘리지 않는다.
  */
-export function useCurrentAddress(coord: Coord | null): string | null {
+export function useCurrentAddress(coord: Coord | null, lang: AddressLang): CurrentAddress | null {
   const entry = useSyncExternalStore(
     subscribeCurrentAddress,
     getCurrentAddressSnapshot,
@@ -33,9 +35,9 @@ export function useCurrentAddress(coord: Coord | null): string | null {
   const lng = coord?.lng ?? null;
   useEffect(() => {
     if (lat === null || lng === null) return;
-    ensureCurrentAddress({ lat, lng });
-  }, [lat, lng]);
+    ensureCurrentAddress({ lat, lng }, lang);
+  }, [lat, lng, lang]);
 
   if (!coord) return null;
-  return entry?.key === coordAddressKey(coord) ? entry.address : null;
+  return entry?.key === coordAddressKey(coord) && entry.lang === lang ? entry.value : null;
 }

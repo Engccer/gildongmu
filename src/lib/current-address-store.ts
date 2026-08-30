@@ -20,7 +20,10 @@
 import { roundCoord } from "./coord-round";
 import type { Coord } from "./types";
 
-export type CurrentAddressEntry = { key: string; address: string | null };
+/** `english`는 공식 영문(juso `engAddr`) 또는 규칙 로마자(E28) — 한국어 요청은 null. */
+export type CurrentAddress = { address: string; english: string | null };
+export type CurrentAddressEntry = { key: string; lang: AddressLang; value: CurrentAddress | null };
+export type AddressLang = "ko" | "en";
 
 /**
  * 캐시 키. 4자리 약 ±5.5m — GPS 오차보다 작아 같은 자리의 재조회를 만들지 않으면서,
@@ -59,12 +62,17 @@ export function getCurrentAddressServerSnapshot(): CurrentAddressEntry | null {
  * 좌표 → 대표 주소. 매칭 없음·실패 모두 조용히 null(라벨은 "현재 위치"만 남아
  * 거짓 표시가 없다). `DirectionsView.fetchCurrentAddress`와 같은 라우트·같은 계약.
  */
-async function fetchAddress(coord: Coord): Promise<string | null> {
+async function fetchAddress(coord: Coord, lang: AddressLang): Promise<CurrentAddress | null> {
   try {
-    const res = await fetch(`/api/geocode/reverse?lat=${coord.lat}&lng=${coord.lng}`);
+    const res = await fetch(`/api/geocode/reverse?lat=${coord.lat}&lng=${coord.lng}&lang=${lang}`);
     if (!res.ok) return null;
-    const body = (await res.json()) as { address: string | null };
-    return body.address;
+    const body = (await res.json()) as {
+      address: string | null;
+      addressEn?: string;
+      addressRoman?: string;
+    };
+    if (!body.address) return null;
+    return { address: body.address, english: body.addressEn ?? body.addressRoman ?? null };
   } catch {
     return null;
   }
@@ -74,19 +82,20 @@ async function fetchAddress(coord: Coord): Promise<string | null> {
  * 이 좌표의 주소를 확보한다. 이미 확정됐거나 같은 좌표가 조회 중이면 no-op이라
  * 여러 표시줄이 동시에 불러도 요청은 하나다.
  */
-export function ensureCurrentAddress(coord: Coord): void {
+export function ensureCurrentAddress(coord: Coord, lang: AddressLang): void {
   const key = coordAddressKey(coord);
-  if (entry?.key === key || inflightKey === key) return;
-  inflightKey = key;
+  // 언어가 바뀌면 같은 좌표라도 다시 받는다(영문 병기는 en 응답에만 실린다).
+  if ((entry?.key === key && entry.lang === lang) || inflightKey === `${key}|${lang}`) return;
+  inflightKey = `${key}|${lang}`;
   if (entry) {
     entry = null;
     emit();
   }
-  void fetchAddress(coord).then((address) => {
+  void fetchAddress(coord, lang).then((value) => {
     // 더 새 좌표가 앞질렀으면 이 응답은 옛 자리의 주소다(latest-wins).
-    if (inflightKey !== key) return;
+    if (inflightKey !== `${key}|${lang}`) return;
     inflightKey = null;
-    entry = { key, address };
+    entry = { key, lang, value };
     emit();
   });
 }

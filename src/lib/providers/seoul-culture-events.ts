@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import type { CultureEvent } from "../types";
 import { env } from "../env";
 import { readSeoulOpenJson } from "./seoul-open-json";
+import { romanNameOf } from "../romanize";
 
 /**
  * 서울 문화행사 provider — `culturalEventInfo`(OA-15486).
@@ -120,8 +121,10 @@ export function toCultureEvent(row: RawRow): CultureEventBase | null {
   return {
     id: eventId(row),
     title,
+    titleRoman: romanNameOf(title),
     category: str(row.CODENAME),
     place: str(row.PLACE),
+    placeRoman: romanNameOf(str(row.PLACE)),
     district: str(row.GUNAME),
     dateText: str(row.DATE),
     timeText: str(row.PRO_TIME),

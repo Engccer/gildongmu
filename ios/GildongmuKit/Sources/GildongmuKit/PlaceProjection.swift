@@ -16,6 +16,7 @@ public func nightClinicToPlace(_ c: NightClinic) -> Place {
     Place(
         id: c.id,
         name: c.name,
+        nameRoman: c.nameRoman,
         // 종별(의원/병원) — 역 키워드가 없어 일반 프롬프트 버킷으로 떨어진다.
         category: c.kind,
         // ⚠ NMC dutyAddr은 **도로명 주소**다(명부 153건 전수 확인, 2026-07-26).
@@ -36,6 +37,7 @@ public func kidsPlaceToPlace(_ k: KidsPlace) -> Place {
     Place(
         id: k.id,
         name: k.name,
+        nameRoman: k.nameRoman,
         category: k.category,
         address: k.address,
         roadAddress: k.roadAddress ?? "",
@@ -51,6 +53,7 @@ public func surroundingPlaceToPlace(_ p: SurroundingPlace) -> Place {
     Place(
         id: p.id,
         name: p.name,
+        nameRoman: p.nameRoman,
         // categoryRaw = 카카오 category_name 전체 계층 — isStation 판정에 필요(지하철 등).
         category: p.categoryRaw,
         address: "",
@@ -68,6 +71,7 @@ public func sceneItemToPlace(_ item: SurroundingsSceneItem) -> Place {
     Place(
         id: item.id,
         name: item.name,
+        nameRoman: item.nameRoman,
         category: item.categoryRaw,
         address: "",
         roadAddress: item.roadAddress ?? "",
@@ -83,6 +87,7 @@ public func barrierFreePlaceToPlace(_ b: BarrierFreePlace) -> Place {
     Place(
         id: b.contentId,
         name: b.name,
+        nameRoman: b.nameRoman,
         // contenttypeid 라벨(빈 문자열 허용) — 역 키워드가 없어 일반 프롬프트 버킷.
         category: b.category,
         // ⚠ TourAPI addr1은 도로명 주소다(fixture 실측 "서울특별시 중구 세종대로 110 (태평로1가)").
@@ -103,6 +108,7 @@ public func overviewAnchorPlace(_ overview: NearbyOverview, lat: Double, lng: Do
     Place(
         id: "where-am-i-\(String(format: "%.5f", lat))-\(String(format: "%.5f", lng))",
         name: firstNonEmpty(overview.place) ?? kitLocalized("whereAmI.ready", lang: lang),
+        nameRoman: firstNonEmpty(overview.place) == nil ? nil : overview.placeRoman,
         category: "",
         address: "",
         roadAddress: "",
@@ -142,6 +148,7 @@ public func cultureEventToPlace(_ e: CultureEvent) -> Place {
     Place(
         id: e.id,
         name: e.title,
+        nameRoman: e.titleRoman,
         category: e.category,
         address: "",
         roadAddress: "",

@@ -1,5 +1,6 @@
 import { findCongestionArea } from "./congestion-area";
 import { loadCongestion, type CongestionReading } from "./providers/seoul-congestion";
+import { romanNameOf } from "./romanize";
 
 /**
  * 실시간 인구 혼잡도 진입점 — 라우트·채팅 공용.
@@ -14,6 +15,8 @@ export interface CongestionAreaReading extends CongestionReading {
   code: string;
   /** 영역 이름(`강남역`). 사용자에게 "어디의 혼잡도인지" 알리는 정본. */
   name: string;
+  /** 영역 이름 로마자(E28, additive). */
+  nameRoman?: string;
 }
 
 export interface CongestionResult {
@@ -34,5 +37,5 @@ export async function findCongestionNear(
   const reading = await loadCongestion(area.code);
   if (!reading) return { area: null };
 
-  return { area: { ...reading, code: area.code, name: area.name } };
+  return { area: { ...reading, code: area.code, name: area.name, nameRoman: romanNameOf(area.name) } };
 }

@@ -17,6 +17,11 @@ export interface Place {
   id: string;
   /** 업체/장소 이름 (HTML 태그 제거된 평문) */
   name: string;
+  /**
+   * 이름의 로마자(국어원 표기법, 서버 `romanize.ts`, E28). 한글이 있는 이름에만 실리고
+   * 영문 원천 이름(TourAPI en 등)에는 없다. 비-ko 로케일이 `Roman (한글)` 병기에 쓴다.
+   */
+  nameRoman?: string;
   /** 카테고리 경로 (예: "음식점>한식") */
   category: string;
   /** 지번 주소 */
@@ -556,6 +561,8 @@ export interface BusStop {
   cityCode: string;
   /** 정류소명(한글 — TAGO는 영문 미제공) */
   name: string;
+  /** 정류소명 로마자(E28, additive). */
+  nameRoman?: string;
   /** 정류소 표지판 번호(없을 수 있음) */
   stopNo?: string;
   lat: number;
@@ -733,6 +740,8 @@ export interface BikeStation {
   stationId: string;
   /** 대여소명 — 원문 그대로(번호 접두 포함, 예 "3681. 길동 마루빌딩") */
   name: string;
+  /** 대여소명 로마자(E28, additive). */
+  nameRoman?: string;
   lat: number;
   lng: number;
   /** 출발 좌표로부터 Haversine 거리(m). 좌표 비유한이면 Infinity(정렬 후미). */
@@ -777,6 +786,8 @@ export interface NightClinic {
   id: string;
   /** 기관명(dutyName) */
   name: string;
+  /** 기관명 로마자(E28, additive). */
+  nameRoman?: string;
   /** 주소(dutyAddr) */
   address: string;
   /** 대표 전화(dutyTel1) — 없으면 "" */
@@ -953,6 +964,8 @@ export interface AirPollutant {
 export interface AirQuality {
   /** 측정소명 */
   stationName: string;
+  /** 측정소명 로마자(E28, additive). */
+  stationNameRoman?: string;
   /** 현재 위치로부터 거리(km, 에어코리아 `tm` 정본) */
   distanceKm: number;
   /** 측정소 주소 */
@@ -1026,6 +1039,8 @@ export interface KidsPlace {
   /** 카카오 장소 id(dedupe 키, "kakao-" 접두) */
   id: string;
   name: string;
+  /** 이름 로마자(E28, additive). */
+  nameRoman?: string;
   /** 카카오 category_name 전체 계층 */
   category: string;
   kind: KidsPlaceKind;
@@ -1069,6 +1084,8 @@ export type SurroundingCategory =
 export interface SurroundingPlace {
   id: string;
   name: string;
+  /** 이름 로마자(E28, additive). */
+  nameRoman?: string;
   category: SurroundingCategory;
   /** 카카오 category_name 전체 계층(보조 표시) */
   categoryRaw: string;
@@ -1121,6 +1138,8 @@ export interface WebSearchResult {
 export interface BarrierFreePlace {
   contentId: string;
   name: string;
+  /** 이름 로마자(E28, additive). */
+  nameRoman?: string;
   /** contenttypeid 라벨(빈 문자열 허용 — Task 1 비범위) */
   category: string;
   address: string;
@@ -1150,6 +1169,8 @@ export interface BarrierFreeFacility {
 export interface BarrierFreeDetail {
   contentId: string;
   name: string;
+  /** 이름 로마자(E28, additive). */
+  nameRoman?: string;
   /** 값 있는 편의시설만, 빈 배열 가능 */
   facilities: BarrierFreeFacility[];
 }
@@ -1168,6 +1189,9 @@ export interface CultureEvent {
   /** CODENAME — 전시/미술·교육/체험·콘서트 등 */
   category: string;
   place: string;
+  /** 제목·장소 로마자(E28, additive). 분류(`category`)는 로마자를 만들지 않는다. */
+  titleRoman?: string;
+  placeRoman?: string;
   /** GUNAME — 자치구 */
   district: string;
   /** DATE 원문(`2026-08-01~2026-09-20`) — 이미 완성 표기라 재조합하지 않는다 */

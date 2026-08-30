@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor } from "@/components/BilingualName";
 import { useEffect, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import type { AirQuality as Air, Weather } from "@/lib/types";
@@ -7,6 +8,7 @@ import { isInKorea } from "@/lib/coverage";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { congestionLevelKey } from "@/lib/congestion-level";
 import { prefersEnglish } from "@/lib/data-locale";
+import { bilingualName } from "@/lib/bilingual-name";
 import { AirQualityBody } from "./AirQuality";
 
 /**
@@ -18,6 +20,8 @@ interface CongestionAreaInfo {
   /** 영역 코드(`POI014`). 표시에는 쓰지 않지만 응답 모양의 일부다. */
   code: string;
   name: string;
+  /** 영역명 로마자(E28, additive). */
+  nameRoman?: string;
   level: string;
   message: string;
   asOf: string;
@@ -183,11 +187,17 @@ function CongestionBody({ area }: { area: CongestionAreaInfo }) {
   const locale = useLocale();
   const levelKey = congestionLevelKey(area.level);
   const levelText = levelKey ? t(`levels.${levelKey}`) : area.level;
+  const areaName = bilingualName(locale, area.name, { roman: area.nameRoman });
+  const summary = t("summary", { area: areaName.primary, level: levelText });
 
   return (
     <div className="mt-3 text-sm leading-relaxed">
-      {/* 영역명+등급어를 단일 텍스트로(라벨 볼드 분절 포기 — 한 줄=한 객체). */}
-      <p>{t("summary", { area: area.name, level: levelText })}</p>
+      {/* 영역명+등급어를 단일 텍스트로(라벨 볼드 분절 포기 — 한 줄=한 객체). 비-ko는 영역명이
+          로마자, 한글은 줄 끝 괄호(E28 R5). */}
+      <p lang={langFor(summary)}>
+        {summary}
+        <KoTail secondary={areaName.secondary} />
+      </p>
       {!prefersEnglish(locale) && area.message && <p>{area.message}</p>}
       <p className="mt-2 text-xs opacity-70">{t("asOf", { time: area.asOf })}</p>
       <p className="mt-1 text-xs opacity-70">{t("source")}</p>

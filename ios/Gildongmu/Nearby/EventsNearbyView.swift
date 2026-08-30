@@ -121,8 +121,12 @@ struct CultureEventSection: View {
     var body: some View {
         Section {
             // 개최 장소는 주소가 아니라 시설 설명이라 주소 슬롯이 아닌 여기서 밝힌다.
-            let venue = joinText(event.place, event.district)
-            if !venue.isEmpty { Text(venue) }
+            // 비-ko는 장소명 로마자 병기(E28): 시각 `Roman (한글), 자치구`, 낭독은 로마자만.
+            let place = bilingual(event.place, roman: event.placeRoman)
+            let venue = joinText(place.display, event.district)
+            if !venue.isEmpty {
+                Text(venue).accessibilityLabel(Text(joinText(place.primary, event.district)))
+            }
             // dateText는 원본 완성 표기(2026-06-04~2026-08-23) — 재조합 금지.
             let when = joinText(event.dateText, event.timeText)
             if !when.isEmpty { Text(when) }

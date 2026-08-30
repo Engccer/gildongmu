@@ -49,10 +49,36 @@ private func nameAsDestination(_ name: String, lang: String) -> String {
     return KoreanParticle.direction(name).map { name + $0 } ?? name + ","
 }
 
-private func overviewNearest(_ items: [OverviewPlace], lang: String) -> String {
+/// 불릿 한 줄의 문장 + 한글 병기 꼬리(E28, 웹 `OverviewLine` 미러). `secondary`는 병기한 이름들의
+/// 한글 원문을 순서대로 쉼표로 이었고, 없으면 nil. 뷰는 `text`를 낭독하고 시각은 `text (secondary)`.
+public struct OverviewLine: Equatable, Sendable {
+    public let text: String
+    public let secondary: String?
+
+    public var display: String {
+        guard let secondary else { return text }
+        return "\(text) (\(secondary))"
+    }
+}
+
+/// 병기한 한글 이름을 불릿 단위로 모은다.
+private final class KoSink {
+    var names: [String] = []
+    var secondary: String? { names.isEmpty ? nil : names.joined(separator: ", ") }
+}
+
+/// 불릿에 넣을 이름 — 비-ko는 원천 영문(역 `nameEn`) → 로마자 → 한글 순(`bilingualName` 규칙).
+private func pickName(_ name: String, en: String?, roman: String?, lang: String, sink: KoSink) -> String {
+    let b = bilingualName(lang: lang, ko: name, en: en, roman: roman)
+    if let secondary = b.secondary { sink.names.append(secondary) }
+    return b.primary
+}
+
+private func overviewNearest(_ items: [OverviewPlace], lang: String, sink: KoSink) -> String {
     let parts = items.map {
         kitLocalized("whereAmI.overview.nearestItem", lang: lang,
-                     nameAsDestination($0.name, lang: lang), directionWord($0.bearing, lang: lang),
+                     nameAsDestination(pickName($0.name, en: nil, roman: $0.nameRoman, lang: lang, sink: sink), lang: lang),
+                     directionWord($0.bearing, lang: lang),
                      formatDistance($0.distanceMeters))
     }
     return kitLocalized("whereAmI.overview.nearestLead", lang: lang, parts.joined(separator: ", "))
@@ -62,16 +88,25 @@ private func overviewNearest(_ items: [OverviewPlace], lang: String) -> String {
 /// 헤딩 부제(`whereAmI.overview.radius`)가 한 번만 말하고, none 문장만 반경을 품는다.
 /// 템플릿은 `messages/*.json` whereAmI.overview.*(6 로케일, LLM 아님). 문장형은 위원장
 /// 판정 2026-08-22("아이 놀 곳이 9곳 있습니다. 가장 가까운 곳은 …입니다.").
-public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [String] {
+public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [OverviewLine] {
     let radius = formatDistance(overview.radiusMeters)
     return overview.bullets.map { bullet in
+        let sink = KoSink()
+        let text = overviewBulletText(bullet, lang: lang, radius: radius, sink: sink)
+        return OverviewLine(text: text, secondary: sink.secondary)
+    }
+}
+
+private func overviewBulletText(_ bullet: OverviewBullet, lang: String, radius: String, sink: KoSink) -> String {
+    {
         switch bullet {
         case .transit(let station, let bus):
             var parts: [String] = []
             if let station {
                 let line = station.line.map { kitLocalized("whereAmI.overview.transitLine", lang: lang, $0) } ?? ""
                 parts.append(kitLocalized("whereAmI.overview.transitStation", lang: lang,
-                                          line, nameAsDestination(station.name, lang: lang),
+                                          line,
+                                          nameAsDestination(pickName(station.name, en: station.nameEn, roman: nil, lang: lang, sink: sink), lang: lang),
                                           directionWord(station.bearing, lang: lang),
                                           formatDistance(station.distanceMeters)))
             } else {
@@ -80,7 +115,7 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
             switch bus {
             case .ok(let count, let nearest):
                 parts.append(kitLocalized("whereAmI.overview.transitBus", lang: lang,
-                                          String(count), overviewNearest(nearest, lang: lang)))
+                                          String(count), overviewNearest(nearest, lang: lang, sink: sink)))
             case .empty: parts.append(kitLocalized("whereAmI.overview.transitBusNone", lang: lang))
             case .uncovered: parts.append(kitLocalized("whereAmI.overview.transitBusUncovered", lang: lang))
             case .failed: parts.append(kitLocalized("whereAmI.overview.transitBusFailed", lang: lang))
@@ -93,7 +128,7 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
             case .ok(let count, let capped, let nearest):
                 return kitLocalized(capped ? "whereAmI.overview.okCapped" : "whereAmI.overview.ok", lang: lang,
                                     withSubject(label, lang: lang), String(count),
-                                    overviewNearest(nearest, lang: lang))
+                                    overviewNearest(nearest, lang: lang, sink: sink))
             case .empty:
                 return kitLocalized("whereAmI.overview.none", lang: lang, withTopic(label, lang: lang), radius)
             case .unavailableSeoulOnly:
@@ -101,5 +136,5 @@ public func buildOverviewLines(_ overview: NearbyOverview, lang: String) -> [Str
             case .failed: return kitLocalized("whereAmI.overview.failedItem", lang: lang, label)
             }
         }
-    }
+    }()
 }

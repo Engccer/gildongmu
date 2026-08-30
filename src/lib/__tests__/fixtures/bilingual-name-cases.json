@@ -13,6 +13,10 @@
     { "id": "other-non-ko-locale-same-as-en", "locale": "ja", "ko": "선릉역", "en": "Seolleung", "roman": null, "primary": "Seolleung", "secondary": "선릉역" },
     { "id": "candidate-trimmed", "locale": "fr", "ko": "왕십리", "en": null, "roman": " Wangsimni ", "primary": "Wangsimni", "secondary": "왕십리" },
     { "id": "hangul-in-en-candidate-falls-to-roman", "locale": "en", "ko": "강남역", "en": "강남 Station", "roman": "Gangnamyeok", "primary": "Gangnamyeok", "secondary": "강남역" },
-    { "id": "hangul-in-every-candidate-keeps-ko", "locale": "en", "ko": "ㄱ카페", "en": null, "roman": "ㄱKape", "primary": "ㄱ카페", "secondary": null }
+    { "id": "hangul-in-every-candidate-keeps-ko", "locale": "en", "ko": "ㄱ카페", "en": null, "roman": "ㄱKape", "primary": "ㄱ카페", "secondary": null },
+    { "id": "identical-after-ko-trim", "locale": "en", "ko": "Seoul Station ", "en": "Seoul Station", "roman": null, "primary": "Seoul Station", "secondary": null },
+    { "id": "embedded-bilingual-source-wins-over-roman", "locale": "en", "ko": "Starbucks Gyeongdong Market (스타벅스 경동1960)", "en": null, "roman": "Starbucks Gyeongdong Market (seutabeokseu Gyeongdong1960)", "primary": "Starbucks Gyeongdong Market", "secondary": "스타벅스 경동1960" },
+    { "id": "embedded-bilingual-ko-locale-unchanged", "locale": "ko", "ko": "Starbucks Gyeongdong Market (스타벅스 경동1960)", "en": null, "roman": null, "primary": "Starbucks Gyeongdong Market (스타벅스 경동1960)", "secondary": null },
+    { "id": "korean-name-with-latin-parenthesis-is-not-embedded", "locale": "en", "ko": "스타벅스 (DT점)", "en": null, "roman": "Seutabeokseu (DT점)", "primary": "스타벅스 (DT점)", "secondary": null }
   ]
 }

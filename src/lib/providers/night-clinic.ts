@@ -7,6 +7,7 @@ import type {
 import { env } from "../env";
 import { haversineMeters } from "../geo";
 import { fetchDataGoKrJson, readItems, readResultCode, readTotalCount } from "./datagokr-envelope";
+import { romanNameOf } from "../romanize";
 
 /**
  * 내 주변 소아 야간·휴일 진료(달빛어린이병원·소아전문센터) provider —
@@ -76,6 +77,7 @@ export function parseClinics(raw: unknown): NightClinic[] {
       return {
         id: str(it.hpid),
         name: str(it.dutyName),
+        nameRoman: romanNameOf(str(it.dutyName)),
         address: str(it.dutyAddr),
         phone: str(it.dutyTel1),
         kind: str(it.dutyDivNam),

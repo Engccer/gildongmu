@@ -67,8 +67,8 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노출·오작동하는 6항. ①iOS `isCrossingStep`의 `"건너"` 문자열 요구 → en 도보 안내에서 횡단 유닛 판정 불능(안전) ②iOS `RouteService.car` `lang` 선택 인자 + `BeaconModel` 미배선 ③웹 car 라우트 en→ko 폴백의 언어 마커 부재 ④웹 경로 카드 2종이 서버 한국어 error를 live region에 그대로 낭독 ⑤서버 합성 한국어(무장애 라벨 27종·엘리베이터 위치 문장·"휠체어 접근 가능"·`호선`/`선` 접미·iOS "N정류장 전") ⑥웹 `lang="ko"` 마크업 누락. 정본: `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
 
 **남은 판정(종결 시점 기록)**:
-- **`lang="ko"`를 건너뛴 자리(E28 재료)** — 영어 산문 템플릿 안에 한국어 데이터가 삽입되는 줄이라 속성을 주려면 줄 중간 분절이 필요해 헌장 위반: `AroundNearby` 패널 헤딩(`here {place}`)·한눈에 보기 불릿(`buildOverviewLines`)·항목 헤딩(`joinText(p.name, item 템플릿)`)·`SurroundingsScene` 장면 문장, `LocationBar`(`gpsNear {address}`, 역지오코딩 주소가 ko), `LocalConditions` 혼잡도 요약(`summary {area}`)·`AirQuality` 측정소 줄(`station {name}`), `TransitGuidePanel` 상태 문장·경유 정류소 줄(`stop.name + viaBoard`), `SeoulMetroFacilities` 헤딩(`heading {name}` + line). **노선명이 들어가는 줄**(`StationTimetable` 항목·`StationMeta` 노선 줄·`TransitRouteBriefing` 구간 — 후자는 이미 `<line>` 태그 핸들러로 부분 처리)은 E27(노선명 영문 표)이 풀리면 자연 해소라 보류. 판정 축: 병기 형식이 정해지면 그 줄들은 "ko 블록 + en 블록" 두 객체로 재구성될 수 있다.
-- **혼합 줄의 판정 축**: 값이 한국어인 줄(`PlaceCard` 분류 "음식점 > 한식, about 120m", 무장애 "Wheelchair rental 안내소에서 대여 가능")은 영어 조각이 섞여도 줄 전체 `lang="ko"`로 뒀다 — 영어 엔진은 한글을 못 읽고 한국어 엔진은 영어 낱말을 읽으므로. E28 병기 정책이 정해지면 "ko 블록 + en 블록" 구조로 함께 재검토.
+- ~~**`lang="ko"`를 건너뛴 자리(E28 재료)**~~ ✅ 2026-08-31 E28이 로마자 병기로 해소(`AroundNearby` 헤딩·불릿·항목, `SurroundingsScene`, `LocationBar`, `LocalConditions`·`AirQuality` — 이름이 로마자가 되어 삽입 자리에 한글이 남지 않는다). **남은 것은 E27 몫**(`TransitGuidePanel` 상태 문장·경유 정류소 줄, `SeoulMetroFacilities` 헤딩의 노선명). 원문: 영어 산문 템플릿 안에 한국어 데이터가 삽입되는 줄이라 속성을 주려면 줄 중간 분절이 필요해 헌장 위반: `AroundNearby` 패널 헤딩(`here {place}`)·한눈에 보기 불릿(`buildOverviewLines`)·항목 헤딩(`joinText(p.name, item 템플릿)`)·`SurroundingsScene` 장면 문장, `LocationBar`(`gpsNear {address}`, 역지오코딩 주소가 ko), `LocalConditions` 혼잡도 요약(`summary {area}`)·`AirQuality` 측정소 줄(`station {name}`), `TransitGuidePanel` 상태 문장·경유 정류소 줄(`stop.name + viaBoard`), `SeoulMetroFacilities` 헤딩(`heading {name}` + line). **노선명이 들어가는 줄**(`StationTimetable` 항목·`StationMeta` 노선 줄·`TransitRouteBriefing` 구간 — 후자는 이미 `<line>` 태그 핸들러로 부분 처리)은 E27(노선명 영문 표)이 풀리면 자연 해소라 보류. 판정 축: 병기 형식이 정해지면 그 줄들은 "ko 블록 + en 블록" 두 객체로 재구성될 수 있다.
+- **혼합 줄의 판정 축**: 값이 한국어인 줄(`PlaceCard` 분류 "음식점 > 한식, about 120m", 무장애 "Wheelchair rental 안내소에서 대여 가능")은 영어 조각이 섞여도 줄 전체 `lang="ko"`로 뒀다 — 영어 엔진은 한글을 못 읽고 한국어 엔진은 영어 낱말을 읽으므로. E28(2026-08-31)은 이 축을 유지했다(`langFor(접근 텍스트)`): 이름이 로마자여도 분류·종별이 한국어면 줄 전체 ko. 남은 후보는 **카카오 분류의 영문화**(로마자는 정보가 0 — 버킷 i18n 라벨 재사용이 맞다, E28 spec §7) — 그것이 풀리면 이 줄들의 `lang="ko"`가 자연히 떨어진다.
 - **iOS 자동차 브리핑의 `guidanceLang`**: Kit 모델에 디코딩만 넣었고 `CarRouteRows`에 언어 표기(`AttributedString.accessibilitySpeechLanguage`)는 붙이지 않았다 — VoiceOver가 그 속성을 SwiftUI `Text`에서 존중하는지 실기기 미확인(E28 iOS 언어 태깅 판정과 같은 축).
 - **`호선` 접미의 en "Line {n}"**(음성유도기 환승역·`subway.lineNumber`)은 서버 합성 접미를 로컬라이즈한 것이라 여기서 처리했다 — E27 노선명 표가 생기면 그 표로 통일한다.
 - **ko 표시 1건 변화**: 서울 지하철 장애인 화장실 보조 설명이 " · " 결합에서 쉼표 결합(`joinText`)으로 바뀌었다(가운뎃점 구분자 금지 헌장 정합, CLI/MCP `detail` 문자열은 불변).
@@ -233,6 +233,16 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 
 ---
 
+### 장소명 병기 (E28)
+
+| 식별자 | 판정 대상 | 빌드 | 정본 |
+|---|---|---|---|
+| **E28-①** | iOS 한국어 구간 언어 태깅 후보 ① `KoreanText`(`Text(verbatim:).environment(\.locale, ko)`) — 비-ko 앱 언어에서 VoiceOver가 장소 상세 분류 줄을 **한국어 엔진**으로 읽는가("언어 감지" 설정 켬/끔 둘 다). 실패면 후보 ② `AttributedString.languageIdentifier`로 교체. ⚠ `PlaceRow` 같은 `.combine` 행에는 ①이 구조적으로 닿지 않는다(자식 environment는 합쳐진 라벨에 무관) — 그 자리는 ②뿐 | 정식판·실험판 동일(둘 다 포함) | spec E28 §6 |
+| **E28-②** | 웹 합성 줄의 괄호 자리 — `Name, 종별, 500m (한글)`(줄 끝, R1)이 위원장 판정 ②의 한 줄 괄호로 받아들여지는가. 대안(이름 바로 뒤)은 Chrome AX 실측상 분절이라 없다 — 자리 자체를 판정 | 웹(en) | spec E28 §5 |
+| **E28-③** | iOS 장소 상세 제목 — 내비 타이틀은 로마자만, 한글은 제목 아래 보조 줄(`accessibilityHidden`). 판정 ③을 ②보다 앞세운 예외의 수용 여부. ⚠ 함께 볼 것: List 셀이 숨김 자식 텍스트를 셀 라벨로 승격하는 SwiftUI 함정 — 제목 다음 스와이프가 분류 줄로 **바로** 가는가(시뮬 원시 트리엔 그 텍스트 노드가 남아 있었다, a11y 감사 RD-1) | 정식판 | spec E28 §6 |
+| **E28-④** | iOS `PlaceRow`(combine 행)에서 이름 라벨이 로마자로만 들리고 한글이 새지 않는가, 헤딩 trait(버스 정류소 줄)이 보존되는가 | 정식판 | spec E28 §6 |
+| **E28-⑤** | 로마자 낭독 품질 — 영어 엔진이 `Gangdongseongsimbyeongwon`류 긴 로마자를 어떻게 읽는가(어절 미분리, spec §3.4 ①). 견딜 만하면 종결, 아니면 어절 분리 원천(사전) 재검토 | 웹·iOS | spec E28 §3.4 |
+
 ## 3. 도달
 
 만들 게 남은 게 아니라 **보낼 게 남은 것**이다. 웹은 push=배포라 이 축이 없고 **iOS·CLI는 릴리스가 별도 행위**라 끝난 일이 아무에게도 가지 않은 채 쌓인다.
@@ -296,9 +306,14 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 아래는 접수 시점 기록이다. ODsay `searchPubTransPathT`가 `lang=1`로 역명(`Gangnam`)·노선명(`Line 2`)·버스 정류소명(`Gil-dong Station Exit 1`)을 영문으로 준다(실호출 확정 2026-08-31, 한글은 `*Kor` 필드 병기). 전국 지하철 노선명은 닫힌 집합이라 정적 영문 표가 정답. 판정 확정(2026-08-31): ODsay 영문 채택(정류소명 구분자·약어만 정규화, 조인은 `*Kor`), 도착 문장은 en에서 `arvlCd` 기반 영어 단문 생성(실패는 ko 폴백). 범위 밖으로 남는 판정: 실시간 대중교통 안내 en 게이트 해제(실험판 봉인 별도), CLI/MCP `route transit` `lang`(E26 동형). 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
 
-### E28. 장소명 영문 병기 — 로마자 서버 투영 + 한 줄 괄호 (🆕 2026-08-31, ✅ 판정 확정 — 병렬 세션 place-names 착수)
+### E28. 장소명 영문 병기 — 로마자 서버 투영 + 한 줄 괄호 (✅ 2026-08-31 코드 종결, ⏳ 실기기 판정)
 
-카카오·네이버·TAGO·TOPIS는 영문 필드가 없다. 판정 확정(2026-08-31): 영문 원천 없는 이름은 **한글 + 로마자(서버 투영) 한 줄 괄호 병기**, 접근 가능한 이름은 영문·로마자만. 서울시 외국어 표기 사전(OA-2475)은 실측상 도로명·시청 조직명 사전(가게·병원·역명 매칭 0/15·0/15·1/15)이라 **기각**. 남는 실기기 판정: iOS 한국어 구간 언어 태깅(SwiftUI `accessibilitySpeechLanguage` 미동작 보고). 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
+카카오·네이버·TAGO·TOPIS는 영문 필드가 없다. 판정 확정(2026-08-31): 영문 원천 없는 이름은 **한글 + 로마자(서버 투영) 한 줄 괄호 병기**, 접근 가능한 이름은 영문·로마자만. 서울시 외국어 표기 사전(OA-2475)은 실측상 도로명·시청 조직명 사전(가게·병원·역명 매칭 0/15·0/15·1/15)이라 **기각**. 구현 종결(CHANGELOG 2026-08-31, spec `docs/superpowers/specs/2026-08-31-place-name-bilingual-design.md`, plan `2026-08-31-en-locale-korean-cleanup-parallel-plan.md`). 실기기 판정은 §2 "장소명 병기(E28)" 표. 후속 후보(범위 밖으로 남긴 것):
+- **카카오 분류·진료 종별의 영문화** — 로마자는 정보가 0이라 만들지 않았다. 버킷 i18n 라벨(`category.ts`) 재사용이 후보. 풀리면 혼합 줄의 `lang="ko"`가 함께 떨어진다.
+- **둘러보기 장면의 도로명(`SceneItem.road`)** — 문장 안 한국어 도로명 그대로(`on 성내로`). `roadRoman`(주소 규칙) additive가 후보.
+- **길찾기 화면의 장소명**(웹 `DirectionsView`·iOS `DirectionsEndpointSearchView` 출발·도착 검색 결과, `DirectionsTabView` 현재 주소) — 길찾기 세션 소유라 손대지 않았다. `Place.nameRoman`·`reverseGeocode(lang:)`이 이미 값을 주므로 소비만 붙이면 된다(설계 리뷰 #25).
+- **`where-am-i`(CLI·채팅 계약)**에는 로마자를 싣지 않았다 — CLI 텍스트 포맷과 채팅 산문이 범위 밖이라.
+- **수동 위치 라벨**(`manualLocation.manual {label}`, 지정 화면에서 고른 장소명) — 스토어가 문자열 하나만 들어 비-ko 표시줄이 "Set location, 강동구청 (cannot verify)"로 남는다(실페이지 실측 2026-08-31). 스토어에 `labelRoman` additive + 표시줄 병기가 후보(웹 `manual-location-store.ts` ↔ Kit `ManualLocation.swift`).
 
 ### W2. WebMCP 도구층 2차 — 이동 계획 보조 상시 집합 7개 (신규 2026-08-28, spec 확정 2026-08-29)
 

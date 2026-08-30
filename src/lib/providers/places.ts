@@ -10,6 +10,7 @@ import { annotateDistances, haversineMeters, sortByDistanceFrom } from "../geo";
 import { searchPlacesKakaoLocal } from "./kakao-local";
 import { searchPlacesMock } from "./mock";
 import { searchPlacesNaverLocal } from "./naver-local";
+import { romanNameOf } from "../romanize";
 import { geocodeEnglishAddress } from "./ncp-geocode";
 import { geocodeEnglishAddressJuso } from "./juso-address";
 import { searchPlacesTourApi } from "./tour-api";
@@ -84,15 +85,25 @@ export async function searchPlaces(
   params: PlaceSearchParams,
 ): Promise<PlaceSearchResult> {
   const result = await pickPlacesProvider(params);
+  // 로마자 주석(E28)은 로케일 무관 — 한글 이름에만 붙고 TourAPI en 이름은 자동 제외.
+  const romanized = { ...result, places: annotateRoman(result.places) };
   // 거리 "표기"는 서버 일원화 — 정렬 없이 주석만(정확도순 전환, 스펙 §1).
   // 리뷰순 결과도 이 주석만 지난다 — 재정렬하면 축이 그 자리에서 파괴된다.
   if (params.lat != null && params.lng != null) {
     return {
-      ...result,
-      places: annotateDistances(result.places, { lat: params.lat, lng: params.lng }),
+      ...romanized,
+      places: annotateDistances(romanized.places, { lat: params.lat, lng: params.lng }),
     };
   }
-  return result;
+  return romanized;
+}
+
+/** `nameRoman` 주석 — 정렬·필터 없음. 이미 실린 값(provider 투영)은 존중한다. */
+function annotateRoman(places: Place[]): Place[] {
+  return places.map((p) => {
+    const nameRoman = p.nameRoman ?? romanNameOf(p.name);
+    return nameRoman ? { ...p, nameRoman } : p;
+  });
 }
 
 /** provider 선택 체인(기존 searchPlaces 본문 그대로 이동). */

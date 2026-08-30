@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import type { AirPollutant, AirQuality as Air } from "@/lib/types";
 
 /**
@@ -11,10 +12,14 @@ import type { AirPollutant, AirQuality as Air } from "@/lib/types";
  */
 export function AirQualityBody({ air }: { air: Air }) {
   const t = useTranslations("airQuality");
+  const station = useBilingualName()(air.stationName, { roman: air.stationNameRoman });
+  const stationLine = t("station", { name: station.primary, distance: air.distanceKm });
   return (
     <>
-      <p className="mt-1 text-sm opacity-80">
-        {t("station", { name: air.stationName, distance: air.distanceKm })}
+      {/* 측정소명 병기(E28 R5) — 비-ko는 로마자, 한글은 줄 끝 괄호. */}
+      <p className="mt-1 text-sm opacity-80" lang={langFor(stationLine)}>
+        {stationLine}
+        <KoTail secondary={station.secondary} />
       </p>
       <div className="mt-1 text-sm leading-relaxed">
         <PollutantRow label={t("khai")} p={air.khai} t={t} />

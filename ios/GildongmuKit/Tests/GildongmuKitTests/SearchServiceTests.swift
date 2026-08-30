@@ -169,15 +169,31 @@ extension StubNetworkTests {
             default: return (404, Data())
             }
         }
-        let address = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237)
-        #expect(address == "서울 강동구 천호대로 1077")
+        let response = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237, lang: "ko")
+        #expect(response.address == "서울 강동구 천호대로 1077")
+        #expect(response.english == nil)
+    }
+
+    /// en 요청은 lang을 싣고 공식 영문(addressEn) → 로마자(addressRoman) 순으로 `english`를 낸다(E28).
+    @Test func reverseGeocodeEnCarriesEnglish() async throws {
+        nonisolated(unsafe) var seenQuery = ""
+        StubURLProtocol.handler = { request in
+            seenQuery = request.url!.query() ?? ""
+            return (200, Data(#"{"address":"서울 강동구 천호대로 1077","addressEn":"1077 Cheonho-daero, Gangdong-gu, Seoul"}"#.utf8))
+        }
+        let response = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237, lang: "en")
+        #expect(seenQuery.contains("lang=en"))
+        #expect(response.english == "1077 Cheonho-daero, Gangdong-gu, Seoul")
+        StubURLProtocol.handler = { _ in (200, Data(#"{"address":"서울 강동구 길동 123","addressRoman":"Seoul Gangdong-gu Gil-dong 123"}"#.utf8)) }
+        let roman = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237, lang: "en")
+        #expect(roman.english == "Seoul Gangdong-gu Gil-dong 123")
     }
 
     /// 매칭 없음(null)은 성공의 nil — 실패(throw)와 뭉개지 않는다(3-state).
     @Test func reverseGeocodeNoMatchIsNil() async throws {
         StubURLProtocol.handler = { _ in (200, Data(#"{"address":null}"#.utf8)) }
-        let address = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237)
-        #expect(address == nil)
+        let response = try await SearchService(client: stubbedClient()).reverseGeocode(lat: 37.5385, lng: 127.1237, lang: "ko")
+        #expect(response.address == nil)
     }
 }
 

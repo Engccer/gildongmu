@@ -113,6 +113,8 @@ public struct BusStop: Codable, Sendable, Hashable {
     public let cityCode: String
     /// 정류소명(한글)
     public let name: String
+    /// 정류소명 로마자(E28)
+    public var nameRoman: String? = nil
     /// 정류소 표지판 번호(없을 수 있음)
     public let stopNo: String?
     public let lat: Double
@@ -138,6 +140,8 @@ public struct BikeStation: Codable, Sendable, Hashable {
     public let stationId: String
     /// 대여소명(번호 접두 포함 원문)
     public let name: String
+    /// 대여소명 로마자(E28)
+    public var nameRoman: String? = nil
     public let lat: Double
     public let lng: Double
     public let distanceMeters: Int
@@ -173,6 +177,8 @@ public struct NightClinic: Codable, Sendable, Identifiable, Hashable {
     /// 기관 ID(hpid)
     public let id: String
     public let name: String
+    /// 기관명 로마자(E28)
+    public var nameRoman: String? = nil
     public let address: String
     /// 대표 전화 — 없으면 ""
     public let phone: String
@@ -218,6 +224,8 @@ public struct KidsPlace: Codable, Sendable, Identifiable, Hashable {
     /// 카카오 장소 id("kakao-" 접두)
     public let id: String
     public let name: String
+    /// 이름 로마자(E28)
+    public var nameRoman: String? = nil
     /// 카카오 category_name 전체 계층
     public let category: String
     /// "kidscafe" / "playground" / "playcenter" / "park"
@@ -244,6 +252,8 @@ public struct KidsNearbyResponse: Codable, Sendable {
 public struct SurroundingPlace: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let name: String
+    /// 이름 로마자(E28)
+    public var nameRoman: String? = nil
     /// 카테고리 키(10종: convenience·subway·restaurant·cafe·bank·pharmacy·hospital·mart·public·attraction)
     public let category: String
     /// 카카오 category_name 전체 계층(보조 표시)
@@ -285,9 +295,12 @@ public struct CultureEvent: Codable, Sendable, Identifiable, Hashable {
     /// HMPG_ADDR의 cultcode("seoul-" 접두) 또는 제목|장소|시작일 복합키
     public let id: String
     public let title: String
+    /// 제목·장소 로마자(E28). 분류는 로마자를 만들지 않는다.
+    public var titleRoman: String? = nil
     /// "전시/미술"·"교육/체험"·"콘서트" 등
     public let category: String
     public let place: String
+    public var placeRoman: String? = nil
     /// 자치구
     public let district: String
     /// 원본 완성 표기("2026-06-04~2026-08-23") — 재조합 금지
@@ -320,6 +333,8 @@ public struct EventsNearbyResponse: Codable, Sendable {
 
 public struct OverviewPlace: Codable, Sendable, Hashable {
     public let name: String
+    /// 이름 로마자(E28) — 비-ko 불릿이 `name` 대신 넣는다.
+    public var nameRoman: String? = nil
     public let distanceMeters: Int
     /// 8방위 소문자(SurroundingPlace 동형)
     public let bearing: String
@@ -327,6 +342,8 @@ public struct OverviewPlace: Codable, Sendable, Hashable {
 
 public struct OverviewStation: Codable, Sendable, Hashable {
     public let name: String
+    /// seed 영문 역명(원천 영문 — 로마자를 만들지 않는다).
+    public var nameEn: String? = nil
     public let line: String?
     public let bearing: String
     public let distanceMeters: Int
@@ -363,19 +380,22 @@ public enum OverviewBullet: Sendable, Hashable {
 public struct NearbyOverview: Sendable {
     /// 위치 문장 재료(행정동 + 도로명). 못 얻으면 nil.
     public let place: String?
+    /// `place`의 로마자(주소 규칙, E28).
+    public let placeRoman: String?
     public let radiusMeters: Int
     /// 순서 고정(transit, food, kids, events, barrierFree). 모르는 kind·state는 버린다(화면이 죽지 않는다).
     public let bullets: [OverviewBullet]
 
-    public init(place: String?, radiusMeters: Int, bullets: [OverviewBullet]) {
+    public init(place: String?, placeRoman: String? = nil, radiusMeters: Int, bullets: [OverviewBullet]) {
         self.place = place
+        self.placeRoman = placeRoman
         self.radiusMeters = radiusMeters
         self.bullets = bullets
     }
 }
 
 extension NearbyOverview: Decodable {
-    private enum Keys: String, CodingKey { case place, radiusMeters, bullets }
+    private enum Keys: String, CodingKey { case place, placeRoman, radiusMeters, bullets }
     private enum BulletKeys: String, CodingKey {
         case kind, state, station, busStops, count, countCapped, nearest, reason
     }
@@ -384,6 +404,7 @@ extension NearbyOverview: Decodable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         place = try c.decodeIfPresent(String.self, forKey: .place)
+        placeRoman = try c.decodeIfPresent(String.self, forKey: .placeRoman)
         radiusMeters = try c.decode(Int.self, forKey: .radiusMeters)
         var list = try c.nestedUnkeyedContainer(forKey: .bullets)
         var decoded: [OverviewBullet] = []

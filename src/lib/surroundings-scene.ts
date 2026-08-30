@@ -17,6 +17,12 @@ import {
   type CompassDirection,
 } from "./geo/bearing";
 import type { SurroundingPlace } from "./types";
+import { romanAddressOf } from "./romanize";
+
+function placeRomanField(place: string | null): { placeRoman?: string } {
+  const placeRoman = romanAddressOf(place);
+  return placeRoman ? { placeRoman } : {};
+}
 
 /**
  * M1 도착지 부근 상황 재구성 — 앵커 좌표 하나를 받아 "입구를 마주 본" 기준의
@@ -40,6 +46,8 @@ const SCENE_CAP = 150;
 
 export interface SceneItem {
   name: string;
+  /** 이름 로마자(E28, additive). */
+  nameRoman?: string;
   distanceMeters: number;
   /** 앵커와 다른 도로일 때만 채운다(같으면 잉여). */
   road: string | null;
@@ -65,6 +73,8 @@ export interface SceneGroup {
 export interface Scene {
   /** 위치 확인 문장 재료(행정동 + 도로명주소). 못 얻으면 null. */
   place: string | null;
+  /** `place`의 로마자(주소 규칙, E28). place가 null이거나 한글이 없으면 없다. */
+  placeRoman?: string;
   /** entrance = 입구 기준 좌우, compass = 절대 방위 폴백(3-state) */
   frame: "entrance" | "compass";
   groups: SceneGroup[];
@@ -105,6 +115,7 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
     const parsed = p.roadAddress ? parseRoadAddress(p.roadAddress) : null;
     return {
       name: p.name,
+      ...(p.nameRoman ? { nameRoman: p.nameRoman } : {}),
       distanceMeters: Math.round(p.distanceMeters),
       road: parsed && parsed.road !== anchor?.road ? parsed.road : null,
       category: p.category,
@@ -143,7 +154,7 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
       bucket: b as SurroundingBucket,
       items: grouped.get(b)!.sort((a, c) => a.distanceMeters - c.distanceMeters),
     }));
-    return { place, frame: "entrance", groups, total: places.length };
+    return { place, ...placeRomanField(place), frame: "entrance", groups, total: places.length };
   }
 
   // 폴백: 축을 못 세웠다. 침묵하지 않고 절대 방위로 물러난다(3-state).
@@ -159,5 +170,5 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
     .sort(
       (a, b) => (a.items[0]?.distanceMeters ?? 0) - (b.items[0]?.distanceMeters ?? 0),
     );
-  return { place, frame: "compass", groups, total: places.length };
+  return { place, ...placeRomanField(place), frame: "compass", groups, total: places.length };
 }

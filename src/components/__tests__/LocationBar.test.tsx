@@ -237,7 +237,7 @@ describe("LocationBar — GPS 주소 병기", () => {
     // 다른 화면이 다른 좌표를 조회해 스토어를 덮는다(표시줄의 좌표는 그대로).
     stubReverse("천호대로 1000");
     await act(async () => {
-      ensureCurrentAddress({ lat: 37.6, lng: 127.2 });
+      ensureCurrentAddress({ lat: 37.6, lng: 127.2 }, "ko");
       await Promise.resolve();
     });
     await waitFor(() =>

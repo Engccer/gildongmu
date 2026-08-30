@@ -269,7 +269,7 @@ final class DirectionsModel {
     /// 정직하게 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 부가 정보라 조회
     /// 흐름은 어떤 경우에도 막지 않는다.
     private func syncCurrentAddress(lat: Double, lng: Double) async {
-        currentAddress = (try? await searchService.reverseGeocode(lat: lat, lng: lng)) ?? nil
+        currentAddress = (try? await searchService.reverseGeocode(lat: lat, lng: lng, lang: AppLanguage.dataLocale))?.address
     }
 
     /// 안내 주도 재조회(스펙 2026-08-12 §5.3)는 silently=true — 완료·실패 통지를
