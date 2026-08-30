@@ -9,8 +9,8 @@ import type { TranslateFn } from "./translate";
 /**
  * [영문역명 줄, 노선 줄(환승이면 배지 텍스트 흡수), 운영기관 줄].
  * 영문역명은 en·ko 모두 같은 문자열이고 로케일 차이는 화면 스타일(주/보조)뿐. 노선 줄은 en 계열
- * 로케일에서 서버 `linesEn`(E27)이 있을 때만 영문이고, 없으면 한국어 원문(`lang: "ko"`) — 라벨
- * `Lines`가 섞인 혼합 줄이라 영어 쪽은 태그하지 않는다.
+ * 로케일에서 서버 `linesEn`(E27)이 있을 때만 영문이고, 없으면 한국어 원문 + `lang: "ko"` — 라벨
+ * `Lines`가 섞인 혼합 줄이라 영어 쪽만 태그하지 않는다.
  */
 export function stationMetaLocalizedLines(
   meta: StationMeta,

@@ -31,8 +31,8 @@ export function arrivalItems(
   return arrivals.map((a) => {
     const express = a.express ? t("express") : undefined;
     const lineKo = joinText(`${a.line ? `${a.line} ` : ""}${a.direction}`, a.trainLineNm, express);
-    // 노선 미매핑(`line` 부재)은 ko도 방향만 쓴다 — en은 그 자리를 빈 조각으로 두면 원자성에 걸리므로
-    // "노선 없음"을 영문 줄에서도 허용한다(`lineEn`은 `line`이 있을 때만 요구).
+    // 노선 미매핑(`line` 부재)은 ko도 방향만 쓴다 — 그 자리는 `""`(자리 표시)라 영문 요구 대상이 아니다
+    // (`lineEn`은 `line`이 있을 때만 결측으로 본다). 현재역도 같다.
     const line = pickLine(
       locale,
       lineKo,
@@ -48,7 +48,7 @@ export function arrivalItems(
       messageKo,
       [a.messageEn, a.currentLocation ? a.currentLocationEn : ""],
       ([msg, loc]) => joinText(msg, loc && t("currentLocation", { location: loc })),
-      // 현재역 문장은 UI 템플릿(`Now at {location}`)이라 혼합 줄 — 태그하지 않는다
+      // 현재역 문장은 UI 템플릿(`Now at {location}`)이라 영어 줄이면 혼합 줄 — en 태그를 달지 않는다
       { pure: !a.currentLocation },
     );
     return {

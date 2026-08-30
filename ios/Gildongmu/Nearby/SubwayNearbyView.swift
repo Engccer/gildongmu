@@ -104,10 +104,8 @@ struct SubwayNearbyView: View {
                     // 중복이 생기지 않는다 — 버스가 nodeId를 쓰는 것과 조건이 다르다.
                     ForEach(result.stations, id: \.stationName) { station in
                         Section {
-                            // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수.
-                            // 역명은 현재 언어 하나만(웹 `isEn ? nameEn || stationName` 미러) —
-                            // 병기는 lang 경계를 만들어 분절되므로 쓰지 않는다. 노선명은
-                            // 외부 데이터가 한국어뿐이라 en에서도 그대로 둔다.
+                            // 역명만 heading(웹 h4 규칙). 노선·거리는 같은 줄에 흡수. en은 시각 병기
+                            // `Gangnam (강남)` + 낭독 영문만(E27 §3.6, 위원장 판정 4).
                             stationHeading(station)
                                 .accessibilityAddTraits(.isHeader)
                                 // 첫 로드 착지 대상. 키는 ForEach 정체성과 같은 값이어야 한다.

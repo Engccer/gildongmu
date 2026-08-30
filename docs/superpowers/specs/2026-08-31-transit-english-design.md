@@ -114,13 +114,13 @@
 
 **줄 단위 원자성(리뷰 #2)**: 한 접근성 객체(한 줄) 안에서 언어를 섞지 않는다. 웹은 공용 헬퍼 `pickLine(isEn, ko: string, enParts: (string | undefined)[], build: (parts: string[]) => string): { text: string; lang: "ko" | "en" }` — `isEn`이고 `enParts`가 **전부** 있을 때만 영어 줄, 아니면 한국어 줄. 줄을 만드는 모든 자리(`place-lines/*`·컴포넌트 헤딩)가 이 헬퍼만 지나고, 테스트는 조각 하나를 빼는 변이로 한국어 폴백을 확인한다. iOS는 같은 계약의 `pickLine(isEn:ko:enParts:build:)`(Kit, 새 파일 `TransitDisplay.swift`).
 
-**언어 태그(리뷰 #3)**: 웹은 줄의 `lang`을 마크업에 단다 — 한국어 폴백 줄은 `lang="ko"`, **순수 데이터 영어 줄**(도착 편성·메시지 줄, 역 메타 영문 이름 줄)은 UI 로케일이 en 계열이 아닐 때 `lang="en"`(ja 화면에서 `Gangnam`을 일본어 음성으로 읽지 않게). UI 문장 틀과 영어 데이터가 한 줄에 섞이는 자리(`about 350m`·`Board <line> at <from>`)는 A26 선례대로 태그를 달지 않는다(분절 없이 못 달고, 분절은 헌장 위반 — E28 재료로 남긴다). iOS 언어 태깅은 이 마일스톤 밖(§6).
+**언어 태그(리뷰 #3, a11y 감사 #4)**: 웹은 줄의 `lang`을 마크업에 단다 — **한국어 폴백 줄은 언제나 `lang="ko"`**(UI 라벨이 섞여도 값이 한국어인 줄은 통째로 ko, A26 선례), **순수 데이터 영어 줄**(도착 편성 줄, 역 메타 영문 이름 줄)은 UI 로케일이 en 계열이 아닐 때 `lang="en"`(ja 화면에서 `Gangnam`을 일본어 음성으로 읽지 않게). UI 문장 틀과 영어 데이터가 한 줄에 섞이는 영어 줄(`about 350m`·`Board <line> at <from>`·`Now at {station}`)은 태그를 달지 않는다(분절 없이 못 달고, 분절은 헌장 위반 — E28 재료로 남긴다). `pickLine`의 조각 3-state: `undefined`=결측(→ 한국어 폴백), `""`=자리 표시(ko에도 없는 조각 — 노선 미매핑·현재역 부재, 영문 요구 대상 아님), 문자열=영문(a11y 감사 #1 — 종전엔 `""`를 결측으로 봐서 영문이 있는데도 한국어로 떨어졌다). iOS 언어 태깅은 이 마일스톤 밖(§6).
 
 **병기(위원장 판정 4)**: 이름이 단독으로 서는 자리는 `Gangnam (강남)` — 웹은 `English<span lang="ko" aria-hidden="true"> (한글)</span>`, iOS는 `Text(visual).accessibilityLabel(englishOnly)`. 접근 가능한 이름은 영문뿐이고 괄호 한글은 **시각 전용 정보**다(리뷰 #14 — 안전망으로 계산하지 않는다). 조립 헬퍼는 E28(`bilingual-name.ts`·Kit `BilingualName.swift`)이 정본이고, 통합 시점에 main에 있으면 그것을 쓰고 없으면 같은 계약(`bilingualName(primary, ko)`)의 최소 구현을 자기 소유 파일에 두고 코디네이터에 신고한다. 병기가 한 객체로 읽히는지는 a11y-auditor(Chrome 접근성 트리)로 확인하고 실기기 VoiceOver 판정은 E28과 함께 등재한다.
 
 | 자리 | 변경 |
 |---|---|
-| 웹 `TransitRouteBriefing` | fetch URL에 `lang=${dataLocale(locale)}`(종전 주석 "ODsay 무료 티어 국문 전용"은 실측으로 폐기). `TransitRouteResult`: 탑승 leg 줄은 노선·승차명이 둘 다 영문일 때만 en(승차명 병기), `arrive`는 병기. **도보 `toName`은 병기 없이 영문만** — `{name}` 문자열 자리라 괄호 span을 넣을 수 없고, 문장 안 이름은 위원장 판정 4의 "단독으로 서는 자리"가 아니다(iOS `transitLegLine` walk 동형). `lang="ko"` span은 한국어 폴백에만 |
+| 웹 `TransitRouteBriefing` | fetch URL에 `lang=${dataLocale(locale)}`(종전 주석 "ODsay 무료 티어 국문 전용"은 실측으로 폐기). `TransitRouteResult`: 탑승 leg 줄은 노선·승차명·하차명이 **다** 영문일 때만 en(iOS와 같은 조건 — 하차명은 빠른하차 줄에 쓰인다; 승차명 병기), `arrive`는 병기. **도보 `toName`은 병기 없이 영문만** — `{name}` 문자열 자리라 괄호 span을 넣을 수 없고, 문장 안 이름은 위원장 판정 4의 "단독으로 서는 자리"가 아니다(iOS `transitLegLine` walk 동형). `lang="ko"` span은 한국어 폴백에만 |
 | 웹 `DirectionsView` (소유 밖, 1줄 — 자진 신고) | 대중교통 fetch URL `&lang=${dataLocale(locale)}`; 본문은 `TransitRouteResult`를 쓰므로 자동. `transitRouteLabel`은 요약(분·원·환승)뿐이라 무변경 |
 | 웹 `SubwayArrivalList`·`place-lines/station-arrivals.ts` | `arrivalItems(arrivals, t, isEn)` → 항목 줄마다 `{text, lang}`. 편성 줄 = `lineEn directionEn, trainLineNmEn, Express`, 메시지 줄 = `messageEn(, Now at {currentLocationEn})`(현재역이 있는데 영문이 없으면 그 줄은 한국어) |
 | 웹 `SubwayArrivalsNearby` | fetch URL `lang`; 헤딩 `pickLine`(병기 역명 + `linesEn` + 거리 — 노선 영문이 없으면 헤딩 전체 한국어 역명·노선); `emptyNearest`도 같은 규칙 |
@@ -134,7 +134,7 @@
 
 ### 3.7 안내 상태 머신 — 이 마일스톤 밖 (리뷰 #15 반영)
 
-실시간 대중교통 안내의 en 게이트(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`)가 닫혀 있어 `TransitGuideLeg` 표시 라벨은 도달 가능한 사용자가 없는 죽은 배선이고, 반대로 게이트를 여는 날엔 `viaStops[].name`·실시간 provider 정류소명·차량 선택 문맥까지 별도 display DTO가 필요하다. **게이트 해제 마일스톤으로 통째로 미룬다**(BACKLOG E27 잔여). 그때의 불변식은 "상태 머신 테스트가 조인 필드에 식별 가능한 한국어 sentinel을 넣고 어떤 발화에도 그 값이 나오지 않는다"이다.
+실시간 대중교통 안내의 en 게이트(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`)가 닫혀 있어 `TransitGuideLeg` 표시 라벨은 도달 가능한 사용자가 없는 죽은 배선이고, 반대로 게이트를 여는 날엔 `viaStops[].name`·실시간 provider 정류소명·차량 선택 문맥까지 별도 display DTO가 필요하다. **게이트 해제 마일스톤으로 통째로 미룬다**(BACKLOG E27 잔여). 그때의 불변식은 "상태 머신 테스트가 조인 필드에 식별 가능한 한국어 sentinel을 넣고 어떤 발화에도 그 값이 나오지 않는다"이다. ⚠ A27(§3.9)이 상태 머신에 더한 `lastArrivalCode`·이벤트 `arrivalCode`는 이 축이 아니다 — 언어 무관의 문장 **종류** 판정이고 조인 필드·라벨은 불변이다.
 
 ### 3.9 A27 — 승차 국면 지하철 상태줄 (코디네이터 추가 배정, 위원장 실승차 피드백 2026-08-29)
 
@@ -161,7 +161,7 @@
 ## 4. 3-state·접근성 정합
 
 - 영문 부재는 **필드 부재**이지 빈 문자열·음차가 아니다. 소비자는 부재를 "한국어 원문 + `lang="ko"`"로 읽는다(종전 화면과 동일) — 3-state 위장 없음.
-- 한 줄 한 객체: 줄 안 언어 혼합 금지는 `pickLine` 헬퍼가 구조로 강제한다(§3.6). 병기 괄호부는 `aria-hidden` + `lang="ko"`라 접근 가능한 이름에서 빠진다.
+- 한 줄 한 객체: 줄 안 언어 혼합 금지는 줄을 만드는 자리마다 같은 규칙(영문 조각 전부 있을 때만 영어)을 지키고 변이 테스트가 잠근다(§3.6 — `pickLine`·`TransitDisplay.pickLine`이 공용 헬퍼이고, 탑승 leg·nearby 헤딩·시간표는 조각 구조가 달라 같은 규칙의 지역 판정이다. 새 자리를 만들면 이 규칙과 테스트를 함께 둔다). 병기 괄호부는 `aria-hidden` + `lang="ko"`라 접근 가능한 이름에서 빠진다.
 - 도착 영어 문장은 서버 데이터라 웹·iOS·6로케일이 같은 문자열을 본다(플랫폼 간 갈림 0).
 - 거짓 문장보다 부재를 택한다: 코드×문장 행렬·수치 범위·역명 모호·모순 현재역은 전부 부재.
 
