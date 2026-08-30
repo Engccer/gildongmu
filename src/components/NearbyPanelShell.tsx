@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor } from "@/components/BilingualName";
 import type { ReactNode, RefObject } from "react";
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   live: string;
   open: boolean;
   heading: string;
+  /** 패널 헤딩의 한글 병기(E28, 시각 전용 꼬리). 헤딩 텍스트는 접근 가능한 이름 그대로다. */
+  headingSecondary?: string | null;
   headingRef: RefObject<HTMLHeadingElement | null>;
   /** 헤딩과 닫기 버튼 사이 조건부 공지 슬롯(진료 기준·보완 실패 등 — NightClinics). */
   notice?: ReactNode;
@@ -34,6 +37,7 @@ export function NearbyPanelShell({
   live,
   open,
   heading,
+  headingSecondary,
   headingRef,
   notice,
   onClose,
@@ -62,8 +66,9 @@ export function NearbyPanelShell({
 
       {open && (
         <div className="mt-2 rounded-md border border-border p-3">
-          <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold">
+          <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold" lang={langFor(heading)}>
             {heading}
+            <KoTail secondary={headingSecondary} />
           </h3>
           {notice}
           {onClose && (

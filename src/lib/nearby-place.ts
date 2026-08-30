@@ -24,6 +24,7 @@ export function nightClinicToPlace(c: NightClinic): Place {
   return {
     id: c.id,
     name: c.name,
+    nameRoman: c.nameRoman,
     category: c.kind,
     address: "",
     roadAddress: c.address,
@@ -38,6 +39,7 @@ export function kidsPlaceToPlace(k: KidsPlace): Place {
   return {
     id: k.id,
     name: k.name,
+    nameRoman: k.nameRoman,
     category: k.category,
     address: k.address,
     roadAddress: k.roadAddress ?? "",
@@ -53,6 +55,7 @@ export function surroundingPlaceToPlace(p: SurroundingPlace): Place {
   return {
     id: p.id,
     name: p.name,
+    nameRoman: p.nameRoman,
     category: p.categoryRaw,
     address: "",
     roadAddress: p.roadAddress ?? "",
@@ -69,6 +72,7 @@ export function sceneItemToPlace(it: SceneItem): Place {
   return {
     id: it.id,
     name: it.name,
+    nameRoman: it.nameRoman,
     category: it.categoryRaw,
     address: "",
     roadAddress: it.roadAddress ?? "",
@@ -84,6 +88,7 @@ export function barrierFreePlaceToPlace(b: BarrierFreePlace): Place {
   return {
     id: b.contentId,
     name: b.name,
+    nameRoman: b.nameRoman,
     category: b.category,
     address: "",
     roadAddress: b.address,

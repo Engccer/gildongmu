@@ -114,15 +114,18 @@ public struct SearchService: Sendable {
         return response.matches
     }
 
-    /// 좌표 → 대표 주소 문자열(역지오코딩 `/api/geocode/reverse`, 웹 F-B 미러).
-    /// "현재 위치" 라벨 주소 병기용. 매칭 없음은 nil(정보 없음), 실패는 throw —
+    /// 좌표 → 대표 주소(역지오코딩 `/api/geocode/reverse`, 웹 F-B 미러).
+    /// "현재 위치" 라벨 주소 병기용. 매칭 없음은 `address` nil(정보 없음), 실패는 throw —
     /// 호출자는 주소가 부가 정보이므로 조용히 병기를 생략한다(3-state).
-    public func reverseGeocode(lat: Double, lng: Double) async throws -> String? {
-        let response: ReverseGeocodeResponse = try await client.get("/api/geocode/reverse", query: [
+    /// `lang`은 **기본값 없는 필수 인자**다(`AppLanguage.dataLocale`) — en이면 서버가 juso 공식 영문
+    /// (`addressEn`) 또는 규칙 로마자(`addressRoman`)를 함께 싣는다(E28). 빠뜨린 호출은 조용히
+    /// 한글만 받는 경로가 되므로 인자로 강제한다.
+    public func reverseGeocode(lat: Double, lng: Double, lang: String) async throws -> ReverseGeocodeResponse {
+        try await client.get("/api/geocode/reverse", query: [
             URLQueryItem(name: "lat", value: String(lat)),
             URLQueryItem(name: "lng", value: String(lng)),
+            URLQueryItem(name: "lang", value: lang),
         ])
-        return response.address
     }
 
     /// 목적지 출입구 승격 조회(A11, `/api/places/entrance`).

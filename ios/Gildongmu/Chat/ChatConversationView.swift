@@ -523,7 +523,7 @@ private struct MessageBubbleView: View {
                 // 산문 등장 순으로 들리도록 뒤집어 선언.
                 .accessibilityActions {
                     ForEach(Array(mentions.reversed())) { place in
-                        Button(appLocalized("ios.chat.openPlace", place.name)) {
+                        Button(appLocalized("ios.chat.openPlace", bilingual(place.name, roman: place.nameRoman).primary)) {
                             onOpenPlace(place, originKey)
                         }
                     }
@@ -617,8 +617,8 @@ private struct MessageBubbleView: View {
             }
         case .addresses(let addresses):
             ForEach(addresses, id: \.roadAddr) { address in
-                // 한 줄=한 객체: 도로명+우편번호 단일 텍스트(SearchView 주소 행 동형)
-                Text("\(address.roadAddr), \(address.zipNo)")
+                // 한 줄=한 객체: 도로명+우편번호 단일 텍스트(SearchView 주소 행 동형, 비-ko 영문 병기)
+                addressRowText(address)
                     .addressCopyActions(address)
             }
         case .webResults(let results):

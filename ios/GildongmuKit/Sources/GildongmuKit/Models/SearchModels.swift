@@ -4,6 +4,8 @@ import Foundation
 public struct Place: Codable, Sendable, Identifiable, Hashable {
     public let id: String
     public let name: String
+    /// 이름 로마자(서버 `romanize.ts`, E28). 한글 이름에만 실린다 — 비-ko는 `bilingualName`으로 병기.
+    public var nameRoman: String? = nil
     public let category: String
     public let address: String
     public let roadAddress: String
@@ -77,6 +79,11 @@ public struct GeocodeResponse: Codable, Sendable {
 /// (3-state: 정보 없음 — 조회 실패는 HTTP 오류로 throw된다).
 public struct ReverseGeocodeResponse: Codable, Sendable {
     public let address: String?
+    /// `lang=en` 요청에서만: juso 공식 영문 주소. 없으면 `addressRoman`(규칙 로마자)이 폴백이다(E28).
+    public var addressEn: String? = nil
+    public var addressRoman: String? = nil
+    /// 비-ko 1순위 표시 후보(공식 영문 → 로마자). ko 요청은 nil.
+    public var english: String? { addressEn ?? addressRoman }
 }
 
 /// 라우트 오류 응답 `{ "error": "..." }`.

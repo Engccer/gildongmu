@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { BusStop } from "@/lib/types";
@@ -29,6 +30,7 @@ export function BusArrivals(
     | { mode: "place"; lat: number; lng: number },
 ) {
   const t = useTranslations("bus");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   /** BusRouteStops(경유정류소) 통지 — 도착 항목마다 별도 live region이 생기지
@@ -85,15 +87,20 @@ export function BusArrivals(
     >
       {status.kind === "done" && (
         <ul className="mt-2 space-y-3">
-          {status.data.stops.map((stop) => (
+          {status.data.stops.map((stop) => {
+            const name = bilingual(stop.name, { roman: stop.nameRoman });
+            const line = joinText(
+              name.primary,
+              t("stopDistance", {
+                distance: formatDistance(stop.distanceMeters),
+              }),
+            );
+            return (
             <li key={`${stop.source}-${stop.cityCode}-${stop.nodeId}`}>
-              <h4 className="font-medium" lang="ko">
-                {joinText(
-                  stop.name,
-                  t("stopDistance", {
-                    distance: formatDistance(stop.distanceMeters),
-                  }),
-                )}
+              {/* 정류소명 병기(E28 R1) — 도착 목록은 E27(대중교통 영문화) 소관이라 손대지 않는다. */}
+              <h4 className="font-medium" lang={langFor(line)}>
+                {line}
+                <KoTail secondary={name.secondary} />
               </h4>
               {stop.arrivalStatus === "unavailable" ? (
                 // 도착조회 실패 ≠ 버스 없음(개정 노트 §1) — 별도 문구로 통지
@@ -142,7 +149,8 @@ export function BusArrivals(
                 </ul>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </NearbyPanelShell>

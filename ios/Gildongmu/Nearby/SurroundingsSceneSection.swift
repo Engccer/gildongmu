@@ -205,14 +205,24 @@ struct SurroundingsSceneSection: View {
 
 /// 묶음·항목 문구 조립(버튼형·자동 펼침 공유). 린터 계약(리터럴 키만)이라 switch 나열.
 private enum SceneText {
-    static func itemLine(_ item: SurroundingsSceneItem) -> String {
+    /// 항목 문구. `name`은 병기 이름의 한 변종(시각 `display` 또는 낭독 `primary`, E28)이다.
+    static func itemLine(_ item: SurroundingsSceneItem, name: String) -> String {
         if let road = item.road {
             return appLocalized(
                 "surroundings.itemWithRoad",
-                formatDistance(item.distanceMeters), item.name, road)
+                formatDistance(item.distanceMeters), name, road)
         }
         return appLocalized(
-            "surroundings.item", formatDistance(item.distanceMeters), item.name)
+            "surroundings.item", formatDistance(item.distanceMeters), name)
+    }
+
+    /// 한 줄 = 한 접근성 객체. 시각은 `Roman (한글)` 병기, 낭독은 로마자만 + 거리 단위 정정.
+    @MainActor
+    static func itemRow(_ item: SurroundingsSceneItem) -> some View {
+        let name = bilingual(item.name, roman: item.nameRoman)
+        return bilingualLine(
+            visible: itemLine(item, name: name.display),
+            accessible: itemLine(item, name: name.primary))
     }
 
     static func bucketTitle(_ group: SurroundingsSceneGroup) -> String {
@@ -257,7 +267,9 @@ struct SurroundingsSceneGroupsView: View {
     var body: some View {
         // 위치 확인 문장 먼저, 그다음 묶음(spec 판정 3).
         if showPlace, let place = scene.place {
-            Text(place)
+            // 위치 문장은 주소라 로마자(주소 규칙)로 병기(E28).
+            let name = bilingual(place, roman: scene.placeRoman)
+            Text(name.display).accessibilityLabel(Text(name.primary))
         }
         ForEach(scene.groups, id: \.bucket) { group in
             // 묶음 제목이 유일한 발견 경로(spec 판정 10 — 제목 점프로 통째 건너뛰기).
@@ -272,7 +284,7 @@ struct SurroundingsSceneGroupsView: View {
                 NavigationLink {
                     PlaceDetailView(place: sceneItemToPlace(item))
                 } label: {
-                    distanceText(SceneText.itemLine(item))
+                    SceneText.itemRow(item)
                 }
                 .id(sceneItemRowID(bucket: group.bucket, index: index))
                 .accessibilityFocused(

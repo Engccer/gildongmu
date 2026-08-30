@@ -106,14 +106,20 @@ struct AroundNearbyView: View {
 
     /// 위치 문장 — 이 화면에서 위치 출처(GPS vs 수동)를 선언하는 **유일한 자리**
     /// (종전 WhereAmIView.headerText 책임 승계). 표시줄의 "조회 기준"과 층이 다르다.
-    private func hereLine(_ payload: AroundPayload) -> String {
-        let place = payload.overview?.place
+    private func hereLine(_ payload: AroundPayload, place: String?) -> String {
         if manualLocationStore.current == nil {
             return place.map { appLocalized("ios.nearby.aroundHere", $0) }
                 ?? appLocalized("ios.nearby.aroundHereNoPlace")
         }
         return place.map { appLocalized("ios.nearby.aroundHereManual", $0) }
             ?? appLocalized("ios.nearby.aroundHereManualNoPlace")
+    }
+
+    /// 위치 문장 헤딩 — 주소는 비-ko에서 로마자(주소 규칙) 병기, 낭독은 로마자만(E28).
+    private func hereHeading(_ payload: AroundPayload) -> some View {
+        let place = payload.overview?.place.map { bilingual($0, roman: payload.overview?.placeRoman) }
+        return Text(hereLine(payload, place: place?.display))
+            .accessibilityLabel(Text(hereLine(payload, place: place?.primary)))
     }
 
     var body: some View {
@@ -123,7 +129,7 @@ struct AroundNearbyView: View {
             List {
                 if case .loaded(let payload) = model.phase {
                     // 1. 위치 문장(헤딩, 착지 지점) — 내가 어디 서 있는지가 먼저 오는 질문이다.
-                    Text(hereLine(payload))
+                    hereHeading(payload)
                         .font(.headline)
                         .accessibilityAddTraits(.isHeader)
                         .id(topRowID)
@@ -176,8 +182,8 @@ struct AroundNearbyView: View {
                 .font(.headline)
                 .accessibilityAddTraits(.isHeader)
             ForEach(Array(buildOverviewLines(overview, lang: AppLanguage.current).enumerated()), id: \.offset) { _, line in
-                // 거리 밀도가 높은 문장이라 낭독 변환 필수(m → 로케일 단어).
-                distanceText(line)
+                // 거리 밀도가 높은 문장이라 낭독 변환 필수(m → 로케일 단어). 한글 병기는 시각 전용 꼬리(E28).
+                bilingualLine(visible: line.display, accessible: line.text)
             }
         } else if payload.overviewFailed {
             Text(appLocalized("whereAmI.overview.heading"))

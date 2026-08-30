@@ -191,6 +191,8 @@ public struct AirPollutant: Codable, Sendable, Hashable {
 public struct AirQuality: Codable, Sendable, Hashable {
     /// 측정소명
     public let stationName: String
+    /// 측정소명 로마자(E28)
+    public var stationNameRoman: String? = nil
     /// 현재 위치로부터 거리(km, 에어코리아 정본)
     public let distanceKm: Double
     /// 측정소 주소
@@ -281,6 +283,8 @@ public struct Congestion: Codable, Sendable, Hashable {
     public let code: String
     /// 영역 이름("강남역"): 어디의 혼잡도인지 알리는 정본
     public let name: String
+    /// 영역 이름 로마자(E28)
+    public var nameRoman: String? = nil
     /// 등급어 원문("붐빔"). 4단계 밖 값도 통과하므로 표시 계층이 `CongestionLevelKey`로 번역한다
     public let level: String
     /// 완성 문장(한국어 자유 텍스트). 번역 수단이 없어 ko 로케일에서만 노출한다

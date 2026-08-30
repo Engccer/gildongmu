@@ -23,6 +23,8 @@ final class CurrentAddressStore {
 
     /// 마지막으로 확정된 좌표의 대표 주소. nil = 미확보(조회 전·매칭 없음·실패).
     private(set) var address: String?
+    /// 비-ko 1순위 표시 후보(juso 공식 영문 → 규칙 로마자, E28). ko 언어 조회는 nil.
+    private(set) var english: String?
 
     /// 주소가 확정된 좌표의 키. 조회 중복 판정에만 쓴다.
     @ObservationIgnored private var loadedKey: String?
@@ -50,17 +52,20 @@ final class CurrentAddressStore {
         // 미허용이면 loadedKey를 세우지 않는다 — 나중에 권한을 허용하면 그때
         // 조회된다. 이 경로는 네트워크도 팝업도 없이 즉시 nil이라 재시도가 싸다.
         guard let coord = await LocationService.shared.coordinateForDisplay() else { return }
-        let key = Self.key(lat: coord.lat, lng: coord.lng)
+        // 언어가 바뀌면 같은 좌표라도 다시 받는다(영문 병기는 en 응답에만 실린다).
+        let lang = AppLanguage.dataLocale
+        let key = Self.key(lat: coord.lat, lng: coord.lng) + "|" + lang
         if key == loadedKey { return }
         // 좌표가 갈렸으면 새 주소가 오기 전에 옛 주소를 버린다.
-        if loadedKey != nil { address = nil }
-        let resolved = (try? await service.reverseGeocode(lat: coord.lat, lng: coord.lng)) ?? nil
+        if loadedKey != nil { address = nil; english = nil }
+        let resolved = try? await service.reverseGeocode(lat: coord.lat, lng: coord.lng, lang: lang)
         // ⚠ **취소는 "그 좌표를 확정했다"가 아니다.** 호출부 `.task(id:)`는 수동 위치가
         // 켜지는 순간 이 태스크를 취소하는데(정상 흐름이다 — 사용자가 위치를 지정했다),
         // 그때 loadedKey를 세워 두면 나중에 수동 위치를 해제해도 "이미 조회한 좌표"로
         // 판정돼 주소가 영영 안 붙는다. 확정은 결과가 실제로 도착했을 때만 한다.
         guard !Task.isCancelled else { return }
         loadedKey = key
-        address = resolved
+        address = resolved?.address
+        english = resolved?.address == nil ? nil : resolved?.english
     }
 }

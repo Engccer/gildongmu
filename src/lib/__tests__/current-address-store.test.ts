@@ -29,21 +29,43 @@ describe("current-address-store", () => {
 
   it("좌표를 확정 주소로 채운다", async () => {
     stubFetch(() => ({ address: "성내로 12" }));
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     expect(getCurrentAddressSnapshot()).toEqual({
       key: coordAddressKey({ lat: 37.5384, lng: 127.1432 }),
-      address: "성내로 12",
+      lang: "ko",
+      value: { address: "성내로 12", english: null },
+    });
+  });
+
+  it("en 요청은 lang을 실어 보내고 공식 영문(addressEn) 또는 로마자(addressRoman)를 english로 든다", async () => {
+    const spy = stubFetch(() => ({ address: "성내로 12", addressEn: "12 Seongnae-ro" }));
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "en");
+    await settle();
+    expect(String(spy.mock.calls[0][0])).toContain("lang=en");
+    expect(getCurrentAddressSnapshot()).toEqual({
+      key: coordAddressKey({ lat: 37.5384, lng: 127.1432 }),
+      lang: "en",
+      value: { address: "성내로 12", english: "12 Seongnae-ro" },
+    });
+    // 같은 좌표라도 언어가 바뀌면 다시 받는다(영문 병기는 en 응답에만 실린다).
+    stubFetch(() => ({ address: "성내로 12" }));
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
+    await settle();
+    expect(getCurrentAddressSnapshot()).toEqual({
+      key: coordAddressKey({ lat: 37.5384, lng: 127.1432 }),
+      lang: "ko",
+      value: { address: "성내로 12", english: null },
     });
   });
 
   // 세 화면(채팅·검색·"내 주변")의 표시줄이 동시에 불러도 역지오코딩은 한 번이다.
   it("같은 좌표를 여러 번 불러도 왕복은 한 번이다", async () => {
     const spy = stubFetch(() => ({ address: "성내로 12" }));
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -51,9 +73,9 @@ describe("current-address-store", () => {
   // 4자리(±5.5m)는 GPS 오차보다 작다 — 같은 자리의 미세 흔들림은 재조회가 아니다.
   it("반올림이 같은 좌표는 재조회하지 않는다", async () => {
     const spy = stubFetch(() => ({ address: "성내로 12" }));
-    ensureCurrentAddress({ lat: 37.53841, lng: 127.14321 });
+    ensureCurrentAddress({ lat: 37.53841, lng: 127.14321 }, "ko");
     await settle();
-    ensureCurrentAddress({ lat: 37.53842, lng: 127.14322 });
+    ensureCurrentAddress({ lat: 37.53842, lng: 127.14322 }, "ko");
     await settle();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -65,13 +87,14 @@ describe("current-address-store", () => {
       throw new Error("network");
     });
     vi.stubGlobal("fetch", spy);
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     expect(getCurrentAddressSnapshot()).toEqual({
       key: coordAddressKey({ lat: 37.5384, lng: 127.1432 }),
-      address: null,
+      lang: "ko",
+      value: null,
     });
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -80,14 +103,14 @@ describe("current-address-store", () => {
   it("좌표가 바뀌면 새 주소가 오기 전에 옛 주소를 버린다", async () => {
     let answer = "성내로 12";
     stubFetch(() => ({ address: answer }));
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     answer = "천호대로 1000";
-    ensureCurrentAddress({ lat: 37.6, lng: 127.2 });
+    ensureCurrentAddress({ lat: 37.6, lng: 127.2 }, "ko");
     // 왕복이 끝나기 전 스냅샷 — 옛 주소가 남아 있으면 안 된다.
     expect(getCurrentAddressSnapshot()).toBeNull();
     await settle();
-    expect(getCurrentAddressSnapshot()?.address).toBe("천호대로 1000");
+    expect(getCurrentAddressSnapshot()?.value?.address).toBe("천호대로 1000");
   });
 
   // latest-wins: 늦게 도착한 옛 좌표의 응답이 새 좌표의 주소를 덮지 않는다.
@@ -103,23 +126,23 @@ describe("current-address-store", () => {
           ),
       })),
     );
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
-    ensureCurrentAddress({ lat: 37.6, lng: 127.2 });
+    ensureCurrentAddress({ lat: 37.6, lng: 127.2 }, "ko");
     await settle();
     // 새 좌표 응답 먼저, 옛 좌표 응답 나중에 도착.
     resolvers[1]?.();
     await settle();
     resolvers[0]?.();
     await settle();
-    expect(getCurrentAddressSnapshot()?.address).toBe("새 주소");
+    expect(getCurrentAddressSnapshot()?.value?.address).toBe("새 주소");
   });
 
   it("구독자는 주소 확정 시 통지받는다", async () => {
     stubFetch(() => ({ address: "성내로 12" }));
     const listener = vi.fn();
     subscribeCurrentAddress(listener);
-    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 });
+    ensureCurrentAddress({ lat: 37.5384, lng: 127.1432 }, "ko");
     await settle();
     expect(listener).toHaveBeenCalled();
   });

@@ -7,6 +7,8 @@ import Foundation
 /// 장소 한 줄 재료. 한 줄 조립(거리+이름+길 단서)은 뷰가 i18n 템플릿으로 한다.
 public struct SurroundingsSceneItem: Codable, Sendable, Hashable {
     public let name: String
+    /// 이름 로마자(E28)
+    public let nameRoman: String?
     public let distanceMeters: Int
     /// 앵커와 다른 도로일 때만 서버가 채운다(같은 도로면 잉여라 null).
     public let road: String?
@@ -21,10 +23,10 @@ public struct SurroundingsSceneItem: Codable, Sendable, Hashable {
     public let phone: String?
     public let link: String?
 
-    public init(name: String, distanceMeters: Int, road: String?, category: String,
+    public init(name: String, nameRoman: String? = nil, distanceMeters: Int, road: String?, category: String,
                 id: String, lat: Double, lng: Double, categoryRaw: String,
                 roadAddress: String?, phone: String?, link: String?) {
-        self.name = name; self.distanceMeters = distanceMeters; self.road = road; self.category = category
+        self.name = name; self.nameRoman = nameRoman; self.distanceMeters = distanceMeters; self.road = road; self.category = category
         self.id = id; self.lat = lat; self.lng = lng; self.categoryRaw = categoryRaw
         self.roadAddress = roadAddress; self.phone = phone; self.link = link
     }
@@ -40,6 +42,8 @@ public struct SurroundingsSceneGroup: Codable, Sendable, Hashable {
 public struct SurroundingsScene: Codable, Sendable {
     /// 위치 확인 문장 재료(행정동 + 도로명주소). 못 얻으면 null.
     public let place: String?
+    /// `place`의 로마자(주소 규칙, E28).
+    public var placeRoman: String? = nil
     /// "entrance" = 입구 기준 좌우, "compass" = 절대 방위 폴백(3-state).
     public let frame: String
     public let groups: [SurroundingsSceneGroup]

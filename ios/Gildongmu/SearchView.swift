@@ -303,8 +303,9 @@ struct SearchView: View {
         case .addresses(let addresses):
             Section(appLocalized("search.addressSection")) {
                 ForEach(addresses, id: \.roadAddr) { address in
-                    // 한 줄=한 객체: 도로명+우편번호를 단일 텍스트로(웹 joinText 동형)
-                    Text("\(address.roadAddr), \(address.zipNo)")
+                    // 한 줄=한 객체: 도로명+우편번호를 단일 텍스트로(웹 joinText 동형).
+                    // 비-ko는 juso 공식 영문이 1순위, 한글 도로명은 괄호(시각 전용, E28).
+                    addressRowText(address)
                         .accessibilityFocused($focusedRowID, equals: "address-\(address.roadAddr)")
                         .addressCopyActions(address)
                 }
@@ -399,9 +400,13 @@ struct PlaceRow: View {
     var onAskAbout: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
 
+    /// 비-ko 병기(E28): 시각 `Roman (한글)`, 낭독은 로마자만(`accessibilityLabel`).
+    private var bilingualTitle: BilingualName { bilingual(place.name, roman: place.nameRoman) }
+
     var body: some View {
         VStack(alignment: .leading) {
-            Text(place.name)
+            Text(bilingualTitle.display)
+                .accessibilityLabel(Text(bilingualTitle.primary))
             // 낭독만 거리 단위 풀어쓰기(m→minutes 오독 대응). combine이 자식 라벨을 합친다.
             distanceText(joined)
                 .font(.subheadline)
@@ -413,7 +418,7 @@ struct PlaceRow: View {
         // 보유한 데이터만 낸다(빈 도로명·빈 전화 = 죽은 액션).
         .accessibilityActions {
             if let onAskAbout {
-                Button(appLocalized("ios.place.askAbout", place.name)) { onAskAbout() }
+                Button(appLocalized("ios.place.askAbout", bilingualTitle.primary)) { onAskAbout() }
             }
             if let phone = place.phone, !phone.isEmpty,
                let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -457,4 +462,14 @@ private struct FilterChip: Identifiable {
     let id: String
     let label: String
     let count: Int
+}
+
+/// 주소 결과 행 텍스트(검색·채팅 공용): `roadAddr, zipNo`, 비-ko는 `engAddr (roadAddr), zipNo`이고
+/// 낭독은 괄호 없이(E28 판정 ③).
+@MainActor
+func addressRowText(_ address: JusoAddress) -> some View {
+    let name = bilingual(address.roadAddr, en: address.engAddr, roman: nil)
+    return bilingualLine(
+        visible: "\(name.display), \(address.zipNo)",
+        accessible: "\(name.primary), \(address.zipNo)")
 }

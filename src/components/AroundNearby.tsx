@@ -1,11 +1,12 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useLocale, useTranslations } from "next-intl";
 import type { SurroundingPlace } from "@/lib/types";
 import type { Scene } from "@/lib/surroundings-scene";
 import type { NearbyOverview } from "@/lib/nearby-overview";
 import { buildOverviewLines } from "@/lib/overview-lines";
-import { formatDistance, joinText } from "@/lib/format";
+import { formatDistance } from "@/lib/format";
 import { isOutOfCoverageBody } from "@/lib/out-of-coverage";
 import { requestOpenPlace } from "@/lib/place-open-request";
 import { surroundingPlaceToPlace } from "@/lib/nearby-place";
@@ -94,6 +95,7 @@ export function AroundNearby() {
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const bilingual = useBilingualName();
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } =
     useNearbyFetch<AroundPayload>({
       source: { kind: "current" },
@@ -116,9 +118,14 @@ export function AroundNearby() {
   );
 
   // 위치 문장(패널 헤딩) — 이 산문이 **무엇을 기준으로 만들어졌나**를 말한다(`origin` 기록).
+  // 비-ko는 위치 문장의 주소가 로마자(주소 규칙)이고 한글은 헤딩 끝 괄호(E28 R1).
+  const headingPlace =
+    status.kind === "done" && status.data.overview?.place
+      ? bilingual(status.data.overview.place, { roman: status.data.overview.placeRoman })
+      : null;
   const heading = (() => {
     if (status.kind !== "done") return "";
-    const place = status.data.overview?.place ?? null;
+    const place = headingPlace?.primary ?? null;
     const manual = status.origin === "manual";
     if (place) return manual ? t("hereManual", { place }) : t("here", { place });
     return manual ? t("hereManualNoPlace") : t("hereNoPlace");
@@ -133,6 +140,7 @@ export function AroundNearby() {
       live={live}
       open={status.kind === "done"}
       heading={heading}
+      headingSecondary={headingPlace?.secondary}
       headingRef={headingRef}
       onClose={() => close()}
       closeLabel={tActions("close")}
@@ -150,8 +158,9 @@ export function AroundNearby() {
               </h4>
               <ul className="mt-1 space-y-1">
                 {buildOverviewLines(status.data.overview, tWhere, locale).map((line, i) => (
-                  <li key={i} className="text-sm">
-                    {line}
+                  <li key={i} className="text-sm" lang={langFor(line.text)}>
+                    {line.text}
+                    <KoTail secondary={line.secondary} />
                   </li>
                 ))}
               </ul>
@@ -196,7 +205,9 @@ export function AroundNearby() {
             ) : (
               <>
                 <ul className="mt-1 space-y-4">
-                  {status.data.places.slice(0, visibleCount).map((p, i) => (
+                  {status.data.places.slice(0, visibleCount).map((p, i) => {
+                    const itemName = bilingual(p.name, { roman: p.nameRoman });
+                    return (
                     <li key={p.id}>
                       {/* "더 보기" 착지는 컨테이너가 아니라 버튼 — 컨테이너에 두면 VO가 같은
                           텍스트를 컨테이너·버튼으로 두 번 읽는다(a11y 감사 2026-08-22). */}
@@ -209,14 +220,14 @@ export function AroundNearby() {
                           onClick={() => requestOpenPlace(surroundingPlaceToPlace(p))}
                           className="min-h-11 text-left underline"
                         >
-                          {joinText(
-                            p.name,
-                            tSurroundingsNearby("item", {
-                              category: tSurroundingsNearby(`category.${p.category}`),
-                              direction: tSurroundingsNearby(`direction.${p.bearing}`),
-                              distance: formatDistance(p.distanceMeters),
-                            }),
-                          )}
+                          {/* 버튼은 이름이 계산되는 요소라 괄호를 이름 바로 뒤에 둬도 한 객체다(E28 R2). */}
+                          {itemName.primary}
+                          <KoTail secondary={itemName.secondary} />
+                          {`, ${tSurroundingsNearby("item", {
+                            category: tSurroundingsNearby(`category.${p.category}`),
+                            direction: tSurroundingsNearby(`direction.${p.bearing}`),
+                            distance: formatDistance(p.distanceMeters),
+                          })}`}
                         </button>
                       </h5>
                       {p.phone && (
@@ -227,7 +238,8 @@ export function AroundNearby() {
                         </p>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
                 {status.data.places.length > visibleCount && (
                   <button

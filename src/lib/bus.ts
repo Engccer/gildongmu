@@ -4,6 +4,7 @@ import { fetchSeoulNearby } from "./providers/seoul-bus";
 import { coordToRegionNames } from "./providers/kakao-address";
 import { judgeTagoCityCoverage } from "./tago-coverage";
 import { hasKakaoKey } from "./env";
+import { romanNameOf } from "./romanize";
 
 /** 좌표 4자리(약 11m) 중복 판정 키 — en 장소병합과 동일 기준. */
 function coordKey(s: BusStop): string {
@@ -23,7 +24,12 @@ export function mergeBusStops(tago: BusStop[], seoul: BusStop[]): BusStop[] {
   }
   return [...byKey.values()]
     .sort((a, b) => a.distanceMeters - b.distanceMeters)
-    .slice(0, 5);
+    .slice(0, 5)
+    // 정류소명 로마자(E28) — TAGO·TOPIS 공통 한 곳. ODsay 조인부(E27)와 무관.
+    .map((s) => {
+      const nameRoman = romanNameOf(s.name);
+      return nameRoman ? { ...s, nameRoman } : s;
+    });
 }
 
 /**

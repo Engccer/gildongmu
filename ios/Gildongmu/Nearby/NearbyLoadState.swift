@@ -28,6 +28,30 @@ func distanceText(_ s: String) -> some View {
     Text(s).accessibilityLabel(Text(spokenUnits(s)))
 }
 
+/// 장소명 병기(E28) — 앱 언어를 넣은 Kit `bilingualName` 축약. 비-ko에서 en 원천 → 로마자 → 한글.
+@MainActor
+func bilingual(_ ko: String, en: String? = nil, roman: String?) -> BilingualName {
+    bilingualName(lang: AppLanguage.current, ko: ko, en: en, roman: roman)
+}
+
+/// 병기 이름이 든 한 줄: 시각은 `Roman (한글)`을 품은 문장, 낭독은 괄호 없는 문장(위원장 판정 ③ —
+/// 접근 가능한 이름은 괄호 앞만). 단일 `Text`라 한 객체이고 거리 단위 정정도 함께 건다.
+@MainActor
+func bilingualLine(visible: String, accessible: String) -> some View {
+    Text(visible).accessibilityLabel(Text(spokenUnits(accessible)))
+}
+
+/// 비-ko UI에 한글이 그대로 남는 자리(병기 불가 폴백·한국어 분류)의 언어 태깅 후보 ①(E28).
+/// `.environment(\.locale, ko)`가 VoiceOver 발화 엔진을 실제로 바꾸는지는 **실기기 판정 항목**
+/// (`docs/BACKLOG.md` E28 종결 기록). 후보 ②는 `AttributedString.languageIdentifier`.
+struct KoreanText: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(verbatim: text).environment(\.locale, Locale(identifier: "ko"))
+    }
+}
+
 /// 새로고침 실패 통지: 직전 성공 데이터 유지와 짝(데이터 포기 아님을 함께 알린다).
 /// ⚠ 기본 우선순위를 유지한다 — 목록이 그대로 남아 포커스가 움직이지 않으므로
 /// 잠식될 착지 낭독이 없다(아래 전락 3종과 갈리는 정확한 판별선, D24).
@@ -108,13 +132,15 @@ extension LocationService {
 struct PlaceAnchor {
     let coord: NearbyCoord
     let name: String
+    /// 이름 로마자(E28) — 화면 제목은 라벨 분리 수단이 없어 비-ko는 1순위 이름만 쓴다.
+    var nameRoman: String? = nil
 }
 
 /// 앵커 화면 제목: 기본 제목에 기준 장소명을 쉼표로 흡수(한 줄=한 객체).
 /// 현재 위치 화면(anchor nil)은 기본 제목 그대로 — 허브 호출처 문자열 불변.
 @MainActor
 func nearbyTitle(_ base: String, anchor: PlaceAnchor?) -> String {
-    joinText(base, anchor?.name)
+    joinText(base, anchor.map { bilingual($0.name, roman: $0.nameRoman).primary })
 }
 
 /// 완료 통지 문구 조립부(문자열 불변). 0건도 문장으로.

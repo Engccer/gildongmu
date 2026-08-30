@@ -188,10 +188,25 @@ struct ConditionsView: View {
         }
     }
 
+    /// 측정소명 병기(E28): 시각 `… Roman (한글) …`, 낭독은 로마자만.
+    private func airStationLine(_ air: AirQuality) -> some View {
+        let name = bilingual(air.stationName, roman: air.stationNameRoman)
+        return Text(appLocalized("ios.nearby.airStationLine", name.display, numberText(air.distanceKm)))
+            .accessibilityLabel(Text(appLocalized("ios.nearby.airStationLine", name.primary, numberText(air.distanceKm))))
+    }
+
+    /// 혼잡도 영역명 병기(E28).
+    private func congestionSummaryLine(_ congestion: Congestion) -> some View {
+        let name = bilingual(congestion.name, roman: congestion.nameRoman)
+        let level = levelWord(congestion.level)
+        return Text(appLocalized("congestion.summary", name.display, level))
+            .accessibilityLabel(Text(appLocalized("congestion.summary", name.primary, level)))
+    }
+
     @ViewBuilder private func airSection(_ air: AirQuality?) -> some View {
         Section {
             if let air {
-                Text(appLocalized("ios.nearby.airStationLine", air.stationName, numberText(air.distanceKm)))
+                airStationLine(air)
                 Text(pollutantText(appLocalized("airQuality.khai"), air.khai))
                 Text(pollutantText(appLocalized("airQuality.pm10"), air.pm10))
                 Text(pollutantText(appLocalized("airQuality.pm25"), air.pm25))
@@ -213,7 +228,7 @@ struct ConditionsView: View {
     @ViewBuilder private func congestionSection(_ congestion: Congestion?) -> some View {
         if let congestion {
             Section {
-                Text(appLocalized("congestion.summary", congestion.name, levelWord(congestion.level)))
+                congestionSummaryLine(congestion)
                 // 완성 문장은 API가 한국어로만 주는 자유 텍스트라 번역 수단이 없다.
                 // 비한국어 사용자에겐 닫힌 집합이라 번역되는 등급어만 남긴다(웹 데이터 언어 분리 미러).
                 if AppLanguage.current == "ko", !congestion.message.isEmpty {

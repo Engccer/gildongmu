@@ -3,6 +3,7 @@ import { env } from "../env";
 import { haversineMeters } from "../geo";
 import { metersOutsideSeoul } from "../coverage";
 import { readSeoulOpenJson } from "./seoul-open-json";
+import { romanNameOf } from "../romanize";
 
 /**
  * 서울 따릉이(공공자전거) provider — bikeList(OA-15493).
@@ -52,6 +53,7 @@ export function parseBikeStations(
       return {
         stationId: str(it.stationId),
         name: str(it.stationName),
+        nameRoman: romanNameOf(str(it.stationName)),
         lat,
         lng,
         distanceMeters: finite

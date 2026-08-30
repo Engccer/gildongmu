@@ -25,12 +25,31 @@ struct PlaceDetailView<DomainSection: View>: View {
     /// 장소 채팅 sheet(M5). 표시마다 새 ChatView = 장소마다 새 대화(웹 계약)
     @State private var isChatPresented = false
 
+    /// 비-ko 병기(E28). 내비게이션 타이틀은 접근 라벨을 따로 줄 수 없어 1순위 이름만 쓰고,
+    /// 한글 원문은 바로 아래 보조 줄에 시각 전용(`accessibilityHidden`)으로 둔다 — 판정 ③(낭독은
+    /// 로마자만)을 ②(한 줄 괄호)보다 앞세운 의도된 예외. 실기기 판정 항목(BACKLOG E28 종결 기록).
+    private var bilingualTitle: BilingualName { bilingual(place.name, roman: place.nameRoman) }
+
     var body: some View {
         List {
+            if let secondary = bilingualTitle.secondary {
+                Section {
+                    Text(secondary)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+            }
             domainSection()
             Section {
-                // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙)
-                if !place.category.isEmpty { Text(place.category) }
+                // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙).
+                // 카카오 분류는 비-ko에서도 한국어 — 언어 태깅 후보 ①(KoreanText, 실기기 판정 항목).
+                if !place.category.isEmpty {
+                    if AppLanguage.current != "ko", hasHangul(place.category) {
+                        KoreanText(place.category)
+                    } else {
+                        Text(place.category)
+                    }
+                }
                 // 주소는 종류마다 "줄 + 그 줄 전용 복사 버튼"을 인접 배치한다. 도로명과
                 // 지번은 쓰임이 달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 버튼이
                 // 자기 주소 바로 뒤에 와야 스와이프 순서에서 짝이 유지된다(웹 동형).
@@ -155,7 +174,7 @@ struct PlaceDetailView<DomainSection: View>: View {
             // 무장애 편의시설도 자동 등장(조용히 나타남, 역 여부 무관)
             BarrierFreeInfoSection(model: barrierFreeInfo)
         }
-        .navigationTitle(place.name)
+        .navigationTitle(bilingualTitle.primary)
         .navigationBarTitleDisplayMode(.large)
         .task {
             if isStation(place) {
@@ -187,7 +206,7 @@ struct PlaceDetailView<DomainSection: View>: View {
     /// "이 장소 주변" 화면들이 쓰는 앵커(현재 위치 대신 이 장소 고정).
     /// 이름을 함께 넘겨 앵커 화면 제목에 기준점이 드러나게 한다.
     private var anchor: PlaceAnchor {
-        PlaceAnchor(coord: (lat: place.lat, lng: place.lng), name: place.name)
+        PlaceAnchor(coord: (lat: place.lat, lng: place.lng), name: place.name, nameRoman: place.nameRoman)
     }
 
     /// 도보 기본(1급 사용자 주 시나리오). 모드 선택 UI는 M4 경로 브리핑에서.

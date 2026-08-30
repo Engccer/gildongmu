@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useTranslations } from "next-intl";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
@@ -38,6 +39,7 @@ function formatTime(n: number | null): string {
  */
 export function NightClinicsNearby() {
   const t = useTranslations("clinicNearby");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } =
@@ -101,23 +103,27 @@ export function NightClinicsNearby() {
           <ul className="mt-2 space-y-4">
             {status.data.clinics.slice(0, visibleCount).map((c, i) => {
               const holiday = c.hours[7];
+              const name = bilingual(c.name, { roman: c.nameRoman });
+              const line = joinText(
+                name.primary,
+                c.kind,
+                t("distance", { distance: formatDistance(c.distanceMeters) }),
+              );
               return (
                 <li key={c.id || `${c.name}-${c.distanceMeters}`}>
-                  {/* 한 줄 = 한 객체: 이름·분류(한국어)·거리를 단일 텍스트로 합친다.
-                      이름·분류가 한국어 전용 데이터라 lang="ko"를 줄 전체로 옮긴다. */}
+                  {/* 한 줄 = 한 객체: 이름·분류(한국어)·거리를 단일 텍스트로 합친다. 비-ko는 이름이
+                      로마자이고 한글은 줄 끝 괄호(E28 R1 — 가운데 두면 텍스트 노드가 갈린다).
+                      lang은 접근 텍스트에 한글이 남을 때만(분류는 아직 한국어라 대개 남는다). */}
                   <h4
                     className="font-medium"
-                    lang="ko"
+                    lang={langFor(line)}
                     tabIndex={-1}
                     ref={(el) => {
                       itemHeadingRefs.current[i] = el;
                     }}
                   >
-                    {joinText(
-                      c.name,
-                      c.kind,
-                      t("distance", { distance: formatDistance(c.distanceMeters) }),
-                    )}
+                    {line}
+                    <KoTail secondary={name.secondary} />
                   </h4>
 
                   {/* 진료 상태 3-state — 마감과 정보없음을 구분(분기 유지, 부가 운영시간만 흡수).
@@ -159,7 +165,7 @@ export function NightClinicsNearby() {
                       <a
                         href={`tel:${c.phone}`}
                         className="text-accent underline"
-                        aria-label={t("callAction", { name: c.name })}
+                        aria-label={t("callAction", { name: name.primary })}
                       >
                         {c.phone}
                       </a>

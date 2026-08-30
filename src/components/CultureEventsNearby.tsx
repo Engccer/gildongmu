@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useTranslations } from "next-intl";
 import type { CultureEvent } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
@@ -21,6 +22,7 @@ import { NEARBY_LIMIT_MAX } from "@/lib/nearby-limits";
  */
 export function CultureEventsNearby() {
   const t = useTranslations("eventsNearby");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } = useNearbyFetch<
@@ -57,27 +59,34 @@ export function CultureEventsNearby() {
       {status.kind === "done" && (
         <>
           <ul className="mt-2 space-y-4">
-            {status.data.slice(0, visibleCount).map((e, i) => (
+            {status.data.slice(0, visibleCount).map((e, i) => {
+              const title = bilingual(e.title, { roman: e.titleRoman });
+              const titleLine = joinText(
+                title.primary,
+                e.category,
+                t("distance", { distance: formatDistance(e.distanceMeters) }),
+              );
+              const place = bilingual(e.place, { roman: e.placeRoman });
+              const placeLine = joinText(place.primary, e.district);
+              return (
               <li key={e.id}>
-                {/* 제목·분류·거리를 단일 텍스트로. 제목·분류가 한국어 전용 데이터라
-                    lang="ko"를 줄 전체에 준다(소아진료 선례). */}
+                {/* 제목·분류·거리를 단일 텍스트로(소아진료 선례). 비-ko는 제목이 로마자이고
+                    한글은 줄 끝 괄호(E28 R1). lang은 접근 텍스트에 한글이 남을 때만. */}
                 <h4
                   className="font-medium"
-                  lang="ko"
+                  lang={langFor(titleLine)}
                   tabIndex={-1}
                   ref={(el) => {
                     itemHeadingRefs.current[i] = el;
                   }}
                 >
-                  {joinText(
-                    e.title,
-                    e.category,
-                    t("distance", { distance: formatDistance(e.distanceMeters) }),
-                  )}
+                  {titleLine}
+                  <KoTail secondary={title.secondary} />
                 </h4>
 
-                <p className="mt-1 text-sm" lang="ko">
-                  {joinText(e.place, e.district)}
+                <p className="mt-1 text-sm" lang={langFor(placeLine)}>
+                  {placeLine}
+                  <KoTail secondary={place.secondary} />
                 </p>
 
                 {/* dateText는 원본이 이미 완성 표기(2026-06-04~2026-08-23) — 재조합 금지. */}
@@ -111,7 +120,8 @@ export function CultureEventsNearby() {
                   </p>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
           {status.data.length > visibleCount && (
             <button

@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useTranslations } from "next-intl";
 import type { KidsPlace } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
@@ -25,6 +26,7 @@ interface KidsData {
  */
 export function KidsPlacesNearby() {
   const t = useTranslations("kidsNearby");
+  const bilingual = useBilingualName();
   const tActions = useTranslations("actions");
   const tCommon = useTranslations("common");
   const { status, doneSeq, load, close, busy, headingRef, triggerRef } =
@@ -63,24 +65,28 @@ export function KidsPlacesNearby() {
       {status.kind === "done" && (
         <>
           <ul className="mt-2 space-y-4">
-            {status.data.kids.slice(0, visibleCount).map((k, i) => (
+            {status.data.kids.slice(0, visibleCount).map((k, i) => {
+              const name = bilingual(k.name, { roman: k.nameRoman });
+              const line = joinText(
+                name.primary,
+                t(`kind.${k.kind}`),
+                t(`indoor.${k.indoorOutdoor}`),
+                t("distance", { distance: formatDistance(k.distanceMeters) }),
+              );
+              return (
               <li key={k.id}>
-                {/* 한 줄 = 한 객체: 이름·분류·실내외·거리를 단일 텍스트로 합친다.
-                    분류·실내외·거리는 번역(로케일 정합)이고 이름은 한국어 전용이라,
-                    SubwayArrivalsNearby와 동형으로 lang 없이 페이지 로케일을 따른다. */}
+                {/* 한 줄 = 한 객체: 이름·분류·실내외·거리를 단일 텍스트로 합친다. 비-ko는 이름이
+                    로마자이고 한글은 줄 끝 괄호(E28 R1); 한글이 남는 폴백 줄만 lang="ko". */}
                 <h4
                   className="font-medium"
+                  lang={langFor(line)}
                   tabIndex={-1}
                   ref={(el) => {
                     itemHeadingRefs.current[i] = el;
                   }}
                 >
-                  {joinText(
-                    k.name,
-                    t(`kind.${k.kind}`),
-                    t(`indoor.${k.indoorOutdoor}`),
-                    t("distance", { distance: formatDistance(k.distanceMeters) }),
-                  )}
+                  {line}
+                  <KoTail secondary={name.secondary} />
                 </h4>
 
                 <p className="mt-1 text-sm" lang="ko">
@@ -110,7 +116,8 @@ export function KidsPlacesNearby() {
                   </p>
                 )}
               </li>
-            ))}
+              );
+            })}
           </ul>
           {status.data.kids.length > visibleCount && (
             <button

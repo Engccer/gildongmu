@@ -1,5 +1,6 @@
 "use client";
 
+import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useEffect, useRef, type ComponentPropsWithRef } from "react";
 import { useTranslations } from "next-intl";
 import type { Scene, SceneGroup } from "@/lib/surroundings-scene";
@@ -44,6 +45,7 @@ function GroupSection({
   const tActions = useTranslations("actions");
   const { visibleCount, reveal, itemHeadingRefs } =
     useRevealMore<HTMLButtonElement>(resetKey);
+  const bilingual = useBilingualName();
   const title =
     group.items.length > COUNT_IN_TITLE_THRESHOLD
       ? `${t(`bucket.${group.bucket}`)} ${t("count", { count: group.items.length })}`
@@ -54,17 +56,29 @@ function GroupSection({
     <section className="mt-3">
       <BucketHeading className="font-medium">{title}</BucketHeading>
       <ul className="mt-1 space-y-1">
-        {group.items.slice(0, visibleCount).map((it, i) => (
+        {group.items.slice(0, visibleCount).map((it, i) => {
+          const name = bilingual(it.name, { roman: it.nameRoman });
+          const text = it.road
+            ? t("itemWithRoad", {
+                distance: formatDistance(it.distanceMeters),
+                name: name.primary,
+                road: it.road,
+              })
+            : t("item", {
+                distance: formatDistance(it.distanceMeters),
+                name: name.primary,
+              });
+          return (
           <li
             key={`${it.id}-${it.distanceMeters}`}
             className="text-sm"
-            // 장소명·도로명은 전 로케일에서 한국어 원문이다 — lang 미지정 시 비한국어
-            // 로케일 SR이 엉뚱한 엔진으로 발화한다(NightClinics 한 줄 lang 선례).
-            lang="ko"
+            // 도로명은 전 로케일에서 한국어 원문이고 이름은 비-ko에서 로마자다 — lang은 접근
+            // 텍스트에 한글이 남을 때만(NightClinics 한 줄 lang 선례, E28 R4).
+            lang={langFor(text)}
           >
             {/* 한 줄 = 한 접근성 객체 — 거리·이름·길 단서를 단일 텍스트로(헌장 §4).
                 행 전체가 장소 상세 진입 버튼이고 "더 보기" 착지도 이 버튼이다(M4 판정 ⑤,
-                iOS `NavigationLink` 동형 — 컨테이너 착지는 이중 낭독). */}
+                iOS `NavigationLink` 동형 — 컨테이너 착지는 이중 낭독). 한글 괄호는 줄 끝(E28 R1). */}
             <button
               type="button"
               ref={(el) => {
@@ -73,19 +87,12 @@ function GroupSection({
               onClick={() => requestOpenPlace(sceneItemToPlace(it))}
               className="min-h-11 text-left underline"
             >
-              {it.road
-                ? t("itemWithRoad", {
-                    distance: formatDistance(it.distanceMeters),
-                    name: it.name,
-                    road: it.road,
-                  })
-                : t("item", {
-                    distance: formatDistance(it.distanceMeters),
-                    name: it.name,
-                  })}
+              {text}
+              <KoTail secondary={name.secondary} />
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
       {group.items.length > visibleCount && (
         <button
@@ -116,11 +123,14 @@ export function SurroundingsSceneView({
   headingLevel?: SceneHeadingLevel;
   showPlace?: boolean;
 }) {
+  const bilingual = useBilingualName();
+  const place = scene.place ? bilingual(scene.place, { roman: scene.placeRoman }) : null;
   return (
     <>
-      {showPlace && scene.place && (
-        <p className="mt-2 text-sm" lang="ko">
-          {scene.place}
+      {showPlace && place && (
+        <p className="mt-2 text-sm" lang={langFor(place.primary)}>
+          {place.primary}
+          <KoTail secondary={place.secondary} />
         </p>
       )}
       {scene.groups.map((g) => (

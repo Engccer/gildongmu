@@ -35,7 +35,10 @@ struct LocationBarView: View {
     @State private var pickerOpen = false
 
     var body: some View {
-        Button(label) { pickerOpen = true }
+        Button { pickerOpen = true } label: {
+            // 비-ko 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만.
+            Text(label(addressName?.display)).accessibilityLabel(Text(label(addressName?.primary)))
+        }
             .frame(minHeight: 44)
             .sheet(isPresented: $pickerOpen) {
                 DirectionsEndpointSearchView(target: .manualLocation) { endpoint in
@@ -52,8 +55,13 @@ struct LocationBarView: View {
 
     /// 상태 + **동작**을 한 텍스트로. 상태만 이름으로 쓰면 VoiceOver가 "현재 위치,
     /// 버튼"으로 읽어 누르면 무엇이 되는지 단서가 0이다 — 이 기능의 유일한 진입점이다.
-    private var label: String {
-        "\(state), \(appLocalized("manualLocation.pickTitle"))"
+    private func label(_ address: String?) -> String {
+        "\(state(address: address)), \(appLocalized("manualLocation.pickTitle"))"
+    }
+
+    /// 현재 위치 주소의 병기 이름(E28). 주소 미확보면 nil — 라벨은 "현재 위치"로 폴백한다.
+    private var addressName: BilingualName? {
+        addressStore.address.map { bilingual($0, en: addressStore.english, roman: nil) }
     }
 
     /// 4-state(웹 `LocationBar.tsx` 미러): 수동 / GPS 실패 / GPS 좌표 있음 / 확인 중.
@@ -65,7 +73,7 @@ struct LocationBarView: View {
     /// 실패를 좌표 유무보다 먼저 본다 — 권한을 회수해도 `lastCoordinate`는 남으므로
     /// (재취득 실패 시 직전 좌표 보존이 계약이다) 좌표를 먼저 보면 회수를 못 알린다.
     /// 웹도 스토어 status가 `denied`로 덮이므로 같은 순서다.
-    private var state: String {
+    private func state(address: String?) -> String {
         if let manual = manualLocationLabel(store) { return manual }
         switch location.observedAuthorization {
         case .denied, .restricted:
@@ -87,7 +95,7 @@ struct LocationBarView: View {
             // 때 스스로 고치는 것"인데, 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는
             // 사실 자체를 알 방법이 없다(위원장 실사용 판정 2026-08-09). 주소 미확보는
             // 기존 "현재 위치"로 폴백한다 — 모르면 거짓을 말하지 않는다.
-            if let address = addressStore.address {
+            if let address {
                 return appLocalized("manualLocation.gpsNear", address)
             }
             return appLocalized("manualLocation.gps")
