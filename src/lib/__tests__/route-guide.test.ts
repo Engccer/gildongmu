@@ -3,6 +3,7 @@ import scenarios from "./fixtures/route-guide-scenarios.json";
 import courseAxisScenarios from "./fixtures/course-axis-scenarios.json";
 import type { CourseVoteSample } from "../guide-course-axis";
 import type { GuideAction } from "../walk-action";
+import { PRESUMED_ARRIVAL_CAR, PRESUMED_ARRIVAL_WALK } from "../final-approach";
 import {
   buildGuideRoute,
   CAR_DRIVER_TUNING,
@@ -754,10 +755,19 @@ describe("표시 좌표계 (spec 2026-08-11 §3)", () => {
   });
 });
 
-describe("도착 추정 게이트", () => {
-  it("도착 추정은 walk 전용이다 (spec 2026-08-13 §4)", () => {
-    expect(WALK_TUNING.presumedArrivalEnabled).toBe(true);
-    expect(CAR_TUNING.presumedArrivalEnabled).toBe(false);
+describe("세션 종료 튜닝 (spec 2026-08-31)", () => {
+  it("도착 추정 프로파일: walk·car가 각자 것을 들고 carDriver는 car를 상속한다", () => {
+    expect(WALK_TUNING.presumedArrival).toBe(PRESUMED_ARRIVAL_WALK);
+    expect(CAR_TUNING.presumedArrival).toBe(PRESUMED_ARRIVAL_CAR);
+    expect(CAR_DRIVER_TUNING.presumedArrival).toBe(PRESUMED_ARRIVAL_CAR);
+  });
+  it("기하 없는 최종 접근 진입은 car만, 안전망 무이동 축은 walk만", () => {
+    expect(WALK_TUNING.entersFinalApproachWithoutGeometry).toBe(false);
+    expect(CAR_TUNING.entersFinalApproachWithoutGeometry).toBe(true);
+    expect(CAR_DRIVER_TUNING.entersFinalApproachWithoutGeometry).toBe(true);
+    expect(WALK_TUNING.sessionIdleStationaryAxis).toBe(true);
+    expect(CAR_TUNING.sessionIdleStationaryAxis).toBe(false);
+    expect(CAR_DRIVER_TUNING.sessionIdleStationaryAxis).toBe(false);
   });
 });
 

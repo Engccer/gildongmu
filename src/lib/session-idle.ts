@@ -24,18 +24,22 @@ export type SessionIdleReason = "noFix" | "stationary";
 export interface SessionIdleInput {
   /** 기준: max(세션 시작, 마지막 usable fix). */
   secondsSinceUsableFix: number;
-  /** 기준: max(세션 시작, 마지막 앵커 전진). */
-  secondsSinceProgress: number;
+  /**
+   * 기준: max(세션 시작, 마지막 앵커 전진). **null = 무이동 축 없음**(자동차 — 정체·휴게소
+   * 정차와 구분할 수 없어 켜지 않는다, spec 2026-08-31 §4). 축 선택은 `GuideTuning.sessionIdleStationaryAxis`.
+   */
+  secondsSinceProgress: number | null;
 }
 
 const finiteNonNegative = (x: number) => Number.isFinite(x) && x >= 0;
 
 /** 판정 순서(noFix → stationary)가 계약이다 — 둘 다 성립하면 원인이 더 앞선 noFix. */
 export function sessionIdleStep(input: SessionIdleInput): SessionIdleReason | null {
-  if (!finiteNonNegative(input.secondsSinceUsableFix) || !finiteNonNegative(input.secondsSinceProgress)) {
-    return null;
-  }
+  if (!finiteNonNegative(input.secondsSinceUsableFix)) return null;
+  if (input.secondsSinceProgress !== null && !finiteNonNegative(input.secondsSinceProgress)) return null;
   if (input.secondsSinceUsableFix >= SESSION_IDLE_NO_FIX_S) return "noFix";
-  if (input.secondsSinceProgress >= SESSION_IDLE_STATIONARY_S) return "stationary";
+  if (input.secondsSinceProgress !== null && input.secondsSinceProgress >= SESSION_IDLE_STATIONARY_S) {
+    return "stationary";
+  }
   return null;
 }

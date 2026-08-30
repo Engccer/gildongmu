@@ -113,14 +113,39 @@ export function computeFinalApproach(
 // ── 도착 추정(잊힌 세션 정리, spec 2026-08-13) ──────────────────────────────
 // Kit 미러는 `FinalApproach.swift`, 공유 fixture `presumed-arrival-scenarios.json`.
 
-/** usable fix 두절이 이만큼 지속되면 실내 진입으로 간주(잠정 — 실보행 재판정). */
-export const PRESUMED_ARRIVAL_NO_FIX_S = 180;
-/** usable fix는 오는데 무진행이 이만큼 지속되면 실내 고정 좌표로 간주(잠정). */
-export const PRESUMED_ARRIVAL_STATIONARY_S = 300;
 /** 진행 관측 앵커 이탈 하한(m). 직전 fix 비교 금지 — 저속 연속 보행이 제자리로 오판된다. */
 export const PROGRESS_EPSILON_M = 10;
-/** 마지막 확인 거리 캡(m). 오프셋 실측 상한 89m + GPS 여유. 이 밖은 이탈이지 도착이 아니다. */
-export const PRESUMED_ARRIVAL_MAX_DIST_M = 150;
+
+/**
+ * 도착 추정 임계 프로파일(수단별, spec 2026-08-31 §3). 값은 전부 잠정 — 실보행·실주행 재판정.
+ * `presumedArrivalStep`의 필수 인자라 호출자가 어느 수단인지를 생략할 수 없다.
+ */
+export interface PresumedArrivalThresholds {
+  /** usable fix 두절이 이만큼 지속되면 실내(지하) 진입으로 간주. */
+  noFixSeconds: number;
+  /** usable fix는 오는데 무진행이 이만큼 지속되면 고정 좌표로 간주. */
+  stationarySeconds: number;
+  /** 마지막 확인 거리 캡(m). 이 밖은 이탈이지 도착이 아니다. */
+  maxDistanceMeters: number;
+}
+
+/** 도보: 건물 진입 뒤 wifi 측위가 드문드문 이어지는 180초, 오프셋 실측 상한 89m + GPS 여유 150m. */
+export const PRESUMED_ARRIVAL_WALK: PresumedArrivalThresholds = {
+  noFixSeconds: 180,
+  stationarySeconds: 300,
+  maxDistanceMeters: 150,
+};
+/**
+ * 자동차: 지하 주차장 진입은 fix가 끊기는 순간 운전이 끝나므로 두절 120초(08-22 짧은 공백
+ * 46~96초가 하한 근거). 무이동 300초는 관측 최장 신호 대기 73초의 4배 — 40m 안 정차는 확정
+ * 도착이 먼저 잡으므로 이 축의 몫은 40~150m뿐. 도보와 같은 값도 별 프로파일에 둔다(도보
+ * 재판정이 자동차를 끌고 가면 안 된다).
+ */
+export const PRESUMED_ARRIVAL_CAR: PresumedArrivalThresholds = {
+  noFixSeconds: 120,
+  stationarySeconds: 300,
+  maxDistanceMeters: 150,
+};
 
 export type PresumedArrivalReason = "noFix" | "stationary";
 
@@ -142,6 +167,7 @@ const finiteNonNegative = (x: number) => Number.isFinite(x) && x >= 0;
  */
 export function presumedArrivalStep(
   input: PresumedArrivalInput,
+  thresholds: PresumedArrivalThresholds,
 ): PresumedArrivalReason | null {
   if (!input.inFinalApproach) return null;
   if (
@@ -151,11 +177,11 @@ export function presumedArrivalStep(
     return null;
   }
   const dist = input.lastKnownDistanceToDestMeters;
-  if (dist === null || !finiteNonNegative(dist) || dist > PRESUMED_ARRIVAL_MAX_DIST_M) {
+  if (dist === null || !finiteNonNegative(dist) || dist > thresholds.maxDistanceMeters) {
     return null;
   }
-  if (input.secondsSinceUsableFix >= PRESUMED_ARRIVAL_NO_FIX_S) return "noFix";
-  if (input.secondsSinceProgress >= PRESUMED_ARRIVAL_STATIONARY_S) return "stationary";
+  if (input.secondsSinceUsableFix >= thresholds.noFixSeconds) return "noFix";
+  if (input.secondsSinceProgress >= thresholds.stationarySeconds) return "stationary";
   return null;
 }
 

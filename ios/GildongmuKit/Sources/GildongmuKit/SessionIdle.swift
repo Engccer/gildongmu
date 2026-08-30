@@ -22,13 +22,15 @@ public enum SessionIdleReason: String, Sendable, Equatable {
 private func finiteNonNegative(_ x: Double) -> Bool { x.isFinite && x >= 0 }
 
 /// 판정 순서(noFix → stationary)가 계약이다 — 둘 다 성립하면 원인이 더 앞선 noFix.
+/// `secondsSinceProgress` **nil = 무이동 축 없음**(자동차 — 정체·휴게소 정차와 구분할 수 없어
+/// 켜지 않는다, spec 2026-08-31 §4). 축 선택은 `GuideTuning.sessionIdleStationaryAxis`.
 public func sessionIdleStep(
     secondsSinceUsableFix: Double,
-    secondsSinceProgress: Double
+    secondsSinceProgress: Double?
 ) -> SessionIdleReason? {
-    guard finiteNonNegative(secondsSinceUsableFix), finiteNonNegative(secondsSinceProgress)
-    else { return nil }
+    guard finiteNonNegative(secondsSinceUsableFix) else { return nil }
+    if let p = secondsSinceProgress, !finiteNonNegative(p) { return nil }
     if secondsSinceUsableFix >= sessionIdleNoFixSeconds { return .noFix }
-    if secondsSinceProgress >= sessionIdleStationarySeconds { return .stationary }
+    if let p = secondsSinceProgress, p >= sessionIdleStationarySeconds { return .stationary }
     return nil
 }

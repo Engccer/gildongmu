@@ -91,6 +91,7 @@ private struct PresumedFixtureFile: Decodable {
 
 private struct PresumedStepScenario: Decodable {
     let name: String
+    let profile: String
     let input: Input
     let expect: String?
 
@@ -116,6 +117,14 @@ private func loadPresumedFixture() throws -> PresumedFixtureFile {
     return try JSONDecoder().decode(PresumedFixtureFile.self, from: Data(contentsOf: url))
 }
 
+private func thresholds(for profile: String) throws -> PresumedArrivalThresholds {
+    switch profile {
+    case "walk": return .walk
+    case "car": return .car
+    default: throw NSError(domain: "fixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "미지 프로파일 \(profile)"])
+    }
+}
+
 @Test("도착 추정 판정 공유 fixture 동조")
 func presumedArrivalMatchesSharedFixture() throws {
     for s in try loadPresumedFixture().stepScenarios {
@@ -123,10 +132,18 @@ func presumedArrivalMatchesSharedFixture() throws {
             inFinalApproach: s.input.inFinalApproach,
             secondsSinceUsableFix: s.input.secondsSinceUsableFix,
             secondsSinceProgress: s.input.secondsSinceProgress,
-            lastKnownDistanceToDestMeters: s.input.lastKnownDistanceToDestMeters
+            lastKnownDistanceToDestMeters: s.input.lastKnownDistanceToDestMeters,
+            thresholds: try thresholds(for: s.profile)
         )
         #expect(got?.rawValue == s.expect, "\(s.name)")
     }
+}
+
+@Test("프로파일: car는 두절이 더 짧고 나머지는 같다 (spec 2026-08-31 §3.2)")
+func presumedArrivalProfiles() {
+    #expect(PresumedArrivalThresholds.car.noFixSeconds < PresumedArrivalThresholds.walk.noFixSeconds)
+    #expect(PresumedArrivalThresholds.car.stationarySeconds == PresumedArrivalThresholds.walk.stationarySeconds)
+    #expect(PresumedArrivalThresholds.car.maxDistanceMeters == PresumedArrivalThresholds.walk.maxDistanceMeters)
 }
 
 @Test("진행 앵커 공유 fixture 동조")
@@ -149,14 +166,14 @@ func progressAnchorMatchesSharedFixture() throws {
 func presumedArrivalRejectsInvalidInput() {
     #expect(presumedArrivalStep(
         inFinalApproach: true, secondsSinceUsableFix: -1,
-        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: 20) == nil)
+        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: 20, thresholds: .walk) == nil)
     #expect(presumedArrivalStep(
         inFinalApproach: true, secondsSinceUsableFix: .nan,
-        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: 20) == nil)
+        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: 20, thresholds: .walk) == nil)
     #expect(presumedArrivalStep(
         inFinalApproach: true, secondsSinceUsableFix: 200,
-        secondsSinceProgress: .infinity, lastKnownDistanceToDestMeters: 20) == nil)
+        secondsSinceProgress: .infinity, lastKnownDistanceToDestMeters: 20, thresholds: .walk) == nil)
     #expect(presumedArrivalStep(
         inFinalApproach: true, secondsSinceUsableFix: 200,
-        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: -5) == nil)
+        secondsSinceProgress: 0, lastKnownDistanceToDestMeters: -5, thresholds: .walk) == nil)
 }
