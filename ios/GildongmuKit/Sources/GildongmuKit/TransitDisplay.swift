@@ -21,11 +21,4 @@ public enum TransitDisplay {
     public static func pickName(isEn: Bool, ko: String, en: String?) -> String {
         pickLine(isEn: isEn, ko: ko, enParts: [en]) { $0[0] }
     }
-
-    /// 한 줄 괄호 병기(위원장 판정 4): 시각 `Gangnam (강남)`, 낭독은 영문만. 한글이 없거나 같으면 병기 없음.
-    /// ⚠ E28 `BilingualName.swift`가 같은 계약의 정본 — 통합 시 그것으로 교체(transit-en 최소 구현).
-    public static func bilingual(en: String, ko: String?) -> (visual: String, spoken: String) {
-        guard let ko, !ko.isEmpty, ko != en else { return (en, en) }
-        return ("\(en) (\(ko))", en)
-    }
 }

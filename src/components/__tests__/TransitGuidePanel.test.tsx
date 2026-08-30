@@ -554,7 +554,9 @@ describe("TransitGuidePanel — 승차 대기·탑승·도착 여정", () => {
     });
     expect(screen.getByRole("button", { name: "transitGuide.changeBoarding" })).toBeTruthy();
     expect(screen.getByText(/approxNote/)).toBeTruthy();
-    expect(screen.getByText(/remainingCount:4/)).toBeTruthy();
+    // A27: 지하철 99(운행중)는 "까지 {원문}" 프레임을 내지 않고 잔여 수 문장으로 떨어진다 — 통지·상태줄 둘 다.
+    expect(screen.getAllByText(/remainingCount:4/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/messageFrame/)).toBeNull();
   });
 
   it("경유역 목록(§14.1): disclosure 정적 표시 + 승차·하차 라벨 + 현재 위치 병치", async () => {

@@ -1,159 +1,582 @@
 {
   "comment": "E27 §3.4 도착 영문 투영 fixture. seed는 테스트가 주입하는 축소판(stations). 기대값 부재(absent)는 필드가 실리지 않아야 한다는 뜻.",
   "stations": [
-    { "name": "강남", "nameEn": "Gangnam", "lineName": "2호선" },
-    { "name": "강남", "nameEn": "Gangnam", "lineName": "신분당선" },
-    { "name": "성수", "nameEn": "Seongsu", "lineName": "2호선" },
-    { "name": "역삼", "nameEn": "Yeoksam", "lineName": "2호선" },
-    { "name": "교대", "nameEn": "Seoul Nat'l Univ. of Education", "lineName": "2호선" },
-    { "name": "교대", "nameEn": "Seoul Nat'l Univ. of Education", "lineName": "3호선" },
-    { "name": "광교", "nameEn": "Gwanggyo", "lineName": "신분당선" },
-    { "name": "양재", "nameEn": "Yangjae", "lineName": "신분당선" },
-    { "name": "논현", "nameEn": "Nonhyeon", "lineName": "7호선" },
-    { "name": "논현", "nameEn": "Nonhyeon", "lineName": "신분당선" },
-    { "name": "신사", "nameEn": "Sinsa", "lineName": "3호선" },
-    { "name": "신논현", "nameEn": "Sinnonhyeon", "lineName": "9호선" },
-    { "name": "서울", "nameEn": "Seoul Station", "lineName": "1호선" },
-    { "name": "서울", "nameEn": "Seoul Station", "lineName": "4호선" },
-    { "name": "동두천", "nameEn": "Dongducheon", "lineName": "경원선" },
-    { "name": "시청", "nameEn": "City Hall", "lineName": "1호선" },
-    { "name": "종각", "nameEn": "Jonggak", "lineName": "1호선" },
-    { "name": "이촌", "nameEn": "Ichon", "lineName": "4호선" },
-    { "name": "문산", "nameEn": "Munsan", "lineName": "경의중앙선" },
-    { "name": "신촌", "nameEn": "Sinchon", "lineName": "2호선" },
-    { "name": "신촌", "nameEn": "Sinchon(Gyeongui Line)", "lineName": "경의중앙선" },
-    { "name": "청량리", "nameEn": "Cheongnyangni", "lineName": "1호선" },
-    { "name": "청량리", "nameEn": "Cheongnyangni", "lineName": "경의중앙선" },
-    { "name": "용산", "nameEn": "Yongsan", "lineName": "1호선" },
-    { "name": "용산", "nameEn": "Yongsan", "lineName": "경의중앙선" },
-    { "name": "용산", "nameEn": "Yongsan(Daegu)", "lineName": "대구 도시철도 2호선" },
-    { "name": "천호(풍납토성)", "nameEn": "Cheonho(Pungnaptoseong)", "lineName": "5호선" }
+    {
+      "name": "강남",
+      "nameEn": "Gangnam",
+      "lineName": "2호선"
+    },
+    {
+      "name": "강남",
+      "nameEn": "Gangnam",
+      "lineName": "신분당선"
+    },
+    {
+      "name": "성수",
+      "nameEn": "Seongsu",
+      "lineName": "2호선"
+    },
+    {
+      "name": "역삼",
+      "nameEn": "Yeoksam",
+      "lineName": "2호선"
+    },
+    {
+      "name": "교대",
+      "nameEn": "Seoul Nat'l Univ. of Education",
+      "lineName": "2호선"
+    },
+    {
+      "name": "교대",
+      "nameEn": "Seoul Nat'l Univ. of Education",
+      "lineName": "3호선"
+    },
+    {
+      "name": "광교",
+      "nameEn": "Gwanggyo",
+      "lineName": "신분당선"
+    },
+    {
+      "name": "양재",
+      "nameEn": "Yangjae",
+      "lineName": "신분당선"
+    },
+    {
+      "name": "논현",
+      "nameEn": "Nonhyeon",
+      "lineName": "7호선"
+    },
+    {
+      "name": "논현",
+      "nameEn": "Nonhyeon",
+      "lineName": "신분당선"
+    },
+    {
+      "name": "신사",
+      "nameEn": "Sinsa",
+      "lineName": "3호선"
+    },
+    {
+      "name": "신논현",
+      "nameEn": "Sinnonhyeon",
+      "lineName": "9호선"
+    },
+    {
+      "name": "동두천",
+      "nameEn": "Dongducheon",
+      "lineName": "경원선"
+    },
+    {
+      "name": "시청",
+      "nameEn": "City Hall",
+      "lineName": "1호선"
+    },
+    {
+      "name": "종각",
+      "nameEn": "Jonggak",
+      "lineName": "1호선"
+    },
+    {
+      "name": "이촌",
+      "nameEn": "Ichon",
+      "lineName": "4호선"
+    },
+    {
+      "name": "문산",
+      "nameEn": "Munsan",
+      "lineName": "경의중앙선"
+    },
+    {
+      "name": "신촌",
+      "nameEn": "Sinchon",
+      "lineName": "2호선"
+    },
+    {
+      "name": "신촌",
+      "nameEn": "Sinchon(Gyeongui Line)",
+      "lineName": "경의중앙선"
+    },
+    {
+      "name": "청량리",
+      "nameEn": "Cheongnyangni",
+      "lineName": "1호선"
+    },
+    {
+      "name": "청량리",
+      "nameEn": "Cheongnyangni",
+      "lineName": "경의중앙선"
+    },
+    {
+      "name": "용산",
+      "nameEn": "Yongsan",
+      "lineName": "1호선"
+    },
+    {
+      "name": "용산",
+      "nameEn": "Yongsan",
+      "lineName": "경의중앙선"
+    },
+    {
+      "name": "용산",
+      "nameEn": "Yongsan(Daegu)",
+      "lineName": "대구 도시철도 2호선"
+    },
+    {
+      "name": "천호(풍납토성)",
+      "nameEn": "Cheonho(Pungnaptoseong)",
+      "lineName": "5호선"
+    },
+    {
+      "name": "서울역",
+      "nameEn": "Seoul Station",
+      "lineName": "1호선"
+    },
+    {
+      "name": "서울역",
+      "nameEn": "Seoul Station",
+      "lineName": "4호선"
+    },
+    {
+      "name": "서울",
+      "nameEn": "Seoul",
+      "lineName": "인천국제공항선"
+    },
+    {
+      "name": "서울역(경의선)",
+      "nameEn": "Seoul station",
+      "lineName": "경의중앙선"
+    },
+    {
+      "name": "검암",
+      "nameEn": "Geomam",
+      "lineName": "인천국제공항선"
+    },
+    {
+      "name": "공덕",
+      "nameEn": "Gongdeok",
+      "lineName": "인천국제공항선"
+    }
   ],
   "cases": [
     {
       "name": "코드 1 도착 + 2호선 외선 행선",
-      "arrival": { "line": "2호선", "direction": "외선", "trainLineNm": "성수행 - 역삼방면", "destination": "성수", "message": "강남 도착", "arrivalCode": "1", "currentLocation": "강남" },
-      "expect": { "lineEn": "Line 2", "directionEn": "Outer Circle", "trainLineNmEn": "To Seongsu via Yeoksam", "messageEn": "Arrived at Gangnam", "currentLocationEn": "Gangnam" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "외선",
+        "trainLineNm": "성수행 - 역삼방면",
+        "destination": "성수",
+        "message": "강남 도착",
+        "arrivalCode": "1",
+        "currentLocation": "강남"
+      },
+      "expect": {
+        "lineEn": "Line 2",
+        "directionEn": "Outer Circle",
+        "trainLineNmEn": "To Seongsu via Yeoksam",
+        "messageEn": "Arrived at Gangnam",
+        "currentLocationEn": "Gangnam"
+      }
     },
     {
       "name": "코드 0 진입",
-      "arrival": { "line": "신분당선", "direction": "하행", "trainLineNm": "광교행 - 양재방면", "destination": "광교", "message": "강남 진입", "arrivalCode": "0" },
-      "expect": { "lineEn": "Shinbundang Line", "directionEn": "Down", "trainLineNmEn": "To Gwanggyo via Yangjae", "messageEn": "Approaching Gangnam" }
+      "arrival": {
+        "line": "신분당선",
+        "direction": "하행",
+        "trainLineNm": "광교행 - 양재방면",
+        "destination": "광교",
+        "message": "강남 진입",
+        "arrivalCode": "0"
+      },
+      "expect": {
+        "lineEn": "Shinbundang Line",
+        "directionEn": "Down",
+        "trainLineNmEn": "To Gwanggyo via Yangjae",
+        "messageEn": "Approaching Gangnam"
+      }
     },
     {
       "name": "코드 2 출발(하차역 지나침 신호)",
-      "arrival": { "line": "1호선", "direction": "상행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "서울 출발", "arrivalCode": "2" },
-      "expect": { "lineEn": "Line 1", "directionEn": "Up", "trainLineNmEn": "To Dongducheon via City Hall", "messageEn": "Departed Seoul Station" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "서울 출발",
+        "arrivalCode": "2"
+      },
+      "expect": {
+        "lineEn": "Line 1",
+        "directionEn": "Up",
+        "trainLineNmEn": "To Dongducheon via City Hall",
+        "messageEn": "Departed Seoul Station"
+      }
     },
     {
       "name": "코드 3·4·5 고정 문구",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "전역 출발", "arrivalCode": "3" },
-      "expect": { "messageEn": "Departed previous station" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "전역 출발",
+        "arrivalCode": "3"
+      },
+      "expect": {
+        "messageEn": "Departed previous station"
+      }
     },
     {
       "name": "코드 4",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "전역 진입", "arrivalCode": "4" },
-      "expect": { "messageEn": "Approaching previous station" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "전역 진입",
+        "arrivalCode": "4"
+      },
+      "expect": {
+        "messageEn": "Approaching previous station"
+      }
     },
     {
       "name": "코드 5",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "전역 도착", "arrivalCode": "5" },
-      "expect": { "messageEn": "Arrived at previous station" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "전역 도착",
+        "arrivalCode": "5"
+      },
+      "expect": {
+        "messageEn": "Arrived at previous station"
+      }
     },
     {
       "name": "99 분만",
-      "arrival": { "line": "2호선", "direction": "외선", "trainLineNm": "성수행 - 역삼방면", "destination": "성수", "message": "7분 후", "arrivalCode": "99" },
-      "expect": { "messageEn": "In 7 min" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "외선",
+        "trainLineNm": "성수행 - 역삼방면",
+        "destination": "성수",
+        "message": "7분 후",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "In 7 min"
+      }
     },
     {
       "name": "99 분·초",
-      "arrival": { "line": "2호선", "direction": "내선", "trainLineNm": "성수행 - 교대방면", "destination": "성수", "message": "2분 30초 후", "arrivalCode": "99" },
-      "expect": { "messageEn": "In 2 min 30 sec", "trainLineNmEn": "To Seongsu via Seoul Nat'l Univ. of Education" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "내선",
+        "trainLineNm": "성수행 - 교대방면",
+        "destination": "성수",
+        "message": "2분 30초 후",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "In 2 min 30 sec",
+        "trainLineNmEn": "To Seongsu via Seoul Nat'l Univ. of Education"
+      }
     },
     {
       "name": "99 분 + 괄호 현재역(arvlMsg3 없음) → 문장엔 없고 currentLocationEn으로",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "5분 후 (종각)", "arrivalCode": "99" },
-      "expect": { "messageEn": "In 5 min", "currentLocationEn": "Jonggak" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "5분 후 (종각)",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "In 5 min",
+        "currentLocationEn": "Jonggak"
+      }
     },
     {
       "name": "99 잔여역 + 괄호 현재역 + arvlMsg3 일치",
-      "arrival": { "line": "신분당선", "direction": "하행", "trainLineNm": "광교행 - 양재방면", "destination": "광교", "message": "[2]번째 전역 (논현)", "arrivalCode": "99", "currentLocation": "논현" },
-      "expect": { "messageEn": "2 stations away", "currentLocationEn": "Nonhyeon" }
+      "arrival": {
+        "line": "신분당선",
+        "direction": "하행",
+        "trainLineNm": "광교행 - 양재방면",
+        "destination": "광교",
+        "message": "[2]번째 전역 (논현)",
+        "arrivalCode": "99",
+        "currentLocation": "논현"
+      },
+      "expect": {
+        "messageEn": "2 stations away",
+        "currentLocationEn": "Nonhyeon"
+      }
     },
     {
       "name": "99 잔여역 1",
-      "arrival": { "line": "신분당선", "direction": "하행", "trainLineNm": "광교행 - 양재방면", "destination": "광교", "message": "[1]번째 전역 (논현)", "arrivalCode": "99" },
-      "expect": { "messageEn": "1 station away" }
+      "arrival": {
+        "line": "신분당선",
+        "direction": "하행",
+        "trainLineNm": "광교행 - 양재방면",
+        "destination": "광교",
+        "message": "[1]번째 전역 (논현)",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "1 station away"
+      }
     },
     {
       "name": "괄호 현재역과 arvlMsg3 모순 → currentLocationEn 부재, 문장은 유지",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "5분 후 (종각)", "arrivalCode": "99", "currentLocation": "이촌" },
-      "expect": { "messageEn": "In 5 min", "currentLocationEn": "absent" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "5분 후 (종각)",
+        "arrivalCode": "99",
+        "currentLocation": "이촌"
+      },
+      "expect": {
+        "messageEn": "In 5 min",
+        "currentLocationEn": "absent"
+      }
     },
     {
       "name": "코드·문장 불일치(코드 1인데 출발) → messageEn 부재",
-      "arrival": { "line": "1호선", "direction": "상행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "서울 출발", "arrivalCode": "1" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "서울 출발",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "코드 3인데 분 문장 → 부재",
-      "arrival": { "line": "1호선", "direction": "상행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "3분 후", "arrivalCode": "3" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "3분 후",
+        "arrivalCode": "3"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "초 범위 밖 → 부재",
-      "arrival": { "line": "2호선", "direction": "내선", "trainLineNm": "성수행 - 교대방면", "destination": "성수", "message": "2분 75초 후", "arrivalCode": "99" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "내선",
+        "trainLineNm": "성수행 - 교대방면",
+        "destination": "성수",
+        "message": "2분 75초 후",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "잔여역 0 → 부재",
-      "arrival": { "line": "2호선", "direction": "내선", "trainLineNm": "성수행 - 교대방면", "destination": "성수", "message": "[0]번째 전역", "arrivalCode": "99" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "내선",
+        "trainLineNm": "성수행 - 교대방면",
+        "destination": "성수",
+        "message": "[0]번째 전역",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "미지 코드 → 부재",
-      "arrival": { "line": "2호선", "direction": "내선", "trainLineNm": "성수행 - 교대방면", "destination": "성수", "message": "곧 도착", "arrivalCode": "7" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "내선",
+        "trainLineNm": "성수행 - 교대방면",
+        "destination": "성수",
+        "message": "곧 도착",
+        "arrivalCode": "7"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "코드 결측 → 부재",
-      "arrival": { "line": "2호선", "direction": "내선", "trainLineNm": "성수행 - 교대방면", "destination": "성수", "message": "강남 도착" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "내선",
+        "trainLineNm": "성수행 - 교대방면",
+        "destination": "성수",
+        "message": "강남 도착"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "역명 미매칭(seed에 없음) → messageEn·trainLineNmEn 부재, lineEn·directionEn은 산다",
-      "arrival": { "line": "2호선", "direction": "외선", "trainLineNm": "화성행 - 역삼방면", "destination": "화성", "message": "화성 도착", "arrivalCode": "1" },
-      "expect": { "lineEn": "Line 2", "directionEn": "Outer Circle", "trainLineNmEn": "absent", "messageEn": "absent" }
+      "arrival": {
+        "line": "2호선",
+        "direction": "외선",
+        "trainLineNm": "화성행 - 역삼방면",
+        "destination": "화성",
+        "message": "화성 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "lineEn": "Line 2",
+        "directionEn": "Outer Circle",
+        "trainLineNmEn": "absent",
+        "messageEn": "absent"
+      }
     },
     {
       "name": "방면 괄호 노선 힌트(신촌(경의중앙선)) → 힌트로 경의중앙선 신촌을 고른다",
-      "arrival": { "line": "경의중앙선", "direction": "상행", "trainLineNm": "문산행 - 신촌(경의중앙선)방면", "destination": "문산", "message": "[5]번째 전역 (용산)", "arrivalCode": "99" },
-      "expect": { "trainLineNmEn": "To Munsan via Sinchon(Gyeongui Line)", "messageEn": "5 stations away", "currentLocationEn": "Yongsan" }
+      "arrival": {
+        "line": "경의중앙선",
+        "direction": "상행",
+        "trainLineNm": "문산행 - 신촌(경의중앙선)방면",
+        "destination": "문산",
+        "message": "[5]번째 전역 (용산)",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "trainLineNmEn": "To Munsan via Sinchon(Gyeongui Line)",
+        "messageEn": "5 stations away",
+        "currentLocationEn": "Yongsan"
+      }
     },
     {
       "name": "동명이역 영문이 갈리는데 노선 우선으로 하나가 남는다(용산: 1호선 vs 대구)",
-      "arrival": { "line": "1호선", "direction": "하행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "용산 도착", "arrivalCode": "1" },
-      "expect": { "messageEn": "Arrived at Yongsan" }
+      "arrival": {
+        "line": "1호선",
+        "direction": "하행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "용산 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "Arrived at Yongsan"
+      }
     },
     {
       "name": "동명이역 영문이 갈리고 노선 우선으로도 못 가르면 부재(신촌, 노선 힌트 없음·도착 노선 미매칭)",
-      "arrival": { "line": "신림선", "direction": "상행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "신촌 도착", "arrivalCode": "1" },
-      "expect": { "messageEn": "absent" }
+      "arrival": {
+        "line": "신림선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "신촌 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     },
     {
       "name": "급행 꼬리는 버린다(express 필드가 따로 있다)",
-      "arrival": { "line": "경의중앙선", "direction": "하행", "trainLineNm": "문산행 - 신촌(경의중앙선)방면 (급행)", "destination": "문산", "message": "[9]번째 전역 (청량리)", "arrivalCode": "99", "express": true },
-      "expect": { "trainLineNmEn": "To Munsan via Sinchon(Gyeongui Line)", "messageEn": "9 stations away", "currentLocationEn": "Cheongnyangni" }
+      "arrival": {
+        "line": "경의중앙선",
+        "direction": "하행",
+        "trainLineNm": "문산행 - 신촌(경의중앙선)방면 (급행)",
+        "destination": "문산",
+        "message": "[9]번째 전역 (청량리)",
+        "arrivalCode": "99",
+        "express": true
+      },
+      "expect": {
+        "trainLineNmEn": "To Munsan via Sinchon(Gyeongui Line)",
+        "messageEn": "9 stations away",
+        "currentLocationEn": "Cheongnyangni"
+      }
     },
     {
       "name": "미지 방향·미지 노선 → directionEn·lineEn 부재",
-      "arrival": { "line": "화성선", "direction": "순환", "trainLineNm": "성수행 - 역삼방면", "destination": "성수", "message": "7분 후", "arrivalCode": "99" },
-      "expect": { "lineEn": "absent", "directionEn": "absent", "trainLineNmEn": "To Seongsu via Yeoksam", "messageEn": "In 7 min" }
+      "arrival": {
+        "line": "화성선",
+        "direction": "순환",
+        "trainLineNm": "성수행 - 역삼방면",
+        "destination": "성수",
+        "message": "7분 후",
+        "arrivalCode": "99"
+      },
+      "expect": {
+        "lineEn": "absent",
+        "directionEn": "absent",
+        "trainLineNmEn": "To Seongsu via Yeoksam",
+        "messageEn": "In 7 min"
+      }
     },
     {
       "name": "괄호 부가명 역(천호(풍납토성)) — 정규화 매칭",
-      "arrival": { "line": "5호선", "direction": "상행", "trainLineNm": "동두천행 - 시청방면", "destination": "동두천", "message": "천호 도착", "arrivalCode": "1" },
-      "expect": { "messageEn": "Arrived at Cheonho(Pungnaptoseong)" }
+      "arrival": {
+        "line": "5호선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "천호 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "Arrived at Cheonho(Pungnaptoseong)"
+      }
+    },
+    {
+      "name": "실호출 서울역 게이트 검출 — 공항철도 열차의 '서울 출발'은 표 동치(AREX ↔ 인천국제공항선)로 seed 'Seoul'을 고른다",
+      "arrival": {
+        "line": "공항철도",
+        "direction": "상행",
+        "trainLineNm": "검암행 - 공덕방면",
+        "destination": "검암",
+        "message": "서울 출발",
+        "arrivalCode": "2"
+      },
+      "expect": {
+        "lineEn": "AREX",
+        "messageEn": "Departed Seoul",
+        "trainLineNmEn": "To Geomam via Gongdeok"
+      }
+    },
+    {
+      "name": "1호선 열차의 서울역은 같은 노선 행 'Seoul Station'",
+      "arrival": {
+        "line": "1호선",
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "서울 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "Arrived at Seoul Station"
+      }
+    },
+    {
+      "name": "노선 정보가 없으면 서울역 후보 셋(Seoul Station·Seoul·Seoul station)이 갈려 부재",
+      "arrival": {
+        "direction": "상행",
+        "trainLineNm": "동두천행 - 시청방면",
+        "destination": "동두천",
+        "message": "서울 도착",
+        "arrivalCode": "1"
+      },
+      "expect": {
+        "messageEn": "absent"
+      }
     }
   ]
 }
