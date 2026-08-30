@@ -94,7 +94,7 @@
 | `currentLocationEn` | `currentLocation`(arvlMsg3), 없으면 99 문장의 괄호 역명 | `ctx.stationNameEn`. 둘 다 있고 정규화 역명이 다르면 부재(모순은 침묵) |
 
 - ⚠ `barvlDt`(초)는 쓰지 않는다(CLAUDE.md 함정: 운행종료에도 비0).
-- **seed 조회 `ctx.stationNameEn(name, lineKo)`**(리뷰 #6): `findStationsByName(name, lineHint)`(괄호 노선 힌트는 `parseStationQuery`가 분리) 후보 중 **도착 노선(`arrival.line`)과 `lineHintMatches`하는 후보를 우선**하고, 없으면 전체 후보(1호선 열차의 종착 `동두천`은 seed `경원선` 행이라 노선 필터를 강제할 수 없다). 남은 후보의 `nameEn` 집합이 **둘 이상이면 null**(추측 금지). 잔여 위험(수용): 같은 이름의 타 도시 역만 seed에 있고 진짜 역이 없는 경우 — 서울 실시간 커버 역은 전부 수도권 seed에 있어 실측상 성립하지 않는다.
+- **seed 조회 `stationNameEn(ctx, name, lineKo)`**(리뷰 #6): `findStationsByName(name, lineHint)`(괄호 노선 힌트 `신촌(경의중앙선)`은 직접 뽑아 넘긴다) 후보 중 **도착 노선과 같은 노선인 후보를 우선**하고 — 같은 노선 판정은 영문 표 동치(`공항철도` ↔ seed `인천국제공항선` = AREX, §8 게이트 검출) → 코어 접두 일치(`lineHintMatches`) 두 겹 — 없으면 전체 후보(1호선 열차의 종착 `동두천`은 seed `경원선` 행이라 노선 필터를 강제할 수 없다). 남은 후보의 `nameEn`을 대소문자 무시로 모아 **둘 이상이면 null**(추측 금지). 잔여 위험(수용): 같은 이름의 타 도시 역만 seed에 있고 진짜 역이 없는 경우 — 서울 실시간 커버 역은 전부 수도권 seed에 있어 실측상 성립하지 않는다.
 - 순수 함수는 seed 없이 fixture로 테스트한다(라우트가 seed 바인딩을 주입). fixture `subway-arrival-en-cases.json`: §2.2 표 전 행 + 코드/문장 불일치 + 수치 범위 밖 + 미매칭 역 + 방면 괄호 노선 힌트 + `updnLine` 미지 값 + 괄호 현재역 vs arvlMsg3 모순.
 - 계측(리뷰 #17): 코드·문장 모양이 행렬 밖이면 `console.warn`(문장 모양만, 역명은 제외) 프로세스당 모양별 1회. 실시간 API가 문구를 바꾸면 조용한 한국어 강등 대신 로그가 남는다.
 
@@ -135,6 +135,14 @@
 ### 3.7 안내 상태 머신 — 이 마일스톤 밖 (리뷰 #15 반영)
 
 실시간 대중교통 안내의 en 게이트(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`)가 닫혀 있어 `TransitGuideLeg` 표시 라벨은 도달 가능한 사용자가 없는 죽은 배선이고, 반대로 게이트를 여는 날엔 `viaStops[].name`·실시간 provider 정류소명·차량 선택 문맥까지 별도 display DTO가 필요하다. **게이트 해제 마일스톤으로 통째로 미룬다**(BACKLOG E27 잔여). 그때의 불변식은 "상태 머신 테스트가 조인 필드에 식별 가능한 한국어 sentinel을 넣고 어떤 발화에도 그 값이 나오지 않는다"이다.
+
+### 3.9 A27 — 승차 국면 지하철 상태줄 (코디네이터 추가 배정, 위원장 실승차 피드백 2026-08-29)
+
+탑승 직후 상태줄 "충정로까지 전역 도착"이 부자연스럽다는 피드백. 원인: `transitGuide.messageFrame`("{stop}까지 {message}.")은 버스 완성 문장("2분 남음")을 전제한 틀인데, 지하철 `arvlMsg2`("전역 도착"·"[3]번째 전역")는 조회역(=하차역) 기준 **열차 위치 서술**이라 "까지"가 앞에 붙으면 뜻이 뒤집힌다. 버스는 승차 국면 재작성(`rewriteBusArrivalMessage`)이 있고 지하철은 없었다.
+
+- **ko도 코드 기반 문장으로 바뀐 근거 = A27.** 순수 함수 `subwayRidingMessage(arrivalCode)`(웹 `transit-guide.ts` ↔ Kit `TransitGuide.swift`, 공유 fixture `subway-riding-message-cases.json`): 3·4·5 → `transitGuide.subwayNextStop`("다음 역 {stop}.") · 0 → `subwayArriving`("{stop} 진입 중.") · 1 → `subwayAtStop`("{stop} 도착.") · 2 → `subwayDeparted`("{stop} 출발." — 하차역을 지나친 신호. 상태 머신의 도착 판정은 코드 1만 보므로 충돌 없음) · 99 → 생략(`remainingCount`가 잔여 수를 말한다) · 미지·결측 → `arvlMsg2` 원문을 **까지 틀 없이** 그대로(3-state 폴백). 6로케일 키.
+- 상태 머신에 `lastArrivalCode`(state)·`arrivalCode`(`trackingStarted`·`countdown`·`messageChanged`·`backOnTrack` 이벤트)를 additive로 더한다 — 소비자(웹 `useTransitGuide.frameText`·iOS `TransitGuideModel.frameText`)가 문장을 고르는 유일한 축. §3.7의 "표시 라벨 배선 금지"와 다른 축이다: 이건 영문 표시가 아니라 ko·en 공통의 문장 **종류** 판정이고, 도달 가능한 사용자(ko 실승차)가 있다.
+- 경계: 대기 국면 후보 목록(`approachFrameText`)·내 주변 역 도착 목록은 완성 문장 정본 불변. 버스 승차 국면은 종전 `messageFrame` 그대로. `frameText`의 `arrivalCode` 인자에 기본값 없음(`slotToItem` 선례).
 
 ### 3.8 실호출 게이트 `scripts/verify-odsay-lang.mjs`
 
@@ -183,9 +191,15 @@
 | 도착 문장을 클라이언트 i18n 키로 조립(6로케일) | 영문 데이터 정책(`dataLocale`)과 어긋난다 — 역명·노선명은 영문인데 문장 틀만 프랑스어면 한 줄에 두 언어가 선다 |
 | 안내 상태 머신 표시 라벨 지금 배선(초안 §3.7) | 리뷰 #15 — 도달 사용자 0인 죽은 배선이고 미래 계약도 불완전. 게이트 해제 마일스톤으로 |
 
-## 8. 실호출 게이트 결과
+## 8. 실호출 게이트 결과 (2026-08-31, `node scripts/verify-odsay-lang.mjs`)
 
-(구현 후 기록)
+**35/35 PASS**(1차 33/35 → 서울역 도착 2건 검출 → 수정 후 재실행 PASS).
+
+- 경로 3종(길동→강남·김포공항→신논현·길동→하남) × en·ko: 탑승 leg `*En` 결측 0(8·5·4 legs), 경유 정류장 `nameEn` 결측 0, 요약 결측 0, `*En` 한글 0, 정규화 잔존물 0, 노선 표 미스 0, **en·ko 한국어 필드 전수 일치(짝 5/5 ×3)**, ko 응답 `*En` 키 0.
+- 급행 필수 표본: `수도권 9호선(급행)` 보존 + `lineNameEn = "Line 9 Express"`(ODsay 영문은 `Line 9`).
+- 정류소 표본: `30-3 Gil-dong Community Service Center, Dunchon 2-dong Community Service Center → Hanam City Hall` · `Line 5 Gildong → Hanam City Hall(Deokpung, Sinjang)`(원문 `(덕풍·신장)`의 가운뎃점이 쉼표로).
+- 실시간 도착 en: 강남 8/8 · 서울역 20/20(`messageEn`·`trainLineNmEn` 생성률 100%), 한국어 원문 불변. **1차 검출**: 서울역에서 공항철도 열차의 `서울 출발`·`서울행 - 서울방면`이 부재였다 — seed에 서울역이 4행(`Seoul Station`×2·`Seoul`(인천국제공항선)·`Seoul station`(경의중앙선))이고 도착 노선 `공항철도`와 seed `인천국제공항선`이 `lineHintMatches`로 안 묶여 후보 셋의 영문이 갈렸다. 수정: 같은 노선 판정에 **영문 표 동치**(둘 다 AREX)를 먼저 보고, 표기 차이(`Seoul station`)는 대소문자 무시로 모은다(§3.4 갱신). fixture에 그 케이스 3건 추가.
+- ODsay 호출 수: 경로 3종 × 2언어 = 6콜(캐시 없는 상태) + 실시간 2콜.
 
 ## 9. 설계 리뷰 (codex adversarial-review, 2026-08-31)
 
