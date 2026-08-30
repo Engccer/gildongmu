@@ -65,6 +65,10 @@ const envSchema = z.object({
   // 미설정 시 502 → 클라이언트 온디바이스 낭독 폴백(문서화된 경로라 게이트 함수 없음).
   GOOGLE_CLOUD_TTS_API_KEY: z.string().min(1).optional(),
 
+  // Google Places API (New) — 장소 상세 영업시간 한 줄(E24, iOS 실험판 전용 소비).
+  // gildongmu-prod 키 `gildongmu-places`(Places API만 허용). 예산 상한은 GCP 쿼터가 강제.
+  GOOGLE_PLACES_API_KEY: z.string().min(1).optional(),
+
   // 네이버 지도 앱 딥링크의 appname 파라미터 (필수 권장)
   NEXT_PUBLIC_APP_IDENTIFIER: z.string().default("space.dodoplanet.gildongmu"),
 });
@@ -86,6 +90,7 @@ export const env = envSchema.parse({
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   PERPLEXITY_API_KEY: process.env.PERPLEXITY_API_KEY,
   GOOGLE_CLOUD_TTS_API_KEY: process.env.GOOGLE_CLOUD_TTS_API_KEY,
+  GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
   NEXT_PUBLIC_APP_IDENTIFIER: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
 });
 
@@ -171,4 +176,9 @@ export function hasGeminiKey(): boolean {
 /** Perplexity 웹 검색 API 사용 가능 여부 */
 export function hasPerplexityKey(): boolean {
   return !!env.PERPLEXITY_API_KEY;
+}
+
+/** Google Places 영업시간 게이트(E24). 키 없으면 라우트가 `{hours:null}`로 침묵. */
+export function hasGooglePlacesKey(): boolean {
+  return Boolean(env.GOOGLE_PLACES_API_KEY);
 }

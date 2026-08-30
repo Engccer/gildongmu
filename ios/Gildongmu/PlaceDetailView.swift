@@ -20,6 +20,8 @@ struct PlaceDetailView<DomainSection: View>: View {
     private let guideSession = GuideSession.shared
     /// 무장애 편의시설 자동 섹션 모델. 역 여부와 무관하게 모든 장소에서 로드
     @State private var barrierFreeInfo = BarrierFreeInfoModel()
+    /// 영업시간 한 줄(E24). 실험판에서만 로드한다 — 정식판은 `.task`를 걸지 않아 호출 0.
+    @State private var placeHours = PlaceHoursModel()
     /// 장소 채팅 sheet(M5). 표시마다 새 ChatView = 장소마다 새 대화(웹 계약)
     @State private var isChatPresented = false
 
@@ -45,6 +47,10 @@ struct PlaceDetailView<DomainSection: View>: View {
                 if let english = place.englishAddress, !english.isEmpty {
                     Text(appLocalized("ios.place.englishAddressLine", english))
                     Button(appLocalized("place.copyEnglishAddress")) { copyAddressToPasteboard(english) }
+                }
+                // 영업시간(실험판): 전화 링크 앞 — 시각이 틀릴 수 있어 확인 경로와 짝짓는다.
+                if AppConfig.experimentalPlaceHoursEnabled {
+                    PlaceHoursLine(model: placeHours)
                 }
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
@@ -158,6 +164,11 @@ struct PlaceDetailView<DomainSection: View>: View {
         }
         .task {
             await barrierFreeInfo.load(lat: place.lat, lng: place.lng, name: place.name)
+        }
+        .task {
+            if AppConfig.experimentalPlaceHoursEnabled {
+                await placeHours.load(place: place)
+            }
         }
         .sheet(isPresented: $isChatPresented) {
             ChatView(place: place)

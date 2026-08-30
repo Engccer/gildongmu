@@ -311,6 +311,12 @@
       "routeSwitched": "Itinéraire modifié.",
       "altNone": "Aucun autre itinéraire en transports depuis ici.",
       "altRefetching": "Les conditions ont changé ; nouvelle recherche d’itinéraires."
+    },
+    "placeHours": {
+      "line": "Horaires du jour {ranges} (Google Maps)",
+      "closed": "Fermé aujourd'hui (Google Maps)",
+      "allDay": "24 h/24",
+      "nextDay": "lendemain {time}"
     }
   },
   "beacon": {

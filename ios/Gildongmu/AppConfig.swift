@@ -45,6 +45,15 @@ enum AppConfig {
     static let experimentalTabOrderEnabled = false
     #endif
 
+    /// 장소 상세 영업시간 한 줄(E24, Google Places). **실험판에서만**(위원장 결정 2026-08-30 —
+    /// 실사용으로 도움이 된다고 판단하면 정식판으로). 정식판은 서비스 호출 자체가 없다.
+    /// 승격 시 이 검사를 삭제한다(플래그 졸업). spec 2026-08-30-place-hours-google-design.md.
+    #if EXPERIMENTAL
+    static let experimentalPlaceHoursEnabled = true
+    #else
+    static let experimentalPlaceHoursEnabled = false
+    #endif
+
     /// 웹 개인정보 처리방침 URL(현재 앱 언어 로케일). 동의 화면·설정이 공유한다.
     static var privacyPolicyURL: URL {
         apiBaseURL.appending(path: "\(AppLanguage.current)/privacy")
