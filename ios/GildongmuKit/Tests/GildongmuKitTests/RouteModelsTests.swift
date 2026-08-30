@@ -240,6 +240,18 @@ struct WalkRouteStepActionTests {
         #expect(s[0].action == nil)
     }
 
+    @Test("자동차 브리핑의 guidanceLang(A26)은 선택 디코딩이다")
+    func decodesGuidanceLang() throws {
+        let with = try JSONDecoder().decode(CarRouteBriefing.self, from: Data(#"""
+        {"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[],"guidanceLang":"ko"}
+        """#.utf8))
+        #expect(with.guidanceLang == "ko")
+        let without = try JSONDecoder().decode(CarRouteBriefing.self, from: Data(#"""
+        {"distanceMeters":1,"durationSeconds":1,"taxiFare":0,"tollFare":0,"guides":[]}
+        """#.utf8))
+        #expect(without.guidanceLang == nil)
+    }
+
     @Test("횡단 구간 플래그(A26)를 디코딩하고, 없으면 nil이다")
     func decodesCrossing() throws {
         let s = try steps(#"""

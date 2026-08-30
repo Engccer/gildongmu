@@ -102,6 +102,13 @@ describe("GET /api/route/car", () => {
       expect(getCarRoute).toHaveBeenCalledTimes(1);
     });
 
+    it("lang=en + includeGeometry=1은 NCP가 기하를 못 주므로 ko 서비스 + guidanceLang=ko(실시간 안내 상세 유지)", async () => {
+      vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
+      const body = await (await GET(makeRequest("37.5,127.0", "37.6,127.1", "en", "1"))).json();
+      expect(body.guidanceLang).toBe("ko");
+      expect(getCarRoute).toHaveBeenCalledWith(expect.objectContaining({ includeGeometry: true }));
+    });
+
     it("lang=en + via(경유지)는 NCP 미검증이라 ko 서비스 + guidanceLang=ko", async () => {
       vi.mocked(hasNcpMapsKeys).mockReturnValue(true);
       const res = await GET(

@@ -4,6 +4,7 @@ import { normalizeStationName } from "../station-match";
 import { readSeoulOpenJson } from "./seoul-open-json";
 import { bearingDegrees, bearingToCompass8 } from "../geo/bearing";
 import { haversineMeters } from "../geo";
+import { formatDistance } from "../format";
 
 /**
  * 서울 지하철 엘리베이터 위치(OA-21212 tbTraficElvtr) — wksn 미커버 노선(9호선·
@@ -96,9 +97,10 @@ export function composeElevatorItems(
     const meters = Math.round(haversineMeters(anchor.lat, anchor.lng, e.lat, e.lng) / 10) * 10;
     const direction = bearingToCompass8(bearingDegrees(anchor.lat, anchor.lng, e.lat, e.lng));
     const compass = COMPASS_KO[direction];
+    // 거리 표기는 formatDistance 정본(1km 이상 "1.2km") — 클라이언트 `parts` 조립과 같은 함수라 갈리지 않는다.
     const name = e.dong
-      ? `역 중심 기준 ${compass}쪽 약 ${meters}m, ${e.dong}`
-      : `역 중심 기준 ${compass}쪽 약 ${meters}m`;
+      ? `역 중심 기준 ${compass}쪽 약 ${formatDistance(meters)}, ${e.dong}`
+      : `역 중심 기준 ${compass}쪽 약 ${formatDistance(meters)}`;
     return {
       name,
       location: undefined,

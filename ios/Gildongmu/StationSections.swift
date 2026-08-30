@@ -224,9 +224,9 @@ struct StationSectionsView: View {
     /// 서버 합성 한국어(`name`) 대신 구조화 조각(`parts`, A26)이 있으면 앱 언어로 조립한다
     /// (웹 `metroFacilityGroups.nameOf` 미러). 부재면 문자열 그대로.
     private func facilityName(_ f: SeoulMetroFacility) -> String {
-        if let p = f.parts, let compass = p.compass, let meters = p.meters {
+        if let p = f.parts, let compass = p.compass, let meters = p.meters, let direction = compassLabel(compass) {
             return joinText(
-                appLocalized("subway.elevatorAt", compassLabel(compass), formatDistance(meters)),
+                appLocalized("subway.elevatorAt", direction, formatDistance(meters)),
                 p.dong)
         }
         if let p = f.parts, let location = p.location {
@@ -245,7 +245,8 @@ struct StationSectionsView: View {
     }
 
     /// 8방위 코드 → 앱 언어 낱말. 키 린터가 리터럴만 스캔하므로 switch로 되받는다.
-    private func compassLabel(_ code: String) -> String {
+    /// 모르는 코드는 nil — 호출부가 서버 문장(`name`)으로 폴백한다(틀린 방위를 읽는 것보다 낫다).
+    private func compassLabel(_ code: String) -> String? {
         switch code {
         case "n": return appLocalized("subway.direction.n")
         case "ne": return appLocalized("subway.direction.ne")
@@ -254,7 +255,8 @@ struct StationSectionsView: View {
         case "s": return appLocalized("subway.direction.s")
         case "sw": return appLocalized("subway.direction.sw")
         case "w": return appLocalized("subway.direction.w")
-        default: return appLocalized("subway.direction.nw")
+        case "nw": return appLocalized("subway.direction.nw")
+        default: return nil
         }
     }
 

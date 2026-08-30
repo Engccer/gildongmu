@@ -62,9 +62,16 @@ export async function GET(request: NextRequest) {
 
   // en + NCP 키가 있으면 영문 턴바이턴, 아니면 car-route 서비스(ko)로 폴백.
   // 경유지(N4)는 NCP 경로 미검증이라 ko 서비스로 보낸다 — 조용히 버리는 것보다
-  // 한국어 문장이 낫다. 여기서 가르므로 아래 키 게이트도 ko 서비스 기준으로 돈다.
+  // 한국어 문장이 낫다. 기하 요청(`includeGeometry`, 실시간 자동차 안내)도 같다 — NCP 응답엔
+  // 기하·`provider`·`terminalCoord`가 없어 클라이언트가 상세 안내를 세우지 못하고 간략(직선)으로
+  // 강등된다(리뷰 검출 2026-08-31: iOS en 사용자의 자동차 안내가 문장 없는 직선이 됐다).
+  // 폴백 사유 셋(키 부재·경유지·기하)은 전부 `guidanceLang: "ko"`로 응답에 드러난다.
+  // 여기서 가르므로 아래 키 게이트도 ko 서비스 기준으로 돈다.
   const useNcp =
-    request.nextUrl.searchParams.get("lang") === "en" && hasNcpMapsKeys() && !via;
+    request.nextUrl.searchParams.get("lang") === "en" &&
+    hasNcpMapsKeys() &&
+    !via &&
+    !parsed.data.includeGeometry;
   if (!useNcp && !hasCarRouteKey()) {
     return NextResponse.json(
       { error: "경로 브리핑은 API 키 등록 후 사용할 수 있습니다." },
@@ -80,7 +87,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // en(NCP) 경로는 기하·경유지 미지원 — ko 서비스에만 전달된다.
+    // en(NCP) 경로는 기하·경유지 미지원 — 그 둘은 위에서 ko 서비스로 갈렸다.
     const briefing = useNcp
       ? await getCarRouteBriefingEn({ origin, dest })
       : await getCarRoute({

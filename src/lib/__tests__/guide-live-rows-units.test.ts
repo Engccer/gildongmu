@@ -48,6 +48,16 @@ describe("buildDisplayUnits (spec §4.1)", () => {
     expect(u[1].crossingText).toBe("횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음");
   });
 
+  it("ko+Tmap 폴백 문장('건너' 없음)도 서버 플래그면 횡단 유닛이다 — 종전엔 문자열 판정에 걸려 서지 않았다(A26 의도된 변화)", () => {
+    const u = buildDisplayUnits(
+      steps(
+        [58, "58m 이동"],
+        [30, "횡단보도 후 30m 이동", { crossing: true }],
+        [40, "40m 이동"],
+      ), "text");
+    expect(u.map((x) => x.crossing)).toEqual([false, true, false]);
+  });
+
   it("이름은 서버 조각에서만 온다 — target·endAnchor 배선", () => {
     const u = buildDisplayUnits(
       steps(

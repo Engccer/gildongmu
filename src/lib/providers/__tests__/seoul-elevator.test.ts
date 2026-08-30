@@ -46,6 +46,12 @@ describe("composeElevatorItems — 방위·거리 ko 합성", () => {
     });
     expect(items[0].name).toBe(`역 중심 기준 ${{ n: "북", ne: "북동", e: "동", se: "남동", s: "남", sw: "남서", w: "서", nw: "북서" }[items[0].parts!.compass!]}쪽 약 ${items[0].parts!.meters}m, 성내동`);
   });
+  it("1km 이상은 formatDistance 표기(약 1.2km) — 클라이언트 조립(parts)과 문장이 갈리지 않는다", () => {
+    const far = [{ stationKey: "강동", lat: 37.5354 + 0.011, lng: 127.1323, dong: "" }];
+    const items = composeElevatorItems(far, seedRows);
+    expect(items[0].parts!.meters).toBeGreaterThanOrEqual(1000);
+    expect(items[0].name).toMatch(/^역 중심 기준 북쪽 약 \d+(\.\d+)?km$/);
+  });
   it("seed 좌표가 없으면 빈 배열(방위 없는 나열은 무가치)", () => {
     expect(composeElevatorItems(parseElevatorRows(raw), [])).toEqual([]);
   });
