@@ -122,11 +122,11 @@ export const PROGRESS_EPSILON_M = 10;
  */
 export interface PresumedArrivalThresholds {
   /** usable fix 두절이 이만큼 지속되면 실내(지하) 진입으로 간주. */
-  noFixSeconds: number;
+  readonly noFixSeconds: number;
   /** usable fix는 오는데 무진행이 이만큼 지속되면 고정 좌표로 간주. */
-  stationarySeconds: number;
+  readonly stationarySeconds: number;
   /** 마지막 확인 거리 캡(m). 이 밖은 이탈이지 도착이 아니다. */
-  maxDistanceMeters: number;
+  readonly maxDistanceMeters: number;
 }
 
 /** 도보: 건물 진입 뒤 wifi 측위가 드문드문 이어지는 180초, 오프셋 실측 상한 89m + GPS 여유 150m. */

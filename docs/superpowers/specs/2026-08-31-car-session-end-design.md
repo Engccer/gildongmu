@@ -72,6 +72,8 @@ public func presumedArrivalStep(inFinalApproach:, secondsSinceUsableFix:, second
 
 ⚠ **미탐 수용**: 지하 주차장에서 cell/wifi fix(acc 수백 m)가 계속 오면 `isUsableFix`(acc>0·신선)를 통과해 두절 축이 안 열리고, 그 fix가 튀면 무이동 축도 안 열린다. 도보 spec 2026-08-13 §7의 같은 수용이고, 그때는 국면 무관 안전망(§4)도 같은 이유로 막힌다. 판정 채널은 `final` 로그의 `acc` 열이다(§6).
 
+⚠ **미탐 수용 2 — 최종 접근에 못 들어간 자동차 세션은 두절 축 말고는 상한이 없다**(코드 품질 리뷰 검출, 2026-08-31). 리듀서 6b는 이탈 상태(`isOff`)에서 `finalApproachEnter`를 내지 않으므로, 경로 종점과 다른 주차장 입구로 들어가는 주행·조회 실패로 간략 강등된 세션은 `inFinalApproach`가 영영 false다. 도보는 이때 국면 무관 무이동 1200초가 잡지만 자동차는 계획 §1.2(b)가 무이동 축을 껐다(정체·휴게소 정차와 구분 불가). 야외 주차로 fix가 계속 오면 세션은 사용자가 끝낼 때까지 산다 — 08-29와 같은 모양이나 확률은 다르다(종점 근처에서 이탈로 끝나는 주행만). B1 관찰 항목(§9)이며, 실측되면 car 전용 긴 무이동 상수(예: 40~60분)를 별 판정으로 연다.
+
 ### 3.3 게이트
 
 `GuideTuning.presumedArrivalEnabled: Bool`을 **`presumedArrival: PresumedArrivalThresholds?`**로 바꾼다(nil = 끔). `.walk = .walk`, `.car = .car`. Bool을 남기고 둘 다 true로 두면 항상 참인 상수가 남는다(CLAUDE.md "플래그 졸업은 검사 삭제로"). `carDriver`는 `.car`를 상속한다(리듀서 튜닝만 다르다).
@@ -119,7 +121,7 @@ brief t=… lat=… lng=… acc=… motion=… age=… usable=… dist=… nearb
 
 ## 7. 테스트 (게이트)
 
-- 공유 fixture 3종(Kit·웹 양쪽 리더 갱신, 필드 누락은 디코딩 실패로 드러난다).
+- 공유 fixture 2종(Kit·웹 양쪽 리더 갱신, 필드 누락은 디코딩 실패로 드러난다).
 - Kit `RouteGuideTests`·웹 `route-guide.test.ts`: 위 튜닝 3필드 단언(walk·car·carDriver).
 - `SessionIdleTests`·`session-idle.test.ts`: 느슨함 단언을 walk·car 프로파일 둘 다에.
 - `BeaconModel`은 테스트 레인이 없다(앱 타깃, repo 전역 한계 — 설계 리뷰 #8). 그래서 갈림 셋(진입·추정 프로파일·안전망 축)을 전부 **튜닝 데이터**로 내려 Kit 테스트가 잠그고, BeaconModel에는 `tuning.*`를 읽는 배선만 남긴다. 배선 자체는 실기기 Experimental 배포 뒤 B1 실주행이 정본(§9).
@@ -141,13 +143,16 @@ MAJOR 8·MINOR 1. 처리 원칙: 계획 §1 확정 판정은 재론하지 않고
 | 8 | BeaconModel 배선이 테스트 밖 | **부분 채택** — 갈림 셋을 `GuideTuning` 데이터로 내려 Kit·웹 테스트가 잠근다(§2·§3.3·§4). 앱 타깃 테스트 레인 신설은 범위 밖 |
 | 9 | fixture 부정 케이스·거부 fix 계측 누락 | **채택** — §5·§6 |
 
+구현 리뷰(spec-compliance·code-quality 서브에이전트, diff+spec만): 도보 동결 0건·미러 동형 확인. 채택 — `tooClose` 기하를 진입 시 nil로 정규화(진입 서술이 빈 기하로 나가는 경로 차단)·인계 로그 사유 분리, fixture 원 포맷 복원, TS 프로파일 `readonly`, BeaconModel 튜닝 배선 소스 스캔 가드(`beacon-tuning-wiring.test.ts`). 기록 — 위 미탐 수용 2(이탈 종료·간략 강등 자동차 세션의 상한 부재).
+
 ## 9. 판정 축 (B1 실주행, 위원장 몫)
 
 `docs/FIELD-TEST.md` B1 행 추가, `docs/BACKLOG.md` K2-a는 코드 종결로 닫고 판정 항목을 B1에 남긴다:
-- 종점 150m에서 "목적지까지 약 N미터, {방향}"이 곧바로 들리는가(종전 "직선 안내로 전환합니다"는 car에서 사라진다 — FIELD-TEST 기존 행 갱신).
+- 종점 150m에서 "{방향} 약 N미터입니다"(`guide.finalApproachTick`)가 곧바로 들리는가(종전 "직선 안내로 전환합니다"는 car에서 사라진다 — FIELD-TEST 기존 행 갱신).
 - 40m 안 정차 → 도착 종·종료 화면·인계 버튼(기존 B1③).
-- 길 건너·주차장 정차(40~150m) 5분 → "도착한 것으로 보고 안내를 종료합니다"가 들리는가. 지하 주차장 진입 2분 뒤 같은 문장이 들리는가(전경일 때 종).
+- 길 건너·주차장 정차(40~150m) 5분 → "목적지 부근에 도착한 것으로 판단해 안내를 종료했습니다"(`guide.arrivedPresumed`)가 들리는가. 지하 주차장 진입 2분 뒤 같은 문장이 들리는가(전경일 때 종).
 - 로그 `final`·`brief` 줄로 §3.2 상수 재판정.
+- 종점과 다른 입구로 들어가 이탈 상태로 끝난 주행·간략 강등 세션이 야외 주차 뒤 안 끝나는가(미탐 수용 2).
 
 ## 10. 파일
 

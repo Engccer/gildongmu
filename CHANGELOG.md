@@ -9,6 +9,10 @@
 
 ---
 
+## 2026-08-31
+
+- **자동차 세션 종료 보강(K2-a)**: 자동차는 `finalApproach` 기하 없이도 경로 종점 150m에서 최종 접근 국면에 들어가(진입 서술 없음, 첫 주기 통지 즉시) `carArrivalStep`(40m·정차·acc≤30)이 실주행에서 도달 가능해졌다 — 종전엔 간략 인계로 빠져 세션이 영영 끝나지 않았다(2026-08-29 실사고). 도착 추정은 car 프로파일(두절 120초·무이동 300초·캡 150m, `PresumedArrivalThresholds`)로 켜고 추정 종료도 확정 도착과 같은 종료 화면(도보 인계 버튼). 국면 무관 안전망은 자동차에 두절 600초 축만(무이동 축은 정체와 구분 불가라 끔, `sessionIdleStep` 무이동 인자 옵셔널). 간략 경로 fix당 1줄 `brief` 계측. 갈림 셋은 `GuideTuning` 데이터(`presumedArrival`·`entersFinalApproachWithoutGeometry`·`sessionIdleStationaryAxis`)로 내려 Kit·웹 테스트가 잠근다. 설계 리뷰(codex) 9건 처리 기록 포함. spec `docs/superpowers/specs/2026-08-31-car-session-end-design.md`. 실주행 판정 B1(`docs/FIELD-TEST.md` §6-1).
+
 ## 2026-08-30
 
 - **대중교통 안내 승차 전 도보 핸드오프(A25)**: 첫 탑승 leg 앞 도보(`walkBeforeMinutes ≥ 1`, 승차 정류소 좌표 보유)가 있으면 대중교통 시작 버튼이 승차역까지의 도보 실시간 안내를 먼저 돌리고, 도착(확정·추정·"{역} 도착" 선언)하면 도보 문맥을 지운 경로로 대기 국면에 자동 연결한다. 도보 중 사용자 중지·권한 상실은 전체 종료(취소 문장), 도보 시작 실패는 종전처럼 바로 대기 국면(불가 문장). 판정 순수 함수 `transitPrewalkTarget`·`withoutPrewalk` 웹·Kit 미러(공유 fixture `prewalk` 키). iOS `BeaconModel.onSessionEnd`(stop() 정리 뒤 다음 턴 전달)·`GuideSession` 연결(컨텍스트 id·600ms), 웹 `TransitGuidePanel` prewalk 단계 + `DistanceBeacon.onSessionEnd`. 진입점 게이트 7→8. 실승차 판정 대기(`docs/FIELD-TEST.md` §5-4). spec `docs/superpowers/specs/2026-08-30-transit-prewalk-handoff-design.md`(codex 적대적 리뷰 43건 반영 기록 §9).

@@ -34,7 +34,7 @@ describe("sessionIdleStep (공유 fixture)", () => {
     expect(SESSION_PROGRESS_EPSILON_M).toBeGreaterThan(PROGRESS_EPSILON_M);
   });
 
-  it("무이동 축이 없으면(null) 무효 검사도 건너뛴다 — 두절 축만 산다", () => {
+  it("무이동 축이 없으면(null) 두절 축만 산다", () => {
     expect(sessionIdleStep({ secondsSinceUsableFix: 600, secondsSinceProgress: null })).toBe("noFix");
     expect(sessionIdleStep({ secondsSinceUsableFix: NaN, secondsSinceProgress: null })).toBeNull();
   });
