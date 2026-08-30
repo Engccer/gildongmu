@@ -314,8 +314,10 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     fireEvent.click(screen.getByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }));
     // 세션 중 접힘 클릭은 기록조차 안 된다(감사 HIGH): 기록하면 중지 순간
     // 뒤늦게 접히며 중지 통지 live region과 복귀 포커스가 동반 소멸한다.
+    // 선행 도보가 있어 승차 전 도보 단계(A25)부터 활성이다 — 그 단계에서도 접힘은 무시된다.
     fireEvent.click(discs[0]);
     expect(discs[0].getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(await screen.findByRole("button", { name: /prewalkArrivedButton/ }));
     const stopBtn = await screen.findByRole("button", { name: "stop" });
     fireEvent.click(stopBtn);
     // 중지 후에도 펼침 유지 — 트리거(시작 버튼)가 되살아나 포커스 복귀처가 있다.

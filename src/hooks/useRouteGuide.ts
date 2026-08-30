@@ -451,8 +451,17 @@ export function useRouteGuide(
    * 읽는다. ⚠ **기본값을 두지 않는다** — A4가 생략 가능한 안전 인자에서 나왔다.
    */
   accessible: boolean,
+  /**
+   * 세션 종료 1회 통지(A25 승차 전 도보 핸드오프): 확정 도착은 "arrived", 그 밖의 종료(사용자
+   * 중지·다른 세션의 claim·탭 숨김·권한 실패)는 "ended". 도착 문장을 live region에 커밋한 **뒤**
+   * 불린다. 언마운트 정리는 세션 종료가 아니라 자원 회수라 부르지 않는다.
+   */
+  options: { onSessionEnd?: (reason: "arrived" | "ended") => void } = {},
 ): RouteGuideApi {
   const locale = useLocale();
+  const onSessionEndRef = useRef(options.onSessionEnd);
+  /** 확정 도착 분기가 stop() 직전에 세운다 — stop()이 사유를 읽고 되돌린다. */
+  const arrivedRef = useRef(false);
   const t = useTranslations("guide");
   const tBeacon = useTranslations("beacon");
   // 커버리지 문구는 repo 전역 계층이 소유한다(§A2 — 강등 사유에서 새로 쓰지 않는다).
@@ -1364,8 +1373,13 @@ export function useRouteGuide(
         // ⚠ `stopRef`가 아니라 `sessionStopRef`를 쓴다. `stopRef`는 매 렌더 대입되는데,
         // 훅 인자로 캡처된 값을 나중에 수정하는 것을 React Compiler가 막는다
         // (react-hooks/immutability). `sessionStopRef`는 생성 후 읽기만 한다.
+        arrivedRef.current = true;
         sessionStopRef.current();
+        arrivedRef.current = false;
         announce(text);
+        // 종료 통지는 도착 문장 커밋 **뒤**(A25 spec §6) — 부모가 같은 턴에 다음 세션을 시작해도
+        // 도착 문장이 뒤에 오지 않는다.
+        onSessionEndRef.current?.("arrived");
         return;
       }
 
@@ -1641,6 +1655,8 @@ export function useRouteGuide(
 
   const stop = useCallback(() => {
     if (!trackingRef.current && watchIdRef.current === null) return;
+    // 도착 종료는 도착 분기가 도착 문장을 커밋한 **뒤** 직접 통지한다(stop()이 live region을 비운다).
+    if (!arrivedRef.current) onSessionEndRef.current?.("ended");
     genRef.current += 1;
     clearWatch();
     clearEtaTimer();
@@ -2002,6 +2018,7 @@ export function useRouteGuide(
   useEffect(() => {
     destRef.current = dest;
     accessibleRef.current = accessible;
+    onSessionEndRef.current = options.onSessionEnd;
     handleFixRef.current = handleFix;
     handleErrorRef.current = handleError;
     stopRef.current = stop;

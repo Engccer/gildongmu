@@ -20,6 +20,8 @@ import {
   type TransitGuideRoute,
   type TransitGuideState,
   type TransitLock,
+  transitPrewalkTarget,
+  withoutPrewalk,
 } from "@/lib/transit-guide";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
 import type { TransitRoute } from "@/lib/types";
@@ -111,6 +113,16 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 도보가 있으면 패널이 "남은 도보 안내 시작"을 노출한다. 다음 시작에서 소거.
    */
   const [doneHandoff, setDoneHandoff] = useState<{ walkMinutes: number } | null>(null);
+  /**
+   * 세션이 실제로 도는 경로(A25). 승차 전 도보를 걸어서 온 세션은 첫 leg의 도보 문맥을 지운
+   * 경로로 돌므로 props 파생 `guideRoute`와 다를 수 있다 — 상시 표시·패널 leg는 이쪽을 읽는다.
+   */
+  const [sessionRoute, setSessionRoute] = useState<TransitGuideRoute | null>(null);
+  /** 승차 전 도보 대상(A25 spec 2026-08-30 §3) — null이면 종전 시작 경로. */
+  const prewalkTarget = useMemo(
+    () => (guideRoute ? transitPrewalkTarget(guideRoute) : null),
+    [guideRoute],
+  );
   /** 역 재선택 단계 표시 여부(A16 L3, 지하철 전용). */
   const [reboardPickerActive, setReboardPickerActive] = useState(false);
   /**
@@ -689,20 +701,46 @@ export function useTransitGuide(route: TransitRoute | null) {
     if (pollTick > 0) void pollOnce();
   }, [pollTick, pollOnce]);
 
+  /** 게이트 뒤 세션 초기화 공통부(`start`·`startAfterPrewalk`). `prefix`는 시작 문장 앞 한 문장. */
+  const beginSession = useCallback(
+    (route: TransitGuideRoute, prefix: string | null) => {
+      setDoneHandoff(null);
+      claimGuideSession(stopSession);
+      routeRef.current = route;
+      setSessionRoute(route);
+      seqRef.current = 0;
+      const init = initTransitGuide(route, Date.now());
+      commit(init);
+      const first = route.legs[0];
+      const parts = [t("started", { count: route.legs.length }), waitContextText(first, true)];
+      if (!first.trackMode) parts.push(t("untrackable"));
+      if (prefix) parts.unshift(prefix);
+      announce(parts.join(" "));
+      void pollOnce();
+    },
+    [announce, commit, pollOnce, stopSession, t, waitContextText],
+  );
+
   const start = useCallback(() => {
     if (!guideRoute) return;
-    setDoneHandoff(null);
-    claimGuideSession(stopSession);
-    routeRef.current = guideRoute;
-    seqRef.current = 0;
-    const init = initTransitGuide(guideRoute, Date.now());
-    commit(init);
-    const first = guideRoute.legs[0];
-    const parts = [t("started", { count: guideRoute.legs.length }), waitContextText(first, true)];
-    if (!first.trackMode) parts.push(t("untrackable"));
-    announce(parts.join(" "));
-    void pollOnce();
-  }, [announce, commit, guideRoute, pollOnce, stopSession, t, waitContextText]);
+    beginSession(guideRoute, null);
+  }, [beginSession, guideRoute]);
+
+  /**
+   * 승차 전 도보 뒤의 시작(A25 §6). `prewalkCompleted`가 true면 첫 leg의 도보 문맥을 지운 경로로
+   * 시작하고 도착 문장을 시작 문장 앞에 붙인다(DistanceBeacon이 언마운트되며 자기 live region을
+   * 잃으므로 도착 문장은 이 채널이 낸다). ⚠ 기본값 없음(안전 인자).
+   */
+  const startAfterPrewalk = useCallback(
+    (prewalkCompleted: boolean) => {
+      if (!guideRoute || !prewalkTarget) return;
+      beginSession(
+        prewalkCompleted ? withoutPrewalk(guideRoute) : guideRoute,
+        prewalkCompleted ? t("prewalkArrived", { station: prewalkTarget.name }) : null,
+      );
+    },
+    [beginSession, guideRoute, prewalkTarget, t],
+  );
 
   const stop = useCallback(() => {
     releaseGuideSession(stopSession);
@@ -915,14 +953,17 @@ export function useTransitGuide(route: TransitRoute | null) {
   }, [announce, buildStatusText]);
 
   /** 상시 표시 문자열(§12.3) — 패널이 그대로 렌더한다(별도 조립 금지). */
+  const activeRoute = sessionRoute ?? guideRoute;
   const statusText = useMemo(() => {
-    const leg = state && guideRoute ? guideRoute.legs[state.legIndex] : null;
+    const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
     return state && leg ? buildStatusText(state, leg) : "";
-  }, [buildStatusText, guideRoute, state]);
+  }, [activeRoute, buildStatusText, state]);
 
   return {
     startable: guideRoute !== null,
-    guideRoute,
+    /** 세션 중엔 실제로 도는 경로(승차 전 도보를 지운 것일 수 있다), 아니면 props 파생. */
+    guideRoute: activeRoute,
+    prewalkTarget,
     state,
     statusText,
     liveMessage,
@@ -935,6 +976,7 @@ export function useTransitGuide(route: TransitRoute | null) {
     /** 완료 후 도보 핸드오프 제안(§14.2) — 말미 도보가 없으면 null. */
     doneHandoff,
     start,
+    startAfterPrewalk,
     stop,
     boardCandidate,
     confirmBoarded,

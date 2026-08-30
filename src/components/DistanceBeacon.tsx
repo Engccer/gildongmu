@@ -41,6 +41,7 @@ export function DistanceBeacon({
   focusTriggerOnMount = false,
   triggerLabel,
   onStart,
+  onSessionEnd,
 }: {
   dest: { lat: number; lng: number; name: string };
   /** 안내 수단(B1 §4.1 봉인 구성 키). 장소 상세는 walk 고정, 길찾기 뷰는 버튼별. */
@@ -69,6 +70,8 @@ export function DistanceBeacon({
    * 세션 문장이 점유하므로 그 문장과 경합시키지 않는다.
    */
   onStart?: () => void;
+  /** 세션 종료 1회 통지(A25 승차 전 도보 핸드오프) — `useRouteGuide` 동명 옵션 그대로. */
+  onSessionEnd?: (reason: "arrived" | "ended") => void;
 }) {
   const t = useTranslations("beacon");
   const tGuide = useTranslations("guide");
@@ -82,7 +85,7 @@ export function DistanceBeacon({
       return false;
     }
   });
-  const guide = useRouteGuide(dest, kind, accessible);
+  const guide = useRouteGuide(dest, kind, accessible, { onSessionEnd });
 
   // 재조회 버튼은 성공(offRoute 해제)·경로 자동 복귀 순간 언마운트된다. 포커스를 쥔
   // 요소가 사라지면 커서가 body로 떨어져 걷는 중 맥락을 통째로 잃으므로(헌장 §5),

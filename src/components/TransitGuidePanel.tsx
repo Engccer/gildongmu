@@ -5,6 +5,7 @@ import type { FocusEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useTransitGuide } from "@/hooks/useTransitGuide";
 import { isApproxTransitLock, viaStopCurrentIndex } from "@/lib/transit-guide";
+import type { TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
 import { quickExitText } from "@/lib/quick-exit-text";
@@ -68,6 +69,34 @@ export function TransitGuidePanel({
   // 세션이 밖에서 죽으면(단일성 강탈·완료) 자동으로 트리거로 복귀한다.
   const open = state !== null;
   const leg = state && guide.guideRoute ? guide.guideRoute.legs[state.legIndex] : null;
+  /**
+   * 승차 전 도보(A25 spec 2026-08-30 §6): 시작 버튼이 세션 대신 이 상태로 들어가 승차역까지의
+   * 도보 안내(DistanceBeacon)를 마운트한다. 진입 순간의 대상을 스냅숏으로 든다(props 변경에
+   * 흔들리지 않게). 도착·선언이면 세션을 잇고, 그 밖의 종료는 전체 종료(iOS와 같은 정책).
+   */
+  const [prewalk, setPrewalk] = useState<TransitPrewalkTarget | null>(null);
+  /** 선언 버튼이 세운다 — 세션 claim이 도보 세션을 멈추며 내는 "ended"를 취소로 읽지 않게. */
+  const declaredRef = useRef(false);
+  const active = open || prewalk !== null;
+  const beginPrewalk = (target: TransitPrewalkTarget) => {
+    declaredRef.current = false;
+    setPrewalk(target);
+    guide.setLiveMessage(t("prewalkStart", { station: target.name, minutes: target.minutes }));
+  };
+  const finishPrewalk = () => {
+    declaredRef.current = true;
+    setPrewalk(null);
+    guide.startAfterPrewalk(true);
+  };
+  const onPrewalkSessionEnd = (reason: "arrived" | "ended") => {
+    if (reason === "arrived") {
+      finishPrewalk();
+      return;
+    }
+    if (declaredRef.current) return;
+    setPrewalk(null);
+    guide.setLiveMessage(t("prewalkCancelled"));
+  };
   // 대기 국면에서만 쓰지만 훅 규칙과 무관한 순수 파생이라 여기서 만든다.
   const quickExit = quickExitText(tTransitRoute, leg?.alightName ?? "", leg?.quickExit);
 
@@ -80,8 +109,8 @@ export function TransitGuidePanel({
     onActiveChangeRef.current = onActiveChange;
   });
   useEffect(() => {
-    onActiveChangeRef.current?.(open);
-  }, [open]);
+    onActiveChangeRef.current?.(active);
+  }, [active]);
   useEffect(() => () => onActiveChangeRef.current?.(false), []);
 
   // 경유역 목록 disclosure(§14.1) — 정적 표시 1단계, leg가 바뀌면 접는다
@@ -162,11 +191,11 @@ export function TransitGuidePanel({
 
   return (
     <div className="mt-1">
-      {!open && (
+      {!active && (
         <button
           type="button"
           ref={triggerRef}
-          onClick={guide.start}
+          onClick={() => (guide.prewalkTarget ? beginPrewalk(guide.prewalkTarget) : guide.start())}
           className="min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
         >
           {triggerLabel}
@@ -179,6 +208,28 @@ export function TransitGuidePanel({
       <p aria-live="polite" role="status" className="min-h-5 text-sm">
         {guide.liveMessage}
       </p>
+
+      {/* 승차 전 도보(A25): 승차역까지의 도보 안내 + 도착 판정이 닿지 않을 때의 선언 버튼
+          (라벨에 역명 — 무엇을 선언하는지 말한다). 세션 단일성은 guide-session-store가 그대로. */}
+      {prewalk && !open && (
+        <div className="mt-1">
+          <DistanceBeacon
+            dest={{ lat: prewalk.lat, lng: prewalk.lng, name: prewalk.name }}
+            kind="walk"
+            accessible={walkAccessible}
+            startOnOpen
+            focusTriggerOnMount
+            onSessionEnd={onPrewalkSessionEnd}
+          />
+          <button
+            type="button"
+            onClick={finishPrewalk}
+            className="mt-2 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+          >
+            {t("prewalkArrivedButton", { station: prewalk.name })}
+          </button>
+        </div>
+      )}
 
       {open && state && leg && (
         <div className="rounded-md border border-gray-300 p-3">
