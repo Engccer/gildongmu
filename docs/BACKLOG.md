@@ -56,7 +56,9 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A27. 지하철 승차 중 상태줄 "충정로까지 전역 도착"이 부자연스럽다 (🆕 2026-08-31 실승차 피드백 — transit-en 세션에 배정)
+### A27. 지하철 승차 중 상태줄 "충정로까지 전역 도착"이 부자연스럽다 — ✅ 종결(2026-08-31, transit-en, CHANGELOG 같은 날)
+
+✅ **2026-08-31 종결**: 승차 국면 지하철 상태줄·통지가 `arvlCd` 기반 탑승자 시점 문장으로 바뀌었다(`subwayRidingMessage` 웹 ↔ Kit, spec `2026-08-31-transit-english-design.md` §3.9). 출처: 위원장 실승차 2026-08-29(토) 2호선 시청→충정로. ⏳ **실승차 재판정**: 탑승 직후 "다음 역 충정로." → 진입 "충정로 진입 중." → 도착 "충정로 도착." 순서와 99 구간의 잔여 수 문장만 남는지(`docs/FIELD-TEST.md` §5-4에 한 줄 추가). 아래는 접수 시점 기록이다.
 
 2026-08-29(토) 2호선 시청→충정로 실승차, 탑승 직후 상태줄: "수도권 2호선 탑승 중, 충정로에서 하차합니다. 추적 중. 남은 정거장 1개. **충정로까지 전역 도착.** 47초 전 기준." 원인: `transitGuide.messageFrame`("{stop}까지 {message}.")은 버스 완성 문장("2분 남음")을 전제한 틀인데, 지하철 `arvlMsg2`("전역 도착"·"[3]번째 전역")는 **조회역(하차역) 기준 열차 위치** 서술이라 "까지"를 앞에 붙이면 뜻이 뒤집힌다. 버스는 승차 국면 재작성(`rewriteBusArrivalMessage`)이 있는데 지하철은 없다. 수정 방향: 승차 국면 지하철은 `arvlCd`(0 진입·1 도착·2 출발·3~5 전역)로 **탑승자 시점 문장**("다음 역 충정로"·"충정로 진입 중"·"충정로 도착")을 i18n 키로 만들고 99(운행중)는 `remainingCount`가 이미 말하므로 생략, 미지 코드만 `arvlMsg2` 원문(까지 틀 없이). E27 판정 2(도착 문장 코드 기반 영어 생성)와 같은 기제라 ko·en을 한 함수로 — transit-en 소유(`transit-track.ts`·`useTransitGuide`·`TransitGuideModel`). 대기 국면·역 도착 목록은 완성 문장 정본 불변.
 
@@ -282,9 +284,16 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 **실호출로 확인한 것과 문서로만 아는 것을 섞지 않는다.** "데이터 실재" 축은 **문서가 아니라 실호출로 판정한다** — 실시간 혼잡도는 이 축의 오판으로 보류돼 있다가 실호출 한 번에 사유가 사라지고 그날 출시됐다.
 
-### E27. 대중교통 영문화 — ODsay `lang=1` + 노선명 영문 표 + 도착 문장 영어 생성 (🆕 2026-08-31, ✅ 판정 확정 — 병렬 세션 transit-en 착수)
+### E27. 대중교통 영문화 — ODsay `lang=1` + 노선명 영문 표 + 도착 문장 영어 생성 — ✅ 구현 종결(2026-08-31, transit-en, CHANGELOG 같은 날)
 
-ODsay `searchPubTransPathT`가 `lang=1`로 역명(`Gangnam`)·노선명(`Line 2`)·버스 정류소명(`Gil-dong Station Exit 1`)을 영문으로 준다(실호출 확정 2026-08-31, 한글은 `*Kor` 필드 병기). 전국 지하철 노선명은 닫힌 집합이라 정적 영문 표가 정답. 판정 확정(2026-08-31): ODsay 영문 채택(정류소명 구분자·약어만 정규화, 조인은 `*Kor`), 도착 문장은 en에서 `arvlCd` 기반 영어 단문 생성(실패는 ko 폴백). 범위 밖으로 남는 판정: 실시간 대중교통 안내 en 게이트 해제(실험판 봉인 별도), CLI/MCP `route transit` `lang`(E26 동형). 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
+✅ **2026-08-31 구현 종결**(spec `docs/superpowers/specs/2026-08-31-transit-english-design.md`, 실호출 게이트 35/35, codex 설계 리뷰 17건 §9). **남은 판정**:
+- **실시간 대중교통 안내 en 게이트 해제**(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`) + 안내 상태 머신 display DTO(`viaStops[].name`·실시간 정류소명·차량 선택 문맥까지 영문 라벨, 발화 sentinel 테스트) — 실험판 봉인(G3)과 별도 판정. spec §3.7·§6.
+- **CLI/MCP `route transit`·`station` 계열 `lang`** — E26 동형(도보 `lang`과 함께).
+- **iOS 줄 단위 언어 태깅**(한국어 폴백 줄·비-en 로케일 영어 줄) — E28 실기기 판정 항목과 같은 축(SwiftUI `accessibilitySpeechLanguage`).
+- **병기 `Gangnam (강남)`이 한 접근성 객체로 읽히는가** — 웹 `<h4>`·`<li>` 안 `aria-hidden` span(a11y-auditor 정적 판정 결과는 spec §9 아래), iOS `accessibilityLabel` — 실기기 VoiceOver 판정(E28 병기와 함께).
+- 내 주변 **버스 정류소명** 영문(ODsay 밖, E28 로마자) · 채팅 산문의 영문 노선명(채팅은 ko 산문 정본).
+
+아래는 접수 시점 기록이다. ODsay `searchPubTransPathT`가 `lang=1`로 역명(`Gangnam`)·노선명(`Line 2`)·버스 정류소명(`Gil-dong Station Exit 1`)을 영문으로 준다(실호출 확정 2026-08-31, 한글은 `*Kor` 필드 병기). 전국 지하철 노선명은 닫힌 집합이라 정적 영문 표가 정답. 판정 확정(2026-08-31): ODsay 영문 채택(정류소명 구분자·약어만 정규화, 조인은 `*Kor`), 도착 문장은 en에서 `arvlCd` 기반 영어 단문 생성(실패는 ko 폴백). 범위 밖으로 남는 판정: 실시간 대중교통 안내 en 게이트 해제(실험판 봉인 별도), CLI/MCP `route transit` `lang`(E26 동형). 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
 
 ### E28. 장소명 영문 병기 — 로마자 서버 투영 + 한 줄 괄호 (🆕 2026-08-31, ✅ 판정 확정 — 병렬 세션 place-names 착수)
 

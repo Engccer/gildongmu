@@ -100,6 +100,15 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 
 ⚠ **급행 leg의 `passStopList`는 이미 급행 정차역만 담는다**(급행 13역 vs 완행 29역, `stationID`도 완행 일련번호를 건너뛴다). 경유역 목록·조망은 그대로 쓰면 되고, 별도 급행 정차역 데이터가 필요한 것은 **계획 leg와 다른 등급을 잠갔을 때**뿐이다(`docs/BACKLOG.md` A16 L1).
 
+### 영문 응답 (`lang=en` → ODsay `lang=1`, E27 2026-08-31)
+
+`getTransitRoute({ lang: "en" })`만 URL에 `lang=1`을 붙인다(ko는 파라미터 없음 — 종전 URL·캐시 키 그대로). `lang=1` 응답은 이름 필드마다 `*Kor` 한글 병기가 붙고(실호출 636개 결측 0) 원래 필드가 영문이다.
+
+- **한글은 `*Kor`에서만 얻고 그것이 하나라도 빠지면 영문 응답을 통째로 버린다**(`assertKorComplete` → ko 재조회, `console.warn` 결측 경로). 영문이 한국어 필드(`lineName`·`fromName`·`toName`·`stops[].name`·`departName`·`arriveName`)에 들어가는 경로는 없다 — 그 필드가 운행시간·빠른하차·실시간 매핑·역명 조인의 키다. 버스 번호 `busNoKor`는 숫자만인 것이 정상이라 존재만 본다.
+- 영문은 additive `*En`: 지하철 `lineNameEn`은 **표**(`subway-line-names.ts`)가 `nameKor`로 만든다 — ODsay 영문 `name`은 쓰지 않는다(급행 표지 소실 `Line 9`, `Suin·Bundang Line` 가운뎃점, `Busan 1 Line` 비공식). 표 미스는 부재. 정류소·역명은 `normalizeTransitNameEn`(`ㆍ`·`. `→쉼표, `Stn.`→`Station`, 약어·이니셜·숫자 뒤 보존) + 한글 포함 값은 부재.
+- 도보 leg의 `toNameEn`은 뒤 탑승 `fromNameEn`에서 유도(한국어 `toName`과 같은 자리).
+- 실호출 게이트 `scripts/verify-odsay-lang.mjs`: 경로 3종(급행 필수 표본 포함) × en·ko, 한국어 필드 전수 일치(언어 무관 서명으로 짝), 정규화 잔존물 0, ko 응답 `*En` 0, 실시간 도착 영문 생성률.
+
 ### 출발 시각 미반영 보정
 ⚠ **ODsay는 출발 시각을 반영하지 않는다**(심야에 첫차 04:00 노선 추천, 실측 6개 대안 전량). `getTransitRoute`가 노선 운행시간을 조인해 leg에 `serviceStatus`(running·unknown·outside)와 첫차·막차를 싣고 **안정 정렬로 강등**한다(`prioritizeOpen` 동형, 같은 상태 안에서 ODsay 추천순 보존). **정렬 키는 `outside` 유무 하나**(A21, 2026-08-25) — `unknown`은 정렬에 참여하지 않는다. 종전 3단 서열(running·unknown·outside 순, 삭제된 SERVICE_RANK 상수)은 선정 5개 절단과 결합해 "강등 = 제외"가 됐다(TAGO 4호선 0행). 술어는 `odsay-select.ts` `isOutside`를 강등·축 제외가 공유한다.
 
@@ -123,6 +132,7 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 - ⚠ **조회 대상 역은 상태 머신이 모른다.** 머신은 폴 *결과*만 받고 어느 역을 조회할지는 소비자(`trackTargetUrl` · `fetchPoll`)가 정한다. 그래서 "무엇을 조회할까"에 속하는 기능(A16 L3 역 재선택)은 **Kit·공유 fixture를 건드리지 않고** 앱·훅 계층에서 끝난다. 반대로 판정에 속하는 것은 반드시 양쪽 미러 + fixture를 지난다.
 - ⚠ **국면이 조회 대상을 정한다**(`waiting`·`boarding` → 승차 정류소, 그 뒤 → 하차 정류소). 그래서 국면을 되돌리는 액션(`changeBoarding`)은 조회 대상도 함께 되돌린다 — 이것이 A16 L3 결함의 기제였다. 국면 전이를 추가할 때 "이 전이가 조회 대상을 어디로 옮기는가"를 함께 답할 것. **`boarding`(N3, 2026-08-22)은 차량을 고른 뒤에도 승차 정류소를 계속 조회하는 국면**이라, 소비자의 "승차 정류소 갈래" 조건은 `waiting || boarding`이어야 한다(iOS `fetchPoll`·`tagoCacheKey`·`resolveTagoIfNeeded`, 웹 `trackTargetUrl`·tago 캐시 키 — 한 곳만 `waiting`으로 남으면 boarding이 하차 정류소를 조회해 도착 관측이 영영 안 온다). riding 승격은 **도착 관측(`remainingStops 0`·지하철 arvlCd 0/1, 동결 제외) 또는 사용자 선언(`confirmBoarded`·`restoreBoarding`)** 두 길뿐 — 미등장은 `vehiclePassed`·`signalLost`까지만이고 탑승으로 추론하지 않는다(설계 리뷰 C2). "탑승 변경 취소"는 `board(previousLock)`이 아니라 `restoreBoarding`이다 — 전자는 식별자 잠금을 boarding으로 보내 이미 탄 사용자를 승차 정류소 폴링으로 되돌린다.
 - **소거는 dispatch 한 곳에서, 단 축은 상태마다 다르다.** 사용자가 고른 기준 역(`boardOverride`)처럼 수명이 짧은 값은 호출부마다 지우지 말고 디스패치에서 판정한다 — `board` 디스패치만 네 곳이라 하나만 빠져도 다음 대기 국면이 조용히 틀린 역을 조회한다. ⚠ **그런데 그 자리에 두 축이 나란히 산다**: `boardOverride`는 **riding 진입과 `advance`**로(N3 개정 — 종전 `board` 시점 소거는 boarding이 재선택 역을 조회해야 해서 옮겼다. 국면 기반이라 폴이 일으키는 승격도 잡는다), 픽커 플래그(`reboardPickerActive`)는 **국면**으로(`phase != riding` = "그 UI가 성립하지 않게 될 때") 지운다. 픽커를 입력 종류로 지우면 **폴이 일으키는 arrived 전이를 놓쳐**, 화면에서만 사라지고 플래그가 남아 다음 구간 탑승에서 되살아난다(iOS는 VO 포커스까지 강탈).
+- ⚠ **riding 상태줄의 지하철 문장은 `arrivalCode`가 고른다**(A27): 리듀서는 `lastArrivalCode`(state)와 `arrivalCode`(`trackingStarted`·`countdown`·`messageChanged`·`backOnTrack`)를 싣고, 소비자 `frameText`가 `subwayRidingMessage`로 종류를 고른다(99는 빈 문장 → 잔여 수 문장으로 폴백). 이벤트에 `message`만 싣고 코드를 빠뜨리면 상태줄이 다시 "{stop}까지 {원문}"으로 돌아간다.
 - ⚠ **국면 전용 UI를 새로 붙이면 그 플래그의 수명을 함께 정한다.** A16에서 override는 중앙화하고 주석까지 근거를 적어 놓고 **같은 수명을 갖는 짝을 그 switch에 넣지 않았다**(독립 리뷰가 잡았다). 규율을 세운 사람이 그 규율의 두 번째 대상을 못 보는 것이 이 계열의 전형이라, "이 상태는 언제 성립하지 않게 되는가"를 선언 시점에 한 줄로 적어 둔다.
 
 ---
@@ -172,6 +182,15 @@ ODsay 지하철 `lane[].name`은 **급행 운행 구간에서 별도 표기**를
 - 판정은 `judgeStationService`(순수)가 `fetchStationTimetable`+`judgeServiceStatus`로 하고 **실시간이 빈 역에만** 조인한다(평시 0콜, 시간표는 revalidate 86400).
 - **`closed` 단정은 시간표 `lines[].coverage`가 `ok`·`noTrains`인 노선만 참여하는 allowlist다**(A19, 2026-08-23): `unknown`(업스트림 0행)·`unavailable`·미지 값이 하나라도 섞이면 판정 불가(`closed:false`). 대가 — 0행 노선이 있는 역(홍대입구·강남·서울역)은 심야 "운행 종료, 첫차 X"가 나가지 않는다. 거짓 확정보다 침묵이 덜 해로워 택한 교환이지 회귀가 아니다.
 - ⚠ **시각 근사(01~05시)로 가르지 말 것** — 같은 04:47에 천호 `closed`·강동 `ok`(첫차 대기 열차)가 공존한 실측이 있다.
+
+### 영문 투영 (`lang=en`, `withArrivalsEn` → `subway-arrival-en.ts`, E27)
+
+라우트가 `lang=en`일 때만 각 도착에 `lineEn`·`directionEn`·`trainLineNmEn`·`messageEn`·`currentLocationEn`을 additive로 더한다(한국어 필드 불변). **거짓 문장보다 부재**가 원칙이다:
+
+- `messageEn`은 `arvlCd`×`arvlMsg2` **정확 행렬**(0↔`{S} 진입`, 1↔`{S} 도착`, 2↔`{S} 출발`, 3·4·5↔`전역 출발/진입/도착`, 99↔`N분( M초) 후`·`[K]번째 전역`)에서만 나온다. 코드와 문장 모양이 어긋나면 부재 + 모양만 계측(`console.warn`, 역명 제외). 분 ≥ 1·초 0~59·잔여역 ≥ 1 밖도 부재. `barvlDt`는 쓰지 않는다.
+- 괄호 현재역(`5분 후 (종각)`)은 문장에 넣지 않고 `currentLocationEn`의 원천이다(arvlMsg3 우선, 둘이 다르면 부재).
+- 역명 → seed 영문: 도착 노선과 **같은 노선 후보 우선**(영문 표 동치 → 코어 접두), 남은 후보의 영문이 대소문자 무시로 둘 이상이면 부재. ⚠ 서울역은 seed에 `Seoul Station`(1·4호선)·`Seoul`(인천국제공항선)·`Seoul station`(경의중앙선) 3표기라 노선 문맥 없이는 부재다 — 공항철도 열차의 `서울 출발`이 이 함정에서 검출됐다(게이트 1차 33/35).
+- `trainLineNm` `{종착}행 - {방면}방면( (급행))` → `To {Dest} via {Via}`(급행 꼬리는 `express` 필드가 따로). 방면의 괄호 노선 힌트(`신촌(경의중앙선)`)는 seed 매칭 힌트로 쓴다.
 
 ### 순환선(2호선)은 방향·종착 두 필드가 모두 다르게 동작한다
 
