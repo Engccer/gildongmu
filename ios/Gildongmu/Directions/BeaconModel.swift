@@ -411,6 +411,24 @@ final class BeaconModel {
     /// 화면을 걸음·칼로리 요약을 위해 남긴다(2026-08-19, `stopLeavingSummary`).
     private(set) var arrivalDest: BeaconDest?
 
+    // MARK: - 승차 전 도보(prewalk, A25 spec 2026-08-30 §4.2)
+
+    /// 도보 세션이 끝난 사유 — `onSessionEnd`로 `GuideSession`에 전달된다.
+    enum EndReason { case arrived, userStopped, startFailed, ended }
+
+    /// 승차역 라벨. nil이 아니면 이 도보 세션은 대중교통 안내의 승차 전 구간이다: 종료 화면을
+    /// 남기지 않고(승차역은 여정의 끝이 아니다), 시트가 "승차역 도착" 선언 버튼을 보이며, 잊힌
+    /// 세션 안전망이 돌지 않는다(지하 진입 = fix 두절이 곧 그 버튼이 필요한 순간). `stop()`이 비운다.
+    /// ⚠ 종료 화면 분기는 `stop()` **뒤**에 도는데 `stop()`이 이 값을 지우므로, 확정·추정·
+    ///   `stopLeavingSummary` 세 경로는 `stop()` 앞에서 지역 변수로 캡처한다.
+    private(set) var prewalkTarget: String?
+    /// 세션 종료 1회 콜백. 발화점은 둘뿐 — `stop()` 정리 완료 뒤 다음 MainActor 턴, 그리고
+    /// `begin()`의 시작 Task 말미(시작되지 않아 `stop()`이 돌지 않는 경로: `.startFailed`).
+    /// 경로마다 부르지 않는다 — 종료 경로가 7곳이라 하나를 빠뜨리면 연결이 조용히 끊긴다.
+    var onSessionEnd: ((EndReason) -> Void)?
+    /// `stop()`이 소비할 사유. `stop()` 직전에 대입하고 `stop()`·`begin()`이 `.ended`로 되돌린다.
+    private var pendingEndReason: EndReason = .ended
+
     // MARK: - 도착 건강 요약(spec 2026-08-17)
 
     private let pedometer: PedometerQuerying
@@ -467,6 +485,32 @@ final class BeaconModel {
         endKind = .arrived
         endText = ""
         resetArrivalHealth()
+    }
+
+    /// 승차 전 도보 세션으로 표식(A25). `requestStart` **앞**에 건다 — 시작 Task의 실패 판정이
+    /// 이 값을 함께 지운다.
+    func markPrewalk(target: String) {
+        prewalkTarget = target
+    }
+
+    /// 승차 전 도보 해제(연결 취소·다른 세션 시작). 추적 중이면 세션은 그대로 두고 표식만 뗀다.
+    func clearPrewalk() {
+        prewalkTarget = nil
+        onSessionEnd = nil
+    }
+
+    /// "승차역 도착" 선언(A25 §4.3) — 도착 판정이 닿지 않는 경우(입구가 멀어 지하로 먼저 진입)의
+    /// 사용자 행위. 확정 도착과 같은 모양: 종·`.arrived` 사유·stop()·도착 문장(.high, 직접 응답).
+    func declarePrewalkArrival() {
+        guard isTracking, let station = prewalkTarget else { return }
+        let text = appLocalized("transitGuide.prewalkArrived", station)
+        playTone(.nearby)
+        pendingEndReason = .arrived
+        stop()
+        statusText = text
+        lastGuidance = text
+        liveTopText = text
+        announce(text, highPriority: true)
     }
 
     private func resetArrivalHealth() {
@@ -558,9 +602,18 @@ final class BeaconModel {
         routeWaypointLabel = nil
         lastStepFree = nil
         pendingStepFreeNotice = nil
+        pendingEndReason = .ended
         startTask = Task { [weak self] in
             await self?.start(dest: request.dest, label: request.label, kind: request.kind)
-            self?.starting = false
+            guard let self else { return }
+            self.starting = false
+            // 시작 실패 한 판정(권한 거부·정밀 위치·서비스 꺼짐·claim 거부·취소 전부): 세션이
+            // 시작되지 않았으면 `stop()`이 돌지 않으므로 여기서 콜백을 소비한다.
+            if !self.isTracking, let cb = self.onSessionEnd {
+                self.onSessionEnd = nil
+                self.prewalkTarget = nil
+                cb(.startFailed)
+            }
         }
     }
 
@@ -1176,6 +1229,16 @@ final class BeaconModel {
         clearProposal()
         proposalFetchCount = 0
         resetAlternativePreview()
+        prewalkTarget = nil
+        // 종료 콜백은 정리가 **끝난 뒤** 다음 턴에 — 이 stop()을 부른 자리가 뒤에 내는 종료
+        // 문장(도착·유휴·권한)이 연결 문장보다 먼저 나가고, 정리 도중 다른 모델 시작이
+        // 재진입하지 않는다(spec 2026-08-30 §4.2).
+        let reason = pendingEndReason
+        pendingEndReason = .ended
+        if let cb = onSessionEnd {
+            onSessionEnd = nil
+            Task { @MainActor in cb(reason) }
+        }
     }
 
     /// 화면 이탈 정리. 중지에 더해 오디오 자원까지 반납한다.
@@ -1204,6 +1267,7 @@ final class BeaconModel {
     /// 화면의 존재를 알 수 있다). 요약이 없어 그냥 닫히는 경로는 정지 톤이 신호다.
     func stopByUser() {
         let text = appLocalized("ios.beacon.stopped")
+        pendingEndReason = .userStopped
         if stopLeavingSummary(playStopTone: true, text: text) {
             announce(text, highPriority: true)
         }
@@ -1230,8 +1294,9 @@ final class BeaconModel {
         //   지는 요약은 임계값 미만이거나 만보계가 실제로 죽어 있는 세션이다. 여기서 사후
         //   질의를 태우면 판정이 비동기가 되어 이 함수가 없앤 깜빡임이 되돌아온다.
         let sample = liveHealthSample
+        let prewalk = prewalkTarget != nil  // stop() 앞 캡처(A25 §4.2) — 승차 전 도보는 종료 화면 없음
         stop(playStopTone: playStopTone)
-        guard wasWalkSession, let dest, let sample,
+        guard !prewalk, wasWalkSession, let dest, let sample,
               WalkHealth.isMeaningfulWalk(steps: sample.steps, distanceMeters: sample.distance)
         else { return false }
         presentEndScreen(dest: dest, text: text, sample: sample)
@@ -1920,17 +1985,27 @@ final class BeaconModel {
         }
 
         if arrived {
-            let text = appLocalized("guide.arrived")
+            // prewalk(승차 전 도보)는 stop() 앞에서 캡처 — stop()이 지운다(A25 §4.2).
+            let prewalk = prewalkTarget
+            let text = prewalk.map { appLocalized("transitGuide.prewalkArrived", $0) }
+                ?? appLocalized("guide.arrived")
             // 수단은 stop() **앞**에서 기록한다 — stop()이 sessionKind를 walk로 되돌린다(설계 리뷰 B10).
             arrivalSessionKind = sessionKind
             playTone(.nearby)
+            pendingEndReason = .arrived
             stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다
-            // stop() **뒤에** 대입 — 이 값이 시트를 도착 종료 화면으로 유지한다
-            // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
-            // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
-            arrivalDest = dest
-            endKind = .arrived
-            loadArrivalHealth()
+            if prewalk == nil {
+                // stop() **뒤에** 대입 — 이 값이 시트를 도착 종료 화면으로 유지한다
+                // (presentation 바인딩이 `isTracking || arrivalDest != nil`을 본다).
+                // `dest`는 함수 머리의 guard let 지역 사본이라 stop()의 소거와 무관하다.
+                // prewalk는 종료 화면을 남기지 않는다 — 승차역은 여정의 끝이 아니고, 남기면
+                // `screen`의 비콘 우선순위가 대중교통 시트를 영구 은폐한다.
+                arrivalDest = dest
+                endKind = .arrived
+                loadArrivalHealth()
+            } else {
+                arrivalSessionKind = nil
+            }
             statusText = text
             lastGuidance = text
             liveTopText = text  // 시트 dismiss 동안의 가시 상태(statusText 동형)
@@ -1978,7 +2053,9 @@ final class BeaconModel {
     /// 워치독이 유일한 도달 경로다(noFix는 fix가 안 와서 fix 경로에 걸 수 없다). true = 끝냈다.
     @discardableResult
     private func maybeEndIdleSession(now: Double) -> Bool {
-        guard isTracking, sessionKind == .walk, let startedAt else { return false }
+        // 승차 전 도보(prewalk)는 제외 — fix 두절 10분은 대개 지하 역사 진입이고, 그때 끝내면 바로
+        // 그 경우를 위한 "승차역 도착" 선언 버튼까지 사라진다(A25 spec §2).
+        guard isTracking, sessionKind == .walk, prewalkTarget == nil, let startedAt else { return false }
         let fixRef = max(startedAt, lastFixAt ?? startedAt)
         let progressRef = max(startedAt, sessionLastProgressAt ?? startedAt)
         guard let reason = sessionIdleStep(
@@ -2019,16 +2096,21 @@ final class BeaconModel {
             "presumedArrival reason=\(reason.rawValue) "
                 + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-")"
         )
-        let text = appLocalized("guide.arrivedPresumed")
+        let prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
+        let text = prewalk.map { appLocalized("transitGuide.prewalkArrived", $0) }
+            ?? appLocalized("guide.arrivedPresumed")
         // 도착 종은 **전경에서만**(위원장 판정 2026-08-19). 이 종료는 도착 3~5분 뒤에 오는
         // 사후 정리라, 잠근 채 두고 잊은 휴대전화가 한참 뒤 갑자기 울리면 당황스럽다 —
         // 확정 도착의 종(지금 도착 중이라는 실시간 신호)과 뜻이 다르다. 백그라운드 종료는
         // 무음이고, 복귀 시 도착 화면과 상환 낭독이 종료 사실을 알린다.
         if isForeground { playTone(.nearby) }
+        pendingEndReason = .arrived
         stop()  // ⚠ dest·statusText를 지우므로 문장은 위에서 미리 만든다(확정 도착 동형)
-        arrivalDest = dest
-        endKind = .presumed
-        loadArrivalHealth()
+        if prewalk == nil {
+            arrivalDest = dest
+            endKind = .presumed
+            loadArrivalHealth()
+        }
         statusText = text
         lastGuidance = text
         liveTopText = text

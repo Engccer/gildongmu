@@ -225,7 +225,24 @@ struct BeaconTrackingSheet: View {
         // 안내 종료는 목록 밖 최하단 고정(GuideStopButton 주석). 도착 화면엔 없다(닫기가 그 자리).
         .safeAreaInset(edge: .bottom) {
             if model.arrivalDest == nil {
-                GuideStopButton(action: onStop)
+                VStack(spacing: 0) {
+                    // 승차 전 도보(A25 §4.3): 도착 판정이 닿지 않을 때의 사용자 선언. 라벨에 역명을
+                    // 넣어 무엇을 선언하는지 말한다(오조작 방지의 1선).
+                    if let station = model.prewalkTarget {
+                        Button {
+                            model.declarePrewalkArrival()
+                        } label: {
+                            Text(appLocalized("transitGuide.prewalkArrivedButton", station))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .background(.bar, ignoresSafeAreaEdges: [])
+                    }
+                    GuideStopButton(action: onStop)
+                }
             }
         }
         // 띠바에서 돌아온 경우 첫 착지는 최소화 버튼(떠난 자리). 플래그는 같은 종류

@@ -138,6 +138,38 @@ final class TransitGuideModel {
             GuideSession.shared.coordinator.release(token)
             return
         }
+        beginSession(guideRoute: guideRoute, token: token, destinationLabel: destinationLabel,
+                     dest: dest, accessible: accessible)
+    }
+
+    /// 승차 전 도보 뒤의 시작(A25 spec 2026-08-30 §4.1) — `start`와 같은 게이트, 같은 세션 초기화.
+    /// `prewalkCompleted`가 true면 첫 leg의 도보 문맥을 지운 경로로 시작한다(걸어서 도착한 뒤
+    /// "도보 5분 이동 후"를 다시 말하면 지난 일을 미래형으로 말하는 거짓). 시작 실패로 넘어온
+    /// 경우는 false — 사용자는 아직 걷지 않았다. ⚠ 기본값 없음(안전 인자).
+    func startAfterPrewalk(
+        transitRoute: TransitRoute, destinationLabel: String, dest: BeaconDest,
+        accessible: Bool, prewalkCompleted: Bool
+    ) {
+        guard !GuideSession.shared.isActive,
+              let token = GuideSession.shared.coordinator.claim(stop: { [weak self] in self?.stop() })
+        else {
+            GuideSession.shared.beacon.announceNow(
+                appLocalized("guide.alreadyActive"), highPriority: true, bypassSuppression: true)
+            return
+        }
+        guard let built = buildTransitGuideRoute(transitRoute) else {
+            GuideSession.shared.coordinator.release(token)
+            return
+        }
+        beginSession(guideRoute: prewalkCompleted ? withoutPrewalk(built) : built, token: token,
+                     destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+    }
+
+    /// 게이트를 지난 뒤의 세션 초기화 공통부(`start`·`startAfterPrewalk`).
+    private func beginSession(
+        guideRoute: TransitGuideRoute, token: Int, destinationLabel: String,
+        dest: BeaconDest, accessible: Bool
+    ) {
         pendingWalkHandoff = nil
         sessionToken = token
         self.route = guideRoute
@@ -1048,6 +1080,12 @@ final class TransitGuideModel {
 
     private func nowMs() -> Double {
         Date().timeIntervalSince1970 * 1000
+    }
+
+    /// 세션 밖 오케스트레이터(`GuideSession`)의 통지 창구 — 승차 전 도보 시작·취소·불가 문장(A25).
+    /// 같은 억제 규칙을 지난다.
+    func announceExternal(_ message: String) {
+        announce(message)
     }
 
     /// 통지 단일 경로. 하차 임박·도착·직접 응답만 .high(§6.1 — 헌장 §5 계열).

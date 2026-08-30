@@ -38,6 +38,21 @@ final class GuideSession {
 
     private var walkHandoffTask: Task<Void, Never>?
 
+    /// 승차 전 도보 연결 컨텍스트(A25 spec 2026-08-30 §4.4). 도보 세션이 끝나면 같은 시작 요청으로
+    /// 대중교통 세션을 잇는다. `id`가 이전 세션의 늦은 콜백을 걸러 낸다.
+    private struct PrewalkContext {
+        let id: UUID
+        let route: TransitRoute
+        let destinationLabel: String
+        let dest: BeaconDest
+        let accessible: Bool
+    }
+    private var prewalk: PrewalkContext?
+    private var prewalkTask: Task<Void, Never>?
+    /// `startTransit`의 prewalk 경로가 `startBeacon`을 부르는 동안 true — 그 호출의 취소 게이트가
+    /// 자기 컨텍스트를 지우지 않게.
+    private var launchingPrewalk = false
+
     private init() {}
 
     /// 세션 활성 = 코디네이터 점유 ∨ 비콘 시작 대기(권한 팝업 등, 설계 리뷰 M5).
@@ -59,14 +74,76 @@ final class GuideSession {
 
     func startBeacon(_ request: BeaconModel.StartRequest) {
         guard !refuseIfActive() else { return }
+        if !launchingPrewalk { cancelPrewalk() }
         transit.clearWalkHandoff()
         beacon.requestStart(request)
     }
 
     func startTransit(route: TransitRoute, destinationLabel: String, dest: BeaconDest, accessible: Bool) {
         guard !refuseIfActive() else { return }
+        cancelPrewalk()
         beacon.clearArrival()
-        transit.start(transitRoute: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+        // 승차 전 도보(A25): 첫 탑승 leg 앞 도보가 있으면 도보 실시간 안내를 먼저 돌리고, 도착하면
+        // 같은 요청으로 대중교통 세션을 잇는다. 판정은 순수 함수(웹 미러) — nil이면 종전 경로.
+        guard let target = buildTransitGuideRoute(route).flatMap(transitPrewalkTarget) else {
+            transit.start(transitRoute: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+            return
+        }
+        let context = PrewalkContext(
+            id: UUID(), route: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
+        prewalk = context
+        beacon.markPrewalk(target: target.name)
+        beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
+        transit.announceExternal(
+            appLocalized("transitGuide.prewalkStart", target.name, String(target.minutes)))
+        launchingPrewalk = true
+        self.startBeacon(BeaconModel.StartRequest(
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.name, kind: .walk,
+            accessible: accessible, variant: nil, shortestAvailable: false,
+            waypoint: nil))  // 승차역까지의 도보에 경유지는 없다
+        launchingPrewalk = false
+        // 동기 거부(requestStart 게이트)면 시작 Task가 없어 실패 콜백도 없다 — 여기서 잇는다.
+        if !beacon.starting, !beacon.isTracking { endPrewalk(context.id, reason: .startFailed) }
+    }
+
+    /// 승차 전 도보 세션의 종료 → 대중교통 연결(spec §4.4). 다른 도보 세션·낡은 콜백은 id로 무시.
+    private func endPrewalk(_ id: UUID, reason: BeaconModel.EndReason) {
+        guard let context = prewalk, context.id == id else { return }
+        prewalk = nil
+        beacon.onSessionEnd = nil
+        switch reason {
+        case .arrived:
+            // 600ms: §14.2 하차 후 핸드오프와 같은 값·같은 근거(같은 계층 두 시트의 단일 presentation).
+            prewalkTask?.cancel()
+            prewalkTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled, let self else { return }
+                self.transit.startAfterPrewalk(
+                    transitRoute: context.route, destinationLabel: context.destinationLabel,
+                    dest: context.dest, accessible: context.accessible, prewalkCompleted: true)
+            }
+        case .startFailed:
+            // 도보 안내가 불가해도 대중교통 안내는 가능하다 — 도보 문맥은 유지(아직 걷지 않았다).
+            transit.announceExternal(appLocalized("transitGuide.prewalkUnavailable"))
+            transit.startAfterPrewalk(
+                transitRoute: context.route, destinationLabel: context.destinationLabel,
+                dest: context.dest, accessible: context.accessible, prewalkCompleted: false)
+        case .userStopped:
+            // 요약 화면이 없어 stopByUser의 통지가 안 나간다 — 정지 문장과 함께 한 문장으로.
+            transit.announceExternal(joinText(
+                appLocalized("ios.beacon.stopped"), appLocalized("transitGuide.prewalkCancelled")))
+        case .ended:
+            // 종료 사유 문장(유휴·권한)은 도보 모델이 이미 냈다(콜백이 다음 턴이라 순서가 구조적).
+            transit.announceExternal(appLocalized("transitGuide.prewalkCancelled"))
+        }
+    }
+
+    /// 낡은 연결 폐기 — 모든 시작 진입·teardown에서. 추적 중인 도보 세션은 건드리지 않는다.
+    private func cancelPrewalk() {
+        prewalk = nil
+        prewalkTask?.cancel()
+        prewalkTask = nil
+        beacon.clearPrewalk()
     }
 
     /// 거부 통지는 모델의 창구를 쓴다(지연 슬롯·억제 규칙을 지나야 한다).

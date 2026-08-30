@@ -273,10 +273,12 @@ describe("2. 도보 경로는 플래그를 졸업했다", () => {
     // 핸드오프 진입점은 GuideSession 안에 둘이다 — 대중교통→도보(`acceptWalkHandoff`)와
     // 자동차 도착→도보(`acceptCarWalkHandoff`, 2026-08-23 K2. 자동차 세션이 봉인 안이라 도달
     // 불가이지만 도보 세션 자체는 졸업한 기능이라 별도 게이트가 없다 — spec K2 §6.4).
+    // 승차 전 도보(A25, 2026-08-30 — `startTransit` 안. 대중교통 시작 버튼이 봉인 안이라 도달 불가)까지 셋.
     const session = readFileSync(GUIDE_SESSION, "utf8");
-    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(2);
+    expect(session.match(/self\.startBeacon\(/g)).toHaveLength(3);
     expect(declarationBody(session, "acceptWalkHandoff")).toContain("self.startBeacon(");
     expect(declarationBody(session, "acceptCarWalkHandoff")).toContain("self.startBeacon(");
+    expect(declarationBody(session, "startTransit")).toContain("self.startBeacon(");
   });
 
   it("구 플래그 realtimeGuidanceEnabled가 남아 있지 않다", () => {
@@ -292,7 +294,8 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    * 안내 세션을 시작시키는 자리의 **전수**. spec §3.2가 6곳을 판정해 두었고(도보
    * 추천·도보 최단·정밀 위치 허용 후 재시작은 정식판 도달, 간략 단독·자동차·대중교통
    * 인계는 차단), 2026-08-23 K2가 7번째(자동차 도착→도보 인계 `acceptCarWalkHandoff`,
-   * 자동차 종료 화면 안이라 봉인 뒤)를 더했다.
+   * 자동차 종료 화면 안이라 봉인 뒤)를 더했고, 2026-08-30 A25가 8번째(대중교통 시작 →
+   * 승차 전 도보 `GuideSession.startTransit`, 대중교통 시작 버튼이 봉인 안이라 도달 불가)를 더했다.
    *
    * ⚠ 판정 축은 "`toggle`을 부르는가"가 아니라 **세션을 시작시키는가**다. A13이
    * 정밀 위치 복구 경로를 `beacon.restart()`로 바꿨을 때 `toggle`만 세는 검사는
@@ -310,12 +313,12 @@ describe("3. 안내 세션 진입점이 늘지 않았다", () => {
    */
   const ENTRY_CALL = /(?:beacon\.(?:toggle|restart)|(?:session|self)\.startBeacon)\(/g;
 
-  it("안내 세션 진입점 호출이 정확히 7곳이다", () => {
+  it("안내 세션 진입점 호출이 정확히 8곳이다", () => {
     const sites = swiftFiles(IOS_DIR).flatMap((file) => {
       const hits = readFileSync(file, "utf8").match(ENTRY_CALL) ?? [];
       return hits.map(() => file);
     });
-    expect(sites).toHaveLength(7);
+    expect(sites).toHaveLength(8);
   });
 
   it("재시작 진입점은 인자를 다시 조립하지 않는다(A13)", () => {
