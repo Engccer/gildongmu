@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
-import { joinText } from "@/lib/format";
+import { hasHangul, joinText } from "@/lib/format";
 import { metroFacilityGroups } from "@/lib/place-lines/station-metro";
 import { useAxisSource } from "@/hooks/useAxisBridge";
 import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
@@ -152,8 +152,13 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
               <div key={status.facilities.groups[gi].kind}>
                 <h4 className="text-sm font-semibold">{g.name}</h4>
                 <ul className="mt-1 space-y-1 text-sm leading-relaxed">
+                  {/* 시설 줄은 서버 한국어 원문이 대부분이지만 `parts`로 조립한 줄(엘리베이터 위치 등)은
+                      비-ko 로케일에서 온전히 번역문일 수 있다 — 한글이 있을 때만 ko(a11y 감사 2026-08-31). */}
                   {g.lines.map((line, i) => (
-                    <li key={`${status.facilities.groups[gi].kind}-${i}`} lang="ko">
+                    <li
+                      key={`${status.facilities.groups[gi].kind}-${i}`}
+                      lang={hasHangul(line) ? "ko" : undefined}
+                    >
                       {line}
                     </li>
                   ))}
