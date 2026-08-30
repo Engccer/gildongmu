@@ -1,5 +1,5 @@
 {
- "comment": "대중교통 안내 상태 머신 공유 fixture (B2 스펙 §8.1) — 웹 transit-guide.test.ts ↔ Kit TransitGuideTests가 같은 파일을 실행한다. 시각은 ms epoch 오프셋, expect.event는 kind + 명시 필드만 부분 대조(null = 이벤트 없음).",
+ "comment": "대중교통 안내 상태 머신 공유 fixture (B2 스펙 §8.1) — 웹 transit-guide.test.ts ↔ Kit TransitGuideTests가 같은 파일을 실행한다. 시각은 ms epoch 오프셋, expect.event는 kind + 명시 필드만 부분 대조(null = 이벤트 없음). `prewalk`는 A25 승차 전 도보 판정(transitPrewalkTarget) 기대값 — routes 이름 → {name,lat,lng,minutes} | null.",
  "routes": {
   "subwaySingle": {
    "legs": [
@@ -165,6 +165,23 @@
     }
    ],
    "walkAfterMinutes": null
+  }
+ },
+ "prewalk": {
+  "subwaySingle": {
+   "name": "천호",
+   "lat": 37.538566,
+   "lng": 127.123539,
+   "minutes": 3
+  },
+  "seoulBusSingle": null,
+  "tagoBusSingle": null,
+  "untrackableSubway": null,
+  "twoLegs": {
+   "name": "천호역.풍납시장",
+   "lat": 37.537186,
+   "lng": 127.122667,
+   "minutes": 2
   }
  },
  "locks": {

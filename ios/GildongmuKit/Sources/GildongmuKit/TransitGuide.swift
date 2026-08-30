@@ -377,6 +377,49 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
     return TransitGuideRoute(legs: legs, walkAfterMinutes: pendingWalk)
 }
 
+// === 승차 전 도보 핸드오프 판정 (A25, spec 2026-08-30 §3) — 순수, 웹 미러 ===
+
+/// 첫 탑승 leg 앞 도보를 도보 실시간 안내로 돌릴 대상. nil = 종전 경로(도보 없음·정보 결손).
+public struct TransitPrewalkTarget: Codable, Sendable, Equatable {
+    public let name: String
+    public let lat: Double
+    public let lng: Double
+    public let minutes: Int
+
+    public init(name: String, lat: Double, lng: Double, minutes: Int) {
+        self.name = name
+        self.lat = lat
+        self.lng = lng
+        self.minutes = minutes
+    }
+}
+
+/// 하한은 `walkBeforeMinutes ≥ 1`(0분은 역 안 이동), 좌표는 유한·(0,0) 아님. 거리 축을
+/// 따로 두지 않는다(같은 정보의 두 임계는 drift). 두 번째 leg 이후의 도보는 대상이 아니다.
+public func transitPrewalkTarget(_ route: TransitGuideRoute) -> TransitPrewalkTarget? {
+    guard let leg = route.legs.first,
+          let minutes = leg.walkBeforeMinutes, minutes >= 1,
+          let stop = leg.boardStop,
+          stop.lat.isFinite, stop.lng.isFinite,
+          !(stop.lat == 0 && stop.lng == 0)
+    else { return nil }
+    return TransitPrewalkTarget(name: leg.boardName, lat: stop.lat, lng: stop.lng, minutes: minutes)
+}
+
+/// 도보를 안내로 소비한 뒤의 경로 — legs[0].walkBeforeMinutes만 nil. 값 타입 재구성(원본 불변).
+/// 대기 문맥·조망·legAdvanced가 같은 필드를 읽으므로 한 곳에서 지운다(문장마다 분기 금지).
+public func withoutPrewalk(_ route: TransitGuideRoute) -> TransitGuideRoute {
+    guard let first = route.legs.first else { return route }
+    let stripped = TransitGuideLeg(
+        mode: first.mode, lineName: first.lineName, trackMode: first.trackMode,
+        boardName: first.boardName, alightName: first.alightName,
+        boardStop: first.boardStop, alightStop: first.alightStop,
+        viaStops: first.viaStops, stationCount: first.stationCount,
+        routeId: first.routeId, wayCode: first.wayCode, walkBeforeMinutes: nil,
+        quickExit: first.quickExit)
+    return TransitGuideRoute(legs: [stripped] + route.legs.dropFirst(), walkAfterMinutes: route.walkAfterMinutes)
+}
+
 // === 열차 선택 목록 필터 (§5.1) — 순수 판정, 시트가 소비 ===
 
 public struct TransitBoardingCandidate: Sendable {

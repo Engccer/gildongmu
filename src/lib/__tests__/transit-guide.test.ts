@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import scenariosFixture from "./fixtures/transit-guide-scenarios.json";
+import { transitPrewalkTarget, withoutPrewalk } from "../transit-guide";
 import {
   buildTransitGuideRoute,
   classifyBoardingCandidates,
@@ -456,5 +457,58 @@ describe("classifyBoardingCandidates·terminatesBeforeAlight(§5.1)", () => {
     expect(viaStopCurrentIndex(leg, null)).toBeNull();
     expect(viaStopCurrentIndex(leg, "")).toBeNull();
     expect(viaStopCurrentIndex({ ...leg, viaStops: [] }, "강동")).toBeNull();
+  });
+});
+
+describe("승차 전 도보 판정 transitPrewalkTarget (A25)", () => {
+  const routes = fixture.routes as unknown as Record<string, TransitGuideRoute>;
+  const expected = (scenariosFixture as unknown as { prewalk: Record<string, unknown> }).prewalk;
+
+  it("공유 fixture prewalk 기대값과 일치한다(전 route)", () => {
+    expect(Object.keys(expected).sort()).toEqual(Object.keys(routes).sort());
+    for (const [name, route] of Object.entries(routes)) {
+      expect(transitPrewalkTarget(route), name).toEqual(expected[name]);
+    }
+  });
+
+  const base = routes.subwaySingle;
+  const withFirst = (patch: Partial<TransitGuideLeg>): TransitGuideRoute => ({
+    ...base,
+    legs: [{ ...base.legs[0], ...patch }, ...base.legs.slice(1)],
+  });
+
+  it("0분·null·boardStop 없음·(0,0)·NaN은 null", () => {
+    expect(transitPrewalkTarget(withFirst({ walkBeforeMinutes: 0 }))).toBeNull();
+    expect(transitPrewalkTarget(withFirst({ walkBeforeMinutes: null }))).toBeNull();
+    expect(transitPrewalkTarget(withFirst({ boardStop: null }))).toBeNull();
+    expect(
+      transitPrewalkTarget(withFirst({ boardStop: { name: "x", lat: 0, lng: 0 } })),
+    ).toBeNull();
+    expect(
+      transitPrewalkTarget(withFirst({ boardStop: { name: "x", lat: Number.NaN, lng: 127 } })),
+    ).toBeNull();
+    expect(transitPrewalkTarget({ legs: [], walkAfterMinutes: null })).toBeNull();
+  });
+
+  it("두 번째 leg의 도보는 대상이 아니다", () => {
+    const route: TransitGuideRoute = {
+      ...base,
+      legs: [{ ...base.legs[0], walkBeforeMinutes: null }, { ...base.legs[0], walkBeforeMinutes: 4 }],
+    };
+    expect(transitPrewalkTarget(route)).toBeNull();
+  });
+
+  it("withoutPrewalk는 legs[0].walkBeforeMinutes만 지우고 원본은 불변", () => {
+    const route: TransitGuideRoute = {
+      ...base,
+      legs: [{ ...base.legs[0] }, { ...base.legs[0], walkBeforeMinutes: 4 }],
+    };
+    const snapshot = JSON.parse(JSON.stringify(route));
+    const out = withoutPrewalk(route);
+    expect(out.legs[0].walkBeforeMinutes).toBeNull();
+    expect(out.legs[1].walkBeforeMinutes).toBe(4);
+    expect(out.walkAfterMinutes).toBe(route.walkAfterMinutes);
+    expect(route).toEqual(snapshot);
+    expect(withoutPrewalk({ legs: [], walkAfterMinutes: 2 })).toEqual({ legs: [], walkAfterMinutes: 2 });
   });
 });
