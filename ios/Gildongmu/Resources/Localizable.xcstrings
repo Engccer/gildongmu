@@ -41801,6 +41801,206 @@
         }
       }
     },
+    "transitGuide.prewalkArrived": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승차역 %1$@에 도착했습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrived at boarding stop %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ha llegado a la parada de embarque %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous êtes arrivé à l'arrêt d'embarquement %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sei arrivato alla fermata di salita %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗車駅 %1$@ に到着しました。"
+          }
+        }
+      }
+    },
+    "transitGuide.prewalkArrivedButton": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 도착"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrived at %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Llegada a %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivé à %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivato a %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 到着"
+          }
+        }
+      }
+    },
+    "transitGuide.prewalkCancelled": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "대중교통 안내는 시작하지 않았습니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transit guidance was not started."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guía de transporte público no se inició."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage des transports n'a pas été lancé."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La guida dei trasporti non è stata avviata."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公共交通案内は開始していません。"
+          }
+        }
+      }
+    },
+    "transitGuide.prewalkStart": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "승차역 %1$@까지 도보 %2$@분. 도보 안내를 먼저 시작합니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ min walk to boarding stop %1$@. Walking guidance starts first."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ min a pie hasta la parada de embarque %1$@. Primero comienza la guía a pie."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ min à pied jusqu'à l'arrêt d'embarquement %1$@. Le guidage à pied commence d'abord."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ min a piedi fino alla fermata di salita %1$@. La guida a piedi inizia per prima."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "乗車駅 %1$@ まで徒歩 %2$@ 分。先に徒歩案内を開始します。"
+          }
+        }
+      }
+    },
+    "transitGuide.prewalkUnavailable": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "도보 안내를 시작할 수 없어 승차 대기로 바로 넘어갑니다."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Walking guidance could not start; moving straight to boarding wait."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo iniciar la guía a pie; se pasa directamente a la espera de embarque."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le guidage à pied n'a pas pu démarrer ; passage direct à l'attente d'embarquement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile avviare la guida a piedi; si passa direttamente all'attesa di salita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "徒歩案内を開始できないため、そのまま乗車待ちに進みます。"
+          }
+        }
+      }
+    },
     "transitGuide.reboardCancel": {
       "localizations": {
         "ko": {
