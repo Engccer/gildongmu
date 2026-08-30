@@ -87,4 +87,4 @@ git worktree remove ~/gildongmu-wt/<name>
 
 ## 종료 상태
 
-(웨이브 종료 시 추기)
+2026-08-31 전 웨이브 종료. en-fix(A26) → `864b552` · transit-en(E27+A27) → `e86d5d1` · place-names(E28) → `d4d113d`(전부 ff, worktree·`feat/*` 0). 웹은 push 자동 배포, iOS 실기기는 코디네이터가 정식·실험판 순차 배포. 남은 위원장 판정: BACKLOG §2 "장소명 병기(E28)" 실기기 5건 · E27 잔여 5건(en 게이트·CLI lang·언어 태깅·병기 한 객체 실기기·GTX-A 실측) · A27 실승차 재판정(`docs/FIELD-TEST.md`). 후속: doc-audit 세션(겹침 분배 점검·PORTS 등록).
