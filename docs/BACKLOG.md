@@ -56,6 +56,10 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
+### A27. 지하철 승차 중 상태줄 "충정로까지 전역 도착"이 부자연스럽다 (🆕 2026-08-31 실승차 피드백 — transit-en 세션에 배정)
+
+2026-08-29(토) 2호선 시청→충정로 실승차, 탑승 직후 상태줄: "수도권 2호선 탑승 중, 충정로에서 하차합니다. 추적 중. 남은 정거장 1개. **충정로까지 전역 도착.** 47초 전 기준." 원인: `transitGuide.messageFrame`("{stop}까지 {message}.")은 버스 완성 문장("2분 남음")을 전제한 틀인데, 지하철 `arvlMsg2`("전역 도착"·"[3]번째 전역")는 **조회역(하차역) 기준 열차 위치** 서술이라 "까지"를 앞에 붙이면 뜻이 뒤집힌다. 버스는 승차 국면 재작성(`rewriteBusArrivalMessage`)이 있는데 지하철은 없다. 수정 방향: 승차 국면 지하철은 `arvlCd`(0 진입·1 도착·2 출발·3~5 전역)로 **탑승자 시점 문장**("다음 역 충정로"·"충정로 진입 중"·"충정로 도착")을 i18n 키로 만들고 99(운행중)는 `remainingCount`가 이미 말하므로 생략, 미지 코드만 `arvlMsg2` 원문(까지 틀 없이). E27 판정 2(도착 문장 코드 기반 영어 생성)와 같은 기제라 ko·en을 한 함수로 — transit-en 소유(`transit-track.ts`·`useTransitGuide`·`TransitGuideModel`). 대기 국면·역 도착 목록은 완성 문장 정본 불변.
+
 ### A26. 비-ko 로케일 한국어 잔존 결함 묶음 — ✅ 6항 종결(2026-08-31, 병렬 세션 en-fix, CHANGELOG 같은 날)
 
 en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노출·오작동하는 6항. ①iOS `isCrossingStep`의 `"건너"` 문자열 요구 → en 도보 안내에서 횡단 유닛 판정 불능(안전) ②iOS `RouteService.car` `lang` 선택 인자 + `BeaconModel` 미배선 ③웹 car 라우트 en→ko 폴백의 언어 마커 부재 ④웹 경로 카드 2종이 서버 한국어 error를 live region에 그대로 낭독 ⑤서버 합성 한국어(무장애 라벨 27종·엘리베이터 위치 문장·"휠체어 접근 가능"·`호선`/`선` 접미·iOS "N정류장 전") ⑥웹 `lang="ko"` 마크업 누락. 정본: `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md`.
