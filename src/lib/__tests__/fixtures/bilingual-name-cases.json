@@ -1,0 +1,18 @@
+{
+  "_comment": "bilingualName(locale, ko, {en, roman}) 규칙표 — 웹 bilingual-name.test.ts ↔ Kit BilingualNameTests 공유(spec 2026-08-31-place-name-bilingual-design.md §4). display = primary + ' (' + secondary + ')'.",
+  "cases": [
+    { "id": "ko-locale-no-bilingual", "locale": "ko", "ko": "강동성심병원", "en": null, "roman": "Gangdongseongsimbyeongwon", "primary": "강동성심병원", "secondary": null },
+    { "id": "roman-only", "locale": "en", "ko": "강동성심병원", "en": null, "roman": "Gangdongseongsimbyeongwon", "primary": "Gangdongseongsimbyeongwon", "secondary": "강동성심병원" },
+    { "id": "en-source-wins-over-roman", "locale": "en", "ko": "강남역", "en": "Gangnam", "roman": "Gangnamyeok", "primary": "Gangnam", "secondary": "강남역" },
+    { "id": "no-candidate-keeps-ko", "locale": "en", "ko": "강동성심병원", "en": null, "roman": null, "primary": "강동성심병원", "secondary": null },
+    { "id": "empty-strings-are-absent", "locale": "en", "ko": "강동성심병원", "en": "  ", "roman": "", "primary": "강동성심병원", "secondary": null },
+    { "id": "latin-ko-no-parenthesis", "locale": "en", "ko": "CU", "en": null, "roman": "CU", "primary": "CU", "secondary": null },
+    { "id": "latin-ko-with-different-en", "locale": "en", "ko": "GS25", "en": "GS25 Convenience", "roman": null, "primary": "GS25 Convenience", "secondary": null },
+    { "id": "identical-candidate", "locale": "en", "ko": "서울", "en": "서울", "roman": null, "primary": "서울", "secondary": null },
+    { "id": "mixed-name-romanized", "locale": "en", "ko": "GS25 천호점", "en": null, "roman": "GS25 Cheonhojeom", "primary": "GS25 Cheonhojeom", "secondary": "GS25 천호점" },
+    { "id": "other-non-ko-locale-same-as-en", "locale": "ja", "ko": "선릉역", "en": "Seolleung", "roman": null, "primary": "Seolleung", "secondary": "선릉역" },
+    { "id": "candidate-trimmed", "locale": "fr", "ko": "왕십리", "en": null, "roman": " Wangsimni ", "primary": "Wangsimni", "secondary": "왕십리" },
+    { "id": "hangul-in-en-candidate-falls-to-roman", "locale": "en", "ko": "강남역", "en": "강남 Station", "roman": "Gangnamyeok", "primary": "Gangnamyeok", "secondary": "강남역" },
+    { "id": "hangul-in-every-candidate-keeps-ko", "locale": "en", "ko": "ㄱ카페", "en": null, "roman": "ㄱKape", "primary": "ㄱ카페", "secondary": null }
+  ]
+}
