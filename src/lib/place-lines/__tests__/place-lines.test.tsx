@@ -304,6 +304,30 @@ describe("place-lines == 화면 문장", () => {
     expect(groups[2].lines).toEqual(["장애인화장실, 대합실, 지하1층, 남녀구분, subway.wheelchairAccessible"]);
   });
 
+  it("서울 지하철 시설 줄의 lang은 조립 결과에 한글이 있을 때만 ko(a11y 감사 2026-08-31)", async () => {
+    const f: Metro = {
+      stationName: "강동",
+      groups: [
+        {
+          kind: "elevatorLocation",
+          facilities: [
+            { name: "역 중심 기준 북동쪽 약 120m", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined, parts: { compass: "ne", meters: 120 } },
+            { name: "역 중심 기준 북쪽 약 30m, 성내동", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined, parts: { compass: "n", meters: 30, dong: "성내동" } },
+          ],
+        },
+      ],
+    } as Metro;
+    stubFetch({ facilities: f });
+    const { container } = render(<SeoulMetroFacilities stationName="강동" />);
+    fireEvent.click(screen.getByRole("button"));
+    const lis = await screen.findAllByRole("listitem");
+    expect(lis).toHaveLength(2);
+    // 첫 줄은 전부 번역 템플릿(한글 없음) → 페이지 언어, 둘째 줄은 동명이 한글 → ko
+    expect(lis[0].hasAttribute("lang")).toBe(false);
+    expect(lis[1].getAttribute("lang")).toBe("ko");
+    expect(container.querySelectorAll("li span")).toHaveLength(0);
+  });
+
   it("시간표 — 서버가 '선'을 덧붙인 노선(lineCore)은 클라이언트가 접미를 자기 언어로 단다(A26)", () => {
     const tt: Timetable = {
       stationName: "왕십리",
