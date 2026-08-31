@@ -1,10 +1,11 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import type { Place } from "@/lib/types";
 import { formatDistance, hasHangul, joinText } from "@/lib/format";
+import { pickCategory } from "@/lib/kakao-category";
 
 export function PlaceCard({
   place,
@@ -15,6 +16,8 @@ export function PlaceCard({
 }) {
   const t = useTranslations("place");
   const name = useBilingualName()(place.name, { roman: place.nameRoman });
+  // 분류는 서버 `categoryEn`(A28, 세그먼트 전부 등재일 때만)을 비-ko에서 우선하고, 없으면 원문 + lang="ko".
+  const category = pickCategory(useLocale(), place);
   return (
     <li className="rounded-lg border border-border bg-surface">
       <button
@@ -23,18 +26,18 @@ export function PlaceCard({
         className="flex w-full items-center justify-between gap-3 p-4 text-left"
       >
         <span>
-          {/* 카카오 장소명·분류는 en 페이지에서도 한국어다 — 블록마다 lang="ko"(A26). 이미 별도
-              블록이라 새 분절은 없다. TourAPI en 데이터처럼 한글이 없으면 페이지 언어를 따른다. */}
+          {/* 카카오 장소명·분류가 en 페이지에서 한국어로 남으면 블록마다 lang="ko"(A26). 이미 별도
+              블록이라 새 분절은 없다. 영문(TourAPI en·categoryEn)이면 페이지 언어를 따른다. */}
           <span className="block text-lg font-bold" lang={langFor(name.primary)}>
             {name.primary}
             <KoTail secondary={name.secondary} />
           </span>
           <span
             className="mt-0.5 block text-sm text-muted"
-            lang={hasHangul(place.category) ? "ko" : undefined}
+            lang={hasHangul(category) ? "ko" : undefined}
           >
             {joinText(
-              place.category,
+              category,
               place.distanceMeters != null &&
                 t("distance", {
                   distance: formatDistance(place.distanceMeters),

@@ -448,7 +448,11 @@ struct PlaceRow: View {
     /// falsy 조각 제거+쉼표 결합(웹 joinText 미러). 거리는 있을 때만 마지막 조각으로.
     private var joined: String {
         if let secondaryOverride { return secondaryOverride }
-        var parts = [place.category, place.roadAddress.isEmpty ? place.address : place.roadAddress]
+        // 분류는 비-ko에서 서버 영문(categoryEn, A28)을 우선하고 없으면 원문(웹 PlaceCard 미러).
+        var parts = [
+            pickCategory(lang: AppLanguage.current, category: place.category, categoryEn: place.categoryEn),
+            place.roadAddress.isEmpty ? place.address : place.roadAddress,
+        ]
         if let distance = place.distanceMeters {
             // ko.json place.distance "약 {distance}" 정본 미러.
             parts.append(appLocalized("place.distance", formatDistance(Int(distance.rounded()))))

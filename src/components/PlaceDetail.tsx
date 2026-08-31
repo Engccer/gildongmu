@@ -2,11 +2,12 @@
 
 import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Copy, MessageSquare, Route } from "lucide-react";
 import type { Place } from "@/lib/types";
 import { isStation } from "@/lib/station-match";
 import { hasHangul } from "@/lib/format";
+import { pickCategory } from "@/lib/kakao-category";
 import { PlaceBridgeContext } from "@/hooks/useAxisBridge";
 import { createAxisRegistry } from "@/lib/webmcp/place-axes";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
@@ -59,6 +60,8 @@ export function PlaceDetail({
   onBack: () => void;
 }) {
   const t = useTranslations();
+  // 분류 표시(A28): 비-ko는 서버 `categoryEn` 우선, 없으면 원문 + lang="ko". 채팅 컨텍스트·isStation은 원문.
+  const displayCategory = pickCategory(useLocale(), place);
   const bilingualTitle = useBilingualName()(place.name, { roman: place.nameRoman });
   const headingRef = useRef<HTMLHeadingElement>(null);
   // 채팅 오버레이 열림 상태 + 트리거 버튼 ref(닫을 때 포커스 복귀 대상).
@@ -249,9 +252,9 @@ export function PlaceDetail({
           역할과 콜론을 별도 낭독하던 노이즈를 제거한다(라벨은 볼드 시각 구분만).
           "분류 음식점"처럼 한 호흡에 읽힌다(First Rule of ARIA). */}
         <div className="mt-2 text-sm leading-relaxed">
-          {/* 카카오 분류는 en 페이지에서도 한국어 — 줄 전체에 lang="ko"(주소 줄과 같은 판정, A26). */}
-          <p lang={hasHangul(place.category) ? "ko" : undefined}>
-            {`${t("place.category")} ${place.category}`}
+          {/* 카카오 분류가 en 페이지에서 한국어로 남으면(categoryEn 부재) 줄 전체에 lang="ko"(A26). */}
+          <p lang={hasHangul(displayCategory) ? "ko" : undefined}>
+            {`${t("place.category")} ${displayCategory}`}
           </p>
           {/* 주소는 종류마다 한 줄 + 그 줄 전용 복사 버튼. 도로명과 지번은 쓰임이
             달라(택배·행정서식) 둘 다 복사할 수 있어야 하고, 복사 대상은 반드시

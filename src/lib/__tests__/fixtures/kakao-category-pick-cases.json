@@ -1,0 +1,13 @@
+{
+  "note": "pickCategory(locale, category, categoryEn) — 웹 kakao-category.ts ↔ Kit KakaoCategory.swift 공유 fixture(A28). ko는 항상 원문, 비-ko는 categoryEn 우선·부재면 원문.",
+  "cases": [
+    { "id": "ko-ignores-en", "locale": "ko", "category": "교육,학문 > 학교 > 중학교", "categoryEn": "Education & Academia > School > Middle School", "expected": "교육,학문 > 학교 > 중학교" },
+    { "id": "en-prefers-en", "locale": "en", "category": "교육,학문 > 학교 > 중학교", "categoryEn": "Education & Academia > School > Middle School", "expected": "Education & Academia > School > Middle School" },
+    { "id": "en-falls-back-when-absent", "locale": "en", "category": "음식점 > 한식 > 육류,고기 > 갈비", "categoryEn": null, "expected": "음식점 > 한식 > 육류,고기 > 갈비" },
+    { "id": "en-falls-back-when-empty", "locale": "en", "category": "음식점 > 한식", "categoryEn": "", "expected": "음식점 > 한식" },
+    { "id": "ja-uses-en-data-locale", "locale": "ja", "category": "의료,건강 > 병원 > 치과", "categoryEn": "Health & Medical > Hospital > Dental Clinic", "expected": "Health & Medical > Hospital > Dental Clinic" },
+    { "id": "es-falls-back", "locale": "es", "category": "여행 > 관광,명소", "categoryEn": null, "expected": "여행 > 관광,명소" },
+    { "id": "empty-category-en-empty", "locale": "en", "category": "", "categoryEn": null, "expected": "" },
+    { "id": "already-english-source", "locale": "en", "category": "Tourist Attraction", "categoryEn": null, "expected": "Tourist Attraction" }
+  ]
+}

@@ -60,6 +60,8 @@ export interface SceneItem {
   lng: number;
   /** 카카오 category_name 전체 계층(상세의 역 판별 등에 필요). */
   categoryRaw: string;
+  /** `categoryRaw`의 영문 경로(A28, additive). */
+  categoryEn?: string;
   roadAddress: string | null;
   phone?: string;
   link?: string;
@@ -123,6 +125,7 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
       lat: p.lat,
       lng: p.lng,
       categoryRaw: p.categoryRaw,
+      ...(p.categoryEn ? { categoryEn: p.categoryEn } : {}),
       roadAddress: p.roadAddress,
       phone: p.phone,
       link: p.link,

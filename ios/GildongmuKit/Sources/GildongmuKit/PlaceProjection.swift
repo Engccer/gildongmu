@@ -6,7 +6,8 @@ import Foundation
 // 각 nearby 결과는 자체 모델이라 장소별 채팅(ChatView)에 넘기려면 공통 Place로
 // 정규화해야 한다. category는 **가장 풍부한 분류 문자열**을 쓴다 — 채팅 프롬프트가
 // isStation(place)로 역 여부를 판정해 버킷을 고르기 때문(둘러보기에서 나온 지하철
-// 입구는 categoryRaw에 "지하철"이 있어 자동으로 역 프롬프트를 받는다).
+// 입구는 categoryRaw에 "지하철"이 있어 자동으로 역 프롬프트를 받는다). `categoryEn`(A28)은
+// 표시 전용이라 그대로 나르기만 한다 — 판정에 쓰지 말 것.
 // whereAmIToPlace만 category를 빈 문자열로 고정 — 현재 위치를 역으로 오분류해
 // 역 프롬프트를 주는 것을 막기 위함.
 //
@@ -39,6 +40,7 @@ public func kidsPlaceToPlace(_ k: KidsPlace) -> Place {
         name: k.name,
         nameRoman: k.nameRoman,
         category: k.category,
+        categoryEn: k.categoryEn,
         address: k.address,
         roadAddress: k.roadAddress ?? "",
         englishAddress: nil,
@@ -56,6 +58,7 @@ public func surroundingPlaceToPlace(_ p: SurroundingPlace) -> Place {
         nameRoman: p.nameRoman,
         // categoryRaw = 카카오 category_name 전체 계층 — isStation 판정에 필요(지하철 등).
         category: p.categoryRaw,
+        categoryEn: p.categoryEn,
         address: "",
         roadAddress: "",
         englishAddress: nil,
@@ -73,6 +76,7 @@ public func sceneItemToPlace(_ item: SurroundingsSceneItem) -> Place {
         name: item.name,
         nameRoman: item.nameRoman,
         category: item.categoryRaw,
+        categoryEn: item.categoryEn,
         address: "",
         roadAddress: item.roadAddress ?? "",
         englishAddress: nil,

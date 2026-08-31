@@ -4,7 +4,8 @@
  * iOS Kit `PlaceProjection.swift`의 정본(웹). 채팅 라우터가 nearby류 렌더에 `places`로
  * 실어 보내, 카드가 없던 iOS 답변에서도 산문 장소 언급 → 상세 진입의 근거가 되게 한다
  * (BACKLOG B9). 규칙은 Swift와 동일해야 한다:
- * - category는 가장 풍부한 분류 문자열(채팅 프롬프트 `isStation` 판정용).
+ * - category는 가장 풍부한 분류 문자열(채팅 프롬프트 `isStation` 판정용). `categoryEn`(A28)은
+ *   표시 전용이라 그대로 나르기만 한다 — 판정에 쓰지 말 것.
  * - 도로명만 있는 소스(NMC dutyAddr·TourAPI addr1)는 `roadAddress`에, 지번은 비운다
  *   (없는 값을 지어내지 않는다 — 지번 슬롯에 넣으면 상세 화면이 "지번 주소"라 낭독).
  * - 의도된 비대칭 하나: 둘러보기 `roadAddress`는 여기서 실값을 싣는다(웹 모델에 있다).
@@ -41,6 +42,7 @@ export function kidsPlaceToPlace(k: KidsPlace): Place {
     name: k.name,
     nameRoman: k.nameRoman,
     category: k.category,
+    categoryEn: k.categoryEn,
     address: k.address,
     roadAddress: k.roadAddress ?? "",
     lat: k.lat,
@@ -57,6 +59,7 @@ export function surroundingPlaceToPlace(p: SurroundingPlace): Place {
     name: p.name,
     nameRoman: p.nameRoman,
     category: p.categoryRaw,
+    categoryEn: p.categoryEn,
     address: "",
     roadAddress: p.roadAddress ?? "",
     lat: p.lat,
@@ -74,6 +77,7 @@ export function sceneItemToPlace(it: SceneItem): Place {
     name: it.name,
     nameRoman: it.nameRoman,
     category: it.categoryRaw,
+    categoryEn: it.categoryEn,
     address: "",
     roadAddress: it.roadAddress ?? "",
     lat: it.lat,

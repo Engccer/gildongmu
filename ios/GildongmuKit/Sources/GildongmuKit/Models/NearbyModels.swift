@@ -228,6 +228,8 @@ public struct KidsPlace: Codable, Sendable, Identifiable, Hashable {
     public var nameRoman: String? = nil
     /// 카카오 category_name 전체 계층
     public let category: String
+    /// `category`의 영문 경로(A28, 전부 등재일 때만)
+    public var categoryEn: String? = nil
     /// "kidscafe" / "playground" / "playcenter" / "park"
     public let kind: String
     /// "indoor" / "outdoor" / "unknown" — 3-state, unknown도 문장으로 표시
@@ -258,6 +260,8 @@ public struct SurroundingPlace: Codable, Sendable, Identifiable, Hashable {
     public let category: String
     /// 카카오 category_name 전체 계층(보조 표시)
     public let categoryRaw: String
+    /// `categoryRaw`의 영문 경로(A28, 전부 등재일 때만)
+    public var categoryEn: String? = nil
     public let distanceMeters: Int
     /// 8방위 소문자("n"·"ne"·"e"·"se"·"s"·"sw"·"w"·"nw") — fixture 실측
     public let bearing: String
