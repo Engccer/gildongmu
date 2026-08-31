@@ -311,7 +311,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 ✅ **2026-08-31 구현 종결**(spec `docs/superpowers/specs/2026-08-31-transit-english-design.md`, 실호출 게이트 35/35, codex 설계 리뷰 17건 §9). **2026-09-01 위원장 판정으로 잔여 3건에 세션 배정**(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`). **남은 판정**:
 - **실시간 대중교통 안내 en 게이트 해제**(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`) + 안내 상태 머신 display DTO(`viaStops[].name`·실시간 정류소명·차량 선택 문맥까지 영문 라벨, 발화 sentinel 테스트) — 실험판 봉인(G3)과 별도 판정. spec §3.7·§6.
-- **CLI/MCP `route transit`·`station` 계열 `lang`** — E26 동형(도보 `lang`과 함께). ✅ 2026-09-01 **기능 이식 확정**, 세션 `cli-lang` 배정.
+- ~~**CLI/MCP `route transit`·`station` 계열 `lang`**(E26 동형)~~ ✅ 2026-09-01 종결(세션 `cli-lang`, CHANGELOG 같은 날). 카탈로그 params가 곧 MCP 도구 입력이라 `route_walk`·`route_transit`·`station_meta`·`station_timetable`·`subway_arrival`·`nearby_subway`이 `lang`을 받는다. ⚠ **CLI 텍스트 포매터의 라벨·조사는 한국어 고정**이라 `--lang en`이 바꾸는 것은 서버가 쓴 문장(도보·자동차)과 `*En` 필드(json)뿐이다 — 포매터 i18n은 별개 마일스톤이고 착수 판정 없음(수요 근거가 없다: CLI 산문 소비자는 한국어 사용자이고, 에이전트는 json을 읽는다).
 - **iOS 줄 단위 언어 태깅**(한국어 폴백 줄·비-en 로케일 영어 줄) — 판정 정본은 §2 E28-①(같은 축, 이 면은 그 행에 적었다).
 - **병기 `Gangnam (강남)`이 한 접근성 객체로 읽히는가** — 웹 `<h4>`·`<li>` 안 `aria-hidden` span(a11y-auditor 정적 판정 결과는 spec §9 아래), iOS `accessibilityLabel` — 실기기 VoiceOver 판정(E28 병기와 함께).
 - ~~내 주변 **버스 정류소명** 영문~~ ✅ 2026-08-31 E28 로마자(`bus.ts` `nameRoman`)로 해소. 채팅 산문의 영문 노선명은 범위 밖(채팅은 ko 산문 정본).
@@ -385,10 +385,6 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 **다음 웨이브 후보(spec §8.5, 이번 범위 밖)**: "내 주변" 허브 뷰 도구층(+`get_walk_infrastructure_nearby` 이관) · 역 시설 도구(동명이역 `ambiguousStation` 계약 + 장소 상세 뷰 도구층과 함께) · 장소 상세 `focus_item` · `plan_directions` 수단 선택 인자(화면 핸들러 선행) · Declarative API(같은 기능이 두 표면에 서면 겹치므로 imperative만).
 
 **부수 효과(위원장 2026-08-27)**: 한동안 웹은 iOS 기능 이식 수준에 머물렀다. 도구를 노출하려면 "이 앱이 할 수 있는 일"을 하나씩 이름 붙이고 스키마로 못박아야 하므로, 그 작업 자체가 웹앱 기능 경계를 정리한다.
-
-### E26. E16 축3(비-ko 도보 문장)의 CLI/MCP 미도달 (🆕 2026-08-27, doc-audit 검출)
-
-서버 `/api/route/walk`는 `lang`을 받아 en 문장을 만들지만(`hasWalkRouteKeyFor(lang)`), CLI `packages/cli/src/commands/route.ts`는 `car`에만 `lang`을 싣고 walk는 옛 주석("transit·walk는 V1 국문 전용") 그대로라 `gil route walk --lang en`이 한국어 문장을 돌려준다. 공유 카탈로그 `endpoint-catalog-shared.ts`의 `route-walk` params에도 `lang`이 없다(cli·mcp 両미러). ✅ **2026-09-01 위원장 판정: 기능 이식**(문서 한정 봉인 기각 — 서버가 이미 다 받고 있고 MCP는 에이전트 창구라 영어권 에이전트가 한국어 문장을 받는 상태가 남는다). walk·transit·station 계열에 `lang` 전달 + 카탈로그 両미러 갱신 + 포매터·drift 테스트. 세션 `cli-lang` 배정(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`).
 
 ### E25. ODsay가 이미 주는 것 두 가지 — 출구 번호·지하철 최단시간 경로 (🆕 2026-08-25, A20 조사 부산물)
 
@@ -846,7 +842,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 **⚠ 2026-08-27부로 아래 순서 전체가 [W1](#w1-webmcp-도구층--웹앱-기능을-에이전트에게-선언한다-신규-2026-08-27-마감-2026-09-04-0500-kst)·[W2](#w2-webmcp-도구층-2차--이동-계획-보조-상시-집합-7개-신규-2026-08-28-spec-확정-2026-08-29) 뒤로 밀린다.** W1 게이트 0~3과 W2 구현(2026-08-29 main 통합·배포)은 끝났다. 다음 행동은 **W2 실기기 게이트 ⑧~⑪**(`docs/FIELD-TEST.md` §8, 배포 차단 판정, 위원장)과 **G4 제출물**(2026-09-04 05:00 KST, 위원장)이다. 아래는 그 뒤 복귀할 순서다.
 
-**2026-08-31 병렬 세션 3개(A26·E27+A27·E28) 종료 뒤 열린 위원장 판정**: §2 "장소명 병기(E28)" 5건 + E27 병기 한 객체(`docs/FIELD-TEST.md` §4-6, 앉아서) · A27 실승차 재판정(§5-2) · A25 실승차(§5-5) · K2-a 실주행(§6-1). 코드로 열린 것은 E27 잔여(실시간 안내 en 게이트·CLI/MCP `lang` = E26 동형·GTX-A 실호출)와 E28 후속 후보다. ⚠ 이 여섯 묶음의 iOS 커밋은 스토어 1.13 아카이브 `df229f0` 뒤라 판정은 직접 설치한 빌드로만 된다.
+**2026-08-31 병렬 세션 3개(A26·E27+A27·E28) 종료 뒤 열린 위원장 판정**: §2 "장소명 병기(E28)" 5건 + E27 병기 한 객체(`docs/FIELD-TEST.md` §4-6, 앉아서) · A27 실승차 재판정(§5-2) · A25 실승차(§5-5) · K2-a 실주행(§6-1). 코드로 열린 것은 E27 잔여(실시간 안내 en 게이트·GTX-A 실호출)와 E28 후속 후보다(CLI/MCP `lang` = E26은 2026-09-01 종결). ⚠ 이 여섯 묶음의 iOS 커밋은 스토어 1.13 아카이브 `df229f0` 뒤라 판정은 직접 설치한 빌드로만 된다.
 
 **착수 순서**(위원장 지정 2026-08-16):
 
