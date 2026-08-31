@@ -12,7 +12,12 @@ import { fetchTagoArrivals, fetchTagoStopsNear } from "./providers/tago-bus";
 import {
   fetchSubwayArrivals,
   subwayLineNameForId,
+  withArrivalsEn,
 } from "./providers/seoul-subway-arrival";
+import { busArrivalMessageEnFrom } from "./bus-arrival-en";
+import { stationNameEn } from "./subway-arrival-en";
+import { findStationsByName } from "./subway-stations";
+import type { DataLang } from "./lang-param";
 
 /**
  * 대중교통 추적 폴링 서비스(B2 §7) — provider 봉투 차이를 여기서 흡수해
@@ -34,6 +39,19 @@ export type TransitTrackResult =
  */
 function withItems(items: TrackItem[], rawCount: number): TransitTrackResult {
   return items.length > 0 ? { status: "ok", items, rawCount } : { status: "empty", rawCount };
+}
+
+/** 지하철 영문 역명 조회의 seed 바인딩(순수 함수에 주입 — `withArrivalsEn`과 같은 바인딩). */
+const SUBWAY_EN_CTX = { findStations: findStationsByName };
+
+/**
+ * 영문 조각 한 칸 — **빈 문자열은 싣지 않는다**(spec §3.4 ⚠). 이름·방향·종착역의 `""`는
+ * "이 자리는 비어도 된다"가 아니라 정보 소실이라, 그대로 두면 줄 원자성 판정이 "완비"로
+ * 읽어 `Boarded . Get off at .` 같은 줄을 만든다. `messageEn`의 `""`(TAGO)만 예외이고
+ * 그 자리는 이 헬퍼를 지나지 않는다.
+ */
+function nonEmpty(key: string, value: string | undefined): Record<string, string> {
+  return value != null && value.trim() !== "" ? { [key]: value } : {};
 }
 
 // === 서울 버스 ===
@@ -69,7 +87,9 @@ export function rewriteBusArrivalMessage(message: string): string {
  * 문장도 달라야 한다(`rewriteBusArrivalMessage` 주석). 기본값을 두면 신규 호출부가
  * 국면을 빠뜨려도 컴파일이 통과해 조용히 틀린 문장을 낸다([[no-default-for-safety-parameters]]).
  */
-function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride"): TrackItem {
+function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride", lang: DataLang): TrackItem {
+  // 영문은 **원문**에서 만든다 — ko 재작성본("2분55초 남음")을 다시 파싱하면 두 해석이 갈린다.
+  const messageEn = lang === "en" ? busArrivalMessageEnFrom(slot.message, phase) : undefined;
   return {
     vehicleId: slot.vehicleId,
     direction: "",
@@ -78,6 +98,8 @@ function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride"): TrackItem {
     destinationName: null,
     express: false,
     arrivalCode: null,
+    // 방향·종착역은 서울버스에 **구조적으로 없다**(ko도 ""·null) — 영문 자리도 만들지 않는다.
+    ...(messageEn ? { messageEn } : {}),
   };
 }
 
@@ -85,10 +107,11 @@ function slotToItem(slot: SeoulTrackSlot, phase: "wait" | "ride"): TrackItem {
 export async function trackSeoulWait(params: {
   arsId: string;
   routeId: string;
+  lang: DataLang;
 }): Promise<TransitTrackResult> {
   const { slots, rawCount } = await fetchSeoulWaitSlots(params.arsId, params.routeId);
   return withItems(
-    slots.map((s) => slotToItem(s, "wait")),
+    slots.map((s) => slotToItem(s, "wait", params.lang)),
     rawCount,
   );
 }
@@ -118,8 +141,9 @@ export async function trackSeoulRide(params: {
   routeId: string;
   boardLocalId: string;
   alightLocalId: string;
+  lang: DataLang;
 }): Promise<TransitTrackResult> {
-  const { routeId, boardLocalId, alightLocalId } = params;
+  const { routeId, boardLocalId, alightLocalId, lang } = params;
   let ord = pickAlightOrd(await fetchSeoulRouteStops(routeId), boardLocalId, alightLocalId);
   if (ord == null) {
     // 캐시가 낡았을 수 있다(임시 우회·노선 변경, §5.2) — 우회 재조회 1회.
@@ -136,7 +160,7 @@ export async function trackSeoulRide(params: {
   const slots = await fetchSeoulRideSlots(alightLocalId, routeId, ord);
   // getArrInfoByRoute는 이미 노선 스코프 조회라 필터가 없다 — rawCount = 항목 수.
   return withItems(
-    slots.map((s) => slotToItem(s, "ride")),
+    slots.map((s) => slotToItem(s, "ride", lang)),
     slots.length,
   );
 }
@@ -181,6 +205,7 @@ export async function trackTago(params: {
   cityCode: string;
   nodeId: string;
   routeNo: string;
+  lang: DataLang;
 }): Promise<TransitTrackResult> {
   const arrivals = await fetchTagoArrivals(params.cityCode, params.nodeId);
   const items = arrivals
@@ -194,6 +219,10 @@ export async function trackTago(params: {
         destinationName: null,
         express: false,
         arrivalCode: null,
+        // ⚠ `""`를 **싣는다**(빼지 않는다). ko에도 완성 문장이 없는 자리라 이것은 부재가 아니라
+        // 자리 표시이고, 빼면 줄 원자성 판정이 "영문 결측"으로 읽어 en 사용자의 지방버스 줄이
+        // 전부 한국어로 폴백한다(spec §3.2 행렬).
+        ...(params.lang === "en" ? { messageEn: "" } : {}),
       }),
     );
   return withItems(items, arrivals.length);
@@ -264,11 +293,16 @@ export function subwayDataAgeSeconds(
 export async function trackSubway(params: {
   station: string;
   lineName: string;
+  lang: DataLang;
 }): Promise<TransitTrackResult> {
   const subwayId = subwayIdForOdsayLine(params.lineName);
   const expectedLine = subwayId ? subwayLineNameForId(subwayId) : undefined;
   if (!expectedLine) return { status: "unsupported" };
-  const result = await fetchSubwayArrivals(params.station);
+  // 영문은 E27의 행렬(`enrichArrivalEn`)을 **그대로 태운다** — 여기서 별도 생성기를 만들면
+  // 같은 도착 코드가 역 상세와 안내에서 서로 다른 문장을 내게 된다.
+  const result = params.lang === "en"
+    ? withArrivalsEn(await fetchSubwayArrivals(params.station))
+    : await fetchSubwayArrivals(params.station);
   // null(INFO-200)은 "미커버"와 "접근 열차 없음(운행 밖 포함)"이 같은 코드를
   // 쓴다(지하철 4-state 교훈). 추적에선 노선 매핑표가 수도권 커버를 이미
   // 걸렀으므로 empty(미등장)가 정직하다 — 심야 실호출에서 unsupported로
@@ -289,6 +323,19 @@ export async function trackSubway(params: {
         currentLocation: a.currentLocation || null,
         dataStamp: a.receivedAt ?? null,
         dataAgeSeconds: subwayDataAgeSeconds(a.receivedAt, a.arrivalCode, now),
+        // 영문 조각(spec §3.2). `""`는 정보 소실이라 실지 않는다 — `nonEmpty`가 그 정규화다.
+        // 종착역은 `trainLineNmEn`("To X via Y" 문장)에서 뗄 수 없어 seed 영문을 직접 조회한다.
+        ...(params.lang === "en"
+          ? {
+              ...nonEmpty("messageEn", a.messageEn),
+              ...nonEmpty("directionEn", a.directionEn),
+              ...nonEmpty(
+                "destinationNameEn",
+                a.destination ? (stationNameEn(SUBWAY_EN_CTX, a.destination, a.line) ?? undefined) : undefined,
+              ),
+              ...nonEmpty("currentLocationEn", a.currentLocationEn),
+            }
+          : {}),
       }),
     );
   return withItems(items, result.arrivals.length);

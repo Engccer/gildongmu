@@ -268,7 +268,7 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
           message: "곧 도착", arrivalSeconds: 30, express: false, trainNo: "8123", arrivalCode: "1" },
       ],
     });
-    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선" });
+    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
     expect(r.status).toBe("ok");
     if (r.status === "ok") {
       expect(r.items).toHaveLength(1);
@@ -290,16 +290,16 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
 
   it("미커버 노선(비수도권)은 unsupported, 도착 0건·INFO-200(null)은 empty", async () => {
     const mod = await withMockedArrivals({ stationName: "천호", arrivals: [] });
-    expect((await mod.trackSubway({ station: "대전역", lineName: "대전 1호선" })).status).toBe(
+    expect((await mod.trackSubway({ station: "대전역", lineName: "대전 1호선", lang: "ko" })).status).toBe(
       "unsupported",
     );
-    expect((await mod.trackSubway({ station: "천호", lineName: "수도권 5호선" })).status).toBe(
+    expect((await mod.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" })).status).toBe(
       "empty",
     );
     // INFO-200은 "미커버"와 "접근 열차 없음(운행 밖)"이 같은 코드 — 노선 매핑표가
     // 수도권을 이미 걸렀으므로 empty가 정직(심야 실호출 2026-08-04 정정).
     const modNull = await withMockedArrivals(null);
-    expect((await modNull.trackSubway({ station: "천호", lineName: "수도권 5호선" })).status).toBe(
+    expect((await modNull.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" })).status).toBe(
       "empty",
     );
   });
@@ -312,7 +312,7 @@ describe("trackSubway — 노선 필터·3-state(모킹)", () => {
           message: "곧 도착", arrivalSeconds: 30, express: false, trainNo: "8123", arrivalCode: "1" },
       ],
     });
-    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선" });
+    const r = await mod.trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
     expect(r).toEqual({ status: "empty", rawCount: 1 });
   });
 });
@@ -335,8 +335,7 @@ describe("trackSeoulRide — ord 해석 실패의 정직 강등(모킹)", () => 
     const r = await mod.trackSeoulRide({
       routeId: "227000006",
       boardLocalId: "123000017",
-      alightLocalId: "123000043",
-    });
+      alightLocalId: "123000043", lang: "ko" });
     expect(r.status).toBe("unsupported");
     expect(fetchStops).toHaveBeenCalledTimes(2); // 캐시 1 + fresh 1
     expect(fetchStops).toHaveBeenNthCalledWith(2, "227000006", { fresh: true });
@@ -363,7 +362,7 @@ describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원�
       fetchSeoulWaitSlots: vi.fn(async () => ({ slots: [slot], rawCount: 1 })),
     }));
     const mod = await import("../transit-track");
-    const r = await mod.trackSeoulWait({ arsId: "25107", routeId: "4130081" });
+    const r = await mod.trackSeoulWait({ arsId: "25107", routeId: "4130081", lang: "ko" });
     expect(r.status).toBe("ok");
     if (r.status !== "ok") return;
     // 후보 버튼은 remainingStops를 별도로 싣지 않는다(웹 TransitGuidePanel·iOS
@@ -386,8 +385,7 @@ describe("완성 문장 다듬기는 승차 국면만 — 대기 목록은 원�
     const r = await mod.trackSeoulRide({
       routeId: "227000006",
       boardLocalId: "123000017",
-      alightLocalId: "123000043",
-    });
+      alightLocalId: "123000043", lang: "ko" });
     expect(r.status).toBe("ok");
     if (r.status !== "ok") return;
     expect(r.items[0].message).toBe("2분55초 남음");
