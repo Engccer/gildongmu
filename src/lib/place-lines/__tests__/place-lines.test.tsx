@@ -21,7 +21,7 @@ vi.mock("next-intl", () => ({
 import { stationMetaLines } from "../station-meta";
 import { timetableHeaderLine, timetableLineItems } from "../station-timetable";
 import { korailFacilityLines } from "../station-facilities";
-import { metroFacilityGroups } from "../station-metro";
+import { metroFacilityGroups, metroHeadingLine } from "../station-metro";
 import { arrivalItems } from "../station-arrivals";
 import { barrierFreeLines } from "../barrier-free";
 import { StationMeta } from "@/components/StationMeta";
@@ -332,6 +332,62 @@ describe("place-lines == 화면 문장", () => {
     expect(groups[2].lines).toEqual(["장애인화장실, 대합실, 지하1층, 남녀구분, subway.wheelchairAccessible"]);
   });
 
+  it("노선 라벨은 E27 노선명 표를 탄다 — 비-ko는 영문, ko는 접미 조립(E27 잔여, 2026-09-01)", () => {
+    const f: Metro = {
+      stationName: "강동",
+      line: "5호선",
+      groups: [
+        {
+          kind: "voiceGuide",
+          facilities: [
+            {
+              name: "3번 출구 5호선", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined,
+              parts: { location: "3번 출구", line: "5" },
+            },
+          ],
+        },
+      ],
+    } as Metro;
+    // ko는 종전 그대로(A26 접미 조립)
+    expect(metroFacilityGroups(f, tFor("subway"), "ko")[0].lines).toEqual([
+      '3번 출구, subway.lineNumber{"line":"5"}',
+    ]);
+    expect(metroHeadingLine(f, "강동", tFor("subway"), "ko")).toBe(
+      'subway.heading{"name":"강동"}, 5호선',
+    );
+    // 비-ko는 전부 영문 데이터를 공유하므로 표 값 하나로 통일된다(es에서 "Línea 5"가 나오지 않는다)
+    for (const locale of ["en", "es", "fr", "it", "ja"]) {
+      expect(metroFacilityGroups(f, tFor("subway"), locale)[0].lines).toEqual(["3번 출구, Line 5"]);
+      expect(metroHeadingLine(f, "강동", tFor("subway"), locale)).toBe(
+        'subway.heading{"name":"강동"}, Line 5',
+      );
+    }
+  });
+
+  it("표에 없는 노선은 폴백 — 시설 줄은 접미 조립, 헤딩은 한국어 원문", () => {
+    const f: Metro = {
+      stationName: "가상역",
+      line: "가상선",
+      groups: [
+        {
+          kind: "voiceGuide",
+          facilities: [
+            {
+              name: "1번 출구", location: undefined, floors: undefined, operatingStatus: undefined, detail: undefined,
+              parts: { location: "1번 출구", line: "99" },
+            },
+          ],
+        },
+      ],
+    } as Metro;
+    expect(metroFacilityGroups(f, tFor("subway"), "en")[0].lines).toEqual([
+      '1번 출구, subway.lineNumber{"line":"99"}',
+    ]);
+    expect(metroHeadingLine(f, "가상역", tFor("subway"), "en")).toBe(
+      'subway.heading{"name":"가상역"}, 가상선',
+    );
+  });
+
   it("서울 지하철 시설 줄의 lang은 조립 결과에 한글이 있을 때만 ko(a11y 감사 2026-08-31)", async () => {
     const f: Metro = {
       stationName: "강동",
@@ -354,6 +410,11 @@ describe("place-lines == 화면 문장", () => {
     expect(lis[0].hasAttribute("lang")).toBe(false);
     expect(lis[1].getAttribute("lang")).toBe("ko");
     expect(container.querySelectorAll("li span")).toHaveLength(0);
+    // 헤딩도 같은 규칙 — 역명이 한글이라 줄 통째로 ko(줄 중간 분절 없음, E27 잔여 2026-09-01)
+    const h3 = container.querySelector("h3")!;
+    expect(h3.textContent).toBe(metroHeadingLine(f, "강동", tFor("subway"), "ko"));
+    expect(h3.getAttribute("lang")).toBe("ko");
+    expect(h3.querySelectorAll("span")).toHaveLength(0);
   });
 
   it("시간표 — 서버가 '선'을 덧붙인 노선(lineCore)은 클라이언트가 접미를 자기 언어로 단다(A26)", () => {

@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import type { SeoulMetroFacilities as Facilities } from "@/lib/types";
-import { hasHangul, joinText } from "@/lib/format";
-import { metroFacilityGroups } from "@/lib/place-lines/station-metro";
+import { hasHangul } from "@/lib/format";
+import { metroFacilityGroups, metroHeadingLine } from "@/lib/place-lines/station-metro";
 import { useAxisSource } from "@/hooks/useAxisBridge";
 import type { AxisSnapshot } from "@/lib/webmcp/tools/context";
 
@@ -26,6 +26,7 @@ type Status =
 export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
   const t = useTranslations("subway");
   const tActions = useTranslations("actions");
+  const locale = useLocale();
   const [status, setStatus] = useState<Status>({ kind: "idle", gen: 0 });
   const headingRef = useRef<HTMLHeadingElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -82,12 +83,15 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
         status: s.kind,
         gen: s.gen,
         data: facilities
-          ? { groups: metroFacilityGroups(facilities, t), supplementFailed: facilities.supplementFailed || undefined }
+          ? {
+              groups: metroFacilityGroups(facilities, t, locale),
+              supplementFailed: facilities.supplementFailed || undefined,
+            }
           : undefined,
         refreshError: s.kind === "done" && s.refreshError ? true : undefined,
       };
     },
-    [t],
+    [t, locale],
   );
   const loadForTool = useCallback((force: boolean, source: "user" | "tool") => void load(force, source), [load]);
   useAxisSource("facilitiesMetro", status, toSnapshot, loadForTool);
@@ -103,6 +107,8 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
           : status.kind === "done"
             ? t("ready")
             : "";
+  const headingLine =
+    status.kind === "done" ? metroHeadingLine(status.facilities, stationName, t, locale) : "";
 
   return (
     <div className="mt-3">
@@ -125,17 +131,15 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
         <div
           className="mt-2 rounded-md border border-border p-3"
         >
+          {/* 헤딩도 시설 줄과 같은 규칙 — 값(역명·노선명)이 한국어로 남으면 줄 통째로 ko
+              (줄 중간 분절 없이 태그하는 유일한 방법, A26 선례). */}
           <h3
             ref={headingRef}
             tabIndex={-1}
+            lang={hasHangul(headingLine) ? "ko" : undefined}
             className="text-base font-semibold"
           >
-            {joinText(
-              t("heading", {
-                name: status.facilities.stationName || stationName,
-              }),
-              status.facilities.line,
-            )}
+            {headingLine}
           </h3>
 
           <button
@@ -148,7 +152,7 @@ export function SeoulMetroFacilities({ stationName }: { stationName: string }) {
 
           {/* 문장 정본은 place-lines(도구층과 공용) — 그룹 헤딩·시설 줄 모두 */}
           <div className="mt-2 space-y-3">
-            {metroFacilityGroups(status.facilities, t).map((g, gi) => (
+            {metroFacilityGroups(status.facilities, t, locale).map((g, gi) => (
               <div key={status.facilities.groups[gi].kind}>
                 <h4 className="text-sm font-semibold">{g.name}</h4>
                 <ul className="mt-1 space-y-1 text-sm leading-relaxed">
