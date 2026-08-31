@@ -104,3 +104,5 @@ git worktree remove ~/gildongmu-wt/<name>
 ## 종료 상태
 
 2026-08-31 전 웨이브 종료. en-fix(A26) → `864b552` · transit-en(E27+A27) → `e86d5d1` · place-names(E28) → `d4d113d`(전부 ff, worktree·`feat/*` 0). 웹은 push 자동 배포, iOS 실기기는 코디네이터가 정식·실험판 순차 배포. 남은 위원장 판정: BACKLOG §2 "장소명 병기(E28)" 실기기 5건 · E27 잔여 5건(en 게이트·CLI lang·언어 태깅·병기 한 객체 실기기·GTX-A 실측) · A27 실승차 재판정(`docs/FIELD-TEST.md`). 후속: doc-audit 세션(겹침 분배 점검·PORTS 등록).
+
+웨이브 3 종료(2026-08-31): category-en(A28) → `a93a996`(프로덕션 게이트 카드 97.0% PASS) · plurals(A29) → `f4d8491`. worktree·`feat/*` 0. iOS 실기기 정식·실험판 재배포(코디네이터). 실기기 확인 항목: 비-ko 검색 결과·상세 분류 줄 영문 낭독(미등재 잎사귀는 한국어 유지), "1 place / 2 places" 수량 낭독. 이월: BACKLOG A29 종결 절의 iOS 위치 인자 ABI 게이트 후보(위원장 판정), A30 `bike.availability` 가운뎃점.
