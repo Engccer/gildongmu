@@ -123,5 +123,20 @@
     "lang": "fr-FR",
     "n": 0,
     "category": "one"
+  },
+  {
+    "lang": "es",
+    "n": -1,
+    "category": "one"
+  },
+  {
+    "lang": "it",
+    "n": -1,
+    "category": "one"
+  },
+  {
+    "lang": "fr",
+    "n": -1,
+    "category": "one"
   }
 ]
