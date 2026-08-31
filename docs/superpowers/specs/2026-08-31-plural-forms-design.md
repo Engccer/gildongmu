@@ -31,7 +31,7 @@
 | `whereAmI.overview.transitBus` | ○ `There is/are` | ○ | ○ | ○ `C'è/Ci sono` | Kit `LocationNarrative`도 소비 |
 | `transitGuide.started` / `boardedCount` / `remainingCount` / `stationCountAbout` / `waitingCount` / `viaStopsTrain` / `viaStopsBus` | ○ | ○ | ○ | ○ | |
 | `transitGuide.dataAge` | ○ seconds | ○ | ○ | ○ | |
-| `bike.availability` | ○ racks | ○ | ○ | ○ | `{bikes}`는 명사 없음 |
+| `bike.availability` | ○ racks | ○ racks·bikes | ○ racks·bikes | ○ racks·bikes | `{bikes}`는 en에서만 명사가 없다(es·fr·it은 형용사 `disponible(s)`가 수 일치) |
 | `bus.arrival` | ○ `{prev} stops away` | ○ | ○ | ○ | plural 인자가 `prev`(count가 아님) |
 | `surroundings.count` | ○ | ○ | ○ | ○ | |
 | `chat.reviewPlacesHeading` | × | ○ | ○ | ○ | |
