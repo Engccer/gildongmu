@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { bilingualName, type BilingualName } from "@/lib/bilingual-name";
 import { isManualLocationVerified, type ManualLocation, type ManualVerdict } from "@/lib/manual-location";
 import {
   getManualLocation,
@@ -45,6 +46,23 @@ export function useManualLocationLabel(): string | null {
   const manual = useManualLocation();
   if (!manual) return null;
   return format(manual.label);
+}
+
+/**
+ * 표시줄용 **병기 라벨**(E28). 검증 가능/불가 판정은 `useManualLabelFormatter` 한 곳을
+ * 그대로 지나므로 판정선이 갈라지지 않고, 여기서 더하는 것은 "이름의 라틴 표기를 1순위로
+ * 보이고 한글은 괄호로 민다" 하나뿐이다(`labelRoman`이 없으면 종전과 byte-identical).
+ *
+ * 괄호(`secondary`)의 **자리**는 렌더 계층이 정한다(`KoTail` R1·R2) — 이 훅은 무엇을
+ * 괄호에 넣을지만 말한다.
+ */
+export function useManualLocationBilingual(): { text: string; secondary: string | null } | null {
+  const format = useManualLabelFormatter();
+  const manual = useManualLocation();
+  const locale = useLocale();
+  if (!manual) return null;
+  const name: BilingualName = bilingualName(locale, manual.label, { roman: manual.labelRoman });
+  return { text: format(name.primary), secondary: name.secondary };
 }
 
 /**

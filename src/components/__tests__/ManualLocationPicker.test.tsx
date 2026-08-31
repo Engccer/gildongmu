@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/ko.json";
@@ -10,6 +10,9 @@ import {
   setManualLocation,
 } from "@/lib/manual-location-store";
 import { ManualLocationPicker } from "../ManualLocationPicker";
+
+// 지정 시점의 실측 fix는 이 테스트의 축이 아니다(origin 없음 = undecidable로 정상 동작).
+vi.mock("@/lib/effective-location", () => ({ awaitRealFix: async () => null }));
 
 // 이 프로젝트는 vitest globals를 켜지 않아(vitest.config.ts) RTL 자동 정리가
 // 없다 — PlaceDetail.test.tsx와 동형으로 각 테스트 후 명시 cleanup.
@@ -59,6 +62,37 @@ describe("ManualLocationPicker", () => {
     // 닫기까지가 한 동작이다 — 해제만 하고 화면에 남으면 무엇이 바뀌었는지 알리는
     // 신호(복귀 포커스가 받는 표시줄 버튼 라벨)에 닿지 못한다.
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * E27 잔여(2026-09-01): 표시줄 병기는 **지정 시점에** 라틴 표기를 함께 저장해야 성립한다.
+   * 이 배선이 끊기면 비-ko 표시줄이 조용히 한글만 읽는다(오류도 빈 값도 아니다).
+   */
+  it("장소를 고르면 서버 로마자(nameRoman)가 labelRoman으로 함께 저장된다", async () => {
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (String(url).startsWith("/api/places")) {
+        return {
+          ok: true,
+          json: async () => ({
+            places: [
+              {
+                id: "1", name: "강동구청", nameRoman: "Gangdong-gu Office",
+                address: "서울 강동구 성내로 25", category: "public",
+                lat: 37.5301, lng: 127.1238,
+              },
+            ],
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ addresses: [] }) };
+    });
+    renderPicker();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "강동구청" } });
+    fireEvent.submit(screen.getByRole("searchbox").closest("form")!);
+    await userEvent.click(await screen.findByRole("button", { name: /강동구청/ }));
+    expect(getManualLocation()?.label).toBe("강동구청");
+    expect(getManualLocation()?.labelRoman).toBe("Gangdong-gu Office");
+    vi.unstubAllGlobals();
   });
 
   // 수동 위치가 없을 때도 노출한다: "현재 위치를 그대로 쓴다"는 확정 선택이고,

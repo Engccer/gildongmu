@@ -110,6 +110,8 @@ export function subscribeManualLocation(listener: () => void): () => void {
 
 export interface ManualLocationInput {
   label: string;
+  /** 라벨의 라틴 표기(E28 병기). 없으면 병기 없음 — `ManualLocation.labelRoman` 참조. */
+  labelRoman?: string;
   lat: number;
   lng: number;
   /** 지정 시점의 적격 실측 fix. 없으면 판정이 undecidable이 된다. */

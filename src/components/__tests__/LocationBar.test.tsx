@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/ko.json";
+import enMessages from "../../../messages/en.json";
 import { __resetGeolocationForTest, requestLocation } from "@/lib/geolocation";
 import {
   __resetCurrentAddressForTest,
@@ -23,6 +24,14 @@ afterEach(cleanup);
 function renderBar(onPick = vi.fn()) {
   return render(
     <NextIntlClientProvider locale="ko" messages={messages}>
+      <LocationBar onPick={onPick} />
+    </NextIntlClientProvider>,
+  );
+}
+
+function renderBarEn(onPick = vi.fn()) {
+  return render(
+    <NextIntlClientProvider locale="en" messages={enMessages}>
       <LocationBar onPick={onPick} />
     </NextIntlClientProvider>,
   );
@@ -248,6 +257,54 @@ describe("LocationBar — GPS 주소 병기", () => {
     expect(
       screen.queryByRole("button", { name: /천호대로 1000/ }),
     ).toBeNull();
+  });
+
+  // E27 잔여(2026-09-01): 비-ko 표시줄이 "Set location, 강동구청"으로 남던 자리.
+  // 지정 시점에 이미 손에 있던 라틴 표기(`labelRoman`)를 1순위로 읽고 한글은 괄호로 민다.
+  it("en: 수동 라벨은 라틴 표기가 낭독되고 한글은 시각 전용 괄호다", () => {
+    setManualLocation({
+      label: "강동구청", labelRoman: "Gangdong-gu Office",
+      lat: 37.5301, lng: 127.1238,
+      origin: { lat: 37.5301, lng: 127.1238, accuracy: 10, at: 1 }, setAt: 1,
+    });
+    const { container } = renderBarEn();
+    const button = screen.getByRole("button", {
+      name: "Set location, Gangdong-gu Office, Set your location",
+    });
+    expect(button.textContent).toBe(
+      "Set location, Gangdong-gu Office (강동구청), Set your location",
+    );
+    // 괄호는 `aria-hidden` + `lang="ko"` 한 노드뿐 — 접근 이름에는 한글이 없다.
+    const spans = container.querySelectorAll("span");
+    expect(spans).toHaveLength(1);
+    expect(spans[0].getAttribute("aria-hidden")).toBe("true");
+    expect(spans[0].getAttribute("lang")).toBe("ko");
+    expect(button.getAttribute("aria-label")).toBeNull();
+  });
+
+  it("en: 라틴 표기가 없으면 병기하지 않는다(옛 저장값·로마자 불가)", () => {
+    setManualLocation({
+      label: "강동구청", lat: 37.5301, lng: 127.1238,
+      origin: { lat: 37.5301, lng: 127.1238, accuracy: 10, at: 1 }, setAt: 1,
+    });
+    const { container } = renderBarEn();
+    expect(
+      screen.getByRole("button", { name: "Set location, 강동구청, Set your location" }),
+    ).toBeTruthy();
+    expect(container.querySelectorAll("span")).toHaveLength(0);
+  });
+
+  it("ko는 labelRoman이 있어도 병기하지 않는다(byte-identical)", () => {
+    setManualLocation({
+      label: "강동구청", labelRoman: "Gangdong-gu Office",
+      lat: 37.5301, lng: 127.1238,
+      origin: { lat: 37.5301, lng: 127.1238, accuracy: 10, at: 1 }, setAt: 1,
+    });
+    const { container } = renderBar();
+    expect(screen.getByRole("button").textContent).toBe(
+      "지정한 위치, 강동구청, 위치 지정하기",
+    );
+    expect(container.querySelectorAll("span")).toHaveLength(0);
   });
 
   // 한 줄 = 한 접근성 객체 — 병기가 길어져도 시각 텍스트를 덮는 aria-label을

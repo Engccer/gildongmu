@@ -22,6 +22,20 @@ describe("manual-location-store", () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).label).toBe("길동 카페");
   });
 
+  it("labelRoman은 저장·복원을 왕복하고, 없으면 없는 채로 남는다(E28 병기)", () => {
+    setManualLocation({
+      label: "강동구청", labelRoman: "Gangdong-gu Office",
+      lat: 37.5301, lng: 127.1238, origin: null, setAt: 1000,
+    });
+    expect(getManualLocation()?.labelRoman).toBe("Gangdong-gu Office");
+    // 저장소를 거쳐 복원해도 같다(zod 스키마가 필드를 떨구지 않는다).
+    __resetManualLocationForTest();
+    expect(getManualLocation()?.labelRoman).toBe("Gangdong-gu Office");
+
+    setManualLocation({ label: "길동 카페", lat: 37.5, lng: 127.1, origin: null, setAt: 2000 });
+    expect(getManualLocation()?.labelRoman).toBeUndefined();
+  });
+
   it("revision이 지정마다 증가한다 (CAS 토큰)", () => {
     setManualLocation({ label: "A", lat: 37.5, lng: 127.1, origin: null, setAt: 1 });
     const first = getManualLocation()!.revision;
