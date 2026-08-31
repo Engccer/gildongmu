@@ -900,7 +900,7 @@
     "tactileEmpty": "Aucune bande podotactile enregistrée à proximité",
     "tactileError": "Impossible de charger les informations sur les bandes podotactiles",
     "tactileUnsupported": "Les informations sur les bandes podotactiles ne sont disponibles qu'en Corée du Sud",
-    "osmSummary": "{count, plural, one {# passage piéton/bande podotactile} other {# passages piétons/bandes podotactiles}}",
+    "osmSummary": "{count, plural, one {# passage piéton ou bande podotactile} other {# passages piétons et bandes podotactiles}}",
     "osmEmpty": "Aucune information sur les passages piétons ou bandes podotactiles enregistrée à proximité",
     "osmError": "Impossible de charger les informations sur les passages piétons ou bandes podotactiles",
     "osmUnsupported": "Les informations sur les passages piétons et les bandes podotactiles ne sont disponibles qu'en Corée du Sud",

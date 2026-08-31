@@ -900,7 +900,7 @@
     "tactileEmpty": "Nessuna pavimentazione tattile registrata nelle vicinanze",
     "tactileError": "Impossibile caricare le informazioni sulla pavimentazione tattile",
     "tactileUnsupported": "Le informazioni sulla pavimentazione tattile sono disponibili solo in Corea del Sud",
-    "osmSummary": "{count, plural, one {# attraversamento pedonale/punto di pavimentazione tattile} other {# attraversamenti pedonali/punti di pavimentazione tattile}}",
+    "osmSummary": "{count, plural, one {# attraversamento pedonale o punto di pavimentazione tattile} other {# attraversamenti pedonali e punti di pavimentazione tattile}}",
     "osmEmpty": "Nessuna informazione su attraversamenti pedonali o pavimentazione tattile registrata nelle vicinanze",
     "osmError": "Impossibile caricare le informazioni su attraversamenti pedonali o pavimentazione tattile",
     "osmUnsupported": "Le informazioni su attraversamenti pedonali e pavimentazione tattile sono disponibili solo in Corea del Sud",

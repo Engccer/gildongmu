@@ -165,7 +165,7 @@ describe("수량 문구 복수형(A29)", () => {
     "guide.band.transitRiding": "On x, 1 stop left",
     "walkInfra.audioSummary": "1 device within 300m",
     "walkInfra.audioSite": "x, x (1 device)",
-    "walkInfra.osmSummary": "1 crosswalk/tactile paving point",
+    "walkInfra.osmSummary": "1 crosswalk or tactile paving point",
     "whereAmI.overview.transitBus": "There is 1 bus stop. x",
     "transitGuide.started": "Starting transit guidance. 1 ride segment.",
     "transitGuide.boardedCount": "Boarded x. Get off at x, 1 stop.",

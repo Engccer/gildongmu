@@ -47212,25 +47212,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ crosswalk/tactile paving point} other {%1$@ crosswalks/tactile paving points}}"
+            "value": "{1, plural, one {%1$@ crosswalk or tactile paving point} other {%1$@ crosswalks and tactile paving points}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ paso de peatones/punto de pavimento táctil} other {%1$@ pasos de peatones/puntos de pavimento táctil}}"
+            "value": "{1, plural, one {%1$@ paso de peatones o punto de pavimento táctil} other {%1$@ pasos de peatones y puntos de pavimento táctil}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ passage piéton/bande podotactile} other {%1$@ passages piétons/bandes podotactiles}}"
+            "value": "{1, plural, one {%1$@ passage piéton ou bande podotactile} other {%1$@ passages piétons et bandes podotactiles}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ attraversamento pedonale/punto di pavimentazione tattile} other {%1$@ attraversamenti pedonali/punti di pavimentazione tattile}}"
+            "value": "{1, plural, one {%1$@ attraversamento pedonale o punto di pavimentazione tattile} other {%1$@ attraversamenti pedonali e punti di pavimentazione tattile}}"
           }
         },
         "ja": {

@@ -900,7 +900,7 @@
     "tactileEmpty": "No hay pavimento táctil registrado cerca",
     "tactileError": "No se pudo cargar la información de pavimento táctil",
     "tactileUnsupported": "La información de pavimento táctil solo está disponible en Corea del Sur",
-    "osmSummary": "{count, plural, one {# paso de peatones/punto de pavimento táctil} other {# pasos de peatones/puntos de pavimento táctil}}",
+    "osmSummary": "{count, plural, one {# paso de peatones o punto de pavimento táctil} other {# pasos de peatones y puntos de pavimento táctil}}",
     "osmEmpty": "No hay información de pasos de peatones ni pavimento táctil registrada cerca",
     "osmError": "No se pudo cargar la información de pasos de peatones ni pavimento táctil",
     "osmUnsupported": "La información de pasos de peatones y pavimento táctil solo está disponible en Corea del Sur",

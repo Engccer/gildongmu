@@ -900,7 +900,7 @@
     "tactileEmpty": "No tactile paving registered nearby",
     "tactileError": "Could not load tactile paving info",
     "tactileUnsupported": "Tactile paving info is only available in South Korea",
-    "osmSummary": "{count, plural, one {# crosswalk/tactile paving point} other {# crosswalks/tactile paving points}}",
+    "osmSummary": "{count, plural, one {# crosswalk or tactile paving point} other {# crosswalks and tactile paving points}}",
     "osmEmpty": "No crosswalk or tactile paving info registered nearby",
     "osmError": "Could not load crosswalk/tactile paving info",
     "osmUnsupported": "Crosswalk and tactile paving info is only available in South Korea",
