@@ -62,7 +62,9 @@ describe("search 명령", () => {
     await runSearch({ query: "강남", output: "text" });
 
     expect(apiRequest).toHaveBeenCalledTimes(2);
-    expect(apiRequest).toHaveBeenCalledWith("/api/places", { query: { query: "강남", lang: "ko" } });
+    // --lang 미지정이면 파라미터 자체를 싣지 않는다(서버 기본 ko). 종전엔 CLI가 "ko"를
+    // 채워 보내며 미지 값까지 ko로 접었다 — 그 정규화가 오타의 조용한 강등이었다.
+    expect(apiRequest).toHaveBeenCalledWith("/api/places", { query: { query: "강남" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/address/search", { query: { query: "강남" } });
 
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");

@@ -103,36 +103,50 @@ describe("route 명령", () => {
     expect(apiRequest).not.toHaveBeenCalledWith("/api/geocode", { query: { query: "37.49,127.02" } });
   });
 
-  it("car는 --lang en 시 lang 쿼리를 포함하고 transit은 en이어도 포함하지 않는다", async () => {
-    apiRequest.mockImplementation(async (path: string) => {
-      if (path === "/api/route/car") return { distanceMeters: 0, durationSeconds: 0, taxiFare: 0, tollFare: 0, guides: [] };
-      if (path === "/api/route/transit") return { result: null };
-      throw new Error(`unexpected path ${path}`);
+  // E26: 종전엔 car만 lang을 실었다("transit·walk는 V1 국문 전용" 주석). 서버가 셋 다
+  // 받으므로(각 라우트 lang 스키마) 세 수단 전부에서 전달을 단언한다 — 한 수단이라도
+  // 빠지면 사용자는 영어를 요청하고 한국어 응답을 받는데 그 사실을 알 길이 없다.
+  it.each([
+    ["car", "/api/route/car"],
+    ["transit", "/api/route/transit"],
+    ["walk", "/api/route/walk"],
+  ] as const)("%s는 --lang en을 쿼리에 싣는다", async (verb, path) => {
+    apiRequest.mockImplementation(async (p: string) => {
+      if (p === "/api/route/car") return { distanceMeters: 0, durationSeconds: 0, taxiFare: 0, tollFare: 0, guides: [] };
+      if (p === "/api/route/transit") return { result: null };
+      if (p === "/api/route/walk") return { result: { distanceMeters: 0, durationSeconds: 0, steps: [] } };
+      throw new Error(`unexpected path ${p}`);
     });
 
-    await runRoute("car", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    await runRoute(verb, { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
-      "/api/route/car",
+      path,
       { query: { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en" } },
     );
+  });
 
-    await runRoute("transit", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+  it("--lang 미지정이면 lang 파라미터 자체가 없다(서버 기본 ko)", async () => {
+    apiRequest.mockImplementation(async () => ({ result: { distanceMeters: 0, durationSeconds: 0, steps: [] } }));
+
+    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", output: "text" });
     expect(apiRequest).toHaveBeenCalledWith(
-      "/api/route/transit",
+      "/api/route/walk",
       { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
     );
   });
 
-  it("walk는 lang을 --lang en이어도 쿼리에 포함하지 않는다(V1 국문 전용)", async () => {
-    apiRequest.mockImplementation(async (path: string) => {
-      if (path === "/api/route/walk") return { result: { distanceMeters: 0, durationSeconds: 0, steps: [] } };
-      throw new Error(`unexpected path ${path}`);
+  it("미지 lang 값도 정규화 없이 그대로 보낸다(라우트가 400 — 조용한 ko 강등 금지)", async () => {
+    apiRequest.mockImplementation(async (p: string) => {
+      if (p === "/api/route/transit") throw new MockApiError("Invalid input", 400, 2);
+      throw new Error(`unexpected path ${p}`);
     });
 
-    await runRoute("walk", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "en", output: "text" });
+    await expect(
+      runRoute("transit", { origin: "37.53,127.12", dest: "37.49,127.02", lang: "EN", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
     expect(apiRequest).toHaveBeenCalledWith(
-      "/api/route/walk",
-      { query: { origin: "37.53,127.12", dest: "37.49,127.02" } },
+      "/api/route/transit",
+      { query: { origin: "37.53,127.12", dest: "37.49,127.02", lang: "EN" } },
     );
   });
 

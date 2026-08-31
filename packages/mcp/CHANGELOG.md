@@ -10,6 +10,10 @@
 
 ## [미출시]
 
+### 추가
+- **`lang` 입력을 `route_walk`·`route_transit`·`station_meta`·`station_timetable`·`subway_arrival`·`nearby_subway`에도 노출한다**(종전 `places_search`·`route_car`뿐). `en`이면 영문 안내 문장과 `*En` 필드(`lineNameEn`·`messageEn`·`linesEn`·`terminusEn` 등)가 함께 실린다 — 한국어 필드는 조인 키라 그대로 남는다. 영어권 에이전트가 한국어 문장만 받던 상태를 닫는다.
+- 시설 도구 2종(`station_facilities`·`station_metro_facilities`)에는 `lang`이 없다. 서버가 그 라우트에서 영문을 만들지 않으므로 받을 수 있는 척하지 않는다.
+
 ## [0.9.0] - 2026-08-25
 
 ### 추가

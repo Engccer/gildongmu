@@ -218,6 +218,43 @@ describe("station 명령", () => {
     const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(output).toContain("첫차·막차 조회 실패");
   });
+
+  // E26/E27: 서버가 lang을 받는 역 라우트는 셋(meta·timetable·subway-arrival)이고
+  // 시설 둘(코레일·서울지하철)은 받지 않는다. 합성 명령 info가 그 갈림을 카탈로그
+  // 술어로 판정하는지 — 안 갈리면 시설 라우트에 무의미한 파라미터가 새거나,
+  // 반대로 lang을 받는 두 섹션이 조용히 한국어로 떨어진다.
+  it("arrivals·timetable은 --lang en을 쿼리에 싣는다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/subway-arrival") return { arrivals: null };
+      if (path === "/api/station/timetable") return { timetable: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["arrivals"], { station: "강남", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/subway-arrival", { query: { station: "강남", lang: "en" } });
+
+    await runSub("../commands/station.js", "stationCommand", ["timetable"], { station: "강동", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강동", lang: "en" } });
+  });
+
+  it("info --lang en은 lang을 받는 섹션에만 싣고 시설 2종엔 싣지 않는다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/meta") {
+        return { meta: { name: "강남", nameEn: "Gangnam", lines: ["2호선"], isTransfer: false, operator: "서울교통공사" } };
+      }
+      if (path === "/api/station/facilities") return { facilities: null };
+      if (path === "/api/station/metro-facilities") return { facilities: null };
+      if (path === "/api/station/timetable") return { timetable: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["info"], { station: "강남", lang: "en", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/meta", { query: { station: "강남", lang: "en" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/timetable", { query: { station: "강남", lang: "en" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/facilities", { query: { station: "강남" } });
+    expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남" } });
+  });
 });
 
 describe("bus route 명령", () => {

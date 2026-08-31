@@ -9,7 +9,7 @@ const barrierFreeCommand = defineCommand({
     output: sharedArgs.output,
   },
   async run({ args }) {
-    await runEndpoint("barrier-free-detail", { contentId: args.contentId }, args.output);
+    await runEndpoint("barrier-free-detail", { contentId: args.contentId }, args.output, undefined);
   },
 });
 

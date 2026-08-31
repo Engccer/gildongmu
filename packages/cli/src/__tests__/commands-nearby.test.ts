@@ -127,6 +127,41 @@ describe("nearby 명령", () => {
     );
   });
 
+  // E26/E27: nearby 11종 중 lang을 받는 것은 지하철 도착뿐이다. 카탈로그 술어로
+  // 갈리는지 — 안 갈리면 따릉이 라우트에 무의미한 lang이 새거나(광고된 옵트인의
+  // 침묵 무시), 지하철이 영어를 요청받고도 한국어를 돌려준다.
+  it("subway는 --lang en을 싣고, lang을 안 받는 도메인(bike)은 싣지 않는다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/subway-arrival/nearby") return { stations: [] };
+      if (path === "/api/bike/nearby") return { stations: [] };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runNearby("subway", { lat: "37.5", lng: "127.1", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/station/subway-arrival/nearby",
+      { query: { lat: "37.5", lng: "127.1", lang: "en" } },
+    );
+
+    await runNearby("bike", { lat: "37.5", lng: "127.1", lang: "en", output: "text" });
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/bike/nearby",
+      { query: { lat: "37.5", lng: "127.1" } },
+    );
+  });
+
+  it("--lang 인자 선언은 카탈로그의 lang 지원과 정확히 일치한다(help가 못 쓰는 옵션을 광고하지 않는다)", async () => {
+    const { nearbyCommand } = await import("../commands/nearby.js");
+    const subs = nearbyCommand.subCommands as Record<string, { args?: Record<string, unknown> }>;
+    // 목록을 손으로 적어 둔다 — 카탈로그에 lang을 더하면 이 단언이 실패해,
+    // "help에도 노출된다"는 결과를 의식적으로 승인하게 만든다.
+    const declared = Object.entries(subs)
+      .filter(([, cmd]) => cmd.args && "lang" in cmd.args)
+      .map(([verb]) => verb)
+      .sort();
+    expect(declared).toEqual(["subway"]);
+  });
+
   it("congestion은 혼잡도 라우트로 나가고, area null(영역 밖)을 오류가 아닌 안내로 출력한다", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/congestion/nearby") return { area: null };
