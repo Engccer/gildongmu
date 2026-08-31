@@ -54,6 +54,20 @@ gil config set output json            # 영구 기본값으로 저장
 NO_COLOR=1 gil search "맥도날드"      # 색상 비활성화
 ```
 
+## 응답 언어
+
+```bash
+gil route walk 천호역 강동역 --lang en    # 영문 안내 문장
+gil station info 강남 --lang en           # 영문 노선·역명 필드 병기(json)
+```
+
+`--lang`은 **서버가 돌려주는 데이터·안내 문장의 언어**다. `--help`에 이 옵션이 보이는 명령
+(`search`·`chat`·`route`·`station`·`nearby subway`)만 서버가 `lang`을 받는다. `ko`/`en` 외의 값은
+400으로 거절한다(조용히 한국어로 떨어뜨리지 않는다).
+
+⚠ CLI가 직접 쓰는 표기(라벨·조사·"약 16분")는 한국어 고정이다. 대중교통·역 조회의 영문은
+`*En` 필드로 오므로 `--output json`에서 온전히 보인다.
+
 ## 자동완성
 
 ```bash

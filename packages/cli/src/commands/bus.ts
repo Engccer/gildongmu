@@ -20,6 +20,7 @@ const routeCommand = defineCommand({
       "bus-route-stops",
       { source: args.source, routeId: args.routeId, cityCode: args.cityCode },
       args.output,
+      undefined,
     );
   },
 });

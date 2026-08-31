@@ -4,7 +4,7 @@ import { readConfig } from "../lib/config.js";
 import { FORMATTERS } from "../lib/formatters.js";
 import { emit, fail, resolveOutputMode } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
-import { catalogPath, runEndpoint, sharedArgs } from "./shared.js";
+import { catalogPath, catalogSupportsLang, langArgs, runEndpoint, sharedArgs } from "./shared.js";
 
 /**
  * `station info`의 4병렬 섹션 정의 — 카탈로그 이름·envelope 키·표시 제목·json 합성 키를
@@ -32,14 +32,23 @@ const infoCommand = defineCommand({
   args: {
     station: { type: "positional", description: "역명", required: true },
     output: sharedArgs.output,
+    ...langArgs,
   },
   async run({ args }) {
     const cfg = await readConfig();
     const mode = resolveOutputMode(args.output, cfg);
-    const query = { station: args.station };
 
+    // 섹션마다 lang 지원이 갈린다(메타·첫차막차는 받고, 코레일·서울지하철 시설은 없다).
+    // 카탈로그 술어로 갈라 보내므로, 시설 라우트가 lang을 받게 되는 날 이 코드는 그대로 따라간다.
     const settled = await Promise.allSettled(
-      INFO_SECTIONS.map((s) => apiRequest<Record<string, unknown>>(catalogPath(s.catalog), { query })),
+      INFO_SECTIONS.map((s) =>
+        apiRequest<Record<string, unknown>>(catalogPath(s.catalog), {
+          query:
+            args.lang !== undefined && catalogSupportsLang(s.catalog)
+              ? { station: args.station, lang: args.lang }
+              : { station: args.station },
+        }),
+      ),
     );
 
     if (settled.every((r) => r.status === "rejected")) {
@@ -82,9 +91,10 @@ const arrivalsCommand = defineCommand({
   args: {
     station: { type: "positional", description: "역명", required: true },
     output: sharedArgs.output,
+    ...langArgs,
   },
   async run({ args }) {
-    await runEndpoint("subway-arrival", { station: args.station }, args.output);
+    await runEndpoint("subway-arrival", { station: args.station }, args.output, args.lang);
   },
 });
 
@@ -94,9 +104,10 @@ const timetableCommand = defineCommand({
   args: {
     station: { type: "positional", description: "역명", required: true },
     output: sharedArgs.output,
+    ...langArgs,
   },
   async run({ args }) {
-    await runEndpoint("station-timetable", { station: args.station }, args.output);
+    await runEndpoint("station-timetable", { station: args.station }, args.output, args.lang);
   },
 });
 

@@ -3,7 +3,7 @@ import { ApiError } from "../lib/api-client.js";
 import { geocodeQuery } from "../lib/resolve-location.js";
 import { fail } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
-import { runEndpoint, sharedArgs } from "./shared.js";
+import { langArgs, runEndpoint, sharedArgs } from "./shared.js";
 
 const COORD_RE = /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/;
 
@@ -48,6 +48,7 @@ function makeRoute(verb: "car" | "transit" | "walk") {
       origin: { type: "positional", description: "출발지(장소명·주소 또는 '위도,경도')", required: true },
       dest: { type: "positional", description: "도착지(장소명·주소 또는 '위도,경도')", required: true },
       ...sharedArgs,
+      ...langArgs,
       ...viaArgs,
       ...(verb === "walk" ? walkArgs : {}),
     },
@@ -70,14 +71,12 @@ function makeRoute(verb: "car" | "transit" | "walk") {
         if (err instanceof ApiError) fail(err.message, err.exitCode);
         fail(err instanceof Error ? err.message : String(err), ExitCode.Usage);
       }
-      // lang은 car(en 턴바이턴)만 쓴다 — transit·walk는 V1 국문 전용(ODsay·Tmap 무료
-      // 티어가 국문 응답만 제공, 보내도 라우트가 무시).
-      const extra: Record<string, string> = verb === "car" && args.lang === "en" ? { lang: "en" } : {};
+      const extra: Record<string, string> = {};
       // 값은 그대로 전달한다 — "true"/"false" 외는 라우트가 400으로 거절해야 하고,
       // CLI가 정규화하면 오타("yes")가 조용히 기본 모드(계단 포함)로 강등된다.
       if (verb === "walk" && accessible !== undefined) extra.accessible = String(accessible);
       if (via !== undefined) extra.via = via;
-      await runEndpoint(ROUTE_CATALOG_NAME[verb], { origin, dest, ...extra }, args.output);
+      await runEndpoint(ROUTE_CATALOG_NAME[verb], { origin, dest, ...extra }, args.output, args.lang);
     },
   });
 }

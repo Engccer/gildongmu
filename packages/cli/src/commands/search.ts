@@ -5,7 +5,7 @@ import { resolveLocation } from "../lib/resolve-location.js";
 import { FORMATTERS } from "../lib/formatters.js";
 import { emit, fail, resolveOutputMode } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
-import { sharedArgs } from "./shared.js";
+import { langArgs, sharedArgs } from "./shared.js";
 
 /**
  * 웹 UI 검색창의 결정론 병렬 동형(스펙 §4): 장소+주소는 매 검색 병렬.
@@ -13,11 +13,13 @@ import { sharedArgs } from "./shared.js";
  */
 export const searchCommand = defineCommand({
   meta: { name: "search", description: "장소·주소 통합 검색 (0건이면 웹 검색 폴백)" },
-  args: { query: { type: "positional", description: "검색어", required: true }, ...sharedArgs },
+  args: { query: { type: "positional", description: "검색어", required: true }, ...sharedArgs, ...langArgs },
   async run({ args }) {
     const cfg = await readConfig();
     const mode = resolveOutputMode(args.output, cfg);
-    const lang = args.lang === "en" ? "en" : "ko";
+    // 값은 그대로 전달한다 — 미지 값("EN"·"eng")은 /api/places가 400으로 거절해야 하고,
+    // CLI가 ko로 접으면 그 오타가 조용한 한국어 강등이 된다(runEndpoint 동형).
+    const lang = args.lang;
 
     let loc: { lat: number; lng: number } | null = null;
     try {
@@ -28,7 +30,9 @@ export const searchCommand = defineCommand({
     const locQ = loc ? { lat: String(loc.lat), lng: String(loc.lng) } : {};
 
     const settled = await Promise.allSettled([
-      apiRequest<{ places: unknown[] }>("/api/places", { query: { query: args.query, lang, ...locQ } }),
+      apiRequest<{ places: unknown[] }>("/api/places", {
+        query: lang === undefined ? { query: args.query, ...locQ } : { query: args.query, lang, ...locQ },
+      }),
       apiRequest<{ addresses: unknown[] }>("/api/address/search", { query: { query: args.query } }),
     ]);
     const places = settled[0].status === "fulfilled" ? settled[0].value.places : [];

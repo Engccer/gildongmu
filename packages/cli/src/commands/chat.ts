@@ -6,7 +6,7 @@ import { ApiError } from "../lib/api-client.js";
 import { chatOnce, type ChatTurn, type ChatOnceResult } from "../lib/chat-client.js";
 import { emit, fail, resolveOutputMode } from "../lib/output.js";
 import { ExitCode } from "../lib/exit-codes.js";
-import { sharedArgs } from "./shared.js";
+import { langArgs, sharedArgs } from "./shared.js";
 
 /** 마크다운 경량 정리 — 헤딩·볼드·이탤릭 마커 제거 수준(의존성 추가 없음, 스펙 §7). */
 function stripMarkdown(text: string): string {
@@ -95,7 +95,7 @@ export const chatCommand = defineCommand({
     near: sharedArgs.near,
     lat: sharedArgs.lat,
     lng: sharedArgs.lng,
-    lang: sharedArgs.lang,
+    lang: langArgs.lang,
     output: sharedArgs.output,
   },
   async run({ args }) {

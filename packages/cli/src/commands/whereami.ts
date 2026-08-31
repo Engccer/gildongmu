@@ -11,7 +11,7 @@ export const whereamiCommand = defineCommand({
   async run({ args }) {
     try {
       const loc = await resolveLocation(args, { required: true });
-      await runEndpoint("where-am-i", { lat: String(loc!.lat), lng: String(loc!.lng) }, args.output);
+      await runEndpoint("where-am-i", { lat: String(loc!.lat), lng: String(loc!.lng) }, args.output, undefined);
     } catch (err) {
       // ApiError(네트워크 7·서버 오류 1 등)는 고유 exit 코드 보존, 지오코딩 0건(일반 Error)만 Usage(2).
       if (err instanceof LocationError) fail(err.message, err.exitCode);

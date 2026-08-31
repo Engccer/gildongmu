@@ -8,6 +8,13 @@
 
 ## [미출시]
 
+### 추가
+- **`--lang en`을 `route walk`·`route transit`·`station info`·`station timetable`·`station arrivals`·`nearby subway`에서 받는다.** 종전엔 `route car`·`search`뿐이었다. `route walk --lang en`은 영문 안내 문장을(`Turn right, then walk 600m along Olympic-ro`), 대중교통·역 조회는 `*En` 필드(`lineNameEn`·`messageEn`·`linesEn`·`terminusEn` 등)를 함께 싣는다. 한국어 필드는 어느 응답에서도 그대로다(조인 키).
+
+### 변경
+- `--lang`이 **서버가 `lang`을 받는 명령의 `--help`에만** 나온다. 종전엔 전 명령에 붙어 따릉이·혼잡도처럼 영어를 줄 수 없는 조회에도 옵션을 광고했다.
+- `--lang` 값을 정규화하지 않고 그대로 보낸다. `--lang EN` 같은 오타는 400으로 거절된다(종전 `search`는 조용히 `ko`로 접었다).
+
 ## [0.9.0] - 2026-08-25
 
 ### 추가

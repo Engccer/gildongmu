@@ -9,6 +9,6 @@ export const webCommand = defineCommand({
     output: sharedArgs.output,
   },
   async run({ args }) {
-    await runEndpoint("web-search", { query: args.query }, args.output);
+    await runEndpoint("web-search", { query: args.query }, args.output, undefined);
   },
 });
