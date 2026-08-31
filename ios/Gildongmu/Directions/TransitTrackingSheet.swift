@@ -361,17 +361,16 @@ struct TransitTrackingSheet: View {
     @ViewBuilder private var viaStopsRows: some View {
         if let state = model.state, let leg = model.currentLeg, !leg.viaStops.isEmpty {
             DisclosureGroup(isExpanded: $viaExpanded) {
+                // ⚠ 현재역 인덱스 판정은 **조인**이라 한국어 원문으로 한다.
                 let currentIndex = viaStopCurrentIndex(leg: leg, currentLocation: state.currentLocation)
-                ForEach(Array(leg.viaStops.enumerated()), id: \.offset) { index, stop in
-                    Text(joinText(
-                        stop.name,
-                        index == 0
-                            ? appLocalized("transitGuide.viaBoard")
-                            : index == leg.viaStops.count - 1
-                                ? appLocalized("transitGuide.viaAlight")
-                                : "",
-                        index == currentIndex ? appLocalized("transitGuide.viaCurrent") : ""
-                    ))
+                let display = model.displayLeg(leg, useOverride: false)
+                ForEach(Array(display.stops.enumerated()), id: \.offset) { index, stop in
+                    Text(TransitGuideTextRenderer.render(transitViaStopLine(
+                        isEn: transitGuideIsEn, stop: stop,
+                        role: index == 0
+                            ? "board"
+                            : index == display.stops.count - 1 ? "alight" : "via",
+                        here: index == currentIndex)))
                 }
             } label: {
                 Text(appLocalized(
@@ -497,8 +496,10 @@ struct TransitTrackingSheet: View {
             .task { landControlFocus(.reboardPrompt, proxy: proxy) }
         // 항목 정체성은 순번(웹은 순번+이름 복합) — 동명 정차가 있어도 행이 합쳐지지
         // 않는다. 두 표기가 다르지만 고유성은 양쪽 다 순번이 보장한다.
-        ForEach(Array(leg.viaStops.enumerated()), id: \.offset) { _, stop in
-            Button(stop.name) { model.changeBoarding(at: stop.name) }
+        // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 모델이 인덱스로
+        // viaStops의 한국어 원문을 되찾는다(조인/표시 분리, spec §3.5·§3.6).
+        ForEach(Array(model.displayLeg(leg, useOverride: false).stops.enumerated()), id: \.offset) { index, stop in
+            Button(stop.en ?? stop.ko) { model.changeBoarding(at: index) }
         }
         Button(appLocalized("transitGuide.reboardCancel")) {
             model.cancelReboard()
@@ -572,13 +573,11 @@ struct TransitTrackingSheet: View {
         let departedMinutes = model.waitingDeparted.first {
             $0.item.vehicleId == item.vehicleId
         }?.minutes
-        let desc = joinText(
-            item.destinationName.map { appLocalized("transitGuide.bound", $0) } ?? "",
-            item.direction,
-            item.message,
-            candidate.express ? appLocalized("transitGuide.expressCheck", leg.alightName) : "",
-            departedMinutes.map { appLocalized("transitGuide.departed", String($0)) } ?? ""
-        )
+        let displayLeg = model.displayLeg(leg, useOverride: false)
+        let displayItem = transitDisplayItem(item)
+        let desc = TransitGuideTextRenderer.render(transitCandidateDescLine(
+            isEn: transitGuideIsEn, leg: displayLeg, item: displayItem,
+            express: candidate.express, departedMinutes: departedMinutes))
         if item.vehicleId == nil || item.vehicleId?.isEmpty == true {
             // vehId 없는 슬롯은 잠금 불가(§5.1 "vehId 보유 슬롯만 활성화") — 빈 잠금은
             // 어떤 항목과도 매칭되지 않는 조용한 고장이 된다(독립 리뷰 BLOCKER).
@@ -587,8 +586,8 @@ struct TransitTrackingSheet: View {
             // 결정적 미도달(§5.1) — 활성화 차단, 사유 병기.
             Text(joinText(
                 desc,
-                appLocalized(
-                    "transitGuide.terminatesEarly", item.destinationName ?? "", leg.alightName)
+                TransitGuideTextRenderer.render(transitTerminatesEarlyLine(
+                    isEn: transitGuideIsEn, leg: displayLeg, item: displayItem))
             ))
             .foregroundStyle(.secondary)
         } else {
@@ -597,9 +596,13 @@ struct TransitTrackingSheet: View {
             Button(appLocalized(
                 leg.mode == "subway" ? "transitGuide.selectTrain" : "transitGuide.selectBus", desc
             )) {
-                model.board(item: item, description: joinText(
-                    item.destinationName.map { appLocalized("transitGuide.bound", $0) } ?? "",
-                    item.direction))
+                // 설명은 ko·en 쌍으로 얼린다 — 렌더 문자열을 저장하면 세션 도중 언어를
+                // 바꿨을 때 그 조각만 옛 언어로 남는다.
+                let en = transitVehicleDescLine(isEn: true, item: displayItem)
+                model.board(item: item, description: TransitLabel(
+                    ko: TransitGuideTextRenderer.render(
+                        transitVehicleDescLine(isEn: false, item: displayItem)),
+                    en: en.lang == "en" ? TransitGuideTextRenderer.render(en) : nil))
             }
         }
     }

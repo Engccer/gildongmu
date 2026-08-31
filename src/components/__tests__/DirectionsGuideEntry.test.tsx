@@ -280,11 +280,13 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     expect(screen.queryByRole("button", { name: "briefGuideStart" })).toBeNull();
   });
 
-  it("en + 대중교통 성공: ko 전용이라 버튼 없음", async () => {
+  it("en + 대중교통 성공: 버튼이 있다(E27 잔여 ① 게이트 해제, 2026-09-01)", async () => {
+    // 종전엔 ko 전용이라 0이었다. 서버가 영문 조각을 싣고 표시 계층이 줄 단위로 고르므로
+    // 비-ko에서도 시작할 수 있다 — 반대로 계단 회피·자동차는 여전히 비-ko 미노출이다.
     mockLocale = "en";
     stubFetch({ walk: "fail", car: "fail", transit: "ok" });
     await queryRoutes();
-    expect(guideStartButtons()).toHaveLength(0);
+    expect(guideStartButtons()).toHaveLength(1);
   });
 
   it("대안 펼침 시 탑승 leg 있는 대안만 안내 시작 버튼(M5 선행분)", async () => {
@@ -332,15 +334,15 @@ describe("수단별 안내 진입점 게이트(§3.1)", () => {
     });
   });
 
-  it("en + 대안 펼침: 대안 시작 버튼도 ko 전용", async () => {
+  it("en + 대안 펼침: 대안 시작 버튼도 열린다(E27 잔여 ①)", async () => {
     mockLocale = "en";
     stubFetch({ walk: "fail", car: "fail", transit: "withAlts" });
     await queryRoutes();
     const discs = screen.getAllByRole("button", { name: /alternativeHeading/ });
     fireEvent.click(discs[0]);
     expect(
-      screen.queryAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
-    ).toHaveLength(0);
+      screen.getAllByRole("button", { name: "guideStartTransitAlt:alternativeHeading" }),
+    ).toHaveLength(1);
   });
 });
 
