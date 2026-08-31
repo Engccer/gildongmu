@@ -62,8 +62,14 @@ gil station info 강남 --lang en           # 영문 노선·역명 필드 병�
 ```
 
 `--lang`은 **서버가 돌려주는 데이터·안내 문장의 언어**다. `--help`에 이 옵션이 보이는 명령
-(`search`·`chat`·`route`·`station`·`nearby subway`)만 서버가 `lang`을 받는다. `ko`/`en` 외의 값은
-400으로 거절한다(조용히 한국어로 떨어뜨리지 않는다).
+(`search`·`chat`·`route`·`station`·`nearby subway`)만 서버가 `lang`을 받는다. `search`·`route walk`·
+`route transit`·`station` 계열·`nearby subway`은 `ko`/`en` 외의 값을 400으로 거절한다(조용히
+한국어로 떨어뜨리지 않는다).
+
+⚠ **`route car`·`chat`은 그 검증이 없다** — 두 라우트는 `en`이 아닌 값을 전부 한국어로 취급하므로
+`--lang EN` 같은 오타에 오류 없이 한국어가 온다. `route car`는 경유지(`--via`)·서버 키 부재일 때도
+영어 요청이 한국어로 폴백하는데, 지금 텍스트 출력에는 그 사실을 알리는 줄이 없다(`--output json`의
+`guidanceLang`에만 보인다).
 
 ⚠ CLI가 직접 쓰는 표기(라벨·조사·"약 16분")는 한국어 고정이다. 대중교통·역 조회의 영문은
 `*En` 필드로 오므로 `--output json`에서 온전히 보인다.

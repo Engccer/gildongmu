@@ -51,6 +51,17 @@ const infoCommand = defineCommand({
       ),
     );
 
+    // 400은 부분 실패가 아니라 **요청이 틀렸다**는 뜻이라 즉시 종료한다(`search` 동형).
+    // 흡수시키면 `--lang eng` 같은 오타가 "역 정보 조회 실패 / 첫차·막차 조회 실패" 두 줄
+    // + 시설 정상 렌더 + exit 0이 되어, 사용자는 그 역에 정보가 없는 것인지 자기 요청이
+    // 거절된 것인지 구분할 수 없다(서버가 보낸 400 메시지가 어디에도 안 나온다).
+    // upstream 장애(502)는 종전대로 섹션별 부분 성공을 유지한다.
+    for (const r of settled) {
+      if (r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 400) {
+        fail(r.reason.message, r.reason.exitCode);
+      }
+    }
+
     if (settled.every((r) => r.status === "rejected")) {
       const first = settled[0] as PromiseRejectedResult;
       const err = first.reason;

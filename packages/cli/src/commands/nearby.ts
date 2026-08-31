@@ -30,17 +30,13 @@ function makeNearby(verb: string, catalog: string, description: string) {
     meta: { name: verb, description },
     args: supportsLang ? { ...sharedArgs, ...langArgs } : sharedArgs,
     async run({ args }) {
-      // citty는 선언하지 않은 플래그도 args에 싣는다 — 선언 여부와 무관하게 읽되,
-      // 전달 판정은 runEndpoint의 카탈로그 술어가 한다(미지원 도메인에선 무전달).
-      const lang = (args as { lang?: unknown }).lang;
+      // 선언한 도메인에서만 읽는다. 선언 안 된 도메인에 `--lang en`을 주면 citty(mri)가
+      // `lang: true` + positional `"en"`으로 접으므로(실측) 그 값은 문자열이 아니다 —
+      // 캐스트는 args 타입이 분기(ternary)라 필요할 뿐이고, 안 읽는 것이 유일한 방어다.
+      const lang = supportsLang ? (args as { lang?: string }).lang : undefined;
       try {
         const loc = await resolveLocation(args, { required: true });
-        await runEndpoint(
-          catalog,
-          { lat: String(loc!.lat), lng: String(loc!.lng) },
-          args.output,
-          lang === undefined ? undefined : String(lang),
-        );
+        await runEndpoint(catalog, { lat: String(loc!.lat), lng: String(loc!.lng) }, args.output, lang);
       } catch (err) {
         // ApiError(네트워크 7·서버 오류 1 등)는 고유 exit 코드 보존, 지오코딩 0건(일반 Error)만 Usage(2).
         if (err instanceof LocationError) fail(err.message, err.exitCode);
