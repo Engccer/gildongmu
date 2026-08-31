@@ -255,6 +255,45 @@ describe("station 명령", () => {
     expect(apiRequest).toHaveBeenCalledWith("/api/station/facilities", { query: { station: "강남" } });
     expect(apiRequest).toHaveBeenCalledWith("/api/station/metro-facilities", { query: { station: "강남" } });
   });
+
+  /**
+   * `search`와 같은 결함이 `info`에도 있었다(리뷰 검출 2026-09-01): 오타 lang이 meta·
+   * timetable을 400으로 만드는데 allSettled가 흡수해 "조회 실패" 두 줄 + 시설 정상 렌더 +
+   * exit 0이 나왔다 — 서버가 보낸 400 메시지는 어디에도 안 나온다.
+   */
+  it("info: 한 섹션이 400으로 거절되면 다른 섹션이 성공해도 exit 2로 종료한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/meta" || path === "/api/station/timetable") {
+        throw new MockApiError('Invalid option: expected one of "ko"|"en"', 400, 2);
+      }
+      if (path === "/api/station/facilities") return { facilities: { elevators: 2 } };
+      if (path === "/api/station/metro-facilities") return { facilities: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await expect(
+      runSub("../commands/station.js", "stationCommand", ["info"], { station: "강남", lang: "eng", output: "text" }),
+    ).rejects.toThrow("EXIT_2");
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("expected one of");
+  });
+
+  it("info: 502(업스트림 장애)는 종전대로 섹션별 부분 성공을 유지한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/station/meta") throw new MockApiError("역 정보 조회에 실패했습니다.", 502, 1);
+      if (path === "/api/station/facilities") return { facilities: { elevators: 2 } };
+      if (path === "/api/station/metro-facilities") return { facilities: null };
+      if (path === "/api/station/timetable") return { timetable: null };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSub("../commands/station.js", "stationCommand", ["info"], { station: "강남", output: "text" });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain("역 정보 조회 실패");
+    expect(output).toContain("엘리베이터 2대");
+  });
 });
 
 describe("bus route 명령", () => {

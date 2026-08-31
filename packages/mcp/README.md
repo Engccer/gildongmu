@@ -68,6 +68,7 @@ codex mcp add gildongmu -- npx -y gildongmu-mcp
 | `weather` | 이 지역 날씨(기상청 실황+예보) |
 | `air_quality` | 이 지역 공기질(에어코리아) |
 | `where_am_i` | 현재 위치 정위(주소·행정동·가까운 역·기준점) |
+| `nearby_overview` | 내 주변 한눈에 보기(1km 안 대중교통·식당·카페·아이 놀 곳·문화 행사·무장애 관광지) |
 | `barrier_free_detail` | 무장애 관광지 편의시설 상세 |
 
 채팅(`chat`)·웹 검색(`web`)은 호스트 LLM이 직접 처리하는 몫이라 MCP 도구로는 노출하지 않는다.

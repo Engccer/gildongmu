@@ -311,7 +311,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 ✅ **2026-08-31 구현 종결**(spec `docs/superpowers/specs/2026-08-31-transit-english-design.md`, 실호출 게이트 35/35, codex 설계 리뷰 17건 §9). **2026-09-01 위원장 판정으로 잔여 3건에 세션 배정**(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`). **남은 판정**:
 - **실시간 대중교통 안내 en 게이트 해제**(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`) + 안내 상태 머신 display DTO(`viaStops[].name`·실시간 정류소명·차량 선택 문맥까지 영문 라벨, 발화 sentinel 테스트) — 실험판 봉인(G3)과 별도 판정. spec §3.7·§6.
-- ~~**CLI/MCP `route transit`·`station` 계열 `lang`**(E26 동형)~~ ✅ 2026-09-01 종결(세션 `cli-lang`, CHANGELOG 같은 날). 카탈로그 params가 곧 MCP 도구 입력이라 `route_walk`·`route_transit`·`station_meta`·`station_timetable`·`subway_arrival`·`nearby_subway`이 `lang`을 받는다. ⚠ **CLI 텍스트 포매터의 라벨·조사는 한국어 고정**이라 `--lang en`이 바꾸는 것은 서버가 쓴 문장(도보·자동차)과 `*En` 필드(json)뿐이다 — 포매터 i18n은 별개 마일스톤이고 착수 판정 없음(수요 근거가 없다: CLI 산문 소비자는 한국어 사용자이고, 에이전트는 json을 읽는다).
+- ~~**CLI/MCP `route transit`·`station` 계열 `lang`**(E26 동형)~~ ✅ 2026-09-01 종결(세션 `cli-lang`, CHANGELOG 같은 날). **파생 열린 항목 → §5 E29**(CLI 자동차 브리핑에 `guidanceLang` 강등 표기가 없다). 카탈로그 params가 곧 MCP 도구 입력이라 `route_walk`·`route_transit`·`station_meta`·`station_timetable`·`subway_arrival`·`nearby_subway`이 `lang`을 받는다. ⚠ **CLI 텍스트 포매터의 라벨·조사는 한국어 고정**이라 `--lang en`이 바꾸는 것은 서버가 쓴 문장(도보·자동차)과 `*En` 필드(json)뿐이다 — 포매터 i18n은 별개 마일스톤이고 착수 판정 없음(수요 근거가 없다: CLI 산문 소비자는 한국어 사용자이고, 에이전트는 json을 읽는다).
 - **iOS 줄 단위 언어 태깅**(한국어 폴백 줄·비-en 로케일 영어 줄) — 판정 정본은 §2 E28-①(같은 축, 이 면은 그 행에 적었다).
 - **병기 `Gangnam (강남)`이 한 접근성 객체로 읽히는가** — 웹 `<h4>`·`<li>` 안 `aria-hidden` span(a11y-auditor 정적 판정 결과는 spec §9 아래), iOS `accessibilityLabel` — 실기기 VoiceOver 판정(E28 병기와 함께).
 - ~~내 주변 **버스 정류소명** 영문~~ ✅ 2026-08-31 E28 로마자(`bus.ts` `nameRoman`)로 해소. 채팅 산문의 영문 노선명은 범위 밖(채팅은 ko 산문 정본).
@@ -385,6 +385,14 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 **다음 웨이브 후보(spec §8.5, 이번 범위 밖)**: "내 주변" 허브 뷰 도구층(+`get_walk_infrastructure_nearby` 이관) · 역 시설 도구(동명이역 `ambiguousStation` 계약 + 장소 상세 뷰 도구층과 함께) · 장소 상세 `focus_item` · `plan_directions` 수단 선택 인자(화면 핸들러 선행) · Declarative API(같은 기능이 두 표면에 서면 겹치므로 imperative만).
 
 **부수 효과(위원장 2026-08-27)**: 한동안 웹은 iOS 기능 이식 수준에 머물렀다. 도구를 노출하려면 "이 앱이 할 수 있는 일"을 하나씩 이름 붙이고 스키마로 못박아야 하므로, 그 작업 자체가 웹앱 기능 경계를 정리한다.
+
+### E29. CLI 자동차 브리핑에 en→ko 폴백 표기가 없다 (🆕 2026-09-01, cli-lang 리뷰 검출)
+
+`/api/route/car`는 en 요청이 한국어로 폴백한 사실을 응답 `guidanceLang: "ko"`로 정직하게 싣는데(A26이 그 목적으로 만든 필드) **CLI 포매터가 그 필드를 읽지 않는다**(`packages/cli/src/lib/formatters.ts`에 등장 0). 그래서 `gil route car A B --lang en --via C`는 한국어 턴바이턴을 표기 없이 낸다 — 웹은 `<li lang="ko">`, iOS는 `CarRouteRows`가 같은 사실을 표기하는데 CLI text 모드에만 반증 채널이 없다(`--output json`에는 필드가 보인다). 폴백 사유는 셋(NCP 키 부재·경유지·기하 요청)이라 사용자 조작만으로도 상시 발생한다.
+
+⚠ **막는 것은 포매터 시그니처다**: `FORMATTERS[name](body)`는 body만 받아 "사용자가 무슨 언어를 요청했는가"를 모른다. `guidanceLang === "ko"`만으로는 ko 요청의 정상 응답과 구분되지 않으므로, 요청 lang을 포매터까지 내리는 계약 변경(전 포매터 시그니처)이 선행한다. E26 세션이 그 규모를 이유로 열어 두었다.
+
+부수 관찰(같은 리뷰): `/api/route/car`·`/api/chat`은 `lang`/`locale`을 검증하지 않아 en이 아닌 값을 조용히 한국어로 취급한다(`searchParams.get("lang") === "en"` 문자열 비교, `locale?: string` 무검증). E27이 세운 `langParam()`(미지 값 400) 원칙과 어긋나지만 라우트 소유가 이 세션 밖이라 통일 여부는 판정 대기다. `/api/chat`은 실제로 6로케일을 받는데 CLI `--help`는 `ko|en`만 광고한다(좁지만 거짓은 아님).
 
 ### E25. ODsay가 이미 주는 것 두 가지 — 출구 번호·지하철 최단시간 경로 (🆕 2026-08-25, A20 조사 부산물)
 
