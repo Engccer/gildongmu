@@ -27,6 +27,15 @@ export interface ManualLocation {
   /** 단조 증가. 판정 왕복 중 재지정을 가르는 CAS 토큰. */
   revision: number;
   label: string;
+  /**
+   * 라벨의 라틴 표기(E28 병기용, additive). 장소는 서버 투영 `Place.nameRoman`,
+   * 주소는 juso 공식 영문(`engAddr`)이 그 자리에 온다 — 지정 시점에 이미 손에 있는
+   * 값이라 저장한다(표시 때 다시 조회하면 왕복마다 값이 달라질 수 있다).
+   *
+   * 부재면 병기 없음이다(옛 저장값·로마자를 만들 수 없는 이름). 한글이 섞인 후보는
+   * `bilingualName`이 후보에서 떨어뜨리므로 여기서 거르지 않는다.
+   */
+  labelRoman?: string;
   lat: number;
   lng: number;
   origin: Fix | null;
@@ -123,6 +132,7 @@ const fixSchema = z.object({
 const manualLocationSchema = z.object({
   revision: z.number().finite(),
   label: z.string().trim().min(1),
+  labelRoman: z.string().trim().min(1).optional(),
   lat: z.number().finite().min(-90).max(90),
   lng: z.number().finite().min(-180).max(180),
   origin: fixSchema.nullable(),

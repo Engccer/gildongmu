@@ -177,17 +177,24 @@ interface Surface {
 /**
  * 웹 소비자 판정. **세 축**이다(백로그 D20②):
  * ① `source: { kind: "current" }` — "내 주변" 계열
- * ② `useManualLocationLabel` — 수동 라벨을 직접 렌더하는 화면
+ * ② 수동 라벨 훅(`useManualLocationLabel`·`useManualLocationBilingual`) — 라벨을 직접 렌더하는 화면
  * ③ `useGeolocation(` — GPS 스냅샷을 직접 읽는 화면
  *
  * ①만 보던 종전 판은 **표시줄(`LocationBar.tsx`) 자신을 스캔 밖에 두었다.** 이 기능의
  * 핵심 화면이자 GPS 문구를 직접 렌더하는 유일한 상시 표면인데, 누가 수동 분기를
  * 지워도 가드가 초록이었다.
  */
+/**
+ * 수동 라벨 훅 계열. 이름을 하나만 검사하면 **훅이 갈라지는 날 조용히 뚫린다** —
+ * `LocationBar`가 병기용 `useManualLocationBilingual`로 옮겨갔을 때가 그 자리였다
+ * (표시줄이 `branches: false`로 떨어져 위반이 되거나, 스캔 밖으로 빠진다).
+ */
+const MANUAL_LABEL_HOOK = /useManualLocation(?:Label|Bilingual)\b/;
+
 function isWebSurface(src: string): boolean {
   return (
     src.includes('kind: "current"') ||
-    src.includes("useManualLocationLabel") ||
+    MANUAL_LABEL_HOOK.test(src) ||
     src.includes("useGeolocation(")
   );
 }
@@ -219,12 +226,12 @@ function webSurfaces(): Surface[] {
     out.push({
       file: path.relative(REPO_ROOT, file),
       gpsKeys: [...gpsKeys],
-      // 분기의 형태는 둘이다: ①라벨을 직접 렌더하는 화면은 `useManualLocationLabel`로
+      // 분기의 형태는 둘이다: ①라벨을 직접 렌더하는 화면은 수동 라벨 훅으로
       // 가르고 ②"내 주변" 계열은 좌표원 자체가 수동 우선이라(`useNearbyFetch`의
       // `source: { kind: "current" }` → `awaitManualLocation`) 화면에 분기 코드가 없다.
       // ②를 미분기로 세면 **좌표는 이미 옳은데** 가드가 매번 위반을 외친다.
       branches:
-        src.includes("useManualLocationLabel") ||
+        MANUAL_LABEL_HOOK.test(src) ||
         (src.includes("useNearbyFetch") && src.includes('kind: "current"')),
     });
   }

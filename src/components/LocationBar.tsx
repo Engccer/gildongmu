@@ -3,7 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCurrentAddress } from "@/hooks/useCurrentAddress";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { useManualLocationLabel } from "@/hooks/useManualLocation";
+import { useManualLocationBilingual } from "@/hooks/useManualLocation";
 import { prefersEnglish } from "@/lib/data-locale";
 import { bilingualName } from "@/lib/bilingual-name";
 import { KoTail } from "@/components/BilingualName";
@@ -25,7 +25,7 @@ import { KoTail } from "@/components/BilingualName";
 export function LocationBar({ onPick }: { onPick: () => void }) {
   const t = useTranslations("manualLocation");
   const locale = useLocale();
-  const manualLabel = useManualLocationLabel();
+  const manual = useManualLocationBilingual();
   const geo = useGeolocation();
   // GPS 상태에서만 실주소를 병기한다. 이 기능의 존재 이유가 "GPS가 틀렸을 때
   // 스스로 고치는 것"인데, 주소가 없으면 시각장애 사용자는 GPS가 틀렸다는 사실
@@ -33,7 +33,7 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
   // 지정한 이름을 말하고 있어 주소가 잉여이므로 조회 자체를 하지 않는다
   // (표시되지 않을 라벨을 위한 역지오코딩 — DirectionsView 동형).
   const current = useCurrentAddress(
-    !manualLabel && geo.status === "ready" ? geo.coords : null,
+    !manual && geo.status === "ready" ? geo.coords : null,
     prefersEnglish(locale) ? "en" : "ko",
   );
   // 비-ko는 공식 영문 주소(juso) 또는 로마자를 1순위로, 한글은 버튼 끝 괄호(E28 R2).
@@ -42,7 +42,7 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
     : null;
 
   const state =
-    manualLabel ??
+    manual?.text ??
     (geo.status === "ready"
       ? // 주소 미확보는 기존 "현재 위치"로 폴백한다 — 모르면 거짓을 말하지 않는다.
         address
@@ -68,7 +68,8 @@ export function LocationBar({ onPick }: { onPick: () => void }) {
     >
       {/* 버튼은 이름이 계산되는 요소라 괄호를 상태 문장 바로 뒤에 둬도 한 객체다(E28 R2). 접근 이름은 상태 문장, 동작 문장이다. */}
       {state}
-      <KoTail secondary={address?.secondary} />
+      {/* 수동·GPS는 배타 상태다(수동이면 주소를 조회하지 않는다) — 괄호는 언제나 하나뿐. */}
+      <KoTail secondary={manual ? manual.secondary : address?.secondary} />
       {`, ${pickTitle}`}
     </button>
   );

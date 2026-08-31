@@ -147,7 +147,9 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
     void runSearch(q);
   }
 
-  async function commitManual(label: string, lat: number, lng: number) {
+  // `labelRoman`은 지정 시점에 이미 손에 있는 라틴 표기다(장소=서버 `nameRoman`,
+  // 주소=juso 공식 영문). 표시줄이 비-ko에서 이것을 1순위로 읽고 한글은 괄호로 민다(E28).
+  async function commitManual(label: string, lat: number, lng: number, labelRoman?: string) {
     if (committingRef.current) return;
     committingRef.current = true;
     setCommitting(true);
@@ -158,7 +160,7 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
         fix && isEligibleFix(fix, now)
           ? { lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, at: fix.at }
           : null;
-      setManualLocation({ label, lat, lng, origin, setAt: now });
+      setManualLocation({ label, labelRoman, lat, lng, origin, setAt: now });
       onClose();
     } finally {
       committingRef.current = false;
@@ -177,7 +179,7 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
       setAddrCoordState(r.kind === "failed" ? "failed" : "none");
       return;
     }
-    void commitManual(target, r.lat, r.lng);
+    void commitManual(target, r.lat, r.lng, addr.engAddr || undefined);
   }
 
   const places = status.kind === "done" ? status.places : [];
@@ -278,7 +280,7 @@ export function ManualLocationPicker({ onClose }: { onClose: () => void }) {
             <ResultList
               places={places}
               onOpen={(place) =>
-                void commitManual(place.name, place.lat, place.lng)
+                void commitManual(place.name, place.lat, place.lng, place.nameRoman)
               }
             />
           </section>
