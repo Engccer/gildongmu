@@ -1346,6 +1346,116 @@
     ],
     "lang": "en"
    }
+  },
+  {
+   "name": "vehicleDesc 행선+방향 en",
+   "fn": "vehicleDesc",
+   "isEn": true,
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "Hanam"
+      ]
+     },
+     {
+      "text": "Down"
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "vehicleDesc 방향 결측 → 통째로 ko",
+   "fn": "vehicleDesc",
+   "isEn": true,
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "종착ᛥ"
+      ]
+     },
+     {
+      "text": "방향ᛥ"
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "vehicleDesc 행선 없음(버스)",
+   "fn": "vehicleDesc",
+   "isEn": true,
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": null,
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "expect": {
+    "parts": [
+     {
+      "text": "Down"
+     }
+    ],
+    "lang": "en"
+   }
   }
  ]
 }

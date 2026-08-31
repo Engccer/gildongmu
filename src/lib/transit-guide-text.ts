@@ -221,6 +221,23 @@ export function candidateDescLine(
   return { parts, lang };
 }
 
+/**
+ * 선택한 차량의 **안정 조각만**으로 만든 설명(행선·방향) — 완성 문장은 폴마다 바뀌므로 넣지 않는다.
+ * 선택 시점에 얼려 두는 값이라 `TransitLabel` 한 쌍으로 만들어 두고(ko·en) 이후 렌더가 고른다.
+ */
+export function vehicleDescLine(isEn: boolean, item: TransitDisplayItem): TransitTextLine {
+  const labels: TransitLabel[] = [];
+  if (item.destination) labels.push(item.destination);
+  labels.push(item.direction);
+  const { values, lang } = pickLabels(isEn, labels);
+  let i = 0;
+  const parts: TransitTextPart[] = [];
+  if (item.destination) parts.push({ key: "bound", args: [values[i++]] });
+  const direction = values[i];
+  if (direction) parts.push({ text: direction });
+  return { parts, lang };
+}
+
 /** 종착이 하차역보다 앞인 후보의 주석. */
 export function terminatesEarlyLine(
   isEn: boolean,

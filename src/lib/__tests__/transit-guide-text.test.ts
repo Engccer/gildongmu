@@ -17,6 +17,7 @@ import {
   terminatesEarlyLine,
   vehiclePassedLine,
   vehicleSelectedLine,
+  vehicleDescLine,
   viaStopLine,
   waitContextLine,
   type TransitTextLine,
@@ -153,6 +154,11 @@ const CASES: {
       ],
       lang: "en",
     },
+  },
+  {
+    fn: vehicleDescLine, name: "vehicleDescLine(행선+방향)",
+    run: (e) => vehicleDescLine(e, ITEM),
+    en: { parts: [{ key: "bound", args: ["Hanam"] }, { text: "Down" }], lang: "en" },
   },
   {
     fn: terminatesEarlyLine, name: "terminatesEarlyLine",
@@ -349,6 +355,7 @@ function runFixtureCase(c: FixtureCase): TransitTextLine {
         express: c.express!,
         departedMinutes: c.departedMinutes ?? null,
       });
+    case "vehicleDesc": return vehicleDescLine(e, c.item!);
     case "terminatesEarly": return terminatesEarlyLine(e, c.leg!, c.item!);
     case "viaStop": return viaStopLine(e, c.stop!, c.role!, c.here!);
     case "overviewLeg": return overviewLegLine(e, c.n!, c.line!, c.board!, c.alight!);

@@ -187,6 +187,22 @@ public func transitCandidateDescLine(
     return TransitTextLine(parts: parts, lang: picked.lang)
 }
 
+/// 선택한 차량의 **안정 조각만**으로 만든 설명(행선·방향) — 완성 문장은 폴마다 바뀌므로 넣지 않는다.
+public func transitVehicleDescLine(isEn: Bool, item: TransitDisplayItem) -> TransitTextLine {
+    var labels: [TransitLabel] = []
+    if let dest = item.destination { labels.append(dest) }
+    labels.append(item.direction)
+    let picked = transitPickLabels(isEn: isEn, labels)
+    var i = 0
+    var parts: [TransitTextPart] = []
+    if item.destination != nil {
+        parts.append(.key("bound", [picked.values[i]])); i += 1
+    }
+    let direction = picked.values[i]
+    if !direction.isEmpty { parts.append(.text(direction)) }
+    return TransitTextLine(parts: parts, lang: picked.lang)
+}
+
 public func transitTerminatesEarlyLine(
     isEn: Bool, leg: TransitDisplayLeg, item: TransitDisplayItem
 ) -> TransitTextLine {
