@@ -56,6 +56,10 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
+### A30. `bike.availability` 문구가 가운뎃점(`·`)으로 조각을 잇는다 — 6로케일 (🆕 2026-08-31, plurals 세션 관찰)
+
+접근성 헌장 §4: 가운뎃점은 일부 SR이 단어로 낭독해 구분자로 금지(쉼표가 정본). 웹 `messages/*.json` 6로케일 `bike.availability`(+iOS xcstrings 생성물)에 잔존. 문자열만 고치면 되는 소규모라 다음 i18n 손질 때 편승.
+
 ### A29. 수량 문구에 단수형이 없다 — "1 places" — ✅ 종결(2026-08-31, plurals, CHANGELOG 같은 날)
 
 ✅ **2026-08-31 종결**: 웹 en·es·fr·it 27키 + ios-extra 12키가 ICU `{count, plural, one {…} other {…}}`이고, iOS는 카탈로그의 ICU 블록을 Kit `formatLocalized`가 푼다(네이티브 `variations.plural`은 stringsdict로 컴파일돼 명시 언어 조회가 못 읽어 기각 — spec `2026-08-31-plural-forms-design.md` §4.1). ko·ja 불변(단 iOS "주변 곳 3개" → "주변 장소 3곳", 단위 낱말 합성 폐기). 실기기 판정 항목 없음(문법이지 낭독 계약이 아니다). 접수 기록: `messages/en.json` count 키 31개 전부 복수 고정, iOS 복수 변형 0건.
