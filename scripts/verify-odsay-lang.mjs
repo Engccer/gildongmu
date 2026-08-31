@@ -62,8 +62,10 @@ try {
     { name: "길동→강남", origin: { lat: 37.5384, lng: 127.1408 }, dest: { lat: 37.4979, lng: 127.0276 } },
     { name: "김포공항→신논현(9호선 급행)", origin: { lat: 37.5623, lng: 126.8012 }, dest: { lat: 37.5045, lng: 127.0249 }, expressRequired: true },
     { name: "길동→하남(버스)", origin: { lat: 37.5384, lng: 127.1408 }, dest: { lat: 37.5395, lng: 127.214 } },
-    // GTX-A: 한글 없는 정당 노선명이 `*Kor` 술어에 걸려 영문이 통째로 버려지지 않는지(code-quality 리뷰 #5)
-    { name: "서울역→동탄(GTX-A)", origin: { lat: 37.5547, lng: 126.9707 }, dest: { lat: 37.2036, lng: 127.0996 } },
+    // GTX-A: 한글 없는 정당 노선명이 `*Kor` 술어에 걸려 영문이 통째로 버려지지 않는지(code-quality 리뷰 #5).
+    // ⚠ 급행과 같은 **필수 표본**이다 — GTX-A lane은 선정 5개에 거의 안 들어와서(2026-09-01 실측: 9경로 중
+    // 상위 5개는 4·3호선 경유), 경로 통과만으로는 그 노선을 한 번도 안 본 채 초록이 된다.
+    { name: "서울역→동탄(GTX-A)", origin: { lat: 37.5547, lng: 126.9707 }, dest: { lat: 37.2036, lng: 127.0996 }, requiredLine: { ko: "수도권 GTX-A", en: "GTX-A" } },
   ];
 
   const legsOf = (r) => [r.recommended, ...r.alternatives].flatMap((route) => route.legs.map((leg) => ({ route, leg })));
@@ -122,15 +124,26 @@ try {
     // 6. ko 응답에 *En 키 0
     check(`${r.name}: ko 응답에 *En 키 없음`, !/"(lineNameEn|fromNameEn|toNameEn|nameEn|departNameEn|arriveNameEn)"/.test(JSON.stringify(ko)));
 
-    // 3. 급행 표본
-    if (r.expressRequired) {
-      // 선정 5개 밖이어도 정규화 전체 배열에서 본다(spec §3.8 3항) — raw lang=1 응답을 직접 받아 정규화.
+    // 3. 필수 표본(급행·GTX-A) — 선정 5개 밖이어도 정규화 **전체 배열**에서 본다(spec §3.8 3항).
+    //    raw lang=1 응답을 직접 받아 정규화한다. 선정만 보면 그 노선을 한 번도 관측하지 못한 채 초록이 된다.
+    if (r.expressRequired || r.requiredLine) {
       const raw = await fetchOdsayRaw(r.origin, r.dest);
       const all = normalizeOdsayRoutes(raw, { includeStops: true, lang: "en" }) ?? [];
-      const expressLeg = all.flatMap((route) => route.legs).find((leg) => leg.lineName?.includes("(급행)"));
-      check(`${r.name}: 급행 leg 존재(필수 표본, 전체 ${all.length}경로)`, Boolean(expressLeg), expressLeg ? expressLeg.lineName : "전체 후보에 급행 없음");
-      if (expressLeg) {
-        check(`${r.name}: 급행 lineName 보존 + lineNameEn "Line 9 Express"`, expressLeg.lineName === "수도권 9호선(급행)" && expressLeg.lineNameEn === "Line 9 Express", `${expressLeg.lineName} → ${expressLeg.lineNameEn}`);
+      const allLegs = all.flatMap((route) => route.legs);
+      if (r.expressRequired) {
+        const expressLeg = allLegs.find((leg) => leg.lineName?.includes("(급행)"));
+        check(`${r.name}: 급행 leg 존재(필수 표본, 전체 ${all.length}경로)`, Boolean(expressLeg), expressLeg ? expressLeg.lineName : "전체 후보에 급행 없음");
+        if (expressLeg) {
+          check(`${r.name}: 급행 lineName 보존 + lineNameEn "Line 9 Express"`, expressLeg.lineName === "수도권 9호선(급행)" && expressLeg.lineNameEn === "Line 9 Express", `${expressLeg.lineName} → ${expressLeg.lineNameEn}`);
+        }
+      }
+      if (r.requiredLine) {
+        const { ko, en: enName } = r.requiredLine;
+        const leg = allLegs.find((l) => l.lineName === ko);
+        check(`${r.name}: ${enName} leg 존재(필수 표본, 전체 ${all.length}경로)`, Boolean(leg), leg ? leg.lineName : `전체 후보에 ${ko} 없음`);
+        if (leg) {
+          check(`${r.name}: ${enName} lineName 보존 + lineNameEn "${enName}"`, leg.lineName === ko && leg.lineNameEn === enName, `${leg.lineName} → ${leg.lineNameEn}`);
+        }
       }
     }
     console.log(`  표본: ${boardLegs.slice(0, 3).map(({ leg }) => `${leg.lineNameEn} ${leg.fromNameEn}→${leg.toNameEn}`).join(" / ")}`);
