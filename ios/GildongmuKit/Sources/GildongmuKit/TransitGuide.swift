@@ -62,6 +62,13 @@ public struct TransitGuideLeg: Codable, Sendable {
     public let trackMode: TransitTrackMode?
     public let boardName: String
     public let alightName: String
+    /// 영문 표시 조각(E27 잔여 ①, `lang=en` 조회에만 — 웹 `TransitGuideLeg` 미러).
+    ///
+    /// ⚠ 위 한국어 필드는 en 세션에서도 한국어다 — 조인(매핑표·조회 쿼리·종착 검사)이 그 값으로
+    /// 돌기 때문이고, 여기 영문을 넣으면 오류가 아니라 "실시간 정보가 영영 안 뜬다"가 된다.
+    public let lineNameEn: String?
+    public let boardNameEn: String?
+    public let alightNameEn: String?
     public let boardStop: TransitLegStop?
     public let alightStop: TransitLegStop?
     /// 경유 전체(양 끝 포함, includeStops 미보유 시 []) — 종착 검사(§5.1) 축.
@@ -79,13 +86,17 @@ public struct TransitGuideLeg: Codable, Sendable {
         boardStop: TransitLegStop?, alightStop: TransitLegStop?,
         viaStops: [TransitLegStop], stationCount: Int?,
         routeId: String?, wayCode: Int?, walkBeforeMinutes: Int?,
-        quickExit: QuickExit? = nil
+        quickExit: QuickExit? = nil,
+        lineNameEn: String? = nil, boardNameEn: String? = nil, alightNameEn: String? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
         self.trackMode = trackMode
         self.boardName = boardName
         self.alightName = alightName
+        self.lineNameEn = lineNameEn
+        self.boardNameEn = boardNameEn
+        self.alightNameEn = alightNameEn
         self.boardStop = boardStop
         self.alightStop = alightStop
         self.viaStops = viaStops
@@ -201,15 +212,17 @@ public enum TransitGuideEvent: Sendable, Equatable {
     /// 차량 선택(boarding 진입) — 활성화 응답은 앱이 .high로 낭독.
     case vehicleSelected(legIndex: Int)
     /// boarding: 선택 차량의 승차 정류소 접근(첫 관측 + 사다리 3·2·1).
-    case approaching(remaining: Int?, message: String)
+    case approaching(remaining: Int?, message: String, messageEn: String?)
     /// boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청.
     case vehiclePassed
-    case trackingStarted(message: String, remaining: Int?, arrivalCode: String?)
-    case countdown(remaining: Int, message: String, currentLocation: String?, arrivalCode: String?)
-    case messageChanged(message: String, arrivalCode: String?)
+    case trackingStarted(message: String, messageEn: String?, remaining: Int?, arrivalCode: String?)
+    case countdown(
+        remaining: Int, message: String, messageEn: String?,
+        currentLocation: String?, currentLocationEn: String?, arrivalCode: String?)
+    case messageChanged(message: String, messageEn: String?, arrivalCode: String?)
     case arrived(certain: Bool)
-    case backOnTrack(message: String, arrivalCode: String?)
-    case approxVehicleChanged(message: String)
+    case backOnTrack(message: String, messageEn: String?, arrivalCode: String?)
+    case approxVehicleChanged(message: String, messageEn: String?)
     case signalLost
     case neverSeen
     case upstreamFailed
@@ -232,6 +245,8 @@ public struct TransitGuideState: Sendable {
     public var previousPhase: TransitPhase?
     public var remaining: Int?
     public var lastMessage: String?
+    /// `lastMessage`의 영문(E27 잔여 ①) — 상시 표시 상태줄이 읽는다. 결측이면 그 줄은 ko.
+    public var lastMessageEn: String?
     /// 잠금 항목의 도착 코드(지하철 arvlCd, A27) — 승차 국면 상태줄이 탑승자 시점 문장을 고르는 축.
     public var lastArrivalCode: String?
     public var lastUpdatedAt: Double?
@@ -291,9 +306,9 @@ public enum TransitGuideTone: String, Sendable {
 /// 이벤트 → 통지 채널·톤 매핑(§6.1). 잔여 1·도착만 interrupting.
 public func transitEventProfile(_ event: TransitGuideEvent) -> (interrupt: Bool, tone: TransitGuideTone?) {
     switch event {
-    case let .countdown(remaining, _, _, _):
+    case let .countdown(remaining, _, _, _, _, _):
         return remaining <= 1 ? (true, .imminent) : (false, .ladder)
-    case let .approaching(remaining, _):
+    case let .approaching(remaining, _, _):
         // 내 정류소에 거의 왔다 — 지금 움직여야 하는 신호(riding 사다리와 같은 축).
         return (remaining ?? .max) <= 1 ? (true, .imminent) : (false, .ladder)
     case .arrived:
@@ -387,7 +402,12 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
             routeId: leg.serviceRouteId,
             wayCode: leg.serviceWayCode,
             walkBeforeMinutes: pendingWalk,
-            quickExit: leg.quickExit
+            quickExit: leg.quickExit,
+            // ⚠ ko/en 폴백 순서 짝(웹 주석과 같은 근거): ko가 `fromName`을 골랐으면 en도
+            // `fromNameEn`만 본다. 원천이 갈리면 같은 자리가 서로 다른 정류소를 가리킨다.
+            lineNameEn: leg.lineNameEn,
+            boardNameEn: leg.fromName != nil ? leg.fromNameEn : boardStop?.nameEn,
+            alightNameEn: leg.toName != nil ? leg.toNameEn : alightStop?.nameEn
         ))
         pendingWalk = nil
     }
@@ -400,12 +420,15 @@ public func buildTransitGuideRoute(_ route: TransitRoute) -> TransitGuideRoute? 
 /// 첫 탑승 leg 앞 도보를 도보 실시간 안내로 돌릴 대상. nil = 종전 경로(도보 없음·정보 결손).
 public struct TransitPrewalkTarget: Codable, Sendable, Equatable {
     public let name: String
+    /// 영문 승차역명(E27 잔여 ①) — 도보 세션 목적지 라벨·통지가 읽는다. 결측이면 그 줄은 ko.
+    public let nameEn: String?
     public let lat: Double
     public let lng: Double
     public let minutes: Int
 
-    public init(name: String, lat: Double, lng: Double, minutes: Int) {
+    public init(name: String, nameEn: String? = nil, lat: Double, lng: Double, minutes: Int) {
         self.name = name
+        self.nameEn = nameEn
         self.lat = lat
         self.lng = lng
         self.minutes = minutes
@@ -421,7 +444,9 @@ public func transitPrewalkTarget(_ route: TransitGuideRoute) -> TransitPrewalkTa
           stop.lat.isFinite, stop.lng.isFinite,
           !(stop.lat == 0 && stop.lng == 0)
     else { return nil }
-    return TransitPrewalkTarget(name: leg.boardName, lat: stop.lat, lng: stop.lng, minutes: minutes)
+    return TransitPrewalkTarget(
+        name: leg.boardName, nameEn: leg.boardNameEn,
+        lat: stop.lat, lng: stop.lng, minutes: minutes)
 }
 
 /// 도보를 안내로 소비한 뒤의 경로 — legs[0].walkBeforeMinutes만 nil. 값 타입 재구성(원본 불변).
@@ -553,6 +578,7 @@ public func initTransitGuide(route: TransitGuideRoute, now: Double) -> TransitGu
         previousPhase: nil,
         remaining: nil,
         lastMessage: nil,
+        lastMessageEn: nil,
         lastArrivalCode: nil,
         lastUpdatedAt: nil,
         currentLocation: nil,
@@ -608,6 +634,7 @@ private func resetLockTracking(_ state: TransitGuideState) -> TransitGuideState 
     var next = state
     next.remaining = nil
     next.lastMessage = nil
+    next.lastMessageEn = nil
     next.lastArrivalCode = nil
     next.lastUpdatedAt = nil
     next.currentLocation = nil
@@ -694,6 +721,7 @@ private func handleChangeBoarding(
     next.previousPhase = state.phase == .boarding ? .boarding : .riding
     next.remaining = nil
     next.lastMessage = nil
+    next.lastMessageEn = nil
     next.lastArrivalCode = nil
     next.currentLocation = nil
     next.dataStamp = nil
@@ -735,6 +763,7 @@ private func handleAdvance(
     next.previousPhase = nil
     next.remaining = nil
     next.lastMessage = nil
+    next.lastMessageEn = nil
     next.lastArrivalCode = nil
     next.lastUpdatedAt = nil
     next.currentLocation = nil
@@ -877,6 +906,7 @@ private func commitBoardingMatched(
     out.missCount = 0
     out.remaining = item.remainingStops
     out.lastMessage = item.message
+    out.lastMessageEn = item.messageEn
     out.lastArrivalCode = item.arrivalCode
     out.lastUpdatedAt = now
     out.currentLocation = item.currentLocation
@@ -901,11 +931,11 @@ private func commitBoardingMatched(
     // 첫 관측 — signalLost 뒤의 재발견도 이 문장이 이긴다(문장 자체가 "찾았다", 리뷰 M4).
     if !wasTracking {
         out.ladderAnnounced = item.remainingStops
-        return (out, .approaching(remaining: item.remainingStops, message: item.message))
+        return (out, .approaching(remaining: item.remainingStops, message: item.message, messageEn: item.messageEn))
     }
     guard let remaining = item.remainingStops else {
         if let last = base.lastMessage, item.message != last {
-            return (out, .messageChanged(message: item.message, arrivalCode: item.arrivalCode))
+            return (out, .messageChanged(message: item.message, messageEn: item.messageEn, arrivalCode: item.arrivalCode))
         }
         return (out, carriedEvent)
     }
@@ -914,7 +944,7 @@ private func commitBoardingMatched(
        latch == nil || remaining < latch!,
        let prev = prevRemaining, remaining < prev {
         out.ladderAnnounced = remaining
-        return (out, .approaching(remaining: remaining, message: item.message))
+        return (out, .approaching(remaining: remaining, message: item.message, messageEn: item.messageEn))
     }
     if base.signal == .signalLost, carriedEvent == nil {
         return (out, .signalRecovered)
@@ -991,6 +1021,7 @@ private func commitMatched(
     out.missCount = 0
     out.remaining = item.remainingStops
     out.lastMessage = item.message
+    out.lastMessageEn = item.messageEn
     out.lastArrivalCode = item.arrivalCode
     out.lastUpdatedAt = now
     out.currentLocation = item.currentLocation
@@ -1004,7 +1035,7 @@ private func commitMatched(
     // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
     if base.phase == .arrived, !base.arrivedCertain {
         out.phase = .riding
-        return (out, .backOnTrack(message: item.message, arrivalCode: item.arrivalCode))
+        return (out, .backOnTrack(message: item.message, messageEn: item.messageEn, arrivalCode: item.arrivalCode))
     }
     if base.phase != .riding {
         return (out, carriedEvent)
@@ -1027,13 +1058,15 @@ private func commitMatched(
 
     if !wasTracking {
         out.ladderAnnounced = item.remainingStops
-        return (out, .trackingStarted(message: item.message, remaining: item.remainingStops, arrivalCode: item.arrivalCode))
+        return (out, .trackingStarted(
+            message: item.message, messageEn: item.messageEn,
+            remaining: item.remainingStops, arrivalCode: item.arrivalCode))
     }
 
     guard let remaining = item.remainingStops else {
         // 잔여 추출 실패(§6.2) — 완성 문장 변화 통지로 폴백.
         if let last = base.lastMessage, item.message != last {
-            return (out, .messageChanged(message: item.message, arrivalCode: item.arrivalCode))
+            return (out, .messageChanged(message: item.message, messageEn: item.messageEn, arrivalCode: item.arrivalCode))
         }
         return (out, carriedEvent)
     }
@@ -1041,7 +1074,7 @@ private func commitMatched(
     // 근사 기준 차량 교체(§5.2·§13.2): 잔여 역행 관측.
     if approx, let prev = prevRemaining, remaining > prev {
         out.ladderAnnounced = nil
-        return (out, .approxVehicleChanged(message: item.message))
+        return (out, .approxVehicleChanged(message: item.message, messageEn: item.messageEn))
     }
 
     // 사다리(§6.1): {3,2,1} 도달, 건너뜀은 현재 값 하나만, 증가에 래치 비가역.
@@ -1051,7 +1084,8 @@ private func commitMatched(
        let prev = prevRemaining, remaining < prev {
         out.ladderAnnounced = remaining
         return (out, .countdown(
-            remaining: remaining, message: item.message, currentLocation: item.currentLocation,
+            remaining: remaining, message: item.message, messageEn: item.messageEn,
+            currentLocation: item.currentLocation, currentLocationEn: item.currentLocationEn,
             arrivalCode: item.arrivalCode))
     }
     // 소실 후 재관측 회복(§4.2) — 상위 이벤트가 없을 때만.
