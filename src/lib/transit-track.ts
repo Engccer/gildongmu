@@ -45,14 +45,22 @@ function withItems(items: TrackItem[], rawCount: number): TransitTrackResult {
 const SUBWAY_EN_CTX = { findStations: findStationsByName };
 
 /**
- * 영문 조각 한 칸 — **빈 문자열은 싣지 않는다**(spec §3.4 ⚠). 이름·방향·종착역의 `""`는
- * "이 자리는 비어도 된다"가 아니라 정보 소실이라, 그대로 두면 줄 원자성 판정이 "완비"로
- * 읽어 `Boarded . Get off at .` 같은 줄을 만든다. `messageEn`의 `""`(TAGO)만 예외이고
- * 그 자리는 이 헬퍼를 지나지 않는다.
+ * 영문 조각 한 칸 — **빈 문자열도 한글이 섞인 값도 싣지 않는다**(spec §3.4 ⚠, §5.1).
+ *
+ * ① `""`는 "이 자리는 비어도 된다"가 아니라 정보 소실이라, 그대로 두면 줄 원자성 판정이
+ * "완비"로 읽어 `Boarded . Get off at .` 같은 줄을 만든다(`messageEn`의 `""`(TAGO)만 예외이고
+ * 그 자리는 이 헬퍼를 지나지 않는다).
+ * ② **필드 존재 ≠ 영문**(E27 §3.1 리뷰 #12와 같은 규칙). 표시 계층의 타입 분리는 *우리 코드가
+ * 조인 값을 읽지 않는다*만 보증하고, **서버가 영문 자리에 한국어를 실어 보내는 방향**은
+ * 타입을 그대로 통과한다 — seed 영문이 비어 한글로 채워지거나 provider 문구가 바뀌면
+ * `Boarded 수도권 5호선`이 "영어 줄"로 판정된다. 그 방향을 여기서 fail-closed로 막는다.
  */
-function nonEmpty(key: string, value: string | undefined): Record<string, string> {
-  return value != null && value.trim() !== "" ? { [key]: value } : {};
+export function englishFieldOnly(key: string, value: string | undefined): Record<string, string> {
+  if (value == null || value.trim() === "" || HANGUL.test(value)) return {};
+  return { [key]: value };
 }
+
+const HANGUL = /[가-힣]/;
 
 // === 서울 버스 ===
 
@@ -327,13 +335,13 @@ export async function trackSubway(params: {
         // 종착역은 `trainLineNmEn`("To X via Y" 문장)에서 뗄 수 없어 seed 영문을 직접 조회한다.
         ...(params.lang === "en"
           ? {
-              ...nonEmpty("messageEn", a.messageEn),
-              ...nonEmpty("directionEn", a.directionEn),
-              ...nonEmpty(
+              ...englishFieldOnly("messageEn", a.messageEn),
+              ...englishFieldOnly("directionEn", a.directionEn),
+              ...englishFieldOnly(
                 "destinationNameEn",
                 a.destination ? (stationNameEn(SUBWAY_EN_CTX, a.destination, a.line) ?? undefined) : undefined,
               ),
-              ...nonEmpty("currentLocationEn", a.currentLocationEn),
+              ...englishFieldOnly("currentLocationEn", a.currentLocationEn),
             }
           : {}),
       }),

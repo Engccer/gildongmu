@@ -13,7 +13,7 @@ vi.mock("../providers/seoul-subway-arrival", async (orig) => {
 import { fetchSeoulWaitSlots } from "../providers/seoul-bus";
 import { fetchTagoArrivals } from "../providers/tago-bus";
 import { fetchSubwayArrivals } from "../providers/seoul-subway-arrival";
-import { trackSeoulWait, trackSubway, trackTago } from "../transit-track";
+import { englishFieldOnly, trackSeoulWait, trackSubway, trackTago } from "../transit-track";
 import type { TrackItem } from "../transit-guide";
 
 afterEach(() => vi.clearAllMocks());
@@ -115,5 +115,36 @@ describe("실시간 추적 영문 조각 (E27 잔여 ①, spec 2026-09-01 §3.2)
     expect(en.items[0]).not.toHaveProperty("messageEn");
     expect(en.items[0].directionEn).toBe("Up");
     expect(en.items[0].currentLocationEn).toBe("Gunja (Neungdong)");
+  });
+});
+
+describe("영문 자리에 한국어가 실려 오는 방향 (타입이 못 보는 축, spec §5.1)", () => {
+  it("englishFieldOnly: 빈 값·한글 섞인 값은 싣지 않는다 — 필드 존재 ≠ 영문", () => {
+    // 표시 계층의 타입 분리는 "우리 코드가 조인 값을 읽지 않는다"만 보증한다. **서버가 영문
+    // 자리에 한국어를 실어 보내는 방향**은 타입을 그대로 통과하므로(seed 영문이 비어 한글로
+    // 채워지거나 provider 문구가 바뀌면 `Boarded 수도권 5호선`이 "영어 줄"로 판정된다)
+    // 그 방향을 이 가드가 fail-closed로 막는다(E27 §3.1 "필드 존재 ≠ 영문"과 같은 규칙).
+    expect(englishFieldOnly("messageEn", "In 3 min")).toEqual({ messageEn: "In 3 min" });
+    expect(englishFieldOnly("messageEn", "3분 후")).toEqual({});
+    expect(englishFieldOnly("messageEn", "Gangnam 강남")).toEqual({});
+    expect(englishFieldOnly("messageEn", "")).toEqual({});
+    expect(englishFieldOnly("messageEn", "   ")).toEqual({});
+    expect(englishFieldOnly("messageEn", undefined)).toEqual({});
+  });
+
+  it("실응답 투영에서도 영문 필드에 한글이 없다(통합 축)", async () => {
+    vi.mocked(fetchSubwayArrivals).mockResolvedValue({
+      stationName: "천호",
+      arrivals: [SUBWAY_ARRIVAL as never],
+    });
+    const en = await trackSubway({ station: "천호", lineName: "수도권 5호선", lang: "en" });
+    if (en.status !== "ok") throw new Error("ok 기대");
+    for (const item of en.items) {
+      for (const [k, v] of Object.entries(item)) {
+        if (k.endsWith("En") && typeof v === "string") {
+          expect(/[가-힣]/.test(v), `${k}=${v}`).toBe(false);
+        }
+      }
+    }
   });
 });
