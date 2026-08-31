@@ -1,5 +1,6 @@
 import { roundCoord } from "../coord-round";
 import { env } from "../env";
+import { categoryEnField } from "../kakao-category";
 import type { Place, PlaceSearchParams, PlaceSearchResult } from "../types";
 
 /**
@@ -47,6 +48,8 @@ export function normalizeDocument(doc: KakaoLocalDocument): Place {
     id: `kakao-${doc.id}`,
     name: doc.place_name,
     category: doc.category_name,
+    // 영문 분류(A28) — 전부 등재일 때만 키가 실린다. 판정 축은 위 원문 `category`.
+    ...categoryEnField(doc.category_name),
     address: doc.address_name,
     roadAddress: doc.road_address_name,
     lat: Number(doc.y),

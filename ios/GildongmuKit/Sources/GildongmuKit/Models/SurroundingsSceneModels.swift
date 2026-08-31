@@ -19,15 +19,17 @@ public struct SurroundingsSceneItem: Codable, Sendable, Hashable {
     public let lng: Double
     /// 카카오 category_name 전체 계층(상세의 역 판별에 필요).
     public let categoryRaw: String
+    /// `categoryRaw`의 영문 경로(A28, 전부 등재일 때만)
+    public let categoryEn: String?
     public let roadAddress: String?
     public let phone: String?
     public let link: String?
 
     public init(name: String, nameRoman: String? = nil, distanceMeters: Int, road: String?, category: String,
-                id: String, lat: Double, lng: Double, categoryRaw: String,
+                id: String, lat: Double, lng: Double, categoryRaw: String, categoryEn: String? = nil,
                 roadAddress: String?, phone: String?, link: String?) {
         self.name = name; self.nameRoman = nameRoman; self.distanceMeters = distanceMeters; self.road = road; self.category = category
-        self.id = id; self.lat = lat; self.lng = lng; self.categoryRaw = categoryRaw
+        self.id = id; self.lat = lat; self.lng = lng; self.categoryRaw = categoryRaw; self.categoryEn = categoryEn
         self.roadAddress = roadAddress; self.phone = phone; self.link = link
     }
 }

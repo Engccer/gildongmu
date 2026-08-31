@@ -7,6 +7,9 @@ public struct Place: Codable, Sendable, Identifiable, Hashable {
     /// 이름 로마자(서버 `romanize.ts`, E28). 한글 이름에만 실린다 — 비-ko는 `bilingualName`으로 병기.
     public var nameRoman: String? = nil
     public let category: String
+    /// 분류 경로의 영문(서버 `kakao-category.ts`, A28). 세그먼트 전부 등재일 때만 실린다 —
+    /// 비-ko 표시는 `pickCategory`가 부재를 원문으로 폴백. 판정(`isStation`·칩 버킷)은 `category`만.
+    public var categoryEn: String? = nil
     public let address: String
     public let roadAddress: String
     public let englishAddress: String?

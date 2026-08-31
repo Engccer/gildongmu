@@ -24,6 +24,11 @@ export interface Place {
   nameRoman?: string;
   /** 카테고리 경로 (예: "음식점>한식") */
   category: string;
+  /**
+   * 카카오 분류 경로의 영문(A28, additive, `kakao-category.ts`). 세그먼트 전부 등재일 때만 실리고
+   * 하나라도 미등재면 부재 — 비-ko 표시는 `pickCategory`가 원문으로 폴백한다. 판정 축은 `category`.
+   */
+  categoryEn?: string;
   /** 지번 주소 */
   address: string;
   /** 도로명 주소 */
@@ -1043,6 +1048,8 @@ export interface KidsPlace {
   nameRoman?: string;
   /** 카카오 category_name 전체 계층 */
   category: string;
+  /** `category`의 영문 경로(A28, additive, 전부 등재일 때만). */
+  categoryEn?: string;
   kind: KidsPlaceKind;
   indoorOutdoor: IndoorOutdoor;
   /** 현재 위치로부터 거리(m, 카카오 정본) */
@@ -1089,6 +1096,8 @@ export interface SurroundingPlace {
   category: SurroundingCategory;
   /** 카카오 category_name 전체 계층(보조 표시) */
   categoryRaw: string;
+  /** `categoryRaw`의 영문 경로(A28, additive, 전부 등재일 때만). */
+  categoryEn?: string;
   distanceMeters: number;
   bearing: CompassDirection;
   lat: number;

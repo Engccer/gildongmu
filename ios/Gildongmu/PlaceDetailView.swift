@@ -5,6 +5,10 @@ import GildongmuKit
 /// domainSection: 도메인 전용 최상단 섹션(내 주변 소아 진료 등) — 그 화면에 온 이유이므로 서열 1위.
 struct PlaceDetailView<DomainSection: View>: View {
     let place: Place
+    /// 표시용 분류(A28) — 채팅 컨텍스트·역 판정은 `place.category` 원문 그대로.
+    private var displayCategory: String {
+        pickCategory(lang: AppLanguage.current, category: place.category, categoryEn: place.categoryEn)
+    }
     /// 길찾기 프리필 진입 버튼 노출 여부(기본 표시). 안내 시트의 "장소 상세 보기"
     /// 문맥에서만 숨긴다 — 이미 그곳으로 안내 중이라 무의미하고, 누르면 시트 뒤
     /// 길찾기 폼을 조작해 보이지 않는 상태 변화를 만든다(스펙 2026-08-12 §2).
@@ -42,12 +46,13 @@ struct PlaceDetailView<DomainSection: View>: View {
             domainSection()
             Section {
                 // 한 줄=한 객체: 라벨 볼드 분절 대신 단일 텍스트(웹 정본 규칙).
-                // 카카오 분류는 비-ko에서도 한국어 — 언어 태깅 후보 ①(KoreanText, 실기기 판정 항목).
-                if !place.category.isEmpty {
-                    if AppLanguage.current != "ko", hasHangul(place.category) {
-                        KoreanText(place.category)
+                // 분류는 비-ko에서 서버 영문(categoryEn, A28)을 우선한다. 영문이 없어 한국어가 남는
+                // 폴백에만 언어 태깅 후보 ①(KoreanText, 실기기 판정 항목).
+                if !displayCategory.isEmpty {
+                    if AppLanguage.current != "ko", hasHangul(displayCategory) {
+                        KoreanText(displayCategory)
                     } else {
-                        Text(place.category)
+                        Text(displayCategory)
                     }
                 }
                 // 주소는 종류마다 "줄 + 그 줄 전용 복사 버튼"을 인접 배치한다. 도로명과

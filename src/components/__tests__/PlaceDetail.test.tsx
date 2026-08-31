@@ -2,10 +2,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+// 로케일은 테스트가 바꿔 끼운다(A28 분류 영문화 케이스) — 기본 ko.
+const localeState = vi.hoisted(() => ({ locale: "ko" }));
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
   // DistanceBeacon(useRouteGuide)이 상세 안내 ko 게이트에 쓴다.
-  useLocale: () => "ko",
+  useLocale: () => localeState.locale,
 }));
 vi.mock("@/lib/station-match", () => ({ isStation: () => false }));
 vi.mock("../RouteLinks", () => ({ RouteLinks: () => null }));
@@ -152,5 +154,31 @@ describe("PlaceDetail 분류 줄의 언어 표기(A26)", () => {
     renderDetail({ category: "Tourist Attractions" });
     const line = screen.getByText(/Tourist Attractions/);
     expect(line.hasAttribute("lang")).toBe(false);
+  });
+});
+
+describe("PlaceDetail 분류 영문화(A28)", () => {
+  afterEach(() => {
+    localeState.locale = "ko";
+  });
+
+  it("en + categoryEn: 영문 경로, lang 없음", () => {
+    localeState.locale = "en";
+    renderDetail({ category: "교육,학문 > 학교 > 중학교", categoryEn: "Education & Academia > School > Middle School" } as never);
+    const line = screen.getByText(/Education & Academia > School > Middle School/);
+    expect(line.hasAttribute("lang")).toBe(false);
+    expect(screen.queryByText(/교육,학문/)).toBeNull();
+  });
+
+  it("en + categoryEn 부재: 한국어 원문 + lang=\"ko\"", () => {
+    localeState.locale = "en";
+    renderDetail({ category: "교육,학문 > 학교 > 중학교" });
+    expect(screen.getByText(/교육,학문 > 학교 > 중학교/).getAttribute("lang")).toBe("ko");
+  });
+
+  it("ko: categoryEn이 있어도 원문", () => {
+    renderDetail({ category: "교육,학문 > 학교 > 중학교", categoryEn: "Education & Academia > School > Middle School" } as never);
+    expect(screen.getByText(/교육,학문 > 학교 > 중학교/)).toBeTruthy();
+    expect(screen.queryByText(/Middle School/)).toBeNull();
   });
 });

@@ -210,7 +210,8 @@ struct AroundNearbyView: View {
                     PlaceRow(
                         place: surroundingPlaceToPlace(place),
                         secondaryOverride: joinText(
-                            categoryPiece(place.categoryRaw), bearingLabel(place.bearing),
+                            categoryPiece(pickCategory(lang: AppLanguage.current, category: place.categoryRaw, categoryEn: place.categoryEn)),
+                            bearingLabel(place.bearing),
                             appLocalized("place.distance", formatDistance(place.distanceMeters))),
                         onAskAbout: { chatPlace = surroundingPlaceToPlace(place) })
                 }
