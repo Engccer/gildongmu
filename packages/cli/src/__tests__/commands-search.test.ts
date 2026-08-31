@@ -73,6 +73,55 @@ describe("search 명령", () => {
     expect(output).toContain("장소1");
   });
 
+  it("--lang en을 그대로 싣는다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/places") return { places: [] };
+      if (path === "/api/address/search") return { addresses: [] };
+      if (path === "/api/search/web") return { web: [] };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSearch({ query: "강남", lang: "en", output: "text" });
+
+    expect(apiRequest).toHaveBeenCalledWith("/api/places", { query: { query: "강남", lang: "en" } });
+  });
+
+  /**
+   * 실호출로 검출한 결함(2026-09-01): 값 정규화를 뗀 뒤 `--lang eng`가 /api/places를
+   * 400으로 만드는데, allSettled가 그 거절을 흡수해 **주소 섹션만 있는 exit 0**이 나왔다.
+   * 사용자는 "장소가 0건"인지 "요청이 거절됐다"인지 구분할 수 없다 — 정규화가 만들던
+   * 조용한 ko 강등을 조용한 섹션 소실로 바꾼 셈이라 400은 즉시 종료로 가른다.
+   */
+  it("한 섹션이 400으로 거절되면 다른 섹션이 성공해도 exit 2로 종료한다(조용한 섹션 소실 금지)", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/places") throw new MockApiError('Invalid option: expected one of "ko"|"en"', 400, 2);
+      if (path === "/api/address/search") {
+        return { addresses: [{ roadAddr: "서울 강남구 x", jibunAddr: "", zipNo: "", engAddr: "" }] };
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await expect(runSearch({ query: "강남", lang: "eng", output: "text" })).rejects.toThrow("EXIT_2");
+    const stderrOut = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(stderrOut).toContain("expected one of");
+  });
+
+  it("502(업스트림 장애)는 종전대로 부분 성공을 유지한다", async () => {
+    apiRequest.mockImplementation(async (path: string) => {
+      if (path === "/api/places") throw new MockApiError("장소 검색에 실패했습니다.", 502, 1);
+      if (path === "/api/address/search") {
+        return { addresses: [{ roadAddr: "서울 강남구 x", jibunAddr: "", zipNo: "", engAddr: "" }] };
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await runSearch({ query: "강남", output: "text" });
+
+    expect(exitSpy).not.toHaveBeenCalled();
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(output).toContain("주소 1건");
+  });
+
   it("전 섹션 0건이면 웹 검색으로 폴백한다(envelope은 { web } — { results } 아님)", async () => {
     apiRequest.mockImplementation(async (path: string) => {
       if (path === "/api/places") return { places: [] };
