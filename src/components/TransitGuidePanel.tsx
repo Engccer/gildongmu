@@ -8,6 +8,19 @@ import { isApproxTransitLock, viaStopCurrentIndex } from "@/lib/transit-guide";
 import type { TransitPrewalkTarget } from "@/lib/transit-guide";
 import type { TransitRoute } from "@/lib/types";
 import { joinText } from "@/lib/format";
+import { transitDisplayItem, transitDisplayLeg, type TransitLabel } from "@/lib/transit-display";
+import {
+  candidateDescLine,
+  prewalkArrivedButtonLine,
+  prewalkStartLine,
+  terminatesEarlyLine,
+  vehicleDescLine,
+  viaStopLine,
+  type TransitTextLine,
+} from "@/lib/transit-guide-text";
+import { namedArgs } from "@/lib/transit-text-args";
+import { prefersEnglish } from "@/lib/data-locale";
+import { useLocale } from "next-intl";
 import { quickExitText } from "@/lib/quick-exit-text";
 import { DistanceBeacon } from "./DistanceBeacon";
 
@@ -53,6 +66,32 @@ export function TransitGuidePanel({
   // 다른 문장으로 말하면 같은 정보인지 알 수 없다.
   const tTransitRoute = useTranslations("route.transit");
   const guide = useTransitGuide(route);
+  const locale = useLocale();
+  /** 데이터 언어 축 — 비-ko 로케일은 전부 영문 데이터를 공유한다(E27 잔여 ① §3.1). */
+  const isEn = prefersEnglish(locale);
+
+  /** descriptor → 화면 문자열(조각을 각자 조회해 쉼표로 잇는다, 빈 조각 제거). */
+  const render = (d: TransitTextLine): string =>
+    joinText(...d.parts.map((p) => ("key" in p ? t(p.key, namedArgs(p.key, p.args)) : p.text)));
+
+  /**
+   * 그 줄의 `lang` — 한국어 폴백일 때만 `"ko"`(영어 줄은 UI 문장 틀이 섞여 태그하지 않는다,
+   * E27 §3.6). 영어 엔진이 한글을 만나면 그 이름이 통째로 침묵하므로 이 태그가 필요하다.
+   */
+  const langOf = (d: TransitTextLine): "ko" | undefined =>
+    isEn && d.parts.length > 0 && d.lang === "ko" ? "ko" : undefined;
+
+  /**
+   * 선택 차량 설명을 **ko·en 쌍**으로 얼린다 — 렌더 문자열을 저장하면 세션 도중 언어를 바꿨을 때
+   * 그 조각만 옛 언어로 남는다(안정 조각인 행선·방향만, 완성 문장은 폴마다 바뀐다).
+   */
+  const descLabelOf = (item: ReturnType<typeof transitDisplayItem>): TransitLabel => {
+    const en = vehicleDescLine(true, item);
+    return {
+      ko: render(vehicleDescLine(false, item)),
+      ...(en.lang === "en" ? { en: render(en) } : {}),
+    };
+  };
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const advanceRef = useRef<HTMLButtonElement>(null);
@@ -81,7 +120,12 @@ export function TransitGuidePanel({
   const beginPrewalk = (target: TransitPrewalkTarget) => {
     declaredRef.current = false;
     setPrewalk(target);
-    guide.setLiveMessage(t("prewalkStart", { station: target.name, minutes: target.minutes }));
+    const line = prewalkStartLine(
+      isEn,
+      { ko: target.name, ...(target.nameEn ? { en: target.nameEn } : {}) },
+      target.minutes,
+    );
+    guide.setLiveMessage(render(line), langOf(line));
   };
   const finishPrewalk = () => {
     declaredRef.current = true;
@@ -205,7 +249,7 @@ export function TransitGuidePanel({
       {/* 이 패널의 유일한 live region — 훅 liveMessage 단일 채널. 상시 마운트
           (내용과 함께 삽입되면 무발화 — B1 교훈)이고, 닫힌 뒤에도 중지·완료
           통지가 이 채널로 나가야 하므로 open 조건 밖이다. */}
-      <p aria-live="polite" role="status" className="min-h-5 text-sm">
+      <p aria-live="polite" role="status" className="min-h-5 text-sm" lang={guide.liveLang}>
         {guide.liveMessage}
       </p>
 
@@ -226,7 +270,12 @@ export function TransitGuidePanel({
             onClick={finishPrewalk}
             className="mt-2 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
           >
-            {t("prewalkArrivedButton", { station: prewalk.name })}
+            {render(
+              prewalkArrivedButtonLine(isEn, {
+                ko: prewalk.name,
+                ...(prewalk.nameEn ? { en: prewalk.nameEn } : {}),
+              }),
+            )}
           </button>
         </div>
       )}
@@ -236,7 +285,7 @@ export function TransitGuidePanel({
           {/* 상시 표시(live region 밖, 묶음 A 계약) — 통지와 같은 조립기를
               공유한다(§12.3: 완성 문장 공백 연결, 쉼표 조립(joinText) 폐기 —
               문장 키와 쉼표 조립이 섞이며 "기준., " 이중 구두점이 났었다). */}
-          <p ref={statusRef} tabIndex={-1} className="text-sm">
+          <p ref={statusRef} tabIndex={-1} className="text-sm" lang={guide.statusLang}>
             {guide.statusText}
           </p>
 
@@ -259,22 +308,28 @@ export function TransitGuidePanel({
               </button>
               {viaOpen &&
                 (() => {
+                  // ⚠ 현재역 인덱스 판정은 **조인**이라 한국어 원문(`state.currentLocation`)으로 한다.
                   const currentIndex = viaStopCurrentIndex(leg, state.currentLocation);
+                  const display = transitDisplayLeg(leg, null);
                   return (
                     <ul className="mt-1">
-                      {leg.viaStops.map((stop, index) => (
-                        <li key={`${index}-${stop.name}`} className="text-sm">
-                          {joinText(
-                            stop.name,
-                            index === 0
-                              ? t("viaBoard")
-                              : index === leg.viaStops.length - 1
-                                ? t("viaAlight")
-                                : "",
-                            index === currentIndex ? t("viaCurrent") : "",
-                          )}
-                        </li>
-                      ))}
+                      {display.stops.map((stop, index) => {
+                        const line = viaStopLine(
+                          isEn,
+                          stop,
+                          index === 0
+                            ? "board"
+                            : index === display.stops.length - 1
+                              ? "alight"
+                              : "via",
+                          index === currentIndex,
+                        );
+                        return (
+                          <li key={`${index}-${stop.ko}`} className="text-sm" lang={langOf(line)}>
+                            {render(line)}
+                          </li>
+                        );
+                      })}
                     </ul>
                   );
                 })()}
@@ -342,27 +397,20 @@ export function TransitGuidePanel({
                   >
                     {guide.waitingOptions.map((option) => {
                       const item = option.candidate.item;
-                      const desc = joinText(
-                        item.destinationName ? t("bound", { dest: item.destinationName }) : "",
-                        item.direction,
-                        item.message,
-                        option.candidate.express
-                          ? t("expressCheck", { stop: leg.alightName })
-                          : "",
-                        option.departedMinutes != null
-                          ? t("departed", { minutes: option.departedMinutes })
-                          : "",
-                      );
+                      const displayLeg = transitDisplayLeg(leg, null);
+                      const displayItem = transitDisplayItem(item);
+                      const descLine = candidateDescLine(isEn, displayLeg, displayItem, {
+                        express: option.candidate.express,
+                        departedMinutes: option.departedMinutes,
+                      });
+                      const desc = render(descLine);
                       if (option.candidate.terminatesEarly) {
+                        const note = terminatesEarlyLine(isEn, displayLeg, displayItem);
+                        // 두 줄이 한 항목이라 언어가 갈리면 그 항목은 통째로 ko로 태그한다.
+                        const lang = langOf(descLine) ?? langOf(note);
                         return (
-                          <li key={option.key} className="mt-1 text-sm opacity-80">
-                            {joinText(
-                              desc,
-                              t("terminatesEarly", {
-                                dest: item.destinationName ?? "",
-                                stop: leg.alightName,
-                              }),
-                            )}
+                          <li key={option.key} className="mt-1 text-sm opacity-80" lang={lang}>
+                            {joinText(desc, render(note))}
                           </li>
                         );
                       }
@@ -376,13 +424,7 @@ export function TransitGuidePanel({
                             onClick={() => {
                               if (!item.vehicleId) return;
                               // 설명은 안정 조각(행선·방향)만 — 완성 문장은 폴마다 바뀐다.
-                              guide.boardCandidate(
-                                option.candidate,
-                                joinText(
-                                  item.destinationName ? t("bound", { dest: item.destinationName }) : "",
-                                  item.direction,
-                                ),
-                              );
+                              guide.boardCandidate(option.candidate, descLabelOf(displayItem));
                             }}
                             aria-disabled={!item.vehicleId}
                             className="min-h-11 w-full rounded-md border border-gray-400 px-3 text-left text-sm aria-disabled:opacity-50"
@@ -492,20 +534,24 @@ export function TransitGuidePanel({
                 {t("reboardStationPrompt")}
               </h4>
               <ul className="mt-1 flex flex-wrap gap-2">
-                {leg.viaStops.map((stop, index) => (
-                  <li key={`${index}-${stop.name}`}>
-                    <button
-                      type="button"
-                      onClick={() => guide.changeBoardingAt(index)}
-                      className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
-                      // 역명은 ODsay 한국어 원문 — en 페이지에서도 한국어 엔진으로(A26). 버튼 하나가
-                      // 한 객체라 새 분절은 없다.
-                      lang="ko"
-                    >
-                      {stop.name}
-                    </button>
-                  </li>
-                ))}
+                {transitDisplayLeg(leg, null).stops.map((stop, index) => {
+                  // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 훅이 인덱스로
+                  // viaStops의 한국어 원문을 되찾는다(조인/표시 분리, spec §3.5·§3.6).
+                  const label = stop.en ?? stop.ko;
+                  return (
+                    <li key={`${index}-${stop.ko}`}>
+                      <button
+                        type="button"
+                        onClick={() => guide.changeBoardingAt(index)}
+                        className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
+                        // 한국어 라벨일 때만 ko 태그 — 영문 라벨에 붙이면 영어를 한국어 엔진이 읽는다.
+                        lang={stop.en ? undefined : "ko"}
+                      >
+                        {label}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
               <button
                 type="button"

@@ -60,6 +60,7 @@ private func run(_ c: TextFixture.Case) -> TransitTextLine {
         return transitCandidateDescLine(
             isEn: e, leg: c.leg!, item: c.item!, express: c.express!,
             departedMinutes: c.departedMinutes)
+    case "vehicleDesc": return transitVehicleDescLine(isEn: e, item: c.item!)
     case "terminatesEarly": return transitTerminatesEarlyLine(isEn: e, leg: c.leg!, item: c.item!)
     case "viaStop": return transitViaStopLine(isEn: e, stop: c.stop!, role: c.role!, here: c.here!)
     case "overviewLeg":

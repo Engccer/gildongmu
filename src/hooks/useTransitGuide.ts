@@ -22,10 +22,31 @@ import {
   type TransitLock,
   transitPrewalkTarget,
   withoutPrewalk,
-  subwayRidingMessage,
 } from "@/lib/transit-guide";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
-import { dataLocale } from "@/lib/data-locale";
+import { dataLocale, prefersEnglish } from "@/lib/data-locale";
+import { joinText } from "@/lib/format";
+import {
+  messageLabel,
+  transitDisplayLeg,
+  type TransitDisplayLeg,
+  type TransitLabel,
+} from "@/lib/transit-display";
+import {
+  approachFrameLine,
+  arrivedAtBoardStopLine,
+  boardedLine,
+  boardingContextLine,
+  contextLine,
+  currentStationLine,
+  frameLine,
+  selectedVehicleLine,
+  vehiclePassedLine,
+  vehicleSelectedLine,
+  waitContextLine,
+  type TransitTextLine,
+} from "@/lib/transit-guide-text";
+import { namedArgs } from "@/lib/transit-text-args";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -120,6 +141,12 @@ export function useTransitGuide(route: TransitRoute | null) {
   const [waiting, setWaiting] = useState<WaitingSnapshot>(EMPTY_WAITING);
   const [liveMessage, setLiveMessage] = useState("");
   /**
+   * live region의 `lang`(E27 잔여 ①). 한국어 폴백이 섞인 통지에만 `"ko"`가 붙는다 —
+   * 영어 엔진이 한글을 만나면 그 이름이 통째로 침묵하기 때문이다(spec §3.8).
+   * 영어 줄에는 태그를 붙이지 않는다(UI 문장 틀이 섞여 있어 순수 데이터 줄이 아니다).
+   */
+  const [liveLang, setLiveLang] = useState<"ko" | undefined>(undefined);
+  /**
    * 완료(done) 후 도보 핸드오프 제안(A안, §14.2) — 세션 자원은 회수하되 말미
    * 도보가 있으면 패널이 "남은 도보 안내 시작"을 노출한다. 다음 시작에서 소거.
    */
@@ -141,9 +168,13 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 남긴다 — "탑승 변경 취소"(restoreBoarding)가 같은 차량으로 복귀한다. 소거는
    * 새 선택·전진·세션 종료. ref인 이유는 통지가 dispatch 직후 동기로 읽기 때문.
    */
-  const selectedDescriptionRef = useRef<string | null>(null);
-  const [selectedDescription, setSelectedDescriptionState] = useState<string | null>(null);
-  const setSelectedDescription = useCallback((desc: string | null) => {
+  /**
+   * ⚠ **문자열이 아니라 ko·en 쌍이다**(E27 잔여 ①). 선택 시점의 렌더 문자열을 얼려 두면 세션
+   * 도중 언어를 바꿨을 때 그 조각만 옛 언어로 남는다 — 값을 쌍으로 들고 렌더가 고른다.
+   */
+  const selectedDescriptionRef = useRef<TransitLabel | null>(null);
+  const [selectedDescription, setSelectedDescriptionState] = useState<TransitLabel | null>(null);
+  const setSelectedDescription = useCallback((desc: TransitLabel | null) => {
     selectedDescriptionRef.current = desc;
     setSelectedDescriptionState(desc);
   }, []);
@@ -175,7 +206,8 @@ export function useTransitGuide(route: TransitRoute | null) {
   const reannounceTimerRef = useRef<number | null>(null);
   // 같은 문장이면 DOM 텍스트가 안 바뀌어 aria-live가 침묵한다(진행 상황 버튼
   // 연타 재현) — 빈 값을 한 번 거쳐 재발화한다(useRouteGuide announce 동형).
-  const announce = useCallback((text: string) => {
+  const announce = useCallback((text: string, lang?: "ko") => {
+    setLiveLang(lang);
     if (reannounceTimerRef.current !== null) {
       window.clearTimeout(reannounceTimerRef.current);
       reannounceTimerRef.current = null;
@@ -221,71 +253,99 @@ export function useTransitGuide(route: TransitRoute | null) {
     return r.legs[s.legIndex] ?? null;
   }, []);
 
+  /** 세션의 데이터 언어(E27 잔여 ①) — 화면·통지가 같은 축을 쓴다. */
+  const isEn = prefersEnglish(locale);
+
+  /**
+   * descriptor → 화면 문자열. 조각을 각자 조회해 쉼표로 잇는다(빈 조각은 제거).
+   * `lang`은 표시 채널만 쓴다 — 발화는 문자열뿐이라 여기서 텍스트만 돌려주고,
+   * `lang`이 필요한 자리는 `renderLine`을 쓴다.
+   */
+  const renderText = useCallback(
+    (d: TransitTextLine): string =>
+      joinText(
+        ...d.parts.map((p) => ("key" in p ? t(p.key, namedArgs(p.key, p.args)) : p.text)),
+      ),
+    [t],
+  );
+
+  /**
+   * 한 조각의 렌더 결과와 **한국어 폴백 여부**.
+   *
+   * 유일하게 필요한 태그는 `lang="ko"`다(E27 §3.6 — UI 문장 틀이 섞인 영어 줄은 태그하지 않는다).
+   * 그래서 조각마다 "이 줄이 ko로 떨어졌나"만 들고 다니고, 줄 하나라도 ko면 통지·표시 전체를
+   * ko로 태그한다 — 영어 엔진이 한글을 만나면 **그 이름이 통째로 침묵**하기 때문이다(spec §3.8).
+   */
+  const piece = useCallback(
+    (d: TransitTextLine): { text: string; ko: boolean } => ({
+      text: renderText(d),
+      ko: isEn && d.parts.length > 0 && d.lang === "ko",
+    }),
+    [isEn, renderText],
+  );
+
+  /**
+   * leg → 표시 투영. 조인 필드가 타입에 없어 이 아래에서는 노선명·역명을 조회 쿼리로 쓸 수 없다
+   * (spec §3.5 — 1선은 구조).
+   */
+  /**
+   * ⚠ **재선택 인덱스는 인자로 받는다**(ref를 여기서 읽지 않는다). 이 훅은 같은 값을 ref와 state
+   * 두 벌로 드는데 — 폴 루프는 렌더 사이클 밖이라 ref를, 화면 문구는 state를 읽어야 한다 —
+   * 여기서 ref를 읽으면 렌더 중 ref 접근이 되어 화면이 갱신되지 않을 수 있다(React 규칙).
+   */
+  const displayLegOf = useCallback(
+    (leg: TransitGuideLeg, overrideIndex: number | null): TransitDisplayLeg =>
+      transitDisplayLeg(leg, overrideIndex),
+    [],
+  );
+
   /**
    * 대기 문맥(§4.1): 선행 도보 + 승차 지점 + 노선.
    *
-   * ⚠ **재선택한 기준 역이 있으면 그 역이 승차 지점이다**(A16 L3, 독립 리뷰 MAJOR).
-   * 이 문장은 상시 표시이자 진행 상황 발화라, 조회 대상과 어긋나면 화면은 "천호역
-   * 대기"라고 말하는데 그 아래 목록은 왕십리 도착 정보인 상태가 된다. 목록 항목에
-   * 역명이 없으므로 SR 사용자에게는 이 문장이 그 화면의 유일한 역 정보원이다.
+   * ⚠ **재선택한 기준 역이 있으면 그 역이 승차 지점이다**(A16 L3). 이 문장은 상시 표시이자 진행
+   * 상황 발화라, 조회 대상과 어긋나면 화면은 "천호역 대기"라고 말하는데 그 아래 목록은 왕십리
+   * 도착 정보인 상태가 된다. 목록 항목에 역명이 없으므로 SR 사용자에게는 이 문장이 그 화면의
+   * 유일한 역 정보원이다.
+   *
+   * @param isCurrentLeg 이 문맥이 **지금 안내 중인 구간**을 설명하는가(기본값 없음 — 다음 구간
+   * 안내가 이전 구간에서 고른 역을 말하면 안 되는데 생략이 통과하면 조용히 들어온다).
    */
-  const waitContextText = useCallback(
-    /**
-     * @param isCurrentLeg 이 문맥이 **지금 안내 중인 구간**을 설명하는가. ⚠ 기본값을
-     * 두지 않는 이유: 다음 구간 안내(`nextLeg`·`legAdvanced`)가 이전 구간에서 고른
-     * 역을 말하면 안 되는데, 생략이 통과하면 그 결함이 조용히 들어온다.
-     */
-    (leg: TransitGuideLeg, isCurrentLeg: boolean): string => {
-      if (isCurrentLeg && boardOverride != null) {
-        // 선행 도보는 원래 승차역까지의 구간이라 재선택 뒤에는 이미 지난 일이다 —
-        // 역명만 바꾸면 "3분 걸어 왕십리역에서"라는 새 거짓말이 된다.
-        return t("waitContext", { stop: boardOverride, line: leg.lineName });
-      }
-      const args = { stop: leg.boardName, line: leg.lineName };
-      return leg.walkBeforeMinutes != null && leg.walkBeforeMinutes > 0
-        ? t("waitContextWalk", { ...args, minutes: leg.walkBeforeMinutes })
-        : t("waitContext", args);
-    },
-    [boardOverride, t],
+  const waitContextPiece = useCallback(
+    (leg: TransitGuideLeg, isCurrentLeg: boolean) =>
+      piece(
+        waitContextLine(isEn, displayLegOf(leg, isCurrentLeg ? boardOverride : null), isCurrentLeg),
+      ),
+    [boardOverride, displayLegOf, isEn, piece],
   );
 
   /** 노선·하차 전문 문맥(§6.1 M1 개정) — 추적 시작·진행 상황·상시 표시가 담당. */
-  const contextText = useCallback(
-    (leg: TransitGuideLeg): string => t("context", { line: leg.lineName, stop: leg.alightName }),
-    [t],
+  const contextPiece = useCallback(
+    (leg: TransitGuideLeg) => piece(contextLine(isEn, displayLegOf(leg, null))),
+    [displayLegOf, isEn, piece],
   );
 
   /**
-   * 승차 국면 상태 문장(§12.3). 버스는 upstream 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
+   * 승차 국면 상태 문장(§12.3). 버스는 완성 문장의 라벨 프레임("{stop}까지 {message}", 원문 무변형).
    * 지하철은 `arvlMsg2`가 조회역(=하차역) 기준 열차 위치 서술이라 그 틀에 넣으면 뜻이 뒤집힌다
-   * ("충정로까지 전역 도착", A27 실승차 피드백) — `subwayRidingMessage`(코드 → 탑승자 시점 문장)로 고르고,
-   * 99(운행중)는 빈 문자열(잔여 수가 말한다), 미지 코드는 원문을 틀 없이 그대로.
+   * ("충정로까지 전역 도착", A27) — 코드로 탑승자 시점 문장을 고르고 99는 생략(잔여 수가 말한다).
    */
-  const frameText = useCallback(
-    (leg: TransitGuideLeg, message: string, arrivalCode: string | null): string => {
-      if (leg.mode === "subway") {
-        const r = subwayRidingMessage(arrivalCode);
-        if (r.kind === "key") return t(r.key, { stop: leg.alightName });
-        if (r.kind === "omit") return "";
-        return message;
-      }
-      return t("messageFrame", { stop: leg.alightName, message });
-    },
-    [t],
+  const framePiece = useCallback(
+    (leg: TransitGuideLeg, message: TransitLabel, arrivalCode: string | null) =>
+      piece(frameLine(isEn, displayLegOf(leg, null), message, arrivalCode)),
+    [displayLegOf, isEn, piece],
   );
 
   /** boarding 문맥(N3) — 승차 정류소에서 선택 차량을 기다리는 중. 재선택 역이 이긴다. */
-  const boardingContextText = useCallback(
-    (leg: TransitGuideLeg): string =>
-      t("boardingContext", { stop: boardOverride ?? leg.boardName, line: leg.lineName }),
-    [boardOverride, t],
+  const boardingContextPiece = useCallback(
+    (leg: TransitGuideLeg) => piece(boardingContextLine(isEn, displayLegOf(leg, boardOverride))),
+    [boardOverride, displayLegOf, isEn, piece],
   );
 
   /** boarding 완성 문장 프레임 — 승차 정류소 라벨 전치("{stop}에 {message}"). */
-  const approachFrameText = useCallback(
-    (leg: TransitGuideLeg, message: string): string =>
-      t("approachFrame", { stop: boardOverride ?? leg.boardName, message }),
-    [boardOverride, t],
+  const approachFramePiece = useCallback(
+    (leg: TransitGuideLeg, message: TransitLabel) =>
+      piece(approachFrameLine(isEn, displayLegOf(leg, boardOverride), message)),
+    [boardOverride, displayLegOf, isEn, piece],
   );
 
   /** 0건 사유 문구(§13.3 3-state) — 목록 자리·새로고침 응답 공용. */
@@ -325,52 +385,81 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
    * 단일 헬퍼. 화면과 통지가 같은 파트 목록을 공유해 드리프트를 구조 차단한다.
    */
-  const buildStatusText = useCallback(
-    (s: TransitGuideState, leg: TransitGuideLeg): string => {
+  const buildStatus = useCallback(
+    (s: TransitGuideState, leg: TransitGuideLeg): { text: string; lang?: "ko" } => {
       const boarding = s.phase === "boarding";
-      const parts = [
+      const ui = (text: string) => ({ text, ko: false });
+      const lastMessage = s.lastMessage
+        ? messageLabel(s.lastMessage, s.lastMessageEn ?? undefined)
+        : null;
+      const pieces: { text: string; ko: boolean }[] = [
         s.phase === "waiting"
-          ? waitContextText(leg, true)
+          ? waitContextPiece(leg, true)
           : boarding
-            ? boardingContextText(leg)
-            : contextText(leg),
-        boarding && selectedDescription ? t("selectedVehicle", { desc: selectedDescription }) : "",
-        signalText(s.signal, s.phase),
+            ? boardingContextPiece(leg)
+            : contextPiece(leg),
+        boarding && selectedDescription
+          ? piece(selectedVehicleLine(isEn, selectedDescription))
+          : ui(""),
+        ui(signalText(s.signal, s.phase)),
         // boarding은 승차 정류소 기준 정보라 "하차역까지 남은 정거장"을 말하면 거짓이
         // 된다 — 원문 프레임만(잔여 수는 원문 꼬리가 담는다).
-        !boarding && s.remaining != null
-          ? t("remainingCount", { count: s.remaining })
-          : !boarding && leg.stationCount != null && s.phase === "riding"
-            ? t("stationCountAbout", { count: leg.stationCount })
-            : "",
-        s.lastMessage
+        ui(
+          !boarding && s.remaining != null
+            ? t("remainingCount", { count: s.remaining })
+            : !boarding && leg.stationCount != null && s.phase === "riding"
+              ? t("stationCountAbout", { count: leg.stationCount })
+              : "",
+        ),
+        lastMessage
           ? boarding
-            ? approachFrameText(leg, s.lastMessage)
-            : frameText(leg, s.lastMessage, s.lastArrivalCode)
-          : "",
+            ? approachFramePiece(leg, lastMessage)
+            : framePiece(leg, lastMessage, s.lastArrivalCode)
+          : ui(""),
         // 근사 주석의 판별자는 leg 유형이 아니라 잠금의 근사 여부(§13.2 — tagoBus는
         // 대기 중에도 근사 예고로 유지).
-        leg.trackMode === "tagoBus" || (s.lock != null && isApproxTransitLock(s.lock))
-          ? t("approxNote")
-          : "",
+        ui(
+          leg.trackMode === "tagoBus" || (s.lock != null && isApproxTransitLock(s.lock))
+            ? t("approxNote")
+            : "",
+        ),
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외(미등장·소실·실패)엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼
         // 이월하지 않는다(3-state, useRouteGuide "낡은 fix 거짓 정밀 차단" 동형).
-        s.signal === "tracking" && s.dataAgeSeconds != null
-          ? t("dataAge", { seconds: s.dataAgeSeconds })
-          : s.lastUpdatedAt != null
-            ? t("lastUpdated", {
-                time: new Date(s.lastUpdatedAt).toLocaleTimeString("ko-KR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                }),
-              })
-            : "",
+        ui(
+          s.signal === "tracking" && s.dataAgeSeconds != null
+            ? t("dataAge", { seconds: s.dataAgeSeconds })
+            : s.lastUpdatedAt != null
+              ? t("lastUpdated", {
+                  time: new Date(s.lastUpdatedAt).toLocaleTimeString("ko-KR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  }),
+                })
+              : "",
+        ),
       ];
-      return parts.filter(Boolean).join(" ");
+      return {
+        text: pieces
+          .map((p) => p.text)
+          .filter(Boolean)
+          .join(" "),
+        ...(pieces.some((p) => p.ko && p.text) ? { lang: "ko" as const } : {}),
+      };
     },
-    [approachFrameText, boardingContextText, contextText, frameText, selectedDescription, signalText, t, waitContextText],
+    [
+      approachFramePiece,
+      boardingContextPiece,
+      contextPiece,
+      framePiece,
+      isEn,
+      piece,
+      selectedDescription,
+      signalText,
+      t,
+      waitContextPiece,
+    ],
   );
 
   /** approaching 첫 관측 판별(전이 전 trackingAnnounced) — dispatch가 기록, announceEvent가 읽는다. */
@@ -381,15 +470,27 @@ export function useTransitGuide(route: TransitRoute | null) {
     (event: TransitGuideEvent): void => {
       const leg = currentLeg();
       const r = routeRef.current;
-      const parts: string[] = [];
+      // 조각마다 한국어 폴백 여부를 함께 들고 다닌다(마지막에 통지 전체의 lang을 정한다).
+      const pieces: { text: string; ko: boolean }[] = [];
+      const parts = {
+        push: (text: string) => {
+          if (text) pieces.push({ text, ko: false });
+        },
+      };
+      const pushPiece = (p: { text: string; ko: boolean }) => {
+        if (p.text) pieces.push(p);
+      };
       switch (event.kind) {
         case "vehicleSelected":
           if (leg) {
-            parts.push(
-              t("vehicleSelected", {
-                desc: selectedDescriptionRef.current ?? leg.lineName,
-                stop: boardOverrideRef.current ?? leg.boardName,
-              }),
+            pushPiece(
+              piece(
+                vehicleSelectedLine(
+                  isEn,
+                  displayLegOf(leg, boardOverrideRef.current),
+                  selectedDescriptionRef.current,
+                ),
+              ),
             );
           }
           break;
@@ -397,26 +498,28 @@ export function useTransitGuide(route: TransitRoute | null) {
           // 첫 관측만 "추적합니다"를 앞세운다. 이벤트는 첫 관측과 사다리를 구분하지
           // 않으므로 전이 전 상태(dispatch가 남긴 플래그)를 본다.
           if (firstObservationRef.current) parts.push(t("approachingStarted"));
-          if (event.message && leg) parts.push(approachFrameText(leg, event.message));
+          if (event.message && leg) {
+            pushPiece(approachFramePiece(leg, messageLabel(event.message, event.messageEn)));
+          }
           break;
         case "vehiclePassed":
-          if (leg) parts.push(t("vehiclePassed", { stop: boardOverrideRef.current ?? leg.boardName }));
+          if (leg) pushPiece(piece(vehiclePassedLine(isEn, displayLegOf(leg, boardOverrideRef.current))));
           break;
         case "boarded": {
           if (!leg) break;
-          if (event.cause === "observed") parts.push(t("arrivedAtBoardStop", { line: leg.lineName }));
-          parts.push(
-            leg.stationCount != null
-              ? t("boardedCount", { line: leg.lineName, stop: leg.alightName, count: leg.stationCount })
-              : t("boarded", { line: leg.lineName, stop: leg.alightName }),
-          );
+          const d = displayLegOf(leg, null);
+          if (event.cause === "observed") pushPiece(piece(arrivedAtBoardStopLine(isEn, d)));
+          pushPiece(piece(boardedLine(isEn, d)));
           break;
         }
         case "trackingStarted":
-          if (leg) parts.push(contextText(leg), t("trackingStarted"));
+          if (leg) pushPiece(contextPiece(leg));
+          parts.push(t("trackingStarted"));
           {
-            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
-            if (framed) parts.push(framed);
+            const framed = event.message && leg
+              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
+              : { text: event.message, ko: false };
+            if (framed.text) pushPiece(framed);
             else if (event.remaining != null) parts.push(t("remainingCount", { count: event.remaining }));
           }
           break;
@@ -424,30 +527,44 @@ export function useTransitGuide(route: TransitRoute | null) {
           // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
           {
             // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
-            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
-            parts.push(framed || t("remainingCount", { count: event.remaining }));
+            const framed = event.message && leg
+              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
+              : { text: event.message, ko: false };
+            if (framed.text) pushPiece(framed);
+            else parts.push(t("remainingCount", { count: event.remaining }));
           }
           // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
           // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
           if (event.remaining <= 1 && event.currentLocation) {
-            parts.push(t("currentStation", { station: event.currentLocation }));
+            pushPiece(
+              piece(
+                currentStationLine(
+                  isEn,
+                  messageLabel(event.currentLocation, event.currentLocationEn),
+                ),
+              ),
+            );
           }
           break;
         case "messageChanged":
           {
+            const label = messageLabel(event.message, event.messageEn);
             const framed = leg
               ? stateRef.current?.phase === "boarding"
-                ? approachFrameText(leg, event.message)
-                : frameText(leg, event.message, event.arrivalCode)
-              : event.message;
-            if (framed) parts.push(framed);
+                ? approachFramePiece(leg, label)
+                : framePiece(leg, label, event.arrivalCode)
+              : { text: event.message, ko: false };
+            if (framed.text) pushPiece(framed);
           }
           break;
         case "arrived": {
           parts.push(event.certain ? t("arrived") : t("arrivedGuess"));
           const s = stateRef.current;
           const next = s && r ? r.legs[s.legIndex + 1] : null;
-          if (next) parts.push(t("nextLeg", { context: waitContextText(next, false) }));
+          if (next) {
+            const inner = waitContextPiece(next, false);
+            pushPiece({ text: t("nextLeg", { context: inner.text }), ko: inner.ko });
+          }
           else if (r?.walkAfterMinutes != null) {
             parts.push(t("nextLeg", { context: t("doneWalk", { minutes: r.walkAfterMinutes }) }));
           }
@@ -456,8 +573,10 @@ export function useTransitGuide(route: TransitRoute | null) {
         case "backOnTrack":
           parts.push(t("backOnTrack"));
           {
-            const framed = event.message && leg ? frameText(leg, event.message, event.arrivalCode) : event.message;
-            if (framed) parts.push(framed);
+            const framed = event.message && leg
+              ? framePiece(leg, messageLabel(event.message, event.messageEn), event.arrivalCode)
+              : { text: event.message, ko: false };
+            if (framed.text) pushPiece(framed);
           }
           break;
         case "approxVehicleChanged":
@@ -489,7 +608,7 @@ export function useTransitGuide(route: TransitRoute | null) {
           } else {
             const nextLeg = r?.legs[event.legIndex];
             if (nextLeg) {
-              parts.push(waitContextText(nextLeg, false));
+              pushPiece(waitContextPiece(nextLeg, false));
               if (!nextLeg.trackMode) parts.push(t("untrackable"));
             }
           }
@@ -499,9 +618,25 @@ export function useTransitGuide(route: TransitRoute | null) {
           parts.push(t("changeBoardingDone"));
           break;
       }
-      if (parts.length > 0) announce(parts.join(" "));
+      if (pieces.length > 0) {
+        announce(
+          pieces.map((p) => p.text).join(" "),
+          pieces.some((p) => p.ko) ? "ko" : undefined,
+        );
+      }
     },
-    [announce, approachFrameText, contextText, currentLeg, frameText, t, waitContextText],
+    [
+      announce,
+      approachFramePiece,
+      contextPiece,
+      currentLeg,
+      displayLegOf,
+      framePiece,
+      isEn,
+      piece,
+      t,
+      waitContextPiece,
+    ],
   );
 
   const dispatch = useCallback(
@@ -751,13 +886,14 @@ export function useTransitGuide(route: TransitRoute | null) {
       const init = initTransitGuide(route, Date.now());
       commit(init);
       const first = route.legs[0];
-      const parts = [t("started", { count: route.legs.length }), waitContextText(first, true)];
+      const context = waitContextPiece(first, true);
+      const parts = [t("started", { count: route.legs.length }), context.text];
       if (!first.trackMode) parts.push(t("untrackable"));
       if (prefix) parts.unshift(prefix);
-      announce(parts.join(" "));
+      announce(parts.filter(Boolean).join(" "), context.ko ? "ko" : undefined);
       void pollOnce();
     },
-    [announce, commit, pollOnce, stopSession, t, waitContextText],
+    [announce, commit, pollOnce, stopSession, t, waitContextPiece],
   );
 
   const start = useCallback(() => {
@@ -801,7 +937,7 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 완성 문장은 제외. dispatch **전에** 기록해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
    */
   const boardCandidate = useCallback(
-    (candidate: BoardingCandidate, description: string) => {
+    (candidate: BoardingCandidate, description: TransitLabel) => {
       const leg = currentLeg();
       if (!leg?.trackMode) return;
       setSelectedDescription(description);
@@ -991,15 +1127,16 @@ export function useTransitGuide(route: TransitRoute | null) {
     const r = routeRef.current;
     const leg = s && r ? r.legs[s.legIndex] : null;
     if (!s || !leg) return;
-    announce(buildStatusText(s, leg));
-  }, [announce, buildStatusText]);
+    const status = buildStatus(s, leg);
+    announce(status.text, status.lang);
+  }, [announce, buildStatus]);
 
   /** 상시 표시 문자열(§12.3) — 패널이 그대로 렌더한다(별도 조립 금지). */
   const activeRoute = sessionRoute ?? guideRoute;
-  const statusText = useMemo(() => {
+  const status = useMemo(() => {
     const leg = state && activeRoute ? activeRoute.legs[state.legIndex] : null;
-    return state && leg ? buildStatusText(state, leg) : "";
-  }, [activeRoute, buildStatusText, state]);
+    return state && leg ? buildStatus(state, leg) : { text: "" };
+  }, [activeRoute, buildStatus, state]);
 
   return {
     startable: guideRoute !== null,
@@ -1007,8 +1144,12 @@ export function useTransitGuide(route: TransitRoute | null) {
     guideRoute: activeRoute,
     prewalkTarget,
     state,
-    statusText,
+    statusText: status.text,
+    /** 상시 표시 줄의 `lang`(한국어 폴백일 때만 "ko"). */
+    statusLang: status.lang,
     liveMessage,
+    /** live region의 `lang`(한국어 폴백이 섞인 통지일 때만 "ko"). */
+    liveLang,
     // 외부(패널 중지 통지 등)도 같은 가드를 태운다 — 직접 setState 노출 금지.
     setLiveMessage: announce,
     waitingOptions: waitingOptions.options,
