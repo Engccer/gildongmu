@@ -347,7 +347,7 @@
     "ready": "근처 따릉이 대여소입니다.",
     "asOf": "{time} 기준",
     "stationDistance": "도보 약 {distance}",
-    "availability": "대여 가능 {bikes}대 · 거치대 {racks}개",
+    "availability": "대여 가능 {bikes}대, 거치대 {racks}개",
     "geoDenied": "현재 위치 권한이 필요합니다. 브라우저에서 위치 접근을 허용해 주세요.",
     "geoUnsupported": "이 브라우저는 현재 위치를 지원하지 않습니다.",
     "source": "출처: 서울 열린데이터광장 따릉이."
@@ -441,7 +441,7 @@
   },
   "airQuality": {
     "heading": "이 지역 공기질",
-    "station": "{name} 측정소 · {distance}km",
+    "station": "{name} 측정소, {distance}km",
     "khai": "통합대기환경지수",
     "pm10": "미세먼지",
     "pm25": "초미세먼지",

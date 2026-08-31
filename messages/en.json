@@ -347,7 +347,7 @@
     "ready": "Nearby bike stations.",
     "asOf": "as of {time}",
     "stationDistance": "{distance} walk",
-    "availability": "{bikes} available · {racks, plural, one {# rack} other {# racks}}",
+    "availability": "{bikes} available, {racks, plural, one {# rack} other {# racks}}",
     "geoDenied": "Location permission is required. Please allow location access in your browser.",
     "geoUnsupported": "This browser does not support location.",
     "source": "Source: Seoul Open Data Plaza (Ttareungyi)."
@@ -441,7 +441,7 @@
   },
   "airQuality": {
     "heading": "Air Quality",
-    "station": "{name} monitoring station · {distance} km",
+    "station": "{name} monitoring station, {distance} km",
     "khai": "Air quality index",
     "pm10": "Fine dust (PM10)",
     "pm25": "Ultrafine dust (PM2.5)",

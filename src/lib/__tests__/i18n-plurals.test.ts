@@ -175,7 +175,7 @@ describe("수량 문구 복수형(A29)", () => {
     "transitGuide.viaStopsTrain": "1 station on this leg",
     "transitGuide.viaStopsBus": "1 stop on this leg",
     "transitGuide.dataAge": "As of 1 second ago.",
-    "bike.availability": "x available · 1 rack",
+    "bike.availability": "x available, 1 rack",
     "bus.arrival": "Route x x, 1 stop away, in about x min",
     "surroundings.count": "1 place",
     "ios.chat.placesHeading": "1 place",
