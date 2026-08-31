@@ -56,10 +56,6 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A28. en 장소 카드의 카카오 분류 경로가 한국어 그대로 (🆕 2026-08-31 위원장 웹 실사용 — 병렬 세션 category-en 착수)
-
-`gildongmu.vercel.app/en` 검색 "sinmyung middle school" 결과 카드: 이름은 `Sinmyeongjunghakgyo (신명중학교)`로 병기됐으나 분류 줄 "교육,학문 > 학교 > 중학교"는 한국어 원문(E28 후속 후보 "분류 영문화"). 설계: 세그먼트 사전 + 서버 `categoryEn` 투영, 미등재 세그먼트가 있으면 경로 전체 한국어+`lang="ko"`. 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md` §웨이브 3.
-
 ### A29. 수량 문구에 단수형이 없다 — "1 places" (🆕 2026-08-31 위원장 웹 실사용 — 병렬 세션 plurals 착수)
 
 웹 `messages/en.json` count 키 31개 전부 복수 고정(ICU plural 0건), iOS xcstrings 복수 변형 0건. en·es·fr·it에 ICU `one/other` 도입 + iOS 변환 스크립트·`appLocalized`/`kitLocalized` 복수 해석. 정본은 위 계획 문서 §웨이브 3.
@@ -76,7 +72,7 @@ en(및 es/fr/it/ja) 사용에서 **우리 코드 결함**으로 한국어가 노
 
 **남은 판정(종결 시점 기록)**:
 - ~~**`lang="ko"`를 건너뛴 자리(E28 재료)**~~ ✅ 2026-08-31 E28이 로마자 병기로 해소(`AroundNearby` 헤딩·불릿·항목, `SurroundingsScene`, `LocationBar`, `LocalConditions`·`AirQuality` — 이름이 로마자가 되어 삽입 자리에 한글이 남지 않는다). **남은 것은 E27 몫**(`TransitGuidePanel` 상태 문장·경유 정류소 줄, `SeoulMetroFacilities` 헤딩의 노선명). 원문: 영어 산문 템플릿 안에 한국어 데이터가 삽입되는 줄이라 속성을 주려면 줄 중간 분절이 필요해 헌장 위반: `AroundNearby` 패널 헤딩(`here {place}`)·한눈에 보기 불릿(`buildOverviewLines`)·항목 헤딩(`joinText(p.name, item 템플릿)`)·`SurroundingsScene` 장면 문장, `LocationBar`(`gpsNear {address}`, 역지오코딩 주소가 ko), `LocalConditions` 혼잡도 요약(`summary {area}`)·`AirQuality` 측정소 줄(`station {name}`), `TransitGuidePanel` 상태 문장·경유 정류소 줄(`stop.name + viaBoard`), `SeoulMetroFacilities` 헤딩(`heading {name}` + line). ~~**노선명이 들어가는 줄**(`StationTimetable` 항목·`StationMeta` 노선 줄·`TransitRouteBriefing` 구간)~~ ✅ 2026-08-31 E27 노선명 표(`lineNameEn`·`linesEn`)로 해소. `SeoulMetroFacilities` 헤딩의 노선명 `lang` 부재는 E27 잔여 목록에 옮겼다.
-- **혼합 줄의 판정 축**: 값이 한국어인 줄(`PlaceCard` 분류 "음식점 > 한식, about 120m", 무장애 "Wheelchair rental 안내소에서 대여 가능")은 영어 조각이 섞여도 줄 전체 `lang="ko"`로 뒀다 — 영어 엔진은 한글을 못 읽고 한국어 엔진은 영어 낱말을 읽으므로. E28(2026-08-31)은 이 축을 유지했다(`langFor(접근 텍스트)`): 이름이 로마자여도 분류·종별이 한국어면 줄 전체 ko. 후속 후보(카카오 분류 영문화)는 E28 후속 후보 목록이 정본이다.
+- **혼합 줄의 판정 축**: 값이 한국어인 줄(`PlaceCard` 분류 "음식점 > 한식, about 120m", 무장애 "Wheelchair rental 안내소에서 대여 가능")은 영어 조각이 섞여도 줄 전체 `lang="ko"`로 뒀다 — 영어 엔진은 한글을 못 읽고 한국어 엔진은 영어 낱말을 읽으므로. E28(2026-08-31)은 이 축을 유지했다(`langFor(접근 텍스트)`): 이름이 로마자여도 분류·종별이 한국어면 줄 전체 ko. A28(2026-08-31)로 카카오 분류는 96.8%가 영문이 되어 그 줄의 ko 폴백은 미등재 브랜드 잎사귀에만 남는다(진료 종별은 아직).
 - **iOS 자동차 브리핑의 `guidanceLang`**: Kit 모델에 디코딩만 넣었고 `CarRouteRows`에 언어 표기는 붙이지 않았다 — 판정 정본은 §2 E28-①(iOS 한국어 구간 언어 태깅)이고 이 면은 그 행에 적었다.
 - **`호선` 접미의 en "Line {n}"**(음성유도기 환승역·`subway.lineNumber`, `src/lib/place-lines/station-metro.ts`)은 서버 합성 접미를 로컬라이즈한 것이라 여기서 처리했다 — E27 노선명 표(`subway-line-names.ts`)가 같은 날 생겼지만 이 자리는 아직 표를 타지 않는다(통일은 E27 잔여, 2026-08-31 doc-audit 확인).
 - **ko 표시 1건 변화**: 서울 지하철 장애인 화장실 보조 설명이 " · " 결합에서 쉼표 결합(`joinText`)으로 바뀌었다(가운뎃점 구분자 금지 헌장 정합, CLI/MCP `detail` 문자열은 불변).
@@ -321,7 +317,7 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 ### E28. 장소명 영문 병기 — 로마자 서버 투영 + 한 줄 괄호 (✅ 2026-08-31 코드 종결, ⏳ 실기기 판정)
 
 카카오·네이버·TAGO·TOPIS는 영문 필드가 없다. 판정 확정(2026-08-31): 영문 원천 없는 이름은 **한글 + 로마자(서버 투영) 한 줄 괄호 병기**, 접근 가능한 이름은 영문·로마자만. 서울시 외국어 표기 사전(OA-2475)은 실측상 도로명·시청 조직명 사전(가게·병원·역명 매칭 0/15·0/15·1/15)이라 **기각**. 구현 종결(CHANGELOG 2026-08-31, spec `docs/superpowers/specs/2026-08-31-place-name-bilingual-design.md`, plan `2026-08-31-en-locale-korean-cleanup-parallel-plan.md`). 실기기 판정은 §2 "장소명 병기(E28)" 표. 후속 후보(범위 밖으로 남긴 것):
-- **카카오 분류·진료 종별의 영문화** — 로마자는 정보가 0이라 만들지 않았다. 버킷 i18n 라벨(`category.ts`) 재사용이 후보. 풀리면 혼합 줄의 `lang="ko"`가 함께 떨어진다.
+- ~~**카카오 분류의 영문화**~~ → ✅ A28 종결(2026-08-31, 세그먼트 사전 + 서버 `categoryEn`, spec `2026-08-31-kakao-category-en-design.md`). 버킷 i18n 라벨 재사용안은 경로 정보를 버려 채택하지 않았다. 남는 것: **진료 종별(`NightClinic.kind` "의원"/"병원")의 영문화** — 카카오 분류가 아니라 NMC 필드라 A28 범위 밖. 값이 2종뿐이라 i18n 키 2개(`clinic.kind.*`)가 후보.
 - **둘러보기 장면의 도로명(`SceneItem.road`)** — 문장 안 한국어 도로명 그대로(`on 성내로`). `roadRoman`(주소 규칙) additive가 후보.
 - **길찾기 화면의 장소명**(웹 `DirectionsView`·iOS `DirectionsEndpointSearchView` 출발·도착 검색 결과, `DirectionsTabView` 현재 주소) — 길찾기 세션 소유라 손대지 않았다. `Place.nameRoman`·`reverseGeocode(lang:)`이 이미 값을 주므로 소비만 붙이면 된다(설계 리뷰 #25).
 - **`where-am-i`(CLI·채팅 계약)**에는 로마자를 싣지 않았다 — CLI 텍스트 포맷과 채팅 산문이 범위 밖이라.
@@ -794,6 +790,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 | A20 | 환승역 빠른하차가 환승 통로가 아닌 계단을 고름 — ODsay `door` 정본화 | 2026-08-25 · spec `2026-08-25-subway-transfer-door-design.md` |
 | A21 | 4호선 TAGO 0행 `unknown` 정렬 강등 × 5개 절단 = ODsay 1순위 제외 | 2026-08-25 · spec `2026-08-25-transit-unknown-not-demoted-design.md`(주간 재관측은 A22) |
 | A9 | 근접 지하철역 노선 집계 동명이역 혼입 | 2026-08-11 |
+| A28 | en 장소 카드의 카카오 분류 경로가 한국어 그대로 | 2026-08-31 · spec `2026-08-31-kakao-category-en-design.md`(§11 커버리지 실측 — 사전은 스냅샷, 미등재는 한국어 원문으로 남는 것이 계약) |
 | A10 | 최종 접근 진입 거부 시 세션 영구 정지 | 2026-08-11 |
 | A14 | 공지 모달 문안이 disclosure 펼침 단계를 안 담음 | 2026-08-15 **위원장 기각**(의도적 단순화 — 1회성 공지의 몫은 절차 완전 기술이 아니다). ⚠ 재개 조건: 실사용에서 "버튼을 못 찾겠다"가 실제로 나오면 문안 보강안부터 본다(동작 무변경이라 되돌리기 쉽다) |
 | A7 | 길찾기 조회의 "현재 위치"가 캐시 좌표 | 2026-08-16 (나이 상한 3분 + `Coord.at`) |
