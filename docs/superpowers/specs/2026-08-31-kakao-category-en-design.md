@@ -60,7 +60,7 @@ E28 §7과 같은 이유로 **로케일 무관**하게 싣는다: nearby 라우�
 
 ## 7. iOS 렌더 규칙
 
-- `SearchView.swift` `PlaceRow.joined`: `place.category` → `pickCategory(lang: AppLanguage.dataLocale, …)`. **이 줄만** 건드린다(결과 수 헤딩은 plurals 소유).
+- `SearchView.swift` `PlaceRow.joined`: `place.category` → `pickCategory(lang: AppLanguage.current, …)`(E28 `bilingual()` 헬퍼와 같은 인자 — 판정은 `lang != "ko"`뿐이라 `dataLocale`과 결과가 같다). **이 줄만** 건드린다(결과 수 헤딩은 plurals 소유).
 - `PlaceDetailView.swift` 분류 행: 고른 값에 한글이 남을 때만 `KoreanText`(종전 조건 그대로), 아니면 `Text`.
 - `AroundNearbyView.swift` `categoryPiece`: 고른 값의 마지막 세그먼트(`Middle School`). 영문 경로도 `" > "` 결합이라 같은 분할이 선다.
 - `KidsNearbyView`: **변경 없음**(원문 분류를 그리지 않는다).
@@ -105,7 +105,9 @@ codex adversarial-review(raw `codex exec` 설계 문서 주입·파일 읽기 �
 - #14 결합 줄의 `lang="ko"` 범위 → E28 §10 #13과 같은 판정: 가운데 `lang` span은 Chrome AX 실측에서 접근성 객체를 가르므로(분절) 대안이 없고, 이 기능으로 그 폴백 줄 자체가 카드의 3% 안팎으로 준다(§11).
 - #15 원문 접근 경로 → 한국어 원문은 한국어를 모르는 사용자에게 정보가 0이고 ko 로케일이 원문을 그대로 보인다. 병기·별도 행은 이중 낭독·객체 증가(과잉).
 
-**a11y 감사·코드 리뷰**: (별도 컨텍스트 결과를 여기 적는다.)
+**코드 리뷰(별도 컨텍스트, spec-compliance + 정확성 + 사전 표본 80+103항목, swift test·tsc·vitest 재실행)**: 판정 "머지 가능". 반영 — WARNING: `kids-places`·`surroundings` 투영에 미등재 경로(키 부재) 케이스 추가(provider마다 spread 회귀를 따로 잡는다); INFO: `자산관리,자산운용` → `Wealth & Asset Management`(§3 원칙 정합). 기각 — INFO `용인에버라인`을 `Yongin EverLine`으로: E27 노선명 표(`subway-line-names.ts`)가 `EverLine`이라 같은 앱 안의 노선명 표기를 하나로 유지하는 쪽을 택했다(다른 노선명도 전부 E27 표를 따른다). 리뷰어가 본 `coverage.test.ts` OSM 전수 5초 타임아웃 1건은 이 diff 무관(부하 시 flake).
+
+**a11y 감사(별도 컨텍스트, 정적 + 웹 Chrome AX 실측(dev 서버) + iOS 시뮬 런타임 실측(`appLanguage=en` 주입))**: "접근성 양호" — 한 줄=한 객체 유지(웹 카드 버튼 accessible name 통짜 1개, iOS PlaceRow `.combine` 한 `text`), `lang` 접근 텍스트 기준 정확(categoryEn 있음 → 속성 없음 / 부재 → `lang="ko"` 실측), 판정 축 오염 0, 부분 번역 혼합 경로 0, 새 ARIA·live region·병기 0. 기록 — 시뮬 앱이 프로덕션 API를 불러 `categoryEn` 부재 폴백(`KoreanText`) 경로가 실측됐고 존재 경로는 웹 실측 + 공유 fixture로 덮였다. §7 `dataLocale` 표기는 실제 인자 `AppLanguage.current`로 정정(결과 동일).
 
 ## 11. 커버리지 실측 기록
 
