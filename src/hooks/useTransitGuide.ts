@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   buildTransitGuideRoute,
   classifyBoardingCandidates,
@@ -25,6 +25,7 @@ import {
   subwayRidingMessage,
 } from "@/lib/transit-guide";
 import { claimGuideSession, releaseGuideSession } from "@/lib/guide-session-store";
+import { dataLocale } from "@/lib/data-locale";
 import type { TransitRoute } from "@/lib/types";
 
 /**
@@ -68,11 +69,17 @@ const RETAIN_MS = 180_000;
 /** 같은 문장 재발화를 위한 빈 값 경유 지연(useRouteGuide 동일값). */
 const REANNOUNCE_DELAY_MS = 120;
 
-function trackTargetUrl(
+/**
+ * 폴링 대상 URL. **`lang`은 기본값 없는 필수 인자다**(E27 잔여 ①) — 생략이 컴파일을 통과하면
+ * 실시간 줄만 조용히 한국어로 떨어지고, 서버는 400도 내지 않는다(파라미터 부재 = ko가 정상 계약).
+ * 파라미터 **이름 오타도 조용히 무시**되므로 테스트가 URL 문자열 전체를 단언한다.
+ */
+export function trackTargetUrl(
   leg: TransitGuideLeg,
   phase: "waiting" | "boarding" | "riding" | "arrived",
   resolvedTago: { nodeId: string; cityCode: string } | null,
   boardOverride: string | null,
+  lang: "ko" | "en",
 ): string | null {
   const mode = leg.trackMode;
   if (!mode) return null;
@@ -82,24 +89,25 @@ function trackTargetUrl(
   if (mode === "seoulBus") {
     if (atBoardStop) {
       if (!leg.boardStop?.arsId || !leg.routeId) return null;
-      return `/api/transit/track?mode=seoulBus&phase=wait&arsId=${encodeURIComponent(leg.boardStop.arsId)}&routeId=${encodeURIComponent(leg.routeId)}`;
+      return `/api/transit/track?mode=seoulBus&phase=wait&arsId=${encodeURIComponent(leg.boardStop.arsId)}&routeId=${encodeURIComponent(leg.routeId)}&lang=${lang}`;
     }
     if (!leg.boardStop?.localId || !leg.alightStop?.localId || !leg.routeId) return null;
-    return `/api/transit/track?mode=seoulBus&phase=ride&routeId=${encodeURIComponent(leg.routeId)}&boardId=${encodeURIComponent(leg.boardStop.localId)}&alightId=${encodeURIComponent(leg.alightStop.localId)}`;
+    return `/api/transit/track?mode=seoulBus&phase=ride&routeId=${encodeURIComponent(leg.routeId)}&boardId=${encodeURIComponent(leg.boardStop.localId)}&alightId=${encodeURIComponent(leg.alightStop.localId)}&lang=${lang}`;
   }
   if (mode === "tagoBus") {
     if (!resolvedTago) return null;
-    return `/api/transit/track?mode=tagoBus&phase=track&cityCode=${encodeURIComponent(resolvedTago.cityCode)}&nodeId=${encodeURIComponent(resolvedTago.nodeId)}&routeNo=${encodeURIComponent(leg.lineName)}`;
+    return `/api/transit/track?mode=tagoBus&phase=track&cityCode=${encodeURIComponent(resolvedTago.cityCode)}&nodeId=${encodeURIComponent(resolvedTago.nodeId)}&routeNo=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
   }
   // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
   // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
   const station = atBoardStop ? (boardOverride ?? leg.boardName) : leg.alightName;
   if (!station) return null;
-  return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}`;
+  return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
 }
 
 export function useTransitGuide(route: TransitRoute | null) {
   const t = useTranslations("transitGuide");
+  const locale = useLocale();
 
   const guideRoute = useMemo(
     () => (route ? buildTransitGuideRoute(route) : null),
@@ -614,6 +622,7 @@ export function useTransitGuide(route: TransitRoute | null) {
         s.phase as "waiting" | "boarding" | "riding" | "arrived",
         resolvedTago,
         boardOverrideRef.current,
+        dataLocale(locale),
       );
       if (!url) {
         finishEarlyUnsupported();
@@ -698,7 +707,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       inFlightRef.current = false;
       scheduleNext();
     }
-  }, [announce, currentLeg, dispatch, reasonText, resolveTagoIfNeeded, scheduleNext, t]);
+  }, [announce, currentLeg, dispatch, reasonText, resolveTagoIfNeeded, scheduleNext, t, locale]);
 
   const stopSession = useCallback(() => {
     clearTimer();

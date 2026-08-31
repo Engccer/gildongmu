@@ -38,17 +38,20 @@ public struct TransitTrackService: Sendable {
         }
     }
 
-    public func seoulWait(arsId: String, routeId: String) async throws -> TransitTrackEnvelope {
+    /// ⚠ `lang`은 **기본값 없는 필수 인자**다(E27 잔여 ①, spec 2026-09-01 §3.3) — 생략이 컴파일을
+    /// 통과하면 실시간 줄만 조용히 한국어로 떨어지고 서버는 400도 내지 않는다(부재 = ko가 정상 계약).
+    public func seoulWait(arsId: String, routeId: String, lang: String) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "seoulBus"),
             URLQueryItem(name: "phase", value: "wait"),
             URLQueryItem(name: "arsId", value: arsId),
             URLQueryItem(name: "routeId", value: routeId),
+            URLQueryItem(name: "lang", value: lang),
         ])
     }
 
     public func seoulRide(
-        routeId: String, boardId: String, alightId: String
+        routeId: String, boardId: String, alightId: String, lang: String
     ) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "seoulBus"),
@@ -56,9 +59,12 @@ public struct TransitTrackService: Sendable {
             URLQueryItem(name: "routeId", value: routeId),
             URLQueryItem(name: "boardId", value: boardId),
             URLQueryItem(name: "alightId", value: alightId),
+            URLQueryItem(name: "lang", value: lang),
         ])
     }
 
+    /// ⚠ `lang` 없음 — 응답의 `stop.name`을 소비자가 표시하지 않고(nodeId·cityCode만 쓴다)
+    /// TAGO 정류소명에는 영문 원천도 없다. 표시가 생기면 그때 `lang`을 더한다.
     public func resolveTagoStop(lat: Double, lng: Double) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "tagoBus"),
@@ -69,7 +75,7 @@ public struct TransitTrackService: Sendable {
     }
 
     public func tagoTrack(
-        cityCode: String, nodeId: String, routeNo: String
+        cityCode: String, nodeId: String, routeNo: String, lang: String
     ) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "tagoBus"),
@@ -77,15 +83,17 @@ public struct TransitTrackService: Sendable {
             URLQueryItem(name: "cityCode", value: cityCode),
             URLQueryItem(name: "nodeId", value: nodeId),
             URLQueryItem(name: "routeNo", value: routeNo),
+            URLQueryItem(name: "lang", value: lang),
         ])
     }
 
-    public func subwayTrack(station: String, line: String) async throws -> TransitTrackEnvelope {
+    public func subwayTrack(station: String, line: String, lang: String) async throws -> TransitTrackEnvelope {
         try await get([
             URLQueryItem(name: "mode", value: "subway"),
             URLQueryItem(name: "phase", value: "track"),
             URLQueryItem(name: "station", value: station),
             URLQueryItem(name: "line", value: line),
+            URLQueryItem(name: "lang", value: lang),
         ])
     }
 }

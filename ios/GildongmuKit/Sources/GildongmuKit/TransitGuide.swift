@@ -126,11 +126,23 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
     public let dataStamp: String?
     /// 데이터 나이(초, 서버 계산·클램프). nil = 미제공·동결 판정 불가(§12.1 ⓑ).
     public let dataAgeSeconds: Int?
+    /// 영문 조각(E27 잔여 ①, `lang=en` 요청에만 — 웹 `TrackItem` 미러, spec 2026-09-01 §3.2 행렬).
+    ///
+    /// ⚠ 위 한국어 필드는 en 응답에서도 한국어다 — 실시간 매핑·종착 검사·현재역 인덱스가
+    /// 전부 그 값으로 조인한다.
+    /// ⚠ **`messageEn`만 빈 문자열이 유효한 값이다**(TAGO는 ko도 완성 문장이 없어 `""`).
+    /// 나머지 셋의 `""`는 정보 소실이라 서버가 부재로 정규화해 보낸다.
+    public let messageEn: String?
+    public let directionEn: String?
+    public let destinationNameEn: String?
+    public let currentLocationEn: String?
 
     public init(
         vehicleId: String?, direction: String, message: String, remainingStops: Int?,
         destinationName: String?, express: Bool, arrivalCode: String?,
-        currentLocation: String? = nil, dataStamp: String? = nil, dataAgeSeconds: Int? = nil
+        currentLocation: String? = nil, dataStamp: String? = nil, dataAgeSeconds: Int? = nil,
+        messageEn: String? = nil, directionEn: String? = nil,
+        destinationNameEn: String? = nil, currentLocationEn: String? = nil
     ) {
         self.vehicleId = vehicleId
         self.direction = direction
@@ -142,6 +154,10 @@ public struct TransitTrackItem: Codable, Sendable, Equatable {
         self.currentLocation = currentLocation
         self.dataStamp = dataStamp
         self.dataAgeSeconds = dataAgeSeconds
+        self.messageEn = messageEn
+        self.directionEn = directionEn
+        self.destinationNameEn = destinationNameEn
+        self.currentLocationEn = currentLocationEn
     }
 }
 
