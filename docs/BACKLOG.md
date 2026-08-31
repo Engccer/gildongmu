@@ -58,7 +58,7 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 ### A30. `bike.availability` 문구가 가운뎃점(`·`)으로 조각을 잇는다 — 6로케일 (🆕 2026-08-31, plurals 세션 관찰)
 
-접근성 헌장 §4: 가운뎃점은 일부 SR이 단어로 낭독해 구분자로 금지(쉼표가 정본). 웹 `messages/*.json` 6로케일 `bike.availability`(+iOS xcstrings 생성물)에 잔존. 문자열만 고치면 되는 소규모라 다음 i18n 손질 때 편승.
+접근성 헌장 §4: 가운뎃점은 일부 SR이 단어로 낭독해 구분자로 금지(쉼표가 정본). 웹 `messages/*.json` 6로케일 `bike.availability`(+iOS xcstrings 생성물)에 잔존. 문자열만 고치면 되는 소규모라 다음 i18n 손질 때 편승. **2026-09-01 세션 `en-polish` 배정**(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`).
 
 ### A29. 수량 문구에 단수형이 없다 — "1 places" — ✅ 종결(2026-08-31, plurals, CHANGELOG 같은 날)
 
@@ -309,9 +309,9 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 
 ### E27. 대중교통 영문화 — ODsay `lang=1` + 노선명 영문 표 + 도착 문장 영어 생성 — ✅ 구현 종결(2026-08-31, transit-en, CHANGELOG 같은 날)
 
-✅ **2026-08-31 구현 종결**(spec `docs/superpowers/specs/2026-08-31-transit-english-design.md`, 실호출 게이트 35/35, codex 설계 리뷰 17건 §9). **남은 판정**:
+✅ **2026-08-31 구현 종결**(spec `docs/superpowers/specs/2026-08-31-transit-english-design.md`, 실호출 게이트 35/35, codex 설계 리뷰 17건 §9). **2026-09-01 위원장 판정으로 잔여 3건에 세션 배정**(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`). **남은 판정**:
 - **실시간 대중교통 안내 en 게이트 해제**(웹 `!prefersEnglish`·iOS `dataLocale == "ko"`) + 안내 상태 머신 display DTO(`viaStops[].name`·실시간 정류소명·차량 선택 문맥까지 영문 라벨, 발화 sentinel 테스트) — 실험판 봉인(G3)과 별도 판정. spec §3.7·§6.
-- **CLI/MCP `route transit`·`station` 계열 `lang`** — E26 동형(도보 `lang`과 함께).
+- **CLI/MCP `route transit`·`station` 계열 `lang`** — E26 동형(도보 `lang`과 함께). ✅ 2026-09-01 **기능 이식 확정**, 세션 `cli-lang` 배정.
 - **iOS 줄 단위 언어 태깅**(한국어 폴백 줄·비-en 로케일 영어 줄) — 판정 정본은 §2 E28-①(같은 축, 이 면은 그 행에 적었다).
 - **병기 `Gangnam (강남)`이 한 접근성 객체로 읽히는가** — 웹 `<h4>`·`<li>` 안 `aria-hidden` span(a11y-auditor 정적 판정 결과는 spec §9 아래), iOS `accessibilityLabel` — 실기기 VoiceOver 판정(E28 병기와 함께).
 - ~~내 주변 **버스 정류소명** 영문~~ ✅ 2026-08-31 E28 로마자(`bus.ts` `nameRoman`)로 해소. 채팅 산문의 영문 노선명은 범위 밖(채팅은 ko 산문 정본).
@@ -327,8 +327,8 @@ spec `2026-08-12-walk-route-alternatives-design.md` §4·§7. 출처 `PORTS.md` 
 - **둘러보기 장면의 도로명(`SceneItem.road`)** — 문장 안 한국어 도로명 그대로(`on 성내로`). `roadRoman`(주소 규칙) additive가 후보.
 - **길찾기 화면의 장소명**(웹 `DirectionsView`·iOS `DirectionsEndpointSearchView` 출발·도착 검색 결과, `DirectionsTabView` 현재 주소) — 길찾기 세션 소유라 손대지 않았다. `Place.nameRoman`·`reverseGeocode(lang:)`이 이미 값을 주므로 소비만 붙이면 된다(설계 리뷰 #25).
 - **`where-am-i`(CLI·채팅 계약)**에는 로마자를 싣지 않았다 — CLI 텍스트 포맷과 채팅 산문이 범위 밖이라.
-- **`/api/geocode/reverse`의 `lang`은 `z.enum(["ko","en"]).catch("ko")`**라 미지 값을 조용히 ko로 떨군다 — 같은 날 E27이 세운 `langParam()`(미지 값 400) 원칙과 반대. 통일 여부 판정(2026-08-31 doc-audit 관찰).
-- **수동 위치 라벨**(`manualLocation.manual {label}`, 지정 화면에서 고른 장소명) — 스토어가 문자열 하나만 들어 비-ko 표시줄이 "Set location, 강동구청 (cannot verify)"로 남는다(실페이지 실측 2026-08-31). 스토어에 `labelRoman` additive + 표시줄 병기가 후보(웹 `manual-location-store.ts` ↔ Kit `ManualLocation.swift`).
+- **`/api/geocode/reverse`의 `lang`은 `z.enum(["ko","en"]).catch("ko")`**라 미지 값을 조용히 ko로 떨군다 — 같은 날 E27이 세운 `langParam()`(미지 값 400) 원칙과 반대. 통일 여부 판정(2026-08-31 doc-audit 관찰). ✅ 2026-09-01 **`langParam()`으로 통일 확정**(코디네이터 강한 디폴트 — 소비자가 우리 코드뿐이라 파급이 국소적이고, 조용한 ko 강등은 E27 원칙과 정면 반대). 세션 `en-polish` 배정.
+- **수동 위치 라벨**(`manualLocation.manual {label}`, 지정 화면에서 고른 장소명) — 스토어가 문자열 하나만 들어 비-ko 표시줄이 "Set location, 강동구청 (cannot verify)"로 남는다(실페이지 실측 2026-08-31). 스토어에 `labelRoman` additive + 표시줄 병기가 후보(웹 `manual-location-store.ts` ↔ Kit `ManualLocation.swift`). **2026-09-01 세션 `en-polish` 배정** — E28 `romanNameOf`·`bilingualName` 재사용.
 
 ### W2. WebMCP 도구층 2차 — 이동 계획 보조 상시 집합 7개 (신규 2026-08-28, spec 확정 2026-08-29)
 
@@ -388,7 +388,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 
 ### E26. E16 축3(비-ko 도보 문장)의 CLI/MCP 미도달 (🆕 2026-08-27, doc-audit 검출)
 
-서버 `/api/route/walk`는 `lang`을 받아 en 문장을 만들지만(`hasWalkRouteKeyFor(lang)`), CLI `packages/cli/src/commands/route.ts`는 `car`에만 `lang`을 싣고 walk는 옛 주석("transit·walk는 V1 국문 전용") 그대로라 `gil route walk --lang en`이 한국어 문장을 돌려준다. 공유 카탈로그 `endpoint-catalog-shared.ts`의 `route-walk` params에도 `lang`이 없다(cli·mcp 両미러). 판정: 기능 이식(walk에 `lang` 전달 + 카탈로그 갱신 + 포매터·drift 테스트) 또는 문서 한정(README·카탈로그 설명에 "walk는 ko")로 닫는다.
+서버 `/api/route/walk`는 `lang`을 받아 en 문장을 만들지만(`hasWalkRouteKeyFor(lang)`), CLI `packages/cli/src/commands/route.ts`는 `car`에만 `lang`을 싣고 walk는 옛 주석("transit·walk는 V1 국문 전용") 그대로라 `gil route walk --lang en`이 한국어 문장을 돌려준다. 공유 카탈로그 `endpoint-catalog-shared.ts`의 `route-walk` params에도 `lang`이 없다(cli·mcp 両미러). ✅ **2026-09-01 위원장 판정: 기능 이식**(문서 한정 봉인 기각 — 서버가 이미 다 받고 있고 MCP는 에이전트 창구라 영어권 에이전트가 한국어 문장을 받는 상태가 남는다). walk·transit·station 계열에 `lang` 전달 + 카탈로그 両미러 갱신 + 포매터·drift 테스트. 세션 `cli-lang` 배정(plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`).
 
 ### E25. ODsay가 이미 주는 것 두 가지 — 출구 번호·지하철 최단시간 경로 (🆕 2026-08-25, A20 조사 부산물)
 
