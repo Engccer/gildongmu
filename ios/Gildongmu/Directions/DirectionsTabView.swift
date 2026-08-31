@@ -1084,8 +1084,10 @@ struct DirectionsTabView: View {
     /// 추적 불가 leg는 게이트 축이 아니라 세션 안의 정직 상태다. 성립하면 시작에
     /// 넘길 recommended를 그대로 돌려준다(재조회 없음 — 브리핑과 같은 경로, §2).
     private var transitGuideStartable: TransitRoute? {
+        // E27 잔여 ①(2026-09-01): en 게이트 해제 — 서버가 영문 조각을 싣고 표시 계층이 줄 단위로
+        // 고른다. ⚠ 실험 플래그 가드는 **그대로다**(대중교통 안내 전체가 아직 봉인 안이다).
         guard AppConfig.experimentalGuidanceEnabled,
-              AppLanguage.dataLocale == "ko", let results = model.results,
+              let results = model.results,
               case let .transit(result) = results.outcomes[.transit],
               buildTransitGuideRoute(result.recommended) != nil
         else { return nil }
@@ -1093,11 +1095,10 @@ struct DirectionsTabView: View {
     }
 
     /// 대안 경로 시작 게이트(M5 선행분, recommended 전용 해제): 추천과 같은 축
-    /// (플래그 ∧ ko ∧ 탑승 leg ≥ 1)을 경로 단위로 판정한다.
+    /// (플래그 ∧ 탑승 leg ≥ 1)을 경로 단위로 판정한다.
     private func altTransitGuideStartable(_ route: TransitRoute) -> Bool {
-        AppConfig.experimentalGuidanceEnabled
-            && AppLanguage.dataLocale == "ko"
-            && buildTransitGuideRoute(route) != nil
+        // E27 잔여 ①: en 게이트 해제(추천과 같은 축). 실험 플래그는 유지.
+        AppConfig.experimentalGuidanceEnabled && buildTransitGuideRoute(route) != nil
     }
 
     /// 간략 폴백 게이트: 시작 가능한 수단 안내 0개 ∧ 조회 settled(§3.1 — "모든 수단
