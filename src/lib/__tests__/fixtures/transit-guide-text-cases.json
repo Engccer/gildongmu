@@ -1,0 +1,1351 @@
+{
+ "comment": "안내 문장 descriptor 공유 fixture(E27 잔여 ①, spec 2026-09-01 §3.7) — 웹 transit-guide-text.test.ts ↔ Kit TransitGuideTextTests. ko 필드의 ᛥ는 조인 sentinel이라 en 케이스의 기대값에 나타나면 안 된다.",
+ "cases": [
+  {
+   "name": "waitContext 도보 있음 en",
+   "fn": "waitContext",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "isCurrentLeg": true,
+   "expect": {
+    "parts": [
+     {
+      "key": "waitContextWalk",
+      "args": [
+       "3",
+       "Cheonho",
+       "Line 5"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "waitContext 도보 있음 ko",
+   "fn": "waitContext",
+   "isEn": false,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "isCurrentLeg": true,
+   "expect": {
+    "parts": [
+     {
+      "key": "waitContextWalk",
+      "args": [
+       "3",
+       "승차ᛥ",
+       "노선ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "waitContext 재선택 뒤 도보 문구 없음",
+   "fn": "waitContext",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": true
+   },
+   "isCurrentLeg": true,
+   "expect": {
+    "parts": [
+     {
+      "key": "waitContext",
+      "args": [
+       "Cheonho",
+       "Line 5"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "waitContext 노선명 결측 → 통째로 ko",
+   "fn": "waitContext",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "isCurrentLeg": true,
+   "expect": {
+    "parts": [
+     {
+      "key": "waitContextWalk",
+      "args": [
+       "3",
+       "승차ᛥ",
+       "노선ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "boardingContext en",
+   "fn": "boardingContext",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "boardingContext",
+      "args": [
+       "Cheonho",
+       "Line 5"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "context en",
+   "fn": "context",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "context",
+      "args": [
+       "Line 5",
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "context 하차역 결측 → ko",
+   "fn": "context",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "context",
+      "args": [
+       "노선ᛥ",
+       "하차ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "frame 지하철 코드 3",
+   "fn": "frame",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ",
+    "en": "In 3 min"
+   },
+   "arrivalCode": "3",
+   "expect": {
+    "parts": [
+     {
+      "key": "subwayNextStop",
+      "args": [
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "frame 지하철 코드 99 → 생략",
+   "fn": "frame",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ",
+    "en": "In 3 min"
+   },
+   "arrivalCode": "99",
+   "expect": {
+    "parts": [],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "frame 지하철 미지 코드 → 원문 병치",
+   "fn": "frame",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ",
+    "en": "In 3 min"
+   },
+   "arrivalCode": "77",
+   "expect": {
+    "parts": [
+     {
+      "text": "In 3 min"
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "frame 버스 라벨 프레임",
+   "fn": "frame",
+   "isEn": true,
+   "leg": {
+    "mode": "bus",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ",
+    "en": "In 3 min"
+   },
+   "arrivalCode": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "messageFrame",
+      "args": [
+       "Gwanghwamun",
+       "In 3 min"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "frame 버스 문장 결측 → ko",
+   "fn": "frame",
+   "isEn": true,
+   "leg": {
+    "mode": "bus",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ"
+   },
+   "arrivalCode": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "messageFrame",
+      "args": [
+       "하차ᛥ",
+       "메시지ᛥ"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "approachFrame en",
+   "fn": "approachFrame",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "message": {
+    "ko": "메시지ᛥ",
+    "en": "In 3 min"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "approachFrame",
+      "args": [
+       "Cheonho",
+       "In 3 min"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "vehicleSelected 설명 있음",
+   "fn": "vehicleSelected",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "desc": {
+    "ko": "설명ᛥ",
+    "en": "Bound for Hanam"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "vehicleSelected",
+      "args": [
+       "Bound for Hanam",
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "vehicleSelected 설명 없으면 노선명",
+   "fn": "vehicleSelected",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "desc": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "vehicleSelected",
+      "args": [
+       "Line 5",
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "selectedVehicle en",
+   "fn": "selectedVehicle",
+   "isEn": true,
+   "desc": {
+    "ko": "설명ᛥ",
+    "en": "Bound for Hanam"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "selectedVehicle",
+      "args": [
+       "Bound for Hanam"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "vehiclePassed en",
+   "fn": "vehiclePassed",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "vehiclePassed",
+      "args": [
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "arrivedAtBoardStop en",
+   "fn": "arrivedAtBoardStop",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "arrivedAtBoardStop",
+      "args": [
+       "Line 5"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "boarded 정거장 수 있음",
+   "fn": "boarded",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "boardedCount",
+      "args": [
+       "Line 5",
+       "Gwanghwamun",
+       "8"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "boarded 정거장 수 없음",
+   "fn": "boarded",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": null,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "boarded",
+      "args": [
+       "Line 5",
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "currentStation en",
+   "fn": "currentStation",
+   "isEn": true,
+   "location": {
+    "ko": "현재ᛥ",
+    "en": "Singil"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "currentStation",
+      "args": [
+       "Singil"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "candidateDesc 급행·관측시각",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "express": true,
+   "departedMinutes": 2,
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "Hanam"
+      ]
+     },
+     {
+      "text": "Down"
+     },
+     {
+      "text": "In 3 min"
+     },
+     {
+      "key": "expressCheck",
+      "args": [
+       "Gwanghwamun"
+      ]
+     },
+     {
+      "key": "departed",
+      "args": [
+       "2"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "candidateDesc 종착 결측 → 통째로 ko",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "express": false,
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "key": "bound",
+      "args": [
+       "종착ᛥ"
+      ]
+     },
+     {
+      "text": "방향ᛥ"
+     },
+     {
+      "text": "메시지ᛥ"
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "candidateDesc TAGO 빈 문장은 자리 표시라 en 유지",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "",
+     "en": ""
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": null,
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "express": false,
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "text": "Down"
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "terminatesEarly en",
+   "fn": "terminatesEarly",
+   "isEn": true,
+   "leg": {
+    "mode": "subway",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "메시지ᛥ",
+     "en": "In 3 min"
+    },
+    "direction": {
+     "ko": "방향ᛥ",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "종착ᛥ",
+     "en": "Hanam"
+    },
+    "currentLocation": {
+     "ko": "현재ᛥ",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "terminatesEarly",
+      "args": [
+       "Hanam",
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "viaStop 승차·현재",
+   "fn": "viaStop",
+   "isEn": true,
+   "stop": {
+    "ko": "경유0ᛥ",
+    "en": "Stop0"
+   },
+   "role": "board",
+   "here": true,
+   "expect": {
+    "parts": [
+     {
+      "text": "Stop0"
+     },
+     {
+      "key": "viaBoard",
+      "args": []
+     },
+     {
+      "key": "viaCurrent",
+      "args": []
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "viaStop 하차·영문 결측 → ko",
+   "fn": "viaStop",
+   "isEn": true,
+   "stop": {
+    "ko": "경유1ᛥ"
+   },
+   "role": "alight",
+   "here": false,
+   "expect": {
+    "parts": [
+     {
+      "text": "경유1ᛥ"
+     },
+     {
+      "key": "viaAlight",
+      "args": []
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "overviewLeg en",
+   "fn": "overviewLeg",
+   "isEn": true,
+   "n": 2,
+   "line": {
+    "ko": "노선ᛥ",
+    "en": "Line 5"
+   },
+   "board": {
+    "ko": "승차ᛥ",
+    "en": "Cheonho"
+   },
+   "alight": {
+    "ko": "하차ᛥ",
+    "en": "Gwanghwamun"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "overviewLeg",
+      "args": [
+       "2",
+       "Line 5",
+       "Cheonho",
+       "Gwanghwamun"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "prewalkStart en",
+   "fn": "prewalkStart",
+   "isEn": true,
+   "station": {
+    "ko": "승차ᛥ",
+    "en": "Cheonho"
+   },
+   "minutes": 4,
+   "expect": {
+    "parts": [
+     {
+      "key": "prewalkStart",
+      "args": [
+       "Cheonho",
+       "4"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "prewalkArrived en",
+   "fn": "prewalkArrived",
+   "isEn": true,
+   "station": {
+    "ko": "승차ᛥ",
+    "en": "Cheonho"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "prewalkArrived",
+      "args": [
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "prewalkArrivedButton en",
+   "fn": "prewalkArrivedButton",
+   "isEn": true,
+   "station": {
+    "ko": "승차ᛥ",
+    "en": "Cheonho"
+   },
+   "expect": {
+    "parts": [
+     {
+      "key": "prewalkArrivedButton",
+      "args": [
+       "Cheonho"
+      ]
+     }
+    ],
+    "lang": "en"
+   }
+  }
+ ]
+}

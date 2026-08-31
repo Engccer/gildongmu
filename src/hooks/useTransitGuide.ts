@@ -78,7 +78,7 @@ export function trackTargetUrl(
   leg: TransitGuideLeg,
   phase: "waiting" | "boarding" | "riding" | "arrived",
   resolvedTago: { nodeId: string; cityCode: string } | null,
-  boardOverride: string | null,
+  boardOverrideIndex: number | null,
   lang: "ko" | "en",
 ): string | null {
   const mode = leg.trackMode;
@@ -100,7 +100,9 @@ export function trackTargetUrl(
   }
   // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
   // riding(alightName)은 건드리지 않는다 — 그쪽은 L1 영역이다.
-  const station = atBoardStop ? (boardOverride ?? leg.boardName) : leg.alightName;
+  const overrideStop =
+    boardOverrideIndex != null ? (leg.viaStops[boardOverrideIndex] ?? null) : null;
+  const station = atBoardStop ? (overrideStop?.name ?? leg.boardName) : leg.alightName;
   if (!station) return null;
   return `/api/transit/track?mode=subway&phase=track&station=${encodeURIComponent(station)}&line=${encodeURIComponent(leg.lineName)}&lang=${lang}`;
 }
@@ -153,15 +155,20 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 공유 계약도 fixture도 건드리지 않는다. state가 아니라 ref인 이유는 폴 루프가
    * 렌더 사이클 밖에서 읽기 때문이다.
    */
-  const boardOverrideRef = useRef<string | null>(null);
+  const boardOverrideRef = useRef<number | null>(null);
   /**
    * 위 ref의 렌더용 사본(`stateRef`+`state` 관례 동형). 폴 루프는 ref를, 화면·발화
    * 문구는 이 값을 읽는다 — 둘을 함께 갱신하는 곳은 `setBoardOverride` 하나다.
    */
-  const [boardOverride, setBoardOverrideState] = useState<string | null>(null);
-  const setBoardOverride = useCallback((name: string | null) => {
-    boardOverrideRef.current = name;
-    setBoardOverrideState(name);
+  const [boardOverride, setBoardOverrideState] = useState<number | null>(null);
+  /**
+   * ⚠ **이름이 아니라 인덱스다**(E27 잔여 ①, spec 2026-09-01 §3.6). 이름으로 들면 표시 영문을
+   * `viaStops`에서 역조회해야 하는데, 정규화 후 동명 역이 둘이면 첫 일치를 골라 **다른 역의
+   * 영문명이 표시된다**(오류 없이). 인덱스는 그 모호함이 구조적으로 없다.
+   */
+  const setBoardOverride = useCallback((index: number | null) => {
+    boardOverrideRef.current = index;
+    setBoardOverrideState(index);
   }, []);
 
   const liveRef = useRef("");
@@ -869,10 +876,13 @@ export function useTransitGuide(route: TransitRoute | null) {
 
   const cancelReboard = useCallback(() => setReboardPickerActive(false), []);
 
-  /** 사용자가 고른 현재 역으로 재선택한다(A16 L3). */
+  /**
+   * 사용자가 고른 현재 역으로 재선택한다(A16 L3). 인자는 **세션 경로 `viaStops`의 인덱스**다 —
+   * 이름을 받는 판을 남기면 그것이 다시 동명 역 모호 경로가 된다(spec §3.6).
+   */
   const changeBoardingAt = useCallback(
-    (stationName: string) => {
-      setBoardOverride(stationName);
+    (stopIndex: number) => {
+      setBoardOverride(stopIndex);
       setReboardPickerActive(false);
       changeBoarding();
     },
