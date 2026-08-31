@@ -740,7 +740,8 @@ final class TransitGuideModel {
                     guard let arsId = leg.boardStop?.arsId, let routeId = leg.routeId else {
                         return (.unsupported, nil)
                     }
-                    let env = try await trackService.seoulWait(arsId: arsId, routeId: routeId)
+                    let env = try await trackService.seoulWait(
+                        arsId: arsId, routeId: routeId, lang: AppLanguage.dataLocale)
                     return (TransitTrackService.poll(from: env), env.rawCount)
                 }
                 guard let boardId = leg.boardStop?.localId,
@@ -748,7 +749,8 @@ final class TransitGuideModel {
                       let routeId = leg.routeId
                 else { return (.unsupported, nil) }
                 let env = try await trackService.seoulRide(
-                    routeId: routeId, boardId: boardId, alightId: alightId)
+                    routeId: routeId, boardId: boardId, alightId: alightId,
+                    lang: AppLanguage.dataLocale)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case .tagoBus:
                 guard let resolved = await resolveTagoIfNeeded(leg: leg, phase: phase) else {
@@ -758,7 +760,8 @@ final class TransitGuideModel {
                     return (unsupported ? .unsupported : .failed, nil)
                 }
                 let env = try await trackService.tagoTrack(
-                    cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName)
+                    cityCode: resolved.cityCode, nodeId: resolved.nodeId, routeNo: leg.lineName,
+                    lang: AppLanguage.dataLocale)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case .subway:
                 // waiting 국면의 기준 역은 사용자가 고른 현재 역이 이긴다(A16 L3).
@@ -767,7 +770,8 @@ final class TransitGuideModel {
                     ? (boardOverrideName ?? leg.boardName)
                     : leg.alightName
                 guard !station.isEmpty else { return (.unsupported, nil) }
-                let env = try await trackService.subwayTrack(station: station, line: leg.lineName)
+                let env = try await trackService.subwayTrack(
+                    station: station, line: leg.lineName, lang: AppLanguage.dataLocale)
                 return (TransitTrackService.poll(from: env), env.rawCount)
             case nil:
                 return (.unsupported, nil)
