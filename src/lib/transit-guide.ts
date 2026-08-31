@@ -105,6 +105,18 @@ export interface TrackItem {
   dataStamp?: string | null;
   /** 데이터 나이(초, 서버 계산·클램프). null = 미제공 또는 동결 판정 불가(§12.1 ⓑ). */
   dataAgeSeconds?: number | null;
+  /**
+   * 영문 조각(E27 잔여 ①, `lang=en` 요청에만 실린다 — spec 2026-09-01 §3.2 행렬).
+   *
+   * ⚠ 위 한국어 필드는 en 응답에서도 한국어다 — 실시간 매핑·종착 검사·현재역 인덱스가
+   * 전부 그 값으로 조인하므로 여기 영문이 들어가면 조인이 조용히 죽는다.
+   * ⚠ **`messageEn`만 빈 문자열이 유효한 값이다**(TAGO는 ko도 완성 문장이 없어 `""`).
+   * 나머지 셋의 `""`는 정보 소실이라 투영 단계에서 부재로 정규화한다.
+   */
+  messageEn?: string;
+  directionEn?: string;
+  destinationNameEn?: string;
+  currentLocationEn?: string;
 }
 
 export type TrackPoll =

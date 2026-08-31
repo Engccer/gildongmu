@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { latParam, lngParam } from "@/lib/coord-param";
+import { langParam } from "@/lib/lang-param";
 import { checkTransitTrackRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import {
   resolveTagoStop,
@@ -56,11 +57,17 @@ export async function GET(request: NextRequest) {
   const phase = q.get("phase") ?? "";
   const params = Object.fromEntries(q.entries());
 
+  // ⚠ `lang`은 mode·phase 분기 **앞에서** 한 번만 판정한다(E27 잔여 ①). 갈래마다 스키마가
+  // 달라 넷에 흩으면 하나를 빠뜨리고, 그 갈래만 조용히 ko로 떨어진다.
+  const langParsed = langParam().safeParse(q.get("lang"));
+  if (!langParsed.success) return badRequest("lang은 ko 또는 en이어야 합니다");
+  const lang = langParsed.data;
+
   try {
     if (mode === "seoulBus" && phase === "wait") {
       const parsed = seoulWaitSchema.safeParse(params);
       if (!parsed.success) return badRequest();
-      return NextResponse.json({ mode, ...(await trackSeoulWait(parsed.data)) });
+      return NextResponse.json({ mode, ...(await trackSeoulWait({ ...parsed.data, lang })) });
     }
     if (mode === "seoulBus" && phase === "ride") {
       const parsed = seoulRideSchema.safeParse(params);
@@ -68,7 +75,7 @@ export async function GET(request: NextRequest) {
       const { routeId, boardId, alightId } = parsed.data;
       return NextResponse.json({
         mode,
-        ...(await trackSeoulRide({ routeId, boardLocalId: boardId, alightLocalId: alightId })),
+        ...(await trackSeoulRide({ routeId, boardLocalId: boardId, alightLocalId: alightId, lang })),
       });
     }
     if (mode === "tagoBus" && phase === "resolve") {
@@ -81,14 +88,14 @@ export async function GET(request: NextRequest) {
     if (mode === "tagoBus" && phase === "track") {
       const parsed = tagoTrackSchema.safeParse(params);
       if (!parsed.success) return badRequest();
-      return NextResponse.json({ mode, ...(await trackTago(parsed.data)) });
+      return NextResponse.json({ mode, ...(await trackTago({ ...parsed.data, lang })) });
     }
     if (mode === "subway" && phase === "track") {
       const parsed = subwaySchema.safeParse(params);
       if (!parsed.success) return badRequest();
       return NextResponse.json({
         mode,
-        ...(await trackSubway({ station: parsed.data.station, lineName: parsed.data.line })),
+        ...(await trackSubway({ station: parsed.data.station, lineName: parsed.data.line, lang })),
       });
     }
     return badRequest("mode·phase 조합이 유효하지 않습니다");

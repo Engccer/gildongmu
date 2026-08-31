@@ -23,6 +23,7 @@ import {
   trackSeoulRide,
   trackSeoulWait,
   trackSubway,
+  trackTago,
 } from "@/lib/transit-track";
 
 function makeRequest(params: Record<string, string>) {
@@ -43,7 +44,7 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
     const body = await res.json();
     expect(body.mode).toBe("seoulBus");
     expect(body.status).toBe("ok");
-    expect(trackSeoulWait).toHaveBeenCalledWith({ arsId: "24101", routeId: "227000006" });
+    expect(trackSeoulWait).toHaveBeenCalledWith({ arsId: "24101", routeId: "227000006", lang: "ko" });
   });
 
   it("seoulBus ride: boardId·alightId를 로컬 ID로 매핑", async () => {
@@ -59,6 +60,7 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
       routeId: "227000006",
       boardLocalId: "123000017",
       alightLocalId: "123000043",
+      lang: "ko",
     });
   });
 
@@ -79,7 +81,7 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
     );
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe("unsupported");
-    expect(trackSubway).toHaveBeenCalledWith({ station: "천호", lineName: "수도권 5호선" });
+    expect(trackSubway).toHaveBeenCalledWith({ station: "천호", lineName: "수도권 5호선", lang: "ko" });
   });
 
   it("알 수 없는 mode·phase 조합은 400", async () => {
@@ -102,5 +104,43 @@ describe("GET /api/transit/track — 판별 union(B2 §7)", () => {
       makeRequest({ mode: "seoulBus", phase: "wait", arsId: "24101", routeId: "1" }),
     );
     expect(res.status).toBe(502);
+  });
+});
+
+describe("GET /api/transit/track — lang (E27 잔여 ①, spec 2026-09-01 §3.2)", () => {
+  beforeEach(() => {
+    vi.mocked(checkTransitTrackRateLimit).mockReturnValue(true);
+    vi.mocked(trackSeoulWait).mockClear();
+    vi.mocked(trackSubway).mockClear();
+  });
+
+  it("미지 값은 400 — 조용한 ko 강등 금지", async () => {
+    const res = await GET(
+      makeRequest({ mode: "seoulBus", phase: "wait", arsId: "24101", routeId: "227000006", lang: "de" }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("누락은 ko로 전달된다(종전 소비자 무변화)", async () => {
+    await GET(makeRequest({ mode: "seoulBus", phase: "wait", arsId: "24101", routeId: "227000006" }));
+    expect(vi.mocked(trackSeoulWait).mock.calls[0][0]).toMatchObject({ lang: "ko" });
+  });
+
+  it("네 갈래 전부에 lang이 전달된다 — 갈래마다 파싱하면 하나를 빠뜨린다", async () => {
+    await GET(makeRequest({ mode: "seoulBus", phase: "wait", arsId: "24101", routeId: "227", lang: "en" }));
+    expect(vi.mocked(trackSeoulWait).mock.calls[0][0]).toMatchObject({ lang: "en" });
+
+    await GET(
+      makeRequest({ mode: "seoulBus", phase: "ride", routeId: "227", boardId: "1", alightId: "2", lang: "en" }),
+    );
+    expect(vi.mocked(trackSeoulRide).mock.calls.at(-1)?.[0]).toMatchObject({ lang: "en" });
+
+    await GET(
+      makeRequest({ mode: "tagoBus", phase: "track", cityCode: "25", nodeId: "DJB1", routeNo: "3", lang: "en" }),
+    );
+    expect(vi.mocked(trackTago).mock.calls.at(-1)?.[0]).toMatchObject({ lang: "en" });
+
+    await GET(makeRequest({ mode: "subway", phase: "track", station: "천호", line: "5호선", lang: "en" }));
+    expect(vi.mocked(trackSubway).mock.calls.at(-1)?.[0]).toMatchObject({ lang: "en" });
   });
 });
