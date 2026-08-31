@@ -1,0 +1,525 @@
+{
+ "comment": "안내 표시 투영 공유 fixture(E27 잔여 ①, spec 2026-09-01 §3.5) — 웹 transit-display.test.ts ↔ Kit TransitDisplayProjectionTests.",
+ "legs": [
+  {
+   "name": "영문 완비 + override 없음",
+   "leg": {
+    "mode": "subway",
+    "lineName": "수도권 5호선",
+    "lineNameEn": "Line 5",
+    "trackMode": "subway",
+    "boardName": "천호",
+    "boardNameEn": "Cheonho",
+    "alightName": "광화문",
+    "alightNameEn": "Gwanghwamun",
+    "boardStop": {
+     "name": "천호",
+     "lat": 37.5,
+     "lng": 127.1,
+     "nameEn": "Cheonho"
+    },
+    "alightStop": {
+     "name": "광화문",
+     "lat": 37.57,
+     "lng": 126.97,
+     "nameEn": "Gwanghwamun"
+    },
+    "viaStops": [
+     {
+      "name": "천호",
+      "lat": 37.5,
+      "lng": 127.1,
+      "nameEn": "Cheonho"
+     },
+     {
+      "name": "왕십리",
+      "lat": 37.56,
+      "lng": 127.03,
+      "nameEn": "Wangsimni"
+     },
+     {
+      "name": "광화문",
+      "lat": 37.57,
+      "lng": 126.97,
+      "nameEn": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "routeId": null,
+    "wayCode": 1,
+    "walkBeforeMinutes": 3
+   },
+   "boardOverrideIndex": null,
+   "expect": {
+    "mode": "subway",
+    "line": {
+     "ko": "수도권 5호선",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "천호",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "광화문",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "천호",
+      "en": "Cheonho"
+     },
+     {
+      "ko": "왕십리",
+      "en": "Wangsimni"
+     },
+     {
+      "ko": "광화문",
+      "en": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   }
+  },
+  {
+   "name": "재선택 인덱스가 승차 라벨을 바꾼다",
+   "leg": {
+    "mode": "subway",
+    "lineName": "수도권 5호선",
+    "lineNameEn": "Line 5",
+    "trackMode": "subway",
+    "boardName": "천호",
+    "boardNameEn": "Cheonho",
+    "alightName": "광화문",
+    "alightNameEn": "Gwanghwamun",
+    "boardStop": {
+     "name": "천호",
+     "lat": 37.5,
+     "lng": 127.1,
+     "nameEn": "Cheonho"
+    },
+    "alightStop": {
+     "name": "광화문",
+     "lat": 37.57,
+     "lng": 126.97,
+     "nameEn": "Gwanghwamun"
+    },
+    "viaStops": [
+     {
+      "name": "천호",
+      "lat": 37.5,
+      "lng": 127.1,
+      "nameEn": "Cheonho"
+     },
+     {
+      "name": "왕십리",
+      "lat": 37.56,
+      "lng": 127.03,
+      "nameEn": "Wangsimni"
+     },
+     {
+      "name": "광화문",
+      "lat": 37.57,
+      "lng": 126.97,
+      "nameEn": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "routeId": null,
+    "wayCode": 1,
+    "walkBeforeMinutes": 3
+   },
+   "boardOverrideIndex": 1,
+   "expect": {
+    "mode": "subway",
+    "line": {
+     "ko": "수도권 5호선",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "왕십리",
+     "en": "Wangsimni"
+    },
+    "alight": {
+     "ko": "광화문",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "천호",
+      "en": "Cheonho"
+     },
+     {
+      "ko": "왕십리",
+      "en": "Wangsimni"
+     },
+     {
+      "ko": "광화문",
+      "en": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": true
+   }
+  },
+  {
+   "name": "범위 밖 인덱스는 override 없음으로 떨어진다",
+   "leg": {
+    "mode": "subway",
+    "lineName": "수도권 5호선",
+    "lineNameEn": "Line 5",
+    "trackMode": "subway",
+    "boardName": "천호",
+    "boardNameEn": "Cheonho",
+    "alightName": "광화문",
+    "alightNameEn": "Gwanghwamun",
+    "boardStop": {
+     "name": "천호",
+     "lat": 37.5,
+     "lng": 127.1,
+     "nameEn": "Cheonho"
+    },
+    "alightStop": {
+     "name": "광화문",
+     "lat": 37.57,
+     "lng": 126.97,
+     "nameEn": "Gwanghwamun"
+    },
+    "viaStops": [
+     {
+      "name": "천호",
+      "lat": 37.5,
+      "lng": 127.1,
+      "nameEn": "Cheonho"
+     },
+     {
+      "name": "왕십리",
+      "lat": 37.56,
+      "lng": 127.03,
+      "nameEn": "Wangsimni"
+     },
+     {
+      "name": "광화문",
+      "lat": 37.57,
+      "lng": 126.97,
+      "nameEn": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "routeId": null,
+    "wayCode": 1,
+    "walkBeforeMinutes": 3
+   },
+   "boardOverrideIndex": 9,
+   "expect": {
+    "mode": "subway",
+    "line": {
+     "ko": "수도권 5호선",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "천호",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "광화문",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "천호",
+      "en": "Cheonho"
+     },
+     {
+      "ko": "왕십리",
+      "en": "Wangsimni"
+     },
+     {
+      "ko": "광화문",
+      "en": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   }
+  },
+  {
+   "name": "ko 조회는 영문이 하나도 없다",
+   "leg": {
+    "mode": "subway",
+    "lineName": "수도권 5호선",
+    "trackMode": "subway",
+    "boardName": "천호",
+    "alightName": "광화문",
+    "boardStop": {
+     "name": "천호",
+     "lat": 37.5,
+     "lng": 127.1,
+     "nameEn": "Cheonho"
+    },
+    "alightStop": {
+     "name": "광화문",
+     "lat": 37.57,
+     "lng": 126.97,
+     "nameEn": "Gwanghwamun"
+    },
+    "viaStops": [
+     {
+      "name": "천호",
+      "lat": 37.5,
+      "lng": 127.1
+     },
+     {
+      "name": "왕십리",
+      "lat": 37.56,
+      "lng": 127.03
+     },
+     {
+      "name": "광화문",
+      "lat": 37.57,
+      "lng": 126.97
+     }
+    ],
+    "stationCount": 8,
+    "routeId": null,
+    "wayCode": 1,
+    "walkBeforeMinutes": 3
+   },
+   "boardOverrideIndex": null,
+   "expect": {
+    "mode": "subway",
+    "line": {
+     "ko": "수도권 5호선"
+    },
+    "board": {
+     "ko": "천호"
+    },
+    "alight": {
+     "ko": "광화문"
+    },
+    "stops": [
+     {
+      "ko": "천호"
+     },
+     {
+      "ko": "왕십리"
+     },
+     {
+      "ko": "광화문"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   }
+  },
+  {
+   "name": "이름 슬롯의 공백·빈 문자열은 영문이 아니다(정보 소실이 완비로 위장하는 것 차단)",
+   "leg": {
+    "mode": "subway",
+    "lineName": "수도권 5호선",
+    "lineNameEn": "  ",
+    "trackMode": "subway",
+    "boardName": "천호",
+    "boardNameEn": "",
+    "alightName": "광화문",
+    "alightNameEn": "Gwanghwamun",
+    "boardStop": {
+     "name": "천호",
+     "lat": 37.5,
+     "lng": 127.1,
+     "nameEn": "Cheonho"
+    },
+    "alightStop": {
+     "name": "광화문",
+     "lat": 37.57,
+     "lng": 126.97,
+     "nameEn": "Gwanghwamun"
+    },
+    "viaStops": [
+     {
+      "name": "천호",
+      "lat": 37.5,
+      "lng": 127.1,
+      "nameEn": "Cheonho"
+     },
+     {
+      "name": "왕십리",
+      "lat": 37.56,
+      "lng": 127.03,
+      "nameEn": "Wangsimni"
+     },
+     {
+      "name": "광화문",
+      "lat": 37.57,
+      "lng": 126.97,
+      "nameEn": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "routeId": null,
+    "wayCode": 1,
+    "walkBeforeMinutes": 3
+   },
+   "boardOverrideIndex": null,
+   "expect": {
+    "mode": "subway",
+    "line": {
+     "ko": "수도권 5호선"
+    },
+    "board": {
+     "ko": "천호"
+    },
+    "alight": {
+     "ko": "광화문",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "천호",
+      "en": "Cheonho"
+     },
+     {
+      "ko": "왕십리",
+      "en": "Wangsimni"
+     },
+     {
+      "ko": "광화문",
+      "en": "Gwanghwamun"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   }
+  }
+ ],
+ "items": [
+  {
+   "name": "지하철 영문 완비",
+   "item": {
+    "vehicleId": "5696",
+    "direction": "하행",
+    "directionEn": "Down",
+    "message": "[3]번째 전역",
+    "messageEn": "3 stations away",
+    "remainingStops": 3,
+    "destinationName": "하남검단산",
+    "destinationNameEn": "Hanam Geomdansan",
+    "express": false,
+    "arrivalCode": "99",
+    "currentLocation": "신길",
+    "currentLocationEn": "Singil"
+   },
+   "expect": {
+    "message": {
+     "ko": "[3]번째 전역",
+     "en": "3 stations away"
+    },
+    "direction": {
+     "ko": "하행",
+     "en": "Down"
+    },
+    "destination": {
+     "ko": "하남검단산",
+     "en": "Hanam Geomdansan"
+    },
+    "currentLocation": {
+     "ko": "신길",
+     "en": "Singil"
+    },
+    "express": false,
+    "remainingStops": 3,
+    "selectable": true
+   }
+  },
+  {
+   "name": "TAGO: message의 빈 문자열은 자리 표시라 영문 조각으로 유효하다",
+   "item": {
+    "vehicleId": null,
+    "direction": "",
+    "message": "",
+    "messageEn": "",
+    "remainingStops": 2,
+    "destinationName": null,
+    "express": false,
+    "arrivalCode": null
+   },
+   "expect": {
+    "message": {
+     "ko": "",
+     "en": ""
+    },
+    "direction": {
+     "ko": ""
+    },
+    "destination": null,
+    "currentLocation": null,
+    "express": false,
+    "remainingStops": 2,
+    "selectable": false
+   }
+  },
+  {
+   "name": "서울버스: 방향·종착역은 구조적 부재",
+   "item": {
+    "vehicleId": "111",
+    "direction": "",
+    "message": "6분47초후[4번째 전]",
+    "messageEn": "In 6 min 47 sec",
+    "remainingStops": 4,
+    "destinationName": null,
+    "express": false,
+    "arrivalCode": null
+   },
+   "expect": {
+    "message": {
+     "ko": "6분47초후[4번째 전]",
+     "en": "In 6 min 47 sec"
+    },
+    "direction": {
+     "ko": ""
+    },
+    "destination": null,
+    "currentLocation": null,
+    "express": false,
+    "remainingStops": 4,
+    "selectable": true
+   }
+  },
+  {
+   "name": "ko 조회 항목은 영문이 없다",
+   "item": {
+    "vehicleId": "5696",
+    "direction": "하행",
+    "message": "[3]번째 전역",
+    "remainingStops": 3,
+    "destinationName": "하남검단산",
+    "express": true,
+    "arrivalCode": "99",
+    "currentLocation": "신길"
+   },
+   "expect": {
+    "message": {
+     "ko": "[3]번째 전역"
+    },
+    "direction": {
+     "ko": "하행"
+    },
+    "destination": {
+     "ko": "하남검단산"
+    },
+    "currentLocation": {
+     "ko": "신길"
+    },
+    "express": true,
+    "remainingStops": 3,
+    "selectable": true
+   }
+  }
+ ]
+}

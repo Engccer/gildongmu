@@ -496,7 +496,7 @@ export function TransitGuidePanel({
                   <li key={`${index}-${stop.name}`}>
                     <button
                       type="button"
-                      onClick={() => guide.changeBoardingAt(stop.name)}
+                      onClick={() => guide.changeBoardingAt(index)}
                       className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                       // 역명은 ODsay 한국어 원문 — en 페이지에서도 한국어 엔진으로(A26). 버튼 하나가
                       // 한 객체라 새 분절은 없다.

@@ -61,9 +61,21 @@ describe("trackTargetUrl — lang", () => {
     );
   });
 
-  it("재선택 역이 있으면 그 역으로 조회한다 — 조인 값은 한국어 원문", () => {
-    expect(trackTargetUrl(leg(), "waiting", null, "왕십리", "en")).toBe(
+  it("재선택 인덱스가 가리키는 역으로 조회한다 — 조인 값은 한국어 원문", () => {
+    const withStops = leg({
+      viaStops: [
+        { name: "천호", lat: 37.5, lng: 127.1, nameEn: "Cheonho" },
+        { name: "왕십리", lat: 37.56, lng: 127.03, nameEn: "Wangsimni" },
+      ],
+    } as Partial<TransitGuideLeg>);
+    expect(trackTargetUrl(withStops, "waiting", null, 1, "en")).toBe(
       "/api/transit/track?mode=subway&phase=track&station=%EC%99%95%EC%8B%AD%EB%A6%AC&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en",
+    );
+  });
+
+  it("범위 밖 인덱스는 원래 승차역으로 떨어진다(조용한 빈 쿼리 금지)", () => {
+    expect(trackTargetUrl(leg(), "waiting", null, 9, "en")).toBe(
+      "/api/transit/track?mode=subway&phase=track&station=%EC%B2%9C%ED%98%B8&line=%EC%88%98%EB%8F%84%EA%B6%8C%205%ED%98%B8%EC%84%A0&lang=en",
     );
   });
 });
