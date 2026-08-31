@@ -56,9 +56,11 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
-### A29. 수량 문구에 단수형이 없다 — "1 places" (🆕 2026-08-31 위원장 웹 실사용 — 병렬 세션 plurals 착수)
+### A29. 수량 문구에 단수형이 없다 — "1 places" — ✅ 종결(2026-08-31, plurals, CHANGELOG 같은 날)
 
-웹 `messages/en.json` count 키 31개 전부 복수 고정(ICU plural 0건), iOS xcstrings 복수 변형 0건. en·es·fr·it에 ICU `one/other` 도입 + iOS 변환 스크립트·`appLocalized`/`kitLocalized` 복수 해석. 정본은 위 계획 문서 §웨이브 3.
+✅ **2026-08-31 종결**: 웹 en·es·fr·it 27키 + ios-extra 12키가 ICU `{count, plural, one {…} other {…}}`이고, iOS는 카탈로그의 ICU 블록을 Kit `formatLocalized`가 푼다(네이티브 `variations.plural`은 stringsdict로 컴파일돼 명시 언어 조회가 못 읽어 기각 — spec `2026-08-31-plural-forms-design.md` §4.1). ko·ja 불변(단 iOS "주변 곳 3개" → "주변 장소 3곳", 단위 낱말 합성 폐기). 실기기 판정 항목 없음(문법이지 낭독 계약이 아니다). 접수 기록: `messages/en.json` count 키 31개 전부 복수 고정, iOS 복수 변형 0건.
+
+**설계 리뷰에서 기각·이월한 것(codex #8)**: ko 문장의 플레이스홀더 등장 순서가 iOS 위치 인자 ABI인데(메모리 `gildongmu-ios-i18n-architecture` 함정 6) 그것을 고정하는 게이트가 없다 — ko 번역만 자연스럽게 재배열해도 호출부 인자가 뒤바뀌고 빌드·린터·테스트가 전부 통과한다. 복수형과 무관한 파이프라인 전체의 기존 계약이라 A29 밖. 후보: 키별 인자 순서 manifest(`ios/i18n/arg-order.json`)를 생성해 버전 관리하고 ko 순서 변경을 명시적 계약 변경으로 실패시킨다. 착수 판정은 위원장.
 
 ### A27. 지하철 승차 중 상태줄 "충정로까지 전역 도착"이 부자연스럽다 — ✅ 종결(2026-08-31, transit-en, CHANGELOG 같은 날)
 
