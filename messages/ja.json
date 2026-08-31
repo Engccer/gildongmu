@@ -347,7 +347,7 @@
     "ready": "付近のタルンイのステーションです。",
     "asOf": "{time}時点",
     "stationDistance": "徒歩約{distance}",
-    "availability": "貸出可能{bikes}台 · ラック{racks}基",
+    "availability": "貸出可能{bikes}台, ラック{racks}基",
     "geoDenied": "位置情報の許可が必要です。ブラウザで位置情報へのアクセスを許可してください。",
     "geoUnsupported": "このブラウザは現在地に対応していません。",
     "source": "出典: ソウルオープンデータ広場(タルンイ)。"
@@ -441,7 +441,7 @@
   },
   "airQuality": {
     "heading": "この地域の大気質",
-    "station": "{name}測定所 · {distance}km",
+    "station": "{name}測定所, {distance}km",
     "khai": "統合大気環境指数",
     "pm10": "PM10",
     "pm25": "PM2.5",

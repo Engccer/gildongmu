@@ -1486,37 +1486,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ 측정소 · %2$@km"
+            "value": "%1$@ 측정소, %2$@km"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ monitoring station · %2$@ km"
+            "value": "%1$@ monitoring station, %2$@ km"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Estación de monitoreo %1$@ · %2$@ km"
+            "value": "Estación de monitoreo %1$@, %2$@ km"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Station de mesure %1$@ · %2$@ km"
+            "value": "Station de mesure %1$@, %2$@ km"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stazione di rilevamento %1$@ · %2$@ km"
+            "value": "Stazione di rilevamento %1$@, %2$@ km"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@測定所 · %2$@km"
+            "value": "%1$@測定所, %2$@km"
           }
         }
       }
@@ -5086,37 +5086,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "대여 가능 %1$@대 · 거치대 %2$@개"
+            "value": "대여 가능 %1$@대, 거치대 %2$@개"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ available · {2, plural, one {%2$@ rack} other {%2$@ racks}}"
+            "value": "%1$@ available, {2, plural, one {%2$@ rack} other {%2$@ racks}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}} · {2, plural, one {%2$@ anclaje} other {%2$@ anclajes}}"
+            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}}, {2, plural, one {%2$@ anclaje} other {%2$@ anclajes}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}} · {2, plural, one {%2$@ borne} other {%2$@ bornes}}"
+            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}}, {2, plural, one {%2$@ borne} other {%2$@ bornes}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "{1, plural, one {%1$@ disponibile} other {%1$@ disponibili}} · {2, plural, one {%2$@ stallo} other {%2$@ stalli}}"
+            "value": "{1, plural, one {%1$@ disponibile} other {%1$@ disponibili}}, {2, plural, one {%2$@ stallo} other {%2$@ stalli}}"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "貸出可能%1$@台 · ラック%2$@基"
+            "value": "貸出可能%1$@台, ラック%2$@基"
           }
         }
       }

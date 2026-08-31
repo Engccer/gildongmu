@@ -89,5 +89,15 @@ describe("i18n 메시지 일관성", () => {
         .map(([key, value]) => `${key} = ${value}`);
       expect(leaked).toEqual([]);
     });
+
+    // 조각을 잇는 가운뎃점은 일부 SR이 "middle dot"처럼 낱말로 읽는다(접근성 헌장 §4,
+    // `joinText`가 쉼표를 쓰는 것과 같은 이유). 판정 축은 **양옆 공백**이다 — 한국어
+    // 합성어의 가운뎃점(`관광·명소`·`첫차·막차`)은 낱말 안이라 구분자가 아니고 정상 표기다.
+    it(`${loc}: 조각 구분자로 쓴 가운뎃점 없음(A30)`, () => {
+      const offenders = Object.entries(flat)
+        .filter(([, value]) => / ·|· /.test(value))
+        .map(([key, value]) => `${key} = ${value}`);
+      expect(offenders).toEqual([]);
+    });
   }
 });
