@@ -238,7 +238,14 @@ busArrivalMessageEn(parsed, phase: "wait" | "ride"): string | undefined
 
 ### 5.5 실호출 게이트
 
-`scripts/verify-transit-track-lang.mjs`(신규): 지하철·서울버스·TAGO 각 1건을 `lang=en`으로 실호출해 ①영문 조각이 실제로 실리는지 ②한국어 필드가 en 응답에서도 한국어인지(원칙 1) ③행렬 밖 모양이 부재로 떨어지는지. **항목 0건(운행 시간 밖)은 합격이 아니라 미실측**으로 기록한다(리뷰 #20 — 0건을 통과로 세면 아무것도 검증하지 않고 게이트를 지난다). 최소 한 provider에서 비어 있지 않은 응답 증거가 있어야 한다.
+`scripts/verify-transit-track-lang.mjs`(신규): 지하철·서울버스·TAGO 각 1건을 `lang=en`으로 실호출해 ①영문 조각이 실제로 실리는지 ②한국어 필드가 en 응답에서도 한국어인지(원칙 1) ③행렬 밖 모양이 부재로 떨어지는지. **항목 0건(운행 시간 밖)은 합격이 아니라 미실측**으로 기록한다(리뷰 #20 — 0건을 통과로 세면 아무것도 검증하지 않고 게이트를 지난다). 최소 한 provider에서 비어 있지 않은 응답 증거가 있어야 하고, 없으면 exit 2다.
+
+**2026-09-01 실행 결과: 8/8 PASS, 미실측 1건.**
+
+- 지하철(천호·수도권 5호선, 4항목): 한국어 필드 불변 확인, 영문 조각 `messageEn`·`directionEn`·`destinationNameEn`·`currentLocationEn` 전부 관측(`Arrived at previous station` · `Up` · `Banghwa` · `Olympic Park (Korea National Sport Univ.)`), 영문에 한글 혼입 0, ko 응답의 영문 키 0.
+- 서울버스(천호역.풍납시장 24101 × 30-3): `곧 도착 → Arriving soon` · `15분후[6번째 전] → In 15 min` 관측. 방향·종착역 자리를 만들지 않음(구조적 부재) 확인.
+- **TAGO는 미실측** — `getCrdntPrxmtSttnList`가 HTTP 에러(upstream 장애). 우리 계약의 실패가 아니라 관측 부재이므로 그렇게 기록한다(재시도 반복 금지). `messageEn: ""` 자리 표시는 단위 테스트가 덮는다.
+- **부수 관측(E27 축, 이 마일스톤 밖)**: 실데이터에 `arvlCd=1` + `arvlMsg2="전역 도착"` 조합이 있다. E27의 코드×문장 정확 행렬은 이를 불일치로 보아 `messageEn`을 부재로 떨어뜨린다(설계대로 fail-closed). 같은 문장이 코드 5로도 오므로 코드가 정본이 아니라는 신호다 — `docs/BACKLOG.md` E27 잔여에 관측으로 남긴다.
 
 ### 5.6 접근성
 
