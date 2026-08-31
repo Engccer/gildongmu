@@ -1030,7 +1030,10 @@ export function DirectionsView({
         name,
         oneLine: transitRouteLabel(route, name),
         highlight: route.highlight,
-        startable: buildTransitGuideRoute(route) !== null && !prefersEnglish(locale),
+        // E27 잔여 ①(2026-09-01): en 게이트 해제. 서버가 영문 조각을 싣고 표시 계층이
+        // 줄 단위로 고르므로 비-ko에서도 시작할 수 있다. ⚠ 같은 파일의 계단 회피
+        // (`stepFreeSupported`)·자동차(`carGuideStartable`) 게이트는 **다른 축**이라 그대로다.
+        startable: buildTransitGuideRoute(route) !== null,
         summary: {
           totalMinutes: route.summary.totalMinutes,
           transfers: route.summary.transfers,
@@ -1617,8 +1620,8 @@ export function DirectionsView({
                       const expanded =
                         routeExpanded(route.routeKey, defaultExpanded) ||
                         activeGuideAlt === route.routeKey;
-                      const guideStartable =
-                        buildTransitGuideRoute(route) !== null && !prefersEnglish(locale);
+                      // E27 잔여 ①: en 게이트 해제(위 `startable`과 같은 축).
+                      const guideStartable = buildTransitGuideRoute(route) !== null;
                       return (
                         <div key={route.routeKey} className="mt-2">
                           <button

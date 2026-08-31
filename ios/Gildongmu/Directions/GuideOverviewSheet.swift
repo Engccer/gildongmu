@@ -295,9 +295,19 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
                 case .current: appLocalized("transitGuide.overviewLegCurrent")
                 case .upcoming: appLocalized("transitGuide.overviewLegUpcoming")
                 }
+                // ⚠ 영문 라벨은 **행이 아니라 leg에서** 가져온다(E27 잔여 ①). 순수 판정 계층
+                // (`transitProgressOverview`)과 그 공유 fixture를 건드리지 않기 위한 배치다 —
+                // 행은 조인 문자열을 그대로 나르고 표시 언어 선택만 여기서 한다.
+                let legDisplay = model.route?.legs.indices.contains(legIndex) == true
+                    ? model.displayLeg(model.route!.legs[legIndex], useOverride: false)
+                    : nil
                 rows.append(.text(id: "leg-\(legIndex)", joinText(
-                    appLocalized("transitGuide.overviewLeg",
-                                 String(legIndex + 1), lineName, boardName, alightName),
+                    legDisplay.map {
+                        TransitGuideTextRenderer.render(transitOverviewLegLine(
+                            isEn: transitGuideIsEn, n: legIndex + 1,
+                            line: $0.line, board: $0.board, alight: $0.alight))
+                    } ?? appLocalized("transitGuide.overviewLeg",
+                                      String(legIndex + 1), lineName, boardName, alightName),
                     statusText,
                     status == .current
                         ? stationCount.map { appLocalized("transitGuide.stationCountAbout", $0) } ?? ""
@@ -315,13 +325,15 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
                     }
                 }
             case let .stop(stopIndex, name, role, here):
-                let roleText = switch role {
-                case .board: appLocalized("transitGuide.viaBoard")
-                case .alight: appLocalized("transitGuide.viaAlight")
-                case .via: ""
-                }
-                rows.append(.text(id: "stop-\(stopIndex)", joinText(
-                    name, roleText, here ? appLocalized("transitGuide.viaCurrent") : "")))
+                // 정차역 행도 같은 배치 — 현재 leg의 표시 투영에서 이름을 고른다.
+                let stopLabel = model.currentLeg.map { model.displayLeg($0, useOverride: false) }
+                    .flatMap { $0.stops.indices.contains(stopIndex) ? $0.stops[stopIndex] : nil }
+                    ?? TransitLabel(ko: name)
+                rows.append(.text(id: "stop-\(stopIndex)", TransitGuideTextRenderer.render(
+                    transitViaStopLine(
+                        isEn: transitGuideIsEn, stop: stopLabel,
+                        role: role == .board ? "board" : role == .alight ? "alight" : "via",
+                        here: here))))
             case .stopsUnavailable:
                 rows.append(.text(id: "stopsUnavailable",
                                   appLocalized("transitGuide.overviewStopsUnavailable")))
@@ -372,6 +384,13 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
 /// disclosure(라벨 = 이름+요약, 본문 = 구간 행 + "이 경로로 전환") → 닫기. **미리 보고
 /// 전환**(A안)이 이 펼침이다. 무엇을 기준으로 한 목록인지가 SR 사용자의 유일한
 /// 정보원이라 헤더가 근거(현재 위치·현재역·승차역 선언)를 말한다.
+/// 승차역 표시 문자열 — 영문 조각이 있으면 그것, 없으면 한국어 원문(E27 잔여 ①).
+/// 한 버튼·한 헤딩이 각각 한 접근성 객체라 조각 하나짜리 줄이고, 여기서는 언어 태그를 두지
+/// 않는다(iOS 줄 단위 태깅은 E28-① 실기기 판정 선행 — spec §3.8 수용 위험).
+private func boardLabelText(_ leg: TransitDisplayLeg) -> String {
+    transitGuideIsEn ? (leg.board.en ?? leg.board.ko) : leg.board.ko
+}
+
 struct TransitAltRoutesSheet: View {
     let adapter: TransitOverviewAdapter
     let onFollowUp: (GuideOverviewFollowUp) -> Void
@@ -412,7 +431,10 @@ struct TransitAltRoutesSheet: View {
                             if reason == .noLocation, let leg = model.currentLeg,
                                let phase = model.state?.phase, phase == .waiting || phase == .boarding,
                                leg.boardStop != nil {
-                                Button(appLocalized("ios.transitGuide.altFromBoardStop", leg.boardName)) {
+                                // 승차역명은 **표시 라벨**이다(E27 잔여 ①) — 영문이 없으면 한국어 원문.
+                                Button(appLocalized(
+                                    "ios.transitGuide.altFromBoardStop",
+                                    boardLabelText(model.displayLeg(leg, useOverride: false)))) {
                                     token = model.prepareAltRoutes(declaredBoardStop: true)
                                 }
                             }
@@ -455,7 +477,9 @@ struct TransitAltRoutesSheet: View {
             }
             return appLocalized("ios.transitGuide.altHeading")
         case .boardStopDeclared:
-            return appLocalized("ios.transitGuide.altHeadingFrom", model.currentLeg?.boardName ?? "")
+            return appLocalized(
+                "ios.transitGuide.altHeadingFrom",
+                model.currentLeg.map { boardLabelText(model.displayLeg($0, useOverride: false)) } ?? "")
         case .gps, nil:
             return appLocalized("ios.transitGuide.altHeading")
         }

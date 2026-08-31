@@ -142,7 +142,14 @@ export function TransitGuidePanel({
     guide.setLiveMessage(t("prewalkCancelled"));
   };
   // 대기 국면에서만 쓰지만 훅 규칙과 무관한 순수 파생이라 여기서 만든다.
-  const quickExit = quickExitText(tTransitRoute, leg?.alightName ?? "", leg?.quickExit);
+  // 하차역명은 **표시 라벨**이다(E27 잔여 ①) — 영문이 없으면 그 줄만 ko로 태그한다.
+  const alightLabel = leg ? transitDisplayLeg(leg, null).alight : null;
+  const quickExit = quickExitText(
+    tTransitRoute,
+    alightLabel ? (isEn ? (alightLabel.en ?? alightLabel.ko) : alightLabel.ko) : "",
+    leg?.quickExit,
+  );
+  const quickExitLang = isEn && alightLabel && !alightLabel.en ? "ko" : undefined;
 
   // 세션 활성 전이를 부모에 통지(식별자는 ref로 고정 — 부모 인라인 콜백이
   // 렌더마다 새 함수여도 effect가 재발화하지 않는다). unmount 시 false 정리.
@@ -373,7 +380,11 @@ export function TransitGuidePanel({
                       세션 시작 착지점은 상태 텍스트(B4, 2026-08-17)이고 그 다음 순차
                       탐색이 여기를 지나 목록으로 내려간다 — 자리의 근거는 "목록 앞"이다.
                       통지는 만들지 않는다(정적 정보라 상태 변화가 없다). */}
-                  {quickExit && <p className="text-sm">{quickExit}</p>}
+                  {quickExit && (
+                    <p className="text-sm" lang={quickExitLang}>
+                      {quickExit}
+                    </p>
+                  )}
                   {guide.waitingOptions.length === 0 && (
                     // 0건 사유 3-state(§13.3): 진짜 0건 / 필터 전멸 / 조회 실패.
                     <p className="text-sm">
