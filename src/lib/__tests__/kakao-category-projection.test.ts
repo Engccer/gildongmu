@@ -32,6 +32,11 @@ describe("provider 투영 — categoryEn additive", () => {
     expect(k?.categoryEn).toBe("Home & Living > Kids > Play Facility > Kids Cafe");
     expect(kidsPlaceToPlace(k!).categoryEn).toBe("Home & Living > Kids > Play Facility > Kids Cafe");
     expect(kidsPlaceToPlace(k!).category).toBe("가정,생활 > 유아 > 놀이시설 > 키즈카페");
+    // 미등재 잎사귀(브랜드) — 키 부재(코드 리뷰 WARNING: provider마다 spread 회귀를 따로 잡는다).
+    const u = normalizeKidsDoc({ ...doc, place_name: "우리끼리 키즈카페", category_name: "가정,생활 > 유아 > 놀이시설 > 키즈카페 > 우리끼리" } as never);
+    expect(u).not.toBeNull();
+    expect("categoryEn" in u!).toBe(false);
+    expect(JSON.stringify(kidsPlaceToPlace(u!))).not.toContain("categoryEn");
   });
 
   it("surroundings: categoryRaw 옆 categoryEn, 투영도 나른다", () => {
@@ -43,6 +48,12 @@ describe("provider 투영 — categoryEn additive", () => {
     const p = surroundingPlaceToPlace(s!);
     expect(p.category).toBe("교통,수송 > 지하철,전철 > 수도권5호선");
     expect(p.categoryEn).toBe("Transportation > Subway > Line 5");
+    const u = normalizeSurroundingDoc(
+      { ...doc, place_name: "벌크커피", category_name: "음식점 > 카페 > 커피전문점 > 미등재브랜드", category_group_code: "CE7" } as never,
+      37.55, 127.15,
+    );
+    expect("categoryEn" in u!).toBe(false);
+    expect(JSON.stringify(surroundingPlaceToPlace(u!))).not.toContain("categoryEn");
   });
 
   it("scene 항목 투영도 나른다", () => {
