@@ -46,9 +46,9 @@
       "suggestion3": "Quelle est la qualité de l'air en ce moment ?",
       "suggestion4": "Y a-t-il des endroits à proximité où aller avec des enfants ?",
       "openPlace": "Voir les détails de {name}",
-      "placesHeading": "{count} lieux",
-      "addressesHeading": "{count} adresses",
-      "webResultsHeading": "{count} résultats web",
+      "placesHeading": "{count, plural, one {# lieu} other {# lieux}}",
+      "addressesHeading": "{count, plural, one {# adresse} other {# adresses}}",
+      "webResultsHeading": "{count, plural, one {# résultat web} other {# résultats web}}",
       "sourcesHeading": "Sources",
       "sending": "Envoi en cours",
       "emptyAnswer": "Impossible de préparer une réponse",
@@ -89,7 +89,7 @@
       "webSection": "Recherche web",
       "announceFailed": "Échec de la recherche.",
       "announceEmpty": "Aucun résultat",
-      "announceCount": "{count} résultats"
+      "announceCount": "{count, plural, one {# résultat} other {# résultats}}"
     },
     "place": {
       "call": "Appeler",
@@ -114,12 +114,12 @@
       "taxiFare": "taxi environ {won} KRW",
       "tollFare": "péages {won} KRW",
       "fare": "tarif {won} KRW",
-      "transfers": "{count} correspondances",
+      "transfers": "{count, plural, one {# correspondance} other {# correspondances}}",
       "walkMinutes": "à pied {minutes} min",
       "board": "montée à {name}",
       "alight": "descente à {name}",
-      "stopCount": "{count} arrêts",
-      "stationCount": "{count} stations",
+      "stopCount": "{count, plural, one {# arrêt} other {# arrêts}}",
+      "stationCount": "{count, plural, one {# station} other {# stations}}",
       "legMinutes": "{minutes} min"
     },
     "station": {
@@ -150,18 +150,13 @@
       "events": "Événements culturels",
       "conditions": "Météo et qualité de l'air",
       "announceEmpty": "Aucun résultat à proximité",
-      "announceCount": "{count} {unit} à proximité",
       "refreshFailed": "Échec de l'actualisation. Informations précédentes conservées",
       "refreshDenied": "Actualisation impossible : autorisation de localisation désactivée",
-      "unitPlace": "lieux",
-      "unitBike": "stations de vélo",
-      "unitStop": "arrêts",
-      "unitStation": "stations",
       "directionSuffixed": "vers le {direction}",
       "aroundEmpty": "Aucun lieu à afficher à proximité",
       "barrierFreeEmpty": "Aucun site accessible à proximité",
-      "bikesAvailable": "{count} vélos disponibles",
-      "racksTotal": "{count} bornes",
+      "bikesAvailable": "{count, plural, one {# vélo disponible} other {# vélos disponibles}}",
+      "racksTotal": "{count, plural, one {# borne} other {# bornes}}",
       "bikeEmpty": "Aucune station de vélo à proximité",
       "arrivalUnavailable": "Impossible de charger les arrivées",
       "noBusArrivals": "Aucun bus prévu",
@@ -200,7 +195,6 @@
       "rainSnow": "Pluie ou neige",
       "airStationLine": "Station de mesure {name}, {distance}km",
       "eventsEmpty": "Aucun événement culturel n'a lieu près de vous aujourd'hui",
-      "unitEvent": "événements",
       "subwayClosed": "Hors service actuellement. Premier train %@",
       "subwayNoRealtime": "Pas d'informations en temps réel pour cette station",
       "refreshReduced": "Actualisation impossible car la position précise est désactivée",
@@ -212,7 +206,12 @@
       "aroundLoadedManual": "Environs de la position choisie prêts",
       "aroundPlacesHeading": "Commerces et services à proximité",
       "aroundPlacesFailed": "Impossible de charger les commerces et services à proximité",
-      "stopsBefore": "à {count} arrêts"
+      "stopsBefore": "à {count, plural, one {# arrêt} other {# arrêts}}",
+      "announcePlaces": "{count, plural, one {# lieu} other {# lieux}} à proximité",
+      "announceBikes": "{count, plural, one {# station de vélo} other {# stations de vélo}} à proximité",
+      "announceStops": "{count, plural, one {# arrêt} other {# arrêts}} à proximité",
+      "announceStations": "{count, plural, one {# station} other {# stations}} à proximité",
+      "announceEvents": "{count, plural, one {# événement} other {# événements}} à proximité"
     },
     "settings": {
       "title": "Réglages",
@@ -275,7 +274,7 @@
         "hotteok": "C'est l'équivalent d'un hotteok (crêpe sucrée coréenne) !",
         "riceBowl": "C'est l'équivalent d'un bol de riz (bap) !",
         "ramyeon": "C'est l'équivalent d'un bol de ramyeon !",
-        "ramyeonMany": "C'est l'équivalent d'environ {n} bols de ramyeon !"
+        "ramyeonMany": "C'est l'équivalent d'environ {n, plural, one {# bol} other {# bols}} de ramyeon !"
       },
       "carWalkHandoffStart": "Démarrer le guidage à pied ici"
     },
@@ -324,9 +323,9 @@
     "guideStartWalkShortest": "Démarrer le guidage sur l’itinéraire le plus court"
   },
   "guide": {
-    "switchedToShortest": "Itinéraire le plus court activé. {count} instructions, {distance} au total. {first}",
-    "switchedToRecommended": "Itinéraire recommandé activé. {count} instructions, {distance} au total. {first}",
-    "proposalReady": "Un itinéraire depuis votre position actuelle est prêt. {count} instructions, {distance} au total. {first}",
+    "switchedToShortest": "Itinéraire le plus court activé. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
+    "switchedToRecommended": "Itinéraire recommandé activé. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
+    "proposalReady": "Un itinéraire depuis votre position actuelle est prêt. {count, plural, one {# instruction} other {# instructions}}, {distance} au total. {first}",
     "proposalAdopt": "Reprendre le guidage depuis la position actuelle",
     "viewAlternative": "Voir l’itinéraire alternatif",
     "adoptAlternative": "Basculer le guidage sur cet itinéraire",

@@ -22,7 +22,7 @@ final class BikeNearbyModel {
                 return try await service.bikeStations(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stations in
-                nearbyLoadedMessage(count: stations.count, unit: appLocalized("ios.nearby.unitBike"))
+                nearbyLoadedMessage(count: stations.count, kind: .bikeStations)
             }))
     }
 
@@ -46,8 +46,8 @@ struct BikeNearbyView: View {
     private func bikeRow(_ station: BikeStation) -> some View {
         let name = bilingual(station.name, roman: station.nameRoman)
         let rest = joinText(formatDistance(station.distanceMeters),
-                            appLocalized("ios.nearby.bikesAvailable", String(station.bikesAvailable)),
-                            appLocalized("ios.nearby.racksTotal", String(station.racksTotal)))
+                            appLocalized("ios.nearby.bikesAvailable", station.bikesAvailable),
+                            appLocalized("ios.nearby.racksTotal", station.racksTotal))
         return bilingualLine(visible: joinText(name.display, rest), accessible: joinText(name.primary, rest))
     }
 

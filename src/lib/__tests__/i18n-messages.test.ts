@@ -35,9 +35,15 @@ function flatten(obj: unknown, prefix = ""): Record<string, string> {
   return out;
 }
 
-/** ICU 플레이스홀더 {xxx}와 빈 태그 <xxx>의 이름 집합(정렬). */
+/**
+ * ICU 인자 이름 집합 {xxx}와 빈 태그 <xxx>(정렬). 인자는 `{name}`(단순)과
+ * `{name, plural, one {…} other {…}}`(A29 복수형) 둘 다 `{` 뒤 식별자가 `,`나
+ * `}`로 닫히는 형태라 한 정규식으로 잡힌다 — 분기 안 `#`은 인자가 아니고 분기
+ * 안 중첩 `{name}`은 그대로 수집된다. 게이트의 뜻은 **인자 집합** 동일성이지
+ * plural 사용 여부가 아니다(ko `{count}` ↔ en `{count, plural…}`는 같은 집합).
+ */
 function tokens(s: string): string[] {
-  const placeholders = [...s.matchAll(/\{(\w+)\}/g)].map((m) => `{${m[1]}}`);
+  const placeholders = [...s.matchAll(/\{\s*([A-Za-z_]\w*)\s*(?=[,}])/g)].map((m) => `{${m[1]}}`);
   const tags = [...s.matchAll(/<(\w+)>/g)].map((m) => `<${m[1]}>`);
   return [...new Set([...placeholders, ...tags])].sort();
 }

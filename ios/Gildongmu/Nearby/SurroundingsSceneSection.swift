@@ -228,7 +228,7 @@ private enum SceneText {
     static func bucketTitle(_ group: SurroundingsSceneGroup) -> String {
         let name = Self.bucketName(group.bucket)
         guard group.items.count > countInTitleThreshold else { return name }
-        return "\(name) \(appLocalized("surroundings.count", String(group.items.count)))"
+        return "\(name) \(appLocalized("surroundings.count", group.items.count))"
     }
 
     /// bucket 값→키 매핑. 린터 계약(리터럴 키만)이라 switch에 12개를 나열한다.

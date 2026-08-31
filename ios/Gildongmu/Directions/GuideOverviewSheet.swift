@@ -300,7 +300,7 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
                                  String(legIndex + 1), lineName, boardName, alightName),
                     statusText,
                     status == .current
-                        ? stationCount.map { appLocalized("transitGuide.stationCountAbout", String($0)) } ?? ""
+                        ? stationCount.map { appLocalized("transitGuide.stationCountAbout", $0) } ?? ""
                         : "")))
                 if status == .current {
                     // silence·탈출구는 현재 leg 행 바로 뒤(순수 계층이 같은 자리에 낸다).

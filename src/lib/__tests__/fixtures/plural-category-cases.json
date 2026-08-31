@@ -1,0 +1,127 @@
+[
+  {
+    "lang": "en",
+    "n": 0,
+    "category": "other"
+  },
+  {
+    "lang": "en",
+    "n": 1,
+    "category": "one"
+  },
+  {
+    "lang": "en",
+    "n": -1,
+    "category": "one"
+  },
+  {
+    "lang": "en",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "en",
+    "n": 21,
+    "category": "other"
+  },
+  {
+    "lang": "en",
+    "n": 100,
+    "category": "other"
+  },
+  {
+    "lang": "es",
+    "n": 0,
+    "category": "other"
+  },
+  {
+    "lang": "es",
+    "n": 1,
+    "category": "one"
+  },
+  {
+    "lang": "es",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "es",
+    "n": 21,
+    "category": "other"
+  },
+  {
+    "lang": "it",
+    "n": 0,
+    "category": "other"
+  },
+  {
+    "lang": "it",
+    "n": 1,
+    "category": "one"
+  },
+  {
+    "lang": "it",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "it",
+    "n": 21,
+    "category": "other"
+  },
+  {
+    "lang": "fr",
+    "n": 0,
+    "category": "one"
+  },
+  {
+    "lang": "fr",
+    "n": 1,
+    "category": "one"
+  },
+  {
+    "lang": "fr",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "fr",
+    "n": 21,
+    "category": "other"
+  },
+  {
+    "lang": "fr",
+    "n": 1000000,
+    "category": "other"
+  },
+  {
+    "lang": "ko",
+    "n": 0,
+    "category": "other"
+  },
+  {
+    "lang": "ko",
+    "n": 1,
+    "category": "other"
+  },
+  {
+    "lang": "ko",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "ja",
+    "n": 1,
+    "category": "other"
+  },
+  {
+    "lang": "ja",
+    "n": 2,
+    "category": "other"
+  },
+  {
+    "lang": "fr-FR",
+    "n": 0,
+    "category": "one"
+  }
+]

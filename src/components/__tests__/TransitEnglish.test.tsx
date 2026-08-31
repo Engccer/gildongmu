@@ -125,14 +125,23 @@ describe("TransitRouteResult — en 로케일 구간 문장", () => {
     legs,
     routeKey: "p0",
   };
+  // 목 번역기: ICU 복수 블록(A29 `{count, plural, one {…} other {…}}`)은 값이 1이면 one,
+  // 아니면 other 분기로 미리 푼다(en 규칙만 — next-intl이 하는 일의 최소 모사).
+  const resolvePlural = (template: string, values: Record<string, unknown>) =>
+    template.replace(/\{(\w+), plural, one \{([^{}]*)\} other \{([^{}]*)\}\}/g, (_, k, one, other) => {
+      const n = Number(values[k]);
+      return (n === 1 ? one : other).replaceAll("#", String(values[k] ?? ""));
+    });
   const t = Object.assign(
     (key: string, values?: Record<string, unknown>) => {
       const template = (en.route.transit as Record<string, string>)[key];
-      return values ? template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? "")) : template;
+      return values
+        ? resolvePlural(template, values).replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ""))
+        : template;
     },
     {
       rich: (key: string, values: Record<string, (chunks: ReactNode) => ReactNode>) => {
-        const template = (en.route.transit as Record<string, string>)[key];
+        const template = resolvePlural((en.route.transit as Record<string, string>)[key], values);
         const out: ReactNode[] = [];
         const re = /<(\w+)><\/\1>|\{(\w+)\}/g;
         let last = 0;

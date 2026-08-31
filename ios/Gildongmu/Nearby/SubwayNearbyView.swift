@@ -72,8 +72,7 @@ final class SubwayNearbyModel {
                     return appLocalized("ios.nearby.subwayEmptyNearest",
                                         nearestLabel(nearest), formatDistance(nearest.distanceMeters))
                 }
-                return nearbyLoadedMessage(count: result.stations.count,
-                                           unit: appLocalized("ios.nearby.unitStation"))
+                return nearbyLoadedMessage(count: result.stations.count, kind: .stations)
             }))
     }
 

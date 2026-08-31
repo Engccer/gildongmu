@@ -46,9 +46,9 @@
       "suggestion3": "Com'è la qualità dell'aria adesso?",
       "suggestion4": "Ci sono posti nelle vicinanze dove andare con i bambini?",
       "openPlace": "Vedi dettagli di {name}",
-      "placesHeading": "{count} luoghi",
-      "addressesHeading": "{count} indirizzi",
-      "webResultsHeading": "{count} risultati web",
+      "placesHeading": "{count, plural, one {# luogo} other {# luoghi}}",
+      "addressesHeading": "{count, plural, one {# indirizzo} other {# indirizzi}}",
+      "webResultsHeading": "{count, plural, one {# risultato web} other {# risultati web}}",
       "sourcesHeading": "Fonti",
       "sending": "Invio in corso",
       "emptyAnswer": "Impossibile preparare una risposta",
@@ -89,7 +89,7 @@
       "webSection": "Ricerca web",
       "announceFailed": "Ricerca non riuscita.",
       "announceEmpty": "Nessun risultato",
-      "announceCount": "{count} risultati"
+      "announceCount": "{count, plural, one {# risultato} other {# risultati}}"
     },
     "place": {
       "call": "Chiama",
@@ -114,12 +114,12 @@
       "taxiFare": "taxi circa {won} KRW",
       "tollFare": "pedaggi {won} KRW",
       "fare": "tariffa {won} KRW",
-      "transfers": "{count} cambi",
+      "transfers": "{count, plural, one {# cambio} other {# cambi}}",
       "walkMinutes": "a piedi {minutes} min",
       "board": "salita a {name}",
       "alight": "discesa a {name}",
-      "stopCount": "{count} fermate",
-      "stationCount": "{count} stazioni",
+      "stopCount": "{count, plural, one {# fermata} other {# fermate}}",
+      "stationCount": "{count, plural, one {# stazione} other {# stazioni}}",
       "legMinutes": "{minutes} min"
     },
     "station": {
@@ -150,18 +150,13 @@
       "events": "Eventi culturali",
       "conditions": "Meteo e qualità dell'aria",
       "announceEmpty": "Nessun risultato nelle vicinanze",
-      "announceCount": "{count} {unit} nelle vicinanze",
       "refreshFailed": "Aggiornamento non riuscito. Informazioni precedenti conservate",
       "refreshDenied": "Impossibile aggiornare: permesso di localizzazione disattivato",
-      "unitPlace": "luoghi",
-      "unitBike": "stazioni",
-      "unitStop": "fermate",
-      "unitStation": "stazioni",
       "directionSuffixed": "a {direction}",
       "aroundEmpty": "Nessun luogo da mostrare nelle vicinanze",
       "barrierFreeEmpty": "Nessuna attrazione accessibile nelle vicinanze",
-      "bikesAvailable": "{count} bici disponibili",
-      "racksTotal": "{count} rastrelliere",
+      "bikesAvailable": "{count, plural, one {# bici disponibile} other {# bici disponibili}}",
+      "racksTotal": "{count, plural, one {# rastrelliera} other {# rastrelliere}}",
       "bikeEmpty": "Nessuna stazione bici nelle vicinanze",
       "arrivalUnavailable": "Impossibile caricare gli arrivi",
       "noBusArrivals": "Nessun autobus in arrivo",
@@ -200,7 +195,6 @@
       "rainSnow": "Pioggia o neve",
       "airStationLine": "Stazione di monitoraggio {name}, {distance}km",
       "eventsEmpty": "Oggi non ci sono eventi culturali nelle tue vicinanze",
-      "unitEvent": "eventi",
       "subwayClosed": "Fuori servizio ora. Primo treno %@",
       "subwayNoRealtime": "Nessuna informazione in tempo reale per questa stazione",
       "refreshReduced": "Aggiornamento non riuscito perché la posizione precisa è disattivata",
@@ -212,7 +206,12 @@
       "aroundLoadedManual": "Dintorni della posizione impostata pronti",
       "aroundPlacesHeading": "Negozi e servizi nelle vicinanze",
       "aroundPlacesFailed": "Impossibile caricare negozi e servizi nelle vicinanze",
-      "stopsBefore": "a {count} fermate"
+      "stopsBefore": "a {count, plural, one {# fermata} other {# fermate}}",
+      "announcePlaces": "{count, plural, one {# luogo} other {# luoghi}} nelle vicinanze",
+      "announceBikes": "{count, plural, one {# stazione} other {# stazioni}} nelle vicinanze",
+      "announceStops": "{count, plural, one {# fermata} other {# fermate}} nelle vicinanze",
+      "announceStations": "{count, plural, one {# stazione} other {# stazioni}} nelle vicinanze",
+      "announceEvents": "{count, plural, one {# evento} other {# eventi}} nelle vicinanze"
     },
     "settings": {
       "title": "Impostazioni",
@@ -260,7 +259,7 @@
       "arrivedPresumedHeading": "Arrivo stimato",
       "endedHeading": "Guida terminata",
       "soundBackgroundUnavailable": "I suoni della guida non verranno riprodotti a schermo spento o mentre usi un'altra app.",
-      "healthSummary": "In questo tratto hai fatto {steps} passi e bruciato circa {kcal} kcal.",
+      "healthSummary": "In questo tratto hai fatto {steps, plural, one {# passo} other {# passi}} e bruciato circa {kcal} kcal.",
       "healthWeightNotice": "Il valore delle calorie usa la media adulta di {kg} kg. Inserisci il tuo peso nelle Impostazioni per una stima più precisa. Il dato non lascia mai il tuo dispositivo.",
       "healthEnterWeight": "Inserisci il peso",
       "food": {
@@ -275,7 +274,7 @@
         "hotteok": "Equivale a un hotteok (frittella dolce coreana)!",
         "riceBowl": "Equivale a una ciotola di riso (bap)!",
         "ramyeon": "Equivale a una ciotola di ramyeon!",
-        "ramyeonMany": "Equivale a circa {n} ciotole di ramyeon!"
+        "ramyeonMany": "Equivale a circa {n, plural, one {# ciotola} other {# ciotole}} di ramyeon!"
       },
       "carWalkHandoffStart": "Avvia la guida a piedi da qui"
     },
@@ -324,9 +323,9 @@
     "guideStartWalkShortest": "Avvia la guida sul percorso più breve"
   },
   "guide": {
-    "switchedToShortest": "Passato al percorso più breve. {count} indicazioni, {distance} in totale. {first}",
-    "switchedToRecommended": "Passato al percorso consigliato. {count} indicazioni, {distance} in totale. {first}",
-    "proposalReady": "Un percorso dalla posizione attuale è pronto. {count} indicazioni, {distance} in totale. {first}",
+    "switchedToShortest": "Passato al percorso più breve. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+    "switchedToRecommended": "Passato al percorso consigliato. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
+    "proposalReady": "Un percorso dalla posizione attuale è pronto. {count, plural, one {# indicazione} other {# indicazioni}}, {distance} in totale. {first}",
     "proposalAdopt": "Riavvia la guida dalla posizione attuale",
     "viewAlternative": "Vedi percorso alternativo",
     "adoptAlternative": "Passa alla guida su questo percorso",

@@ -43,7 +43,7 @@ final class ClinicNearbyModel {
             },
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
             onEvent: nearbyAnnouncer(loaded: { payload in
-                nearbyLoadedMessage(count: payload.clinics.count, unit: appLocalized("ios.nearby.unitPlace"))
+                nearbyLoadedMessage(count: payload.clinics.count, kind: .places)
             }))
     }
 

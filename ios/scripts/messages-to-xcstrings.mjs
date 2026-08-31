@@ -9,11 +9,16 @@
 // ② CLI 인자는 네임스페이스가 아니라 타깃명뿐(dodo의 인자 오염→카탈로그 truncation
 // 실사고를 원천 차단 — 네임스페이스 목록은 아래 상수로 고정) ③ 출력이 두 카탈로그다.
 //
-// 범위: 단순 명명 플레이스홀더({name} 형태, ICU plural/select 구문 아님)만 있는 키는
-// ko(source language) 원문에서의 등장 순서로 positional specifier(%1$@, %2$@...)로 변환한다
-// (같은 이름→같은 인덱스 매핑을 전 로케일에 동일 적용, 로케일별 어순이 달라도 안전).
-// Swift 쪽에서는 `String(format: String(localized: "..."), arg1, arg2)`로 소비한다.
-// plural/select 구문이 있거나, 로케일 간 플레이스홀더 이름 집합이 어긋나는 키는 스킵한다.
+// 범위: 명명 플레이스홀더 `{name}`과 ICU 복수 블록 `{name, plural, one {…} other {…}}`
+// (A29, spec 2026-08-31-plural-forms-design.md §4)만 있는 키를 ko(source language) 원문
+// 등장 순서로 positional specifier(%1$@, %2$@...)로 변환한다(같은 이름→같은 인덱스를 전
+// 로케일에 동일 적용, 로케일별 어순이 달라도 안전). 복수 블록은 이름을 인덱스로 바꾼
+// `{N, plural, one {…} other {…}}`로 **문자열 그대로** 싣고, 블록 안 `#`은 그 인자의
+// `%N$@`가 된다 — Swift `formatLocalized`(Kit Localization.swift)가 실행 시 분기를 고른 뒤
+// String(format:)을 태운다. xcstrings 네이티브 `variations.plural`을 쓰지 않는 이유는 lproj로
+// 컴파일되면 `.stringsdict`(`%#@value@`)가 되어 앱의 명시 언어 조회가 one/other 값에 닿지
+// 못하기 때문이다(실험 2026-08-31, spec §4.1). 분기 이름은 one·other만 지원한다.
+// select·few/many·중첩 plural이 있거나, 로케일 간 인자 이름 집합이 어긋나는 키는 스킵한다.
 //
 // extra 병합 입력(타깃별, 매 실행 항상 병합):
 //   ios/i18n/ios-extra/{locale}.json → app 타깃 (iOS 전용 키 + 웹 카피 오버라이드)
@@ -27,9 +32,10 @@ import { fileURLToPath } from 'node:url';
 
 const LOCALES = ['ko', 'en', 'es', 'fr', 'it', 'ja'];
 const SOURCE_LANGUAGE = 'ko';
-const ANY_BRACE_RE = /\{[^{}]*\}/g;
-const SIMPLE_TOKEN_RE = /^\{([a-zA-Z_][a-zA-Z0-9_]*)\}$/;
-const NAMED_PLACEHOLDER_RE = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+const SIMPLE_ARG_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*$/;
+const PLURAL_HEAD_RE = /^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*,\s*plural\s*,([\s\S]*)$/;
+const BRANCH_HEAD_RE = /^\s*([a-zA-Z]+)\s*\{/;
+const PLURAL_BRANCHES = ['one', 'other'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
@@ -58,16 +64,107 @@ const TARGETS = {
   },
 };
 
-/** 값 안의 `{...}` 토큰을 전부 뽑아 이름 배열로 반환한다. plural/select 등 단순 명명
- * 플레이스홀더가 아닌 토큰이 하나라도 있으면 null(복합 ICU, 변환 불가)을 반환한다. */
-function extractPlaceholderNames(value) {
-  const tokens = value.match(ANY_BRACE_RE);
-  if (!tokens) return [];
+/** `open` 위치의 `{`와 짝이 되는 `}` 인덱스(깊이 계산). 없으면 -1. */
+function matchingBrace(value, open) {
+  let depth = 0;
+  for (let i = open; i < value.length; i += 1) {
+    if (value[i] === '{') depth += 1;
+    else if (value[i] === '}') {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * ICU 부분집합 파서. 값을 조각 배열로 돌려준다:
+ *   { kind: 'text', text }            리터럴
+ *   { kind: 'arg', name }             `{name}`
+ *   { kind: 'plural', name, branches } `{name, plural, one {…} other {…}}` — branches는
+ *                                     분기 이름 → 조각 배열(`#`는 { kind: 'hash' }, `{name}`은
+ *                                     'arg', 중첩 plural 불가)
+ * 지원 밖 구문(select·few/many·중첩 plural·짝 없는 `}`)이 하나라도 있으면 null(스킵).
+ * 짝 없는 `{`는 종전 동작대로 리터럴로 본다.
+ */
+function parseIcu(value, { insidePlural = false } = {}) {
+  const parts = [];
+  let text = '';
+  let i = 0;
+  while (i < value.length) {
+    const ch = value[i];
+    if (ch === '}') return null;
+    // ICU 아포스트로피 인용(`'{'`·`'#'`·`''`)은 지원하지 않는다 — 웹은 리터럴로 풀지만 이
+    // 변환기·Swift 스캐너는 구조 문자로 세어 양쪽이 갈린다. 낱말 속 `'`(C'è)는 리터럴이다.
+    if (ch === "'" && i + 1 < value.length && "{}#'".includes(value[i + 1])) return null;
+    if (ch === '#' && insidePlural) {
+      if (text) parts.push({ kind: 'text', text });
+      text = '';
+      parts.push({ kind: 'hash' });
+      i += 1;
+      continue;
+    }
+    if (ch !== '{') {
+      text += ch;
+      i += 1;
+      continue;
+    }
+    const close = matchingBrace(value, i);
+    if (close === -1) {
+      text += ch;
+      i += 1;
+      continue;
+    }
+    const inner = value.slice(i + 1, close);
+    const simple = SIMPLE_ARG_RE.exec(inner);
+    if (simple) {
+      if (text) parts.push({ kind: 'text', text });
+      text = '';
+      parts.push({ kind: 'arg', name: simple[1] });
+      i = close + 1;
+      continue;
+    }
+    const plural = PLURAL_HEAD_RE.exec(inner);
+    if (!plural || insidePlural) return null;
+    const branches = parsePluralBranches(plural[2]);
+    if (!branches) return null;
+    if (text) parts.push({ kind: 'text', text });
+    text = '';
+    parts.push({ kind: 'plural', name: plural[1], branches });
+    i = close + 1;
+  }
+  if (text) parts.push({ kind: 'text', text });
+  return parts;
+}
+
+/** `one {…} other {…}` 꼬리를 분기 사전으로. 이름은 one·other만, 둘 다 있어야 하고 중복 불가. */
+function parsePluralBranches(tail) {
+  const branches = {};
+  let rest = tail;
+  while (rest.trim().length > 0) {
+    const head = BRANCH_HEAD_RE.exec(rest);
+    if (!head) return null;
+    const name = head[1];
+    if (!PLURAL_BRANCHES.includes(name) || name in branches) return null;
+    const open = head[0].length - 1;
+    const close = matchingBrace(rest, open);
+    if (close === -1) return null;
+    const body = parseIcu(rest.slice(open + 1, close), { insidePlural: true });
+    if (!body) return null;
+    branches[name] = body;
+    rest = rest.slice(close + 1);
+  }
+  return PLURAL_BRANCHES.every((name) => name in branches) ? branches : null;
+}
+
+/** 조각 배열이 참조하는 인자 이름(등장 순서, plural 인자 포함, 분기 안 인자 포함). */
+function referencedNames(parts) {
   const names = [];
-  for (const token of tokens) {
-    const match = SIMPLE_TOKEN_RE.exec(token);
-    if (!match) return null;
-    names.push(match[1]);
+  for (const part of parts) {
+    if (part.kind === 'arg' || part.kind === 'plural') names.push(part.name);
+    if (part.kind === 'plural') {
+      for (const body of Object.values(part.branches)) names.push(...referencedNames(body));
+    }
   }
   return names;
 }
@@ -80,16 +177,27 @@ function dedupeInOrder(names) {
   return seen;
 }
 
-/** `{name}`을 nameOrder 안 위치 기반 `%N$@`로 치환한다. 문자열 안 등장 순서가 로케일마다
- * 달라도(어순 차이) nameOrder(ko 기준) 인덱스로 고정되므로 안전하다.
- * 리터럴 `%`는 먼저 `%%`로 이스케이프한다 — 이 키들은 Swift String(format:)으로
- * 소비되는데, 유효 지정자로 이어지지 않는 `%`를 format이 조용히 삼킨다
- * (실측: "습도 %1$@%" → "습도 55", % 소실. 코드리뷰 2026-07-19). */
-function toPositionalFormat(value, nameOrder) {
-  return value.replaceAll('%', '%%').replace(NAMED_PLACEHOLDER_RE, (full, name) => {
-    const index = nameOrder.indexOf(name);
-    return index === -1 ? full : `%${index + 1}$@`;
-  });
+/** 조각 배열을 nameOrder 인덱스 기반 문자열로 되돌린다. `{name}` → `%N$@`, plural →
+ * `{N, plural, one {…} other {…}}`, 분기 안 `#` → 그 인자의 `%N$@`. 리터럴 `%`는 `%%`로
+ * 이스케이프한다 — 이 문자열은 Swift String(format:)으로 소비되는데, 유효 지정자로
+ * 이어지지 않는 `%`를 format이 조용히 삼킨다(실측: "습도 %1$@%" → "습도 55", % 소실.
+ * 코드리뷰 2026-07-19). 문자열 안 등장 순서가 로케일마다 달라도(어순 차이) nameOrder
+ * (ko 기준) 인덱스로 고정되므로 안전하다. */
+function toPositionalFormat(parts, nameOrder, hashIndex = null) {
+  let out = '';
+  for (const part of parts) {
+    if (part.kind === 'text') out += part.text.replaceAll('%', '%%');
+    else if (part.kind === 'hash') out += `%${hashIndex}$@`;
+    else if (part.kind === 'arg') out += `%${nameOrder.indexOf(part.name) + 1}$@`;
+    else {
+      const index = nameOrder.indexOf(part.name) + 1;
+      const branches = PLURAL_BRANCHES.map(
+        (name) => `${name} {${toPositionalFormat(part.branches[name], nameOrder, index)}}`
+      );
+      out += `{${index}, plural, ${branches.join(' ')}}`;
+    }
+  }
+  return out;
 }
 
 function flatten(obj, prefix = '') {
@@ -166,15 +274,17 @@ function buildCatalog(target) {
       continue;
     }
 
+    const partsByLocale = {};
     const namesByLocale = {};
     let hasComplexIcu = false;
     for (const [locale, value] of Object.entries(valuesByLocale)) {
-      const names = extractPlaceholderNames(value);
-      if (names === null) {
+      const parts = parseIcu(value);
+      if (parts === null) {
         hasComplexIcu = true;
         break;
       }
-      namesByLocale[locale] = names;
+      partsByLocale[locale] = parts;
+      namesByLocale[locale] = referencedNames(parts);
     }
 
     if (hasComplexIcu) {
@@ -206,9 +316,9 @@ function buildCatalog(target) {
     }
 
     const localizations = {};
-    for (const [locale, value] of Object.entries(valuesByLocale)) {
+    for (const locale of Object.keys(valuesByLocale)) {
       localizations[locale] = {
-        stringUnit: { state: 'translated', value: toPositionalFormat(value, nameOrder) },
+        stringUnit: { state: 'translated', value: toPositionalFormat(partsByLocale[locale], nameOrder) },
       };
     }
     strings[key] = { localizations };
@@ -228,12 +338,24 @@ function generate(name) {
   const written = Object.keys(catalog.strings).length;
   console.log(`[${name}] ${target.output}`);
   console.log(`[${name}] 키 ${totalKeys}개 중 ${written}개 수록, ${skipped.length}개 스킵`);
-  if (skipped.length > 0) console.log(`[${name}] 스킵: ${skipped.join(', ')}`);
+  if (skipped.length > 0) {
+    // 스킵은 조용한 실패다 — 키가 카탈로그에서 빠지면 화면엔 키 문자열이 낭독되고 린터가
+    // 잡는 것은 Swift가 참조하는 키뿐이다. 지원 밖 ICU(select·few/many·중첩·인용)와
+    // 로케일 간 인자 이름 불일치는 정본 JSON을 고쳐야 하므로 생성을 실패시킨다.
+    console.error(`[${name}] 스킵: ${skipped.join(', ')}`);
+    process.exitCode = 1;
+  }
 }
 
-const arg = process.argv[2];
-if (!arg || !['app', 'kit', 'all'].includes(arg)) {
-  console.error('사용법: node ios/scripts/messages-to-xcstrings.mjs <app|kit|all>');
-  process.exit(1);
+// 테스트(src/lib/__tests__/xcstrings-plural.test.ts)가 변환 함수를 직접 부른다.
+export { parseIcu, referencedNames, dedupeInOrder, toPositionalFormat, buildCatalog, TARGETS };
+
+const isCli = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isCli) {
+  const arg = process.argv[2];
+  if (!arg || !['app', 'kit', 'all'].includes(arg)) {
+    console.error('사용법: node ios/scripts/messages-to-xcstrings.mjs <app|kit|all>');
+    process.exit(1);
+  }
+  for (const name of arg === 'all' ? ['app', 'kit'] : [arg]) generate(name);
 }
-for (const name of arg === 'all' ? ['app', 'kit'] : [arg]) generate(name);

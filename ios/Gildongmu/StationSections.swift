@@ -138,7 +138,7 @@ struct StationSectionsView: View {
             Section {
                 ForEach(facilities.groups, id: \.kind) { group in
                     // kind 한국어 라벨은 웹 SeoulMetroFacilities.tsx 미러
-                    Text(appLocalized("ios.station.kindCount", metroKindLabel(group.kind), String(group.facilities.count)))
+                    Text(appLocalized("ios.station.kindCount", metroKindLabel(group.kind), group.facilities.count))
                     ForEach(Array(group.facilities.enumerated()), id: \.offset) { _, facility in
                         Text(joinText(
                             facilityName(facility), facility.location, facility.floors,
@@ -164,7 +164,7 @@ struct StationSectionsView: View {
         guard let count else { return appLocalized("ios.station.countUnknown", label) }
         return count == 0
             ? appLocalized("ios.station.countNone", label)
-            : appLocalized("ios.station.countSome", label, String(count))
+            : appLocalized("ios.station.countSome", label, count)
     }
 
     /// 가동현황 텍스트(엘리베이터·에스컬레이터만 존재, 그 외 nil은 생략)

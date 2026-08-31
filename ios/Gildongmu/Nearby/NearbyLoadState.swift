@@ -143,12 +143,23 @@ func nearbyTitle(_ base: String, anchor: PlaceAnchor?) -> String {
     joinText(base, anchor.map { bilingual($0.name, roman: $0.nameRoman).primary })
 }
 
-/// 완료 통지 문구 조립부(문자열 불변). 0건도 문장으로.
+/// 완료 통지의 대상 종류. 종류별 완성 문장 키(A29) — 종전 "{count} {unit} nearby" +
+/// 단위 낱말 합성은 en "1 place nearby"를 만들 수 없고 fr은 어순까지 달랐다.
+enum NearbyCountKind {
+    case places, bikeStations, busStops, stations, events
+}
+
+/// 완료 통지 문구 조립부. 0건도 문장으로. 키는 리터럴 switch(check-xcstrings-keys 린터 계약).
 @MainActor
-func nearbyLoadedMessage(count: Int, unit: String) -> String {
-    count == 0
-        ? appLocalized("ios.nearby.announceEmpty")
-        : appLocalized("ios.nearby.announceCount", unit, String(count))
+func nearbyLoadedMessage(count: Int, kind: NearbyCountKind) -> String {
+    guard count > 0 else { return appLocalized("ios.nearby.announceEmpty") }
+    switch kind {
+    case .places: return appLocalized("ios.nearby.announcePlaces", count)
+    case .bikeStations: return appLocalized("ios.nearby.announceBikes", count)
+    case .busStops: return appLocalized("ios.nearby.announceStops", count)
+    case .stations: return appLocalized("ios.nearby.announceStations", count)
+    case .events: return appLocalized("ios.nearby.announceEvents", count)
+    }
 }
 
 /// 이벤트→VO 발화 매퍼 1벌(스펙 §4): 전락 통지 3종은 기존 announce* 그대로,

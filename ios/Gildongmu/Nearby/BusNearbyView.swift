@@ -21,7 +21,7 @@ final class BusNearbyModel {
                 return try await service.busStops(lat: coord.lat, lng: coord.lng)
             },
             onEvent: nearbyAnnouncer(loaded: { stops in
-                nearbyLoadedMessage(count: stops.count, unit: appLocalized("ios.nearby.unitStop"))
+                nearbyLoadedMessage(count: stops.count, kind: .busStops)
             }))
     }
 
@@ -115,7 +115,7 @@ struct BusNearbyView: View {
             return joinText(appLocalized("ios.nearby.routeNo", arrival.routeNo), arrival.routeType, lowFloor, message)
         }
         return joinText(appLocalized("ios.nearby.routeNo", arrival.routeNo), arrival.routeType, lowFloor,
-                        appLocalized("ios.nearby.stopsBefore", String(arrival.prevStationCount)),
+                        appLocalized("ios.nearby.stopsBefore", arrival.prevStationCount),
                         appLocalized("ios.nearby.minutesAway", String(max(1, arrival.arrivalSeconds / 60))))
     }
 }
