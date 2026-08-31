@@ -185,7 +185,7 @@ final class TransitGuideModel {
         tones.play(.start)
         let first = guideRoute.legs[0]
         var parts = [
-            appLocalized("transitGuide.started", String(guideRoute.legs.count)),
+            appLocalized("transitGuide.started", guideRoute.legs.count),
             waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
@@ -603,7 +603,7 @@ final class TransitGuideModel {
         }
         var parts = [
             lead,
-            appLocalized("transitGuide.started", String(guideRoute.legs.count)),
+            appLocalized("transitGuide.started", guideRoute.legs.count),
             waitContextText(first, isCurrentLeg: true),
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
@@ -641,9 +641,9 @@ final class TransitGuideModel {
             }
         } else {
             if let remaining = state.remaining {
-                parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
+                parts.append(appLocalized("transitGuide.remainingCount", remaining))
             } else if let count = leg.stationCount, state.phase == .riding {
-                parts.append(appLocalized("transitGuide.stationCountAbout", String(count)))
+                parts.append(appLocalized("transitGuide.stationCountAbout", count))
             }
             if let message = state.lastMessage, !message.isEmpty,
                let framed = frameText(leg, message, arrivalCode: state.lastArrivalCode) {
@@ -658,7 +658,7 @@ final class TransitGuideModel {
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.
         if state.signal == .tracking, let age = state.dataAgeSeconds {
-            parts.append(appLocalized("transitGuide.dataAge", String(age)))
+            parts.append(appLocalized("transitGuide.dataAge", age))
         } else if let updatedAt = state.lastUpdatedAt {
             parts.append(appLocalized("transitGuide.lastUpdated", Self.timeText(updatedAt)))
         }
@@ -719,7 +719,7 @@ final class TransitGuideModel {
                 ).candidates
                 refreshResponse = waitingReason == .unavailable
                     ? reasonText(.unavailable)
-                    : appLocalized("transitGuide.waitingCount", String(candidates.count))
+                    : appLocalized("transitGuide.waitingCount", candidates.count)
             }
         }
         refreshAnnounce = false
@@ -936,7 +936,7 @@ final class TransitGuideModel {
                 }
                 if let count = leg.stationCount {
                     parts.append(appLocalized(
-                        "transitGuide.boardedCount", leg.lineName, leg.alightName, String(count)))
+                        "transitGuide.boardedCount", leg.lineName, leg.alightName, count))
                 } else {
                     parts.append(appLocalized("transitGuide.boarded", leg.lineName, leg.alightName))
                 }
@@ -948,13 +948,13 @@ final class TransitGuideModel {
             if let framed {
                 parts.append(framed)
             } else if let remaining {
-                parts.append(appLocalized("transitGuide.remainingCount", String(remaining)))
+                parts.append(appLocalized("transitGuide.remainingCount", remaining))
             }
         case let .countdown(remaining, message, currentLocation, arrivalCode):
             // §12.3: 매 사다리마다 문맥 문장을 반복하지 않는다 — 프레임이 하차역을 밝힌다.
             // 지하철 99(운행중)는 프레임이 비어 잔여 수 문장으로 떨어진다(A27).
             let framed = message.isEmpty ? nil : (leg.map { frameText($0, message, arrivalCode: arrivalCode) } ?? message)
-            parts.append(framed ?? appLocalized("transitGuide.remainingCount", String(remaining)))
+            parts.append(framed ?? appLocalized("transitGuide.remainingCount", remaining))
             // 한 정거장 전 현재 역 병치(§12.2, 피드백 #10) — 잔여 ≥ 2 문장은 원문이
             // 현재 역을 이미 담아 병치하지 않는다(중복 금지).
             if remaining <= 1, let currentLocation, !currentLocation.isEmpty {

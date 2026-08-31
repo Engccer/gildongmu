@@ -95,7 +95,7 @@ final class SearchModel {
         } else if totalCount == 0 {
             message = appLocalized("ios.search.announceEmpty")
         } else {
-            message = appLocalized("ios.search.announceCount", String(totalCount))
+            message = appLocalized("ios.search.announceCount", totalCount)
         }
         AccessibilityNotification.Announcement(message).post()
     }

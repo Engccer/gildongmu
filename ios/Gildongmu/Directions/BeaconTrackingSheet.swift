@@ -412,7 +412,7 @@ struct BeaconTrackingSheet: View {
         guard let food = WalkHealth.foodComparison(kcal: kcal) else { return nil }
         if food.count > 1 {
             switch food.key {
-            case "ramyeon": return appLocalized("ios.beacon.food.ramyeonMany", "\(food.count)")
+            case "ramyeon": return appLocalized("ios.beacon.food.ramyeonMany", food.count)
             default: return nil
             }
         }

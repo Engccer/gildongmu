@@ -2332,25 +2332,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Board <line></line> at <from></from>, %1$@ stops"
+            "value": "Board <line></line> at <from></from>, {1, plural, one {%1$@ stop} other {%1$@ stops}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sube a <line></line> en <from></from>, %1$@ paradas"
+            "value": "Sube a <line></line> en <from></from>, {1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montez à bord de <line></line> à <from></from>, %1$@ arrêts"
+            "value": "Montez à bord de <line></line> à <from></from>, {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sali su <line></line> a <from></from>, %1$@ fermate"
+            "value": "Sali su <line></line> a <from></from>, {1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -2452,25 +2452,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transfer to <line></line> at <from></from>, %1$@ stops"
+            "value": "Transfer to <line></line> at <from></from>, {1, plural, one {%1$@ stop} other {%1$@ stops}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transborda a <line></line> en <from></from>, %1$@ paradas"
+            "value": "Transborda a <line></line> en <from></from>, {1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Changez pour <line></line> à <from></from>, %1$@ arrêts"
+            "value": "Changez pour <line></line> à <from></from>, {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambia per <line></line> a <from></from>, %1$@ fermate"
+            "value": "Cambia per <line></line> a <from></from>, {1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -3172,25 +3172,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ transfer(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ transfer} other {%3$@ transfers}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ transbordo(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ transbordo} other {%3$@ transbordos}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ correspondance(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ correspondance} other {%3$@ correspondances}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ cambio/i"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ cambio} other {%3$@ cambi}}"
           }
         },
         "ja": {
@@ -4172,25 +4172,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "There are %1$@ bus stops. %2$@"
+            "value": "{1, plural, one {There is %1$@ bus stop.} other {There are %1$@ bus stops.}} %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hay %1$@ paradas de autobús. %2$@"
+            "value": "{1, plural, one {Hay %1$@ parada de autobús.} other {Hay %1$@ paradas de autobús.}} %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il y a %1$@ arrêts de bus. %2$@"
+            "value": "{1, plural, one {Il y a %1$@ arrêt de bus.} other {Il y a %1$@ arrêts de bus.}} %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ci sono %1$@ fermate dell'autobus. %2$@"
+            "value": "{1, plural, one {C'è %1$@ fermata dell'autobus.} other {Ci sono %1$@ fermate dell'autobus.}} %2$@"
           }
         },
         "ja": {

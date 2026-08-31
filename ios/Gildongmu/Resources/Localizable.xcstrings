@@ -5092,25 +5092,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ available · %2$@ racks"
+            "value": "%1$@ available · {2, plural, one {%2$@ rack} other {%2$@ racks}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ disponibles · %2$@ anclajes"
+            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}} · {2, plural, one {%2$@ anclaje} other {%2$@ anclajes}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ disponibles · %2$@ bornes"
+            "value": "{1, plural, one {%1$@ disponible} other {%1$@ disponibles}} · {2, plural, one {%2$@ borne} other {%2$@ bornes}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ disponibili · %2$@ stalli"
+            "value": "{1, plural, one {%1$@ disponibile} other {%1$@ disponibili}} · {2, plural, one {%2$@ stallo} other {%2$@ stalli}}"
           }
         },
         "ja": {
@@ -5612,25 +5612,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route %1$@ %2$@, %3$@ stops away, in about %4$@ min"
+            "value": "Route %1$@ %2$@, {3, plural, one {%3$@ stop} other {%3$@ stops}} away, in about %4$@ min"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Línea %1$@ %2$@, a %3$@ paradas, en aprox. %4$@ min"
+            "value": "Línea %1$@ %2$@, a {3, plural, one {%3$@ parada} other {%3$@ paradas}}, en aprox. %4$@ min"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ligne %1$@ %2$@, à %3$@ arrêts, dans environ %4$@ min"
+            "value": "Ligne %1$@ %2$@, à {3, plural, one {%3$@ arrêt} other {%3$@ arrêts}}, dans environ %4$@ min"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Linea %1$@ %2$@, a %3$@ fermate, tra circa %4$@ min"
+            "value": "Linea %1$@ %2$@, a {3, plural, one {%3$@ fermata} other {%3$@ fermate}}, tra circa %4$@ min"
           }
         },
         "ja": {
@@ -8058,19 +8058,19 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lugares por reseñas de Naver"
+            "value": "{1, plural, one {%1$@ lugar} other {%1$@ lugares}} por reseñas de Naver"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lieux par avis Naver"
+            "value": "{1, plural, one {%1$@ lieu} other {%1$@ lieux}} par avis Naver"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ luoghi per recensioni Naver"
+            "value": "{1, plural, one {%1$@ luogo} other {%1$@ luoghi}} per recensioni Naver"
           }
         },
         "ja": {
@@ -10492,25 +10492,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Found %1$@ candidates."
+            "value": "Found {1, plural, one {%1$@ candidate} other {%1$@ candidates}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se encontraron %1$@ candidatos."
+            "value": "{1, plural, one {Se encontró %1$@ candidato} other {Se encontraron %1$@ candidatos}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ candidats trouvés."
+            "value": "{1, plural, one {%1$@ candidat trouvé} other {%1$@ candidats trouvés}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Trovati %1$@ candidati."
+            "value": "{1, plural, one {Trovato %1$@ candidato} other {Trovati %1$@ candidati}}."
           }
         },
         "ja": {
@@ -10932,19 +10932,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route guidance is ready for %1$@ modes."
+            "value": "Route guidance is ready for {1, plural, one {%1$@ mode} other {%1$@ modes}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía de ruta lista para %1$@ modos."
+            "value": "Guía de ruta lista para {1, plural, one {%1$@ modo} other {%1$@ modos}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraires prêts pour %1$@ modes."
+            "value": "Itinéraires prêts pour {1, plural, one {%1$@ mode} other {%1$@ modes}}."
           }
         },
         "it": {
@@ -13132,25 +13132,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "On %1$@, %2$@ stops left"
+            "value": "On %1$@, {2, plural, one {%2$@ stop} other {%2$@ stops}} left"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En %1$@, faltan %2$@ paradas"
+            "value": "En %1$@, {2, plural, one {falta %2$@ parada} other {faltan %2$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "À bord de %1$@, %2$@ arrêts restants"
+            "value": "À bord de %1$@, {2, plural, one {%2$@ arrêt restant} other {%2$@ arrêts restants}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "A bordo di %1$@, %2$@ fermate rimanenti"
+            "value": "A bordo di %1$@, {2, plural, one {%2$@ fermata rimanente} other {%2$@ fermate rimanenti}}"
           }
         },
         "ja": {
@@ -14012,25 +14012,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Car guidance started. %1$@ instructions, %2$@ total. %3$@"
+            "value": "Car guidance started. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía en coche iniciada. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Guía en coche iniciada. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage en voiture démarré. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Guidage en voiture démarré. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida in auto avviata. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Guida in auto avviata. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -14452,25 +14452,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Walking guidance started. %1$@ instructions, %2$@ total. %3$@"
+            "value": "Walking guidance started. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guía a pie iniciada. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Guía a pie iniciada. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guidage à pied démarré. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Guidage à pied démarré. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Guida a piedi avviata. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Guida a piedi avviata. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -16532,25 +16532,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A route from your current location is ready. %1$@ steps, %2$@ total. %3$@"
+            "value": "A route from your current location is ready. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "La ruta desde tu ubicación actual está lista. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "La ruta desde tu ubicación actual está lista. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un itinéraire depuis votre position actuelle est prêt. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Un itinéraire depuis votre position actuelle est prêt. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Un percorso dalla posizione attuale è pronto. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Un percorso dalla posizione attuale è pronto. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -16772,25 +16772,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Route recalculated from your current location. %1$@ instructions, %2$@ total. %3$@"
+            "value": "Route recalculated from your current location. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ruta recalculada desde tu ubicación actual. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Ruta recalculada desde tu ubicación actual. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire recalculé depuis votre position actuelle. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Itinéraire recalculé depuis votre position actuelle. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Percorso ricalcolato dalla tua posizione attuale. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Percorso ricalcolato dalla tua posizione attuale. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -16892,25 +16892,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switched to the recommended route. %1$@ steps, %2$@ total. %3$@"
+            "value": "Switched to the recommended route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cambió a la ruta recomendada. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Se cambió a la ruta recomendada. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire recommandé activé. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Itinéraire recommandé activé. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passato al percorso consigliato. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Passato al percorso consigliato. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -16932,25 +16932,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switched to the shortest route. %1$@ steps, %2$@ total. %3$@"
+            "value": "Switched to the shortest route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Se cambió a la ruta más corta. %1$@ indicaciones, %2$@ en total. %3$@"
+            "value": "Se cambió a la ruta más corta. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Itinéraire le plus court activé. %1$@ instructions, %2$@ au total. %3$@"
+            "value": "Itinéraire le plus court activé. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Passato al percorso più breve. %1$@ indicazioni, %2$@ in totale. %3$@"
+            "value": "Passato al percorso più breve. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
           }
         },
         "ja": {
@@ -17612,25 +17612,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That's about %1$@ bowls of ramyeon!"
+            "value": "That's about {1, plural, one {%1$@ bowl} other {%1$@ bowls}} of ramyeon!"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "¡Equivale a unos %1$@ cuencos de ramyeon!"
+            "value": "¡Equivale a {1, plural, one {un cuenco} other {unos %1$@ cuencos}} de ramyeon!"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "C'est l'équivalent d'environ %1$@ bols de ramyeon !"
+            "value": "C'est l'équivalent d'environ {1, plural, one {%1$@ bol} other {%1$@ bols}} de ramyeon !"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Equivale a circa %1$@ ciotole di ramyeon!"
+            "value": "Equivale a circa {1, plural, one {%1$@ ciotola} other {%1$@ ciotole}} di ramyeon!"
           }
         },
         "ja": {
@@ -17812,13 +17812,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You walked %1$@ steps on this leg and burned about %2$@ kcal."
+            "value": "You walked {1, plural, one {%1$@ step} other {%1$@ steps}} on this leg and burned about %2$@ kcal."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "En este tramo caminaste %1$@ pasos y quemaste unas %2$@ kcal."
+            "value": "En este tramo caminaste {1, plural, one {%1$@ paso} other {%1$@ pasos}} y quemaste unas %2$@ kcal."
           }
         },
         "fr": {
@@ -17830,7 +17830,7 @@
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "In questo tratto hai fatto %1$@ passi e bruciato circa %2$@ kcal."
+            "value": "In questo tratto hai fatto {1, plural, one {%1$@ passo} other {%1$@ passi}} e bruciato circa %2$@ kcal."
           }
         },
         "ja": {
@@ -18012,25 +18012,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ addresses"
+            "value": "{1, plural, one {%1$@ address} other {%1$@ addresses}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ direcciones"
+            "value": "{1, plural, one {%1$@ dirección} other {%1$@ direcciones}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ adresses"
+            "value": "{1, plural, one {%1$@ adresse} other {%1$@ adresses}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ indirizzi"
+            "value": "{1, plural, one {%1$@ indirizzo} other {%1$@ indirizzi}}"
           }
         },
         "ja": {
@@ -18532,25 +18532,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ places"
+            "value": "{1, plural, one {%1$@ place} other {%1$@ places}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lugares"
+            "value": "{1, plural, one {%1$@ lugar} other {%1$@ lugares}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lieux"
+            "value": "{1, plural, one {%1$@ lieu} other {%1$@ lieux}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ luoghi"
+            "value": "{1, plural, one {%1$@ luogo} other {%1$@ luoghi}}"
           }
         },
         "ja": {
@@ -18892,25 +18892,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ web results"
+            "value": "{1, plural, one {%1$@ web result} other {%1$@ web results}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ resultados web"
+            "value": "{1, plural, one {%1$@ resultado web} other {%1$@ resultados web}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ résultats web"
+            "value": "{1, plural, one {%1$@ résultat web} other {%1$@ résultats web}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ risultati web"
+            "value": "{1, plural, one {%1$@ risultato web} other {%1$@ risultati web}}"
           }
         },
         "ja": {
@@ -20561,42 +20561,42 @@
         }
       }
     },
-    "ios.nearby.announceCount": {
+    "ios.nearby.announceBikes": {
       "localizations": {
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변 %1$@ %2$@개"
+            "value": "주변 대여소 %1$@곳"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ %1$@ nearby"
+            "value": "{1, plural, one {%1$@ bike station} other {%1$@ bike stations}} nearby"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ %1$@ cerca"
+            "value": "{1, plural, one {%1$@ estación} other {%1$@ estaciones}} cerca"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ %1$@ à proximité"
+            "value": "{1, plural, one {%1$@ station de vélo} other {%1$@ stations de vélo}} à proximité"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%2$@ %1$@ nelle vicinanze"
+            "value": "{1, plural, one {%1$@ stazione} other {%1$@ stazioni}} nelle vicinanze"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "周辺の%1$@%2$@件"
+            "value": "周辺のステーション%1$@件"
           }
         }
       }
@@ -20637,6 +20637,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "周辺に結果がありません"
+          }
+        }
+      }
+    },
+    "ios.nearby.announceEvents": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 문화행사 %1$@건"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ event} other {%1$@ events}} nearby"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ evento} other {%1$@ eventos}} cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ événement} other {%1$@ événements}} à proximité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ evento} other {%1$@ eventi}} nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺のイベント%1$@件"
+          }
+        }
+      }
+    },
+    "ios.nearby.announcePlaces": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 장소 %1$@곳"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ place} other {%1$@ places}} nearby"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ lugar} other {%1$@ lugares}} cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ lieu} other {%1$@ lieux}} à proximité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ luogo} other {%1$@ luoghi}} nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺のスポット%1$@件"
+          }
+        }
+      }
+    },
+    "ios.nearby.announceStations": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 역 %1$@곳"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}} nearby"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ estación} other {%1$@ estaciones}} cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}} à proximité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ stazione} other {%1$@ stazioni}} nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺の駅%1$@件"
+          }
+        }
+      }
+    },
+    "ios.nearby.announceStops": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "주변 정류소 %1$@곳"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ bus stop} other {%1$@ bus stops}} nearby"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ parada} other {%1$@ paradas}} cerca"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ arrêt} other {%1$@ arrêts}} à proximité"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "{1, plural, one {%1$@ fermata} other {%1$@ fermate}} nelle vicinanze"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "周辺のバス停%1$@件"
           }
         }
       }
@@ -21292,25 +21452,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bikes available"
+            "value": "{1, plural, one {%1$@ bike available} other {%1$@ bikes available}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bicis disponibles"
+            "value": "{1, plural, one {%1$@ bici disponible} other {%1$@ bicis disponibles}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ vélos disponibles"
+            "value": "{1, plural, one {%1$@ vélo disponible} other {%1$@ vélos disponibles}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bici disponibili"
+            "value": "{1, plural, one {%1$@ bici disponibile} other {%1$@ bici disponibili}}"
           }
         },
         "ja": {
@@ -22132,25 +22292,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ racks"
+            "value": "{1, plural, one {%1$@ rack} other {%1$@ racks}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ soportes"
+            "value": "{1, plural, one {%1$@ soporte} other {%1$@ soportes}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ bornes"
+            "value": "{1, plural, one {%1$@ borne} other {%1$@ bornes}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ rastrelliere"
+            "value": "{1, plural, one {%1$@ rastrelliera} other {%1$@ rastrelliere}}"
           }
         },
         "ja": {
@@ -22652,25 +22812,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stops away"
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} away"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "a %1$@ paradas"
+            "value": "a {1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "à %1$@ arrêts"
+            "value": "à {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "a %1$@ fermate"
+            "value": "a {1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -22997,206 +23157,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "現在の気温%1$@度"
-          }
-        }
-      }
-    },
-    "ios.nearby.unitBike": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "대여소"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bike stations"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "estaciones"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stations de vélo"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stazioni"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ステーション"
-          }
-        }
-      }
-    },
-    "ios.nearby.unitEvent": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "건"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "events"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "eventos"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "événements"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "eventi"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "件"
-          }
-        }
-      }
-    },
-    "ios.nearby.unitPlace": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "곳"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "places"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "lugares"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "lieux"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "luoghi"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "スポット"
-          }
-        }
-      }
-    },
-    "ios.nearby.unitStation": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "역"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stations"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "estaciones"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stations"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "stazioni"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "駅"
-          }
-        }
-      }
-    },
-    "ios.nearby.unitStop": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "정류소"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bus stops"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "paradas"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "arrêts"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "fermate"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "バス停"
           }
         }
       }
@@ -24252,25 +24212,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stations"
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ estaciones"
+            "value": "{1, plural, one {%1$@ estación} other {%1$@ estaciones}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stations"
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stazioni"
+            "value": "{1, plural, one {%1$@ stazione} other {%1$@ stazioni}}"
           }
         },
         "ja": {
@@ -24292,25 +24252,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stops"
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ paradas"
+            "value": "{1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ arrêts"
+            "value": "{1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fermate"
+            "value": "{1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -24452,25 +24412,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ transfers"
+            "value": "{1, plural, one {%1$@ transfer} other {%1$@ transfers}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ transbordos"
+            "value": "{1, plural, one {%1$@ transbordo} other {%1$@ transbordos}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ correspondances"
+            "value": "{1, plural, one {%1$@ correspondance} other {%1$@ correspondances}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ cambi"
+            "value": "{1, plural, one {%1$@ cambio} other {%1$@ cambi}}"
           }
         },
         "ja": {
@@ -24532,25 +24492,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ results"
+            "value": "{1, plural, one {%1$@ result} other {%1$@ results}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ resultados"
+            "value": "{1, plural, one {%1$@ resultado} other {%1$@ resultados}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ résultats"
+            "value": "{1, plural, one {%1$@ résultat} other {%1$@ résultats}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ risultati"
+            "value": "{1, plural, one {%1$@ risultato} other {%1$@ risultati}}"
           }
         },
         "ja": {
@@ -34092,25 +34052,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Board <line></line> at <from></from>, %1$@ stops"
+            "value": "Board <line></line> at <from></from>, {1, plural, one {%1$@ stop} other {%1$@ stops}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sube a <line></line> en <from></from>, %1$@ paradas"
+            "value": "Sube a <line></line> en <from></from>, {1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Montez à bord de <line></line> à <from></from>, %1$@ arrêts"
+            "value": "Montez à bord de <line></line> à <from></from>, {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sali su <line></line> a <from></from>, %1$@ fermate"
+            "value": "Sali su <line></line> a <from></from>, {1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -34212,25 +34172,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transfer to <line></line> at <from></from>, %1$@ stops"
+            "value": "Transfer to <line></line> at <from></from>, {1, plural, one {%1$@ stop} other {%1$@ stops}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Transborda a <line></line> en <from></from>, %1$@ paradas"
+            "value": "Transborda a <line></line> en <from></from>, {1, plural, one {%1$@ parada} other {%1$@ paradas}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Changez pour <line></line> à <from></from>, %1$@ arrêts"
+            "value": "Changez pour <line></line> à <from></from>, {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cambia per <line></line> a <from></from>, %1$@ fermate"
+            "value": "Cambia per <line></line> a <from></from>, {1, plural, one {%1$@ fermata} other {%1$@ fermate}}"
           }
         },
         "ja": {
@@ -34932,25 +34892,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ transfer(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ transfer} other {%3$@ transfers}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ transbordo(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ transbordo} other {%3$@ transbordos}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ correspondance(s)"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ correspondance} other {%3$@ correspondances}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ min, %2$@ won, %3$@ cambio/i"
+            "value": "%1$@ min, %2$@ won, {3, plural, one {%3$@ cambio} other {%3$@ cambi}}"
           }
         },
         "ja": {
@@ -35092,25 +35052,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ addresses"
+            "value": "{1, plural, one {%1$@ address} other {%1$@ addresses}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ direcciones"
+            "value": "{1, plural, one {%1$@ dirección} other {%1$@ direcciones}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ adresses"
+            "value": "{1, plural, one {%1$@ adresse} other {%1$@ adresses}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ indirizzi"
+            "value": "{1, plural, one {%1$@ indirizzo} other {%1$@ indirizzi}}"
           }
         },
         "ja": {
@@ -35532,25 +35492,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ places"
+            "value": "{1, plural, one {%1$@ place} other {%1$@ places}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lugares"
+            "value": "{1, plural, one {%1$@ lugar} other {%1$@ lugares}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lieux"
+            "value": "{1, plural, one {%1$@ lieu} other {%1$@ lieux}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ luoghi"
+            "value": "{1, plural, one {%1$@ luogo} other {%1$@ luoghi}}"
           }
         },
         "ja": {
@@ -35812,25 +35772,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ web results"
+            "value": "{1, plural, one {%1$@ web result} other {%1$@ web results}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ resultados web"
+            "value": "{1, plural, one {%1$@ resultado web} other {%1$@ resultados web}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ résultats web"
+            "value": "{1, plural, one {%1$@ résultat web} other {%1$@ résultats web}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ risultati web"
+            "value": "{1, plural, one {%1$@ risultato web} other {%1$@ risultati web}}"
           }
         },
         "ja": {
@@ -39652,25 +39612,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ places"
+            "value": "{1, plural, one {%1$@ place} other {%1$@ places}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lugares"
+            "value": "{1, plural, one {%1$@ lugar} other {%1$@ lugares}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ lieux"
+            "value": "{1, plural, one {%1$@ lieu} other {%1$@ lieux}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ luoghi"
+            "value": "{1, plural, one {%1$@ luogo} other {%1$@ luoghi}}"
           }
         },
         "ja": {
@@ -42332,25 +42292,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Boarded %1$@. Get off at %2$@, %3$@ stops."
+            "value": "Boarded %1$@. Get off at %2$@, {3, plural, one {%3$@ stop} other {%3$@ stops}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "A bordo del %1$@. Baja en %2$@, %3$@ paradas."
+            "value": "A bordo del %1$@. Baja en %2$@, {3, plural, one {%3$@ parada} other {%3$@ paradas}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "À bord du %1$@. Descendez à %2$@, %3$@ arrêts."
+            "value": "À bord du %1$@. Descendez à %2$@, {3, plural, one {%3$@ arrêt} other {%3$@ arrêts}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "A bordo del %1$@. Scendi a %2$@, %3$@ fermate."
+            "value": "A bordo del %1$@. Scendi a %2$@, {3, plural, one {%3$@ fermata} other {%3$@ fermate}}."
           }
         },
         "ja": {
@@ -42772,25 +42732,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "As of %1$@ seconds ago."
+            "value": "As of {1, plural, one {%1$@ second} other {%1$@ seconds}} ago."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Datos de hace %1$@ segundos."
+            "value": "Datos de hace {1, plural, one {%1$@ segundo} other {%1$@ segundos}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Données d'il y a %1$@ secondes."
+            "value": "Données d'il y a {1, plural, one {%1$@ seconde} other {%1$@ secondes}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dati di %1$@ secondi fa."
+            "value": "Dati di {1, plural, one {%1$@ secondo} other {%1$@ secondi}} fa."
           }
         },
         "ja": {
@@ -43892,25 +43852,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stops remaining."
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} remaining."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Quedan %1$@ paradas."
+            "value": "{1, plural, one {Queda %1$@ parada} other {Quedan %1$@ paradas}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ arrêts restants."
+            "value": "{1, plural, one {%1$@ arrêt restant} other {%1$@ arrêts restants}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fermate rimanenti."
+            "value": "{1, plural, one {%1$@ fermata rimanente} other {%1$@ fermate rimanenti}}."
           }
         },
         "ja": {
@@ -44212,25 +44172,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Starting transit guidance. %1$@ ride segments."
+            "value": "Starting transit guidance. {1, plural, one {%1$@ ride segment} other {%1$@ ride segments}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Iniciando la guía de transporte público. %1$@ tramos."
+            "value": "Iniciando la guía de transporte público. {1, plural, one {%1$@ tramo} other {%1$@ tramos}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Démarrage du guidage en transports. %1$@ segments."
+            "value": "Démarrage du guidage en transports. {1, plural, one {%1$@ segment} other {%1$@ segments}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Avvio della guida sui mezzi pubblici. %1$@ tratte."
+            "value": "Avvio della guida sui mezzi pubblici. {1, plural, one {%1$@ tratta} other {%1$@ tratte}}."
           }
         },
         "ja": {
@@ -44612,25 +44572,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "About %1$@ stops."
+            "value": "About {1, plural, one {%1$@ stop} other {%1$@ stops}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Unas %1$@ paradas."
+            "value": "Aproximadamente {1, plural, one {%1$@ parada} other {%1$@ paradas}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Environ %1$@ arrêts."
+            "value": "Environ {1, plural, one {%1$@ arrêt} other {%1$@ arrêts}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Circa %1$@ fermate."
+            "value": "Circa {1, plural, one {%1$@ fermata} other {%1$@ fermate}}."
           }
         },
         "ja": {
@@ -45252,25 +45212,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stops on this leg"
+            "value": "{1, plural, one {%1$@ stop} other {%1$@ stops}} on this leg"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ paradas en este tramo"
+            "value": "{1, plural, one {%1$@ parada} other {%1$@ paradas}} en este tramo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ arrêts sur ce tronçon"
+            "value": "{1, plural, one {%1$@ arrêt} other {%1$@ arrêts}} sur ce tronçon"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ fermate in questa tratta"
+            "value": "{1, plural, one {%1$@ fermata} other {%1$@ fermate}} in questa tratta"
           }
         },
         "ja": {
@@ -45292,25 +45252,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stations on this leg"
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}} on this leg"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ estaciones en este tramo"
+            "value": "{1, plural, one {%1$@ estación} other {%1$@ estaciones}} en este tramo"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stations sur ce tronçon"
+            "value": "{1, plural, one {%1$@ station} other {%1$@ stations}} sur ce tronçon"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ stazioni in questa tratta"
+            "value": "{1, plural, one {%1$@ stazione} other {%1$@ stazioni}} in questa tratta"
           }
         },
         "ja": {
@@ -45452,25 +45412,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ boarding options."
+            "value": "{1, plural, one {%1$@ boarding option} other {%1$@ boarding options}}."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ opciones de embarque."
+            "value": "{1, plural, one {%1$@ opción de embarque} other {%1$@ opciones de embarque}}."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ options d'embarquement."
+            "value": "{1, plural, one {%1$@ option d'embarquement} other {%1$@ options d'embarquement}}."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ opzioni di salita."
+            "value": "{1, plural, one {%1$@ opzione di salita} other {%1$@ opzioni di salita}}."
           }
         },
         "ja": {
@@ -46172,25 +46132,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, %2$@ (%3$@ device(s))"
+            "value": "%1$@, %2$@ ({3, plural, one {%3$@ device} other {%3$@ devices}})"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, %2$@ (%3$@ dispositivo(s))"
+            "value": "%1$@, %2$@ ({3, plural, one {%3$@ dispositivo} other {%3$@ dispositivos}})"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, %2$@ (%3$@ dispositif(s))"
+            "value": "%1$@, %2$@ ({3, plural, one {%3$@ dispositif} other {%3$@ dispositifs}})"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@, %2$@ (%3$@ dispositivo/i)"
+            "value": "%1$@, %2$@ ({3, plural, one {%3$@ dispositivo} other {%3$@ dispositivi}})"
           }
         },
         "ja": {
@@ -46212,25 +46172,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ device(s) within 300m"
+            "value": "{1, plural, one {%1$@ device} other {%1$@ devices}} within 300m"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ dispositivo(s) en un radio de 300 m"
+            "value": "{1, plural, one {%1$@ dispositivo} other {%1$@ dispositivos}} en un radio de 300 m"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ dispositif(s) dans un rayon de 300 m"
+            "value": "{1, plural, one {%1$@ dispositif} other {%1$@ dispositifs}} dans un rayon de 300 m"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ dispositivo/i entro 300 m"
+            "value": "{1, plural, one {%1$@ dispositivo} other {%1$@ dispositivi}} entro 300 m"
           }
         },
         "ja": {
@@ -47252,25 +47212,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ crosswalks/tactile paving points"
+            "value": "{1, plural, one {%1$@ crosswalk/tactile paving point} other {%1$@ crosswalks/tactile paving points}}"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ pasos de peatones/puntos de pavimento táctil"
+            "value": "{1, plural, one {%1$@ paso de peatones/punto de pavimento táctil} other {%1$@ pasos de peatones/puntos de pavimento táctil}}"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ passages piétons/bandes podotactiles"
+            "value": "{1, plural, one {%1$@ passage piéton/bande podotactile} other {%1$@ passages piétons/bandes podotactiles}}"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ attraversamenti pedonali/punti di pavimentazione tattile"
+            "value": "{1, plural, one {%1$@ attraversamento pedonale/punto di pavimentazione tattile} other {%1$@ attraversamenti pedonali/punti di pavimentazione tattile}}"
           }
         },
         "ja": {
@@ -49932,25 +49892,25 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "There are %1$@ bus stops. %2$@"
+            "value": "{1, plural, one {There is %1$@ bus stop.} other {There are %1$@ bus stops.}} %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hay %1$@ paradas de autobús. %2$@"
+            "value": "{1, plural, one {Hay %1$@ parada de autobús.} other {Hay %1$@ paradas de autobús.}} %2$@"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il y a %1$@ arrêts de bus. %2$@"
+            "value": "{1, plural, one {Il y a %1$@ arrêt de bus.} other {Il y a %1$@ arrêts de bus.}} %2$@"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ci sono %1$@ fermate dell'autobus. %2$@"
+            "value": "{1, plural, one {C'è %1$@ fermata dell'autobus.} other {Ci sono %1$@ fermate dell'autobus.}} %2$@"
           }
         },
         "ja": {

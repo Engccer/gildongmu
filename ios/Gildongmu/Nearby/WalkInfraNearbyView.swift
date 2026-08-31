@@ -53,7 +53,7 @@ func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
     switch walk.audioSignals {
     case .ok(let data):
         audio = data.deviceCount > 0
-            ? appLocalized("walkInfra.audioSummary", String(data.deviceCount))
+            ? appLocalized("walkInfra.audioSummary", data.deviceCount)
             : appLocalized("walkInfra.audioNone")
     case .unsupported: audio = appLocalized("walkInfra.audioUnsupported")
     case .error: audio = appLocalized("walkInfra.audioError")
@@ -62,7 +62,7 @@ func walkInfraLiveSummary(_ walk: WalkInfrastructure) -> String {
     switch walk.osm {
     case .ok(let data):
         osm = data.listedCount > 0
-            ? appLocalized("walkInfra.osmSummary", String(data.listedCount))
+            ? appLocalized("walkInfra.osmSummary", data.listedCount)
             : appLocalized("walkInfra.osmEmpty")
     case .unsupported: osm = appLocalized("walkInfra.osmUnsupported")
     case .error: osm = appLocalized("walkInfra.osmError")
@@ -130,7 +130,7 @@ struct WalkInfraNearbyView: View {
             case .ok(let data):
                 if data.deviceCount > 0 {
                     // deviceCount는 sites(최대 5) 절단 전 총수 — 요약이 절단을 정직 표기
-                    distanceText(appLocalized("walkInfra.audioSummary", String(data.deviceCount)))
+                    distanceText(appLocalized("walkInfra.audioSummary", data.deviceCount))
                     ForEach(Array(data.sites.enumerated()), id: \.offset) { _, site in
                         distanceText(audioSiteText(site))
                     }
@@ -237,10 +237,10 @@ struct WalkInfraNearbyView: View {
         guard let direction = bearingKorean(site.bearing) else {
             // 미지 방위(계약상 도달 희박): 빈 방위를 채우면 선행 공백·쉼표가 남는다 —
             // 포맷 결과에서 잔여 구분자를 걷어내 문구를 깨끗하게(itemLocationText 동형 처리).
-            return appLocalized("walkInfra.audioSite", "", distance, String(site.deviceCount))
+            return appLocalized("walkInfra.audioSite", "", distance, site.deviceCount)
                 .trimmingCharacters(in: CharacterSet(charactersIn: " ,"))
         }
-        return appLocalized("walkInfra.audioSite", direction, distance, String(site.deviceCount))
+        return appLocalized("walkInfra.audioSite", direction, distance, site.deviceCount)
     }
 
     private func itemLocationText(_ feature: WalkFeature) -> String {

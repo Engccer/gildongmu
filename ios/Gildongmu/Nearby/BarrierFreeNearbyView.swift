@@ -23,7 +23,7 @@ final class BarrierFreeNearbyModel {
             },
             willCommit: { [weak self] _ in self?.window.reset() },   // 커밋과 원자(스펙 §4)
             onEvent: nearbyAnnouncer(loaded: { places in
-                nearbyLoadedMessage(count: places.count, unit: appLocalized("ios.nearby.unitPlace"))
+                nearbyLoadedMessage(count: places.count, kind: .places)
             }))
     }
 

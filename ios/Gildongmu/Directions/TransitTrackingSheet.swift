@@ -376,7 +376,7 @@ struct TransitTrackingSheet: View {
             } label: {
                 Text(appLocalized(
                     leg.mode == "subway" ? "transitGuide.viaStopsTrain" : "transitGuide.viaStopsBus",
-                    String(leg.viaStops.count)
+                    leg.viaStops.count
                 ))
             }
         }

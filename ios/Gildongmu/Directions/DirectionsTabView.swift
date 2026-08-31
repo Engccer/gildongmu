@@ -430,7 +430,7 @@ final class DirectionsModel {
         resultsRevision += 1
         // 완료 통지는 합산 1문장뿐(수단별 개별 통지 금지). 포커스 이동은 뷰가 revision으로.
         announce(built.successCount > 0
-            ? appLocalized("directions.readySummary", String(built.successCount))
+            ? appLocalized("directions.readySummary", built.successCount)
             : appLocalized("directions.allFailed"))
     }
 
@@ -1230,7 +1230,7 @@ struct DirectionsTabView: View {
         case .geoError: appLocalized("directions.geoError")
         case .outOfCoverage: appLocalized("ios.common.outOfCoverage")
         case .settled(let count):
-            count > 0 ? appLocalized("directions.readySummary", String(count)) : appLocalized("directions.allFailed")
+            count > 0 ? appLocalized("directions.readySummary", count) : appLocalized("directions.allFailed")
         }
     }
 

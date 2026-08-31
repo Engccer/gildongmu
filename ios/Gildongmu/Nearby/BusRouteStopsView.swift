@@ -19,7 +19,7 @@ final class BusRouteStopsModel {
                 try await service.busRouteStops(source: source, cityCode: cityCode, routeId: routeId)
             },
             onEvent: nearbyAnnouncer(loaded: { stops in
-                nearbyLoadedMessage(count: stops.count, unit: appLocalized("ios.nearby.unitStop"))
+                nearbyLoadedMessage(count: stops.count, kind: .busStops)
             }))
     }
 

@@ -46,9 +46,9 @@
       "suggestion3": "How's the air quality right now?",
       "suggestion4": "Any good places nearby to go with kids?",
       "openPlace": "View details for {name}",
-      "placesHeading": "{count} places",
-      "addressesHeading": "{count} addresses",
-      "webResultsHeading": "{count} web results",
+      "placesHeading": "{count, plural, one {# place} other {# places}}",
+      "addressesHeading": "{count, plural, one {# address} other {# addresses}}",
+      "webResultsHeading": "{count, plural, one {# web result} other {# web results}}",
       "sourcesHeading": "Sources",
       "sending": "Sending",
       "emptyAnswer": "Couldn't prepare a response",
@@ -89,7 +89,7 @@
       "webSection": "Web search",
       "announceFailed": "Search failed.",
       "announceEmpty": "No results",
-      "announceCount": "{count} results"
+      "announceCount": "{count, plural, one {# result} other {# results}}"
     },
     "place": {
       "call": "Call",
@@ -114,12 +114,12 @@
       "taxiFare": "taxi fare about {won} KRW",
       "tollFare": "tolls {won} KRW",
       "fare": "fare {won} KRW",
-      "transfers": "{count} transfers",
+      "transfers": "{count, plural, one {# transfer} other {# transfers}}",
       "walkMinutes": "walk {minutes} min",
       "board": "board at {name}",
       "alight": "get off at {name}",
-      "stopCount": "{count} stops",
-      "stationCount": "{count} stations",
+      "stopCount": "{count, plural, one {# stop} other {# stops}}",
+      "stationCount": "{count, plural, one {# station} other {# stations}}",
       "legMinutes": "{minutes} min"
     },
     "station": {
@@ -150,18 +150,13 @@
       "events": "Cultural events",
       "conditions": "Weather & air quality",
       "announceEmpty": "No nearby results",
-      "announceCount": "{count} {unit} nearby",
       "refreshFailed": "Refresh failed. Keeping previous information",
       "refreshDenied": "Couldn't refresh because location permission is off",
-      "unitPlace": "places",
-      "unitBike": "bike stations",
-      "unitStop": "bus stops",
-      "unitStation": "stations",
       "directionSuffixed": "to the {direction}",
       "aroundEmpty": "No places to show nearby",
       "barrierFreeEmpty": "No barrier-free attractions nearby",
-      "bikesAvailable": "{count} bikes available",
-      "racksTotal": "{count} racks",
+      "bikesAvailable": "{count, plural, one {# bike available} other {# bikes available}}",
+      "racksTotal": "{count, plural, one {# rack} other {# racks}}",
       "bikeEmpty": "No bike stations nearby",
       "arrivalUnavailable": "Couldn't load arrival info",
       "noBusArrivals": "No buses due",
@@ -200,7 +195,6 @@
       "rainSnow": "Rain or snow",
       "airStationLine": "{name} monitoring station, {distance}km",
       "eventsEmpty": "No cultural events are running near you today",
-      "unitEvent": "events",
       "subwayClosed": "Not running now. First train %@",
       "subwayNoRealtime": "Real-time arrivals are not available for this station",
       "refreshReduced": "Couldn’t refresh because Precise Location is off",
@@ -212,7 +206,12 @@
       "aroundLoadedManual": "Surroundings of the set location are ready",
       "aroundPlacesHeading": "Shops and facilities nearby",
       "aroundPlacesFailed": "Could not load nearby shops and facilities",
-      "stopsBefore": "{count} stops away"
+      "stopsBefore": "{count, plural, one {# stop} other {# stops}} away",
+      "announcePlaces": "{count, plural, one {# place} other {# places}} nearby",
+      "announceBikes": "{count, plural, one {# bike station} other {# bike stations}} nearby",
+      "announceStops": "{count, plural, one {# bus stop} other {# bus stops}} nearby",
+      "announceStations": "{count, plural, one {# station} other {# stations}} nearby",
+      "announceEvents": "{count, plural, one {# event} other {# events}} nearby"
     },
     "settings": {
       "title": "Settings",
@@ -260,7 +259,7 @@
       "arrivedPresumedHeading": "Presumed arrival",
       "endedHeading": "Guidance ended",
       "soundBackgroundUnavailable": "Guide sounds will not play while the screen is off or another app is in use.",
-      "healthSummary": "You walked {steps} steps on this leg and burned about {kcal} kcal.",
+      "healthSummary": "You walked {steps, plural, one {# step} other {# steps}} on this leg and burned about {kcal} kcal.",
       "healthWeightNotice": "The calorie figure above uses the adult average of {kg} kg. Enter your weight in Settings for a more accurate estimate. It never leaves your device.",
       "healthEnterWeight": "Enter weight",
       "food": {
@@ -275,7 +274,7 @@
         "hotteok": "That's about one hotteok (Korean sweet pancake)!",
         "riceBowl": "That's about one bowl of rice (bap)!",
         "ramyeon": "That's about one bowl of ramyeon!",
-        "ramyeonMany": "That's about {n} bowls of ramyeon!"
+        "ramyeonMany": "That's about {n, plural, one {# bowl} other {# bowls}} of ramyeon!"
       },
       "carWalkHandoffStart": "Start walking guidance from here"
     },
@@ -324,9 +323,9 @@
     "guideStartWalkShortest": "Start shortest route guidance"
   },
   "guide": {
-    "switchedToShortest": "Switched to the shortest route. {count} steps, {distance} total. {first}",
-    "switchedToRecommended": "Switched to the recommended route. {count} steps, {distance} total. {first}",
-    "proposalReady": "A route from your current location is ready. {count} steps, {distance} total. {first}",
+    "switchedToShortest": "Switched to the shortest route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+    "switchedToRecommended": "Switched to the recommended route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
+    "proposalReady": "A route from your current location is ready. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "proposalAdopt": "Restart guidance from current location",
     "viewAlternative": "View alternative route",
     "adoptAlternative": "Switch guidance to this route",

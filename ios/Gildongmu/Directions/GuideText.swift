@@ -136,7 +136,7 @@ enum GuideText {
     static func start(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
             "guide.detailStart",
-            String(route.steps.count),
+            route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )
@@ -146,7 +146,7 @@ enum GuideText {
     static func carStart(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
             "guide.carStart",
-            String(route.steps.count),
+            route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )
@@ -160,7 +160,7 @@ enum GuideText {
     static func reroute(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
             "guide.rerouteDone",
-            String(route.steps.count),
+            route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )
@@ -171,7 +171,7 @@ enum GuideText {
     static func variantSwitch(route: GuideRoute, firstIndices: [Int], shortest: Bool) -> String {
         appLocalized(
             shortest ? "guide.switchedToShortest" : "guide.switchedToRecommended",
-            String(route.steps.count),
+            route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )
@@ -183,7 +183,7 @@ enum GuideText {
     static func proposalReady(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
             "guide.proposalReady",
-            String(route.steps.count),
+            route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
         )

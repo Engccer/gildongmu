@@ -94,7 +94,7 @@ func transitSummaryText(_ summary: TransitRouteSummary) -> String {
     joinText(
         appLocalized("ios.route.durationMinutes", String(summary.totalMinutes)),
         appLocalized("ios.route.fare", wonText(summary.fare)),
-        appLocalized("ios.route.transfers", String(summary.transfers)),
+        appLocalized("ios.route.transfers", summary.transfers),
         // 도보 0분은 생략(웹 TransitRouteResult의 walkMinutes > 0 조건 동형)
         summary.walkMinutes > 0 ? appLocalized("ios.route.walkMinutes", String(summary.walkMinutes)) : nil)
 }
@@ -177,8 +177,11 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil, name
         }
     }
     // ko는 두 키가 같은 "정거장"이라 분기가 무의미해 보이지만 지우지 말 것 —
-    // en(stops/stations)·ja(バス停/駅)는 수단별로 단어가 갈린다.
-    let countKey = leg.mode == "bus" ? appLocalized("ios.route.stopCount") : appLocalized("ios.route.stationCount")
+    // en(stops/stations)·ja(バス停/駅)는 수단별로 단어가 갈린다. 키마다 수량을 인자로
+    // 직접 넘긴다(A29) — 포맷을 먼저 꺼내 두고 나중에 채우면 복수 블록 해석기를 우회한다.
+    let countText: (Int) -> String = {
+        leg.mode == "bus" ? appLocalized("ios.route.stopCount", $0) : appLocalized("ios.route.stationCount", $0)
+    }
     // 운행 밖만 표기(정상·정보없음은 침묵). 별도 Text로 쪼개면 접근성 객체가 갈라지므로
     // joinText로 같은 한 줄에 합친다.
     var serviceOutside: String?
@@ -200,7 +203,7 @@ func transitLegText(_ leg: TransitRouteLeg, destinationName: String? = nil, name
         lineText,
         fromName.map { appLocalized("ios.route.board", $0) },
         toName.map { appLocalized("ios.route.alight", $0) },
-        leg.stationCount.map { String(format: countKey, String($0)) },
+        leg.stationCount.map(countText),
         appLocalized("ios.route.legMinutes", String(leg.minutes)),
         serviceOutside)
 }

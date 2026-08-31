@@ -397,7 +397,7 @@ struct GuideBandView: View {
         case .waiting(let stop, let line):
             return appLocalized("guide.band.transitWaiting", stop, line)
         case .riding(let line, let remaining?):
-            return appLocalized("guide.band.transitRiding", line, String(remaining))
+            return appLocalized("guide.band.transitRiding", line, remaining)
         case .riding(let line, nil):
             return appLocalized("guide.band.transitRidingNoCount", line)
         case .arrived:

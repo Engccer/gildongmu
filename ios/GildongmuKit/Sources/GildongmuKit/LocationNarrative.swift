@@ -115,7 +115,7 @@ private func overviewBulletText(_ bullet: OverviewBullet, lang: String, radius: 
             switch bus {
             case .ok(let count, let nearest):
                 parts.append(kitLocalized("whereAmI.overview.transitBus", lang: lang,
-                                          String(count), overviewNearest(nearest, lang: lang, sink: sink)))
+                                          count, overviewNearest(nearest, lang: lang, sink: sink)))
             case .empty: parts.append(kitLocalized("whereAmI.overview.transitBusNone", lang: lang))
             case .uncovered: parts.append(kitLocalized("whereAmI.overview.transitBusUncovered", lang: lang))
             case .failed: parts.append(kitLocalized("whereAmI.overview.transitBusFailed", lang: lang))

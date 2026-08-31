@@ -585,12 +585,12 @@ private struct MessageBubbleView: View {
             // 리뷰순 묶음은 헤딩이 갈린다 — 정확도순 묶음과 한 답변에 공존할 때 낭독의
             // 유일한 경계(spec 2026-08-17 §5.3, 웹 MessageBubble 캡션 미러).
             return sort == .review
-                ? appLocalized("chat.reviewPlacesHeading", String(places.count))
-                : appLocalized("ios.chat.placesHeading", String(places.count))
+                ? appLocalized("chat.reviewPlacesHeading", places.count)
+                : appLocalized("ios.chat.placesHeading", places.count)
         case .addresses(let addresses) where !addresses.isEmpty:
-            return appLocalized("ios.chat.addressesHeading", String(addresses.count))
+            return appLocalized("ios.chat.addressesHeading", addresses.count)
         case .webResults(let results) where !results.isEmpty:
-            return appLocalized("ios.chat.webResultsHeading", String(results.count))
+            return appLocalized("ios.chat.webResultsHeading", results.count)
         default:
             return nil
         }
