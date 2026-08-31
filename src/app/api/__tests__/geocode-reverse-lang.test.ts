@@ -32,6 +32,22 @@ describe("/api/geocode/reverse lang", () => {
     searchJusoAddresses.mockReset();
   });
 
+  it("미지 lang은 조용히 ko로 떨구지 않고 400(langParam 통일, 2026-09-01)", async () => {
+    coordToAddress.mockResolvedValue({ roadAddress: "서울 강동구 성내로 12", jibunAddress: null });
+    for (const bad of ["EN", "ko-KR", "es", ""]) {
+      const res = await get(`lat=37.53&lng=127.12&lang=${encodeURIComponent(bad)}`);
+      expect(res.status, `lang=${bad}`).toBe(400);
+    }
+    expect(coordToAddress).not.toHaveBeenCalled();
+  });
+
+  it("lang 누락은 종전대로 ko(400 아님)", async () => {
+    coordToAddress.mockResolvedValue({ roadAddress: "서울 강동구 성내로 12", jibunAddress: null });
+    const res = await get("lat=37.53&lng=127.12");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ address: "서울 강동구 성내로 12" });
+  });
+
   it("ko(기본)는 종전 응답 그대로이고 juso를 부르지 않는다", async () => {
     coordToAddress.mockResolvedValue({ roadAddress: "서울 강동구 성내로 12", jibunAddress: "서울 강동구 성내동 1" });
     const res = await get("lat=37.53&lng=127.12");
@@ -77,10 +93,4 @@ describe("/api/geocode/reverse lang", () => {
     expect(body.addressRoman).toBe("Seoul Gangdong-gu Seongnae-ro 12");
   });
 
-  it("잘못된 lang 값은 ko로 접는다(400 아님)", async () => {
-    coordToAddress.mockResolvedValue({ roadAddress: "서울 강동구 성내로 12", jibunAddress: null });
-    const res = await get("lat=37.53&lng=127.12&lang=xx");
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ address: "서울 강동구 성내로 12" });
-  });
 });
