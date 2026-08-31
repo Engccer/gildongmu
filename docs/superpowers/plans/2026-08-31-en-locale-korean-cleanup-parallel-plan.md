@@ -85,6 +85,22 @@ git worktree remove ~/gildongmu-wt/<name>
 
 착수 프롬프트 파일로 전달(요지): ①`romanize.ts`(국어원 로마자, `@romanize/korean` 평가 후 채택 또는 자체 규칙 — 실측 표 5어 기대값 테스트, 알려진 오류 문서화) ②서버 투영 `nameRoman`(영문 원천 없는 이름에만, additive) ③`bilingualName(en|roman, ko)` 한 줄 괄호 조립 + 웹 렌더(괄호부 `<span lang="ko" aria-hidden>`) + iOS `.accessibilityLabel` 영문만 ④적용 면: 장소 카드·상세·둘러보기·한눈에 보기·소아진료·따릉이·문화행사·무장애·버스 정류소(내 주변)·혼잡도 영역명·측정소명·현재 위치 주소(juso 영문 없을 때) ⑤iOS 한국어 구간 언어 태깅 헬퍼(실기기 판정 항목으로 등재) ⑥a11y-auditor 필수.
 
+## 웨이브 3 (2026-08-31 저녁, 위원장 웹 실사용 스크린샷 피드백)
+
+| ID | 내용 | 판정 |
+|---|---|---|
+| A28 | en 장소 카드의 카카오 분류 경로("교육,학문 > 학교 > 중학교")가 한국어 그대로 | 불필요 — E28 후속 후보 "분류 영문화" 착수 |
+| A29 | 수량 문구가 단수형이 없다("1 places") — 웹 i18n ICU 복수형 0건, iOS xcstrings 복수 변형 0건 | 불필요 — 파이프라인 작업 |
+
+**코디네이터 설계 사항:**
+- A28: 카카오 `category_name`은 닫힌 분류 체계(경로 세그먼트 유한 집합). **세그먼트 사전**(`src/lib/data/kakao-category-en.json`, ko 세그먼트→en)을 실호출 코퍼스로 수집하고 번역은 세션이 직접 작성(외부 API 비용 0), 서버가 `categoryEn`(additive)을 투영해 웹·iOS가 같은 값을 본다(E28 `nameRoman` 동형). **세그먼트 하나라도 미등재면 경로 전체를 한국어 원문 + `lang="ko"`**(부분 번역 혼합 금지, 3-state). 사전 커버리지는 실호출 게이트 스크립트로 측정해 spec에 기록.
+- A29: 웹은 next-intl ICU `{count, plural, one {…} other {…}}`(en·es·fr·it, ko·ja는 불변), `count`가 숫자로 전달되는지 호출부 전수. iOS는 xcstrings `variations.plural`을 변환 스크립트가 생성하고 `appLocalized`/`kitLocalized`가 복수 형태를 해석(ICU 부분집합 one/other, 순수 함수 + 테스트). 실기기 불필요(문자열 회귀는 시뮬 AX 스냅샷).
+
+**소유권(웨이브 3):**
+- **category-en(A28)**: 신규 `src/lib/kakao-category.ts`·`src/lib/data/kakao-category-en.json`·`scripts/build-kakao-category-en.mjs`·`scripts/verify-kakao-category-en.mjs`, `src/lib/providers/kakao-local.ts`·`places.ts`·`nearby-place.ts`·`surroundings.ts`·`kids-places.ts`(분류 투영), `src/lib/types.ts` 장소 절 additive, `src/components/PlaceCard.tsx`·`PlaceDetail.tsx`·`AroundNearby.tsx`·`KidsPlacesNearby.tsx`, iOS Kit `PlaceProjection.swift`, 앱 `SearchView.swift`(PlaceRow 분류 줄만)·`PlaceDetailView.swift`·`Nearby/AroundNearbyView.swift`·`KidsNearbyView`.
+- **plurals(A29)**: `messages/*.json`(count 키 전부), iOS i18n 변환 스크립트·`ios/i18n/ios-extra/*.json`·両 `Localizable.xcstrings`(생성물), `ios/Gildongmu/AppLocalization.swift`·Kit `Localization.swift`, count를 넘기는 웹 컴포넌트·Swift 호출부의 **그 줄만**(`SearchView.swift`의 결과 수 헤딩 포함).
+- 겹침: `SearchView.swift`(category-en은 PlaceRow 분류 줄, plurals는 결과 수 헤딩)·xcstrings(생성물, rebase 후 재생성)·`messages/*.json`(category-en은 키 추가 없음이 원칙). 먼저 push한 쪽이 기준, 両변경 유지, `comm -23` 소실 대조.
+
 ## 종료 상태
 
 2026-08-31 전 웨이브 종료. en-fix(A26) → `864b552` · transit-en(E27+A27) → `e86d5d1` · place-names(E28) → `d4d113d`(전부 ff, worktree·`feat/*` 0). 웹은 push 자동 배포, iOS 실기기는 코디네이터가 정식·실험판 순차 배포. 남은 위원장 판정: BACKLOG §2 "장소명 병기(E28)" 실기기 5건 · E27 잔여 5건(en 게이트·CLI lang·언어 태깅·병기 한 객체 실기기·GTX-A 실측) · A27 실승차 재판정(`docs/FIELD-TEST.md`). 후속: doc-audit 세션(겹침 분배 점검·PORTS 등록).

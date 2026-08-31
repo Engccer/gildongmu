@@ -56,6 +56,14 @@ node scripts/usage-report.mjs   # API 비용·쿼터·키 만료
 
 있는 기능이 틀린 답을 낸다. **여기가 비면 축 3(도달)부터 다시 본다** — 2026-08-02에 "코드 마일스톤 0"이라는 결론이 그 축의 부재 때문에 틀렸다.
 
+### A28. en 장소 카드의 카카오 분류 경로가 한국어 그대로 (🆕 2026-08-31 위원장 웹 실사용 — 병렬 세션 category-en 착수)
+
+`gildongmu.vercel.app/en` 검색 "sinmyung middle school" 결과 카드: 이름은 `Sinmyeongjunghakgyo (신명중학교)`로 병기됐으나 분류 줄 "교육,학문 > 학교 > 중학교"는 한국어 원문(E28 후속 후보 "분류 영문화"). 설계: 세그먼트 사전 + 서버 `categoryEn` 투영, 미등재 세그먼트가 있으면 경로 전체 한국어+`lang="ko"`. 정본 `docs/superpowers/plans/2026-08-31-en-locale-korean-cleanup-parallel-plan.md` §웨이브 3.
+
+### A29. 수량 문구에 단수형이 없다 — "1 places" (🆕 2026-08-31 위원장 웹 실사용 — 병렬 세션 plurals 착수)
+
+웹 `messages/en.json` count 키 31개 전부 복수 고정(ICU plural 0건), iOS xcstrings 복수 변형 0건. en·es·fr·it에 ICU `one/other` 도입 + iOS 변환 스크립트·`appLocalized`/`kitLocalized` 복수 해석. 정본은 위 계획 문서 §웨이브 3.
+
 ### A27. 지하철 승차 중 상태줄 "충정로까지 전역 도착"이 부자연스럽다 — ✅ 종결(2026-08-31, transit-en, CHANGELOG 같은 날)
 
 ✅ **2026-08-31 종결**: 승차 국면 지하철 상태줄·통지가 `arvlCd` 기반 탑승자 시점 문장으로 바뀌었다(`subwayRidingMessage` 웹 ↔ Kit, spec `2026-08-31-transit-english-design.md` §3.9). 출처: 위원장 실승차 2026-08-29(토) 2호선 시청→충정로. ⏳ **실승차 재판정**: 탑승 직후 "다음 역 충정로." → 진입 "충정로 진입 중." → 도착 "충정로 도착." 순서와 99 구간의 잔여 수 문장만 남는지(`docs/FIELD-TEST.md` §5-2 지하철 행). 아래는 접수 시점 기록이다.
