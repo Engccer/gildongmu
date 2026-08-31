@@ -38,6 +38,16 @@ export const searchCommand = defineCommand({
     const places = settled[0].status === "fulfilled" ? settled[0].value.places : [];
     const addresses = settled[1].status === "fulfilled" ? settled[1].value.addresses : [];
 
+    // 400은 부분 실패가 아니라 **요청이 틀렸다**는 뜻이라 즉시 종료한다. allSettled에
+    // 흡수시키면 `--lang eng` 같은 오타가 "장소 섹션이 통째로 사라진 exit 0"이 되어,
+    // 사용자는 결과가 없는 것인지 요청이 거절된 것인지 구분할 수 없다(실호출로 검출).
+    // upstream 장애(502)는 종전대로 부분 성공을 유지한다.
+    for (const r of settled) {
+      if (r.status === "rejected" && r.reason instanceof ApiError && r.reason.status === 400) {
+        fail(r.reason.message, r.reason.exitCode);
+      }
+    }
+
     // 장소·주소가 둘 다 실패했을 때만 명령 자체를 실패 처리한다.
     const allFailed = settled.every((s) => s.status === "rejected");
     if (allFailed) {
