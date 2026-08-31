@@ -21,7 +21,7 @@ import {
   type TransitInput,
   type TransitLock,
 } from "../transit-guide";
-import type { TransitRoute } from "../types";
+import type { TransitLeg, TransitRoute } from "../types";
 
 /**
  * 공유 fixture 실행기 — Kit TransitGuideTests와 같은 파일을 돌린다(동조 강제).
@@ -86,7 +86,11 @@ describe("transitGuideStep — 공유 fixture 시나리오(B2 §8.1)", () => {
             const expEvent = exp.event as Record<string, unknown>;
             expect(event, ctx).not.toBeNull();
             for (const [k, v] of Object.entries(expEvent)) {
-              expect((event as unknown as Record<string, unknown>)[k], `${ctx} event.${k}`).toBe(v);
+              const actual = (event as unknown as Record<string, unknown>)[k];
+              // fixture의 명시 `null`은 "그 필드 부재" 기대다. 웹은 부재를 `undefined`로,
+              // Swift는 `nil`로 표현하는데 JSON에는 그 구분이 없으므로 여기서 합친다
+              // (같은 파일이 두 플랫폼을 돌리는 대가 — 부재의 뜻은 양쪽이 같다).
+              expect(v === null ? (actual ?? null) : actual, `${ctx} event.${k}`).toBe(v);
             }
           }
         }
@@ -531,5 +535,79 @@ describe("subwayRidingMessage — arvlCd → 탑승자 시점 문장 종류(A27)
     const r = transitGuideStep(state, pollOk(1, state.phaseGen, [item({ arrivalCode: "5", message: "전역 도착", remainingStops: 1 })]), route, 1000);
     expect(r.state.lastArrivalCode).toBe("5");
     expect(r.event).toMatchObject({ kind: "trackingStarted", arrivalCode: "5" });
+  });
+});
+
+describe("영문 조각 승계 (E27 잔여 ①, spec 2026-09-01 §3.4)", () => {
+  function routeWith(over: Partial<TransitLeg>): TransitRoute {
+    return {
+      routeKey: "k",
+      summary: { totalMinutes: 20, transfers: 0, fare: 1400, walkMinutes: 3 },
+      legs: [
+        {
+          mode: "subway",
+          lineName: "수도권 5호선",
+          minutes: 15,
+          stationCount: 8,
+          fromName: "천호",
+          toName: "광화문",
+          stops: [
+            { name: "천호", lat: 37.5, lng: 127.1, nameEn: "Cheonho" },
+            { name: "광화문", lat: 37.57, lng: 126.97, nameEn: "Gwanghwamun" },
+          ],
+          ...over,
+        } as TransitLeg,
+      ],
+    } as TransitRoute;
+  }
+
+  it("경로 영문을 leg로 승계한다 — 한국어 필드는 불변", () => {
+    const r = buildTransitGuideRoute(
+      routeWith({
+        lineNameEn: "Line 5",
+        fromNameEn: "Cheonho",
+        toNameEn: "Gwanghwamun",
+      } as Partial<TransitLeg>),
+    );
+    expect(r?.legs[0].lineNameEn).toBe("Line 5");
+    expect(r?.legs[0].boardNameEn).toBe("Cheonho");
+    expect(r?.legs[0].alightNameEn).toBe("Gwanghwamun");
+    expect(r?.legs[0].lineName).toBe("수도권 5호선");
+    expect(r?.legs[0].boardName).toBe("천호");
+  });
+
+  it("ko/en 폴백 순서가 짝을 이룬다 — fromName이 있는데 fromNameEn이 없으면 부재", () => {
+    // ⚠ 여기서 boardStop.nameEn("Cheonho")으로 흘러가면 같은 자리가 서로 다른 정류소를
+    // 가리킬 수 있다(fromName은 provider가 준 승차 지점, boardStop은 정차 목록의 첫 항목).
+    const r = buildTransitGuideRoute(routeWith({ fromName: "천호역 3번 출구" } as Partial<TransitLeg>));
+    expect(r?.legs[0].boardName).toBe("천호역 3번 출구");
+    expect(r?.legs[0].boardNameEn).toBeUndefined();
+  });
+
+  it("fromName이 없으면 boardStop 쪽 짝을 쓴다", () => {
+    const r = buildTransitGuideRoute(routeWith({ fromName: undefined } as Partial<TransitLeg>));
+    expect(r?.legs[0].boardName).toBe("천호");
+    expect(r?.legs[0].boardNameEn).toBe("Cheonho");
+  });
+
+  it("ko 조회(영문 없음)면 leg에도 영문 키가 없다 — 종전 동작 무변화", () => {
+    const r = buildTransitGuideRoute(routeWith({}));
+    expect(r?.legs[0]).not.toHaveProperty("lineNameEn");
+    expect(r?.legs[0]).not.toHaveProperty("boardNameEn");
+    expect(r?.legs[0]).not.toHaveProperty("alightNameEn");
+  });
+
+  it("승차 전 도보 대상이 영문 역명을 나른다", () => {
+    const r = buildTransitGuideRoute(
+      routeWith({ fromNameEn: "Cheonho", stops: [
+        { name: "천호", lat: 37.5, lng: 127.1, nameEn: "Cheonho" },
+        { name: "광화문", lat: 37.57, lng: 126.97, nameEn: "Gwanghwamun" },
+      ] } as Partial<TransitLeg>),
+    );
+    const withWalk: TransitGuideRoute = {
+      ...r!,
+      legs: [{ ...r!.legs[0], walkBeforeMinutes: 4 }],
+    };
+    expect(transitPrewalkTarget(withWalk)).toMatchObject({ name: "천호", nameEn: "Cheonho", minutes: 4 });
   });
 });

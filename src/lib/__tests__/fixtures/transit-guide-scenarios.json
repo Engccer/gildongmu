@@ -3873,6 +3873,211 @@
      }
     }
    ]
+  },
+  {
+   "name": "지하철 en: 이벤트가 같은 관측의 ko·en을 함께 나른다(E27 잔여 ①)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "notYetVisible",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "directionEn": "Down",
+         "message": "[5]번째 전역 (신길)",
+         "messageEn": "5 stations away",
+         "remainingStops": 5,
+         "destinationName": "하남검단산",
+         "destinationNameEn": "Hanam Geomdansan",
+         "express": false,
+         "arrivalCode": "99",
+         "currentLocation": "신길",
+         "currentLocationEn": "Singil"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 5,
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 5,
+       "messageEn": "5 stations away"
+      }
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 2,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "directionEn": "Down",
+         "message": "[1]번째 전역 (여의나루)",
+         "messageEn": "1 station away",
+         "remainingStops": 1,
+         "destinationName": "하남검단산",
+         "destinationNameEn": "Hanam Geomdansan",
+         "express": false,
+         "arrivalCode": "99",
+         "currentLocation": "여의나루",
+         "currentLocationEn": "Yeouinaru"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 1,
+      "event": {
+       "kind": "countdown",
+       "remaining": 1,
+       "currentLocation": "여의나루",
+       "messageEn": "1 station away",
+       "currentLocationEn": "Yeouinaru"
+      }
+     }
+    },
+    {
+     "at": 180000,
+     "input": {
+      "kind": "poll",
+      "seq": 3,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "여의도 도착",
+         "remainingStops": 0,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "1"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "arrived",
+      "event": {
+       "kind": "arrived",
+       "certain": true
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "지하철 ko: 항목에 영문이 없으면 이벤트에도 없다(종전 동작 무변화)",
+   "route": "subwaySingle",
+   "steps": [
+    {
+     "at": 0,
+     "input": {
+      "kind": "board",
+      "lock": "subway5696"
+     },
+     "expect": {
+      "phase": "boarding",
+      "event": {
+       "kind": "vehicleSelected"
+      }
+     }
+    },
+    {
+     "at": 0,
+     "input": {
+      "kind": "confirmBoarded"
+     },
+     "expect": {
+      "phase": "riding",
+      "event": {
+       "kind": "boarded",
+       "legIndex": 0,
+       "cause": "declared"
+      }
+     }
+    },
+    {
+     "at": 60000,
+     "input": {
+      "kind": "poll",
+      "seq": 1,
+      "phaseGen": 2,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "5696",
+         "direction": "하행",
+         "message": "[5]번째 전역 (신길)",
+         "remainingStops": 5,
+         "destinationName": "하남검단산",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "phase": "riding",
+      "signal": "tracking",
+      "remaining": 5,
+      "event": {
+       "kind": "trackingStarted",
+       "remaining": 5,
+       "messageEn": null
+      }
+     }
+    }
+   ]
   }
  ]
 }

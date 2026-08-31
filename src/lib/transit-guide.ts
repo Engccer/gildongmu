@@ -56,14 +56,49 @@ export function isApproxTransitLock(lock: TransitLock): boolean {
   return lock.vehicleId === "";
 }
 
+/**
+ * 완성 문장과 그 영문을 **한 관측에서 함께** 뽑는다(E27 잔여 ①, spec 2026-09-01 §3.4).
+ *
+ * ⚠ 소비자가 이벤트만 보고 문장을 만들고 폴 항목을 붙들지 않으므로, ko만 실으면 소비자가
+ * "마지막 항목"을 따로 기억해 짝지어야 하고 그 짝은 늦은 폴·국면 전이에서 조용히 어긋난다
+ * (한국어 현재역과 직전 항목의 영문 현재역이 한 문장에). 같은 관측의 두 값은 같은 이벤트에.
+ */
+function messageOf(item: TrackItem): { message: string; messageEn?: string } {
+  return {
+    message: item.message,
+    ...(item.messageEn !== undefined ? { messageEn: item.messageEn } : {}),
+  };
+}
+
+/** 현재역과 그 영문 — 위와 같은 이유로 한 자리에서 함께 뽑는다. */
+function currentLocationOf(
+  item: TrackItem,
+): { currentLocation: string | null; currentLocationEn?: string } {
+  return {
+    currentLocation: item.currentLocation ?? null,
+    ...(item.currentLocationEn !== undefined ? { currentLocationEn: item.currentLocationEn } : {}),
+  };
+}
+
 /** 안내 대상으로 조립된 탑승 leg(§4.1). 도보 leg는 대기 문맥으로 흡수된다. */
 export interface TransitGuideLeg {
   mode: "bus" | "subway";
   lineName: string;
+  /**
+   * 영문 표시 조각(E27 잔여 ①, `lang=en` 조회에만 — spec 2026-09-01 §3.4).
+   *
+   * ⚠ 위 한국어 필드는 en 세션에서도 한국어다. 조인(매핑표·조회 쿼리·종착 검사)이 그 값으로
+   * 돌기 때문이고, 여기 영문을 넣으면 오류가 아니라 "실시간 정보가 영영 안 뜬다"가 된다.
+   * ⚠ **ko/en의 폴백 순서가 짝을 이뤄야 한다** — ko가 `fromName`을 골랐는데 en이
+   * `boardStop.nameEn`을 고르면 같은 자리가 서로 다른 정류소를 가리킨다.
+   */
+  lineNameEn?: string;
   /** null = 추적 불가(비수도권 지하철·정보 결손) — 수동 전진만 가능. */
   trackMode: TransitTrackMode | null;
   boardName: string;
+  boardNameEn?: string;
   alightName: string;
+  alightNameEn?: string;
   boardStop: TransitLegStop | null;
   alightStop: TransitLegStop | null;
   /** 경유 전체(양 끝 포함, includeStops 미보유 시 []) — 종착 검사(§5.1) 축. */
@@ -162,21 +197,29 @@ export type TransitGuideEvent =
   /** 차량 선택(boarding 진입) — 활성화 응답은 소비자가 .high로 낭독. */
   | { kind: "vehicleSelected"; legIndex: number }
   /** boarding: 선택 차량의 승차 정류소 접근(첫 관측 + 사다리 3·2·1). */
-  | { kind: "approaching"; remaining: number | null; message: string }
+  | { kind: "approaching"; remaining: number | null; message: string; messageEn?: string }
   /** boarding: 잔여 ≤1에서 소실 — 지나갔을 수 있다. 국면 유지, 사용자 선택 요청. */
   | { kind: "vehiclePassed" }
-  | { kind: "trackingStarted"; message: string; remaining: number | null; arrivalCode: string | null }
+  | {
+      kind: "trackingStarted";
+      message: string;
+      messageEn?: string;
+      remaining: number | null;
+      arrivalCode: string | null;
+    }
   | {
       kind: "countdown";
       remaining: number;
       message: string;
+      messageEn?: string;
       currentLocation: string | null;
+      currentLocationEn?: string;
       arrivalCode: string | null;
     }
-  | { kind: "messageChanged"; message: string; arrivalCode: string | null }
+  | { kind: "messageChanged"; message: string; messageEn?: string; arrivalCode: string | null }
   | { kind: "arrived"; certain: boolean }
-  | { kind: "backOnTrack"; message: string; arrivalCode: string | null }
-  | { kind: "approxVehicleChanged"; message: string }
+  | { kind: "backOnTrack"; message: string; messageEn?: string; arrivalCode: string | null }
+  | { kind: "approxVehicleChanged"; message: string; messageEn?: string }
   | { kind: "signalLost" }
   | { kind: "neverSeen" }
   | { kind: "upstreamFailed" }
@@ -205,6 +248,8 @@ export interface TransitGuideState {
   previousPhase: TransitPhase | null;
   remaining: number | null;
   lastMessage: string | null;
+  /** `lastMessage`의 영문(E27 잔여 ①) — 상시 표시 상태줄이 읽는다. 결측이면 그 줄은 ko. */
+  lastMessageEn: string | null;
   /**
    * 잠금 항목의 도착 코드(지하철 arvlCd, A27) — 승차 국면 상태줄이 `lastMessage`(조회역 기준 열차 위치
    * 서술) 대신 탑승자 시점 문장을 고르는 축. 버스·미제공은 null.
@@ -399,12 +444,20 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
     const stops = leg.stops ?? [];
     const boardStop = stops.length > 0 ? stops[0] : null;
     const alightStop = stops.length > 1 ? stops[stops.length - 1] : null;
+    // ⚠ ko/en 폴백 순서 짝(§3.4): ko가 `fromName`을 골랐으면 en도 `fromNameEn`을 봐야 한다.
+    // `fromName`은 있는데 `fromNameEn`이 없을 때 `boardStop.nameEn`으로 흘러가면 같은 자리가
+    // 서로 다른 정류소를 가리키게 된다 — 그래서 **같은 원천끼리만** 짝짓는다.
+    const boardNameEn = leg.fromName != null ? leg.fromNameEn : boardStop?.nameEn;
+    const alightNameEn = leg.toName != null ? leg.toNameEn : alightStop?.nameEn;
     legs.push({
       mode: leg.mode,
       lineName: leg.lineName ?? "",
+      ...(leg.lineNameEn ? { lineNameEn: leg.lineNameEn } : {}),
       trackMode: classifyTrackMode(leg, boardStop, alightStop),
       boardName: leg.fromName ?? boardStop?.name ?? "",
+      ...(boardNameEn ? { boardNameEn } : {}),
       alightName: leg.toName ?? alightStop?.name ?? "",
+      ...(alightNameEn ? { alightNameEn } : {}),
       boardStop,
       alightStop,
       viaStops: stops,
@@ -425,6 +478,8 @@ export function buildTransitGuideRoute(route: TransitRoute): TransitGuideRoute |
 /** 첫 탑승 leg 앞 도보를 도보 실시간 안내로 돌릴 대상. null = 종전 경로(도보 없음·정보 결손). */
 export interface TransitPrewalkTarget {
   name: string;
+  /** 영문 승차역명(E27 잔여 ①) — 도보 세션 목적지 라벨·통지가 읽는다. 결측이면 그 줄은 ko. */
+  nameEn?: string;
   lat: number;
   lng: number;
   minutes: number;
@@ -443,7 +498,13 @@ export function transitPrewalkTarget(route: TransitGuideRoute): TransitPrewalkTa
   if (!stop) return null;
   if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lng)) return null;
   if (stop.lat === 0 && stop.lng === 0) return null;
-  return { name: leg.boardName, lat: stop.lat, lng: stop.lng, minutes };
+  return {
+    name: leg.boardName,
+    ...(leg.boardNameEn ? { nameEn: leg.boardNameEn } : {}),
+    lat: stop.lat,
+    lng: stop.lng,
+    minutes,
+  };
 }
 
 /**
@@ -595,6 +656,7 @@ export function initTransitGuide(route: TransitGuideRoute, _now: number): Transi
     previousPhase: null,
     remaining: null,
     lastMessage: null,
+    lastMessageEn: null,
     lastArrivalCode: null,
     lastUpdatedAt: null,
     currentLocation: null,
@@ -651,6 +713,7 @@ function resetLockTracking(state: TransitGuideState): TransitGuideState {
     ...state,
     remaining: null,
     lastMessage: null,
+    lastMessageEn: null,
     lastArrivalCode: null,
     lastUpdatedAt: null,
     currentLocation: null,
@@ -747,6 +810,7 @@ function handleChangeBoarding(state: TransitGuideState): TransitStepResult {
       previousPhase: state.phase === "boarding" ? "boarding" : "riding",
       remaining: null,
       lastMessage: null,
+      lastMessageEn: null,
       lastArrivalCode: null,
       currentLocation: null,
       dataStamp: null,
@@ -791,6 +855,7 @@ function handleAdvance(state: TransitGuideState, route: TransitGuideRoute): Tran
       previousPhase: null,
       remaining: null,
       lastMessage: null,
+      lastMessageEn: null,
       lastArrivalCode: null,
       lastUpdatedAt: null,
       currentLocation: null,
@@ -973,6 +1038,7 @@ function commitBoardingMatched(
     missCount: 0,
     remaining: item.remainingStops,
     lastMessage: item.message,
+    lastMessageEn: item.messageEn ?? null,
     lastArrivalCode: item.arrivalCode,
     lastUpdatedAt: now,
     currentLocation: item.currentLocation ?? null,
@@ -1000,13 +1066,16 @@ function commitBoardingMatched(
     next.ladderAnnounced = item.remainingStops;
     return {
       state: next,
-      event: { kind: "approaching", remaining: item.remainingStops, message: item.message },
+      event: { kind: "approaching", remaining: item.remainingStops, ...messageOf(item) },
     };
   }
   const remaining = item.remainingStops;
   if (remaining == null) {
     if (item.message !== base.lastMessage && base.lastMessage !== null) {
-      return { state: next, event: { kind: "messageChanged", message: item.message, arrivalCode: item.arrivalCode } };
+      return {
+        state: next,
+        event: { kind: "messageChanged", ...messageOf(item), arrivalCode: item.arrivalCode },
+      };
     }
     return { state: next, event: carriedEvent };
   }
@@ -1019,7 +1088,7 @@ function commitBoardingMatched(
     remaining < prevRemaining
   ) {
     next.ladderAnnounced = remaining;
-    return { state: next, event: { kind: "approaching", remaining, message: item.message } };
+    return { state: next, event: { kind: "approaching", remaining, ...messageOf(item) } };
   }
   if (base.signal === "signalLost" && carriedEvent === null) {
     return { state: next, event: { kind: "signalRecovered" } };
@@ -1098,6 +1167,7 @@ function commitMatched(
     missCount: 0,
     remaining: item.remainingStops,
     lastMessage: item.message,
+    lastMessageEn: item.messageEn ?? null,
     lastArrivalCode: item.arrivalCode,
     lastUpdatedAt: now,
     currentLocation: item.currentLocation ?? null,
@@ -1111,7 +1181,10 @@ function commitMatched(
   // 도착 추정 상태에서 재관측 — riding 복귀(추정은 가역, §4.2).
   if (base.phase === "arrived" && !base.arrivedCertain) {
     next.phase = "riding";
-    return { state: next, event: { kind: "backOnTrack", message: item.message, arrivalCode: item.arrivalCode } };
+    return {
+      state: next,
+      event: { kind: "backOnTrack", ...messageOf(item), arrivalCode: item.arrivalCode },
+    };
   }
   if (base.phase !== "riding") {
     return { state: next, event: carriedEvent };
@@ -1141,7 +1214,7 @@ function commitMatched(
       state: next,
       event: {
         kind: "trackingStarted",
-        message: item.message,
+        ...messageOf(item),
         remaining: item.remainingStops,
         arrivalCode: item.arrivalCode,
       },
@@ -1152,7 +1225,10 @@ function commitMatched(
   if (remaining == null) {
     // 잔여 추출 실패(§6.2) — 사다리만 비활성, 완성 문장 변화 통지로 폴백.
     if (item.message !== base.lastMessage && base.lastMessage !== null) {
-      return { state: next, event: { kind: "messageChanged", message: item.message, arrivalCode: item.arrivalCode } };
+      return {
+        state: next,
+        event: { kind: "messageChanged", ...messageOf(item), arrivalCode: item.arrivalCode },
+      };
     }
     return { state: next, event: carriedEvent };
   }
@@ -1160,7 +1236,7 @@ function commitMatched(
   // 근사 기준 차량 교체(§5.2·§13.2): 잔여 역행 관측 — 조용한 기준 교체 금지.
   if (approx && prevRemaining != null && remaining > prevRemaining) {
     next.ladderAnnounced = null; // 새 차량 기준으로 사다리 재무장
-    return { state: next, event: { kind: "approxVehicleChanged", message: item.message } };
+    return { state: next, event: { kind: "approxVehicleChanged", ...messageOf(item) } };
   }
 
   // 사다리(§6.1): {3,2,1} 도달, 임계 건너뜀은 현재 값 하나만, 증가에 래치 비가역.
@@ -1178,8 +1254,8 @@ function commitMatched(
       event: {
         kind: "countdown",
         remaining,
-        message: item.message,
-        currentLocation: item.currentLocation ?? null,
+        ...messageOf(item),
+        ...currentLocationOf(item),
         arrivalCode: item.arrivalCode,
       },
     };

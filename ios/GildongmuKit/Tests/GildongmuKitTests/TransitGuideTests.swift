@@ -81,8 +81,14 @@ private struct FixtureEvent: Decodable {
     let cause: String?
     // currentLocation은 "명시 null"(병치 없음 기대)과 "미지정"을 구분한다.
     let currentLocation: String??
+    // 영문 조각(E27 잔여 ①) — 같은 관측의 ko·en이 한 이벤트에 실리는지 잠근다.
+    let messageEn: String??
+    let currentLocationEn: String??
 
-    enum CodingKeys: String, CodingKey { case kind, legIndex, remaining, certain, final, cause, currentLocation }
+    enum CodingKeys: String, CodingKey {
+        case kind, legIndex, remaining, certain, final, cause, currentLocation
+        case messageEn, currentLocationEn
+    }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         kind = try c.decode(String.self, forKey: .kind)
@@ -93,6 +99,12 @@ private struct FixtureEvent: Decodable {
         final = try c.decodeIfPresent(Bool.self, forKey: .final)
         currentLocation = c.contains(.currentLocation)
             ? .some(try c.decodeIfPresent(String.self, forKey: .currentLocation))
+            : .none
+        messageEn = c.contains(.messageEn)
+            ? .some(try c.decodeIfPresent(String.self, forKey: .messageEn))
+            : .none
+        currentLocationEn = c.contains(.currentLocationEn)
+            ? .some(try c.decodeIfPresent(String.self, forKey: .currentLocationEn))
             : .none
     }
 }
@@ -201,15 +213,27 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
                         if let e = expectedEvent.cause { #expect(cause.rawValue == e, "\(ctx) event.cause") }
                     case let .vehicleSelected(legIndex):
                         if let e = expectedEvent.legIndex { #expect(legIndex == e, "\(ctx) event.legIndex") }
-                    case let .approaching(remaining, _):
+                    case let .approaching(remaining, _, messageEn):
                         if case let .some(e) = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
-                    case let .countdown(remaining, _, currentLocation, _):
+                        if case let .some(e) = expectedEvent.messageEn {
+                            #expect(messageEn == e, "\(ctx) event.messageEn")
+                        }
+                    case let .countdown(remaining, _, messageEn, currentLocation, currentLocationEn, _):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
                         if case let .some(e) = expectedEvent.currentLocation {
                             #expect(currentLocation == e, "\(ctx) event.currentLocation")
                         }
-                    case let .trackingStarted(_, remaining, _):
+                        if case let .some(e) = expectedEvent.messageEn {
+                            #expect(messageEn == e, "\(ctx) event.messageEn")
+                        }
+                        if case let .some(e) = expectedEvent.currentLocationEn {
+                            #expect(currentLocationEn == e, "\(ctx) event.currentLocationEn")
+                        }
+                    case let .trackingStarted(_, messageEn, remaining, _):
                         if let e = expectedEvent.remaining { #expect(remaining == e, "\(ctx) event.remaining") }
+                        if case let .some(e) = expectedEvent.messageEn {
+                            #expect(messageEn == e, "\(ctx) event.messageEn")
+                        }
                     case let .arrived(certain):
                         if let e = expectedEvent.certain { #expect(certain == e, "\(ctx) event.certain") }
                     case let .legAdvanced(legIndex, final):
@@ -288,8 +312,8 @@ private func kindName(_ event: TransitGuideEvent?) -> String? {
 }
 
 @Test func eventProfileChannels() {
-    #expect(transitEventProfile(.countdown(remaining: 1, message: "", currentLocation: nil, arrivalCode: nil)).interrupt == true)
-    #expect(transitEventProfile(.countdown(remaining: 2, message: "", currentLocation: nil, arrivalCode: nil)).interrupt == false)
+    #expect(transitEventProfile(.countdown(remaining: 1, message: "", messageEn: nil, currentLocation: nil, currentLocationEn: nil, arrivalCode: nil)).interrupt == true)
+    #expect(transitEventProfile(.countdown(remaining: 2, message: "", messageEn: nil, currentLocation: nil, currentLocationEn: nil, arrivalCode: nil)).interrupt == false)
     #expect(transitEventProfile(.arrived(certain: true)).interrupt == true)
     #expect(transitEventProfile(.signalLost).interrupt == false)
 }
