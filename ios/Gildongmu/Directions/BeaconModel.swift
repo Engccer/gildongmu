@@ -421,7 +421,9 @@ final class BeaconModel {
     /// 세션 안전망이 돌지 않는다(지하 진입 = fix 두절이 곧 그 버튼이 필요한 순간). `stop()`이 비운다.
     /// ⚠ 종료 화면 분기는 `stop()` **뒤**에 도는데 `stop()`이 이 값을 지우므로, 확정·추정·
     ///   `stopLeavingSummary` 세 경로는 `stop()` 앞에서 지역 변수로 캡처한다.
-    private(set) var prewalkTarget: String?
+    /// ⚠ 표시 라벨이라 **ko·en 쌍**이다(E27 잔여 ①) — 영문 역명이 있으면 선언 버튼·도착 문장이
+    /// 영문으로 나가고, 없으면 한국어 원문으로 떨어진다.
+    private(set) var prewalkTarget: TransitLabel?
     /// 세션 종료 1회 콜백. 발화점은 둘뿐 — `stop()` 정리 완료 뒤 다음 MainActor 턴, 그리고
     /// `begin()`의 시작 Task 말미(시작되지 않아 `stop()`이 돌지 않는 경로: `.startFailed`).
     /// 경로마다 부르지 않는다 — 종료 경로가 7곳이라 하나를 빠뜨리면 연결이 조용히 끊긴다.
@@ -492,7 +494,7 @@ final class BeaconModel {
 
     /// 승차 전 도보 세션으로 표식(A25). `requestStart` **앞**에 건다 — 시작 Task의 실패 판정이
     /// 이 값을 함께 지운다.
-    func markPrewalk(target: String) {
+    func markPrewalk(target: TransitLabel) {
         prewalkTarget = target
     }
 
@@ -506,7 +508,8 @@ final class BeaconModel {
     /// 사용자 행위. 확정 도착과 같은 모양: 종·`.arrived` 사유·stop()·도착 문장(.high, 직접 응답).
     func declarePrewalkArrival() {
         guard isTracking, let station = prewalkTarget else { return }
-        let text = appLocalized("transitGuide.prewalkArrived", station)
+        let text = TransitGuideTextRenderer.render(
+            transitPrewalkArrivedLine(isEn: transitGuideIsEn, station: station))
         playTone(.nearby)
         pendingEndReason = .arrived
         stop()
@@ -2013,8 +2016,10 @@ final class BeaconModel {
         if arrived {
             // prewalk(승차 전 도보)는 stop() 앞에서 캡처 — stop()이 지운다(A25 §4.2).
             let prewalk = prewalkTarget
-            let text = prewalk.map { appLocalized("transitGuide.prewalkArrived", $0) }
-                ?? appLocalized("guide.arrived")
+            let text = prewalk.map {
+                TransitGuideTextRenderer.render(
+                    transitPrewalkArrivedLine(isEn: transitGuideIsEn, station: $0))
+            } ?? appLocalized("guide.arrived")
             // 수단은 stop() **앞**에서 기록한다 — stop()이 sessionKind를 walk로 되돌린다(설계 리뷰 B10).
             arrivalSessionKind = sessionKind
             playTone(.nearby)
@@ -2126,8 +2131,10 @@ final class BeaconModel {
                 + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-")"
         )
         let prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
-        let text = prewalk.map { appLocalized("transitGuide.prewalkArrived", $0) }
-            ?? appLocalized("guide.arrivedPresumed")
+        let text = prewalk.map {
+            TransitGuideTextRenderer.render(
+                transitPrewalkArrivedLine(isEn: transitGuideIsEn, station: $0))
+        } ?? appLocalized("guide.arrivedPresumed")
         // 도착 종은 **전경에서만**(위원장 판정 2026-08-19). 이 종료는 도착 3~5분 뒤에 오는
         // 사후 정리라, 잠근 채 두고 잊은 휴대전화가 한참 뒤 갑자기 울리면 당황스럽다 —
         // 확정 도착의 종(지금 도착 중이라는 실시간 신호)과 뜻이 다르다. 백그라운드 종료는

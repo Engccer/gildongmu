@@ -232,7 +232,9 @@ struct BeaconTrackingSheet: View {
                         Button {
                             model.declarePrewalkArrival()
                         } label: {
-                            Text(appLocalized("transitGuide.prewalkArrivedButton", station))
+                            Text(TransitGuideTextRenderer.render(
+                                transitPrewalkArrivedButtonLine(
+                                    isEn: transitGuideIsEn, station: station)))
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
