@@ -325,8 +325,7 @@
   "guide": {
     "switchedToShortest": "Switched to the shortest route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "switchedToRecommended": "Switched to the recommended route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
-    "proposalReady": "A route from your current location is ready. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
-    "proposalAdopt": "Restart guidance from current location",
+    "autoReroute": "Now guiding on a new route. {count, plural, one {# step} other {# steps}}, {distance} total. {first}",
     "viewAlternative": "View alternative route",
     "adoptAlternative": "Switch guidance to this route",
     "altPreviewLoading": "Finding alternative route",

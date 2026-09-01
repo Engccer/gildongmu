@@ -325,8 +325,7 @@
   "guide": {
     "switchedToShortest": "최단 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
     "switchedToRecommended": "추천 경로로 전환했습니다. 안내 {count}개, 총 {distance}. {first}",
-    "proposalReady": "현재 위치 기준 경로가 준비되었습니다. 안내 {count}개, 총 {distance}. {first}",
-    "proposalAdopt": "현재 위치부터 다시 안내 시작",
+    "autoReroute": "새 경로로 다시 안내합니다. 안내 {count}개, 총 {distance}. {first}",
     "viewAlternative": "대안 경로 보기",
     "adoptAlternative": "이 경로 안내로 전환",
     "altPreviewLoading": "대안 경로 조회 중",
