@@ -7,6 +7,8 @@ vi.mock("@/lib/gemini/client", () => ({
   GEMINI_MODEL: "m",
 }));
 vi.mock("@/lib/chat/declarations", () => ({ availableDeclarations: () => [] }));
+// 레이트리밋(60초 10회)은 이 파일의 호출 수가 넘기므로 목 — 판정 대상이 아니다.
+vi.mock("@/lib/rate-limit", () => ({ checkChatRateLimit: () => true, clientIpFromHeaders: () => "1.2.3.4" }));
 vi.mock("@/lib/chat/agent-loop", () => ({
   runAgentLoop: vi.fn(async (opts: AgentLoopOptions) => {
     opts.onStatus?.(["get_air_quality"]);
@@ -44,6 +46,25 @@ describe("POST /api/chat", () => {
     const req = new Request("http://x/api/chat", { method: "POST", body: "{}" });
     const res = await POST(req);
     expect(res.status).toBe(502);
+  });
+
+  it("locale이 지원 6로케일 밖이면 400 invalid_locale(누락은 ko)", async () => {
+    for (const bad of ["EN", "ko-KR", "zh", ""]) {
+      const req = new Request("http://x/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: [{ role: "user", text: "q" }], locale: bad }),
+      });
+      const res = await POST(req);
+      expect(res.status, `locale=${bad}`).toBe(400);
+      expect(await res.json()).toEqual({ error: "invalid_locale" });
+    }
+    for (const ok of ["ko", "en", "es", "fr", "it", "ja", undefined]) {
+      const req = new Request("http://x/api/chat", {
+        method: "POST",
+        body: JSON.stringify({ messages: [{ role: "user", text: "q" }], locale: ok }),
+      });
+      expect((await POST(req)).status, `locale=${ok}`).toBe(200);
+    }
   });
 
   it("잘못된 body → 400", async () => {

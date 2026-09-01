@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { FORMATTERS } from "../lib/formatters.js";
 
+/** lang을 받지 않는 호출의 포매터 컨텍스트(E29) — 요청 언어 미지정. */
+const NO_LANG = { lang: undefined };
+
 // FORMATTERS는 엔드포인트 키 → 포매터 레코드다. transit 키는 "route-transit"(슬래시 아님).
 const formatTransit = (body: unknown) =>
-  FORMATTERS["route-transit"](body as never).join("\n");
+  FORMATTERS["route-transit"](body as never, NO_LANG).join("\n");
 
 describe("route transit 운행 시간", () => {
   const body = {
@@ -149,7 +152,7 @@ describe("route transit 경로 수 변화", () => {
         totalCandidates: 9,
       },
     };
-    const lines = FORMATTERS["route-transit"](body as never);
+    const lines = FORMATTERS["route-transit"](body as never, NO_LANG);
     // 경로 5개 × (이름 1 + 요약 1 + 구간 1) = 15줄. 3경로 전제 코드는 여기서 깨진다.
     expect(lines).toHaveLength(15);
     expect(lines[0]).toBe("추천 경로");
@@ -185,6 +188,7 @@ describe("route transit 빠른하차", () => {
         elevator: { kind: "door", doors: ["6-4"] },
         stairs: { kind: "door", doors: ["5-4"] },
       }) as never,
+      NO_LANG,
     );
     const i = lines.findIndex((l) => l.includes("천호→여의도"));
     expect(lines[i + 1]).toBe("여의도 하차, 엘리베이터 6-4 문, 계단 5-4 문");

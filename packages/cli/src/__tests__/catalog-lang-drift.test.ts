@@ -30,6 +30,10 @@ const LANG_SIGNAL = /langParam\(|lang:\s*z\.|searchParams\.get\("lang"\)/;
 const NOT_IN_CATALOG_BY_DESIGN = new Map<string, string>([
   // 역지오코딩은 CLI/MCP 명령이 없다 — 웹·iOS의 "현재 위치" 라벨 전용 경량 라우트다.
   ["/api/geocode/reverse", "CLI/MCP 소비자가 없는 웹·iOS 전용 라우트"],
+  // 실시간 대중교통 추적 폴(E27 잔여 ①, 2026-09-01) — 안내 세션이 몇 초마다 부르는 라우트라
+  // 단발 조회 명령이 없다. ⚠ 이 항목이 없던 하루 동안 이 파일이 red였는데 아무도 몰랐다:
+  // 루트 `npm run test:run`의 include 밖이라 이 디렉터리에서 `npx vitest run`을 돌려야만 보인다.
+  ["/api/transit/track", "CLI/MCP 소비자가 없는 웹·iOS 안내 세션 전용 폴 라우트"],
 ]);
 
 function routeDirs(dir: string): string[] {

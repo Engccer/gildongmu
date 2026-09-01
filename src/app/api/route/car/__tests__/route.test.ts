@@ -52,6 +52,20 @@ describe("GET /api/route/car", () => {
     vi.mocked(getCarRoute).mockClear();
   });
 
+  it("lang이 ko/en 밖이면 400(조용한 한국어 강등 금지 — E27 langParam 통일)", async () => {
+    for (const bad of ["EN", "eng", "ja", ""]) {
+      const res = await GET(makeRequest("37.5,127.1", "37.6,127.1", bad));
+      expect(res.status, `lang=${bad}`).toBe(400);
+    }
+    expect(getCarRoute).not.toHaveBeenCalled();
+  });
+
+  it("lang 누락은 ko(getCarRoute 경로, guidanceLang ko)", async () => {
+    const res = await GET(makeRequest("37.5,127.1", "37.6,127.1"));
+    expect(res.status).toBe(200);
+    expect((await res.json()).guidanceLang).toBe("ko");
+  });
+
   it("origin 형식 오류 → 400", async () => {
     const res = await GET(makeRequest("not-a-coord", "37.6,127.1"));
     expect(res.status).toBe(400);

@@ -51,6 +51,10 @@ describe("extractEntities", () => {
     const got = extractEntities("약 1,250m 거리, 28분 소요, 5호선", ["number"]).map((e) => e.norm);
     expect(got).toEqual(["1250m", "28분", "5호선"]);
   });
+  it("dodo 이식본 단위(도·유로·€)도 뽑는다(D27 — 두 이식본이 갈리지 않게)", () => {
+    const got = extractEntities("기온 31도, 입장권 18유로, 커피 3.5€", ["number"]).map((e) => e.norm);
+    expect(got).toEqual(["31도", "18유로", "3.5€"]);
+  });
   it("고유명사 후보는 시설 접미사가 있는 토큰만(과잉 추출 금지)", () => {
     const got = extractEntities("강동역 근처 길동소아과와 천호대로를 지나", ["name"]).map((e) => e.raw);
     expect(got).toEqual(["강동역", "길동소아과"]);
@@ -86,6 +90,12 @@ describe("scoreGrounding — 엔티티 대조", () => {
   it("도구에 없는 시설명은 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "강동성심병원도 있습니다");
     expect(r.leaked).toEqual(["name:강동성심병원"]);
+  });
+  it("역 어간으로 온 도구 값('춘천')은 답변의 '춘천역'을 접지한다(C5 케이스 42)", () => {
+    const outputs = [{ name: "get_subway_arrivals", response: { count: 0, arrivals: [], nearest: { stationName: "춘천", lines: ["경춘선"], distanceMeters: 65637 } } }];
+    const g = { fromTools: ["get_subway_arrivals"], fields: ["*"], kinds: ["name", "number"] as const };
+    expect(scoreGrounding(g, outputs, "주변에 지하철역이 없고, 가장 가까운 춘천역은 약 66km 떨어져 있습니다.")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(g, outputs, "가까운 강남역은 5분 거리").leaked).toEqual(["number:5분", "name:강남역"]);
   });
   it("조사·공백·하이픈 차이는 leak 가 아니다", () => {
     const outputs = [{ name: "t", response: { name: "서울 아산병원", tel: "0230101234" } }];

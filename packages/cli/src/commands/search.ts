@@ -61,8 +61,8 @@ export const searchCommand = defineCommand({
 
     const lines: string[] = [];
     const sections = [
-      { title: "장소", count: places.length, lines: FORMATTERS["places-search"]({ places } as never) },
-      { title: "주소", count: addresses.length, lines: FORMATTERS["address-search"]({ addresses } as never) },
+      { title: "장소", count: places.length, lines: FORMATTERS["places-search"]({ places } as never, { lang }) },
+      { title: "주소", count: addresses.length, lines: FORMATTERS["address-search"]({ addresses } as never, { lang }) },
     ].sort((a, b) => b.count - a.count);
     for (const s of sections.filter((s) => s.count > 0)) lines.push(`${s.title} ${s.count}건`, ...s.lines, "");
 
@@ -75,7 +75,7 @@ export const searchCommand = defineCommand({
         web = webRes.web ?? [];
         if (web.length) {
           lines.push("장소·주소 결과가 없어 웹 검색 결과를 보여드립니다.", "");
-          lines.push(...FORMATTERS["web-search"](webRes as never));
+          lines.push(...FORMATTERS["web-search"](webRes as never, { lang }));
         } else {
           lines.push("검색 결과가 없습니다.");
         }

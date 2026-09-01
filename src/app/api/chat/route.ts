@@ -5,6 +5,7 @@ import { availableDeclarations } from "@/lib/chat/declarations";
 import { buildChatSystemInstruction } from "@/lib/chat/system-instruction";
 import { runAgentLoop } from "@/lib/chat/agent-loop";
 import { dataLocale } from "@/lib/data-locale";
+import { routing } from "@/i18n/routing";
 import { checkChatRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { ExecutionContext, ChatStreamEvent } from "@/lib/chat/types";
 
@@ -43,7 +44,15 @@ export async function POST(request: Request) {
     });
   }
 
+  // 지원 6로케일만(E27 원칙, 2026-09-02 통일): 누락=ko, 미지 값은 400. 종전엔 무검증이라
+  // `EN`·`ko-KR`이 그대로 systemInstruction("사용자 언어(EN)")과 dataLocale 판정에 들어갔다 —
+  // 오류도 빈 결과도 아니라 CLI `--lang` 오타가 영문 답변으로 위장했다.
   const locale = body.locale ?? "ko";
+  if (!(routing.locales as readonly string[]).includes(locale)) {
+    return new Response(JSON.stringify({ error: "invalid_locale" }), {
+      status: 400, headers: { "Content-Type": "application/json" },
+    });
+  }
   const pc = body.placeContext;
   const ctx: ExecutionContext = {
     userLocation: body.userLocation,
