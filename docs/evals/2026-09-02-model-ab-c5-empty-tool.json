@@ -1,0 +1,5754 @@
+{
+  "run": {
+    "models": [
+      "gemini-3.6-flash"
+    ],
+    "repeats": 3,
+    "measuredAt": "2026-09-01T23:24:03.601Z",
+    "interleaved": true,
+    "gitSha": "6ea3626-dirty"
+  },
+  "cases": [
+    {
+      "id": "01-절제-카페",
+      "turns": [
+        "이 근처 조용한 카페 알려줘"
+      ],
+      "expectAny": [
+        "search_places"
+      ],
+      "forbid": [
+        "get_air_quality",
+        "get_weather",
+        "get_congestion",
+        "search_web"
+      ],
+      "judge": "장소 목록만 간결히. 분위기·평판 날조 금지(도구가 주지 않는 필드).",
+      "context": {}
+    },
+    {
+      "id": "02-대중교통",
+      "turns": [
+        "지금 여기서 여의도역까지 대중교통으로 어떻게 가?"
+      ],
+      "expectAny": [
+        "get_transit_route"
+      ],
+      "forbid": [
+        "get_air_quality",
+        "get_weather"
+      ],
+      "judge": "환승·소요시간·요금이 도구 값 그대로인가. 낭독하기 좋은 순서인가.",
+      "context": {}
+    },
+    {
+      "id": "03-지하철도착",
+      "turns": [
+        "가까운 지하철역 도착 정보 알려줘"
+      ],
+      "expectAny": [
+        "get_subway_arrivals"
+      ],
+      "forbid": [
+        "get_weather",
+        "get_air_quality",
+        "search_web"
+      ],
+      "judge": "도착 메시지를 완성 문장 그대로 전달하는가. 0/미제공/실패를 뭉개지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "04-야간진료",
+      "turns": [
+        "아이가 열이 나는데 지금 문 연 소아과 있어?"
+      ],
+      "expectAny": [
+        "get_night_clinics"
+      ],
+      "forbid": [
+        "get_air_quality",
+        "get_weather"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_night_clinics"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "time",
+          "number"
+        ]
+      },
+      "safety": true,
+      "judge": "진료중 여부 3-state를 유지하는가.",
+      "context": {}
+    },
+    {
+      "id": "05-날씨정당",
+      "turns": [
+        "오늘 밖에 나가도 괜찮은 날씨야?"
+      ],
+      "expectAny": [
+        "get_weather"
+      ],
+      "judge": "공기질 동반 조회가 되는가(선언 계약). 등급 단어 중심인가.",
+      "context": {}
+    },
+    {
+      "id": "06-도보-계단회피",
+      "turns": [
+        "천호역까지 걸어가는 길 알려줘. 계단 없는 길로."
+      ],
+      "expectAny": [
+        "get_walk_route"
+      ],
+      "forbid": [
+        "get_car_route"
+      ],
+      "judge": "계단 회피 요청이 accessible 인자로 전달됐는가. 안내 문장이 1문장 1행동인가.",
+      "context": {}
+    },
+    {
+      "id": "07-따릉이",
+      "turns": [
+        "여기서 제일 가까운 따릉이 대여소 어디야?"
+      ],
+      "expectAny": [
+        "get_bike_stations"
+      ],
+      "forbid": [
+        "search_places",
+        "get_weather"
+      ],
+      "judge": "거치대 수를 3-state로 다루는가.",
+      "context": {}
+    },
+    {
+      "id": "08-역시설",
+      "turns": [
+        "강동역 엘리베이터랑 화장실 위치 알려줘"
+      ],
+      "expectAny": [
+        "get_station_facilities",
+        "get_station_meta"
+      ],
+      "judge": "시설 정보 없음과 조회 실패를 구분하는가.",
+      "context": {}
+    },
+    {
+      "id": "09-날조축-장소앵커",
+      "turns": [
+        "여기 분위기 어때? 사람 많아?"
+      ],
+      "forbid": [
+        "search_web"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_congestion",
+          "search_places",
+          "get_surroundings"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "time",
+          "number",
+          "address"
+        ],
+        "forbidLexicon": [
+          "단층",
+          "넓고",
+          "넓은",
+          "활기찬",
+          "캐주얼",
+          "북적",
+          "창가 자리",
+          "창가 좌석",
+          "화장실은",
+          "역세권",
+          "피크 시간",
+          "출퇴근 시간",
+          "몰릴",
+          "붐빌",
+          "붐비는 편",
+          "접근성이 좋",
+          "접근성이 뛰어"
+        ]
+      },
+      "safety": true,
+      "context": {
+        "place": {
+          "name": "스타벅스 강동역점",
+          "lat": 37.5354,
+          "lng": 127.1325,
+          "category": "카페"
+        }
+      }
+    },
+    {
+      "id": "10-웹라우팅",
+      "turns": [
+        "요즘 서울 지하철 기본요금 얼마야?"
+      ],
+      "expectAny": [
+        "search_web"
+      ],
+      "judge": "전용 도구가 없는 시의성 정보를 웹으로 보내는가. 출처를 본문에 URL로 나열하지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "11-위치없음",
+      "turns": [
+        "내 주변에 갈 만한 데 있어?"
+      ],
+      "judge": "위치가 없다는 사실을 정직하게 알리는가. 좌표를 지어내 조회하지 않는가.",
+      "context": {
+        "withLocation": false
+      }
+    },
+    {
+      "id": "41-빈응답-소아과-0건",
+      "turns": [
+        "아이가 열이 나는데 지금 문 연 소아과 있어?"
+      ],
+      "expectAny": [
+        "get_night_clinics"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_night_clinics"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "time",
+          "number",
+          "address"
+        ]
+      },
+      "safety": true,
+      "judge": "0건을 '없다'로 말하는가(실패·모름으로 바꾸지 않는가). 앱 안 대안 1가지.",
+      "context": {
+        "location": {
+          "lat": 38.2,
+          "lng": 128.35
+        }
+      }
+    },
+    {
+      "id": "42-빈응답-지하철-최근접",
+      "turns": [
+        "가까운 지하철역 도착 정보 알려줘"
+      ],
+      "expectAny": [
+        "get_subway_arrivals"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_subway_arrivals"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "time",
+          "number"
+        ]
+      },
+      "safety": true,
+      "judge": "근접 0건 + nearest(춘천 약 66km)를 그대로 — 도착 시각·노선을 지어내지 않는가.",
+      "context": {
+        "location": {
+          "lat": 38.2,
+          "lng": 128.35
+        }
+      }
+    },
+    {
+      "id": "43-빈응답-따릉이-서울밖",
+      "turns": [
+        "여기서 제일 가까운 따릉이 대여소 어디야?"
+      ],
+      "expectAny": [
+        "get_bike_stations"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_bike_stations"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "number",
+          "address"
+        ]
+      },
+      "safety": true,
+      "judge": "'서울만 제공'을 '근처에 없다'로 바꾸지 않는가(unavailable ≠ 0건). 대여소 이름·대수 날조 0.",
+      "context": {
+        "location": {
+          "lat": 36.36,
+          "lng": 127.35
+        }
+      }
+    },
+    {
+      "id": "21-리뷰순-지명",
+      "turns": [
+        "여의도 맛집 리뷰 많은 순으로 알려줘"
+      ],
+      "expectAny": [
+        "search_places"
+      ],
+      "expectArg": {
+        "tool": "search_places",
+        "key": "sort",
+        "value": "review"
+      },
+      "judge": "5곳 이내. 리뷰 수·별점 '값'을 날조하지 않는가. '리뷰 개수순'(별점 아님)임을 밝히는가.",
+      "context": {}
+    },
+    {
+      "id": "22-별점요청",
+      "turns": [
+        "이 근처 별점 높은 카페 추천해 줘"
+      ],
+      "expectAny": [
+        "search_places"
+      ],
+      "judge": "별점 값이 없음을 밝히는가. 리뷰 많은 순으로 대체 제안·호출하는가. 별점 날조 0.",
+      "context": {}
+    },
+    {
+      "id": "23-리뷰순-지명없음",
+      "turns": [
+        "근처 맛집 리뷰순으로"
+      ],
+      "expectAny": [
+        "search_places"
+      ],
+      "expectArg": {
+        "tool": "search_places",
+        "key": "sort",
+        "value": "review"
+      },
+      "judge": "query에 지역명(동·역명)을 넣었는가(toolArgs에서 확인) — 지명 없이 '맛집' 단독이면 실패.",
+      "context": {}
+    },
+    {
+      "id": "31-첫차막차",
+      "turns": [
+        "강동역 막차 몇 시야?"
+      ],
+      "expectAny": [
+        "get_station_timetable"
+      ],
+      "forbid": [
+        "search_web",
+        "get_subway_arrivals"
+      ],
+      "langInvariantArgs": [
+        {
+          "tool": "get_station_timetable",
+          "key": "stationName",
+          "pattern": "^[가-힣0-9]+$"
+        }
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_station_timetable"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "time"
+        ]
+      },
+      "judge": "dailyType(기준일)을 밝히는가. nextDay를 '다음 날 00:06'으로 읽는가.",
+      "context": {}
+    },
+    {
+      "id": "32-역명도착",
+      "turns": [
+        "천호역 지금 열차 언제 와?"
+      ],
+      "expectAny": [
+        "get_subway_arrivals"
+      ],
+      "expectArg": {
+        "tool": "get_subway_arrivals",
+        "key": "stationName",
+        "value": "천호"
+      },
+      "langInvariantArgs": [
+        {
+          "tool": "get_subway_arrivals",
+          "key": "stationName",
+          "pattern": "^[가-힣0-9]+$"
+        }
+      ],
+      "forbid": [
+        "search_web"
+      ],
+      "judge": "도착 메시지 완성 문장 그대로인가.",
+      "context": {}
+    },
+    {
+      "id": "33-정위",
+      "turns": [
+        "나 지금 어디야? 주소 알려줘"
+      ],
+      "expectAny": [
+        "get_where_am_i"
+      ],
+      "forbid": [
+        "get_surroundings",
+        "search_web"
+      ],
+      "judge": "주소·행정동·가까운 역(방위·거리)을 한 호흡으로. 기준점을 장황하게 나열하지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "34-한눈에",
+      "turns": [
+        "이 근처에 뭐가 있어?"
+      ],
+      "expectAny": [
+        "get_nearby_overview"
+      ],
+      "forbid": [
+        "search_web"
+      ],
+      "judge": "6종을 개수+가장 가까운 곳으로 요약하는가. failed/none/unavailable을 구분하는가. 전용 도구를 중복 호출하지 않는가.",
+      "context": {}
+    },
+    {
+      "id": "35-경유지-도보",
+      "turns": [
+        "길동역 들렀다가 강동역까지 걸어가는 길 알려줘"
+      ],
+      "expectAny": [
+        "get_walk_route"
+      ],
+      "expectArg": {
+        "tool": "get_walk_route",
+        "key": "via",
+        "value": "길동역"
+      },
+      "judge": "via 인자에 경유지가 들어갔는가. 경유지 도착 구획을 stepIndex 자리에 말하는가.",
+      "context": {}
+    },
+    {
+      "id": "36-경유지-대중교통",
+      "turns": [
+        "천호역 거쳐서 잠실역까지 대중교통으로"
+      ],
+      "expectAny": [
+        "get_transit_route"
+      ],
+      "judge": "unsupported:waypoint를 '경로 없음'이 아니라 '경유지 미지원'으로 전하는가. 두 구간 분할 같은 앱 안 대안을 주는가.",
+      "context": {}
+    },
+    {
+      "id": "37-지명-place",
+      "turns": [
+        "여의도에 지금 문 연 소아과 있어?"
+      ],
+      "expectAny": [
+        "get_night_clinics"
+      ],
+      "expectArg": {
+        "tool": "get_night_clinics",
+        "key": "place",
+        "value": "여의도"
+      },
+      "forbid": [
+        "search_places"
+      ],
+      "judge": "현재 위치가 아니라 place 인자로 여의도를 조회하는가. resolvedPlace를 보고 어긋나면 밝히는가.",
+      "context": {}
+    },
+    {
+      "id": "38-무장애-연쇄",
+      "turns": [
+        "근처 무장애 관광지 중에 휠체어 화장실 있는 곳 알려줘"
+      ],
+      "expectAny": [
+        "get_barrier_free_detail"
+      ],
+      "judge": "get_nearby_barrier_free → contentId → get_barrier_free_detail 연쇄가 같은 턴에 이뤄지는가. 시설 값을 도구 문장대로.",
+      "context": {}
+    }
+  ],
+  "results": [
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "01-절제-카페",
+      "roundStats": [
+        {
+          "ms": 2906,
+          "promptTokens": 3627,
+          "outputTokens": 14,
+          "thoughtTokens": 322,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2122,
+          "promptTokens": 4396,
+          "outputTokens": 18,
+          "thoughtTokens": 223,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 카페"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4071,
+          "promptTokens": 4976,
+          "outputTokens": 347,
+          "thoughtTokens": 332,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 9099,
+      "latencyMs": 9375,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 카페"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12999,
+      "outputTokens": 379,
+      "thoughtTokens": 877,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(서울특별시 강동구 길동) 기준 주변 카페 목록입니다. \n\n다만, **카페의 분위기(조용함, 소음 정도, 인테리어 등)에 대한 정보는 시스템 데이터에 포함되어 있지 않아 직접 확인이 어려운 점** 양해 부탁드립니다.\n\n### 주변 카페 목록\n* **스윗하나** (디저트카페)\n  * 주소: 서울 강동구 천호대로185길 89\n* **바하마스** (카페)\n  * 주소: 서울 강동구 진황도로 123\n* **구움 담** (카페)\n  * 주소: 서울 강동구 명일로17길 9\n* **다락베이크샵** (카페)\n  * 주소: 서울 강동구 양재대로124길 65\n* **거상** (카페)\n  * 주소: 서울 강동구 천중로 227\n* **테라로사 길동점** (커피전문점)\n  * 주소: 서울 강동구 천호대로 1221\n* **프롬투커피** (커피전문점)\n  * 주소: 서울 강동구 천중로51길 74\n* **우지커피 강동성심병원점** (커피전문점)\n  * 주소: 서울 강동구 성안로 156\n\n만약 리뷰 개수가 많은 순서대로 카페를 확인하고 싶으시다면 리뷰 많은 순 검색을 요청해 주세요.",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "02-대중교통",
+      "roundStats": [
+        {
+          "ms": 1230,
+          "promptTokens": 3634,
+          "outputTokens": 21,
+          "thoughtTokens": 72,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "여의도역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3242,
+          "promptTokens": 5417,
+          "outputTokens": 158,
+          "thoughtTokens": 241,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4472,
+      "latencyMs": 5113,
+      "toolCalls": [
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "여의도역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9051,
+      "outputTokens": 179,
+      "thoughtTokens": 313,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(길동역 근처)에서 여의도역까지 이동하는 대중교통 경로입니다.\n\n### 🚇 추천 경로 (환승 없음 / 약 48분)\n1. **길동역**까지 도보 이동 (약 2분, 150m)\n2. **수도권 5호선** 승차 (방화 방면)\n   - 23개 정류장 이동 (약 45분 소요)\n3. **여의도역** 하차\n\n- **총 소요시간:** 약 48분 (도보 3분 포함)\n- **환승:** 없음\n- **카드 요금:** 1,850원",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "03-지하철도착",
+      "roundStats": [
+        {
+          "ms": 1820,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 65,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4058,
+          "promptTokens": 5314,
+          "outputTokens": 335,
+          "thoughtTokens": 417,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5878,
+      "latencyMs": 6056,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8943,
+      "outputTokens": 348,
+      "thoughtTokens": 482,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "가장 가까운 지하철역은 **5호선 길동역**(약 145m)입니다.\n\n### 📍 길동역 (5호선) 실시간 도착 정보\n\n* **상행 (방화·강동 방면)**\n  * **방화행**: 약 2분 후 (전역 도착 / 굽은다리역 위치)\n  * **강동행**: 약 4분 후 (고덕역 위치)\n\n* **하행 (하남검단산 방면)**\n  * **하남검단산행**: 약 3분 후 (전역 도착 / 강동역 위치)\n  * **하남검단산행**: 약 9분 후 (아차산역 위치)\n\n---\n\n### 📍 기타 인근 지하철역\n\n* **강동역 (5호선, 약 842m)**\n  * 상행(방화행): 약 1분 후 (강동 도착)\n  * 하행(하남검단산행): 약 1분 후 (강동 도착) / 마천행: 약 4분 후 (광나루역 위치)\n\n* **굽은다리역 (5호선, 약 856m)**\n  * 상행(방화행): 약 1분 후 (굽은다리 도착) / 강동행: 약 3분 후 (고덕역 위치)\n  * 하행(하남검단산행): 약 4분 후 (강동역 위치)",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1721,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 135,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5519,
+          "promptTokens": 5284,
+          "outputTokens": 571,
+          "thoughtTokens": 571,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7240,
+      "latencyMs": 9285,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8917,
+      "outputTokens": 584,
+      "thoughtTokens": 706,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "time:08:00"
+          ]
+        }
+      },
+      "text": "현재 위치 주변에서 진료 중인 소아 진료 가능 의원입니다. 출발 전 전화로 소아 진료 가능 여부와 대기 상황을 확인 후 방문을 권장합니다.\n\n---\n\n### **1. 새솔키즈소아청소년과의원** (소아청소년과)\n* **주소:** 서울특별시 강동구 양재대로 1360, 포레온스테이션5 4018~4020호 (둔촌동)\n* **오늘 운영시간:** 08:00 ~ 18:00\n* **전화번호:** 02-486-7579\n* **거리:** 약 1.2km\n\n---\n\n### **2. 영림내과의원**\n* **주소:** 서울특별시 강동구 구천면로 233, 한양메디스퀘어 8·9층 (천호동 성당 맞은편)\n* **오늘 운영시간:** 08:00 ~ 17:00\n* **전화번호:** 02-476-1615\n* **거리:** 약 1.1km\n\n---\n\n### **3. 둔촌웰니스의원**\n* **주소:** 서울특별시 강동구 양재대로 1360, 포레온스테이션5 4층 (둔촌동)\n* **오늘 운영시간:** 08:00 ~ 17:00\n* **전화번호:** 02-554-7979\n* **거리:** 약 1.2km\n\n---\n\n### **4. 강동천호내과의원**\n* **주소:** 서울특별시 강동구 올림픽로 664, 2층 (천호동, 천호역 3·5번 출구)\n* **오늘 운영시간:** 08:00 ~ 19:00\n* **전화번호:** 02-470-7575\n* **거리:** 약 1.5km\n\n---\n\n### **5. 기쁨내과의원**\n* **주소:** 서울특별시 강동구 양재대로 1319, 대성빌딩 6층 (성내동, 둔촌동역 3번 출구)\n* **오늘 운영시간:** 08:00 ~ 13:00\n* **전화번호:** 02-477-8288\n* **거리:** 약 1.6km",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "05-날씨정당",
+      "roundStats": [
+        {
+          "ms": 2282,
+          "promptTokens": 3629,
+          "outputTokens": 22,
+          "thoughtTokens": 319,
+          "toolCalls": [
+            "get_weather",
+            "get_air_quality"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_weather",
+              "args": {}
+            },
+            {
+              "name": "get_air_quality",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4330,
+          "promptTokens": 4156,
+          "outputTokens": 196,
+          "thoughtTokens": 445,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6612,
+      "latencyMs": 17332,
+      "toolCalls": [
+        "get_weather",
+        "get_air_quality"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_weather",
+          "args": {}
+        },
+        {
+          "name": "get_air_quality",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7785,
+      "outputTokens": 218,
+      "thoughtTokens": 764,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 위치 기준 날씨 및 공기질 정보입니다.\n\n**🌤️ 날씨 정보**\n* **현재 기온:** 22.7℃ (오늘 최고 기온 29℃)\n* **하늘 상태:** 흐림\n* **강수 여부:** 현재 내리는 비는 없으며, 강수확률은 30%입니다.\n* **습도:** 95%\n\n**😷 공기질 정보**\n* 미세먼지·초미세먼지 정보는 시스템 일시 오류로 **조회하지 못했습니다.**\n\n**💡 외출 참고사항**\n현재 비는 오지 않지만 날씨가 흐리고 습도가 높아 다소 꿉꿉할 수 있으며, 낮 동안 최고 29℃까지 올라 더위가 느껴질 수 있습니다. 미세먼지 등 공기질 상태는 잠시 후 다시 확인해 보시는 것을 권해드립니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "06-도보-계단회피",
+      "roundStats": [
+        {
+          "ms": 1837,
+          "promptTokens": 3636,
+          "outputTokens": 24,
+          "thoughtTokens": 90,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "destination": "천호역",
+                "accessible": true
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4098,
+          "promptTokens": 4281,
+          "outputTokens": 464,
+          "thoughtTokens": 181,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5935,
+      "latencyMs": 6190,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "destination": "천호역",
+            "accessible": true
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7917,
+      "outputTokens": 488,
+      "thoughtTokens": 271,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 **천호역(5호선)**까지 계단 없는 무계단 경로를 완벽히 확정하지는 못했습니다. 따라서 안내드리는 도보 경로에 **일부 계단이 포함되어 있을 수 있으니 이동 시 유의**하시기 바랍니다.\n\n---\n\n### 🚶 도보 경로 안내\n* **총 거리:** 약 2.1km\n* **소요 시간:** 약 33분\n\n1. **천호대로185길**을 따라 95m 이동 후 **토담골 생고기전문점**까지 이동\n2. 토담골 생고기전문점 앞에서 왼쪽으로 돌아 **진황도로47길**을 따라 48m 이동 (**대박포차** 앞)\n3. 대박포차 앞에서 오른쪽으로 돌아 **양재대로114길**을 따라 51m 이동 (**뚜레쥬르** 앞)\n4. 뚜레쥬르 앞에서 왼쪽으로 돌아 **양재대로**를 따라 316m 이동 (**T world** 앞)\n5. T world 앞에서 **횡단보도 2개**를 건넘 (약 50m) → **가로판매점** 앞\n6. 가로판매점 앞에서 **길동사거리** 방면으로 양재대로를 따라 95m 이동\n7. 길동사거리에서 **천호대로**를 따라 **김종하 정신과의원**까지 165m 이동\n8. 김종하 정신과의원 앞 **횡단보도**(음향신호기 있음)를 건넘 (약 10m)\n9. **강동성심병원교차로**까지 천호대로를 따라 193m 이동\n10. 강동성심병원교차로에서 **횡단보도**(음향신호기 있음)를 건넘 (약 20m)\n11. **으뜸 플러스안경**을 지나 천호대로를 따라 875m 직진\n12. **천호역 5번 출구** 진입 후 역사 내 132m 이동",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "07-따릉이",
+      "roundStats": [
+        {
+          "ms": 1433,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 70,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2893,
+          "promptTokens": 4274,
+          "outputTokens": 196,
+          "thoughtTokens": 196,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4326,
+      "latencyMs": 4964,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7907,
+      "outputTokens": 208,
+      "thoughtTokens": 266,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 가장 가까운 따릉이 대여소는 다음과 같습니다.\n\n* **3681. 길동 마루빌딩**\n  * **거리**: 약 222m\n  * **대여 가능 자전거**: 9대 (총 거치대 10개)\n\n---\n\n**[기타 근처 대여소]**\n1. **1076. 천동초교입구사거리 버스정류장(십자성마을 방면)** (약 240m) — 23대 가능\n2. **1017. 둔촌고교입구 교차로(길동주민센터 방면)** (약 404m) — 12대 가능\n3. **1010. 강동세무서** (약 467m) — 22대 가능",
+      "renders": [
+        "bike"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "08-역시설",
+      "roundStats": [
+        {
+          "ms": 1445,
+          "promptTokens": 3633,
+          "outputTokens": 20,
+          "thoughtTokens": 97,
+          "toolCalls": [
+            "get_station_facilities"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_facilities",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2899,
+          "promptTokens": 5656,
+          "outputTokens": 194,
+          "thoughtTokens": 222,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4344,
+      "latencyMs": 4724,
+      "toolCalls": [
+        "get_station_facilities"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_facilities",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9289,
+      "outputTokens": 214,
+      "thoughtTokens": 319,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "5호선 **강동역**의 엘리베이터 및 화장실 위치 정보입니다.\n\n---\n\n### 🛗 엘리베이터 위치\n* **외부 2호기** (지상 1층 ↔ 지하 B3층): **1번 출입구**\n* **내부 1호기** (지하 B3층 ↔ 지하 B4층): **둔촌동 방면 (8-3 승강장)**\n* **내부 3호기** (지하 B4층 ↔ 지하 B3층): **천호 방면 (1-2 승강장)**\n\n---\n\n### 🚻 화장실 위치\n* **위치**: **지하 1층 대합실 2번 출입구 앞**\n* **구분**: 일반(남·여) / 교통약자(남·여) 화장실",
+      "renders": [
+        "station-facilities"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "09-날조축-장소앵커",
+      "roundStats": [
+        {
+          "ms": 3126,
+          "promptTokens": 3777,
+          "outputTokens": 22,
+          "thoughtTokens": 359,
+          "toolCalls": [
+            "get_congestion"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_congestion",
+              "args": {
+                "place": "스타벅스 강동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 1549,
+          "promptTokens": 4197,
+          "outputTokens": 18,
+          "thoughtTokens": 96,
+          "toolCalls": [
+            "get_congestion"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_congestion",
+              "args": {
+                "place": "강동역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4555,
+          "promptTokens": 4351,
+          "outputTokens": 147,
+          "thoughtTokens": 523,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 9230,
+      "latencyMs": 9418,
+      "toolCalls": [
+        "get_congestion",
+        "get_congestion"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_congestion",
+          "args": {
+            "place": "스타벅스 강동역점"
+          }
+        },
+        {
+          "name": "get_congestion",
+          "args": {
+            "place": "강동역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12325,
+      "outputTokens": 187,
+      "thoughtTokens": 978,
+      "ok": true,
+      "checks": {
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "**스타벅스 강동역점**의 분위기 및 혼잡도 정보는 다음과 같습니다.\n\n* **매장 분위기**: 매장의 분위기, 인테리어, 평판 등의 정보는 제공되지 않아 안내해 드리기 어렵습니다.\n* **실시간 혼잡도**: 스타벅스 강동역점 및 강동역 주변 지역은 실시간 인구 혼잡도 데이터가 제공되는 대상 구역이 아니어서, 현재 사람이 얼마나 많은지 알 수 없습니다.\n\n강동역 주변의 다른 카페를 네이버 리뷰 개수가 많은 순서로 확인해 보고 싶으시다면 **\"강동역 카페 리뷰 많은 순으로 알려줘\"**라고 요청해 주세요.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "10-웹라우팅",
+      "roundStats": [
+        {
+          "ms": 1525,
+          "promptTokens": 3630,
+          "outputTokens": 21,
+          "thoughtTokens": 79,
+          "toolCalls": [
+            "search_web"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_web",
+              "args": {
+                "query": "서울 지하철 기본요금"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3074,
+          "promptTokens": 6131,
+          "outputTokens": 170,
+          "thoughtTokens": 271,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4599,
+      "latencyMs": 5678,
+      "toolCalls": [
+        "search_web"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_web",
+          "args": {
+            "query": "서울 지하철 기본요금"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9761,
+      "outputTokens": 191,
+      "thoughtTokens": 350,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 서울 지하철 기본요금(카드 기준, 10km 이내)은 다음과 같습니다.\n\n### 연령별 기본요금 (교통카드 기준)\n* **일반(성인)**: **1,550원**\n* **청소년**: **800원**\n* **어린이**: **500원**\n\n---\n\n### 기타 참고 사항\n* **1회용 교통카드**: 일반 기준 **1,650원** (교통카드 운임 대비 100원 추가)\n* **거리 추가 요금**:\n  * **10km ~ 50km**: 5km마다 100원 추가\n  * **50km 초과**: 8km마다 100원 추가",
+      "renders": [
+        "web-results"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "11-위치없음",
+      "roundStats": [
+        {
+          "ms": 2063,
+          "promptTokens": 3628,
+          "outputTokens": 12,
+          "thoughtTokens": 203,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2623,
+          "promptTokens": 3865,
+          "outputTokens": 61,
+          "thoughtTokens": 164,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4686,
+      "latencyMs": 4686,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7493,
+      "outputTokens": 73,
+      "thoughtTokens": 367,
+      "ok": true,
+      "checks": {},
+      "text": "현재 위치 정보를 확인할 수 없어 주변 정보를 조회하지 못했습니다. \n\n동 이름, 지하철역, 대표 건물명 등 **현재 계신 위치(지역명)**를 알려주시면 주변의 식당, 카페, 문화행사, 가볼 만한 곳 등을 안내해 드리겠습니다.",
+      "renders": [],
+      "sources": 0
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1768,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 162,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3041,
+          "promptTokens": 3838,
+          "outputTokens": 108,
+          "thoughtTokens": 267,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4809,
+      "latencyMs": 5484,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7471,
+      "outputTokens": 121,
+      "thoughtTokens": 429,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:달빛어린이병원",
+            "name:종합병원"
+          ]
+        }
+      },
+      "text": "현재 위치 주변에는 지금 운영 중인 소아 야간·휴일 진료 병원(달빛어린이병원)이 없습니다.\n\n구체적인 지역명(예: '강남구', '천호동' 등)을 말씀해 주시면 해당 지역 근처의 소아 야간 진료 병원을 다시 검색해 드릴 수 있습니다. 아이의 고열이 지속되거나 긴급한 상황이라면 119 문의 또는 인근 종합병원 응급실 방문을 고려해 주세요.",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1327,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 88,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3180,
+          "promptTokens": 3785,
+          "outputTokens": 102,
+          "thoughtTokens": 313,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4507,
+      "latencyMs": 4511,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7414,
+      "outputTokens": 115,
+      "thoughtTokens": 401,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역(경춘선, 약 65.6km)**입니다.\n\n현재 춘천역의 실시간 열차 도착 정보는 제공되지 않거나 운행 정보가 없습니다.\n\n* **참고**: 코레일/지방 도시철도 일부 구간은 실시간 도착 정보가 제공되지 않을 수 있습니다. 특정 지하철역의 첫차·막차 시간표 조회가 필요하시면 말씀해 주세요.",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1526,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 74,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2099,
+          "promptTokens": 3770,
+          "outputTokens": 61,
+          "thoughtTokens": 153,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 3625,
+      "latencyMs": 3625,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7403,
+      "outputTokens": 73,
+      "thoughtTokens": 227,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 계신 위치는 **따릉이 대여소 정보가 제공되지 않는 지역(서울 외 지역)**입니다. \n\n따릉이(서울시 공공자전거) 대여소 정보는 **서울 지역**에서만 제공되므로, 현재 위치에서는 조회가 어렵습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "21-리뷰순-지명",
+      "roundStats": [
+        {
+          "ms": 2243,
+          "promptTokens": 3630,
+          "outputTokens": 26,
+          "thoughtTokens": 216,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "여의도 맛집",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3771,
+          "promptTokens": 4136,
+          "outputTokens": 319,
+          "thoughtTokens": 317,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6014,
+      "latencyMs": 6098,
+      "toolCalls": [
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_places",
+          "args": {
+            "query": "여의도 맛집",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7766,
+      "outputTokens": 345,
+      "thoughtTokens": 533,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "여의도 지역의 리뷰(네이버 카페·블로그) 많은 순 상위 5곳입니다. \n\n※ 시스템 특성상 리뷰 수의 정확한 수치나 별점·평점 값은 제공되지 않으며, 리뷰가 많은 순서대로 목록이 안내됩니다.\n\n1. **진주집**\n   - **분류:** 한식 > 국수\n   - **주소:** 서울특별시 영등포구 국제금융로6길 33 지하 1층\n\n2. **블루보틀 여의도 카페**\n   - **분류:** 카페·디저트\n   - **주소:** 서울특별시 영등포구 여의대로 108 더현대서울점 5층\n\n3. **63뷔페 파빌리온 더 프리미엄**\n   - **분류:** 뷔페\n   - **주소:** 서울특별시 영등포구 63로 50 63빌딩 지하 1층(Ground Floor)\n\n4. **노티드 여의도IFC몰점**\n   - **분류:** 카페·디저트\n   - **주소:** 서울특별시 영등포구 국제금융로 10 L2층 234호\n\n5. **콘타이 IFC몰점**\n   - **분류:** 태국음식\n   - **주소:** 서울특별시 영등포구 국제금융로 10 IFC몰 L3층",
+      "renders": [
+        "places"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "22-별점요청",
+      "roundStats": [
+        {
+          "ms": 2250,
+          "promptTokens": 3630,
+          "outputTokens": 14,
+          "thoughtTokens": 260,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1930,
+          "promptTokens": 4337,
+          "outputTokens": 24,
+          "thoughtTokens": 157,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "sort": "review",
+                "query": "길동 카페"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4970,
+          "promptTokens": 4756,
+          "outputTokens": 265,
+          "thoughtTokens": 496,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 9150,
+      "latencyMs": 9355,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "sort": "review",
+            "query": "길동 카페"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12723,
+      "outputTokens": 303,
+      "thoughtTokens": 913,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "별점이나 평점 정보는 수치로 제공되지 않습니다. 대신 현재 계신 **강동구 길동**을 기준으로 네이버 리뷰(블로그·카페)가 많은 순서의 카페 5곳을 안내해 드립니다.\n\n1. **스타벅스 길동역점**\n   - **분류**: 카페\n   - **주소**: 서울특별시 강동구 양재대로 1487\n\n2. **스타벅스 천호대로길동점**\n   - **분류**: 카페\n   - **주소**: 서울특별시 강동구 천호대로 1131 거산 유팰리스\n\n3. **테라로사 길동점**\n   - **분류**: 카페\n   - **주소**: 서울특별시 강동구 천호대로 1221\n\n4. **뚜레쥬르 길동역점**\n   - **분류**: 베이커리\n   - **주소**: 서울특별시 강동구 양재대로 1478\n\n5. **메가MGC커피 길동역점**\n   - **분류**: 카페\n   - **주소**: 서울특별시 강동구 양재대로 1465",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "23-리뷰순-지명없음",
+      "roundStats": [
+        {
+          "ms": 2092,
+          "promptTokens": 3626,
+          "outputTokens": 14,
+          "thoughtTokens": 213,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1174,
+          "promptTokens": 4286,
+          "outputTokens": 25,
+          "thoughtTokens": 47,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 맛집",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4003,
+          "promptTokens": 4609,
+          "outputTokens": 306,
+          "thoughtTokens": 359,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 7269,
+      "latencyMs": 7419,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 맛집",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12521,
+      "outputTokens": 345,
+      "thoughtTokens": 619,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치(서울 강동구 길동) 기준, **리뷰 많은 순** 맛집 상위 5곳입니다. (리뷰의 정확한 개수 및 별점 수치는 제공되지 않으며 순서만 조회됩니다.)\n\n1. **버거킹 길동사거리점**\n   - **분류**: 양식 > 햄버거\n   - **주소**: 서울특별시 강동구 양재대로 1440\n\n2. **멘야세븐**\n   - **분류**: 음식점 > 일식 > 일본식라면\n   - **주소**: 서울특별시 강동구 양재대로112길 45 1층\n\n3. **길동우동 길동본점**\n   - **분류**: 음식점 > 일식 > 우동, 소바\n   - **주소**: 서울특별시 강동구 천호대로 1135 1층\n\n4. **상무초밥 길동점**\n   - **분류**: 음식점 > 일식 > 초밥, 롤\n   - **주소**: 서울특별시 강동구 천호대로 1139 강동그린타워 1층\n\n5. **스타벅스 길동역점**\n   - **분류**: 카페, 디저트 > 카페\n   - **주소**: 서울특별시 강동구 양재대로 1487",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "31-첫차막차",
+      "roundStats": [
+        {
+          "ms": 1842,
+          "promptTokens": 3628,
+          "outputTokens": 20,
+          "thoughtTokens": 85,
+          "toolCalls": [
+            "get_station_timetable"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_timetable",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2852,
+          "promptTokens": 3918,
+          "outputTokens": 121,
+          "thoughtTokens": 193,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4694,
+      "latencyMs": 4974,
+      "toolCalls": [
+        "get_station_timetable"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_timetable",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7546,
+      "outputTokens": 141,
+      "thoughtTokens": 278,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "langInvariant": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "강동역(5호선)의 **평일 기준 막차 시각**은 다음과 같습니다.\n\n### 5호선 상행 (방화·왕십리 방면)\n* **왕십리행**: 00:42 (익일)\n\n### 5호선 하행 (상일동·마천 방면)\n* **상일동행**: 00:50 (익일)\n\n---\n※ 토요일·일요일 및 공휴일은 평일과 운행 시간표가 다를 수 있습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "32-역명도착",
+      "roundStats": [
+        {
+          "ms": 1516,
+          "promptTokens": 3628,
+          "outputTokens": 21,
+          "thoughtTokens": 72,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {
+                "stationName": "천호"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3348,
+          "promptTokens": 4691,
+          "outputTokens": 241,
+          "thoughtTokens": 305,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4864,
+      "latencyMs": 4906,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {
+            "stationName": "천호"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8319,
+      "outputTokens": 262,
+      "thoughtTokens": 377,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "langInvariant": true
+      },
+      "text": "천호역(5호선·8호선)의 실시간 열차 도착 정보입니다.\n\n---\n\n### **5호선**\n* **상행 (방화 방면)**\n  * **방화행**: 전역 출발 (약 1분 후 도착 예정)\n  * **방화행**: 전역(강동) 도착 (약 2분 후 도착 예정)\n\n* **하행 (마천·하남검단산 방면)**\n  * **마천행**: 전역(광나루) 출발 (약 1분 후 도착 예정)\n  * **하남검단산행**: 아차산역 위치 (약 4분 후 도착 예정)\n\n---\n\n### **8호선**\n* **상행 (별내 방면)**\n  * **별내행**: 당역(천호) 도착\n  * **별내행**: 잠실역 위치\n\n* **하행 (모란 방면)**\n  * **모란행**: 당역(천호) 도착\n  * **모란행**: 전역(암사) 진입",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "33-정위",
+      "roundStats": [
+        {
+          "ms": 1661,
+          "promptTokens": 3628,
+          "outputTokens": 14,
+          "thoughtTokens": 90,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2693,
+          "promptTokens": 4165,
+          "outputTokens": 145,
+          "thoughtTokens": 165,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4354,
+      "latencyMs": 4420,
+      "toolCalls": [
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7793,
+      "outputTokens": 159,
+      "thoughtTokens": 255,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치 정보입니다.\n\n* **도로명 주소:** 서울특별시 강동구 천호대로185길 89-5\n* **지번 주소:** 서울특별시 강동구 길동 393-14\n* **행정동:** 서울특별시 강동구 길동\n\n**주변 주요 정보**\n* **가장 가까운 지하철역:** 지하철 5호선 길동역 (서쪽 약 145m)\n* **인근 주요 장소:** 길동골목냉면(남서쪽 약 20m), GS25 우성스타점(남동쪽 약 22m)",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "34-한눈에",
+      "roundStats": [
+        {
+          "ms": 1856,
+          "promptTokens": 3626,
+          "outputTokens": 12,
+          "thoughtTokens": 256,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5771,
+          "promptTokens": 4951,
+          "outputTokens": 517,
+          "thoughtTokens": 568,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7627,
+      "latencyMs": 10573,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8577,
+      "outputTokens": 529,
+      "thoughtTokens": 824,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(서울특별시 강동구 길동) 기준 1km 이내 주요 시설과 주요 장소입니다.\n\n### 🚆 대중교통\n* **지하철**: 5호선 길동역 (서쪽 145m)\n* **버스정류소**: 총 5곳\n  * 길동역1번출구 (서쪽 156m)\n  * 길동역3번출구 (서쪽 159m)\n  * 천동초교입구사거리 (북쪽 247m)\n\n---\n\n### 🍽️ 음식점 (15곳 이상)\n* **길동골목냉면** (남서쪽 20m)\n* **얼음왕국 길동297호점** (남서쪽 20m)\n* **아구세상 길동점** (남쪽 20m)\n* **박가면장 길동점** (남동쪽 33m)\n\n---\n\n### ☕ 카페 (15곳 이상)\n* **스윗하나** (북동쪽 36m)\n* **메가MGC커피 길동희망공원점** (북동쪽 59m)\n* **다올** (남동쪽 61m)\n* **백억커피 길동역점** (서쪽 75m)\n\n---\n\n### 🎈 아이 놀 곳 (15곳)\n* **희망어린이공원** (북쪽 148m)\n* **달님어린이공원** (남쪽 209m)\n* **프레리주니어 길동점** (남동쪽 366m)\n* **성심어린이공원** (서쪽 367m)\n\n---\n\n### 🎭 문화행사 (1건)\n* **[우리역사문화도서관] 생활의 지혜, 기초 한문 강독 [사자소학 四字小學]** (남쪽 520m)\n\n---\n\n### ♿ 무장애 관광지 (2곳)\n* **해공신익희선생동상** (서쪽 884m)\n* **강동문화원** (북쪽 887m)",
+      "renders": [
+        "places"
+      ],
+      "sources": 5
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "35-경유지-도보",
+      "roundStats": [
+        {
+          "ms": 1529,
+          "promptTokens": 3635,
+          "outputTokens": 28,
+          "thoughtTokens": 117,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "via": "길동역",
+                "destination": "강동역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3082,
+          "promptTokens": 4452,
+          "outputTokens": 257,
+          "thoughtTokens": 224,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4611,
+      "latencyMs": 4835,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "via": "길동역",
+            "destination": "강동역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8087,
+      "outputTokens": 285,
+      "thoughtTokens": 341,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치에서 **길동역**을 거쳐 **강동역**까지 가는 도보 경로 정보입니다.\n\n- **총 거리:** 약 1.3 km\n- **소요 시간:** 약 22분\n\n---\n\n### 🚶 주요 이동 경로\n\n1. **출발 ~ 길동역**\n   - 천호대로185길 → 진황도로47길 → 양재대로114길을 지나 양재대로 방향으로 이동\n   - **길동역 3번 출구**로 진입 후 역사 내 이동하여 **1번 출구**로 나옵니다.\n\n2. **길동역 ~ 길동사거리**\n   - 길동역 1번 출구 나와 양재대로를 따라 직진\n   - 횡단보도 건너 **길동사거리** 방면으로 약 95m 이동\n\n3. **길동사거리 ~ 강동역**\n   - 길동사거리에서 천호대로를 따라 직진\n   - 강동성심병원교차로 횡단보도를 건넌 후 천호대로를 따라 이동\n   - **강동역 2번 출구** 도착",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "36-경유지-대중교통",
+      "roundStats": [
+        {
+          "ms": 1774,
+          "promptTokens": 3634,
+          "outputTokens": 28,
+          "thoughtTokens": 169,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "via": "천호역",
+                "destination": "잠실역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2467,
+          "promptTokens": 3896,
+          "outputTokens": 20,
+          "thoughtTokens": 239,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3937,
+          "promptTokens": 5380,
+          "outputTokens": 364,
+          "thoughtTokens": 227,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 8178,
+      "latencyMs": 9002,
+      "toolCalls": [
+        "get_transit_route",
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "via": "천호역",
+            "destination": "잠실역"
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "천호역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12910,
+      "outputTokens": 412,
+      "thoughtTokens": 635,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "대중교통 경로는 경유지를 지정한 한 번에의 통합 조회가 지원되지 않습니다. 따라서 **[현재 위치 → 천호역]**과 **[천호역 → 잠실역]** 2개 구간으로 나누어 안내해 드립니다.\n\n---\n\n### 1구간: 현재 위치 → 천호역\n* **추천 경로 (지하철 5호선)**\n  * **이동:** 길동역까지 도보(약 2분) ➔ 5호선 탑승 ➔ 천호역 하차(2개 정거장, 약 4분)\n  * **총 소요 시간:** 약 7분 (도보 약 3분 포함)\n  * **요금:** 1,550원\n\n* **대안 경로 (버스 이용 시)**\n  * **130번 버스:** 길동역1번출구 정류장 탑승 ➔ 천호역1번출구.문구거리 하차 (약 15분 소요)\n  * **370번 / 341번 버스:** 길동주민센터.둔촌2동주민센터 정류장 탑승 ➔ 천호역 하차 (약 19분 소요)\n\n---\n\n### 2구간: 천호역 → 잠실역\n* **지하철 8호선 이용**\n  * **이동:** 천호역(8호선) 탑승 ➔ 강동구청 ➔ 몽촌토성 ➔ 잠실역 하차 (3개 정거장)\n  * **소요 시간:** 약 6~7분",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "37-지명-place",
+      "roundStats": [
+        {
+          "ms": 1528,
+          "promptTokens": 3631,
+          "outputTokens": 42,
+          "thoughtTokens": 113,
+          "toolCalls": [
+            "get_night_clinics",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {
+                "place": "여의도"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "여의도 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 6065,
+          "promptTokens": 5679,
+          "outputTokens": 384,
+          "thoughtTokens": 647,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7593,
+      "latencyMs": 9651,
+      "toolCalls": [
+        "get_night_clinics",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {
+            "place": "여의도"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "여의도 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9310,
+      "outputTokens": 426,
+      "thoughtTokens": 760,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "arg": true
+      },
+      "text": "현재 여의도 내에서 진료 중으로 확인되는 병원 및 인근 소아청소년과 정보입니다.\n\n---\n\n### 1. 여의도 내 진료 가능 병원\n* **여의도의원** (의원 / 일반·소아 진료)\n  * **주소:** 서울 영등포구 국제금융로7길 15 (여의도동, 여의상가 2층 2025호)\n  * **전화번호:** 02-784-0705\n  * **진료 상태:** 현재 진료 중\n\n---\n\n### 2. 여의도 내 소아청소년과 전문 병원·의원\n*(실시간 당일 운영 상황이 다를 수 있으므로 방문 전 전화 확인을 권장합니다.)*\n\n* **최소아청소년과의원**\n  * **주소:** 서울 영등포구 여의대방로 417\n* **여의도진주소아청소년과의원**\n  * **주소:** 서울 영등포구 여의대방로 386\n* **가톨릭대학교 여의도성모병원 소아청소년과**\n  * **주소:** 서울 영등포구 63로 10\n\n---\n\n### 3. 여의도 인근 소아청소년과 전문 의원 (현재 진료 중)\n* **더튼튼소아청소년과의원**\n  * **주소:** 서울 마포구 마포대로 68 (마포아크로타워 4층)\n  * **전화번호:** 02-704-7575\n  * **진료 상태:** 현재 진료 중",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "38-무장애-연쇄",
+      "roundStats": [
+        {
+          "ms": 1832,
+          "promptTokens": 3638,
+          "outputTokens": 14,
+          "thoughtTokens": 211,
+          "toolCalls": [
+            "get_nearby_barrier_free"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_barrier_free",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2585,
+          "promptTokens": 4741,
+          "outputTokens": 214,
+          "thoughtTokens": 225,
+          "toolCalls": [
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1836300"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "130376"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1017568"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2751863"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "126520"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2758811"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2608651"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2741610"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4572,
+          "promptTokens": 6522,
+          "outputTokens": 396,
+          "thoughtTokens": 430,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 8989,
+      "latencyMs": 9379,
+      "toolCalls": [
+        "get_nearby_barrier_free",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_barrier_free",
+          "args": {}
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1836300"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "130376"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1017568"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2751863"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "126520"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2758811"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2608651"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2741610"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 14901,
+      "outputTokens": 624,
+      "thoughtTokens": 866,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 위치 근처의 무장애 관광지 중 **장애인(휠체어) 화장실**이 구비된 곳입니다.\n\n---\n\n### 1. **강동문화원** (약 887m)\n* **주소**: 서울특별시 강동구 상암로 168 (천호동)\n* **편의시설**: 장애인 전용 화장실, 엘리베이터, 장애인 주차구역(4대), 출입구 경사로 및 뒷문 무단차, 점자블록\n\n### 2. **강동그린웨이 가족캠핑장** (약 1.1km)\n* **주소**: 서울특별시 강동구 천호대로206길 87 (둔촌동)\n* **편의시설**: 장애인 화장실(자동미닫이문), 장애인 주차장(3대), 휠체어 접근 가능한 접근로, 점자블록\n\n### 3. **둔촌역전통시장** (약 1.3km)\n* **주소**: 서울특별시 강동구 풍성로58길 34 (성내동)\n* **편의시설**: 장애인 화장실(상인회 건물 내), 단차 없는 휠체어 접근로·주출입구, 점자블록, 보조견 동반 가능\n\n### 4. **서울 풍납동 토성** (약 1.9km)\n* **주소**: 서울특별시 송파구 풍납동 73-1\n* **편의시설**: 장애인 전용 화장실, 장애인 주차구역, 단차 없는 휠체어 접근로·주출입구 (풍납근린공원 내 휠체어 이용 가능)",
+      "renders": [
+        "barrier-free-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "01-절제-카페",
+      "roundStats": [
+        {
+          "ms": 2571,
+          "promptTokens": 3627,
+          "outputTokens": 14,
+          "thoughtTokens": 247,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2070,
+          "promptTokens": 4321,
+          "outputTokens": 18,
+          "thoughtTokens": 149,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 카페"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3340,
+          "promptTokens": 4827,
+          "outputTokens": 272,
+          "thoughtTokens": 293,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 7981,
+      "latencyMs": 8104,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 카페"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12775,
+      "outputTokens": 304,
+      "thoughtTokens": 689,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치는 **서울 강동구 길동(5호선 길동역 인근)**입니다. \n\n실시간 매장 소음이나 분위기(조용함 여부)는 별도 정보가 제공되지 않으므로, 근처에 위치한 카페 목록을 안내해 드립니다.\n\n### 길동역 인근 카페 목록\n* **스윗하나** (디저트카페)\n  * 주소: 서울 강동구 천호대로185길 89 (현재 위치 바로 인근)\n* **바하마스**\n  * 주소: 서울 강동구 진황도로 123\n* **구움 담**\n  * 주소: 서울 강동구 명일로17길 9\n* **다락베이크샵**\n  * 주소: 서울 강동구 양재대로124길 65\n* **거상**\n  * 주소: 서울 강동구 천중로 227\n* **테라로사 길동점**\n  * 주소: 서울 강동구 천호대로 1221\n* **프롬투커피**\n  * 주소: 서울 강동구 천중로51길 74",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "02-대중교통",
+      "roundStats": [
+        {
+          "ms": 1225,
+          "promptTokens": 3634,
+          "outputTokens": 21,
+          "thoughtTokens": 76,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "여의도역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4105,
+          "promptTokens": 5421,
+          "outputTokens": 365,
+          "thoughtTokens": 288,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5330,
+      "latencyMs": 5903,
+      "toolCalls": [
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "여의도역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9055,
+      "outputTokens": 386,
+      "thoughtTokens": 364,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(길동역 근처)에서 여의도역까지 대중교통으로 가는 경로입니다.\n\n---\n\n### 1. 추천 경로 (환승 없음)\n* **총 소요시간:** 약 48분 (도보 3분 포함)\n* **이용 요금:** 1,850원\n* **상세 경로:**\n  1. **길동역**까지 도보 이동 (약 2분, 150m)\n  2. **수도권 5호선**(방화 방면) 탑승 → **여의도역** 하차 (23개 정거장, 약 45분 소요)\n  3. 여의도역 하차 후 도보 이동 (약 1분)\n\n---\n\n### 2. 최단 시간 경로 (9호선 급행 환승)\n* **총 소요시간:** 약 45분 (도보 3분 포함)\n* **이용 요금:** 1,850원\n* **상세 경로:**\n  1. **길동역**에서 **5호선** 탑승 → **강동역** 이동 (1개 정거장)\n  2. **5호선**(마천 방면) 환승 → **올림픽공원역** 이동 (2개 정거장)\n  3. **9호선 급행** 환승 → **여의도역** 하차 (9개 정거장, 약 30분 소요)\n\n환승 없이 한 번에 가시려면 **5호선 직행 경로(약 48분)**를 이용하시는 것을 추천합니다.",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "03-지하철도착",
+      "roundStats": [
+        {
+          "ms": 1492,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 115,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4999,
+          "promptTokens": 5341,
+          "outputTokens": 436,
+          "thoughtTokens": 465,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6491,
+      "latencyMs": 6521,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8970,
+      "outputTokens": 449,
+      "thoughtTokens": 580,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역들의 실시간 도착 정보입니다.\n\n---\n\n### 1. **길동역 (5호선)** · 약 145m\n* **상행 (강동·방화 방면)**\n  * **방화행**: 길동 도착 (약 1분 후)\n  * **강동행**: 전역(굽은다리) 진입 (약 2분 후)\n* **하행 (하남검단산 방면)**\n  * **하남검단산행**: 길동 진입 (약 1분 후)\n  * **하남검단산행**: 광나루 위치 (약 6분 후)\n\n---\n\n### 2. **강동역 (5호선)** · 약 842m\n* **상행 (천호·방화 방면)**\n  * **방화행**: 강동 도착 (약 1분 후)\n  * **방화행**: 전역(길동) 도착 (약 1분 후)\n* **하행 (마천·하남검단산 방면)**\n  * **마천행**: 전역(천호) 도착 (약 2분 후)\n  * **하남검단산행**: 광나루 위치 (약 4분 후)\n\n---\n\n### 3. **굽은다리역 (5호선)** · 약 856m\n* **상행 (길동·방화 방면)**\n  * **강동행**: 굽은다리 진입 (약 1분 후)\n  * **방화행**: 고덕 위치 (약 4분 후)\n* **하행 (명일·하남검단산 방면)**\n  * **하남검단산행**: 전역(길동) 진입 (약 2분 후)\n  * **하남검단산행**: 광나루 위치 (약 8분 후)",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1397,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 89,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5823,
+          "promptTokens": 5238,
+          "outputTokens": 489,
+          "thoughtTokens": 556,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7220,
+      "latencyMs": 9268,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8871,
+      "outputTokens": 502,
+      "thoughtTokens": 645,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "time:08:00"
+          ]
+        }
+      },
+      "text": "현재 위치 기준으로 지금 진료 중인 소아청소년과 및 주변 의원 정보입니다. 방문 전 전화로 실시간 접수 마감 여부를 확인하시는 것을 권장합니다.\n\n---\n\n### **소아청소년과**\n* **새솔키즈소아청소년과의원**\n  * **주소**: 서울특별시 강동구 양재대로 1360, 포레온스테이션5 4018~4020호 (둔촌동)\n  * **전화번호**: 02-486-7579\n  * **오늘 진료시간**: 08:00 ~ 18:00 (현재 진료 중)\n  * **거리**: 약 1.2km\n\n---\n\n### **주변 기타 진료 가능 의원**\n* **영림내과의원**\n  * **주소**: 서울특별시 강동구 구천면로 233, 한양메디스퀘어 8·9층 (천호동, 천호동 성당 맞은편)\n  * **전화번호**: 02-476-1615\n  * **오늘 진료시간**: 08:00 ~ 17:00 (현재 진료 중)\n\n* **둔촌웰니스의원**\n  * **주소**: 서울특별시 강동구 양재대로 1360, 포레온스테이션5 4층 4001~4008호 (둔촌동)\n  * **전화번호**: 02-554-7979\n  * **오늘 진료시간**: 08:00 ~ 17:00 (현재 진료 중)\n\n* **강동천호내과의원**\n  * **주소**: 서울특별시 강동구 올림픽로 664, 2층 (천호동, 천호역 3·5번 출구 인근)\n  * **전화번호**: 02-470-7575\n  * **오늘 진료시간**: 08:00 ~ 19:00 (현재 진료 중)",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "05-날씨정당",
+      "roundStats": [
+        {
+          "ms": 1941,
+          "promptTokens": 3629,
+          "outputTokens": 22,
+          "thoughtTokens": 159,
+          "toolCalls": [
+            "get_weather",
+            "get_air_quality"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_weather",
+              "args": {}
+            },
+            {
+              "name": "get_air_quality",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3613,
+          "promptTokens": 4032,
+          "outputTokens": 226,
+          "thoughtTokens": 283,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5554,
+      "latencyMs": 6634,
+      "toolCalls": [
+        "get_weather",
+        "get_air_quality"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_weather",
+          "args": {}
+        },
+        {
+          "name": "get_air_quality",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7661,
+      "outputTokens": 248,
+      "thoughtTokens": 442,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "오늘 야외 활동을 하기에 **공기질은 매우 좋으나, 날씨가 다소 덥고 습합니다.**\n\n### 🌤️ 날씨 상태\n* **현재 기온**: 22.7℃ (오늘 최고 기온 29℃)\n* **하늘 상태**: 흐림\n* **강수 확률**: 30% (현재 강수 없음)\n* **습도**: 95%\n\n### 🍃 공기질 상태\n* **통합대기질**: 좋음 (27)\n* **미세먼지 (PM10)**: 좋음 (9 ㎍/㎥)\n* **초미세먼지 (PM2.5)**: 좋음 (3 ㎍/㎥)\n\n공기 상태가 깨끗하여 외출하기에 좋지만, 습도가 높고 낮 동안 최고 29℃까지 올라 더울 수 있으니 통풍이 잘 되는 옷차림과 수분 섭취를 챙겨 외출하시길 권해드립니다.",
+      "renders": [
+        "air-quality"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "06-도보-계단회피",
+      "roundStats": [
+        {
+          "ms": 1525,
+          "promptTokens": 3636,
+          "outputTokens": 24,
+          "thoughtTokens": 105,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "accessible": true,
+                "destination": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4832,
+          "promptTokens": 4296,
+          "outputTokens": 395,
+          "thoughtTokens": 440,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6357,
+      "latencyMs": 6553,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "accessible": true,
+            "destination": "천호역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7932,
+      "outputTokens": 419,
+      "thoughtTokens": 545,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 **천호역(5호선)**까지 도보 경로는 약 **2.1km**, 소요 시간은 **약 33분**입니다.\n\n⚠️ **계단 안내 주의**\n계단이 완전히 없는 경로는 확정되지 않아 안내 경로에 일부 계단이 포함될 수 있습니다.\n\n---\n\n### 🚶 **주요 도보 경로**\n\n1. **천호대로185길**을 따라 95m 이동 (토담골 생고기전문점까지)\n2. 왼쪽으로 돌아 **진황도로47길**을 따라 48m 이동 (대박포차까지)\n3. 오른쪽으로 돌아 **양재대로114길**을 따라 51m 이동 (뚜레쥬르까지)\n4. 왼쪽으로 돌아 **양재대로**를 따라 316m 이동 (T world까지)\n5. **횡단보도 2개** 건너기 (50m, 가로판매점 방향)\n6. **양재대로**를 따라 95m 이동하여 **길동사거리** 이동\n7. **천호대로**를 따라 165m 이동 (김종하 정신과의원 방향)\n8. **횡단보도** 건너기 (10m, 음향신호기 있음)\n9. **천호대로**를 따라 193m 이동하여 **강동성심병원교차로** 이동\n10. **횡단보도** 건너기 (20m, 음향신호기 있음)\n11. **천호대로**를 따라 875m 직진 (으뜸 플러스안경 방향)\n12. **천호역 5번 출구** 진입 후 역사 내 132m 이동",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "07-따릉이",
+      "roundStats": [
+        {
+          "ms": 1630,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 107,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3297,
+          "promptTokens": 4312,
+          "outputTokens": 240,
+          "thoughtTokens": 250,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4927,
+      "latencyMs": 5636,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7945,
+      "outputTokens": 252,
+      "thoughtTokens": 357,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 가장 가까운 따릉이 대여소는 **3681. 길동 마루빌딩**입니다.\n\n### 🚲 가장 가까운 대여소\n* **3681. 길동 마루빌딩**\n  * **거리:** 약 222m\n  * **대여 가능 자전거:** 10대 (거치대 10개)\n\n---\n\n### 📍 인근 기타 대여소\n1. **1076. 천동초교입구사거리 버스정류장(십자성마을 방면)**\n   * **거리:** 약 240m | **대여 가능:** 21대\n2. **1017. 둔촌고교입구 교차로(길동주민센터 방면)**\n   * **거리:** 약 404m | **대여 가능:** 12대\n3. **1010. 강동세무서**\n   * **거리:** 약 467m | **대여 가능:** 22대",
+      "renders": [
+        "bike"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "08-역시설",
+      "roundStats": [
+        {
+          "ms": 1919,
+          "promptTokens": 3633,
+          "outputTokens": 20,
+          "thoughtTokens": 108,
+          "toolCalls": [
+            "get_station_facilities"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_facilities",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2988,
+          "promptTokens": 5667,
+          "outputTokens": 237,
+          "thoughtTokens": 215,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4907,
+      "latencyMs": 5221,
+      "toolCalls": [
+        "get_station_facilities"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_facilities",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9300,
+      "outputTokens": 257,
+      "thoughtTokens": 323,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "5호선 강동역의 엘리베이터 및 화장실 위치 정보입니다.\n\n---\n\n### 🛗 **엘리베이터 위치**\n* **외부 (지상 ↔ 지하 대합실)**\n  * **외부 2호기**: 1번 출입구 (지상 1층 ↔ 지하 B3층) / 정상 운행\n* **내부 (승강장 ↔ 대합실)**\n  * **내부 1호기**: 둔촌동 방면 8-3 승강장 (지하 B4층 ↔ 지하 B3층) / 정상 운행\n  * **내부 3호기**: 천호 방면 1-2 승강장 (지하 B4층 ↔ 지하 B3층) / 정상 운행\n\n---\n\n### 🚻 **화장실 위치**\n* **위치**: 지하 1층 대합실 **2번 출입구 앞**\n* **시설 구분**: 일반 화장실(남/여) 및 교통약자 화장실(남/여)",
+      "renders": [
+        "station-facilities"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "09-날조축-장소앵커",
+      "roundStats": [
+        {
+          "ms": 2274,
+          "promptTokens": 3777,
+          "outputTokens": 22,
+          "thoughtTokens": 251,
+          "toolCalls": [
+            "get_congestion"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_congestion",
+              "args": {
+                "place": "스타벅스 강동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 1440,
+          "promptTokens": 4089,
+          "outputTokens": 18,
+          "thoughtTokens": 61,
+          "toolCalls": [
+            "get_congestion"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_congestion",
+              "args": {
+                "place": "강동역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3390,
+          "promptTokens": 4208,
+          "outputTokens": 83,
+          "thoughtTokens": 272,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 7104,
+      "latencyMs": 7266,
+      "toolCalls": [
+        "get_congestion",
+        "get_congestion"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_congestion",
+          "args": {
+            "place": "스타벅스 강동역점"
+          }
+        },
+        {
+          "name": "get_congestion",
+          "args": {
+            "place": "강동역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12074,
+      "outputTokens": 123,
+      "thoughtTokens": 584,
+      "ok": true,
+      "checks": {
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "'스타벅스 강동역점'의 분위기, 인테리어 등 상세한 분위기 관련 정보는 제공되는 데이터가 없어 안내해 드리기 어렵습니다.\n\n또한, 해당 위치는 실시간 인구 혼잡도 데이터가 제공되는 주요 상권/관광 구역이 아니어서 현재 인근에 사람이 얼마나 많은지(혼잡도)는 확인하지 못했습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "10-웹라우팅",
+      "roundStats": [
+        {
+          "ms": 2037,
+          "promptTokens": 3630,
+          "outputTokens": 33,
+          "thoughtTokens": 118,
+          "toolCalls": [
+            "search_web"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_web",
+              "args": {
+                "query": "서울 지하철 기본요금 현행 2024 2025"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4315,
+          "promptTokens": 6440,
+          "outputTokens": 265,
+          "thoughtTokens": 388,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6352,
+      "latencyMs": 7267,
+      "toolCalls": [
+        "search_web"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_web",
+          "args": {
+            "query": "서울 지하철 기본요금 현행 2024 2025"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 10070,
+      "outputTokens": 298,
+      "thoughtTokens": 506,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "수도권(서울·인천·경기) 지하철 기본요금(10km 이하) 정보는 다음과 같습니다.\n\n### 지하철 기본요금 (카드 기준)\n* **성인 (만 19세 이상):** **1,550원**\n* **청소년 (만 13~18세):** **900원**\n* **어린이 (만 6~12세):** **550원**\n\n---\n\n### 기타 상세 안내\n* **현금 구매(1회용 교통카드):** 성인 및 청소년 **1,650원**, 어린이 **550원** (보증금 500원 별도)\n* **거리 비례 추가 요금:** \n  * 10km ~ 50km 구간: 매 5km마다 100원 추가\n  * 50km 초과 구간: 매 8km마다 100원 추가\n* **조조할인:** 영업 시작(첫차)부터 오전 6시 30분 이전 탑승 시 기본요금의 20% 할인 적용 (성인 카드 기준 **1,240원**)",
+      "renders": [
+        "web-results"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "11-위치없음",
+      "roundStats": [
+        {
+          "ms": 1867,
+          "promptTokens": 3628,
+          "outputTokens": 12,
+          "thoughtTokens": 145,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3175,
+          "promptTokens": 3807,
+          "outputTokens": 75,
+          "thoughtTokens": 303,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5042,
+      "latencyMs": 5042,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7435,
+      "outputTokens": 87,
+      "thoughtTokens": 448,
+      "ok": true,
+      "checks": {},
+      "text": "현재 위치 정보를 확인할 수 없어 주변 장소를 조회하지 못했습니다. \n\n원하시는 **지역이나 기준 지명(예: OO동, OO역 등)**을 말씀해 주시면, 해당 위치 주변의 대중교통, 식당, 카페, 아이 놀 곳, 문화행사, 무장애 관광지 등의 목록을 확인해 드리겠습니다.",
+      "renders": [],
+      "sources": 0
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1791,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 161,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2374,
+          "promptTokens": 3837,
+          "outputTokens": 14,
+          "thoughtTokens": 184,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1348,
+          "promptTokens": 4350,
+          "outputTokens": 21,
+          "thoughtTokens": 75,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "인제군 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3751,
+          "promptTokens": 4746,
+          "outputTokens": 289,
+          "thoughtTokens": 301,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 4,
+      "modelMs": 9264,
+      "latencyMs": 10048,
+      "toolCalls": [
+        "get_night_clinics",
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "인제군 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 16566,
+      "outputTokens": 337,
+      "thoughtTokens": 721,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:193번",
+            "name:달빛어린이병원",
+            "name:보건복지상담센터",
+            "name:응급의료정보센터",
+            "name:한림의원",
+            "name:설악의원",
+            "name:한사랑의원",
+            "name:서울의원",
+            "name:튼튼소아청소년과의원",
+            "address:원통로 218",
+            "address:원통로 178",
+            "address:비봉로 43",
+            "address:사명길 50-10"
+          ]
+        }
+      },
+      "text": "현재 위치(강원특별자치도 인제군 북면) 주변에는 등록된 **소아 야간·휴일 진료 병원(달빛어린이병원)**이 없습니다(0건). \n\n인근 지역의 소아청소년과 및 일반 의원 목록은 다음과 같습니다. 야간이나 휴일 실시간 진료 여부 및 운영 시간은 방문 전 전화나 119(보건복지상담센터/응급의료정보센터)를 통해 반드시 확인하시기 바랍니다.\n\n* **한림의원**: 강원특별자치도 인제군 북면 원통로 218\n* **설악의원**: 강원특별자치도 인제군 북면 원통로 178\n* **한사랑의원**: 강원특별자치도 인제군 인제읍 인제로193번길 1\n* **서울의원**: 강원특별자치도 인제군 인제읍 비봉로 43\n* **튼튼소아청소년과의원**: 강원특별자치도 양구군 양구읍 사명길 50-10\n\n> 아이의 열이 심하거나 긴급한 상황인 경우, 119에 문의하시면 실시간으로 진료 가능한 가까운 응급실 및 병의원을 안내받으실 수 있습니다.",
+      "renders": [
+        "clinics-nearby",
+        "places"
+      ],
+      "sources": 3
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1423,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 96,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3219,
+          "promptTokens": 3793,
+          "outputTokens": 126,
+          "thoughtTokens": 271,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4642,
+      "latencyMs": 4645,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7422,
+      "outputTokens": 139,
+      "thoughtTokens": 367,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:천호역",
+            "name:강남역"
+          ]
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역**(경춘선, 약 65.6km)입니다.\n\n다만, 현재 **실시간 도착 정보가 조회되지 않았습니다**. (서울 도시철도 외 구간이거나 현재 운행 중인도착 예정 열차가 없을 수 있습니다.)\n\n특정 지하철역 이름을 지정해 말씀해 주시면(예: '천호역 도착 정보 알려줘', '강남역 첫차 시각 알려줘') 해당 역의 실시간 도착 정보나 첫차·막차 시간표를 조회해 드릴 수 있습니다.",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1631,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 86,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1880,
+          "promptTokens": 3782,
+          "outputTokens": 14,
+          "thoughtTokens": 149,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2668,
+          "promptTokens": 4337,
+          "outputTokens": 80,
+          "thoughtTokens": 150,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 6179,
+      "latencyMs": 6261,
+      "toolCalls": [
+        "get_bike_stations",
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11752,
+      "outputTokens": 106,
+      "thoughtTokens": 385,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치(대전광역시 유성구 궁동)에서는 **따릉이 대여소 정보가 제공되지 않습니다.** \n\n따릉이는 서울특별시 공공자전거 서비스로 서울 지역 내 대여소 정보만 조회 가능합니다. 대전광역시 공공자전거(타슈) 등의 이용을 원하실 경우 해당 전용 앱이나 안내 서비스를 확인해 보시기 바랍니다.",
+      "renders": [],
+      "sources": 3
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "21-리뷰순-지명",
+      "roundStats": [
+        {
+          "ms": 1927,
+          "promptTokens": 3630,
+          "outputTokens": 26,
+          "thoughtTokens": 175,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "여의도 맛집",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3627,
+          "promptTokens": 4095,
+          "outputTokens": 275,
+          "thoughtTokens": 319,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5554,
+      "latencyMs": 5606,
+      "toolCalls": [
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_places",
+          "args": {
+            "query": "여의도 맛집",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7725,
+      "outputTokens": 301,
+      "thoughtTokens": 494,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "여의도 지역에서 리뷰(네이버 카페·블로그)가 많은 순서대로 정리한 맛집 및 카페 Top 5 목록입니다. (※ 리뷰 수나 평점 수치는 제공되지 않으며, 순위 정보만 제공됩니다.)\n\n1. **진주집** (한식 > 국수)\n   - 주소: 서울특별시 영등포구 국제금융로6길 33 지하 1층\n\n2. **블루보틀 여의도 카페** (카페, 디저트)\n   - 주소: 서울특별시 영등포구 여의대로 108 더현대서울점 5층\n\n3. **63뷔페 파빌리온 더 프리미엄** (뷔페)\n   - 주소: 서울특별시 영등포구 63로 50 63빌딩 지하 1층\n\n4. **노티드 여의도IFC몰점** (카페, 디저트)\n   - 주소: 서울특별시 영등포구 국제금융로 10 L2층 234호\n\n5. **콘타이 IFC몰점** (태국음식)\n   - 주소: 서울특별시 영등포구 국제금융로 10 IFC몰 L3층",
+      "renders": [
+        "places"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "22-별점요청",
+      "roundStats": [
+        {
+          "ms": 2478,
+          "promptTokens": 3630,
+          "outputTokens": 14,
+          "thoughtTokens": 303,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1464,
+          "promptTokens": 4380,
+          "outputTokens": 24,
+          "thoughtTokens": 77,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 카페",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3942,
+          "promptTokens": 4719,
+          "outputTokens": 303,
+          "thoughtTokens": 351,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 7884,
+      "latencyMs": 8013,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 카페",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12729,
+      "outputTokens": 341,
+      "thoughtTokens": 731,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "별점이나 평점, 리뷰 수의 정확한 수치는 시스템상 제공되지 않습니다. \n\n대신 현재 위치(서울 강동구 길동/길동역 근처) 기준 **리뷰 개수가 많은 순**으로 검색된 카페 목록을 안내해 드립니다.\n\n1. **스타벅스 길동역점**\n   - **주소**: 서울특별시 강동구 양재대로 1487\n   - **분류**: 카페,디저트 > 카페\n\n2. **스타벅스 천호대로길동점**\n   - **주소**: 서울특별시 강동구 천호대로 1131 거산 유팰리스\n   - **분류**: 카페,디저트 > 카페\n\n3. **테라로사 길동점**\n   - **주소**: 서울특별시 강동구 천호대로 1221\n   - **분류**: 카페,디저트 > 카페\n\n4. **뚜레쥬르 길동역점**\n   - **주소**: 서울특별시 강동구 양재대로 1478\n   - **분류**: 카페,디저트 > 베이커리\n\n5. **메가MGC커피 길동역점**\n   - **주소**: 서울특별시 강동구 양재대로 1465\n   - **분류**: 카페,디저트 > 카페",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "23-리뷰순-지명없음",
+      "roundStats": [
+        {
+          "ms": 1557,
+          "promptTokens": 3626,
+          "outputTokens": 14,
+          "thoughtTokens": 152,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1297,
+          "promptTokens": 4225,
+          "outputTokens": 25,
+          "thoughtTokens": 44,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 맛집",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3657,
+          "promptTokens": 4545,
+          "outputTokens": 284,
+          "thoughtTokens": 306,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 6511,
+      "latencyMs": 6664,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 맛집",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12396,
+      "outputTokens": 323,
+      "thoughtTokens": 502,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치인 **서울 강동구 길동** 기준, 리뷰(블로그·카페 작성글) 수가 많은 순으로 정렬된 상위 맛집 목록입니다.\n\n*(※ 리뷰 작성 건수 기준 정렬이며, 정확한 리뷰 수 및 별점·평점 값은 별도 제공되지 않습니다.)*\n\n1. **버거킹 길동사거리점** (양식 > 햄버거)\n   - 주소: 서울특별시 강동구 양재대로 1440\n2. **멘야세븐** (일식 > 일본식라면)\n   - 주소: 서울특별시 강동구 양재대로112길 45 1층\n3. **길동우동 길동본점** (일식 > 우동, 소바)\n   - 주소: 서울특별시 강동구 천호대로 1135 1층\n4. **상무초밥 길동점** (일식 > 초밥, 롤)\n   - 주소: 서울특별시 강동구 천호대로 1139 강동그린타워 1층\n5. **스타벅스 길동역점** (카페, 디저트 > 카페)\n   - 주소: 서울특별시 강동구 양재대로 1487",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "31-첫차막차",
+      "roundStats": [
+        {
+          "ms": 1508,
+          "promptTokens": 3628,
+          "outputTokens": 20,
+          "thoughtTokens": 106,
+          "toolCalls": [
+            "get_station_timetable"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_timetable",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2937,
+          "promptTokens": 3939,
+          "outputTokens": 122,
+          "thoughtTokens": 172,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4445,
+      "latencyMs": 4711,
+      "toolCalls": [
+        "get_station_timetable"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_timetable",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7567,
+      "outputTokens": 142,
+      "thoughtTokens": 278,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "langInvariant": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "오늘(평일 기준) **강동역(5호선)**의 노선·방향별 막차 시간입니다.\n\n### 5호선\n* **상행 (방화·왕십리 방향)**\n  * **막차:** 00:42 (왕십리행)\n* **하행 (상일동·마천 방향)**\n  * **막차:** 00:50 (상일동행)\n\n*(주말 및 공휴일은 운행 시간이 달라질 수 있으니 참고하시기 바랍니다.)*",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "32-역명도착",
+      "roundStats": [
+        {
+          "ms": 1310,
+          "promptTokens": 3628,
+          "outputTokens": 21,
+          "thoughtTokens": 103,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {
+                "stationName": "천호"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3081,
+          "promptTokens": 4707,
+          "outputTokens": 215,
+          "thoughtTokens": 250,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4391,
+      "latencyMs": 4421,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {
+            "stationName": "천호"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8335,
+      "outputTokens": 236,
+      "thoughtTokens": 353,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "langInvariant": true
+      },
+      "text": "천호역의 실시간 열차 도착 정보입니다.\n\n### **5호선**\n* **상행 (방화 방면)**\n  * **방화행**: 천호 도착 (약 1분 후)\n  * **방화행**: 전역(강동) 도착 (약 2분 후)\n* **하행 (하남검단산·마천 방면)**\n  * **하남검단산행**: 천호 진입 (약 1분 후)\n  * **마천행**: 아차산 위치 (약 5분 후)\n\n---\n\n### **8호선**\n* **상행 (별내 방면)**\n  * **별내행**: 전역(강동구청) 도착\n  * **별내행**: 석촌역 위치\n* **하행 (모란 방면)**\n  * **모란행**: 천호 도착\n  * **모란행**: 전역(암사) 진입",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "33-정위",
+      "roundStats": [
+        {
+          "ms": 1450,
+          "promptTokens": 3628,
+          "outputTokens": 14,
+          "thoughtTokens": 152,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2300,
+          "promptTokens": 4227,
+          "outputTokens": 129,
+          "thoughtTokens": 173,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 3750,
+      "latencyMs": 3814,
+      "toolCalls": [
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7855,
+      "outputTokens": 143,
+      "thoughtTokens": 325,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치 정보는 다음과 같습니다.\n\n- **도로명 주소:** 서울특별시 강동구 천호대로185길 89-5\n- **지번 주소:** 서울특별시 강동구 길동 393-14\n- **행정구역:** 서울특별시 강동구 길동\n- **가장 가까운 지하철역:** 5호선 길동역 (서쪽 약 145m)\n- **주변 주요 장소:** GS25 우성스타점, 길동골목냉면, 아구세상 길동점 등",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "34-한눈에",
+      "roundStats": [
+        {
+          "ms": 1550,
+          "promptTokens": 3626,
+          "outputTokens": 12,
+          "thoughtTokens": 98,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5368,
+          "promptTokens": 4793,
+          "outputTokens": 546,
+          "thoughtTokens": 553,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6918,
+      "latencyMs": 8852,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8419,
+      "outputTokens": 558,
+      "thoughtTokens": 651,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(서울특별시 강동구 길동) 기준 1km 이내의 주요 시설 및 장소 정보입니다.\n\n### 🚆 대중교통\n* **지하철**: 5호선 길동역 (서쪽 145m)\n* **버스정류장**: 길동역1번출구 (서쪽 156m), 길동역3번출구 (서쪽 159m), 천동초교입구사거리 (북쪽 247m) 등 5곳\n\n---\n\n### 🍴 식당 (15곳 이상)\n* **길동골목냉면** (남서쪽 20m)\n* **얼음왕국 길동297호점** (남서쪽 20m)\n* **아구세상 길동점** (남쪽 20m)\n* **박가면장 길동점** (남동쪽 33m)\n\n---\n\n### ☕ 카페 (15곳 이상)\n* **스윗하나** (북동쪽 36m)\n* **메가MGC커피 길동희망공원점** (북동쪽 59m)\n* **다올** (남동쪽 61m)\n* **백억커피 길동역점** (서쪽 75m)\n\n---\n\n### 🛝 아이 놀 곳 (총 15곳)\n* **희망어린이공원** (북쪽 148m)\n* **달님어린이공원** (남쪽 209m)\n* **프레리주니어 길동점** (남동쪽 366m)\n* **성심어린이공원** (서쪽 367m)\n\n---\n\n### 🎨 오늘 진행 중인 문화행사 (1건)\n* **[우리역사문화도서관] 생활의 지혜, 기초 한문 강독 [사자소학 四字小學]** (남쪽 520m)\n\n---\n\n### ♿ 무장애 관광지 (총 2곳)\n* **해공신익희선생동상** (서쪽 884m)\n* **강동문화원** (북쪽 887m)\n\n---\n\n특정 카테고리나 장소에 대해 더 자세한 경로 및 정보가 필요하시면 말씀해 주세요.",
+      "renders": [
+        "places"
+      ],
+      "sources": 5
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "35-경유지-도보",
+      "roundStats": [
+        {
+          "ms": 1566,
+          "promptTokens": 3635,
+          "outputTokens": 28,
+          "thoughtTokens": 99,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "via": "길동역",
+                "destination": "강동역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3596,
+          "promptTokens": 4434,
+          "outputTokens": 292,
+          "thoughtTokens": 211,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5162,
+      "latencyMs": 5369,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "via": "길동역",
+            "destination": "강동역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8069,
+      "outputTokens": 320,
+      "thoughtTokens": 310,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치에서 **길동역**을 거쳐 **강동역**까지 가는 도보 경로는 다음과 같습니다.\n\n### **전체 정보**\n* **총 거리:** 약 1.3 km\n* **소요 시간:** 약 22분\n\n---\n\n### **주요 이동 경로**\n1. **길동역(경유지) 이동**\n   * 천호대로185길 및 양재대로114길을 따라 이동 후 **길동역 3번 출구**로 진입합니다.\n   * 역사 내를 통해 **길동역 1번 출구**로 진출합니다.\n\n2. **길동역 → 길동사거리**\n   * 길동역 1번 출구에서 양재대로를 따라 약 400m 직진합니다. (중간 횡단보도 이용)\n   * **길동사거리**까지 이동합니다.\n\n3. **길동사거리 → 강동역**\n   * 길동사거리에서 천호대로를 따라 강동성심병원교차로 방향으로 약 500m 직진합니다.\n   * 강동성심병원교차로 근처 횡단보도를 건넌 후 천호대로를 따라 조금 더 이동하면 **강동역 2번 출구**에 도착합니다.",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "36-경유지-대중교통",
+      "roundStats": [
+        {
+          "ms": 1967,
+          "promptTokens": 3634,
+          "outputTokens": 28,
+          "thoughtTokens": 200,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "잠실역",
+                "via": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3720,
+          "promptTokens": 3927,
+          "outputTokens": 20,
+          "thoughtTokens": 445,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4566,
+          "promptTokens": 5617,
+          "outputTokens": 322,
+          "thoughtTokens": 377,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 10253,
+      "latencyMs": 10677,
+      "toolCalls": [
+        "get_transit_route",
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "잠실역",
+            "via": "천호역"
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "천호역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 13178,
+      "outputTokens": 370,
+      "thoughtTokens": 1022,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "대중교통 길찾기는 경유지 설정을 지원하지 않아 **천호역을 거쳐 가는 전체 경로를 한 번에 안내해 드리기 어렵습니다.** \n\n대신 **구간별 이동 경로**를 나눠 안내해 드립니다.\n\n---\n\n### 1구간: 현재 위치 → 천호역\n* **지하철 (추천)**: **5호선 길동역** 탑승 → **천호역** 하차  \n  * **소요 시간**: 약 7분 (도보 포함)\n  * **요금**: 1,550원\n* **버스**: 길동역1번출구 정류소에서 **130번** 버스 탑승 → 천호역1번출구.문구거리 하차  \n  * **소요 시간**: 약 15분\n\n---\n\n### 2구간: 천호역 → 잠실역\n* **지하철**: **8호선 천호역**(모란 방면) 탑승 → **잠실역** 하차  \n  * **소요 구간**: 3개 역 (천호 → 강동구청 → 몽촌토성 → 잠실)\n  * **소요 시간**: 약 6분\n\n---\n\n💡 **대안 안내**  \n경유지 없이 현재 위치에서 잠실역까지 바로 가는 최적 경로가 필요하시다면 **\"잠실역까지 대중교통\"**으로 다시 문의해 주세요.",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "37-지명-place",
+      "roundStats": [
+        {
+          "ms": 2508,
+          "promptTokens": 3631,
+          "outputTokens": 42,
+          "thoughtTokens": 282,
+          "toolCalls": [
+            "get_night_clinics",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {
+                "place": "여의도"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "여의도 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 5357,
+          "promptTokens": 5848,
+          "outputTokens": 341,
+          "thoughtTokens": 650,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7865,
+      "latencyMs": 9846,
+      "toolCalls": [
+        "get_night_clinics",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {
+            "place": "여의도"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "여의도 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9479,
+      "outputTokens": 383,
+      "thoughtTokens": 932,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "arg": true
+      },
+      "text": "여의도 및 인근 지역에서 현재 진료 중으로 확인된 병원·의원은 다음과 같습니다.\n\n### **1. 여의도 내**\n* **여의도의원**\n  * **주소:** 서울 영등포구 국제금융로7길 15 여의상가 2층\n  * **전화번호:** 02-784-0705\n  * **상태:** 진료 중\n\n---\n\n### **2. 여의도 인근 소아청소년과**\n* **더튼튼소아청소년과의원** (마포구 도화동)\n  * **주소:** 서울 마포구 마포대로 68 마포아크로타워 4층\n  * **전화번호:** 02-704-7575\n  * **상태:** 진료 중 (오늘 19:00까지)\n\n---\n\n### **참고: 여의도 내 주요 소아청소년과**\n다음 병원들은 여의도 내에 위치해 있으며, 방문 전 전화로 실시간 접수 마감 여부를 확인하시는 것을 권장합니다.\n* **최소아청소년과의원:** 서울 영등포구 여의대방로 417\n* **여의도진주소아청소년과의원:** 서울 영등포구 여의대방로 386\n* **가톨릭대학교 여의도성모병원 소아청소년과:** 서울 영등포구 63로 10",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "38-무장애-연쇄",
+      "roundStats": [
+        {
+          "ms": 1546,
+          "promptTokens": 3638,
+          "outputTokens": 14,
+          "thoughtTokens": 141,
+          "toolCalls": [
+            "get_nearby_barrier_free"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_barrier_free",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2428,
+          "promptTokens": 4671,
+          "outputTokens": 214,
+          "thoughtTokens": 211,
+          "toolCalls": [
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1836300"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "130376"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1017568"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2751863"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "126520"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2758811"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2608651"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2741610"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 6296,
+          "promptTokens": 6438,
+          "outputTokens": 456,
+          "thoughtTokens": 860,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 10270,
+      "latencyMs": 10679,
+      "toolCalls": [
+        "get_nearby_barrier_free",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_barrier_free",
+          "args": {}
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1836300"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "130376"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1017568"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2751863"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "126520"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2758811"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2608651"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2741610"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 14747,
+      "outputTokens": 684,
+      "thoughtTokens": 1212,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 위치 주변의 무장애 관광지 중 **장애인(휠체어) 화장실**이 설치된 곳은 다음과 같습니다.\n\n---\n\n### 1. **강동문화원** (약 887m)\n* **주소**: 서울특별시 강동구 상암로 168 (천호동)\n* **화장실**: 장애인 전용 화장실 보유\n* **주요 편의시설**: 엘리베이터, 장애인 전용 주차장(뒷문 쪽 4대), 주출입구 경사로(자동문) 및 무단차 뒷문, 점자블록\n\n---\n\n### 2. **강동그린웨이 가족캠핑장** (약 1.1km)\n* **주소**: 서울특별시 강동구 천호대로206길 87 (둔촌동)\n* **화장실**: 장애인 화장실 보유 (자동 미닫이문)\n* **주요 편의시설**: 장애인 주차장(출구 쪽 3대), 화장실 앞 점자블록, 휠체어 접근 가능 접근로\n\n---\n\n### 3. **둔촌역전통시장** (약 1.3km)\n* **주소**: 서울특별시 강동구 풍성로58길 34 (성내동)\n* **화장실**: 장애인 화장실 보유 (상인회 건물 내)\n* **주요 편의시설**: 주출입구 및 접근로 턱 없음(휠체어 이동 가능), 점자블록, 보조견 동반 가능\n\n---\n\n### 4. **서울 풍납동 토성** (약 1.9km)\n* **주소**: 서울특별시 송파구 풍납동 73-1\n* **화장실**: 장애인 전용 화장실 보유\n* **주요 편의시설**: 장애인 전용 주차장, 주출입구 및 접근로 단차 없음, 풍납근린공원 내 휠체어 이용 가능",
+      "renders": [
+        "barrier-free-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "01-절제-카페",
+      "roundStats": [
+        {
+          "ms": 3594,
+          "promptTokens": 3627,
+          "outputTokens": 14,
+          "thoughtTokens": 451,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1662,
+          "promptTokens": 4525,
+          "outputTokens": 18,
+          "thoughtTokens": 108,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 카페"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 1455,
+          "promptTokens": 4990,
+          "outputTokens": 24,
+          "thoughtTokens": 53,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 카페",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3824,
+          "promptTokens": 5305,
+          "outputTokens": 369,
+          "thoughtTokens": 209,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 4,
+      "modelMs": 10535,
+      "latencyMs": 10737,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 카페"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 카페",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 18447,
+      "outputTokens": 425,
+      "thoughtTokens": 821,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치는 **서울 강동구 길동(길동역 인근)**입니다. \n\n도구에서 제공하는 장소 정보에는 카페의 소음 정도나 분위기(조용함 여부)가 포함되어 있지 않아, 어느 곳이 조용한지 직접 확인해 드릴 수는 없습니다. 다만 현재 위치 주변에 등록된 주요 카페 목록과 주소를 안내해 드리니 참고하시기 바랍니다.\n\n---\n\n### 📍 주변 카페 목록\n\n1. **스윗하나**\n   - **분류:** 카페 (디저트카페)\n   - **주소:** 서울 강동구 천호대로185길 89\n\n2. **바하마스**\n   - **분류:** 카페\n   - **주소:** 서울 강동구 진황도로 123\n\n3. **구움 담**\n   - **분류:** 카페\n   - **주소:** 서울 강동구 명일로17길 9\n\n4. **다락베이크샵**\n   - **분류:** 카페\n   - **주소:** 서울 강동구 양재대로124길 65\n\n5. **거상**\n   - **분류:** 카페\n   - **주소:** 서울 강동구 천중로 227\n\n6. **테라로사 길동점**\n   - **분류:** 카페 (커피전문점)\n   - **주소:** 서울 강동구 천호대로 1221\n\n7. **프롬투커피**\n   - **분류:** 카페 (커피전문점)\n   - **주소:** 서울 강동구 천중로51길 74",
+      "renders": [
+        "places",
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "02-대중교통",
+      "roundStats": [
+        {
+          "ms": 1428,
+          "promptTokens": 3634,
+          "outputTokens": 21,
+          "thoughtTokens": 84,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "여의도역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 5202,
+          "promptTokens": 5429,
+          "outputTokens": 307,
+          "thoughtTokens": 578,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6630,
+      "latencyMs": 7086,
+      "toolCalls": [
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "여의도역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9063,
+      "outputTokens": 328,
+      "thoughtTokens": 662,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(길동역 인근)에서 여의도역까지 대중교통 이용 경로를 안내해 드립니다.\n\n---\n\n### 1. 추천 경로 (환승 없이 직통)\n* **총 소요 시간**: 약 48분\n* **환승**: 0회\n* **요금**: 1,850원\n\n1. **도보 (약 2분)**: **길동역**까지 이동\n2. **지하철 (약 45분)**: **수도권 5호선** 탑승 (23개 역 이동)\n3. **도보 (약 1분)**: **여의도역** 하차 후 목적지 도착\n\n---\n\n### 2. 대안 경로 (9호선 급행 이용)\n* **총 소요 시간**: 약 45분\n* **환승**: 2회\n\n1. **길동역**에서 **5호선** 탑승 (강동 방면, 1개 역) → **강동역** 하차\n2. **강동역**에서 **5호선(마천 방면)** 환승 (2개 역) → **올림픽공원역** 하차\n3. **올림픽공원역**에서 **9호선 급행** 환승 (9개 역, 약 30분) → **여의도역** 하차",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "03-지하철도착",
+      "roundStats": [
+        {
+          "ms": 1413,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 96,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4945,
+          "promptTokens": 5325,
+          "outputTokens": 409,
+          "thoughtTokens": 515,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6358,
+      "latencyMs": 6401,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8954,
+      "outputTokens": 422,
+      "thoughtTokens": 611,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 가까운 지하철역들의 실시간 도착 정보입니다.\n\n---\n\n### **1. 길동역 (5호선, 약 145m)**\n* **상행 (강동·방화 방면)**\n  * **강동행**: 길동 도착 (약 1분 후)\n  * **방화행**: 약 3분 후 (현재 명일역)\n* **하행 (하남검단산 방면)**\n  * **하남검단산행**: 약 3분 후 (현재 천호역)\n  * **하남검단산행**: 약 8분 후 (현재 강동역)\n\n---\n\n### **2. 강동역 (5호선, 약 842m)**\n* **상행 (방화·강동 방면)**\n  * **방화행**: 강동 도착 (약 1분 후)\n  * **강동행**: 약 2분 후 (전역 도착)\n* **하행 (하남검단산·마천 방면)**\n  * **하남검단산행**: 약 2분 후 (전역 도착)\n  * **마천행**: 약 6분 후 (현재 아차산역)\n\n---\n\n### **3. 굽은다리역 (5호선, 약 856m)**\n* **상행 (방화 방면)**\n  * **방화행**: 약 2분 후 (전역 출발)\n  * **방화행**: 약 8분 후 (현재 상일동역)\n* **하행 (하남검단산 방면)**\n  * **하남검단산행**: 약 5분 후 (현재 천호역)\n  * **하남검단산행**: 약 10분 후 (현재 강동역)",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1728,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 155,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 6009,
+          "promptTokens": 5224,
+          "outputTokens": 589,
+          "thoughtTokens": 619,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7737,
+      "latencyMs": 10037,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8857,
+      "outputTokens": 602,
+      "thoughtTokens": 774,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "time:08:30"
+          ]
+        }
+      },
+      "text": "현재 위치 주변에서 진료 중인 병원 및 응급의료기관 정보입니다. 소아 진료 가능 여부나 접수 마감 시각이 다를 수 있으므로 **방문 전 전화 확인**을 권장합니다.\n\n---\n\n### **진료 중인 의원**\n\n1. **서울유의원**\n   - **거리**: 약 121m\n   - **주소**: 서울특별시 강동구 천호대로187길 61, 2층 (길동)\n   - **전화번호**: 02-475-8275\n   - **오늘 진료시간**: 08:30 ~ 18:30 (요일에 따라 20:00까지 운영)\n\n2. **훈훈한내과의원**\n   - **거리**: 약 131m\n   - **주소**: 서울특별시 강동구 양재대로 1488 (길동역 2번 출구 부근)\n   - **전화번호**: 02-484-7600\n   - **오늘 진료시간**: 08:30 ~ 18:00\n\n3. **조한준가정의학과의원**\n   - **거리**: 약 160m\n   - **주소**: 서울특별시 강동구 천호대로187길 53, 2층 (길동)\n   - **전화번호**: 02-472-3396\n   - **오늘 진료시간**: 08:30 ~ 18:00\n\n4. **서울준내과의원**\n   - **거리**: 약 178m\n   - **주소**: 서울특별시 강동구 양재대로 1477, 4층 (길동)\n   - **전화번호**: 02-6925-5154\n   - **오늘 진료시간**: 08:30 ~ 18:00\n\n---\n\n### **응급의료기관 (종합병원)**\n\n* **성심의료재단 강동성심병원** (지역응급의료센터)\n  - **거리**: 약 602m\n  - **주소**: 서울특별시 강동구 성안로 150 (강동역 2번 출구 부근)\n  - **전화번호**: 02-2224-2114\n  - **특이사항**: 일반 외래 진료시간 외 야간·응급 상황 시 응급실 이용이 가능합니다.",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "05-날씨정당",
+      "roundStats": [
+        {
+          "ms": 1635,
+          "promptTokens": 3629,
+          "outputTokens": 22,
+          "thoughtTokens": 122,
+          "toolCalls": [
+            "get_weather",
+            "get_air_quality"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_weather",
+              "args": {}
+            },
+            {
+              "name": "get_air_quality",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3325,
+          "promptTokens": 3959,
+          "outputTokens": 147,
+          "thoughtTokens": 301,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4960,
+      "latencyMs": 10023,
+      "toolCalls": [
+        "get_weather",
+        "get_air_quality"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_weather",
+          "args": {}
+        },
+        {
+          "name": "get_air_quality",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7588,
+      "outputTokens": 169,
+      "thoughtTokens": 423,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 위치 기준 날씨 정보입니다.\n\n* **날씨/하늘 상태:** 구름많음\n* **현재 기온:** 22.7℃ (오늘 최고 기온 29℃)\n* **강수 상태:** 강수 없음 (강수확률 30%)\n* **습도:** 95%\n\n비 소식은 현재 없으나 최고 기온이 29℃까지 오르고 습도가 높아 야외 활동 시 다소 덥고 습하게 느껴질 수 있습니다.\n\n※ 공기질(미세먼지/초미세먼지) 정보는 대기 오염 정보 시스템 연결 오류로 인해 조회하지 못했습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "06-도보-계단회피",
+      "roundStats": [
+        {
+          "ms": 1956,
+          "promptTokens": 3636,
+          "outputTokens": 24,
+          "thoughtTokens": 140,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "destination": "천호역",
+                "accessible": true
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4796,
+          "promptTokens": 4331,
+          "outputTokens": 420,
+          "thoughtTokens": 441,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6752,
+      "latencyMs": 6969,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "destination": "천호역",
+            "accessible": true
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7967,
+      "outputTokens": 444,
+      "thoughtTokens": 581,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 **천호역(5호선)**까지 도보 경로 안내입니다.\n\n⚠️ **주의사항**: 완벽히 계단이 배제된 경로를 확정하지 못했습니다. 아래 경로 중 일부 구간에 계단이나 턱이 포함되어 있을 수 있습니다.\n\n---\n\n### **경로 요약**\n- **총 거리**: 약 2.1 km\n- **예상 소요 시간**: 약 33분\n\n---\n\n### **상세 이동 경로**\n1. **천호대로185길**을 따라 **토담골 생고기전문점**까지 이동 (95m)\n2. 왼쪽으로 돌아 **진황도로47길**을 따라 **대박포차**까지 이동 (48m)\n3. 오른쪽으로 돌아 **양재대로114길**을 따라 **뚜레쥬르**까지 이동 (51m)\n4. 왼쪽으로 돌아 **양재대로**를 따라 **T world**까지 이동 (316m)\n5. **T world** 앞에서 횡단보도 2개 건너기 (50m)\n6. **양재대로**를 따라 **길동사거리**까지 이동 (95m)\n7. **천호대로**를 따라 **김종하 정신과의원**까지 이동 (165m)\n8. 횡단보도 건너기 (*음향신호기 설치*, 10m)\n9. **천호대로**를 따라 **강동성심병원교차로**까지 이동 (193m)\n10. **강동성심병원교차로**에서 횡단보도 건너기 (*음향신호기 설치*, 20m)\n11. **천호대로**를 따라 약 875m 직진\n12. **천호역 5번 출구**를 통해 역사 진입",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "07-따릉이",
+      "roundStats": [
+        {
+          "ms": 1931,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 132,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2846,
+          "promptTokens": 4337,
+          "outputTokens": 213,
+          "thoughtTokens": 188,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4777,
+      "latencyMs": 5432,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7970,
+      "outputTokens": 225,
+      "thoughtTokens": 320,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치에서 가장 가까운 따릉이 대여소는 **3681. 길동 마루빌딩**입니다.\n\n### 🚴 가장 가까운 따릉이 대여소\n* **3681. 길동 마루빌딩**\n  * **거리**: 약 222m\n  * **대여 가능 자전거**: 12대\n\n---\n\n### 📍 인근 다른 대여소\n* **1076. 천동초교입구사거리 버스정류장(십자성마을 방면)** (약 240m) — 대여 가능 21대\n* **1017. 둔촌고교입구 교차로(길동주민센터 방면)** (약 404m) — 대여 가능 11대\n* **1010. 강동세무서** (약 467m) — 대여 가능 22대",
+      "renders": [
+        "bike"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "08-역시설",
+      "roundStats": [
+        {
+          "ms": 1621,
+          "promptTokens": 3633,
+          "outputTokens": 20,
+          "thoughtTokens": 118,
+          "toolCalls": [
+            "get_station_facilities"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_facilities",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2547,
+          "promptTokens": 5677,
+          "outputTokens": 203,
+          "thoughtTokens": 182,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4168,
+      "latencyMs": 4496,
+      "toolCalls": [
+        "get_station_facilities"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_facilities",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9310,
+      "outputTokens": 223,
+      "thoughtTokens": 300,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "5호선 **강동역**의 엘리베이터와 화장실 위치 정보입니다.\n\n---\n\n### 🛗 **엘리베이터 위치**\n* **외부 (지상 1층 ↔ 지하 3층):** 1번 출입구 앞 (외부 2호기)\n* **내부 (지하 3층 ↔ 지하 4층):**\n  * **천호 방면:** 1-2 승강장 위치 (내부 3호기)\n  * **둔촌동 방면:** 8-3 승강장 위치 (내부 1호기)\n\n---\n\n### 🚻 **화장실 위치**\n* **위치:** 지하 1층(B1) 대합실 **2번 출입구 앞**\n* **구분:** 일반 화장실(남/여) 및 교통약자 화장실(남/여)",
+      "renders": [
+        "station-facilities"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "09-날조축-장소앵커",
+      "roundStats": [
+        {
+          "ms": 2670,
+          "promptTokens": 3777,
+          "outputTokens": 22,
+          "thoughtTokens": 302,
+          "toolCalls": [
+            "get_congestion"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_congestion",
+              "args": {
+                "place": "스타벅스 강동역점"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2828,
+          "promptTokens": 4139,
+          "outputTokens": 99,
+          "thoughtTokens": 282,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5498,
+      "latencyMs": 5572,
+      "toolCalls": [
+        "get_congestion"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_congestion",
+          "args": {
+            "place": "스타벅스 강동역점"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7916,
+      "outputTokens": 121,
+      "thoughtTokens": 584,
+      "ok": true,
+      "checks": {
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "스타벅스 강동역점의 분위기나 혼잡도에 관한 정보는 다음과 같습니다.\n\n* **분위기**: 장소의 분위기, 인테리어, 이용 평판 등은 시스템 데이터로 제공되지 않아 안내해 드릴 수 없습니다.\n* **실시간 혼잡도**: 스타벅스 강동역점은 실시간 인구 혼잡도 데이터가 제공되는 대상 지역이 아니어서 현재 인원이 얼마나 붐비는지 알 수 없습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "10-웹라우팅",
+      "roundStats": [
+        {
+          "ms": 2095,
+          "promptTokens": 3630,
+          "outputTokens": 31,
+          "thoughtTokens": 168,
+          "toolCalls": [
+            "search_web"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_web",
+              "args": {
+                "query": "서울 지하철 기본요금 2024 2025"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3308,
+          "promptTokens": 6177,
+          "outputTokens": 216,
+          "thoughtTokens": 264,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5403,
+      "latencyMs": 6700,
+      "toolCalls": [
+        "search_web"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_web",
+          "args": {
+            "query": "서울 지하철 기본요금 2024 2025"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9807,
+      "outputTokens": 247,
+      "thoughtTokens": 432,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 서울 지하철 기본요금은 **성인 카드 기준 1,550원**(10km 이내)입니다.\n\n### 1. 연령 및 결제 수단별 기본요금 (10km 이내)\n* **성인 (만 19세 이상)**: 카드 1,550원 / 현금 1,650원\n* **청소년 (만 13세~18세)**: 카드 800원\n* **어린이 (만 6세~12세)**: 카드 500원\n* **65세 이상, 장애인, 국가유공자**: 무임\n\n---\n\n### 2. 거리 추가 요금 (기본거리 10km 초과 시)\n* **10km ~ 50km 구간**: 매 5km마다 100원 추가\n* **50km 초과 구간**: 매 8km마다 100원 추가",
+      "renders": [
+        "web-results"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "11-위치없음",
+      "roundStats": [
+        {
+          "ms": 2135,
+          "promptTokens": 3628,
+          "outputTokens": 12,
+          "thoughtTokens": 213,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2633,
+          "promptTokens": 3875,
+          "outputTokens": 71,
+          "thoughtTokens": 182,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4768,
+      "latencyMs": 4768,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7503,
+      "outputTokens": 83,
+      "thoughtTokens": 395,
+      "ok": true,
+      "checks": {},
+      "text": "현재 위치 정보를 확인할 수 없어 주변 장소를 조회하지 못했습니다. \n\n계신 지역명이나 지하철역 이름(예: *강남역*, *홍대입구*, *성수동* 등)을 알려주시면 근처 식당, 카페, 문화행사, 아이 놀 곳 등을 찾아 안내해 드릴게요.",
+      "renders": [],
+      "sources": 0
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1525,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 124,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4429,
+          "promptTokens": 3800,
+          "outputTokens": 142,
+          "thoughtTokens": 416,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5954,
+      "latencyMs": 6600,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7433,
+      "outputTokens": 155,
+      "thoughtTokens": 540,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:달빛어린이병원"
+          ]
+        }
+      },
+      "text": "현재 위치 주변에서 **지금 진료 중인 소아 야간·휴일 진료 병원(달빛어린이병원)이 검색되지 않았습니다.**\n\n---\n\n### 💡 안내 및 대안\n1. **지역명으로 재검색**: 찾으시는 구·동 이름이나 특정 지역명을 말씀해 주시면 해당 지역 주변으로 다시 찾아드리겠습니다.\n2. **응급 문의**: 아이의 열이 심하거나 긴급한 상황이라면 **119(응급의료정보상담)**로 전화하시면 현재 운영 중인 가까운 소아 진료 병의원 및 응급실 안내를 즉시 받으실 수 있습니다.",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1713,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 103,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3594,
+          "promptTokens": 3800,
+          "outputTokens": 90,
+          "thoughtTokens": 350,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5307,
+      "latencyMs": 5311,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7429,
+      "outputTokens": 103,
+      "thoughtTokens": 453,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:강남역",
+            "name:천호역"
+          ]
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역**(경춘선, 약 65.6km 거리)으로 조회되었으나, 현재 실시간 지하철 도착 정보가 없습니다.\n\n특정 지하철역 이름(예: 강남역, 천호역)이나 지역명을 말씀해 주시면 해당 역의 실시간 도착 정보나 첫차·막차 시간표를 조회해 드릴 수 있습니다.",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1670,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 88,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3371,
+          "promptTokens": 3784,
+          "outputTokens": 75,
+          "thoughtTokens": 375,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5041,
+      "latencyMs": 5041,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7417,
+      "outputTokens": 87,
+      "thoughtTokens": 463,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:강남역"
+          ]
+        }
+      },
+      "text": "현재 위치 주변의 따릉이 대여소 정보를 조회할 수 없습니다. 따릉이 대여소 정보는 **서울 지역**에서만 제공됩니다.\n\n서울 내 특정 지역이나 지명 주변의 따릉이 대여소를 검색하시려면, 원하는 위치(예: '강남역 근처 따릉이')와 함께 다시 질문해 주세요.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "21-리뷰순-지명",
+      "roundStats": [
+        {
+          "ms": 2023,
+          "promptTokens": 3630,
+          "outputTokens": 26,
+          "thoughtTokens": 152,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "sort": "review",
+                "query": "여의도 맛집"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4838,
+          "promptTokens": 4072,
+          "outputTokens": 323,
+          "thoughtTokens": 591,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6861,
+      "latencyMs": 6955,
+      "toolCalls": [
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "search_places",
+          "args": {
+            "sort": "review",
+            "query": "여의도 맛집"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7702,
+      "outputTokens": 349,
+      "thoughtTokens": 743,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "여의도 지역의 음식점·카페 중 리뷰(네이버 블로그·카페 리뷰 개수)가 많은 순서대로 정리한 상위 5곳입니다. \n\n*(※ 상세 리뷰 수 수치나 별점·평점 정보는 시스템상 별도로 제공되지 않는 점 참고 부탁드립니다.)*\n\n---\n\n1. **진주집**\n   - **분류**: 한식 > 국수\n   - **주소**: 서울특별시 영등포구 국제금융로6길 33 지하 1층\n\n2. **블루보틀 여의도 카페**\n   - **분류**: 카페 / 디저트\n   - **주소**: 서울특별시 영등포구 여의대로 108 더현대서울 5층\n\n3. **63뷔페 파빌리온 더 프리미엄**\n   - **분류**: 뷔페\n   - **주소**: 서울특별시 영등포구 63로 50 63빌딩 지하 1층\n\n4. **노티드 여의도IFC몰점**\n   - **분류**: 카페 / 디저트\n   - **주소**: 서울특별시 영등포구 국제금융로 10 IFC몰 L2층 234호\n\n5. **콘타이 IFC몰점**\n   - **분류**: 태국음식\n   - **주소**: 서울특별시 영등포구 국제금융로 10 IFC몰 L3층",
+      "renders": [
+        "places"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "22-별점요청",
+      "roundStats": [
+        {
+          "ms": 2140,
+          "promptTokens": 3630,
+          "outputTokens": 14,
+          "thoughtTokens": 236,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1833,
+          "promptTokens": 4313,
+          "outputTokens": 24,
+          "thoughtTokens": 120,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "sort": "review",
+                "query": "길동 카페"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3011,
+          "promptTokens": 4695,
+          "outputTokens": 275,
+          "thoughtTokens": 224,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 6984,
+      "latencyMs": 7170,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "sort": "review",
+            "query": "길동 카페"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12638,
+      "outputTokens": 313,
+      "thoughtTokens": 580,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "별점이나 평점 정보는 따로 제공되지 않지만, **네이버 카페·블로그 리뷰 수가 많은 순서**로 검색한 길동 근처 카페 목록을 안내해 드립니다.\n\n1. **스타벅스 길동역점**\n   - 도로명 주소: 서울특별시 강동구 양재대로 1487\n   - 분류: 카페,디저트 > 카페\n\n2. **스타벅스 천호대로길동점**\n   - 도로명 주소: 서울특별시 강동구 천호대로 1131\n   - 분류: 카페,디저트 > 카페\n\n3. **테라로사 길동점**\n   - 도로명 주소: 서울특별시 강동구 천호대로 1221\n   - 분류: 카페,디저트 > 카페\n\n4. **뚜레쥬르 길동역점**\n   - 도로명 주소: 서울특별시 강동구 양재대로 1478\n   - 분류: 카페,디저트 > 베이커리\n\n5. **메가MGC커피 길동역점**\n   - 도로명 주소: 서울특별시 강동구 양재대로 1465\n   - 분류: 카페,디저트 > 카페",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "23-리뷰순-지명없음",
+      "roundStats": [
+        {
+          "ms": 1989,
+          "promptTokens": 3626,
+          "outputTokens": 14,
+          "thoughtTokens": 189,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1372,
+          "promptTokens": 4262,
+          "outputTokens": 25,
+          "thoughtTokens": 48,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "길동 맛집",
+                "sort": "review"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3282,
+          "promptTokens": 4586,
+          "outputTokens": 299,
+          "thoughtTokens": 307,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 6643,
+      "latencyMs": 6785,
+      "toolCalls": [
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "길동 맛집",
+            "sort": "review"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12474,
+      "outputTokens": 338,
+      "thoughtTokens": 544,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치인 **서울특별시 강동구 길동** 주변의 리뷰 개수가 많은 맛집 상위 5곳입니다. (리뷰 수나 별점의 정확한 수치는 제공되지 않으며, 리뷰 순서대로 정렬된 결과입니다.)\n\n1. **버거킹 길동사거리점**\n   - **분류**: 양식 > 햄버거\n   - **주소**: 서울특별시 강동구 양재대로 1440\n\n2. **멘야세븐**\n   - **분류**: 일식 > 일본식라면\n   - **주소**: 서울특별시 강동구 양재대로112길 45 1층\n\n3. **길동우동 길동본점**\n   - **분류**: 일식 > 우동,소바\n   - **주소**: 서울특별시 강동구 천호대로 1135 1층\n\n4. **상무초밥 길동점**\n   - **분류**: 일식 > 초밥,롤\n   - **주소**: 서울특별시 강동구 천호대로 1139 강동그린타워 1층\n\n5. **스타벅스 길동역점**\n   - **분류**: 카페,디저트 > 카페\n   - **주소**: 서울특별시 강동구 양재대로 1487",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "31-첫차막차",
+      "roundStats": [
+        {
+          "ms": 1129,
+          "promptTokens": 3628,
+          "outputTokens": 20,
+          "thoughtTokens": 56,
+          "toolCalls": [
+            "get_station_timetable"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_station_timetable",
+              "args": {
+                "stationName": "강동"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 1962,
+          "promptTokens": 3889,
+          "outputTokens": 81,
+          "thoughtTokens": 111,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 3091,
+      "latencyMs": 3389,
+      "toolCalls": [
+        "get_station_timetable"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_station_timetable",
+          "args": {
+            "stationName": "강동"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7517,
+      "outputTokens": 101,
+      "thoughtTokens": 167,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "langInvariant": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "오늘(평일 기준) **5호선 강동역**의 방면별 막차 시간입니다.\n\n* **상행 (방화·왕십리 방면)**: **00:42** (왕십리행)\n* **하행 (마천·상일동 방면)**: **00:50** (상일동행)",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "32-역명도착",
+      "roundStats": [
+        {
+          "ms": 1235,
+          "promptTokens": 3628,
+          "outputTokens": 21,
+          "thoughtTokens": 68,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {
+                "stationName": "천호"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 3033,
+          "promptTokens": 4674,
+          "outputTokens": 244,
+          "thoughtTokens": 237,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4268,
+      "latencyMs": 4306,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {
+            "stationName": "천호"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8302,
+      "outputTokens": 265,
+      "thoughtTokens": 305,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "arg": true,
+        "langInvariant": true
+      },
+      "text": "천호역(5호선·8호선)의 실시간 열차 도착 정보입니다.\n\n---\n\n### **5호선**\n* **상행 (방화 방면)**\n  * **방화행**: 당역 도착 (약 1분 후)\n  * **방화행**: 약 3분 후 (둔촌동)\n* **하행 (마천·상일동 방면)**\n  * **마천행**: 약 3분 후 (전역 광나루 도착)\n  * **상일동행**: 약 8분 후 (군자)\n\n---\n\n### **8호선**\n* **상행 (별내 방면)**\n  * **별내행**: 당역 도착\n  * **별내행**: 3번째 전역 (잠실)\n* **하행 (모란 방면)**\n  * **모란행**: 당역 진입\n  * **모란행**: 2번째 전역 (암사역사공원)\n\n*(실시간 운행 상황에 따라 실제 도착 시각은 변동될 수 있습니다.)*",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "33-정위",
+      "roundStats": [
+        {
+          "ms": 1126,
+          "promptTokens": 3628,
+          "outputTokens": 14,
+          "thoughtTokens": 41,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2308,
+          "promptTokens": 4116,
+          "outputTokens": 156,
+          "thoughtTokens": 142,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 3434,
+      "latencyMs": 3496,
+      "toolCalls": [
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7744,
+      "outputTokens": 170,
+      "thoughtTokens": 183,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 계신 위치의 주소 정보입니다.\n\n* **도로명 주소:** 서울특별시 강동구 천호대로185길 89-5\n* **지번 주소:** 서울특별시 강동구 길동 393-14 (행정동: 길동)\n\n**주변 참고 정보:**\n* **가장 가까운 지하철역:** 지하철 5호선 **길동역** (서쪽 약 145m)\n* **가까운 건물/매장:** 남서쪽 약 20m 거리의 '길동골목냉면', 남동쪽 약 22m 거리의 'GS25 우성스타점' 근처입니다.",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "34-한눈에",
+      "roundStats": [
+        {
+          "ms": 1814,
+          "promptTokens": 3626,
+          "outputTokens": 12,
+          "thoughtTokens": 205,
+          "toolCalls": [
+            "get_nearby_overview"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_overview",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5307,
+          "promptTokens": 4900,
+          "outputTokens": 516,
+          "thoughtTokens": 539,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7121,
+      "latencyMs": 9158,
+      "toolCalls": [
+        "get_nearby_overview"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_overview",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8526,
+      "outputTokens": 528,
+      "thoughtTokens": 744,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true
+      },
+      "text": "현재 위치(**서울특별시 강동구 길동**) 주변 1km 이내의 주요 장소와 시설 요약입니다.\n\n---\n\n### 🚆 대중교통\n* **지하철역**: 5호선 **길동역** (서쪽 약 145m)\n* **버스정류장**: 길동역1번출구(서쪽 156m), 길동역3번출구(서쪽 159m), 천동초교입구사거리(북쪽 247m) 등 5곳 이상\n\n---\n\n### 🍽️ 음식점 (15곳 이상)\n* **길동골목냉면** (남서쪽 20m)\n* **얼음왕국 길동297호점** (남서쪽 20m)\n* **아구세상 길동점** (남쪽 20m)\n* **박가면장 길동점** (남동쪽 33m)\n\n---\n\n### ☕ 카페 (15곳 이상)\n* **스윗하나** (북동쪽 36m)\n* **메가MGC커피 길동희망공원점** (북동쪽 59m)\n* **다올** (남동쪽 61m)\n* **백억커피 길동역점** (서쪽 75m)\n\n---\n\n### 🛝 아이 놀 곳 (15곳)\n* **희망어린이공원** (북쪽 148m)\n* **달님어린이공원** (남쪽 209m)\n* **프레리주니어 길동점** (남동쪽 366m)\n* **성심어린이공원** (서쪽 367m)\n\n---\n\n### 🎭 문화행사 & 무장애 관광지\n* **문화행사 (1건)**: `[우리역사문화도서관] 생활의 지혜, 기초 한문 강독 [사자소학]` (남쪽 520m)\n* **무장애 관광지 (2곳)**: 해공신익희선생동상 (서쪽 884m), 강동문화원 (북쪽 887m)",
+      "renders": [
+        "places"
+      ],
+      "sources": 5
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "35-경유지-도보",
+      "roundStats": [
+        {
+          "ms": 1526,
+          "promptTokens": 3635,
+          "outputTokens": 28,
+          "thoughtTokens": 108,
+          "toolCalls": [
+            "get_walk_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_walk_route",
+              "args": {
+                "destination": "강동역",
+                "via": "길동역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2891,
+          "promptTokens": 4443,
+          "outputTokens": 303,
+          "thoughtTokens": 109,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4417,
+      "latencyMs": 4719,
+      "toolCalls": [
+        "get_walk_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_walk_route",
+          "args": {
+            "destination": "강동역",
+            "via": "길동역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8078,
+      "outputTokens": 331,
+      "thoughtTokens": 217,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "arg": true
+      },
+      "text": "현재 위치에서 **길동역**을 거쳐 **강동역**까지 가는 도보 경로는 다음과 같습니다.\n\n* **총 거리:** 약 1.33km\n* **소요 시간:** 약 22분\n\n---\n\n### **상세 경로 안내**\n\n1. **길동역까지 이동**\n   * 천호대로185길을 따라 이동 후 진황도로47길, 양재대로114길을 거쳐 양재대로로 진입합니다.\n   * **길동역 3번 출구**로 진입 후 역사 내를 통과하여 **1번 출구**로 진출합니다.\n\n2. **길동역 → 강동역 이동**\n   * 길동역 1번 출구에서 나와 양재대로를 따라 직진합니다.\n   * 배스킨라빈스 앞 횡단보도 및 가로판매점 앞 횡단보도를 건너 **길동사거리**로 이동합니다.\n   * 길동사거리에서 오른쪽 천호대로 방면으로 꺾어 직진합니다.\n   * 김종하 정신과의원 앞 횡단보도와 **강동성심병원교차로** 횡단보도를 건너 천호대로를 따라 직진합니다.\n   * 호밀호두를 지나 **강동역 2번 출구**에 도착합니다.",
+      "renders": [],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "36-경유지-대중교통",
+      "roundStats": [
+        {
+          "ms": 1759,
+          "promptTokens": 3634,
+          "outputTokens": 28,
+          "thoughtTokens": 134,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "잠실역",
+                "via": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 2850,
+          "promptTokens": 3861,
+          "outputTokens": 20,
+          "thoughtTokens": 321,
+          "toolCalls": [
+            "get_transit_route"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_transit_route",
+              "args": {
+                "destination": "천호역"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4593,
+          "promptTokens": 5427,
+          "outputTokens": 371,
+          "thoughtTokens": 361,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 9202,
+      "latencyMs": 9706,
+      "toolCalls": [
+        "get_transit_route",
+        "get_transit_route"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "잠실역",
+            "via": "천호역"
+          }
+        },
+        {
+          "name": "get_transit_route",
+          "args": {
+            "destination": "천호역"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 12922,
+      "outputTokens": 419,
+      "thoughtTokens": 816,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "대중교통 길찾기는 **경유지 기능을 지원하지 않습니다.** 따라서 **[현재 위치 → 천호역]**과 **[천호역 → 잠실역]** 2구간으로 나누어 안내해 드립니다.\n\n---\n\n### 1구간: 현재 위치 → 천호역\n* **지하철 (추천)**\n  * **경로**: 5호선 길동역 탑승 → 천호역 하차 (2개 정거장)\n  * **소요 시간**: 약 7분 (도보 포함)\n  * **요금**: 1,550원\n* **시내버스**\n  * **130번**: '길동역1번출구' 승차 → '천호역1번출구.문구거리' 하차 (약 15분 소요)\n  * **370번 / 341번**: '길동주민센터.둔촌2동주민센터' 승차 → '천호역' / '천호역.풍납시장' 하차 (약 19분 소요)\n\n---\n\n### 2구간: 천호역 → 잠실역\n* **지하철 (추천)**\n  * **경로**: 8호선 천호역 탑승 (모란 방면) → 잠실역 하차 (2개 정거장)\n  * **소요 시간**: 약 4~5분\n* **시내버스**\n  * 천호역 주변 정류장에서 **341번**, **342번**, **3217번** 등을 이용해 잠실역 방면으로 이동할 수 있습니다.",
+      "renders": [
+        "transit-route"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "37-지명-place",
+      "roundStats": [
+        {
+          "ms": 2100,
+          "promptTokens": 3631,
+          "outputTokens": 42,
+          "thoughtTokens": 199,
+          "toolCalls": [
+            "get_night_clinics",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {
+                "place": "여의도"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "여의도 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 5057,
+          "promptTokens": 5668,
+          "outputTokens": 271,
+          "thoughtTokens": 508,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7157,
+      "latencyMs": 9081,
+      "toolCalls": [
+        "get_night_clinics",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {
+            "place": "여의도"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "여의도 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 9299,
+      "outputTokens": 313,
+      "thoughtTokens": 707,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "arg": true
+      },
+      "text": "여의도 내에서 현재 진료 중인 소아 진료 가능 병원은 다음과 같습니다.\n\n### **여의도의원**\n* **주소:** 서울특별시 영등포구 국제금융로7길 15 여의상가 2층 (여의도동)\n* **전화번호:** 02-784-0705\n* **상태:** 진료 중\n\n---\n\n### **여의도 인근 진료 가능 의원 (여의도 외곽 약 1~1.5km)**\n* **온가족보건의원**\n  * **주소:** 서울특별시 용산구 원효로25길 31\n  * **전화번호:** 02-706-7001\n* **온힐가정의학과의원**\n  * **주소:** 서울특별시 동작구 노량진로 132 4층\n  * **전화번호:** 02-814-9802\n\n> 💡 **참고:** 병원 접수 마감 시간이나 현장 상황에 따라 실제 진료 여부가 달라질 수 있으므로, 방문하시기 전 전화로 사전 확인하시길 권장합니다.",
+      "renders": [
+        "places"
+      ],
+      "sources": 2
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "38-무장애-연쇄",
+      "roundStats": [
+        {
+          "ms": 1763,
+          "promptTokens": 3638,
+          "outputTokens": 14,
+          "thoughtTokens": 139,
+          "toolCalls": [
+            "get_nearby_barrier_free"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_nearby_barrier_free",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2754,
+          "promptTokens": 4669,
+          "outputTokens": 160,
+          "thoughtTokens": 264,
+          "toolCalls": [
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail",
+            "get_barrier_free_detail"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1836300"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "130376"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "1017568"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2751863"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "126520"
+              }
+            },
+            {
+              "name": "get_barrier_free_detail",
+              "args": {
+                "contentId": "2758811"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 4447,
+          "promptTokens": 6105,
+          "outputTokens": 429,
+          "thoughtTokens": 448,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 8964,
+      "latencyMs": 9372,
+      "toolCalls": [
+        "get_nearby_barrier_free",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail",
+        "get_barrier_free_detail"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_nearby_barrier_free",
+          "args": {}
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1836300"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "130376"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "1017568"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2751863"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "126520"
+          }
+        },
+        {
+          "name": "get_barrier_free_detail",
+          "args": {
+            "contentId": "2758811"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 14412,
+      "outputTokens": 603,
+      "thoughtTokens": 851,
+      "ok": true,
+      "checks": {
+        "expect": true
+      },
+      "text": "현재 위치 기준 주변 무장애 관광지 중 **장애인(휠체어) 화장실**이 갖춰진 곳은 다음과 같습니다.\n\n---\n\n### 1. **강동문화원** (약 887m)\n* **주소**: 서울특별시 강동구 상암로 168 (천호동)\n* **화장실**: 장애인 전용 화장실 있음\n* **기타 편의시설**: 장애인 전용 주차구역(4대), 엘리베이터, 출입구 경사로 및 뒷문 무단차, 점자블록\n\n### 2. **강동그린웨이 가족캠핑장** (약 1.1km)\n* **주소**: 서울특별시 강동구 천호대로206길 87 (둔촌동)\n* **화장실**: 장애인 화장실 있음 (자동미닫이문)\n* **기타 편의시설**: 장애인 주차장(3대), 휠체어 접근 가능 접근로, 점자블록\n\n### 3. **둔촌역전통시장** (약 1.3km)\n* **주소**: 서울특별시 강동구 풍성로58길 34 (성내동)\n* **화장실**: 장애인 화장실 있음 (상인회 건물)\n* **기타 편의시설**: 주출입구 및 접근로 무단차, 점자블록, 보조견 동반 가능\n\n### 4. **서울 풍납동 토성** (약 1.9km)\n* **주소**: 서울특별시 송파구 풍납동 73-1\n* **화장실**: 장애인 전용 화장실 있음\n* **기타 편의시설**: 장애인 전용 주차구역, 주출입구 및 접근로 무단차, 풍납근린공원 내 휠체어 이용 가능",
+      "renders": [
+        "barrier-free-nearby"
+      ],
+      "sources": 1
+    }
+  ]
+}

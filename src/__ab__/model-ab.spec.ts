@@ -48,6 +48,8 @@ interface RoundStat {
 /** 결과 파일 계약(`report.ts` `RunResult`) + 이 하네스가 더 기록하는 것. */
 interface HarnessResult extends RunResult {
   roundStats: RoundStat[];
+  /** 도구 반환 원문 — 채점기를 고친 뒤 실호출 없이 재채점할 수 있게 남긴다(C5 재실행에서 이것이 없어 재채점을 못 했다). */
+  toolOutputs: ToolOutput[];
   modelMs: number;
   renders: string[];
   sources: number;
@@ -139,6 +141,7 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
     latencyMs: Date.now() - t0,
     toolCalls: rounds.flatMap((r) => r.toolCalls),
     toolArgs: rounds.flatMap((r) => r.toolArgs),
+    toolOutputs,
     // gildongmu 하네스는 스텁이 없다 — 모든 도구가 실호출이라 "빈 응답을 받은 스텁 없는 도구"는 정의상 0.
     unstubbed: [] as string[],
     promptTokens: rounds.reduce((s, r) => s + r.promptTokens, 0),
