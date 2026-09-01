@@ -97,6 +97,12 @@ describe("scoreGrounding — 엔티티 대조", () => {
     expect(scoreGrounding(g, outputs, "주변에 지하철역이 없고, 가장 가까운 춘천역은 약 66km 떨어져 있습니다.")).toEqual({ pass: true, leaked: [] });
     expect(scoreGrounding(g, outputs, "가까운 강남역은 5분 거리").leaked).toEqual(["number:5분", "name:강남역"]);
   });
+  it("역 어간 대조는 값 경계 안에서만 — 주소 '천호대로'가 '천호역'을 접지하지 않는다(리뷰 검출)", () => {
+    const outputs = [{ name: "get_night_clinics", response: { clinics: [{ name: "길동소아과", address: "서울 강동구 천호대로 1077" }] } }];
+    const g = { fromTools: ["get_night_clinics"], fields: ["*"], kinds: ["name"] as const };
+    const r = scoreGrounding(g, outputs, "천호역, 강동역, 서울역 근처 길동소아과");
+    expect(r.leaked).toEqual(["name:천호역", "name:강동역", "name:서울역"]);
+  });
   it("조사·공백·하이픈 차이는 leak 가 아니다", () => {
     const outputs = [{ name: "t", response: { name: "서울 아산병원", tel: "0230101234" } }];
     const r = scoreGrounding({ fromTools: ["t"], fields: ["*"], kinds: ["name", "phone"] }, outputs, "서울아산병원은 02-3010-1234");
