@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ENDPOINT_CATALOG } from "../lib/endpoint-catalog-shared.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { FORMATTERS } from "../lib/formatters.js";
 
 /**
@@ -31,12 +34,12 @@ describe("포매터 커버리지", () => {
     expect(both).toEqual([]);
   });
 
-  it("모든 포매터가 (body, ctx) 계약을 받는다 — lang 없는 컨텍스트로 호출해도 throw하지 않는다(E29)", () => {
-    // 본문 없이 호출하면 대부분 TypeError라 계약 검사는 등록 자체로 한다: 값이 함수이고
-    // 레지스트리 타입(`Formatter`)이 두 번째 인자를 요구한다는 것은 tsc가 강제한다.
-    for (const [name, fn] of Object.entries(FORMATTERS)) {
-      expect(typeof fn, name).toBe("function");
-    }
+  it("레지스트리 타입이 (body, ctx) 두 인자를 요구한다 — 소스 가드(E29)", () => {
+    // vitest는 타입을 검사하지 않고 이 패키지 scripts에 tsc 게이트가 없다. 계약이 타입에만 있으면
+    // `Record<string, (data: never) => string[]>`로 되돌려도 스위트가 초록이라 소스를 직접 읽는다.
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "lib", "formatters.ts"), "utf8");
+    expect(src).toMatch(/export type Formatter = \(data: never, ctx: FormatContext\) => string\[\];/);
+    expect(src).toMatch(/export const FORMATTERS: Record<string, Formatter> = \{/);
   });
 
   it("예외 목록에 죽은 항목이 없다(카탈로그에서 사라진 이름은 지운다)", () => {

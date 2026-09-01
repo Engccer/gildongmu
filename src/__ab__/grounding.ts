@@ -164,7 +164,11 @@ function grounded(e: Entity, corpus: string, corpusNumbers: number[]): boolean {
   if (corpus.includes(e.norm)) return true;
   // 역 데이터는 어간("춘천")으로 오고 답변은 "춘천역"으로 쓴다 — 접미 하나만 벗겨 대조한다
   // (C5 빈 응답 케이스 42, 2026-09-02). 다른 접미(점·병원)는 원문 그대로라 벗기지 않는다.
-  if (e.kind === "name" && e.norm.endsWith("역") && corpus.includes(e.norm.slice(0, -1))) return true;
+  // ⚠ 어간은 값 경계(`|`) 안에서만 — 부분 문자열로 찾으면 주소 "천호대로"가 "천호역"을 접지한다(리뷰 검출).
+  if (e.kind === "name" && e.norm.endsWith("역")) {
+    const stem = e.norm.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(^|\\|)${stem}(\\||$)`).test(corpus);
+  }
   if (e.kind === "time") {
     // 값 경계(`|`)를 살려 좌표 127.1325가 13:25를 접지하지 않게 한다.
     const compact = e.norm.replace(":", "");
