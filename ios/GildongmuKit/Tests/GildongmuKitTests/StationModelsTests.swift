@@ -209,7 +209,8 @@ import Foundation
       {"kind":"elevatorLocation","facilities":[
         {"name":"역 중심 기준 북동쪽 약 120m, 성내동","parts":{"compass":"ne","meters":120,"dong":"성내동"}}]},
       {"kind":"voiceGuide","facilities":[
-        {"name":"3번 출구 5호선","parts":{"location":"3번 출구","line":"5"}},
+        {"name":"3번 출구 5호선","parts":{"location":"3번 출구","line":"5","lineEn":"Line 5"}},
+        {"name":"6번 출구 99호선","parts":{"location":"6번 출구","line":"99"}},
         {"name":"4번 출구"}]},
       {"kind":"restroom","facilities":[
         {"name":"장애인화장실","detail":"남녀구분 · 휠체어 접근 가능","parts":{"restroomType":"남녀구분","wheelchairAccessible":true}}]}
@@ -220,7 +221,11 @@ import Foundation
     #expect(f.groups[0].facilities[0].parts?.meters == 120)
     #expect(f.groups[0].facilities[0].parts?.dong == "성내동")
     #expect(f.groups[1].facilities[0].parts?.line == "5")
-    #expect(f.groups[1].facilities[1].parts == nil)
+    // `lineEn`(E27 잔여, lang=en additive)은 있으면 읽고 없으면 nil — 표 미스·ko 응답이 그 자리다.
+    #expect(f.groups[1].facilities[0].parts?.lineEn == "Line 5")
+    #expect(f.groups[1].facilities[1].parts?.line == "99")
+    #expect(f.groups[1].facilities[1].parts?.lineEn == nil)
+    #expect(f.groups[1].facilities[2].parts == nil)
     #expect(f.groups[2].facilities[0].parts?.wheelchairAccessible == true)
     #expect(f.groups[2].facilities[0].parts?.restroomType == "남녀구분")
 }

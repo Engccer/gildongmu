@@ -67,6 +67,7 @@ import { DistanceBeacon } from "./DistanceBeacon";
 import { TransitGuidePanel } from "./TransitGuidePanel";
 import { buildTransitGuideRoute } from "@/lib/transit-guide";
 import { VoiceRecordButton } from "./VoiceRecordButton";
+import { KoTail, langFor, useBilingualName } from "./BilingualName";
 
 type ModeKey = DirectionsModeKey;
 
@@ -1820,6 +1821,7 @@ function EndpointField({
   tRecent: ReturnType<typeof useTranslations<"recent">>;
 }) {
   const inputId = useId();
+  const bilingual = useBilingualName();
   const inputRef = useRef<HTMLInputElement>(null);
   const [candidates, setCandidates] = useState<{
     places: Place[];
@@ -2027,40 +2029,55 @@ function EndpointField({
       {candidates &&
         (candidates.places.length > 0 || candidates.addresses.length > 0) && (
           <ul ref={candidateListRef} className="mt-1">
-            {candidates.places.map((p, i) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  ref={i === 0 ? firstCandidateRef : undefined}
-                  onClick={() =>
-                    resolveAndClose({
-                      kind: "place",
-                      label: p.name,
-                      coord: { lat: p.lat, lng: p.lng },
-                    })
-                  }
-                  className="min-h-11 w-full text-left text-sm underline"
-                >
-                  {joinText(p.name, p.roadAddress || p.address)}
-                </button>
-              </li>
-            ))}
-            {candidates.addresses.map((a, i) => (
-              <li key={a.roadAddr}>
-                <button
-                  type="button"
-                  ref={
-                    candidates.places.length === 0 && i === 0
-                      ? firstCandidateRef
-                      : undefined
-                  }
-                  onClick={() => void selectAddress(a)}
-                  className="min-h-11 w-full text-left text-sm underline"
-                >
-                  {a.roadAddr}
-                </button>
-              </li>
-            ))}
+            {/* 장소 후보: 비-ko는 이름이 로마자(E28)이고 한글은 버튼 이름의 마지막 노드(R1). 주소는
+                한국어 원문이라 접근 텍스트에 한글이 남으면 줄 전체 lang=ko(R4, NightClinics 선례).
+                확정 라벨(`label`)은 종전대로 원명이다 — 병기는 후보 목록의 표시 층에만 있다. */}
+            {candidates.places.map((p, i) => {
+              const name = bilingual(p.name, { roman: p.nameRoman });
+              const text = joinText(name.primary, p.roadAddress || p.address);
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    ref={i === 0 ? firstCandidateRef : undefined}
+                    onClick={() =>
+                      resolveAndClose({
+                        kind: "place",
+                        label: p.name,
+                        coord: { lat: p.lat, lng: p.lng },
+                      })
+                    }
+                    className="min-h-11 w-full text-left text-sm underline"
+                    lang={langFor(text)}
+                  >
+                    {text}
+                    <KoTail secondary={name.secondary} />
+                  </button>
+                </li>
+              );
+            })}
+            {/* 주소 후보: juso 공식 영문 주소(`engAddr`)가 원천이라 로마자보다 앞선다. */}
+            {candidates.addresses.map((a, i) => {
+              const name = bilingual(a.roadAddr, { en: a.engAddr });
+              return (
+                <li key={a.roadAddr}>
+                  <button
+                    type="button"
+                    ref={
+                      candidates.places.length === 0 && i === 0
+                        ? firstCandidateRef
+                        : undefined
+                    }
+                    onClick={() => void selectAddress(a)}
+                    className="min-h-11 w-full text-left text-sm underline"
+                    lang={langFor(name.primary)}
+                  >
+                    {name.primary}
+                    <KoTail secondary={name.secondary} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       {/* 최근 장소(스펙 2026-07-26): 후보 검색 전 상태에만. 조용히 나타나는 목록이라

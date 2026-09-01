@@ -370,6 +370,10 @@
     "supplementFailedNotice": "일반 소아청소년과 조회에 실패해 지정 기관만 표시합니다.",
     "basisHoliday": "오늘은 공휴일 진료시간 기준입니다.",
     "distance": "약 {distance}",
+    "kind": {
+      "clinic": "의원",
+      "hospital": "병원"
+    },
     "open": "지금 진료 중",
     "closed": "지금은 진료 시간이 아닙니다",
     "unknown": "오늘 진료시간 정보가 없습니다",

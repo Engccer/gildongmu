@@ -10,6 +10,7 @@ import { findVoiceGuides } from "../voice-guides";
 import { findStationsByName } from "../subway-stations";
 import { fetchSeoulElevators, composeElevatorItems } from "./seoul-elevator";
 import { joinText } from "../format";
+import { subwayLineNameEn } from "../subway-line-names";
 import type {
   SeoulMetroFacilities,
   SeoulMetroFacility,
@@ -313,5 +314,27 @@ export async function fetchSeoulMetroFacilities(
     line: base?.line,
     groups,
     ...(supplementFailed ? { supplementFailed: true as const } : {}),
+  };
+}
+
+/**
+ * `lang=en` 투영(E27 잔여): 음성유도기 `parts.line`(번호 "5")을 표 키 "5호선"으로 조회해 `parts.lineEn`
+ * ("Line 5")을 additive로 싣는다. 표 미스는 부재(소비자가 종전 조립으로 떨어진다). 문자열 필드(`name`)와
+ * ko 응답은 불변 — 라우트가 en일 때만 부른다.
+ */
+export function withMetroFacilityLinesEn(
+  f: SeoulMetroFacilities | null,
+): SeoulMetroFacilities | null {
+  if (!f) return null;
+  return {
+    ...f,
+    groups: f.groups.map((g) => ({
+      ...g,
+      facilities: g.facilities.map((x) => {
+        const line = x.parts?.line;
+        const lineEn = line ? subwayLineNameEn(`${line}호선`) : null;
+        return lineEn ? { ...x, parts: { ...x.parts, lineEn } } : x;
+      }),
+    })),
   };
 }

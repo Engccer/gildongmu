@@ -88,6 +88,8 @@ final class DirectionsModel {
     /// "현재 위치" 라벨에 병기할 역지오코딩 주소(F-B, 웹 currentAddress 미러).
     /// nil=주소 미확보 — 라벨은 "현재 위치"만(주소 없음=정보 없음, 거짓 표시 금지).
     private(set) var currentAddress: String?
+    /// `currentAddress`의 비-ko 1순위 표기(juso 공식 영문 → 로마자, E28). ko 요청·부재는 nil.
+    private(set) var currentAddressEnglish: String?
     /// `results`가 마지막으로 확정될 때 출발지가 수동 위치였는가(웹 originSource
     /// 미러, DirectionsView.tsx). "지금 수동 위치가 켜져 있는가"가 아니라 **화면에
     /// 보이는 이 경로가 어느 좌표에서 계산됐는가**가 판정 축이다 — 조회 뒤 수동
@@ -269,7 +271,10 @@ final class DirectionsModel {
     /// 정직하게 비운다(옛 좌표의 주소를 남기지 않는다). 주소는 부가 정보라 조회
     /// 흐름은 어떤 경우에도 막지 않는다.
     private func syncCurrentAddress(lat: Double, lng: Double) async {
-        currentAddress = (try? await searchService.reverseGeocode(lat: lat, lng: lng, lang: AppLanguage.dataLocale))?.address
+        let resolved = try? await searchService.reverseGeocode(lat: lat, lng: lng, lang: AppLanguage.dataLocale)
+        currentAddress = resolved?.address
+        // 주소가 없으면 영문도 없다(`CurrentAddressStore` 동형) — 옛 좌표의 영문이 남지 않게 함께 비운다.
+        currentAddressEnglish = resolved?.address == nil ? nil : resolved?.english
     }
 
     /// 안내 주도 재조회(스펙 2026-08-12 §5.3)는 silently=true — 완료·실패 통지를
@@ -606,10 +611,15 @@ struct DirectionsTabView: View {
         NavigationStack {
             List {
                 Section {
-                    Button(fieldText(.from)) { searchTarget = .from }
+                    // 비-ko 현재 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만(LocationBar 동형).
+                    Button { searchTarget = .from } label: {
+                        bilingualLine(visible: fieldText(.from, accessible: false), accessible: fieldText(.from, accessible: true))
+                    }
                         .accessibilityFocused($focusedEndpointField, equals: .from)
                     Button(appLocalized("directions.swap")) { model.swap() }
-                    Button(fieldText(.to)) { searchTarget = .to }
+                    Button { searchTarget = .to } label: {
+                        bilingualLine(visible: fieldText(.to, accessible: false), accessible: fieldText(.to, accessible: true))
+                    }
                         .accessibilityFocused($focusedEndpointField, equals: .to)
                     // 경유지(N4, 선택 사항) — 도착지와 경로 조회 사이. 확정되면 필드 버튼
                     // (탭=재검색) + 삭제 버튼으로 바뀐다. 삭제는 자기를 누른 버튼을 없애므로
@@ -1185,11 +1195,12 @@ struct DirectionsTabView: View {
 
     /// 필드 한 줄 = 한 객체: "출발지, 현재 위치"처럼 라벨+값 단일 텍스트(쉼표 결합).
     /// 미확정 필드는 검색 유도 라벨이 곧 버튼 이름.
-    private func fieldText(_ target: DirectionsFieldTarget) -> String {
+    /// `accessible`은 병기 변종이다(E28): false=시각 `Roman (한글)`, true=낭독(괄호 없이). 한글 원문만이면 둘이 같다.
+    private func fieldText(_ target: DirectionsFieldTarget, accessible: Bool) -> String {
         let label = target == .from ? appLocalized("directions.from") : appLocalized("directions.to")  // via는 위 폼 인라인
         switch model.endpoint(for: target) {
         case .current:
-            return "\(label), \(currentLocationText)"
+            return "\(label), \(currentLocationText(accessible: accessible))"
         case .place(let name, _, _):
             return "\(label), \(name)"
         case nil:
@@ -1200,12 +1211,13 @@ struct DirectionsTabView: View {
     /// 현재 위치 값 텍스트(F-B): 수동 위치가 켜져 있으면 그 라벨(표시줄과 **같은 훅**을
     /// 써 검증 가능/불가 판정선이 갈리지 않게 한다 — 3-state 정직성), 그 외 재측위 중 →
     /// 진행 라벨, 주소 확보 → 주소 병기, 기본 "현재 위치". 한 줄 = 한 객체(필드
-    /// 버튼 단일 텍스트에 흡수).
-    private var currentLocationText: String {
+    /// 버튼 단일 텍스트에 흡수). 주소는 비-ko에서 영문·로마자 병기(E28, `LocationBarView` 동형).
+    private func currentLocationText(accessible: Bool) -> String {
         if let manual = manualLocationLabel(manualLocationStore) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         if let address = model.currentAddress {
-            return appLocalized("directions.currentLocationNear", address)
+            let name = bilingual(address, en: model.currentAddressEnglish, roman: nil)
+            return appLocalized("directions.currentLocationNear", accessible ? name.primary : name.display)
         }
         return appLocalized("directions.currentLocation")
     }

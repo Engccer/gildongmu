@@ -12,6 +12,8 @@ public struct SurroundingsSceneItem: Codable, Sendable, Hashable {
     public let distanceMeters: Int
     /// 앵커와 다른 도로일 때만 서버가 채운다(같은 도로면 잉여라 null).
     public let road: String?
+    /// `road`의 로마자(주소 규칙, E28 후속) — 비-ko 장면 문장이 도로명 자리에 쓴다.
+    public var roadRoman: String? = nil
     public let category: String
     // 장소 상세 진입 재료(M4 판정 ⑤, 2026-08-22) — `sceneItemToPlace`가 `Place`로 투영한다.
     public let id: String

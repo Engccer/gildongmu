@@ -73,3 +73,46 @@ describe("NightClinicsNearby 병기(en, 합성 줄)", () => {
     expect(headings[1].textContent?.endsWith(" (CU 병원)")).toBe(true);
   });
 });
+
+describe("NightClinicsNearby 종별 i18n(en)", () => {
+  beforeEach(() => {
+    geoMock.mockReset();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          clinics: [
+            { ...clinic, id: "k1", kind: "의원" },
+            { ...clinic, id: "k2", kind: "병원" },
+            { ...clinic, id: "k3", kind: "종합병원" },
+          ],
+          basis: "weekday",
+          supplementFailed: false,
+        }),
+      ),
+    );
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("의원·병원은 i18n 키를 타고 그 밖은 원문 + lang=ko", async () => {
+    geoMock.mockResolvedValue({ status: "ready", coords: KOREA_COORDS });
+    render(<NightClinicsNearby />);
+    fireEvent.click(screen.getByRole("button", { name: "clinicNearby.button" }));
+    const headings = await waitFor(() => screen.getAllByRole("heading", { level: 4 }));
+    const accessible = (h: Element) => {
+      const clone = h.cloneNode(true) as Element;
+      clone.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+      return clone.textContent ?? "";
+    };
+    expect(accessible(headings[0])).toContain("Seouraibyeongwon, clinicNearby.kind.clinic, ");
+    expect(accessible(headings[1])).toContain("Seouraibyeongwon, clinicNearby.kind.hospital, ");
+    // 접근 텍스트에 한글이 남지 않으면 줄 lang 태그도 없다(R4).
+    expect(headings[0].getAttribute("lang")).toBeNull();
+    // 두 종 밖의 값은 원문 그대로이고 줄 전체가 ko다.
+    expect(accessible(headings[2])).toContain("Seouraibyeongwon, 종합병원, ");
+    expect(headings[2].getAttribute("lang")).toBe("ko");
+  });
+});

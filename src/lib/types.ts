@@ -248,6 +248,11 @@ export interface SeoulMetroFacilityParts {
   location?: string;
   /** voiceGuide: 환승역에서만 오는 노선 번호(예 "5" — "호선"은 클라이언트가 단다). */
   line?: string;
+  /**
+   * `line`의 영문 노선명(`lang=en`에만, E27 표 `subwayLineNameEn` — 예 "Line 5"). 표 미스면 부재이고
+   * 소비자는 종전대로 `line`에 자기 언어 접미를 단다. 웹은 표를 직접 타므로 이 필드는 iOS 몫이다.
+   */
+  lineEn?: string;
   /** restroom: 화장실 종류 원문(rstrmInfo). */
   restroomType?: string;
   /** restroom: 휠체어 접근 가능(whlchrAcsPsbltyYn === "Y")일 때만. */

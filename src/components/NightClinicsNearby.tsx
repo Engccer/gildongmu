@@ -4,6 +4,7 @@ import { KoTail, langFor, useBilingualName } from "@/components/BilingualName";
 import { useTranslations } from "next-intl";
 import type { ClinicOpenStatus, NightClinic } from "@/lib/types";
 import { formatDistance, joinText } from "@/lib/format";
+import { clinicKindKey } from "@/lib/clinic-kind";
 import { useNearbyFetch } from "@/hooks/useNearbyFetch";
 import { useRevealMore } from "@/hooks/useRevealMore";
 import { NearbyPanelShell } from "@/components/NearbyPanelShell";
@@ -104,9 +105,12 @@ export function NightClinicsNearby() {
             {status.data.clinics.slice(0, visibleCount).map((c, i) => {
               const holiday = c.hours[7];
               const name = bilingual(c.name, { roman: c.nameRoman });
+              // 종별은 두 값("의원"·"병원")만 i18n 키를 타고(ko는 같은 낱말이라 byte-identical), 그 밖은
+              // 원문 그대로다 — 그때는 아래 `langFor`가 줄 전체를 ko로 태깅한다(E28 R4).
+              const kindKey = clinicKindKey(c.kind);
               const line = joinText(
                 name.primary,
-                c.kind,
+                kindKey ? t(`kind.${kindKey}`) : c.kind,
                 t("distance", { distance: formatDistance(c.distanceMeters) }),
               );
               return (

@@ -28,7 +28,7 @@ final class StationSectionsModel {
         // 시간표만 실패를 error로 구분해 보존한다(무운행 위장 금지).
         async let metaTask: StationMeta? = (try? service.meta(station: stationName, lang: AppLanguage.dataLocale)) ?? nil
         async let korailTask: StationFacilities? = (try? service.korailFacilities(station: stationName)) ?? nil
-        async let metroTask: SeoulMetroFacilities? = (try? service.metroFacilities(station: stationName)) ?? nil
+        async let metroTask: SeoulMetroFacilities? = (try? service.metroFacilities(station: stationName, lang: AppLanguage.dataLocale)) ?? nil
         async let arrivalsTask: StationArrivals? = (try? service.arrivals(station: stationName, lang: AppLanguage.dataLocale)) ?? nil
         async let timetableTask: TimetableState = loadTimetable(stationName: stationName)
         meta = await metaTask
@@ -259,7 +259,9 @@ struct StationSectionsView: View {
                 p.dong)
         }
         if let p = f.parts, let location = p.location {
-            return joinText(location, p.line.map { appLocalized("subway.lineNumber", $0) })
+            // 노선명은 서버 표(`lineEn`, E27)가 정본이고 앱 언어 접미 조립은 표 미스·ko 폴백이다 —
+            // 같은 화면의 역 메타 줄(`linesEn`)과 한 노선이 두 이름으로 읽히지 않게(CLAUDE.md A26 예외).
+            return joinText(location, p.lineEn ?? p.line.map { appLocalized("subway.lineNumber", $0) })
         }
         return f.name
     }

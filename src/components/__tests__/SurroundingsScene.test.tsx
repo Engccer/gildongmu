@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import { cleanup, render, screen } from "@testing-library/react";
 import ko from "../../../messages/ko.json";
+import en from "../../../messages/en.json";
 import { SurroundingsSceneView } from "../SurroundingsScene";
 import type { Scene } from "@/lib/surroundings-scene";
 
@@ -79,5 +80,39 @@ describe("SurroundingsSceneView", () => {
     };
     renderScene(many);
     expect(screen.getByRole("heading", { name: "오른쪽 5곳" })).toBeTruthy();
+  });
+});
+
+describe("SurroundingsSceneView — 비-ko 도로명 로마자(E28 후속)", () => {
+  const withRoman: Scene = {
+    ...scene,
+    groups: [
+      {
+        bucket: "left",
+        items: [{ ...scene.groups[0].items[0], nameRoman: "Bongnaemyeonok", roadRoman: "Myeongil-ro" }],
+      },
+    ],
+    total: 1,
+  };
+
+  it("en은 도로명 자리에 로마자를 쓰고 한글 도로명은 접근 텍스트에 남지 않는다", () => {
+    render(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <SurroundingsSceneView scene={withRoman} />
+      </NextIntlClientProvider>,
+    );
+    const button = screen.getByRole("button", { name: "62m Bongnaemyeonok, on Myeongil-ro" });
+    // 이름의 한글 괄호는 마지막 노드(R1) — 도로명엔 괄호를 두지 않는다.
+    expect(button.lastElementChild?.textContent).toBe(" (봉래면옥)");
+    expect(button.textContent?.includes("명일로")).toBe(false);
+  });
+
+  it("ko는 종전 그대로다(roadRoman이 있어도 원문)", () => {
+    render(
+      <NextIntlClientProvider locale="ko" messages={ko}>
+        <SurroundingsSceneView scene={withRoman} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByText("62m 봉래면옥, 명일로 쪽")).toBeTruthy();
   });
 });

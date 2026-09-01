@@ -370,6 +370,10 @@
     "supplementFailedNotice": "General pediatric clinic lookup failed; only designated hospitals are shown.",
     "basisHoliday": "Based on public holiday hours for today.",
     "distance": "about {distance}",
+    "kind": {
+      "clinic": "Clinic",
+      "hospital": "Hospital"
+    },
     "open": "Open now",
     "closed": "Closed now",
     "unknown": "No hours info for today",

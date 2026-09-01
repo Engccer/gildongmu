@@ -89,6 +89,14 @@ describe("assembleScene", () => {
     expect(right?.items[0]?.road).toBeNull();
   });
 
+  it("길 이름이 있으면 로마자(`roadRoman`, 주소 규칙)를 additive로 싣고 없으면 필드 자체가 없다", async () => {
+    const scene = await assembleScene(37.5415, 127.1495);
+    const left = scene.groups.find((g) => g.bucket === "left");
+    expect(left?.items[0]?.roadRoman).toBe("Myeongil-ro");
+    const right = scene.groups.find((g) => g.bucket === "right");
+    expect(right?.items[0]).not.toHaveProperty("roadRoman");
+  });
+
   it("축을 못 세우면 절대 방위로 물러난다 — 침묵하지 않는다", async () => {
     resolveRoadAxis.mockResolvedValue(null);
     const scene = await assembleScene(37.5415, 127.1495);

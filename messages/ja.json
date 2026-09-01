@@ -370,6 +370,10 @@
     "supplementFailedNotice": "一般の小児科の照会に失敗したため、指定機関のみ表示しています。",
     "basisHoliday": "今日は祝日の診療時間基準です。",
     "distance": "約{distance}",
+    "kind": {
+      "clinic": "医院",
+      "hospital": "病院"
+    },
     "open": "現在診療中",
     "closed": "現在は診療時間外です",
     "unknown": "今日の診療時間の情報がありません",

@@ -102,7 +102,7 @@ struct ClinicNearbyView: View {
                             PlaceRow(
                                 place: nightClinicToPlace(clinic),
                                 secondaryOverride: joinText(
-                                    clinic.kind,
+                                    clinicKindText(clinic.kind),
                                     clinicStatusText(clinic.openStatus),
                                     appLocalized("place.distance", formatDistance(clinic.distanceMeters))),
                                 onAskAbout: { chatPlace = nightClinicToPlace(clinic) })
@@ -142,6 +142,16 @@ struct ClinicNearbyView: View {
 
 /// 진료 상태 3-state 문장 — 목록 행 보조 텍스트와 상세 도메인 섹션이 공유.
 /// open이면 종료시각까지, closed/unknown은 각각의 문장으로.
+/// 진료 종별 라벨(E28 후속) — 두 값("의원"·"병원")만 앱 언어(ko는 같은 낱말), 그 밖은 원문 그대로.
+/// 키는 리터럴로 나열한다(xcstrings 린터 계약). 웹 `NightClinicsNearby`의 `clinicKindKey` 분기 미러.
+func clinicKindText(_ kind: String) -> String {
+    switch clinicKindKey(kind) {
+    case "clinic": return appLocalized("clinicNearby.kind.clinic")
+    case "hospital": return appLocalized("clinicNearby.kind.hospital")
+    default: return kind
+    }
+}
+
 func clinicStatusText(_ status: NightClinic.OpenStatus) -> String {
     switch status.state {
     case "open":
