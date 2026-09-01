@@ -92,10 +92,14 @@ final class GuideSession {
         let context = PrewalkContext(
             id: UUID(), route: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
         prewalk = context
-        beacon.markPrewalk(target: target.name)
+        // 표시 라벨은 ko·en 쌍(E27 잔여 ①). 도보 세션의 목적지 라벨(`label:`)은 조인·표시가
+        // 겸하는 자리라 한국어 원문을 유지한다 — 도보 안내는 이 마일스톤의 축이 아니다.
+        let stationLabel = TransitLabel(ko: target.name, en: target.nameEn)
+        beacon.markPrewalk(target: stationLabel)
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
-        transit.announceExternal(
-            appLocalized("transitGuide.prewalkStart", target.name, String(target.minutes)))
+        transit.announceExternal(TransitGuideTextRenderer.render(
+            transitPrewalkStartLine(
+                isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)))
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
             dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.name, kind: .walk,
