@@ -74,7 +74,7 @@ function GroupSection({
           <li
             key={`${it.id}-${it.distanceMeters}`}
             className="text-sm"
-            // 도로명은 전 로케일에서 한국어 원문이고 이름은 비-ko에서 로마자다 — lang은 접근
+            // 이름·도로명 모두 비-ko에서 로마자(도로명은 `roadRoman` 부재면 한국어 원문) — lang은 접근
             // 텍스트에 한글이 남을 때만(NightClinics 한 줄 lang 선례, E28 R4).
             lang={langFor(text)}
           >
