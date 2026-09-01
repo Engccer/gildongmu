@@ -219,7 +219,7 @@ cd ~/gildongmu-wt/<name> && npm ci        # 심링크 금지 — 실제 설치
 |---|---|---|---|---|
 | **B. cli-lang** | ✅ 종결 | `457e9c5`(커밋 4) | 없음(npm 발행은 §6) | 3건, 전부 승인 |
 | **C. en-polish** | ✅ 종결 | `fb1aafa`(커밋 6, `457e9c5` 위 rebase) | 웹 자동 배포. iOS Swift 변경 0이라 락 불필요 | 6건, 전부 승인 |
-| **A. transit-en-gate** | ✅ 종결 | `df4b458`(커밋 15, `75480cb` 위 rebase) | iOS 실험판(`Experimental`) | 5건, 전부 승인 — **그중 2건은 계획 결함**(아래) |
+| **A. transit-en-gate** | ✅ 코드 종결 | `df4b458`(커밋 15, `75480cb` 위 rebase) | ⚠ **iOS 실험판 배포 미실행**(아래) | 5건, 전부 승인 — **그중 2건은 계획 결함**(아래) |
 
 **리뷰·실행이 잡은 게이트 결함 3건**(이번 웨이브의 최고가치, 셋 다 "초록인데 대상에 닿지 않았다"):
 - cli-lang이 쓴 카탈로그 검사가 **자기 자신만 보는 change-detector**여서 이 마일스톤이 고친 드리프트를 통과시켰을 것 → 라우트 소스 스캔 양방향 대조(`catalog-lang-drift.test.ts`)로 교체, 변이 3종 검출.
@@ -235,6 +235,9 @@ cd ~/gildongmu-wt/<name> && npm ci        # 심링크 금지 — 실제 설치
 2. E29 — CLI 자동차 브리핑의 en→ko 폴백 표기 부재(포매터 계약 변경이 선행).
 3. `/api/route/car`·`/api/chat`의 `lang` 무검증 통일 여부 — `geocode/reverse`와 같은 계열이나 car는 `guidanceLang` 3-state가 이미 서 있고 chat `locale`은 6로케일이라 한 규칙으로 묶이지 않는다.
 4. iOS `subway.lineNumber`가 es에서 "Línea 5"(웹은 "Line 5") + 수동 위치 라벨 iOS 병기. ⚠ **코디네이터 관찰**: 후보 ⓐⓑ가 둘 다 "en 통일" 전제인데 그것이 맞다 — 노선명을 es로 내려면 노선명 표의 es판(47개)이 필요하고 그것이 곧 §0이 추정한 "다음 언어 추가" 비용이다. 이 항목은 그 마일스톤의 축소판이지 이번 축이 아니다.
+
+⚠ **iOS 실험판 배포는 실행되지 않았다**(2026-09-01). 코드는 main에 있고(`df4b458`) 같은 구성의 빌드도 BUILD SUCCEEDED지만, 배포 시점에 기기가 `unavailable`(USB 미연결)이라 `deploy-device.sh`가 exit 1로 멈췄다. **배포한 것처럼 닫으면 실승차 날 위원장이 옛 빌드로 걷고, 영어에서 안내 시작 버튼이 안 보이는 것을 "게이트가 안 열렸다"는 결함으로 적게 된다** — 실제로는 설치가 안 된 것이다. 그래서 `docs/FIELD-TEST.md` §5-6 머리에도 재설치 전제를 적었다(`5157e93`). 기기를 USB로 연결하고 잠금 해제한 뒤 아무 세션에서나 `CONFIGURATION=Experimental ./ios/deploy-device.sh` 한 줄이면 된다.
+⚠ 코디네이터가 배포 락을 줄 때 본 `available (paired)`와 세션이 배포 직전에 본 `unavailable`은 **둘 다 각자 시점에 맞다**(그 사이 연결이 끊겼다). 기기 상태도 SHA와 같아서 **읽는 순간이 곧 스냅샷**이다 — 락 허가 시점의 관측을 배포 시점의 보증으로 넘기지 말 것.
 
 **코디네이터 몫**: `AGENTS.md` 일괄 재생성(A 통합 후. B·C가 `CLAUDE.md`를 5줄 고쳤다) · 창 정리(`close-sessions.sh`) · 스킬 개정 제안 1건(아래).
 
