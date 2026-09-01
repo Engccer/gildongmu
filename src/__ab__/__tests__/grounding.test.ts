@@ -82,6 +82,19 @@ describe("scoreGrounding — 엔티티 대조", () => {
     const r = scoreGrounding({ fromTools: ["t"], fields: ["*"], kinds: ["time"] }, outputs, "13:25에 오고 05:30에 첫차");
     expect(r.leaked).toEqual(["time:13:25"]);
   });
+  it("미터 반올림: 121m를 '약 120m'로, 602m를 '약 600m'로 쓴 것은 날조가 아니다(C5 재실행 실측)", () => {
+    const outputs = [{ name: "t", response: { items: [{ distanceMeters: 121 }, { distanceMeters: 602 }] } }];
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["number"] as const };
+    expect(scoreGrounding(g, outputs, "약 120m, 약 600m")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(g, outputs, "약 130m").leaked).toEqual(["number:130m"]);
+    expect(scoreGrounding(g, outputs, "약 125m").leaked).toEqual(["number:125m"]);
+  });
+  it("도로명 '인제로193번길'의 193번은 수치가 아니고, 공공 상담 창구 이름은 시설이 아니다", () => {
+    expect(extractEntities("인제군 인제읍 인제로193번길 1", ["number"])).toEqual([]);
+    expect(extractEntities("마을버스 3번을 타세요", ["number"]).map((e) => e.norm)).toEqual(["3번"]);
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+    expect(scoreGrounding(g, [], "129 보건복지상담콜센터나 응급의료정보센터에 문의하세요")).toEqual({ pass: true, leaked: [] });
+  });
   it("앞자리 0 없는 HHMM 정수(진료시간 800)가 답변의 08:00을 접지한다(C5 1차 실측)", () => {
     const outputs = [{ name: "t", response: { hours: [{ start: 800, end: 1830 }] } }];
     const g = { fromTools: ["t"], fields: ["*"], kinds: ["time"] as const };

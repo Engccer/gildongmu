@@ -1,0 +1,1043 @@
+{
+  "run": {
+    "models": [
+      "gemini-3.6-flash"
+    ],
+    "repeats": 3,
+    "only": "04,41,42,43",
+    "measuredAt": "2026-09-01T23:34:37.980Z",
+    "interleaved": true,
+    "gitSha": "abac35c-dirty"
+  },
+  "cases": [
+    {
+      "id": "04-야간진료",
+      "turns": [
+        "아이가 열이 나는데 지금 문 연 소아과 있어?"
+      ],
+      "expectAny": [
+        "get_night_clinics"
+      ],
+      "forbid": [
+        "get_air_quality",
+        "get_weather"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_night_clinics"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "time",
+          "number"
+        ]
+      },
+      "safety": true,
+      "judge": "진료중 여부 3-state를 유지하는가.",
+      "context": {}
+    },
+    {
+      "id": "41-빈응답-소아과-0건",
+      "turns": [
+        "아이가 열이 나는데 지금 문 연 소아과 있어?"
+      ],
+      "expectAny": [
+        "get_night_clinics"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_night_clinics"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "time",
+          "number",
+          "address"
+        ]
+      },
+      "safety": true,
+      "judge": "0건을 '없다'로 말하는가(실패·모름으로 바꾸지 않는가). 앱 안 대안 1가지.",
+      "context": {
+        "location": {
+          "lat": 38.2,
+          "lng": 128.35
+        }
+      }
+    },
+    {
+      "id": "42-빈응답-지하철-최근접",
+      "turns": [
+        "가까운 지하철역 도착 정보 알려줘"
+      ],
+      "expectAny": [
+        "get_subway_arrivals"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_subway_arrivals"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "time",
+          "number"
+        ]
+      },
+      "safety": true,
+      "judge": "근접 0건 + nearest(춘천 약 66km)를 그대로 — 도착 시각·노선을 지어내지 않는가.",
+      "context": {
+        "location": {
+          "lat": 38.2,
+          "lng": 128.35
+        }
+      }
+    },
+    {
+      "id": "43-빈응답-따릉이-서울밖",
+      "turns": [
+        "여기서 제일 가까운 따릉이 대여소 어디야?"
+      ],
+      "expectAny": [
+        "get_bike_stations"
+      ],
+      "forbid": [
+        "search_web",
+        "search_places"
+      ],
+      "grounding": {
+        "fromTools": [
+          "get_bike_stations"
+        ],
+        "fields": [
+          "*"
+        ],
+        "kinds": [
+          "name",
+          "phone",
+          "number",
+          "address"
+        ]
+      },
+      "safety": true,
+      "judge": "'서울만 제공'을 '근처에 없다'로 바꾸지 않는가(unavailable ≠ 0건). 대여소 이름·대수 날조 0.",
+      "context": {
+        "location": {
+          "lat": 36.36,
+          "lng": 127.35
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1903,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 136,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5658,
+          "promptTokens": 5205,
+          "outputTokens": 471,
+          "thoughtTokens": 477,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 7561,
+      "latencyMs": 9705,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8838,
+      "outputTokens": 484,
+      "thoughtTokens": 613,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치(강동구 길동 주변) 기준, 지금 진료 중인 병원 및 의료기관입니다. 방문 전 전화로 소아 진료 가능 여부를 확인하시길 권장합니다.\n\n1. **서울유의원** (약 121m)\n   - **주소**: 서울특별시 강동구 천호대로187길 61, 2층\n   - **전화**: 02-475-8275\n   - **상태**: 진료 중 (오늘 종료 예정시간: 18:30)\n\n2. **훈훈한내과의원** (약 131m)\n   - **주소**: 서울특별시 강동구 양재대로 1488, 4층\n   - **전화**: 02-484-7600\n   - **상태**: 진료 중 (오늘 종료 예정시간: 18:00)\n\n3. **조한준가정의학과의원** (약 160m)\n   - **주소**: 서울특별시 강동구 천호대로187길 53, 2층\n   - **전화**: 02-472-3396\n   - **상태**: 진료 중 (오늘 종료 예정시간: 18:00)\n\n4. **서울준내과의원** (약 178m)\n   - **주소**: 서울특별시 강동구 양재대로 1477, 4층\n   - **전화**: 02-6925-5154\n   - **상태**: 진료 중 (오늘 종료 예정시간: 18:00)\n\n5. **성심의료재단강동성심병원** (종합병원 / 지역응급의료센터, 약 602m)\n   - **주소**: 서울특별시 강동구 성안로 150\n   - **전화**: 02-2224-2114\n   - **상태**: 진료 중",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1523,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 119,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4823,
+          "promptTokens": 3795,
+          "outputTokens": 163,
+          "thoughtTokens": 429,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6346,
+      "latencyMs": 6961,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7428,
+      "outputTokens": 176,
+      "thoughtTokens": 548,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "name:보건복지상담콜센터"
+          ]
+        }
+      },
+      "text": "현재 위치 주변에는 지금 운영 중인 **달빛어린이병원(소아 야간·휴일 진료 병원)**이 검색되지 않습니다 (0건).\n\n* **지역 지정 검색**: 특정 지역명(예: \"강남구\", \"천호동\" 등)을 말씀해 주시면 해당 동네 주변으로 다시 검색해 드릴 수 있습니다.\n* **응급 상황 시**: 아이의 열이 잘 내리지 않거나 상태가 위급하다면 **119 응급상담(또는 129 보건복지상담콜센터)**에 전화하시거나 **응급의료포털(e-gen)**을 통해 지금 이용 가능한 가까운 응급실 및 야간 진료 병원을 바로 확인해 보세요.",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1548,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 71,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2702,
+          "promptTokens": 3768,
+          "outputTokens": 60,
+          "thoughtTokens": 166,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4250,
+      "latencyMs": 4254,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7397,
+      "outputTokens": 73,
+      "thoughtTokens": 237,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역**(경춘선, 약 65.6km 거리)입니다.\n\n현재 춘천역의 **실시간 열차 도착 정보가 없습니다.** (또는 운행 중인 열차가 조회되지 않습니다.)",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 1,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1735,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 99,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2877,
+          "promptTokens": 3795,
+          "outputTokens": 122,
+          "thoughtTokens": 196,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4612,
+      "latencyMs": 4613,
+      "toolCalls": [
+        "get_bike_stations"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7428,
+      "outputTokens": 134,
+      "thoughtTokens": 295,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 계신 지역에서는 따릉이 대여소 정보를 확인할 수 없습니다. 따릉이 대여소 정보는 **서울 지역**에 한해 제공됩니다.\n\n서울 지역 내 특정 위치나 지하철역 근처의 따릉이 대여소가 궁금하시다면, 위치 이름(예: '강남역', '홍대입구역')과 함께 다시 문의해 주세요. \n\n대신 대중교통(버스·지하철) 길안내나 근처 대중교통 정보가 필요하시다면 목적지를 말씀해 주시면 안내해 드리겠습니다.",
+      "renders": [],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1733,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 148,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 5168,
+          "promptTokens": 5217,
+          "outputTokens": 485,
+          "thoughtTokens": 529,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6901,
+      "latencyMs": 9073,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8850,
+      "outputTokens": 498,
+      "thoughtTokens": 677,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치 주변에서 이용 가능한 병원 정보입니다. 방문 전 소아 진료 가능 여부 및 접수 마감 시간을 전화로 확인해 주시기 바랍니다.\n\n1. **서울유의원** (약 121m)\n   - **주소:** 서울특별시 강동구 천호대로187길 61, 2층 (길동)\n   - **전화:** 02-475-8275\n   - **오늘 진료시간:** 08:30 ~ 18:30\n\n2. **훈훈한내과의원** (약 131m)\n   - **주소:** 서울특별시 강동구 양재대로 1488, 4층 (길동)\n   - **전화:** 02-484-7600\n   - **오늘 진료시간:** 08:30 ~ 18:00\n\n3. **조한준가정의학과의원** (약 160m)\n   - **주소:** 서울특별시 강동구 천호대로187길 53, 2층 (길동)\n   - **전화:** 02-472-3396\n   - **오늘 진료시간:** 08:30 ~ 18:00\n\n4. **서울준내과의원** (약 178m)\n   - **주소:** 서울특별시 강동구 양재대로 1477, 4층 (길동)\n   - **전화:** 02-6925-5154\n   - **오늘 진료시간:** 08:30 ~ 18:00\n\n5. **강동성심병원** (종합병원·지역응급의료센터, 약 602m)\n   - **주소:** 서울특별시 강동구 성안로 150 (길동)\n   - **전화:** 02-2224-2114\n   - **오늘 진료시간:** 08:30 ~ 17:30",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1519,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 117,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2288,
+          "promptTokens": 3793,
+          "outputTokens": 14,
+          "thoughtTokens": 199,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1792,
+          "promptTokens": 4321,
+          "outputTokens": 21,
+          "thoughtTokens": 124,
+          "toolCalls": [
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "인제군 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 6136,
+          "promptTokens": 4766,
+          "outputTokens": 326,
+          "thoughtTokens": 645,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 4,
+      "modelMs": 11735,
+      "latencyMs": 12598,
+      "toolCalls": [
+        "get_night_clinics",
+        "get_where_am_i",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "인제군 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 16513,
+      "outputTokens": 374,
+      "thoughtTokens": 1085,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:193번",
+            "name:한림의원",
+            "name:설악의원",
+            "name:한사랑의원",
+            "name:서울의원",
+            "name:튼튼소아청소년과의원",
+            "name:보건복지상담센터",
+            "address:원통로 218",
+            "address:원통로 178",
+            "address:비봉로 43",
+            "address:사명길 50-10"
+          ]
+        }
+      },
+      "text": "현재 위치(강원특별자치도 인제군 북면) 주변에는 야간·휴일 소아 진료 기관인 **달빛어린이병원이 등록되어 있지 않습니다(0건).**\n\n인근에 위치한 병원 및 의원 목록은 다음과 같습니다. 실시간 진료 여부 및 야간 진료 가능 여부는 방문 전 반드시 전화로 확인하시기 바랍니다.\n\n### 인근 의원/병원 목록\n* **한림의원**: 강원특별자치도 인제군 북면 원통로 218\n* **설악의원**: 강원특별자치도 인제군 북면 원통로 178\n* **한사랑의원**: 강원특별자치도 인제군 인제읍 인제로193번길 1\n* **서울의원**: 강원특별자치도 인제군 인제읍 비봉로 43\n* **튼튼소아청소년과의원**: 강원특별자치도 양구군 양구읍 사명길 50-10 *(소아청소년과)*\n\n---\n\n💡 **참고사항**\n* 야간이나 공휴일에 응급 진료가 필요한 경우 **119** 또는 **보건복지상담센터(129)**를 통해 현재 진료 중인 가까운 병원 및 응급실을 안내받으실 수 있습니다.\n* 고열이 지속되거나 아이의 상태가 중한 경우 즉시 가까운 응급실을 방문하세요.",
+      "renders": [
+        "clinics-nearby",
+        "places"
+      ],
+      "sources": 3
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1693,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 73,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 3401,
+          "promptTokens": 3770,
+          "outputTokens": 97,
+          "thoughtTokens": 324,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 5094,
+      "latencyMs": 5098,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7399,
+      "outputTokens": 110,
+      "thoughtTokens": 397,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역**(경춘선, 약 65.6km 거리)입니다.\n\n다만, 춘천역은 서울 도시철도 외 구간으로 **실시간 지하철 도착 정보가 제공되지 않거나, 현재 조회된 실시간 도착 열차가 없습니다.**\n\n첫차·막차 시간표 등 정규 운행 정보 조회가 필요하시면 원하시는 지하철역 이름을 말씀해 주세요.",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 2,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1532,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 106,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1561,
+          "promptTokens": 3802,
+          "outputTokens": 14,
+          "thoughtTokens": 124,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2435,
+          "promptTokens": 4332,
+          "outputTokens": 84,
+          "thoughtTokens": 175,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 5528,
+      "latencyMs": 5594,
+      "toolCalls": [
+        "get_bike_stations",
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11767,
+      "outputTokens": 110,
+      "thoughtTokens": 405,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치는 **대전광역시 유성구 궁동**입니다. \n\n서울시 공공자전거 서비스인 **따릉이 대여소 정보는 서울 지역에서만 제공**되므로, 현재 계신 위치에서는 따릉이 정보를 조회할 수 없습니다. \n\n대전 지역에서는 대전시 공공자전거인 **‘타슈’** 등의 서비스를 활용해 보실 수 있습니다.",
+      "renders": [],
+      "sources": 3
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "04-야간진료",
+      "roundStats": [
+        {
+          "ms": 1510,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 119,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 4964,
+          "promptTokens": 5188,
+          "outputTokens": 466,
+          "thoughtTokens": 551,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 6474,
+      "latencyMs": 8635,
+      "toolCalls": [
+        "get_night_clinics"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 8821,
+      "outputTokens": 479,
+      "thoughtTokens": 670,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:120m",
+            "number:130m",
+            "number:600m"
+          ]
+        }
+      },
+      "text": "현재 위치 근처에서 진료 중인 주요 병원입니다. 소아 진료 여부 및 접수 마감 시간이 달라질 수 있으므로, **방문 전 전화로 진료 가능 여부를 확인**하시는 것을 권장합니다.\n\n1. **서울유의원**\n   - **주소**: 서울 강동구 천호대로187길 61, 2층\n   - **거리**: 약 120m\n   - **진료 시간**: 08:30 ~ 18:30 (현재 진료 중)\n   - **전화번호**: 02-475-8275\n\n2. **훈훈한내과의원**\n   - **주소**: 서울 강동구 양재대로 1488, 4층 (길동역 2번 출구 근처)\n   - **거리**: 약 130m\n   - **진료 시간**: 08:30 ~ 18:00 (현재 진료 중)\n   - **전화번호**: 02-484-7600\n\n3. **조한준가정의학과의원**\n   - **주소**: 서울 강동구 천호대로187길 53, 2층\n   - **거리**: 약 160m\n   - **진료 시간**: 08:30 ~ 18:00 (현재 진료 중)\n   - **전화번호**: 02-472-3396\n\n4. **성심의료재단 강동성심병원** (응급실 운영)\n   - **주소**: 서울 강동구 성안로 150 (강동역 2번 출구 근처)\n   - **거리**: 약 600m\n   - **외래 진료**: 08:30 ~ 17:30 (현재 진료 중) / 응급실 이용 가능\n   - **전화번호**: 02-2224-2114",
+      "renders": [
+        "clinics-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "41-빈응답-소아과-0건",
+      "roundStats": [
+        {
+          "ms": 1881,
+          "promptTokens": 3633,
+          "outputTokens": 13,
+          "thoughtTokens": 177,
+          "toolCalls": [
+            "get_night_clinics"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_night_clinics",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2562,
+          "promptTokens": 3853,
+          "outputTokens": 14,
+          "thoughtTokens": 333,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1745,
+          "promptTokens": 4515,
+          "outputTokens": 41,
+          "thoughtTokens": 133,
+          "toolCalls": [
+            "search_places",
+            "search_places"
+          ],
+          "toolArgs": [
+            {
+              "name": "search_places",
+              "args": {
+                "query": "인제군 소아과"
+              }
+            },
+            {
+              "name": "search_places",
+              "args": {
+                "query": "속초 소아과"
+              }
+            }
+          ]
+        },
+        {
+          "ms": 5731,
+          "promptTokens": 5265,
+          "outputTokens": 406,
+          "thoughtTokens": 539,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 4,
+      "modelMs": 11919,
+      "latencyMs": 16899,
+      "toolCalls": [
+        "get_night_clinics",
+        "get_where_am_i",
+        "search_places",
+        "search_places"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_night_clinics",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "인제군 소아과"
+          }
+        },
+        {
+          "name": "search_places",
+          "args": {
+            "query": "속초 소아과"
+          }
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 17266,
+      "outputTokens": 474,
+      "thoughtTokens": 1182,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": false,
+        "grounding": {
+          "pass": false,
+          "leaked": [
+            "number:193번",
+            "name:한림의원",
+            "name:설악의원",
+            "name:한사랑의원",
+            "name:소아청소년과의원",
+            "name:송소아청소년과의원",
+            "name:개성소아청소년과의원",
+            "name:이현철소아청소년과의원",
+            "name:보건복지상담센터",
+            "address:원통로 218",
+            "address:원통로 178",
+            "address:동해대로 4121",
+            "address:동해대로 4215",
+            "address:동해대로 4147"
+          ]
+        }
+      },
+      "text": "현재 위치(강원특별자치도 인제군 북면) 주변에는 야간·휴일 소아 진료를 전담하는 **달빛어린이병원이 없습니다(0건)**.\n\n---\n\n### 🏥 인근 지역 소아청소년과 / 의원 목록\n야간 진료 가능 여부는 도구상 확인할 수 없으므로, 방문 전 반드시 전화 확인이 필요합니다.\n\n* **인제군 북면·인제읍 일대 의원**\n  * **한림의원**: 강원특별자치도 인제군 북면 원통로 218\n  * **설악의원**: 강원특별자치도 인제군 북면 원통로 178\n  * **한사랑의원**: 강원특별자치도 인제군 인제읍 인제로193번길 1\n\n* **속초시 지역 소아청소년과의원**\n  * **송소아청소년과의원**: 강원특별자치도 속초시 동해대로 4121\n  * **개성소아청소년과의원**: 강원특별자치도 속초시 동해대로 4215\n  * **이현철소아청소년과의원**: 강원특별자치도 속초시 동해대로 4147\n\n---\n\n🚨 **응급 상황 안내**\n아이가 고열이 심하거나 야간 응급 진료가 필요한 경우, **119**나 **1339(보건복지상담센터)**로 문의하시면 현재 운영 중인 가장 가까운 응급실 및 야간 진료 병원을 실시간으로 안내받으실 수 있습니다.\n\n💡 **대안 안내**\n원하시는 다른 지역명(예: \"속초시 야간 병원\")을 구체적으로 알려주시면 해당 위치 기준으로 다시 검색해 드릴 수 있습니다.",
+      "renders": [
+        "clinics-nearby",
+        "places",
+        "places"
+      ],
+      "sources": 3
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "42-빈응답-지하철-최근접",
+      "roundStats": [
+        {
+          "ms": 1684,
+          "promptTokens": 3629,
+          "outputTokens": 13,
+          "thoughtTokens": 140,
+          "toolCalls": [
+            "get_subway_arrivals"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_subway_arrivals",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2960,
+          "promptTokens": 3837,
+          "outputTokens": 98,
+          "thoughtTokens": 256,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 2,
+      "modelMs": 4644,
+      "latencyMs": 4646,
+      "toolCalls": [
+        "get_subway_arrivals"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_subway_arrivals",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 7466,
+      "outputTokens": 111,
+      "thoughtTokens": 396,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치에서 가장 가까운 지하철역은 **춘천역**(경춘선, 약 65.6km 거리)으로 확인되며, 현재 실시간 지하철 도착 정보는 제공되지 않거나 운행 중인 열차가 없습니다.\n\n특정 지하철역 이름(예: \"강남역\", \"청량리역\")을 말씀해 주시면 해당 역의 도착 정보나 첫차·막차 시간표를 확인해 드릴 수 있습니다.",
+      "renders": [
+        "subway-nearby"
+      ],
+      "sources": 1
+    },
+    {
+      "model": "gemini-3.6-flash",
+      "rep": 3,
+      "caseId": "43-빈응답-따릉이-서울밖",
+      "roundStats": [
+        {
+          "ms": 1455,
+          "promptTokens": 3633,
+          "outputTokens": 12,
+          "thoughtTokens": 79,
+          "toolCalls": [
+            "get_bike_stations"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_bike_stations",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 1851,
+          "promptTokens": 3775,
+          "outputTokens": 14,
+          "thoughtTokens": 154,
+          "toolCalls": [
+            "get_where_am_i"
+          ],
+          "toolArgs": [
+            {
+              "name": "get_where_am_i",
+              "args": {}
+            }
+          ]
+        },
+        {
+          "ms": 2329,
+          "promptTokens": 4335,
+          "outputTokens": 56,
+          "thoughtTokens": 174,
+          "toolCalls": [],
+          "toolArgs": []
+        }
+      ],
+      "rounds": 3,
+      "modelMs": 5635,
+      "latencyMs": 5694,
+      "toolCalls": [
+        "get_bike_stations",
+        "get_where_am_i"
+      ],
+      "toolArgs": [
+        {
+          "name": "get_bike_stations",
+          "args": {}
+        },
+        {
+          "name": "get_where_am_i",
+          "args": {}
+        }
+      ],
+      "unstubbed": [],
+      "promptTokens": 11743,
+      "outputTokens": 82,
+      "thoughtTokens": 407,
+      "ok": true,
+      "checks": {
+        "expect": true,
+        "forbid": true,
+        "grounding": {
+          "pass": true,
+          "leaked": []
+        }
+      },
+      "text": "현재 위치(대전광역시 유성구 궁동)는 대전 지역으로, 서울시 공공자전거인 **따릉이** 서비스 제공 구역이 아닙니다. \n\n따릉이 대여소 정보는 서울 지역에서만 조회할 수 있습니다.",
+      "renders": [],
+      "sources": 3
+    }
+  ]
+}
