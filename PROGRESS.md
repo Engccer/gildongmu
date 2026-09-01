@@ -19,9 +19,9 @@
 | 채널 | 상태 |
 |---|---|
 | 웹 | https://gildongmu.dodoplanet.space (push = 자동 배포) |
-| iOS | **1.13 `READY_FOR_SALE`**(빌드 21, 아카이브 커밋 `df229f0`, 제출 2026-08-27 · 승인 확인 2026-08-31 `asc-submit.mjs --check`). ⚠ 그 아카이브 뒤 iOS 커밋(E24·A25·K2-a·A26·E27·E28)은 스토어 1.13에 없다 — `git log df229f0..HEAD -- ios/` |
+| iOS | **1.13 `READY_FOR_SALE`**(빌드 21, 아카이브 커밋 `df229f0`, 제출 2026-08-27 · 승인 확인 2026-08-31 `asc-submit.mjs --check`). ⚠ 그 아카이브 뒤 iOS 커밋(E24·A25·K2-a·A26·E27·E28·A28·A29·A30)은 스토어 1.13에 없다 — `git log df229f0..HEAD -- ios/` |
 | iOS 최소 지원 | **18.0**(2026-08-19 하향, 1.10부터 적용 — 스토어 반영 완료) |
-| npm | `gildongmu` · `gildongmu-mcp` **v0.9.0**(2026-08-25, provenance 증명 포함) |
+| npm | `gildongmu` · `gildongmu-mcp` **v0.9.0**(2026-08-25, provenance 증명 포함). ⚠ 0.9.0 뒤 미발행 변경 있음(`lang` 배선 — `packages/*/CHANGELOG.md` `[미출시]`, 발행은 위원장 판정) |
 | 저장소 | GitHub **public**(2026-08-17 전환) — https://github.com/Engccer/gildongmu. 코드 MIT, 번들 데이터는 `NOTICE.md`. **모든 커밋이 즉시 공개된다** — 실주소·계측 로그·키를 넣지 않는 규칙은 `CLAUDE.md` 개발 규칙 |
 
 - iOS 심사 상태 조회: `node ios/scripts/asc-submit.mjs --check`
@@ -66,7 +66,7 @@
 | 도보 경로 | 카카오 기본 + Tmap 폴백, 계단 회피 모드, 서버 안내문 재작성, 경유지 1개(`via`, 웹·CLI·iOS — iOS 실시간 안내는 경유지 도착을 알리고 계속, ⏳ 실보행 판정), 횡단보도 차로 수·도로 폭 주석(E8, 2026-08-23 — 서울은 동작구만 데이터 보유, ⏳ 라벨 낭독 판정) |
 | 도보 경로 대안(M3+E10ⓑ) | 추천·최단 2행 제시(iOS Release 포함, 웹 조회 화면 2026-08-23), 안내 중 전환·이탈 시 제안은 iOS Experimental (⏳ 실보행 판정, 웹 전환은 B9 ② 대기) |
 | 자동차 경로 | ko Tmap 기본 + 카카오모빌리티 폴백, en NCP(경유지·기하 요청·키 부재는 ko 폴백, 응답 `guidanceLang`으로 표기 — A26), 경유지 1개(`via`, 웹·CLI·iOS) |
-| 대중교통 경로 | ODsay, 운행 시간 밖(`outside`)만 강등(A21), 최단·최소환승 축, 경유지는 `unsupported` 정직 표시. **en 계열은 ODsay `lang=1` 영문 + 노선명 표 + 역명 병기**(E27, 2026-08-31 — 한국어 필드 불변, 실시간 안내 en 게이트는 닫힘) |
+| 대중교통 경로 | ODsay, 운행 시간 밖(`outside`)만 강등(A21), 최단·최소환승 축, 경유지는 `unsupported` 정직 표시. **en 계열은 ODsay `lang=1` 영문 + 노선명 표 + 역명 병기**(E27, 2026-08-31 — 한국어 필드 불변. 실시간 안내 게이트는 2026-09-01 해제, §실시간 길 안내) |
 | 길찾기 섹션 동적 순서(E11) | 성공 앞·비성공 뒤, 도보 30분 이하 최상단, settled 스냅샷(웹·iOS, 2026-08-12) |
 | 지하철 빠른하차 | 환승 leg는 ODsay 빠른환승 문(A20), 최종 하차 leg는 1~8호선 방향별 계단·엘리베이터 최근접 칸·문 (⏳ 하차역 실승차 판정) |
 
@@ -116,7 +116,7 @@
 | 웹 PWA | 수제 서비스워커, document network-first |
 | iOS 앱 | SwiftUI + GildongmuKit, 4탭, 설정 업데이트 이력(release notes) 화면 |
 | CLI · MCP | REST 카탈로그 중계 씬 클라이언트. 응답 언어 `lang`은 서버가 받는 8엔드포인트(`route walk`·`car`·`transit`·`station` 계열·`nearby subway`·`search`)에서 받는다 — CLI 텍스트 표기 자체는 한국어 고정 |
-| 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 5건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 96.8%, 미등재는 한국어 원문 + `lang="ko"`). 웹 수동 위치 라벨도 병기하고(2026-09-01, iOS 미해소), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 열림) |
+| 다국어 | ko·en·es·fr·it·ja 6개. 비-ko의 한국어 장소명은 **서버 로마자 + `Roman (한글)` 병기**(E28, 2026-08-31 — 웹 prod·iOS 코드 도달, ⏳ 실기기 판정 5건 BACKLOG §2), 카카오 분류 경로는 **세그먼트 사전 영문**(A28, 2026-08-31 — 실호출 카드 97.0%(프로덕션, spec §11), 미등재는 한국어 원문 + `lang="ko"`). 웹 수동 위치 라벨도 병기하고(2026-09-01, iOS 미해소), 지하철 시설 노선 라벨은 E27 표를 탄다(iOS 미러 열림) |
 | 커스텀 도메인 · GEO 대응 | 소개·FAQ + JSON-LD + llms.txt |
 | 서비스 커버리지 | 좌표 라우트 19종(`grep -rl isInKorea src/app/api`, 테스트 제외 — 2026-08-30 E24 `places/hours`로 +1)·웹 클라·iOS Kit·채팅 게이트가 국경 폴리곤 `isInKorea` 한 술어(사각형은 프리필터). 링 정본 `src/lib/data/korea-boundary.json`, Kit 리소스는 바이트 동일 사본 |
 
@@ -142,7 +142,7 @@
 
 ## 정적 게이트 기준선
 
-`docs/BACKLOG.md` 서두가 실측 기준선의 정본이다. 요약하면 테스트는 전량 green이고 `npm run lint` error 0, `tsc --noEmit` error 0이다(선재 5건은 2026-08-11 종결). 세 게이트 모두 0이 기준선이므로, 0에서 벗어난 출력은 그 자체가 신규 결함이다.
+`docs/BACKLOG.md` 서두가 실측 기준선의 정본이다. 요약하면 테스트는 전량 green이고 `npm run lint` error 0, `tsc --noEmit` error 0이다. **축은 error이지 warning이 아니다** — lint warning은 기준선 밖이라 0을 요구하지 않는다. error가 0에서 벗어난 출력은 그 자체가 신규 결함이다. ⚠ 루트 `npm run test:run`은 `packages/cli`·`packages/mcp`를 돌지 않는다(`vitest.config.ts` include가 `src/**`·`scripts/**`뿐) — 그 둘은 각 디렉터리에서 `npx vitest run`으로 따로 돌린다.
 
 ---
 
