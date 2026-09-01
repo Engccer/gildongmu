@@ -150,6 +150,10 @@ export const PRESUMED_ARRIVAL_CAR: PresumedArrivalThresholds = {
 export type PresumedArrivalReason = "noFix" | "stationary";
 
 export interface PresumedArrivalInput {
+  /**
+   * 도착 창 안인가 — 최종 접근 국면 **또는** 간략 근처 창(`briefArrivalWindowStep`, spec 2026-09-02 §2).
+   * 이름은 도착 추정 도입 시점(2026-08-13)의 것이고 뜻만 넓어졌다.
+   */
   inFinalApproach: boolean;
   /** 기준: max(최종 접근 진입, 마지막 usable fix) — 진입 전 노화가 새면 즉시 발동한다. */
   secondsSinceUsableFix: number;
@@ -199,4 +203,41 @@ export function advanceProgressAnchor(
     return { anchor: fix, progressed: true };
   }
   return { anchor, progressed: false };
+}
+
+// ── 간략 창 자격(spec 2026-09-02 §2.1·§2.2) ─────────────────────────────────
+// Kit 미러는 `FinalApproach.swift`, 공유 fixture `brief-arrival-window-cases.json`.
+
+/**
+ * 간략 창 정확도 상한(m). 비콘 `nearby` 래치는 정확도로 스케일돼(진입 `max(20, acc)`, 유지 `+max(15, acc)`)
+ * usable 상한 100m fix에서는 관측 200m까지 켜져 있으므로 그대로는 종료 권한이 될 수 없다(설계 리뷰 BLOCKER).
+ * `carArrivalMaxAccuracyMeters`와 같은 뜻("도착을 선언할 만큼 믿을 수 있는 정확도")의 같은 값 — 테스트가 동일을 단언.
+ * 이 상한 아래에서 창의 공간 범위는 관측 ≤60m·참 위치 ≤90m(최종 접근 오프셋 실측 상한 89m와 같은 규모).
+ */
+export const BRIEF_ARRIVAL_WINDOW_MAX_ACC_M = 30;
+
+export interface BriefArrivalWindowInput {
+  /** 직전 usable fix까지의 창 플래그. */
+  active: boolean;
+  /** 비콘 리듀서의 `nearby` 래치(이 fix 반영 후). */
+  nearby: boolean;
+  /** 이 fix의 수평 정확도(m). ≤0·NaN은 자격 없음. */
+  accuracy: number;
+}
+
+export interface BriefArrivalWindowStep {
+  active: boolean;
+  entered: boolean;
+  exited: boolean;
+}
+
+/**
+ * 복합 술어(래치 ∧ 정확도 ≤ 30)의 이전·이후 값으로 진입·이탈을 정한다 — raw `nearby` 변화로 관리하면
+ * 모드 전환·래치 초기화 뒤 옛 에피소드가 살아남는다(설계 리뷰 MAJOR ①). 자격 없는 fix는 "무시"가
+ * 아니라 "창 밖"이다: 무시하면 두절 축이 그 fix들을 건너뛰고 계속 센다.
+ */
+export function briefArrivalWindowStep(input: BriefArrivalWindowInput): BriefArrivalWindowStep {
+  const qualifies =
+    input.nearby && input.accuracy > 0 && input.accuracy <= BRIEF_ARRIVAL_WINDOW_MAX_ACC_M;
+  return { active: qualifies, entered: qualifies && !input.active, exited: !qualifies && input.active };
 }

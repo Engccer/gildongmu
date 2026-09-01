@@ -167,6 +167,9 @@ private func finiteNonNegative(_ x: Double) -> Bool { x.isFinite && x >= 0 }
 
 /// 도착 추정 판정. 판정 순서(국면 → 거리 캡 → noFix → stationary)까지 계약이다 —
 /// 국면 게이트가 경로 중간 자동 종료 금지의 1선 방어다(spec §3).
+///
+/// `inFinalApproach` = **도착 창** 안인가 — 최종 접근 국면 또는 간략 근처 창(`briefArrivalWindowStep`,
+/// spec 2026-09-02 §2). 이름은 도착 추정 도입 시점의 것이고 뜻만 넓어졌다.
 public func presumedArrivalStep(
     inFinalApproach: Bool,
     secondsSinceUsableFix: Double,
@@ -199,4 +202,33 @@ public func advanceProgressAnchor(
     )
     if moved >= epsilonMeters { return (fix, true) }
     return (anchor, false)
+}
+
+// ── 간략 창 자격(spec 2026-09-02 §2.1·§2.2) — 웹 `final-approach.ts` `briefArrivalWindowStep` 미러 ──
+// 공유 fixture `brief-arrival-window-cases.json`.
+
+/// 간략 창 정확도 상한(m). 비콘 `nearby` 래치는 정확도로 스케일돼(진입 `max(20, acc)`, 유지 `+max(15, acc)`)
+/// usable 상한 100m fix에서는 관측 200m까지 켜져 있으므로 그대로는 종료 권한이 될 수 없다(설계 리뷰 BLOCKER).
+/// `carArrivalMaxAccuracyMeters`와 같은 뜻("도착을 선언할 만큼 믿을 수 있는 정확도")의 같은 값 — 테스트가 동일을 단언.
+/// 이 상한 아래에서 창의 공간 범위는 관측 ≤60m·참 위치 ≤90m(최종 접근 오프셋 실측 상한 89m와 같은 규모).
+public let briefArrivalWindowMaxAccuracyMeters = 30.0
+
+public struct BriefArrivalWindowStep: Sendable, Equatable {
+    public let active: Bool
+    public let entered: Bool
+    public let exited: Bool
+
+    public init(active: Bool, entered: Bool, exited: Bool) {
+        self.active = active
+        self.entered = entered
+        self.exited = exited
+    }
+}
+
+/// 복합 술어(래치 ∧ 정확도 ≤ 30)의 이전·이후 값으로 진입·이탈을 정한다 — raw `nearby` 변화로 관리하면
+/// 모드 전환·래치 초기화 뒤 옛 에피소드가 살아남는다(설계 리뷰 MAJOR ①). 자격 없는 fix는 "무시"가 아니라
+/// "창 밖"이다: 무시하면 두절 축이 그 fix들을 건너뛰고 계속 센다. ≤0·NaN 정확도는 자격 없음.
+public func briefArrivalWindowStep(active: Bool, nearby: Bool, accuracy: Double) -> BriefArrivalWindowStep {
+    let qualifies = nearby && accuracy > 0 && accuracy <= briefArrivalWindowMaxAccuracyMeters
+    return BriefArrivalWindowStep(active: qualifies, entered: qualifies && !active, exited: !qualifies && active)
 }
