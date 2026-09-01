@@ -108,6 +108,24 @@
       "profile": "car",
       "input": { "inFinalApproach": true, "secondsSinceUsableFix": 400, "secondsSinceProgress": 400, "lastKnownDistanceToDestMeters": 80 },
       "expect": "noFix"
+    },
+    {
+      "name": "간략 근처 창(spec 2026-09-02 §2): 2026-09-01 등굣길 모양 — stationary 300s·24.3m",
+      "profile": "walk",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 1, "secondsSinceProgress": 300, "lastKnownDistanceToDestMeters": 24.3 },
+      "expect": "stationary"
+    },
+    {
+      "name": "간략 근처 창 밖(래치 해제·정확도 열화 = 창 플래그 false)은 none",
+      "profile": "walk",
+      "input": { "inFinalApproach": false, "secondsSinceUsableFix": 9999, "secondsSinceProgress": 9999, "lastKnownDistanceToDestMeters": 24.3 },
+      "expect": null
+    },
+    {
+      "name": "간략 근처 창 진입 직후(0·0)는 none",
+      "profile": "walk",
+      "input": { "inFinalApproach": true, "secondsSinceUsableFix": 0, "secondsSinceProgress": 0, "lastKnownDistanceToDestMeters": 12.3 },
+      "expect": null
     }
   ],
   "anchorScenarios": [
