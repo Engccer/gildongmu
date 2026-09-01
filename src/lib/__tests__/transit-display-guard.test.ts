@@ -56,6 +56,29 @@ describe("조인 값이 문구 조회에 들어가지 않는다 (2선 = 소스 �
     expect(offendingLines("ios/Gildongmu/Directions/TransitTrackingSheet.swift")).toEqual([]);
     expect(offendingLines("ios/Gildongmu/Directions/GuideOverviewSheet.swift")).toEqual([]);
   });
+
+  it("iOS 승차 전 도보 자리 — 역명이 문구 조회에 원문으로 들어가지 않는다", () => {
+    // 웹만 배선하고 iOS 네 자리를 빠뜨렸던 자리(시작 통지·선언 버튼·확정/추정 도착 문장).
+    // `prewalkTarget`이 이제 ko·en 쌍이라 `appLocalized(..., station)` 형태면 컴파일이 막지만,
+    // 새 문자열 자리가 생겼을 때를 위해 소스에서도 본다.
+    for (const file of [
+      "ios/Gildongmu/Directions/BeaconModel.swift",
+      "ios/Gildongmu/Directions/GuideSessionCoordinator.swift",
+      "ios/Gildongmu/Directions/BeaconTrackingSheet.swift",
+    ]) {
+      const hits = read(file)
+        .split("\n")
+        .map((l, i) => ({ l, i }))
+        // **역명을 인자로 받는 키만** 본다 — `prewalkUnavailable`·`prewalkCancelled`는 인자가
+        // 없는 순수 UI 문구라 언어 선택 축이 아니다(넓게 잡으면 잡음이 allowlist를 키운다).
+        .filter(({ l }) =>
+          /appLocalized\("transitGuide\.(prewalkStart|prewalkArrived|prewalkArrivedButton)"/.test(l),
+        )
+        .map(({ l, i }) => `${file}:${i + 1} ${l.trim()}`);
+      // 이 키들은 전부 descriptor(`transitPrewalk*Line`)를 지나야 한다.
+      expect(hits).toEqual([]);
+    }
+  });
 });
 
 describe("iOS 리터럴 switch 망라성 (앱 타깃엔 테스트 레인이 없다)", () => {
