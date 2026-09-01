@@ -23641,166 +23641,6 @@
         }
       }
     },
-    "ios.placeHours.allDay": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24시간"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24 hours"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24 horas"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24 h/24"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24 ore"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "24時間"
-          }
-        }
-      }
-    },
-    "ios.placeHours.closed": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "오늘 휴무 (Google Maps)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Closed today (Google Maps)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cerrado hoy (Google Maps)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fermé aujourd'hui (Google Maps)"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chiuso oggi (Google Maps)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本日休業 (Google Maps)"
-          }
-        }
-      }
-    },
-    "ios.placeHours.line": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "오늘 영업시간 %1$@ (Google Maps)"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Today's hours %1$@ (Google Maps)"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Horario de hoy %1$@ (Google Maps)"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Horaires du jour %1$@ (Google Maps)"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Orari di oggi %1$@ (Google Maps)"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本日の営業時間 %1$@ (Google Maps)"
-          }
-        }
-      }
-    },
-    "ios.placeHours.nextDay": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "다음 날 %1$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "next day %1$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "día siguiente %1$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "lendemain %1$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "giorno dopo %1$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "翌日 %1$@"
-          }
-        }
-      }
-    },
     "ios.route.alight": {
       "localizations": {
         "ko": {
@@ -30681,6 +30521,166 @@
         }
       }
     },
+    "placeHours.allDay": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24시간"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 hours"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 horas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 h/24"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24 ore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "24時間"
+          }
+        }
+      }
+    },
+    "placeHours.closed": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 휴무 (Google Maps)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Closed today (Google Maps)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrado hoy (Google Maps)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermé aujourd'hui (Google Maps)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiuso oggi (Google Maps)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本日休業 (Google Maps)"
+          }
+        }
+      }
+    },
+    "placeHours.line": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오늘 영업시간 %1$@ (Google Maps)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's hours %1$@ (Google Maps)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horario de hoy %1$@ (Google Maps)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Horaires du jour %1$@ (Google Maps)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orari di oggi %1$@ (Google Maps)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本日の営業時間 %1$@ (Google Maps)"
+          }
+        }
+      }
+    },
+    "placeHours.nextDay": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다음 날 %1$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "next day %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "día siguiente %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lendemain %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "giorno dopo %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "翌日 %1$@"
+          }
+        }
+      }
+    },
     "privacy.activity": {
       "localizations": {
         "ko": {
@@ -31046,37 +31046,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "iOS 실험판의 장소 상세에 표시하는 영업시간은 장소 이름, 좌표, 도로명 주소를 Google Places에 보내 조회합니다. 사용자의 현재 위치는 보내지 않습니다."
+            "value": "장소 상세에 표시하는 영업시간은 장소 이름, 좌표, 도로명 주소를 Google Places에 보내 조회합니다. 사용자의 현재 위치는 보내지 않습니다."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Business hours shown in the iOS experimental build's place details are looked up by sending the place name, coordinates, and road address to Google Places. Your current location is not sent."
+            "value": "Business hours shown in place details are looked up by sending the place name, coordinates, and road address to Google Places. Your current location is not sent."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "El horario comercial que muestra la versión experimental de iOS en los detalles del lugar se consulta enviando el nombre, las coordenadas y la dirección del lugar a Google Places. No se envía tu ubicación actual."
+            "value": "El horario comercial que se muestra en los detalles del lugar se consulta enviando el nombre, las coordenadas y la dirección del lugar a Google Places. No se envía tu ubicación actual."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Les horaires affichés dans la fiche d'un lieu de la version expérimentale iOS sont obtenus en envoyant le nom, les coordonnées et l'adresse du lieu à Google Places. Votre position actuelle n'est pas envoyée."
+            "value": "Les horaires affichés dans la fiche d'un lieu sont obtenus en envoyant le nom, les coordonnées et l'adresse du lieu à Google Places. Votre position actuelle n'est pas envoyée."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gli orari di apertura mostrati nei dettagli del luogo della versione sperimentale iOS vengono ottenuti inviando nome, coordinate e indirizzo del luogo a Google Places. La tua posizione attuale non viene inviata."
+            "value": "Gli orari di apertura mostrati nei dettagli del luogo vengono ottenuti inviando nome, coordinate e indirizzo del luogo a Google Places. La tua posizione attuale non viene inviata."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "iOS 実験版の場所詳細に表示する営業時間は、場所の名前・座標・道路名住所を Google Places に送信して取得します。現在地は送信しません。"
+            "value": "場所詳細に表示する営業時間は、場所の名前・座標・道路名住所を Google Places に送信して取得します。現在地は送信しません。"
           }
         }
       }

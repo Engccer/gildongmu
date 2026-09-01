@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /**
  * 장소 상세 영업시간 한 줄(E24). 매칭 보조 라우트라 **어떤 실패도 `{hours:null}`**(무장애
  * `match` 동형) — 키 없음·한국 밖·매칭 실패·부재·429·타임아웃을 소비자는 구분하지 않고
- * 줄을 만들지 않는다. 소비자는 iOS 실험판뿐(spec §1 — 채팅·CLI/MCP·내 주변 재도입 금지).
+ * 줄을 만들지 않는다. 소비자는 웹·iOS 장소 상세뿐(spec §1 — 채팅·CLI/MCP·내 주변 재도입 금지).
  */
 const querySchema = z.object({
   lat: latParam(),

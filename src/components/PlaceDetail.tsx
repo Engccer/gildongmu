@@ -13,6 +13,7 @@ import { createAxisRegistry } from "@/lib/webmcp/place-axes";
 import { isUnwinding, publishView, withdrawView } from "@/lib/webmcp/view-registry";
 import type { PlaceBridge } from "@/lib/webmcp/tools/context";
 import { RouteLinks } from "./RouteLinks";
+import { PlaceHoursLine } from "./PlaceHoursLine";
 import { StationMeta } from "./StationMeta";
 import { StationTimetable } from "./StationTimetable";
 import { StationFacilities } from "./StationFacilities";
@@ -286,6 +287,8 @@ export function PlaceDetail({
               </span>
             )}
           </div>
+          {/* 영업시간(E24): 전화 줄 바로 앞 — 시각이 틀릴 수 있어 확인 경로와 짝짓는다(iOS 미러). */}
+          <PlaceHoursLine place={place} />
           {place.phone && (
             <p>
               {`${t("place.phone")} `}
