@@ -1,0 +1,11 @@
+{
+  "comment": "isEndScreenStale 웹·Kit 동조 fixture (spec 2026-09-02 §3). 종료 뒤 경과(초, 잠자기 중에도 전진하는 단조 시계). 무효 입력(음수·NaN·무한)은 소거하지 않는다 — 종료 화면은 걸음 요약의 유일한 채널이라 근거 없는 소거 금지. NaN·무한은 JSON 표현 불가라 각 플랫폼 단위 테스트가 커버.",
+  "cases": [
+    { "name": "1799.9는 유지", "secondsSinceEnd": 1799.9, "expect": false },
+    { "name": "1800 경계는 소거", "secondsSinceEnd": 1800, "expect": true },
+    { "name": "8시간(2026-09-01 실사고)은 소거", "secondsSinceEnd": 28800, "expect": true },
+    { "name": "0(방금 종료)은 유지", "secondsSinceEnd": 0, "expect": false },
+    { "name": "2분(주머니에 30분 넣고 걷다 종료 직후 복귀)은 유지", "secondsSinceEnd": 120, "expect": false },
+    { "name": "음수(시계 역행)는 유지", "secondsSinceEnd": -5, "expect": false }
+  ]
+}
