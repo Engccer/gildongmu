@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -21,6 +21,19 @@ type Order = Record<string, string[]>;
 const ROOT = resolve(__dirname, "..", "..", "..");
 const SCRIPT = join(ROOT, "ios", "scripts", "messages-to-xcstrings.mjs");
 const quiet = { log: () => {}, error: () => {} } as unknown as Console;
+// vitest를 띄운 바로 그 Node로 자식을 돌린다 — PATH의 `node`(nvm shim·CI 시스템 node)면 런타임이 갈린다.
+const NODE = process.execPath;
+
+function withTempDir<T>(prefix: string, body: (dir: string) => T): T {
+  // ⚠ realpath — macOS tmp는 `/var` → `/private/var` 심링크라, 스크립트의 CLI 판정
+  // (`argv[1]` resolve ↔ `import.meta.url`)이 두 철자를 다른 파일로 보고 조용히 no-op이 된다.
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), prefix)));
+  try {
+    return body(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 describe("xcstrings 인자 순서 manifest", () => {
   it("저장된 manifest가 정본(messages + extra)에서 계산한 순서와 같다", () => {
@@ -42,28 +55,45 @@ describe("xcstrings 인자 순서 manifest", () => {
   });
 
   it("순서 변경은 --update-arg-order 없이는 실패하고 manifest를 건드리지 않는다", () => {
-    const dir = mkdtempSync(join(tmpdir(), "arg-order-"));
-    const manifestPath = join(dir, "arg-order.json");
-    writeFileSync(manifestPath, `${JSON.stringify({ a: ["x", "y"], b: ["n"] }, null, 2)}\n`);
-    const current: Order = { a: ["y", "x"], b: ["n"], c: ["p", "q"] };
-    const rejected = syncArgOrder({ update: false, manifestPath, current, log: quiet });
-    expect(rejected.ok).toBe(false);
-    expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual({ a: ["x", "y"], b: ["n"] });
-    const accepted = syncArgOrder({ update: true, manifestPath, current, log: quiet });
-    expect(accepted.ok).toBe(true);
-    expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual(current);
-    // 신규 키·사라진 키만 있으면 플래그 없이도 통과하며 manifest가 따라온다.
-    const evolved: Order = { a: ["y", "x"], c: ["p", "q"], d: ["r"] };
-    expect(syncArgOrder({ update: false, manifestPath, current: evolved, log: quiet }).ok).toBe(true);
-    expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual(evolved);
+    withTempDir("arg-order-", (dir) => {
+      const manifestPath = join(dir, "arg-order.json");
+      writeFileSync(manifestPath, `${JSON.stringify({ a: ["x", "y"], b: ["n"] }, null, 2)}\n`);
+      const current: Order = { a: ["y", "x"], b: ["n"], c: ["p", "q"] };
+      const rejected = syncArgOrder({ update: false, manifestPath, current, log: quiet });
+      expect(rejected.ok).toBe(false);
+      expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual({ a: ["x", "y"], b: ["n"] });
+      const accepted = syncArgOrder({ update: true, manifestPath, current, log: quiet });
+      expect(accepted.ok).toBe(true);
+      expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual(current);
+      // 신규 키·사라진 키만 있으면 플래그 없이도 통과하며 manifest가 따라온다.
+      const evolved: Order = { a: ["y", "x"], c: ["p", "q"], d: ["r"] };
+      expect(syncArgOrder({ update: false, manifestPath, current: evolved, log: quiet }).ok).toBe(true);
+      expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual(evolved);
+    });
+  });
+
+  it("manifest가 없으면 플래그 없이는 부트스트랩하지 않는다(지우고 재생성하는 우회 차단)", () => {
+    withTempDir("arg-order-", (dir) => {
+      const manifestPath = join(dir, "arg-order.json");
+      const current: Order = { a: ["x", "y"] };
+      expect(syncArgOrder({ update: false, manifestPath, current, log: quiet }).ok).toBe(false);
+      expect(existsSync(manifestPath)).toBe(false);
+      expect(syncArgOrder({ update: true, manifestPath, current, log: quiet }).ok).toBe(true);
+      expect(JSON.parse(readFileSync(manifestPath, "utf8"))).toEqual(current);
+      // 손상된 manifest는 스택 트레이스가 아니라 원인 문장으로 죽는다.
+      writeFileSync(manifestPath, JSON.stringify({ a: "x,y" }));
+      expect(() => syncArgOrder({ update: false, manifestPath, current, log: quiet })).toThrow(/모양/);
+    });
   });
 
   // 변이 주입 — 실제 스크립트를 임시 저장소 사본에서 돌려 "ko 한 문장의 어순만 바꾸면 exit 1"을
   // 프로세스 수준에서 단언한다(스크립트는 자기 경로 기준으로 저장소를 찾으므로 사본이 곧 격리다).
-  it("ko 문장 어순만 바꾸면 생성 스크립트가 exit 1이고, 플래그를 주면 manifest가 갱신된다", () => {
-    // ⚠ realpath — macOS tmp는 `/var` → `/private/var` 심링크라, 스크립트의 CLI 판정
-    // (`argv[1]` resolve ↔ `import.meta.url`)이 두 철자를 다른 파일로 보고 조용히 no-op이 된다.
-    const dir = realpathSync(mkdtempSync(join(tmpdir(), "arg-order-repo-")));
+  it("ko 문장 어순만 바꾸면 생성 스크립트가 exit 1이고 카탈로그도 쓰지 않으며, 플래그를 주면 manifest가 갱신된다", () => {
+    withTempDir("arg-order-repo-", (dir) => mutationScenario(dir));
+  });
+});
+
+function mutationScenario(dir: string): void {
     cpSync(join(ROOT, "messages"), join(dir, "messages"), { recursive: true });
     cpSync(join(ROOT, "ios", "i18n"), join(dir, "ios", "i18n"), { recursive: true });
     mkdirSync(join(dir, "ios", "scripts"), { recursive: true });
@@ -74,12 +104,18 @@ describe("xcstrings 인자 순서 manifest", () => {
     const manifestPath = join(dir, "ios", "i18n", "arg-order.json");
     expect(existsSync(manifestPath)).toBe(true);
 
+    const appCatalog = join(dir, "ios", "Gildongmu", "Resources", "Localizable.xcstrings");
+
     // 사본은 정본과 동일하므로 먼저 통과해야 한다(대조군).
-    const clean = spawnSync("node", [script, "all"], { encoding: "utf8" });
+    const clean = spawnSync(NODE, [script, "all"], { encoding: "utf8" });
     expect(clean.status, clean.stderr).toBe(0);
+    const cleanCatalog = readFileSync(appCatalog, "utf8");
 
     // 인자 2개 이상인 웹 키 하나의 ko 문장에서 두 플레이스홀더 자리를 맞바꾼다 — 게이트가 보는
     // 것은 순서뿐이다. manifest의 첫 후보를 고르되 ko.json(웹 정본)에 있는 키만.
+    // 전제 둘(실측 2026-09-02, 어긋나면 이 테스트는 "expected 1, got 0"으로 실패하지 공허 통과하지 않는다):
+    // ①그 키의 ko를 `ios-extra`/`kit-extra`가 오버라이드하지 않는다(오버라이드되면 ko.json 변이가 무효)
+    // ②ko 문장에 같은 플레이스홀더가 두 번 나오지 않는다(`.replace`가 첫 등장만 바꾼다).
     const koPath = join(dir, "messages", "ko.json");
     const ko = JSON.parse(readFileSync(koPath, "utf8")) as Record<string, unknown>;
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Order;
@@ -99,16 +135,18 @@ describe("xcstrings 인자 순서 manifest", () => {
     setPath(ko, key, mutated);
     writeFileSync(koPath, `${JSON.stringify(ko, null, 2)}\n`);
 
-    const rejected = spawnSync("node", [script, "all"], { encoding: "utf8" });
+    const rejected = spawnSync(NODE, [script, "all"], { encoding: "utf8" });
     expect(rejected.status).toBe(1);
     expect(rejected.stderr).toContain(key);
     expect(JSON.parse(readFileSync(manifestPath, "utf8"))[key]).toEqual(order);
+    // 게이트가 카탈로그보다 먼저다 — 거부된 순서로 카탈로그가 먼저 바뀌어 있으면 안 된다.
+    expect(readFileSync(appCatalog, "utf8")).toBe(cleanCatalog);
 
-    const accepted = spawnSync("node", [script, "all", UPDATE_ARG_ORDER_FLAG], { encoding: "utf8" });
+    const accepted = spawnSync(NODE, [script, "all", UPDATE_ARG_ORDER_FLAG], { encoding: "utf8" });
     expect(accepted.status, accepted.stderr).toBe(0);
     expect(JSON.parse(readFileSync(manifestPath, "utf8"))[key]).toEqual([second, first, ...order.slice(2)]);
-  });
-});
+    expect(readFileSync(appCatalog, "utf8")).not.toBe(cleanCatalog);
+}
 
 function getPath(obj: Record<string, unknown>, dotted: string): unknown {
   return dotted

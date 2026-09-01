@@ -139,6 +139,6 @@ public enum WalkRouteVariant: String, Sendable {
 /// 데이터 언어(웹 `data-locale.ts` 동형 — 외부 데이터는 ko 외 전부 en). 서버 `lang` 쿼리 값과 1:1.
 /// 앱의 정본은 `AppLanguage.dataLocaleValue`이고 문자열 `AppLanguage.dataLocale`은 그 투영이다.
 /// 도보 경로(`walk`·`walkAlternatives`)가 이 타입을 받는다 — 나머지 `lang: String` 인자는 종전 계약.
-public enum DataLocale: String, Sendable, Equatable {
+public enum DataLocale: String, Sendable {
     case ko, en
 }
