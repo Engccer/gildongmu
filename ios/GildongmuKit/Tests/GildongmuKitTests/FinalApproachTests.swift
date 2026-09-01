@@ -177,3 +177,54 @@ func presumedArrivalRejectsInvalidInput() {
         inFinalApproach: true, secondsSinceUsableFix: 200,
         secondsSinceProgress: 0, lastKnownDistanceToDestMeters: -5, thresholds: .walk) == nil)
 }
+
+// ── 간략 창 자격 fixture 동조 (spec 2026-09-02 §2.2) ──
+
+private struct BriefWindowFixtureFile: Decodable {
+    let cases: [BriefWindowCase]
+}
+
+private struct BriefWindowCase: Decodable {
+    let name: String
+    let input: Input
+    let expect: Expect
+    struct Input: Decodable {
+        let active: Bool
+        let nearby: Bool
+        let accuracy: Double
+    }
+    struct Expect: Decodable {
+        let active: Bool
+        let entered: Bool
+        let exited: Bool
+    }
+}
+
+private func loadBriefWindowFixture() throws -> BriefWindowFixtureFile {
+    var url = URL(fileURLWithPath: #filePath)
+    for _ in 0..<5 { url.deleteLastPathComponent() }
+    url.appendPathComponent("src/lib/__tests__/fixtures/brief-arrival-window-cases.json")
+    return try JSONDecoder().decode(BriefWindowFixtureFile.self, from: Data(contentsOf: url))
+}
+
+@Test("간략 창 자격 공유 fixture 동조")
+func briefArrivalWindowMatchesSharedFixture() throws {
+    for c in try loadBriefWindowFixture().cases {
+        let got = briefArrivalWindowStep(active: c.input.active, nearby: c.input.nearby, accuracy: c.input.accuracy)
+        #expect(
+            got == BriefArrivalWindowStep(active: c.expect.active, entered: c.expect.entered, exited: c.expect.exited),
+            "\(c.name)")
+    }
+}
+
+@Test("간략 창 정확도 상한 = 자동차 도착 정확도 상한(같은 뜻의 같은 값)")
+func briefArrivalWindowAccuracyCeilingMatchesCar() {
+    #expect(briefArrivalWindowMaxAccuracyMeters == carArrivalMaxAccuracyMeters)
+}
+
+@Test("NaN 정확도는 자격 없음(유지 중이면 이탈)")
+func briefArrivalWindowRejectsNaN() {
+    #expect(
+        briefArrivalWindowStep(active: true, nearby: true, accuracy: .nan)
+            == BriefArrivalWindowStep(active: false, entered: false, exited: true))
+}

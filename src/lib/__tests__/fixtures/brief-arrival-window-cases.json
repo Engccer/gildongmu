@@ -1,0 +1,14 @@
+{
+  "comment": "briefArrivalWindowStep 웹·Kit 동조 fixture (spec 2026-09-02 §2.2). 간략 창 자격 = nearby 래치 ∧ 정확도 ≤ 30m. entered/exited는 복합 술어의 전이. 무효 정확도(≤0)는 자격 없음이지 '유지'가 아니다 — usable 게이트는 호출자(BeaconModel)가 앞서 거르고 NaN은 각 플랫폼 단위 테스트가 커버.",
+  "cases": [
+    { "name": "래치 켜짐·정확도 6.6 → 진입", "input": { "active": false, "nearby": true, "accuracy": 6.6 }, "expect": { "active": true, "entered": true, "exited": false } },
+    { "name": "진입 뒤 같은 조건 → 유지(전이 없음)", "input": { "active": true, "nearby": true, "accuracy": 6.6 }, "expect": { "active": true, "entered": false, "exited": false } },
+    { "name": "정확도 30 경계는 자격 안", "input": { "active": false, "nearby": true, "accuracy": 30 }, "expect": { "active": true, "entered": true, "exited": false } },
+    { "name": "정확도 30.1은 자격 밖 → 진입 안 함", "input": { "active": false, "nearby": true, "accuracy": 30.1 }, "expect": { "active": false, "entered": false, "exited": false } },
+    { "name": "유지 중 정확도 열화(30.1) → 이탈", "input": { "active": true, "nearby": true, "accuracy": 30.1 }, "expect": { "active": false, "entered": false, "exited": true } },
+    { "name": "유지 중 래치 해제 → 이탈", "input": { "active": true, "nearby": false, "accuracy": 6.6 }, "expect": { "active": false, "entered": false, "exited": true } },
+    { "name": "래치 꺼짐·창 밖 → 그대로", "input": { "active": false, "nearby": false, "accuracy": 6.6 }, "expect": { "active": false, "entered": false, "exited": false } },
+    { "name": "설계 리뷰 BLOCKER 모양: 정확도 100·래치 켜짐 → 진입 안 함", "input": { "active": false, "nearby": true, "accuracy": 100 }, "expect": { "active": false, "entered": false, "exited": false } },
+    { "name": "정확도 0(무효)은 자격 없음 → 이탈", "input": { "active": true, "nearby": true, "accuracy": 0 }, "expect": { "active": false, "entered": false, "exited": true } }
+  ]
+}

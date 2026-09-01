@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { buildGuideRoute } from "../route-geometry";
 import {
   advanceProgressAnchor,
+  briefArrivalWindowStep,
+  BRIEF_ARRIVAL_WINDOW_MAX_ACC_M,
   computeFinalApproach,
   presumedArrivalStep,
   relativeDirection,
@@ -12,6 +14,8 @@ import {
 } from "../final-approach";
 import fixtures from "./fixtures/final-approach-scenarios.json";
 import presumedFixture from "./fixtures/presumed-arrival-scenarios.json";
+import windowFixture from "./fixtures/brief-arrival-window-cases.json";
+import { CAR_ARRIVAL_MAX_ACC_M } from "../car-arrival";
 
 /** 남→북 직선 100m 경로. lat 1도 ≈ 111320m. */
 const northRoute = () =>
@@ -217,4 +221,24 @@ describe("advanceProgressAnchor (공유 fixture)", () => {
       expect(progressedAt).toEqual(s.expectProgressedAt);
     });
   }
+});
+
+describe("briefArrivalWindowStep (공유 fixture, spec 2026-09-02 §2.2)", () => {
+  for (const c of windowFixture.cases) {
+    it(c.name, () => {
+      expect(briefArrivalWindowStep(c.input)).toEqual(c.expect);
+    });
+  }
+
+  it("정확도 상한은 자동차 도착 정확도 상한과 같은 뜻의 같은 값이다(도착을 선언할 만큼 믿을 수 있는 정확도)", () => {
+    expect(BRIEF_ARRIVAL_WINDOW_MAX_ACC_M).toBe(CAR_ARRIVAL_MAX_ACC_M);
+  });
+
+  it("NaN 정확도는 자격 없음(유지 중이면 이탈)", () => {
+    expect(briefArrivalWindowStep({ active: true, nearby: true, accuracy: NaN })).toEqual({
+      active: false,
+      entered: false,
+      exited: true,
+    });
+  });
 });
