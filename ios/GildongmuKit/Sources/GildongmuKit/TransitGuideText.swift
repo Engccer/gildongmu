@@ -112,15 +112,16 @@ private enum SubwayRidingKey {
     case raw
 }
 
-/// A27 승차 국면 지하철 문장 종류 — **언어 무관 판정**이라 여기서 키만 고른다.
+/// A27 승차 국면 지하철 문장 종류 — **판정은 `subwayRidingMessage`가 정본**이고 여기서는 그
+/// 결과를 i18n 키로 옮기기만 한다.
+///
+/// ⚠ 판정을 여기에 다시 쓰면 CLAUDE.md가 정본이라 부르는 함수의 프로덕션 호출자가 0이 되어
+/// 공유 fixture만 초록인 채 실제 문장이 따라오지 않는 드리프트 경로가 생긴다(리뷰 검출).
 private func subwayRidingKey(_ code: String?) -> SubwayRidingKey {
-    switch code {
-    case "3", "4", "5": .key("subwayNextStop")
-    case "0": .key("subwayArriving")
-    case "1": .key("subwayAtStop")
-    case "2": .key("subwayDeparted")
-    case "99": .omit
-    default: .raw
+    switch subwayRidingMessage(code) {
+    case let .key(k): .key(k)
+    case .omit: .omit
+    case .raw: .raw
     }
 }
 

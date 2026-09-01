@@ -124,3 +124,18 @@ describe("en 로케일 대중교통 안내 배선", () => {
     });
   });
 });
+
+describe("live region 단일성 (헌장: 통지 객체는 플랫폼당 하나)", () => {
+  it("패널 전체에 aria-live가 정확히 하나다", async () => {
+    mockPoll([]);
+    const { container } = render(
+      <TransitGuidePanel route={ROUTE} triggerLabel="start" walkAccessible={false} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "start" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    // ⚠ `lang`을 새로 붙인 표시 행들이 live로 승격되지 않았는지 본다 — 승격되면 같은 상태가
+    // 두 번 낭독된다(헌장 §5 "이미 보이는 콘텐츠를 live region에 복제하지 말 것").
+    expect(container.querySelectorAll("[aria-live]")).toHaveLength(1);
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+  });
+});

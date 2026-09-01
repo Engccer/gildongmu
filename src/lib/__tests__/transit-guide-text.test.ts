@@ -375,3 +375,93 @@ describe("descriptor 공유 fixture — Kit TransitGuideTextTests와 한 표", (
     });
   }
 });
+
+// === 합성 경로(투영 → 문장) — 두 계층을 따로만 검증하던 공백 ===
+
+import { transitDisplayItem, transitDisplayLeg } from "../transit-display";
+import type { TrackItem, TransitGuideLeg } from "../transit-guide";
+
+/**
+ * ⚠ **위 fixture 케이스는 이미 투영된 모양을 손으로 적는다** — 투영이 그 모양을 실제로 만드는지는
+ * 보지 않는다. 서울버스 en 후보 줄이 통째로 한국어로 떨어진 결함(리뷰 2인 독립 검출)이 정확히
+ * 그 공백에 있었다: 투영 fixture에는 버스 모양이 있고 문장 fixture에는 없어서, 두 계층이 각자
+ * 초록인 채 합성 경로만 깨져 있었다. 여기서는 **서버가 실제로 내는 `TrackItem`**에서 시작한다.
+ */
+function busTrackItem(over: Partial<TrackItem> = {}): TrackItem {
+  // `slotToItem`(transit-track.ts)이 서울버스 대기 국면에서 내는 모양 그대로.
+  return {
+    vehicleId: "111033479",
+    direction: "", // 구조적 부재 — 서버가 `directionEn`을 만들지 않는다(spec §3.2 행렬)
+    message: "6분47초후[4번째 전]",
+    messageEn: "In 6 min 47 sec, 4 stops away",
+    remainingStops: 4,
+    destinationName: null,
+    express: false,
+    arrivalCode: null,
+    ...over,
+  };
+}
+
+function busLeg(): TransitGuideLeg {
+  return {
+    mode: "bus",
+    lineName: "30-3",
+    lineNameEn: "30-3",
+    trackMode: "seoulBus",
+    boardName: "천호역.풍납시장",
+    boardNameEn: "Cheonho Stn. Pungnap Market",
+    alightName: "잠실역8번출구",
+    alightNameEn: "Jamsil Stn. Exit 8",
+    boardStop: null,
+    alightStop: null,
+    viaStops: [],
+    stationCount: 7,
+    routeId: "227000006",
+    wayCode: null,
+    walkBeforeMinutes: null,
+  } as TransitGuideLeg;
+}
+
+describe("합성 경로: 서울버스 TrackItem → 투영 → 후보 줄", () => {
+  it("방향이 구조적 ''이어도 서버가 만든 영문 문장이 살아남는다", () => {
+    const leg = transitDisplayLeg(busLeg(), null);
+    const item = transitDisplayItem(busTrackItem());
+    expect(candidateDescLine(true, leg, item, { express: false, departedMinutes: null })).toEqual({
+      parts: [{ text: "In 6 min 47 sec, 4 stops away" }],
+      lang: "en",
+    });
+  });
+
+  it("완성 문장 영문이 없으면(행렬 밖) 그 줄만 ko로 떨어진다", () => {
+    const leg = transitDisplayLeg(busLeg(), null);
+    const item = transitDisplayItem(busTrackItem({ messageEn: undefined }));
+    expect(candidateDescLine(true, leg, item, { express: false, departedMinutes: null })).toEqual({
+      parts: [{ text: "6분47초후[4번째 전]" }],
+      lang: "ko",
+    });
+  });
+
+  it("급행 주석이 붙어도 하차역 영문이 있으면 영어 줄", () => {
+    const leg = transitDisplayLeg(busLeg(), null);
+    const item = transitDisplayItem(busTrackItem());
+    expect(candidateDescLine(true, leg, item, { express: true, departedMinutes: 2 })).toEqual({
+      parts: [
+        { text: "In 6 min 47 sec, 4 stops away" },
+        { key: "expressCheck", args: ["Jamsil Stn. Exit 8"] },
+        { key: "departed", args: ["2"] },
+      ],
+      lang: "en",
+    });
+  });
+
+  it("TAGO(완성 문장 없음) 합성 — 조각 0, 언어는 en 유지", () => {
+    const leg = transitDisplayLeg(busLeg(), null);
+    const item = transitDisplayItem(
+      busTrackItem({ vehicleId: null, message: "", messageEn: "", remainingStops: 2 }),
+    );
+    expect(candidateDescLine(true, leg, item, { express: false, departedMinutes: null })).toEqual({
+      parts: [],
+      lang: "en",
+    });
+  });
+});

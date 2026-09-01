@@ -39,6 +39,7 @@ import {
   boardingContextLine,
   contextLine,
   currentStationLine,
+  prewalkArrivedLine,
   frameLine,
   selectedVehicleLine,
   vehiclePassedLine,
@@ -911,10 +912,17 @@ export function useTransitGuide(route: TransitRoute | null) {
       if (!guideRoute || !prewalkTarget) return;
       beginSession(
         prewalkCompleted ? withoutPrewalk(guideRoute) : guideRoute,
-        prewalkCompleted ? t("prewalkArrived", { station: prewalkTarget.name }) : null,
+        prewalkCompleted
+          ? renderText(
+              prewalkArrivedLine(isEn, {
+                ko: prewalkTarget.name,
+                ...(prewalkTarget.nameEn ? { en: prewalkTarget.nameEn } : {}),
+              }),
+            )
+          : null,
       );
     },
-    [beginSession, guideRoute, prewalkTarget, t],
+    [beginSession, guideRoute, isEn, prewalkTarget, renderText],
   );
 
   const stop = useCallback(() => {
@@ -937,7 +945,7 @@ export function useTransitGuide(route: TransitRoute | null) {
    * 완성 문장은 제외. dispatch **전에** 기록해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
    */
   const boardCandidate = useCallback(
-    (candidate: BoardingCandidate, description: TransitLabel) => {
+    (candidate: BoardingCandidate, description: TransitLabel | null) => {
       const leg = currentLeg();
       if (!leg?.trackMode) return;
       setSelectedDescription(description);

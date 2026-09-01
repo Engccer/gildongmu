@@ -69,8 +69,8 @@ E27 spec §3.7이 이 작업을 미루며 남긴 요구가 둘이다.
 
 서버에 파라미터를 더하는 것만으로는 아무 일도 일어나지 않는다. 폴링 URL을 만드는 **모든 자리**에 세션 언어를 싣는다.
 
-- 웹 `trackTargetUrl`(4갈래 전부) + TAGO `resolve` 경로.
-- iOS Kit `TransitTrackService`의 `seoulWait`·`seoulRide`·`tagoResolve`·`tagoTrack`·`subwayTrack`. **`lang`은 기본값 없는 필수 인자**(walk·transit 규율 — 생략이 컴파일을 통과하면 조용히 ko가 된다).
+- 웹 `trackTargetUrl`(4갈래 전부), iOS Kit `TransitTrackService`의 `seoulWait`·`seoulRide`·`tagoTrack`·`subwayTrack`. **`lang`은 기본값 없는 필수 인자**(walk·transit 규율 — 생략이 컴파일을 통과하면 조용히 ko가 된다).
+- ⚠ **TAGO `resolve`는 대상이 아니다**(구현 판정 2026-09-01, 초판의 "resolve도 대상"을 정정): 응답의 `stop.name`을 소비자가 표시하지 않고(nodeId·cityCode만 쓴다) TAGO 정류소명에 영문 원천도 없다. 표시가 생기면 그때 더한다.
 - 테스트가 **실제 요청 URL 문자열**을 단언한다 — 파라미터 이름 오타는 400도 아니고 그냥 무시된다.
 
 ### 3.4 안내 DTO·이벤트가 나르는 영문 조각
@@ -137,12 +137,17 @@ export interface TransitDisplayItem {
 문장 판정(어떤 키를 쓰는가, 어떤 인자를 어떤 순서로, 이 줄이 ko인가 en인가)은 **순수 공유 계층**이 하고, 플랫폼은 자기 카탈로그로 조회만 한다. `TransitWalkLegText` 선례 그대로다.
 
 ```ts
-export interface TransitTextDescriptor {
-  key: string;            // transitGuide 네임스페이스 안의 키
-  args: string[];         // ko 문장의 플레이스홀더 등장 순서
-  lang: "ko" | "en";      // 값의 언어
+/** 한 조각: i18n 키(+위치 인자) 또는 완성 문장 원문(서버가 준 그대로 병치). */
+export type TransitTextPart = { key: string; args: string[] } | { text: string };
+
+/** 한 줄(한 접근성 객체). `parts`가 비면 생략이고 `lang`은 **값의 언어**다. */
+export interface TransitTextLine {
+  parts: TransitTextPart[];
+  lang: "ko" | "en";
 }
 ```
+
+⚠ 초판은 `{key, args, lang}` 단일 조각이었으나 **다중 조각 줄**(대기 후보 desc = 행선+방향+문장+급행+관측시각, 경유역 = 이름+역할 표식)이 그 모양에 안 들어가 조각 배열로 확장했다(구현 판정 2026-09-01). §5.1의 "정확한 단언"은 조각 단위로 그대로 성립한다.
 
 - 정본: `src/lib/transit-guide-text.ts` ↔ Kit `TransitGuideText.swift`. 공유 fixture `transit-guide-text-cases.json`이 두 구현을 한 표로 잠근다.
 - **웹 어댑터**: 키 → 인자 이름 표(`TRANSIT_TEXT_ARG_NAMES`) 하나로 위치 인자를 named로 옮기고 `t(key, named)`를 부른다. 표 완전성(모든 descriptor 키가 표에 있고 이름 수가 메시지 플레이스홀더 수와 같다)을 테스트가 강제한다.
@@ -165,7 +170,9 @@ export interface TransitTextDescriptor {
 
 ### 3.10 조망(E15-1) 행
 
-`TransitOverviewRow`의 `leg`(lineName·boardName·alightName)·`stop`(name) 행에 영문 optional을 additive로 더한다. 순수 판정(`transitProgressOverview`)의 로직은 바뀌지 않고 어댑터(`GuideOverviewSheet`)가 descriptor로 조립한다. 입력에 영문이 없으면 출력에도 없으므로 **기존 공유 fixture는 무변경**이다.
+**구현 판정 2026-09-01: 행에 영문을 더하지 않고 어댑터가 leg에서 라벨을 조회한다.** 순수 계층(`transit-progress-overview.ts` ↔ Kit 미러)과 그 공유 fixture를 **한 줄도 건드리지 않는 쪽**을 골랐다 — 행 타입에 optional을 더하면 Kit enum case 시그니처·Codable·전 패턴 매치가 따라 바뀐다. 어댑터(`GuideOverviewSheet`)가 `legIndex`·`stopIndex`로 `model.route.legs[…]`·`model.currentLeg.viaStops[…]`를 되찾아 표시 라벨을 만들고, 못 찾으면 행이 나르는 조인 문자열로 폴백한다(`guard:allow` 표식).
+
+⚠ **대가**: 행의 출처와 표시 라벨의 출처가 갈린다. `transitProgressOverview`가 `current`를 `min(legIndex, count-1)`로 클램프하는 경계에서 `model.currentLeg`와 어긋날 수 있고 공유 fixture는 이 배선을 보지 않는다(폴백이 안전해 실패가 조용하다). 조망 행이 늘거나 클램프 규칙이 바뀌면 이 판정을 다시 본다.
 
 ### 3.11 버스 도착 문장 — 공유 parser (리뷰 #18)
 
@@ -266,7 +273,29 @@ busArrivalMessageEn(parsed, phase: "wait" | "ride"): string | undefined
 
 ## 8. 파일
 
-(구현 후 채운다.)
+**신규**
+- `src/lib/bus-arrival-en.ts` — TOPIS `arrmsg1` 파서 + 영문 투영(§3.11)
+- `src/lib/transit-display.ts` ↔ `ios/GildongmuKit/Sources/GildongmuKit/TransitDisplayProjection.swift` — 좁은 표시 투영(§3.5)
+- `src/lib/transit-guide-text.ts` ↔ `ios/GildongmuKit/Sources/GildongmuKit/TransitGuideText.swift` — 공유 문장 descriptor(§3.7)
+- `src/lib/transit-text-args.ts` — 웹 어댑터 표(§3.7)
+- `ios/Gildongmu/Directions/TransitGuideTextRenderer.swift` — iOS 리터럴 switch 어댑터 + 폴백 계측(§3.7·§3.8)
+- `scripts/verify-transit-track-lang.mjs` — 실호출 게이트(§5.5)
+- fixture 3종: `transit-display-cases.json`·`transit-guide-text-cases.json` + `transit-guide-scenarios.json` 시나리오 2건 추가
+
+**서버**
+- `src/lib/transit-track.ts`(`lang` 필수 인자 4함수 · `englishFieldOnly` fail-closed) · `src/app/api/transit/track/route.ts`(`langParam()`)
+
+**공유 계층**
+- `src/lib/transit-guide.ts` ↔ `TransitGuide.swift` — leg·prewalk·상태·이벤트 6종의 영문 조각(§3.4)
+
+**소비자**
+- 웹: `src/hooks/useTransitGuide.ts` · `src/components/TransitGuidePanel.tsx` · `src/components/DirectionsView.tsx`(게이트 2자리)
+- iOS: `TransitGuideModel.swift` · `TransitTrackingSheet.swift` · `GuideOverviewSheet.swift` · `BeaconModel.swift` · `GuideSessionCoordinator.swift` · `BeaconTrackingSheet.swift` · `DirectionsTabView.swift`(게이트 2자리) · Kit `TransitTrackService.swift`
+
+**가드**
+- `src/lib/__tests__/transit-display-guard.test.ts` — 소스 가드(3줄 창·`guard:allow` 표식) · iOS switch 망라성 · iOS URL 파라미터 이름 · 게이트 조건(반대 방향 단언 포함)
+- `src/lib/__tests__/transit-guide-text.test.ts` — sentinel 3축 + **합성 경로**(TrackItem → 투영 → 문장)
+- `src/components/__tests__/TransitGuidePanel.en.test.tsx` — en 배선 + live region 단일성
 
 ## 9. 설계 리뷰 판정 (codex adversarial-review, 2026-09-01 · 20건)
 

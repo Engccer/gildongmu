@@ -306,6 +306,8 @@ final class TransitOverviewAdapter: GuideOverviewCapability, Identifiable {
                         TransitGuideTextRenderer.render(transitOverviewLegLine(
                             isEn: transitGuideIsEn, n: legIndex + 1,
                             line: $0.line, board: $0.board, alight: $0.alight))
+                    // guard:allow — 경로를 못 찾았을 때의 **의도된 한국어 폴백**이다(행이 나르는
+                    // 조인 문자열을 그대로 쓴다). 표시 라벨 경로는 바로 위 `legDisplay` 분기다.
                     } ?? appLocalized("transitGuide.overviewLeg",
                                       String(legIndex + 1), lineName, boardName, alightName),
                     statusText,

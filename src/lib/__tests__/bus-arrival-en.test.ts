@@ -51,13 +51,25 @@ describe("parseBusArrmsg", () => {
 });
 
 describe("busArrivalMessageEn", () => {
-  it("국면마다 어순이 다르다", () => {
-    expect(busArrivalMessageEn(parseBusArrmsg("6분47초후[4번째 전]"), "wait")).toBe("In 6 min 47 sec");
+  it("국면마다 어순이 다르고, 대기 국면만 잔여 정거장을 붙인다", () => {
+    // ko 원문의 꼬리 `[N번째 전]`이 대기 목록에서 잔여 정보의 유일한 채널이다 — en에서만
+    // 그것을 잃으면 "몇 번째 전 버스인가"를 en 사용자만 못 듣는다.
+    expect(busArrivalMessageEn(parseBusArrmsg("6분47초후[4번째 전]"), "wait")).toBe(
+      "In 6 min 47 sec, 4 stops away",
+    );
     expect(busArrivalMessageEn(parseBusArrmsg("6분47초후[4번째 전]"), "ride")).toBe("6 min 47 sec left");
-    expect(busArrivalMessageEn(parseBusArrmsg("15분후[9번째 전]"), "wait")).toBe("In 15 min");
+    expect(busArrivalMessageEn(parseBusArrmsg("15분후[9번째 전]"), "wait")).toBe(
+      "In 15 min, 9 stops away",
+    );
     expect(busArrivalMessageEn(parseBusArrmsg("15분후[9번째 전]"), "ride")).toBe("15 min left");
-    expect(busArrivalMessageEn(parseBusArrmsg("55초후[1번째 전]"), "wait")).toBe("In 55 sec");
+    expect(busArrivalMessageEn(parseBusArrmsg("55초후[1번째 전]"), "wait")).toBe(
+      "In 55 sec, 1 stop away",
+    );
     expect(busArrivalMessageEn(parseBusArrmsg("55초후[1번째 전]"), "ride")).toBe("55 sec left");
+  });
+
+  it("꼬리가 없으면 잔여를 붙이지 않는다(없는 정보를 만들지 않는다)", () => {
+    expect(busArrivalMessageEn(parseBusArrmsg("3분후"), "wait")).toBe("In 3 min");
   });
 
   it("고정 문구 3종은 국면 불문 같다", () => {
@@ -87,6 +99,7 @@ describe("busArrivalMessageEnFrom", () => {
   it("정상 모양은 계측 없이 문장을 낸다", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(busArrivalMessageEnFrom("2분55초후[3번째 전]", "ride")).toBe("2 min 55 sec left");
+    expect(busArrivalMessageEnFrom("2분55초후[3번째 전]", "wait")).toBe("In 2 min 55 sec, 3 stops away");
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });

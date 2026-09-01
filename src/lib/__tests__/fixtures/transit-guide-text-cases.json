@@ -1456,6 +1456,145 @@
     ],
     "lang": "en"
    }
+  },
+  {
+   "name": "candidateDesc 서울버스 실제 모양 — 방향이 구조적 ''이어도 영어 줄이 성립한다",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "bus",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "6분47초후[4번째 전]",
+     "en": "In 6 min 47 sec, 4 stops away"
+    },
+    "direction": {
+     "ko": "",
+     "en": ""
+    },
+    "destination": null,
+    "currentLocation": null,
+    "express": false,
+    "remainingStops": 4,
+    "selectable": true
+   },
+   "express": false,
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "text": "In 6 min 47 sec, 4 stops away"
+     }
+    ],
+    "lang": "en"
+   }
+  },
+  {
+   "name": "candidateDesc 서울버스 — 완성 문장 영문이 없으면 그 줄은 ko",
+   "fn": "candidateDesc",
+   "isEn": true,
+   "leg": {
+    "mode": "bus",
+    "line": {
+     "ko": "노선ᛥ",
+     "en": "Line 5"
+    },
+    "board": {
+     "ko": "승차ᛥ",
+     "en": "Cheonho"
+    },
+    "alight": {
+     "ko": "하차ᛥ",
+     "en": "Gwanghwamun"
+    },
+    "stops": [
+     {
+      "ko": "경유0ᛥ",
+      "en": "Stop0"
+     },
+     {
+      "ko": "경유1ᛥ",
+      "en": "Stop1"
+     }
+    ],
+    "stationCount": 8,
+    "walkBeforeMinutes": 3,
+    "boardOverridden": false
+   },
+   "item": {
+    "message": {
+     "ko": "6분47초후[4번째 전]"
+    },
+    "direction": {
+     "ko": "",
+     "en": ""
+    },
+    "destination": null,
+    "currentLocation": null,
+    "express": false,
+    "remainingStops": 4,
+    "selectable": true
+   },
+   "express": false,
+   "departedMinutes": null,
+   "expect": {
+    "parts": [
+     {
+      "text": "6분47초후[4번째 전]"
+     }
+    ],
+    "lang": "ko"
+   }
+  },
+  {
+   "name": "vehicleDesc 서울버스 — 행선·방향이 모두 없으면 조각 0(설명 없음)",
+   "fn": "vehicleDesc",
+   "isEn": true,
+   "item": {
+    "message": {
+     "ko": "6분47초후[4번째 전]",
+     "en": "In 6 min 47 sec, 4 stops away"
+    },
+    "direction": {
+     "ko": "",
+     "en": ""
+    },
+    "destination": null,
+    "currentLocation": null,
+    "express": false,
+    "remainingStops": 4,
+    "selectable": true
+   },
+   "expect": {
+    "parts": [],
+    "lang": "en"
+   }
   }
  ]
 }
