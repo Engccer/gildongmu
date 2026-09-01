@@ -12,6 +12,63 @@
 
 ---
 
+## 1.14 (빌드 22)
+
+기준은 1.13 아카이브 커밋 `df229f0`(빌드 21)이며 그 이후 `ios/` 커밋 37건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
+
+포함 판정:
+
+| 기능 | 커밋 | 노트 |
+|---|---|---|
+| **장소 상세 영업시간 한 줄이 정식판 승격**(E24 — `experimentalPlaceHoursEnabled` 검사 삭제, 문구를 `messages/placeHours.*`로 이관해 웹과 공유) | `ed7b5e1`·`8fce075` | ko·en(로케일 게이트 없음). 실험판에만 있던 기능이라 정식판 사용자에겐 이 버전이 처음이다 |
+| 이탈 시 자동 재조회를 확인 없이 즉시 채택 + 고지(E10ⓑ 개정 — 수락제 폐기, `guide.autoReroute` `.high`) | `bf54653`·`555124a` | ko·en. ⚠ `PROGRESS.md`가 이 계층을 "iOS Experimental"이라 적고 있었으나 `BeaconModel`·`BeaconTrackingSheet`에 `EXPERIMENTAL` 게이트가 0건이다(spec은 2026-08-12 작성분이고 1.7 도보 졸업이 이 계층을 정식판으로 데려갔다). 5단계에서 PROGRESS를 고친다 |
+| 간략 세션 도착 창(A31 축 ①) — 상세 경로 없이 도는 세션도 `nearby` 래치 ∧ 정확도 ≤30m면 도착 추정으로 종료 | `59b7a8d`·`cc1d955`·`6195a60` | ko·en. 종전엔 국면 게이트를 못 지나 20분 무이동 안전망만이 출구였다(2026-09-01 등굣길 실보행) |
+| 30분 지난 종료 화면 소거 + 종료 상태 문장 잔존 판별선을 실패 상태로(A31 축 ②·③) | `a288473`·`fbe31c3` | ko·en |
+| 조각 구분자 가운뎃점 → 쉼표(A30, 따릉이 `availability`·공기질 `station`) + `walkInfra.osmSummary` 슬래시 → 접속사(A29 후속) | `dc0bf32`·`d87786f` | 가운뎃점은 ko 포함 6로케일, 슬래시는 en 계열. 둘 다 SR이 기호를 낱말로 낭독하던 자리 |
+| **비한국어 로케일의 한국어 잔존 제거 묶음** — 대중교통 경로·역 정보 영문(E27 브리핑·역 메타·첫차/막차·도착 문장), 장소·역 이름 로마자 병기(E28), 카카오 분류 영문(A28), 서버 합성 한국어의 앱 조립(A26 역 시설·시간표·무장애 편의시설·오류 낭독), 수량 문구 복수형(A29) | `795efa5`·`1d51184`·`5813fa2`·`cf19c5f`·`e86d5d1`·`db8f60d`·`d4d113d`·`9adec3b`·`0044be3`·`f19a3f1`·`763ae1d` | **en(비-ko)만.** ko 출력은 불변이다. Release 도달면은 `RouteBriefing`(대중교통 브리핑)·`StationSections`(역 정보)·`SearchView`/`PlaceDetailView`/`Nearby*`(장소·분류·병기)·`BarrierFreeInfoSection` |
+
+제외 근거:
+
+- **승차 전 도보 핸드오프**(A25 `56a550f`·`204290a`·`a2d4e6b`·`f2db848`): 대중교통 세션 안이라 `AppConfig.experimentalGuidanceEnabled` 봉인 안.
+- **자동차 세션 종료 보강**(K2-a `4a1c2bf`·`3db1ad8`): 같은 봉인 안.
+- **대중교통 실시간 안내의 en 게이트 해제**(E27 잔여 ① `77fbb50`·`0a1c0ba`·`9fd465f`·`dbee107`·`c0096f9`·`65fb72f`·`5c2a71b`·`df4b458`·`a9e965d`): 게이트가 열린 것은 로케일 축이고 세션 자체는 여전히 실험판 봉인이다. 정식판 사용자에게는 대중교통 실시간 안내가 존재하지 않는다. 같은 커밋의 **브리핑·역 정보 영문 투영은 Release 도달**이라 위 묶음에 담았다.
+- **웹 전용**: `dbee107`(웹 훅·패널 재배선), `8fce075`의 웹 `PlaceHoursLine`, A26·A28·E28의 서버·웹 분. 서버 변경은 직전 버전 사용자에게 이미 닿았다.
+- 문서·테스트·생성물·리뷰 반영 커밋 중 동작 변경 0인 것 전량.
+
+심사 노트는 이번 버전에서 **승계한다**(`--review-notes` 없음). 영업시간 조회로 Google Places가 정식 빌드에 처음 들어가지만 **새 권한·새 데이터 유형이 아니다**(보내는 것은 장소 이름·좌표·도로명 주소이고 사용자 현재 위치는 보내지 않는다 — 웹 privacy `placeHours` 문안이 정본, `PrivacyInfo.xcprivacy`·ASC 영양 라벨 무변화). §9 문장 중 이번 변경으로 거짓이 된 것도 없다.
+
+### ko
+
+```
+새로운 기능
+- 장소 상세에 오늘 영업시간이 한 줄로 나옵니다. 출처는 Google Maps이며, 확인할 수 없는 장소에서는 그 줄이 나타나지 않습니다.
+
+개선
+- 도보 안내 중 경로를 벗어나 새 경로를 찾으면 확인 절차 없이 바로 그 경로로 안내를 이어 가고, 바뀌었다는 사실과 첫 안내를 알려 드립니다.
+- 상세 경로 없이 목적지 방향과 거리로만 안내하는 중에도 목적지 부근에서 걸음이 멈추면 도착으로 안내를 마칩니다. 그동안은 안내가 계속 켜져 있었습니다.
+- 끝난 지 30분이 지난 안내의 종료 화면은 앱으로 돌아왔을 때 더 이상 뜨지 않습니다. 길찾기 화면 맨 위에 종료 사유 문장이 계속 남던 것도 함께 고쳤습니다.
+- 따릉이 대여 정보와 공기질 측정소 줄의 구분 기호를 가운뎃점에서 쉼표로 바꿨습니다. 화면 낭독에서 기호가 낱말로 읽히지 않습니다.
+```
+
+### en
+
+```
+New
+- Place details now show today's opening hours on one line, sourced from Google Maps. The line does not appear for places whose hours cannot be confirmed.
+- Public transit and station information now reads in English. Subway and bus line names, station names, arrival messages, station facilities, first and last train times, accessible-facility details, and place categories are shown in English wherever an English source exists.
+- Place and station names with no English source are now written in the Latin alphabet, with the Korean name in parentheses. Screen readers announce only the Latin form.
+
+Improved
+- Sentences the app used to receive already written in Korean, including spoken error messages, are now composed in your app language.
+- Counted phrases now use the correct singular and plural forms.
+- When walking guidance goes off route and finds a new one, it now switches to that route immediately, with no confirmation step, and tells you it changed along with the first instruction.
+- Guidance that has fallen back to direction and distance only now ends as an arrival when you stop near the destination. Until now it stayed on.
+- An end-of-guidance screen from a session that finished more than 30 minutes ago no longer appears when you return to the app, and its closing message no longer stays at the top of the Directions screen.
+- Separators in the bike-share and air-quality lines are now commas rather than middle dots, so screen readers no longer read the symbol as a word.
+```
+
+---
+
 ## 1.13 (빌드 21)
 
 기준은 1.12 아카이브 커밋 `37b99db`(빌드 20)이며 그 이후 `ios/` 커밋 4건을 판정했다. Release 바이너리에 도달하면서 iOS 사용자에게 보이는 것만 담는다.
