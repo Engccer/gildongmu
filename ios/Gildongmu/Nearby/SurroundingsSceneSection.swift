@@ -206,11 +206,14 @@ struct SurroundingsSceneSection: View {
 /// 묶음·항목 문구 조립(버튼형·자동 펼침 공유). 린터 계약(리터럴 키만)이라 switch 나열.
 private enum SceneText {
     /// 항목 문구. `name`은 병기 이름의 한 변종(시각 `display` 또는 낭독 `primary`, E28)이다.
+    @MainActor
     static func itemLine(_ item: SurroundingsSceneItem, name: String) -> String {
         if let road = item.road {
+            // 도로명은 비-ko에서 로마자(서버 `roadRoman`, E28 후속) — 이름과 달리 괄호 병기는 하지
+            // 않는다(문장 안 절이라 괄호가 둘이면 줄이 어지럽다). ko·로마자 부재는 원문 그대로.
             return appLocalized(
                 "surroundings.itemWithRoad",
-                formatDistance(item.distanceMeters), name, road)
+                formatDistance(item.distanceMeters), name, bilingual(road, roman: item.roadRoman).primary)
         }
         return appLocalized(
             "surroundings.item", formatDistance(item.distanceMeters), name)

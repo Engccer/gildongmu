@@ -58,11 +58,13 @@ function GroupSection({
       <ul className="mt-1 space-y-1">
         {group.items.slice(0, visibleCount).map((it, i) => {
           const name = bilingual(it.name, { roman: it.nameRoman });
+          // 도로명은 비-ko에서 로마자(서버 `roadRoman`, E28 후속) — 이름과 달리 괄호 병기는 하지 않는다
+          // (문장 안 절이라 `KoTail`을 줄 가운데 둘 수 없다, R1). ko·로마자 부재는 원문 그대로.
           const text = it.road
             ? t("itemWithRoad", {
                 distance: formatDistance(it.distanceMeters),
                 name: name.primary,
-                road: it.road,
+                road: bilingual(it.road, { roman: it.roadRoman }).primary,
               })
             : t("item", {
                 distance: formatDistance(it.distanceMeters),

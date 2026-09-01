@@ -215,16 +215,25 @@ struct DirectionsEndpointSearchView: View {
                     Button {
                         select(.place(label: place.name, lat: place.lat, lng: place.lng))
                     } label: {
-                        // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형)
-                        Text(joinText(place.name, place.roadAddress.isEmpty ? place.address : place.roadAddress))
+                        // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형). 비-ko는 이름이 로마자
+                        // 병기(E28) — 시각 `Roman (한글), 주소`, 낭독은 괄호 없이. 확정 라벨은 원명 그대로.
+                        let name = bilingual(place.name, roman: place.nameRoman)
+                        let address = place.roadAddress.isEmpty ? place.address : place.roadAddress
+                        bilingualLine(
+                            visible: joinText(name.display, address),
+                            accessible: joinText(name.primary, address))
                     }
                     .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(place: place))
                 }
                 ForEach(model.addresses, id: \.roadAddr) { address in
-                    Button(address.roadAddr) {
+                    Button {
                         Task {
                             if let endpoint = await model.geocode(address) { select(endpoint) }
                         }
+                    } label: {
+                        // juso 공식 영문 주소(`engAddr`)가 원천이라 로마자보다 앞선다(웹 동형).
+                        let name = bilingual(address.roadAddr, en: address.engAddr, roman: nil)
+                        bilingualLine(visible: name.display, accessible: name.primary)
                     }
                     .accessibilityFocused($focusedCandidate, equals: Self.candidateKey(address: address))
                 }

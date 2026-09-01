@@ -51,6 +51,8 @@ export interface SceneItem {
   distanceMeters: number;
   /** 앵커와 다른 도로일 때만 채운다(같으면 잉여). */
   road: string | null;
+  /** `road`의 로마자(주소 규칙 `romanAddressOf`, E28 후속 additive) — `road`가 있을 때만. */
+  roadRoman?: string;
   category: string;
   // ── 장소 상세 진입 재료(M4 판정 ⑤, 2026-08-22). 소비자가 `Place`로 투영한다
   // (Kit `sceneItemToPlace` ↔ 웹 `surroundingPlaceToPlace` 동형). 실재성 헤지는
@@ -115,11 +117,15 @@ export async function assembleScene(lat: number, lng: number): Promise<Scene> {
 
   const toItem = (p: SurroundingPlace): SceneItem => {
     const parsed = p.roadAddress ? parseRoadAddress(p.roadAddress) : null;
+    const road = parsed && parsed.road !== anchor?.road ? parsed.road : null;
+    // 도로명은 어절 하나라 로마자가 곧 병기 후보다(`Seongnae-ro`). 비-ko 장면 문장이 소비한다.
+    const roadRoman = road ? romanAddressOf(road) : undefined;
     return {
       name: p.name,
       ...(p.nameRoman ? { nameRoman: p.nameRoman } : {}),
       distanceMeters: Math.round(p.distanceMeters),
-      road: parsed && parsed.road !== anchor?.road ? parsed.road : null,
+      road,
+      ...(roadRoman ? { roadRoman } : {}),
       category: p.category,
       id: p.id,
       lat: p.lat,

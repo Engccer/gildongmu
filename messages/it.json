@@ -370,6 +370,10 @@
     "supplementFailedNotice": "Ricerca delle cliniche pediatriche generali non riuscita; sono mostrati solo gli ospedali designati.",
     "basisHoliday": "In base agli orari festivi di oggi.",
     "distance": "circa {distance}",
+    "kind": {
+      "clinic": "Clinica",
+      "hospital": "Ospedale"
+    },
     "open": "Aperta ora",
     "closed": "Chiusa ora",
     "unknown": "Nessun orario disponibile per oggi",

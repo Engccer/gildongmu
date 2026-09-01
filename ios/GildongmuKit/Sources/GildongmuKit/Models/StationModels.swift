@@ -80,6 +80,9 @@ public struct SeoulMetroFacilityParts: Codable, Sendable, Hashable {
     public let location: String?
     /// 노선 번호(예 "5") — "호선"은 앱이 단다.
     public let line: String?
+    /// `line`의 영문 노선명(`lang=en`에만, E27 표 — 예 "Line 5"). 표 미스면 nil이고 앱은 `line`에
+    /// 자기 언어 접미를 단다(종전 조립).
+    public var lineEn: String? = nil
     public let restroomType: String?
     public let wheelchairAccessible: Bool?
     /// 8방위 코드 n·ne·e·se·s·sw·w·nw

@@ -32,9 +32,10 @@ public struct StationService: Sendable {
         return response.facilities
     }
 
-    public func metroFacilities(station: String) async throws -> SeoulMetroFacilities? {
+    /// `lang=en`이면 음성유도기 `parts.lineEn`(영문 노선명)이 additive로 온다(E27 잔여). ⚠ 기본값 없음.
+    public func metroFacilities(station: String, lang: String) async throws -> SeoulMetroFacilities? {
         let response: SeoulMetroFacilitiesResponse = try await client.get(
-            "/api/station/metro-facilities", query: stationQuery(station))
+            "/api/station/metro-facilities", query: stationQuery(station, lang: lang))
         return response.facilities
     }
 
