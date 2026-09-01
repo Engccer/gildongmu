@@ -86,9 +86,6 @@ public struct GuideTuning: Sendable, Equatable {
     public var imminentUnknownSpeedM: Double
     /// 첫 임박 큐 뒤 같은 경계를 향해 되풀이하는 단계(m). 빈 배열 = 1회(car). 웹 `imminentRepeatM` 미러.
     public var imminentRepeatM: [Double]
-    /// 행동 출처 — `.text`=문장 분류(`walkStepAction`), `.step`=서버 투영 `action`만(없으면 침묵).
-    /// ⚠ car는 `.step`이다(설계 리뷰 B1 — 문장으로 되돌아가면 갈래·시설 문장이 회전이 된다).
-    public var actionSource: GuideActionSource
     /// 임박 큐가 전문 선행(`imminentUpTo < announcedUpTo`)을 요구하는가. walk true, car false
     /// (명령이 자기 완결 — 재획득 직후 한 fix를 기다리면 20m/s에서 경계를 지난다, B3).
     public var imminentNeedsAnnounce: Bool
@@ -148,11 +145,12 @@ public struct GuideTuning: Sendable, Equatable {
         imminentAheadM: imminentAheadMeters, imminentAheadS: 0,
         imminentUnknownSpeedM: imminentAheadMeters,
         imminentRepeatM: imminentRepeatMeters,
-        // 도보 행동도 **서버가 전량 투영**한다(E16 축3, spec 2026-08-23-non-ko-walk-guidance-design §4.2.1):
-        // 카카오 스텝은 서버가 최종 문장을 분류해 싣고 Tmap 스텝은 turnType 표에서 온다.
-        // 클라이언트 문자열 폴백을 두면 구조화의 "의도된 행동 없음"(육교·계단·엘리베이터)과
-        // 미투영을 구별하지 못하고, en 문장에서는 한국어 부분 문자열 분류가 성립하지 않는다.
-        actionSource: .step, imminentNeedsAnnounce: true,
+        // 결정 지점 행동은 수단 불문 **서버 투영**(`step.action`)만 본다(E16 축3, spec
+        // 2026-08-23-non-ko-walk-guidance-design §4.2.1) — 종전 `actionSource` 축은 walk·car 둘 다
+        // `.step`이 되어 2026-09-02에 지웠다. 클라이언트 문자열 폴백을 두면 구조화의 "의도된
+        // 행동 없음"(육교·계단·엘리베이터)과 미투영을 구별하지 못하고, en 문장에서는 한국어
+        // 부분 문자열 분류가 성립하지 않으며, car는 갈래·시설 문장이 회전이 된다(설계 리뷰 B1).
+        imminentNeedsAnnounce: true,
         silentCatchUp: false, speedSampleMaxAccM: speedSampleMaxAccuracyMeters,
         farNoticeM: nil,
         windowAheadMinM: windowAheadMinMeters, windowAheadSpeedS: 0,
@@ -174,7 +172,7 @@ public struct GuideTuning: Sendable, Equatable {
         imminentAheadM: carImminentFloorMeters, imminentAheadS: carImminentAheadSeconds,
         imminentUnknownSpeedM: carImminentUnknownSpeedMeters,
         imminentRepeatM: [],
-        actionSource: .step, imminentNeedsAnnounce: false,
+        imminentNeedsAnnounce: false,
         silentCatchUp: true, speedSampleMaxAccM: uncertainAccuracyMeters,
         farNoticeM: 1500,
         windowAheadMinM: 150, windowAheadSpeedS: 5,
@@ -200,11 +198,6 @@ public struct GuideTuning: Sendable, Equatable {
     }()
 }
 
-/// 행동 출처(웹 `GuideTuning.actionSource` 미러).
-public enum GuideActionSource: Sendable, Equatable {
-    case text, step
-}
-
 /// 자동차 임박 큐 상수(웹 `CAR_IMMINENT_*` 미러, K2 spec §3.2 — B1 실주행 판정 대상).
 public let carImminentFloorMeters = 15.0
 public let carFixLagSeconds = 1.0
@@ -212,12 +205,6 @@ public let carImminentAheadSeconds = 5.0 + carFixLagSeconds
 public let carDriverImminentAheadSeconds = 8.0 + carFixLagSeconds
 public let carImminentUnknownSpeedMeters = 60.0
 
-/// 결정 지점 행동 — 출처는 프로파일이 정한다(웹 `stepActionFor` 미러). car는 서버 투영만.
-public func stepActionFor(
-    description: String, action: WalkAction?, source: GuideActionSource
-) -> WalkAction? {
-    source == .step ? action : walkStepAction(description)
-}
 
 /// 이 상태의 임박 임계(m) — 6a와 같은 식. 표시 계층(`guideLiveRows`의 `turnApproachM`)이
 /// 같은 시점에 전환하도록 한 함수에서 낸다(웹 `imminentAheadMeters` 미러).
@@ -989,8 +976,8 @@ public func guideStep(
             if stage >= 0 {
                 let target = next.imminentUpTo + 1
                 let step = route.steps[target]
-                let action = stepActionFor(
-                    description: step.description, action: step.action, source: tuning.actionSource)
+                // 행동은 서버 투영만(없으면 침묵) — 문장 분류 폴백 없음(E16 축3).
+                let action = step.action
                 if action == nil || stage == stages.count - 1 {
                     next.imminentUpTo = target
                     next.imminentStage = 0

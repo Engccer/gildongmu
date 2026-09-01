@@ -1,4 +1,5 @@
 import Foundation
+import GildongmuKit
 
 /// 앱 UI 언어 정본. 데이터 계약(검색 lang·채팅 locale·STT)과 Kit lang 인자,
 /// `appLocalized` 조회가 전부 여기서 나온다.
@@ -33,8 +34,12 @@ enum AppLanguage {
         #endif
     }
 
-    /// 웹 data-locale.ts 동형: 외부 데이터는 ko 외 전부 en.
-    static var dataLocale: String { current == "ko" ? "ko" : "en" }
+    /// 웹 data-locale.ts 동형: 외부 데이터는 ko 외 전부 en. 타입 정본은 이쪽이고
+    /// `dataLocale`(String)은 그 투영이다 — 삼항을 두 번 쓰면 두 형태가 갈린다.
+    static var dataLocaleValue: DataLocale { current == "ko" ? .ko : .en }
+
+    /// 문자열 계약 소비자(검색·역 정보·대중교통·자동차 `lang: String`)용 투영.
+    static var dataLocale: String { dataLocaleValue.rawValue }
 
     /// STT SpeechTranscriber locale 매핑(자동 감지 금지 계약 유지).
     /// 기기 미지원 locale은 SpeechService의 localeUnsupported 오류 경로가 받는다.

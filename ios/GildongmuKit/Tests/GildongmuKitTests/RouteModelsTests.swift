@@ -163,14 +163,14 @@ extension StubNetworkTests {
         }
         let service = RouteService(client: stubbedClient())
         await #expect(throws: APIError.self) {
-            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: "ko", via: nil)
+            _ = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, via: nil)
         }
     }
 
     @Test func routeServiceWalkNullResultReturnsNilNotThrow() async throws {
         StubURLProtocol.handler = { _ in (200, Data(#"{"result":null}"#.utf8)) }
         let service = RouteService(client: stubbedClient())
-        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: "ko", via: nil)
+        let result = try await service.walk(originLat: 37.5, originLng: 127.0, destLat: 37.6, destLng: 127.1, accessible: false, lang: .ko, via: nil)
         #expect(result == nil)
     }
 }
@@ -204,7 +204,7 @@ extension StubNetworkTests {
 // 기하 응답에는 안내 문장이 유사 스텝으로 오지 않으므로 필드가 유일한 채널이다.
 // 두 필드 모두 옵셔널 — 구버전 서버 응답에서 브리핑이 통째로 깨지면 안 된다.
 
-/// 도보 스텝의 서버 투영 행동(E16 축3 §4.2.1). 도보 리듀서가 `actionSource: .step`이라
+/// 도보 스텝의 서버 투영 행동(E16 축3 §4.2.1). 리듀서는 `step.action`만 보므로(문장 분류 폴백 없음)
 /// **이 디코딩이 없으면 임박 큐가 전면 침묵한다** — 웹 테스트도 타입 검사도 Kit fixture
 /// 테스트도 통과시키는 자리라(fixture는 action을 직접 싣는다) 여기가 유일한 가드다.
 @Suite("도보 스텝의 서버 투영 행동")

@@ -366,7 +366,7 @@ public struct WalkRouteStep: Codable, Sendable, Hashable {
     /// 실시간 표시 계층용 구조화 조각(spec 2026-08-11 §5). `includeGeometry=1` 응답에만
     /// 온다. ⚠ 선택 디코딩 — 필수로 두면 구버전 응답에서 브리핑 전체가 실패한다.
     public let live: WalkLiveFragments?
-    /// **서버가 투영한 결정 지점 행동**(E16 축3 §4.2.1). 도보 리듀서는 `actionSource: .step`이라
+    /// **서버가 투영한 결정 지점 행동**(E16 축3 §4.2.1). 도보 리듀서는 문장 분류 폴백 없이
     /// 이 필드만 본다 — 여기서 디코딩하지 않으면 임박 큐(명령형 문장·행동별 톤·햅틱)가
     /// 통째로 침묵한다. ⚠ 선택 디코딩(구버전 서버 호환, `live`와 같은 이유).
     public let action: WalkAction?

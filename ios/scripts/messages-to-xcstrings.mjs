@@ -25,6 +25,13 @@
 //   ios/i18n/kit-extra/{locale}.json → kit 타깃
 // 웹과 같은 키를 넣으면 extra 값이 웹 값을 오버라이드한다(나중 병합 승리) — iOS 실문구가
 // 웹 카피와 다를 때 ko 표시 문자열 불변식을 지키는 공식 경로.
+//
+// 인자 순서 manifest(`ios/i18n/arg-order.json`, 2026-09-02): 키 → ko 플레이스홀더 등장 순서.
+// ko 순서가 곧 iOS 호출부의 **위치 인자 ABI**다(위 nameOrder — 호출부는 로케일 무관하게 ko 순서
+// 하나만 지킨다). ko 문장을 자연스럽게 재배열하기만 해도 호출부 인자가 뒤바뀌는데 빌드·린터·
+// 테스트가 전부 통과하므로, 기존 키의 순서가 manifest와 다르면 생성을 실패시킨다(exit 1).
+// 호출부를 함께 고친 의도된 변경은 `--update-arg-order`로만 통과한다. 신규 키는 자동 등록,
+// 사라진 키는 자동 제거(계약이 없어졌으므로). 게이트 테스트 `src/lib/__tests__/xcstrings-arg-order.test.ts`.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -41,6 +48,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
 const MESSAGES_DIR = path.join(REPO_ROOT, 'messages');
 const I18N_DIR = path.join(REPO_ROOT, 'ios', 'i18n');
+const ARG_ORDER_PATH = path.join(I18N_DIR, 'arg-order.json');
+const UPDATE_ARG_ORDER_FLAG = '--update-arg-order';
 
 // Kit 네임스페이스: Kit 소스 `kitLocalized` 실참조 도메인만 — 감사 2026-07-30에서
 // 나머지 11종 180키 전량 미참조 확정. 앱 타깃은 전 네임스페이스를 담는다
@@ -254,6 +263,7 @@ function buildCatalog(target) {
   const sortedKeys = [...allKeys].sort();
   const strings = {};
   const skipped = [];
+  const argOrder = {};
 
   for (const key of sortedKeys) {
     const valuesByLocale = {};
@@ -314,6 +324,7 @@ function buildCatalog(target) {
       skipped.push(key);
       continue;
     }
+    argOrder[key] = nameOrder;
 
     const localizations = {};
     for (const locale of Object.keys(valuesByLocale)) {
@@ -328,7 +339,71 @@ function buildCatalog(target) {
     catalog: { sourceLanguage: SOURCE_LANGUAGE, strings, version: '1.0' },
     totalKeys: sortedKeys.length,
     skipped,
+    argOrder,
   };
+}
+
+/** 두 타깃의 인자 순서를 한 표로 합친다(키 → ko 이름 순서). 같은 키가 타깃마다 다른 순서면
+ * extra 오버라이드가 갈린 것이라 throw(한 키에 ABI 둘은 성립하지 않는다). */
+function collectArgOrder(targets = TARGETS) {
+  const merged = {};
+  for (const target of Object.values(targets)) {
+    for (const [key, order] of Object.entries(buildCatalog(target).argOrder)) {
+      if (key in merged && merged[key].join(',') !== order.join(',')) {
+        throw new Error(`인자 순서가 타깃마다 다르다: ${key} (${merged[key].join(',')} vs ${order.join(',')})`);
+      }
+      merged[key] = order;
+    }
+  }
+  return Object.fromEntries(Object.keys(merged).sort().map((key) => [key, merged[key]]));
+}
+
+/** manifest(저장본) ↔ current(정본에서 계산) 차분. `changed`만 계약 파손이다. */
+function diffArgOrder(manifest, current) {
+  const added = Object.keys(current).filter((key) => !(key in manifest)).sort();
+  const removed = Object.keys(manifest).filter((key) => !(key in current)).sort();
+  const changed = Object.keys(current)
+    .filter((key) => key in manifest && manifest[key].join(',') !== current[key].join(','))
+    .sort()
+    .map((key) => ({ key, was: manifest[key], now: current[key] }));
+  return { added, removed, changed };
+}
+
+function readArgOrderManifest(manifestPath) {
+  return existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : {};
+}
+
+/**
+ * manifest를 정본과 대조하고 갱신한다. 기존 키의 순서 변경은 `update`가 아니면 실패(`ok: false`,
+ * manifest 불변). 신규 키 등록·사라진 키 제거는 항상 쓴다(그것은 계약 변경이 아니라 계약의
+ * 생성·소멸이다). 호출자는 `ok`가 false면 exit 1을 낸다.
+ */
+function syncArgOrder({ update = false, manifestPath = ARG_ORDER_PATH, current = collectArgOrder(), log = console } = {}) {
+  const manifest = readArgOrderManifest(manifestPath);
+  const diff = diffArgOrder(manifest, current);
+  if (diff.changed.length > 0 && !update) {
+    log.error(
+      `[arg-order] ko 문장의 플레이스홀더 순서가 바뀐 키 ${diff.changed.length}개 — ko 순서가 iOS 호출부의 위치 인자 순서(ABI)다.`
+    );
+    for (const { key, was, now } of diff.changed) {
+      log.error(`  ${key}: ${was.join(',')} → ${now.join(',')}`);
+    }
+    log.error(
+      `[arg-order] 그 키를 부르는 appLocalized/kitLocalized 호출부의 인자 순서를 함께 고쳤으면 ` +
+        `\`node ios/scripts/messages-to-xcstrings.mjs all ${UPDATE_ARG_ORDER_FLAG}\`로 manifest를 갱신한다.`
+    );
+    return { ok: false, diff };
+  }
+  const unchanged = diff.added.length === 0 && diff.removed.length === 0 && diff.changed.length === 0;
+  if (!unchanged || !existsSync(manifestPath)) {
+    writeFileSync(manifestPath, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
+  }
+  const parts = [];
+  if (diff.added.length) parts.push(`등록 ${diff.added.length}`);
+  if (diff.removed.length) parts.push(`제거 ${diff.removed.length}`);
+  if (diff.changed.length) parts.push(`순서 갱신 ${diff.changed.length}`);
+  log.log(`[arg-order] ${manifestPath} 키 ${Object.keys(current).length}개${parts.length ? ` (${parts.join(', ')})` : ' (변화 없음)'}`);
+  return { ok: true, diff };
 }
 
 function generate(name) {
@@ -347,15 +422,32 @@ function generate(name) {
   }
 }
 
-// 테스트(src/lib/__tests__/xcstrings-plural.test.ts)가 변환 함수를 직접 부른다.
-export { parseIcu, referencedNames, dedupeInOrder, toPositionalFormat, buildCatalog, TARGETS };
+// 테스트(src/lib/__tests__/xcstrings-plural.test.ts·xcstrings-arg-order.test.ts)가 직접 부른다.
+export {
+  parseIcu,
+  referencedNames,
+  dedupeInOrder,
+  toPositionalFormat,
+  buildCatalog,
+  collectArgOrder,
+  diffArgOrder,
+  syncArgOrder,
+  TARGETS,
+  ARG_ORDER_PATH,
+  UPDATE_ARG_ORDER_FLAG,
+};
 
 const isCli = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isCli) {
-  const arg = process.argv[2];
-  if (!arg || !['app', 'kit', 'all'].includes(arg)) {
-    console.error('사용법: node ios/scripts/messages-to-xcstrings.mjs <app|kit|all>');
+  const args = process.argv.slice(2);
+  const update = args.includes(UPDATE_ARG_ORDER_FLAG);
+  const targets = args.filter((a) => a !== UPDATE_ARG_ORDER_FLAG);
+  const arg = targets[0];
+  if (targets.length !== 1 || !['app', 'kit', 'all'].includes(arg)) {
+    console.error(`사용법: node ios/scripts/messages-to-xcstrings.mjs <app|kit|all> [${UPDATE_ARG_ORDER_FLAG}]`);
     process.exit(1);
   }
   for (const name of arg === 'all' ? ['app', 'kit'] : [arg]) generate(name);
+  // manifest는 두 타깃 공용 한 벌이라 어느 타깃을 생성하든 전체를 대조한다.
+  if (!syncArgOrder({ update }).ok) process.exitCode = 1;
 }

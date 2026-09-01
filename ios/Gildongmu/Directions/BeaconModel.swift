@@ -833,8 +833,8 @@ final class BeaconModel {
             destLat: dest.lat, destLng: dest.lng,
             accessible: accessible,
             // 안내 문장 언어(E16 축3) — 기본값 없는 인자라 새 조회 경로가 빠뜨리면 컴파일이 막는다.
-            // `dataLocale`은 이미 "ko"|"en"만 낸다 — 삼항으로 다시 좁히면 두 형태가 갈린다.
-            lang: AppLanguage.dataLocale,
+            // 타입이 `DataLocale`이라 오타가 들어갈 자리가 없다(2026-09-02).
+            lang: AppLanguage.dataLocaleValue,
             includeGeometry: true,
             variant: variant, via: via
         )
@@ -842,7 +842,7 @@ final class BeaconModel {
         if via != nil, briefing.waypoint == nil { return nil }
         guard let route = buildGuideRoute(
             briefing.steps.map {
-                // ⚠ `action`을 빠뜨리면 walk 프로파일(`actionSource: .step`)에서 임박 큐가
+                // ⚠ `action`을 빠뜨리면 walk 프로파일(서버 투영만 본다)에서 임박 큐가
                 // 전면 침묵한다 — 웹 테스트·타입 검사·Kit fixture가 전부 통과시키는 자리다
                 // (fixture는 action을 직접 싣는다). E16 축3 §4.2.1.
                 GuideStepGeometry(
@@ -954,7 +954,7 @@ final class BeaconModel {
             offRoute = false
             updateRemaining(route: fetched.route, state: initial.state)
             // 하단 2행: 표시 유닛은 경로와 수명이 같다(spec 2026-08-11, car 확장 K2 §4).
-            displayUnits = buildDisplayUnits(fetched.liveSteps, source: tuning.actionSource)
+            displayUnits = buildDisplayUnits(fetched.liveSteps)
             liveSteps = fetched.liveSteps
             resetLiveRowsBaseline(state: initial.state)
             if sessionKind == .walk {
@@ -2718,7 +2718,7 @@ final class BeaconModel {
         offRoute = false
         updateRemaining(route: fetched.route, state: initial.state)
         // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7, car 확장 K2 §4).
-        displayUnits = buildDisplayUnits(fetched.liveSteps, source: tuning.actionSource)
+        displayUnits = buildDisplayUnits(fetched.liveSteps)
         liveSteps = fetched.liveSteps
         resetLiveRowsBaseline(state: initial.state)
         if sessionKind == .car {

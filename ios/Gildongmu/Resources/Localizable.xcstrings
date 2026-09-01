@@ -21246,37 +21246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변에 무장애 관광지가 없습니다"
+            "value": "주변에 등록된 무장애 관광지가 없습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No barrier-free attractions nearby"
+            "value": "No registered barrier-free attractions nearby"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay atracciones sin barreras cerca"
+            "value": "No hay atracciones sin barreras registradas cerca"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun site accessible à proximité"
+            "value": "Aucun site accessible enregistré à proximité"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna attrazione accessibile nelle vicinanze"
+            "value": "Nessuna attrazione accessibile registrata nelle vicinanze"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "周辺にバリアフリー観光地がありません"
+            "value": "周辺に登録されたバリアフリー観光地がありません"
           }
         }
       }
@@ -21606,37 +21606,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변에 진료 기관이 없습니다"
+            "value": "주변에 소아 야간·휴일 진료 기관이 없습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No clinics nearby"
+            "value": "No pediatric night/holiday clinics nearby"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay centros médicos cerca"
+            "value": "No hay centros de atención pediátrica nocturna/festiva cerca"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun établissement médical à proximité"
+            "value": "Aucun établissement de soins pédiatriques de nuit/jours fériés à proximité"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna struttura medica nelle vicinanze"
+            "value": "Nessuna struttura pediatrica notturna/festiva nelle vicinanze"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "周辺に診療機関がありません"
+            "value": "周辺に小児夜間・休日診療機関がありません"
           }
         }
       }
@@ -22006,37 +22006,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "주변에 아이 놀 곳이 없습니다"
+            "value": "주변에 아이 놀 곳(키즈카페·놀이터·어린이공원)이 없습니다"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No kids places nearby"
+            "value": "No kids play places (kids cafes, playgrounds, parks) nearby"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "No hay lugares para niños cerca"
+            "value": "No hay lugares de juego infantil (cafés infantiles, parques de juego, parques) cerca"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aucun lieu pour enfants à proximité"
+            "value": "Aucun lieu de jeux pour enfants (cafés pour enfants, aires de jeux, parcs) à proximité"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessun luogo per bambini nelle vicinanze"
+            "value": "Nessuna area gioco per bambini (kids cafe, parchi giochi, parchi) nelle vicinanze"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "周辺に子どもの遊び場がありません"
+            "value": "周辺に子どもの遊び場(キッズカフェ・遊び場・児童公園)がありません"
           }
         }
       }

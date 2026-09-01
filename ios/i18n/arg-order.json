@@ -1,0 +1,996 @@
+{
+  "airQuality.asOf": [
+    "time"
+  ],
+  "airQuality.station": [
+    "name",
+    "distance"
+  ],
+  "around.here": [
+    "place"
+  ],
+  "around.hereManual": [
+    "place"
+  ],
+  "barrierFreeNearby.asOf": [
+    "time"
+  ],
+  "barrierFreeNearby.distance": [
+    "distance"
+  ],
+  "beacon.closer": [
+    "distance"
+  ],
+  "beacon.farther": [
+    "distance"
+  ],
+  "beacon.first": [
+    "distance"
+  ],
+  "beacon.guideStartTransitAlt": [
+    "name"
+  ],
+  "beacon.nearby": [
+    "meters"
+  ],
+  "bike.asOf": [
+    "time"
+  ],
+  "bike.availability": [
+    "bikes",
+    "racks"
+  ],
+  "bike.stationDistance": [
+    "distance"
+  ],
+  "bus.arrival": [
+    "route",
+    "type",
+    "prev",
+    "min"
+  ],
+  "bus.arrivalMessage": [
+    "route",
+    "type",
+    "message"
+  ],
+  "bus.asOf": [
+    "time"
+  ],
+  "bus.routeStopsButton": [
+    "route"
+  ],
+  "bus.routeStopsEmpty": [
+    "route"
+  ],
+  "bus.routeStopsError": [
+    "route"
+  ],
+  "bus.routeStopsHeading": [
+    "route"
+  ],
+  "bus.routeStopsLoading": [
+    "route"
+  ],
+  "bus.stopDistance": [
+    "distance"
+  ],
+  "chat.progress.searching": [
+    "tools"
+  ],
+  "chat.reviewPlacesHeading": [
+    "count"
+  ],
+  "clinicNearby.asOf": [
+    "time"
+  ],
+  "clinicNearby.callAction": [
+    "name"
+  ],
+  "clinicNearby.directions": [
+    "text"
+  ],
+  "clinicNearby.distance": [
+    "distance"
+  ],
+  "clinicNearby.holidayHours": [
+    "start",
+    "end"
+  ],
+  "clinicNearby.todayHours": [
+    "start",
+    "end"
+  ],
+  "congestion.asOf": [
+    "time"
+  ],
+  "congestion.summary": [
+    "area",
+    "level"
+  ],
+  "directions.candidateCount": [
+    "count"
+  ],
+  "directions.currentLocationNear": [
+    "address"
+  ],
+  "directions.readySummary": [
+    "count"
+  ],
+  "directions.viaArrived": [
+    "label"
+  ],
+  "eventsNearby.asOf": [
+    "time"
+  ],
+  "eventsNearby.detailAction": [
+    "name"
+  ],
+  "eventsNearby.distance": [
+    "distance"
+  ],
+  "eventsNearby.paid": [
+    "fee"
+  ],
+  "eventsNearby.target": [
+    "text"
+  ],
+  "guide.altPreviewRemaining": [
+    "distance"
+  ],
+  "guide.altPreviewSummary": [
+    "variant",
+    "distance"
+  ],
+  "guide.altPreviewTime": [
+    "minutes"
+  ],
+  "guide.approx": [
+    "distance"
+  ],
+  "guide.autoReroute": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.band.arrived": [
+    "dest"
+  ],
+  "guide.band.ended": [
+    "dest"
+  ],
+  "guide.band.remaining": [
+    "dest",
+    "distance"
+  ],
+  "guide.band.starting": [
+    "dest"
+  ],
+  "guide.band.transitArrived": [
+    "dest"
+  ],
+  "guide.band.transitDestChangeFailed": [
+    "label"
+  ],
+  "guide.band.transitDestChangePending": [
+    "label"
+  ],
+  "guide.band.transitRiding": [
+    "line",
+    "count"
+  ],
+  "guide.band.transitRidingNoCount": [
+    "line"
+  ],
+  "guide.band.transitWaiting": [
+    "stop",
+    "line"
+  ],
+  "guide.bundle": [
+    "steps"
+  ],
+  "guide.carPeriodic": [
+    "distance",
+    "command"
+  ],
+  "guide.carRoadNow": [
+    "road"
+  ],
+  "guide.carStart": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.detailStart": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.etaStale": [
+    "minutes"
+  ],
+  "guide.farNotice": [
+    "distance",
+    "step"
+  ],
+  "guide.finalApproachNearDir": [
+    "direction"
+  ],
+  "guide.finalApproachTick": [
+    "direction",
+    "distance"
+  ],
+  "guide.finalApproachTickNoDir": [
+    "distance"
+  ],
+  "guide.finalApproachToDest": [
+    "direction",
+    "distance",
+    "dest"
+  ],
+  "guide.finalApproachToDestNoDir": [
+    "dest",
+    "distance"
+  ],
+  "guide.liveStraight": [
+    "target",
+    "n"
+  ],
+  "guide.liveStraightNoName": [
+    "n"
+  ],
+  "guide.liveTurnIn": [
+    "n",
+    "action"
+  ],
+  "guide.next": [
+    "distance",
+    "step"
+  ],
+  "guide.nextAction": [
+    "anchor",
+    "action"
+  ],
+  "guide.nextDestination": [
+    "dest",
+    "distance"
+  ],
+  "guide.nextStraight": [
+    "target",
+    "n"
+  ],
+  "guide.nextStraightNoName": [
+    "n"
+  ],
+  "guide.periodicStraight": [
+    "target",
+    "distance"
+  ],
+  "guide.periodicStraightNoName": [
+    "distance"
+  ],
+  "guide.progressCurrent": [
+    "step"
+  ],
+  "guide.progressFinalApproach": [
+    "distance"
+  ],
+  "guide.progressNext": [
+    "step"
+  ],
+  "guide.progressOffRoute": [
+    "distance"
+  ],
+  "guide.progressOrdinal": [
+    "count",
+    "n"
+  ],
+  "guide.progressUncertain": [
+    "last"
+  ],
+  "guide.remainingDistance": [
+    "distance"
+  ],
+  "guide.remainingTime": [
+    "minutes"
+  ],
+  "guide.rerouteDone": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.rough": [
+    "distance"
+  ],
+  "guide.switchedToRecommended": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "guide.switchedToShortest": [
+    "count",
+    "distance",
+    "first"
+  ],
+  "ios.beacon.food.ramyeonMany": [
+    "n"
+  ],
+  "ios.beacon.healthSummary": [
+    "steps",
+    "kcal"
+  ],
+  "ios.beacon.healthWeightNotice": [
+    "kg"
+  ],
+  "ios.chat.addressesHeading": [
+    "count"
+  ],
+  "ios.chat.openPlace": [
+    "name"
+  ],
+  "ios.chat.placesHeading": [
+    "count"
+  ],
+  "ios.chat.webResultsHeading": [
+    "count"
+  ],
+  "ios.guide.destChanged": [
+    "name"
+  ],
+  "ios.guide.routeListCurrent": [
+    "n",
+    "step"
+  ],
+  "ios.guide.routeListRow": [
+    "n",
+    "step"
+  ],
+  "ios.guide.waypointChange": [
+    "label"
+  ],
+  "ios.guide.waypointDropped": [
+    "label"
+  ],
+  "ios.guide.waypointKept": [
+    "label"
+  ],
+  "ios.guide.waypointRemoved": [
+    "label"
+  ],
+  "ios.guide.waypointSet": [
+    "label"
+  ],
+  "ios.nearby.airStationLine": [
+    "name",
+    "distance"
+  ],
+  "ios.nearby.announceBikes": [
+    "count"
+  ],
+  "ios.nearby.announceEvents": [
+    "count"
+  ],
+  "ios.nearby.announcePlaces": [
+    "count"
+  ],
+  "ios.nearby.announceStations": [
+    "count"
+  ],
+  "ios.nearby.announceStops": [
+    "count"
+  ],
+  "ios.nearby.aroundHere": [
+    "place"
+  ],
+  "ios.nearby.aroundHereManual": [
+    "place"
+  ],
+  "ios.nearby.baseTime": [
+    "time"
+  ],
+  "ios.nearby.bikesAvailable": [
+    "count"
+  ],
+  "ios.nearby.dataTime": [
+    "time"
+  ],
+  "ios.nearby.directionSuffixed": [
+    "direction"
+  ],
+  "ios.nearby.minutesAway": [
+    "minutes"
+  ],
+  "ios.nearby.precipLine": [
+    "value"
+  ],
+  "ios.nearby.racksTotal": [
+    "count"
+  ],
+  "ios.nearby.routeNo": [
+    "route"
+  ],
+  "ios.nearby.routeStopsTitle": [
+    "route"
+  ],
+  "ios.nearby.skyLine": [
+    "value"
+  ],
+  "ios.nearby.stopsBefore": [
+    "count"
+  ],
+  "ios.nearby.tempMax": [
+    "value"
+  ],
+  "ios.nearby.tempMin": [
+    "value"
+  ],
+  "ios.nearby.tempNow": [
+    "value"
+  ],
+  "ios.nearby.untilTime": [
+    "hours",
+    "minutes"
+  ],
+  "ios.place.askAbout": [
+    "name"
+  ],
+  "ios.place.callLine": [
+    "phone"
+  ],
+  "ios.place.englishAddressLine": [
+    "value"
+  ],
+  "ios.place.jibunAddressLine": [
+    "value"
+  ],
+  "ios.place.roadAddressLine": [
+    "value"
+  ],
+  "ios.route.alight": [
+    "name"
+  ],
+  "ios.route.board": [
+    "name"
+  ],
+  "ios.route.durationMinutes": [
+    "minutes"
+  ],
+  "ios.route.fare": [
+    "won"
+  ],
+  "ios.route.legMinutes": [
+    "minutes"
+  ],
+  "ios.route.stationCount": [
+    "count"
+  ],
+  "ios.route.stopCount": [
+    "count"
+  ],
+  "ios.route.taxiFare": [
+    "won"
+  ],
+  "ios.route.tollFare": [
+    "won"
+  ],
+  "ios.route.totalDistance": [
+    "distance"
+  ],
+  "ios.route.transfers": [
+    "count"
+  ],
+  "ios.route.walkMinutes": [
+    "minutes"
+  ],
+  "ios.search.announceCount": [
+    "count"
+  ],
+  "ios.settings.releaseNotesVersion": [
+    "version"
+  ],
+  "ios.station.countNone": [
+    "label"
+  ],
+  "ios.station.countSome": [
+    "label",
+    "count"
+  ],
+  "ios.station.countUnknown": [
+    "label"
+  ],
+  "ios.station.kindCount": [
+    "label",
+    "count"
+  ],
+  "ios.station.nameSuffixed": [
+    "name"
+  ],
+  "ios.transitGuide.altFromBoardStop": [
+    "station"
+  ],
+  "ios.transitGuide.altHeadingFrom": [
+    "station"
+  ],
+  "ios.transitGuide.destChangeHeading": [
+    "name"
+  ],
+  "kidsNearby.asOf": [
+    "time"
+  ],
+  "kidsNearby.distance": [
+    "distance"
+  ],
+  "manualLocation.gpsNear": [
+    "address"
+  ],
+  "manualLocation.manual": [
+    "label"
+  ],
+  "manualLocation.manualUnverifiable": [
+    "label"
+  ],
+  "place.distance": [
+    "distance"
+  ],
+  "placeHours.line": [
+    "ranges"
+  ],
+  "placeHours.nextDay": [
+    "time"
+  ],
+  "recent.deleteItem": [
+    "name"
+  ],
+  "recent.pinItem": [
+    "name"
+  ],
+  "recent.pinnedItem": [
+    "name"
+  ],
+  "recent.titleFor": [
+    "field"
+  ],
+  "recent.unpinItem": [
+    "name"
+  ],
+  "recent.unpinnedItem": [
+    "name"
+  ],
+  "recentRoutes.item": [
+    "from",
+    "to"
+  ],
+  "recentRoutes.itemVia": [
+    "from",
+    "to",
+    "via"
+  ],
+  "route.briefing.heading": [
+    "name"
+  ],
+  "route.briefing.summary": [
+    "distance",
+    "minutes",
+    "taxi"
+  ],
+  "route.briefing.toll": [
+    "toll"
+  ],
+  "route.pedestrian.summary": [
+    "distance",
+    "minutes"
+  ],
+  "route.transit.alternativeHeading": [
+    "index"
+  ],
+  "route.transit.busNo": [
+    "route"
+  ],
+  "route.transit.heading": [
+    "name"
+  ],
+  "route.transit.legBoard": [
+    "count"
+  ],
+  "route.transit.legInterval": [
+    "minutes"
+  ],
+  "route.transit.legServiceOutside": [
+    "first",
+    "last"
+  ],
+  "route.transit.legTransfer": [
+    "count"
+  ],
+  "route.transit.legWalk": [
+    "minutes"
+  ],
+  "route.transit.legWalkTo": [
+    "name",
+    "minutes",
+    "distance"
+  ],
+  "route.transit.legWalkToDest": [
+    "minutes",
+    "distance"
+  ],
+  "route.transit.legWalkToDestNoDistance": [
+    "minutes"
+  ],
+  "route.transit.legWalkToNoDistance": [
+    "name",
+    "minutes"
+  ],
+  "route.transit.quickExitBetween": [
+    "first",
+    "second"
+  ],
+  "route.transit.quickExitBoth": [
+    "station",
+    "elevator",
+    "stairs"
+  ],
+  "route.transit.quickExitDoor": [
+    "door"
+  ],
+  "route.transit.quickExitElevator": [
+    "station",
+    "elevator"
+  ],
+  "route.transit.quickExitStairs": [
+    "station",
+    "stairs"
+  ],
+  "route.transit.quickExitTransfer": [
+    "station",
+    "transfer"
+  ],
+  "route.transit.summary": [
+    "minutes",
+    "fare",
+    "transfers"
+  ],
+  "route.transit.walkSummary": [
+    "minutes"
+  ],
+  "search.addressCount": [
+    "count"
+  ],
+  "search.placeCount": [
+    "count"
+  ],
+  "search.searchingFor": [
+    "query"
+  ],
+  "search.webCount": [
+    "count"
+  ],
+  "station.heading": [
+    "name"
+  ],
+  "subway.count": [
+    "count"
+  ],
+  "subway.elevatorAt": [
+    "direction",
+    "distance"
+  ],
+  "subway.heading": [
+    "name"
+  ],
+  "subway.lineNumber": [
+    "line"
+  ],
+  "subwayArrival.asOf": [
+    "time"
+  ],
+  "subwayArrival.currentLocation": [
+    "location"
+  ],
+  "subwayArrival.heading": [
+    "name"
+  ],
+  "subwayNearby.asOf": [
+    "time"
+  ],
+  "subwayNearby.closed": [
+    "time"
+  ],
+  "subwayNearby.emptyNearest": [
+    "station",
+    "distance"
+  ],
+  "subwayNearby.stationDistance": [
+    "distance"
+  ],
+  "surroundings.count": [
+    "count"
+  ],
+  "surroundings.item": [
+    "distance",
+    "name"
+  ],
+  "surroundings.itemWithRoad": [
+    "distance",
+    "name",
+    "road"
+  ],
+  "surroundingsNearby.item": [
+    "category",
+    "direction",
+    "distance"
+  ],
+  "timetable.coverage.noTrains": [
+    "line"
+  ],
+  "timetable.coverage.unavailable": [
+    "line"
+  ],
+  "timetable.coverage.unknown": [
+    "line"
+  ],
+  "timetable.lineSuffixed": [
+    "name"
+  ],
+  "timetable.toTerminus": [
+    "terminus"
+  ],
+  "transitGuide.approachFrame": [
+    "stop",
+    "message"
+  ],
+  "transitGuide.arrivedAtBoardStop": [
+    "line"
+  ],
+  "transitGuide.boarded": [
+    "line",
+    "stop"
+  ],
+  "transitGuide.boardedCount": [
+    "line",
+    "stop",
+    "count"
+  ],
+  "transitGuide.boardingContext": [
+    "stop",
+    "line"
+  ],
+  "transitGuide.bound": [
+    "dest"
+  ],
+  "transitGuide.context": [
+    "line",
+    "stop"
+  ],
+  "transitGuide.currentStation": [
+    "station"
+  ],
+  "transitGuide.dataAge": [
+    "seconds"
+  ],
+  "transitGuide.departed": [
+    "minutes"
+  ],
+  "transitGuide.doneWalk": [
+    "minutes"
+  ],
+  "transitGuide.expressCheck": [
+    "stop"
+  ],
+  "transitGuide.lastUpdated": [
+    "time"
+  ],
+  "transitGuide.messageFrame": [
+    "stop",
+    "message"
+  ],
+  "transitGuide.nextLeg": [
+    "context"
+  ],
+  "transitGuide.overviewLeg": [
+    "n",
+    "line",
+    "board",
+    "alight"
+  ],
+  "transitGuide.overviewOrdinal": [
+    "count",
+    "n"
+  ],
+  "transitGuide.overviewWalk": [
+    "minutes"
+  ],
+  "transitGuide.prewalkArrived": [
+    "station"
+  ],
+  "transitGuide.prewalkArrivedButton": [
+    "station"
+  ],
+  "transitGuide.prewalkStart": [
+    "station",
+    "minutes"
+  ],
+  "transitGuide.remainingCount": [
+    "count"
+  ],
+  "transitGuide.selectBus": [
+    "desc"
+  ],
+  "transitGuide.selectTrain": [
+    "desc"
+  ],
+  "transitGuide.selectedVehicle": [
+    "desc"
+  ],
+  "transitGuide.started": [
+    "count"
+  ],
+  "transitGuide.stationCountAbout": [
+    "count"
+  ],
+  "transitGuide.subwayArriving": [
+    "stop"
+  ],
+  "transitGuide.subwayAtStop": [
+    "stop"
+  ],
+  "transitGuide.subwayDeparted": [
+    "stop"
+  ],
+  "transitGuide.subwayNextStop": [
+    "stop"
+  ],
+  "transitGuide.surroundingsAnchorAlight": [
+    "name"
+  ],
+  "transitGuide.surroundingsAnchorCurrent": [
+    "name"
+  ],
+  "transitGuide.terminatesEarly": [
+    "dest",
+    "stop"
+  ],
+  "transitGuide.vehiclePassed": [
+    "stop"
+  ],
+  "transitGuide.vehicleSelected": [
+    "desc",
+    "stop"
+  ],
+  "transitGuide.viaStopsBus": [
+    "count"
+  ],
+  "transitGuide.viaStopsTrain": [
+    "count"
+  ],
+  "transitGuide.waitContext": [
+    "stop",
+    "line"
+  ],
+  "transitGuide.waitContextWalk": [
+    "minutes",
+    "stop",
+    "line"
+  ],
+  "transitGuide.waitingCount": [
+    "count"
+  ],
+  "walkInfra.asOf": [
+    "time"
+  ],
+  "walkInfra.audioSite": [
+    "direction",
+    "distance",
+    "count"
+  ],
+  "walkInfra.audioSummary": [
+    "count"
+  ],
+  "walkInfra.groupCrossingCount": [
+    "count"
+  ],
+  "walkInfra.groupCrossingTruncated": [
+    "total",
+    "listed"
+  ],
+  "walkInfra.groupTactileCount": [
+    "count"
+  ],
+  "walkInfra.groupTactileTruncated": [
+    "total",
+    "listed"
+  ],
+  "walkInfra.itemLocation": [
+    "direction",
+    "distance"
+  ],
+  "walkInfra.osmSummary": [
+    "count"
+  ],
+  "walkInfra.sourceAudio": [
+    "baseDate"
+  ],
+  "weather.asOf": [
+    "time"
+  ],
+  "weather.highLow": [
+    "max",
+    "min"
+  ],
+  "weather.humidity": [
+    "humidity"
+  ],
+  "weather.precipProbability": [
+    "pop"
+  ],
+  "webmcpProbe.buttonTarget": [
+    "index"
+  ],
+  "webmcpProbe.focusFailed": [
+    "index"
+  ],
+  "webmcpProbe.focusMoved": [
+    "label"
+  ],
+  "webmcpProbe.headingTarget": [
+    "index"
+  ],
+  "webmcpProbe.manualActivation": [
+    "index"
+  ],
+  "webmcpProbe.readStateResult": [
+    "support",
+    "focus",
+    "lastResult"
+  ],
+  "whereAmI.overview.failedItem": [
+    "label"
+  ],
+  "whereAmI.overview.nearestItem": [
+    "name",
+    "direction",
+    "distance"
+  ],
+  "whereAmI.overview.nearestLead": [
+    "items"
+  ],
+  "whereAmI.overview.none": [
+    "label",
+    "distance"
+  ],
+  "whereAmI.overview.ok": [
+    "label",
+    "count",
+    "nearest"
+  ],
+  "whereAmI.overview.okCapped": [
+    "label",
+    "count",
+    "nearest"
+  ],
+  "whereAmI.overview.radius": [
+    "distance"
+  ],
+  "whereAmI.overview.transitBus": [
+    "count",
+    "nearest"
+  ],
+  "whereAmI.overview.transitLead": [
+    "body"
+  ],
+  "whereAmI.overview.transitLine": [
+    "line"
+  ],
+  "whereAmI.overview.transitNoStation": [
+    "distance"
+  ],
+  "whereAmI.overview.transitStation": [
+    "line",
+    "name",
+    "direction",
+    "distance"
+  ],
+  "whereAmI.overview.unavailableSeoulOnly": [
+    "label"
+  ]
+}

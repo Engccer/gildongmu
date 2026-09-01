@@ -394,7 +394,7 @@ final class DirectionsModel {
         // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원 — 서버 spec §2.1).
         // "경로 없음"이 아니라 "미지원"이라 별도 상태로 섹션에 사유를 남긴다.
         async let transitSettled = Self.settleTransit(service, include: viaCoord == nil, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: lang, via: viaCoord)
+        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: AppLanguage.dataLocaleValue, via: viaCoord)
         async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang, via: viaCoord)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }
@@ -460,7 +460,7 @@ final class DirectionsModel {
         let accessible = stepFreeEnabled && AppLanguage.dataLocale == "ko"
         let settled = await Self.settleWalk(
             service, include: true, origin: origin, dest: dest, accessible: accessible,
-            lang: AppLanguage.dataLocale, via: via)
+            lang: AppLanguage.dataLocaleValue, via: via)
         guard !Task.isCancelled, let settled, let current = results else { return }
         // lastCoords는 이미 커버리지 검증을 통과한 좌표라 재조회에서 서버 마커가 다시
         // 뜰 일은 사실상 없다 — 그래도 도달 시 화면 전체 전환 대신 도보 오류로 안내한다
@@ -514,7 +514,7 @@ final class DirectionsModel {
 
     nonisolated private static func settleWalk(
         _ service: RouteService, include: Bool, origin: (lat: Double, lng: Double), dest: (lat: Double, lng: Double),
-        accessible: Bool, lang: String, via: (lat: Double, lng: Double)?
+        accessible: Bool, lang: DataLocale, via: (lat: Double, lng: Double)?
     ) async -> Result<(result: WalkRouteBriefing?, shortest: WalkRouteBriefing?), any Error>? {
         guard include else { return nil }
         do {
