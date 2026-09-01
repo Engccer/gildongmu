@@ -20,8 +20,8 @@ export interface MetroGroupItem {
  * 읽힌다(es에서 "Línea 5" vs "Line 5"). 비-ko는 전부 영문 데이터를 공유하므로(`prefersEnglish`)
  * 표 값이 그 자리의 답이고, 표 미스·ko만 폴백 문자열을 쓴다.
  *
- * ⚠ iOS `StationSections.facilityName`은 아직 `subway.lineNumber`를 앱 언어로 조립한다 — Kit에
- * 표 미러가 없어 이번 범위 밖이다(`docs/BACKLOG.md` E27 잔여).
+ * iOS `StationSections.facilityName`은 같은 표를 서버 additive `parts.lineEn`(`lang=en`)으로 받는다 —
+ * Kit에 표를 이식하지 않고 라우트가 태운다(2026-09-02).
  */
 function lineLabel(koName: string, fallback: string, isEn: boolean): string {
   return (isEn && subwayLineNameEn(koName)) || fallback;
