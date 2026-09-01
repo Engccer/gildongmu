@@ -93,6 +93,23 @@ final class TransitGuideModel {
 
     private let trackService = TransitTrackService(client: APIClient(baseURL: AppConfig.apiBaseURL))
     private let tones = BeaconTonePlayer()
+    /// 추세 톤 계층 상태(E15 ②, spec 2026-09-02 §2). 판정은 Kit `transitToneStep`, 여기는 재생만.
+    private var toneState = TransitToneState.initial
+    /// 발화 지연 슬롯(spec 2026-08-14, BeaconModel 동형 — 2026-09-02 E15 ② 설계 리뷰 #5로 채택):
+    /// 안내 효과음이 재생 중이면 그 잔여만큼 통지를 미룬다. 종전엔 톤 직후 즉시 게시라 임박
+    /// 0.73초·도착 종 2.25초가 문장 앞머리를 잘라 먹었다. 수명 계약(latest-wins·세대·재평가)은
+    /// Kit 타입이 소유하고 여기는 톤 잔여·실제 게시를 클로저로 주입만 한다.
+    @ObservationIgnored private lazy var deferredAnnouncer = DeferredAnnouncer(
+        clock: { ProcessInfo.processInfo.systemUptime },
+        toneEndsAt: { [weak self] in self?.tones.toneEndsAt },
+        post: { [weak self] text, high, bypass in
+            self?.post(text, highPriority: high, bypassSuppression: bypass) ?? false
+        }
+    )
+    /// 직전 폴 시작의 단조 시각(초) — `pollStart sinceLast=` 계측(A16 미확정 ②).
+    private var lastPollStartAt: Double?
+    /// 이 폴을 예약한 주기(ms). 즉폴은 nil — 로그에 `planned=-`.
+    private var plannedIntervalMs: Int?
     private var sessionToken: Int?
     private var pollTask: Task<Void, Never>?
     private var seq = 0
@@ -180,9 +197,13 @@ final class TransitGuideModel {
         retained = [:]
         tagoResolved = [:]
         tagoUnsupported = []
+        toneState = .initial
+        lastPollStartAt = nil
+        plannedIntervalMs = nil
+        deferredAnnouncer.advanceGeneration()
         state = initTransitGuide(route: guideRoute, now: nowMs())
         UIApplication.shared.isIdleTimerDisabled = true
-        tones.play(.start)
+        playTone(.start)
         let first = guideRoute.legs[0]
         var parts = [
             appLocalized("transitGuide.started", guideRoute.legs.count),
@@ -201,6 +222,11 @@ final class TransitGuideModel {
         pollTask?.cancel()
         pollTask = nil
         UIApplication.shared.isIdleTimerDisabled = false
+        // 세션 경계 — 보류 문장을 버린다(끝난 세션의 문장이 다음 세션 안에서 나오지 않게).
+        deferredAnnouncer.advanceGeneration()
+        toneState = .initial
+        lastPollStartAt = nil
+        plannedIntervalMs = nil
         if playStopTone, state != nil { tones.play(.stop) }
         state = nil
         route = nil
@@ -236,6 +262,8 @@ final class TransitGuideModel {
 
     func handleScenePhaseChange(to phase: ScenePhase) {
         guard isTracking else { return }
+        // 계측(A16 미확정 ②): 잠금·백그라운드가 곧 폴 정지인지를 `pollStart sinceLast`와 짝지어 가른다.
+        transitGuideLog("scene phase=\(phase) tracking=\(isTracking) paused=\(pausedInBackground)")
         switch phase {
         case .background, .inactive:
             // 전경 전용(§3.2): 폴만 정지, 세션은 유지. 들리지 않는 채널에 통지를 쌓지 않는다.
@@ -528,7 +556,7 @@ final class TransitGuideModel {
             let declared = pending.origin == .boardStopDeclared
             // 재조회 사유는 이 통지가 유일한 전달 경로(활성화한 버튼이 사라진다, 헌장 §6).
             // 사유가 넷(근거 변화·국면·구간·시간)이라 "위치가 바뀌어"가 거짓일 수 있다 — 중립 문구(감사 M1).
-            announce(appLocalized("ios.transitGuide.altRefetching"), highPriority: true)
+            announceNow(appLocalized("ios.transitGuide.altRefetching"), highPriority: true)
             altRoutesToken += 1
             let next = altRoutesToken
             pendingAltRoutes = PendingAltRoutes(
@@ -560,7 +588,7 @@ final class TransitGuideModel {
             pendingDestChange?.fetchedAt = nil
             // .high(리뷰 MINOR): 활성화한 후보 버튼이 사라지고 로딩 행 착지 낭독이
             // 뒤따른다 — 재조회 사유는 이 통지가 유일한 전달 경로다(헌장 §6).
-            announce(appLocalized("ios.transitGuide.destChangeRefetched"), highPriority: true)
+            announceNow(appLocalized("ios.transitGuide.destChangeRefetched"), highPriority: true)
             Task { await fetchDestChangeCandidates(token: token) }
             return false
         }
@@ -606,6 +634,10 @@ final class TransitGuideModel {
         waitingDeparted = []
         waitingReason = nil
         refreshAnnounce = false
+        toneState = .initial
+        lastPollStartAt = nil
+        plannedIntervalMs = nil
+        deferredAnnouncer.advanceGeneration()
         state = initTransitGuide(route: guideRoute, now: nowMs())
         let first = guideRoute.legs[0]
         // 목적지가 같은 경로 전환에 "목적지가 바뀌었다"를 말하면 거짓이다 — 종류별 첫 문장.
@@ -620,7 +652,7 @@ final class TransitGuideModel {
         ]
         if first.trackMode == nil { parts.append(appLocalized("transitGuide.untrackable")) }
         // 활성화 응답(후보 버튼이 사라지는 전이) — .high(헌장 §6).
-        announce(parts.joined(separator: " "), highPriority: true)
+        announceNow(parts.joined(separator: " "), highPriority: true)
         restartPollLoop(immediate: true)
         return true
     }
@@ -629,7 +661,7 @@ final class TransitGuideModel {
     /// 상시 표시와 같은 조립기를 공유한다(§12.3 드리프트 차단).
     func announceProgress() {
         guard let state, let leg = currentLeg else { return }
-        announce(statusLineText(state: state, leg: leg), highPriority: true)
+        announceNow(statusLineText(state: state, leg: leg), highPriority: true)
     }
 
     /// 상시 표시·진행 상황 공용 조립기(§12.3) — 완성 문장 파트를 공백으로 연결하는
@@ -697,6 +729,8 @@ final class TransitGuideModel {
         guard let state else { return }
         let interval = transitPollIntervalMs(state)
         if !immediate, interval <= 0 { return }
+        // 계측: 이 폴을 예약한 주기(즉폴은 nil → `planned=-`).
+        plannedIntervalMs = immediate ? nil : interval
         pollTask = Task { [weak self] in
             if !immediate {
                 try? await Task.sleep(for: .milliseconds(interval))
@@ -707,6 +741,7 @@ final class TransitGuideModel {
                 guard let s = self.state, !Task.isCancelled else { return }
                 let next = transitPollIntervalMs(s)
                 if next <= 0 { return }
+                self.plannedIntervalMs = next
                 try? await Task.sleep(for: .milliseconds(next))
             }
         }
@@ -718,8 +753,25 @@ final class TransitGuideModel {
         let phaseGen = state.phaseGen
         seq += 1
         let mySeq = seq
+        // 계측(A16 미확정 ②, spec 2026-09-02 §3): 시작·종료 1쌍/폴. 종료는 `defer`라 조기 반환·취소
+        // 어느 경로든 정확히 한 번 남는다(설계 리뷰 2차 #6). 시각은 단조(systemUptime).
+        let startedAt = ProcessInfo.processInfo.systemUptime
+        let sinceLast = lastPollStartAt.map { String(format: "%.1f", startedAt - $0) } ?? "-"
+        let planned = plannedIntervalMs.map { "\($0 / 1000)" } ?? "-"  // 정수 초(ms 주기는 1000 배수)
+        lastPollStartAt = startedAt
+        transitGuideLog("pollStart seq=\(mySeq) phase=\(state.phase.rawValue) sinceLast=\(sinceLast)s planned=\(planned)s")
+        var endStatus = "cancelled"
+        defer {
+            let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+            transitGuideLog("pollEnd seq=\(mySeq) status=\(endStatus) elapsed=\(String(format: "%.2f", elapsed))s")
+        }
         let (poll, rawCount) = await fetchPoll(leg: leg, phase: state.phase)
-        guard !Task.isCancelled else { return }
+        endStatus = Self.pollStatusText(poll)
+        guard !Task.isCancelled else { endStatus = "cancelled"; return }
+        // 잠금 국면 계측(A16 미확정 ①): boarding·riding·arrived 응답을 dispatch 전에 남긴다.
+        if state.phase != .waiting {
+            logRidingPoll(seq: mySeq, poll: poll, rawCount: rawCount, state: state)
+        }
         // 대기 목록 스냅숏(§5.1) — 소실 유지·경과 계산은 폴 시점에.
         var refreshResponse: String?
         if self.state?.phase == .waiting, self.state?.phaseGen == phaseGen {
@@ -743,8 +795,37 @@ final class TransitGuideModel {
         dispatch(.poll(seq: mySeq, phaseGen: phaseGen, poll: poll))
         // 응답은 dispatch 뒤에 .high로 게시한다 — 같은 폴의 신호 이벤트 통지가
         // 먼저 나가고 .high가 큐를 끊어 응답이 최종 승자가 된다(감사 M1: 역순이면
-        // 동어반복 두 문장이 연달아 나가거나 응답이 잠식된다).
-        if let refreshResponse { announce(refreshResponse, highPriority: true) }
+        // 동어반복 두 문장이 연달아 나가거나 응답이 잠식된다). 사용자 활성화(새로고침)의
+        // 직접 응답이라 즉시 창구(보류 슬롯 무효화 — 이벤트 문장이 뒤늦게 발화하는 역전 차단).
+        if let refreshResponse { announceNow(refreshResponse, highPriority: true) }
+    }
+
+    private static func pollStatusText(_ poll: TransitTrackPoll) -> String {
+        switch poll {
+        case let .ok(items): "ok(\(items.count))"
+        case .empty: "empty"
+        case .unsupported: "unsupported"
+        case .failed: "failed"
+        }
+    }
+
+    /// 잠금 국면 계측(A16 미확정 ①, spec 2026-09-02 §3) — 폴이 `empty`였는지, 항목은 있는데 잠금
+    /// 열차가 없었는지(L1 기제), 매칭됐는데 잔여 추출이 실패했는지를 가른다. 매칭은 리듀서와
+    /// **같은 순수 함수·같은 입력**(dispatch 전 `state.lock`)이라 결과가 같다(리뷰 #7).
+    private func logRidingPoll(
+        seq: Int, poll: TransitTrackPoll, rawCount: Int?, state: TransitGuideState
+    ) {
+        transitGuideLog({
+            let items: [TransitTrackItem] = if case let .ok(list) = poll { list } else { [] }
+            let matched = state.lock.flatMap { transitFindLockedItem(items, lock: $0) }
+            let m = matched.map { item in
+                "yes remaining=\(item.remainingStops.map(String.init) ?? "-")"
+                    + " code=\(item.arrivalCode ?? "-") loc=\(item.currentLocation ?? "-")"
+                    + " age=\(item.dataAgeSeconds.map(String.init) ?? "-") stamp=\(item.dataStamp ?? "-")"
+            } ?? "no"
+            return "ridePoll seq=\(seq) phase=\(state.phase.rawValue) status=\(Self.pollStatusText(poll))"
+                + " raw=\(rawCount.map(String.init) ?? "-") matched=\(m) signal=\(state.signal.rawValue)"
+        }())
     }
 
     private func fetchPoll(
@@ -883,6 +964,13 @@ final class TransitGuideModel {
         guard let state, let route else { return }
         let result = transitGuideStep(state: state, input: input, route: route, now: nowMs())
         self.state = result.state
+        // 추세 톤 계층(E15 ②, spec 2026-09-02 §2.5): `state`(대입 전 캡처 = before)와 `result.state`
+        // (after)를 넘긴다 — 입력 조립·phaseGen 리셋은 Kit 순수 함수 몫이다(설계 리뷰 #2).
+        // 이벤트가 있는 스텝은 층이 nil을 내므로 한 dispatch에 `tones.play`는 최대 1회다.
+        let toned = transitToneStep(
+            state: toneState, before: state, after: result.state, event: result.event,
+            now: ProcessInfo.processInfo.systemUptime)
+        toneState = toned.state
         // 사용자가 고른 기준 역(A16 L3)의 수명은 딱 한 번의 재선택이다. 재잠금·전진
         // 뒤에도 남으면 다음 대기 국면이 엉뚱한 역을 조회한다. ⚠ 소거를 호출부마다
         // 흩뿌리지 않는 이유가 그것이다 — board 디스패치만 네 곳이라 하나만 빠져도
@@ -914,6 +1002,10 @@ final class TransitGuideModel {
         // 사다리를 구분하지 않으므로 문구 조립이 전이 전 상태를 본다.
         firstObservationInStep = !state.trackingAnnounced && result.state.trackingAnnounced
         if let event = result.event { handle(event: event) }
+        if let tone = toned.tone {
+            transitGuideLog("tone kind=\(tone.rawValue) anchor=\(toned.state.anchorRemaining.map(String.init) ?? "-")")
+            playTone(tone)
+        }
     }
 
     private var firstObservationInStep = false
@@ -921,15 +1013,23 @@ final class TransitGuideModel {
     private func handle(event: TransitGuideEvent) {
         let profile = transitEventProfile(event)
         switch profile.tone {
-        case .start: tones.play(.start)
-        case .ladder: tones.play(.closer)
-        case .imminent: tones.play(.ahead)
-        case .arrive: tones.play(.nearby)
-        case .weak: tones.play(.warning)
+        case .start: playTone(.start)
+        case .ladder: playTone(.closer)
+        case .imminent: playTone(.ahead)
+        case .arrive: playTone(.nearby)
+        case .weak: playTone(.warning)
         case nil: break
         }
         let text = announcementText(for: event)
         if !text.isEmpty { announce(text, highPriority: profile.interrupt) }
+    }
+
+    /// 톤 재생 단일 창구 — 억제 가드는 여기 한 곳(BeaconModel.playTone 동형). 종전엔 이벤트 톤이
+    /// `tones.play`를 직접 불러 검색 시트(받아쓰기 마이크)가 열린 동안에도 소리가 났다(설계 리뷰 #4).
+    /// 층 상태(앵커·타이머)는 억제 중에도 전진한다 — 억제는 출력 게이트이지 판정 게이트가 아니다.
+    private func playTone(_ tone: BeaconTone) {
+        guard !outputSuppressed else { return }
+        tones.play(tone)
     }
 
     private func announcementText(for event: TransitGuideEvent) -> String {
@@ -1134,12 +1234,27 @@ final class TransitGuideModel {
         announce(message)
     }
 
-    /// 통지 단일 경로. 하차 임박·도착·직접 응답만 .high(§6.1 — 헌장 §5 계열).
+    /// 자동 통지 창구(spec 2026-08-14 §4-6 동형). 안내 효과음이 재생 중이면 그 소리가 끝난 뒤에
+    /// 게시한다(지연·latest-wins·세대는 `DeferredAnnouncer` 소유). 하차 임박·도착만 .high(§6.1).
     private func announce(_ message: String, highPriority: Bool = false) {
+        deferredAnnouncer.announce(message, highPriority: highPriority)
+    }
+
+    /// 사용자 활성화의 **직접 응답** 전용 즉시 창구(진행 상황·새로고침 응답·재조회 통지·경로 교체).
+    /// 즉시성이 문장의 본질이라 톤과 겹치더라도 미루지 않고, 보류 슬롯은 진입 즉시 버린다.
+    private func announceNow(_ message: String, highPriority: Bool = false) {
+        deferredAnnouncer.announceNow(message, highPriority: highPriority)
+    }
+
+    /// 실제 게시. 지연은 타이밍만 바꾸고 억제 계약은 바꾸지 않는다 — 대기가 끝난 게시 시도도
+    /// 같은 가드를 지난다. 반환 = 실제로 게시했는가.
+    @discardableResult
+    private func post(_ message: String, highPriority: Bool, bypassSuppression: Bool) -> Bool {
         // 검색 시트(받아쓰기 마이크)가 열린 동안은 발화 0(스펙 §5.4).
-        guard !outputSuppressed else { return }
+        guard bypassSuppression || !outputSuppressed else { return false }
         var attributed = AttributedString(spokenUnits(message))
         if highPriority { attributed.accessibilitySpeechAnnouncementPriority = .high }
         AccessibilityNotification.Announcement(attributed).post()
+        return true
     }
 }

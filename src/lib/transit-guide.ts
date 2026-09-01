@@ -1120,7 +1120,11 @@ function boardingUnmatched(
   return { state: next, event: carriedEvent };
 }
 
-function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem | null {
+/**
+ * 잠금 항목 매칭(리듀서 정본). 계측(iOS `logRidingPoll`)이 같은 함수·같은 입력(dispatch 전 lock)으로
+ * 매칭 여부를 기록한다 — 판정을 복제하면 드리프트한다(spec 2026-09-02 §3).
+ */
+export function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem | null {
   if (isApproxTransitLock(lock)) {
     // 근사(§5.2·§13.2): 방향 일치(양측 보유 시) 항목 중 최근접 접근 차량(잔여 최소).
     // tagoBus는 방향이 ""라 무필터 — 기존 행동 불변.
