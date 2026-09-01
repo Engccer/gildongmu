@@ -8,6 +8,50 @@ import { describe, expect, it } from "vitest";
  */
 const src = readFileSync(new URL("../../../ios/Gildongmu/Directions/BeaconModel.swift", import.meta.url), "utf8");
 
+
+/** 주석·문자열 리터럴을 같은 길이의 공백으로 지운다(오프셋 보존) — 주석에 적힌 옛 조건 이름이 판정에 끼지 않게. */
+function blankComments(source: string): string {
+  let out = "";
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    const next = source[i + 1];
+    if (c === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") {
+        out += " ";
+        i++;
+      }
+      out += "\n";
+      continue;
+    }
+    if (c === "/" && next === "*") {
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) {
+        out += source[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += "  ";
+      i++;
+      continue;
+    }
+    if (c === '"') {
+      out += " ";
+      i++;
+      while (i < source.length && source[i] !== '"') {
+        if (source[i] === "\\") {
+          out += " ";
+          i++;
+        }
+        out += source[i] === "\n" ? "\n" : " ";
+        i++;
+      }
+      out += " ";
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+const code = blankComments(src);
+
 describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다", () => {
   it.each([
     "tuning.presumedArrival",
@@ -29,7 +73,7 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
 });
 
 describe("도착 창(A31 §2, spec 2026-09-02): 간략 근처 창 배선", () => {
-  const presume = src.slice(src.indexOf("func maybePresumeArrival"), src.indexOf("func loadArrivalHealth"));
+  const presume = code.slice(code.indexOf("func maybePresumeArrival"), code.indexOf("func loadArrivalHealth"));
 
   it("추정 도착 가드는 inArrivalWindow를 읽고 inFinalApproach 단독 가드로 되돌아가지 않는다", () => {
     expect(presume).toMatch(/guard isTracking, inArrivalWindow/);
@@ -45,9 +89,45 @@ describe("도착 창(A31 §2, spec 2026-09-02): 간략 근처 창 배선", () =>
   });
 
   it("resetFinalApproach가 간략 창 플래그까지 지운다(경로 커밋·재획득·stop에서 옛 창이 살아남지 않게)", () => {
-    const reset = src.slice(src.indexOf("func resetFinalApproach"), src.indexOf("func beginFinalApproach"));
+    const reset = code.slice(code.indexOf("func resetFinalApproach"), code.indexOf("func beginFinalApproach"));
     expect(reset).toMatch(/resetArrivalWindow\(\)/);
-    const window = src.slice(src.indexOf("func resetArrivalWindow"), src.indexOf("func resetFinalApproach"));
+    const window = code.slice(code.indexOf("func resetArrivalWindow"), code.indexOf("func resetFinalApproach"));
     expect(window).toMatch(/briefWindowActive = false/);
+  });
+});
+
+describe("종료 화면 수명(A31 §3, spec 2026-09-02)", () => {
+  const scene = code.slice(code.indexOf("func handleScenePhaseChange"), src.indexOf("// MARK: - 톤 계층 배선"));
+
+  it("복귀 판정은 백그라운드 경유 플래그를 .active 맨 앞에서 소비한다(제어센터 왕복·전경 체류는 판정 밖)", () => {
+    expect(scene).toMatch(/let returnedFromBackground = wasBackgrounded\s*\n\s*wasBackgrounded = false/);
+    expect(scene).toMatch(/isEndScreenStale\(/);
+    expect(scene).not.toMatch(/guard wasBackgrounded else/);
+  });
+
+  it("종료 시각은 잠자기 중에도 전진하는 단조 시계(ContinuousClock)", () => {
+    expect(src).toMatch(/endedAt: ContinuousClock\.Instant\?/);
+  });
+
+  it("앱 루트는 유휴 리셋보다 먼저 세션에 전경 전환을 전달한다(옛 시트가 한 프레임 떴다 닫히지 않게)", () => {
+    const app = readFileSync(new URL("../../../ios/Gildongmu/GildongmuApp.swift", import.meta.url), "utf8");
+    const handoff = app.indexOf("guideSession.handleScenePhaseChange(to: phase)");
+    expect(handoff).toBeGreaterThan(0);
+    expect(handoff).toBeLessThan(app.indexOf("IdleReset.shouldReset("));
+  });
+});
+
+describe("종료 문장 잔존(A31 §4, spec 2026-09-02): clearArrival 판별선", () => {
+  const clear = code.slice(code.indexOf("func clearArrival"), code.indexOf("func markPrewalk"));
+
+  it("상태 문장은 실패 상태(denied·unavailable)가 남았을 때만 유지한다", () => {
+    // 문자열 리터럴은 공백으로 지워져 있으므로 대입 좌변까지만 본다.
+    expect(clear).toMatch(/if !status\.isFailure \{ statusText = /);
+    expect(clear).not.toMatch(/endKind != \.stopped/);
+    expect(clear).not.toMatch(/status == \.idle/);
+  });
+
+  it("liveTopText는 조건 없이 지운다(실패 문장이 사는 자리가 아니다)", () => {
+    expect(clear).toMatch(/^\s*liveTopText = nil\s*$/m);
   });
 });

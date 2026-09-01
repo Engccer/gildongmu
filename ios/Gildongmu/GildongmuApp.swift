@@ -182,6 +182,11 @@ struct GildongmuApp: App {
             // .task 대응짝은 불필요하다. .onChange만으로 충분하다.
             .onChange(of: directionsPrefillStore.pending) { _, newValue in consumeDirectionsPrefill(newValue) }
             .onChange(of: scenePhase) { _, phase in
+                // 세션이 탭 밖에 살므로 전경·배경 전환도 여기서 전달한다(N1). 유휴 리셋보다 **앞**이다
+                // (A31 축 ②): 오래된 종료 화면을 먼저 걷어야 리셋의 TabView 재생성에서 옛 시트가
+                // 한 프레임 떴다 닫히며 VoiceOver 포커스를 흔들지 않는다. 추적 중 세션은 리셋 대상이
+                // 아니라(`!guideSession.isActive` 가드) 순서가 그쪽에 영향을 주지 않는다.
+                guideSession.handleScenePhaseChange(to: phase)
                 switch phase {
                 case .background:
                     backgroundedAt = .now
@@ -202,8 +207,6 @@ struct GildongmuApp: App {
                 default:
                     break
                 }
-                // 세션이 탭 밖에 살므로 전경·배경 전환도 여기서 전달한다(N1).
-                guideSession.handleScenePhaseChange(to: phase)
             }
         }
     }

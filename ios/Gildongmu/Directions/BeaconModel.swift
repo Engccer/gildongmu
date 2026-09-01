@@ -24,6 +24,11 @@ final class BeaconModel {
         /// 위치 서비스 꺼짐·취득 실패. `denied`와 문구가 달라야 한다. 사용자가 취할
         /// 행동이 다르다(설정에서 권한 허용 vs 하늘이 트인 곳으로 이동).
         case unavailable
+
+        /// 사용자가 할 조치가 남은 상태 — 종료 화면을 닫아도 상태 문장·복구 버튼이 살아야 한다.
+        /// `failResolution != .none`이 아닌 이유: `.unavailable`은 복구 버튼 없이도 문장("하늘이 트인 곳")은
+        /// 남아야 한다. `status == .idle`이 아닌 이유: `.tracking`은 실패가 아니다(설계 리뷰 MAJOR ④).
+        var isFailure: Bool { self == .denied || self == .unavailable }
     }
 
     /// 안내 방식 = 거리의 기준(스펙 §3). 간략=직선(비콘, 전 수단), 상세=경로 추종.
@@ -418,7 +423,14 @@ final class BeaconModel {
     /// 건드리지 않는다(도착 직후의 stop()이 지우면 종료 화면이 성립하지 않는다).
     /// 종류는 `endKind`가 가른다 — 도착이 아닌 종료(`.stopped`)도 도보 세션이면 같은
     /// 화면을 걸음·칼로리 요약을 위해 남긴다(2026-08-19, `stopLeavingSummary`).
-    private(set) var arrivalDest: BeaconDest?
+    private(set) var arrivalDest: BeaconDest? {
+        // 종료 시각(A31 축 ②): 세 종료 경로가 따로 기록하지 않는다 — 경로마다 두면 하나가 빠진다.
+        didSet { endedAt = arrivalDest == nil ? nil : (oldValue == nil ? .now : endedAt) }
+    }
+    /// 종료 화면이 생긴 시각. **잠자기 중에도 전진하는 단조 시계** — `uptimeNow`(systemUptime)는 잠자기
+    /// 동안 멈춰 "주머니에 8시간"이 0분이 되고, 벽시계는 앞으로 교정되면 1분 된 새 화면을 30분 지난
+    /// 것으로 읽는다(설계 리뷰 MAJOR ⑤). 판정은 Kit `isEndScreenStale`.
+    private var endedAt: ContinuousClock.Instant?
 
     // MARK: - 승차 전 도보(prewalk, A25 spec 2026-08-30 §4.2)
 
@@ -487,13 +499,13 @@ final class BeaconModel {
     /// 않아 다음 세션까지 남는다(위원장 실사용 발견 2026-08-17: 도착 뒤 목적지를
     /// 바꿔 조회해도 첫 수단 섹션 위에 도착 문장이 남았다).
     func clearArrival() {
-        // ⚠ `.stopped`의 상태 줄은 이 화면의 것이 아니다 — 권한 상실 종료의 실패 문장
-        //   (`fail`)이 거기 있고, 화면을 닫은 뒤에도 인라인 상태 줄·복구 버튼의 근거로
-        //   남아야 한다. 도착 문장만 이 화면과 수명을 같이한다.
-        if endKind != .stopped {
-            statusText = ""
-            liveTopText = nil
-        }
+        // 판별선은 종료 종류가 아니라 **실패 상태 잔존**이다(A31 축 ③, spec 2026-09-02 §4). 권한 상실
+        // 종료는 `stopAndFail` → `.stopped` 화면 → `fail()`이 실패 문장을 `statusText`에 넣고 `status`를
+        // 올리므로, 화면을 닫은 뒤에도 그 문장·복구 버튼이 길찾기 탭 선두에 남아야 한다. 종전의
+        // `endKind != .stopped` 예외는 안전망·사용자 중지 종료(같은 `.stopped`)의 문장까지 영영 남겼다.
+        // `liveTopText`는 시트 내용이라 화면과 수명을 같이한다 — `fail()`이 쓰는 자리가 아니다.
+        liveTopText = nil
+        if !status.isFailure { statusText = "" }
         arrivalDest = nil
         arrivalSessionKind = nil
         endKind = .arrived
@@ -1459,6 +1471,25 @@ final class BeaconModel {
             wasBackgrounded = true
             UIApplication.shared.isIdleTimerDisabled = false
         case .active:
+            // 백그라운드 경유 플래그는 **맨 앞에서 소비**한다(설계 리뷰 MAJOR ②). 종전엔 추적 가드 뒤에서만
+            // 소비해 종료 화면 상태(비추적)에서 플래그가 영영 남았고, 그러면 제어센터 `.inactive` 왕복이
+            // 백그라운드 복귀로 오인된다.
+            let returnedFromBackground = wasBackgrounded
+            wasBackgrounded = false
+            // 오래된 종료 화면 소거(A31 축 ②, spec 2026-09-02 §3): 종료 뒤 30분이 지나 **백그라운드를 거쳐**
+            // 돌아왔으면 화면·띠바 요약·미뤄진 종료 통지를 함께 버린다(맥락 밖 낭독 금지 — 헌장 §6 ⑨ 동형).
+            // 상환 블록보다 앞이다: `clearArrival()`이 종료 문장을 지우면 아래 상환은 남은 실패 문장만
+            // 읽는다(권한 상실 뒤 돌아온 사용자가 들어야 할 것은 종료 사실이 아니라 권한 문장이다).
+            if returnedFromBackground, !isTracking, arrivalDest != nil, let endedAt {
+                let age = endedAt.duration(to: .now)
+                let seconds = Double(age.components.seconds) + Double(age.components.attoseconds) / 1e18
+                if isEndScreenStale(secondsSinceEnd: seconds) {
+                    guideDiagLog("endScreenExpired age=\(Int(seconds))")
+                    pendingFinalApproachIntro = nil
+                    pendingStepFreeNotice = nil
+                    clearArrival()
+                }
+            }
             // 도착 종료 화면이 열린 채 조회가 실패했으면 1회 재조회(spec 2026-08-17 §3 —
             // 도착 직후 정지·권한 응답 지연 구제). `.unavailable`은 다시 보지 않는다.
             if arrivalDest != nil, arrivalHealthLoad == .failed { loadArrivalHealth() }
@@ -1497,8 +1528,7 @@ final class BeaconModel {
             UIApplication.shared.isIdleTimerDisabled = true
             // `.background`를 거친 복귀에서만 앵커를 버린다. 제어센터를 잠깐 여는
             // `.inactive` 왕복까지 리셋하면 추세가 계속 초기화되고 절대거리가 재발화된다.
-            guard wasBackgrounded else { return }
-            wasBackgrounded = false
+            guard returnedFromBackground else { return }
             // 백그라운드 위치가 선언된 빌드는 공백이 없다 — 스트림이 계속 흘러 상태가
             // 이미 최신이므로, 리셋하면 사용자가 화면을 확인하는 순간 누적 추세
             // (가까워지는 중/멀어지는 중)를 오히려 버린다(독립 리뷰 MAJOR). 이 리셋은
