@@ -100,7 +100,10 @@ export function normalize(s: string): string {
 
 const PHONE_RE = /0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}/g;
 const TIME_RE = /(\d{1,2}):(\d{2})|(\d{1,2})\s*시\s*(\d{1,2})\s*분/g;
-const NUMBER_RE = /(\d[\d,]*(?:\.\d+)?)\s*(km|m|분|초|원|대|개|곳|호선|번|층|명|건)(?![a-z])/gi;
+// 단위 표는 dodo 이식본과 한 벌이다(D27, 2026-09-02): 온도 `도`·통화 `유로`·`€`는 dodo 여행 도메인이
+// 더한 것을 정본이 흡수한 것 — gildongmu 도메인엔 나오지 않아 채점 결과는 무변화이고, 흡수하지
+// 않으면 두 이식본이 갈라진다(PORTS.md 역제안 2026-08-25).
+const NUMBER_RE = /(\d[\d,]*(?:\.\d+)?)\s*(km|m|분|초|원|대|개|곳|호선|번|층|명|건|도|유로|€)(?![a-z])/gi;
 /** 시설 접미사가 붙은 토큰만 고유명사 후보로(과잉 추출 금지). */
 // 접두 2자 이상("구역"·"지역" 같은 일반어 배제), 접미사 뒤에는 조사 한 글자까지만 허용한다("길동소아과와" → 길동소아과).
 const NAME_RE =
@@ -159,6 +162,9 @@ const NEGATION_RE = /제공되지 않|제공하지 않|제공되지 않|확인�
 
 function grounded(e: Entity, corpus: string, corpusNumbers: number[]): boolean {
   if (corpus.includes(e.norm)) return true;
+  // 역 데이터는 어간("춘천")으로 오고 답변은 "춘천역"으로 쓴다 — 접미 하나만 벗겨 대조한다
+  // (C5 빈 응답 케이스 42, 2026-09-02). 다른 접미(점·병원)는 원문 그대로라 벗기지 않는다.
+  if (e.kind === "name" && e.norm.endsWith("역") && corpus.includes(e.norm.slice(0, -1))) return true;
   if (e.kind === "time") {
     // 값 경계(`|`)를 살려 좌표 127.1325가 13:25를 접지하지 않게 한다.
     const compact = e.norm.replace(":", "");

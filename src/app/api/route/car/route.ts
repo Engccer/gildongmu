@@ -3,6 +3,7 @@ import { z } from "zod";
 import { hasCarRouteKey, hasNcpMapsKeys } from "@/lib/env";
 import { isInKorea } from "@/lib/coverage";
 import { coordSchema } from "@/lib/route-coord-schema";
+import { langParam } from "@/lib/lang-param";
 import { checkCarRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import { getCarRoute } from "@/lib/car-route";
 import { getCarRouteBriefingEn } from "@/lib/providers/ncp-directions";
@@ -35,6 +36,10 @@ const querySchema = z.object({
   includeGeometry: z
     .union([z.literal("1"), z.null()])
     .transform((v) => v === "1"),
+  // 안내 문장 언어(E27 계약, 2026-09-02 통일): 누락=ko, 그 외는 정확히 ko/en만. 종전엔
+  // `=== "en"` 문자열 비교라 `EN`·`eng`가 조용히 한국어로 떨어졌다 — 그 응답은 `guidanceLang: "ko"`가
+  // 실려 폴백처럼 보이지만 실제로는 요청이 틀린 것이라, 400이 정직하다.
+  lang: langParam(),
 });
 
 export async function GET(request: NextRequest) {
@@ -43,6 +48,7 @@ export async function GET(request: NextRequest) {
     dest: request.nextUrl.searchParams.get("dest") ?? "",
     via: request.nextUrl.searchParams.get("via"),
     includeGeometry: request.nextUrl.searchParams.get("includeGeometry"),
+    lang: request.nextUrl.searchParams.get("lang"),
   });
   if (!parsed.success) {
     return NextResponse.json(
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
   // 폴백 사유 셋(키 부재·경유지·기하)은 전부 `guidanceLang: "ko"`로 응답에 드러난다.
   // 여기서 가르므로 아래 키 게이트도 ko 서비스 기준으로 돈다.
   const useNcp =
-    request.nextUrl.searchParams.get("lang") === "en" &&
+    parsed.data.lang === "en" &&
     hasNcpMapsKeys() &&
     !via &&
     !parsed.data.includeGeometry;

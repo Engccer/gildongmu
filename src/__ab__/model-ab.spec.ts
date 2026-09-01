@@ -122,7 +122,7 @@ async function runOne(real: GoogleGenAI, model: string, c: Case, rep: number): P
   const rounds: RoundStat[] = [];
   const toolOutputs: ToolOutput[] = [];
   const ctx: ExecutionContext = {
-    userLocation: c.withLocation === false ? undefined : HOME,
+    userLocation: c.withLocation === false ? undefined : (c.location ?? HOME),
     placeAnchor: c.place ? { lat: c.place.lat, lng: c.place.lng, name: c.place.name } : undefined,
     locale: "ko",
     dataLocale: dataLocale("ko"),
@@ -217,7 +217,7 @@ it("모델 A/B 실호출", async () => {
 
   const file: ResultFile = {
     run: { models: MODELS, repeats: REPS, only, measuredAt, interleaved: true, gitSha: gitSha() },
-    cases: cases.map(({ place, withLocation, ...rest }) => ({ ...rest, context: { place, withLocation } })),
+    cases: cases.map(({ place, withLocation, location, ...rest }) => ({ ...rest, context: { place, withLocation, location } })),
     results,
   };
   const dir = path.resolve(process.cwd(), ".ab-out");

@@ -85,7 +85,7 @@ const infoCommand = defineCommand({
       jsonData[section.jsonKey] = value ?? null;
       if (value === null || value === undefined) return; // null/빈은 생략
       lines.push(section.title);
-      lines.push(...FORMATTERS[section.catalog](result.value as never));
+      lines.push(...FORMATTERS[section.catalog](result.value as never, { lang: args.lang }));
     });
 
     // 3-state: 네 섹션이 모두 fulfilled인데 값이 전부 null(존재하지 않는 역명)이면

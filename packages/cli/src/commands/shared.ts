@@ -31,7 +31,7 @@ export const sharedArgs = {
  * 그대로다(포매터 i18n은 별개 마일스톤 — docs/BACKLOG.md E26 잔여).
  */
 export const langArgs = {
-  lang: { type: "string" as const, description: "ko|en (기본 ko) — 서버 응답 데이터·안내 문장의 언어" },
+  lang: { type: "string" as const, description: "ko|en (기본 ko) — 서버 응답 데이터·안내 문장의 언어. 그 외 값은 서버가 400으로 거절(chat은 지원 6로케일)" },
 };
 
 /** 카탈로그 이름 → 스펙 조회(없으면 throw) — 경로·파라미터 질의의 단일 진입점. */
@@ -89,7 +89,7 @@ export async function runEndpoint(
       return;
     }
     const formatter = FORMATTERS[name];
-    emit(data, formatter ? formatter(data as never) : [JSON.stringify(data)], mode);
+    emit(data, formatter ? formatter(data as never, { lang }) : [JSON.stringify(data)], mode);
   } catch (err) {
     if (err instanceof ApiError) fail(err.message, err.exitCode);
     fail(err instanceof Error ? err.message : String(err), ExitCode.Error);

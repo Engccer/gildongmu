@@ -264,6 +264,8 @@ interface CarRouteBriefingItem {
   tollFare: number;
   guides: CarRouteGuideItem[];
   waypoint?: RouteWaypointItem;
+  /** 안내 문장의 실제 언어(A26). en 요청이 ko로 폴백하면 "ko" — 구버전 서버 응답엔 없다. */
+  guidanceLang?: "ko" | "en";
 }
 
 interface TransitLegItem {
@@ -782,8 +784,15 @@ function formatBusRouteStops(body: { stops: BusRouteStopItem[] }): string[] {
 
 // ── 길찾기 ──────────────────────────────────────────────────────────────
 
+/**
+ * en 요청이 한국어 안내로 폴백했을 때의 표기(E29). 웹 `<li lang="ko">`·iOS `CarRouteRows`가
+ * 같은 사실을 표기하고, CLI text 모드만 이 줄이 없어 `--output json`의 `guidanceLang`에만 보였다.
+ * 판정은 **요청 lang과 응답 guidanceLang 둘 다**다 — 응답만 보면 ko 요청의 정상 응답과 구분되지 않는다.
+ */
+export const GUIDANCE_LANG_FALLBACK_LINE = "한국어 안내(영문 미제공)";
+
 /** envelope 없음 — body 자체가 CarRouteBriefing(카탈로그 envelope: ""). */
-function formatRouteCar(body: CarRouteBriefingItem): string[] {
+function formatRouteCar(body: CarRouteBriefingItem, ctx: FormatContext): string[] {
   const lines: string[] = [
     joinText(
       dist(body.distanceMeters),
@@ -792,6 +801,9 @@ function formatRouteCar(body: CarRouteBriefingItem): string[] {
       body.tollFare > 0 && `통행료 ${body.tollFare.toLocaleString()}원`,
     ),
   ];
+  // 폴백 사유(NCP 키 부재·경유지·기하 요청)는 서버가 가르고, CLI는 그 결과만 표기한다.
+  // 구버전 응답(guidanceLang 부재)은 판정 근거가 없어 침묵한다 — 부재를 ko로 읽지 않는다.
+  if (ctx.lang === "en" && body.guidanceLang === "ko") lines.push(GUIDANCE_LANG_FALLBACK_LINE);
   body.guides.forEach((g, i) => {
     if (body.waypoint?.stepIndex === i) lines.push(WAYPOINT_LINE);
     lines.push(joinText(`${i + 1}. ${g.guidance}`, g.distanceMeters > 0 ? m(g.distanceMeters) : undefined));
@@ -1037,7 +1049,20 @@ function formatBarrierFreeDetail(body: { detail: BarrierFreeDetailItem | null })
 
 // ── 레지스트리(키는 endpoint-catalog-shared.ts의 name과 일치) ───────────
 
-export const FORMATTERS: Record<string, (data: never) => string[]> = {
+/**
+ * 포매터가 응답 본문 밖에서 알아야 하는 것 — 지금은 요청 `lang` 하나다(E29).
+ * 호출자(`runEndpoint`·합성 명령)가 **반드시** 넘긴다: 기본값을 두면 lang을 빠뜨린 호출이
+ * 조용히 컴파일되고, 그 포매터는 "영어를 요청했는가"를 영영 모른다(폴백 표기 누락 = 원증상).
+ * 본문만 보는 포매터는 인자를 선언하지 않아도 된다(TypeScript 구조적 호환).
+ */
+export interface FormatContext {
+  /** 사용자가 요청한 응답 언어. lang을 받지 않는 명령·미지정은 undefined. */
+  lang: string | undefined;
+}
+
+export type Formatter = (data: never, ctx: FormatContext) => string[];
+
+export const FORMATTERS: Record<string, Formatter> = {
   "places-search": formatPlaces,
   "address-search": formatAddresses,
   "web-search": formatWebSearch,
