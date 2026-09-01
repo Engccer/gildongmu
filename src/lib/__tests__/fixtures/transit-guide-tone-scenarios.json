@@ -1,0 +1,1701 @@
+{
+  "comment": "추세 톤 계층 공유 fixture(E15 ②, spec 2026-09-02 §2.7) — 리듀서 입력 단위. 웹 transit-guide-tone.test.ts ↔ Kit TransitGuideToneTests가 transitGuideStep → transitToneStep을 잇는다. routes·locks는 transit-guide-scenarios.json을 참조한다. `at`은 ms(리듀서 시각)이고 층의 now는 at/1000(초). expect.tone은 톤 이름 또는 null(무음), anchor는 층 상태의 anchorRemaining, event는 리듀서 이벤트 kind(null = 이벤트 없음), phase·signal은 리듀서 상태.",
+  "scenarios": [
+    {
+      "name": "①②⑥⑩ 정상 진행 9→4 closer ×5, 사다리 3·2·1은 이벤트 소유(무음), 사다리 직후 같은 값 무음, 확정 도착 뒤 무음",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 60000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[9]번째 전역",
+                  "remainingStops": 9,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 9,
+            "event": "trackingStarted"
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[8]번째 전역",
+                  "remainingStops": 8,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 8
+          }
+        },
+        {
+          "at": 180000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[7]번째 전역",
+                  "remainingStops": 7,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 7
+          }
+        },
+        {
+          "at": 210000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 6
+          }
+        },
+        {
+          "at": 240000,
+          "input": {
+            "kind": "poll",
+            "seq": 6,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 5
+          }
+        },
+        {
+          "at": 270000,
+          "input": {
+            "kind": "poll",
+            "seq": 7,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        },
+        {
+          "at": 300000,
+          "input": {
+            "kind": "poll",
+            "seq": 8,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[3]번째 전역",
+                  "remainingStops": 3,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 3,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 315000,
+          "input": {
+            "kind": "poll",
+            "seq": 9,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[3]번째 전역 (다른 문장)",
+                  "remainingStops": 3,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 3,
+            "event": null
+          }
+        },
+        {
+          "at": 330000,
+          "input": {
+            "kind": "poll",
+            "seq": 10,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[2]번째 전역",
+                  "remainingStops": 2,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 2,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 345000,
+          "input": {
+            "kind": "poll",
+            "seq": 11,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "전역 출발",
+                  "remainingStops": 1,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "3"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 1,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 360000,
+          "input": {
+            "kind": "poll",
+            "seq": 12,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "여의도 도착",
+                  "remainingStops": 0,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "1"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": "arrived"
+          }
+        },
+        {
+          "at": 375000,
+          "input": {
+            "kind": "poll",
+            "seq": 13,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "여의도 도착",
+                  "remainingStops": 0,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "1"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": null
+          }
+        },
+        {
+          "at": 390000,
+          "input": {
+            "kind": "poll",
+            "seq": 14,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "③ 식별자 잠금의 잔여 증가는 farther, 다시 줄면 closer",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 6
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[7]번째 전역",
+                  "remainingStops": 7,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "farther",
+            "anchor": 7,
+            "event": null
+          }
+        },
+        {
+          "at": 180000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역 (재)",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "④ 소실: 진입 폴은 이벤트가 소유(무음), 60초 뒤 unreliable, 재관측 폴은 이벤트 소유(무음)+재앵커",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 200000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 6
+          }
+        },
+        {
+          "at": 215000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "tracking"
+          }
+        },
+        {
+          "at": 230000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "tracking"
+          }
+        },
+        {
+          "at": 245000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "signalLost",
+            "event": "signalLost"
+          }
+        },
+        {
+          "at": 260000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 275000,
+          "input": {
+            "kind": "poll",
+            "seq": 6,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 290000,
+          "input": {
+            "kind": "poll",
+            "seq": 7,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 305000,
+          "input": {
+            "kind": "poll",
+            "seq": 8,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": "unreliable"
+          }
+        },
+        {
+          "at": 320000,
+          "input": {
+            "kind": "poll",
+            "seq": 9,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 335000,
+          "input": {
+            "kind": "poll",
+            "seq": 10,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": "signalRecovered",
+            "signal": "tracking"
+          }
+        },
+        {
+          "at": 350000,
+          "input": {
+            "kind": "poll",
+            "seq": 11,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑤ 조회 실패: 통지 폴 무음, 회복 폴(이벤트 + signalLost 잔존 + 60초 경과)은 이벤트 소유라 무음(순서 변이 킬러), 그 60초 뒤 unreliable, 재관측 뒤 closer",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 200000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 6
+          }
+        },
+        {
+          "at": 215000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 230000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 245000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "upstreamFailed",
+            "event": "upstreamFailed"
+          }
+        },
+        {
+          "at": 260000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 275000,
+          "input": {
+            "kind": "poll",
+            "seq": 6,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 290000,
+          "input": {
+            "kind": "poll",
+            "seq": 7,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "failed"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 320000,
+          "input": {
+            "kind": "poll",
+            "seq": 8,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "signalLost",
+            "event": "signalRecovered"
+          }
+        },
+        {
+          "at": 335000,
+          "input": {
+            "kind": "poll",
+            "seq": 9,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 350000,
+          "input": {
+            "kind": "poll",
+            "seq": 10,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 365000,
+          "input": {
+            "kind": "poll",
+            "seq": 11,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 380000,
+          "input": {
+            "kind": "poll",
+            "seq": 12,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": "unreliable"
+          }
+        },
+        {
+          "at": 395000,
+          "input": {
+            "kind": "poll",
+            "seq": 13,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": "signalRecovered"
+          }
+        },
+        {
+          "at": 410000,
+          "input": {
+            "kind": "poll",
+            "seq": 14,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑦ 추정 도착은 억제하지 않는다 — 소실 지속 60초에 unreliable, 재관측 backOnTrack은 이벤트 소유",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[3]번째 전역",
+                  "remainingStops": 3,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 3
+          }
+        },
+        {
+          "at": 135000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[2]번째 전역",
+                  "remainingStops": 2,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 2,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "전역 출발",
+                  "remainingStops": 1,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "3"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 1,
+            "event": "countdown"
+          }
+        },
+        {
+          "at": 165000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 180000,
+          "input": {
+            "kind": "poll",
+            "seq": 5,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "phase": "arrived",
+            "event": "arrived"
+          }
+        },
+        {
+          "at": 195000,
+          "input": {
+            "kind": "poll",
+            "seq": 6,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null,
+            "signal": "signalLost",
+            "event": "signalLost"
+          }
+        },
+        {
+          "at": 210000,
+          "input": {
+            "kind": "poll",
+            "seq": 7,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 225000,
+          "input": {
+            "kind": "poll",
+            "seq": 8,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 240000,
+          "input": {
+            "kind": "poll",
+            "seq": 9,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 255000,
+          "input": {
+            "kind": "poll",
+            "seq": 10,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "empty"
+            }
+          },
+          "expect": {
+            "tone": "unreliable",
+            "phase": "arrived"
+          }
+        },
+        {
+          "at": 270000,
+          "input": {
+            "kind": "poll",
+            "seq": 11,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "전역 출발 (재)",
+                  "remainingStops": 1,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "3"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 1,
+            "phase": "riding",
+            "event": "backOnTrack"
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑧ 잔여 추출 실패 폴은 앵커 불변(이벤트·무이벤트 둘 다), 다음 유효 잔여에 closer",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5
+          }
+        },
+        {
+          "at": 135000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "운행중 (문장 변경)",
+                  "remainingStops": null,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": "messageChanged"
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "운행중 (문장 변경)",
+                  "remainingStops": null,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": null
+          }
+        },
+        {
+          "at": 165000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑨ 동일 스냅숏 무정보 폴은 무음, 새 스냅숏의 감소에 closer",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99",
+                  "dataStamp": "s1",
+                  "dataAgeSeconds": 10
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5
+          }
+        },
+        {
+          "at": 135000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99",
+                  "dataStamp": "s1",
+                  "dataAgeSeconds": 25
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": null
+          }
+        },
+        {
+          "at": 150000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99",
+                  "dataStamp": "s1",
+                  "dataAgeSeconds": 40
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5,
+            "event": null
+          }
+        },
+        {
+          "at": 165000,
+          "input": {
+            "kind": "poll",
+            "seq": 4,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[4]번째 전역",
+                  "remainingStops": 4,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99",
+                  "dataStamp": "s2",
+                  "dataAgeSeconds": 5
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 4
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑪ 탑승 변경(phaseGen↑) 뒤 재잠금은 앵커 리셋 — 새 첫 관측 7이 farther가 아니다",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 0,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null
+          }
+        },
+        {
+          "at": 120000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 2,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[5]번째 전역",
+                  "remainingStops": 5,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 5
+          }
+        },
+        {
+          "at": 130000,
+          "input": {
+            "kind": "changeBoarding"
+          },
+          "expect": {
+            "tone": null,
+            "phase": "waiting"
+          }
+        },
+        {
+          "at": 140000,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null,
+            "phase": "boarding"
+          }
+        },
+        {
+          "at": 140000,
+          "input": {
+            "kind": "confirmBoarded"
+          },
+          "expect": {
+            "tone": null,
+            "phase": "riding"
+          }
+        },
+        {
+          "at": 200000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 5,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[7]번째 전역",
+                  "remainingStops": 7,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "anchor": 7,
+            "event": "trackingStarted"
+          }
+        },
+        {
+          "at": 215000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 5,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[6]번째 전역",
+                  "remainingStops": 6,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": "closer",
+            "anchor": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "⑫ boarding 국면(승차 정류소 접근)엔 추세 톤이 없다",
+      "route": "subwaySingle",
+      "steps": [
+        {
+          "at": 0,
+          "input": {
+            "kind": "board",
+            "lock": "subway5696"
+          },
+          "expect": {
+            "tone": null,
+            "phase": "boarding"
+          }
+        },
+        {
+          "at": 20000,
+          "input": {
+            "kind": "poll",
+            "seq": 1,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[9]번째 전역",
+                  "remainingStops": 9,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": "approaching"
+          }
+        },
+        {
+          "at": 40000,
+          "input": {
+            "kind": "poll",
+            "seq": 2,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[8]번째 전역",
+                  "remainingStops": 8,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": null,
+            "phase": "boarding"
+          }
+        },
+        {
+          "at": 60000,
+          "input": {
+            "kind": "poll",
+            "seq": 3,
+            "phaseGen": 1,
+            "poll": {
+              "kind": "ok",
+              "items": [
+                {
+                  "vehicleId": "5696",
+                  "direction": "하행",
+                  "message": "[7]번째 전역",
+                  "remainingStops": 7,
+                  "destinationName": "하남검단산",
+                  "express": false,
+                  "arrivalCode": "99"
+                }
+              ]
+            }
+          },
+          "expect": {
+            "tone": null,
+            "event": null,
+            "phase": "boarding"
+          }
+        }
+      ]
+    }
+  ]
+}
