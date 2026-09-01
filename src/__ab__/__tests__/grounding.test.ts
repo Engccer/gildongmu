@@ -82,6 +82,22 @@ describe("scoreGrounding — 엔티티 대조", () => {
     const r = scoreGrounding({ fromTools: ["t"], fields: ["*"], kinds: ["time"] }, outputs, "13:25에 오고 05:30에 첫차");
     expect(r.leaked).toEqual(["time:13:25"]);
   });
+  it("앞자리 0 없는 HHMM 정수(진료시간 800)가 답변의 08:00을 접지한다(C5 1차 실측)", () => {
+    const outputs = [{ name: "t", response: { hours: [{ start: 800, end: 1830 }] } }];
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["time"] as const };
+    expect(scoreGrounding(g, outputs, "오늘 08:00 ~ 18:30")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(g, outputs, "오늘 09:00부터").leaked).toEqual(["time:09:00"]);
+  });
+  it("예시 괄호 '(예: 강남역)' 안의 이름은 사실 주장이 아니라 대조하지 않는다 — 괄호 밖은 그대로", () => {
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+    expect(scoreGrounding(g, [], "역 이름(예: 강남역, 천호역)을 말씀해 주세요")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(g, [], "(예: '천호역 도착 정보 알려줘')로 물어보세요")).toEqual({ pass: true, leaked: [] });
+    expect(scoreGrounding(g, [], "예를 들어 강남역이 가깝습니다").leaked).toEqual(["name:강남역"]);
+  });
+  it("범주 이름(달빛어린이병원·종합병원)은 시설명 후보가 아니다", () => {
+    const g = { fromTools: ["t"], fields: ["*"], kinds: ["name"] as const };
+    expect(scoreGrounding(g, [], "달빛어린이병원이 없습니다. 인근 종합병원 응급실을 고려하세요.")).toEqual({ pass: true, leaked: [] });
+  });
   it("도구에 없는 전화번호·수치는 leaked 로 잡는다", () => {
     const r = scoreGrounding(spec, clinics, "길동소아과 02-999-0000, 3층에 있어요");
     expect(r.pass).toBe(false);
