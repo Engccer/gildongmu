@@ -59,6 +59,8 @@ describe("GET /api/station/metro-facilities — lang", () => {
     expect(guides[1].parts).toEqual({ location: "7번 출구", line: "99" });
     // 노선 없는 그룹은 손대지 않는다.
     expect(en.facilities.groups[0]).toEqual(FOUND.groups[0]);
+    // 입력을 변형하지 않는다(en 투영이 provider 반환값을 건드리면 같은 프로세스의 ko 응답이 오염된다).
+    expect(FOUND.groups[1].facilities[0].parts).not.toHaveProperty("lineEn");
   });
 
   it("미커버 역은 en에서도 facilities:null", async () => {
