@@ -14,7 +14,8 @@ import {
  * `briefHandoff reason=tooClose`로 간략 인계된 뒤 dist 24.3m 고정·nearby=true로 20분을 살다
  * 09:05 국면 무관 안전망이 끝냈다. 이 설계(간략 근처 창)로는 인계 뒤 도착 추정 stationary(300초) 안에
  * 끝나야 하고, 그 전엔 침묵이어야 한다. 배선 순서는 `BeaconModel` 간략 fix 처리와 같다:
- * 창 리듀서 → 앵커 전진 → `presumedArrivalStep`.
+ * 창 리듀서 → 앵커 전진 → `presumedArrivalStep`. ⚠ fixture의 `nearby`는 로그가 fix 처리 **전**에 찍은 값이라
+ * 코드(`stepped.state.nearby`, 처리 후)보다 한 fix(~1초) 늦게 진입한다 — 1초 단위 판정엔 쓰지 말 것.
  *
  * 실데이터의 굴곡: 인계 36~45초 뒤 건물 진입으로 정확도가 40→106m로 열화한 fix 10건이 있고(그동안
  * dist 20~21m·nearby 유지), 그 뒤 wifi 측위가 24.3m·정확도 5~17m로 고정된다. 설계상 그 10건은 "창 밖"이라

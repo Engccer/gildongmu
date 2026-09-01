@@ -379,10 +379,8 @@ final class BeaconModel {
     private(set) var inFinalApproach = false
     /// 세션이 쥔 종점 오프셋 기하. 재조회 시 통째로 교체한다(새 경로는 새 종점이다).
     private var finalApproachGeometry: FinalApproachPayload?
-    // 도착 추정(spec 2026-08-13): 최종 접근 한정 상태. resetFinalApproach가 전부
-    // 소거하고 beginFinalApproach가 에피소드 기준을 다시 세운다 — 이전 에피소드
-    // 값이 새 에피소드로 새면 조기 종료가 된다(§4 상태 초기화 계약).
-    // 도착 창 에피소드(spec 2026-09-02 §2.2): 최종 접근 국면 **또는** 간략 근처 창이 소유한다. 진입
+    // 도착 추정 에피소드(spec 2026-08-13 §4 상태 초기화 계약 — 이전 에피소드 값이 새 에피소드로 새면
+    // 조기 종료다). 2026-09-02 §2.2부터 **도착 창**(최종 접근 국면 또는 간략 근처 창)이 소유한다: 진입
     // 순간에 항상 재초기화되고, `resetArrivalWindow()`가 통째로 지운다.
     private var arrivalWindowEnteredAt: Double?
     private var progressAnchor: RoutePoint?
@@ -1537,7 +1535,9 @@ final class BeaconModel {
             guard !LocationService.backgroundLocationDeclared else { return }
             beaconState = .initial
             gateState = .initial
-            resetArrivalWindow()  // 래치를 지웠으니 간략 창 에피소드도 함께(다음 fix가 다시 연다)
+            // 래치를 지웠으니 간략 창 에피소드도 함께(다음 fix가 다시 연다). 최종 접근 창은 이 리셋과
+            // 무관하다 — 지우면 `beginFinalApproach`가 다시 돌지 않는 에피소드 안에서 추정 도착이 영구 침묵한다.
+            if !inFinalApproach { resetArrivalWindow() }
             lastFixAt = nil
             startedAt = ProcessInfo.processInfo.systemUptime
             suppressNextNotice = true
@@ -2162,7 +2162,8 @@ final class BeaconModel {
 
     /// 국면 무관 세션 안전망(2026-08-26 위원장 실사용 — 출근 도보 안내를 끄지 않아 몇 시간이고
     /// 켜져 있었다). 도착 추정은 최종 접근 국면에 들어간 세션만 정리하므로 그 문을 못 지난
-    /// 세션(GPS 두절·이탈 상태로 종점 접근·간략 강등·150m 밖 실내 진입)은 이 축만이 끝낸다.
+    /// 세션(GPS 두절·이탈 상태로 종점 접근·150m 밖 실내 진입·정확도 30~100m로 목적지 근처에 멈춘 간략
+    /// 세션)은 이 축만이 끝낸다. 간략 강등 세션 자체는 2026-09-02 A31부터 도착 창으로 끝날 수 있다.
     /// 자동차는 두절 축만이다(`GuideTuning.sessionIdleStationaryAxis`, spec 2026-08-31 §4) — 무이동은
     /// 정체·휴게소 정차와 구분할 수 없다. 워치독이 유일한 도달 경로다(noFix는 fix가 안 와서 fix 경로에
     /// 걸 수 없다). true = 끝냈다.
