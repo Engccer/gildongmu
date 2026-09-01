@@ -45,12 +45,19 @@ public struct TransitDisplayItem: Codable, Sendable, Equatable {
     public let selectable: Bool
 }
 
-/// 영문 조각 정규화 — **빈 문자열은 영문이 아니다**(spec §3.4). 이름·방향·종착역의 `""`는
-/// 정보 소실이라 그대로 두면 줄 원자성 판정이 "완비"로 읽어 `Boarded . Get off at .`를 만든다.
-/// `message` 슬롯만 이 함수를 지나지 않는다.
+/// 조각 정규화 — 두 방향을 함께 본다(spec §3.4, 웹 `label` 미러).
+///
+/// ① **영문 자리의 빈 문자열은 영문이 아니다** — 정보 소실이 "완비"로 위장한다.
+/// ② ⚠ **ko가 비어 있으면 그 조각은 언어 축이 아니다.** ko에도 없는 것을 "영문 결측"으로 세면
+/// 나머지가 전부 영문이어도 줄 전체가 한국어로 되돌아간다(서울버스 `direction`이 구조적 `""`).
 private func transitLabel(_ ko: String?, _ en: String?) -> TransitLabel {
-    let trimmed = en?.trimmingCharacters(in: .whitespacesAndNewlines)
-    return TransitLabel(ko: ko ?? "", en: (trimmed?.isEmpty == false) ? en : nil)
+    let koText = ko ?? ""
+    let trimmedEn = en?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let enText: String? = (trimmedEn?.isEmpty == false) ? en : nil
+    if koText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        return TransitLabel(ko: koText, en: enText ?? "")
+    }
+    return TransitLabel(ko: koText, en: enText)
 }
 
 private func stopLabel(_ stop: TransitLegStop) -> TransitLabel {

@@ -45,13 +45,21 @@ export interface TransitDisplayItem {
 }
 
 /**
- * 영문 조각 정규화 — **빈 문자열은 영문이 아니다**(spec §3.4 ⚠).
- * 이름·방향·종착역의 `""`는 "비어도 된다"가 아니라 정보 소실이라, 그대로 두면 줄 원자성 판정이
- * "완비"로 읽어 `Boarded . Get off at .` 같은 줄을 만든다. `message` 슬롯만 이 함수를 지나지 않는다.
+ * 조각 정규화 — 두 방향을 함께 본다(spec §3.4 ⚠).
+ *
+ * ① **영문 자리의 빈 문자열은 영문이 아니다.** 이름·방향·종착역의 `""`는 "비어도 된다"가 아니라
+ * 정보 소실이라, 그대로 두면 줄 원자성 판정이 "완비"로 읽어 `Boarded . Get off at .`를 만든다.
+ * ② ⚠ **ko가 비어 있으면 그 조각은 언어 축이 아니다.** ko에도 없는 것을 "영문 결측"으로 세면
+ * 나머지 조각이 전부 영문이어도 줄 전체가 한국어로 되돌아간다 — 서울버스는 `direction`이
+ * 구조적으로 `""`(서버가 `directionEn`을 만들지 않는다)라, 이 정규화가 없으면 서버가 만든
+ * `In 6 min 47 sec`가 대기 후보 목록에서 통째로 버려진다(리뷰 2인 독립 검출).
+ * CLAUDE.md 계약 그대로다: "`""`는 ko에도 그 조각이 없다는 자리 표시라 영어 줄이 성립한다."
  */
 function label(ko: string | undefined, en: string | undefined): TransitLabel {
-  const trimmed = en?.trim();
-  return { ko: ko ?? "", ...(trimmed ? { en } : {}) };
+  const koText = ko ?? "";
+  const enText = en?.trim() ? en : undefined;
+  if (!koText.trim()) return { ko: koText, en: enText ?? "" };
+  return { ko: koText, ...(enText ? { en: enText } : {}) };
 }
 
 function stopLabel(stop: TransitLegStop): TransitLabel {

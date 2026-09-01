@@ -85,12 +85,14 @@ export function TransitGuidePanel({
    * 선택 차량 설명을 **ko·en 쌍**으로 얼린다 — 렌더 문자열을 저장하면 세션 도중 언어를 바꿨을 때
    * 그 조각만 옛 언어로 남는다(안정 조각인 행선·방향만, 완성 문장은 폴마다 바뀐다).
    */
-  const descLabelOf = (item: ReturnType<typeof transitDisplayItem>): TransitLabel => {
+  const descLabelOf = (item: ReturnType<typeof transitDisplayItem>): TransitLabel | null => {
     const en = vehicleDescLine(true, item);
-    return {
-      ko: render(vehicleDescLine(false, item)),
-      ...(en.lang === "en" ? { en: render(en) } : {}),
-    };
+    const ko = render(vehicleDescLine(false, item));
+    // ⚠ **비면 null이다.** 서울버스는 행선·방향이 둘 다 없어 설명이 빈 문자열인데, 빈 라벨
+    // 객체는 truthy라 상시 표시에 "선택한 차량: ." 같은 빈 슬롯이 뜬다(종전엔 `""`가 falsy라
+    // 줄이 통째로 생략됐다). null이면 `vehicleSelectedLine`의 노선명 폴백도 주석대로 산다.
+    if (!ko) return null;
+    return { ko, ...(en.lang === "en" ? { en: render(en) } : {}) };
   };
 
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -117,6 +119,11 @@ export function TransitGuidePanel({
   /** 선언 버튼이 세운다 — 세션 claim이 도보 세션을 멈추며 내는 "ended"를 취소로 읽지 않게. */
   const declaredRef = useRef(false);
   const active = open || prewalk !== null;
+  /** 승차 전 도보 "도착" 버튼 라벨 — 줄과 lang을 함께 쓰므로 한 번만 만든다. */
+  const prewalkArrivedButtonLabel = prewalkArrivedButtonLine(isEn, {
+    ko: prewalk?.name ?? "",
+    ...(prewalk?.nameEn ? { en: prewalk.nameEn } : {}),
+  });
   const beginPrewalk = (target: TransitPrewalkTarget) => {
     declaredRef.current = false;
     setPrewalk(target);
@@ -276,13 +283,11 @@ export function TransitGuidePanel({
             type="button"
             onClick={finishPrewalk}
             className="mt-2 min-h-11 rounded-md border border-blue-700 px-3 text-sm text-blue-700 dark:text-blue-300"
+            // ⚠ 역명이 한국어 폴백이면 이 줄도 ko로 태그한다 — 지하 진입으로 도착 판정이 닿지
+            // 않을 때의 유일한 탈출구라, 영어 엔진이 역명을 삼키면 라벨의 존재 이유가 없어진다.
+            lang={langOf(prewalkArrivedButtonLabel)}
           >
-            {render(
-              prewalkArrivedButtonLine(isEn, {
-                ko: prewalk.name,
-                ...(prewalk.nameEn ? { en: prewalk.nameEn } : {}),
-              }),
-            )}
+            {render(prewalkArrivedButtonLabel)}
           </button>
         </div>
       )}
@@ -426,7 +431,7 @@ export function TransitGuidePanel({
                         );
                       }
                       return (
-                        <li key={option.key} className="mt-1">
+                        <li key={option.key} className="mt-1" lang={langOf(descLine)}>
                           <button
                             type="button"
                             // aria-disabled는 활성화를 실제로 막지 못한다 — 핸들러
@@ -435,6 +440,7 @@ export function TransitGuidePanel({
                             onClick={() => {
                               if (!item.vehicleId) return;
                               // 설명은 안정 조각(행선·방향)만 — 완성 문장은 폴마다 바뀐다.
+                              // 설명이 비면 null — 훅이 노선명 폴백으로 문장을 만든다.
                               guide.boardCandidate(option.candidate, descLabelOf(displayItem));
                             }}
                             aria-disabled={!item.vehicleId}
@@ -556,7 +562,7 @@ export function TransitGuidePanel({
                         onClick={() => guide.changeBoardingAt(index)}
                         className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                         // 한국어 라벨일 때만 ko 태그 — 영문 라벨에 붙이면 영어를 한국어 엔진이 읽는다.
-                        lang={stop.en ? undefined : "ko"}
+                        lang={isEn && !stop.en ? "ko" : undefined}
                       >
                         {label}
                       </button>

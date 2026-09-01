@@ -57,7 +57,9 @@ describe("실시간 추적 영문 조각 (E27 잔여 ①, spec 2026-09-01 §3.2)
     });
     const en = await trackSeoulWait({ arsId: "1", routeId: "2", lang: "en" });
     if (en.status !== "ok") throw new Error("ok 기대");
-    expect(en.items[0].messageEn).toBe("In 6 min 47 sec");
+    // 대기 국면은 잔여 정거장을 붙인다 — ko 원문의 꼬리가 그 정보의 유일한 채널이라
+    // en에서만 잃으면 "몇 번째 전 버스인가"를 en 사용자만 못 듣는다.
+    expect(en.items[0].messageEn).toBe("In 6 min 47 sec, 4 stops away");
     expect(en.items[0]).not.toHaveProperty("directionEn");
     expect(en.items[0]).not.toHaveProperty("destinationNameEn");
     // 한국어 필드는 en 응답에서도 한국어다(원칙 1) — 조인 경로가 이 값으로 돈다.

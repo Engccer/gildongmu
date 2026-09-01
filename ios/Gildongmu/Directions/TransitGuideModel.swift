@@ -262,7 +262,7 @@ final class TransitGuideModel {
     /// 기다린다 — riding 승격은 상태 머신이 관측으로 한다. `description`은 선택 차량의
     /// 안정 설명(행선·방향 — 폴마다 바뀌는 완성 문장은 제외)으로 상시 표시·통지에 쓴다.
     /// dispatch **전에** 동기로 보관해 vehicleSelected 통지가 빈 설명을 읽지 않는다.
-    func board(item: TransitTrackItem, description: TransitLabel) {
+    func board(item: TransitTrackItem, description: TransitLabel?) {
         guard let leg = currentLeg, let trackMode = leg.trackMode else { return }
         let lock = TransitLock(
             mode: trackMode,

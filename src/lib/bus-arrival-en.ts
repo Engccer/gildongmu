@@ -74,7 +74,16 @@ export function busArrivalMessageEn(parsed: BusArrmsg, phase: "wait" | "ride"): 
       // 분·초가 둘 다 0이면 남은 시간이 없다는 뜻인데 "In " / " left"에 담을 값이 없다 — 부재.
       if (parts.length === 0) return undefined;
       const body = parts.join(" ");
-      return phase === "wait" ? `In ${body}` : `${body} left`;
+      // ⚠ **대기 국면에선 잔여 정거장을 붙인다.** ko 원문은 꼬리 `[N번째 전]`을 달고 있고
+      // 대기 후보 목록은 `remainingStops`를 따로 렌더하지 않으므로(`rewriteBusArrivalMessage`
+      // 주석) **그 꼬리가 잔여 정보의 유일한 채널**이다 — 안 붙이면 en 사용자만 "몇 번째 전
+      // 버스인가"를 못 듣는다. 승차 국면은 상태줄이 잔여 수를 따로 말하므로 붙이지 않는다.
+      const eta = phase === "wait" ? `In ${body}` : `${body} left`;
+      const stops = parsed.remainingStops;
+      if (phase === "wait" && stops != null && stops > 0) {
+        return `${eta}, ${stops === 1 ? "1 stop away" : `${stops} stops away`}`;
+      }
+      return eta;
     }
     default:
       return undefined;

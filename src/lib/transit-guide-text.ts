@@ -13,6 +13,7 @@
  * 어순이 다른 로케일은 변환 스크립트가 인덱스를 재배치하므로 호출부는 이 순서 하나만 지킨다.
  */
 import type { TransitDisplayItem, TransitDisplayLeg, TransitLabel } from "./transit-display";
+import { subwayRidingMessage } from "./transit-guide";
 
 /** 한 조각: i18n 키(+위치 인자) 또는 완성 문장 원문(서버가 준 그대로 병치). */
 export type TransitTextPart = { key: string; args: string[] } | { text: string };
@@ -130,26 +131,18 @@ export function approachFrameLine(
 }
 
 /**
- * A27 승차 국면 지하철 문장 종류 — **언어 무관 판정**이라 여기서 키만 고른다.
- * (정본은 `transit-guide.ts`의 `subwayRidingMessage`이고 이 함수는 그 결과를 키로 옮긴다.)
+ * A27 승차 국면 지하철 문장 종류 — **판정은 `subwayRidingMessage`가 정본**이고 여기서는 그 결과를
+ * i18n 키로 옮기기만 한다.
+ *
+ * ⚠ 판정을 여기에 다시 쓰면 안 된다(리뷰 검출 2026-09-01): 그러면 CLAUDE.md가 정본이라 부르는
+ * 함수의 프로덕션 호출자가 0이 되어 공유 fixture만 초록인 채로 남고, `arvlCd`를 하나 더해도
+ * 실제 문장은 안 따라오는 조용한 드리프트 경로가 생긴다.
  */
 function subwayRidingKey(code: string | null): string | "omit" | null {
-  switch (code) {
-    case "3":
-    case "4":
-    case "5":
-      return "subwayNextStop";
-    case "0":
-      return "subwayArriving";
-    case "1":
-      return "subwayAtStop";
-    case "2":
-      return "subwayDeparted";
-    case "99":
-      return "omit";
-    default:
-      return null;
-  }
+  const r = subwayRidingMessage(code);
+  if (r.kind === "omit") return "omit";
+  if (r.kind === "key") return r.key;
+  return null;
 }
 
 // === 이벤트 통지 ===

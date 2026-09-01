@@ -9,8 +9,18 @@ import GildongmuKit
 /// `transitTextKeys`와 대조해 강제한다(앱 타깃엔 테스트 레인이 없다).
 enum TransitGuideTextRenderer {
     /// 한 줄 → 문자열. 조각을 각자 조회해 쉼표로 잇는다(빈 조각 제거 — 웹 `joinText` 미러).
+    ///
+    /// ⚠ **en 세션에서 ko로 떨어진 줄은 계측한다**(spec §3.8). iOS는 줄 단위 언어 태깅 수단이
+    /// 아직 없어 한국어 폴백이 영어 음성에 삼켜질 수 있는데, 그것을 수용 위험으로 넘기는 대신
+    /// **관측 가능하게** 만드는 것이 그 절의 조건이다. 실승차에서 한글이 들렸을 때 이 로그가
+    /// 있으면 "서버가 영문을 못 만든 정상 폴백", 없으면 "배선 누락"으로 갈린다 — 화면만으로는
+    /// 못 가르는 구분이고 FIELD-TEST §5-6이 그 회수를 전제한다.
     static func render(_ line: TransitTextLine) -> String {
-        line.parts.map(part).filter { !$0.isEmpty }.joined(separator: ", ")
+        if transitGuideIsEn, line.lang == "ko", !line.parts.isEmpty {
+            let keys = line.parts.compactMap(\.key).joined(separator: ",")
+            transitGuideLog("koFallback keys=\(keys.isEmpty ? "(raw)" : keys)")
+        }
+        return line.parts.map(part).filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     private static func part(_ p: TransitTextPart) -> String {

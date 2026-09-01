@@ -453,9 +453,10 @@ struct TransitTrackingSheet: View {
             // 빠른하차(E5) — 열차 목록 **앞**. 국면 전환으로 조용히 나타나는 문장이라
             // 포커스 착지점(waitingLabel) 뒤에 두어야 앞으로 스와이프해서 만난다.
             // 통지는 만들지 않는다(정적 정보라 상태 변화가 없다).
-            if let quickExit = quickExitText(
-                leg.quickExit, station: leg.alightName, lang: AppLanguage.current)
-            {
+            // ⚠ 역명은 **표시 라벨**이다(E27 잔여 ①) — 조인 필드를 그대로 넣으면 영어 틀에
+            // 한국어 역명이 섞인다(웹은 같은 자리를 이미 고쳤다). 영문이 없으면 문장 전체가
+            // 한국어가 되도록 `lang`도 함께 ko로 내린다.
+            if let quickExit = quickExitLine(leg) {
                 Text(quickExit)
             }
             if classified.candidates.isEmpty {
@@ -499,7 +500,12 @@ struct TransitTrackingSheet: View {
         // ⚠ **라벨은 표시(en 가능)이고 값은 인덱스**다 — 조회 쿼리는 모델이 인덱스로
         // viaStops의 한국어 원문을 되찾는다(조인/표시 분리, spec §3.5·§3.6).
         ForEach(Array(model.displayLeg(leg, useOverride: false).stops.enumerated()), id: \.offset) { index, stop in
-            Button(stop.en ?? stop.ko) { model.changeBoarding(at: index) }
+            // ⚠ 언어 축은 로케일(`transitGuideIsEn`)이지 **데이터 유무가 아니다** — 데이터로
+            // 고르면 세션 도중 ko로 바꿨을 때 이 버튼만 영어로 남는다(spec §3.9가 세션 재시작을
+            // 하지 않기로 했다).
+            Button(transitGuideIsEn ? (stop.en ?? stop.ko) : stop.ko) {
+                model.changeBoarding(at: index)
+            }
         }
         Button(appLocalized("transitGuide.reboardCancel")) {
             model.cancelReboard()
@@ -566,6 +572,22 @@ struct TransitTrackingSheet: View {
         }
     }
 
+    /// 빠른하차 줄 — 하차역명을 표시 라벨로 넘긴다(영문 없으면 한국어 원문).
+    private func quickExitLine(_ leg: TransitGuideLeg) -> String? {
+        let alight = model.displayLeg(leg, useOverride: false).alight
+        let station = transitGuideIsEn ? (alight.en ?? alight.ko) : alight.ko
+        return quickExitText(leg.quickExit, station: station, lang: AppLanguage.current)
+    }
+
+    /// 선택 차량 설명을 ko·en 쌍으로 얼린다. **비면 nil** — 서울버스는 행선·방향이 둘 다 없어
+    /// 설명이 빈 문자열인데, 빈 라벨은 non-nil이라 상시 표시에 "선택한 차량: ." 빈 슬롯이 뜬다.
+    private func vehicleDescLabel(_ item: TransitDisplayItem) -> TransitLabel? {
+        let ko = TransitGuideTextRenderer.render(transitVehicleDescLine(isEn: false, item: item))
+        guard !ko.isEmpty else { return nil }
+        let en = transitVehicleDescLine(isEn: true, item: item)
+        return TransitLabel(ko: ko, en: en.lang == "en" ? TransitGuideTextRenderer.render(en) : nil)
+    }
+
     @ViewBuilder private func candidateRow(
         _ candidate: TransitBoardingCandidate, leg: TransitGuideLeg
     ) -> some View {
@@ -598,11 +620,7 @@ struct TransitTrackingSheet: View {
             )) {
                 // 설명은 ko·en 쌍으로 얼린다 — 렌더 문자열을 저장하면 세션 도중 언어를
                 // 바꿨을 때 그 조각만 옛 언어로 남는다.
-                let en = transitVehicleDescLine(isEn: true, item: displayItem)
-                model.board(item: item, description: TransitLabel(
-                    ko: TransitGuideTextRenderer.render(
-                        transitVehicleDescLine(isEn: false, item: displayItem)),
-                    en: en.lang == "en" ? TransitGuideTextRenderer.render(en) : nil))
+                model.board(item: item, description: vehicleDescLabel(displayItem))
             }
         }
     }
