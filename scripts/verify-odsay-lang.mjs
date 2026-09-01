@@ -35,6 +35,8 @@ function hasRawSeparator(s) {
 const workDir = mkdtempSync(join(tmpdir(), "odsay-lang-gate-"));
 const entryPath = join(workDir, "entry.ts");
 const bundlePath = join(workDir, "odsay.mjs");
+const stubPath = join(workDir, "next-cache-stub.mjs");
+writeFileSync(stubPath, "export const unstable_cache = (fn) => fn;\n");
 writeFileSync(
   entryPath,
   [
@@ -45,7 +47,9 @@ writeFileSync(
 try {
   execFileSync(
     "npx",
-    ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--outfile=${bundlePath}`],
+    // odsay.ts가 급행 정차역 캐시(`next/cache`)를 끌어오므로 Next 런타임 밖에서는 통과 스텁으로 대체한다
+    // (2026-09-02 — 없으면 esbuild가 `@opentelemetry/api` 미해결로 번들 자체가 실패한다).
+    ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--alias:next/cache=${stubPath}`, `--outfile=${bundlePath}`],
     { stdio: "pipe" },
   );
   const mod = await import(bundlePath);
