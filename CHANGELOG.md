@@ -9,6 +9,10 @@
 
 ---
 
+## 2026-09-02
+
+- **E20(음향신호기 앱 조작) 게이트 종결 — 서울시 공식 답변 회수**: 2026-08-20 접수한 응답소 질의(20260820900034)에 교통실 교통운영과가 2026-09-01 답했다. **서울시가 관리·운영 중인 블루투스 연동 기종은 없다**(기종별 지원·호환성 차이로 일괄 적용 곤란 → 버튼·리모컨 겸용 방식으로만 운영, 2024년 기능개선 시범운영에서 앱 연동 검토·평가 이력, 향후 교체 시 지속 검토). 이로써 1차(2026-08-19)·2차(2026-08-21) BLE 실측 0건의 원인이 **기기 부재**로 확정되고, 남아 있던 세 가설 중 계측기 한계·표본 편향(한길HC 미방문)이 함께 기각된다. 2차가 남긴 되살림 조건("길동에 설치돼 있으면 재측정")은 성립하지 않아 닫히고, 재개는 외부 사건(서울시 연동 기종 도입)에 붙는다. 진단 UI·보행 인프라 메뉴는 종전대로 유지. 조사 `docs/research/RESEARCH-2026-08-16-audio-signal-ble-control.md` §13.
+
 ## 2026-09-01
 
 - **CLI/MCP 응답 언어 `lang` 배선(E26 + E27 잔여, 병렬 세션 cli-lang)**: 서버는 `/api/route/{walk,transit}`·`/api/station/{meta,timetable,subway-arrival,subway-arrival/nearby}`가 전부 `lang`을 받는데 CLI는 `route car`·`search`에만 실었다(`route.ts`의 "transit·walk는 V1 국문 전용" 주석이 사실이 아닌 지 오래였다). ①공유 카탈로그(cli·mcp byte-mirror)에 `lang` params 6건 — MCP 도구 입력 스키마는 카탈로그에서 자동 생성되므로 `route_walk`·`route_transit`·`station_meta`·`station_timetable`·`subway_arrival`·`nearby_subway`이 그대로 영어 입력을 받는다(`tools/list` 실측 8도구) ②`runEndpoint`의 `lang`은 기본값 없는 필수 인자, 전달 판정은 카탈로그 술어 `catalogSupportsLang`(명령 쪽 하드코딩 목록 없음 — `station info`는 섹션 4개 중 lang을 받는 둘에만 싣는다) ③`--lang`은 서버가 받는 명령의 `--help`에만(종전 blanket spread는 따릉이·혼잡도에도 광고하고 조용히 버렸다) ④값 정규화 제거 — `--lang EN`은 라우트 400(종전 `search`는 ko로 접었다. ⚠ `route car`·`chat`은 서버가 `lang`을 검증하지 않아 예외이고 그 사실을 README·CLAUDE.md에 명시했다). ⚠ 그 결과 `search`·`station info`에서 400이 `allSettled`에 흡수돼 **섹션이 통째로 사라진 exit 0**이 되는 것을 실호출과 리뷰가 잡아, 400은 부분 실패가 아니라 요청 오류이므로 즉시 종료로 갈랐다(502는 종전대로 부분 성공) ⑥서버 라우트 소스를 스캔해 `lang`을 받는 라우트가 카탈로그에 없으면 실패하는 가드(`catalog-lang-drift.test.ts`) — 카탈로그 자기 자신만 보는 검사는 이 마일스톤이 고친 드리프트를 끝까지 통과시킨다 ⑤실호출: `route walk --lang en` 영문 문장, `station meta linesEn`·`timetable lineNameEn/terminusEn`·`arrivals messageEn`·`nearby subway linesEn`·`transit lineNameEn/fromNameEn`. ko 응답 필드 무증가. 변이 주입 3종 검출 6·3·4건. ⚠ CLI 텍스트 포매터의 라벨·조사는 한국어 고정이라 `--lang en`이 바꾸는 것은 서버가 쓴 문장과 `*En` 필드(json)뿐이다(`--help`·README에 명시). npm 발행은 별도 판정이라 버전 미상승. plan `docs/superpowers/plans/2026-09-01-en-locale-residual-parallel-plan.md`.
