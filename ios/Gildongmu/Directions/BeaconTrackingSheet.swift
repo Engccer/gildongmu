@@ -314,8 +314,11 @@ struct BeaconTrackingSheet: View {
             }
         }
         // 재조회 성공으로 버튼이 사라진 순간 커서를 제목 행으로(헌장 §5 이탈 방지).
+        // 자동 채택(E10ⓑ 2026-09-02)도 같은 부류다 — 사용자가 이탈 경고를 듣고 이 버튼에
+        // 커서를 둔 순간에 배경에서 발동할 수 있어 누른 여부와 무관하게 착지한다. 자연
+        // 복귀(backOnRoute)만 종전대로 무이동.
         .onChange(of: model.offRoute) { _, isOff in
-            guard !isOff, reroutePressed else { return }
+            guard !isOff, reroutePressed || model.offRouteEndedByReroute else { return }
             reroutePressed = false
             Task { await landTitleFocus() }
         }

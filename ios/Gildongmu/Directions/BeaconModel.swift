@@ -152,6 +152,10 @@ final class BeaconModel {
 
     /// 이탈 상태 — 시트가 "경로 다시 조회" 버튼 노출에 쓴다.
     private(set) var offRoute = false
+    /// 직전 `offRoute` 해제가 경로 커밋(자동 채택·재조회·전환)이었는가 — 시트가 "재조회
+    /// 버튼이 사라진" 전이에서 제목 행 착지 여부를 가르는 데 쓴다(헌장 §5: 포커스를 쥔
+    /// 요소가 제거되는 전이는 선점 이동. 자연 복귀 `backOnRoute`는 종전대로 무이동).
+    private(set) var offRouteEndedByReroute = false
     /// 마지막 실행 안내(상세=스텝·묶음, 간략=거리 통지). 진행 상황 버튼의 uncertain
     /// 분기가 소비한다. 상태·오류 통지는 대상이 아니다(스펙 §4.2 리뷰 #23).
     private(set) var lastGuidance: String?
@@ -2451,6 +2455,7 @@ final class BeaconModel {
             // 확정 회차당 1회 자동 조회 후 즉시 채택(E10ⓑ 자동 채택, 2026-09-02).
             if isEpisodeStart { maybeFetchProposal() }
         case .backOnRoute:
+            offRouteEndedByReroute = false
             offRoute = false
             // 이탈 복귀 = 자동 재조회 근거 소멸(진행 중 조회의 채택 차단).
             clearProposal()
@@ -2588,6 +2593,9 @@ final class BeaconModel {
     /// 이유: 걷는 중이라 그 경로의 출발점이 낡았다.
     func requestVariantSwitch() {
         guard sessionKind == .walk, isTracking, mode == .detail, !rerouteInFlight else { return }
+        // 진행 중 자동 재조회(이탈 확정 회차)는 폐기한다 — 자동 채택이 능동 커밋자가 된
+        // 뒤로 두 커밋이 잇달아 나갈 수 있다(리뷰 MAJOR 2026-09-02, requestReroute 동형).
+        clearProposal()
         rerouteInFlight = true
         // busy 신호는 누른 버튼에만 귀속한다(isRerouting과 분리 — 공유하면 이탈 중
         // 두 버튼이 동시에 "조회 중"이 되어 어느 조회가 도는지 라벨이 오귀속된다).
@@ -2706,6 +2714,7 @@ final class BeaconModel {
             courseDerivation: guideState?.courseDerivation ?? initialDerivationState
         )
         guideState = initial.state
+        offRouteEndedByReroute = true
         offRoute = false
         updateRemaining(route: fetched.route, state: initial.state)
         // 새 경로 = 새 표시 유닛 + 램프인·클램프 리셋(spec 2026-08-11 F7, car 확장 K2 §4).
@@ -2726,7 +2735,8 @@ final class BeaconModel {
     /// 이탈 표결이 최종 접근보다 앞이라는 기존 불변식 순서에 자동 재조회도 그대로 걸린다).
     private func maybeFetchProposal() {
         // car도 자동 재조회한다(K2 §5) — fetchDetailData가 수단별 provider·via를 고른다.
-        guard isTracking, mode == .detail, !inFinalApproach,
+        // 수동 재조회·전환이 도는 중이면 자동 조회를 열지 않는다(그 조회가 새 경로를 만든다).
+        guard isTracking, mode == .detail, !inFinalApproach, !rerouteInFlight,
               RerouteProposalGate.mayFetch(episodeFetchCount: proposalFetchCount)
         else { return }
         proposalToken += 1
@@ -2750,9 +2760,10 @@ final class BeaconModel {
             let waypointAtFetch = waypoint
             let fetched = try await fetchDetailData(
                 origin: origin, dest: dest, variant: sessionVariant, waypoint: waypointAtFetch)
-            // 채택 가드: 토큰 일치 ∧ 이탈 지속 중일 때만(복귀 후 늦은 응답이 경로를
-            // 갈아치우는 경로 차단 — latest-wins, spec §6 리뷰 #1).
-            guard token == proposalToken, offRoute, isTracking, mode == .detail,
+            // 채택 가드: 토큰 일치 ∧ 이탈 지속 중 ∧ 수동 조회 비진행일 때만(복귀 후 늦은
+            // 응답이 경로를 갈아치우는 경로 차단 — latest-wins, spec §6 리뷰 #1. 수동
+            // 재조회·전환과의 이중 커밋은 양방향으로 막는다 — 리뷰 MAJOR 2026-09-02).
+            guard token == proposalToken, offRoute, isTracking, mode == .detail, !rerouteInFlight,
                   self.dest == dest, self.waypoint == waypointAtFetch else { return }
             // 경로 없음도 그 회차 종결(통지 없음 — spec §6 명시적 트레이드오프).
             guard let fetched else { return }
@@ -2900,7 +2911,7 @@ final class BeaconModel {
             let text = notice.map { "\($0) \(summary)" } ?? summary
             statusText = text
             // `.high`: 채택 성공으로 시트가 닫히고 포커스가 중지 버튼으로 옮겨가며
-            // 그 라벨 낭독에 기본 우선순위가 잠식된다(adoptProposal 동형).
+            // 그 라벨 낭독에 기본 우선순위가 잠식된다(자동 채택 fetchProposal 동형).
             announce(text, highPriority: true) { [weak self] in
                 if let notice { self?.pendingStepFreeNotice = notice }
             }
