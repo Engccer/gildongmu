@@ -60,7 +60,8 @@ inArrivalWindow = inFinalApproach || briefWindowActive      // briefWindowActive
 - **간략 창 진입**(`entered`): 같은 초기화(`arrivalWindowEnteredAt = now`, 앵커 nil, 거리 = 그 fix) + `briefWindowActive = true`. 로그 `arrivalWindowEnter mode=brief dist=… acc=…`.
 - **간략 창 유지**(`active`, 매 usable fix): `lastUsableDistanceToDest` 갱신 + `advanceProgressAnchor`(10m) → `lastProgressAt`. 최종 접근의 `handleFinalApproach`와 같은 갱신이다.
 - **간략 창 이탈**(`exited` — 래치 해제 또는 정확도 > 30m): 네 값 nil + 플래그 false. 로그 `arrivalWindowExit reason=released|accuracy`. 정확도가 나쁜 fix는 "창 밖"이지 "무시"가 아니다 — 무시하면 두절 축이 그 fix들을 건너뛰고 계속 센다.
-- **unusable fix**(정확도 ≤ 0·>100·낡음): 창 상태 불변(종전 최종 접근과 같다 — 두절 축이 그 공백을 센다).
+- **unusable fix**(`isUsableFix` = 정확도 > 0 ∧ 신선 — 100m 상한은 없다): 창 상태 불변. 정확도 30m 초과는 100m 초과를 포함해 전부 "창 밖"(usable이라 `lastFixAt`은 갱신되고 두절 축은 fix **부재**에서만 센다). 09-01 리플레이의 정확도 106.5m 행이 그 모양이다.
+- **비-백그라운드 선언 빌드의 전경 복귀 래치 초기화**는 간략 창만 지운다(`if !inFinalApproach`) — 최종 접근 창까지 지우면 `beginFinalApproach`가 다시 돌지 않는 에피소드 안에서 추정 도착이 영구 침묵한다(구현 리뷰 검출).
 - **리셋 계약**: `resetFinalApproach`(세션 시작·경로 커밋·재획득·`stop()`)가 플래그까지 지운다 — 경로가 커밋되어 상세로 올라갈 때 옛 간략 창이 살아남지 않는다. `fallbackToBrief`·`beginFinalApproach`의 간략 인계 분기·비-백그라운드 빌드의 전경 복귀 래치 초기화는 `resetArrivalWindow()`(네 값 + 플래그)를 명시 호출한다. 그래서 리뷰의 시나리오("재조회로 잠시 상세였다가 `nearby == true`인 채 `fallbackToBrief` → 옛 300초가 즉시 충족")는 성립하지 않는다: 상세로 올라가는 커밋에서 창이 지워지고, 간략 복귀의 첫 usable fix가 `entered`로 다시 초기화한다.
 - 최종 접근과 간략 창은 **배타**다: `inFinalApproach`는 상세 경로 처리(`handleDetail` → `beginFinalApproach`)에서만 참이 되고, 그 진입이 `mode`를 바꾸지 않으며(상세 유지), 간략 인계는 `inFinalApproach`를 세우지 않는다. 한 fix가 두 창에 동시에 있을 수 없다.
 
@@ -70,7 +71,7 @@ inArrivalWindow = inFinalApproach || briefWindowActive      // briefWindowActive
 |---|---|---|
 | 확정 도착(상세, ≤15m) | `handleFinalApproach` | 최종 접근 창에서만. 간략 창에는 확정 도착이 없다(간략은 15m 축이 아니라 20m 래치 축이고, 위원장이 즉시 선언을 기각했다) |
 | 추정 도착(도착 창) | ①`handleFinalApproach`(종전) ②**간략 fix 처리 말미**(신설, 통지 처리 뒤) ③워치독 `tickWatchdog`(종전, noFix 모양) | `maybePresumeArrival`의 가드가 `inArrivalWindow`로 넓어지는 것 외엔 함수 하나 그대로. `stop()`이 동기로 `isTracking`을 내리므로 같은 턴에 두 번 발동할 수 없다 |
-| 국면 무관 안전망 | 워치독, 추정 도착 **뒤** | 종전 순서 그대로(`if maybePresumeArrival { return }; if maybeEndIdleSession { return }`). 09-01 모양에서는 추정 도착(08:50)이 안전망(09:05)보다 15분 먼저 끝내므로 안전망은 도달하지 않는다 — 안전망 상수는 건드리지 않는다(위원장 기각 ⓑ). 설계 리뷰도 세 경로의 이중 발동·순서 역전을 발견하지 못했다 |
+| 국면 무관 안전망 | 워치독, 추정 도착 **뒤** | 종전 순서 그대로(`if maybePresumeArrival { return }; if maybeEndIdleSession { return }`). 09-01 모양에서는 추정 도착(마지막 창 진입 + 300초 ≈ 08:51:50)이 안전망(09:05)보다 13분 먼저 끝내므로 안전망은 도달하지 않는다 — 안전망 상수는 건드리지 않는다(위원장 기각 ⓑ). 설계 리뷰도 세 경로의 이중 발동·순서 역전을 발견하지 못했다 |
 
 간략 fix 처리 안의 호출 자리는 **통지 처리 뒤**다. 창 진입 fix에서는 `secondsSinceProgress = 0`이라 발동할 수 없고, 발동하는 fix에서는 그 fix의 비콘 통지(hold·무발화)가 앞서도 도착 낭독이 `.high`라 잘리지 않는다.
 
@@ -82,7 +83,7 @@ inArrivalWindow = inFinalApproach || briefWindowActive      // briefWindowActive
 
 - `src/lib/final-approach.ts`: `presumedArrivalStep` 불변(doc 주석만 갱신), `briefArrivalWindowStep`·`BRIEF_ARRIVAL_WINDOW_MAX_ACC_M` 미러 추가. `useRouteGuide`의 간략 경로 배선은 하지 않는다 — 도착 추정 자체가 웹 화면 배선 없음(spec 2026-08-13 §7, PORTS 후속)이라 간략 창만 먼저 배선하면 최종 접근 창은 없고 간략 창만 끝나는 비대칭이 생긴다. 웹 배선은 PORTS의 도착 추정 행이 열릴 때 두 창을 함께.
 - 공유 fixture `presumed-arrival-scenarios.json`에 간략 창 라벨 시나리오를 더한다(같은 함수를 지나므로 입력은 `inFinalApproach: true` — 이름이 "간략 근처 창"임을 적는다): 09-01 모양(stationary 300s·24.3m)·창 밖(래치 해제 = `inFinalApproach: false`) none·창 진입 직후(0·0) none.
-- **리플레이 게이트**(`presumed-arrival-replay.test.ts` 계열, 신규 `brief-window-replay.test.ts`): 09-01 등굣길 세션을 fixture로 뗀다(`guide-diag-2026-09-01-brief-window.json` — 인계 이후 `brief` 행의 `t`·`dist`·`acc`·`usable`·`nearby`·경도 평행이동 좌표. 좌표는 앵커 전진 계산에 필요하고 평행이동은 haversine을 보존한다). 창 리듀서 → 앵커 전진 → `presumedArrivalStep`을 재생해 **인계(08:45:15) 뒤 5분 안에 `stationary`가 나고 그 전엔 침묵**, 발동 시점이 실제 종료(09:05:22)보다 앞임을 잠근다.
+- **리플레이 게이트**(`presumed-arrival-replay.test.ts` 계열, 신규 `brief-window-replay.test.ts`): 09-01 등굣길 세션을 fixture로 뗀다(`guide-diag-2026-09-01-brief-window.json` — 인계 이후 `brief` 행의 `t`·`dist`·`acc`·`usable`·`nearby`·경도 평행이동 좌표. 좌표는 앵커 전진 계산에 필요하고 평행이동은 haversine을 보존한다). 창 리듀서 → 앵커 전진 → `presumedArrivalStep`을 재생해 **마지막 창 진입 + 300초에 `stationary`가 나고 그 전엔 침묵**, 발동 시점이 실제 종료(09:05:22)보다 10분 이상 앞임을 잠근다. 실측: 건물 진입 직후 정확도 40→106m fix 10건(인계 36~45초)이 창을 닫고 회복 fix에서 재진입, 발동은 인계 ≈395초 뒤(08:51:50). ⚠ fixture의 `nearby`는 로그가 fix 처리 전에 찍은 값이라 코드보다 한 fix 늦다.
 
 ### 2.6 소스 가드 (앱 타깃엔 테스트 레인이 없다)
 

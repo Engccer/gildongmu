@@ -9,7 +9,11 @@ import { describe, expect, it } from "vitest";
 const src = readFileSync(new URL("../../../ios/Gildongmu/Directions/BeaconModel.swift", import.meta.url), "utf8");
 
 
-/** 주석·문자열 리터럴을 같은 길이의 공백으로 지운다(오프셋 보존) — 주석에 적힌 옛 조건 이름이 판정에 끼지 않게. */
+/**
+ * 주석·문자열 리터럴을 같은 길이의 공백으로 지운다(오프셋 보존) — 주석에 적힌 옛 조건 이름이 판정에 끼지 않게.
+ * ⚠ 보간 안 중첩 따옴표(`"\(x ? "a" : "b")"`)의 안쪽 낱말과 `"""` 다중행 문자열은 다루지 않는다 — 현재 단언은
+ * 그 자리를 보지 않는다.
+ */
 function blankComments(source: string): string {
   let out = "";
   for (let i = 0; i < source.length; i++) {
@@ -81,11 +85,15 @@ describe("도착 창(A31 §2, spec 2026-09-02): 간략 근처 창 배선", () =>
   });
 
   it("maybePresumeArrival 호출은 세 자리(최종 접근·간략 fix·워치독)", () => {
-    expect(src.match(/maybePresumeArrival\(now: now\)/g)?.length).toBe(3);
+    expect(code.match(/maybePresumeArrival\(now: now\)/g)?.length).toBe(3);
   });
 
-  it("간략 fix 처리는 창 자격을 Kit 리듀서로 정한다(nearby를 직접 창 진입 근거로 읽지 않는다)", () => {
-    expect(src.includes("briefArrivalWindowStep(")).toBe(true);
+  it("간략 fix 처리는 창 자격을 Kit 리듀서로 정하고 그 결과만 플래그에 싣는다(nearby 직접 판정 금지)", () => {
+    const brief = code.slice(code.indexOf("let usable = isUsableFix(accuracy: fix.accuracy"), code.indexOf("func handleDetail"));
+    expect(brief).toMatch(/briefArrivalWindowStep\(/);
+    expect(brief).toMatch(/briefWindowActive = window\.active/);
+    // 리듀서 옆에 래치 직접 대입을 덧대는 변이 차단.
+    expect(brief).not.toMatch(/briefWindowActive = (true|stepped\.state\.nearby)/);
   });
 
   it("resetFinalApproach가 간략 창 플래그까지 지운다(경로 커밋·재획득·stop에서 옛 창이 살아남지 않게)", () => {
@@ -102,6 +110,8 @@ describe("종료 화면 수명(A31 §3, spec 2026-09-02)", () => {
   it("복귀 판정은 백그라운드 경유 플래그를 .active 맨 앞에서 소비한다(제어센터 왕복·전경 체류는 판정 밖)", () => {
     expect(scene).toMatch(/let returnedFromBackground = wasBackgrounded\s*\n\s*wasBackgrounded = false/);
     expect(scene).toMatch(/isEndScreenStale\(/);
+    // 소거 조건 자체가 백그라운드 경유를 본다 — 플래그 소비만 검사하면 조건에서 빼는 변이가 통과한다.
+    expect(scene).toMatch(/if returnedFromBackground, !isTracking, arrivalDest != nil/);
     expect(scene).not.toMatch(/guard wasBackgrounded else/);
   });
 
