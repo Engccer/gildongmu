@@ -82,12 +82,14 @@ public struct RouteService: Sendable {
     /// 조용히 컴파일된다(`accessible` 규율 동형).
     /// `lang`(E16 축3): 안내 문장 언어. ⚠ **같은 이유로 기본값을 두지 않는다** — 빠뜨린 조회는
     /// 오류 없이 **한국어 안내**를 주고, 그 사실은 비-ko 사용자에게 낭독으로만 드러난다.
-    /// "ko"는 파라미터를 생략해 기존 요청과 byte-identical.
+    /// `.ko`는 파라미터를 생략해 기존 요청과 byte-identical. 타입이 `DataLocale`인 이유는
+    /// 열린 `String`이면 오타가 서버 400 → `unavailable` 강등으로 조용히 흡수돼 낭독이
+    /// "경로를 찾지 못했습니다"가 되기 때문이다(`WalkRouteVariant` 대칭, 2026-09-02).
     public func walk(
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
-        lang: String,
+        lang: DataLocale,
         includeGeometry: Bool = false,
         variant: WalkRouteVariant? = nil,
         via: (lat: Double, lng: Double)?
@@ -96,7 +98,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "origin", value: coordPair(originLat, originLng)),
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
         ]
-        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
+        if lang != .ko { query.append(URLQueryItem(name: "lang", value: lang.rawValue)) }
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if includeGeometry { query.append(URLQueryItem(name: "includeGeometry", value: "1")) }
         if let variant { query.append(URLQueryItem(name: "variant", value: variant.rawValue)) }
@@ -113,7 +115,7 @@ public struct RouteService: Sendable {
         originLat: Double, originLng: Double,
         destLat: Double, destLng: Double,
         accessible: Bool,
-        lang: String,
+        lang: DataLocale,
         via: (lat: Double, lng: Double)?
     ) async throws -> (result: WalkRouteBriefing?, shortest: WalkRouteBriefing?) {
         var query = [
@@ -121,7 +123,7 @@ public struct RouteService: Sendable {
             URLQueryItem(name: "dest", value: coordPair(destLat, destLng)),
             URLQueryItem(name: "alternatives", value: "1"),
         ]
-        if lang != "ko" { query.append(URLQueryItem(name: "lang", value: lang)) }
+        if lang != .ko { query.append(URLQueryItem(name: "lang", value: lang.rawValue)) }
         if accessible { query.append(URLQueryItem(name: "accessible", value: "true")) }
         if let via { query.append(URLQueryItem(name: "via", value: coordPair(via.lat, via.lng))) }
         let envelope: WalkRouteEnvelope = try await client.get("/api/route/walk", query: query)
@@ -132,4 +134,11 @@ public struct RouteService: Sendable {
 /// 도보 경로 축(M3). 서버 `variant` 쿼리 값과 1:1.
 public enum WalkRouteVariant: String, Sendable {
     case shortest
+}
+
+/// 데이터 언어(웹 `data-locale.ts` 동형 — 외부 데이터는 ko 외 전부 en). 서버 `lang` 쿼리 값과 1:1.
+/// 앱의 정본은 `AppLanguage.dataLocaleValue`이고 문자열 `AppLanguage.dataLocale`은 그 투영이다.
+/// 도보 경로(`walk`·`walkAlternatives`)가 이 타입을 받는다 — 나머지 `lang: String` 인자는 종전 계약.
+public enum DataLocale: String, Sendable, Equatable {
+    case ko, en
 }

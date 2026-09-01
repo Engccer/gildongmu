@@ -11,15 +11,18 @@
         },
         {
           "len": 10,
+          "action": "right",
           "desc": "오른쪽으로 돌아 10m 이동"
         },
         {
           "len": 58,
+          "action": "left",
           "desc": "왼쪽으로 돌아 파리바게뜨까지 명일로를 따라 58m 이동",
           "target": "파리바게뜨"
         },
         {
           "len": 21,
+          "action": "crosswalk",
           "desc": "횡단보도를 건너세요, 횡단보도 길이 21m, 음향신호기 있음",
           "crossing": true
         },
@@ -33,12 +36,14 @@
         },
         {
           "len": 35,
+          "action": "right",
           "desc": "약국 앞에서 오른쪽으로 돌아 주택 A까지 35m 이동",
           "target": "주택 A",
           "anchor": "약국"
         },
         {
           "len": 12,
+          "action": "left",
           "desc": "왼쪽으로 돌아 목적지까지 12m 이동",
           "target": "목적지"
         }

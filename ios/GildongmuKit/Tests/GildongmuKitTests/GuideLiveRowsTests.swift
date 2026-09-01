@@ -154,7 +154,7 @@ private func renderNext(_ next: LiveNextRow?, _ g: KoMessages.Guide, car: Bool) 
             return input
         }
         let car = sc.kind == "car"
-        let units = buildDisplayUnits(steps, source: car ? .step : .text)
+        let units = buildDisplayUnits(steps)
         var state: LiveRowsState?
         var baselineD = sc.baselineD
         var results: [(top: String, next: String)] = []
@@ -199,7 +199,7 @@ struct CrossingStepTests {
                 action: .crosswalk, crossing: true),
             LiveStepInput(description: "Turn left, then walk 40m", startD: 80, endD: 120, action: .left),
         ]
-        let units = buildDisplayUnits(steps, source: .step)
+        let units = buildDisplayUnits(steps)
         #expect(units.map(\.crossing) == [false, true, false])
         #expect(units[1].crossingText == "Cross the crosswalk, then walk 30m")
         #expect(units[0].endAction == .crosswalk)
@@ -210,7 +210,7 @@ struct CrossingStepTests {
         let steps = [
             LiveStepInput(description: "천호역 횡단보도까지 100m 이동", startD: 0, endD: 100, action: .crosswalk)
         ]
-        #expect(buildDisplayUnits(steps, source: .step)[0].crossing == false)
+        #expect(buildDisplayUnits(steps)[0].crossing == false)
     }
 
     @Test("liveStepsFrom은 응답 스텝의 crossing을 표시 입력으로 옮긴다")

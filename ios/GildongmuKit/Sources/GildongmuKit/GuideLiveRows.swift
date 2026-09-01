@@ -74,13 +74,9 @@ public func isCrossingStep(_ action: WalkAction?, crossing: Bool) -> Bool {
     (action == .crosswalk || action == .underpass) && crossing
 }
 
-/// `source`: 행동 출처(리듀서 `actionSource`와 같은 값 — walk `.text`, car `.step`). 기본값 없음.
-public func buildDisplayUnits(
-    _ steps: [LiveStepInput], source: GuideActionSource
-) -> [DisplayUnit] {
-    func actionOf(_ step: LiveStepInput) -> WalkAction? {
-        stepActionFor(description: step.description, action: step.action, source: source)
-    }
+/// 행동은 `LiveStepInput.action`(서버 투영)만 본다 — 문장 분류 폴백 없음(E16 축3, 웹 미러).
+public func buildDisplayUnits(_ steps: [LiveStepInput]) -> [DisplayUnit] {
+    func actionOf(_ step: LiveStepInput) -> WalkAction? { step.action }
     struct Group {
         var indices: [Int]
         let crossing: Bool
