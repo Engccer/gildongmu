@@ -1,4 +1,3 @@
-import { env } from "../env";
 import { roundCoord } from "../coord-round";
 import { judgeServiceStatus, kstNowMinutes, type ServiceStatus } from "../service-hours";
 import { fetchServiceHoursMap, type ServiceHours } from "./bus-service-hours";
@@ -10,6 +9,9 @@ import { toDisplayEnglish } from "../transit-name-en";
 import { hasHangul } from "../format";
 import { annotateHighlights, isOutside, selectTransitRoutes } from "./odsay-select";
 import { fetchSubwayServiceHoursMap, subwayHoursKey } from "./subway-service-hours";
+import { fetchOdsayJson } from "./odsay-fetch";
+import { fetchExpressStopsMap } from "./odsay-express-stops";
+import { attachExpressStops, expressLinesIn } from "../express-stops";
 import type {
   Coord,
   TransitLeg,
@@ -28,8 +30,6 @@ import type {
  * ⚠ 필드명/단위/에러코드는 pre-merge 실호출로 확정(설계 §2). 단위는 문서 기준
  *   totalTime/sectionTime=분, payment=원, totalWalk=미터.
  */
-
-const ENDPOINT = "https://api.odsay.com/v1/api/searchPubTransPathT";
 
 /**
  * `lang=1`(영문) 응답은 이름 필드마다 `*Kor` 한글 병기가 붙는다(실호출 2026-08-31, 636개 이름 결측 0).
@@ -72,6 +72,20 @@ interface OdsaySubPath {
    * (실호출 2026-08-25 사당→구로디지털단지 `"null"`, 노원→서울역 `"10-4"`). 카카오지하철 표기와 일치.
    */
   door?: string;
+  /**
+   * 승차·하차 출구 번호(E25, 실호출 2026-09-02): 값은 문자열(`"2"`), 출구가 없는 쪽(환승 leg)은 **키 자체가 없다**.
+   * ODsay가 출발지·목적지 좌표로 고른 출구라 첫 승차 leg의 start·마지막 하차 leg의 end에만 온다.
+   */
+  startExitNo?: string;
+  endExitNo?: string;
+  startExitX?: string | number;
+  startExitY?: string | number;
+  endExitX?: string | number;
+  endExitY?: string | number;
+  startX?: string | number;
+  startY?: string | number;
+  endX?: string | number;
+  endY?: string | number;
   lane?: OdsayLane[];
   passStopList?: { stations?: OdsayPassStop[] };
 }
@@ -203,9 +217,76 @@ function previousStopName(sp: OdsaySubPath, lang: OdsayLang): string | null {
   return previous || null;
 }
 
-/** ODsay `door` → 문. `"null"` 문자열·빈 값·미지 표기는 전부 부재(긍정 매칭만 통과, A20). */
+/**
+ * ODsay `door` → 문. `"null"` 문자열·빈 값·미지 표기는 전부 부재(긍정 매칭만 통과, A20).
+ * ⚠ `"0-0"`도 부재다(실호출 2026-09-02: 개화→김포공항 완행 leg, 다음 leg가 같은 승강장 급행) — 0번 칸은
+ *   없으므로 통과시키면 "0-0 문"이 낭독된다. 칸·문 모두 1 이상만 문이다.
+ */
 function transferDoor(raw: unknown): string | null {
-  return typeof raw === "string" && /^\d+-\d+$/.test(raw) ? raw : null;
+  return typeof raw === "string" && /^[1-9]\d*-[1-9]\d*$/.test(raw) ? raw : null;
+}
+
+/**
+ * ODsay `startExitNo`/`endExitNo` → 출구 번호. 긍정 정규식만 통과(E25): `"null"`·빈 값·미지 표기·**0 계열**
+ * (`"0"`·`"00"`·`"2-0"`, 앞자리 0)은 부재 — 0번 출구는 없다(문 번호 `"0-0"`과 같은 기준).
+ */
+function exitNumber(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const v = raw.trim();
+  return /^[1-9]\d*(?:-[1-9]\d*)?$/.test(v) ? v : null;
+}
+
+/** 출구 좌표가 역 좌표에서 이 거리 안이면 참(출구는 역 부지 안이다). 좌표가 없으면 검사하지 않는다. */
+const EXIT_SANITY_METERS = 1000;
+
+function exitCoordSane(exitX: unknown, exitY: unknown, stX: unknown, stY: unknown): boolean {
+  const ex = coordNum(exitX);
+  const ey = coordNum(exitY);
+  const sx = coordNum(stX);
+  const sy = coordNum(stY);
+  if (![ex, ey, sx, sy].every(Number.isFinite)) return true; // 좌표 부재는 출구 오류의 증거가 아니다
+  // 위도 1도 ≈ 111km, 경도 1도 ≈ 111km × cos(lat) — 1km 문턱엔 평면 근사로 충분하다.
+  const dy = (ey - sy) * 111_000;
+  const dx = (ex - sx) * 111_000 * Math.cos((sy * Math.PI) / 180);
+  return Math.hypot(dx, dy) <= EXIT_SANITY_METERS;
+}
+
+/**
+ * 탑승 leg의 승차 종류(출구 투영용, `alightKindAt`의 대칭). 앞 subPath가 지하철에서 0m 도보로만 이어지면
+ * 역내 환승(`inStation`)이고, 첫 탑승·버스 뒤·0m 아닌 도보 뒤는 역 밖 진입(`entry`)이다.
+ */
+function boardKindAt(subPath: OdsaySubPath[], index: number): "entry" | "inStation" {
+  for (let j = index - 1; j >= 0; j--) {
+    const prev = subPath[j];
+    if (prev.trafficType === 3) {
+      if ((prev.distance ?? 0) === 0) continue;
+      return "entry";
+    }
+    return prev.trafficType === 1 ? "inStation" : "entry";
+  }
+  return "entry";
+}
+
+/**
+ * 지하철 leg의 승차·하차 출구(E25). **필드 존재가 아니라 경로 문맥으로** 허용한다 — 역 밖 진입 승차에만
+ * `board`, 역 밖으로 나가는 하차(`final`)에만 `alight`. ODsay가 환승 leg에 값을 채우기 시작해도 환승역에서
+ * 역 밖 출구를 안내하지 않는다(설계 리뷰 #12). 둘 다 없으면 null(키 자체 부재).
+ */
+function exitOf(
+  sp: OdsaySubPath,
+  boardKind: "entry" | "inStation",
+  alightKind: AlightKind,
+): { board?: string; alight?: string } | null {
+  const board =
+    boardKind === "entry" && exitCoordSane(sp.startExitX, sp.startExitY, sp.startX, sp.startY)
+      ? exitNumber(sp.startExitNo)
+      : null;
+  const alight =
+    alightKind === "final" && exitCoordSane(sp.endExitX, sp.endExitY, sp.endX, sp.endY)
+      ? exitNumber(sp.endExitNo)
+      : null;
+  if (!board && !alight) return null;
+  return { ...(board ? { board } : {}), ...(alight ? { alight } : {}) };
 }
 
 /**
@@ -252,6 +333,7 @@ function quickExitFor(sp: OdsaySubPath, kind: AlightKind, lang: OdsayLang) {
 function toLeg(
   sp: OdsaySubPath,
   includeStops: boolean,
+  boardKind: "entry" | "inStation",
   alightKind: AlightKind,
   lang: OdsayLang,
 ): TransitLeg {
@@ -265,6 +347,9 @@ function toLeg(
   const lane = sp.lane?.[0];
   const stops = includeStops ? toLegStops(sp, lang) : [];
   const quickExit = mode === "subway" ? quickExitFor(sp, alightKind, lang) : null;
+  // 출구 번호는 `stops`와 같은 옵트인 경계(includeStops)에만 — 낭독 소비자(웹·iOS)가 같고 CLI/MCP 미지정
+  // 응답은 byte-identical을 유지한다(spec §2).
+  const exit = mode === "subway" && includeStops ? exitOf(sp, boardKind, alightKind) : null;
   const en = lang === "en";
   // 한국어 정본: ko 응답은 원래 필드, en 응답은 `*Kor`(원래 필드가 영문이다).
   const lineName = mode === "subway" ? (en ? lane?.nameKor : lane?.name) : en ? lane?.busNoKor : lane?.busNo;
@@ -301,6 +386,7 @@ function toLeg(
     ...(stops.length > 0 ? { stops } : {}),
     // 판정 불가·미커버·시설 없음은 전부 키 부재(3-state, E5 §7).
     ...(quickExit ? { quickExit } : {}),
+    ...(exit ? { exit } : {}),
   };
 }
 
@@ -316,9 +402,9 @@ function toTransitRoute(
   // 환승 통로 시간도 실제 걷는 시간이라 필터 전 전체 도보 합으로 정직하게 센다.
   // ⚠ 하차 종류는 필터 **전** 원본 인덱스로 판정한다 — 역내 환승 통로(0m 도보)가 판정의 단서다.
   const legs = path.subPath
-    .map((sp, i) => ({ sp, kind: alightKindAt(path.subPath, i) }))
+    .map((sp, i) => ({ sp, board: boardKindAt(path.subPath, i), kind: alightKindAt(path.subPath, i) }))
     .filter(({ sp }) => !(sp.trafficType === 3 && (sp.distance ?? 0) === 0))
-    .map(({ sp, kind }) => toLeg(sp, includeStops, kind, lang));
+    .map(({ sp, board, kind }) => toLeg(sp, includeStops, board, kind, lang));
 
   // 도보 구간의 행선지 유도: 그 뒤 첫 탑승 구간의 fromName.
   // ⚠ 환승 통로 필터 **뒤**의 배열에서 돈다. 필터 전에 돌면 0m 통로가 사이에 끼어
@@ -452,9 +538,7 @@ export function annotateServiceStatus(
 
 /**
  * ODsay 대중교통 길찾기 조회. 경로 없으면 null, ODsay 오류/HTTP 실패면 throw.
- *
- * ⚠ apiKey는 이미 URL 인코딩된 값일 수 있어 재인코딩하면 깨진다 →
- *   URLSearchParams로 인코딩하지 말고 raw로 쿼리에 붙인다.
+ * HTTP·Referer·apiKey 처리는 `odsay-fetch.ts` 한 곳(급행 정차역 조회와 공용).
  * ODsay 좌표 파라미터는 SX/EX=경도(lng), SY/EY=위도(lat).
  */
 async function fetchOdsay(origin: Coord, dest: Coord, lang: OdsayLang): Promise<OdsayResponse> {
@@ -467,23 +551,9 @@ async function fetchOdsay(origin: Coord, dest: Coord, lang: OdsayLang): Promise<
   });
   // en은 `lang=1`(영문 + `*Kor` 병기). ko는 파라미터 자체가 없어 종전 URL·캐시 키와 같다(E27 §3.0 원칙 3).
   if (lang === "en") q.set("lang", "1");
-  // apiKey는 인코딩하지 않고 raw로 덧붙인다(이중 인코딩 방지)
-  const url = `${ENDPOINT}?${q.toString()}&apiKey=${env.ODSAY_API_KEY ?? ""}`;
-
-  const res = await fetch(url, {
-    // ODsay URI(도메인) 플랫폼 식별 — 콘솔에 등록된 도메인과 일치해야 한다.
-    // Vercel 서버리스는 egress IP가 가변이라 Server(IP) 방식이 프로덕션에서 인증 실패
-    // → 기존 앱에 URI 환경을 병행 등록하고 서버 fetch가 Referer를 명시한다(dev/prod 동일 경로).
-    headers: { Referer: "https://gildongmu.vercel.app/" },
-    // 경로는 준정적, 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호.
-    // 좌표는 4자리 반올림으로 캐시 키 안정화(측위마다 키가 달라지는 것 방지)
-    next: { revalidate: 3600 },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`ODsay 길찾기 실패: HTTP ${res.status} ${body}`);
-  }
-  return (await res.json()) as OdsayResponse;
+  // 경로는 준정적, 같은 좌표쌍 캐시로 1,000회/일 쿼터를 보호.
+  // 좌표는 4자리 반올림으로 캐시 키 안정화(측위마다 키가 달라지는 것 방지)
+  return fetchOdsayJson<OdsayResponse>("searchPubTransPathT", q, { revalidate: 3600 });
 }
 
 export async function getTransitRoute(params: {
@@ -530,11 +600,19 @@ export async function getTransitRoute(params: {
       ? [{ stationName: l.fromName, lineName: l.lineName, wayCode: l.serviceWayCode }]
       : [],
   );
-  const [busHours, subwayHours] = await Promise.all([
+  // 급행 정차역 집합(A16 L1)은 `stops`와 같은 옵트인 경계 — 실시간 안내의 viaStops가 stops에서 나오므로
+  // 급행 판정이 성립하는 소비자가 정확히 includeStops 소비자다. 실패·미지 노선은 부재(거짓 집합보다 부재).
+  const [busHours, subwayHours, expressSets] = await Promise.all([
     fetchServiceHoursMap(refs),
     fetchSubwayServiceHoursMap(subwayRefs),
+    params.includeStops ? fetchExpressStopsMap(expressLinesIn(routes)) : new Map<string, string[]>(),
   ]);
-  const ranked = annotateServiceStatus(routes, busHours, subwayHours, kstNowMinutes(new Date()));
+  const ranked = annotateServiceStatus(
+    attachExpressStops(routes, expressSets),
+    busHours,
+    subwayHours,
+    kstNowMinutes(new Date()),
+  );
 
   // 2단계 선정 → 3단계 라벨. 순서를 바꾸면 축의 기준점이 낡는다.
   return annotateHighlights(selectTransitRoutes(ranked), ranked.length);

@@ -245,6 +245,15 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
     /// ⚠ additive라도 **여기 선언하지 않으면 값이 오지 않는다**. 서버가 실었는데
     ///   앱만 침묵하는 조용한 결함이라 계약 테스트가 디코딩부터 문장까지 훑는다.
     public let quickExit: QuickExit?
+    /// 이 leg 노선의 급행 정차역 이름 전체 집합(노선 순서, ODsay 원문 — `stops[].name`과 같은 표기, A16 L1).
+    /// 급행 운행이 있고 서버가 집합을 검증한 노선(현재 9호선)의 지하철 leg에만, 완행·급행 leg 둘 다.
+    /// `includeStops=1` 응답에만 온다. ⚠ nil의 뜻은 "판정 불가"이지 "급행 없음"이 아니다 — 빈 배열은
+    /// 오지 않는다(서버가 싣지 않는다). 소비자는 nil에서 종전 `expressCheck` 라벨을 유지한다.
+    /// ⚠ 여기 선언하지 않으면 서버가 실어도 앱만 침묵한다(quickExit와 같은 additive 계약).
+    public let expressStops: [String]?
+    /// 승차·하차 출구 번호(ODsay `startExitNo`/`endExitNo`, E25) — 지하철 leg·`includeStops=1`에만.
+    /// 없는 쪽은 nil, 둘 다 없으면 `exit` 자체 nil. 환승 leg에는 대개 오지 않는다.
+    public let exit: TransitLegExit?
 
     public init(
         mode: String, lineName: String?, fromName: String?, toName: String?,
@@ -253,7 +262,8 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         serviceRouteId: String? = nil, serviceWayCode: Int? = nil,
         stops: [TransitLegStop]? = nil, distanceMeters: Int? = nil,
         quickExit: QuickExit? = nil,
-        lineNameEn: String? = nil, fromNameEn: String? = nil, toNameEn: String? = nil
+        lineNameEn: String? = nil, fromNameEn: String? = nil, toNameEn: String? = nil,
+        expressStops: [String]? = nil, exit: TransitLegExit? = nil
     ) {
         self.mode = mode
         self.lineName = lineName
@@ -272,6 +282,19 @@ public struct TransitRouteLeg: Codable, Sendable, Hashable {
         self.serviceWayCode = serviceWayCode
         self.stops = stops
         self.quickExit = quickExit
+        self.expressStops = expressStops
+        self.exit = exit
+    }
+}
+
+/// 지하철 leg의 승차(`board`)·하차(`alight`) 출구 번호(E25). 서버가 없는 쪽 키를 빼므로 각각 옵셔널.
+public struct TransitLegExit: Codable, Sendable, Hashable {
+    public let board: String?
+    public let alight: String?
+
+    public init(board: String? = nil, alight: String? = nil) {
+        self.board = board
+        self.alight = alight
     }
 }
 

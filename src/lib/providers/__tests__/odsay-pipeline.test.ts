@@ -140,3 +140,67 @@ describe("getTransitRoute 파이프라인", () => {
     await expect(getTransitRoute(COORDS)).rejects.toThrow(/ODsay/);
   });
 });
+
+/**
+ * 급행 정차역 부착(A16 L1, spec `2026-09-02-express-stops-data-design.md` §3.4) — 조회는 스텁, 부착 경계만 본다.
+ * ⚠ 이 스위트가 실호출 스텁 없이 돌면 `odsay-express-stops`가 실제 fetch(위 fetchMock)를 타 첫 mock 응답을 되읽는다.
+ */
+const expressSets = new Map<string, string[]>();
+vi.mock("../odsay-express-stops", () => ({
+  fetchExpressStopsMap: vi.fn(async () => expressSets),
+}));
+
+function subwayPath(...lanes: string[]) {
+  const subPath: unknown[] = [{ trafficType: 3, distance: 100, sectionTime: 2 }];
+  lanes.forEach((name, i) => {
+    if (i > 0) subPath.push({ trafficType: 3, distance: 0, sectionTime: 1 });
+    subPath.push({
+      trafficType: 1,
+      distance: 3000,
+      sectionTime: 8,
+      stationCount: 4,
+      startName: `승차${i}`,
+      endName: `하차${i}`,
+      lane: [{ name }],
+      wayCode: 1,
+      passStopList: { stations: [{ stationName: `승차${i}`, x: "127.0", y: "37.5" }, { stationName: `하차${i}`, x: "127.1", y: "37.6" }] },
+    });
+  });
+  subPath.push({ trafficType: 3, distance: 200, sectionTime: 3 });
+  return { pathType: 1, info: { totalTime: 30, payment: 1500 }, subPath };
+}
+
+describe("expressStops 부착", () => {
+  beforeEach(() => {
+    expressSets.clear();
+  });
+
+  it("includeStops면 표 노선 leg(완행·급행)에 붙고 다른 노선엔 없다", async () => {
+    expressSets.set("수도권 9호선", ["김포공항", "당산", "중앙보훈병원"]);
+    respond([subwayPath("수도권 9호선", "수도권 9호선(급행)", "수도권 5호선")]);
+    const result = (await getTransitRoute({ ...COORDS, includeStops: true }))!;
+    const subways = result.recommended.legs.filter((l) => l.mode === "subway");
+    expect(subways.map((l) => l.expressStops)).toEqual([
+      ["김포공항", "당산", "중앙보훈병원"],
+      ["김포공항", "당산", "중앙보훈병원"],
+      undefined,
+    ]);
+  });
+
+  it("includeStops가 아니면 조회조차 하지 않고 필드도 없다", async () => {
+    const { fetchExpressStopsMap } = await import("../odsay-express-stops");
+    vi.mocked(fetchExpressStopsMap).mockClear();
+    expressSets.set("수도권 9호선", ["김포공항", "당산", "중앙보훈병원"]);
+    respond([subwayPath("수도권 9호선")]);
+    const result = (await getTransitRoute(COORDS))!;
+    expect(fetchExpressStopsMap).not.toHaveBeenCalled();
+    expect("expressStops" in result.recommended.legs[1]).toBe(false);
+  });
+
+  it("조회가 빈손이면 부재이고 경로 응답은 그대로다", async () => {
+    respond([subwayPath("수도권 9호선")]);
+    const result = (await getTransitRoute({ ...COORDS, includeStops: true }))!;
+    expect(result.recommended.legs.filter((l) => l.mode === "subway")).toHaveLength(1);
+    expect("expressStops" in result.recommended.legs[1]).toBe(false);
+  });
+});
