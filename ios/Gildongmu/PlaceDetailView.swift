@@ -72,10 +72,9 @@ struct PlaceDetailView<DomainSection: View>: View {
                     Text(appLocalized("ios.place.englishAddressLine", english))
                     Button(appLocalized("place.copyEnglishAddress")) { copyAddressToPasteboard(english) }
                 }
-                // 영업시간(실험판): 전화 링크 앞 — 시각이 틀릴 수 있어 확인 경로와 짝짓는다.
-                if AppConfig.experimentalPlaceHoursEnabled {
-                    PlaceHoursLine(model: placeHours)
-                }
+                // 영업시간(E24, 정식판 승격 2026-09-02): 전화 링크 앞 — 시각이 틀릴 수 있어 확인
+                // 경로와 짝짓는다.
+                PlaceHoursLine(model: placeHours)
                 if let phone = place.phone, !phone.isEmpty,
                    let telURL = URL(string: "tel:\(phone.replacingOccurrences(of: "-", with: ""))") {
                     // 인터랙티브 요소는 별도 객체가 정상(합치지 말 것)
@@ -190,9 +189,7 @@ struct PlaceDetailView<DomainSection: View>: View {
             await barrierFreeInfo.load(lat: place.lat, lng: place.lng, name: place.name)
         }
         .task {
-            if AppConfig.experimentalPlaceHoursEnabled {
-                await placeHours.load(place: place)
-            }
+            await placeHours.load(place: place)
         }
         .sheet(isPresented: $isChatPresented) {
             ChatView(place: place)

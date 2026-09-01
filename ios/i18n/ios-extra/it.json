@@ -311,12 +311,6 @@
       "routeSwitched": "Percorso cambiato.",
       "altNone": "Nessun altro percorso con i mezzi da qui.",
       "altRefetching": "Le condizioni sono cambiate; nuova ricerca dei percorsi."
-    },
-    "placeHours": {
-      "line": "Orari di oggi {ranges} (Google Maps)",
-      "closed": "Chiuso oggi (Google Maps)",
-      "allDay": "24 ore",
-      "nextDay": "giorno dopo {time}"
     }
   },
   "beacon": {

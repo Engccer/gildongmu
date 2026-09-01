@@ -2,8 +2,9 @@ import SwiftUI
 import Observation
 import GildongmuKit
 
-/// 장소 상세 영업시간 한 줄 모델(E24, 실험판 전용). 실패·부재·매칭 실패·쿼터 소진을 구분하지
-/// 않고 nil = 줄 없음(침묵). 로드 트리거는 PlaceDetailView의 `.task`(실험판에서만 건다).
+/// 장소 상세 영업시간 한 줄 모델(E24, 정식판 승격 2026-09-02). 실패·부재·매칭 실패·쿼터 소진을
+/// 구분하지 않고 nil = 줄 없음(침묵). 로드 트리거는 PlaceDetailView의 `.task`. 문구는 웹과 공유
+/// (`messages/*.json` `placeHours.*` ↔ 웹 `PlaceHoursLine.tsx`).
 @Observable @MainActor
 final class PlaceHoursModel {
     private(set) var hours: PlaceHoursToday?
@@ -29,15 +30,15 @@ struct PlaceHoursLine: View {
 
     static func lineText(_ hours: PlaceHoursToday) -> String {
         if hours.allDay {
-            return appLocalized("ios.placeHours.line", appLocalized("ios.placeHours.allDay"))
+            return appLocalized("placeHours.line", appLocalized("placeHours.allDay"))
         }
         if hours.ranges.isEmpty {
-            return appLocalized("ios.placeHours.closed")
+            return appLocalized("placeHours.closed")
         }
         let ranges = hours.ranges.map { r -> String in
-            let close = r.closesNextDay ? appLocalized("ios.placeHours.nextDay", r.close) : r.close
+            let close = r.closesNextDay ? appLocalized("placeHours.nextDay", r.close) : r.close
             return "\(r.open)~\(close)"
         }.joined(separator: ", ")
-        return appLocalized("ios.placeHours.line", ranges)
+        return appLocalized("placeHours.line", ranges)
     }
 }

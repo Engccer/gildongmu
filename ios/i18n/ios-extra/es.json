@@ -311,12 +311,6 @@
       "routeSwitched": "Ruta cambiada.",
       "altNone": "No hay otras rutas de transporte desde aquí.",
       "altRefetching": "Las condiciones cambiaron; buscando otras rutas de nuevo."
-    },
-    "placeHours": {
-      "line": "Horario de hoy {ranges} (Google Maps)",
-      "closed": "Cerrado hoy (Google Maps)",
-      "allDay": "24 horas",
-      "nextDay": "día siguiente {time}"
     }
   },
   "beacon": {

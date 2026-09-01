@@ -22,7 +22,9 @@ const ALLOWED = new Set([
   "ios/Gildongmu/PlaceHoursLine.swift",
   "ios/scripts/messages-to-xcstrings.mjs",
   "ios/Gildongmu/PlaceDetailView.swift",
-  "ios/Gildongmu/AppConfig.swift",
+  "src/components/PlaceHoursLine.tsx",
+  "src/components/__tests__/PlaceHoursLine.test.tsx",
+  "src/components/PlaceDetail.tsx",
   "scripts/verify-place-hours.mjs",
 ]);
 
@@ -45,7 +47,7 @@ function grepFiles(pattern: string): string[] {
 describe("영업시간 심볼은 allowlist 파일에만 산다", () => {
   it("PlaceHours(Today|Service|Model|Line)·/api/places/hours가 채팅·CLI/MCP·안내 계층에 없다", () => {
     // i18n 키·응답 필드명도 잡는다 — 심볼 없이 문자열만 가져다 speakGuidance에 태우는 경로가 가장 그럴듯한 유출이다
-    const files = grepFiles("PlaceHours(Today|Service|Model|Line)|/api/places/hours|getPlaceHoursToday|ios\\.placeHours\\.|closesNextDay");
+    const files = grepFiles("PlaceHours(Today|Service|Model|Line)|/api/places/hours|getPlaceHoursToday|placeHours\\.|closesNextDay");
     const leaked = files.filter((f) => !ALLOWED.has(f));
     expect(leaked).toEqual([]);
     // allowlist가 죽은 목록이 되지 않게: 핵심 파일이 실제로 검출된다

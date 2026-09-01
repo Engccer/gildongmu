@@ -88,6 +88,12 @@
     "copyJibunAddress": "Copia indirizzo catastale",
     "copyEnglishAddress": "Copia indirizzo in inglese"
   },
+  "placeHours": {
+      "line": "Orari di oggi {ranges} (Google Maps)",
+      "closed": "Chiuso oggi (Google Maps)",
+      "allDay": "24 ore",
+      "nextDay": "giorno dopo {time}"
+  },
   "address": {
     "postalCode": "Codice postale",
     "jibun": "Numero di lotto"
@@ -620,7 +626,7 @@
     "search": "I termini di ricerca vengono inviati a fornitori come Kakao e Naver, e alla ricerca web Perplexity solo quando non ci sono risultati di luoghi o indirizzi.",
     "dictation": "La dettatura nell'app iOS viene elaborata sul dispositivo: l'audio non lo lascia mai. La dettatura sul web invia l'audio a Deepgram per la trascrizione e non lo conserva.",
     "activity": "Nell'app iOS, i passi mostrati all'arrivo con la guida pedonale e il peso inserito nelle Impostazioni sono usati solo sul dispositivo: non vengono trasmessi né conservati.",
-    "placeHours": "Gli orari di apertura mostrati nei dettagli del luogo della versione sperimentale iOS vengono ottenuti inviando nome, coordinate e indirizzo del luogo a Google Places. La tua posizione attuale non viene inviata.",
+    "placeHours": "Gli orari di apertura mostrati nei dettagli del luogo vengono ottenuti inviando nome, coordinate e indirizzo del luogo a Google Places. La tua posizione attuale non viene inviata.",
     "agent": "Se usi gli strumenti di Gildongmu tramite un browser con agente IA compatibile con WebMCP, l'output degli strumenti viene inviato al fornitore di quell'agente. Vengono inviati: la tua ricerca e i risultati (nomi dei luoghi, indirizzi, numeri di telefono), le informazioni sul luogo (primo e ultimo treno di una stazione, servizi, arrivi in tempo reale, servizi senza barriere) e, per i percorsi, i nomi di partenza, destinazione e tappa intermedia, il riepilogo del percorso e le frasi di guida. Le coordinate non vengono mai inviate, ma queste informazioni possono rivelare la tua posizione e i tuoi spostamenti. Funziona solo quando Gildongmu è aperto in un browser con agente IA compatibile con WebMCP. In un browser normale non fa nulla e non esiste un'impostazione separata dentro Gildongmu.",
     "analytics": "Il traffico web è misurato in forma anonima con Vercel Analytics. Non utilizza cookie e non memorizza informazioni che permettano di identificarti.",
     "contactHeading": "Contatto",
