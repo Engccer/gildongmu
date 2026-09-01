@@ -377,10 +377,19 @@ final class BeaconModel {
     // 도착 추정(spec 2026-08-13): 최종 접근 한정 상태. resetFinalApproach가 전부
     // 소거하고 beginFinalApproach가 에피소드 기준을 다시 세운다 — 이전 에피소드
     // 값이 새 에피소드로 새면 조기 종료가 된다(§4 상태 초기화 계약).
-    private var finalApproachEnteredAt: Double?
+    // 도착 창 에피소드(spec 2026-09-02 §2.2): 최종 접근 국면 **또는** 간략 근처 창이 소유한다. 진입
+    // 순간에 항상 재초기화되고, `resetArrivalWindow()`가 통째로 지운다.
+    private var arrivalWindowEnteredAt: Double?
     private var progressAnchor: RoutePoint?
     private var lastProgressAt: Double?
     private var lastUsableDistanceToDest: Double?
+    /// 간략 근처 창 플래그 — Kit `briefArrivalWindowStep`(래치 ∧ 정확도 ≤ 30m)의 마지막 usable fix 값.
+    /// 저장하는 이유는 워치독(noFix 모양)이 fix 없이 읽기 때문이다. `nearby` 래치를 직접 읽지 않는다 —
+    /// 래치는 정확도로 스케일돼 100m fix에서 200m까지 켜져 있다(설계 리뷰 BLOCKER).
+    private var briefWindowActive = false
+    /// 도착 창 안인가 — 도착 추정(`maybePresumeArrival`)의 국면 게이트. 두 창은 배타다(`inFinalApproach`는
+    /// 상세 경로 처리에서만 참이 되고 간략 인계는 그것을 세우지 않는다).
+    private var inArrivalWindow: Bool { inFinalApproach || briefWindowActive }
     // 국면 무관 세션 안전망(Kit `sessionIdleStep`, 2026-08-26). 도착 추정과 달리 세션 전체가
     // 에피소드다 — start()가 기준을 세우고 매 usable fix가 앵커를 전진시킨다.
     private var sessionProgressAnchor: RoutePoint?
@@ -1074,6 +1083,7 @@ final class BeaconModel {
     /// 문구는 원인별로 가른다(8번): 경로 실패(기본)와 위치 대기 실패는 사용자가 취할
     /// 행동이 다르다(잠시 후 전환 재시도 vs 하늘 트인 곳으로 이동).
     private func fallbackToBrief(key: String = "guide.detailUnavailable") {
+        resetArrivalWindow()  // 옛 창 에피소드는 지운다 — 간략 복귀의 첫 usable fix가 새로 연다(spec 2026-09-02 §2.2)
         mode = .brief
         remainingText = nil
         currentGuidanceText = nil
@@ -1497,6 +1507,7 @@ final class BeaconModel {
             guard !LocationService.backgroundLocationDeclared else { return }
             beaconState = .initial
             gateState = .initial
+            resetArrivalWindow()  // 래치를 지웠으니 간략 창 에피소드도 함께(다음 fix가 다시 연다)
             lastFixAt = nil
             startedAt = ProcessInfo.processInfo.systemUptime
             suppressNextNotice = true
@@ -1661,6 +1672,37 @@ final class BeaconModel {
         )
         beaconState = stepped.state
 
+        // 도착 창(간략, spec 2026-09-02 §2.2): 자격은 Kit 리듀서(래치 ∧ 정확도 ≤ 30m)가 정하고 여기는
+        // 그 결과로만 에피소드 상태를 만진다. 자격 없는 fix는 "무시"가 아니라 "창 밖"이라 이탈이 상태를
+        // 지운다 — 무시하면 두절 축이 그 fix들을 건너뛰고 계속 센다. 창 진입 순간의 재초기화가
+        // 불변식이라, 래치가 다른 경로로 초기화돼 이탈 로그 없이 남은 상태도 다음 진입이 덮는다.
+        let window = briefArrivalWindowStep(
+            active: briefWindowActive, nearby: stepped.state.nearby, accuracy: fix.accuracy
+        )
+        let straightDistance = stepped.announce.distance
+        if window.entered {
+            resetArrivalWindow()
+            arrivalWindowEnteredAt = now
+            lastUsableDistanceToDest = straightDistance
+            guideDiagLog(
+                "arrivalWindowEnter mode=brief dist=\(String(format: "%.1f", straightDistance)) "
+                    + "acc=\(String(format: "%.1f", fix.accuracy))"
+            )
+        } else if window.exited {
+            guideDiagLog("arrivalWindowExit reason=\(stepped.state.nearby ? "accuracy" : "released")")
+            resetArrivalWindow()
+        }
+        briefWindowActive = window.active
+        if window.active {
+            // 최종 접근 `handleFinalApproach`와 같은 갱신: 거리 캡 입력 + 앵커 기준 누적 변위.
+            lastUsableDistanceToDest = straightDistance
+            let anchorStep = advanceProgressAnchor(
+                anchor: progressAnchor, fix: RoutePoint(lat: fix.lat, lng: fix.lng)
+            )
+            progressAnchor = anchorStep.anchor
+            if anchorStep.progressed { lastProgressAt = now }
+        }
+
         let gated = beaconGateStep(state: gateState, announce: stepped.announce)
         gateState = gated.state
 
@@ -1696,6 +1738,9 @@ final class BeaconModel {
                 announce(text)
             }
         }
+        // 도착 추정(간략 창, stationary 모양) — 통지 처리 **뒤**. 창 진입 fix에서는 진행 기준이 0이라
+        // 발동할 수 없고, 발동하는 fix의 비콘 통지는 hold(무발화)라 `.high` 도착 낭독과 겹치지 않는다.
+        maybePresumeArrival(now: now)
     }
 
     // MARK: - 상세 모드 fix 처리·이벤트 배선 (판정은 전부 Kit guideStep)
@@ -1861,16 +1906,24 @@ final class BeaconModel {
     // MARK: - 최종 접근 (spec 2026-08-08 §3.3·§3.4·§4)
 
     /// 세션의 최종 접근 상태를 새 경로 기준으로 되돌린다(시작·재조회 공용).
+    /// 도착 창 에피소드 소거(両창 공용). 경로 커밋·재획득·`stop()`은 `resetFinalApproach` 경유, 간략
+    /// 인계·간략 강등·래치 초기화는 직접 부른다 — 옛 에피소드의 타임스탬프가 새 에피소드로 새면
+    /// 조기 종료다(spec 2026-08-13 §4 상태 초기화 계약, 2026-09-02 §2.2로 간략 창까지).
+    private func resetArrivalWindow() {
+        briefWindowActive = false
+        arrivalWindowEnteredAt = nil
+        progressAnchor = nil
+        lastProgressAt = nil
+        lastUsableDistanceToDest = nil
+    }
+
     private func resetFinalApproach(geometry: FinalApproachPayload?) {
         inFinalApproach = false
         finalApproachGeometry = geometry
         finalApproachIntroSpoken = false
         pendingFinalApproachIntro = nil
         lastFinalTickAt = nil
-        finalApproachEnteredAt = nil
-        progressAnchor = nil
-        lastProgressAt = nil
-        lastUsableDistanceToDest = nil
+        resetArrivalWindow()
     }
 
     /// 진입 처리 — 플래그와 거리 축만 바꾸고 **말하지 않는다.** 첫 발화는
@@ -1904,6 +1957,7 @@ final class BeaconModel {
         let usableGeometry = finalApproachGeometry.flatMap { $0.unavailableReason == .tooClose ? nil : $0 }
         guard usableGeometry != nil || tuning.entersFinalApproachWithoutGeometry else {
             guideDiagLog("briefHandoff reason=\(finalApproachGeometry == nil ? "noGeometry" : "tooClose")")
+            resetArrivalWindow()  // 간략 창은 다음 usable fix가 Kit 리듀서로 연다(spec 2026-09-02 §2.2)
             mode = .brief
             let text = appLocalized("guide.handoff")
             statusText = text
@@ -1916,9 +1970,8 @@ final class BeaconModel {
         inFinalApproach = true
         finalApproachIntroSpoken = false
         lastFinalTickAt = nil
-        finalApproachEnteredAt = uptimeNow
-        progressAnchor = nil
-        lastProgressAt = nil
+        resetArrivalWindow()
+        arrivalWindowEnteredAt = uptimeNow
         // 진입 fix가 곧 마지막 usable fix일 수 있다(2026-08-13 실사고가 정확히 그
         // 모양) — 거리 캡 입력을 진입 시점 좌표로 미리 세운다. 이후 usable fix마다
         // handleFinalApproach가 갱신한다.
@@ -2114,8 +2167,10 @@ final class BeaconModel {
     /// 꼬리로 갚아진다 — statusText 대입이 stop() 뒤인 것이 그 전제다(설계 리뷰 M7).
     @discardableResult
     private func maybePresumeArrival(now: Double) -> Bool {
-        guard isTracking, inFinalApproach, let thresholds = tuning.presumedArrival,
-              let dest, let enteredAt = finalApproachEnteredAt
+        // 국면 게이트는 **도착 창**(최종 접근 국면 ∨ 간략 근처 창, spec 2026-09-02 §2) — 간략 창은 새
+        // 종료 경로가 아니라 이 함수의 게이트 확장이다. 두 창은 배타라 `window=` 로그가 갈린다.
+        guard isTracking, inArrivalWindow, let thresholds = tuning.presumedArrival,
+              let dest, let enteredAt = arrivalWindowEnteredAt
         else { return false }
         let fixRef = max(enteredAt, lastFixAt ?? enteredAt)
         let progressRef = max(enteredAt, lastProgressAt ?? enteredAt)
@@ -2128,7 +2183,8 @@ final class BeaconModel {
         ) else { return false }
         guideDiagLog(
             "presumedArrival reason=\(reason.rawValue) "
-                + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-")"
+                + "dist=\(lastUsableDistanceToDest.map { String(format: "%.1f", $0) } ?? "-") "
+                + "window=\(inFinalApproach ? "final" : "brief")"
         )
         let prewalk = prewalkTarget  // stop() 앞 캡처(A25 §4.2)
         let text = prewalk.map {

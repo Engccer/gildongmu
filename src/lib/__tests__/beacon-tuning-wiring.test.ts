@@ -27,3 +27,27 @@ describe("BeaconModel 세션 종료 갈림은 GuideTuning 데이터를 읽는다
     expect(idle).not.toMatch(/sessionKind\s*==\s*\.walk/);
   });
 });
+
+describe("도착 창(A31 §2, spec 2026-09-02): 간략 근처 창 배선", () => {
+  const presume = src.slice(src.indexOf("func maybePresumeArrival"), src.indexOf("func loadArrivalHealth"));
+
+  it("추정 도착 가드는 inArrivalWindow를 읽고 inFinalApproach 단독 가드로 되돌아가지 않는다", () => {
+    expect(presume).toMatch(/guard isTracking, inArrivalWindow/);
+    expect(presume).not.toMatch(/guard isTracking, inFinalApproach/);
+  });
+
+  it("maybePresumeArrival 호출은 세 자리(최종 접근·간략 fix·워치독)", () => {
+    expect(src.match(/maybePresumeArrival\(now: now\)/g)?.length).toBe(3);
+  });
+
+  it("간략 fix 처리는 창 자격을 Kit 리듀서로 정한다(nearby를 직접 창 진입 근거로 읽지 않는다)", () => {
+    expect(src.includes("briefArrivalWindowStep(")).toBe(true);
+  });
+
+  it("resetFinalApproach가 간략 창 플래그까지 지운다(경로 커밋·재획득·stop에서 옛 창이 살아남지 않게)", () => {
+    const reset = src.slice(src.indexOf("func resetFinalApproach"), src.indexOf("func beginFinalApproach"));
+    expect(reset).toMatch(/resetArrivalWindow\(\)/);
+    const window = src.slice(src.indexOf("func resetArrivalWindow"), src.indexOf("func resetFinalApproach"));
+    expect(window).toMatch(/briefWindowActive = false/);
+  });
+});
