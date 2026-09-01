@@ -122,17 +122,16 @@ struct BeaconTrackingSheet: View {
                     SurroundingsSceneSection(
                         anchor: (lat: dest.lat, lng: dest.lng), proxy: proxy)
                 }
-                // 재조회: 이탈 확정 시에만 노출. 자동 재조회 금지(스펙 §5.6)의 수동 출구.
+                // 재조회: 이탈 확정 시에만 노출. 이탈 확정 시 자동 재조회·채택(E10ⓑ 자동
+                // 채택, 2026-09-02)이 실패·만료·상한 도달로 경로를 못 바꿨을 때의 수동 예비
+                // 출구다(종전 "준비된 새 경로로 안내" 확인 라벨은 폐기 — 누르지 않을 이유가
+                // 없는 확인은 군더더기).
                 // 진행 신호는 라벨 교체가 정본(라벨이 곧 상태 신호 — 별도 통지 중복 금지).
                 // 성공하면 이 버튼 자체가 사라지므로, 누른 결과로 사라질 때는 항상
                 // 존재하는 제목 행으로 포커스를 되돌린다(헌장 §5, a11y 감사 HIGH).
                 if model.offRoute {
-                    // 제안이 준비되면 같은 버튼의 라벨만 바뀐다(E10ⓑ — 별도 버튼
-                    // 추가 금지: SR 읽기 순서 비용. 라벨이 지속 신호의 정본이다).
                     Button(appLocalized(
-                        model.isRerouting ? "guide.rerouteBusy"
-                            : model.hasPreparedProposal ? "guide.proposalAdopt"
-                            : "guide.rerouteButton"
+                        model.isRerouting ? "guide.rerouteBusy" : "guide.rerouteButton"
                     )) {
                         reroutePressed = true
                         model.requestReroute()

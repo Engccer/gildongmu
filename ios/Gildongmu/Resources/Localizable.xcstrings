@@ -12761,6 +12761,46 @@
         }
       }
     },
+    "guide.autoReroute": {
+      "localizations": {
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "새 경로로 다시 안내합니다. 안내 %1$@개, 총 %2$@. %3$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now guiding on a new route. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora te guío por una nueva ruta. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guidage repris sur un nouvel itinéraire. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ora ti guido su un nuovo percorso. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新しいルートで案内を再開します。案内%1$@件、合計%2$@。%3$@"
+          }
+        }
+      }
+    },
     "guide.backOnRoute": {
       "localizations": {
         "ko": {
@@ -16477,86 +16517,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "位置の確度が低いです。最後の案内、%1$@"
-          }
-        }
-      }
-    },
-    "guide.proposalAdopt": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치부터 다시 안내 시작"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restart guidance from current location"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reiniciar la guía desde la ubicación actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reprendre le guidage depuis la position actuelle"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Riavvia la guida dalla posizione attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地から案内をやり直す"
-          }
-        }
-      }
-    },
-    "guide.proposalReady": {
-      "localizations": {
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 위치 기준 경로가 준비되었습니다. 안내 %1$@개, 총 %2$@. %3$@"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A route from your current location is ready. {1, plural, one {%1$@ step} other {%1$@ steps}}, %2$@ total. %3$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La ruta desde tu ubicación actual está lista. {1, plural, one {%1$@ indicación} other {%1$@ indicaciones}}, %2$@ en total. %3$@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un itinéraire depuis votre position actuelle est prêt. {1, plural, one {%1$@ instruction} other {%1$@ instructions}}, %2$@ au total. %3$@"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Un percorso dalla posizione attuale è pronto. {1, plural, one {%1$@ indicazione} other {%1$@ indicazioni}}, %2$@ in totale. %3$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在地からのルートが準備できました。案内%1$@件、合計%2$@。%3$@"
           }
         }
       }

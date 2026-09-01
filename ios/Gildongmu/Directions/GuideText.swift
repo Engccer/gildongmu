@@ -177,12 +177,13 @@ enum GuideText {
         )
     }
 
-    /// 제안 준비 통지(E10ⓑ). 형제(rerouteDone·switchedTo*)와 같은 "규모(개수·총
+    /// 이탈 시 자동 재조회 채택 통지(E10ⓑ 자동 채택, 2026-09-02 — 종전 "준비됨" 제안
+    /// 통지의 자리). 형제(rerouteDone·switchedTo*)와 같은 "규모(개수·총
     /// 거리) → 첫 안내" 구조 — {first}가 거리 포함 서술문이라 뒤에 총 거리를 붙이면
     /// 두 거리가 인접해 판독이 흐려진다(a11y 감사 LOW, periodic 실사용 결함 계열).
-    static func proposalReady(route: GuideRoute, firstIndices: [Int]) -> String {
+    static func autoReroute(route: GuideRoute, firstIndices: [Int]) -> String {
         appLocalized(
-            "guide.proposalReady",
+            "guide.autoReroute",
             route.steps.count,
             formatDistance(Int(route.totalMeters.rounded())),
             unit(route: route, indices: firstIndices)
