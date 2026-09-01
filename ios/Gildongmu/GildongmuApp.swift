@@ -313,7 +313,7 @@ struct GildongmuApp: App {
         directionsPrefill = endpoint
         directionsEpoch += 1
         selectedTab = .directions
-        if case .place(let label, let lat, let lng) = endpoint {
+        if case .place(let label, let lat, let lng, _) = endpoint {
             // 프리필은 도착지 필드 확정이므로 도착지 스코프에 기록(분리 저장).
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: .to)
         }

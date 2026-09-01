@@ -275,7 +275,7 @@ struct BeaconTrackingSheet: View {
         // changeDestination이 false를 돌려 폼도 건드리지 않는다(§3.2 확정 가드).
         .sheet(isPresented: $changeDestPresented) {
             DirectionsEndpointSearchView(target: .to) { endpoint in
-                guard case .place(let label, let lat, let lng) = endpoint else { return }
+                guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.changeDestination(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onDestinationCommitted(endpoint)
                 }
@@ -286,7 +286,7 @@ struct BeaconTrackingSheet: View {
         // 경유지 검색(N4): 목적지 검색과 같은 시트·같은 억제·같은 착지 계약.
         .sheet(isPresented: $waypointPresented) {
             DirectionsEndpointSearchView(target: .via) { endpoint in
-                guard case .place(let label, let lat, let lng) = endpoint else { return }
+                guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                 if model.setWaypoint(dest: BeaconDest(lat: lat, lng: lng), label: label) {
                     onWaypointCommitted(endpoint)
                 }

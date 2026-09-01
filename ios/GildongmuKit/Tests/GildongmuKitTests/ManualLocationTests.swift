@@ -114,3 +114,35 @@ private func strippingComments(_ source: String) -> String {
     #expect(!isManualLocationVerified(withoutOrigin, verdict: .keep))
     #expect(!isManualLocationVerified(withoutOrigin, verdict: .undecidable))
 }
+
+/// 라틴 표기(`labelRoman`, E28)는 additive다 — 저장소의 옛 값(키 부재)은 nil로 읽히고, 있으면 왕복이 보존한다.
+@Test func 라틴_표기는_선택_필드라_옛_저장값도_읽힌다() throws {
+    let legacy = #"{"revision":1,"label":"강동구청","lat":37.53,"lng":127.12,"origin":null,"setAt":1}"#
+    let decoded = try JSONDecoder().decode(ManualLocation.self, from: Data(legacy.utf8))
+    #expect(decoded.labelRoman == nil)
+    #expect(decoded.label == "강동구청")
+
+    let withRoman = ManualLocation(
+        revision: 2, label: "강동구청", labelRoman: "Gangdong-gu Office", lat: 37.53, lng: 127.12,
+        origin: nil, setAt: 2)
+    let roundTrip = try JSONDecoder().decode(ManualLocation.self, from: JSONEncoder().encode(withRoman))
+    #expect(roundTrip == withRoman)
+    #expect(roundTrip.labelRoman == "Gangdong-gu Office")
+}
+
+/// 비-ko 낭독은 라틴 표기가 1순위(웹 `useManualLocationBilingual` 미러), ko와 표기 부재는 한글 그대로.
+@Test func 비ko_낭독은_라틴_표기가_1순위다() {
+    let withRoman = ManualLocation(
+        revision: 1, label: "강동구청", labelRoman: "Gangdong-gu Office", lat: 37.53, lng: 127.12,
+        origin: nil, setAt: 1)
+    let en = manualLocationBilingualName(withRoman, lang: "en")
+    #expect(en.primary == "Gangdong-gu Office")
+    #expect(en.secondary == "강동구청")
+    #expect(en.display == "Gangdong-gu Office (강동구청)")
+    // ko는 병기 없음(byte-identical).
+    let ko = manualLocationBilingualName(withRoman, lang: "ko")
+    #expect(ko == BilingualName(primary: "강동구청", secondary: nil))
+    // 표기가 없으면 비-ko도 한글 그대로(거짓 로마자를 만들지 않는다).
+    let bare = ManualLocation(revision: 1, label: "강동구청", lat: 37.53, lng: 127.12, origin: nil, setAt: 1)
+    #expect(manualLocationBilingualName(bare, lang: "en") == BilingualName(primary: "강동구청", secondary: nil))
+}

@@ -170,7 +170,7 @@ struct TransitTrackingSheet: View {
             // 사이드 채널 후보 조회만 시작한다(취소 시 전체 무효).
             .sheet(isPresented: $changeDestPresented) {
                 DirectionsEndpointSearchView(target: .to) { endpoint in
-                    guard case .place(let label, let lat, let lng) = endpoint else { return }
+                    guard case .place(let label, let lat, let lng, _) = endpoint else { return }
                     model.prepareDestinationChange(
                         dest: BeaconDest(lat: lat, lng: lng), label: label)
                 }
