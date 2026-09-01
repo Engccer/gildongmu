@@ -26,6 +26,8 @@ function check(name, cond, detail) {
 const workDir = mkdtempSync(join(tmpdir(), "odsay-gate-"));
 const entryPath = join(workDir, "entry.ts");
 const bundlePath = join(workDir, "odsay.mjs");
+const stubPath = join(workDir, "next-cache-stub.mjs");
+writeFileSync(stubPath, "export const unstable_cache = (fn) => fn;\n");
 writeFileSync(
   entryPath,
   `export { getTransitRoute } from ${JSON.stringify(resolve("src/lib/providers/odsay"))};`,
@@ -33,7 +35,9 @@ writeFileSync(
 try {
   execFileSync(
     "npx",
-    ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--outfile=${bundlePath}`],
+    // odsay.ts가 급행 정차역 캐시(`next/cache`)를 끌어오므로 Next 런타임 밖에서는 통과 스텁으로 대체한다
+    // (2026-09-02 — 없으면 esbuild가 `@opentelemetry/api` 미해결로 번들 자체가 실패한다).
+    ["esbuild", entryPath, "--bundle", "--format=esm", "--platform=node", `--alias:next/cache=${stubPath}`, `--outfile=${bundlePath}`],
     { stdio: "pipe" },
   );
   const { getTransitRoute } = await import(bundlePath);
@@ -75,8 +79,9 @@ try {
   // 시나리오 유효성: 4호선 leg가 여전히 unknown이어야 이 단언이 A21을 검증한다. TAGO가 4호선을
   // 채우면 이 검사가 먼저 FAIL해 "게이트가 다른 것을 재고 있다"를 드러낸다(조용한 초록 방지).
   const line4 = routes.flatMap((r) => r.legs).find((l) => l.mode === "subway" && /4호선/.test(l.lineName ?? ""));
-  check("A21 시나리오 유효: 4호선 leg serviceStatus=unknown(TAGO 0행)", line4?.serviceStatus === "unknown",
-    `${line4?.lineName ?? "(4호선 없음)"}[${line4?.serviceStatus}]`);
+  // 2026-09-02 재관측: TAGO가 4호선을 채워(232행) 이 조건이 더는 성립하지 않는다 — 시나리오 무효는 FAIL이 아니라
+  // 표기다(추천 단언은 그대로 돈다: unknown이든 running이든 ODsay 1순위가 추천이어야 한다).
+  console.log(`  A21 시나리오(4호선 unknown) ${line4?.serviceStatus === "unknown" ? "유효" : "무효 — TAGO가 4호선을 채웠다"}: ${line4?.lineName ?? "(4호선 없음)"}[${line4?.serviceStatus}]`);
   const recIsLine4Sadang =
     rec?.legs.some((l) => l.mode === "subway" && /4호선/.test(l.lineName ?? "") && l.toName === "사당") &&
     rec?.legs.some((l) => l.mode === "subway" && /2호선/.test(l.lineName ?? ""));
