@@ -109,7 +109,14 @@ const NUMBER_RE = /(\d[\d,]*(?:\.\d+)?)\s*(km|m|분|초|원|대|개|곳|호선|�
 const NAME_RE =
   /[가-힣A-Za-z0-9]{2,}(역|점|병원|의원|소아과|내과|치과|한의원|약국|공원|정류장|정류소|대여소|센터|시장|학교)(?=[은는이가을를에도의와과로]?(?![가-힣]))/g;
 /** 접미사만으로 이뤄진 일반 명사는 후보가 아니다. */
-const GENERIC_NAMES = new Set(["지하철역", "기차역", "버스정류장", "정류장", "정류소", "대여소", "병원", "약국", "공원", "학교", "시장", "센터"]);
+// "달빛어린이병원"·"종합병원"은 도구 설명·일반어에서 오는 범주 이름이지 시설명이 아니다(2026-09-02 C5 1차 실측 — 0건 정직 답변이 이 둘로 오탐).
+const GENERIC_NAMES = new Set(["지하철역", "기차역", "버스정류장", "정류장", "정류소", "대여소", "병원", "약국", "공원", "학교", "시장", "센터", "달빛어린이병원", "종합병원"]);
+/**
+ * 예시 괄호 "(예: '천호역 도착 정보 알려줘')"는 사실 주장이 아니라 다음 발화 안내다 — 그 안의 이름은
+ * 대조하지 않는다(C5 1차 실측: 42·43의 정직한 0건 답변이 예시 역명으로 오탐). 괄호 밖의 "예를 들어 …" 산문은
+ * 면제하지 않는다(사실 서술과 구분할 수 없다).
+ */
+const EXAMPLE_PAREN_RE = /\(\s*예[:：]?[^)]*\)/g;
 // 도로명은 2자 이상 + 뒤에 단위가 오면 조사 "로"("버스로 10분"·"도보로 5분")라 제외한다.
 const ADDRESS_RE = /[가-힣]{2,}(?:대로|로|길)\s?\d+(?:-\d+)?(?!\d)(?!\s*(?:분|초|m|km|정거장|대|개|곳|호선|번))/g;
 
@@ -141,7 +148,7 @@ export function extractEntities(text: string, kinds: readonly EntityKind[]): Ent
     }
   }
   if (kinds.includes("name")) {
-    for (const m of text.matchAll(NAME_RE)) {
+    for (const m of text.replace(EXAMPLE_PAREN_RE, "").matchAll(NAME_RE)) {
       if (GENERIC_NAMES.has(m[0])) continue;
       out.push({ kind: "name", raw: m[0], norm: normalize(m[0]) });
     }
@@ -171,8 +178,11 @@ function grounded(e: Entity, corpus: string, corpusNumbers: number[]): boolean {
   }
   if (e.kind === "time") {
     // 값 경계(`|`)를 살려 좌표 127.1325가 13:25를 접지하지 않게 한다.
+    // 진료시간은 `{start: 800, end: 1800}`처럼 앞자리 0이 없는 HHMM 정수로 오므로 그 꼴도 받는다
+    // (C5 1차 실측: 04의 "08:00"이 도구 값 800에 접지되지 않아 3/3 오탐).
     const compact = e.norm.replace(":", "");
-    return new RegExp(`(^|\\|)${compact}(00)?($|\\|)`).test(corpus);
+    const forms = [compact, compact.replace(/^0/, "")];
+    return forms.some((f) => new RegExp(`(^|\\|)${f}(00)?($|\\|)`).test(corpus));
   }
   if (e.kind === "number") {
     const m = /^([\d.]+)(.*)$/.exec(e.norm);
