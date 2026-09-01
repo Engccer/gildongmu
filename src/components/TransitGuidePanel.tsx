@@ -119,6 +119,8 @@ export function TransitGuidePanel({
   /** 선언 버튼이 세운다 — 세션 claim이 도보 세션을 멈추며 내는 "ended"를 취소로 읽지 않게. */
   const declaredRef = useRef(false);
   const active = open || prewalk !== null;
+  /** 도보 안내에 넘길 목적지 표시 이름 — 프리워크 통지·버튼과 **같은 이름**이어야 한다. */
+  const prewalkWalkLabel = isEn ? (prewalk?.nameEn ?? prewalk?.name ?? "") : (prewalk?.name ?? "");
   /** 승차 전 도보 "도착" 버튼 라벨 — 줄과 lang을 함께 쓰므로 한 번만 만든다. */
   const prewalkArrivedButtonLabel = prewalkArrivedButtonLine(isEn, {
     ko: prewalk?.name ?? "",
@@ -272,7 +274,11 @@ export function TransitGuidePanel({
       {prewalk && !open && (
         <div className="mt-1">
           <DistanceBeacon
-            dest={{ lat: prewalk.lat, lng: prewalk.lng, name: prewalk.name }}
+            // ⚠ 도보 안내의 목적지 라벨도 **같은 표시 이름**을 쓴다 — 한국어로 두면 한 세션
+            // 안에서 같은 역이 두 이름("Walk to Cheonho" → "천호까지 …")으로 불려, 화면을 못
+            // 보는 사용자에게 둘이 같은 곳이라는 근거가 없다(a11y 감사 검출). 이 라벨은
+            // 안내 문장에만 쓰이는 표시 전용이라 조인이 걸리지 않는다.
+            dest={{ lat: prewalk.lat, lng: prewalk.lng, name: prewalkWalkLabel }}
             kind="walk"
             accessible={walkAccessible}
             startOnOpen
