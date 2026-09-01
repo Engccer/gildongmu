@@ -92,9 +92,17 @@ final class GuideSession {
         let context = PrewalkContext(
             id: UUID(), route: route, destinationLabel: destinationLabel, dest: dest, accessible: accessible)
         prewalk = context
-        // 표시 라벨은 ko·en 쌍(E27 잔여 ①). 도보 세션의 목적지 라벨(`label:`)은 조인·표시가
-        // 겸하는 자리라 한국어 원문을 유지한다 — 도보 안내는 이 마일스톤의 축이 아니다.
-        let stationLabel = TransitLabel(ko: target.name, en: target.nameEn)
+        // 표시 라벨은 ko·en 쌍(E27 잔여 ①).
+        //
+        // ⚠ **도보 세션의 목적지 라벨(`label:`)도 같은 이름을 쓴다.** 종전 주석은 그 자리를
+        // "조인·표시 겸용"이라고 적었는데 **틀렸다** — `destinationLabel`은 `GuideText.periodicWalk`·
+        // `progress`·`finalApproachEnter`로만 가는 **표시 전용**이고 조인하는 소비자가 없다.
+        // 이 자리를 한국어로 두면 한 세션 안에서 같은 역이 두 이름으로 불린다(a11y 감사 검출):
+        // 시작 통지 "Walk to Cheonho" → 걷는 중 "Go straight 200 m to 천호" → 도착 "Arrived at
+        // Cheonho". 화면을 못 보는 사용자에게 그 둘이 같은 곳이라는 근거가 없어 "목적지가
+        // 바뀌었나"를 의심하게 된다 — 이름이 통째로 한국어인 것보다 나쁘다.
+        let stationLabel = transitPrewalkLabel(target)
+        let walkLabel = transitGuideIsEn ? (stationLabel.en ?? stationLabel.ko) : stationLabel.ko
         beacon.markPrewalk(target: stationLabel)
         beacon.onSessionEnd = { [weak self] reason in self?.endPrewalk(context.id, reason: reason) }
         transit.announceExternal(TransitGuideTextRenderer.render(
@@ -102,7 +110,7 @@ final class GuideSession {
                 isEn: transitGuideIsEn, station: stationLabel, minutes: target.minutes)))
         launchingPrewalk = true
         self.startBeacon(BeaconModel.StartRequest(
-            dest: BeaconDest(lat: target.lat, lng: target.lng), label: target.name, kind: .walk,
+            dest: BeaconDest(lat: target.lat, lng: target.lng), label: walkLabel, kind: .walk,
             accessible: accessible, variant: nil, shortestAvailable: false,
             waypoint: nil))  // 승차역까지의 도보에 경유지는 없다
         launchingPrewalk = false

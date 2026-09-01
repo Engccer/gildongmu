@@ -98,6 +98,14 @@ public func transitDisplayItem(_ item: TransitTrackItem) -> TransitDisplayItem {
         selectable: item.vehicleId?.isEmpty == false)
 }
 
+/// 승차 전 도보 대상의 표시 라벨 — **앱이 `TransitLabel`을 직접 만들지 않게** 하는 자리다.
+/// `TransitLabel.init`엔 정규화가 없어 `nameEn == ""`이면 `pickLabels`가 "en 완비"로 읽어
+/// `"Arrived at "`(이름 없는 문장)가 된다(a11y 감사 I2). 서버 두 축이 지금은 막고 있지만
+/// 정규화기가 한 줄 옆에 있는데 우회하는 것은 이중 방어를 iOS만 잃는 비대칭이다.
+public func transitPrewalkLabel(_ target: TransitPrewalkTarget) -> TransitLabel {
+    transitLabel(target.name, target.nameEn)
+}
+
 /// 이벤트가 실어 온 완성 문장 쌍(같은 관측에서 나온 ko·en, spec §3.4).
 public func transitMessageLabel(_ ko: String, _ en: String?) -> TransitLabel {
     TransitLabel(ko: ko, en: en)
