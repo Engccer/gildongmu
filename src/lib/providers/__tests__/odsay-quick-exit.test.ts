@@ -203,3 +203,19 @@ describe("odsay quickExit 부착", () => {
     expect("quickExit" in leg).toBe(false);
   });
 });
+
+describe('transfer door "0-0"(실호출 2026-09-02, 같은 승강장 완행→급행 환승)', () => {
+  it("0번 칸은 없으므로 문이 아니라 부재다", () => {
+    const zero = {
+      ...SUBWAY,
+      subPath: [
+        { ...SUBWAY.subPath[1], door: "0-0" },
+        { trafficType: 3, distance: 0, sectionTime: 1 },
+        { ...SUBWAY.subPath[1], startName: "여의도", endName: "신길", lane: [{ name: "수도권 5호선(급행)" }], door: "null" },
+      ],
+    };
+    const legs = normalizeOdsayRoutes(wrap([zero]))![0].legs.filter((l) => l.mode === "subway");
+    expect(legs[0].quickExit?.transfer).toBeUndefined();
+    expect(JSON.stringify(legs)).not.toContain("0-0");
+  });
+});

@@ -424,3 +424,28 @@ struct RouteBriefingWaypointTests {
     #expect(TransitDisplay.pickLine(isEn: true, ko: "강남, 2호선", enParts: ["Gangnam", nil]) { $0.joined(separator: ", ") } == "강남, 2호선")
     #expect(TransitDisplay.pickLine(isEn: false, ko: "강남, 2호선", enParts: ["Gangnam", "Line 2"]) { $0.joined(separator: ", ") } == "강남, 2호선")
 }
+
+// MARK: - 급행 정차역 집합·출구 번호(2026-09-02, A16 L1·E25)
+// 두 필드 모두 additive optional. ⚠ 선언하지 않으면 서버가 실어도 앱만 침묵한다 — 디코딩이 유일한 가드.
+
+@Suite("급행 정차역 집합·출구 번호 디코딩")
+struct TransitLegExpressExitTests {
+    @Test func 두_필드를_디코딩한다() throws {
+        let json = Data("""
+        {"mode":"subway","lineName":"수도권 9호선","fromName":"당산","toName":"노들","stationCount":3,"minutes":6,
+         "expressStops":["김포공항","당산","여의도","노량진","중앙보훈병원"],
+         "exit":{"alight":"1"}}
+        """.utf8)
+        let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
+        #expect(leg.expressStops == ["김포공항", "당산", "여의도", "노량진", "중앙보훈병원"])
+        #expect(leg.exit?.alight == "1")
+        #expect(leg.exit?.board == nil)
+    }
+
+    @Test func 두_필드가_없어도_디코딩된다() throws {
+        let json = Data(#"{"mode":"subway","lineName":"수도권 5호선","minutes":6}"#.utf8)
+        let leg = try JSONDecoder().decode(TransitRouteLeg.self, from: json)
+        #expect(leg.expressStops == nil)
+        #expect(leg.exit == nil)
+    }
+}

@@ -137,3 +137,76 @@ describe("normalizeOdsayRoutes 봉투 3-state", () => {
     expect(() => normalizeOdsayRoutes({ result: {} } as never)).toThrow(/스키마/);
   });
 });
+
+/**
+ * 출구 번호 투영(E25, spec `2026-09-02-express-stops-data-design.md` §4). 실호출 2026-09-02 개화→중앙보훈병원:
+ * 첫 leg `startExitNo:"2"`, 마지막 leg `endExitNo:"1"`, 환승 leg엔 키 부재. 허용은 필드 존재가 아니라
+ * 경로 문맥(역 밖 진입 승차·역 밖 하차)이다.
+ */
+describe("exit 투영(E25)", () => {
+  const sub = (start: string, end: string, extra: Record<string, unknown>) => ({
+    trafficType: 1,
+    distance: 1000,
+    sectionTime: 10,
+    startName: start,
+    endName: end,
+    stationCount: 3,
+    lane: [{ name: "수도권 9호선" }],
+    wayCode: 1,
+    ...extra,
+  });
+  const inStation = { trafficType: 3, distance: 0, sectionTime: 2 };
+  const outside = { trafficType: 3, distance: 150, sectionTime: 2 };
+  const P = (...subPath: unknown[]) => ({ pathType: 1, info: { totalTime: 30, payment: 1400 }, subPath });
+  const legsOf = (path: unknown, includeStops = true) =>
+    normalizeOdsayRoutes(wrap([path]), { includeStops })![0].legs.filter((l) => l.mode === "subway");
+
+  it("첫 승차 leg의 board·마지막 하차 leg의 alight만 싣는다(환승 leg는 문맥으로 차단)", () => {
+    const [a, b] = legsOf(
+      P(
+        outside,
+        sub("개화", "김포공항", { startExitNo: "2", endExitNo: "7" }), // ODsay가 환승 하차 쪽에 값을 채워도
+        inStation,
+        sub("김포공항", "중앙보훈병원", { startExitNo: "5", endExitNo: "1" }), // 역내 환승 승차 쪽도
+        outside,
+      ),
+    );
+    expect(a.exit).toEqual({ board: "2" });
+    expect(b.exit).toEqual({ alight: "1" });
+  });
+
+  it("버스로 갈아타는 하차·버스 뒤 승차는 역 밖이라 둘 다 허용된다", () => {
+    const bus = { trafficType: 2, distance: 2000, sectionTime: 10, startName: "a", endName: "b", lane: [{ busNo: "1" }] };
+    const [a, b] = legsOf(P(sub("x", "y", { endExitNo: "3" }), outside, bus, outside, sub("y", "z", { startExitNo: "4" })));
+    expect(a.exit).toEqual({ alight: "3" });
+    expect(b.exit).toEqual({ board: "4" });
+  });
+
+  it('"null"·빈 값·0 계열·앞자리 0은 부재, 둘 다 없으면 exit 키 자체 부재', () => {
+    for (const bad of ["null", "", "0", "00", "2-0", "02", " ", "2abc"]) {
+      const [l] = legsOf(P(sub("x", "y", { startExitNo: bad, endExitNo: bad })));
+      expect("exit" in l).toBe(false);
+    }
+    const [ok] = legsOf(P(sub("x", "y", { startExitNo: " 2-1 ", endExitNo: "10" })));
+    expect(ok.exit).toEqual({ board: "2-1", alight: "10" });
+  });
+
+  it("출구 좌표가 역에서 1km 밖이면 부재(좌표가 없으면 검사하지 않는다)", () => {
+    const [far] = legsOf(P(sub("x", "y", { startExitNo: "2", startX: "127.00", startY: "37.50", startExitX: "127.05", startExitY: "37.50" })));
+    expect("exit" in far).toBe(false);
+    const [near] = legsOf(P(sub("x", "y", { startExitNo: "2", startX: "127.00", startY: "37.50", startExitX: "127.002", startExitY: "37.501" })));
+    expect(near.exit).toEqual({ board: "2" });
+  });
+
+  it("includeStops 미지정이면 exit·expressStops 모두 부재(byte-호환)", () => {
+    const [l] = legsOf(P(sub("x", "y", { startExitNo: "2", endExitNo: "1" })), false);
+    expect("exit" in l).toBe(false);
+    expect("expressStops" in l).toBe(false);
+  });
+
+  it("버스 leg에는 싣지 않는다", () => {
+    const bus = { trafficType: 2, distance: 2000, sectionTime: 10, startName: "a", endName: "b", lane: [{ busNo: "1" }], startExitNo: "2" };
+    const legs = normalizeOdsayRoutes(wrap([P(bus)]), { includeStops: true })![0].legs;
+    expect("exit" in legs[0]).toBe(false);
+  });
+});
