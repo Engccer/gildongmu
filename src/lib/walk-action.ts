@@ -1,6 +1,7 @@
 /**
  * 도보 스텝 문장에서 **결정 지점의 행동**을 뽑아내는 순수 분류기(ko 전용).
- * Kit 미러: `WalkAction.swift` — 공유 fixture(walk-action-cases.json)가 동조를 강제한다.
+ * 서버 전용(`walk-route.ts` `attachStepActions`). Kit 미러는 2026-09-02에 지웠다 — 클라이언트는
+ * 서버가 투영한 `step.action`만 읽고 문장을 분류하지 않는다(공유 fixture walk-action-cases.json은 웹 테스트만 읽는다).
  *
  * 쓰임은 하나다: 결정 지점 임박 큐(`route-guide.ts` 6a, 거리는 `IMMINENT_AHEAD_M`)가 무엇을 말할지 고른다.
  * 분류가 없으면 큐 자체가 나가지 않으므로, **미분류의 결과는 오안내가 아니라 침묵**이다.

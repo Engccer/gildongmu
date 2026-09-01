@@ -385,16 +385,18 @@ final class DirectionsModel {
         lastCoords = (origin: origin, dest: dest, via: viaCoord)
 
         // 3수단 병렬. 도보의 ko 전용 게이트는 E16 축3으로 사라졌다 — 서버가 en 문장을 만든다.
-        let lang = AppLanguage.dataLocale
+        // 언어는 한 번만 읽는다 — 세 수단이 같은 스냅샷을 쓴다는 사실이 코드에 보이게.
+        let locale = AppLanguage.dataLocaleValue
+        let lang = locale.rawValue
         let service = self.service
         // ⚠ 앱 언어를 ko에서 바꾸면 토글은 숨겨지는데 모델 상태는 남는다 — 끌 수단이 없는
         // 채로 매 조회에 실려 "Step-free routing is unavailable…"이 스텝 0으로 삽입된다
         // (리뷰 검출). 토글 노출 조건과 **같은 조건**으로 값 자체를 무력화한다.
-        let accessible = stepFreeEnabled && AppLanguage.dataLocale == "ko"
+        let accessible = stepFreeEnabled && locale == .ko
         // 대중교통은 경유지가 있으면 호출하지 않는다(ODsay 미지원 — 서버 spec §2.1).
         // "경로 없음"이 아니라 "미지원"이라 별도 상태로 섹션에 사유를 남긴다.
         async let transitSettled = Self.settleTransit(service, include: viaCoord == nil, origin: origin, dest: dest)
-        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: AppLanguage.dataLocaleValue, via: viaCoord)
+        async let walkSettled = Self.settleWalk(service, include: true, origin: origin, dest: dest, accessible: accessible, lang: locale, via: viaCoord)
         async let carSettled = Self.settleCar(service, origin: origin, dest: dest, lang: lang, via: viaCoord)
         let (transit, walk, car) = await (transitSettled, walkSettled, carSettled)
         guard !Task.isCancelled else { return }

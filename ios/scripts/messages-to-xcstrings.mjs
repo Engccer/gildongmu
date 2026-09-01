@@ -31,7 +31,9 @@
 // 하나만 지킨다). ko 문장을 자연스럽게 재배열하기만 해도 호출부 인자가 뒤바뀌는데 빌드·린터·
 // 테스트가 전부 통과하므로, 기존 키의 순서가 manifest와 다르면 생성을 실패시킨다(exit 1).
 // 호출부를 함께 고친 의도된 변경은 `--update-arg-order`로만 통과한다. 신규 키는 자동 등록,
-// 사라진 키는 자동 제거(계약이 없어졌으므로). 게이트 테스트 `src/lib/__tests__/xcstrings-arg-order.test.ts`.
+// 사라진 키는 자동 제거(계약이 없어졌으므로). manifest가 없을 때의 부트스트랩도 그 플래그로만 —
+// 지우고 재생성하면 조용히 재기준선이 되기 때문이다. 게이트는 **카탈로그를 쓰기 전에** 돈다
+// (실패하면 두 카탈로그 다 그대로). 게이트 테스트 `src/lib/__tests__/xcstrings-arg-order.test.ts`.
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -343,12 +345,12 @@ function buildCatalog(target) {
   };
 }
 
-/** 두 타깃의 인자 순서를 한 표로 합친다(키 → ko 이름 순서). 같은 키가 타깃마다 다른 순서면
- * extra 오버라이드가 갈린 것이라 throw(한 키에 ABI 둘은 성립하지 않는다). */
-function collectArgOrder(targets = TARGETS) {
+/** 타깃별 `buildCatalog` 결과에서 인자 순서를 한 표로 합친다(키 → ko 이름 순서). 같은 키가
+ * 타깃마다 다른 순서면 extra 오버라이드가 갈린 것이라 throw(한 키에 ABI 둘은 성립하지 않는다). */
+function argOrderFromBuilds(builds) {
   const merged = {};
-  for (const target of Object.values(targets)) {
-    for (const [key, order] of Object.entries(buildCatalog(target).argOrder)) {
+  for (const build of Object.values(builds)) {
+    for (const [key, order] of Object.entries(build.argOrder)) {
       if (key in merged && merged[key].join(',') !== order.join(',')) {
         throw new Error(`인자 순서가 타깃마다 다르다: ${key} (${merged[key].join(',')} vs ${order.join(',')})`);
       }
@@ -356,6 +358,15 @@ function collectArgOrder(targets = TARGETS) {
     }
   }
   return Object.fromEntries(Object.keys(merged).sort().map((key) => [key, merged[key]]));
+}
+
+function buildAll(targets = TARGETS) {
+  return Object.fromEntries(Object.entries(targets).map(([name, target]) => [name, buildCatalog(target)]));
+}
+
+/** 두 타깃 전부를 빌드해 인자 순서 표를 낸다(테스트·CLI 공용). */
+function collectArgOrder(targets = TARGETS) {
+  return argOrderFromBuilds(buildAll(targets));
 }
 
 /** manifest(저장본) ↔ current(정본에서 계산) 차분. `changed`만 계약 파손이다. */
@@ -369,8 +380,15 @@ function diffArgOrder(manifest, current) {
   return { added, removed, changed };
 }
 
+/** 저장된 manifest. 없으면 null(부트스트랩 판정용), 모양이 "이름 배열의 사전"이 아니면 원인 문장으로 throw. */
 function readArgOrderManifest(manifestPath) {
-  return existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : {};
+  if (!existsSync(manifestPath)) return null;
+  const parsed = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const wellFormed =
+    parsed && typeof parsed === 'object' && !Array.isArray(parsed) &&
+    Object.values(parsed).every((v) => Array.isArray(v) && v.every((n) => typeof n === 'string'));
+  if (!wellFormed) throw new Error(`[arg-order] manifest 모양이 "키 → 이름 배열"이 아니다: ${manifestPath}`);
+  return parsed;
 }
 
 /**
@@ -379,7 +397,13 @@ function readArgOrderManifest(manifestPath) {
  * 생성·소멸이다). 호출자는 `ok`가 false면 exit 1을 낸다.
  */
 function syncArgOrder({ update = false, manifestPath = ARG_ORDER_PATH, current = collectArgOrder(), log = console } = {}) {
-  const manifest = readArgOrderManifest(manifestPath);
+  const stored = readArgOrderManifest(manifestPath);
+  if (stored === null && !update) {
+    // 부재를 "전부 신규"로 읽으면 manifest를 지우고 재생성하는 것만으로 순서 변경이 재기준선이 된다.
+    log.error(`[arg-order] manifest가 없다: ${manifestPath} — 부트스트랩은 ${UPDATE_ARG_ORDER_FLAG}로만 한다.`);
+    return { ok: false, diff: diffArgOrder({}, current) };
+  }
+  const manifest = stored ?? {};
   const diff = diffArgOrder(manifest, current);
   if (diff.changed.length > 0 && !update) {
     log.error(
@@ -394,9 +418,10 @@ function syncArgOrder({ update = false, manifestPath = ARG_ORDER_PATH, current =
     );
     return { ok: false, diff };
   }
-  const unchanged = diff.added.length === 0 && diff.removed.length === 0 && diff.changed.length === 0;
-  if (!unchanged || !existsSync(manifestPath)) {
-    writeFileSync(manifestPath, `${JSON.stringify(current, null, 2)}\n`, 'utf8');
+  // 내용이 같아도 저장 형식(키 순서·들여쓰기)이 정규형과 다르면 다시 쓴다.
+  const serialized = `${JSON.stringify(current, null, 2)}\n`;
+  if (stored === null || readFileSync(manifestPath, 'utf8') !== serialized) {
+    writeFileSync(manifestPath, serialized, 'utf8');
   }
   const parts = [];
   if (diff.added.length) parts.push(`등록 ${diff.added.length}`);
@@ -406,9 +431,9 @@ function syncArgOrder({ update = false, manifestPath = ARG_ORDER_PATH, current =
   return { ok: true, diff };
 }
 
-function generate(name) {
+function generate(name, build) {
   const target = TARGETS[name];
-  const { catalog, totalKeys, skipped } = buildCatalog(target);
+  const { catalog, totalKeys, skipped } = build;
   writeFileSync(target.output, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
   const written = Object.keys(catalog.strings).length;
   console.log(`[${name}] ${target.output}`);
@@ -447,7 +472,13 @@ if (isCli) {
     console.error(`사용법: node ios/scripts/messages-to-xcstrings.mjs <app|kit|all> [${UPDATE_ARG_ORDER_FLAG}]`);
     process.exit(1);
   }
-  for (const name of arg === 'all' ? ['app', 'kit'] : [arg]) generate(name);
-  // manifest는 두 타깃 공용 한 벌이라 어느 타깃을 생성하든 전체를 대조한다.
-  if (!syncArgOrder({ update }).ok) process.exitCode = 1;
+  // manifest는 두 타깃 공용 한 벌이라 어느 타깃을 생성하든 두 타깃을 다 빌드해 대조하고,
+  // 게이트를 통과한 뒤에만 카탈로그를 쓴다(실패한 순서로 카탈로그가 먼저 바뀌면 manifest만
+  // 정상인 채 인덱스가 어긋난 카탈로그가 커밋될 수 있다 — 리뷰 검출 2026-09-02).
+  const builds = buildAll();
+  if (!syncArgOrder({ update, current: argOrderFromBuilds(builds) }).ok) {
+    console.error('[arg-order] 게이트 실패 — 카탈로그를 쓰지 않았다.');
+    process.exit(1);
+  }
+  for (const name of arg === 'all' ? ['app', 'kit'] : [arg]) generate(name, builds[name]);
 }

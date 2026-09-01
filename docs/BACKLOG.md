@@ -448,7 +448,7 @@ W1 도구 9개를 "데이터 반환형이 주"(W2 spec 판정 ②) 기준으로 
 | **도착 즉시 종료** | 웹은 도착에 세션을 끝내고 iOS는 도착 종료 화면(건강 요약 포함)을 유지한다. 착수하려면 그 화면의 웹 대응을 먼저 판정해야 한다 |
 | ~~**Kit `RouteService.walk(lang:)`를 enum으로**~~ | ✅ 2026-09-02 종결 — Kit `DataLocale`(`ko`·`en`), 앱 정본 `AppLanguage.dataLocaleValue`(문자열 `dataLocale`은 투영). 나머지 서비스의 `lang: String`은 종전 계약 그대로(다른 항목 아님 — 오타가 들어갈 자리가 없다) |
 | ~~**Kit `walkStepAction` 정리**~~ | ✅ 2026-09-02 종결 — `walkStepAction`·`GuideActionSource`·`stepActionFor`·`GuideTuning.actionSource` 삭제(검사 삭제 졸업), `buildDisplayUnits(source:)` 인자 소멸. 웹 `walk-action.ts`는 서버 정본이라 불변 |
-| **웹 `GuideTuning.actionSource` `"text"` 분기** | Kit과 같은 이유로 죽은 분기다(walk·car 둘 다 `"step"`, `stepActionFor`의 문장 폴백에 도달하는 프로파일이 없다). 2026-09-02 Kit 정리는 소유권이 Kit이라 웹은 두었다 — 웹 리듀서를 다음에 만질 때 동형으로 지운다(`walk-action.ts` 자체는 서버 `attachStepActions`가 쓰므로 남긴다) |
+| **웹 `GuideTuning.actionSource` `"text"` 분기** | Kit과 같은 이유로 죽은 분기다(walk·car 둘 다 `"step"`, `stepActionFor`의 문장 폴백에 도달하는 프로파일이 없다). 2026-09-02 Kit 정리는 소유권이 Kit이라 웹은 두었다 — 웹 리듀서를 다음에 만질 때 동형으로 지운다(`walk-action.ts` 자체는 서버 `attachStepActions`가 쓰므로 남긴다). 그때 `guide-live-rows.test.ts`의 walk 시나리오도 `"step"`으로 돌려 공유 fixture의 `action`(지금은 Kit만 읽는다)이 웹에서도 검사되게 한다 |
 
 ### E15. 안내 UI 공통화 — 도보에서 도달한 UI/UX를 대중교통·자동차로
 
