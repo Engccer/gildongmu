@@ -166,7 +166,7 @@ final class DirectionsModel {
 
     /// 경유지 라벨(결과 행 "경유지 {label} 도착"·시작 요청용). 서버는 라벨을 모른다.
     var viaLabel: String? {
-        if case .place(let label, _, _) = via { return label }
+        if case .place(let label, _, _, _) = via { return label }
         return nil
     }
 
@@ -184,7 +184,7 @@ final class DirectionsModel {
     /// (init은 App body 재평가마다 반복 호출되어 여기서 기록하면 삭제된 최근 장소가
     /// 부활하는 부수효과가 있었다 — 스펙 §5 삭제 계약 위반, 2026-07-26 리뷰 수정).
     private func recordRecent(_ endpoint: DirectionsEndpoint?, scope: RecentEndpointScope) {
-        if case .place(let label, let lat, let lng) = endpoint {
+        if case .place(let label, let lat, let lng, _) = endpoint {
             RecentSearchStore().recordEndpoint(RecentEndpoint(label: label, lat: lat, lng: lng), scope: scope)
         }
     }
@@ -197,7 +197,7 @@ final class DirectionsModel {
     }
 
     private static func recentSide(_ endpoint: DirectionsEndpoint) -> RecentEndpoint? {
-        if case .place(let label, let lat, let lng) = endpoint {
+        if case .place(let label, let lat, let lng, _) = endpoint {
             return RecentEndpoint(label: label, lat: lat, lng: lng)
         }
         return nil
@@ -376,7 +376,7 @@ final class DirectionsModel {
         // 사이 화면이 직전 phase(settled)에 머물면서 결과만 비어 있는 창이 생긴다.
         phase = .loading
         var entrance: EntranceMatch?
-        if case .place(let label, _, _) = to, AppLanguage.dataLocale == "ko" {
+        if case .place(let label, _, _, _) = to, AppLanguage.dataLocale == "ko" {
             entrance = await searchService.destinationEntrance(
                 name: label, lat: queried.lat, lng: queried.lng,
                 fromLat: origin.lat, fromLng: origin.lng
@@ -487,7 +487,7 @@ final class DirectionsModel {
     ) -> (lat: Double, lng: Double)? {
         switch endpoint {
         case .current: current
-        case .place(_, let lat, let lng): (lat: lat, lng: lng)
+        case .place(_, let lat, let lng, _): (lat: lat, lng: lng)
         }
     }
 
@@ -1172,7 +1172,7 @@ struct DirectionsTabView: View {
         if let promoted = model.promotedDestination {
             return (promoted.label, BeaconDest(lat: promoted.lat, lng: promoted.lng))
         }
-        guard case .place(let label, let lat, let lng) = model.endpoint(for: .to) else { return nil }
+        guard case .place(let label, let lat, let lng, _) = model.endpoint(for: .to) else { return nil }
         return (label, BeaconDest(lat: lat, lng: lng))
     }
 
@@ -1180,7 +1180,7 @@ struct DirectionsTabView: View {
     /// 안내 시작 버튼 4곳이 전부 이 값을 쓴다(한 곳이 빠지면 경유지 없는 안내가 조용히
     /// 시작된다 — `StartRequest.waypoint`에 기본값이 없는 이유).
     private var sessionWaypoint: BeaconModel.Waypoint? {
-        guard case .place(let label, let lat, let lng) = model.via else { return nil }
+        guard case .place(let label, let lat, let lng, _) = model.via else { return nil }
         return BeaconModel.Waypoint(dest: BeaconDest(lat: lat, lng: lng), label: label)
     }
 
@@ -1189,7 +1189,7 @@ struct DirectionsTabView: View {
     /// 떨어진다(이름 부재와 구간 의미 부재는 다른 층이다).
     private var destinationPlaceName: String? {
         if let promoted = model.promotedDestination { return promoted.label }
-        guard case .place(let label, _, _) = model.endpoint(for: .to) else { return nil }
+        guard case .place(let label, _, _, _) = model.endpoint(for: .to) else { return nil }
         return label
     }
 
@@ -1201,7 +1201,7 @@ struct DirectionsTabView: View {
         switch model.endpoint(for: target) {
         case .current:
             return "\(label), \(currentLocationText(accessible: accessible))"
-        case .place(let name, _, _):
+        case .place(let name, _, _, _):
             return "\(label), \(name)"
         case nil:
             return target == .from ? appLocalized("directions.searchFrom") : appLocalized("directions.searchTo")
@@ -1213,7 +1213,7 @@ struct DirectionsTabView: View {
     /// 진행 라벨, 주소 확보 → 주소 병기, 기본 "현재 위치". 한 줄 = 한 객체(필드
     /// 버튼 단일 텍스트에 흡수). 주소는 비-ko에서 영문·로마자 병기(E28, `LocationBarView` 동형).
     private func currentLocationText(accessible: Bool) -> String {
-        if let manual = manualLocationLabel(manualLocationStore) { return manual }
+        if let manual = manualLocationLabel(manualLocationStore, accessible: accessible) { return manual }
         if model.isRefreshingCurrent { return appLocalized("directions.refreshingCurrent") }
         if let address = model.currentAddress {
             let name = bilingual(address, en: model.currentAddressEnglish, roman: nil)

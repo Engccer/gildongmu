@@ -55,10 +55,11 @@ final class ManualLocationStore {
     }
 
     /// 지정. `revision`은 이 메서드만 증가시킨다(CAS 토큰의 단일 발급처).
-    func set(label: String, lat: Double, lng: Double, origin: ManualFix?) {
+    /// `labelRoman`은 지정 화면이 그 시점에 든 라틴 표기다(E28) — 여기서 다시 조회하지 않는다.
+    func set(label: String, labelRoman: String?, lat: Double, lng: Double, origin: ManualFix?) {
         let next = ManualLocation(
             revision: (current?.revision ?? 0) + 1,
-            label: label, lat: lat, lng: lng,
+            label: label, labelRoman: labelRoman, lat: lat, lng: lng,
             origin: origin,
             setAt: Date().timeIntervalSince1970
         )

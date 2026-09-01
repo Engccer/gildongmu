@@ -24,15 +24,25 @@ public struct ManualLocation: Equatable, Codable, Sendable {
     /// 단조 증가. 판정 왕복 중 재지정을 가르는 CAS 토큰.
     public let revision: Int
     public let label: String
+    /// 라벨의 라틴 표기(E28 병기, additive) — **지정 시점**에 저장한다(장소=서버 `nameRoman`,
+    /// 주소=juso `engAddr`). 없으면 병기 없음. 저장소의 옛 값(키 부재)은 nil로 읽힌다.
+    public let labelRoman: String?
     public let lat: Double
     public let lng: Double
     public let origin: ManualFix?
     public let setAt: Double
 
-    public init(revision: Int, label: String, lat: Double, lng: Double, origin: ManualFix?, setAt: Double) {
-        self.revision = revision; self.label = label
+    public init(revision: Int, label: String, labelRoman: String? = nil, lat: Double, lng: Double,
+                origin: ManualFix?, setAt: Double) {
+        self.revision = revision; self.label = label; self.labelRoman = labelRoman
         self.lat = lat; self.lng = lng; self.origin = origin; self.setAt = setAt
     }
+}
+
+/// 수동 위치 라벨의 병기 이름(웹 `useManualLocationBilingual` 미러) — 비-ko에서 `labelRoman`이 1순위,
+/// 없으면 한글 그대로. 검증 가능/불가 틀(`manualLocation.manual*`)은 호출부가 `primary`에 씌운다.
+public func manualLocationBilingualName(_ manual: ManualLocation, lang: String) -> BilingualName {
+    bilingualName(lang: lang, ko: manual.label, en: nil, roman: manual.labelRoman)
 }
 
 public enum ManualVerdict: String, Equatable, Sendable {

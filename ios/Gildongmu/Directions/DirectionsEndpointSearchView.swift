@@ -75,7 +75,9 @@ final class EndpointSearchModel {
                 announceCoordError()
                 return nil
             }
-            return .place(label: target, lat: match.lat, lng: match.lng)
+            // 라틴 표기는 지정 시점의 juso 공식 영문 주소(E28) — 수동 위치 지정이 스토어까지 옮긴다.
+            let roman = address.engAddr.trimmingCharacters(in: .whitespaces)
+            return .place(label: target, lat: match.lat, lng: match.lng, labelRoman: roman.isEmpty ? nil : roman)
         } catch {
             announceCoordError()
             return nil
@@ -213,7 +215,7 @@ struct DirectionsEndpointSearchView: View {
                 }
                 ForEach(model.places) { place in
                     Button {
-                        select(.place(label: place.name, lat: place.lat, lng: place.lng))
+                        select(.place(label: place.name, lat: place.lat, lng: place.lng, labelRoman: place.nameRoman))
                     } label: {
                         // 한 줄 = 한 객체: 이름+주소 단일 텍스트(웹 joinText 동형). 비-ko는 이름이 로마자
                         // 병기(E28) — 시각 `Roman (한글), 주소`, 낭독은 괄호 없이. 확정 라벨은 원명 그대로.

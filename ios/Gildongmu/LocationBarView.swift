@@ -11,12 +11,18 @@ import GildongmuKit
 /// ⚠ **스토어를 인자로 받는다(기본값 없음).** 호출 뷰가 그 스토어를 붙들고 있어야
 /// `current`·`verdict` 접근이 body 평가 중 관찰로 등록되어 지정·해제·판정이 라벨에
 /// 즉시 반영된다. 기본값을 주면 그 의존이 호출부에서 보이지 않게 된다.
+///
+/// `accessible`은 병기 변종이다(E28, 웹 `useManualLocationBilingual` 동형): false=시각 `Roman (한글)`,
+/// true=낭독(로마자만). 라틴 표기(`labelRoman`)가 없으면 둘이 같다. 검증 가능/불가 틀은 두 변종에
+/// 같이 씌운다 — 판정선은 여전히 한 곳이다.
 @MainActor
-func manualLocationLabel(_ store: ManualLocationStore) -> String? {
+func manualLocationLabel(_ store: ManualLocationStore, accessible: Bool) -> String? {
     guard let m = store.current else { return nil }
+    let name = manualLocationBilingualName(m, lang: AppLanguage.current)
+    let label = accessible ? name.primary : name.display
     return isManualLocationVerified(m, verdict: store.verdict)
-        ? appLocalized("manualLocation.manual", m.label)
-        : appLocalized("manualLocation.manualUnverifiable", m.label)
+        ? appLocalized("manualLocation.manual", label)
+        : appLocalized("manualLocation.manualUnverifiable", label)
 }
 
 /// 현재 위치 표시줄. **버튼 하나**다.
@@ -36,8 +42,9 @@ struct LocationBarView: View {
 
     var body: some View {
         Button { pickerOpen = true } label: {
-            // 비-ko 주소 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만.
-            Text(label(addressName?.display)).accessibilityLabel(Text(label(addressName?.primary)))
+            // 비-ko 주소·수동 위치 병기(E28): 시각 `… (한글) …`, 낭독은 영문·로마자만.
+            Text(label(addressName?.display, accessible: false))
+                .accessibilityLabel(Text(label(addressName?.primary, accessible: true)))
         }
             .frame(minHeight: 44)
             .sheet(isPresented: $pickerOpen) {
@@ -55,8 +62,8 @@ struct LocationBarView: View {
 
     /// 상태 + **동작**을 한 텍스트로. 상태만 이름으로 쓰면 VoiceOver가 "현재 위치,
     /// 버튼"으로 읽어 누르면 무엇이 되는지 단서가 0이다 — 이 기능의 유일한 진입점이다.
-    private func label(_ address: String?) -> String {
-        "\(state(address: address)), \(appLocalized("manualLocation.pickTitle"))"
+    private func label(_ address: String?, accessible: Bool) -> String {
+        "\(state(address: address, accessible: accessible)), \(appLocalized("manualLocation.pickTitle"))"
     }
 
     /// 현재 위치 주소의 병기 이름(E28). 주소 미확보면 nil — 라벨은 "현재 위치"로 폴백한다.
@@ -73,8 +80,8 @@ struct LocationBarView: View {
     /// 실패를 좌표 유무보다 먼저 본다 — 권한을 회수해도 `lastCoordinate`는 남으므로
     /// (재취득 실패 시 직전 좌표 보존이 계약이다) 좌표를 먼저 보면 회수를 못 알린다.
     /// 웹도 스토어 status가 `denied`로 덮이므로 같은 순서다.
-    private func state(address: String?) -> String {
-        if let manual = manualLocationLabel(store) { return manual }
+    private func state(address: String?, accessible: Bool) -> String {
+        if let manual = manualLocationLabel(store, accessible: accessible) { return manual }
         switch location.observedAuthorization {
         case .denied, .restricted:
             return appLocalized("manualLocation.gpsFailed")
@@ -107,12 +114,13 @@ struct LocationBarView: View {
         switch endpoint {
         case .current:
             store.clear()   // 이 맥락에서 "현재 위치 사용"은 해제를 뜻한다
-        case .place(let label, let lat, let lng):
+        case .place(let label, let lat, let lng, let labelRoman):
             // origin은 지정 시점의 적격 실측 fix. 없으면 판정이 undecidable이 된다.
             let fix = try? await LocationService.shared.currentFix(force: true)
             let now = Date().timeIntervalSince1970
             let origin = fix.flatMap { isEligibleManualFix($0, now: now) ? $0 : nil }
-            store.set(label: label, lat: lat, lng: lng, origin: origin)
+            // 라틴 표기는 지정 화면이 이 시점에 든 값(E28) — 스토어가 다시 조회하지 않는다.
+            store.set(label: label, labelRoman: labelRoman, lat: lat, lng: lng, origin: origin)
         }
     }
 }

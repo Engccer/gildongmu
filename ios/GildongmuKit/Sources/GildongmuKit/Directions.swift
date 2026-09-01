@@ -10,7 +10,10 @@ import Foundation
 public enum DirectionsEndpoint: Sendable, Hashable {
     /// 현재 위치. 좌표는 조회 실행 시점에 측위한다(권한 요청도 그 시점, 직렬화 금지 계약과 동형).
     case current
-    case place(label: String, lat: Double, lng: Double)
+    /// `labelRoman`은 지정 시점에 손에 있는 라틴 표기(장소=서버 `Place.nameRoman`, 주소=juso `engAddr`,
+    /// E28 후속). 수동 위치 지정이 스토어까지 옮겨 비-ko 표시줄이 1순위로 낭독한다 — 표시 때 다시
+    /// 조회하면 왕복마다 값이 달라지므로 그때 저장한다(웹 `ManualLocation.labelRoman` 동형). 부재는 nil.
+    case place(label: String, lat: Double, lng: Double, labelRoman: String? = nil)
 }
 
 /// 수단 식별. displayOrder는 각 군(성공·비성공) 안의 고정 순서다(웹 activeModes 동형) —
