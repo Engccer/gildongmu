@@ -43246,37 +43246,37 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "급행"
+            "value": "급행 열차"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Express"
+            "value": "Express train"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Expreso"
+            "value": "Tren expreso"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Express"
+            "value": "Train express"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Espresso"
+            "value": "Treno espresso"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "急行"
+            "value": "急行列車"
           }
         }
       }

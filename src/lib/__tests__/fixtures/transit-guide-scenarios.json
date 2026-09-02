@@ -4087,7 +4087,7 @@
    ]
   },
   {
-   "name": "근사 잠금 급행 선언(§6): 하차역 목록에서 급행 항목을 우선한다 — 더 가까운 완행이 있어도 급행 잔여로 추적, 급행이 없으면 전체",
+   "name": "근사 잠금 급행 선언(§6): 하차역 목록에서 급행 항목만 고른다 — 더 가까운 완행이 있어도 급행 잔여로 추적, 급행이 없으면 미등장(완행 폴백 없음)",
    "route": "subwaySingle",
    "steps": [
     {
@@ -4199,11 +4199,94 @@
       }
      },
      "expect": {
+      "remaining": 4,
+      "event": null,
+      "signal": "tracking"
+     }
+    },
+    {
+     "at": 105000,
+     "input": {
+      "kind": "poll",
+      "seq": 4,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "L2",
+         "direction": "하행",
+         "message": "[2]번째 전역",
+         "remainingStops": 2,
+         "destinationName": "중앙보훈병원",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "remaining": 4,
+      "event": null
+     }
+    },
+    {
+     "at": 120000,
+     "input": {
+      "kind": "poll",
+      "seq": 5,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "L2",
+         "direction": "하행",
+         "message": "[1]번째 전역",
+         "remainingStops": 1,
+         "destinationName": "중앙보훈병원",
+         "express": false,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "remaining": 4,
+      "event": {
+       "kind": "signalLost"
+      },
+      "signal": "signalLost"
+     }
+    },
+    {
+     "at": 135000,
+     "input": {
+      "kind": "poll",
+      "seq": 6,
+      "phaseGen": 1,
+      "poll": {
+       "kind": "ok",
+       "items": [
+        {
+         "vehicleId": "E1",
+         "direction": "하행",
+         "message": "[3]번째 전역",
+         "remainingStops": 3,
+         "destinationName": "중앙보훈병원",
+         "express": true,
+         "arrivalCode": "99"
+        }
+       ]
+      }
+     },
+     "expect": {
       "remaining": 3,
       "event": {
        "kind": "countdown",
        "remaining": 3
-      }
+      },
+      "signal": "tracking"
      }
     }
    ]

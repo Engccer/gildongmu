@@ -1057,7 +1057,7 @@
     "exitBound": "Toward Exit {exit}",
     "exitBoundSentence": "Toward Exit {exit}.",
     "expressPrompt": "Is it an express train?",
-    "expressYes": "Express",
+    "expressYes": "Express train",
     "expressNo": "Regular train",
     "departed": "seen {minutes} min ago",
     "stateTracking": "Tracking.",

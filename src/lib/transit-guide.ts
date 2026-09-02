@@ -1219,10 +1219,11 @@ export function findLockedItem(items: TrackItem[], lock: TransitLock): TrackItem
     const byDirection = items.filter(
       (it) => !lock.direction || !it.direction || it.direction === lock.direction,
     );
-    // 급행 선언 근사 잠금(§6): 급행 항목이 있으면 그 안에서 고른다(없으면 전체 — 목록에 급행 표지가
-    // 없는 수단·시각에도 추적은 살아야 한다).
-    const expressOnly = lock.express ? byDirection.filter((it) => it.express) : [];
-    const pool = expressOnly.length > 0 ? expressOnly : byDirection;
+    // 급행 선언 근사 잠금(§6): 급행 항목만 고른다. 급행이 목록에 없으면 **미등장**(null)이다 — 완행으로
+    // 떨어뜨리면 더 가까운 완행 잔여로 카운트다운이 나가고 급행이 다시 잡힐 때 "기준 차량 교체"가 거짓으로
+    // 난다(코드 리뷰 MAJOR 1). 미등장 경로(첫 관측 전 정상 침묵·관측 후 유예 뒤 소실)가 정직하다.
+    const pool = lock.express ? byDirection.filter((it) => it.express) : byDirection;
+    if (lock.express && pool.length === 0) return null;
     let best: TrackItem | null = null;
     for (const it of pool) {
       if (it.remainingStops == null) continue;

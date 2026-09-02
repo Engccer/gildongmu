@@ -101,12 +101,24 @@ export function TransitGuidePanel({
   const changeBoardingRef = useRef<HTMLButtonElement>(null);
   /** 역 재선택 프롬프트 착지(A16 L3) — 버튼이 사라지는 전이라 포커스를 선점한다. */
   const reboardPromptRef = useRef<HTMLHeadingElement>(null);
-  /** 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3). */
-  const [expressPromptOpen, setExpressPromptOpen] = useState(false);
+  /**
+   * 급행 확인 프롬프트(spec 2026-09-02 §6) — 버튼으로 펼친 것이라 heading이 발견 경로(헌장 §3).
+   * 연 시점의 국면 세대에 결박해 파생한다(iOS `onChange(of: phase)` 동형): 후보 선택·탑승 변경·구간
+   * 전진·세션 종료가 세대를 올리면 누르지 않은 프롬프트가 다음 대기 국면에 되살아나지 않는다(spec 리뷰).
+   */
+  const [expressPromptGen, setExpressPromptGen] = useState<number | null>(null);
   const expressPromptRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    if (expressPromptOpen) expressPromptRef.current?.focus();
-  }, [expressPromptOpen]);
+  useLayoutEffect(() => {
+    if (expressPromptGen !== null) expressPromptRef.current?.focus();
+  }, [expressPromptGen]);
+  // 급행 거절(§6): 답 버튼이 사라지는 전이라 거절 문장 행에 선점(헌장 §5) — 착지 낭독이 곧 답이라 별도 통지 없음.
+  const expressNoteRef = useRef<HTMLParagraphElement>(null);
+  const prevExpressNoteRef = useRef(false);
+  const hasExpressNote = guide.expressBlockedNote !== null;
+  useLayoutEffect(() => {
+    if (hasExpressNote && !prevExpressNoteRef.current) expressNoteRef.current?.focus();
+    prevExpressNoteRef.current = hasExpressNote;
+  }, [hasExpressNote]);
   const confirmBoardedRef = useRef<HTMLButtonElement>(null);
   const waitingLabelRef = useRef<HTMLParagraphElement>(null);
   const statusRef = useRef<HTMLParagraphElement>(null);
@@ -485,7 +497,9 @@ export function TransitGuidePanel({
                       type="button"
                       // 급행 집합이 있는 노선만 급행 확인을 묻는다(§6) — 없으면 종전 즉시 잠금.
                       onClick={() =>
-                        needsExpressPrompt(leg) ? setExpressPromptOpen(true) : guide.boardAlready()
+                        needsExpressPrompt(leg)
+                          ? setExpressPromptGen(state.phaseGen)
+                          : guide.boardAlready()
                       }
                       className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
                     >
@@ -501,7 +515,7 @@ export function TransitGuidePanel({
                       </button>
                     )}
                   </div>
-                  {expressPromptOpen && (
+                  {expressPromptGen === state.phaseGen && needsExpressPrompt(leg) && (
                     <div className="mt-2">
                       <h4 ref={expressPromptRef} tabIndex={-1} className="text-sm font-medium">
                         {t("expressPrompt")}
@@ -510,7 +524,7 @@ export function TransitGuidePanel({
                         <button
                           type="button"
                           onClick={() => {
-                            setExpressPromptOpen(false);
+                            setExpressPromptGen(null);
                             guide.boardAlready(true);
                           }}
                           className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
@@ -520,7 +534,7 @@ export function TransitGuidePanel({
                         <button
                           type="button"
                           onClick={() => {
-                            setExpressPromptOpen(false);
+                            setExpressPromptGen(null);
                             guide.boardAlready(false);
                           }}
                           className="min-h-11 rounded-md border border-gray-400 px-3 text-sm"
@@ -532,7 +546,12 @@ export function TransitGuidePanel({
                   )}
                   {guide.expressBlockedNote && (
                     // 잠금 거절의 상시 문장(통지는 훅 live region이 이미 냈다) — 사유가 화면에 남는다.
-                    <p className="mt-1 text-sm" lang={guide.expressBlockedNote.lang}>
+                    <p
+                      ref={expressNoteRef}
+                      tabIndex={-1}
+                      className="mt-1 text-sm"
+                      lang={guide.expressBlockedNote.lang}
+                    >
                       {guide.expressBlockedNote.text}
                     </p>
                   )}

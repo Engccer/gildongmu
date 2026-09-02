@@ -444,8 +444,7 @@ final class TransitGuideModel {
                 transitExpressSkipsAlightLine(isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false)))
             expressBlockedNote = note
             transitGuideLog("boardAlready rejected express skips alight")
-            // 활성화의 직접 응답이고 프롬프트 버튼이 사라진다(헌장 §6) — 즉시·.high.
-            announceNow(note, highPriority: true)
+            // 통지는 시트의 착지가 대신한다(문장 행 착지 = 답). 착지 실패 폴백만 `announceExpressBlockedFallback`.
             return
         }
         expressBlockedNote = nil
@@ -461,8 +460,15 @@ final class TransitGuideModel {
     }
 
     /// 급행 확인에서 잠금을 거절한 뒤 남는 상시 문장("이 급행은 {하차역}에 서지 않습니다", §6).
-    /// 국면 전이(잠금·전진·탑승 변경)와 세션 종료가 지운다.
+    /// 국면 전이(잠금·전진·탑승 변경)·경로 교체·세션 종료가 지운다.
     private(set) var expressBlockedNote: String?
+
+    /// 거절 문장 행 착지가 실패했을 때만(List 컬링) 부르는 폴백 — 활성화 응답이 침묵으로 끝나지 않게 `.high`.
+    /// 착지가 성공하면 착지 낭독이 답이라 부르지 않는다(같은 문장 이중 낭독 금지, a11y 감사 2026-09-02).
+    func announceExpressBlockedFallback() {
+        guard let note = expressBlockedNote else { return }
+        announceNow(note, highPriority: true)
+    }
 
     /// 새로고침(§13.2) — 즉폴 + 결과를 직접 응답으로 통지(자동 폴 무낭독의 예외).
     func refreshWaiting() {
@@ -677,6 +683,7 @@ final class TransitGuideModel {
         waitingDeparted = []
         waitingReason = nil
         refreshAnnounce = false
+        expressBlockedNote = nil  // 옛 경로의 하차역 이름이 든 문장(코드 리뷰 #4)
         toneState = .initial
         lastPollStartAt = nil
         plannedIntervalMs = nil
@@ -746,6 +753,12 @@ final class TransitGuideModel {
         // 대기 중에도 근사 예고로 유지).
         if leg.trackMode == .tagoBus || (state.lock.map(isApproxTransitLock) ?? false) {
             parts.append(appLocalized("transitGuide.approxNote"))
+        }
+        // 급행 선언 잠금(§6)은 판정을 상시 표시에 남긴다 — 답한 직후의 침묵이 "확인됨"으로 읽히지 않게.
+        if state.lock?.express == true {
+            parts.append(TransitGuideTextRenderer.render(transitExpressStatusLine(
+                isEn: transitGuideIsEn, leg: displayLeg(leg, useOverride: false),
+                verdict: transitDeclaredExpressVerdict(leg: leg))))
         }
         // 신선도 문장은 정확히 1개(§12.3, 감사 H2·M1): 추적 중이면 데이터 나이,
         // 그 외엔 마지막 폴 시각만 — 낡은 나이를 신선한 값처럼 이월하지 않는다.

@@ -1063,9 +1063,10 @@ public func transitFindLockedItem(_ items: [TransitTrackItem], lock: TransitLock
         let byDirection = items.filter {
             lock.direction.isEmpty || $0.direction.isEmpty || $0.direction == lock.direction
         }
-        // 급행 선언 근사 잠금(§6): 급행 항목이 있으면 그 안에서 고른다(없으면 전체).
-        let expressOnly = lock.express == true ? byDirection.filter(\.express) : []
-        let pool = expressOnly.isEmpty ? byDirection : expressOnly
+        // 급행 선언 근사 잠금(§6): 급행 항목만 고르고, 없으면 **미등장**(nil) — 완행 폴백은 이 기능이
+        // 막으려던 결함(완행 잔여 카운트다운·거짓 기준 교체)이다(코드 리뷰 MAJOR 1, 웹 미러).
+        let pool = lock.express == true ? byDirection.filter(\.express) : byDirection
+        if lock.express == true, pool.isEmpty { return nil }
         let withRemaining = pool.filter { $0.remainingStops != nil }
         if let best = withRemaining.min(by: { ($0.remainingStops ?? .max) < ($1.remainingStops ?? .max) }) {
             return best

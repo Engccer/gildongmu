@@ -218,6 +218,14 @@ public func transitExpressSkipsAlightLine(isEn: Bool, leg: TransitDisplayLeg) ->
 /// 하차 출구 방면(E25) — 확정 도착 통지(`sentence`: 마침표 있는 문장 키, 공백 연결 채널)·하차역 행
 /// (쉼표 연결, 마침표 없음)에 병기. 통지 채널의 다른 조각은 마침표를 가지므로 마침표 없는 키를 쓰면
 /// "3번 출구 방면 다음: …"으로 이어져 읽힌다(a11y 감사 2026-09-02).
+/// 급행 선언 근사 잠금의 승차 상시 표시(§6, 웹 `expressStatusLine` 미러) — 답한 직후의 침묵이 "확인됨"으로
+/// 읽히지 않게 판정을 말한다. 기존 키 재사용(`stops` → expressStopsAt, 그 밖 → expressCheck).
+public func transitExpressStatusLine(
+    isEn: Bool, leg: TransitDisplayLeg, verdict: TransitExpressVerdict?
+) -> TransitTextLine {
+    makeLine(isEn, verdict == .stops ? "expressStopsAt" : "expressCheck", [leg.alight]) { $0 }
+}
+
 public func transitExitBoundLine(isEn: Bool, exit: String, sentence: Bool = false) -> TransitTextLine {
     TransitTextLine(parts: [.key(sentence ? "exitBoundSentence" : "exitBound", [exit])], lang: isEn ? "en" : "ko")
 }

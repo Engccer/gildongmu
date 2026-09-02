@@ -136,6 +136,8 @@ struct TransitTrackingSheet: View {
                 }
             }
             .onChange(of: model.state?.legIndex) { viaExpanded = false }
+            // 급행 확인 프롬프트(§6)는 연 국면 세대에 묶인다 — 경로 교체(waiting→waiting)도 세대가 바뀐다(코드 리뷰 #4).
+            .onChange(of: model.state?.phaseGen) { expressPromptActive = false }
             // 완료 전이(세션 소거 + 핸드오프 제안): 사라진 "다음 구간" 대신 다음
             // 행동(도보 안내 시작)으로 선점(헌장 §5, arrived 전이와 동형 패턴).
             .onChange(of: model.pendingWalkHandoff) { _, handoff in
@@ -500,7 +502,10 @@ struct TransitTrackingSheet: View {
                 Button(appLocalized("transitGuide.expressYes")) {
                     expressPromptActive = false
                     model.boardAlready(express: true)
-                    if model.expressBlockedNote != nil { landControlFocus(.expressBlocked, proxy: proxy) }
+                    // 거절이면 문장 행 착지(착지 낭독 = 답). 착지가 실패한 경우에만 `.high` 통지 폴백.
+                    if model.expressBlockedNote != nil {
+                        landControlFocus(.expressBlocked, proxy: proxy) { model.announceExpressBlockedFallback() }
+                    }
                 }
                 Button(appLocalized("transitGuide.expressNo")) {
                     expressPromptActive = false
@@ -559,7 +564,10 @@ struct TransitTrackingSheet: View {
     /// 재가시화 → 재대입 → 로그. **동기 대입 한 줄은 실패한다** — List 오프스크린 행은
     /// AX 컬링으로 대입이 조용히 되돌아가는 실기기 확정 함정이고, 종전 구현은 재시도에서
     /// 가시화를 다시 하지 않았다(A19 실승차 2/2 실패). 로그는 착지 결과까지 남긴다.
-    private func landControlFocus(_ target: SheetControl, proxy: ScrollViewProxy, note: String = "") {
+    /// `onMiss`: 재시도 뒤에도 착지하지 못했을 때 1회(착지 낭독이 답인 자리의 침묵 방지 폴백).
+    private func landControlFocus(
+        _ target: SheetControl, proxy: ScrollViewProxy, note: String = "", onMiss: (() -> Void)? = nil
+    ) {
         controlFocusTask?.cancel()
         controlFocusTask = Task { @MainActor in
             // 경합 바인딩 해제(설계 리뷰 M7) — 후보·경로 정체성 바인딩이 사라진 항목을
@@ -583,6 +591,7 @@ struct TransitTrackingSheet: View {
                 "controlFocus target=\(target) landed=\(focusedControl == target)"
                     + " actual=\(focusedControl.map { "\($0)" } ?? "nil")"
                     + (note.isEmpty ? "" : " \(note)"))
+            if focusedControl != target { onMiss?() }
         }
     }
 
