@@ -50,6 +50,7 @@ enum TransitGuideTextRenderer {
         case "expressStopsAt": return appLocalized("transitGuide.expressStopsAt", arguments: args)
         case "expressSkipsAlight": return appLocalized("transitGuide.expressSkipsAlight", arguments: args)
         case "exitBound": return appLocalized("transitGuide.exitBound", arguments: args)
+        case "exitBoundSentence": return appLocalized("transitGuide.exitBoundSentence", arguments: args)
         case "departed": return appLocalized("transitGuide.departed", arguments: args)
         case "terminatesEarly": return appLocalized("transitGuide.terminatesEarly", arguments: args)
         case "viaBoard": return appLocalized("transitGuide.viaBoard", arguments: args)

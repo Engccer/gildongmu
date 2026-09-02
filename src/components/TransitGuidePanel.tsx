@@ -421,8 +421,9 @@ export function TransitGuidePanel({
                       const item = option.candidate.item;
                       const displayLeg = transitDisplayLeg(leg, null);
                       const displayItem = transitDisplayItem(item);
+                      // 차단 행은 급행 조각을 빼고 사유 줄만 결정 문장으로 둔다(a11y 감사 2026-09-02).
                       const descLine = candidateDescLine(isEn, displayLeg, displayItem, {
-                        express: option.candidate.express,
+                        express: option.candidate.unreachable ? null : option.candidate.express,
                         departedMinutes: option.departedMinutes,
                       });
                       const desc = render(descLine);

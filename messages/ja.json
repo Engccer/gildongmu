@@ -1055,6 +1055,7 @@
     "expressStopsAt": "急行、{stop}停車",
     "expressSkipsAlight": "この急行は{stop}に停車しません",
     "exitBound": "{exit}番出口方面",
+    "exitBoundSentence": "{exit}番出口方面。",
     "departed": "{minutes}分前に確認",
     "stateTracking": "追跡中。",
     "stateNotYetVisible": "車両接近待ち。",

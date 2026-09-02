@@ -565,7 +565,7 @@ export function useTransitGuide(route: TransitRoute | null) {
           // 출구 방면(E25)은 **확정** 도착에만(설계 리뷰 #14) — 추정 도착에 확정형 출구 안내는 잘못 내리게 한다.
           if (event.certain && leg) {
             const exit = transitDisplayLeg(leg, null).exitAlight;
-            if (exit) parts.push(renderText(exitBoundLine(isEn, exit)));
+            if (exit) parts.push(renderText(exitBoundLine(isEn, exit, true)));
           }
           const s = stateRef.current;
           const next = s && r ? r.legs[s.legIndex + 1] : null;
@@ -638,6 +638,7 @@ export function useTransitGuide(route: TransitRoute | null) {
       approachFramePiece,
       contextPiece,
       currentLeg,
+      renderText,
       displayLegOf,
       framePiece,
       isEn,

@@ -1920,6 +1920,24 @@
     ],
     "lang": "ko"
    }
+  },
+  {
+   "name": "exitBound 통지 문장형(마침표) ko",
+   "fn": "exitBound",
+   "isEn": false,
+   "exit": "3",
+   "sentence": true,
+   "expect": {
+    "parts": [
+     {
+      "key": "exitBoundSentence",
+      "args": [
+       "3"
+      ]
+     }
+    ],
+    "lang": "ko"
+   }
   }
  ]
 }

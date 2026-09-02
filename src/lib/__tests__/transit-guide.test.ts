@@ -592,6 +592,13 @@ describe("승차 전 도보 판정 transitPrewalkTarget (A25)", () => {
     expect(out.walkAfterMinutes).toBe(route.walkAfterMinutes);
     expect(route).toEqual(snapshot);
     expect(withoutPrewalk({ legs: [], walkAfterMinutes: 2 })).toEqual({ legs: [], walkAfterMinutes: 2 });
+    // 새 필드(급행 집합·출구·en 이름)도 보존 — Kit withoutPrewalk 단언과 미러.
+    const rich: TransitGuideLeg = {
+      ...base.legs[0], walkBeforeMinutes: 3, lineNameEn: "Line 9",
+      expressStops: ["김포공항"], expressStopIds: ["901"], exitAlight: "2-1",
+    };
+    const kept = withoutPrewalk({ legs: [rich], walkAfterMinutes: null }).legs[0];
+    expect(kept).toEqual({ ...rich, walkBeforeMinutes: null });
   });
 });
 

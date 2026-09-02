@@ -777,6 +777,9 @@
   "transitGuide.exitBound": [
     "exit"
   ],
+  "transitGuide.exitBoundSentence": [
+    "exit"
+  ],
   "transitGuide.expressCheck": [
     "stop"
   ],
